@@ -1,248 +1,197 @@
-Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
+Received: from mail-ed1-f43.google.com (mail-ed1-f43.google.com [209.85.208.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3865634C9A6
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 19:40:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32507327BEC
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 21:07:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.43
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774467614; cv=pass; b=CX7DA8cqLgV1QYHrbml0B7KenqCZZGit7WRyuta9hK/7OFzcIn+/hNQXgDYala8yo1Lh8Lnj+UhUBzYdtLMjee1SGRZOCC/7OXARPwWy4xe+OngC76Umx8YXwR2jYwbukcpmE3g9xdpRXd5upo+pALBYfouhhig5VwgQHAEn8Io=
+	t=1774472855; cv=pass; b=MYbIpbXoa5Vw1W6cjPQwnudPbOWd/w4/5D/+RjgnWXh/Y5sTAaHeo4wAhCEibcU5gXRL8AvWkTPRMkqxwZf1UrGgBk+Xo33WfsUkS6nxLXKsPhRoBtbP2SrI1+ZtGu/eJHP9D5Z9+ErYcZKiL0YNswBA/kgAOxBc6HfSjQxUVv8=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774467614; c=relaxed/simple;
-	bh=oeicwxjwchcF9WqvWg1RQaqLIIuLCbf8G0N4FWHt8Q4=;
+	s=arc-20240116; t=1774472855; c=relaxed/simple;
+	bh=JGjs+v5dawp1OwMd2nAirdT8cW4F0CuocDS42X+FnRk=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=kDJtmquaBzjQT33ha1lCBKdEbrvIjr/3ELV1xcX1PiaBfOhrSbtlPdFlaBBsBI4OciOvVFO36am76Vea9mIj0S5rwunUUwl/4FwMpCWM9ZgD81cyYrkPvzUoUOQ7dVBonK+zjuBdOfE6aHl63W8e2F9Pqvp6q4UUwztAabyZJLg=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Qk2iy/p5; arc=pass smtp.client-ip=209.85.221.49
+	 To:Cc:Content-Type; b=tH9A5H10WsXIu76d+CaEj80B0V1B8oIqHGjXtKk0jwPkFE2QfMe8iqDIujRdjlRc3QI3MIXmtUFSNiwQcl4VBt1Cj7CxcbTvljINiCWIO7tf/gYn01RNmiy5oPcajLzxYJLHInrv5ft7l1e1SdVlUE/nWZCowxmSiKDK23T78RY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OImVs1zk; arc=pass smtp.client-ip=209.85.208.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Qk2iy/p5"
-Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-439bc14dcf4so1025037f8f.1
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 12:40:12 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774467611; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OImVs1zk"
+Received: by mail-ed1-f43.google.com with SMTP id 4fb4d7f45d1cf-66970715adbso551135a12.3
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 14:07:33 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774472852; cv=none;
         d=google.com; s=arc-20240605;
-        b=KCEDEFmBkfVgjmDOArfJDZy5bx5VDnLswVqQhvKYXxYDAaf4LaeHVR17IGC43hy7+6
-         r/4lZfn+8uWjc95BtdCf2HGUwL3dvjbEOpjyFZfrBkBIR5e1NeEAkJyyT9+8aA5wTC+9
-         OoNMRiGciiq64+T4MXBlhK5Egbx3mFmCTAPuvVuDsrEaZ4SKCXq+OTPZRlaXd6IoIZiF
-         38mY8QVAvnWVbxJ3TINFGbtpg2lzSH6ot7nAzMXj7SANUeTezywrgmfCg/K2PqrykQlQ
-         Ym2lLZMwYYbLfZNg2VFVPCERAowxk1cgrDu/EPLkBDscjqgoYn85d7uNpuD3nZDfBMUb
-         Avpg==
+        b=JykDlY9aTrAHg2Kbkdbo3i/s5EnhWdx9eAzTddbbnIkGMZFUFt2IjIIhCYg2qAbMta
+         QZSTj4AaTkNXi71F58H/UVc8MYwi3eEMABvpizR1XQy/55xcJ2N47eq11iYMP4EP6u2m
+         YMYzhAiwNuola92DjokCUGCLNoX9rzCnGb0JY5KNVlH0aQWX35is7rAcUPW5SNW1khiT
+         S8BQ4VhcsVafVq7TpF4zqjujhPjOQ+nLZrV3Q17RjBec0e70kfw0orwAeMHIvBQAhvIR
+         UZ4msOjMiXalZZEi2Kl32oGqAZbPaKz3nMCVzh+xpXtyzIcbbaw7tERYHZxrB1REtjV8
+         BzYg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=1jaRlaeffeDJBGaCdxhQ4LgTNj3RIqYHRelemKVaRzI=;
-        fh=CWG7KqAKpfZC3YucEag2RJzX+mC6UswmgzIJR+jxDvs=;
-        b=Wk+gs2Qo3F4YfHyyOmT5660FkFqPEnIGRnAYCLg78zzUGNEIjJUUilshn93rHKvP78
-         0c1LuBbWY89c+9BieOCe0z4FKmw/QCFNvknJhpPzWZ+b/CEICkySyf4OG5MlDOgzc5HQ
-         lIQYh2TqMFZj2J7znP/i9XxmJMG6nrYEWLciuTJ0lfIVe2Mtgl0FliJwtrkyajQwTrl3
-         8RVTkhpg4ATSXj0CvWSFvSHofqsobrxOE0spEkyVVBLqdYLiZiwEKF8dftwH9EAyRZJC
-         LD8sCH1G9M/YyIaucmNYdwhHC2WOdeNLUjNalDXS74KjhFTRQ3hRP9syBHx2JLX4fMOY
-         VgRw==;
+        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
+        fh=PO4n2WBPaalELz73/30y88UgVUim4kmeRddFh02b9dE=;
+        b=C2tG76fXMIUX034JeEVq1T+3OooHipgLE4YkZK5H+JBXuplIQlD1rm2Yz63VC+TcCC
+         wGQqvyyPJOd2W7XR9bfx1qrHb568QeVTYCwPg/c7B/tzePdUK741HuHhbuQkclOKUH1y
+         5MpL2wXRnMm8oHY7wGfvbkgTakOKrhGcN5dJBkv6PRgnPGxYLg7e5SJRoJWlhC7a6WWb
+         x5WPT4NjinCgKSbucBn4obr9LK+0fZfatP9wBGHdxvOxg3MifTHezAdeJWiVNEG26rvF
+         of9zWvK72hI/96+m7O4GLkLjBkiPaxsTCSZYNIcx5mATMBZP9Oo5SY8k7vEO5U5+TSaw
+         tmOw==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774467611; x=1775072411; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1774472852; x=1775077652; darn=vger.kernel.org;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=1jaRlaeffeDJBGaCdxhQ4LgTNj3RIqYHRelemKVaRzI=;
-        b=Qk2iy/p54elQLzB8JP2+xrdLuCL06Leb5yvd7tCXwqvJRJOB6fmelu3xzcweMSL5eK
-         DdVCpx+PZCs6S4+56dn6/gS5fJG4EC4jY1LoabApjKwhKgXCKhpqzrnJ3Um8rLiIy/It
-         7PWJX+JcBqMdgAvc2MFZSqnJvUW4JR0SkNUwELdDjt4o4zC5n+00/A2bubKsq6WNfEA2
-         Btomix0C1N7pitC5lxxWn+AtUMWNjCuwtttJHozTLDHhiuQrnfNCYMWx452FtkTB6qHX
-         tTA5v8kooQyM8eb4D7EbbuHlxdCHK5SFbPf8c7c2PbVk0fcDNgoalA29DAvSxh9FOe4N
-         4Oiw==
+        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
+        b=OImVs1zkUJrlAkN52OwyfOW0lQFYMTwJf4Aq0gO3e+S/8/zHDfVDOG7htEcM0wVjxS
+         7QBcjyYil/fcM56MZvIPoU8ESgiGBASTGxGb0GYVcHRaJ/Yb7GWo63hKC6fSYxx83Nky
+         IMAZg9n4IICog16zDUZqs6PM9+B6T4ID8SUXWLDs50vlRwQaayYepSt5SzlQ6ruxnhIh
+         MhgnFk4BzJwrYUo7QqlgkVfz/iVGEic1WZ/sVbH8IbyOmaqkZdNoNran00OHGlnmt20L
+         2cNTbKeBQrxptXlhbB+Umo6alPQsb1k7KhAUg89JpUOelK3yO89TSz17qzDSrWcLS4Xn
+         jjaw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774467611; x=1775072411;
+        d=1e100.net; s=20251104; t=1774472852; x=1775077652;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=1jaRlaeffeDJBGaCdxhQ4LgTNj3RIqYHRelemKVaRzI=;
-        b=cH2RG2ex+uNPKvZjHilr7vhCJHvRwAmbrGb+vvUKQoTKSvwR74ieJCOsNq0LhH8Lm+
-         PSpY+f1rKZPUkVWxm1r6PyZuf5GQfPvnXuAekcRwc2ZKWXpVjwHtSVwo5gBNFtkD0AIj
-         7mDCge6RuIewfnfJia2ce8NyVRGYYPSj/InHu0g6j/H2CTKSOXgWnQPLyjlY7smf8Ceb
-         i1TKS6oS+w6uh1vQBcAoK6aqRMehO7NGEo9a1KuxpKRxbgmo9p28f9GBvl9wSbhkEk1W
-         mmbaBzrtZBZxWEnPJXENfyJVthElXVC4Vc/GJKcBHFqZ8Id+0xRYBO2ndGo7JzO+RXXd
-         kaGQ==
-X-Forwarded-Encrypted: i=1; AJvYcCW4P3iL2niSiZg3RA8ym9m8NyogBy9NmLkd4RiSyqLHu3CmCDOVWvAFMz4XB6oNRvcfCO7lnmMWNPcE@vger.kernel.org
-X-Gm-Message-State: AOJu0YzSGP4j7Qhv9XMadQsC4G8dVT0uXBLLxnX9qCpsjcUbBvC4YK6E
-	6Walh2KdMu1Nqup+vs3UoHd9aO9/JUXng2kH7kPmLd5Qo67gzwY3vEjnP1noRE427OP8p/umwVQ
-	4SuhbRFCB2HldvFTL32aRIUuesvay/CY=
-X-Gm-Gg: ATEYQzzpgpaK4RBB68k1kk6NQaep/gZkrH9Hd4485WBZfgEBHimfy3oKRJ+JfxxZ6P2
-	A36Pt1vE+fB2LVjSuUEjvsQ/jJtxK85YquD25GSHLH+h3LQhj4IFVzNx+64tqVvTstx+7hyN5Zb
-	dQ4qfRVr4xbnAK6avJvz56+/GIQ3a5tqEKRczrR95065rfC8oHqrY0C8D2WdfzCP9DfJbrLN+qH
-	JQfb5C7tsn99Gty7+g1lHe+W551JqoruUsddC4Ogd6GJwoeHdOOv+fEytyuz7EDcDkHngOdS+2N
-	Lqb3eA==
-X-Received: by 2002:a5d:5846:0:b0:43b:4703:9dd5 with SMTP id
- ffacd0b85a97d-43b883be2admr7963481f8f.18.1774467610501; Wed, 25 Mar 2026
- 12:40:10 -0700 (PDT)
+        bh=MYHNxKB+bgvczQp1QPu1TdjgicMQ/b36W0rRs4Y4aSg=;
+        b=Up/jqSow50OhZfbcxqo+Ilzbt2YlPQJjS4YOO0AJvSpdSa7+ObKaZNdOdp9WXNVBVR
+         8EBpLljJdkKXTX0cjCCIlyTjc+26Pkk5NLbzkPGV64Ehdg7NA6d/HHaYDFFYcyVfaYPE
+         GGHq2XrkfqeRIdFWM0X3M5p8uIHaWFlszixv5SVq843u3mvIafiNBB7xO0yR+PrM0lNt
+         fKGb6hGWVD4L2H0P4bMA/sRuIdGAfXVncZTCVg9cBpiOuYNowVZtpsFx1mghii6ESmA0
+         /w1wT1m+hoQfznmfd+q40GM1M9lL2oIfinwim2enEYcDABJZA7GKyzDXOb8HL2XALAM+
+         AGMg==
+X-Forwarded-Encrypted: i=1; AJvYcCWdroCvWEV1HQRzvlmpM8xBFHobOkpKYFv9YiE6cHV3+l5fZM3vm96sRu9u/nyGl57211sjtRnom7kC@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy9678641OjjkZil0BSEalbctbE5u2E69WfAGv8t3lZRQzDKXq9
+	FjkCejqO1ErlbNuLiHDxkosYbxNv802QuNMUxuPVoDXv1WNIkN/mZSDhIYOIGQ89U8pvyV5qe9t
+	kQHlJPtiGsAfdUq8IiFHpcGJ3h0bzZfX13PSl
+X-Gm-Gg: ATEYQzxbXTVlC8xs+mAytj5p+wFEFKz2bzcV2wbW31tNaWkxP0CnYRkwj+fewL1bGz1
+	baRq//Vi9O9+KlDbkSk9WSLndlekyYRvbI0SLj0FXbbrfdOybxDogE9bmYhgePh+gzhr6n3lPiw
+	iTsHanN2Ku0l1StUYnUhHwy18y5Vxn1oYpW1R3zePwKZYILOrUnto6U7Ng9itz2fPhEgHb5nvmH
+	eQxPOOnwc9Z0+QUXFK/o14iDzjqd2zj9joittxFTeQW7btbHN7cVaZ0uF0QgVlym8AZixkhcIHC
+	54DrpRZOyZOtBGGOFpEbNT9GjQrjdqIq8mPgmpo=
+X-Received: by 2002:a05:6402:528d:b0:66a:16ed:46d3 with SMTP id
+ 4fb4d7f45d1cf-66a826ea687mr3278329a12.30.1774472852230; Wed, 25 Mar 2026
+ 14:07:32 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <177188733084.3935219.10400570136529869673.stgit@frogsfrogsfrogs> <177188733196.3935219.3172887920210313838.stgit@frogsfrogsfrogs>
-In-Reply-To: <177188733196.3935219.3172887920210313838.stgit@frogsfrogsfrogs>
-From: Joanne Koong <joannelkoong@gmail.com>
-Date: Wed, 25 Mar 2026 12:39:57 -0700
-X-Gm-Features: AQROBzCZjUmNW3mHEyd1fr7dhM1RSyURYPV4Z6yvt_FMTpVeDdj7JRXwFxnTYS0
-Message-ID: <CAJnrk1YL3KnON-WtNjNi+2GZ+6rYvnVUnYwCk5efv0o41XkxcA@mail.gmail.com>
-Subject: Re: [PATCH 4/5] fuse: update file mode when updating acls
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: miklos@szeredi.hu, bpf@vger.kernel.org, bernd@bsbernd.com, neal@gompa.dev, 
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+References: <20260320090428.24899-2-jack@suse.cz>
+In-Reply-To: <20260320090428.24899-2-jack@suse.cz>
+From: Mateusz Guzik <mjguzik@gmail.com>
+Date: Wed, 25 Mar 2026 22:07:20 +0100
+X-Gm-Features: AQROBzBanJ2emY_czit1kyH4Eyo3hZKOPBi6ESjKXPu7BVQXtoaBV59UZf-eTh8
+Message-ID: <CAGudoHF8zgjcKiHx75EwPmz5eTp_7yk+dh+ju4Ju2xZJqFJYvw@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Fix deadlock on inode reallocation
+To: Jan Kara <jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org, yi1.lai@linux.intel.com, 
+	stable@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Feb 23, 2026 at 3:07=E2=80=AFPM Darrick J. Wong <djwong@kernel.org>=
- wrote:
+can this get any traction?
+
+master as-is contains a change which uncovered the ext4 problem.
+either the deadlock needs to be fixed in time for the release or the
+other change needs to get temporarily reverted.
+
+interested parties can find proposed revert here:
+https://lore.kernel.org/linux-fsdevel/20260316103306.1258289-1-mjguzik@gmai=
+l.com/
+
+On Fri, Mar 20, 2026 at 10:04=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
 >
-> From: Darrick J. Wong <djwong@kernel.org>
+> Currently there is a race in ext4 when reallocating freed inode
+> resulting in a deadlock:
 >
-> If someone sets ACLs on a file that can be expressed fully as Unix DAC
-> mode bits, most local filesystems will then update the mode bits and
-> drop the ACL xattr to reduce inefficiency in the file access paths.
-> Let's do that too.  Note that means that we can setacl and end up with
-> no ACL xattrs, so we also need to tolerate ENODATA returns from
-> fuse_removexattr.
+> Task1                                   Task2
+> ext4_evict_inode()
+>   handle =3D ext4_journal_start();
+>   ...
+>   if (IS_SYNC(inode))
+>     handle->h_sync =3D 1;
+>   ext4_free_inode()
+>                                         ext4_new_inode()
+>                                           handle =3D ext4_journal_start()
+>                                           finds the bit in inode bitmap
+>                                             already clear
+>                                           insert_inode_locked()
+>                                             waits for inode to be
+>                                               removed from the hash.
+>   ext4_journal_stop(handle)
+>     jbd2_journal_stop(handle)
+>       jbd2_log_wait_commit(journal, tid);
+>         - deadlocks waiting for transaction handle Task2 holds
 >
-> Note that here we define a "local" fuse filesystem as one that uses
-> fuseblk mode; we'll shortly add fuse servers that use iomap for the file
-> IO path to that list.
+> Fix the problem by removing inode from the hash already in
+> ext4_clear_inode() by which time all IO for the inode is done so reuse
+> is already fine but we are still before possibly blocking on transaction
+> commit.
 >
-> Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
+> Reported-by: "Lai, Yi" <yi1.lai@linux.intel.com>
+> Link: https://lore.kernel.org/all/abNvb2PcrKj1FBeC@ly-workstation
+> Fixes: 88ec797c4680 ("fs: make insert_inode_locked() wait for inode destr=
+uction")
+> CC: stable@vger.kernel.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
 > ---
->  fs/fuse/fuse_i.h |    2 +-
->  fs/fuse/acl.c    |   43 ++++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 43 insertions(+), 2 deletions(-)
+>  fs/ext4/super.c | 21 +++++++++++++++++++++
+>  1 file changed, 21 insertions(+)
 >
-> diff --git a/fs/fuse/acl.c b/fs/fuse/acl.c
-> index cbde6ac1add35a..f2b959efd67490 100644
-> --- a/fs/fuse/acl.c
-> +++ b/fs/fuse/acl.c
-> @@ -11,6 +11,18 @@
->  #include <linux/posix_acl.h>
->  #include <linux/posix_acl_xattr.h>
+> Ted, this is a regression recently introduced by VFS changes in
+> insert_inode_locked() but I think it's best fixed in ext4. If you agree, =
+it
+> would be nice to merge this so that it makes it to 7.0 release. Thanks!
 >
-> +/*
-> + * If this fuse server behaves like a local filesystem, we can implement=
- the
-> + * kernel's optimizations for ACLs for local filesystems instead of pass=
-ing
-> + * the ACL requests straight through to another server.
-> + */
-> +static inline bool fuse_inode_has_local_acls(const struct inode *inode)
-> +{
-> +       const struct fuse_conn *fc =3D get_fuse_conn(inode);
-> +
-> +       return fc->posix_acl && fuse_inode_is_exclusive(inode);
-> +}
-> +
->  static struct posix_acl *__fuse_get_acl(struct fuse_conn *fc,
->                                         struct inode *inode, int type, bo=
-ol rcu)
->  {
-> @@ -98,6 +110,7 @@ int fuse_set_acl(struct mnt_idmap *idmap, struct dentr=
-y *dentry,
->         struct inode *inode =3D d_inode(dentry);
->         struct fuse_conn *fc =3D get_fuse_conn(inode);
->         const char *name;
-> +       umode_t mode =3D inode->i_mode;
->         int ret;
->
->         if (fuse_is_bad(inode))
-> @@ -113,6 +126,18 @@ int fuse_set_acl(struct mnt_idmap *idmap, struct den=
-try *dentry,
->         else
->                 return -EINVAL;
->
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 43f680c750ae..b8122d24c083 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1527,6 +1527,27 @@ void ext4_clear_inode(struct inode *inode)
+>         invalidate_inode_buffers(inode);
+>         clear_inode(inode);
+>         ext4_discard_preallocations(inode);
 > +       /*
-> +        * If the ACL can be represented entirely with changes to the mod=
-e
-> +        * bits, then most filesystems will update the mode bits and dele=
-te
-> +        * the ACL xattr.
-> +        */
-> +       if (acl && type =3D=3D ACL_TYPE_ACCESS &&
-> +           fuse_inode_has_local_acls(inode)) {
-> +               ret =3D posix_acl_update_mode(idmap, inode, &mode, &acl);
-> +               if (ret)
-> +                       return ret;
-> +       }
-> +
->         if (acl) {
->                 unsigned int extra_flags =3D 0;
->                 /*
-
-I think this sentence in this comment block "Fuse userspace is
-responsible for updating access permissions in the inode, if needed"
-needs some updating now, since this is only now true for non-local
-fuse servers
-
-> @@ -139,7 +164,7 @@ int fuse_set_acl(struct mnt_idmap *idmap, struct dent=
-ry *dentry,
->                  * through POSIX ACLs. Such daemons don't expect setgid b=
-its to
->                  * be stripped.
->                  */
-> -               if (fc->posix_acl &&
-> +               if (fc->posix_acl && mode =3D=3D inode->i_mode &&
-
-Maybe a bit verbose but imo it'd be clearer if we had a separate
-boolean tracking the case where the kernel updated the mode bits,
-instead of using "mode =3D=3D inode->i_mode" here and below for the
-fuse_do_setattr() logic block. That makes it more clear here to reason
-about (eg it'd at least make it more obvious here that we don't need
-to strip sgid since the kernel already did that when it updated the
-mode bits earlier)
-
->                     !in_group_or_capable(idmap, inode,
->                                          i_gid_into_vfsgid(idmap, inode))=
+> +        * We must remove the inode from the hash before ext4_free_inode(=
 )
->                         extra_flags |=3D FUSE_SETXATTR_ACL_KILL_SGID;
-> @@ -148,6 +173,22 @@ int fuse_set_acl(struct mnt_idmap *idmap, struct den=
-try *dentry,
->                 kfree(value);
->         } else {
->                 ret =3D fuse_removexattr(inode, name);
-> +               /* If the acl didn't exist to start with that's fine. */
-> +               if (ret =3D=3D -ENODATA)
-> +                       ret =3D 0;
-> +       }
-> +
-> +       /* If we scheduled a mode update above, push that to userspace no=
-w. */
-> +       if (!ret) {
-> +               struct iattr attr =3D { };
-> +
-> +               if (mode !=3D inode->i_mode) {
-> +                       attr.ia_valid |=3D ATTR_MODE;
-> +                       attr.ia_mode =3D mode;
-> +               }
-> +
-> +               if (attr.ia_valid)
-> +                       ret =3D fuse_do_setattr(idmap, dentry, &attr, NUL=
-L);
->         }
-
-I think this logic reads clearer if it's restructured to
-
-if (!ret && mode !=3D inode->i_mode) {
-    struct iattr attr =3D {
-            .ia_valid =3D ATTR_MODE,
-            .ia_mode =3D mode,
-     };
-
-    ret =3D fuse_do_setattr(idmap, dentry, &attr, NULL);
-}
-
+> +        * clears the bit in inode bitmap as otherwise another process re=
+using
+> +        * the inode will block in insert_inode_hash() waiting for inode
+> +        * eviction to complete while holding transaction handle open, bu=
+t
+> +        * ext4_evict_inode() still running for that inode could block wa=
+iting
+> +        * for transaction commit if the inode is marked as IS_SYNC =3D> =
+deadlock.
+> +        *
+> +        * Removing the inode from the hash here is safe. There are two c=
+ases
+> +        * to consider:
+> +        * 1) The inode still has references to it (i_nlink > 0). In that=
+ case
+> +        * we are keeping the inode and once we remove the inode from the=
+ hash,
+> +        * iget() can create the new inode structure for the same inode n=
+umber
+> +        * and we are fine with that as all IO on behalf of the inode is
+> +        * finished.
+> +        * 2) We are deleting the inode (i_nlink =3D=3D 0). In that case =
+inode
+> +        * number cannot be reused until ext4_free_inode() clears the bit=
+ in
+> +        * the inode bitmap, at which point all IO is done and reuse is f=
+ine
+> +        * again.
+> +        */
+> +       remove_inode_hash(inode);
+>         ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+>         dquot_drop(inode);
+>         if (EXT4_I(inode)->jinode) {
+> --
+> 2.51.0
 >
->         if (fc->posix_acl) {
->
-
-For local / exclusive servers, the kernel already has / sets the
-refreshed attributes, so we could probably skip the invalidation logic
-here for that case since the cache is already uptodate?
-
-Thanks,
-Joanne
