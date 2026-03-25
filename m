@@ -1,216 +1,135 @@
-Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17F4A34A77D
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 09:34:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75F9438F234
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 09:58:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774431286; cv=none; b=mornlXUCbGRSOsGp4wf0BotdNzHnhJlCnQ6UmxHQV5gnbkGNue92txosVMrb91iqfBs6f0GMcVRpLOM6MyBIu8vRbUQnzJGCB/2c/gwag8kRtTPE/p1xy9HyXjuxBUss2FDYBwc/uL3FXew97/GiOEwU/FUke1VTHELhdCFPnZM=
+	t=1774432699; cv=none; b=tWvZfXoaY1Jluur4owBTLj3vQNjivzREuiwsZpzpnBKoICjTB/v4tVYJNWnepyEdqpOrSG/ocJTZeJW8UcpV6jUNis7f9cRRu0N0WOudumUZDiysbklPUfSrXpnSuE/s3IzLWMzhQa9JBzqi5RekRXdppddfWY+LzKqTlmznOsc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774431286; c=relaxed/simple;
-	bh=au2v8Zj1g2gTa/qYyAEVaRCf5QQU9rUKjFNpk5w+uaE=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=ELSC4CbCAz/JsTXyT0GIADy4wxZ3QEvuy19SYLCKDJJPABAlO8tSjiH/UqYYJMK15LeCcJo3d3b+PpREYsM1wWx5j1wJcnY40vBE6NtqnjUqGzNwFS7xOUIkzIJO54baTTuIYmSu0KYNQlNc3Is9RwlWj4dQGBnxGXqv1Pj+e7M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jrSRf3WT; arc=none smtp.client-ip=209.85.214.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1774432699; c=relaxed/simple;
+	bh=hzZ6/op2g3F67XFCQL6RSZD3FXfQqffbdJUyoXA3zbE=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=Wpu288V+NK2hRTH0k6LL/WghHtMkovbGXCzGb7CRVATl2CeZRzsH4y0fAXW4Rv+/Dv87YRyqCVcWKF9lFHnDh8pOACyqqunWJlR7KhuhamEKvYQMEcg4MT26dRTeNR6P/2I+aeT6pNJekdY+/jL/EU2XZG46A6bMqcLL5cR0QY4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b=Nn7RVfFf; arc=none smtp.client-ip=209.85.214.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jrSRf3WT"
-Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-2b06c43e6a7so25705765ad.2
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 02:34:43 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20230601.gappssmtp.com header.i=@dilger-ca.20230601.gappssmtp.com header.b="Nn7RVfFf"
+Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2b0603ee486so15793245ad.0
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 02:58:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774431283; x=1775036083; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+        d=dilger-ca.20230601.gappssmtp.com; s=20230601; t=1774432697; x=1775037497; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=C2kZEGfm9VSl1YrM5qslWXevfM/VbQjjSaf7BnkuDjI=;
-        b=jrSRf3WT+DDpx5fcz/kXm0Rlfo6tOWG+ws6WM6zZyV9qNq1yST4Vp+Bnuo9vOUXpTX
-         2RugBghwntS/dHehzmGENwhYSXibhDqLqij594StYHIYH5DMfPF5spuBU2ueFf4rk5RZ
-         hYJN/gzKPPG1a5WVogL2HjfflGJSiR/MB3r1ik83ndLqxLe8HzG3CtjAC9V2muS6sNZ4
-         HGp7CxldlQzBeVfiaa72B+I4LOSvJZFlMaClNmDa6qNEoXTU1ztVVPynAsaPU3vJWBra
-         9MquIfkEfEx5Gq7br4SJYlmrH/cyHLi1h4UoX9IsZZ68435r6S3Qa6M8Abv9Tf0yZFJC
-         SWnA==
+        bh=6ySQX1bYaFtB+temqyqED5nWAImH+Dkzo6iJEBKw1nM=;
+        b=Nn7RVfFfpSRwJgV3SExb1F3ofqEYfiYRpqMr3BcR+CLouv4kddzA9TCVJarD8d5MIb
+         ZDSryj9n9hkkh74IARm0qN/pq1dfnZs8mD/wA3DSI8wNh/OovRZWLP3mMasUnhwU+gqP
+         eUutkiSPZvBXDwBKULgHkrEZXa2ndxDo0CBGjFjWgr2ayjQsCa9RwyAo8HT2s1E2I7q2
+         WD+UTdjP2zsRtOD4xfMAh6l6oGsfUm4ogoNloB8EY+rX4oDGsdWcho31CktyzktTs8Ob
+         jvMNrv5e2PGACFJ/0z7rR2RFB1OEyEhJ8Lq5XuriT4ECxJlCUuldZGGIQNINTog1hg7T
+         R4zw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774431283; x=1775036083;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=C2kZEGfm9VSl1YrM5qslWXevfM/VbQjjSaf7BnkuDjI=;
-        b=qQyNPwwvBSsoAioGjp7Ll2JU+GqT98ZpXEIOMx/7X4tVuHx4F7UjPtkuDHg987pd0n
-         va0pDMPlAoh2xiY3bltuTLnepWpfAierWa3gSdIvLV58+dEgF+blS25xApJIDVrQwpTd
-         THQ6v1RLfJ/m1l8httglITjsROTkKiShAO47eeRFE/W+o3VECC2C/UyFY2hb3meYVKrF
-         FgM83MvlO6+WZfgoNKrdQ/sJmOvRWROF+Xo9BlupLh6efuCfg3Dx2qF8I8/lUtsXwqLE
-         IPp4pmll68QaTKsXrWhz1o3BRim3AAjNMQqygJd/0Nu37E0BBimhOZ5q1mC7UcebSrnO
-         p+eQ==
-X-Gm-Message-State: AOJu0YwiZFozReuCJMnBOt04jt8Ge5fHEly+34vSgQ0B1DE+qETl/Ybf
-	fBIrYFQBtiPsOB1JBaGfvE7mGlthGt1IzhJsbvbfSICU234je1+diq6UTj618gtwacw=
-X-Gm-Gg: ATEYQzzfyq0ThZhc/A7iAhC+ET4L7SgVjNSeDFjrGzZ1qIQ3FTWkUnX+gYLdTj4QBEm
-	P4AjB1rsgx9ObHqmxRuK5rkFFnRO1kmLThn8Xu/MJZUCk5QSqm9eISzDc7UpCv1+GVuE59EV1x8
-	tsRg1MGEDbXo5T0om0yHLVwaPn18IyobCpZStd7akU4iP2YGJbydA4jHT99PhcCVsFfV2luQXmF
-	8q2azf5F7zj+GVef7DO6Dxm0I1LKCQI7Rrm7w6Mo71n5Vbr0eolusJeREzR4ehIb/YQ42L65uBK
-	c8yQsceJUGmUWpBb9aUpR0Bb0N/g34Kc5vsXEcoiWf8+rHm47QzhLC6Y3keB2lWcxq1CWIqfyp3
-	9+8FSMg18fhvVXERzfevZF2IcX8juCJoxnjMhQNVTG7GDFcKkTviUygEIy8pouApNK4LSQaAP4a
-	BF7R2Lj+CDCE35/sQSUygr4O0LpF98JjNhutku
-X-Received: by 2002:a17:903:1b45:b0:2ae:6259:5aff with SMTP id d9443c01a7336-2b0b09a69b6mr29408665ad.6.1774431283311;
-        Wed, 25 Mar 2026 02:34:43 -0700 (PDT)
-Received: from n37-098-250.byted.org ([115.190.40.15])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b083516ae1sm164266245ad.13.2026.03.25.02.34.40
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 25 Mar 2026 02:34:42 -0700 (PDT)
-From: Diangang Li <diangangli@gmail.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	changfengnan@bytedance.com,
-	Diangang Li <lidiangang@bytedance.com>
-Subject: [RFC 1/1] ext4: fail fast on repeated metadata reads after IO failure
-Date: Wed, 25 Mar 2026 17:33:49 +0800
-Message-Id: <20260325093349.630193-2-diangangli@gmail.com>
-X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20260325093349.630193-1-diangangli@gmail.com>
-References: <20260325093349.630193-1-diangangli@gmail.com>
+        d=1e100.net; s=20251104; t=1774432697; x=1775037497;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=6ySQX1bYaFtB+temqyqED5nWAImH+Dkzo6iJEBKw1nM=;
+        b=lDNTDjMHUsSx21pFBFfAju7K+nOsBF5NyTo2YXTAhHn1EQbLLcu4XcBmGWb31GRLbN
+         rIuaJgDXtJ8q/m27s9/GsWa2tKBEuQ3qmoWkxgdjcjCGsXYwIUAYobZxD+slKlIWaA9S
+         k1CLzAxRg8UiBKW9Jw4MPR+c40plrQD7+KMGIZPjjcN7yU6Bo4PZyX+OpiQqcoShejAI
+         tTvy/DMiWt60dnouF3jcfVCzoud4TMku4u1fG3zxOg/LaNSlqAsv6YoQ/xQGD42OEIPd
+         uSbkjRbiVhhdZv3gpYprj8swSFR0i9ys/sw9Xxs7YQFwrbbpkmxqVs5oY8llQLaXd7lZ
+         5UYQ==
+X-Forwarded-Encrypted: i=1; AJvYcCVCOk5jFqSVaW42imGyHdTCh4VgQ4gulYQFajb/+n94ikg5XXTKYAFrJHffo6BDjp9ltstnq/MwA47b@vger.kernel.org
+X-Gm-Message-State: AOJu0YyGG994nMMWQ3EOUXbtu3pwd9P6lcfKaO9yu5GkJixkhzAh0GT1
+	1AB25skLy2p7CjFnm+tw//GOvwv8ka96yemcRa/YDs1d5Qy1QZLv+xCD9Lc6JFLIDtQ=
+X-Gm-Gg: ATEYQzwyATipZTVx4nI0Lksq/Vps0JIJ6uP/vN84WhhnoYvhdbefViUhr4qpiHdaMg4
+	mWsCIcgy7zUR7WYdkk6zSlq185sjtx7IgSjJQhN1H5V41mYhFlxJmYx9rhnuNuVwyIXDJhRzZ1r
+	b12nRDnXIRUia7e7WxSVaBoubWQ2DZCps4bNYB4gZOJs9jZI4BMT1IkAbwE7iX3cJJfwl5K31pl
+	bqaGuEOm1OcBYd1cDO2vJrp9YURfo7rgDkBCGKkPWMG8DO6D2WNDiHzf4bQjsFg6EUv+EodLA3F
+	lFFMB5DQVu7XzTV1xSnDb6LVf2AyXjdZKSH5KemOZs4HPMfJT9YqK9h2iSY6PKsH4kKmPEry/Fa
+	VrSKHggwrJCfKtTdtV8ZkbL26FH9ggw3pbPTGscO+7yf8Stuopa85vOVHQWKmm5IpOgd5BBPPgM
+	YzOSbT+Woxz4/g6lStuuTpwI5EvxSFziElvP2SpcUyQ9zljS+463WBpM7dUUpEeGklUyxe0jSL3
+	bOjGg==
+X-Received: by 2002:a17:902:e54d:b0:2b0:608d:d8a8 with SMTP id d9443c01a7336-2b0b09a0addmr31739585ad.1.1774432696787;
+        Wed, 25 Mar 2026 02:58:16 -0700 (PDT)
+Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b08366c74dsm239318035ad.62.2026.03.25.02.58.15
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 25 Mar 2026 02:58:16 -0700 (PDT)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: =?utf-8?Q?Re=3A_=5BRFC=5D_Proposal=3A_provenance=5Ftime_=28ptime?=
+ =?utf-8?Q?=29_=E2=80=94_a_settable_timestamp_for_cross-filesystem_migrati?=
+ =?utf-8?Q?on?=
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <CAOx6djP4hb-Cd1Zk07SNfFfLc8irjNmbVqq+58h1Whz+h1wSFA@mail.gmail.com>
+Date: Wed, 25 Mar 2026 03:58:04 -0600
+Cc: linux-fsdevel@vger.kernel.org,
+ linux-ext4@vger.kernel.org,
+ tytso@mit.edu,
+ dsterba@suse.com,
+ david@fromorbit.com,
+ brauner@kernel.org,
+ osandov@osandov.com
+Content-Transfer-Encoding: 7bit
+Message-Id: <A9DCEEDC-5F71-465C-A519-244853CF3069@dilger.ca>
+References: <CAOx6djP4hb-Cd1Zk07SNfFfLc8irjNmbVqq+58h1Whz+h1wSFA@mail.gmail.com>
+To: Sean Smith <defendthedisabled@gmail.com>
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-From: Diangang Li <lidiangang@bytedance.com>
+On Mar 24, 2026, at 22:26, Sean Smith <defendthedisabled@gmail.com> wrote:
+> 
+> [Email draft produced by AI agent. Reviewed, revised, and submitted by
+> Sean Smith.]
+> 
+> Hello,
+> 
+> I am writing as a user whose work is directly harmed by the absence
+> of a settable file creation timestamp in the Linux kernel. I am not a
+> kernel developer, but I believe this use case may help inform the
+> ongoing design discussion about btime semantics.
 
-ext4 metadata reads serialize on BH_Lock (lock_buffer). If the read fails,
-the buffer remains !Uptodate. With concurrent callers, each waiter can
-retry the same failing read after the previous holder drops BH_Lock. This
-amplifies device retry latency and may trigger hung tasks.
+Implementing a new timestamp for every filesystem is unlikely to happen
+any time soon.  Even if the implementation was finished tomorrow, it
+would be many years before a large number of users were running those
+kernels, and tools had been modified to process the extra timestamps.
 
-In the normal read path the block driver already performs its own retries.
-Once the retries keep failing, re-submitting the same metadata read from
-the filesystem just amplifies the latency by serializing waiters on
-BH_Lock.
 
-Remember read failures on buffer_head and fail fast for ext4 metadata reads
-once a buffer has already failed to read. Clear the flag on successful
-read/write completion so the buffer can recover. ext4 read-ahead uses
-ext4_read_bh_nowait(), so it does not set the failure flag and remains
-best-effort.
+A simple solution that would work today would be to write a script for
+Windows that extracted the creation time from NTFS and saved it as an
+xattr on each file like "user.ptime" before they are copied to Linux.
 
-Example hung stacks:
+Many tools today handle backup/restore and copying of xattrs already,
+and since the goal of "ptime" is that it stays the same across copies,
+then copying the xattr preserves the correct semantics with low effort.
 
-  INFO: task toutiao.infra.t:3760933 blocked for more than 327 seconds.
-  Call Trace:
-   __schedule
-   io_schedule
-   __wait_on_bit_lock
-   bh_uptodate_or_lock
-   __read_extent_tree_block
-   ext4_find_extent
-   ext4_ext_map_blocks
-   ext4_map_blocks
-   ext4_getblk
-   ext4_bread
-   __ext4_read_dirblock
-   dx_probe
-   ext4_htree_fill_tree
-   ext4_readdir
-   iterate_dir
-   ksys_getdents64
+The xattrs can be written in ASCII ISO8601 format like "date +%Is" does,
+"2026-03-25T03:43:21-06:00", so that it sorts properly and is easily parsed.
+It would be easy to set this via normal command-line tools on Linux, like:
 
-  INFO: task toutiao.infra.t:2724456 blocked for more than 327 seconds.
-  Call Trace:
-   __schedule
-   io_schedule
-   __wait_on_bit_lock
-   ext4_read_bh_lock
-   ext4_bread
-   __ext4_read_dirblock
-   htree_dirblock_to_tree
-   ext4_htree_fill_tree
-   ext4_readdir
-   iterate_dir
-   ksys_getdents64
+$ setfattr -n user.ptime -v $(date -Is --date=@$(stat -c %W FILE)) FILE
+$ getfattr -d -m user.ptime FILE
+# file: FILE
+user.ptime="2013-10-11T13:46:10-06:00"
 
-Signed-off-by: Diangang Li <lidiangang@bytedance.com>
-Reviewed-by: Fengnan Chang <changfengnan@bytedance.com>
----
- fs/buffer.c                 |  2 ++
- fs/ext4/super.c             | 12 +++++++++++-
- include/linux/buffer_head.h |  2 ++
- 3 files changed, 15 insertions(+), 1 deletion(-)
+to extract the (local) birth time in seconds, convert to ISO8601 format
+and store it in the "user.ptime" xattr where it will stay unchanged.
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 2d2e3ecec6b2b..b41d54b8b1f4d 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -145,6 +145,7 @@ static void __end_buffer_read_notouch(struct buffer_head *bh, int uptodate)
- {
- 	if (uptodate) {
- 		set_buffer_uptodate(bh);
-+		clear_buffer_read_io_error(bh);
- 	} else {
- 		/* This happens, due to failed read-ahead attempts. */
- 		clear_buffer_uptodate(bh);
-@@ -167,6 +168,7 @@ void end_buffer_write_sync(struct buffer_head *bh, int uptodate)
- {
- 	if (uptodate) {
- 		set_buffer_uptodate(bh);
-+		clear_buffer_read_io_error(bh);
- 	} else {
- 		buffer_io_error(bh, ", lost sync page write");
- 		mark_buffer_write_io_error(bh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 781c083000c2e..89a99851864a0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -198,7 +198,13 @@ int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
- {
- 	BUG_ON(!buffer_locked(bh));
- 
-+	if (!buffer_write_io_error(bh) && buffer_read_io_error(bh)) {
-+		unlock_buffer(bh);
-+		return -EIO;
-+	}
-+
- 	if (ext4_buffer_uptodate(bh)) {
-+		clear_buffer_read_io_error(bh);
- 		unlock_buffer(bh);
- 		return 0;
- 	}
-@@ -206,8 +212,12 @@ int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
- 	__ext4_read_bh(bh, op_flags, end_io, simu_fail);
- 
- 	wait_on_buffer(bh);
--	if (buffer_uptodate(bh))
-+	if (buffer_uptodate(bh)) {
-+		clear_buffer_read_io_error(bh);
- 		return 0;
-+	}
-+	if (!buffer_write_io_error(bh))
-+		set_buffer_read_io_error(bh);
- 	return -EIO;
- }
- 
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index b16b88bfbc3e7..be8bedcde379e 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -29,6 +29,7 @@ enum bh_state_bits {
- 	BH_Delay,	/* Buffer is not yet allocated on disk */
- 	BH_Boundary,	/* Block is followed by a discontiguity */
- 	BH_Write_EIO,	/* I/O error on write */
-+	BH_Read_EIO,	/* I/O error on read */
- 	BH_Unwritten,	/* Buffer is allocated on disk but not written */
- 	BH_Quiet,	/* Buffer Error Prinks to be quiet */
- 	BH_Meta,	/* Buffer contains metadata */
-@@ -132,6 +133,7 @@ BUFFER_FNS(Async_Write, async_write)
- BUFFER_FNS(Delay, delay)
- BUFFER_FNS(Boundary, boundary)
- BUFFER_FNS(Write_EIO, write_io_error)
-+BUFFER_FNS(Read_EIO, read_io_error)
- BUFFER_FNS(Unwritten, unwritten)
- BUFFER_FNS(Meta, meta)
- BUFFER_FNS(Prio, prio)
--- 
-2.39.5
+To expand this further, you might consider submitting patches to Windows
+tools (where file creation time can be set) like 7zip, rclone, etc.) to
+save and restore the "user.ptime" xattr from creation time automatically.
+If a few popular tools start doing this, it is more likely others would
+follow suit.
+
+Cheers, Andreas
+
+
