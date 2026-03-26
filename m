@@ -1,155 +1,103 @@
-Received: from mail-lj1-f179.google.com (mail-lj1-f179.google.com [209.85.208.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C78A52116F6
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 02:29:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.179
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774492182; cv=pass; b=FWG1ack5fzYFY8zMwsob54CEF+7l7eRAwbtLdOqCi/R5G48GnMb5yIOMTIvggoIemHEjFv1R/5AB0tUxIpG1/O4rYnX7hUTxxyYaYx7cnVY1HsoYkf3IfHuWdEMEdyp0JLuebQpGuJPDNrVEsp7j8g9igDD26l4MtTY+AWTWgB0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774492182; c=relaxed/simple;
-	bh=z4Rn3gNatuHl/9qSVwptNOj7bYliPOcWtNmCwZiRk8o=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=kYyWzadAF34hz7BIkeTTqGJbca932jPMx4rdIUMStlCrUWM0vEWjr7xXjmb0+4QxkhYHb/oZ8CHAr7wCMqFgegQWtrjL9NgZvBbdyx8tb1kxAavp7VbEwcXKfWV5oLsHCF/jCr8gojN+pkhur4DyyqsTB/K5CyyqKWUIF3up2gM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Enx7LrGJ; arc=pass smtp.client-ip=209.85.208.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D293344D91
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 04:58:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774501141; cv=none; b=NeUUOksoG/uFi1gAms/l3yRfw2MYmti1R2SLkGoG+EtK4EDh+aV8Tcs+ePORJPIcgJaGWve/Ga1Uf19y32n9tgIPsZMvH9flmM9rVWMawUknUUP18A7digcG/5Em6xM1/5diFsjrReZGCIhh/a78YYZQtU8zckUIDa1xz2dV4cs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774501141; c=relaxed/simple;
+	bh=pVLm3wyomm0JxZ2OcXvlagzyLKYA2/ATLisfqGP0cJY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=B1ej8OzMFiTUtAEYbo2UEb3ppcI63RxqBBqnPZ/r65ud/y9V/S4Pa3MkMYxv6O3JpSbvueMzEm9wdQ/XcStEiKnYhbhiF7BQ38VNckz5dzln4SukKLym9YWmS/wCZFKDHRSysm65r9S0R5U0gy873u43uEHR61hDZlExqL+kCoY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=fPT4lTkU; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Enx7LrGJ"
-Received: by mail-lj1-f179.google.com with SMTP id 38308e7fff4ca-38ad12fb595so15206071fa.0
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2026 19:29:40 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774492179; cv=none;
-        d=google.com; s=arc-20240605;
-        b=OZHhOEp4Ue/0w3r0uXu5E93EhyWlVVILuWEecguH9SHn9rAYxcdkNYxd5pcglTfAYR
-         oiPnv1iBIriKI0yQC5bQPbQxFu7vWSNgqihEyIDeP0vrYIeT26F4NLPbMZYKJTJ6Nlq8
-         kREvm/ALyxDeMTpVtBd5a6Y5Jm8pkHQVPmR37ACgTCmK3xMOrhbFtM/Le2FkWhJJFyXg
-         IyZskB1hVWizhTL8NtktzI9j99bZbaIKB5jwqYK/t9DC4L5gPemu+1f0h8Glmie49N82
-         yHVzYyoBLeULqfwaHzWQHhBSv82ZViXhBF41xS4Eq3+rnr9IpsrAcjAmhaScwuSCJP7n
-         xJjQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=z4Rn3gNatuHl/9qSVwptNOj7bYliPOcWtNmCwZiRk8o=;
-        fh=xlYWRdzNNPBSUzK3n2O82fZAMzRSCVpiBtPdaEjMWwo=;
-        b=IjRWxLXyiMz2p7j1zDGrJ/hUB7d3dD7qg8zBGkIt3pSyUQ1G8mgCGnsoU+3brrndsT
-         JDX1L+H3blNTtvoivgAF6eNZy4ygs2CoPebU5cBSR8xsxOBDHaYoyTQdF5i01j5RR4yb
-         9nmgjq4vS3RiKIKlrX/fBZpejNdy4hLRVK5cP8Z2h9GaNroxsTHRtr9mlWjhrzstISVZ
-         Lya3kuKkd0DOQRm8jUTh6Cf4rLAdGaxtGu+UGpXQSqOPXfZCkIkyYVPtj4qMc1817do6
-         LSnwAkJLlndBFGdX+Fb58D6yTc6riuQhb3+gt0usO6gNv5sF/gKdEjSPJIZPHs+FVTwG
-         SzsQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774492179; x=1775096979; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=z4Rn3gNatuHl/9qSVwptNOj7bYliPOcWtNmCwZiRk8o=;
-        b=Enx7LrGJupQYN5lCl8cfH0Hde9x1dovzlhUv/PrmUfXCbrLOF+zHRjQvV9vXomVqXQ
-         sWqasSFnoScj1kY/7j0Kf7HfoH2zxWr9Y9Jf8aNi4a/9WtgYSHKL4TooDxq40YpxHHIm
-         zsNO7BY1smqKGKiPwqVOU6cjyqrUsLsVpLoIf9pQiifxlZqVGBxIFbO4crd7eBjAStwj
-         afCjsA9ez7t1RO3jDZ5J6dWUOCGsJXlfIPlBRzwXhKV1asi0GUVxg9Kxl9leD6WB+7cz
-         lfj4ibmgR1/QvhU4Ia7wTFY73b7lW6keMe4y9CgOY3YlZlwdKPoFL3vnas+w+r7cnrd6
-         dH3g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774492179; x=1775096979;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=z4Rn3gNatuHl/9qSVwptNOj7bYliPOcWtNmCwZiRk8o=;
-        b=kYVjDada3jLnv9YcF/uLtgrZ5g88qjNS39Ojiq9VpsVsZ2gKKYTVeag00J5gSW+3/V
-         KnFSRX07xtDtjmtMRoRnPDmAMooEkcnvagd0UdFMMietUDZsa9kj5Ug8TxQFhHEd4sur
-         mrYWJ41jw4zc9cmeDhKRW1iF1G3R7FRX6tkKn79EV2/Wt2wzXDIlTG2y6+ymnapQ8CNN
-         QxI9SqzLy6Ta6VxG1S4VMiHYlmqcHjGL/lkZvEF3xhN3KeEz67flkYKLSzgKZZzfp5db
-         WRqv98LP72KSxP06WG401Qu5WzNPoC6YaLyeN5inVoxAwHaBop/eqswuv9zwZNTxGWUC
-         qFxg==
-X-Forwarded-Encrypted: i=1; AJvYcCVk9JrRbzhdW5RhNtKUccRS49/vivuuQxcsNmpMGo04kLbtcsKtIOlqbGnwXD2SPABGdI7QzVMMc8Ca@vger.kernel.org
-X-Gm-Message-State: AOJu0YwSv/8oJZQ37rg9+3Q/YmbAcdaHYo3l+tLx9KV5Sia8KOVD/4f3
-	hpqjmgR1Q7N3vF137kq4ktSO5MZNiaM6GTvWKcw3/9s1n8Tyw6Tngi6hA4kWIhsU7e1FIYjz30I
-	mTbeC5hdMdOmc47aaHU/qj/PIr9jHST0SdEscseg=
-X-Gm-Gg: ATEYQzxRGcE++eflr6oeH8U2ZjPSQITV9/u5bW6w3AjWr/fWBJMv5ezd3CctReNEN9i
-	+0O8z5HRM03TckGayxUxVPsIW1js6HNAT09JNlDjRY6i8W+9O5IPJbmp8o1GpFgydoYwvS+4Md0
-	puhLbcnnEESKMT0DVkeW1bWOZunFGaJ2Chlam8b4JtTumyND1ogzX9LnZF8X2h8ghdsbKxoWxPs
-	SoIVrcHeqZ/hxwZ/JTTMBD5H3Xhjqb2DOKZQWgJGkkvxX36J2SWbHL9ZjgoBROJkDjf2/dmvpuE
-	8yfB
-X-Received: by 2002:a05:6512:1286:b0:5a1:44d7:1fae with SMTP id
- 2adb3069b0e04-5a29b4f8fd2mr2449829e87.7.1774492178666; Wed, 25 Mar 2026
- 19:29:38 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="fPT4lTkU"
+Received: from trampoline.thunk.org (pool-173-48-82-49.bstnma.fios.verizon.net [173.48.82.49])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62Q4wdPD028233
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 26 Mar 2026 00:58:40 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774501121; bh=egKqHTesdGfdY0/Gnd7vq1Ungvvo7iWfU84mdR64Sa0=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=fPT4lTkU7se14rlPj3720rdZeGw/MUQT3HE7bokASROf5ALTCw8OOPx2V1UsnNdFe
+	 qRm+bC4/RbPJwQIW02wKnhWwgtxnJEQnNnjtZ06vjZCXO4tfGnc4mvnYouj38pSK2i
+	 r3ewK1iGxAGXXUGdQd2fdru8C6vyu17lw2yI8oUhmfGprCncqZlqUqnsmN5wwimcgU
+	 jV0W3d9v+NQ+09fvLg6NwF4TXqtl3RH9ybGTjwFJvoA9VECMjk6kLxpQXRZZQmo6RQ
+	 V0GbRRpU/xnW9GCYdzq9zOYHf9s4FgGrqK+g4BzmkqzQZlqF4vvmhGJCzap1GJ/9Fp
+	 +O81s7O3I5W9Q==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 5FBD22E00D6; Thu, 26 Mar 2026 00:58:39 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Subject: [PATCH -v2] ext4: handle wraparound when searching for blocks for indirect mapped blocks
+Date: Thu, 26 Mar 2026 00:58:34 -0400
+Message-ID: <20260326045834.1175822-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CAOx6djP4hb-Cd1Zk07SNfFfLc8irjNmbVqq+58h1Whz+h1wSFA@mail.gmail.com>
- <befb1cd7-f709-4e46-b08f-9c2579b10fd6@hogyros.de>
-In-Reply-To: <befb1cd7-f709-4e46-b08f-9c2579b10fd6@hogyros.de>
-From: Sean Smith <defendthedisabled@gmail.com>
-Date: Wed, 25 Mar 2026 21:29:27 -0500
-X-Gm-Features: AQROBzAQWuoiwj5NVrb0IEs5rZjhQDz2eA9mdIKzDHDnBj0mRJSEFKwDanpDi9I
-Message-ID: <CAOx6djOJGstn-GHX_wgqOVQ6FKn7O=X-ARSi5=711JwXoQRZXA@mail.gmail.com>
-Subject: =?UTF-8?Q?Re=3A_=5BRFC=5D_Proposal=3A_provenance=5Ftime_=28ptime=29_=E2=80=94_a_se?=
-	=?UTF-8?Q?ttable_timestamp_for_cross=2Dfilesystem_migration?=
-To: Simon Richter <Simon.Richter@hogyros.de>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu, 
-	dsterba@suse.com, david@fromorbit.com, brauner@kernel.org, 
-	osandov@osandov.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Setting an xattr user.provenance_time was a solution my AI agents
-and I arrived at for meeting my immediate Windows to Linux
-migration needs. The idea to submit this ptime proposal was to
-help the Linux kernel maintainers better understand the types of
-problems that users like me encounter when switching to Linux.
+Commit 4865c768b563 ("ext4: always allocate blocks only from groups
+inode can use") restricts what blocks will be allocated for indirect
+block based files to block numbers that fit within 32-bit block
+numbers.
 
-Users like me are working with AI to solve previously neglected,
-and untenable problems. I believe I am amongst the first of a wave of
-disruptive projects that is going to hit many industries quite hard.
+However, when using a review bot running on the latest Gemini LLM to
+check this commit when backporting into an LTS based kernel, it raised
+this concern:
 
-Users like me are unprecedented and working on unprecedented projects.
-I think of my proposal being a bit of a heads-up to the Linux maintainers.
-To help you plan for what's coming by understanding the vanguard of users
-that are now arriving.
+   If ac->ac_g_ex.fe_group is >= ngroups (for instance, if the goal
+   group was populated via stream allocation from s_mb_last_groups),
+   then start will be >= ngroups.
 
-My intent with the proposal was to highlight:
+   Does this allow allocating blocks beyond the 32-bit limit for
+   indirect block mapped files? The commit message mentions that
+   ext4_mb_scan_groups_linear() takes care to not select unsupported
+   groups. However, its loop uses group = *start, and the very first
+   iteration will call ext4_mb_scan_group() with this unsupported
+   group because next_linear_group() is only called at the end of the
+   iteration.
 
-1. The friction I encountered in Windows made the switch to Linux
-*necessary*.
+After reviewing the code paths involved and considering the LLM
+review, I determined that this can happen when there is a file system
+where some files/directories are extent-mapped and others are
+indirect-block mapped.  To address this, add a safety clamp in
+ext4_mb_scan_groups().
 
-2. The friction in migrating to Linux can be reduced with simple,
-long-overdue changes.
+Fixes: 4865c768b563 ("ext4: always allocate blocks only from groups inode can use")
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>
+---
+v2:
+  * Remove extra checks that were not needed once we add the clamp
+    in ext4_mb_scan_groups().
 
-3. While ptime might not be effective proof of a files provenance in terms
-of forensic computing, it is metadata that is critical to effective human
-and agentic workflows.
+ fs/ext4/mballoc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Additionally, a sworn affidavit of authenticity is one way to assert the
-date created is accurate file provenance. If the system administrator
-knows the integrity of the metadata is sound, then they can attest
-to that under oath. But if that metadata is destroyed, there is
-nothing to attest to. The date created metadata can also be corroborated
-by third parties. A plan beneficiary who records a phone call with
-their insurer, and the insurer representative enters call notes into
-a database. It's an event that 'happened'. With enough third-party data points
-verifying a private dataset, the metadata becomes something a reasonable
-person should believe to be accurate.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 20e9fdaf4301..b10db5d7545b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1199,6 +1199,8 @@ static int ext4_mb_scan_groups(struct ext4_allocation_context *ac)
+ 
+ 	/* searching for the right group start from the goal value specified */
+ 	start = ac->ac_g_ex.fe_group;
++	if (start >= ngroups)
++		start = 0;
+ 	ac->ac_prefetch_grp = start;
+ 	ac->ac_prefetch_nr = 0;
+ 
+-- 
+2.51.0
 
-My point isn't to argue rules of evidence or debate how AI deep fakes
-will require courts to exercise enhanced scrutiny. It's to illustrate
-that the date created metadata has substantive value to legal work.
-Additionally, that legal work is going to become an increasingly agentic
-and pro se process that can supply substantive value to society by
-enabling the under-served to access justice through an open-source
-stack.
-
-My proposal for provenance_time is more about reducing friction in migrating
-to Linux and optimizing real-world workflows for humans and agents.
-
-I concede that using xattr to add ptime will be effective, but it does
-introduce operational inefficiencies and overhead. Overhead that I think
-it worthwhile to be mindful of. Having every users AI agents coding up
-an xattr fix for an obvious problem is a lot of wasted tokens and
-human attention.
-
-Sincerely,
-Sean Smith
-DefendTheDisabled.org
