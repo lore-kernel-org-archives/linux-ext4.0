@@ -1,48 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6678383C7C
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 11:58:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 320F93C455D
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 11:58:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774526288; cv=none; b=WL4uqnaMOSIuOPvQPUgjIL1P8iXGWajRJ4nMpPFovhVnuJQFnSBKSWy+Jzvtz1Igcn/hdnMnYCvOY2HToAZ0dSTkGytTcQdQMi+hu6Liv+kouenfIAmT14ozKA80YngpldtFiPRUJWOSFsNhQdpI5I6V6b66wl9S0Q6qlRuOX30=
+	t=1774526289; cv=none; b=sxmrl4yzTPEEn+V+KIp1eV18zDJw6TQCIChRPpcdEgJ7tsvAmDJvkOAnEBxGQ5fMkMSYXDt+cSD9PQ3XXYb23kS6okwkQRGN5njBKzhGa5qr+GSxBriw7EMG7tlkfHoJiotSMqgLxBh7bo/nvAS8PGKLl2zoLwc4sKmW6229nWg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774526288; c=relaxed/simple;
-	bh=JkgwHLmz4YoaI0qPw76529HxLFzosOj7QBQf4IR2FfI=;
+	s=arc-20240116; t=1774526289; c=relaxed/simple;
+	bh=oCmoDTvEbikoXtA/xHeQVV9HGNSSCRZwIzYz+9dIECE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=HcAIEqAxYGlQrNx+wwOBGRzKVv95PvDPEh44mkgDaXIYhN7oFosZDtLb4NDhclVWx/cOaEfIC7esAQYXy1F+7FfTbKclEsXQYo8de8jnpNGCFLZ1+kUY7zbzQddaQcEhCrIDuTfr8vBFbKrYrEMRMtYq2kCTyJP4TanM04aSUhw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=PUHmTBm8; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=qw5EoUNtZCcvCmSHfBszLDHA/zGP9gy40g0zEJeGzWA5W/o31J1oxMd2ufw2tYw4gu2J19Phmt9TDEe2hWnz6SIXqA9MBI/6SeAhU2nn3FU4iZkjG6eH0wUKYlXkJ7d/UJj1pisRHyBF1q+ZXlhsgr/Be62bhvPh+77whdyDtKs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=g2/o4Ul5; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="PUHmTBm8"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="g2/o4Ul5"
 Received: from trampoline.thunk.org (pool-173-48-121-153.bstnma.fios.verizon.net [173.48.121.153])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62QBvv15020391
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62QBvw9n020438
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 26 Mar 2026 07:57:58 -0400
+	Thu, 26 Mar 2026 07:57:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1774526278; bh=pSWYz49nrJnQVqogjdPNPiQhjFMArTdj3LVa8bcZDBA=;
+	t=1774526280; bh=AJGKOATFL/NqeKbJEJN3atmL5YQOj5AcMoGC1taBEek=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=PUHmTBm8iT3WjN6+z9qpArrZQyhwFXK5K2+AfD0+0JCNT7TGhuCRLVIssa2AtQAQ1
-	 c/+C3OpQb/Wh/hINAGWp+hsXP4j31/dvpzr0q+fKioFeiQkPbWX+xJUYGPDgMq8q86
-	 NTzd1AhRDXC8KfD5nmrR5BzVNUxDCoG1u0thT+ACHpxJ0MQ6XAPvvbMd32E+Ox4rZ9
-	 2j9QXrgdd5oFSLtGfywvDy9RKxeMe3S57yEN2QnYBzNmaq6F7JFT/sAMo6TM09alNG
-	 W8Df8vkzBYcaBHSfSWT+YOhuBwlLb/dh6lgAIIQso03+mGsku/ZD82SJgUfM+x4s9c
-	 VWnsKVPHRzLkw==
+	b=g2/o4Ul5QOO3z/A+hWG4eeRCHvmVpvBWW74CL2Zk1B4UuqboS1TSxXjbtkDJRQQJv
+	 JgqTu3I9xGVFKD9VAIV3y8WpRW9OwjuiQIocG3vyMgRzWYHolaYZSd3vsbgPAg+diK
+	 knTV8IQmd4WtHWc+zarUk2CPwHCY2birQhIQGeL+g9c4NEISwnFTYBS1AyIAhJpLhz
+	 JLN05aKzq0Cae85cgzJUJHYnuCCC64DAoqLN6m/8HjuU48cVCick+ftEEfPiJCzirL
+	 S0Dv38gSI81JqOaMTPxoCd5v9qFnsatcBAEcJTpn9Eg0vEmfiZ4OhtTEV2GJsXbf1v
+	 q5yCSj2uBUOiw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id E7ACD2E00CF; Thu, 26 Mar 2026 07:57:56 -0400 (EDT)
+	id 055C42E00DE; Thu, 26 Mar 2026 07:57:57 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Yuto Ohnuki <ytohnuki@amazon.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Gerald Yang <gerald.yang@canonical.com>
-Subject: Re: [PATCH] ext4: Fix stale xarray tags after writeback
-Date: Thu, 26 Mar 2026 07:57:44 -0400
-Message-ID: <177452625019.1205486.7499693288701434301.b4-ty@b4>
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: replace BUG_ON with proper error handling in ext4_read_inline_folio
+Date: Thu, 26 Mar 2026 07:57:50 -0400
+Message-ID: <177452625028.1205486.8241953503891637067.b4-ty@b4>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260205092223.21287-2-jack@suse.cz>
-References: <20260205092223.21287-2-jack@suse.cz>
+In-Reply-To: <20260223123345.14838-2-ytohnuki@amazon.com>
+References: <20260223123345.14838-2-ytohnuki@amazon.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,26 +54,21 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Thu, 05 Feb 2026 10:22:24 +0100, Jan Kara wrote:
-> There are cases where ext4_bio_write_page() gets called for a page which
-> has no buffers to submit. This happens e.g. when the part of the file is
-> actually a hole, when we cannot allocate blocks due to being called from
-> jbd2, or in data=journal mode when checkpointing writes the buffers
-> earlier. In these cases we just return from ext4_bio_write_page()
-> however if the page didn't need redirtying, we will leave stale DIRTY
-> and/or TOWRITE tags in xarray because those get cleared only in
-> __folio_start_writeback(). As a result we can leave these tags set in
-> mappings even after a final sync on filesystem that's getting remounted
-> read-only or that's being frozen. Various assertions can then get upset
-> when writeback is started on such filesystems (Gerald reported assertion
-> in ext4_journal_check_start() firing).
+On Mon, 23 Feb 2026 12:33:46 +0000, Yuto Ohnuki wrote:
+> Replace BUG_ON() with proper error handling when inline data size
+> exceeds PAGE_SIZE. This prevents kernel panic and allows the system to
+> continue running while properly reporting the filesystem corruption.
+> 
+> The error is logged via ext4_error_inode(), the buffer head is released
+> to prevent memory leak, and -EFSCORRUPTED is returned to indicate
+> filesystem corruption.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Fix stale xarray tags after writeback
-      commit: bc6874ab41809f210c3e966576374d0778e144ff
+[1/1] ext4: replace BUG_ON with proper error handling in ext4_read_inline_folio
+      commit: e8814f7f4646aa0bba3f9e9a446b07753e87117d
 
 Best regards,
 -- 
