@@ -1,145 +1,83 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from abb.hmeau.com (abb.hmeau.com [180.181.231.80])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 941F9221D89;
-	Thu, 26 Mar 2026 09:09:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70A0B3BA240;
+	Thu, 26 Mar 2026 09:13:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=180.181.231.80
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774516163; cv=none; b=Es9kQmxB+Ul+FzDV80cd+JUR7vloBK9RsgH2rXSvx/3o26qwD8Mu7x2HkgBewLPe5wwX07JKZDTIcR7M86zJ77g0v5VZPY78qofEEdLVMYLtAyj7RmbZP8Yu9ScXjIhGwqnsVG/lJqI9jlvCwouHQyhxq9JbXB6hs6NGtGmufxw=
+	t=1774516397; cv=none; b=if9+A8/AlUiReiBNS1gXPY9rHflzPDSRGTxE7AkBZpIKuI5EIqh8YPAGRiaNzmU/u/ARHDhvH4B0s+Hq8UAO4f65PU8U8npWjI/uFddx6lenWRBn/mdY4KgQloTrtij2PLKMQAeIG5EJetqtkKiCJohTdQC4eMo+JKN9a/Y2Jeo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774516163; c=relaxed/simple;
-	bh=tLY0ePJlKmZKLqmOL9WiC9ORTlmc/Y/m+2xJ8tQZ3xQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=t9ZcH6GMa2sRrqTU3GrREz7AaRPTyaHOAup7lSliO8M6D0qh8jblJ8gInIxqRpi/0WqFsBFVd+aJDlgJwe8TxLtx/oDcmKZ3WNUlBtwJTsxup5QOZdryROjMvMqAfHrbT2TbHozgSGgi++0J/riAgArfiioAt8xqBNgLzKbjnFI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4fhHbH2s6tzKHMhW;
-	Thu, 26 Mar 2026 16:52:27 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 61AEA40573;
-	Thu, 26 Mar 2026 16:53:07 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgBHStrv88RpqlIbCQ--.6951S3;
-	Thu, 26 Mar 2026 16:53:05 +0800 (CST)
-Message-ID: <4cb874b7-f5e3-4612-a2cd-c5e707c72985@huaweicloud.com>
-Date: Thu, 26 Mar 2026 16:53:03 +0800
+	s=arc-20240116; t=1774516397; c=relaxed/simple;
+	bh=hint5GgHxMIQ02zA8RdtL+NcbCotYoFlkHa+WVfCdac=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=G6NPJl1zLA1pVgdwT+6QDQVkkPAZH5GUmJt+tmR6TEIJscKSSiunIO8Gcho9jK2q6gaKo3kkd/wsAGS2GDsRsYxTbMSmXrtnp4/JiNS+atN98L+nuEkMGxkQ4BATM0+4QCZvmrmqxN6YHSwCAV/XELeUS4rgqYBfM9062srucXg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gondor.apana.org.au; spf=pass smtp.mailfrom=gondor.apana.org.au; dkim=pass (2048-bit key) header.d=gondor.apana.org.au header.i=@gondor.apana.org.au header.b=fmY0N3nv; arc=none smtp.client-ip=180.181.231.80
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gondor.apana.org.au
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gondor.apana.org.au
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gondor.apana.org.au header.i=@gondor.apana.org.au header.b="fmY0N3nv"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=gondor.apana.org.au; s=h01; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:cc:to:subject:message-id:date:
+	from:content-type:reply-to; bh=nzLsyzPmerOoZxU39vp3ZR2pOob3tan7VXeaMuN/gYQ=; 
+	b=fmY0N3nvpfyKiq9cu68/CKPt7FuEZ7pq1HvzKFsA2/A/UVmMy3c+MSyRogAUsHN5gt0ub9QvXId
+	LnlVR0BBb2rpxYGYKt5EGvQM6Af4KPhqasBgnXQhSMIdhx6GqososTRuy/4HQlZosIda1FJHIJUCD
+	CWQDaQaN54CvH8ocVp1dIl3RoMxiDOM7deXoNvoJ/68Cxoeo2uCLb6Z7Xrxl6ihN3jMDeH+zgh13q
+	mj3bUonxtPgbjNcNQErflN3Sa8OnPbieRm/NSip6DpiuG1U5Ss0WhA5VCdlq+f1dgVeeH1NBAVMwa
+	fPelXFY8cGNw5cebvyy6JpzaFwDSCDLrJ9Lw==;
+Received: from loth.rohan.me.apana.org.au ([192.168.167.2])
+	by formenos.hmeau.com with smtp (Exim 4.96 #2 (Debian))
+	id 1w5gMY-001FpR-1P;
+	Thu, 26 Mar 2026 17:13:06 +0800
+Received: by loth.rohan.me.apana.org.au (sSMTP sendmail emulation); Thu, 26 Mar 2026 18:13:05 +0900
+Date: Thu, 26 Mar 2026 18:13:05 +0900
+From: Herbert Xu <herbert@gondor.apana.org.au>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-crypto@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fscrypt@vger.kernel.org,
+	Thierry Reding <thierry.reding@gmail.com>,
+	Jonathan Hunter <jonathanh@nvidia.com>,
+	Zorro Lang <zlang@redhat.com>, stable@vger.kernel.org,
+	Akhil R <akhilrajeev@nvidia.com>
+Subject: Re: [PATCH v2] crypto: tegra - Add missing CRYPTO_ALG_ASYNC
+Message-ID: <acT4ocMTLlNLfxcK@gondor.apana.org.au>
+References: <20260316202119.13934-1-ebiggers@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 00/10] ext4: refactor partial block zero-out for iomap
- conversion
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
- tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com,
- yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
- yukuai@fnnas.com
-References: <20260325072850.3997161-1-yi.zhang@huaweicloud.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260325072850.3997161-1-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgBHStrv88RpqlIbCQ--.6951S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxZw47Jr4UAF1rZFyfGrWDCFg_yoW5Kw4DpF
-	ya9w1Y9r4xG39F9an7CF48XF1a9wn3Gr4rGry3G34kZ3y5ZF1IkFs3Ka1F9FWj9rW3Ga40
-	qF4UAa4UWFn8Aa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
-	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
-	7KsUUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260316202119.13934-1-ebiggers@kernel.org>
 
-On 3/25/2026 3:28 PM, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On Mon, Mar 16, 2026 at 01:21:19PM -0700, Eric Biggers wrote:
+> The tegra crypto driver failed to set the CRYPTO_ALG_ASYNC on its
+> asynchronous algorithms, causing the crypto API to select them for users
+> that request only synchronous algorithms.  This causes crashes (at
+> least).  Fix this by adding the flag like what the other drivers do.
+> Also remove the unnecessary CRYPTO_ALG_TYPE_* flags, since those just
+> get ignored and overridden by the registration function anyway.
+> 
+> Reported-by: Zorro Lang <zlang@redhat.com>
+> Closes: https://lore.kernel.org/r/20260314080937.pghb4aa7d4je3mhh@dell-per750-06-vm-08.rhts.eng.pek2.redhat.com
+> Fixes: 0880bb3b00c8 ("crypto: tegra - Add Tegra Security Engine driver")
+> Cc: stable@vger.kernel.org
+> Cc: Akhil R <akhilrajeev@nvidia.com>
+> Signed-off-by: Eric Biggers <ebiggers@kernel.org>
+> ---
+> 
+> This patch is targeting crypto/master.
+> 
+> v2: fix tegra-se-hash.c as well, and remove unnecessary type flags
+> 
+>  drivers/crypto/tegra/tegra-se-aes.c  | 11 ++++++----
+>  drivers/crypto/tegra/tegra-se-hash.c | 30 ++++++++++++++++------------
+>  2 files changed, 24 insertions(+), 17 deletions(-)
 
-Sashiko found some real issues in patch 09 and 10, I will send v3 to fix them.
-
-https://sashiko.dev/#/patchset/20260325072850.3997161-1-yi.zhang%40huaweicloud.com
-
-Best Regards,
-Yi.
-
-> 
-> Changes since v1:
->  - In patch 04, rename ext4_block_get_zero_range() to
->    ext4_load_tail_bh() and drop the unused 'length' parameter as Jan
->    suggested.
->  - In patch 06, modify the commit message, add another reason to drop
->    data=ordered mode when zeroing partial blocks in ext4_punch_hole()
->    and ext4_punch_hole() as Jan pointed out.
->  - In patch 10, modify the commit message, explain the race condition
->    between the buffered write and mmap write that pointed out by Jan.
->  - Collect reviewed tags from Jan.
-> 
-> v1: https://lore.kernel.org/linux-ext4/20260310014101.4140698-1-yi.zhang@huaweicloud.com/
-> 
-> Original cover letter:
-> 
-> This patch series extracted from my iomap conversion v2 series[1]. It
-> refactors the ext4 zero partial block code path in preparation for
-> converting buffered I/O to the iomap infrastructure. The main changes
-> are:
-> 
-> [1] https://lore.kernel.org/linux-ext4/20260203062523.3869120-1-yi.zhang@huawei.com/
-> 
-> 1. Introduce ext4_block_zero_eof(): Extend and rename
->    ext4_block_truncate_page() to handle post-EOF partial block zeroing
->    for both append writes and truncate operations.
-> 2. Separate ordered data handling: Move data=ordered mode handling from
->    __ext4_block_zero_page_range to ext4_block_zero_eof(). Only truncate
->    and post-EOF append write/fallocate paths need ordered data mode,
->    hole punching and zero range paths don't need ordered data handling.
-> 3. Split journal mode handling: Extract
->    ext4_block_journalled_zero_range() from
->    __ext4_block_zero_page_range() for data=journal mode, leaving
->    ext4_block_do_zero_range() for data=ordered/writeback modes.
-> 4. Refactor ext4_alloc_file_blocks(): Change parameters to loff_t byte
->    granularity to simplify callers and prepares removing the zero call
->    from the allocation loop for unaligned append writes.
-> 5. Remove handle parameters: Stop passing handle_t * to zero functions.
->    Make ext4_block_journalled_zero_range() start its own handle, and
->    move zero operations outside active handles. This is required because
->    iomap uses "folio lock -> transaction start" lock ordering, opposite
->    to the current lock ordering.
-> 6. Centralize zeroing in ext4_write_checks(): Move all post-EOF partial
->    block zeroing to ext4_write_checks() so it applies to both regular
->    buffered writes and the upcoming iomap path.
-> 
-> Thanks
-> Yi.
-> 
-> Zhang Yi (10):
->   ext4: add did_zero output parameter to ext4_block_zero_page_range()
->   ext4: ext4_block_truncate_page() returns zeroed length on success
->   ext4: rename and extend ext4_block_truncate_page()
->   ext4: factor out journalled block zeroing range
->   ext4: rename ext4_block_zero_page_range() to ext4_block_zero_range()
->   ext4: move ordered data handling out of ext4_block_do_zero_range()
->   ext4: remove handle parameters from zero partial block functions
->   ext4: pass allocate range as loff_t to ext4_alloc_file_blocks()
->   ext4: move zero partial block range functions out of active handle
->   ext4: zero post-EOF partial block before appending write
-> 
->  fs/ext4/ext4.h    |   5 +-
->  fs/ext4/extents.c |  83 +++++++--------
->  fs/ext4/file.c    |  14 +++
->  fs/ext4/inode.c   | 255 ++++++++++++++++++++++++++++------------------
->  4 files changed, 207 insertions(+), 150 deletions(-)
-> 
-
+Patch applied.  Thanks.
+-- 
+Email: Herbert Xu <herbert@gondor.apana.org.au>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
