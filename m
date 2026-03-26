@@ -1,81 +1,81 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 054BB3BF677
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 09:55:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C3893C13E6
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2026 09:55:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774518944; cv=none; b=MlHkar0lx+s4IYofkaqUJO95g6tRdQaMXONqw5gXfEL8CTNEfhclZB9uXP94+EGoOkJgS/Oaf8RXpADNxW0QPAt1efL8yaxC2v01XFbeVEghmfS6G7jIbZ+hGscFI+uzZXTKqEF3jSJm22bYuSDOdHATAo12mcCn9lTPss7C94w=
+	t=1774518948; cv=none; b=lfbKcxi9kxqxgCkwVZ3UgqRXXUFfqqQuVFLmyPbTOiAyGtRlh10737JK9ZOjBsis7Rae4NzA7eYHht1ezTGN+zUug0Mi+5V3jdm9+ldExxeMyYxkSHdM8osQ7L3wu6aG1e7Lv1OSGkeJ4SA9uBge07vyUsCu1mVBfPXYGRhZFIc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774518944; c=relaxed/simple;
-	bh=SmSUMyHwm0K50cHCdMR4KDamoJmEJMkF3+TUKO5XXw4=;
+	s=arc-20240116; t=1774518948; c=relaxed/simple;
+	bh=nIoejJMaV49gDfeiiXcXv5LH7VzUz9A7WUS7gjGHtc8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=iYHZyWPGTi7n6pwL/O5k+/VL7+pgeKLIuVsFrN6EziiMAFaL13UGVYgADlF1lSfL3N+SSo9Pt5d0U+MLjgj2XsjDdkXsHAycXywVGJJiolqyulWMOfoYq+DrvE5VzXC3qG5aynzVYLgkkmNj/YCMoshtm46Upj33F/jcGN+SD1A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=auK1kjzn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5H3HM+XA; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=auK1kjzn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5H3HM+XA; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=DBdwJ77l/5RofHvcyQIYCwLAKuNJUie93ZnOagByGBFWxTHpmsMcbfwWCVR5kUKH04XKvdyQUem2Z2H14b1Lg8yZsoGtKi5ZksetbdcMbEyK0eb4JF1mGoteie/iOHE4xjuKjoNUS9ZZvgivVq6nh5BrInkjx80ivGpjk3f1ls0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=KhtlkWiO; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RPa8Up3P; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=KhtlkWiO; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RPa8Up3P; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="auK1kjzn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5H3HM+XA";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="auK1kjzn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5H3HM+XA"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="KhtlkWiO";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RPa8Up3P";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="KhtlkWiO";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RPa8Up3P"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 287044D27D;
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 162F05BD90;
 	Thu, 26 Mar 2026 09:54:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1774518897; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=1WZrCR/hrplAz7CrGGN1pyhuwAsW6VsYXtl7pMQKKRw=;
-	b=auK1kjznc8woJpI/n1LKgos6QwI1I6y0MERfu6eLryJUXVAS124LSfTUWiKLYubLzycEBb
-	2jMjsnTHhRDGpKF8DmHyt7+Ljje3jVKGSpJcbPuC8tt70StMXHHRq7XyJqXsG7rtje1wf6
-	67sA8T7d7Eyi1eFexVywXA0wcDwc+ro=
+	bh=kKiSRak0agp/qsjTYeF0a7XGFUIh/0Ujvc9vhIKtkHc=;
+	b=KhtlkWiO78CCJ9mGJrt+U4aNIhhgZPPRQfPgmPwTj4qgyhwY5RT8DHONXFX8D6w/9XkBMK
+	32PeTho+BOFRWhKnDofaCEPmEre8/NsuZw8oRVwL9jyu75CEJYOeApY7uRa9pc37TeiB7g
+	qelr59wcfrX8hNnF5fIqkgrnSWKcxlM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1774518897;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=1WZrCR/hrplAz7CrGGN1pyhuwAsW6VsYXtl7pMQKKRw=;
-	b=5H3HM+XAu7TWqcD89+9dRZxM2u/Ku6EXFTRqEIUa2Nfsy5msTGcrycCJMF6lavtEtUmf+t
-	ok9PcFHa72SxyTBA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=auK1kjzn;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=5H3HM+XA
+	bh=kKiSRak0agp/qsjTYeF0a7XGFUIh/0Ujvc9vhIKtkHc=;
+	b=RPa8Up3PdBsZgjkYN9RG5sVgNh0qSYmtretiLMFBxaF+DT+KG0OQMf3FaP+qlGtdEHT/uR
+	QwquuxjWs/2ufQDg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=KhtlkWiO;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=RPa8Up3P
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1774518897; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=1WZrCR/hrplAz7CrGGN1pyhuwAsW6VsYXtl7pMQKKRw=;
-	b=auK1kjznc8woJpI/n1LKgos6QwI1I6y0MERfu6eLryJUXVAS124LSfTUWiKLYubLzycEBb
-	2jMjsnTHhRDGpKF8DmHyt7+Ljje3jVKGSpJcbPuC8tt70StMXHHRq7XyJqXsG7rtje1wf6
-	67sA8T7d7Eyi1eFexVywXA0wcDwc+ro=
+	bh=kKiSRak0agp/qsjTYeF0a7XGFUIh/0Ujvc9vhIKtkHc=;
+	b=KhtlkWiO78CCJ9mGJrt+U4aNIhhgZPPRQfPgmPwTj4qgyhwY5RT8DHONXFX8D6w/9XkBMK
+	32PeTho+BOFRWhKnDofaCEPmEre8/NsuZw8oRVwL9jyu75CEJYOeApY7uRa9pc37TeiB7g
+	qelr59wcfrX8hNnF5fIqkgrnSWKcxlM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1774518897;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=1WZrCR/hrplAz7CrGGN1pyhuwAsW6VsYXtl7pMQKKRw=;
-	b=5H3HM+XAu7TWqcD89+9dRZxM2u/Ku6EXFTRqEIUa2Nfsy5msTGcrycCJMF6lavtEtUmf+t
-	ok9PcFHa72SxyTBA==
+	bh=kKiSRak0agp/qsjTYeF0a7XGFUIh/0Ujvc9vhIKtkHc=;
+	b=RPa8Up3PdBsZgjkYN9RG5sVgNh0qSYmtretiLMFBxaF+DT+KG0OQMf3FaP+qlGtdEHT/uR
+	QwquuxjWs/2ufQDg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 198254A0A9;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 061F04A0A7;
 	Thu, 26 Mar 2026 09:54:57 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id YF85BnECxWm9YAAAD6G6ig
+	id /WV9AXECxWmzYAAAD6G6ig
 	(envelope-from <jack@suse.cz>); Thu, 26 Mar 2026 09:54:57 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id DC155A0B99; Thu, 26 Mar 2026 10:54:48 +0100 (CET)
+	id A5B9BA0B68; Thu, 26 Mar 2026 10:54:48 +0100 (CET)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: <linux-block@vger.kernel.org>,
@@ -93,9 +93,9 @@ Cc: <linux-block@vger.kernel.org>,
 	linux-aio@kvack.org,
 	Benjamin LaHaise <bcrl@kvack.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH 13/42] fs: Drop sync_mapping_buffers() from __generic_file_fsync()
-Date: Thu, 26 Mar 2026 10:54:07 +0100
-Message-ID: <20260326095354.16340-55-jack@suse.cz>
+Subject: [PATCH 07/42] exfat: Drop pointless invalidate_inode_buffers() call
+Date: Thu, 26 Mar 2026 10:54:01 +0100
+Message-ID: <20260326095354.16340-49-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260326082428.31660-1-jack@suse.cz>
 References: <20260326082428.31660-1-jack@suse.cz>
@@ -105,11 +105,11 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1452; i=jack@suse.cz; h=from:subject; bh=SmSUMyHwm0K50cHCdMR4KDamoJmEJMkF3+TUKO5XXw4=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpxQI9kheGDEUE8Z4bg0Qcp/ntGv/hibVmPm3jL c7I6LLeBhuJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCacUCPQAKCRCcnaoHP2RA 2eBxCADEaMdSYA4l5xrhxMIj9bv0RkgmP5xWyow8IlNUpzdPlJZNknDMp+bQFC7PrZPd51YrSfx bnumNmF6zOsfs6YEaB6QAmg/PdRy+qvkjxyzr+6qKVrLWxeHm6HOvcVSmUPklnyh52tYvaowSS/ AL32Z6DUEfinD3ZJzIaeH97p09oAr7SlUTNBHs1u6DKNeKBSocDmHRAlyr4boaegHi72x0WROFJ VTOXNurjK3Ho7Ddw/mPoJqcLbQ2EgqkczK94Oulhgu/b3rmKFmMg7a9MTUVzcWcO69bSV8clW26 AMe8xZ3pQVSvll+FZYpQQKq/nW9UB39vZXjlKwMDVv9O2hyy
+X-Developer-Signature: v=1; a=openpgp-sha256; l=642; i=jack@suse.cz; h=from:subject; bh=nIoejJMaV49gDfeiiXcXv5LH7VzUz9A7WUS7gjGHtc8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBpxQI3asYuc/oVgtRi89eW1ehL7CYhut2nO3al3 BpSIY98L/yJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCacUCNwAKCRCcnaoHP2RA 2QgJB/4vYwxu9hVC2NpAKjgJUN90wx+oO48gHyS3U27s/oLQBDHOcFkcXUy8vwEZDpU0Kk9P5dN YaiK28Fi/i6gurrd8aqe+1HKn91CVevrNkUE0Tj5ceLYwOvNXM0WA+kr5N2eQxVZ9xv7RTtQyX3 bZkFBdxitJb+CLqMtg1H0afc/BoCVEE20tRT1ZLpRK4V29Ur5Q/7ABFM5sWeQdiHK8l/duTb0kg oyHjrT4uD4k6GfDhR0Ye3dTMYHn4ucIonq1Tjob2BBKYEhKPhHc3Qtkiyx7H+rxeJgHvJdpNQzV HPbeW4POGDqiPg/KkYxrAj5YFMK8Wr5a4iSQQtST1594SpnW
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Spamd-Result: default: False [-1.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
+	BAYES_HAM(-3.00)[99.99%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
@@ -144,54 +144,29 @@ X-Spam-Flag: NO
 X-Spam-Score: -1.51
 X-Spam-Level: 
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 287044D27D
+X-Rspamd-Queue-Id: 162F05BD90
 
-No filesystem calling __generic_file_fsync() uses metadata bh tracking.
-Drop sync_mapping_buffers() call from __generic_file_fsync() as it's
-pointless now which untangles buffer head handling from fs/libfs.c.
+EXFAT never calls mark_buffer_dirty_inode() and thus
+invalidate_inode_buffers() never has anything to evict. Drop the
+pointless call.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/libfs.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+ fs/exfat/inode.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index ed7242d614fe..e67e43c6509a 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -18,7 +18,6 @@
- #include <linux/exportfs.h>
- #include <linux/iversion.h>
- #include <linux/writeback.h>
--#include <linux/buffer_head.h> /* sync_mapping_buffers */
- #include <linux/fs_context.h>
- #include <linux/pseudo_fs.h>
- #include <linux/fsnotify.h>
-@@ -1555,22 +1554,18 @@ int __generic_file_fsync(struct file *file, loff_t start, loff_t end,
- {
- 	struct inode *inode = file->f_mapping->host;
- 	int err;
--	int ret;
-+	int ret = 0;
+diff --git a/fs/exfat/inode.c b/fs/exfat/inode.c
+index 2fb2d2d5d503..04559b88482d 100644
+--- a/fs/exfat/inode.c
++++ b/fs/exfat/inode.c
+@@ -695,7 +695,6 @@ void exfat_evict_inode(struct inode *inode)
+ 		mutex_unlock(&EXFAT_SB(inode->i_sb)->s_lock);
+ 	}
  
- 	err = file_write_and_wait_range(file, start, end);
- 	if (err)
- 		return err;
- 
--	ret = sync_mapping_buffers(inode->i_mapping);
- 	if (!(inode_state_read_once(inode) & I_DIRTY_ALL))
- 		goto out;
- 	if (datasync && !(inode_state_read_once(inode) & I_DIRTY_DATASYNC))
- 		goto out;
- 
--	err = sync_inode_metadata(inode, 1);
--	if (ret == 0)
--		ret = err;
--
-+	ret = sync_inode_metadata(inode, 1);
- out:
- 	/* check and advance again to catch errors after syncing out buffers */
- 	err = file_check_and_advance_wb_err(file);
+-	invalidate_inode_buffers(inode);
+ 	clear_inode(inode);
+ 	exfat_cache_inval_inode(inode);
+ 	exfat_unhash_inode(inode);
 -- 
 2.51.0
 
