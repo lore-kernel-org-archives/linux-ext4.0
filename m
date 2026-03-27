@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 561073DA7DF;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A29E3DB62F;
 	Fri, 27 Mar 2026 10:34:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774607683; cv=none; b=MvXUeqFWEXiVX0t1AL7/5ATf3HggaESuGDdIfivEBI16vTOmX8M3C/tEP11ORpXnTY0tAh39M9A+qAaYXUZdQaLtBf04oMTJhmZWhleN0UDVgDYay+JiEWySTFULHKHFp1J7g0HBhKIuiZOvc6xt+jCKz5zAdc+KFzWXlLCRY/I=
+	t=1774607685; cv=none; b=Yey7DGtDPXCk69FXzucDduG/6mShrK617Stmu9vAYdA+4X1alsnUiJsVTqRTfeBGXDmV2BOtNjwZsgPw8CHqBFeqErqBcTBAPPnVa+9wvWEajJkKl6Zz2m6W7JKVr4uYANhKgbpEceLHaC0qftnzAnCcGwJ2xBDOUr8ZZT5IkmQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774607683; c=relaxed/simple;
-	bh=QfbPo7seK4B0TDu2BB5BbSBr8hShQvihn/uS493D+9c=;
+	s=arc-20240116; t=1774607685; c=relaxed/simple;
+	bh=j/97nXmTe8IHvO2fi5SBryB3oogNc2Q7CceNOoEudAE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=FdWpXFvZ4oXeaHLd06vAYeJqI/YeDr14rVgpNwp6cLlSRLoFLmVLramnhGQ7lf2Mphzx7QC39VQYQS0NC1T4BapwDF9cwDC9oAwbz0qDdulhN8yUNvA/KqfTCjchPaSuFZ2uQyCJsKm00OKT4IeAKcypHorB6N0NE4M2Yj9MMMk=
+	 MIME-Version; b=ohfzne9O1GJxm4uN3coBeeNoAh2X8UXG9N2mGkCbgvn1EX/o4IHm0pGw1XfWiEe1djNMQ3lBXFwfCfL8MknARsAj1LdTTwD2uFbLyfaGjW9nPcVHuzob0sSOi2B0epAnm70oQ7IN6L+R6CP0MnlEY6aEN+AbH4EIhoK14d9VV9Y=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fhxpM09n0zYQv6M;
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fhxpM0zdjzYQv7N;
 	Fri, 27 Mar 2026 18:34:19 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 980DF40575;
+	by mail.maildlp.com (Postfix) with ESMTP id B425A4057A;
 	Fri, 27 Mar 2026 18:34:32 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with SMTP id cCh0CgC3utouXcZp_T2cCQ--.28730S12;
+	by APP1 (Coremail) with SMTP id cCh0CgC3utouXcZp_T2cCQ--.28730S13;
 	Fri, 27 Mar 2026 18:34:32 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v4 08/13] ext4: move zero partial block range functions out of active handle
-Date: Fri, 27 Mar 2026 18:29:34 +0800
-Message-ID: <20260327102939.1095257-9-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 09/13] ext4: ensure zeroed partial blocks are persisted in SYNC mode
+Date: Fri, 27 Mar 2026 18:29:35 +0800
+Message-ID: <20260327102939.1095257-10-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260327102939.1095257-1-yi.zhang@huaweicloud.com>
 References: <20260327102939.1095257-1-yi.zhang@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgC3utouXcZp_T2cCQ--.28730S12
-X-Coremail-Antispam: 1UD129KBjvJXoWxuFWfKF13GFWrAFyDGF15Jwb_yoWxXr4Up3
-	y3Aa4fGr1kuF9Y9F4Skr47ZF4ak3WxKr4UWry7Cr10qayDZw1fKF1ayFy0vFWjgrWUZr4Y
-	vF4jkry7G3WUC3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgC3utouXcZp_T2cCQ--.28730S13
+X-Coremail-Antispam: 1UD129KBjvJXoWxJw1UKFyUXw4UKF17uFy5twb_yoWrtF18p3
+	43JFy3Gr4fW348ur4fKF4UZr1ay3Z3GF48Wry3Grn8Za97X34xtFyDKF1FvF1YgrW3C340
+	vF4Yy347Kr15CFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -73,192 +73,129 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Move ext4_block_zero_eof() and ext4_zero_partial_blocks() calls out of
-the active handle context, making them independent operations, and also
-add return value checks. This is safe because it still ensures data is
-updated before metadata for data=ordered mode and data=journal mode
-because we still zero data and ordering data before modifying the
-metadata.
+In ext4_zero_range() and ext4_punch_hole(), when operating in SYNC mode
+and zeroing a partial block, only data=journal modes guarantee that the
+zeroed data is synchronously persisted after the operation completes.
+For data=ordered/writeback mode and non-journal modes, this guarantee is
+missing.
 
-This change is required for iomap infrastructure conversion because the
-iomap buffered I/O path does not use the same journal infrastructure for
-partial block zeroing. The lock ordering of folio lock and starting
-transactions is "folio lock -> transaction start", which is opposite of
-the current path. Therefore, zeroing partial blocks cannot be performed
-under the active handle.
+Introduce a partial_zero parameter to explicitly trigger writeback for
+all scenarios where a partial block is zeroed, ensuring the zeroed data
+is durably persisted.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c | 32 +++++++++++++++-----------------
- fs/ext4/inode.c   | 47 ++++++++++++++++++++++++++---------------------
- 2 files changed, 41 insertions(+), 38 deletions(-)
+ fs/ext4/ext4.h    |  2 +-
+ fs/ext4/extents.c |  9 ++++++++-
+ fs/ext4/inode.c   | 19 ++++++++++++++-----
+ 3 files changed, 23 insertions(+), 7 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 859ae05339ad..bfe86479a83c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3101,7 +3101,7 @@ extern int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
+ 				  int pextents);
+ extern int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end);
+ extern int ext4_zero_partial_blocks(struct inode *inode, loff_t lstart,
+-				    loff_t length);
++				    loff_t length, bool *did_zero);
+ extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 57a686b600d9..002b1ec8cee2 100644
+index 002b1ec8cee2..16386f499138 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -4585,6 +4585,13 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
- 	credits = ext4_chunk_trans_blocks(inode, len_lblk);
- 	depth = ext_depth(inode);
- 
-+	/* Zero to the end of the block containing i_size */
-+	if (new_size > old_size) {
-+		ret = ext4_block_zero_eof(inode, old_size, LLONG_MAX);
-+		if (ret)
-+			return ret;
-+	}
-+
- retry:
- 	while (len_lblk) {
- 		/*
-@@ -4623,10 +4630,8 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
- 			if (ext4_update_inode_size(inode, epos) & 0x1)
- 				inode_set_mtime_to_ts(inode,
- 						      inode_get_ctime(inode));
--			if (epos > old_size) {
-+			if (epos > old_size)
- 				pagecache_isize_extended(inode, old_size, epos);
--				ext4_block_zero_eof(inode, old_size, epos);
--			}
- 		}
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
-@@ -4668,7 +4673,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+@@ -4673,6 +4673,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
  	loff_t align_start, align_end, new_size = 0;
  	loff_t end = offset + len;
  	unsigned int blocksize = i_blocksize(inode);
--	int ret, flags, credits;
-+	int ret, flags;
++	bool partial_zeroed = false;
+ 	int ret, flags;
  
  	trace_ext4_zero_range(inode, offset, len, mode);
- 	WARN_ON_ONCE(!inode_is_locked(inode));
-@@ -4722,25 +4727,18 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	if (IS_ALIGNED(offset | end, blocksize))
+@@ -4728,9 +4729,15 @@ static long ext4_zero_range(struct file *file, loff_t offset,
  		return ret;
  
--	/*
--	 * In worst case we have to writeout two nonadjacent unwritten
--	 * blocks and update the inode
--	 */
--	credits = (2 * ext4_ext_index_trans_blocks(inode, 2)) + 1;
--	if (ext4_should_journal_data(inode))
--		credits += 2;
--	handle = ext4_journal_start(inode, EXT4_HT_MISC, credits);
-+	/* Zero out partial block at the edges of the range */
-+	ret = ext4_zero_partial_blocks(inode, offset, len);
-+	if (ret)
-+		return ret;
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
- 	if (IS_ERR(handle)) {
- 		ret = PTR_ERR(handle);
- 		ext4_std_error(inode->i_sb, ret);
- 		return ret;
- 	}
- 
--	/* Zero out partial block at the edges of the range */
+ 	/* Zero out partial block at the edges of the range */
 -	ret = ext4_zero_partial_blocks(inode, offset, len);
--	if (ret)
--		goto out_handle;
--
- 	if (new_size)
- 		ext4_update_inode_size(inode, new_size);
- 	ret = ext4_mark_inode_dirty(handle, inode);
++	ret = ext4_zero_partial_blocks(inode, offset, len, &partial_zeroed);
+ 	if (ret)
+ 		return ret;
++	if (((file->f_flags & O_SYNC) || IS_SYNC(inode)) && partial_zeroed) {
++		ret = filemap_write_and_wait_range(inode->i_mapping, offset,
++						   end - 1);
++		if (ret)
++			return ret;
++	}
+ 
+ 	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+ 	if (IS_ERR(handle)) {
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 13655ea709fe..8aa4369e3150 100644
+index 8aa4369e3150..b934ad86a96d 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4441,8 +4441,12 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+@@ -4227,7 +4227,8 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+ 	return 0;
+ }
+ 
+-int ext4_zero_partial_blocks(struct inode *inode, loff_t lstart, loff_t length)
++int ext4_zero_partial_blocks(struct inode *inode, loff_t lstart, loff_t length,
++			     bool *did_zero)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	unsigned partial_start, partial_end;
+@@ -4244,20 +4245,21 @@ int ext4_zero_partial_blocks(struct inode *inode, loff_t lstart, loff_t length)
+ 	/* Handle partial zero within the single block */
+ 	if (start == end &&
+ 	    (partial_start || (partial_end != sb->s_blocksize - 1))) {
+-		err = ext4_block_zero_range(inode, lstart, length, NULL, NULL);
++		err = ext4_block_zero_range(inode, lstart, length, did_zero,
++					    NULL);
+ 		return err;
+ 	}
+ 	/* Handle partial zero out on the start of the range */
+ 	if (partial_start) {
+ 		err = ext4_block_zero_range(inode, lstart, sb->s_blocksize,
+-					    NULL, NULL);
++					    did_zero, NULL);
+ 		if (err)
+ 			return err;
+ 	}
+ 	/* Handle partial zero out on the end of the range */
+ 	if (partial_end != sb->s_blocksize - 1)
+ 		err = ext4_block_zero_range(inode, byte_end - partial_end,
+-					    partial_end + 1, NULL, NULL);
++					    partial_end + 1, did_zero, NULL);
+ 	return err;
+ }
+ 
+@@ -4406,6 +4408,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+ 	loff_t end = offset + length;
+ 	handle_t *handle;
+ 	unsigned int credits;
++	bool partial_zeroed = false;
+ 	int ret;
+ 
+ 	trace_ext4_punch_hole(inode, offset, length, 0);
+@@ -4441,9 +4444,15 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
  	if (ret)
  		return ret;
  
-+	ret = ext4_zero_partial_blocks(inode, offset, length);
-+	if (ret)
-+		return ret;
-+
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		credits = ext4_chunk_trans_extent(inode, 2);
-+		credits = ext4_chunk_trans_extent(inode, 0);
- 	else
- 		credits = ext4_blocks_for_truncate(inode);
- 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
-@@ -4452,10 +4456,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		return ret;
- 	}
- 
 -	ret = ext4_zero_partial_blocks(inode, offset, length);
--	if (ret)
--		goto out_handle;
--
- 	/* If there are blocks to remove, do it */
- 	start_lblk = EXT4_B_TO_LBLK(inode, offset);
- 	end_lblk = end >> inode->i_blkbits;
-@@ -4587,6 +4587,11 @@ int ext4_truncate(struct inode *inode)
- 		err = ext4_inode_attach_jinode(inode);
- 		if (err)
- 			goto out_trace;
-+
-+		/* Zero to the end of the block containing i_size */
-+		err = ext4_block_zero_eof(inode, inode->i_size, LLONG_MAX);
-+		if (err)
-+			goto out_trace;
- 	}
++	ret = ext4_zero_partial_blocks(inode, offset, length, &partial_zeroed);
+ 	if (ret)
+ 		return ret;
++	if (((file->f_flags & O_SYNC) || IS_SYNC(inode)) && partial_zeroed) {
++		ret = filemap_write_and_wait_range(inode->i_mapping, offset,
++						   end - 1);
++		if (ret)
++			return ret;
++	}
  
  	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-@@ -4600,10 +4605,6 @@ int ext4_truncate(struct inode *inode)
- 		goto out_trace;
- 	}
- 
--	/* Zero to the end of the block containing i_size */
--	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
--		ext4_block_zero_eof(inode, inode->i_size, LLONG_MAX);
--
- 	/*
- 	 * We add the inode to the orphan list, so that if this
- 	 * truncate spans multiple transactions, and we crash, we will
-@@ -5961,15 +5962,6 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 					goto out_mmap_sem;
- 			}
- 
--			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
--			if (IS_ERR(handle)) {
--				error = PTR_ERR(handle);
--				goto out_mmap_sem;
--			}
--			if (ext4_handle_valid(handle) && shrink) {
--				error = ext4_orphan_add(handle, inode);
--				orphan = 1;
--			}
- 			/*
- 			 * Update c/mtime and tail zero the EOF folio on
- 			 * truncate up. ext4_truncate() handles the shrink case
-@@ -5978,9 +5970,22 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 			if (!shrink) {
- 				inode_set_mtime_to_ts(inode,
- 						      inode_set_ctime_current(inode));
--				if (oldsize & (inode->i_sb->s_blocksize - 1))
--					ext4_block_zero_eof(inode, oldsize,
--							    LLONG_MAX);
-+				if (oldsize & (inode->i_sb->s_blocksize - 1)) {
-+					error = ext4_block_zero_eof(inode,
-+							oldsize, LLONG_MAX);
-+					if (error)
-+						goto out_mmap_sem;
-+				}
-+			}
-+
-+			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
-+			if (IS_ERR(handle)) {
-+				error = PTR_ERR(handle);
-+				goto out_mmap_sem;
-+			}
-+			if (ext4_handle_valid(handle) && shrink) {
-+				error = ext4_orphan_add(handle, inode);
-+				orphan = 1;
- 			}
- 
- 			if (shrink)
+ 		credits = ext4_chunk_trans_extent(inode, 0);
 -- 
 2.52.0
 
