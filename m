@@ -1,72 +1,113 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f47.google.com (mail-wm1-f47.google.com [209.85.128.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E427131716B
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 15:42:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9543D344DB1
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 16:09:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774626167; cv=none; b=G9zHSV8RJ7/xBvYR/EFnYUxXNBQvw3XsXJ9insNPy2/fyXCZFhP/h91LkSnmKUWxi451KgaY0i3uQfKUI59r6va+T0cvGtQ629SeI9I9juXO8qXmOrcayDHOzDbYypjSW4BL31KBG0iJsxFQlBThxcs2VDSSrZLnwQpUSC9PgrY=
+	t=1774627745; cv=none; b=oZwV/x0cCdeQO3hu946oHRLoN7M9nI1KW5WqnkiaZ4AUwh3ZpLIgur9GEnpnPNoc2Vm7g/264eArKoaSVNGOTPwIFWXrAtRL5c02uodT67Wp6JSIa7TytGvgredXg42R0IkGhYyxZv1G3WkIzUP7AzZAiFmv8izhZpFIpoRUWvU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774626167; c=relaxed/simple;
-	bh=/fsmBeV8mwd0xFPdQ6ufX1/kc/hVPzAFzEkHlcxBJgQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=YCf9/VNGRlN/8EoQIzMGnkV6e3pmXAP5fG0cKLPjpQKWXregOnghz2QCDJAaqtYDKZLQ3HEEWpS3b2pABPk2JemQMF2GgBCQvsvOl7t1eTI2RNsMY5vCbJ+VKzYhTOOPlNdgYHYbQDQSfDvwiMtM0y8eeSsPeSofvU3sa0c34q8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=W3qP9m+b; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1774627745; c=relaxed/simple;
+	bh=AhACoJKUePbWhUIBfTtBJjojmEhtsQ5aOjUHthOWYiI=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=rOB7E9rp0mQ7jKOyjINA522V55mes1aGR/3eRafgYrgDJvJA19R3mWYSyFdQ+SWJqYAXFWn6qyeaS2XI5GhtDuPnESpE6Zus0n+tighAp9dkxvnxkQwxTh46pH3x6qnjRJ5y4/INoi8Uk6T4ErZNt6I6e6TNcvH6OUv8TpwG+BM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=JgmuUUDg; arc=none smtp.client-ip=209.85.128.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="W3qP9m+b"
-Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62RFgYcJ020418
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 27 Mar 2026 11:42:35 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1774626156; bh=1er/RskN0vgkHg8Op++rmdJAjd+Cw53EY//ShEnTlY0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=W3qP9m+bSher5PBpmr8CVQhhP+6afTcWVB0HHt6g9inBAYqwLgGT6bifxBhR/tkf8
-	 qsXidyR048qSHmPw9hvPzu8uuUj2XwetaeydBAaoSb1DtxXdsXxrollubN7Ojk/qVX
-	 GTjXpLNOr+gVllpQ+b3KszSXH5/9d0nfA0MYlv8OuNJx6wTGDLuMqYoFPRM20679C0
-	 +5nIhE/u9xshpZPvJaBdOFiSXd/wpiz1KsOP30fkx8b6aPc89/qiGzilxluUKqh9NJ
-	 DzAjJ42mrhcCGptsj7hhgWBJEU19g2O0sSVgBxbfMSK/BkYSd6MAK0XUf2s9zwdReX
-	 wimUtKhVFwrBw==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 8FA625F9BCF1; Fri, 27 Mar 2026 10:42:33 -0500 (CDT)
-Date: Fri, 27 Mar 2026 10:42:33 -0500
-From: "Theodore Tso" <tytso@mit.edu>
-To: Gerald Yang <gerald.yang@canonical.com>
-Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, gerald.yang.tw@gmail.com
-Subject: Re: [PATCH] ext4: Fix call trace when remounting to read only in
- data=journal mode
-Message-ID: <20260327154233.GD4383@macsyma.local>
-References: <4u2l4huoj7zsfy2u37lgdzlmwwdntgqaer7wta7ud3kat7ox2n@oxhbcqryre3r>
- <CAMsNC+s1R-AUzhe80vjxYCSRu0X9Ybp33sSMHGHKpBL6=dG2_w@mail.gmail.com>
- <bycdopvwzfaskilhk3nsljuk3gkztvoa3is466a6utuj2lozmj@pxf44ulcnqup>
- <CAMsNC+ve3dRwT1xGWB0pvBJXqBpeksf7PgbEeihcnfs=AmwVRQ@mail.gmail.com>
- <gluj62pw5pu7ag2juf5ejwsr3ghvckag7wh4zunwyk57slcrmg@42of57gybigz>
- <tmtgzmvkfag4r6lbt4i2ej5ad3bfudezcm35l27ybit25r7l4d@5o2i4cuymh5j>
- <CAMsNC+svSX9AiZbs1dd4qigZqBuOjuCHOjpyXzgaO0sNLUHDYA@mail.gmail.com>
- <CAMsNC+vQceRaw9DkbQFo1p2piwcwDbTgohqt=Gtqj27n42kLTQ@mail.gmail.com>
- <si7uicc6vntron5s64lt5fzcubizryshxeafdeysqdid2xfmfx@mrjpfbddtdqk>
- <CAMsNC+u83HArYs1zjQ-YUHyADruros20LOB2m52=aeDXcpuJVQ@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JgmuUUDg"
+Received: by mail-wm1-f47.google.com with SMTP id 5b1f17b1804b1-486ff201041so21203785e9.1
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 09:09:02 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1774627741; x=1775232541; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=C6+lSlNCSf1mZSv3CVU756ouTHRZ2eG1vELpstFvvVw=;
+        b=JgmuUUDgAJtQbTHoIj8T1fRkCbaTlIGIz1aK9ZWdc3mF93uqdXA2iklkY4cuwKe2ai
+         mrtwSZfuKfBcjGvoW76FqIakrsIT2/XFt1xWh0qb3ERvOl6qbXFei4D1HP3yItpVNhdI
+         Dhl/RfyKyWYacQ4KAjJZI4PUVRt29FK9ddBvgETO3JxeZt/EIFcyZt1ZauuuVenz58T2
+         rjYmbHKlxfcphIR8FznLTdOonp7qQnpOV0a4DoV29auPVvBhrENGTXGcX2BFWtXZZNit
+         WX8wZnHIBxFWc5erwHDVLfPhS2e50MR8jv7IPO83uvA+cleJP4ulnsF+8Vt4GC5ezJqI
+         GOcw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774627741; x=1775232541;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=C6+lSlNCSf1mZSv3CVU756ouTHRZ2eG1vELpstFvvVw=;
+        b=ahMAuGRjmxqRuj3WOYqLu4PwoaFJ7j7MYZTrI8DJn8TJDgtQ6WnB6xLEbgwJPpbner
+         vtLpLIoru9gh7jO91nsFi29veV+w3btBgL+QwJhSNiubnyOXaNirO76It+oPS8YrRU7y
+         Y5ONVKSCoejJHPbXLAP6PfUf5bVOW17tAnR/WjXK0xWskYoQ0sshl0j+m2HwdFIUx4ZG
+         ix/WRxQ170VSroWOhfU+Wn94sy5YLahDkLO+xiyTnDv8HgWVT+S3eJ8us88atWoUJhbp
+         rxc4X85mvdSzd6GfF68zOomVd/fYw3ZOZsAgV1hA7iRbykg5Oq6lsJiL9oU07WMX7hH8
+         D+kQ==
+X-Forwarded-Encrypted: i=1; AJvYcCW9k0LID5bvZGgZbqybpNesNeuxPrBJddM45jslXFpJQu+XdEWYoVrmpZjzInISBnEnZhbPJ0srToHk@vger.kernel.org
+X-Gm-Message-State: AOJu0YzgwvY4Wa7fSwCh+CsjUvDYHWGyKNbZvdPebudRLq1R6Kmc96Vw
+	kuHh/0HYyKp4zU45/GS3VEAeRTmpU7IKdqYMmPBhfTeCNCCRa49CsG/F
+X-Gm-Gg: ATEYQzxtbK5mSHM4LH160Q80simtF40Jkscs8OGYBn3sN3I/582aqe3DWNA8PAY3F1L
+	iIEvxdO0ctSgfzK6Ljo1CRpF6AhGY3iKH5DRqQmrIQX86VVjvRcu6IzbJf0q/zycWpA9LQpKV+0
+	rON9uwcmI9tjwvqvlo1guXABaQ0wRXPpvB3cyMmGW9Hav8C0mXxTSzKFe38T5LGHjQ5dBGxuzbQ
+	eoYgrkudU7SBKZ57CS45L+r5DxiHr2RCEbPCgvquuYLLHKf8NVBFF+/s+ffYXBlWpfU2iIKyfJD
+	wIXxAKD10L60poLOB2LvGdm8nUdAu2vq8jFEp9XsjlVKCKgtpLZ5IKb3jFkTDu03YT+VbqunsSE
+	YcbVPkklJ75z/sG/tmH3ERjfF+L7dqroM2YbzD5pts9yuzKchRUog228ZMZ4XznFdxBshl0VJLw
+	sKDJL5GEn7aRDEDsl7zCjvSD758bt00Uqvh+EIsU5J4Ez5nrmVmh0kGUUWSQBIGyZO
+X-Received: by 2002:a05:600c:8819:b0:485:3ff1:d5c5 with SMTP id 5b1f17b1804b1-48727d55fc3mr56494385e9.7.1774627740517;
+        Fri, 27 Mar 2026 09:09:00 -0700 (PDT)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-487270af027sm31353835e9.3.2026.03.27.09.08.59
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 27 Mar 2026 09:09:00 -0700 (PDT)
+Date: Fri, 27 Mar 2026 16:08:58 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger
+ <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, Masami Hiramatsu <mhiramat@kernel.org>, Petr
+ Mladek <pmladek@suse.com>, Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+ Steven Rostedt <rostedt@goodmis.org>, Sergey Senozhatsky
+ <senozhatsky@chromium.org>, Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH next] ext4: Fix diagnostic printf formats
+Message-ID: <20260327160858.233399bb@pumpkin>
+In-Reply-To: <acaQVpYREnJJuJF5@ashevche-desk.local>
+References: <20260326201804.3881-1-david.laight.linux@gmail.com>
+	<acZgmKv38HLhky6q@ashevche-desk.local>
+	<20260327125412.47944386@pumpkin>
+	<acaQVpYREnJJuJF5@ashevche-desk.local>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAMsNC+u83HArYs1zjQ-YUHyADruros20LOB2m52=aeDXcpuJVQ@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-On Fri, Mar 27, 2026 at 03:26:38PM +0800, Gerald Yang wrote:
+On Fri, 27 Mar 2026 16:12:38 +0200
+Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
+
+...
+> P.S. A bit of off-topic, have you seen this?
+> https://elixir.bootlin.com/linux/v7.0-rc5/source/kernel/stacktrace.c#L33
+> Is it correct use of %c?
 > 
-> Would this be merged into the next merge window?
-> https://lore.kernel.org/linux-ext4/20260205092223.21287-2-jack@suse.cz/
 
-Yes, it's in the ext4 git tree already and will be sent along with a
-number of other bugfixes to Linus before 7.0 is released.
+Works with glibc (or, rather, with whichever libc the shell I'm using
+is linked against):
 
-       	  		    	  	     - Ted
+$ printf '|%*c|\n' 5 x
+|    x|
+$
+
+'man fprintf' tends to agree.
+Left justify also works, either "%-*c" or passing -5.
+
+The 'fun' starts if you print a zero with %c in the middle of some output.
+
+I know some compilers have supported: int c = 'abcd';
+But I can't remember whether the value could be printed with %4c.
+I do remember that the value ended up byteswapped in memory on both
+x86 and sparc.
+
+	David
