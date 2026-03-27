@@ -1,116 +1,172 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.16])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f177.google.com (mail-yw1-f177.google.com [209.85.128.177])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A541D345CB0;
-	Fri, 27 Mar 2026 14:12:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.16
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774620766; cv=none; b=Rh8egzJ3cQoV7m39CEVqMd540cMUeIzOtj3pjWCrEOUay7OvSliLKiEbT/HBHDGP/MxoeODZ1B9bFMdhujnbeBl2e1+jC3hVLnBt2HyITJKbsMGRIcz6+bf16E/1GveD7fjYmAoYYfRcAHMtuIBKZ4E85kJTcAfDAvVtqtcS9o0=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774620766; c=relaxed/simple;
-	bh=swqcJwBXCwupKVvIY8SRloO6Nit0CeeBem4ZEVvNEVo=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=LhXh/uJpJxT9Vzo99AevTGDRQXkIOf49z/LR93UPwY6RpNOlicjlFbrL0JfmXOn2aMEiRWgVIfNWFyXHkdXVTBdDzVvue2VXrqMzN51hqnexgaWXOQPcBdgf9twzIhVbo/2yVxe9kdptyyiEnjUesQUqkpQcnTboglok+xmv0dg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=FtYpSXxE; arc=none smtp.client-ip=198.175.65.16
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 299E63F65EF
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 14:32:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.177
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774621964; cv=pass; b=crULCDhGC7kwe5zpp51fyIULAteY9woIFUJwiIUfcxXd2N7JgdEbBsRkP97QcgR9qPAY7kcd821iUckifrVMRajHywLQ0m+aNQ03zaE2+nPFBb+e6JB1ujehSULhU4FVy5zOedjhjz2iIEgvNPTrLPqfdq62p/Iz2gY0lck1Idk=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774621964; c=relaxed/simple;
+	bh=nCelOdHZNw8XFpBeptkvcXsW+7OvP71QYNzLqewXlEQ=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=QV80lExnux8kYxvUxuvJFufPxDtpLz4vlG3ZOJDXyrDVLnrB/VuPEOih4WQ7B+DehyvaVQbSPY/S2LSEefIOSyQzQDQ/EGh0zeELKSq55lvYpu/qnC4SZ9xKhIXrC/Fn0nNy9nQ4MsWbGGF2aGODEtl7399xuyMhvo6M8qJg63Y=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Dvn4brt5; arc=pass smtp.client-ip=209.85.128.177
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="FtYpSXxE"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1774620765; x=1806156765;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=swqcJwBXCwupKVvIY8SRloO6Nit0CeeBem4ZEVvNEVo=;
-  b=FtYpSXxEQ1XMGGUeSPApYAhKrUGaB9NFJv8/+ZH6WPe82hVWUG+fiuZQ
-   BtjunAW52wdL5d/7q4PF/dNQOGv4mcy0mvMS3NafTiDdcm6CS8vqXLmgm
-   Hex9NcH9RuOTf6KgVWFej7QV/TPhMbGyRymlN+YjEjoqxv/cMCZeNgEJR
-   BASBXuHIdIc4jeTfO0sZwT+Mz75z4nN5E8T67UMnOjBOpjgbL1uy5Bs3h
-   H4+tZevdPDTqO67N4vCFlXSdBrzGuQB2iJw8QaNuK/mAsh9IobuUWalwU
-   EwzMQuYtMSSnuQ9mT1IL5f5ylUi/ySU4JPBjZgv6bDHEZIRM0rCFZg0RI
-   Q==;
-X-CSE-ConnectionGUID: 93vYYldKS0C9UxlveWrD3A==
-X-CSE-MsgGUID: IX0LwdbuS0eYR7MAkEVpRQ==
-X-IronPort-AV: E=McAfee;i="6800,10657,11741"; a="75891758"
-X-IronPort-AV: E=Sophos;i="6.23,144,1770624000"; 
-   d="scan'208";a="75891758"
-Received: from orviesa009.jf.intel.com ([10.64.159.149])
-  by orvoesa108.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 27 Mar 2026 07:12:44 -0700
-X-CSE-ConnectionGUID: m+gJ2oHERhuBgV3Yfrl2gg==
-X-CSE-MsgGUID: vevveTHrQaGmYrzJLGmm+g==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.23,144,1770624000"; 
-   d="scan'208";a="225246571"
-Received: from vpanait-mobl.ger.corp.intel.com (HELO localhost) ([10.245.244.127])
-  by orviesa009-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 27 Mar 2026 07:12:41 -0700
-Date: Fri, 27 Mar 2026 16:12:38 +0200
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: David Laight <david.laight.linux@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Masami Hiramatsu <mhiramat@kernel.org>,
-	Petr Mladek <pmladek@suse.com>,
-	Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	Sergey Senozhatsky <senozhatsky@chromium.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH next] ext4: Fix diagnostic printf formats
-Message-ID: <acaQVpYREnJJuJF5@ashevche-desk.local>
-References: <20260326201804.3881-1-david.laight.linux@gmail.com>
- <acZgmKv38HLhky6q@ashevche-desk.local>
- <20260327125412.47944386@pumpkin>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Dvn4brt5"
+Received: by mail-yw1-f177.google.com with SMTP id 00721157ae682-798374d0f44so46690467b3.0
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 07:32:43 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774621962; cv=none;
+        d=google.com; s=arc-20240605;
+        b=W2WjMNr1ce2bpuqI8XWAgExwSxiLsssh+5xFfZxuqMhmrSw1Jut9EACufxo2aLPi28
+         ni45TGPAty6vKSiGBNU9Uml3tnEXPs97uuxFKVSLnBCvrA0hbN10L7h/XPuNwBJI94q9
+         YAi2Qz/hNV8ZfkJWjdI1oBQnWjLcdExaj4YqRrQD1OADcMKnuRXyibX/K/s57QG3Jjk9
+         bsHygfaXp2FFqImdA1Lf3Tu46PEM0w4rz0VKzXbiyho23ppvK/gheYuz+N8kHe7h7BqW
+         mSFGOwHpPZplGbNf840uUyJZkujYQG/cG06NeOVQNDjY8DHarIlUwAUMbqY9IGw6cBxy
+         g4fg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=HcYDJmr2WQTqVomu4iLT8CyKaPhhK/TZ8XSdB/RFZd0=;
+        fh=EesgSEu3PTIqN8MhuK4+eiK1pXCUb+NxRfQ7dNBLuBI=;
+        b=MSiJ8fDtzStSaF35FKEiAx1UYtUVPo5dHEY69leMraX4wDunBhoFO+ZD7GiHvxQlWB
+         KxJDCODk1zbA8Fl5J/UYg2Di6pyT+5HLT2dbO5CVjZKP5NoYtYJBO8/jTtisl7mWhTWe
+         XjslczCFWJKKOUemIlheian4NDZzZO2E+qBZxVdSHwMkOf4ApacsJ3FdphzwOOshHbeE
+         P8IfCvf/M0npascDpdF/RB03F6tZ1OO7A8qaIOMJMrWO3jMBNSRKAUq/7XCNfgYpRD5P
+         7quQcETuQVJR+HDMQO1XxCDnp268LDzR7+lHQNdIvCSEjDXUefCqrJPWb8y6BnA0ocOZ
+         X/fg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1774621962; x=1775226762; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=HcYDJmr2WQTqVomu4iLT8CyKaPhhK/TZ8XSdB/RFZd0=;
+        b=Dvn4brt5rsaX6+qfGIk7m0lpdM2DjW4jzXHY/rn+U61PH2c5c7Kcc6T7H8NtAXNTA8
+         v6ToQ6SF7tuIBXcBPtn/ah/5/XIe+0gL/1tYVpVUbbYe8HsE0fSCN4j7erhpbjO8N57H
+         eWyx24NOHdnYhH1850wseke9mjyyQNQB0iPBXTLjYfG/hzzGQp75b28gcIB2gham5aNO
+         snIHhB+g4h8syhAoKYPk9hxoNo4+gPBp4RN/Ju2wMonDLvFkRuo5A3WC1Pz0xy48kuXG
+         FuvlhZt30wqv/VxExDUew1EkUWuJVFoMhCJKtUj8nIy4ZNnLHr6QHfv8GvTS17E05L/d
+         ul8g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774621962; x=1775226762;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=HcYDJmr2WQTqVomu4iLT8CyKaPhhK/TZ8XSdB/RFZd0=;
+        b=qV95uSAFDXpYwBS4cmMD7i5fjc57vmnCV44BLI3QZ3WOgNAYuTdMXCrvlCrdQqjfJi
+         9Jo9b815w1xthZ6OGIeT12LRpnyQoBoFbjsrfyICXJEHVFDpDqMve7tOx1xqdZl2gQOm
+         dJl2JZJWGGF9Mnx0/0aig0J+4y81yljNOXcWi+bb261dhjgK1kg7uJE2mtXCo/1l4RvA
+         xLe8GYJD5+Svr0EKQvOLlAh3H2B5Kx/AFgYFJRF1N9XVOL/c2eA/QNIWnHFafsqdGulu
+         fxQd8ySWZnQmEpfsPBrOF7i2G+HXVC5NAEuqGTS5+fAfiSAYqMfzqptUumJPzlJiGx0D
+         gJ2g==
+X-Forwarded-Encrypted: i=1; AJvYcCXWIXimJ4nZbMmCuw5a1+Oh+gJY74npOen8XohkA3THBv5s2a4bGAONopF31fwsxN5IGyFvNoOuHqqP@vger.kernel.org
+X-Gm-Message-State: AOJu0YzM3uZxK0B0rqxnn6qXkZEzRazzUpLLNTtuWf+oMChXMyjKXX9B
+	m4+tovKZQnddOvv1pgXNzFgGZCWHnZbNcsHWMotAErkT1MhBzNNugDGPYzTAxALCyqsDlZhWtRF
+	UAMZ1oqhL+5juUwhClkAq3gjALdBR6N0=
+X-Gm-Gg: ATEYQzz5v1qxO7jb3gNftIazIim4eDc5yDXQbRQFl008FKVusAy5RjSWQLp+GxiYHLe
+	YH6SokfFbiMDZNGNkrV3oFhUq/nTzkUjU3ro4eNIRrgG8t10pD7HeBmhKkaPsTpDIS1VlRYFJTz
+	gbYwP9Onl9CODG3FDJzLg3nyYTKHwqUcJWxLEqMkDwieVueI2b6XhfDAx53twtOCClqflbV5SvK
+	s0PqWi8+zHELMBL0JK++LDgr2AcNnthtlANAbZ0ZQin7QWeOqvAoDUU+Mg0diH3kJEWuolla98M
+	ihI5UElqdkmZadTVDOZ2H2py+2Fw15U0cVMj2kA4G4GJsoXseIsJBvkQX89F0k+nVEo/g0zs
+X-Received: by 2002:a05:690c:6e86:b0:79a:b520:c8b7 with SMTP id
+ 00721157ae682-79bde574b5bmr20164707b3.22.1774621962177; Fri, 27 Mar 2026
+ 07:32:42 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260327125412.47944386@pumpkin>
-Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
- krs, Bertel Jungin Aukio 5, 02600 Espoo
+References: <20260224231429.31361-1-kartikey406@gmail.com> <20260326054718.GC4383@macsyma.local>
+In-Reply-To: <20260326054718.GC4383@macsyma.local>
+From: Deepanshu Kartikey <kartikey406@gmail.com>
+Date: Fri, 27 Mar 2026 20:02:30 +0530
+X-Gm-Features: AQROBzDREIjBINZA4dJz-aNiWO4sz3DAogt0m-xEsjbXzzozFsZYXUFQWm1Huxg
+Message-ID: <CADhLXY5E_4Hi=Uzu3LPwg_YNgcFR+UcAbfY-XzwVnmFBaJqjkA@mail.gmail.com>
+Subject: Re: [PATCH] ext4: add bounds check in ext4_xattr_ibody_get() to
+ prevent out-of-bounds access
+To: Theodore Tso <tytso@mit.edu>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, 
+	syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Mar 27, 2026 at 12:54:12PM +0000, David Laight wrote:
-> On Fri, 27 Mar 2026 12:48:56 +0200
-> Andy Shevchenko <andriy.shevchenko@linux.intel.com> wrote:
-> > On Thu, Mar 26, 2026 at 08:18:04PM +0000, david.laight.linux@gmail.com wrote:
-> > 
-> > > The formats for non-terminated names should be "%.*s" not "%*.s".
-> > > The kernel currently treats "%*.s" as equivalent to "%*s" whereas
-> > > userspace requires it be equivalent to "%*.0s".
-> > > Neither is correct here.  
-> > 
-> > This entire code seems was never tested properly and it's a dead code
-> > until one defines manually DX_DEBUG. It also has tons of plain printk()
-> > calls that may behave differently if the first character is not printable
-> > but maps to the level of printk().
-> > 
-> > I'm not sure how your patch helps with all that, but apparently the
-> > printed data has to be NUL-terminated, otherwise I have no idea how
-> > it was ever working without crashes.
-> 
-> I noticed that as well.
-> I suspect it way have worked for the person that wrote it because the
-> name strings all happened to be NUL terminated.
-> There is certainly likely to be a '\0' before you 'fall off' mapped
-> memory and crash - so maybe they just ignored the extra characters.
-> 
-> Clearly the other option is to delete it all.
-
-I would go for the history of the change and if it's old enough and not
-mentioned in any Documentation or not-so-old email thread, kill all that
-for good. But better to hear the ext4 maintainers first.
-
-> But regardless the format string is wrong.
-
-P.S. A bit of off-topic, have you seen this?
-https://elixir.bootlin.com/linux/v7.0-rc5/source/kernel/stacktrace.c#L33
-Is it correct use of %c?
-
--- 
-With Best Regards,
-Andy Shevchenko
+On Thu, Mar 26, 2026 at 11:17=E2=80=AFAM Theodore Tso <tytso@mit.edu> wrote=
+:
+>
+>
+> Actually, it does more than that.  It also calls xattr_check_inode()
+> which should validate the xattr block in the inode.
+>
+> So instead of adding the check in ext4_xattr_ibody_get(), we should
+> fix the check in __xattr_check_inode().  This is preferable since it's
+> more efficient than checking every time we try to fetch an extended
+> attribute, instead of validating it when the inode is read from the
+> inode table block.
+>
+>                                         - Ted
 
 
+Subject: Re: [PATCH] ext4: add bounds check in ext4_xattr_ibody_get()
+to prevent out-of-bounds access
+
+Hi Ted,
+
+Thank you for the review. I tried moving the fix to check_xattrs()
+as you suggested, but the syzbot reproducer still crashes. I added
+printk statements to trace the code path and found the root cause.
+
+The issue is that __xattr_check_inode() runs once during ext4_iget(),
+but ext4_xattr_ibody_get() re-reads the inode from disk via
+ext4_get_inode_loc() on every call. The reproducer exploits this by
+shrinking the loop device after mount, causing the re-read to return
+corrupted data.
+
+Here is the relevant debug output showing the sequence:
+
+1) Inode 12 is loaded, __xattr_check_inode passes with gap=3D92:
+
+  DEBUG: inode 12: calling ext4_iget_extra_inode
+  DEBUG: inode 12: __xattr_check_inode called,
+         IFIRST=3Dffff88805b9f9fa4 end=3Dffff88805b9fa000 gap=3D92
+
+2) The loop device is then shrunk:
+
+  loop0: detected capacity change from 1024 to 64
+
+3) First access after shrink, inode re-read still looks okay:
+
+  DEBUG: inode 12: ibody_get
+         IFIRST=3Dffff88806edbcfa4 end=3Dffff88806edbd000 gap=3D92
+
+4) Second access, re-read returns corrupted data with gap=3D-4:
+
+  DEBUG: inode 12: ibody_get
+         IFIRST=3Dffff88806edbd004 end=3Dffff88806edbd000 gap=3D-4
+
+5) Crash follows immediately in xattr_find_entry().
+
+Note that IFIRST and end are at different addresses between steps
+1 and 4 - ext4_get_inode_loc() returned a different buffer_head
+with corrupted i_extra_isize, pushing IFIRST 4 bytes past end.
+The initial __xattr_check_inode() validation cannot protect
+against this because it validated the original buffer, not the
+corrupted re-read.
+
+I think we need both fixes:
+
+  1) The bounds fix in check_xattrs() as you suggested, changing
+     (void *)next >=3D end to (void *)next + sizeof(u32) > end
+
+  2) A bounds check in ext4_xattr_ibody_get() before calling
+     xattr_find_entry(), to catch corrupted re-reads
+
+Should I submit a v2 with both fixes as a patch series?
+
+Thanks,
+Deepanshu Kartikey
