@@ -1,91 +1,52 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A101E35AC3A
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 16:27:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67DBA34EEFD
+	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 16:31:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774628825; cv=none; b=cH4kSUQY+vBpaBIuxImpJYWgk9uKyGUdv3F9RoiKrnQQ4uBvjH8AB7ocBAvklPCaI59Vi37qcHaJyB3Yo12WrMmmpyv67QG6vXAijH/sgOVkXKw8hac8IwbgmDVG1pVibx5douthfpDbhRC56Bh18D/QG1BiVc7c6Lr0+3yV39k=
+	t=1774629107; cv=none; b=l2sMH+nl2Yl4BvFb8D4ZKf63M8mlbA447PF3QdmW5WCXdmAw7NCkWsEPc+O6BADurJSMMAorR6soK/mewUfTX7UAns5xwqSElnJM2VNW6pA6cZURVZLMdcLLLhgWHGYFXGyXdm5/xpl0XDAsUx5Zp0X6Sr60pK8ieSrN7zWJd1w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774628825; c=relaxed/simple;
-	bh=H6BFM46QAO9JXeDjUblDjIr7SHr/MFDykB777mwlxPI=;
+	s=arc-20240116; t=1774629107; c=relaxed/simple;
+	bh=5UqAhNJoI8sZVtB4wGx9LlUZq6sQ0DfZ4ZYEJrAq9zs=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CRoZVdo6mX1QIYUeEAdQlRHovto9rqrGFY4tu2WCtrKqMa/228I0RirVyzoL4nNQ/NPBlTr6rpqjGvm1j4T6wJaQVc2mZ5SNtZ6iKqtAMmVwI4moejP1ak4TT1QiPtUXqwivONN0gnMcRDQmv5eEp6D/lTWYjPRaRUC5vgEyia4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=PWIRwc8r; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aHy7/HrQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JdZTa2nF; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4tn+bHEd; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=cQSHKmIEh+wYZb5bSLeO52E17DOl7m4yPzwMW3OjOyaZNDi9Rd01rNMNrGWG2Vd+y83vAUzRr4aksCtb6eqbssw3t1OCFPFLQjkCpqlQhj3e0yZotcx0+hwhhEleYUFDetPgwsl2Hc64MoxL8U+3i92Dh+MLEVuHOqVfjWFuDgs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=cvln4i0a; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="PWIRwc8r";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aHy7/HrQ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JdZTa2nF";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4tn+bHEd"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id E83785BDED;
-	Fri, 27 Mar 2026 16:27:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774628822; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GFjcJQasStRPcNI6PQK9qh0uIXtRvK1Btt+CTwCqo3A=;
-	b=PWIRwc8rOn9Nb4fu2FlwjtSXS1qkXG0tjm/SzAXF8JeibADY9YCwpulSakhZ9HEai4VzWq
-	RcLicvOGKKXUgTc+/f7Ly1MITdhSOlfzYOsT4udpnbmj+3ESJx75D9CmE9de75tAao8tLu
-	0iojcawi6Be59m8CiJSr+pgwVrdYaxE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774628822;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GFjcJQasStRPcNI6PQK9qh0uIXtRvK1Btt+CTwCqo3A=;
-	b=aHy7/HrQ2QdAR4JQb/JErLh8xEBvQrwFvXxGaRsi+mCfX+f8aK+cDqc/cqOxstbbH/5D9u
-	VP7Z3RP2uGuw0wAQ==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1774628821; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GFjcJQasStRPcNI6PQK9qh0uIXtRvK1Btt+CTwCqo3A=;
-	b=JdZTa2nFwYlx7Yz4v0Z1m4tXCmDoIzNzOJNW+8xEWeP8KwfAwRmuW6eBPI9Y4cuUjeAX/l
-	tCv7i6kBMRuIOSP+jljGRT7CpbaFnd37x0zUwqg81DbBCJLnjPD9dXPI6iYvqnzSCXv4HD
-	z7iMh9qWp9Db6GOOlplSxiGIi58kq90=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1774628821;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GFjcJQasStRPcNI6PQK9qh0uIXtRvK1Btt+CTwCqo3A=;
-	b=4tn+bHEdrwopjN6Dk8ZMfXdEshhQTlIfghPu9FONoDvawdc8IUbttoyLrGr2hyy1XwXLDI
-	+SyoNvyVCOyLf9DQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DAEAD4A0A2;
-	Fri, 27 Mar 2026 16:27:01 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 3v5vNdWvxml5SgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 27 Mar 2026 16:27:01 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 9A9C2A0976; Fri, 27 Mar 2026 17:26:57 +0100 (CET)
-Date: Fri, 27 Mar 2026 17:26:57 +0100
-From: Jan Kara <jack@suse.cz>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
-	linux-block@vger.kernel.org, Christian Brauner <brauner@kernel.org>, 
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>, 
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>, David Sterba <dsterba@suse.com>, 
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Muchun Song <muchun.song@linux.dev>, 
-	Oscar Salvador <osalvador@suse.de>, David Hildenbrand <david@kernel.org>, linux-mm@kvack.org, 
-	linux-aio@kvack.org, Benjamin LaHaise <bcrl@kvack.org>
-Subject: Re: [PATCH 14/42] fs: Rename generic_file_fsync() to simple_fsync()
-Message-ID: <szke56tw43bq2wyv3rai3akrewxbpclbj3finajrwtubkzbgbz@zgj7cc7h2sr2>
-References: <20260326082428.31660-1-jack@suse.cz>
- <20260326095354.16340-56-jack@suse.cz>
- <acYiH4ByDc1-nPqD@infradead.org>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="cvln4i0a"
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62RGVaWS012008
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 27 Mar 2026 12:31:37 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774629098; bh=yFkxvUWBQnonb4AXcqR2UfeVj+E4LwsMp02yB4sjB/E=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=cvln4i0a2rsqOYHEQqhLQL4wEDp1omc2vj/b6sjsYFy+HDp0oYBcbyx0CzRuYI6R4
+	 Ykrz6+jpalF2h9/+e+d0BONwIrm8feGgocKQkozjTikBZtYiGHvHZk3FigdydZgK0M
+	 sjhxLZrbumhv1+hXl6MSKH3TlT7TFSqIkILBYk7Ur42TnymokZ6vEqPN11cHRJaKql
+	 lDsxiButY08W33J8LUpNag2WWSIsIiAUBMjD5q6REfsKcqr93fqTzfhavG+mPcjv+S
+	 IenQFBA0HgFtpEwUdEr8oJcdAtQ0rQd8hfpBiQiakNPffwKH4e+djwXpKdWRTHSwmz
+	 JFBzejWPzWVIQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id CB6F95F9FDF2; Fri, 27 Mar 2026 11:31:35 -0500 (CDT)
+Date: Fri, 27 Mar 2026 11:31:35 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Deepanshu Kartikey <kartikey406@gmail.com>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com,
+        syzkaller@googlegroups.com
+Subject: SYZKALLER BUG: messing with a mounted file system via loop ioctls
+ (was: Re: [PATCH] ext4: add bounds check in ext4_xattr_ibody_get() to)
+ prevent out-of-bounds access
+Message-ID: <20260327163135.GE4383@macsyma.local>
+References: <20260224231429.31361-1-kartikey406@gmail.com>
+ <20260326054718.GC4383@macsyma.local>
+ <CADhLXY5E_4Hi=Uzu3LPwg_YNgcFR+UcAbfY-XzwVnmFBaJqjkA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -94,52 +55,92 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <acYiH4ByDc1-nPqD@infradead.org>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[17];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,kernel.org,zeniv.linux.org.uk,mit.edu,gmail.com,suse.com,mail.parknet.co.jp,linux.dev,suse.de,kvack.org];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+In-Reply-To: <CADhLXY5E_4Hi=Uzu3LPwg_YNgcFR+UcAbfY-XzwVnmFBaJqjkA@mail.gmail.com>
 
-On Thu 26-03-26 23:22:23, Christoph Hellwig wrote:
-> > -extern int __generic_file_fsync(struct file *, loff_t, loff_t, int);
-> > -extern int generic_file_fsync(struct file *, loff_t, loff_t, int);
-> > +extern int simple_fsync_noflush(struct file *, loff_t, loff_t, int);
-> > +extern int simple_fsync(struct file *, loff_t, loff_t, int);
+On Fri, Mar 27, 2026 at 08:02:30PM +0530, Deepanshu Kartikey wrote:
 > 
-> Please drop the pointless externs, and maybe also add the parameter names
-> when you touch it.
+> Thank you for the review. I tried moving the fix to check_xattrs()
+> as you suggested, but the syzbot reproducer still crashes. I added
+> printk statements to trace the code path and found the root cause.
 > 
-> Otherwise looks good.
+> The issue is that __xattr_check_inode() runs once during ext4_iget(),
+> but ext4_xattr_ibody_get() re-reads the inode from disk via
+> ext4_get_inode_loc() on every call. The reproducer exploits this by
+> shrinking the loop device after mount, causing the re-read to return
+> corrupted data.
 
-I believe Christian has a patch from Jeff in his tree cleaning up the whole
-fs.h header in this way. Not sure how Christian ended up resolving the
-conflict but we can clean this up after the merge window if some externs
-are still left there.
+I consider this more a defect in Syzkaller than in ext4.  Syzkaller
+already unsets CONFIG_BLK_DEV_WRITE_MOUNTED because modifying a
+mounted file system is not considered a valid security concern.
+Unfortunately, the syzkaller fuzzer which corrupts a mounted file
+system by messing with a loop device using a privileged ioctl bypasses
+!CONFIG_DEV_BLK_WRITE_MOUNTED.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I'll accept a change to add a to check_xattrs(), which will protect
+against static corruptions, but adding an extra check to a hotpath
+(this would slow down SELinux, which aggressively needs to read the
+file's sid) to protect against a corruption issue which requires root
+privs is not something I'm interested in.
+
+My priority is improving ext4 --- not reducing the syzkaller reports
+against ext4 to zero, since there are false positives like this.  For
+people who care about reducing the syzkaller report gamification, my
+suggestion is to either extend CONFIG_BLK_DEV_WRITE_MOUNTED to prevent
+these loop device reconfiguration while a file system is mounted on
+that loop device, or to fix syzkaller to not create fuzzers like this.
+
+Cheers,
+
+						- Ted
+
+
+
+
+
+
+
+
+> 
+> Here is the relevant debug output showing the sequence:
+> 
+> 1) Inode 12 is loaded, __xattr_check_inode passes with gap=92:
+> 
+>   DEBUG: inode 12: calling ext4_iget_extra_inode
+>   DEBUG: inode 12: __xattr_check_inode called,
+>          IFIRST=ffff88805b9f9fa4 end=ffff88805b9fa000 gap=92
+> 
+> 2) The loop device is then shrunk:
+> 
+>   loop0: detected capacity change from 1024 to 64
+> 
+> 3) First access after shrink, inode re-read still looks okay:
+> 
+>   DEBUG: inode 12: ibody_get
+>          IFIRST=ffff88806edbcfa4 end=ffff88806edbd000 gap=92
+> 
+> 4) Second access, re-read returns corrupted data with gap=-4:
+> 
+>   DEBUG: inode 12: ibody_get
+>          IFIRST=ffff88806edbd004 end=ffff88806edbd000 gap=-4
+> 
+> 5) Crash follows immediately in xattr_find_entry().
+> 
+> Note that IFIRST and end are at different addresses between steps
+> 1 and 4 - ext4_get_inode_loc() returned a different buffer_head
+> with corrupted i_extra_isize, pushing IFIRST 4 bytes past end.
+> The initial __xattr_check_inode() validation cannot protect
+> against this because it validated the original buffer, not the
+> corrupted re-read.
+> 
+> I think we need both fixes:
+> 
+>   1) The bounds fix in check_xattrs() as you suggested, changing
+>      (void *)next >= end to (void *)next + sizeof(u32) > end
+> 
+>   2) A bounds check in ext4_xattr_ibody_get() before calling
+>      xattr_find_entry(), to catch corrupted re-reads
+> 
+> Should I submit a v2 with both fixes as a patch series?
+> 
+> Thanks,
+> Deepanshu Kartikey
