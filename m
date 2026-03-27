@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54BD53DA7CE;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 556C43DA7DD;
 	Fri, 27 Mar 2026 10:34:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774607683; cv=none; b=WrpgtoGIOuuDcrPGLhxAZo35ex+SgAnWYIyANVo30zV2KvWu1SIWhZUmSf4BngloX5BBJX/SeGAYQz9as/uZz8WFOOPTGShnlCKiblnmeJ/AnykhPxTTTHRuyYpo0J5T4zLZh6jmbyWSAA88BZtvPT44KyuxBL4kvUSLYin+2Sk=
+	t=1774607683; cv=none; b=dGUjYtlPlSvG8bTIck16V7taoLA3fVCiBf9cbEU5GWjff38JHEDLbXXnEu4Ds5gHqvKTX6M1XNq/K+mLZ1CwDCDkzt0LrzeBkGR5IinCUrpbGsizINQdj5d5bMzl6IpMIwJV2o61QYsqBOKIs4dxD1s1VIWXDk8ozehtOqiXQ54=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1774607683; c=relaxed/simple;
-	bh=SJjes3iGDrA6L1XeuCKnKGzpfXUkDoov3mS2gTY12Nk=;
+	bh=HWHjJwruyHq/Wbz4i5l0dAiCgRGI7Sfz7pY8baZw8Ns=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GPdITwTA/PGRKKFqX1G8zTi1K0g30Ub/BW0GPaa1Qu55UlA+JExSuphzkHjBNAnj4snFiMPsEE54EWwx73jAgE79aUrsEEgD90V0cxh73pLE1VW8MstfVgHaZ4ERGp7bFsn0kThYNSaw69uSnHRGUY+ZgGeD6SFxz0oQ0mg5Of8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=cDpCDvZOWib5BVHRLQqkVMmw2Wx9iQX39Oqs/4P5NIKZtR7G2jj5o0idb9zMkxyU6xOsKVh0mGbePsm2d52rL+YlJAqAAbBJu6VKTA6LUJicTX+8utTG7Jp/MoZ2jJceCQVadc5ZHp5aviQyIwfQ8BOERupbxwaXIkcaPoRJwHo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fhxpM1FY4zYQv70;
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fhxpM2wlMzYQv8r;
 	Fri, 27 Mar 2026 18:34:19 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id BF9224058D;
-	Fri, 27 Mar 2026 18:34:32 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 03C0E4056F;
+	Fri, 27 Mar 2026 18:34:33 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with SMTP id cCh0CgC3utouXcZp_T2cCQ--.28730S14;
+	by APP1 (Coremail) with SMTP id cCh0CgC3utouXcZp_T2cCQ--.28730S17;
 	Fri, 27 Mar 2026 18:34:32 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -38,9 +38,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v4 10/13] ext4: unify SYNC mode checks in fallocate paths
-Date: Fri, 27 Mar 2026 18:29:36 +0800
-Message-ID: <20260327102939.1095257-11-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 13/13] ext4: zero post-EOF partial block before appending write
+Date: Fri, 27 Mar 2026 18:29:39 +0800
+Message-ID: <20260327102939.1095257-14-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260327102939.1095257-1-yi.zhang@huaweicloud.com>
 References: <20260327102939.1095257-1-yi.zhang@huaweicloud.com>
@@ -51,10 +51,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgC3utouXcZp_T2cCQ--.28730S14
-X-Coremail-Antispam: 1UD129KBjvJXoW7uF17Ary5CF1xJrWDuw1kGrg_yoW8KF1kp3
-	yrGa48Kr10gFyjgrsagF4UZF12y3WkK3y8WrWkC34Fqa9Iqr1Fga4rt3WFkF47X3yruF4U
-	XFWUK34UGa17C37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgC3utouXcZp_T2cCQ--.28730S17
+X-Coremail-Antispam: 1UD129KBjvJXoWxGrW8WrWrtryxZr17Gr1Dtrb_yoWrWFW3pF
+	ZIkF1fuwnFgr9rW3yxGFsrX34jka48JrW7GFyfKrWfZFnxJw18KF1Iq34UtFWrtrZrXa1F
+	qF4qkFyUG3Wjy3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -73,71 +73,126 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-In the ext4 fallocate call chain, SYNC mode handling is inconsistent:
-some places check the inode state, while others check the open file
-descriptor state. Unify these checks by evaluating both conditions
-to ensure consistent behavior across all fallocate operations.
+In cases of appending write beyond EOF, ext4_zero_partial_blocks() is
+called within ext4_*_write_end() to zero out the partial block beyond
+EOF. This prevents exposing stale data that might be written through
+mmap.
+
+However, supporting only the regular buffered write path is
+insufficient. It is also necessary to support the DAX path as well as
+the upcoming iomap buffered write path. Therefore, move this operation
+to ext4_write_checks().
+
+In addition, this may introduce a race window in which a post-EOF
+buffered write can race with an mmap write after the old EOF block has
+been zeroed. As a result, the data in this block written by the
+buffer-write and the data written by the mmap-write may be mixed.
+However, this is safe because users should not rely on the result of the
+race condition.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c | 9 +++++----
- fs/ext4/inode.c   | 2 +-
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ fs/ext4/file.c  | 17 +++++++++++++++++
+ fs/ext4/inode.c | 21 +++++++--------------
+ 2 files changed, 24 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 16386f499138..f4009544f762 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4753,7 +4753,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		goto out_handle;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index f1dc5ce791a7..ec0d81bea07a 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -271,6 +271,8 @@ static ssize_t ext4_generic_write_checks(struct kiocb *iocb,
  
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
--	if (file->f_flags & O_SYNC)
-+	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
- 		ext4_handle_sync(handle);
+ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ {
++	struct inode *inode = file_inode(iocb->ki_filp);
++	loff_t old_size = i_size_read(inode);
+ 	ssize_t ret, count;
  
- out_handle:
-@@ -4791,7 +4791,8 @@ static long ext4_do_fallocate(struct file *file, loff_t offset,
+ 	count = ext4_generic_write_checks(iocb, from);
+@@ -280,6 +282,21 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ 	ret = file_modified(iocb->ki_filp);
  	if (ret)
- 		goto out;
+ 		return ret;
++
++	/*
++	 * If the position is beyond the EOF, it is necessary to zero out the
++	 * partial block that beyond the existing EOF, as it may contains
++	 * stale data written through mmap.
++	 */
++	if (iocb->ki_pos > old_size && !ext4_verity_in_progress(inode)) {
++		if (iocb->ki_flags & IOCB_NOWAIT)
++			return -EAGAIN;
++
++		ret = ext4_block_zero_eof(inode, old_size, iocb->ki_pos);
++		if (ret)
++			return ret;
++	}
++
+ 	return count;
+ }
  
--	if (file->f_flags & O_SYNC && EXT4_SB(inode->i_sb)->s_journal) {
-+	if (((file->f_flags & O_SYNC) || IS_SYNC(inode)) &&
-+	    EXT4_SB(inode->i_sb)->s_journal) {
- 		ret = ext4_fc_commit(EXT4_SB(inode->i_sb)->s_journal,
- 					EXT4_I(inode)->i_sync_tid);
- 	}
-@@ -5564,7 +5565,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
- 		goto out_handle;
- 
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
--	if (IS_SYNC(inode))
-+	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 
- out_handle:
-@@ -5688,7 +5689,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
- 		goto out_handle;
- 
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
--	if (IS_SYNC(inode))
-+	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 
- out_handle:
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b934ad86a96d..3b150e643ef5 100644
+index 3b150e643ef5..7afa5fbf067b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4501,7 +4501,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
- 		goto out_handle;
+@@ -1456,10 +1456,9 @@ static int ext4_write_end(const struct kiocb *iocb,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
  
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
--	if (IS_SYNC(inode))
-+	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- out_handle:
+-	if (old_size < pos && !verity) {
++	if (old_size < pos && !verity)
+ 		pagecache_isize_extended(inode, old_size, pos);
+-		ext4_block_zero_eof(inode, old_size, pos);
+-	}
++
+ 	/*
+ 	 * Don't mark the inode dirty under folio lock. First, it unnecessarily
+ 	 * makes the holding time of folio lock longer. Second, it forces lock
+@@ -1574,10 +1573,8 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 
+-	if (old_size < pos && !verity) {
++	if (old_size < pos && !verity)
+ 		pagecache_isize_extended(inode, old_size, pos);
+-		ext4_block_zero_eof(inode, old_size, pos);
+-	}
+ 
+ 	if (size_changed) {
+ 		ret2 = ext4_mark_inode_dirty(handle, inode);
+@@ -3196,7 +3193,7 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+ 	struct inode *inode = mapping->host;
+ 	loff_t old_size = inode->i_size;
+ 	bool disksize_changed = false;
+-	loff_t new_i_size, zero_len = 0;
++	loff_t new_i_size;
+ 	handle_t *handle;
+ 
+ 	if (unlikely(!folio_buffers(folio))) {
+@@ -3240,19 +3237,15 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+ 	folio_unlock(folio);
+ 	folio_put(folio);
+ 
+-	if (pos > old_size) {
++	if (pos > old_size)
+ 		pagecache_isize_extended(inode, old_size, pos);
+-		zero_len = pos - old_size;
+-	}
+ 
+-	if (!disksize_changed && !zero_len)
++	if (!disksize_changed)
+ 		return copied;
+ 
+-	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
++	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+-	if (zero_len)
+-		ext4_block_zero_eof(inode, old_size, pos);
+ 	ext4_mark_inode_dirty(handle, inode);
  	ext4_journal_stop(handle);
+ 
 -- 
 2.52.0
 
