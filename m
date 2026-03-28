@@ -1,91 +1,75 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DBA9347525
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2026 17:15:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA78B2CCB9
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Mar 2026 05:31:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774631707; cv=none; b=sIVkYUBdyy7ZIbSzL7yUX+LEJdogbMHGhiT0H7lDNxOtc4FXk9dD1mwI0fIJUg1yp8815lgdgoImxPzwXCBIvWHxuQtaugsdgk//k6G/7DDk3UX7AB5p5R8nDNQY7LoKqNMGjUlqK1jVueGizgTa9yDt0zYp72TuiX55U2AgV3c=
+	t=1774675885; cv=none; b=UH1EaGwF7VVBXrZyTtwy63SIXThNEYB0tj6qmBBsacA/SMl6BxSpOWpDBnooFQDmDmQNa1FBMxzNZubBgCKR4wds53tHRewfPZTtmvS9pCqeE47mKKh/GHuZ1kjxtSyEFg8OK5P6cSPXAIw6y60MV1hJfg0kjrcPs8gf9nWNa5U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774631707; c=relaxed/simple;
-	bh=cbJKnsOsrV59t9SrTlbmeaEoWdYfWxalRf2BlcCV99w=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=fDx83PCrw+FDAt3JZHVBBh/lwayoRzxmQDdPSWQA4ClpJs4+XtWKsZ+PCBh7ET77B4KM7199cz71QZL++ROLVkzqr2/Kmrg1qXT+RJqhJ/WV/BOKPAi2dRXaDpukehoQvUVDbq/7IIb3kRyrFEbNUuwY4QmeBsTXVjGpGJ3KuL4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=nKvpVgaV; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1774675885; c=relaxed/simple;
+	bh=OIw1ff5vPGz9ShKuc942VycBWi2Zc7ppzW3CiG1a4Rc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=aqPQXf87RhSq8BhdKQW3yG7d/WSv/8eFzUmoFg5sMy5NjafGKbSI5FF98JaJwHiNKEBkZoKABzPdycFtJjf5jFYT2TENi6uBaKF16aQz/fI/srf6Pug8Vj8lCleWOS3oKwBfKpdATt13tyARrgYxuQZxD6K9jHV3bqTCiLqL2P8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=OGrBLFv8; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="nKvpVgaV"
-Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="OGrBLFv8"
+Received: from trampoline.thunk.org (pool-173-48-121-153.bstnma.fios.verizon.net [173.48.121.153])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62RHEEXL031540
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62S5VIT3013578
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 27 Mar 2026 13:14:16 -0400
+	Sat, 28 Mar 2026 01:31:19 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1774631658; bh=qhC4m8+w/YUxA5P5hC5aC/cvjYIcc1Nx1K+xDs824Uw=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=nKvpVgaVDCwPPSiubMFaZGw9Y4TyBPLeT9sJlmxpjBe3BM0RYdgnZSG522ppgzcJl
-	 ByDfeLPu8htrZhS4T44AohteluR6mjr0IdHl46yQI1V+z1JfxgMHZH3/PXABpUVouf
-	 favcryuWlT5DuXbr96VJloMuRghdIJs+imEzVlRwO83P5MG1k8+QVlhOb5jltU7ruR
-	 w4fTSYYSGsfGhWPdSQGRW45u4Rmxmww8h7ZOiioBkl+JMU/8m5MqtLX7iuNIBNXZIf
-	 fBcUcuZIQKeTcWgl8M/V2ilK415J/g5X0VRjP2fE6w3ILK2MQiHhBBl4YJDDb3ND5H
-	 /MjYY/zttOorA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 4A0015FA1FF7; Fri, 27 Mar 2026 12:14:14 -0500 (CDT)
-Date: Fri, 27 Mar 2026 12:14:14 -0500
-From: "Theodore Tso" <tytso@mit.edu>
-To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: David Laight <david.laight.linux@gmail.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Masami Hiramatsu <mhiramat@kernel.org>,
-        Petr Mladek <pmladek@suse.com>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Sergey Senozhatsky <senozhatsky@chromium.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH next] ext4: Fix diagnostic printf formats
-Message-ID: <20260327171414.GF4383@macsyma.local>
-References: <20260326201804.3881-1-david.laight.linux@gmail.com>
- <acZgmKv38HLhky6q@ashevche-desk.local>
- <20260327125412.47944386@pumpkin>
- <acaQVpYREnJJuJF5@ashevche-desk.local>
+	t=1774675879; bh=mF71/NDCFx4CQUjxiTWjVrfpz4aSbzhxoJUB7Pdzzr4=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=OGrBLFv8diDiL9DIrHN53vMySBeiYZ5TE4R81yjxHJo6Ej0Bo7p2301nhWCHlG0ny
+	 8B6oMxRmcLaCUcZ2FbHTXANQHBcqOwLWJVk55yvi7Rfl8s/WZKuM5W+8wkKqE1jfSi
+	 gl/dlQYrCAwud8uCWhjonsZHRjc8JeQjz0nxikhB+O0VIZ9GIuED9A0Uh2K8p8H7JX
+	 NBk+7KdJWDAWydPZvKNu+rwEQEC1qI0hnhvPuRD6lSwHEKUAjX5tId5xKADmR6iVNz
+	 p6yWd3OyBLpyF3x7C5v21/kGAoQsZW0FIunDZWJPYVC66z73OKxtN8Lp+JGsYDz3VM
+	 WEL7GvPQfBvYg==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 0E4052E00DE; Sat, 28 Mar 2026 01:31:15 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -v2] ext4: handle wraparound when searching for blocks for indirect mapped blocks
+Date: Sat, 28 Mar 2026 01:31:11 -0400
+Message-ID: <177467585142.1335526.5177975430062183104.b4-ty@b4>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20260326045834.1175822-1-tytso@mit.edu>
+References: <20260326045834.1175822-1-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <acaQVpYREnJJuJF5@ashevche-desk.local>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-On Fri, Mar 27, 2026 at 04:12:38PM +0200, Andy Shevchenko wrote:
-> > > I'm not sure how your patch helps with all that, but apparently the
-> > > printed data has to be NUL-terminated, otherwise I have no idea how
-> > > it was ever working without crashes.
-> > 
-> > I noticed that as well.
-> > I suspect it way have worked for the person that wrote it because the
-> > name strings all happened to be NUL terminated.
-> > There is certainly likely to be a '\0' before you 'fall off' mapped
-> > memory and crash - so maybe they just ignored the extra characters.
-> > 
-> > Clearly the other option is to delete it all.
+
+On Thu, 26 Mar 2026 00:58:34 -0400, Theodore Ts'o wrote:
+> Commit 4865c768b563 ("ext4: always allocate blocks only from groups
+> inode can use") restricts what blocks will be allocated for indirect
+> block based files to block numbers that fit within 32-bit block
+> numbers.
 > 
-> I would go for the history of the change and if it's old enough and not
-> mentioned in any Documentation or not-so-old email thread, kill all that
-> for good. But better to hear the ext4 maintainers first.
+> However, when using a review bot running on the latest Gemini LLM to
+> check this commit when backporting into an LTS based kernel, it raised
+> this concern:
+> 
+> [...]
 
-This is code that can only be manually enabled by adding a
+Applied, thanks!
 
-#define DX_DEBUG
+[1/1] ext4: handle wraparound when searching for blocks for indirect mapped blocks
+      commit: bb81702370fad22c06ca12b6e1648754dbc37e0f
 
-to the sources; it's not anything that users can configure using
-Kconfig.  It *has* been used relatively recently, when developers
-added support for three level htree directories.  I'm not sure why
-they didn't run into the NULL termination issue, but since it is handy
-to have the debugging code for developers' use, my preference would be
-to keep the code and fix it up the problems.
-
-   	    	     	    - Ted
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
