@@ -1,187 +1,153 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-lj1-f169.google.com (mail-lj1-f169.google.com [209.85.208.169])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BBCA134CF
-	for <linux-ext4@vger.kernel.org>; Sun, 29 Mar 2026 04:57:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774760275; cv=none; b=F496P4xi/wwHtpZgzvNsdOVC+nc4K8KPPzFMUv2ItckPyRUjXn+SpGebmWaNmQE4ViO3TmFW5nDfjmp1k5UZ20i9/gChaUFvILu1EzXCV6d59peit5YifCH8OV5K0ToAPs+NaAVokREHxV13qAfgh9AtrsM5ZDuEpus0yxDAg64=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774760275; c=relaxed/simple;
-	bh=e5imEYik1/CVQSgR0Cz9kEJ99SrjN04D5/TnUHUKIOM=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=VfgX4dDxJqem1D56C5+re7NHj+pS6ZjZloYU7kuXlZHviIPv1dGK/6o0WmpRIQ2myX6o/gkgydJBwKyZaFZ8vVnMOGyp2Q3gjEkT9NbdEShvk/UGpavxNddqh+9uXcVZKxB3E+vAW068ibZ31HnjEkExWu8haV8DKZWIPgf1w8w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=P5Ad3kwQ; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0F851DED5C
+	for <linux-ext4@vger.kernel.org>; Sun, 29 Mar 2026 09:47:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.169
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774777680; cv=pass; b=DI6urBrsrN4BSnUtSFvkBI1J395fDNBkJglSC4MY9zZAK8tLhBx5X7ck5jcW+xNU+SzVyuZ7rhFSrwsPcWkCdumqAKXAgvdMsyOgDR/GduPCJs7SUiA+GEtR+Fk8PbxiDv7ftKMyr7sknzKzINcVqXclll7hj2gL5qCP/PsTaBU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774777680; c=relaxed/simple;
+	bh=uisHWGr9w7wEjo5rU4whWNRepfU/9ghDXVSierhMUqk=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=NbFvI8mqZfnOyPI8Jd3G5aTIzllffHUf6tmiGfRlNuL6e8jAl4JYoF/8CtDkgUWsSi+bQMypc6IoIRo1JZs0l4qTK4wLcV57Rh+H1teJJIuUEMq13D3Ox64OLAYtUrcCrLkSHVBtASP9s/qy51ScdObyJbRVYOkgHP2T7ulyh9I=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=tpge1fLK; arc=pass smtp.client-ip=209.85.208.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="P5Ad3kwQ"
-Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62T4vfUq001813
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sun, 29 Mar 2026 00:57:42 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1774760263; bh=T1WOt+Xd2BaBdxbJ9VRwjRIW1brCuPE2iHU7rYIkpQ0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=P5Ad3kwQCS5BGX5Uu0wLTR02mkT8kEvaGz6MgBdGzhqg3StK3wozLoSCaT6c6SP4r
-	 AEEiz1p/FPNuDV7bTE8pm4O54rfjC5VNyQ8arYeUe9pwzNwRYWqnxE7/BeaXVkDDQD
-	 HKL1+lrb3soZtdLb09EUIKc3cNn1I7faxgW5i+yXgFhoR8veDKPIWJS4Xk0UAShy7m
-	 QS8qIM/prz+3hTs2GeRQd1YIENvJFyqwFFAaknHTS8BKtd0TvQDKB8zTY169CIDu/C
-	 yf3lCa0FLdbKgu/r8AWjCG3/4kvXZGsy4YmGIHYWTJVR+Uc4sI8dEKCj2mJIeJc2ZI
-	 5Gzfr9un5tn6Q==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 40FD75FE352D; Sat, 28 Mar 2026 23:57:41 -0500 (CDT)
-Date: Sat, 28 Mar 2026 23:57:41 -0500
-From: "Theodore Tso" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Kernel Developers List <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] ext4 fixes for 7.0-rc6
-Message-ID: <20260329045741.GA9694@Mac>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="tpge1fLK"
+Received: by mail-lj1-f169.google.com with SMTP id 38308e7fff4ca-38b3ee785a5so29598671fa.1
+        for <linux-ext4@vger.kernel.org>; Sun, 29 Mar 2026 02:47:58 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1774777677; cv=none;
+        d=google.com; s=arc-20240605;
+        b=jVz2Sxfb2eLNKEAdgaBRyKztu4PD1DoyIjkhXP5uVey5LeZx1QYi6eBpvKseEMLNoS
+         NxmuIZfKGoPaxnxtsk5FN9U7hEY/kZSQQfZaER5LDe+ZPH4oIrd6wGldKPGvtaBAPLAg
+         BPlNLfQEf70QqePvposOTBQG2rtgsDqfX92o7jkN2M67TkVWmCpU/XS9TGoCdWUOXl70
+         K1e044hj1DIW5bOxgC/bEL5lJ4TMjVa1tGyxTI3hKWtN9go5X41a+KqtrwT3iF0Yu35N
+         8apPdg3yPxAJKRCGT1tQhng6O0Mbq0ORZ6IT5tYRMczZGw9nOk2apouSNGYBMpAN4QjO
+         vbSA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=Ys6OW1HAKtgnjRfnCjtlpJyRBvf+jJDNEhyq9aWffjE=;
+        fh=brVo8UUqq8B60jCpxKJwjhXZMukL7I8gqPvJUPRyh9Y=;
+        b=StXT06Mv5WlQ9r1XpjuC/+SOsjbgzoC5oV4VdSTCVkxBTxd62bAayZEJPnBTYZUcIA
+         9357IKAPg5v5/HUPu90JO8gnmBdrFKnmgeFntYyeOdgmnn0ZELehMrpc9nQPp6ZL9dL3
+         bblHYwZVjViD0D36feJqT8f7mwsl6qoD4GaOQ5oo/729SvWPf8p7ePc4oPP34J7HkeDS
+         d7QmPPzqBUMRg8C1Uy+5xXWAMsy55z6kVuQ5rO4YGtgITlPkFWgznrmI/lPjnIXB08OI
+         fHdoV22mkA0GuiZDWNO7FoiXKA2ixysED1r8OMKyrWRHdiKImZfGMPhG6s7REuyozoB2
+         GO/g==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1774777677; x=1775382477; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Ys6OW1HAKtgnjRfnCjtlpJyRBvf+jJDNEhyq9aWffjE=;
+        b=tpge1fLKiXMxvZduSUaBn3fmM3Hh/lPw8kxuCn0eKbxfPzxjTUJOGlY1RYo2nbrb6V
+         I8UaEx4tEhwHxiQXMmQzCY77wNhBo5jJ4Y4Lh1C1zBjbRG817v/17wxcAHGITmfYIua1
+         5bJCp2X8YSKyoxwHkDHe7tfRfFPWXQGg82wqmuMX7adrwxdBO5miP5cXR3tK5vIdXqq6
+         BIknbBeVVGBOxnrSb3nV9J15+OZgOzs/cDofeYawAlvoJbWJEJBYyNx0YOwsEJta5kz9
+         CUMKgnxVw8vJZPYnyTkoUerbxtUelLRcNs/fwkz6/2Fihx16IzdcFN6phaO11clPoaCL
+         9KhA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1774777677; x=1775382477;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=Ys6OW1HAKtgnjRfnCjtlpJyRBvf+jJDNEhyq9aWffjE=;
+        b=Hb8Gjoyi+TYlCMlKsnOkof5k3yzi33lcKvAn8SIEYUyR4leffZfjs7c/Cf56NpZyu4
+         0qEP2+QuZ/YEIoBdferEgEaocnh3xq5zVNY7ZPpPe77JxYVG+XKu1SwfMizebFkQP9hX
+         YoRaA3anF7f12O0p/DSEHbTgWcbQaIT+gRlI5vpUeL+CiOZwGFw5lDCXh1jXENjrk45g
+         kDtJFpQgPm3osSIZ/sK0JX97eHDj/Jjp6clsdk3SUeGrHlF4oz2BFr46D/0siU490mPm
+         yu4RXexXhU046xUkJaG4rpoOVdoCbg0nUVH63E0Xa75jQMA2gvb8rai6mCgRzvtmtP4x
+         eKJw==
+X-Forwarded-Encrypted: i=1; AJvYcCV+66gnwk2N6OXaL/cwTwylgb4gpaKQjRcHUgrNrXOHV45VDWwKfngNaBlxGhqANvn7tqCadOVrQnes@vger.kernel.org
+X-Gm-Message-State: AOJu0YzleQm1aPFQQwPKVdyV3DifZifKZf36+zJWEnCOknHNUiKnH6LI
+	hKbIUnFyL3fzSJIzs7Z2KkSVvI7I0A+zKqhGcNVEZdWf12yh45n7J1egY6mt5m9SfgAym6AeoYL
+	+X4n/WdXFe8lFEcKlt+Otw7PBF3Hl6JRpttPGpb9B
+X-Gm-Gg: ATEYQzy0uRN9QZE4bfrofPEo3Xuzbm5rw3KBYZVp10i4rn6vME/6XlQAfSPbvT/9oZI
+	hF9v86Fxfz1MsopZXzD7nwvqdqsqqb4emGA4twz0vCuupY8TAce0ZL99qRT5arBhCA5IYStYSN5
+	HKC3oDKUcoJX/XLpaBIMp/z5p0PEpFfbUWgLwS4ISPwnZo8EH2KGyo0aalAVLcbhfAwi4rl4oIh
+	PKT5sGmgufCC2t/bNWAR4DuBgNSWRffNrX1CzjmRDOsFrUeZQGoU3S6E9QyJDrxN/NPZ2zaCNym
+	gDYhfLBepBABHNDJcBWEeGIQguEGclr/C7e0DcRpUGolIEZmJfmYcklh9CNLlr6kBm2SCA==
+X-Received: by 2002:a05:651c:1a25:b0:38a:4e8d:747 with SMTP id
+ 38308e7fff4ca-38c756d1ca8mr26992851fa.1.1774777676495; Sun, 29 Mar 2026
+ 02:47:56 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+References: <20260224231429.31361-1-kartikey406@gmail.com> <20260326054718.GC4383@macsyma.local>
+ <CADhLXY5E_4Hi=Uzu3LPwg_YNgcFR+UcAbfY-XzwVnmFBaJqjkA@mail.gmail.com>
+ <20260327163135.GE4383@macsyma.local> <CADhLXY6QjWHiyY2MkUutzJK8utKghMTxjG9C8X7e=WDL5xKvYQ@mail.gmail.com>
+In-Reply-To: <CADhLXY6QjWHiyY2MkUutzJK8utKghMTxjG9C8X7e=WDL5xKvYQ@mail.gmail.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Sun, 29 Mar 2026 11:47:44 +0200
+X-Gm-Features: AQROBzCebvkMiRqEkSvgNsB-rruuWqgDIrO1VXYi1TK5f1KfYbQEi3ymB-TV66A
+Message-ID: <CACT4Y+ZzbnD_puTRMx4MpcACpp5m3aMhQYvH+1LAyTKOz6otEw@mail.gmail.com>
+Subject: Re: SYZKALLER BUG: messing with a mounted file system via loop ioctls
+ (was: Re: [PATCH] ext4: add bounds check in ext4_xattr_ibody_get() to)
+ prevent out-of-bounds access
+To: Deepanshu Kartikey <kartikey406@gmail.com>, Theodore Tso <tytso@mit.edu>, syzkaller@googlegroups.com
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, 
+	syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-The following changes since commit f338e77383789c0cae23ca3d48adcc5e9e137e3c:
+On Sat, 28 Mar 2026 at 16:02, Deepanshu Kartikey <kartikey406@gmail.com> wr=
+ote:
+>
+> On Fri, Mar 27, 2026 at 10:01=E2=80=AFPM Theodore Tso <tytso@mit.edu> wro=
+te:
+> >
+> > On Fri, Mar 27, 2026 at 08:02:30PM +0530, Deepanshu Kartikey wrote:
+> > >
+> > > Thank you for the review. I tried moving the fix to check_xattrs()
+> > > as you suggested, but the syzbot reproducer still crashes. I added
+> > > printk statements to trace the code path and found the root cause.
+> > >
+> > > The issue is that __xattr_check_inode() runs once during ext4_iget(),
+> > > but ext4_xattr_ibody_get() re-reads the inode from disk via
+> > > ext4_get_inode_loc() on every call. The reproducer exploits this by
+> > > shrinking the loop device after mount, causing the re-read to return
+> > > corrupted data.
+> >
+> > I consider this more a defect in Syzkaller than in ext4.  Syzkaller
+> > already unsets CONFIG_BLK_DEV_WRITE_MOUNTED because modifying a
+> > mounted file system is not considered a valid security concern.
+> > Unfortunately, the syzkaller fuzzer which corrupts a mounted file
+> > system by messing with a loop device using a privileged ioctl bypasses
+> > !CONFIG_DEV_BLK_WRITE_MOUNTED.
+> >
+> > I'll accept a change to add a to check_xattrs(), which will protect
+> > against static corruptions, but adding an extra check to a hotpath
+> > (this would slow down SELinux, which aggressively needs to read the
+> > file's sid) to protect against a corruption issue which requires root
+> > privs is not something I'm interested in.
+> >
+> > My priority is improving ext4 --- not reducing the syzkaller reports
+> > against ext4 to zero, since there are false positives like this.  For
+> > people who care about reducing the syzkaller report gamification, my
+> > suggestion is to either extend CONFIG_BLK_DEV_WRITE_MOUNTED to prevent
+> > these loop device reconfiguration while a file system is mounted on
+> > that loop device, or to fix syzkaller to not create fuzzers like this.
 
-  Linux 7.0-rc4 (2026-03-15 13:52:05 -0700)
+Hi Ted,
 
-are available in the Git repository at:
+Thanks for the report.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.0-rc6
+https://syzkaller.appspot.com/text?tag=3DReproSyz&x=3D17a43b3a580000
 
-for you to fetch changes up to 9ee29d20aab228adfb02ca93f87fb53c56c2f3af:
+Do you mean LOOP_SET_STATUS64 ioctl? It's the only ioctl in the repro:
 
-  ext4: always drain queued discard work in ext4_mb_release() (2026-03-27 23:39:10 -0400)
+ioctl$LOOP_SET_STATUS64(r0, 0x4c04, ...)
 
-----------------------------------------------------------------
-Update the MAINTAINERS file to add reviewers for the ext4 file system
-
-Add a test issue an ext4 warning (not a WARN_ON) if there are still
-dirty pages attached to an evicted inode.
-
-A lot of ext4 bug fixes including:
-   * Fix a number of Syzkaller issues.
-   * Fix memory leaks on error paths.
-   * Replace some BUG and WARN with EFSCORRUPTED reporting.
-   * Fix a potential crash when disabling discard via remount followed
-     by an immediate unmount.  (Found by Sashiko)
-   * Fix a corner case which could lead to allocating blocks for an
-     indirect-mapped inode block numbers > 2**32.
-   * Fix a race when reallocating a freed inode that could result in
-     a deadlock.
-   * Fix a user-after-free in update_super_work when racing with umount.
-   * Fix build issues when trying to build ext4's kunit tests as a module
-   * Fix a bug where ext4_split_extent_zeroout() could fail to pass
-     back an error from ext4_ext_dirty().
-   * Avoid allocating blocks from a corrupted block group in
-     ext4_mb_find_by_goal().
-   * Fix a percpu_counters list corruption BUG triggered by an
-     ext4 extents kunit.
-   * Fix a potetial crash caused by the fast commit flush path potentially
-     accessing the jinode structure before it is fully initialized.
-   * Fix fsync(2) in no-journal mode to make sure the dirtied inode is
-     write to storage.
-   * Fix a bug when in no-journal mode, when ext4 tries to avoid using
-     recently deleted inodes, if lazy itable initialization is enabled,
-     can lead to an unitialized inode getting skipped and triggering
-     an e2fsck complaint.
-   * Fix journal credit calculation when setting an xattr when both
-     the encryption and ea_inode feeatures are enabled.
-   * Fix corner cases which could result in stale xarray tags after
-     writeback.
-   * Fix generic/475 failures caused by ENOSPC errors while creating
-     a symlink when the system crashes resulting to a file system
-     inconsistency when replaying the fast commit journal.
-
-----------------------------------------------------------------
-Baokun Li (1):
-      ext4: fix iloc.bh leak in ext4_fc_replay_inode() error paths
-
-Deepanshu Kartikey (1):
-      ext4: convert inline data to extents when truncate exceeds inline size
-
-Edward Adam Davis (1):
-      ext4: avoid infinite loops caused by residual data
-
-Helen Koike (1):
-      ext4: reject mount if bigalloc with s_first_data_block != 0
-
-Jan Kara (4):
-      ext4: fix stale xarray tags after writeback
-      ext4: make recently_deleted() properly work with lazy itable initialization
-      ext4: fix fsync(2) for nojournal mode
-      ext4: fix deadlock on inode reallocation
-
-Jiayuan Chen (1):
-      ext4: fix use-after-free in update_super_work when racing with umount
-
-Li Chen (1):
-      ext4: publish jinode after initialization
-
-Milos Nikic (1):
-      jbd2: gracefully abort on checkpointing state corruptions
-
-Ojaswin Mujoo (1):
-      ext4: minor fix for ext4_split_extent_zeroout()
-
-Ritesh Harjani (IBM) (1):
-      ext4: kunit: extents-test: lix percpu_counters list corruption
-
-Simon Weber (1):
-      ext4: fix journal credit check when setting fscrypt context
-
-Tejas Bharambe (1):
-      ext4: validate p_idx bounds in ext4_ext_correct_indexes
-
-Theodore Ts'o (3):
-      Update MAINTAINERS file to add reviewers for ext4
-      ext4: handle wraparound when searching for blocks for indirect mapped blocks
-      ext4: always drain queued discard work in ext4_mb_release()
-
-Ye Bin (5):
-      ext4: avoid allocate block from corrupted group in ext4_mb_find_by_goal()
-      ext4: test if inode's all dirty pages are submitted to disk
-      ext4: introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper
-      ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
-      ext4: fix extents-test.c is not compiled when EXT4_KUNIT_TESTS=M
-
-Yuto Ohnuki (1):
-      ext4: replace BUG_ON with proper error handling in ext4_read_inline_folio
-
-Zhang Yi (1):
-      ext4: do not check fast symlink during orphan recovery
-
-Zqiang (1):
-      ext4: fix the might_sleep() warnings in kvfree()
-
-hongao (1):
-      ext4: skip split extent recovery on corruption
-
- MAINTAINERS            |   7 ++-
- fs/ext4/Makefile       |   5 +-
- fs/ext4/crypto.c       |   9 +++-
- fs/ext4/ext4.h         |   6 +++
- fs/ext4/ext4_extents.h |  12 +++++
- fs/ext4/extents-test.c |  12 +++--
- fs/ext4/extents.c      |  80 +++++++++++++++++++++++++-----
- fs/ext4/fast_commit.c  |  17 ++++---
- fs/ext4/fsync.c        |  16 +++++-
- fs/ext4/ialloc.c       |   6 +++
- fs/ext4/inline.c       |  10 +++-
- fs/ext4/inode.c        |  75 ++++++++++++++++++++++------
- fs/ext4/mballoc-test.c |  81 +++++++++++++++---------------
- fs/ext4/mballoc.c      | 132 ++++++++++++++++++++++++++++++++++++++++++-------
- fs/ext4/mballoc.h      |  30 +++++++++++
- fs/ext4/page-io.c      |  10 +++-
- fs/ext4/super.c        |  37 +++++++++++---
- fs/ext4/sysfs.c        |  10 +++-
- fs/jbd2/checkpoint.c   |  15 +++++-
- 19 files changed, 455 insertions(+), 115 deletions(-)
+Does it mean it should also be prohibited under
+CONFIG_BLK_DEV_WRITE_MOUNTED to avoid kernel memory corruption?
+Or at least some changes should be prohibited? E.g. I guess changing
+lo_offset is equivalent to writing to the mounted device.
