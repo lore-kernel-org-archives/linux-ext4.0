@@ -1,264 +1,187 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C7FA396571
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Mar 2026 16:43:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BBCA134CF
+	for <linux-ext4@vger.kernel.org>; Sun, 29 Mar 2026 04:57:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774716226; cv=none; b=JbVxRY34Mc8I4GTS21l9gLRnAWfBmUFi1iaw4Bd/X92qEfQrXJEzAUftbeNKAKGpYJmHcNqHUfF+4vrL9zn37hH728n8pfLIiQEM6qAzoFh2aZCuIEydi++bI/AAODCY8u7btKMtf1fHAyZeTiKr3/5gx0QvRlthe9qyurEod+A=
+	t=1774760275; cv=none; b=F496P4xi/wwHtpZgzvNsdOVC+nc4K8KPPzFMUv2ItckPyRUjXn+SpGebmWaNmQE4ViO3TmFW5nDfjmp1k5UZ20i9/gChaUFvILu1EzXCV6d59peit5YifCH8OV5K0ToAPs+NaAVokREHxV13qAfgh9AtrsM5ZDuEpus0yxDAg64=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774716226; c=relaxed/simple;
-	bh=BV/UbwLTMvrW2rODL2Y6XyewyXJlnqFCQxHYFXBFq9w=;
-	h=Date:From:To:Cc:Subject:Message-ID; b=hkJOO/Cgplqweem3P7puiBWbaCXOilbTxTXdp1YFe4CtSTjc6v1NV9UXNfoV+Hr2VD4kGHMVqGmxQNI73o5ai/L8nnwHnEhqMLMV4QLVunqUMUnoARt2kUu5HJtkDFs1DLpRnVjowxTJJ96YCkc8s1dExowz8Z7zfqPU21zwkpA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=PrHXCnl2; arc=none smtp.client-ip=198.175.65.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1774760275; c=relaxed/simple;
+	bh=e5imEYik1/CVQSgR0Cz9kEJ99SrjN04D5/TnUHUKIOM=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=VfgX4dDxJqem1D56C5+re7NHj+pS6ZjZloYU7kuXlZHviIPv1dGK/6o0WmpRIQ2myX6o/gkgydJBwKyZaFZ8vVnMOGyp2Q3gjEkT9NbdEShvk/UGpavxNddqh+9uXcVZKxB3E+vAW068ibZ31HnjEkExWu8haV8DKZWIPgf1w8w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=P5Ad3kwQ; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="PrHXCnl2"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1774716224; x=1806252224;
-  h=date:from:to:cc:subject:message-id;
-  bh=BV/UbwLTMvrW2rODL2Y6XyewyXJlnqFCQxHYFXBFq9w=;
-  b=PrHXCnl20+mOXXgf7WSFcwRLFvDCuSMLDcwwYJjtfRSNllEMAjj/Spc4
-   muPKT/2Kc/9UdDJVV3cNjmAVSanUWqwgPf8zhxUZIf9kuYx9u3theJb0r
-   TCav7ogTlPKI2QyjNrQCS9rB9rT1jFQrVJ8Pl3T6+YtKzj8slFYHG/T+t
-   TaSzBIigQ9eGcR8qK6W56DdzoaNvUNmTCamvTV2yK8f8LhZDZSNsj+QIv
-   /7316cOcDOQDJBym4P19yi2VuMMY1HGFIte6MAJ2zvLJtNePfM7S5vuTh
-   HW085kN8UfAsx4yQj3CbdMDyqn4C5Me+JO9kDDY5meEBCokTbFzjW9KvT
-   Q==;
-X-CSE-ConnectionGUID: PLGea2w1TuWb70crjdFpXQ==
-X-CSE-MsgGUID: H68m5TYURbS4yLRIf20Vsw==
-X-IronPort-AV: E=McAfee;i="6800,10657,11742"; a="93150548"
-X-IronPort-AV: E=Sophos;i="6.23,146,1770624000"; 
-   d="scan'208";a="93150548"
-Received: from orviesa005.jf.intel.com ([10.64.159.145])
-  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 Mar 2026 09:43:44 -0700
-X-CSE-ConnectionGUID: I64GubTLQTaoaGFC3nn/7g==
-X-CSE-MsgGUID: sFrpC6ZuQqSx9tzPE77fwg==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.23,146,1770624000"; 
-   d="scan'208";a="230528191"
-Received: from lkp-server01.sh.intel.com (HELO 3905d212be1b) ([10.239.97.150])
-  by orviesa005.jf.intel.com with ESMTP; 28 Mar 2026 09:43:43 -0700
-Received: from kbuild by 3905d212be1b with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1w6WlA-00000000Baz-1KcX;
-	Sat, 28 Mar 2026 16:43:40 +0000
-Date: Sun, 29 Mar 2026 00:43:16 +0800
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- 9ee29d20aab228adfb02ca93f87fb53c56c2f3af
-Message-ID: <202603290008.DWPUuDFU-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="P5Ad3kwQ"
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62T4vfUq001813
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Sun, 29 Mar 2026 00:57:42 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774760263; bh=T1WOt+Xd2BaBdxbJ9VRwjRIW1brCuPE2iHU7rYIkpQ0=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=P5Ad3kwQCS5BGX5Uu0wLTR02mkT8kEvaGz6MgBdGzhqg3StK3wozLoSCaT6c6SP4r
+	 AEEiz1p/FPNuDV7bTE8pm4O54rfjC5VNyQ8arYeUe9pwzNwRYWqnxE7/BeaXVkDDQD
+	 HKL1+lrb3soZtdLb09EUIKc3cNn1I7faxgW5i+yXgFhoR8veDKPIWJS4Xk0UAShy7m
+	 QS8qIM/prz+3hTs2GeRQd1YIENvJFyqwFFAaknHTS8BKtd0TvQDKB8zTY169CIDu/C
+	 yf3lCa0FLdbKgu/r8AWjCG3/4kvXZGsy4YmGIHYWTJVR+Uc4sI8dEKCj2mJIeJc2ZI
+	 5Gzfr9un5tn6Q==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 40FD75FE352D; Sat, 28 Mar 2026 23:57:41 -0500 (CDT)
+Date: Sat, 28 Mar 2026 23:57:41 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Kernel Developers List <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] ext4 fixes for 7.0-rc6
+Message-ID: <20260329045741.GA9694@Mac>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 9ee29d20aab228adfb02ca93f87fb53c56c2f3af  ext4: always drain queued discard work in ext4_mb_release()
+The following changes since commit f338e77383789c0cae23ca3d48adcc5e9e137e3c:
 
-elapsed time: 752m
+  Linux 7.0-rc4 (2026-03-15 13:52:05 -0700)
 
-configs tested: 187
-configs skipped: 2
+are available in the Git repository at:
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.0-rc6
 
-tested configs:
-alpha                             allnoconfig    gcc-15.2.0
-alpha                            allyesconfig    gcc-15.2.0
-alpha                               defconfig    gcc-15.2.0
-arc                              allmodconfig    clang-16
-arc                               allnoconfig    gcc-15.2.0
-arc                              allyesconfig    clang-23
-arc                                 defconfig    gcc-15.2.0
-arc                   randconfig-001-20260328    gcc-15.2.0
-arc                   randconfig-002-20260328    gcc-15.2.0
-arm                               allnoconfig    clang-23
-arm                               allnoconfig    gcc-15.2.0
-arm                              allyesconfig    clang-16
-arm                       aspeed_g4_defconfig    clang-23
-arm                          collie_defconfig    gcc-15.2.0
-arm                                 defconfig    gcc-15.2.0
-arm                   randconfig-001-20260328    gcc-15.2.0
-arm                   randconfig-002-20260328    gcc-15.2.0
-arm                   randconfig-003-20260328    gcc-15.2.0
-arm                   randconfig-004-20260328    gcc-15.2.0
-arm64                            allmodconfig    clang-23
-arm64                             allnoconfig    gcc-15.2.0
-arm64                               defconfig    gcc-15.2.0
-arm64                 randconfig-001-20260328    gcc-14.3.0
-arm64                 randconfig-002-20260328    gcc-14.3.0
-arm64                 randconfig-003-20260328    gcc-14.3.0
-arm64                 randconfig-004-20260328    gcc-14.3.0
-csky                             allmodconfig    gcc-15.2.0
-csky                              allnoconfig    gcc-15.2.0
-csky                                defconfig    gcc-15.2.0
-csky                  randconfig-001-20260328    gcc-14.3.0
-csky                  randconfig-002-20260328    gcc-14.3.0
-hexagon                          allmodconfig    gcc-15.2.0
-hexagon                           allnoconfig    clang-23
-hexagon                           allnoconfig    gcc-15.2.0
-hexagon                             defconfig    gcc-15.2.0
-hexagon               randconfig-001-20260328    gcc-11.5.0
-hexagon               randconfig-002-20260328    gcc-11.5.0
-i386                             allmodconfig    clang-20
-i386                              allnoconfig    gcc-14
-i386                              allnoconfig    gcc-15.2.0
-i386                             allyesconfig    clang-20
-i386        buildonly-randconfig-001-20260328    clang-20
-i386        buildonly-randconfig-002-20260328    clang-20
-i386        buildonly-randconfig-003-20260328    clang-20
-i386        buildonly-randconfig-004-20260328    clang-20
-i386        buildonly-randconfig-005-20260328    clang-20
-i386        buildonly-randconfig-006-20260328    clang-20
-i386                                defconfig    gcc-15.2.0
-i386                  randconfig-001-20260328    clang-20
-i386                  randconfig-002-20260328    clang-20
-i386                  randconfig-003-20260328    clang-20
-i386                  randconfig-004-20260328    clang-20
-i386                  randconfig-005-20260328    clang-20
-i386                  randconfig-006-20260328    clang-20
-i386                  randconfig-007-20260328    clang-20
-i386                  randconfig-011-20260328    gcc-13
-i386                  randconfig-012-20260328    gcc-13
-i386                  randconfig-013-20260328    gcc-13
-i386                  randconfig-014-20260328    gcc-13
-i386                  randconfig-015-20260328    gcc-13
-i386                  randconfig-016-20260328    gcc-13
-i386                  randconfig-017-20260328    gcc-13
-loongarch                        allmodconfig    clang-23
-loongarch                         allnoconfig    clang-23
-loongarch                         allnoconfig    gcc-15.2.0
-loongarch                           defconfig    clang-19
-loongarch             randconfig-001-20260328    gcc-11.5.0
-loongarch             randconfig-002-20260328    gcc-11.5.0
-m68k                             allmodconfig    gcc-15.2.0
-m68k                              allnoconfig    gcc-15.2.0
-m68k                             allyesconfig    clang-16
-m68k                                defconfig    clang-19
-microblaze                        allnoconfig    gcc-15.2.0
-microblaze                       allyesconfig    gcc-15.2.0
-microblaze                          defconfig    clang-19
-mips                             allmodconfig    gcc-15.2.0
-mips                              allnoconfig    gcc-15.2.0
-mips                             allyesconfig    gcc-15.2.0
-nios2                            allmodconfig    clang-23
-nios2                            allmodconfig    gcc-11.5.0
-nios2                             allnoconfig    clang-23
-nios2                             allnoconfig    gcc-11.5.0
-nios2                               defconfig    clang-19
-nios2                 randconfig-001-20260328    gcc-11.5.0
-nios2                 randconfig-002-20260328    gcc-11.5.0
-openrisc                         allmodconfig    clang-23
-openrisc                         allmodconfig    gcc-15.2.0
-openrisc                          allnoconfig    clang-23
-openrisc                          allnoconfig    gcc-15.2.0
-openrisc                            defconfig    gcc-15.2.0
-parisc                           allmodconfig    gcc-15.2.0
-parisc                            allnoconfig    clang-23
-parisc                            allnoconfig    gcc-15.2.0
-parisc                           allyesconfig    clang-19
-parisc                              defconfig    gcc-15.2.0
-parisc                randconfig-001-20260328    gcc-10.5.0
-parisc                randconfig-002-20260328    gcc-10.5.0
-parisc64                            defconfig    clang-19
-powerpc                          allmodconfig    gcc-15.2.0
-powerpc                           allnoconfig    clang-23
-powerpc                           allnoconfig    gcc-15.2.0
-powerpc                        cell_defconfig    gcc-15.2.0
-powerpc               randconfig-001-20260328    gcc-10.5.0
-powerpc               randconfig-002-20260328    gcc-10.5.0
-powerpc64             randconfig-001-20260328    gcc-10.5.0
-powerpc64             randconfig-002-20260328    gcc-10.5.0
-riscv                            allmodconfig    clang-23
-riscv                             allnoconfig    clang-23
-riscv                             allnoconfig    gcc-15.2.0
-riscv                            allyesconfig    clang-16
-riscv                               defconfig    gcc-15.2.0
-riscv                 randconfig-001-20260328    clang-23
-riscv                 randconfig-002-20260328    clang-23
-s390                             allmodconfig    clang-19
-s390                              allnoconfig    clang-23
-s390                             allyesconfig    gcc-15.2.0
-s390                                defconfig    gcc-15.2.0
-s390                  randconfig-001-20260328    clang-23
-s390                  randconfig-002-20260328    clang-23
-sh                               alldefconfig    gcc-15.2.0
-sh                               allmodconfig    gcc-15.2.0
-sh                                allnoconfig    clang-23
-sh                                allnoconfig    gcc-15.2.0
-sh                               allyesconfig    clang-19
-sh                                  defconfig    gcc-14
-sh                    randconfig-001-20260328    clang-23
-sh                    randconfig-002-20260328    clang-23
-sh                           se7705_defconfig    gcc-15.2.0
-sparc                             allnoconfig    clang-23
-sparc                             allnoconfig    gcc-15.2.0
-sparc                               defconfig    gcc-15.2.0
-sparc                 randconfig-001-20260328    gcc-14
-sparc                 randconfig-002-20260328    gcc-14
-sparc64                          allmodconfig    clang-23
-sparc64                             defconfig    gcc-14
-sparc64               randconfig-001-20260328    gcc-14
-sparc64               randconfig-002-20260328    gcc-14
-um                               allmodconfig    clang-19
-um                                allnoconfig    clang-23
-um                               allyesconfig    gcc-15.2.0
-um                                  defconfig    gcc-14
-um                             i386_defconfig    gcc-14
-um                    randconfig-001-20260328    gcc-14
-um                    randconfig-002-20260328    gcc-14
-um                           x86_64_defconfig    gcc-14
-x86_64                           allmodconfig    clang-20
-x86_64                            allnoconfig    clang-20
-x86_64                            allnoconfig    clang-23
-x86_64                           allyesconfig    clang-20
-x86_64      buildonly-randconfig-001-20260328    clang-20
-x86_64      buildonly-randconfig-002-20260328    clang-20
-x86_64      buildonly-randconfig-003-20260328    clang-20
-x86_64      buildonly-randconfig-004-20260328    clang-20
-x86_64      buildonly-randconfig-005-20260328    clang-20
-x86_64      buildonly-randconfig-006-20260328    clang-20
-x86_64                              defconfig    gcc-14
-x86_64                                  kexec    clang-20
-x86_64                randconfig-001-20260328    gcc-14
-x86_64                randconfig-002-20260328    gcc-14
-x86_64                randconfig-003-20260328    gcc-14
-x86_64                randconfig-004-20260328    gcc-14
-x86_64                randconfig-005-20260328    gcc-14
-x86_64                randconfig-006-20260328    gcc-14
-x86_64                randconfig-011-20260328    clang-20
-x86_64                randconfig-012-20260328    clang-20
-x86_64                randconfig-013-20260328    clang-20
-x86_64                randconfig-014-20260328    clang-20
-x86_64                randconfig-015-20260328    clang-20
-x86_64                randconfig-016-20260328    clang-20
-x86_64                randconfig-071-20260328    gcc-12
-x86_64                randconfig-072-20260328    gcc-12
-x86_64                randconfig-073-20260328    gcc-12
-x86_64                randconfig-074-20260328    gcc-12
-x86_64                randconfig-075-20260328    gcc-12
-x86_64                randconfig-076-20260328    gcc-12
-x86_64                               rhel-9.4    clang-20
-x86_64                           rhel-9.4-bpf    gcc-14
-x86_64                          rhel-9.4-func    clang-20
-x86_64                    rhel-9.4-kselftests    clang-20
-x86_64                         rhel-9.4-kunit    gcc-14
-x86_64                           rhel-9.4-ltp    gcc-14
-x86_64                          rhel-9.4-rust    clang-20
-xtensa                            allnoconfig    clang-23
-xtensa                            allnoconfig    gcc-15.2.0
-xtensa                           allyesconfig    clang-23
-xtensa                randconfig-001-20260328    gcc-14
-xtensa                randconfig-002-20260328    gcc-14
+for you to fetch changes up to 9ee29d20aab228adfb02ca93f87fb53c56c2f3af:
 
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+  ext4: always drain queued discard work in ext4_mb_release() (2026-03-27 23:39:10 -0400)
+
+----------------------------------------------------------------
+Update the MAINTAINERS file to add reviewers for the ext4 file system
+
+Add a test issue an ext4 warning (not a WARN_ON) if there are still
+dirty pages attached to an evicted inode.
+
+A lot of ext4 bug fixes including:
+   * Fix a number of Syzkaller issues.
+   * Fix memory leaks on error paths.
+   * Replace some BUG and WARN with EFSCORRUPTED reporting.
+   * Fix a potential crash when disabling discard via remount followed
+     by an immediate unmount.  (Found by Sashiko)
+   * Fix a corner case which could lead to allocating blocks for an
+     indirect-mapped inode block numbers > 2**32.
+   * Fix a race when reallocating a freed inode that could result in
+     a deadlock.
+   * Fix a user-after-free in update_super_work when racing with umount.
+   * Fix build issues when trying to build ext4's kunit tests as a module
+   * Fix a bug where ext4_split_extent_zeroout() could fail to pass
+     back an error from ext4_ext_dirty().
+   * Avoid allocating blocks from a corrupted block group in
+     ext4_mb_find_by_goal().
+   * Fix a percpu_counters list corruption BUG triggered by an
+     ext4 extents kunit.
+   * Fix a potetial crash caused by the fast commit flush path potentially
+     accessing the jinode structure before it is fully initialized.
+   * Fix fsync(2) in no-journal mode to make sure the dirtied inode is
+     write to storage.
+   * Fix a bug when in no-journal mode, when ext4 tries to avoid using
+     recently deleted inodes, if lazy itable initialization is enabled,
+     can lead to an unitialized inode getting skipped and triggering
+     an e2fsck complaint.
+   * Fix journal credit calculation when setting an xattr when both
+     the encryption and ea_inode feeatures are enabled.
+   * Fix corner cases which could result in stale xarray tags after
+     writeback.
+   * Fix generic/475 failures caused by ENOSPC errors while creating
+     a symlink when the system crashes resulting to a file system
+     inconsistency when replaying the fast commit journal.
+
+----------------------------------------------------------------
+Baokun Li (1):
+      ext4: fix iloc.bh leak in ext4_fc_replay_inode() error paths
+
+Deepanshu Kartikey (1):
+      ext4: convert inline data to extents when truncate exceeds inline size
+
+Edward Adam Davis (1):
+      ext4: avoid infinite loops caused by residual data
+
+Helen Koike (1):
+      ext4: reject mount if bigalloc with s_first_data_block != 0
+
+Jan Kara (4):
+      ext4: fix stale xarray tags after writeback
+      ext4: make recently_deleted() properly work with lazy itable initialization
+      ext4: fix fsync(2) for nojournal mode
+      ext4: fix deadlock on inode reallocation
+
+Jiayuan Chen (1):
+      ext4: fix use-after-free in update_super_work when racing with umount
+
+Li Chen (1):
+      ext4: publish jinode after initialization
+
+Milos Nikic (1):
+      jbd2: gracefully abort on checkpointing state corruptions
+
+Ojaswin Mujoo (1):
+      ext4: minor fix for ext4_split_extent_zeroout()
+
+Ritesh Harjani (IBM) (1):
+      ext4: kunit: extents-test: lix percpu_counters list corruption
+
+Simon Weber (1):
+      ext4: fix journal credit check when setting fscrypt context
+
+Tejas Bharambe (1):
+      ext4: validate p_idx bounds in ext4_ext_correct_indexes
+
+Theodore Ts'o (3):
+      Update MAINTAINERS file to add reviewers for ext4
+      ext4: handle wraparound when searching for blocks for indirect mapped blocks
+      ext4: always drain queued discard work in ext4_mb_release()
+
+Ye Bin (5):
+      ext4: avoid allocate block from corrupted group in ext4_mb_find_by_goal()
+      ext4: test if inode's all dirty pages are submitted to disk
+      ext4: introduce EXPORT_SYMBOL_FOR_EXT4_TEST() helper
+      ext4: fix mballoc-test.c is not compiled when EXT4_KUNIT_TESTS=M
+      ext4: fix extents-test.c is not compiled when EXT4_KUNIT_TESTS=M
+
+Yuto Ohnuki (1):
+      ext4: replace BUG_ON with proper error handling in ext4_read_inline_folio
+
+Zhang Yi (1):
+      ext4: do not check fast symlink during orphan recovery
+
+Zqiang (1):
+      ext4: fix the might_sleep() warnings in kvfree()
+
+hongao (1):
+      ext4: skip split extent recovery on corruption
+
+ MAINTAINERS            |   7 ++-
+ fs/ext4/Makefile       |   5 +-
+ fs/ext4/crypto.c       |   9 +++-
+ fs/ext4/ext4.h         |   6 +++
+ fs/ext4/ext4_extents.h |  12 +++++
+ fs/ext4/extents-test.c |  12 +++--
+ fs/ext4/extents.c      |  80 +++++++++++++++++++++++++-----
+ fs/ext4/fast_commit.c  |  17 ++++---
+ fs/ext4/fsync.c        |  16 +++++-
+ fs/ext4/ialloc.c       |   6 +++
+ fs/ext4/inline.c       |  10 +++-
+ fs/ext4/inode.c        |  75 ++++++++++++++++++++++------
+ fs/ext4/mballoc-test.c |  81 +++++++++++++++---------------
+ fs/ext4/mballoc.c      | 132 ++++++++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/mballoc.h      |  30 +++++++++++
+ fs/ext4/page-io.c      |  10 +++-
+ fs/ext4/super.c        |  37 +++++++++++---
+ fs/ext4/sysfs.c        |  10 +++-
+ fs/jbd2/checkpoint.c   |  15 +++++-
+ 19 files changed, 455 insertions(+), 115 deletions(-)
