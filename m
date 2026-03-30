@@ -1,112 +1,91 @@
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98C0D1A9B46
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 17:45:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0870F3806DD
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 19:01:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774892750; cv=none; b=gFW+UfL6v9KovgmkbfoemsxjzIDyMHFlOSahPzVqsimRQdMWtJrVDsodjk25xLEi2ATMBzWuyBri0w4ykqjAiSsZoHLp0X0PhlBn/6aDrYat8HmjNpkIeFINScfa5WZD679wip6C6LlfOwlbTBDPBRh/qBE9LVMN3Exuuk37l94=
+	t=1774897277; cv=none; b=IMSoDvkEsRxEB4WB6xvHAIFCJ7qeEfFWFEd1dk3Jk5nT81iyvt3VKotDB2VF7TVE2iRUJYsNkiKWtwNz/UfzzPhplJsJbmeRFOapyIFu80jtI/AJLjWxM8uXw/EBXZbPK44zp8EF39WOACrJH7aI8xurEw5X2GYFi00rIocWg5Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774892750; c=relaxed/simple;
-	bh=C4nLq0ZGxU9C1mpoMpaPcjRYC/MiF+813k19aIfQorE=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=cZzHluReWDPVlk3tNqiM70YZQs3ekdtw6LbXDb5uf5hmi9f8EabiY1VwR3CwPhLewCMyYPjzk4hW7qxVf6uGAku6ZiNbVo+6f5uXd4FNRD6myaZK4JVkwy2UIE4YCQKNw3EC9u9Uw+VnAFytqG0ezNtEgJxoQiOFtGvHRxykGOY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aW4q9RIh; arc=none smtp.client-ip=209.85.214.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1774897277; c=relaxed/simple;
+	bh=HOevPGuZTBls5+xHraEmWH0kFBXkG1OWp/CawLOgShs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=eqJ5JVlskn9+2uT6SDrG+fa9vFu+5OCrHUIbgub7egxCeWn5eY8phsbIVizjR7Y9mpaw7lHlI1G+qeIONrjFDCqHcFdQZYtbsGdPkUA3HmtUZJ6MmHwhgx16vpdDXVa6CcNMxqnSdR5vEVJNKw4NLNkknyyvs9EjLf3mvp+cO+E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=gE216fKt; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aW4q9RIh"
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2ad9f316d68so21180095ad.2
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 10:45:49 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774892749; x=1775497549; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=0jnXaIJZaI+XJciwHz8zOlF+UyD+Bi1KdMrKx3w+c8A=;
-        b=aW4q9RIhxk0JbvljSfPJzQFf7ViyucGyCKLzqT6SO9W1NJV6jflfqhfSo5E8kbmemG
-         FO0vFz4aBqUUWS42aqhQ4UFlBJJO3ST2oaKpK2ctQJlZymdrPCzh0+kJ9MKfQ8P+9BCP
-         Dw9/EjYqVF5yAUCLe194Of6ZIG1+yz3hpOFlnpSdaREBrNVBOr6yrUkuSOh5SK9uyWen
-         9IqCSd9uSMaD67JEe6IVrg84rDwKEzhJJBVi9oq5SgNSnA+Z6y11d6+qbU9Qp4Zf/aJL
-         84RrfWIvaeE9OaOpG/RHSfgyvHVhCKSpciKuwAiAebMwqalm6Xzc+YudawYmc2AuudES
-         abTw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774892749; x=1775497549;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=0jnXaIJZaI+XJciwHz8zOlF+UyD+Bi1KdMrKx3w+c8A=;
-        b=o2KUQ1yZJwKjqTAn5luxelIfMCq28C6F78hEngkH18/C9R1jOKhFGuYdR6rBhkM0g0
-         bZdbx95uxBIWahBvJWo8iTqltpE7E/4dvke7jXAE0L5u9wLO71/3fHf7njhHUUY7eIIw
-         0sszCFdvqpyax63AVy9tiTl/QS1mLu4hXlpGPU1O1k7yBCs+dcD1IcvadXRUVmSA7xTR
-         deY9hCNazFvnK4Z12PFyfZuQfN1pQJ6GBCuaVE7pTqf34Zsk04wiQN/zHzvAqNw7RCgQ
-         ab/oyFusmkRwv746+3koYaORfi5wyDz+WAoUhGW1IIBl82xLxaCCaMzkbzh3jKjkbiMx
-         dNSQ==
-X-Gm-Message-State: AOJu0YyzYSbQafXkPovC9mi2i+Q0veQfIvEcwyNW0RqEolakCyCZ/4WQ
-	crh9zRh4CZR47f5BX6VjykZjWcBLjF/PVntk++z0O9xt5Fu6iozL1UcZube8Npz/sqXmMw==
-X-Gm-Gg: ATEYQzyx64JMCyZMIYZHus+EzWIVfL7mcTm1xjkbwYV/WJ/OtCpSLbA10kUnuywmnTO
-	8yaHMqTz0vkO8o4paqDmhbCFq0FnyVFpHHOtq0+rsLvbXzO4pjM0G52QGT7XATaV+62bH0Wtna1
-	aWUY+SSE+v+Q8BD4l3G3F5eQ3T4ZaM3VfJKKLJRNeLoBR12heDGlspjjpIHqp884oh7g+OJU9VH
-	bZdz83HqdkobQcipAOFWANyHWEKBzMZJ68nLdp4NNdTJxvDRzHhaiPCNoFHZoon5e66Ik10TZ7J
-	PkvC4vUKsFHF3LZWrI7MIvASygahPypz1hO98yF9R59bE4mInC9YRLjcMh7AHzrXhM3HhlphAC+
-	90YI3TSob55ZPaqQymTBTdEmX4hBxnSuyzWvX+osKDgOYknHKu6XA+26e+ybFpJVhyTiua/96KG
-	jMouVPviaA+cdB6zU2c/IaayQBxDm1OIjz
-X-Received: by 2002:a17:903:32c6:b0:2b2:4775:fa02 with SMTP id d9443c01a7336-2b24775fd98mr88081045ad.48.1774892748653;
-        Mon, 30 Mar 2026 10:45:48 -0700 (PDT)
-Received: from localhost.localdomain ([240b:11:b6c1:f600:94fc:1e9:a262:57b8])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b242680132sm90934415ad.32.2026.03.30.10.45.47
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Mon, 30 Mar 2026 10:45:48 -0700 (PDT)
-From: skoyama.kernel@gmail.com
-X-Google-Original-From: skoyama@ddn.com
-To: linux-ext4@vger.kernel.org
-Cc: Sohei Koyama <skoyama@ddn.com>
-Subject: [PATCH] ext4: fix missing brelse() in ext4_xattr_inode_dec_ref_all()
-Date: Tue, 31 Mar 2026 02:42:48 +0900
-Message-Id: <20260330174248.71268-1-skoyama@ddn.com>
-X-Mailer: git-send-email 2.39.3 (Apple Git-146)
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="gE216fKt"
+Received: from macsyma.thunk.org ([104.135.218.82])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62UJ0reQ001670
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 30 Mar 2026 15:00:54 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774897256; bh=nZlcZRdhA0AHs0rqFoHFJpsMob20gEp4e9qaMZOHKyY=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=gE216fKt3BOv0ndA512g5QunMJ/5Legzcz0v3kTJxxfjY0/HDOspx9TsEWtXhsWaS
+	 GaOp5J/GN1/kwDNTdCaDeht4ybWBO04lhiOUtFYDUqEvva6Ahut/fiS/cUUYhp8A3/
+	 f1CoMuIQLyoHG51+Ch88VQuhyx2W3ngVPj7PWgItqdennGWa7goZtJ+OyBGOE+oa8W
+	 ex99Whl7n2h52jY0g+pvXCB666J/xAsuuERra2A1j9AkZ83NnF+XtltNpdZ2u5a3UL
+	 4BH0P5DrKmB2hWauKFR7D629uqmPa10BPTcm3DEJfSC8OkMndz2bOetiqXyJ0Br52G
+	 aahoeUeYKbOqA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id B57BB600CEF6; Mon, 30 Mar 2026 15:00:52 -0400 (EDT)
+Date: Mon, 30 Mar 2026 15:00:52 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Deepanshu Kartikey <kartikey406@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, axboe@kernel.dk, dvyukov@google.com,
+        adilger.kernel@dilger.ca, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
+Subject: Re: [PATCH] loop: block loop reconfiguration of offset/sizelimit on
+ mounted device
+Message-ID: <20260330190052.GA50033@macsyma.local>
+References: <20260330044334.373480-1-kartikey406@gmail.com>
+ <acoQBLwdc1PqIb0m@infradead.org>
+ <20260330133800.GC22278@macsyma.local>
+ <CADhLXY6Cu+O_jeL9xxORtLg-LU6pdBxFb29yhS=d2rTtgbA2tw@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CADhLXY6Cu+O_jeL9xxORtLg-LU6pdBxFb29yhS=d2rTtgbA2tw@mail.gmail.com>
 
-From: Sohei Koyama <skoyama@ddn.com>
+On Mon, Mar 30, 2026 at 08:03:55PM +0530, Deepanshu Kartikey wrote:
+> 
+> The check would be:
+> 
+> #ifndef CONFIG_BLK_DEV_WRITE_MOUNTED
+> if ((lo->lo_offset != info->lo_offset ||
+>      lo->lo_sizelimit != info->lo_sizelimit) &&
+>     lo->lo_device->bd_writers < 0) {
+> err = -EBUSY;
+> goto out_unlock;
+> }
+> #endif
 
-The commit c8e008b60492 ("ext4: ignore xattrs past end")
-introduced a refcount leak in when block_csum is false.
+Can you please move bdev_writes_blocked() into
+include/linux/blk_types.h as an inline function as Christoph
+suggested?
 
-ext4_xattr_inode_dec_ref_all() calls ext4_get_inode_loc() to
-get iloc.bh, but never releases it with brelse().
+The reason for that is that "bdev_writers < 0" is an implementation
+detail and it might change in the future, and then loop driver might
+break unexpectedly.  Using bdev_writes_blocked() is also much clearer
+from a code readability perspective.
 
-Fixes: c8e008b60492 ("ext4: ignore xattrs past end")
-Signed-off-by: Sohei Koyama <skoyama@ddn.com>
----
- fs/ext4/xattr.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+> Regarding Christoph's point about increasing lo_sizelimit being
+> safe - should I narrow the check to only block shrinking and
+> offset changes?
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 7bf9ba19a89d..19c72e38fb82 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1165,7 +1165,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- {
- 	struct inode *ea_inode;
- 	struct ext4_xattr_entry *entry;
--	struct ext4_iloc iloc;
-+	struct ext4_iloc iloc = { .bh = NULL };
- 	bool dirty = false;
- 	unsigned int ea_ino;
- 	int err;
-@@ -1260,6 +1260,8 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 			ext4_warning_inode(parent,
- 					   "handle dirty metadata err=%d", err);
- 	}
-+
-+	brelse(iloc.bh);
- }
- 
- /*
--- 
-2.39.3 (Apple Git-146)
+Yes, I think we should allow the loop device to grow, since that's
+harmless and there are some legitimate use cases when people might
+want to do this and then trigger an online resize so the file system
+grows to use the added space.
 
+						- Ted
