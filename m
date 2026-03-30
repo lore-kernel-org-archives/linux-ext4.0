@@ -1,162 +1,112 @@
-Received: from mail-yx1-f45.google.com (mail-yx1-f45.google.com [74.125.224.45])
+Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FE5430E858
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 14:34:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.224.45
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774881249; cv=pass; b=b4/1ffRIzw5OboufuB1W/uwjM2DoWxu+gep9cYherbH5hbOGufMySWhKlJqUB0rOWsljErAh2JuG9TSKu13o2JtnXcVX+iH5g1eu0DM2OHMPvdisilGdlxFpYci71t56lCSZq5p47Kbx86jpHQHJDIFNcJdJzs7dkecfLpJww9Q=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774881249; c=relaxed/simple;
-	bh=I79gy/L1iUtPeR9Sx5svfxAJiYGA/IeaDqYZS24HXHI=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=R0NcSgSNC0s5cVqpDAScvaqqWZvPvseoqrnBVbjNpLgR7DE/DAPhlYgd3dQj+6roTKmXXIgCWKnT8qsyisfG2MFSkRwmJik/N6puaXKJBcC9X1rexHcXdCPpTKWHjuYdTPTqzwXDdyO51DKu0+/mLbdqpDrxrQXsJyH2wtPioT0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=W2wieVhn; arc=pass smtp.client-ip=74.125.224.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98C0D1A9B46
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 17:45:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774892750; cv=none; b=gFW+UfL6v9KovgmkbfoemsxjzIDyMHFlOSahPzVqsimRQdMWtJrVDsodjk25xLEi2ATMBzWuyBri0w4ykqjAiSsZoHLp0X0PhlBn/6aDrYat8HmjNpkIeFINScfa5WZD679wip6C6LlfOwlbTBDPBRh/qBE9LVMN3Exuuk37l94=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774892750; c=relaxed/simple;
+	bh=C4nLq0ZGxU9C1mpoMpaPcjRYC/MiF+813k19aIfQorE=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=cZzHluReWDPVlk3tNqiM70YZQs3ekdtw6LbXDb5uf5hmi9f8EabiY1VwR3CwPhLewCMyYPjzk4hW7qxVf6uGAku6ZiNbVo+6f5uXd4FNRD6myaZK4JVkwy2UIE4YCQKNw3EC9u9Uw+VnAFytqG0ezNtEgJxoQiOFtGvHRxykGOY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aW4q9RIh; arc=none smtp.client-ip=209.85.214.174
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W2wieVhn"
-Received: by mail-yx1-f45.google.com with SMTP id 956f58d0204a3-6501547d7edso3020747d50.0
-        for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 07:34:08 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774881247; cv=none;
-        d=google.com; s=arc-20240605;
-        b=P/yT698kmIvdpAi/156pzekpbmEa5MEkOTMd9VYHLDuCAEuBDs270Z+QdMXFTDwo94
-         3CnbJjIk5N4ipnhDbG52LjL4J7oUeAib4B18SME2tCUs8e+ZSZ2CUhfEtq/f+HczVhuJ
-         +kGwTspv1dw9pYzoiNJEExw8s0ZM8PwS3uhNnY3xD9NvNDf6iGb7nOC0iN1CYptl7AqQ
-         Bti7SWP2UL1wp7WxdZHE6zeCjnNrtb+YnR39AKI67v8qPjaKKGzFMDvOfuG9R8fcjYb0
-         GLRS3dK0HUvXiRs+Cgy5NM711QRBFYrxae/lS2iMPqiJVWbS8Xm8JAfK3FjBymOIP4vC
-         P0hg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=IIA8D0ff4y+v3OdWEO6D1Oc2rbEBX2dD2f4Uu2Jsj7Y=;
-        fh=L9obaeD65GeaIdspxwcKWjIt030E+JHZjok8LBWptgQ=;
-        b=iKmf8oRxwvf0JP/ki3GzdylycPqb7Xa/+kmF/VcCOUbRg1a4xjNKP9Aeqzm7DFCFTG
-         yRLPEhl0cNYOq09bxXTvE9vTJXRFxOp+SB85gTgMlxJ/ptCClTw1HQsoisjChN/mjwo8
-         h/XqJVwW6ihsnPvVeqa0oG+YJ/nQExLfLb4stiVMNrPGcxue8W740cr7KmNE37luQC/h
-         QEazONbxPOal9yJH+/KYbJOegpbOTApfQMLeiSJeeUwm5Bs36afIVEG5Ejb9AaDHiePc
-         xsSVSKTNbr/gm8zgWdKUT2wl+fUOW4k6yZ6HJUIfFFyZq+10S7ncWXrfwplanK5t0Iyz
-         LR/A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aW4q9RIh"
+Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2ad9f316d68so21180095ad.2
+        for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 10:45:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774881247; x=1775486047; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=IIA8D0ff4y+v3OdWEO6D1Oc2rbEBX2dD2f4Uu2Jsj7Y=;
-        b=W2wieVhn5xWfAUuy6TNnJWCZQTGIqG2iw+if9Q7IaeK2CX2lPDFAMNyUvfY1Wt72xp
-         SCMR0tYq008xOM4AOyAVHMVkHFUJfGHuNyybsplFXTpKGCz6ZbwoFxFsK6QpCnIXvPjF
-         SflsMcKnH3DrOoZLDBfv+KOwSACmJXxnSTUKA4qLp4+zaism0boLIbWjjjfPqVZmJtnu
-         RSGHRHw70qXvToO77oc3Hln4iFoio8VKQREALJ/e+cwnN2NqATTq2Yl1wiEILQ+nj7vd
-         lNRbzZkmyZ/0xTWfuyIpO+rKj2J7u2aJaSkT/hBh6AfzGGYcfGeP/+OlcFOQoyPMSaHI
-         3b6Q==
+        d=gmail.com; s=20251104; t=1774892749; x=1775497549; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=0jnXaIJZaI+XJciwHz8zOlF+UyD+Bi1KdMrKx3w+c8A=;
+        b=aW4q9RIhxk0JbvljSfPJzQFf7ViyucGyCKLzqT6SO9W1NJV6jflfqhfSo5E8kbmemG
+         FO0vFz4aBqUUWS42aqhQ4UFlBJJO3ST2oaKpK2ctQJlZymdrPCzh0+kJ9MKfQ8P+9BCP
+         Dw9/EjYqVF5yAUCLe194Of6ZIG1+yz3hpOFlnpSdaREBrNVBOr6yrUkuSOh5SK9uyWen
+         9IqCSd9uSMaD67JEe6IVrg84rDwKEzhJJBVi9oq5SgNSnA+Z6y11d6+qbU9Qp4Zf/aJL
+         84RrfWIvaeE9OaOpG/RHSfgyvHVhCKSpciKuwAiAebMwqalm6Xzc+YudawYmc2AuudES
+         abTw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774881247; x=1775486047;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=IIA8D0ff4y+v3OdWEO6D1Oc2rbEBX2dD2f4Uu2Jsj7Y=;
-        b=Rok1p79Ti2XRQpesAkwDZ9yDrQiLz4FTME9IzyI464zArKMDdH+7pCWI0Wrsbu2pCL
-         hBOxAPc+ka5Qq0o1Pja8EbGpzTROE6yTNujcePFwnUgfJUFToBK9kkq9d22jZX8a0vNw
-         JL/3aWa5UlW79OX1ttixUBxMFu8Rtw7ru5rj7CV/8XrV3Kkcr2X4l/Z6HwJAKvKjHSNW
-         ErBiig3oroOgMxK2rv5BQFG5jEV5n8YC2/oHb96ueNvuQpHT/L+9cqMKju5hLQ6uBZZI
-         X7jI16/hvpMANpOlauD1pE2x29pRAll5oVCRm5t7OI+ZRyRogIBuZPc6a4MFSM3WfZnh
-         /0KA==
-X-Forwarded-Encrypted: i=1; AJvYcCWYZRzw1yffHZqimLIpYrfE8nHodRnxJ3362AkBrTkjOtFv63x13z2o1oS/11YsdWd95cQPdRCAqdy4@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx71vYefFLCqC1xngIKhOdZtpuxQ498TAdg7DNX9Ql/Ndb7cXOi
-	AcgIRHABg3MpbIAfM9VS3IOgvzucDNYAeBh4PhJTJQOSp6x3IBPVIqOFZRaQr2a09K9oNOFMmtm
-	CAMPujW8aZp35bwiq2CcY8LE8mA2g0TQ=
-X-Gm-Gg: ATEYQzz77EXO9KLIzuepdNO1jCx9O6EHgcwyAlEK2b4eRZ8xKExTOwXZlifjPrpUzQX
-	jqxtybJL313snMK8A/vMqUZhIOWbaN7pZk2TXvjdCeKOyvhrzZYgwwpn9DBXFdHs8g98jcRGcWC
-	r/35fd+N1KwIGMdlF0f9O9ri1BGXuZJh2Awig8cKjH2sc5c4EpkrJeMzmILtP1h54ksI9+N6P39
-	DDWqtO9x+Dbf1hNcdaaK8J6nm+mNRXPjuoZqY7ASFk2++wrHd4/qex3ZvYBuHQ12ZlQkwdhtWQi
-	sQEAC6boQ1No+xXOFSOGPIc830SO6t5hbQ4KOzzJk4Pmta6Hsqtb5+3Eyx944C0BzvqwogIh
-X-Received: by 2002:a05:690c:10c:b0:79c:3e94:808f with SMTP id
- 00721157ae682-79c3e948553mr99440527b3.3.1774881247188; Mon, 30 Mar 2026
- 07:34:07 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1774892749; x=1775497549;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=0jnXaIJZaI+XJciwHz8zOlF+UyD+Bi1KdMrKx3w+c8A=;
+        b=o2KUQ1yZJwKjqTAn5luxelIfMCq28C6F78hEngkH18/C9R1jOKhFGuYdR6rBhkM0g0
+         bZdbx95uxBIWahBvJWo8iTqltpE7E/4dvke7jXAE0L5u9wLO71/3fHf7njhHUUY7eIIw
+         0sszCFdvqpyax63AVy9tiTl/QS1mLu4hXlpGPU1O1k7yBCs+dcD1IcvadXRUVmSA7xTR
+         deY9hCNazFvnK4Z12PFyfZuQfN1pQJ6GBCuaVE7pTqf34Zsk04wiQN/zHzvAqNw7RCgQ
+         ab/oyFusmkRwv746+3koYaORfi5wyDz+WAoUhGW1IIBl82xLxaCCaMzkbzh3jKjkbiMx
+         dNSQ==
+X-Gm-Message-State: AOJu0YyzYSbQafXkPovC9mi2i+Q0veQfIvEcwyNW0RqEolakCyCZ/4WQ
+	crh9zRh4CZR47f5BX6VjykZjWcBLjF/PVntk++z0O9xt5Fu6iozL1UcZube8Npz/sqXmMw==
+X-Gm-Gg: ATEYQzyx64JMCyZMIYZHus+EzWIVfL7mcTm1xjkbwYV/WJ/OtCpSLbA10kUnuywmnTO
+	8yaHMqTz0vkO8o4paqDmhbCFq0FnyVFpHHOtq0+rsLvbXzO4pjM0G52QGT7XATaV+62bH0Wtna1
+	aWUY+SSE+v+Q8BD4l3G3F5eQ3T4ZaM3VfJKKLJRNeLoBR12heDGlspjjpIHqp884oh7g+OJU9VH
+	bZdz83HqdkobQcipAOFWANyHWEKBzMZJ68nLdp4NNdTJxvDRzHhaiPCNoFHZoon5e66Ik10TZ7J
+	PkvC4vUKsFHF3LZWrI7MIvASygahPypz1hO98yF9R59bE4mInC9YRLjcMh7AHzrXhM3HhlphAC+
+	90YI3TSob55ZPaqQymTBTdEmX4hBxnSuyzWvX+osKDgOYknHKu6XA+26e+ybFpJVhyTiua/96KG
+	jMouVPviaA+cdB6zU2c/IaayQBxDm1OIjz
+X-Received: by 2002:a17:903:32c6:b0:2b2:4775:fa02 with SMTP id d9443c01a7336-2b24775fd98mr88081045ad.48.1774892748653;
+        Mon, 30 Mar 2026 10:45:48 -0700 (PDT)
+Received: from localhost.localdomain ([240b:11:b6c1:f600:94fc:1e9:a262:57b8])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b242680132sm90934415ad.32.2026.03.30.10.45.47
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Mon, 30 Mar 2026 10:45:48 -0700 (PDT)
+From: skoyama.kernel@gmail.com
+X-Google-Original-From: skoyama@ddn.com
+To: linux-ext4@vger.kernel.org
+Cc: Sohei Koyama <skoyama@ddn.com>
+Subject: [PATCH] ext4: fix missing brelse() in ext4_xattr_inode_dec_ref_all()
+Date: Tue, 31 Mar 2026 02:42:48 +0900
+Message-Id: <20260330174248.71268-1-skoyama@ddn.com>
+X-Mailer: git-send-email 2.39.3 (Apple Git-146)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260330044334.373480-1-kartikey406@gmail.com>
- <acoQBLwdc1PqIb0m@infradead.org> <20260330133800.GC22278@macsyma.local>
-In-Reply-To: <20260330133800.GC22278@macsyma.local>
-From: Deepanshu Kartikey <kartikey406@gmail.com>
-Date: Mon, 30 Mar 2026 20:03:55 +0530
-X-Gm-Features: AQROBzC5DFrpcRbDJwyotZPLQ_bBOfvI5OeF6bTQGNecm3qxL0J9raOMmDCZ4Nk
-Message-ID: <CADhLXY6Cu+O_jeL9xxORtLg-LU6pdBxFb29yhS=d2rTtgbA2tw@mail.gmail.com>
-Subject: Re: [PATCH] loop: block loop reconfiguration of offset/sizelimit on
- mounted device
-To: Theodore Tso <tytso@mit.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, axboe@kernel.dk, dvyukov@google.com, 
-	adilger.kernel@dilger.ca, linux-block@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Mar 30, 2026 at 7:08=E2=80=AFPM Theodore Tso <tytso@mit.edu> wrote:
->
-> The patch was missing the...
->
->   #ifndef CONFIG_BLK_DEV_WRITE_MOUNTED)
->
-> ... in loop.c which was in my original sketch of a patch which I sent
-> to Deepanshu.
->
-> The intent was to suppress Syzkaller noise.  Inherent in my assumption
-> was that changing either lo_offset or lo_sizelimit parameter was going
-> to mutate the loop device when it was mounted, which was the intent of
-> !CONFIG_BLK_DEV_WRITE_MOUNTED.  I also assumed that at least for now,
-> the only user of !CONFIG_BLK_DEV_WRITE_MOUNTED was syzkaller, since
-> there are file systems (in particular ext4) that are commonly in use
-> whose userspace utilities fundamentally assume that you can write to
-> the block device.  Even after we promulgate the tune2fs changes to use
-> the new EXT4_IOC_SET_TUNE_SB_PARAM ioctl and we can assume that it is
-> common use in deployed kernels, some grub operations still assume they
-> can modify the block device where the second-stage grub bootloader is
-> located.
->
-> In the long term, when ext4 can start assuming that we can suppress
-> writes to the block device (and we find a solution to the grub issue),
-> we'll probably want to have a way to suppress write access to block
-> devices on a per-super basis, without clearing the Kconfig
-> CONFIG_BLK_DEV_WRITE_MOUNTED.   But that's a problem for another day...
->
-> Cheers,
->
->                                                 - Ted
+From: Sohei Koyama <skoyama@ddn.com>
 
+The commit c8e008b60492 ("ext4: ignore xattrs past end")
+introduced a refcount leak in when block_csum is false.
 
-Hi Ted, Christoph,
+ext4_xattr_inode_dec_ref_all() calls ext4_get_inode_loc() to
+get iloc.bh, but never releases it with brelse().
 
-Thank you both for the feedback. Based on your suggestions, I'll
-submit a v2 with the following approach:
+Fixes: c8e008b60492 ("ext4: ignore xattrs past end")
+Signed-off-by: Sohei Koyama <skoyama@ddn.com>
+---
+ fs/ext4/xattr.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-- Use #ifndef CONFIG_BLK_DEV_WRITE_MOUNTED as Ted originally
-  intended, since this is meant to suppress syzkaller noise
-- Check bd_writers directly instead of exporting
-  bdev_writes_blocked(), addressing Christoph's concern
-- No changes to block/bdev.c or include/linux/blkdev.h, keeping
-  the patch minimal and limited to drivers/block/loop.c
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 7bf9ba19a89d..19c72e38fb82 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1165,7 +1165,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ {
+ 	struct inode *ea_inode;
+ 	struct ext4_xattr_entry *entry;
+-	struct ext4_iloc iloc;
++	struct ext4_iloc iloc = { .bh = NULL };
+ 	bool dirty = false;
+ 	unsigned int ea_ino;
+ 	int err;
+@@ -1260,6 +1260,8 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 			ext4_warning_inode(parent,
+ 					   "handle dirty metadata err=%d", err);
+ 	}
++
++	brelse(iloc.bh);
+ }
+ 
+ /*
+-- 
+2.39.3 (Apple Git-146)
 
-The check would be:
-
-#ifndef CONFIG_BLK_DEV_WRITE_MOUNTED
-if ((lo->lo_offset !=3D info->lo_offset ||
-     lo->lo_sizelimit !=3D info->lo_sizelimit) &&
-    lo->lo_device->bd_writers < 0) {
-err =3D -EBUSY;
-goto out_unlock;
-}
-#endif
-
-Regarding Christoph's point about increasing lo_sizelimit being
-safe - should I narrow the check to only block shrinking and
-offset changes?
-
-Thanks,
-Deepanshu
