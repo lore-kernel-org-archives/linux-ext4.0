@@ -1,36 +1,36 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACFBE37F75F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD0663876D5
 	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 13:32:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774877579; cv=none; b=bV/SbJk1uPf0vm1OfdGmnZ1876c884WqXBJS7kAm+dCEdG6ffUm0ZcR0FLNm2Heogd9m5fa14LoOdUWvgwKIifWzbb4oTtatBo3KzKpTHcKmwYkqlSFmDqxNM2UI7FgLbKsVvlcWP3UsNAk75SAairG80sax2JqvvB6ISRfdN8c=
+	t=1774877579; cv=none; b=YZEnDYb/3K8899g401AJA066revWxsZt7vlIYVrDnOlWZJVrBNm3KI+ZqhU7S+SGYcGStPhos+KvhLnPYOdYcUN2yeU4z256BtmRsqEe5STY6A9+vosGs/u05554TAZGjDxHu5H7HTM2ngA4MQl5cSaCq7HzW1uQQCPM4DhY2iA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1774877579; c=relaxed/simple;
-	bh=kdZDBCINfKaEB8jO3QNNYDa1xp69WhTkmTX7Speekuk=;
+	bh=WY3bjKmRH8qFcnlkWTbgZY0ZY3c7vpOAI5F0Ow5Jn2U=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=PnL5KRwrkGzfuLClUXZF3LIZqQ6EzmD3gJzRrCLSSFa9P7JXtFAKD2TrXnnBsA1l21TGNJCcbqK9ahS0UpKYe8uX79QK4AOLfc9uiKABTDYm0imBspMtimWYXyCXaXPNDKKg170mN6jtRaDzGJ5vnd1uu4t+ncjkzXRSgQUhuac=
+	 MIME-Version; b=NW7/ROeU0LPJfKTqAq2Ud3XnUXFgIWohCG0jEc0iUqVcNTpjGDbU7xPKT/HVFHXgxfgniRpmFqzjeRb8uc0StrsQ8LCVK4KDC9/lOjd9n1iU8iMgx2yYZFguuNMwbBGnTIv8TjuFBE5j6qGZ88cbsteHCXNNkDdgQU6mbPOuXeU=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fkscY6l9QzYQtdQ
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fkscY5zY5zYQtLf
 	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 21:32:29 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D368C4056F
+	by mail.maildlp.com (Postfix) with ESMTP id B900F40590
 	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 21:32:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgDHn0p7e8pp7U0sCw--.17260S7;
+	by APP4 (Coremail) with SMTP id gCh0CgDHn0p7e8pp7U0sCw--.17260S5;
 	Mon, 30 Mar 2026 21:32:48 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz
-Subject: [PATCH v5 3/5] ext4: fix the error handling process in extents_kunit_init).
-Date: Mon, 30 Mar 2026 21:30:33 +0800
-Message-Id: <20260330133035.287842-4-yebin@huaweicloud.com>
+Subject: [PATCH v5 1/5] ext4: fix miss unlock 'sb->s_umount' in extents_kunit_init()
+Date: Mon, 30 Mar 2026 21:30:31 +0800
+Message-Id: <20260330133035.287842-2-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260330133035.287842-1-yebin@huaweicloud.com>
 References: <20260330133035.287842-1-yebin@huaweicloud.com>
@@ -41,13 +41,13 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDHn0p7e8pp7U0sCw--.17260S7
-X-Coremail-Antispam: 1UD129KBjvJXoW7Ar18Gry8tr18Cw1rur1xZrb_yoW5Jr4fpF
-	n3CFy5trW8Z3ZrWFZ3tF18AF13C3WFyrWxCry29asIyay5ZryFgw1ftryj9F909rW8Xr4Y
-	va10qa17ur43JFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
-	A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+X-CM-TRANSID:gCh0CgDHn0p7e8pp7U0sCw--.17260S5
+X-Coremail-Antispam: 1UD129KBjvJXoW7tr17ur4DZw1xZr45Wr48JFb_yoW8Xw1Dpw
+	43AFyUKr1rZ3W7CFW8tF4UtryYka1fCa47CryfWF43XFW7u348Kr1fKF1YkFW5Xa1UXFn8
+	ZF40va4jkw43C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGw
+	A2048vs2IY020Ec7CjxVAFwI0_Jrv_JF4l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
 	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
 	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
 	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
@@ -55,114 +55,52 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7Ar18Gry8tr18Cw1rur1xZrb_yoW5Jr4fpF
 	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
 	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
 	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
-	C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+	C0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
 	6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
-	73UjIFyTuYvjxU2ApnDUUUU
+	73UjIFyTuYvjxUFzV1UUUUU
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-The error processing in extents_kunit_init() is improper, causing
-resource leakage.
-Reconstruct the error handling process to prevent potential resource
-leaks
+There's warning as follows when do ext4 kunit test:
+WARNING: kunit_try_catch/15923 still has locks held!
+7.0.0-rc3-next-20260309-00028-g73f965a1bbb1-dirty #281 Tainted: G            E    N
+1 lock held by kunit_try_catch/15923:
+ #0: ffff888139f860e0 (&type->s_umount_key#70/1){+.+.}-{4:4}, at: alloc_super.constprop.0+0x172/0xa90
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0x180/0x1b0
+ debug_check_no_locks_held+0xc8/0xd0
+ do_exit+0x1502/0x2b20
+ kthread+0x3a9/0x540
+ ret_from_fork+0xa76/0xdf0
+ ret_from_fork_asm+0x1a/0x30
+
+As sget() will return 'sb' which holds 's->s_umount' lock. However,
+"extents-test" miss unlock this lock.
+So unlock 's->s_umount' in the end of extents_kunit_init().
 
 Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
 Signed-off-by: Ye Bin <yebin10@huawei.com>
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/extents-test.c | 50 +++++++++++++++++++++++++++++-------------
- 1 file changed, 35 insertions(+), 15 deletions(-)
+ fs/ext4/extents-test.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index 3d4663d99eb1..4042bc8a95e2 100644
+index 5496b2c8e2cd..82c59291e045 100644
 --- a/fs/ext4/extents-test.c
 +++ b/fs/ext4/extents-test.c
-@@ -225,34 +225,38 @@ static int extents_kunit_init(struct kunit *test)
- 		(struct kunit_ext_test_param *)(test->param_value);
- 	int err;
- 
--	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
--	if (IS_ERR(sb))
--		return PTR_ERR(sb);
--
--	sb->s_blocksize = 4096;
--	sb->s_blocksize_bits = 12;
--
- 	sbi = kzalloc_obj(struct ext4_sb_info);
- 	if (sbi == NULL)
- 		return -ENOMEM;
- 
-+	sb = sget(&ext_fs_type, NULL, ext_set, 0, NULL);
-+	if (IS_ERR(sb)) {
-+		kfree(sbi);
-+		return PTR_ERR(sb);
-+	}
+@@ -309,6 +309,8 @@ static int extents_kunit_init(struct kunit *test)
+ 	kunit_activate_static_stub(test, ext4_ext_zeroout, ext4_ext_zeroout_stub);
+ 	kunit_activate_static_stub(test, ext4_issue_zeroout,
+ 				   ext4_issue_zeroout_stub);
++	up_write(&sb->s_umount);
 +
- 	sbi->s_sb = sb;
- 	sb->s_fs_info = sbi;
- 
-+	sb->s_blocksize = 4096;
-+	sb->s_blocksize_bits = 12;
-+
- 	if (!param || !param->disable_zeroout)
- 		sbi->s_extent_max_zeroout_kb = 32;
- 
-+	err = ext4_es_register_shrinker(sbi);
-+	if (err)
-+		goto out_deactivate;
-+
- 	/* setup the mock inode */
- 	k_ctx.k_ei = kzalloc_obj(struct ext4_inode_info);
--	if (k_ctx.k_ei == NULL)
--		return -ENOMEM;
-+	if (k_ctx.k_ei == NULL) {
-+		err = -ENOMEM;
-+		goto out;
-+	}
- 	ei = k_ctx.k_ei;
- 	inode = &ei->vfs_inode;
- 
--	err = ext4_es_register_shrinker(sbi);
--	if (err)
--		return err;
--
- 	ext4_es_init_tree(&ei->i_es_tree);
- 	rwlock_init(&ei->i_es_lock);
- 	INIT_LIST_HEAD(&ei->i_es_list);
-@@ -267,8 +271,10 @@ static int extents_kunit_init(struct kunit *test)
- 	inode->i_sb = sb;
- 
- 	k_ctx.k_data = kzalloc(EXT_DATA_LEN * 4096, GFP_KERNEL);
--	if (k_ctx.k_data == NULL)
--		return -ENOMEM;
-+	if (k_ctx.k_data == NULL) {
-+		err = -ENOMEM;
-+		goto out;
-+	}
- 
- 	/*
- 	 * set the data area to a junk value
-@@ -313,6 +319,20 @@ static int extents_kunit_init(struct kunit *test)
- 	up_write(&sb->s_umount);
- 
  	return 0;
-+
-+out:
-+	kfree(k_ctx.k_ei);
-+	k_ctx.k_ei = NULL;
-+
-+	kfree(k_ctx.k_data);
-+	k_ctx.k_data = NULL;
-+
-+	ext4_es_unregister_shrinker(sbi);
-+out_deactivate:
-+	deactivate_locked_super(sb);
-+	kfree(sbi);
-+
-+	return err;
  }
  
- /*
 -- 
 2.34.1
 
