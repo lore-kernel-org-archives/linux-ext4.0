@@ -1,109 +1,105 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD0F33B5318
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 13:32:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E4713D5256
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 13:38:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774877579; cv=none; b=NzhhC8ku8WVuW/IgVktlqLIkdIJJYH85wBhPXF5zeR+RVeiFZdmM0mkK2vs7Uwp+t5EHkD+jC4w5jJxCaZe0/Z1HPQUGYkWUURkFwPoQF1HJ8nG47u01AYo60hP9OZfiFT7m1pc4Yn38oGPjyGwsz2LGPJrsTCJBHlAxwrvKisE=
+	t=1774877909; cv=none; b=i1cNPofjS3PbMRo1xHSnG3KSRTncTksFzuvOtKoHszApGyXZnW5wDuRAbccChEg1/WRdsJ5AQOfzgIkXGMu75z4BP+jkkI2ozfgPjZzqacCk4NZCL8IT1Px4yqzVkH8q+ZLztU9a1r+E1Xer8nBo+k2CmyXrqpPDfXdilNDCPnk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774877579; c=relaxed/simple;
-	bh=IPK8WGXxPLWXNwbrdMBAzpcMd/++4/SsEEB+zaGv/7E=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=skmKuzZRfm99dAcDDvD275gv96FqUFvJSiHzRy4aXHM2iEIfJKNJpb1Qnq0cBrX1EVbYqc+5vj1xyJeZDH7NFxxHEvU3p7C/01lLhB0EX9fkkXH+RsVXMS1iHNl6eBEoG+iNj1Gf68SMw/lho1BpeXDKc0peTACovjwF5z+q0HA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fkscY6nmGzYQtfZ
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 21:32:29 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D74A04058C
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2026 21:32:48 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP4 (Coremail) with SMTP id gCh0CgDHn0p7e8pp7U0sCw--.17260S8;
-	Mon, 30 Mar 2026 21:32:48 +0800 (CST)
-From: Ye Bin <yebin@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: jack@suse.cz
-Subject: [PATCH v5 4/5] ext4: fix possible null-ptr-deref in extents_kunit_exit()
-Date: Mon, 30 Mar 2026 21:30:34 +0800
-Message-Id: <20260330133035.287842-5-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260330133035.287842-1-yebin@huaweicloud.com>
-References: <20260330133035.287842-1-yebin@huaweicloud.com>
+	s=arc-20240116; t=1774877909; c=relaxed/simple;
+	bh=5I3685CjXQuqK5dhrwDdVKDMDNbm/PLucafT3sV7jOc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dmEgsmZcX2Ib0MyfbflIHY3EaLehDw3msArBJQzKS8KP81G+7Y7tfWrghKF2PMOsrNMDKJBz/tDKqt56TME4lH3PdxmVZaCwi9ynuLdhy6HGCW7EQ6TB+bqrkWmyvDUXihRS3ebhAZb6TpOzx7M9Bmebs9lLpyvx+3XsSZXt6kI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Q7rK8ICm; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Q7rK8ICm"
+Received: from macsyma.thunk.org ([104.135.218.80])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 62UDc0YL004731
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 30 Mar 2026 09:38:01 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1774877883; bh=oKoVb8nuXmkEGj7x7bnWyG1ytu/H133rG6H1d3IV8Kk=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=Q7rK8ICm/M0dEs0535BIJaLTn8OO/msn808vNCYXkPSDGt6KuVU0ndCoouD5pgRpw
+	 o6kiSv096M7XzumF2IAsf5R/xHh2QHJ73Ni65ovHS63DEhwSQpG6S3JH+hKNwwNuDI
+	 P2j8OKL+1U5MGGoU6CRINdFIuKI0caeXPI146TISAtmqzMMR04zb/D+rNHzkcBgQ/R
+	 FJ7hEw5uK35ny4RP+YuGi8jT/kT+eDeYFyOWL8v7Y/4PquBvjSAMeeas6nGpu11/bC
+	 oWDtGm9lrTiUTfufvYzwIKlwiI6SqQgRJZiWnbbw0XwnyXZD0aulW4GQE1TxWpb+gm
+	 /z7DKv+QeDFMg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 4948F60035F7; Mon, 30 Mar 2026 09:38:00 -0400 (EDT)
+Date: Mon, 30 Mar 2026 09:38:00 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Deepanshu Kartikey <kartikey406@gmail.com>, axboe@kernel.dk,
+        dvyukov@google.com, adilger.kernel@dilger.ca,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org,
+        syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
+Subject: Re: [PATCH] loop: block loop reconfiguration of offset/sizelimit on
+ mounted device
+Message-ID: <20260330133800.GC22278@macsyma.local>
+References: <20260330044334.373480-1-kartikey406@gmail.com>
+ <acoQBLwdc1PqIb0m@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgDHn0p7e8pp7U0sCw--.17260S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7uFyrtw48CF1fCr1ruw1fCrg_yoW8XFykpr
-	sxCF4UKr48Zw1UCFWxGFy5tryakan7CFW7uryxJa1agayDCry8Kr1UKr1UKFZ8XF48JFy5
-	uF10v34UK3W3KaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvEb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E
-	14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-	xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-	z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
-	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
-	1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIx
-	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
-	42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
-	evJa73UjIFyTuYvjxU2CJmUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <acoQBLwdc1PqIb0m@infradead.org>
 
-From: Ye Bin <yebin10@huawei.com>
+On Sun, Mar 29, 2026 at 10:54:12PM -0700, Christoph Hellwig wrote:
+> On Mon, Mar 30, 2026 at 10:13:34AM +0530, Deepanshu Kartikey wrote:
+> > LOOP_SET_STATUS{64} allows changing lo_offset and lo_sizelimit while
+> > a filesystem is mounted on the loop device. This effectively mutates
+> > the data visible to the mounted filesystem, which is equivalent to
+> > writing directly to the block device.
+> 
+> Increasing the size certainly does not do that.
+> 
+> > Export bdev_writes_blocked() so it can be used from the loop driver.
+> 
+> I'm not sure exporting this is a good idea.  Besides the growing the
+> device part above, if someone insist on changing the size, they could
+> do this just fine with a remove block device, so prohibiting it locally
+> just because we can seems odd.  And exporting a helper with obscure
+> usage for a strange use case without documenting that is rarely a
+> good idea.
 
-There's issue as follows:
-KASAN: null-ptr-deref in range [0x00000000000002c0-0x00000000000002c7]
-Tainted: [E]=UNSIGNED_MODULE, [N]=TEST
-RIP: 0010:extents_kunit_exit+0x2e/0xc0 [ext4_test]
-Call Trace:
- <TASK>
- kunit_try_run_case_cleanup+0xbc/0x100 [kunit]
- kunit_generic_run_threadfn_adapter+0x89/0x100 [kunit]
- kthread+0x408/0x540
- ret_from_fork+0xa76/0xdf0
- ret_from_fork_asm+0x1a/0x30
+The patch was missing the...
 
-Above issue happens as extents_kunit_init() init testcase failed.
-So test if testcase is inited success.
+  #ifndef CONFIG_BLK_DEV_WRITE_MOUNTED)
 
-Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
-Signed-off-by: Ye Bin <yebin10@huawei.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
----
- fs/ext4/extents-test.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+... in loop.c which was in my original sketch of a patch which I sent
+to Deepanshu.
 
-diff --git a/fs/ext4/extents-test.c b/fs/ext4/extents-test.c
-index 4042bc8a95e2..6b53a3f39fcd 100644
---- a/fs/ext4/extents-test.c
-+++ b/fs/ext4/extents-test.c
-@@ -142,9 +142,12 @@ static struct file_system_type ext_fs_type = {
- 
- static void extents_kunit_exit(struct kunit *test)
- {
--	struct super_block *sb = k_ctx.k_ei->vfs_inode.i_sb;
--	struct ext4_sb_info *sbi = sb->s_fs_info;
-+	struct ext4_sb_info *sbi;
- 
-+	if (!k_ctx.k_ei)
-+		return;
-+
-+	sbi = k_ctx.k_ei->vfs_inode.i_sb->s_fs_info;
- 	ext4_es_unregister_shrinker(sbi);
- 	deactivate_super(sbi->s_sb);
- 	kfree(sbi);
--- 
-2.34.1
+The intent was to suppress Syzkaller noise.  Inherent in my assumption
+was that changing either lo_offset or lo_sizelimit parameter was going
+to mutate the loop device when it was mounted, which was the intent of
+!CONFIG_BLK_DEV_WRITE_MOUNTED.  I also assumed that at least for now,
+the only user of !CONFIG_BLK_DEV_WRITE_MOUNTED was syzkaller, since
+there are file systems (in particular ext4) that are commonly in use
+whose userspace utilities fundamentally assume that you can write to
+the block device.  Even after we promulgate the tune2fs changes to use
+the new EXT4_IOC_SET_TUNE_SB_PARAM ioctl and we can assume that it is
+common use in deployed kernels, some grub operations still assume they
+can modify the block device where the second-stage grub bootloader is
+located.
 
+In the long term, when ext4 can start assuming that we can suppress
+writes to the block device (and we find a solution to the grub issue),
+we'll probably want to have a way to suppress write access to block
+devices on a per-super basis, without clearing the Kconfig 
+CONFIG_BLK_DEV_WRITE_MOUNTED.   But that's a problem for another day...
+
+Cheers,
+
+						- Ted
