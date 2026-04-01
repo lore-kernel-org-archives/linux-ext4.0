@@ -1,88 +1,88 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E22F1175A8D
-	for <linux-ext4@vger.kernel.org>; Wed,  1 Apr 2026 17:07:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B130538A73A
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Apr 2026 17:09:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775063229; cv=none; b=B88H2+mjRYK9Vum+9tvstM4F2LzH0Zenbq55x90OVT5Vc+wqPlvR5D4YhS82heTNx29NzIPxED6Oau3JyV9nJy0QWqFmWmFl1D5vcp/ndND8YNaMjbfpg8Fjx/pn67HTHKm7UmgVsZVVu6NhSQpDEOIyj+nKOZhT9mn2Nb73I0w=
+	t=1775063394; cv=none; b=lGnbjvO8iuxkx/33LzvHCvYIcbo3Nc+CA6YBv+9wwepKSkdCqz6afSW4ezshexXGiVkMT+A0DieQJr0Yf6sP9gsm5ugjRAXDR6CpwFPD/ua33UqwLd+3gsk/MeFKAK8ZB2Mg10AYr6cxWsv/Dht6leiQhXM9S00AgPdguCHg1H4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775063229; c=relaxed/simple;
-	bh=xRsKN8MrdETEILgWHpUGTvIUTJ3n7YLEUWqMJULpGEo=;
+	s=arc-20240116; t=1775063394; c=relaxed/simple;
+	bh=zuswW9Ijwau12aEArle5jZB/zDri6gpTHLihHZoZE+w=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EtdV/nZI8rAq8QBUOLUWfiZ9/mdkiBLGwVN5hmmAfAFhch8w76qBXw1AGycj/Rw2ZLuyA2S1yb9as9IUDgpJum2lstxfP6kqr3rvTPM3YbsIaAQsU3TFMv4XMYZjhD0Y1uw8WrCUtYuh8EMQcg4WogIK2YXJiTxwqCENnbYhpik=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=nJTtVf3j; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Qag/9aOP; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=nJTtVf3j; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Qag/9aOP; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=qx7E4x1vcSiJ5zgvDF7HCp98uVSCVfyq5NftfyLi2X8Bbjrykg/tsNrjsNO9u/+sydMCE1OSOKYDY2HjGZMbLpZnD9jPeKtjybwgxZ9TDWCGNu0thfic9ntcFUMqF7zl2ypev4tISSEeXCbjEACuz9I9cg7NVEW4GbHzzXQnA64=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=uLSfyvjq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uc63ha5M; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=uLSfyvjq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uc63ha5M; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="nJTtVf3j";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Qag/9aOP";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="nJTtVf3j";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Qag/9aOP"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="uLSfyvjq";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uc63ha5M";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="uLSfyvjq";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uc63ha5M"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 2E4F44D2F2;
-	Wed,  1 Apr 2026 17:07:06 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 0D6574D2FA;
+	Wed,  1 Apr 2026 17:09:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775063226; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1775063391; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=62cpOEFcjibuBDALz/XAHBkgr56beA18PKbbvkuIyfc=;
-	b=nJTtVf3jOx5wYjbvpOh9RPte7pQlfELYOoWH8In1g94DPSg0KgiRs5V5huw+W1P8b7pLen
-	vTfdPsFdJ/VsEBQLZY8/OCqCLQkRvdZypHhKbrEmYLiYzWw9wWukqiBLaYR1WDyzKmDPrj
-	Zf5ICwIzOxc7hVvY/XEaxDLlt7uhq0U=
+	bh=vSgRhppgwKWIEfWQoyoSQRU+OilmAJs4JdNcpHT8F0U=;
+	b=uLSfyvjqeXsxReF4Fsnfgvt92NNM+qFFN/d4curKQu8Pxt3MEIavlKMN+nmZgn7u8HszNX
+	36FFO1daha2Hs18FWKvYvdT/mu+D3EKlW3LDrAgrFXnTveio0sqAeAEL7TyB/mGrV0M7s9
+	jAeHGbcSnpmw6sTv1sqI69z8SuJ/QTU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775063226;
+	s=susede2_ed25519; t=1775063391;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=62cpOEFcjibuBDALz/XAHBkgr56beA18PKbbvkuIyfc=;
-	b=Qag/9aOPRrCU+DLCn73MbXhFy5xF95uF5OfGbUEFyobAsI0VpmNgck8EP2AAQvJdySMKYc
-	NKj1mvkW1jbjYuDw==
+	bh=vSgRhppgwKWIEfWQoyoSQRU+OilmAJs4JdNcpHT8F0U=;
+	b=uc63ha5Mfh0q5GxGvLlznXYXm1JWJuLYQ6uASUiQW7wGdeqKt1/fs/p4AINK+UfF9BQQAx
+	wjtRceQaPFRjs6Cg==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=nJTtVf3j;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="Qag/9aOP"
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775063226; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1775063391; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=62cpOEFcjibuBDALz/XAHBkgr56beA18PKbbvkuIyfc=;
-	b=nJTtVf3jOx5wYjbvpOh9RPte7pQlfELYOoWH8In1g94DPSg0KgiRs5V5huw+W1P8b7pLen
-	vTfdPsFdJ/VsEBQLZY8/OCqCLQkRvdZypHhKbrEmYLiYzWw9wWukqiBLaYR1WDyzKmDPrj
-	Zf5ICwIzOxc7hVvY/XEaxDLlt7uhq0U=
+	bh=vSgRhppgwKWIEfWQoyoSQRU+OilmAJs4JdNcpHT8F0U=;
+	b=uLSfyvjqeXsxReF4Fsnfgvt92NNM+qFFN/d4curKQu8Pxt3MEIavlKMN+nmZgn7u8HszNX
+	36FFO1daha2Hs18FWKvYvdT/mu+D3EKlW3LDrAgrFXnTveio0sqAeAEL7TyB/mGrV0M7s9
+	jAeHGbcSnpmw6sTv1sqI69z8SuJ/QTU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775063226;
+	s=susede2_ed25519; t=1775063391;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=62cpOEFcjibuBDALz/XAHBkgr56beA18PKbbvkuIyfc=;
-	b=Qag/9aOPRrCU+DLCn73MbXhFy5xF95uF5OfGbUEFyobAsI0VpmNgck8EP2AAQvJdySMKYc
-	NKj1mvkW1jbjYuDw==
+	bh=vSgRhppgwKWIEfWQoyoSQRU+OilmAJs4JdNcpHT8F0U=;
+	b=uc63ha5Mfh0q5GxGvLlznXYXm1JWJuLYQ6uASUiQW7wGdeqKt1/fs/p4AINK+UfF9BQQAx
+	wjtRceQaPFRjs6Cg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 21E5B4A0B0;
-	Wed,  1 Apr 2026 17:07:06 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0103A4A0B0;
+	Wed,  1 Apr 2026 17:09:51 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id zntECLpQzWnjJQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 01 Apr 2026 17:07:06 +0000
+	id Whg8AF9RzWmpKAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 01 Apr 2026 17:09:51 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id DD8B2A0B39; Wed,  1 Apr 2026 19:06:50 +0200 (CEST)
-Date: Wed, 1 Apr 2026 19:06:50 +0200
+	id 76F30A0B39; Wed,  1 Apr 2026 19:09:35 +0200 (CEST)
+Date: Wed, 1 Apr 2026 19:09:35 +0200
 From: Jan Kara <jack@suse.cz>
 To: Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
 	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
 	ojaswin@linux.ibm.com, ritesh.list@gmail.com, libaokun@linux.alibaba.com, 
 	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 10/13] ext4: unify SYNC mode checks in fallocate paths
-Message-ID: <k3ql262rzl6zn4vgkdqz2h2y55etwo6fcvyupb4l45ydcqhsha@wu7w74sjd5wr>
+Subject: Re: [PATCH v4 11/13] ext4: remove ctime/mtime update from
+ ext4_alloc_file_blocks()
+Message-ID: <7smodlgpgfkmd2wmdmfe5vkdhuvjelmejh6nho5vn3dnij3cai@y4zxwrqtcujj>
 References: <20260327102939.1095257-1-yi.zhang@huaweicloud.com>
- <20260327102939.1095257-11-yi.zhang@huaweicloud.com>
+ <20260327102939.1095257-12-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,118 +91,74 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260327102939.1095257-11-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
+In-Reply-To: <20260327102939.1095257-12-yi.zhang@huaweicloud.com>
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	RCVD_TLS_LAST(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,huawei.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
-X-Rspamd-Action: no action
+	MIME_TRACE(0.00)[0:+];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Flag: NO
-X-Spam-Score: -2.51
+X-Spam-Score: -2.30
 X-Spam-Level: 
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 2E4F44D2F2
 
-On Fri 27-03-26 18:29:36, Zhang Yi wrote:
+On Fri 27-03-26 18:29:37, Zhang Yi wrote:
 > From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> In the ext4 fallocate call chain, SYNC mode handling is inconsistent:
-> some places check the inode state, while others check the open file
-> descriptor state. Unify these checks by evaluating both conditions
-> to ensure consistent behavior across all fallocate operations.
+> The ctime and mtime update is already handled by file_modified() in
+> ext4_fallocate(), the caller of ext4_alloc_file_blocks(). So remove the
+> redundant calls to inode_set_ctime_current() and inode_set_mtime_to_ts()
+> in ext4_alloc_file_blocks().
 > 
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-Ah, OK, you unify it here :). Feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext4/extents.c | 9 +++++----
->  fs/ext4/inode.c   | 2 +-
->  2 files changed, 6 insertions(+), 5 deletions(-)
+>  fs/ext4/extents.c | 5 +----
+>  1 file changed, 1 insertion(+), 4 deletions(-)
 > 
 > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 16386f499138..f4009544f762 100644
+> index f4009544f762..7abe47f923c0 100644
 > --- a/fs/ext4/extents.c
 > +++ b/fs/ext4/extents.c
-> @@ -4753,7 +4753,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  		goto out_handle;
->  
->  	ext4_update_inode_fsync_trans(handle, inode, 1);
-> -	if (file->f_flags & O_SYNC)
-> +	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
->  		ext4_handle_sync(handle);
->  
->  out_handle:
-> @@ -4791,7 +4791,8 @@ static long ext4_do_fallocate(struct file *file, loff_t offset,
->  	if (ret)
->  		goto out;
->  
-> -	if (file->f_flags & O_SYNC && EXT4_SB(inode->i_sb)->s_journal) {
-> +	if (((file->f_flags & O_SYNC) || IS_SYNC(inode)) &&
-> +	    EXT4_SB(inode->i_sb)->s_journal) {
->  		ret = ext4_fc_commit(EXT4_SB(inode->i_sb)->s_journal,
->  					EXT4_I(inode)->i_sync_tid);
->  	}
-> @@ -5564,7 +5565,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
->  		goto out_handle;
->  
->  	ext4_update_inode_fsync_trans(handle, inode, 1);
-> -	if (IS_SYNC(inode))
-> +	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
->  		ext4_handle_sync(handle);
->  
->  out_handle:
-> @@ -5688,7 +5689,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
->  		goto out_handle;
->  
->  	ext4_update_inode_fsync_trans(handle, inode, 1);
-> -	if (IS_SYNC(inode))
-> +	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
->  		ext4_handle_sync(handle);
->  
->  out_handle:
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b934ad86a96d..3b150e643ef5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4501,7 +4501,7 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
->  		goto out_handle;
->  
->  	ext4_update_inode_fsync_trans(handle, inode, 1);
-> -	if (IS_SYNC(inode))
-> +	if ((file->f_flags & O_SYNC) || IS_SYNC(inode))
->  		ext4_handle_sync(handle);
->  out_handle:
->  	ext4_journal_stop(handle);
+> @@ -4623,13 +4623,10 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+>  		 */
+>  		retries = 0;
+>  		epos = EXT4_LBLK_TO_B(inode, map.m_lblk + ret);
+> -		inode_set_ctime_current(inode);
+>  		if (new_size) {
+>  			if (epos > new_size)
+>  				epos = new_size;
+> -			if (ext4_update_inode_size(inode, epos) & 0x1)
+> -				inode_set_mtime_to_ts(inode,
+> -						      inode_get_ctime(inode));
+> +			ext4_update_inode_size(inode, epos);
+>  			if (epos > old_size)
+>  				pagecache_isize_extended(inode, old_size, epos);
+>  		}
 > -- 
 > 2.52.0
 > 
