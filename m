@@ -1,140 +1,70 @@
-Received: from mail-pl1-f172.google.com (mail-pl1-f172.google.com [209.85.214.172])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC1E91C84BB
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Apr 2026 07:33:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3013D3DF008
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Apr 2026 13:49:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775115238; cv=none; b=bJauYvwANOTa6knqTtVDdgLPErG/ohwvF2GF5hg5yZo/FqWPEulyF7EEoiHINdPTJPwbjgfcDAGvs/JiuOuB4pMbuc33xVczcXn33rtJEdkuKMspfTI43HSaUzV7/lMHsh7H6bq1L5eOLus+PCQmL6Shhc08OUjsdmCMerfpQz4=
+	t=1775137778; cv=none; b=SFxMJdydLjr82JbSa42S5xJuJ5GFHz2UvKPj2tRbJDlaBiRtL/5oUfkPbbO/87PI/N4QOf2CGXqoHzdBIlt5BGUv+opM7GYwvph4PxmKI9kf9V5Kr/D//RT0kMSDLKLY/PkIKUuW/klBtH79x6K8ljW+Tvd2fUc/4dWkNaGzer8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775115238; c=relaxed/simple;
-	bh=kk/SGZETr3VbKn5r9SfE07zMdaV8VAHVgU3f+PHmrTc=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Jyi1I7XadFiIteaIsFK/czDkJv29APMlDdUAdjwmjOWjETpIrAy7Q6TDuGjymHD75PStr6vEFHRBEMbplVf5BcuVUFcYxTsZ/pFa79U/8yUukd337xUqBsrhYjV/FX0Mzmq0b8VDQDf1cId8BaM1gvK2FYdmvIPkZmIzhjeZgEk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TcYPpT64; arc=none smtp.client-ip=209.85.214.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1775137778; c=relaxed/simple;
+	bh=ZKaLgI/GXGxdScdhPM43X/72a0hDedyjAnXxqJ1vGoU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=n83dS7X6+NEleKgVWjxTOV+B9iYmrE9agEu4/Q5Gr/ciUh9dGbhPUt/Kz+BxECuLVbODlqM6fuHi+gSrcG00LUGvBMOSdfPfO1yxIk2Yr2R/+Qj/WVL+nG2CXO+lTLUd81Hq76Y6s6LOC7I+Hl3yn5t9W95wN8WLEbKIPJ9pdGY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Mk9TQfmh; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TcYPpT64"
-Received: by mail-pl1-f172.google.com with SMTP id d9443c01a7336-2b25cf1b5f0so3232055ad.3
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Apr 2026 00:33:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1775115236; x=1775720036; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=JK30YBReA195moqsRsDMjywxisJV4gXm9twSxeD57TE=;
-        b=TcYPpT64yn3+4g8AobUWmV9CCa+ERelf9mfzlF6kWwY1paVbjj8hvwzsn72/JCr3e6
-         mR8EUC+FAQ7ewno5YF+US/u2XhH8NMbgAGGnrM0jjV/XhgD9cCs8luO3G5PtHbzY4AMZ
-         Mzk5RcI8YUFqLy0dlcr5br8ZPSZgDubZiUfE5+fasuJ9vSWYSM86o6tZWPaJkFzVKncO
-         VjFRAu8tUu93e03F4yXtbv0Ax9Cx8QLxQSfHkkeZDc/HCINaJ43baY2UVKluzPa2/H4E
-         /jjjEb4hzrmH62uzefiVbfgiFqA7rzamouCOQYF3xJOTQQQekYXhOIjHXU6G2Siw25qA
-         fXYA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775115236; x=1775720036;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=JK30YBReA195moqsRsDMjywxisJV4gXm9twSxeD57TE=;
-        b=E+iSWG86dPE6OenWMMtHIhk3YVLfa3aSTmx9bBduHaTZQqSD7JCJBZJVOLMRY6Q/9d
-         hroTHUmXFeMnfWSsUgLebAbdT+EQm2jZi83gGHdFK1FbD3hNZAJA56yM5JZXdyug5YzB
-         dGhRBLf6vTIeLxInEkuJo0XBhcHrzHKjJa4qin8Nm+PPGTOvQJVk3bCUKE5A9YTJp9qu
-         c+KfT26RdLbHkYLK2Rvb7u4tuM9D7ZkkktEgKBrmAJPh1WxRFBQAqubddwjJO2yUHcE2
-         Q+zZ774JIBtJix1/9J8dPk4GwXUdgg3SlSxXDmQg4M542cNBQBPzsemznQT9+n1iSXN4
-         aITA==
-X-Forwarded-Encrypted: i=1; AJvYcCXOS0k/K8iAWKx28PaCqJ6YEhofbKwq9Bv1y4XoEWdyCTC6ghAWVmJ//0SF64Dd3qpehpp3kQF0JY76@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx52dujs6+iXqUAOPp8+7QFOyiveKfQVcfxWXukMmYHUdlf6wxd
-	HZUq6rsoYPiSmABe6yUpkKVZF+pjlWB6NuffLJEW/J/DDlUYDkMTwcTe
-X-Gm-Gg: AeBDiesR08ZZ74NDjHTyTR3qFexhezxqdVnRNQDDEonap0maO/lSdV18ruNpsjDt6xG
-	BB58Cz1vJwx739fs2rISldyjW6CSyyumJ9thqkKDjMKKmiiXZgwLe1wLTy+T4VnGs9KP8ygdSlQ
-	ojpJWEEZ5o8/VUJB/2TCBldddapLrJrA5jIBgGnV2yLOMLF224BL6bMGTK69jNi66/74RrHS82b
-	xlFdJIAscJKTXQF9fMBjpFu4yF+Gvjn9UR8REzmmKGJlKHL5rwFVdq169QXz5jIXIJwEtNSEPyy
-	rzlZWnIvSNx0734oeKO2A6LQqGjAaeQ1z+PygdRLYzuNO1FX92P5BSsxHWcZHskkrHi+QMC3nVF
-	kHIyFWFxIXImfxAGYRLApLwpEQ+fNvHrNsK6TZTVTP9MadESd9Lx6AzmeCvLM3N2w50NyA7Uq/P
-	jJSgunNHpuo1GnP+Cick6iCQKCB1o=
-X-Received: by 2002:a17:903:248:b0:2b2:5723:12c3 with SMTP id d9443c01a7336-2b269ccfbfemr64748095ad.43.1775115236283;
-        Thu, 02 Apr 2026 00:33:56 -0700 (PDT)
-Received: from [192.168.50.90] ([116.87.14.48])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b27497c0f3sm19793405ad.41.2026.04.02.00.33.53
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 02 Apr 2026 00:33:55 -0700 (PDT)
-Message-ID: <4da9792d-5f4a-4619-91e2-4ffc1691b867@gmail.com>
-Date: Thu, 2 Apr 2026 15:33:52 +0800
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Mk9TQfmh"
+Received: from macsyma.thunk.org (pool-173-48-112-174.bstnma.fios.verizon.net [173.48.112.174])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 632DnSwV004953
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 2 Apr 2026 09:49:29 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1775137770; bh=hudNQZMnqf0t9Ux7pIOBg3Z8Z4FbyJqxC9ujCz7aJ9w=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=Mk9TQfmh8yqvkwDskW3/+YIb6KBHMOV7WsUDgPGzJ1DoaJr4jJdJ9mmkg8XBuGrKk
+	 C5PS4nJbM0np2RquoMZljy2piN3aNE6w6UbZAzBvZdjIuFhEdbPl32cB7O/OcUO0CW
+	 x6JvwU1Iq2QVjgCL62zUV/uM9oDcNdmwBGpGx+KzXA9wVxyUUnD0qEKHO+dqfZcXfb
+	 NORZ2fC7b+jGG/Wfd52MXMnFXgYlR6WN9GINQ8dqXBnwh6QHytZPNmwXKcSW+PqRKf
+	 Y3kteSOWx80Gh7nsECSqRQrn2M6WPwDDZYWBs4ponwtCLvQnRRqVXWV8ctIOySAVsr
+	 ioQLbn0BuhUVg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 29F9D60D95E7; Thu,  2 Apr 2026 09:48:28 -0400 (EDT)
+Date: Thu, 2 Apr 2026 09:48:28 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [GIT PULL 3/9] fuse2fs: clean up operation startup
+Message-ID: <20260402134828.GB15407@macsyma-wired.lan>
+References: <20260312205728.GA6004@frogsfrogsfrogs>
+ <177334916519.3254574.10658825847200071665.stg-ugh@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
- collisions
-To: Theodore Tso <tytso@mit.edu>
-Cc: Andreas Dilger <adilger@dilger.ca>, "Darrick J. Wong"
- <djwong@kernel.org>, Anand Jain <asj@kernel.org>,
- linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
- linux-xfs@vger.kernel.org, hch@infradead.org
-References: <cover.1774092915.git.asj@kernel.org>
- <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
- <20260323041624.GA11453@mac.lan> <20260323152943.GH6223@frogsfrogsfrogs>
- <5DB914D4-594D-49EE-B69E-6F68E9C103A1@dilger.ca>
- <91d1e10b-b24d-477a-8724-2a75a710dd8d@gmail.com>
- <20260325125952.GB2107@macsyma.local>
-Content-Language: en-US
-From: Anand Jain <anajain.sg@gmail.com>
-In-Reply-To: <20260325125952.GB2107@macsyma.local>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <177334916519.3254574.10658825847200071665.stg-ugh@frogsfrogsfrogs>
 
-
-
-On 25/3/26 20:59, Theodore Tso wrote:
-> On Wed, Mar 25, 2026 at 06:59:32PM +0800, Anand Jain wrote:
->>
->> IMO, sb->s_uuid (as used by overlayfs)
->> Represents a filesystem UUID that is persistent.
->> It is derived from on-disk metadata.
->>
->> statfs()->f_fsid is..
->> A kind of runtime filesystem identifier used to distinguish mounted
->> filesystems within a running system.
->> It may be stable across reboots or device removal and reinsertion,
->> but this is not guaranteed. It may change if the device dev_t changes.
+On Thu, Mar 12, 2026 at 02:00:11PM -0700, Darrick J. Wong wrote:
 > 
-> I always worry about "it might be stable, but it might not; ¯\_(ツ)_/¯"
+> As usual, I did a test-merge with the main upstream branch as of a few
+> minutes ago, and didn't see any conflicts.  Please let me know if you
+> encounter any problems.
 > 
-> The problem with that is that people might starting using this
-> kinda-of-guarantee-but-maybe-not in scripts or in programs, and then
-> when people try to run that script or program on a different system,
-> or on a different file system, things goes *boom*.
-> 
-> So if we want to say that it is stable so long as dev_t and the file
-> system the same, that's a well defined semantic.
-> 
+> The following changes since commit a4fc4817e3072cb19f481da24d4520671a174fff:
+>
+> fuse2fs: implement MMP updates (2026-03-08 19:14:04 -0700)
 
-Yeah, agreed. Avoid misuse. Document that f_fsid is stable as long
-as dev_t and the underlying filesystem identity don't change.
+Thanks, merged.  (BTW, I noticed that the previous pull request
+resulted in a large number of regression test failures triggered by
+improving libext2fs's dir_index support.  I should have noticed it
+earlier, but I had skipped running "make -j24 check" after merging the
+previous pull request, which is my bad.)
 
-> If it's that it has no guarantees whatsoever; cloud change across
-> reboots; could change across remounts, then maybe it should just be a
-> global mount sequence number that starts with a random number at boot.
-> So you can use it to distinguish between different mounted file
-> systems, but that's *all* you can do with the thing.  That would also
-> be a well defined semantic.
-> 
-
-Per-mount random value (or global mount sequence) is also a
-well-defined semantic, but it comes with trade-offs: we lose
-consistency across mount cycles and need to carry per-mount
-state.
-
-IMHO, it's better to stick with a deterministic id:
-
-  f_fsid = f(dev_t, fsid)
-
-predictable and aligned with XFS/btrfs and avoids additional state.
-Bottom line, it fixes the cloned filesystem case without regressing
-the existing semantics.
-
-
+					- Ted
