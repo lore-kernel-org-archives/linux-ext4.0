@@ -1,80 +1,90 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f47.google.com (mail-pj1-f47.google.com [209.85.216.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24CA733F383;
-	Wed,  1 Apr 2026 23:57:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93AED1D516C
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Apr 2026 00:24:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775087836; cv=none; b=R8fa5qHxfNSo8xVFTj651cD9P4aDd2LNf36OA5AOM4fa9HfaUx4wJrZhHhSYLw1gt46Vt6XPuxFssOdrC6VfVWcKP9DC6e93yU9LFW33VjkVIpMLIWSUi8FTJhX2zlw4BoblM9GJZxpqhdAxVlDxOKTcaQiRGve4CAKygYq3B5w=
+	t=1775089445; cv=none; b=rrxy3buEZ0LaD9SzEAUu/1bfi/mZ5mJAcizomAtAL9rb0f5SxcrmLyGedLlLbTFkOJ34WjIdDExdhFA+BD5lhjVj3tUXCt/bc8D+jCm8dlJpL6Zv6SqQxF+8RK/BIgYngdEe+m+WizpRHUyUmzQ0gHVr6VmqJvhYciZUqnN4fHQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775087836; c=relaxed/simple;
-	bh=tcQn0jNvskFSJW+K9iuub+kF7CbhB6AAKIoY7X78kfg=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pPgqirgA0Y7aLCKM8j1bzWF+Q5nKvhZ1n5dwjXj3YihJCHI75cqw298V5ckAeKDIOTyod0QCe7WWqUJLIBlm48+SoEA/b0V9x0ujYoRjllXlvB3aAx65ikd7j+v5SNNOfvLuEU1OiXHaabB9EzaUKuxc/n1AWJp1yuiOzCEIPYo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pmqH/gYS; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1775089445; c=relaxed/simple;
+	bh=Olu5tsASkZ1VQLA+MfMnYz52JkAp74HQENbsucNki00=;
+	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=uWKt6EWceRzgvUXp5NXRzduP1Ehe9EcyMzQ2O5WE0gWOS/qeMrXP5ZUnP/yXVvP4x7GWzx0aZBGFFxj+I8TtwlUehpclu6EmWgGzXyZHuHbUJf2bZkuuAlA4xrhlIV6+37UmnotxTYhJ1a9+/VDFS9aHTbylqyFzElOBeyniLjY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=a9HjXOF5; arc=none smtp.client-ip=209.85.216.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pmqH/gYS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E119C4CEF7;
-	Wed,  1 Apr 2026 23:57:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775087835;
-	bh=tcQn0jNvskFSJW+K9iuub+kF7CbhB6AAKIoY7X78kfg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=pmqH/gYS7H3A8WIi5YaQwSPGuloLcc9oof281lzvAWGN4iW/sx8PxnpcmLa0fkTwI
-	 VLuQCSdS+pad4iKkwf6iYNFDE3CubyeXY+Gg9/AM262caq/JvUaUw9j3K8YSzBXyO3
-	 /8B8BvgqIyeJ3QXT26IHd05FmQsg/BwIrsJXNwDoiYKa/Xn45P1xdC1LR1QKuve4fe
-	 O0rVwIHQmzCtvy1QZm33yuuaFlHzDjwoQWgGejb3a8A84Lx1VmzrRtNWZ3YQ39eBYG
-	 HYB8qVoDf61xKIhY8HVfbWP+sT3x02HLL0iH5yOeRFZWBdyKrOjTQTwiuyIWlU9A7Q
-	 3zO85+iKzq84A==
-Date: Wed, 1 Apr 2026 16:57:13 -0700
-From: Eric Biggers <ebiggers@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: linux-xfs@vger.kernel.org, fsverity@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org, hch@lst.de,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-btrfs@vger.kernel.org, djwong@kernel.org
-Subject: Re: [PATCH v6 15/22] xfs: add fs-verity support
-Message-ID: <20260401235713.GC14247@quark>
-References: <20260331212827.2631020-1-aalbersh@kernel.org>
- <20260331212827.2631020-16-aalbersh@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="a9HjXOF5"
+Received: by mail-pj1-f47.google.com with SMTP id 98e67ed59e1d1-35d9f68d011so157587a91.2
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Apr 2026 17:24:04 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1775089444; x=1775694244; darn=vger.kernel.org;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=i9XhsCJfPlh4GHkbFm3hgDAzLOlaHJE8sb4/uRoIfO4=;
+        b=a9HjXOF53UekSldf7w5oyQ5XWDH5vM6VGCz+6i7WchN6cChz+xwWv6RRba5VVzeiKZ
+         7kNjaYAepyi95wbz+wv9WaQM7rauagtaOVRcW6KMiLwygWgZY9E7VPF/GHyb7nvP9rcF
+         +l3spxzXSpB8Cgr50YYeRfl33aiNo9/gw5mbVDQlPTiDmFMARaWePpEb/E+hztuvS3fk
+         K4yZEpA6Ti0DYa7Jk3lJWa8Hh8H+YwLC3duWb2wkzk1u+etTRmLeq1RV+C9th5bcs9vw
+         25+9ZhyRddEd8fboARrOjAY3eDIsA8KXK1mgpGVlK6yK5MUUmmipb/ZbUnx52hqPPNV/
+         /Phg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1775089444; x=1775694244;
+        h=references:message-id:date:in-reply-to:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=i9XhsCJfPlh4GHkbFm3hgDAzLOlaHJE8sb4/uRoIfO4=;
+        b=EhjN8jabmIui56OCR6i7gtv4LhD0NowSAg0N/92vrwshHt1F9DrS8iriWrPC6mi2Wg
+         zbqEGkd3Nu41yUTjY6XXq3ImkXPWiKAiP7j32poAipOrl9q1UTkOgI2GRRyvAkQ7YEwB
+         1E874MDKDYJjbuLYBiBH/9mKb8qHvKrjXMJKoIb3hQxj/x4qAC4FzTknaq6zbwuE2D4U
+         zd6DqfG3CI9SWxdx7VxuzwmrsdwcbGr6b5pcd5KuDwGan8jC/UdiAqQ6O+bfhkOtGAGv
+         8CRbl3Z717HyvQgVjMBZcZl5UTxd6obJWGSuq7dReYsMZajX33Hl7asUocpZzLxTuJEN
+         y7Pg==
+X-Forwarded-Encrypted: i=1; AJvYcCUgt0tfb1IiK7H5qNRVmUxJ7859+5s2L1pyuaPrbYxn6MP7y7Qh1S885b1cf92qWyR8peYbk7YNIyuk@vger.kernel.org
+X-Gm-Message-State: AOJu0YzWIQ0wtnu+hi+eDgLL81FQOlECFKPfuopQybjYq3xX0Dz9thBh
+	63kd/PkrJ3UIcXxr2KvQckDTb/r87inyfnhXADPmuUm3b+QiFToEZ/7Dmwrfvyp/
+X-Gm-Gg: ATEYQzwJkjkfMA4tpoCjae2QF1tcsZ8iBOf70rsSfNXxXrxw8K/t4hqa4kHHlLayLMW
+	9gCOJg5AF4ameq3LwYQu3BioE7VA4rNPQSf4+gL6LZz40Rcl7ivLYcO+AnLU0jY10kdNyX8rTPm
+	aRBpSE4GSmxMb5olIcQ/7rCcNCk48HDM16XnXTqff/HYjbo/OI18OTeL1U/p9z/fj9wGROVFF3I
+	oIibBmo7+lmy9zspsIgrz2Mn6WMpjjSLGusU9C5bw6tMjdFNqrnitqpRbUlIAvDZOFv3ZoOeErK
+	nqhJ32uOJb/44iAxotQZ9vG+TVppBi//6Eph/JF+MPBPdQXs1sifke1+6UJkv8I/wQdXh1LAirn
+	QNnpWDOhClQKYTDNACHcP3dxS+ROq5p4I+L76usBBVuI9cVTmwA0qRbEtfiwJNz/f4S+/OGN29J
+	RbrOUbdRbfJ5gxvmgHH5NAfkQVOwYx4j49
+X-Received: by 2002:a17:90b:48:b0:35b:e4d8:e21d with SMTP id 98e67ed59e1d1-35dc6e7aac9mr5276300a91.2.1775089443841;
+        Wed, 01 Apr 2026 17:24:03 -0700 (PDT)
+Received: from pve-server ([49.205.216.49])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35dbe5e4ba7sm5936280a91.4.2026.04.01.17.24.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 01 Apr 2026 17:24:03 -0700 (PDT)
+From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
+To: Ye Bin <yebin@huaweicloud.com>, tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc: jack@suse.cz
+Subject: Re: [PATCH v5 3/5] ext4: fix the error handling process in extents_kunit_init).
+In-Reply-To: <20260330133035.287842-4-yebin@huaweicloud.com>
+Date: Thu, 02 Apr 2026 05:51:58 +0530
+Message-ID: <ldf6mct5.ritesh.list@gmail.com>
+References: <20260330133035.287842-1-yebin@huaweicloud.com> <20260330133035.287842-4-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260331212827.2631020-16-aalbersh@kernel.org>
 
-On Tue, Mar 31, 2026 at 11:28:16PM +0200, Andrey Albershteyn wrote:
-> +	/*
-> +	 * If this is a block full of hashes of zeroed blocks, don't bother
-> +	 * storing the block. We can synthesize them later.
-> +	 *
-> +	 * However, do this only in case Merkle tree block == fs block size.
-> +	 * Iomap synthesizes these blocks based on holes in the merkle tree. We
-> +	 * won't be able to tell if something need to be synthesizes for the
-> +	 * range in the fs block. For example, for 4k filesystem block
-> +	 *
-> +	 *	[ 1k | zero hashes | zero hashes | 1k ]
-> +	 *
-> +	 * Iomap won't know about these empty blocks.
-> +	 */
-> +	for (i = 0, p = buf; i < size; i += digest_size, p += digest_size)
-> +		if (memcmp(p, zero_digest, digest_size))
-> +			break;
-> +	if (i == size && size == ip->i_mount->m_sb.sb_blocksize)
-> +		return 0;
+Ye Bin <yebin@huaweicloud.com> writes:
 
-Might be too subtle, but this could be done more efficiently with just
-two calls to memcmp():
+> From: Ye Bin <yebin10@huawei.com>
+>
+> The error processing in extents_kunit_init() is improper, causing
+> resource leakage.
+> Reconstruct the error handling process to prevent potential resource
+> leaks
+>
+> Fixes: cb1e0c1d1fad ("ext4: kunit tests for extent splitting and conversion")
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
+> ---
+>  fs/ext4/extents-test.c | 50 +++++++++++++++++++++++++++++-------------
+>  1 file changed, 35 insertions(+), 15 deletions(-)
 
-	if (size == ip->i_mount->m_sb.sb_blocksize &&
-	    /* first digest is zero_digest */
-	    memcmp(buf, zero_digest, digest_size) == 0 &&
-	    /* every digest is same as previous, thus all are zero_digest */
-	    memcmp(buf + digest_size, buf, size - digest_size) == 0)
-		return 0;
+Looks better now. Thanks for taking care of it.
 
-- Eric
+Feel free to add:
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
