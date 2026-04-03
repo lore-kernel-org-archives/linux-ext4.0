@@ -1,87 +1,201 @@
-Received: from mail-yw1-f178.google.com (mail-yw1-f178.google.com [209.85.128.178])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4475E2D3A69
-	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 06:48:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.178
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775198932; cv=pass; b=eN9AGY+n+sk5x6h3S3bTKWgDLLDYNk3AoGYgVVoZruo7j9ZXyz7zICsHRNw7qwhRiSSH+RV5Y+pFYqFFAKmIT3DT/ZhRhDx6D6ITfh6LNx5wbJOf+B9YPL5ORfrGA1nzwcN0nl92Db0pRqLA1Dn5gm0+Y722iVVl945T+7ZKiHE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775198932; c=relaxed/simple;
-	bh=40Iy16vAtC3VCfwsyD6xCm65Gb/eAWcwdZPkCaiRG8g=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=AQgloC4Z3rPuIDD+9SPMnxb2JE7LXVK7VpkmPYc6PddmGqqjFOzW1agJua1uRW7xK1U9FlvynOPk0HWuSaI9M0XIak5tuaIGUqsb43sjKGeIZ+gb6Ug/whshO85zmma5zSUyzpdjPtmo1nQAayYor+eGyq9iAYBcd4V5w5nSXJQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=j/7TBZJo; arc=pass smtp.client-ip=209.85.128.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="j/7TBZJo"
-Received: by mail-yw1-f178.google.com with SMTP id 00721157ae682-7982c3b7dfcso15552347b3.0
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Apr 2026 23:48:51 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1775198930; cv=none;
-        d=google.com; s=arc-20240605;
-        b=QTW350HSmSMRLE4iuAz+LKWwWo7np1nJgyjozWGbUs9pcYSLE3dpzOQ3f1M5k+R1mZ
-         VMBG7PeuHcZRq0XypfMnJXjRNmkLqNOn3qfhi4YfyXF7gnG60WEU/9FTRdUdPdtLAVSR
-         4FXpihCKZR5QUvRXOFE7hv0oRXFn1zWOt5is6nFNEfTakycrx5gwhzZvQMHZ9cgViIiV
-         iDw0o26XXnLRAKxvN9RrtE3YhX32DTwqklWuMJhxRfmy8xdSt580g3cW+l4qz45Xw4bQ
-         3+AnYVKWmDXrbnOW50J7RvtwZalPGEFegNW0B4aPh0vy2HtiIG9qKHsWrIP+s3ZRIXLi
-         DZig==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=40Iy16vAtC3VCfwsyD6xCm65Gb/eAWcwdZPkCaiRG8g=;
-        fh=lfmAJNlsrgVlLfgmf+xa0zOkAKc6VKVRczifYgkRnAY=;
-        b=abuEe3MLvfrXRlSqnf0NYqgJXD9hKyAVOtpo+LLtrl3hTp3QGK4xMdy//oGyFbKLye
-         VQsSD5R0ckG3TLaB4OcT6VJRynHpkljY6o1bWOTVKEQPB7D0skXKNijp1LWbwgR5HL52
-         Qe0WxcHr+VuH8jRPhA246Oviuzoch9nI+mdbua7BRi9nHTj77pTBG3GCGMZsPcYGVVpG
-         Lfk7V/450/cOwMtyuc6TGEKAi+8Rpv+IrwxJlI3tnxbCHxq/LJUJpDD6AXJCknseYJXr
-         JFGLUxXVR2QsMyXDMkeDnU5LZAIy/Dgu5aQLkbh4j7vFPctJJk2HGoHpHpyIY09PKb6D
-         TDPA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1775198930; x=1775803730; darn=vger.kernel.org;
-        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=40Iy16vAtC3VCfwsyD6xCm65Gb/eAWcwdZPkCaiRG8g=;
-        b=j/7TBZJo8Ms41ISyZGpmUiWd94fEyZINA1y0By5xlEkwUmRYDHYKyDdSGqUKxq3s7N
-         SFkwMv+6fXUWR9Ug7ZQC2cOYyC0DscThacMqHwbJb1oN291FOIvH9AXlYMRe8GObUtd8
-         8S62P/Q+d2NK8kLFM6X2S2sw6LjLS1Eec8HFcstfW/2KvibvxAyV6MIF04hy9SMqXWIu
-         KZhuMJiSCh5TBfI4iXZM/JRZkTXfj3kZ50uSK0U0iOqf0h21OhBsKVRumlkrOh02wB8o
-         bLtpIIp0Xu6Z9cwIdTTTNLOVR8yEorLlNVXAKIYJAPj9p1pTggtFVZtIjgaDQQ/ZujyX
-         o2vQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775198930; x=1775803730;
-        h=to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=40Iy16vAtC3VCfwsyD6xCm65Gb/eAWcwdZPkCaiRG8g=;
-        b=FLuAHy+h7WrbWSKlVCdNcJjo+9Fur2NzmxU1c38BZQYReiS9SDeaTflW7+d+L6sHpT
-         dQfGXFdPRAopnhZjtFvq4s3evgwTLucDxaRj5U5rrwQCsxA2wVdIX/JPZZbGEzQDLEAC
-         WLLnOoE2rkfrA8ZFiClDZR7spxqUdwFAl+95PQXYETra6rswPIFK9MVQ76OeURa5ivAu
-         RfsS719oQWIaSLW7zMmeoBMs0NfR/BGu2D0kMA4SkHr4p+DwVdV97yz+ElnHqC9c784S
-         immOhjbXtOfRhqAvLjRZAA83dc8fiuDVLQJ1BBrqw0vEfhCfhx/aj8HNj5Vj75yKnADT
-         ipYQ==
-X-Gm-Message-State: AOJu0YyUHGNoSW1yYyGSl79a8LmfKXRQofff3s/Nmgbstbz4CzmnATys
-	0kW14ZjkXR6eLUzmCkb6KbWZVNaJQ5WMXApz+1ERldajXEnZA2ZMwi4kQQ0r7Y11bvdAwVePHzJ
-	vMKfiUO58EaWr/MFHnvBNZItQrnQWakwo1F4H+Bt50QPE
-X-Gm-Gg: AeBDies/skxe27ZRKZGDyikqbfrqPfu6gorZrKIu8rf7Ss4jsr1AA8/L4gQSdALg5RW
-	Ce6Ux40tr5B3VrTYwzJTleE4tX7CjjBJxvQZh1u5I0IeCxELFvYHjHNvsvx5B49hTBnDqG8HS50
-	7W3b8L3M9WJ9Aa5qJVqfl58l4Qg4ucIKYt67ls3LBplqHFNjThQFU7gS1TaWFcbZhH1r2OxSdCX
-	NREIxtyWvsT8OChl/25CpImLhzzg1WxNAnZUD1rzW5QlIwssF8qnXuHe2dSboVdtF1otLAcUCjv
-	CBlSpw2LGg==
-X-Received: by 2002:a05:690c:f16:b0:79a:565a:b5d with SMTP id
- 00721157ae682-7a4d39cbe82mr24272007b3.15.1775198930325; Thu, 02 Apr 2026
- 23:48:50 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ADAD5332EBD
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 08:27:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1775204851; cv=none; b=pVDEs9NekQ2pASTO+spFRKJQWU5y9EHlmkO5WwnJwcwgwFPYoWs5uUADh5MSniU6XUpmM+3Wdz7wZuPq+/FELqEiAwulXp+3yby7fN4J53PTggHi8gxBBHfkI6XTqcKD73a9AerZRxx3U8nXtXncM2/AVrWKHNE2Ykmq5hZvNFA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1775204851; c=relaxed/simple;
+	bh=CjtkAc4EO1LkIlSvIhzwjEc17aJZLHMxj9rtizpySq0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=LKGn/v6kMvARazh2Rp68Fq86rtLaa71rwAU2HHIBNGLiqaCuyFos80MGX1QPcIr8nQO6jclEzqs7TtkEWMm5PmX1qAB5MMUtncV3FwSn7KBZ4pBaC5tkXlTBt4Ytd9y2kKRHmxhj2bbAVwmFSN36AkJ1HTfhx2fQlfK4T270N58=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fnBf872S4zYQts0
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 16:26:56 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 533544056F
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 16:27:22 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.87.132])
+	by APP4 (Coremail) with SMTP id gCh0CgDHn0roec9pD5T6DA--.40142S6;
+	Fri, 03 Apr 2026 16:27:22 +0800 (CST)
+From: Ye Bin <yebin@huaweicloud.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+Cc: jack@suse.cz
+Subject: [PATCH 2/3] ext4: show inode orphan list detail information
+Date: Fri,  3 Apr 2026 16:25:06 +0800
+Message-Id: <20260403082507.1882703-3-yebin@huaweicloud.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260403082507.1882703-1-yebin@huaweicloud.com>
+References: <20260403082507.1882703-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: liming wu <wu860403@gmail.com>
-Date: Fri, 3 Apr 2026 14:48:12 +0800
-X-Gm-Features: AQROBzDidyqg0uPbmk-O7IsBmk1AteSXUztlcS4SVf2u-3kL4dQzHFX_X3QQYTA
-Message-ID: <CAPnMXWVKKOPCE0mdqhXVE0SYv+EBMeNcT_dtvfQ6W0jfmo2QSg@mail.gmail.com>
-Subject: 
-To: linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgDHn0roec9pD5T6DA--.40142S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxJFy3Zr1kur48Jr1DGry5twb_yoWrGr43pF
+	W5J34rAa1rWF93WF4fJF4UZFn3K3WxG3y7Xr9a93yYqryUXrWktF18t3WUZFy5ArW8Gwn0
+	qws0gFy5Kr18urJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvGb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
+	A2048vs2IY020Ec7CjxVAFwI0_JFI_Gr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
+	w2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
+	W8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v2
+	6rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
+	Ij6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
+	Jr0_Gr1lF7xvr2IYc2Ij64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr
+	0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY
+	17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcV
+	C0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY
+	6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa
+	73UjIFyTuYvjxUzMKuUUUUU
+X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
-linux-ext4+unsubscribe@vger.kernel.org
+From: Ye Bin <yebin10@huawei.com>
+
+Some inodes added to the orphan list are due to truncation, while others
+are due to deletion.Therefore, we printed the information of inode as
+follows: inode number/i_nlink/i_size/i_blocks/projid/file path. By using
+this information, it is possible to quickly identify files that have been
+deleted but are still being referenced.
+
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext4/orphan.c | 88 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 86 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+index 1d231aeaf282..272de32d1a47 100644
+--- a/fs/ext4/orphan.c
++++ b/fs/ext4/orphan.c
+@@ -662,25 +662,108 @@ int ext4_orphan_file_empty(struct super_block *sb)
+ 
+ struct ext4_proc_orphan {
+ 	struct ext4_inode_info cursor;
++	bool print_title;
+ };
+ 
+-static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
++static inline bool ext4_is_cursor(struct ext4_inode_info *inode)
++{
++	return (inode->vfs_inode.i_ino == 0);
++}
++
++static struct inode *ext4_list_next(struct list_head *head, struct list_head *p)
+ {
++	struct ext4_inode_info *inode;
++
++	list_for_each_continue(p, head) {
++		inode = list_entry(p, typeof(*inode), i_orphan);
++		if (!ext4_is_cursor(inode))
++			return &inode->vfs_inode;
++	}
++
+ 	return NULL;
+ }
+ 
++static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
++{
++	struct ext4_proc_orphan *s = seq->private;
++	struct super_block *sb = pde_data(file_inode(seq->file));
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct list_head *prev;
++
++	mutex_lock(&sbi->s_orphan_lock);
++
++	if (!*pos) {
++		prev = &sbi->s_orphan;
++	} else {
++		prev = &s->cursor.i_orphan;
++		if (list_empty(prev))
++			return NULL;
++	}
++
++	return ext4_list_next(&sbi->s_orphan, prev);
++}
++
+ static void *ext4_orphan_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ {
+-	return NULL;
++	struct super_block *sb = pde_data(file_inode(seq->file));
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = v;
++
++	++*pos;
++
++	return ext4_list_next(&sbi->s_orphan, &EXT4_I(inode)->i_orphan);
++}
++
++static void ext4_show_filename(struct seq_file *seq, struct inode *inode)
++{
++	struct dentry *dentry;
++
++	dentry = d_find_alias(inode);
++	if (!dentry)
++		dentry = d_find_any_alias(inode);
++
++	if (dentry)
++		seq_dentry(seq, dentry, "\t\n\\");
++	else
++		seq_puts(seq, "unknown");
++
++	dput(dentry);
++	seq_putc(seq, '\n');
+ }
+ 
+ static int ext4_orphan_seq_show(struct seq_file *seq, void *v)
+ {
++	struct inode *inode = v;
++	struct ext4_proc_orphan *s = seq->private;
++
++	if (s->print_title) {
++		seq_puts(seq, "INO\tNLINK\tSIZE\tBLOCKS\tPROJID\tPATH\n");
++		s->print_title = false;
++	}
++
++	seq_printf(seq, "%llu\t%u\t%llu\t%llu\t%u\t",
++		   inode->i_ino, inode->i_nlink,
++		   i_size_read(inode), inode->i_blocks,
++		   __kprojid_val(EXT4_I(inode)->i_projid));
++
++	ext4_show_filename(seq, inode);
++
+ 	return 0;
+ }
+ 
+ static void ext4_orphan_seq_stop(struct seq_file *seq, void *v)
+ {
++	struct super_block *sb = pde_data(file_inode(seq->file));
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = v;
++	struct ext4_proc_orphan *s = seq->private;
++
++	if (inode)
++		list_move_tail(&s->cursor.i_orphan, &EXT4_I(inode)->i_orphan);
++	else
++		list_del_init(&s->cursor.i_orphan);
++
++	mutex_unlock(&sbi->s_orphan_lock);
+ }
+ 
+ const struct seq_operations ext4_orphan_seq_ops = {
+@@ -703,6 +786,7 @@ static int ext4_seq_orphan_open(struct inode *inode, struct file *file)
+ 		private = m->private;
+ 		INIT_LIST_HEAD(&private->cursor.i_orphan);
+ 		private->cursor.vfs_inode.i_ino = 0;
++		private->print_title = true;
+ 	}
+ 
+ 	return rc;
+-- 
+2.34.1
+
