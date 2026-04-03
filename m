@@ -1,107 +1,78 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BC8931B803;
-	Thu,  2 Apr 2026 21:58:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6281C1991D4
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 04:03:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775167107; cv=none; b=k0KTnsXAl0U1zEWJXPFqqxg/0Ps3JXPapOn3I1EGDoeKTvF9US/PyIfdG+xpLI7tvChHd36X2Tl7BxvkXQId6eqjJ0CvRUFjBPnNvmh0R8aT2gMib5ftcekYMyYcmiA1YqUefTFMScCkjx1iMYXus6GRMr0nosElGxpPdOE0UK0=
+	t=1775189021; cv=none; b=g+FAVfxOZi7R0jHh7yuOxT0aZBTpZ6vjD9o3sovYxml3tCa0v/kAdH2VDtI7ImNKtPlOVtwvOqtXoLSkETvQJYMEHiFheqS3by+L9e1++soJ8uHLIOgfzCELNwHUD2ip2KkpHCA41X26iZCLNsDViPgG6SftRANjEmzXJl6WAn0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775167107; c=relaxed/simple;
-	bh=QvUc9vANqYsb1luDp8UYk1f8BqkeVaTMVXLV75eutnQ=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=DVJp2RZb27ELpuSXbKU4Hp/Y6oxtY4GVZi+hvh0cGpfFqwLi3iiECU8FkXW3LsP2E4BFa3lHd7gKiNOQi5H6gIaKO0hKHraIz2ZSgvjaY8pL8Nj3ueFJ33XzKXy8KKHzyLjplHoEp/PCfYJu8MKrJG/teYDsTZ/J1SYs3fWx0zQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KBJzCsq7; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1775189021; c=relaxed/simple;
+	bh=SI1Dw4e1LIWHqDwsUQg9Wu32N7tCPj6+AjZd1TgXTDA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=glU3bJvspN032jYGaKI1CPEZMf/rHBaUfNLpiQsyDs0SYxmz6R/NutapePbZO7sleVYPWUvfegs3yaNF1cPwbCBVIg5i3jl1lbyJWe9M7Drvoa5ZwNfeG4C89Xo8KYVKCencwGOGKWqDIKuUbG4vmOBiFmMbH6daU2STwYo0qjg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=VUzEbQhP; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KBJzCsq7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76D96C116C6;
-	Thu,  2 Apr 2026 21:58:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775167106;
-	bh=QvUc9vANqYsb1luDp8UYk1f8BqkeVaTMVXLV75eutnQ=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References:From;
-	b=KBJzCsq7TNcgHpU+TWPAd3W8YuuJXdgpviR9Ow38UzYp/E+eDMYCQdUq5+04/Mnru
-	 vF8yruBgH9Kqoxj3RdUA00tDQnEgnr1qE7AXbmqG7qka9IVu/f1eZKTg86JWT+ETrn
-	 TjxI1jdECoYVYFvAydaPvhTr0DLyOkSNS0rHhfEWArmmkmeciwTpFwX+5aQHpstoUl
-	 foXfbAlUvknuR2UINHvJ3kK1f5ozCCWUSVy6PFFL3eEN4gpoDz+keSHvFP6Ep2zvPe
-	 Ej2doeiB7lotVTyVy6ov80wS5IsFWdnGSH4WR6z1XJ7lBV9TObDwXGWdYhpggyK3MT
-	 1b1VbHt8uneOw==
-Date: Thu, 2 Apr 2026 15:58:18 -0600 (MDT)
-From: Paul Walmsley <pjw@kernel.org>
-To: Yury Norov <ynorov@nvidia.com>
-cc: Andrew Morton <akpm@linux-foundation.org>, 
-    "David S. Miller" <davem@davemloft.net>, 
-    "Michael S. Tsirkin" <mst@redhat.com>, Theodore Ts'o <tytso@mit.edu>, 
-    Albert Ou <aou@eecs.berkeley.edu>, Alexander Duyck <alexanderduyck@fb.com>, 
-    Alexander Gordeev <agordeev@linux.ibm.com>, 
-    Alexander Viro <viro@zeniv.linux.org.uk>, 
-    Alexandra Winter <wintera@linux.ibm.com>, 
-    Andreas Dilger <adilger.kernel@dilger.ca>, 
-    Andrew Lunn <andrew+netdev@lunn.ch>, Anna Schumaker <anna@kernel.org>, 
-    Anton Yakovlev <anton.yakovlev@opensynergy.com>, 
-    Arnaldo Carvalho de Melo <acme@kernel.org>, 
-    Aswin Karuvally <aswin@linux.ibm.com>, Borislav Petkov <bp@alien8.de>, 
-    Carlos Maiolino <cem@kernel.org>, 
-    Catalin Marinas <catalin.marinas@arm.com>, Chao Yu <chao@kernel.org>, 
-    Christian Borntraeger <borntraeger@linux.ibm.com>, 
-    Christian Brauner <brauner@kernel.org>, 
-    Claudio Imbrenda <imbrenda@linux.ibm.com>, 
-    Dave Hansen <dave.hansen@linux.intel.com>, 
-    David Airlie <airlied@gmail.com>, 
-    Dominique Martinet <asmadeus@codewreck.org>, 
-    Dongsheng Yang <dongsheng.yang@linux.dev>, 
-    Eric Dumazet <edumazet@google.com>, 
-    Eric Van Hensbergen <ericvh@kernel.org>, 
-    Heiko Carstens <hca@linux.ibm.com>, 
-    Herbert Xu <herbert@gondor.apana.org.au>, Ingo Molnar <mingo@redhat.com>, 
-    Jaegeuk Kim <jaegeuk@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
-    Jani Nikula <jani.nikula@linux.intel.com>, 
-    Janosch Frank <frankja@linux.ibm.com>, Jaroslav Kysela <perex@perex.cz>, 
-    Jens Axboe <axboe@kernel.dk>, 
-    Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
-    Latchesar Ionkov <lucho@ionkov.net>, Linus Walleij <linusw@kernel.org>, 
-    Madhavan Srinivasan <maddy@linux.ibm.com>, Mark Brown <broonie@kernel.org>, 
-    Michael Ellerman <mpe@ellerman.id.au>, Miklos Szeredi <miklos@szeredi.hu>, 
-    Namhyung Kim <namhyung@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
-    Paolo Abeni <pabeni@redhat.com>, Paolo Bonzini <pbonzini@redhat.com>, 
-    Paul Walmsley <pjw@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
-    Rodrigo Vivi <rodrigo.vivi@intel.com>, 
-    Sean Christopherson <seanjc@google.com>, Simona Vetter <simona@ffwll.ch>, 
-    Takashi Iwai <tiwai@suse.com>, Thomas Gleixner <tglx@kernel.org>, 
-    Trond Myklebust <trondmy@kernel.org>, 
-    Tvrtko Ursulin <tursulin@ursulin.net>, Vasily Gorbik <gor@linux.ibm.com>, 
-    Will Deacon <will@kernel.org>, Yury Norov <yury.norov@gmail.com>, 
-    Zheng Gu <cengku@gmail.com>, linux-kernel@vger.kernel.org, x86@kernel.org, 
-    linux-arm-kernel@lists.infradead.org, linuxppc-dev@lists.ozlabs.org, 
-    linux-riscv@lists.infradead.org, kvm@vger.kernel.org, 
-    linux-s390@vger.kernel.org, linux-block@vger.kernel.org, 
-    intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
-    dm-devel@lists.linux.dev, netdev@vger.kernel.org, 
-    linux-spi@vger.kernel.org, linux-ext4@vger.kernel.org, 
-    linux-f2fs-devel@lists.sourceforge.net, linux-fsdevel@vger.kernel.org, 
-    linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org, 
-    linux-crypto@vger.kernel.org, linux-mm@kvack.org, 
-    linux-perf-users@vger.kernel.org, v9fs@lists.linux.dev, 
-    virtualization@lists.linux.dev, linux-sound@vger.kernel.org
-Subject: Re: [PATCH 8/8] arch: use rest_of_page() macro where appropriate
-In-Reply-To: <20260304012717.201797-9-ynorov@nvidia.com>
-Message-ID: <ee15482d-22a8-9686-ba64-d216b25d8e68@kernel.org>
-References: <20260304012717.201797-1-ynorov@nvidia.com> <20260304012717.201797-9-ynorov@nvidia.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="VUzEbQhP"
+Received: from trampoline.thunk.org (pool-173-48-112-174.bstnma.fios.verizon.net [173.48.112.174])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63343Xej005244
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 3 Apr 2026 00:03:34 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1775189015; bh=IWd78onahs7a8oXzAR+uFTyc2wkrAT4ZgLNx8ZuNOmY=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=VUzEbQhP1+kt8e2pmQCs02jLWo0rlgV6p0ZNjCSutiCJozX6J0ISaqhTFgTVB+qd8
+	 2XQGhqWK+eHme3NprS6iojDItpJu7hjFUElMM5W/l6wTpAp+UZ1jJv0e+c+ZTsWYOG
+	 e0+FHIV6EhtEjFJvKjgMuoHLxwXsW36uDAw/cn/wQABj/MZ2F1gTp0OPtjWYy40y2x
+	 /bHYfq83tq+5JLci0M339v7LiNpMaK69r3CU+CqbiJWww3phT3P2mRqhQRuivXp/RM
+	 1SLD75SsXk1gGFOgyMM4xMsFzDdsNkceVpPax81I/NBGUiL12Kyt8ucl0RmkjYe8Wp
+	 IPQr20iDES2Jw==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 7B5E82E00DA; Fri, 03 Apr 2026 00:03:33 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 3/3] fuse2fs: fix build failure on systems which don't define EUCLEAN
+Date: Fri,  3 Apr 2026 00:03:28 -0400
+Message-ID: <20260403040328.2385083-4-tytso@mit.edu>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20260403040328.2385083-1-tytso@mit.edu>
+References: <20260403040328.2385083-1-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
-On Tue, 3 Mar 2026, Yury Norov wrote:
+MacOS doesn't have EUCLEAN, so we use EIO as the closest error code.
+But then we need to avoid a compile error caused by a duplicate case
+labels of EUCLEAN and EIO.
 
-> Switch arch code to using the macro. No functional changes intended.
-> 
-> Signed-off-by: Yury Norov <ynorov@nvidia.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ misc/fuse2fs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Acked-by: Paul Walmsley <pjw@kernel.org> # arch/riscv
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index dfbc98636..94e289fab 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -5870,7 +5870,9 @@ static int __translate_error(ext2_filsys fs, ext2_ino_t ino, errcode_t err,
+ #ifdef EILSEQ
+ 	case EILSEQ:
+ #endif
++#if EUCLEAN != EIO
+ 	case EUCLEAN:
++#endif
+ 		/* these errnos usually denote corruption or persistence fail */
+ 		is_err = 1;
+ 		ret = -err;
+-- 
+2.51.0
 
-
-- Paul
