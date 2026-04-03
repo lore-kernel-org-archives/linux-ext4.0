@@ -1,46 +1,41 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D54B22E889C
-	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 13:50:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80A7929B799
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Apr 2026 15:15:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775224218; cv=none; b=Uw+8YvxYOGRwdt/+XWG1/KO1TScpPAIGIfsN5FInDjqyrytU2s2xJBU3yLEP0LNALFUM2uAz1IxbY499q4RTcMlj7x5STKYq+P6Z+BfIpze4BS9te9gfugogelGwGNqQ/CS2hOdiy31mBZ6Oko2FGCM0M99d5uaZ1UvgUUjEUG4=
+	t=1775229336; cv=none; b=gKr5SCYtEWjjeIBj2IZZq+tDp1G8IIHsnRX/JMm1bvDC5ScUf8St2nUMEXwvZc0c8r/n4zcOzc4fl2jSPUBq9DpqNH6ettAGSAVrt4JdZOWkOCr2DNNy6+5q+TeVVkYSn5QKtvEL9GNWqmVoAyhXm3YQRo/66czXglLeSpUjS/c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775224218; c=relaxed/simple;
-	bh=KM82XPyhwQSvWzfe3ry+IsLm3lctzv9eE9LE6M/XEUQ=;
+	s=arc-20240116; t=1775229336; c=relaxed/simple;
+	bh=UplDLhOZLXJ4/pVnqeRz1aozsvR7UuquHAnE22s4p4I=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=X461zG5Reb1nAJMXWONhYzsgi+2M1uROsqVWexwbChByEjqt24CdmJsJwk0IvQyYgh4EPk2bMigi6s3tOwEQKkAlNgLZ9RPN21lmoCCDk6K17U6PfGYG4tckbwJXDCIGJMi1XUWO7RhtIx8jA9gT93H0kzoLH65rU2ac5VMNd9w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=T3LPeyfN; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=Gllme+Kx78JQpVJXnFQ4wRYAnIbWHQSt+F74PlQ70oYWYEnm0z3WR503T5KNvIYXE3pmeoCF6L+Dc540kxUDdZF0bUqz1iHRk47Z6AReCD3MCaon+frih5BrJ1Bl+ukM2TqActZ9tPeWXfS7Qv6tpe//SPx7kqIWAnQN7GdNCBQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DfvYl5aB; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="T3LPeyfN"
-Received: from macsyma.thunk.org (pool-173-48-112-174.bstnma.fios.verizon.net [173.48.112.174])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 633DnqaB019633
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 3 Apr 2026 09:49:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775224194; bh=ACY9Dd7YGqHjTQ+3FVbAepJcXW43VjGz7Vp/66VzHLk=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=T3LPeyfN2rZoFYJ3T4tEq+gnpxJJ2evbIe8+hD/AHosc7MbvR2zxA0/Es+FLnCobG
-	 uAEseqiHqaTlfZOY4V7R6wnDAl2cdcZHmbmvmYrNs2JwIS8nee0yPwW80bEou9Yuba
-	 lFkBylOf3xxnYHfw7gb4oLA9cfJh8KZMEyswMBO0/VSmsd6TZ3np1ozHj/CsgskijW
-	 lOqYYbCq0cMDn7xwzAGDm0rzx2oEf8ZRpCrzFBZfWLuA15vVjIxm07fd8EHGp4gtm+
-	 AZY88g2alBC/U5S8frZRuvZGoPUi7tZBuUc1Mmt5flgb4cjvCW1HGtsYULs0CaAEeo
-	 GdM/r1fN5aRjA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 57BCE6103EC9; Fri,  3 Apr 2026 09:48:52 -0400 (EDT)
-Date: Fri, 3 Apr 2026 09:48:52 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: 4fqr <4fqr@proton.me>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: [SECURITY] e2fsprogs =?utf-8?Q?v1=2E47?=
- =?utf-8?Q?=2E4_Vulnerabilities_=E2=80=94?= Orphan File & Extent Handling
-Message-ID: <20260403134852.GE12260@macsyma-wired.lan>
-References: <DJq7WqGAG9HBnpd-DVD5sVNGDUoSoP2sJ5RAXlucoYhtbqxJXFNUUfhFETwaDeDr6Q8a5xp0hVJb0yIt8EucI-F-PQ28zg8i0Y9HmF8qk5Q=@proton.me>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DfvYl5aB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1B1CBC4CEF7;
+	Fri,  3 Apr 2026 15:15:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1775229336;
+	bh=UplDLhOZLXJ4/pVnqeRz1aozsvR7UuquHAnE22s4p4I=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=DfvYl5aBlFSkYuqBzBLxNKBp+x1NjnOVa+f9yBAv7RXRfgoF5sEjFL0cq95KdSBZR
+	 dfVTJtKvEf84E0HsvViEgABU2ssFRs91KqMfQyI5XwaLvZW8hLwVilP8chstD2Dpj7
+	 xF+V9ClmrwJLA08to763mbD+zLnjZ0yEVdo26o3bdldnr75gFcfkssZKiQG0CUmQk/
+	 z5cu3qmGRXy7loLbCRZ7ZuxkjJxPwHdn3ERyNJdhivYGckEN3xZtKREUdBWCUqVzwI
+	 GjedEGnBj6AyVGbTymga5jF7aAM63xcxbS6z1H9H9jMlxh/Ur/MWOR0ugforhDQnMj
+	 62TZ1SJ9o33Tg==
+Date: Fri, 3 Apr 2026 08:15:35 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 1/3] libsupport: fix portability issues with the bthread.c
+Message-ID: <20260403151535.GI6254@frogsfrogsfrogs>
+References: <20260403040328.2385083-1-tytso@mit.edu>
+ <20260403040328.2385083-2-tytso@mit.edu>
+ <20260403041624.GD6254@frogsfrogsfrogs>
+ <20260403115313.GA12260@macsyma-wired.lan>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -49,29 +44,26 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <DJq7WqGAG9HBnpd-DVD5sVNGDUoSoP2sJ5RAXlucoYhtbqxJXFNUUfhFETwaDeDr6Q8a5xp0hVJb0yIt8EucI-F-PQ28zg8i0Y9HmF8qk5Q=@proton.me>
+In-Reply-To: <20260403115313.GA12260@macsyma-wired.lan>
 
-On Fri, Apr 03, 2026 at 11:29:55AM +0000, 4fqr wrote:
+On Fri, Apr 03, 2026 at 07:53:13AM -0400, Theodore Tso wrote:
+> On Thu, Apr 02, 2026 at 09:16:24PM -0700, Darrick J. Wong wrote:
+> > > -/* Define to 1 if fuse supports cache_readdir */
+> > > -#undef HAVE_FUSE_CACHE_READDIR
+> > 
+> > Huh, there's a lot of churn in this file.  Do you have a magic script
+> > somewhere that regenerates config.h.in?
 > 
-> I'm disclosing three security vulnerabilities in e2fsprogs v1.47.4
-> affecting orphan file inode processing and extent tree
-> validation. This follows responsible disclosure notification to the
-> maintainer (Theodore Ts'o).
+> It's "autoheader".  Whenver you add or remove tests to configure.ac,
+> you need to run "autoconf ; autoheader".  If you don't run
+> "autoheader", then even if the autoconf's feature test enables some
+> new feature test, say HAVE_PR_SET_IO_FLUSHER, the feature won't
+> actually be enabled in the #ifdef.
 
-You notified me 45 seconds before sending this e-mail to linux-ext4,
-which is a public mailing list.  (For future reference, essentially
-all lists @vger.kernel.org are public, with the contents available at
-https://lore.kernel.org.)
+Aha!  Thanks for that tip; I'll go fix my dev branch.
 
-> Patches and coordination discussion will follow once the maintainer
-> has reviewed.
+--D
 
-Coordination discussion is moot at this point, because you've already
-made your findings public.  I'll review them in detail in the next few
-days, but it does appear that we are missing some checks in the
-orphan_file handling, which whether or not they are exploitable by a
-malicious attacker, are real bugs that should be fixed.
-
-Cheers,
-
-					- Ted
+> Cheers,
+> 
+> 							- Ted
