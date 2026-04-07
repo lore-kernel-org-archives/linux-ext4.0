@@ -1,87 +1,53 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7141521B9F5
-	for <linux-ext4@vger.kernel.org>; Tue,  7 Apr 2026 14:01:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B79813290C7
+	for <linux-ext4@vger.kernel.org>; Tue,  7 Apr 2026 14:48:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775570472; cv=none; b=Gwhb+XEjyZNn2g74mssZLNLAyLEz23B+bPuXwtV2Ma0yTJYpQVpwb2LdLSfLSqVaDYB5e4jCsOE0HjYkMU+R5WveLjeCcO32WH5gATF18XMbQq5g33mWHfkDuL8+OE2PQllyv7n8KqBT/vYU+/nw4060pkuX6GaSVX72fwM+/a0=
+	t=1775573310; cv=none; b=f2bAEtlS3gI5Sc995rVooqlAA9ngrsn1DITi38US7NmS9HGDLgrgxD6qBRcp+xU4bev6MibzICxzZLgaKWyBvLCm8xaM1qGj6a1Ndxz8oyyY+OlTSGbe6Gu6N39PRsGVuYQPv6NvBZXuEeUy0Mc9MYc3F4ywBn9EpRtrP5C1Ig4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775570472; c=relaxed/simple;
-	bh=nt3VqJQXTR21Rp2kyBxpvnL/FzButQj5JZ0BhqYPuvw=;
+	s=arc-20240116; t=1775573310; c=relaxed/simple;
+	bh=P3GvwR+j8UgQw/D50ZFDRswhdtkd7NU/FARUnxYyiLY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=AQZFVWe+Jmb5el9J3oERz/mOaCzagy7ulgktv6ilYOGxMdasQquKCvXMpCaclnZrOjPmnz+au+jM7tcigDbbQkcVbZnpwQbSm95Z8MhVaFRqDVT80QsppfSUfEDrgc9S1alU9wyv53bo1ZLi+FgMmCAyD9WBToFovpbX4v83cag=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=DYN6IVUI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=wgcsjY79; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=YfSsOjNv; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=J7VSvXKx; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=qoPq+D4MXoaqL1u9tb4Uwm/nj4YV7t5JhbJ2KP5Cff0BPf10JdCygEVZIf7Eh1D8jLrtdwLDSn2CiJygnY8ljcDXgaL9U+4x7U6aCZeIFR0VXYSO7yU7rzhEusyUhtpsAm75jttJzYcUye4qLLQQWOu82/OYl6p/a0kiXSoJvhs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Gv3urCNA; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="DYN6IVUI";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="wgcsjY79";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="YfSsOjNv";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="J7VSvXKx"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id CB4E74E48A;
-	Tue,  7 Apr 2026 14:00:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775570464; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3B0E0VJbP0ni6UNC+CyIHckgKZHIPszOu5IpL3GJgzM=;
-	b=DYN6IVUIPIPPE2tcKJ1f+MeqVM7yEsizKGCQHHFlp5my1hSLMflRT7x6QiOldvp3/C9Qcz
-	+2SV2eQCXBzxBQ1xKbwMglq1J0FvKZCrcqcFBi6UAGhOyY3Tj6blVyNE+iwXc7KQ3ube9H
-	axDDgFqbwisqgfXCPhXSRQdAyOKM6CM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775570464;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3B0E0VJbP0ni6UNC+CyIHckgKZHIPszOu5IpL3GJgzM=;
-	b=wgcsjY79Dj6SKSbWDGJl9rSDoRO4Q3d7Hw55zUOJSujykgKFNkrQy4y3MSGrWMR2FQKJnz
-	brLuMN/rMBQZZADA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=YfSsOjNv;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=J7VSvXKx
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775570459; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3B0E0VJbP0ni6UNC+CyIHckgKZHIPszOu5IpL3GJgzM=;
-	b=YfSsOjNvmkTZW/KbZ0vcw8saC8C/u94/AD7JlFCEUV1qcErEY9i7N1qQgyHoq00OveH/rn
-	ISyPKYUxthVPOrB0AA1YFK7sjjrz1aRWPGeZpyq/qRDlAaB0ZDqXxal/Y1SGsSwqBfy7nZ
-	znRDbEFQtr3wQ+k9lXMg+pq+vkGHR1Y=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775570459;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3B0E0VJbP0ni6UNC+CyIHckgKZHIPszOu5IpL3GJgzM=;
-	b=J7VSvXKxs8506sckFipEqmcKn4fJstYElFW2/LHI8wTFMxVNaQVmliWzxl2/WKS69Cza5n
-	S85gks8SmIQiVrBg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C03954A0B0;
-	Tue,  7 Apr 2026 14:00:59 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id z8npLhsO1WmScwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 07 Apr 2026 14:00:59 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 658BDA0A81; Tue,  7 Apr 2026 16:00:51 +0200 (CEST)
-Date: Tue, 7 Apr 2026 16:00:51 +0200
-From: Jan Kara <jack@suse.cz>
-To: Vasiliy Kovalev <kovalev@altlinux.org>
-Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org, 
-	Andrew Morton <akpm@osdl.org>, Alexey Dobriyan <adobriyan@gmail.com>, 
-	linux-kernel@vger.kernel.org, lvc-project@linuxtesting.org
-Subject: Re: [PATCH] ext2: reject inodes with zero i_nlink and valid mode in
- ext2_iget()
-Message-ID: <3fvlnlctw6skbkl6egh4wdz3fhhyuhjudxkk2suh5va7xx6s5p@4hjink4jidco>
-References: <20260404152011.2590197-1-kovalev@altlinux.org>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Gv3urCNA"
+Received: from macsyma.thunk.org (pool-173-48-119-176.bstnma.fios.verizon.net [173.48.119.176])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 637EmAXB003208
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 7 Apr 2026 10:48:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1775573292; bh=B6mytxkR/pP/+KrUuQ4BEVU8OOl8s75NsKAPt+dhBVQ=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=Gv3urCNAhxv19PmA9S/iTKCp+SiVD2aAaDI7e3In5igU7PNU9MDX2OPeagQCItyz8
+	 +IO/nF1XWVRA8hHojKbTJX6eHtxITSHmyF/A7frFN87n3+qWFbmtsZ/lhU4uKWkVKF
+	 L/SAQRS7vJFFr4RdteQa+N753FGdm9uVqMnYpiyWVymkGQFT6GiBCEzIgAEZZ9kDQ3
+	 riW+P+99kQKKAqRFGTRPAhaqXEjV8GuWbgdMuMUQ/dDgv7MOIqmShvaANvfrbraOCf
+	 e4rD4yLseMo8U/DxiV1u4CREIwbmX0HncxM4xIegfOkEA5PCMrgtKeYnxl+Z/d8XK2
+	 ACfNFgAOslwvg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 9E5586226E6E; Tue,  7 Apr 2026 10:47:09 -0400 (EDT)
+Date: Tue, 7 Apr 2026 10:47:09 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anand Jain <anajain.sg@gmail.com>, "Darrick J. Wong" <djwong@kernel.org>,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Anand Jain <asj@kernel.org>
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+Message-ID: <20260407144709.GA81690@macsyma-wired.lan>
+References: <cover.1774092915.git.asj@kernel.org>
+ <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
+ <20260323041624.GA11453@mac.lan>
+ <d4a9970b-e7ed-4e74-be9d-2d08400f9d79@gmail.com>
+ <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
+ <adSUiB9L0sFAd04U@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,139 +56,40 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260404152011.2590197-1-kovalev@altlinux.org>
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	RSPAMD_URIBL_FAIL(0.00)[suse.cz:query timed out];
-	ARC_NA(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[7];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_CC(0.00)[suse.com,vger.kernel.org,osdl.org,gmail.com,linuxtesting.org];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
-X-Rspamd-Queue-Id: CB4E74E48A
-X-Spam-Flag: NO
-X-Spam-Score: -4.01
-X-Spam-Level: 
+In-Reply-To: <adSUiB9L0sFAd04U@infradead.org>
 
-On Sat 04-04-26 18:20:11, Vasiliy Kovalev wrote:
-> ext2_iget() already rejects inodes with i_nlink == 0 when i_mode is
-> zero or i_dtime is set, treating them as deleted. However, the case of
-> i_nlink == 0 with a non-zero mode and zero dtime slips through. Since
-> ext2 has no orphan list, such a combination can only result from
-> filesystem corruption - a legitimate inode deletion always sets either
-> i_dtime or clears i_mode before freeing the inode.
-> 
-> A crafted image can exploit this gap to present such an inode to the
-> VFS, which then triggers WARN_ON inside drop_nlink() (fs/inode.c) via
-> ext2_unlink(), ext2_rename() and ext2_rmdir():
-> 
-> WARNING: CPU: 3 PID: 609 at fs/inode.c:336 drop_nlink+0xad/0xd0 fs/inode.c:336
-> CPU: 3 UID: 0 PID: 609 Comm: syz-executor Not tainted 6.12.77+ #1
-> Call Trace:
->  <TASK>
->  inode_dec_link_count include/linux/fs.h:2518 [inline]
->  ext2_unlink+0x26c/0x300 fs/ext2/namei.c:295
->  vfs_unlink+0x2fc/0x9b0 fs/namei.c:4477
->  do_unlinkat+0x53e/0x730 fs/namei.c:4541
->  __x64_sys_unlink+0xc6/0x110 fs/namei.c:4587
->  do_syscall_64+0xf5/0x220 arch/x86/entry/common.c:78
->  entry_SYSCALL_64_after_hwframe+0x77/0x7f
->  </TASK>
-> 
-> WARNING: CPU: 0 PID: 646 at fs/inode.c:336 drop_nlink+0xad/0xd0 fs/inode.c:336
-> CPU: 0 UID: 0 PID: 646 Comm: syz.0.17 Not tainted 6.12.77+ #1
-> Call Trace:
->  <TASK>
->  inode_dec_link_count include/linux/fs.h:2518 [inline]
->  ext2_rename+0x35e/0x850 fs/ext2/namei.c:374
->  vfs_rename+0xf2f/0x2060 fs/namei.c:5021
->  do_renameat2+0xbe2/0xd50 fs/namei.c:5178
->  __x64_sys_rename+0x7e/0xa0 fs/namei.c:5223
->  do_syscall_64+0xf5/0x220 arch/x86/entry/common.c:78
->  entry_SYSCALL_64_after_hwframe+0x77/0x7f
->  </TASK>
-> 
-> WARNING: CPU: 0 PID: 634 at fs/inode.c:336 drop_nlink+0xad/0xd0 fs/inode.c:336
-> CPU: 0 UID: 0 PID: 634 Comm: syz-executor Not tainted 6.12.77+ #1
-> Call Trace:
->  <TASK>
->  inode_dec_link_count include/linux/fs.h:2518 [inline]
->  ext2_rmdir+0xca/0x110 fs/ext2/namei.c:311
->  vfs_rmdir+0x204/0x690 fs/namei.c:4348
->  do_rmdir+0x372/0x3e0 fs/namei.c:4407
->  __x64_sys_unlinkat+0xf0/0x130 fs/namei.c:4577
->  do_syscall_64+0xf5/0x220 arch/x86/entry/common.c:78
->  entry_SYSCALL_64_after_hwframe+0x77/0x7f
->  </TASK>
-> 
-> Extend the existing i_nlink == 0 check to also catch this case,
-> reporting the corruption via ext2_error() and returning -EFSCORRUPTED.
-> This rejects the inode at load time and prevents it from reaching any
-> of the namei.c paths.
-> 
-> Found by Linux Verification Center (linuxtesting.org) with Syzkaller.
-> 
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Vasiliy Kovalev <kovalev@altlinux.org>
+On Mon, Apr 06, 2026 at 10:22:16PM -0700, Christoph Hellwig wrote:
+> > Dilemma:
+> > While statfs(2) [1] suggests f_fsid is "some random stuff," we know
+> > userspace (NFS, systemd) often treats it as a persistent handle.
+> > 
+> > Do you prefer one of the names above, or is there a more idiomatic ext4
+> > naming convention I should follow?
+> > 
+>
+> My take is that anything that should persist should be an on-disk
+> feature flag, not a mount option.  But I'm not in charge for ext4
 
-Thanks. I've added the patch to my tree.
+My take is that f_fsid is random stuff, as documented by the
+specification, so anyone who tries to depend on it needs to be kept in
+a padding room where they can't hurt themselves or their users.
 
-								Honza
+And as far as NFS is concerned, file handles should be based on
+the super block UUID, not statfs's f_fsid, and anyone who wants to
+mount a snapshot as an NFS exported file system at the same time that
+the original file system is mounted is _also_ should be gently coaxed
+into a padding room where they can't hurt themselves or their users.
 
-> ---
->  fs/ext2/inode.c | 14 +++++++++++---
->  1 file changed, 11 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index dbfe9098a124..39d972722f5f 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -1430,9 +1430,17 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
->  	 * the test is that same one that e2fsck uses
->  	 * NeilBrown 1999oct15
->  	 */
-> -	if (inode->i_nlink == 0 && (inode->i_mode == 0 || ei->i_dtime)) {
-> -		/* this inode is deleted */
-> -		ret = -ESTALE;
-> +	if (inode->i_nlink == 0) {
-> +		if (inode->i_mode == 0 || ei->i_dtime) {
-> +			/* this inode is deleted */
-> +			ret = -ESTALE;
-> +		} else {
-> +			ext2_error(sb, __func__,
-> +				   "inode %lu has zero i_nlink with mode 0%o and no dtime, "
-> +				   "filesystem may be corrupt",
-> +				   ino, inode->i_mode);
-> +			ret = -EFSCORRUPTED;
-> +		}
->  		goto bad_inode;
->  	}
->  	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
-> -- 
-> 2.50.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+The solution that we've used for people who are cloning block devices
+for things like cloud images has been for *years* has been to use
+"tune2fs -U random /dev/sda1".  And this works on mounted file system,
+and (for example) built into various cloud images for Google Cloud
+Engine.
+
+If we want to change statfs's f_fsid, from one set of "Random stuff"
+to another set of "Random stuff", I don't really mind, but I don't
+think it's worth *either* a mount option, *or* a feature flag, as
+either would be confusing for system adminsitrators when some file
+systems behave one way, and other file systems behave another.
+
+	       	   	    	  - Ted
