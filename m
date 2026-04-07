@@ -1,106 +1,170 @@
-Received: from mail.ispras.ru (mail.ispras.ru [83.149.199.84])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4942140DFDD
-	for <linux-ext4@vger.kernel.org>; Tue,  7 Apr 2026 07:46:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=83.149.199.84
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A5F539C01E
+	for <linux-ext4@vger.kernel.org>; Tue,  7 Apr 2026 10:29:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775548010; cv=none; b=X/j3JGlSbcEjS9c9sXBDhrv/f/B7dLJBbsjA5rLz34I1BNV3IzgIBuXSWDtOx8oHz+LB3AEzns+yGiJ/Fw5BPI7T3aJraY/l6u5v1dtqPJE+A2Kk/IfpMzL8gl/ocSvgSq/D0RrNXitLW26bcMVPO4yGSdgu7ujayx1vDcpSfIA=
+	t=1775557774; cv=none; b=YIbJmsJMywr8P2mu7wST2KJM2GfSbUppMjWCvG3tNH1VIT0Mqh/FpRoAyzTRONfvdcuqK8ZD30Ca03YDMsd9ClxLqwKWLxIVgZH7gEgnL3u13GqpVm6RdnSxQsh0rZzngEh556+2CP4lIbx7SLbcchoW1PMJO4oRXPYtQ+yhi04=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775548010; c=relaxed/simple;
-	bh=KFgVBXnry845PIfnPOlMc2sOdr2esbGzBoYCdYbITQk=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=TTySzBaoprnfAcl69mm5QAuXysGtvhn3DNluX1N6Frc2Mx2GlII7IQAM0DzbwFdnHm+iws4c05GRKdlC46Lht2l7ZZXGWUywqLgSfKhQc8yI57gQIWDM/k4zsJ9Wfd35w0wePJbIek7pOkXGF677lg3VypgLmOgE1MJCZoP4zWE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ispras.ru; spf=pass smtp.mailfrom=ispras.ru; dkim=pass (1024-bit key) header.d=ispras.ru header.i=@ispras.ru header.b=hCWeZn1l; arc=none smtp.client-ip=83.149.199.84
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ispras.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ispras.ru
+	s=arc-20240116; t=1775557774; c=relaxed/simple;
+	bh=7D9hKiql2l9Xe7SCXvJve+5YiX8ZVh86qv8U6I9Rack=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=RnysdO6uSrthM5PahHzl4OA9luCJI1ZJT9oxVABZBG2vkV3YLKrfo8AaKBWFMOiIw9///Jb26pGbCP5W0SWUHPdmnJoxAREekMPPWuBAmJicyveCLA+x/xE9bQuPc5+Yo3IdsldyUbyMfIQQqX/MMUeTT/2GhT65ex6w3sVuyOc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=AkkBmK9N; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RFuJl61n; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=AkkBmK9N; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RFuJl61n; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ispras.ru header.i=@ispras.ru header.b="hCWeZn1l"
-Received: from monopod.intra.ispras.ru (unknown [10.10.3.121])
-	by mail.ispras.ru (Postfix) with ESMTPSA id BA1E2413A4DB;
-	Tue,  7 Apr 2026 07:46:38 +0000 (UTC)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mail.ispras.ru BA1E2413A4DB
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ispras.ru;
-	s=default; t=1775547998;
-	bh=bQZPCYlOfJcFjumDRLe69FbwpFNDOhE7/hkelOkN/mU=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References:From;
-	b=hCWeZn1lkGbqpo7I/8+l59QmoD0gVtWG/BNQfkdmHO4LFU7H4lEjBvNMadRQ0OYqq
-	 GYxzDDP2qEZZkkjWmv0G1eWKHMjP5iOectskPUgqOefNX5C1mpxg7m6tKVs2dpGS/W
-	 b5IQRzLitt6QkWu2SiuS35iZWerDc3ZLmhAn1808=
-Date: Tue, 7 Apr 2026 10:46:35 +0300 (MSK)
-From: Alexander Monakov <amonakov@ispras.ru>
-To: linux-ext4@vger.kernel.org
-cc: Zhang Yi <yi.zhang@huawei.com>
-Subject: Re: [BUG] lseek in sparse files broken on ext3 mounted as ext4
-In-Reply-To: <594c17d9-c00f-e485-96fb-cedf27ce3aa3@ispras.ru>
-Message-ID: <77ea1a0c-6924-a9a5-4851-9d7ad9a52e32@ispras.ru>
-References: <594c17d9-c00f-e485-96fb-cedf27ce3aa3@ispras.ru>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="AkkBmK9N";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RFuJl61n";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="AkkBmK9N";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RFuJl61n"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id ACC935BD3D;
+	Tue,  7 Apr 2026 10:29:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775557771; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=g1+Ci/akFMdO0jko6/Y2u7OnVMbV6gzyEmJjEE1R3HI=;
+	b=AkkBmK9NqQjLzi63Z2mnAn3JGiqmFA/So2LUvszGIIwCCjVObil0nyNq6V+N6YK0H5ZjE5
+	GHXhC8f0Uew7Sru98+0tOMBkMQfjo/8+tVdmrxw5LReLK/EoK0tNA53cdtdZ9sqbKERJ0k
+	O7suWjGBlYsbWPh3TYdd+stzp02xjrw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775557771;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=g1+Ci/akFMdO0jko6/Y2u7OnVMbV6gzyEmJjEE1R3HI=;
+	b=RFuJl61nGltbpAVDqNXLOXXHeS5l0zcCGMyczsZV+jUiKnlHMAgviy9Z3RajqIp9iXXKIN
+	E7D7kmChM/sZe4Bw==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775557771; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=g1+Ci/akFMdO0jko6/Y2u7OnVMbV6gzyEmJjEE1R3HI=;
+	b=AkkBmK9NqQjLzi63Z2mnAn3JGiqmFA/So2LUvszGIIwCCjVObil0nyNq6V+N6YK0H5ZjE5
+	GHXhC8f0Uew7Sru98+0tOMBkMQfjo/8+tVdmrxw5LReLK/EoK0tNA53cdtdZ9sqbKERJ0k
+	O7suWjGBlYsbWPh3TYdd+stzp02xjrw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775557771;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=g1+Ci/akFMdO0jko6/Y2u7OnVMbV6gzyEmJjEE1R3HI=;
+	b=RFuJl61nGltbpAVDqNXLOXXHeS5l0zcCGMyczsZV+jUiKnlHMAgviy9Z3RajqIp9iXXKIN
+	E7D7kmChM/sZe4Bw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A308F4A0B1;
+	Tue,  7 Apr 2026 10:29:31 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id kIXFJ4vc1GlMGgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 07 Apr 2026 10:29:31 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 55898A0A81; Tue,  7 Apr 2026 12:29:23 +0200 (CEST)
+Date: Tue, 7 Apr 2026 12:29:23 +0200
+From: Jan Kara <jack@suse.cz>
+To: Ye Bin <yebin@huaweicloud.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	jack@suse.cz, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 0/3] show orphan file inode detail info
+Message-ID: <n4sccudy5avcgnkdhc27rzofzoprxqtwhfrlmsh3yyrj6vbc6d@mmu73gmtawkq>
+References: <20260403082507.1882703-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260403082507.1882703-1-yebin@huaweicloud.com>
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MISSING_XM_UA(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_FIVE(0.00)[6];
+	FROM_EQ_ENVFROM(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo]
+X-Spam-Flag: NO
+X-Spam-Score: -3.80
+X-Spam-Level: 
 
-On Sat, 28 Mar 2026, Alexander Monakov wrote:
+Hi!
 
-> Hi!
+On Fri 03-04-26 16:25:04, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
 > 
-> Mounting ext3 with '-o delalloc' is explicitly rejected by the kernel
-> ("EXT4-fs: Mount option(s) incompatible with ext3" in dmesg).
-> 
-> At the same time, mounting ext3 with '-t ext4' is accepted, and enables
-> delayed allocation. In this case, lseek with SEEK_DATA/SEEK_HOLE requests
-> does not work correctly and breaks userspace programs such as install(1)
-> from coreutils.
-> 
-> To reproduce, it is sufficient to prepare an ext3 image as usual and mount it
-> as ext4:
-> 
-> truncate -s 1G img-ext3
-> mkfs.ext3 img-ext3
-> mkdir mnt-ext3
-> mount -t ext4 img-ext3 mnt-ext3
-> 
-> and run the following repro script:
-> 
-> #!/bin/sh
-> echo | dd of=src bs=1 count=1 seek=64K
-> strace -v -o install.strace install src dst
-> cmp src dst
-> 
-> the output should be
-> 
-> src dst differ: char 65537, line 1
-> 
-> with
-> 
-> lseek(3, 0, SEEK_DATA)                  = -1 ENXIO
-> 
-> in install.strace on the first lseek call, meaning that it reports
-> "no more data until EOF" (and hence install does not copy anything).
-> 
-> Either mounting with '-o nodelalloc' or fdatasync'ing the file before install
-> (conv=fdatasync in dd or 'sync -d src' after dd) avoids the problem.
-> 
-> The old ext4 wiki [1], the KernelNewbies wiki [2], and the Arch wiki [3]
-> all claim that mounting ext3 as ext4 is expected to work correctly.
-> 
-> [1] https://archive.kernel.org/oldwiki/ext4.wiki.kernel.org/index.php/UpgradeToExt4.html
-> [2] https://kernelnewbies.org/Ext4
-> [3] https://wiki.archlinux.org/title/Ext4
+> In actual production environments, the issue of inconsistency between
+> df and du is frequently encountered. In many cases, the cause of the
+> problem can be identified through the use of lsof. However, when
+> overlayfs is combined with project quota configuration, the issue becomes
+> more complex and troublesome to diagnose. First, to determine the project
+> ID, one needs to obtain orphaned nodes using `fsck.ext4 -fn /dev/xx`, and
+> then retrieve file information through `debugfs`. However, the file names
+> cannot always be obtained, and it is often unclear which files they are.
+> To identify which files these are, one would need to use crash for online
+> debugging or use kprobe to gather information incrementally. However, some
+> customers in production environments do not agree to upload any tools, and
+> online debugging might impact the business. There are also scenarios where
+> files are opened in kernel mode, which do not generate file descriptors(fds),
+> making it impossible to identify which files were deleted but still have
+> references through lsof. This patchset adds a procfs interface to query
+> information about orphaned nodes, which can assist in the analysis and
+> localization of such issues.
 
-I would like to ping this, and take this chance to cc Zhang Yi: it seems you
-have experience in this area, do you have some ideas what is happening here?
-How does delayed allocation interact with lseek like that?
+I agree listing orphan inodes for a superblock is useful and the usefulness
+could actually go beyond ext4. I imagine the very same problem is there for
+XFS or btrfs so perhaps we could think for a while whether we can provide
+an interface that wouldn't be ext4 specific? Perhaps an ioctl
+(GET_ORPHAN_FILES) that would return an fd and reading from that fd would
+return entries for orphan inodes?
 
-I think it would be nice to solve this problem, because it is just silent
-data corruption (no sign in dmesg of anything going wrong) in a setup that
-was claimed to be safe by ext4 wiki (and propagated elsewhere).
+Also regarding information reported about orphan inodes - won't it be better
+interface to just return a list of file handles? Userspace can then do
+whatever it needs with them - open, statx, calling ioctl, etc - so we
+thwart feature creep with people asking us to add more information to the
+interface. This also offloads a lot of security questions about the
+interface to appropriate syscalls. So overall it looks like a win to me.
 
-Downstream this was discovered in Gentoo bug 970253 (I'm not the affected user,
-I assisted with root-causing the bug): https://bugs.gentoo.org/970253
+								Honza
 
-Thanks.
-Alexander
+> 
+> Ye Bin (3):
+>   ext4: register 'orphan_list' procfs
+>   ext4: show inode orphan list detail information
+>   ext4: show orphan file inode detail info
+> 
+>  fs/ext4/ext4.h   |   1 +
+>  fs/ext4/orphan.c | 227 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/sysfs.c  |   2 +
+>  3 files changed, 230 insertions(+)
+> 
+> -- 
+> 2.34.1
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
