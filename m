@@ -1,146 +1,136 @@
-Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC39A349B1F
-	for <linux-ext4@vger.kernel.org>; Wed,  8 Apr 2026 16:22:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.48
+Received: from foss.arm.com (foss.arm.com [217.140.110.172])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id B31D63CF02A;
+	Wed,  8 Apr 2026 16:40:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=217.140.110.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775665369; cv=none; b=ErtQwx5iHF42D4NXTAuaVtl8z+sJIhMJKUMFnmoFq5ePJyHhnR/6v4PDnSkBB+099mTgoamM7klMqJrNdzn96oJDfA7f8iQGi/CVgjNwix7G6Syd15+HGKg2QsWK0vhHyylJXDR2x60iczw0RSm/FTEsIl4Uttm7SKAIcUlSfDo=
+	t=1775666453; cv=none; b=qW6C/iqfGS94etZXL+M7Lbr3Y4JhQrJc59WTOI6CI64l5qKwtUjIowvzPL4B2Ied8e/gq8IpK0eti5gmlx426u3wVdyD4JxO7/GKcu7lmAFQ49XP7zTA504gGqzZNsPA72Zf4bDUafPep8lqLPP7Hy2J5pXYN1gckedAyzuSV0k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775665369; c=relaxed/simple;
-	bh=MbK2EhOyylLAxU2Q/eHjdaz1ad4dnrnqpmOeagl6cGE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=IXcKTKzicFt8Tj8Q0ha/1S47wvKktYmB+p9k0HbsxqeBW5a2xAjntSUtaPL/VmzNvXLyzR2LFbtwiBzFUYQnBFHg03i1Z02aU1uy8B57IA+oq5sMdLreD3ojJzuCn6ePynKOZUS3b7Vtxpi9bsizmcvu6FXRyFYteDeLHJBR84U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org; spf=pass smtp.mailfrom=linuxfoundation.org; dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b=fRrx/4uX; arc=none smtp.client-ip=209.85.218.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linuxfoundation.org
+	s=arc-20240116; t=1775666453; c=relaxed/simple;
+	bh=X7uwi1mTnlblHvnMF6Xvi2utMBucdMig04mZXn3jTOw=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=arRaT6MF/SbKqOJ3Nh/71oV8YFibmMMZoczljNU5jUqPWDcHPSMFqwyDppSlKbH+zPV4V1j3pUish14Wb14LKAl4IJYV+vISdyf2usAZ0gTA0ZSst9oZ3QlGIJC+QiL31ZTh7dfrYobeiAm+rdwvdlr3dOeTv43uYPITBMRsk64=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com; spf=pass smtp.mailfrom=arm.com; dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b=F849nA4U; arc=none smtp.client-ip=217.140.110.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=arm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=arm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="fRrx/4uX"
-Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-b93698bb57aso9894766b.0
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2026 09:22:47 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google; t=1775665366; x=1776270166; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=FrJr1968WuvXLCx5E+q3h8WCNbUNL7Em2uQzgCx18+c=;
-        b=fRrx/4uXqqu8FVs+LcB5+I88dBlbYd8KacXUkYaa0Va2hEsXqTy3goqfpBY3fJh9Tc
-         fWLfDWTTAbpW4h4KhUuq98O0GWVfXP4mtkz84YLszyBxoDZuDhWVs01lVCiiz6fT+bsd
-         wk++HSaQWQLzrNf7GJCzQan7iGqEmJhg6mkCs=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775665366; x=1776270166;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=FrJr1968WuvXLCx5E+q3h8WCNbUNL7Em2uQzgCx18+c=;
-        b=d/dNZhtYIiObj24nOY9zo2vE1M5MmuIp+Z9A77qAuN0npBgp8VPwvVjNRgG66cdu+7
-         U2ZEuU7nwKWM98fb/HF0BU9nueiDW6+QgFquMpc6vT3MqGboo0UBpPpv0tlyvv+gJeV+
-         DRgkA4ZflMZqKqb3NuQbJQv7fbOR599c/Gd8p8hVGu6g13G5t8ra7wQE4qmEqPYpdQ8x
-         Uvye20OT+ZbB+NrK/st9ddzns+PkKjMNZGzmyUpeG+RUl+7luYtyZOtE5Cm3HMC1fjtt
-         xkkKHmah5bkqKckXW2KgKmvoK0GDPsFTGilXGjOByBTvx2cKSJ0WpKR1RtTwCYIgQU5N
-         xUoA==
-X-Forwarded-Encrypted: i=1; AJvYcCVdHnjkg70YKQqW8dOx5D05m8XmZ+22jjWCJeHgH70dYZxeIZ68GkztvLN2g7YzfOBuPpKAX4faofqi@vger.kernel.org
-X-Gm-Message-State: AOJu0YyC422J4PXsnkbYfCkEyQ+4nr+Mq8nSUTacv9hPnH6CjhrYHP0T
-	NbfCmVNh4wjw+lqcBylYmVsm86RLERRS/HCdAJc56UZ684pZE9IMc4W7CdMCp0ma+KFvmDsIIkl
-	BdbP3x7o=
-X-Gm-Gg: AeBDiev/xQiBjNLAtlD3yxR6VVeQrMeXFaR+O5zzALhd7hKNrzZ+BBuWLEVQEm4KrXI
-	PHNHhj4VYgM7Nei7txlQKFAz9l4Ux2THF9sp6bxnfrsJhHUGo4ENvWgsXt44prFmWMFVs0qOXuM
-	W11KBupP6FDW4EPrLpScSLr4RKhwwDsUOescOfNF48Gz6+9tZl/O1yCR88xP4lw8VCjBoIOSJ6W
-	WODx85PBmuE4wenXbif+IFRrUZPaBawYOP+KLqBgCQU4m7g9yDibRiclK2noQRSt+BfZPvVH+FG
-	xYJ6os7JDQ15F0oLXHeLVyFJMhF4vCFQhk49HpRcN6U/gaUHqZ5uWiwxObKCRXkTdWYcyJiFr49
-	3SV73kx6+b9CYWB+jlYIscViQAUIcdJg/OW5Muv88ExfbeTG6bxOGi60L2PtJDt1FElUsszSzth
-	FqXkbK7NcQPf4IgilWXkkEySTMWAQhS5bboX6YSFrRtda0fFbEcmt/PsXKPWUB1ulrbz/ArQkO
-X-Received: by 2002:a17:907:9306:b0:b90:b959:4c72 with SMTP id a640c23a62f3a-b9d4605e3e7mr9131466b.6.1775665365994;
-        Wed, 08 Apr 2026 09:22:45 -0700 (PDT)
-Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com. [209.85.208.42])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-b9c3cad1350sm653231866b.28.2026.04.08.09.22.44
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 08 Apr 2026 09:22:45 -0700 (PDT)
-Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-66d65646c65so60979a12.1
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2026 09:22:44 -0700 (PDT)
-X-Forwarded-Encrypted: i=1; AJvYcCVQeZBgtC/kE7MED77MiidAh8VUhshfTI5acPweXAuf/Ng8DNNk4/CErfibnhAz+v9560CJ5qOlMyo2@vger.kernel.org
-X-Received: by 2002:aa7:da5a:0:b0:669:cbc5:db7e with SMTP id
- 4fb4d7f45d1cf-6700a57ee26mr52955a12.6.1775665364063; Wed, 08 Apr 2026
- 09:22:44 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=arm.com header.i=@arm.com header.b="F849nA4U"
+Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
+	by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 0A6E62BC4;
+	Wed,  8 Apr 2026 09:40:45 -0700 (PDT)
+Received: from [10.57.85.157] (unknown [10.57.85.157])
+	by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id 952A73F632;
+	Wed,  8 Apr 2026 09:40:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=arm.com; s=foss;
+	t=1775666450; bh=X7uwi1mTnlblHvnMF6Xvi2utMBucdMig04mZXn3jTOw=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
+	b=F849nA4URN+RFi4j0f5jgoLpZlywmk3Pu6hMnA0qQncicSUV1k8+YOOGBYJZSzaWa
+	 WMsa+sEqQWvwY50XlMrAdxLbQ+BeLEJsklz01UjQB01Siqe8pKdIb3MTS2FbTKw0vy
+	 rIz0XlbsMeH2E12h1gNYQj8sc9EisZyfYvo/NbKo=
+Message-ID: <3a1d0520-3402-47b2-9d7b-4e14a3cd07a4@arm.com>
+Date: Wed, 8 Apr 2026 17:40:48 +0100
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <adZTGOjjJrVJOcT8@shell.armlinux.org.uk> <adZfTi3R6jtsjXx-@shell.armlinux.org.uk>
- <adZ9grUg71f518Fg@shell.armlinux.org.uk>
-In-Reply-To: <adZ9grUg71f518Fg@shell.armlinux.org.uk>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 8 Apr 2026 09:22:27 -0700
-X-Gmail-Original-Message-ID: <CAHk-=wgvBPt8b204E49qUfK5F3otKzV==4t8Z=6_wXO6vgWqHw@mail.gmail.com>
-X-Gm-Features: AQROBzAZ_qhfjZYeQTD5IRVziYmZuTFOofH8RWcCNS0y3LUoXT4zBJ_T9EYFJb0
-Message-ID: <CAHk-=wgvBPt8b204E49qUfK5F3otKzV==4t8Z=6_wXO6vgWqHw@mail.gmail.com>
+User-Agent: Mozilla Thunderbird
 Subject: Re: BUG: net-next (7.0-rc6 based and later) fails to boot on Jetson
  Xavier NX
-To: "Russell King (Oracle)" <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
-	linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
-	linux-ext4@vger.kernel.org, dmaengine@vger.kernel.org, 
-	Marek Szyprowski <m.szyprowski@samsung.com>, Robin Murphy <robin.murphy@arm.com>, 
-	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, Vinod Koul <vkoul@kernel.org>, 
-	Frank Li <Frank.Li@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+To: "Russell King (Oracle)" <linux@armlinux.org.uk>, netdev@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
+ iommu@lists.linux.dev, linux-ext4@vger.kernel.org,
+ Linus Torvalds <torvalds@linux-foundation.org>, dmaengine@vger.kernel.org
+Cc: Marek Szyprowski <m.szyprowski@samsung.com>, Theodore Ts'o
+ <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
+References: <adZTGOjjJrVJOcT8@shell.armlinux.org.uk>
+ <adZfTi3R6jtsjXx-@shell.armlinux.org.uk>
+ <adZ9grUg71f518Fg@shell.armlinux.org.uk>
+ <adZ_ZmjcE8S22vR1@shell.armlinux.org.uk>
+From: Robin Murphy <robin.murphy@arm.com>
+Content-Language: en-GB
+In-Reply-To: <adZ_ZmjcE8S22vR1@shell.armlinux.org.uk>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Wed, 8 Apr 2026 at 09:08, Russell King (Oracle)
-<linux@armlinux.org.uk> wrote:
->
-> The rebase is still progressing, but it's landed on:
->
-> c7d812e33f3e dmaengine: xilinx: xilinx_dma: Fix unmasked residue subtraction
+On 2026-04-08 5:16 pm, Russell King (Oracle) wrote:
+> On Wed, Apr 08, 2026 at 05:08:34PM +0100, Russell King (Oracle) wrote:
+>> The rebase is still progressing, but it's landed on:
+>>
+>> c7d812e33f3e dmaengine: xilinx: xilinx_dma: Fix unmasked residue subtraction
 
-Well, that commit looks completely bogus.
+FWIW I don't see a Tegra having the Xilinx IP in it anyway - judging by 
+the DT it has their own tegra-gpcdma engine...
 
-The explanation is just garbage: when subtracting two values that may
-have random crud in the top bits, it's actually likely *better* to do
-the masking *after* the subtraction.
+There's a fair chance this could be 90c5def10bea ("iommu: Do not call 
+drivers for empty gathers"), which JonH also reported causing boot 
+issues on Tegras - in short, SMMU TLB maintenance may not be completed 
+properly which could lead to recycled DMA addresses causing exactly this 
+kind of random memory corruption. I CC'd you on a patch:
 
-The subtract of bogus upper bits will only affect upper bits. The
-carry-chain only works upwards, not downwards.
+https://lore.kernel.org/linux-iommu/20260408162846.GE3357077@nvidia.com/T/#t
 
-So the old code that did
+Thanks,
+Robin.
 
-                       residue += (cdma_hw->control - cdma_hw->status) &
-                                  chan->xdev->max_buffer_len;
+>>
+>> and while this boots to a login prompt, it spat out a BUG():
+>>
+>> BUG: sleeping function called from invalid context at kernel/locking/mutex.c:591
+>> in_atomic(): 0, irqs_disabled(): 1, non_block: 0, pid: 56, name: kworker/u24:3
+>> preempt_count: 0, expected: 0
+>> RCU nest depth: 0, expected: 0
+>> 3 locks held by kworker/u24:3/56:
+>>   #0: ffff000080042148 ((wq_completion)events_unbound#2){+.+.}-{0:0}, at: process_one_work+0x184/0x780
+>>   #1: ffff80008299bdf8 (deferred_probe_work){+.+.}-{0:0}, at: process_one_work+0x1ac/0x780
+>>   #2: ffff0000808b48f8 (&dev->mutex){....}-{4:4}, at: __device_attach+0x2c/0x188
+>> irq event stamp: 10872
+>> hardirqs last  enabled at (10871): [<ffff80008013a410>] ktime_get+0x130/0x180
+>> hardirqs last disabled at (10872): [<ffff800080d61ac8>] _raw_spin_lock_irqsave+0x84/0x88
+>> softirqs last  enabled at (9216): [<ffff80008002807c>] fpsimd_save_and_flush_current_state+0x3c/0x80
+>> softirqs last disabled at (9214): [<ffff800080028098>] fpsimd_save_and_flush_current_state+0x58/0x80
+>> CPU: 5 UID: 0 PID: 56 Comm: kworker/u24:3 Not tainted 7.0.0-rc1-bisect+ #654 PREEMPT
+>> Hardware name: NVIDIA NVIDIA Jetson Xavier NX Developer Kit/Jetson, BIOS 6.0-37391689 08/28/2024
+>> Workqueue: events_unbound deferred_probe_work_func
+>> Call trace:
+>>   show_stack+0x18/0x30 (C)
+>>   dump_stack_lvl+0x6c/0x94
+>>   dump_stack+0x18/0x24
+>>   __might_resched+0x154/0x220
+>>   __might_sleep+0x48/0x80
+>>   __mutex_lock+0x48/0x800
+>>   mutex_lock_nested+0x24/0x30
+>>   pinmux_disable_setting+0x9c/0x180
+>>   pinctrl_commit_state+0x5c/0x260
+>>   pinctrl_pm_select_idle_state+0x4c/0xa0
+>>   tegra_i2c_runtime_suspend+0x2c/0x3c
+>>   pm_generic_runtime_suspend+0x2c/0x44
+>>   __rpm_callback+0x48/0x1ec
+>>   rpm_callback+0x74/0x80
+>>   rpm_suspend+0xec/0x630
+>>   rpm_idle+0x2c0/0x420
+>>   __pm_runtime_idle+0x44/0x160
+>>   tegra_i2c_probe+0x2e4/0x640
+>>   platform_probe+0x5c/0xa4
+>>   really_probe+0xbc/0x2c0
+>>   __driver_probe_device+0x78/0x120
+>>   driver_probe_device+0x3c/0x160
+>>   __device_attach_driver+0xbc/0x160
+>>   bus_for_each_drv+0x70/0xb8
+>>   __device_attach+0xa4/0x188
+>>   device_initial_probe+0x50/0x54
+>>   bus_probe_device+0x38/0xa4
+>>   deferred_probe_work_func+0x90/0xcc
+>>   process_one_work+0x204/0x780
+>>   worker_thread+0x1c8/0x36c
+>>   kthread+0x138/0x144
+>>   ret_from_fork+0x10/0x20
+>>
+>> This is reproducible.
+> 
+> I've just realised that it's the Tegra I2C bug that is already known
+> about, but took ages to be fixed in mainline - it's unrelated to the
+> memory corruption, so can be ignored. Sorry for the noise.
+> 
 
-would correctly mask out the upper bits, and the result of the
-subtraction would be done "modulo mac_buffer_len". Which is rather
-reasonable.
-
-The code was changed to
-
-                       residue += (cdma_hw->control &
-chan->xdev->max_buffer_len) -
-                                  (cdma_hw->status &
-chan->xdev->max_buffer_len);
-
-and now it does obviously still mask out the upper bits on each of the
-values), but then the subtraction is done "modulo the arithmetic C
-type" (which is 'u32')
-
-In particular, if the status bits are bigger than the control bits,
-that residue addition will now add a *huge* 32-bit number. It used to
-add a number that was limited by the  max_buffer_len mask.
-
-So the "interference from those top bits" stated in the commit message
-is simply NOT TRUE. It's just complete rambling garbage.
-
-Instead, the commit purely changes the final modulus of the
-subtraction - which has nothing to do with any upper bits, and
-everything to do with what kind of answer you want.
-
-I think that commit is just very very wrong. At least the commit
-message is wrong. And see above why I think the changed arithmetic is
-likely wrong too.
-
-It's very possible that the 'residue' is now a random 32-bit number
-with the high bits set, and you get DMA corruption.
-
-That would explain why this happens on Jetson but I haven't seen other reports.
-
-                    Linus
