@@ -1,79 +1,75 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9370537F01B
-	for <linux-ext4@vger.kernel.org>; Tue,  7 Apr 2026 23:37:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775605059; cv=none; b=MFVbhLLzGpMZH9bWQLgQCCDucL9TwxD8qsPWSEg5xXWN/i03QD5e5lFr3tKq2yAhNMXno9J2Q27nzgmaWI7E3IWfzm/Wr9y65U4rg3VL4iokfE479OskJIccoqxeQ4QIc887dwV1YQd8Dfv7IgPUKEcJ5+sWafw1ZLwEveMhpAo=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775605059; c=relaxed/simple;
-	bh=j+99azgYy0vKK3UY0we2bGSE9cNp6pIy4pj3/0pKyY8=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=F02kiLleteBtIH1Xx0wNFqimNbEA46TTCnn0z1fPDxUXlMipz2UUmK+UeQ3785NOdWkpBjr4M/AkyuNB+wELQVB8nBwrwjYsUnWdbEmEC0CZgQfDiCCWSA8nBNpFoSGTdkmW3dMoTjf3MrY3u/qyW8PmnRLgsPVTbWIp5Zz3y6U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=YHDvSX56; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B456740DFD4;
+	Wed,  8 Apr 2026 02:13:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1775614384; cv=pass; b=oLrPvFmWq6pga73YqzQtW3mVCLAxZsDyAYMvq8TKwQK8Q8Fik7kKVwqoCFv/nI8V5SkM9oEaQ3aotXzJsEvaefEfG3qr4ndyTwmxv6Fm6k0k+5FiLJ9N2Vk6phmyTkPOdexGCMtgGZtGjyjdXRXncMnist0JGE1JsEGnZ0dpKms=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1775614384; c=relaxed/simple;
+	bh=eyoyXlcJTyoWlelpg/gBuIe+Uh0cOF1QNrrDhnzQwDo=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=tl2lDCKD4nrogTqAl83GFjVjMacWO9HBZP1JARz16PKxYnlY5fOuXZ13vuW12WcZwR7V5vQv7ZBv8aT09i4IBQ28iCNYzSN0FLy9TckdbFB7p5gwA/FvnY5UllITAu5z+AJjWXwW6dV47cJCD4JmwTqAL5/lwsx2/8ijWJrEXGM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=ImJFZvO3; arc=pass smtp.client-ip=136.143.188.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="YHDvSX56"
-Received: from macsyma.thunk.org (pool-173-48-119-176.bstnma.fios.verizon.net [173.48.119.176])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 637NbI3g013361
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 7 Apr 2026 19:37:19 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775605041; bh=EM9+Y65ZKjeH9MFPMAEsNqFW5ghZHnWR3WX389z7zgs=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=YHDvSX56xWowlPH5og8N94jX3jyGLIipHmE/UaTZWlKBq2jllSEXNIE4NWB1XKBjH
-	 9aPFePl2TxCAbR2nopgEvDR4aGTVspF1xglEL9jg3gyXaIy87KQun+TJOgzpIiLyyA
-	 pbQ66vv0xqi1MXrFYqxBjyv5o6AByHPDqS2/T6RCIOg3PgoR41PUGt+VNdfFeoTrHM
-	 VwsF7dgQv1Eq3In9tk1O8ngvue/bl/Ki9PcS7LmtZzb1LBndkAL0F5niujUT097hqX
-	 qW6eWVZHy0E2IKqmrHxQByUbOIAUf7yN5gdegPxPQs4hcUbLdZQkZkL1mPXhaNZ/4Y
-	 WlQJw0odGcRPw==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 5DC516230A04; Tue,  7 Apr 2026 19:36:18 -0400 (EDT)
-Date: Tue, 7 Apr 2026 19:36:18 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Sean Smith <defendthedisabled@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, dsterba@suse.com, david@fromorbit.com,
-        brauner@kernel.org, osandov@osandov.com, almaz@kernel.org,
-        hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org
-Subject: Re: [RFC PATCH v1 0/6] provenance_time (ptime): a new settable
- timestamp for cross-filesystem provenance
-Message-ID: <20260407233618.GB12536@macsyma-wired.lan>
-References: <20260405225442.GA1763@macsyma-wired.lan>
- <20260407000558.417-1-DefendTheDisabled@gmail.com>
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="ImJFZvO3"
+ARC-Seal: i=1; a=rsa-sha256; t=1775614354; cv=none; 
+	d=zohomail.com; s=zohoarc; 
+	b=DR7jxLPDruobcn+KlW56bCuNMd9nWyonqcIfLzi2NKV+pzY/krmy7I+0CPhRQtxVi9Zhbhp9iGHsNFzoE7Ollr7WO7Z+UKbUNC8T+maxsVoEJd7xoVnNbeLwmEQLyFhmrAAMbf+e6J68tC90XS1evYP7WP4P4/bdxr/qYPGZGS8=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
+	t=1775614354; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=eyoyXlcJTyoWlelpg/gBuIe+Uh0cOF1QNrrDhnzQwDo=; 
+	b=m6Jl37K8BU3WDOmVCczdNiGVTcnMTftA2vYSJKaxbnmg/B94OSlU7yplG2e6ZwHdv28pTJqHetv/Xkgk5GBTl0CG+9cwg/9MhCiCCIn7BmWNF0ODLBeNjBIzWEJebu+HnAgMdTY5EEGP+Cex7mfF9l/86BYJ3VGqI61T9La/iIw=
+ARC-Authentication-Results: i=1; mx.zohomail.com;
+	dkim=pass  header.i=linux.beauty;
+	spf=pass  smtp.mailfrom=me@linux.beauty;
+	dmarc=pass header.from=<me@linux.beauty>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1775614353;
+	s=zmail; d=linux.beauty; i=me@linux.beauty;
+	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=eyoyXlcJTyoWlelpg/gBuIe+Uh0cOF1QNrrDhnzQwDo=;
+	b=ImJFZvO3J/22H8qAaSz1lOLgdpiL3RljdSIlJaZfJD8LsJRe07ow7jJagMdf8ISi
+	x38Gv3upkkrPHIGn4t537fwchc3da3qMlEjyTsK9Aatbxpunec6UioTJXp/QcgV2c00
+	oDlfFuyiZrry2zeV6JnPmNy3wrhl2l+zzSihhNBM=
+Received: by mx.zohomail.com with SMTPS id 177561434908025.963734623901928;
+	Tue, 7 Apr 2026 19:12:29 -0700 (PDT)
+From: Li Chen <me@linux.beauty>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>,
+	Mark Fasheh <mark@fasheh.com>,
+	linux-ext4@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v4 0/4] jbd2/ext4/ocfs2: lockless jinode dirty range
+Date: Wed,  8 Apr 2026 10:12:14 +0800
+Message-ID: <20260408021214.2060713-1-me@linux.beauty>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260306085643.465275-1-me@linux.beauty>
+References: <20260306085643.465275-1-me@linux.beauty>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260407000558.417-1-DefendTheDisabled@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-ZohoMailClient: External
 
-On Mon, Apr 06, 2026 at 07:05:55PM -0500, Sean Smith wrote:
-> The patches implement rename-over preservation in all 5
-> filesystem rename handlers. When rename(source, target)
-> replaces an existing file, and the source has ptime=0 (the
-> default for any newly-created temp file) while the target
-> has ptime != 0, the filesystem copies the target's ptime to
-> the source before destroying the target's inode. This runs
-> inside the rename transaction, atomic with the rename itself.
+Hi,
 
-Yelch.   This is so *very* non-Unixy / non-POSIX / non-Linux.
+Just a gentle ping on this series posted on March 6, 2026.
 
-I understand why it's convenient for your particular use case, but
-rename(2) is fundamentally an operation which works on directory
-entries.  We don't copy over extended attributes, or Posix ACL's, or
-Unix permission mode bits, because (a) that would violate POSIX and
-historical Unix behavior, and (b) because rename(2) is fundamentally a
-directory entry operation.  This is despite the fact that it be more
-convenient if we didn't have to copy over things like extended
-attributes, ACL's, permission mode bits, etc.  So you want to make an
-exception for ptime?   Yelch.  Just Yelch.
+The current v4 has Reviewed-by tags from Jan on all four patches.
+If there are no further concerns, could you please consider it for
+merging?
 
-						- Ted
+I'm happy to resend if that would help.
+
+Thanks,
+Li
