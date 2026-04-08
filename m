@@ -1,175 +1,216 @@
-Received: from pandora.armlinux.org.uk (pandora.armlinux.org.uk [78.32.30.218])
+Received: from relay.hostedemail.com (smtprelay0017.hostedemail.com [216.40.44.17])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBB23361DDD;
-	Wed,  8 Apr 2026 19:52:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=78.32.30.218
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF13038D007;
+	Wed,  8 Apr 2026 20:02:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=216.40.44.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775677961; cv=none; b=JCzMULcuN7/dvHDuoP/9/5MpaKLXIjvKgyFfpQYmSNqJ2PkSZbDGgJLfM0fevonOoQn1a9/763Km10ohUXmLgAEfo3E9HU28eIKQnzuJcHJZ6TDkTPaV16LjhbMRWBPOZmthcCzHk3GHa3EY5Zl+yPnXJWDmuMNoWyqqYFwkFA4=
+	t=1775678581; cv=none; b=TjzvU0YnM6c0WqZ+i1Sx2KRAyBvhIbjHmQvif0ybwC+EMfSO1jzpTdOCRdvctdzrofCXXDEAlXeNREWroXr90ecZ4TiUDWXYOzpL/bwoZFOt4qSuK7YFC+PQUNm3A2OzjKoGqUmBxMPNrGCQ1AFfCY83HaU9H2l0lBBeNYfnXyk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775677961; c=relaxed/simple;
-	bh=9mqb4UmtbkwxmOKBN82oecxyPuZOukRhEtgO/Lh2Y5g=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=FDo9s905hzWgZuZy70ZR41oKp/qpLrpLGVcGxqDIyZBB1RmGZ3vSsnMurXy6crx1eKky+2+oPFpgtF/ZUMIlB+vA9BP9MabxayeRXmKHN7efcGWRve+Vf2/IV0ABxzb8WS7N8H68l0PaNlcE59zvqPINUFzssLI86ZlAIe/2mCY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=armlinux.org.uk; spf=none smtp.mailfrom=armlinux.org.uk; dkim=pass (2048-bit key) header.d=armlinux.org.uk header.i=@armlinux.org.uk header.b=HbONVFG6; arc=none smtp.client-ip=78.32.30.218
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=armlinux.org.uk
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=armlinux.org.uk
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=armlinux.org.uk header.i=@armlinux.org.uk header.b="HbONVFG6"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=armlinux.org.uk; s=pandora-2019; h=Sender:In-Reply-To:Content-Type:
-	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-	Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-	List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-	bh=siH4dWUpa1bG3+ZxEQfIrP5wIqLbPeNz587asx6iEtM=; b=HbONVFG6DRgrSygkw950meAgfH
-	FLTLo7BxXvMxVYn1N3O9aPUiz3woyCupXzqlJQWKrMvzQLmTmBdI6FEku+H9GKYgnuT3VLPpCo9f+
-	6UDXAtge8QqbJsZepg2gz1o0r8ZWvTGoK5cuNO5b+6T7SGJHaGQ1dJN34J2aho4Bw1hyZTnIeNaC4
-	Poq5/q05n5j5v6Xxsm05218oh5ixACNea6eFktDlpcOoW2BJjsL2Wd0AjuMGd6wqOP2v1ksNxubFr
-	y9J3KuLltt3yfobkIvJuBFwB/mpTyjhKQzrWzf7bSihFoYIWM5TQZmnfgoZQm6ZHigZ83vVG3EqUO
-	pkUdBNyg==;
-Received: from shell.armlinux.org.uk ([fd8f:7570:feb6:1:5054:ff:fe00:4ec]:44908)
-	by pandora.armlinux.org.uk with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.98.2)
-	(envelope-from <linux@armlinux.org.uk>)
-	id 1wAYx1-000000002jw-3Ojf;
-	Wed, 08 Apr 2026 20:52:35 +0100
-Received: from linux by shell.armlinux.org.uk with local (Exim 4.98.2)
-	(envelope-from <linux@shell.armlinux.org.uk>)
-	id 1wAYwy-000000003cC-3cPP;
-	Wed, 08 Apr 2026 20:52:32 +0100
-Date: Wed, 8 Apr 2026 20:52:32 +0100
-From: "Russell King (Oracle)" <linux@armlinux.org.uk>
-To: Robin Murphy <robin.murphy@arm.com>
-Cc: netdev@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-	linux-kernel@vger.kernel.org, iommu@lists.linux.dev,
-	linux-ext4@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	dmaengine@vger.kernel.org,
-	Marek Szyprowski <m.szyprowski@samsung.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
-Subject: Re: BUG: net-next (7.0-rc6 based and later) fails to boot on Jetson
- Xavier NX
-Message-ID: <adayAMR_dEA6W5vW@shell.armlinux.org.uk>
-References: <adZTGOjjJrVJOcT8@shell.armlinux.org.uk>
- <adZfTi3R6jtsjXx-@shell.armlinux.org.uk>
- <adZ9grUg71f518Fg@shell.armlinux.org.uk>
- <adZ_ZmjcE8S22vR1@shell.armlinux.org.uk>
- <3a1d0520-3402-47b2-9d7b-4e14a3cd07a4@arm.com>
+	s=arc-20240116; t=1775678581; c=relaxed/simple;
+	bh=yI0gf8gI4SVLBBvRbXbDhKekxGCVbzCyZg+rugJd84Y=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=nf0uSv5eASdRcMaR8R7ZdQtxbaXhpad90HcZjdaJ6HwyXzJUew0IgDcXNfALMswDnehj1GKaZMds4q5XRSy8AXgRNsDcvDdYVU2kUwmC94f3m4C6VJA3124+yDOEeLwii4L74nBV6axPGj+tFTOb//avi+xVxSJT94TxoA0Qmaw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org; spf=pass smtp.mailfrom=goodmis.org; arc=none smtp.client-ip=216.40.44.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=goodmis.org
+Received: from omf20.hostedemail.com (a10.router.float.18 [10.200.18.1])
+	by unirelay02.hostedemail.com (Postfix) with ESMTP id D3F52138162;
+	Wed,  8 Apr 2026 20:02:51 +0000 (UTC)
+Received: from [HIDDEN] (Authenticated sender: rostedt@goodmis.org) by omf20.hostedemail.com (Postfix) with ESMTPA id F130320026;
+	Wed,  8 Apr 2026 20:02:48 +0000 (UTC)
+Date: Wed, 8 Apr 2026 16:04:05 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Li Chen <me@linux.beauty>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>, Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li
+ <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huawei.com>, Masami Hiramatsu <mhiramat@kernel.org>,
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-trace-kernel@vger.kernel.org
+Subject: Re: [RFC v6 6/7] ext4: fast commit: add lock_updates tracepoint
+Message-ID: <20260408160405.45a5ee09@gandalf.local.home>
+In-Reply-To: <20260408112020.716706-7-me@linux.beauty>
+References: <20260408112020.716706-1-me@linux.beauty>
+	<20260408112020.716706-7-me@linux.beauty>
+X-Mailer: Claws Mail 3.20.0git84 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <3a1d0520-3402-47b2-9d7b-4e14a3cd07a4@arm.com>
-Sender: Russell King (Oracle) <linux@armlinux.org.uk>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+X-Rspamd-Queue-Id: F130320026
+X-Rspamd-Server: rspamout06
+X-Stat-Signature: 31f3wkxzr7b1o9rbmffjuiurwxs7afg4
+X-Session-Marker: 726F737465647440676F6F646D69732E6F7267
+X-Session-ID: U2FsdGVkX1+fNRqLMKHLva9mfCIRC3qtfuY8KaONfJs=
+X-HE-Tag: 1775678568-265512
+X-HE-Meta: U2FsdGVkX18aAJWzRtF34Vi9zUSLx49mvEH+R9xkDO1iO/T6NoLAGMimOxsRrT7nU6Ww9B/VRzMcJV6Mhkj9S3CAE7VXwLM0CbV9tiELPqIsbXoPnmAX1saMakuxvCU4wDOMZvzzXJbkk/5n10QK0/9uR0sy7KPhBlLWaXbS7Y8Ky0SM7gXd5ht0si9JNB0k8ltzMrKVZGoOjag1lVH05TUd9HNc/LRPBgf4jUJT41C8Kzvik3MPSLVshoYDL3FdZINYV7wTl/GDG15bKQcuo0SFvkUX9MotBS8QhjogsaRPUnA/K5ppkBnIwsfmwApC7N/jCTdCdU5nYPMtyRTapTC3iuBh8SztvyrAciTFUvAWLD5Z4SY8qhA9ZF8AGVF9
 
-On Wed, Apr 08, 2026 at 05:40:48PM +0100, Robin Murphy wrote:
-> On 2026-04-08 5:16 pm, Russell King (Oracle) wrote:
-> > On Wed, Apr 08, 2026 at 05:08:34PM +0100, Russell King (Oracle) wrote:
-> > > The rebase is still progressing, but it's landed on:
-> > > 
-> > > c7d812e33f3e dmaengine: xilinx: xilinx_dma: Fix unmasked residue subtraction
+On Wed,  8 Apr 2026 19:20:17 +0800
+Li Chen <me@linux.beauty> wrote:
+
+> Commit-time fast commit snapshots run under jbd2_journal_lock_updates(),
+> so it is useful to quantify the time spent with updates locked and to
+> understand why snapshotting can fail.
 > 
-> FWIW I don't see a Tegra having the Xilinx IP in it anyway - judging by the
-> DT it has their own tegra-gpcdma engine...
+> Add a new tracepoint, ext4_fc_lock_updates, reporting the time spent in
+> the updates-locked window along with the number of snapshotted inodes
+> and ranges. Record the first snapshot failure reason in a stable snap_err
+> field for tooling.
 > 
-> There's a fair chance this could be 90c5def10bea ("iommu: Do not call
-> drivers for empty gathers"), which JonH also reported causing boot issues on
-> Tegras - in short, SMMU TLB maintenance may not be completed properly which
-> could lead to recycled DMA addresses causing exactly this kind of random
-> memory corruption. I CC'd you on a patch:
-> 
-> https://lore.kernel.org/linux-iommu/20260408162846.GE3357077@nvidia.com/T/#t
 
-Okay, bisect complete, and... no idea. It seems to suggest that 7.0-rc6
-is actually fine - it ended up blaming Linus' tagging of 7.0-rc6 which
-only changed the makefile. So, my assumption that because rc6 was merged
-into net-next last Thursday which fails, net-next+rc7 fails, rc7 also
-fails, that rc6 would also fail seems to be false.
+[..]
 
-Right, rc7 built with the same .config that rc6 was built with
-definitely fails, this time with:
+> @@ -1338,13 +1375,13 @@ static int ext4_fc_perform_commit(journal_t *journal)
+>  	if (ret)
+>  		return ret;
+>  
+> -
+>  	ret = ext4_fc_alloc_snapshot_inodes(sb, &inodes, &inodes_size);
+>  	if (ret)
+>  		return ret;
+>  
+>  	/* Step 4: Mark all inodes as being committed. */
+>  	jbd2_journal_lock_updates(journal);
+> +	lock_start = ktime_get();
 
-Root device found: PARTUUID=741c0777-391a-4bce-a222-455e180ece2a
-depmod: ERROR: could not open directory /lib/modules/7.0.0-rc7-bisect: No such file or directory
-depmod: FATAL: could not search modules: No such file or directory
-usb 2-3: new SuperSpeed Plus Gen 2x1 USB device number 2 using tegra-xusb
-hub 2-3:1.0: USB hub found
-hub 2-3:1.0: 4 ports detected
-usb 1-3: new full-speed USB device number 3 using tegra-xusb
-EXT4-fs (mmcblk0p1): VFS: Can't find ext4 filesystem
-mount: /mnt: wrong fs type, bad option, bad superblock on /dev/mmcblk0p1, missing codepage or helper program, or other error.
-mount: /mnt/: can't find PARTUUID=741c0777-391a-4bce-a222-455e180ece2a.
-get_swap_device: Bad swap file entry 1800c00008
-get_swap_device: Bad swap file entry 1800c00008
-get_swap_device: Bad swap file entry 1800c00008
+ktime_get() is rather quick but if you care about micro-optimizations, you
+could have:
 
-So, it seems rc6 -> rc7 => fails
-net-next with rc5 -> net-next with rc6 => fails
+	if (trace_ext4_fc_lock_updates_enabled())
+		lock_start = ktime_get();
+	else	
+		lock_start = 0;
 
-However, before I test anything else, I've just built the same rc7
-which failed above with your patch applied - and that boots fine.
+>  	/*
+>  	 * The journal is now locked. No more handles can start and all the
+>  	 * previous handles are now drained. Snapshotting happens in this
+> @@ -1358,8 +1395,15 @@ static int ext4_fc_perform_commit(journal_t *journal)
+>  	}
+>  	ext4_fc_unlock(sb, alloc_ctx);
+>  
+> -	ret = ext4_fc_snapshot_inodes(journal, inodes, inodes_size);
+> +	ret = ext4_fc_snapshot_inodes(journal, inodes, inodes_size,
+> +				      &snap_inodes, &snap_ranges, &snap_err);
+>  	jbd2_journal_unlock_updates(journal);
+> +	if (trace_ext4_fc_lock_updates_enabled()) {
 
-Now, each Thursday, net-next gets updated as that's the day that the
-net tree gets sent for merging into mainline. This causes net-next's
-version to increase. So something in current net-next plus in rc7 is
-causing this problem.
+	if (trace_ext4_fc_lock_updates_enabled() && lock_start) {
 
-The commit you claim needs fixing is:
+But feel free to ignore this if the overhead of always calling ktime_get()
+is not an issue.
 
-$ git describe --contains 90c5def10bea
-v7.0-rc7~29^2~2
 
-which I had assumed wouldn't be in net-next.
+> +		locked_ns = ktime_to_ns(ktime_sub(ktime_get(), lock_start));
+> +		trace_ext4_fc_lock_updates(sb, commit_tid, locked_ns,
+> +					   snap_inodes, snap_ranges, ret,
+> +					   snap_err);
+> +	}
+>  	kvfree(inodes);
+>  	if (ret)
+>  		return ret;
+> @@ -1564,7 +1608,7 @@ int ext4_fc_commit(journal_t *journal, tid_t commit_tid)
+>  		journal_ioprio = EXT4_DEF_JOURNAL_IOPRIO;
+>  	set_task_ioprio(current, journal_ioprio);
+>  	fc_bufs_before = (sbi->s_fc_bytes + bsize - 1) / bsize;
+> -	ret = ext4_fc_perform_commit(journal);
+> +	ret = ext4_fc_perform_commit(journal, commit_tid);
+>  	if (ret < 0) {
+>  		if (ret == -EAGAIN || ret == -E2BIG || ret == -ECANCELED)
+>  			status = EXT4_FC_STATUS_INELIGIBLE;
+> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+> index f493642cf121..7028a28316fa 100644
+> --- a/include/trace/events/ext4.h
+> +++ b/include/trace/events/ext4.h
+> @@ -107,6 +107,26 @@ TRACE_DEFINE_ENUM(EXT4_FC_REASON_VERITY);
+>  TRACE_DEFINE_ENUM(EXT4_FC_REASON_MOVE_EXT);
+>  TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX);
+>  
+> +#undef EM
+> +#undef EMe
+> +#define EM(a)	TRACE_DEFINE_ENUM(EXT4_FC_SNAP_ERR_##a);
+> +#define EMe(a)	TRACE_DEFINE_ENUM(EXT4_FC_SNAP_ERR_##a);
+> +
+> +#define TRACE_SNAP_ERR						\
+> +	EM(NONE)						\
+> +	EM(ES_MISS)						\
+> +	EM(ES_DELAYED)						\
+> +	EM(ES_OTHER)						\
+> +	EM(INODES_CAP)						\
+> +	EM(RANGES_CAP)						\
+> +	EM(NOMEM)						\
+> +	EMe(INODE_LOC)
+> +
+> +TRACE_SNAP_ERR
+> +
+> +#undef EM
+> +#undef EMe
+> +
+>  #define show_fc_reason(reason)						\
+>  	__print_symbolic(reason,					\
+>  		{ EXT4_FC_REASON_XATTR,		"XATTR"},		\
+> @@ -2818,6 +2838,47 @@ TRACE_EVENT(ext4_fc_commit_stop,
+>  		  __entry->num_fc_ineligible, __entry->nblks_agg, __entry->tid)
+>  );
+>  
+> +#define EM(a)	{ EXT4_FC_SNAP_ERR_##a, #a },
+> +#define EMe(a)	{ EXT4_FC_SNAP_ERR_##a, #a }
+> +
+> +TRACE_EVENT(ext4_fc_lock_updates,
+> +	    TP_PROTO(struct super_block *sb, tid_t commit_tid, u64 locked_ns,
+> +		     unsigned int nr_inodes, unsigned int nr_ranges, int err,
+> +		     int snap_err),
+> +
+> +	TP_ARGS(sb, commit_tid, locked_ns, nr_inodes, nr_ranges, err, snap_err),
+> +
+> +	TP_STRUCT__entry(/* entry */
+> +		__field(dev_t, dev)
+> +		__field(tid_t, tid)
+> +		__field(u64, locked_ns)
+> +		__field(unsigned int, nr_inodes)
+> +		__field(unsigned int, nr_ranges)
+> +		__field(int, err)
+> +		__field(int, snap_err)
+> +	),
+> +
+> +	TP_fast_assign(/* assign */
+> +		__entry->dev = sb->s_dev;
+> +		__entry->tid = commit_tid;
+> +		__entry->locked_ns = locked_ns;
+> +		__entry->nr_inodes = nr_inodes;
+> +		__entry->nr_ranges = nr_ranges;
+> +		__entry->err = err;
+> +		__entry->snap_err = snap_err;
+> +	),
+> +
+> +	TP_printk("dev %d,%d tid %u locked_ns %llu nr_inodes %u nr_ranges %u err %d snap_err %s",
+> +		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->tid,
+> +		  __entry->locked_ns, __entry->nr_inodes, __entry->nr_ranges,
+> +		  __entry->err, __print_symbolic(__entry->snap_err,
+> +						 TRACE_SNAP_ERR))
+> +);
+> +
+> +#undef EM
+> +#undef EMe
+> +#undef TRACE_SNAP_ERR
+> +
+>  #define FC_REASON_NAME_STAT(reason)					\
+>  	show_fc_reason(reason),						\
+>  	__entry->fc_ineligible_rc[reason]
 
-Now, mainline had this on Thursday:
+As for the rest:
 
-commit f8f5627a8aeab15183eef8930bf75ba88a51622f
-Merge: 4c2c526b5adf ec7067e66119
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu Apr 2 09:57:06 2026 -0700
+Reviewed-by: Steven Rostedt (Google) <rostedt@goodmis.org>
 
-    Merge tag 'net-7.0-rc7' of git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net
+[ Please add this reviewed-by to any new versions so I remember I already
+  looked at it. ]
 
-commit 4c2c526b5adfb580bd95316bf179327d5ee26da8
-Merge: 2ec9074b28a0 8b72aa5704c7
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu Apr 2 09:53:16 2026 -0700
+Thanks,
 
-    Merge tag 'iommu-fixes-v7.0-rc6' of git://git.kernel.org/pub/scm/linux/kernel/git/iommu/linux
-
-and merging iommu-fixes-v7.0-rc6 introduced the buggy 90c5def10bea
-commit into -rc7.
-
-However, as soon as Linus merged net-7.0-rc7, netdev maintainers merged
-that exact commit back into net-next:
-
-commit 8ffb33d7709b59ff60560f48960a73bd8a55be95
-Merge: 269389ba5398 f8f5627a8aea
-Author: Jakub Kicinski <kuba@kernel.org>
-Date:   Thu Apr 2 10:57:09 2026 -0700
-
-    Merge git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net
-
-Thereby bringing in that buggy commit into net-next, but with net-next
-identifying itself as 7.0-rc6.
-
-That's... confusing, but explains why current net-next which reports
-itself as 7.0-rc6 _and_ rc7 both fail, but rc6 itself does not. It
-also means I've wasted an entire afternoon running a useless bisect
-between rc5 and rc6 due to the version numbers in net-next being
-meaningless.
-
-What's the status on the iommu fix? Is it merged into mainline yet?
-If it isn't already, that means net-next remains unbootable going
-into the merge window without manually carrying the fix locally.
-
--- 
-RMK's Patch system: https://www.armlinux.org.uk/developer/patches/
-FTTP is here! 80Mbps down 10Mbps up. Decent connectivity at last!
+-- Steve
