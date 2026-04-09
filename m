@@ -1,64 +1,95 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 879E730BF6D;
-	Thu,  9 Apr 2026 13:38:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 112CB2EC0A1
+	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 14:12:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775741916; cv=none; b=t/Uf7WtUVzDrJl3ylr4EgAS/EAGVFFe5QPMI5rIYyi+ywSY7p50MZWqlqDsomPx2f99Q0S8J7kM12vr0dsF1vsC9dMMPg7wEM1F6TH1Kvmi64v1BHTFRsuCAtgE5HHM6xN2xHgVs5RfzL0qwwTd4JmHWoxR6UqR2yU/R7NpRsG0=
+	t=1775743932; cv=none; b=A2tW2ASh2OQ5DoYqgVcJorqXOYh6sk6fTDiCd4APSLtt3cE6V5Di3kn/qiw5QYkct01z0v3iyDmcKFBOb+K7vfYBjCpiIB278oJusKkjIyDwILWLrt0GnUUuwGIKd4Dz55zKZKQuOAOen8qtjK5W/r9GSq9mprjckRbGccmkkDc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775741916; c=relaxed/simple;
-	bh=ZZTegXgr9pUaseE17m2ATJSgkEL6TWH6qbyHnwiViJg=;
+	s=arc-20240116; t=1775743932; c=relaxed/simple;
+	bh=WfFOtlPs2NfDXPqb4oR2cN3XOdTSzWo3zgeHbGy5nsA=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Dd32ptqYhkFoNT1PaRjYP/JUDhbr78/mUqDoEkluPSqHCDVp/6smZdzrRHN8GzXPSisgbAGlvFY0BRmaM4QfJwsnsalza9Oup2PdnssM+DXLni1mrJBHqG/D0fyMs5UCrEgrJkdsWhAvuc1HFGMZ7fxEtkzAkaUfk+5VhwJBupU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ubRxbUba; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=dBA3A8YzAouqyJYhK7Cdnd208zOwY8aPZMV987/N9NbdoO9qil5GwK4mZNoEGyFl9glqr2o6Se2lT2/HE7Q5Q8K67xeN+/rUCo1GM5fCaybVyZpbbQgDGC9Q4P97Dr5i924LWAJzgikEs3qnyxEvTUXFIhSsTDomrEU3sECfDk8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=IH+kJqSd; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ubRxbUba"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B74DC4CEF7;
-	Thu,  9 Apr 2026 13:38:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775741916;
-	bh=ZZTegXgr9pUaseE17m2ATJSgkEL6TWH6qbyHnwiViJg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=ubRxbUbaV2ZuKcyHWFhmbZuLOrwRH02qOI4yuICGL8GEcVt9kNosuqWeoF0hOqEK0
-	 LlcRO4PAuuWe6hS7Ir5Mv4JGnDEeYUYOKNfi8IZfeksJxEeNCCwFRAJy7vF40uXvA7
-	 zNejjEi7ec6pN2yZaz8mRJVOMh6Il/WOZKKI9vLOD/YNi+n7VLaBfNPwz+PY16fC1q
-	 cSZvtmXIXJfoPUbVpOUMgFe8IKzPk9gdhL3zJ1x25fKK5Lj/dTL16EUdeU3P+6TSYP
-	 HezU9r7PKGwlW/hjCJe+FOHFK1uCsUGUP1haycbUSMmYB0latNB3nJffoo6+RzAsCR
-	 wyJz4Q50xWXEw==
-Date: Thu, 9 Apr 2026 15:38:31 +0200
-From: Christian Brauner <brauner@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Sean Smith <defendthedisabled@gmail.com>, 
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	dsterba@suse.com, david@fromorbit.com, osandov@osandov.com, 
-	hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org
-Subject: Re: [RFC PATCH v1 0/6] provenance_time (ptime): a new settable
- timestamp for cross-filesystem provenance
-Message-ID: <20260409-hinblick-anregen-b50f248bd7e4@brauner>
-References: <20260405225442.GA1763@macsyma-wired.lan>
- <20260407000558.417-1-DefendTheDisabled@gmail.com>
- <20260407233618.GB12536@macsyma-wired.lan>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="IH+kJqSd"
+Received: from macsyma.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 639EBpC3008558
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 9 Apr 2026 10:11:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1775743915; bh=uxJLWPeeGFUiniSNpii4WFinjORBHMr3fYalQpg8VpA=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=IH+kJqSdmb9YrThN9ofBQzR+aiHqCBThJM48culO1NYZFJsa/ddqFG+erokjFQOwb
+	 lkhFuHKQ4XvtYpj/aUSSS/lXEadAz9ZzpLZG95VF7yR978iFNQ68XTzGQqwPR+6pZ+
+	 FLfmGHv8BtambhyanvYs4D+asH0LeWKzf8zXtftdTY44P85D82bJF0onrGeFjpKdTy
+	 y6eq5NhUFdBmWtd4X/DmKiM+gSGVA6gvFsTJnh/y9JaTnD2tCy1G8uZUEIeNwbtcCM
+	 IrcmFjq8iSC6fMTRXq6HpXDWdpgf/MDFfQs7NcuAc3aGdUmmHYDe9eJfL6CaJ1EDEs
+	 QG2Ui5bZSVTvg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id DC98262647EF; Thu,  9 Apr 2026 10:10:50 -0400 (EDT)
+Date: Thu, 9 Apr 2026 10:10:50 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Guan-Chun Wu <409411716@gms.tku.edu.tw>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, visitorckw@gmail.com,
+        david.laight.linux@gmail.com
+Subject: Re: [PATCH v2] ext4: improve str2hashbuf by processing 4-byte chunks
+ and removing function pointers
+Message-ID: <20260409141050.GA59468@macsyma-wired.lan>
+References: <20251122043929.1908643-1-409411716@gms.tku.edu.tw>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260407233618.GB12536@macsyma-wired.lan>
+In-Reply-To: <20251122043929.1908643-1-409411716@gms.tku.edu.tw>
 
-On Tue, Apr 07, 2026 at 07:36:18PM -0400, Theodore Ts'o wrote:
-> On Mon, Apr 06, 2026 at 07:05:55PM -0500, Sean Smith wrote:
-> > The patches implement rename-over preservation in all 5
-> > filesystem rename handlers. When rename(source, target)
-> > replaces an existing file, and the source has ptime=0 (the
-> > default for any newly-created temp file) while the target
-> > has ptime != 0, the filesystem copies the target's ptime to
-> > the source before destroying the target's inode. This runs
-> > inside the rename transaction, atomic with the rename itself.
+On Sat, Nov 22, 2025 at 12:39:29PM +0800, Guan-Chun Wu wrote:
+> The original byte-by-byte implementation with modulo checks is less
+> efficient. Refactor str2hashbuf_unsigned() and str2hashbuf_signed()
+> to process input in explicit 4-byte chunks instead of using a
+> modulus-based loop to emit words byte by byte.
 > 
-> Yelch.   This is so *very* non-Unixy / non-POSIX / non-Linux.
+> Additionally, the use of function pointers for selecting the appropriate
+> str2hashbuf implementation has been removed. Instead, the functions are
+> directly invoked based on the hash type, eliminating the overhead of
+> dynamic function calls.
+> 
+> Performance test (x86_64, Intel Core i7-10700 @ 2.90GHz, average over 10000
+> runs, using kernel module for testing):
+> 
+>     len | orig_s | new_s | orig_u | new_u
+>     ----+--------+-------+--------+-------
+>       1 |   70   |   71  |   63   |   63
+>       8 |   68   |   64  |   64   |   62
+>      32 |   75   |   70  |   75   |   63
+>      64 |   96   |   71  |  100   |   68
+>     255 |  192   |  108  |  187   |   84
+> 
+> This change improves performance, especially for larger input sizes.
+> 
+> Signed-off-by: Guan-Chun Wu <409411716@gms.tku.edu.tw>
 
-I think you meant to type "N", "A", and "K".
+Apologies for the delay in looking at this.  It fell through the
+cracks on my end.
+
+Because of how I'm a bit late with reviewing patches before the merge
+window, I'm going to be very conservative in which patches I'm going
+to land.  So this is going to be deferred until the next cycle, but I
+wanted to let you know that I haven't forgotten about it.
+
+If this was a comprehensive set of Kunit tests for fs/ext4/hash.c, I
+might have taken it.  And that's something that I would look at adding
+for the next cycle, but if you'd be interested in creating the kunit
+tests for hash.c, that would be great.
+
+						- Ted
