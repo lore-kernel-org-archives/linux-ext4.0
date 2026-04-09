@@ -1,114 +1,64 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9484826E165
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 13:16:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 879E730BF6D;
+	Thu,  9 Apr 2026 13:38:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775740609; cv=none; b=pPzIUGCrH6Jtys0BFLzsoYh2CToBjGusPvfE/+6CeCSwu1K5KDGwURO7kRWLeiJBqXmj1DliyTp6+wB4O+ZPZXIUL74BfqRt5+PX9LQ+RhuaS1JQIK8M2NS26qJ9laWRrxRblG9xDx/HvKgb96XOeyj6o31EIyGn/9ndYBSHj8Y=
+	t=1775741916; cv=none; b=t/Uf7WtUVzDrJl3ylr4EgAS/EAGVFFe5QPMI5rIYyi+ywSY7p50MZWqlqDsomPx2f99Q0S8J7kM12vr0dsF1vsC9dMMPg7wEM1F6TH1Kvmi64v1BHTFRsuCAtgE5HHM6xN2xHgVs5RfzL0qwwTd4JmHWoxR6UqR2yU/R7NpRsG0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775740609; c=relaxed/simple;
-	bh=+8HNfJO6lKTadPMqN2KZn/OiSKoWTTnUtegSrnHPbP0=;
+	s=arc-20240116; t=1775741916; c=relaxed/simple;
+	bh=ZZTegXgr9pUaseE17m2ATJSgkEL6TWH6qbyHnwiViJg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=QlAvyAQ9R/l7VTJcIj4epIrknL25juHCzaIlOqjmuW2RI2KfRJpQ/AYvmwjBRn2bEX9ltiF0sVRnmPNRJ8peSmHx1DtYXUnzw3oNoXw2/9wFE0kfD+St8EJP/u2Ce24EYmWN657iw+qoxGxfHvunV1hNa5vphHwVlbYlYZ/zJHs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=aB1/hUZC; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=Dd32ptqYhkFoNT1PaRjYP/JUDhbr78/mUqDoEkluPSqHCDVp/6smZdzrRHN8GzXPSisgbAGlvFY0BRmaM4QfJwsnsalza9Oup2PdnssM+DXLni1mrJBHqG/D0fyMs5UCrEgrJkdsWhAvuc1HFGMZ7fxEtkzAkaUfk+5VhwJBupU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ubRxbUba; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="aB1/hUZC"
-Received: from macsyma.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 639DDdk6013555
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 9 Apr 2026 09:13:40 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775740421; bh=D4w40sIfh1Zntye5XlBYIgg6R4pyKLV6UQBgcYVuBLQ=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=aB1/hUZCUwChjF0Cy6Ac/lyMdZ8fknqSwjOEr/Slwnu1/7zrijKrl0yu//YjNR/2W
-	 nA8X/mUUUsph1zzX7DAOsvs0F6GxQRkrDyWbRfgfUKN8HxEYIGSSrsCsB9+2ITfvP4
-	 HqWbWnmxodRp1VeTC/zHA5pc5lQXE0B2Kva5Bo7VbF3ut4wxHIKywXVFjrOYN+qkn5
-	 aw9QANPp9kcWzm+n5dbl6xoSNcg6rqEEEyrfjDBumi4ClQ90rnvXirgbWK9aGInzkX
-	 Ar6ZyCpvrarriDc07RTgj3MsXSDq6znimTN5YHwozS7y/4kksPc30jGl2iM3yF9h1Y
-	 F6+VnFPS2B+2Q==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id CFBE76261ECD; Thu,  9 Apr 2026 09:12:38 -0400 (EDT)
-Date: Thu, 9 Apr 2026 09:12:38 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Anand Jain <anajain.sg@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Anand Jain <asj@kernel.org>, dsterba@suse.com
-Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
- collisions
-Message-ID: <20260409131238.GC18443@macsyma-wired.lan>
-References: <cover.1774092915.git.asj@kernel.org>
- <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
- <20260323041624.GA11453@mac.lan>
- <d4a9970b-e7ed-4e74-be9d-2d08400f9d79@gmail.com>
- <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
- <adSUiB9L0sFAd04U@infradead.org>
- <20260407144709.GA81690@macsyma-wired.lan>
- <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
- <20260409041035.GC99725@macsyma-wired.lan>
- <22cfbf8d-af9b-462e-b240-67a1de24764f@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ubRxbUba"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B74DC4CEF7;
+	Thu,  9 Apr 2026 13:38:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1775741916;
+	bh=ZZTegXgr9pUaseE17m2ATJSgkEL6TWH6qbyHnwiViJg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=ubRxbUbaV2ZuKcyHWFhmbZuLOrwRH02qOI4yuICGL8GEcVt9kNosuqWeoF0hOqEK0
+	 LlcRO4PAuuWe6hS7Ir5Mv4JGnDEeYUYOKNfi8IZfeksJxEeNCCwFRAJy7vF40uXvA7
+	 zNejjEi7ec6pN2yZaz8mRJVOMh6Il/WOZKKI9vLOD/YNi+n7VLaBfNPwz+PY16fC1q
+	 cSZvtmXIXJfoPUbVpOUMgFe8IKzPk9gdhL3zJ1x25fKK5Lj/dTL16EUdeU3P+6TSYP
+	 HezU9r7PKGwlW/hjCJe+FOHFK1uCsUGUP1haycbUSMmYB0latNB3nJffoo6+RzAsCR
+	 wyJz4Q50xWXEw==
+Date: Thu, 9 Apr 2026 15:38:31 +0200
+From: Christian Brauner <brauner@kernel.org>
+To: Theodore Tso <tytso@mit.edu>
+Cc: Sean Smith <defendthedisabled@gmail.com>, 
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	dsterba@suse.com, david@fromorbit.com, osandov@osandov.com, 
+	hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org
+Subject: Re: [RFC PATCH v1 0/6] provenance_time (ptime): a new settable
+ timestamp for cross-filesystem provenance
+Message-ID: <20260409-hinblick-anregen-b50f248bd7e4@brauner>
+References: <20260405225442.GA1763@macsyma-wired.lan>
+ <20260407000558.417-1-DefendTheDisabled@gmail.com>
+ <20260407233618.GB12536@macsyma-wired.lan>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <22cfbf8d-af9b-462e-b240-67a1de24764f@gmail.com>
+In-Reply-To: <20260407233618.GB12536@macsyma-wired.lan>
 
-On Thu, Apr 09, 2026 at 05:45:24PM +0800, Anand Jain wrote:
+On Tue, Apr 07, 2026 at 07:36:18PM -0400, Theodore Ts'o wrote:
+> On Mon, Apr 06, 2026 at 07:05:55PM -0500, Sean Smith wrote:
+> > The patches implement rename-over preservation in all 5
+> > filesystem rename handlers. When rename(source, target)
+> > replaces an existing file, and the source has ptime=0 (the
+> > default for any newly-created temp file) while the target
+> > has ptime != 0, the filesystem copies the target's ptime to
+> > the source before destroying the target's inode. This runs
+> > inside the rename transaction, atomic with the rename itself.
 > 
-> Got it. Do you mean that since both filesystems are identical,
-> statfs(A) and statfs(B) can legitimately return the same values?
+> Yelch.   This is so *very* non-Unixy / non-POSIX / non-Linux.
 
-Yes.  f_Fsid can legitimately always be zero (which I believe is the
-case for FreeBSD, but I understand that there are some programs, like
-systemd, which subscribe to the heresy, "All the World's Linux", which
-is a variant of the "All the World's a Vax" or "All the World's SunOS"
-at the beginning of my career :-).
-
-> I'm not entirely sure what the correct expectation for f_fsid
-> should be.
-
-That's my point, there *is* no correct expectation, and I don't
-believe there can or should be.  What we should be doing instead is
-actively discouraging people from using f_fsid.  I suspect that's one
-of the reasons why FreeBSD may have chosen to just return zero.
-
-Which is why I don't think we should be testing this in xfstests's
-generic/791, either.  (Unless we get consensus across file system
-developers abnd willing to make it be a documented behavior as of a
-particular kernel version, and we then adjust the test to skip it if
-it's older than that kernel version, so it doesn't break LTS kernel
-tests.  See below....)
-
-> My initial idea was to make f_fsid behavior consistent across
-> major filesystems so that user space benefits from predictable
-> semantics.
-
-I'm OK with that, so long as it's unconditional across all file system
-types (ideally) or unconditionally across all major file systems (xfs,
-btrfs, ext4, f2fs) as of a particular kernel version (which is
-probably much more realistic), *and* it is documented in the Linux man
-pages as this is the standard behavior starting with 7.1 (or
-whatever), and that the man page further cautions that programs that
-expect to be portable to other OS's (MacOS, FreeBSD, Solaris, etc.)
-should not count on this behavior.
-
-But given that you originally stumbled across this with Overlayfs,
-because it was originally using s_uuid, and that didn't work well for
-btrfs, why not change overlayfs to just use s_uuid plus kdev_t in its
-xattr, and just fix the problem for overlayfs?  That has the benefit
-that it will work for all file system types in Linux, not just for
-those where we have changed what f_fsid does.
-
-Cheers,
-
-					- Ted
+I think you meant to type "N", "A", and "K".
