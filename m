@@ -1,124 +1,146 @@
-Received: from mail-pl1-f173.google.com (mail-pl1-f173.google.com [209.85.214.173])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCF6F35E93E
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 09:45:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13E44391820;
+	Thu,  9 Apr 2026 11:47:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775727930; cv=none; b=ZvNnb2+Za2lwdOFjolIr4T5wN4oGeja67EtXVerPXdyb3MrNkDq5YxukTNUo3hktKqHhZm51+J3LsqZb7yUUAsmhPfZHbE5S+CER53uUBfhKy1FH8eYe4ZOVieONPoTym+iS4tAc89KiucI6zx3VNXISEcwl7hAf+abzrUCfCpI=
+	t=1775735268; cv=none; b=I4ipVaPsex4fMWGwijJqutFg6158UlgQGbu9FPKOgQ8/RDxdBFjdlgsuwLUvLVBMOYp7n+vZuNNLRvT6Ov70saHeuLnQqjFujADkinvCOKrTZy8riNoCa10+AK0UF6LMpes+gPMNcTy7iwpxWOXz51zxFp/gjnP1c1A3e/YGW2E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775727930; c=relaxed/simple;
-	bh=Y7HPYaMeBrC9oPCMFCEfdGDDpTsf221Nf2WBNd8YlxA=;
-	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
-	 In-Reply-To:Content-Type; b=JkqyAKolE4OPqWjBuqTJpRe1UhpCe697zrxQLs/uIfQuKYnT6/gnx2Og86RmE9OeDhDHTdlHaVG+RBhDx6nImrb7wH5nauWLGlphSx6xRIld0V9gVs25KRlOUA2UrG5jTHhlbPIPA0xjQJzNgSebPSPfFtMrMWTsdON1Ggglm2s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YN5OYwXu; arc=none smtp.client-ip=209.85.214.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YN5OYwXu"
-Received: by mail-pl1-f173.google.com with SMTP id d9443c01a7336-2a9296b3926so4114925ad.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Apr 2026 02:45:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1775727929; x=1776332729; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:content-language:references
-         :cc:to:subject:from:user-agent:mime-version:date:message-id:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=4ADfJ2NQprV2qnHtWa7RILUcbgRcQL/MN+0KGK2nuGg=;
-        b=YN5OYwXuJwI4TLfqwZZb6Rj82SPFURoKz5Sjp6cKgi25SraI8oXcz0y6vzsUELYsZ2
-         GDq5AaFvFodzhKO6LbNlx6D2JOT6BRFd2J7tvqolovwXSLw6CSbT2b400FVwd0k1By6D
-         HYLPpUmBakQ7ROTtNK+wWXTx9xTNxckWcI5e8AxfpQCVRek695R2aDgJWcCoB8+jfS34
-         TkP0t/emljanChlYPcV1oZAEiLy/fcopwE6w/NHM/kBJEM9uUs2gu7orEIA1LVLhnWPU
-         oc02HNa2msG3/S4CCrF2pazXAEChdNex1KMS6LWlbomPJ5gJqEalPZX5fFXpjY7/4mi5
-         gHfg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775727929; x=1776332729;
-        h=content-transfer-encoding:in-reply-to:content-language:references
-         :cc:to:subject:from:user-agent:mime-version:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=4ADfJ2NQprV2qnHtWa7RILUcbgRcQL/MN+0KGK2nuGg=;
-        b=IGV2GL/2TfmJsTnle3AUPnGHtzb2NLeVlNAsz/Mj39saO5A96c76sTnEuhdHmC8/PI
-         wLHdTSsgmZ9cn/54uos5IDJZD8tU4NzLGiWVsWVnXLB5Of1tVo8CeaCGvfLHcK22yVWJ
-         ZEgx15EE5Y8aa35evKbcgxfTTK4WA+Lo05BRC2vyCI0rmjX/8s9l5rAA4PKZI/BAml1N
-         059GIshADdFYkSgGVkQMaSZf9CTR/+oEITMRphETos9on712+Fzgo980WhZznBx2kN3d
-         JYhFYjwvEXVn11WqCD5ZaFwBOXhi/uPxoaQcdQENUX3Cm/mnhDcOuz0siDwKaiAsLHKN
-         Y5rQ==
-X-Forwarded-Encrypted: i=1; AJvYcCX77EHZOCat7Cx53A68YEhysfPsEKSAQ3rBkiKbhd9rL+fvgAQpG3J2vX9s9RH4eSyepG7GZiDBGIjD@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy9rgDHcR6Z+YbeWGroiIzVt1rKH7tCNvM9JlmZv0pP2QyLqDGo
-	hgm+OxDiYS1RYrLvMjmiv2kOGZmZM2nQgcD92/NgmHL9LNzOgndhtw9L
-X-Gm-Gg: AeBDietCBRMGvVpdoyUFQ5d9tWEF50L4o8/3RDFVEQ5W56AotjuYK93cVLydoXbg2PL
-	GycLfiOGo7/DayBLOZpauOsdSqP4n4KVxw4s4diz6ttXEYQ+/qPz2DNAreZc+/rAWxyHjD23CO/
-	O3BMi8Alk7NfNdY5brScOFVchrSn/M4y5iVUf1Vj33fox46bym4zAhFvdUUrIPWQz8E+b8e3hlj
-	TR7lArbpGieU8KQkQG7u8wMjOeSMGiGf+eRPWtyBvkeYRHssonu8kBN5WaAVJf1BtE46L5SWQMH
-	DVJb6mmrT8ZcZxNJBr7JJ7iBU0gNX72QSJ5kO21ZFtGT1dwhj7+o0GUn/WqoCJkDXctDjFzbHCS
-	3efhuty5pymv8heB/B28YcHPVTsDgiJ/zXBgbmQPJGtY/FUkgrAyCLac5BZPJANkIvQSmc8mlCo
-	lTIcIYhmdPCqS4ImvE4aoAwip2Eg==
-X-Received: by 2002:a17:903:37c4:b0:2b0:7b57:830f with SMTP id d9443c01a7336-2b2818e4f2amr251227605ad.33.1775727928999;
-        Thu, 09 Apr 2026 02:45:28 -0700 (PDT)
-Received: from [192.168.50.70] ([116.87.14.48])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b2749a2e42sm214502685ad.56.2026.04.09.02.45.25
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 09 Apr 2026 02:45:27 -0700 (PDT)
-Message-ID: <22cfbf8d-af9b-462e-b240-67a1de24764f@gmail.com>
-Date: Thu, 9 Apr 2026 17:45:24 +0800
+	s=arc-20240116; t=1775735268; c=relaxed/simple;
+	bh=UBWP4HMYIq3fCF5zPk//N+07aF3jABzOqwEjmLuncd8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=EVTJPszpaBd+0m22njfa0UJ3aW6ZKnvatYVnJNxuC8rikgn8lD4uLHq0Wthx5REUYlg1onF/oO0pN8n+O7jCVwxUNGNZpWuoaUaHT2cJBiA/Xub1Etg8s0aVaHlCih84iTYD+fIVnmPjAs0rdHzX+7/8bT91KIhvuwnA0mkr/Gk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4frypw0bsCzKHMk3;
+	Thu,  9 Apr 2026 19:47:36 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 4266340592;
+	Thu,  9 Apr 2026 19:47:36 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with SMTP id cCh0CgAHC9vQkddpnPjFDw--.28749S4;
+	Thu, 09 Apr 2026 19:47:36 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	dave@stgolabs.net,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	libaokun@linux.alibaba.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v2] jbd2: fix deadlock in jbd2_journal_cancel_revoke()
+Date: Thu,  9 Apr 2026 19:42:03 +0800
+Message-ID: <20260409114204.917154-1-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-From: Anand Jain <anajain.sg@gmail.com>
-Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
- collisions
-To: Theodore Tso <tytso@mit.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, "Darrick J. Wong"
- <djwong@kernel.org>, linux-ext4@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
- Anand Jain <asj@kernel.org>, dsterba@suse.com
-References: <cover.1774092915.git.asj@kernel.org>
- <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
- <20260323041624.GA11453@mac.lan>
- <d4a9970b-e7ed-4e74-be9d-2d08400f9d79@gmail.com>
- <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
- <adSUiB9L0sFAd04U@infradead.org> <20260407144709.GA81690@macsyma-wired.lan>
- <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
- <20260409041035.GC99725@macsyma-wired.lan>
-Content-Language: en-US
-In-Reply-To: <20260409041035.GC99725@macsyma-wired.lan>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgAHC9vQkddpnPjFDw--.28749S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7Kw15XF4rJr15JF43XFWrKrg_yoW5JFyUpF
+	98KFyYkrykuF1qk3Z7Xay5JF13Gw4kGryUCFZF9wnIkF45XF97KFW7K3WYqFyjvrs7Xw4v
+	qrWjya4rua109rDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9014x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
+	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
+	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
+	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
+	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628v
+	n2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7x
+	kEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E
+	67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCw
+	CI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1x
+	MIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIda
+	VFxhVjvjDU0xZFpf9x0JUQID7UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+From: Zhang Yi <yi.zhang@huawei.com>
 
+Commit f76d4c28a46a ("fs/jbd2: use sleeping version of
+__find_get_block()") changed jbd2_journal_cancel_revoke() to use
+__find_get_block_nonatomic() which holds the folio lock instead of
+i_private_lock. This breaks the lock ordering (folio -> buffer) and
+causes an ABBA deadlock when the filesystem blocksize < pagesize:
 
-> So if the two file systems are identical, the (f_fsid, ino) will
-> uniquely determines a file.  And that's *fine* if f_fsid is the same
-> for statfs(A) and statfs(B).
+     T1                                T2
+ext4_mkdir()
+ ext4_init_new_dir()
+  ext4_append()
+   ext4_getblk()
+    lock_buffer()    <- A
+                                   sync_blockdev()
+                                    blkdev_writepages()
+                                     writeback_iter()
+                                      writeback_get_folio()
+                                       folio_lock()   <- B
+     ext4_journal_get_create_access()
+      jbd2_journal_cancel_revoke()
+       __find_get_block_nonatomic()
+        folio_lock()  <- B
+                                     block_write_full_folio()
+                                      lock_buffer()   <- A
 
+This can occasionally cause generic/013 to hang.
 
-Got it. Do you mean that since both filesystems are identical,
-statfs(A) and statfs(B) can legitimately return the same values?
+Fix by only calling __find_get_block_nonatomic() when the passed
+buffer_head doesn't belong to the bdev, which is the only case that we
+need to look up its bdev alias. Otherwise, the lookup is redundant since
+the found buffer_head is equal to the one we passed in.
 
-And if users want them to diverge, the expectation is that they
-should update the UUID (via tune2fs), after which f_fsid would
-also differ. If the UUID isn't changed, then the ambiguity is
-effectively a user responsibility.
+Fixes: f76d4c28a46a ("fs/jbd2: use sleeping version of __find_get_block()")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+v1->v2:
+ - Switch to using sb_is_blkdev_sb() to check whether the bh belongs to
+   the bdev.
 
-I'm not entirely sure what the correct expectation for f_fsid
-should be.
+ fs/jbd2/revoke.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-My initial idea was to make f_fsid behavior consistent across
-major filesystems so that user space benefits from predictable
-semantics.
-
-Currently, XFS and Btrfs provide f_fsid values that are unique
-per filesystem, including clones, while ext4 provides uniqueness
-only if the UUID is changed by the user.
-
-That said, it may be fine for ext4 to retain this behavior,
-since statfs(2) itself has some inherent ambiguity.
-
-If there are no further concerns, I'll update the submitted
-test case generic/791 accordingly.
-
-Thanks, Anand
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 9016ddb82447..e4c2fbd381f1 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -428,6 +428,7 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	journal_t *journal = handle->h_transaction->t_journal;
+ 	int need_cancel;
+ 	struct buffer_head *bh = jh2bh(jh);
++	struct address_space *bh_mapping = bh->b_folio->mapping;
+ 
+ 	jbd2_debug(4, "journal_head %p, cancelling revoke\n", jh);
+ 
+@@ -464,13 +465,14 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ 	 * buffer_head?  If so, we'd better make sure we clear the
+ 	 * revoked status on any hashed alias too, otherwise the revoke
+ 	 * state machine will get very upset later on. */
+-	if (need_cancel) {
++	if (need_cancel && !sb_is_blkdev_sb(bh_mapping->host->i_sb)) {
+ 		struct buffer_head *bh2;
++
+ 		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
+ 						 bh->b_size);
+ 		if (bh2) {
+-			if (bh2 != bh)
+-				clear_buffer_revoked(bh2);
++			WARN_ON_ONCE(bh2 == bh);
++			clear_buffer_revoked(bh2);
+ 			__brelse(bh2);
+ 		}
+ 	}
+-- 
+2.52.0
 
