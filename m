@@ -1,49 +1,56 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CE311A6829
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 02:52:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E8F4259C9C
+	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 04:12:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775703175; cv=none; b=p5drOSQmNQvriVlVQMl64v82FfbydEdI7NbxdWAFRqffqn+D9wYQyzgvpl90FDQ220Qei/6DARodbwsGsg31quFMU8JePzMhNiCgAH8d60x6OnYJmcV76A7TWl1ruhSaCwQiHCLSmE8ZMYFcCf2KQRpupVhtvQk2aG+7iAHBnWM=
+	t=1775707922; cv=none; b=lBMQdq2Qc7Sh5Qf9+gxvTQ22f2AoLUSQJPObVVEybDjlnlDnCXTWEAyGW1V9L4hf1wHCHuQgWYe9O9bhmH7I3F5m8GOYVYXXWnWyz+j2ej2H+MuY0/4yHXiseomo5esuTuagADnAE/CdMvnTyjySyVQYZrm9l5TV5S7XSNMbO74=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775703175; c=relaxed/simple;
-	bh=4QjqaFHIg/Dy6Jc2O+lz+QefipsXiEqtsyKueInTJ/I=;
+	s=arc-20240116; t=1775707922; c=relaxed/simple;
+	bh=6YHfrpk1CLmgitkyrjwN+HR9dP3AJnFyvTSvr+bFdDY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Mlm6Z9fWC/I0zfRi2iaze2v5mBrhOmuOlA4XjM+BdzBcyPM/s5eDeCNAQx+E+EMlDR0GFYGAUQgZakOzpDmdjGdRNH3MA1wPaKyqs3mP5OijpXJaNlMm97d3dl5m+SGrvlbgdPoNH56Rdcev4aHBugWY7njJzEzV9zoYIJnKd5c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=GRkLTg2Y; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=EWzM4B9f8EQKg9uo8goEMkTd9dQhr5lOlKT8sSTeNJruLybMZKat2IdB/6Rl0SV3Yqxn/wU14G2l/nhjW6FMt9Lsb7fUIzL9Rv2A1O1sfjuQWf+aUjjtFk2EzaisMOfdSh0jyyfcTCey/XXcYQ9vh9uMYG42LfZ3/GlnwbcK6Zk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=PQurBuLz; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="GRkLTg2Y"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="PQurBuLz"
 Received: from macsyma.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6392qZDs017818
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6394Bakp013983
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 8 Apr 2026 22:52:36 -0400
+	Thu, 9 Apr 2026 00:11:38 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775703158; bh=pRitemWm7oStHMtE/NSYcFZebUdUwyyWgpbueyh1kbc=;
+	t=1775707899; bh=NBFukzxQNIlbpu4dR1BAdcrERQuSpFgXbePc35/CAcQ=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=GRkLTg2YZM1nkobsvKOOd4bs+yNeo2+bnwcQxFOxx+RpkJ5i22in1Mbkx8Vek3kB+
-	 4wwe+Sb+c3P7P88+AXXXvkT8n3YNoNnKWUDP88SxeqjimV1yDkcktAbT/XeqXnJcgt
-	 O/97o+7a6ugGW3pNwTbuLB3P/U6rVVTWMbvpsNgbANQeQh0VDTj+rsvUgrsUpJIJV2
-	 dVoZS0IzySHkZlJxKHqZ26C3Qpje3zWbpyKmW/m+Mt7e+KaQnOk5UkEDQ694IXqvFd
-	 5ra2zqdUG2c+CEb+prE4I/lw+vfJNIRjgsruvX4DMz0ErApXs2pzgHAzgoGlHm9QVC
-	 mRspiQafk+x5w==
+	b=PQurBuLzZ1AJBBaBEtKJQ2CAbaNk78ZzQ/69Sr7DZbFPK+9IJybrvvx8OEoBmt0K/
+	 zZu31CKmU5WLkwCcTmVy29QPU8jaAGhUWRbnsm18GtjIxGjrcrWZKRcJAHI9xQNQfp
+	 DnHbaJ7lF1dRStlbJL+qQlHVCeI+leVoZ+ee+4GXaTkxm/NKeWB6pgyiYzetQYAgtL
+	 JfWWBFoKDi8Mu9On1wilzEsFAjM/K3XL7RbyiGetEYu5UtiZRJOIXmI2SQkDv/Xtei
+	 NeECjPfMgW+OdGkv5wnbai8oA4DyT0njG5I56F96F15ZWwLxUQHWKXNheb9YV3Grex
+	 iLe9tyRKGI8bw==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 9B01162570A1; Wed,  8 Apr 2026 22:51:35 -0400 (EDT)
-Date: Wed, 8 Apr 2026 22:51:35 -0400
+	id C9709625964A; Thu,  9 Apr 2026 00:10:35 -0400 (EDT)
+Date: Thu, 9 Apr 2026 00:10:35 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: Ye Bin <yebin@huaweicloud.com>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 0/3] show orphan file inode detail info
-Message-ID: <20260409025135.GB99725@macsyma-wired.lan>
-References: <20260403082507.1882703-1-yebin@huaweicloud.com>
- <n4sccudy5avcgnkdhc27rzofzoprxqtwhfrlmsh3yyrj6vbc6d@mmu73gmtawkq>
- <20260407202845.GA38246@macsyma-wired.lan>
- <fdil2jz7kizzrlew7airdlpvnz7qyzigigaw3huktm66455wuh@yyqhacmxe4qk>
+To: Anand Jain <anajain.sg@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Anand Jain <asj@kernel.org>
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+Message-ID: <20260409041035.GC99725@macsyma-wired.lan>
+References: <cover.1774092915.git.asj@kernel.org>
+ <33e8eb64c304a4d42b60f608c26497bf9a2e9e19.1774092915.git.asj@kernel.org>
+ <20260323041624.GA11453@mac.lan>
+ <d4a9970b-e7ed-4e74-be9d-2d08400f9d79@gmail.com>
+ <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
+ <adSUiB9L0sFAd04U@infradead.org>
+ <20260407144709.GA81690@macsyma-wired.lan>
+ <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,21 +59,39 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <fdil2jz7kizzrlew7airdlpvnz7qyzigigaw3huktm66455wuh@yyqhacmxe4qk>
+In-Reply-To: <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
 
-On Wed, Apr 08, 2026 at 03:36:10PM +0200, Jan Kara wrote:
-> > And inodes on the orphan inode list have been unlinked, so we don't want
-> > to allow people to be able to open them.
-> 
-> Why? You can reopen unlinked files using magic links in proc or file
-> handles just fine today (just tested this if I'm not missing anything in
-> the code). Only once the inode is really deleted you cannot open using the
-> handle anymore.
+On Thu, Apr 09, 2026 at 06:28:32AM +0800, Anand Jain wrote:
+> Some A/B testing use cases require the filesystem to remain
+> byte-for-byte identical. In those scenarios, changing the UUID
+> isn't an option.
 
-You're right.  I don't know why I thought that would fail, but it does
-indeed work.  I think I was thinking of linkat(2) with AT_EMPTY_FLAG.
+But in that case, where the file systems A and B are bit-fot-bit
+identical, why do we care whether statfs returns different fsid's for
+statfs(A) and statfs(B).  After all, f_fsid is only defined as "File
+system ID", and there is no other definition.  Which is why I say that
+people *really* shouldn't depending on its semantics, because it's not
+well defined.
 
-So yeah, your suggestion of a synthetic fd that returns a list of file
-handles sounds good to me.
+Quoting from the statfs(2) man page:
+
+    Nobody knows what f_fsid is supposed to contain (but see below).
+
+    ...
+
+    The general idea is that f_fsid contains some random stuff such
+    that the pair (f_fsid,ino) uniquely determines a file. Some
+    operating systems use (a variation on) the device number, or the
+    device number combined with the filesystem type. Several operating
+    systems restrict giving out the f_fsid field to the superuser only
+    (and zero it for unprivileged users), because this field is used
+    in the filehandle of the filesystem when NFS-exported, and giving
+    it out is a security concern.
+
+So if the two file systems are identical, the (f_fsid, ino) will
+uniquely determines a file.  And that's *fine* if f_fsid is the same
+for statfs(A) and statfs(B).
+
+No?
 
 					- Ted
