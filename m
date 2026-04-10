@@ -1,163 +1,76 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4113D3382F4
-	for <linux-ext4@vger.kernel.org>; Thu,  9 Apr 2026 20:15:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E8C9315D50
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 01:19:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775765704; cv=none; b=Zt2OPsueccU4Nks/JMrHwNeYn2G/VK0f++az5Zuobas3HQ0gedUJoy5Pfn2cos0c9XFnrcvbCmrwYhnCChh6uegYs6wCeVSmjcvfC/oyLlsqH3/ozqFMtTiESOTXvRgNDZjUeFfGaYCBAkfYhoxEDqGuuEaOAyz/enWC7x8ImOQ=
+	t=1775783944; cv=none; b=fTPni1UBHdCZ8ubpf+YGP6IYKmE+EQfgB+yMae+Pe6AL/OBxsulOIlZbqL0ABtCY2Aoa5UIpPVnP4GmeY9XudYpex8HhwynB4ByL9CXuXg1yoqLSmd1F3gesDdjtxBe+m93oiyI2/wNsG+uP250QC39woJlOwz0evD2VsPeZNj0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775765704; c=relaxed/simple;
-	bh=WJ/IEqRr63Mv8pW9rXFFW7XT9KeyYmRrKfV3P5ouf8s=;
-	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:In-Reply-To:
-	 References:Content-Type; b=X505RKXWM9xpUS0R2irYzSG7pI4LKoA6C69+M0KaczffBzylxx/+Zr9KiF5JYm+oxBhuISrc02lZdcuCdMHotIx0orLTlryoEDoV4Z7n7AsRBzEkv8+h80XidN072OovdPcszOglqOf+NgqzkA4qiKB7XaESs65BsvhSov556J8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZcCqCNv1; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1775783944; c=relaxed/simple;
+	bh=JHT5fHED+RNfSNkBCsKJYEWjBPITIG6/eDgn4xajX8Q=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=VBeBKS5OUcyOmm3iDckdN4KTlfWL37iEL+tkvFfl4Ar7taDud4kMyCxSfx2fXFkCySagjtNrWdA2Tig86nk01rRwwr+xb5yc4VD8Cs5hKEnQmmVhhtm+eMqPLbGKQFPklG6YlVBoXH6kI7NkR0mJzsvbBrzzvcGSCYNlbimzTg0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=LmCP2O2I; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZcCqCNv1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0DF2C2BC87;
-	Thu,  9 Apr 2026 20:15:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775765703;
-	bh=WJ/IEqRr63Mv8pW9rXFFW7XT9KeyYmRrKfV3P5ouf8s=;
-	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=ZcCqCNv1xdGQFPO6iHpPE8gWwQuo3JtNdvbRoe6uGPqEoD7qGHDw3iY2iBXUWxV68
-	 Bg8KuNG0bKCcGrlZ0mM/PFa2+ZnQTlvTCGKTdC0b45fGgHMvI1j4F+CHEBuBbOv7Jd
-	 zBq45lWG0/jzgMzs3u8+A/TBxZZXpudfs/Ns4d+VUK7bm/Z4cDa3/0t1ea60HcWH88
-	 boRj2ucO8YO4Mu3J7rQxXYxQnX/jUeOAoyByArbj0nmhYMJALLysSm75cPw/9f2lcQ
-	 yZA0OPLsdI6kYavm3PLrMB9i63Rq03p9MYTtiP4r12oDbm6/QQgGwX34CFEwpDD0/S
-	 QYojO+TJ6O36w==
-Date: Thu, 09 Apr 2026 13:15:03 -0700
-Subject: [GIT PULL 2/2] fuse4fs: fork a low level fuse server
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: tytso@mit.edu
-Cc: amir73il@gmail.com, djwong@kernel.org, linux-ext4@vger.kernel.org
-Message-ID: <177576561103.1959707.10200829629012630842.stg-ugh@frogsfrogsfrogs>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="LmCP2O2I"
+Received: from macsyma.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63A1Iheq013479
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 9 Apr 2026 21:18:44 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1775783926; bh=3YBV0vZ4W8UlqgCo56mF/1Rz8B4mWIam+oveebrWqc8=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=LmCP2O2IdCCJhFUey7WJkY6ZlFgQ+AMfWuVVeP2xe2shw/HuOjkv1XHWSlyMk3QmH
+	 qlX5aRkJIqeflRWbh5jA/Mf/SnGMbitBQLHQr3RhC1qnDj8CopCQ8f9mrUCLvaNh9w
+	 DMWyIP4Tc05aHrHZYeoG0GA8G0LvmogeGaKEUVlWUEas6t+OisNS0l4hCpHmYHmAVa
+	 IIzSa+ZE+8F3zGuRN2yrP6TEpb6LSJfx8xMwER6SAdvD/M1kX6cabl6M4O5O+7meFj
+	 vc9ODrQ4SXM6/kNPj19WEcBOde+P68PKBzUiaJTFbqFrfBJiWtLBdeolVH+NvS/nWp
+	 6rZVsaaVzetUA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 59EF66271A52; Thu,  9 Apr 2026 21:18:43 -0400 (EDT)
+Date: Thu, 9 Apr 2026 21:18:43 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Li Chen <me@linux.beauty>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Masami Hiramatsu <mhiramat@kernel.org>,
+        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        linux-ext4@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC v4 0/7] ext4: fast commit: snapshot inode state for FC log
+Message-ID: <20260410011843.GD99725@macsyma-wired.lan>
+References: <20260120112538.132774-1-me@linux.beauty>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20260409201302.GD6192@frogsfrogsfrogs>
-References: <20260409201302.GD6192@frogsfrogsfrogs>
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260120112538.132774-1-me@linux.beauty>
 
-Hi Ted,
+On Tue, Jan 20, 2026 at 07:25:29PM +0800, Li Chen wrote:
+> Hi,
+> 
+> (This RFC v4 series is based on linux-next tag next-20260106, plus the
+> prerequisite patch "ext4: fast commit: make s_fc_lock reclaim-safe" posted at:
+> https://lore.kernel.org/all/20260106120621.440126-1-me@linux.beauty/)
 
-Please pull this branch with changes for ext4.
+Can you take a look at the Sashiko reviews here:
 
-As usual, I did a test-merge with the main upstream branch as of a few
-minutes ago, and didn't see any conflicts.  Please let me know if you
-encounter any problems.
+    https://sashiko.dev/#/patchset/20260408112020.716706-1-me%40linux.beauty
 
-The following changes since commit c137760397ef6671832548bcd256778f57f49c2d:
+There seems to be at least one legitimate concern, which is the
+potential cur_lblk overflow.  There are a couple of others which I
+think is real; could you please look at their review comments?
 
-fuse2fs: drop fuse 2.x support code (2026-04-09 13:00:40 -0700)
+Thanks,
 
-are available in the Git repository at:
-
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse4fs-fork_2026-04-09
-
-for you to fetch changes up to 951a10258cada0508e185c58ebec74c47b0eb774:
-
-fuse4fs: create incore reverse orphan list (2026-04-09 13:00:42 -0700)
-
-----------------------------------------------------------------
-fuse4fs: fork a low level fuse server [02/11]
-
-Whilst developing the fuse2fs+iomap prototype, I discovered a
-fundamental design limitation of the upper-level libfuse API: hardlinks.
-The upper level fuse library really wants to communicate with the fuse
-server with file paths, instead of using inode numbers.  This works
-great for filesystems that don't have inodes, create files dynamically
-at runtime, or lack stable inode numbers.
-
-Unfortunately, the libfuse path abstraction assigns a unique nodeid to
-every child file in the entire filesystem, without regard to hard links.
-In other words, a hardlinked regular file may have one ondisk inode
-number but multiple kernel inodes.  For classic fuse2fs this isn't a
-problem because all file access goes through the fuse server and the big
-library lock protects us from corruption.
-
-For fuse2fs + iomap this is a disaster because we rely on the kernel to
-coordinate access to inodes.  For hardlinked files, we *require* that
-there only be one in-kernel inode for each ondisk inode.
-
-The path based mechanism is also very inefficient for fuse2fs.  Every
-time a file is accessed, the upper level libfuse passes a new nodeid to
-the kernel, and on every file access the kernel passes that same nodeid
-back to libfuse.  libfuse then walks its internal directory entry cache
-to construct a path string for that nodeid and hands it to fuse2fs.
-fuse2fs then walks the ondisk directory structure to find the ext2 inode
-number.  Every time.
-
-Create a new fuse4fs server from fuse2fs that uses the lowlevel fuse
-API.  This affords us direct control over nodeids and eliminates the
-path wrangling.  Hardlinks can be supported when iomap is turned on,
-and metadata-heavy workloads run twice as fast.
-
-Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
-
-----------------------------------------------------------------
-Darrick J. Wong (23):
-fuse2fs: separate libfuse3 and fuse2fs detection in configure
-fuse2fs: start porting fuse2fs to lowlevel libfuse API
-debian: create new package for fuse4fs
-fuse4fs: namespace some helpers
-fuse4fs: convert to low level API
-libsupport: port the kernel list.h to libsupport
-libsupport: add a cache
-cache: disable debugging
-cache: use modern list iterator macros
-cache: embed struct cache in the owner
-cache: pass cache pointer to callbacks
-cache: pass a private data pointer through cache_walk
-cache: add a helper to grab a new refcount for a cache_node
-cache: return results of a cache flush
-cache: add a "get only if incore" flag to cache_node_get
-cache: support gradual expansion
-cache: support updating maxcount and flags
-cache: support channging flags
-cache: implement automatic shrinking
-fuse4fs: add cache to track open files
-fuse4fs: use the orphaned inode list
-fuse4fs: implement FUSE_TMPFILE
-fuse4fs: create incore reverse orphan list
-
-lib/ext2fs/jfs_compat.h  |    2 +-
-lib/ext2fs/kernel-list.h |  111 -
-lib/support/cache.h      |  184 ++
-lib/support/list.h       |  901 +++++++
-lib/support/xbitops.h    |  128 +
-Makefile.in              |    3 +-
-configure                |  441 ++--
-configure.ac             |  156 +-
-debian/control           |   12 +-
-debian/fuse4fs.install   |    2 +
-debian/fuse4fs.links     |    3 +
-debian/rules             |   11 +
-debugfs/Makefile.in      |   12 +-
-e2fsck/Makefile.in       |   56 +-
-fuse4fs/Makefile.in      |  193 ++
-fuse4fs/fuse4fs.1.in     |  118 +
-fuse4fs/fuse4fs.c        | 6451 ++++++++++++++++++++++++++++++++++++++++++++++
-lib/config.h.in          |    3 +
-lib/e2p/Makefile.in      |    4 +-
-lib/ext2fs/Makefile.in   |   14 +-
-lib/support/Makefile.in  |    8 +-
-lib/support/cache.c      |  882 +++++++
-misc/Makefile.in         |   18 +-
-misc/tune2fs.c           |    4 -
-24 files changed, 9248 insertions(+), 469 deletions(-)
-delete mode 100644 lib/ext2fs/kernel-list.h
-create mode 100644 lib/support/cache.h
-create mode 100644 lib/support/list.h
-create mode 100644 lib/support/xbitops.h
-create mode 100644 debian/fuse4fs.install
-create mode 100644 debian/fuse4fs.links
-create mode 100644 fuse4fs/Makefile.in
-create mode 100644 fuse4fs/fuse4fs.1.in
-create mode 100644 fuse4fs/fuse4fs.c
-create mode 100644 lib/support/cache.c
-
+					- Ted
