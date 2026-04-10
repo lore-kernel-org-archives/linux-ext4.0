@@ -1,219 +1,372 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB8BA3AB290
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 08:52:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7493A37C11E;
+	Fri, 10 Apr 2026 12:18:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775811141; cv=none; b=qBnfJRtfbhpz1qf03yqrrBJTTYHeOdw0E/mB7fJBWSeP2XRBk1881Usx70JimKqWeourww5UqSX4kX0T/zWg810Fae7Kqy3NT/R5fkfRsRuQLpTqon/UxWxznKcsvpuLSE/wNzS3LOGoC66GYLi0s7rolpoKXLbLnm/GBj4VpjU=
+	t=1775823511; cv=none; b=cAhDdNM2XMasoMhXiIrfqnLE7KqLMrUxeujsM2qeMaHtElxuiePwe+c8aXuDXDyGUkfClM2XT4tAv099TMajYmyQg8fSnreRY7DxVGW328LtqthvovyGfhBWDdzN4hs9wkLopK2VRCYYrMzZYKKzi33T446nKiHEYaGglCShBXA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775811141; c=relaxed/simple;
-	bh=2NF4CMzdVYJS+90CHEA+68ig7xbItwmKkaLQrQS1wX4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=FxzaHdMlZGA86CLs6SjlvG/PW5YFFB6tiDk2Sa9zwfOaHXIwsaMTxq5C9RTd4vkTZNz1+cX2txDkYvmjAe8AapS4axV6MVJzBC0JLrtoPrvmMvEBsGrHRdxtgfkltBCpMJfNgIfQI80DxCRfTewfmb5/MIvEyyLQ+406e5S5yYU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=umvHFZ9d; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=LHBWfGxJ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1FFuLjaj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Naqda7/5; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1775823511; c=relaxed/simple;
+	bh=xG6Zhe4Reh8n1CuuXKHsxMx4yyA7cv5SRNW/ce+u7MA=;
+	h=Date:Message-ID:From:To:Subject:cc; b=bQLmY14M4gEj9iOYPCtbHpRAGLENN9IvHmAWTcON+NvjdaX1LBJEyxh8EQvFanRo1d3We70uu1rutPi42DhoK4j1vjVc1VSBsUfhYGxnLxf2OtyrVicJCoGQwz1nTeQEbZ/+E7XUFojo6qSJpvVRDeCAO4Ii05bgfO3WAC2FYkk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=X6IRMdbN; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="umvHFZ9d";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="LHBWfGxJ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1FFuLjaj";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Naqda7/5"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id ACF0C5BCD9;
-	Fri, 10 Apr 2026 08:52:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775811138; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
-	b=umvHFZ9dbM79L/u1GPpnISgGAua5NIjD7hsJNubBpb1IookyAxuACcikQ5LbIhiCltqKod
-	stYRQtgfzn0Ogb4UyNtrVLOkPWhk0fq73oMt4QvJZWRdVlhr4740fkl+ZOo8z8uzxOLAOM
-	+uf0f2jIE4on35RidnnB46jBsF+DccQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775811138;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
-	b=LHBWfGxJsiDgNRnuZNxod/Mr96o/5slXWuHB4L3JCa70l+pQiRRMOsAZayGjbJ0vqJtK/I
-	suFMC7++ESc53GDA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=1FFuLjaj;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="Naqda7/5"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775811136; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
-	b=1FFuLjajZeVxCt6zWo8qPGXAEQf9DghIUO8grmrQqAlEYp1O2/JdbB0om0NO3AAmEiVO9t
-	fXZL2gWXIzDR5x/D69WFqWjRUTMyiKdy5DBtaBeeCZSSznK0DobauDMidN5Sy7Gzgzb49+
-	Cq8JRWiVcT2NdXJtD3aMLfutXH55LY0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775811136;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
-	b=Naqda7/5VfnHTbpWWUa3Ba1WFDXlZN6StPp866IhPGqvP6zg6oLsD3zvB35c9pI9UXDbnS
-	3tWRPhx7XATN2DAw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9F0B94A0B2;
-	Fri, 10 Apr 2026 08:52:16 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 5RrOJkC62GkHGgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 10 Apr 2026 08:52:16 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5504AA0A81; Fri, 10 Apr 2026 10:52:16 +0200 (CEST)
-Date: Fri, 10 Apr 2026 10:52:16 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, dave@stgolabs.net, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	libaokun@linux.alibaba.com, yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, 
-	yukuai@fnnas.com
-Subject: Re: [PATCH v2] jbd2: fix deadlock in jbd2_journal_cancel_revoke()
-Message-ID: <zyzdcmnkvrqgqzslms4ba3vrnk7gsbry3z2dgkpto3a2vidngx@2i4i36ndeebi>
-References: <20260409114204.917154-1-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="X6IRMdbN"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7CF16C19421;
+	Fri, 10 Apr 2026 12:18:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1775823511;
+	bh=xG6Zhe4Reh8n1CuuXKHsxMx4yyA7cv5SRNW/ce+u7MA=;
+	h=Date:From:To:Subject:cc:From;
+	b=X6IRMdbNwD/1TPVTuuT38dax3aETJdTvvykNWi23GiBjWbaPnFiS31YP2+3+rHYnr
+	 +yBiYqSiaFZumAFwSR+NEqA6PxsCix9KHXp0BGVkWu/kFUlz/YIdIICieWTokegmLh
+	 Yr8j8VsIfTTYuyizZOa5fjt2rtqvhW2e+npoz/WBNOWVCp5m8FdgfGaOB54VOYpbJT
+	 yU3PgzyY9/f2Y08BZe1qPEkZ4DBScL99CvOU6Da3YpVoCSH2byw56W+6qCVZbtJoMm
+	 0joIfHOTvLdlWQN0yWziORYb41f8Ajm7GcTfuGZTXlFCF7Y90aZDQyz+rgc1XQsGrv
+	 br4n1yhF6vGQA==
+Date: Fri, 10 Apr 2026 14:18:27 +0200
+Message-ID: <20260410120044.031381086@kernel.org>
+User-Agent: quilt/0.68
+From: Thomas Gleixner <tglx@kernel.org>
+To: LKML <linux-kernel@vger.kernel.org>
+Subject: [patch 00/38] treewide: Cleanup LATCH,
+ CLOCK_TICK_RATE and get_cycles() [ab]use
+cc: Arnd Bergmann <arnd@arndb.de>,
+ x86@kernel.org,
+ Lu Baolu <baolu.lu@linux.intel.com>,
+ iommu@lists.linux.dev,
+ Michael Grzeschik <m.grzeschik@pengutronix.de>,
+ netdev@vger.kernel.org,
+ linux-wireless@vger.kernel.org,
+ Herbert Xu <herbert@gondor.apana.org.au>,
+ linux-crypto@vger.kernel.org,
+ Vlastimil Babka <vbabka@kernel.org>,
+ linux-mm@kvack.org,
+ David Woodhouse <dwmw2@infradead.org>,
+ Bernie Thompson <bernie@plugable.com>,
+ linux-fbdev@vger.kernel.org,
+ "Theodore Tso" <tytso@mit.edu>,
+ linux-ext4@vger.kernel.org,
+ Andrew Morton <akpm@linux-foundation.org>,
+ Uladzislau Rezki <urezki@gmail.com>,
+ Marco Elver <elver@google.com>,
+ Dmitry Vyukov <dvyukov@google.com>,
+ kasan-dev@googlegroups.com,
+ Andrey Ryabinin <ryabinin.a.a@gmail.com>,
+ Thomas Sailer <t.sailer@alumni.ethz.ch>,
+ linux-hams@vger.kernel.org,
+ "Jason A. Donenfeld" <Jason@zx2c4.com>,
+ Richard Henderson <richard.henderson@linaro.org>,
+ linux-alpha@vger.kernel.org,
+ Russell King <linux@armlinux.org.uk>,
+ linux-arm-kernel@lists.infradead.org,
+ Catalin Marinas <catalin.marinas@arm.com>,
+ Huacai Chen <chenhuacai@kernel.org>,
+ loongarch@lists.linux.dev,
+ Geert Uytterhoeven <geert@linux-m68k.org>,
+ linux-m68k@lists.linux-m68k.org,
+ Dinh Nguyen <dinguyen@kernel.org>,
+ Jonas Bonn <jonas@southpole.se>,
+ linux-openrisc@vger.kernel.org,
+ Helge Deller <deller@gmx.de>,
+ linux-parisc@vger.kernel.org,
+ Michael Ellerman <mpe@ellerman.id.au>,
+ linuxppc-dev@lists.ozlabs.org,
+ Paul Walmsley <pjw@kernel.org>,
+ linux-riscv@lists.infradead.org,
+ Heiko Carstens <hca@linux.ibm.com>,
+ linux-s390@vger.kernel.org,
+ "David S. Miller" <davem@davemloft.net>,
+ sparclinux@vger.kernel.org
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260409114204.917154-1-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_TWELVE(0.00)[15];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,stgolabs.net,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,huawei.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: ACF0C5BCD9
 
-On Thu 09-04-26 19:42:03, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Commit f76d4c28a46a ("fs/jbd2: use sleeping version of
-> __find_get_block()") changed jbd2_journal_cancel_revoke() to use
-> __find_get_block_nonatomic() which holds the folio lock instead of
-> i_private_lock. This breaks the lock ordering (folio -> buffer) and
-> causes an ABBA deadlock when the filesystem blocksize < pagesize:
-> 
->      T1                                T2
-> ext4_mkdir()
->  ext4_init_new_dir()
->   ext4_append()
->    ext4_getblk()
->     lock_buffer()    <- A
->                                    sync_blockdev()
->                                     blkdev_writepages()
->                                      writeback_iter()
->                                       writeback_get_folio()
->                                        folio_lock()   <- B
->      ext4_journal_get_create_access()
->       jbd2_journal_cancel_revoke()
->        __find_get_block_nonatomic()
->         folio_lock()  <- B
->                                      block_write_full_folio()
->                                       lock_buffer()   <- A
-> 
-> This can occasionally cause generic/013 to hang.
-> 
-> Fix by only calling __find_get_block_nonatomic() when the passed
-> buffer_head doesn't belong to the bdev, which is the only case that we
-> need to look up its bdev alias. Otherwise, the lookup is redundant since
-> the found buffer_head is equal to the one we passed in.
-> 
-> Fixes: f76d4c28a46a ("fs/jbd2: use sleeping version of __find_get_block()")
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+First of all sorry for the insanely big Cc list, but people can't make
+their mind up whether they want to be Cc'ed on everything or not. So I'm
+opting for the worst case to cater to the people who want to be Cc'ed on
+everything and assume that the rest of you got used to it by now. I really
+wanted this to be more confined but a treewide cleanup does not give a lot
+of options.
 
-Indeed, good catch! Sadly, lockep didn't tell us about this as it tracks
-neither buffer locks nor folio locks... The patch looks good. Feel free to
-add:
+That said, let me explain what this is about.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+  1) LATCH
 
-								Honza
-> ---
-> v1->v2:
->  - Switch to using sb_is_blkdev_sb() to check whether the bh belongs to
->    the bdev.
-> 
->  fs/jbd2/revoke.c | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> index 9016ddb82447..e4c2fbd381f1 100644
-> --- a/fs/jbd2/revoke.c
-> +++ b/fs/jbd2/revoke.c
-> @@ -428,6 +428,7 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
->  	journal_t *journal = handle->h_transaction->t_journal;
->  	int need_cancel;
->  	struct buffer_head *bh = jh2bh(jh);
-> +	struct address_space *bh_mapping = bh->b_folio->mapping;
->  
->  	jbd2_debug(4, "journal_head %p, cancelling revoke\n", jh);
->  
-> @@ -464,13 +465,14 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
->  	 * buffer_head?  If so, we'd better make sure we clear the
->  	 * revoked status on any hashed alias too, otherwise the revoke
->  	 * state machine will get very upset later on. */
-> -	if (need_cancel) {
-> +	if (need_cancel && !sb_is_blkdev_sb(bh_mapping->host->i_sb)) {
->  		struct buffer_head *bh2;
-> +
->  		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
->  						 bh->b_size);
->  		if (bh2) {
-> -			if (bh2 != bh)
-> -				clear_buffer_revoked(bh2);
-> +			WARN_ON_ONCE(bh2 == bh);
-> +			clear_buffer_revoked(bh2);
->  			__brelse(bh2);
->  		}
->  	}
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+     The LATCH define goes back to Linux version 0.1 and has survived until
+     today for the very wrong reasons.
+
+     Initially it was based on the x86 PIT frequency and also steered the
+     timekeeping conversions.
+
+     With the arrival of non x86 architectures it got changed to be based
+     on CLOCK_TICK_RATE in order not to change core code which depended on
+     LATCH.
+
+     That all got meaningless when timers, timekeeping and scheduling
+     infrastructure got rewritten more than two decades ago.
+
+     But there is still a lonely survivor in arch/x86/kernel/apm_32.c
+     which dates back to Linux 1.3.46 (Dec. 1995)
+
+     Which causes the next historical gem
+
+  2) CLOCK_TICK_RATE
+
+     When Linux got expanded beyond i386 LATCH was made "flexible" by
+     basing it on CLOCK_TICK_RATE to adjust for other frequencies than the
+     i386 PIT frequency.
+
+     As LATCH this got meaningless long ago and for amusement value it got
+     copied into new architectures arriving way after it got obsolete for
+     no reason but with comments to the effect that it's meaningless
+
+     And of course it had a lonely survivor in arch/x86/kernel/setup.c
+     despite it being only an alias for PIT_TICK_RATE for a very long time.
+
+  3) get_cycles()
+
+     That was introduced in 2.1.133pre4 (Dec. 1998) to utilize the back
+     then brand new TSC. The introduction broke everything except i386 SMP
+     with a CPU having a TSC and got then fixed up within a couple of days
+     with empty stubs returning 0 and #ifdeffery for CONFIG_TSC before the
+     2.2.0 release.
+
+     It's amusing that the naming deliberately ignored that TSC is the
+     acronym for Time Stamp Counter and not Cycle Counter and rather went
+     for the underlying coincidence that the TSC was running at the same
+     fixed frequency as the CPU core.
+
+     That turned out to be interesting when CPUs started to have frequency
+     scaling as the TSC then turned into a variable frequency random number
+     generator.
+
+     A decade later CPU designers came to senses and made the TSC invariant
+     usually running at the nominal CPU frequency, which allowed to use it
+     for reliable timekeeping purposes.
+
+     Non x86 architectures implemented get_cycles() based on whatever
+     continuously running counter they had available in their CPUs. Some of
+     them actual CPU cycle counters, but many of them running at a fixed
+     frequency which was completely unrelated to CPU cycles.
+
+     Around 2004/5 the timekeeping subsystem was completely rewritten and
+     made generic along with the scheduling clock and other related
+     infrastructure. With that rewrite get_cycles() got mostly obsolete,
+     but despite it being on the todo list of quite some people it never
+     ceased to exist and it was just a conveniance vehicle to base other
+     things like the recent addition of random_get_entropy() on top with a
+     hideous #ifdef/#define macro maze.
+
+     The other remaining use cases are mostly debugging and testing
+     code. Especially the usage in performance test code is hillarious at
+     best. While the name get_cycles() suggests that it provides access to
+     CPU cycles the reality is that it provides a unspecified counter for
+     most systems, where a lot of architectures simply return 0 because
+     they either do not have such a counter or did not bother to implement
+     it at all.
+
+     So in fact get_cycles() should have been renamed to get_bogo_cycles()
+     long ago matching the BogoMIPS "impress your friends" printk which
+     still exists for historical amusement value.
+
+     But the real solution is to remove it all together instead of
+     proliferating the bogosity.
+
+
+This is what this series does with the following steps:
+
+   1) Cleanup some header dependency hell which got unearthed by the
+      restructuring and went unnoticed so far. It's amazing how the kernel
+      build system magically "works". This affects not only x86, but the
+      main fallout was observed and fixed there. ARM64 and MIPS are at
+      least as bad as they silently rely on the accidental asm/timex.h
+      include through a variety of generic headers to make their
+      architecture code compile. See the changelog and patches specific to
+      those two.
+
+   2) Removal of LATCH
+
+   3) Removal of CLOCK_TICK_RATE
+
+   4) Consolidation of cycles_t which was a typedef in asm/timex.h
+
+   5) Cleanup of read_current_timer() which is only used for delay
+      calibration and has nothing to do with get_cycles()
+
+   6) Cleanup of get_cycles() usage in debug and test code
+
+   7) Decoupling of random_get_entropy() from get_cycles()
+
+   8) Removal of asm/timex.h includes except for architecture internal
+      usage where necessary.
+
+At the end get_cycles() survives in a couple of architectures as a purely
+architecture internal implementation detail.
+
+This survives compile testing on all architectures except hexagon and nios2
+because the current cross tools based on gcc15 do not offer a compiler for
+them anymore. Boot tested on x86 and some qemu instances covering only a
+few architectures.
+
+The series applies on v7.0-rc7 and with very minor conflicts on -next. It
+is also available from git:
+
+    git://git.kernel.org/pub/scm/linux/kernel/git/tglx/devel.git getcycles-v1
+
+Thanks,
+
+	tglx
+---
+ arch/alpha/include/asm/timex.h                 |   33 --------
+ arch/arc/include/asm/timex.h                   |   15 ---
+ arch/arm/include/asm/timex.h                   |   16 ---
+ arch/arm64/include/asm/timex.h                 |   18 ----
+ arch/hexagon/include/asm/timex.h               |   23 -----
+ arch/m68k/include/asm/timex.h                  |   42 ----------
+ arch/microblaze/include/asm/timex.h            |   13 ---
+ arch/mips/include/asm/timex.h                  |  102 -------------------------
+ arch/sh/include/asm/timex.h                    |   24 -----
+ arch/sparc/include/asm/timex.h                 |    9 --
+ arch/sparc/include/asm/timex_32.h              |   14 ---
+ arch/um/include/asm/timex.h                    |    9 --
+ b/Documentation/fb/udlfb.rst                   |    4 
+ b/arch/Kconfig                                 |   10 ++
+ b/arch/alpha/Kconfig                           |    1 
+ b/arch/alpha/include/asm/random.h              |   14 +++
+ b/arch/arm/Kconfig                             |    2 
+ b/arch/arm/include/asm/delay.h                 |    1 
+ b/arch/arm/include/asm/random.h                |   14 +++
+ b/arch/arm/lib/delay.c                         |   14 +--
+ b/arch/arm/mach-omap1/Kconfig                  |    2 
+ b/arch/arm64/Kconfig                           |    2 
+ b/arch/arm64/include/asm/io.h                  |    5 -
+ b/arch/arm64/include/asm/ptp_vmclock.h         |   12 ++
+ b/arch/arm64/include/asm/random.h              |   11 ++
+ b/arch/arm64/include/asm/rqspinlock.h          |    1 
+ b/arch/arm64/kernel/time.c                     |    6 +
+ b/arch/arm64/kernel/topology.c                 |    1 
+ b/arch/arm64/kernel/traps.c                    |    1 
+ b/arch/arm64/kvm/emulate-nested.c              |    1 
+ b/arch/arm64/kvm/hyp/include/hyp/switch.h      |    1 
+ b/arch/arm64/lib/delay.c                       |    1 
+ b/arch/hexagon/Kconfig                         |    1 
+ b/arch/hexagon/kernel/time.c                   |    8 +
+ b/arch/loongarch/Kconfig                       |    1 
+ b/arch/loongarch/include/asm/random.h          |   15 +++
+ b/arch/loongarch/include/asm/timex.h           |    2 
+ b/arch/loongarch/kernel/relocate.c             |    1 
+ b/arch/loongarch/kernel/syscall.c              |    1 
+ b/arch/loongarch/lib/delay.c                   |    2 
+ b/arch/m68k/Kconfig                            |    1 
+ b/arch/m68k/amiga/config.c                     |    1 
+ b/arch/m68k/include/asm/random.h               |   14 +++
+ b/arch/m68k/kernel/time.c                      |    2 
+ b/arch/mips/Kconfig                            |    1 
+ b/arch/mips/generic/init.c                     |    1 
+ b/arch/mips/include/asm/random.h               |    7 +
+ b/arch/mips/kernel/pm-cps.c                    |    1 
+ b/arch/mips/kernel/proc.c                      |    1 
+ b/arch/mips/kernel/relocate.c                  |    2 
+ b/arch/mips/kernel/time.c                      |   53 ++++++++++++
+ b/arch/mips/lib/dump_tlb.c                     |    1 
+ b/arch/mips/mm/cache.c                         |    1 
+ b/arch/nios2/Kconfig                           |    1 
+ b/arch/nios2/include/asm/random.h              |   14 +++
+ b/arch/nios2/include/asm/timex.h               |    7 -
+ b/arch/nios2/kernel/time.c                     |    4 
+ b/arch/openrisc/Kconfig                        |    2 
+ b/arch/openrisc/include/asm/random.h           |   12 ++
+ b/arch/openrisc/include/asm/timex.h            |   10 --
+ b/arch/openrisc/lib/delay.c                    |    8 -
+ b/arch/parisc/Kconfig                          |    1 
+ b/arch/parisc/include/asm/random.h             |   12 ++
+ b/arch/parisc/include/asm/timex.h              |   10 --
+ b/arch/parisc/kernel/processor.c               |    1 
+ b/arch/parisc/kernel/time.c                    |    1 
+ b/arch/powerpc/Kconfig                         |    1 
+ b/arch/powerpc/include/asm/random.h            |   13 +++
+ b/arch/powerpc/include/asm/timex.h             |   25 ------
+ b/arch/powerpc/platforms/cell/spufs/switch.c   |    5 -
+ b/arch/riscv/Kconfig                           |    2 
+ b/arch/riscv/include/asm/random.h              |   25 ++++++
+ b/arch/riscv/include/asm/timex.h               |   23 -----
+ b/arch/riscv/kernel/unaligned_access_speed.c   |    1 
+ b/arch/riscv/kvm/vcpu_timer.c                  |    1 
+ b/arch/riscv/lib/delay.c                       |    8 +
+ b/arch/s390/Kconfig                            |    1 
+ b/arch/s390/include/asm/random.h               |   12 ++
+ b/arch/s390/include/asm/timex.h                |   10 --
+ b/arch/s390/kernel/time.c                      |    1 
+ b/arch/s390/kernel/vtime.c                     |    1 
+ b/arch/sparc/Kconfig                           |    2 
+ b/arch/sparc/include/asm/random.h              |   15 +++
+ b/arch/sparc/include/asm/timex_64.h            |   20 ----
+ b/arch/sparc/kernel/pcic.c                     |    1 
+ b/arch/sparc/kernel/time_32.c                  |    1 
+ b/arch/sparc/kernel/time_64.c                  |    4 
+ b/arch/sparc/vdso/vclock_gettime.c             |    1 
+ b/arch/x86/Kconfig                             |    4 
+ b/arch/x86/include/asm/iommu.h                 |    3 
+ b/arch/x86/include/asm/msr.h                   |    5 -
+ b/arch/x86/include/asm/percpu.h                |    5 -
+ b/arch/x86/include/asm/percpu_types.h          |   17 ++++
+ b/arch/x86/include/asm/ptp_vmclock.h           |   12 ++
+ b/arch/x86/include/asm/pvclock.h               |    1 
+ b/arch/x86/include/asm/random.h                |   12 --
+ b/arch/x86/include/asm/smp.h                   |    2 
+ b/arch/x86/include/asm/tsc.h                   |   11 --
+ b/arch/x86/include/asm/vdso/gettimeofday.h     |    5 -
+ b/arch/x86/kernel/apm_32.c                     |    4 
+ b/arch/x86/kernel/cpu/mce/core.c               |    1 
+ b/arch/x86/kernel/nmi.c                        |    1 
+ b/arch/x86/kernel/setup.c                      |    2 
+ b/arch/x86/kernel/smpboot.c                    |    1 
+ b/arch/x86/kernel/tsc.c                        |   12 +-
+ b/arch/x86/lib/delay.c                         |    8 -
+ b/crypto/jitterentropy-kcapi.c                 |    1 
+ b/crypto/tcrypt.c                              |   84 ++++++++++----------
+ b/drivers/iommu/intel/dmar.c                   |    4 
+ b/drivers/iommu/intel/iommu.h                  |    8 +
+ b/drivers/irqchip/irq-apple-aic.c              |    1 
+ b/drivers/misc/sgi-gru/gruhandles.c            |   20 +---
+ b/drivers/misc/sgi-gru/grukservices.c          |    3 
+ b/drivers/misc/sgi-gru/grutlbpurge.c           |    5 -
+ b/drivers/net/arcnet/arc-rimi.c                |    4 
+ b/drivers/net/arcnet/arcdevice.h               |   20 ----
+ b/drivers/net/arcnet/com20020.c                |    6 -
+ b/drivers/net/arcnet/com90io.c                 |    6 -
+ b/drivers/net/arcnet/com90xx.c                 |    4 
+ b/drivers/net/hamradio/baycom_epp.c            |   51 ------------
+ b/drivers/net/wireless/ath/wil6210/debugfs.c   |    2 
+ b/drivers/net/wireless/ath/wil6210/txrx.c      |    6 -
+ b/drivers/net/wireless/ath/wil6210/txrx_edma.c |    4 
+ b/drivers/net/wireless/ath/wil6210/wil6210.h   |    3 
+ b/drivers/ptp/Kconfig                          |    6 -
+ b/drivers/ptp/ptp_vmclock.c                    |    6 -
+ b/drivers/video/fbdev/udlfb.c                  |   24 ++---
+ b/fs/ext4/mballoc.c                            |    4 
+ b/include/asm-generic/Kbuild                   |    2 
+ b/include/asm-generic/percpu_types.h           |   20 ++++
+ b/include/linux/compiler_types.h               |    1 
+ b/include/linux/delay.h                        |    2 
+ b/include/linux/jiffies.h                      |    3 
+ b/include/linux/random.h                       |   18 ++++
+ b/include/linux/timex.h                        |   26 ------
+ b/include/linux/types.h                        |    6 +
+ b/init/calibrate.c                             |   19 ++--
+ b/kernel/kcsan/core.c                          |    3 
+ b/kernel/kcsan/debugfs.c                       |    8 -
+ b/kernel/time/timer.c                          |    1 
+ b/lib/interval_tree_test.c                     |   17 +---
+ b/lib/rbtree_test.c                            |   47 +++++------
+ b/lib/test_vmalloc.c                           |   10 +-
+ b/mm/kasan/sw_tags.c                           |    2 
+ b/mm/slub.c                                    |   37 +++++----
+ include/asm-generic/timex.h                    |   23 -----
+ 146 files changed, 622 insertions(+), 796 deletions(-)
+
+
