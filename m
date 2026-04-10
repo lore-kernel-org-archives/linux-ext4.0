@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C0613BE641;
-	Fri, 10 Apr 2026 12:18:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 907A13C1978;
+	Fri, 10 Apr 2026 12:18:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775823526; cv=none; b=d+0G3opLrnTDTxnRRnCeBqrNjRHTlu5iL3dUtgwQJAxS/F2R8+k6kSXE25K/32/Y8YnPewP7AumrzS4NtrAprBJ5JkAJ1skRVTQ3+nb2Q/6iXrGFCBgmwxD5iviZJkqaSC6je3qKuLYv+wj/RXoA70mLCvK4xvoTEVVIYAEpBPQ=
+	t=1775823531; cv=none; b=mDk65ggUWxBydJz3x0nmAdBCnQndeaYnQKXnClJqUUV6bkEAVoeHA80K4p2Fx/uJTGO32qIXUsVOAUjri6/tmjrsFcrqmMkTpzO5vEmU2z/I6x0zGdRqgGz1yRD2PD6hEPumvDcWq2A5XqI1j+8+451p11y2kVF9Y6XP0fECaVM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775823526; c=relaxed/simple;
-	bh=OWF9pG0hQ95RygMnh7+vDhgeHyKnJRYOWEj0GBEdTEY=;
+	s=arc-20240116; t=1775823531; c=relaxed/simple;
+	bh=d9g4tptgi4bHAMeSUYU/X2RKjwFUxFqrN/mhP3KVNVE=;
 	h=Date:Message-ID:From:To:Subject:References:MIME-Version:
-	 Content-Type:cc; b=OKMh6y6fSS910YwmmiPAxypbiUB1DxEjJ5wW23jEBHA2z45tNB+tamOFJ/+eiIkjHg/kfp2YozPwHWNlzX7FHKnb/hxmZ+2lPXP4kQ9DM8TYunRqORTLToK480cY3+8GXwAmrCIkMKHcz1RyxLYqImQXYPgkb3Uh3tbYvlbjfHs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gYJITPmd; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:cc; b=CTZdikNibaQEV3BkLOvgJp6nd2ucYLrNkwoLfv53ZSbsgmd9LCo+FovOPxRqiAhur5rSqEqY7JCKVMAMF/TVF2RCRmT2uQSycsVcwjB//O3Sr4gxGsD71sRmD50Kx8c+peSKwPwDTiNpyHXi3WHncVew8GxsZgppktAAkHZzwLM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C95dlBh1; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gYJITPmd"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51EC1C2BCB0;
-	Fri, 10 Apr 2026 12:18:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C95dlBh1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 41928C2BCAF;
+	Fri, 10 Apr 2026 12:18:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775823526;
-	bh=OWF9pG0hQ95RygMnh7+vDhgeHyKnJRYOWEj0GBEdTEY=;
+	s=k20201202; t=1775823531;
+	bh=d9g4tptgi4bHAMeSUYU/X2RKjwFUxFqrN/mhP3KVNVE=;
 	h=Date:From:To:Subject:References:cc:From;
-	b=gYJITPmdy2GNPsbI6AD2iZ7zhMgePGS+gqPbXQCs7WsAhhu/qyX8hH+Xi69K/urPl
-	 BoSeBlt4BbqU4ZnISQ8slAdj5VCjiDRcN9bfEzsBBE9dj/wWUHwDFECfvHb21gTPQ5
-	 cvjmyUKF+jJ25R6iZ5vAzO3xaA8XXwp+1aea+F9V1esc/zHHX5PN7paJBTByHcDBl2
-	 auQKRV9dXMsXdujNzqathwxe2n8RWyCswG/DXqH2EllhOxm/ndPsrTIJX4WzacriA/
-	 t/DalYn89VnEQy6E+ROiviOqorgI/E12LPFkiSGiJSdwmaaiky6k8Wx7OG7Y+w6GUr
-	 Ni5ruNMG7XCYg==
-Date: Fri, 10 Apr 2026 14:18:42 +0200
-Message-ID: <20260410120317.776571540@kernel.org>
+	b=C95dlBh11sE1EDcg7WkfMi8fo/Gu65tTzE/T1Srv47O6KGVj91UAmlXjU/FculsKY
+	 awynI69i3I7OzFyIZRoLHG74aENkFw6rGItybhxSqe437lYLBTdjTVnjO/BdcaqFmm
+	 BXfUg/n2zRCzaQYn/z/fsuHLl0WmkcWVFMRkJhLQ5RkhTFRVvrz/UodergNNz9SIp4
+	 BVs5UNoonypUPXLwnttDKrM12mG46vN5EiYmDA6MeZqU6JoMxzzH1xMf+HYNN+Suws
+	 7vEfC+JysbP6o62RQk33gA7qFJeSKzf6pdk/9/gi1eWOgpyfVkfoVSPrkQiIoyiqxd
+	 pjPaBhdVrzMKA==
+Date: Fri, 10 Apr 2026 14:18:47 +0200
+Message-ID: <20260410120317.843419270@kernel.org>
 User-Agent: quilt/0.68
 From: Thomas Gleixner <tglx@kernel.org>
 To: LKML <linux-kernel@vger.kernel.org>
-Subject: [patch 03/38] x86/apm: Remove last LATCH usage
+Subject: [patch 04/38] x86: Use PIT_TICK_RATE instead of CLOCK_TICK_RATE
 References: <20260410120044.031381086@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -88,43 +88,27 @@ cc: Arnd Bergmann <arnd@arndb.de>,
  "David S. Miller" <davem@davemloft.net>,
  sparclinux@vger.kernel.org
 
-LATCH is a historical leftover and has been replaced with PIT_LATCH in all
-other places a decade ago. Replace the last holdout and remove the
-definition from jiffies.h.
+CLOCK_TICK_RATE is only used in x86 but defined all over the tree for no
+reason with comments that it's scheduled for removal for more than a
+decade.
 
-This allows to remove the otherwise unused CLOCK_TICK_RATE define in the
-next step.
+Use PIT_TICK_RATE for registering refined jiffies to get rid of the last
+dependency.
 
 Signed-off-by: Thomas Gleixner <tglx@kernel.org>
 ---
- arch/x86/kernel/apm_32.c |    4 ++--
- include/linux/jiffies.h  |    3 ---
- 2 files changed, 2 insertions(+), 5 deletions(-)
+ arch/x86/kernel/setup.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
---- a/arch/x86/kernel/apm_32.c
-+++ b/arch/x86/kernel/apm_32.c
-@@ -1196,9 +1196,9 @@ static void reinit_timer(void)
- 	/* set the clock to HZ */
- 	outb_p(0x34, PIT_MODE);		/* binary, mode 2, LSB/MSB, ch 0 */
- 	udelay(10);
--	outb_p(LATCH & 0xff, PIT_CH0);	/* LSB */
-+	outb_p(PIT_LATCH & 0xff, PIT_CH0);	/* LSB */
- 	udelay(10);
--	outb_p(LATCH >> 8, PIT_CH0);	/* MSB */
-+	outb_p(PIT_LATCH >> 8, PIT_CH0);	/* MSB */
- 	udelay(10);
- 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
- #endif
---- a/include/linux/jiffies.h
-+++ b/include/linux/jiffies.h
-@@ -56,9 +56,6 @@
- #define SH_DIV(NOM,DEN,LSH) (   (((NOM) / (DEN)) << (LSH))              \
-                              + ((((NOM) % (DEN)) << (LSH)) + (DEN) / 2) / (DEN))
+--- a/arch/x86/kernel/setup.c
++++ b/arch/x86/kernel/setup.c
+@@ -1268,7 +1268,7 @@ void __init setup_arch(char **cmdline_p)
  
--/* LATCH is used in the interval timer and ftape setup. */
--#define LATCH ((CLOCK_TICK_RATE + HZ/2) / HZ)	/* For divider */
--
- extern void register_refined_jiffies(long clock_tick_rate);
+ 	mcheck_init();
  
- /* TICK_USEC is the time between ticks in usec */
+-	register_refined_jiffies(CLOCK_TICK_RATE);
++	register_refined_jiffies(PIT_TICK_RATE);
+ 
+ #ifdef CONFIG_EFI
+ 	if (efi_enabled(EFI_BOOT))
 
