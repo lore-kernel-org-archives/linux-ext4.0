@@ -1,73 +1,88 @@
-Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22B9E370D45
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 06:28:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB8BA3AB290
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 08:52:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775802495; cv=none; b=dP0tnjrJs0G4zV6dkbuOWQ3oPwviq/AC0L+ldcWyaoaRdDVkXsNVuk7nfRT4CGsHZDDUWpFTKIWzW3VxyYwLz5MoGLg/G5OQ3axIeg8nVl8HxndVsGm/zUHyR7qDUVsXiq1c6L4CFn2sEEVCEIFvGDsBardgGJpHHMp6jYFB0qY=
+	t=1775811141; cv=none; b=qBnfJRtfbhpz1qf03yqrrBJTTYHeOdw0E/mB7fJBWSeP2XRBk1881Usx70JimKqWeourww5UqSX4kX0T/zWg810Fae7Kqy3NT/R5fkfRsRuQLpTqon/UxWxznKcsvpuLSE/wNzS3LOGoC66GYLi0s7rolpoKXLbLnm/GBj4VpjU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775802495; c=relaxed/simple;
-	bh=m1YMIlPxD9t/AaOp9EEFB+xyByDNHj+SrqAgIsds02o=;
+	s=arc-20240116; t=1775811141; c=relaxed/simple;
+	bh=2NF4CMzdVYJS+90CHEA+68ig7xbItwmKkaLQrQS1wX4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ct9ZCC4Arj2OUozXfqEqtDRPZTlS4jGa9COuAg0DetHr0quQRn1Pizq8+G94CdD8jZOJkTND+WCl3iFGE/di1aAviiVd6oB4GC/wlnmEqgZz6TzC92Io0fceXhuLela2z9VXGO7kHvALkAfbzZq4AeNd0dmcfMVUGrhPVMD/y8o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gms.tku.edu.tw; spf=pass smtp.mailfrom=gms.tku.edu.tw; dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b=n/4dXuAc; arc=none smtp.client-ip=209.85.210.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gms.tku.edu.tw
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gms.tku.edu.tw
+	 Content-Type:Content-Disposition:In-Reply-To; b=FxzaHdMlZGA86CLs6SjlvG/PW5YFFB6tiDk2Sa9zwfOaHXIwsaMTxq5C9RTd4vkTZNz1+cX2txDkYvmjAe8AapS4axV6MVJzBC0JLrtoPrvmMvEBsGrHRdxtgfkltBCpMJfNgIfQI80DxCRfTewfmb5/MIvEyyLQ+406e5S5yYU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=umvHFZ9d; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=LHBWfGxJ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1FFuLjaj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Naqda7/5; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b="n/4dXuAc"
-Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-82a655cfab5so1640388b3a.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Apr 2026 23:28:12 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gms-tku-edu-tw.20251104.gappssmtp.com; s=20251104; t=1775802492; x=1776407292; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=iKMiJv4/DR/USL0D3ZJwTqklRAdWaGUIC2HNzBIVPNs=;
-        b=n/4dXuAcBJIwux+TeI6zDz3kO13WsdrKHYeKXZyNzuAgsDNpOcKB1LPdfEwGwdKsg1
-         JhZ3mDP/GLvJmFvhpbIVQEcOxkdea7wMNq0w84V1Xaf4ZgU0a0Ix7G1SNvf3v/OaBZAV
-         BpTLJHJz0nISkBKvmJoVpCTOwAq1u75+4VmoV6oDFWJn5uiy7WPRzMdK44Nj/x+1Bosi
-         5J/bf5hSqxTNWsu9og2xIgyeWM7D2Mqbgfe3zwS0hUZzBQfHI7+Dx7k0QLBYd01IdmZT
-         bvo5jr7DLQJ1UhzY2FOzs/WFG6GrktBPAhMNL3xnnTMfQuNNR5G95NAZZ8vn5wvKWyye
-         HkpQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775802492; x=1776407292;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=iKMiJv4/DR/USL0D3ZJwTqklRAdWaGUIC2HNzBIVPNs=;
-        b=PpdtiPdbRDb9DPi+GaZmKDj4GNv0Haf5BNlS83IWHXehEKflR8Fq6WlTs15a5ixLhx
-         Q29MboSPwCPh8bIz9lf9K+0Ph5gfFgwT12VUh4ZvX0zHajz/i4meZxH8ZOVUpsXqwvbG
-         BKR8oNpYEFTY7JTXgrPqjef282U73+tTj0E3M4NicNTxBpRcAc/YO1th0O7gPNNSBXxn
-         JbVVYATxxnDvgOBufj9N/ip3nmzC/9/OXqU50bkhsUbztzHwpJrpVs/phFZ7zXFBXc9S
-         kV/PgkOjU4fjPkMjlz6v55JCD16DcRKd4pCFI98ZFWm2iAYGZeBZQvaddOGMcFF//ju1
-         5jmg==
-X-Forwarded-Encrypted: i=1; AJvYcCW9dpN58mzyfJ5IHqS8rMaU/UrBqqCbidU0EmGwQyqA6L0MfQBXWfA+CyTTMQmMc6FzixFUO6WzB1sX@vger.kernel.org
-X-Gm-Message-State: AOJu0YwYBs8JU7IO2tAcocXRrPErxhyxqI4mLFeLt5C1kXPJS5+i7TFT
-	ooimj5WByH+BDo0OK/UOA0JwDWFjhN41FBDzkMevUVTN/5xNceEfVoZ5OzQUO8Esb/0=
-X-Gm-Gg: AeBDieuCr7tTObjnVa6Ybc6/NWUc1FDmXQ4d4T0u0PDr4uHmjT4iXeIhh2yUxUBHhs7
-	XVFUxdCqB/Yyn0ttbJwo8E+U08cw1hMWztOsOLaxnRBMtXoJcDerYyoN0ph1UwUadkIXugBU9ad
-	8kPXRpD7CnBwQCGgoe0YMLUwGRJz4l7D0+26zl62BI1G5ZvkzeMuvQ7UaaLJdqCRtNwxLh1Ct4H
-	X7tVjQQhtDpAId4BpZtDsfpfXrNzVFgbAKhZp5vkaVuPSWa24aK+s8sVxnwlMYrt/i9thbIGYnG
-	FzWXDBdH08T+jzuoV/Gdf3eJylyJPamIrZBWkuxfK397KoRYLy2uDr9R9jhCzB/i1X13nRbpGhz
-	zSbideNYRunzyoKdAkg+HJeyuTwWHUohFxon97Z8swZIZAtYmO+jwlmlsjlNHCWoYjBHPBYmnGC
-	hCM2WI3KHF3MoTX1c6DnMTAS4xsE6Z0aW4AWwX62Cu7MQ=
-X-Received: by 2002:a05:6a00:9a3:b0:82a:75be:d377 with SMTP id d2e1a72fcca58-82f0c2c8331mr1978149b3a.41.1775802492119;
-        Thu, 09 Apr 2026 23:28:12 -0700 (PDT)
-Received: from wu-Pro-E500-G6-WS720T ([2001:288:7001:2703:7a3:1dc3:54ac:17b7])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82f0c4b7d10sm1661503b3a.28.2026.04.09.23.28.10
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 09 Apr 2026 23:28:11 -0700 (PDT)
-Date: Fri, 10 Apr 2026 14:28:07 +0800
-From: Guan-Chun Wu <409411716@gms.tku.edu.tw>
-To: Theodore Tso <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, visitorckw@gmail.com,
-	david.laight.linux@gmail.com
-Subject: Re: [PATCH v2] ext4: improve str2hashbuf by processing 4-byte chunks
- and removing function pointers
-Message-ID: <adiYd7APmgkR3dIi@wu-Pro-E500-G6-WS720T>
-References: <20251122043929.1908643-1-409411716@gms.tku.edu.tw>
- <20260409141050.GA59468@macsyma-wired.lan>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="umvHFZ9d";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="LHBWfGxJ";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1FFuLjaj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Naqda7/5"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id ACF0C5BCD9;
+	Fri, 10 Apr 2026 08:52:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775811138; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
+	b=umvHFZ9dbM79L/u1GPpnISgGAua5NIjD7hsJNubBpb1IookyAxuACcikQ5LbIhiCltqKod
+	stYRQtgfzn0Ogb4UyNtrVLOkPWhk0fq73oMt4QvJZWRdVlhr4740fkl+ZOo8z8uzxOLAOM
+	+uf0f2jIE4on35RidnnB46jBsF+DccQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775811138;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
+	b=LHBWfGxJsiDgNRnuZNxod/Mr96o/5slXWuHB4L3JCa70l+pQiRRMOsAZayGjbJ0vqJtK/I
+	suFMC7++ESc53GDA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=1FFuLjaj;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="Naqda7/5"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775811136; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
+	b=1FFuLjajZeVxCt6zWo8qPGXAEQf9DghIUO8grmrQqAlEYp1O2/JdbB0om0NO3AAmEiVO9t
+	fXZL2gWXIzDR5x/D69WFqWjRUTMyiKdy5DBtaBeeCZSSznK0DobauDMidN5Sy7Gzgzb49+
+	Cq8JRWiVcT2NdXJtD3aMLfutXH55LY0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775811136;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZDyO4k9B0CglAcYyPRfUWEeqKYLsjkgP04eByE2FkcA=;
+	b=Naqda7/5VfnHTbpWWUa3Ba1WFDXlZN6StPp866IhPGqvP6zg6oLsD3zvB35c9pI9UXDbnS
+	3tWRPhx7XATN2DAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9F0B94A0B2;
+	Fri, 10 Apr 2026 08:52:16 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 5RrOJkC62GkHGgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 10 Apr 2026 08:52:16 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 5504AA0A81; Fri, 10 Apr 2026 10:52:16 +0200 (CEST)
+Date: Fri, 10 Apr 2026 10:52:16 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, dave@stgolabs.net, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	libaokun@linux.alibaba.com, yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, 
+	yukuai@fnnas.com
+Subject: Re: [PATCH v2] jbd2: fix deadlock in jbd2_journal_cancel_revoke()
+Message-ID: <zyzdcmnkvrqgqzslms4ba3vrnk7gsbry3z2dgkpto3a2vidngx@2i4i36ndeebi>
+References: <20260409114204.917154-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -76,54 +91,129 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260409141050.GA59468@macsyma-wired.lan>
+In-Reply-To: <20260409114204.917154-1-yi.zhang@huaweicloud.com>
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_TWELVE(0.00)[15];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,stgolabs.net,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,fnnas.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,huawei.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: ACF0C5BCD9
 
-On Thu, Apr 09, 2026 at 10:10:50AM -0400, Theodore Tso wrote:
-> On Sat, Nov 22, 2025 at 12:39:29PM +0800, Guan-Chun Wu wrote:
-> > The original byte-by-byte implementation with modulo checks is less
-> > efficient. Refactor str2hashbuf_unsigned() and str2hashbuf_signed()
-> > to process input in explicit 4-byte chunks instead of using a
-> > modulus-based loop to emit words byte by byte.
-> > 
-> > Additionally, the use of function pointers for selecting the appropriate
-> > str2hashbuf implementation has been removed. Instead, the functions are
-> > directly invoked based on the hash type, eliminating the overhead of
-> > dynamic function calls.
-> > 
-> > Performance test (x86_64, Intel Core i7-10700 @ 2.90GHz, average over 10000
-> > runs, using kernel module for testing):
-> > 
-> >     len | orig_s | new_s | orig_u | new_u
-> >     ----+--------+-------+--------+-------
-> >       1 |   70   |   71  |   63   |   63
-> >       8 |   68   |   64  |   64   |   62
-> >      32 |   75   |   70  |   75   |   63
-> >      64 |   96   |   71  |  100   |   68
-> >     255 |  192   |  108  |  187   |   84
-> > 
-> > This change improves performance, especially for larger input sizes.
-> > 
-> > Signed-off-by: Guan-Chun Wu <409411716@gms.tku.edu.tw>
+On Thu 09-04-26 19:42:03, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Apologies for the delay in looking at this.  It fell through the
-> cracks on my end.
+> Commit f76d4c28a46a ("fs/jbd2: use sleeping version of
+> __find_get_block()") changed jbd2_journal_cancel_revoke() to use
+> __find_get_block_nonatomic() which holds the folio lock instead of
+> i_private_lock. This breaks the lock ordering (folio -> buffer) and
+> causes an ABBA deadlock when the filesystem blocksize < pagesize:
 > 
-> Because of how I'm a bit late with reviewing patches before the merge
-> window, I'm going to be very conservative in which patches I'm going
-> to land.  So this is going to be deferred until the next cycle, but I
-> wanted to let you know that I haven't forgotten about it.
+>      T1                                T2
+> ext4_mkdir()
+>  ext4_init_new_dir()
+>   ext4_append()
+>    ext4_getblk()
+>     lock_buffer()    <- A
+>                                    sync_blockdev()
+>                                     blkdev_writepages()
+>                                      writeback_iter()
+>                                       writeback_get_folio()
+>                                        folio_lock()   <- B
+>      ext4_journal_get_create_access()
+>       jbd2_journal_cancel_revoke()
+>        __find_get_block_nonatomic()
+>         folio_lock()  <- B
+>                                      block_write_full_folio()
+>                                       lock_buffer()   <- A
 > 
-> If this was a comprehensive set of Kunit tests for fs/ext4/hash.c, I
-> might have taken it.  And that's something that I would look at adding
-> for the next cycle, but if you'd be interested in creating the kunit
-> tests for hash.c, that would be great.
+> This can occasionally cause generic/013 to hang.
 > 
-> 						- Ted
+> Fix by only calling __find_get_block_nonatomic() when the passed
+> buffer_head doesn't belong to the bdev, which is the only case that we
+> need to look up its bdev alias. Otherwise, the lookup is redundant since
+> the found buffer_head is equal to the one we passed in.
+> 
+> Fixes: f76d4c28a46a ("fs/jbd2: use sleeping version of __find_get_block()")
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-Thanks for the update.
+Indeed, good catch! Sadly, lockep didn't tell us about this as it tracks
+neither buffer locks nor folio locks... The patch looks good. Feel free to
+add:
 
-I'd be happy to add Kunit tests for fs/ext4/hash.c. I'll work on them and
-send a v3 patchset with the tests and the optimization in the next cycle.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Best regards,
-Guan-Chun
+								Honza
+> ---
+> v1->v2:
+>  - Switch to using sb_is_blkdev_sb() to check whether the bh belongs to
+>    the bdev.
+> 
+>  fs/jbd2/revoke.c | 8 +++++---
+>  1 file changed, 5 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+> index 9016ddb82447..e4c2fbd381f1 100644
+> --- a/fs/jbd2/revoke.c
+> +++ b/fs/jbd2/revoke.c
+> @@ -428,6 +428,7 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+>  	journal_t *journal = handle->h_transaction->t_journal;
+>  	int need_cancel;
+>  	struct buffer_head *bh = jh2bh(jh);
+> +	struct address_space *bh_mapping = bh->b_folio->mapping;
+>  
+>  	jbd2_debug(4, "journal_head %p, cancelling revoke\n", jh);
+>  
+> @@ -464,13 +465,14 @@ void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+>  	 * buffer_head?  If so, we'd better make sure we clear the
+>  	 * revoked status on any hashed alias too, otherwise the revoke
+>  	 * state machine will get very upset later on. */
+> -	if (need_cancel) {
+> +	if (need_cancel && !sb_is_blkdev_sb(bh_mapping->host->i_sb)) {
+>  		struct buffer_head *bh2;
+> +
+>  		bh2 = __find_get_block_nonatomic(bh->b_bdev, bh->b_blocknr,
+>  						 bh->b_size);
+>  		if (bh2) {
+> -			if (bh2 != bh)
+> -				clear_buffer_revoked(bh2);
+> +			WARN_ON_ONCE(bh2 == bh);
+> +			clear_buffer_revoked(bh2);
+>  			__brelse(bh2);
+>  		}
+>  	}
+> -- 
+> 2.52.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
