@@ -1,37 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86DBD3C8731;
-	Fri, 10 Apr 2026 12:19:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98D2137DE96;
+	Fri, 10 Apr 2026 12:19:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775823585; cv=none; b=uDIIzPl6EkdrzAYSzLENkCYTsuG60ORaXJERlu2PfC7G0ivYQbrYCGMG0VEaeojnUO/mrZQnrjCZhiiGISh9/0LtebmMzKN2PU4rApAmNQaKgY50FHw3BgbaVTBs5yqBdUaCdk6a32IhLmcexUD8zz3/Ku3hCVM+SwDObMbU2Ew=
+	t=1775823590; cv=none; b=dTl4tKcdQ4/iwzVpq5qkkc6IVN7VHh9WEXbfpOT+xWe7EWerc/xv2dvsHM3FNxkgmBMZWCFPAf5+JHSm6m/0l9fGrOCk0uyBQnnR3Lme9CAtLOcsfg3+hQ7zUouQU0AY+QYXoddWCFJCEWrN8hYk+m9N8wpJ6heihZ4+X8T3XfM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775823585; c=relaxed/simple;
-	bh=QeSclCuMiRAS5wk6lWoviUdmtawCgYPJK7955XSCrpk=;
+	s=arc-20240116; t=1775823590; c=relaxed/simple;
+	bh=r17Pe0N1ahBhrB3JYh2nj0lozuwWxFWE8s4wbHnNz1U=;
 	h=Date:Message-ID:From:To:Cc:Subject:References:MIME-Version:
-	 Content-Type; b=XD9CRe/CrB1xSZMARoEF2zB19OwDGKRmcG+xcIIm3i5PksMiNFlffOU+8CRA8JOrWyJ7Xc+hCsD1LYtnM4K33gViWPZ65NExz+c08nGUSA8bh062gHltzvUT0bC1FUXruCHxWRazERHqUvkgwYLbP4p2IlZzdFc9NWyToXXJ/6w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lx7PSe/P; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type; b=LaNkLv/JG7BZsfehwcyrh4pS9fsCCcGrRH0IN+S4JTBwN7FfTeOZ7FCztdt3R4jCXe5h2aoqCHUQI1gb572reKNb9m85twmbNWAXUb49vdiauJxQZtBUB31di4FroogJPw5AzzJWclj4y0dW4USXNEpR0ZywVJgZMZBrdhUxdJc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=okWRwWiK; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lx7PSe/P"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F75AC2BC9E;
-	Fri, 10 Apr 2026 12:19:44 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="okWRwWiK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 704BDC19425;
+	Fri, 10 Apr 2026 12:19:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775823585;
-	bh=QeSclCuMiRAS5wk6lWoviUdmtawCgYPJK7955XSCrpk=;
+	s=k20201202; t=1775823590;
+	bh=r17Pe0N1ahBhrB3JYh2nj0lozuwWxFWE8s4wbHnNz1U=;
 	h=Date:From:To:Cc:Subject:References:From;
-	b=lx7PSe/PjadVTpIMwJdhAJBLt/wkFkRfbRhizAqdCmT18BPcbSlnMFeRTECetW5Mz
-	 e18kIbNIOdNmzSRNcljN5MiUEDzdauvDtZpRrKPYAQq6HuU0ixY90WW/AT9/9BP1TE
-	 G0pmyVH8DHnvheD/Jtznb1TEyB0LG5ezsRLYR23JSrj8T1XCNh6BmAZvkaj4VTBCOk
-	 FjtLvndHPm1jEFcE8PqfK7D9YifyYmXQkYky/wPITICuSdRrICGnLkZ3jZxe25sBaP
-	 q8ggvP1HMAsaRRMlhxP+iwStOOzZHUsvv+/U0DMMTE0lc38vp99aMg2cqhdxuGrXAu
-	 mqm2UYpSfgZaw==
-Date: Fri, 10 Apr 2026 14:19:42 +0200
-Message-ID: <20260410120318.592237447@kernel.org>
+	b=okWRwWiKRXWxIOYd0Peg6lhswEXmgs6TDBmjhAnD7Q9a6usCqNg9OYWu+roqFftQt
+	 CXuq9wugiKbiMxTD+p64hE/DfyXI2OVOyYyt+MQaYOMvBz3HQvYNGX8W9+b4gE14hU
+	 1DViHL5lpk9k7rS0TYmec/vPv8+l0l72HHkjevm3yaDtlLwCxfiyVTiYsTY5w9OTh5
+	 Ju9iD//e8k54q8KUH3ojDg3WjR+Vu3B/cuQgNtmo0Zn1MW3hNX3wOdJ7kCRM+fO7Bg
+	 3Yz29lBDAALUYxAqFMkB8dpm5Y3XPhihE7EzHhldnKqOW+zQ+3nRrzSdk9MbluRvBK
+	 0NZT2IviOMPvg==
+Date: Fri, 10 Apr 2026 14:19:47 +0200
+Message-ID: <20260410120318.658719117@kernel.org>
 User-Agent: quilt/0.68
 From: Thomas Gleixner <tglx@kernel.org>
 To: LKML <linux-kernel@vger.kernel.org>
-Cc: David Woodhouse <dwmw2@infradead.org>,
+Cc: Bernie Thompson <bernie@plugable.com>,
+ linux-fbdev@vger.kernel.org,
  Arnd Bergmann <arnd@arndb.de>,
  x86@kernel.org,
  Lu Baolu <baolu.lu@linux.intel.com>,
@@ -43,8 +44,7 @@ Cc: David Woodhouse <dwmw2@infradead.org>,
  linux-crypto@vger.kernel.org,
  Vlastimil Babka <vbabka@kernel.org>,
  linux-mm@kvack.org,
- Bernie Thompson <bernie@plugable.com>,
- linux-fbdev@vger.kernel.org,
+ David Woodhouse <dwmw2@infradead.org>,
  "Theodore Tso" <tytso@mit.edu>,
  linux-ext4@vger.kernel.org,
  Andrew Morton <akpm@linux-foundation.org>,
@@ -78,7 +78,7 @@ Cc: David Woodhouse <dwmw2@infradead.org>,
  linux-s390@vger.kernel.org,
  "David S. Miller" <davem@davemloft.net>,
  sparclinux@vger.kernel.org
-Subject: [patch 15/38] ptp: ptp_vmclock: Replace get_cycles() usage
+Subject: [patch 16/38] fbdev: udlfb: Replace get_cycles() with ktime_get()
 References: <20260410120044.031381086@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -88,116 +88,109 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 
-get_cycles() is not really well defined and similar to other usaage of the
-underlying hardware CPU counters the PTP vmclock should use an explicit
-interface as well.
+These metrics are not really requiring CPU cycles and as those are
+meanlingless when the CPU is running at a different frequency, this can use
+ktime_get() and achieve the same result.
 
-Implement ptp_vmclock_read_cpu_counter() in arm64 and x86 and simplify the
-Kconfig selection while at it.
-
-No functional change.
+Part of a larger effort to confine get_cycles() access to low level
+architecture code.
 
 Signed-off-by: Thomas Gleixner <tglx@kernel.org>
-Cc: David Woodhouse <dwmw2@infradead.org>
+Cc: Bernie Thompson <bernie@plugable.com>
+Cc: linux-fbdev@vger.kernel.org
 ---
- arch/arm64/Kconfig                   |    1 +
- arch/arm64/include/asm/ptp_vmclock.h |   12 ++++++++++++
- arch/x86/Kconfig                     |    1 +
- arch/x86/include/asm/ptp_vmclock.h   |   12 ++++++++++++
- drivers/ptp/Kconfig                  |    6 ++++--
- drivers/ptp/ptp_vmclock.c            |    6 ++++--
- 6 files changed, 34 insertions(+), 4 deletions(-)
+ Documentation/fb/udlfb.rst  |    4 ++--
+ drivers/video/fbdev/udlfb.c |   24 ++++++++++++------------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
---- a/arch/arm64/Kconfig
-+++ b/arch/arm64/Kconfig
-@@ -112,6 +112,7 @@ config ARM64
- 	select ARCH_SUPPORTS_SCHED_SMT
- 	select ARCH_SUPPORTS_SCHED_CLUSTER
- 	select ARCH_SUPPORTS_SCHED_MC
-+	select ARCH_SUPPORTS_PTP_VMCLOCK if ARCH_SUPPORTS_INT128
- 	select ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
- 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION if COMPAT
- 	select ARCH_WANT_DEFAULT_BPF_JIT
---- /dev/null
-+++ b/arch/arm64/include/asm/ptp_vmclock.h
-@@ -0,0 +1,12 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+#ifndef __ASM_PTP_VMCLOCK_H
-+#define __ASM_PTP_VMCLOCK_H
-+
-+#include <asm/arch_timer.h>
-+
-+static inline u64 ptp_vmclock_read_cpu_counter(void)
-+{
-+	return arch_timer_read_counter();
-+}
-+
-+#endif
---- a/arch/x86/Kconfig
-+++ b/arch/x86/Kconfig
-@@ -135,6 +135,7 @@ config X86
- 	select ARCH_SUPPORTS_RT
- 	select ARCH_SUPPORTS_AUTOFDO_CLANG
- 	select ARCH_SUPPORTS_PROPELLER_CLANG    if X86_64
-+	select ARCH_SUPPORTS_PTP_VMCLOCK	if X86_TSC
- 	select ARCH_USE_BUILTIN_BSWAP
- 	select ARCH_USE_CMPXCHG_LOCKREF		if X86_CX8
- 	select ARCH_USE_MEMTEST
---- /dev/null
-+++ b/arch/x86/include/asm/ptp_vmclock.h
-@@ -0,0 +1,12 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+#ifndef __ASM_PTP_VMCLOCK_H
-+#define __ASM_PTP_VMCLOCK_H
-+
-+#include <asm/tsc.h>
-+
-+static inline u64 ptp_vmclock_read_cpu_counter(void)
-+{
-+	return cpu_feature_enabled(X86_FEATURE_TSC) ? rdtsc() : 0;
-+}
-+
-+#endif
---- a/drivers/ptp/Kconfig
-+++ b/drivers/ptp/Kconfig
-@@ -131,10 +131,12 @@ config PTP_1588_CLOCK_KVM
- 	  To compile this driver as a module, choose M here: the module
- 	  will be called ptp_kvm.
+--- a/Documentation/fb/udlfb.rst
++++ b/Documentation/fb/udlfb.rst
+@@ -156,8 +156,8 @@ metrics_bytes_sent	 32-bit count of how
+ 			 USB to communicate the resulting changed pixels to the
+ 			 hardware. Includes compression and protocol overhead
  
-+config ARCH_SUPPORTS_PTP_VMCLOCK
-+	bool
+-metrics_cpu_kcycles_used 32-bit count of CPU cycles used in processing the
+-			 above pixels (in thousands of cycles).
++metrics_cpu_kcycles_used 32-bit count of microseconds used in processing the
++			 above pixels
+ 
+ metrics_reset		 Write-only. Any write to this file resets all metrics
+ 			 above to zero.  Note that the 32-bit counters above
+--- a/drivers/video/fbdev/udlfb.c
++++ b/drivers/video/fbdev/udlfb.c
+@@ -24,6 +24,7 @@
+ #include <linux/slab.h>
+ #include <linux/delay.h>
+ #include <linux/unaligned.h>
++#include <linux/timekeeping.h>
+ #include <video/udlfb.h>
+ #include "edid.h"
+ 
+@@ -600,15 +601,15 @@ static int dlfb_render_hline(struct dlfb
+ 
+ static int dlfb_handle_damage(struct dlfb_data *dlfb, int x, int y, int width, int height)
+ {
++	ktime_t t_start, t_delta;
+ 	int i, ret;
+ 	char *cmd;
+-	cycles_t start_cycles, end_cycles;
+ 	int bytes_sent = 0;
+ 	int bytes_identical = 0;
+ 	struct urb *urb;
+ 	int aligned_x;
+ 
+-	start_cycles = get_cycles();
++	t_start = ktime_get();
+ 
+ 	mutex_lock(&dlfb->render_mutex);
+ 
+@@ -661,10 +662,9 @@ static int dlfb_handle_damage(struct dlf
+ 	atomic_add(bytes_sent, &dlfb->bytes_sent);
+ 	atomic_add(bytes_identical, &dlfb->bytes_identical);
+ 	atomic_add(width*height*2, &dlfb->bytes_rendered);
+-	end_cycles = get_cycles();
+-	atomic_add(((unsigned int) ((end_cycles - start_cycles)
+-		    >> 10)), /* Kcycles */
+-		   &dlfb->cpu_kcycles_used);
++	t_delta = ktime_get() - t_start;
++	/* Avoid a division and approximate microseconds with shift right ten */
++	atomic_add(((int)(t_delta >> 10)), &dlfb->cpu_kcycles_used);
+ 
+ 	ret = 0;
+ 
+@@ -727,9 +727,9 @@ static void dlfb_dpy_deferred_io(struct
+ {
+ 	struct fb_deferred_io_pageref *pageref;
+ 	struct dlfb_data *dlfb = info->par;
++	ktime_t t_start, t_delta;
+ 	struct urb *urb;
+ 	char *cmd;
+-	cycles_t start_cycles, end_cycles;
+ 	int bytes_sent = 0;
+ 	int bytes_identical = 0;
+ 	int bytes_rendered = 0;
+@@ -742,7 +742,7 @@ static void dlfb_dpy_deferred_io(struct
+ 	if (!atomic_read(&dlfb->usb_active))
+ 		goto unlock_ret;
+ 
+-	start_cycles = get_cycles();
++	t_start = ktime_get();
+ 
+ 	urb = dlfb_get_urb(dlfb);
+ 	if (!urb)
+@@ -774,10 +774,10 @@ static void dlfb_dpy_deferred_io(struct
+ 	atomic_add(bytes_sent, &dlfb->bytes_sent);
+ 	atomic_add(bytes_identical, &dlfb->bytes_identical);
+ 	atomic_add(bytes_rendered, &dlfb->bytes_rendered);
+-	end_cycles = get_cycles();
+-	atomic_add(((unsigned int) ((end_cycles - start_cycles)
+-		    >> 10)), /* Kcycles */
+-		   &dlfb->cpu_kcycles_used);
++	t_delta = ktime_get() - t_start;
++	/* Avoid a division and approximate microseconds with shift right ten */
++	atomic_add(((int)(t_delta >> 10)), &dlfb->cpu_kcycles_used);
 +
- config PTP_1588_CLOCK_VMCLOCK
- 	tristate "Virtual machine PTP clock"
--	depends on X86_TSC || ARM_ARCH_TIMER
--	depends on PTP_1588_CLOCK && ARCH_SUPPORTS_INT128
-+	depends on PTP_1588_CLOCK && ARCH_SUPPORTS_PTP_VMCLOCK
- 	default PTP_1588_CLOCK_KVM
- 	help
- 	  This driver adds support for using a virtual precision clock
---- a/drivers/ptp/ptp_vmclock.c
-+++ b/drivers/ptp/ptp_vmclock.c
-@@ -28,6 +28,8 @@
- 
- #include <linux/ptp_clock_kernel.h>
- 
-+#include <asm/ptp_vmclock.h>
-+
- #ifdef CONFIG_X86
- #include <asm/pvclock.h>
- #include <asm/kvmclock.h>
-@@ -144,11 +146,11 @@ static int vmclock_get_crosststamp(struc
- 			if (systime_snapshot.cs_id == st->cs_id) {
- 				cycle = systime_snapshot.cycles;
- 			} else {
--				cycle = get_cycles();
-+				cycle = ptp_vmclock_read_cpu_counter();
- 				ptp_read_system_postts(sts);
- 			}
- 		} else {
--			cycle = get_cycles();
-+			cycle = ptp_vmclock_read_cpu_counter();
- 		}
- 
- 		delta = cycle - le64_to_cpu(st->clk->counter_value);
+ unlock_ret:
+ 	mutex_unlock(&dlfb->render_mutex);
+ }
 
