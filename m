@@ -1,51 +1,51 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0CB63E1CEC
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 15:19:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE9313DA5C7
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 15:19:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775834354; cv=none; b=dX1dtzZMDZWKGxi+Zu4rjlXMT24MU+tKumMUecBPYwXSncNGta2EyhZxF8gUp6xQACGkCoRtSlP0YTSJLcPrT/4D/Wtwh2IrQTRMcfg8ILCLp5W0JfDyKolUqatakvvftmaLuUEyXeKbodr1RdNn1430wgk7HrB6hLaX+u7ugHs=
+	t=1775834356; cv=none; b=Zu1ibnLgi2/I9WZnSL+nWHlS4rdPEKLGpY3fVAiEuOCGLLtP/yoQ+YJJn8P0vgfwkx9NpNhGzgaRpX0iXadt55T29PYPOWnYbptfSHnc6z3/2ZCigdXirallZaj7VXccKR4I9s/UzW/UcnLa31DTmvcAE+/I+ccrZFkj3hGc44o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775834354; c=relaxed/simple;
-	bh=yjy+VybcZwTxn/hQQPfOioIQbWEUa+8pmeeWkKqVfO4=;
+	s=arc-20240116; t=1775834356; c=relaxed/simple;
+	bh=2FKYpzsdVhCQa1RSMNhjNFn8nSXHgmMQ4Y7xPVtpfxo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=kMVmTROYK9bvyDwN06BYEjAoPzP+EUnT8kTu477QTwvqP6YRBiboZNPHUGNFO1oEZbNwodGxBGPS15W2z6tZ4fAUuFUDl1A/kC+9yGKQI1XT2dBaa1LxCX3ugi15MnxGq03VRO3ORq1854WsqPKjt2MZRPCcLiWbYwy1Q6D+k0Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=JBuLhzZ1; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=cIlvhz2iSFqISkRfEIDoUSkB5iTcc9W5CBIU7y9m6eIYXU2JnSrz3Bfx0SwEeFORvQQjiEcusp86FWWNwY/hNfQGF6Iss61xb/q1WImERmpVjv58CJGXZAe22RZ7ct1kn7g8+2/1rALf2JPRndhX0AKs+lQxroMJIidanJzwg9M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=estaqHUk; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="JBuLhzZ1"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="estaqHUk"
 Received: from trampoline.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63AFIne0015807
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63AFIo9J015829
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 10 Apr 2026 11:18:50 -0400
+	Fri, 10 Apr 2026 11:18:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775834332; bh=uBTt6Lm6ZXcyr+/kAAWhmKpUxYPnkYfDAi8KW4TxZjc=;
+	t=1775834333; bh=ALSl/fv8jDicKjoZxoOyt5olPy72N95UDRq8RlX6k00=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=JBuLhzZ1OVlVyAolmq9ZU2okfWeFKh8SB4nXaBYWH3NJNPwbOLchM4oIOicAP10gu
-	 TrfFTZSJIqX3z/M+WospTxEC7XsHjwFLQeb0zrVUCwVNqoRNXm0xI9fLsEf5aTN4vb
-	 tbJYzPOJFMbpesTHUSDWThHQPVuWAyJExpDzIRG8JBDT44I0MIKvip9C9oZJjh80PB
-	 oE4UGEtEOw/9sejryN7OnlcYbMIE2EllNbi5jGTagChG5WEt1TCWldhFh0z4psrKz8
-	 EzGP/lXZGM2LrxwaMVuQ1Z4PuCAoq1jqlWsRv4bStFtlBUXzdexRC078nXOLT1Z0X5
-	 knv8K1imw1JWQ==
+	b=estaqHUkslxpucSgKtPRLbMMI58oQkDa4uY6M6npp6JhaPbdlh7kgwu2/XumobtwR
+	 vtz3B4sy45ze3yZESGZx10gzly6l22GrBPdQFbs/pB6SD2oCUMGzGd/N9PH0uAE48t
+	 8sZWIwVsNbibjgpikWqzNHeVGHErDrbfyRQUBxLgfNJW6frcRbGEs9msPL2XMb7jMG
+	 dReATirIgI+aaQ9oa4Cd0Kdm4pzd9+ITToLAnpewLwqMneE6YL0juPKlCCfla41lP0
+	 RuWKAYriWo1SlxDLQguFgMxO7OLJCrN8/ugBoT0qvk9ixMsd6oldByIm6PtlQjxYkp
+	 k/A6nVORCHJYQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id F1B502E00DC; Fri, 10 Apr 2026 11:18:47 -0400 (EDT)
+	id 032F82E00DE; Fri, 10 Apr 2026 11:18:48 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, willy@infradead.org,
-        Deepanshu Kartikey <kartikey406@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yi.zhang@huaweicloud.com,
-        djwong@kernel.org,
-        syzbot+b0a0670332b6b3230a0a@syzkaller.appspotmail.com
-Subject: Re: [PATCH v3] ext4: unmap invalidated folios from page tables in mpage_release_unused_pages()
-Date: Fri, 10 Apr 2026 11:18:35 -0400
-Message-ID: <177583430850.2758959.10293506884129885872.b4-ty@b4>
+To: Jan Kara <jack@suse.cz>, Mark Fasheh <mark@fasheh.com>,
+        linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev,
+        Li Chen <me@linux.beauty>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        Joel Becker <jlbec@evilplan.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v4 0/4] jbd2/ext4/ocfs2: lockless jinode dirty range
+Date: Fri, 10 Apr 2026 11:18:37 -0400
+Message-ID: <177583430859.2758959.1360360211440803917.b4-ty@b4>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251205055914.1393799-1-kartikey406@gmail.com>
-References: <20251205055914.1393799-1-kartikey406@gmail.com>
+In-Reply-To: <20260306085643.465275-1-me@linux.beauty>
+References: <20260306085643.465275-1-me@linux.beauty>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -56,24 +56,28 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 05 Dec 2025 11:29:14 +0530, Deepanshu Kartikey wrote:
-> When delayed block allocation fails (e.g., due to filesystem corruption
-> detected in ext4_map_blocks()), the writeback error handler calls
-> mpage_release_unused_pages(invalidate=true) which invalidates affected
-> folios by clearing their uptodate flag via folio_clear_uptodate().
+On Fri, 06 Mar 2026 16:56:38 +0800, Li Chen wrote:
+> This series makes the jbd2_inode dirty range tracking safe for lockless
+> reads in jbd2 and filesystem callbacks used by ext4 and ocfs2.
 > 
-> However, these folios may still be mapped in process page tables. If a
-> subsequent operation (such as ftruncate calling ext4_block_truncate_page)
-> triggers a write fault, the existing page table entry allows access to
-> the now-invalidated folio. This leads to ext4_page_mkwrite() being called
-> with a non-uptodate folio, which then gets marked dirty, triggering:
+> Some paths access jinode fields without holding journal->j_list_lock
+> (e.g. fast commit helpers and ordered truncate helpers). v1 used READ_ONCE()
+> on i_dirty_start/end, but Matthew pointed out that loff_t can be torn on
+> 32-bit platforms, and Jan suggested storing the dirty range in PAGE_SIZE
+> units as pgoff_t.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: unmap invalidated folios from page tables in mpage_release_unused_pages()
-      commit: 9b25f381de6b8942645f43735cb0a4fb0ab3a6d1
+[1/4] jbd2: add jinode dirty range accessors
+      commit: 5267f6ef49cb5fba426f2d286817b1355fde31da
+[2/4] ext4: use jbd2 jinode dirty range accessor
+      commit: 660d23669982202c99798658e2a15ccdd001f82b
+[3/4] ocfs2: use jbd2 jinode dirty range accessor
+      commit: be81084e032c2d74f51173e30f687ce13476cb73
+[4/4] jbd2: store jinode dirty range in PAGE_SIZE units
+      commit: 4edafa81a1d6020272d0c6eb68faeb810dd083c1
 
 Best regards,
 -- 
