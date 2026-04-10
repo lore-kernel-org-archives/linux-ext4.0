@@ -1,49 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B74503DDDB4
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 15:18:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE5583DDDDF
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2026 15:19:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775834341; cv=none; b=iCMSULx/sJuj9WM1BucLIXgVVfUNv1IYZmigiZiP/sw/0OggKARfs81sLX6fEILV0xv0lE8HeFyQrRj5zj5L5ASQlNS2JasNFXLD4g5d3nK0/4WqrPvkZkeaSSXIKvAG2SpRFvk8mfYyD0TzLrK+9lyNkZwKKl5Ro3ofQQUkeJE=
+	t=1775834343; cv=none; b=T9UVuZKbwLptrJD9RYZXqY0aYEUfLZgOFg/xZRjG/uD/8FPgrsffrYJj31JSO5FNVx1IPzb6pSVJFCJ68zmIdrSSYKBDap8R4BaDBVoqFZyNxKS42frszKFRCq6EbpQ7InKOK95TUdzWiPayrO2hURCFs2R+isdcmqQZfG4WzVI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775834341; c=relaxed/simple;
-	bh=RxpvA3eh9SHzgt4/2lh3Inm/8L4wRVYBA0eII59VMSQ=;
+	s=arc-20240116; t=1775834343; c=relaxed/simple;
+	bh=xnjHLMcfgpDVx/kdMup4TPS0YUUNepuNMtlV9r+6zJE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=OrRokUlM0KZ3qBwAdOUx7aX8i/isEOKHgAJu+WG55Y+F0aJlHusAUn/2O/tfir2TzrIExB/j9yWRYx2KnapE/kvRhb6imTeiuJTDi3S1Rsb7XZZxc8vBeUVxwg5g9zXrV9uwzsvLn8H6dr3oxldbgqnDMvYKXOZ2AfIF2kTz29E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=LyUOJVZs; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=CPz+KDa1mbQwyOI5rhk1qfKD9iUH1JL7lXzkdBM55MTbdKhLN4XoTYAtykXKX9yRmnAM1XsOYV/0Tf5r4IbrxubRT8/XSffO+1txpGPp3VbHI/lRmh5g6QTC58+WY8RoMpnzybGvhquiOV22AUQn2BfkNy5anwKWwGrJeqotgzg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=O6WAbJWD; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="LyUOJVZs"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="O6WAbJWD"
 Received: from trampoline.thunk.org (pool-173-48-116-90.bstnma.fios.verizon.net [173.48.116.90])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63AFImgN015769
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63AFIoAd015841
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 10 Apr 2026 11:18:49 -0400
+	Fri, 10 Apr 2026 11:18:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1775834330; bh=OY6G15C9EgyOfaVMAdim+tczgIT2XZ6nQM0Fntgveyc=;
+	t=1775834331; bh=W99+w/CQJUD6o9AyfEzrfWUD9WDm0z6vtxJ6n9HXAYA=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=LyUOJVZs8BaMuQinHijvZ1RHGXBxgfwVz47W7x4TAX820fc8LmDtCGXwjNrEDvOPT
-	 aH6gJJbBgO2dee8/VC23R4CaVt1E8xjO3w3BZckVlokpqHmCEub5/soycXjKnoZUyw
-	 nOFNSxGsQsPcVZNOT/Lald5fw9VQ+2o4N0OI6hiOYTOcop4Y8hzuWrU+ZvW26s4FbJ
-	 hZou7VzIDgsrvFI9AtMYKKMpnoTLmdV34yW1YN03T7BhwBNearJhgE20RmnQLhQ55m
-	 o6kgd2YecXWlc/hzbtcQ4iDw/uw+h4Y34LGmFD8Iqt5tt6aU5b+Tzdan3b74b/hg/l
-	 d6fLmdggHQu4Q==
+	b=O6WAbJWDTjTsu9WxYTUHUUO075cDsoeFQQs9p9ZTjUX9yQy1MTOUUOzX/F7gZQFTx
+	 RNSZAwAe5KKRULAB5dbmBB3+yvWtB2aSC5BvolWqrxns8PU+EU+2Swh85DKdgeAMh9
+	 XLPZ4WCaaxdthq8w6vLiM4t9s6taxhyuvbLjHbUuAHsxMwG955cZ2vkJt55yiH2rbY
+	 nevzMq5HkdeJs84joFIRSqQopa6avjcR4CR5M6tHnXVADnOjhv+Rdp3LoMcL/YhKap
+	 0TYIOEj9mKICVAnRaV8adGhbKuGWfJ7fCB8byYBkZfNinVZ/f5AKS6tpxebfDz8vFV
+	 l63oavy4Z+hBg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id EED782E00DB; Fri, 10 Apr 2026 11:18:47 -0400 (EDT)
+	id 08CEF2E00E0; Fri, 10 Apr 2026 11:18:48 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, Deepanshu Kartikey <kartikey406@gmail.com>
+To: jack@suse.cz, Milos Nikic <nikic.milos@gmail.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        syzbot+fb32afec111a7d61b939@syzkaller.appspotmail.com
-Subject: Re: [PATCH v2] ext4: fix bounds check in check_xattrs() to prevent out-of-bounds access
-Date: Fri, 10 Apr 2026 11:18:34 -0400
-Message-ID: <177583430878.2758959.10038208065851589867.b4-ty@b4>
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v5 0/2] jbd2: audit and convert legacy J_ASSERT usage
+Date: Fri, 10 Apr 2026 11:18:39 -0400
+Message-ID: <177583430857.2758959.2629586609147783650.b4-ty@b4>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260328150038.349497-1-kartikey406@gmail.com>
-References: <20260328150038.349497-1-kartikey406@gmail.com>
+In-Reply-To: <20260304172016.23525-1-nikic.milos@gmail.com>
+References: <20260304172016.23525-1-nikic.milos@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,22 +53,23 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Sat, 28 Mar 2026 20:30:38 +0530, Deepanshu Kartikey wrote:
-> The bounds check for the next xattr entry in check_xattrs() uses
-> (void *)next >= end, which allows next to point within sizeof(u32)
-> bytes of end. On the next loop iteration, IS_LAST_ENTRY() reads 4
-> bytes via *(__u32 *)(entry), which can overrun the valid xattr region.
+On Wed, 04 Mar 2026 09:20:14 -0800, Milos Nikic wrote:
+> This patch series follows up on the previous discussion regarding
+> converting hard J_ASSERT panics into graceful journal aborts.
 > 
-> For example, if next lands at end - 1, the check passes since
-> next < end, but IS_LAST_ENTRY() reads 4 bytes starting at end - 1,
-> accessing 3 bytes beyond the valid region.
+> In v1, we addressed a specific panic on unlock. Per Jan's suggestion,
+> I have audited fs/jbd2/transaction.c for other low-hanging fruit
+> where state machine invariants are enforced by J_ASSERT inside
+> functions that natively support error returns.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix bounds check in check_xattrs() to prevent out-of-bounds access
-      commit: eceafc31ea7b42c984ece10d79d505c0bb6615d5
+[1/2] jbd2: gracefully abort instead of panicking on unlocked buffer
+      commit: 64924362f833fd15d75d2b8fc771eff9646c0933
+[2/2] jbd2: gracefully abort on transaction state corruptions
+      commit: f7fc28b014ebb00796f99f12f0583caab23276e3
 
 Best regards,
 -- 
