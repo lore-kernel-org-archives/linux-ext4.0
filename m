@@ -1,250 +1,193 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3AA39392C4C
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2026 06:51:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60217396B73;
+	Mon, 13 Apr 2026 07:59:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776063103; cv=none; b=p6Y41hzJ/PfCCBCjMSMhkUGt8OQUWrQ/BqnBLCtolRdCZdWPTw1TB0WxGi19UeVMnAF5MrpSB6Yvi01x3bIaJnTND2DN48Vn9pGSm/yh4D3r50kYyi0QQ+i1nuIaauMZIijz9QrF5iu2axYh3Sr8LpbFEVQKguJnQ1PZVqJeOfU=
+	t=1776067142; cv=none; b=mwl5JWeertl0/gsLkuJhUFiD/4pFkMbuu1YAx66BnaaHh0xM3vW7B5nuvKYeeYycgQhrlECdYiSPDDUvTjCjz8WGBdJ5FQqMHmDPfWm68Dc/tEiKj9zaFJVmHJMdTkXt2Y46jn+qRWPpKQ36tlP8aPz+KqPZMazxYVK287sR45E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776063103; c=relaxed/simple;
-	bh=q9+P125CZ549OI7L3wYHYt7w3xleV/ATVK4sTB5jhk8=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=S2HRfUP0HOL3kPbS7B/2GaBNH2H2HcjAzPrEzSWS8hA0rvNRlNFE51mpoRHE9re3wJPtgO+xpMVDsJJP7jIZMOzI8Quhx+53Km9Tz2konkhCbDAbvJRFl1vpNsENp93PFtprQdsnWH6b+qUKIJdo0EHwLDR2z+KkwAC+orOcNac=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gms.tku.edu.tw; spf=pass smtp.mailfrom=gms.tku.edu.tw; dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b=kIVZo7hZ; arc=none smtp.client-ip=209.85.214.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gms.tku.edu.tw
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gms.tku.edu.tw
+	s=arc-20240116; t=1776067142; c=relaxed/simple;
+	bh=XHj3Sl5zLIaiozQdeiIMCMFRZIyOS3dN0hw7WTARA40=;
+	h=Date:From:To:Cc:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=o5Yy4LGd4QYVJp16vTLLNEu6pFIPQOqsaBE/s5GlxjBieSH7nqN5V9DzN1lBKj+ARWJKEd8uIs8XnYd/tS3ePR3atwpKF9Z0HERwePpnYoHD+JiCxf9IsiRsr8b002FusBcBkCZgtcc6Kvv8W9mqLm7JvCKukmzXI7KK/zz/3lg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aInXVTZD; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b="kIVZo7hZ"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2ad4d639db3so18986015ad.0
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Apr 2026 23:51:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gms-tku-edu-tw.20251104.gappssmtp.com; s=20251104; t=1776063101; x=1776667901; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=D4TXFklFQDmQmwxZ0Ud/cdt/UKuliJ1cGjB8R+Go2+M=;
-        b=kIVZo7hZtsxgQ7iDHlkvyYqtoezBnE411i0cky1Hk72TbJnW6Riy+Q8Xy5TYjluytp
-         ztV3xITlC/hKBGNCihdyFFviAHWD6XqnCYO67AY4wlRDXqQhCdh2jdFkBA79aHEp8Gw8
-         PUrcOdn25/LVsQ5oYi7vfZpQNBhOv+u3v2AOBvBtK+h18kQppTx4OelZQITSJBtdl9rn
-         xHcz76k4cVfk39WEUCbRQZAFTv+6PhE3ytFEWsvTRhsYxO5oRQOwngxmzoanr2AVNShs
-         XHoUs+GyN/NwDwG8AhOCuMrtwfCtlCWvsj7jAAXbmGhOXjO27aNbxlAwETL+3x7cqUWS
-         7jWQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776063101; x=1776667901;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=D4TXFklFQDmQmwxZ0Ud/cdt/UKuliJ1cGjB8R+Go2+M=;
-        b=pCLb9CJ+cOL5T1dHHsFyVL/0VM9m8pr75RcIq5Y/QD4iYQKNenrfseFUX1iv9Vli5L
-         7gtRtVrQvm0KkmDUp5f4SKYBtIsYlokhjGMKj5v7ga8PVw7T6o1EA9oFoqEwzyjQ8waY
-         zvBKUHuDW73TD+kHoBE1l343zE2jtotRsmd8fJi+3eqipKYkAASjcMgUb3DeEr6olp+u
-         Anb94Uia2JUK+ScsRdKchDDetR6LyP7tiHrodPLI+b9/U2GkIg7o6hKT3U4O2q88lvus
-         JXRIWCMk0pJYCfB9Dp3nefI0eH9k+cQBT4iA0AXi1OLhtmh5t7zFmLaTS9EuSOBEbPBJ
-         3GQw==
-X-Gm-Message-State: AOJu0Yxxulopu12mIlVZ9V8I4Bwk0jbPCRa+gvzXQTSiUIUx6w9q+1KH
-	64ASOEwswSYo1KBE5WEHUyfDBYGJAdu3SxY4rDMgNMezMQZ8X8zHPdqshz/X9LdDvyU=
-X-Gm-Gg: AeBDievpMADLPoSKljCbHtC7pyxqqbttC3j/8URyGwfdh/VYGr7Uva+lYntvmJ9ltOL
-	EEaWhhrY6hJkKasDUtBfeMl1nD3cipyDf5LBi1xnlXvUcruEub1EaV+/cyPsFxEHbTLq9jBAAq5
-	9alU1/r4+nf1KtEqyqvO42jiAfNwFzUAqd2qiDpldYPhFSj0eACkLHWW91MMISL5QZtc6g+4plS
-	ZlYs2j+ua3c0jA7gC4i52fPkfPJcoXfjDmWubCHKEJAUuEsCjlYNHbcZmfoJYJPPGTi7LmSgB3s
-	VpYwmWJY2MUHRpGlcFK8a5jtI4f8NoaN0Wgwr8Bruj4XNuTCZ3Yt/mYusd/l/9d6jgftLF3sqH0
-	1ATt9qX/XWg9eGTd1gwmRGgenbd6X57+zq56ICpFzDMvEXnSAaRodTxiY/hXFxuW5N2tN3UJzn9
-	VfLOvsLpR1+r8bIa9FXRkw5MS0aekAD8YyKUiYQ5gUJNow7Gc=
-X-Received: by 2002:a17:903:3886:b0:2b0:6ce3:8f7 with SMTP id d9443c01a7336-2b2d5a95db7mr111280365ad.43.1776063101390;
-        Sun, 12 Apr 2026 23:51:41 -0700 (PDT)
-Received: from wu-Pro-E500-G6-WS720T.. ([2001:288:7001:2703:d062:a770:8a34:87a2])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b2d4dde346sm100107855ad.29.2026.04.12.23.51.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 12 Apr 2026 23:51:41 -0700 (PDT)
-From: Guan-Chun Wu <409411716@gms.tku.edu.tw>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	edward062254@gmail.com,
-	visitorckw@gmail.com,
-	david.laight.linux@gmail.com,
-	Guan-Chun Wu <409411716@gms.tku.edu.tw>
-Subject: [PATCH v3 2/2] ext4: improve str2hashbuf by processing 4-byte chunks and removing function pointers
-Date: Mon, 13 Apr 2026 14:51:14 +0800
-Message-Id: <20260413065114.730231-3-409411716@gms.tku.edu.tw>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260413065114.730231-1-409411716@gms.tku.edu.tw>
-References: <20260413065114.730231-1-409411716@gms.tku.edu.tw>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aInXVTZD"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98E82C2BCB1;
+	Mon, 13 Apr 2026 07:59:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1776067142;
+	bh=XHj3Sl5zLIaiozQdeiIMCMFRZIyOS3dN0hw7WTARA40=;
+	h=Date:From:To:Cc:From;
+	b=aInXVTZDoMoSfHiM/ZTxpP0dqJp8rPTOhRsc0Vuegjf9eP1zvaDTJ+apxlgIuhj5m
+	 uymEbEu/UHOJWJ6lw7U0YrRJbLNQJR/o8436sUmQyyIJnGd5I57C1MKi19QSG24eX9
+	 h2iGOBKURBUQkPE+zITLtqcSezi5jonPS8m9wlnnrbrXoKcavVutGZS3YzVK/HoBVS
+	 ZTBks8Urt9YUD0fN0O3n/+VePDQcDLPvpr8M3UALf3YN6/WXTllw86HLQ5q1c3ADYE
+	 YbRf8iuI5QEq4lS/pfjIFvTCKsJMm3+e/VB0lwWLoC4lQj8qW8Sg2xkFLYg/qNqpkL
+	 OEuPIqPS+wyIg==
+Date: Mon, 13 Apr 2026 16:58:59 +0900
+From: "Harry Yoo (Oracle)" <harry@kernel.org>
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Vlastimil Babka <vbabka@kernel.org>, linux-mm@kvack.org,
+	Arnd Bergmann <arnd@arndb.de>, x86@kernel.org,
+	Lu Baolu <baolu.lu@linux.intel.com>, iommu@lists.linux.dev,
+	Michael Grzeschik <m.grzeschik@pengutronix.de>,
+	netdev@vger.kernel.org, linux-wireless@vger.kernel.org,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	linux-crypto@vger.kernel.org, David Woodhouse <dwmw2@infradead.org>,
+	Bernie Thompson <bernie@plugable.com>, linux-fbdev@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Uladzislau Rezki <urezki@gmail.com>, Marco Elver <elver@google.com>,
+	Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com,
+	Andrey Ryabinin <ryabinin.a.a@gmail.com>,
+	Thomas Sailer <t.sailer@alumni.ethz.ch>, linux-hams@vger.kernel.org,
+	"Jason A. Donenfeld" <Jason@zx2c4.com>,
+	Richard Henderson <richard.henderson@linaro.org>,
+	linux-alpha@vger.kernel.org, Russell King <linux@armlinux.org.uk>,
+	linux-arm-kernel@lists.infradead.org,
+	Catalin Marinas <catalin.marinas@arm.com>,
+	Huacai Chen <chenhuacai@kernel.org>, loongarch@lists.linux.dev,
+	Geert Uytterhoeven <geert@linux-m68k.org>,
+	linux-m68k@lists.linux-m68k.org, Dinh Nguyen <dinguyen@kernel.org>,
+	Jonas Bonn <jonas@southpole.se>, linux-openrisc@vger.kernel.org,
+	Helge Deller <deller@gmx.de>, linux-parisc@vger.kernel.org,
+	Michael Ellerman <mpe@ellerman.id.au>,
+	linuxppc-dev@lists.ozlabs.org, Paul Walmsley <pjw@kernel.org>,
+	linux-riscv@lists.infradead.org, Heiko Carstens <hca@linux.ibm.com>,
+	linux-s390@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+	sparclinux@vger.kernel.org, Hao Li <hao.li@linux.dev>,
+	Christoph Lameter <cl@gentwo.org>,
+	David Rientjes <rientjes@google.com>,
+	Roman Gushchin <roman.gushchin@linux.dev>,
+	Shengming Hu <hu.shengming@zte.com.cn>
+Message-ID: <adyiQy_DP_vldg1r@hyeyoo>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-The original byte-by-byte implementation with modulo checks is less
-efficient. Refactor str2hashbuf_unsigned() and str2hashbuf_signed()
-to process input in explicit 4-byte chunks instead of using a
-modulus-based loop to emit words byte by byte.
+Bcc: 
+Subject: Re: [patch 14/38] slub: Use prandom instead of get_cycles()
+Reply-To: 
+In-Reply-To: <20260410120318.525653921@kernel.org>
 
-Additionally, the use of function pointers for selecting the appropriate
-str2hashbuf implementation has been removed. Instead, the functions are
-directly invoked based on the hash type, eliminating the overhead of
-dynamic function calls.
+On Fri, Apr 10, 2026 at 02:19:37PM +0200, Thomas Gleixner wrote:
+> The decision whether to scan remote nodes is based on a 'random' number
+> retrieved via get_cycles(). get_cycles() is about to be removed.
+> 
+> There is already prandom state in the code, so use that instead.
+> 
+> Signed-off-by: Thomas Gleixner <tglx@kernel.org>
+> Cc: Vlastimil Babka <vbabka@kernel.org>
+> Cc: linux-mm@kvack.org
+> ---
 
-Performance test (x86_64, Intel Core i7-10700 @ 2.90GHz, average over 10000
-runs, using kernel module for testing):
+Acked-by: Harry Yoo (Oracle) <harry@kernel.org>
 
-    len | orig_s | new_s | orig_u | new_u
-    ----+--------+-------+--------+-------
-      1 |   70   |   71  |   63   |   63
-      8 |   68   |   64  |   64   |   62
-     32 |   75   |   70  |   75   |   63
-     64 |   96   |   71  |  100   |   68
-    255 |  192   |  108  |  187   |   84
+Is this for this merge window?
 
-This change improves performance, especially for larger input sizes.
+This may conflict with upcoming changes on freelist shuffling [1]
+(not queued for slab/for-next yet though), but it should be easy to
+resolve.
 
-Signed-off-by: Guan-Chun Wu <409411716@gms.tku.edu.tw>
----
- fs/ext4/hash.c | 64 +++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 42 insertions(+), 22 deletions(-)
+[Cc'ing Shengming and SLAB ALLOCATOR folks]
 
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 48483cd01..c3fb2df44 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -9,6 +9,7 @@
- #include <linux/unicode.h>
- #include <linux/compiler.h>
- #include <linux/bitops.h>
-+#include <linux/unaligned.h>
- #include "ext4.h"
- 
- #define DELTA 0x9E3779B9
-@@ -141,21 +142,28 @@ static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
- 
--	val = pad;
- 	if (len > num*4)
- 		len = num * 4;
--	for (i = 0; i < len; i++) {
--		val = ((int) scp[i]) + (val << 8);
--		if ((i % 4) == 3) {
--			*buf++ = val;
--			val = pad;
--			num--;
--		}
-+
-+	while (len >= 4) {
-+		val = (scp[0] << 24) + (scp[1] << 16) + (scp[2] << 8) + scp[3];
-+		*buf++ = val;
-+		scp += 4;
-+		len -= 4;
-+		num--;
- 	}
-+
-+	val = pad;
-+
-+	for (i = 0; i < len; i++)
-+		val = scp[i] + (val << 8);
-+
- 	if (--num >= 0)
- 		*buf++ = val;
-+
- 	while (--num >= 0)
- 		*buf++ = pad;
-+
- }
- 
- static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
-@@ -167,21 +175,28 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
- 
--	val = pad;
- 	if (len > num*4)
- 		len = num * 4;
--	for (i = 0; i < len; i++) {
--		val = ((int) ucp[i]) + (val << 8);
--		if ((i % 4) == 3) {
--			*buf++ = val;
--			val = pad;
--			num--;
--		}
-+
-+	while (len >= 4) {
-+		val = get_unaligned_be32(ucp);
-+		*buf++ = val;
-+		ucp += 4;
-+		len -= 4;
-+		num--;
- 	}
-+
-+	val = pad;
-+
-+	for (i = 0; i < len; i++)
-+		val = ucp[i] + (val << 8);
-+
- 	if (--num >= 0)
- 		*buf++ = val;
-+
- 	while (--num >= 0)
- 		*buf++ = pad;
-+
- }
- 
- /*
-@@ -205,8 +220,7 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 	const char	*p;
- 	int		i;
- 	__u32		in[8], buf[4];
--	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
--				str2hashbuf_signed;
-+	bool use_unsigned = false;
- 
- 	/* Initialize the default seed for the hash checksum functions */
- 	buf[0] = 0x67452301;
-@@ -232,12 +246,15 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		hash = dx_hack_hash_signed(name, len);
- 		break;
- 	case DX_HASH_HALF_MD4_UNSIGNED:
--		str2hashbuf = str2hashbuf_unsigned;
-+		use_unsigned = true;
- 		fallthrough;
- 	case DX_HASH_HALF_MD4:
- 		p = name;
- 		while (len > 0) {
--			(*str2hashbuf)(p, len, in, 8);
-+			if (use_unsigned)
-+				str2hashbuf_unsigned(p, len, in, 8);
-+			else
-+				str2hashbuf_signed(p, len, in, 8);
- 			half_md4_transform(buf, in);
- 			len -= 32;
- 			p += 32;
-@@ -246,12 +263,15 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		hash = buf[1];
- 		break;
- 	case DX_HASH_TEA_UNSIGNED:
--		str2hashbuf = str2hashbuf_unsigned;
-+		use_unsigned = true;
- 		fallthrough;
- 	case DX_HASH_TEA:
- 		p = name;
- 		while (len > 0) {
--			(*str2hashbuf)(p, len, in, 4);
-+			if (use_unsigned)
-+				str2hashbuf_unsigned(p, len, in, 4);
-+			else
-+				str2hashbuf_signed(p, len, in, 4);
- 			TEA_transform(buf, in);
- 			len -= 16;
- 			p += 16;
+[1] https://lore.kernel.org/linux-mm/20260409204352095kKWVYKtZImN59ybO6iRNj@zte.com.cn
+
 -- 
-2.34.1
+Cheers,
+Harry / Hyeonggon
 
+>  mm/slub.c |   37 +++++++++++++++++++++++--------------
+>  1 file changed, 23 insertions(+), 14 deletions(-)
+> 
+> --- a/mm/slub.c
+> +++ b/mm/slub.c
+> @@ -3302,6 +3302,25 @@ static inline struct slab *alloc_slab_pa
+>  	return slab;
+>  }
+>  
+> +#if defined(CONFIG_SLAB_FREELIST_RANDOM) || defined(CONFIG_NUMA)
+> +static DEFINE_PER_CPU(struct rnd_state, slab_rnd_state);
+> +
+> +static unsigned int slab_get_prandom_state(unsigned int limit)
+> +{
+> +	struct rnd_state *state;
+> +	unsigned int res;
+> +
+> +	/*
+> +	 * An interrupt or NMI handler might interrupt and change
+> +	 * the state in the middle, but that's safe.
+> +	 */
+> +	state = &get_cpu_var(slab_rnd_state);
+> +	res = prandom_u32_state(state) % limit;
+> +	put_cpu_var(slab_rnd_state);
+> +	return res;
+> +}
+> +#endif
+> +
+>  #ifdef CONFIG_SLAB_FREELIST_RANDOM
+>  /* Pre-initialize the random sequence cache */
+>  static int init_cache_random_seq(struct kmem_cache *s)
+> @@ -3365,8 +3384,6 @@ static void *next_freelist_entry(struct
+>  	return (char *)start + idx;
+>  }
+>  
+> -static DEFINE_PER_CPU(struct rnd_state, slab_rnd_state);
+> -
+>  /* Shuffle the single linked freelist based on a random pre-computed sequence */
+>  static bool shuffle_freelist(struct kmem_cache *s, struct slab *slab,
+>  			     bool allow_spin)
+> @@ -3383,15 +3400,7 @@ static bool shuffle_freelist(struct kmem
+>  	if (allow_spin) {
+>  		pos = get_random_u32_below(freelist_count);
+>  	} else {
+> -		struct rnd_state *state;
+> -
+> -		/*
+> -		 * An interrupt or NMI handler might interrupt and change
+> -		 * the state in the middle, but that's safe.
+> -		 */
+> -		state = &get_cpu_var(slab_rnd_state);
+> -		pos = prandom_u32_state(state) % freelist_count;
+> -		put_cpu_var(slab_rnd_state);
+> +		pos = slab_get_prandom_state(freelist_count);
+>  	}
+>  
+>  	page_limit = slab->objects * s->size;
+> @@ -3882,7 +3891,7 @@ static void *get_from_any_partial(struct
+>  	 * with available objects.
+>  	 */
+>  	if (!s->remote_node_defrag_ratio ||
+> -			get_cycles() % 1024 > s->remote_node_defrag_ratio)
+> +	    slab_get_prandom_state(1024) > s->remote_node_defrag_ratio)
+>  		return NULL;
+>  
+>  	do {
+> @@ -7102,7 +7111,7 @@ static unsigned int
+>  
+>  	/* see get_from_any_partial() for the defrag ratio description */
+>  	if (!s->remote_node_defrag_ratio ||
+> -			get_cycles() % 1024 > s->remote_node_defrag_ratio)
+> +	    slab_get_prandom_state(1024) > s->remote_node_defrag_ratio)
+>  		return 0;
+>  
+>  	do {
+> @@ -8421,7 +8430,7 @@ void __init kmem_cache_init_late(void)
+>  	flushwq = alloc_workqueue("slub_flushwq", WQ_MEM_RECLAIM | WQ_PERCPU,
+>  				  0);
+>  	WARN_ON(!flushwq);
+> -#ifdef CONFIG_SLAB_FREELIST_RANDOM
+> +#if defined(CONFIG_SLAB_FREELIST_RANDOM) || defined(CONFIG_NUMA)
+>  	prandom_init_once(&slab_rnd_state);
+>  #endif
+>  }
+> 
+> 
