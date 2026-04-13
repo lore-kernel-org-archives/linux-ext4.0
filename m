@@ -1,89 +1,103 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BB04391831
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2026 13:14:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1615332AAA7;
+	Mon, 13 Apr 2026 13:46:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776086053; cv=none; b=TwYJbnR9XrznU6iSNnoshzEEehXL7RqLIXhBM8wM4vlmQnSO/y+AgsG4UyFdf9hDXiHbm7Boi8FhGexr8XwIJjmNYBKKAQhLaRLy07UyVxBq+UOu7vhxIro7xqHP8yPEjuRQEBPnR973vbkwfMQFAyTxb0AkZfkKv+P4JEsEFr4=
+	t=1776087972; cv=none; b=Ne0lbnZgcjB69/j9mqnPGjdeU9F50Eoq4D856MJ2Cw6c8H1YTRIwTg1+eA5jlbG+HuxwF10eZMJ/AVVN7RC5teqXskbOeoPVucDyvOp5ga59vpyEGDFRHpFHwEexkwoS6I6Ksz+inkfYw+5scaDtUnaBqmudRAqdFIMVmqlxBTU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776086053; c=relaxed/simple;
-	bh=2AuBWIFvC7/nquJkHpvRixm9ibvOCSk5O0qQhIFfOcQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hsxS7OwnI6HYOizl2Lbl6xG0GmltI/BQxVvJhB84gW7dMeybBIwdFKzqeQa1zGbSy2glhoQ0sJo8L/OhG5MxRSXBWU85qeWeGGW/wX+dmEU4BfRRGAI/iNr970udb7WFzOryphyWJLrgqIpxneGJq+URAw4OpatnWcSQfKi5eiU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=KHnK4LK1; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1776087972; c=relaxed/simple;
+	bh=oJltz7AJrAszH5NkylMptNLavhPpBeWeTGj56+4UuNQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Y1Pl8/DYl5swgABM+VcA815jM6zMn457GWRVYROyqKo2CdnpiPDrhPIkaXzfNWrAizTc+J49TjueXSUW8MlusjvNWKOvezGAllWyCo33gn326i1OzG2x7gSDSPM/C7lT6HlgYdnRLMJzhmbQoDk4xE1pFqFNRmUHQxt8Tr+iBh4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W1c4yYbX; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="KHnK4LK1"
-Received: from macsyma.thunk.org (pool-173-48-113-10.bstnma.fios.verizon.net [173.48.113.10])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63DDDj5b029103
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 13 Apr 2026 09:13:46 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1776086029; bh=Yumz4VVI2CvZaQiNYD8g1kkjxRQ41MO3HgLPa2OvHuE=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=KHnK4LK1T+bzkuou4AsvWt9CpkFtM1jkjdo0jSsBgdbD5xAnoIgGO5DrXRD064xEZ
-	 GKnOGRUH0ukUsNo3lxG3kTAa/p0CPFQPSkOHlWyB8Rjo051v5i6DfI3Y4yNPaUAKNo
-	 skqUkyqZmGjibkZEMzwLjSx9sOdqcSa+b3xpPVcCWfCsFtQjzDhEwUF7ZLytv0GguR
-	 c7T7D5t+DzY2exVF889bhRH7pDASdKNjo6Jg/pa+wP1CPeuJYIICBvpHcUt3pEGesN
-	 m5MFLKwU/z7KCoK/AsDNofPtLd03bsVVXX7TEbIGSMtvRCMFsU9wI+VIKUXGR7vFI/
-	 Jy/aWHPpT3ZvA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id D1F3E62DBF45; Mon, 13 Apr 2026 09:12:44 -0400 (EDT)
-Date: Mon, 13 Apr 2026 09:12:44 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Li Chen <me@linux.beauty>
-Cc: Zhang Yi <yi.zhang@huaweicloud.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Masami Hiramatsu <mhiramat@kernel.org>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-trace-kernel <linux-trace-kernel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC v4 0/7] ext4: fast commit: snapshot inode state for FC log
-Message-ID: <20260413131244.GB20496@macsyma-wired.lan>
-References: <20260120112538.132774-1-me@linux.beauty>
- <20260410011843.GD99725@macsyma-wired.lan>
- <19d86eec635.f7072461135455.4960134919814592320@linux.beauty>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W1c4yYbX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC1BFC2BCAF;
+	Mon, 13 Apr 2026 13:46:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1776087971;
+	bh=oJltz7AJrAszH5NkylMptNLavhPpBeWeTGj56+4UuNQ=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
+	b=W1c4yYbXInfelp0eUQAv9gO8+XT0Sbrv81Gm0Adb5EvlP79aa60vW1qyaRs6863hq
+	 ywlFwnEXs2N+Csj1t8AT44QeeKBJG/F49Idi2q4rc2RmYot0SX7HMiTlvtWvn/yDH+
+	 7trrgahjvxasFZ1G1mSZHuMwpN/FLXdUKO5A3DE4xduSAFmVqypbzmuyI1rt6S5Skg
+	 mnVOocE28OqrI3sV0A1xJA4AMsFJUmV+SiC9+WzESG+evlqCHSH4Q/iOf94U+BkWPk
+	 AcZh4PrKZrOg/knioNZ+bkeabHdk27YLf4Gl2MWAVIr2/8lUMYASANuBHtyTuYAsV9
+	 CyYJUfeUbdazw==
+Message-ID: <ed8cf7e9-4271-48ab-a410-d7c0e2832020@kernel.org>
+Date: Mon, 13 Apr 2026 15:45:59 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <19d86eec635.f7072461135455.4960134919814592320@linux.beauty>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [patch 14/38] slub: Use prandom instead of get_cycles()
+Content-Language: en-US
+To: hu.shengming@zte.com.cn, harry@kernel.org
+Cc: tglx@kernel.org, linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+ arnd@arndb.de, x86@kernel.org, baolu.lu@linux.intel.com,
+ iommu@lists.linux.dev, m.grzeschik@pengutronix.de, netdev@vger.kernel.org,
+ linux-wireless@vger.kernel.org, herbert@gondor.apana.org.au,
+ linux-crypto@vger.kernel.org, dwmw2@infradead.org, bernie@plugable.com,
+ linux-fbdev@vger.kernel.org, tytso@mit.edu, linux-ext4@vger.kernel.org,
+ akpm@linux-foundation.org, urezki@gmail.com, elver@google.com,
+ dvyukov@google.com, kasan-dev@googlegroups.com, ryabinin.a.a@gmail.com,
+ t.sailer@alumni.ethz.ch, linux-hams@vger.kernel.org, Jason@zx2c4.com,
+ richard.henderson@linaro.org, linux-alpha@vger.kernel.org,
+ linux@armlinux.org.uk, linux-arm-kernel@lists.infradead.org,
+ catalin.marinas@arm.com, chenhuacai@kernel.org, loongarch@lists.linux.dev,
+ geert@linux-m68k.org, linux-m68k@lists.linux-m68k.org, dinguyen@kernel.org,
+ jonas@southpole.se, linux-openrisc@vger.kernel.org, deller@gmx.de,
+ linux-parisc@vger.kernel.org, mpe@ellerman.id.au,
+ linuxppc-dev@lists.ozlabs.org, pjw@kernel.org,
+ linux-riscv@lists.infradead.org, hca@linux.ibm.com,
+ linux-s390@vger.kernel.org, davem@davemloft.net, sparclinux@vger.kernel.org,
+ hao.li@linux.dev, cl@gentwo.org, rientjes@google.com,
+ roman.gushchin@linux.dev
+References: <20260413210252672ZfdcegJLJtyvlYdFAUBlr@zte.com.cn>
+From: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
+In-Reply-To: <20260413210252672ZfdcegJLJtyvlYdFAUBlr@zte.com.cn>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Mon, Apr 13, 2026 at 09:01:28PM +0800, Li Chen wrote:
-> Absolutely! It's great to learn about the Sashiko development site.
-> I will address the real issues in the next version.
+On 4/13/26 15:02, hu.shengming@zte.com.cn wrote:
+> Harry wrote:
+>> [Resending after fixing broken email headers]
+>> 
+>> On Fri, Apr 10, 2026 at 02:19:37PM +0200, Thomas Gleixner wrote:
+>> > The decision whether to scan remote nodes is based on a 'random' number
+>> > retrieved via get_cycles(). get_cycles() is about to be removed.
+>> > 
+>> > There is already prandom state in the code, so use that instead.
+>> > 
+>> > Signed-off-by: Thomas Gleixner <tglx@kernel.org>
+>> > Cc: Vlastimil Babka <vbabka@kernel.org>
+>> > Cc: linux-mm@kvack.org
+>> > ---
+>> 
+>> Acked-by: Harry Yoo (Oracle) <harry@kernel.org>
+>> 
+>> Is this for this merge window?
 
-Note that Sashiko will sometimes report a pre-existing issue as if it
-were a problem with the commit.  If that happens, feel free to ignore
-its complaint; what I consider best practice is to either (a) fix it
-in the a subsequent patch or patch series, or (b) leave a TODO in the
-code.
+I'd say it's not intended for 7.1 as it's not in -next and v1 was posted
+just before the merge window.
 
-I've asked the Sashiko folks to add way for URI's for each issue that
-are identified by Sashiko, so we can put a URL in the TODO comment for
-someone who wants to fix it later, and to make it easier for Sashiko
-to identified pre-existing issues so it doesn't comment on the same
-issue across multiple commit reviews (and perhaps save on the some LLM
-token budget :-).
+>> This may conflict with upcoming changes on freelist shuffling [1]
+>> (not queued for slab/for-next yet though), but it should be easy to
+>> resolve.
 
-In the next few days, for patches sent to linux-ext4, Sashiko will
-start e-mailing its reviews to the patch submitter and to me as the
-maintainer.  Once we can reduce the false positive rate, I'll ask that
-the reviews be cc'ed to the linux-ext4 mailing list.  But it seems
-good enough that to send e-mails to the patch submitter and the
-maintainer --- but that's a decision that each subsystem maintainer
-will be making on their own.
+Indeed, it's a simple conflict.
 
-Cheers,
+> 
+> Hi Harry,
+> 
+> Would you like me to wait for this patch to land linux-next and then
+> rebase and send v6 on top?
 
-						- Ted
+Just send it now based same as previously so we can finish the reviews, and
+we'll deal with it after rc1.
+
