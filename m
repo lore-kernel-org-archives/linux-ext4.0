@@ -1,461 +1,236 @@
-Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mout.gmx.net (mout.gmx.net [212.227.15.15])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5903F3043CF
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2026 12:27:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.182
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E78343E5ECE;
+	Tue, 14 Apr 2026 12:42:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.15.15
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776169634; cv=none; b=LaT1C1uK7cW0uysz5B2SIJxhd16inxm8FrnQ6HQY71rHjrcgJLe3vZUXNkIf+ZhXudW5q1b7najDWe7YFTHRIVL2v/eLqGeY6jfwqkf0rfvHmWslX40SlHwPfWyYqoDZWMoEYRO3gOcWHeHwN5ZB9aW1VbQivMCjlYS0ZdnKJww=
+	t=1776170544; cv=none; b=bL1JUBbM/qwDxPm8tvua4kRFNMwpAxIOQ0ryhUJ5lKVFBo7X0Z75lHW+2ZynVhqAN//O3NwetGVzIm4+suzP7Ic3UDzOG3Dxdxiu8aMij1BgKfrvUnle/z0eDsEOYCJFGcPw/f2XakDpfr0tBCTiaMp3o7w9TvEqJ3yux+IAhlU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776169634; c=relaxed/simple;
-	bh=lInK4xg5OPiqmqMrMqo3ff+cEQrecsEeB4QLUNhSHm4=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=JqMo63tbtuPulukGjSJPvPgnoauolKA3ReLVhDqYimBjZa/8KZxPWdSs1ioRRJDHxU3OUZYQuOSW2MTVQ7GStnjqs3icMvpnAyC8NAbCb/MepCaXzxOckS/W8Qz4zeJQyeXjGo7wP2x71NuQjPvhm3mciEYaexLXAiQbzgoILrQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EfN8c0ye; arc=none smtp.client-ip=209.85.214.182
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1776170544; c=relaxed/simple;
+	bh=H9b1q5soDhblyiDBjSBP8bxpTr8ytn0bYGyZZ21Viag=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=IZxc9UHKXALGUuhnXrdB+tTw7yXaHZO4/xV7YlPoNuBm0VZtqjp2Jpf7379FIMM0a/oq6MqbkQVnK7/D8AEl/vBN1b07/yGyo6P1PSwSjAjQNMmkLS9QmwXAG1HiyWSAT6dGXkhtOsILvAJ8Fy0RgwdfTDYpEryYdl40q5Qxrxw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.de; spf=pass smtp.mailfrom=gmx.de; dkim=pass (2048-bit key) header.d=gmx.de header.i=deller@gmx.de header.b=fAzpenIg; arc=none smtp.client-ip=212.227.15.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmx.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EfN8c0ye"
-Received: by mail-pl1-f182.google.com with SMTP id d9443c01a7336-2a8fba3f769so24626245ad.2
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2026 05:27:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1776169633; x=1776774433; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=bEDuvXTH5Zn2XT2X16UjfO2ntfyWS9qDU8ZPsqL80os=;
-        b=EfN8c0yet70Tc5H7N3Bs8BIwx1TZ5Sq4ByBNOO39p+trvs3vJhc72sRmk5eAes8b9G
-         /QjhQfs8oGr3032yYM1eAVQj/p8BuuvSHGb7dt4OWRJveyMUnN+sJ6OwXCwto6O+RK6M
-         52BuqJ7eH7U0f7hiHq8dI3TUcUYywowO559Lyfnvgqqxdj1E73dwG5yJ+DAuiWjHU+OU
-         Nvmzo8K5qFRDoQYDPCEsd5QDkTsdExHHogCCvR52M6flw5saMmfPrYWoDLdl432o1wtH
-         y/ipTCfZukeu27M8PgSIkeuNKuUP76V9JUYpj5AkP7Y6v3Q4xy60lHbnqQ9SVm/RbfT7
-         FyrA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776169633; x=1776774433;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=bEDuvXTH5Zn2XT2X16UjfO2ntfyWS9qDU8ZPsqL80os=;
-        b=XyrSg3JsJoKoHHwkjiXeYIpYlljcaBIp/AwihtU/CU3NksjmjbWj3KYU0OKufRA55q
-         N9/u47JHAvvl20IOYuTjD07V+gLAM5BpxgWazk6HuY9LQzS3CMhyt+eILD+Xsa30u+oi
-         dFICMLyvFP7S1iYyGwmW7Wzd+ptog5RulftEohWPigtemssw9jxlBlz0mdwEMfrHe4Us
-         gItiFqcnQcxeHtXIoZapZ+dFlTNb4+4Qvr85gUcUASmae197yzkj2YdXAaa6RJVQTrYC
-         E152jLdtWRkMJFlMya+OlYp++6VstSg9NW+REiSV/+ugAJMX9hJqDLBshmuGqKUTPYJd
-         lUCg==
-X-Forwarded-Encrypted: i=1; AFNElJ+YrWI8F1kNm3OtfnW4ozxNY9NzWYsCobKFdI9xkt9LFleiyVbv86HlA1Mrl1/lcgXaBbwd1ZMN0Au+@vger.kernel.org
-X-Gm-Message-State: AOJu0YzmIvtdMebl3ETyEwGcJLCmnEIAVGdEDc+Shcrw7uUc0Gc0efqV
-	v8OabLoHbZO+hgN8vFdEL8ZiRvjSONR7Utq7jaTIR+J8o4RtlNSm2PeW
-X-Gm-Gg: AeBDieutYtq8cjbNhLgRTz0L/iRCEQ6qVQC/G2PKtmuKhk0UDOO+8XfhDaBo+SAmNOx
-	hGIKVyLCvErh/5vbEUoXuF+G0cFPLsEMchMlzzdQJd7UHR4YRFcYJJJifgOKNUl6obghAk6ehK5
-	UdJQA4fMzZ65lVOa7rQqOOT/DtuZhmjfbDOXgAWyz8sPGgV+iAP5kgsHtEBB4AqCvrx6AveKMO1
-	vlUdkWgbv6C/imFPLEHNb5doz95QDzEQv6VOjE9u7NNs4dMs6JG3QJH9fMePtheq7WQt4fyJOZB
-	in9PRV9M6WM6SRwYm4xUvkQMOpI4bf/u2iASLlrF84sztGr2LuNWwvk26iDATGO7mLf0AL9HV4T
-	YToN9rE0WqTdofQD7jvlGMYdl0sPuxOkf4oTmgHL67Pj71tIl11ofx2r4JO2ox6KByvYktaHa9Y
-	T19K1M7ZLr5hlueOuC+xy2NgTNW5szcdD3aGyH2Vn2NDynkP27itPNShJVeBRoqdnqUkA=
-X-Received: by 2002:a17:903:1250:b0:2ae:54b2:27c7 with SMTP id d9443c01a7336-2b2d5a88d3dmr176156215ad.39.1776169632604;
-        Tue, 14 Apr 2026 05:27:12 -0700 (PDT)
-Received: from 192.168.5.4 ([2409:8a28:f32:86e4:9161:fb54:c7b3:5567])
-        by smtp.googlemail.com with ESMTPSA id d9443c01a7336-2b468273ccfsm62273745ad.43.2026.04.14.05.27.07
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Tue, 14 Apr 2026 05:27:11 -0700 (PDT)
-From: Fengnan Chang <fengnanchang@gmail.com>
-X-Google-Original-From: Fengnan Chang <changfengnan@bytedance.com>
-To: brauner@kernel.org,
-	djwong@kernel.org,
-	linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Cc: lidiangang@bytedance.com,
-	Fengnan Chang <changfengnan@bytedance.com>
-Subject: [RFC PATCH] iomap: add fast read path for small direct I/O
-Date: Tue, 14 Apr 2026 20:26:47 +0800
-Message-Id: <20260414122647.15686-1-changfengnan@bytedance.com>
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+	dkim=pass (2048-bit key) header.d=gmx.de header.i=deller@gmx.de header.b="fAzpenIg"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmx.de;
+	s=s31663417; t=1776170520; x=1776775320; i=deller@gmx.de;
+	bh=t+TkXeWEba/XrFX3yATqWZDjmT7vuDDsgvIBT65AAhc=;
+	h=X-UI-Sender-Class:Message-ID:Date:MIME-Version:Subject:To:Cc:
+	 References:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding:cc:content-transfer-encoding:
+	 content-type:date:from:message-id:mime-version:reply-to:subject:
+	 to;
+	b=fAzpenIgpi3rVYugWOIkZZn0tIyFERuZsPfi46E8ZHN94Sc5kE/YMsjy3v3oWzr+
+	 Qfw6wzuSGlr8dS591fcpDsbv+ftgBEfYXTWA19Pu5Qr8kDzb6JoPyy5SFw0BW3RPU
+	 Bf7qFVm3pzevH2My1og5pLNoQKnQtHa91BakdZN1enkoxtKTBtqgakivdwpsPDDAH
+	 mipzWdckMOOoOphH0+XzAK0gdPQo9m+Bf7rF7/pA/F9Qf88DJFr/uTkTD1UBnV5aW
+	 RSF31i+XPMsy+XIHjnT28Gdk1G4bCiu1VG5V6QBFy2hV8AcN5VhDJvVPRgmTQV5Tl
+	 60IPWSvmUUbh0PWVvA==
+X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
+Received: from client.hidden.invalid by mail.gmx.net (mrgmx004
+ [212.227.17.190]) with ESMTPSA (Nemesis) id 1MNKhs-1vnwIX2Vas-00YsyQ; Tue, 14
+ Apr 2026 14:41:59 +0200
+Message-ID: <f0731727-fae7-4582-ad5b-a5d95b0d78ec@gmx.de>
+Date: Tue, 14 Apr 2026 14:41:52 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [patch 31/38] parisc: Select ARCH_HAS_RANDOM_ENTROPY
+To: Thomas Gleixner <tglx@kernel.org>, LKML <linux-kernel@vger.kernel.org>
+Cc: linux-parisc@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
+ x86@kernel.org, Lu Baolu <baolu.lu@linux.intel.com>, iommu@lists.linux.dev,
+ Michael Grzeschik <m.grzeschik@pengutronix.de>, netdev@vger.kernel.org,
+ linux-wireless@vger.kernel.org, Herbert Xu <herbert@gondor.apana.org.au>,
+ linux-crypto@vger.kernel.org, Vlastimil Babka <vbabka@kernel.org>,
+ linux-mm@kvack.org, David Woodhouse <dwmw2@infradead.org>,
+ Bernie Thompson <bernie@plugable.com>, linux-fbdev@vger.kernel.org,
+ Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+ Andrew Morton <akpm@linux-foundation.org>,
+ Uladzislau Rezki <urezki@gmail.com>, Marco Elver <elver@google.com>,
+ Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com,
+ Andrey Ryabinin <ryabinin.a.a@gmail.com>,
+ Thomas Sailer <t.sailer@alumni.ethz.ch>, linux-hams@vger.kernel.org,
+ "Jason A. Donenfeld" <Jason@zx2c4.com>,
+ Richard Henderson <richard.henderson@linaro.org>,
+ linux-alpha@vger.kernel.org, Russell King <linux@armlinux.org.uk>,
+ linux-arm-kernel@lists.infradead.org,
+ Catalin Marinas <catalin.marinas@arm.com>,
+ Huacai Chen <chenhuacai@kernel.org>, loongarch@lists.linux.dev,
+ Geert Uytterhoeven <geert@linux-m68k.org>, linux-m68k@lists.linux-m68k.org,
+ Dinh Nguyen <dinguyen@kernel.org>, Jonas Bonn <jonas@southpole.se>,
+ linux-openrisc@vger.kernel.org, Michael Ellerman <mpe@ellerman.id.au>,
+ linuxppc-dev@lists.ozlabs.org, Paul Walmsley <pjw@kernel.org>,
+ linux-riscv@lists.infradead.org, Heiko Carstens <hca@linux.ibm.com>,
+ linux-s390@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+ sparclinux@vger.kernel.org
+References: <20260410120044.031381086@kernel.org>
+ <20260410120319.658485572@kernel.org>
+Content-Language: en-US
+From: Helge Deller <deller@gmx.de>
+Autocrypt: addr=deller@gmx.de; keydata=
+ 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
+In-Reply-To: <20260410120319.658485572@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:YZqOPGpEpMYOOKnwdNEQ7I3XH33yrIj2uNRXsp2/NoY4YKTm37d
+ cWruVun3i7Sk4GIlBSCYmCwwqcNjragvIKsBHFI3iLQKRhUmXElNimqdOrFj4qhSzGCrQz5
+ 4Nl2leWKLE/WJTA3v6zYwlGFukOTRBLg+lyk/SmoPVxTH7cptbFjBFi4OyiaN9y5NYZwXCM
+ E/BuuquGn8nLMTRaoFkig==
+X-Spam-Flag: NO
+UI-OutboundReport: notjunk:1;M01:P0:znJiATTqjr0=;C7ANzcgujBb/tqMadvALWw89Q6O
+ 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
 
-When running 4K random read workloads on high-performance Gen5 NVMe
-SSDs, the software overhead in the iomap direct I/O path
-(__iomap_dio_rw) becomes a significant bottleneck.
+On 4/10/26 14:21, Thomas Gleixner wrote:
+> The only remaining non-architecture usage of get_cycles() is to provide
+> random_get_entropy().
+>=20
+> Switch parisc over to the new scheme of selecting ARCH_HAS_RANDOM_ENTROP=
+Y
+> and providing random_get_entropy() in asm/random.h.
+>=20
+> Add 'asm/timex.h' includes to the relevant files, so the global include =
+can
+> be removed once all architectures are converted over.
+>=20
+> Signed-off-by: Thomas Gleixner <tglx@kernel.org>
+> Cc: Helge Deller <deller@gmx.de>
+> Cc: linux-parisc@vger.kernel.org
+> ---
+>   arch/parisc/Kconfig              |    1 +
+>   arch/parisc/include/asm/random.h |   12 ++++++++++++
+>   arch/parisc/include/asm/timex.h  |    6 ------
+>   arch/parisc/kernel/processor.c   |    1 +
+>   arch/parisc/kernel/time.c        |    1 +
+>   5 files changed, 15 insertions(+), 6 deletions(-)
 
-Using io_uring with poll mode for a 4K randread test on a raw block
-device:
-taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
--n1 -P1 /dev/nvme10n1
-Result: ~3.2M IOPS
+I tested this series on parisc.
+Works as expected.
 
-Running the exact same workload on ext4 and XFS:
-taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
--n1 -P1 /mnt/testfile
-Result: ~1.9M IOPS
+Tested-by: Helge Deller <deller@gmx.de>
 
-Profiling the ext4 workload reveals that a significant portion of CPU
-time is spent on memory allocation and the iomap state machine
-iteration:
-  5.33%  [kernel]  [k] __iomap_dio_rw
-  3.26%  [kernel]  [k] iomap_iter
-  2.37%  [kernel]  [k] iomap_dio_bio_iter
-  2.35%  [kernel]  [k] kfree
-  1.33%  [kernel]  [k] iomap_dio_complete
-
-I attempted several incremental optimizations in the __iomap_dio_rw()
-path to close the gap:
-1. Allocating the `bio` and `struct iomap_dio` together to avoid a
-   separate kmalloc. However, because `struct iomap_dio` is relatively
-   large and the main path is complex, this yielded almost no
-   performance improvement.
-2. Reducing unnecessary state resets in the iomap state machine (e.g.,
-   skipping `iomap_iter_reset_iomap` where safe). This provided a ~5%
-   IOPS boost, which is helpful but still falls far short of closing
-   the gap with the raw block device.
-
-Since optimizing the heavy generic path did not yield the desired
-results for this specific, highly-demanding Gen5 SSD scenario, this
-RFC patch introduces a dedicated asynchronous fast path.
-
-The fast path is triggered when the request satisfies:
-- Asynchronous READ request only for now.
-- I/O size is <= inode blocksize (fits in a single block, no splits).
-- Aligned to the block device's logical block size.
-- No bounce buffering, fscrypt, or fsverity involved.
-- No custom `iomap_dio_ops` (dops) registered by the filesystem.
-
-By using a dedicated bio_set (`iomap_dio_fast_read_pool`) to embed a
-much smaller completion state (`struct iomap_dio_fast_read`) directly
-in the bio's front padding, we completely eliminate kmalloc/kfree and
-drastically shorten the execution path.
-
-After this optimization, the heavy generic functions disappear from the
-profile, replaced by a single streamlined execution path:
-  4.83%  [kernel]  [k] iomap_dio_fast_read_async.isra.31
-
-With this patch, 4K random read IOPS on ext4 increases from 1.9M to
-2.3M.
-
-I am aware that adding a completely separate fast path introduces
-duplicate code and may result in iomap_begin being called twice, this
-likely unacceptable for merging in its current form.
-
-However, I am submitting this patch to validate whether this
-optimization direction is correct and worth pursuing. I would appreciate
-feedback on how to better integrate these ideas into the main iomap
-execution path.
-
-Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
----
- fs/iomap/direct-io.c | 275 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 275 insertions(+)
-
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index e911daedff65a..e4183f7c2f962 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -5,10 +5,14 @@
-  */
- #include <linux/blk-crypto.h>
- #include <linux/fscrypt.h>
-+#include <linux/fsverity.h>
- #include <linux/pagemap.h>
- #include <linux/iomap.h>
- #include <linux/task_io_accounting_ops.h>
- #include <linux/fserror.h>
-+#include <linux/kobject.h>
-+#include <linux/sysfs.h>
-+#include <linux/init.h>
- #include "internal.h"
- #include "trace.h"
- 
-@@ -880,12 +884,231 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- }
- EXPORT_SYMBOL_GPL(__iomap_dio_rw);
- 
-+static bool iomap_dio_fast_read_enabled = true;
-+
-+struct iomap_dio_fast_read {
-+	struct kiocb	*iocb;
-+	size_t		size;
-+	bool		should_dirty;
-+	struct work_struct	work;
-+	struct bio	bio ____cacheline_aligned_in_smp;
-+};
-+
-+static struct bio_set iomap_dio_fast_read_pool;
-+
-+static void iomap_dio_fast_read_complete_work(struct work_struct *work)
-+{
-+	struct iomap_dio_fast_read *fr =
-+		container_of(work, struct iomap_dio_fast_read, work);
-+	struct kiocb *iocb = fr->iocb;
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	bool should_dirty = fr->should_dirty;
-+	struct bio *bio = &fr->bio;
-+	ssize_t ret;
-+
-+	WRITE_ONCE(iocb->private, NULL);
-+
-+	if (likely(!bio->bi_status)) {
-+		ret = fr->size;
-+		iocb->ki_pos += ret;
-+	} else {
-+		ret = blk_status_to_errno(bio->bi_status);
-+		fserror_report_io(inode, FSERR_DIRECTIO_READ, iocb->ki_pos,
-+				  fr->size, ret, GFP_NOFS);
-+	}
-+
-+	if (should_dirty) {
-+		bio_check_pages_dirty(bio);
-+	} else {
-+		bio_release_pages(bio, false);
-+		bio_put(bio);
-+	}
-+
-+	inode_dio_end(inode);
-+
-+	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
-+	iocb->ki_complete(iocb, ret);
-+}
-+
-+static void iomap_dio_fast_read_end_io(struct bio *bio)
-+{
-+	struct iomap_dio_fast_read *fr = bio->bi_private;
-+	struct kiocb *iocb = fr->iocb;
-+
-+	if (unlikely(bio->bi_status)) {
-+		struct inode *inode = file_inode(iocb->ki_filp);
-+
-+		INIT_WORK(&fr->work, iomap_dio_fast_read_complete_work);
-+		queue_work(inode->i_sb->s_dio_done_wq, &fr->work);
-+		return;
-+	}
-+
-+	iomap_dio_fast_read_complete_work(&fr->work);
-+}
-+
-+static inline bool iomap_dio_fast_read_supported(struct kiocb *iocb,
-+					  struct iov_iter *iter,
-+					  unsigned int dio_flags,
-+					  size_t done_before)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	size_t count = iov_iter_count(iter);
-+	unsigned int alignment;
-+
-+	if (!iomap_dio_fast_read_enabled)
-+		return false;
-+	if (iov_iter_rw(iter) != READ)
-+		return false;
-+
-+	/*
-+	 * Fast read is an optimization for small IO. Filter out large IO early
-+	 * as it's the most common case to fail for typical direct IO workloads.
-+	 */
-+	if (count > inode->i_sb->s_blocksize)
-+		return false;
-+
-+	if (is_sync_kiocb(iocb) || done_before)
-+		return false;
-+	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_BOUNCE))
-+		return false;
-+	if (iocb->ki_pos + count > i_size_read(inode))
-+		return false;
-+	if (IS_ENCRYPTED(inode) || fsverity_active(inode))
-+		return false;
-+
-+	if (count < bdev_logical_block_size(inode->i_sb->s_bdev))
-+		return false;
-+
-+	if (dio_flags & IOMAP_DIO_FSBLOCK_ALIGNED)
-+		alignment = i_blocksize(inode);
-+	else
-+		alignment = bdev_logical_block_size(inode->i_sb->s_bdev);
-+
-+	if ((iocb->ki_pos | count) & (alignment - 1))
-+		return false;
-+
-+	return true;
-+}
-+
-+static ssize_t iomap_dio_fast_read_async(struct kiocb *iocb,
-+					 struct iov_iter *iter,
-+					 const struct iomap_ops *ops,
-+					 void *private)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	size_t count = iov_iter_count(iter);
-+	int nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
-+	bool should_dirty = user_backed_iter(iter);
-+	struct iomap_dio_fast_read *fr;
-+	struct iomap_iter iomi = {
-+		.inode		= inode,
-+		.pos		= iocb->ki_pos,
-+		.len		= count,
-+		.flags		= IOMAP_DIRECT,
-+		.private	= private,
-+	};
-+	struct bio *bio;
-+	ssize_t ret;
-+
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		iomi.flags |= IOMAP_NOWAIT;
-+
-+	ret = kiocb_write_and_wait(iocb, count);
-+	if (ret)
-+		return ret;
-+
-+	inode_dio_begin(inode);
-+
-+	ret = ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
-+			       &iomi.iomap, &iomi.srcmap);
-+	if (ret) {
-+		inode_dio_end(inode);
-+		return ret;
-+	}
-+
-+	if (iomi.iomap.type != IOMAP_MAPPED ||
-+	    iomi.iomap.offset > iomi.pos ||
-+	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count ||
-+	    (iomi.iomap.flags & IOMAP_F_ANON_WRITE)) {
-+		ret = -EAGAIN;
-+		goto out_iomap_end;
-+	}
-+
-+	if (!inode->i_sb->s_dio_done_wq) {
-+		ret = sb_init_dio_done_wq(inode->i_sb);
-+		if (ret < 0)
-+			goto out_iomap_end;
-+	}
-+
-+	trace_iomap_dio_rw_begin(iocb, iter, 0, 0);
-+
-+	bio = bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
-+			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
-+			       GFP_KERNEL, &iomap_dio_fast_read_pool);
-+	fr = container_of(bio, struct iomap_dio_fast_read, bio);
-+	fr->iocb = iocb;
-+	fr->should_dirty = should_dirty;
-+
-+	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
-+	bio->bi_ioprio = iocb->ki_ioprio;
-+	bio->bi_private = fr;
-+	bio->bi_end_io = iomap_dio_fast_read_end_io;
-+
-+	ret = bio_iov_iter_get_pages(bio, iter,
-+				     bdev_logical_block_size(iomi.iomap.bdev) - 1);
-+	if (unlikely(ret)) {
-+		bio_put(bio);
-+		goto out_iomap_end;
-+	}
-+
-+	if (bio->bi_iter.bi_size != count) {
-+		iov_iter_revert(iter, bio->bi_iter.bi_size);
-+		bio_release_pages(bio, false);
-+		bio_put(bio);
-+		ret = -EAGAIN;
-+		goto out_iomap_end;
-+	}
-+
-+	fr->size = bio->bi_iter.bi_size;
-+
-+	if (should_dirty)
-+		bio_set_pages_dirty(bio);
-+
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		bio->bi_opf |= REQ_NOWAIT;
-+	if (iocb->ki_flags & IOCB_HIPRI) {
-+		bio->bi_opf |= REQ_POLLED;
-+		bio_set_polled(bio, iocb);
-+		WRITE_ONCE(iocb->private, bio);
-+	}
-+	submit_bio(bio);
-+
-+	if (ops->iomap_end)
-+		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
-+			       &iomi.iomap);
-+	return -EIOCBQUEUED;
-+
-+out_iomap_end:
-+	if (ops->iomap_end)
-+		ops->iomap_end(inode, iomi.pos, count, 0, iomi.flags,
-+			       &iomi.iomap);
-+	inode_dio_end(inode);
-+	return ret;
-+}
-+
- ssize_t
- iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
- 		unsigned int dio_flags, void *private, size_t done_before)
- {
- 	struct iomap_dio *dio;
-+	ssize_t ret;
-+
-+	if (!dops && iomap_dio_fast_read_supported(iocb, iter, dio_flags, done_before)) {
-+		ret = iomap_dio_fast_read_async(iocb, iter, ops, private);
-+		if (ret != -EAGAIN)
-+			return ret;
-+	}
- 
- 	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, private,
- 			     done_before);
-@@ -894,3 +1117,55 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	return iomap_dio_complete(dio);
- }
- EXPORT_SYMBOL_GPL(iomap_dio_rw);
-+
-+static ssize_t fast_read_enable_show(struct kobject *kobj,
-+				     struct kobj_attribute *attr, char *buf)
-+{
-+	return sysfs_emit(buf, "%d\n", iomap_dio_fast_read_enabled);
-+}
-+
-+static ssize_t fast_read_enable_store(struct kobject *kobj,
-+				      struct kobj_attribute *attr,
-+				      const char *buf, size_t count)
-+{
-+	bool enable;
-+	int ret;
-+
-+	ret = kstrtobool(buf, &enable);
-+	if (ret)
-+		return ret;
-+
-+	iomap_dio_fast_read_enabled = enable;
-+	return count;
-+}
-+
-+static struct kobj_attribute fast_read_enable_attr =
-+	__ATTR(fast_read_enable, 0644, fast_read_enable_show, fast_read_enable_store);
-+
-+static struct kobject *iomap_kobj;
-+
-+static int __init iomap_dio_sysfs_init(void)
-+{
-+	int ret;
-+
-+	ret = bioset_init(&iomap_dio_fast_read_pool, 4,
-+			  offsetof(struct iomap_dio_fast_read, bio),
-+			  BIOSET_NEED_BVECS | BIOSET_PERCPU_CACHE);
-+	if (ret)
-+		return ret;
-+
-+	iomap_kobj = kobject_create_and_add("iomap", fs_kobj);
-+	if (!iomap_kobj) {
-+		bioset_exit(&iomap_dio_fast_read_pool);
-+		return -ENOMEM;
-+	}
-+
-+	if (sysfs_create_file(iomap_kobj, &fast_read_enable_attr.attr)) {
-+		kobject_put(iomap_kobj);
-+		bioset_exit(&iomap_dio_fast_read_pool);
-+		return -ENOMEM;
-+	}
-+
-+	return 0;
-+}
-+fs_initcall(iomap_dio_sysfs_init);
--- 
-2.39.5 (Apple Git-154)
-
+Thanks!
+Helge
