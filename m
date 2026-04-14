@@ -1,221 +1,461 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.2])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3FF23CFF52;
-	Tue, 14 Apr 2026 10:07:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5903F3043CF
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2026 12:27:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776161264; cv=none; b=RHUQMPVWvCeEby/uJ7HC3nvuBLGf2Rf+Ghm0FeQFKU3PUIiVVeUx98iG7dzfx1cImAunxZn4hjJydHOxAoJFQ8B9ImA2Zyj0LcQs1PNAcMG4vduYK92LuqUdG59TkpJO6nU7FKZZ2sndam+Ao5ViN4RC4DsBQBgranujSybuvAg=
+	t=1776169634; cv=none; b=LaT1C1uK7cW0uysz5B2SIJxhd16inxm8FrnQ6HQY71rHjrcgJLe3vZUXNkIf+ZhXudW5q1b7najDWe7YFTHRIVL2v/eLqGeY6jfwqkf0rfvHmWslX40SlHwPfWyYqoDZWMoEYRO3gOcWHeHwN5ZB9aW1VbQivMCjlYS0ZdnKJww=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776161264; c=relaxed/simple;
-	bh=Zn0g9IPBQL+09Gkm+uRMG6m58nNCqJy4167dncxBd5E=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=vAzKhV3zJWSY8hs+SSsGWmzUysgxtpLnFYddkG0zGSNYW1gxSQ+eTBAxip4CnpCOYnHWtz3FeeaPpG5uj+3c7mYEnQ92R3kT9wrRLznPKGq3VMWSRFXv6ntRsjmRbnJiGKOva2xSGOZx61T0c07+tDDwhbF0F+AFbEKTsQDpRaM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=f92Z1q+Z; arc=none smtp.client-ip=220.197.31.2
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+	s=arc-20240116; t=1776169634; c=relaxed/simple;
+	bh=lInK4xg5OPiqmqMrMqo3ff+cEQrecsEeB4QLUNhSHm4=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=JqMo63tbtuPulukGjSJPvPgnoauolKA3ReLVhDqYimBjZa/8KZxPWdSs1ioRRJDHxU3OUZYQuOSW2MTVQ7GStnjqs3icMvpnAyC8NAbCb/MepCaXzxOckS/W8Qz4zeJQyeXjGo7wP2x71NuQjPvhm3mciEYaexLXAiQbzgoILrQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EfN8c0ye; arc=none smtp.client-ip=209.85.214.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="f92Z1q+Z"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
-	Content-Type; bh=lup6srYEtbGICHvpjOCwe+dkqmObgV/oaPKqztT9RFA=;
-	b=f92Z1q+ZKzYVvP/sbM0wn5KKv1yHxxTVgHuIQb9dLqWB18YRTnV/Bc4v6CDABe
-	OVuNGbhtTaTEQrtgwmA9K5jDwEDvqW8TtzbEPcbisDQC7uBAsAj+YQ+gNQUkJdO3
-	kgT/J6tG90LEtUMQEIZWwjgJ8f9wTrydF1re0r1Dw8wqQ=
-Received: from [192.168.117.68] (unknown [])
-	by gzga-smtp-mtada-g0-2 (Coremail) with SMTP id _____wCHaz_NEd5p25gyFA--.63943S2;
-	Tue, 14 Apr 2026 18:07:17 +0800 (CST)
-Message-ID: <6d5cc24a-f8c6-4daa-9e27-399dbb916fac@163.com>
-Date: Tue, 14 Apr 2026 18:07:09 +0800
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EfN8c0ye"
+Received: by mail-pl1-f182.google.com with SMTP id d9443c01a7336-2a8fba3f769so24626245ad.2
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2026 05:27:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1776169633; x=1776774433; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=bEDuvXTH5Zn2XT2X16UjfO2ntfyWS9qDU8ZPsqL80os=;
+        b=EfN8c0yet70Tc5H7N3Bs8BIwx1TZ5Sq4ByBNOO39p+trvs3vJhc72sRmk5eAes8b9G
+         /QjhQfs8oGr3032yYM1eAVQj/p8BuuvSHGb7dt4OWRJveyMUnN+sJ6OwXCwto6O+RK6M
+         52BuqJ7eH7U0f7hiHq8dI3TUcUYywowO559Lyfnvgqqxdj1E73dwG5yJ+DAuiWjHU+OU
+         Nvmzo8K5qFRDoQYDPCEsd5QDkTsdExHHogCCvR52M6flw5saMmfPrYWoDLdl432o1wtH
+         y/ipTCfZukeu27M8PgSIkeuNKuUP76V9JUYpj5AkP7Y6v3Q4xy60lHbnqQ9SVm/RbfT7
+         FyrA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776169633; x=1776774433;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=bEDuvXTH5Zn2XT2X16UjfO2ntfyWS9qDU8ZPsqL80os=;
+        b=XyrSg3JsJoKoHHwkjiXeYIpYlljcaBIp/AwihtU/CU3NksjmjbWj3KYU0OKufRA55q
+         N9/u47JHAvvl20IOYuTjD07V+gLAM5BpxgWazk6HuY9LQzS3CMhyt+eILD+Xsa30u+oi
+         dFICMLyvFP7S1iYyGwmW7Wzd+ptog5RulftEohWPigtemssw9jxlBlz0mdwEMfrHe4Us
+         gItiFqcnQcxeHtXIoZapZ+dFlTNb4+4Qvr85gUcUASmae197yzkj2YdXAaa6RJVQTrYC
+         E152jLdtWRkMJFlMya+OlYp++6VstSg9NW+REiSV/+ugAJMX9hJqDLBshmuGqKUTPYJd
+         lUCg==
+X-Forwarded-Encrypted: i=1; AFNElJ+YrWI8F1kNm3OtfnW4ozxNY9NzWYsCobKFdI9xkt9LFleiyVbv86HlA1Mrl1/lcgXaBbwd1ZMN0Au+@vger.kernel.org
+X-Gm-Message-State: AOJu0YzmIvtdMebl3ETyEwGcJLCmnEIAVGdEDc+Shcrw7uUc0Gc0efqV
+	v8OabLoHbZO+hgN8vFdEL8ZiRvjSONR7Utq7jaTIR+J8o4RtlNSm2PeW
+X-Gm-Gg: AeBDieutYtq8cjbNhLgRTz0L/iRCEQ6qVQC/G2PKtmuKhk0UDOO+8XfhDaBo+SAmNOx
+	hGIKVyLCvErh/5vbEUoXuF+G0cFPLsEMchMlzzdQJd7UHR4YRFcYJJJifgOKNUl6obghAk6ehK5
+	UdJQA4fMzZ65lVOa7rQqOOT/DtuZhmjfbDOXgAWyz8sPGgV+iAP5kgsHtEBB4AqCvrx6AveKMO1
+	vlUdkWgbv6C/imFPLEHNb5doz95QDzEQv6VOjE9u7NNs4dMs6JG3QJH9fMePtheq7WQt4fyJOZB
+	in9PRV9M6WM6SRwYm4xUvkQMOpI4bf/u2iASLlrF84sztGr2LuNWwvk26iDATGO7mLf0AL9HV4T
+	YToN9rE0WqTdofQD7jvlGMYdl0sPuxOkf4oTmgHL67Pj71tIl11ofx2r4JO2ox6KByvYktaHa9Y
+	T19K1M7ZLr5hlueOuC+xy2NgTNW5szcdD3aGyH2Vn2NDynkP27itPNShJVeBRoqdnqUkA=
+X-Received: by 2002:a17:903:1250:b0:2ae:54b2:27c7 with SMTP id d9443c01a7336-2b2d5a88d3dmr176156215ad.39.1776169632604;
+        Tue, 14 Apr 2026 05:27:12 -0700 (PDT)
+Received: from 192.168.5.4 ([2409:8a28:f32:86e4:9161:fb54:c7b3:5567])
+        by smtp.googlemail.com with ESMTPSA id d9443c01a7336-2b468273ccfsm62273745ad.43.2026.04.14.05.27.07
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Tue, 14 Apr 2026 05:27:11 -0700 (PDT)
+From: Fengnan Chang <fengnanchang@gmail.com>
+X-Google-Original-From: Fengnan Chang <changfengnan@bytedance.com>
+To: brauner@kernel.org,
+	djwong@kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Cc: lidiangang@bytedance.com,
+	Fengnan Chang <changfengnan@bytedance.com>
+Subject: [RFC PATCH] iomap: add fast read path for small direct I/O
+Date: Tue, 14 Apr 2026 20:26:47 +0800
+Message-Id: <20260414122647.15686-1-changfengnan@bytedance.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v1] ext4: add mb_stats_clear for mballoc statistics
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- wangguanyu@vivo.com, Baolin Liu <liubaolin@kylinos.cn>
-References: <20260414100212.95209-1-liubaolin12138@163.com>
-From: liubaolin <liubaolin12138@163.com>
-In-Reply-To: <20260414100212.95209-1-liubaolin12138@163.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wCHaz_NEd5p25gyFA--.63943S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW3GFWDWr1UCw13JFy5WryDWrg_yoWxtFWUpF
-	sxXa4UAF4UZ3Wxurs7Wa18WwnYvw40k3yUWrnIvw1F9FZIqryftFySqryjvFy5ArW8X3W8
-	Xa1Yv3yDGrWj937anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07Uza0QUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RaLVmneEdYjDQAA38
 
-> Dear all,                                                                                                                                                                                                                           
->   I have sent a small ext4 patch to add a manual reset capability for the mballoc statistics, and I would like to add some background on the motivation.
-> 
->   The idea came mainly from XFS stats_clear.
->   ext4 already exports mballoc runtime statistics through /proc/fs/ext4/<dev>/mb_stats, 
->   but these counters keep accumulating from mount time, which makes it inconvenient when trying to observe allocator behavior for a single test run.
->                                                                                    
->   This patch adds a write-only sysfs node, /sys/fs/ext4/<dev>/mb_stats_clear, so that writing 1 to it resets the ext4 mballoc runtime statistics.
->   It also adds sbi->s_bal_allocated to /proc/fs/ext4/<dev>/mb_stats, 
->   so that the proc output matches the mballoc summary printed at unmount time and the set of counters covered by mb_stats_clear is more complete. 
->   
->   The main goal is to make it easier to observe allocator activity for a specific test run instead of relying on counters accumulated since mount. 
->   With this in place, the counters can be cleared before starting a test, and the resulting mb_stats output reflects only the activity generated by that test.
->   
->   The counters being cleared are runtime mballoc statistics used for /proc/fs/ext4/<dev>/mb_stats reporting and for the mballoc summary printed at unmount time. 
->   I did not find any cases where these fields are read back to drive ext4 behavior, so the reset only affects statistics reporting.
-> 
->   For validation, /sys/fs/ext4/<dev>/mb_stats can be enabled first, 
->   then a file operation test can be run so that the relevant values in /proc/fs/ext4/<dev>/mb_stats become non-zero. 
->   After writing 1 to /sys/fs/ext4/<dev>/mb_stats_clear, those values should return to 0. 
->   Running another file operation test afterward should make those values increase again.
-> 
->   Best regards,
->   Baolin Liu
+When running 4K random read workloads on high-performance Gen5 NVMe
+SSDs, the software overhead in the iomap direct I/O path
+(__iomap_dio_rw) becomes a significant bottleneck.
 
+Using io_uring with poll mode for a 4K randread test on a raw block
+device:
+taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
+-n1 -P1 /dev/nvme10n1
+Result: ~3.2M IOPS
 
+Running the exact same workload on ext4 and XFS:
+taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
+-n1 -P1 /mnt/testfile
+Result: ~1.9M IOPS
 
+Profiling the ext4 workload reveals that a significant portion of CPU
+time is spent on memory allocation and the iomap state machine
+iteration:
+  5.33%  [kernel]  [k] __iomap_dio_rw
+  3.26%  [kernel]  [k] iomap_iter
+  2.37%  [kernel]  [k] iomap_dio_bio_iter
+  2.35%  [kernel]  [k] kfree
+  1.33%  [kernel]  [k] iomap_dio_complete
 
+I attempted several incremental optimizations in the __iomap_dio_rw()
+path to close the gap:
+1. Allocating the `bio` and `struct iomap_dio` together to avoid a
+   separate kmalloc. However, because `struct iomap_dio` is relatively
+   large and the main path is complex, this yielded almost no
+   performance improvement.
+2. Reducing unnecessary state resets in the iomap state machine (e.g.,
+   skipping `iomap_iter_reset_iomap` where safe). This provided a ~5%
+   IOPS boost, which is helpful but still falls far short of closing
+   the gap with the raw block device.
 
-在 2026/4/14 18:02, Baolin Liu 写道:
-> From: Baolin Liu <liubaolin@kylinos.cn>
-> 
-> Add a write-only mb_stats_clear sysfs knob to reset ext4 mballoc
-> runtime statistics.This makes it easier to inspect allocator
-> activity for a specific workload instead of using counters
-> accumulated since mount.
-> 
-> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
-> ---
->   fs/ext4/ext4.h    |  1 +
->   fs/ext4/mballoc.c | 31 +++++++++++++++++++++++++++++++
->   fs/ext4/sysfs.c   | 24 ++++++++++++++++++++++++
->   3 files changed, 56 insertions(+)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 7617e2d454ea..3a32e1a515dd 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2995,6 +2995,7 @@ int ext4_fc_record_regions(struct super_block *sb, int ino,
->   extern const struct seq_operations ext4_mb_seq_groups_ops;
->   extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
->   extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
-> +extern void ext4_mb_stats_clear(struct ext4_sb_info *sbi);
->   extern int ext4_mb_init(struct super_block *);
->   extern void ext4_mb_release(struct super_block *);
->   extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index bb58eafb87bc..382c91586b26 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3219,6 +3219,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
->   	}
->   	seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
->   	seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
-> +	seq_printf(seq, "\tblocks_allocated: %u\n",
-> +		   atomic_read(&sbi->s_bal_allocated));
->   
->   	seq_printf(seq, "\tgroups_scanned: %u\n",
->   		   atomic_read(&sbi->s_bal_groups_scanned));
-> @@ -4721,6 +4723,35 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
->   		trace_ext4_mballoc_prealloc(ac);
->   }
->   
-> +void ext4_mb_stats_clear(struct ext4_sb_info *sbi)
-> +{
-> +	int i;
-> +
-> +	atomic_set(&sbi->s_bal_reqs, 0);
-> +	atomic_set(&sbi->s_bal_success, 0);
-> +	atomic_set(&sbi->s_bal_allocated, 0);
-> +	atomic_set(&sbi->s_bal_groups_scanned, 0);
-> +
-> +	for (i = 0; i < EXT4_MB_NUM_CRS; i++) {
-> +		atomic64_set(&sbi->s_bal_cX_hits[i], 0);
-> +		atomic64_set(&sbi->s_bal_cX_groups_considered[i], 0);
-> +		atomic_set(&sbi->s_bal_cX_ex_scanned[i], 0);
-> +		atomic64_set(&sbi->s_bal_cX_failed[i], 0);
-> +	}
-> +
-> +	atomic_set(&sbi->s_bal_ex_scanned, 0);
-> +	atomic_set(&sbi->s_bal_goals, 0);
-> +	atomic_set(&sbi->s_bal_stream_goals, 0);
-> +	atomic_set(&sbi->s_bal_len_goals, 0);
-> +	atomic_set(&sbi->s_bal_2orders, 0);
-> +	atomic_set(&sbi->s_bal_breaks, 0);
-> +	atomic_set(&sbi->s_mb_lost_chunks, 0);
-> +	atomic_set(&sbi->s_mb_buddies_generated, 0);
-> +	atomic64_set(&sbi->s_mb_generation_time, 0);
-> +	atomic_set(&sbi->s_mb_preallocated, 0);
-> +	atomic_set(&sbi->s_mb_discarded, 0);
-> +}
-> +
->   /*
->    * Called on failure; free up any blocks from the inode PA for this
->    * context.  We don't need this for MB_GROUP_PA because we only change
-> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-> index 923b375e017f..a5bd88a99f22 100644
-> --- a/fs/ext4/sysfs.c
-> +++ b/fs/ext4/sysfs.c
-> @@ -41,6 +41,7 @@ typedef enum {
->   	attr_pointer_atomic,
->   	attr_journal_task,
->   	attr_err_report_sec,
-> +	attr_mb_stats_clear,
->   } attr_id_t;
->   
->   typedef enum {
-> @@ -161,6 +162,25 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
->   	return count;
->   }
->   
-> +static ssize_t mb_stats_clear_store(struct ext4_sb_info *sbi,
-> +				    const char *buf, size_t count)
-> +{
-> +	int val;
-> +	int ret;
-> +
-> +	if (!capable(CAP_SYS_ADMIN))
-> +		return -EPERM;
-> +
-> +	ret = kstrtoint(skip_spaces(buf), 0, &val);
-> +	if (ret)
-> +		return ret;
-> +	if (val != 1)
-> +		return -EINVAL;
-> +
-> +	ext4_mb_stats_clear(sbi);
-> +	return count;
-> +}
-> +
->   static ssize_t journal_task_show(struct ext4_sb_info *sbi, char *buf)
->   {
->   	if (!sbi->s_journal)
-> @@ -251,6 +271,7 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
->   EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, s_err_report_sec);
->   EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
->   EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
-> +EXT4_ATTR(mb_stats_clear, 0200, mb_stats_clear);
->   EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
->   EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
->   EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-> @@ -301,6 +322,7 @@ static struct attribute *ext4_attrs[] = {
->   	ATTR_LIST(inode_readahead_blks),
->   	ATTR_LIST(inode_goal),
->   	ATTR_LIST(mb_stats),
-> +	ATTR_LIST(mb_stats_clear),
->   	ATTR_LIST(mb_max_to_scan),
->   	ATTR_LIST(mb_min_to_scan),
->   	ATTR_LIST(mb_order2_req),
-> @@ -561,6 +583,8 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
->   		return trigger_test_error(sbi, buf, len);
->   	case attr_err_report_sec:
->   		return err_report_sec_store(sbi, buf, len);
-> +	case attr_mb_stats_clear:
-> +		return mb_stats_clear_store(sbi, buf, len);
->   	default:
->   		return ext4_generic_attr_store(a, sbi, buf, len);
->   	}
+Since optimizing the heavy generic path did not yield the desired
+results for this specific, highly-demanding Gen5 SSD scenario, this
+RFC patch introduces a dedicated asynchronous fast path.
+
+The fast path is triggered when the request satisfies:
+- Asynchronous READ request only for now.
+- I/O size is <= inode blocksize (fits in a single block, no splits).
+- Aligned to the block device's logical block size.
+- No bounce buffering, fscrypt, or fsverity involved.
+- No custom `iomap_dio_ops` (dops) registered by the filesystem.
+
+By using a dedicated bio_set (`iomap_dio_fast_read_pool`) to embed a
+much smaller completion state (`struct iomap_dio_fast_read`) directly
+in the bio's front padding, we completely eliminate kmalloc/kfree and
+drastically shorten the execution path.
+
+After this optimization, the heavy generic functions disappear from the
+profile, replaced by a single streamlined execution path:
+  4.83%  [kernel]  [k] iomap_dio_fast_read_async.isra.31
+
+With this patch, 4K random read IOPS on ext4 increases from 1.9M to
+2.3M.
+
+I am aware that adding a completely separate fast path introduces
+duplicate code and may result in iomap_begin being called twice, this
+likely unacceptable for merging in its current form.
+
+However, I am submitting this patch to validate whether this
+optimization direction is correct and worth pursuing. I would appreciate
+feedback on how to better integrate these ideas into the main iomap
+execution path.
+
+Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
+---
+ fs/iomap/direct-io.c | 275 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 275 insertions(+)
+
+diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+index e911daedff65a..e4183f7c2f962 100644
+--- a/fs/iomap/direct-io.c
++++ b/fs/iomap/direct-io.c
+@@ -5,10 +5,14 @@
+  */
+ #include <linux/blk-crypto.h>
+ #include <linux/fscrypt.h>
++#include <linux/fsverity.h>
+ #include <linux/pagemap.h>
+ #include <linux/iomap.h>
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/fserror.h>
++#include <linux/kobject.h>
++#include <linux/sysfs.h>
++#include <linux/init.h>
+ #include "internal.h"
+ #include "trace.h"
+ 
+@@ -880,12 +884,231 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ }
+ EXPORT_SYMBOL_GPL(__iomap_dio_rw);
+ 
++static bool iomap_dio_fast_read_enabled = true;
++
++struct iomap_dio_fast_read {
++	struct kiocb	*iocb;
++	size_t		size;
++	bool		should_dirty;
++	struct work_struct	work;
++	struct bio	bio ____cacheline_aligned_in_smp;
++};
++
++static struct bio_set iomap_dio_fast_read_pool;
++
++static void iomap_dio_fast_read_complete_work(struct work_struct *work)
++{
++	struct iomap_dio_fast_read *fr =
++		container_of(work, struct iomap_dio_fast_read, work);
++	struct kiocb *iocb = fr->iocb;
++	struct inode *inode = file_inode(iocb->ki_filp);
++	bool should_dirty = fr->should_dirty;
++	struct bio *bio = &fr->bio;
++	ssize_t ret;
++
++	WRITE_ONCE(iocb->private, NULL);
++
++	if (likely(!bio->bi_status)) {
++		ret = fr->size;
++		iocb->ki_pos += ret;
++	} else {
++		ret = blk_status_to_errno(bio->bi_status);
++		fserror_report_io(inode, FSERR_DIRECTIO_READ, iocb->ki_pos,
++				  fr->size, ret, GFP_NOFS);
++	}
++
++	if (should_dirty) {
++		bio_check_pages_dirty(bio);
++	} else {
++		bio_release_pages(bio, false);
++		bio_put(bio);
++	}
++
++	inode_dio_end(inode);
++
++	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
++	iocb->ki_complete(iocb, ret);
++}
++
++static void iomap_dio_fast_read_end_io(struct bio *bio)
++{
++	struct iomap_dio_fast_read *fr = bio->bi_private;
++	struct kiocb *iocb = fr->iocb;
++
++	if (unlikely(bio->bi_status)) {
++		struct inode *inode = file_inode(iocb->ki_filp);
++
++		INIT_WORK(&fr->work, iomap_dio_fast_read_complete_work);
++		queue_work(inode->i_sb->s_dio_done_wq, &fr->work);
++		return;
++	}
++
++	iomap_dio_fast_read_complete_work(&fr->work);
++}
++
++static inline bool iomap_dio_fast_read_supported(struct kiocb *iocb,
++					  struct iov_iter *iter,
++					  unsigned int dio_flags,
++					  size_t done_before)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	size_t count = iov_iter_count(iter);
++	unsigned int alignment;
++
++	if (!iomap_dio_fast_read_enabled)
++		return false;
++	if (iov_iter_rw(iter) != READ)
++		return false;
++
++	/*
++	 * Fast read is an optimization for small IO. Filter out large IO early
++	 * as it's the most common case to fail for typical direct IO workloads.
++	 */
++	if (count > inode->i_sb->s_blocksize)
++		return false;
++
++	if (is_sync_kiocb(iocb) || done_before)
++		return false;
++	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_BOUNCE))
++		return false;
++	if (iocb->ki_pos + count > i_size_read(inode))
++		return false;
++	if (IS_ENCRYPTED(inode) || fsverity_active(inode))
++		return false;
++
++	if (count < bdev_logical_block_size(inode->i_sb->s_bdev))
++		return false;
++
++	if (dio_flags & IOMAP_DIO_FSBLOCK_ALIGNED)
++		alignment = i_blocksize(inode);
++	else
++		alignment = bdev_logical_block_size(inode->i_sb->s_bdev);
++
++	if ((iocb->ki_pos | count) & (alignment - 1))
++		return false;
++
++	return true;
++}
++
++static ssize_t iomap_dio_fast_read_async(struct kiocb *iocb,
++					 struct iov_iter *iter,
++					 const struct iomap_ops *ops,
++					 void *private)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	size_t count = iov_iter_count(iter);
++	int nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
++	bool should_dirty = user_backed_iter(iter);
++	struct iomap_dio_fast_read *fr;
++	struct iomap_iter iomi = {
++		.inode		= inode,
++		.pos		= iocb->ki_pos,
++		.len		= count,
++		.flags		= IOMAP_DIRECT,
++		.private	= private,
++	};
++	struct bio *bio;
++	ssize_t ret;
++
++	if (iocb->ki_flags & IOCB_NOWAIT)
++		iomi.flags |= IOMAP_NOWAIT;
++
++	ret = kiocb_write_and_wait(iocb, count);
++	if (ret)
++		return ret;
++
++	inode_dio_begin(inode);
++
++	ret = ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
++			       &iomi.iomap, &iomi.srcmap);
++	if (ret) {
++		inode_dio_end(inode);
++		return ret;
++	}
++
++	if (iomi.iomap.type != IOMAP_MAPPED ||
++	    iomi.iomap.offset > iomi.pos ||
++	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count ||
++	    (iomi.iomap.flags & IOMAP_F_ANON_WRITE)) {
++		ret = -EAGAIN;
++		goto out_iomap_end;
++	}
++
++	if (!inode->i_sb->s_dio_done_wq) {
++		ret = sb_init_dio_done_wq(inode->i_sb);
++		if (ret < 0)
++			goto out_iomap_end;
++	}
++
++	trace_iomap_dio_rw_begin(iocb, iter, 0, 0);
++
++	bio = bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
++			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
++			       GFP_KERNEL, &iomap_dio_fast_read_pool);
++	fr = container_of(bio, struct iomap_dio_fast_read, bio);
++	fr->iocb = iocb;
++	fr->should_dirty = should_dirty;
++
++	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
++	bio->bi_ioprio = iocb->ki_ioprio;
++	bio->bi_private = fr;
++	bio->bi_end_io = iomap_dio_fast_read_end_io;
++
++	ret = bio_iov_iter_get_pages(bio, iter,
++				     bdev_logical_block_size(iomi.iomap.bdev) - 1);
++	if (unlikely(ret)) {
++		bio_put(bio);
++		goto out_iomap_end;
++	}
++
++	if (bio->bi_iter.bi_size != count) {
++		iov_iter_revert(iter, bio->bi_iter.bi_size);
++		bio_release_pages(bio, false);
++		bio_put(bio);
++		ret = -EAGAIN;
++		goto out_iomap_end;
++	}
++
++	fr->size = bio->bi_iter.bi_size;
++
++	if (should_dirty)
++		bio_set_pages_dirty(bio);
++
++	if (iocb->ki_flags & IOCB_NOWAIT)
++		bio->bi_opf |= REQ_NOWAIT;
++	if (iocb->ki_flags & IOCB_HIPRI) {
++		bio->bi_opf |= REQ_POLLED;
++		bio_set_polled(bio, iocb);
++		WRITE_ONCE(iocb->private, bio);
++	}
++	submit_bio(bio);
++
++	if (ops->iomap_end)
++		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
++			       &iomi.iomap);
++	return -EIOCBQUEUED;
++
++out_iomap_end:
++	if (ops->iomap_end)
++		ops->iomap_end(inode, iomi.pos, count, 0, iomi.flags,
++			       &iomi.iomap);
++	inode_dio_end(inode);
++	return ret;
++}
++
+ ssize_t
+ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
+ 		unsigned int dio_flags, void *private, size_t done_before)
+ {
+ 	struct iomap_dio *dio;
++	ssize_t ret;
++
++	if (!dops && iomap_dio_fast_read_supported(iocb, iter, dio_flags, done_before)) {
++		ret = iomap_dio_fast_read_async(iocb, iter, ops, private);
++		if (ret != -EAGAIN)
++			return ret;
++	}
+ 
+ 	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, private,
+ 			     done_before);
+@@ -894,3 +1117,55 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	return iomap_dio_complete(dio);
+ }
+ EXPORT_SYMBOL_GPL(iomap_dio_rw);
++
++static ssize_t fast_read_enable_show(struct kobject *kobj,
++				     struct kobj_attribute *attr, char *buf)
++{
++	return sysfs_emit(buf, "%d\n", iomap_dio_fast_read_enabled);
++}
++
++static ssize_t fast_read_enable_store(struct kobject *kobj,
++				      struct kobj_attribute *attr,
++				      const char *buf, size_t count)
++{
++	bool enable;
++	int ret;
++
++	ret = kstrtobool(buf, &enable);
++	if (ret)
++		return ret;
++
++	iomap_dio_fast_read_enabled = enable;
++	return count;
++}
++
++static struct kobj_attribute fast_read_enable_attr =
++	__ATTR(fast_read_enable, 0644, fast_read_enable_show, fast_read_enable_store);
++
++static struct kobject *iomap_kobj;
++
++static int __init iomap_dio_sysfs_init(void)
++{
++	int ret;
++
++	ret = bioset_init(&iomap_dio_fast_read_pool, 4,
++			  offsetof(struct iomap_dio_fast_read, bio),
++			  BIOSET_NEED_BVECS | BIOSET_PERCPU_CACHE);
++	if (ret)
++		return ret;
++
++	iomap_kobj = kobject_create_and_add("iomap", fs_kobj);
++	if (!iomap_kobj) {
++		bioset_exit(&iomap_dio_fast_read_pool);
++		return -ENOMEM;
++	}
++
++	if (sysfs_create_file(iomap_kobj, &fast_read_enable_attr.attr)) {
++		kobject_put(iomap_kobj);
++		bioset_exit(&iomap_dio_fast_read_pool);
++		return -ENOMEM;
++	}
++
++	return 0;
++}
++fs_initcall(iomap_dio_sysfs_init);
+-- 
+2.39.5 (Apple Git-154)
 
