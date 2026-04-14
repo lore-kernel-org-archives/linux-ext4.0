@@ -1,193 +1,221 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.3])
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.2])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B9313A0E80;
-	Tue, 14 Apr 2026 10:02:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.3
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3FF23CFF52;
+	Tue, 14 Apr 2026 10:07:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.2
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776160966; cv=none; b=G8pcUYxYDDwh7Pb26Psy1rUJVmf0fPKncTEzhA98O6Tm3w7jlNNlOnd1b2J7BD1odfxvaITbJWADs8griNI7Qsc7AyaKm54rF/YSMSqSzFLMf+3FTJ7prgAg4F3YVBJ6tdyHYauHF9KtfTmge8RPSwfEuHhyge7RBrNfLrvjGq4=
+	t=1776161264; cv=none; b=RHUQMPVWvCeEby/uJ7HC3nvuBLGf2Rf+Ghm0FeQFKU3PUIiVVeUx98iG7dzfx1cImAunxZn4hjJydHOxAoJFQ8B9ImA2Zyj0LcQs1PNAcMG4vduYK92LuqUdG59TkpJO6nU7FKZZ2sndam+Ao5ViN4RC4DsBQBgranujSybuvAg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776160966; c=relaxed/simple;
-	bh=KyqrBXVYLfJJSb1WEZR8VWMn4NIt3wjCro8IRsR3OpM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=SRlbiJhj6nHZ6OEPw4m50QiDtFzZtJi3efsLEohRG2YYXj15zCgUtyYS8pglAgu6/G/Hf1b0nZoUAMvyBHcZ1wON7omt4esw3b2H1nr5LUttjxShLkY8NFulRIzkAeoYR2vl4ZjhTWWYHMGrHraqgDQUQ25BlzIFYT0Kd/UyfRc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=Lns44EO5; arc=none smtp.client-ip=220.197.31.3
+	s=arc-20240116; t=1776161264; c=relaxed/simple;
+	bh=Zn0g9IPBQL+09Gkm+uRMG6m58nNCqJy4167dncxBd5E=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=vAzKhV3zJWSY8hs+SSsGWmzUysgxtpLnFYddkG0zGSNYW1gxSQ+eTBAxip4CnpCOYnHWtz3FeeaPpG5uj+3c7mYEnQ92R3kT9wrRLznPKGq3VMWSRFXv6ntRsjmRbnJiGKOva2xSGOZx61T0c07+tDDwhbF0F+AFbEKTsQDpRaM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=f92Z1q+Z; arc=none smtp.client-ip=220.197.31.2
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="Lns44EO5"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="f92Z1q+Z"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=yy
-	y/TZVRqdIC6eQ1z8Fb/qwWijS+XhBLAucbRi6wwV4=; b=Lns44EO5FOJ7Uulitn
-	2/Aa6ykIAlx1lGkGNR+mSPuXT75M0n2V5OrEIf001jz9/9wa+m0fNdxjYnJ5nGht
-	CZ0IVGg92EJBInAr/H+hmDAye77q00+Ru6x5MyBSsXcuNyX3ITpPURlmXFNfpRZg
-	Um2Sue3E+kAfii2K2kwMlEIJE=
-Received: from liubaolin-VMware-Virtual-Platform.localdomain (unknown [])
-	by gzga-smtp-mtada-g0-3 (Coremail) with SMTP id _____wBHq46oEN5pKQJTFA--.6735S2;
-	Tue, 14 Apr 2026 18:02:18 +0800 (CST)
-From: Baolin Liu <liubaolin12138@163.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca
-Cc: liubaolin12138@163.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	wangguanyu@vivo.com,
-	Baolin Liu <liubaolin@kylinos.cn>
-Subject: [PATCH v1] ext4: add mb_stats_clear for mballoc statistics
-Date: Tue, 14 Apr 2026 18:02:11 +0800
-Message-ID: <20260414100212.95209-1-liubaolin12138@163.com>
-X-Mailer: git-send-email 2.51.0
+	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
+	Content-Type; bh=lup6srYEtbGICHvpjOCwe+dkqmObgV/oaPKqztT9RFA=;
+	b=f92Z1q+ZKzYVvP/sbM0wn5KKv1yHxxTVgHuIQb9dLqWB18YRTnV/Bc4v6CDABe
+	OVuNGbhtTaTEQrtgwmA9K5jDwEDvqW8TtzbEPcbisDQC7uBAsAj+YQ+gNQUkJdO3
+	kgT/J6tG90LEtUMQEIZWwjgJ8f9wTrydF1re0r1Dw8wqQ=
+Received: from [192.168.117.68] (unknown [])
+	by gzga-smtp-mtada-g0-2 (Coremail) with SMTP id _____wCHaz_NEd5p25gyFA--.63943S2;
+	Tue, 14 Apr 2026 18:07:17 +0800 (CST)
+Message-ID: <6d5cc24a-f8c6-4daa-9e27-399dbb916fac@163.com>
+Date: Tue, 14 Apr 2026 18:07:09 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v1] ext4: add mb_stats_clear for mballoc statistics
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ wangguanyu@vivo.com, Baolin Liu <liubaolin@kylinos.cn>
+References: <20260414100212.95209-1-liubaolin12138@163.com>
+From: liubaolin <liubaolin12138@163.com>
+In-Reply-To: <20260414100212.95209-1-liubaolin12138@163.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wBHq46oEN5pKQJTFA--.6735S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW3ArWrZrWDGFW7Xr13XFy3twb_yoW7Gw13pF
-	sxXa4UCr4UZ3Wxurs3Ww4fW3ZYk3y0kryUGrWayw1S9FWavrySyF9aqFy0vFy5ArW8Aa4k
-	X3Wqv3yDGrZYg37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0pEo7KnUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbCwgtAC2neEKsd2gAA3J
+X-CM-TRANSID:_____wCHaz_NEd5p25gyFA--.63943S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW3GFWDWr1UCw13JFy5WryDWrg_yoWxtFWUpF
+	sxXa4UAF4UZ3Wxurs7Wa18WwnYvw40k3yUWrnIvw1F9FZIqryftFySqryjvFy5ArW8X3W8
+	Xa1Yv3yDGrWj937anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07Uza0QUUUUU=
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RaLVmneEdYjDQAA38
 
-From: Baolin Liu <liubaolin@kylinos.cn>
+> Dear all,                                                                                                                                                                                                                           
+>   I have sent a small ext4 patch to add a manual reset capability for the mballoc statistics, and I would like to add some background on the motivation.
+> 
+>   The idea came mainly from XFS stats_clear.
+>   ext4 already exports mballoc runtime statistics through /proc/fs/ext4/<dev>/mb_stats, 
+>   but these counters keep accumulating from mount time, which makes it inconvenient when trying to observe allocator behavior for a single test run.
+>                                                                                    
+>   This patch adds a write-only sysfs node, /sys/fs/ext4/<dev>/mb_stats_clear, so that writing 1 to it resets the ext4 mballoc runtime statistics.
+>   It also adds sbi->s_bal_allocated to /proc/fs/ext4/<dev>/mb_stats, 
+>   so that the proc output matches the mballoc summary printed at unmount time and the set of counters covered by mb_stats_clear is more complete. 
+>   
+>   The main goal is to make it easier to observe allocator activity for a specific test run instead of relying on counters accumulated since mount. 
+>   With this in place, the counters can be cleared before starting a test, and the resulting mb_stats output reflects only the activity generated by that test.
+>   
+>   The counters being cleared are runtime mballoc statistics used for /proc/fs/ext4/<dev>/mb_stats reporting and for the mballoc summary printed at unmount time. 
+>   I did not find any cases where these fields are read back to drive ext4 behavior, so the reset only affects statistics reporting.
+> 
+>   For validation, /sys/fs/ext4/<dev>/mb_stats can be enabled first, 
+>   then a file operation test can be run so that the relevant values in /proc/fs/ext4/<dev>/mb_stats become non-zero. 
+>   After writing 1 to /sys/fs/ext4/<dev>/mb_stats_clear, those values should return to 0. 
+>   Running another file operation test afterward should make those values increase again.
+> 
+>   Best regards,
+>   Baolin Liu
 
-Add a write-only mb_stats_clear sysfs knob to reset ext4 mballoc
-runtime statistics.This makes it easier to inspect allocator
-activity for a specific workload instead of using counters
-accumulated since mount.
 
-Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
----
- fs/ext4/ext4.h    |  1 +
- fs/ext4/mballoc.c | 31 +++++++++++++++++++++++++++++++
- fs/ext4/sysfs.c   | 24 ++++++++++++++++++++++++
- 3 files changed, 56 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7617e2d454ea..3a32e1a515dd 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2995,6 +2995,7 @@ int ext4_fc_record_regions(struct super_block *sb, int ino,
- extern const struct seq_operations ext4_mb_seq_groups_ops;
- extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
- extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
-+extern void ext4_mb_stats_clear(struct ext4_sb_info *sbi);
- extern int ext4_mb_init(struct super_block *);
- extern void ext4_mb_release(struct super_block *);
- extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index bb58eafb87bc..382c91586b26 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3219,6 +3219,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
- 	}
- 	seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
- 	seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
-+	seq_printf(seq, "\tblocks_allocated: %u\n",
-+		   atomic_read(&sbi->s_bal_allocated));
- 
- 	seq_printf(seq, "\tgroups_scanned: %u\n",
- 		   atomic_read(&sbi->s_bal_groups_scanned));
-@@ -4721,6 +4723,35 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
- 		trace_ext4_mballoc_prealloc(ac);
- }
- 
-+void ext4_mb_stats_clear(struct ext4_sb_info *sbi)
-+{
-+	int i;
-+
-+	atomic_set(&sbi->s_bal_reqs, 0);
-+	atomic_set(&sbi->s_bal_success, 0);
-+	atomic_set(&sbi->s_bal_allocated, 0);
-+	atomic_set(&sbi->s_bal_groups_scanned, 0);
-+
-+	for (i = 0; i < EXT4_MB_NUM_CRS; i++) {
-+		atomic64_set(&sbi->s_bal_cX_hits[i], 0);
-+		atomic64_set(&sbi->s_bal_cX_groups_considered[i], 0);
-+		atomic_set(&sbi->s_bal_cX_ex_scanned[i], 0);
-+		atomic64_set(&sbi->s_bal_cX_failed[i], 0);
-+	}
-+
-+	atomic_set(&sbi->s_bal_ex_scanned, 0);
-+	atomic_set(&sbi->s_bal_goals, 0);
-+	atomic_set(&sbi->s_bal_stream_goals, 0);
-+	atomic_set(&sbi->s_bal_len_goals, 0);
-+	atomic_set(&sbi->s_bal_2orders, 0);
-+	atomic_set(&sbi->s_bal_breaks, 0);
-+	atomic_set(&sbi->s_mb_lost_chunks, 0);
-+	atomic_set(&sbi->s_mb_buddies_generated, 0);
-+	atomic64_set(&sbi->s_mb_generation_time, 0);
-+	atomic_set(&sbi->s_mb_preallocated, 0);
-+	atomic_set(&sbi->s_mb_discarded, 0);
-+}
-+
- /*
-  * Called on failure; free up any blocks from the inode PA for this
-  * context.  We don't need this for MB_GROUP_PA because we only change
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 923b375e017f..a5bd88a99f22 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -41,6 +41,7 @@ typedef enum {
- 	attr_pointer_atomic,
- 	attr_journal_task,
- 	attr_err_report_sec,
-+	attr_mb_stats_clear,
- } attr_id_t;
- 
- typedef enum {
-@@ -161,6 +162,25 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
- 	return count;
- }
- 
-+static ssize_t mb_stats_clear_store(struct ext4_sb_info *sbi,
-+				    const char *buf, size_t count)
-+{
-+	int val;
-+	int ret;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	ret = kstrtoint(skip_spaces(buf), 0, &val);
-+	if (ret)
-+		return ret;
-+	if (val != 1)
-+		return -EINVAL;
-+
-+	ext4_mb_stats_clear(sbi);
-+	return count;
-+}
-+
- static ssize_t journal_task_show(struct ext4_sb_info *sbi, char *buf)
- {
- 	if (!sbi->s_journal)
-@@ -251,6 +271,7 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
- EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, s_err_report_sec);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
- EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
-+EXT4_ATTR(mb_stats_clear, 0200, mb_stats_clear);
- EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-@@ -301,6 +322,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(inode_readahead_blks),
- 	ATTR_LIST(inode_goal),
- 	ATTR_LIST(mb_stats),
-+	ATTR_LIST(mb_stats_clear),
- 	ATTR_LIST(mb_max_to_scan),
- 	ATTR_LIST(mb_min_to_scan),
- 	ATTR_LIST(mb_order2_req),
-@@ -561,6 +583,8 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
- 		return trigger_test_error(sbi, buf, len);
- 	case attr_err_report_sec:
- 		return err_report_sec_store(sbi, buf, len);
-+	case attr_mb_stats_clear:
-+		return mb_stats_clear_store(sbi, buf, len);
- 	default:
- 		return ext4_generic_attr_store(a, sbi, buf, len);
- 	}
--- 
-2.51.0
+
+
+在 2026/4/14 18:02, Baolin Liu 写道:
+> From: Baolin Liu <liubaolin@kylinos.cn>
+> 
+> Add a write-only mb_stats_clear sysfs knob to reset ext4 mballoc
+> runtime statistics.This makes it easier to inspect allocator
+> activity for a specific workload instead of using counters
+> accumulated since mount.
+> 
+> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
+> ---
+>   fs/ext4/ext4.h    |  1 +
+>   fs/ext4/mballoc.c | 31 +++++++++++++++++++++++++++++++
+>   fs/ext4/sysfs.c   | 24 ++++++++++++++++++++++++
+>   3 files changed, 56 insertions(+)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 7617e2d454ea..3a32e1a515dd 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2995,6 +2995,7 @@ int ext4_fc_record_regions(struct super_block *sb, int ino,
+>   extern const struct seq_operations ext4_mb_seq_groups_ops;
+>   extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
+>   extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
+> +extern void ext4_mb_stats_clear(struct ext4_sb_info *sbi);
+>   extern int ext4_mb_init(struct super_block *);
+>   extern void ext4_mb_release(struct super_block *);
+>   extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index bb58eafb87bc..382c91586b26 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3219,6 +3219,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
+>   	}
+>   	seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
+>   	seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
+> +	seq_printf(seq, "\tblocks_allocated: %u\n",
+> +		   atomic_read(&sbi->s_bal_allocated));
+>   
+>   	seq_printf(seq, "\tgroups_scanned: %u\n",
+>   		   atomic_read(&sbi->s_bal_groups_scanned));
+> @@ -4721,6 +4723,35 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
+>   		trace_ext4_mballoc_prealloc(ac);
+>   }
+>   
+> +void ext4_mb_stats_clear(struct ext4_sb_info *sbi)
+> +{
+> +	int i;
+> +
+> +	atomic_set(&sbi->s_bal_reqs, 0);
+> +	atomic_set(&sbi->s_bal_success, 0);
+> +	atomic_set(&sbi->s_bal_allocated, 0);
+> +	atomic_set(&sbi->s_bal_groups_scanned, 0);
+> +
+> +	for (i = 0; i < EXT4_MB_NUM_CRS; i++) {
+> +		atomic64_set(&sbi->s_bal_cX_hits[i], 0);
+> +		atomic64_set(&sbi->s_bal_cX_groups_considered[i], 0);
+> +		atomic_set(&sbi->s_bal_cX_ex_scanned[i], 0);
+> +		atomic64_set(&sbi->s_bal_cX_failed[i], 0);
+> +	}
+> +
+> +	atomic_set(&sbi->s_bal_ex_scanned, 0);
+> +	atomic_set(&sbi->s_bal_goals, 0);
+> +	atomic_set(&sbi->s_bal_stream_goals, 0);
+> +	atomic_set(&sbi->s_bal_len_goals, 0);
+> +	atomic_set(&sbi->s_bal_2orders, 0);
+> +	atomic_set(&sbi->s_bal_breaks, 0);
+> +	atomic_set(&sbi->s_mb_lost_chunks, 0);
+> +	atomic_set(&sbi->s_mb_buddies_generated, 0);
+> +	atomic64_set(&sbi->s_mb_generation_time, 0);
+> +	atomic_set(&sbi->s_mb_preallocated, 0);
+> +	atomic_set(&sbi->s_mb_discarded, 0);
+> +}
+> +
+>   /*
+>    * Called on failure; free up any blocks from the inode PA for this
+>    * context.  We don't need this for MB_GROUP_PA because we only change
+> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+> index 923b375e017f..a5bd88a99f22 100644
+> --- a/fs/ext4/sysfs.c
+> +++ b/fs/ext4/sysfs.c
+> @@ -41,6 +41,7 @@ typedef enum {
+>   	attr_pointer_atomic,
+>   	attr_journal_task,
+>   	attr_err_report_sec,
+> +	attr_mb_stats_clear,
+>   } attr_id_t;
+>   
+>   typedef enum {
+> @@ -161,6 +162,25 @@ static ssize_t err_report_sec_store(struct ext4_sb_info *sbi,
+>   	return count;
+>   }
+>   
+> +static ssize_t mb_stats_clear_store(struct ext4_sb_info *sbi,
+> +				    const char *buf, size_t count)
+> +{
+> +	int val;
+> +	int ret;
+> +
+> +	if (!capable(CAP_SYS_ADMIN))
+> +		return -EPERM;
+> +
+> +	ret = kstrtoint(skip_spaces(buf), 0, &val);
+> +	if (ret)
+> +		return ret;
+> +	if (val != 1)
+> +		return -EINVAL;
+> +
+> +	ext4_mb_stats_clear(sbi);
+> +	return count;
+> +}
+> +
+>   static ssize_t journal_task_show(struct ext4_sb_info *sbi, char *buf)
+>   {
+>   	if (!sbi->s_journal)
+> @@ -251,6 +271,7 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
+>   EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, s_err_report_sec);
+>   EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
+>   EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
+> +EXT4_ATTR(mb_stats_clear, 0200, mb_stats_clear);
+>   EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
+>   EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+>   EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+> @@ -301,6 +322,7 @@ static struct attribute *ext4_attrs[] = {
+>   	ATTR_LIST(inode_readahead_blks),
+>   	ATTR_LIST(inode_goal),
+>   	ATTR_LIST(mb_stats),
+> +	ATTR_LIST(mb_stats_clear),
+>   	ATTR_LIST(mb_max_to_scan),
+>   	ATTR_LIST(mb_min_to_scan),
+>   	ATTR_LIST(mb_order2_req),
+> @@ -561,6 +583,8 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
+>   		return trigger_test_error(sbi, buf, len);
+>   	case attr_err_report_sec:
+>   		return err_report_sec_store(sbi, buf, len);
+> +	case attr_mb_stats_clear:
+> +		return mb_stats_clear_store(sbi, buf, len);
+>   	default:
+>   		return ext4_generic_attr_store(a, sbi, buf, len);
+>   	}
 
