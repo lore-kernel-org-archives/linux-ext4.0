@@ -1,66 +1,40 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A70B83624C5;
-	Wed, 15 Apr 2026 19:27:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6B4834C83C
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 23:56:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776281235; cv=none; b=mNozs/qb7GUDoUJbCfdrPrIwcWQt5QoalVWYf9DVkVKm6ooQrf27VQas+SHl7sSgiEbT6oyllC4FY4I/Oy8na4/TTU31WeIC9RYpJOxBxnri5RoQlThcjXuvtyoWpr0NnGaUnZFrFnCSnHsdlmXjqzMpySF5zi+WDIIBuNEBqIU=
+	t=1776297406; cv=none; b=K5m67AW3Te3mE5rvH0GtQgu9NDkPQIKWS+vMFUKHNIelxgfh3aXuB1W/bbXzmThO8+Mod+zdkzfH76CEdsgFhA925KzbpNy9fllqpjH1b0F+2vLnGFkzz1Xeq5uQmwSpNHJ1aKYJljJo7USn3TN0acHMECn7+OlzXcZGhALrKKI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776281235; c=relaxed/simple;
-	bh=Z3Qm2qGbMju+0Js4ijjp8rqnx80EzyxC7cBFc2dicfE=;
+	s=arc-20240116; t=1776297406; c=relaxed/simple;
+	bh=WedYa8zBhzwChCkA0+jjnksGsJU9fpYmcpNqM/1eKj0=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tZx1MuH2mGb2UzNzQNfbo8H+fJArY0xobxfFw7Ki8y7SDBXivg7RdAWqz3l07TWkgSvd9Bzk33GS8J6BX7PHOM/m7lC//LE/Ky4qFFiyqZsthJrwJQ224BG8rEZYRTl34A2C3pHTFy2tRC1oUBs0139IV1OH2zayFWXNlTR4f2o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=NTJkmXv9; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=IYRK5dDLUA57sDjfWizqPcyMBOB+jwRXVHFuC/OLOmxOaP1slwejLSmpLWw5xLjAuinHUGNxSj8ALK3831OZsNlfDcSs09OLD3mckoHM2t9srlYYM77+ctY0/mkBf/BfFnCoBaoWK+Lo75/CLbLQTSwQHuREmLpGnwCrTGxYB8c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LCJBkIBp; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="NTJkmXv9"
-Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 63FGSEjh2130606;
-	Wed, 15 Apr 2026 19:27:07 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=pD2x7FXOAxiphqSY+v80d5AjwEMu7E
-	DZZfNdxbrxpQg=; b=NTJkmXv9Gtbtbuld0aUR0LOeGkXec9oyRWqqcZDmil4oJR
-	6cpOs80dzYfbuKDqWlWvqBVHBwb89pJOw5Bpkt4R0R7GYl94WMp0fo9z3efmeyuq
-	/JhhUlJWglOXbjN0I7fcI9P0UX8cMYSroN9eUj9S9Aggb916OdwchrAwkfe7XZk9
-	DJ+34ZTJtkjcSdKOYlZ5VKu2HWIMAnngWEi7FeS6C23zMsb8iYSK7tAqAyST7HHo
-	G7/6Zc47MR6aHcy1DNjMcS55KDkU0ra2JweEK5IQ98hNPTiwKv316Yom903eBEf4
-	0LbwLHyt0yzW4dGzKiPv5JXzPMsD0uxn2lQucXHQ==
-Received: from ppma23.wdc07v.mail.ibm.com (5d.69.3da9.ip4.static.sl-reverse.com [169.61.105.93])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4dh89nhyk4-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 15 Apr 2026 19:27:07 +0000 (GMT)
-Received: from pps.filterd (ppma23.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma23.wdc07v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 63FHQ0A5004180;
-	Wed, 15 Apr 2026 19:27:05 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-	by ppma23.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4dg24kfngx-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 15 Apr 2026 19:27:05 +0000
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 63FJR3G353543168
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 15 Apr 2026 19:27:03 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id C523D20043;
-	Wed, 15 Apr 2026 19:27:03 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id D1F3320040;
-	Wed, 15 Apr 2026 19:27:01 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.25.126])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Wed, 15 Apr 2026 19:27:01 +0000 (GMT)
-Date: Thu, 16 Apr 2026 00:56:58 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Baolin Liu <liubaolin12138@163.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LCJBkIBp"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 41F1CC19424;
+	Wed, 15 Apr 2026 23:56:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1776297406;
+	bh=WedYa8zBhzwChCkA0+jjnksGsJU9fpYmcpNqM/1eKj0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=LCJBkIBpgqSmIIhUQOUMOym1TibUiZluDKTHChL2Z9UY/UoUj4IWN1rmsi73Kqc+O
+	 0fac+kT6Nbm9rNDd0RCEBW77a8pj2161p5nJj2PJulqvpyUbwz1dSTEdN5c71usTeJ
+	 xFR7OVP8PPKv0UoBsb11FvwVYp/1lC0r7/UsckVcmcobglxeNKp2g3DJ3UK3/y8zYF
+	 skWDpxVEValM7PYqrCUwHwUuvX0RDlYAgcmIR2PVN1rGt0Tad9dN3AGIfPfJ15cI+y
+	 yh6DPi86ADtmzh1sbHm5K2lz1SVANqu//wf7Jq6uAnV9N2bjt8bPFyHvZ2sd3vx2Qs
+	 s29XqL3AJ/DnQ==
+Date: Wed, 15 Apr 2026 16:56:45 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Ye Bin <yebin@huaweicloud.com>
 Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, wangguanyu@vivo.com,
-        Baolin Liu <liubaolin@kylinos.cn>
-Subject: Re: [PATCH v1] ext4: add mb_stats_clear for mballoc statistics
-Message-ID: <ad_mguIqaOT-pEmh@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260414100212.95209-1-liubaolin12138@163.com>
+	jack@suse.cz
+Subject: Re: [PATCH v2 2/4] ext4: skip cursor node in ext4_orphan_del()
+Message-ID: <20260415235645.GA114178@frogsfrogsfrogs>
+References: <20260415105505.342358-1-yebin@huaweicloud.com>
+ <20260415105505.342358-3-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,48 +43,67 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260414100212.95209-1-liubaolin12138@163.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: ix5iUEyB-wPr_UgVJeh11OHM2xRKuNql
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNDE1MDE4MCBTYWx0ZWRfX8suWA81L5td0
- 2zCNQo5IsIkOLhxo7ec7bnh6ysEelF4mtIcJ/YwxXSQlkGxuSVZVK2PNF7TJ2SN1yurU1USzKAl
- T7NNngczUKntqFBNGXIUVO15sVmSnvnOS1EskQlpxuZQdy8Xf+qqSUhSNgdTwzl3BlwRjBE6Cjr
- I8uvgnuuVhpIZv0144XPZn6TIxANTBmRSLinRd6L7kOAEl4lFioyxSLrhJbBZS77HWDp75L2UvQ
- j4YAbLVNK7b6hDbalTmas3E6Q1urlIOqA4iN0XTx3xi5a3hyCco8l67jNTOP9ACL3/dmVEjLX+6
- 7BmWUwe2Jbra9j/UTQivtCfCIWXz4+c7Jm9WAUJNOLZbTWQw6G1uk8Kl5NytcuA6+OdQXxarZKn
- INpMn46PJRWIh4X68jv8BBslgdlYlpjSMpKR9KiXj02ISIGl6Ks+RYadThPSS+lBEjllUAbkcp+
- Uv0QPsEoOsGCs3U6Zcg==
-X-Proofpoint-ORIG-GUID: XrqOsl1uQFRV9dDDYmaToKkNXeqqTSOp
-X-Authority-Analysis: v=2.4 cv=FY4HAp+6 c=1 sm=1 tr=0 ts=69dfe68b cx=c_pps
- a=3Bg1Hr4SwmMryq2xdFQyZA==:117 a=3Bg1Hr4SwmMryq2xdFQyZA==:17
- a=kj9zAlcOel0A:10 a=A5OVakUREuEA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=KrRLzkSUTx881rGj9LEA:9
- a=CjuIK1q_8ugA:10
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-04-15_01,2026-04-13_04,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- adultscore=0 priorityscore=1501 bulkscore=0 impostorscore=0 spamscore=0
- lowpriorityscore=0 suspectscore=0 clxscore=1011 malwarescore=0 phishscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2604070000 definitions=main-2604150180
+In-Reply-To: <20260415105505.342358-3-yebin@huaweicloud.com>
 
-On Tue, Apr 14, 2026 at 06:02:11PM +0800, Baolin Liu wrote:
-> From: Baolin Liu <liubaolin@kylinos.cn>
+On Wed, Apr 15, 2026 at 06:55:03PM +0800, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
 > 
-> Add a write-only mb_stats_clear sysfs knob to reset ext4 mballoc
-> runtime statistics.This makes it easier to inspect allocator
-> activity for a specific workload instead of using counters
-> accumulated since mount.
+> This patch is prepared for displaying orphan_list information. Because
+> temporary nodes may be inserted when the orphan_list is traversed and
+> displayed, these temporary nodes need to be skipped.
 > 
-> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
+> ---
+>  fs/ext4/orphan.c | 20 +++++++++++++++++++-
+>  1 file changed, 19 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+> index f7e7f77e021e..a6bffe67ef75 100644
+> --- a/fs/ext4/orphan.c
+> +++ b/fs/ext4/orphan.c
+> @@ -220,6 +220,23 @@ static int ext4_orphan_file_del(handle_t *handle, struct inode *inode)
+>  	return ret;
+>  }
+>  
+> +static inline bool ext4_is_cursor(struct inode *inode)
+> +{
+> +	return (inode->i_ino == 0);
+> +}
+> +
+> +static inline struct list_head *ext4_orphan_prev_node(
+> +					struct ext4_inode_info *pos,
+> +					struct list_head *head)
+> +{
+> +	list_for_each_entry_continue_reverse(pos, head, i_orphan) {
+> +		if (likely(!ext4_is_cursor(&pos->vfs_inode)))
+> +			return &pos->i_orphan;
+> +	}
+> +
+> +	return head;
 
-The patch looks good to me Baolin. We just need to add documentation of
-this to the Documentation/ABI/testing/sysfs-fs-ext4 file so that the
-users know what it is and the fact that the only value we allow to write
-is 1. 
+Waitaminute, you inject the procfs file's cursor into the orphan list
+with a phony ext4_inode_info??  That sounds like a landmine waiting to
+go off the next time someone writes code that traverses the list, or
+even wants to check that its non-empty.
 
-Regards,
-ojaswin
+--D
 
+> +}
+> +
+>  /*
+>   * ext4_orphan_del() removes an unlinked or truncated inode from the list
+>   * of such inodes stored on disk, because it is finally being cleaned up.
+> @@ -253,7 +270,8 @@ int ext4_orphan_del(handle_t *handle, struct inode *inode)
+>  	mutex_lock(&sbi->s_orphan_lock);
+>  	ext4_debug("remove inode %llu from orphan list\n", inode->i_ino);
+>  
+> -	prev = ei->i_orphan.prev;
+> +	prev = ext4_orphan_prev_node(ei, &sbi->s_orphan);
+> +
+>  	list_del_init(&ei->i_orphan);
+>  
+>  	/* If we're on an error path, we may not have a valid
+> -- 
+> 2.34.1
+> 
+> 
