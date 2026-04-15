@@ -1,36 +1,36 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA8933491D0
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA811347FD0
 	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 10:57:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776250668; cv=none; b=DK9nv+1qYjKV5Hr+LxSgW6ZWr6WOJaP2kHU84b0uewX8TnxfnaZvKNu6Lkmkmj1tRH6/Va8bhbqboL9cF8wqoxxhcCM/LZEFIPlxvfSC4unBJX6qMOHGOjN8WEkXwx8QQLQKF1lCI8c5ZjR+aLEtod5Mql37yFJAJuzztYcgOuw=
+	t=1776250668; cv=none; b=APBUr6BQwmn6e2m2tz7dxvqKNXQ2F6QuJRKZ+ZcoJ3DqOqIikrIeAwJ0DdyV7wmx5+d6PjEIY/9CjaLEDd0hHIcMESjHpyLzlzCrei64yIcf97Q1a0X+LzmQbYjR1odCYZSdTEbRDJ20TG7abc5QMw/3BaJ03+kvreFvKjX4gOQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1776250668; c=relaxed/simple;
-	bh=K3gW/q82FCk0AlfMaNRJQvvnTld23QVn0QVTztoK/M8=;
+	bh=QMgA0vjYT1SaSCMl22Tl4PgBTOQAAWQE1b0ZB0vyKAw=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=YNziGiyb9/A/wBxZpFeHCFZuxemIuGdgB8icV8EWkhDnlBA44vquLiaYFbwICS078qVQmrBQIwB6P1dQV/8Nz5yPzLhF8nRirlKA1PiGW+lXy+dGVZmTLGtaBSWU6K6pmRjsQeuGqe5x8a5O05bW2sG4mBHOqhg96iVTWsZHSbo=
+	 MIME-Version; b=cP1eYzs2zCN04kcsIc34fccRH/cn/GZczhEEukpvZN//8WhITS7YNpMj6iQlx6+bpPRTO4CZBL0ob3PDkCDwuK8U47ThZBL2dGPGiSTSc8lGegzoNkBe8P78ZgIyMP+CwF6qerhXpI44GAAOKLC21l6L8QPnSyew7Cng+9Z/YS4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fwdPb64gCzYQtpY
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fwdPb6FgBzYQtpY
 	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:56:51 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id BD7DC40577
+	by mail.maildlp.com (Postfix) with ESMTP id C530D4058D
 	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:57:37 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP3 (Coremail) with SMTP id _Ch0CgAHtL0fb99pbf70AQ--.45727S7;
+	by APP3 (Coremail) with SMTP id _Ch0CgAHtL0fb99pbf70AQ--.45727S8;
 	Wed, 15 Apr 2026 18:57:37 +0800 (CST)
 From: Ye Bin <yebin@huaweicloud.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org
 Cc: jack@suse.cz
-Subject: [PATCH v2 3/4] ext4: show inode orphan list detail information
-Date: Wed, 15 Apr 2026 18:55:04 +0800
-Message-Id: <20260415105505.342358-4-yebin@huaweicloud.com>
+Subject: [PATCH v2 4/4] ext4: show orphan file inode detail info
+Date: Wed, 15 Apr 2026 18:55:05 +0800
+Message-Id: <20260415105505.342358-5-yebin@huaweicloud.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260415105505.342358-1-yebin@huaweicloud.com>
 References: <20260415105505.342358-1-yebin@huaweicloud.com>
@@ -41,192 +41,281 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgAHtL0fb99pbf70AQ--.45727S7
-X-Coremail-Antispam: 1UD129KBjvJXoWxJFy3Zr1kur48Jr1DGry5twb_yoWruw1UpF
-	s8J34rAan8Was3WF4ftF4UXrnay3WxG3y5Jr9I93yFqrW5XryIqF18tw1UZF98ArW8Gr90
-	qw4jgFW5Kr10grDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvlb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUWw
-	A2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-	w2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-	WxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
-	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
-	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
-	JVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJV
-	W8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF
-	1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6x
-	IIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvE
-	x4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvj
-	DU0xZFpf9x07jec_-UUUUU=
+X-CM-TRANSID:_Ch0CgAHtL0fb99pbf70AQ--.45727S8
+X-Coremail-Antispam: 1UD129KBjvJXoW3AryfCr1xWrW8KF1DAw45trb_yoWxtrWUpF
+	s8Kr95Aa1UWas5Wan7XF4UXrn3t3WxK34UJrya93yFvFyYvr17tF18J3WUuF98ArW8Jrn0
+	gw4jgFWUKF4UZFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvKb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+	AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
+	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
+	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
+	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
+	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
+	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
+	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
+	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
+	VjvjDU0xZFpf9x07jeVbkUUUUU=
 X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
 
 From: Ye Bin <yebin10@huawei.com>
 
-Some inodes added to the orphan list are due to truncation, while others
-are due to deletion.Therefore, we printed the information of inode as
-follows: inode number/i_nlink/i_size/i_blocks/projid/file path. By using
-this information, it is possible to quickly identify files that have been
-deleted but are still being referenced.
+Support show inode information in orphan file.
 
 Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- fs/ext4/orphan.c | 128 ++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 126 insertions(+), 2 deletions(-)
+ fs/ext4/orphan.c | 179 ++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 146 insertions(+), 33 deletions(-)
 
 diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
-index a6bffe67ef75..4d6f8c9edaeb 100644
+index 4d6f8c9edaeb..715d04e386d0 100644
 --- a/fs/ext4/orphan.c
 +++ b/fs/ext4/orphan.c
-@@ -682,23 +682,147 @@ struct ext4_proc_orphan {
+@@ -680,6 +680,11 @@ int ext4_orphan_file_empty(struct super_block *sb)
+ 
+ struct ext4_proc_orphan {
  	struct ext4_inode_info cursor;
++	struct ext4_orphan_info *oi;
++	int inodes_per_ob;
++	int block_idx;
++	int offset;
++	bool orphan_file;
  };
  
--static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
-+static struct inode *ext4_list_next(struct ext4_proc_orphan *s,
-+				    struct list_head *head,
-+				    struct list_head *p)
- {
-+	list_for_each_continue(p, head) {
-+		struct ext4_inode_info *ei;
-+		struct inode *inode;
-+
-+		ei = list_entry(p, typeof(*ei), i_orphan);
-+		inode = &ei->vfs_inode;
-+
-+		/*
-+		 * It is safe to insert a cursor into the orphan list
-+		 * because ext4_orphan_del() will skip cursor. When the
-+		 * orphan list is processed in ext4_put_super(),
-+		 * ext4_seq_orphan_release() must have already been called,
-+		 * so the cursor must have already been removed from the
-+		 * orphan list.Therefore, there will be no access to a
-+		 * stale cursor.
-+		 */
-+		list_move(&s->cursor.i_orphan, &ei->i_orphan);
-+
-+		/*
-+		 * Because the cursor has moved to the node after the
-+		 * current node, the traversal cannot continue from the
-+		 * current node. Instead, the traversal should continue
-+		 * from the cursor.
-+		 */
-+		p = &s->cursor.i_orphan;
-+
-+		if (ext4_is_cursor(inode))
-+			continue;
-+
-+		if (!igrab(inode))
-+			continue;
-+
-+		return inode;
-+	}
-+
+ static struct inode *ext4_list_next(struct ext4_proc_orphan *s,
+@@ -724,24 +729,94 @@ static struct inode *ext4_list_next(struct ext4_proc_orphan *s,
  	return NULL;
  }
  
-+static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
++static struct inode *ext4_orphan_file_next(struct ext4_proc_orphan *s,
++					   struct super_block *sb)
 +{
-+	struct ext4_proc_orphan *s = seq->private;
-+	struct super_block *sb = pde_data(file_inode(seq->file));
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct list_head *prev;
++	struct inode *inode = NULL;
++	struct ext4_orphan_info *oi = s->oi;
 +
-+	mutex_lock(&sbi->s_orphan_lock);
++	for (; s->block_idx < oi->of_blocks; s->block_idx++) {
++		int idx = s->block_idx;
++		struct ext4_orphan_block *binfo = &oi->of_binfo[idx];
++		__le32 *bdata = (__le32 *)(binfo->ob_bh->b_data);
 +
-+	if (!*pos) {
-+		prev = &sbi->s_orphan;
-+	} else {
-+		prev = &s->cursor.i_orphan;
-+		if (list_empty(prev))
-+			return NULL;
++		if (atomic_read(&binfo->ob_free_entries) ==
++				s->inodes_per_ob) {
++			s->offset = 0;
++			continue;
++		}
++		for (; s->offset < s->inodes_per_ob; s->offset++) {
++			u64 ino = le32_to_cpu(bdata[s->offset]);
++
++			if (!ino)
++				continue;
++			/*
++			 * Orphan nodes in the running state are those
++			 * inodes that are still in use, so here we get
++			 * them from the cache if available.
++			 */
++			inode = ilookup(sb, ino);
++			if (!inode)
++				continue;
++
++			if (!ext4_test_inode_state(inode,
++						EXT4_STATE_ORPHAN_FILE)) {
++				iput(inode);
++				continue;
++			}
++
++			s->offset++;
++			if (s->offset == s->inodes_per_ob) {
++				s->offset = 0;
++				s->block_idx++;
++			}
++			return inode;
++		}
++
++		s->offset = 0;
 +	}
 +
-+	return ext4_list_next(s, &sbi->s_orphan, prev);
++	return NULL;
 +}
 +
+ static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
+ {
+ 	struct ext4_proc_orphan *s = seq->private;
+ 	struct super_block *sb = pde_data(file_inode(seq->file));
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct list_head *prev;
++	void *ret;
+ 
+-	mutex_lock(&sbi->s_orphan_lock);
++	if (!s->orphan_file) {
++		mutex_lock(&sbi->s_orphan_lock);
++		if (!*pos)
++			prev = &sbi->s_orphan;
++		else
++			prev = &s->cursor.i_orphan;
+ 
+-	if (!*pos) {
+-		prev = &sbi->s_orphan;
+-	} else {
+-		prev = &s->cursor.i_orphan;
+-		if (list_empty(prev))
++		/*
++		 * Here, the code checks whether the linked list is empty
++		 * because when the orphan_file feature is supported, the
++		 * cursor is removed from the linked list after the orphan
++		 * list is traversed. If the orphan_file feature is not
++		 * enabled, calling ext4_orphan_seq_start() again would
++		 * cause an infinite loop.
++		 */
++		if (!list_empty(prev)) {
++			ret = ext4_list_next(s, &sbi->s_orphan, prev);
++			if (ret)
++				return ret;
++		}
++
++		if (!s->oi)
+ 			return NULL;
++
++		list_del_init(&s->cursor.i_orphan);
++		mutex_unlock(&sbi->s_orphan_lock);
++		s->orphan_file = true;
+ 	}
+ 
+-	return ext4_list_next(s, &sbi->s_orphan, prev);
++	return ext4_orphan_file_next(s, sb);
+ }
+ 
  static void *ext4_orphan_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- {
--	return NULL;
-+	struct super_block *sb = pde_data(file_inode(seq->file));
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_proc_orphan *s = seq->private;
-+	struct inode *inode = v;
+@@ -750,19 +825,36 @@ static void *ext4_orphan_seq_next(struct seq_file *seq, void *v, loff_t *pos)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_proc_orphan *s = seq->private;
+ 	struct inode *inode = v;
++	void *ret;
+ 
+ 	++*pos;
+ 
+-	/*
+-	 * To prevent the deadlock caused by orphan node deletion when the
+-	 * last inode reference count is released, the inode reference
+-	 * count needs to be released in the unlocked state.
+-	 */
+-	mutex_unlock(&sbi->s_orphan_lock);
+-	iput(inode);
+-	mutex_lock(&sbi->s_orphan_lock);
++	if (!s->orphan_file) {
++		/*
++		 * To prevent the deadlock caused by orphan node deletion
++		 * when the last inode reference count is released, the
++		 * inode reference count needs to be released in the
++		 * unlocked state.
++		 */
++		mutex_unlock(&sbi->s_orphan_lock);
++		iput(inode);
++		mutex_lock(&sbi->s_orphan_lock);
 +
-+	++*pos;
++		ret = ext4_list_next(s, &sbi->s_orphan,
++				     &s->cursor.i_orphan);
++		if (ret)
++			return ret;
++		if (!s->oi)
++			return NULL;
++		list_del_init(&s->cursor.i_orphan);
++		mutex_unlock(&sbi->s_orphan_lock);
++		s->orphan_file = true;
++	} else {
++		iput(inode);
++	}
 +
-+	/*
-+	 * To prevent the deadlock caused by orphan node deletion when the
-+	 * last inode reference count is released, the inode reference
-+	 * count needs to be released in the unlocked state.
-+	 */
-+	mutex_unlock(&sbi->s_orphan_lock);
-+	iput(inode);
-+	mutex_lock(&sbi->s_orphan_lock);
-+
-+	return ext4_list_next(s, &sbi->s_orphan, &s->cursor.i_orphan);
-+}
-+
-+static void ext4_show_filename(struct seq_file *seq, struct inode *inode)
-+{
-+	struct dentry *dentry;
-+
-+	dentry = d_find_alias(inode);
-+	if (!dentry)
-+		dentry = d_find_any_alias(inode);
-+
-+	if (dentry)
-+		seq_dentry(seq, dentry, " \t\n\\");
-+	else
-+		seq_puts(seq, "unknown");
-+
-+	seq_puts(seq, "\"\n");
-+
-+	/*
-+	 * Since igrab() has already been called in ext4_list_next(), the
-+	 * inode will not be released here, so there will be no deadlock.
-+	 */
-+	dput(dentry);
+ 
+-	return ext4_list_next(s, &sbi->s_orphan, &s->cursor.i_orphan);
++	return ext4_orphan_file_next(s, sb);
  }
  
- static int ext4_orphan_seq_show(struct seq_file *seq, void *v)
- {
-+	struct inode *inode = v;
-+
-+	/*
-+	 * Print the original data without differentiating namespaces.
-+	 */
-+	seq_printf(seq, "ino: %llu, link: %u, size: %llu, blocks: %llu, proj: %u, path: \"",
-+		   inode->i_ino, inode->i_nlink,
-+		   i_size_read(inode), inode->i_blocks,
-+		   __kprojid_val(EXT4_I(inode)->i_projid));
-+
-+	ext4_show_filename(seq, inode);
-+
- 	return 0;
- }
+ static void ext4_show_filename(struct seq_file *seq, struct inode *inode)
+@@ -811,16 +903,28 @@ static void ext4_orphan_seq_stop(struct seq_file *seq, void *v)
+ 	struct ext4_proc_orphan *s = seq->private;
+ 	struct inode *inode = v;
  
- static void ext4_orphan_seq_stop(struct seq_file *seq, void *v)
- {
-+	struct super_block *sb = pde_data(file_inode(seq->file));
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_proc_orphan *s = seq->private;
-+	struct inode *inode = v;
-+
-+	/*
-+	 * stop() is called when the cache is full, so the traversal
-+	 * position needs to be moved back to the front of the current
-+	 * inode.
-+	 */
-+	if (v)
-+		list_move_tail(&s->cursor.i_orphan,
-+			       &EXT4_I(inode)->i_orphan);
-+
-+	mutex_unlock(&sbi->s_orphan_lock);
-+
-+	iput(inode);
- }
+-	/*
+-	 * stop() is called when the cache is full, so the traversal
+-	 * position needs to be moved back to the front of the current
+-	 * inode.
+-	 */
+-	if (v)
+-		list_move_tail(&s->cursor.i_orphan,
+-			       &EXT4_I(inode)->i_orphan);
++	if (!s->orphan_file) {
++		/*
++		 * stop() is called when the cache is full, so the
++		 * traversal position needs to be moved back to the
++		 * front of the current inode. If stop() due to EOF
++		 * then remove cursor from orphan list.
++		 */
++		if (inode)
++			list_move_tail(&s->cursor.i_orphan,
++				       &EXT4_I(inode)->i_orphan);
++		else
++			list_del_init(&s->cursor.i_orphan);
  
- const struct seq_operations ext4_orphan_seq_ops = {
+-	mutex_unlock(&sbi->s_orphan_lock);
++		mutex_unlock(&sbi->s_orphan_lock);
++	} else if (inode) {
++		if (s->offset) {
++			s->offset--;
++		} else if (s->block_idx) {
++			s->block_idx--;
++			s->offset = s->inodes_per_ob - 1;
++		}
++	}
+ 
+ 	iput(inode);
+ }
+@@ -836,15 +940,21 @@ static int ext4_seq_orphan_open(struct inode *inode, struct file *file)
+ {
+ 	int rc;
+ 	struct seq_file *m;
+-	struct ext4_proc_orphan *private;
++	struct ext4_proc_orphan *s;
+ 
+ 	rc = seq_open_private(file, &ext4_orphan_seq_ops,
+ 			      sizeof(struct ext4_proc_orphan));
+ 	if (!rc) {
++		struct super_block *sb = pde_data(file_inode(file));
+ 		m = file->private_data;
+-		private = m->private;
+-		INIT_LIST_HEAD(&private->cursor.i_orphan);
+-		private->cursor.vfs_inode.i_ino = 0;
++		s = m->private;
++		INIT_LIST_HEAD(&s->cursor.i_orphan);
++		s->cursor.vfs_inode.i_ino = 0;
++		s->orphan_file = 0;
++		if (ext4_has_feature_orphan_file(sb)) {
++			s->oi = &EXT4_SB(sb)->s_orphan_info;
++			s->inodes_per_ob = ext4_inodes_per_orphan_block(sb);
++		}
+ 	}
+ 
+ 	return rc;
+@@ -862,11 +972,14 @@ static int ext4_seq_orphan_release(struct inode *inode, struct file *file)
+ 	 * the entry from the 'pde->pde_openers' list. Therefore, when the
+ 	 * file is closed, proc_reg_release() will not call close_pdeo()
+ 	 * again because it cannot find the node on the 'pde->pde_openers'
+-	 * list. This prevents the UAF issue from occurring.
++	 * list. This prevents the UAF issue from occurring. Maybe, cursor
++	 * already removed in stop().
+ 	 */
+-	mutex_lock(&sbi->s_orphan_lock);
+-	list_del(&s->cursor.i_orphan);
+-	mutex_unlock(&sbi->s_orphan_lock);
++	if (!s->orphan_file) {
++		mutex_lock(&sbi->s_orphan_lock);
++		list_del(&s->cursor.i_orphan);
++		mutex_unlock(&sbi->s_orphan_lock);
++	}
+ 
+ 	return seq_release_private(inode, file);
+ }
 -- 
 2.34.1
 
