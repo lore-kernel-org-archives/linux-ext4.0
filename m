@@ -1,84 +1,73 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E13E53E3D8C
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 17:59:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E35273195E4;
+	Wed, 15 Apr 2026 18:53:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776275965; cv=none; b=UDEbmW5QiIuzkIzKFe6xm18fXSsMLRKStYpd4OdJNu7QuXyDcifOhMFT9jkJXh1nFcSzm/DPFFcCWiC2F2rGge/TYAWUccU5MNv4cIZVcjwhvAHQmrR/w3dZtQMQpKOjnHJ6TSuOsAHrQwND1/6/Mbsyv3Bl+SKbU+7D8ZjgPuU=
+	t=1776279219; cv=none; b=dH54lAdYun1PRsHWuH9t66vLvb8qHdlLgRpO2soD+aU4VKa4j+FR9YNQYv6kzleoPmlMAoiriwAPOf+KIOdvcxZhUQSlcAHfV047tsskoB5wvpScgPDZ+8BjUyITQ/x8Z7ofFhQImW+cgOrd2qKE0oGudofigbt0GcN25qYDcWA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776275965; c=relaxed/simple;
-	bh=nPhPTTWiwlwWX8Ov2dqUK0WbDtDa02Mv3zaNymxItzo=;
+	s=arc-20240116; t=1776279219; c=relaxed/simple;
+	bh=BfHvhcRYRMXMyjgbXJd2OY1+7840Oyx8s5yp4e8AJTs=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=a9wGxDn+7ARV6rP3iYMHWJTYsp7U+vXiS/SKMlD1230+e81vAeJiEzEulRntn6LZvvIKjGcW2VN3D5Vm9YGzO+BPAA7ma/GOafGjxH3Ir8N4XVaX+k/21+ZkUvx8QCrXR28LgbmnxCbR0HxU6gpLny/aAoiUUnEhCWa5e40ebEQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Hh6b6LAQ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Lf3VqkTG; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ijVV3bdH; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8ROWJqxS; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=shEO6C6ZIWdKMN53hACo479EgiRM5xyyaIe3WaXCadW4Pukb8sH+QdZyRVITzmXcR9unZ5rLvWOoPjt6mEZyn4uH9qCDZIMY91md7GpkICTJGGPCzA/8u7Kgd6iE2Yz+fCSTmdlwBFT8ocUaSAHnjTZ+Uoypz6bgUe0uSMe0Xv0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=gYpWdniD; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Hh6b6LAQ";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Lf3VqkTG";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ijVV3bdH";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8ROWJqxS"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id EAD405BD45;
-	Wed, 15 Apr 2026 17:59:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776275962; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
-	b=Hh6b6LAQAJmODJayP2iDs9KGKaw3NwLk+Mck9J9gZa+PJvYsaoycsDDaTzTL1MP92sHp+C
-	1JrrvXS1g0HUdaiApb2ObwW4vdxl+9dDM52h2fmNr3ao9Xp3ji97K9xfGBNezV/oIGp8j+
-	u9DUOA4ceFcPmGFn5gGdI1zlXLlpZjw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776275962;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
-	b=Lf3VqkTG5XJJvDKREbuCYCP4McNDHrNLmyEJ8db+thkVO10eHdTnmYk+m75BJi7trHaxxD
-	8XZ765BWB3Kr14Aw==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776275961; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
-	b=ijVV3bdHQOIP1RUxi/wayEm95hy7JAVbW3/Shyt78N1r9KlvTpz4AWjlM8tBk2GF4WIUVv
-	555bmKQN7xEYqoYWegpYnDFbzhnka6LGPaQNXc+Xj2yfEEi5NTHmGz5kWB9xKJiXw4hlKO
-	QxS5/Om0Rg3m3KH9VM5cvpf7DT19Nzc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776275961;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
-	b=8ROWJqxS7HN7Fju1EL1fwvFm8Oy6AuhMzM/C2mZhjXbuHh1HPKc+BRek/Kre4VhqaNTNAP
-	hCogJWI3pn6sbABA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DD0904BB30;
-	Wed, 15 Apr 2026 17:59:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id Vw+TNPnR32nhbQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 15 Apr 2026 17:59:21 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 990C9A0B59; Wed, 15 Apr 2026 19:59:17 +0200 (CEST)
-Date: Wed, 15 Apr 2026 19:59:17 +0200
-From: Jan Kara <jack@suse.cz>
-To: Ye Bin <yebin@huaweicloud.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
-	jack@suse.cz
-Subject: Re: [PATCH v2 0/4] show orphan file inode detail info
-Message-ID: <lweohtnu6fdvhi2fnbo7obo7vtvehsr4m6u4zwgeqx2abhgx3w@dv5e6zapdwlq>
-References: <20260415105505.342358-1-yebin@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="gYpWdniD"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 63FH8VFf1842719;
+	Wed, 15 Apr 2026 18:53:30 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=h4OpAubd9q5e7B6uB56+ahT00foe/q
+	dN8mEFhKjLCNE=; b=gYpWdniDGWhKzptNQkh7Tn6dlR7YwEX/0Fv3tw1fp0Mp+D
+	DzA8IlTFXcEIhi4iBhi0FkC/fQZBEVjG9wrq6fGf1fYqrOSzx4IgwRIgrn8vJTrt
+	iNxNXyHVFz98/IYXY7CpuQZtzu7cwF8juKjgrGltos8XGr5l1t6CXixUJ3KODY74
+	5qIzzomfefd60W36rOS+HFRwPtdgvaqkO4tMF4y0r95kZT5PeXHNlhQs9ABSQFbS
+	sz0jlfPcmRaxeSKfJhsLNH5DHiRtzTwq5P8BAu+lUx4Ec5qps8cjYOENzxYSknps
+	C76CudaieB3cBRXIu69KgzmqvSnr2yPjb9PZ3Azw==
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4dh89msr82-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 15 Apr 2026 18:53:30 +0000 (GMT)
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma12.dal12v.mail.ibm.com (8.18.1.2/8.18.1.2) with ESMTP id 63FGWFT6015621;
+	Wed, 15 Apr 2026 18:53:29 GMT
+Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
+	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4dg0msqrmu-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 15 Apr 2026 18:53:29 +0000
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 63FIrRWf53543244
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 15 Apr 2026 18:53:27 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 75D2220043;
+	Wed, 15 Apr 2026 18:53:27 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id EB9D220040;
+	Wed, 15 Apr 2026 18:53:24 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.25.126])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Wed, 15 Apr 2026 18:53:24 +0000 (GMT)
+Date: Thu, 16 Apr 2026 00:22:55 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Zorro Lang <zlang@redhat.com>,
+        fstests@vger.kernel.org, fdmanana@suse.com, ritesh.list@gmail.com,
+        naohiro.aota@wdc.com, wqu@suse.com, Disha Goel <disgoel@linux.ibm.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 4/6] generic/765: Ignore mkfs warning
+Message-ID: <ad_b2utxJPG1Sc0M@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <cover.1775802601.git.ojaswin@linux.ibm.com>
+ <afee4fedcc9b3685df0e05800d82b88d27f977f8.1775802601.git.ojaswin@linux.ibm.com>
+ <20260410165435.GU6212@frogsfrogsfrogs>
+ <advRgjl1tG4PMc6V@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <adyxi7156VAbL-G1@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <20260413162120.GV6212@frogsfrogsfrogs>
+ <20260413204215.GA5461@macsyma-wired.lan>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -87,91 +76,60 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260415105505.342358-1-yebin@huaweicloud.com>
-X-Spam-Score: -3.80
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	ARC_NA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[5];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,huawei.com:email]
-X-Spam-Flag: NO
+In-Reply-To: <20260413204215.GA5461@macsyma-wired.lan>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNDE1MDE3NSBTYWx0ZWRfX++/ljNaxRJz7
+ WNRLniE1JFS1qRLN0NqO/BnJOjWEV6sApMH63qu4eVVJhLY5sZ204Gq+4nURoHzP8PsM5nDM193
+ 8RU3DhVyvYna+SEpPRHjzMFemTDiqgjVwSk4HPBJPhvkPGPTpNM9olO8ISSYQ7ND8QqNI+6MWiE
+ xFUAB3riNsjW4Iyz/Ugl8TfiyC/q3UFWb5/pByBbE4O6mb16tDWre+Kuy2wiKCnNDV70E2tUZsP
+ vN/4E0QtGlAQGUfVs9No201KWkp5e3A7Lp+4lNUfZNuiZwMiU5tZOalD2uEFwJreiOdzJ4FCoay
+ VE+yqGuJtZqCoqOpe1R6njO98BJU2A3QiY4eE+ts2TZKw4F75hxc6KE8gedKb2eP1Atu/Fc1Zu/
+ 3XqXM6nOd4IjEMWUOQWhXw/f117zbK1fYQ4ZjQIgktvsfRc0rweIyPq1nJS3QSr+8VrjgeWKY+T
+ aGo+toae3sGLdm9tejw==
+X-Authority-Analysis: v=2.4 cv=eJ4jSnp1 c=1 sm=1 tr=0 ts=69dfdeaa cx=c_pps
+ a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
+ a=kj9zAlcOel0A:10 a=A5OVakUREuEA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=66D-73G8LnB4jtNC3wMA:9
+ a=CjuIK1q_8ugA:10
+X-Proofpoint-GUID: FAMMwvCd3pJ_QqljpiaUgoGKtuIBZMov
+X-Proofpoint-ORIG-GUID: plDz-XMIJxM4rI7fkQEcwMY8q8R7ic8V
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
+ definitions=2026-04-15_01,2026-04-13_04,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 lowpriorityscore=0 adultscore=0 priorityscore=1501
+ clxscore=1015 bulkscore=0 suspectscore=0 spamscore=0 impostorscore=0
+ phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2604070000
+ definitions=main-2604150175
 
-Hello!
-
-On Wed 15-04-26 18:55:01, Ye Bin wrote:
-> From: Ye Bin <yebin10@huawei.com>
+On Mon, Apr 13, 2026 at 04:42:15PM -0400, Theodore Tso wrote:
+> > > > > > The output can get corrupted with warnings like below because clustersize
+> > > > > > more than 16xbs is experimental:
+> > > > > > 
+> > > > > > + 16 times the block size is considered experimental
+> > > > > > 
+> > > > > > Hence pipe these to seqres.full to avoid false negatives.
 > 
-> Diffs v2 vs v1:
-> (1) Fix sashiko review issues:
-> https://sashiko.dev/#/patchset/20260403082507.1882703-1-yebin%40huaweicloud.com
-> (2) Change "orphan_list" file mode from 0444 to 0400;
-> (3) The display format of the "orphan_list" file is modified according
->     to Andreas' suggestions.
-> Fault injection tests have been conducted to address the issues raised
-> in the sashik review. There is no UAF issue in the ext4_seq_orphan_release()
-> function. The reason for this has already been explained in the code comments.
-> In addition to the fault injection tests, we also performed a stress test by
-> observing the /proc/fs/ext4/XX/orphan_list and the concurrent processes of
-> adding and removing orphan nodes, and no issues were found so far.
+> You could also suppress the warnings using the -q option, for example:
 > 
+> mke2fs -Fq -t ext4 -O bigalloc,quota -b 4096 -C 131072 /tmp/foo.img 4G
 > 
-> In actual production environments, the issue of inconsistency between
-> df and du is frequently encountered. In many cases, the cause of the
-> problem can be identified through the use of lsof. However, when
-> overlayfs is combined with project quota configuration, the issue becomes
-> more complex and troublesome to diagnose. First, to determine the project
-> ID, one needs to obtain orphaned nodes using `fsck.ext4 -fn /dev/xx`, and
-> then retrieve file information through `debugfs`. However, the file names
-> cannot always be obtained, and it is often unclear which files they are.
-> To identify which files these are, one would need to use crash for online
-> debugging or use kprobe to gather information incrementally. However, some
-> customers in production environments do not agree to upload any tools, and
-> online debugging might impact the business. There are also scenarios where
-> files are opened in kernel mode, which do not generate file descriptors(fds),
-> making it impossible to identify which files were deleted but still have
-> references through lsof. This patchset adds a procfs interface to query
-> information about orphaned nodes, which can assist in the analysis and
-> localization of such issues.
+> > > Futher, mke2fs has multiple instances where we print warnings to stderr,
+> > > should we go and fix all of them as well?
+> > 
+> > "stderr" meaning "standard error", I'd say that errors are anything that
+> > prohibits the format from completing, and only errors should go there.
+> 
+> Sure, I'll accept those changes.  But adding -q will allow the test to
+> pass using older versions of e2fsprogs, while still allowing stderr to
+> go out the expected output.
 
-Ye, did you read my comments to the v1 of the patchset [1]? I didn't see
-any reply from you. I don't think this is a good way how to expose orphan
-information for a filesystem for reasons I've outlined in that email.
+Okay cool, I'll send the patches.
 
-								Honza
-
-[1] https://lore.kernel.org/all/n4sccudy5avcgnkdhc27rzofzoprxqtwhfrlmsh3yyrj6vbc6d@mmu73gmtawkq/
+thanks,
+ojaswin
 
 > 
-> Ye Bin (4):
->   ext4: register 'orphan_list' procfs
->   ext4: skip cursor node in ext4_orphan_del()
->   ext4: show inode orphan list detail information
->   ext4: show orphan file inode detail info
-> 
->  fs/ext4/ext4.h   |   1 +
->  fs/ext4/orphan.c | 326 ++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/ext4/sysfs.c  |   2 +
->  3 files changed, 328 insertions(+), 1 deletion(-)
-> 
-> -- 
-> 2.34.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> 					- Ted
