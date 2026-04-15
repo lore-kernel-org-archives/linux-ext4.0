@@ -1,38 +1,83 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA811347FD0
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 10:57:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E13E53E3D8C
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 17:59:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776250668; cv=none; b=APBUr6BQwmn6e2m2tz7dxvqKNXQ2F6QuJRKZ+ZcoJ3DqOqIikrIeAwJ0DdyV7wmx5+d6PjEIY/9CjaLEDd0hHIcMESjHpyLzlzCrei64yIcf97Q1a0X+LzmQbYjR1odCYZSdTEbRDJ20TG7abc5QMw/3BaJ03+kvreFvKjX4gOQ=
+	t=1776275965; cv=none; b=UDEbmW5QiIuzkIzKFe6xm18fXSsMLRKStYpd4OdJNu7QuXyDcifOhMFT9jkJXh1nFcSzm/DPFFcCWiC2F2rGge/TYAWUccU5MNv4cIZVcjwhvAHQmrR/w3dZtQMQpKOjnHJ6TSuOsAHrQwND1/6/Mbsyv3Bl+SKbU+7D8ZjgPuU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776250668; c=relaxed/simple;
-	bh=QMgA0vjYT1SaSCMl22Tl4PgBTOQAAWQE1b0ZB0vyKAw=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=cP1eYzs2zCN04kcsIc34fccRH/cn/GZczhEEukpvZN//8WhITS7YNpMj6iQlx6+bpPRTO4CZBL0ob3PDkCDwuK8U47ThZBL2dGPGiSTSc8lGegzoNkBe8P78ZgIyMP+CwF6qerhXpI44GAAOKLC21l6L8QPnSyew7Cng+9Z/YS4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4fwdPb6FgBzYQtpY
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:56:51 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id C530D4058D
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:57:37 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.87.132])
-	by APP3 (Coremail) with SMTP id _Ch0CgAHtL0fb99pbf70AQ--.45727S8;
-	Wed, 15 Apr 2026 18:57:37 +0800 (CST)
-From: Ye Bin <yebin@huaweicloud.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org
-Cc: jack@suse.cz
-Subject: [PATCH v2 4/4] ext4: show orphan file inode detail info
-Date: Wed, 15 Apr 2026 18:55:05 +0800
-Message-Id: <20260415105505.342358-5-yebin@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260415105505.342358-1-yebin@huaweicloud.com>
+	s=arc-20240116; t=1776275965; c=relaxed/simple;
+	bh=nPhPTTWiwlwWX8Ov2dqUK0WbDtDa02Mv3zaNymxItzo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=a9wGxDn+7ARV6rP3iYMHWJTYsp7U+vXiS/SKMlD1230+e81vAeJiEzEulRntn6LZvvIKjGcW2VN3D5Vm9YGzO+BPAA7ma/GOafGjxH3Ir8N4XVaX+k/21+ZkUvx8QCrXR28LgbmnxCbR0HxU6gpLny/aAoiUUnEhCWa5e40ebEQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Hh6b6LAQ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Lf3VqkTG; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ijVV3bdH; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8ROWJqxS; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Hh6b6LAQ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Lf3VqkTG";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ijVV3bdH";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8ROWJqxS"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id EAD405BD45;
+	Wed, 15 Apr 2026 17:59:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1776275962; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
+	b=Hh6b6LAQAJmODJayP2iDs9KGKaw3NwLk+Mck9J9gZa+PJvYsaoycsDDaTzTL1MP92sHp+C
+	1JrrvXS1g0HUdaiApb2ObwW4vdxl+9dDM52h2fmNr3ao9Xp3ji97K9xfGBNezV/oIGp8j+
+	u9DUOA4ceFcPmGFn5gGdI1zlXLlpZjw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1776275962;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
+	b=Lf3VqkTG5XJJvDKREbuCYCP4McNDHrNLmyEJ8db+thkVO10eHdTnmYk+m75BJi7trHaxxD
+	8XZ765BWB3Kr14Aw==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1776275961; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
+	b=ijVV3bdHQOIP1RUxi/wayEm95hy7JAVbW3/Shyt78N1r9KlvTpz4AWjlM8tBk2GF4WIUVv
+	555bmKQN7xEYqoYWegpYnDFbzhnka6LGPaQNXc+Xj2yfEEi5NTHmGz5kWB9xKJiXw4hlKO
+	QxS5/Om0Rg3m3KH9VM5cvpf7DT19Nzc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1776275961;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=GRgWkXxWbhqTeZSQjO2XR41qFMF5O21UcprOlIQi2vI=;
+	b=8ROWJqxS7HN7Fju1EL1fwvFm8Oy6AuhMzM/C2mZhjXbuHh1HPKc+BRek/Kre4VhqaNTNAP
+	hCogJWI3pn6sbABA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DD0904BB30;
+	Wed, 15 Apr 2026 17:59:21 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Vw+TNPnR32nhbQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 15 Apr 2026 17:59:21 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 990C9A0B59; Wed, 15 Apr 2026 19:59:17 +0200 (CEST)
+Date: Wed, 15 Apr 2026 19:59:17 +0200
+From: Jan Kara <jack@suse.cz>
+To: Ye Bin <yebin@huaweicloud.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, 
+	jack@suse.cz
+Subject: Re: [PATCH v2 0/4] show orphan file inode detail info
+Message-ID: <lweohtnu6fdvhi2fnbo7obo7vtvehsr4m6u4zwgeqx2abhgx3w@dv5e6zapdwlq>
 References: <20260415105505.342358-1-yebin@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -40,282 +85,93 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgAHtL0fb99pbf70AQ--.45727S8
-X-Coremail-Antispam: 1UD129KBjvJXoW3AryfCr1xWrW8KF1DAw45trb_yoWxtrWUpF
-	s8Kr95Aa1UWas5Wan7XF4UXrn3t3WxK34UJrya93yFvFyYvr17tF18J3WUuF98ArW8Jrn0
-	gw4jgFWUKF4UZFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvKb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-	Cq3wA2048vs2IY020Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-	rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-	AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAF
-	wI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2
-	WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkE
-	bVWUJVW8JwACjcxG0xvY0x0EwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-	67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
-	VjvjDU0xZFpf9x07jeVbkUUUUU=
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260415105505.342358-1-yebin@huaweicloud.com>
+X-Spam-Score: -3.80
+X-Spam-Level: 
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_COUNT_THREE(0.00)[3];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	FROM_HAS_DN(0.00)[];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCPT_COUNT_FIVE(0.00)[5];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,huawei.com:email]
+X-Spam-Flag: NO
 
-From: Ye Bin <yebin10@huawei.com>
+Hello!
 
-Support show inode information in orphan file.
+On Wed 15-04-26 18:55:01, Ye Bin wrote:
+> From: Ye Bin <yebin10@huawei.com>
+> 
+> Diffs v2 vs v1:
+> (1) Fix sashiko review issues:
+> https://sashiko.dev/#/patchset/20260403082507.1882703-1-yebin%40huaweicloud.com
+> (2) Change "orphan_list" file mode from 0444 to 0400;
+> (3) The display format of the "orphan_list" file is modified according
+>     to Andreas' suggestions.
+> Fault injection tests have been conducted to address the issues raised
+> in the sashik review. There is no UAF issue in the ext4_seq_orphan_release()
+> function. The reason for this has already been explained in the code comments.
+> In addition to the fault injection tests, we also performed a stress test by
+> observing the /proc/fs/ext4/XX/orphan_list and the concurrent processes of
+> adding and removing orphan nodes, and no issues were found so far.
+> 
+> 
+> In actual production environments, the issue of inconsistency between
+> df and du is frequently encountered. In many cases, the cause of the
+> problem can be identified through the use of lsof. However, when
+> overlayfs is combined with project quota configuration, the issue becomes
+> more complex and troublesome to diagnose. First, to determine the project
+> ID, one needs to obtain orphaned nodes using `fsck.ext4 -fn /dev/xx`, and
+> then retrieve file information through `debugfs`. However, the file names
+> cannot always be obtained, and it is often unclear which files they are.
+> To identify which files these are, one would need to use crash for online
+> debugging or use kprobe to gather information incrementally. However, some
+> customers in production environments do not agree to upload any tools, and
+> online debugging might impact the business. There are also scenarios where
+> files are opened in kernel mode, which do not generate file descriptors(fds),
+> making it impossible to identify which files were deleted but still have
+> references through lsof. This patchset adds a procfs interface to query
+> information about orphaned nodes, which can assist in the analysis and
+> localization of such issues.
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/orphan.c | 179 ++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 146 insertions(+), 33 deletions(-)
+Ye, did you read my comments to the v1 of the patchset [1]? I didn't see
+any reply from you. I don't think this is a good way how to expose orphan
+information for a filesystem for reasons I've outlined in that email.
 
-diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
-index 4d6f8c9edaeb..715d04e386d0 100644
---- a/fs/ext4/orphan.c
-+++ b/fs/ext4/orphan.c
-@@ -680,6 +680,11 @@ int ext4_orphan_file_empty(struct super_block *sb)
- 
- struct ext4_proc_orphan {
- 	struct ext4_inode_info cursor;
-+	struct ext4_orphan_info *oi;
-+	int inodes_per_ob;
-+	int block_idx;
-+	int offset;
-+	bool orphan_file;
- };
- 
- static struct inode *ext4_list_next(struct ext4_proc_orphan *s,
-@@ -724,24 +729,94 @@ static struct inode *ext4_list_next(struct ext4_proc_orphan *s,
- 	return NULL;
- }
- 
-+static struct inode *ext4_orphan_file_next(struct ext4_proc_orphan *s,
-+					   struct super_block *sb)
-+{
-+	struct inode *inode = NULL;
-+	struct ext4_orphan_info *oi = s->oi;
-+
-+	for (; s->block_idx < oi->of_blocks; s->block_idx++) {
-+		int idx = s->block_idx;
-+		struct ext4_orphan_block *binfo = &oi->of_binfo[idx];
-+		__le32 *bdata = (__le32 *)(binfo->ob_bh->b_data);
-+
-+		if (atomic_read(&binfo->ob_free_entries) ==
-+				s->inodes_per_ob) {
-+			s->offset = 0;
-+			continue;
-+		}
-+		for (; s->offset < s->inodes_per_ob; s->offset++) {
-+			u64 ino = le32_to_cpu(bdata[s->offset]);
-+
-+			if (!ino)
-+				continue;
-+			/*
-+			 * Orphan nodes in the running state are those
-+			 * inodes that are still in use, so here we get
-+			 * them from the cache if available.
-+			 */
-+			inode = ilookup(sb, ino);
-+			if (!inode)
-+				continue;
-+
-+			if (!ext4_test_inode_state(inode,
-+						EXT4_STATE_ORPHAN_FILE)) {
-+				iput(inode);
-+				continue;
-+			}
-+
-+			s->offset++;
-+			if (s->offset == s->inodes_per_ob) {
-+				s->offset = 0;
-+				s->block_idx++;
-+			}
-+			return inode;
-+		}
-+
-+		s->offset = 0;
-+	}
-+
-+	return NULL;
-+}
-+
- static void *ext4_orphan_seq_start(struct seq_file *seq, loff_t *pos)
- {
- 	struct ext4_proc_orphan *s = seq->private;
- 	struct super_block *sb = pde_data(file_inode(seq->file));
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct list_head *prev;
-+	void *ret;
- 
--	mutex_lock(&sbi->s_orphan_lock);
-+	if (!s->orphan_file) {
-+		mutex_lock(&sbi->s_orphan_lock);
-+		if (!*pos)
-+			prev = &sbi->s_orphan;
-+		else
-+			prev = &s->cursor.i_orphan;
- 
--	if (!*pos) {
--		prev = &sbi->s_orphan;
--	} else {
--		prev = &s->cursor.i_orphan;
--		if (list_empty(prev))
-+		/*
-+		 * Here, the code checks whether the linked list is empty
-+		 * because when the orphan_file feature is supported, the
-+		 * cursor is removed from the linked list after the orphan
-+		 * list is traversed. If the orphan_file feature is not
-+		 * enabled, calling ext4_orphan_seq_start() again would
-+		 * cause an infinite loop.
-+		 */
-+		if (!list_empty(prev)) {
-+			ret = ext4_list_next(s, &sbi->s_orphan, prev);
-+			if (ret)
-+				return ret;
-+		}
-+
-+		if (!s->oi)
- 			return NULL;
-+
-+		list_del_init(&s->cursor.i_orphan);
-+		mutex_unlock(&sbi->s_orphan_lock);
-+		s->orphan_file = true;
- 	}
- 
--	return ext4_list_next(s, &sbi->s_orphan, prev);
-+	return ext4_orphan_file_next(s, sb);
- }
- 
- static void *ext4_orphan_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-@@ -750,19 +825,36 @@ static void *ext4_orphan_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_proc_orphan *s = seq->private;
- 	struct inode *inode = v;
-+	void *ret;
- 
- 	++*pos;
- 
--	/*
--	 * To prevent the deadlock caused by orphan node deletion when the
--	 * last inode reference count is released, the inode reference
--	 * count needs to be released in the unlocked state.
--	 */
--	mutex_unlock(&sbi->s_orphan_lock);
--	iput(inode);
--	mutex_lock(&sbi->s_orphan_lock);
-+	if (!s->orphan_file) {
-+		/*
-+		 * To prevent the deadlock caused by orphan node deletion
-+		 * when the last inode reference count is released, the
-+		 * inode reference count needs to be released in the
-+		 * unlocked state.
-+		 */
-+		mutex_unlock(&sbi->s_orphan_lock);
-+		iput(inode);
-+		mutex_lock(&sbi->s_orphan_lock);
-+
-+		ret = ext4_list_next(s, &sbi->s_orphan,
-+				     &s->cursor.i_orphan);
-+		if (ret)
-+			return ret;
-+		if (!s->oi)
-+			return NULL;
-+		list_del_init(&s->cursor.i_orphan);
-+		mutex_unlock(&sbi->s_orphan_lock);
-+		s->orphan_file = true;
-+	} else {
-+		iput(inode);
-+	}
-+
- 
--	return ext4_list_next(s, &sbi->s_orphan, &s->cursor.i_orphan);
-+	return ext4_orphan_file_next(s, sb);
- }
- 
- static void ext4_show_filename(struct seq_file *seq, struct inode *inode)
-@@ -811,16 +903,28 @@ static void ext4_orphan_seq_stop(struct seq_file *seq, void *v)
- 	struct ext4_proc_orphan *s = seq->private;
- 	struct inode *inode = v;
- 
--	/*
--	 * stop() is called when the cache is full, so the traversal
--	 * position needs to be moved back to the front of the current
--	 * inode.
--	 */
--	if (v)
--		list_move_tail(&s->cursor.i_orphan,
--			       &EXT4_I(inode)->i_orphan);
-+	if (!s->orphan_file) {
-+		/*
-+		 * stop() is called when the cache is full, so the
-+		 * traversal position needs to be moved back to the
-+		 * front of the current inode. If stop() due to EOF
-+		 * then remove cursor from orphan list.
-+		 */
-+		if (inode)
-+			list_move_tail(&s->cursor.i_orphan,
-+				       &EXT4_I(inode)->i_orphan);
-+		else
-+			list_del_init(&s->cursor.i_orphan);
- 
--	mutex_unlock(&sbi->s_orphan_lock);
-+		mutex_unlock(&sbi->s_orphan_lock);
-+	} else if (inode) {
-+		if (s->offset) {
-+			s->offset--;
-+		} else if (s->block_idx) {
-+			s->block_idx--;
-+			s->offset = s->inodes_per_ob - 1;
-+		}
-+	}
- 
- 	iput(inode);
- }
-@@ -836,15 +940,21 @@ static int ext4_seq_orphan_open(struct inode *inode, struct file *file)
- {
- 	int rc;
- 	struct seq_file *m;
--	struct ext4_proc_orphan *private;
-+	struct ext4_proc_orphan *s;
- 
- 	rc = seq_open_private(file, &ext4_orphan_seq_ops,
- 			      sizeof(struct ext4_proc_orphan));
- 	if (!rc) {
-+		struct super_block *sb = pde_data(file_inode(file));
- 		m = file->private_data;
--		private = m->private;
--		INIT_LIST_HEAD(&private->cursor.i_orphan);
--		private->cursor.vfs_inode.i_ino = 0;
-+		s = m->private;
-+		INIT_LIST_HEAD(&s->cursor.i_orphan);
-+		s->cursor.vfs_inode.i_ino = 0;
-+		s->orphan_file = 0;
-+		if (ext4_has_feature_orphan_file(sb)) {
-+			s->oi = &EXT4_SB(sb)->s_orphan_info;
-+			s->inodes_per_ob = ext4_inodes_per_orphan_block(sb);
-+		}
- 	}
- 
- 	return rc;
-@@ -862,11 +972,14 @@ static int ext4_seq_orphan_release(struct inode *inode, struct file *file)
- 	 * the entry from the 'pde->pde_openers' list. Therefore, when the
- 	 * file is closed, proc_reg_release() will not call close_pdeo()
- 	 * again because it cannot find the node on the 'pde->pde_openers'
--	 * list. This prevents the UAF issue from occurring.
-+	 * list. This prevents the UAF issue from occurring. Maybe, cursor
-+	 * already removed in stop().
- 	 */
--	mutex_lock(&sbi->s_orphan_lock);
--	list_del(&s->cursor.i_orphan);
--	mutex_unlock(&sbi->s_orphan_lock);
-+	if (!s->orphan_file) {
-+		mutex_lock(&sbi->s_orphan_lock);
-+		list_del(&s->cursor.i_orphan);
-+		mutex_unlock(&sbi->s_orphan_lock);
-+	}
- 
- 	return seq_release_private(inode, file);
- }
+								Honza
+
+[1] https://lore.kernel.org/all/n4sccudy5avcgnkdhc27rzofzoprxqtwhfrlmsh3yyrj6vbc6d@mmu73gmtawkq/
+
+> 
+> Ye Bin (4):
+>   ext4: register 'orphan_list' procfs
+>   ext4: skip cursor node in ext4_orphan_del()
+>   ext4: show inode orphan list detail information
+>   ext4: show orphan file inode detail info
+> 
+>  fs/ext4/ext4.h   |   1 +
+>  fs/ext4/orphan.c | 326 ++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/ext4/sysfs.c  |   2 +
+>  3 files changed, 328 insertions(+), 1 deletion(-)
+> 
+> -- 
+> 2.34.1
+> 
 -- 
-2.34.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
