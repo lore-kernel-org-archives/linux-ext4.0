@@ -1,65 +1,65 @@
-Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
+Received: from mail-pj1-f52.google.com (mail-pj1-f52.google.com [209.85.216.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF1551E9B3A
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 01:14:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6C4321ABD7
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 01:35:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776302092; cv=none; b=ak4vwsBboZmk3CdEeJ7lumD4cH7pIsQdu8+ScrLPzyPJf/r93vt3/Vp3rrxhda6F6iw9vjDNvpQCOXhESmqKyH7DZq0PVgxgJ+h5Iad3Q1nEt8AvXuk4Hui9G2SUl1wXVHKQNVfPqR5ytcBKPIPRFBI1wtkjQFpEK1TUh4zkZvU=
+	t=1776303333; cv=none; b=lFkokVrjIMak6Kyt9Sj+hLeV5fHM8Pk7ClHya1qYPM2b6fowSfJVHJl+cnbcvAD8SEtoxFRTOt7a+aR0wEmHAlsKGtJyeS1AuFneEBL1OBBZUPNKmLsMvRxBHMjlA2io+4n+Z12ggZmHS13oreyRi2nda+58Pyles9yC9jGA+bs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776302092; c=relaxed/simple;
-	bh=7nO/2Avl3a4tzNRmx1loA/73W4Xv1tpW8HPuY+vGN2s=;
+	s=arc-20240116; t=1776303333; c=relaxed/simple;
+	bh=OUfLQlvSRYmq8b/tYOiTz9DRgTJoD51BTsiRRKFElKY=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=qT+8XB5bA6wMnChbfKM/iWny172QybBvXfBxtsZoeXUVkEZGA/4oRelHIgYofKedOU1h6J8hL+C3FXDO/UprucOSiyLeYwvPe307sMDU3uvHc+SD9nZ606wIeSOZfOf2keDOs9bPhsyCPUpj9WkvnvnTKdTvlz3L4hjCjHw6eZw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=PyNJc5+S; arc=none smtp.client-ip=209.85.216.45
+	 Message-Id:References:To; b=h0w8Vnn4JGHC5/tIyjGiJdpZdvIPfYpmotlF4I1qM5GvthgATkANKrLiKmIIi6ZgbG2dVvRJP2W2tAM+XeRc8o0G5S1v67Pm9+s8lao/7pvQgJGYOMGUyrGy4tKg0awNVaRCd8JV9QbC9K4Q0EAOVZo1YQyWepOq3cEmF32rDFs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=SGqGr9Fh; arc=none smtp.client-ip=209.85.216.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="PyNJc5+S"
-Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-35fb16e56efso2800566a91.2
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:14:50 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="SGqGr9Fh"
+Received: by mail-pj1-f52.google.com with SMTP id 98e67ed59e1d1-35da9c0c007so6416606a91.2
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2026 18:35:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1776302090; x=1776906890; darn=vger.kernel.org;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1776303331; x=1776908131; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=DtlTlsL6YYv4uiMFp8lCnKNg84sZfclP/UVzyqD0g5k=;
-        b=PyNJc5+SyuEIPCw7hhVQbdU4FcJGlGILgNDDGMucuBDcdTvXW70pDwoy9vjVmnmcnV
-         bzorNxZs67YKBedAe1dMdaGR+v4KXUiEuaJTt3jnZmGsmhe8Aebbk9NfzvcA5Rm+j38k
-         7VBCeUXXCUk3C3BYS4usam9Ngi77uvAtn9P19Tv3H1bjOW8t59ORqEgHB9suUWetiRvV
-         8+4l2SdVcXZE9e8DvYVjlNFw9RQCUwXEjq8O4GdmlmjFinT3pwIkgqD+cye7n2J3Aq2N
-         X7uZ+EfbwHPukHG1BAlHxlPqdWZmlJElxkvWVLCNEFqDqctmotdBiOQL51CvZ4hXdtVE
-         OLsQ==
+        bh=AYsib8kE3GPFho4+TI/7PNSbcA8dhEW8o3VOnnyFQc4=;
+        b=SGqGr9FhvhWjnL+LQq7XAbfJYIVjt7zVN2zKgzIhAnuvMlKhaCf/K8EOJMznQA7qLG
+         PT2qOGGYGRkSAvZVTnBMYu4Cg5IQiwJbHNZNrSGBJtCTvVWjiudjemgdBYeImoAOjfyC
+         o/1kr7c19CZhLm9LQBxsIcAsK816RniXSX0d5y7VRFzZLENot22KfNL8J4ATyK2fKLit
+         7Tgiy1IsfxKv2HcFxpb2uvgYqKh9XOLokn51RvFvS+RAVKLYJHYjdcr+PvphuCoXUwVk
+         mQLuUX7nhrVkQa1IYjAkg9os6zgDPc83OJganu9vZx1aUjuVQFGO8MhORKYCKNxLg4YP
+         r1Vg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776302090; x=1776906890;
+        d=1e100.net; s=20251104; t=1776303331; x=1776908131;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=DtlTlsL6YYv4uiMFp8lCnKNg84sZfclP/UVzyqD0g5k=;
-        b=EFq5bSYA+1VIte7RF9DxHvhD/T1nGMzw8nXrVQeA7Rigkqok6CNl1oD+J880JxyaCl
-         XZPpVhvZgtHNP06vWy3W1XpaJiuLTj64Fz8d9EW+kO+QGYnjaRsR41S2pA05XFfk28zy
-         2CCgyUMzglvF5T/yD8KPAoiq0kTqwB8+i4C3FnkCx3Ne1fOUrD3pPoUQ8MR8KrAACfNE
-         5+cDWUJxw1U9cw+yK6A7euMbwUZrRglbYHLJqG8xjgDhwn13uFo3yAeaxTcat9dJQLn1
-         eDwOiCq+blN3b8LM8ibaZjWr5CWP677pHyyUDeynqXjWOHQVetyLhetXEQwxAW5Suwbn
-         9Ngw==
-X-Forwarded-Encrypted: i=1; AFNElJ9/4MLt3OxRXQSZ0smJZ/UkvFVcq8AdJZVs+fRPHqV9ZpB2YtvJTzbT2BulITdzebS3NvNoNAXO1GfH@vger.kernel.org
-X-Gm-Message-State: AOJu0Yzz1sECEeGYLTVUi9ZBzKtonqIsFpi7yzdyTZxv+SPd+Y+hQ+7T
-	Jj0i7sV7LF7axUH5Y4CD9isK1//Pbkb8Bq35fauTT5qdks9svSHRVEAP83F1o5QRNhqAVPshdNm
-	bVJMZsOg=
-X-Gm-Gg: AeBDieu51E56nD5V5BoeiTI8PShCFxxSIc/aQn/bF8/xcVni8opEt7E+abbLeLUXeR6
-	3ghL04XejkUi5PzHbn2YjbwLM2qI3lK1pXPtrPQKlYtsL8EXP5jpyreVz27Ck/I2sOI4Gzp3GAa
-	kk7X8ymJD3jR8hJMMzDd7+rfCWhUQl/sGamA7VywXLv3106G4ElfmGKbnWKPqH8gux7FQ3MWek4
-	eDJAe0JYuk4/AVTpZ5QF2N7FQxKgtA2x9/TJLNK9Z5mZEijMVALy0GQLWu5Ol+bnhh5BxvZJ/4Z
-	b0hcvVeLLVsddcwsnr7cBizqL4b5V1qm1zFcZPWGcHkrNYKF0i6YlATJn63J7VlvhYCysfS8EAD
-	5aHdI//ppcWFm2IdIbPeJ5DFUygc3PJ11hhceE9XNoynyVyGK6tk/1QLMyIIuFRFVb3EUbDuR3i
-	xwBuFo81SaHR9SCDd/8GnSV/rYTGcLL/NX6nkoe0+W2ykAoF35wviZEHphITSX3mQPISY07xJ1x
-	9rtSLkWWa80XyOPuQ==
-X-Received: by 2002:a17:90b:2e0c:b0:35f:c729:de9b with SMTP id 98e67ed59e1d1-35fc729e0ffmr7982616a91.20.1776302090036;
-        Wed, 15 Apr 2026 18:14:50 -0700 (PDT)
+        bh=AYsib8kE3GPFho4+TI/7PNSbcA8dhEW8o3VOnnyFQc4=;
+        b=BZc5DssoUNnsDa6Pp3vu/ya1s9yWTodR0mMUqh/hNQW0V7cGvtAsJKMr2KulMMoPDc
+         cU8iEXI0y+CSA4pCQ5mQRzl0psJyogUOGMruAlQ8ZCGv1Na/5Vze7iB1XL/qiyjOt3f6
+         hH/BlmNhhQw2SjZRmxfFBlmC+e5Xi97HN4VWDeFHxgE6O4zi/u0NhGsvnxynzaCcO0dg
+         X1XDjBb7i9q9ZMgRpAI8KY6/+hMZHNdhPJg04I6jkf9xuUHqeVaYmM8q0YbgpDGllB3D
+         KC5L+FYQYvi7fz32dIgIhsuTyQIoYp70KvcJfsD0tnQGW6EIWGNpwUh13kasAZ1SlfJo
+         GV6A==
+X-Forwarded-Encrypted: i=1; AFNElJ88lutkePFbROn8OiodLVmDoZgQ6iErq2QhhMDJC6U7i8jxlgFCLREH7YCQnff2SVDBLF3sxpsrV/te@vger.kernel.org
+X-Gm-Message-State: AOJu0YxC+UHR/0O2VMtBWnHXHPfvgQ1yS1ShcbU5/4M1J7qnSeE+7vPE
+	NxQwyKNimawUytdYSScgANkJqSthbBuaA4X1apPN/hWyLj+MQi4vM7j4n7cr9PAFkpCTOtyIWSi
+	Vy2+d4YQ=
+X-Gm-Gg: AeBDiesj/jl7l5Ddvre9q43FKoDaed8WLcgUwqpnSB2Rk7YTCQa4z5gsQNJMdq1B0tW
+	Rte4d4zvM/1Cb5i+Mi+BLcPIBrS3WnXhO96vkPS8fzbAn7Ez6qEqI1sxcXIaS0eyNN+nM9IThEO
+	nKJx9b8LkPxqPH6RsQby8VfvVxV5fFarftSlNYVKFabQPkY6rBzLHg8xIo5uLbwQIBABvMpIWmz
+	BKlkaKD+gv9WND6EafJhTcclReqp5KHOXG8sJ5kOEA446gzZ8ne4wAM6DIhfDvQOeujmMz6e+yV
+	o2W+pb9VQzCsylkfzuwMViKOG3t+UKFZPZUwlODzZ3bUzJCDjiz8b9EulA/SiQ1tpNXBObQDEhE
+	JLX4HQHeuZ3e9tcwul0x4IB5qUMjePqPSIBPJQVGdAH7EjGkPoGzvGsh4tDnIIwAYYMnCFGS45b
+	GgToc/kjeXqXCrY2shmk7llCvsoOptVQCwFcPqR6V2S8qhvu4E/ddbiPuopoTCTeOJyic+6t72v
+	XMSVoWP4gqnsw0mPw==
+X-Received: by 2002:a17:90b:1804:b0:356:2c7b:c026 with SMTP id 98e67ed59e1d1-35e42853374mr26498956a91.23.1776303331141;
+        Wed, 15 Apr 2026 18:35:31 -0700 (PDT)
 Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-36132c87817sm315519a91.2.2026.04.15.18.14.48
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35fd07a972esm1799062a91.4.2026.04.15.18.35.30
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 15 Apr 2026 18:14:49 -0700 (PDT)
+        Wed, 15 Apr 2026 18:35:30 -0700 (PDT)
 Content-Type: text/plain;
 	charset=us-ascii
 Precedence: bulk
@@ -68,179 +68,76 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH v1] ext4: add mb_stats_clear for mballoc statistics
+Subject: Re: [PATCH] jbd2: enforce power-of-two default revoke hash size at
+ compile time
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260414100212.95209-1-liubaolin12138@163.com>
-Date: Wed, 15 Apr 2026 19:14:38 -0600
-Cc: tytso@mit.edu,
+In-Reply-To: <cjtirtqozud4keiu2fqi6sj3o4moimloti7celc4y44eejsn2y@i2tz72chmm34>
+Date: Wed, 15 Apr 2026 19:35:21 -0600
+Cc: Milos Nikic <nikic.milos@gmail.com>,
+ tytso@mit.edu,
  linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org,
- wangguanyu@vivo.com,
- Baolin Liu <liubaolin@kylinos.cn>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <C713AA9C-D640-4C5B-98BF-A5D88AE3B2A0@dilger.ca>
-References: <20260414100212.95209-1-liubaolin12138@163.com>
-To: Baolin Liu <liubaolin12138@163.com>
+ linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Message-Id: <C27553C0-0A8E-4BCF-8C6F-1D62A69841C1@dilger.ca>
+References: <20260413212724.127035-1-nikic.milos@gmail.com>
+ <cjtirtqozud4keiu2fqi6sj3o4moimloti7celc4y44eejsn2y@i2tz72chmm34>
+To: Jan Kara <jack@suse.cz>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Apr 14, 2026, at 04:02, Baolin Liu <liubaolin12138@163.com> wrote:
->=20
-> From: Baolin Liu <liubaolin@kylinos.cn>
->=20
-> Add a write-only mb_stats_clear sysfs knob to reset ext4 mballoc
-> runtime statistics. This makes it easier to inspect allocator
-> activity for a specific workload instead of using counters
-> accumulated since mount.
+On Apr 14, 2026, at 06:59, Jan Kara <jack@suse.cz> wrote:
+> 
+> On Mon 13-04-26 14:27:24, Milos Nikic wrote:
+>> The jbd2 revoke table relies on bitwise AND operations for fast hash
+>> indexing, which requires the hash table size to be a strict power of two.
+>> 
+>> Currently, this requirement is only enforced at runtime via a J_ASSERT
+>> in jbd2_journal_init_revoke(). While this successfully catches invalid
+>> dynamic allocations, it means a developer accidentally modifying the
+>> hardcoded JOURNAL_REVOKE_DEFAULT_HASH macro will experience a system
+>> panic upon mounting the filesystem during testing.
+>> 
+>> Add a BUILD_BUG_ON() in journal_init_common() to validate the default
+>> macro at compile time. This acts as an immediate, zero-overhead
+>> safeguard, preventing compilation entirely if the default hash size is
+>> mathematically invalid.
+>> 
+>> Signed-off-by: Milos Nikic <nikic.milos@gmail.com>
+> 
+> Eh, if you modify JOURNAL_REVOKE_DEFAULT_HASH you should better know what
+> you are doing and if you mess up, then the kernel failing with assertion
+> isn't that difficult to diagnose. So sorry I don't think this "cleanup" is
+> useful either.
 
-Rather than having a read-only "mb_stats" procfs file and a separate
-write-only "mb_stats_clear" sysfs file to clear "mb_stats", IMHO it
-would be more obvious to write directly to "/proc/fs/ext4/DEV/mb_stats"
-file to clear it.  Writing "0" would be logical to zero out the stats.
+Jan,
+this is a BUILD_BUG_ON() so it won't cause any runtime assertion.
 
-Cheers, Andreas
+Cheers, Andreas 
 
->=20
-> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
-> ---
-> fs/ext4/ext4.h    |  1 +
-> fs/ext4/mballoc.c | 31 +++++++++++++++++++++++++++++++
-> fs/ext4/sysfs.c   | 24 ++++++++++++++++++++++++
-> 3 files changed, 56 insertions(+)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 7617e2d454ea..3a32e1a515dd 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2995,6 +2995,7 @@ int ext4_fc_record_regions(struct super_block =
-*sb, int ino,
-> extern const struct seq_operations ext4_mb_seq_groups_ops;
-> extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
-> extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
-> +extern void ext4_mb_stats_clear(struct ext4_sb_info *sbi);
-> extern int ext4_mb_init(struct super_block *);
-> extern void ext4_mb_release(struct super_block *);
-> extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index bb58eafb87bc..382c91586b26 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3219,6 +3219,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, =
-void *offset)
-> }
-> seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
-> seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
-> + seq_printf(seq, "\tblocks_allocated: %u\n",
-> +   atomic_read(&sbi->s_bal_allocated));
->=20
-> seq_printf(seq, "\tgroups_scanned: %u\n",
->   atomic_read(&sbi->s_bal_groups_scanned));
-> @@ -4721,6 +4723,35 @@ static void ext4_mb_collect_stats(struct =
-ext4_allocation_context *ac)
-> trace_ext4_mballoc_prealloc(ac);
-> }
->=20
-> +void ext4_mb_stats_clear(struct ext4_sb_info *sbi)
-> +{
-> + int i;
-> +
-> + atomic_set(&sbi->s_bal_reqs, 0);
-> + atomic_set(&sbi->s_bal_success, 0);
-> + atomic_set(&sbi->s_bal_allocated, 0);
-> + atomic_set(&sbi->s_bal_groups_scanned, 0);
-> +
-> + for (i =3D 0; i < EXT4_MB_NUM_CRS; i++) {
-> + atomic64_set(&sbi->s_bal_cX_hits[i], 0);
-> + atomic64_set(&sbi->s_bal_cX_groups_considered[i], 0);
-> + atomic_set(&sbi->s_bal_cX_ex_scanned[i], 0);
-> + atomic64_set(&sbi->s_bal_cX_failed[i], 0);
-> + }
-> +
-> + atomic_set(&sbi->s_bal_ex_scanned, 0);
-> + atomic_set(&sbi->s_bal_goals, 0);
-> + atomic_set(&sbi->s_bal_stream_goals, 0);
-> + atomic_set(&sbi->s_bal_len_goals, 0);
-> + atomic_set(&sbi->s_bal_2orders, 0);
-> + atomic_set(&sbi->s_bal_breaks, 0);
-> + atomic_set(&sbi->s_mb_lost_chunks, 0);
-> + atomic_set(&sbi->s_mb_buddies_generated, 0);
-> + atomic64_set(&sbi->s_mb_generation_time, 0);
-> + atomic_set(&sbi->s_mb_preallocated, 0);
-> + atomic_set(&sbi->s_mb_discarded, 0);
-> +}
-> +
-> /*
->  * Called on failure; free up any blocks from the inode PA for this
->  * context.  We don't need this for MB_GROUP_PA because we only change
-> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-> index 923b375e017f..a5bd88a99f22 100644
-> --- a/fs/ext4/sysfs.c
-> +++ b/fs/ext4/sysfs.c
-> @@ -41,6 +41,7 @@ typedef enum {
-> attr_pointer_atomic,
-> attr_journal_task,
-> attr_err_report_sec,
-> + attr_mb_stats_clear,
-> } attr_id_t;
->=20
-> typedef enum {
-> @@ -161,6 +162,25 @@ static ssize_t err_report_sec_store(struct =
-ext4_sb_info *sbi,
-> return count;
-> }
->=20
-> +static ssize_t mb_stats_clear_store(struct ext4_sb_info *sbi,
-> +    const char *buf, size_t count)
-> +{
-> + int val;
-> + int ret;
-> +
-> + if (!capable(CAP_SYS_ADMIN))
-> + return -EPERM;
-> +
-> + ret =3D kstrtoint(skip_spaces(buf), 0, &val);
-> + if (ret)
-> + return ret;
-> + if (val !=3D 1)
-> + return -EINVAL;
-> +
-> + ext4_mb_stats_clear(sbi);
-> + return count;
-> +}
-> +
-> static ssize_t journal_task_show(struct ext4_sb_info *sbi, char *buf)
-> {
-> if (!sbi->s_journal)
-> @@ -251,6 +271,7 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, =
-0644, mb_order,
-> EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, =
-s_err_report_sec);
-> EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
-> EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
-> +EXT4_ATTR(mb_stats_clear, 0200, mb_stats_clear);
-> EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
-> EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
-> EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-> @@ -301,6 +322,7 @@ static struct attribute *ext4_attrs[] =3D {
-> ATTR_LIST(inode_readahead_blks),
-> ATTR_LIST(inode_goal),
-> ATTR_LIST(mb_stats),
-> + ATTR_LIST(mb_stats_clear),
-> ATTR_LIST(mb_max_to_scan),
-> ATTR_LIST(mb_min_to_scan),
-> ATTR_LIST(mb_order2_req),
-> @@ -561,6 +583,8 @@ static ssize_t ext4_attr_store(struct kobject =
-*kobj,
-> return trigger_test_error(sbi, buf, len);
-> case attr_err_report_sec:
-> return err_report_sec_store(sbi, buf, len);
-> + case attr_mb_stats_clear:
-> + return mb_stats_clear_store(sbi, buf, len);
-> default:
-> return ext4_generic_attr_store(a, sbi, buf, len);
-> }
-> --=20
-> 2.51.0
->=20
+> Honza
+> 
+>> ---
+>> fs/jbd2/journal.c | 1 +
+>> 1 file changed, 1 insertion(+)
+>> 
+>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+>> index 4f397fcdb13c..62b36a2fc4e2 100644
+>> --- a/fs/jbd2/journal.c
+>> +++ b/fs/jbd2/journal.c
+>> @@ -1565,6 +1565,7 @@ static journal_t *journal_init_common(struct 
+>>  	/* The journal is marked for error until we succeed with recovery! */
+>>  	journal->j_flags = JBD2_ABORT;
+>> 
+>> +	BUILD_BUG_ON(!is_power_of_2(JOURNAL_REVOKE_DEFAULT_HASH));
+>>  	/* Set up a default-sized revoke table for the new mount. */
+>>  	err = jbd2_journal_init_revoke(journal, JOURNAL_REVOKE_DEFAULT_HASH);
+>>  	if (err)
+>> -- 
+>> 2.53.0
+>> 
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
+> 
 
 
 Cheers, Andreas
