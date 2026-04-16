@@ -1,161 +1,169 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-ot1-f54.google.com (mail-ot1-f54.google.com [209.85.210.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEE6338F626
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 10:16:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48FCF2DC792
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 10:30:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776334574; cv=none; b=RLHQsYZx7buprFECwvlSlzTInS+c6e2gjq62BGkjc2AtUUqZhMVm4YSNfTI2ub3iu5V7i9/LC/3GvgtF7wmgxLAjPPWWtxBhm/K4eM9KiqsD4M4bt90oW0o+FrYlARxVSDTHvkX9ew25sjOI+qRB+yAZOUhRb0srjgfcK5SGI98=
+	t=1776335451; cv=none; b=ALDUdKU1V6EiYpeSxyMKVd3jJTVJbIxe/9P0L9S0EpfX25jMUcUD9o8NAAXAwGrzuhtywP0a0EEAREJzfmXK7jJ68yQ2q9gF2gEa3cun7sqXIjA6OYGXgl2zb/6qI213Lqsf2D5ocw+OuRMcrPZWa2UmGWThzCqKwFhKaN7Fv+s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776334574; c=relaxed/simple;
-	bh=fyghT8ME37ke8vvckm3H1nFwEQPuJVc0d+cZvvVHcDY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pYzp0kSckd/LsEWo5pRzkFAVN5yAOyJ2adBvUg3bTl1AtorSo2ww/3u+ezAgpq2O/N3lJk1VGW+kNQPo/VXPj9rioFjzydQRYozs6i4qdWKgbupxEboVxmbaflbfJ93MrXxscEb4GULaxCGS9siP9wghZiNhdRUOsn/O2RJQjCo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=mAOYj7x9; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=JawsL70j; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=mAOYj7x9; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=JawsL70j; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="mAOYj7x9";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="JawsL70j";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="mAOYj7x9";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="JawsL70j"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 538225BD14;
-	Thu, 16 Apr 2026 10:16:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776334570; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=41EOIJzPGQo3xHK22HH0MfdYe4Gf2Sonn5V7avucpHM=;
-	b=mAOYj7x9lmo7ALg6MaKYZF9ROfqKJszMoBQcfxj2evlvmF8un5ZrZfAoVtlxZTM3PtEQyU
-	bFJpcBWppQSw8WzyaU7JJMlXcBp1resgfCGXi+66E5akXIJtD1EZnnTTXLEEFasGQQDsI9
-	NWX9Wt+Hz3kMPctqmwHBiTftIyfdREU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776334570;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=41EOIJzPGQo3xHK22HH0MfdYe4Gf2Sonn5V7avucpHM=;
-	b=JawsL70jvBk2N1Q4xztPaic/sx85ArkcXsRLsTsrGChIpBTbsgCEb5yRh050K2G825SRJs
-	P80v1SvPQf8F2DBA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776334570; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=41EOIJzPGQo3xHK22HH0MfdYe4Gf2Sonn5V7avucpHM=;
-	b=mAOYj7x9lmo7ALg6MaKYZF9ROfqKJszMoBQcfxj2evlvmF8un5ZrZfAoVtlxZTM3PtEQyU
-	bFJpcBWppQSw8WzyaU7JJMlXcBp1resgfCGXi+66E5akXIJtD1EZnnTTXLEEFasGQQDsI9
-	NWX9Wt+Hz3kMPctqmwHBiTftIyfdREU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776334570;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=41EOIJzPGQo3xHK22HH0MfdYe4Gf2Sonn5V7avucpHM=;
-	b=JawsL70jvBk2N1Q4xztPaic/sx85ArkcXsRLsTsrGChIpBTbsgCEb5yRh050K2G825SRJs
-	P80v1SvPQf8F2DBA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4583C4BEE6;
-	Thu, 16 Apr 2026 10:16:10 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id uuHpEOq24GnpGgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 16 Apr 2026 10:16:10 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id E9CC8A0B30; Thu, 16 Apr 2026 12:16:05 +0200 (CEST)
-Date: Thu, 16 Apr 2026 12:16:05 +0200
-From: Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Jan Kara <jack@suse.cz>, Milos Nikic <nikic.milos@gmail.com>, 
-	tytso@mit.edu, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] jbd2: enforce power-of-two default revoke hash size at
- compile time
-Message-ID: <gq6n6m75h47lcr2hvmtlun7revnyf3bx3aanndglbh6djmrjcp@jmxhl7kf7bwu>
-References: <20260413212724.127035-1-nikic.milos@gmail.com>
- <cjtirtqozud4keiu2fqi6sj3o4moimloti7celc4y44eejsn2y@i2tz72chmm34>
- <C27553C0-0A8E-4BCF-8C6F-1D62A69841C1@dilger.ca>
+	s=arc-20240116; t=1776335451; c=relaxed/simple;
+	bh=Il5EilNKbQmVM1qv4XgxLAe02Z9+zxydkwUqJc2BPRU=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=kEYoXPIWe+o6lKg8hWQj2LDbNRaVcZ0hC9PsRAA6XG1M2sM2XeO5Pvl0B/BWeWwXTIp/MlbRFGig1a+ZYa+R9NeUQcZ2wbTc1libTLLc7kP4Wg2uWuUHo6TiolN83A/0bs6A2FEm+3y//sGrUlEKShqO04+vzD9lR2aLbCkepGk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.210.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-ot1-f54.google.com with SMTP id 46e09a7af769-7dbdcb85067so6554361a34.1
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 03:30:50 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776335449; x=1776940249;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=z9HEDsaws+1AaPEcUyrGjtCss1Kv3jZQFAB8Oib7mmY=;
+        b=Sg4ATQHxlDMJHahwf0LbmUBwi2FkCxN1dGBEWGTCDJn8AdA7V36D3fodcnMye5jua3
+         4DcwJPBB5w38d+PyJ+dSLwJEYdieGy9M0fDEnPTKoZtGMW7YD/JWYPsLn1bSBtGgohLF
+         2fNtlTF1rbvYk9Gfui2aWbgeIAWHqy3NSHvcftV+BSuNhYJ3h8iydGhL5tV+XTI+qA8T
+         bU0KVK/BmYe4XuY90cxcIPbQePT8OyhrjbjKumapnRSqOnyG64D1cZw4i4u3zkz2YmeQ
+         Lk/kDzuA2F+zrsFCDOouWgxiQsFY0CNYE71zsEQgoD1yZX2XkDB5wFsped2tb9XssIwN
+         +fOg==
+X-Forwarded-Encrypted: i=1; AFNElJ+2bgg4QnntY01JODv/YQpZmJOFeZb4eaotFiTv4KYPpv9qlo2BO2quXWTR7ikaStgAnZVMbnOjBn6m@vger.kernel.org
+X-Gm-Message-State: AOJu0YyrE3Rwdzlodw/aCf7+bG9Heo5lxGo5ho/mY3PTNhAny/fBeWK4
+	ttuUUx7ZCpGrCBPWMx9PLmKlVVkUzavhEl9+f3EhvHTLO5t5TmbIHH2abLQp/2o9
+X-Gm-Gg: AeBDiet2WY3jXkhKz1YmXRNEFT2TsgqlfC+VTMXad27fcGGXhpGFqUGWoVpIQJ6NTZa
+	1EI+h7baEyDrHeKfzhgbUZWq0JJh11LfEzSpV8pXb8QWtPHA4Nk3Ki85TZN64pGNhNED2hk0xSA
+	t8TX7v6a8EY6MXZxVn7srMrDGUyatzuMYN5NFv1R6GyBF8z5gRqT3nPtWa4jjMuMRr59Nadimz0
+	TYk3JOJtJstFfPnKQ1h0QZT6i5R9n8+BAbF9I+ht+2ZV8D2QYRWb6ad+lUklTV88cKdyf4SAdTQ
+	N+O7ezbRCCfipM9TkDeQJor26QP+WmfQk21v38mP9jJYQ84FhlDZ5WHnhOU/GSyC6VIq3OiU3N/
+	akKIE+f/SdGj7eoka42tsm0BVqQRqez04u0IIz7V5FJZ0mRkDYk0RSWij5EM8DV+kRrlEXBDRw2
+	t3v+A8RneecOM/iz8iHUzOyoWMaIQJiXtpdnQ6kT4ETKU1o7Bapuw+2+mC65S1dvjNGttLSA4=
+X-Received: by 2002:a05:6820:4c14:b0:67e:1e52:6e05 with SMTP id 006d021491bc7-68be86e246fmr13816312eaf.48.1776335449174;
+        Thu, 16 Apr 2026 03:30:49 -0700 (PDT)
+Received: from mail-oa1-f52.google.com (mail-oa1-f52.google.com. [209.85.160.52])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-6932ac8b833sm2343994eaf.3.2026.04.16.03.30.48
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 16 Apr 2026 03:30:49 -0700 (PDT)
+Received: by mail-oa1-f52.google.com with SMTP id 586e51a60fabf-40efc77933fso5167493fac.3
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2026 03:30:48 -0700 (PDT)
+X-Forwarded-Encrypted: i=1; AFNElJ8yVe5LO3IachWPJIHiLGK3Db3Ls2MGFGgmPUU4mEdJl88SfgdPXO1UmP89sxgJVtFsHtL3kkODimzt@vger.kernel.org
+X-Received: by 2002:a05:6102:c48:b0:608:cd24:354c with SMTP id
+ ada2fe7eead31-609fe9b0d22mr11966750137.3.1776335071251; Thu, 16 Apr 2026
+ 03:24:31 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <C27553C0-0A8E-4BCF-8C6F-1D62A69841C1@dilger.ca>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	TO_DN_SOME(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCPT_COUNT_FIVE(0.00)[6];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,gmail.com,mit.edu,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+References: <20260410120044.031381086@kernel.org> <20260410120318.794680738@kernel.org>
+In-Reply-To: <20260410120318.794680738@kernel.org>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Thu, 16 Apr 2026 12:24:18 +0200
+X-Gmail-Original-Message-ID: <CAMuHMdVerN6Pz07CQH+hcvT=-ZD-r9VNrSrGzTQZBEsuecK_ig@mail.gmail.com>
+X-Gm-Features: AQROBzDRGGELVSySTko37h6zEj8YoV3p6pwZDCVQUlUW6sZbw_W5mbJzFIh35nQ
+Message-ID: <CAMuHMdVerN6Pz07CQH+hcvT=-ZD-r9VNrSrGzTQZBEsuecK_ig@mail.gmail.com>
+Subject: Re: [patch 18/38] lib/tests: Replace get_cycles() with ktime_get()
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
+	Uladzislau Rezki <urezki@gmail.com>, linux-mm@kvack.org, Arnd Bergmann <arnd@arndb.de>, x86@kernel.org, 
+	Lu Baolu <baolu.lu@linux.intel.com>, iommu@lists.linux.dev, 
+	Michael Grzeschik <m.grzeschik@pengutronix.de>, netdev@vger.kernel.org, 
+	linux-wireless@vger.kernel.org, Herbert Xu <herbert@gondor.apana.org.au>, 
+	linux-crypto@vger.kernel.org, Vlastimil Babka <vbabka@kernel.org>, 
+	David Woodhouse <dwmw2@infradead.org>, Bernie Thompson <bernie@plugable.com>, linux-fbdev@vger.kernel.org, 
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org, Marco Elver <elver@google.com>, 
+	Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com, 
+	Andrey Ryabinin <ryabinin.a.a@gmail.com>, Thomas Sailer <t.sailer@alumni.ethz.ch>, 
+	linux-hams@vger.kernel.org, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
+	Richard Henderson <richard.henderson@linaro.org>, linux-alpha@vger.kernel.org, 
+	Russell King <linux@armlinux.org.uk>, linux-arm-kernel@lists.infradead.org, 
+	Catalin Marinas <catalin.marinas@arm.com>, Huacai Chen <chenhuacai@kernel.org>, 
+	loongarch@lists.linux.dev, linux-m68k@lists.linux-m68k.org, 
+	Dinh Nguyen <dinguyen@kernel.org>, Jonas Bonn <jonas@southpole.se>, linux-openrisc@vger.kernel.org, 
+	Helge Deller <deller@gmx.de>, linux-parisc@vger.kernel.org, 
+	Michael Ellerman <mpe@ellerman.id.au>, linuxppc-dev@lists.ozlabs.org, 
+	Paul Walmsley <pjw@kernel.org>, linux-riscv@lists.infradead.org, 
+	Heiko Carstens <hca@linux.ibm.com>, linux-s390@vger.kernel.org, 
+	"David S. Miller" <davem@davemloft.net>, sparclinux@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Hi!
+Hi Thomas,
 
-On Wed 15-04-26 19:35:21, Andreas Dilger wrote:
-> On Apr 14, 2026, at 06:59, Jan Kara <jack@suse.cz> wrote:
-> > On Mon 13-04-26 14:27:24, Milos Nikic wrote:
-> >> The jbd2 revoke table relies on bitwise AND operations for fast hash
-> >> indexing, which requires the hash table size to be a strict power of two.
-> >> 
-> >> Currently, this requirement is only enforced at runtime via a J_ASSERT
-> >> in jbd2_journal_init_revoke(). While this successfully catches invalid
-> >> dynamic allocations, it means a developer accidentally modifying the
-> >> hardcoded JOURNAL_REVOKE_DEFAULT_HASH macro will experience a system
-> >> panic upon mounting the filesystem during testing.
-> >> 
-> >> Add a BUILD_BUG_ON() in journal_init_common() to validate the default
-> >> macro at compile time. This acts as an immediate, zero-overhead
-> >> safeguard, preventing compilation entirely if the default hash size is
-> >> mathematically invalid.
-> >> 
-> >> Signed-off-by: Milos Nikic <nikic.milos@gmail.com>
-> > 
-> > Eh, if you modify JOURNAL_REVOKE_DEFAULT_HASH you should better know what
-> > you are doing and if you mess up, then the kernel failing with assertion
-> > isn't that difficult to diagnose. So sorry I don't think this "cleanup" is
-> > useful either.
-> 
-> Jan,
-> this is a BUILD_BUG_ON() so it won't cause any runtime assertion.
+On Fri, 10 Apr 2026 at 14:20, Thomas Gleixner <tglx@kernel.org> wrote:
+> get_cycles() is the historical access to a fine grained time source, but it
+> is a suboptimal choice for two reasons:
+>
+>    - get_cycles() is not guaranteed to be supported and functional on all
+>      systems/platforms. If not supported or not functional it returns 0,
+>      which makes benchmarking moot.
+>
+>    - get_cycles() returns the raw counter value of whatever the
+>      architecture platform provides. The original x86 Time Stamp Counter
+>      (TSC) was despite its name tied to the actual CPU core frequency.
+>      That's not longer the case. So the counter value is only meaningful
+>      when the CPU operates at the same frequency as the TSC or the value is
+>      adjusted to the actual CPU frequency. Other architectures and
+>      platforms provide similar disjunct counters via get_cycles(), so the
+>      result is operations per BOGO-cycles, which is not really meaningful.
+>
+> Use ktime_get() instead which provides nanosecond timestamps with the
+> granularity of the underlying hardware counter, which is not different to
+> the variety of get_cycles() implementations.
+>
+> This provides at least understandable metrics, i.e. operations/nanoseconds,
+> and is available on all platforms. As with get_cycles() the result might
+> have to be put into relation with the CPU operating frequency, but that's
+> not any different.
+>
+> This is part of a larger effort to remove get_cycles() usage from
+> non-architecture code.
+>
+> Signed-off-by: Thomas Gleixner <tglx@kernel.org>
 
-Yes, I know. But there is already a runtime assertion in
-jbd2_journal_init_revoke() making sure the passed value is a power of two
-which is verifying also other callers that aren't using
-JOURNAL_REVOKE_DEFAULT_HASH value. I don't see a value in the *additional*
-BUILD_BUG_ON when we already have that runtime check.
+Thanks for your patch!
 
-								Honza
+> --- a/lib/interval_tree_test.c
+> +++ b/lib/interval_tree_test.c
+> @@ -65,13 +65,13 @@ static void init(void)
+>  static int basic_check(void)
+>  {
+>         int i, j;
+> -       cycles_t time1, time2, time;
+> +       ktime_t time1, time2, time;
+>
+>         printk(KERN_ALERT "interval tree insert/remove");
+>
+>         init();
+>
+> -       time1 = get_cycles();
+> +       time1 = ktime_get();
+>
+>         for (i = 0; i < perf_loops; i++) {
+>                 for (j = 0; j < nnodes; j++)
+> @@ -80,11 +80,11 @@ static int basic_check(void)
+>                         interval_tree_remove(nodes + j, &root);
+>         }
+>
+> -       time2 = get_cycles();
+> +       time2 = ktime_get();
+>         time = time2 - time1;
+>
+>         time = div_u64(time, perf_loops);
+> -       printk(" -> %llu cycles\n", (unsigned long long)time);
+> +       printk(" -> %llu nsecs\n", (unsigned long long)time);
+
+While cycles_t was unsigned long or long long, ktime_t is always s64,
+so "%lld", and the cast can be dropped (everywhere).
+
+Gr{oetje,eeting}s,
+
+                        Geert
 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
