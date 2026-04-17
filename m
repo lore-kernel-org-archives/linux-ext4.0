@@ -1,86 +1,99 @@
-Received: from va-1-114.ptr.blmpb.com (va-1-114.ptr.blmpb.com [209.127.230.114])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94D8670818
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Apr 2026 02:19:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.114
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13D381C6FF5;
+	Fri, 17 Apr 2026 07:30:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776392352; cv=none; b=BORCV2Ibb4k4kuTNRC6jKjC2y8S01FMW517BN7j690rFMtXHtk7k7L3b55LzH0/syGb/HIwgx/FJ6jLNSGP/vbN8LJelzv5t1xfB9ztQhxIp0RcGFq3tWvVGZDyW6HxaD1tmU3yMQEti0KPTXzW2B9ohdF8bsn3L0Q6Am4ZSyOE=
+	t=1776411058; cv=none; b=PBxgZTikpoXlFJQ0R0cH+KXK9hgncID8VcEI8oynaZvI7OwAFUzSRDw7eYM+8iwG3mGaqpjWHfkqhDHfT6zYSKGNApP+DTZfR56mT5DsbAhoMZFia9wa1l8TmzH3SmOvnG6KTq1mgveBZFnMkFmR0tjyMMuirTO96ctFSizfjgQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776392352; c=relaxed/simple;
-	bh=jrx+4xUmZU1x4pUeKQda1573iTcGiPF/RQQ5ZPhuFx4=;
-	h=To:Cc:Subject:From:Mime-Version:References:In-Reply-To:Message-Id:
-	 Content-Type:Date; b=YyTUH0vLlDrcSW6MESlIKDHIkKr0EqdICi8V6Z3V91w0AERAkfgKnDr0142mW8gyF2RapGVL1HAQoTZr4VTM+gmTqUBGN6N4WerPJDYlzUn0hoQqe3vAJvNw+NGUUMRk57kqaOELihlvicqE9uOP95nOAd5zweHI9l7A+pxkRlI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=kRbGWf64; arc=none smtp.client-ip=209.127.230.114
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1776411058; c=relaxed/simple;
+	bh=aodTMjFDDLH0XqR5x0JMN+7jrIXJsaPFvb1NeWpriGc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=gjvhz51SnZYIOFwO1nXQb6VtTNiMgqcZMCFOOysfmDjgSrQw/TkGq9KNrzhdHXPmDkb/Pj911nQINaGlTCg0I9vnFlEolDz6VkeQ18sDFXVbW6olLgZs8PVR32EVnMlX8pCKBpwExdMZN1qVLL52jInP4RqxWO8zaV4N85ardms=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=sh0191ye; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="kRbGWf64"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="sh0191ye"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1776392345; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=jrx+4xUmZU1x4pUeKQda1573iTcGiPF/RQQ5ZPhuFx4=;
- b=kRbGWf64Lk45TRaEgh5+GmJk5xSMyi0v6UBDwTZzG3/J301fCwpy4vA46u/Jop3fXVfJGD
- 3R91/Y3CuWX5DxqpKne+soU4NGojZESs3N00FPDWoudn/tJqXGj+66HgoharCnBG5Zf+/w
- TuJuStcIFEbAFV8mnfdLS93L+bqNng4+YKyAICNjikNzINV7v21fYirfPXcdJUYmiLSv+M
- m4UHhcH+ixldNmET8+YX0ZIzg8yLp6ER8fbv4qNV0JnfDL8yhRhX0Z65C2ZZVFF8mgshGG
- vPA2Xu1ntZAeWyB5pOglbbkP+gp4khyWAw3uz7rn05QS8lgJf7jLoHO2iwHVag==
-To: "Mateusz Guzik" <mjguzik@gmail.com>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, 
-	"Brian Foster" <bfoster@redhat.com>, 
-	"Fengnan Chang" <fengnanchang@gmail.com>, <brauner@kernel.org>, 
-	<hch@infradead.org>, <linux-xfs@vger.kernel.org>, 
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
-	<lidiangang@bytedance.com>
-Subject: Re: [PATCH] iomap: avoid memset iomap when iter is done
-From: "changfengnan" <changfengnan@bytedance.com>
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
+	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=/l71e/ER/+VQEChh8Dmezn6S3hUrL+BwD90ojgmYkI0=; b=sh0191yeR65OL4SdSNMFvWgXMd
+	vxwiL06OE7gqXpS8Cdb6nXvra9TNaXTFQvPSJ0fpa7juw73mRzf422X1RMlSJP17H+BZBqWPm9BGL
+	hil2T9cCAkmDoAWqVzlTOVu8fxKGBJ9OQM1ifn64JQmgAweB44W85oZ6UZcOKu57djS6qwq8blyPP
+	VEG77Js1CqxzaKHNud6Aio21CNFC5xSsBm2CxuqnYxSf8Rejsr5A5PthV5Vx2KmeGFs5jfTxPm4pH
+	pyewxrnN0n6N9YqxFxYa4k3TRFsg36qaFsIZHdonXcfQNc9sAsk7f8Y5ZsmWp1qIRVbkCYbZmDQpJ
+	pogLEkZg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1wDdfC-00000003aW0-0FEU;
+	Fri, 17 Apr 2026 07:30:54 +0000
+Date: Fri, 17 Apr 2026 00:30:54 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: changfengnan <changfengnan@bytedance.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Fengnan Chang <fengnanchang@gmail.com>,
+	brauner <brauner@kernel.org>, djwong <djwong@kernel.org>,
+	linux-xfs <linux-xfs@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, lidiangang@bytedance.com
+Subject: Re: [RFC PATCH] iomap: add fast read path for small direct I/O
+Message-ID: <aeHhrsGtJRhP521d@infradead.org>
+References: <20260414122647.15686-1-changfengnan@bytedance.com>
+ <ad867C8dlaQGLS97@infradead.org>
+ <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.eee197c0.e67e.40c8.bd15.8fab5bbb42db@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-References: <20260416030642.26744-1-changfengnan@bytedance.com> <aeDjui2LGSidEHcJ@bfoster> <20260416152705.GC114239@frogsfrogsfrogs>
-	<hgug5jbkwk352zrwcngdofwiy2hq4nk7eq7yvzi6nru5zyebd2@fe64yziutvlk>
-In-Reply-To: <hgug5jbkwk352zrwcngdofwiy2hq4nk7eq7yvzi6nru5zyebd2@fe64yziutvlk>
-Message-Id: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.1dc3ba4b.a0f6.420b.a9f2.f3d89396b545@bytedance.com>
-Content-Type: text/plain; charset=UTF-8
-X-Lms-Return-Path: <lba+169e19897+7df5c7+vger.kernel.org+changfengnan@bytedance.com>
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 17 Apr 2026 10:19:00 +0800
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.eee197c0.e67e.40c8.bd15.8fab5bbb42db@bytedance.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
+On Thu, Apr 16, 2026 at 11:16:23AM +0800, changfengnan wrote:
+> > But it already is a major improvement, and one that would apply outside
+> > of narrow special cases.  So I'd really like to see that patch.
+> You can see this in:
+> https://lore.kernel.org/linux-fsdevel/20260416030642.26744-1-changfengnan@bytedance.com/T/#u
 
-> From: "Mateusz Guzik"<mjguzik@gmail.com>
-> Date:=C2=A0 Fri, Apr 17, 2026, 07:21
-> Subject:=C2=A0 Re: [PATCH] iomap: avoid memset iomap when iter is done
-> To: "Darrick J. Wong"<djwong@kernel.org>
-> Cc: "Brian Foster"<bfoster@redhat.com>, "Fengnan Chang"<fengnanchang@gmai=
-l.com>, <brauner@kernel.org>, <hch@infradead.org>, <linux-xfs@vger.kernel.o=
-rg>, <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, <lidian=
-gang@bytedance.com>, "Fengnan Chang"<changfengnan@bytedance.com>
-> On Thu, Apr 16, 2026 at 08:27:05AM -0700, Darrick J. Wong wrote:
-> > What kind of computer is this where there's a 5% hit to iops from a
-> > memset of ~150 bytes?
-> >=C2=A0
->=C2=A0
-> Such a memset is not free in its own right, but here the real problem is
-> *how* it is done: by default gcc emits inlined 'rep stosq' which has
-> utterly horrid performance (same as 'rep movsq') and in this particular
-> case the 2 memsets in the source code result in 2 separate 'rep movsq'
-> invocations.
-Yes,=C2=A0 two 'rep stosq'.
->=C2=A0
-> I complained about it numerous times, see this to get a taste:
-> https://lore.kernel.org/all/20250605164733.737543-1-mjguzik@gmail.com/
->=C2=A0
-> Also see
-> https://lore.kernel.org/all/202504181042.54ea2b8a-lkp@intel.com/
->=C2=A0
-> If memory serves right gcc is going to fix it, so this is largely going
-> to clear itself down the road.
-Sounds good, I believe there are other similar issues that haven't been
-discovered yet. In this case, removing `memset` is the best option, since
-we don't need it.
+Thanks!
 
->=C2=A0
+> > All direct I/O requires this.
+> > 
+> > > - No bounce buffering, fscrypt, or fsverity involved.
+> > > - No custom `iomap_dio_ops` (dops) registered by the filesystem.
+> > 
+> > I'm really curious at what difference this makes.  It removes a few
+> > branches, but should not have much of an effect while limiting the
+> > applicability a lot.
+> Yes, the impact shouldn’t be significant. 
+> Since this is just a RFC version to confirm that I’m on the right path, there
+> are many aspects that haven’t been fully thought through yet. I haven’t
+> tested these scenarios yet, but I’ll add support for them later to
+> check  exactly what the impact is.
+
+Sure.  It might also make sense to skip some of this if it brings a big
+enough benefit.
+
+> > > +struct iomap_dio_fast_read {
+> > > +        struct kiocb        *iocb;
+> > > +        size_t                size;
+> > > +        bool                should_dirty;
+> > > +        struct work_struct        work;
+> > > +        struct bio        bio ____cacheline_aligned_in_smp;
+> > 
+> > Does the cache line alignment matter here?  If yes, can you explain why
+> > in a comment?
+> 
+> I copy this from struct blkdev_dio , I'll do some test to verfiy. 
+
+Thanks.  Btw, another thing that might be worth is to drop the
+work_struct and reuse iomap_fail_reads or something similar to it.
+This would be a pretty big size reduction.  Additionally we should
+be able to kill should_dirty and just rely on bio or kiocb flags.
+
