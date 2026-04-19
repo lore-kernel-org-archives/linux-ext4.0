@@ -1,29 +1,29 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.2])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7778F2C3259;
-	Sun, 19 Apr 2026 06:32:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76F98281503;
+	Sun, 19 Apr 2026 06:35:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.2
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776580378; cv=none; b=TPQMxG9eXZ7v0IejD0gp1L90vGQ19JpBtAtuiNtLddUKRvCPLCFiAnKQUmiaYc7VtbWExKQoy/pkmEWCaaswogBb7nXumT0nJbRqRib1Fe0xovbPXsHTlSoDmdBKn+IgxS0jzHyyc2ZBWsszrznAN9KwuaIyffEWAMDah9sgZdM=
+	t=1776580530; cv=none; b=lZrAFqF8Oaq2hW3RIw6wlGxO2ci71o5aGbSmdzKWujQPX+liLpmhMrUzKo9v29+V54Op19QztOZB4472ZJPy2Eu/8HtosdF5JcTbCy/SgVXqm6Edq87FAsR76oz1lXjzsI8QZDwd4TWt5ltpbIcuZbne0ZykrN0ossrpe7Fb3hA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776580378; c=relaxed/simple;
+	s=arc-20240116; t=1776580530; c=relaxed/simple;
 	bh=hJghoW16mn/evag+0X1mnpiWLqmR+sfj9HtbvXpetdU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HhMBY/en3zCEx7TP0NLIzavUQiYO3gATIf2TqjcXRYd5G8rxrWSuYoCIks8nO/BVcP9qsXSfqFch1G8CAxqPo5TaBFZlmTPgzpmHc98C2+2xkaqiLldhEdTUkQpz3sB5U9FCZGvdrPzvcHi24XHbJoc0yTZlLphajeK3mi1iyBs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=SlvHPNB1; arc=none smtp.client-ip=117.135.210.5
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=IC2Uqp6Ol2/y10U+JXAKeV9kLQTTZC61JgA4ynWIW5wcg7yQp8MeROF2G8HqzaHEs76Q/FyRwolEEh2C9okyAt5Ee+Lc51CxhuuXmpwRIy1Kq+6snlYr+PQZZ3RyiGSnker6Ra0Iyrp/4eEOdtsJyoDX7CIu+j41dgad+CsU9R0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=J5BdsFmp; arc=none smtp.client-ip=220.197.31.2
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="SlvHPNB1"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="J5BdsFmp"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
 	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=PI
-	6Ymg5aJxzRVLwyUqr0UWzaz/U5NFi9ESZL5EWMitQ=; b=SlvHPNB1Z6zzgMA/IV
-	0dae9auoED7UuUG/GNvap8fA3QoigfIrJRepzP/v1/MiMKMqioMNSCIYjMk0DDlA
-	zxQ7Rfwa+2TaqEK7R7N4Eu8YefmpxLS68HZu06sajCqS5y+wW+9aLJDW80UbVKSf
-	UvbC4LXk7pX63td+7ByAgQwjk=
-Received: from liubaolin-VMware-Virtual-Platform (unknown [])
-	by gzga-smtp-mtada-g0-0 (Coremail) with SMTP id _____wC3MqvyduRpkPkNAg--.10457S2;
-	Sun, 19 Apr 2026 14:32:20 +0800 (CST)
+	6Ymg5aJxzRVLwyUqr0UWzaz/U5NFi9ESZL5EWMitQ=; b=J5BdsFmpJQany7Xjii
+	dy0X/mWUwB0OQqy3ZK/loRBudBYzkBF4liQ406Eaxvfecg3Fo/oiVMp4oZlU+Kt/
+	KaGZaN/SDoDGoHMBSE7Za/XLic/fyp1t1N4YpFxD7lnbUBVPm8No0qri37P7cJEg
+	nV2yIXPFvx6FnhlojWTaCmHcg=
+Received: from liubaolin-VMware-Virtual-Platform.localdomain (unknown [])
+	by gzsmtp3 (Coremail) with SMTP id PigvCgBHBQKBd+Rp1PA9Ag--.97S2;
+	Sun, 19 Apr 2026 14:34:48 +0800 (CST)
 From: Baolin Liu <liubaolin12138@163.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca
@@ -35,8 +35,8 @@ Cc: wangguanyu@vivo.com,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
 Subject: [PATCH v2 v2 0/2] add blocks_allocated to mb_stats and clear mb_stats
-Date: Sun, 19 Apr 2026 14:31:49 +0800
-Message-ID: <20260419063152.17938-1-liubaolin12138@163.com>
+Date: Sun, 19 Apr 2026 14:34:34 +0800
+Message-ID: <20260419063436.17999-1-liubaolin12138@163.com>
 X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -45,12 +45,12 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wC3MqvyduRpkPkNAg--.10457S2
+X-CM-TRANSID:PigvCgBHBQKBd+Rp1PA9Ag--.97S2
 X-Coremail-Antispam: 1Uf129KBjvdXoWrKFWrXry3Xw15CrWDCry8Zrb_yoWfCrb_Wa
 	4FgryrA34avF1DCFy8Gwn5tryY9FW7Jr1DGFn8Jr4fZFy5XrsrCayDGr13Zr1xWr4ayr15
 	Cr1xWw1xCrn2vjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUvcSsGvfC2KfnxnUUI43ZEXa7sRNv31JUUUUU==
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RVuOWnkdvXl1QAA3V
+	9fnUUvcSsGvfC2KfnxnUUI43ZEXa7sRNtCzDUUUUU==
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6giTXmnkd4gNVgAA3G
 
 This series improves ext4 mballoc statistics in two small ways.
 
