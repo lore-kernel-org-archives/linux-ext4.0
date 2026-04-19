@@ -1,104 +1,80 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1F5F158535
-	for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2026 00:48:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7778F2C3259;
+	Sun, 19 Apr 2026 06:32:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776559704; cv=none; b=hsmwNyel+xjVFWJajAYSXU21FRjMbMZw7OIZ4k1iK3aIXiBqQAqGODAjxohpzjmuQ8soVkXOmrRa1wa1+KwRpyqaJw/Zvezl5RNQK08X9dWJjyp6DJxDLYPG+fveai+acdwhelmWsvbQpCnaY2NKJDv0V7aydA53euUXOms7n9M=
+	t=1776580378; cv=none; b=TPQMxG9eXZ7v0IejD0gp1L90vGQ19JpBtAtuiNtLddUKRvCPLCFiAnKQUmiaYc7VtbWExKQoy/pkmEWCaaswogBb7nXumT0nJbRqRib1Fe0xovbPXsHTlSoDmdBKn+IgxS0jzHyyc2ZBWsszrznAN9KwuaIyffEWAMDah9sgZdM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776559704; c=relaxed/simple;
-	bh=T8THIneoKjR7BIt70w8aMh+X7N7iv4nInsjiuIgCX14=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Zi1+hJ5Gv+fu4jZlO1gALwgqCxUqSKXocjKjv2z01fKXCtfSu8y/EeOvTxaRnXBG3r2ArVxqDz/4KNn8lkX9EJA7t4GfuapcZIkWmgGlDaoaQdVSu+hsvPiit/JX/1u29tKHWGFOk92HlcNaMBYuTFiD2GA1jz259EL1vgQR/hU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Uuheqv3O; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1776580378; c=relaxed/simple;
+	bh=hJghoW16mn/evag+0X1mnpiWLqmR+sfj9HtbvXpetdU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HhMBY/en3zCEx7TP0NLIzavUQiYO3gATIf2TqjcXRYd5G8rxrWSuYoCIks8nO/BVcP9qsXSfqFch1G8CAxqPo5TaBFZlmTPgzpmHc98C2+2xkaqiLldhEdTUkQpz3sB5U9FCZGvdrPzvcHi24XHbJoc0yTZlLphajeK3mi1iyBs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=SlvHPNB1; arc=none smtp.client-ip=117.135.210.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Uuheqv3O"
-Received: from macsyma.thunk.org (pool-173-48-114-3.bstnma.fios.verizon.net [173.48.114.3])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63J0mGiu010940
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sat, 18 Apr 2026 20:48:17 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1776559698; bh=5MgujdT91YTjTbmvBUAMw0XqirNxkfSso789cDYpHVY=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=Uuheqv3ONoCxlRGB92pewwGlxET/keWrxqQcM25V3itHFKWw50RInmYcviRJhcwCC
-	 0HXdfYNrRQY7kpvvSHIrRifc+m5J5KoUgSDMIblyOUGJEQ66/KUBfqMPnffw2/4rqT
-	 U/rSHpbIb52Ldt3xAPl8TCrPjKkUYPTOd9VzqHbycNA+e/Tg+k9GnxbZ/xIic26eKJ
-	 BS9cRKFd1abmvjLPtXhCjLE6Qd6NUwh6h2IrJKGuT3RopmURwYgEuMwyNQcFoKEzzk
-	 anJq/2+0YvPhXKaQ526/vShM0w2LtrDHPk6wsd5sAyFHiyZqD+NSr2TuMfeV0NGoYQ
-	 9KRQTA7BzpSuA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 55B0F63BD4C3; Sat, 18 Apr 2026 20:47:16 -0400 (EDT)
-Date: Sat, 18 Apr 2026 20:47:16 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-Subject: Re: [PATCH 0/3] Data in direntry (dirdata) feature
-Message-ID: <20260419004716.GB58909@macsyma-wired.lan>
-References: <20260417213723.74204-1-artem.blagodarenko@gmail.com>
- <20260418214359.GA58909@macsyma-wired.lan>
- <CA+rD4x8uk7h7dv_Mg1tMXXiVZZD1YAj5WAw+6GNuMKQAAMueuQ@mail.gmail.com>
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="SlvHPNB1"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=PI
+	6Ymg5aJxzRVLwyUqr0UWzaz/U5NFi9ESZL5EWMitQ=; b=SlvHPNB1Z6zzgMA/IV
+	0dae9auoED7UuUG/GNvap8fA3QoigfIrJRepzP/v1/MiMKMqioMNSCIYjMk0DDlA
+	zxQ7Rfwa+2TaqEK7R7N4Eu8YefmpxLS68HZu06sajCqS5y+wW+9aLJDW80UbVKSf
+	UvbC4LXk7pX63td+7ByAgQwjk=
+Received: from liubaolin-VMware-Virtual-Platform (unknown [])
+	by gzga-smtp-mtada-g0-0 (Coremail) with SMTP id _____wC3MqvyduRpkPkNAg--.10457S2;
+	Sun, 19 Apr 2026 14:32:20 +0800 (CST)
+From: Baolin Liu <liubaolin12138@163.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: wangguanyu@vivo.com,
+	liubaolin12138@163.com,
+	yi.zhang@huaweicloud.com,
+	ritesh.list@gmail.com,
+	ojaswin@linux.ibm.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2 v2 0/2] add blocks_allocated to mb_stats and clear mb_stats
+Date: Sun, 19 Apr 2026 14:31:49 +0800
+Message-ID: <20260419063152.17938-1-liubaolin12138@163.com>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CA+rD4x8uk7h7dv_Mg1tMXXiVZZD1YAj5WAw+6GNuMKQAAMueuQ@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_____wC3MqvyduRpkPkNAg--.10457S2
+X-Coremail-Antispam: 1Uf129KBjvdXoWrKFWrXry3Xw15CrWDCry8Zrb_yoWfCrb_Wa
+	4FgryrA34avF1DCFy8Gwn5tryY9FW7Jr1DGFn8Jr4fZFy5XrsrCayDGr13Zr1xWr4ayr15
+	Cr1xWw1xCrn2vjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUvcSsGvfC2KfnxnUUI43ZEXa7sRNv31JUUUUU==
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RVuOWnkdvXl1QAA3V
 
-On Sat, Apr 18, 2026 at 11:24:32PM +0100, Artem Blagodarenko wrote:
-> There is now a way to set dirdata. Following the decisions from [1]
-> the patches provided change how the encryption + casefold
-> hash is stored. If the dirdata feature is enabled,
-> the hash is stored as dirdata. Therefore, to test dirdata, it is
-> sufficient to test the combination of encryption + casefold + dirdata.
+This series improves ext4 mballoc statistics in two small ways.
 
-I'm not seeing that in the patches that was sent out to the list last
-week.  Where is that?
+The first patch adds blocks_allocated to /proc/fs/ext4/<dev>/mb_stats,
+so that the proc output covers the same mballoc summary counters
+printed at unmount time.
 
-I traced all of the places where ext4_insert_dentry_data() and
-ext4_dirdata_set() and I don't see *anything* where dirdata was
-stored, including the fscrypt + casefold hash.   What am I missing?
+The second patch makes /proc/fs/ext4/<dev>/mb_stats writable
+and allows writing 0 to clear the current runtime mballoc statistics.
 
-It *really* would be a good idea if the e2fsprogs patches included a
-way to list and set the dirdata using debugfs.  That way we could
-easily verify that dirdata field was getting set when you expected it
-to be.
+Changes since v1: 
+ - Split blocks_allocated reporting and statistics clearing into two patches
+ - Drop the separate mb_stats_clear sysfs node
+ - Make /proc/fs/ext4/<dev>/mb_stats writable instead
 
-> ext4/064: encryption + casefold (WITHOUT dirdata)
-> 
-> This test verifies that files created in directories with both
-> encryption and case-insensitive (casefold) attributes work correctly.
+Baolin Liu (2):
+  ext4: add blocks_allocated to mb_stats output
+  ext4: allow clearing mballoc stats through mb_stats
 
-Yes, but that doesn't actually verify that the dirdata field was set
-when you expected it to be.  Just that it works correctly....
+ fs/ext4/ext4.h    |  1 +
+ fs/ext4/mballoc.c | 31 +++++++++++++++++++++++++++++++
+ fs/ext4/sysfs.c   | 40 ++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 70 insertions(+), 2 deletions(-)
 
-> LUFID is an optimization that allows Lustre to store file identifiers
-> efficiently directly in directory entries, avoiding additional I/O
-> operations to look them up separately.
+-- 
+2.51.0
 
-Oh, I see.  So this is for readdir(), right?
-
-> I am open to adding mechanisms to access LUFID outside the Lustre
-> filesystem. However, since: 1) dirdata is tested using the encryption +
-> casefold features, and LUFID is primarily useful within the Lustre filesystem
-> and is already tested there, I would prefer to rely on testing LUFID
-> within Lustre FS.
-
-Well, the one advantage of having a way to set and get LUFID would be
-if you ever wanted to ressurrect the userspace Lustre server[1].  :-)
-
-[1]  https://wiki.lustre.org/images/5/56/LUG08-Lustre-uOSS.pdf
-
-And I *do* think it would be useful to have a way to set and get the
-LUFID using debugfs.
-
-Cheers,
-
-						- Ted
