@@ -1,140 +1,138 @@
-Received: from mail-yx1-f46.google.com (mail-yx1-f46.google.com [74.125.224.46])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C5852FFDCB
-	for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2026 19:38:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.224.46
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776627493; cv=pass; b=d1or6+6JX8WuO2mQB1pKQUix3v36mSuCePhGWiUEmr4pivTPXIfAr2iosJP+Cwb8ls+3lQJgO9BtnZcIFmq4awEqPeqHmvlp3C/o9g4mE77r+hYtoJ9RyU/ad47eb+sGkNpOWeqwB5/7eq5+CK/Vw2Di3A6tErhfhE/IrIOLJQE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776627493; c=relaxed/simple;
-	bh=FCYG9M4TPg2JFLoztHS5vKeqyv3nd4rXTjH6N4/PBDw=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=lfPqw38owH84p2EszxaQsFsqSsYBTHzGa8ZbjoiCntnTLX5BtxrBn4Dyt3MT4lqHusD0XAu4UOfyP+46v71oV8TGoDjrVUfmDM8nO8kBMqeOClwDeRSb0PXv11/FvwyExzjoqGRPX9N6v7Opcmwo/4kI+0Q5o17MfRYFM2Ua0Tk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=WL7HgpI5; arc=pass smtp.client-ip=74.125.224.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0422613777E
+	for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2026 21:59:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1776635945; cv=none; b=L7VfW4Zgp0jy2NyW/+D5ysKw7tTHWJHVegldVVK4e8F/LrurSKXJFX3+p/m0J7UDFMjFDHZsoDsbHpOvZd3TOFNIvB4h08DxhxNuOe346QDKZ3hRVvnjU2/cVV1PxqugptzlP7G96tofpzrd3no/vznEPQiRoXX10rXSpYmQ+YI=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1776635945; c=relaxed/simple;
+	bh=20js9pG0zQ2naC+r7vTB3OsG9cL6V6oq9ntEcBDzdws=;
+	h=Date:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To:From; b=p1sm1jmhyoZGH1k9x4Itkv6PLt0u6hEnIO/LnyK5fT52VeOqbbrdYvfu1+H46Ao08xaVwmSeeeBCRQebof6xM9CrNa4c6rBGboE0cD54OS+OnNmsTsPE3OtkZ5/oM07TH0mbpJX7z4WwJY/KWKKViFAasUqVfZipkOezlwcLhak=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=CTzFGOWs; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WL7HgpI5"
-Received: by mail-yx1-f46.google.com with SMTP id 956f58d0204a3-652fcd5a6d7so2761622d50.2
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2026 12:38:03 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1776627483; cv=none;
-        d=google.com; s=arc-20240605;
-        b=UE8+RaM5hXgTipzd2CItzdYGPA4fgUgsszG7nsNAjtikjzAkYDC9KiiHqgA9VTfg1o
-         k6Xiu0no6K+1sRisLN7gjgmVmo2OEKEAG4tC8E+eKjOZqmFxHQV2aw5DCT/YjdAlRzmE
-         RkhCvOCjf7k+KhxwRESAhLpo+njSPDd0xUb7N4YZXlIRnyG+qYazJ46laQ0CxEKnqSfb
-         FMpNc4yMHJYaPVi48iQbJ/Jv/v+1HPptIfut0AY9woZNh4BzEkcul0oZ018WEOi2b0DP
-         ecTJRjTRZRIHjdW4FtdNFFeMMyI6mrKDif407Sw1FcV39SU6OqudpnZu9HDGwUx/OO9Y
-         mquw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=72XWY7KIZXCndujXldtBTJTCi0s+MYNlKHR/houzcKQ=;
-        fh=ZXzCTLP96GQ9s1mkoT8A/6ykle3yuM7Qc12HgK20yBc=;
-        b=Ubi4r3HbVHIu5Yxy+iniwpCclaSJFdBkpvadvLIZJzB8u74UrCsKrQW69R2FRlmCx1
-         WUnChqfgJwYnDB6OZii7x+kX6A5sq5AftujvaR6zZWjs8O0Mrn929Jp/vUNa8uPDzx5n
-         fFAA8sYo2uhyMkwA9iFJNpIuBnc7OFklVCIzaVfxAXz5ZCiJx5lH9bOAufUONReUO1iM
-         NmKrSGqX03eF98bogkegNGJCycbmC5TvpeRvvaxyObM3FhuCgeCR9P/4+Lfserx4u7LD
-         hJqeLBSMKvkziqY9Li7jfnl9Ou1z0SAIvQpwbLAPdsxl3HC/5exrvPiAYl5RPAFaTfY/
-         K8MA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1776627483; x=1777232283; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=72XWY7KIZXCndujXldtBTJTCi0s+MYNlKHR/houzcKQ=;
-        b=WL7HgpI5hN/Kaz7bTGHXV62V94NLlGHZ17RTszN1Jq08mEqSVBz2ctAEnchWnFhsgw
-         1VL5vVWbZvLzkVJrHBVNWObA57cZpEnkzpIR/Oq+1sgD02x7jpj8I218dI39umVv9qVh
-         fmfmJE7PnXsFPWybCyKdnRZGWPP/gH7RYeG9SmCLjUHasHHJJcIZ/r2RQDG755TSm+T5
-         QTJ0KZmawXiQj6YxB6mxGqpskXWLJwQNIrIOC95qDjeLwcBtFdgH6outnk06nY01C1QM
-         hHDkqFUozTTjpTji+TeMzsRYEHhFfgmzdmWlv5SELs2IDEHaCPUiI4xH3LC0+5PB3s1M
-         nUVQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776627483; x=1777232283;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=72XWY7KIZXCndujXldtBTJTCi0s+MYNlKHR/houzcKQ=;
-        b=qv3NPWedaSGGjWzZrWQ9FAWrIAflw/j8K83fLn7hJJ7rLRCf7Kl9zASuBUBRgZPvQz
-         iLMQI3LbY0kR0vGBaXbSV86XjMUgfwJC7kFq4bzYJxOaVhllS3mITyMZdPU2c8gCrUPf
-         rmaiHPMOhkIPqc6mzmBYyesb4l2R0S6yE8T6d5PDYd6WWHJ7/b/rOcsd+4b3GFdHcb08
-         9Kz1B0XGgIxt6j49aW4rm+9NPMWmrLN2kr6mV+glQiYqcgE0l7bRAXfHBgBsCFNjFt11
-         Onj4+KcKghgRatZftxyKDmdL2bcPQAlORsnSh4UUQnHgATJVw9Ziytecr5Y5YgUknPCa
-         wOJQ==
-X-Gm-Message-State: AOJu0YwYmoetONEKaZqskw5pufKoHQHWOij1eqIXe9aDsp8vITYXpMiG
-	JbSglgqxWDCHN8EnGeaSC9lo8YGEO+j+FDbF1R7C4P5+9V1iEZJbqidkNqE+KVZ9QBH/UfUq3bk
-	lG0mG65nyNHA1qe80ZzG7ZghbE/VNXfY=
-X-Gm-Gg: AeBDieveLlJv0jQJ7T+df+NJDJ/hy7zIOPiCxqAaEC1nlYeV2dxQwgl890AQGzHekNx
-	Bfsim6nSA2/wyUjHSATS7SIil9Y0jhXhGat4d1vj5lP69mF90QrVcME5Ng1E+AZlXz3hcFL97dD
-	dJfQysm+G3Am3MDA9zl+Gjmp9HUfXetXneOLmrYWmdaFahBP0DnIzy2o1/xS8qztR53+MwwLmjc
-	TgZ7fluwKgLwT0dytrTRYnOTzOcXoCwDGUpQYJpkthmK4lkutU32hEibssSrX12mNDt2W4DVoE5
-	WBXC93DRZXUvS3A9D9sYB8qJiykj++ZZ+l73y3keiJADQYoIUk0r
-X-Received: by 2002:a05:690e:1282:b0:651:c29e:f0b0 with SMTP id
- 956f58d0204a3-653107f0ad9mr10994531d50.4.1776627483125; Sun, 19 Apr 2026
- 12:38:03 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="CTzFGOWs"
+Received: from macsyma.thunk.org (pool-173-48-114-3.bstnma.fios.verizon.net [173.48.114.3])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63JLwpNN005547
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Sun, 19 Apr 2026 17:58:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1776635933; bh=0wsJoqNR69RdXjL+9d9X3pDLi2w6txlGu2cX0VKfCUw=;
+	h=Date:Subject:Message-ID:MIME-Version:Content-Type:From;
+	b=CTzFGOWscTZgNSWskEiWaia6A4e7jiVd+w10bpoWkKJmEGLttQ/W5sPIh8o381Drj
+	 ZFR8SV7xGWyZyQyonv44SJnh0undra0FiRDYzSXjcOcakYqxsIVK9oquYlziat16tA
+	 ZCux0olY1rAK2rgcRbXq9Tg2bS4MQdksQHa7sTuIVfb3W5fbQMQYXchGS0Kj3VKIaC
+	 9b3wJ7tOgG4SgHVV7Ox1NeOGRPAGFWdEdnQMwpw0H8dSI1CrB57P5LD19p8AyGdhiM
+	 8fEyUYCJak5ZBFCthqP7bMj0YEN5fsqQfX0pk0KZLYfWiEPEk+SIYpya0dQTIIVBvU
+	 ZPEbM+mMSmvwQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 980DE63CE561; Sun, 19 Apr 2026 17:57:51 -0400 (EDT)
+Date: Sun, 19 Apr 2026 17:57:51 -0400
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+Subject: Re: [PATCH 0/3] Data in direntry (dirdata) feature
+Message-ID: <20260419215751.GD58909@macsyma-wired.lan>
+References: <20260417213723.74204-1-artem.blagodarenko@gmail.com>
+ <20260418214359.GA58909@macsyma-wired.lan>
+ <CA+rD4x8uk7h7dv_Mg1tMXXiVZZD1YAj5WAw+6GNuMKQAAMueuQ@mail.gmail.com>
+ <20260419004716.GB58909@macsyma-wired.lan>
+ <CA+rD4x_5pRycXgqQ=j3FmZC+Q1KpRPYLv84uY0c0VRtq63uT3A@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260417213723.74204-1-artem.blagodarenko@gmail.com>
- <20260418214359.GA58909@macsyma-wired.lan> <CA+rD4x8uk7h7dv_Mg1tMXXiVZZD1YAj5WAw+6GNuMKQAAMueuQ@mail.gmail.com>
- <20260419004716.GB58909@macsyma-wired.lan>
-In-Reply-To: <20260419004716.GB58909@macsyma-wired.lan>
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Date: Sun, 19 Apr 2026 20:37:51 +0100
-X-Gm-Features: AQROBzA53xSfEz4iR_2ACriw12V6PNicjtO1DL0wb9VRqVHq0T6SG2VMtiM3KYA
-Message-ID: <CA+rD4x_5pRycXgqQ=j3FmZC+Q1KpRPYLv84uY0c0VRtq63uT3A@mail.gmail.com>
-Subject: Re: [PATCH 0/3] Data in direntry (dirdata) feature
-To: Theodore Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CA+rD4x_5pRycXgqQ=j3FmZC+Q1KpRPYLv84uY0c0VRtq63uT3A@mail.gmail.com>
+`From: Theodore Tso <tytso@mit.edu>
+From: tytso@mit.edu (Theodore Tso)
 
-On Sun, 19 Apr 2026 at 01:48, Theodore Tso <tytso@mit.edu> wrote:
-> I'm not seeing that in the patches that was sent out to the list last
-> week.  Where is that?
+On Sun, Apr 19, 2026 at 08:37:51PM +0100, Artem Blagodarenko wrote:
+> On Sun, 19 Apr 2026 at 01:48, Theodore Tso <tytso@mit.edu> wrote:
+> > I'm not seeing that in the patches that was sent out to the list last
+> > week.  Where is that?
+> 
+> I have just sent it to the xfstests mail list and placed you to cc
+> 
+> > I traced all of the places where ext4_insert_dentry_data() and
+> > ext4_dirdata_set() and I don't see *anything* where dirdata was
+> > stored, including the fscrypt + casefold hash.   What am I missing?
+> 
+> dirdata feature should be enabled, and  fscrypt + casefold used
+> The new xfstest ext4/065 should help here
 
-I have just sent it to the xfstests mail list and placed you to cc
+Can you show *where* in the patched sources the dirdata gets set in
+the fscrypt + casefold case?
 
-> I traced all of the places where ext4_insert_dentry_data() and
-> ext4_dirdata_set() and I don't see *anything* where dirdata was
-> stored, including the fscrypt + casefold hash.   What am I missing?
+Also, there is no real value to users for storing the hash with
+fscrypt and casefold using dirdata --- unless they are using dirdata
+for some other uses --- but the 64-bit inode number will require
+significantly more code changes that's not here.  So there is no
+user-visible additional functionality of dirdata.  That's why the
+tests that you sent aren't particularly useful.  It doesn't actually
+test that the fscrypt hash was stored in dirdata when the dirdata
+feature enabled.  It just shows that nothing broke, which is *not* the
+same thing.
 
-dirdata feature should be enabled, and  fscrypt + casefold used
-The new xfstest ext4/065 should help here
+Another way to demonstrate that that that your tests didn't really
+test anything is due to another flaw in your patches.  In addition to
+the dirdata feature, there is *also* a dirdata mount option.  If the
+dirdata mount option is not specified, then the dirdata flags will get
+omitted:
 
-> It *really* would be a good idea if the e2fsprogs patches included a
-> way to list and set the dirdata using debugfs.  That way we could
-> easily verify that dirdata field was getting set when you expected it
-> to be.
-I will send a patch for debugfs with such a function soon
+static inline unsigned char get_dtype(struct super_block *sb, int filetype)
+{
+	unsigned char fl_index = filetype & EXT4_FT_MASK;
 
-> Yes, but that doesn't actually verify that the dirdata field was set
-> when you expected it to be.  Just that it works correctly....
+	if (!ext4_has_feature_filetype(sb) || fl_index >= EXT4_FT_MAX)
+		return DT_UNKNOWN;
 
-Ok. I think debugfs should be improved here to solve this.
+	if (!test_opt(sb, DIRDATA))
+		return ext4_filetype_table[fl_index];
 
-> Oh, I see.  So this is for readdir(), right?
+	return (ext4_filetype_table[fl_index]) |
+		(filetype & ~EXT4_FT_MASK);
+}
 
-Yes
+But your proposed new test doesn't *actually* set the dirdata mount
+option.  So in addition to my not able to find any place where dirdata
+gets *set*, this flaw in your patch (I think it was left over from
+when you were using a mount option instead of a file system feature),
+meant that nothing could possibly *get* the dirdata flag.  Despite
+that, your tests are apparently passing, and you apparently didn't
+notice that dirdata support is a no-op.
 
-> Well, the one advantage of having a way to set and get LUFID would be
-> if you ever wanted to ressurrect the userspace Lustre server[1].  :-)
->
-> [1]  https://wiki.lustre.org/images/5/56/LUG08-Lustre-uOSS.pdf
 
-=D0=A3es that would be convenient. I asked the proposal=E2=80=99s author ab=
-out this
-earlier today. He said the code cannot be moved to userspace due to
-its reliance on transactions.
+Finally, please take a look at the KASAN bugs which syzbot found,
+which includes some use after frees and out-of-bounds bugs.  (This may
+mean that there are some real security bugs in your Luster production
+patches that could be found by mechanisms such as Anthropic's Mythos,
+so you may want to consider whether the bugs found by Syzkaller might
+be applicable in your current product patches.)
 
-> And I *do* think it would be useful to have a way to set and get the
-> LUFID using debugfs.
-Ok. Will do.
+https://ci.syzbot.org/series/590e846e-42c0-4497-b6ae-b95ed4468941
 
-Best regards,
-Artem Blagodarenko
+Also, if you can rebase your patches onto Linux 7.0 when you send the
+next around, then Sashiko will be able to review your patches.
+
+I also suggest that you consider breaking up the patches into smaller
+chunks.  This makes them easier to review, and perhaps you would have
+noticed that the patch was still defining a worse-than-useless dirdata
+mount option.
+
+Finally, perhaps you should consider adding a Kunit test for dirdata?
+That would allow you to test the LUFID functionality without needing
+to plumb through extra userspace interfaces such as an
+EXT4_IOC_SET_LUFID ioctl.
+
+Cheers,
+
+						- Ted
