@@ -1,157 +1,123 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.2])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.13])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1647435DA4A;
-	Tue, 21 Apr 2026 07:08:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF3DD3A7F75;
+	Tue, 21 Apr 2026 09:32:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.13
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776755342; cv=none; b=G1EIBC6RmHIfwTEKG00QZmWN7l7+/3U09E4CdwtzDG6rsZly5Sh/5LSG9L1mrEkBk3/EUCBJHpj0UIejfcABv8ulHP+7KJtd/Xf2P5AYPPmrTVo6z/fCMJxkiG1BvshQo11OWcnYcU2cF0+ycQuRh5A9zzaed5gaXeY811PMH34=
+	t=1776763930; cv=none; b=gBkCQdiBjANRSGAzXfubb02p/xozJfTwb9uKakiPrLmGCLTpE6tCMlJ/FUQZBfheVSQcnBxAMzBqtC26cY80skaNkkmOOkLeM/8iFyl3tJchdqCsEs/S2PsrpoZ7pinXh4pthCTlls4tGQ6J/VUcW1K1mc7iphZ152kioxmDWos=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776755342; c=relaxed/simple;
-	bh=cSqLvnXdE3oPfgZAPyZSpsNjusysd65wMEiuT/gpeXU=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Km1uUAh5rndtjD/tCAw1i+j4sJK6Zwo7QmDp2ii4kDrr1xtaUtvNOYx1MDxp0nBMBwJYtiFXuF7upMlaqGC45bHSpd8I23KCxhAjUmARN3LKEE2u2ktI8eem+foTtSuvduXXnuBLi81R3gcO2iapGx4yvU0ZyU9vQzS1z0WY9kg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=NWGgs0k5; arc=none smtp.client-ip=117.135.210.2
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+	s=arc-20240116; t=1776763930; c=relaxed/simple;
+	bh=Sq0s3Ai9Uj6WEHE5GsmPeZpiF/Xu9DQRsx09i8yUIR0=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=tJsOcAIe8Qt7adQpQCgWo0uKXBH+qWQP5lSP7k+lYIIAtObgcaCEZeubv0pz3AgGBmdmjipcsEwWedT6bNOvSur5QsXfcF5wjFti1YLZYzIIWIxKVjao9iqaHscEQSlFHY63wDE8zkAfhLm0NY+XfLE608716rnKOdqpFJubado=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=Cg19Uvk7; arc=none smtp.client-ip=198.175.65.13
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="NWGgs0k5"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
-	Content-Type; bh=DoE2K00jnVGnqULv3QdCbTOVxdnAMRgBBRGam/SYPqQ=;
-	b=NWGgs0k5Pv5jN47NAGB6KBxfLscVjVE4A3YE8ZZHzC/A0CoXPzoRyoyOZGNRe5
-	FelsdwyDsY15K9A0qbnvN51Xy48316mpMftpAgwxgL2nTXbfnGIRIDRAZjm9gRFC
-	XCqnDc0pB6WsTZakZIQuD4Jd8+LZsk5P3iuWaOf1yK0aY=
-Received: from [192.168.56.68] (unknown [])
-	by gzsmtp1 (Coremail) with SMTP id PCgvCgD3XwVPIudpsTpPAw--.4234S2;
-	Tue, 21 Apr 2026 15:08:03 +0800 (CST)
-Message-ID: <ab93e1b9-93e5-4988-94db-b861dc47abb0@163.com>
-Date: Tue, 21 Apr 2026 15:07:54 +0800
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="Cg19Uvk7"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1776763929; x=1808299929;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=Sq0s3Ai9Uj6WEHE5GsmPeZpiF/Xu9DQRsx09i8yUIR0=;
+  b=Cg19Uvk7j+YOkBTWAdlhRj6PwfWgYO/U/9lC33gC/9sFIjPFX4QOTR6K
+   Fiw/hq+wxn09HIal7WCx+14W8aBz4f5/OQ2I3/+BFJr9Ng33yGZt4i0P+
+   0queH4+ivMaJFSGxRD++i/Y8kNPw/dGd6wL21qCgo4dpLw8fu8maWbUXu
+   feoOLXi0kGPF2/9kJy8Tywh87ZY+Vy3SBFkO6rV4CG7pS2K/PBta6o/SW
+   TknKBAGHncp+8yZ1b375rPYdNEHEJPuxUMfgjBcnAonyGYHblBky0u+f7
+   d2ItoUgsLN54VR92T/nUA+rcWRzLhAX68VxDtOH8ysEE0kZ3g89RMnDGo
+   w==;
+X-CSE-ConnectionGUID: PsWEmFW+TU2iIogeGMj+SA==
+X-CSE-MsgGUID: uGi7M2K2R9GXoqPF46Xi2w==
+X-IronPort-AV: E=McAfee;i="6800,10657,11762"; a="88769816"
+X-IronPort-AV: E=Sophos;i="6.23,191,1770624000"; 
+   d="scan'208";a="88769816"
+Received: from orviesa005.jf.intel.com ([10.64.159.145])
+  by orvoesa105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2026 02:32:07 -0700
+X-CSE-ConnectionGUID: mplqvNn6T1eSQ+PEm4AuZA==
+X-CSE-MsgGUID: mgZbQ6OJTRqQZoZo5msFpg==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.23,191,1770624000"; 
+   d="scan'208";a="236971344"
+Received: from junjie-desk-dev.bj.intel.com ([10.238.152.71])
+  by orviesa005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2026 02:32:03 -0700
+From: Junjie Cao <junjie.cao@intel.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	syzbot+26c4a8cab92d0cda3e3b@syzkaller.appspotmail.com,
+	junjie.cao@intel.com
+Subject: [PATCH] ext4: prevent out-of-bounds read in ext4_read_inline_data()
+Date: Tue, 21 Apr 2026 17:31:38 +0800
+Message-ID: <20260421093138.906266-1-junjie.cao@intel.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 v2 2/2] ext4: allow clearing mballoc stats through
- mb_stats
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu, wangguanyu@vivo.com,
- yi.zhang@huaweicloud.com, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, Baolin Liu <liubaolin@kylinos.cn>
-References: <20260419063436.17999-1-liubaolin12138@163.com>
- <20260419063436.17999-3-liubaolin12138@163.com>
- <aeXt_qg1SprB9Gu_@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
- <4A904858-8611-42BC-B1BD-9679F284F8EE@dilger.ca>
- <7bq1t1zg.ritesh.list@gmail.com>
- <9a2d25d3-219f-481c-afb8-083c8b9417c1@163.com>
- <aecVCWGL3bUFFiBd@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-From: liubaolin <liubaolin12138@163.com>
-In-Reply-To: <aecVCWGL3bUFFiBd@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:PCgvCgD3XwVPIudpsTpPAw--.4234S2
-X-Coremail-Antispam: 1Uf129KBjvJXoWxAr4kKrWkCr4DKr48XFyUGFg_yoW5tFW3pa
-	s5J3W2kan5Xw1rCrnFqr1jvr1Iya4xJ3y7XF98try09F9Iyrn3tr43Kr4j9FyDGrW8XayU
-	Xr4IkryayrWYvaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UOF4iUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6hTxvGnnIlQ2sAAA3N
 
+ext4_read_inline_data() reads e_value_offs from the inode buffer_head on
+each call, but the decision to enter the xattr value path depends on
+i_inline_size cached in EXT4_I(inode) at iget time. If the buffer
+contents change after the initial validation, e_value_offs can point
+beyond the inode body while i_inline_size still directs the code into
+the xattr value path, causing an out-of-bounds read in the memcpy.
 
+Add a bounds check before the memcpy, consistent with
+ext4_xattr_ibody_get(). Also guard folio_mark_uptodate() in
+ext4_read_inline_folio() since ext4_read_inline_data() can now return
+-EFSCORRUPTED.
 
-在 2026/4/21 14:12, Ojaswin Mujoo 写道:
-> On Tue, Apr 21, 2026 at 01:22:31PM +0800, liubaolin wrote:
->> Dear all,
->>     I noticed the discussion about where to document the ext4 proc parameter
->> mb_stats.
->>     I ran:
->>       git grep -n "/proc/fs/ext4" Documentation/
->>     and found that ext4 proc parameters are currently documented in both
->>     Documentation/admin-guide/ext4.rst and
->> Documentation/filesystems/proc.rst.
->>
->>     To be consistent with the existing documentation, I am thinking about
->> documenting mb_stats in both places.
->>     If there are no objections, I will send a v3 shortly.
->>     Compared with v2,the v3 patch will add the mb_stats documentation to both
->> ext4.rst and proc.rst.
-> 
-> Yes this makes sense to me. Feel free to retain the Reviewed-by since this is
-> just a documentation change.
+Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
+Cc: stable@vger.kernel.org
+Reported-by: syzbot+26c4a8cab92d0cda3e3b@syzkaller.appspotmail.com
+Tested-by: syzbot+26c4a8cab92d0cda3e3b@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=26c4a8cab92d0cda3e3b
+Signed-off-by: Junjie Cao <junjie.cao@intel.com>
+---
+ fs/ext4/inline.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-> OK, I will add all the reviewers who helped review my patch with Reviewed-by tags in the v3 version.
-
-
-> 
-> Thanks,
-> Ojaswin
-> 
->>
->>     Regards,
->>     Baolin
->>
->>
->>
->> 在 2026/4/21 11:40, Ritesh Harjani (IBM) 写道:
->>> Andreas Dilger <adilger@dilger.ca> writes:
->>>
->>>> On Apr 20, 2026, at 03:12, Ojaswin Mujoo <ojaswin@linux.ibm.com> wrote:
->>>>>
->>>>> On Sun, Apr 19, 2026 at 02:34:36PM +0800, Baolin Liu wrote:
->>>>>> From: Baolin Liu <liubaolin@kylinos.cn>
->>>>>>
->>>>>> Make /proc/fs/ext4/<dev>/mb_stats writable and clear the runtime
->>>>>> mballoc statistics when 0 is written.
->>>>>>
->>>>>> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
->>>>>> ---
->>>>> Hi Baolin, thanks for the changes.
->>>>>
->>>>> Seems like userspace doesn't have any way to know that writing 0 will
->>>>> clear the that. Well, I guess if you are looking at this file you are
->>>>> anyways debugging kernel code so that should be fine
->>>>
->>>> That could be documented in Documentation/filesystems/ext4/allocators.rst,
->>>> or better would be to add a new file that covers mballoc in more detail.
->>>>
->>>
->>> I started looking for ext4's control knobs for sys-admins in kernel
->>> Documentation where we should ideally document this, and I see those
->>> are declared here..
->>>
->>> Documentation/admin-guide/ext4.rst
->>> Documentation/ABI/testing/sysfs-fs-ext4.rst
->>>
->>> Looking at this and the relevant code, I see all /proc/ entries in ext4
->>> are all readable and sysfs entries for ext4 are mostly the control knobs
->>> which are declared in above admin guide.
->>>
->>> But now this patch adds a control knob to /proc/fs/ext4/<dev>/mb_stats,
->>> to clear the stats :).
->>>
->>> I guess we could have simply documented a new control knob value (e.g.
->>> "2") for clearing the stats via /sys/fs/ext4/<dev>/mb_stats itself or
->>> maybe even having mb_stats_clear file in sysfs wasn't bad either... But
->>> either ways, clearing the stats via the same procfs mb_stats file is not
->>> totally bad and I don't have a strong preference.
->>>
->>>
->>> For documenting this, we can add mb_stats entry under /proc section in
->>> Documentation/admin-guide/ext4.rst and document this change. Something
->>> like -
->>>
->>>     mb_stats
->>>           reports runtime statistics from multiblock allocator (mballoc),
->>>           including allocation request counts, groups scanned,
->>>           per-criteria scan hits (cr_p2_aligned, cr_goal_fast,
->>>           cr_best_avail, cr_goal_slow, cr_any_free), groups / extents
->>>           scanned, goal hits, buddy bitmap generations, and preallocation
->>>           usage etc.
->>>           Writing 0 to this procfs file resets all counters to zero.
->>>
->>>
->>> -ritesh
->>
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 408677fa8196..18c678df0a6e 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -211,6 +211,14 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
+ 	len = min_t(unsigned int, len,
+ 		    (unsigned int)le32_to_cpu(entry->e_value_size));
+ 
++	if (unlikely((void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs) +
++		     len > (void *)ITAIL(inode, raw_inode))) {
++		EXT4_ERROR_INODE(inode,
++			"inline data value out of bounds (offs %u len %u)",
++			le16_to_cpu(entry->e_value_offs), len);
++		return -EFSCORRUPTED;
++	}
++
+ 	memcpy(buffer,
+ 	       (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs), len);
+ 	cp_len += len;
+@@ -535,7 +543,8 @@ static int ext4_read_inline_folio(struct inode *inode, struct folio *folio)
+ 	ret = ext4_read_inline_data(inode, kaddr, len, &iloc);
+ 	kaddr = folio_zero_tail(folio, len, kaddr + len);
+ 	kunmap_local(kaddr);
+-	folio_mark_uptodate(folio);
++	if (ret >= 0)
++		folio_mark_uptodate(folio);
+ 	brelse(iloc.bh);
+ 
+ out:
+-- 
+2.43.0
 
