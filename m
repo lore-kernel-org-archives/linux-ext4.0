@@ -1,175 +1,158 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CC653BC69F
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Apr 2026 11:22:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.170
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776770576; cv=none; b=JYcilS6BHH7vNTCOekEYWf3JLOZF+AtKx055+RfMnibjgdzLSbfSm9WmVnJf5IQ2kDEYjZfPc7pO9rjAWMSoMWv2LW7jjFE78mkDprG9YUeJREAGY+8cMxxQv6HiV74K5cITLWlAbsUI53XfE5n1rD1G3tpEZ/uraqg2E0qRJBg=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776770576; c=relaxed/simple;
-	bh=7J5sLUyTcEtZ5b/o54KJz2TjlXrWGH0W+oigsdVGJYY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=qkAwih4ysMmyabH1mUakM68Sfs7EtZcIJFZ/xeIIFFBE4/c0ZVxKisXG9qTDiusO5uNhdZWvBqa9CMB+sPSm8Iyr72F/1UcDktnpb8aKlDiv4TevaOxe+XfLpQKBCuc7O03VSmEf3VPz8rNOHmRJbxoMPbrQB8OpLLPfezRvmUw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=lU9jm6kG; arc=none smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64AD21632DD
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Apr 2026 11:32:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.45
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1776771176; cv=pass; b=K7eFRsqN7G4zWlsoNJAq0nW0NpoxuqQ0w12KQKLQAdVKOGr5oFH+QoY0uZyKEU9NvS308lCOAW5zIgPTqS+fcPW/hH9ZoRBAXnxrk75UFK+mNnoVZmKv1CSJ2n0NtxnmIFJDBieCdCl2WtDD38jIDV6AXwOnpjjIzlrMsaNENx8=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1776771176; c=relaxed/simple;
+	bh=O5uaamRUmyuJEEJp1DE1/sjlVRrEIWTRjNg2WBDfiWI=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=YZjC0zbvBcdTyIceB7mWB3+F3bdQvYTHhavLFG/4RfDbD6P8NZXt+25Tp8opaBqva0bE5hSG/If5RvXEDc4uE9NMnxPFjYzcDHVVyfvcjVjK0fuPBtj3QyKDQBPIWqfgYOpaB2DC1VNIZ8Oo0hbvo6oql7o9T/z3QDDeav4EovI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=esdWbHVG; arc=pass smtp.client-ip=209.85.216.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lU9jm6kG"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-82f943870baso1460249b3a.1
-        for <linux-ext4@vger.kernel.org>; Tue, 21 Apr 2026 04:22:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="esdWbHVG"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-36146ae9dd4so3106657a91.3
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Apr 2026 04:32:55 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1776771175; cv=none;
+        d=google.com; s=arc-20240605;
+        b=fTsjTwNBIt/IH+YbjDsGJfY1jx1rV9/orNj7Mfws7uCUJukAKbKQadVy0GoM2DSE8E
+         c2Tz/17Zq/fgYxOJAjZ3HtX+RmPyURaNTCXTw4VArKPa1jO1CyFjdRcLvb06DpLFhsrJ
+         eFAB57g970fNOQ4QmNHS0okx3s6HR3WqJGUmOzyeLi9j/R/KeOIjjGosGF924RuQvWWa
+         Z8o4uq45NY1/dY9JQv7MO0PSUpTPCwBJQbJgZglfl5hmRtihgvo2GHcOMoONb9BrZvHU
+         3hg3hR3QLFH5OvVbZwQz9fjkwCv6eobfGDkYJ5DlRJXSRSBWNJn+F3wV766pyJH37qC2
+         bZLA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=O5uaamRUmyuJEEJp1DE1/sjlVRrEIWTRjNg2WBDfiWI=;
+        fh=Wu8bOl8ubfAB5NPFlO9J0KH5WRefa6dbropD9TRpJO8=;
+        b=BsGLmO+tDa/06eMHasDC2EbkarBerlk49RyKiMdzXDEuzXnxM1+a1ZVRxSnUrmKSvi
+         Ex1fXgoxb+L+Y9W8LpT+zx9BkpXzGNLmWCpOnmJv6GL/f98jUsW4N1w0xJAkCFXOE0JA
+         ZXkjAKz2hem4fl4fKhzUOB4moTvS0/CDaGyL5B93kj1pW5BXycORXDy7PGi7EcYmlZnS
+         /Xm7+PMRPoVd+0qU+uK+KhRhr0GMyKWmYD0725ErYZMrIUVoknjpfUgPnRc4wjOMvHLi
+         R6D0uuqEla10YI4gIzFuwQ614pfsyP7MIu/iprouKtVCw5t2GvXJW9IdixZvLtVILoHr
+         IhFg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1776770574; x=1777375374; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=pbepvZoiaQHnY8ojgGndHUN0tqRJnJo2KRx8HLgDgUI=;
-        b=lU9jm6kGqDjqxIjkWxGDeqDvr17UMQYeVNP9rS5P3UWd7+VE4cpTrRwlYKSpCHI1KD
-         zZA4+dsX0fyXlhWGoGhioT7GlAk6Cad2+kFgyXXf+ZkLjXgYuVSOk6W9JhbsksRhS+cn
-         JjoUEw79Nz86BTgOmxYEMCIS5sQKYiwZ5dfniI9hbARcbUXmygsWFT4/6ZYrU7er4B5b
-         AF39CTz+lEumwPTp8qh8DUlpS3e4Z+amiPfglYGt2PS3FjwfgzzvqXLqKOW/KsOHooqZ
-         aJdiZQCu+ux924UJHp8L48osT1cgJGdd6A/cCTA6wbL1kWXsoMldHo20OThek5XInH4F
-         NHfw==
+        d=gmail.com; s=20251104; t=1776771175; x=1777375975; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=O5uaamRUmyuJEEJp1DE1/sjlVRrEIWTRjNg2WBDfiWI=;
+        b=esdWbHVGl9bayQx0OxLRAiknYDYZ8qCN2Nk0yrpAISyeMbSTPPfsMFCLnN7yT7naoF
+         xqn0qHjAGDcnKhdt0yRlcwDLdJVVsNvFt9ldfxmRTBQTCB7b8l4WCRT3gXTzs7/KoG7K
+         k2DVPA5qjaR/K905sQN2HL870u2OHaEvUjo9+Cf5GkR2KZjUP23Q/meQNslK6Yondbkd
+         EAig3ehGuSlKZHJPc14dmfOHxc2+j0FVjw51udhixFTeIR0Hv9M+cGRLhp1PH0ox3rjF
+         mBeoqy9F8J7BXXJdUasmYIL6dQ70Qb+72QOLFj550i+xYRwMSyvSx5/WcJTFVaLbl3Pi
+         v/GQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776770574; x=1777375374;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=pbepvZoiaQHnY8ojgGndHUN0tqRJnJo2KRx8HLgDgUI=;
-        b=kpOR8QBLXn5MnMFA0iCfISG1/zRVxKoq7q0RFFUCjZnVXuYhsmCQ2OQR14HyTSfIyw
-         i7GhGBxoxnZ7bZM5I5WHDmwPDPZsNzhaPgW9kk3tVGqahfpTWhpTWzinI8SMu1AHqt/o
-         UKnddjBnyLN65o33OVqAMq4beCMKAdCszlgdu5hZiwe4AzQ8P6BO+TahWgimYHbpc3mr
-         g2nwrxG8Lb76LRQjvhku+KSJ6UWQZlhit3d6gTQIi9aRthQM/xuRYcj/2uh4qfzqIUZk
-         0tG11iMg583VtpjWZ/L56ZcbDrDLtNMCFlbMqEnqOCo5qQhURREIyJgejcC1jLAklAcn
-         1nbA==
-X-Forwarded-Encrypted: i=1; AFNElJ+zRkHp73WGu8R7lmhSQm7t09PdZdj0ZjM4cy/GenJBQU9ciVFLVnTy54ejfQ0lCMo7MYbp/tbrLcdy@vger.kernel.org
-X-Gm-Message-State: AOJu0Yzh/G6SFH3x+S+Q+OD5RPgQfujifjmj0Ut1uQ/CV0YjBLC+k0gf
-	2CuN/Bl91LWxukQ4JpEJN1/Oj9dP8d37SIs5BunDsAK5eeEkbBqF8gn3
-X-Gm-Gg: AeBDiete2cDFqEbwzxp2eZt9rsAKixzGwpzihZCvppK383BY1drF+MdJL3e6EmtHxHC
-	y1fRa+lxN369SHobwjREomhhy1tfOYy+GYHG9FCkVY+Ov5SF+N4IF4kTE776NFUvXdiNJmiRNlC
-	UcmI4TwezgVBGGYKxYtiXIhBrkEwoE09e1qExCY3y3CcMNF+rXJutk9tytWcHV0RU84ssMuWJSk
-	+4powMH4ybuKMHQiEY32BaIkd7+vIsyrUk/RlIBP7vWQv2Zhh73MRSBOXus8HcmSjfqtrevohbV
-	PacZ3p3KHcLn84yK6bIGPUakbxn0W4a6L3Khfb/+wFBFk+pZgwvONn92Dott6uBVY3vp1VaJdMp
-	FgIZYub4tUmkVCnN813U4mn3kZvizZwDSWMlg933BzLTHgiSQSX5Sw1D4n/MtsoAhF2KeeXYVLI
-	DVIw8tJFugOM5gOlbpD83P4mEjMyl/ng9xqMoiUwsLYFWzue+cwZQI9LVIVcDNiM/WOa0PdPNJu
-	LlNbg==
-X-Received: by 2002:a05:6a00:6988:b0:82f:aae5:c7a9 with SMTP id d2e1a72fcca58-82faae5d438mr7228492b3a.27.1776770573719;
-        Tue, 21 Apr 2026 04:22:53 -0700 (PDT)
-Received: from li-1a3e774c-28e4-11b2-a85c-acc9f2883e29.ibm.com ([129.41.58.4])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82f8e981a0asm14155014b3a.3.2026.04.21.04.22.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 21 Apr 2026 04:22:53 -0700 (PDT)
-Date: Tue, 21 Apr 2026 16:52:37 +0530
-From: Mukesh Kumar Chaurasiya <mkchauras@gmail.com>
-To: Thomas Gleixner <tglx@kernel.org>
-Cc: LKML <linux-kernel@vger.kernel.org>, 
-	Michael Ellerman <mpe@ellerman.id.au>, linuxppc-dev@lists.ozlabs.org, Arnd Bergmann <arnd@arndb.de>, 
-	x86@kernel.org, Lu Baolu <baolu.lu@linux.intel.com>, iommu@lists.linux.dev, 
-	Michael Grzeschik <m.grzeschik@pengutronix.de>, netdev@vger.kernel.org, linux-wireless@vger.kernel.org, 
-	Herbert Xu <herbert@gondor.apana.org.au>, linux-crypto@vger.kernel.org, 
-	Vlastimil Babka <vbabka@kernel.org>, linux-mm@kvack.org, David Woodhouse <dwmw2@infradead.org>, 
-	Bernie Thompson <bernie@plugable.com>, linux-fbdev@vger.kernel.org, Theodore Tso <tytso@mit.edu>, 
-	linux-ext4@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
-	Uladzislau Rezki <urezki@gmail.com>, Marco Elver <elver@google.com>, 
-	Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com, 
-	Andrey Ryabinin <ryabinin.a.a@gmail.com>, Thomas Sailer <t.sailer@alumni.ethz.ch>, 
-	linux-hams@vger.kernel.org, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
-	Richard Henderson <richard.henderson@linaro.org>, linux-alpha@vger.kernel.org, 
-	Russell King <linux@armlinux.org.uk>, linux-arm-kernel@lists.infradead.org, 
-	Catalin Marinas <catalin.marinas@arm.com>, Huacai Chen <chenhuacai@kernel.org>, loongarch@lists.linux.dev, 
-	Geert Uytterhoeven <geert@linux-m68k.org>, linux-m68k@lists.linux-m68k.org, 
-	Dinh Nguyen <dinguyen@kernel.org>, Jonas Bonn <jonas@southpole.se>, linux-openrisc@vger.kernel.org, 
-	Helge Deller <deller@gmx.de>, linux-parisc@vger.kernel.org, Paul Walmsley <pjw@kernel.org>, 
-	linux-riscv@lists.infradead.org, Heiko Carstens <hca@linux.ibm.com>, linux-s390@vger.kernel.org, 
-	"David S. Miller" <davem@davemloft.net>, sparclinux@vger.kernel.org
-Subject: Re: [patch 33/38] powerpc: Select ARCH_HAS_RANDOM_ENTROPY
-Message-ID: <aedc9UddBSYXzrAj@li-1a3e774c-28e4-11b2-a85c-acc9f2883e29.ibm.com>
-References: <20260410120044.031381086@kernel.org>
- <20260410120319.789114053@kernel.org>
+        d=1e100.net; s=20251104; t=1776771175; x=1777375975;
+        h=cc:to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=O5uaamRUmyuJEEJp1DE1/sjlVRrEIWTRjNg2WBDfiWI=;
+        b=bzQYCpq4xdFu4xWyuikHknhVBsrmFwNBoroAh2+jqjiyZawtSx7B/mSCafwhTZ5vp1
+         juy7APZtrBaoxc47ylqB2NXddjDoky0E0s5kYE1GR7aYyV1Spjo/thgaAtScl0JY97Yx
+         t2OyWJ2gZSxl4ZUNCVZO0Azex1hWwm/vzSlGwqF1FWNwU/DVrwrcXHj2BRvYXdTiX+HQ
+         eNJHL845YwitTIwp3fHrhjLazttc7l1TkqX6bySMK7u/AY0TXtkGB+rM/3PG0sL3p2xU
+         2AZGAHPzBwcfCeoEWiDYuiwFv4pL2pawkTSzx2UTWgTaBAak0/7L5e5LoYX8vXwFKLlD
+         8RPA==
+X-Forwarded-Encrypted: i=1; AFNElJ9aiHxi7jUlhXQ/cPoY7IqIP1DidPzcKzeq3rEdGMY3wviHm0pNo0pfX52n+eGx5l5d1EYUIzZVXxAH@vger.kernel.org
+X-Gm-Message-State: AOJu0YzjSOAb2qyz4jiFb+/TA6ZxX/gRYZlv4eBevZF8iahADGhO2Ncv
+	7LNILWzcp55vcKXDDHWieMci+UskJ8ndl+r8axiWU99fRZrE5SmsKACS9dYy2FzYlw+nB9ySaNE
+	B+RJSR1/xK8pj4t9mjRkALoYOcECPue0=
+X-Gm-Gg: AeBDiet0H42ifjO1l971FwrUzG+iiUSblp6dSrzZcbY2MXDIMUg5smJE8Fcy+qCamZ/
+	5P8ULrZMp6ooHAKD/OfZ13Vuem+2VP4F+i3W4dENZ0GLxPsW+odMDRijxWlVC17qXioWtWMRoNO
+	Kih0ky7nArcnvTv8HzoDwkzGmUs3uVCPfT74xbnwPWCGFEs1A8rzDuR4qZPzNV2khIC+uA7l9zZ
+	9XKzbm7chduslTxP1U4XbltYLvoo1BRbxmcilVBQQnWZHd94CYLizSERD7dN1meC70RWzqH8G3F
+	C6Xnd3ytLCIH4WKveA==
+X-Received: by 2002:a17:90b:5107:b0:35f:b870:9c9f with SMTP id
+ 98e67ed59e1d1-361403f09e9mr17524141a91.12.1776771174624; Tue, 21 Apr 2026
+ 04:32:54 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260410120319.789114053@kernel.org>
+From: Zw Tang <shicenci@gmail.com>
+Date: Tue, 21 Apr 2026 19:32:43 +0800
+X-Gm-Features: AQROBzDWJ5grn8TBnVAm-zcDcOu60SSAuTAR9bmtBP5FVlU4texznDx_ooYATZ0
+Message-ID: <CAPHJ_VJeBAL_fk+P79guYTABZgW1hkcAz8t=c_nVK1mbn3_FYw@mail.gmail.com>
+Subject: [BUG] ext4: BUG_ON in ext4_write_inline_data (fs/ext4/inline.c:240)
+To: tytso@mit.edu
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, libaokun@linux.alibaba.com, jack@suse.cz, 
+	ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri, Apr 10, 2026 at 02:21:09PM +0200, Thomas Gleixner wrote:
-> The only remaining usage of get_cycles() is to provide random_get_entropy().
-> 
-> Switch powerpc over to the new scheme of selecting ARCH_HAS_RANDOM_ENTROPY
-> and providing random_get_entropy() in asm/random.h.
-> 
-> Remove asm/timex.h as it has no functionality anymore.
-> 
-> Signed-off-by: Thomas Gleixner <tglx@kernel.org>
-> Cc: Michael Ellerman <mpe@ellerman.id.au>
-> Cc: linuxppc-dev@lists.ozlabs.org
-> ---
->  arch/powerpc/Kconfig              |    1 +
->  arch/powerpc/include/asm/random.h |   13 +++++++++++++
->  arch/powerpc/include/asm/timex.h  |   21 ---------------------
->  3 files changed, 14 insertions(+), 21 deletions(-)
-> 
-> --- a/arch/powerpc/Kconfig
-> +++ b/arch/powerpc/Kconfig
-> @@ -150,6 +150,7 @@ config PPC
->  	select ARCH_HAS_PREEMPT_LAZY
->  	select ARCH_HAS_PTDUMP
->  	select ARCH_HAS_PTE_SPECIAL
-> +	select ARCH_HAS_RANDOM_ENTROPY
->  	select ARCH_HAS_SCALED_CPUTIME		if VIRT_CPU_ACCOUNTING_NATIVE && PPC_BOOK3S_64
->  	select ARCH_HAS_SET_MEMORY
->  	select ARCH_HAS_STRICT_KERNEL_RWX	if (PPC_BOOK3S || PPC_8xx) && !HIBERNATION
-> --- /dev/null
-> +++ b/arch/powerpc/include/asm/random.h
-> @@ -0,0 +1,13 @@
-> +/* SPDX-License-Identifier: GPL-2.0 */
-> +#ifndef _ASM_POWERPC_RANDOM_H
-> +#define _ASM_POWERPC_RANDOM_H
-> +
-> +#include <asm/cputable.h>
-> +#include <asm/vdso/timebase.h>
-> +
-> +static inline unsigned long random_get_entropy(void)
-> +{
-> +	return mftb();
-> +}
-> +
-> +#endif	/* _ASM_POWERPC_RANDOM_H */
-> --- a/arch/powerpc/include/asm/timex.h
-> +++ b/arch/powerpc/include/asm/timex.h
-> @@ -1,21 +0,0 @@
-> -/* SPDX-License-Identifier: GPL-2.0 */
-> -#ifndef _ASM_POWERPC_TIMEX_H
-> -#define _ASM_POWERPC_TIMEX_H
-> -
-> -#ifdef __KERNEL__
-> -
-> -/*
-> - * PowerPC architecture timex specifications
-> - */
-> -
-> -#include <asm/cputable.h>
-> -#include <asm/vdso/timebase.h>
-> -
-> -ostatic inline cycles_t get_cycles(void)
-> -{
-R> -	return mftb();
-> -}
-> -#define get_cycles get_cycles
-> -
-> -#endif	/* __KERNEL__ */
-> -#endif	/* _ASM_POWERPC_TIMEX_H */
-> 
-Build tested for this series with allmodconfig and allyesconfig on ppc64le
-machine for ppc64le.
-tree: git://git.kernel.org/pub/scm/linux/kernel/git/tglx/devel.git getcycles-v1
+Hi,
 
-Boot tested for this series on powernv9 qemu, powernv10 qemu and pSeries
-power11 hardware.
+I am reporting a kernel BUG in ext4 triggered by a syzkaller reproducer on
+Linux 7.0.0-08391-g1d51b370a0f8.
 
-Tested-by: Mukesh Kumar Chaurasiya (IBM) <mkchauras@gmail.com>
-Reviewed-by: Mukesh Kumar Chaurasiya (IBM) <mkchauras@gmail.com>
+The first fatal issue happens in the ext4 inline data write path:
+sendfile64 -> ext4_file_write_iter -> ext4_da_write_end ->
+ext4_write_inline_data_end -> ext4_write_inline_data.
 
+The crash is reported as:
+
+kernel BUG at fs/ext4/inline.c:240
+
+and RIP points to:
+
+ext4_write_inline_data+0x3d0/0x490
+
+This looks like an ext4 inline-data boundary/state inconsistency triggered
+while writing to an ext4 image crafted by syzkaller. The later
+KASAN: slab-use-after-free in rwsem_down_write_slowpath() appears to be a
+secondary effect after the primary ext4 BUG, likely during teardown/unlink
+after the filesystem failure.
+
+Reproducer:
+C reproducer: pastebin.com/raw/3LmK5Kxg
+console output: pastebin.com/raw/C0XjNMXp
+kernel config: pastebin.com/raw/aq1V3cLk
+
+Kernel:
+HEAD commit:
+git tree: <e.g. torvalds/linux>
+kernel version: 7.0.0-08391-g1d51b370a0f8 #1 PREEMPT(lazy) (QEMU)
+
+Relevant log:
+
+[ 1329.147750] kernel BUG at fs/ext4/inline.c:240!
+[ 1329.148692] Oops: invalid opcode: 0000 [#1] SMP KASAN
+[ 1329.149543] CPU: 0 UID: 0 PID: 334 Comm: repro1 Tainted: G W
+7.0.0-08391-g1d51b370a0f8 #1 PREEMPT(lazy)
+[ 1329.153249] RIP: 0010+0x3d0/0x490
+[ 1329.167978] ext4_write_inline_data_end+0x293/0xc90
+[ 1329.170566] ext4_da_write_end+0x521/0xec0
+[ 1329.176842] ext4_buffered_write_iter+0x11a/0x430
+[ 1329.177610] ext4_file_write_iter+0x561/0x1840
+[ 1329.185052] iter_file_splice_write+0xa33/0x11c0
+[ 1329.190820] direct_splice_actor+0x18f/0x7a0
+[ 1329.198893] do_splice_direct+0x41/0x50
+[ 1329.200276] do_sendfile+0xa86/0xda0
+[ 1329.203110] __x64_sys_sendfile64+0x1cf/0x210
+
+There is also an ext4 metadata inconsistency message right after the BUG:
+
+[ 1329.221770] EXT4-fs error (device loop1):
+ext4_mb_generate_buddy:1314: group 0, block bitmap and bg descriptor
+inconsistent: 25 vs 150994969 free clusters
+
+and later a secondary report:
+
+[ 1329.274881] BUG: KASAN: slab-use-after-free in
+rwsem_down_write_slowpath+0x15e9/0x1640
+
+Based on the log, I believe the primary issue to investigate is the BUG in
+fs/ext4/inline.c, while the later rwsem report is probably fallout after
+the ext4 failure.
+
+Please let me know if more information is needed.
+
+Thanks.
