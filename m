@@ -1,44 +1,93 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E1A930C60D;
-	Wed, 22 Apr 2026 06:34:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72CD43BED7D
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 08:58:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776839643; cv=none; b=QcJheJoRSxuuh4iEaktkQGtWAtRfW0VJEcUdtRIUq0Cngg50SmfTyg4BjxGngRqP3HTH5JqMUgnLvgtbJ4a/6DF90hr3kQB3kdkI8oTgSkyWYuHt+/FCaP3uME7NZbT7IKtaU+5eVRZd3iaGDNPa71QVEny1gcWzQu0EbYtIrNA=
+	t=1776848288; cv=none; b=AEUG98RwuG4d5fkAKCJe4VlCn3pAqsosTua0w7rhCVs2JD1fLOhyA98mnudbnRAbAKxF2dTrSwHgZ39ZUpakW2VzeakYjs1Z7AsuVIV1/LMjNdLf7Lr5uUVGxomyMdeS8SgCsGvYtVRo1OlW7f7UoAIi+k2BhoPErFDgXQZrCOY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776839643; c=relaxed/simple;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
+	s=arc-20240116; t=1776848288; c=relaxed/simple;
+	bh=uF63Ms8AACR/oFWxgd+uFy3hlr2NIcQ7At05T0KyQug=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CHJoIAoe+EgBowHVxGTT6u195P2dCc6bIIG03tVFNsyqZEWbU9A/GcQZZi7azEkkfhc0sEiJYf7h/mz9P62sGNwPbu/1GTOJWg+BjunIhk5affmHZf6dNuKJ6NACjIz3Vp1aTvIbdYI6W+jSzaP5QcVH3sBmaDOW5vmbMmPBWGA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=YdA1fg7E; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=V9F4vXq71lfSDhOrFNpXCKf8GpEA4TvCgI7ln3mUvNYuWkJdghx0TJcENc8q3Z05SbqikbABMDhUSibt+CWz7wca+L/gIqanDR7zoNGjE/i6ro0Ivr07L6bYwddG+SOIYIZarZAjXyxXcYzAdXdpmckqld4wy6LcMmqZkI3FCYU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=cHQHEGn4; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=cxPgpXd1; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="YdA1fg7E"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=; b=YdA1fg7E9F57Ys7OPdHPtrzdef
-	2pdbekkVLYPo9LtmZXZggekEEIu+temlrAFnU0M1OpaxE7dRJ+3rGBQHKTpNEF6vaVIg04h1JM698
-	JVT5c/G2oMkpNHnBLk6sZ4kVd2QthPgFSa0VpSKrb+qcmw/JNKRlibq9gwGsJYVBH5Mt7/nj93aX8
-	0ZpISW+vJPwE/qzi8u4Ma1jXirDhSGxQC3Anik0614XUP9qDw5mmuhjJ/+yxLH5mQfYXuQYFQLBKc
-	hGGj+4C5kaINtigsIVQV1K90GzGqaa+H8L/bDXYC2CGMyWwX+rnlAgvydwH8CB3pvw/dVAldii0KV
-	+lQtzhTQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1wFR9t-00000009fTJ-35jR;
-	Wed, 22 Apr 2026 06:34:01 +0000
-Date: Tue, 21 Apr 2026 23:34:01 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Fengnan Chang <fengnanchang@gmail.com>
-Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, lidiangang@bytedance.com,
-	Fengnan Chang <changfengnan@bytedance.com>
-Subject: Re: [PATCH v2] iomap: avoid memset iomap when iter is done
-Message-ID: <aehr2XeOlt8hk0Ry@infradead.org>
-References: <20260420061630.62077-1-changfengnan@bytedance.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="cHQHEGn4";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="cxPgpXd1"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1776848286;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=FFaygBUBXXsgixj3eSOd6CMo0lj7K6zPcakxuhrDzd4=;
+	b=cHQHEGn4d65uGcHveSIfcaCYX+F8OuoMacUm1MAOmqirZSK4FaBJJv5JD4WXXd/psgrLV4
+	AyeNE1L6dGikldh6xPKHp9tapFPxBEeg5jZczq2A419pFkp0K5EdnG6cEGSDAAe63btKjy
+	0tAeHahRUjaQ4pK45Cde+QMyNuzt6lE=
+Received: from mail-wr1-f71.google.com (mail-wr1-f71.google.com
+ [209.85.221.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-554-8nf89K2LPTuEefWwDVjnXg-1; Wed, 22 Apr 2026 04:58:05 -0400
+X-MC-Unique: 8nf89K2LPTuEefWwDVjnXg-1
+X-Mimecast-MFC-AGG-ID: 8nf89K2LPTuEefWwDVjnXg_1776848284
+Received: by mail-wr1-f71.google.com with SMTP id ffacd0b85a97d-43d7e5b98ebso4373482f8f.0
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 01:58:04 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1776848284; x=1777453084; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=FFaygBUBXXsgixj3eSOd6CMo0lj7K6zPcakxuhrDzd4=;
+        b=cxPgpXd1U2be8oz6XUshGUwOibc9axYIPHrFBQMSuZiwknsMCpp4TPaR8V7HmHlTAY
+         /dCsgZVFDwyccB3y60KfRvoGnvNlg2iIqUs25ma3UOS+vz/Zsg2LlbyetF/NjsQvTjys
+         aJuVv7sS9y+rpV64vhwHsfrlc4dqmdxrJWV1l4wJrJpAQhYrfJcu/hMHFG5ggFE775LB
+         W+UX1yNE383mH/kP7SWPY7TcZmnlXH43S7rc0l7ZvA4bsx2363D3RxTy9WLYClkKW2eM
+         LCp79CUbrLb03Zm4ngKEbKKygpkSgf9aAmySoGIq7OXDFIImQGBZnG2jEb8jKTcln3vQ
+         Z9vQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776848284; x=1777453084;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=FFaygBUBXXsgixj3eSOd6CMo0lj7K6zPcakxuhrDzd4=;
+        b=Ypktb6k0j0MHFhB/3XdbZ+DQG9766VAfXPzo8/DoWyLaDkjosCGaP5OGIrETnnwGKb
+         GbHIqDNEFhPAB/PpyWtFTxOSHQ+Ceq66Rv/grYzZuCmrMlam0NPk9nvwa1W+TE/uhYdQ
+         lc6RIcFSXFmLcOGCvPGmWbFUPfERsn6lPS5LRCL7aVG6vVH9UPaBa4WsABmda0j0hFAM
+         gkdYscOcUHCssDRXRDXVcrO0zUe3Vf+0gmw7ZRNR6Zew/xpSnuEFCGsmABWXdUOmRnk0
+         ngkaKkjvBtXEPrEm6zhbdVznMibVWmeyUkGjCCmND382Kq6VDu1UO3aJZxaHGBpVGtFD
+         TyAQ==
+X-Forwarded-Encrypted: i=1; AFNElJ8l0q7D7N58bXr5o3dD25JEoHjro2iQnpyk9GfFtctlpDN/QGufh0wQxPGZbCchrxdztAmaxisK0c5A@vger.kernel.org
+X-Gm-Message-State: AOJu0YznWDhzfGgGfLySXJW5nkpeIMIl14mjrRPY+6wGbhoVcGKMbdYF
+	9FsnVvSark3fcrxM0qqpCU5fVoE3ZHUdl4ciBWB1BN7ll2GwW89D0eCSNPbb5NE+nEo63LiVq7J
+	3cMX/IOIm4rH6qULMwRv/n+UYJckqI2aQicPC1653R7cnzEgcSM69zRv8fDh/ww==
+X-Gm-Gg: AeBDieuvWDiKhR/h9mXzAiQEz40mfBfnp2akEbzL4ZKa0hQ/ra6FNsaFwPkCxgZTq48
+	+3T84qfV8Om2NcBpofsTVNGZXJwPDB2l/NNWB/Nt2VN7V9k7EA5D2IW194JKC3MYyPQWKuzvm2x
+	OfvE/t0kPlioa9AfEvF9+4PcZZ9A41hTqsFkgLif5MjUhrJd/DjAPYfPhy+F4rRxvi8niwhOCMJ
+	t8Pi4kHGS4lSQrf5hlTsq1PQwVLLYXiykMM6h6XSm2S3NWjO56eIxAvKajjqT1445qbJHpqeSPJ
+	VEhwu5gxNHmTUbJrTqeRnBlQerdQyp0XoTT36aWhnEqkaAq85TUArxVPP4ROwB+fJW28f5wkLp5
+	QkLFDG5XAEHzCOx2ub9WMyQ==
+X-Received: by 2002:a05:6000:4022:b0:441:2439:bef2 with SMTP id ffacd0b85a97d-4412439befdmr4594386f8f.24.1776848283802;
+        Wed, 22 Apr 2026 01:58:03 -0700 (PDT)
+X-Received: by 2002:a05:6000:4022:b0:441:2439:bef2 with SMTP id ffacd0b85a97d-4412439befdmr4594342f8f.24.1776848283286;
+        Wed, 22 Apr 2026 01:58:03 -0700 (PDT)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-43fe4e3a341sm47712138f8f.24.2026.04.22.01.58.02
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 22 Apr 2026 01:58:02 -0700 (PDT)
+Date: Wed, 22 Apr 2026 10:58:02 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, djwong@kernel.org, 
+	david@fromorbit.com
+Subject: Re: [PATCH v8 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <iads77qkk2wjkqfezd4vtqsga6btlkqdyephqojyv76herp6by@l24e2hm2ebas>
+References: <20260420114714.1621982-1-aalbersh@kernel.org>
+ <20260421214316.GB37143@quark>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,10 +96,25 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260420061630.62077-1-changfengnan@bytedance.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20260421214316.GB37143@quark>
 
-Looks good:
+On 2026-04-21 14:43:16, Eric Biggers wrote:
+> On Mon, Apr 20, 2026 at 01:46:47PM +0200, Andrey Albershteyn wrote:
+> > This series based on v7.0 with Christoph's read ioends patchset [1].
+> > 
+> > kernel:
+> > https://git.kernel.org/pub/scm/linux/kernel/git/aalbersh/xfs-linux.git/log/?h=b4/fsverity
+> 
+> FYI: the git repository doesn't match what was actually sent out.  For
+> example the patch "ovl: use core fsverity ensure info interface" is a
+> bit different.  The version in git (incorrectly, I think) ignores the
+> error code, while the patch returns it.
+> 
+> - Eric
+> 
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Thanks, you're right, I forgot to push
+
+-- 
+- Andrey
 
