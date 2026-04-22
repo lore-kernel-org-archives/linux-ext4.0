@@ -1,133 +1,160 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E877F3CD8C3
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 10:59:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7EBF372B2F
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 11:40:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776855599; cv=none; b=jzj3QSBUV+cGpU33aRnUGlsM12IsImOnFYpG0rJ1m2HuEhgoGuWHf+xlGAFL9cMew0nGe4kFOCSgJFOzanoiPz70fhx+5WlkyHnu9ZFmzSnxjhmf1rmedxFFjEAcmrED53KiyWxcC2pR7lYQeLC+zinhth+lvMTCuxQTP+k8yKM=
+	t=1776858003; cv=none; b=rqGsIe5+vwZD0BWMwtlDm0HXMAr8HMun47sLQjdPYsAkziCWkZ76QP+KycK9vOm937zaGO7qVwZwf0eBRlY4dkWswmi5ZEGw8Lx1S0kziYbdH2abb7bunaY0Z6prIee1zWpDLpsIU88GLo9SN0WPAEwBbhrUXGYmSFSXQTkVHoM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776855599; c=relaxed/simple;
-	bh=n48wvyxb3Y6EIjjJloYuiiV91f0Unk3er5xo3n6m/Lw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Zi8UtUc7Xn+mkcqKiJhblMz+f5m01iM2Qdz9VKBgJ/InVZi3bonSWS8XhS9TIxguFuXfMeFukvYc5cE8GZeYabsl0UOYGT0v+FtTBKAPYcBmxamcXM4YI8o5Jzsc7oXkl1aOT6rDeu7u9F73ctPoYnTnntkKIv4gDpCXjriVbeA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=aLdIF0dU; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1776858003; c=relaxed/simple;
+	bh=7jSkwPHB1rmAue0G4ep5X5x0tFp0MCnjlBuXF0HrV68=;
+	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
+	 In-Reply-To:Content-Type; b=rG2ZplUFfkZ5EpKVsk8/oucc2SPxAagyIiB3rJJcHi7IgKkunXvNMOT6ALEtw9s8Mfz+4ip8jdA+jynl/RncIy2lBGnJ1yPkhRm1AHFzBLJLCXtgkmnt/1vA/Q5nkxanENFpIm43HS6Lffu3EWQX3sNgG0q6EVP3m9R5kENfa64=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ll9mgn/J; arc=none smtp.client-ip=209.85.210.180
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="aLdIF0dU"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1776855597;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=izjl8drGARtnJbDgV470Smw6Us4DYi0R0XZK5bmOh0M=;
-	b=aLdIF0dU1jYYNI0aSt/22W69gVoq+Dplvx0NPn5jih0h15C4WWzZfeGu1wyUcUwJ9qTktP
-	TIMPLdWcpCval/752Y3uqc4Jmj3c5H75lX8H5Q8GDcwjUpwzd4GP6a3d3pHYmfF+SoPb7j
-	2VZzTgJd39909TNc37yoZiotuOz1QlU=
-Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-501-9KUf4_wFM6uiEpVsiOBTvw-1; Wed,
- 22 Apr 2026 06:59:54 -0400
-X-MC-Unique: 9KUf4_wFM6uiEpVsiOBTvw-1
-X-Mimecast-MFC-AGG-ID: 9KUf4_wFM6uiEpVsiOBTvw_1776855593
-Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id ED44B19560B3;
-	Wed, 22 Apr 2026 10:59:52 +0000 (UTC)
-Received: from bfoster (unknown [10.22.88.73])
-	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 22825180047F;
-	Wed, 22 Apr 2026 10:59:51 +0000 (UTC)
-Date: Wed, 22 Apr 2026 06:59:48 -0400
-From: Brian Foster <bfoster@redhat.com>
-To: Fengnan Chang <fengnanchang@gmail.com>
-Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
-	linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, lidiangang@bytedance.com,
-	Fengnan Chang <changfengnan@bytedance.com>
-Subject: Re: [PATCH v2] iomap: avoid memset iomap when iter is done
-Message-ID: <aeiqJDF1S3nlme72@bfoster>
-References: <20260420061630.62077-1-changfengnan@bytedance.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ll9mgn/J"
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-82cebbdbdccso3247992b3a.1
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 04:40:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1776858001; x=1777462801; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:content-language:references
+         :cc:to:subject:from:user-agent:mime-version:date:message-id:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=MUHkTSAzkxq/Om8+jSsUbp1RMELRmuD0B/+VrfsdgxU=;
+        b=ll9mgn/JnyYFNKhpAt/qyIgH1H+6MCuZuRMt6NoafZGs++QWkmwE9ELntcK6j2aZrs
+         bjQDiQFaXB2pDrlBOV1aoPlpvtUlnweGGbZMAF9Q7qAo54WB+4r87Df9qK0m/MFglUBd
+         BHMCkiou5z1IwPYX5t+7wdQ6N9NGl5PX0SBC+LSXK8JwUi9vyLk0h5QApWvWmE1B/ym0
+         SCtz+viyfmXeVbo/hLcsa8mfFKnC4LHSM4xJtetEzCH1GXbOMkQiH1fScUiEa/qYmSFM
+         gZv5DV9WtfS5UBKC+jofPgs7h43TRT0mP/GxTto7wBYsxzUMpgxu2N0ZTl+YyPksLurO
+         u+Jg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776858001; x=1777462801;
+        h=content-transfer-encoding:in-reply-to:content-language:references
+         :cc:to:subject:from:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=MUHkTSAzkxq/Om8+jSsUbp1RMELRmuD0B/+VrfsdgxU=;
+        b=XpD31HjDgdFSH4ZzpoTaw6GafR0kCat+SzUGzU0R9ec4CKYKdNRI+FyI9bnCcsJQIT
+         KrP4AWY39ZR1vR8xv7AT3oHRZtSIFwxK4LOhh6T1iyABBl1xsHdnAav7Y5ePIAtmLy+3
+         tkvjWKZtCd+xxLu0GEATAe1SioCCSXejhmYnIWh0jyhW/r+lYQWAbyQuS76VfcVzwHmS
+         WrurzDV339EF5uTjh9y2AvmpysSQCMuiyfg/33j/RPjeSQZ2RVPyeuG7WYcdy8FB5b2q
+         WX3WE+w2sOhQ089WLDgBuwCRNbj5e6G0MfoZB8AlXJ/R9xDfIV3OpzfDl06zeb/c33q9
+         SGKg==
+X-Forwarded-Encrypted: i=1; AFNElJ+/L24Ie30roItA+nV/pFxDlx/0NUd/i7cp5srxNurYtmnmwpAg8M4xE++tMfdKR6kqS85KWapIJ8MW@vger.kernel.org
+X-Gm-Message-State: AOJu0YxYZ7bdBg7zNx8R1Lxs7vsHyPgYm81IHKttxlBl3/IiaUZU9MYE
+	cynRu8+ejwalW1PDxfVukLYbouDbzA+TE5LruRudn6LHvSk+Secyha/a
+X-Gm-Gg: AeBDiesshQBZEcE9Ikq/28j/KKr9/uvw1O3/jBFy/IBZjPVtwOWvGYYg3L8LUdfFlfY
+	rJXqUzJYorXVSUzla1z6Fus/KH+/vVJngKTm9J2V8F2RwU2xZkKIFc1OvsaB0XdU+RzvYVrwBpn
+	k6HexHRVMPU5evDRNN5+ecZddvqBXQiNjA8E2JptUZI78FI5yKnAQjU0DjAJ345QTtvBNLEZtYd
+	oNsT0gwHAvQpE4ncO8tz2BlV5grX9OgaaAb2n6zRLPVgAUIblFUyqijHBt2X99o70F2AwzHuTD7
+	XB1uuZfs+/lsvECVk5cWNtCHt0T0O4sELXDHn7Hv3LGqoqY7Q1YaXNN320mjtH4aZTpMCkTNMjX
+	gE5Zq4bBxMQs/MK77GXm50dYyLypy7Ew5ex2Y9hlwVad10YXCjmoaEI+Z7Pdd8R7skgxn/0y2B7
+	cPO3zqLH2hl5So0/kMqCdBvkWX3QLm9ujxQM+C+g==
+X-Received: by 2002:a05:6a00:984:b0:82f:2985:2094 with SMTP id d2e1a72fcca58-82f8b554ebemr18415296b3a.30.1776858001175;
+        Wed, 22 Apr 2026 04:40:01 -0700 (PDT)
+Received: from [192.168.50.90] ([116.87.14.48])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-82f8ec0092bsm18335315b3a.50.2026.04.22.04.39.58
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 22 Apr 2026 04:40:00 -0700 (PDT)
+Message-ID: <cd9c0147-18cf-464d-86e2-12342a992ebc@gmail.com>
+Date: Wed, 22 Apr 2026 19:39:57 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260420061630.62077-1-changfengnan@bytedance.com>
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
+User-Agent: Mozilla Thunderbird
+From: Anand Jain <anajain.sg@gmail.com>
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Theodore Tso <tytso@mit.edu>, "Darrick J. Wong" <djwong@kernel.org>,
+ linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-xfs@vger.kernel.org, Anand Jain <asj@kernel.org>, dsterba@suse.com
+References: <20260323041624.GA11453@mac.lan>
+ <d4a9970b-e7ed-4e74-be9d-2d08400f9d79@gmail.com>
+ <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
+ <adSUiB9L0sFAd04U@infradead.org> <20260407144709.GA81690@macsyma-wired.lan>
+ <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
+ <20260409041035.GC99725@macsyma-wired.lan>
+ <22cfbf8d-af9b-462e-b240-67a1de24764f@gmail.com>
+ <20260409131238.GC18443@macsyma-wired.lan>
+ <b593ab17-afaf-4128-97eb-0ab9c23dec5c@gmail.com>
+ <aeHikJwRmFdDg5FW@infradead.org>
+Content-Language: en-US
+In-Reply-To: <aeHikJwRmFdDg5FW@infradead.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Mon, Apr 20, 2026 at 02:16:30PM +0800, Fengnan Chang wrote:
-> When iomap_iter() finishes its iteration (returns <= 0), it is no longer
-> necessary to memset the entire iomap and srcmap structures.
-> 
-> In high-IOPS scenarios (like 4k randread NVMe polling with io_uring),
-> where the majority of I/Os complete in a single extent map, this wasted
-> memory write bandwidth, as the caller will just discard the iterator.
-> Use this command to test:
-> taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
-> -n1 -P1 /mnt/testfile
-> IOPS improve about 5% on ext4 and XFS.
-> 
-> However, we MUST still call iomap_iter_reset_iomap() to release the
-> folio_batch if IOMAP_F_FOLIO_BATCH is set, otherwise we leak page
-> references. Therefore, split the cleanup logic: always release the
-> folio_batch, but skip the memset() when ret <= 0.
-> 
-> Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
-> ---
 
-Reviewed-by: Brian Foster <bfoster@redhat.com>
 
->  fs/iomap/iter.c | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c
-> index c04796f6e57f..e4a29829591a 100644
-> --- a/fs/iomap/iter.c
-> +++ b/fs/iomap/iter.c
-> @@ -6,17 +6,13 @@
->  #include <linux/iomap.h>
->  #include "trace.h"
->  
-> -static inline void iomap_iter_reset_iomap(struct iomap_iter *iter)
-> +static inline void iomap_iter_clean_fbatch(struct iomap_iter *iter)
->  {
->  	if (iter->iomap.flags & IOMAP_F_FOLIO_BATCH) {
->  		folio_batch_release(iter->fbatch);
->  		folio_batch_reinit(iter->fbatch);
->  		iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
->  	}
-> -
-> -	iter->status = 0;
-> -	memset(&iter->iomap, 0, sizeof(iter->iomap));
-> -	memset(&iter->srcmap, 0, sizeof(iter->srcmap));
->  }
->  
->  /* Advance the current iterator position and decrement the remaining length */
-> @@ -102,10 +98,14 @@ int iomap_iter(struct iomap_iter *iter, const struct iomap_ops *ops)
->  		ret = 0;
->  	else
->  		ret = 1;
-> -	iomap_iter_reset_iomap(iter);
-> +	iomap_iter_clean_fbatch(iter);
-> +	iter->status = 0;
->  	if (ret <= 0)
->  		return ret;
->  
-> +	memset(&iter->iomap, 0, sizeof(iter->iomap));
-> +	memset(&iter->srcmap, 0, sizeof(iter->srcmap));
-> +
->  begin:
->  	ret = ops->iomap_begin(iter->inode, iter->pos, iter->len, iter->flags,
->  			       &iter->iomap, &iter->srcmap);
-> -- 
-> 2.39.5 (Apple Git-154)
-> 
-> 
+>> It seems we've reached the functional limits of f_fsid.
+>> If we want to solve this properly for Overlayfs, NFS handles, or a
+>> complex system monitoring..etc, we need a new identifier let's call
+>> it f_fsid_v2, that meets the following requirements:
+>>
+>>   System-wide Uniqueness: Must distinguish between cloned filesystems.
+>>
+>>   Persistence: Must remain consistent across reboots/HW re-enumeration.
 
+ My mistake- this should be:
+
+  Consistency: Must remain consistent across reboots/HW re-enumeration.
+
+
+>>
+>>   Non-On-Disk: Must not be stored on-disk.
+> 
+> The third requirement doesn't make much sense to me.  If it is
+> persistent it. or something it can be derived from must be stored
+> on-disk.
+
+ I hope it make sense now with "Persistence" replaced by
+ "Consistency" for the 2nd requirement (above).
+
+
+>> One possible implementation for f_fsid_v2 could be:
+>>
+>>    f_fsid_v2 =  hash(s_uuid, block_device_serial, [subvol_id])
+>>
+>> For pseudo block devices (virtio-blk, loop, nbd, brd,..),
+>> the serial could be derived recursively:
+>>
+>>    serial_number = hash(backing_file.f_fsid_v2, backing_file.ino)
+> 
+> What i the point in this?  All of this seems to be better served
+> by s_uuid.
+
+The goal is to fix duplicate f_fsid issues in cloned filesystems
+by creating a unique, reboot-consistent ID. This allows the
+source and clone to remain identical (sharing same uuid) while
+still being individually identifiable.
+
+>> Note on Hardware Serials:
+>>  Standard storage protocols (T10, NVMe, SAS) mandate unique,
+>>  persistent serials per LUN. While I've seen T10 protocol
+>>  violations during my time authoring Solaris HBA drivers, I
+>>  believe these outliers shouldn't dictate the design.
+> 
+> No, T10 does not actually mandate unique identifiers, NVMe does, but the
+> implementations are often totally broken.
+
+Right. Newer SPC-3 (and above) compliant devices must support
+the Inquiry CDB EVPD flag and provide page 0x83 for identification,
+which is what we typically use for multipathing.
+These are globally unique. And, we can overlook legacy
+drives, as they've probably been past their EOSL for a while now.
+
+We can tweak the algorithm as follows:
+
+  ID = hash(s_uuid, device_identifier_id,
+            partition_start_lba, partition_end_lba,
+            [subvol_id], [file.ino])
+
+This is an ID which remains consistent across reboots while
+staying unique within the system, which we can use it for f_fsid.
+
+Thanks.
