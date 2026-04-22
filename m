@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C60793446B7;
-	Wed, 22 Apr 2026 02:17:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D5B635AC04;
+	Wed, 22 Apr 2026 02:17:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776824227; cv=none; b=Ff4cXRIQ7IkwaluHiI4SEa0ppTalEcw2oISNZ4zAgMRToCBln0Y5iiUmAkvKABr+ClsUG9oj/3iyJJ+caw0LBtb7lOeCP3ClyOMrYfMkeMtAO7QT7oLXS21euWF1q8I086xH3580iOxHHn/Uxqsq+2NLTpB2ItIRsezYRZWigM4=
+	t=1776824227; cv=none; b=i/gaWQ5IcOEzp0OiU6bWpFtSCY1Bablakb1oVRN4s12sCi+QHFnNEql3V5RGAk+vjYKmfX0b8cC/Yo2HZNMXt0tjn6uurycN11jKdrFHPpozDAyPGWZgL9O5+cXA6zZBkxzicSAtr3+MFQtyAu0Mjuw+NmSFcEkNRXASKCKWFAQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1776824227; c=relaxed/simple;
-	bh=MgOzNx3i4g+Amum0Bg8TWTc4SNzjpmUBOxr9SspLvkM=;
+	bh=bCJkj+SJLswXyGtg3E1eLMLyPv981Hk0+bNTPn2K5S4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=JpA1F4KeXFTHMFSq078bZZSDIfa1AZOpro+f1MuyjECdZ+au+TBTuNpEvBYRnqxlPAWmiTi75VPf/EsozgnFQUThIUhhvgh71hxvyo0apLZoSqyCq7KWptfSLqFLMU1riFIs1Xltg00+KQzzkv0gfIZvi1uN4yBgjJbqb7zVRpc=
+	 MIME-Version; b=fGf2JIRYK5/fckHiwTgG+tr0nyCn2LrtVzoCCm8+kjHco3rVQ0wH+0E7iTMkikjkOmTq0KG8QyRel/rSeP23rF2+9YSIWazV5gZphHX+BWfHihh4gs/zLMb2HcfdGwWqNETBAXBJ+C67I4M/hPDnjgU+GqhQpMevNvmkerQYfs4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4g0jWM4jN4zYQtrC;
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4g0jWM2N3zzYQtr3;
 	Wed, 22 Apr 2026 10:15:59 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id D3EB740604;
+	by mail.maildlp.com (Postfix) with ESMTP id 82E8A405D6;
 	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S17;
+	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S14;
 	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v3 13/22] iomap: fix incorrect did_zero setting in iomap_zero_iter()
-Date: Wed, 22 Apr 2026 10:10:33 +0800
-Message-ID: <20260422021042.4157510-14-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 10/22] ext4: implement mmap path using iomap
+Date: Wed, 22 Apr 2026 10:10:30 +0800
+Message-ID: <20260422021042.4157510-11-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
 References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S17
-X-Coremail-Antispam: 1UD129KBjvJXoWxJr1UJr4fuw1kXF18uw4kZwb_yoW8tr48p3
-	9xKayDCFn2qrW7uFn5JF9Ivr1Yyws5JrW7Wr4UGwn8ZF4qvr4YkF1FgayYvF1xJ34fA3Wa
-	yF4jyas2qF4UCrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S14
+X-Coremail-Antispam: 1UD129KBjvJXoWxWFW3KryUCFW7CFWkZF1UWrg_yoW5Kw17pF
+	95K3yrGrsxXwnF9rs7WF4DZr1rKayxtrW7WrW3Wry5ZFy2y340ga10gF1YvF45J3yxAr42
+	qF4jkr18Ww13A37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -75,71 +75,103 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The did_zero output parameter was unconditionally set after the loop,
-which is incorrect. It should only be set when the zeroing operation
-actually completes, not when IOMAP_F_STALE is set or when
-IOMAP_F_FOLIO_BATCH is set but !folio causes the loop to break early,
-or when iomap_iter_advance() returns an error.
-
-This causes did_zero to be incorrectly set when zeroing a clean
-unwritten extent because the loop exits early without actually zeroing
-any data.
-
-Fix it by using a local variable to track whether any folio was actually
-zeroed, and only set did_zero after the loop if zeroing happened.
+Introduce ext4_iomap_page_mkwrite() to implement the mmap iomap path for
+ext4. Most of this work is delegated to iomap_page_mkwrite(), which only
+needs to be called with ext4_iomap_buffer_write_ops and
+ext4_iomap_buffer_da_write_ops as arguments to allocate and map the
+blocks. However, the lock ordering of the folio lock and transaction
+start is the opposite of that in the buffer_head buffered write path.
+The locking documentation in super.c has been updated accordingly.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
-This is cherry picked form:
- https://lore.kernel.org/linux-fsdevel/20260310082250.3535486-1-yi.zhang@huaweicloud.com/
-No changes.
+ fs/ext4/inode.c | 32 +++++++++++++++++++++++++++++++-
+ fs/ext4/super.c |  8 ++++++--
+ 2 files changed, 37 insertions(+), 3 deletions(-)
 
- fs/iomap/buffered-io.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index b17296b61a6e..0ffc2c3230af 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -1542,6 +1542,7 @@ static int iomap_zero_iter(struct iomap_iter *iter, bool *did_zero,
- 		const struct iomap_write_ops *write_ops)
- {
- 	u64 bytes = iomap_length(iter);
-+	bool zeroed = false;
- 	int status;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 76ce43c64c30..26e1366b85fd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4022,7 +4022,7 @@ static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
+ 	/* Inline data support is not yet available. */
+ 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+ 		return -ERANGE;
+-	if (WARN_ON_ONCE(!(flags & IOMAP_WRITE)))
++	if (WARN_ON_ONCE(!(flags & (IOMAP_WRITE | IOMAP_FAULT))))
+ 		return -EINVAL;
  
- 	do {
-@@ -1560,6 +1561,8 @@ static int iomap_zero_iter(struct iomap_iter *iter, bool *did_zero,
- 		/* a NULL folio means we're done with a folio batch */
- 		if (!folio) {
- 			status = iomap_iter_advance_full(iter);
-+			if (status)
-+				return status;
- 			break;
- 		}
+ 	if (delalloc)
+@@ -4082,6 +4082,14 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+ 	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
+ 		return 0;
  
-@@ -1570,6 +1573,7 @@ static int iomap_zero_iter(struct iomap_iter *iter, bool *did_zero,
- 				bytes);
- 
- 		folio_zero_range(folio, offset, bytes);
-+		zeroed = true;
- 		folio_mark_accessed(folio);
- 
- 		ret = iomap_write_end(iter, bytes, bytes, folio);
-@@ -1579,10 +1583,10 @@ static int iomap_zero_iter(struct iomap_iter *iter, bool *did_zero,
- 
- 		status = iomap_iter_advance(iter, bytes);
- 		if (status)
--			break;
-+			return status;
- 	} while ((bytes = iomap_length(iter)) > 0);
- 
--	if (did_zero)
-+	if (did_zero && zeroed)
- 		*did_zero = true;
- 	return status;
++	/*
++	 * iomap_page_mkwrite() will never fail in a way that requires delalloc
++	 * extents that it allocated to be revoked.  Hence never try to release
++	 * them here.
++	 */
++	if (flags & IOMAP_FAULT)
++		return 0;
++
+ 	/* Nothing to do if we've written the entire delalloc extent */
+ 	start_byte = iomap_last_written_block(inode, offset, written);
+ 	end_byte = round_up(offset + length, i_blocksize(inode));
+@@ -7167,6 +7175,23 @@ static int ext4_block_page_mkwrite(struct inode *inode, struct folio *folio,
+ 	return ret;
  }
+ 
++static vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf)
++{
++	struct inode *inode = file_inode(vmf->vma->vm_file);
++	const struct iomap_ops *iomap_ops;
++
++	/*
++	 * ext4_nonda_switch() could writeback this folio, so have to
++	 * call it before lock folio.
++	 */
++	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
++		iomap_ops = &ext4_iomap_buffered_da_write_ops;
++	else
++		iomap_ops = &ext4_iomap_buffered_write_ops;
++
++	return iomap_page_mkwrite(vmf, iomap_ops, NULL);
++}
++
+ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -7189,6 +7214,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 
+ 	filemap_invalidate_lock_shared(mapping);
+ 
++	if (ext4_inode_buffered_iomap(inode)) {
++		ret = ext4_iomap_page_mkwrite(vmf);
++		goto out;
++	}
++
+ 	err = ext4_convert_inline_data(inode);
+ 	if (err)
+ 		goto out_ret;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 51d87db53543..62bfe05a64bc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -100,8 +100,12 @@ static const struct fs_parameter_spec ext4_param_specs[];
+  * Lock ordering
+  *
+  * page fault path:
+- * mmap_lock -> sb_start_pagefault -> invalidate_lock (r) -> transaction start
+- *   -> page lock -> i_data_sem (rw)
++ * - buffer_head path:
++ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
++ *     transaction start -> folio lock -> i_data_sem (rw)
++ * - iomap path:
++ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
++ *     folio lock -> transaction start -> i_data_sem (rw)
+  *
+  * buffered write path:
+  * sb_start_write -> i_rwsem (w) -> mmap_lock
 -- 
 2.52.0
 
