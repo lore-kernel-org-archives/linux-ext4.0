@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E51BE301472;
-	Wed, 22 Apr 2026 23:32:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50A1F1FBEBC;
+	Wed, 22 Apr 2026 23:32:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900741; cv=none; b=SR9qniIOJ+gYOS8HEMUZgULI0nmibROn012re1NWe6K7kF/ftJ7IVRv5BqCS2MmXs7jKmnnkw8KxOK1Ktq35NSGesn68baLbIVVEuSM+JUPuaLduUoWtSNkOnKXmTmHOOy4Pw/wnkm5a2cKTIIcHcAJLT8CoshcBvajnLXUXHdU=
+	t=1776900776; cv=none; b=JYSdFjNJyBbdhLzNtHRLYNJKt9hhukY3sJ1+EBA8sVRC48cPLBEvSriDbXpIga73isrzPo+eiYOCeRkHuZFyRsy5GQWPyt2YMk6z+fHcnF8fWIZV7G4U9oAnZp/HU9gn9OVc0iknQCl4pnHw0baqfuOHjlR/hq2V6xReHHVSxE8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900741; c=relaxed/simple;
-	bh=WwnC7XitwZWKv4lRazmoyJetBh+19Er4i2EDf+JnNfc=;
+	s=arc-20240116; t=1776900776; c=relaxed/simple;
+	bh=Mr4XuetFvL1CpNi8BM91LvuBxo/gWXceGxVA4B3PsI0=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Qvp9C76acXsbpnJs2fDYu9HWhiM3B1iHGuR5EG24E9vtRMunSsUtPPw+BwoU6BjIYGnydoJ+GCEXZbUwimLXaodRXFRjJfvvZSFxgjJMAoQq/IHrj0O6xbw0W3P0mG5SVeqV4XnZglR2RBunyW1Mwml1Ye1KGw1Wg8xevFbTkHg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ORliHy3i; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=qq64Dny7x2DKxAv8beJZnwgJW+pnt0fIOVeECegeHWrmDxu/TkMlj2Wu/ltABc+73UkR3wM3krjPysvfv5vw66g4xeDnQ831ig9kJ0/EKC0qZ2zOXjOELezAQ1nh/wHjQsijUnnKLA0CWTE8qPLoL5kxnpU4iaMPaEjC88sqMWs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fRCNlYox; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ORliHy3i"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8EEEC19425;
-	Wed, 22 Apr 2026 23:32:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fRCNlYox"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2121DC19425;
+	Wed, 22 Apr 2026 23:32:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900740;
-	bh=WwnC7XitwZWKv4lRazmoyJetBh+19Er4i2EDf+JnNfc=;
+	s=k20201202; t=1776900776;
+	bh=Mr4XuetFvL1CpNi8BM91LvuBxo/gWXceGxVA4B3PsI0=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=ORliHy3ioGXo3PgiRUVurWuBUrYoLjtAXXlw0Sv1r+oscSzizAVkPV1n6ZYgST/TY
-	 y2zOviz0ZrFTNaDsghG+PrD5VDyLLZdTr0rPWOvYhqlT0f0/Xl6CRRfFXXXzK5uncf
-	 NawY2uVRsLFDAReHYBlXOz30RZkIXRddjHonI+gVgqFWcXisLfG5psERT+5U3fVEaN
-	 EtFjwNqTenhc06Ud77aSkXfk85cMREp2YOgArBx6b3UomGrkY1/+IZ3N/cKM+6j21e
-	 wN0+//WShnS48GNC9ZRp9AkquLJ9NEFuhG7NffMkWAdrChBiVrzraOO+RKRIXscOJA
-	 eD2NM1tkV+5Ug==
-Date: Wed, 22 Apr 2026 16:32:20 -0700
+	b=fRCNlYoxYkytcGj6vzmuGHyTox/PpJqr3oNevZqEhAbyygAt4nQvNIcSqlch1LOUe
+	 CVTRZAIi+NpERhk3QPk+sT9UBdIgyCAy7ZUN2J3vrvjeQE49OZXMZo5K1E2jOshngB
+	 o0dU0jl/8b3u5mR8SzRHwNLiyjI6aXAn0awEzOEh8+VBousAdhVOgZf+R9jgKe5dt/
+	 hipVStbUwx9ZTiBJIPNmWSNWiO2Fgy1kdKVz2u8CJvSmFcBJ76XjeE0mW7P0+1QGI8
+	 1uD50xTDjBpiybP0/pvjmt8yMWmA9uvplnt3t1YyLU67A7sebVRnZrDsT0t6QXPtwa
+	 KRAs2TaaacYHw==
+Date: Wed, 22 Apr 2026 16:32:55 -0700
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
@@ -36,8 +36,8 @@ Cc: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>,
 	Theodore Ts'o <tytso@mit.edu>, Neal Gompa <neal@gompa.dev>,
 	Amir Goldstein <amir73il@gmail.com>,
 	Christian Brauner <brauner@kernel.org>, demiobenour@gmail.com
-Subject: [RFC PATCH 3/4] fuseiso: enable systemd service mode
-Message-ID: <20260422233220.GI7739@frogsfrogsfrogs>
+Subject: [RFC PATCH 4/4] httpdirfs: enable fuse systemd service mode
+Message-ID: <20260422233255.GJ7739@frogsfrogsfrogs>
 References: <20260422231518.GA7717@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -51,459 +51,194 @@ In-Reply-To: <20260422231518.GA7717@frogsfrogsfrogs>
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-Enable use of fuseiso as a contained fuse service.  This is a patch
-against the Debian package, which was ported to fuse3.
+Enable use of httpdirfs as a contained systemd service.
 
-Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
+Signed-off-by: Darrick J. Wong <djwong@kernel.org>
 ---
- src/isofs.h             |    2 -
- configure.in            |  148 +++++++++++++++++++++++++++++++++++++++++++++++
- src/Makefile.am         |   16 +++++
- src/fuseiso.c           |  134 +++++++++++++++++++++++++++++++++++++------
- src/fuseiso.socket.in   |   16 +++++
- src/fuseiso@.service.in |  102 ++++++++++++++++++++++++++++++++
- 6 files changed, 398 insertions(+), 20 deletions(-)
- create mode 100644 src/fuseiso.socket.in
- create mode 100644 src/fuseiso@.service.in
+ src/fuse_local.h          |    2 +
+ meson.build               |   26 ++++++++++++
+ src/fuse_local.c          |   62 ++++++++++++++++++++++++++++
+ src/httpdirfs.socket.in   |   16 +++++++
+ src/httpdirfs@.service.in |   99 +++++++++++++++++++++++++++++++++++++++++++++
+ src/main.c                |    7 +++
+ 6 files changed, 210 insertions(+), 2 deletions(-)
+ create mode 100644 src/httpdirfs.socket.in
+ create mode 100644 src/httpdirfs@.service.in
 
-diff --git a/src/isofs.h b/src/isofs.h
-index 3755e886c9ccc2..b765baf209d77e 100644
---- a/src/isofs.h
-+++ b/src/isofs.h
-@@ -25,7 +25,7 @@
- #include <linux/iso_fs.h>
- #include <linux/rock.h>
+diff --git a/src/fuse_local.h b/src/fuse_local.h
+index 9f459c1e1a8151..69157cd3fa7883 100644
+--- a/src/fuse_local.h
++++ b/src/fuse_local.h
+@@ -9,4 +9,6 @@
+ /* Initialise fuse */
+ int fuse_local_init(int argc, char **argv);
  
--#define FUSE_USE_VERSION 314
-+#define FUSE_USE_VERSION 319
- #include <fuse.h>
++int fuse_local_main(int argc, char *argv[], int (*main)(int argc, char **argv));
++
+ #endif
+diff --git a/meson.build b/meson.build
+index 431a1547b20bfc..5d7c4721bb756c 100644
+--- a/meson.build
++++ b/meson.build
+@@ -41,6 +41,32 @@ expat_dep = dependency('expat')
+ openssl_dep = dependency('openssl')
+ execinfo_dep = cc.find_library('execinfo', required: false)
  
- typedef struct _isofs_context {
-diff --git a/configure.in b/configure.in
-index 9692dc114bfd73..30e2726cea8f2f 100644
---- a/configure.in
-+++ b/configure.in
-@@ -7,7 +7,153 @@ AC_LANG_C
- AC_PROG_CC
- AM_PROG_LIBTOOL
- 
--PKG_CHECK_MODULES([FUSE],[fuse3 >= 3.14.0],[],[AC_MSG_ERROR([libfuse3 is required])])
-+PKG_CHECK_MODULES([FUSE],[fuse3 >= 3.19.0],[have_fuse3_pkg=yes],[AC_MSG_ERROR([libfuse3 is required])])
- PKG_CHECK_MODULES([GLIB],[glib-2.0],[],[AC_MSG_ERROR([glib-2.0 is required])])
- 
-+dnl
-+dnl Check if the FUSE library tells us where to put fs service sockets
-+dnl
-+have_fuse_service=
-+fuse_service_socket_dir=
-+if test -n "$have_fuse3_pkg"
-+then
-+	AC_ARG_WITH([fuse_service_socket_dir],
-+	  [AS_HELP_STRING([--with-fuse-service-socket-dir@<:@=DIR@:>@],
-+		  [Create fuse3 filesystem service sockets in DIR.])],
-+	  [],
-+	  [with_fuse_service_socket_dir=yes])
-+	AS_IF([test "x${with_fuse_service_socket_dir}" != "xno"],
-+	  [
-+		AS_IF([test "x${with_fuse_service_socket_dir}" = "xyes"],
-+		  [
-+			AS_IF([test "x$have_fuse3_pkg" = "xyes" ],
-+			  [
-+				with_fuse_service_socket_dir="$($PKG_CONFIG --variable=service_socket_dir fuse3)"
-+			  ], [
-+				with_fuse_service_socket_dir=""
-+			  ])
-+		  ])
-+		AC_MSG_CHECKING([for fuse3 service socket dir])
-+		fuse_service_socket_dir="${with_fuse_service_socket_dir}"
-+		AS_IF([test -n "${fuse_service_socket_dir}"],
-+		  [
-+			AC_MSG_RESULT(${fuse_service_socket_dir})
-+		  ],
-+		  [
-+			AC_MSG_RESULT(no)
-+		  ])
-+	  ],
-+	  [])
-+	AC_ARG_WITH([fuse_service_socket_perms],
-+	  [AS_HELP_STRING([--with-fuse-service-socket-perms@<:@=MODE@:>@],
-+		  [Create fuse3 filesystem service socket with these permissions.])],
-+	  [],
-+	  [with_fuse_service_socket_perms=yes])
-+	AS_IF([test "x${with_fuse_service_socket_perms}" != "xno"],
-+	  [
-+		AS_IF([test "x${with_fuse_service_socket_perms}" = "xyes"],
-+		  [
-+			AS_IF([test "x$have_fuse3_pkg" = "xyes" ],
-+			  [
-+				with_fuse_service_socket_perms="$($PKG_CONFIG --variable=service_socket_perms fuse3)"
-+			  ], [
-+				with_fuse_service_socket_perms=""
-+			  ])
-+		  ])
-+		fuse_service_socket_perms="${with_fuse_service_socket_perms}"
-+	  ],
-+	  [])
-+
-+	AC_MSG_CHECKING([for fuse_service_accept in libfuse])
-+	old_cflags="$CFLAGS"
-+	CFLAGS="$CFLAGS $FUSE_CFLAGS"
-+	AC_LINK_IFELSE(
-+	[	AC_LANG_PROGRAM([[
-+	#define _GNU_SOURCE
-+	#define _FILE_OFFSET_BITS	64
-+	#define FUSE_USE_VERSION	319
-+	#include <fuse_lowlevel.h>
-+	#include <fuse_service.h>
-+		]], [[
-+	struct fuse_service *moo;
-+	fuse_service_accepted(moo);
-+		]])
-+	], have_fuse_service_accept=yes
-+	   AC_MSG_RESULT(yes),
-+	   AC_MSG_RESULT(no))
-+	CFLAGS="$old_cflags"
-+
-+	AC_MSG_CHECKING([for fuse3 service support])
-+	AS_IF([test -n "${fuse_service_socket_dir}" && test "${have_fuse_service_accept}" = "yes"],
-+	  [
-+		AC_MSG_RESULT(yes)
-+		have_fuse_service="yes"
-+	  ],
-+	  [
-+		AC_MSG_RESULT(no)
-+	  ])
-+fi
-+AC_SUBST(have_fuse_service)
-+AC_SUBST(fuse_service_socket_dir)
-+AC_SUBST(fuse_service_socket_perms)
-+if test "$have_fuse_service" = yes
-+then
-+	AC_DEFINE(HAVE_FUSE_SERVICE, 1, [Define to 1 if fuse supports service])
-+fi
-+
-+dnl
-+dnl Where do systemd services go?
-+dnl
-+AC_ARG_WITH([systemd_unit_dir],
-+  [AS_HELP_STRING([--with-systemd-unit-dir@<:@=DIR@:>@],
-+	[Install systemd system units into DIR.])],
-+  [],
-+  [with_systemd_unit_dir=yes])
-+AS_IF([test "x${with_systemd_unit_dir}" != "xno"],
-+  [
-+	AS_IF([test "x${with_systemd_unit_dir}" = "xyes"],
-+	  [
-+		PKG_CHECK_MODULES([systemd], [systemd],
-+		  [
-+			with_systemd_unit_dir="$($PKG_CONFIG --variable=systemdsystemunitdir systemd)"
-+		  ], [
-+			with_systemd_unit_dir=""
-+		  ])
-+		m4_pattern_allow([^PKG_(MAJOR|MINOR|BUILD|REVISION)$])
-+	  ])
-+	AC_MSG_CHECKING([for systemd system unit dir])
-+	systemd_system_unit_dir="${with_systemd_unit_dir}"
-+	AS_IF([test -n "${systemd_system_unit_dir}"],
-+	  [
-+		AC_MSG_RESULT(${systemd_system_unit_dir})
-+		have_systemd="yes"
-+	  ],
-+	  [
-+		AC_MSG_RESULT(no)
-+		have_systemd="no"
-+	  ])
-+  ],
-+  [
-+	have_systemd="disabled"
-+  ])
-+AC_SUBST(have_systemd)
-+AC_SUBST(systemd_system_unit_dir)
-+
-+AC_MSG_CHECKING([for fuseiso service support and systemd])
-+AS_IF([test "${FUSE4FS_CMT}${have_fuse_service}${have_systemd}" = "yesyes"],
-+      [
-+           AC_MSG_RESULT(yes)
-+           AC_DEFINE(HAVE_FUSEISO_FUSE_SERVICE, 1,
-+                     [Define to 1 if fuseiso should be built with fuse service support])
-+           have_fuseiso_fuse_service=yes
-+           AM_CONDITIONAL(HAVE_FUSEISO_FUSE_SERVICE, [true])
-+      ],
-+      [
-+           AC_MSG_RESULT(no)
-+           AM_CONDITIONAL(HAVE_FUSEISO_FUSE_SERVICE, [false])
-+           have_fuseiso_fuse_service=no
-+      ]
-+)
-+AC_SUBST(have_fuseiso_service)
-+
- AC_OUTPUT(Makefile src/Makefile zAppRun/Makefile)
-diff --git a/src/Makefile.am b/src/Makefile.am
-index cb05da8cd1653c..97cded13a71c96 100644
---- a/src/Makefile.am
-+++ b/src/Makefile.am
-@@ -8,4 +8,20 @@ INCLUDES= $(all_includes)
- fuseiso_LDFLAGS = $(all_libraries) $(FUSE_LIBS) $(GLIB_LIBS) -lz
- noinst_HEADERS = isofs.h
- 
-+if HAVE_FUSEISO_FUSE_SERVICE
-+bin_SCRIPTS = fuseiso.socket fuseiso@.service
++# Check for systemd support
++systemd_dep = dependency('systemd', required: false)
++if systemd_dep.found()
++   systemd_system_unit_dir = systemd_dep.get_variable(pkgconfig: 'systemd_system_unit_dir', default_value: '')
++   libfuse_service_socket_dir = fuse_dep.get_variable(pkgconfig: 'service_socket_dir', default_value: '')
++   libfuse_service_socket_perms = fuse_dep.get_variable(pkgconfig: 'service_socket_perms', default_value: '')
 +endif
 +
-+fuseiso.socket: fuseiso.socket.in
-+	sed \
-+		-e "s|@FUSE3_SERVICE_SOCKET_DIR@|$(fuse_service_socket_dir)|g" \
-+		-e "s|@FUSE3_SERVICE_SOCKET_PERMS@|$(fuse_service_socket_perms)|g" \
-+		< $< > $@
++private_cfg = configuration_data()
++if systemd_system_unit_dir == '' or libfuse_service_socket_dir == ''
++  warning('systemd service support will not be built')
++else
++   private_cfg.set('SYSTEMD_SYSTEM_UNIT_DIR', systemd_system_unit_dir)
++   private_cfg.set('LIBFUSE_SERVICE_SOCKET_DIR', libfuse_service_socket_dir)
++   private_cfg.set('LIBFUSE_SERVICE_SOCKET_PERMS', libfuse_service_socket_perms)
++   private_cfg.set('BINDIR', get_option('bindir'))
++   c_args += [ '-DHAVE_HTTPDIR_FUSE_SERVICE' ]
 +
-+fuseiso@.service: fuseiso@.service.in
-+	sed -e "s|@BINDIR@|$(bindir)|g" \
-+		   < $< > $@
++   configure_file(input: 'src/httpdirfs@.service.in',
++                  output: 'httpdirfs@.service',
++                  configuration: private_cfg)
++   configure_file(input: 'src/httpdirfs.socket.in',
++                  output: 'httpdirfs.socket',
++                  configuration: private_cfg)
++endif
 +
-+EXTRA_PROGRAMS=$(SERVICE_FILES)
-+
- AM_CFLAGS = -D_FILE_OFFSET_BITS=64 $(FUSE_CFLAGS) $(GLIB_CFLAGS) -Wall
-diff --git a/src/fuseiso.c b/src/fuseiso.c
-index 47b94c72161c5f..46b2a61429074b 100644
---- a/src/fuseiso.c
-+++ b/src/fuseiso.c
-@@ -38,12 +38,16 @@
- 
- #include <linux/iso_fs.h>
- 
--#define FUSE_USE_VERSION 314
+ httpdirfs = executable('httpdirfs',
+     srcs,
+     dependencies : [gumbo_dep, libcurl_dep, fuse_dep, uuid_dep, expat_dep, openssl_dep, execinfo_dep],
+diff --git a/src/fuse_local.c b/src/fuse_local.c
+index ae9778f84e6ef3..c373bd67214335 100644
+--- a/src/fuse_local.c
++++ b/src/fuse_local.c
+@@ -6,13 +6,58 @@
+ /*
+  * must be included before including <fuse.h>
+  */
+-#define FUSE_USE_VERSION 30
 +#define FUSE_USE_VERSION 319
  #include <fuse.h>
  
- #include <zlib.h>
- #include <locale.h>
- #include <langinfo.h>
-+#ifdef HAVE_FUSEISO_FUSE_SERVICE
+ #include <errno.h>
+ #include <string.h>
+ #include <unistd.h>
+ 
++#ifdef HAVE_HTTPDIR_FUSE_SERVICE
 +# include <sys/mount.h>
 +# include <fuse_service.h>
-+#endif
- 
- #include "isofs.h"
- 
-@@ -61,6 +65,78 @@ int maintain_mount_point;
- int maintain_mtab;
- char* iocharset;
- 
-+#ifdef HAVE_FUSEISO_FUSE_SERVICE
++
 +static struct fuse_service *service;
 +
-+static inline bool isofs_is_service(void)
++static inline bool fs_is_service(void)
 +{
-+    return fuse_service_accepted(service);
++	return fuse_service_accepted(service);
 +}
 +
-+static int isofs_service_connect(struct fuse_args *args)
++static int fs_service_connect(struct fuse_args *args)
 +{
-+    int ret;
++	int ret;
 +
-+    ret = fuse_service_accept(&service);
-+    if (ret)
-+        return ret;
++	ret = fuse_service_accept(&service);
++	if (ret)
++		return ret;
 +
-+    if (fuse_service_accepted(service))
-+        return fuse_service_append_args(service, args);
++	if (fuse_service_accepted(service))
++		return fuse_service_append_args(service, args);
 +
-+    return 0;
++	return 0;
 +}
 +
-+static int isofs_service_get_config(const char *device, int *fdp)
++static int fs_service_run(int argc, char **argv,
++			  const struct fuse_operations *fs_oper)
 +{
-+    int fd;
-+    int ret;
++	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
++	int exitcode;
 +
-+    ret = fuse_service_request_file(service, device, O_RDONLY, 0, 0);
-+    if (ret)
-+        return ret;
++	fuse_service_expect_mount_format(service, S_IFDIR);
++	exitcode = fuse_service_main(service, &args, fs_oper, NULL);
 +
-+    ret = fuse_service_receive_file(service, device, &fd);
-+    if (ret)
-+        return ret;
++	fuse_service_send_goodbye(service, exitcode);
++	fuse_service_destroy(&service);
 +
-+    if (fd < 0) {
-+        fprintf(stderr, "%s opening device: %s.\n", device,
-+                strerror(-fd));
-+        return -1;
-+    }
-+    *fdp = fd;
-+
-+    return fuse_service_finish_file_requests(service);
-+}
-+
-+static int isofs_service_main(int fuseopts_cnt, char **fuseopts,
-+                              const struct fuse_operations *ops)
-+{
-+    struct fuse_args args = FUSE_ARGS_INIT(fuseopts_cnt, fuseopts);
-+
-+    fuse_service_expect_mount_format(service, S_IFDIR);
-+    return fuse_service_main(service, &args, ops, NULL);
-+}
-+
-+static int isofs_service_finish(int exitcode)
-+{
-+    if (!isofs_is_service())
-+        return exitcode;
-+
-+    fuse_service_send_goodbye(service, exitcode);
-+    fuse_service_destroy(&service);
-+
-+    return fuse_service_exit(exitcode);
++	return fuse_service_exit(exitcode);
 +}
 +#else
-+# define isofs_is_service(...)		(false)
-+# define isofs_service_connect(...)	(0)
-+# define isofs_service_get_config(...)	(EOPNOTSUPP)
-+# define isofs_service_main(...)	(1)
-+# define isofs_service_finish(ret)	(ret)
-+#endif /* HAVE_FUSEISO_FUSE_SERVICE */
++# define fs_is_service(...)		(false)
++# define fs_service_connect(...)	(0)
++# define fs_service_run(...)		(1)
++#endif /* HAVE_HTTPDIR_FUSE_SERVICE */
 +
- char* normalize_name(const char* fname) {
-     char* abs_fname = (char *) malloc(PATH_MAX);
-     realpath(fname, abs_fname);
-@@ -305,6 +381,8 @@ void usage(const char* prog) {
- 
- int main(int argc, char *argv[])
+ static void *fs_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
  {
-+    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+     (void) conn;
+@@ -183,5 +228,20 @@ static struct fuse_operations fs_oper = {
+ 
+ int fuse_local_init(int argc, char **argv)
+ {
++    if (fs_is_service())
++        return fs_service_run(argc, argv, &fs_oper);
 +
-     setlocale(LC_ALL, ""); // set current locale for proper iocharset
-     
-     // defaults
-@@ -315,10 +393,15 @@ int main(int argc, char *argv[])
-     char **fuseopts = reallocarray(NULL, 1, sizeof(*fuseopts));
-     fuseopts[0] = argv[0];
-     size_t fuseopts_cnt = 1;
-+    int rc;
+     return fuse_main(argc, argv, &fs_oper, NULL);
+ }
 +
-+    rc = isofs_service_connect(&args);
-+    if (rc)
-+        exit(EXIT_FAILURE);
-     
-     int c;
-     char *s;
--    while((c = getopt(argc, argv, "+npc:ho:sfdV")) > 0) {
-+    while((c = getopt(args.argc, args.argv, "+npc:ho:sfdV")) > 0) {
-         switch((char)c) {
-             case 'n':
-                 maintain_mtab = 0;
-@@ -361,26 +444,35 @@ int main(int argc, char *argv[])
-         };
-     };
-     
--    if((argc - optind) < 2) {
-+    if((args.argc - optind) < 2) {
-         usage(argv[0]);
-         exit(EXIT_FAILURE);
-     };
-     
--    imagefile = normalize_name(argv[optind++]);
-+    imagefile = normalize_name(args.argv[optind++]);
++int fuse_local_main(int argc, char *argv[], int (*main)(int argc, char **argv))
++{
++	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
++	int ret;
 +
-+    if (isofs_is_service()) {
-+        maintain_mtab = 0;
-+        maintain_mount_point = 0;
++	ret = fs_service_connect(&args);
++	if (ret)
++		return ret;
 +
-+        rc = isofs_service_get_config(imagefile, &image_fd);
-+        if (rc || image_fd < 0)
-+            exit(EXIT_FAILURE);
-+    } else {
-+        image_fd = open(imagefile, O_RDONLY);
-+        if(image_fd == -1) {
-+            fprintf(stderr, "Supplied image file name: \"%s\"\n", imagefile);
-+            perror("Can`t open image file");
-+            exit(EXIT_FAILURE);
-+        };
-+    }
-     
--    image_fd = open(imagefile, O_RDONLY);
--    if(image_fd == -1) {
--        fprintf(stderr, "Supplied image file name: \"%s\"\n", imagefile);
--        perror("Can`t open image file");
--        exit(EXIT_FAILURE);
--    };
-+    mount_point = normalize_name(args.argv[optind]);
-     
--    mount_point = normalize_name(argv[optind]);
-+    fuseopts = reallocarray(fuseopts, fuseopts_cnt + args.argc - optind, sizeof(*fuseopts));
-     
--    fuseopts = reallocarray(fuseopts, fuseopts_cnt + argc - optind, sizeof(*fuseopts));
--    
--    while(optind < argc) {
--        fuseopts[fuseopts_cnt++] = argv[optind++];
-+    while(optind < args.argc) {
-+        fuseopts[fuseopts_cnt++] = args.argv[optind++];
-     };
-     
-     if(!iocharset) {
-@@ -395,7 +487,6 @@ int main(int argc, char *argv[])
-         };
-     };
-     
--    int rc;
-     if(maintain_mount_point) {
-         rc = check_mount_point();
-         if(rc != 0) {
-@@ -412,6 +503,13 @@ int main(int argc, char *argv[])
-     
-     // will exit in case of failure
-     rc = isofs_real_preinit(imagefile, image_fd);
--    
--    return fuse_main(fuseopts_cnt, fuseopts, &isofs_oper, NULL);
-+    if (rc)
-+        exit(EXIT_FAILURE);
-+
-+    if (isofs_is_service())
-+        rc = isofs_service_main(fuseopts_cnt, fuseopts, &isofs_oper);
-+    else
-+        rc = fuse_main(fuseopts_cnt, fuseopts, &isofs_oper, NULL);
-+
-+    return isofs_service_finish(rc);
- };
-diff --git a/src/fuseiso.socket.in b/src/fuseiso.socket.in
++	return main(args.argc, args.argv);
++}
+diff --git a/src/httpdirfs.socket.in b/src/httpdirfs.socket.in
 new file mode 100644
-index 00000000000000..a2ea11e408fa81
+index 00000000000000..ae587646ad707e
 --- /dev/null
-+++ b/src/fuseiso.socket.in
++++ b/src/httpdirfs.socket.in
 @@ -0,0 +1,16 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# Copyright (C) 2026 Oracle.  All Rights Reserved.
 +# Author: Darrick J. Wong <djwong@kernel.org>
 +[Unit]
-+Description=Socket for fuseiso Service
++Description=Socket for httpdirfs Service
 +
 +[Socket]
-+ListenSequentialPacket=@FUSE3_SERVICE_SOCKET_DIR@/isofs
-+ListenSequentialPacket=@FUSE3_SERVICE_SOCKET_DIR@/iso9660
++ListenSequentialPacket=@LIBFUSE_SERVICE_SOCKET_DIR@/http
++ListenSequentialPacket=@LIBFUSE_SERVICE_SOCKET_DIR@/https
 +Accept=yes
-+SocketMode=@FUSE3_SERVICE_SOCKET_PERMS@
++SocketMode=@LIBFUSE_SERVICE_SOCKET_PERMS@
 +RemoveOnStop=yes
 +
 +[Install]
 +WantedBy=sockets.target
-diff --git a/src/fuseiso@.service.in b/src/fuseiso@.service.in
+diff --git a/src/httpdirfs@.service.in b/src/httpdirfs@.service.in
 new file mode 100644
-index 00000000000000..7f2d8977ccf6a9
+index 00000000000000..d808feca3238d7
 --- /dev/null
-+++ b/src/fuseiso@.service.in
-@@ -0,0 +1,102 @@
++++ b/src/httpdirfs@.service.in
+@@ -0,0 +1,99 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# Copyright (C) 2026 Oracle.  All Rights Reserved.
 +# Author: Darrick J. Wong <djwong@kernel.org>
 +[Unit]
-+Description=fuseiso Service
++Description=httpdirfs Service
 +
 +# Don't leave failed units behind, systemd does not clean them up!
 +CollectMode=inactive-or-failed
 +
 +[Service]
 +Type=exec
-+ExecStart=/@BINDIR@/fuseiso
++ExecStart=/@BINDIR@/httpdirfs
 +
 +# Try to capture core dumps
 +LimitCORE=infinity
@@ -521,11 +256,8 @@ index 00000000000000..7f2d8977ccf6a9
 +PrivateDevices=true
 +PrivateUsers=true
 +
-+# No network access
-+PrivateNetwork=true
++# Some network access
 +ProtectHostname=true
-+RestrictAddressFamilies=none
-+IPAddressDeny=any
 +
 +# Don't let the program mess with the kernel configuration at all
 +ProtectKernelLogs=true
@@ -551,7 +283,7 @@ index 00000000000000..7f2d8977ccf6a9
 +# Restrict system calls to the native arch and only enough to get things going
 +SystemCallArchitectures=native
 +SystemCallFilter=@system-service
-+SystemCallFilter=~@privileged
++#SystemCallFilter=~@privileged	# not sure why this breaks http??
 +SystemCallFilter=~@resources
 +
 +SystemCallFilter=~@clock
@@ -593,3 +325,28 @@ index 00000000000000..7f2d8977ccf6a9
 +# service, because we don't want filesystem drivers to go down.
 +OOMPolicy=continue
 +OOMScoreAdjust=-1000
+diff --git a/src/main.c b/src/main.c
+index c93162a9bf4129..4c23d4e5d4419f 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -16,7 +16,7 @@ void parse_config_file(char ***argv, int *argc);
+ 
+ static char *config_path = NULL;
+ 
+-int main(int argc, char **argv)
++static int __main(int argc, char **argv)
+ {
+     /*
+      * Automatically print help if not enough arguments are supplied
+@@ -114,6 +114,11 @@ activate Sonic mode.\n");
+     return 0;
+ }
+ 
++int main(int argc, char *argv[])
++{
++	return fuse_local_main(argc, argv, __main);
++}
++
+ static char *get_XDG_CONFIG_HOME(void)
+ {
+     const char *default_config_subdir = "/.config";
