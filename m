@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CDC5C1D6DA9;
-	Wed, 22 Apr 2026 23:24:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8275F1D6DA9;
+	Wed, 22 Apr 2026 23:24:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900278; cv=none; b=q1fWFdejAnKIPccIyxw3jf27XhAbAg8EWVNsPQaSIqFwqq758Ho/OlI38A2AacksB/A2n7fzQqHz9b+SK/+AQx+LUb+HswPkmtzKbzOP8kh3BHCjnyD7GtaOGuKKwaVDucXn4WG0w9Tugfz0MoJKkgnSHN/WcJZswL+rQuU25no=
+	t=1776900294; cv=none; b=svSqlg8pKWBmsFOz8uk3FaQw4fSJpiN0dyTAuH3TnyGjD2w7d0ILVj5gneHyzuSnJdyn4dlkI+j9E5oLqLfddYYkXWXbcpf6ohTdW+4sOGiUN5HKlQbm+yqBOY5FPP6+iEDvJ63aIYMokD0MVrfFwFYYcNeX/Pb0OXh6IfDUBRY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900278; c=relaxed/simple;
-	bh=n3hiKEVglNnaTzGKlSiTXniL2rk1+rBKTzXjMnfRhdY=;
+	s=arc-20240116; t=1776900294; c=relaxed/simple;
+	bh=VtUQH8nvmynk1XgxJ8+P6/2HFLN98EEObt1Hjk3YXPM=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=IBinKDMdrSz933scGiH5qTMcUZ9+q5jaEh/98X6U9wcctwb36loZCMZz5w6goebMUhTcNT0lNv13ZQ29lrK2on27C/OZp+jvS4/P+/n4RUPHracCYR1kk6f131yCh+zFU0Vfk7xgtbEoT/NdrCD3VAIjtXbwWrWqyjxNtM/IByY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GJA2h8lH; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=cVW3mKcW+v6JUXJelHGWC4JUCGordww3OiXphkCMmZT6GOaaWBJHwlO2M4ZQuVMTBjAxYloryrSuJ+aC7pQPkxIfqAi1+j0Dfj+06pKlDj7sLl29qFs5DzHcgDLd+jZ1FOo7N1UTfwkgr77POuZwbf1pYXuThcikqUGJsNtaYoo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bFCy8B10; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GJA2h8lH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CD22C2BCAF;
-	Wed, 22 Apr 2026 23:24:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bFCy8B10"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 150EEC2BCAF;
+	Wed, 22 Apr 2026 23:24:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900278;
-	bh=n3hiKEVglNnaTzGKlSiTXniL2rk1+rBKTzXjMnfRhdY=;
+	s=k20201202; t=1776900294;
+	bh=VtUQH8nvmynk1XgxJ8+P6/2HFLN98EEObt1Hjk3YXPM=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=GJA2h8lHug5LaGKqm3jSmgsrbSCgEejzHdyb53J8o4Ev7kVlj4Ew2w6Bxu8FEXkmW
-	 EvDmGuA2eS2ha5gLCfXVn0YsKEFD1Je9XJykokUVFsqVygaFVqPtNm+sR+euG8G7p1
-	 EOhWNk5pNcz2xc3zO2cekRsqNqkzfdfHIZPls8NKoRNPTZ4fxxecwGw66ZdI0IkG38
-	 hrLletWbTu7ovBsqEBbz2MwctTWyzLhyTX2qdSdINVVMtBMV+6StjSEJ9SECtuomA2
-	 xXq4OzCmMFADG0ZBE7CVIDBsukWHcg3QFtVyy+1xDNFK+qBYgaelLI2m/615syaC/f
-	 UGas3kD/ixEBQ==
-Date: Wed, 22 Apr 2026 16:24:35 -0700
-Subject: [PATCH 04/10] libext2fs: fix MMP code to work with unixfd IO manager
+	b=bFCy8B10QnzDX8ByhAvBHob24ADqmfRUlpTH2KKpTMUM+Ms6YOz8l9679b+bo2W/o
+	 acWakXCX8j2+QK6docQvxg/5hN7bspv4uL43fj4h2qaCznVYryf2muMcOn/MNJLg6Z
+	 qQG4K1LYnmZHUG6cUnYgV1QOLaJUQyQ3daCp0yxwP97QrTG7gxd9hrWpPlPKdPwWiK
+	 am7e3r6SI+yIlu1808IK1qkuzkMPUSFDqz3UD1I4QP0vSePvubpiIF4sH6c6PP19ek
+	 I3uGZIB5/hyeq2zHxMiVcOiY4qE2wHyYOGLOT2TWaVpd4rDoTlM/sp/jwdXqcC2RRR
+	 VFqDbcMTvaMwA==
+Date: Wed, 22 Apr 2026 16:24:53 -0700
+Subject: [PATCH 05/10] libext2fs: bump libfuse API version to 3.19
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  linux-ext4@vger.kernel.org, neal@gompa.dev, joannelkoong@gmail.com,
  miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989611.3821326.8531164266373897005.stgit@frogsfrogsfrogs>
+Message-ID: <177689989629.3821326.18114142368432938186.stgit@frogsfrogsfrogs>
 In-Reply-To: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 References: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,217 +47,96 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-The MMP code wants to be able to read and write the MMP block directly
-to storage so that the pagecache does not get in the way.  This is
-critical for correct operation of MMP, because it is guarding against
-two cluster nodes trying to change the filesystem at the same time.
-
-Unfortunately there's no convenient way to tell an IO manager to perform
-a particular IO in directio mode, so the MMP code open()s the filesystem
-source device a second time so that it can set O_DIRECT and maintain its
-own file position independently of the IO channel.  This is a gross
-layering violation.
-
-For unprivileged containerized fuse4fs, we're going to have a privileged
-mount helper pass us the fd to the block device, so we'll be using the
-unixfd IO manager.  The enhanced security posture provided by the
-service definition file (minimal /dev) means that we cannot reopen the
-source device.  In this case, MMP can only duplicate the fd and use the
-IO channel carefully.
-
-Fix this (sort of) by detecting the unixfd IO manager and duplicating
-the open fd if it's in use.  This adds a requirement that the unixfd
-originally be opened in O_DIRECT mode if the filesystem is on a block
-device, but that's the best we can do here.
+The fuse service container API is only available in 3.19, so we need to
+bump FUSE_USE_VERSION up from 3.14 to 3.19.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- lib/ext2fs/ext2fs.h  |    1 +
- lib/ext2fs/ext2fsP.h |    4 ++
- lib/ext2fs/mmp.c     |   95 +++++++++++++++++++++++++++++++++++++++++++++++++-
- lib/ext2fs/unix_io.c |    2 +
- 4 files changed, 100 insertions(+), 2 deletions(-)
+ configure    |    8 ++++----
+ configure.ac |   10 +++++-----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c4fcb10bea0fb9..02c3cbcea92482 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -225,6 +225,7 @@ typedef struct ext2_file *ext2_file_t;
-  * Internal flags for use by the ext2fs library only
-  */
- #define EXT2_FLAG2_USE_FAKE_TIME	0x000000001
-+#define EXT2_FLAG2_MMP_USE_IOCHANNEL	0x000000002
+diff --git a/configure b/configure
+index a9779412174b34..59413d5fc32e83 100755
+--- a/configure
++++ b/configure
+@@ -14598,14 +14598,14 @@ fi
  
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 428081c9e2ff38..bdc92991e7dda0 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -218,3 +218,7 @@ errcode_t ext2fs_remove_exit_fn(ext2_exit_fn fn, void *data);
-         (sizeof(array) / sizeof(array[0]))
+ if test -n "$FUSE_LIB"
+ then
+-	FUSE_USE_VERSION=314
++	FUSE_USE_VERSION=319
+ 	CFLAGS="$fuse3_CFLAGS $CFLAGS"
+ 	FUSE_LIB="$fuse3_LIBS"
+ 	       for ac_header in pthread.h fuse.h
+ do :
+   as_ac_Header=`printf "%s\n" "ac_cv_header_$ac_header" | sed "$as_sed_sh"`
+ ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "#define _FILE_OFFSET_BITS	64
+-#define FUSE_USE_VERSION	314
++#define FUSE_USE_VERSION	319
+ "
+ if eval test \"x\$"$as_ac_Header"\" = x"yes"
+ then :
+@@ -14640,7 +14640,7 @@ printf %s "checking for lowlevel interface in libfuse... " >&6; }
  
- #define EXT2FS_BUILD_BUG_ON(cond) ((void)sizeof(char[1 - 2*!!(cond)]))
-+
-+#ifndef _WIN32
-+int possible_unixfd_pathname(const char *path);
-+#endif
-diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
-index cb15a18fce5547..188cdb68900e97 100644
---- a/lib/ext2fs/mmp.c
-+++ b/lib/ext2fs/mmp.c
-@@ -26,9 +26,11 @@
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <fcntl.h>
-+#include <limits.h>
+ 	#define _GNU_SOURCE
+ 	#define _FILE_OFFSET_BITS	64
+-	#define FUSE_USE_VERSION	314
++	#define FUSE_USE_VERSION	319
+ 	#include <fuse_lowlevel.h>
  
- #include "ext2fs/ext2_fs.h"
- #include "ext2fs/ext2fs.h"
-+#include "ext2fs/ext2fsP.h"
+ int
+@@ -14818,7 +14818,7 @@ printf %s "checking for cache_readdir support in libfuse... " >&6; }
  
- #ifndef O_DIRECT
- #define O_DIRECT 0
-@@ -48,6 +50,86 @@ errcode_t ext2fs_mmp_get_mem(ext2_filsys fs, void **ptr)
- 	return ext2fs_get_memalign(fs->blocksize, align, ptr);
- }
+ 	#define _GNU_SOURCE
+ 	#define _FILE_OFFSET_BITS	64
+-	#define FUSE_USE_VERSION	314
++	#define FUSE_USE_VERSION	319
+ 	#include <fuse.h>
  
-+#ifdef _WIN32
-+static int ext2fs_mmp_open_device(ext2_filsys fs, int flags)
-+{
-+	return open(fs->device_name, flags);
-+}
-+#else
-+static int ext2fs_mmp_open_device(ext2_filsys fs, int flags)
-+{
-+	struct stat stbuf;
-+	char path[64];
-+	int maybe_fd = -1;
-+	int new_fd;
-+	int ret;
-+	errcode_t retval = 0;
-+
-+	/*
-+	 * If we can't possibly be using the unixfd IO manager, open the device
-+	 * a second time, which is the historical behavior.  This is a huge
-+	 * and historic layering violation!
-+	 *
-+	 * It's also broken if the unixfd IO manager was passed a string with a
-+	 * file descriptor number instead of a /dev/fd/XX path, but the
-+	 * internet thinks there are no users of the manager outside of Google.
-+	 */
-+	if (!possible_unixfd_pathname(fs->device_name))
-+		return open(fs->device_name, flags);
-+
-+	/*
-+	 * Try to get the fd of the open block device.  If this fails for any
-+	 * reason, fall back to the classic open path.
-+	 */
-+	retval = io_channel_get_fd(fs->io, &maybe_fd);
-+	if (retval || maybe_fd < 0)
-+		return open(fs->device_name, flags);
-+
-+	/*
-+	 * We extracted the fd from the IO manager.
-+	 *
-+	 * Skip directio if this is a regular file, just ext2fs_mmp_read does.
-+	 * Note that the O_DIRECT-clearing logic in the caller might not have
-+	 * cleared the bit because it is path based.
-+	 */
-+	if (fstat(maybe_fd, &stbuf) == 0 && S_ISREG(stbuf.st_mode))
-+		flags &= ~O_DIRECT;
-+
-+	/*
-+	 * Try to reopen the same file descriptor, but with the new mode flags.
-+	 * If that works then we're done.  Note that these magic symlinks do
-+	 * not have to resolve anywhere.
-+	 */
-+	snprintf(path, sizeof(path), "/dev/fd/%d", maybe_fd);
-+	new_fd = open(path, flags);
-+	if (new_fd >= 0)
-+		return new_fd;
-+
-+	/*
-+	 * Reopening didn't work.  Instead, duplicate the file descriptor and
-+	 * check that we actually got directio if that's required.  Note that
-+	 * we can't change the mode on the IO channel's fd because we already
-+	 * set it up for buffered IO.
-+	 */
-+	new_fd = dup(maybe_fd);
-+	if (flags & O_DIRECT) {
-+		ret = fcntl(new_fd, F_GETFL);
-+		if (ret < 0 || !(ret & O_DIRECT)) {
-+			close(new_fd);
-+			return -1;
-+		}
-+	}
-+
-+	/*
-+	 * The MMP fd shadows the io channel fd, so we must use that for all
-+	 * MMP block accesses because the two fds share the same file position
-+	 * and O_DIRECT state, and the iochannel must know about that.
-+	 */
-+	fs->flags2 |= EXT2_FLAG2_MMP_USE_IOCHANNEL;
-+	return new_fd;
-+}
-+#endif
-+
- errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- {
- #ifdef CONFIG_MMP
-@@ -77,7 +159,7 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 		    S_ISREG(st.st_mode))
- 			flags &= ~O_DIRECT;
+ int
+diff --git a/configure.ac b/configure.ac
+index b62553e3d6b946..c7d18dd9988db4 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1383,17 +1383,17 @@ AC_SUBST(FUSE_LIB)
  
--		fs->mmp_fd = open(fs->device_name, flags);
-+		fs->mmp_fd = ext2fs_mmp_open_device(fs, flags);
- 		if (fs->mmp_fd < 0) {
- 			retval = EXT2_ET_MMP_OPEN_DIRECT;
- 			goto out;
-@@ -90,6 +172,15 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 			return retval;
- 	}
- 
-+	if (fs->flags2 & EXT2_FLAG2_MMP_USE_IOCHANNEL) {
-+		retval = io_channel_read_blk64(fs->io, mmp_blk, -fs->blocksize,
-+					       fs->mmp_cmp);
-+		if (retval)
-+			return retval;
-+
-+		goto read_compare;
-+	}
-+
- 	if ((blk64_t) ext2fs_llseek(fs->mmp_fd, mmp_blk * fs->blocksize,
- 				    SEEK_SET) !=
- 	    mmp_blk * fs->blocksize) {
-@@ -102,6 +193,7 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 		goto out;
- 	}
- 
-+read_compare:
- 	mmp_cmp = fs->mmp_cmp;
- 
- 	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
-@@ -428,6 +520,7 @@ errcode_t ext2fs_mmp_stop(ext2_filsys fs)
- 
- mmp_error:
- 	if (fs->mmp_fd >= 0) {
-+		fs->flags2 &= ~EXT2_FLAG2_MMP_USE_IOCHANNEL;
- 		close(fs->mmp_fd);
- 		fs->mmp_fd = -1;
- 	}
-diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
-index a9b1fac62a0250..567bbd9493f7f1 100644
---- a/lib/ext2fs/unix_io.c
-+++ b/lib/ext2fs/unix_io.c
-@@ -1152,7 +1152,7 @@ static errcode_t unix_open_channel(const char *name, int fd,
- #define DEV_FD_PATH	"/dev/fd/"
- #define DEV_FD_PATHLEN	(sizeof(DEV_FD_PATH) - 1)
- 
--static int possible_unixfd_pathname(const char *path)
-+int possible_unixfd_pathname(const char *path)
- {
- 	return strncmp(DEV_FD_PATH, path, DEV_FD_PATHLEN) == 0;
- }
+ dnl
+ dnl Set FUSE_USE_VERSION, which is how fuse servers build against a particular
+-dnl libfuse ABI.  Currently we link against the libfuse 3.14 ABI (hence 314)
++dnl libfuse ABI.  Currently we link against the libfuse 3.19 ABI (hence 319)
+ dnl
+ if test -n "$FUSE_LIB"
+ then
+-	FUSE_USE_VERSION=314
++	FUSE_USE_VERSION=319
+ 	CFLAGS="$fuse3_CFLAGS $CFLAGS"
+ 	FUSE_LIB="$fuse3_LIBS"
+ 	AC_CHECK_HEADERS([pthread.h fuse.h], [],
+ 		[AC_MSG_FAILURE([Cannot build against fuse3 headers])],
+ [#define _FILE_OFFSET_BITS	64
+-#define FUSE_USE_VERSION	314])
++#define FUSE_USE_VERSION	319])
+ fi
+ if test -n "$FUSE_USE_VERSION"
+ then
+@@ -1412,7 +1412,7 @@ then
+ 	[	AC_LANG_PROGRAM([[
+ 	#define _GNU_SOURCE
+ 	#define _FILE_OFFSET_BITS	64
+-	#define FUSE_USE_VERSION	314
++	#define FUSE_USE_VERSION	319
+ 	#include <fuse_lowlevel.h>
+ 		]], [[
+ 	struct fuse_lowlevel_ops fs_ops = { };
+@@ -1512,7 +1512,7 @@ then
+ 	[	AC_LANG_PROGRAM([[
+ 	#define _GNU_SOURCE
+ 	#define _FILE_OFFSET_BITS	64
+-	#define FUSE_USE_VERSION	314
++	#define FUSE_USE_VERSION	319
+ 	#include <fuse.h>
+ 		]], [[
+ 	struct fuse_file_info fs_ops = {
 
