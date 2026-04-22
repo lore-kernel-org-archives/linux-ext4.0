@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80792310620;
-	Wed, 22 Apr 2026 02:17:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFE9C34FF74;
+	Wed, 22 Apr 2026 02:17:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776824223; cv=none; b=lAC1zK0zRPASPDnnT+SOmIsv0h/TPSD82ReeYrtTHaKGubETvpPoHxt7OUMxILa7b3vN88EOMPHUMthLhwA/jqaCD25HWpk7K4y15hIzC37N2t33AuFI439XxRXSfmRdVSCkEasLEAUrknmUU3FJ5yh2g4D+n6OzlDSLlvAn3Cg=
+	t=1776824225; cv=none; b=YxqCN2cgFmXZ06RyWuvBEWqLFom2FiGACcSydY01Y2kKSfZoZ1kduveS5U1n1/O64PjN0xjtkoaiJuMkbUVEAUcygm9ho5PVe5s3VF2W+llkrwMKzrF9jWHSUhTf5gUFoF//ob5h5kMbKFNGvOq6KvNqbuLzRZieygT8LmOm4t8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776824223; c=relaxed/simple;
-	bh=6HObb2LAWjwIuKdbRXu5Ab0/G5LsBqg7PpPg8bLypfg=;
+	s=arc-20240116; t=1776824225; c=relaxed/simple;
+	bh=TR3wXiUMaCqs+/Baqxnmc8l4eBzCYOhR1cr0EWSBFS0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=uu/KeUSFUfg4O/RUZdGbTHqr/H7J6ZNm8xt9MVTzWPP/7RSmjcv1NBS2k9RUGVqWduCM/LjTtmG3rvkFP3W8DzrESpFsljdSu99E87A4LPtn9AdRBj7Xv+BWOWyEsj2+AbD2WwhkZeMDBCoy0MTRIzlNO0WR1ZNWHB4Zkq+k/b4=
+	 MIME-Version; b=DR+Peeq1IwG1YKc4rHxUztkSssUvrOxI/dvuYWEAN3S644iczifHRg80nihO0dzB1CbqhsoESNQCyir3GlqsSKX1JnNr1uKTQJ/B4XLliV8ZbD444k1mpZRSyceLowgHZELWpG4jyPKXc6maopSvKxDg5/FoWWUU1L9wRvXWIZI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g0jX421tVzKHMQS;
-	Wed, 22 Apr 2026 10:16:36 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g0jX50jh6zKHMTL;
+	Wed, 22 Apr 2026 10:16:37 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 5152240604;
-	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 25618405D5;
+	Wed, 22 Apr 2026 10:16:57 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S12;
+	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S20;
 	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v3 08/22] ext4: implement buffered write path using iomap
-Date: Wed, 22 Apr 2026 10:10:28 +0800
-Message-ID: <20260422021042.4157510-9-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 16/22] ext4: disable online defrag when inode using iomap buffered I/O path
+Date: Wed, 22 Apr 2026 10:10:36 +0800
+Message-ID: <20260422021042.4157510-17-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
 References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
@@ -53,361 +53,60 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S12
-X-Coremail-Antispam: 1UD129KBjvJXoW3Aw1kJFWrAw1fWFW7WF18Grg_yoWkuF4kpF
-	90kry5GFsrXr97uF4ftF47Zr1F93WxtrW7CrW3Wrn8XryqyrWIqF40gFyayF15trZ7Cr4j
-	qF4Ykry8Wr4UCrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
+X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S20
+X-Coremail-Antispam: 1UD129KBjvdXoW7Jw47Gw4Uur15Ary8Jr4xJFb_yoWktwc_ta
+	97Jry8Ww1YyFsa9398Jas8KrnYkF48GFn5WFZ5Gr18uw1UZ395Gr1vkry2vr98Wr1jqrZ8
+	CFn7Jr1rKry2gjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbvAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
+	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
+	F7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
+	1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0D
+	M2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjx
+	v20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
+	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
+	IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY
+	6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17
+	CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF
+	0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
+	CI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
+	vfC2KfnxnUUI43ZEXa7VU1zpBDUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Introduce two new iomap_ops instances, ext4_iomap_buffered_write_ops and
-ext4_iomap_buffered_da_write_ops, to implement the iomap write paths for
-ext4. ext4_iomap_buffered_da_write_begin() invokes ext4_da_map_blocks()
-to map delayed allocation extents, and ext4_iomap_buffer_write_begin()
-invokes ext4_iomap_get_blocks() to directly allocate blocks in
-non-delayed allocation mode. Additionally, add ext4_iomap_valid() to
-check the validity of extents by the iomap infrastructure.
-
-Key changes:
-
- - Since we don't use data=ordered mode to prevent exposing stale data
-   in the non-delayed allocation path, we always allocate unwritten
-   extents for new blocks.
-
- - The iomap write path maps multiple blocks at a time in the
-   iomap_begin() callbacks, so we must remove the stale delayed
-   allocation range in case of short writes and write failures.
-   Otherwise, this could result in a range of delayed extents being
-   covered by a clean folio, which would lead to inaccurate space
-   reservation.
-
- - The lock ordering of the folio lock and transaction start is the
-   opposite of that in the buffer_head buffered write path. So we have
-   to stop journal handle in the iomap_begin() callbacks. The lock
-   ordering documentation in super.c has been updated accordingly.
+Online defragmentation does not currently support inodes using the
+iomap buffered I/O path, as it still relies on buffer_head for the
+management of sub-folio blocks and on the data=ordered mode for data
+consistency.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h  |   4 ++
- fs/ext4/file.c  |  20 +++++-
- fs/ext4/inode.c | 164 +++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/super.c |  10 ++-
- 4 files changed, 191 insertions(+), 7 deletions(-)
+ fs/ext4/move_extent.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fe3491ad2129..be92ff648362 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3057,6 +3057,7 @@ int ext4_walk_page_buffers(handle_t *handle,
- int do_journal_get_write_access(handle_t *handle, struct inode *inode,
- 				struct buffer_head *bh);
- void ext4_set_inode_mapping_order(struct inode *inode);
-+int ext4_nonda_switch(struct super_block *sb);
- #define FALL_BACK_TO_NONDELALLOC 1
- #define CONVERT_INLINE_DATA	 2
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 3329b7ad5dbd..f707a1096544 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -476,6 +476,17 @@ static int mext_check_validity(struct inode *orig_inode,
+ 		return -EOPNOTSUPP;
+ 	}
  
-@@ -3943,6 +3944,9 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
- 
- extern const struct iomap_ops ext4_iomap_ops;
- extern const struct iomap_ops ext4_iomap_report_ops;
-+extern const struct iomap_ops ext4_iomap_buffered_write_ops;
-+extern const struct iomap_ops ext4_iomap_buffered_da_write_ops;
-+extern const struct iomap_write_ops ext4_iomap_write_ops;
- 
- static inline int ext4_buffer_uptodate(struct buffer_head *bh)
- {
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index eb1a323962b1..7f9bfbbc4a4e 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -299,6 +299,21 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
- 	return count;
- }
- 
-+static ssize_t ext4_iomap_buffered_write(struct kiocb *iocb,
-+					 struct iov_iter *from)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	const struct iomap_ops *iomap_ops;
-+
-+	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
-+		iomap_ops = &ext4_iomap_buffered_da_write_ops;
-+	else
-+		iomap_ops = &ext4_iomap_buffered_write_ops;
-+
-+	return iomap_file_buffered_write(iocb, from, iomap_ops,
-+					 &ext4_iomap_write_ops, NULL);
-+}
-+
- static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 					struct iov_iter *from)
- {
-@@ -313,7 +328,10 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 	if (ret <= 0)
- 		goto out;
- 
--	ret = generic_perform_write(iocb, from);
-+	if (ext4_inode_buffered_iomap(inode))
-+		ret = ext4_iomap_buffered_write(iocb, from);
-+	else
-+		ret = generic_perform_write(iocb, from);
- 
- out:
- 	inode_unlock(inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5ffd6aeb3485..0ca303a90249 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3097,7 +3097,7 @@ static int ext4_dax_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
--static int ext4_nonda_switch(struct super_block *sb)
-+int ext4_nonda_switch(struct super_block *sb)
- {
- 	s64 free_clusters, dirty_clusters;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -3467,6 +3467,15 @@ static bool ext4_inode_datasync_dirty(struct inode *inode)
- 	return inode_state_read_once(inode) & I_DIRTY_DATASYNC;
- }
- 
-+static bool ext4_iomap_valid(struct inode *inode, const struct iomap *iomap)
-+{
-+	return iomap->validity_cookie == READ_ONCE(EXT4_I(inode)->i_es_seq);
-+}
-+
-+const struct iomap_write_ops ext4_iomap_write_ops = {
-+	.iomap_valid = ext4_iomap_valid,
-+};
-+
- static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
- 			   struct ext4_map_blocks *map, loff_t offset,
- 			   loff_t length, unsigned int flags)
-@@ -3501,6 +3510,8 @@ static void ext4_set_iomap(struct inode *inode, struct iomap *iomap,
- 	    !ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
- 		iomap->flags |= IOMAP_F_MERGED;
- 
-+	iomap->validity_cookie = map->m_seq;
-+
- 	/*
- 	 * Flags passed to ext4_map_blocks() for direct I/O writes can result
- 	 * in m_flags having both EXT4_MAP_MAPPED and EXT4_MAP_UNWRITTEN bits
-@@ -3908,8 +3919,12 @@ const struct iomap_ops ext4_iomap_report_ops = {
- 	.iomap_begin = ext4_iomap_begin_report,
- };
- 
-+/* Map blocks */
-+typedef int (ext4_get_blocks_t)(struct inode *, struct ext4_map_blocks *);
-+
- static int ext4_iomap_map_blocks(struct inode *inode, loff_t offset,
--		loff_t length, struct ext4_map_blocks *map)
-+		loff_t length, ext4_get_blocks_t get_blocks,
-+		struct ext4_map_blocks *map)
- {
- 	u8 blkbits = inode->i_blkbits;
- 
-@@ -3921,6 +3936,9 @@ static int ext4_iomap_map_blocks(struct inode *inode, loff_t offset,
- 	map->m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
- 			   EXT4_MAX_LOGICAL_BLOCK) - map->m_lblk + 1;
- 
-+	if (get_blocks)
-+		return get_blocks(inode, map);
-+
- 	return ext4_map_blocks(NULL, inode, map, 0);
- }
- 
-@@ -3938,7 +3956,7 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
- 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
- 		return -ERANGE;
- 
--	ret = ext4_iomap_map_blocks(inode, offset, length, &map);
-+	ret = ext4_iomap_map_blocks(inode, offset, length, NULL, &map);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -3946,6 +3964,146 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
- 	return 0;
- }
- 
-+static int ext4_iomap_get_blocks(struct inode *inode,
-+				 struct ext4_map_blocks *map)
-+{
-+	loff_t i_size = i_size_read(inode);
-+	handle_t *handle;
-+	int ret, needed_blocks;
-+
 +	/*
-+	 * Check if the blocks have already been allocated, this could
-+	 * avoid initiating a new journal transaction and return the
-+	 * mapping information directly.
++	 * TODO: support online defrag for inodes that using the buffered
++	 * I/O iomap path.
 +	 */
-+	if ((map->m_lblk + map->m_len) <=
-+	    round_up(i_size, i_blocksize(inode)) >> inode->i_blkbits) {
-+		ret = ext4_map_blocks(NULL, inode, map, 0);
-+		if (ret < 0)
-+			return ret;
-+		if (map->m_flags & (EXT4_MAP_MAPPED | EXT4_MAP_UNWRITTEN |
-+				    EXT4_MAP_DELAYED))
-+			return 0;
++	if (ext4_inode_buffered_iomap(orig_inode) ||
++	    ext4_inode_buffered_iomap(donor_inode)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Online defrag not supported for inode with iomap buffered IO path");
++		return -EOPNOTSUPP;
 +	}
 +
-+	/*
-+	 * Reserve one block more for addition to orphan list in case
-+	 * we allocate blocks but write fails for some reason.
-+	 */
-+	needed_blocks = ext4_chunk_trans_blocks(inode, map->m_len) + 1;
-+	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, needed_blocks);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	ret = ext4_map_blocks(handle, inode, map,
-+			      EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT);
-+	/*
-+	 * Stop handle here following the lock ordering of the folio lock
-+	 * and the transaction start.
-+	 */
-+	ext4_journal_stop(handle);
-+
-+	return ret;
-+}
-+
-+static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
-+		loff_t offset, loff_t length, unsigned int flags,
-+		struct iomap *iomap, struct iomap *srcmap, bool delalloc)
-+{
-+	int ret, retries = 0;
-+	struct ext4_map_blocks map;
-+	ext4_get_blocks_t *get_blocks;
-+
-+	ret = ext4_emergency_state(inode->i_sb);
-+	if (unlikely(ret))
-+		return ret;
-+
-+	/* Inline data support is not yet available. */
-+	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+		return -ERANGE;
-+	if (WARN_ON_ONCE(!(flags & IOMAP_WRITE)))
-+		return -EINVAL;
-+
-+	if (delalloc)
-+		get_blocks = ext4_da_map_blocks;
-+	else
-+		get_blocks = ext4_iomap_get_blocks;
-+retry:
-+	ret = ext4_iomap_map_blocks(inode, offset, length, get_blocks, &map);
-+	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+	if (ret < 0)
-+		return ret;
-+
-+	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
-+	return 0;
-+}
-+
-+static int ext4_iomap_buffered_write_begin(struct inode *inode,
-+		loff_t offset, loff_t length, unsigned int flags,
-+		struct iomap *iomap, struct iomap *srcmap)
-+{
-+	return ext4_iomap_buffered_do_write_begin(inode, offset, length, flags,
-+						  iomap, srcmap, false);
-+}
-+
-+static int ext4_iomap_buffered_da_write_begin(struct inode *inode,
-+		loff_t offset, loff_t length, unsigned int flags,
-+		struct iomap *iomap, struct iomap *srcmap)
-+{
-+	return ext4_iomap_buffered_do_write_begin(inode, offset, length, flags,
-+						  iomap, srcmap, true);
-+}
-+
-+/*
-+ * Drop the staled delayed allocation range from the write failure,
-+ * including both start and end blocks. If not, we could leave a range
-+ * of delayed extents covered by a clean folio, it could lead to
-+ * inaccurate space reservation.
-+ */
-+static void ext4_iomap_punch_delalloc(struct inode *inode, loff_t offset,
-+				     loff_t length, struct iomap *iomap)
-+{
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	ext4_es_remove_extent(inode, offset >> inode->i_blkbits,
-+			DIV_ROUND_UP_ULL(length, EXT4_BLOCK_SIZE(inode->i_sb)));
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+}
-+
-+static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
-+					    loff_t length, ssize_t written,
-+					    unsigned int flags,
-+					    struct iomap *iomap)
-+{
-+	loff_t start_byte, end_byte;
-+
-+	/* If we didn't reserve the blocks, we're not allowed to punch them. */
-+	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
-+		return 0;
-+
-+	/* Nothing to do if we've written the entire delalloc extent */
-+	start_byte = iomap_last_written_block(inode, offset, written);
-+	end_byte = round_up(offset + length, i_blocksize(inode));
-+	if (start_byte >= end_byte)
-+		return 0;
-+
-+	filemap_invalidate_lock(inode->i_mapping);
-+	iomap_write_delalloc_release(inode, start_byte, end_byte, flags,
-+				     iomap, ext4_iomap_punch_delalloc);
-+	filemap_invalidate_unlock(inode->i_mapping);
-+	return 0;
-+}
-+
-+
-+const struct iomap_ops ext4_iomap_buffered_write_ops = {
-+	.iomap_begin = ext4_iomap_buffered_write_begin,
-+};
-+
-+const struct iomap_ops ext4_iomap_buffered_da_write_ops = {
-+	.iomap_begin = ext4_iomap_buffered_da_write_begin,
-+	.iomap_end = ext4_iomap_buffered_da_write_end,
-+};
-+
- const struct iomap_ops ext4_iomap_buffered_read_ops = {
- 	.iomap_begin = ext4_iomap_buffered_read_begin,
- };
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6a77db4d3124..9bc294b769db 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -104,9 +104,13 @@ static const struct fs_parameter_spec ext4_param_specs[];
-  *   -> page lock -> i_data_sem (rw)
-  *
-  * buffered write path:
-- * sb_start_write -> i_mutex -> mmap_lock
-- * sb_start_write -> i_mutex -> transaction start -> page lock ->
-- *   i_data_sem (rw)
-+ * sb_start_write -> i_rwsem (w) -> mmap_lock
-+ * - buffer_head path:
-+ *   sb_start_write -> i_rwsem (w) -> transaction start -> folio lock ->
-+ *     i_data_sem (rw)
-+ * - iomap path:
-+ *   sb_start_write -> i_rwsem (w) -> transaction start -> i_data_sem (rw)
-+ *   sb_start_write -> i_rwsem (w) -> folio lock (not under an active handle)
-  *
-  * truncate:
-  * sb_start_write -> i_mutex -> invalidate_lock (w) -> i_mmap_rwsem (w) ->
+ 	if (donor_inode->i_mode & (S_ISUID|S_ISGID)) {
+ 		ext4_debug("ext4 move extent: suid or sgid is set to donor file [ino:orig %llu, donor %llu]\n",
+ 			   orig_inode->i_ino, donor_inode->i_ino);
 -- 
 2.52.0
 
