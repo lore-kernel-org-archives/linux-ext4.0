@@ -1,48 +1,41 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.5])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A850D3090C4;
-	Wed, 22 Apr 2026 01:52:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 453834A23;
+	Wed, 22 Apr 2026 01:59:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776822772; cv=none; b=Q9WZq81AN3VhgbigSa2r9t5wxa96Eg2UtXT7NWELWGBbLH5t2deBQrrerKqss7fHc7c8azctUA9qetLco132UeUXf2rii+W5uI4wzrlsCaqqOtd8OaYfGYkhw1LG4uqNpWyBZHkoyyn0Sfs8YDUe16+wqYYeZQcXwu7dcHLj5f8=
+	t=1776823152; cv=none; b=h7Xm6IolN3FGqE5ZpRlgFwcFwpUy2c3OOKBzBgWohgh8TwvuBxblvWSGFb2dZfnK37xi/mO5FAriEJq7Im2uyU6lLMVX9I94exsykgLlLiIbOF4OZlUNTeazX3Uh3QRQO6J6NtvxRkPmRr12W7ZTXcPVwBrS2aI5+AijZehit6w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776822772; c=relaxed/simple;
-	bh=d3/dSb8VCsfS1PnI0yLe8lTP/fXOz2nNcgCYfTB7PVE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=i2Ug/kg4rwMHhGnFE0xXQs1oNZmKNnj9ME40rjFvEzg9w26J/7GM2yPQai9EAi1wvGzjb3YM8Wj3HzXUNsSTSjLQU7HkeSyrHYqMcY4Xwgx8YxTkVNzNuyy/O5cLsAQqyND8b5NIblTZon6iwXILX+R6Cz17ussAm2t5GdKnv0A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=VqiApriF; arc=none smtp.client-ip=220.197.31.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="VqiApriF"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=dE
-	Z9FIUPUF+T6ETjcmLX+Rkx/mVcnjQZFx9WuuF6ilM=; b=VqiApriFvRN4Z6E9no
-	7/+64z/mVsdsVapf9Ggzdz2vRtv3fAx+fhgHvdYgouQBq398YHi0asb6eX3Ah8Ar
-	Rovw21Cz7AiuPIyUc7rNq4hsD/B4sr2IoQvesU32H1oh21lrEuM8a1O534MLTGXI
-	WGmCfvLfFgz8K6M47zBO/4mig=
-Received: from liubaolin-VMware-Virtual-Platform.localdomain (unknown [])
-	by gzga-smtp-mtada-g1-0 (Coremail) with SMTP id _____wA3Hx+uKehpOCzjAw--.387S4;
-	Wed, 22 Apr 2026 09:52:01 +0800 (CST)
-From: Baolin Liu <liubaolin12138@163.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com
+	s=arc-20240116; t=1776823152; c=relaxed/simple;
+	bh=/dYcp8HiUqYhyRhwQpJDUJJRfiSSBDRerwnbELrnQ44=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=uzNcSwZ99FRupt7nX48yqrGGUs5RuRIZxkrTus6fgC8iIZxd57wetkJaRo168gC/bxZkT9waHqEwgWtt/J4TGtIyvaZHErcRTTCzLORRAPVrL5ppaLwe4mFSLe0zIoXEzsYezN9vuo7O5dCAeRzHHvGs+Hkb4WAtYrXtH4W22zQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g0j7T0YzVzKHLt9;
+	Wed, 22 Apr 2026 09:58:45 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id 1B1A1405D2;
+	Wed, 22 Apr 2026 09:59:05 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP3 (Coremail) with SMTP id _Ch0CgC3ZL5bK+hpYcQSBQ--.2895S4;
+	Wed, 22 Apr 2026 09:59:02 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: fstests@vger.kernel.org,
+	zlang@kernel.org
 Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	wangguanyu@vivo.com,
-	liubaolin12138@163.com,
-	Baolin Liu <liubaolin@kylinos.cn>,
-	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v3 v3 2/2] ext4: allow clearing mballoc stats through mb_stats
-Date: Wed, 22 Apr 2026 09:50:25 +0800
-Message-ID: <20260422015026.7170-3-liubaolin12138@163.com>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260422015026.7170-1-liubaolin12138@163.com>
-References: <20260422015026.7170-1-liubaolin12138@163.com>
+	linux-fsdevel@vger.kernel.org,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com
+Subject: [PATCH] generic/790: test post-EOF gap zeroing persistence
+Date: Wed, 22 Apr 2026 09:52:46 +0800
+Message-ID: <20260422015246.4132376-1-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,172 +43,227 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wA3Hx+uKehpOCzjAw--.387S4
-X-Coremail-Antispam: 1Uf129KBjvJXoW3JrW8GFyxCr45CF1fGrW3Jrb_yoW7tFyUpF
-	s8ZFyxGr18Wa47uws7Gr4xZw1Yy3W8Cw1UKryIv34rur9Iqr9YyF1rtryjyFyYgrWUAayk
-	XF429ryUGr42ka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0z_73kDUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbCwgEP2WnoKcE7yQAA3O
+X-CM-TRANSID:_Ch0CgC3ZL5bK+hpYcQSBQ--.2895S4
+X-Coremail-Antispam: 1UD129KBjvJXoW3Xw17Cr48CryDCryUtry3twb_yoWxuFy3pF
+	ZYgF1Ykr1xKa17X397GF1qqr1ruwn5Zr4j9392grZ0vry8GF1xXa9Fgr1jq3y7Jr1fuw4F
+	va1kKa4xWw17AFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUkG14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4U
+	JVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lc7CjxVAaw2AFwI0_
+	Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67
+	AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIY
+	rxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14
+	v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8
+	JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x0JUZYFZUUU
+	UU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-From: Baolin Liu <liubaolin@kylinos.cn>
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Make /proc/fs/ext4/<dev>/mb_stats writable and clear the runtime
-mballoc statistics when 0 is written.
-Update the related documentation accordingly.
+Test that extending a file past a non-block-aligned EOF correctly
+zero-fills the gap [old_EOF, block_boundary), and that this zeroing
+persists through a filesystem shutdown+remount cycle.
 
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
+Stale data beyond EOF can persist on disk when append write data blocks
+are flushed before the i_size metadata update, or when concurrent append
+writeback and mmap writes persist non-zero data past EOF. Subsequent
+post-EOF operations (append write, fallocate, truncate up) must
+zero-fill and persist the gap to prevent exposing stale data.
+
+The test pollutes the file's last physical block (via FIEMAP + raw
+device write) with a sentinel pattern beyond i_size, then performs each
+extend operation and verifies the gap is zeroed both in memory and on
+disk.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- Documentation/admin-guide/ext4.rst |  5 ++++
- Documentation/filesystems/proc.rst |  3 +++
- fs/ext4/ext4.h                     |  1 +
- fs/ext4/mballoc.c                  | 29 ++++++++++++++++++++++
- fs/ext4/sysfs.c                    | 40 ++++++++++++++++++++++++++++--
- 5 files changed, 76 insertions(+), 2 deletions(-)
+This is the case Jan Kara pointed out during my work on the ext4
+buffered I/O to iomap conversion. This case is similar to generic/363,
+but generic/363 doesn't provide persistent testing. For details:
 
-diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
-index ac0c709ea9e7..fb3887cd5e44 100644
---- a/Documentation/admin-guide/ext4.rst
-+++ b/Documentation/admin-guide/ext4.rst
-@@ -436,6 +436,11 @@ Files in /proc/fs/ext4/<devname>
-   mb_groups
-         details of multiblock allocator buddy cache of free blocks
- 
-+  mb_stats
-+        reports runtime statistics from the multiblock allocator
-+        (mballoc). Writing 0 to this file clears the current
-+        statistics.
+ https://lore.kernel.org/linux-ext4/jgotl7vzzuzm6dvz5zfgk6haodxvunb4hq556pzh4hqqwvnhxq@lr3jiedhqh7c/
+
+ tests/generic/790     | 155 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/790.out |   4 ++
+ 2 files changed, 159 insertions(+)
+ create mode 100755 tests/generic/790
+ create mode 100644 tests/generic/790.out
+
+diff --git a/tests/generic/790 b/tests/generic/790
+new file mode 100755
+index 00000000..5d8f61f9
+--- /dev/null
++++ b/tests/generic/790
+@@ -0,0 +1,155 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Huawei.  All Rights Reserved.
++#
++# FS QA Test No. 790
++#
++# Test that extending a file past a non-block-aligned EOF correctly zero-fills
++# the gap [old_EOF, block_boundary), and that this zeroing persists through a
++# filesystem shutdown+remount cycle.
++#
++# Stale data beyond EOF can persist on disk when:
++# 1) append write data blocks are flushed before the i_size metadata update,
++#    and the system crashes in this window.
++# 2) concurrent append writeback and mmap writes persist non-zero data past EOF.
++#
++# Subsequent post-EOF operations (append write, fallocate, truncate up) must
++# zero-fill and persist the gap to prevent exposing stale data.
++#
++# The test pollutes the file's last physical block (via FIEMAP + raw device
++# write) with a sentinel pattern beyond i_size, then performs each extend
++# operation and verifies the gap is zeroed both in memory and on disk.
++#
++. ./common/preamble
++_begin_fstest auto quick rw shutdown
 +
- /sys entries
- ============
- 
-diff --git a/Documentation/filesystems/proc.rst b/Documentation/filesystems/proc.rst
-index b0c0d1b45b99..7ce02573a3d9 100644
---- a/Documentation/filesystems/proc.rst
-+++ b/Documentation/filesystems/proc.rst
-@@ -1634,6 +1634,9 @@ directory are shown in Table 1-12, below.
-  ==============  ==========================================================
-  File            Content
-  mb_groups       details of multiblock allocator buddy cache of free blocks
-+ mb_stats        reports runtime statistics from the multiblock allocator
-+                 (mballoc). Writing 0 to this file clears the current
-+                 statistics.
-  ==============  ==========================================================
- 
- 1.9 /proc/consoles
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 293f698b7042..3223e73612ae 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2994,6 +2994,7 @@ int ext4_fc_record_regions(struct super_block *sb, int ino,
- extern const struct seq_operations ext4_mb_seq_groups_ops;
- extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
- extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
-+extern void ext4_mb_stats_clear(struct ext4_sb_info *sbi);
- extern int ext4_mb_init(struct super_block *);
- extern void ext4_mb_release(struct super_block *);
- extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 1e13ef62cb9d..79ddfa935813 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4723,6 +4723,35 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
- 		trace_ext4_mballoc_prealloc(ac);
- }
- 
-+void ext4_mb_stats_clear(struct ext4_sb_info *sbi)
++. ./common/filter
++
++_require_scratch
++_require_block_device $SCRATCH_DEV
++_require_scratch_shutdown
++_require_metadata_journaling $SCRATCH_DEV
++_require_xfs_io_command "fiemap"
++_require_xfs_io_command "falloc"
++_require_xfs_io_command "pwrite"
++_require_xfs_io_command "truncate"
++_require_xfs_io_command "sync_range"
++
++# Check that gap region [offset, offset+nbytes) is entirely zero
++_check_gap_zero()
 +{
-+	int i;
++	local file="$1"
++	local offset="$2"
++	local nbytes="$3"
++	local label="$4"
++	local data
++	local stripped
 +
-+	atomic_set(&sbi->s_bal_reqs, 0);
-+	atomic_set(&sbi->s_bal_success, 0);
-+	atomic_set(&sbi->s_bal_allocated, 0);
-+	atomic_set(&sbi->s_bal_groups_scanned, 0);
++	data=$(od -A n -t x1 -j $offset -N $nbytes "$file" 2>/dev/null)
 +
-+	for (i = 0; i < EXT4_MB_NUM_CRS; i++) {
-+		atomic64_set(&sbi->s_bal_cX_hits[i], 0);
-+		atomic64_set(&sbi->s_bal_cX_groups_considered[i], 0);
-+		atomic_set(&sbi->s_bal_cX_ex_scanned[i], 0);
-+		atomic64_set(&sbi->s_bal_cX_failed[i], 0);
-+	}
-+
-+	atomic_set(&sbi->s_bal_ex_scanned, 0);
-+	atomic_set(&sbi->s_bal_goals, 0);
-+	atomic_set(&sbi->s_bal_stream_goals, 0);
-+	atomic_set(&sbi->s_bal_len_goals, 0);
-+	atomic_set(&sbi->s_bal_2orders, 0);
-+	atomic_set(&sbi->s_bal_breaks, 0);
-+	atomic_set(&sbi->s_mb_lost_chunks, 0);
-+	atomic_set(&sbi->s_mb_buddies_generated, 0);
-+	atomic64_set(&sbi->s_mb_generation_time, 0);
-+	atomic_set(&sbi->s_mb_preallocated, 0);
-+	atomic_set(&sbi->s_mb_discarded, 0);
++	# Remove whitespace and check if any byte is non-zero
++	stripped=$(echo "$data" | tr -d ' \n\t')
++	if [ -n "$stripped" ] && ! echo "$stripped" | grep -qE "^0+$"; then
++		echo "FAIL: non-zero data in gap [$offset,$((offset + nbytes))) $label"
++		_hexdump -N $((offset + nbytes)) "$file"
++		return 1
++	fi
++	return 0
 +}
 +
- /*
-  * Called on failure; free up any blocks from the inode PA for this
-  * context.  We don't need this for MB_GROUP_PA because we only change
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index b87d7bdab06a..e90885d470ab 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -52,6 +52,42 @@ typedef enum {
- static const char proc_dirname[] = "fs/ext4";
- static struct proc_dir_entry *ext4_proc_root;
- 
-+static int ext4_mb_stats_open(struct inode *inode, struct file *file)
++# Get the physical block offset (in bytes) of the file's first block on device
++_get_phys_offset()
 +{
-+	return single_open(file, ext4_seq_mb_stats_show, pde_data(inode));
++	local file="$1"
++	local fiemap_output
++	local phys_blk
++
++	fiemap_output=$($XFS_IO_PROG -r -c "fiemap -v" "$file" 2>/dev/null)
++	phys_blk=$(echo "$fiemap_output" | _filter_xfs_io_fiemap | head -1 | awk '{print $3}')
++	if [ -z "$phys_blk" ]; then
++		echo ""
++		return
++	fi
++	# Convert 512-byte blocks to bytes
++	echo $((phys_blk * 512))
 +}
 +
-+static ssize_t ext4_mb_stats_write(struct file *file, const char __user *buf,
-+					   size_t count, loff_t *ppos)
++_test_eof_zeroing()
 +{
-+	struct super_block *sb = pde_data(file_inode(file));
-+	char kbuf[2];
++	local test_name="$1"
++	local extend_cmd="$2"
++	local file=$SCRATCH_MNT/testfile_${test_name}
 +
-+	if (count == 0 || count > sizeof(kbuf))
-+		return -EINVAL;
++	echo "$test_name" | tee -a $seqres.full
 +
-+	if (copy_from_user(kbuf, buf, count))
-+		return -EFAULT;
++	# Compute non-block-aligned EOF offset
++	local gap_bytes=16
++	local eof_offset=$((blksz - gap_bytes))
 +
-+	if (count == 2) {
-+		if (kbuf[0] != '0' || kbuf[1] != '\n')
-+			return -EINVAL;
-+	} else if (kbuf[0] != '0') {
-+		return -EINVAL;
-+	}
++	# Step 1: Write one full block to ensure the filesystem allocates a
++	#         physical block for the file instead of using inline data.
++	$XFS_IO_PROG -f -c "pwrite -S 0x5a 0 $blksz" -c fsync \
++		"$file" >> $seqres.full 2>&1
 +
-+	ext4_mb_stats_clear(EXT4_SB(sb));
-+	return count;
++	# Step 2: Get physical block offset on device via FIEMAP
++	local phys_offset
++	phys_offset=$(_get_phys_offset "$file")
++	if [ -z "$phys_offset" ]; then
++		_fail "$test_name: failed to get physical block offset via fiemap"
++	fi
++
++	# Step 3: Truncate file to non-block-aligned size and fsync.
++	#         The on-disk region [eof_offset, blksz) may or may not be
++	#         zeroed by the filesystem at this point.
++	$XFS_IO_PROG -c "truncate $eof_offset" -c fsync \
++		"$file" >> $seqres.full 2>&1
++
++	# Step 4: Unmount and restore the physical block to all-0x5a on disk.
++	#         This bypasses the kernel's pagecache EOF-zeroing to ensure
++	#         the stale pattern is present on disk. Then remount.
++	_scratch_unmount
++	$XFS_IO_PROG -d -c "pwrite -S 0x5a $phys_offset $blksz" \
++		$SCRATCH_DEV >> $seqres.full 2>&1
++	_scratch_mount >> $seqres.full 2>&1
++
++	# Verify file size is still eof_offset after remount
++	local sz
++	sz=$(stat -c %s "$file")
++	if [ "$sz" -ne "$eof_offset" ]; then
++		_fail "$test_name: file size wrong after remount: $sz != $eof_offset"
++	fi
++
++	# Step 5: Execute the extend operation.
++	$XFS_IO_PROG -c "$extend_cmd" "$file" >> $seqres.full 2>&1
++
++	# Step 6: Verify gap [eof_offset, blksz) is zeroed BEFORE shutdown
++	_check_gap_zero "$file" $eof_offset $gap_bytes "before shutdown" || return 1
++
++	# Step 7: Sync the extended range and shutdown the filesystem with
++	#         journal flush. This persists the file size extending, and
++	#         the filesystem should persist the zeroed data in the gap
++	#         range as well.
++	if [ "$extend_cmd" != "${extend_cmd#pwrite}" ]; then
++		$XFS_IO_PROG -c "sync_range -w $blksz $blksz" \
++			"$file" >> $seqres.full 2>&1
++	fi
++	_scratch_shutdown -f
++
++	# Step 8: Remount and verify gap is still zeroed
++	_scratch_cycle_mount
++	_check_gap_zero "$file" $eof_offset $gap_bytes "after shutdown+remount" || return 1
 +}
 +
-+static const struct proc_ops ext4_mb_stats_proc_ops = {
-+	.proc_open	= ext4_mb_stats_open,
-+	.proc_read	= seq_read,
-+	.proc_lseek	= seq_lseek,
-+	.proc_release	= single_release,
-+	.proc_write	= ext4_mb_stats_write,
-+};
++_scratch_mkfs >> $seqres.full 2>&1
++_scratch_mount
 +
- struct ext4_attr {
- 	struct attribute attr;
- 	short attr_id;
-@@ -630,8 +666,8 @@ int ext4_register_sysfs(struct super_block *sb)
- 					ext4_fc_info_show, sb);
- 		proc_create_seq_data("mb_groups", S_IRUGO, sbi->s_proc,
- 				&ext4_mb_seq_groups_ops, sb);
--		proc_create_single_data("mb_stats", 0444, sbi->s_proc,
--				ext4_seq_mb_stats_show, sb);
-+		proc_create_data("mb_stats", 0644, sbi->s_proc,
-+				 &ext4_mb_stats_proc_ops, sb);
- 		proc_create_seq_data("mb_structs_summary", 0444, sbi->s_proc,
- 				&ext4_mb_seq_structs_summary_ops, sb);
- 	}
++blksz=$(_get_block_size $SCRATCH_MNT)
++
++# Test three variants of EOF-extending operations
++_test_eof_zeroing "append_write" "pwrite -S 0x42 $blksz $blksz"
++_test_eof_zeroing "truncate_up" "truncate $((blksz * 2))"
++_test_eof_zeroing "fallocate" "falloc $blksz $blksz"
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/790.out b/tests/generic/790.out
+new file mode 100644
+index 00000000..e5e2cc09
+--- /dev/null
++++ b/tests/generic/790.out
+@@ -0,0 +1,4 @@
++QA output created by 790
++append_write
++truncate_up
++fallocate
 -- 
-2.51.0
+2.52.0
 
