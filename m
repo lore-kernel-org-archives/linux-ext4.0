@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1C1F3603EC;
-	Wed, 22 Apr 2026 23:25:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A45571D6DA9;
+	Wed, 22 Apr 2026 23:26:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900356; cv=none; b=sh8sIFCUZvXIlTWC6RRlU4TCavjz9cJ3uszjjuuoyn4xa3i3J701E2tDKAMhAGwEA+ykxd3+GTMOlnnx7Vsb/U8RcaPWNC5L/yw72tY5vwgMogtrbKWhncDlFO3Nb+WVMX0JdUB4yyt2RZIn8HE/g6KKH3izRAX2yB2cSHJ8qzM=
+	t=1776900372; cv=none; b=FgNx9YElbHuHQ7fM6A6fW6LbOF1R5NHjKHj4Pe+mC6XbZbepr7CxiE+ThUzRVy4MPVZ4jK3rdDztSSXrOJETBCua1GnIbuzKVnltNs1njdA6AGdAUwl/8ebb0Xh25YLYBaItW1I94RtY02fwemwune3Nb7sQ+zmgBPiSiEYmsxQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900356; c=relaxed/simple;
-	bh=QvSSXDex8smHOkznZ+/6hUxMFthQJek3R92yjQYyDkg=;
+	s=arc-20240116; t=1776900372; c=relaxed/simple;
+	bh=e0F23TlsTVNqph/gwND+L2yl6H6ZyCUo1QHw+FOvZYs=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=cJGMBnfOO+oun0J8+n+Ko/vZ74evBbrWmRB6L5tQOWJU8n2s4czewJb3swnJGQHPgC+OKq2/+AoKhXLfyIJL/kloVFjlbjHRCRiqI5H0pNr+jhfkm9MhZft3KQUyU8OPgmtVDehVT5g6zYzdUMDMcv2w5nmpSUwpyiZC7t9k4Fc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ro/WeVm7; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=PZ7/vCyTE2nuQ3DA09J/hFObZpdPicH3HYvUr77+vjBkhMNlghvTjwhhiySnnWlH/xlIxjMU7g/lqap2FgiiXBcpjTwnQO8rTarFPlhruv2nAAql+BrYL7PCl4tPttxAjg41xzoNCoj7jPImw//6+q/xyOY0WV5+fVrqxpIZa70=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mWplpYHS; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ro/WeVm7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B91DC2BCAF;
-	Wed, 22 Apr 2026 23:25:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mWplpYHS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42216C2BCAF;
+	Wed, 22 Apr 2026 23:26:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900356;
-	bh=QvSSXDex8smHOkznZ+/6hUxMFthQJek3R92yjQYyDkg=;
+	s=k20201202; t=1776900372;
+	bh=e0F23TlsTVNqph/gwND+L2yl6H6ZyCUo1QHw+FOvZYs=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=Ro/WeVm7axKSDjSBFw0dE23ZOGbyfqkuLBdhS42Wgar7cetc/gzg+gG1+LaQMFKBu
-	 4D+BAblkTmlxL4Ermgr0wwy8axHHKcnp016mOwPhWukHeG3QHHg+2w0VEgF7xvFKgS
-	 TeYt1gjBQLGnTIHx9eSvnwWCTX3s9W7yghdBW5vriX4Snb8GSTpPW+26Ep+p9VCNgu
-	 x4T+pTmpozGOM/T0ORW7eA97Q1OeejrY3HRqAeBifVjIu/vOy4HnGMijYBEI/UT3Oo
-	 Jf6FCqqX89aJxZWTRnIjCRdoqtuwkR2DyMSAUG0sNhErHjNEdtGM3iO0a/j/S8bI9w
-	 5/pM2/plQx+JA==
-Date: Wed, 22 Apr 2026 16:25:56 -0700
-Subject: [PATCH 09/10] fuse4fs: make MMP work correctly in safe service mode
+	b=mWplpYHSWnJZK18UDSOT/dKt0RlKyCcB2+RcLTT56XcoB1UZpeZ3Llf3d+2OPWID2
+	 0llej7nqQ0zNsLXWpb/jQG3jxTXMgqqRB/bWixtZmbXYJX3MhPKEp1EgdY9Ilt3HAg
+	 dqH15iFkkE3wLn7nrdn6DCo0GYbolKTAiD+UNrQduRndNBzsj5f7k/gInZ2z/LeQyE
+	 8xK0TRZaYTRy53NdHR4jpwZInnwksCikd23cu/CGT8PTPIJaNfGuW5NcHBSi8xCVHc
+	 kR0D3QoqrEIMufdUVc/Krw7vIRf4WT08PRtiycq2PUtE48NM4wdg9FXwQnKqVlHz6l
+	 2NeH2GTmLMdAA==
+Date: Wed, 22 Apr 2026 16:26:11 -0700
+Subject: [PATCH 10/10] debian: update packaging for fuse4fs service
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  linux-ext4@vger.kernel.org, neal@gompa.dev, joannelkoong@gmail.com,
  miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989700.3821326.9217649391848833281.stgit@frogsfrogsfrogs>
+Message-ID: <177689989717.3821326.3934400216489321372.stgit@frogsfrogsfrogs>
 In-Reply-To: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 References: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,99 +47,57 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-Normally, the libext2fs MMP code open()s a complete separate file
-descriptor to read and write the MMP block so that it can have its own
-private open file with its own access mode and file position.  However,
-if the unixfd IO manager is in use, it will reuse the io channel, which
-means that MMP and the unixfd share the same open file and hence the
-access mode and file position.
-
-MMP requires directio access to block devices so that changes are
-immediately visible on other nodes.  Therefore, we need the IO channel
-(and thus the filesystem) to be running in directio mode if MMP is in
-use.
-
-To make this work correctly with the sole unixfd IO manager user
-(fuse4fs in unprivileged service mode), we must set O_DIRECT on the
-bdev fd and mount the filesystem in directio mode.
+Update the Debian packaging code so that we can create fuse4fs service
+containers.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- fuse4fs/fuse4fs.c |   51 ++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 48 insertions(+), 3 deletions(-)
+ debian/e2fsprogs.install |    7 ++++++-
+ debian/fuse4fs.install   |    3 +++
+ debian/rules             |    3 +++
+ 3 files changed, 12 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 debian/fuse4fs.install
 
 
-diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
-index bf7c8ef9102a7a..dc5a0ede9f5072 100644
---- a/fuse4fs/fuse4fs.c
-+++ b/fuse4fs/fuse4fs.c
-@@ -1371,12 +1371,57 @@ static int fuse4fs_service_get_config(struct fuse4fs *ff)
- }
+diff --git a/debian/e2fsprogs.install b/debian/e2fsprogs.install
+index 17a80e3922dcee..808474bcab1717 100755
+--- a/debian/e2fsprogs.install
++++ b/debian/e2fsprogs.install
+@@ -50,4 +50,9 @@ usr/share/man/man8/resize2fs.8
+ usr/share/man/man8/tune2fs.8
+ etc
+ [linux-any] ${deb_udevudevdir}/rules.d
+-[linux-any] ${deb_systemdsystemunitdir}
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub@.service
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub@.service
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub_all.service
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub_all.timer
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub_fail@.service
++[linux-any] ${deb_systemdsystemunitdir}/e2scrub_reap.service
+diff --git a/debian/fuse4fs.install b/debian/fuse4fs.install
+old mode 100644
+new mode 100755
+index 17bdc90e33cb67..56048136c2b28b
+--- a/debian/fuse4fs.install
++++ b/debian/fuse4fs.install
+@@ -1,2 +1,5 @@
++#!/usr/bin/dh-exec
+ usr/bin/fuse4fs
+ usr/share/man/man1/fuse4fs.1
++[linux-any] ${deb_systemdsystemunitdir}/fuse4fs.socket
++[linux-any] ${deb_systemdsystemunitdir}/fuse4fs@.service
+diff --git a/debian/rules b/debian/rules
+index b680eb33ceac9e..d629e9d6915cfe 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -173,6 +173,9 @@ override_dh_installinfo:
+ ifneq ($(DEB_HOST_ARCH_OS), hurd)
+ override_dh_installsystemd:
+ 	dh_installsystemd -p e2fsprogs --no-restart-after-upgrade --no-stop-on-upgrade e2scrub_all.timer e2scrub_reap.service
++ifeq ($(SKIP_FUSE4FS),)
++	dh_installsystemd -p fuse4fs fuse4fs.socket
++endif
+ endif
  
- static errcode_t fuse4fs_service_openfs(struct fuse4fs *ff, char *options,
--					int flags)
-+					int *flags)
- {
-+	struct stat statbuf;
- 	char path[64];
-+	errcode_t retval;
-+	int ret;
- 
-+	ret = fstat(ff->bdev_fd, &statbuf);
-+	if (ret)
-+		return errno;
-+
-+	/*
-+	 * Open the filesystem with SKIP_MMP so that we can find out if the
-+	 * filesystem actually has MMP.
-+	 */
- 	snprintf(path, sizeof(path), "/dev/fd/%d", ff->bdev_fd);
--	return ext2fs_open2(path, options, flags, 0, 0, unixfd_io_manager,
-+	retval = ext2fs_open2(path, options, *flags | EXT2_FLAG_SKIP_MMP, 0, 0,
-+			      unixfd_io_manager, &ff->fs);
-+	if (retval)
-+		return retval;
-+
-+	/*
-+	 * If the fs doesn't have MMP then we're good to go.  Otherwise close
-+	 * the filesystem so that we can reopen it with MMP enabled.
-+	 */
-+	if (!ext2fs_has_feature_mmp(ff->fs->super))
-+		return 0;
-+
-+	retval = ext2fs_close_free(&ff->fs);
-+	if (retval)
-+		return retval;
-+
-+	/*
-+	 * If the filesystem is not on a regular file, MMP will share the same
-+	 * fd as the unixfd IO channel.  We need to set O_DIRECT on the bdev_fd
-+	 * and open the filesystem in directio mode.
-+	 */
-+	if (!S_ISREG(statbuf.st_mode)) {
-+		int fflags = fcntl(ff->bdev_fd, F_GETFL);
-+
-+		if (!(fflags & O_DIRECT)) {
-+			ret = fcntl(ff->bdev_fd, F_SETFL, fflags | O_DIRECT);
-+			if (ret)
-+				return EXT2_ET_MMP_OPEN_DIRECT;
-+		}
-+
-+		ff->directio = 1;
-+		*flags |= EXT2_FLAG_DIRECT_IO;
-+	}
-+
-+	return ext2fs_open2(path, options, *flags, 0, 0, unixfd_io_manager,
- 			    &ff->fs);
- }
- #else
-@@ -1516,7 +1561,7 @@ static errcode_t fuse4fs_open(struct fuse4fs *ff)
- 	deadline = init_deadline(FUSE4FS_OPEN_TIMEOUT);
- 	do {
- 		if (fuse4fs_is_service(ff))
--			err = fuse4fs_service_openfs(ff, options, flags);
-+			err = fuse4fs_service_openfs(ff, options, &flags);
- 		else
- 			err = ext2fs_open2(ff->device, options, flags, 0, 0,
- 					   unix_io_manager, &ff->fs);
+ override_dh_makeshlibs:
 
