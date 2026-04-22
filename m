@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFE9C34FF74;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A036B2FFFA4;
 	Wed, 22 Apr 2026 02:17:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776824225; cv=none; b=YxqCN2cgFmXZ06RyWuvBEWqLFom2FiGACcSydY01Y2kKSfZoZ1kduveS5U1n1/O64PjN0xjtkoaiJuMkbUVEAUcygm9ho5PVe5s3VF2W+llkrwMKzrF9jWHSUhTf5gUFoF//ob5h5kMbKFNGvOq6KvNqbuLzRZieygT8LmOm4t8=
+	t=1776824226; cv=none; b=uyK5HxVnbIlOViqiA/fWt2WWBMs8n9//YSzG4IgfpiqLW3kAby5FQ8IkOeqyqiGK9/Ih4tIOXDWgSmb3YfUH0DdkBFxNCOJKQBxYcoJn7kz03BCXeeC8CuhTfuZHFvpYqZz5WnZbhoJEyB1BfuIT7b9rEZ7WHIVlDl9tcKqCrjM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776824225; c=relaxed/simple;
-	bh=TR3wXiUMaCqs+/Baqxnmc8l4eBzCYOhR1cr0EWSBFS0=;
+	s=arc-20240116; t=1776824226; c=relaxed/simple;
+	bh=SGgAVzQKlalx4575A8xE0nJS4/9k31qQPrfyU/eUHtI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DR+Peeq1IwG1YKc4rHxUztkSssUvrOxI/dvuYWEAN3S644iczifHRg80nihO0dzB1CbqhsoESNQCyir3GlqsSKX1JnNr1uKTQJ/B4XLliV8ZbD444k1mpZRSyceLowgHZELWpG4jyPKXc6maopSvKxDg5/FoWWUU1L9wRvXWIZI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=aASOaVDemB56ndcIMtNG20u/LtrIQfPwcbqDVyFphpsRq/UHPnn6QLmGeJsmA0gxzFuMJuBkrIMkdLa0WiX54u47aYK8LXEdXsWebm2wze0t8aFYRJjZ33HBSoNlsbzK7PF7Ut+aRnF4EZ16oOBDD/30cbVMj5TiWlOxwoSozNk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g0jX50jh6zKHMTL;
-	Wed, 22 Apr 2026 10:16:37 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4g0jWM44GWzYQtrC;
+	Wed, 22 Apr 2026 10:15:59 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 25618405D5;
-	Wed, 22 Apr 2026 10:16:57 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id BBBFF405F8;
+	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S20;
+	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S16;
 	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v3 16/22] ext4: disable online defrag when inode using iomap buffered I/O path
-Date: Wed, 22 Apr 2026 10:10:36 +0800
-Message-ID: <20260422021042.4157510-17-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 12/22] iomap: support invalidating partial folios
+Date: Wed, 22 Apr 2026 10:10:32 +0800
+Message-ID: <20260422021042.4157510-13-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
 References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
@@ -53,60 +53,68 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S20
-X-Coremail-Antispam: 1UD129KBjvdXoW7Jw47Gw4Uur15Ary8Jr4xJFb_yoWktwc_ta
-	97Jry8Ww1YyFsa9398Jas8KrnYkF48GFn5WFZ5Gr18uw1UZ395Gr1vkry2vr98Wr1jqrZ8
-	CFn7Jr1rKry2gjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbvAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
-	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
-	F7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
-	1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0D
-	M2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjx
-	v20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1l
-	F7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2
-	IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY
-	6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17
-	CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryUMIIF
-	0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsG
-	vfC2KfnxnUUI43ZEXa7VU1zpBDUUUUU==
+X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S16
+X-Coremail-Antispam: 1UD129KBjvJXoW7uF1xtrW5Jw48tw18Kr4fAFb_yoW8CryrpF
+	W3KrWDGryDGr17uw47Ca1fXF1j9a9xXFy7CFW3Gw1a9Fs8Jw1qgFy7Ka1YgayUJryxAF1S
+	vrsFgFyvqF15A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Online defragmentation does not currently support inodes using the
-iomap buffered I/O path, as it still relies on buffer_head for the
-management of sub-folio blocks and on the data=ordered mode for data
-consistency.
+Current iomap_invalidate_folio() can only invalidate an entire folio. If
+we truncate a partial folio on a filesystem where the block size is
+smaller than the folio size, it will leave behind dirty bits for the
+truncated or punched blocks. During the write-back process, it will
+attempt to map the invalid hole range. Fortunately, this has not caused
+any real problems so far because the ->writeback_range() function
+corrects the length.
+
+However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
+the support for invalidating partial folios. When ext4 partially zeroes
+out a dirty and unwritten folio, it does not perform a flush first like
+XFS. Therefore, if the dirty bits of the corresponding area cannot be
+cleared, the zeroed area after writeback remains in the written state
+rather than reverting to the unwritten state. Fix this by supporting
+invalidation of partial folios.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
 ---
- fs/ext4/move_extent.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+This is cherry picked form:
+ https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-3-yi.zhang@huaweicloud.com/
+No code changes, only update the commit message to explain why Ext4
+needs this.
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 3329b7ad5dbd..f707a1096544 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -476,6 +476,17 @@ static int mext_check_validity(struct inode *orig_inode,
- 		return -EOPNOTSUPP;
+ fs/iomap/buffered-io.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
+index 7e7d5b776d35..b17296b61a6e 100644
+--- a/fs/iomap/buffered-io.c
++++ b/fs/iomap/buffered-io.c
+@@ -761,6 +761,8 @@ void iomap_invalidate_folio(struct folio *folio, size_t offset, size_t len)
+ 		WARN_ON_ONCE(folio_test_writeback(folio));
+ 		folio_cancel_dirty(folio);
+ 		ifs_free(folio);
++	} else {
++		iomap_clear_range_dirty(folio, offset, len);
  	}
- 
-+	/*
-+	 * TODO: support online defrag for inodes that using the buffered
-+	 * I/O iomap path.
-+	 */
-+	if (ext4_inode_buffered_iomap(orig_inode) ||
-+	    ext4_inode_buffered_iomap(donor_inode)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Online defrag not supported for inode with iomap buffered IO path");
-+		return -EOPNOTSUPP;
-+	}
-+
- 	if (donor_inode->i_mode & (S_ISUID|S_ISGID)) {
- 		ext4_debug("ext4 move extent: suid or sgid is set to donor file [ino:orig %llu, donor %llu]\n",
- 			   orig_inode->i_ino, donor_inode->i_ino);
+ }
+ EXPORT_SYMBOL_GPL(iomap_invalidate_folio);
 -- 
 2.52.0
 
