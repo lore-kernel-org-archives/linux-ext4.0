@@ -1,39 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC5AA34F48E;
-	Wed, 22 Apr 2026 23:24:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 051451D6DA9;
+	Wed, 22 Apr 2026 23:24:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900244; cv=none; b=ZoYwH1mRD33gK4yb/bzKry3T+g/tzQdIvt8hb9deXaP6BVwN/tl9UxX8cV6yosOi4KulJh7Nt4BqXC5wXxCE8feHKGJw0HgXgsx61NE3dM2WC0s29JCcFnbTNk6pemLX09wH+SMwKsw7KHtL64y33IMapUVjtQmht+jvnOMkL+g=
+	t=1776900260; cv=none; b=Rz4atMf6KBQ0gmHxjMKGwlpNVMkKQmT8ddcw0WT7xXhwvpGadGrxgx/x/NxCKbQEu4SIA9djKaecGFPG92hDyn+yWo5HTLbym1YhLHOUC/AwwrIbUzbDApm1kwrJsOmJXtoc+znrrK/BPIu093zYNIsMVEslmo3M6ukHkhM1oLY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900244; c=relaxed/simple;
-	bh=JYxdgXAAk37h6iFb0YjdjLOKoYVuZupQIUbjtX6RT2Y=;
+	s=arc-20240116; t=1776900260; c=relaxed/simple;
+	bh=NkhOfkyKeLlFOmxSWSlGf6xb4M1S8YLYljkVdi3MaHo=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=M+rcRVFhjmCIJgv+Ew0o32Ecym/EKo/gNfHLf/CqsYi53YReeJMRDFnqceaAtM85e4zozjasXqrXWi8UGyuqWqGjZWBLIZ5+TGzjq448kYDRQGabb18+EAOKNVUXgs5YvuHNoY45qASqrTT1jJhdqc7+lQk0gzxcyyo3bVgzqPQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bfLr7CLG; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=hHVMWHYDE4hGtcoTSbkhaXt+uY/ZES2N40AzTw7CwUWOE1zACL2ug8jIXURGWGBF3dCr6iV8vf4i57cZE3D9KOBOHSzDn43x6ZggEfP7ACtLvBHJrVumXjFj9nYnBxvR8t7DgxJ96wR1ptkUlAConJwETHMnrzRk3mLayhqALpw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=odUyoTq7; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bfLr7CLG"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 372E0C2BCAF;
-	Wed, 22 Apr 2026 23:24:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="odUyoTq7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9E19C2BCAF;
+	Wed, 22 Apr 2026 23:24:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900244;
-	bh=JYxdgXAAk37h6iFb0YjdjLOKoYVuZupQIUbjtX6RT2Y=;
+	s=k20201202; t=1776900259;
+	bh=NkhOfkyKeLlFOmxSWSlGf6xb4M1S8YLYljkVdi3MaHo=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=bfLr7CLGEfIcHikXZAzsKG6z4WWvgC8JDrnnc7Ti13SXy4rAWAT8PLcqKnkkRbS9f
-	 AGPARgnRGB7XF02H7ApdkSnnW2fT+L8Qf3rWnyede7ieUBeN+CDj85HcP8Ge6IQrvv
-	 YpBwnOLY2o0csWID5QI8Oa5t8W7wdXp4qS4VD50BzpLc4wPOG/yTGjqcnYwwJn8+ae
-	 5wUOxkNiOz+0RXBK98NUrid9bXSBdTN0v6jPOXmPrwYEAk10Qhm38MR8pW0adk0RC5
-	 /30c4CTICCb5QGhIITbhr08AsNSAJYqSnxv5NDb2jt5OSFsQ9cOSat/BwpriUeL+3W
-	 6IXWKlL5vBj1A==
-Date: Wed, 22 Apr 2026 16:24:02 -0700
-Subject: [PATCH 02/10] libext2fs: fix checking for valid fds in mmp.c
+	b=odUyoTq7Vp2S9mBWvbF5qFoaOAgbteZHoTrVx5PVBIawj82FhrXenru3gif6sFq6z
+	 94zBP8JnIo+J9nHjwo9zz2fjgNYVsguByZ2KQgKZ8XMyquvgVY0Zlpm4WxpBhLM7HA
+	 K3XOwgHyFuA1pzMqC44uXhZ+JM8AYmwLVYRJJtBoEja69GaduWY4k5cuNyQzCbIh/v
+	 A0kd22K5+OGZM6NHfeAS1+LOzz8asjECepWOSRYLC5jso0QV0TtRiXe2zpiK4684Mn
+	 lJPaALs/x3+pruq6SFHFUDKLoEHSS9q4+bqmlkR3pE9KrKWP49pHUL9jLS/sVUYUFg
+	 fVVSLyyllapeg==
+Date: Wed, 22 Apr 2026 16:24:19 -0700
+Subject: [PATCH 03/10] unix_io: allow passing /dev/fd/XXX paths to the unixfd
+ IO manager
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  fuse-devel@lists.linux.dev, linux-ext4@vger.kernel.org, neal@gompa.dev,
  joannelkoong@gmail.com, miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989576.3821326.18441817831051181225.stgit@frogsfrogsfrogs>
+Message-ID: <177689989593.3821326.8030762717050212953.stgit@frogsfrogsfrogs>
 In-Reply-To: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 References: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,56 +48,78 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-File descriptors are non-negative numbers, which means that 0 is a valid
-fd.  Fix the code to be consistent with Unix behaviors.
+Commit 4ccf9e4fe165cf created a "unixfd" IO manager that allows someone
+to choose the unixfd IO manager and then mount a filesystem from an
+existing file descriptor by passing a string with the fd number as the
+"device" name to ext2fs_open().
 
-Cc: <linux-ext4@vger.kernel.org> # v1.42
-Fixes: 0f5eba7501f467 ("ext2fs: add multi-mount protection (INCOMPAT_MMP)")
-Fixes: 76a6c8788c79e4 ("mmp: do not use O_DIRECT when working with regular file")
+That was an unfortunate choice of naming, however, because that could
+be mistaken for a relative path to a file whose name is an integer
+number.  Let's improve this by allowing callers to pass /dev/fd/XX
+as the filesystem device name.  The upcoming fuse4fs service patches
+will employ this method to open a filesystem on a block device fd passed
+into the secure container from a mount helper.
+
+Cc: <linux-ext4@vger.kernel.org> # v1.43.2
+Fixes: 4ccf9e4fe165cf ("libext2fs: add unixfd_io_manager")
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- lib/ext2fs/mmp.c    |    6 +++---
- lib/ext2fs/openfs.c |    1 +
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ lib/ext2fs/unix_io.c |   30 +++++++++++++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
 
 
-diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
-index e2823732e2b6a2..cb15a18fce5547 100644
---- a/lib/ext2fs/mmp.c
-+++ b/lib/ext2fs/mmp.c
-@@ -59,11 +59,11 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 		return EXT2_ET_MMP_BAD_BLOCK;
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index 79bc9219f9515b..a9b1fac62a0250 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -67,6 +67,7 @@
+ #ifdef HAVE_SYS_FILE_H
+ #include <sys/file.h>
+ #endif
++#include <limits.h>
  
- 	/* ext2fs_open() reserves fd0,1,2 to avoid stdio collision, so checking
--	 * mmp_fd <= 0 is OK to validate that the fd is valid.  This opens its
-+	 * mmp_fd < 0 is OK to validate that the fd is valid.  This opens its
- 	 * own fd to read the MMP block to ensure that it is using O_DIRECT,
- 	 * regardless of how the io_manager is doing reads, to avoid caching of
- 	 * the MMP block by the io_manager or the VM.  It needs to be fresh. */
--	if (fs->mmp_fd <= 0) {
-+	if (fs->mmp_fd < 0) {
- 		struct stat st;
- 		int flags = O_RDONLY | O_DIRECT;
+ #if defined(__linux__) && defined(_IO) && !defined(BLKROGET)
+ #define BLKROGET   _IO(0x12, 94) /* Get read-only status (0 = read_write).  */
+@@ -1148,13 +1149,40 @@ static errcode_t unix_open_channel(const char *name, int fd,
+ 	return retval;
+ }
  
-@@ -427,7 +427,7 @@ errcode_t ext2fs_mmp_stop(ext2_filsys fs)
- 	retval = ext2fs_mmp_write(fs, fs->super->s_mmp_block, fs->mmp_cmp);
++#define DEV_FD_PATH	"/dev/fd/"
++#define DEV_FD_PATHLEN	(sizeof(DEV_FD_PATH) - 1)
++
++static int possible_unixfd_pathname(const char *path)
++{
++	return strncmp(DEV_FD_PATH, path, DEV_FD_PATHLEN) == 0;
++}
++
+ static errcode_t unixfd_open(const char *str_fd, int flags,
+ 			     io_channel *channel)
+ {
+ 	int fd;
+ 	int fd_flags;
  
- mmp_error:
--	if (fs->mmp_fd > 0) {
-+	if (fs->mmp_fd >= 0) {
- 		close(fs->mmp_fd);
- 		fs->mmp_fd = -1;
- 	}
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 2b8e0e753c46e8..41359d15740881 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -148,6 +148,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	/* don't overwrite sb backups unless flag is explicitly cleared */
- 	fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
- 	fs->umask = 022;
-+	fs->mmp_fd = -1;
- 
- 	time_env = ext2fs_safe_getenv("SOURCE_DATE_EPOCH");
- 	if (time_env) {
+-	fd = atoi(str_fd);
++	/*
++	 * The caller should provide a path in the form "/dev/fd/XX",
++	 * but the shorthand form "XX" is allowed for legacy reasons.
++	 */
++	if (possible_unixfd_pathname(str_fd)) {
++		char *endptr;
++		long maybe_fd;
++
++		errno = 0;
++		maybe_fd = strtol(str_fd + DEV_FD_PATHLEN, &endptr, 10);
++		if (errno)
++			return errno;
++		if (*endptr != 0)
++			return EINVAL;
++		if (maybe_fd < 0 || maybe_fd > INT_MAX)
++			return EINVAL;
++		fd = maybe_fd;
++	} else {
++		fd = atoi(str_fd);
++	}
+ #if defined(HAVE_FCNTL)
+ 	fd_flags = fcntl(fd, F_GETFL);
+ 	if (fd_flags == -1)
 
