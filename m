@@ -1,41 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C2ED34029E;
-	Wed, 22 Apr 2026 23:19:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5B1C352FA5
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 23:23:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776899962; cv=none; b=kqew8zts122F0Y8J8v22A9/EOKqNMta5vBSD6Wq29HDvs/CFSynr27E2YrnCbADbQ2qUuLD4Cmh+kFLRgvqXrEAo8BcyM4kzaBmdAWUCr9MTgsV76GCb7ZvNIb3DwFwR+MmFQefNnfgY5BuVyJkrBTLjcwyAjZ34KTNoimpicj4=
+	t=1776900180; cv=none; b=l5Hvw1mRr4RXPn24wSup7YX1sU9WeJsiQ0vWoFT4ah8mYMmizUOywLXmwh1r4vKUGudHy/2mLBy6WhQ+vX/H4xjAnYKekSrNrX86gZMbyd7gzskLOpi0FzJyYT8ksizUB1wsj/mCLZSqKwq2AoIXRdKXtmkAJI9HeqjhOjgf/z0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776899962; c=relaxed/simple;
-	bh=l2JE0T6zXy6gkxMiCpRlTkBn2TeOTu+CcOr7KhtVTA0=;
+	s=arc-20240116; t=1776900180; c=relaxed/simple;
+	bh=CPVapfxOdzK79ldUNiY74kvv1H/1tR7u2G/bXa+WsOY=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=CgsguEfVkUPunA6MO3318wpS05iIrpeQGlIEUvolMtcUHHgHwqfDIxVx1LHHwt+Asmqsd7fSirqqSPatZWN8FyMqbxlNCzc/s/iXKNKD/JD09TfZp9IhwPE41WrFZrJBlesSC5ALACA09WeTzXDDYkjdPIwPC3uWE89Qnekj+MI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TT8P94rh; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=Xi0DYq06z2m+S59EavmR9p2qQGIXmgXmejDjHGJnarTGOP+NVxR/mTB7+tS0IYrxOgPrqx8XNdZMVSXlLrjHRO9v7KtD5wQqitj6TDpiWNUsObWPdEZG5A6gT4p/Isd6c3hQpONdJZ+xy1uB15WNltjITQrWuuTC2VU6BrE4QwU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UMXiyJoY; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TT8P94rh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DCBE6C19425;
-	Wed, 22 Apr 2026 23:19:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UMXiyJoY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B231BC19425;
+	Wed, 22 Apr 2026 23:23:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776899961;
-	bh=l2JE0T6zXy6gkxMiCpRlTkBn2TeOTu+CcOr7KhtVTA0=;
+	s=k20201202; t=1776900180;
+	bh=CPVapfxOdzK79ldUNiY74kvv1H/1tR7u2G/bXa+WsOY=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=TT8P94rhEo3Viu2qolnC/ypCjIaJrcZHPRq78S89u5+suFgkD4G5FWUkK6cJtD5l3
-	 HRDrFARRYsNlDyKRY2engO++N4liXpGmGRSdCJNUmnZNf7+8yNF8wfVY8pALKfwkbi
-	 wOfUlFfUpyMYO7xPrXoQSXlJhD9cHXoq7VxhtvbJCRu1NbIu5DYT+F0q68Iq4Ke9Kp
-	 0OOM7pBFs/NjvVchbku69nSHgG8n1gwasSCdkSqLWXvr3A7GiejWmd9WZwAbxVZqhk
-	 SyjVLN2sNZtJToc5lvnvVyteLntJaXfwiPqM+b7K91DoLbW09fJXZVWkEgfoJekOVF
-	 3t51ixjsWOTxA==
-Date: Wed, 22 Apr 2026 16:19:21 -0700
-Subject: [PATCHSET v5 2/2] fuse4fs: run servers as a contained service
+	b=UMXiyJoYx7Wm4SnpdytNjjZ6YYcDzaN+BluosFU/HIFrQa6VCbHyC9czldV4De8UB
+	 Zk6WEbVaaV35e/xz+AV+fV5Qx0sFdPxD2LWV1klCmc5hw0Mf+30eB7ofZaGypDP8um
+	 xiF+NDVXBKH5YRtwKaIVnBRq6qoVzqm1Xbvs4FsLLd4mTtiBi87LjOXDikmCvrmPHw
+	 8dgqqwfBZ77J5vymlHHVf3k96ZpqgFtvMewrXB4KTsPZUY/Xo4Mrndo2wwW/YlXwwS
+	 +ZVedQ+7ak37pp0ZxRgA3gZKc8wQuEXssJjm1Ci90NX9BZ+FlDE4fb+ZEK1lOgglXd
+	 Lbh2UT0S8Y47A==
+Date: Wed, 22 Apr 2026 16:23:00 -0700
+Subject: [PATCH 1/3] libext2fs: always fsync the device when flushing the
+ cache
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- fuse-devel@lists.linux.dev, linux-ext4@vger.kernel.org, neal@gompa.dev,
- joannelkoong@gmail.com, miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
-In-Reply-To: <20260422231518.GA7717@frogsfrogsfrogs>
-References: <20260422231518.GA7717@frogsfrogsfrogs>
+Cc: linux-ext4@vger.kernel.org
+Message-ID: <177689989330.3821152.4019461882726051373.stgit@frogsfrogsfrogs>
+In-Reply-To: <177689989303.3821152.12873703999139555043.stgit@frogsfrogsfrogs>
+References: <177689989303.3821152.12873703999139555043.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,54 +44,32 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 
-Hi all,
+From: Darrick J. Wong <djwong@kernel.org>
 
-This series packages the newly created fuse4fs server into a systemd
-socket service.  This service can be used by the "mount.service" helper
-in libfuse to implement untrusted unprivileged mounts.
+When we're flushing the unix IO manager's buffer cache, we should always
+fsync the block device, because something could have written to the
+block device -- either the buffer cache itself, or a direct write.
+Regardless, the callers all want all dirtied regions to be persisted to
+stable media.
 
-If you're going to start using this code, I strongly recommend pulling
-from my git trees, which are linked below.
-
-Comments and questions are, as always, welcome.
-
-e2fsprogs git tree:
-https://git.kernel.org/cgit/linux/kernel/git/djwong/e2fsprogs.git/log/?h=fuse4fs-service-container
+Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
-Commits in this patchset:
- * libext2fs: make it possible to extract the fd from an IO manager
- * libext2fs: fix checking for valid fds in mmp.c
- * unix_io: allow passing /dev/fd/XXX paths to the unixfd IO manager
- * libext2fs: fix MMP code to work with unixfd IO manager
- * libext2fs: bump libfuse API version to 3.19
- * fuse4fs: hoist some code out of fuse4fs_main
- * fuse4fs: enable safe service mode
- * fuse4fs: set proc title when in fuse service mode
- * fuse4fs: make MMP work correctly in safe service mode
- * debian: update packaging for fuse4fs service
----
- lib/ext2fs/ext2_io.h         |    4 
- lib/ext2fs/ext2fs.h          |    1 
- lib/ext2fs/ext2fsP.h         |    4 
- MCONFIG.in                   |    2 
- configure                    |  303 +++++++++++++++++++++++++++
- configure.ac                 |  131 +++++++++++-
- debian/e2fsprogs.install     |    7 +
- debian/fuse4fs.install       |    3 
- debian/libext2fs2t64.symbols |    1 
- debian/rules                 |    3 
- fuse4fs/Makefile.in          |   42 +++-
- fuse4fs/fuse4fs.c            |  466 +++++++++++++++++++++++++++++++++++-------
- fuse4fs/fuse4fs.socket.in    |   17 ++
- fuse4fs/fuse4fs@.service.in  |  102 +++++++++
- lib/config.h.in              |   12 +
- lib/ext2fs/io_manager.c      |    8 +
- lib/ext2fs/mmp.c             |  101 +++++++++
- lib/ext2fs/openfs.c          |    1 
- lib/ext2fs/unix_io.c         |   50 ++++-
- util/subst.conf.in           |    3 
- 20 files changed, 1164 insertions(+), 97 deletions(-)
- mode change 100644 => 100755 debian/fuse4fs.install
- create mode 100644 fuse4fs/fuse4fs.socket.in
- create mode 100644 fuse4fs/fuse4fs@.service.in
+ lib/ext2fs/unix_io.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index abd33ba839f7e9..b6feebef93fa5b 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -1531,7 +1531,8 @@ static errcode_t unix_flush(io_channel channel)
+ 	retval = flush_cached_blocks(channel, data, 0);
+ #endif
+ #ifdef HAVE_FSYNC
+-	if (!retval && fsync(data->dev) != 0)
++	/* always fsync the device, even if flushing our own cache failed */
++	if (fsync(data->dev) != 0 && !retval)
+ 		return errno;
+ #endif
+ 	return retval;
 
