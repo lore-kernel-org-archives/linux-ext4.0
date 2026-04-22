@@ -1,442 +1,243 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E8123A3E69;
-	Wed, 22 Apr 2026 23:29:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BA14346AE3;
+	Wed, 22 Apr 2026 23:30:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900591; cv=none; b=QMPjTqsbXWlHfq5SRrcTjtx6jF7UCh3hcFPXk7oULMEiNcwcaow0h6S8xXtVtm/AS9EHp5V02Wg7odXq48rQom4rbVzJyD/hmGmkrXre0szRDtYl/SPDjNa82vLVDv5ypjmvxwZZQwJS+1u05gE9KAF1e82aKLczaz7Y7qD68kE=
+	t=1776900617; cv=none; b=hrBvZSaVQUbgx8aBN2giyXYPL8WdmBnZ4+2uScJWAzmI8Osv/uPdDzMaEt2puldP+QGlB8IM+ka7GW+Pl8iGq34DqZQqs/FlZ3SLbiIK5LdN39Ob9kPgG7Slj8ZjKOnN+ipn5r5iiy/znyvU21Q6boRMtUQ86JIQ7cQ2BIFJXlI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900591; c=relaxed/simple;
-	bh=NCztthpEtAsgBxxVb7EYoaSvE1eJCRW1L2HMmyijlc0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=GBoU+xybXjSJsxMg2Kb+QodvwfqZeAc4I0Op+a60Nb8IJDKQb90ttLoUoWn4IAG310s+BVTTASutuEKNw6wRU0WsPR7v373gtgWKoM1+eyb16WiKqLzHrwQpGCoLAAY4UHz7F7sVgMj3pdmH6SLYJkpURjD65DVFk8+rC+gUJv4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RrDBx5QZ; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1776900617; c=relaxed/simple;
+	bh=nSWvRvVLvvSZdli9CnC8hr1bXPfPcgp+ZC3UK68WE7E=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=Nd2gWYMS3GKNOZNUOl9ebDaSBuumZjML2ooQB7aGDUNytmyWUQuIXP+W3sFTGqMkkqivVe5iaVLSSy7DqRA6/GQCyGx13KIYW8uoOuhOapVTn9s0fwBhDkmMXDt+7vYoPcgdax0Qrc1D25SLd2EUO7mnE+iJRPOVS4JS8CHKwAo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=N6+HGFyh; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RrDBx5QZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AACD5C19425;
-	Wed, 22 Apr 2026 23:29:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="N6+HGFyh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1496C19425;
+	Wed, 22 Apr 2026 23:30:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900590;
-	bh=NCztthpEtAsgBxxVb7EYoaSvE1eJCRW1L2HMmyijlc0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=RrDBx5QZHRo1xqE30jeGuto2AoKyZZy2k9bFbn/oE8ZLHQ52mCMo/i3XctUb9T+lz
-	 f9XyLrhGxF6B7bkmcIWIqa5Alx8jEZ+hyJNCaa+8+qZ8PDYO/KVoXiVXqSO38MG8mZ
-	 WTaQm723JdFCINOgsBte9Fqrh91GeMYOoGKedI7KcT4MLBP7N8uULeemzcAknoTKQc
-	 J6Wqcv6qTdLcOrkB8h0N34tIWmoOWcGTHt2SK9WO6wp2LytYT9rO0aKwz51bNJR8/l
-	 UcAYcKKdt5v0mXLzgK4Pa3iC6AknNK+m4usxeSwylHTah93wgt+4kEdqBn2/nSZyD+
-	 P2+T6gi8jyHwg==
-Date: Wed, 22 Apr 2026 16:29:50 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	fuse-devel <fuse-devel@lists.linux.dev>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>,
-	Joanne Koong <joannelkoong@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>, Neal Gompa <neal@gompa.dev>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Christian Brauner <brauner@kernel.org>, demiobenour@gmail.com
-Subject: [RFC PATCH 1/4] fusefatfs: enable fuse systemd service mode
-Message-ID: <20260422232950.GG7739@frogsfrogsfrogs>
-References: <20260422231518.GA7717@frogsfrogsfrogs>
+	s=k20201202; t=1776900617;
+	bh=nSWvRvVLvvSZdli9CnC8hr1bXPfPcgp+ZC3UK68WE7E=;
+	h=From:Subject:Date:To:Cc:From;
+	b=N6+HGFyhQd9DvW78jZtWY1QbnbgcQhKYbdv/Pr4g7qkRM9M1dt3zSDjvsq8+Cj6Pq
+	 /fYZRkpRRSxhtTiitiM6p0xyWllr8bgvYNLbg2S1HyHzztErbjiK8wJC9x+QtQWJzG
+	 jbGrbNjAcP3LB5fQiQVh5B9pu1AHdqSUOw6cmWYPtwbfHS9q0GIH7T812IUuRi0Fh8
+	 +Trv4GBlAhj7ISIQGWim7FoG76jC1fYOG+Eiv9DUQyKg4lsQ+KLXMaKOI6ovh2t4gS
+	 vJODnaQhSbNkc3kC5p1owoayosmQoqWLeTZOFy3SKWxoOY5peKpHkibCTXvOefNHFs
+	 1hO1Xuq4ZpY4g==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v9 00/17] Exposing case folding behavior
+Date: Wed, 22 Apr 2026 19:29:54 -0400
+Message-Id: <20260422-case-sensitivity-v9-0-be023cc070e2@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260422231518.GA7717@frogsfrogsfrogs>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAPJZ6WkC/yWMQQ7CMAwEv1L5TEqJKBS+gjgkrk2NUIriEIGq/
+ p0EDnuY1e4soBSFFM7NApGyqMyhwGnTAE4u3MjIWBhsZw/d3lqDTskoBZUkWdLH9OiZceBd3w9
+ Qbs9ILO+f8nL9s778nTBVT134qvDRBZxqlVm3JebY2rbaeX6MsK5f7o3QmpsAAAA=
+X-Change-ID: 20260422-case-sensitivity-5cbffc8f1558
+To: Al Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+ linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
+ linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp, 
+ linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
+ almaz.alexandrovich@paragon-software.com, slava@dubeyko.com, 
+ glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu, 
+ adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, 
+ pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com, 
+ trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, 
+ hansg@kernel.org, senozhatsky@chromium.org, 
+ Chuck Lever <chuck.lever@oracle.com>, "Darrick J. Wong" <djwong@kernel.org>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6855;
+ i=chuck.lever@oracle.com; h=from:subject:message-id;
+ bh=nSWvRvVLvvSZdli9CnC8hr1bXPfPcgp+ZC3UK68WE7E=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBp6Vn9Kt1tzr2kFvP0Kdpok68GcrcKfLlwgFtsM
+ oazIO8Ul9SJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaelZ/QAKCRAzarMzb2Z/
+ l9QQD/0cnxc2xWUgbGlmzr0CatU2yPuq86+5240DgMd1JmcaJt9CAna3J70eXcj3QgfuPQKTKRV
+ 6Wj4NTvZq48eV9gFyX4EIbWUzlkuQdgMaxxQZeq/avJeilSwdxJqsg/CQx6VEevXvlW2bCEiWpy
+ GK4Scn4yMuj5Wu04CyGzjvh8ySvjSmjJjCwzeSiT4rI5hUIFNmVXu7ywVgMmVemz7TVVXZjErFP
+ +xFdr4I9IcMOJVA6scAtzMnFO7vFs40YtiVPkSfCQYle/w3k0FKqpGEMVueH75kl/Jaaxn8wkzv
+ W1lY/B9IqCTW4NdG6Qd4ZaaCr+wnHwNxgzuYXfBqRWt/uYrCs1SH554zHYsStczLnFEAEg0y2P7
+ Ck6/isIXfTB5tYlVfBL44MRKfNDDhtyZoqfzhgqnqzBtNNIk+GZouAD4qqjWYlWCoTNC242b9IN
+ 713gzqezLN8ax2i1d1cUKZCcXz2e6V4a6Th1VxD1u15I918Ba0wQXowjwKf/CmCj0e5A2VmqP+N
+ k75pCnONxAWYNGk545R71I+qwLpexoxkyKhnn+u3VQlVk1djoK6aQ8xA+K9njqvvUb4drZVPULh
+ w9BWIIwK9SgO06IGf9WwP4tf/SXkjGH1YnzYzcmMfWlONfvUoalk1OQnGZd1hBhwVs79ZFG+6YD
+ WNaMOCAe6Hb566Q==
+X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-From: Darrick J. Wong <djwong@kernel.org>
+Following on from
 
-Enable use of fusefatfs as a contained systemd service.
+https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57fd@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
 
-Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+I'm attempting to implement enough support in the Linux VFS to
+enable file services like NFSD and ksmbd (and user space
+equivalents) to provide the actual status of case folding support
+in local file systems. The default behavior for local file systems
+not explicitly supported in this series is to reflect the usual
+POSIX behaviors:
+
+  case-insensitive = false
+  case-nonpreserving = false
+
+The case-insensitivity and case-nonpreserving booleans can be
+consumed immediately by NFSD. These two attributes have been part of
+the NFSv3 and NFSv4 protocols for decades, in order to support NFS
+client implementations on non-POSIX systems.
+
+Support for user space file servers is why this series exposes case
+folding information via a user-space API. I don't know of any other
+category of user-space application that requires access to case
+folding info.
+
+The Linux NFS community has a growing interest in supporting NFS
+clients on Windows and MacOS platforms, where file name behavior does
+not align with traditional POSIX semantics.
+
+One example of a Windows-based NFS client is [1]. This client
+implementation explicitly requires servers to report
+FATTR4_WORD0_CASE_INSENSITIVE = TRUE for proper operation, a hard
+requirement for Windows client interoperability because Windows
+applications expect case-insensitive behavior. When an NFS client
+knows the server is case-insensitive, it can avoid issuing multiple
+LOOKUP/READDIR requests to search for case variants, and applications
+like Win32 programs work correctly without manual workarounds or
+code changes.
+
+Even the Linux client can take advantage of this information. Trond
+merged patches 4 years ago [2] that introduce support for case
+insensitivity, in support of the Hammerspace NFS server. In
+particular, when a client detects a case-insensitive NFS share,
+negative dentry caching must be disabled (a lookup for "FILE.TXT"
+failing shouldn't cache a negative entry when "file.txt" exists)
+and directory change invalidation must clear all cached case-folded
+file name variants.
+
+Hammerspace servers and several other NFS server implementations
+operate in multi-protocol environments, where a single file service
+instance caters to both NFS and SMB clients. In those cases, things
+work more smoothly for everyone when the NFS client can see and adapt
+to the case folding behavior that SMB users rely on and expect. NFSD
+needs to support the case-insensitivity and case-nonpreserving
+booleans properly in order to participate as a first-class citizen
+in such environments.
+
+[1] https://github.com/kofemann/ms-nfs41-client
+
+[2] https://patchwork.kernel.org/project/linux-nfs/cover/20211217203658.439352-1-trondmy@kernel.org/
+
 ---
- CMakeLists.txt        |   18 +++++++
- config.h.in           |    2 +
- diskio.c              |    3 +
- fusefatfs.c           |  124 ++++++++++++++++++++++++++++++++++++++++++++++---
- fusefatfs.socket.in   |   17 +++++++
- fusefatfs@.service.in |  102 ++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 259 insertions(+), 7 deletions(-)
- create mode 100644 fusefatfs.socket.in
- create mode 100644 fusefatfs@.service.in
+Changes since v8:
+- Rebase on v7.0-rc1
 
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 5e7d70ec85b748..473d1c451d0810 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -14,6 +14,24 @@ pkg_check_modules(FUSE fuse3)
- if(NOT FUSE_FOUND)
- 	pkg_check_modules(FUSE REQUIRED fuse)
- endif()
-+pkg_get_variable(FUSE3_SERVICE_SOCKET_DIR fuse3 service_socket_dir)
-+pkg_get_variable(FUSE3_SERVICE_SOCKET_PERMS fuse3 service_socket_perms)
-+pkg_check_modules(SYSTEMD systemd)
-+if (SYSTEMD_FOUND)
-+	pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemd_system_unit_dir)
-+endif()
-+IF ( (NOT "${FUSE3_SERVICE_SOCKET_DIR}" STREQUAL "") AND (NOT "${SYSTEMD_SYSTEM_UNIT_DIR}" STREQUAL "") )
-+	message(STATUS "Found libfuse3 service socket dir: ${FUSE3_SERVICE_SOCKET_DIR}")
-+	message(STATUS "Found libfuse3 service socket perms: ${FUSE3_SERVICE_SOCKET_PERMS}")
-+	set(DEFINE_HAVE_FUSE_SERVICE "#define HAVE_FUSE_SERVICE")
-+	configure_file(fusefatfs.socket.in ${CMAKE_BINARY_DIR}/fusefatfs.socket @ONLY)
-+	configure_file(fusefatfs@.service.in ${CMAKE_BINARY_DIR}/fusefatfs@.service @ONLY)
-+	message(STATUS "Found systemd system unit dir: ${SYSTEMD_SYSTEM_UNIT_DIR}")
-+	install(FILES ${CMAKE_BINARY_DIR}/fusefatfs.socket
-+		DESTINATION ${CMAKE_INSTALL_PREFIX}${SYSTEMD_SYSTEM_UNIT_DIR})
-+	install(FILES ${CMAKE_BINARY_DIR}/fusefatfs@.service
-+		DESTINATION ${CMAKE_INSTALL_PREFIX}${SYSTEMD_SYSTEM_UNIT_DIR})
-+endif()
- string(REGEX REPLACE "\\..*" "" FUSE_VERSION ${FUSE_VERSION})
- 
- set(CMAKE_REQUIRED_DEFINITIONS -D_FILE_OFFSET_BITS=64)
-diff --git a/config.h.in b/config.h.in
-index 7f916d685c1e42..e6d2e8c82b7d0c 100644
---- a/config.h.in
-+++ b/config.h.in
-@@ -4,5 +4,7 @@
- #define PROGNAME "@CMAKE_PROJECT_NAME@"
- #define VERSION "@CMAKE_PROJECT_VERSION@"
- 
-+@DEFINE_HAVE_FUSE_SERVICE@
-+
- #endif
- 
-diff --git a/diskio.c b/diskio.c
-index 122f93f3316e66..ca83a102e49b78 100644
---- a/diskio.c
-+++ b/diskio.c
-@@ -41,6 +41,9 @@ DSTATUS disk_initialize (
- 	struct fftab *drv = fftab_get(pdrv);
- 	if (!drv) return STA_NOINIT;
- 
-+	if (drv->fd >= 0)
-+		return RES_OK;
-+
- 	if (drv->flags & FFFF_RDONLY)
- 		drv->fd = open(drv->path, O_RDONLY);
- 	else
-diff --git a/fusefatfs.c b/fusefatfs.c
-index 248f5c3a8a37c8..376f6cd1c338dd 100644
---- a/fusefatfs.c
-+++ b/fusefatfs.c
-@@ -20,7 +20,7 @@
- #define FUSE_USE_VERSION 29
- #define FUSE3_ONLY(...)
- #else
--#define FUSE_USE_VERSION FUSE_MAKE_VERSION(3, 14)
-+#define FUSE_USE_VERSION FUSE_MAKE_VERSION(3, 19)
- #define FUSE3_ONLY(...) __VA_ARGS__
- #endif
- 
-@@ -37,6 +37,11 @@
- #include <fftable.h>
- #include <config.h>
- 
-+#ifdef HAVE_FUSE_SERVICE
-+# include <sys/mount.h>
-+# include <fuse_service.h>
-+#endif
-+
- int fuse_reentrant_tag = 0;
- 
- #if FF_DEFINED == 80286
-@@ -52,6 +57,96 @@ static pthread_mutex_t fff_mutex = PTHREAD_MUTEX_INITIALIZER;
- #define mutex_out() pthread_mutex_unlock(&fff_mutex)
- #define mutex_out_return(RETVAL) do {mutex_out(); return(RETVAL); } while (0)
- 
-+#ifdef HAVE_FUSE_SERVICE
-+static struct fuse_service *service;
-+static int bdev_fd = -1;
-+
-+static inline bool fff_is_service(void)
-+{
-+	return fuse_service_accepted(service);
-+}
-+
-+static int fff_service_connect(struct fuse_args *args)
-+{
-+	int ret;
-+
-+	ret = fuse_service_accept(&service);
-+	if (ret)
-+		return ret;
-+
-+	if (fuse_service_accepted(service))
-+		return fuse_service_append_args(service, args);
-+
-+	return 0;
-+}
-+
-+static int fff_service_get_config(const char *device, bool ro,
-+				  struct stat *sbuf)
-+{
-+	int open_flags = O_EXCL;
-+	int fd;
-+	int ret;
-+
-+	if (ro)
-+		open_flags |= O_RDONLY;
-+	else
-+		open_flags |= O_SYNC | O_RDWR;
-+
-+	ret = fuse_service_request_file(service, device, open_flags, 0, 0);
-+	if (ret)
-+		return ret;
-+
-+	ret = fuse_service_receive_file(service, device, &fd);
-+	if (ret)
-+		return ret;
-+
-+	if (fd < 0) {
-+		fprintf(stderr, "%s opening device: %s.\n", device,
-+			   strerror(-fd));
-+		return -1;
-+	}
-+	bdev_fd = fd;
-+
-+	ret = fuse_service_finish_file_requests(service);
-+	if (ret)
-+		return ret;
-+
-+	return fstat(bdev_fd, sbuf);
-+}
-+
-+static void fff_service_assign_bdev(struct fftab *ffentry)
-+{
-+	if (fff_is_service())
-+		ffentry->fd = bdev_fd;
-+}
-+
-+static int fff_service_main(struct fuse_args *args,
-+			    const struct fuse_operations *ops,
-+			    struct fftab *data)
-+{
-+	fuse_service_expect_mount_format(service, S_IFDIR);
-+	return fuse_service_main(service, args, ops, data);
-+}
-+
-+static int fff_service_finish(int exitcode)
-+{
-+	if (!fff_is_service())
-+		return exitcode;
-+
-+	fuse_service_send_goodbye(service, exitcode);
-+	fuse_service_destroy(&service);
-+
-+	return fuse_service_exit(exitcode);
-+}
-+#else
-+# define fff_is_service(...)			(false)
-+# define fff_service_connect(...)		(0)
-+# define fff_service_get_config(...)		(EOPNOTSUPP)
-+# define fff_service_assign_bdev(...)		((void)0)
-+# define fff_service_main(...)			(1)
-+# define fff_service_finish(ret)		(ret)
-+#endif /* HAVE_FUSE_SERVICE */
-+
- #define fffpath(index, path) \
-   *fffpath; \
-   ssize_t __fffpathlen = (index == 0) ? 0 : strlen(path) + 3; \
-@@ -423,6 +518,9 @@ static struct fftab *fff_init(const char *source, int codepage, int flags) {
- 	if (index >= 0) {
- 		struct fftab *ffentry = fftab_get(index);
- 		char sdrv[12];
-+
-+		fff_service_assign_bdev(ffentry);
-+
- 		snprintf(sdrv, 12, "%d:", index);
- 		FRESULT fres = f_mount(&ffentry->fs, sdrv, 1);
- 		if (fres != FR_OK) {
-@@ -531,10 +629,10 @@ fff_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs)
- 			return 1;
- 		case FUSE_OPT_KEY_NONOPT:
- 			if (!options->source) {
--				options->source = arg;
-+				options->source = strdup(arg);
- 				return 0;
- 			} else if(!options->mountpoint) {
--				options->mountpoint = arg;
-+				options->mountpoint = strdup(arg);
- 				return 1;
- 			} else
- 				return -1;
-@@ -565,6 +663,11 @@ int main(int argc, char *argv[])
- 	int flags = 0;
- 	struct stat sbuf;
- 	putenv("TZ=UTC0");
-+
-+	err = fff_service_connect(&args);
-+	if (err)
-+		exit(1);
-+
- 	if (fuse_opt_parse(&args, &options, fff_opts, fff_opt_proc) == -1) {
- 		fuse_opt_free_args(&args);
- 		return -1;
-@@ -585,7 +688,11 @@ int main(int argc, char *argv[])
- 		goto returnerr;
- 	}
- 
--	if (stat(options.source, &sbuf) < 0) {
-+	if (fff_is_service())
-+		err = fff_service_get_config(options.source, options.ro, &sbuf);
-+	else
-+		err = stat(options.source, &sbuf);
-+	if (err < 0) {
- 		fprintf(stderr, "%s: %s\n", options.source, strerror(errno));
- 		goto returnerr;
- 	}
-@@ -600,12 +707,15 @@ int main(int argc, char *argv[])
- 		fprintf(stderr, "Fuse init error\n");
- 		goto returnerr;
- 	}
--	err = fuse_main(args.argc, args.argv, &fusefat_ops, ffentry);
-+	if (fff_is_service())
-+		err = fff_service_main(&args, &fusefat_ops, ffentry);
-+	else
-+		err = fuse_main(args.argc, args.argv, &fusefat_ops, ffentry);
- 	fff_destroy(ffentry);
- 	fuse_opt_free_args(&args);
- 	if (err) fprintf(stderr, "Fuse error %d\n", err);
--	return err;
-+	return fff_service_finish(err);
- returnerr:
- 	fuse_opt_free_args(&args);
--	return -1;
-+	return fff_service_finish(-1);
- }
-diff --git a/fusefatfs.socket.in b/fusefatfs.socket.in
-new file mode 100644
-index 00000000000000..3512b3570d6178
---- /dev/null
-+++ b/fusefatfs.socket.in
-@@ -0,0 +1,17 @@
-+# SPDX-License-Identifier: GPL-2.0-or-later
-+#
-+# Copyright (C) 2026 Oracle.  All Rights Reserved.
-+# Author: Darrick J. Wong <djwong@kernel.org>
-+[Unit]
-+Description=Socket for fusefatfs Service
-+
-+[Socket]
-+ListenSequentialPacket=@FUSE3_SERVICE_SOCKET_DIR@/vfat
-+ListenSequentialPacket=@FUSE3_SERVICE_SOCKET_DIR@/msdos
-+ListenSequentialPacket=@FUSE3_SERVICE_SOCKET_DIR@/fat
-+Accept=yes
-+SocketMode=@FUSE3_SERVICE_SOCKET_PERMS@
-+RemoveOnStop=yes
-+
-+[Install]
-+WantedBy=sockets.target
-diff --git a/fusefatfs@.service.in b/fusefatfs@.service.in
-new file mode 100644
-index 00000000000000..ac7c4d6cdad93a
---- /dev/null
-+++ b/fusefatfs@.service.in
-@@ -0,0 +1,102 @@
-+# SPDX-License-Identifier: GPL-2.0-or-later
-+#
-+# Copyright (C) 2026 Oracle.  All Rights Reserved.
-+# Author: Darrick J. Wong <djwong@kernel.org>
-+[Unit]
-+Description=fusefatfs Service
-+
-+# Don't leave failed units behind, systemd does not clean them up!
-+CollectMode=inactive-or-failed
-+
-+[Service]
-+Type=exec
-+ExecStart=/@CMAKE_INSTALL_BINDIR@/fusefatfs
-+
-+# Try to capture core dumps
-+LimitCORE=infinity
-+
-+SyslogIdentifier=%N
-+
-+# No realtime CPU scheduling
-+RestrictRealtime=true
-+
-+# Don't let us see anything in the regular system, and don't run as root
-+DynamicUser=true
-+ProtectSystem=strict
-+ProtectHome=true
-+PrivateTmp=true
-+PrivateDevices=true
-+PrivateUsers=true
-+
-+# No network access
-+PrivateNetwork=true
-+ProtectHostname=true
-+RestrictAddressFamilies=none
-+IPAddressDeny=any
-+
-+# Don't let the program mess with the kernel configuration at all
-+ProtectKernelLogs=true
-+ProtectKernelModules=true
-+ProtectKernelTunables=true
-+ProtectControlGroups=true
-+ProtectProc=invisible
-+RestrictNamespaces=true
-+RestrictFileSystems=
-+
-+# Hide everything in /proc, even /proc/mounts
-+ProcSubset=pid
-+
-+# Only allow the default personality Linux
-+LockPersonality=true
-+
-+# No writable memory pages
-+MemoryDenyWriteExecute=true
-+
-+# Don't let our mounts leak out to the host
-+PrivateMounts=true
-+
-+# Restrict system calls to the native arch and only enough to get things going
-+SystemCallArchitectures=native
-+SystemCallFilter=@system-service
-+SystemCallFilter=~@privileged
-+SystemCallFilter=~@resources
-+
-+SystemCallFilter=~@clock
-+SystemCallFilter=~@cpu-emulation
-+SystemCallFilter=~@debug
-+SystemCallFilter=~@module
-+SystemCallFilter=~@reboot
-+SystemCallFilter=~@swap
-+
-+SystemCallFilter=~@mount
-+
-+# libfuse io_uring wants to pin cores and memory
-+SystemCallFilter=mbind
-+SystemCallFilter=sched_setaffinity
-+
-+# Leave a breadcrumb if we get whacked by the system call filter
-+SystemCallErrorNumber=EL3RST
-+
-+# Log to the kernel dmesg, just like an in-kernel ext4 driver
-+StandardOutput=append:/dev/ttyprintk
-+StandardError=append:/dev/ttyprintk
-+
-+# Run with no capabilities at all
-+CapabilityBoundingSet=
-+AmbientCapabilities=
-+NoNewPrivileges=true
-+
-+# fuse4fs doesn't create files
-+UMask=7777
-+
-+# No access to hardware /dev files at all
-+ProtectClock=true
-+DevicePolicy=closed
-+
-+# Don't mess with set[ug]id anything.
-+RestrictSUIDSGID=true
-+
-+# Don't let OOM kills of processes in this containment group kill the whole
-+# service, because we don't want filesystem drivers to go down.
-+OOMPolicy=continue
-+OOMScoreAdjust=-1000
+Changes since v7:
+- Split file_attr initialization changes into a separate patch
+
+Changes since v6:
+- Remove the memset from vfs_fileattr_get
+
+Changes since v5:
+- Finish the conversion to FS_XFLAGs
+- NFSv4 GETATTR now clears the attr mask bit if nfsd_get_case_info()
+  fails
+
+Changes since v4:
+- Observe the MSDOS "nocase" mount option
+- Define new FS_XFLAGs for the user API
+
+Changes since v3:
+- Change fa->case_preserving to fa_case_nonpreserving
+- VFAT is case preserving
+- Make new fields available to user space
+
+Changes since v2:
+- Remove unicode labels
+- Replace vfs_get_case_info
+- Add support for several more local file system implementations
+- Add support for in-kernel SMB server
+
+Changes since RFC:
+- Use file_getattr instead of statx
+- Postpone exposing Unicode version until later
+- Support NTFS and ext4 in addition to FAT
+- Support NFSv4 fattr4 in addition to NFSv3 PATHCONF
+
+---
+Chuck Lever (17):
+      fs: Move file_kattr initialization to callers
+      fs: Add case sensitivity flags to file_kattr
+      fat: Implement fileattr_get for case sensitivity
+      exfat: Implement fileattr_get for case sensitivity
+      ntfs3: Implement fileattr_get for case sensitivity
+      hfs: Implement fileattr_get for case sensitivity
+      hfsplus: Report case sensitivity in fileattr_get
+      ext4: Report case sensitivity in fileattr_get
+      xfs: Report case sensitivity in fileattr_get
+      cifs: Implement fileattr_get for case sensitivity
+      nfs: Implement fileattr_get for case sensitivity
+      f2fs: Add case sensitivity reporting to fileattr_get
+      vboxsf: Implement fileattr_get for case sensitivity
+      isofs: Implement fileattr_get for case sensitivity
+      nfsd: Report export case-folding via NFSv3 PATHCONF
+      nfsd: Implement NFSv4 FATTR4_CASE_INSENSITIVE and FATTR4_CASE_PRESERVING
+      ksmbd: Report filesystem case sensitivity via FS_ATTRIBUTE_INFORMATION
+
+ fs/exfat/exfat_fs.h      |  2 ++
+ fs/exfat/file.c          | 17 +++++++++++++++--
+ fs/exfat/namei.c         |  1 +
+ fs/ext4/ioctl.c          |  7 +++++++
+ fs/f2fs/file.c           |  8 ++++++++
+ fs/fat/fat.h             |  3 +++
+ fs/fat/file.c            | 23 +++++++++++++++++++++++
+ fs/fat/namei_msdos.c     |  1 +
+ fs/fat/namei_vfat.c      |  1 +
+ fs/file_attr.c           | 16 ++++++++--------
+ fs/hfs/dir.c             |  1 +
+ fs/hfs/hfs_fs.h          |  2 ++
+ fs/hfs/inode.c           | 13 +++++++++++++
+ fs/hfsplus/inode.c       | 10 ++++++++++
+ fs/isofs/dir.c           | 11 +++++++++++
+ fs/nfs/client.c          |  9 +++++++--
+ fs/nfs/inode.c           | 21 +++++++++++++++++++++
+ fs/nfs/internal.h        |  3 +++
+ fs/nfs/nfs3proc.c        |  2 ++
+ fs/nfs/nfs3xdr.c         |  7 +++++--
+ fs/nfs/nfs4proc.c        |  2 ++
+ fs/nfs/proc.c            |  3 +++
+ fs/nfs/symlink.c         |  3 +++
+ fs/nfsd/nfs3proc.c       | 18 ++++++++++--------
+ fs/nfsd/nfs4xdr.c        | 25 +++++++++++++++++++++++--
+ fs/nfsd/vfs.c            | 29 +++++++++++++++++++++++++++++
+ fs/nfsd/vfs.h            |  3 +++
+ fs/ntfs3/file.c          | 23 +++++++++++++++++++++++
+ fs/ntfs3/inode.c         |  1 +
+ fs/ntfs3/namei.c         |  2 ++
+ fs/ntfs3/ntfs_fs.h       |  1 +
+ fs/smb/client/cifsfs.c   | 20 ++++++++++++++++++++
+ fs/smb/server/smb2pdu.c  | 25 +++++++++++++++++++------
+ fs/vboxsf/dir.c          |  1 +
+ fs/vboxsf/file.c         |  6 ++++--
+ fs/vboxsf/super.c        |  7 +++++++
+ fs/vboxsf/utils.c        | 26 ++++++++++++++++++++++++++
+ fs/vboxsf/vfsmod.h       |  6 ++++++
+ fs/xfs/xfs_ioctl.c       |  9 ++++++++-
+ include/linux/fileattr.h |  3 ++-
+ include/linux/nfs_xdr.h  |  2 ++
+ include/uapi/linux/fs.h  |  7 +++++++
+ 42 files changed, 346 insertions(+), 34 deletions(-)
+---
+base-commit: 6596a02b207886e9e00bb0161c7fd59fea53c081
+change-id: 20260422-case-sensitivity-5cbffc8f1558
+
+Best regards,
+--  
+Chuck Lever
+
