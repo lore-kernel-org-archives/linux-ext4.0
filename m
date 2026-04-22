@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8275F1D6DA9;
-	Wed, 22 Apr 2026 23:24:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D68791D6DA9;
+	Wed, 22 Apr 2026 23:25:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900294; cv=none; b=svSqlg8pKWBmsFOz8uk3FaQw4fSJpiN0dyTAuH3TnyGjD2w7d0ILVj5gneHyzuSnJdyn4dlkI+j9E5oLqLfddYYkXWXbcpf6ohTdW+4sOGiUN5HKlQbm+yqBOY5FPP6+iEDvJ63aIYMokD0MVrfFwFYYcNeX/Pb0OXh6IfDUBRY=
+	t=1776900309; cv=none; b=j3mSFqWfKGZby5JfONp4cVk0ni6JL6GFqdus3vGQFJ/7j5rRDNI6k5s+Iuy2hBZywnq7ITXnyRaExjWvqcMzLziJYKxYdmHay+dz1Yfgp/9tG/BmNbzzU1PoJpKflORagYACbcZrnU/MQy3BqIx0oG8QnY+Tfxd65jG3jAYO168=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900294; c=relaxed/simple;
-	bh=VtUQH8nvmynk1XgxJ8+P6/2HFLN98EEObt1Hjk3YXPM=;
+	s=arc-20240116; t=1776900309; c=relaxed/simple;
+	bh=AQVvkzucSaB9N5C7vksLYzCRX5HzVgbtRQTaOYtYY0o=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=cVW3mKcW+v6JUXJelHGWC4JUCGordww3OiXphkCMmZT6GOaaWBJHwlO2M4ZQuVMTBjAxYloryrSuJ+aC7pQPkxIfqAi1+j0Dfj+06pKlDj7sLl29qFs5DzHcgDLd+jZ1FOo7N1UTfwkgr77POuZwbf1pYXuThcikqUGJsNtaYoo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bFCy8B10; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=GpAtamfebGwIxvOB4XA3ZsmV2wACYqpGN85eC3ViIZSybnUhYbJD30OA+nHLjCttml4IQVLRFqCB12pkaQ48RKDo4oay+S9EpRenDTSI19G98Jlun8IlB8CBxlnrXk1JOLZ6g7bZ22qvgQyCjsWzn+IdNOmXq6bGUwXS5ckYvto=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fojfrIVW; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bFCy8B10"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 150EEC2BCAF;
-	Wed, 22 Apr 2026 23:24:54 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fojfrIVW"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3242C2BCAF;
+	Wed, 22 Apr 2026 23:25:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900294;
-	bh=VtUQH8nvmynk1XgxJ8+P6/2HFLN98EEObt1Hjk3YXPM=;
+	s=k20201202; t=1776900309;
+	bh=AQVvkzucSaB9N5C7vksLYzCRX5HzVgbtRQTaOYtYY0o=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=bFCy8B10QnzDX8ByhAvBHob24ADqmfRUlpTH2KKpTMUM+Ms6YOz8l9679b+bo2W/o
-	 acWakXCX8j2+QK6docQvxg/5hN7bspv4uL43fj4h2qaCznVYryf2muMcOn/MNJLg6Z
-	 qQG4K1LYnmZHUG6cUnYgV1QOLaJUQyQ3daCp0yxwP97QrTG7gxd9hrWpPlPKdPwWiK
-	 am7e3r6SI+yIlu1808IK1qkuzkMPUSFDqz3UD1I4QP0vSePvubpiIF4sH6c6PP19ek
-	 I3uGZIB5/hyeq2zHxMiVcOiY4qE2wHyYOGLOT2TWaVpd4rDoTlM/sp/jwdXqcC2RRR
-	 VFqDbcMTvaMwA==
-Date: Wed, 22 Apr 2026 16:24:53 -0700
-Subject: [PATCH 05/10] libext2fs: bump libfuse API version to 3.19
+	b=fojfrIVW+5czKM7ierPjdoIzoInN/cF7o61LMAjTDIlFDh3QamgSDJ9ClDCbVweif
+	 ojCjYgp5TNfZu0LjnA8GtOiD3lnTW/2LxBaQrVB6n+mKju8mFYOw/0mtyy8rYfv4mf
+	 vqSa/qyxFX9pjwbbzhPy0rEOUkXv4XFIFYcOuJXi7DcRtPQPbvoKBb3FFWd44jTQV/
+	 2BDdVqCwJrLoeSQ+Pyiizarp9zgbCVnu2w5JelFbIAggM3Az8sZHrDwPvY0m/Vf4Eh
+	 j1TNoYFfeltF5e+aq0xVfL3JSaUdYtnUcbTe51lzVoKavNQ7wltoWRdwSVM7p3IiSk
+	 mV1QL9CEEOY8A==
+Date: Wed, 22 Apr 2026 16:25:09 -0700
+Subject: [PATCH 06/10] fuse4fs: hoist some code out of fuse4fs_main
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  linux-ext4@vger.kernel.org, neal@gompa.dev, joannelkoong@gmail.com,
  miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989629.3821326.18114142368432938186.stgit@frogsfrogsfrogs>
+Message-ID: <177689989646.3821326.14492655485067596223.stgit@frogsfrogsfrogs>
 In-Reply-To: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 References: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,96 +47,154 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-The fuse service container API is only available in 3.19, so we need to
-bump FUSE_USE_VERSION up from 3.14 to 3.19.
+In the next patch, we're going to create a separate fuse4fs_main
+function when we're running in service mode.  Hoist into separate
+helpers the code that will be shared between the two functions.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- configure    |    8 ++++----
- configure.ac |   10 +++++-----
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ fuse4fs/fuse4fs.c |   95 +++++++++++++++++++++++++++--------------------------
+ 1 file changed, 49 insertions(+), 46 deletions(-)
 
 
-diff --git a/configure b/configure
-index a9779412174b34..59413d5fc32e83 100755
---- a/configure
-+++ b/configure
-@@ -14598,14 +14598,14 @@ fi
+diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
+index 13e1aae4b5d2e5..1203f074ac29b6 100644
+--- a/fuse4fs/fuse4fs.c
++++ b/fuse4fs/fuse4fs.c
+@@ -6016,47 +6016,64 @@ static void fuse4fs_com_err_proc(const char *whoami, errcode_t code,
+ 	fflush(stderr);
+ }
  
- if test -n "$FUSE_LIB"
- then
--	FUSE_USE_VERSION=314
-+	FUSE_USE_VERSION=319
- 	CFLAGS="$fuse3_CFLAGS $CFLAGS"
- 	FUSE_LIB="$fuse3_LIBS"
- 	       for ac_header in pthread.h fuse.h
- do :
-   as_ac_Header=`printf "%s\n" "ac_cv_header_$ac_header" | sed "$as_sed_sh"`
- ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "#define _FILE_OFFSET_BITS	64
--#define FUSE_USE_VERSION	314
-+#define FUSE_USE_VERSION	319
- "
- if eval test \"x\$"$as_ac_Header"\" = x"yes"
- then :
-@@ -14640,7 +14640,7 @@ printf %s "checking for lowlevel interface in libfuse... " >&6; }
+-static int fuse4fs_main(struct fuse_args *args, struct fuse4fs *ff)
++static int fuse4fs_create_session(struct fuse4fs *ff, struct fuse_args *args,
++				  struct fuse_cmdline_opts *opts)
+ {
+-	struct fuse_cmdline_opts opts;
+-	struct fuse_session *se;
+-	struct fuse_loop_config *loop_config = NULL;
+-	int ret;
+-
+-	if (fuse_parse_cmdline(args, &opts) != 0) {
+-		ret = 1;
+-		goto out;
+-	}
+-
+ 	if (ff->debug)
+-		opts.debug = true;
++		opts->debug = true;
  
- 	#define _GNU_SOURCE
- 	#define _FILE_OFFSET_BITS	64
--	#define FUSE_USE_VERSION	314
-+	#define FUSE_USE_VERSION	319
- 	#include <fuse_lowlevel.h>
+-	if (opts.show_help) {
++	if (opts->show_help) {
+ 		fuse_cmdline_help();
+-		ret = 0;
+-		goto out_free_opts;
++		return 0;
+ 	}
  
- int
-@@ -14818,7 +14818,7 @@ printf %s "checking for cache_readdir support in libfuse... " >&6; }
+-	if (opts.show_version) {
++	if (opts->show_version) {
+ 		printf("FUSE library version %s\n", fuse_pkgversion());
+-		ret = 0;
+-		goto out_free_opts;
++		return 0;
+ 	}
  
- 	#define _GNU_SOURCE
- 	#define _FILE_OFFSET_BITS	64
--	#define FUSE_USE_VERSION	314
-+	#define FUSE_USE_VERSION	319
- 	#include <fuse.h>
+-	if (!opts.mountpoint) {
++	if (!opts->mountpoint) {
+ 		fprintf(stderr, "error: no mountpoint specified\n");
+-		ret = 2;
+-		goto out_free_opts;
++		return 2;
+ 	}
  
- int
-diff --git a/configure.ac b/configure.ac
-index b62553e3d6b946..c7d18dd9988db4 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1383,17 +1383,17 @@ AC_SUBST(FUSE_LIB)
+-	se = fuse_session_new(args, &fs_ops, sizeof(fs_ops), ff);
+-	if (se == NULL) {
+-		ret = 3;
+-		goto out_free_opts;
++	ff->fuse = fuse_session_new(args, &fs_ops, sizeof(fs_ops), ff);
++	return ff->fuse ? 0 : 3;
++}
++
++static int fuse4fs_event_loop(struct fuse4fs *ff,
++			      struct fuse_loop_config *loop_config,
++			      const struct fuse_cmdline_opts *opts)
++{
++	/*
++	 * Since there's a Big Kernel Lock around all the libext2fs code, we
++	 * only need to start four threads -- one to decode a request, another
++	 * to do the filesystem work, a third to transmit the reply, and a
++	 * fourth to handle fuse notifications.
++	 */
++	fuse_loop_cfg_set_clone_fd(loop_config, opts->clone_fd);
++	fuse_loop_cfg_set_idle_threads(loop_config, opts->max_idle_threads);
++	fuse_loop_cfg_set_max_threads(loop_config, 4);
++
++	return fuse_session_loop_mt(ff->fuse, loop_config) == 0 ? 0 : 8;
++}
++
++static int fuse4fs_main(struct fuse_args *args, struct fuse4fs *ff)
++{
++	struct fuse_cmdline_opts opts;
++	struct fuse_loop_config *loop_config = NULL;
++	int ret;
++
++	if (fuse_parse_cmdline(args, &opts) != 0) {
++		ret = 1;
++		goto out;
+ 	}
+-	ff->fuse = se;
  
- dnl
- dnl Set FUSE_USE_VERSION, which is how fuse servers build against a particular
--dnl libfuse ABI.  Currently we link against the libfuse 3.14 ABI (hence 314)
-+dnl libfuse ABI.  Currently we link against the libfuse 3.19 ABI (hence 319)
- dnl
- if test -n "$FUSE_LIB"
- then
--	FUSE_USE_VERSION=314
-+	FUSE_USE_VERSION=319
- 	CFLAGS="$fuse3_CFLAGS $CFLAGS"
- 	FUSE_LIB="$fuse3_LIBS"
- 	AC_CHECK_HEADERS([pthread.h fuse.h], [],
- 		[AC_MSG_FAILURE([Cannot build against fuse3 headers])],
- [#define _FILE_OFFSET_BITS	64
--#define FUSE_USE_VERSION	314])
-+#define FUSE_USE_VERSION	319])
- fi
- if test -n "$FUSE_USE_VERSION"
- then
-@@ -1412,7 +1412,7 @@ then
- 	[	AC_LANG_PROGRAM([[
- 	#define _GNU_SOURCE
- 	#define _FILE_OFFSET_BITS	64
--	#define FUSE_USE_VERSION	314
-+	#define FUSE_USE_VERSION	319
- 	#include <fuse_lowlevel.h>
- 		]], [[
- 	struct fuse_lowlevel_ops fs_ops = { };
-@@ -1512,7 +1512,7 @@ then
- 	[	AC_LANG_PROGRAM([[
- 	#define _GNU_SOURCE
- 	#define _FILE_OFFSET_BITS	64
--	#define FUSE_USE_VERSION	314
-+	#define FUSE_USE_VERSION	319
- 	#include <fuse.h>
- 		]], [[
- 	struct fuse_file_info fs_ops = {
+-	if (fuse_session_mount(se, opts.mountpoint) != 0) {
++	ret = fuse4fs_create_session(ff, args, &opts);
++	if (ret || !ff->fuse)
++		goto out_free_opts;
++
++	if (fuse_session_mount(ff->fuse, opts.mountpoint) != 0) {
+ 		ret = 4;
+ 		goto out_destroy_session;
+ 	}
+@@ -6076,7 +6093,7 @@ static int fuse4fs_main(struct fuse_args *args, struct fuse4fs *ff)
+ 		close(ff->logfd);
+ 	ff->logfd = -1;
+ 
+-	if (fuse_set_signal_handlers(se) != 0) {
++	if (fuse_set_signal_handlers(ff->fuse) != 0) {
+ 		ret = 6;
+ 		goto out_unmount;
+ 	}
+@@ -6087,30 +6104,16 @@ static int fuse4fs_main(struct fuse_args *args, struct fuse4fs *ff)
+ 		goto out_remove_signal_handlers;
+ 	}
+ 
+-	/*
+-	 * Since there's a Big Kernel Lock around all the libext2fs code, we
+-	 * only need to start four threads -- one to decode a request, another
+-	 * to do the filesystem work, a third to transmit the reply, and a
+-	 * fourth to handle fuse notifications.
+-	 */
+-	fuse_loop_cfg_set_clone_fd(loop_config, opts.clone_fd);
+-	fuse_loop_cfg_set_idle_threads(loop_config, opts.max_idle_threads);
+-	fuse_loop_cfg_set_max_threads(loop_config, 4);
++	ret = fuse4fs_event_loop(ff, loop_config, &opts);
+ 
+-	if (fuse_session_loop_mt(se, loop_config) != 0) {
+-		ret = 8;
+-		goto out_loopcfg;
+-	}
+-
+-out_loopcfg:
+ 	fuse_loop_cfg_destroy(loop_config);
+ out_remove_signal_handlers:
+-	fuse_remove_signal_handlers(se);
++	fuse_remove_signal_handlers(ff->fuse);
+ out_unmount:
+-	fuse_session_unmount(se);
++	fuse_session_unmount(ff->fuse);
+ out_destroy_session:
++	fuse_session_destroy(ff->fuse);
+ 	ff->fuse = NULL;
+-	fuse_session_destroy(se);
+ out_free_opts:
+ 	free(opts.mountpoint);
+ out:
 
