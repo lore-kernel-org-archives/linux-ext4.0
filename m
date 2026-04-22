@@ -1,103 +1,110 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A45571D6DA9;
-	Wed, 22 Apr 2026 23:26:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94FF63A3833;
+	Wed, 22 Apr 2026 23:29:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776900372; cv=none; b=FgNx9YElbHuHQ7fM6A6fW6LbOF1R5NHjKHj4Pe+mC6XbZbepr7CxiE+ThUzRVy4MPVZ4jK3rdDztSSXrOJETBCua1GnIbuzKVnltNs1njdA6AGdAUwl/8ebb0Xh25YLYBaItW1I94RtY02fwemwune3Nb7sQ+zmgBPiSiEYmsxQ=
+	t=1776900543; cv=none; b=afOjxqh6h1cjc5spsiXXavfaKhnWhXyyCYztgUrjY0c7WWLfiHV6TZgFRo516mhy59vRKVWB4zinuWIFJyT0UbKk3jY+7cOodC7T2cMQ4BNIcC/l6B/b0TL6Hl7p8au2wer1szMic+zbuLujOCh9SBka0J3ziK6IZE3lciwcIPM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776900372; c=relaxed/simple;
-	bh=e0F23TlsTVNqph/gwND+L2yl6H6ZyCUo1QHw+FOvZYs=;
-	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=PZ7/vCyTE2nuQ3DA09J/hFObZpdPicH3HYvUr77+vjBkhMNlghvTjwhhiySnnWlH/xlIxjMU7g/lqap2FgiiXBcpjTwnQO8rTarFPlhruv2nAAql+BrYL7PCl4tPttxAjg41xzoNCoj7jPImw//6+q/xyOY0WV5+fVrqxpIZa70=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mWplpYHS; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1776900543; c=relaxed/simple;
+	bh=bvl92UEOxoPlURu3laZ0+Grpbq+E+dKoVy+MV3iNcMc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=lC6WRhVFQXDFCR/AhdEVCN5B+Fzr+mjiF3x5erVZMFR1bFCqoWOnJRdNwGjUTbvnThlVptCcNRRFjIn4mcp6IFtefZt080Jml8Vgz4L7E51L7j6PIR/oTdHiXg7W5KO8seoq3OkFxyXDihQUBIaeK1lja18/uQvly5bocg1/THo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SekkEjDh; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mWplpYHS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42216C2BCAF;
-	Wed, 22 Apr 2026 23:26:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SekkEjDh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC915C19425;
+	Wed, 22 Apr 2026 23:29:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776900372;
-	bh=e0F23TlsTVNqph/gwND+L2yl6H6ZyCUo1QHw+FOvZYs=;
-	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=mWplpYHSWnJZK18UDSOT/dKt0RlKyCcB2+RcLTT56XcoB1UZpeZ3Llf3d+2OPWID2
-	 0llej7nqQ0zNsLXWpb/jQG3jxTXMgqqRB/bWixtZmbXYJX3MhPKEp1EgdY9Ilt3HAg
-	 dqH15iFkkE3wLn7nrdn6DCo0GYbolKTAiD+UNrQduRndNBzsj5f7k/gInZ2z/LeQyE
-	 8xK0TRZaYTRy53NdHR4jpwZInnwksCikd23cu/CGT8PTPIJaNfGuW5NcHBSi8xCVHc
-	 kR0D3QoqrEIMufdUVc/Krw7vIRf4WT08PRtiycq2PUtE48NM4wdg9FXwQnKqVlHz6l
-	 2NeH2GTmLMdAA==
-Date: Wed, 22 Apr 2026 16:26:11 -0700
-Subject: [PATCH 10/10] debian: update packaging for fuse4fs service
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
- linux-ext4@vger.kernel.org, neal@gompa.dev, joannelkoong@gmail.com,
- miklos@szeredi.hu, bernd@bsbernd.com
-Message-ID: <177689989717.3821326.3934400216489321372.stgit@frogsfrogsfrogs>
-In-Reply-To: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
-References: <177689989498.3821326.15497525132012299039.stgit@frogsfrogsfrogs>
+	s=k20201202; t=1776900543;
+	bh=bvl92UEOxoPlURu3laZ0+Grpbq+E+dKoVy+MV3iNcMc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=SekkEjDhHV8mJkGXxThm7jzjXl5r+G21rFwehhvUlC8Rt0thUJXkQ9ZvnLJDA49bN
+	 AiEWsPZKrWpwJl6zfPjMan6ZQQZ0SAX+GPqfqhIpTcP35W8c1hY1j5dB6ZIVRdWyZA
+	 RNZviU5piCS25/nr/hQI6ts3ddvXVIovvSSX1VqyN4YbVGTBHe3cWBWDtY95rWDwN0
+	 xHHWA5ihxTGxv+YwxpMRqQ876Ka0u7IW76BymiTC5SP9o3smEjBbRycPC8NcfOLvHb
+	 0Z8M9tfGW58T0LF6vlXrNkCURDjmm/8i26jOGnEaqiBhh7H6sdLRr3wu5y+atVFtu1
+	 3x/J7bLZeZD7Q==
+Date: Wed, 22 Apr 2026 16:27:47 -0700
+From: Eric Biggers <ebiggers@kernel.org>
+To: LiaoYuanhong-vivo <liaoyuanhong@vivo.com>
+Cc: tytso@mit.edu, jaegeuk@kernel.org, linux-fscrypt@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH] fscrypt: add software key support for filesystem-managed
+ data
+Message-ID: <20260422232747.GD2226@sol>
+References: <20260421075717.170840-1-liaoyuanhong@vivo.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260421075717.170840-1-liaoyuanhong@vivo.com>
 
-From: Darrick J. Wong <djwong@kernel.org>
+On Tue, Apr 21, 2026 at 03:57:17PM +0800, LiaoYuanhong-vivo wrote:
+> Some filesystems store small file contents in filesystem-managed regions
+> rather than in regular data blocks submitted through bios. One example is
+> F2FS inline_data, where the payload is stored inside the inode node block.
+> Such regions still need to follow the inode's fscrypt contents encryption
+> semantics, but they cannot rely on blk-crypto because they are not
+> submitted as standalone file data bios.
+> 
+> As a result, when blk-crypto is enabled, mechanisms such as inline_data are
+> typically disabled outright. However, it is desirable to re-enable such
+> space-saving features while still preserving the required encryption
+> semantics.
+> 
+> To support this, add fscrypt_crypt_fs_layer_page_inplace(), a helper that
+> encrypts or decrypts a caller-provided page region in place using
+> filesystem-layer software crypto and the inode's contents encryption
+> policy.
+> 
+> This support is limited to v2 encryption policies. v1 policies do not
+> provide the key setup model used here, so this path returns -EOPNOTSUPP for
+> v1. Hardware-wrapped keys are not supported either, since deriving a
+> software skcipher key requires software-accessible key material, which
+> conflicts with the hardware-wrapped key model.
+> 
+> When the inode's normal contents path uses blk-crypto, fscrypt may not have
+> a software skcipher key prepared for the inode contents key. Add an
+> optional filesystem-layer prepared key to fscrypt_inode_info. This key is
+> derived using the same v2 contents-encryption KDF as the normal contents
+> key, but is prepared as a software skcipher key and is used only by the new
+> filesystem-layer helper.
+> 
+> Signed-off-by: LiaoYuanhong-vivo <liaoyuanhong@vivo.com>
 
-Update the Debian packaging code so that we can create fuse4fs service
-containers.
+I don't have time for a super detailed review at the moment, but here
+are my initial thoughts:
 
-Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
----
- debian/e2fsprogs.install |    7 ++++++-
- debian/fuse4fs.install   |    3 +++
- debian/rules             |    3 +++
- 3 files changed, 12 insertions(+), 1 deletion(-)
- mode change 100644 => 100755 debian/fuse4fs.install
+- This needs to be sent along with the code that actually uses it in
+  ext4 and f2fs.  Please also Cc the mailing lists for those
+  filesystems.
 
+- This is going to require an "incompat" filesystem feature flag.  After
+  all, once a filesystem contains files that use this scheme, older
+  kernels won't understand it.
 
-diff --git a/debian/e2fsprogs.install b/debian/e2fsprogs.install
-index 17a80e3922dcee..808474bcab1717 100755
---- a/debian/e2fsprogs.install
-+++ b/debian/e2fsprogs.install
-@@ -50,4 +50,9 @@ usr/share/man/man8/resize2fs.8
- usr/share/man/man8/tune2fs.8
- etc
- [linux-any] ${deb_udevudevdir}/rules.d
--[linux-any] ${deb_systemdsystemunitdir}
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub@.service
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub@.service
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub_all.service
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub_all.timer
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub_fail@.service
-+[linux-any] ${deb_systemdsystemunitdir}/e2scrub_reap.service
-diff --git a/debian/fuse4fs.install b/debian/fuse4fs.install
-old mode 100644
-new mode 100755
-index 17bdc90e33cb67..56048136c2b28b
---- a/debian/fuse4fs.install
-+++ b/debian/fuse4fs.install
-@@ -1,2 +1,5 @@
-+#!/usr/bin/dh-exec
- usr/bin/fuse4fs
- usr/share/man/man1/fuse4fs.1
-+[linux-any] ${deb_systemdsystemunitdir}/fuse4fs.socket
-+[linux-any] ${deb_systemdsystemunitdir}/fuse4fs@.service
-diff --git a/debian/rules b/debian/rules
-index b680eb33ceac9e..d629e9d6915cfe 100755
---- a/debian/rules
-+++ b/debian/rules
-@@ -173,6 +173,9 @@ override_dh_installinfo:
- ifneq ($(DEB_HOST_ARCH_OS), hurd)
- override_dh_installsystemd:
- 	dh_installsystemd -p e2fsprogs --no-restart-after-upgrade --no-stop-on-upgrade e2scrub_all.timer e2scrub_reap.service
-+ifeq ($(SKIP_FUSE4FS),)
-+	dh_installsystemd -p fuse4fs fuse4fs.socket
-+endif
- endif
- 
- override_dh_makeshlibs:
+- UBIFS and CephFS already use fs/crypto/ but don't support blk-crypto
+  (inline encryption).  This new code feels duplicative of that.  It
+  should be possible to reuse the existing code instead.  That would
+  include, for example, reusing the existing en/decryption functions and
+  the existing struct ci_enc_key field.  This would keep the changes
+  limited mainly to how the key is being set up.
 
+- Supporting all the different IV generation methods doesn't make sense
+  when a per-file key is always used.
+
+- The fact that this is incompatible with hardware-wrapped keys greatly
+  limits the usefulness of this.  (Note that technically, it could be
+  supported in combination with them anyway.  But the security models
+  would be inconsistent, which I assume is what you have in mind.)
+
+Hope this is helpful,
+
+- Eric
