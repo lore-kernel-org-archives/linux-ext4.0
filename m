@@ -1,28 +1,28 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD0A7345721;
-	Wed, 22 Apr 2026 02:17:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D4D535A3B8;
+	Wed, 22 Apr 2026 02:17:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776824228; cv=none; b=WZmrp9T/41keWanURNjehijoMOVvYkswkyQkPjwYbZ6n1I1EtNXZ5gcBjyCbTAZ4R4roKHL7BnqVX4jDKMQxTo0T2uTNU8PJiI0DiyVGtbgjFeyNmQC88HeM1yXQH/w+Xl2LrQtzvWUNWMaY3UcU73QIeEuBUO/VaP2HvIhCBsQ=
+	t=1776824229; cv=none; b=JbeJ1FJfBMS3D7Jty1J9Mf5ANtOtamE39c5nqI3pwPw889K5JP51sLhaKubOINGP05YsAhGmjzj562XCbETfztZUG71qXSKJgzPzcR+2KzR6AMvnxcBDpXdsKb6BkpF51oeM6Yxatnuy4SxPtFt+H5UPdPPTrBFyY2AcUFGOW0A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776824228; c=relaxed/simple;
-	bh=LSueVWoJnsscuVIREEDByNIXpfqsPJMkD635NnFcnwE=;
+	s=arc-20240116; t=1776824229; c=relaxed/simple;
+	bh=xPnRnv2vLgfMgk2Egdli1mi1SjXfj3Qdi0qbTQSB6o0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=WoadY5RmwKCPcStbAGK21nEac/brzNx4CYwD9J6aNEveFqrYFQ/sB3Z6exfR9M0/sV4N9x4IxzwyTxb6DAO0SGWofv+ShmehAiQvB9qQuIlgwD2zlAKFqx7yZPImSrLRMqaqYNUMxjR1jAznOtJoenMk9U/uEqayFfi9w1h3Jak=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=ByxTK7/61RBHpja2hgTNU9ujgaUcTIRcKt/9UX/Nz7LrP4etbhgG1e3NtYMbFz1iComt33MSQwJQ5P2qGKiHfya+Lmar17LN6b2+1z9wXLLJ+XyZ68F5mi4EdhLCJMKWabqGX3jgBRDHkWrbjjG79GFLj+tRFLxHtgBduWE0vrM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g0jX40lJ0zKHMQS;
-	Wed, 22 Apr 2026 10:16:36 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4g0jWM5fs7zYQtrV;
+	Wed, 22 Apr 2026 10:15:59 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 238D340601;
+	by mail.maildlp.com (Postfix) with ESMTP id F22BB405D4;
 	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S10;
-	Wed, 22 Apr 2026 10:16:55 +0800 (CST)
+	by APP3 (Coremail) with SMTP id _Ch0CgB3JL6PL+hpqkgUBQ--.2635S18;
+	Wed, 22 Apr 2026 10:16:56 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v3 06/22] ext4: pass out extent seq counter when mapping da blocks
-Date: Wed, 22 Apr 2026 10:10:26 +0800
-Message-ID: <20260422021042.4157510-7-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 14/22] ext4: implement partial block zero range path using iomap
+Date: Wed, 22 Apr 2026 10:10:34 +0800
+Message-ID: <20260422021042.4157510-15-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
 References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S10
-X-Coremail-Antispam: 1UD129KBjvJXoW7tF1ftFWDJr48AF4xKw1kuFg_yoW8Cr15p3
-	9YkF1rGw18Zw1q9ay8X3W7ZFyrKan8ArW7GrWfXw1j9a4DWFySqF4jkF17AFykKr4xXr1F
-	vF48CryUC3ySkFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgB3JL6PL+hpqkgUBQ--.2635S18
+X-Coremail-Antispam: 1UD129KBjvJXoW3WF13Kw1DKFWrXF48ZFyxKrg_yoW7WF1UpF
+	WDK345Gr47Wry29w4ftFsrXr1Yk3WxtrW8Wry3Grn0v3s8XayxKF48GFyF93W5tw47Cw12
+	qF4UtryxGF1UAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -67,53 +67,156 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7tF1ftFWDJr48AF4xKw1kuFg_yoW8Cr15p3
 	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
 	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
 	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUCVW8JwCI
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
 	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
 	daVFxhVjvjDU0xZFpf9x0JUWMKtUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The iomap buffered write path does not hold any locks between querying
-inode extent mapping information and performing buffered writes. It
-relies on the sequence counter saved in the inode to detect stale
-mappings.
+Introduce a new iomap_ops instance, ext4_iomap_zero_ops, along with
+ext4_iomap_block_zero_range() to implement the iomap block zeroing range
+for ext4. ext4_iomap_block_zero_range() invokes iomap_zero_range() and
+passes ext4_iomap_zero_begin() to locate and zero out a mapped partial
+block or a dirty, unwritten partial block.
 
-Commit 07c440e8da8f ("ext4: pass out extent seq counter when mapping
-blocks") added the m_seq field to ext4_map_blocks to pass out extent
-sequence numbers, but it missed two callsites within
-ext4_da_map_blocks(). These callsites are on the delayed allocation
-path, which is also used in the iomap buffered write path. Pass out the
-sequence counter to ensure stale mappings can be detected.
+Note that zeroing out under an active handle can cause deadlock since
+the order of acquiring the folio lock and starting a handle is
+inconsistent with the iomap writeback procedure. Therefore,
+ext4_iomap_block_zero_range() cannot be called under an active handle,
+and we also cannot use data=order mode to ensure zeroed data to be
+unwritten back before updating i_disksize when performing post-EOF
+append write or performing truncate up as well.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 91 insertions(+)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index df21f6870ec4..5ffd6aeb3485 100644
+index 26e1366b85fd..701b912db6fb 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1929,7 +1929,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	ext4_check_map_extents_env(inode);
+@@ -4103,6 +4103,50 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+ 	return 0;
+ }
  
- 	/* Lookup extent status tree firstly */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
++static int ext4_iomap_zero_begin(struct inode *inode,
++		loff_t offset, loff_t length, unsigned int flags,
++		struct iomap *iomap, struct iomap *srcmap)
++{
++	struct iomap_iter *iter = container_of(iomap, struct iomap_iter, iomap);
++	struct ext4_map_blocks map;
++	u8 blkbits = inode->i_blkbits;
++	unsigned int iomap_flags = 0;
++	int ret;
++
++	ret = ext4_emergency_state(inode->i_sb);
++	if (unlikely(ret))
++		return ret;
++
++	if (WARN_ON_ONCE(!(flags & IOMAP_ZERO)))
++		return -EINVAL;
++
++	ret = ext4_iomap_map_blocks(inode, offset, length, NULL, &map);
++	if (ret < 0)
++		return ret;
++
++	/*
++	 * Look up dirty folios for unwritten mappings within EOF. Providing
++	 * this bypasses the flush iomap uses to trigger extent conversion
++	 * when unwritten mappings have dirty pagecache in need of zeroing.
++	 */
++	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++		loff_t offset = ((loff_t)map.m_lblk) << blkbits;
++		loff_t end = ((loff_t)map.m_lblk + map.m_len) << blkbits;
++
++		iomap_fill_dirty_folios(iter, &offset, end, &iomap_flags);
++		if ((offset >> blkbits) < map.m_lblk + map.m_len)
++			map.m_len = (offset >> blkbits) - map.m_lblk;
++	}
++
++	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
++	iomap->flags |= iomap_flags;
++
++	return 0;
++}
++
++static const struct iomap_ops ext4_iomap_zero_ops = {
++	.iomap_begin = ext4_iomap_zero_begin,
++};
  
-@@ -1982,7 +1982,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	 * is held in write mode, before inserting a new da entry in
- 	 * the extent status tree.
+ const struct iomap_ops ext4_iomap_buffered_write_ops = {
+ 	.iomap_begin = ext4_iomap_buffered_write_begin,
+@@ -4609,6 +4653,47 @@ static int ext4_block_journalled_zero_range(struct inode *inode, loff_t from,
+ 	return err;
+ }
+ 
++static int ext4_block_iomap_zero_range(struct inode *inode, loff_t from,
++				       loff_t length, bool *did_zero,
++				       bool *zero_written)
++{
++	int ret;
++
++	/*
++	 * Zeroing out under an active handle can cause deadlock since
++	 * the order of acquiring the folio lock and starting a handle is
++	 * inconsistent with the iomap writeback procedure.
++	 */
++	if (WARN_ON_ONCE(ext4_handle_valid(journal_current_handle())))
++		return -EINVAL;
++
++	/* The zeroing scope should not extend across a block. */
++	if (WARN_ON_ONCE((from >> inode->i_blkbits) !=
++			 ((from + length - 1) >> inode->i_blkbits)))
++		return -EINVAL;
++
++	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS) &&
++	    !(inode_state_read_once(inode) & (I_NEW | I_FREEING)))
++		WARN_ON_ONCE(!inode_is_locked(inode) &&
++			!rwsem_is_locked(&inode->i_mapping->invalidate_lock));
++
++	ret = iomap_zero_range(inode, from, length, did_zero,
++			       &ext4_iomap_zero_ops, &ext4_iomap_write_ops,
++			       NULL);
++	if (ret)
++		return ret;
++
++	/*
++	 * TODO: The iomap does not distinguish between different types of
++	 * zeroing and always sets zero_written if a zeroing operation is
++	 * performed, which may result in unnecessary order operations.
++	 */
++	if (did_zero && zero_written)
++		*zero_written = *did_zero;
++
++	return 0;
++}
++
+ /*
+  * Zeros out a mapping of length 'length' starting from file offset
+  * 'from'.  The range to be zero'd must be contained with in one block.
+@@ -4635,6 +4720,9 @@ static int ext4_block_zero_range(struct inode *inode,
+ 	} else if (ext4_should_journal_data(inode)) {
+ 		return ext4_block_journalled_zero_range(inode, from, length,
+ 							did_zero);
++	} else if (ext4_inode_buffered_iomap(inode)) {
++		return ext4_block_iomap_zero_range(inode, from, length,
++						   did_zero, zero_written);
+ 	}
+ 	return ext4_block_do_zero_range(inode, from, length, did_zero,
+ 					zero_written);
+@@ -4675,6 +4763,9 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+ 	 * truncating up or performing an append write, because there might be
+ 	 * exposing stale on-disk data which may caused by concurrent post-EOF
+ 	 * mmap write during folio writeback.
++	 *
++	 * TODO: In the iomap path, handle this by updating i_disksize to
++	 * i_size after the zeroed data has been written back.
  	 */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
- 
+ 	if (ext4_should_order_data(inode) &&
+ 	    did_zero && zero_written && !IS_DAX(inode)) {
 -- 
 2.52.0
 
