@@ -1,151 +1,184 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 247FD3F23B2;
-	Thu, 23 Apr 2026 13:13:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B969225788;
+	Thu, 23 Apr 2026 14:50:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776949985; cv=none; b=C+AqvCgPwi4EZl6fQuoOgjd7ZdiKjQgAu33AtrFJMxPaZoD57XrtISu1L0R5YwZs511X4oi/V2cLsJMPI1eVM4dMvYSYpy0GPZo39CekHcZgU+HMffMRg9WLCyGLHn7V5OXEM87KTafQ0GRfk6VoAH8NGTiV7H4DhCkw98W9vhw=
+	t=1776955827; cv=none; b=BnVMGjvNl3HCTfVkeKTp3/yHYXAHiPRw97FIY4SLVhVHXjzN5mY2udd7+N1zWTBU8OwkyLS5SrSw2/mzpYz6VyjdzyKKLFLbiqkaGZj+kaE59HN+jFT/npkRqJUXPx1j/AGa20PAk7bF0iHqEaSNc4QNOdNxeram7l5P/lktYQY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776949985; c=relaxed/simple;
-	bh=UNo7HHcDIV7JWpD0f7CVGZkCuGE2I4nW5HuPOm8dnXs=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=EFoGM9q1ptcXGfOh4X/vMEoz05ayRRr/DyvTud6r2CAsxn7rxwTWaQFqhelx4hCjtXx3SBtIEbIVgGfs7CS6bNyVBr0y0QtAA8y1APHLmYfWD9TXLpuBnQEcZ6DE6gVOztHksYCHndBOndjvf8Ki/CdHC7e4EkGzKbasPZ6/UO8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K4OLhQiL; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1776955827; c=relaxed/simple;
+	bh=jswnJoKDx4tKl10WGUL7n0/MeD2pRoH+k6W0/ZeuDy8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=uvLdL3K+vKNzrWt8P9cAOXcUYBwfsJtw87QSO78PhqvbVVQJ3dbNFLNXHhGVyhdk9XtXe9DlhrO/z1wxHciSQS1g/JCmrE4g+acDoTh5j29wOIFIrxnT0uZ3GGcPzpPCFbto38JkLQsQrsbKKSl0jDHZ2PobaA5xZl3Aj6JJHaw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WjfX0RgA; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K4OLhQiL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6F73C4AF0B;
-	Thu, 23 Apr 2026 13:13:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WjfX0RgA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3424C2BCAF;
+	Thu, 23 Apr 2026 14:50:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776949984;
-	bh=UNo7HHcDIV7JWpD0f7CVGZkCuGE2I4nW5HuPOm8dnXs=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=K4OLhQiL5q2gmBR6fMg7OQc8/AgWzGgE7c8lWakCv7FgQPstzhyPNpp5NVg8rSH5t
-	 mboZro4Y4RDogKy4pwOYTTBKrM1nSl9+T/ayjwK5XjqPBicW7it5FJsOONHrR9vTxJ
-	 Em4nM8x6k2v7UjnhrFFcU6nGFe5bpzMFO9Yv2iH5Dpjv9OQ0eAYvP12zCL5VShV54s
-	 MD1CiSWkCn5D5uE2yRw158f+KjfNGR6ZDQrcaMl9StikZc7kMsAlmk6gXyZp6scNMI
-	 iFwiMOsMVpSckv3ECa8Psgpi8yqngU7TcH0G6Y1+SeQ/6d/A1XCfyYIuIAkh/plDrG
-	 RKm2aYHMHvm+A==
-From: Chuck Lever <cel@kernel.org>
-Date: Thu, 23 Apr 2026 09:12:20 -0400
-Subject: [PATCH v10 17/17] ksmbd: Report filesystem case sensitivity via
- FS_ATTRIBUTE_INFORMATION
+	s=k20201202; t=1776955826;
+	bh=jswnJoKDx4tKl10WGUL7n0/MeD2pRoH+k6W0/ZeuDy8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=WjfX0RgAVAkp+sbfTbdOVkzIbkAUH6vHobudqqXIOdlH0RBSqHKeaXSlk/QbqljyH
+	 1YaNI9zE+iaNbwqR1AZUtX5ay/2Yp/7Ge5qfBsO47A34l3K3T+CI55qLAWqcZQWPB3
+	 tXD80zFwIU/Y4zssNgYbKGUI8gKg4nm5xULF2yAs91xJLaEA9Z3xAH+m5zfRlSeFgu
+	 3lwvHlHhGBs/bBkANZj5E9RK0N3zG3bdeyYJhvyFn/UFM/vTflZTe/5HPaR7v7PtkR
+	 9EaOgOlmzvCfG3f9WdmgtaGPLBcrqFae3u5tym3MJHg0L+H3KyCMMOe8S4mhbFHYD1
+	 /Fa6u7perzgtA==
+Date: Thu, 23 Apr 2026 07:50:26 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	fuse-devel <fuse-devel@lists.linux.dev>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Bernd Schubert <bernd@bsbernd.com>,
+	Joanne Koong <joannelkoong@gmail.com>,
+	Theodore Ts'o <tytso@mit.edu>, Neal Gompa <neal@gompa.dev>,
+	Christian Brauner <brauner@kernel.org>, demiobenour@gmail.com,
+	Naoki MATSUMOTO <m.naoki9911@gmail.com>
+Subject: Re: [PATCHBOMB v5] fuse/libfuse/e2fsprogs/etc: containerize ext4 for
+ safer operation
+Message-ID: <20260423145026.GC3778109@frogsfrogsfrogs>
+References: <20260422231518.GA7717@frogsfrogsfrogs>
+ <CAOQ4uxhEmbFWuM80F+Tq7TbDWjrL-znkwu=O=P7Ng2P5dksXsg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260423-case-sensitivity-v10-17-c385d674a6cf@oracle.com>
-References: <20260423-case-sensitivity-v10-0-c385d674a6cf@oracle.com>
-In-Reply-To: <20260423-case-sensitivity-v10-0-c385d674a6cf@oracle.com>
-To: Al Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
- linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
- linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
- linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp, 
- linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
- almaz.alexandrovich@paragon-software.com, slava@dubeyko.com, 
- glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu, 
- adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, 
- pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com, 
- trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, 
- hansg@kernel.org, senozhatsky@chromium.org, 
- Chuck Lever <chuck.lever@oracle.com>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2582;
- i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=/M15phZsxO4dYF/kfeaMD4laDtLmxamo65xsRXL/kkg=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBp6hq0lrMRP/taRhAjVj2Nj34LkMZtiUQ1WGFUj
- 5GhhBTIsAWJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaeoatAAKCRAzarMzb2Z/
- l7+iD/9RTr4hntMPxhl7UX1Xa9+pHwyzL17Hm9T+TA6M+p7usu+ddsGl6douosfJVOewO3FyoUV
- kUkhZBoIos+DHr5mWvcU/p0Bmt6IvhCdDIg7EkUJHbOUd+a821W9CDt9NGNwLdWnHU7rJATocLP
- 1IGEUvEUEm12ihgZPtNYLLOGf99q7H8f3fkR0RtAxSKaP3KkPkYO5IDkZJlqKdShfxbwU/l0IRD
- 3yb59efObNpfct0TPF9BY3UR/YAGA97NsvtptvyitXjtb65xeeFKZVJN7GyAGSkvQ8YFAxiYYLt
- SshlPCE3GLBxxGmAQBgkH56S67IiXI1kxMrddESmsTOExvc0rzaVvm97m9wYoLvy+dmt+12UBJ4
- WUGXgh41TFpWIt1+RYtZ/WBboC0B5IhkSou7z6IlksVYl5G8q/9fUAoQBM79v0B0bNbzWXWfq0a
- WjPFYvD3qovj8sX7CcfPXlXnNU0L40gt+MNRbNGtZjppbWixbTv77TAGbn51rxVQnTfulBLoDpF
- 4+VqzzCzM1XTKJCPYOETZ/yhXvjZZtNa5BQVaerGOMBIaCOC7yop2xyTiBOoMevYEA+qaoZzGqz
- 9+XTxfknXthMElnBLQC5JLn6zz/IHiwZx5awniQHRHH18z8MiIXnIbCjfrj92Owq7tSiKzrCsNU
- V1E030k7effzOsA==
-X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAOQ4uxhEmbFWuM80F+Tq7TbDWjrL-znkwu=O=P7Ng2P5dksXsg@mail.gmail.com>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Thu, Apr 23, 2026 at 10:44:31AM +0200, Amir Goldstein wrote:
+> On Thu, Apr 23, 2026 at 1:15 AM Darrick J. Wong <djwong@kernel.org> wrote:
+> >
+> > Hi everyone,
+> >
+> > This *would have been* the eight public draft of the gigantic patchset
+> > to connect the Linux fuse driver to fs-iomap for regular file IO
+> > operations to and from files whose contents persist to locally attached
+> > storage devices.
+> >
+> > However, the previous submission was too large, and I didn't even send
+> > half the patches!  I have therefore split the work into two sections.
+> > This first section covers setting up fuse servers to run as contained
+> > systemd services; I previously sent only the libfuse changes, without
+> > any of the surrounding pieces.  Now I'm ready to send them all.
+> >
+> > To summarize this patchbomb: fuse servers can now run as non-root users,
+> > with no privilege, no access to the network or hardware, etc.  The only
+> > connection to the outside is an ephemeral AF_UNIX socket.  The process
+> > on the other end is a helper program that acquires resources and calls
+> > fsmount().
+> >
+> > Why would you want to do that?  Most filesystem drivers are seriously
+> > vulnerable to metadata parsing attacks, as syzbot has shown repeatedly
+> > over almost a decade of its existence.  Faulty code can lead to total
+> > kernel compromise, and I think there's a very strong incentive to move
+> > all that parsing out to userspace where we can containerize the fuse
+> > server process.  Runtime filesystem metadata parsing is no longer a
+> > privileged (== risky) operation.
+> >
+> > The consequences of a crashed driver is a dead mount, instead of a
+> > crashed or corrupt OS kernel.
+> >
+> > Note that contained fuse filesystem servers are no faster than regular
+> > fuse.  The redesign of the fuse IO path via iomap will be the subject of
+> > the second patchbomb.  The containerization code only requires changes
+> > to libfuse and is ready to go today.
+> >
+> > Since the seventh submission, I have made the following changes:
+> >
+> > 1) Added a couple of simple fuse service drivers to the example code
+> >
+> > 2) Adapted fuservicemount to be runnable as a setuid program so that
+> > unprivileged users can start up a containerized filesystem driver
+> >
+> > 3) Fixed some endianness handling errors in the socket protocol between
+> > the new mount helper and the fuse server
+> >
+> > 4) Added a high level fuse_main function so that fuse servers that use
+> > the high level api can containerize without a total rewrite
+> >
+> > 5) Adapted mount.fuse to call the new mount helper code so that mount -t
+> > fuse.XXX can try to start up a contained server
+> >
+> > 6) Cleaned up a lot of cppcheck complaints and refactored a bunch of
+> > repetitious code
+> >
+> > 7) Started using codex to try to find bugs and security problems with
+> > the new mount helper
+> >
+> > There are a few unanswered questions:
+> >
+> > a. How to integrate with the SYNC_INIT patches that Bernd is working on
+> > merging into libfuse
+> >
+> > b. If /any/ of the new fsopen/fsconfig/fsmount/move_mount calls fail,
+> > do we fall back to the old mount syscall?  Even after printing errors?
+> >
+> > c. Are there any Linux systems where some inetd implementation can
+> > actually handle AF_UNIX sockets?  Does it make sense to try to do the
+> > service isolation without the convenience of systemd directives?
+> 
+> A large part of the world is running container workloads on kubernetes
+> and my understanding is that k8s does not mix well with systemd.
+> 
+> We have successfully used the fusetmount3-proxy [1] approach by Naoki
+> MATSUMOTO as a way for unprivileged containers to delegate fuse mount
+> by a (non-systemd) service, running in another container.
+> 
+> [1] https://github.com/pfnet-research/meta-fuse-csi-plugin#fusermount3-proxy-modified-fusermount3-approach
+> 
+> The README says that sshfs, s3fs and other high profile fuse fs have been
+> tested with this approach and they do not require any rebuild.
+> 
+> So it bears the question...
+> 
+> >
+> > d. meson/autoconf/cmake are a pain to deal with, hopefully the changes I
+> > made are correct
+> >
+> > I have also converted a handful more fuse servers (fat, exfat, iso,
+> > http) to the new service architecture so that I can run a (virtual)
+> > Debian system with EFI completely off of containerized fuse servers.
+> > These will be sent at the end.
+> >
+> 
+> ... what is the added value of rebuilding those packages with systemd
+> service support?
+> 
+> I am not implying that there is no added value, I just am not well versed
+> in the world of container and system services.
 
-FS_ATTRIBUTE_INFORMATION responses have always reported
-FILE_CASE_SENSITIVE_SEARCH and FILE_CASE_PRESERVED_NAMES
-unconditionally. Case-insensitive filesystems like exFAT, and
-casefolded directories on ext4 or f2fs, have no way to signal
-their actual semantics to SMB clients.
+From the discussion of fusermount3-proxy:
+https://github.com/pfnet-research/meta-fuse-csi-plugin/raw/main/assets/inside-fusermount3-proxy.png
+or
+https://tech.preferred.jp/wp-content/uploads/2023/11/figures-6.png
 
-Now that filesystems expose case behavior through ->fileattr_get,
-query it via vfs_fileattr_get() and translate the FS_XFLAG_CASEFOLD
-and FS_XFLAG_CASENONPRESERVING flags into the corresponding SMB
-attributes. Filesystems without ->fileattr_get continue reporting
-default POSIX behavior (case-sensitive, case-preserving).
+Their approach spins up a second "CSI driver pod" (aka another contained
+environment) to run fusermount3 with CAP_SYS_ADMIN.  This means that the
+"user pod" has to be able to access all resources necessary to mount the
+filesystem, e.g. virtual disk images, actual block devices, networking,
+etc.  Once the fuse server is running, it's obviously still running in
+the same environment as the user pod.
 
-SMB's FS_ATTRIBUTE_INFORMATION reports per-share attributes from
-the share root, not per-file. Shares mixing casefold and
-non-casefold directories report the root directory's behavior.
+With my approach, resource acquisition can be done up front, and the
+fuse server can run in a very sealed environment.  No block devices, no
+networking, no /home, and the minimal root filesystem.  It's systemd, so
+you can be more permissive with the environment if you'd like.
 
-Acked-by: Namjae Jeon <linkinjeon@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/smb/server/smb2pdu.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
+The downside is that requires code changes in the fuse server because
+open() won't work if you've trimmed the directory tree.  Hmm, there's
+not much provision for sockets, maybe I need to extend the protocol.
 
-diff --git a/fs/smb/server/smb2pdu.c b/fs/smb/server/smb2pdu.c
-index ee32e61b6d3c..05245562bcb8 100644
---- a/fs/smb/server/smb2pdu.c
-+++ b/fs/smb/server/smb2pdu.c
-@@ -14,6 +14,7 @@
- #include <linux/falloc.h>
- #include <linux/mount.h>
- #include <linux/filelock.h>
-+#include <linux/fileattr.h>
- 
- #include "glob.h"
- #include "smbfsctl.h"
-@@ -5541,16 +5542,28 @@ static int smb2_get_info_filesystem(struct ksmbd_work *work,
- 	case FS_ATTRIBUTE_INFORMATION:
- 	{
- 		FILE_SYSTEM_ATTRIBUTE_INFO *info;
-+		struct file_kattr fa = {};
- 		size_t sz;
-+		u32 attrs;
-+		int err;
- 
- 		info = (FILE_SYSTEM_ATTRIBUTE_INFO *)rsp->Buffer;
--		info->Attributes = cpu_to_le32(FILE_SUPPORTS_OBJECT_IDS |
--					       FILE_PERSISTENT_ACLS |
--					       FILE_UNICODE_ON_DISK |
--					       FILE_CASE_PRESERVED_NAMES |
--					       FILE_CASE_SENSITIVE_SEARCH |
--					       FILE_SUPPORTS_BLOCK_REFCOUNTING);
-+		attrs = FILE_SUPPORTS_OBJECT_IDS |
-+			FILE_PERSISTENT_ACLS |
-+			FILE_UNICODE_ON_DISK |
-+			FILE_SUPPORTS_BLOCK_REFCOUNTING;
- 
-+		err = vfs_fileattr_get(path.dentry, &fa);
-+		if (err && err != -ENOIOCTLCMD && err != -ENOTTY) {
-+			path_put(&path);
-+			return err;
-+		}
-+		if (!(fa.fsx_xflags & FS_XFLAG_CASEFOLD))
-+			attrs |= FILE_CASE_SENSITIVE_SEARCH;
-+		if (!(fa.fsx_xflags & FS_XFLAG_CASENONPRESERVING))
-+			attrs |= FILE_CASE_PRESERVED_NAMES;
-+
-+		info->Attributes = cpu_to_le32(attrs);
- 		info->Attributes |= cpu_to_le32(server_conf.share_fake_fscaps);
- 
- 		if (test_share_config_flag(work->tcon->share_conf,
+A big roadblock: none of that code can be merged into libfuse because
+it's all Apache 2.0 licensed, whereas libfuse is GPL2/LGPL2.  LLMwash
+notwithstanding.
 
--- 
-2.53.0
-
+--D
