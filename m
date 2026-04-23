@@ -1,62 +1,80 @@
-Received: from mail-oo1-f72.google.com (mail-oo1-f72.google.com [209.85.161.72])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C49CA30DEDD
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Apr 2026 05:05:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.72
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FE7321E098;
+	Thu, 23 Apr 2026 05:08:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776920723; cv=none; b=DiHMWRdItEjYlXB2cRO23yqczMUJG6Q+sDsRb4dQ15amg9QHzopMI39qqDONtiAzqrMZjHWoxCde0PR2/q8qwjzmCrTP1eUo1Rc+5q2g4KJrGgCV4p8/Dt/BrDdW46cMw6LmMhfHjYjyOj3Q3ht8aeHRQ5RCOAF97MniNriL6BE=
+	t=1776920914; cv=none; b=gmlxPFjvQqQw5wHsmyxNS7lUerD+625mK4r0h76L59AaNZsf5idc0OOpmRzZTRgDoGrQR+Qq5DKXyQ41+q+sg/m4xlA1gK88mBpw2bMhJxkS3/oaXmf9hHOtl0DCpyY+Su6PdXHaKBtDG6GfLxwZswovTYNtiwUrwjxV5AwD710=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776920723; c=relaxed/simple;
-	bh=fHKEKHdPjoZhYVJRZoCAKKckDq3mCm+7VXF61UEPMbE=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=duI4+Ueq7smj2cFTqCXTLcN+3a+EsXTRInq0E+e19bLGOpIQ5V8gAyqcP/oO7lwCPShwcaqtYJ5XXVtV7mN8XeTCDO3WTq72F3k4+MXMcz32OoVAXejS1Rip0uevK5VvzxOZ4s3ar7JAy2QePCcHR7sQlMVra8tkS+0cMNDvJ8Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.72
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f72.google.com with SMTP id 006d021491bc7-6949742b3ebso1443943eaf.3
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2026 22:05:21 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1776920721; x=1777525521;
-        h=to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=fHKEKHdPjoZhYVJRZoCAKKckDq3mCm+7VXF61UEPMbE=;
-        b=o0o9iCKUUJHDuC5BKCr4fEu8Jrpg8nQallgh8kNMNeMt1grxD1MlOlfeh14jWX6kNu
-         Io1d80puZb2h+blnT0V7wXw5J4o4W/7jyhg1eRlBtKaipQdT3NgEd78UUh4CEJ7SX968
-         3juKAIi0GCwWtx5WhyS/RwrravsC1hYXFQxqEJjwfIQFIAL5+CoOkBxXSZgJyOIIBUf1
-         bUWwZEiMD50MLZ+ahVysHYq+Ura/gcPiQ2crVEr3AN9Vtgghu2yt9CebZsiZ+RTZ9MVg
-         vgi9ua+NKdMr3oluTjYugbNA9uxPC82IUDQyfui0J/2j/6KvtGSMG5WZ8t/UtBT9R/J/
-         8WlQ==
-X-Forwarded-Encrypted: i=1; AFNElJ+Y4f5yBuoczkSvFAA2sLeJbv8kl2tJmzSIUsEYVGj/TgNa2NlQ+wCrS8F/WMoCB/DEmiF27xIq3UXQ@vger.kernel.org
-X-Gm-Message-State: AOJu0YyeEwsrmF0PxFnF4V9eqErXpr2AEXNQ4x7C1O+PAN8eq73nVXo7
-	GaGS6+alqeJ4mG5Rep5jjOUc/k0BajJ2zdQwY7ZEnimrn/MGEOYOu6HJOqrRAOIDjXHJpLNog81
-	rjaNiettUNqJAyZ56zhQrlZJ27eEP6tBof0GKOE3pnZcLhY6Eorbz6UNgY8Q=
+	s=arc-20240116; t=1776920914; c=relaxed/simple;
+	bh=HrfNR7fnumiB56vEYMy3p40je4xEW7wwiAn4IjvsHko=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KmEL7FLT5Klz5hi1C8qcoFKIfiDvGQSqq37yUfPyCpiHw3QQUMQPSbfhGAdEriUCjvQUpP2OZ+n/bLJ4IALWtCEegqh0qdajd30cBBlM8Gi6poLwuKLOE0ou2X/DyjNVUPSdDrhk+j89kGqiFMbsEhfoTXJwQjPByLN24sIH+e4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=FYv33qok; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="FYv33qok"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=1OxXqEnjl+54GOy6xnGRl8Qec/72RctUzHC5EckBAQk=; b=FYv33qokR6WpAV/RxGOQbhG8YO
+	wmLSRqHLiTV3pezvTYS6WBzXykW/GPGgHRYwb4aPcgRqyc+6UlaQpy7TMpy1ZowpTR91JlBPZuh2+
+	iUDEMyQC+jdsob+ZwUweKrrniV2nVCt1NILstuFWH2RVgSfT5f/UqdIjSbAIRy6sMaqrae5fUPtiZ
+	ZzgU/U2ppSgJ87aIbWc2dvTRlDwbSeVN2wG0wJgFfDYON4fm10aZrWJX9h9H/uWRp63ap5iMgdMLG
+	XOKWNt07GQaAzAGH458GgeePKU7+dCR41p4Umn1ufD+S6ceHUXcTbj2ApQPcD71YvHKuhmWxk2z04
+	8lqyZJxg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1wFmIf-0000000B3C9-0TS1;
+	Thu, 23 Apr 2026 05:08:29 +0000
+Date: Wed, 22 Apr 2026 22:08:29 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anand Jain <anajain.sg@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Theodore Tso <tytso@mit.edu>,
+	"Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+	Anand Jain <asj@kernel.org>, dsterba@suse.com
+Subject: Re: [PATCH v2 3/3] ext4: derive f_fsid from block device to avoid
+ collisions
+Message-ID: <aempTb5TyKG0vPL0@infradead.org>
+References: <5bda3d00-df35-4ea1-b313-2fef6e5c5682@gmail.com>
+ <adSUiB9L0sFAd04U@infradead.org>
+ <20260407144709.GA81690@macsyma-wired.lan>
+ <3c9e478a-42ef-446f-a8cc-1b4ac970d2ef@gmail.com>
+ <20260409041035.GC99725@macsyma-wired.lan>
+ <22cfbf8d-af9b-462e-b240-67a1de24764f@gmail.com>
+ <20260409131238.GC18443@macsyma-wired.lan>
+ <b593ab17-afaf-4128-97eb-0ab9c23dec5c@gmail.com>
+ <aeHikJwRmFdDg5FW@infradead.org>
+ <cd9c0147-18cf-464d-86e2-12342a992ebc@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a4a:ee09:0:b0:696:1cf0:22 with SMTP id 006d021491bc7-6961cf00103mr161763eaf.38.1776920720911;
- Wed, 22 Apr 2026 22:05:20 -0700 (PDT)
-Date: Wed, 22 Apr 2026 22:05:20 -0700
-In-Reply-To: <699fd494.050a0220.2fcbed.0000.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <69e9a890.a00a0220.17a17.0037.GAE@google.com>
-Subject: Re: [moderation] KCSAN: data-race in filemap_read /
- filemap_splice_read (3)
-From: syzbot <syzbot+6880f676b265dbd42d63@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, akpm@linux-foundation.org, 
-	almaz.alexandrovich@paragon-software.com, baolin.wang@linux.alibaba.com, 
-	hughd@google.com, jack@suse.cz, jiayuan.chen@linux.dev, 
-	jiayuan.chen@shopee.com, linux-ext4@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-mm@kvack.org, linux-trace-kernel@vger.kernel.org, 
-	mathieu.desnoyers@efficios.com, mhiramat@kernel.org, ntfs3@lists.linux.dev, 
-	rostedt@goodmis.org, syzkaller-upstream-moderation@googlegroups.com, 
-	tytso@mit.edu, willy@infradead.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <cd9c0147-18cf-464d-86e2-12342a992ebc@gmail.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Auto-closing this bug as obsolete.
-Crashes did not happen for a while, no reproducer and no activity.
+On Wed, Apr 22, 2026 at 07:39:57PM +0800, Anand Jain wrote:
+> > No, T10 does not actually mandate unique identifiers, NVMe does, but the
+> > implementations are often totally broken.
+> 
+> Right. Newer SPC-3 (and above) compliant devices must support
+> the Inquiry CDB EVPD flag and provide page 0x83 for identification,
+> which is what we typically use for multipathing.
+
+But there is no requirement for it to contain something useful.
+
+> These are globally unique. And, we can overlook legacy
+> drives, as they've probably been past their EOSL for a while now.
+
+We have absolutely no useful identifiers for most USB devices.
+NVMe devices have broken identifiers all the time as well.
+
+So no, you can't.
+
