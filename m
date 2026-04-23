@@ -1,134 +1,214 @@
-Received: from cse.ust.hk (cssvr7.cse.ust.hk [143.89.41.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv1-f50.google.com (mail-qv1-f50.google.com [209.85.219.50])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEF2C2D97B7;
-	Thu, 23 Apr 2026 17:37:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=143.89.41.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 200F034CFC6
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Apr 2026 21:03:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.219.50
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776965861; cv=fail; b=S22OQnjHtzOtTkkyJZuQFASYXbzoU/J9vqd1zbeXgfrMqoduJ1cZFuWGCy16oG17477om6Xw79htifW92C1tuPFg3Ynw/hUW6imipmM2uviksPh3ZkqidM5NyDqq/wI5EwLu3JpCdhPwxuy9HmZtBJjZ6Ge4HZ1T+RBaXZ9h7CI=
+	t=1776978190; cv=pass; b=Llj8AwpQpyY8vCPQ8bc9AhAtkVpBBr4fYGVtPap2kd8dClVAAD8Y7p/CoROEX18x1YlSufCULo24eh4XhcqA4Mn1fZJTWfKt7/JZcD1cZ2Dw/7Jtl28pzSvWrVgEqXUT2cgOwDbRXbzqyCz8spsMFj4E0abCQedWMVomhjzfFbg=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776965861; c=relaxed/simple;
-	bh=0x/auHbOhhE+j/6Df10ZM/NGURUzqWqfjC2ekyvD5HY=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=C9ZPayjCCx3sscT/SlfUy+DNs4fBQjHm+y6J+z5LMu/OGn1BghGwWUrMZoD4Jnx8STQD42zNVU6Yd8WDY2mC7rOiWki7VCufz8QDo+PKi5QZgrjc7hkrKmWuSENToNjMYu2ASiMMPgoNqoCrds3e3btxt8aeqbGs/pUiYPSJcDY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cse.ust.hk; spf=pass smtp.mailfrom=cse.ust.hk; dkim=fail (1024-bit key) header.d=cse.ust.hk header.i=@cse.ust.hk header.b=lePdqm4q reason="signature verification failed"; arc=fail smtp.client-ip=143.89.41.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cse.ust.hk
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cse.ust.hk
+	s=arc-20240116; t=1776978190; c=relaxed/simple;
+	bh=xhEH603J8v85yHWTGq8ZnN7Uus4HM3riSO2QoNgy+fs=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=CoDCLAnOuvZ+VfsGq6MMrpuF4vBYp0fzwV4njV/seMf/ypdj07ZHHJuN3++GevtbtcVTWvZujh9diOb7goScUTRgcCkoynFy4nAByiNrHMctL2a2dM9BXP5UFXjnZ+m1+j4JGR3bEaPdghICUC6LGPewUj2q2e9mS+qoWQHxq8s=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=rDvAu1SN; arc=pass smtp.client-ip=209.85.219.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=cse.ust.hk header.i=@cse.ust.hk header.b="lePdqm4q"
-ARC-Seal: i=1; d=cse.ust.hk; s=arccse; a=rsa-sha256; cv=none; t=1776965848;
-	b=AjAF/AUxsrDhjwvI6hRS7wW0fNQGqfwdHdlGfnbSWlODoNBFi7eCunougQj7njU9Srmh
-	 Aph11WHgAkMeJjCxSfm07htXs+OyYtX+EtUsqrT8l49NiRV03b/HBR11417ucfa+2u8Zj
-	 CSrkCILafu0ooYCTC/h4K/Uc3vIgpPsN7k=
-ARC-Message-Signature: i=1; d=cse.ust.hk; s=arccse; a=rsa-sha256;
-	c=relaxed/relaxed; t=1776965848;
-	h=DKIM-Signature:Date:From:To:Subject:Message-ID:MIME-Version;
-	bh=ooBVeHO5BNHGyWf9t7ZufVl29d6IT3b4Z7fohAbfVwc=;
-	b=ZbWEHSL0T/fII8NM4r/zhxiWvhf6D2UYNsBUabgJfepQpQpZPtEJ4B/egsb8mOX9xnFn
-	 028uS9esS5+iz+9lcXNauKtpde6grj8I9F3VItQpF0gNTgQOFkPOvvWPPRViaQ0zGERPh
-	 eUKbexZBOi+vPQt890sADqcc4J4pE1Y5l8=
-ARC-Authentication-Results: i=1; cse.ust.hk; arc=none smtp.remote-ip=143.89.191.45
-Received: from chcpu16 (191host045.mobilenet.cse.ust.hk [143.89.191.45])
-	(authenticated bits=0)
-	by cse.ust.hk (8.18.1/8.12.5) with ESMTPSA id 63NHbL7v1768571
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Fri, 24 Apr 2026 01:37:28 +0800
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=cse.ust.hk;
-	s=cseusthk; t=1776965848;
-	bh=ooBVeHO5BNHGyWf9t7ZufVl29d6IT3b4Z7fohAbfVwc=;
-	h=Date:From:To:Cc:Subject:From;
-	b=lePdqm4qB7eWJYQqIPHt9brQXb3SuRd91nj6sGelvFEovd3IICbaMLCqYMUwOfDnd
-	 DZh1/AOXe3Uek/B2JI3o56S9yIaY7VcaoTDxinZi8E/Ite3YXlkps61XDv1OkefZtM
-	 p+QyBDqYU0kvXG5tO2FM/0pfJ8wHv8ZzV9mZ3XLk=
-Date: Fri, 24 Apr 2026 01:37:16 +0800
-From: Shuhao Fu <sfual@cse.ust.hk>
-To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Subject: [BUG] ext4: KCSAN: lockless i_es_all_nr reads in es_shrinker_info
-Message-ID: <20260423173700.GA2187084@chcpu16>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rDvAu1SN"
+Received: by mail-qv1-f50.google.com with SMTP id 6a1803df08f44-8acae26e564so81121286d6.2
+        for <linux-ext4@vger.kernel.org>; Thu, 23 Apr 2026 14:03:08 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1776978188; cv=none;
+        d=google.com; s=arc-20240605;
+        b=WjM+AwK5Iu8ePdnu7lyqb/ilDKxYkmC7A7V55wg0Mc1OaXmwdEWqxHhGfprxfhCUsJ
+         nYpYYGYUEnIT47sdaRSC/xIPu7UWvO9WaaTiwU64n0580WJ3csS5NrwUZKJhe6mJuLXn
+         x0mONqtBTjxollkX+lXEybBSoOIUzvBaQ90HSEjJBV5Poz6U7rjNRto6Dhs1YdpiYNTp
+         qYRLztysN6Xb3SecaaOLeoASQElALyLSz4DPbA0PyDu1Tje1DByIp3blkmWNE4hYcJ5X
+         LKqtDmo9fWBKudvyYiqdzdiGEjrzeMbTUdeR4phezjkBoT2dftOz8Bfq9yahB0WZc6JC
+         2Rhw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=PB9D2kfgkJFOe3p8pXvyrrOYHUrSUtT15eUJWPkJgQk=;
+        fh=dg9XuWDq2LGTfIq1/5nOeIDnuPZzr4y5r82V2La855k=;
+        b=jzswQRK2igUbv0MH2TVX7Z3lA4DhUzaN+lbrxYVcmw9+ZlmtIi2pT42XNN21aAnLNL
+         AoBvHwDV0fpR+7lEi2PRCCGoWdfhqscX9jXYjgSYNTtt3HEDth6Bnzp5Q8gmuCYZ5b/5
+         hqKn+UcL7ODWS0ucLfC986yVZNuwN8WVfSgT7zdbjQcaQjmVXOqeG7mkY0jP/oIKRUzy
+         4PmFfglUpTWPi9t3CKUK0L4YCo8jVCmn9kAkLq1SjfHdGAQE836Ql/ECuurFNJ4k2mwl
+         IOhkyjU5lvUvn/lysgRzESI91vDGVeOmBpxcTGszaJELDJYgYfWtloS4Y/6y59XSusmY
+         LfVQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1776978188; x=1777582988; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=PB9D2kfgkJFOe3p8pXvyrrOYHUrSUtT15eUJWPkJgQk=;
+        b=rDvAu1SNNCNFOtPGGZA1Ilm0Le5RC3HqJ0wXokdqmzOLVNi8lHw7GMMZu9w9TKLwL2
+         97WG5/8zvZHB8yvJKvWest8upLdKisDZ7H05Ka5/vdYNhsrnM3D9ri/hCBGJJWSYMJ6A
+         4aV5pN8ZpW+OvUAVyQXtCxyz+lKlPQ3JSP3K8P+ESur67eGHrRIzYUzsXwVHkCd6yj2/
+         ctzXdJjsBXDJTbKbibVy0FNHQzCBCqmL0wFBtBXUGYA9rjTxlgcuc+yyfB6WixhGhej1
+         k1hqtskE52BY3YNgHMeEYZ4kRq1QB4GqeTj/Zh+a80rccrsXdmSCnU6wEvXr81Y4Mp/o
+         /xVA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776978188; x=1777582988;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=PB9D2kfgkJFOe3p8pXvyrrOYHUrSUtT15eUJWPkJgQk=;
+        b=JrhPo70t4QEuamPgRgdIVe2snYlDKejUdunwf07BVjjhYmdIfx4sLe6IfIYLhEEy59
+         Cr75MlEZIZt51mP4kpxrcGRQnd0+vqklKNNYT7eSXae0mHdOP3J0mtK+E30CF/SMTZEW
+         M5kw+SH2ZPOy/a/N5lZ3MW3whXWovDschVdfPA+L38urnGUauczg4oylnHpDsjtRJlfb
+         YHQweDfjVKcJA0Et32keLzL1zmoC4NMWT+KXXj9/7DdDh0wcEbX/79S1ltCN3YHqCpRN
+         tncon/v4F/FhlhrH+brXoGEyFebPN1UIgG0BSpx9JXHQlQ95BWXEenMqFKh1dFLUerSR
+         2jDw==
+X-Forwarded-Encrypted: i=1; AFNElJ8eOea5K4+IpKN4j0JT4KOrL4OQW9NFI1NgTif9yEgCJ9UTSfBgoZt/yjWS3HhF0X50kQtYu5md/JUD@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy5FfRry6XIP4Ow3bfVUPHLiLU4fYsck/MRois/eTs2eCukM/AU
+	zHFFsdx8QXW8RK44NUriTG+tgyJy2yvXzNEb+VxzJQKtXjjrZcC0tTWTsmukmdC7oqs+DKiE0wV
+	gA73K6dtHZp/DQz6kmBtCKmkhSyUTEyk=
+X-Gm-Gg: AeBDieuyB9w2lT04BYW8c8+NPa/I1QXnXUN4ztk5KtH55zBx29CgXLLud622beNstbf
+	RZYN0r45o+xdl9WfzIv6Mci64ytDAc6P3DwLBR9yWSw0wXgjZFTy3UWORb1n+DjL62cjjFKy3Ch
+	YI6whE5N2FZFlJv74A+NHD8R1qRs4g+he50/jawgLGi1RAaTUbBqkKl9Q31kcX69Nqa679XgihR
+	0WkYIYve2OLDIYIMqY0Hy7+N/R2xqnCvyNb84LYTpOQVqPXFi145NVoyDBrdGsm5MLXD5+QwQTj
+	VUzaeyB+qMKOXwg5/+bFps9txrVcZZcnXgiOQPVe7SctorD90afKUePmq14tNDguTT7M5U/dTco
+	QdPSkGjNuq/MZuW70vtu6iOOOqtwq3GDd0y+GYekpXymio26NzoqXAUX/o8PBKjjTn5UAFhlqgR
+	DYw/g8oasUJ8jGG7qCbyYjHEr9GTRi5L8=
+X-Received: by 2002:ad4:5d65:0:b0:8ae:6282:df2e with SMTP id
+ 6a1803df08f44-8b02822456emr461252066d6.44.1776978187970; Thu, 23 Apr 2026
+ 14:03:07 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-Env-From: sfual
+References: <20260423-case-sensitivity-v10-0-c385d674a6cf@oracle.com> <20260423-case-sensitivity-v10-10-c385d674a6cf@oracle.com>
+In-Reply-To: <20260423-case-sensitivity-v10-10-c385d674a6cf@oracle.com>
+From: Steve French <smfrench@gmail.com>
+Date: Thu, 23 Apr 2026 16:02:56 -0500
+X-Gm-Features: AQROBzDF43-id-Qgk6rRbL0HPyUPTg1w8GYo4-J0uBb2d6IfD5ElWAtE-TtbFxA
+Message-ID: <CAH2r5mu1Wg_9tZCjei-xF357UjKR+h6jQr9zey39v59rx9quZQ@mail.gmail.com>
+Subject: Re: [PATCH v10 10/17] cifs: Implement fileattr_get for case sensitivity
+To: Chuck Lever <cel@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp, 
+	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
+	almaz.alexandrovich@paragon-software.com, slava@dubeyko.com, 
+	glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu, 
+	adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, pc@manguebit.org, 
+	ronniesahlberg@gmail.com, sprasad@microsoft.com, trondmy@kernel.org, 
+	anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, hansg@kernel.org, 
+	senozhatsky@chromium.org, Chuck Lever <chuck.lever@oracle.com>, 
+	Steve French <stfrench@microsoft.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Hi,
+Should this also be checking if the SMB3.1.1 Linux Extensions or SMB
+POSIX Extensions are negotiated (ie the server supports case
+sensitivity)?
 
-Reading /proc/fs/ext4/<sb>/es_shrinker_info can overlap with extent-status
-updates and trigger KCSAN reports on the per-inode ES counters (I saw this on
-i_es_all_nr; i_es_shk_nr is read the same way in this proc path). From what I
-can see, the user-visible impact appears limited to stale/inconsistent procfs
-stats output (I do not have evidence of corruption or crash from this path).
+On Thu, Apr 23, 2026 at 8:20=E2=80=AFAM Chuck Lever <cel@kernel.org> wrote:
+>
+> From: Chuck Lever <chuck.lever@oracle.com>
+>
+> Upper layers such as NFSD need a way to query whether a filesystem
+> handles filenames in a case-sensitive manner. Report CIFS/SMB case
+> handling behavior via the FS_XFLAG_CASEFOLD flag.
+>
+> CIFS servers (typically Windows or Samba) are usually case-insensitive
+> but case-preserving, meaning they ignore case during lookups but store
+> filenames exactly as provided.
+>
+> The implementation reports case sensitivity based on the nocase mount
+> option, which reflects whether the client expects the server to perform
+> case-insensitive comparisons. When nocase is set, the mount is reported
+> as case-insensitive.
+>
+> The callback is registered in all three inode_operations structures
+> (directory, file, and symlink) to ensure consistent reporting across
+> all inode types.
+>
+> Acked-by: Steve French <stfrench@microsoft.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/smb/client/cifsfs.c | 20 ++++++++++++++++++++
+>  1 file changed, 20 insertions(+)
+>
+> diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
+> index 2025739f070a..9b70ffa3e01d 100644
+> --- a/fs/smb/client/cifsfs.c
+> +++ b/fs/smb/client/cifsfs.c
+> @@ -30,6 +30,7 @@
+>  #include <linux/xattr.h>
+>  #include <linux/mm.h>
+>  #include <linux/key-type.h>
+> +#include <linux/fileattr.h>
+>  #include <uapi/linux/magic.h>
+>  #include <net/ipv6.h>
+>  #include "cifsfs.h"
+> @@ -1199,6 +1200,22 @@ struct file_system_type smb3_fs_type =3D {
+>  MODULE_ALIAS_FS("smb3");
+>  MODULE_ALIAS("smb3");
+>
+> +static int cifs_fileattr_get(struct dentry *dentry, struct file_kattr *f=
+a)
+> +{
+> +       struct cifs_sb_info *cifs_sb =3D CIFS_SB(dentry->d_sb);
+> +       struct cifs_tcon *tcon =3D cifs_sb_master_tcon(cifs_sb);
+> +
+> +       /*
+> +        * The nocase mount option installs case-insensitive dentry
+> +        * operations on this superblock. SMB preserves case on the
+> +        * wire and at rest, so the mount matches FS_XFLAG_CASEFOLD
+> +        * semantics: case-folded lookup, verbatim storage.
+> +        */
+> +       if (tcon->nocase)
+> +               fa->fsx_xflags |=3D FS_XFLAG_CASEFOLD;
+> +       return 0;
+> +}
+> +
+>  const struct inode_operations cifs_dir_inode_ops =3D {
+>         .create =3D cifs_create,
+>         .atomic_open =3D cifs_atomic_open,
+> @@ -1217,6 +1234,7 @@ const struct inode_operations cifs_dir_inode_ops =
+=3D {
+>         .listxattr =3D cifs_listxattr,
+>         .get_acl =3D cifs_get_acl,
+>         .set_acl =3D cifs_set_acl,
+> +       .fileattr_get =3D cifs_fileattr_get,
+>  };
+>
+>  const struct inode_operations cifs_file_inode_ops =3D {
+> @@ -1227,6 +1245,7 @@ const struct inode_operations cifs_file_inode_ops =
+=3D {
+>         .fiemap =3D cifs_fiemap,
+>         .get_acl =3D cifs_get_acl,
+>         .set_acl =3D cifs_set_acl,
+> +       .fileattr_get =3D cifs_fileattr_get,
+>  };
+>
+>  const char *cifs_get_link(struct dentry *dentry, struct inode *inode,
+> @@ -1261,6 +1280,7 @@ const struct inode_operations cifs_symlink_inode_op=
+s =3D {
+>         .setattr =3D cifs_setattr,
+>         .permission =3D cifs_permission,
+>         .listxattr =3D cifs_listxattr,
+> +       .fileattr_get =3D cifs_fileattr_get,
+>  };
+>
+>  /*
+>
+> --
+> 2.53.0
+>
+>
 
-I reproduced this on a local KCSAN-instrumented tree based on linux commit
-d8a9a4b11a13, using an x86_64 QEMU workload with userspace reader/writer loops.
-To increase the race window, I added small debug-only hooks in my local tree:
-after the writer updates the counter, it briefly delays and records which inode
-it just touched; the proc reader then samples that inode's counters during the
-s_es_list walk. I also wrapped the i_es_all_nr load in a local helper
-ext4_es_shrinker_read_all_nr() so the read-side stack has a stable symbol;
-upstream reads happen directly in ext4_seq_es_shrinker_info_show().
 
-With that setup, KCSAN prints the following summary line (naming the two
-racing functions):
-
-  BUG: KCSAN: data-race in ext4_es_init_extent / ext4_es_shrinker_read_all_nr
-
-The first clean hit in my local log was:
-
-  read to 0xffff917cc15222c8 of 4 bytes by task 107 on cpu 0:
-   ext4_es_shrinker_read_all_nr+0x26/0x50
-   ext4_es_kcsan_probe_hot_inode+0x2b9/0x400
-   ext4_seq_es_shrinker_info_show+0x9b/0xd40
-   ...
-   __x64_sys_sendfile64+0xc2/0x100
-   do_syscall_64+0x13f/0x3c0
-
-  write (reordered) to 0xffff917cc15222c8 of 4 bytes by task 108 on cpu 2:
-   ext4_es_init_extent+0x6aa/0xa00
-   __es_insert_extent+0x477/0xaa0
-   ...
-   ext4_do_fallocate+0x127/0x310
-   __x64_sys_fallocate+0x75/0xb0
-
-I then saw the same pair again later in the same run (for example around
-129.529391 and 129.579938), still on the same 4-byte address.
-
-It looks like i_es_all_nr and i_es_shk_nr are documented as protected by
-i_es_lock, and writers update them under i_es_lock, but
-ext4_seq_es_shrinker_info_show() reads them while walking the list under
-s_es_lock (the list lock), not i_es_lock.
-
-The reproducer shape from normal userspace APIs is one reader loop running
-cat /proc/fs/ext4/<sb>/es_shrinker_info while a writer loop runs fallocate,
-buffered writes, punch-hole, and truncate on the same filesystem.
-
-Since this appears to be an observational procfs stats path, would you prefer
-marking these loads with data_race(...) so the intentionally approximate reads
-are explicit and this path stops generating repeated KCSAN warnings?
-
-The rough change I had in mind is:
-
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index ... .. ...
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@
- int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v)
- {
- 	...
- 	list_for_each_entry(ei, &sbi->s_es_list, i_es_list) {
- 		inode_cnt++;
- 		ei_all_nr = data_race(ei->i_es_all_nr);
- 		ei_shk_nr = data_race(ei->i_es_shk_nr);
- 		...
-  }
-
-If this direction is preferred, I can send a formal patch.
-
+--=20
 Thanks,
-Shuhao
+
+Steve
