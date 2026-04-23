@@ -1,184 +1,80 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B969225788;
-	Thu, 23 Apr 2026 14:50:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0CBF28C2BF
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Apr 2026 16:21:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776955827; cv=none; b=BnVMGjvNl3HCTfVkeKTp3/yHYXAHiPRw97FIY4SLVhVHXjzN5mY2udd7+N1zWTBU8OwkyLS5SrSw2/mzpYz6VyjdzyKKLFLbiqkaGZj+kaE59HN+jFT/npkRqJUXPx1j/AGa20PAk7bF0iHqEaSNc4QNOdNxeram7l5P/lktYQY=
+	t=1776961292; cv=none; b=gqGBqtBcSj2Y8hMgYHl8L26cTvzg0hYAY5T1lxIm/R+r/A4GP/wUkWVd1gNeLUFqt69CVpeMYJaOAfgsolOodOfTE/qY/PrNd9XB27XrfJlPBdKGaFThBLZV9ew1KGy1U1vY84hIqSDDtv9oza2/tLSp3aTTKz825qeFYxZ0t7E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776955827; c=relaxed/simple;
-	bh=jswnJoKDx4tKl10WGUL7n0/MeD2pRoH+k6W0/ZeuDy8=;
+	s=arc-20240116; t=1776961292; c=relaxed/simple;
+	bh=xp2pMTo3aw7cLhP5uDme1JVwUIzmEWSjps8fmMShWkI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=uvLdL3K+vKNzrWt8P9cAOXcUYBwfsJtw87QSO78PhqvbVVQJ3dbNFLNXHhGVyhdk9XtXe9DlhrO/z1wxHciSQS1g/JCmrE4g+acDoTh5j29wOIFIrxnT0uZ3GGcPzpPCFbto38JkLQsQrsbKKSl0jDHZ2PobaA5xZl3Aj6JJHaw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WjfX0RgA; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=m8MQjjfCS0T68vvcIireZlHiqUm/oEpvz1MktkEq1A4qLA0D1gNouynoHBYtl1UhAksjv1zrW/SKT+p6LGvIT2s5QSuixcEBYhOeS6dRmN6GIk04oQfR2yRBLVUfw4ZY0jTcbLc5jsZyeeYEd7Q05UtdAnTb324gaBRKFP3jwrg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=e0J5JW3u; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WjfX0RgA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3424C2BCAF;
-	Thu, 23 Apr 2026 14:50:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776955826;
-	bh=jswnJoKDx4tKl10WGUL7n0/MeD2pRoH+k6W0/ZeuDy8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=WjfX0RgAVAkp+sbfTbdOVkzIbkAUH6vHobudqqXIOdlH0RBSqHKeaXSlk/QbqljyH
-	 1YaNI9zE+iaNbwqR1AZUtX5ay/2Yp/7Ge5qfBsO47A34l3K3T+CI55qLAWqcZQWPB3
-	 tXD80zFwIU/Y4zssNgYbKGUI8gKg4nm5xULF2yAs91xJLaEA9Z3xAH+m5zfRlSeFgu
-	 3lwvHlHhGBs/bBkANZj5E9RK0N3zG3bdeyYJhvyFn/UFM/vTflZTe/5HPaR7v7PtkR
-	 9EaOgOlmzvCfG3f9WdmgtaGPLBcrqFae3u5tym3MJHg0L+H3KyCMMOe8S4mhbFHYD1
-	 /Fa6u7perzgtA==
-Date: Thu, 23 Apr 2026 07:50:26 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	fuse-devel <fuse-devel@lists.linux.dev>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Bernd Schubert <bernd@bsbernd.com>,
-	Joanne Koong <joannelkoong@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>, Neal Gompa <neal@gompa.dev>,
-	Christian Brauner <brauner@kernel.org>, demiobenour@gmail.com,
-	Naoki MATSUMOTO <m.naoki9911@gmail.com>
-Subject: Re: [PATCHBOMB v5] fuse/libfuse/e2fsprogs/etc: containerize ext4 for
- safer operation
-Message-ID: <20260423145026.GC3778109@frogsfrogsfrogs>
-References: <20260422231518.GA7717@frogsfrogsfrogs>
- <CAOQ4uxhEmbFWuM80F+Tq7TbDWjrL-znkwu=O=P7Ng2P5dksXsg@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="e0J5JW3u"
+Received: from macsyma.thunk.org (pool-173-48-114-3.bstnma.fios.verizon.net [173.48.114.3])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63NGKmT9022089
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 23 Apr 2026 12:20:49 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1776961251; bh=xrabulbNwCoYtGMFi0J6CHNFR1BHJnva+CZE5x1zRII=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=e0J5JW3uJvECgwxY803wsj1yO8F15mowTRD1H+XDZCfFZeZmnPoHHkYBvMK9kibJt
+	 bzKKJ0EVLimGcKe8Sn3lC3vRq93qD/egK2dYQM0K/kCUj/ZQ7VRQ9E/Ynm2C3qOR0K
+	 OOGfSxQTwdLsGaYP9PlEgfDKhxXsvrqHkPCd/DlfHt+yvyIMzq6GvIJR6dxUu+ljc3
+	 aHbFyHP805/vCItxQxWIFFJgEW0llNQ71pKZwOePYXJ7UXPC9Cm2lEJvin6nMUS4QQ
+	 +qMNsCOPxMk5xrJDbdQrIU4lLwRFXQDfHLm0WWIMyQBfGFsGGvHuBNlw7nehobqfm0
+	 02VY8uCi4qXgQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id C584C64BE250; Thu, 23 Apr 2026 12:19:47 -0400 (EDT)
+Date: Thu, 23 Apr 2026 12:19:47 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Baolin Liu <liubaolin12138@163.com>
+Cc: adilger.kernel@dilger.ca, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+        yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, wangguanyu@vivo.com,
+        Baolin Liu <liubaolin@kylinos.cn>, Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v3 v3 2/2] ext4: allow clearing mballoc stats through
+ mb_stats
+Message-ID: <20260423161947.GB68318@macsyma-wired.lan>
+References: <20260422015026.7170-1-liubaolin12138@163.com>
+ <20260422015026.7170-3-liubaolin12138@163.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAOQ4uxhEmbFWuM80F+Tq7TbDWjrL-znkwu=O=P7Ng2P5dksXsg@mail.gmail.com>
+In-Reply-To: <20260422015026.7170-3-liubaolin12138@163.com>
 
-On Thu, Apr 23, 2026 at 10:44:31AM +0200, Amir Goldstein wrote:
-> On Thu, Apr 23, 2026 at 1:15 AM Darrick J. Wong <djwong@kernel.org> wrote:
-> >
-> > Hi everyone,
-> >
-> > This *would have been* the eight public draft of the gigantic patchset
-> > to connect the Linux fuse driver to fs-iomap for regular file IO
-> > operations to and from files whose contents persist to locally attached
-> > storage devices.
-> >
-> > However, the previous submission was too large, and I didn't even send
-> > half the patches!  I have therefore split the work into two sections.
-> > This first section covers setting up fuse servers to run as contained
-> > systemd services; I previously sent only the libfuse changes, without
-> > any of the surrounding pieces.  Now I'm ready to send them all.
-> >
-> > To summarize this patchbomb: fuse servers can now run as non-root users,
-> > with no privilege, no access to the network or hardware, etc.  The only
-> > connection to the outside is an ephemeral AF_UNIX socket.  The process
-> > on the other end is a helper program that acquires resources and calls
-> > fsmount().
-> >
-> > Why would you want to do that?  Most filesystem drivers are seriously
-> > vulnerable to metadata parsing attacks, as syzbot has shown repeatedly
-> > over almost a decade of its existence.  Faulty code can lead to total
-> > kernel compromise, and I think there's a very strong incentive to move
-> > all that parsing out to userspace where we can containerize the fuse
-> > server process.  Runtime filesystem metadata parsing is no longer a
-> > privileged (== risky) operation.
-> >
-> > The consequences of a crashed driver is a dead mount, instead of a
-> > crashed or corrupt OS kernel.
-> >
-> > Note that contained fuse filesystem servers are no faster than regular
-> > fuse.  The redesign of the fuse IO path via iomap will be the subject of
-> > the second patchbomb.  The containerization code only requires changes
-> > to libfuse and is ready to go today.
-> >
-> > Since the seventh submission, I have made the following changes:
-> >
-> > 1) Added a couple of simple fuse service drivers to the example code
-> >
-> > 2) Adapted fuservicemount to be runnable as a setuid program so that
-> > unprivileged users can start up a containerized filesystem driver
-> >
-> > 3) Fixed some endianness handling errors in the socket protocol between
-> > the new mount helper and the fuse server
-> >
-> > 4) Added a high level fuse_main function so that fuse servers that use
-> > the high level api can containerize without a total rewrite
-> >
-> > 5) Adapted mount.fuse to call the new mount helper code so that mount -t
-> > fuse.XXX can try to start up a contained server
-> >
-> > 6) Cleaned up a lot of cppcheck complaints and refactored a bunch of
-> > repetitious code
-> >
-> > 7) Started using codex to try to find bugs and security problems with
-> > the new mount helper
-> >
-> > There are a few unanswered questions:
-> >
-> > a. How to integrate with the SYNC_INIT patches that Bernd is working on
-> > merging into libfuse
-> >
-> > b. If /any/ of the new fsopen/fsconfig/fsmount/move_mount calls fail,
-> > do we fall back to the old mount syscall?  Even after printing errors?
-> >
-> > c. Are there any Linux systems where some inetd implementation can
-> > actually handle AF_UNIX sockets?  Does it make sense to try to do the
-> > service isolation without the convenience of systemd directives?
+On Wed, Apr 22, 2026 at 09:50:25AM +0800, Baolin Liu wrote:
+> From: Baolin Liu <liubaolin@kylinos.cn>
 > 
-> A large part of the world is running container workloads on kubernetes
-> and my understanding is that k8s does not mix well with systemd.
-> 
-> We have successfully used the fusetmount3-proxy [1] approach by Naoki
-> MATSUMOTO as a way for unprivileged containers to delegate fuse mount
-> by a (non-systemd) service, running in another container.
-> 
-> [1] https://github.com/pfnet-research/meta-fuse-csi-plugin#fusermount3-proxy-modified-fusermount3-approach
-> 
-> The README says that sshfs, s3fs and other high profile fuse fs have been
-> tested with this approach and they do not require any rebuild.
-> 
-> So it bears the question...
-> 
-> >
-> > d. meson/autoconf/cmake are a pain to deal with, hopefully the changes I
-> > made are correct
-> >
-> > I have also converted a handful more fuse servers (fat, exfat, iso,
-> > http) to the new service architecture so that I can run a (virtual)
-> > Debian system with EFI completely off of containerized fuse servers.
-> > These will be sent at the end.
-> >
-> 
-> ... what is the added value of rebuilding those packages with systemd
-> service support?
-> 
-> I am not implying that there is no added value, I just am not well versed
-> in the world of container and system services.
+> Make /proc/fs/ext4/<dev>/mb_stats writable and clear the runtime
+> mballoc statistics when 0 is written.
 
-From the discussion of fusermount3-proxy:
-https://github.com/pfnet-research/meta-fuse-csi-plugin/raw/main/assets/inside-fusermount3-proxy.png
-or
-https://tech.preferred.jp/wp-content/uploads/2023/11/figures-6.png
+At the moment to enable mb_stats the system administrator needs to
+write "1" to /sys/fs/ext4/<dev>/mb_stats, and writing "0" to the sysfs
+file will pauce the statistics colleciton (but not clear the
+statistics).  Adding a way to clear the statistics by writing to the
+procfs file might be confusing to users.
 
-Their approach spins up a second "CSI driver pod" (aka another contained
-environment) to run fusermount3 with CAP_SYS_ADMIN.  This means that the
-"user pod" has to be able to access all resources necessary to mount the
-filesystem, e.g. virtual disk images, actual block devices, networking,
-etc.  Once the fuse server is running, it's obviously still running in
-the same environment as the user pod.
+So.... as a suggestion, if you're adding to the ability to write to
+/proc/fs/.../mb_stats, what if we make things work by
 
-With my approach, resource acquisition can be done up front, and the
-fuse server can run in a very sealed environment.  No block devices, no
-networking, no /home, and the minimal root filesystem.  It's systemd, so
-you can be more permissive with the environment if you'd like.
+   * Write 1 to /proc/fs/.../mb_stats to  enable statistics collection
+   * Write 0 to /proc/fs/.../mb_stats to  disable statistics collection
+   * Write -1 to /proc/fs/.../mb_stats to clear statistics counters
 
-The downside is that requires code changes in the fuse server because
-open() won't work if you've trimmed the directory tree.  Hmm, there's
-not much provision for sockets, maybe I need to extend the protocol.
+And then deprecate the /sys/fs/.../mb_stats variable (but we probably
+won't be able to remove it for at least a year or two).
 
-A big roadblock: none of that code can be merged into libfuse because
-it's all Apache 2.0 licensed, whereas libfuse is GPL2/LGPL2.  LLMwash
-notwithstanding.
-
---D
+	       	       	  	    	- Ted
