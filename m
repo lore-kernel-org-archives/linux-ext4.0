@@ -1,189 +1,142 @@
-Received: from OS8PR02CU002.outbound.protection.outlook.com (mail-japanwestazon11012040.outbound.protection.outlook.com [40.107.75.40])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A58B73CAE81;
-	Thu, 23 Apr 2026 10:41:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.75.40
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776940906; cv=fail; b=SzBt9LOD9oFruMFGVEpsdgjIwuHUUpksT4t3riWOiss7IsA+QXi/yXdYIbfoLWOgXhhp69+KMNWBA2zCUxJJXu6ORDHPIkJ/Uru+07snFS0aocIdi7Q4NeNxW8rH5hNa0lfQnWJ2GL0OfnnbZ6oZud3NjvB3UHuMVuS5A8I6g0k=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776940906; c=relaxed/simple;
-	bh=YBSZArHgPqYFfuIPmF4k0slRyjA9+ui4QL/AKY9SYGc=;
-	h=Message-ID:Date:From:Subject:To:Cc:References:In-Reply-To:
-	 Content-Type:MIME-Version; b=hgXVE68ScnGnMWI9X1xakdQ7ZOBfb5/WBCAroZfECT/UbodA8nTQUDOBAcG1uDOQwVxJhOxr/DIZxTQwd1y7sGi9PvygHrJ2G4MQlQ9Ae5AQp/6ofXdsYFFv9FFTeMJEmhg2IVAnNvc/ojJQdZBRcplBqW9pZPlzRFFYPWFriZY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com; spf=pass smtp.mailfrom=vivo.com; dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b=EW3y9uoX; arc=fail smtp.client-ip=40.107.75.40
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vivo.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8B0B3E9F8C;
+	Thu, 23 Apr 2026 11:53:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1776945202; cv=none; b=RVg4D6gVlKzxEU5SqvGjCIynreygk98gykV7WR/RsBwjd8xD1DJeAzrEoQe175ljCphi7mEXlnDQxxYHR+pGmdTqJrCuGvLpUTS4BzzTI3RGpqEDs3lahb8Vf+E4OEDod5cRt8Gneae2Zpl+o9XfMF4UMYrKpbKiaPouj6bQoYE=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1776945202; c=relaxed/simple;
+	bh=cHE9hrag1OMIex+WXfpjDqBpsMmIUcQJHMPd4Y7yd1s=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=YkH0lrMQ/TNGycozH0QwASwP/85ogKDrj9EEWkdgogtKkbHY5eqSOKbT5+HS1806WbjDXGOlhMXYt2Yx3bA8S8n5iXDAaDEkKv+AKd7vKmtB7YIMfa7H6CjE19asJvkVdyCqbiTqzQEstj2hkFfzB9O5rM1Xh6ZsRhOaVtsdMP0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=R6p905u8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b="EW3y9uoX"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=vBrp+6YWkPv/RAApl9J3YZM5h4zneEEx7ZWLPuQ24xZOfBeEtmdoL6X5S12nvRDL0vSOZqpIhTBnZLCoLYhnOtX80x7i9P69OasiNw2ue3kHPFqDyLTzQXYGMmre+fnPCN2fHGd+ApzAzyooIThwFxyjUduGlinu7JVviIDOFAcymdI8N1cWMUWGiFK9cK9viNFoflbC8wGkJsszAdLLIwu7kP0UY3+6083HucwlbSGbyOhVVd+RG2JJOCBMe57IrVFT36oQaQk5hIvhcsS2ENDdeFtePA8R++5NtEfWxw3uRwP1YDNVQYGyXlk6j6V0TUNoq4cOPOMK5kP2yfEiFA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=qvUJziKXe46hrXodHw02nFmofqALE1KGXS7isNkhv+I=;
- b=CdckE/VZHNsSpCa+kCJd4H+eFATaNIdLi34pMST6+GMFNmT+SeWDoPhbHGCRCGAe/5fW43dWQI48Q1700L4JNhed1a0xlvKzl74WmM6Y0K8Js+JoBJR4STgX3P9kqNQCzWa4asAAxCaU9D2wSiXZbJmXhCcHyMR0GCdsVPmWHXa8LD69zEIyYVbOq3uUjZFc5M8K9In3837L8qooZtL7b/J9OGKtpfy3ZeLF5VlK16YQd3V1DxI3MgTZCTPEVmYcpBA+lmO8TUXZKwRCc1NT2cQrBhcfIE7IMvmAJqkENLs5IGutRuhIqfqfamwzDLC48rzphjjftd07eePhzWz1Cg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=vivo.com; dmarc=pass action=none header.from=vivo.com;
- dkim=pass header.d=vivo.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=vivo.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=qvUJziKXe46hrXodHw02nFmofqALE1KGXS7isNkhv+I=;
- b=EW3y9uoXDrg9YOR8p94WFfcwCZ/jZsPTTQJRMwlcILNC1bj8nZSVHBKEt7kay5NZzA4kiKbSj5cIimg/ng9thqaDiQDBfAMLcXRjGWSQcaouBqC1y481w5Wr9jO/lv6IWen0hhwuuctbeAzm4QVqfcOCiLH1a8wXJu3x00TuSPvaVmbB7TnDWmdj9b8yhqD/EJlQXF/C1l15kfmmRL1BrC7f0HVVjToi+S9uybUzWrHiAlqxkJC7OMvVTZ4cZ73kwLlsOxxNMVklYFvE3OnbEGveSDdYedmMOzjTOxpmuZkMEkDMRW3DD6kPZuYNNdRWbybGdUrluuPQc4+Ms7DLjw==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=vivo.com;
-Received: from TY0PR06MB5579.apcprd06.prod.outlook.com (2603:1096:400:32f::14)
- by PUZPR06MB6053.apcprd06.prod.outlook.com (2603:1096:301:11a::10) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9846.17; Thu, 23 Apr
- 2026 10:41:35 +0000
-Received: from TY0PR06MB5579.apcprd06.prod.outlook.com
- ([fe80::fd5b:d112:ac3:bba4]) by TY0PR06MB5579.apcprd06.prod.outlook.com
- ([fe80::fd5b:d112:ac3:bba4%6]) with mapi id 15.20.9846.016; Thu, 23 Apr 2026
- 10:41:35 +0000
-Message-ID: <05eca173-168a-47df-982f-ccc3e06c0d0c@vivo.com>
-Date: Thu, 23 Apr 2026 18:41:30 +0800
-User-Agent: Mozilla Thunderbird
-From: Liao Yuanhong <liaoyuanhong@vivo.com>
-Subject: Re: [PATCH] fscrypt: add software key support for filesystem-managed
- data
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: tytso@mit.edu, jaegeuk@kernel.org, linux-fscrypt@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net
-References: <20260421075717.170840-1-liaoyuanhong@vivo.com>
- <20260422232747.GD2226@sol>
-Content-Language: en-US
-In-Reply-To: <20260422232747.GD2226@sol>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: SG2P153CA0049.APCP153.PROD.OUTLOOK.COM (2603:1096:4:c6::18)
- To TY0PR06MB5579.apcprd06.prod.outlook.com (2603:1096:400:32f::14)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="R6p905u8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 20254C2BCB5;
+	Thu, 23 Apr 2026 11:53:14 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1776945202;
+	bh=cHE9hrag1OMIex+WXfpjDqBpsMmIUcQJHMPd4Y7yd1s=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=R6p905u8w5riLWLBL7tRdD5S09cDEbJnPwWB5RVXAG2eZ8l9DVcz9BdD1snxlZ2Zl
+	 DQHKLZweSXptmoepemPcv3MQMKXrko/qLSf8d9gekZ9FC9npj1Rl5+g83VEnO+lLev
+	 xBFP7nCswuXz722eHK8fJ8BLo5Gk/F0+fuLGkDdxYxjQkDltUnC+j+R3mwxhrUbqzi
+	 NJO+IaFgHoRmOtUENV0fUO142ajvIUPYaRG9OYAFDVcHCovlg6DI0cyER+NKMDRgNh
+	 vxODO9xb+7N3kQKZvCTki45OQYoSORg/oovwJEvPkMCBEsAvK4tl5B50itIMRurf/p
+	 QTWH9qc+XS8KQ==
+From: Christian Brauner <brauner@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+	Al Viro <viro@zeniv.linux.org.uk>,
+	Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	hirofumi@mail.parknet.co.jp,
+	linkinjeon@kernel.org,
+	sj1557.seo@samsung.com,
+	yuezhang.mo@sony.com,
+	almaz.alexandrovich@paragon-software.com,
+	slava@dubeyko.com,
+	glaubitz@physik.fu-berlin.de,
+	frank.li@vivo.com,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	cem@kernel.org,
+	sfrench@samba.org,
+	pc@manguebit.org,
+	ronniesahlberg@gmail.com,
+	sprasad@microsoft.com,
+	trondmy@kernel.org,
+	anna@kernel.org,
+	jaegeuk@kernel.org,
+	chao@kernel.org,
+	hansg@kernel.org,
+	senozhatsky@chromium.org,
+	"Darrick J. Wong" <djwong@kernel.org>
+Subject: Re: [PATCH v9 00/17] Exposing case folding behavior
+Date: Thu, 23 Apr 2026 13:52:39 +0200
+Message-ID: <20260423-notorisch-marmorieren-3b1376711a8f@brauner>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260422-case-sensitivity-v9-0-be023cc070e2@oracle.com>
+References: <20260422-case-sensitivity-v9-0-be023cc070e2@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: TY0PR06MB5579:EE_|PUZPR06MB6053:EE_
-X-MS-Office365-Filtering-Correlation-Id: 6a0a83d2-2ef4-4af1-8c48-08dea124e393
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|376014|1800799024|366016|56012099003|22082099003|18002099003|11006099003;
-X-Microsoft-Antispam-Message-Info:
-	RwaugEp6MNizDbm9vAEHtr1+ymou7zW1R8HecPjr8bVYVN3f3NeNgUSQ4lYOhTs3E/BGtzmiVOqTKgUjLRjlXWzILrr/Va/peae3OeG0plDR6j3TkwdKxww2l0N74Yi/V9SHKSx5F4LDjEE40jGVCX9l6R+Gw4e5SIv2kWWGPQl9NjLOcQRkPIFp6+q7z5+vf5Rh1iR6UhOhf1v25ffyczKCQebUvIXejnKiGprglEjvvJDXTdGzB4uJgpivbHnXFzgUEOWLnx/mzOyLUM71tWr+MUT7ewi7LxoSpCtjjSZU4ppX6TtrXfsUWjs5dAyWCKj2CyJMqvjOgFOH6da+2DFzQrXruUSspFzZVb08/UUUbpmtWMH2XVdyVQzI3MhyxLQox5E9L8zj6ei8NyOKIAgX1ckizG5r66SfSDB/CZv1zdM2lU4SaNjsYpJ+gy02TQmKF8hTXFG/N4ZTcsLIyU8ob+biJKMkxoVIsUHa2NMctNvKtSzWYjFpxBUtCUCwH5l/kaRc2JmyAhvlmAuhhWs7aLGdSLCtpSY93+OzpCsLytdz0SIGqvxju/1nD1j0KS5xQ+w94puwEYyKe9wHHXLWpO494V2Rp7YuEzSbzEGpmM0p6lrSyXV0MT6I4VoZsnWFHWE6vJUlFSYBKqUC/Wtel5qkvznXqrx/oz4kdcNB2B7OoLy3pVA4GAfl7J9/2EAIOOIOqwRJavTH2FO4Tlb9D/MZzvaDt+0prya8Mpw=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:TY0PR06MB5579.apcprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(366016)(56012099003)(22082099003)(18002099003)(11006099003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?Z1k2aU9lTjc3RHBlVXM5VU9KSWJXVlh5MlFSVzhxRW82TGdDM1ZWN3ZQODV0?=
- =?utf-8?B?ckRXUFFXKytSekFzZW5OVERxc3puWHZoSWJTbExSRFNZeS9hOGRvOHV2MU5F?=
- =?utf-8?B?YlVmTldsclo2VXgyTE1xYkhqbWV0dEFrSmdVRHFaSEdZeHhRNzk1N01NT2ZE?=
- =?utf-8?B?WEdXYjBPcndScFJaUlliVjhKSDBZaXJMSzZ2V3NuRkNIMENxK3V1cFZJZDlC?=
- =?utf-8?B?VFhpK2NtWjRSNzI1RWdZVlBLTUt4WllzNG02Y1hvN3plRldaYW9VbHJvdWJJ?=
- =?utf-8?B?UFovRFkyU1BSMm5lZDVFS2Q4SER0MVMzVTk0dWp2ZGlXbmJ0Q0tLSmFrdVJR?=
- =?utf-8?B?TEpKM3QvOVNIczVoREFQY2tJL29aRGZVK294UCswNHVxS2tGNENBNkFiUzFq?=
- =?utf-8?B?RHRjOFM4TlRoRG9pS2d4RnVNdmFQVlBOZytZdlRFbElEZDBBWmsyaiszMDFr?=
- =?utf-8?B?cDd6Tmt5R3Y4Z0FkTWFlSkM4SEtmMmkwa0ZUUkZGZ3ZHVGo0QjI5eThacHM0?=
- =?utf-8?B?RmtBMkI3WFdnL0treDBSWGhNMm9pVFFlWW1MaVF5ZkM5Nng5dFhvc0lydVZl?=
- =?utf-8?B?OTdDUFlhbjloc3RhV0tHWkJGc1U1djlSY0NjUzF5VTRqYzRHZ3ZnRlA5M0pv?=
- =?utf-8?B?b1VkeFlOUzlIV2Z3ZU5IU3hVT0tTUkJzNFR5M1JGS0ZFcFU1bmhRREJqRHlX?=
- =?utf-8?B?cW5sMCthM1hBUy9BYUR4WDRGVFlQSVMvdU9Eb3BMZnNVWFZXb1VzM2ZSQmpo?=
- =?utf-8?B?TnJDdHFCdGY2VzN6VEgzSS9yOVJPTGVTaUtsdW51bFVWaTY3akErcmtIZnUw?=
- =?utf-8?B?dWZZakU5TTN5UitBYVFLOHp6RGVKbjEyL2REVjZMSkxxRXM3SXRXMHJKR3Fk?=
- =?utf-8?B?K2x2MkdzellYWTJoN3BEK0ZNUms3ZDdrTVZCdE9KZVlseHphS3hGLzIydUtt?=
- =?utf-8?B?MDNoOEFwZnRyc0RseW41MXM0Vm8xZFVIZFRCcFJiZm1hcldEUDVyRXFBWGZV?=
- =?utf-8?B?cnNGVjZoekM0Y3FIRzMwd3BFb3NLWmtZMjlya2VpTDRiWlVzNU5aOWQ2U1ZW?=
- =?utf-8?B?RHJ4QkFiK2E1MVl3anN2b3UrSVJVOHR1NER0cjRZcTJ6YmJ0RTdzQ21RaHJm?=
- =?utf-8?B?dlM0RzhLWlpZZlYreTlCUWIySmxsdXY4THNWbjgya2VSU1VJamFzbmhLNnF5?=
- =?utf-8?B?TTBqMUdET01QQTRZbUpkNDB2WXkyR3U3a2ZjYlVyWmdUL2ZJTUpwa3pIcFFN?=
- =?utf-8?B?N05lVFZsT3J1Vm1XaXRDZk5XOGxhdk1BRXlPdE1PL2tUU1cvTHBmbThQbnlv?=
- =?utf-8?B?OE1kS3BSQ3ZUUkxXZ3NlM3FCK05IZld3RFcwakx5UjhHR3V2VitGMHMySmJC?=
- =?utf-8?B?Z3kvMUh1SmdyVTcyU3F4NS9RTFBSZGxoK2Y3US84alBINzhpQWgvUDBQWGFz?=
- =?utf-8?B?bDBGN3NuT1hjL2Z4Ujd2YWxOMWpZTTFaQ0dQS2pGWExBaGx1L29aR05naUNx?=
- =?utf-8?B?dzUvT1BqM3hoS2krOFU5ZEY1cTJFbTJZQUVldm03aUJOU2dNMHJnQkp0bU9X?=
- =?utf-8?B?RTVrN3U0c0JMbUFNSmZKM0c2TU9Gc0ZMTGZUQk4vQ2RQSWU1aVltWEt0aVg3?=
- =?utf-8?B?RWVpSzk5QytJSXFaVWpCaHdaY2FWZE0yNzZNVlArVStlNG12SEdBQ251S1Ny?=
- =?utf-8?B?dlIwTkF5Y0R0L08xdXBxVXVYNzAxLysvbDVFQ1VwVUxEa0lXSk5JbnpQUFQ5?=
- =?utf-8?B?R1JMeWM0dm82VHZXVllzMHAzalphUUV3UXV3MmE1SitydWVXQlh4b0pySHAw?=
- =?utf-8?B?dmpsa0I5eVVPa2dNbjd1Um1tZXEvZ2lGcUlHTjZSUGJ4Wi8xVnl3YkJhRitN?=
- =?utf-8?B?Um9iV09WTlU5VnVsbEhydFFkYytaN3dsaUMyNzVidzVpc2hhdSt5cmpkWWw3?=
- =?utf-8?B?MVRpUzlrRUxqRHdPT2dTVkh4OURrbnVkTjUrUUFwNHoxWkMvdzNua2pFRjh1?=
- =?utf-8?B?UFVWem1nSklYK1JVT1ZiZE94WWp2dnlPd24vN0tqbTF6YzNkdVZwcFZ1bitj?=
- =?utf-8?B?OTNCc29manI3cFkyWERBRThQR1FEMFBQQlhuQW5YaDZ3MGtMVFI1VDAyOVZj?=
- =?utf-8?B?SEF3Z2wrS1JiZXAyRVBtTWhjR1hWaWFXbEFydEt0bEFDY3JZQ3lCTjl6enR0?=
- =?utf-8?B?bXExTy9FMmJWQjBYZVhHYXQxY3VsVFFnak5Nb2VBV1Y5V2h0NU1PMGo4UWVF?=
- =?utf-8?B?TWRNazJweFV5Q2NhL3l1VHVZMWduNitiQ1g3ZlAzTHQrOHowZFp4ZVIzdWNH?=
- =?utf-8?B?L29uaGVCaVNOWEpUdmpwSThEQXdjSHErQ2dBWk1QVWVwUjRsODRqUT09?=
-X-OriginatorOrg: vivo.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 6a0a83d2-2ef4-4af1-8c48-08dea124e393
-X-MS-Exchange-CrossTenant-AuthSource: TY0PR06MB5579.apcprd06.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 23 Apr 2026 10:41:34.7801
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 923e42dc-48d5-4cbe-b582-1a797a6412ed
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: BvHIioZ5eps5iW3gRDE0xU6+dIsgxLgkPJAEWSybx9pv4c7j0oF5wPdd75DuNL5KZphQ+7tMENJgPEpo3eMLnw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PUZPR06MB6053
+Content-Type: text/plain; charset="utf-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3216; i=brauner@kernel.org; h=from:subject:message-id; bh=cHE9hrag1OMIex+WXfpjDqBpsMmIUcQJHMPd4Y7yd1s=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS+4pDrrGXLlji/IJ4rYraNoNkSc4YNzkphLnvaDBjuH ZDgN+7oKGVhEONikBVTZHFoNwmXW85TsdkoUwNmDisTyBAGLk4BmIiFB8M/i54I8d9+l7+JLPRe ZprEUqdyJzW9MtJsd1YHj5vI9ksXGH6zpfMemLRMIbdowdo3hucvvTqjdGrTptvGfolrD63muVD ACAA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-On 4/23/2026 7:27 AM, Eric Biggers wrote:
+On Wed, 22 Apr 2026 19:29:54 -0400, Chuck Lever wrote:
+> Following on from
+> 
+> https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57fd@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
+> 
+> I'm attempting to implement enough support in the Linux VFS to
+> enable file services like NFSD and ksmbd (and user space
+> equivalents) to provide the actual status of case folding support
+> in local file systems. The default behavior for local file systems
+> not explicitly supported in this series is to reflect the usual
+> POSIX behaviors:
+> 
+> [...]
 
-> I don't have time for a super detailed review at the moment, but here
-> are my initial thoughts:
->
-> - This needs to be sent along with the code that actually uses it in
->    ext4 and f2fs.  Please also Cc the mailing lists for those
->    filesystems.
->
-> - This is going to require an "incompat" filesystem feature flag.  After
->    all, once a filesystem contains files that use this scheme, older
->    kernels won't understand it.
->
-> - UBIFS and CephFS already use fs/crypto/ but don't support blk-crypto
->    (inline encryption).  This new code feels duplicative of that.  It
->    should be possible to reuse the existing code instead.  That would
->    include, for example, reusing the existing en/decryption functions and
->    the existing struct ci_enc_key field.  This would keep the changes
->    limited mainly to how the key is being set up.
->
-> - Supporting all the different IV generation methods doesn't make sense
->    when a per-file key is always used.
->
-> - The fact that this is incompatible with hardware-wrapped keys greatly
->    limits the usefulness of this.  (Note that technically, it could be
->    supported in combination with them anyway.  But the security models
->    would be inconsistent, which I assume is what you have in mind.)
->
-> Hope this is helpful,
->
-> - Eric
+Applied to the vfs-7.2.casefold branch of the vfs/vfs.git tree.
+Patches in the vfs-7.2.casefold branch should appear in linux-next soon.
 
-Thanks for the comments. They are very helpful.
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
 
-I agree that the fscrypt changes should stay much closer to the
-existing filesystem-layer encryption code.  I will rework this so
-that the fscrypt side is mainly limited to key setup: when
-blk-crypto is used for normal file contents, fscrypt can also
-prepare the existing software contents crypto state for
-filesystem-managed regions that cannot go through bio/blk-crypto.
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
 
-I will also drop the separate key object / key-selection path, and
-try to reuse the existing contents key and software encryption
-functions as much as possible.
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
 
-I agree that supporting all IV generation methods is unnecessary
-here.  For the first version, I plan to limit this to the normal v2
-per-file-key case.
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: master
 
-Regarding hardware-wrapped keys: it may be technically possible to
-make this work in some cases, but using a software crypto key for
-these regions seems to conflict with the expected hardware-wrapped
-key security model.  What would you prefer for the initial version:
-should this combination be disallowed, or is there another approach
-you would recommend?
-
-Thanks,
-Liao Yuanhong
+[01/17] fs: Move file_kattr initialization to callers
+        https://git.kernel.org/vfs/vfs/c/a46401c7dc2f
+[02/17] fs: Add case sensitivity flags to file_kattr
+        https://git.kernel.org/vfs/vfs/c/1dd697879cf2
+[03/17] fat: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/2b124bb86cdb
+[04/17] exfat: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/9b8b66549c8e
+[05/17] ntfs3: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/7d0fbb53b0c2
+[06/17] hfs: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/024b4a69abaf
+[07/17] hfsplus: Report case sensitivity in fileattr_get
+        https://git.kernel.org/vfs/vfs/c/22a319bfe8b8
+[08/17] ext4: Report case sensitivity in fileattr_get
+        https://git.kernel.org/vfs/vfs/c/75fd84cb0922
+[09/17] xfs: Report case sensitivity in fileattr_get
+        https://git.kernel.org/vfs/vfs/c/29323822bece
+[10/17] cifs: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/4444c82e69a6
+[11/17] nfs: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/6f3f50885bd9
+[12/17] f2fs: Add case sensitivity reporting to fileattr_get
+        https://git.kernel.org/vfs/vfs/c/e8d671306a8f
+[13/17] vboxsf: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/f5e334b94179
+[14/17] isofs: Implement fileattr_get for case sensitivity
+        https://git.kernel.org/vfs/vfs/c/764609f76826
+[15/17] nfsd: Report export case-folding via NFSv3 PATHCONF
+        https://git.kernel.org/vfs/vfs/c/06726ac88bb5
+[16/17] nfsd: Implement NFSv4 FATTR4_CASE_INSENSITIVE and FATTR4_CASE_PRESERVING
+        https://git.kernel.org/vfs/vfs/c/d129f0419eb3
+[17/17] ksmbd: Report filesystem case sensitivity via FS_ATTRIBUTE_INFORMATION
+        https://git.kernel.org/vfs/vfs/c/8179d08606e8
