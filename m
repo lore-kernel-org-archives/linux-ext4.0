@@ -1,301 +1,108 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37A6C3C3C13
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2026 13:09:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E819301460
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2026 15:23:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777036165; cv=none; b=mCDKPa3PJGA09z+H9x32FytuYwi93GeBlWhUcJk/mexTcBKoYimi9IHSDxvOOnoua0PX21aDKTeH550j42TR5meHLj3WqsiiPsWTvpF/Y3ruUTbhyvwNKbMoll0OnWYDuJxm852ANZKCi2Tftv43ab4mAt6RQltwlof7AzsIz4k=
+	t=1777044196; cv=none; b=NYrzN1nEDxU8S9es6AXo58LNLPYKMY6/q5EaGqpsD6t86K5QdezcQ/KTpoSicI0v3cr1Q4SzQ4+aolsvQXc2GDIq2PUwMPe0a5eahQDfetcUoslPJsTa7GhZ+oUlrvlz3Q0q8Scfld46W+EpzF9WcyE0acGORM54ac45rK0POkM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777036165; c=relaxed/simple;
-	bh=v7t8xXDgnZ5P6NVjO2NjHdjf7n2TcaW0th9RWKtWbjY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=VWijdF5kHw1+dVYPcGbH0ymC0Cv8liwL5jUx4sIx0frXqygUDYpdaU9/DLR7WEaKX3EfIk31f8EV6Aw8QCgYaIgbYk1x4203EF/TpUZWV3EAF5UJbpsy9Ca+jq8Xnq2y16F/VRQfUr0Wg288UaWYg4LNal/CieL8qvFuze2qZNw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Vyn85yB1; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1777044196; c=relaxed/simple;
+	bh=87aAIT7JLiM4IKflKuaLO5AfGd6MxQHvEtXiFf1Gi0s=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=s8oVHBkqSjV8N72Kbqh1Cp71RySqpq1MEsY9XGjMcKYyDHOg9qm+lnw9WbS8I+RJiyHs1+TNYF1WORQlVS7Ygkrym2Z/pgU39u/lhhv6EqLxatrupozESfA4z0eixlVB7RTlDgNv7Kyvi4p80xn6Sohi5gIgZVMlCXBNkWlE9no=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=O+28firq; arc=none smtp.client-ip=209.85.128.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Vyn85yB1"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1777036163;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=DkpmNTHWhcFsfPJowXveyVB0qmZ+N6Tg3EfaNJNZceY=;
-	b=Vyn85yB1aT/+kOD2LdtRzGgvCNNlySMEEGS6KCDwWsbGPYvwjR0RumaSwBlqAiB0IuXKhI
-	xWkK5Z/CbK09UHPK3CeXbuyPrMwv0zWptNOnx9tfTU3kV3hm35gFThuvfipGbBCjpg4+tL
-	IwW1bwmUkDEfPSYJaXRJVw8e/lsfiG8=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-359-sIsZSpHANaOxAhPLV8ykyw-1; Fri,
- 24 Apr 2026 09:09:18 -0400
-X-MC-Unique: sIsZSpHANaOxAhPLV8ykyw-1
-X-Mimecast-MFC-AGG-ID: sIsZSpHANaOxAhPLV8ykyw_1777036156
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 1A4D319560BD;
-	Fri, 24 Apr 2026 13:09:16 +0000 (UTC)
-Received: from bfoster (unknown [10.22.88.73])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5F59E1800446;
-	Fri, 24 Apr 2026 13:09:14 +0000 (UTC)
-Date: Fri, 24 Apr 2026 09:09:12 -0400
-From: Brian Foster <bfoster@redhat.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: fstests@vger.kernel.org, zlang@kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, jack@suse.cz, yi.zhang@huawei.com,
-	yizhang089@gmail.com, yangerkun@huawei.com
-Subject: Re: [PATCH v2] generic/790: test post-EOF gap zeroing persistence
-Message-ID: <aetreLr6tt1Vb-GJ@bfoster>
-References: <20260424092228.1396658-1-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O+28firq"
+Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-488af9fdaa7so47979795e9.1
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2026 08:23:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1777044193; x=1777648993; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=tsBKJQ94VXQFSEK55ii3607B/EMG8Iu5B+b4vCeqHeM=;
+        b=O+28firq7OYZ73ip70TjVTO3TpBvVXojZsLoSZiVCm/i/CeA6goOuoQV+KVHxj7+MD
+         cWmigfKzlx6qOWysg97Wt76hvexKntVhilhwcQPNc+u+o3XsL0EXuXEtTaqYE5IqT/Of
+         p7VqqMr1zpFTxvtjDhaFUaq7+2nQ2AAmT8y3biXLAuLhSoXw65Ao9hn8amDF9pL2uV6W
+         m+AHqGrZNjg7KsRM+4PVWaJZ3dAc45aOWICJun4kGwWzQSBxE406Pq1TSJksLZS1qD/I
+         p8s3k11+BSu58oGz2AxXoCjG1uzwL0WILynAKpAMXIYs1pcILhJmG25IrDlPmTuhJiHd
+         p7Ig==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1777044193; x=1777648993;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=tsBKJQ94VXQFSEK55ii3607B/EMG8Iu5B+b4vCeqHeM=;
+        b=DFtP3Z4qh3OXc2HE4QCAolJWR697r25tyZZg1+N1hw1pUIlkbw0fWZ2R8oEiCzwYp9
+         nETuR5Kdn/g5/z/VU2zdWDfgN6jFFc9GWDvqpxJJR4Z9qV08wPfIJceQZD92ivunRCJZ
+         cYW5p6FcA3I8qwOn1gb84QzaN+F8g2l1X5NMO3uyVp0sONPT8k1yYe0ZstyZa30G7Dit
+         iSMdEUeDHlToARS9M3NJCAvJMcz/YXBHEW+pLItqoOTfH3kjQF+7iGq3D4bMoeudSpWH
+         EYehbjrN+RwbG7OKotZ0SANxEHrGRZJhuGrKzjLn7J2EsXMlIfFeShRMnS/pDcMhy48+
+         bTFw==
+X-Gm-Message-State: AOJu0YzrFsbzmyxZq6Tx1k+2cuFWdYNChQJOcMjefD/9EJjKdHsVI4iM
+	vek+fNd6D6Y5azJw2goi1UlxGwFd1t9romX1chmFwi2fkWLLcY5rEGQj
+X-Gm-Gg: AeBDieumsPeTar5OCpT+zhaenirLpu3YXmTNhjqBOKlMR3qw6eVs344Pp+2yAH/sYZZ
+	wABHIsKXaDzrec5V9fATZNfg13qPbryqfttWRXKGPjJyzAXwwOnTwJZza7FYsmQS2xonoKvjpgm
+	iHq6iJEQ63ZSdHzQef/tqRFIFtKkI5+adUdMpm7X4WDx6nySwsNCpK+T60bGKgJ4gaNXJNmdqZi
+	j9kumPmRqWWFX+Zvdtie7GvV8/VK7kvV525WLr939Zf9vnLv7ivzJqZimbkqznwuklhg7gSmRhF
+	WYzOt5NpfI4S9dgQzg4/m9WOho59Jk3yqWUWq6f3zkriNySvhRTEFHBuUHzgn/0Be3iu7wBczwG
+	x54XEBsdDGWnbuawgRr16B2rJEie8iFFX7ciuaR7f1GaooEt1jLl2rgrm0S709V7oYFbVPhXKcq
+	ULhrZUmphTv5XKLXPy7OPh2W0Ktg==
+X-Received: by 2002:a05:600c:8b84:b0:480:1c69:9d36 with SMTP id 5b1f17b1804b1-488fb76e4aamr503935035e9.17.1777044192443;
+        Fri, 24 Apr 2026 08:23:12 -0700 (PDT)
+Received: from kali ([41.142.67.157])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-489e124f6c7sm109113735e9.29.2026.04.24.08.23.11
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 24 Apr 2026 08:23:11 -0700 (PDT)
+From: Abdellah Ouhbi <abdououhbi1@gmail.com>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	skhan@linuxfoundation.org,
+	me@brighamcampbell.com,
+	linux-kernel-mentees@lists.linuxfoundation.org,
+	Abdellah Ouhbi <abdououhbi1@gmail.com>
+Subject: [PATCH] ext4: Use %pe to print PTR_ERR() in namei.c
+Date: Fri, 24 Apr 2026 16:22:45 +0100
+Message-ID: <20260424152245.142308-1-abdououhbi1@gmail.com>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260424092228.1396658-1-yi.zhang@huaweicloud.com>
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+Content-Transfer-Encoding: 8bit
 
-On Fri, Apr 24, 2026 at 05:22:28PM +0800, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Test that extending a file past a non-block-aligned EOF correctly
-> zero-fills the gap [old_EOF, block_boundary), and that this zeroing
-> persists through a filesystem shutdown+remount cycle.
-> 
-> Stale data beyond EOF can persist on disk when append write data blocks
-> are flushed before the on-disk file size update, or when concurrent
-> append writeback and mmap writes persist non-zero data past EOF.
-> Subsequent post-EOF operations (append write, fallocate, truncate up)
-> must zero-fill and persist the gap to prevent exposing stale data.
-> 
-> The test pollutes the file's last physical block (via FIEMAP + raw
-> device write) with a sentinel pattern beyond i_size, then performs each
-> extend operation and verifies the gap is zeroed both in memory and on
-> disk.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> ---
-> v1->v2:
->  - Add _require_no_realtime to prevent testing on XFS realtime devices,
->    where file data may reside on $SCRATCH_RTDEV.
->  - Add _exclude_fs btrfs since FIEMAP returns logical addresses, not
->    physical device offsets, writing to these offsets on $SCRATCH_DEV
->    would corrupt the filesystem in multi-device setups. Besides, since
->    btrfs doesn't support shutdown right now, we can support it later.
->  - Add -v flag to od in _check_gap_zero() to prevent line folding of
->    identical consecutive lines.
->  - Add expected_new_sz parameter to _test_eof_zeroing(), verify file
->    size was not rolled back after shutdown+remount cycle, and also drop
->    the unnecessary file size check before the shutdown as well.
->  - Clarify the comment regarding when stale data beyond EOF can persist.
-> 
+Fix coccicheck warning
+./namei.c:150:25-32: WARNING: Consider using %pe to print PTR_ERR()
 
-Thanks for the tweaks. This all LGTM from a review standpoint. I gave it
-a quick test on latest master and I see a few failures in a couple runs:
+Replace %ld with %pe and PTR_ERR(bh) with bh pointer.
+The %pe specifier automatically converts error pointers to
+human-readable error names instead of raw error codes.
 
-- On XFS (mkfs defaults) I saw one unexpected i_size failure and one
-  zeroing failure, both on write extension fwiw.
-- On ext4 I saw a few unexpected i_size failures (both with mkfs
-  defaults and 1k block size).
+Signed-off-by: Abdellah Ouhbi <abdououhbi1@gmail.com>
+---
+ fs/ext4/namei.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I haven't dug into anything beyond that. Does this match what you're
-seeing on current kernels or are these unexpected failures?
-
-Brian
-
->  tests/generic/790     | 164 ++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/790.out |   4 ++
->  2 files changed, 168 insertions(+)
->  create mode 100755 tests/generic/790
->  create mode 100644 tests/generic/790.out
-> 
-> diff --git a/tests/generic/790 b/tests/generic/790
-> new file mode 100755
-> index 00000000..2adc06f8
-> --- /dev/null
-> +++ b/tests/generic/790
-> @@ -0,0 +1,164 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2026 Huawei.  All Rights Reserved.
-> +#
-> +# FS QA Test No. 790
-> +#
-> +# Test that extending a file past a non-block-aligned EOF correctly zero-fills
-> +# the gap [old_EOF, block_boundary), and that this zeroing persists through a
-> +# filesystem shutdown+remount cycle.
-> +#
-> +# Stale data beyond EOF can persist on disk when:
-> +# 1) append write data blocks are flushed before the on-disk file size update,
-> +#    and the system crashes in this window.
-> +# 2) concurrent append writeback and mmap writes persist non-zero data past EOF.
-> +#
-> +# Subsequent post-EOF operations (append write, fallocate, truncate up) must
-> +# zero-fill and persist the gap to prevent exposing stale data.
-> +#
-> +# The test pollutes the file's last physical block (via FIEMAP + raw device
-> +# write) with a sentinel pattern beyond i_size, then performs each extend
-> +# operation and verifies the gap is zeroed both in memory and on disk.
-> +#
-> +. ./common/preamble
-> +_begin_fstest auto quick rw shutdown
-> +
-> +. ./common/filter
-> +
-> +_require_scratch
-> +_require_block_device $SCRATCH_DEV
-> +_require_no_realtime
-> +_require_scratch_shutdown
-> +_require_metadata_journaling $SCRATCH_DEV
-> +
-> +# FIEMAP on Btrfs returns logical addresses within the filesystem's address
-> +# space, not physical device offsets. Writing to these offsets on $SCRATCH_DEV
-> +# would corrupt the filesystem in multi-device setups.
-> +_exclude_fs btrfs
-> +
-> +_require_xfs_io_command "fiemap"
-> +_require_xfs_io_command "falloc"
-> +_require_xfs_io_command "pwrite"
-> +_require_xfs_io_command "truncate"
-> +_require_xfs_io_command "sync_range"
-> +
-> +# Check that gap region [offset, offset+nbytes) is entirely zero
-> +_check_gap_zero()
-> +{
-> +	local file="$1"
-> +	local offset="$2"
-> +	local nbytes="$3"
-> +	local label="$4"
-> +	local data
-> +	local stripped
-> +
-> +	data=$(od -A n -t x1 -v -j $offset -N $nbytes "$file" 2>/dev/null)
-> +
-> +	# Remove whitespace and check if any byte is non-zero
-> +	stripped=$(printf '%s' "$data" | tr -d ' \n\t')
-> +	if [ -n "$stripped" ] && ! echo "$stripped" | grep -qE "^0+$"; then
-> +		echo "FAIL: non-zero data in gap [$offset,$((offset + nbytes))) $label"
-> +		_hexdump -N $((offset + nbytes)) "$file"
-> +		return 1
-> +	fi
-> +	return 0
-> +}
-> +
-> +# Get the physical block offset (in bytes) of the file's first block on device
-> +_get_phys_offset()
-> +{
-> +	local file="$1"
-> +	local fiemap_output
-> +	local phys_blk
-> +
-> +	fiemap_output=$($XFS_IO_PROG -r -c "fiemap -v" "$file" 2>/dev/null)
-> +	phys_blk=$(echo "$fiemap_output" | _filter_xfs_io_fiemap | head -1 | awk '{print $3}')
-> +	if [ -z "$phys_blk" ]; then
-> +		echo ""
-> +		return
-> +	fi
-> +	# Convert 512-byte blocks to bytes
-> +	echo $((phys_blk * 512))
-> +}
-> +
-> +_test_eof_zeroing()
-> +{
-> +	local test_name="$1"
-> +	local extend_cmd="$2"
-> +	local expected_new_sz="$3"
-> +	local file=$SCRATCH_MNT/testfile_${test_name}
-> +
-> +	echo "$test_name" | tee -a $seqres.full
-> +
-> +	# Compute non-block-aligned EOF offset
-> +	local gap_bytes=16
-> +	local eof_offset=$((blksz - gap_bytes))
-> +
-> +	# Step 1: Write one full block to ensure the filesystem allocates a
-> +	#         physical block for the file instead of using inline data.
-> +	$XFS_IO_PROG -f -c "pwrite -S 0x5a 0 $blksz" -c fsync \
-> +		"$file" >> $seqres.full 2>&1
-> +
-> +	# Step 2: Get physical block offset on device via FIEMAP
-> +	local phys_offset
-> +	phys_offset=$(_get_phys_offset "$file")
-> +	if [ -z "$phys_offset" ]; then
-> +		_fail "$test_name: failed to get physical block offset via fiemap"
-> +	fi
-> +
-> +	# Step 3: Truncate file to non-block-aligned size and fsync.
-> +	#         The on-disk region [eof_offset, blksz) may or may not be
-> +	#         zeroed by the filesystem at this point.
-> +	$XFS_IO_PROG -c "truncate $eof_offset" -c fsync \
-> +		"$file" >> $seqres.full 2>&1
-> +
-> +	# Step 4: Unmount and restore the physical block to all-0x5a on disk.
-> +	#         This bypasses the kernel's pagecache EOF-zeroing to ensure
-> +	#         the stale pattern is present on disk. Then remount.
-> +	_scratch_unmount
-> +	$XFS_IO_PROG -d -c "pwrite -S 0x5a $phys_offset $blksz" \
-> +		$SCRATCH_DEV >> $seqres.full 2>&1
-> +	_scratch_mount >> $seqres.full 2>&1
-> +
-> +	# Step 5: Execute the extend operation.
-> +	$XFS_IO_PROG -c "$extend_cmd" "$file" >> $seqres.full 2>&1
-> +
-> +	# Step 6: Verify gap [eof_offset, blksz) is zeroed BEFORE shutdown
-> +	_check_gap_zero "$file" $eof_offset $gap_bytes "before shutdown" || return 1
-> +
-> +	# Step 7: Sync the extended range and shutdown the filesystem with
-> +	#         journal flush. This persists the file size extending, and
-> +	#         the filesystem should persist the zeroed data in the gap
-> +	#         range as well.
-> +	if [ "$extend_cmd" != "${extend_cmd#pwrite}" ]; then
-> +		$XFS_IO_PROG -c "sync_range -w $blksz $blksz" \
-> +			"$file" >> $seqres.full 2>&1
-> +	fi
-> +	_scratch_shutdown -f
-> +
-> +	# Step 8: Remount and verify gap is still zeroed
-> +	_scratch_cycle_mount
-> +
-> +	# Verify file size was not rolled back after shutdown+remount
-> +	local sz
-> +	sz=$(stat -c %s "$file")
-> +	if [ "$sz" -ne "$expected_new_sz" ]; then
-> +		_fail "$test_name: file size rolled back after shutdown+remount: $sz != $expected_new_sz"
-> +	fi
-> +
-> +	_check_gap_zero "$file" $eof_offset $gap_bytes "after shutdown+remount" || return 1
-> +}
-> +
-> +_scratch_mkfs >> $seqres.full 2>&1
-> +_scratch_mount
-> +
-> +blksz=$(_get_block_size $SCRATCH_MNT)
-> +
-> +# Test three variants of EOF-extending operations
-> +_test_eof_zeroing "append_write" "pwrite -S 0x42 $blksz $blksz" $((blksz * 2))
-> +_test_eof_zeroing "truncate_up" "truncate $((blksz * 2))" $((blksz * 2))
-> +_test_eof_zeroing "fallocate" "falloc $blksz $blksz" $((blksz * 2))
-> +
-> +# success, all done
-> +status=0
-> +exit
-> diff --git a/tests/generic/790.out b/tests/generic/790.out
-> new file mode 100644
-> index 00000000..e5e2cc09
-> --- /dev/null
-> +++ b/tests/generic/790.out
-> @@ -0,0 +1,4 @@
-> +QA output created by 790
-> +append_write
-> +truncate_up
-> +fallocate
-> -- 
-> 2.52.0
-> 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 4a47fbd8dd30..c0cabf172020 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -145,9 +145,9 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 	if (IS_ERR(bh)) {
+ 		__ext4_warning(inode->i_sb, func, line,
+ 			       "inode #%llu: lblock %lu: comm %s: "
+-			       "error %ld reading directory block",
++			       "error %pe reading directory block",
+ 			       inode->i_ino, (unsigned long)block,
+-			       current->comm, PTR_ERR(bh));
++			       current->comm, bh);
+ 
+ 		return bh;
+ 	}
+-- 
+2.51.0
 
