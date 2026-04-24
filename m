@@ -1,32 +1,32 @@
-Received: from out30-99.freemail.mail.aliyun.com (out30-99.freemail.mail.aliyun.com [115.124.30.99])
+Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7942B19CCF5;
-	Fri, 24 Apr 2026 02:35:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.99
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C742421D596;
+	Fri, 24 Apr 2026 03:12:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.110
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776998118; cv=none; b=FfWNYFFab8Myq/Wte0qZjKc0RDcoGXggGdwFqaCH6y/39MU91A8te0QzLIDnawiV8qrnZeJrd77WA4bIIe0rNHp2GnTrDlMSkmEgUour66aFN+2gMRkjpNM6VSK06O5z4iCbvEIOEfAGcY75/ei4SPMYBZaPRB1qGFsmukoi9Ho=
+	t=1777000331; cv=none; b=BzmWYDJhpg4mXstPPr9gVnMuOMa+D1DaUq1DqeicUBMF70bEv278Su9ir7rO+sB78ZlOZ9j+B/b0P/aZUU6GQuf7xug2ClvODbv8KdU6PUcGN/pqqclsYKksGA/+BzqkLVQALxONzkfOiRibP73KvW/dfidMlGMTVynPbL6NkRg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776998118; c=relaxed/simple;
-	bh=10XaqAudCsSlqbAYFp9fTBvjlWUZJX5miIT59I3sSMs=;
+	s=arc-20240116; t=1777000331; c=relaxed/simple;
+	bh=BunZlHSPns/AEpAE9FiIGKpSPfYhy6FrZBs1AYeBlSU=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=cD6ATSa7GJ2JOsrkmBH9G+oPk50SFWn8osse7Cj/sDWwdZC13j7FCZ2WxpnJtWYyvyweSeyPRB2wNpX2wh+zvvmhDXckc6zR1ErbZTT2UTl8mRKaC8pciC7n/ixrZ0TSJ3NrXLl5oMIK0MAvlYf34yS6qchZXJJWbY69T7Dlpkg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=wKnue62j; arc=none smtp.client-ip=115.124.30.99
+	 In-Reply-To:Content-Type; b=OneKy610nF5huzcKWlr3h3a8RYX46OE+qoTWnshEeoWlekW0uPLOZudehun4FPyAbueQRXq+ExHRB/pkvK/3y0fCEMvltpxjNWcDOn1U7SE8v3j4lsKw8JX4WN8UnFqhEzX4ltb/7sO8HTRQUr4stAoqKnqgWqwloZSU4lr+dG0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=KLrpyUJT; arc=none smtp.client-ip=115.124.30.110
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="wKnue62j"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="KLrpyUJT"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1776998107; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=QaX8XkqkhgvwEi+A7WkcshBdGBRMJb/05eM5+Izdvew=;
-	b=wKnue62jDzFfxElolC1M5nkHAMFvDD+SIP2wuMA4ArUcWpEg1lhBkTnMKhcrwKEH9WFJWXz3pfLvfs/wZzKTBRXI8kDGx1VzKDapg5kvD923ccISVOurzx4tIT42f/WMgVAqbr8LcKtFcvRPsKLLDNWp8kMADTkDxlCqlP4Lgpg=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R101e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0X1b7H7R_1776998105;
-Received: from 30.221.130.231(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X1b7H7R_1776998105 cluster:ay36)
+	t=1777000326; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=OClGHb/5KCZ0g7trwYIAKkLfAs2r7GF2pA1o7AG/KKU=;
+	b=KLrpyUJT90GQ/ONZvPBfj1VvpA2RJG2sqR99qgehF2X1oSJ+3MBSNJPyDc2ZPGyR9ULga1VgftgvA95/VLGLJdNB3znf2owaW98jCUddkuphmXHMWSA8TaHtgvfTb4NXGeB1RQc5/tr3tbCFz8YYrirmktUIaV+EzXQNOo7I/pU=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R781e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0X1b7UoB_1777000325;
+Received: from 30.221.130.231(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X1b7UoB_1777000325 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Fri, 24 Apr 2026 10:35:06 +0800
-Message-ID: <afdf84d7-7fbd-4d47-ae67-996f5339b2ea@linux.alibaba.com>
-Date: Fri, 24 Apr 2026 10:35:05 +0800
+          Fri, 24 Apr 2026 11:12:05 +0800
+Message-ID: <38a32a36-705f-4996-a49b-621dfdc5bb26@linux.alibaba.com>
+Date: Fri, 24 Apr 2026 11:12:04 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,53 +34,50 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 v3 1/2] ext4: add blocks_allocated to mb_stats output
-To: Baolin Liu <liubaolin12138@163.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, ojaswin@linux.ibm.com,
- ritesh.list@gmail.com, yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
+Subject: Re: [PATCH v3 v3 2/2] ext4: allow clearing mballoc stats through
+ mb_stats
+To: Theodore Tso <tytso@mit.edu>, Baolin Liu <liubaolin12138@163.com>
+Cc: adilger.kernel@dilger.ca, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
  linux-kernel@vger.kernel.org, wangguanyu@vivo.com,
  Baolin Liu <liubaolin@kylinos.cn>, Andreas Dilger <adilger@dilger.ca>
 References: <20260422015026.7170-1-liubaolin12138@163.com>
- <20260422015026.7170-2-liubaolin12138@163.com>
+ <20260422015026.7170-3-liubaolin12138@163.com>
+ <20260423161947.GB68318@macsyma-wired.lan>
 Content-Language: en-US
 From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260422015026.7170-2-liubaolin12138@163.com>
+In-Reply-To: <20260423161947.GB68318@macsyma-wired.lan>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
 
-
-On 2026/4/22 09:50, Baolin Liu wrote:
-> From: Baolin Liu <liubaolin@kylinos.cn>
+On 2026/4/24 00:19, Theodore Tso wrote:
+> On Wed, Apr 22, 2026 at 09:50:25AM +0800, Baolin Liu wrote:
+>> From: Baolin Liu <liubaolin@kylinos.cn>
+>>
+>> Make /proc/fs/ext4/<dev>/mb_stats writable and clear the runtime
+>> mballoc statistics when 0 is written.
+> At the moment to enable mb_stats the system administrator needs to
+> write "1" to /sys/fs/ext4/<dev>/mb_stats, and writing "0" to the sysfs
+> file will pauce the statistics colleciton (but not clear the
+> statistics).  Adding a way to clear the statistics by writing to the
+> procfs file might be confusing to users.
 >
-> Add blocks_allocated to /proc/fs/ext4/<dev>/mb_stats so that the
-> reported statistics match the mballoc summary printed at unmount time.
+> So.... as a suggestion, if you're adding to the ability to write to
+> /proc/fs/.../mb_stats, what if we make things work by
 >
-> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-> Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
-
-Looks good, feel free to add:
-
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
-
-> ---
->  fs/ext4/mballoc.c | 2 ++
->  1 file changed, 2 insertions(+)
+>    * Write 1 to /proc/fs/.../mb_stats to  enable statistics collection
+>    * Write 0 to /proc/fs/.../mb_stats to  disable statistics collection
+>    * Write -1 to /proc/fs/.../mb_stats to clear statistics counters
 >
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 20e9fdaf4301..1e13ef62cb9d 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3211,6 +3211,8 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
->  			"\tTo enable, please write \"1\" to sysfs file mb_stats.\n");
->  		return 0;
->  	}
-> +	seq_printf(seq, "\tblocks_allocated: %u\n",
-> +		   atomic_read(&sbi->s_bal_allocated));
->  	seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
->  	seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
->  
+> And then deprecate the /sys/fs/.../mb_stats variable (but we probably
+> won't be able to remove it for at least a year or two).
+
+I like this idea. Consolidating everything into /proc/fs/.../mb_stats
+and using -1 to reset the counters is much cleaner than the current
+split approach.
+
+
+Cheers,
+Baokun
 
