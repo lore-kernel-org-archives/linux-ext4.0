@@ -1,30 +1,66 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yx1-f50.google.com (mail-yx1-f50.google.com [74.125.224.50])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E88A242D9B;
-	Sat, 25 Apr 2026 03:06:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9F051E1A3D
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Apr 2026 18:00:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.224.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777086398; cv=none; b=r56wBCLhLaQpMf3zq1c++YQmPtxB+iGONNpaDVyktJ3K+XqjbSBylCVfdjc9NI+IV0anEqLxNhqSzguh+dOx8ZZKSU30UCB79Waajg/pP4K0V7o+r/T4IZQtLa4WNcVHQPU01hLVsSZu2+VijFn9HBdOdwqfKEDWeCzKfA53rvM=
+	t=1777140033; cv=none; b=DFZvMPIO39G2bJbe9eAOTkJrySg4cPMJsss+wgqdGRgGQS3ZpaATySaMngy3Zj/6y1C9vPrUL01gqZt62tMw+IUBJf0pRMz9tAwjOoBFS8Y8RWmHNbDXxCxDKyVjAfw10RGJvsbUcZWIu5toTUXgHr8RbWaMi54r73mxsi/LP0s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777086398; c=relaxed/simple;
-	bh=5fDFqiBpKFp6773GB+1M/JSq8WY8BK5NnRc1ZOoUaQU=;
+	s=arc-20240116; t=1777140033; c=relaxed/simple;
+	bh=oWQmImC3dgWgLhs/gQchbJGrq3Tdy5zBN1LD0AEJjW8=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=f2HGYnpwdGeeAw/FGfklm0op/iEOh5zGthgYD/oa6SShF352RsNaEVfC2tQDctqz8mZNuqFcZMBXPGiEmNxt5WcQ8ANKxFz6aZTHJWo5jPwIgCll1Bw51LJYCTok5W8sy4Ew1L9cx1cpqI7eIPrdd8ii7uegx9H3+/ceA7KIWOA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4g2ZVG3bYgzYQts5;
-	Sat, 25 Apr 2026 11:06:30 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 995624058D;
-	Sat, 25 Apr 2026 11:06:31 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP3 (Coremail) with SMTP id _Ch0CgC3sbuzL+xp1O2ABg--.12852S3;
-	Sat, 25 Apr 2026 11:06:29 +0800 (CST)
-Message-ID: <038228d9-8058-43e0-8be9-b8afc9e8397c@huaweicloud.com>
-Date: Sat, 25 Apr 2026 11:06:27 +0800
+	 In-Reply-To:Content-Type; b=IYEYUTKl7a1xHSM0cSd7aKeD0JwPjavx2NS1guDAWwFKswyVF+aFWPGui+EkENiwtrWb+eIXwBehZHb2B8JKegtQ2xtCntyJwG5syyPNqlU7Geb3K4e9WGSYzGXVk8UDZKviJ26i+ZSwEcNxF7icKTYHiXAWeSt0vdRaqIAUfv0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=XH5JYbiQ; arc=none smtp.client-ip=74.125.224.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XH5JYbiQ"
+Received: by mail-yx1-f50.google.com with SMTP id 956f58d0204a3-6501c9903edso9058690d50.1
+        for <linux-ext4@vger.kernel.org>; Sat, 25 Apr 2026 11:00:31 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1777140031; x=1777744831; darn=vger.kernel.org;
+        h=in-reply-to:autocrypt:from:content-language:references:cc:to
+         :subject:user-agent:mime-version:date:message-id:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=r0ATBOWYzLGqXLwFC8RNqTca9CVdh54VQk9bU7cnIxE=;
+        b=XH5JYbiQHW5646YtBNOAA/stN/sNxQn7YY7hyiuV8Is3FV+ZoG7G1pMGl+RStv8wd+
+         N6tiYnwMpafgmqn3jI2xx2PggnO4+IOcurDbnUdGAdxiqCgQJRTioRoaWQLZ0gbEoUjK
+         M2p99cKVzQeBKCs3Wtz22q7herVgAKpAofTyCz4RRROQu1ifdeHnPPIpsUHtCOKwY2Rd
+         wbUu/EySto+0iX7RZ/Z1qzo1DwsK0EMIbo1oIIIGMhMZdYXCtr3lUtCDU9m4XNDP7AWg
+         QqWLZIChp16gB6to4Uk+Gz3dTihV7qTZPpek/7tIG0fFS2tkx5K/lBU0KJiHIhXcIkaI
+         efIQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1777140031; x=1777744831;
+        h=in-reply-to:autocrypt:from:content-language:references:cc:to
+         :subject:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=r0ATBOWYzLGqXLwFC8RNqTca9CVdh54VQk9bU7cnIxE=;
+        b=BglD58ccw0q0MXSkZ4Bj37txVqsvTkMB39+HfAlusNDkPpqPc2IZ7Ne/0ZnsyHO6sw
+         ani1/G46cjqCo7rklbe0MXOQY9NdIM9x4Lh4R5e4y6S4mu+WrljfNm9UolcIkxkMirVr
+         z3imup6QKXD/qN0QUQZbyXfMMRSGKB9tEEFzcQS8AMeI71pjzFY6IZSQj7iHqjNaCgCb
+         9Lm8r9T81c8qFHYJEXJwJ0h/pbVMzf2zZO6n4w7VktCZi1WMMMLQozeOXOFzl1CbDA/H
+         +L8/xz838J5PJb4ZYHMkuQYv9bfmRbweS04cMAsS/+jdatpLN9HoWh7GapSxWbIYZ1b/
+         tLhg==
+X-Forwarded-Encrypted: i=1; AFNElJ8ykbpju8vaN1jnyXesc8btR8BgdWD6AxzyWlQxc7ePrYeT5LyaFW24MTWnQ+ceBLL3kMOo+ZDKy4LZ@vger.kernel.org
+X-Gm-Message-State: AOJu0YylNJFPuKTO4BSggUwR9rJaFIPMhtFqa86B7BJG/0ZGGQN/oFtS
+	jiuFvBap92IDdtuEgum6D3XkRskVQJQyydMLMJxBbgzwoaGQicBQOymI
+X-Gm-Gg: AeBDiesq56N+gxYiFqgd0pS4RbcYgt6viZlwGmQPmRUswGfiNOSjpoZA4nNwJUr0E3m
+	yjxGAhLIndsoU5jdKzWX+LRHZuKG7zggpOw5YjZ0Y2f9SZqlSq5Ft3xvv9jwAv6L3thvGn7YR9z
+	1INH07S1Ptr28uxNG1Zb+WR1aLAJ4yTOKnL+yi8NvkKF0oSGYqqKhPGKeQ02UeSCPvEJTm5ypBu
+	D3ZPDLfsh+EA1qE5zdvCO+wVjs+gQ/0aqz6XGUBAUZMRNMAGozFnIpf4K7/aiGNqU3JiX4zqzrU
+	EbdRb7vXgRmny3ROJD2Ia9BVtAuYNv6cK8LcQyEeW5YDNzTOhpQ/Tx+Se9ioHXVl1xvDohXnAhx
+	E/hSjuP1X+CEJZ5PYkEipQeTB3/+6lZANJcpYYiMIaTLt0WA9NMP72xFb4fxp0NaZAUksPzcPJ7
+	JZ9/o6yC+/mUIvnpC/bT2LD+ePnTp0RlgTI9HRH5NKu8GAGkbKWsY4hgmpJyoKzZmNJL8DJBW1I
+	T4RIl6FbOC0Jd5nXWtRBJHFg/XPUnkHtv8BaWYKN1EWwnsorVHjCemD192D/MM=
+X-Received: by 2002:a05:690e:400d:b0:651:cc5e:b8d7 with SMTP id 956f58d0204a3-65310859d9emr35548909d50.22.1777140030500;
+        Sat, 25 Apr 2026 11:00:30 -0700 (PDT)
+Received: from [10.138.34.110] (h69-131-150-190.cncrtn.broadband.dynamic.tds.net. [69.131.150.190])
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-6541a84063asm10481597d50.0.2026.04.25.11.00.28
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 25 Apr 2026 11:00:29 -0700 (PDT)
+Message-ID: <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
+Date: Sat, 25 Apr 2026 14:00:23 -0400
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,300 +68,341 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] generic/790: test post-EOF gap zeroing persistence
-To: Brian Foster <bfoster@redhat.com>
-Cc: fstests@vger.kernel.org, zlang@kernel.org, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, jack@suse.cz, yi.zhang@huawei.com,
- yizhang089@gmail.com, yangerkun@huawei.com
-References: <20260424092228.1396658-1-yi.zhang@huaweicloud.com>
- <aetreLr6tt1Vb-GJ@bfoster>
+Subject: Re: [BUG] ext4: BUG_ON in ext4_write_inline_data
+ (fs/ext4/inline.c:240)
+To: Theodore Tso <tytso@mit.edu>, Zw Tang <shicenci@gmail.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, libaokun@linux.alibaba.com,
+ jack@suse.cz, ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+ syzkaller-bugs@googlegroups.com
+References: <CAPHJ_VJeBAL_fk+P79guYTABZgW1hkcAz8t=c_nVK1mbn3_FYw@mail.gmail.com>
+ <20260421122059.GA86221@macsyma.local>
 Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <aetreLr6tt1Vb-GJ@bfoster>
+From: Demi Marie Obenour <demiobenour@gmail.com>
+Autocrypt: addr=demiobenour@gmail.com; keydata=
+ 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
+ +MYSfkEjBz0E8CLOcAw7JIwAaeBT
+In-Reply-To: <20260421122059.GA86221@macsyma.local>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="------------jofqqPNtr2cmehDmcOSinDzI"
+
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--------------jofqqPNtr2cmehDmcOSinDzI
+Content-Type: multipart/mixed; boundary="------------l0ogIjpQqQsTR4q4H7tHeSZ0";
+ protected-headers="v1"
+Message-ID: <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
+Date: Sat, 25 Apr 2026 14:00:23 -0400
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [BUG] ext4: BUG_ON in ext4_write_inline_data
+ (fs/ext4/inline.c:240)
+To: Theodore Tso <tytso@mit.edu>, Zw Tang <shicenci@gmail.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>, libaokun@linux.alibaba.com,
+ jack@suse.cz, ojaswin@linux.ibm.com, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+ syzkaller-bugs@googlegroups.com
+References: <CAPHJ_VJeBAL_fk+P79guYTABZgW1hkcAz8t=c_nVK1mbn3_FYw@mail.gmail.com>
+ <20260421122059.GA86221@macsyma.local>
+Content-Language: en-US
+From: Demi Marie Obenour <demiobenour@gmail.com>
+Autocrypt: addr=demiobenour@gmail.com; keydata=
+ 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
+ +MYSfkEjBz0E8CLOcAw7JIwAaeBT
+In-Reply-To: <20260421122059.GA86221@macsyma.local>
+
+--------------l0ogIjpQqQsTR4q4H7tHeSZ0
+Content-Type: multipart/mixed; boundary="------------AkqXpdiGIbXk8QWwyZyn28Nd"
+
+--------------AkqXpdiGIbXk8QWwyZyn28Nd
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:_Ch0CgC3sbuzL+xp1O2ABg--.12852S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3uF13Gr1DCF48GF1rCF1kAFb_yoWDAw48pF
-	Z5WF1Yyr1xKF47A3s29Fn8Xw1F9ws5Ar47urWSgryjyryDCr1xXFW2qr4jgay7Jrn3uw1F
-	vw4kJa4fWw1jyaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1v3UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: quoted-printable
 
-On 4/24/2026 9:09 PM, Brian Foster wrote:
-> On Fri, Apr 24, 2026 at 05:22:28PM +0800, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> Test that extending a file past a non-block-aligned EOF correctly
->> zero-fills the gap [old_EOF, block_boundary), and that this zeroing
->> persists through a filesystem shutdown+remount cycle.
->>
->> Stale data beyond EOF can persist on disk when append write data blocks
->> are flushed before the on-disk file size update, or when concurrent
->> append writeback and mmap writes persist non-zero data past EOF.
->> Subsequent post-EOF operations (append write, fallocate, truncate up)
->> must zero-fill and persist the gap to prevent exposing stale data.
->>
->> The test pollutes the file's last physical block (via FIEMAP + raw
->> device write) with a sentinel pattern beyond i_size, then performs each
->> extend operation and verifies the gap is zeroed both in memory and on
->> disk.
->>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> ---
->> v1->v2:
->>  - Add _require_no_realtime to prevent testing on XFS realtime devices,
->>    where file data may reside on $SCRATCH_RTDEV.
->>  - Add _exclude_fs btrfs since FIEMAP returns logical addresses, not
->>    physical device offsets, writing to these offsets on $SCRATCH_DEV
->>    would corrupt the filesystem in multi-device setups. Besides, since
->>    btrfs doesn't support shutdown right now, we can support it later.
->>  - Add -v flag to od in _check_gap_zero() to prevent line folding of
->>    identical consecutive lines.
->>  - Add expected_new_sz parameter to _test_eof_zeroing(), verify file
->>    size was not rolled back after shutdown+remount cycle, and also drop
->>    the unnecessary file size check before the shutdown as well.
->>  - Clarify the comment regarding when stale data beyond EOF can persist.
->>
-> 
-> Thanks for the tweaks. This all LGTM from a review standpoint. I gave it
-> a quick test on latest master and I see a few failures in a couple runs:
-> 
-> - On XFS (mkfs defaults) I saw one unexpected i_size failure and one
->   zeroing failure, both on write extension fwiw.
+On 4/21/26 08:20, Theodore Tso wrote:
+> On Tue, Apr 21, 2026 at 07:32:43PM +0800, Zw Tang wrote:
+>> This looks like an ext4 inline-data boundary/state inconsistency trigg=
+ered
+>> while writing to an ext4 image crafted by syzkaller. The later
+>> KASAN: slab-use-after-free in rwsem_down_write_slowpath() appears to b=
+e a
+>> secondary effect after the primary ext4 BUG, likely during teardown/un=
+link
+>> after the filesystem failure.
+>=20
+> Writing to a mounted image is not something that we consider a valid
+> threat model.  If you can write to a mounted image, there are a
+> zillion different ways that you can creash the kernel, or you can
+> create a setuid shell, etc.
+>=20
+> The upstream syzkaller bot makes sure that CONFIG_BLK_DEV_WRITE_MOUNTED=
 
-Previously, I only discovered the zeroing failure of append write. This
-is because xfs_file_write_checks() -> xfs_file_write_zero_eof() only
-zeroes the gap range in the page cache, without providing any
-synchronous or asynchronous persistence (instead, truncate up does
-synchronously writeback in xfs_vn_setattr_size(), and ext4 achieves
-persistence via asynchronous writeback in data=ordered mode). So I think
-this is a XFS problem.
+> is not defined to avoid syzkaller noise.
 
-Regarding the i_size failure, I did not directly reproduce this issue.
-After analysis, I believe it is because the test case did not include
-the -a option in sync_range, meaning it did not wait for IO writeback
-completion and file size update persistence. I reproduced this issue by
-adding a delay in the XFS end IO path. This is a problem with the test
-case, and I will fix it in v3. Thank you for pointing this out.
+CONFIG_BLK_DEV_WRITE_MOUNTED only blocks writing via the specific block
+device that is mounted.  It doesn't block writing via other methods.
+If I recall correctly, its purpose was to prevent writing to the
+buffer cache used by the filesystem driver.
 
-> - On ext4 I saw a few unexpected i_size failures (both with mkfs
->   defaults and 1k block size).
-> 
+Changing block devices that are mounted is also reachable via USB.
+Yes, some distros may disable automount, but users who have stuff to
+get done will mount USB devices anyway.  Telling users "don't do this"
+very rarely works in practice.
 
-This is an ext4 issue on the shutdown path. Since ext4 set the shutdown
-flag too early, it was unable to write back ordered zero data when
-flushing the journal, which led to a journal abort and prevented the file
-size update from being persisted. I have submitted a patch to fix this
-issue. Please see below link for details.
+I asked a distro maintainer about using libguestfs by default and
+they refused, citing poor performance.  Unfortunately, there is no
+way at the OS level to distinguish "trusted device used for backups"
+and "untrusted USB stick".
 
- https://lore.kernel.org/linux-ext4/20260424104201.1930823-1-yi.zhang@huaweicloud.com/
+So for now, neither distros nor kernel maintainers are willing to
+budge, and in the meantime, users are left vulnerable.
 
-Thanks
-Yi.
+The only ways out of this deadlock that I can see are either:
 
-> I haven't dug into anything beyond that. Does this match what you're
-> seeing on current kernels or are these unexpected failures?
-> 
-> Brian
-> 
->>  tests/generic/790     | 164 ++++++++++++++++++++++++++++++++++++++++++
->>  tests/generic/790.out |   4 ++
->>  2 files changed, 168 insertions(+)
->>  create mode 100755 tests/generic/790
->>  create mode 100644 tests/generic/790.out
->>
->> diff --git a/tests/generic/790 b/tests/generic/790
->> new file mode 100755
->> index 00000000..2adc06f8
->> --- /dev/null
->> +++ b/tests/generic/790
->> @@ -0,0 +1,164 @@
->> +#! /bin/bash
->> +# SPDX-License-Identifier: GPL-2.0
->> +# Copyright (c) 2026 Huawei.  All Rights Reserved.
->> +#
->> +# FS QA Test No. 790
->> +#
->> +# Test that extending a file past a non-block-aligned EOF correctly zero-fills
->> +# the gap [old_EOF, block_boundary), and that this zeroing persists through a
->> +# filesystem shutdown+remount cycle.
->> +#
->> +# Stale data beyond EOF can persist on disk when:
->> +# 1) append write data blocks are flushed before the on-disk file size update,
->> +#    and the system crashes in this window.
->> +# 2) concurrent append writeback and mmap writes persist non-zero data past EOF.
->> +#
->> +# Subsequent post-EOF operations (append write, fallocate, truncate up) must
->> +# zero-fill and persist the gap to prevent exposing stale data.
->> +#
->> +# The test pollutes the file's last physical block (via FIEMAP + raw device
->> +# write) with a sentinel pattern beyond i_size, then performs each extend
->> +# operation and verifies the gap is zeroed both in memory and on disk.
->> +#
->> +. ./common/preamble
->> +_begin_fstest auto quick rw shutdown
->> +
->> +. ./common/filter
->> +
->> +_require_scratch
->> +_require_block_device $SCRATCH_DEV
->> +_require_no_realtime
->> +_require_scratch_shutdown
->> +_require_metadata_journaling $SCRATCH_DEV
->> +
->> +# FIEMAP on Btrfs returns logical addresses within the filesystem's address
->> +# space, not physical device offsets. Writing to these offsets on $SCRATCH_DEV
->> +# would corrupt the filesystem in multi-device setups.
->> +_exclude_fs btrfs
->> +
->> +_require_xfs_io_command "fiemap"
->> +_require_xfs_io_command "falloc"
->> +_require_xfs_io_command "pwrite"
->> +_require_xfs_io_command "truncate"
->> +_require_xfs_io_command "sync_range"
->> +
->> +# Check that gap region [offset, offset+nbytes) is entirely zero
->> +_check_gap_zero()
->> +{
->> +	local file="$1"
->> +	local offset="$2"
->> +	local nbytes="$3"
->> +	local label="$4"
->> +	local data
->> +	local stripped
->> +
->> +	data=$(od -A n -t x1 -v -j $offset -N $nbytes "$file" 2>/dev/null)
->> +
->> +	# Remove whitespace and check if any byte is non-zero
->> +	stripped=$(printf '%s' "$data" | tr -d ' \n\t')
->> +	if [ -n "$stripped" ] && ! echo "$stripped" | grep -qE "^0+$"; then
->> +		echo "FAIL: non-zero data in gap [$offset,$((offset + nbytes))) $label"
->> +		_hexdump -N $((offset + nbytes)) "$file"
->> +		return 1
->> +	fi
->> +	return 0
->> +}
->> +
->> +# Get the physical block offset (in bytes) of the file's first block on device
->> +_get_phys_offset()
->> +{
->> +	local file="$1"
->> +	local fiemap_output
->> +	local phys_blk
->> +
->> +	fiemap_output=$($XFS_IO_PROG -r -c "fiemap -v" "$file" 2>/dev/null)
->> +	phys_blk=$(echo "$fiemap_output" | _filter_xfs_io_fiemap | head -1 | awk '{print $3}')
->> +	if [ -z "$phys_blk" ]; then
->> +		echo ""
->> +		return
->> +	fi
->> +	# Convert 512-byte blocks to bytes
->> +	echo $((phys_blk * 512))
->> +}
->> +
->> +_test_eof_zeroing()
->> +{
->> +	local test_name="$1"
->> +	local extend_cmd="$2"
->> +	local expected_new_sz="$3"
->> +	local file=$SCRATCH_MNT/testfile_${test_name}
->> +
->> +	echo "$test_name" | tee -a $seqres.full
->> +
->> +	# Compute non-block-aligned EOF offset
->> +	local gap_bytes=16
->> +	local eof_offset=$((blksz - gap_bytes))
->> +
->> +	# Step 1: Write one full block to ensure the filesystem allocates a
->> +	#         physical block for the file instead of using inline data.
->> +	$XFS_IO_PROG -f -c "pwrite -S 0x5a 0 $blksz" -c fsync \
->> +		"$file" >> $seqres.full 2>&1
->> +
->> +	# Step 2: Get physical block offset on device via FIEMAP
->> +	local phys_offset
->> +	phys_offset=$(_get_phys_offset "$file")
->> +	if [ -z "$phys_offset" ]; then
->> +		_fail "$test_name: failed to get physical block offset via fiemap"
->> +	fi
->> +
->> +	# Step 3: Truncate file to non-block-aligned size and fsync.
->> +	#         The on-disk region [eof_offset, blksz) may or may not be
->> +	#         zeroed by the filesystem at this point.
->> +	$XFS_IO_PROG -c "truncate $eof_offset" -c fsync \
->> +		"$file" >> $seqres.full 2>&1
->> +
->> +	# Step 4: Unmount and restore the physical block to all-0x5a on disk.
->> +	#         This bypasses the kernel's pagecache EOF-zeroing to ensure
->> +	#         the stale pattern is present on disk. Then remount.
->> +	_scratch_unmount
->> +	$XFS_IO_PROG -d -c "pwrite -S 0x5a $phys_offset $blksz" \
->> +		$SCRATCH_DEV >> $seqres.full 2>&1
->> +	_scratch_mount >> $seqres.full 2>&1
->> +
->> +	# Step 5: Execute the extend operation.
->> +	$XFS_IO_PROG -c "$extend_cmd" "$file" >> $seqres.full 2>&1
->> +
->> +	# Step 6: Verify gap [eof_offset, blksz) is zeroed BEFORE shutdown
->> +	_check_gap_zero "$file" $eof_offset $gap_bytes "before shutdown" || return 1
->> +
->> +	# Step 7: Sync the extended range and shutdown the filesystem with
->> +	#         journal flush. This persists the file size extending, and
->> +	#         the filesystem should persist the zeroed data in the gap
->> +	#         range as well.
->> +	if [ "$extend_cmd" != "${extend_cmd#pwrite}" ]; then
->> +		$XFS_IO_PROG -c "sync_range -w $blksz $blksz" \
->> +			"$file" >> $seqres.full 2>&1
->> +	fi
->> +	_scratch_shutdown -f
->> +
->> +	# Step 8: Remount and verify gap is still zeroed
->> +	_scratch_cycle_mount
->> +
->> +	# Verify file size was not rolled back after shutdown+remount
->> +	local sz
->> +	sz=$(stat -c %s "$file")
->> +	if [ "$sz" -ne "$expected_new_sz" ]; then
->> +		_fail "$test_name: file size rolled back after shutdown+remount: $sz != $expected_new_sz"
->> +	fi
->> +
->> +	_check_gap_zero "$file" $eof_offset $gap_bytes "after shutdown+remount" || return 1
->> +}
->> +
->> +_scratch_mkfs >> $seqres.full 2>&1
->> +_scratch_mount
->> +
->> +blksz=$(_get_block_size $SCRATCH_MNT)
->> +
->> +# Test three variants of EOF-extending operations
->> +_test_eof_zeroing "append_write" "pwrite -S 0x42 $blksz $blksz" $((blksz * 2))
->> +_test_eof_zeroing "truncate_up" "truncate $((blksz * 2))" $((blksz * 2))
->> +_test_eof_zeroing "fallocate" "falloc $blksz $blksz" $((blksz * 2))
->> +
->> +# success, all done
->> +status=0
->> +exit
->> diff --git a/tests/generic/790.out b/tests/generic/790.out
->> new file mode 100644
->> index 00000000..e5e2cc09
->> --- /dev/null
->> +++ b/tests/generic/790.out
->> @@ -0,0 +1,4 @@
->> +QA output created by 790
->> +append_write
->> +truncate_up
->> +fallocate
->> -- 
->> 2.52.0
->>
+1. Make a tightly sandboxed FUSE daemon the default *and* fast.
+   Ideally, it would:
 
+   a. Run as an ephemeral user.
+   b. Have the vast majority of syscalls blocked via seccomp.
+   c. Have all access to /dev/fuse mediated by a validating proxy.
+   d. Run in namespaces that block accessing any paths, even though
+      the seccomp filter would already block any path-related syscalls.
+   e. Support all the filesystems the kernel does, most likely via LKL.
+
+2. Harden the kernel filesystem drivers against malicious devices,
+   including TOCTOU.
+
+Of course, it is also necessary to set usbcore.authorized_default=3D0
+and use some form of port-based access control, so that one can use USB
+keyboards without allowing a USB drive plugged in to act as a keyboard.
+
+Maybe Linux should have been a microkernel after all...
+--=20
+Sincerely,
+Demi Marie Obenour (she/her/hers)
+--------------AkqXpdiGIbXk8QWwyZyn28Nd
+Content-Type: application/pgp-keys; name="OpenPGP_0xB288B55FFF9C22C1.asc"
+Content-Disposition: attachment; filename="OpenPGP_0xB288B55FFF9C22C1.asc"
+Content-Description: OpenPGP public key
+Content-Transfer-Encoding: quoted-printable
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+xsFNBFp+A0oBEADffj6anl9/BHhUSxGTICeVl2tob7hPDdhHNgPR4C8xlYt5q49y
+B+l2nipdaq+4Gk6FZfqC825TKl7eRpUjMriwle4r3R0ydSIGcy4M6eb0IcxmuPYf
+bWpr/si88QKgyGSVZ7GeNW1UnzTdhYHuFlk8dBSmB1fzhEYEk0RcJqg4AKoq6/3/
+UorR+FaSuVwT7rqzGrTlscnTDlPWgRzrQ3jssesI7sZLm82E3pJSgaUoCdCOlL7M
+MPCJwI8JpPlBedRpe9tfVyfu3euTPLPxwcV3L/cfWPGSL4PofBtB8NUU6QwYiQ9H
+zx4xOyn67zW73/G0Q2vPPRst8LBDqlxLjbtx/WLR6h3nBc3eyuZ+q62HS1pJ5EvU
+T1vjyJ1ySrqtUXWQ4XlZyoEFUfpJxJoN0A9HCxmHGVckzTRl5FMWo8TCniHynNXs
+BtDQbabt7aNEOaAJdE7to0AH3T/Bvwzcp0ZJtBk0EM6YeMLtotUut7h2Bkg1b//r
+6bTBswMBXVJ5H44Qf0+eKeUg7whSC9qpYOzzrm7+0r9F5u3qF8ZTx55TJc2g656C
+9a1P1MYVysLvkLvS4H+crmxA/i08Tc1h+x9RRvqba4lSzZ6/Tmt60DPM5Sc4R0nS
+m9BBff0Nm0bSNRS8InXdO1Aq3362QKX2NOwcL5YaStwODNyZUqF7izjK4QARAQAB
+zTxEZW1pIE9iZW5vdXIgKElUTCBFbWFpbCBLZXkpIDxhdGhlbmFAaW52aXNpYmxl
+dGhpbmdzbGFiLmNvbT7CwY4EEwEIADgWIQR2h02fEza6IlkHHHGyiLVf/5wiwQUC
+X6YJvQIbAwULCQgHAgYVCgkICwIEFgIDAQIeAQIXgAAKCRCyiLVf/5wiwWRhD/0Y
+R+YYC5Kduv/2LBgQJIygMsFiRHbR4+tWXuTFqgrxxFSlMktZ6gQrQCWe38WnOXkB
+oY6n/5lSJdfnuGd2UagZ/9dkaGMUkqt+5WshLFly4BnP7pSsWReKgMP7etRTwn3S
+zk1OwFx2lzY1EnnconPLfPBc6rWG2moA6l0WX+3WNR1B1ndqpl2hPSjT2jUCBWDV
+rGOUSX7r5f1WgtBeNYnEXPBCUUM51pFGESmfHIXQrqFDA7nBNiIVFDJTmQzuEqIy
+Jl67pKNgooij5mKzRhFKHfjLRAH4mmWZlB9UjDStAfFBAoDFHwd1HL5VQCNQdqEc
+/9lZDApqWuCPadZN+pGouqLysesIYsNxUhJ7dtWOWHl0vs7/3qkWmWun/2uOJMQh
+ra2u8nA9g91FbOobWqjrDd6x3ZJoGQf4zLqjmn/P514gb697788e573WN/MpQ5XI
+Fl7aM2d6/GJiq6LC9T2gSUW4rbPBiqOCeiUx7Kd/sVm41p9TOA7fEG4bYddCfDsN
+xaQJH6VRK3NOuBUGeL+iQEVF5Xs6Yp+U+jwvv2M5Lel3EqAYo5xXTx4ls0xaxDCu
+fudcAh8CMMqx3fguSb7Mi31WlnZpk0fDuWQVNKyDP7lYpwc4nCCGNKCj622ZSocH
+AcQmX28L8pJdLYacv9pU3jPy4fHcQYvmTavTqowGnM08RGVtaSBNYXJpZSBPYmVu
+b3VyIChsb3ZlciBvZiBjb2RpbmcpIDxkZW1pb2Jlbm91ckBnbWFpbC5jb20+wsF4
+BBMBAgAiBQJafgNKAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIeAQIXgAAKCRCyiLVf
+/5wiwYa/EACv8a2+MMou9cSCNoZBQaU+fTmyzft9hUE+0d5W2UY1RY3OsjFIzm9R
+/4SVccfsqOYLEo+S0vQMIIIqFEq3FCpXXwPzyimotps05VA8U3Bd7yseojFygOgK
+sAMOAee2RCaDDOnoJue01dfZMzzHPO/TVdp3OvnpWipfv5G1Xg96rwbhMLE3tg6N
+xwAHa31Bv4/Xq8CJOoIWvx6fcmZQpz01/lSvsYn0KrfEbTKkuUf0vM9JrCTCP2oz
+VNN5BYzqaq2M4r+jmSyeXLim922VOWqGkUEQ85BSEemqrRS06IU6NtEMsF8EWt/b
+hWjk/9GDKTcnpdJHTrMxTspExBiNrvpI2t+YPU5B/dJJAUxvmhFrbSIbdB8umBZs
+I3AMYrEmpAbh5x7jEjoskUC7uN3o9vpg1oCLS2ePDLtAtyBtbHnkA4xGD7ar8mem
+xpH9lY/i+sC6CyyIUWcUDnnagKyJP0m9ks0GLsTeOCA0bft2XA6rD6aaCnMUsndT
+ctrab42CV5XypjmC4U1rPJ8JQJUh1/3P48/8sMH+3krxpJ06KNWNFaUbaMTGiltZ
+7x9DngklSYrX0T+2G4kVXNmjaljwkoLahwLla2gUWwBSyofXdqyhQdwZsp01KXNQ
+UCyT/Pg+aDcm/E7OMV3d4lf7g/CSxiX2GSEe6BlhSz+Lmd7ZJ3g32M1ARGVtaSBN
+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
+EtJuZYM5blWncBOJCoWMnBEcTEo/viU3GgcVRw=3D=3D
+=3Dx94R
+-----END PGP PUBLIC KEY BLOCK-----
+
+--------------AkqXpdiGIbXk8QWwyZyn28Nd--
+
+--------------l0ogIjpQqQsTR4q4H7tHeSZ0--
+
+--------------jofqqPNtr2cmehDmcOSinDzI
+Content-Type: application/pgp-signature; name="OpenPGP_signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="OpenPGP_signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEopQtqVJW1aeuo9/sszaHOrMp8lMFAmntATgACgkQszaHOrMp
+8lOF8g/+POe1l8LghoUMpe3/Ha4E8glK4muuDvTHYoqpD/Zld591ml9UcYj2IR80
+3wLTd+SALWh2wtlrcKi4+fwMfZjdchTA6sxsNPvI2XhxJ//GqfwjGtAl2KsyxLtF
+8sHRuNDDPWwUbjMieu4XdZFucs7ylXZWH6K0juMSeD2W9umSWpi/itVA/xGUvxNm
+a/CBxGXwHntEdxoQ6rlK3d0xkPlL5qa/CLcNd/BrNOcOQmjp48j66m+aqvglttoM
+cCLHRxbgUcoAsw6vIJRYy71CZQ9Zy5RdQUCyTSMwmYzru21CZhRsovHMbOJTIxtJ
+lVTViqjm/WYvnvSLLFOeV6ksPL40ormv72XF851SN/g8dK0polECGjom32Pw+IfP
+sLhF4o4gPsShXdB1l6rWhSNP8xWwLfm7L0rgbffYEWGX1a8DeAzWtrTr77eacGHu
+SlFDPvmwq3G20P0S43kZos8/AGvDoShZlCKtH7kSbSPwTUjyG9ea3MBIlecMPhLO
+iC93YrzHdhWk5oYd3e8itrFFo558vDhOQi1IYLX3yB407GkLZKhEFsZx9/EoTLXj
+sR7eLPVXZ/rQ9QMI5fPTY6vW2t5t6QimMg+h9VgSBQNY8iH5i+rJTVWBjlgjys9d
+mRDE7CHylP3VJ4OD++RcyBGBUuOUKgluhNNaCaX98ZQQAXCP0g4=
+=WY2r
+-----END PGP SIGNATURE-----
+
+--------------jofqqPNtr2cmehDmcOSinDzI--
