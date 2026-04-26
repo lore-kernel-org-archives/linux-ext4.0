@@ -1,51 +1,40 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 288001F131A
-	for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2026 03:23:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3F76199FB0;
+	Sun, 26 Apr 2026 06:10:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777173834; cv=none; b=EdogDy0J+MeQuz+reCEGtumynEZ8Z7GejBdnPigov5gB4SDFK73+H+6q+idy0guZpic9JFx9ILUiMTEevVIBj/IJx8r8isk7jdg3zvD8huhZTZg1oOZYpsMP7zb7pHweTjJPoYH8YMd4pIpsrqEmK4foRt8ue5wDom9J10Yjkq8=
+	t=1777183811; cv=none; b=dT+UFTIpFLaZJOcOLjFpRXenxkZIr1ThupGl7huEbvzV7ReSmd3WXH1HM2siyIxQhwF3BSPcHG6O5DGZyMgG8foQcecUOmpC4rLXWuCsmnulW2QwlGtfk97i3c+37w+zvdgXPFB4pyH5XnJ+9up15/euDTjIVB2xNRjvhoi6bfM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777173834; c=relaxed/simple;
-	bh=NRFid82dWokUSPLZ8KSVrjNlQbWo7C/PGljHTP1hiyQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cmOxA/lMoe9sjduFIxkwE0/hEjP35hGd7UFtEGll8Mtfz7nsu7t2n8SW+rHzRQDNMPQKcLPB4U6qDQBwkh+P8aE8/pXk6cZokC5jEwXPJqQDsKSuksGp7cHcyKbuY159bzAVFnM9RMEnqbGBNbcAIpgy24TeIevVhwURzd0MJlg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=guv8muH4; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1777183811; c=relaxed/simple;
+	bh=3N3qSO6MSIoGnvIb9NPtscc7rRE2OiowJp5tLfBb7YQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=I3HcaPRwecyaaIzeKastr+vJfb3O8TEVCv61hUiDvaQwehgCSO0wVgmnnvYGYa35gPSayNTs6SHYJntlnIc23f+DrY4jJaRqA52ZKsfgIiY9PjsqWprX4pLCtVFLgt8HPgKV+DbA4un6dPy56J8DhlJC0wibmayBZU5dzPbTu0k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=OlCHV83d; arc=none smtp.client-ip=62.89.141.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="guv8muH4"
-Received: from macsyma.thunk.org (pool-173-48-114-3.bstnma.fios.verizon.net [173.48.114.3])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 63Q3NBEx008166
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sat, 25 Apr 2026 23:23:14 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1777173797; bh=fc0JrjbtsDTG8b4nKaSZjvS3aKP0at0JO5qol57LFIE=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=guv8muH4bMR5Wn4mqK8e/2DvvSH6xfPRnFhSJZE1Rv+tSAB51tgKYC/rLkNE5EQ4Z
-	 mir6AAbNEaSuWTgMClFWc9Z+Nx9c64Q2vLouVEhhi4dbr9d7XsUpfpPhtqW8PLxKxo
-	 CkTGnB9Tdc9mJ4nPH3/no2IHJrR8mnCVir+DGh+hUbiMocLHXknVXOVbA/+ntzVtdY
-	 cKTBcALJtcg7051rF/MjvGGo2vlC5s9SIuRwAFz0+sSZgLHQk9++J8MGTr0bP20iIn
-	 Bt8M6agpQdi3yyqgQaK0LL+GZrdZ7FbdCTg2ksgLMRn+XQ4IZDaBxQMq+mvqG7pEHe
-	 Px+laUoRXJgSQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 70FC4651AA86; Sat, 25 Apr 2026 23:22:11 -0400 (EDT)
-Date: Sat, 25 Apr 2026 23:22:11 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Demi Marie Obenour <demiobenour@gmail.com>
-Cc: Zw Tang <shicenci@gmail.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        yi.zhang@huawei.com, syzkaller-bugs@googlegroups.com
-Subject: Re: [BUG] ext4: BUG_ON in ext4_write_inline_data
- (fs/ext4/inline.c:240)
-Message-ID: <20260426032211.GD22489@macsyma-wired.lan>
-References: <CAPHJ_VJeBAL_fk+P79guYTABZgW1hkcAz8t=c_nVK1mbn3_FYw@mail.gmail.com>
- <20260421122059.GA86221@macsyma.local>
- <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="OlCHV83d"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Type:MIME-Version:
+	Message-ID:Subject:Cc:To:From:Date:Reply-To:Content-Transfer-Encoding:
+	Content-ID:Content-Description:In-Reply-To:References;
+	bh=VkekR0ZQnUPB8h/ezh7yPJ5uGQoJ/UJN/CJfNPlzUlA=; b=OlCHV83dFVTNE7YCwNCWT10V6S
+	TLgmd35QRm5CKtkkdiTNBYuhOrC2SGR1GnzRMNWW1yGIZmgdHuOg9JxnejZ8PsY9GR7yTAfS2c579
+	naKT4eS6R90RdrHXmhgYGauZIXVdjLUcubvnGyCEAjSm/+/wfL7ZvTaFUWlwuKOtwZqZXyqACIAlm
+	Pxi85any2T6FsOujDvx85cwSFHjUuOeGuGMcm9WrOHxTfm62PRx/bDtjZ3RUSlvCGeO54ePrxZ5wb
+	FhJYfav4AmH5VMNKE74N7aFJhIaQHmvPytPyBRpp2ENTPGbnygi0w42/LF2sbBC/ONUjdnNks146b
+	Bq4vCbWw==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wGsgz-00000004Hq9-1D63;
+	Sun, 26 Apr 2026 06:10:09 +0000
+Date: Sun, 26 Apr 2026 07:10:09 +0100
+From: Al Viro <viro@zeniv.linux.org.uk>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: why does ext4_sync_parent() bother with d_find_any_alias() at all?
+Message-ID: <20260426061009.GQ3518998@ZenIV>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,43 +43,42 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 
-On Sat, Apr 25, 2026 at 02:00:23PM -0400, Demi Marie Obenour wrote:
-> 
-> Changing block devices that are mounted is also reachable via USB.
-> Yes, some distros may disable automount, but users who have stuff to
-> get done will mount USB devices anyway.  Telling users "don't do this"
-> very rarely works in practice.
+	The caller has a dentry for that inode, after all...
+Am I missing something there?  IOW, is there anything wrong
+with something like (untested) patch below?
 
-How can an unprivileged user change the contents of a USB device while
-it is mounted?
-
-Are you positing evil USB devices that can return block contents A at
-time t, and block contents B at time t+1?
-
-The threat model that we are using is that if the USB device is set to
-a particular state *before* the file system is mounted, and then the
-KGB scatters the USB device in the parking lot, and then someone picks
-up the USB device in the Raytheon parking lot, and says, "hey, free
-hardware", takes it into the classified machinem room, inserts it into
-the server, and mounts it.  This might be considered likely or not
-likely, but speaking as someone who has been in a top secret machine
-room at a defense contractor, they were *way* less protected than what
-I've seen at a financial services company, or at a data center at a
-hyperscaler.
-
-But be that as it may, even *then* you're not modifying the block
-device while it is mounted.
-
-> 2. Harden the kernel filesystem drivers against malicious devices,
->    including TOCTOU.
-
-Malicious devices that have their own microcomputer and can change the
-block contents under the control of the attacker is *just* not
-something I care about.  I also don't think it's a particularly
-realistic threat model.
-
-Cheers,
-
-						- Ted
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 924726dcc85f..c635cd732c2e 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -43,16 +43,14 @@
+  * the parent directory's parent as well, and so on recursively, if
+  * they are also freshly created.
+  */
+-static int ext4_sync_parent(struct inode *inode)
++static int ext4_sync_parent(struct inode *inode, struct dentry *dentry)
+ {
+-	struct dentry *dentry, *next;
++	struct dentry *next;
+ 	int ret = 0;
+ 
+ 	if (!ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY))
+ 		return 0;
+-	dentry = d_find_any_alias(inode);
+-	if (!dentry)
+-		return 0;
++	dget(dentry);
+ 	while (ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY)) {
+ 		ext4_clear_inode_state(inode, EXT4_STATE_NEWENTRY);
+ 
+@@ -99,7 +97,7 @@ static int ext4_fsync_nojournal(struct file *file, loff_t start, loff_t end,
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ext4_sync_parent(inode);
++	ret = ext4_sync_parent(inode, file->f_path.dentry);
+ 
+ 	if (test_opt(inode->i_sb, BARRIER))
+ 		*needs_barrier = true;
