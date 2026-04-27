@@ -1,150 +1,201 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A125E255F28;
-	Mon, 27 Apr 2026 01:30:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A6302F3C26
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 09:53:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777253413; cv=none; b=NPJtxJWc0ddqvJ+OpcjCFaAJcyLsdWk8KhuWF1gPJ6XWeuQFP6m5CHuGMlTR7R9sE8Li62yCWWEr0a/x1BZ0ZR7Ytxl9T+Hxg7MlIq39Ta23t1Oo2KNBWzXh4/XPudwhJudzkRr/H7/a1zezIrelv8rQTXd4vdzlPUzsDeNEaCU=
+	t=1777283589; cv=none; b=mGnI2OPcHIlndKiH4RAxK6PygOqG/w2s23kF92b8CrYfLAQsOYvRjG1Jw/WGKRrHhcPIukPhswpbkxD3kchJI2nvt7kARXAYY4rGHSozeQNAbWk1fFSnbHJfg9wJ9C1UDQpAoBWp34XPY32LAeOS7U8yqu15E+w/XWRs4Ll5evc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777253413; c=relaxed/simple;
-	bh=acjbu6UIaVoWP0uAA66KF2HD4oHsAtt1U3RQzTygfgA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=XHdR3iTdy0ujbKxIxq3ABHBfZ2W1wJgSpGHIeZ53n12hbcRoIsgrWhrhsgBvYDDSU+3EM6ieLkpPcIbKObN3fpnxzybLR/m4Gp58dL+ZDwGQKNqn2cjJbTbSNGHQ5dI4iiiuWraRJ1E/Tp8WTPPCYxvOfZ6/Id7sHjFQ5ACz1Pw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=PJID8kaK; arc=none smtp.client-ip=117.135.210.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+	s=arc-20240116; t=1777283589; c=relaxed/simple;
+	bh=6/RbJKWhx2XbWjZ5+oa6pzcdPRytoJwxCQDkNB+XiBA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=AzSVWzjUzbhYPrVGXeMDyLpyUifjzig2MvFI3Cw7Disy8LDIq6QMAst4tX+vXv180jslnrcwOBy/0JPKoycqC2eMFUmDShZSjceLhIYaxEyHimCUg2t6W/6wrOTK8BiAm0YEFWps0yVvsZSjwcuh3W3y0HEkYOSH7atMYi2Sdv0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UegfBLNp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tc9xnou5; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UegfBLNp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tc9xnou5; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="PJID8kaK"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
-	Content-Type; bh=p3WgPpPfz2Bbmyji9QfrGWWEt38T46v9GT1N7YF6YB8=;
-	b=PJID8kaKdsJ2JKKIZcv+EQPWVWkQm6/XMf/rMzAtuy6GW5BpgZNraAZ3/rttR+
-	mxDNvvlH8NJ6/pyuR7/l0YrkbQmF0qj+NGBV9Daj554zBjurIJYjNWmkUVMI/YC0
-	eB0Fk4Ez/Rl9Y1YUVOQ4ZtKOVm0BAmQuXRAocb1FGHTyg=
-Received: from [192.168.100.68] (unknown [])
-	by gzga-smtp-mtada-g1-0 (Coremail) with SMTP id _____wCX8n__u+5pkitQBw--.52059S2;
-	Mon, 27 Apr 2026 09:29:41 +0800 (CST)
-Message-ID: <bd3bf849-d14d-4706-b21a-9bce0abb7659@163.com>
-Date: Mon, 27 Apr 2026 09:29:32 +0800
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UegfBLNp";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tc9xnou5";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UegfBLNp";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tc9xnou5"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 6CA265BD0A;
+	Mon, 27 Apr 2026 09:53:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1777283586; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RXlDoVPyr2lKHA0pOPZSGsXcqx4oBNnpddERdjSIFcI=;
+	b=UegfBLNpK/dP3hEupvZZbRlGH0pXHrKBqX+WY3STD3/u3iPsAOxHlydpeJDZtivc3e1KQG
+	md7k5ax3By0XzhH57YKrwJs11zsy0hzXJGzwAZP01p5kwV181YqruXCrMH5Joz8jUNVmZD
+	uyzPoEFDeV8pZ2kv10IWZGnSvinpMJE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1777283586;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RXlDoVPyr2lKHA0pOPZSGsXcqx4oBNnpddERdjSIFcI=;
+	b=Tc9xnou5ZWfXdM+2Sr7djWbUJNVbgoaByJRU2XtK3IIy9T2Ktbz5wfJdX7p6+w/eXSLXDW
+	4IWLag3iwsjl37Aw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=UegfBLNp;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=Tc9xnou5
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1777283586; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RXlDoVPyr2lKHA0pOPZSGsXcqx4oBNnpddERdjSIFcI=;
+	b=UegfBLNpK/dP3hEupvZZbRlGH0pXHrKBqX+WY3STD3/u3iPsAOxHlydpeJDZtivc3e1KQG
+	md7k5ax3By0XzhH57YKrwJs11zsy0hzXJGzwAZP01p5kwV181YqruXCrMH5Joz8jUNVmZD
+	uyzPoEFDeV8pZ2kv10IWZGnSvinpMJE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1777283586;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RXlDoVPyr2lKHA0pOPZSGsXcqx4oBNnpddERdjSIFcI=;
+	b=Tc9xnou5ZWfXdM+2Sr7djWbUJNVbgoaByJRU2XtK3IIy9T2Ktbz5wfJdX7p6+w/eXSLXDW
+	4IWLag3iwsjl37Aw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5DFA9593B0;
+	Mon, 27 Apr 2026 09:53:06 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id rKLnFgIy72l3cAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 27 Apr 2026 09:53:06 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 18935A0AFF; Mon, 27 Apr 2026 11:53:02 +0200 (CEST)
+Date: Mon, 27 Apr 2026 11:53:02 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH] ext4: fix LOGFLUSH shutdown ordering to allow
+ ordered-mode data writeback
+Message-ID: <2d5eyieiqd4x6tum66jdrhriuknaoxeihy7yzpivgthdu4myrk@4fhxp6ngjsjs>
+References: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 v3 2/2] ext4: allow clearing mballoc stats through
- mb_stats
-To: Baokun Li <libaokun@linux.alibaba.com>, Theodore Tso <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, wangguanyu@vivo.com,
- Baolin Liu <liubaolin@kylinos.cn>, Andreas Dilger <adilger@dilger.ca>
-References: <20260422015026.7170-1-liubaolin12138@163.com>
- <20260422015026.7170-3-liubaolin12138@163.com>
- <20260423161947.GB68318@macsyma-wired.lan>
- <592456a9-ce45-4967-a7c4-4ed80e908bac@163.com>
- <5eaa521b-28b0-4c2a-a33d-57d1449f125e@linux.alibaba.com>
-From: liubaolin <liubaolin12138@163.com>
-In-Reply-To: <5eaa521b-28b0-4c2a-a33d-57d1449f125e@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wCX8n__u+5pkitQBw--.52059S2
-X-Coremail-Antispam: 1Uf129KBjvJXoWxXFy5JFWkuFyxCw4fXF15twb_yoW5Kw1Dpr
-	4Yqa42vF45XFyjvwn7KF4kJr1Utr9xJ3y7JrnxC3y29F4DtrySvF1SkrW5tF9Fkry8Zayr
-	Zr4j9F9xAayjvFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UY0PhUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6QVGEWnuvAW4LAAA3R
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	RCVD_TLS_LAST(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,fnnas.com];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+X-Rspamd-Queue-Id: 6CA265BD0A
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
 
-Dear Baokun,
-    Thank you and Ted for your review and suggestions.
-    I will incorporate your suggestions and submit the v4 patch as soon 
-as possible.
+On Fri 24-04-26 18:42:01, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> In EXT4_GOING_FLAGS_LOGFLUSH mode, the EXT4_FLAGS_SHUTDOWN flag was set
+> before calling ext4_force_commit().  This caused ordered-mode data
+> writeback (triggered by journal commit) to fail with -EIO, since
+> ext4_do_writepages() checks for the shutdown flag.  The journal would
+> then be aborted prematurely before the commit could succeed.
+> 
+> Fix this by calling ext4_force_commit() first, then setting the
+> shutdown flag, so that pending data can be written back correctly.
+> 
+> Note that moving ext4_force_commit() before setting the shutdown flag
+> creates a small window in which new writes may occur and generate new
+> journal transactions.  When the journal is subsequently aborted, the
+> new transactions will not be able to write to disk.  This is intentional
+> because LOGFLUSH's semantics are to flush pre-existing journal entries
+> before shutdown, not to guarantee atomicity for writes that race with
+> the ioctl.
+> 
+> Fixes: 783d94854499 ("ext4: add EXT4_IOC_GOINGDOWN ioctl")
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-Thanks,
-Baolin
+Looks good. Feel free to add:
 
-在 2026/4/24 17:34, Baokun Li 写道:
-> 
-> On 2026/4/24 16:09, liubaolin wrote:
->>
->>
->> 在 2026/4/24 0:19, Theodore Tso 写道:
->>> On Wed, Apr 22, 2026 at 09:50:25AM +0800, Baolin Liu wrote:
->>>> From: Baolin Liu <liubaolin@kylinos.cn>
->>>>
->>>> Make /proc/fs/ext4/<dev>/mb_stats writable and clear the runtime
->>>> mballoc statistics when 0 is written.
->>>
->>> At the moment to enable mb_stats the system administrator needs to
->>> write "1" to /sys/fs/ext4/<dev>/mb_stats, and writing "0" to the sysfs
->>> file will pauce the statistics colleciton (but not clear the
->>> statistics).  Adding a way to clear the statistics by writing to the
->>> procfs file might be confusing to users.
->>>
->>> So.... as a suggestion, if you're adding to the ability to write to
->>> /proc/fs/.../mb_stats, what if we make things work by
->>>
->>>      * Write 1 to /proc/fs/.../mb_stats to  enable statistics collection
->>>      * Write 0 to /proc/fs/.../mb_stats to  disable statistics collection
->>>      * Write -1 to /proc/fs/.../mb_stats to clear statistics counters
->>>
->>> And then deprecate the /sys/fs/.../mb_stats variable (but we probably
->>> won't be able to remove it for at least a year or two).
->>>
->>>                                          - Ted
->> Dear Ted, Baokun,
->>     Thank you for your review and suggestions.
->>     Since you mentioned that /sys/fs/.../mb_stats cannot be deleted in
->> the short term,
->>     I plan to modify and submit a v4 patch according to the following
->> strategy.
->>
->>     1. Change `/proc/fs/.../mb_stats` to read-write mode.
->>      * Read `/proc/fs/.../mb_stats` to show statistics counters.
->>      * Write 0 to `/proc/fs/.../mb_stats` to disable statistics
->> collection.
->>      * Write 1 to `/proc/fs/.../mb_stats` to enable statistics collection.
->>      * Write 2 to `/proc/fs/.../mb_stats` to clear statistics counters.
->>
->>     2. Do not delete the `/sys/fs/.../mb_stats` node for now; implement
->> the same write control logic.
->>      * Write 0 to `/sys/fs/.../mb_stats` to disable statistics collection.
->>      * Write 1 to `/sys/fs/.../mb_stats` to enable statistics collection.
->>      * Write 2 to `/sys/fs/.../mb_stats` to clear statistics counters.
->>
->>      Delete `/sys/fs/.../mb_stats` later when it is possible to delete it.
->>
->>     3. Modify the relevant documentation for `mb_stats`.
->>      Documentation/ABI/testing/sysfs-fs-ext4
->>      Documentation/admin-guide/ext4.rst
->>      Documentation/filesystems/proc.rst
->>
->>     Compared to your suggestion, I recommend using the value 2 for the
->> clear operation because s_mb_stats is an unsigned int variable, and
->> using -1 requires changing the variable type.
->>     I suggest avoiding changing the s_mb_stats variable type unless
->> absolutely necessary.
->>
->>     Do you think this modification is appropriate?
->>     If there are no problems, I will start modifying the code and
->> submit the v4 patch as soon as possible.
-> 
-> For the clear command, we only handle it without storing it, so s_mb_stats
-> remains unchanged and still stores only 0 and non-zero values to represent
-> disabled and enabled, respectively. Otherwise, you will have to deal with
-> a large number of s_mb_stats checks
-> 
-> That means the /sys/fs/.../mb_stats interface does not need to support
-> clearing, but it might make sense to add a deprecation warning there.
-> 
-> Then in `/proc/fs/.../mb_stats`, writing 0 or a positive number passes
-> it to s_mb_stats, writing -1 performs a reset, and other negative values
-> return -EINVAL.
-> 
-> 
-> Cheers,
-> Baokun
-> 
+Reviewed-by: Jan Kara <jack@suse.cz>
 
+								Honza
+
+> ---
+> This fix addresses my new generic/970 test, which fails during the file
+> size verification after shutdown and remount.
+> 
+>  https://lore.kernel.org/fstests/20260424092228.1396658-1-yi.zhang@huaweicloud.com/
+> 
+>  fs/ext4/ioctl.c | 12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 1d0c3d4bdf47..110e3fb194ec 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -830,11 +830,17 @@ int ext4_force_shutdown(struct super_block *sb, u32 flags)
+>  		bdev_thaw(sb->s_bdev);
+>  		break;
+>  	case EXT4_GOING_FLAGS_LOGFLUSH:
+> +		/*
+> +		 * Call ext4_force_commit() before setting EXT4_FLAGS_SHUTDOWN.
+> +		 * This is because in data=ordered mode, journal commit
+> +		 * triggers data writeback which fails if shutdown is already
+> +		 * set, causing the journal to be aborted prematurely before
+> +		 * the commit succeeds.
+> +		 */
+> +		(void) ext4_force_commit(sb);
+>  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> -		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+> -			(void) ext4_force_commit(sb);
+> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+>  			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
+> -		}
+>  		break;
+>  	case EXT4_GOING_FLAGS_NOLOGFLUSH:
+>  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> -- 
+> 2.52.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
