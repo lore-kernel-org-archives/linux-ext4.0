@@ -1,167 +1,113 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51B3B3B774F
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 11:17:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E52D43B7763;
+	Mon, 27 Apr 2026 11:23:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.98
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777288644; cv=none; b=VxugpwMAO3pjTiJRkstCtMgt7eq3AsljQHi/1Sy7nUiiI5o5+VPqknlH1CHOvYDKLux4Lly9fIOamiGHI54xK0Y+ABFdwbeANo/9OwLF9MnfsvuJ3DFSAOemdkAMJm1T/i6z3vLEwwYIcI1+HSzq0DlD7v6Fz2PbYvuckft2+cY=
+	t=1777289031; cv=none; b=fib4xNRYtfwgoud5quFVCL8U0CQ9nErUeXIfAj48G058ELMtcDuWyMxnZfW04gFdIUwfO6MJ4azzIPLoDwqXeBHf22l55eM/D/eTAqdZa/U9jj9UnCWqBRs4aR49ImDi/7GUBZlgD5aKgkjWZB4R9b1GAWV2gGxnZuLPUHorq4w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777288644; c=relaxed/simple;
-	bh=KH1OEnwYC9N8rL7qYsljubA7LqBib2m5QtOtXpTgQ7U=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=iiVX1qPZCcqRnYATjncF6fmZc9hKF4bG6DBxgBqnOh/EPzf5ZOXgAQC/YGr41n468uwRCR9kfRdlKcek+pO4jozaZHTYCpMksyjq87fIctEysyqFV5Pufqy9JeSbRBqqS5DevkHIcLYD3xZ2pgpc7PAQAqyCNzTgbfotxVBbh+g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zh0Kl9V6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=x8QbtI/g; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zh0Kl9V6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=x8QbtI/g; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1777289031; c=relaxed/simple;
+	bh=WO5Jr9BznyWMFDn+xDVYRXzM+mUsKH3DU+dM0XCL7kQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=mT9i2zIuaaz8drC5BWKM38YXfIMNtg/ut8MJBiRcB9n+ixVfW8g6m4mIypTrL6hvxcoowT5t7xkqz0397K0w3UQUF7Tq+klQKuXDJgJ/Gw1tZeN0bc0yJ10x8uinzPRhJyYa5+nQ7R5un0SG3G7fGIS2IoS00GaUetCpoye8CpM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=kLEKjswr; arc=none smtp.client-ip=115.124.30.98
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zh0Kl9V6";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="x8QbtI/g";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zh0Kl9V6";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="x8QbtI/g"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id C16F76A8EA;
-	Mon, 27 Apr 2026 11:17:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777288641; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=o/aHEXwmUiLmMfzArj7m3DrqK9QsTa+n8aR8JtA/nCU=;
-	b=zh0Kl9V65eWnxttsDAh1Udgr/tkEpyr7lVpRPN48XNI0NLLT6uGJTD9CKSK9quAA12Hf8s
-	8y0loJioKf680X5VX1uQAXKpv46wX2CZaEOKCsuE3DCvTdMJAH9nPkYZcE+sXYIVf5NIDp
-	QY1hzjvgTGplx06c1Yl1YrkcGgMH0t0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777288641;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=o/aHEXwmUiLmMfzArj7m3DrqK9QsTa+n8aR8JtA/nCU=;
-	b=x8QbtI/gnA5gTgPITpOt9RsyJ9ZNIXxLamecDKC1hITGy98kSseS5dzA+N0UGbGzVpnTmb
-	6600u8j9syDXNLBw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777288641; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=o/aHEXwmUiLmMfzArj7m3DrqK9QsTa+n8aR8JtA/nCU=;
-	b=zh0Kl9V65eWnxttsDAh1Udgr/tkEpyr7lVpRPN48XNI0NLLT6uGJTD9CKSK9quAA12Hf8s
-	8y0loJioKf680X5VX1uQAXKpv46wX2CZaEOKCsuE3DCvTdMJAH9nPkYZcE+sXYIVf5NIDp
-	QY1hzjvgTGplx06c1Yl1YrkcGgMH0t0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777288641;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=o/aHEXwmUiLmMfzArj7m3DrqK9QsTa+n8aR8JtA/nCU=;
-	b=x8QbtI/gnA5gTgPITpOt9RsyJ9ZNIXxLamecDKC1hITGy98kSseS5dzA+N0UGbGzVpnTmb
-	6600u8j9syDXNLBw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id B6793593B2;
-	Mon, 27 Apr 2026 11:17:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id obWHLMFF72lsTwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 27 Apr 2026 11:17:21 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 73F62A0AFF; Mon, 27 Apr 2026 13:17:17 +0200 (CEST)
-Date: Mon, 27 Apr 2026 13:17:17 +0200
-From: Jan Kara <jack@suse.cz>
-To: Demi Marie Obenour <demiobenour@gmail.com>
-Cc: Theodore Tso <tytso@mit.edu>, Zw Tang <shicenci@gmail.com>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, yi.zhang@huawei.com, 
-	syzkaller-bugs@googlegroups.com
-Subject: Re: [BUG] ext4: BUG_ON in ext4_write_inline_data
- (fs/ext4/inline.c:240)
-Message-ID: <4h2bstimz6ludsekfenxpuswqwweosowo3pelr7wujmqr7sjvu@yhhduatqpapy>
-References: <CAPHJ_VJeBAL_fk+P79guYTABZgW1hkcAz8t=c_nVK1mbn3_FYw@mail.gmail.com>
- <20260421122059.GA86221@macsyma.local>
- <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="kLEKjswr"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1777289024; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=UJn4lNe3N+gv4YNs9I/2Ctj5QiiaM6KzePs2I31E4Ec=;
+	b=kLEKjswrqnh+lOQvV315VibgGf1cOH52GBMzDDwUKeZPH9o66vuBv0s+LNvVDv5SHYKdRyF57xrM82+cdXSUyOWnMM3aFQgioWGj8xeC7z/mTYnWX1lhAW7uM+/W4WCgNlLdjf472/DziQhP1f+/4UoFEH1hRIs3azNhok+YvtA=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R921e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=13;SR=0;TI=SMTPD_---0X1mqfjD_1777289022;
+Received: from 30.221.131.19(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X1mqfjD_1777289022 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 27 Apr 2026 19:23:43 +0800
+Message-ID: <3ea5dc18-0ae0-49d3-b89c-f6f9a7c11ab8@linux.alibaba.com>
+Date: Mon, 27 Apr 2026 19:23:42 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <4e76eb68-862d-4b9f-8242-e6aced2704ee@gmail.com>
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,gmail.com,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,vger.kernel.org,huawei.com,googlegroups.com];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -3.80
-X-Spam-Level: 
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix LOGFLUSH shutdown ordering to allow
+ ordered-mode data writeback
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
+ yukuai@fnnas.com
+References: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Sat 25-04-26 14:00:23, Demi Marie Obenour wrote:
-> On 4/21/26 08:20, Theodore Tso wrote:
-> > On Tue, Apr 21, 2026 at 07:32:43PM +0800, Zw Tang wrote:
-> >> This looks like an ext4 inline-data boundary/state inconsistency triggered
-> >> while writing to an ext4 image crafted by syzkaller. The later
-> >> KASAN: slab-use-after-free in rwsem_down_write_slowpath() appears to be a
-> >> secondary effect after the primary ext4 BUG, likely during teardown/unlink
-> >> after the filesystem failure.
-> > 
-> > Writing to a mounted image is not something that we consider a valid
-> > threat model.  If you can write to a mounted image, there are a
-> > zillion different ways that you can creash the kernel, or you can
-> > create a setuid shell, etc.
-> > 
-> > The upstream syzkaller bot makes sure that CONFIG_BLK_DEV_WRITE_MOUNTED
-> > is not defined to avoid syzkaller noise.
-> 
-> CONFIG_BLK_DEV_WRITE_MOUNTED only blocks writing via the specific block
-> device that is mounted.  It doesn't block writing via other methods.
-> If I recall correctly, its purpose was to prevent writing to the
-> buffer cache used by the filesystem driver.
 
-Correct. This a kind of corruption that's impossible to address only at fs
-level.
+On 2026/4/24 18:42, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+>
+> In EXT4_GOING_FLAGS_LOGFLUSH mode, the EXT4_FLAGS_SHUTDOWN flag was set
+> before calling ext4_force_commit().  This caused ordered-mode data
+> writeback (triggered by journal commit) to fail with -EIO, since
+> ext4_do_writepages() checks for the shutdown flag.  The journal would
+> then be aborted prematurely before the commit could succeed.
+>
+> Fix this by calling ext4_force_commit() first, then setting the
+> shutdown flag, so that pending data can be written back correctly.
+>
+> Note that moving ext4_force_commit() before setting the shutdown flag
+> creates a small window in which new writes may occur and generate new
+> journal transactions.  When the journal is subsequently aborted, the
+> new transactions will not be able to write to disk.  This is intentional
+> because LOGFLUSH's semantics are to flush pre-existing journal entries
+> before shutdown, not to guarantee atomicity for writes that race with
+> the ioctl.
+>
+> Fixes: 783d94854499 ("ext4: add EXT4_IOC_GOINGDOWN ioctl")
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-> Changing block devices that are mounted is also reachable via USB.
-> Yes, some distros may disable automount, but users who have stuff to
-> get done will mount USB devices anyway.  Telling users "don't do this"
-> very rarely works in practice.
-> 
-> I asked a distro maintainer about using libguestfs by default and
-> they refused, citing poor performance.  Unfortunately, there is no
-> way at the OS level to distinguish "trusted device used for backups"
-> and "untrusted USB stick".
+Looks good to me.
 
-Well, people *are* seriously looking into mounting hotpluggable devices with
-FUSE (or other userspace means) - e.g. openSUSE has experimental packages
-doing just that for a few months. Darrick Wong is also working on making
-FUSE more performant so the plan is to eventually get there.
+Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> ---
+> This fix addresses my new generic/970 test, which fails during the file
+> size verification after shutdown and remount.
+>
+>  https://lore.kernel.org/fstests/20260424092228.1396658-1-yi.zhang@huaweicloud.com/
+>
+>  fs/ext4/ioctl.c | 12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 1d0c3d4bdf47..110e3fb194ec 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -830,11 +830,17 @@ int ext4_force_shutdown(struct super_block *sb, u32 flags)
+>  		bdev_thaw(sb->s_bdev);
+>  		break;
+>  	case EXT4_GOING_FLAGS_LOGFLUSH:
+> +		/*
+> +		 * Call ext4_force_commit() before setting EXT4_FLAGS_SHUTDOWN.
+> +		 * This is because in data=ordered mode, journal commit
+> +		 * triggers data writeback which fails if shutdown is already
+> +		 * set, causing the journal to be aborted prematurely before
+> +		 * the commit succeeds.
+> +		 */
+> +		(void) ext4_force_commit(sb);
+>  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> -		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+> -			(void) ext4_force_commit(sb);
+> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+>  			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
+> -		}
+>  		break;
+>  	case EXT4_GOING_FLAGS_NOLOGFLUSH:
+>  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
