@@ -1,132 +1,129 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f49.google.com (mail-pj1-f49.google.com [209.85.216.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B4E321CC59;
-	Mon, 27 Apr 2026 15:56:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E56634F27F
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 16:20:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777305397; cv=none; b=QNB0L4eL2xB9xYFy66yOXgQMuFQZIFC8QlVjQOMwoDnEs3I7E40KZIKsIvaylSu2Sjro7hEujLdSezpbTz9E1a+pLGI5trS5Z9xDdl1xGRW8vo5fc1d94G5Y2bUjjTuhxYn6E6T1OqGszFudNSyTfzNuO0VR4R89tG8t+2oINdI=
+	t=1777306846; cv=none; b=rbL/i4BcKNs8BhV3h+lN0uSWwIquZMw99sNss8ZF0THeMtEcVUy14p0LN0txgUS+iEnI20zcZWTaMhgZx1kdSXCQVs1BGPanve1Wdf8+frPHrwysqEypylYcpNSwfHIPwIWAKw6StXLW+LOrV/5xgqUpkXL5lboEMEXWTe886hM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777305397; c=relaxed/simple;
-	bh=Zz8Qb+L+a6t6/LZ2gpOvq36I/oARw1YWvWvpPUd8Taw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=oOpdp36HoZdgMwlAgYgOCHxD4aTB7C+9ksTZ6mJ86TiNIPmcDpj/phOt76V2uJ07EanV5pZthIdN7lB1yKmLp7L8emLkJ3yQaUZSXB86o087ZAR3Zj73ewjt9+IC3Fok4gaPXVO0hH3/FpRBHskD08RexNDeTMcB7bgCP3S062E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KuiMFGhh; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1777306846; c=relaxed/simple;
+	bh=WroDfzPqTURMv0iDm0VUPBMyksj/JhESZ+u0Y7pNEqM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=n/Qwn107H4MM3abYVK0LZcLmY/43Nuza0/dokLpVsuRzF3C+nC+tDVmzJ3m+wVS4WrASmvgr+faiQnIBQMW4KbNoDliiMAnSqJYnk6QoV93T5wjTVhg+Q3P181SNGRc8f9fvrd5OLVC4YihNsRhOrABPZbBcjreXGvLSTK4labQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Rq7lY7ac; arc=none smtp.client-ip=209.85.216.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KuiMFGhh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2ADFC19425;
-	Mon, 27 Apr 2026 15:56:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777305397;
-	bh=Zz8Qb+L+a6t6/LZ2gpOvq36I/oARw1YWvWvpPUd8Taw=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=KuiMFGhhZMhfF4cpbnvg34N+nWG4ckxtWlgEsSJSo8lrJn1WrrC21FCMUKvoWHc6a
-	 VXNYvv+TI2vivTAogG5fVhZZm8Q6m/XaHPK2M0KNeItNGc2tDUwxnimhGxrQ55KmBk
-	 QV1jyEdOnMUUXPAM3CdguB9xwM8gMnmibDlfd4POipt7r20r4s/VkjQg3sdKEqY3JB
-	 iyQwLnIFPdI37sq0FnlfBjRf5o8IcNj9c1F7hl3FZJcF0uWsyGShf28J5+euuE7Ea+
-	 +GQ3062oVXFnCblu3RlRACujnsY5albUCT4Pkla85PEJfP6zv/KSvZM4Ne/B6iDEpg
-	 Rf9Usmw5ML5vw==
-Date: Mon, 27 Apr 2026 08:56:36 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp,
-	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com,
-	almaz.alexandrovich@paragon-software.com, slava@dubeyko.com,
-	glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu,
-	adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org,
-	pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com,
-	trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org,
-	chao@kernel.org, hansg@kernel.org, senozhatsky@chromium.org,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Roland Mainz <roland.mainz@nrubsig.org>
-Subject: Re: [PATCH v11 08/15] xfs: Report case sensitivity in fileattr_get
-Message-ID: <20260427155636.GC7751@frogsfrogsfrogs>
-References: <20260424-case-sensitivity-v11-0-de5619beddaf@oracle.com>
- <20260424-case-sensitivity-v11-8-de5619beddaf@oracle.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Rq7lY7ac"
+Received: by mail-pj1-f49.google.com with SMTP id 98e67ed59e1d1-35fbca04006so5238185a91.1
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 09:20:44 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1777306843; x=1777911643; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=vxA6MQ5WVPMH6RM+iJNh6xzquK0b80JHF1z9HxjdUkE=;
+        b=Rq7lY7ac3FJm1V+qUxlnkjICvMkJ8ez9vfJiCrYTnGvpFe99cKwZ/unM9qz3aU0Y0a
+         uid2n+rY9hLk3JwBi9Ug58REYW0e80VIpexqoxXMVFZInRtuHv1YzizxJL4BJASkUYuu
+         +pR5LPlApMiI+tUvg8nSEcVLA3ug/oTYqE8PREw3talb9h2K+S+461uaxj5RwU4HyGXP
+         D7B2g2VAgq6VSGbsEKZIFyta2aiYeMU2r3yi5o/yVcabhCga6n+M5zaPeKpnymjH/iK2
+         Dfut8/RL+r3lU9kIZuPVgUEHvNEZH3tjQyRj/TEfM70qcT2wegpAWVOqMtJHDi69Q1kY
+         WrfA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1777306843; x=1777911643;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=vxA6MQ5WVPMH6RM+iJNh6xzquK0b80JHF1z9HxjdUkE=;
+        b=M47UiTd3HHcXL1NqYFp0kbJmAHaLlFU0CPUcbqyRztUg/LqRRm3DFd1sw5JsCF/xiF
+         CzSWlAOrTjoU2Ki7QKTaWfAx9Iltf1TJaFdKUyCR5pGE5Rh3UdZdqDjt2XsqotiwLk9y
+         FKJUNkfBAd/Gk/W3Sgd5a6ZuZdYadazbYCs50+aq7kFxS2N8E/nqJ1xGKyhdtr3s00ix
+         W/H/QJMIzFI5ZeJGxUx5QW5PUo4oyXTd35z/46rieNGP5hRsA2f2/D9Sb2FQWP6VfKUt
+         iUaHI/a50TIebw2CizBsL9lR2JgMDCKovpfqLyBTWbKtVN5RU2J9EeBCqCQdOeVDF7MY
+         xgoQ==
+X-Gm-Message-State: AOJu0YxCNijQiwXAlZ/Isq3ubeUEfuAg3YscWEI16CayF2DskK98BUeD
+	XHSgyGLPbhDp+9+N3ssFaH8zA92RJ1KXqON8VHQM6jC+V/em6UOmXA8EaHCI4rPkMiuqcQ==
+X-Gm-Gg: AeBDieujy28cfs3mYMv2Z1lsxBx4qGGVxr5ViBPlMtNl4rPfUOstxtnVxif9xjIz8ab
+	XTOTKMaPbYxjERJvIX9sADDzr4aUfE0kPQrC5TsUHeGtw4JiqhesKkHYpJsaoyfDgtWQz/8EaTV
+	q7nER0fHU18shChtcqgQG5G63vSq07yK6ChC0tTBHe0hJh3z4uLfZeoO2nDw7zj0OJlxyTXnNpr
+	Z9wENeLGBo3+sxX0Ie9kLJdKNUAqQn1agZpAVMy4Ar538uekyjW2IH6Pgw2zea3OCa4tIGNXqmC
+	YWmZNHx493/QdrWGYo2nAZa7hRsbi+kNnWhtfJiEInG4q8jF4R2euZPLKFNZ+tajRct+gSCmI5A
+	rq/mXv4vN0SXbo0DKBjoFIfaJCJf8nqyESm6K70XAxJBLLM+ZcyIvk02Rco/qfP25NjkirzJ10l
+	X1FB5UuIctix3JkuWC5Bt9XJrgLc22CfHoGyJEK65J
+X-Received: by 2002:a17:90a:d4f:b0:362:ef3a:a153 with SMTP id 98e67ed59e1d1-362ef3aa62cmr9842448a91.12.1777306843438;
+        Mon, 27 Apr 2026 09:20:43 -0700 (PDT)
+Received: from vini ([2401:4900:8fca:e7b6:f223:6319:a79e:7616])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b5fab28e35sm307352625ad.64.2026.04.27.09.20.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 27 Apr 2026 09:20:43 -0700 (PDT)
+From: Vineet Agarwal <agarwal.vineet2006@gmail.com>
+To: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun1@huawei.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	Vineet Agarwal <agarwal.vineet2006@gmail.com>
+Subject: [PATCH] ext4: avoid BUG_ON() in ext4_get_inline_entry()
+Date: Mon, 27 Apr 2026 21:50:20 +0530
+Message-ID: <20260427162020.49723-1-agarwal.vineet2006@gmail.com>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260424-case-sensitivity-v11-8-de5619beddaf@oracle.com>
+Content-Transfer-Encoding: 8bit
 
-On Fri, Apr 24, 2026 at 09:53:10PM -0400, Chuck Lever wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
-> 
-> Upper layers such as NFSD need to query whether a filesystem
-> is case-sensitive. Add FS_XFLAG_CASEFOLD to xfs_ip2xflags()
-> when the filesystem is formatted with the ASCIICI feature
-> flag. This serves both FS_IOC_FSGETXATTR (via xfs_fill_fsxattr() in
-> xfs_fileattr_get()) and XFS_IOC_BULKSTAT (which populates bs_xflags
-> directly from xfs_ip2xflags()), so bulkstat consumers and per-inode
-> queries see a consistent view of the filesystem's case-folding
-> behavior.
-> 
-> XFS always preserves case. XFS is case-sensitive by default, but
-> supports ASCII case-insensitive lookups when formatted with the
-> ASCIICI feature flag.
-> 
-> Reviewed-by: Roland Mainz <roland.mainz@nrubsig.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/xfs/libxfs/xfs_inode_util.c | 2 ++
->  fs/xfs/xfs_ioctl.c             | 7 +++++++
->  2 files changed, 9 insertions(+)
-> 
-> diff --git a/fs/xfs/libxfs/xfs_inode_util.c b/fs/xfs/libxfs/xfs_inode_util.c
-> index 551fa51befb6..82be54b6f8d3 100644
-> --- a/fs/xfs/libxfs/xfs_inode_util.c
-> +++ b/fs/xfs/libxfs/xfs_inode_util.c
-> @@ -130,6 +130,8 @@ xfs_ip2xflags(
->  
->  	if (xfs_inode_has_attr_fork(ip))
->  		flags |= FS_XFLAG_HASATTR;
-> +	if (xfs_has_asciici(ip->i_mount))
-> +		flags |= FS_XFLAG_CASEFOLD;
->  	return flags;
->  }
->  
-> diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> index ed9b4846c05f..5a58fb0bad2b 100644
-> --- a/fs/xfs/xfs_ioctl.c
-> +++ b/fs/xfs/xfs_ioctl.c
-> @@ -472,6 +472,13 @@ xfs_fill_fsxattr(
->  
->  	fileattr_fill_xflags(fa, xfs_ip2xflags(ip));
->  
-> +	/*
-> +	 * FS_XFLAG_CASEFOLD is read-only; hide it from the legacy
-> +	 * flags view so chattr's RMW cycle does not pass it back to
-> +	 * xfs_fileattr_set().
-> +	 */
-> +	fa->flags &= ~FS_CASEFOLD_FL;
+Corrupted inline directory metadata can cause offset to exceed
+the inline data size through rec_len processing in
+empty_inline_dir().
 
-I don't understand this at all.  Yes, FS_XFLAG_CASEFOLD is readonly, but
-how does clearing FS_CASEFOLD_FL from the fileattr_get output (without
-clearing XFLAG_CASEFOLD!) solve anything?  This makes the reported
-output inconsistent between fsgetxattr and getflags -- one reports case
-folding, the other reports no casefolding.
+This triggers BUG_ON() in ext4_get_inline_entry(), causing a
+kernel panic before ext4_check_dir_entry() can handle the
+corruption gracefully.
 
-If you want to avoid fileattr_set returning EINVAL when setting
-attributes due to the casefold flag, then don't you want to check the
-flag state vs. xfs_has_asciici() in the *fileattr_set* path?
+Replace BUG_ON() with a NULL return and handle the invalid
+offset in the caller by emitting a warning and exiting safely.
 
---D
+This prevents a kernel panic from corrupted inline directory
+metadata.
 
-> +
->  	if (ip->i_diflags & XFS_DIFLAG_EXTSIZE) {
->  		fa->fsx_extsize = XFS_FSB_TO_B(mp, ip->i_extsize);
->  	} else if (ip->i_diflags & XFS_DIFLAG_EXTSZINHERIT) {
-> 
-> -- 
-> 2.53.0
-> 
-> 
+Signed-off-by: Vineet Agarwal <agarwal.vineet2006@gmail.com>
+---
+ fs/ext4/inline.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..bca9936ed6d0 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1718,7 +1718,8 @@ ext4_get_inline_entry(struct inode *inode,
+ {
+ 	void *inline_pos;
+ 
+-	BUG_ON(offset > ext4_get_inline_size(inode));
++	if (offset > ext4_get_inline_size(inode))
++		return NULL;
+ 
+ 	if (offset < EXT4_MIN_INLINE_DATA_SIZE) {
+ 		inline_pos = (void *)ext4_raw_inode(iloc)->i_block;
+@@ -1773,6 +1774,12 @@ bool empty_inline_dir(struct inode *dir, int *has_inline_data)
+ 	while (offset < inline_len) {
+ 		de = ext4_get_inline_entry(dir, &iloc, offset,
+ 					   &inline_pos, &inline_size);
++		if (!de) {
++			ext4_warning(dir->i_sb,
++				     "bad inline directory (dir #%llu) - invalid offset",
++				     dir->i_ino);
++			goto out;
++		}
+ 		if (ext4_check_dir_entry(dir, NULL, de,
+ 					 iloc.bh, inline_pos,
+ 					 inline_size, offset)) {
+-- 
+2.54.0
+
