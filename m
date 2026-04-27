@@ -1,113 +1,169 @@
-Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f51.google.com (mail-ed1-f51.google.com [209.85.208.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E52D43B7763;
-	Mon, 27 Apr 2026 11:23:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.98
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777289031; cv=none; b=fib4xNRYtfwgoud5quFVCL8U0CQ9nErUeXIfAj48G058ELMtcDuWyMxnZfW04gFdIUwfO6MJ4azzIPLoDwqXeBHf22l55eM/D/eTAqdZa/U9jj9UnCWqBRs4aR49ImDi/7GUBZlgD5aKgkjWZB4R9b1GAWV2gGxnZuLPUHorq4w=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777289031; c=relaxed/simple;
-	bh=WO5Jr9BznyWMFDn+xDVYRXzM+mUsKH3DU+dM0XCL7kQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=mT9i2zIuaaz8drC5BWKM38YXfIMNtg/ut8MJBiRcB9n+ixVfW8g6m4mIypTrL6hvxcoowT5t7xkqz0397K0w3UQUF7Tq+klQKuXDJgJ/Gw1tZeN0bc0yJ10x8uinzPRhJyYa5+nQ7R5un0SG3G7fGIS2IoS00GaUetCpoye8CpM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=kLEKjswr; arc=none smtp.client-ip=115.124.30.98
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D33239A071
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 12:02:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.51
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1777291341; cv=pass; b=DUNTzizzE6X36mMagrRX66Oce3b0QUIZRnjkwS2S3D9UF0+la0L4SR0SlH7BhSM3kjLtOCsuVlPQ7JYAAulx/JIfnRCVJtB9kbOshOU7DxNrhHBXwk2wYmduRz6b1axiBWbdfKh0pz9YBIOwRLsST8yvU1XrFwFWotEdVUyYPLY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1777291341; c=relaxed/simple;
+	bh=f7oNU5FaDQl+Nkbi/6/Ivnlhsv7ogl5Ysmt1I3aNaRg=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=eBCDJEAMBmEEag6ABr4SvCIdWH3oxxxb/lLHiH/UQg9WrDZFr02h8m4uy73EOtkkwN5LyqcZ7Nxwtrmphv7/nEk9rk5g8KHRZ2NWdkH8dcU4cYCU82mq7dUHDjIQIr1/QfE+waLj5250UdilXWR/kxE2rLYSmfN5fcdWC8V1TJw=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=L1Qji05Y; arc=pass smtp.client-ip=209.85.208.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="kLEKjswr"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1777289024; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=UJn4lNe3N+gv4YNs9I/2Ctj5QiiaM6KzePs2I31E4Ec=;
-	b=kLEKjswrqnh+lOQvV315VibgGf1cOH52GBMzDDwUKeZPH9o66vuBv0s+LNvVDv5SHYKdRyF57xrM82+cdXSUyOWnMM3aFQgioWGj8xeC7z/mTYnWX1lhAW7uM+/W4WCgNlLdjf472/DziQhP1f+/4UoFEH1hRIs3azNhok+YvtA=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R921e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=13;SR=0;TI=SMTPD_---0X1mqfjD_1777289022;
-Received: from 30.221.131.19(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X1mqfjD_1777289022 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Mon, 27 Apr 2026 19:23:43 +0800
-Message-ID: <3ea5dc18-0ae0-49d3-b89c-f6f9a7c11ab8@linux.alibaba.com>
-Date: Mon, 27 Apr 2026 19:23:42 +0800
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L1Qji05Y"
+Received: by mail-ed1-f51.google.com with SMTP id 4fb4d7f45d1cf-671c24f23b1so14831414a12.0
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2026 05:02:20 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1777291339; cv=none;
+        d=google.com; s=arc-20240605;
+        b=FSDQ3nZUEaMWBaqW5WFdSkdA2ejVyZbl9cWwY4/iJPLD+g6G1T73OisPzOOQEKDAHb
+         sFmfgRsmeDqkThVbD6UzMH+Qy9lI7LnOhbDga2mUU4/EeOksNsevwXfHJ1G5cvCBn5e0
+         6hSxwtbFea3k6h4UuGzx0BiKTY1cl1bTCQvxihwglji9Z8AZ/+NeJaCnaBTOomKAbLRY
+         LcTljTf22ahWnhohMficuENJ2z3KmQAcYrM0M5yWMagi4ZUQL2OVmwoNMuISVJ2pZPEW
+         JcyWtZ77r3IcFCMlAY1fsQUXQD0OSfLohNZ9e26XebiAc7okpoYEB0N6npRCdUUKW4jE
+         jGeg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=bSw1aMO32TuHJYbNOmDfdqPOAHdqlsV6G0A1b+WUvMY=;
+        fh=j/6lKImDOdfdBttr+wZqRc+2TkPYgXH6MBoCO4MbsB0=;
+        b=gLpR2glIyohf+OlCJVKaT20uzVl0rq879Du+uGkb0fWIQGMhb8eLbqFed62dtxyZM0
+         tI7YWCoa1gBSIKIcHlET0WwltbfdZQlcxqmpQ2/FEVEVK5165PvvHHlRlW2NERUbA3wR
+         rxLUViXtjVdpuKuNPwaLtbdj4ANcwpZM7sjW5LCIP6uow/PSxWIPZ00hKqpPmhvj68gv
+         REdCWNJi46CTImOYimq1vdtQ965PGZaK7qXEApwzyvTiUKoLmxQ/RCMDr29zFs+fRd9H
+         yHVjAR8TaSnIci1GoDn1uFdx6FiAkfB1fqxc2a2H+QfpE4eIeDl9pZP4p0f1t37CdaQS
+         1Dtw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1777291339; x=1777896139; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=bSw1aMO32TuHJYbNOmDfdqPOAHdqlsV6G0A1b+WUvMY=;
+        b=L1Qji05YBSR2Px1RPMh0Qij8MMdumsVHV5YhEmf2miBD194l4h2f4Z7suJgFn1jtUi
+         nzfd7Qh5/RECtOiX7nuAY1uhhuzoTTrXeMLpEZrhbXjht25kKCDiiIthtTp3DVHH5Nqx
+         eMrNP697teAtC8Hv70hpPCgecgtZdpvh2VsT5utyY5amkOAKY+Yw0YFGZ/BKhJ1O6/Lw
+         qfJ3koSwuyZNC3NIanPJvHA7FAEzxMODU8ZsjqoAInWEwJvYyPQ2vbfnqaO+SOYsAp7/
+         a/kbMqdC5MiCHNxJE+BLEO8y0jN6NVDA5IEUYIDJmJJouMA+qdoOSNLNGUIDhH2IoA7V
+         DMfA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1777291339; x=1777896139;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=bSw1aMO32TuHJYbNOmDfdqPOAHdqlsV6G0A1b+WUvMY=;
+        b=jS5+WL/sO1IY4p3tn6fkG6lHDaDR2BdvMDT8rc0RucAEgA/gYfcD+R3KIgX1CaxvSQ
+         NB9NHnPiyRMoZPrmcOIb+oQQa36fIB1V7b+Kzc/NTjWqgrtEC4XfrbCzGFkLlHa8UXHN
+         WhbhwrWtOEpFdRrvudj8U8pW4P3AZWYABlXTkf7uF/6IIahP3WJbKyAOUdUzZ04Nz/vA
+         /bj8YHs6GYNy0sQMvXMDqPK5m4B35Z/hZx5XqX7cAv0OnBBNeyXSHre6tCRVdJiotGOD
+         /eDXc8H45/Pi33/ZL3f9PMbRkksme/mrTDfZmkAA+JzxtX89qgndExR1KQXWSreWHuGw
+         TU1g==
+X-Forwarded-Encrypted: i=1; AFNElJ//WnTYK/j0hgulAQsWk9qlfmhpe2QZrK83qdPZQBYa3w6d/jTy9GTWYz9IzCmY642S0syTqKHmHlIc@vger.kernel.org
+X-Gm-Message-State: AOJu0YwJx6HnW/9Mjy6K3RbPHsSqmIP2uTroQxFzJeBVVYgSNow+9iYM
+	V3deETGfA817ACoRVNskd0gA7lFESPcG2iFyqCQ6EqYGgFFTG3IlW7dKKXy0nMQZ3mBVhK+wvus
+	QTRUQUrJ965yM2pjeqRo27DxUqpJ/4mg=
+X-Gm-Gg: AeBDiesIEXNzl8sdgVi6jsg2Sy64jZCdJATQ5A0/19cpULyJf18t+3Zut+ii/x3dnGD
+	8Pt1pj47r23Ie2hlGq/OtHxd7cqT0Z9nK6E+pkZrqH2x8Pg0922AvislPRWvJKqJWldXIi/dY0J
+	AJC1w5778yvnacH+PRMBU3OV3jnhDT3tx5cpZF/um+hkYJP55VI/3xOtOuZzgdGi98yMtrIN+Ta
+	f4WZojmrC8ZU6bsdpzx23uy65+TsmYItEY4q1nt5AuMRehnA/Fgx5LdqG5UA08l3gS2I4vxILIQ
+	PyWYnWgVdbwdOQyQG827z97cUrcO
+X-Received: by 2002:a05:6402:c46:b0:670:d548:da79 with SMTP id
+ 4fb4d7f45d1cf-672bfd87175mr18491070a12.3.1777291337998; Mon, 27 Apr 2026
+ 05:02:17 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix LOGFLUSH shutdown ordering to allow
- ordered-mode data writeback
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
- yukuai@fnnas.com
-References: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+References: <20260424-case-sensitivity-v11-0-de5619beddaf@oracle.com>
+ <20260424-case-sensitivity-v11-12-de5619beddaf@oracle.com> <isfgwmd5hxjfn7dj7p54yzlhumx2hrkt3zw7fscs2ywm57g3hu@co27drpx24lq>
+In-Reply-To: <isfgwmd5hxjfn7dj7p54yzlhumx2hrkt3zw7fscs2ywm57g3hu@co27drpx24lq>
+From: Lionel Cons <lionelcons1972@gmail.com>
+Date: Mon, 27 Apr 2026 14:02:00 +0200
+X-Gm-Features: AVHnY4JzeOH_kK3jDOjK2FxeQTqZ9zkWJjZAaa-9jIyvUG0bleb4vaJ230stvGc
+Message-ID: <CAPJSo4WmRu_64TxBsaimWOqz3VAU0TZ1H-_hw36HSqzQULm39w@mail.gmail.com>
+Subject: Re: [PATCH v11 12/15] isofs: Implement fileattr_get for case sensitivity
+To: Jan Kara <jack@suse.cz>
+Cc: Chuck Lever <cel@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-api@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org, sj1557.seo@samsung.com, 
+	yuezhang.mo@sony.com, almaz.alexandrovich@paragon-software.com, 
+	slava@dubeyko.com, glaubitz@physik.fu-berlin.de, frank.li@vivo.com, 
+	tytso@mit.edu, adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, 
+	pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com, 
+	trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, 
+	hansg@kernel.org, senozhatsky@chromium.org, 
+	Chuck Lever <chuck.lever@oracle.com>, Roland Mainz <roland.mainz@nrubsig.org>
+Content-Type: text/plain; charset="UTF-8"
 
+On Mon, 27 Apr 2026 at 12:47, Jan Kara <jack@suse.cz> wrote:
+>
+> On Fri 24-04-26 21:53:14, Chuck Lever wrote:
+> > From: Chuck Lever <chuck.lever@oracle.com>
+> >
+> > Upper layers such as NFSD need a way to query whether a
+> > filesystem handles filenames in a case-sensitive manner so
+> > they can provide correct semantics to remote clients. Without
+> > this information, NFS exports of ISO 9660 filesystems cannot
+> > advertise their filename case behavior.
+> >
+> > Implement isofs_fileattr_get() to report ISO 9660 case handling
+> > behavior via the FS_XFLAG_CASEFOLD flag. The 'check=r' (relaxed)
+> > mount option enables case-insensitive lookups, and this setting
+> > determines the value reported. By default, Joliet extensions
+> > operate in relaxed mode while plain ISO 9660 uses strict
+> > (case-sensitive) mode. All ISO 9660 variants are case-preserving,
+> > meaning filenames are stored exactly as they appear on the disc.
+> >
+> > Case handling is a superblock-wide property, so the callback
+> > must report the same value for every inode type. Regular files
+> > previously had no inode_operations; introduce
+> > isofs_file_inode_operations to carry the callback. Symlinks
+> > previously shared page_symlink_inode_operations; introduce
+> > isofs_symlink_inode_operations, which wires page_get_link
+> > alongside the callback, so that fileattr queries on a symlink
+> > reach the isofs implementation instead of returning
+> > -ENOIOCTLCMD. The flag is set in both fa->fsx_xflags and
+> > fa->flags so FS_IOC_FSGETXATTR and FS_IOC_GETFLAGS agree.
+> >
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> > Reviewed-by: Roland Mainz <roland.mainz@nrubsig.org>
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>
+> ...
+>
+> > @@ -281,6 +293,18 @@ const struct file_operations isofs_dir_operations =
+> >  const struct inode_operations isofs_dir_inode_operations =
+> >  {
+> >       .lookup = isofs_lookup,
+> > +     .fileattr_get = isofs_fileattr_get,
+> > +};
+> > +
+> > +const struct inode_operations isofs_file_inode_operations =
+> > +{
+> > +     .fileattr_get = isofs_fileattr_get,
+> > +};
+> > +
+> > +const struct inode_operations isofs_symlink_inode_operations =
+> > +{
+> > +     .get_link = page_get_link,
+> > +     .fileattr_get = isofs_fileattr_get,
+> >  };
+>
+> Hum, I thought casefolding is a directory attribute. At least I don't see
+> a big point in reporting it for regular files or symlinks (and then why not
+> report it for device nodes or named pipes?). So why did you decide for this
+> change?
 
-On 2026/4/24 18:42, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
->
-> In EXT4_GOING_FLAGS_LOGFLUSH mode, the EXT4_FLAGS_SHUTDOWN flag was set
-> before calling ext4_force_commit().  This caused ordered-mode data
-> writeback (triggered by journal commit) to fail with -EIO, since
-> ext4_do_writepages() checks for the shutdown flag.  The journal would
-> then be aborted prematurely before the commit could succeed.
->
-> Fix this by calling ext4_force_commit() first, then setting the
-> shutdown flag, so that pending data can be written back correctly.
->
-> Note that moving ext4_force_commit() before setting the shutdown flag
-> creates a small window in which new writes may occur and generate new
-> journal transactions.  When the journal is subsequently aborted, the
-> new transactions will not be able to write to disk.  This is intentional
-> because LOGFLUSH's semantics are to flush pre-existing journal entries
-> before shutdown, not to guarantee atomicity for writes that race with
-> the ioctl.
->
-> Fixes: 783d94854499 ("ext4: add EXT4_IOC_GOINGDOWN ioctl")
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Where do you see this being a per-directory attribute in
+https://web.archive.org/web/20170404043745/http://www.ymi.com/ymi/sites/default/files/pdf/Rockridge.pdf
 
-Looks good to me.
-
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
-
-> ---
-> This fix addresses my new generic/970 test, which fails during the file
-> size verification after shutdown and remount.
->
->  https://lore.kernel.org/fstests/20260424092228.1396658-1-yi.zhang@huaweicloud.com/
->
->  fs/ext4/ioctl.c | 12 +++++++++---
->  1 file changed, 9 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index 1d0c3d4bdf47..110e3fb194ec 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -830,11 +830,17 @@ int ext4_force_shutdown(struct super_block *sb, u32 flags)
->  		bdev_thaw(sb->s_bdev);
->  		break;
->  	case EXT4_GOING_FLAGS_LOGFLUSH:
-> +		/*
-> +		 * Call ext4_force_commit() before setting EXT4_FLAGS_SHUTDOWN.
-> +		 * This is because in data=ordered mode, journal commit
-> +		 * triggers data writeback which fails if shutdown is already
-> +		 * set, causing the journal to be aborted prematurely before
-> +		 * the commit succeeds.
-> +		 */
-> +		(void) ext4_force_commit(sb);
->  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
-> -		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
-> -			(void) ext4_force_commit(sb);
-> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
->  			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
-> -		}
->  		break;
->  	case EXT4_GOING_FLAGS_NOLOGFLUSH:
->  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+Lionel
