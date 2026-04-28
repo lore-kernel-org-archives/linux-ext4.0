@@ -1,383 +1,559 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from sg-3-114.ptr.tlmpb.com (sg-3-114.ptr.tlmpb.com [101.45.255.114])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73A353D75D6;
-	Tue, 28 Apr 2026 09:09:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69E833F23DA
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2026 12:00:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=101.45.255.114
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777367357; cv=none; b=nDULmUKZiPVDG0hi8msNJ//dxPEW8eWHLuRig8mbtxCeKVycuMbO1Jz2bWzHo6ATU2OHqd1iN6RGuWe2zp/Wz9RVqQm2bIO65mDfvRSoEv3DhzUSpXSXkaMuFxJXwi906bJXMjA5wz13SdRaep7DLHY+hgv1atMLbNTHSRi1C8U=
+	t=1777377666; cv=none; b=mVJGoMbyBtioRvCERn4fdrAEMe7KnJnKgW35uzKwpmKZ7/VrHpahUB9Dcc7BFOHMoKvLB+62KsJ/l4VnW14i5lTsdtakjHmvGc8ilskvNZBVzhnqL7mgZBqJ91zbhx8/yTF+zvxriWt9P2+4OztHrjli2V+9M1GAW8J8cFH0dEA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777367357; c=relaxed/simple;
-	bh=7dO8kxAqwen6ZwLHZwgZ8a1/uMCPwzCYzicWNCW6+0Q=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=BV0g3y78MbVO43wrwcfwr9yjxmyyeQuO1fRUOeYuw1G9S++2kXO1aZSCKqLu2oGAtMVOP65kBG07M6c8z30/oa3XZWYc4n+ZGEi6+rvKSdu7jNwwAmydjVNHrloC7TbuGqX4i5apEEbqAQ0ZCdz1jEfcqR+My1GyKE1Y6xYMiUQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4g4Z1P0y0SzKHMZd;
-	Tue, 28 Apr 2026 16:51:53 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 1C93540561;
-	Tue, 28 Apr 2026 16:52:23 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP4 (Coremail) with SMTP id gCh0CgAHz1pDdfBpnJRfAQ--.9999S3;
-	Tue, 28 Apr 2026 16:52:20 +0800 (CST)
-Message-ID: <3349cfbe-8ffe-4032-8ba9-7f6cf037c020@huaweicloud.com>
-Date: Tue, 28 Apr 2026 16:52:18 +0800
+	s=arc-20240116; t=1777377666; c=relaxed/simple;
+	bh=MherJ4arDpIzWHxnhFrg1Pwje4BFbZI3nQCsDzilLP4=;
+	h=From:To:Subject:Date:Mime-Version:Content-Type:Cc:Message-Id; b=MW4v24Rh1SG5EkOMLs70jdlkiOWELwxgaq0Kxx9kGZlpwNmjDzkTbhqhZEn2qp1ntfTo42Whu02bkL4YpV0mskeS6zh6Ly/zxTIvBCut1bNVDlVR81zg0y4Z0QOy+smihFfLud68D7PPYT4nW+3I1G1bhLU2neetSthmTdRdQR0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=UCKZORJz; arc=none smtp.client-ip=101.45.255.114
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="UCKZORJz"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1777376933; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=tuMlAllb2gii9Wov5/+jxIYfj8iGsOrvw3kr3rxAS8Y=;
+ b=UCKZORJzEDaLuorc5PF0nimNJqxFnd9rL75qP1ogJpIPyLd9/emQ1c8+8soSy5n/Jngaiq
+ LJsJ5Yf9Z2IvS6aVALpo4HNO9/S0LttlCSoXrBsaixh5yf3meHZLAeM1iKeJo5Z/e+E/Lh
+ pwV0vkcm0g+NBNvtHtBW7s9iop6htkq92EYmP/u1GH66vdKH/IBmUjbY9N1zhVBFMXUQEw
+ 1doEwl2bPvYWlm8I85ZWELsyaLmCNxTgtzJDvcZz0GS9KXfGHDsvtYHHvhMS7BnHd4gH1C
+ t1ZqRD9185fFU9FvYKUxtdcugnVpz+uwQ7vAvmqjE24pc5QcNm4bglybK5tw9A==
+From: "Fengnan Chang" <changfengnan@bytedance.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Content-Transfer-Encoding: 7bit
+To: <brauner@kernel.org>, <djwong@kernel.org>, <hch@infradead.org>, 
+	<ojaswin@linux.ibm.com>, <dgc@kernel.org>, <linux-xfs@vger.kernel.org>, 
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>
+X-Original-From: Fengnan Chang <changfengnan@bytedance.com>
+X-Lms-Return-Path: <lba+269f09ea3+16e0c1+vger.kernel.org+changfengnan@bytedance.com>
+Subject: [PATCH v2] iomap: add simple read path for small direct I/O
+Date: Tue, 28 Apr 2026 19:47:30 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] generic/790: test post-EOF gap zeroing persistence
-To: Brian Foster <bfoster@redhat.com>
-Cc: fstests@vger.kernel.org, zlang@kernel.org, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, jack@suse.cz, yi.zhang@huawei.com,
- yizhang089@gmail.com, yangerkun@huawei.com
-References: <20260424092228.1396658-1-yi.zhang@huaweicloud.com>
- <aetreLr6tt1Vb-GJ@bfoster>
- <038228d9-8058-43e0-8be9-b8afc9e8397c@huaweicloud.com>
- <ae9euwyg53TRutsK@bfoster>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <ae9euwyg53TRutsK@bfoster>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAHz1pDdfBpnJRfAQ--.9999S3
-X-Coremail-Antispam: 1UD129KBjvAXoW3uF13ZFykWr15JFWrur4xXrb_yoW8JF1DWo
-	WfWrW7Xw18Cry8AFn0kayqqryj9anYgF18JFWY9rW5J3WYqa1UCr1xAw18Ja9akr1j9FWD
-	Ja4kKrnxZrWUXF1fn29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
-	AaLaJ3UjIYCTnIWjp_UUU5K7kC6x804xWl14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK
-	8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4
-	AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xvwVC0I7IYx2IY6xkF
-	7I0E14v26rxl6s0DM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07UAwIDUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Cc: "Fengnan Chang" <changfengnan@bytedance.com>
+Message-Id: <20260428114730.14384-1-changfengnan@bytedance.com>
 
-On 4/27/2026 9:03 PM, Brian Foster wrote:
-> On Sat, Apr 25, 2026 at 11:06:27AM +0800, Zhang Yi wrote:
->> On 4/24/2026 9:09 PM, Brian Foster wrote:
->>> On Fri, Apr 24, 2026 at 05:22:28PM +0800, Zhang Yi wrote:
->>>> From: Zhang Yi <yi.zhang@huawei.com>
->>>>
->>>> Test that extending a file past a non-block-aligned EOF correctly
->>>> zero-fills the gap [old_EOF, block_boundary), and that this zeroing
->>>> persists through a filesystem shutdown+remount cycle.
->>>>
->>>> Stale data beyond EOF can persist on disk when append write data blocks
->>>> are flushed before the on-disk file size update, or when concurrent
->>>> append writeback and mmap writes persist non-zero data past EOF.
->>>> Subsequent post-EOF operations (append write, fallocate, truncate up)
->>>> must zero-fill and persist the gap to prevent exposing stale data.
->>>>
->>>> The test pollutes the file's last physical block (via FIEMAP + raw
->>>> device write) with a sentinel pattern beyond i_size, then performs each
->>>> extend operation and verifies the gap is zeroed both in memory and on
->>>> disk.
->>>>
->>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>>> ---
->>>> v1->v2:
->>>>  - Add _require_no_realtime to prevent testing on XFS realtime devices,
->>>>    where file data may reside on $SCRATCH_RTDEV.
->>>>  - Add _exclude_fs btrfs since FIEMAP returns logical addresses, not
->>>>    physical device offsets, writing to these offsets on $SCRATCH_DEV
->>>>    would corrupt the filesystem in multi-device setups. Besides, since
->>>>    btrfs doesn't support shutdown right now, we can support it later.
->>>>  - Add -v flag to od in _check_gap_zero() to prevent line folding of
->>>>    identical consecutive lines.
->>>>  - Add expected_new_sz parameter to _test_eof_zeroing(), verify file
->>>>    size was not rolled back after shutdown+remount cycle, and also drop
->>>>    the unnecessary file size check before the shutdown as well.
->>>>  - Clarify the comment regarding when stale data beyond EOF can persist.
->>>>
->>>
->>> Thanks for the tweaks. This all LGTM from a review standpoint. I gave it
->>> a quick test on latest master and I see a few failures in a couple runs:
->>>
->>> - On XFS (mkfs defaults) I saw one unexpected i_size failure and one
->>>   zeroing failure, both on write extension fwiw.
->>
->> Previously, I only discovered the zeroing failure of append write. This
->> is because xfs_file_write_checks() -> xfs_file_write_zero_eof() only
->> zeroes the gap range in the page cache, without providing any
->> synchronous or asynchronous persistence (instead, truncate up does
->> synchronously writeback in xfs_vn_setattr_size(), and ext4 achieves
->> persistence via asynchronous writeback in data=ordered mode). So I think
->> this is a XFS problem.
->>
-> 
-> Ah Ok.. the truncate flush has been there for a while to combat the NULL
-> files problem, and the zeroing check ties into that. I suspect the
-> reason we don't see this often is typical ascending offset writeback
-> order, whereas this test is doing a targeted sync range of a later
-> offset in the file (i.e. technically not overlapping with the range that
-> was zeroed internally).
+When running 4K random read workloads on high-performance Gen5 NVMe
+SSDs, the software overhead in the iomap direct I/O path
+(__iomap_dio_rw) becomes a significant bottleneck.
 
-Yes, this use case is quite rare.
+Using io_uring with poll mode for a 4K randread test on a raw block
+device:
+taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
+-n1 -P1 /dev/nvme10n1
+Result: ~3.2M IOPS
 
-> 
-> I guess the simple thing to do there would be to similarly flush on
-> write extension. I'd want to think about that just a bit because we
-> haven't historically flushed there and I know the zeroing improvements
-> I've made in iomap have caused a couple performance regressions along
-> the way related to aggressive flushing that had to be fixed.
+Running the exact same workload on ext4 and XFS:
+taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
+-n1 -P1 /mnt/testfile
+Result: ~1.84M IOPS
 
-I am also concerned that synchronous write-back might introduce
-performance regressions. Although the probability is relatively low
-(I'm not sure), perhaps some users who use post-EOF writing will
-complain.
+Profiling the ext4 workload reveals that a significant portion of CPU
+time is spent on memory allocation and the iomap state machine
+iteration:
+  5.33%  [kernel]  [k] __iomap_dio_rw
+  3.26%  [kernel]  [k] iomap_iter
+  2.37%  [kernel]  [k] iomap_dio_bio_iter
+  2.35%  [kernel]  [k] kfree
+  1.33%  [kernel]  [k] iomap_dio_complete
 
-In this corner case, ext4+iomap also encountered the same dilemma, as it
-can no longer use data=ordered to achieve asynchronous persistence.
+Introduce simple reads to reduce the overhead of iomap, simple read path
+is triggered when the request satisfies:
+- I/O size is <= inode blocksize (fits in a single block, no splits).
+- No custom `iomap_dio_ops` (dops) registered by the filesystem.
 
-FYI, the current approach of ext4+iomap is to submit an I/O immediately
-after zeroing the EOF block, but it does not wait for the I/O to
-complete. In the subsequent endio process, it waits for this zero I/O to
-complete before updating i_disksize beyond the end of the gap.
+After this optimization, the heavy generic functions disappear from the
+profile, replaced by a single streamlined execution path:
+  4.83%  [kernel]  [k] iomap_dio_simple_read
 
-Best Regards,
-Yi
+With this patch, 4K random read IOPS on ext4 increases from 1.84M to
+2.19M in the original single-core io_uring poll-mode workload.
 
-> 
-> Maybe this is less of an issue now, but regardless if my assumptions are
-> correct here than I agree this isn't a test issue.
-> 
->> Regarding the i_size failure, I did not directly reproduce this issue.
->> After analysis, I believe it is because the test case did not include
->> the -a option in sync_range, meaning it did not wait for IO writeback
->> completion and file size update persistence. I reproduced this issue by
->> adding a delay in the XFS end IO path. This is a problem with the test
->> case, and I will fix it in v3. Thank you for pointing this out.
->>
-> 
-> Makes sense. It will be interesting to see if we can still reproduce the
-> above issue with this change.
-> 
->>> - On ext4 I saw a few unexpected i_size failures (both with mkfs
->>>   defaults and 1k block size).
->>>
->>
->> This is an ext4 issue on the shutdown path. Since ext4 set the shutdown
->> flag too early, it was unable to write back ordered zero data when
->> flushing the journal, which led to a journal abort and prevented the file
->> size update from being persisted. I have submitted a patch to fix this
->> issue. Please see below link for details.
->>
->>  https://lore.kernel.org/linux-ext4/20260424104201.1930823-1-yi.zhang@huaweicloud.com/
->>
-> 
-> Ok, thanks.
-> 
-> Brian
-> 
->> Thanks
->> Yi.
->>
->>> I haven't dug into anything beyond that. Does this match what you're
->>> seeing on current kernels or are these unexpected failures?
->>>
->>> Brian
->>>
->>>>  tests/generic/790     | 164 ++++++++++++++++++++++++++++++++++++++++++
->>>>  tests/generic/790.out |   4 ++
->>>>  2 files changed, 168 insertions(+)
->>>>  create mode 100755 tests/generic/790
->>>>  create mode 100644 tests/generic/790.out
->>>>
->>>> diff --git a/tests/generic/790 b/tests/generic/790
->>>> new file mode 100755
->>>> index 00000000..2adc06f8
->>>> --- /dev/null
->>>> +++ b/tests/generic/790
->>>> @@ -0,0 +1,164 @@
->>>> +#! /bin/bash
->>>> +# SPDX-License-Identifier: GPL-2.0
->>>> +# Copyright (c) 2026 Huawei.  All Rights Reserved.
->>>> +#
->>>> +# FS QA Test No. 790
->>>> +#
->>>> +# Test that extending a file past a non-block-aligned EOF correctly zero-fills
->>>> +# the gap [old_EOF, block_boundary), and that this zeroing persists through a
->>>> +# filesystem shutdown+remount cycle.
->>>> +#
->>>> +# Stale data beyond EOF can persist on disk when:
->>>> +# 1) append write data blocks are flushed before the on-disk file size update,
->>>> +#    and the system crashes in this window.
->>>> +# 2) concurrent append writeback and mmap writes persist non-zero data past EOF.
->>>> +#
->>>> +# Subsequent post-EOF operations (append write, fallocate, truncate up) must
->>>> +# zero-fill and persist the gap to prevent exposing stale data.
->>>> +#
->>>> +# The test pollutes the file's last physical block (via FIEMAP + raw device
->>>> +# write) with a sentinel pattern beyond i_size, then performs each extend
->>>> +# operation and verifies the gap is zeroed both in memory and on disk.
->>>> +#
->>>> +. ./common/preamble
->>>> +_begin_fstest auto quick rw shutdown
->>>> +
->>>> +. ./common/filter
->>>> +
->>>> +_require_scratch
->>>> +_require_block_device $SCRATCH_DEV
->>>> +_require_no_realtime
->>>> +_require_scratch_shutdown
->>>> +_require_metadata_journaling $SCRATCH_DEV
->>>> +
->>>> +# FIEMAP on Btrfs returns logical addresses within the filesystem's address
->>>> +# space, not physical device offsets. Writing to these offsets on $SCRATCH_DEV
->>>> +# would corrupt the filesystem in multi-device setups.
->>>> +_exclude_fs btrfs
->>>> +
->>>> +_require_xfs_io_command "fiemap"
->>>> +_require_xfs_io_command "falloc"
->>>> +_require_xfs_io_command "pwrite"
->>>> +_require_xfs_io_command "truncate"
->>>> +_require_xfs_io_command "sync_range"
->>>> +
->>>> +# Check that gap region [offset, offset+nbytes) is entirely zero
->>>> +_check_gap_zero()
->>>> +{
->>>> +	local file="$1"
->>>> +	local offset="$2"
->>>> +	local nbytes="$3"
->>>> +	local label="$4"
->>>> +	local data
->>>> +	local stripped
->>>> +
->>>> +	data=$(od -A n -t x1 -v -j $offset -N $nbytes "$file" 2>/dev/null)
->>>> +
->>>> +	# Remove whitespace and check if any byte is non-zero
->>>> +	stripped=$(printf '%s' "$data" | tr -d ' \n\t')
->>>> +	if [ -n "$stripped" ] && ! echo "$stripped" | grep -qE "^0+$"; then
->>>> +		echo "FAIL: non-zero data in gap [$offset,$((offset + nbytes))) $label"
->>>> +		_hexdump -N $((offset + nbytes)) "$file"
->>>> +		return 1
->>>> +	fi
->>>> +	return 0
->>>> +}
->>>> +
->>>> +# Get the physical block offset (in bytes) of the file's first block on device
->>>> +_get_phys_offset()
->>>> +{
->>>> +	local file="$1"
->>>> +	local fiemap_output
->>>> +	local phys_blk
->>>> +
->>>> +	fiemap_output=$($XFS_IO_PROG -r -c "fiemap -v" "$file" 2>/dev/null)
->>>> +	phys_blk=$(echo "$fiemap_output" | _filter_xfs_io_fiemap | head -1 | awk '{print $3}')
->>>> +	if [ -z "$phys_blk" ]; then
->>>> +		echo ""
->>>> +		return
->>>> +	fi
->>>> +	# Convert 512-byte blocks to bytes
->>>> +	echo $((phys_blk * 512))
->>>> +}
->>>> +
->>>> +_test_eof_zeroing()
->>>> +{
->>>> +	local test_name="$1"
->>>> +	local extend_cmd="$2"
->>>> +	local expected_new_sz="$3"
->>>> +	local file=$SCRATCH_MNT/testfile_${test_name}
->>>> +
->>>> +	echo "$test_name" | tee -a $seqres.full
->>>> +
->>>> +	# Compute non-block-aligned EOF offset
->>>> +	local gap_bytes=16
->>>> +	local eof_offset=$((blksz - gap_bytes))
->>>> +
->>>> +	# Step 1: Write one full block to ensure the filesystem allocates a
->>>> +	#         physical block for the file instead of using inline data.
->>>> +	$XFS_IO_PROG -f -c "pwrite -S 0x5a 0 $blksz" -c fsync \
->>>> +		"$file" >> $seqres.full 2>&1
->>>> +
->>>> +	# Step 2: Get physical block offset on device via FIEMAP
->>>> +	local phys_offset
->>>> +	phys_offset=$(_get_phys_offset "$file")
->>>> +	if [ -z "$phys_offset" ]; then
->>>> +		_fail "$test_name: failed to get physical block offset via fiemap"
->>>> +	fi
->>>> +
->>>> +	# Step 3: Truncate file to non-block-aligned size and fsync.
->>>> +	#         The on-disk region [eof_offset, blksz) may or may not be
->>>> +	#         zeroed by the filesystem at this point.
->>>> +	$XFS_IO_PROG -c "truncate $eof_offset" -c fsync \
->>>> +		"$file" >> $seqres.full 2>&1
->>>> +
->>>> +	# Step 4: Unmount and restore the physical block to all-0x5a on disk.
->>>> +	#         This bypasses the kernel's pagecache EOF-zeroing to ensure
->>>> +	#         the stale pattern is present on disk. Then remount.
->>>> +	_scratch_unmount
->>>> +	$XFS_IO_PROG -d -c "pwrite -S 0x5a $phys_offset $blksz" \
->>>> +		$SCRATCH_DEV >> $seqres.full 2>&1
->>>> +	_scratch_mount >> $seqres.full 2>&1
->>>> +
->>>> +	# Step 5: Execute the extend operation.
->>>> +	$XFS_IO_PROG -c "$extend_cmd" "$file" >> $seqres.full 2>&1
->>>> +
->>>> +	# Step 6: Verify gap [eof_offset, blksz) is zeroed BEFORE shutdown
->>>> +	_check_gap_zero "$file" $eof_offset $gap_bytes "before shutdown" || return 1
->>>> +
->>>> +	# Step 7: Sync the extended range and shutdown the filesystem with
->>>> +	#         journal flush. This persists the file size extending, and
->>>> +	#         the filesystem should persist the zeroed data in the gap
->>>> +	#         range as well.
->>>> +	if [ "$extend_cmd" != "${extend_cmd#pwrite}" ]; then
->>>> +		$XFS_IO_PROG -c "sync_range -w $blksz $blksz" \
->>>> +			"$file" >> $seqres.full 2>&1
->>>> +	fi
->>>> +	_scratch_shutdown -f
->>>> +
->>>> +	# Step 8: Remount and verify gap is still zeroed
->>>> +	_scratch_cycle_mount
->>>> +
->>>> +	# Verify file size was not rolled back after shutdown+remount
->>>> +	local sz
->>>> +	sz=$(stat -c %s "$file")
->>>> +	if [ "$sz" -ne "$expected_new_sz" ]; then
->>>> +		_fail "$test_name: file size rolled back after shutdown+remount: $sz != $expected_new_sz"
->>>> +	fi
->>>> +
->>>> +	_check_gap_zero "$file" $eof_offset $gap_bytes "after shutdown+remount" || return 1
->>>> +}
->>>> +
->>>> +_scratch_mkfs >> $seqres.full 2>&1
->>>> +_scratch_mount
->>>> +
->>>> +blksz=$(_get_block_size $SCRATCH_MNT)
->>>> +
->>>> +# Test three variants of EOF-extending operations
->>>> +_test_eof_zeroing "append_write" "pwrite -S 0x42 $blksz $blksz" $((blksz * 2))
->>>> +_test_eof_zeroing "truncate_up" "truncate $((blksz * 2))" $((blksz * 2))
->>>> +_test_eof_zeroing "fallocate" "falloc $blksz $blksz" $((blksz * 2))
->>>> +
->>>> +# success, all done
->>>> +status=0
->>>> +exit
->>>> diff --git a/tests/generic/790.out b/tests/generic/790.out
->>>> new file mode 100644
->>>> index 00000000..e5e2cc09
->>>> --- /dev/null
->>>> +++ b/tests/generic/790.out
->>>> @@ -0,0 +1,4 @@
->>>> +QA output created by 790
->>>> +append_write
->>>> +truncate_up
->>>> +fallocate
->>>> -- 
->>>> 2.52.0
->>>>
->>
-> 
+Below are the test results using fio:
 
+  fs    workload       qd    simple=0      simple=1      gain
+  ext4  libaio         1     18,738        18,761        +0.12%
+  ext4  libaio         128   455,383       471,473       +3.53%
+  ext4  libaio         256   453,273       468,555       +3.37%
+  ext4  libaio         512   447,320       469,036       +4.85%
+  ext4  io_uring       1     18,798        18,824        +0.14%
+  ext4  io_uring       128   503,834       528,353       +4.87%
+  ext4  io_uring       256   503,635       527,617       +4.76%
+  ext4  io_uring       512   501,802       527,882       +5.20%
+  ext4  io_uring_poll  1     19,246        19,270        +0.12%
+  ext4  io_uring_poll  128   1,463,343     1,565,019     +6.95%
+  ext4  io_uring_poll  256   1,651,112     1,888,182     +14.36%
+  ext4  io_uring_poll  512   1,632,641     1,893,259     +15.96%
+  xfs   libaio         1     18,715        18,734        +0.10%
+  xfs   libaio         128   452,974       473,459       +4.52%
+  xfs   libaio         256   454,435       470,855       +3.61%
+  xfs   libaio         512   456,796       473,047       +3.56%
+  xfs   io_uring       1     18,755        18,795        +0.21%
+  xfs   io_uring       128   509,459       534,819       +4.98%
+  xfs   io_uring       256   509,853       536,051       +5.14%
+  xfs   io_uring       512   507,926       533,558       +5.05%
+  xfs   io_uring_poll  1     19,230        19,269        +0.20%
+  xfs   io_uring_poll  128   1,467,398     1,567,840     +6.84%
+  xfs   io_uring_poll  256   1,636,852     1,878,917     +14.79%
+  xfs   io_uring_poll  512   1,639,495     1,874,813     +14.35%
+
+Assisted-by: Gemini:gemini-3.1-pro-preview
+Assisted-by: Codex:gpt-5-5
+Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
+---
+ fs/iomap/direct-io.c | 382 +++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 371 insertions(+), 11 deletions(-)
+
+diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+index e911daedff65a..807d8c628a464 100644
+--- a/fs/iomap/direct-io.c
++++ b/fs/iomap/direct-io.c
+@@ -9,6 +9,9 @@
+ #include <linux/iomap.h>
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/fserror.h>
++#include <linux/kobject.h>
++#include <linux/sysfs.h>
++#include <linux/init.h>
+ #include "internal.h"
+ #include "trace.h"
+ 
+@@ -236,20 +239,26 @@ static void iomap_dio_done(struct iomap_dio *dio)
+ 	iomap_dio_complete_work(&dio->aio.work);
+ }
+ 
+-static void __iomap_dio_bio_end_io(struct bio *bio, bool inline_completion)
++static inline void iomap_dio_bio_release_pages(struct bio *bio,
++		unsigned int dio_flags, bool error)
+ {
+-	struct iomap_dio *dio = bio->bi_private;
+-
+-	if (dio->flags & IOMAP_DIO_BOUNCE) {
+-		bio_iov_iter_unbounce(bio, !!dio->error,
+-				dio->flags & IOMAP_DIO_USER_BACKED);
++	if (dio_flags & IOMAP_DIO_BOUNCE) {
++		bio_iov_iter_unbounce(bio, error,
++				dio_flags & IOMAP_DIO_USER_BACKED);
+ 		bio_put(bio);
+-	} else if (dio->flags & IOMAP_DIO_USER_BACKED) {
++	} else if (dio_flags & IOMAP_DIO_USER_BACKED) {
+ 		bio_check_pages_dirty(bio);
+ 	} else {
+ 		bio_release_pages(bio, false);
+ 		bio_put(bio);
+ 	}
++}
++
++static void __iomap_dio_bio_end_io(struct bio *bio, bool inline_completion)
++{
++	struct iomap_dio *dio = bio->bi_private;
++
++	iomap_dio_bio_release_pages(bio, dio->flags, !!dio->error);
+ 
+ 	/* Do not touch bio below, we just gave up our reference. */
+ 
+@@ -387,6 +396,14 @@ static ssize_t iomap_dio_bio_iter_one(struct iomap_iter *iter,
+ 	return ret;
+ }
+ 
++static inline unsigned int iomap_dio_alignment(struct inode *inode,
++		struct block_device *bdev, unsigned int dio_flags)
++{
++	if (dio_flags & IOMAP_DIO_FSBLOCK_ALIGNED)
++		return i_blocksize(inode);
++	return bdev_logical_block_size(bdev);
++}
++
+ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
+ {
+ 	const struct iomap *iomap = &iter->iomap;
+@@ -405,10 +422,7 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
+ 	 * File systems that write out of place and always allocate new blocks
+ 	 * need each bio to be block aligned as that's the unit of allocation.
+ 	 */
+-	if (dio->flags & IOMAP_DIO_FSBLOCK_ALIGNED)
+-		alignment = fs_block_size;
+-	else
+-		alignment = bdev_logical_block_size(iomap->bdev);
++	alignment = iomap_dio_alignment(inode, iomap->bdev, dio->flags);
+ 
+ 	if ((pos | length) & (alignment - 1))
+ 		return -EINVAL;
+@@ -880,12 +894,350 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ }
+ EXPORT_SYMBOL_GPL(__iomap_dio_rw);
+ 
++struct iomap_dio_simple_read {
++	struct kiocb		*iocb;
++	size_t			size;
++	unsigned int		dio_flags;
++	atomic_t		state;
++	union {
++		struct task_struct	*waiter;
++		struct work_struct	work;
++	};
++	/*
++	 * Align @bio to a cacheline boundary so that, combined with the
++	 * front_pad passed to bioset_init(), the bio sits at the start of
++	 * a cacheline in memory returned by the (HWCACHE-aligned) bio
++	 * slab.  This keeps the hot fields block layer touches on submit
++	 * and completion (bi_iter, bi_status, ...) within a single line.
++	 */
++	struct bio	bio ____cacheline_aligned_in_smp;
++};
++
++static struct bio_set iomap_dio_simple_read_pool;
++
++/*
++ * In the async simple read path, we need to prevent bio_endio() from
++ * triggering iocb->ki_complete() before the submitter has returned
++ * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently.
++ *
++ * We use a three-state rendezvous to synchronize the submitter and end_io:
++ *
++ * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the bio.
++ *
++ * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and will
++ * return -EIOCBQUEUED. If end_io sees this state, it takes over and calls
++ * ki_complete().
++ *
++ * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished the
++ * submit path. end_io sets this state and does nothing else. The submitter
++ * will see this state and handle the completion synchronously (bypassing
++ * ki_complete() and returning the actual result).
++ */
++enum {
++	IOMAP_DIO_SIMPLE_SUBMITTING = 0,
++	IOMAP_DIO_SIMPLE_QUEUED,
++	IOMAP_DIO_SIMPLE_DONE,
++};
++
++static ssize_t iomap_dio_simple_read_finish(struct kiocb *iocb,
++		struct bio *bio, ssize_t ret)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	struct iomap_dio_simple_read *sr = bio->bi_private;
++
++	if (likely(!ret)) {
++		ret = sr->size;
++		iocb->ki_pos += ret;
++	} else {
++		fserror_report_io(inode, FSERR_DIRECTIO_READ, iocb->ki_pos,
++				  sr->size, ret, GFP_NOFS);
++	}
++
++	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
++
++	return ret;
++}
++
++static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
++		struct bio *bio)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	ssize_t ret;
++
++	WRITE_ONCE(iocb->private, NULL);
++
++	ret = iomap_dio_simple_read_finish(iocb, bio,
++			blk_status_to_errno(bio->bi_status));
++
++	inode_dio_end(inode);
++	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
++	return ret;
++}
++
++static void iomap_dio_simple_read_complete_work(struct work_struct *work)
++{
++	struct iomap_dio_simple_read *sr =
++		container_of(work, struct iomap_dio_simple_read, work);
++	struct kiocb *iocb = sr->iocb;
++	ssize_t ret;
++
++	ret = iomap_dio_simple_read_complete(iocb, &sr->bio);
++	iocb->ki_complete(iocb, ret);
++}
++
++static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_read *sr)
++{
++	struct kiocb *iocb = sr->iocb;
++
++	if (unlikely(sr->bio.bi_status)) {
++		struct inode *inode = file_inode(iocb->ki_filp);
++
++		INIT_WORK(&sr->work, iomap_dio_simple_read_complete_work);
++		queue_work(inode->i_sb->s_dio_done_wq, &sr->work);
++		return;
++	}
++
++	iomap_dio_simple_read_complete_work(&sr->work);
++}
++
++static void iomap_dio_simple_read_end_io(struct bio *bio)
++{
++	struct iomap_dio_simple_read *sr = bio->bi_private;
++
++	if (sr->waiter) {
++		struct task_struct *waiter = sr->waiter;
++
++		WRITE_ONCE(sr->waiter, NULL);
++		blk_wake_io_task(waiter);
++		return;
++	}
++
++	if (likely(atomic_read(&sr->state) == IOMAP_DIO_SIMPLE_QUEUED) ||
++	    atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
++			   IOMAP_DIO_SIMPLE_DONE) == IOMAP_DIO_SIMPLE_QUEUED)
++		iomap_dio_simple_read_async_done(sr);
++}
++
++static inline bool iomap_dio_simple_read_supported(struct kiocb *iocb,
++		struct iov_iter *iter, unsigned int dio_flags)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	size_t count = iov_iter_count(iter);
++
++	if (iov_iter_rw(iter) != READ)
++		return false;
++	/*
++	 * Simple read is an optimization for small IO. Filter out large IO
++	 * early as it's the most common case to fail for typical direct IO
++	 * workloads.
++	 */
++	if (count > inode->i_sb->s_blocksize)
++		return false;
++	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL))
++		return false;
++	if (iocb->ki_pos + count > i_size_read(inode))
++		return false;
++
++	return true;
++}
++
++static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
++		struct iov_iter *iter, const struct iomap_ops *ops,
++		void *private, unsigned int dio_flags)
++{
++	struct inode *inode = file_inode(iocb->ki_filp);
++	size_t count = iov_iter_count(iter);
++	int nr_pages;
++	struct iomap_dio_simple_read *sr;
++	unsigned int alignment;
++	struct iomap_iter iomi = {
++		.inode		= inode,
++		.pos		= iocb->ki_pos,
++		.len		= count,
++		.flags		= IOMAP_DIRECT,
++		.private	= private,
++	};
++	struct bio *bio;
++	bool wait_for_completion = is_sync_kiocb(iocb);
++	ssize_t ret;
++
++	if (dio_flags & IOMAP_DIO_BOUNCE)
++		nr_pages = bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
++	else
++		nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
++
++	if (iocb->ki_flags & IOCB_NOWAIT)
++		iomi.flags |= IOMAP_NOWAIT;
++
++	ret = kiocb_write_and_wait(iocb, count);
++	if (ret)
++		return ret;
++
++	inode_dio_begin(inode);
++
++	ret = ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
++			       &iomi.iomap, &iomi.srcmap);
++	if (ret) {
++		inode_dio_end(inode);
++		return ret;
++	}
++
++	if (iomi.iomap.type != IOMAP_MAPPED ||
++	    iomi.iomap.offset > iomi.pos ||
++	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count) {
++		ret = -ENOTBLK;
++		goto out_iomap_end;
++	}
++
++	alignment = iomap_dio_alignment(inode, iomi.iomap.bdev, dio_flags);
++	if ((iomi.pos | count) & (alignment - 1)) {
++		ret = -EINVAL;
++		goto out_iomap_end;
++	}
++
++	if (unlikely(!inode->i_sb->s_dio_done_wq)) {
++		ret = sb_init_dio_done_wq(inode->i_sb);
++		if (ret < 0)
++			goto out_iomap_end;
++	}
++
++	trace_iomap_dio_rw_begin(iocb, iter, dio_flags, 0);
++
++	if (user_backed_iter(iter))
++		dio_flags |= IOMAP_DIO_USER_BACKED;
++
++	bio = bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
++			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
++			       GFP_KERNEL, &iomap_dio_simple_read_pool);
++	sr = container_of(bio, struct iomap_dio_simple_read, bio);
++
++	fscrypt_set_bio_crypt_ctx(bio, inode, iomi.pos >> inode->i_blkbits,
++				  GFP_KERNEL);
++	sr->iocb = iocb;
++	sr->dio_flags = dio_flags;
++
++	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
++	bio->bi_ioprio = iocb->ki_ioprio;
++	bio->bi_private = sr;
++	bio->bi_end_io = iomap_dio_simple_read_end_io;
++
++	if (dio_flags & IOMAP_DIO_BOUNCE)
++		ret = bio_iov_iter_bounce(bio, iter);
++	else
++		ret = bio_iov_iter_get_pages(bio, iter, alignment - 1);
++	if (unlikely(ret))
++		goto out_bio_put;
++
++	if (bio->bi_iter.bi_size != count) {
++		iov_iter_revert(iter, bio->bi_iter.bi_size);
++		ret = -ENOTBLK;
++		goto out_bio_release_pages;
++	}
++
++	sr->size = bio->bi_iter.bi_size;
++
++	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
++	    !(dio_flags & IOMAP_DIO_BOUNCE))
++		bio_set_pages_dirty(bio);
++
++	if (iocb->ki_flags & IOCB_NOWAIT)
++		bio->bi_opf |= REQ_NOWAIT;
++	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
++		bio->bi_opf |= REQ_POLLED;
++		bio_set_polled(bio, iocb);
++		WRITE_ONCE(iocb->private, bio);
++	}
++
++	if (wait_for_completion) {
++		sr->waiter = current;
++		blk_crypto_submit_bio(bio);
++	} else {
++		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
++		sr->waiter = NULL;
++		blk_crypto_submit_bio(bio);
++		ret = -EIOCBQUEUED;
++	}
++
++	if (ops->iomap_end)
++		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
++			       &iomi.iomap);
++
++	if (wait_for_completion) {
++		for (;;) {
++			set_current_state(TASK_UNINTERRUPTIBLE);
++			if (!READ_ONCE(sr->waiter))
++				break;
++			blk_io_schedule();
++		}
++		__set_current_state(TASK_RUNNING);
++
++		ret = iomap_dio_simple_read_finish(iocb, bio,
++				blk_status_to_errno(bio->bi_status));
++		inode_dio_end(inode);
++		trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0,
++					 ret > 0 ? ret : 0);
++	} else if (atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
++				  IOMAP_DIO_SIMPLE_QUEUED) ==
++		   IOMAP_DIO_SIMPLE_DONE) {
++		ret = iomap_dio_simple_read_complete(iocb, bio);
++	} else {
++		trace_iomap_dio_rw_queued(inode, iomi.pos, count);
++	}
++
++	return ret;
++
++out_bio_release_pages:
++	if (dio_flags & IOMAP_DIO_BOUNCE)
++		bio_iov_iter_unbounce(bio, true, false);
++	else
++		bio_release_pages(bio, false);
++out_bio_put:
++	bio_put(bio);
++out_iomap_end:
++	if (ops->iomap_end)
++		ops->iomap_end(inode, iomi.pos, count, 0, iomi.flags,
++			       &iomi.iomap);
++	inode_dio_end(inode);
++	return ret;
++}
++
+ ssize_t
+ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
+ 		unsigned int dio_flags, void *private, size_t done_before)
+ {
+ 	struct iomap_dio *dio;
++	ssize_t ret;
++
++	/*
++	 * Fast path for small, block-aligned reads that map to a single
++	 * contiguous on-disk extent.
++	 *
++	 * @dops must be NULL: a non-NULL @dops means the caller wants its
++	 * ->end_io / ->submit_io hooks invoked, and in particular wants its
++	 * bios to be allocated from the filesystem-private @dops->bio_set
++	 * (whose front_pad sizes a filesystem-private wrapper around the
++	 * bio).  The fast path instead allocates from the shared
++	 * iomap_dio_simple_read_pool, whose front_pad matches
++	 * struct iomap_dio_simple_read; the two wrappers are not
++	 * interchangeable, so we must fall back to __iomap_dio_rw() in
++	 * that case.
++	 *
++	 * @done_before must be zero: a non-zero caller-accumulated residual
++	 * cannot be carried through a single-bio inline completion.
++	 *
++	 * -ENOTBLK is the private sentinel returned by iomap_dio_simple_read()
++	 * when it decides the request does not fit the fast path.
++	 * In that case we proceed to the generic __iomap_dio_rw() slow
++	 * path.  Any other errno is a real result and is propagated as-is,
++	 * in particular -EAGAIN for IOCB_NOWAIT must reach the caller.
++	 */
++	if (!dops && !done_before &&
++	    iomap_dio_simple_read_supported(iocb, iter, dio_flags)) {
++		ret = iomap_dio_simple_read(iocb, iter, ops, private, dio_flags);
++		if (ret != -ENOTBLK)
++			return ret;
++	}
+ 
+ 	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, private,
+ 			     done_before);
+@@ -894,3 +1246,11 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	return iomap_dio_complete(dio);
+ }
+ EXPORT_SYMBOL_GPL(iomap_dio_rw);
++
++static int __init iomap_dio_init(void)
++{
++	return bioset_init(&iomap_dio_simple_read_pool, 4,
++			   offsetof(struct iomap_dio_simple_read, bio),
++			   BIOSET_NEED_BVECS | BIOSET_PERCPU_CACHE);
++}
++fs_initcall(iomap_dio_init);
+-- 
+2.39.5 (Apple Git-154)
