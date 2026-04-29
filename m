@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF6AA355F36;
-	Wed, 29 Apr 2026 15:01:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8737A1E98E3;
+	Wed, 29 Apr 2026 15:01:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777474874; cv=none; b=sPnz/8VMrZNO//Wao3twQoLKGI+QkMlT/IuGOmzKtOurVyNhaoqIE6YKKX5+zz0Zy3s3HCTbAijpSxvqOlZtdVFOs0Q2pVGBi1EeN5USOOc3NjGn1VfdxtP30E6EZBrKooFT4pbpOx6nC01PQPnmgHZhtN6uemnPzWaF8xVfLKY=
+	t=1777474889; cv=none; b=XAchhGVb6OVje0u9JMf31ZHTA3tub79Rfwr3BTjP+0atoctsfaA5A3W44XIUbIAmdGWiG61VDbVqmTxyjZgJeez3Wy4m5j+u+fYnf7nqbrke1emNjZjjnFl3kxiJxx3xWjaDT0eBlsEG5nreLkXpIQQiSY7t7LZpW/6veJIUSbA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777474874; c=relaxed/simple;
-	bh=Cvt3s9nv0WmmjasPQjtoyo7FZdZ46hpRXMa3yGH9jCg=;
+	s=arc-20240116; t=1777474889; c=relaxed/simple;
+	bh=UchNZ+sOI1GCFZfSgmmjrxLhVsiKxaRAhoi0+Mwhm5A=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=gXZbqj/0sduKLHeigNOdL/BV4Y453zFn5i9cUCYc7x5GR2mVGJlTPzAeL5kLXI0sNFtLDB5f3ZOoreA7h8AT58dqqRVLf4Frr6M6m0e7NsWMuvqKEwkjTACrwPI9C4Rr1B4ycDT8Y5JoReH1y710xGyhed7K5sMatPXtPX+LxNM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ciHKo6Vw; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=VazZWAy8DVKijxTTCZ+L+m57C8VS34QRZf1T9g35Nr/+mTrqKmaCkqmirEtDSer70YTdqFu8Ag/dDnovpp3MB4HjkXytjn6AI0vQEWHkgK9xUdydvM1gmqx/pkIFL2jwz6palcgy1bOHB794gtONKmuLISXNY00bjcS2Ay2TclQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Fk88YCE8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ciHKo6Vw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD86DC19425;
-	Wed, 29 Apr 2026 15:01:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Fk88YCE8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 61968C19425;
+	Wed, 29 Apr 2026 15:01:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777474873;
-	bh=Cvt3s9nv0WmmjasPQjtoyo7FZdZ46hpRXMa3yGH9jCg=;
+	s=k20201202; t=1777474889;
+	bh=UchNZ+sOI1GCFZfSgmmjrxLhVsiKxaRAhoi0+Mwhm5A=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=ciHKo6VwGHfaHCl79cyzD4OCPN2h0WpgeLAPXB3U3gpT+N2NEkkOno4nLs0txjvU+
-	 jDUOlzTV7LXARqmuT7jCdOydD8k46gf1crUO709vlIFcFSYI+7x/wrq0beWA1bSJcr
-	 iM3IhtsgArqrbzKICp8W716RkmksqfGrLkYon+ZvUQE/lXbwvapBsz+llo7mMPaQls
-	 UVrgm+XXcWkSyt59qg1BW+OoJsrcslECX2rm3aYj1yoTIJ3JtfFMXw6oy/GUJ6kglh
-	 LERtGmHx6oEYcMHEHYhiqu4bcnAeklgMJS6F73aIptSslJV2tbfWie/E4PudvAFFRL
-	 jVXHdDDwHpVBg==
-Date: Wed, 29 Apr 2026 08:01:13 -0700
-Subject: [PATCH 10/10] fuse4fs: increase attribute timeout in iomap mode
+	b=Fk88YCE8cWacVfhXT5p4Da1NqZ5MvmNosqeOZUklrG30XbA4Mupzm00bC+JLnRG7I
+	 Ao9rfCyBv8k7u+3wnJATfnRLxpK8zIbmyt7R9srmoE+Z5NdggoG537AR4yJysHK1EQ
+	 9UdxskYZ5A9K4MLf/8N/j8WgIeNAH7rF5eHdCEsJ4HA2p6tEA+81FHpn7WvfaDaOGx
+	 sIv1HMiKYTYpIc6Niv3zsBhJnw/leudscWId9VOpvwFNQiF9L/P2h4zXIJ86JOpOw+
+	 12mfw8BpI+5u77M+K5+8ssla4IrQHTc5G4GSsa9HZgFu6aaIDG88pvqb2xvIe72Fx+
+	 yE2rbzoAAmqNg==
+Date: Wed, 29 Apr 2026 08:01:29 -0700
+Subject: [PATCH 1/4] fuse2fs: enable caching of iomaps
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: bernd@bsbernd.com, miklos@szeredi.hu, linux-ext4@vger.kernel.org,
  neal@gompa.dev, linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  joannelkoong@gmail.com
-Message-ID: <177747215562.4110156.8990534145359592512.stgit@frogsfrogsfrogs>
-In-Reply-To: <177747215344.4110156.17216553139316774040.stgit@frogsfrogsfrogs>
-References: <177747215344.4110156.17216553139316774040.stgit@frogsfrogsfrogs>
+Message-ID: <177747215717.4110581.2902242851952264152.stgit@frogsfrogsfrogs>
+In-Reply-To: <177747215686.4110581.16852917113451473539.stgit@frogsfrogsfrogs>
+References: <177747215686.4110581.16852917113451473539.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,56 +47,150 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-In iomap mode, we trust the kernel to cache file attributes, because it
-is critical to keep all of the file IO permissions checking in the
-kernel as part of keeping all the file IO paths in the kernel.
-Therefore, increase the attribute timeout to 30 seconds to reduce the
-number of upcalls even further.
+Cache the iomaps we generate in the kernel for better performance.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- fuse4fs/fuse4fs.c |   15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+ fuse4fs/fuse4fs.c |   30 ++++++++++++++++++++++++++++++
+ misc/fuse2fs.c    |   29 +++++++++++++++++++++++++++++
+ 2 files changed, 59 insertions(+)
 
 
 diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
-index b4105333f4fe22..9f7fe365ccdf87 100644
+index 9f7fe365ccdf87..56a79dd48c9f43 100644
 --- a/fuse4fs/fuse4fs.c
 +++ b/fuse4fs/fuse4fs.c
-@@ -131,7 +131,8 @@
+@@ -304,6 +304,8 @@ struct fuse4fs {
+ #ifdef STATX_WRITE_ATOMIC
+ 	unsigned int awu_min, awu_max;
  #endif
- #endif /* !defined(ENODATA) */
++	/* options set by fuse_opt_parse must be of type int */
++	int iomap_cache;
+ #endif
+ 	unsigned int blockmask;
+ 	unsigned long offset;
+@@ -2314,6 +2316,7 @@ static void fuse4fs_iomap_enable(struct fuse_conn_info *conn,
+ 			err_printf(ff, "%s\n", _("Could not enable iomap."));
+ 		if (ff->iomap_passthrough_options)
+ 			err_printf(ff, "%s\n", _("Some mount options require iomap."));
++		ff->iomap_cache = 0;
+ 		return;
+ 	}
+ }
+@@ -7169,6 +7172,28 @@ static void op_iomap_begin(fuse_req_t req, fuse_ino_t fino, uint64_t dontcare,
+ 	if (opflags & FUSE_IOMAP_OP_ATOMIC)
+ 		read.flags |= FUSE_IOMAP_F_ATOMIC_BIO;
  
--#define FUSE4FS_ATTR_TIMEOUT	(0.0)
-+#define FUSE4FS_IOMAP_ATTR_TIMEOUT	(0.0)
-+#define FUSE4FS_ATTR_TIMEOUT		(30.0)
- 
- #ifndef O_DIRECT
- # define O_DIRECT	(0)
-@@ -2437,8 +2438,14 @@ static int fuse4fs_stat_inode(struct fuse4fs *ff, ext2_ino_t ino,
- 
- 	fuse4fs_ino_to_fuse(ff, &entry->ino, ino);
- 	entry->generation = inodep->i_generation;
--	entry->attr_timeout = FUSE4FS_ATTR_TIMEOUT;
--	entry->entry_timeout = FUSE4FS_ATTR_TIMEOUT;
++	/*
++	 * For real IO operations, cache the mapping in the kernel so that we
++	 * can reuse them for subsequent IO to the same regions.  Don't let
++	 * FIEMAP thrash the cache.
++	 */
++	if (!(opflags & FUSE_IOMAP_OP_REPORT) && ff->iomap_cache) {
++		ret = fuse_lowlevel_iomap_upsert_mappings(ff->fuse, fino, ino,
++							  &read, NULL);
++		if (ret) {
++			/*
++			 * Log the cache upsert error, but we can still return
++			 * the mapping via the reply.  EINVAL is the magic code
++			 * for the kernel declining to cache the mapping.
++			 */
++			if (ret != -ENOMEM && ret != -EINVAL)
++				translate_error(fs, ino, -ret);
++			goto out_unlock;
++		}
 +
-+	if (fuse4fs_iomap_enabled(ff)) {
-+		entry->attr_timeout = FUSE4FS_IOMAP_ATTR_TIMEOUT;
-+		entry->entry_timeout = FUSE4FS_IOMAP_ATTR_TIMEOUT;
-+	} else {
-+		entry->attr_timeout = FUSE4FS_ATTR_TIMEOUT;
-+		entry->entry_timeout = FUSE4FS_ATTR_TIMEOUT;
++		fuse_file_iomap_retry_cache(&read);
 +	}
- 
- 	fstat->iflags = 0;
- 
-@@ -2671,6 +2678,8 @@ static void op_statx(fuse_req_t req, fuse_ino_t fino, int flags, int mask,
++
+ out_unlock:
  	fuse4fs_finish(ff, ret);
  	if (ret)
- 		fuse_reply_err(req, -ret);
-+	else if (fuse4fs_iomap_enabled(ff))
-+		fuse_reply_statx(req, 0, &stx, FUSE4FS_IOMAP_ATTR_TIMEOUT);
- 	else
- 		fuse_reply_statx(req, 0, &stx, FUSE4FS_ATTR_TIMEOUT);
+@@ -7993,6 +8018,10 @@ static struct fuse_opt fuse4fs_opts[] = {
+ #ifdef HAVE_CLOCK_MONOTONIC
+ 	FUSE4FS_OPT("timing",		timing,			1),
+ #endif
++#ifdef HAVE_FUSE_IOMAP
++	FUSE4FS_OPT("iomap_cache",	iomap_cache,		1),
++	FUSE4FS_OPT("noiomap_cache",	iomap_cache,		0),
++#endif
+ 
+ #ifdef HAVE_FUSE_IOMAP
+ #ifdef MS_LAZYTIME
+@@ -8487,6 +8516,7 @@ int main(int argc, char *argv[])
+ 		.iomap_want = FT_DEFAULT,
+ 		.iomap_state = IOMAP_UNKNOWN,
+ 		.iomap_dev = FUSE_IOMAP_DEV_NULL,
++		.iomap_cache = 1,
+ #endif
+ #ifdef HAVE_FUSE_LOOPDEV
+ 		.loop_fd = -1,
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 6e4780121d5c83..e485c38bda41e8 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -285,6 +285,8 @@ struct fuse2fs {
+ #ifdef STATX_WRITE_ATOMIC
+ 	unsigned int awu_min, awu_max;
+ #endif
++	/* options set by fuse_opt_parse must be of type int */
++	int iomap_cache;
+ #endif
+ 	unsigned int blockmask;
+ 	unsigned long offset;
+@@ -1870,6 +1872,7 @@ static void fuse2fs_iomap_enable(struct fuse_conn_info *conn,
+ 			err_printf(ff, "%s\n", _("Could not enable iomap."));
+ 		if (ff->iomap_passthrough_options)
+ 			err_printf(ff, "%s\n", _("Some mount options require iomap."));
++		ff->iomap_cache = 0;
+ 		return;
+ 	}
  }
+@@ -6453,6 +6456,27 @@ static int op_iomap_begin(const char *path, uint64_t nodeid, uint64_t attr_ino,
+ 	if (opflags & FUSE_IOMAP_OP_ATOMIC)
+ 		read->flags |= FUSE_IOMAP_F_ATOMIC_BIO;
+ 
++	/*
++	 * For real IO operations, cache the mapping in the kernel so that we
++	 * can reuse them for subsequent IO to the same regions.  Don't let
++	 * FIEMAP thrash the cache.
++	 */
++	if (!(opflags & FUSE_IOMAP_OP_REPORT) && ff->iomap_cache) {
++		ret = fuse_fs_iomap_upsert(nodeid, attr_ino, read, NULL);
++		if (ret) {
++			/*
++			 * Log the cache upsert error, but we can still return
++			 * the mapping via the reply.  EINVAL is the magic code
++			 * for the kernel declining to cache the mapping.
++			 */
++			if (ret != -ENOMEM && ret != -EINVAL)
++				translate_error(fs, attr_ino, -ret);
++			goto out_unlock;
++		}
++
++		fuse_file_iomap_retry_cache(read);
++	}
++
+ out_unlock:
+ 	fuse2fs_finish(ff, ret);
+ 	return ret;
+@@ -7259,6 +7283,10 @@ static struct fuse_opt fuse2fs_opts[] = {
+ #ifdef HAVE_CLOCK_MONOTONIC
+ 	FUSE2FS_OPT("timing",		timing,			1),
+ #endif
++#ifdef HAVE_FUSE_IOMAP
++	FUSE2FS_OPT("iomap_cache",	iomap_cache,		1),
++	FUSE2FS_OPT("noiomap_cache",	iomap_cache,		0),
++#endif
+ 
+ #ifdef HAVE_FUSE_IOMAP
+ #ifdef MS_LAZYTIME
+@@ -7539,6 +7567,7 @@ int main(int argc, char *argv[])
+ 		.iomap_want = FT_DEFAULT,
+ 		.iomap_state = IOMAP_UNKNOWN,
+ 		.iomap_dev = FUSE_IOMAP_DEV_NULL,
++		.iomap_cache = 1,
+ #endif
+ #ifdef HAVE_FUSE_LOOPDEV
+ 		.loop_fd = -1,
 
