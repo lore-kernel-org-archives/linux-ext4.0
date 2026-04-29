@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4393C348860;
-	Wed, 29 Apr 2026 14:53:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDA84333445;
+	Wed, 29 Apr 2026 14:53:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777474405; cv=none; b=I08Ej0y6/4Yi1uaMiehHBDkuu+dKwuyIJyQ6LyZXQdXMRV2tlAuLBkN1jGYnqKh4JJlTPxcFJ7EKPXmwlB8ndiG8mIMaYLhTZCW0ImCdPLwueWxNadPl8IkFgNTfQhzNTeaRxFdbaeCrjyWsAQI+akyPeZcl04NqDfs/bk60cxY=
+	t=1777474420; cv=none; b=rjoIADsAbYDgwJS8HE4gYlGZvOz2+0RuuXEjH/SaSAU0CJvsharDl1P4H4nLdNka0toz81ZKN8ypXhA2TYoAUz4zDn4DRo04stlOjUx7rpDv38j2mwAUPMIFAxn6LoLUPc/1EQs1Byo/J3A7w3m93bIg+ejvRn5vZqDz3pfnS0Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777474405; c=relaxed/simple;
-	bh=5b8JXRY84oGHHIhcsgBig9mNPsyF7xzRBfsqkN+n4uM=;
+	s=arc-20240116; t=1777474420; c=relaxed/simple;
+	bh=LaJ9Lq0EP/219RjzO8l2eoiRThp67IrIO2x77PHw9ZU=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=m8+jvDpXGnWTy5mLDtVoExx8qqR+QWzL/WY7MAW4cEeVrN7GiEWLjcUMT/oqh6Ch1SyFIO65VAPhYYNTUvzQV+7qYkDM9Hk0nHnBBQMQ+sYvvhi+E+o72fxwcPsYTRojt9/tb0yJ1PVa35G1fAB17p+EZIhxzgnJkWBuaDNLz0g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BQn43XuH; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=iuFfZXLcjSZEy1PrsyLOiohxi+QlURIkpPraRqKEB/eLgkim3yQ3emA6kmRy87Z4OtNMTkJt1nGqok9v0oJw9+DWCyOvdMPe0Ai7FahLLk0hijIKJLGeskvZYXZYlkOjvleGC/nDN9qvpRBR6yeKRmidPPUnw3/ZsXW5QLjR4fY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=m7MAdUTZ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BQn43XuH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1F6B7C19425;
-	Wed, 29 Apr 2026 14:53:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="m7MAdUTZ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0BE0C19425;
+	Wed, 29 Apr 2026 14:53:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777474405;
-	bh=5b8JXRY84oGHHIhcsgBig9mNPsyF7xzRBfsqkN+n4uM=;
+	s=k20201202; t=1777474420;
+	bh=LaJ9Lq0EP/219RjzO8l2eoiRThp67IrIO2x77PHw9ZU=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=BQn43XuHFC8bGERwhJdlPVCEp9MXexOURGmZw6Hg42io2BbWvZRRGkTklMl09X/qM
-	 A+QbSOi40etPU9GGpBCnY5prYPc768PkuBcxJD67y8dA9haCmZfKwaLQyo7CEH5TUO
-	 pBM1ZXq88urPBgoTaqOIXVbI1dzugynczKnkr3Tw876qmU65WLJc+wjL5q25Tc6j9j
-	 n1WWbBaktnwUACSWT1W7q8Fh3lw6aUnqvoDTHOKw8cKQe+1vUmm4zWcMXp9T6UC60D
-	 k795Jh+O6AGiwu5beZXOoJiy/vYgco6cFewN0Lv2qxXxnvinTaxOZoAAx0XszLVZ6/
-	 k7nxbABzQsuRA==
-Date: Wed, 29 Apr 2026 07:53:24 -0700
-Subject: [PATCH 03/19] fuse2fs: implement iomap configuration
+	b=m7MAdUTZ7SUoBVslnN7I7LmaLWWYt3HZtQWdlywDAmwW2+v2SDPuPkBWpl39Wp4uQ
+	 wVif97tTfjJocphR+Uf6vaLu9uTIdrXussmugeCCuiMdnsGkSJiQUW2S+NufbjYvJk
+	 o7hJqyUncXINT93WQOAsZa6DsxLtE4E5wmSGmz9+E72nhlfJ9O23qr2DVpIxjtm/kl
+	 Z2Fnd1W7cl4maGRvYxBc9jduu3xy7RVEoo7QHvo9R2P/+iYiPsM7NvFdPicAw/XuCj
+	 UnbgmfAVag73gfHQKYUew0Vl26JGuKkuKwrKsDKCad7TCxi5zIuZnmIMgitoL3RFa2
+	 ddmVoA5BrWoYw==
+Date: Wed, 29 Apr 2026 07:53:40 -0700
+Subject: [PATCH 04/19] fuse2fs: register block devices for use with iomap
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: bernd@bsbernd.com, miklos@szeredi.hu, linux-ext4@vger.kernel.org,
  neal@gompa.dev, linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  joannelkoong@gmail.com
-Message-ID: <177747214590.4107473.12172144510741083607.stgit@frogsfrogsfrogs>
+Message-ID: <177747214608.4107473.9714580127528968368.stgit@frogsfrogsfrogs>
 In-Reply-To: <177747214459.4107473.9520724883867588970.stgit@frogsfrogsfrogs>
 References: <177747214459.4107473.9520724883867588970.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -47,271 +47,222 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-Upload the filesystem geometry to the kernel when asked.
+Register the ext4 block device with the kernel for use with iomap.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- fuse4fs/fuse4fs.c |   98 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- misc/fuse2fs.c    |   96 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 188 insertions(+), 6 deletions(-)
+ fuse4fs/fuse4fs.c |   44 ++++++++++++++++++++++++++++++++++++++++----
+ misc/fuse2fs.c    |   42 ++++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 78 insertions(+), 8 deletions(-)
 
 
 diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
-index df2bda7cc22bf2..feb46bdfbac39b 100644
+index feb46bdfbac39b..3e9852f585302d 100644
 --- a/fuse4fs/fuse4fs.c
 +++ b/fuse4fs/fuse4fs.c
-@@ -208,6 +208,10 @@ static inline uint64_t round_down(uint64_t b, unsigned int align)
- # define FL_ZERO_RANGE_FLAG (0)
- #endif
- 
-+#ifndef NSEC_PER_SEC
-+# define NSEC_PER_SEC	(1000000000L)
-+#endif
-+
- errcode_t ext2fs_check_ext3_journal(ext2_filsys fs);
- errcode_t ext2fs_run_ext3_journal(ext2_filsys *fs);
- 
-@@ -995,9 +999,9 @@ static int update_atime(ext2_filsys fs, ext2_ino_t ino)
- 	EXT4_INODE_GET_XTIME(i_mtime, &mtime, pinode);
- 	get_now(&now);
- 
--	datime = atime.tv_sec + ((double)atime.tv_nsec / 1000000000);
--	dmtime = mtime.tv_sec + ((double)mtime.tv_nsec / 1000000000);
--	dnow = now.tv_sec + ((double)now.tv_nsec / 1000000000);
-+	datime = atime.tv_sec + ((double)atime.tv_nsec / NSEC_PER_SEC);
-+	dmtime = mtime.tv_sec + ((double)mtime.tv_nsec / NSEC_PER_SEC);
-+	dnow = now.tv_sec + ((double)now.tv_nsec / NSEC_PER_SEC);
- 
- 	/*
- 	 * If atime is newer than mtime and atime hasn't been updated in thirty
-@@ -6459,6 +6463,93 @@ static void op_iomap_end(fuse_req_t req, fuse_ino_t fino, uint64_t dontcare,
- 
- 	fuse_reply_err(req, 0);
- }
-+
-+/*
-+ * Maximal extent format file size.
-+ * Resulting logical blkno at s_maxbytes must fit in our on-disk
-+ * extent format containers, within a sector_t, and within i_blocks
-+ * in the vfs.  ext4 inode has 48 bits of i_block in fsblock units,
-+ * so that won't be a limiting factor.
-+ *
-+ * However there is other limiting factor. We do store extents in the form
-+ * of starting block and length, hence the resulting length of the extent
-+ * covering maximum file size must fit into on-disk format containers as
-+ * well. Given that length is always by 1 unit bigger than max unit (because
-+ * we count 0 as well) we have to lower the s_maxbytes by one fs block.
-+ *
-+ * Note, this does *not* consider any metadata overhead for vfs i_blocks.
-+ */
-+static off_t fuse4fs_max_size(struct fuse4fs *ff, off_t upper_limit)
-+{
-+	off_t res;
-+
-+	if (!ext2fs_has_feature_huge_file(ff->fs->super)) {
-+		upper_limit = (1LL << 32) - 1;
-+
-+		/* total blocks in file system block size */
-+		upper_limit >>= (ff->blocklog - 9);
-+		upper_limit <<= ff->blocklog;
-+	}
-+
-+	/*
-+	 * 32-bit extent-start container, ee_block. We lower the maxbytes
-+	 * by one fs block, so ee_len can cover the extent of maximum file
-+	 * size
-+	 */
-+	res = (1LL << 32) - 1;
-+	res <<= ff->blocklog;
-+
-+	/* Sanity check against vm- & vfs- imposed limits */
-+	if (res > upper_limit)
-+		res = upper_limit;
-+
-+	return res;
-+}
-+
-+static void op_iomap_config(fuse_req_t req,
-+			    const struct fuse_iomap_config_params *p,
-+			    size_t psize)
-+{
-+	struct fuse_iomap_config cfg = { };
-+	struct fuse4fs *ff = fuse4fs_get(req);
-+	ext2_filsys fs;
-+
-+	FUSE4FS_CHECK_CONTEXT(req);
-+
-+	dbg_printf(ff, "%s: flags=0x%llx maxbytes=0x%llx\n", __func__,
-+		   (unsigned long long)p->flags,
-+		   (unsigned long long)p->maxbytes);
-+	fs = fuse4fs_start(ff);
-+
-+	cfg.flags |= FUSE_IOMAP_CONFIG_UUID;
-+	memcpy(cfg.s_uuid, fs->super->s_uuid, sizeof(cfg.s_uuid));
-+	cfg.s_uuid_len = sizeof(fs->super->s_uuid);
-+
-+	cfg.flags |= FUSE_IOMAP_CONFIG_BLOCKSIZE;
-+	cfg.s_blocksize = FUSE4FS_FSB_TO_B(ff, 1);
-+
-+	/*
-+	 * If there inode is large enough to house i_[acm]time_extra then we
-+	 * can turn on nanosecond timestamps; i_crtime was the next field added
-+	 * after i_atime_extra.
-+	 */
-+	cfg.flags |= FUSE_IOMAP_CONFIG_TIME;
-+	if (fs->super->s_inode_size >=
-+	    offsetof(struct ext2_inode_large, i_crtime)) {
-+		cfg.s_time_gran = 1;
-+		cfg.s_time_max = EXT4_EXTRA_TIMESTAMP_MAX;
-+	} else {
-+		cfg.s_time_gran = NSEC_PER_SEC;
-+		cfg.s_time_max = EXT4_NON_EXTRA_TIMESTAMP_MAX;
-+	}
-+	cfg.s_time_min = EXT4_TIMESTAMP_MIN;
-+
-+	cfg.flags |= FUSE_IOMAP_CONFIG_MAXBYTES;
-+	cfg.s_maxbytes = fuse4fs_max_size(ff, p->maxbytes);
-+
-+	fuse4fs_finish(ff, 0);
-+	fuse_reply_iomap_config(req, &cfg);
-+}
- #endif /* HAVE_FUSE_IOMAP */
- 
- static struct fuse_lowlevel_ops fs_ops = {
-@@ -6507,6 +6598,7 @@ static struct fuse_lowlevel_ops fs_ops = {
+@@ -284,6 +284,7 @@ struct fuse4fs {
  #ifdef HAVE_FUSE_IOMAP
- 	.iomap_begin = op_iomap_begin,
- 	.iomap_end = op_iomap_end,
-+	.iomap_config = op_iomap_config,
- #endif /* HAVE_FUSE_IOMAP */
- };
- 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 15ebe6b39f1288..7df4e127e5981a 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -191,6 +191,10 @@ static inline uint64_t round_down(uint64_t b, unsigned int align)
- # define FL_ZERO_RANGE_FLAG (0)
+ 	enum fuse4fs_feature_toggle iomap_want;
+ 	enum fuse4fs_iomap_state iomap_state;
++	uint32_t iomap_dev;
  #endif
+ 	unsigned int blockmask;
+ 	unsigned long offset;
+@@ -6247,7 +6248,7 @@ static errcode_t fuse4fs_iomap_begin_extent(struct fuse4fs *ff, uint64_t ino,
+ 	}
  
-+#ifndef NSEC_PER_SEC
-+# define NSEC_PER_SEC	(1000000000L)
-+#endif
-+
- errcode_t ext2fs_check_ext3_journal(ext2_filsys fs);
- errcode_t ext2fs_run_ext3_journal(ext2_filsys *fs);
+ 	/* Mapping overlaps startoff, report this. */
+-	iomap->dev = FUSE_IOMAP_DEV_NULL;
++	iomap->dev = ff->iomap_dev;
+ 	iomap->addr = FUSE4FS_FSB_TO_B(ff, extent.e_pblk) + ff->offset;
+ 	iomap->offset = FUSE4FS_FSB_TO_B(ff, extent.e_lblk);
+ 	iomap->length = FUSE4FS_FSB_TO_B(ff, extent.e_len);
+@@ -6280,13 +6281,14 @@ static int fuse4fs_iomap_begin_indirect(struct fuse4fs *ff, uint64_t ino,
+ 	if (err)
+ 		return translate_error(fs, ino, err);
  
-@@ -806,9 +810,9 @@ static int update_atime(ext2_filsys fs, ext2_ino_t ino)
- 	EXT4_INODE_GET_XTIME(i_mtime, &mtime, pinode);
- 	get_now(&now);
- 
--	datime = atime.tv_sec + ((double)atime.tv_nsec / 1000000000);
--	dmtime = mtime.tv_sec + ((double)mtime.tv_nsec / 1000000000);
--	dnow = now.tv_sec + ((double)now.tv_nsec / 1000000000);
-+	datime = atime.tv_sec + ((double)atime.tv_nsec / NSEC_PER_SEC);
-+	dmtime = mtime.tv_sec + ((double)mtime.tv_nsec / NSEC_PER_SEC);
-+	dnow = now.tv_sec + ((double)now.tv_nsec / NSEC_PER_SEC);
- 
- 	/*
- 	 * If atime is newer than mtime and atime hasn't been updated in thirty
-@@ -5692,6 +5696,91 @@ static int op_iomap_end(const char *path, uint64_t nodeid, uint64_t attr_ino,
- 
- 	return 0;
+-	iomap->dev = FUSE_IOMAP_DEV_NULL;
+ 	iomap->offset = FUSE4FS_FSB_TO_B(ff, startoff);
+ 	iomap->flags |= FUSE_IOMAP_F_MERGED;
+ 	if (startblock) {
++		iomap->dev = ff->iomap_dev;
+ 		iomap->addr = FUSE4FS_FSB_TO_B(ff, startblock) + ff->offset;
+ 		iomap->type = FUSE_IOMAP_TYPE_MAPPED;
+ 	} else {
++		iomap->dev = FUSE_IOMAP_DEV_NULL;
+ 		iomap->addr = FUSE_IOMAP_NULL_ADDR;
+ 		iomap->type = FUSE_IOMAP_TYPE_HOLE;
+ 	}
+@@ -6506,6 +6508,30 @@ static off_t fuse4fs_max_size(struct fuse4fs *ff, off_t upper_limit)
+ 	return res;
  }
-+
-+/*
-+ * Maximal extent format file size.
-+ * Resulting logical blkno at s_maxbytes must fit in our on-disk
-+ * extent format containers, within a sector_t, and within i_blocks
-+ * in the vfs.  ext4 inode has 48 bits of i_block in fsblock units,
-+ * so that won't be a limiting factor.
-+ *
-+ * However there is other limiting factor. We do store extents in the form
-+ * of starting block and length, hence the resulting length of the extent
-+ * covering maximum file size must fit into on-disk format containers as
-+ * well. Given that length is always by 1 unit bigger than max unit (because
-+ * we count 0 as well) we have to lower the s_maxbytes by one fs block.
-+ *
-+ * Note, this does *not* consider any metadata overhead for vfs i_blocks.
-+ */
-+static off_t fuse2fs_max_size(struct fuse2fs *ff, off_t upper_limit)
+ 
++static int fuse4fs_iomap_config_devices(struct fuse4fs *ff)
 +{
-+	off_t res;
++	errcode_t err;
++	int fd;
++	int ret;
 +
-+	if (!ext2fs_has_feature_huge_file(ff->fs->super)) {
-+		upper_limit = (1LL << 32) - 1;
++	err = io_channel_get_fd(ff->fs->io, &fd);
++	if (err)
++		return translate_error(ff->fs, 0, err);
 +
-+		/* total blocks in file system block size */
-+		upper_limit >>= (ff->blocklog - 9);
-+		upper_limit <<= ff->blocklog;
++	ret = fuse_lowlevel_iomap_device_add(ff->fuse, fd, 0);
++	if (ret < 0) {
++		dbg_printf(ff, "%s: cannot register iomap dev fd=%d, err=%d\n",
++			   __func__, fd, -ret);
++		return translate_error(ff->fs, 0, -ret);
 +	}
 +
-+	/*
-+	 * 32-bit extent-start container, ee_block. We lower the maxbytes
-+	 * by one fs block, so ee_len can cover the extent of maximum file
-+	 * size
-+	 */
-+	res = (1LL << 32) - 1;
-+	res <<= ff->blocklog;
++	dbg_printf(ff, "%s: registered iomap dev fd=%d iomap_dev=%u\n",
++		   __func__, fd, ff->iomap_dev);
 +
-+	/* Sanity check against vm- & vfs- imposed limits */
-+	if (res > upper_limit)
-+		res = upper_limit;
-+
-+	return res;
-+}
-+
-+static int op_iomap_config(const struct fuse_iomap_config_params *p,
-+			   size_t psize, struct fuse_iomap_config *cfg)
-+{
-+	struct fuse2fs *ff = fuse2fs_get();
-+	ext2_filsys fs;
-+
-+	FUSE2FS_CHECK_CONTEXT(ff);
-+
-+	dbg_printf(ff, "%s: flags=0x%llx maxbytes=0x%llx\n", __func__,
-+		   (unsigned long long)p->flags,
-+		   (unsigned long long)p->maxbytes);
-+	fs = fuse2fs_start(ff);
-+
-+	cfg->flags |= FUSE_IOMAP_CONFIG_UUID;
-+	memcpy(cfg->s_uuid, fs->super->s_uuid, sizeof(cfg->s_uuid));
-+	cfg->s_uuid_len = sizeof(fs->super->s_uuid);
-+
-+	cfg->flags |= FUSE_IOMAP_CONFIG_BLOCKSIZE;
-+	cfg->s_blocksize = FUSE2FS_FSB_TO_B(ff, 1);
-+
-+	/*
-+	 * If there inode is large enough to house i_[acm]time_extra then we
-+	 * can turn on nanosecond timestamps; i_crtime was the next field added
-+	 * after i_atime_extra.
-+	 */
-+	cfg->flags |= FUSE_IOMAP_CONFIG_TIME;
-+	if (fs->super->s_inode_size >=
-+	    offsetof(struct ext2_inode_large, i_crtime)) {
-+		cfg->s_time_gran = 1;
-+		cfg->s_time_max = EXT4_EXTRA_TIMESTAMP_MAX;
-+	} else {
-+		cfg->s_time_gran = NSEC_PER_SEC;
-+		cfg->s_time_max = EXT4_NON_EXTRA_TIMESTAMP_MAX;
-+	}
-+	cfg->s_time_min = EXT4_TIMESTAMP_MIN;
-+
-+	cfg->flags |= FUSE_IOMAP_CONFIG_MAXBYTES;
-+	cfg->s_maxbytes = fuse2fs_max_size(ff, p->maxbytes);
-+
-+	fuse2fs_finish(ff, 0);
++	ff->iomap_dev = ret;
 +	return 0;
 +}
++
+ static void op_iomap_config(fuse_req_t req,
+ 			    const struct fuse_iomap_config_params *p,
+ 			    size_t psize)
+@@ -6513,6 +6539,7 @@ static void op_iomap_config(fuse_req_t req,
+ 	struct fuse_iomap_config cfg = { };
+ 	struct fuse4fs *ff = fuse4fs_get(req);
+ 	ext2_filsys fs;
++	int ret = 0;
+ 
+ 	FUSE4FS_CHECK_CONTEXT(req);
+ 
+@@ -6547,8 +6574,16 @@ static void op_iomap_config(fuse_req_t req,
+ 	cfg.flags |= FUSE_IOMAP_CONFIG_MAXBYTES;
+ 	cfg.s_maxbytes = fuse4fs_max_size(ff, p->maxbytes);
+ 
+-	fuse4fs_finish(ff, 0);
+-	fuse_reply_iomap_config(req, &cfg);
++	ret = fuse4fs_iomap_config_devices(ff);
++	if (ret)
++		goto out_unlock;
++
++out_unlock:
++	fuse4fs_finish(ff, ret);
++	if (ret)
++		fuse_reply_err(req, -ret);
++	else
++		fuse_reply_iomap_config(req, &cfg);
+ }
  #endif /* HAVE_FUSE_IOMAP */
  
- static struct fuse_operations fs_ops = {
-@@ -5738,6 +5827,7 @@ static struct fuse_operations fs_ops = {
+@@ -7084,6 +7119,7 @@ int main(int argc, char *argv[])
  #ifdef HAVE_FUSE_IOMAP
- 	.iomap_begin = op_iomap_begin,
- 	.iomap_end = op_iomap_end,
-+	.iomap_config = op_iomap_config,
- #endif /* HAVE_FUSE_IOMAP */
- };
+ 		.iomap_want = FT_DEFAULT,
+ 		.iomap_state = IOMAP_UNKNOWN,
++		.iomap_dev = FUSE_IOMAP_DEV_NULL,
+ #endif
+ 	};
+ 	errcode_t err;
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 7df4e127e5981a..c24ae461dad2ad 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -40,6 +40,7 @@
+ # define _FILE_OFFSET_BITS 64
+ #endif /* _FILE_OFFSET_BITS */
+ #include <fuse.h>
++#include <fuse_lowlevel.h>
+ #ifdef __SET_FOB_FOR_FUSE
+ # undef _FILE_OFFSET_BITS
+ #endif /* __SET_FOB_FOR_FUSE */
+@@ -266,6 +267,7 @@ struct fuse2fs {
+ #ifdef HAVE_FUSE_IOMAP
+ 	enum fuse2fs_feature_toggle iomap_want;
+ 	enum fuse2fs_iomap_state iomap_state;
++	uint32_t iomap_dev;
+ #endif
+ 	unsigned int blockmask;
+ 	unsigned long offset;
+@@ -5481,7 +5483,7 @@ static errcode_t fuse2fs_iomap_begin_extent(struct fuse2fs *ff, uint64_t ino,
+ 	}
  
+ 	/* Mapping overlaps startoff, report this. */
+-	iomap->dev = FUSE_IOMAP_DEV_NULL;
++	iomap->dev = ff->iomap_dev;
+ 	iomap->addr = FUSE2FS_FSB_TO_B(ff, extent.e_pblk) + ff->offset;
+ 	iomap->offset = FUSE2FS_FSB_TO_B(ff, extent.e_lblk);
+ 	iomap->length = FUSE2FS_FSB_TO_B(ff, extent.e_len);
+@@ -5514,13 +5516,14 @@ static int fuse2fs_iomap_begin_indirect(struct fuse2fs *ff, uint64_t ino,
+ 	if (err)
+ 		return translate_error(fs, ino, err);
+ 
+-	iomap->dev = FUSE_IOMAP_DEV_NULL;
+ 	iomap->offset = FUSE2FS_FSB_TO_B(ff, startoff);
+ 	iomap->flags |= FUSE_IOMAP_F_MERGED;
+ 	if (startblock) {
++		iomap->dev = ff->iomap_dev;
+ 		iomap->addr = FUSE2FS_FSB_TO_B(ff, startblock) + ff->offset;
+ 		iomap->type = FUSE_IOMAP_TYPE_MAPPED;
+ 	} else {
++		iomap->dev = FUSE_IOMAP_DEV_NULL;
+ 		iomap->addr = FUSE_IOMAP_NULL_ADDR;
+ 		iomap->type = FUSE_IOMAP_TYPE_HOLE;
+ 	}
+@@ -5739,11 +5742,36 @@ static off_t fuse2fs_max_size(struct fuse2fs *ff, off_t upper_limit)
+ 	return res;
+ }
+ 
++static int fuse2fs_iomap_config_devices(struct fuse2fs *ff)
++{
++	errcode_t err;
++	int fd;
++	int ret;
++
++	err = io_channel_get_fd(ff->fs->io, &fd);
++	if (err)
++		return translate_error(ff->fs, 0, err);
++
++	ret = fuse_fs_iomap_device_add(fd, 0);
++	if (ret < 0) {
++		dbg_printf(ff, "%s: cannot register iomap dev fd=%d, err=%d\n",
++			   __func__, fd, -ret);
++		return translate_error(ff->fs, 0, -ret);
++	}
++
++	dbg_printf(ff, "%s: registered iomap dev fd=%d iomap_dev=%u\n",
++		   __func__, fd, ff->iomap_dev);
++
++	ff->iomap_dev = ret;
++	return 0;
++}
++
+ static int op_iomap_config(const struct fuse_iomap_config_params *p,
+ 			   size_t psize, struct fuse_iomap_config *cfg)
+ {
+ 	struct fuse2fs *ff = fuse2fs_get();
+ 	ext2_filsys fs;
++	int ret = 0;
+ 
+ 	FUSE2FS_CHECK_CONTEXT(ff);
+ 
+@@ -5778,8 +5806,13 @@ static int op_iomap_config(const struct fuse_iomap_config_params *p,
+ 	cfg->flags |= FUSE_IOMAP_CONFIG_MAXBYTES;
+ 	cfg->s_maxbytes = fuse2fs_max_size(ff, p->maxbytes);
+ 
+-	fuse2fs_finish(ff, 0);
+-	return 0;
++	ret = fuse2fs_iomap_config_devices(ff);
++	if (ret)
++		goto out_unlock;
++
++out_unlock:
++	fuse2fs_finish(ff, ret);
++	return ret;
+ }
+ #endif /* HAVE_FUSE_IOMAP */
+ 
+@@ -6145,6 +6178,7 @@ int main(int argc, char *argv[])
+ #ifdef HAVE_FUSE_IOMAP
+ 		.iomap_want = FT_DEFAULT,
+ 		.iomap_state = IOMAP_UNKNOWN,
++		.iomap_dev = FUSE_IOMAP_DEV_NULL,
+ #endif
+ 	};
+ 	errcode_t err;
 
