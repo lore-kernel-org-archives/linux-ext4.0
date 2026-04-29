@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0B952D8370;
-	Wed, 29 Apr 2026 14:11:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 316AC3FE35D;
+	Wed, 29 Apr 2026 14:12:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777471881; cv=none; b=TwKiK72u8+UJy3iIonyuMxfdWfmZ0O4ci/aToXLVfSGv+5Hr8PrhQwVNsikpsfr23dHN5Jvg5u2kwdm8DcYo2vUP2fjg8PeK1J/CGSwbE46HI5C3wfmao1KL4WXxjQlgE5+RR0VQP/mpY0RN2Gu3HV6S+4cA8NS1ISCLD3Y9OHA=
+	t=1777471974; cv=none; b=X8zRudrQabxg5J06JcFEzhAmiPKg+ZDqdQssPnw2C7ODwphSKYCL68I+IWE5nw4y/iAZ29fTT8fnNA7jfr52WErHqzXYtKxJeKIcMJj5suEkyS5zsNdu4WXy7mMhcxzgVrvoTatIb1b5a1Tdbr/lEWrgfjXHJd2PKkIjmRZibwI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777471881; c=relaxed/simple;
-	bh=1CmkhIiS7kL6nQ3kOxg8HXKWwOrySXOJzZZWLN+AYvI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=RxTNVpeBiM/qOykMHPWvgSpwegbptuQ3Dz0f230FGsqtb4kTwfyH+Hx++TCb6c+iWj1C8gU2qfzEjN/nqGXeqBQKU2bzqLcpgZNJWqDxJ60KFfDz5i9VUtvgvcZa+id7rZ/vpdbRxdzjIu8RI4Y8hdRs4OpK9RpRBQgt7DrAg+k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=p4ziPV/5; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1777471974; c=relaxed/simple;
+	bh=H88RuBnXJiK5hQfdWQDhe+732bMfMKcPuGgJ5tVileo=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=NPRlyV8g5w5QEAgyyncTRdyvFo3KNQoi3Uuvxl4PXwACFGbpvMwb3lW9O+3ZhHdp8jr9QzBMjtcz5NKQ3vM/4WdUKQbL7mi8RLJyyB7SztXF51EiT5/SaRICEZCJEANmTUOPtFmi57fQ2/1uFflh0X9FDa6Y/xUcBvekI/Op7SQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MRJtb58I; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="p4ziPV/5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5201EC19425;
-	Wed, 29 Apr 2026 14:11:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MRJtb58I"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 632E0C19425;
+	Wed, 29 Apr 2026 14:12:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777471881;
-	bh=1CmkhIiS7kL6nQ3kOxg8HXKWwOrySXOJzZZWLN+AYvI=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=p4ziPV/5hqwzP48/EXr/uu+qc0gSsubRd4qPwbj0ygD9wYZaWlfyvOv6LpcYWAXSI
-	 uQjg47q4NevZuWsV/4YsP4S/CN0YmlsBVSuR5NIiUZtKqXc4wMe7VofIgxepp8bJJI
-	 JcCkRLMqUT5YB1Lu+0VrQNTJQ/acbFk+B3jpOZzSdXyMGt43VQNBsf/U3DQ0KnU3bl
-	 jZwmwkF/nlbVY4LXCQr5ow8Ne2zeX7vPD4nuhlEjOB/o9FEyfWjHJVzKvymAuqBPB9
-	 YDi4usCawhTIDL0AEE/USERewjz9LE7cL2syzg/r5ixMfWXq1vicM2tk6XaZcxuicW
-	 1wJqcqu+VbMww==
-Date: Wed, 29 Apr 2026 07:11:20 -0700
+	s=k20201202; t=1777471973;
+	bh=H88RuBnXJiK5hQfdWQDhe+732bMfMKcPuGgJ5tVileo=;
+	h=Date:From:To:Cc:Subject:From;
+	b=MRJtb58If3XskNhNifTgP4LUZBIp7u+RSfUEZ1DTNRSo9Lgd6D0ql4mIA82mRyQSK
+	 9gf+2rUbV4FbLzZ9QR6aOK1OsojGQOF0Zgn/P1hNJBC9OjkkDVXBb6LIzLCJ3Du0LZ
+	 c19mfU7lgBklhFU/J1J5eAgbC6IIfGu6KgW8/utkbwK/sznHHSDV1FoL6oC09Cy6wM
+	 gkbxXAOhm2gmiSUN6+wr7o/h1TgXAx6X48CeT6zw6VAHJRIWQLMCOWbQFhxvVph024
+	 0fWH7AZaDsvM7PMNEkZsGPlQuGMO53y1ZJUrUapfm4qZN0VQXTgxxXvYX0FZg2zu4w
+	 ABNP5PQT6Rmvw==
+Date: Wed, 29 Apr 2026 07:12:53 -0700
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
@@ -38,8 +38,7 @@ Cc: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>,
 	Christian Brauner <brauner@kernel.org>
 Subject: [PATCHBLIZZARD v8] fuse/libfuse/e2fsprogs: faster file IO for
  containerized ext4 servers
-Message-ID: <20260429141120.GD3778109@frogsfrogsfrogs>
-References: <20260223224617.GA2390314@frogsfrogsfrogs>
+Message-ID: <20260429141253.GQ7739@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,7 +47,8 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260223224617.GA2390314@frogsfrogsfrogs>
+
+[let's send this as a separate thread]
 
 Hi everyone,
 
@@ -83,7 +83,8 @@ especially painful for fuse+iomap (~90% more overhead) due to upcall
 overhead.  And that's with (now dynamic) debugging turned on!
 
 This series has been rebased to 7.1-rc1 since the seventh RFC, but it
-has not otherwise changed much.  Most changes happened in userspace:
+has not otherwise changed much.  Most changes happened in userspace
+this time:
 
 1. I've written some example fuse-iomap servers, so I now have a vehicle
    for testing that out of place writes works (they do) and that inline
