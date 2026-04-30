@@ -1,78 +1,77 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B340B413247
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2026 13:23:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CC824218B7
+	for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2026 13:23:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777555401; cv=none; b=Z9xSxqbZ0SkZ9JsRK3mpokg21ZaamNiUAVVzyxbJr2awvY1aXTnrk59rAzWC4QyZvTkjD15iYLf3O+V9VpcFO/0jOI3+/PR8vi1cTwEv5qxnXq6c41hfDdHj//xNYvFj4S/Z3tiqbzFcm6lkXJZY5eQXfWpvleTp1MfVmcVwxKw=
+	t=1777555421; cv=none; b=kTKneNv/FSFuB9PNdPpGLCpn9X1oK+ZPJZ2BwiLvqQHooYuKObSftdoBMpwG8UgBArqkKvcIGlbh09WFL2/yx+yGnYcsdvkBRrKt7VuVvogNegKtAHKKvORJyigK01xUhAvGuqjzhAiPkP6wuAG1/EslFUkZnWO/0TY5qNkAozk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777555401; c=relaxed/simple;
-	bh=FOrMjnKBaX9i6lZMqyfe0DgRMtB3s0yfdYOGUJpW4PM=;
+	s=arc-20240116; t=1777555421; c=relaxed/simple;
+	bh=n6mIQ1SY+KMkSAuVisw3yTa0kMmmDndhkyUXNmRVxkE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=dx3PuddPKOwauqOt3Fj/CQDQVyOp9221FIaq9+90AgHJV1QPYy2haGMib2kdQel9n6GRVhxnyOIMxaWZZvYvdQwgeUqbO0JDYMGFHVrv+qOrHkOxvg31nCvZAPls4Q4HF7Ygv2t9/Bk+NzLfawIIHeXA9QnRvXHHHBO0Hl1FUtk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dIgxGwzq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=TBFdGpFe; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dIgxGwzq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=TBFdGpFe; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=KNwbt9TAOdc/BRG1Z4ukNv6fB03An3Rlyz4nZfioZE5/er9CmV8xd/2Nrpf1bzYhLQd1hql6Hru8mEhSmzkUusTBnfFxTZ6KmrYFCwrXZN7J8JDrk/39M8T0RVDixMH6TP6cO+4SdyP6Hqxo2rTLoNa6uqbOO1fRFIOD9Pk6axo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dQdQ3u66; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=l8Jky8Si; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dQdQ3u66; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=l8Jky8Si; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dIgxGwzq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="TBFdGpFe";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dIgxGwzq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="TBFdGpFe"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dQdQ3u66";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="l8Jky8Si";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dQdQ3u66";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="l8Jky8Si"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 1D21B5BD56;
-	Thu, 30 Apr 2026 13:23:17 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id F3D885BD3C;
+	Thu, 30 Apr 2026 13:23:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777555397; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1777555418; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ruqM/U1qAm4e+ArmQmo/a/Cr0pBlZQFsZCHSjpM6G3s=;
-	b=dIgxGwzqHetY/cs8w2Yv9nocwyXp2wDmgIdCnXXyGSJ6g9ofZ38nwC/B6lcWmgzdkk1dB8
-	HrzO63tPZD+q+yobTShLfstHKIBMehYPAw250IDXd7LD11udSH3k5quWbtmyNLP2y6mHec
-	0ICitMN2EE5Dq82QPJVU2H+VcywkuOY=
+	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
+	b=dQdQ3u66PcUFyL1L+y0Rp631W0JdyIz1xO5Rp4PVhd4MfqCB1bAqGh7e+IY18PC/km7dur
+	zolVeeAS1OEQ9sJ6PEgCdf6JHNjw4VJXqY2TZSzRA1ltP3TK39939tZW8Rj4N3taey8bea
+	x6lBY682FE/xaW/JXCI7ovf959IFvOs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777555397;
+	s=susede2_ed25519; t=1777555418;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ruqM/U1qAm4e+ArmQmo/a/Cr0pBlZQFsZCHSjpM6G3s=;
-	b=TBFdGpFemNdxfhZcjpXevifGhwuc1XhyNTosNrCcU2WbOfbjjmDItONS9D40HBckhl8otC
-	xH/8LyNNjk6kFCCw==
+	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
+	b=l8Jky8SiqaI5kmDFOv0lCuM4QcKCcL/GXikIgYX73klx3XKoaoq+G9ml6mh7tjuXkKe5xS
+	XTs9W4sAwNNRreCA==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=dIgxGwzq;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=TBFdGpFe
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777555397; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1777555418; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ruqM/U1qAm4e+ArmQmo/a/Cr0pBlZQFsZCHSjpM6G3s=;
-	b=dIgxGwzqHetY/cs8w2Yv9nocwyXp2wDmgIdCnXXyGSJ6g9ofZ38nwC/B6lcWmgzdkk1dB8
-	HrzO63tPZD+q+yobTShLfstHKIBMehYPAw250IDXd7LD11udSH3k5quWbtmyNLP2y6mHec
-	0ICitMN2EE5Dq82QPJVU2H+VcywkuOY=
+	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
+	b=dQdQ3u66PcUFyL1L+y0Rp631W0JdyIz1xO5Rp4PVhd4MfqCB1bAqGh7e+IY18PC/km7dur
+	zolVeeAS1OEQ9sJ6PEgCdf6JHNjw4VJXqY2TZSzRA1ltP3TK39939tZW8Rj4N3taey8bea
+	x6lBY682FE/xaW/JXCI7ovf959IFvOs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777555397;
+	s=susede2_ed25519; t=1777555418;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=ruqM/U1qAm4e+ArmQmo/a/Cr0pBlZQFsZCHSjpM6G3s=;
-	b=TBFdGpFemNdxfhZcjpXevifGhwuc1XhyNTosNrCcU2WbOfbjjmDItONS9D40HBckhl8otC
-	xH/8LyNNjk6kFCCw==
+	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
+	b=l8Jky8SiqaI5kmDFOv0lCuM4QcKCcL/GXikIgYX73klx3XKoaoq+G9ml6mh7tjuXkKe5xS
+	XTs9W4sAwNNRreCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 11E02593B0;
-	Thu, 30 Apr 2026 13:23:17 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EB40A593B0;
+	Thu, 30 Apr 2026 13:23:37 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 4CBbBMVX82mYMQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 30 Apr 2026 13:23:17 +0000
+	id EoZtOdlX82nLMQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 30 Apr 2026 13:23:37 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id BD07BA0523; Thu, 30 Apr 2026 15:23:16 +0200 (CEST)
-Date: Thu, 30 Apr 2026 15:23:16 +0200
+	id A4CF9A0523; Thu, 30 Apr 2026 15:23:29 +0200 (CEST)
+Date: Thu, 30 Apr 2026 15:23:29 +0200
 From: Jan Kara <jack@suse.cz>
 To: Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
@@ -80,10 +79,11 @@ Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
 	djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com, yizhang089@gmail.com, 
 	yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v3 05/22] ext4: implement buffered read path using iomap
-Message-ID: <nz3ieqivswig4tdec4k2yo55w3qskn54f6mynmhqg7kplkcpg3@3pjcib7ehomc>
+Subject: Re: [PATCH v3 04/22] ext4: add iomap address space operations for
+ buffered I/O
+Message-ID: <l3drgv2f6spaxojcudhg3nakq6tzcikbasxgnyr2fuqz64tukt@vrjellznccu2>
 References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
- <20260422021042.4157510-6-yi.zhang@huaweicloud.com>
+ <20260422021042.4157510-5-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -92,58 +92,50 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260422021042.4157510-6-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
+In-Reply-To: <20260422021042.4157510-5-yi.zhang@huaweicloud.com>
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[16];
-	ARC_NA(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DWL_DNSWL_BLOCKED(0.00)[suse.cz:dkim];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,suse.cz:dkim,suse.cz:email]
-X-Rspamd-Action: no action
+	MIME_TRACE(0.00)[0:+];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[16];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
 X-Spam-Flag: NO
-X-Spam-Score: -2.51
+X-Spam-Score: -2.30
 X-Spam-Level: 
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 1D21B5BD56
 
-On Wed 22-04-26 10:10:25, Zhang Yi wrote:
+On Wed 22-04-26 10:10:24, Zhang Yi wrote:
 > From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Implement the iomap read path for ext4 by introducing a new
-> ext4_iomap_buffered_read_ops instance. This provides the read_folio()
-> and readahead() callbacks for ext4_iomap_aops. The implementation
-> introduces:
+> Introduce initial support for iomap in the buffered I/O path for regular
+> files on ext4.
 > 
->  - ext4_iomap_map_blocks(): Helper function to query extent mappings for
->    a given read range using ext4_map_blocks() and convert the mapping
->    information to iomap type
->  - ext4_iomap_buffered_read_begin(): The iomap_begin callback that maps
->    blocks, validates filesystem state, and populates the iomap. It
->    returns -ERANGE for inline data which is not yet supported.
+>   - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
+>     inode uses iomap instead of buffer_head for buffered I/O
+>   - Add helper ext4_inode_buffered_iomap() to check the flag
+>   - Add new address space operations ext4_iomap_aops with callbacks that
+>     will use generic iomap implementations
+>   - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
+> 
+> The following callbacks(read_folio(), readahead(), writepages()) are
+> provided as placeholders and will be implemented in later patches.
 > 
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
@@ -154,72 +146,92 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/ext4/inode.c | 45 ++++++++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 44 insertions(+), 1 deletion(-)
+>  fs/ext4/ext4.h  |  7 +++++++
+>  fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
+>  2 files changed, 39 insertions(+)
 > 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 9e4353432325..fe3491ad2129 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1972,6 +1972,7 @@ enum {
+>  	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+>  	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+>  	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+> +	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
+>  };
+>  
+>  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+> @@ -2040,6 +2041,12 @@ static inline bool ext4_inode_orphan_tracked(struct inode *inode)
+>  		!list_empty(&EXT4_I(inode)->i_orphan);
+>  }
+>  
+> +/* Whether the inode pass through the iomap infrastructure for buffered I/O */
+> +static inline bool ext4_inode_buffered_iomap(struct inode *inode)
+> +{
+> +	return ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
+> +}
+> +
+>  /*
+>   * Codes for operating systems
+>   */
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9e9f421888ed..df21f6870ec4 100644
+> index 59405a95ecfc..9e9f421888ed 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -3908,14 +3908,57 @@ const struct iomap_ops ext4_iomap_report_ops = {
+> @@ -3908,6 +3908,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
 >  	.iomap_begin = ext4_iomap_begin_report,
 >  };
 >  
-> +static int ext4_iomap_map_blocks(struct inode *inode, loff_t offset,
-> +		loff_t length, struct ext4_map_blocks *map)
+> +static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
 > +{
-> +	u8 blkbits = inode->i_blkbits;
-> +
-> +	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-> +		return -EINVAL;
-> +
-> +	/* Calculate the first and last logical blocks respectively. */
-> +	map->m_lblk = offset >> blkbits;
-> +	map->m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
-> +			   EXT4_MAX_LOGICAL_BLOCK) - map->m_lblk + 1;
-> +
-> +	return ext4_map_blocks(NULL, inode, map, 0);
-> +}
-> +
-> +static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
-> +		loff_t length, unsigned int flags, struct iomap *iomap,
-> +		struct iomap *srcmap)
-> +{
-> +	struct ext4_map_blocks map;
-> +	int ret;
-> +
-> +	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
-> +		return -EIO;
-> +
-> +	/* Inline data support is not yet available. */
-> +	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-> +		return -ERANGE;
-> +
-> +	ret = ext4_iomap_map_blocks(inode, offset, length, &map);
-> +	if (ret < 0)
-> +		return ret;
-> +
-> +	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
 > +	return 0;
 > +}
 > +
-> +const struct iomap_ops ext4_iomap_buffered_read_ops = {
-> +	.iomap_begin = ext4_iomap_buffered_read_begin,
+> +static void ext4_iomap_readahead(struct readahead_control *rac)
+> +{
+> +
+> +}
+> +
+> +static int ext4_iomap_writepages(struct address_space *mapping,
+> +				 struct writeback_control *wbc)
+> +{
+> +	return 0;
+> +}
+> +
+>  /*
+>   * For data=journal mode, folio should be marked dirty only when it was
+>   * writeably mapped. When that happens, it was already attached to the
+> @@ -3994,6 +4010,20 @@ static const struct address_space_operations ext4_da_aops = {
+>  	.swap_activate		= ext4_iomap_swap_activate,
+>  };
+>  
+> +static const struct address_space_operations ext4_iomap_aops = {
+> +	.read_folio		= ext4_iomap_read_folio,
+> +	.readahead		= ext4_iomap_readahead,
+> +	.writepages		= ext4_iomap_writepages,
+> +	.dirty_folio		= iomap_dirty_folio,
+> +	.bmap			= ext4_bmap,
+> +	.invalidate_folio	= iomap_invalidate_folio,
+> +	.release_folio		= iomap_release_folio,
+> +	.migrate_folio		= filemap_migrate_folio,
+> +	.is_partially_uptodate  = iomap_is_partially_uptodate,
+> +	.error_remove_folio	= generic_error_remove_folio,
+> +	.swap_activate		= ext4_iomap_swap_activate,
 > +};
 > +
->  static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
->  {
-> +	iomap_bio_read_folio(folio, &ext4_iomap_buffered_read_ops);
->  	return 0;
->  }
->  
->  static void ext4_iomap_readahead(struct readahead_control *rac)
->  {
-> -
-> +	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
->  }
->  
->  static int ext4_iomap_writepages(struct address_space *mapping,
+>  static const struct address_space_operations ext4_dax_aops = {
+>  	.writepages		= ext4_dax_writepages,
+>  	.dirty_folio		= noop_dirty_folio,
+> @@ -4015,6 +4045,8 @@ void ext4_set_aops(struct inode *inode)
+>  	}
+>  	if (IS_DAX(inode))
+>  		inode->i_mapping->a_ops = &ext4_dax_aops;
+> +	else if (ext4_inode_buffered_iomap(inode))
+> +		inode->i_mapping->a_ops = &ext4_iomap_aops;
+>  	else if (test_opt(inode->i_sb, DELALLOC))
+>  		inode->i_mapping->a_ops = &ext4_da_aops;
+>  	else
 > -- 
 > 2.52.0
 > 
