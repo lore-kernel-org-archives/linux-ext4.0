@@ -1,240 +1,168 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CC824218B7
-	for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2026 13:23:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4647F2EF653;
+	Thu, 30 Apr 2026 21:15:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777555421; cv=none; b=kTKneNv/FSFuB9PNdPpGLCpn9X1oK+ZPJZ2BwiLvqQHooYuKObSftdoBMpwG8UgBArqkKvcIGlbh09WFL2/yx+yGnYcsdvkBRrKt7VuVvogNegKtAHKKvORJyigK01xUhAvGuqjzhAiPkP6wuAG1/EslFUkZnWO/0TY5qNkAozk=
+	t=1777583712; cv=none; b=e6KI+xhutArLETpOOTrPBmdifew3y8M4hP11Ydypp5/85uT+d6AJvsZ6dMY0dareYdf0IfMfbD69egGnvz5zx9zOqaV7Yyct62AszJ1WRldfqJDSmGhkc9rVzeQkWHaPcvbbKpLd+jyUlYybLeSKSYh26zgl1et4gWDZYQ6JQcU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777555421; c=relaxed/simple;
-	bh=n6mIQ1SY+KMkSAuVisw3yTa0kMmmDndhkyUXNmRVxkE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=KNwbt9TAOdc/BRG1Z4ukNv6fB03An3Rlyz4nZfioZE5/er9CmV8xd/2Nrpf1bzYhLQd1hql6Hru8mEhSmzkUusTBnfFxTZ6KmrYFCwrXZN7J8JDrk/39M8T0RVDixMH6TP6cO+4SdyP6Hqxo2rTLoNa6uqbOO1fRFIOD9Pk6axo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dQdQ3u66; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=l8Jky8Si; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dQdQ3u66; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=l8Jky8Si; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1777583712; c=relaxed/simple;
+	bh=aoOFAQdEHetNra8ZBV5i3tjYRbiE0hW41hJs/mFbCeo=;
+	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:Content-Type; b=o7fm9U10d5rwSaBNUpZ6fDkeX1Vq3ywAlXFC8qCjwEZn7PM9hkOaq4RiTXWAXgm4ps7Q9UZJWDazVMMjdFCljd62D7VDax3navR3wgh2KufgBVuH/cBotEI3tBHoQH4FEplWuo7HM3RBGvqWPP3icyP157xp64V3BwiQU1mSah0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H1Op7dnJ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dQdQ3u66";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="l8Jky8Si";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dQdQ3u66";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="l8Jky8Si"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id F3D885BD3C;
-	Thu, 30 Apr 2026 13:23:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777555418; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
-	b=dQdQ3u66PcUFyL1L+y0Rp631W0JdyIz1xO5Rp4PVhd4MfqCB1bAqGh7e+IY18PC/km7dur
-	zolVeeAS1OEQ9sJ6PEgCdf6JHNjw4VJXqY2TZSzRA1ltP3TK39939tZW8Rj4N3taey8bea
-	x6lBY682FE/xaW/JXCI7ovf959IFvOs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777555418;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
-	b=l8Jky8SiqaI5kmDFOv0lCuM4QcKCcL/GXikIgYX73klx3XKoaoq+G9ml6mh7tjuXkKe5xS
-	XTs9W4sAwNNRreCA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1777555418; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
-	b=dQdQ3u66PcUFyL1L+y0Rp631W0JdyIz1xO5Rp4PVhd4MfqCB1bAqGh7e+IY18PC/km7dur
-	zolVeeAS1OEQ9sJ6PEgCdf6JHNjw4VJXqY2TZSzRA1ltP3TK39939tZW8Rj4N3taey8bea
-	x6lBY682FE/xaW/JXCI7ovf959IFvOs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1777555418;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=4ghvDTgv9dsIwv4C2A0WXSHxDlHKLnoYUmvKo4tl2GU=;
-	b=l8Jky8SiqaI5kmDFOv0lCuM4QcKCcL/GXikIgYX73klx3XKoaoq+G9ml6mh7tjuXkKe5xS
-	XTs9W4sAwNNRreCA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EB40A593B0;
-	Thu, 30 Apr 2026 13:23:37 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id EoZtOdlX82nLMQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 30 Apr 2026 13:23:37 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A4CF9A0523; Thu, 30 Apr 2026 15:23:29 +0200 (CEST)
-Date: Thu, 30 Apr 2026 15:23:29 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com, yizhang089@gmail.com, 
-	yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v3 04/22] ext4: add iomap address space operations for
- buffered I/O
-Message-ID: <l3drgv2f6spaxojcudhg3nakq6tzcikbasxgnyr2fuqz64tukt@vrjellznccu2>
-References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
- <20260422021042.4157510-5-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H1Op7dnJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1578CC2BCB3;
+	Thu, 30 Apr 2026 21:15:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1777583712;
+	bh=aoOFAQdEHetNra8ZBV5i3tjYRbiE0hW41hJs/mFbCeo=;
+	h=Date:Subject:From:To:Cc:From;
+	b=H1Op7dnJRBP6WjqbnkILMNm5yRNHG+2/A7CubKDwnPtg734r8AIe9aaiqzo8Im9Xt
+	 lfeXQcljhdgaY0ZKDdTkqcQrba3Z9mQ6rbQSGnF4X6ZYuMarphkdbkBDbBd93bl+Qm
+	 ePeu7g94bxUCOkfQq+8MsSDDRPIFv7NNDXO9SS6TcE9ZvdqG7w/9JP8gJ+JMlOG65h
+	 FxFuSBcaIeAH7ySADcCt2jzl9oOKe5MsqG/UxWKqmK2sAx9UDAXLz/Ivgmx052vUpy
+	 hSOTOT9hc3WIEW99v7ilIhve57H0s8Yb08z3SaY+qijUsW/N5hlJl/65J2bkgHVCdN
+	 gqw4Z6DLWmwPQ==
+Date: Thu, 30 Apr 2026 14:15:11 -0700
+Subject: [PATCHSET v5.1] libfuse: run fuse servers as a contained service
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: bernd@bsbernd.com, djwong@kernel.org
+Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
+ linux-ext4@vger.kernel.org, miklos@szeredi.hu, neal@gompa.dev,
+ joannelkoong@gmail.com
+Message-ID: <177758363484.1314717.11777978893472254088.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260422021042.4157510-5-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCPT_COUNT_TWELVE(0.00)[16];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 
-On Wed 22-04-26 10:10:24, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Introduce initial support for iomap in the buffered I/O path for regular
-> files on ext4.
-> 
->   - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
->     inode uses iomap instead of buffer_head for buffered I/O
->   - Add helper ext4_inode_buffered_iomap() to check the flag
->   - Add new address space operations ext4_iomap_aops with callbacks that
->     will use generic iomap implementations
->   - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
-> 
-> The following callbacks(read_folio(), readahead(), writepages()) are
-> provided as placeholders and will be implemented in later patches.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Hi all,
 
-Looks good. Feel free to add:
+This patchset defines the necessary communication protocols and library
+code so that users can mount fuse servers that run in unprivileged
+systemd service containers.  That in turn allows unprivileged untrusted
+mounts, because the worst that can happen is that a malicious image
+crashes the fuse server and the mount dies, instead of corrupting the
+kernel's memory.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+v5.1: fix some of the SCM_RIGHTS handling code, fix header inclusion
+      errors, improve documentation of example code, improve statx
+      flags handling, improve phony timestamp handling
+v5: Refactor socket IO into helpers, tighten the security checks in
+    mount_service.c, always set nosuid/nodev for unprivileged mounts,
+    use posix_spawnp in mount.fuse, restructure sample programs and hl
+    library code to avoid the need for unmounting during startup
+v4.1: fix various cppcheck/codecheck complaints
+v4: fix a large number of security problems that only matter when the
+    mount helper is being run as a setuid program; fix protocol
+    byteswapping problems; add CLOEXEC to all files being traded
+    back and forth; add an umount command; and strengthen mount socket
+    protocol checks.
+v3: refactor the sample code to reduce duplication; fix all the
+    checkpatch complaints; examples actually build standalone;
+    fuservicemount handles utab now; cleaned up meson feature detection;
+    handle MS_ flags that don't translate to MOUNT_ATTR_*
+v2: cleaned up error code handling and logging; add some example fuse
+    service; fuservicemount3 can now be a setuid program to allow
+    unprivileged userspace to fire up a contained filesystem driver.
+    This could be opening Pandora's box...
+v1: detach from fuse-iomap series
 
-								Honza
+If you're going to start using this code, I strongly recommend pulling
+from my git trees, which are linked below.
 
-> ---
->  fs/ext4/ext4.h  |  7 +++++++
->  fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
->  2 files changed, 39 insertions(+)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 9e4353432325..fe3491ad2129 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1972,6 +1972,7 @@ enum {
->  	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
->  	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
->  	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
-> +	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
->  };
->  
->  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
-> @@ -2040,6 +2041,12 @@ static inline bool ext4_inode_orphan_tracked(struct inode *inode)
->  		!list_empty(&EXT4_I(inode)->i_orphan);
->  }
->  
-> +/* Whether the inode pass through the iomap infrastructure for buffered I/O */
-> +static inline bool ext4_inode_buffered_iomap(struct inode *inode)
-> +{
-> +	return ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
-> +}
-> +
->  /*
->   * Codes for operating systems
->   */
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 59405a95ecfc..9e9f421888ed 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3908,6 +3908,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
->  	.iomap_begin = ext4_iomap_begin_report,
->  };
->  
-> +static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
-> +{
-> +	return 0;
-> +}
-> +
-> +static void ext4_iomap_readahead(struct readahead_control *rac)
-> +{
-> +
-> +}
-> +
-> +static int ext4_iomap_writepages(struct address_space *mapping,
-> +				 struct writeback_control *wbc)
-> +{
-> +	return 0;
-> +}
-> +
->  /*
->   * For data=journal mode, folio should be marked dirty only when it was
->   * writeably mapped. When that happens, it was already attached to the
-> @@ -3994,6 +4010,20 @@ static const struct address_space_operations ext4_da_aops = {
->  	.swap_activate		= ext4_iomap_swap_activate,
->  };
->  
-> +static const struct address_space_operations ext4_iomap_aops = {
-> +	.read_folio		= ext4_iomap_read_folio,
-> +	.readahead		= ext4_iomap_readahead,
-> +	.writepages		= ext4_iomap_writepages,
-> +	.dirty_folio		= iomap_dirty_folio,
-> +	.bmap			= ext4_bmap,
-> +	.invalidate_folio	= iomap_invalidate_folio,
-> +	.release_folio		= iomap_release_folio,
-> +	.migrate_folio		= filemap_migrate_folio,
-> +	.is_partially_uptodate  = iomap_is_partially_uptodate,
-> +	.error_remove_folio	= generic_error_remove_folio,
-> +	.swap_activate		= ext4_iomap_swap_activate,
-> +};
-> +
->  static const struct address_space_operations ext4_dax_aops = {
->  	.writepages		= ext4_dax_writepages,
->  	.dirty_folio		= noop_dirty_folio,
-> @@ -4015,6 +4045,8 @@ void ext4_set_aops(struct inode *inode)
->  	}
->  	if (IS_DAX(inode))
->  		inode->i_mapping->a_ops = &ext4_dax_aops;
-> +	else if (ext4_inode_buffered_iomap(inode))
-> +		inode->i_mapping->a_ops = &ext4_iomap_aops;
->  	else if (test_opt(inode->i_sb, DELALLOC))
->  		inode->i_mapping->a_ops = &ext4_da_aops;
->  	else
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+With a bit of luck, this should all go splendidly.
+Comments and questions are, as always, welcome.
+
+--D
+
+kernel git tree:
+https://git.kernel.org/cgit/linux/kernel/git/djwong/xfs-linux.git/log/?h=fuse-service-container
+---
+Commits in this patchset:
+ * Refactor mount code / move common functions to mount_util.c
+ * mount_service: add systemd socket service mounting helper
+ * mount_service: create high level fuse helpers
+ * mount_service: use the new mount api for the mount service
+ * mount_service: update mtab after a successful mount
+ * util: hoist the fuse.conf parsing and setuid mode enforcement code
+ * util: fix checkpatch complaints in fuser_conf.[ch]
+ * mount_service: enable unprivileged users in a similar manner as fusermount
+ * mount.fuse3: integrate systemd service startup
+ * mount_service: allow installation as a setuid program
+ * example/service_ll: create a sample systemd service fuse server
+ * example/service: create a sample systemd service for a high-level fuse server
+ * nullfs: support fuse systemd service mode
+---
+ example/single_file.h                            |  195 ++
+ include/fuse.h                                   |   34 
+ include/fuse_service.h                           |  243 +++
+ include/fuse_service_priv.h                      |  161 ++
+ lib/fuse_i.h                                     |    3 
+ lib/mount_common_i.h                             |   22 
+ lib/mount_util.h                                 |    8 
+ lib/util.h                                       |   35 
+ util/fuser_conf.h                                |   62 +
+ util/mount_service.h                             |   49 +
+ .github/workflows/install-ubuntu-dependencies.sh |    4 
+ README.md                                        |    3 
+ doc/fuservicemount3.8                            |   32 
+ doc/meson.build                                  |    3 
+ example/meson.build                              |   26 
+ example/null.c                                   |   51 +
+ example/null.socket.in                           |   15 
+ example/null@.service                            |  102 +
+ example/service_hl.c                             |  240 +++
+ example/service_hl.socket.in                     |   15 
+ example/service_hl@.service                      |  102 +
+ example/service_ll.c                             |  329 +++
+ example/service_ll.socket.in                     |   15 
+ example/service_ll@.service                      |  102 +
+ example/single_file.c                            |  992 ++++++++++
+ include/meson.build                              |    4 
+ lib/fuse_service.c                               | 1248 +++++++++++++
+ lib/fuse_service_stub.c                          |  106 +
+ lib/fuse_versionscript                           |   18 
+ lib/helper.c                                     |  160 ++
+ lib/meson.build                                  |   17 
+ lib/mount.c                                      |   72 +
+ lib/mount_util.c                                 |    9 
+ meson.build                                      |   53 +
+ meson_options.txt                                |    9 
+ test/ci-build.sh                                 |   14 
+ util/fuser_conf.c                                |  398 ++++
+ util/fusermount.c                                |  363 ----
+ util/fuservicemount.c                            |   65 +
+ util/install_helper.sh                           |    6 
+ util/meson.build                                 |   24 
+ util/mount.fuse.c                                |  171 ++
+ util/mount_service.c                             | 2111 ++++++++++++++++++++++
+ 43 files changed, 7287 insertions(+), 404 deletions(-)
+ create mode 100644 example/single_file.h
+ create mode 100644 include/fuse_service.h
+ create mode 100644 include/fuse_service_priv.h
+ create mode 100644 lib/mount_common_i.h
+ create mode 100644 util/fuser_conf.h
+ create mode 100644 util/mount_service.h
+ create mode 100644 doc/fuservicemount3.8
+ create mode 100644 example/null.socket.in
+ create mode 100644 example/null@.service
+ create mode 100644 example/service_hl.c
+ create mode 100644 example/service_hl.socket.in
+ create mode 100644 example/service_hl@.service
+ create mode 100644 example/service_ll.c
+ create mode 100644 example/service_ll.socket.in
+ create mode 100644 example/service_ll@.service
+ create mode 100644 example/single_file.c
+ create mode 100644 lib/fuse_service.c
+ create mode 100644 lib/fuse_service_stub.c
+ create mode 100644 util/fuser_conf.c
+ create mode 100644 util/fuservicemount.c
+ create mode 100644 util/mount_service.c
+
