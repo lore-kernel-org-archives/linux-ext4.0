@@ -1,40 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8BA4175A5;
-	Thu, 30 Apr 2026 21:16:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCDC81A08AF;
+	Thu, 30 Apr 2026 21:16:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777583764; cv=none; b=PV5y7EEV32FNwn38wHVnLklvo7OHcPB2u0p9rL6Frzwyq3f1l9trUuDDqzlx0JvmqePvK6neefoZoskVE12wyv7JgpzdwXnY3VqPMQwhkfqsEry3cPWuio1J2DXvIN3VQg9qYxG5L4oWbrJL2NwL5abB3tSa4vTi9H4YDjE/vaY=
+	t=1777583780; cv=none; b=imw/TkNOF5mrOnzmESp1hXGun/epiJwXg4ZC1x1jdRRqrzE7Nd/PGIq186pbtXvwXDNPMfKt0HUCdjYhlGYmJzvtCdJ152OfurWJ1I+/rQX3ETlXNrzpqRiXIdiNLX9Gy+CsZZ0FqHR+QzbKqbJevWZdgp2vzvdvWa01bWpr5XU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777583764; c=relaxed/simple;
-	bh=zBeHADBPSY0fHb6BGs6WaRFYGtkHkmbZ2SWR3rfLHW8=;
+	s=arc-20240116; t=1777583780; c=relaxed/simple;
+	bh=9mgB2mB1YnfDFua4CNi1SAWbnO+CjtvvDNJtl1MOJyk=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=iYVJS8sfnF9fuKDYVXJBfPX9XrBkJV8rfQmmmzrM01jR5qCAr3lfw9OVvK8ybzBwcMU0Hj5YIeLtCzz5hV0N3OoErBrek3klduixbs74O7bcIl1KqepVzFFPNgk2qJppB0lHLmpk0n49Pwzkf8LSQfvwtN8agrSQbL/G0dy55lc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VNG85iN9; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=o2teHwM8HyzQI6rgYz7As/vO3T6gdxFAuiZNzW2SiugDsPSCa9JD8g8XgL4WN039k9QwUcsFvjbgqRRxt6RQ0J/LAm1xlbr8d5jbUKvHRm+VlUxBhoEghOw2BgGxgHeXIedDHgY+IZkV9+jM/DQUbAjZqVksw5lZKcHJLigLOCo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RLVlkmp2; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VNG85iN9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3321C2BCB3;
-	Thu, 30 Apr 2026 21:16:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RLVlkmp2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58271C2BCB3;
+	Thu, 30 Apr 2026 21:16:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777583764;
-	bh=zBeHADBPSY0fHb6BGs6WaRFYGtkHkmbZ2SWR3rfLHW8=;
+	s=k20201202; t=1777583780;
+	bh=9mgB2mB1YnfDFua4CNi1SAWbnO+CjtvvDNJtl1MOJyk=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References:From;
-	b=VNG85iN9F8Qbce/EhnjlzyBexJjA8BKNDNXB3AejldSIcIRcNwutwXEuU+l/piyxC
-	 56nUPbG/oGtJ7UhhosaRPnHyCQY46KTcsmw3Vp3/G5/BFCrrh1N/9/qxM16HF8Vl9p
-	 O+wlS902u1FMBOxSXcxfeDeHpbA+CZGRoIQKfbjGaZSCOQ81aWM9+nPef3zUBtyHPQ
-	 0MFtMCEAt5D5K9E2TSWcqsxDglzfB5AO5VSgO+J1recV2rBjPeEGlvFYDX3DQK5DOh
-	 22xCw2Pbcmn8yjIJqthHOSTO9BQsWS4prdYkZSvUKzT0D3GsR8xgTd4s51qmJSX0Ys
-	 9BgK5o0D+Kehw==
-Date: Thu, 30 Apr 2026 14:16:04 -0700
-Subject: [PATCH 04/13] mount_service: use the new mount api for the mount
- service
+	b=RLVlkmp2o2a1RPPArdwziDZ+OEf8jG5fKhtQIFRz6IQRqy7gkR5TnehXUvwILWEjl
+	 Ko7fcKBOPWTdEM/2BJHAJyVMT3ZPEZhRpi5ZXq8Bv0lfV8qWtBymQc3h7692j6Dz/b
+	 FL0pRx5h6nBlaoVVBfxapUBJguCzUI+oaVek41cJgh+VkWBpENYLBTkp9UH8vZkYPk
+	 AH7t7yixaOO6ISsBiCBzRQEwMq969KIIRv8xmgquOoCrLT/kP8xRcSU2j8QvyE5TLE
+	 EGvXf/Kj+cnQP5sKq2d2ex16dvIY5kg3/Ea/tDhCJGhwBh8opMhKRZxqnLL2vtjs8L
+	 T5K7thLmw5LBA==
+Date: Thu, 30 Apr 2026 14:16:19 -0700
+Subject: [PATCH 05/13] mount_service: update mtab after a successful mount
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: bernd@bsbernd.com, djwong@kernel.org
 Cc: linux-fsdevel@vger.kernel.org, fuse-devel@lists.linux.dev,
  linux-ext4@vger.kernel.org, miklos@szeredi.hu, neal@gompa.dev,
  joannelkoong@gmail.com
-Message-ID: <177758363604.1314717.1565554096353858559.stgit@frogsfrogsfrogs>
+Message-ID: <177758363622.1314717.3266454364549497435.stgit@frogsfrogsfrogs>
 In-Reply-To: <177758363484.1314717.11777978893472254088.stgit@frogsfrogsfrogs>
 References: <177758363484.1314717.11777978893472254088.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -48,498 +47,262 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-Use the new fsopen/fsmount system calls to mount the filesystem so that
-we get somewhat better diagnostics if something gets screwed up.
+Update "mtab" so that non-kernel mount options (e.g. "x-fubar=XXX") are
+recorded somewhere so that userspace utilities can pick that up.  Note
+that this likely is not the venerable /etc/mtab, which has been a
+symlink to procfs for years.  On a modern system, these non-kernel
+options end up /run/mount/utab.
+
+But that's not a detail that libfuse has to worry about directly; it's
+really just calling mount -f(ake) to make the changes it wants.  Old
+hats may remember the use of mount -f to update /etc/mtab after mounting
+the root filesystem.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- lib/fuse_i.h         |    3 
- meson.build          |   15 ++
- util/mount_service.c |  332 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 346 insertions(+), 4 deletions(-)
+ include/fuse_service_priv.h |    1 
+ lib/mount_common_i.h        |    1 
+ lib/fuse_service.c          |   15 +++++++
+ lib/mount.c                 |    7 +++
+ util/mount_service.c        |   95 +++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 119 insertions(+)
 
 
-diff --git a/lib/fuse_i.h b/lib/fuse_i.h
-index 0ca13d132585f6..1710a872e19c72 100644
---- a/lib/fuse_i.h
-+++ b/lib/fuse_i.h
-@@ -215,6 +215,9 @@ struct fuse_chan *fuse_chan_get(struct fuse_chan *ch);
-  */
- void fuse_chan_put(struct fuse_chan *ch);
+diff --git a/include/fuse_service_priv.h b/include/fuse_service_priv.h
+index a3773d90c7db7e..8560b1ac610143 100644
+--- a/include/fuse_service_priv.h
++++ b/include/fuse_service_priv.h
+@@ -39,6 +39,7 @@ struct fuse_service_memfd_argv {
+ #define FUSE_SERVICE_MOUNT_CMD		0x444f4954	/* DOIT */
+ #define FUSE_SERVICE_UNMOUNT_CMD	0x554d4e54	/* UMNT */
+ #define FUSE_SERVICE_BYE_CMD		0x42594545	/* BYEE */
++#define FUSE_SERVICE_MTABOPTS_CMD	0x4d544142	/* MTAB */
  
-+/* Special return value for mount functions to indicate fallback to fusermount3 is needed */
-+#define FUSE_MOUNT_FALLBACK_NEEDED (-2)
-+
- struct mount_opts *parse_mount_opts(struct fuse_args *args);
- void destroy_mount_opts(struct mount_opts *mo);
- void fuse_mount_version(void);
-diff --git a/meson.build b/meson.build
-index 66425a0d4cc16f..c8326b79fcee8f 100644
---- a/meson.build
-+++ b/meson.build
-@@ -135,6 +135,21 @@ special_funcs = {
- 	int main(int argc, char *argv[]) {
-           return SD_LISTEN_FDS_START;
+ /* mount.service sends replies to the fuse server */
+ #define FUSE_SERVICE_OPEN_REPLY		0x46494c45	/* FILE */
+diff --git a/lib/mount_common_i.h b/lib/mount_common_i.h
+index 631dff3e6f8aaf..541cdebae4f47a 100644
+--- a/lib/mount_common_i.h
++++ b/lib/mount_common_i.h
+@@ -15,6 +15,7 @@ struct mount_opts;
+ char *fuse_mnt_build_source(const struct mount_opts *mo);
+ char *fuse_mnt_build_type(const struct mount_opts *mo);
+ char *fuse_mnt_kernel_opts(const struct mount_opts *mo);
++char *fuse_mnt_mtab_opts(const struct mount_opts *mo);
+ unsigned int fuse_mnt_flags(const struct mount_opts *mo);
+ 
+ 
+diff --git a/lib/fuse_service.c b/lib/fuse_service.c
+index ef512c76120a0f..83c1d564a18b0c 100644
+--- a/lib/fuse_service.c
++++ b/lib/fuse_service.c
+@@ -992,6 +992,7 @@ int fuse_service_session_mount(struct fuse_service *sf, struct fuse_session *se,
+ 	char *fstype = fuse_mnt_build_type(se->mo);
+ 	char *source = fuse_mnt_build_source(se->mo);
+ 	char *mntopts = fuse_mnt_kernel_opts(se->mo);
++	char *mtabopts = fuse_mnt_mtab_opts(se->mo);
+ 	char path[32];
+ 	int ret;
+ 	int error = 0;
+@@ -1062,6 +1063,19 @@ int fuse_service_session_mount(struct fuse_service *sf, struct fuse_session *se,
+ 		}
  	}
-+    ''',
-+    'new_mount_api': '''
-+       #define _GNU_SOURCE
-+       #include <sys/mount.h>
-+       #include <linux/mount.h>
-+       #include <unistd.h>
-+       #include <fcntl.h>
+ 
++	if (mtabopts) {
++		ret = send_string(sf, FUSE_SERVICE_MTABOPTS_CMD, mtabopts,
++				  &error);
++		if (ret)
++			goto out_strings;
++		if (error) {
++			fuse_log(FUSE_LOG_ERR, "fuse: service fs mtab options: %s\n",
++				 strerror(error));
++			ret = -error;
++			goto out_strings;
++		}
++	}
 +
-+       int main(void) {
-+           int fsfd = fsopen("fuse", FSOPEN_CLOEXEC);
-+           int res = fsconfig(fsfd, FSCONFIG_SET_STRING, "source", "test", 0);
-+           int mntfd = fsmount(fsfd, FSMOUNT_CLOEXEC, 0);
-+           res = move_mount(mntfd, "", AT_FDCWD, "/mnt", MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
-+           return 0;
-+       }
-     '''
+ 	ret = send_mount(sf, fuse_mnt_flags(se->mo), &error);
+ 	if (ret)
+ 		goto out_strings;
+@@ -1082,6 +1096,7 @@ int fuse_service_session_mount(struct fuse_service *sf, struct fuse_session *se,
+ 	(void)chdir("/");
+ 
+ out_strings:
++	free(mtabopts);
+ 	free(mntopts);
+ 	free(source);
+ 	free(fstype);
+diff --git a/lib/mount.c b/lib/mount.c
+index 952d8899dcf218..84c73579ab2daf 100644
+--- a/lib/mount.c
++++ b/lib/mount.c
+@@ -758,6 +758,13 @@ char *fuse_mnt_kernel_opts(const struct mount_opts *mo)
+ 	return NULL;
  }
  
++char *fuse_mnt_mtab_opts(const struct mount_opts *mo)
++{
++	if (mo->mtab_opts)
++		return strdup(mo->mtab_opts);
++	return NULL;
++}
++
+ unsigned int fuse_mnt_flags(const struct mount_opts *mo)
+ {
+ 	return mo->flags;
 diff --git a/util/mount_service.c b/util/mount_service.c
-index a43ff79c7bfb6f..f2a515a2cc3b37 100644
+index f2a515a2cc3b37..915a0c4b610792 100644
 --- a/util/mount_service.c
 +++ b/util/mount_service.c
-@@ -28,6 +28,11 @@
- #include <sys/ioctl.h>
- #include <linux/fs.h>
+@@ -61,6 +61,9 @@ struct mount_service {
+ 	/* mount options */
+ 	char *mntopts;
  
-+#ifdef HAVE_NEW_MOUNT_API
-+#include <sys/mount.h>
-+#include <linux/mount.h>
-+#endif
++	/* mtab options */
++	char *mtabopts;
 +
- #include "mount_util.h"
- #include "util.h"
- #include "fuse_i.h"
-@@ -68,6 +73,9 @@ struct mount_service {
- 	/* fd for mount point */
- 	int mountfd;
+ 	/* socket fd */
+ 	int sockfd;
  
-+	/* fd for fsopen */
-+	int fsopenfd;
+@@ -86,6 +89,13 @@ struct mount_service {
+ 	bool fuseblk;
+ };
+ 
++static char IGNORE_MTAB;
 +
- 	/* did we actually mount successfully? */
- 	bool mounted;
- 
-@@ -187,6 +195,7 @@ static int mount_service_init(struct mount_service *mo, int argc, char *argv[])
- 	mo->argvfd = -1;
- 	mo->fusedevfd = -1;
- 	mo->mountfd = -1;
-+	mo->fsopenfd = -1;
- 
- 	for (i = 0; i < argc; i++) {
- 		if (!strcmp(argv[i], "-t") && i + 1 < argc) {
-@@ -782,6 +791,20 @@ static inline const char *fsname(const struct mount_service *mo)
- 	return mo->fuseblk ? "fuseblk" : "fuse";
- }
- 
-+#ifdef HAVE_NEW_MOUNT_API
-+static void try_fsopen(struct mount_service *mo)
++static inline bool have_real_mtabopts(const struct mount_service *mo)
 +{
-+	/*
-+	 * As of Linux 7.0 you can pass subtypes to fsopen, but the manpage for
-+	 * fsopen only says that you can pass any value of the second column of
-+	 * /proc/filesystems into fsopen.
-+	 */
-+	mo->fsopenfd = fsopen(fsname(mo), FSOPEN_CLOEXEC);
++	return mo->mtabopts && mo->mtabopts != &IGNORE_MTAB;
 +}
-+#else
-+# define try_fsopen(...)	((void)0)
-+#endif
 +
- static int mount_service_handle_fsopen_cmd(struct mount_service *mo,
- 					   const struct fuse_service_packet *p,
- 					   size_t psz)
-@@ -820,15 +843,52 @@ static int mount_service_handle_fsopen_cmd(struct mount_service *mo,
- 	}
- 	mo->fsopened = true;
- 
-+	/* If this fails we fall back on mount(); oc->value is mutated */
-+	try_fsopen(mo);
+ static ssize_t __send_fd(struct mount_service *mo,
+ 			 struct fuse_service_requested_file *req,
+ 			 size_t req_sz, int fd)
+@@ -1018,6 +1028,55 @@ static int mount_service_handle_mntopts_cmd(struct mount_service *mo,
  	return mount_service_send_reply(mo, 0);
  }
  
-+#ifdef HAVE_NEW_MOUNT_API
-+/* callers must preserve errno */
-+static void emit_fsconfig_messages(const struct mount_service *mo)
++static int mount_service_handle_mtabopts_cmd(struct mount_service *mo,
++					     const struct fuse_service_packet *p,
++					     size_t psz)
 +{
-+	uint8_t buf[BUFSIZ];
-+	ssize_t sz;
-+
-+	while ((sz = read(mo->fsopenfd, buf, sizeof(buf) - 1)) >= 1) {
-+		if (buf[sz - 1] == '\n')
-+			buf[--sz] = '\0';
-+		else
-+			buf[sz] = '\0';
-+
-+		if (!*buf)
-+			continue;
-+
-+		switch (buf[0]) {
-+		case 'e':
-+			fprintf(stderr, "Error: %s\n", buf + 2);
-+			break;
-+		case 'w':
-+			fprintf(stderr, "Warning: %s\n", buf + 2);
-+			break;
-+		case 'i':
-+			fprintf(stderr, "Info: %s\n", buf + 2);
-+			break;
-+		default:
-+			fprintf(stderr, " %s\n", buf);
-+			break;
-+		}
-+	}
-+}
-+#endif
-+
- static int mount_service_handle_source_cmd(struct mount_service *mo,
- 					   const struct fuse_service_packet *p,
- 					   size_t psz)
- {
- 	struct fuse_service_string_command *oc =
- 			container_of(p, struct fuse_service_string_command, p);
-+	char *source;
- 
- 	if (psz < sizeof_fuse_service_string_command(1)) {
- 		fprintf(stderr, "%s: source command too small\n",
-@@ -848,8 +908,8 @@ static int mount_service_handle_source_cmd(struct mount_service *mo,
- 		return mount_service_send_reply(mo, EINVAL);
- 	}
- 
--	mo->source = strdup(oc->value);
--	if (!mo->source) {
-+	source = strdup(oc->value);
-+	if (!source) {
- 		int error = errno;
- 
- 		fprintf(stderr, "%s: alloc source string: %s\n",
-@@ -857,6 +917,23 @@ static int mount_service_handle_source_cmd(struct mount_service *mo,
- 		return mount_service_send_reply(mo, error);
- 	}
- 
-+#ifdef HAVE_NEW_MOUNT_API
-+	if (mo->fsopenfd >= 0) {
-+		int ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "source",
-+			       oc->value, 0);
-+		if (ret) {
-+			int error = errno;
-+
-+			fprintf(stderr, "%s: fsconfig source: %s\n",
-+				mo->msgtag, strerror(error));
-+			emit_fsconfig_messages(mo);
-+			free(source);
-+			return mount_service_send_reply(mo, error);
-+		}
-+	}
-+#endif
-+
-+	mo->source = source;
- 	return mount_service_send_reply(mo, 0);
- }
- 
-@@ -866,6 +943,9 @@ static int mount_service_handle_mntopts_cmd(struct mount_service *mo,
- {
- 	struct fuse_service_string_command *oc =
- 			container_of(p, struct fuse_service_string_command, p);
++	struct fuse_service_string_command *oc =
++			container_of(p, struct fuse_service_string_command, p);
 +	char *tokstr = oc->value;
 +	char *tok, *savetok;
-+	char *mntopts;
- 
- 	if (psz < sizeof_fuse_service_string_command(1)) {
- 		fprintf(stderr, "%s: mount options command too small\n",
-@@ -885,8 +965,8 @@ static int mount_service_handle_mntopts_cmd(struct mount_service *mo,
- 		return mount_service_send_reply(mo, EINVAL);
- 	}
- 
--	mo->mntopts = strdup(oc->value);
--	if (!mo->mntopts) {
-+	mntopts = strdup(oc->value);
-+	if (!mntopts) {
- 		int error = errno;
- 
- 		fprintf(stderr, "%s: alloc mount options string: %s\n",
-@@ -894,6 +974,47 @@ static int mount_service_handle_mntopts_cmd(struct mount_service *mo,
- 		return mount_service_send_reply(mo, error);
- 	}
- 
++
++	if (psz < sizeof_fuse_service_string_command(1)) {
++		fprintf(stderr, "%s: mtab options command too small\n",
++			mo->msgtag);
++		return mount_service_send_reply(mo, EINVAL);
++	}
++
++	if (!check_null_endbyte(p, psz)) {
++		fprintf(stderr, "%s: mtab options command must be null terminated\n",
++			mo->msgtag);
++		return mount_service_send_reply(mo, EINVAL);
++	}
++
++	if (mo->mtabopts) {
++		fprintf(stderr, "%s: mtab options respecified!\n",
++			mo->msgtag);
++		return mount_service_send_reply(mo, EINVAL);
++	}
++
++	mo->mtabopts = strdup(oc->value);
++	if (!mo->mtabopts) {
++		int error = errno;
++
++		fprintf(stderr, "%s: alloc mtab options string: %s\n",
++			mo->msgtag, strerror(error));
++		return mount_service_send_reply(mo, error);
++	}
++
 +	/* strtok_r mutates tokstr aka oc->value */
 +	while ((tok = strtok_r(tokstr, ",", &savetok)) != NULL) {
-+		char *equals = strchr(tok, '=');
-+		char oldchar = 0;
-+
-+		if (equals) {
-+			oldchar = *equals;
-+			*equals = 0;
++		if (!strcmp(tok, "-n")) {
++			free(mo->mtabopts);
++			mo->mtabopts = &IGNORE_MTAB;
 +		}
-+
-+#ifdef HAVE_NEW_MOUNT_API
-+		if (mo->fsopenfd >= 0) {
-+			int ret;
-+
-+			if (equals)
-+				ret = fsconfig(mo->fsopenfd,
-+					       FSCONFIG_SET_STRING, tok,
-+					       equals + 1, 0);
-+			else
-+				ret = fsconfig(mo->fsopenfd,
-+					       FSCONFIG_SET_FLAG, tok,
-+					       NULL, 0);
-+			if (ret) {
-+				int error = errno;
-+
-+				fprintf(stderr, "%s: set mount option: %s\n",
-+					mo->msgtag, strerror(error));
-+				emit_fsconfig_messages(mo);
-+				free(mntopts);
-+				return mount_service_send_reply(mo, error);
-+			}
-+		}
-+#endif
-+
-+		if (equals)
-+			*equals = oldchar;
 +
 +		tokstr = NULL;
 +	}
 +
-+	mo->mntopts = mntopts;
- 	return mount_service_send_reply(mo, 0);
- }
- 
-@@ -1181,6 +1302,201 @@ static int mount_service_regular_mount(struct mount_service *mo,
- 	return ret;
- }
- 
-+#ifdef HAVE_NEW_MOUNT_API
-+struct ms_to_mount_map {
-+	unsigned long ms_flag;
-+	unsigned int mount_attr_flag;
-+};
-+
-+static const struct ms_to_mount_map attrs[] = {
-+	{ MS_RDONLY,		MOUNT_ATTR_RDONLY },
-+	{ MS_NOSUID,		MOUNT_ATTR_NOSUID },
-+	{ MS_NODEV,		MOUNT_ATTR_NODEV },
-+	{ MS_NOEXEC,		MOUNT_ATTR_NOEXEC },
-+	{ MS_RELATIME,		MOUNT_ATTR_RELATIME },
-+	{ MS_NOATIME,		MOUNT_ATTR_NOATIME },
-+	{ MS_STRICTATIME,	MOUNT_ATTR_STRICTATIME },
-+	{ MS_NODIRATIME,	MOUNT_ATTR_NODIRATIME },
-+#ifdef MOUNT_ATTR_NOSYMFOLLOW
-+	{ MS_NOSYMFOLLOW,	MOUNT_ATTR_NOSYMFOLLOW },
-+#endif
-+	{ 0, 0 },
-+};
-+
-+static void get_mount_attr_flags(const struct fuse_service_mount_command *oc,
-+				 unsigned int *attr_flags,
-+				 unsigned long *leftover_ms_flags)
-+{
-+	const struct ms_to_mount_map *i;
-+	unsigned int ms_flags = ntohl(oc->ms_flags);
-+	unsigned int mount_attr_flags = 0;
-+
-+	for (i = attrs; i->ms_flag != 0; i++) {
-+		if (ms_flags & i->ms_flag)
-+			mount_attr_flags |= i->mount_attr_flag;
-+		ms_flags &= ~i->ms_flag;
-+	}
-+
-+	*leftover_ms_flags = ms_flags;
-+	*attr_flags = mount_attr_flags;
-+}
-+
-+struct ms_to_str_map {
-+	unsigned long ms_flag;
-+	const char *string;
-+};
-+
-+static const struct ms_to_str_map strflags[] = {
-+	{ MS_SYNCHRONOUS,	"sync" },
-+	{ MS_DIRSYNC,		"dirsync" },
-+	{ MS_LAZYTIME,		"lazytime" },
-+	{ 0, 0 },
-+};
-+
-+static int set_ms_flags(struct mount_service *mo, unsigned long ms_flags)
-+{
-+	const struct ms_to_str_map *i;
-+	int ret;
-+
-+	for (i = strflags; i->ms_flag != 0; i++) {
-+		if (!(ms_flags & i->ms_flag))
-+			continue;
-+
-+		ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_FLAG, i->string,
-+			       NULL, 0);
-+		if (ret) {
-+			int error = errno;
-+
-+			fprintf(stderr, "%s: set %s option: %s\n",
-+				mo->msgtag, i->string, strerror(error));
-+			emit_fsconfig_messages(mo);
-+
-+			errno = error;
-+			return -1;
-+		}
-+		ms_flags &= ~i->ms_flag;
-+	}
-+
-+	/*
-+	 * We can't translate all the supplied MS_ flags into MOUNT_ATTR_ flags
-+	 * or string flags!  Return a magic code so the caller will fall back
-+	 * to regular mount(2).
-+	 */
-+	if (ms_flags)
-+		return FUSE_MOUNT_FALLBACK_NEEDED;
-+
-+	return 0;
-+}
-+
-+static int mount_service_fsopen_mount(struct mount_service *mo,
-+				      struct fuse_service_mount_command *oc,
-+				      struct stat *stbuf)
-+{
-+	char tmp[64];
-+	unsigned long ms_flags;
-+	unsigned int attr_flags;
-+	int mfd;
-+	int error;
-+	int ret;
-+
-+	get_mount_attr_flags(oc, &attr_flags, &ms_flags);
-+
-+	ret = set_ms_flags(mo, ms_flags);
-+	if (ret == FUSE_MOUNT_FALLBACK_NEEDED)
-+		return ret;
-+	if (ret) {
-+		error = errno;
-+		goto fail_mount;
-+	}
-+
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "subtype",
-+		       mo->subtype, 0);
-+	if (ret) {
-+		error = errno;
-+
-+		/* The subtype option was merged after fsopen */
-+		if (error == EINVAL)
-+			return FUSE_MOUNT_FALLBACK_NEEDED;
-+
-+		fprintf(stderr, "%s: set subtype option: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	snprintf(tmp, sizeof(tmp), "%i", mo->fusedevfd);
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "fd", tmp, 0);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: set fd option: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	snprintf(tmp, sizeof(tmp), "%o", stbuf->st_mode & S_IFMT);
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "rootmode", tmp, 0);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: set rootmode option: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	snprintf(tmp, sizeof(tmp), "%u", getuid());
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "user_id", tmp, 0);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: set user_id option: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	snprintf(tmp, sizeof(tmp), "%u", getgid());
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_SET_STRING, "group_id", tmp, 0);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: set group_id option: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	ret = fsconfig(mo->fsopenfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: creating filesystem: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	mfd = fsmount(mo->fsopenfd, FSMOUNT_CLOEXEC, attr_flags);
-+	if (mfd < 0) {
-+		error = errno;
-+		fprintf(stderr, "%s: fsmount: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_fsconfig;
-+	}
-+
-+	ret = move_mount(mfd, "", mo->mountfd, "",
-+			 MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
-+	close(mfd);
-+	if (ret) {
-+		error = errno;
-+		fprintf(stderr, "%s: move_mount: %s\n",
-+			mo->msgtag, strerror(error));
-+		goto fail_mount;
-+	}
-+
-+	mo->mounted = true;
 +	return mount_service_send_reply(mo, 0);
-+
-+fail_fsconfig:
-+	emit_fsconfig_messages(mo);
-+fail_mount:
-+	return mount_service_send_reply(mo, error);
 +}
-+#else
-+# define mount_service_fsopen_mount(...)	(FUSE_MOUNT_FALLBACK_NEEDED)
-+#endif
 +
- static int mount_service_handle_mount_cmd(struct mount_service *mo,
- 					  struct fuse_service_packet *p,
- 					  size_t psz)
-@@ -1222,6 +1538,12 @@ static int mount_service_handle_mount_cmd(struct mount_service *mo,
+ static int attach_to_mountpoint(struct mount_service *mo, mode_t expected_fmt,
+ 				char *mntpt)
+ {
+@@ -1293,6 +1352,14 @@ static int mount_service_regular_mount(struct mount_service *mo,
+ 		goto out_fstype;
+ 	}
+ 
++	/*
++	 * The mount succeeded, so we send a positive reply even if the mtab
++	 * update fails.
++	 */
++	if (have_real_mtabopts(mo))
++		fuse_mnt_add_mount(mo->msgtag, mo->source, mo->resv_mountpoint,
++				   fstype, mo->mtabopts);
++
+ 	mo->mounted = true;
+ 	ret = mount_service_send_reply(mo, 0);
+ out_fstype:
+@@ -1485,6 +1552,22 @@ static int mount_service_fsopen_mount(struct mount_service *mo,
+ 		goto fail_mount;
+ 	}
+ 
++	/*
++	 * The mount succeeded, so we send a positive reply even if the mtab
++	 * update fails.
++	 */
++	if (have_real_mtabopts(mo)) {
++		char *fstype = NULL;
++
++		asprintf(&fstype, "%s.%s", fsname(mo), mo->subtype);
++		if (fstype) {
++			fuse_mnt_add_mount(mo->msgtag, mo->source,
++					   mo->resv_mountpoint, fstype,
++					   mo->mtabopts);
++			free(fstype);
++		}
++	}
++
+ 	mo->mounted = true;
+ 	return mount_service_send_reply(mo, 0);
+ 
+@@ -1592,6 +1675,13 @@ static int mount_service_handle_unmount_cmd(struct mount_service *mo,
  		return mount_service_send_reply(mo, error);
  	}
  
-+	if (mo->fsopenfd >= 0) {
-+		ret = mount_service_fsopen_mount(mo, oc, &stbuf);
-+		if (ret != FUSE_MOUNT_FALLBACK_NEEDED)
-+			return ret;
-+	}
++	/*
++	 * The unmount succeeded, so we send a positive reply even if the mtab
++	 * update fails.
++	 */
++	if (have_real_mtabopts(mo))
++		fuse_mnt_remove_mount(mo->msgtag, mo->resv_mountpoint);
 +
- 	return mount_service_regular_mount(mo, oc, &stbuf);
+ 	mo->mounted = false;
+ 	return mount_service_send_reply(mo, 0);
  }
+@@ -1631,6 +1721,8 @@ static void mount_service_destroy(struct mount_service *mo)
+ 	free(mo->mountpoint);
+ 	free(mo->real_mountpoint);
+ 	free(mo->resv_mountpoint);
++	if (have_real_mtabopts(mo))
++		free(mo->mtabopts);
+ 	free(mo->mntopts);
+ 	free(mo->subtype);
  
-@@ -1301,6 +1623,7 @@ static void mount_service_destroy(struct mount_service *mo)
- 	close(mo->mountfd);
- 	close(mo->fusedevfd);
- 	close(mo->argvfd);
-+	close(mo->fsopenfd);
- 	shutdown(mo->sockfd, SHUT_RDWR);
- 	close(mo->sockfd);
- 
-@@ -1316,6 +1639,7 @@ static void mount_service_destroy(struct mount_service *mo)
- 	mo->argvfd = -1;
- 	mo->fusedevfd = -1;
- 	mo->mountfd = -1;
-+	mo->fsopenfd = -1;
- }
- 
- int mount_service_main(int argc, char *argv[])
+@@ -1720,6 +1812,9 @@ int mount_service_main(int argc, char *argv[])
+ 			ret = mount_service_handle_mountpoint_cmd(&mo, p, sz,
+ 								  argc, argv);
+ 			break;
++		case FUSE_SERVICE_MTABOPTS_CMD:
++			ret = mount_service_handle_mtabopts_cmd(&mo, p, sz);
++			break;
+ 		case FUSE_SERVICE_MOUNT_CMD:
+ 			ret = mount_service_handle_mount_cmd(&mo, p, sz);
+ 			break;
 
