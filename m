@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3D942010EE
-	for <linux-ext4@vger.kernel.org>; Tue,  5 May 2026 00:20:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A778D17A300
+	for <linux-ext4@vger.kernel.org>; Tue,  5 May 2026 00:26:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777940445; cv=none; b=cLbVxyMO5+ubjnh35stzGIgKUwMb75SJ+MyG1IIjeRku0QFxKMCe8TInlFYvLbQXe5JmSDcC4OYfiGiZNNtHGwn+/ajO9Kl4io3lOQuJmFBYL5KDv5VGwUvbNASyHA3nMQW0A1NPyiBP5sNiMUNfnh9IN/QSVE2gch6EJHUqvWo=
+	t=1777940811; cv=none; b=sm8ShTx/g2LfVbw0YRKd2dwN3PBGd9QgO57mdx9hUXI+PHADWmWVoqJa+pwEBjmjKg2rY5TBBHAaxOmbYeIU1l3AXyRxYGtfRpb/JTZqPNmw+opTxINpXoXRqj+BLAI1XcSJqD0wamPww0owOh6SMmdqNlG3hkB3sc4rGKd8C6Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777940445; c=relaxed/simple;
-	bh=M/lsMOAyoZykQXvDD0oTFDeuliSmAuWdS+PVa91+T0s=;
+	s=arc-20240116; t=1777940811; c=relaxed/simple;
+	bh=ieXoS6LLteuEXFQ28J/3fC5XqbGUwcT25I9OMdKpE9g=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=KS666zxChUBnL+X5VS2iUYKa7UZxRPP+B7ROyf553KzS+Y4ezKfGNtEeLBTZMFi3FJ9Ltag0g5AKvjuC9yXPlU1R9+raRumrItBnmulLbwcjLIWA3PGJd026N+569WkLhkdarOiAvqntfojWre8dNFLbpROWeoz24vBJtZ3g99o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ud2Lpmkj; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=s+VpJoqax+edIldS8LS5a4QtwrseHlwHkeXfSTGxOHUMQvmDA0Aq/meoq9X/+3Q0+V/3R60513adpdN/INn3Kq1On2633qYBKMv0ACqIY2icQX8iNaNOwYIbdHjyEVfOBiQDPnyK6/JbZmNalWQrhLXYaOunLV2096ak/I/7n50=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Edrpl+Nr; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ud2Lpmkj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 576BBC2BCB8;
-	Tue,  5 May 2026 00:20:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Edrpl+Nr"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35B03C2BCB8;
+	Tue,  5 May 2026 00:26:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777940445;
-	bh=M/lsMOAyoZykQXvDD0oTFDeuliSmAuWdS+PVa91+T0s=;
+	s=k20201202; t=1777940811;
+	bh=ieXoS6LLteuEXFQ28J/3fC5XqbGUwcT25I9OMdKpE9g=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=ud2Lpmkj0jOuvuqvwIjNnXdASGUVTSqPCbzJZ3nqydW4D5Swi1EJOa5rWKRtliMCb
-	 tdae0atmX+lswNPGcXl3WXXdUtEyV71+IlR3YxtMeWe6V5LMcYvrqo7Eh+A6rtYxbO
-	 sF9XP9RvkTXoYVpvd25QKdYOv2AALT1ZFVxcwJpZ/uWcnmgzhB/6VBKtiIQJ/MjOoI
-	 5831/+8T4oVPgJGlSefzQaI+xW0nfLYr/C3bQA8CnpXuhWstEJEh+sQq0nvngvvJgO
-	 WCUx0Ovh51MnYE0Hj3sRhPCkSozCeJpBm7JV+/MWlLqS2EExx8sDnpckwaFAv+Vt8l
-	 ANwDwRz+t0jLQ==
-Date: Mon, 4 May 2026 17:20:44 -0700
+	b=Edrpl+NrhPH1rICrVYTUP0kOlHqk/evIfsFN0BjddWeL330RxpYHdHMwM/plzBisY
+	 JNHchDipe1+j5q3KJrQ0EZySAuZ2jXjrI3pUGpNdwGqwuY5Tay8FGULTnsLZ80SMUn
+	 3Zr4bZbEphdfjP9fwhnACloeMDAQMBdm7U2rkatBXm+2gm3g1tokkmZvNYfGrcTT5i
+	 s9RIYtrxOo6vj1Qi7L/TVLG2w+cdV0dymE3A4yfWPAc1t/1XRUHXVlwDUzo2rEZ8Ze
+	 1p3Loyc2yulJxB9B9zH6W5GOjcy4LDIff4GYtooUM/zoVakwPk5N4V7VI1uq2QvFR3
+	 tUb0ohpccVQLg==
+Date: Mon, 4 May 2026 17:26:50 -0700
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: Theodore Ts'o <tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 6/7] libsupport: fix gcc -Wall warnings
-Message-ID: <20260505002044.GG1101423@frogsfrogsfrogs>
+Subject: Re: [PATCH 7/7] fuse2fs: fix uninitialized variable warnings
+Message-ID: <20260505002650.GH1101423@frogsfrogsfrogs>
 References: <20260504233301.2345652-1-tytso@mit.edu>
- <20260504233301.2345652-7-tytso@mit.edu>
+ <20260504233301.2345652-8-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,101 +42,65 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260504233301.2345652-7-tytso@mit.edu>
+In-Reply-To: <20260504233301.2345652-8-tytso@mit.edu>
 
-On Mon, May 04, 2026 at 07:33:00PM -0400, Theodore Ts'o wrote:
+On Mon, May 04, 2026 at 07:33:01PM -0400, Theodore Ts'o wrote:
+> Clang treats use of unitialized variables found by static analysis to
+> be serious enough that it will emit them by default (even without
+> -Wall).  So let's fix them up.
+> 
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Looks good to me,
+I wonder why gcc doesn't complain about this??
+
 Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 
 --D
 
 > ---
->  lib/support/cache.c | 12 +++++++++---
->  lib/support/cache.h |  2 +-
->  lib/support/list.h  |  8 ++++----
->  3 files changed, 14 insertions(+), 8 deletions(-)
+>  fuse4fs/fuse4fs.c | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
 > 
-> diff --git a/lib/support/cache.c b/lib/support/cache.c
-> index aec785347..ece0adece 100644
-> --- a/lib/support/cache.c
-> +++ b/lib/support/cache.c
-> @@ -15,6 +15,12 @@
->  #include <stdint.h>
->  #include <errno.h>
+> diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
+> index b883083f8..928473268 100644
+> --- a/fuse4fs/fuse4fs.c
+> +++ b/fuse4fs/fuse4fs.c
+> @@ -2216,7 +2216,7 @@ static void op_mknod(fuse_req_t req, fuse_ino_t fino, const char *name,
+>  	const struct fuse_ctx *ctxt = fuse_req_ctx(req);
+>  	struct fuse4fs *ff = fuse4fs_get(req);
+>  	ext2_filsys fs;
+> -	ext2_ino_t parent, child;
+> +	ext2_ino_t parent, child = 0;
+>  	errcode_t err;
+>  	int filetype;
+>  	gid_t gid;
+> @@ -2311,7 +2311,7 @@ static void op_mkdir(fuse_req_t req, fuse_ino_t fino, const char *name,
+>  	const struct fuse_ctx *ctxt = fuse_req_ctx(req);
+>  	struct fuse4fs *ff = fuse4fs_get(req);
+>  	ext2_filsys fs;
+> -	ext2_ino_t parent, child;
+> +	ext2_ino_t parent, child = 0;
+>  	errcode_t err;
+>  	char *block;
+>  	blk64_t blk;
+> @@ -2990,7 +2990,7 @@ static void op_symlink(fuse_req_t req, const char *target, fuse_ino_t fino,
+>  	const struct fuse_ctx *ctxt = fuse_req_ctx(req);
+>  	struct fuse4fs *ff = fuse4fs_get(req);
+>  	ext2_filsys fs;
+> -	ext2_ino_t parent, child;
+> +	ext2_ino_t parent, child = 0;
+>  	errcode_t err;
+>  	gid_t gid;
+>  	int ret = 0;
+> @@ -6042,7 +6042,7 @@ static int fuse4fs_main(struct fuse_args *args, struct fuse4fs *ff)
+>  	struct fuse_cmdline_opts opts;
+>  	struct fuse_session *se;
+>  	struct fuse_loop_config *loop_config = NULL;
+> -	int ret;
+> +	int ret = 0;
 >  
-> +#ifdef __GNUC__
-> +#define EXT2FS_ATTR(x) __attribute__(x)
-> +#else
-> +#define EXT2FS_ATTR(x)
-> +#endif
-> +
->  #include "config.h"
->  #include "list.h"
->  #include "cache.h"
-> @@ -711,7 +717,7 @@ cache_node_put(
->  
->  void
->  cache_node_set_priority(
-> -	struct cache *		cache,
-> +	struct cache *		cache EXT2FS_ATTR((unused)),
->  	struct cache_node *	node,
->  	int			priority)
->  {
-> @@ -820,7 +826,7 @@ cache_flush(
->  {
->  	struct cache_hash	*hash;
->  	struct cache_node	*node;
-> -	int			i;
-> +	unsigned int		i;
->  	bool			still_dirty = false;
->  
->  	if (!cache->flush)
-> @@ -848,7 +854,7 @@ cache_report(
->  	const char	*name,
->  	struct cache	*cache)
->  {
-> -	int		i;
-> +	unsigned int	i;
->  	unsigned long	count, index, total;
->  	unsigned long	hash_bucket_lengths[HASH_REPORT + 2] = { 0 };
->  
-> diff --git a/lib/support/cache.h b/lib/support/cache.h
-> index 71fb9762f..cd0e8c20e 100644
-> --- a/lib/support/cache.h
-> +++ b/lib/support/cache.h
-> @@ -83,7 +83,7 @@ typedef unsigned int (*cache_node_resize_t)(const struct cache *c,
->  					    unsigned int curr_size,
->  					    int dir);
->  
-> -static inline unsigned int cache_gradual_resize(const struct cache *cache,
-> +static inline unsigned int cache_gradual_resize(const struct cache *cache EXT2FS_ATTR((unused)),
->  						unsigned int curr_size,
->  						int dir)
->  {
-> diff --git a/lib/support/list.h b/lib/support/list.h
-> index 0ec8de525..54e8e2360 100644
-> --- a/lib/support/list.h
-> +++ b/lib/support/list.h
-> @@ -148,13 +148,13 @@ static __always_inline bool __list_del_entry_valid(struct list_head *entry)
->  	return ret;
->  }
->  #else
-> -static inline bool __list_add_valid(struct list_head *new,
-> -				struct list_head *prev,
-> -				struct list_head *next)
-> +static inline bool __list_add_valid(struct list_head *new EXT2FS_ATTR((unused)),
-> +				struct list_head *prev EXT2FS_ATTR((unused)),
-> +				struct list_head *next EXT2FS_ATTR((unused)))
->  {
->  	return true;
->  }
-> -static inline bool __list_del_entry_valid(struct list_head *entry)
-> +static inline bool __list_del_entry_valid(struct list_head *entry EXT2FS_ATTR((unused)))
->  {
->  	return true;
->  }
+>  	if (fuse_parse_cmdline(args, &opts) != 0) {
+>  		ret = 1;
 > -- 
 > 2.53.0
 > 
