@@ -1,46 +1,37 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD8943E3D99
-	for <linux-ext4@vger.kernel.org>; Mon,  4 May 2026 23:33:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F696F507
+	for <linux-ext4@vger.kernel.org>; Tue,  5 May 2026 00:08:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777937610; cv=none; b=n7F0C5c8SY/b7otChv9Vr7iB+su2DaDJUd1nEpbD4i1dmRiei0j4kTerqOrw4xfl0cAK9XXSyf53nfQ6uU8TTJXUjks9LGxjuSYv34eukiHQEgyrlU2jUR7HYEUWcomIapRTkUnuCAJr3etOh1aC2x23bmLjxLG/XuRPTzJHI58=
+	t=1777939712; cv=none; b=Qs/RQd8DihPYGiOtgO188uMwROJfmji2HpYo33up4u4gN0vB6yyDiDZEXaHz3nuKOHhj0hzOrpw39yXUd8FtFV/6yk7UOnZo7zl9ufC7/xvo8DnsbTY9dm8lacCq8vpy6uzCJAPG9AY+44GvDLyRNIRyBipA87ZFMyzkOaN18kQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777937610; c=relaxed/simple;
-	bh=Q/imJGLMZIBZLTYsrQsq6LbsKYRF6A1UJ6q2qFMKU68=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=mqXlhPKjDQW2/K3QY5T2g44Jc+jO4vjYVrpDSj+/w4+4ksPovP5jcD/0lnuhd34JZPLmkvBug79FpOtxgiC/onAAznay3EgWrpHdNV42jKklLZwhOiiScz+4OmI9PyRHZHMM3oQc4e4AC50iiaEWgrgPwlVgjHJ1rPHSk2MZ16A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=JSzaioJu; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1777939712; c=relaxed/simple;
+	bh=OfAZeba+WCnbk01jo491rI/w06ENJthBFcGj6Oleavc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QS6y7SllWEthEHtzJqSoa9J1ebP8U6Nm5i8/TiuMcwio6yvkskWdpn+gHW++IWQT+sK3MDrZJNP08OKtnxiTRFuZoeWzEZ0WbZvElPtINTI28hE18jh/qaZWq0tKuvC0+KqWw1w7ZOzSXJLh01lxiGbyFazq63ynVhdLJO3+7gU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sY57pNb9; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="JSzaioJu"
-Received: from trampoline.thunk.org (pool-173-48-114-3.bstnma.fios.verizon.net [173.48.114.3])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 644NX9I3019586
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 4 May 2026 19:33:10 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1777937591; bh=B3t63z5PERYiwWoafEj2kuIkGpgvcawA2QYLEAY/3MM=;
-	h=From:Subject:Date:Message-ID:MIME-Version;
-	b=JSzaioJuLjU+nthFRc78t1TbralOmVaeJFzfddo7WnfuiW1kC+slE1ljfDfZ8Ir4j
-	 28LwLWpnS4RplZfeaTR9+kzHTam0nYEYZwwAn7FWgK95NtVSpKpNcpbbLg05n3/V00
-	 09w4xzsZqC4F32DABiHR9ffc5mA7C0VDaVmkxwepkHr3gDBC4pkqre6dZu2uUeb+sM
-	 ivURIe3GDP5NqMWpXdvii9WqVDlzMqcTbZ4jtaRrfLfTfh5Cq0zhW2806/geBh7hc2
-	 M4jwn70HGdzFLdfY4qST6+Bhn2l/Z4/fUcfOhvY3+ZTGYfO7J3dGjG1N6eYIH74ypA
-	 DdBHbB19k7d7A==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 066792E00D5; Mon, 04 May 2026 19:33:08 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 5/7] libsupport: remove the LIST_HEAD macro from list.h
-Date: Mon,  4 May 2026 19:32:59 -0400
-Message-ID: <20260504233301.2345652-6-tytso@mit.edu>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260504233301.2345652-1-tytso@mit.edu>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sY57pNb9"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 34666C2BCB8;
+	Tue,  5 May 2026 00:08:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1777939712;
+	bh=OfAZeba+WCnbk01jo491rI/w06ENJthBFcGj6Oleavc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=sY57pNb9T4ukWbQlylpIDimCet2N+Xb5EskHYOc5bp/f1SMnTcu4MWlM4GdngbU5N
+	 50AJtlrmcLv5pjSGKnWDF5/o1795d9tgnWABJCg/DfzYbhA6dQHGzehDDu2EWZhfhO
+	 ITqF+UOg2K/mvEOx2Y8o2H+U70xacWCxComR394oUY1PHFAQAc8mfqChq1/EYqbjeI
+	 Ya54GDa6Agl1F9/cOE5F6gIYrOl5AKfreoEB/79zm7HaFFiTgvmOjLehkUaqbuzIdj
+	 hlwEKZJFSN5B/S50K68OkLQHh1VPh9ZRXiMDSaacgg7uHqMV0uSMVdbrR256s2heMq
+	 7ORUBDFelBfWQ==
+Date: Mon, 4 May 2026 17:08:31 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 0/7] fix up issues from djwong/fuse4fs-fork
+Message-ID: <20260505000831.GA1101423@frogsfrogsfrogs>
 References: <20260504233301.2345652-1-tytso@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -48,42 +39,105 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260504233301.2345652-1-tytso@mit.edu>
 
-The LIST_HEAD macro is defined by both the Linux kernel's list.h and
-<sys/queue.h> (originally from BSD).  The problem is that on MacOS,
-some system header file pulls in <sys/queue.h> leading to a macro
-redefiniction conflict.  Since we don't use LIST_HEAD in e2fsprogs,
-the simplest mitigation is to just comment out the definition of LIST_HEAD.
+On Mon, May 04, 2026 at 07:32:54PM -0400, Theodore Ts'o wrote:
+> These are the patches that I've applied to the next branch to clean up
+> found when trying to compile e2fsprogs on MacOS and via the github's
+> continuous integration testing.
+> 
+> Note: See .github/workflows/ci.yaml; it's a good reason to get a
+> github account if you are doing a lot of e2fsprogs development.
+> If you fork my e2fsprogs repository and push your changes to your github
+> repo, you can get reports like the ones found here:
+>       https://github.com/tytso/e2fsprogs/actions
+> 
+> 
+> Anyway, with these patches, e2fsprogs builds on MacOS (both using the
+> github CI and on locally on my Macbook).  Unfortunately fuse2fs has
+> regressed in that non-root accesses are getting denied with a permission
+> denied on MacOS, and this worked with e2fsprogs v1.47.4.  Here's a
+> lightly edited transcript from my Macbook Air:
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Fixes: 37dafcc0894b ("libsupport: port the kernel list.h to libsupport")
----
- lib/support/list.h | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Hm, curious.  It's regrettable that I no longer have a Mac, and
+therefore can't really do much investigating.  If you give
+-o default_permissions,allow_other , does that fix the problem?
+If that fixes it, then fuse2fs has a bug somewhere in its own
+permissions checking.
 
-diff --git a/lib/support/list.h b/lib/support/list.h
-index 0e00e446d..0ec8de525 100644
---- a/lib/support/list.h
-+++ b/lib/support/list.h
-@@ -36,8 +36,17 @@ static inline void list_head_destroy(struct list_head *list)
- 
- #define LIST_HEAD_INIT(name) { &(name), &(name) }
- 
-+#if 0
-+/*
-+ * This conflicts with the LIST_HEAD defined in <sys/queue.h>.  We
-+ * don't include it in e2fsprogs, but some systems' header files might
-+ * pull it in, leading to the macro redefinition conflict.
-+ * Fortunately, we also don't need LIST_HEAD in e2fsprogs, so just
-+ * drop this convenience macro.
-+ */
- #define LIST_HEAD(name) \
- 	struct list_head name = LIST_HEAD_INIT(name)
-+#endif
- 
- /**
-  * INIT_LIST_HEAD - Initialize a list_head structure
--- 
-2.53.0
+> % uname -a
+> Darwin macsyma.local 25.4.0 Darwin Kernel Version 25.4.0: Thu Mar 19 19:33:09 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T8112 arm64 arm Darwin
+> % ./mke2fs -Fq -t ext4 -d . /tmp/foo.img  1G
+> % ./fuse2fs -o allow_other /tmp/foo.img /Users/tytso/mnt
+> FUSE2FS (foo.img): Warning: fuse2fs does not support using the journal.
+> There may be file system corruption or data loss if
+> the file system is not gracefully unmounted.
+> % stat /Users/tytso/mnt/revoke.o
+> stat: cannot stat '/Users/tytso/mnt/revoke.o': Permission denied
+> % sudo stat /Users/tytso/mnt/revoke.o
+>   File: /Users/tytso/mnt/revoke.o
+>   Size: 29728     	Blocks: 64         IO Block: 16384  regular file
+> Device: 55,270	Inode: 91          Links: 1
+> Access: (0644/-rw-r--r--)  Uid: (15806/   tytso)   Gid: (   20/   staff)
+> Access: 2026-05-05 00:21:50.000000000 +0200
+> Modify: 2026-05-05 00:21:50.000000000 +0200
+> Change: 2026-05-05 00:21:50.000000000 +0200
+>  Birth: -
+> % stat revoke.o
+>   File: revoke.o
+>   Size: 29728     	Blocks: 64         IO Block: 4096   regular file
+> Device: 1,18	Inode: 851374      Links: 1
+> Access: (0644/-rw-r--r--)  Uid: (15806/   tytso)   Gid: (   20/   staff)
+> Access: 2026-05-05 00:21:50.903084819 +0200
+> Modify: 2026-05-05 00:21:50.346338295 +0200
+> Change: 2026-05-05 00:21:50.346580544 +0200
+>  Birth: 2026-05-05 00:21:50.293229053 +0200
+> % sum revoke.o
+> 45116    30 revoke.o
+> % sum /Users/tytso/mnt/revoke.o
+> sum: /Users/tytso/mnt/revoke.o: Permission denied
 
+That's really strange.  Does MacOS do any strange idmapping stuff?
+
+I'm also curious if there's a particular commit that makes it all work
+again?  There are a few defaults that changed between fuse2 and fuse3,
+and since MacFuse claims to have vendored both, it could very well be
+the megacommit dropping the fuse2 api support.
+
+--D
+
+> So fuse2fs is broken on MacOS, but it's not *totally* broken, since you
+> can still use it as root.  I'll want to fix this before updating the
+> master branch, but this is good enough for the next branch.
+> 
+> 
+> 
+> Theodore Ts'o (7):
+>   libsupport: drop xbitops.h and define fls() if necessary
+>   configure.ac: fix disable fuse2fs/fuse4fs by default path
+>   libsupport: don't use bzero in cache.c
+>   fuse[24]fs: suppress clang warnings which were breaking the github CI
+>   libsupport: remove the LIST_HEAD macro from list.h
+>   libsupport: fix gcc -Wall warnings
+>   fuse2fs: fix uninitialized variable warnings
+> 
+>  configure               |   8 +++
+>  configure.ac            |   3 +
+>  fuse4fs/Makefile.in     |  18 +++---
+>  fuse4fs/fuse4fs.c       |  29 +++++++--
+>  lib/config.h.in         |   3 +
+>  lib/support/Makefile.in |   2 +-
+>  lib/support/cache.c     |  49 ++++++++++++---
+>  lib/support/cache.h     |   2 +-
+>  lib/support/list.h      |  17 ++++--
+>  lib/support/xbitops.h   | 128 ----------------------------------------
+>  misc/fuse2fs.c          |  21 +++++++
+>  11 files changed, 125 insertions(+), 155 deletions(-)
+>  delete mode 100644 lib/support/xbitops.h
+> 
+> -- 
+> 2.53.0
+> 
+> 
