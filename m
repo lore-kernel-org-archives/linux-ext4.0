@@ -1,38 +1,45 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E5B246AF0F;
-	Wed,  6 May 2026 14:34:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49F3C3D0907
+	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 15:08:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778078054; cv=none; b=omgbHkuJX4ELJpGIX1cJWwi1cdG2ReoeAsP7BygXdPlKejbNUaXIGdMxf7vHE6Xu3QZBpBkdkrRIaRmRT3/WbnnaVNvxay98wD/Tgf8VtmJlu4QDfwF98te9hN6Ywmq2B3wnm/6V53RW0x+tepgzPv0kQTUo23yOygBT5DXjXrY=
+	t=1778080125; cv=none; b=qUjkHGuzVPC/Xgo0O3RYJ8Id4nEvvdSWFQ4r//XyS9A3/aXwdK/cT+42syQAN20rJEdD628Szke5SH33jPWTeb2vRU071CkH5GirtBtkNvZN7cEmyDDE9wQIxOxmtgXn1Veax5/xeumR+CD54ZnFmGXsGzwIsHBfLyq1eNtb09E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778078054; c=relaxed/simple;
-	bh=KzJaDkP8gIuv1rzeEWn0SEz9DAZ9C1moARBZfpFXUa8=;
+	s=arc-20240116; t=1778080125; c=relaxed/simple;
+	bh=eyv6Oi8ELO76ufpS0nEKBGprnuOkUL2evMt6kM+DFDc=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EyEIfFU8JANLTWqbcYFTXqnkUgIxutKvA8fTrCkU/AkjBNhXQDQWJ7rY9LtGkzwAQWlXrP3cNrpDcgoW6H3aA4FSiqjukUW51wCMfO259n0pqjUzmOBIyf+s/ClHlR7Tj3avN2m/x/9bhQpkkAM9k7H9B8OlV8eneIO+AgE+WdE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=P6pw9lni; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=RvKYklq++kxefGxbRWVzx83F7iL+hc3tEAF8u14OapCqhVebn4hR9F7Xim5kBl/s0lJqwi/h5BLNfC5LQ5+lfy981bTNqKqybKunDuLpErRaTh3fTMe/zdcGebd4S8VKRCwAXD7y09csXJgSnMTw0cwBx0FijNxUjMBTytsGgVY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=d+3+YlkK; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="P6pw9lni"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0E29AC2BCB0;
-	Wed,  6 May 2026 14:34:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1778078054;
-	bh=KzJaDkP8gIuv1rzeEWn0SEz9DAZ9C1moARBZfpFXUa8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=P6pw9lnioz9idCO98K7lGG0cK1vT+vsrskUP3LjZsqwttEZJFOE9dg+o2alsjTyEk
-	 XkdCHipYtuRAufdTP5Pt+Hoc97t95/FbadfC3RY6W513+O38Kgu03pQgGbRQ78PcYe
-	 /AQS0kdChoxWzF2cRBIlsHj7Y8NuVncmLyA0BPn3PnxNQm4lu4Ta8B09acnJjx0Wz7
-	 kbJu2GNYE4hEH3mVVz62BTL2d3Xnj56qCJmSS0fnjhJMvk1rm423OFC4SYkbQZU32c
-	 a5MmE5i2Wc47WkcIejIWrewmt5LTQ7KQPzGvqdjn1UFni/XV8i43lREWoseGUW9qex
-	 yeGo40+jetBQw==
-Date: Wed, 6 May 2026 07:34:13 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="d+3+YlkK"
+Received: from macsyma.thunk.org ([136.144.35.157])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 646F8XKZ006997
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 6 May 2026 11:08:36 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1778080117; bh=L0BsG1JgcDsgxZmbzt/1LSD6aBvNyZfvlYH7ChVUNRg=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=d+3+YlkKSGmD0njRI2lG6XtcUT29pVICZXUdJoKEG96wSJq+QBMXoNJNxuKJptZaN
+	 8nSA1dSB+4TFZ5KGwbZaMbECPAyspTz0pzOzflbynxGroELwylt3pyXL7DfSl0QdX3
+	 G0Ch5w+hQYDYUiG1mZ54RBGUqaL0tq2dWueyYUPfgEhHmS5tw6mCh+5MoKdges9+Vv
+	 I6yLPdIPd1Jr7Kb01Q7+C4pgTYqUQiDCsjZG6qWDxX6bXkV4oWRXazCbgAJFZtMiKw
+	 1p1psuR7SFT0kcKaf5LUtoIFxyWlWhiMR8Wqwg1L8ataZOi1r/+C5/W3qwUiKrmKBi
+	 ZjzXKkhrvCOhg==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 253B9666E9E7; Wed,  6 May 2026 17:08:33 +0200 (CEST)
+Date: Wed, 6 May 2026 17:08:33 +0200
+From: "Theodore Tso" <tytso@mit.edu>
+To: "Darrick J. Wong" <djwong@kernel.org>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	fuse-devel <fuse-devel@lists.linux.dev>
+        fuse-devel <fuse-devel@lists.linux.dev>
 Subject: Re: [PATCH 0/7] fix up issues from djwong/fuse4fs-fork
-Message-ID: <20260506143413.GA2241589@frogsfrogsfrogs>
+Message-ID: <20260506150833.GD49070@macsyma.local>
 References: <20260504233301.2345652-1-tytso@mit.edu>
  <20260505000831.GA1101423@frogsfrogsfrogs>
  <20260505072144.GC16497@macsyma-wired.lan>
@@ -40,6 +47,7 @@ References: <20260504233301.2345652-1-tytso@mit.edu>
  <20260505220441.GB49070@macsyma.local>
  <20260505225635.GT7765@frogsfrogsfrogs>
  <20260506092858.GC49070@macsyma.local>
+ <20260506143413.GA2241589@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,102 +56,109 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260506092858.GC49070@macsyma.local>
+In-Reply-To: <20260506143413.GA2241589@frogsfrogsfrogs>
 
-[cc fuse-devel]
-
-TLDR for the fuse developers: Ted and I discovered a collision between
-the upstream libfuse feature bits and the MacFUSE feature bits, which
-causes macfuse to do the wrong thing if you try to enable symlink
-pagecache.
-
-https://lore.kernel.org/linux-ext4/20260505225635.GT7765@frogsfrogsfrogs/
-
-On Wed, May 06, 2026 at 11:28:58AM +0200, Theodore Tso wrote:
-> On Tue, May 05, 2026 at 03:56:35PM -0700, Darrick J. Wong wrote:
-> > FUSE kABI 7.20 added FUSE_AUTO_INVAL_DATA, which is bit 12.  It looks to
-> > me as though they decided to add their own MacOS-specific feature flags
-> > at the end of the u32 want field.  Then Linux FUSE added 11 more feature
-> > flags, at which point they unthinkingly ported over FUSE_CACHE_SYMLINKS,
-> > which collides with FUSE_DARWIN_ACCESS_EXT.  Apparently nobody on the
-> > macfuse end noticed, so on your machine you're getting whatever
-> > "ACCESS_EXT" does.
+On Wed, May 06, 2026 at 07:34:13AM -0700, Darrick J. Wong wrote:
+> [cc fuse-devel]
 > 
-> Yeah....
-> 
-> What MacFuse needs to do is to steal some extra fields from struct
-> fuse_init_in and fuse_init_out for the darwin-specific capabilities.
-> It turns out it already has conn->{want,capable}_darwin, but there's
-> no way to pass it in and out of op_init....
-> 
-> #ifdef __APPLE__
-> 	/*
-> 	 * TODO(bf)
-> 	 *
-> 	 * Resolve conflict with vanilla API. We need a separate field flags for
-> 	 * Darwin-only flags. As long as we don't support anything beyond ABI
-> 	 * version 7.19 on the kernel-side this should not be an issue, though.
-> 	 * We need to clean this up when moving to 7.20 or later.
-> 	 */
-> 	if (se->conn.want_darwin & FUSE_DARWIN_CAP_ACCESS_EXT)
-> 		outargflags |= FUSE_DARWIN_ACCESS_EXT;
-> 
-> So I *guess* what MacFuse needs to do is to do something like:
-> 
-> struct fuse_init_in {
-> 	uint32_t	major;
-> 	uint32_t	minor;
-> 	uint32_t	max_readahead;
-> 	uint32_t	flags;
-> 	uint32_t	flags2;
-> 	uint32_t	unused[9];
-> 	uint32_t	darwin_flags;
-> 	uint32_t	darwin_flags2;
-> };
-> 
-> am I right in understanding that fuse_*_{in,out} is private between
-> the OS's libfuse and OS's fuse driver or kernel extension, so
-> it's not disastrous for fuse_kernel.h for Mac and Linux to drift?
+> TLDR for the fuse developers: Ted and I discovered a collision between
+> the upstream libfuse feature bits and the MacFUSE feature bits, which
+> causes macfuse to do the wrong thing if you try to enable symlink
+> pagecache.
 
-Yeah, the easiest method would be to carve out the darwin_flags field.
+This is the patch for fuse2fs and fuse4fs in e2fsprogs which works
+around the problem (tested on MacOS using macfuse 5.2.0_1 from
+MacPorts).  More details about why it was needed is in the commit
+description.
 
-If they still want to use flags/flags2, then they could probably still
-fix it by redefining whichever feature was added later (probably
-FUSE_CACHE_SYMLINKS) because right now they're broken, so it's not an
-ABI break to redefine the symbol.
+					- Ted
 
-Either way someone will have to talk to the MacFUSE people about this.
+From 67f1ec55a1309abead16cad883e38b798a567191 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Wed, 6 May 2026 10:51:56 -0400
+Subject: [PATCH] fuse2fs, fuse4fs: Fix MacFuse compatibility issue
 
-> > Does this work?
-> >
-> > /* MacFUSE overlays feature bits with LinuxFUSE, this is fcked up */
-> > #if defined(FUSE_CAP_CACHE_SYMLINKS) && !defined(FUSE_CACHE_SYMLINKS)
-> > 	fuse_set_feature_flag(conn, FUSE_CAP_CACHE_SYMLINKS);
-> > #endif
-> 
-> What I'm thinking about doing is adding at the beginning of
-> fuse[24]fs.c:
-> 
-> #ifdef __APPLE__
-> /*
->  * Sigh.... MacFuse is overloading the top bits of the flags field of
->  * struct fuse_init_{out} so we have to avoid using these capability
->  * flags until this gets fixed in MacFUSE
->  */
-> #undef FUSE_CACHE_SYMLINKS
-> #undef FUSE_NO_OPENDIR_SUPPORT
-> #undef FUSE_EXPLICIT_INVAL_DATA
-> #undef FUSE_MAP_ALIGNMENT
-> #undef FUSE_SUBMOUNTS
-> #undef FUSE_HANDLE_KILLPRIV_V2
-> #undef FUSE_SETXATTR_EXT
-> #undef FUSE_INIT_EXT
-> #endif
+Unfortunately, MacFuse is overloading the top bits of the flags field
+in struct fuse_init_{out} for MacFuse-specific capability extensions.
+This results in an attempt to use FUSE_CAP_CACHE_SYMLINKS when linking
+with the libfuse in MacPorts will end up enabling
+FUSE_DARWIN_CAP_ACCESS_EXT with MacFuse.  Hilarity then ensues with
+all non-privileged access failing with permission denied.
 
-That works for now.  If macfuse fixes themselves, then I guess we could
-turn that into a configure check.
+The change which is needed in MacFuse is described in a TODO(bf)
+statement:
 
---D
+https://github.com/macfuse/library/blob/ddb630db8327a50b6670ef5e4f5e6da82a549e99/lib/fuse_lowlevel.c#L3415
 
-> 
-> 						- Ted
+I plan to submit a bug report to MacFuse, but in the mean time, work around
+the problem by disabling the overloaded capability flags on MacOS.
+
+Link: https://lore.kernel.org/r/20260505225635.GT7765@frogsfrogsfrogs
+Link: https://lore.kernel.org/r/20260506092858.GC49070@macsyma.local
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fuse4fs/fuse4fs.c | 18 ++++++++++++++++++
+ misc/fuse2fs.c    | 18 ++++++++++++++++++
+ 2 files changed, 36 insertions(+)
+
+diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
+index 92847326..2739da92 100644
+--- a/fuse4fs/fuse4fs.c
++++ b/fuse4fs/fuse4fs.c
+@@ -120,6 +120,24 @@
+ #endif
+ #endif /* !defined(ENODATA) */
+ 
++#ifdef __APPLE__
++/*
++ * Sigh.... MacFuse is overloading the top bits of the flags field in
++ * struct fuse_init_{out} for MacFuse-specific capability extensions.
++ * Avoid using these fuse3 capability flags until this gets fixed in
++ * MacFUSE
++ */
++#undef FUSE_CAP_CACHE_SYMLINKS
++#undef FUSE_CAP_NO_OPENDIR_SUPPORT
++#undef FUSE_CAP_EXPLICIT_INVAL_DATA
++#undef FUSE_CAP_EXPIRE_ONLY
++#undef FUSE_CAP_SETXATTR_EXT
++#undef FUSE_CAP_DIRECT_IO_ALLOW_MMAP
++#undef FUSE_CAP_PASSTHROUGH
++#undef FUSE_CAP_NO_EXPORT_SUPPORT
++#undef FUSE_CAP_OVER_IO_URING
++#endif
++
+ #define FUSE4FS_ATTR_TIMEOUT	(0.0)
+ 
+ static inline uint64_t round_up(uint64_t b, unsigned int align)
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index c46cfc23..0f2a3c35 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -116,6 +116,24 @@
+ #endif
+ #endif /* !defined(ENODATA) */
+ 
++#ifdef __APPLE__
++/*
++ * Sigh.... MacFuse is overloading the top bits of the flags field in
++ * struct fuse_init_{out} for MacFuse-specific capability extensions.
++ * Avoid using these fuse3 capability flags until this gets fixed in
++ * MacFUSE
++ */
++#undef FUSE_CAP_CACHE_SYMLINKS
++#undef FUSE_CAP_NO_OPENDIR_SUPPORT
++#undef FUSE_CAP_EXPLICIT_INVAL_DATA
++#undef FUSE_CAP_EXPIRE_ONLY
++#undef FUSE_CAP_SETXATTR_EXT
++#undef FUSE_CAP_DIRECT_IO_ALLOW_MMAP
++#undef FUSE_CAP_PASSTHROUGH
++#undef FUSE_CAP_NO_EXPORT_SUPPORT
++#undef FUSE_CAP_OVER_IO_URING
++#endif
++
+ static inline uint64_t round_up(uint64_t b, unsigned int align)
+ {
+ 	unsigned int m;
+-- 
+2.50.1 (Apple Git-155)
+
