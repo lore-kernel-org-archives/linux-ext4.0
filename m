@@ -1,177 +1,117 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 78E4730E0FB;
-	Wed,  6 May 2026 06:42:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from out30-101.freemail.mail.aliyun.com (out30-101.freemail.mail.aliyun.com [115.124.30.101])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4845175A99
+	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 07:59:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778049754; cv=none; b=EEwufuM5FGu5KWQRtPFCUNr+cBu0mmnYCA3V5aK9Gh3lpkFdZaFB2iMqbBqKuD9pInJbUZAfodcbdoVj51Z8Vr7p/v7TPxEn3u2wazXkIyNc/OC3VF+sZe3zE18q31eaIKS8OSpnb159tBbrQcG9mFhtHPKwVs/8krSYxSaN0mU=
+	t=1778054370; cv=none; b=YJmrOhejzNaXmHAXj4Cg5ZVuOw3ciimw0wUgp7J+gbcl0fIcquU+D7wKQnecJNwefwVpA6XPxnbGq4JPAdNvGGcVYgyIyXtMKQ6Id9xuSKqf18sw6S0/DsUA6xPekjZjGPNF69A5Xp6Urcebt5XvX+ULjHJsGL1BSRfyMH7QMHI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778049754; c=relaxed/simple;
-	bh=uMKmOeTL3/2pgROWMA/zP/bnLSfPy+1VZq9bHUTyPfU=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=nqeaLZhzRXLSDEcJqQqjEmhbL1u2ISYEBUv4iTSvEtbIn6wYbSYy5KQc+YJhGr5gxdKx//L2kdK5X92o32TVVbND94AaLjdiuoUbNnfNePo9yckUVZlrGoAB9wsyGqktSD4pbgZe52K5cxtgA/s56hA23EIaXT/sNO/5ni4a5hU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-97-69fadf471230
-Date: Wed, 6 May 2026 15:27:14 +0900
-From: Byungchul Park <byungchul@sk.com>
-To: Yunseong Kim <yunseong.kim@est.tech>
-Cc: bagasdotme@gmail.com, 2407018371@qq.com, Dai.Ngo@oracle.com,
-	Liam.Howlett@oracle.com, a.hindborg@kernel.org,
-	ada.coupriediaz@arm.com, adilger.kernel@dilger.ca,
-	akpm@linux-foundation.org, alex.gaynor@gmail.com,
-	alexander.shishkin@linux.intel.com, aliceryhl@google.com,
-	amir73il@gmail.com, andi.shyti@kernel.org, andrii@kernel.org,
-	anna@kernel.org, arnd@arndb.de, ast@kernel.org,
-	baolin.wang@linux.alibaba.com, bigeasy@linutronix.de,
-	bjorn3_gh@protonmail.com, boqun.feng@gmail.com, bp@alien8.de,
-	brauner@kernel.org, broonie@kernel.org, bsegall@google.com,
-	catalin.marinas@arm.com, chenhuacai@kernel.org,
-	chris.p.wilson@intel.com, christian.koenig@amd.com,
-	chuck.lever@oracle.com, cl@linux.com, clrkwllms@kernel.org,
-	corbet@lwn.net, da.gomez@kernel.org, dakr@kernel.org,
-	damien.lemoal@opensource.wdc.com, dan.j.williams@intel.com,
-	daniel.vetter@ffwll.ch, dave.hansen@intel.com, david@fromorbit.com,
-	dennis@kernel.org, dietmar.eggemann@arm.com, djwong@kernel.org,
-	dri-devel@lists.freedesktop.org, duyuyang@gmail.com,
-	dwmw@amazon.co.uk, francesco@valla.it, frederic@kernel.org,
-	gary@garyguo.net, geert+renesas@glider.be, geert@linux-m68k.org,
-	gregkh@linuxfoundation.org, guoweikang.kernel@gmail.com,
-	gustavo@padovan.org, gwan-gyeong.mun@intel.com,
-	hamohammed.sa@gmail.com, hannes@cmpxchg.org, harry.yoo@oracle.com,
-	hch@infradead.org, her0gyugyu@gmail.com, hpa@zytor.com,
-	jack@suse.cz, jglisse@redhat.com, jiangshanlai@gmail.com,
-	jlayton@kernel.org, joel.granados@kernel.org,
-	joel@joelfernandes.org, joelagnelf@nvidia.com,
-	johannes.berg@intel.com, josef@toxicpanda.com,
-	josh@joshtriplett.org, jpoimboe@kernel.org, juri.lelli@redhat.com,
-	kees@kernel.org, kernel-team@lge.com, kernel_team@skhynix.com,
-	kevin.brodsky@arm.com, kristina.martsenko@arm.com,
-	lillian@star-ark.net, linaro-mm-sig@lists.linaro.org, link@vivo.com,
-	linux-arch@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-	linux-block@vger.kernel.org, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-i2c@vger.kernel.org, linux-ide@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-media@vger.kernel.org,
-	linux-mm@kvack.org, linux-modules@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-rt-devel@lists.linux.dev,
-	linux@treblig.org, longman@redhat.com, lorenzo.stoakes@oracle.com,
-	lossin@kernel.org, luto@kernel.org, mark.rutland@arm.com,
-	masahiroy@kernel.org, mathieu.desnoyers@efficios.com,
-	matthew.brost@intel.com, max.byungchul.park@gmail.com,
-	mcgrof@kernel.org, melissa.srw@gmail.com, mgorman@suse.de,
-	mhocko@kernel.org, miguel.ojeda.sandonis@gmail.com,
-	minchan@kernel.org, mingo@redhat.com, mjguzik@gmail.com,
-	neeraj.upadhyay@kernel.org, neil@brown.name, neilb@ownmail.net,
-	netdev@vger.kernel.org, ngupta@vflare.org, ojeda@kernel.org,
-	okorniev@redhat.com, oleg@redhat.com, paulmck@kernel.org,
-	penberg@kernel.org, peterz@infradead.org, petr.pavlu@suse.com,
-	qiang.zhang@linux.dev, rcu@vger.kernel.org,
-	richard.weiyang@gmail.com, rientjes@google.com,
-	rodrigosiqueiramelo@gmail.com, rostedt@goodmis.org, rppt@kernel.org,
-	rust-for-linux@vger.kernel.org, samitolvanen@google.com,
-	sashal@kernel.org, shakeel.butt@linux.dev, sj@kernel.org,
-	sumit.semwal@linaro.org, surenb@google.com, tglx@linutronix.de,
-	thomas.weissschuh@linutronix.de, tim.c.chen@linux.intel.com,
-	tj@kernel.org, tmgross@umich.edu, tom@talpey.com,
-	torvalds@linux-foundation.org, trondmy@kernel.org, tytso@mit.edu,
-	urezki@gmail.com, usamaarif642@gmail.com, vbabka@suse.cz,
-	vdavydov.dev@gmail.com, vincent.guittot@linaro.org,
-	vschneid@redhat.com, wangfushuai@baidu.com,
-	wangkefeng.wang@huawei.com, will@kernel.org, willy@infradead.org,
-	wsa+renesas@sang-engineering.com, x86@kernel.org,
-	yeoreum.yun@arm.com, ysk@kzalloc.com, yunseong.kim@ericsson.com,
-	yuzhao@google.com, ziy@nvidia.com
-Subject: Re: [PATCH] dept: update documentation function names to match
- implementation
-Message-ID: <20260506062714.GA48817@system.software.com>
-References: <aTN38kJjBftxnjm9@archie.me>
- <20260428162614.786365-2-yunseong.kim@est.tech>
+	s=arc-20240116; t=1778054370; c=relaxed/simple;
+	bh=4Vb9bxi6YN8kP5rRd5nyb3Sr7NSKQDWV51h6DBoHaq4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=SPKuSDWhlC6ue8Zs93BrlCfNivR/Rqfu4IO4/HCtCVh9zrpmWWlAOYLmKaCUrQf8mgFePfDEdBKYMncuaMS2VeVc0orJblRKfb0SwwEpsTofGXLyE3MoQKIYI6bsMhBRc61z1z4fALzzN+xutmsGxc99+xOeZ6T3BKZtRMbayjw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=jgh+oeU7; arc=none smtp.client-ip=115.124.30.101
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="jgh+oeU7"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1778054360; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=tj2qyGlTzEhJKk0g2FB3xZdcuU2hlPJGLK2Tdm/8io0=;
+	b=jgh+oeU7FWLlaHkcIANt+HaS+gLfq3KPmLuAYTNcxDDcmby80tgXigWMv0R0Yv997csv7zDOZlyMA9kTNoxcFBaLxPVave2T8RoEj6qTXAHM8oCoBcdlGnNvpn1hrXkwMDyFhJ9MA0/yvktMOXn1UMa/6QGlL3UcA8cMfaS67QY=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0X2NNNzH_1778054345;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X2NNNzH_1778054345 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Wed, 06 May 2026 15:59:19 +0800
+From: Baokun Li <libaokun@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	libaokun@linux.alibaba.com
+Subject: [PATCH] ext4: enable mballoc kunit tests for blocksize > PAGE_SIZE
+Date: Wed,  6 May 2026 15:59:00 +0800
+Message-ID: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260428162614.786365-2-yunseong.kim@est.tech>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Brightmail-Tracker: H4sIAAAAAAAAA02SfUxbZRTGfe9978ttXc21Ynbd4mLqPgxmuJmZHJfp9A/ddYZlif8oW6JV
-	rlJWytJuDCTGoi1WHATrVqQfs9tK+SoBW5ksZIjsg9C1ccON3MWyumQrhVENrEBoGbOFLO6/
-	X57znCfPSQ5LK51kDavRHRL1OrVWReRYnlh1arMQTWm2XHA+ARbzlzCbtGBwdvkIWPxNDERn
-	LQjm0w4azGcfYDhejeBe9xKBiYu74MHYOAX3bQcgHf6DhpO3xmj45dJNBHcaemgYPv4dgcRV
-	JwUuhxWBzeXHELFZKejwF0DUG8PQOEHA9vNqcDTGKQidjmDwGjeAI/wnA3djVgLRoRoGmk5E
-	CBzt7mHA6JhnYKTjCoaucYmCYXsbhlt/SwwEwiEapIY7CH74J4bgRuNUDowMuCmIXa+hoO1c
-	mMCMZw7DUN0ABd/E+whE6icxXLvRh6C5NcGA3zdKYNzuoiA11svAqPUnAqmWiwiCqWCm79XM
-	2YsWAo7qegTd0y0Equ9FEZgir0Dn/VH0xpvCvLkeC+2BM5TgO+FDQrL5a1owN2To/NS/tGAK
-	HBGaL08RITV7nQjn5txYCJ7ihe/Dm4Wz9rEcwe0/LJguJBgh0Jq3d32hfEeRqNWUi/qXXv9I
-	XvxtNIQPdigqLp00MUbULK9FMpbntvGtSS95yIm4JyfLmFvP17qGmSwTbhMvSQt0lnO5F/hJ
-	qXbZT3Od6/gfO4uz/BT3Pt9f009lWcEBn5zwLu8quUJeun2UrOhP8sNNt/HKbh4vLU1k/GyG
-	1/ItS2xWlnE7eHewfbnC09zz/MCZoYxFnqkWlPGBOje90vMZ/vdWCTcgzv5IrP2RWPv/sW5E
-	tyOlRldeqtZot+UXV+o0FfmflJX6UeZnvV8s7utFM1feG0Qci1SrFL3XFjRKRl1uqCwdRDxL
-	q3IV6UhGUhSpKz8X9WUf6g9rRcMgWsti1WrFy3NHipTcZ+pD4gFRPCjqH04pVrbGiHyLr/4a
-	Yh3THS8aKdNvX82bPI8XmqPvvuYcXbDKQqc/HjeXeOs0sa6dOy9/Or07923bup5jG0pdM/Gq
-	kq2uSf+sp0JZ0PbWzXf0WlpX5S15tqAnaHgsf/u+7VSyCnnO/5U+NuCIGDem+71VZXvUUt+u
-	+N7QSPn+/b4Pdt+d2fLciAobitVb82i9Qf0f1Eg6x68DAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAA02SbUhTYRTHe+69u7suVzezekgIWkoWaEUFB5KICLz0hlFQ+KFaemvDt9jM
-	MojUtZoWYqvNdFm+LpmapfZiMTUjy8rUypxlTWNZS02xLXE27a6I+nL4nf85PzgfDkMGeEUL
-	GWViMq9KlMfLaAkl2b5OExZp9yhX1tmXgk57EnrtDhG8SW+iwO3SUXC5upIGr+mOGHQ1eSJ4
-	0p1BQcf1CgR2tw7B+KSJBG39NAVefYsYXBPvxGBIRzBtbUFg7NSTYOtoJKGyLp2A7zemaBh8
-	OIbA0O+gIdeZTsGI+RyC/AGTGJyPImHYfl8E0+8/E9D9YwiB2TFFgKPpDAKvMQ6uFtcKunGU
-	hsm2dhJyDR0IivrfkzDm7ENQ1/IBgbU8g4ZPObdIeOWYBa/dIzS0Gs7SMNx5mYBvN2gozLCK
-	oPP5IIICkx7BwFsrAZqSahqMBTUU1PfdE0Pn4E8Ceo16AipqtoHdPEDBs5xiQjhX2Lq5AEy5
-	GkIoXwgwVN0nYMJsEW8wI25cm01xltrbBKd96aW5yiuViJv06BHnKtOQnDZHaB8OjZDcqdqj
-	XNmzIZrzuLtoruPjC5Kz/iikuKfFmCvN9BDc+bawqI3RkohYPl6ZwqtWrN8vUWTan1OHK6TH
-	WopOidJQmSQL+TGYXYOHv5SKfUyxwTiroFXkY5pdim22CdLHgWwo/mrLon1MslWL8KUqhY/n
-	sntww+kGwsdSFrDLaf7tBrDR2OY4R//J5+DWPAf1x12ObVNOYZ8ROAhfm2J8sR8bgQufWn6f
-	MI9dgptuPyZykDT/Pzv/Pzv/n12ISAsKVCamJMiV8WvD1XGK1ETlsfCYpIQaJDyl+cTP83eR
-	61VkM2IZJPOX3n09oQwQyVPUqQnNCDOkLFA62StE0lh56nFelbRPdSSeVzejIIaSLZBu3s3v
-	D2APyZP5OJ4/zKv+TgnGb2Eayhxvv3BhRnj9TpwW4+8fdahsdP2d2YHHnWQfm73Y0di+PTYr
-	Wm3VQUNTcs/el3PCzvp9HTvgsVxPWhbeUw/BbxNKZq4ObcuMqR69GNK1qaRUGtW4xQ7+2xT9
-	MipkOmj04IwHEbs0RZFabx7eOrYjKLg89LR7X7Znpi2pp1w2NF9GqRXyVctJlVr+C58CT62Q
-	AwAA
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
 
-On Tue, Apr 28, 2026 at 06:26:15PM +0200, Yunseong Kim wrote:
-> Synchronize function names in the documentation with the actual
-> implementation to fix naming inconsistencies.
+With Large Block Size (LBS) support, ext4 can now use block sizes larger
+than PAGE_SIZE. The mballoc kunit tests previously skipped three test
+cases (test_mb_mark_used, test_mb_free_blocks, test_mb_mark_used_cost)
+under this configuration because the buddy cache inode's folio mapping
+order was never initialized in the test harness.
 
-Good catch!  Thanks Yunseong.  I will apply it on the top.
+The real mount path configures s_min_folio_order and s_max_folio_order
+in ext4_fill_super(), which allows ext4_set_inode_mapping_order() to
+set up the correct folio order for the buddy cache inode. The kunit
+test bypasses ext4_fill_super(), so the mapping order stayed at zero
+and __filemap_get_folio() allocated order-0 folios too small for LBS.
 
-	Byungchul
+Initialize s_min_folio_order and s_max_folio_order in mbt_init_sb_layout()
+to mirror ext4_fill_super() behavior, enabling properly sized folio
+allocations and removing the three blocksize > PAGE_SIZE skips.
 
-> Signed-off-by: Yunseong Kim <yunseong.kim@est.tech>
-> ---
->  Documentation/dev-tools/dept.rst     | 2 +-
->  Documentation/dev-tools/dept_api.rst | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/Documentation/dev-tools/dept.rst b/Documentation/dev-tools/dept.rst
-> index 333166464543..31b2fe629fab 100644
-> --- a/Documentation/dev-tools/dept.rst
-> +++ b/Documentation/dev-tools/dept.rst
-> @@ -97,7 +97,7 @@ No.  What about the following?
-> 
->                            mutex_lock A
->     mutex_lock A <- DEADLOCK
-> -                          wait_for_complete B <- DEADLOCK
-> +                          wait_for_completion B <- DEADLOCK
->     complete B
->                            mutex_unlock A
->     mutex_unlock A
-> diff --git a/Documentation/dev-tools/dept_api.rst b/Documentation/dev-tools/dept_api.rst
-> index 409116a62849..74e7b1424ad5 100644
-> --- a/Documentation/dev-tools/dept_api.rst
-> +++ b/Documentation/dev-tools/dept_api.rst
-> @@ -113,7 +113,7 @@ Do not use these APIs directly.  The raw APIs of dept are:
->     dept_stage_wait(map, key, ip, wait_func, time);
->     dept_request_event_wait_commit();
->     dept_clean_stage();
-> -   dept_stage_event(task, ip);
-> +   dept_ttwu_stage_wait(task, ip);
->     dept_ecxt_enter(map, evt_flags, ip, ecxt_func, evt_func, sub_local);
->     dept_ecxt_holding(map, evt_flags);
->     dept_request_event(map, ext_wgen);
-> --
-> 2.53.0
+Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+---
+ fs/ext4/mballoc-test.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
+
+diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+index 90ed505fa4b1..04bc9f773d63 100644
+--- a/fs/ext4/mballoc-test.c
++++ b/fs/ext4/mballoc-test.c
+@@ -206,6 +206,8 @@ static void mbt_init_sb_layout(struct super_block *sb,
+ 	sbi->s_desc_per_block_bits =
+ 		sb->s_blocksize_bits - (fls(layout->desc_size) - 1);
+ 	sbi->s_desc_per_block = 1 << sbi->s_desc_per_block_bits;
++	sbi->s_min_folio_order = get_order(sb->s_blocksize);
++	sbi->s_max_folio_order = sbi->s_min_folio_order;
+ 
+ 	es->s_first_data_block = cpu_to_le32(0);
+ 	es->s_blocks_count_lo = cpu_to_le32(layout->blocks_per_group *
+@@ -791,10 +793,6 @@ static void test_mb_mark_used(struct kunit *test)
+ 	struct test_range ranges[TEST_RANGE_COUNT];
+ 	int i;
+ 
+-	/* buddy cache assumes that each page contains at least one block */
+-	if (sb->s_blocksize > PAGE_SIZE)
+-		kunit_skip(test, "blocksize exceeds pagesize");
+-
+ 	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+ 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
+ 	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+@@ -858,10 +856,6 @@ static void test_mb_free_blocks(struct kunit *test)
+ 	int i;
+ 	struct test_range ranges[TEST_RANGE_COUNT];
+ 
+-	/* buddy cache assumes that each page contains at least one block */
+-	if (sb->s_blocksize > PAGE_SIZE)
+-		kunit_skip(test, "blocksize exceeds pagesize");
+-
+ 	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+ 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
+ 	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+@@ -905,10 +899,6 @@ static void test_mb_mark_used_cost(struct kunit *test)
+ 	int i, j;
+ 	unsigned long start, end, all = 0;
+ 
+-	/* buddy cache assumes that each page contains at least one block */
+-	if (sb->s_blocksize > PAGE_SIZE)
+-		kunit_skip(test, "blocksize exceeds pagesize");
+-
+ 	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
+ 	KUNIT_ASSERT_EQ(test, ret, 0);
+ 
+-- 
+2.43.7
+
