@@ -1,201 +1,212 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-pl1-f172.google.com (mail-pl1-f172.google.com [209.85.214.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D669D30AD0C
-	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 09:35:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAB894418D7
+	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 13:51:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778060121; cv=none; b=jdcL7+ParI6TL8RmUb5w4Z0uejJqF1mz1YiPZBi1QIXQeTk9ASPQiq4CzYMHXydC7cOepqZmOwnfEvX7q9PL1WzR8IRXD55d0lyt/KHOr7jyi7myrzX/HV/Hxzge5tos/FB8RtQ7QUEZDudjuoF3McfgKY5e64GxN1WJpzbVzag=
+	t=1778075481; cv=none; b=X77WLDf/CLO5QRD7jy3tHz6cdVUuBrSgj+Y+9+QTE5tXT/ReVV1UEWsJbj9LakuqY+BUWnCJEAJY6N+auL4YG8y3O2krYjQCoTmPHawwg6VropOcBWceM0F/htkeboLauKE09GUfR0LyCSQiuzEmwG9PR1l23bDLYnHv9AJz+JE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778060121; c=relaxed/simple;
-	bh=85uy0TE6amGgzWnJ0dK6WKEm+tc8kMVjzywmV+z7Tg4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=RekyGW/u41QKuFzxnbZJn5LxvK8Q+WAWNrw26D6BebNX//sBb8aH68uqIK6YAGoG1wY4aZDlFB5djUjUZBkHauDdUrugXK/J/SkipYCIxWh2/02IoZ2cbibDxDICDvjNjnyHFEmNG+J+Wh/4vf+e5lJiCahJVKD7zZv2g/I8rLI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hK6nSEF6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ALVxJFS1; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hK6nSEF6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ALVxJFS1; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1778075481; c=relaxed/simple;
+	bh=URnkf5RkyFWCiwuC7crpWYvpHdTESNB+bPjqHfHOcDw=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=CEtbTn+NlKhkvV2FmpFZ07Dcb/GS+eDRzJwJ8IjQ32lDEK36Yzd/4xmlcvZa6AzqCrOeLbyUiOvK+G//eIbCtnWjLkfzNNuLMkJAXHRuKQPpW/o+gP0lomu7OTIfTLRtXnyfZXaUn0NlqGd2kFAQ28wGKTSh/+DNoE6go64csuA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VBta+2el; arc=none smtp.client-ip=209.85.214.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hK6nSEF6";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ALVxJFS1";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hK6nSEF6";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ALVxJFS1"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 0F4436B259;
-	Wed,  6 May 2026 09:35:18 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1778060118; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
-	b=hK6nSEF6V7SHpd7axWAWAUEtLZaAiu2pf36yQHh9TIzoQhEtXI12JdVvU6gC1bfxO11ewx
-	aG0dQQw18sDhQdLCatmsmO3davEg1U/EwwCPTKcOyx6/o7dDksSCje7s8gZNd8zM8uHyvL
-	HKOJEu0O3zx0Es9jv98KG73xFr3OazQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1778060118;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
-	b=ALVxJFS1zyEeY2bbR9CsMyPbkCucpas4bT301+rnvmpDzjWuLPkI/6gVcW9okBubrCUS6O
-	1h8oTzTAZXKszQDw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1778060118; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
-	b=hK6nSEF6V7SHpd7axWAWAUEtLZaAiu2pf36yQHh9TIzoQhEtXI12JdVvU6gC1bfxO11ewx
-	aG0dQQw18sDhQdLCatmsmO3davEg1U/EwwCPTKcOyx6/o7dDksSCje7s8gZNd8zM8uHyvL
-	HKOJEu0O3zx0Es9jv98KG73xFr3OazQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1778060118;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
-	b=ALVxJFS1zyEeY2bbR9CsMyPbkCucpas4bT301+rnvmpDzjWuLPkI/6gVcW9okBubrCUS6O
-	1h8oTzTAZXKszQDw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 03BB7593A3;
-	Wed,  6 May 2026 09:35:18 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id PLPXAFYL+2lpBAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 06 May 2026 09:35:18 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 53BBBA0790; Wed, 06 May 2026 11:35:17 +0200 (CEST)
-Date: Wed, 6 May 2026 11:35:17 +0200
-From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com
-Subject: Re: [PATCH] ext4: enable mballoc kunit tests for blocksize >
- PAGE_SIZE
-Message-ID: <xjduwrjb3nlvvfaproth226slnagxhimeln3duhkizbzlh2xpx@zuh56jw5xk3u>
-References: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VBta+2el"
+Received: by mail-pl1-f172.google.com with SMTP id d9443c01a7336-2ba4a1a0325so18597175ad.0
+        for <linux-ext4@vger.kernel.org>; Wed, 06 May 2026 06:51:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1778075479; x=1778680279; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=YVI1pdoyKD96TavOxlQpvmNCRqmQwCeQQwtusJVnWcI=;
+        b=VBta+2el3YzbscXC/3OQeQ4FcwcPBzMUKkKwzuDPQ3Nxpc4f1pJrcju/n+i1FtzS+l
+         xNGB4uBYFtK8p/EXjtSmx5B/JkP4rR6wlXcStTekI0WTyCHHPrXG49a/eooVkOags02Y
+         grSdHKJDDXwHNYKhbX4abWCZgdtsEozqHXYdTWGeihyhyT4cDkQKfc+95TcGZx80UYGB
+         05//faN4M6Aweo3mucb6NhCLxfLdHXY3/9Gy3B7niileO4c1BNj2TmBlh6JSFh71hAND
+         OOkRivG8DmFDeP3xAYnZdBW64jtZ9qA1A4yxjCY4LxD91q62BXB93JZrS4SbkhmecWP4
+         iZ1A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1778075479; x=1778680279;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=YVI1pdoyKD96TavOxlQpvmNCRqmQwCeQQwtusJVnWcI=;
+        b=sXOOK42SYawtB6OWfF3+OtB9g2plbQfTg5V2cx0Wj6gfrN8lOA9ItNYYEffiSmXs20
+         2ihkvyqpKVvYVvTwE3pe0CjtlERJWte8EZ9E3JaUeE1fordd3QGe7RiVuWpnE0+6ZJ/p
+         XFwSoCrYnKmOicjbn4G7hZLxepZJvH9frw6glR7auiCBQTW/7vWOYLyXF5vaIQUVWrtF
+         u4dh341jM2bTZw5Fr9t3/UVNAFv6iU4Pay6g0g91LgOowDCcUQzTw9QQ93JDOwKJQN9Z
+         DHSZzcLKdFrusrxhQ28M5xs+pd8HTc5lXbEeDwVvs/4lOhBQTyV+cXP1jcDLxCI0mPok
+         pQJA==
+X-Forwarded-Encrypted: i=1; AFNElJ8W+Wy92906E8Pt6p7pSUS0WLVdkF7MiG2xp8/YcFSUsbS0S6eWFBgMrQ6a26G9NbMl1KWeRXOoFf9r@vger.kernel.org
+X-Gm-Message-State: AOJu0YzMFd1OUd9hz3mMEiOQd6iAJveeUs+2wjj2x+TAHrTBsGHrWLw5
+	Oi5/cOKLm3CZS6D622ZAnGDBhR/HhdLDWh+u2k78sjQdJTrXeAL3E/J9
+X-Gm-Gg: AeBDietFTi3PvAD3qJsoYZ8HSD+vuDTa5u+a4FpCBNbN7HXSmjz9vptf4vmGNhzXA5+
+	RdtBWIyagZMcIwaBXiGpGnfKo595Rbd9+TZ7sW6y4Cp2qz8lfb1PX5U2r6wG37Kqb8fFffrRiXL
+	xw6Fu4NVn6FdnwWtaq4JE0jpHGFsNmzMnULN6RVKU4w7iJx9lQmUxvPLdzlZdppcFyf38Bnbzio
+	SXrOJUosyMrZRZKM5ZtWfIF9zNI0hWF9c1E1eMTWHlUhBiyMp/6euJ22GLtQ+P/NidN4/6kJl7s
+	gL/EUUsnhdyGuYLxORZ2LmAgCN6NVTamtqvA9Hu18VJNY5JtZEAcFN7UxgdK+UPMAlANs+V3frR
+	j6iKF2oNyUxlugC6UJ6tlndK4BtWtgjPzGWSloMu/Wk7OOvcHjH6jZzYk+ycFjglOeyf3rBz7mq
+	XIsYCfaypXT30FHeQptC8ckA==
+X-Received: by 2002:a17:903:13c8:b0:2b9:8d39:5e87 with SMTP id d9443c01a7336-2ba78f4589bmr38476715ad.10.1778075479156;
+        Wed, 06 May 2026 06:51:19 -0700 (PDT)
+Received: from n37-098-250.byted.org ([240e:83:200::738])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2ba7bf330a0sm26970375ad.31.2026.05.06.06.51.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 06 May 2026 06:51:18 -0700 (PDT)
+From: Diangang Li <diangangli@gmail.com>
+To: axboe@kernel.dk,
+	viro@zeniv.linux.org.uk,
+	brauner@kernel.org
+Cc: linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	changfengnan@bytedance.com,
+	Diangang Li <lidiangang@bytedance.com>
+Subject: [RFC v1 0/1] buffer_head: fail fast on repeated reads after I/O errors
+Date: Wed,  6 May 2026 21:50:46 +0800
+Message-Id: <20260506135047.2670453-1-diangangli@gmail.com>
+X-Mailer: git-send-email 2.39.5
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[8];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,alibaba.com:email,suse.cz:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
+Content-Transfer-Encoding: 8bit
 
-On Wed 06-05-26 15:59:00, Baokun Li wrote:
-> With Large Block Size (LBS) support, ext4 can now use block sizes larger
-> than PAGE_SIZE. The mballoc kunit tests previously skipped three test
-> cases (test_mb_mark_used, test_mb_free_blocks, test_mb_mark_used_cost)
-> under this configuration because the buddy cache inode's folio mapping
-> order was never initialized in the test harness.
-> 
-> The real mount path configures s_min_folio_order and s_max_folio_order
-> in ext4_fill_super(), which allows ext4_set_inode_mapping_order() to
-> set up the correct folio order for the buddy cache inode. The kunit
-> test bypasses ext4_fill_super(), so the mapping order stayed at zero
-> and __filemap_get_folio() allocated order-0 folios too small for LBS.
-> 
-> Initialize s_min_folio_order and s_max_folio_order in mbt_init_sb_layout()
-> to mirror ext4_fill_super() behavior, enabling properly sized folio
-> allocations and removing the three blocksize > PAGE_SIZE skips.
-> 
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+From: Diangang Li <lidiangang@bytedance.com>
 
-Looks sensible. Feel free to add:
+A production system reported hung tasks blocked for 300s+ in ext4
+buffer_head paths. Hung task reports were accompanied by disk I/O errors,
+but profiling showed that most individual reads completed (or failed)
+within 10s, with the worst case around 60s.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+At the same time, we observed a high repeat rate to the same disk LBAs.
+The repeated reads frequently showed seconds-level latency and ended with
+I/O errors, e.g.:
 
-								Honza
+  [Tue Mar 24 14:16:24 2026] blk_update_request: I/O error, dev sdi,
+      sector 10704150288 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 0
+  [Tue Mar 24 14:16:25 2026] blk_update_request: I/O error, dev sdi,
+      sector 10704488160 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 0
+  [Tue Mar 24 14:16:26 2026] blk_update_request: I/O error, dev sdi,
+      sector 10704382912 op 0x0:(READ) flags 0x0 phys_seg 1 prio class 0
 
-> ---
->  fs/ext4/mballoc-test.c | 14 ++------------
->  1 file changed, 2 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-> index 90ed505fa4b1..04bc9f773d63 100644
-> --- a/fs/ext4/mballoc-test.c
-> +++ b/fs/ext4/mballoc-test.c
-> @@ -206,6 +206,8 @@ static void mbt_init_sb_layout(struct super_block *sb,
->  	sbi->s_desc_per_block_bits =
->  		sb->s_blocksize_bits - (fls(layout->desc_size) - 1);
->  	sbi->s_desc_per_block = 1 << sbi->s_desc_per_block_bits;
-> +	sbi->s_min_folio_order = get_order(sb->s_blocksize);
-> +	sbi->s_max_folio_order = sbi->s_min_folio_order;
->  
->  	es->s_first_data_block = cpu_to_le32(0);
->  	es->s_blocks_count_lo = cpu_to_le32(layout->blocks_per_group *
-> @@ -791,10 +793,6 @@ static void test_mb_mark_used(struct kunit *test)
->  	struct test_range ranges[TEST_RANGE_COUNT];
->  	int i;
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
->  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
->  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
-> @@ -858,10 +856,6 @@ static void test_mb_free_blocks(struct kunit *test)
->  	int i;
->  	struct test_range ranges[TEST_RANGE_COUNT];
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
->  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
->  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
-> @@ -905,10 +899,6 @@ static void test_mb_mark_used_cost(struct kunit *test)
->  	int i, j;
->  	unsigned long start, end, all = 0;
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
->  	KUNIT_ASSERT_EQ(test, ret, 0);
->  
-> -- 
-> 2.43.7
-> 
+We also sampled repeated-LBA latency histograms on /dev/sdi and saw that
+the same error-prone LBAs were re-submitted many times with ~1-4s latency:
+
+  LBA 10704488160 (count=22): 1-2s: 20, 2-4s: 2
+  LBA 10704382912 (count=21): 1-2s: 20, 2-4s: 1
+  LBA 10704150288 (count=21): 1-2s: 19, 2-4s: 2
+
+Root cause
+==========
+
+buffer_head reads serialize I/O via BH_Lock. When one read fails, the
+buffer remains !Uptodate. With multiple threads concurrently accessing
+the same buffer_head, each waiter wakes up after the previous owner drops
+BH_Lock, then submits the same read again and waits again. This makes the
+latency grow linearly with the number of contending threads, leading to
+300s+ hung tasks.
+
+The failing I/Os are repeatedly issued to the same LBA. The observed 1s+
+per-I/O latency is likely from device-side retry/error recovery. On SCSI
+the driver typically retries reads several times (e.g. 5 retries in our
+environment), so a single filesystem submission can easily accumulate 5s+
+delay before failing. When multiple threads then re-submit the same
+failing read and serialize on BH_Lock, the delay is amplified into 300s+
+hung tasks.
+
+Similar behavior exists for other devices (e.g. NVMe with multiple
+internal retries).
+
+Example hung stacks:
+
+  INFO: task toutiao.infra.t:3760933 blocked for more than 327 seconds.
+  Call Trace:
+   __schedule
+   io_schedule
+   __wait_on_bit_lock
+   bh_uptodate_or_lock
+   __read_extent_tree_block
+   ext4_find_extent
+   ext4_ext_map_blocks
+   ext4_map_blocks
+   ext4_getblk
+   ext4_bread
+   __ext4_read_dirblock
+   dx_probe
+   ext4_htree_fill_tree
+   ext4_readdir
+   iterate_dir
+   ksys_getdents64
+
+  INFO: task toutiao.infra.t:2724456 blocked for more than 327 seconds.
+  Call Trace:
+   __schedule
+   io_schedule
+   __wait_on_bit_lock
+   ext4_read_bh_lock
+   ext4_bread
+   __ext4_read_dirblock
+   htree_dirblock_to_tree
+   ext4_htree_fill_tree
+   ext4_readdir
+   iterate_dir
+   ksys_getdents64
+
+This series follows an earlier ext4-only RFC and moves the policy to the
+generic buffer_head path so other buffer_head users can opt in with the
+same per-block-device knob.
+
+Approach
+========
+
+Record non-readahead read failures on buffer_head (BH_Read_EIO +
+b_err_timestamp). When a per-bdev retry window is configured, submit_bh()
+will skip submitting another non-readahead read for a buffer_head that
+already failed within the window and complete it immediately with failure.
+Clear the state on successful read or rewrite so the buffer can recover
+if the error is transient.
+
+The timestamp is recorded on the first failure only, so repeated failures
+do not extend the retry window. After the window expires, the next
+non-readahead read is submitted normally and can discover that the device
+or media has recovered.
+
+The retry window is configured per block device:
+
+  /sys/block/<disk>/read_err_retry_sec
+  /sys/block/<disk>/<part>/read_err_retry_sec
+
+The default value is 0, which keeps the current behavior: after a read
+error, callers may keep retrying the same read. Set it to a non-zero
+value to fail repeated non-readahead reads fast within the window.
+
+Patch summary
+=============
+
+  1) Add BH_Read_EIO and b_err_timestamp to buffer_head.
+  2) Track non-readahead read failures in the submit_bh() bio completion
+     path.
+  3) Add per-bdev read_err_retry_sec sysfs knobs for disks and partitions.
+  4) Fail repeated non-readahead submit_bh() reads fast within the
+     configured window, while leaving readahead and other bio users
+     unchanged.
+
+Diangang Li (1):
+  buffer_head: fail fast on repeated reads after I/O errors
+
+ Documentation/ABI/stable/sysfs-block | 26 +++++++++++
+ block/genhd.c                        | 24 ++++++++++
+ block/partitions/core.c              | 24 ++++++++++
+ fs/buffer.c                          | 65 ++++++++++++++++++++++++++++
+ include/linux/blk_types.h            |  3 ++
+ include/linux/buffer_head.h          | 10 +++++
+ 6 files changed, 152 insertions(+)
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.39.5
