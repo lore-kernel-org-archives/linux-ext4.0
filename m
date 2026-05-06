@@ -1,50 +1,86 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E17743DFC7B
-	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 09:29:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D669D30AD0C
+	for <linux-ext4@vger.kernel.org>; Wed,  6 May 2026 09:35:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778059763; cv=none; b=eR8jOgQMISKndsNy9vtPOV2k6d/0545EpOGkSLquq3l2SEzS9tXYesxMvY10VLf+NzooDxmfLcQZxJTu90mAwZ+RQxaUYNd2UNinWZ6bNeyAmWXA8Z6gqNUvavhJc1b7at+s9rLvXqCKNpo+yS11wKzXTStc1Pl2S3q/pH7gqes=
+	t=1778060121; cv=none; b=jdcL7+ParI6TL8RmUb5w4Z0uejJqF1mz1YiPZBi1QIXQeTk9ASPQiq4CzYMHXydC7cOepqZmOwnfEvX7q9PL1WzR8IRXD55d0lyt/KHOr7jyi7myrzX/HV/Hxzge5tos/FB8RtQ7QUEZDudjuoF3McfgKY5e64GxN1WJpzbVzag=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778059763; c=relaxed/simple;
-	bh=KVQvWWpxUJe5gqCLMD9YOF+O2FjcKrRaRyslDb2wVkw=;
+	s=arc-20240116; t=1778060121; c=relaxed/simple;
+	bh=85uy0TE6amGgzWnJ0dK6WKEm+tc8kMVjzywmV+z7Tg4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rfTeWYfuntGoSI8K6m9z88Alo+U1/9D9EiXAyoDO0fAFuj+074a3bDAx+Y4bxcFuzaQrk9ropM6h0GZR7iPuUX5/f9n9VmowwAJhFVD7vn12bDycKYoK5PRYwECA9JJLwTGAt3G9V+He+l0vEvji1GnqJUsSru7ecsWlBA6Sf5A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Z1cmmYEF; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=RekyGW/u41QKuFzxnbZJn5LxvK8Q+WAWNrw26D6BebNX//sBb8aH68uqIK6YAGoG1wY4aZDlFB5djUjUZBkHauDdUrugXK/J/SkipYCIxWh2/02IoZ2cbibDxDICDvjNjnyHFEmNG+J+Wh/4vf+e5lJiCahJVKD7zZv2g/I8rLI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hK6nSEF6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ALVxJFS1; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hK6nSEF6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ALVxJFS1; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Z1cmmYEF"
-Received: from macsyma.thunk.org ([173.239.240.39])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6469T0Cq011013
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 6 May 2026 05:29:02 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1778059743; bh=pZgN0aMFZrjrmipA4aMh+Kmlr4u4lKUzDxFC01KnC+4=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=Z1cmmYEFNNOedj78/LgriR0T7L5P1pFIt+VHGpeQguC0XIfnxOSweHcjEiTuYOYH6
-	 peMKBEaUB9KHc8SfEl6wGdqvc48FCTWcnnYXggHf/sH9srKgYZ2U74bIQQ/C8nhDWZ
-	 HZT4bKruS1sgMfloYVZwzW9oZ+cxBkWYLIWV/ghx88eABIBWC/Cemx2K4wPZW35nZI
-	 vcMhjdvsaVr7qPDMjdj++lx441ngcFCAxcqOlOpsG4jjqpsnREwXtYRH+gR/Fl6sFx
-	 6duLJvc+jccq0jO6lZt3m9psqeb+CGz03XY3mpgb92IGoKQzwNOuc4XsF91mzZg+Q8
-	 xlvfrahP/KhbA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id F3D6866670C3; Wed,  6 May 2026 11:28:58 +0200 (CEST)
-Date: Wed, 6 May 2026 11:28:58 +0200
-From: "Theodore Tso" <tytso@mit.edu>
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 0/7] fix up issues from djwong/fuse4fs-fork
-Message-ID: <20260506092858.GC49070@macsyma.local>
-References: <20260504233301.2345652-1-tytso@mit.edu>
- <20260505000831.GA1101423@frogsfrogsfrogs>
- <20260505072144.GC16497@macsyma-wired.lan>
- <20260505155821.GI1101423@frogsfrogsfrogs>
- <20260505220441.GB49070@macsyma.local>
- <20260505225635.GT7765@frogsfrogsfrogs>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hK6nSEF6";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ALVxJFS1";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hK6nSEF6";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ALVxJFS1"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 0F4436B259;
+	Wed,  6 May 2026 09:35:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1778060118; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
+	b=hK6nSEF6V7SHpd7axWAWAUEtLZaAiu2pf36yQHh9TIzoQhEtXI12JdVvU6gC1bfxO11ewx
+	aG0dQQw18sDhQdLCatmsmO3davEg1U/EwwCPTKcOyx6/o7dDksSCje7s8gZNd8zM8uHyvL
+	HKOJEu0O3zx0Es9jv98KG73xFr3OazQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1778060118;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
+	b=ALVxJFS1zyEeY2bbR9CsMyPbkCucpas4bT301+rnvmpDzjWuLPkI/6gVcW9okBubrCUS6O
+	1h8oTzTAZXKszQDw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1778060118; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
+	b=hK6nSEF6V7SHpd7axWAWAUEtLZaAiu2pf36yQHh9TIzoQhEtXI12JdVvU6gC1bfxO11ewx
+	aG0dQQw18sDhQdLCatmsmO3davEg1U/EwwCPTKcOyx6/o7dDksSCje7s8gZNd8zM8uHyvL
+	HKOJEu0O3zx0Es9jv98KG73xFr3OazQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1778060118;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/3jNXVakWdXrmEzJZl0S7Fl91TMBaZIw/pAeShBSRfU=;
+	b=ALVxJFS1zyEeY2bbR9CsMyPbkCucpas4bT301+rnvmpDzjWuLPkI/6gVcW9okBubrCUS6O
+	1h8oTzTAZXKszQDw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 03BB7593A3;
+	Wed,  6 May 2026 09:35:18 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id PLPXAFYL+2lpBAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 06 May 2026 09:35:18 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 53BBBA0790; Wed, 06 May 2026 11:35:17 +0200 (CEST)
+Date: Wed, 6 May 2026 11:35:17 +0200
+From: Jan Kara <jack@suse.cz>
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
+	ritesh.list@gmail.com
+Subject: Re: [PATCH] ext4: enable mballoc kunit tests for blocksize >
+ PAGE_SIZE
+Message-ID: <xjduwrjb3nlvvfaproth226slnagxhimeln3duhkizbzlh2xpx@zuh56jw5xk3u>
+References: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,77 +89,113 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260505225635.GT7765@frogsfrogsfrogs>
+In-Reply-To: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[8];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,alibaba.com:email,suse.cz:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.30
 
-On Tue, May 05, 2026 at 03:56:35PM -0700, Darrick J. Wong wrote:
-> FUSE kABI 7.20 added FUSE_AUTO_INVAL_DATA, which is bit 12.  It looks to
-> me as though they decided to add their own MacOS-specific feature flags
-> at the end of the u32 want field.  Then Linux FUSE added 11 more feature
-> flags, at which point they unthinkingly ported over FUSE_CACHE_SYMLINKS,
-> which collides with FUSE_DARWIN_ACCESS_EXT.  Apparently nobody on the
-> macfuse end noticed, so on your machine you're getting whatever
-> "ACCESS_EXT" does.
+On Wed 06-05-26 15:59:00, Baokun Li wrote:
+> With Large Block Size (LBS) support, ext4 can now use block sizes larger
+> than PAGE_SIZE. The mballoc kunit tests previously skipped three test
+> cases (test_mb_mark_used, test_mb_free_blocks, test_mb_mark_used_cost)
+> under this configuration because the buddy cache inode's folio mapping
+> order was never initialized in the test harness.
+> 
+> The real mount path configures s_min_folio_order and s_max_folio_order
+> in ext4_fill_super(), which allows ext4_set_inode_mapping_order() to
+> set up the correct folio order for the buddy cache inode. The kunit
+> test bypasses ext4_fill_super(), so the mapping order stayed at zero
+> and __filemap_get_folio() allocated order-0 folios too small for LBS.
+> 
+> Initialize s_min_folio_order and s_max_folio_order in mbt_init_sb_layout()
+> to mirror ext4_fill_super() behavior, enabling properly sized folio
+> allocations and removing the three blocksize > PAGE_SIZE skips.
+> 
+> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 
-Yeah....
+Looks sensible. Feel free to add:
 
-What MacFuse needs to do is to steal some extra fields from struct
-fuse_init_in and fuse_init_out for the darwin-specific capabilities.
-It turns out it already has conn->{want,capable}_darwin, but there's
-no way to pass it in and out of op_init....
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-#ifdef __APPLE__
-	/*
-	 * TODO(bf)
-	 *
-	 * Resolve conflict with vanilla API. We need a separate field flags for
-	 * Darwin-only flags. As long as we don't support anything beyond ABI
-	 * version 7.19 on the kernel-side this should not be an issue, though.
-	 * We need to clean this up when moving to 7.20 or later.
-	 */
-	if (se->conn.want_darwin & FUSE_DARWIN_CAP_ACCESS_EXT)
-		outargflags |= FUSE_DARWIN_ACCESS_EXT;
+								Honza
 
-So I *guess* what MacFuse needs to do is to do something like:
-
-struct fuse_init_in {
-	uint32_t	major;
-	uint32_t	minor;
-	uint32_t	max_readahead;
-	uint32_t	flags;
-	uint32_t	flags2;
-	uint32_t	unused[9];
-	uint32_t	darwin_flags;
-	uint32_t	darwin_flags2;
-};
-
-am I right in understanding that fuse_*_{in,out} is private between
-the OS's libfuse and OS's fuse driver or kernel extension, so
-it's not disastrous for fuse_kernel.h for Mac and Linux to drift?
-
-> Does this work?
->
-> /* MacFUSE overlays feature bits with LinuxFUSE, this is fcked up */
-> #if defined(FUSE_CAP_CACHE_SYMLINKS) && !defined(FUSE_CACHE_SYMLINKS)
-> 	fuse_set_feature_flag(conn, FUSE_CAP_CACHE_SYMLINKS);
-> #endif
-
-What I'm thinking about doing is adding at the beginning of
-fuse[24]fs.c:
-
-#ifdef __APPLE__
-/*
- * Sigh.... MacFuse is overloading the top bits of the flags field of
- * struct fuse_init_{out} so we have to avoid using these capability
- * flags until this gets fixed in MacFUSE
- */
-#undef FUSE_CACHE_SYMLINKS
-#undef FUSE_NO_OPENDIR_SUPPORT
-#undef FUSE_EXPLICIT_INVAL_DATA
-#undef FUSE_MAP_ALIGNMENT
-#undef FUSE_SUBMOUNTS
-#undef FUSE_HANDLE_KILLPRIV_V2
-#undef FUSE_SETXATTR_EXT
-#undef FUSE_INIT_EXT
-#endif
-
-						- Ted
+> ---
+>  fs/ext4/mballoc-test.c | 14 ++------------
+>  1 file changed, 2 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
+> index 90ed505fa4b1..04bc9f773d63 100644
+> --- a/fs/ext4/mballoc-test.c
+> +++ b/fs/ext4/mballoc-test.c
+> @@ -206,6 +206,8 @@ static void mbt_init_sb_layout(struct super_block *sb,
+>  	sbi->s_desc_per_block_bits =
+>  		sb->s_blocksize_bits - (fls(layout->desc_size) - 1);
+>  	sbi->s_desc_per_block = 1 << sbi->s_desc_per_block_bits;
+> +	sbi->s_min_folio_order = get_order(sb->s_blocksize);
+> +	sbi->s_max_folio_order = sbi->s_min_folio_order;
+>  
+>  	es->s_first_data_block = cpu_to_le32(0);
+>  	es->s_blocks_count_lo = cpu_to_le32(layout->blocks_per_group *
+> @@ -791,10 +793,6 @@ static void test_mb_mark_used(struct kunit *test)
+>  	struct test_range ranges[TEST_RANGE_COUNT];
+>  	int i;
+>  
+> -	/* buddy cache assumes that each page contains at least one block */
+> -	if (sb->s_blocksize > PAGE_SIZE)
+> -		kunit_skip(test, "blocksize exceeds pagesize");
+> -
+>  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+>  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
+>  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+> @@ -858,10 +856,6 @@ static void test_mb_free_blocks(struct kunit *test)
+>  	int i;
+>  	struct test_range ranges[TEST_RANGE_COUNT];
+>  
+> -	/* buddy cache assumes that each page contains at least one block */
+> -	if (sb->s_blocksize > PAGE_SIZE)
+> -		kunit_skip(test, "blocksize exceeds pagesize");
+> -
+>  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+>  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
+>  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
+> @@ -905,10 +899,6 @@ static void test_mb_mark_used_cost(struct kunit *test)
+>  	int i, j;
+>  	unsigned long start, end, all = 0;
+>  
+> -	/* buddy cache assumes that each page contains at least one block */
+> -	if (sb->s_blocksize > PAGE_SIZE)
+> -		kunit_skip(test, "blocksize exceeds pagesize");
+> -
+>  	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
+>  	KUNIT_ASSERT_EQ(test, ret, 0);
+>  
+> -- 
+> 2.43.7
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
