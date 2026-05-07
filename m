@@ -1,132 +1,324 @@
-Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FA5E39A7F4
-	for <linux-ext4@vger.kernel.org>; Thu,  7 May 2026 08:51:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.110
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7F7134BA5A;
+	Thu,  7 May 2026 08:53:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778143873; cv=none; b=kL9kRMdv0r+Vlv8BAoubR1ZpsLjq6eRxI4jwqeVC7y9UMcoikGG4tu2jV4tdSlecHL8yaKSJ0ekCiueAkRJUfCsF1DhxHIknaSsvhCqJxg291FXpeyUzkhFppRLwJu25udiG3YdlIHUdsNrQUutlp8bNbwFDaHT40lQamjsM720=
+	t=1778144000; cv=none; b=pRbSYBZKe3FYozeg9GoLZr/DClcjaRJ9fcUO7Bw1/HjlwfT6XZGx88DhmbUEz8IweOeftzWuvMQWZf8A9bvWzyya96Sjwczuhj1QKcdDKpnhpaFNHL1j0uCX9T2LMD7DpAQgwfXnqolXL+YuAYZs2ztaHY5wNKvmaDxBoEeqxIM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778143873; c=relaxed/simple;
-	bh=cAQVoJnAydtUKtF74BY44/TuVaeWsQEy7/X29KzESCA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=RkuGDpxXUemJgiyd95FEr87aCe0jk3AKlaFUhEDN876mzbRVsZPEyc2qjyt4+TwMBCD3vQBV6IC7Dm/HFgOWKtO0aA18OUiDkQPPrFEjOAlFnjWkFZZaPusGD4GPJG4924PO/NgICdG9jObFLWHykFbyi36YBkba1v2vXftGSis=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=Z2PC4KZM; arc=none smtp.client-ip=115.124.30.110
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1778144000; c=relaxed/simple;
+	bh=XcNpvf8ER8suPl0PboARI8FL/Si1/YxxqlJXeJpP4xI=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=rMlfotm9spTahAANFzsYwrj0//xSC01WFlOEy6msiqsE2XpBkJLUH6iLOE4+YoXXySX2CjPSvXR2cor+uZSOYJQ4sq49q91ks/JvzFVzkrVd2xzCKu9it9s7q4Mn5R9lB8ps1D3lx/ZiCNQ/jV5tlsewKnq6AOo/VBtMKdQpG5U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CU6EGzvZ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="Z2PC4KZM"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1778143862; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=I70Fq5k37lefnnORP2ItWeeCvMsO6kgyDskbsVCv5Uo=;
-	b=Z2PC4KZM1SVhTnRNYc7BSV4ZWYcPoc5g+vTyzM35lPXPZFBh3ATc4CU3smSgbXihv8Czflo6Y2wvBemWc8awrzUK+IA1d+YW0y0ErWKkr9/WP5xjDjbsawl6Lc2CUj2dyV9UR3FZkb0e9pK2LUut7QNei83Pts+3IRq+tMF3hxA=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=7;SR=0;TI=SMTPD_---0X2TxetP_1778143860;
-Received: from 30.221.147.97(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X2TxetP_1778143860 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 07 May 2026 16:51:01 +0800
-Message-ID: <65ebc7df-3172-4995-afbc-bb9771b169c1@linux.alibaba.com>
-Date: Thu, 7 May 2026 16:51:00 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CU6EGzvZ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 50E80C2BCC4;
+	Thu,  7 May 2026 08:53:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1778143999;
+	bh=XcNpvf8ER8suPl0PboARI8FL/Si1/YxxqlJXeJpP4xI=;
+	h=From:Subject:Date:To:Cc:From;
+	b=CU6EGzvZN/KN2TjH89B3OHAklbvZ82928RJiyxTaNrgGogfvx9D0tFIJSdemDYwrc
+	 WPGcJjMgfK1Xrrr1k1p3glXAH5bGcwdmvd/cLgV1J0HVSb+d41EGIPr6tlurstAV1r
+	 Dgib1Zq/LFDPr1ErZvHv83MRKO8XTYD3GZoXfEF6Sb3h1Fx9Ou1DVtxGw/TuRSeO1u
+	 K7Z3dZDi9Snpv4l5kzK1zU9rUoxegU4JyloimUftNKCZTYa1fx4bXIgTiuH+DMAABv
+	 E3uMHXMt2GhhmedWeflV3k5F207/FXpk0JqwmHstEARTyBttZEoVXR6js9H/EdT5ZM
+	 6lHZVgvGhrjEQ==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v14 00/15] Exposing case folding behavior
+Date: Thu, 07 May 2026 04:52:53 -0400
+Message-Id: <20260507-case-sensitivity-v14-0-e62cc8200435@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: enable mballoc kunit tests for blocksize >
- PAGE_SIZE
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com
-References: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260506075900.3649944-1-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOZS/GkC/33QzW7DIAwH8FepOI8MQ8jHTnuPaQcwZmVqkwkyt
+ KrKuw+6wzI12sEHW/ZPf7iyRDFQYk+HK4uUQwrzVBpoHw4Mj2Z6Ix5cGTApZCdaKTmaRDzRlMI
+ SclguXKP1HgcPWg+snH1E8uHrZr68/vTp074TLtWpG7YSNpoJj3WUfXosxftGNlX388nVtWNIy
+ xwvt2x5rNw/KfLIBbckpEIUvSD5PEeDJ2pwPrMaI4PYEmqHAFEMVIN2Xd+aDv29AVuj3TOgGI5
+ 0B6Ml58yOIbfGuGfIYgxC9yCVpfKoe0P9GlrsfQeoYhgzaAWtUAB/c6zr+g28NqwC+wEAAA==
+X-Change-ID: 20260422-case-sensitivity-5cbffc8f1558
+To: Al Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+ linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
+ linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp, 
+ linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com, 
+ almaz.alexandrovich@paragon-software.com, slava@dubeyko.com, 
+ glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu, 
+ adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, 
+ pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com, 
+ trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, 
+ hansg@kernel.org, senozhatsky@chromium.org, 
+ Chuck Lever <chuck.lever@oracle.com>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Roland Mainz <roland.mainz@nrubsig.org>, 
+ Steve French <stfrench@microsoft.com>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=10818;
+ i=chuck.lever@oracle.com; h=from:subject:message-id;
+ bh=XcNpvf8ER8suPl0PboARI8FL/Si1/YxxqlJXeJpP4xI=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBp/FLsATrYD1pJJZ6vKuokL5pUMO9DEtG2y7dmS
+ 88d9W8LlsSJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCafxS7AAKCRAzarMzb2Z/
+ l7BxD/kBuAO9bwBnCL12tn2Su2GLeSG/PJCKgkSaV0UHkOG/EpgfEEzoPkG+r5FuRc4saeu0nWs
+ pef6bW90IAp/CyCHpFOvEOp9eLG4zAT4p9ZKENtWSh1dSLaREpacsO2f28TnWklLwJnmMboX8Ac
+ Oyt8RA8pjO+fUSEGSMDkrGZhgoVn+64QKWNjNOtPU7goLu69elA/6NqDszSDjIvA1AFMPdI3HGq
+ 7mG1wNSHZhMDhFdyETa7xRpOoKd422jpyD3RNmU0g41VipnrMbW6ewEJNoerfSK4YljoWyp/0YW
+ xt7MgdwDJKbRNOxeJIO0oI/oqykI84S7bMo8rD7Ps6rU5loCIX0xoUIWn8lNONDV8BQizJRkk12
+ 2LVl4RMeY5tPtRHFj3YDeoonZfZjtVgf9cOdqEk0n0X6pa1mb1Y2dOYb/nWmEYZ+vLCRC91eo7B
+ EHoJqP+LOsldUVgB19vjum5pv9XLciXnz+D/X1umK7KqyKeTy7GSQ8IFKOE0oq8KM09Bxm1TKlx
+ Bz/IPrbfFq2NzWl+tjXQ4TDxIs795F/fR2IiVo6d+3LDQyMiboUbHG3s/LhbYmktaloJ9b9k3o3
+ zhPS8BfFw0E2z+10ScdQ6pmJgGWYFsu66Gsjw+picw/M5ifjzoFxhlBq1RhpW2iVrmPwAlM9g/U
+ AM4s1M45hZsWK9A==
+X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
+Christian, let's lock this one in. I will post subsequent changes
+as delta patches.
 
-Please ignore this patch.
+Following on from:
 
-During review, Sashiko noticed a potential out-of-bounds write when
-CONFIG_TRANSPARENT_HUGEPAGE is disabled.
+https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57fd@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
 
-This has been fixed in v2 by adding a CONFIG_TRANSPARENT_HUGEPAGE check:
+I'm attempting to implement enough support in the Linux VFS to
+enable file services like NFSD and ksmbd (and user space
+equivalents) to provide the actual status of case folding support
+in local file systems. The default behavior for local file systems
+not explicitly supported in this series is to reflect the usual
+POSIX behaviors:
 
-v2:
-https://patch.msgid.link/20260507083754.1646636-1-libaokun@linux.alibaba.com
+  case-insensitive = false
+  case-nonpreserving = false
 
+The case-insensitivity and case-nonpreserving booleans can be
+consumed immediately by NFSD. These two attributes have been part of
+the NFSv3 and NFSv4 protocols for decades, in order to support NFS
+client implementations on non-POSIX systems.
 
-Regards,
-Baokun
+Support for user space file servers is why this series exposes case
+folding information via a user-space API. I don't know of any other
+category of user-space application that requires access to case
+folding info.
 
-在 2026/5/6 15:59, Baokun Li 写道:
-> With Large Block Size (LBS) support, ext4 can now use block sizes larger
-> than PAGE_SIZE. The mballoc kunit tests previously skipped three test
-> cases (test_mb_mark_used, test_mb_free_blocks, test_mb_mark_used_cost)
-> under this configuration because the buddy cache inode's folio mapping
-> order was never initialized in the test harness.
->
-> The real mount path configures s_min_folio_order and s_max_folio_order
-> in ext4_fill_super(), which allows ext4_set_inode_mapping_order() to
-> set up the correct folio order for the buddy cache inode. The kunit
-> test bypasses ext4_fill_super(), so the mapping order stayed at zero
-> and __filemap_get_folio() allocated order-0 folios too small for LBS.
->
-> Initialize s_min_folio_order and s_max_folio_order in mbt_init_sb_layout()
-> to mirror ext4_fill_super() behavior, enabling properly sized folio
-> allocations and removing the three blocksize > PAGE_SIZE skips.
->
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
-> ---
->  fs/ext4/mballoc-test.c | 14 ++------------
->  1 file changed, 2 insertions(+), 12 deletions(-)
->
-> diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-> index 90ed505fa4b1..04bc9f773d63 100644
-> --- a/fs/ext4/mballoc-test.c
-> +++ b/fs/ext4/mballoc-test.c
-> @@ -206,6 +206,8 @@ static void mbt_init_sb_layout(struct super_block *sb,
->  	sbi->s_desc_per_block_bits =
->  		sb->s_blocksize_bits - (fls(layout->desc_size) - 1);
->  	sbi->s_desc_per_block = 1 << sbi->s_desc_per_block_bits;
-> +	sbi->s_min_folio_order = get_order(sb->s_blocksize);
-> +	sbi->s_max_folio_order = sbi->s_min_folio_order;
->  
->  	es->s_first_data_block = cpu_to_le32(0);
->  	es->s_blocks_count_lo = cpu_to_le32(layout->blocks_per_group *
-> @@ -791,10 +793,6 @@ static void test_mb_mark_used(struct kunit *test)
->  	struct test_range ranges[TEST_RANGE_COUNT];
->  	int i;
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
->  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
->  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
-> @@ -858,10 +856,6 @@ static void test_mb_free_blocks(struct kunit *test)
->  	int i;
->  	struct test_range ranges[TEST_RANGE_COUNT];
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	bitmap = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
->  	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, bitmap);
->  	buddy = kunit_kzalloc(test, sb->s_blocksize, GFP_KERNEL);
-> @@ -905,10 +899,6 @@ static void test_mb_mark_used_cost(struct kunit *test)
->  	int i, j;
->  	unsigned long start, end, all = 0;
->  
-> -	/* buddy cache assumes that each page contains at least one block */
-> -	if (sb->s_blocksize > PAGE_SIZE)
-> -		kunit_skip(test, "blocksize exceeds pagesize");
-> -
->  	ret = ext4_mb_load_buddy_test(sb, TEST_GOAL_GROUP, &e4b);
->  	KUNIT_ASSERT_EQ(test, ret, 0);
->  
+The Linux NFS community has a growing interest in supporting NFS
+clients on Windows and MacOS platforms, where file name behavior does
+not align with traditional POSIX semantics.
 
+One example of a Windows-based NFS client is [1]. This client
+implementation explicitly requires servers to report
+FATTR4_WORD0_CASE_INSENSITIVE = TRUE for proper operation, a hard
+requirement for Windows client interoperability because Windows
+applications expect case-insensitive behavior. When an NFS client
+knows the server is case-insensitive, it can avoid issuing multiple
+LOOKUP/READDIR requests to search for case variants, and applications
+like Win32 programs work correctly without manual workarounds or
+code changes.
+
+Even the Linux client can take advantage of this information. Trond
+merged patches 4 years ago [2] that introduce support for case
+insensitivity, in support of the Hammerspace NFS server. In
+particular, when a client detects a case-insensitive NFS share,
+negative dentry caching must be disabled (a lookup for "FILE.TXT"
+failing shouldn't cache a negative entry when "file.txt" exists)
+and directory change invalidation must clear all cached case-folded
+file name variants.
+
+Hammerspace servers and several other NFS server implementations
+operate in multi-protocol environments, where a single file service
+instance caters to both NFS and SMB clients. In those cases, things
+work more smoothly for everyone when the NFS client can see and adapt
+to the case folding behavior that SMB users rely on and expect. NFSD
+needs to support the case-insensitivity and case-nonpreserving
+booleans properly in order to participate as a first-class citizen
+in such environments.
+
+[1] https://github.com/kofemann/ms-nfs41-client
+
+[2] https://patchwork.kernel.org/project/linux-nfs/cover/20211217203658.439352-1-trondmy@kernel.org/
+
+---
+Changes since v13:
+- Address findings from sashiko (gemini-3.1):
+  - ntfs3: Drop fileattr_get from symlink and special inode ops
+  - nfsd: Probe nfsd_get_case_info() under kernel creds to avoid
+    spurious NFS4ERR_ACCESS from per-client MAC policy
+
+Changes since v12:
+- Address findings from sashiko (gemini-3.1):
+  - cifs: Restrict case-handling flags to directories per UAPI
+  - nfs: Clear case caps before PATHCONF so a failed reply
+    does not retain stale bits from the prior probe
+  - nfsd: Document the parent-resolution corner cases of
+    nfsd_get_case_info() (single-file exports, disconnected
+    dentries, hardlinks) in the v3 and v4 commit messages
+
+Changes since v11:
+- isofs: Wire .fileattr_get only on directory inodes, since
+  NFSD and ksmbd query casefolding on directories (Jan Kara)
+- xfs, hfsplus: Drop the FS_CASEFOLD_FL fileattr_get mask;
+  admit the bit through fileattr_set's allowlist instead
+- Address findings from sashiko(gemini-3) and gpt-5.5:
+  - cifs: Wire .fileattr_get on cifs_namespace_inode_operations
+    so DFS referral / automount directories report case handling
+  - fat, ntfs3: Fill FS_IMMUTABLE_FL in fileattr_get
+  - hfsplus: Hide FS_CASEFOLD_FL from the legacy flags view so
+    chattr round-trips do not hit the setflags whitelist
+  - nfs: Clear NFS_CAP_CASE_INSENSITIVE and
+    NFS_CAP_CASE_NONPRESERVING before re-OR'ing in the v3 and
+    v4 probe paths so re-probe / TSM does not retain stale caps
+  - nfsd: Switch nfsd_get_case_info() to errno return so
+    v3 PATHCONF and v4 GETATTR can apply version-appropriate
+    policy on failure
+  - nfsd: Use dget_parent() in v4 case-attr probe to keep
+    the parent dentry referenced across the query
+  - isofs: Report FS_XFLAG_CASENONPRESERVING for map=n/map=a
+
+Changes since v10:
+- cifs: Source case-handling flags from the server's cached
+  FS_ATTRIBUTE_INFORMATION reply instead of the nocase mount
+  option, with a nocase fallback when the reply is absent
+- Address findings from sashiko(gemini-3) and gpt-5.5:
+  - nfs: Skip pathconf case bits on NFSv4 (set via FATTR4_CASE_*
+    instead)
+  - xfs: Hide FS_CASEFOLD_FL from the legacy flags view so
+    chattr round-trips do not hit the setflags whitelist
+  - ext4, f2fs: Drop redundant fileattr_get patches; the
+    FS_CASEFOLD_FL translation in fileattr_fill_flags() already
+    reports FS_XFLAG_CASEFOLD for casefolded directories
+  - nfsd: Report FATTR4_HOMOGENEOUS = FALSE when the exported
+    filesystem has a Unicode encoding, since per-directory
+    casefold makes the fs-scoped case attributes inhomogeneous
+  - nfsd: Document in nfsd_get_case_info() why -ENOIOCTLCMD and
+    -ENOTTY are swallowed while other errors propagate
+  - fat: Honor vfat 'check=strict' when reporting FS_XFLAG_CASEFOLD
+  - Set FS_CASEFOLD_FL so FS_IOC_GETFLAGS reflects case-insensitive
+    mount
+  - isofs: Register fileattr_get on regular file and symlink inodes,
+    not just directories
+  - nfsd: Query NFSv4 FATTR4_CASE_* from the parent directory for
+    non-directory objects, since casefold lives on the directory
+
+Changes since v9:
+- nfs: always probe PATHCONF for case caps. Default to case-
+  preserving when the server does not report case_preserving
+- nfsd, ksmbd: tolerate -ENOTTY from vfs_fileattr_get() so
+  overlayfs exports on backing filesystems without fileattr_get
+  do not fail the RPC
+- xfs: map FS_XFLAG_CASEFOLD inside xfs_ip2xflags() so BULKSTAT
+  and FS_IOC_FSGETXATTR report the flag consistently
+- vboxsf: reject a short host reply to SHFL_INFO_VOLUME before
+  trusting volinfo.properties.case_sensitive
+
+Changes since v8:
+- Rebase on v7.0-rc1
+
+Changes since v7:
+- Split file_attr initialization changes into a separate patch
+
+Changes since v6:
+- Remove the memset from vfs_fileattr_get
+
+Changes since v5:
+- Finish the conversion to FS_XFLAGs
+- NFSv4 GETATTR now clears the attr mask bit if nfsd_get_case_info()
+  fails
+
+Changes since v4:
+- Observe the MSDOS "nocase" mount option
+- Define new FS_XFLAGs for the user API
+
+Changes since v3:
+- Change fa->case_preserving to fa_case_nonpreserving
+- VFAT is case preserving
+- Make new fields available to user space
+
+Changes since v2:
+- Remove unicode labels
+- Replace vfs_get_case_info
+- Add support for several more local file system implementations
+- Add support for in-kernel SMB server
+
+Changes since RFC:
+- Use file_getattr instead of statx
+- Postpone exposing Unicode version until later
+- Support NTFS and ext4 in addition to FAT
+- Support NFSv4 fattr4 in addition to NFSv3 PATHCONF
+
+---
+Chuck Lever (15):
+      fs: Move file_kattr initialization to callers
+      fs: Add case sensitivity flags to file_kattr
+      fat: Implement fileattr_get for case sensitivity
+      exfat: Implement fileattr_get for case sensitivity
+      ntfs3: Implement fileattr_get for case sensitivity
+      hfs: Implement fileattr_get for case sensitivity
+      hfsplus: Report case sensitivity in fileattr_get
+      xfs: Report case sensitivity in fileattr_get
+      cifs: Implement fileattr_get for case sensitivity
+      nfs: Implement fileattr_get for case sensitivity
+      vboxsf: Implement fileattr_get for case sensitivity
+      isofs: Implement fileattr_get for case sensitivity
+      nfsd: Report export case-folding via NFSv3 PATHCONF
+      nfsd: Implement NFSv4 FATTR4_CASE_INSENSITIVE and FATTR4_CASE_PRESERVING
+      ksmbd: Report filesystem case sensitivity via FS_ATTRIBUTE_INFORMATION
+
+ fs/exfat/exfat_fs.h            |  2 +
+ fs/exfat/file.c                | 18 ++++++++-
+ fs/exfat/namei.c               |  1 +
+ fs/fat/fat.h                   |  3 ++
+ fs/fat/file.c                  | 36 +++++++++++++++++
+ fs/fat/namei_msdos.c           |  1 +
+ fs/fat/namei_vfat.c            |  1 +
+ fs/file_attr.c                 | 16 ++++----
+ fs/hfs/dir.c                   |  1 +
+ fs/hfs/hfs_fs.h                |  2 +
+ fs/hfs/inode.c                 | 14 +++++++
+ fs/hfsplus/inode.c             | 16 +++++++-
+ fs/isofs/dir.c                 | 16 ++++++++
+ fs/isofs/isofs.h               |  3 ++
+ fs/nfs/client.c                | 21 +++++++---
+ fs/nfs/inode.c                 | 15 +++++++
+ fs/nfs/internal.h              |  3 ++
+ fs/nfs/namespace.c             |  2 +
+ fs/nfs/nfs3proc.c              |  2 +
+ fs/nfs/nfs3xdr.c               |  7 +++-
+ fs/nfs/nfs4proc.c              | 10 +++--
+ fs/nfs/proc.c                  |  3 ++
+ fs/nfs/symlink.c               |  3 ++
+ fs/nfsd/nfs3proc.c             | 36 +++++++++++++----
+ fs/nfsd/nfs4xdr.c              | 52 +++++++++++++++++++++++--
+ fs/nfsd/vfs.c                  | 88 ++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/vfs.h                  |  3 ++
+ fs/nfsd/xdr3.h                 |  4 +-
+ fs/ntfs3/file.c                | 29 ++++++++++++++
+ fs/ntfs3/namei.c               |  1 +
+ fs/ntfs3/ntfs_fs.h             |  1 +
+ fs/smb/client/cifsfs.c         | 53 +++++++++++++++++++++++++
+ fs/smb/client/cifsfs.h         |  3 ++
+ fs/smb/client/namespace.c      |  1 +
+ fs/smb/server/smb2pdu.c        | 30 +++++++++++---
+ fs/vboxsf/dir.c                |  1 +
+ fs/vboxsf/file.c               |  6 ++-
+ fs/vboxsf/super.c              |  7 ++++
+ fs/vboxsf/utils.c              | 30 ++++++++++++++
+ fs/vboxsf/vfsmod.h             |  6 +++
+ fs/xfs/libxfs/xfs_inode_util.c |  2 +
+ fs/xfs/xfs_ioctl.c             | 22 +++++++++--
+ include/linux/fileattr.h       |  3 +-
+ include/linux/nfs_fs_sb.h      |  2 +-
+ include/linux/nfs_xdr.h        |  2 +
+ include/uapi/linux/fs.h        |  7 ++++
+ 46 files changed, 536 insertions(+), 49 deletions(-)
+---
+base-commit: 6596a02b207886e9e00bb0161c7fd59fea53c081
+change-id: 20260422-case-sensitivity-5cbffc8f1558
+
+Best regards,
+--  
+Chuck Lever <chuck.lever@oracle.com>
 
