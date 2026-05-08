@@ -1,102 +1,91 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.4])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A841A2F8EA3;
-	Fri,  8 May 2026 08:48:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 201042EA498;
+	Fri,  8 May 2026 09:34:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.4
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778230116; cv=none; b=hQYLzsEA7AyAFLOnit52mNv3SlV5QxSgw/t7M8akeLluDo58DfsvL2SaawHXhJEo8M0XrpdD5kPVAXCj8seMUH+5P39YV/YDYovtsM64Ju6sDz8Xy5XoY6wl6MQtHWPqQR7wuXadb0io8pT5Inziyhg0Xx2mi4K6c8o1HLUYr90=
+	t=1778232904; cv=none; b=CQ25NGGFH67elP/WLHvvhybiMH5As3D5ouOZYVp/n5EqLldLp3d6odTG/dZwLB6njAhvfnAkA29BxkU/T9J7FZmREKYEQ5nCBJAPNl14dd5nSVAvsptkuuADpaw8wRVdaaAoXvb4nvRQ+wA8p6lmHpxl+eOcF8DXIbDJy/WMN7M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778230116; c=relaxed/simple;
-	bh=Jf7SM2waUOR6s6oAxl8TdVOtBZsKvn9jKVopQ2xFx5g=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=YPvCUL+e3M92XdNY6Hkndj13ro6cQ9j4VYcM5Xj7PO95ZQkvbtYaYHtgOSPuEgiYS1jkKzM2vfJz4kzR43/uBfakD5TAALLmek9DOQkcr3L66a09j6mhyCqvQr+GFEdbuaFTyKJpZYQY0p3BXfrPqRpJXWWyDY3xEQlIX2r6JHM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gBjS158X9zKKLCS;
-	Fri,  8 May 2026 16:47:45 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 8A31A40561;
-	Fri,  8 May 2026 16:48:31 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP4 (Coremail) with SMTP id gCh0CgA3_1peo_1pl0EkBg--.14769S3;
-	Fri, 08 May 2026 16:48:31 +0800 (CST)
-Message-ID: <e42f3d75-4e38-43b5-a9e4-992428a7836c@huaweicloud.com>
-Date: Fri, 8 May 2026 16:48:29 +0800
+	s=arc-20240116; t=1778232904; c=relaxed/simple;
+	bh=fXLomLoZmY3O+huwgBxeO+z/kIn+pPzOO/e5MLLLEpA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Z/sl/LlkfJAxC7JjiajqaIh8F/nEL8HkJGL0fc7exAvzkWX5s0kV8vy4Is6srOhqD3F9HTvpRjNAysQb1vOeUrCRlHPhQ36HxEdzK7+fgOnXESKtOGvUN8HBVcbd+ptkbY8mdNwYhtngDfV5/UC454rTlzH1WdgkvOguQEPSY3A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=M4+Exeuj; arc=none smtp.client-ip=117.135.210.4
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="M4+Exeuj"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=7j
+	MC6DUZiOS7Wban9FJyNbMFUdCN5d4YMh8KUY//5iA=; b=M4+ExeujLewXoQBu7a
+	V56SwjnIvs8Gnp+V7PrOv2jzPnMSACZl4MybAVifqYnkNU3C/4VJSLD0MbiXbhVa
+	cpcB8OIFFxLSl6w7QfusFuQYyllbtPgTyNDbNi/YcRtXGIbBG0npv7T4dIVbkH8G
+	3wwYSzj3Nm+ehLMzuYxJlbRq8=
+Received: from liubaolin-VMware-Virtual-Platform.localdomain (unknown [])
+	by gzsmtp2 (Coremail) with SMTP id PSgvCgDXeCEprv1pUW9wDg--.60442S2;
+	Fri, 08 May 2026 17:34:35 +0800 (CST)
+From: Baolin Liu <liubaolin12138@163.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com
+Cc: ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	wangguanyu@vivo.com,
+	adilger@dilger.ca,
+	liubaolin12138@163.com
+Subject: [PATCH v4 v4 0/3] ext4: improve mballoc statistics reporting and control
+Date: Fri,  8 May 2026 17:34:25 +0800
+Message-ID: <20260508093428.5814-1-liubaolin12138@163.com>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 03/22] ext4: simplify error handling in ext4_setattr()
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
- yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260422021042.4157510-1-yi.zhang@huaweicloud.com>
- <20260422021042.4157510-4-yi.zhang@huaweicloud.com>
- <yueuhejhnqlffyjth5u56japyrgeoa74pasp5zydwrxgbnfrco@iv3gpx33esvu>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <yueuhejhnqlffyjth5u56japyrgeoa74pasp5zydwrxgbnfrco@iv3gpx33esvu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgA3_1peo_1pl0EkBg--.14769S3
-X-Coremail-Antispam: 1UD129KBjvdXoW7Gr18Wr1rZr1UWFyxKw4DJwb_yoW3trg_ua
-	1vywsrGw4Fvr1ftrZrZF4ayrsYkrsIgrnrWFyFywnxW3yDta4kAF1FkFy0vr1xGrWfKrsx
-	WF18Ja4xZr9FgjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbxxYFVCjjxCrM7AC8VAFwI0_Gr0_Xr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x02
-	67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
-	wI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
-	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
-	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
-	0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
-	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUOB
-	MKDUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:PSgvCgDXeCEprv1pUW9wDg--.60442S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7KF1UWF4DKw1rGr43Gw1xZrb_yoW8Xr17pF
+	WSvw1SqFn5Zw1fJwnxGF42q343A3yfCw47Gr42g34xuF98tr1SyF4rtrWrAF98JrW0vF4U
+	Xr4jkr95CFW2yrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0pimhF7UUUUU=
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6guPWmn9riuJlAAA34
 
-On 4/30/2026 9:03 PM, Jan Kara wrote:
-> On Wed 22-04-26 10:10:23, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> Remove the redundant rc variable and consolidate error handling.
->>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> 
-> One comment below. Otherwise the changes look good.
-> 
->> @@ -6073,8 +6073,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->>  
->>  		filemap_invalidate_lock(inode->i_mapping);
->>  
->> -		rc = ext4_break_layouts(inode);
->> -		if (rc) {
->> +		error = ext4_break_layouts(inode);
->> +		if (error) {
-> 
-> This is wrong. Errors from ext4_break_layouts() just need to be returned
-> but they shouldn't be logged with ext4_std_error().
+This series improves ext4 mballoc statistics reporting and control.
+Compared with v3, this version adds a new patch to convert s_mb_stats
+to atomic_t and use atomic operations for its accesses, so as to avoid
+potential concurrent accesses to this variable.
 
-Yeah, I got it, will fix.
+Patch 3 is updated according to comments from Ted and BaoKun. Writing 0
+to /proc/fs/ext4/<dev>/mb_stats disables statistics collection, writing
+1 enables it, and writing -1 clears the current statistics and enables
+collection. The related documentation is updated accordingly, and the
+sysfs mb_stats entry is documented as deprecated in favor of the proc
+mb_stats entry.
 
-Thanks,
-Yi.
+Changes since v3:
+  - add a new patch to convert s_mb_stats to atomic_t and use atomic
+    operations for its accesses
+  - update /proc/fs/ext4/<dev>/mb_stats write semantics based on comments
+    from Ted and BaoKun
+  - update related documentation and document sysfs mb_stats as deprecated
 
-> 
->>  			filemap_invalidate_unlock(inode->i_mapping);
->>  			goto err_out;
->>  		}
-> 
-> 								Honza
+Baolin Liu (3):
+  ext4: add blocks_allocated to mb_stats output
+  ext4: use atomic operations for s_mb_stats accesses
+  ext4: allow controlling mballoc stats through proc mb_stats
+
+ Documentation/ABI/testing/sysfs-fs-ext4 |  3 +-
+ Documentation/admin-guide/ext4.rst      |  9 +++-
+ Documentation/filesystems/proc.rst      | 13 +-----
+ fs/ext4/ext4.h                          |  3 +-
+ fs/ext4/mballoc.c                       | 57 +++++++++++++++++++------
+ fs/ext4/sysfs.c                         | 55 ++++++++++++++++++++++--
+ 6 files changed, 109 insertions(+), 31 deletions(-)
+
+-- 
+2.51.0
 
