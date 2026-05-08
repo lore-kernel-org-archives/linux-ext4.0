@@ -1,93 +1,124 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mail115-118.sinamail.sina.com.cn (mail115-118.sinamail.sina.com.cn [218.30.115.118])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 801A1175A85;
-	Thu,  7 May 2026 20:21:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD1603570C8
+	for <linux-ext4@vger.kernel.org>; Fri,  8 May 2026 06:59:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=218.30.115.118
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778185265; cv=none; b=jf0bd8HhjKxJS27n+k7SXUkPexm2Ag1T010v5BoWqHz0tlHQg2z1dKjN9cL6Zwi8EsoXa5rQRqUKS/+DLLi+A8fhE8fWqJ9qZfMGuBckFY5ZaoEK7NQAU2knD+u3EFC7lK5NJfRSLpt+V9kYlzKKx02n2mmIJ4kPzPDiRdzdk90=
+	t=1778223556; cv=none; b=HUA3qkbAedtIUI7ORudT5eSpgPO3NOBpy+sG6jhQIdI1c5w7fa4FplIym77YYBhUMGGm/5Va76LcsulHBU3m7hT+6boo9sp6d/EYTQAPVLNU5MJa82XTgYepL6eqMwUmU6Vd1l3jIYpEu98Qw5NhfOLAUXNxthOkeED/PvYZnmo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778185265; c=relaxed/simple;
-	bh=tD8py6U0e7L6UhPQPJi5qYuBjRmS263KJiaioSan1ks=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=IP9n4CYmMATeP7+KZftI6To7xLvcAc4hha+fzgez+cIGTRsFqYOXf+aP/sKn8aWX8w2IqcyjhcpQfWGzgo5EjTA/jFHRWhX0YkO9Tdd41gJw0q8gUday2hVNsIpBBvsRCURYLiqKTDZTi01JUTB9/DcjV++KyVqycw8kw3STbkU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dpMDx/Pg; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1778223556; c=relaxed/simple;
+	bh=Ny5lasZHyO87EegPFrBjX2eufmvrdYmaIvUhQ44Lp5M=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Ydad9IuqWXPTpEuMQfXctHvc5UVPAaRBs1T9rDRx8uQwspkt2kyiLdDVInKziYL56FnTESrw4r2TtkdJJCgLvShJCETX23Da5fa2JorUrkDKTUCR17KUHvaPopGeT7TCNIr+OaOH4PvezAWM/XXpRqzJwqz0qF2bRYbN0lqF4ok=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sina.cn; spf=pass smtp.mailfrom=sina.cn; dkim=pass (1024-bit key) header.d=sina.cn header.i=@sina.cn header.b=bstxeO3L; arc=none smtp.client-ip=218.30.115.118
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sina.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sina.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dpMDx/Pg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6557FC2BCB2;
-	Thu,  7 May 2026 20:21:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1778185265;
-	bh=tD8py6U0e7L6UhPQPJi5qYuBjRmS263KJiaioSan1ks=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=dpMDx/Pg4TmbJr9ZvqT7t7ldaFhuiW081o5nuciCK9xQ7dymxSwvb8z8wqwyAFig2
-	 ah9M+A7BrMaMAc8ifD6XVmWvEqZSJl6qu3Vi4Zaubm0kqdvhwvAX9iWVkEQGWWsybr
-	 Y+r8K24L5K4Bel7pOLLRW9yf6AwpP5Y5H62D2EWGO6rVLdkSAcsVmJUW3cSwuO+SEv
-	 oy2sqcduu2boXuTT0ZqzUOlLX8oTTS1nMhF1pZw9jt8J/Eb2P4Vwis0lJm49SoTdNU
-	 ovNEF9GhIo9Af3/qQ77T2D8Ul9PM3inRTZkzBzI8quZPppPfvkEL46eQIwEIWoJJ3z
-	 kO4/eHHQzubxA==
-Date: Fri, 8 May 2026 04:20:54 +0800
-From: Zorro Lang <zlang@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: fstests@vger.kernel.org, xfs-list <linux-xfs@vger.kernel.org>, 
-	ext4-list <linux-ext4@vger.kernel.org>, btrfs-list <linux-btrfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] check: add new option "--loop <n>" which runs each
- test multiple times
-Message-ID: <afzyQgqrhZEtMcc0@zlang-mailbox>
-Mail-Followup-To: Theodore Tso <tytso@mit.edu>, fstests@vger.kernel.org, 
-	xfs-list <linux-xfs@vger.kernel.org>, ext4-list <linux-ext4@vger.kernel.org>, 
-	btrfs-list <linux-btrfs@vger.kernel.org>
-References: <20260415213248.1795275-1-tytso@mit.edu>
- <20260505133409.GA49070@macsyma.local>
+	dkim=pass (1024-bit key) header.d=sina.cn header.i=@sina.cn header.b="bstxeO3L"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sina.cn; s=201208; t=1778223551;
+	bh=mknp58zzNXrMHnzixaFoNMYGsNeXzm8WGz4EEnUO4qM=;
+	h=From:Subject:Date:Message-Id;
+	b=bstxeO3LLLxPUBT3oiJluWWc1gQCjXPULNZtptfFnRQlCYkWL27YUjnDHkZmuT9D3
+	 dUQunUC69qfUOZdj1UEi/siJ45qbmKXEyY8h34tvmzk268vtGi4lWPgjF8PIyFuPYr
+	 VCENFUubiDZfYgtAr19/4qOgg+ZoH+6einwtSgo8=
+X-SMAIL-HELO: NTT-kernel-dev
+Received: from unknown (HELO NTT-kernel-dev)([60.247.85.88])
+	by sina.cn (10.185.250.24) with ESMTP
+	id 69FD899500007A39; Fri, 8 May 2026 14:58:31 +0800 (CST)
+X-Sender: jianqkang@sina.cn
+X-Auth-ID: jianqkang@sina.cn
+Authentication-Results: sina.cn;
+	 spf=none smtp.mailfrom=jianqkang@sina.cn;
+	 dkim=none header.i=none;
+	 dmarc=none action=none header.from=jianqkang@sina.cn
+X-SMAIL-MID: 48299210747922
+X-SMAIL-UIID: 8D42F8EFFC414A5DA0CB3185ACE2023C-20260508-145831-1
+From: Jianqiang kang <jianqkang@sina.cn>
+To: gregkh@linuxfoundation.org,
+	stable@vger.kernel.org,
+	tejas.bharambe@outlook.com
+Cc: patches@lists.linux.dev,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org
+Subject: [PATCH 6.1.y] ext4: validate p_idx bounds in ext4_ext_correct_indexes
+Date: Fri,  8 May 2026 14:58:29 +0800
+Message-Id: <20260508065829.3030954-1-jianqkang@sina.cn>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260505133409.GA49070@macsyma.local>
+Content-Transfer-Encoding: 8bit
 
-On Tue, May 05, 2026 at 03:34:09PM +0200, Theodore Tso wrote:
-> On Wed, Apr 15, 2026 at 05:32:48PM -0400, Theodore Ts'o wrote:
-> > Teach the check script a new option --loop, which re-run each test
-> > multiple times.  This works very similarly to to -L, which will retry
-> > a particular test after it first fails, except that the test is rerun
-> > unconditionally.
-> 
-> Ping?  Does anyone have a preference between adding a new option,
-> --loop, or changing the heaviour of the -i option?
+From: Tejas Bharambe <tejas.bharambe@outlook.com>
 
-Hi Ted,
+[ Upstream commit 2acb5c12ebd860f30e4faf67e6cc8c44ddfe5fe8 ]
 
-Personally, I feel that once we have --loop, the existing -i starts to lose
-its value. --loop is far more effective at catching specific, flaky bugs due
-to its stashing logic.
+ext4_ext_correct_indexes() walks up the extent tree correcting
+index entries when the first extent in a leaf is modified. Before
+accessing path[k].p_idx->ei_block, there is no validation that
+p_idx falls within the valid range of index entries for that
+level.
 
-Furthermore, if we eventually add something like --loop-while-successful, then
--I also becomes redundant. It might be worth considering a more unified naming
-convention in the long run, perhaps renaming -L to --loop-on-fail and keeping
-everything under the --loop-* family. This would be much clearer for other users
-than the current mix of single-letter flags.
+If the on-disk extent header contains a corrupted or crafted
+eh_entries value, p_idx can point past the end of the allocated
+buffer, causing a slab-out-of-bounds read.
 
-Welcome any further feedback. Also, feel free to weigh in if you have concerns
-about the potential impact of renaming these option names.
+Fix this by validating path[k].p_idx against EXT_LAST_INDEX() at
+both access sites: before the while loop and inside it. Return
+-EFSCORRUPTED if the index pointer is out of range, consistent
+with how other bounds violations are handled in the ext4 extent
+tree code.
 
-Thanks,
-Zorro
+Reported-by: syzbot+04c4e65cab786a2e5b7e@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=04c4e65cab786a2e5b7e
+Signed-off-by: Tejas Bharambe <tejas.bharambe@outlook.com>
+Link: https://patch.msgid.link/JH0PR06MB66326016F9B6AD24097D232B897CA@JH0PR06MB6632.apcprd06.prod.outlook.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org
+[ Minor conflict resolved. ]
+Signed-off-by: Jianqiang kang <jianqkang@sina.cn>
+---
+ fs/ext4/extents.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-> 
-> > This differs from the "-i <n>" option, which iterates each set of
-> > tests <n> times instead of each test.  The -i option is problematic in
-> > two ways.  First, it doesn't save the test artifacts from each test run.
-> > This is unfortunate because when the developer is trying to debug a
-> > flaky test failure, running "check -i 100" will run a test 100 times,
-> > but if only the 42nd test fails, the NNN.out.bad file for that failing
-> > test run is not preserved.  The second difference between --loop and
-> > -i is the result.xml file is rewritten after each test set, so we do
-> > not have the cumulative statistics of the 100 test runs in the junit
-> > XML file.
-> 
-> 						- Ted
-> 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 1df717477469..6d95dab53847 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1740,6 +1740,13 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
+ 	err = ext4_ext_get_access(handle, inode, path + k);
+ 	if (err)
+ 		return err;
++	if (unlikely(path[k].p_idx > EXT_LAST_INDEX(path[k].p_hdr))) {
++		EXT4_ERROR_INODE(inode,
++				 "path[%d].p_idx %p > EXT_LAST_INDEX %p",
++				 k, path[k].p_idx,
++				 EXT_LAST_INDEX(path[k].p_hdr));
++		return -EFSCORRUPTED;
++	}
+ 	path[k].p_idx->ei_block = border;
+ 	err = ext4_ext_dirty(handle, inode, path + k);
+ 	if (err)
+@@ -1752,6 +1759,14 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
+ 		err = ext4_ext_get_access(handle, inode, path + k);
+ 		if (err)
+ 			break;
++		if (unlikely(path[k].p_idx > EXT_LAST_INDEX(path[k].p_hdr))) {
++			EXT4_ERROR_INODE(inode,
++					 "path[%d].p_idx %p > EXT_LAST_INDEX %p",
++					 k, path[k].p_idx,
++					 EXT_LAST_INDEX(path[k].p_hdr));
++			err = -EFSCORRUPTED;
++			break;
++		}
+ 		path[k].p_idx->ei_block = border;
+ 		err = ext4_ext_dirty(handle, inode, path + k);
+ 		if (err)
+-- 
+2.34.1
+
