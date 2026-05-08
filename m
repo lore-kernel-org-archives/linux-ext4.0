@@ -1,30 +1,30 @@
-Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
+Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08AD63DA5DC;
-	Fri,  8 May 2026 12:16:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.132
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4F453DB63C;
+	Fri,  8 May 2026 12:16:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.98
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778242580; cv=none; b=JUdUBAP5OodZ6EgQjWzzANgZ+lyA3Gf8vdElxgZtdSFeP9YIicXISDoJnjRxSZE/oEQD98XnCHTQk/TJYDBdPw4Vo40rQFZDs7OUixebVcbtqavrNN0Pgn2Cac4KJ6fv5RBdX4c58fMgbHarvejuwgzzMEm+UmS2oQ3LP6z+J7Q=
+	t=1778242581; cv=none; b=OxKKBC511uCpn/iaal5z2HxU+dmLaLGxkubgceHixyEEbzXoob4AC5xPYrFsWN2A9PvnhmDKnJis3q9IPODgg/HG6QdkRFbKSiujMjOemeEOdqdxt8xzJF0cVUDkhhGw3Dskv4/kwEYV/CmFJuygXx/2i279LkksN9VoyWwnCPs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778242580; c=relaxed/simple;
-	bh=vBNO2Bvyb8M0KvGjxHVE5XxThYzHNdNL1nT/bjDLgeA=;
+	s=arc-20240116; t=1778242581; c=relaxed/simple;
+	bh=OUftgixMNWlG++qrrDs5ZeGmxtXp1jfQD5mN2C6rp6E=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QqdjcyMakGK8xTAVqHHr+ZD17UFOk2drMxvlfL8rhXQmcbLqIQDoLe1RipQo3IW+UuBFqrEYS/mT0QuOzZSqFOffbKX8pxCHJ5jlJV7LKHyT+7kPnddptDJ0IrgPPWXU9x1PCr2XO7rPjiA0smclJCm1IFG6QZtokrwEyE9dD2c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=e/jNtFAx; arc=none smtp.client-ip=115.124.30.132
+	 MIME-Version; b=Q5E+YwD1Sulilr9UsZ1mOyDvoUSIl/898ycOwhosz3AvE1og9bRR5K+ttB01MuNfyx+JnONkXRQV57bMaLOUMsz6HthvV2qVh+L+Qa2ILLPPGi2HEpub5mSxAq2L+GnXcBeaomPRe5xghPqXrvnmiZkvW3TIjKl3pU5GD+HW2qk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=Aw4Wh/zW; arc=none smtp.client-ip=115.124.30.98
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="e/jNtFAx"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="Aw4Wh/zW"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1778242569; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=Pyydu/+mSA8+HVaiGjvimdSM19JdEkQ9zUvMzEWmW5w=;
-	b=e/jNtFAxpfMViYJVnBTmqLtcsE57duadw9Mcs3XIWmQFCs42TddxZu3fuvEXhjx3nlnSGAiXgEQHXvUotC3GaqYxJU6Psn35Fwhc+uI/EljAKGkaB7uKpS9Ya6ZRC8cGDxxALFtswwTFRJ36ycQJky5QqI0Com4r+4K3jiSvTd8=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R611e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0X2XQgqm_1778242568;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X2XQgqm_1778242568 cluster:ay36)
+	t=1778242573; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=jzJIYLNOQ5UlZMTTubAeA23KJPWfOAbaezYvUFo6acU=;
+	b=Aw4Wh/zW++Mqs2Wb1rzSIOQ0VmRSdME6eTelCkYCpdGLzbtQZC79JOJGXAxQ4n9PF72S9ERWB4ODpqKalZhqaRW7VCSyeYVL+xaKnNApOgElNu21GXzq79U/CbY2FyB9wx2w5d8gaWyR4DdJuYO3j8MM1NkT6kw+wMBzewOcL/g=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=11;SR=0;TI=SMTPD_---0X2XQgru_1778242572;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X2XQgru_1778242572 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Fri, 08 May 2026 20:16:09 +0800
+          Fri, 08 May 2026 20:16:13 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-ext4@vger.kernel.org
 Cc: linux-crypto@vger.kernel.org,
@@ -37,9 +37,9 @@ Cc: linux-crypto@vger.kernel.org,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	Baokun Li <libaokun@linux.alibaba.com>
-Subject: [PATCH RFC 12/17] ext4: factor out ext4_might_init_block_bitmap() helper
-Date: Fri,  8 May 2026 20:15:34 +0800
-Message-ID: <20260508121539.4174601-13-libaokun@linux.alibaba.com>
+Subject: [PATCH RFC 17/17] ext4: add ext4_get_flex_group() helper to simplify flex group lookups
+Date: Fri,  8 May 2026 20:15:39 +0800
+Message-ID: <20260508121539.4174601-18-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260508121539.4174601-1-libaokun@linux.alibaba.com>
 References: <20260508121539.4174601-1-libaokun@linux.alibaba.com>
@@ -51,176 +51,144 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Extract the BLOCK_UNINIT initialization logic from ext4_mark_inode_used()
-and __ext4_new_inode() into a shared ext4_might_init_block_bitmap() helper.
-
-Both call sites perform the same sequence: check EXT4_BG_BLOCK_UNINIT,
-read the block bitmap, dirty it, then clear the flag and establish the
-correct block bitmap checksum under the group lock.  The only difference
-is whether a journal handle is available (NULL during fast commit replay
-in ext4_mark_inode_used()).
+Introduce ext4_get_flex_group() that combines ext4_flex_group() and
+sbi_array_rcu_deref() into a single call, replacing the repeated
+pattern across ialloc.c, mballoc.c, resize.c, and super.c.
 
 No functional change.
 
 Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 ---
- fs/ext4/ialloc.c | 129 +++++++++++++++++++++--------------------------
- 1 file changed, 58 insertions(+), 71 deletions(-)
+ fs/ext4/ext4.h    |  7 +++++++
+ fs/ext4/ialloc.c  | 19 +++++--------------
+ fs/ext4/mballoc.c |  4 +---
+ fs/ext4/resize.c  |  4 +---
+ fs/ext4/super.c   |  4 +---
+ 5 files changed, 15 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 5896cdfb2ccf..90896b7f8c73 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -756,6 +756,58 @@ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
- 	return 1;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f48cb9d998ab..e38ada51972a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3457,6 +3457,13 @@ static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
+ 	return 1 << sbi->s_log_groups_per_flex;
  }
  
-+/*
-+ * If the block bitmap for @group is not yet initialized (EXT4_BG_BLOCK_UNINIT),
-+ * read it into memory, dirty it, and clear the UNINIT flag under the group lock
-+ * so that the on-disk checksum is established.  @handle may be NULL during fast
-+ * commit replay (no journal credits needed in that path).
-+ */
-+static int ext4_might_init_block_bitmap(handle_t *handle,
-+					struct super_block *sb,
-+					ext4_group_t group,
-+					struct ext4_group_desc *gdp)
++static inline struct flex_groups *ext4_get_flex_group(struct ext4_sb_info *sbi,
++						      ext4_group_t block_group)
 +{
-+	int err;
-+	struct buffer_head *block_bitmap_bh;
-+
-+	if (!ext4_has_group_desc_csum(sb) ||
-+	    !(gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
-+		return 0;
-+
-+	block_bitmap_bh = ext4_read_block_bitmap(sb, group);
-+	if (IS_ERR(block_bitmap_bh))
-+		return PTR_ERR(block_bitmap_bh);
-+
-+	if (handle) {
-+		BUFFER_TRACE(block_bitmap_bh, "get block bitmap access");
-+		err = ext4_journal_get_write_access(handle, sb,
-+				block_bitmap_bh, EXT4_JTR_NONE);
-+		if (err)
-+			goto out_brelse;
-+	}
-+
-+	BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
-+	err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
-+	if (!handle)
-+		sync_dirty_buffer(block_bitmap_bh);
-+
-+	/* recheck and clear flag under lock if we still need to */
-+	ext4_lock_group(sb, group);
-+	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-+		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
-+		ext4_free_group_clusters_set(sb, gdp,
-+			ext4_free_clusters_after_init(sb, group, gdp));
-+		ext4_block_bitmap_csum_set(sb, gdp, block_bitmap_bh);
-+		ext4_group_desc_csum_set(sb, group, gdp);
-+	}
-+	ext4_unlock_group(sb, group);
-+
-+out_brelse:
-+	brelse(block_bitmap_bh);
-+	ext4_std_error(sb, err);
-+	return err;
++	return sbi_array_rcu_deref(sbi, s_flex_groups,
++				   ext4_flex_group(sbi, block_group));
 +}
 +
- int ext4_mark_inode_used(struct super_block *sb, int ino, umode_t mode)
+ static inline loff_t ext4_get_maxbytes(struct inode *inode)
  {
- 	unsigned long max_ino = le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
-@@ -801,38 +853,9 @@ int ext4_mark_inode_used(struct super_block *sb, int ino, umode_t mode)
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 25430c572818..d88160afd6b6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -336,8 +336,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	if (sbi->s_log_groups_per_flex) {
+ 		struct flex_groups *fg;
+ 
+-		fg = sbi_array_rcu_deref(sbi, s_flex_groups,
+-					 ext4_flex_group(sbi, block_group));
++		fg = ext4_get_flex_group(sbi, block_group);
+ 		atomic_inc(&fg->free_inodes);
+ 		if (is_directory)
+ 			atomic_dec(&fg->used_dirs);
+@@ -826,12 +825,8 @@ static void ext4_update_inode_group_desc(struct super_block *sb,
+ 	ext4_free_inodes_set(sb, gdp, ext4_free_inodes_count(sb, gdp) - 1);
+ 	if (S_ISDIR(mode)) {
+ 		ext4_used_dirs_set(sb, gdp, ext4_used_dirs_count(sb, gdp) + 1);
+-		if (sbi->s_log_groups_per_flex) {
+-			ext4_group_t f = ext4_flex_group(sbi, group);
+-
+-			atomic_inc(&sbi_array_rcu_deref(sbi, s_flex_groups,
+-							f)->used_dirs);
+-		}
++		if (sbi->s_log_groups_per_flex)
++			atomic_inc(&ext4_get_flex_group(sbi, group)->used_dirs);
  	}
  
- 	/* We may have to initialize the block bitmap if it isn't already */
--	if (ext4_has_group_desc_csum(sb) &&
--	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--		struct buffer_head *block_bitmap_bh;
--
--		block_bitmap_bh = ext4_read_block_bitmap(sb, group);
--		if (IS_ERR(block_bitmap_bh)) {
--			err = PTR_ERR(block_bitmap_bh);
--			goto out;
--		}
--
--		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
--		err = ext4_handle_dirty_metadata(NULL, NULL, block_bitmap_bh);
--		sync_dirty_buffer(block_bitmap_bh);
--
--		/* recheck and clear flag under lock if we still need to */
--		ext4_lock_group(sb, group);
--		if (ext4_has_group_desc_csum(sb) &&
--		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
--			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_group_clusters_set(sb, gdp,
--				ext4_free_clusters_after_init(sb, group, gdp));
--			ext4_block_bitmap_csum_set(sb, gdp, block_bitmap_bh);
--			ext4_group_desc_csum_set(sb, group, gdp);
--		}
--		ext4_unlock_group(sb, group);
--		brelse(block_bitmap_bh);
--
--		if (err) {
--			ext4_std_error(sb, err);
--			goto out;
--		}
+ 	if (!ext4_has_group_desc_csum(sb))
+@@ -997,7 +992,6 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 	int ret2, err;
+ 	struct inode *ret;
+ 	ext4_group_t i;
+-	ext4_group_t flex_group;
+ 	struct ext4_group_info *grp = NULL;
+ 	bool encrypt = false;
+ 
+@@ -1220,11 +1214,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 	if (S_ISDIR(mode))
+ 		percpu_counter_inc(&sbi->s_dirs_counter);
+ 
+-	if (sbi->s_log_groups_per_flex) {
+-		flex_group = ext4_flex_group(sbi, group);
+-		atomic_dec(&sbi_array_rcu_deref(sbi, s_flex_groups,
+-						flex_group)->free_inodes);
 -	}
-+	err = ext4_might_init_block_bitmap(NULL, sb, group, gdp);
-+	if (err)
-+		goto out;
++	if (sbi->s_log_groups_per_flex)
++		atomic_dec(&ext4_get_flex_group(sbi, group)->free_inodes);
  
- 	/* Update the relevant bg descriptor fields */
- 	if (ext4_has_group_desc_csum(sb)) {
-@@ -1154,45 +1177,9 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 	}
+ 	/* the inode bitmap is zero-based */
+ 	inode->i_ino = bit + 1 + group * EXT4_INODES_PER_GROUP(sb);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 77f6309916d1..9e30c9eefd35 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4181,9 +4181,7 @@ ext4_mb_mark_context(handle_t *handle, struct super_block *sb, bool state,
+ 		*ret_changed = changed;
  
- 	/* We may have to initialize the block bitmap if it isn't already */
--	if (ext4_has_group_desc_csum(sb) &&
--	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
--		struct buffer_head *block_bitmap_bh;
--
--		block_bitmap_bh = ext4_read_block_bitmap(sb, group);
--		if (IS_ERR(block_bitmap_bh)) {
--			err = PTR_ERR(block_bitmap_bh);
--			goto out;
--		}
--		BUFFER_TRACE(block_bitmap_bh, "get block bitmap access");
--		err = ext4_journal_get_write_access(handle, sb, block_bitmap_bh,
--						    EXT4_JTR_NONE);
--		if (err) {
--			brelse(block_bitmap_bh);
--			ext4_std_error(sb, err);
--			goto out;
--		}
--
--		BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
--		err = ext4_handle_dirty_metadata(handle, NULL, block_bitmap_bh);
--
--		/* recheck and clear flag under lock if we still need to */
--		ext4_lock_group(sb, group);
--		if (ext4_has_group_desc_csum(sb) &&
--		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
--			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
--			ext4_free_group_clusters_set(sb, gdp,
--				ext4_free_clusters_after_init(sb, group, gdp));
--			ext4_block_bitmap_csum_set(sb, gdp, block_bitmap_bh);
--			ext4_group_desc_csum_set(sb, group, gdp);
--		}
--		ext4_unlock_group(sb, group);
--		brelse(block_bitmap_bh);
--
--		if (err) {
--			ext4_std_error(sb, err);
--			goto out;
--		}
--	}
-+	err = ext4_might_init_block_bitmap(handle, sb, group, gdp);
-+	if (err)
-+		goto out;
+ 	if (sbi->s_log_groups_per_flex) {
+-		ext4_group_t flex_group = ext4_flex_group(sbi, group);
+-		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
+-					   s_flex_groups, flex_group);
++		struct flex_groups *fg = ext4_get_flex_group(sbi, group);
  
- 	/* Update the relevant bg descriptor fields */
- 	if (ext4_has_group_desc_csum(sb)) {
+ 		if (state)
+ 			atomic64_sub(changed, &fg->free_clusters);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 2c5b851c552a..8d2cd1bc17bb 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1495,11 +1495,9 @@ static void ext4_update_super(struct super_block *sb,
+ 	ext4_debug("free blocks count %llu",
+ 		   percpu_counter_read(&sbi->s_freeclusters_counter));
+ 	if (ext4_has_feature_flex_bg(sb) && sbi->s_log_groups_per_flex) {
+-		ext4_group_t flex_group;
+ 		struct flex_groups *fg;
+ 
+-		flex_group = ext4_flex_group(sbi, group_data[0].group);
+-		fg = sbi_array_rcu_deref(sbi, s_flex_groups, flex_group);
++		fg = ext4_get_flex_group(sbi, group_data[0].group);
+ 		atomic64_add(EXT4_NUM_B2C(sbi, free_blocks),
+ 			     &fg->free_clusters);
+ 		atomic_add(EXT4_INODES_PER_GROUP(sb) * flex_gd->count,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6a77db4d3124..064e06163716 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3211,7 +3211,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_group_desc *gdp = NULL;
+ 	struct flex_groups *fg;
+-	ext4_group_t flex_group;
+ 	int i, err;
+ 
+ 	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
+@@ -3227,8 +3226,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 
+-		flex_group = ext4_flex_group(sbi, i);
+-		fg = sbi_array_rcu_deref(sbi, s_flex_groups, flex_group);
++		fg = ext4_get_flex_group(sbi, i);
+ 		atomic_add(ext4_free_inodes_count(sb, gdp), &fg->free_inodes);
+ 		atomic64_add(ext4_free_group_clusters(sb, gdp),
+ 			     &fg->free_clusters);
 -- 
 2.43.7
 
