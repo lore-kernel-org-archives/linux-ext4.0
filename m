@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1AFA382F28;
-	Mon, 11 May 2026 07:28:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49483388E5A;
+	Mon, 11 May 2026 07:28:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778484516; cv=none; b=dEvjKgVAlWQnpdSvHg1OsxrD6zQEVcEKWUMJIZfEKIqTXbeQITCiA+ARMOXF/58YXk9YReLvhJmezkwPLueXpFZNmEXo6wTI0wukcY5lGIfeRzufsdK9EbKLz1LOF4iCvDwbsmE5eMgRTWa8zYxQtS9cgK00OuHs2MCnIxizTL8=
+	t=1778484517; cv=none; b=k6d1eWEt3l8l1QsdAfmNZpQLbnOIkImMoZbged5h3/dm1OJX3UimEE/0hY3LVNFY9DDgHlcp6WmHz/VQOHKNXW8A/6Tu3EbdC679R/ZygOWI27Oo0XzqjG8iJAxyeRJ8AIt1RCQbBaaT0cBm3Gn8KdekixoFgPls/T+KOft3n0k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778484516; c=relaxed/simple;
-	bh=ZGKx46dogqEsmAMWIMKLQxCHSYqNgfVNQ7opl+nGZ5g=;
+	s=arc-20240116; t=1778484517; c=relaxed/simple;
+	bh=lpABSLQe57xHGvtOsXpd4YUWod4lWlx6xy4V7JrXUL4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=F/A5kuGhJ0+Aiff66U6dbI4FktPNXF8XWv/Yp0bedYMVbb4WWAtAdDGNoszgQre3hlDyJaLEz+gnd0VZdcDMwSMPVlnBN8leUpLmlUCfdtoTb0irK3RkWVBGIn5MmszfO1fmBUxP1V5/XyCp9FIX0Vx+Ew3PIorg07q8DI+zdRE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=Ba5aag2YdK88KpAFhbGdcPMus0wXk25aWcmbjAKDva8xumt7rlyZfHUZsmAwgr55Y+P59UTV1o5UsSc2T6YaaBxyPN3wizLaS7tVFjO6KFvR/AmetAUnETKARBstqcNEpcKoVyTNIofq+ZybPJ0UqUayBXquLt+gTDYkIQCa0lc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gDWXV0XyvzYQv22;
-	Mon, 11 May 2026 15:27:54 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gDWX54x6DzKHMfw;
+	Mon, 11 May 2026 15:27:33 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id B553F40579;
-	Mon, 11 May 2026 15:28:22 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 382634056E;
+	Mon, 11 May 2026 15:28:24 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgD3v1sKhQFqAy6MBw--.28537S7;
-	Mon, 11 May 2026 15:28:22 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgD3v1sKhQFqAy6MBw--.28537S24;
+	Mon, 11 May 2026 15:28:23 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v4 03/23] ext4: simplify error handling in ext4_setattr()
-Date: Mon, 11 May 2026 15:23:23 +0800
-Message-ID: <20260511072344.191271-4-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 20/23] ext4: wait for ordered I/O to complete during insert and collapse range
+Date: Mon, 11 May 2026 15:23:40 +0800
+Message-ID: <20260511072344.191271-21-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
 References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
@@ -53,116 +53,117 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3v1sKhQFqAy6MBw--.28537S7
-X-Coremail-Antispam: 1UD129KBjvJXoWxZr13JF1kCFW3Zr1UAry5Arb_yoW5XrWUpF
-	13Ga4qkr48XF1UWr48KFy7Zw1Fg3WIq3y8Zry3K3Z7AFn5JwnFqFy2qa4SgFW5GrWkGw1a
-	qF4UKr9xCFy7Z3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIev
-	Ja73UjIFyTuYvjfUO_MaUUUUU
+X-CM-TRANSID:gCh0CgD3v1sKhQFqAy6MBw--.28537S24
+X-Coremail-Antispam: 1UD129KBjvJXoWxGF18GFyUur1Duw1kuFWfKrg_yoW5KFWkpr
+	WfK3y8GF48X34q9rs2qFZrZw1Fga1rKw48JFWfurWqvay5G34IvFn0yFy0kFW8trZ8JrWj
+	qF4kK3y7Xw18A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW5JVW7JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Refactor the error handling in ext4_setattr() for better clarity:
+Currently, i_disksize is updated after ordered data writeback to prevent
+exposing stale data in the post-EOF block, and operations like append
+allocate, zero range, and truncate defer the i_disksize update until
+ordered I/O completes.
 
- - Return directly on ext4_break_layouts() failure.
- - Propagate ext4_truncate() errors using the existing error variable
-   and jump to the common 'err_out' label.
- - Propagate posix_acl_chmod() errors also through the error variable,
-   as it theoretically does not return a non-fatal error.
+However, insert range and collapse range still directly update
+i_disksize. This is safe because they have already called
+filemap_write_and_wait_range() to flush data up to LLONG_MAX, ensuring
+that ordered I/O has completed if any dirty data was present.
 
-With these changes, every error path either returns immediately or jumps
-to err_out. Consequently, the "if (!error)" condition guarding
-setattr_copy() and mark_inode_dirty() becomes unreachable for error
-cases. Remove this redundant check and the unused rc variable can be
-removed as well.
+One exception is when the ordered I/O is caused by a previous truncate
+up. In this case, there is no dirty data to flush. Therefore, add an
+explicit wait for I/O completion to handle this case. This will not have
+significant impact on performance.
+
+Finally, also add a WARN_ON_ONCE check before updating i_disksize to
+detect any unexpected cases that could still expose stale data.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 32 +++++++++++++++-----------------
- 1 file changed, 15 insertions(+), 17 deletions(-)
+ fs/ext4/extents.c | 18 ++++++++++++++++++
+ fs/ext4/inode.c   |  4 +++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 35e958f89bd5..b1ef706987c3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5989,7 +5989,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 		 struct iattr *attr)
- {
- 	struct inode *inode = d_inode(dentry);
--	int error, rc = 0;
-+	int error;
- 	int orphan = 0;
- 	const unsigned int ia_valid = attr->ia_valid;
- 	bool inc_ivers = true;
-@@ -6102,10 +6102,10 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 125f628e738a..85c74c37f0ca 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5565,6 +5565,14 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
+ 	if (ret)
+ 		return ret;
  
- 		filemap_invalidate_lock(inode->i_mapping);
++	/*
++	 * Wait for ordered I/O to be complete. Updating i_disksize beyond
++	 * the current i_disksize here risks exposuring stale data.
++	 */
++	if (ext4_inode_buffered_iomap(inode))
++		wait_event(EXT4_I(inode)->i_ordered_wq,
++			   READ_ONCE(EXT4_I(inode)->i_ordered_len) == 0);
++
+ 	truncate_pagecache(inode, start);
  
--		rc = ext4_break_layouts(inode);
--		if (rc) {
-+		error = ext4_break_layouts(inode);
-+		if (error) {
- 			filemap_invalidate_unlock(inode->i_mapping);
--			goto err_out;
-+			return error;
- 		}
- 
- 		if (attr->ia_size > oldsize)
-@@ -6117,15 +6117,19 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 		}
- 
- 		filemap_invalidate_unlock(inode->i_mapping);
-+		if (error)
-+			goto err_out;
+ 	credits = ext4_chunk_trans_extent(inode, 0);
+@@ -5597,6 +5605,7 @@ static int ext4_collapse_range(struct file *file, loff_t offset, loff_t len)
+ 		goto out_handle;
  	}
  
--	if (!error) {
--		if (inc_ivers)
--			inode_inc_iversion(inode);
--		setattr_copy(idmap, inode, attr);
--		mark_inode_dirty(inode);
--	}
-+	if (inc_ivers)
-+		inode_inc_iversion(inode);
-+	setattr_copy(idmap, inode, attr);
-+	mark_inode_dirty(inode);
++	WARN_ON_ONCE(READ_ONCE(EXT4_I(inode)->i_ordered_len) != 0);
+ 	new_size = inode->i_size - len;
+ 	i_size_write(inode, new_size);
+ 	EXT4_I(inode)->i_disksize = new_size;
+@@ -5661,6 +5670,14 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
+ 	if (ret)
+ 		return ret;
  
-+	if (ia_valid & ATTR_MODE)
-+		error = posix_acl_chmod(idmap, dentry, inode->i_mode);
++	/*
++	 * Wait for ordered I/O to be complete. Updating i_disksize beyond
++	 * the current i_disksize here risks exposuring stale data.
++	 */
++	if (ext4_inode_buffered_iomap(inode))
++		wait_event(EXT4_I(inode)->i_ordered_wq,
++			   READ_ONCE(EXT4_I(inode)->i_ordered_len) == 0);
 +
-+err_out:
- 	/*
- 	 * If the call to ext4_truncate failed to get a transaction handle at
- 	 * all, we need to clean up the in-core orphan list manually.
-@@ -6133,14 +6137,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (orphan && inode->i_nlink)
- 		ext4_orphan_del(NULL, inode);
+ 	truncate_pagecache(inode, start);
  
--	if (!error && (ia_valid & ATTR_MODE))
--		rc = posix_acl_chmod(idmap, dentry, inode->i_mode);
--
--err_out:
--	if  (error)
-+	if (error)
- 		ext4_std_error(inode->i_sb, error);
--	if (!error)
--		error = rc;
- 	return error;
- }
+ 	credits = ext4_chunk_trans_extent(inode, 0);
+@@ -5671,6 +5688,7 @@ static int ext4_insert_range(struct file *file, loff_t offset, loff_t len)
+ 	ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_FALLOC_RANGE, handle);
  
+ 	/* Expand file to avoid data loss if there is error while shifting */
++	WARN_ON_ONCE(READ_ONCE(EXT4_I(inode)->i_ordered_len) != 0);
+ 	inode->i_size += len;
+ 	EXT4_I(inode)->i_disksize += len;
+ 	ret = ext4_mark_inode_dirty(handle, inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 23efb44f0c27..e47b504e85c9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4899,7 +4899,9 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+ 		 *    i_size by the end_io handler once the ongoing I/O
+ 		 *    completes.
+ 		 *
+-		 *  - TODO: handle insert range and collapse range.
++		 *  - Insert range and collapse range operations:
++		 *    Wait synchronously for the relevant I/O to complete
++		 *    before updating i_disksize.
+ 		 */
+ 		} else if (ext4_inode_buffered_iomap(inode)) {
+ 			err = ext4_iomap_submit_zero_block(inode, from, end);
 -- 
 2.52.0
 
