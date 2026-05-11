@@ -1,77 +1,120 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 320933C1400;
-	Mon, 11 May 2026 08:58:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 660B336E473
+	for <linux-ext4@vger.kernel.org>; Mon, 11 May 2026 11:15:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778489886; cv=none; b=KO8aI0hWOXjCN7WqsDwdw2eEevms66SuTC+0kmANBizILlhTPi1FbmaI7HuzRYK10BrkfpQ6sYOSNcIFR0Ld5JrjwZzoJSu9wIW3WLOcq4KVXjn9ij7Iad7mkNIPPpLpTVg/bqa8MLqXaVloYEXuVltaVdT7HeZhVgc40xkDPVM=
+	t=1778498146; cv=none; b=YYqaRmui3zalEHHFLjVfmEsOGojn4iO1I4yKwSSbMhrpfDK4aG9FsxmTr89pjtrlSeyaSlDkIU8JibsThaVHkoKFrT6xLGn/Vvh9nM9G9rTF4xafnKiaAQInPMq/Wl4xSjJIGHB7l2EEHZ60YjwCcDHrrodrvtkrgdTN1yXs/e8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778489886; c=relaxed/simple;
-	bh=UI+BpiBaT+/3sNnst4ttG75iE7173qobOTeSWI6p81M=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=l/+dDxEEx75YcQJ3KMZwUZhYaRb7vdK37ODC5+zRfkzaUcFPAUXZAZ/3jz1BQOTxmQklmx6a3aAF5Xr+2NK8bO4lAY4uTvRFc/Ugq3f2zjHkFJuzIZEP5HGxPzxeRB54lV5c5KiP/E1gACN4iKnNu4reQjk8gSwI3hian6EZVv0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gDYWt2qG7zYQtyY;
-	Mon, 11 May 2026 16:57:30 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 28B694058D;
-	Mon, 11 May 2026 16:57:59 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP4 (Coremail) with SMTP id gCh0CgA3_1oVmgFqVLiTBw--.31408S3;
-	Mon, 11 May 2026 16:57:58 +0800 (CST)
-Message-ID: <91e19b32-da55-4d21-a580-abfa2b2c7dbe@huaweicloud.com>
-Date: Mon, 11 May 2026 16:57:56 +0800
+	s=arc-20240116; t=1778498146; c=relaxed/simple;
+	bh=RR1NenBgrAYdu1c55iySbUR6WPCvJPcX8MV/1pGj/Aw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=LrjEMR/Z2XeS0TcGZwzzNBG56uQqQVDfOXaHv6Zx0VYYugMPenO2XbUxhTugcdeFBDicXRKZUvpZ1vH01A+hTcLufgxTVYYIL7eYzbpxiuk7mhABL4d/1euyQdti3tYarIiLjtpqdtSWsQ683w3qSQVO/hERsFC87kffWcunsFI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=eiOXnVzB; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=JD7RYlZU; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="eiOXnVzB";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="JD7RYlZU"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1778498144;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=yQi40JXMVWHDZRjke+rHrQlcRrLFkKa2WRv/wpGjnDg=;
+	b=eiOXnVzB/pI21G1epMBuoDXb6oNlBBDexTMU4Pa0JCBceD31HbvlXiXC/IZQa1Fj8l9LKV
+	pw5PgOlAYz+3TPAX39WKLM4LkRWOgM1cChU19NATJtSHTy8eIWrTpo/2dvzXU9R2NFykm3
+	lwEojr5JQKwtDDdhTXGyrl+BoIaiuCg=
+Received: from mail-wm1-f69.google.com (mail-wm1-f69.google.com
+ [209.85.128.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-367-xwYRVwmmN1uk536MV_dcdQ-1; Mon, 11 May 2026 07:15:43 -0400
+X-MC-Unique: xwYRVwmmN1uk536MV_dcdQ-1
+X-Mimecast-MFC-AGG-ID: xwYRVwmmN1uk536MV_dcdQ_1778498142
+Received: by mail-wm1-f69.google.com with SMTP id 5b1f17b1804b1-48a5952c635so48432185e9.2
+        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2026 04:15:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1778498142; x=1779102942; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=yQi40JXMVWHDZRjke+rHrQlcRrLFkKa2WRv/wpGjnDg=;
+        b=JD7RYlZU6EskBY0iebQXhrP6fG75D84nXogDPu32FfcEw63rnM1IikbMUF2W/1X4Dt
+         vZt+Wq8PziYB+4Hp7ysslCShy8FNO/Ok6TcQ4mFZ6m0CiQTd60l6VyvOfoqewkkfBYYQ
+         FkZf3iCfI+5BBlhha7ptXvQZyNtIxwStyV/4KlGARJYEQYkV5SXdLGUxd+I4kXg7z+vB
+         r/CeTPBzHD4KfQFNbu0VqhuEplLProVADaEeS+0jmKCpu725WyJezz2C61yDE0sToe9q
+         lDw3yxAMwWPWjke4qYIA79uVQLaRPgr0bJBWYyFBaIo/2EAZGrKxl8U4V5UuHvErYF9T
+         vgyw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1778498142; x=1779102942;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=yQi40JXMVWHDZRjke+rHrQlcRrLFkKa2WRv/wpGjnDg=;
+        b=FH98chze/Vyx6hq3f3nn/cgDRay+Vgw6K2kX8Du4BSNyRafVU+NnXjCFzBjnDD8Ppi
+         RRL+B3tUWU6li4Ppu+xtgYkCFNvRri9q6Qba2TqmcJOoxT57bcowbsKfYySm3d84o7s7
+         zLYyqbNOBEylEApw5wq5qKRj9pdbsWYfqtp4K4PDEmtrR+1n3UpHB+ruV1y5kzjhF4+U
+         ISMZhhldrgs6fZWMsVUUf+EDyI2IEXGpzVAcVJ3KBLD2PEJDg+Icsprkidep8i67s3Hv
+         CoDCyqmCHc+JT04gl3uTqfGP02BE4Q+dPziYFUbduRCT3J2VTCj3VHCXDHKuELfKv3KB
+         Uh6g==
+X-Forwarded-Encrypted: i=1; AFNElJ8v30ChJau3NiB8TdLH+yqJT8urG47k6tkl6yIGW/+y5BPBRDeGt6/77o5KCjUfmwwhIUgmd7VlIgGr@vger.kernel.org
+X-Gm-Message-State: AOJu0Yzz1Wlhx/mY1cHghqN/1Y9ZmpQvOCVW6Nu9rCRRwN45S8DyPDhF
+	wQAlC6rbBObhAmvJ5E5ML+ywblxtgmPQQG6bjXaQYwevcAdB6g0SLnByGeMtlCVel054VahF97L
+	DRaL72rT8Op7GnM8vwjlLVCZ58D8hAHMaBL7i/nClHOuPQ2hZwwG/QDGdXhaRAQ==
+X-Gm-Gg: Acq92OGU+HWTHWSKk9rZu1pipU5ogA3JJ7yUPS1klQcXfwEJgZdezpdBi7BnMXj4+X6
+	bLhuu7p9Zdu1lAoQ52WL4AupdBAgvGjEx4frlXs4xeiJFR/Ef1mTc+6Mqp/tMMayL169EMiYkXW
+	MO/oeISCax6FQfQILvFYYcatVIf5+ktFjhvgXgRVWOs4XVOpU/GQBsyqvUYs0Z0DkgPwJFUfYEf
+	p+94kkRu5mp4EROAnCb80t0Gh745T6QHFWZQfMYiQudS9TCTkqNLiC9Mi3YA/SQAKYNrsrudJta
+	PqEwgCEeoeHqQZnwe/MbzpGsJovezsdbaiTsYdVwguujMHxoKjIAmEHo4+KriCPCIEHHtSINoEf
+	9klyPyPRs6v8=
+X-Received: by 2002:a05:600c:1f89:b0:48e:8741:fd4c with SMTP id 5b1f17b1804b1-48e8741ff98mr21083605e9.18.1778498141646;
+        Mon, 11 May 2026 04:15:41 -0700 (PDT)
+X-Received: by 2002:a05:600c:1f89:b0:48e:8741:fd4c with SMTP id 5b1f17b1804b1-48e8741ff98mr21082605e9.18.1778498140980;
+        Mon, 11 May 2026 04:15:40 -0700 (PDT)
+Received: from thinky ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-48e7040a9a9sm309872515e9.9.2026.05.11.04.15.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 11 May 2026 04:15:40 -0700 (PDT)
+Date: Mon, 11 May 2026 13:15:39 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, djwong@kernel.org, 
+	david@fromorbit.com
+Subject: Re: [PATCH v9 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <hnsxzymuydf5evoxw4chao7rkixm4eafolebxfjtsqschgfazh@nll3fdfnsigx>
+References: <20260428083332.768693-1-aalbersh@kernel.org>
+ <20260507055217.GA19888@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 11/23] iomap: correct the range of a partial dirty
- clear
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
- ritesh.list@gmail.com, djwong@kernel.org, yi.zhang@huawei.com,
- yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-12-yi.zhang@huaweicloud.com>
- <agGJcqFNl23qNLvx@infradead.org>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <agGJcqFNl23qNLvx@infradead.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgA3_1oVmgFqVLiTBw--.31408S3
-X-Coremail-Antispam: 1UD129KBjDUn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7v73
-	VFW2AGmfu7bjvjm3AaLaJ3UjIYCTnIWjp_UUUY37kC6x804xWl14x267AKxVW8JVW5JwAF
-	c2x0x2IEx4CE42xK8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII
-	0Yj41l84x0c7CEw4AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26w1j6s0DM28EF7xv
-	wVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4
-	x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG
-	64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r
-	1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kI
-	c2xKxwCF04k20xvY0x0EwIxGrwCF54CYxVCY1x0262kKe7AKxVWUtVW8ZwCFx2IqxVCFs4
-	IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1r
-	MI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJV
-	WUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j
-	6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJb
-	IYCTnIWIevJa73UjIFyTuYvjxUrR6zUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260507055217.GA19888@lst.de>
 
-On 5/11/2026 3:46 PM, Christoph Hellwig wrote:
-> Plase send the iomap patches out separate, including to all the
-> relevant lists from the iomap MAINTAINERS entry.
+On 2026-05-07 07:52:17, Christoph Hellwig wrote:
+> On Tue, Apr 28, 2026 at 10:33:06AM +0200, Andrey Albershteyn wrote:
+> > This series based on v7.0 with Christoph's read ioends patchset [1].
+> 
+> That's not a good baseline.  We'll need it on the -rc that has everything
+> from the current merge window at least.  It might also interact with
+> the fsverity fix that just went in.
+
+Sure, I will sent v10 with a latest master and that fix soon.
+
+> 
+> This might also be time to come up with a merge plan to figure out through
+> what tree(s) to merge it as there don't seem to be any maintainer
+> objections.
+> 
 > 
 
-OK, sure, will do.
-
-Best Regards,
-Yi
+-- 
+- Andrey
 
