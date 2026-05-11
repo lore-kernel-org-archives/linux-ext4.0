@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BC13382F14;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60F37390992;
 	Mon, 11 May 2026 07:28:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778484521; cv=none; b=jlasbNSSzlzZZnlI777ymUdSq2lVSiWkrCNxeLWrjngQyENw8YTbonpdskJa3xDWx/Cb46wCaMdmJJlHGv3cQBra7ssiRdWb6Kh2nFmFTu2w4TzadLxM39uiagGVY+g3ui/1i6jb0pldk04LxFbs7ug1IqiHQoIGUyJePOhmc9Q=
+	t=1778484521; cv=none; b=B1dTwkCvGzbuMEEtSRWTWr2aazgn3YsPBJgKiWibOtuQBQqK6NkWf4xiewCY40zavtnZEG1fByLuo3Rh+JXAJ/5RX2dg3KiOE7NCr6KOc82eV5OGp1q4wnCo5TSlZG8QyWjSi6yYVsqRZB5q41Qv4klxYLC6HGL/SVENWtaqNjA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1778484521; c=relaxed/simple;
-	bh=c7InR3i1MOiLg/Ny6xgdtX86ynRsTGo+NCviZ+z6mXE=;
+	bh=pTAy+2+kW0hd6ArJe/XxmdF9CJ4jwbhGmawCxMEgPoE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dDlcNffQnv1SAyWfQoYvfsaSlXdFB/03IT/SaBNIKmrwqAYymWrYdkhvpMbnXWrYLzHaVld9MnG4t9kTNqIieY5A5dOg7rENLkTLc9RkmYqFT0UIVY4eG7MGnmKOKKzFDUV+aid+0m9F3HKTh7qZyX19S/kRjjfuUaSbNq2+RYc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=gF5o5RbIMsG9N1xVAX0JOXor7kYrhmEiRfC3ofDEi/jY1BxfUVTNn31i/xw+N2+jA62mvzwdfRGZKH8R9KcwcBWqr3520j/VpRosP9OkixLbEJ1y/+JIO+KemnEIuP4N5NLhZbJs6ZgopjcJWLEi/g0NnWri0ivNEduB2Qq8Arw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gDWXV65ryzYQv35;
-	Mon, 11 May 2026 15:27:54 +0800 (CST)
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gDWXW1B0tzYQv3b;
+	Mon, 11 May 2026 15:27:55 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 817FE4056F;
+	by mail.maildlp.com (Postfix) with ESMTP id CD6494056F;
 	Mon, 11 May 2026 15:28:23 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgD3v1sKhQFqAy6MBw--.28537S16;
+	by APP4 (Coremail) with SMTP id gCh0CgD3v1sKhQFqAy6MBw--.28537S19;
 	Mon, 11 May 2026 15:28:23 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -40,9 +40,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yizhang089@gmail.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v4 12/23] iomap: support invalidating partial folios
-Date: Mon, 11 May 2026 15:23:32 +0800
-Message-ID: <20260511072344.191271-13-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 15/23] ext4: add block mapping tracepoints for iomap buffered I/O path
+Date: Mon, 11 May 2026 15:23:35 +0800
+Message-ID: <20260511072344.191271-16-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
 References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
@@ -53,10 +53,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgD3v1sKhQFqAy6MBw--.28537S16
-X-Coremail-Antispam: 1UD129KBjvJXoW7uF1xtrW5Jw48tw18Kr4fAFb_yoW8CryrpF
-	W3KrWDGryDGr17uw17Ca1fXF1j9a9xXFy7CFW3Gw1a9Fs8Jw1qgFy7Ka1YgayUJryxAF1S
-	vrsFgFyvqF15A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:gCh0CgD3v1sKhQFqAy6MBw--.28537S19
+X-Coremail-Antispam: 1UD129KBjvJXoWxurW7ZrWDAFWkXF17WF18uFg_yoWrGr43pF
+	yqyFy5KF4fXrsF9w4fWrW3XF1Fva1xKr4UGry3Wry5JFWxtr42gF4UGFyjyFy5Jw4jkryf
+	WF4Ykry8G3WUuFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -75,46 +75,109 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Current iomap_invalidate_folio() can only invalidate an entire folio. If
-we truncate a partial folio on a filesystem where the block size is
-smaller than the folio size, it will leave behind dirty bits for the
-truncated or punched blocks. During the write-back process, it will
-attempt to map the invalid hole range. Fortunately, this has not caused
-any real problems so far because the ->writeback_range() function
-corrects the length.
-
-However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
-the support for invalidating partial folios. When ext4 partially zeroes
-out a dirty and unwritten folio, it does not perform a flush first like
-XFS. Therefore, if the dirty bits of the corresponding area cannot be
-cleared, the zeroed area after writeback remains in the written state
-rather than reverting to the unwritten state. Fix this by supporting
-invalidation of partial folios.
+Add tracepoints for iomap buffered read, write, partial block zeroing,
+and writeback operations to help debug the iomap buffered I/O path.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
 ---
-This is cherry picked form:
- https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-3-yi.zhang@huaweicloud.com/
-No code changes, only update the commit message to explain why Ext4
-needs this.
+ fs/ext4/inode.c             |  6 +++++
+ include/trace/events/ext4.h | 45 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
 
- fs/iomap/buffered-io.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 64351a448a8b..876c2f507f58 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -761,6 +761,8 @@ void iomap_invalidate_folio(struct folio *folio, size_t offset, size_t len)
- 		WARN_ON_ONCE(folio_test_writeback(folio));
- 		folio_cancel_dirty(folio);
- 		ifs_free(folio);
-+	} else {
-+		iomap_clear_range_dirty(folio, offset, len);
- 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e0dae2501292..239d387ffaf2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3961,6 +3961,8 @@ static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
+ 	if (ret < 0)
+ 		return ret;
+ 
++	trace_ext4_iomap_buffered_read_begin(inode, &map, offset, length,
++					     flags);
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(iomap_invalidate_folio);
+@@ -4034,6 +4036,8 @@ static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
+ 	if (ret < 0)
+ 		return ret;
+ 
++	trace_ext4_iomap_buffered_write_begin(inode, &map, offset, length,
++					      flags);
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+ 	return 0;
+ }
+@@ -4136,6 +4140,7 @@ static int ext4_iomap_zero_begin(struct inode *inode,
+ 			map.m_len = (start >> blkbits) - map.m_lblk;
+ 	}
+ 
++	trace_ext4_iomap_zero_begin(inode, &map, offset, length, flags);
+ 	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+ 	iomap->flags |= iomap_flags;
+ 
+@@ -4308,6 +4313,7 @@ static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+ 		return ret;
+ 	}
+ out:
++	trace_ext4_iomap_map_writeback_range(inode, &map, offset, dirty_len, 0);
+ 	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
+ 	return 0;
+ }
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index f493642cf121..ebafa06cd191 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -3096,6 +3096,51 @@ TRACE_EVENT(ext4_move_extent_exit,
+ 		  __entry->ret)
+ );
+ 
++DECLARE_EVENT_CLASS(ext4_set_iomap_class,
++	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map,
++		 loff_t offset, loff_t length, unsigned int flags),
++	TP_ARGS(inode, map, offset, length, flags),
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(u64, ino)
++		__field(ext4_lblk_t, m_lblk)
++		__field(unsigned int, m_len)
++		__field(unsigned int, m_flags)
++		__field(u64, m_seq)
++		__field(loff_t, offset)
++		__field(loff_t, length)
++		__field(unsigned int, iomap_flags)
++	),
++	TP_fast_assign(
++		__entry->dev		= inode->i_sb->s_dev;
++		__entry->ino		= inode->i_ino;
++		__entry->m_lblk		= map->m_lblk;
++		__entry->m_len		= map->m_len;
++		__entry->m_flags	= map->m_flags;
++		__entry->m_seq		= map->m_seq;
++		__entry->offset		= offset;
++		__entry->length		= length;
++		__entry->iomap_flags	= flags;
++
++	),
++	TP_printk("dev %d:%d ino %llu m_lblk %u m_len %u m_flags %s m_seq %llu orig_off 0x%llx orig_len 0x%llx iomap_flags 0x%x",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->ino, __entry->m_lblk, __entry->m_len,
++		  show_mflags(__entry->m_flags), __entry->m_seq,
++		  __entry->offset, __entry->length, __entry->iomap_flags)
++)
++
++#define DEFINE_SET_IOMAP_EVENT(name) \
++DEFINE_EVENT(ext4_set_iomap_class, name, \
++	TP_PROTO(struct inode *inode, struct ext4_map_blocks *map, \
++		 loff_t offset, loff_t length, unsigned int flags), \
++	TP_ARGS(inode, map, offset, length, flags))
++
++DEFINE_SET_IOMAP_EVENT(ext4_iomap_buffered_read_begin);
++DEFINE_SET_IOMAP_EVENT(ext4_iomap_buffered_write_begin);
++DEFINE_SET_IOMAP_EVENT(ext4_iomap_map_writeback_range);
++DEFINE_SET_IOMAP_EVENT(ext4_iomap_zero_begin);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
 -- 
 2.52.0
 
