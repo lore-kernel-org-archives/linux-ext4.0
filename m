@@ -1,35 +1,51 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7AE223C39A;
-	Mon, 11 May 2026 01:42:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7747937CD31;
+	Mon, 11 May 2026 07:28:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778463725; cv=none; b=ikdIkBYYXtJq0owfxA/JKewB1/uWPq1A3q3B5A0LimTS9wbKrxTI/HmGpVhTx8AQSyFXH9+0enhqUibjgPpONeIEacIfh39k8U81aOowICZSKMc9Awgi4BuAKWfxE9Wg8zicJfL326wqlySveAXCjVtBZTpSwx6lZMrp4jhJ0eU=
+	t=1778484509; cv=none; b=gHdbEzajgN3/9JiEUKk/TyPWdw0kpZWEAigKwF35h6BHDxEKx55t7TSfGMMq3HcIPhhF2YrxdK0+y1DHvHP1II0zCLzMID8ZXcvaaysNV7wDetRPABPM2tVgHlfwuY5RrZ2JFO5RN3voimfEgwdVDlw8cO2Pr1IbZ/ohBmmcnzs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778463725; c=relaxed/simple;
-	bh=l1dMEIH4cxx+wnZB0tqVb04wT+dwsZ6juwhVU7G3jEA=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=Zmh7hCgGh9UoOvOnhulQfDoXa4MkGFX3Jd7DJ+IIEAjVxKZk4LbA+lJ7vfWl5QgAlb61jQm2LmoyRl3Vn5Q70n4YAshLXiZb1kLyk1aUcR7mPMrMBb7w9utnnEwPFOQPs32LkDaIUFcrfOq2DgRapF9uWrxPbrBpoQeClvQYWmQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=At5Qb51+; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="At5Qb51+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 70196C2BCB8;
-	Mon, 11 May 2026 01:42:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1778463725;
-	bh=l1dMEIH4cxx+wnZB0tqVb04wT+dwsZ6juwhVU7G3jEA=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-	b=At5Qb51+LYJ397XHy123a03vgbfslynusNYk8Un6LteRrhANlCZmNOpF0hmW5zWj8
-	 dc/3bPYQb0oqwKrzX1MyX8rfT5JvNbaPHoZv7e65SNH8XEnwAUG4bARnNyrjl9lnPM
-	 FJe+CD5yG2/rzGA6wdRGJKLD11OLhel/+Iq5r01AFeJA3Ky6gzxaOiDLWA/es2UBH7
-	 +jIkEy958guv630flGvAUiaIo9nNta7ZYseUXPwLJC8bQd1HMJXgikZHTDI3O/v43/
-	 v1jxMR6zyiLs4hyD0XFnEeBuwoUNJjwWJqEvzQ6trlCPynD1rA6qXtuohjMSPzrUTa
-	 wHseFHy4SMfjg==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id B9E393930039;
-	Mon, 11 May 2026 01:41:13 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=arc-20240116; t=1778484509; c=relaxed/simple;
+	bh=vZqBTaLK+H0HhZr53O/Wwz4dDyPOOoFrVwZvMbFkwcs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=qc653OQ1o5Qcd+w+exfd5krAzhqTFCMC4oT7YmgiQl4V1SB1Srw9UA6F/jJyc7gcvlrO0PRQdJDMx/NQ+wSWmxliQWPtb5lgZ3IeKq5H2Hq1GnHKfhvlEY+TLdFi9CNypQ1tbzJRHrRLZJwLByVclJS9oQvz/fBF0o7DNtzuhtE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gDWX52rLdzKHMfW;
+	Mon, 11 May 2026 15:27:33 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id E170E40561;
+	Mon, 11 May 2026 15:28:23 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgD3v1sKhQFqAy6MBw--.28537S20;
+	Mon, 11 May 2026 15:28:23 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	djwong@kernel.org,
+	hch@infradead.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v4 16/23] ext4: disable online defrag when inode using iomap buffered I/O path
+Date: Mon, 11 May 2026 15:23:36 +0800
+Message-ID: <20260511072344.191271-17-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -37,43 +53,60 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [f2fs-dev] [GIT PULL] fsverity updates for 7.0
-From: patchwork-bot+f2fs@kernel.org
-Message-Id: 
- <177846367229.1975880.775776220391157336.git-patchwork-notify@kernel.org>
-Date: Mon, 11 May 2026 01:41:12 +0000
-References: <20260212012652.GA8885@sol>
-In-Reply-To: <20260212012652.GA8885@sol>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: torvalds@linux-foundation.org, fsverity@lists.linux.dev, tytso@mit.edu,
- djwong@kernel.org, aalbersh@redhat.com, linux-kernel@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, dsterba@suse.com,
- linux-fsdevel@vger.kernel.org, jack@suse.cz, linux-ext4@vger.kernel.org,
- hch@lst.de, linux-btrfs@vger.kernel.org
+X-CM-TRANSID:gCh0CgD3v1sKhQFqAy6MBw--.28537S20
+X-Coremail-Antispam: 1UD129KBjvJXoW7Jw47Zry5AF43WFyxAFWxtFb_yoW8JrWfp3
+	Zakr1rGrWDX3WI9a9YqFnFqw4UKa1xGrW2grWSgr4UGFWDAF9Ygr4UKa15Aa4YqrWUJ34F
+	qF42kr1UWw4UA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW8JVW5JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hello:
+From: Zhang Yi <yi.zhang@huawei.com>
 
-This pull request was applied to jaegeuk/f2fs.git (dev)
-by Linus Torvalds <torvalds@linux-foundation.org>:
+Online defragmentation does not currently support inodes using the
+iomap buffered I/O path. The existing implementation relies on
+buffer_head for sub-folio block management and data=ordered mode for
+data consistency, both of which are incompatible with the iomap path.
 
-On Wed, 11 Feb 2026 17:26:52 -0800 you wrote:
-> The following changes since commit 63804fed149a6750ffd28610c5c1c98cce6bd377:
-> 
->   Linux 6.19-rc7 (2026-01-25 14:11:24 -0800)
-> 
-> are available in the Git repository at:
-> 
->   git://git.kernel.org/pub/scm/fs/fsverity/linux.git tags/fsverity-for-linus
-> 
-> [...]
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/move_extent.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Here is the summary with links:
-  - [f2fs-dev,GIT,PULL] fsverity updates for 7.0
-    https://git.kernel.org/jaegeuk/f2fs/c/1bfaee9d3351
-
-You are awesome, thank you!
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 3329b7ad5dbd..f707a1096544 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -476,6 +476,17 @@ static int mext_check_validity(struct inode *orig_inode,
+ 		return -EOPNOTSUPP;
+ 	}
+ 
++	/*
++	 * TODO: support online defrag for inodes that using the buffered
++	 * I/O iomap path.
++	 */
++	if (ext4_inode_buffered_iomap(orig_inode) ||
++	    ext4_inode_buffered_iomap(donor_inode)) {
++		ext4_msg(sb, KERN_ERR,
++			 "Online defrag not supported for inode with iomap buffered IO path");
++		return -EOPNOTSUPP;
++	}
++
+ 	if (donor_inode->i_mode & (S_ISUID|S_ISGID)) {
+ 		ext4_debug("ext4 move extent: suid or sgid is set to donor file [ino:orig %llu, donor %llu]\n",
+ 			   orig_inode->i_ino, donor_inode->i_ino);
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.52.0
 
