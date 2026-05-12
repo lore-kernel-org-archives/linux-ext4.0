@@ -1,133 +1,162 @@
-Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
+Received: from SY2PR01CU004.outbound.protection.outlook.com (mail-australiaeastazolkn19011060.outbound.protection.outlook.com [52.103.72.60])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 749D628504D
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2026 12:23:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6681C3E172C;
+	Tue, 12 May 2026 13:03:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.103.72.60
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778588587; cv=pass; b=WHO0XWMXX+pdb+bgb/47MnpJA2q6XBuSWtYVMFWlwkKNfdkGINDuoVdNkDVpJG+L8pBA79AEuH8BRDC9oOGJxSVkH05Z1Oe9Fzo3DcYqtDvufBbAXtMqzAyYWDap0vzQpdIWlDuzuacWDJ/GiIHPONQHOFvfussCNzBhhZNZw3k=
+	t=1778590997; cv=fail; b=VPJZ4XrKRdiSR9aUz/S+z6BTYFnnbE7Ep6WwcysaSkHzVGqrTNLVGbKLLVMjy9iuJH/s6gZvoR4lMyHAvxEH3qWhQMVz98GdTBXSj/ljavKveiVnKzklQ+SyrJCDBPi2g1zFYG5bg0IxFmeai0chHN96nWDtJBq/XyNdwcTT4gI=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778588587; c=relaxed/simple;
-	bh=snpZtaiuehEpdah6YhTE1cMUtD/Ycgzgmd0f2xm4N5k=;
-	h=Date:From:To:Cc:Message-ID:In-Reply-To:References:Subject:
-	 MIME-Version:Content-Type; b=NZmpz+BxRrvAP/nTkolwnn/+1CwRgypUklVIL/zl9hDU5o0CZ1sevVN7qUDHiLBozQ/Vt6mpBzOekLmFz6kEXAzv2+Jv+Qtsk3n+OGKdEGT8v3VVd4tXztv5KJIHznIkPkmhcfdBe9lqy+JdnfRb6CMR7olmNxAGZUUiIAYEAWc=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=b3TPlRC0; arc=pass smtp.client-ip=136.143.188.15
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
+	s=arc-20240116; t=1778590997; c=relaxed/simple;
+	bh=oaTsJSn1WWSf1WPS71n10dGiAarFkEW8/9w5MjfCXMU=;
+	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
+	 Content-Type:MIME-Version; b=XWovztX9mUWtsteoo34BLe1IE8A3SeyZ6Y7zWxdgQY9y9vRHFAgf6q2DfPTpiTJyqt0piwOXDs2cDn9OmjOh6LGdsEIhU1pPcTxoGHELX5jQVooagRVehNby+PHuydUtwgwkQmQElxhMKbEY8OSPgT0x4WGN+eQzIme05rjCdUc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=outlook.com; spf=pass smtp.mailfrom=outlook.com; dkim=pass (2048-bit key) header.d=outlook.com header.i=@outlook.com header.b=SSl0E0sY; arc=fail smtp.client-ip=52.103.72.60
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=outlook.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=outlook.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="b3TPlRC0"
-ARC-Seal: i=1; a=rsa-sha256; t=1778588579; cv=none; 
-	d=zohomail.com; s=zohoarc; 
-	b=krVCyxV1oDyPzzZ4ixQxLhwCeRzCKhSJN7Gi5B0L6WiM4Nn/msPmU2ethZxq7k0/rh6Lfyp7ykNKAf45R63dT54huq8M7u7Gvx2SaCg6g+U2hoW5QKpTICUV1ePLm4mcxACsy9SnfsXAPolxuszaPYn1lqWiw3yQzEmRxvHLpIQ=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
-	t=1778588579; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=tftwGdSYOF+SPOXairbdqYm2g/X90ABFg53gvL5xLxo=; 
-	b=ltklMV4mbUb9dwijde5eX3SckCx6tuxn/jp4aex0Kcbo2T8Or5TiJFdFrxlckLec8eDk7q5ccRJkfOPD5mV8TBXIJ85Gg3RIlKwX+E19bhkaqHb7xaNOGMOm6hqB4cloxZSVufCJ1gEFddlv402aHWKmqs1TxNQOpbLwXxsnb0Y=
-ARC-Authentication-Results: i=1; mx.zohomail.com;
-	dkim=pass  header.i=linux.beauty;
-	spf=pass  smtp.mailfrom=me@linux.beauty;
-	dmarc=pass header.from=<me@linux.beauty>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1778588579;
-	s=zmail; d=linux.beauty; i=me@linux.beauty;
-	h=Date:Date:From:From:To:To:Cc:Cc:Message-ID:In-Reply-To:References:Subject:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=tftwGdSYOF+SPOXairbdqYm2g/X90ABFg53gvL5xLxo=;
-	b=b3TPlRC0L6Cr5RtYVJGozNmnqtMKKUHDp93SFyXLD/eiqT5wLTqM/dIjaSTPSAKi
-	OFhfpsZlvr0KVg7xeCfi0+stCU2WrJfrXeJ3VViYwr3DXqs37VUyQMXfEyTs6hlPc4j
-	BRJV7dMcpXhbDuplzervU17vpgLGEf/aMBNYtN3Y=
-Received: from mail.zoho.com by mx.zohomail.com
-	with SMTP id 1778588576731782.4163117919959; Tue, 12 May 2026 05:22:56 -0700 (PDT)
-Date: Tue, 12 May 2026 20:22:56 +0800
-From: Li Chen <me@linux.beauty>
-To: "sashiko" <sashiko@lists.linux.dev>
-Cc: "tytso" <tytso@mit.edu>, "Linux ext4" <linux-ext4@vger.kernel.org>
-Message-ID: <19e1c23ebca.6a3c475d372729.498530157652304808@linux.beauty>
-In-Reply-To: <20260512022525.BD660C2BCF5@smtp.kernel.org>
-References: <20260511084304.1559557-4-me@linux.beauty> <20260512022525.BD660C2BCF5@smtp.kernel.org>
-Subject: Re: [RFC v7 3/7] ext4: fast commit: avoid waiting for FC_COMMITTING
+	dkim=pass (2048-bit key) header.d=outlook.com header.i=@outlook.com header.b="SSl0E0sY"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=VEdPxqKmr+L4JfESPL41/a4ay5JNmR91kNVspec1Wo1hLMqXzad5rca5HrYAc7EKQtN7xWliMMSWWT306vyZ9R/A07LcrqgwmzmlRJI1HRD8QUeAENAKwYqiHkeAXlKk+WB1EVaEnJp0eVVv1cvQZVR7qN8IimWzPqqu4vvdMoPLPo09Lz1B8IRBl1oEWkigDQ9KdWlC0c76LZtfAVXIxDHI6QTyYfLcXmA+mMhYPSmHq9NCC0CaWCSNgvsZPWov29b0pZHIHRaMIvJ4W6JHrGueEfLcqeD8DbvTcA5psenf30KcEwv22hknoB17k1N6G5OrIaKVFImruFR6Azw8lw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=oaTsJSn1WWSf1WPS71n10dGiAarFkEW8/9w5MjfCXMU=;
+ b=xNcoQuORmaWvxmel0hFM4Nie6BsGJnJij2Y5Iifxtl73xJSZG39IIzWbQs+qf6TRFImLXUWhKnOqiPCMOvhElHsU2XDTSvHIMJhEyRjhk6NEciIo345Z86X9WB3GVOOo1hwuAPkDEzdBJD9vTL2xm7vXOLCsczobkCZjOD1gClxC/Xgd8klHskc93H+Ylv98Wra4aGR3rPbl3K1LW44cpjBXe3IZB6L/+UC2ukTopAwEPSXXN0I48x4L8mx7MsHVNpCL5vFrNOAfHB9FC3Ol0hmHwUJqKQPgIDHi+xfOf1Z4xm6+sl8gVwDHw0PNxbrBpJBMiV4XrcD4lyiBv/fiQw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
+ dkim=none; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=outlook.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=oaTsJSn1WWSf1WPS71n10dGiAarFkEW8/9w5MjfCXMU=;
+ b=SSl0E0sYIOGXZ6Odf4bdi1gkeCRqnidellvkk8HavjodYax1C/EmGZKvMYQK2K8w46WYMV6QQOBMXKSchZJP7LEhbSiwXIquYHBuqGdtdwB5Fb2bytuzcq+UaZnw0E2OTc9Kw0Jhaqxf0+TjDfTCWOgD64Vgp26kejUytv5AFZGcCWl788afK91YN1NLn2K4/ks7clcUnevPViWCP5boJSe2wanx3zbqjcJUIb5EvnL9SzdkVwvJfiA9I8NfGVyXh5oFZVID1029r/zvEty4v4a47H9fDteIaIWpjgFy30S9LUlQVH0JDhBnTas28tljRamkL4Laf30yDsmWI6Pf0Q==
+Received: from MEYPR01MB7886.ausprd01.prod.outlook.com (2603:10c6:220:17e::8)
+ by SY9PR01MB9711.ausprd01.prod.outlook.com (2603:10c6:10:306::21) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9891.23; Tue, 12 May
+ 2026 13:03:11 +0000
+Received: from MEYPR01MB7886.ausprd01.prod.outlook.com
+ ([fe80::19df:3891:d8aa:692d]) by MEYPR01MB7886.ausprd01.prod.outlook.com
+ ([fe80::19df:3891:d8aa:692d%3]) with mapi id 15.20.9891.021; Tue, 12 May 2026
+ 13:03:11 +0000
+From: Junrui Luo <moonafterrain@outlook.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+CC: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>, Harshad
+ Shirwadkar <harshadshirwadkar@gmail.com>, "linux-ext4@vger.kernel.org"
+	<linux-ext4@vger.kernel.org>, "linux-kernel@vger.kernel.org"
+	<linux-kernel@vger.kernel.org>, Yuhao Jiang <danisjiang@gmail.com>,
+	"stable@vger.kernel.org" <stable@vger.kernel.org>
+Subject: Re: [PATCH] jbd2: fix integer underflow in
+ jbd2_journal_initialize_fast_commit()
+Thread-Topic: [PATCH] jbd2: fix integer underflow in
+ jbd2_journal_initialize_fast_commit()
+Thread-Index: AQHc4eQkm1wg5P55r0agA0nvRb4rUbYKTG4AgAAPGwA=
+Date: Tue, 12 May 2026 13:03:11 +0000
+Message-ID: <CCDC32DB-67E3-4AB5-AB71-9A90A318E57B@outlook.com>
+References:
+ <SYBPR01MB78813DD23B28BD49B1AA1123AF392@SYBPR01MB7881.ausprd01.prod.outlook.com>
+ <7cf5ea66-55e9-46ec-8f69-91e80d3c42b8@huaweicloud.com>
+In-Reply-To: <7cf5ea66-55e9-46ec-8f69-91e80d3c42b8@huaweicloud.com>
+Accept-Language: en-US, zh-CN
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+x-ms-exchange-messagesentrepresentingtype: 1
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: MEYPR01MB7886:EE_|SY9PR01MB9711:EE_
+x-ms-office365-filtering-correlation-id: f5a77815-9afe-4b25-b92e-08deb026d1fa
+x-microsoft-antispam:
+ BCL:0;ARA:14566002|22091999003|24121999003|51005399006|24021099003|55001999006|12121999013|15080799012|41001999006|31061999003|8060799015|19110799012|8062599012|40105399003|440099028|3412199025|102099032;
+x-microsoft-antispam-message-info:
+ =?us-ascii?Q?KWkUsdod8uQhU+DZbMhJtoDVeAJckZwvKPAfeDUC6cH6/S4ZRdAH6va0FChK?=
+ =?us-ascii?Q?Ig+XEI1AV0U2jiPTFN21zsMZwwAwZRKagxmYHpTYBRwfu3LKrmG0W+dshT2F?=
+ =?us-ascii?Q?x5rQlH8HunxOuMSIHhsrt5WqmgnX5lp4mGkzoq/dtwl4QXPLSVqqccTQqPqC?=
+ =?us-ascii?Q?BGxwufeX2XEilO8+u0xm8WrEAX3s1SULHV4+gn49k1rkbXl0IYaQq+CK9fIa?=
+ =?us-ascii?Q?mgHhZUiFy41xbDLvxY8TbyVwP3kq0i0hRTmAXxbtjAiKfoEv9BNjPzSo9ZKD?=
+ =?us-ascii?Q?wU6+S7HrRF2yShQsAygy4JC4YjVgWaLUEGtn298U3MPzQWBVkIv9f0sx52P+?=
+ =?us-ascii?Q?UfJm+sIsaSv1tYH++XZQ3r6w/uQTsiYlGL9rZ59HU3VoGVyWpErS3VHCYLc+?=
+ =?us-ascii?Q?aX8JFz93kY+0A8D1g9gquLb1FFvm4LBQQRbXxupvcLjNW86xLm5UAIMExfSB?=
+ =?us-ascii?Q?jODn8KNMLGdJI42mSWJPLxIFlF9PFfHH+7qQMPx3cxL60oUBs1yr2YKOmk9f?=
+ =?us-ascii?Q?QY8FrUUcCUscTfJFOQP8Vu04htHXH2c1IBRmD5NLnoP/OnrYVEEz7qWX1pYI?=
+ =?us-ascii?Q?FJOuWWjEkbk+Eu+LJwYhq3QpetcBnn1arqfXv35iplBk/mTTUByvC34v/sPu?=
+ =?us-ascii?Q?cJoo8WqWeVwOLRdHGELXtHPZfQ4zyQ/4AV0wh1M5y3+Jjc194ve1+6s8vndl?=
+ =?us-ascii?Q?GzO9xSeIjnChtZK5b8H9MJA852COHGNZQHgYnYaaXutuW85cBw18e4xkvxVe?=
+ =?us-ascii?Q?2Wke9zJRHxg+yMuezwduRDKB7b5IIRcDbLpOo9NbvM/KvftCvBnxfUeuf4LP?=
+ =?us-ascii?Q?f1nUwGSxYPFA737nDe5mE37a1MrKk5JscqZjWyWeSTOTsIlU9zwldW5QZ8O/?=
+ =?us-ascii?Q?hwKbSBQcNykKkE8nUTTSkt+NAZSAFn1dxradXggyHMJ71XzrgARbqqe3PW0H?=
+ =?us-ascii?Q?0YQQyI8tRwosMI6fJmQdcoX0kD5+pMsaVqC+wwa17sXrsXG9YNc43Rf+5Mh8?=
+ =?us-ascii?Q?I5qy3jsJ+t3wavcCPvQ+6MXVITUknqjHW/PZFhBttWDYI/nALgGIEvV6gvcx?=
+ =?us-ascii?Q?hgQablnlL4e3nnsZHE+/3dh5hLSaDUWroUhMnTiX7XMtT2WTJ88=3D?=
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0:
+ =?us-ascii?Q?XhF4AAehrLq77XaaM0VsnCZJQBrYnBJFULChpH+6+iKL9r1jcvOhtFj8yOGM?=
+ =?us-ascii?Q?V6tz9tmQ4gCY5OsyMYbnF0ACrES4LnbreE75GHGN8zB9875YUmfyE0+SBa2j?=
+ =?us-ascii?Q?ZyfcG7iGzXcC246CmpfsmR8DDTwNVI6KTTfwJmZVnB0DlFgd6rsSZcEVJSrd?=
+ =?us-ascii?Q?Nu/kWwyC1VWlYNtlo5+Z7Lfxpm7yp5FdS2CAga7SSJc2tHqi+3MlY3tcviOl?=
+ =?us-ascii?Q?0cW72gHv80w93aXQjqtl5B1sb310ZdqfA0YVyMBt4ENoDaj6ZEQXwz+gLRoV?=
+ =?us-ascii?Q?fUeIaQBvbNaNKKjSPjkNEusPh+cI/Q3RlFzXC3VrVeYGFDt6FHv57XQ8sSDN?=
+ =?us-ascii?Q?UjlGqA6vs4jzxLdXfxoXHw3r1Eo5Am7A7vUpiMEymUUgg/529MX/0ZzeXysm?=
+ =?us-ascii?Q?PVYyvJXwP6+G7PR675dRj+jILKx8NsxhGAdKhhknY3FZ/fs81nhSQsQrinwK?=
+ =?us-ascii?Q?Or3EThzJnFqXQakvYDQMGw/5P6kp+umK5g3D/YvmOzrZrl76JJksN6fiaJeT?=
+ =?us-ascii?Q?7pT0ucxrnN9eed3TyWc50tVOb14SdCwr9yv30yXIKCoMrc//1eDU697DBVjZ?=
+ =?us-ascii?Q?MvrJrUuMsTJzVbdp9PO50lx7VKxhlAN7FgNrmRP6cd04c46iYL1BnjMAkOkf?=
+ =?us-ascii?Q?E9cR5sJD9G9Mv3SMBgDHL8IbGJi1r3FuwH2PrLzWBjivEUk7qcuwza1DDjVb?=
+ =?us-ascii?Q?nwjkXhdaWnXg8KeRi0yuZom7AM6iUKGekmm5/ucneGuAoJc1+Pz6PE29tuYc?=
+ =?us-ascii?Q?jSeEVhDwP/sss/pj/QS+rMFbQZyyba9aOtBdMVvaur/FZa5ywRyM79nqsini?=
+ =?us-ascii?Q?CAPf4MXZDiJUFS+a2V685bikVfvYs7C6Pm00o7dvI17nhi8mS5a7tvNJtsM0?=
+ =?us-ascii?Q?eJSKdcENeQT8/7aKSS+KJb7NsbCwxle5DDQuElCI8BcvRisbHZ+zc9mKWnk8?=
+ =?us-ascii?Q?mVVwmqbBq/AYwfBG5Oz9cicowP1h4akGz8WtGPFb2AAD6XDSXyEsOJVCYAwQ?=
+ =?us-ascii?Q?jC9mwj7KNzcHiUOrkCZGS6ymCmYwy786rfVez9J1a60DYbzr+93csavYv8K7?=
+ =?us-ascii?Q?ayZWuQo/bOJQkQeIAdMZMyWkdiOOb8rVQspuli4v5FS9SH5nVek3+OoZ4fNw?=
+ =?us-ascii?Q?0WBTrTU3dMFzbKMDEKbpmimvD+rmO4fke73VbDiJ7lCf3b7t5HM+MDoPRtpx?=
+ =?us-ascii?Q?yGgaejhI5U8cCZvSsdYLHIQAPvgLTZwvbgTvYH3BpYBEoQ4UL9cgLRqForRo?=
+ =?us-ascii?Q?dL6JblTyx42vWmzADeLbLQR/eBUlIESnWGm8thqlM2aHVuFLqUwAE2l+jZoM?=
+ =?us-ascii?Q?0GgcvmHZOr+w+FKjDJ4sz1LHE7j4oQZLjXweM+Q7urelD67kBB7UDS/UQrg7?=
+ =?us-ascii?Q?T76hBqJZl051xWWZDh+wvUnEiuOPz7cPMjYvr+HsS1Va2lI7uQ=3D=3D?=
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <79687C504167C44A85D477121197E766@ausprd01.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-Importance: Medium
-User-Agent: Zoho Mail
-X-Mailer: Zoho Mail
+X-OriginatorOrg: outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: MEYPR01MB7886.ausprd01.prod.outlook.com
+X-MS-Exchange-CrossTenant-RMS-PersistedConsumerOrg: 00000000-0000-0000-0000-000000000000
+X-MS-Exchange-CrossTenant-Network-Message-Id: f5a77815-9afe-4b25-b92e-08deb026d1fa
+X-MS-Exchange-CrossTenant-originalarrivaltime: 12 May 2026 13:03:11.0936
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa
+X-MS-Exchange-CrossTenant-rms-persistedconsumerorg: 00000000-0000-0000-0000-000000000000
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SY9PR01MB9711
 
-Hi sashiko,
+On Tue, May 12, 2026 at 08:08:56PM +0800, Zhang Yi wrote:
+> On 5/12/2026 3:49 PM, Junrui Luo wrote:
+> > jbd2_journal_initialize_fast_commit() validates journal capacity by
+> > checking (journal->j_last - num_fc_blks < JBD2_MIN_JOURNAL_BLOCKS).
+> > Both j_last and num_fc_blks are unsigned, so when num_fc_blks exceeds
+> > j_last the subtraction wraps to a large value, bypassing the bounds
+> > check.
+>=20
+> I'm wondering, how does the "num_fc_blks exceeds j_last" error occur?
+> Under normal circumstances, journal->j_last is initialized to
+> sb->s_maxlen, which is set to the total number of journal blocks (i.e.,
+> the sum of the normal journal area and the fast commit journal area)
+> during filesystem formatting by mkfs. Therefore, num_fc_blocks shoud
+> never exceed journal->j_last. Right?
 
- ---- On Tue, 12 May 2026 10:25:25 +0800   <sashiko-bot@kernel.org> wrote -=
---=20
- > Thank you for your contribution! Sashiko AI review found 1 potential iss=
-ue(s) to consider:
- > - [High] Wait loops using `bit_waitqueue` test the wrong bit on 64-bit p=
-latforms, causing permanent deadlocks due to ignored wakeups for files with=
- certain on-disk flags (e.g., encrypted or uncompressed files).
- > --
- >=20
- > Note: The standard inline-diff format for this LKML report has been alte=
-red
- > to a free-form summary due to automated system recitation restrictions.
- >=20
- > commit 6a0b3a4122c0edab1e98d39dcec0cf8e11e66265
- > Author: Li Chen <chenl311@chinatelecom.cn>
- > ext4: fast commit: avoid waiting for FC_COMMITTING
- >=20
- > This commit removes the block on FC_COMMITTING during fast commit inode
- > tracking to avoid deadlocks. It instead requeues modified inodes via a n=
-ew
- > state flag and adds wait loops in the eviction path to block while a com=
-mit
- > is actively using the inode.
- >=20
- > Looking at the newly added wait loop in ext4_fc_del() and the wakeup in
- > ext4_fc_cleanup(), could the use of bit_waitqueue() and DEFINE_WAIT_BIT(=
-)
- > with EXT4_STATE_FC_COMMITTING and EXT4_STATE_FC_FLUSHING_DATA cause task=
-s
- > to sleep forever on 64-bit systems?
- >=20
- > On 64-bit platforms, the EXT4_INODE_BIT_FNS macro maps dynamic state fla=
-gs
- > to bits 32 and above in the i_flags field. For example, the enum values =
-for
- > EXT4_STATE_FC_COMMITTING (10) and EXT4_STATE_FC_FLUSHING_DATA (11) are
- > actually evaluated as bits 42 and 43 when accessed through the proper
- > ext4_test_inode_state() helpers.
- >=20
- > However, the 64-bit fallback paths for the wait queues and wake_up_bit()
- > calls in this patch act directly on i_flags using the unshifted enum
- > values 10 and 11. In the context of the raw i_flags field, bit 10
- > corresponds to EXT4_NOCOMPR_FL, and bit 11 corresponds to EXT4_ENCRYPT_F=
-L.
- >=20
- > If a file has the encrypted or no-compress on-disk flags set, test_bit()=
- in
- > the kernel's wake_bit_function() will return true because the on-disk fl=
-ags
- > are set, rather than checking the intended dynamic state flags. Will thi=
-s
- > cause wake_bit_function() to assume the condition is still pending and
- > ignore the wakeup, leaving the task in ext4_fc_del() deadlocked in an
- > uninterruptible sleep?
- >=20
- > --=20
- > Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260511084304.1=
-559557-1-me@linux.beauty?part=3D3
- >=20
+Yes, this is triggered by mounting a crafted filesystem where the ext4
+superblock has fast_commit enabled but the journal superblock does not,
+while s_num_fc_blks is set larger than s_maxlen.
 
-Thanks, good catch. This bug was already in 857d32f26181 ("ext4: rework
-fast commit commit path"); this patch just moved the same wait/wake code
-into ext4_fc_del().
+> Have you mounted a deliberately constructed corrupted file system? If
+> so, I'd prefer to return EFSCORRUPTED here.
+=20
+I will change it in v2.
 
-I think it's cleaner to send a small standalone fix patch first, instead
-of folding this into v8. I'll add a helper to map EXT4_STATE_* to the
-real wait word/bit, and use it for both bit_waitqueue() and wake_up_bit()
-so it matches ext4_test_inode_state() on 64-bit.
-
-I'll look at the other two review mails tomorrow.
-
-Li=E2=80=8B
-
+Thanks,
+Junrui Luo
