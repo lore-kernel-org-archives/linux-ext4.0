@@ -1,64 +1,180 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB2BC3D411A;
-	Tue, 12 May 2026 05:40:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04A4E357D08;
+	Tue, 12 May 2026 07:08:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778564405; cv=none; b=hLOsk88tEQlxg7KDxx9rbOYsWfHdVNe0zDiikj4ni85LQL6BzVKm/+dANlTr7n3VnERU7hDe90itiHEsyCEWYZrO4yWF4s5nkVxHGVp/eLNh8mZskAQbhgiuMAhG7iGuGbuawTSQZmUqZcHBwF7WP9FdWK3XhMSAX1GV6yio/c0=
+	t=1778569722; cv=none; b=ZacpkcsJD/F3dELlzrPe8rrb0XbUq3+VehYSBxgHLHxyPrLhm8h1DVTFkKx4vTJ8TGUa6nM1zYNwJzXKMkGrFhIEGUkST6kktVBFLtzSdZkJCpfiblZP+JzP5Z6vKBQ9H5GYmuAl2JNs7UU5DzMhdnmiimNZ3/iJ+eK/VuDjRZ8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778564405; c=relaxed/simple;
-	bh=9UmhZouBRx0Zm3NwCIeu1OtlXu9KMetIX7TR2AcblcA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hVFOQ2fx8JG0x4sy7p2tJFXWYO6FcpJ4ZxBIKg1TbuQ/GBDUQW6soFKv4rnOZuUwW6Kt800WT/w4Bsv8jbi3dzfEELEb/lnUUvvF1mD1IrGr4R27Wm/hab6JWm5Pp6np/MRPLLRVh9XssQPKM15r7Mn36iHaUBpYeU3GT3Emn/c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=WKEH/ihx; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1778569722; c=relaxed/simple;
+	bh=5R+EGY533uqCmLzbRat4246szQJrvxiGXh+zrcNZP8Y=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=qZ/tT+5p2sM4JWHzRLZkPhbZC1yih/gvOJK9nyvA5tVfDW6cvm+Jgvfoy7SevddRJlhhJzGd+WDLpw+TPbpvVvg7LIvcRew3rbikdnLLn5s37GpyGC+PB8Ta6Tmi3H4MAhlusbVHNfD8Jj4bXbiubTFZoOdhU6+BBoIf4vizWlg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AZVW7Qui; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="WKEH/ihx"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=9UmhZouBRx0Zm3NwCIeu1OtlXu9KMetIX7TR2AcblcA=; b=WKEH/ihxP5/p7NmZ4tHe0opMeT
-	6K61i7tkEdh+IvQG3qUtcSDjb25DrSP75DbkP824cmi5V45kD8q05+a6y4d+JPH1EnkWjuSGSONuA
-	NHdOocSgIOj82vBS98nZ8XOkSFbdjz3zi8T/tt1T8w6lHTyX/jA6UsZIejYts36xoAXEN9svgwuin
-	vc1It8Xo+KIoPVl6IkoDCdQCRFy4bspp2yGWErluMEvVu7lS/xnj+9/ys19zwt1JV+XUz4m4jRbR5
-	dgmeGxFQI6+XJKZ/VOxBhO1pOj8fhZO//HxZRtNNOsO4b/5JPcw7VJoXuiPwzJcy+zBTINus5LfQv
-	O7fO+Q/Q==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wMfqa-0000000FfoO-3VnY;
-	Tue, 12 May 2026 05:40:00 +0000
-Date: Mon, 11 May 2026 22:40:00 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anand Jain <asj@kernel.org>
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-f2fs@vger.kernel.org, amir73il@gmail.com, zlang@redhat.com,
-	djwong@kernel.org
-Subject: Re: [PATCH v4 9/9] fstests: btrfs: test UUID consistency for clones
- with metadata_uuid
-Message-ID: <agK9MC0ufkTJj-zu@infradead.org>
-References: <cover.1777357320.git.asj@kernel.org>
- <d079b3f7cce446b0c5bc0762226957b960c7a3ac.1777357321.git.asj@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AZVW7Qui"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0E6A5C2BCFD;
+	Tue, 12 May 2026 07:08:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1778569721;
+	bh=5R+EGY533uqCmLzbRat4246szQJrvxiGXh+zrcNZP8Y=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
+	b=AZVW7Qui1CP12PCsES+DAfGefhgG6ZsGG+IPd29OfkaPW+1CkthidE8AZJwY75U0C
+	 4rNrhnRBljNrhbvZDbEiEgSRDdXMcjdraEcCwuiJdxsOXLKnGqhSVmrr/6hhPR2x9L
+	 5vwiYRzb+7Elk2tmObpq81hcArgCm9ZegwZDJEAkv9M9iicfMeRn5NaRYpNZWqfPOE
+	 2HWszZ/4Gxf/5HGNX9W/seayQBqvEPgMe4Hs7m6wvAkzGhJbO9TvFDGMPWP3Yn5FY9
+	 SZ27OhjGJ/CoGsGG5mf9JCFTzQ3uplWm0vr4OAI+NqYEiilCS2Y4tpjuYjp3Qie9BH
+	 /RQBnxU6ladzQ==
+Message-ID: <03dddf72-8755-4ebf-ba79-456377f0f25d@kernel.org>
+Date: Tue, 12 May 2026 16:08:35 +0900
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d079b3f7cce446b0c5bc0762226957b960c7a3ac.1777357321.git.asj@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 01/12] swap: remove the maxpages variable in sys_swapon
+To: Christoph Hellwig <hch@lst.de>, Andrew Morton
+ <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>,
+ Kairui Song <kasong@tencent.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+ "Darrick J . Wong" <djwong@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+ David Sterba <dsterba@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+ Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>,
+ Steve French <sfrench@samba.org>, Paulo Alcantara <pc@manguebit.org>,
+ Carlos Maiolino <cem@kernel.org>, Naohiro Aota <naohiro.aota@wdc.com>,
+ linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-doc@vger.kernel.org, linux-mm@kvack.org, linux-block@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+ linux-cifs@vger.kernel.org
+References: <20260512053625.2950900-1-hch@lst.de>
+ <20260512053625.2950900-2-hch@lst.de>
+Content-Language: en-US
+From: Damien Le Moal <dlemoal@kernel.org>
+Organization: Western Digital Research
+In-Reply-To: <20260512053625.2950900-2-hch@lst.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Tue, Apr 28, 2026 at 02:42:59PM +0800, Anand Jain wrote:
-> Btrfs uses the metadata_uuid superblock feature to change the on-disk UUID
-> without rewriting every block header. This patch adds a sanity check to
-> ensure UUID consistency when a filesystem with metadata_uuid enabled is
-> cloned.
+On 5/12/26 14:35, Christoph Hellwig wrote:
+> Always use si->max which is updated setup_swap_extents instead of copying
+> into and out of maxpages.
 
-xfs does the same.
+Checking mm/swapfile.c, I see s->max being set only in swapon(). Is this a typo
+or am I misunderstanding this sentence ?
 
-Can we abstract out the uuid change and generalize the test?
+Looks good otherwise, but it would be nice to rename ->max to ->maxpages to make
+it clear what this is counting.
 
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  mm/swapfile.c | 27 +++++++++++----------------
+>  1 file changed, 11 insertions(+), 16 deletions(-)
+> 
+> diff --git a/mm/swapfile.c b/mm/swapfile.c
+> index 9174f1eeffb0..f7ebd97e28a3 100644
+> --- a/mm/swapfile.c
+> +++ b/mm/swapfile.c
+> @@ -3350,10 +3350,9 @@ static unsigned long read_swap_header(struct swap_info_struct *si,
+>  }
+>  
+>  static int setup_swap_clusters_info(struct swap_info_struct *si,
+> -				    union swap_header *swap_header,
+> -				    unsigned long maxpages)
+> +				    union swap_header *swap_header)
+>  {
+> -	unsigned long nr_clusters = DIV_ROUND_UP(maxpages, SWAPFILE_CLUSTER);
+> +	unsigned long nr_clusters = DIV_ROUND_UP(si->max, SWAPFILE_CLUSTER);
+>  	struct swap_cluster_info *cluster_info;
+>  	int err = -ENOMEM;
+>  	unsigned long i;
+> @@ -3395,7 +3394,7 @@ static int setup_swap_clusters_info(struct swap_info_struct *si,
+>  		if (err)
+>  			goto err;
+>  	}
+> -	for (i = maxpages; i < round_up(maxpages, SWAPFILE_CLUSTER); i++) {
+> +	for (i = si->max; i < round_up(si->max, SWAPFILE_CLUSTER); i++) {
+>  		err = swap_cluster_setup_bad_slot(si, cluster_info, i, true);
+>  		if (err)
+>  			goto err;
+> @@ -3425,7 +3424,7 @@ static int setup_swap_clusters_info(struct swap_info_struct *si,
+>  	si->cluster_info = cluster_info;
+>  	return 0;
+>  err:
+> -	free_swap_cluster_info(cluster_info, maxpages);
+> +	free_swap_cluster_info(cluster_info, si->max);
+>  	return err;
+>  }
+>  
+> @@ -3440,7 +3439,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+>  	union swap_header *swap_header;
+>  	int nr_extents;
+>  	sector_t span;
+> -	unsigned long maxpages;
+>  	struct folio *folio = NULL;
+>  	struct inode *inode = NULL;
+>  	bool inced_nr_rotate_swap = false;
+> @@ -3512,14 +3510,13 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+>  	}
+>  	swap_header = kmap_local_folio(folio, 0);
+>  
+> -	maxpages = read_swap_header(si, swap_header, inode);
+> -	if (unlikely(!maxpages)) {
+> +	si->max = read_swap_header(si, swap_header, inode);
+> +	if (unlikely(!si->max)) {
+>  		error = -EINVAL;
+>  		goto bad_swap_unlock_inode;
+>  	}
+>  
+> -	si->max = maxpages;
+> -	si->pages = maxpages - 1;
+> +	si->pages = si->max - 1;
+>  	nr_extents = setup_swap_extents(si, swap_file, &span);
+>  	if (nr_extents < 0) {
+>  		error = nr_extents;
+> @@ -3531,14 +3528,12 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+>  		goto bad_swap_unlock_inode;
+>  	}
+>  
+> -	maxpages = si->max;
+> -
+>  	/* Set up the swap cluster info */
+> -	error = setup_swap_clusters_info(si, swap_header, maxpages);
+> +	error = setup_swap_clusters_info(si, swap_header);
+>  	if (error)
+>  		goto bad_swap_unlock_inode;
+>  
+> -	error = swap_cgroup_swapon(si->type, maxpages);
+> +	error = swap_cgroup_swapon(si->type, si->max);
+>  	if (error)
+>  		goto bad_swap_unlock_inode;
+>  
+> @@ -3546,7 +3541,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+>  	 * Use kvmalloc_array instead of bitmap_zalloc as the allocation order might
+>  	 * be above MAX_PAGE_ORDER incase of a large swap file.
+>  	 */
+> -	si->zeromap = kvmalloc_array(BITS_TO_LONGS(maxpages), sizeof(long),
+> +	si->zeromap = kvmalloc_array(BITS_TO_LONGS(si->max), sizeof(long),
+>  				     GFP_KERNEL | __GFP_ZERO);
+>  	if (!si->zeromap) {
+>  		error = -ENOMEM;
+> @@ -3597,7 +3592,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+>  		}
+>  	}
+>  
+> -	error = zswap_swapon(si->type, maxpages);
+> +	error = zswap_swapon(si->type, si->max);
+>  	if (error)
+>  		goto bad_swap_unlock_inode;
+>  
+
+
+-- 
+Damien Le Moal
+Western Digital Research
