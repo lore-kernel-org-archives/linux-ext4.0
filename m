@@ -1,118 +1,121 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.3])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A323529BDBF;
-	Tue, 12 May 2026 02:11:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.3
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEDA53B7744;
+	Tue, 12 May 2026 05:36:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778551900; cv=none; b=I+TIQCWurUxO5yTr5OdiVDytWVaqPF8U5S7kHOC6vZBW+GoGZ3sbXg/smHzQKi153/aHCSBM7WuGGLK+DIDw65bVYs6uRzEC/3c9NFN03IuILhdhVMLWQ/idj8JzAD9jXCac5be78aQ4BFWuJ7ypqQHugtXpau+9P4hwoTK9FTs=
+	t=1778564208; cv=none; b=T7dHhhPt/U6aIJa6HWkdyj/VQXrESpZ0RNvnjIyPAvm7cnU8gx/1Z5dXW0ybbmND14xbN0bsR44MgHIGNQu9gIbtxGq11yUTm5MqVBuljRcUAgHAHjmXxrUKncva7Z1QvG4vWcYFJWwVocSb+rVjjwi7xfJpFY73AsS4yAyP6dk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778551900; c=relaxed/simple;
-	bh=y6yQ6HM0XyM5CHXUndby/A+KEehTP2dSwQ8ng2pGSwY=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=MHmVJ4Jpzf/DBzdl/wfxYaNkW03YGSoDyL+Ab3nGeJJIfnaD46zL8r+7p+47f0ij14vWNQx93uYDHxks5wCsLanE0GAE4zsVME5GzGGjIhqF5vGXjcvnR06/r/sch1QZyINQpQZ4aM8cUur8sOoxiEaJIh1r7+f0eowAYONAx9g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=fl0nAvyJ; arc=none smtp.client-ip=117.135.210.3
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+	s=arc-20240116; t=1778564208; c=relaxed/simple;
+	bh=XFV7RR6J0X5n+Nu9/rm5rxtB2SpA+lJioNk9zcWWi6A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=AjCbxmtOUPouerY+7M3/W4D8PgmAEb/nnKmBQR3Q34qRquXNWu2cWv+gBihqgwR42QJMYEPjotlxua1V9luRn6eEtDr/LVd6oLEg1PqN8HlJI5sslZF1GM1Nyw4NoLt5m9T2nX8bk5HK79ElCx1DaGmzabD77py8pkp82nNBM9s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=KIK+jQvS; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="fl0nAvyJ"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
-	Content-Type; bh=+Z8makgKmcfdp697EY64x32KShxUw//enrX43GpQF5E=;
-	b=fl0nAvyJXKttn7RUqT4Vv92mVVO1eEQLlpOXBqk6dgmWnPYRJ12yRuEOpVdvut
-	3NjK/PvNukHb/4On+1xnD3WHKOKFpRALDyXR6LWuq7F6RgQDhCUjtv3g4zeHQ2fB
-	62S+9O5mWr52DTmajOxVq0Y7LdrUE06oFkIWcOkU8DaFw=
-Received: from [192.168.56.102] (unknown [])
-	by gzga-smtp-mtada-g0-2 (Coremail) with SMTP id _____wBH9+E2jAJqJL1qAw--.3266S2;
-	Tue, 12 May 2026 10:11:03 +0800 (CST)
-Message-ID: <f64bdace-15c0-43e6-98eb-12628cdfbf33@163.com>
-Date: Tue, 12 May 2026 10:11:02 +0800
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="KIK+jQvS"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+	Content-ID:Content-Description:In-Reply-To:References;
+	bh=L6G3lv4jbdMbQ4QsNCiCXE8kA9OQYRVEnsOclxNjvlk=; b=KIK+jQvSnKRXIFRrePcKSt8tSC
+	gTDIoVa3ilaBJgAv2JyiBq1oBQNEEVuR8cAKQZACHFbXeQgzOq5bCCS43yMoo3rZpQpygSiDzL+5p
+	k8ewxMk5abPknkbI0BLQkk18U//bp1Se74dgd8ytTOIwgIqIRD8+j0upZnmtm9RP/nG0Iay4iv5BI
+	0R0Ux2iGn5C8GSW0QkgvHRpchKQA0HU/3surCqZ+w6g1XBcpaQIEofBGAUjsWIOw9fW5TdRUHOoZH
+	pIElcotsE4NXj4I4GC6C78nmVfU4K8GqhWK2VIAj1M/0+2fkttDIMP1Vqdy9WFOxCQtHvlSJJWz7z
+	NqzmFnXw==;
+Received: from 2a02-8389-2341-5b80-decc-1a96-daaa-a2cc.cable.dynamic.v6.surfer.at ([2a02:8389:2341:5b80:decc:1a96:daaa:a2cc] helo=localhost)
+	by bombadil.infradead.org with esmtpsa (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wMfnF-0000000FfDa-0NfM;
+	Tue, 12 May 2026 05:36:33 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Chris Li <chrisl@kernel.org>,
+	Kairui Song <kasong@tencent.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+	"Darrick J . Wong " <djwong@kernel.org>,
+	Jens Axboe <axboe@kernel.dk>,
+	David Sterba <dsterba@suse.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Chao Yu <chao@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Steve French <sfrench@samba.org>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Carlos Maiolino <cem@kernel.org>,
+	Damien Le Moal <dlemoal@kernel.org>,
+	Naohiro Aota <naohiro.aota@wdc.com>,
+	linux-xfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-doc@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-block@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org
+Subject: improve the swap_activate interface
+Date: Tue, 12 May 2026 07:35:16 +0200
+Message-ID: <20260512053625.2950900-1-hch@lst.de>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 v4 2/3] ext4: use atomic operations for s_mb_stats
- accesses
-To: sashiko@lists.linux.dev, libaokun@linux.alibaba.com,
- adilger.kernel@dilger.ca, tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- adilger@dilger.ca, wangguanyu@vivo.com
-References: <20260508093428.5814-3-liubaolin12138@163.com>
- <20260508200245.A703BC2BCC7@smtp.kernel.org>
-Content-Language: en-US
-From: liubaolin <liubaolin12138@163.com>
-In-Reply-To: <20260508200245.A703BC2BCC7@smtp.kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wBH9+E2jAJqJL1qAw--.3266S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW7CFyfGrWUZrWrtry7XF4DCFg_yoW8uw1kpr
-	s5Jay5KFsFvwn3C39rCFs5Gw4Fv342k347GrWayryjkFZ09r1vyryxKFy5ZFy5ArWDGF1I
-	vF4kK34DC3y3uaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07U3hL5UUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RdLFmoCjDeqIgAA34
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Dear All,
-    Sashiko AI reviewed the patch and provided two points. I will take 
-these into consideration and submit a revised version for v5 as soon as 
-possible.
+Hi all,
 
-Thanks,
-Baolin
+Darrick recently posted iomap support for fuse-iomap, which was trivial
+but a bit ugly, which triggered me into looking how this could be done
+in a cleaner way.  The result of that is this fairly big series that
+reworks how the MM code calls into the file system to activate swap
+files to make it much cleaner and easier to use.
 
-在 2026/5/9 04:02, sashiko-bot@kernel.org 写道:
-> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [Low] Architectural Anti-pattern: Using `atomic_t` for a simple configuration flag
-> --
-> 
-> commit 4ef770887d49b5db285ae4848dba912e51abd333
-> Author: Baolin Liu <liubaolin@kylinos.cn>
-> ext4: use atomic operations for s_mb_stats accesses
-> 
-> This commit converts the s_mb_stats configuration flag in ext4 from an
-> unsigned int to an atomic_t to fix data races between sysfs updates and
-> mballoc reads.
-> 
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 94283a991e5c4..4fb19fcb1f5f3 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
-> [ ... ]
->> @@ -1622,7 +1622,7 @@ struct ext4_sb_info {
->>   	unsigned int s_mb_stream_request;
->>   	unsigned int s_mb_max_to_scan;
->>   	unsigned int s_mb_min_to_scan;
->> -	unsigned int s_mb_stats;
->> +	atomic_t s_mb_stats;
-> 
-> Since s_mb_stats is only loaded and stored concurrently without any
-> read-modify-write operations (like atomic_inc), would it be better to retain
-> the unsigned int type and use READ_ONCE() and WRITE_ONCE() instead? Using
-> atomic_t for simple configuration flags can add unnecessary conceptual
-> overhead.
-> 
->> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
->> index 923b375e017fa..fad2819f36319 100644
->> --- a/fs/ext4/sysfs.c
->> +++ b/fs/ext4/sysfs.c
-> [ ... ]
->> @@ -540,6 +541,12 @@ static ssize_t ext4_generic_attr_store(struct ext4_attr *a,
->>   			return ret;
->>   		*((unsigned long *) ptr) = lt;
->>   		return len;
->> +	case attr_pointer_atomic:
->> +		ret = kstrtoint(skip_spaces(buf), 0, &i);
->> +		if (ret)
->> +			return ret;
->> +		atomic_set((atomic_t *)ptr, i);
->> +		return len;
->>   	}
->>   	return 0;
-> 
-> Does migrating from attr_pointer_ui (which uses kstrtouint) to
-> attr_pointer_atomic unintentionally allow logically invalid negative
-> values to be written to s_mb_stats, since kstrtoint accepts negative numbers?
-> 
+I've tested this with swap devices manually, and using the swap tests
+in xfstests on btrfs, ext3, ext4, f2fs and xfs to exercise the different
+implementation.  Out of those all passed, but f2fs actually notruns all
+tests even in the baseline as it requires special preparation for
+swapfiles which never got wired up in xfstests.
 
+Diffstat:
+ Documentation/filesystems/iomap/operations.rst |    3 
+ Documentation/filesystems/locking.rst          |   35 +--
+ Documentation/filesystems/vfs.rst              |   40 ++--
+ block/fops.c                                   |   15 +
+ fs/btrfs/btrfs_inode.h                         |    3 
+ fs/btrfs/file.c                                |    4 
+ fs/btrfs/inode.c                               |   72 -------
+ fs/ext4/file.c                                 |    6 
+ fs/ext4/inode.c                                |   11 -
+ fs/f2fs/data.c                                 |   50 -----
+ fs/f2fs/f2fs.h                                 |    2 
+ fs/f2fs/file.c                                 |    4 
+ fs/iomap/swapfile.c                            |  165 +++---------------
+ fs/nfs/direct.c                                |    1 
+ fs/nfs/file.c                                  |   21 --
+ fs/nfs/nfs4file.c                              |    3 
+ fs/ntfs/aops.c                                 |    8 
+ fs/ntfs/file.c                                 |    6 
+ fs/smb/client/cifsfs.c                         |   18 +
+ fs/smb/client/cifsfs.h                         |    3 
+ fs/smb/client/file.c                           |   16 -
+ fs/xfs/xfs_aops.c                              |   48 -----
+ fs/xfs/xfs_file.c                              |   39 ++++
+ fs/zonefs/file.c                               |   30 +--
+ include/linux/fs.h                             |   11 -
+ include/linux/iomap.h                          |    5 
+ include/linux/nfs_fs.h                         |    3 
+ include/linux/swap.h                           |  129 +-------------
+ mm/page_io.c                                   |   45 ----
+ mm/swap.h                                      |   92 ++++++++++
+ mm/swapfile.c                                  |  227 ++++++++++++++-----------
+ 31 files changed, 471 insertions(+), 644 deletions(-)
