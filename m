@@ -1,56 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A85B9385D6B;
-	Tue, 12 May 2026 17:10:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0421342509;
+	Tue, 12 May 2026 18:09:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778605829; cv=none; b=i1wpDAG1YU4yv/8aRb6zN3WnlsdA2yz4cgBcSodM+Bo/IjlkejggUzkZiBGwCWMQ9HNUY2FMyWoshHGssjGEqorLxY/5DP5WVlbowTPOL7OD1muH9hLxNHf60Aq5mV59/8LCMZJCKK2bbAtH8hoiOH1BlwGw1K2Shydd8q2Q4kI=
+	t=1778609376; cv=none; b=KPq+XVRPDFCWHazyTpcJBzCyGeAgMofr88qqlcH0+vIA7WdabAzafWI3h+YKmoePBlCn8zx8aGi0uQOnBH87UyeENeOGcYKCexH+grUa8GhA7i2tYQc/gVWRLf168pJSuu1Wy4cK61V43dcazVDFseXAR4e4ggsz70wFkU20FkI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778605829; c=relaxed/simple;
-	bh=UIMc6Epq1jKVpYoN8NQkrsbH35Z/rxkSt0+cjObPXEg=;
+	s=arc-20240116; t=1778609376; c=relaxed/simple;
+	bh=NSlA8PXwaSQBg9lRU0nicIqgs5LnnxiwnlmBNMi6WY4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=vF2Rh4X0Meb/cIxqTxT8Dd9Bs+Y7KK5rNJkI5VbdgkYjg7f3MHRUe8iQ3sHnmh1y2+vYUcUBCjpyNC3Kz8BYRym8YdjUSjKvhOiYsjKBvCFVD4zAhrUnRJVxilOY5Q0e/FuK27y+4qxd+pwUduBgo0zznzSI3iflkOrJaoqL+kI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cwQyUKQ7; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=Lw5qzI4KUbfSS6n0JBkH8+F52EkvQ9T66v09DtFyynSJiHe8qRBBjxW+BZ9QyVB4WQmxK3X+p4pkS9HI9NlbWW2UaSqDMCclWIkygKkkgkymLPZMROPUN8zcfAl+bZwfrvZ2dtQdiIixeUHwpvqJQUv+sP0Cq1lIfBVKa9LEQ4o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=E0VkP0b5; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cwQyUKQ7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BEBEC2BCB0;
-	Tue, 12 May 2026 17:10:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="E0VkP0b5"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC46DC2BCC7;
+	Tue, 12 May 2026 18:09:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1778605829;
-	bh=UIMc6Epq1jKVpYoN8NQkrsbH35Z/rxkSt0+cjObPXEg=;
+	s=k20201202; t=1778609375;
+	bh=NSlA8PXwaSQBg9lRU0nicIqgs5LnnxiwnlmBNMi6WY4=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=cwQyUKQ7/ehswE6htqBY9YS5WZtrPNKyBqWQCvZt3MGoMAZl38WrdS4VCCUoTtce5
-	 3HXiMl5gnt6E8BE0Wlgn1JAAx+a721k2CiMTFjCC1q/33PgDsydSqQVOEZ0c/aEcPh
-	 qqMPItxUFu2pzF96J9wTatigpI1eNoG4appb93SUembefpNXfS+dQ3jx5Zjo7T9pg+
-	 Mru+31A2ZvAy//NyZ0pamvIuUJ6MRZj/QrOw+oPtdc5YksLDWF2zrWsZK+3k4Y36/N
-	 kUKgR6D21j3nHYHX3zYVq674GjpOqIAusFNnu8t7U2Rep60jDIv6s7wrNPKcxawCYO
-	 7JJLf2m6C5FqQ==
-Date: Tue, 12 May 2026 10:10:28 -0700
+	b=E0VkP0b5V95lhkKdR2N5aMoqVD85Idh3sajRyX4B+aoVPS8KwZvGe4exOrMTw/mvW
+	 lcEVmjAZ0M9/U0fS+ZB3+o4jXPtK/f/ay370CQfmYALauVY8k6v/+yQqe5hTWvwthP
+	 9RkwFZMEZjcVIhSN8yk39O/LF3KkNvbqo2j1YuH3b1ScsQyATbop+esKoYwk3iiqE5
+	 AauiT7mX9rO8As179KanRivV+JxycQciVQbvh72mmS1+9ftrKRwlnzMq8rC8Sf6XsS
+	 X5i1rxKg4Wd2Xyk2fhs+nrt2yRzZRg6McFesdNlk6X7EsoH6J6KdltcsMscctTVoE8
+	 gUHsk7uFfoEpw==
+Date: Tue, 12 May 2026 11:09:35 -0700
 From: "Darrick J. Wong" <djwong@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>,
-	Kairui Song <kasong@tencent.com>,
-	Christian Brauner <brauner@kernel.org>,
-	Jens Axboe <axboe@kernel.dk>, David Sterba <dsterba@suse.com>,
-	Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
-	Chao Yu <chao@kernel.org>, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Hyunchul Lee <hyc.lee@gmail.com>, Steve French <sfrench@samba.org>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Carlos Maiolino <cem@kernel.org>,
-	Damien Le Moal <dlemoal@kernel.org>,
-	Naohiro Aota <naohiro.aota@wdc.com>, linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-doc@vger.kernel.org,
-	linux-mm@kvack.org, linux-block@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 12/12] swap: move swap_info_struct to mm/swap.h
-Message-ID: <20260512171028.GM9555@frogsfrogsfrogs>
-References: <20260512053625.2950900-1-hch@lst.de>
- <20260512053625.2950900-13-hch@lst.de>
+To: Brian Foster <bfoster@redhat.com>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>, fstests@vger.kernel.org,
+	zlang@kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, jack@suse.cz, yi.zhang@huawei.com,
+	yizhang089@gmail.com, yangerkun@huawei.com
+Subject: Re: [PATCH v3] generic/790: test post-EOF gap zeroing persistence
+Message-ID: <20260512180935.GB9544@frogsfrogsfrogs>
+References: <20260428085750.1072612-1-yi.zhang@huaweicloud.com>
+ <afHqVR7WwYgawwVm@bfoster>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -59,288 +45,254 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260512053625.2950900-13-hch@lst.de>
+In-Reply-To: <afHqVR7WwYgawwVm@bfoster>
 
-On Tue, May 12, 2026 at 07:35:28AM +0200, Christoph Hellwig wrote:
-> swap_info_struct is now internal to the MM subsystem, so remove it from
-> the public header.
-> 
+On Wed, Apr 29, 2026 at 07:24:05AM -0400, Brian Foster wrote:
+> On Tue, Apr 28, 2026 at 04:57:50PM +0800, Zhang Yi wrote:
+> > From: Zhang Yi <yi.zhang@huawei.com>
+> > 
+> > Test that extending a file past a non-block-aligned EOF correctly
+> > zero-fills the gap [old_EOF, block_boundary), and that this zeroing
+> > persists through a filesystem shutdown+remount cycle.
+> > 
+> > Stale data beyond EOF can persist on disk when append write data blocks
+> > are flushed before the on-disk file size update, or when concurrent
+> > append writeback and mmap writes persist non-zero data past EOF.
+> > Subsequent post-EOF operations (append write, fallocate, truncate up)
+> > must zero-fill and persist the gap to prevent exposing stale data.
+> > 
+> > The test pollutes the file's last physical block (via FIEMAP + raw
+> > device write) with a sentinel pattern beyond i_size, then performs each
+> > extend operation and verifies the gap is zeroed both in memory and on
+> > disk.
 
-Even more cleaning out of swap.h is nice, so
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+Hmm.  So this test fails on ext4, which apparently doesn't persist the
+isize update, which seems like a reasonable behaveior.
+
+It also complains about seeing the 0x5a pattern on xfs, which surprises
+me a little.  Is that a bug in xfs, and is someone working on that?
 
 --D
 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  include/linux/swap.h | 98 +-------------------------------------------
->  mm/swap.h            | 92 +++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 94 insertions(+), 96 deletions(-)
+> > 
+> > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > ---
 > 
-> diff --git a/include/linux/swap.h b/include/linux/swap.h
-> index 95237ee065c2..31eef9b74949 100644
-> --- a/include/linux/swap.h
-> +++ b/include/linux/swap.h
-> @@ -16,9 +16,9 @@
->  #include <uapi/linux/mempolicy.h>
->  #include <asm/page.h>
->  
-> -struct notifier_block;
-> -
->  struct bio;
-> +struct notifier_block;
-> +struct swap_info_struct;
->  
->  #define SWAP_FLAG_PREFER	0x8000	/* set if swap priority specified */
->  #define SWAP_FLAG_PRIO_MASK	0x7fff
-> @@ -178,29 +178,6 @@ struct sysinfo;
->  struct writeback_control;
->  struct zone;
->  
-> -/*
-> - * Max bad pages in the new format..
-> - */
-> -#define MAX_SWAP_BADPAGES \
-> -	((offsetof(union swap_header, magic.magic) - \
-> -	  offsetof(union swap_header, info.badpages)) / sizeof(int))
-> -
-> -enum {
-> -	SWP_USED	= (1 << 0),	/* is slot in swap_info[] used? */
-> -	SWP_WRITEOK	= (1 << 1),	/* ok to write to this swap?	*/
-> -	SWP_DISCARDABLE = (1 << 2),	/* blkdev support discard */
-> -	SWP_DISCARDING	= (1 << 3),	/* now discarding a free cluster */
-> -	SWP_SOLIDSTATE	= (1 << 4),	/* blkdev seeks are cheap */
-> -	SWP_BLKDEV	= (1 << 6),	/* its a block device */
-> -	SWP_ACTIVATED	= (1 << 7),	/* set after swap_activate success */
-> -	SWP_FS_OPS	= (1 << 8),	/* swapfile operations go through fs */
-> -	SWP_AREA_DISCARD = (1 << 9),	/* single-time swap area discards */
-> -	SWP_PAGE_DISCARD = (1 << 10),	/* freed swap page-cluster discards */
-> -	SWP_STABLE_WRITES = (1 << 11),	/* no overwrite PG_writeback pages */
-> -	SWP_SYNCHRONOUS_IO = (1 << 12),	/* synchronous IO is efficient */
-> -					/* add others here before... */
-> -};
-> -
->  #define SWAP_CLUSTER_MAX 32UL
->  #define SWAP_CLUSTER_MAX_SKIPPED (SWAP_CLUSTER_MAX << 10)
->  #define COMPACT_CLUSTER_MAX SWAP_CLUSTER_MAX
-> @@ -219,56 +196,6 @@ enum {
->  #define SWAP_NR_ORDERS		1
->  #endif
->  
-> -/*
-> - * We keep using same cluster for rotational device so IO will be sequential.
-> - * The purpose is to optimize SWAP throughput on these device.
-> - */
-> -struct swap_sequential_cluster {
-> -	unsigned int next[SWAP_NR_ORDERS]; /* Likely next allocation offset */
-> -};
-> -
-> -/*
-> - * The in-memory structure used to track swap areas.
-> - */
-> -struct swap_info_struct {
-> -	struct percpu_ref users;	/* indicate and keep swap device valid. */
-> -	unsigned long	flags;		/* SWP_USED etc: see above */
-> -	signed short	prio;		/* swap priority of this type */
-> -	struct plist_node list;		/* entry in swap_active_head */
-> -	signed char	type;		/* strange name for an index */
-> -	unsigned int	max;		/* size of this swap device */
-> -	unsigned long *zeromap;		/* kvmalloc'ed bitmap to track zero pages */
-> -	struct swap_cluster_info *cluster_info; /* cluster info. Only for SSD */
-> -	struct list_head free_clusters; /* free clusters list */
-> -	struct list_head full_clusters; /* full clusters list */
-> -	struct list_head nonfull_clusters[SWAP_NR_ORDERS];
-> -					/* list of cluster that contains at least one free slot */
-> -	struct list_head frag_clusters[SWAP_NR_ORDERS];
-> -					/* list of cluster that are fragmented or contented */
-> -	unsigned int pages;		/* total of usable pages of swap */
-> -	atomic_long_t inuse_pages;	/* number of those currently in use */
-> -	struct swap_sequential_cluster *global_cluster; /* Use one global cluster for rotating device */
-> -	spinlock_t global_cluster_lock;	/* Serialize usage of global cluster */
-> -	struct rb_root swap_extent_root;/* root of the swap extent rbtree */
-> -	struct block_device *bdev;	/* swap device or bdev of swap file */
-> -	struct file *swap_file;		/* seldom referenced */
-> -	struct completion comp;		/* seldom referenced */
-> -	spinlock_t lock;		/*
-> -					 * protect map scan related fields like
-> -					 * inuse_pages and all cluster lists.
-> -					 * Other fields are only changed
-> -					 * at swapon/swapoff, so are protected
-> -					 * by swap_lock. changing flags need
-> -					 * hold this lock and swap_lock. If
-> -					 * both locks need hold, hold swap_lock
-> -					 * first.
-> -					 */
-> -	struct work_struct discard_work; /* discard worker */
-> -	struct work_struct reclaim_work; /* reclaim worker */
-> -	struct list_head discard_clusters; /* discard clusters list */
-> -	struct plist_node avail_list;   /* entry in swap_avail_head */
-> -};
-> -
->  static inline swp_entry_t page_swap_entry(struct page *page)
->  {
->  	struct folio *folio = page_folio(page);
-> @@ -423,10 +350,7 @@ int find_first_swap(dev_t *device);
->  extern unsigned int count_swap_pages(int, int);
->  extern sector_t swapdev_block(int, pgoff_t);
->  extern int __swap_count(swp_entry_t entry);
-> -extern bool swap_entry_swapped(struct swap_info_struct *si, swp_entry_t entry);
->  extern int swp_swapcount(swp_entry_t entry);
-> -struct backing_dev_info;
-> -extern struct swap_info_struct *get_swap_device(swp_entry_t entry);
->  sector_t swap_folio_sector(struct folio *folio);
->  
->  /*
-> @@ -452,20 +376,7 @@ bool folio_free_swap(struct folio *folio);
->  swp_entry_t swap_alloc_hibernation_slot(int type);
->  void swap_free_hibernation_slot(swp_entry_t entry);
->  
-> -static inline void put_swap_device(struct swap_info_struct *si)
-> -{
-> -	percpu_ref_put(&si->users);
-> -}
-> -
->  #else /* CONFIG_SWAP */
-> -static inline struct swap_info_struct *get_swap_device(swp_entry_t entry)
-> -{
-> -	return NULL;
-> -}
-> -
-> -static inline void put_swap_device(struct swap_info_struct *si)
-> -{
-> -}
->  
->  #define get_nr_swap_pages()			0L
->  #define total_swap_pages			0L
-> @@ -497,11 +408,6 @@ static inline int __swap_count(swp_entry_t entry)
->  	return 0;
->  }
->  
-> -static inline bool swap_entry_swapped(struct swap_info_struct *si, swp_entry_t entry)
-> -{
-> -	return false;
-> -}
-> -
->  static inline int swp_swapcount(swp_entry_t entry)
->  {
->  	return 0;
-> diff --git a/mm/swap.h b/mm/swap.h
-> index a77016f2423b..70974495bf15 100644
-> --- a/mm/swap.h
-> +++ b/mm/swap.h
-> @@ -8,6 +8,79 @@ struct swap_iocb;
->  
->  extern int page_cluster;
->  
-> +/*
-> + * We keep using same cluster for rotational device so IO will be sequential.
-> + * The purpose is to optimize SWAP throughput on these device.
-> + */
-> +struct swap_sequential_cluster {
-> +	unsigned int next[SWAP_NR_ORDERS]; /* Likely next allocation offset */
-> +};
-> +
-> +/*
-> + * The in-memory structure used to track swap areas.
-> + */
-> +struct swap_info_struct {
-> +	struct percpu_ref users;	/* indicate and keep swap device valid. */
-> +	unsigned long	flags;		/* SWP_USED etc: see above */
-> +	signed short	prio;		/* swap priority of this type */
-> +	struct plist_node list;		/* entry in swap_active_head */
-> +	signed char	type;		/* strange name for an index */
-> +	unsigned int	max;		/* size of this swap device */
-> +	unsigned long *zeromap;		/* kvmalloc'ed bitmap to track zero pages */
-> +	struct swap_cluster_info *cluster_info; /* cluster info. Only for SSD */
-> +	struct list_head free_clusters; /* free clusters list */
-> +	struct list_head full_clusters; /* full clusters list */
-> +	struct list_head nonfull_clusters[SWAP_NR_ORDERS];
-> +					/* list of cluster that contains at least one free slot */
-> +	struct list_head frag_clusters[SWAP_NR_ORDERS];
-> +					/* list of cluster that are fragmented or contented */
-> +	unsigned int pages;		/* total of usable pages of swap */
-> +	atomic_long_t inuse_pages;	/* number of those currently in use */
-> +	struct swap_sequential_cluster *global_cluster; /* Use one global cluster for rotating device */
-> +	spinlock_t global_cluster_lock;	/* Serialize usage of global cluster */
-> +	struct rb_root swap_extent_root;/* root of the swap extent rbtree */
-> +	struct block_device *bdev;	/* swap device or bdev of swap file */
-> +	struct file *swap_file;		/* seldom referenced */
-> +	struct completion comp;		/* seldom referenced */
-> +	spinlock_t lock;		/*
-> +					 * protect map scan related fields like
-> +					 * inuse_pages and all cluster lists.
-> +					 * Other fields are only changed
-> +					 * at swapon/swapoff, so are protected
-> +					 * by swap_lock. changing flags need
-> +					 * hold this lock and swap_lock. If
-> +					 * both locks need hold, hold swap_lock
-> +					 * first.
-> +					 */
-> +	struct work_struct discard_work; /* discard worker */
-> +	struct work_struct reclaim_work; /* reclaim worker */
-> +	struct list_head discard_clusters; /* discard clusters list */
-> +	struct plist_node avail_list;   /* entry in swap_avail_head */
-> +};
-> +
-> +/*
-> + * Max bad pages in the new format..
-> + */
-> +#define MAX_SWAP_BADPAGES \
-> +	((offsetof(union swap_header, magic.magic) - \
-> +	  offsetof(union swap_header, info.badpages)) / sizeof(int))
-> +
-> +enum {
-> +	SWP_USED	= (1 << 0),	/* is slot in swap_info[] used? */
-> +	SWP_WRITEOK	= (1 << 1),	/* ok to write to this swap?	*/
-> +	SWP_DISCARDABLE = (1 << 2),	/* blkdev support discard */
-> +	SWP_DISCARDING	= (1 << 3),	/* now discarding a free cluster */
-> +	SWP_SOLIDSTATE	= (1 << 4),	/* blkdev seeks are cheap */
-> +	SWP_BLKDEV	= (1 << 6),	/* its a block device */
-> +	SWP_ACTIVATED	= (1 << 7),	/* set after swap_activate success */
-> +	SWP_FS_OPS	= (1 << 8),	/* swapfile operations go through fs */
-> +	SWP_AREA_DISCARD = (1 << 9),	/* single-time swap area discards */
-> +	SWP_PAGE_DISCARD = (1 << 10),	/* freed swap page-cluster discards */
-> +	SWP_STABLE_WRITES = (1 << 11),	/* no overwrite PG_writeback pages */
-> +	SWP_SYNCHRONOUS_IO = (1 << 12),	/* synchronous IO is efficient */
-> +					/* add others here before... */
-> +};
-> +
->  #ifdef CONFIG_THP_SWAP
->  #define SWAPFILE_CLUSTER	HPAGE_PMD_NR
->  #define swap_entry_order(order)	(order)
-> @@ -352,6 +425,13 @@ static inline int non_swapcache_batch(swp_entry_t entry, int max_nr)
->  	return i;
->  }
->  
-> +bool swap_entry_swapped(struct swap_info_struct *si, swp_entry_t entry);
-> +struct swap_info_struct *get_swap_device(swp_entry_t entry);
-> +static inline void put_swap_device(struct swap_info_struct *si)
-> +{
-> +	percpu_ref_put(&si->users);
-> +}
-> +
->  #else /* CONFIG_SWAP */
->  struct swap_iocb;
->  static inline struct swap_cluster_info *swap_cluster_lock(
-> @@ -498,5 +578,17 @@ static inline int non_swapcache_batch(swp_entry_t entry, int max_nr)
->  {
->  	return 0;
->  }
-> +static inline bool swap_entry_swapped(struct swap_info_struct *si,
-> +		swp_entry_t entry)
-> +{
-> +	return false;
-> +}
-> +static inline struct swap_info_struct *get_swap_device(swp_entry_t entry)
-> +{
-> +	return NULL;
-> +}
-> +static inline void put_swap_device(struct swap_info_struct *si)
-> +{
-> +}
->  #endif /* CONFIG_SWAP */
->  #endif /* _MM_SWAP_H */
-> -- 
-> 2.53.0
+> Reviewed-by: Brian Foster <bfoster@redhat.com>
+> 
+> > v2->v3:
+> >  - Add error check for the raw device pwrite, a failed pwrite would
+> >    silently leave the test continuing with an unpolluted block,
+> >    producing false-positive passes.
+> >  - Add sync_range -a to wait until the extending I/O completes and to
+> >    ensure file size update is persisted before shutdown, preventing
+> >    unexpected file size errors.
+> > v1->v2:
+> >  - Add _require_no_realtime to prevent testing on XFS realtime devices,
+> >    where file data may reside on $SCRATCH_RTDEV.
+> >  - Add _exclude_fs btrfs since FIEMAP returns logical addresses, not
+> >    physical device offsets, writing to these offsets on $SCRATCH_DEV
+> >    would corrupt the filesystem in multi-device setups. Besides, since
+> >    btrfs doesn't support shutdown right now, we can support it later.
+> >  - Add -v flag to od in _check_gap_zero() to prevent line folding of
+> >    identical consecutive lines.
+> >  - Add expected_new_sz parameter to _test_eof_zeroing(), verify file
+> >    size was not rolled back after shutdown+remount cycle, and also drop
+> >    the unnecessary file size check before the shutdown as well.
+> >  - Clarify the comment regarding when stale data beyond EOF can persist.
+> > 
+> >  tests/generic/790     | 168 ++++++++++++++++++++++++++++++++++++++++++
+> >  tests/generic/790.out |   4 +
+> >  2 files changed, 172 insertions(+)
+> >  create mode 100755 tests/generic/790
+> >  create mode 100644 tests/generic/790.out
+> > 
+> > diff --git a/tests/generic/790 b/tests/generic/790
+> > new file mode 100755
+> > index 00000000..6daf3793
+> > --- /dev/null
+> > +++ b/tests/generic/790
+> > @@ -0,0 +1,168 @@
+> > +#! /bin/bash
+> > +# SPDX-License-Identifier: GPL-2.0
+> > +# Copyright (c) 2026 Huawei.  All Rights Reserved.
+> > +#
+> > +# FS QA Test No. 790
+> > +#
+> > +# Test that extending a file past a non-block-aligned EOF correctly zero-fills
+> > +# the gap [old_EOF, block_boundary), and that this zeroing persists through a
+> > +# filesystem shutdown+remount cycle.
+> > +#
+> > +# Stale data beyond EOF can persist on disk when:
+> > +# 1) append write data blocks are flushed before the on-disk file size update,
+> > +#    and the system crashes in this window.
+> > +# 2) concurrent append writeback and mmap writes persist non-zero data past EOF.
+> > +#
+> > +# Subsequent post-EOF operations (append write, fallocate, truncate up) must
+> > +# zero-fill and persist the gap to prevent exposing stale data.
+> > +#
+> > +# The test pollutes the file's last physical block (via FIEMAP + raw device
+> > +# write) with a sentinel pattern beyond i_size, then performs each extend
+> > +# operation and verifies the gap is zeroed both in memory and on disk.
+> > +#
+> > +. ./common/preamble
+> > +_begin_fstest auto quick rw shutdown
+> > +
+> > +. ./common/filter
+> > +
+> > +_require_scratch
+> > +_require_block_device $SCRATCH_DEV
+> > +_require_no_realtime
+> > +_require_scratch_shutdown
+> > +_require_metadata_journaling $SCRATCH_DEV
+> > +
+> > +# FIEMAP on Btrfs returns logical addresses within the filesystem's address
+> > +# space, not physical device offsets. Writing to these offsets on $SCRATCH_DEV
+> > +# would corrupt the filesystem in multi-device setups.
+> > +_exclude_fs btrfs
+> > +
+> > +_require_xfs_io_command "fiemap"
+> > +_require_xfs_io_command "falloc"
+> > +_require_xfs_io_command "pwrite"
+> > +_require_xfs_io_command "truncate"
+> > +_require_xfs_io_command "sync_range"
+> > +
+> > +# Check that gap region [offset, offset+nbytes) is entirely zero
+> > +_check_gap_zero()
+> > +{
+> > +	local file="$1"
+> > +	local offset="$2"
+> > +	local nbytes="$3"
+> > +	local label="$4"
+> > +	local data
+> > +	local stripped
+> > +
+> > +	data=$(od -A n -t x1 -v -j $offset -N $nbytes "$file" 2>/dev/null)
+> > +
+> > +	# Remove whitespace and check if any byte is non-zero
+> > +	stripped=$(printf '%s' "$data" | tr -d ' \n\t')
+> > +	if [ -n "$stripped" ] && ! echo "$stripped" | grep -qE "^0+$"; then
+> > +		echo "FAIL: non-zero data in gap [$offset,$((offset + nbytes))) $label"
+> > +		_hexdump -N $((offset + nbytes)) "$file"
+> > +		return 1
+> > +	fi
+> > +	return 0
+> > +}
+> > +
+> > +# Get the physical block offset (in bytes) of the file's first block on device
+> > +_get_phys_offset()
+> > +{
+> > +	local file="$1"
+> > +	local fiemap_output
+> > +	local phys_blk
+> > +
+> > +	fiemap_output=$($XFS_IO_PROG -r -c "fiemap -v" "$file" 2>/dev/null)
+> > +	phys_blk=$(echo "$fiemap_output" | _filter_xfs_io_fiemap | head -1 | awk '{print $3}')
+> > +	if [ -z "$phys_blk" ]; then
+> > +		echo ""
+> > +		return
+> > +	fi
+> > +	# Convert 512-byte blocks to bytes
+> > +	echo $((phys_blk * 512))
+> > +}
+> > +
+> > +_test_eof_zeroing()
+> > +{
+> > +	local test_name="$1"
+> > +	local extend_cmd="$2"
+> > +	local expected_new_sz="$3"
+> > +	local file=$SCRATCH_MNT/testfile_${test_name}
+> > +
+> > +	echo "$test_name" | tee -a $seqres.full
+> > +
+> > +	# Compute non-block-aligned EOF offset
+> > +	local gap_bytes=16
+> > +	local eof_offset=$((blksz - gap_bytes))
+> > +
+> > +	# Step 1: Write one full block to ensure the filesystem allocates a
+> > +	#         physical block for the file instead of using inline data.
+> > +	$XFS_IO_PROG -f -c "pwrite -S 0x5a 0 $blksz" -c fsync \
+> > +		"$file" >> $seqres.full 2>&1
+> > +
+> > +	# Step 2: Get physical block offset on device via FIEMAP
+> > +	local phys_offset
+> > +	phys_offset=$(_get_phys_offset "$file")
+> > +	if [ -z "$phys_offset" ]; then
+> > +		_fail "$test_name: failed to get physical block offset via fiemap"
+> > +	fi
+> > +
+> > +	# Step 3: Truncate file to non-block-aligned size and fsync.
+> > +	#         The on-disk region [eof_offset, blksz) may or may not be
+> > +	#         zeroed by the filesystem at this point.
+> > +	$XFS_IO_PROG -c "truncate $eof_offset" -c fsync \
+> > +		"$file" >> $seqres.full 2>&1
+> > +
+> > +	# Step 4: Unmount and restore the physical block to all-0x5a on disk.
+> > +	#         This bypasses the kernel's pagecache EOF-zeroing to ensure
+> > +	#         the stale pattern is present on disk. Then remount.
+> > +	_scratch_unmount
+> > +	$XFS_IO_PROG -d -c "pwrite -S 0x5a $phys_offset $blksz" \
+> > +		$SCRATCH_DEV >> $seqres.full 2>&1
+> > +	if [ $? -ne 0 ]; then
+> > +		_fail "$test_name: failed to inject stale data on disk"
+> > +	fi
+> > +	_scratch_mount >> $seqres.full 2>&1
+> > +
+> > +	# Step 5: Execute the extend operation.
+> > +	$XFS_IO_PROG -c "$extend_cmd" "$file" >> $seqres.full 2>&1
+> > +
+> > +	# Step 6: Verify gap [eof_offset, blksz) is zeroed BEFORE shutdown
+> > +	_check_gap_zero "$file" $eof_offset $gap_bytes "before shutdown" || return 1
+> > +
+> > +	# Step 7: Sync the extended range and shutdown the filesystem with
+> > +	#         journal flush. This persists the file size extending, and
+> > +	#         the filesystem should persist the zeroed data in the gap
+> > +	#         range as well.
+> > +	if [ "$extend_cmd" != "${extend_cmd#pwrite}" ]; then
+> > +		$XFS_IO_PROG -c "sync_range -w $blksz $blksz" \
+> > +			-c "sync_range -a $blksz $blksz" \
+> > +			"$file" >> $seqres.full 2>&1
+> > +	fi
+> > +	_scratch_shutdown -f
+> > +
+> > +	# Step 8: Remount and verify gap is still zeroed
+> > +	_scratch_cycle_mount
+> > +
+> > +	# Verify file size was not rolled back after shutdown+remount
+> > +	local sz
+> > +	sz=$(stat -c %s "$file")
+> > +	if [ "$sz" -ne "$expected_new_sz" ]; then
+> > +		_fail "$test_name: file size rolled back after shutdown+remount: $sz != $expected_new_sz"
+> > +	fi
+> > +
+> > +	_check_gap_zero "$file" $eof_offset $gap_bytes "after shutdown+remount" || return 1
+> > +}
+> > +
+> > +_scratch_mkfs >> $seqres.full 2>&1
+> > +_scratch_mount
+> > +
+> > +blksz=$(_get_block_size $SCRATCH_MNT)
+> > +
+> > +# Test three variants of EOF-extending operations
+> > +_test_eof_zeroing "append_write" "pwrite -S 0x42 $blksz $blksz" $((blksz * 2))
+> > +_test_eof_zeroing "truncate_up" "truncate $((blksz * 2))" $((blksz * 2))
+> > +_test_eof_zeroing "fallocate" "falloc $blksz $blksz" $((blksz * 2))
+> > +
+> > +# success, all done
+> > +status=0
+> > +exit
+> > diff --git a/tests/generic/790.out b/tests/generic/790.out
+> > new file mode 100644
+> > index 00000000..e5e2cc09
+> > --- /dev/null
+> > +++ b/tests/generic/790.out
+> > @@ -0,0 +1,4 @@
+> > +QA output created by 790
+> > +append_write
+> > +truncate_up
+> > +fallocate
+> > -- 
+> > 2.52.0
+> > 
 > 
 > 
