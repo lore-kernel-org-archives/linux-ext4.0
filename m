@@ -1,207 +1,174 @@
-Received: from SY5PR01CU010.outbound.protection.outlook.com (mail-australiaeastazolkn19012015.outbound.protection.outlook.com [52.103.72.15])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0996E3EDE71;
-	Wed, 13 May 2026 09:30:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.103.72.15
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778664621; cv=fail; b=KgPkuwM0K71mAMxYtRBbcx/yOYiAnN6SxmQie0M6d5+rfO1nBoCC1HGtmFlRTpfMPBHHCVVaZHse9P/8M4w7TX861IUdEHI5fCuXFwhBFAhgw+XfMNcMha8hOkgQKeDziBhqC/eenxHgVESnzIGsddDcdRUOdklzWPcrgl9FkBM=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778664621; c=relaxed/simple;
-	bh=LW1rrdOh9KjYtmKcow2UFcHFw+OaIqOGifGVZfcmOag=;
-	h=From:Date:Subject:Content-Type:Message-ID:To:Cc:In-Reply-To:
-	 MIME-Version; b=emWLoklohXHgh09RWSfemHeIW8w25UQ8Y1I4O/7pXJmLoj56Z/YlYL01KYDS3jINHF4B5rv6vjYgV1+Chy/omJMUAb2UmHAH6dPE8UBC+RFaWkp5MSfNhspm4iSQ3Z8JrUlAnkJSKEpjzz7OzuLwvM7JptEZLJBPXd7tl5Jd7Lc=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=outlook.com; spf=pass smtp.mailfrom=outlook.com; dkim=pass (2048-bit key) header.d=outlook.com header.i=@outlook.com header.b=cMRgn8BM; arc=fail smtp.client-ip=52.103.72.15
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=outlook.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=outlook.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3FF73E51EC
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2026 09:41:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1778665310; cv=none; b=F4GuJRyU6JJsOhVmQkNMWSONFTLjGtqY6AAexafGG6X6+EPx+S+RTtPjVYjI5JQnnrBRuuxAE44HhxRm7WTz1TaHMxjyD8Mg7Wlv6LIvTSwW6Nz7UP4t+yMyxoaqkITs4p4HIeQPyIKL/DYBo+6mCBjvx32u11rLdwV+FdnvH2A=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1778665310; c=relaxed/simple;
+	bh=yv1ioo730nb6PxBR6EOAVNHeIOBqXWPZLY5HWhRhaUE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=K7X8/6m0Ga+u9mjyk1JlsFEG+m0IkCsPOtN9No1BQjPjJDr0yVE3GUMIuMispgT4lHF1H5yUDjnTn6glvtYm3P8z+TtxUY5ew8f3m99nG54VsdGOQRIt9vKwqF2PpFiPmQqiCZSYpn91seDVtCK6YOYyYdA4kDkR37CvucZEzeA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fqh2ulBH; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7mq8Q5Jo; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Z3V8tlGP; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=rCDPzi1D; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=outlook.com header.i=@outlook.com header.b="cMRgn8BM"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=uaTLs1Tt8nT6rIY599rgKAsIAgOaTDDrwtxHecLjYmspiYF40BfZ1GIx2V8ctOInADf2tFr6b1HpBR4CsNpWzSFdyUv4wtRhG7FdKPxn3hYLRy5fG/MNvjpX8s3mH/HQP8zTBX8zQ1412zPxdEGAaIlT7Cj52JXNqTVVdUQV43KFjUIU9iMv7bYw6d+ASqUwH/VO3eaA4W5Z9KovfWL/DbEg+5UtMJFA1mrTxZlisqQlJi5Q/u5xf8/Q28DIzB1cBP40MByrmSaxVNpSVuwKqEU70o8rqstKf9e6X2Z12GF5eFAYSaBskA6M7HYALGuutWFCfvIx3qln9CoAI4uZww==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=N27HIpZuE8+qg5fxTVBek/oYg9QUikHN4Tlat0JWxXU=;
- b=kkNka9KZkmb4UfCN5lxluIgAMRWd1QSugPioJNgQDFjuP4R3F88thOtecEStjozxobfOTTTbwhPOujW/FxOYx1+bbV/UkLemOmF0b5uopXG7l7HAs0iRwNL9hkGAE9McfeEa9nWhnNlOijouCb25SkDtTueoNwBDeja/zQcyfIDjXLUB//0E+tG3nrU1oXsgsf9iFjkhb2LJSURSqgCbBj2JFz5hDpHVZF1XlEap+/nmVwJ078M5jMcjKx1cyVNl2xlNV7VzAjKJ6Npu4KMo5pKfKhiD/ajZewimUQo7J8rQqSAYdywX6V0UGPdUsqujXvTwzbGD2DNe4uGEeGDekw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
- dkim=none; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=outlook.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=N27HIpZuE8+qg5fxTVBek/oYg9QUikHN4Tlat0JWxXU=;
- b=cMRgn8BMRRsaTmFVjgRv6SOIbOaoOSWuWyZkuKL3n6djt/Z8VmyBKBmzEv8VQHPEuF0qUoDFW5i7DCxbzbskituLHLI/IJ2UOinslSjn7F8+aM4SNG8fLEtZ/yPxbs6JeNNfeKfI7dW+IU0Xr5fc63KU0ZyC0UT91baXuk69tpQuFzL5JMn0KOc5XjODxY3Hc/lmrg5D4p6VFqxd+c+bhOIxCLOzbt6kxQCRcchFobR7r4dn2nDjlzUp87qFenN4TwmgBiCMMvfYHlOd3D1Qbqur5KLZLOr2G4+bI8SKVHPCqS0DGr9cerv21Y+3C5gENCyR1zIm+MEiGuZW/aXG+g==
-Received: from SYBPR01MB7881.ausprd01.prod.outlook.com (2603:10c6:10:1b0::5)
- by SYBPR01MB6510.ausprd01.prod.outlook.com (2603:10c6:10:112::5) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.25.18; Wed, 13 May
- 2026 09:30:14 +0000
-Received: from SYBPR01MB7881.ausprd01.prod.outlook.com
- ([fe80::7cd2:d6e8:3fa0:5f0c]) by SYBPR01MB7881.ausprd01.prod.outlook.com
- ([fe80::7cd2:d6e8:3fa0:5f0c%3]) with mapi id 15.21.0025.012; Wed, 13 May 2026
- 09:30:14 +0000
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Wed, 13 May 2026 17:28:40 +0800
-Subject: [PATCH v2] jbd2: fix integer underflow in
- jbd2_journal_initialize_fast_commit()
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-ID:
- <SYBPR01MB7881663C927DE9D7BBF4D1DFAF062@SYBPR01MB7881.ausprd01.prod.outlook.com>
-X-B4-Tracking: v=1; b=H4sIAEdEBGoC/x3KQQqAIBBA0avIrBN0LIOuEi3EmWo2FgoSSHdPW
- j7+b1A4CxdYVIPMVYpcqcMOCuIZ0sFaqBvQoDeTdXqXh4tmT5GCw9nRCP29M/+hrytUhO19P0H
- H6WFbAAAA
-X-Change-ID: 20260513-fixes-e6dcda3273d4
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>, 
- Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org, 
- Junrui Luo <moonafterrain@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1561;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=LW1rrdOh9KjYtmKcow2UFcHFw+OaIqOGifGVZfcmOag=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGLBYXd+kj0mZdv775bJrx7tHziYGHCmVKp5l5HTZ7+
- C7tt8gGZomOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmEjJMkaGEwsnHV25wMvX
- 5Y6gVOChtQ3JhzPTuIMTw+If3GDye5HXzcjwKqNigcbHGY++bDt5u6VVd47P9NMRuVv6SpbrOb0
- 9OIeVEQCAi0ul
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-In-Reply-To: <SYBPR01MB78813DD23B28BD49B1AA1123AF392@SYBPR01MB7881.ausprd01.prod.outlook.com>
-X-ClientProxiedBy: TYCP286CA0228.JPNP286.PROD.OUTLOOK.COM
- (2603:1096:400:3c7::7) To SYBPR01MB7881.ausprd01.prod.outlook.com
- (2603:10c6:10:1b0::5)
-X-Microsoft-Original-Message-ID:
- <20260513-fixes-v1-1-22ad08b19665@outlook.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fqh2ulBH";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7mq8Q5Jo";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Z3V8tlGP";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="rCDPzi1D"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id EC02E5CB08;
+	Wed, 13 May 2026 09:41:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1778665307; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=bHbjEZfhKP7MJos5pJgS08ZWYJyr7oZkJ7o2krPi9BU=;
+	b=fqh2ulBHqD2oMl4oxfd+2P2NPyx5Z9pRdSilNofKJeesZxzFdOdibrEym5vW79SwpXrIMt
+	mO78Pmk+c0ThPkNfNtX4jI93IKhqlBy7snxHel8459ezrApygEk5B5ZAyhHLjS3NND70Op
+	9QQ8/6bpLdJwYB1p//bmZ7nuXnMLMBI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1778665307;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=bHbjEZfhKP7MJos5pJgS08ZWYJyr7oZkJ7o2krPi9BU=;
+	b=7mq8Q5JoHwJcX0grqxxEPD1w6frOb2Rw94YR5W1tIPmZBwAqJt/JcstcbWhLxxZUWtVJn4
+	sRJDmPxzlw8U7zCw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1778665306; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=bHbjEZfhKP7MJos5pJgS08ZWYJyr7oZkJ7o2krPi9BU=;
+	b=Z3V8tlGPlLbO6yOkQ8fi/ZCrekrGpY3K1Lb8PWAyevdb0isRPyn2TC4hlpzdgNLTmGhH4X
+	l/4p7nf4j87D2HMkDLMX0YM3hG1Q6S7ZdyV8fiPQPWliYPEkIh5NNzz+Ilh1erDmRLvCcS
+	u8h6p9HhvYBylMz9nbC6e9J1pkyKn9c=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1778665306;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=bHbjEZfhKP7MJos5pJgS08ZWYJyr7oZkJ7o2krPi9BU=;
+	b=rCDPzi1DJ8ODRHM3AsZYqIvu9OLp+v+KcSkw8bVybo6hEYDDAKwHdXXL/IRacxxqqKK+83
+	rvvwuknzhZXHZ/BQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E24D2593A9;
+	Wed, 13 May 2026 09:41:46 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id WqE5N1pHBGrJdgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 13 May 2026 09:41:46 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 7C854A0800; Wed, 13 May 2026 11:41:46 +0200 (CEST)
+Date: Wed, 13 May 2026 11:41:46 +0200
+From: Jan Kara <jack@suse.cz>
+To: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
+	Christian Brauner <brauner@kernel.org>, aivazian.tigran@gmail.com, Ted Tso <tytso@mit.edu>, 
+	linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 6/9] fat: Fix possibly missing inode write on fsync(2)
+Message-ID: <hgouso5rqzv6lpzrublrp2marwxw7broz6hewltpfbhzuev3za@rzzbw7zaj32m>
+References: <20260511115725.28441-1-jack@suse.cz>
+ <20260511121356.241821-15-jack@suse.cz>
+ <87pl32yq2a.fsf@mail.parknet.co.jp>
+ <rnl552jwa6x72ibx3sg2oeitn6sh6jp5tnfu7evycol2fopw7v@ahwlfjnuoiwy>
+ <87v7ctddui.fsf@mail.parknet.co.jp>
+ <jb536ihpuajtk4dcpxquos5fmmllfs7uiq3ryvnsfl4tesiidj@jwhnlrdiaih3>
+ <877bp8yang.fsf@mail.parknet.co.jp>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-Exchange-MessageSentRepresentingType: 1
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: SYBPR01MB7881:EE_|SYBPR01MB6510:EE_
-X-MS-Office365-Filtering-Correlation-Id: e2da9ea5-53b5-4b17-2688-08deb0d23cc0
-X-Microsoft-Antispam:
-	BCL:0;ARA:14566002|12121999013|8060799015|19110799012|23021999003|41001999006|15080799012|6090799003|24021099003|55001999006|24121999003|22091999003|5072599009|51005399006|10035399007|440099028|3412199025|4302099013|12091999003|1602099012|40105399003|1710799026;
-X-Microsoft-Antispam-Message-Info:
-	=?utf-8?B?Q2dNZzZSRDZZdGx5UHFUT082a0hkZGJPUmFadXc2Zy93SlFpeEpIY2FBR0lm?=
- =?utf-8?B?cUFxN3F3Ty9DVjQzY2tybXNCWWpSVGdJZysxUmpIMHJpczlSTHRnOHpjMnp0?=
- =?utf-8?B?YXFXYU1vL3ArbnVlczJiWENhdFFhMXUrMmNhK3pGR3pqNm5ocTRRcENDNWV5?=
- =?utf-8?B?V01hYU9kREw2WGhET1JsV3cwYnpFMldiTVR6TytCN1E2OXdPcGFyaitBY2o1?=
- =?utf-8?B?MGd1eEJwMFFialZ4d3BGUW9ES3VtL1dmOXNhWU1vSHl1dkF4VHpYdC9wbkhL?=
- =?utf-8?B?M1gvY25vQjZFL0J1QjhTQWFZa3dINUFBSllqUjNSQkxobWRlRy8xb2lDSEYy?=
- =?utf-8?B?VlN3cnlGcWM1NEpKdXJiMVBlbWNOb0xXU1pSOEZtZUFsaDVhZDNHYm5ldlFC?=
- =?utf-8?B?QVFUZGxSRWZaWERFNDh2VXFhdGNDaVFxd01vclljYWtzbTdjSFNNUjIwT040?=
- =?utf-8?B?dzU3dHNJVnBRd3hTWTRQYk96N1UySmYwUkVCSG85VXU4eURHd3RBcDFiNVJS?=
- =?utf-8?B?V1o0NzFUd05YN0RBS3ZnemhwWDlDaURVOFdFWWJYTW1NaW1YV2E5UGtaUU1x?=
- =?utf-8?B?bWxsRXRkZ0hhY2pSMDloWUNBU1FzNk1TNERQR2JCMjNaclRQYWlrSC9TcDNK?=
- =?utf-8?B?Um9LT0pDY3RKQ2NyenRCaUl1UFF2ZVdXMDRPakp4OC90QmhnaDRDNFhQTjU1?=
- =?utf-8?B?Wm4waWJKWGhSYW5FUm4zSU5VWkRaYTNGZlpHbk13bllRc0xCRDJ1d0IyMU50?=
- =?utf-8?B?RU9jRUxhYTVIQWRVM29HSENBcStOdjhRWEFzVXN3VWJXN2lYSnpXenhwZDdX?=
- =?utf-8?B?Q3ZmU1Mra3czd2FTblh4VWNOMDcxcWQ1Z05iMVlRazdxRWdXZXQ5V1J6S2hZ?=
- =?utf-8?B?OXJEL1IxdDVGSFRyZ3lxSCtENmljRVNzNXZmeFBQY1lKa3dCR2xHVXZJR09l?=
- =?utf-8?B?OEFCZk4vWThyV0h4eWEyQ1dvZFVhVE9kY3NJZlBFcUkzVDRPdEhSak9vVkZ6?=
- =?utf-8?B?bWlCU2o5bk85ak5yUTBybUlxY2g4NXN1NHBOdTVDWFA4QytWS3VTRG5rSHdp?=
- =?utf-8?B?OVM5eGI5NTNzcTlVOHJDVWJUeHhzK2ZsVVN0aFNQOGJuVnFXb05DekhHQkpm?=
- =?utf-8?B?YXhRMXNSWXM4aGovdkxSTUlFQkhWOGYxR0xVVlZOc0RCME16SDJ1T1luV1BH?=
- =?utf-8?B?WlJydkVaSTZ0WDRXQ3pJdkowVmJWeTNyejlvaUh0eGk2R2ZLK0JpclBQMkNk?=
- =?utf-8?B?S2NuM3ZGczFjdCtjVjE4WVZ2cHJEOXFaakp5ZVovTW9vbEhNVXpVY1BIb291?=
- =?utf-8?B?UXU0Ylg5dSt6aUlkQ25GWVZCenpFZXNCRzRadEx6SUlhaVBhc1NVbWFEMlZZ?=
- =?utf-8?B?blFGVnpYQ245VWIyVVR4QXQ1c1IxTVd1T2pQbXo4dHgvRDhuMnNqQnNJaXpO?=
- =?utf-8?B?NGFyaWI1TXNWNTlvcmlQNnhCUW56dE5kOEJqb3V4dFB3aU1FK1VkcmhxanNo?=
- =?utf-8?B?d2plSytsRHJ5R283V0t2akpuTlN3ekxSZjZXVkdJRW9NY1E5WWVwQmkwUys3?=
- =?utf-8?B?K2N1Um82bTJTZ0hvcnZXMCt1bzlsbE5aWFhzMklrQWZMSFRLTFFhYzJzU015?=
- =?utf-8?Q?D5+v9SiFry/WOpezWE614maX2V5SGt+7gNjPp3e58C24=3D?=
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?OEVWc0lVbVhuMitWcmNKY3ZYTEhvTjkwS0o2UkRLc2VvTVR4RFFEd0JzTnFI?=
- =?utf-8?B?MHI1elo0VVU3WTRlUzlld3hZVmU4RFRleGNRekFQT05tSmJQR0NRVjhUVjlL?=
- =?utf-8?B?QTFPMnZNcGxmSTBOM0c3dDlDUnBtaHpYT2NnOGZITmYxN1lrS2dwOTN0RTBq?=
- =?utf-8?B?QlVXUmlWeE01cEViNDBxb0g5WWc1Skw1d3VIZkZJWnowOGRFWUlzTldaZ0M1?=
- =?utf-8?B?cjJ6NTN5QmEwWFQzUjlpeFR2R3hac2V4Y0xINXdNNlRWendhbENCVGFsUHov?=
- =?utf-8?B?NFhQWUM3Qjg3Rno2RXVTVE8xRHM4bDZld2g3L3EzRzc0dUhoT2NDektndTRk?=
- =?utf-8?B?d2VqNTdZckU4bUtTMjNmWUczUGlLZEgwUWxXVE0reFdzcDVad2k2ei9RcTNv?=
- =?utf-8?B?TVlOV1JKZFViUW0rbzFiMWYwd2M3c3Bpdmx6cGM1L2lTQ1RZZ3ZSc2U3OUsx?=
- =?utf-8?B?bHJ6SzViYnJMM3YwR285S3JwWnFMc2U3YTF5VTVFQjlMdWlMWUxOTVArOGtr?=
- =?utf-8?B?WTBqVWgwVXdhYjl0dlUzb210K3FkTDNldlBtZkIyRXNDR3VXbW00L2wxUEdU?=
- =?utf-8?B?c0hzN2loTEFQS2FscGFJYWluSGFTblg3ZzQ5WjY2d0ZmUXNuWHhEYUgwUkw4?=
- =?utf-8?B?MFlmWXVRbkZpYUpKbElLKzlLbkRIaVJzamdQOHkxeTVEeEdUclJ2TjJxc3dz?=
- =?utf-8?B?KzRYRnRBK0VUMWpHSWNqaUhaYXBOZkw3N2pIQmpnRm55T3owbkpLbG1QR09D?=
- =?utf-8?B?a01uT3hLZVY1WUpBMG5jNzFyR2lPOU1DRVVJYTlvYmZjaEd4T1VlNUtKeTNw?=
- =?utf-8?B?b2hVam15T1BBeHVBTW8yUG9wOW1zVGl3bDJoRE9ORTIyeEc5UDFDOXJWbUQ1?=
- =?utf-8?B?MkNDT1BMOWxiYjJmRWZjT3BwaXZRUUxSdzFiYU9Kd1FWQ0J4eStRb2tIOHA0?=
- =?utf-8?B?Q0drcCtXaVdsS29nQzRJS3dreGJnYU5ldTBGV1BSU3FDSkZseE5iNzB2QmdB?=
- =?utf-8?B?eUQ2SnZzdHROcG8zSnRGaE1JNFA4OVVMTndPNXFQNlhyVE9DQlFsNWZVTDZt?=
- =?utf-8?B?SkphMnN2RyswTzcrdDViUWNVMHNVbFdFKzhMd2hOQlRlVTdDZmQ3cGVSQXVH?=
- =?utf-8?B?QkVqdHBybXhmR0lnYzhGV0p4Y3Jpc0pWMG00KzVtSkJFUVhYbU50V1BaVHgz?=
- =?utf-8?B?Q0lUcjZmSURkUk1TbGZndkh6WFdLb2htMWs4cDR1eTZpMEZCRVRnWXJnMUZV?=
- =?utf-8?B?ZlhNT0hWUmhDTHgvNzhYQXFBcW1xTXpVUlBYQzJZTURyTVYwSENXbEZTUjhu?=
- =?utf-8?B?b3dOMGdXUWlLejVZSzBJbFhHT1hYdGgzUDlUSFRrZGc5MDJWQ1F6ZHB5bXRu?=
- =?utf-8?B?U0gwd0VwcUNqQkQzUFg4b2NSMnBwb2xsSHE3RXh1N1ZER3YyZGVIUjlpNFMx?=
- =?utf-8?B?Unh1czJPOVFTV294UlVDbm1ZZzdRK2VucHhabVJXVEJGeThEMzAxMUxENHRh?=
- =?utf-8?B?MkNtcXB2OC81d3BFSEFzVjNIWG9oeGlWZEVFcHRoZFg5R21aa2Q0YW1HL2dz?=
- =?utf-8?B?UXEyTWNMbEhQamtrUGNsRHJmTllrSDVKQ2QyUjZDZEI2WEhpRlpjOXVsRXVK?=
- =?utf-8?B?M2NqLzJSSTh3V0p2c2FZaFN5RUxaS0Y2TmJYNmlhck55a3RUN0xlTVJCUkhi?=
- =?utf-8?B?cVNiQ0xPY0pOK2dvUnJPcThHWm5ZOFZNYVJkbGZDWjR0d1RtU1lGOERBOTlh?=
- =?utf-8?B?TEZ1OWtKM0haRUpWalZyVmVmTXBrYUpaWm5HTEF1emZZSWNtZCtkMEpUTGNu?=
- =?utf-8?B?TjdXMU1McHd2NGxOVTVvUFd6UWpFOWtvUCtIMTNSRE9HVUt6TS9Cb1lXSld6?=
- =?utf-8?Q?LipTgmhVOdscZ?=
-X-OriginatorOrg: outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: e2da9ea5-53b5-4b17-2688-08deb0d23cc0
-X-MS-Exchange-CrossTenant-AuthSource: SYBPR01MB7881.ausprd01.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 13 May 2026 09:30:14.4898
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa
-X-MS-Exchange-CrossTenant-RMS-PersistedConsumerOrg:
-	00000000-0000-0000-0000-000000000000
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SYBPR01MB6510
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <877bp8yang.fsf@mail.parknet.co.jp>
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,kernel.org,gmail.com,mit.edu];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.30
 
-jbd2_journal_initialize_fast_commit() validates journal capacity by
-checking (journal->j_last - num_fc_blks < JBD2_MIN_JOURNAL_BLOCKS).
-Both j_last and num_fc_blks are unsigned, so when num_fc_blks exceeds
-j_last the subtraction wraps to a large value, bypassing the bounds
-check.
+On Tue 12-05-26 23:17:55, OGAWA Hirofumi wrote:
+> Jan Kara <jack@suse.cz> writes:
+> 
+> >> I didn't check the case of rename completely, just recalled it when I
+> >> saw this code, need confirm/check.  But at least, the case of remove
+> >> will leave it even after the block is reused.
+> >
+> > Right. fat_detach() should set i_metadata_bhs.inode_blk to INVALID_BLK,
+> > thanks for catching that. I was thinking whether we should set
+> > i_metadata_bhs.inode_blk in fat_attach() instead of during inode dirtying.
+> > It would be somewhat more obviously correct but it could lead to
+> > unnecessary flushing in case the directory block gets dirtied by some other
+> > entry in it while the inode we are fsyncing got never dirtied. IMHO that's
+> > a sensible tradeoff so I'd do that but what is your opinion?
+> 
+> IMO, the marker should be cleared like b_assoc_buffers or I_DIRTY_*
+> flags after each sync. Otherwise, because the block is shared with other
+> inodes, it would sync/wait the unrelated dirty easily.
 
-The resulting underflow corrupts j_last, j_fc_first, and j_free,
-leading to journal abort.
+Well, even if we do that, we should still clear inode_blk in fat_detach()
+AFAICT as nobody has to sync the inode before unlinking it.
 
-Fix by checking num_fc_blks against j_last before the subtraction,
-returning -EFSCORRUPTED.
+Regarding clearing of inode_blk in mmb_sync() - yes, that makes sense could
+be done although then we have to be careful about races of mmb_sync() with
+.write_inode so that always guarantee mmb_sync() after .write_inode will
+persist the buffer. I'll see how complex that will get.
 
-Fixes: 6866d7b3f2bb ("ext4 / jbd2: add fast commit initialization")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
----
-Changes in v2:
-- Return -EFSCORRUPTED instead of -ENOSPC
-- Link to v1: https://lore.kernel.org/all/SYBPR01MB78813DD23B28BD49B1AA1123AF392@SYBPR01MB7881.ausprd01.prod.outlook.com/
----
- fs/jbd2/journal.c | 2 ++
- 1 file changed, 2 insertions(+)
+> [And more serious implementation, looks like it should be cleared at
+> similar points or such with b_assoc_buffers is cleared to minimize
+> unrelated sync/wait.]
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index cb2c529a8f1b..0bb97459fbf0 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2263,6 +2263,8 @@ jbd2_journal_initialize_fast_commit(journal_t *journal)
- 	unsigned long long num_fc_blks;
- 
- 	num_fc_blks = jbd2_journal_get_num_fc_blks(sb);
-+	if (num_fc_blks > journal->j_last)
-+		return -EFSCORRUPTED;
- 	if (journal->j_last - num_fc_blks < JBD2_MIN_JOURNAL_BLOCKS)
- 		return -ENOSPC;
- 
+OTOH this doesn't really make much sense. We need to handle b_assoc_buffers
+when bh is getting reclaimed so that we can free the bh. We deliberately
+track inode block number and not bh pointer in mapping_metadata_bhs so that
+bhs backing inodes can be freed independently as it's infeasible to track
+down all mapping_metadata_bhs structs that might be referencing this bh.
 
----
-base-commit: 7aaa8047eafd0bd628065b15757d9b48c5f9c07d
-change-id: 20260513-fixes-e6dcda3273d4
+And yes, I'm aware that in some corner cases the simple tracking can result
+in mmb_sync() writing out inode buffer although the inode itself was
+already persisted but exact tracking is way too expensive and not worth it
+for simple filesystems using this infrastructure. If we implement clearing
+of inode_blk in mmb_sync(), then we'll write out inode buffer unnecessarily
+at most once after the inode gets dirty which is IMO a reasonable middle
+ground between complexity of the tracking and unnecessary writeback.
 
-Best regards,
+								Honza
 -- 
-Junrui Luo <moonafterrain@outlook.com>
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
