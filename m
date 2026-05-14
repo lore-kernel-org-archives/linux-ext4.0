@@ -1,115 +1,143 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1DAF03C4553;
-	Thu, 14 May 2026 06:34:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778740493; cv=none; b=cV2vwuMxAwMSydUevGLEjV2YlXcxiXI0SjFQemApVznrD2bbPFI5Ri0FA9RBuz06KA4SUAGmvnW0hN4O/CVQR02C7lq8aw3p9v69omS5exWOa8mIhvH6f9UkzR0c8Lot1LG3rWiVVqkEgSFgyoAYiNXbunZ0jDejGq6aT+a13lA=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778740493; c=relaxed/simple;
-	bh=yve/zbgSuUshC2W///tJeSfhRFvCvYaK5aTaNm0cRnE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OrlmPO0Ub0mzlTJV8L/G8/N8qcpk/iJzF2Mt+DiuY1GnazRm1sw2KzXYWL3N/cQ8EHjt2yG6rr4Bg5BiBbrBeYgSyWbf6uUMMx+6J95PGwu+0tSgYs/ry8bXKTvCjNRFiz965BEU/WlU2u0/rxRy0lhHUHd0Cr4fvw1qqzD6pdQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gGLBj4WbrzKHMQM;
-	Thu, 14 May 2026 14:33:49 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id D99CE40574;
-	Thu, 14 May 2026 14:34:44 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with SMTP id gCh0CgCnb1v4bAVqIcT3CA--.41732S6;
-	Thu, 14 May 2026 14:34:44 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-fsdevel@vger.kernel.org,
-	linux-xfs@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org,
-	brauner@kernel.org,
-	djwong@kernel.org,
-	hch@infradead.org,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	yizhang089@gmail.com,
-	yangerkun@huawei.com,
-	yukuai@fnnas.com
-Subject: [PATCH 2/4] iomap: support invalidating partial folios
-Date: Thu, 14 May 2026 14:29:53 +0800
-Message-ID: <20260514062955.1183976-3-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260514062955.1183976-1-yi.zhang@huaweicloud.com>
-References: <20260514062955.1183976-1-yi.zhang@huaweicloud.com>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 280813D88E5
+	for <linux-ext4@vger.kernel.org>; Thu, 14 May 2026 07:28:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1778743695; cv=pass; b=UgQirWQLRxKUKCYLGMX73BjSTvylqanTHdaWpf/NxKEhtdVmG4rgtUN7dwdxCIayV5Lhn127fsNdmXu4v6dmnzAuKLn3WI25m4zAB9cPnScQXQoKRPmidLH7HrrzeyP0z9vFz4rsPpcqaDR++VW48GKrNYMU0DKNrsc1VJG2MT8=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1778743695; c=relaxed/simple;
+	bh=gTDl3a2HjdTkls2KCClwZup8qGgLP0nHtvXY4JmOPbg=;
+	h=Date:From:To:Cc:Message-ID:In-Reply-To:References:Subject:
+	 MIME-Version:Content-Type; b=vEVCLQ4qP5oFI2BXZf0brp1KRQ+UwvgN+yWqAchGRuMAdDBYjClMworG9ibHuYn2Hnrx3EAoTYe524k45LlQUZlriLPhtgB0SmlEeR6BjD8KlOcJmU7+p141xcSqf3qP9jt1M7KMLIGqMASpCwkuwKt/CmYkqmNvc3rWJldmhec=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=U/o8+LEp; arc=pass smtp.client-ip=136.143.188.15
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="U/o8+LEp"
+ARC-Seal: i=1; a=rsa-sha256; t=1778743686; cv=none; 
+	d=zohomail.com; s=zohoarc; 
+	b=Q/ylkYm0y5IAbmbGuFVo7Sdcr+Bm1wcL1TLad+vYqqCvd4EbZN2xbUG3rEjeuG79ibw9NZAnLKmkhF5Y3g1rXQEqOqYNlr7JvnBeXh3EZgiZoSq0F/KVx2SqCDf0MqHSpWtqCN97alHBoPTddLzx9FiPI8SpOLEA9f5H6a4GOUs=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
+	t=1778743686; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=WWYjUDfvep/Wp+fKpRwvD98NxIseSp42RISuostGNIY=; 
+	b=LbSX5d0z9ppcVuIcn3pJTYEFj2JlADDNrUP8TWQVs4YLRl+H8Ay+QB7dREDLXCnrGciF6dd0+fJHWl1LQdJAzsY9bWbeGeEywt9JOFAHc3i9o0mxy0IBVHx99JNF+7DsIL5QgzVt/H1lXu4II7Z2V+pt6faTE2xrNoCcUtRrZ2U=
+ARC-Authentication-Results: i=1; mx.zohomail.com;
+	dkim=pass  header.i=linux.beauty;
+	spf=pass  smtp.mailfrom=me@linux.beauty;
+	dmarc=pass header.from=<me@linux.beauty>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1778743686;
+	s=zmail; d=linux.beauty; i=me@linux.beauty;
+	h=Date:Date:From:From:To:To:Cc:Cc:Message-ID:In-Reply-To:References:Subject:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=WWYjUDfvep/Wp+fKpRwvD98NxIseSp42RISuostGNIY=;
+	b=U/o8+LEpnzKVwoNmMz4rOZ+nvxsft5GM1D0P1MKuqX85afBrK2B5UinzivSaf8cZ
+	O5YDAeFhJawal8LQI4T/qavNZPdrcj1oYEs8uTKVv0xtYORB2F/+guwD1uIxnpjH93h
+	PtQFx/FECKjsmlcrLRb6WoQlJzZ3xPKtNz6Q95v8=
+Received: from mail.zoho.com by mx.zohomail.com
+	with SMTP id 1778743683891166.01678968466956; Thu, 14 May 2026 00:28:03 -0700 (PDT)
+Date: Thu, 14 May 2026 15:28:03 +0800
+From: Li Chen <me@linux.beauty>
+To: "sashiko" <sashiko@lists.linux.dev>
+Cc: "tytso" <tytso@mit.edu>, "Linux ext4" <linux-ext4@vger.kernel.org>
+Message-ID: <19e2562ab1f.7bfc0be11828124.5033413086245138109@linux.beauty>
+In-Reply-To: <20260512034640.71DA1C2BCB0@smtp.kernel.org>
+References: <20260511084304.1559557-5-me@linux.beauty> <20260512034640.71DA1C2BCB0@smtp.kernel.org>
+Subject: Re: [RFC v7 4/7] ext4: fast commit: avoid self-deadlock in inode
+ snapshotting
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCnb1v4bAVqIcT3CA--.41732S6
-X-Coremail-Antispam: 1UD129KBjvJXoW7uF1xtrW5Jw48tw18Kr4fAFb_yoW8Cr43pF
-	W3KrWDGryDGr17uw17Ca1fXF1j9a9xXFy7CFW3Gw1a9Fs8Jw1qgFyUKa1Ygay7JryxAF1S
-	vrsFgFyvqF15A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUm014x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
-	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVj
-	vjDU0xZFpf9x0JUQXo7UUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Importance: Medium
+User-Agent: Zoho Mail
+X-Mailer: Zoho Mail
 
-From: Zhang Yi <yi.zhang@huawei.com>
+Hi sashiko,
 
-Current iomap_invalidate_folio() can only invalidate an entire folio. If
-we truncate a partial folio on a filesystem where the block size is
-smaller than the folio size, it will leave behind dirty bits for the
-truncated or punched blocks. During the write-back process, it will
-attempt to map the invalid hole range. Fortunately, this has not caused
-any real problems so far because the ->writeback_range() function
-corrects the length.
+ ---- On Tue, 12 May 2026 11:46:39 +0800   <sashiko-bot@kernel.org> wrote -=
+--=20
+ > Thank you for your contribution! Sashiko AI review found 1 potential iss=
+ue(s) to consider:
+ > - [Critical] Removing igrab() exposes a critical use-after-free vulnerab=
+ility because ext4_fc_del() can miss the EXT4_STATE_FC_COMMITTING state tra=
+nsition and free the inode while it is actively being snapshotted.
+ > --
+ >=20
+ > commit 39c5450f50154240ff764cf3a63e011d8e973fd4
+ > Author: Li Chen <me@linux.beauty>
+ >=20
+ > ext4: fast commit: avoid self-deadlock in inode snapshotting
+ >=20
+ > This commit removes igrab()/iput() during fast commit snapshotting, rely=
+ing
+ > instead on the EXT4_STATE_FC_COMMITTING flag to keep inodes pinned while
+ > their pointers are stored in the inodes[] array for snapshotting.
+ >=20
+ > > diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+ > > index 273bf34031aeb..f9bb18c0b5497 100644
+ > > --- a/fs/ext4/fast_commit.c
+ > > +++ b/fs/ext4/fast_commit.c
+ > > @@ -1195,13 +1195,12 @@ static int ext4_fc_snapshot_inodes(journal_t *=
+journal)
+ > > =20
+ > >      alloc_ctx =3D ext4_fc_lock(sb);
+ > >      list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
+ > > -        inodes[i] =3D igrab(&iter->vfs_inode);
+ > > -        if (inodes[i])
+ > > -            i++;
+ > > +        inodes[i++] =3D &iter->vfs_inode;
+ > >      }
+ >=20
+ > Is it possible for this change to cause a use-after-free of the inode?
+ >=20
+ > If ext4_fc_del() is called during inode eviction, it waits sequentially =
+for
+ > EXT4_STATE_FC_COMMITTING and then EXT4_STATE_FC_FLUSHING_DATA. However, =
+it
+ > doesn't appear to loop back to re-check EXT4_STATE_FC_COMMITTING after
+ > waiting for the flush bit.
+ >=20
+ > Could a sequence like this occur?
+ >=20
+ > 1. ext4_fc_perform_commit() sets EXT4_STATE_FC_FLUSHING_DATA.
+ > 2. Eviction calls ext4_fc_del(), which sees EXT4_STATE_FC_COMMITTING is
+ >    false, but EXT4_STATE_FC_FLUSHING_DATA is true, so it waits on the
+ >    flush bit.
+ > 3. ext4_fc_perform_commit() clears EXT4_STATE_FC_FLUSHING_DATA, waking u=
+p
+ >    ext4_fc_del().
+ > 4. Before ext4_fc_del() resumes, ext4_fc_perform_commit() sets
+ >    EXT4_STATE_FC_COMMITTING and saves the unpinned inode pointer into th=
+e
+ >    inodes[] array.
+ > 5. ext4_fc_del() resumes, skips re-checking EXT4_STATE_FC_COMMITTING,
+ >    removes the inode from the fast commit list, and returns.
+ > 6. The VFS completely frees the inode.
+ > 7. ext4_fc_snapshot_inodes() iterates over the inodes[] array and passes
+ >    the now dangling pointer to ext4_fc_snapshot_inode().
+ >=20
+ > Does ext4_fc_del() need to re-verify the state flags after waking up, or
+ > is there another mechanism preventing the inode from being freed before
+ > ext4_fc_snapshot_inode() accesses it?
+ >=20
+ > [ ... ]
+ >=20
+ > --=20
+ > Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260511084304.1=
+559557-1-me@linux.beauty?part=3D4
+ >=20
 
-However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
-the support for invalidating partial folios. When ext4 partially zeroes
-out a dirty and unwritten folio, it does not perform a flush first like
-XFS. Therefore, if the dirty bits of the corresponding area cannot be
-cleared, the zeroed area after writeback remains in the written state
-rather than reverting to the unwritten state. Fix this by supporting
-invalidation of partial folios.
+Yes, I think you're right. I missed that window.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
----
-This is taken from:
- https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-3-yi.zhang@huaweicloud.com/
-No code changes, only update the commit message to explain why Ext4
-needs this.
+I'll make ext4_fc_del() loop back after waiting on FC_FLUSHING_DATA, so it =
+checks FC_COMMITTING again
+under s_fc_lock before removing the inode from the FC lists.
 
- fs/iomap/buffered-io.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index 64351a448a8b..876c2f507f58 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -761,6 +761,8 @@ void iomap_invalidate_folio(struct folio *folio, size_t offset, size_t len)
- 		WARN_ON_ONCE(folio_test_writeback(folio));
- 		folio_cancel_dirty(folio);
- 		ifs_free(folio);
-+	} else {
-+		iomap_clear_range_dirty(folio, offset, len);
- 	}
- }
- EXPORT_SYMBOL_GPL(iomap_invalidate_folio);
--- 
-2.52.0
+Regards,
+Li=E2=80=8B
 
