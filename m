@@ -1,86 +1,94 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17F9C2989B5;
-	Thu, 14 May 2026 03:54:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 903C12989B5;
+	Thu, 14 May 2026 06:34:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778730852; cv=none; b=PKwmug7fSuCI5yx9qIRNNtlgQOnidRUZM26lIO7VTZm0Buhr2LqeUwS/zVOM0A7Z/21dCa7TV7573LpVKY54gpMihkl4UpUZvvajPDuZH83eBXmR5aZqyB03n7UfW5RpBBbybA8vSWu56K8ayRaRDCNK7DNJEv91Ky8wwMW1+dc=
+	t=1778740490; cv=none; b=pVYpff/HmSxbZMm7tN24jnpg4wIhFmJX0PTgTQhRkfkhXkmhx1gVJfk+19TcmAwp0P5Un3WXXqyz3pPsZHiopN09tNhykWl9ZFoCwIFrSo6TboDQKYMBEaPjH69MRSeXDsucbHe55Ps36lYhVJogzm3AHrtHQV0la2ch5pnZdpw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778730852; c=relaxed/simple;
-	bh=8PtDRdXMVSbjnST+Cs0Dn1Z2/E315hAZtklcn942KsE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=H/1QYSGmKfPlgdhenqZf7kBhRnBNqAzQlF1gtN5dv0XBNGuvHnrLSjn4Xba6lSx18nVJQfyUeh4SCbc5XM0Hl+G8lODLwJH6pHtbdKHSFE/5KP+/sxBr8loJ6MJH7wot5LEFVIZMzRYPozqbYLsHX4jN3L2XzdTsHcMFft0k0wA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gFobv/Al; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gFobv/Al"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 710ABC2BCB7;
-	Thu, 14 May 2026 03:54:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1778730851;
-	bh=8PtDRdXMVSbjnST+Cs0Dn1Z2/E315hAZtklcn942KsE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=gFobv/AlwQ+0/2J67Xr5lnaYxSS5tAqfjty33eet0pXkhE4YYHYHjCFpo01D6bYJ0
-	 sO0j1vr2yoIuVWJHltZr9e2ZGMa975F9kLQria7yQSJVoa/CD/x40T8p0jj42aBNUG
-	 L6XSeG8Lyu9vMCwrwDviN5fWORWofdsDLOMJQJ0YZngy9KcNhAwrdIhMmSE3ubRxbq
-	 mwRKUj41Y7F4jiLmMdwrdd0Yhfbd4P5jcLs4UB4MtmEEnMSTkYuyopJpUwJKHQVEUK
-	 orSGmH1V3xQ3hChhF+yywzPs/zkMuYVdsxXfVkE/BlSi4CShiNQMvwhDKtBs+rKVuZ
-	 1s9dMSYRich6Q==
-Date: Wed, 13 May 2026 20:52:48 -0700
-From: Eric Biggers <ebiggers@kernel.org>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, linux-crypto@vger.kernel.org,
-	ardb@kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com
-Subject: Re: [PATCH RFC 01/17] lib/crc: add crc32c_flip_range() for
- incremental CRC update
-Message-ID: <20260514035248.GA2816@sol>
-References: <20260508121539.4174601-1-libaokun@linux.alibaba.com>
- <20260508121539.4174601-2-libaokun@linux.alibaba.com>
+	s=arc-20240116; t=1778740490; c=relaxed/simple;
+	bh=b4xx33h9mUNDWWKCTA/A3mwHmmzO9UAv7a8vkHCzHRo=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=GjSdIvGeNTFZrYmGhmewsXlsNV8b2eeDAzhGwpUnmCELXu4SjkyYhcyfVLcGV6NZt8J2BvDlcA71pYQKTzuyB3mxUNM8xbjfwQo3JlGikxUwJxHq3AXTY4eZiWrFhuA2y8J2KAzOBvjO4Ag40T2Ns7thRSUA/DTSgtZj+zpVgio=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gGLBj36v4zKHLw9;
+	Thu, 14 May 2026 14:33:49 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id AA9E14058C;
+	Thu, 14 May 2026 14:34:44 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP4 (Coremail) with SMTP id gCh0CgCnb1v4bAVqIcT3CA--.41732S4;
+	Thu, 14 May 2026 14:34:43 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-fsdevel@vger.kernel.org,
+	linux-xfs@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	brauner@kernel.org,
+	djwong@kernel.org,
+	hch@infradead.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH 0/4] iomap: trivial fixes for ext4 conversion
+Date: Thu, 14 May 2026 14:29:51 +0800
+Message-ID: <20260514062955.1183976-1-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260508121539.4174601-2-libaokun@linux.alibaba.com>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgCnb1v4bAVqIcT3CA--.41732S4
+X-Coremail-Antispam: 1UD129KBjvdXoWruF4xXF1xXw4DJrW7Kr4DArb_yoWfKwc_ua
+	yvkFykWr1DXF9aka9ruF15JrZFkayUKr1rCFy8trZ3Gr9rArn3CF4vkrZ3Zw18Xr4xJrZ8
+	JrnIyayFywnFvjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUb3kFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
+	A2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j
+	6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
+	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
+	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
+	4UM4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628v
+	n2kIc2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7x
+	kEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E
+	67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCw
+	CI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1x
+	MIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIda
+	VFxhVjvjDU0xZFpf9x0JUd-B_UUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Fri, May 08, 2026 at 08:15:23PM +0800, Baokun Li wrote:
-> When a contiguous range of bits in a buffer is flipped, the CRC32c
-> checksum can be updated incrementally without re-scanning the entire
-> buffer, by exploiting the linearity of CRCs over GF(2):
-> 
->   New_CRC = Old_CRC ^ CRC(flip_mask << trailing_bits)
-> 
-> Introduce crc32c_flip_range() which computes this delta using
-> precomputed GF(2) shift matrices and nibble-indexed lookup tables.
-> The implementation decomposes nbits and trailing_bits into
-> power-of-2 components and combines them via the CRC concatenation
-> property:
-> 
->   CRC(A || B) = shift(CRC(A), len(B)) ^ CRC(B)
-> 
-> This gives O(log N) complexity with only ~9.8KB of static tables
-> (fits in L1 cache).  The current maximum supported buffer size is
-> 64KB (INCR_MAX_ORDER = 19, i.e. 2^19 bits = 524288 bits = 64KB).
+From: Zhang Yi <yi.zhang@huawei.com>
 
-It will be a little while before I can do a full review of this, but
-just a high-level comment: "only ~9.8KB of static tables (fits in L1
-cache)" isn't ideal.  Large tables tend to microbenchmark well, then
-have worse real-world performance due to lots of other things contending
-for the L1 cache.
+This patch series contains a few trivial iomap-related fixes in
+preparation for converting ext4 buffered I/O to use iomap. 
 
-Another consideration is that basically every Linux kernel has
-CONFIG_CRC32 enabled, regardless of whether they would actually find
-this new functionality useful.
+The first three patches are taken from my ext4 conversion series [1], as
+suggested by Christoph. The last patch fixes a bug originally reported
+by Sashiko during review of my series; although unrelated to the ext4
+conversion, it is worth fixing on its own. Please see the following
+patches for detail.
 
-I'm not necessarily saying this should be its own option, especially if
-it's useful for ext4 even in the non-LBS case.  But I do think it would
-be nice if it could be a bit smaller and more memory-optimized.
+Thanks,
+Yi.
 
-Anyway, I'll look into the algorithm more when I have time.
+[1] https://lore.kernel.org/linux-ext4/20260511072344.191271-1-yi.zhang@huaweicloud.com/
 
-- Eric
+Zhang Yi (4):
+  iomap: correct the range of a partial dirty clear
+  iomap: support invalidating partial folios
+  iomap: fix incorrect did_zero setting in iomap_zero_iter()
+  iomap: fix out-of-bounds bitmap_set() with zero-length range
+
+ fs/iomap/buffered-io.c | 45 +++++++++++++++++++++++++++++-------------
+ 1 file changed, 31 insertions(+), 14 deletions(-)
+
+-- 
+2.52.0
+
