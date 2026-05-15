@@ -1,41 +1,41 @@
 Received: from sender4-op-o15.zoho.com (sender4-op-o15.zoho.com [136.143.188.15])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1DA8D413229;
-	Fri, 15 May 2026 09:20:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7975F3E63A1;
+	Fri, 15 May 2026 09:21:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=136.143.188.15
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778836859; cv=pass; b=gWCMfpqSMPbxO6bRVBwy1E1O4p4auazQqrgyUwj+T53bj4cvV7koznMsYVXoewogpM/3as4RPtwa+JWvAK1IB5msNNF03AYb0ToJINc8T4S019Yzm/5/sizWFqqA4kbrse1CSzy8ExkdJ1fxpCSLz1KbSz33si7TcDkaTKLG2qw=
+	t=1778836887; cv=pass; b=UT4woxVf2NnVVSCKZDHTrJlU6tY1AN3Lb0mtVh0j9mJcn8WmtlT02quwta2tQDbtjxja4YyQ/X8cE+jqFC+AAMhMbFTMUSBsyK8BDn5U0gKjZyz1A9ueSCJVvEpAKRGmF9NGLT3+yGUz4TDd3BjDOXK8gq4IxAMmslnBcmjPQ/I=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778836859; c=relaxed/simple;
-	bh=/kckBpy6agkgFHP1mgX65jS5gT6EpXalE2T0ZAbDP2Q=;
+	s=arc-20240116; t=1778836887; c=relaxed/simple;
+	bh=Xt/ahvJmwKHteBIpVw53WzFYa54uGiIc5Bo5tfB31Bk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Tp+EJ92MNetW1WVslYWILxc6cfqVCPXfjPq8LJcmy8VEgV1b6Gf5m6Y4egyJQvSpdiC8k0EWxnXaVQ+gOgjo8/uZcFIThexdo8hqTWxEcRdw8KRskCo6CYv8b64xNgu9vJn9x74yW6dF0RTxuackElj5oQbjQpTgDJHicC9N0hQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=XnRkFGZa; arc=pass smtp.client-ip=136.143.188.15
+	 MIME-Version; b=u4tqFZjJq0qLm5XdtEUWCRG0AXqbEUFX66At88HLXnnLCHyegs/7U/I42SIay/fc4ml3MEYO2QU/T/4NxRcJF80DWu2ztVzvb68f76ZwuiYiaBEQBp+i9yOdnHacvMHXjK7EuytIQR9bEVwuDw6NxvkmeO6Xo6j+iVyA0XkHIi0=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty; spf=pass smtp.mailfrom=linux.beauty; dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b=iYkSbIo6; arc=pass smtp.client-ip=136.143.188.15
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.beauty
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="XnRkFGZa"
-ARC-Seal: i=1; a=rsa-sha256; t=1778836740; cv=none; 
+	dkim=pass (1024-bit key) header.d=linux.beauty header.i=me@linux.beauty header.b="iYkSbIo6"
+ARC-Seal: i=1; a=rsa-sha256; t=1778836744; cv=none; 
 	d=zohomail.com; s=zohoarc; 
-	b=jCH2u5N57X4Wvygo2dZG/3kXml1tuqHASsTP5UxPt3p+Z8kbV03m+pTsNO+eovkZi7O20Qq4+IY9/Z2opWsRKyy1up+LdrYhmo6ldvPNApNDLtZo+DZ7VGvxYcXUGmub6wfDEppS+9JcjcD3A0BEkPRAuiMd42kWTzsbziOvSwg=
+	b=InrSNpUr6z9xbgjh92w6rn2llEuZ9E9HTBk7aAAv2Z03CRB9++Z2x/fMjkTIvsUy+dkvg5hMl6O0KGRN+dn7OY3gKAWbd01ITeLCgNd0n4wHIzi7fDY4pKK8cQwSMeDbBXuHnmv1kkuPMaEN1pkisC1xTQHqe7+Z9oJp12oqvZo=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
-	t=1778836740; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=u5OiQ42AfpfxxdPNi2Pytx4tCCnkm/451hbAvgMObT4=; 
-	b=SIMWjrmrg2EH7wm8DwcsNzonASCQ127LL7QQvdgS5tnyHbRXsLQJEnPcKMasoEIVSU2gkahVRplOCgs4RK7sQfsL4wYTKGiVQuGdX9Y/eBziAaeqbsqbhyv3c7TYUn0eLuqAdQf6T6Iyu8VRlzTCMuEs3eDKLxs9Iqa/zj8rwO0=
+	t=1778836744; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=Sz8qtSYhZtjZ4PMIfLjdvl6NlWuqHAph/mv9kOZyj48=; 
+	b=c8IjSnbBLNpMa+WMTLFpDjSdY6EpzMgAKMxtB3BDzFhiD1wBFQq6a9hjJlJDMoA03Dcs2weMUSEri0R/RFyW9qzlKgBMmYBB6VRFkm4G0uCH7Q8LiBd7UHdZmKMOxRK5+uoNZu1v8rdyLsCzfzXefals/cWwKNClA0RRDhO7GEM=
 ARC-Authentication-Results: i=1; mx.zohomail.com;
 	dkim=pass  header.i=linux.beauty;
 	spf=pass  smtp.mailfrom=me@linux.beauty;
 	dmarc=pass header.from=<me@linux.beauty>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1778836740;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1778836744;
 	s=zmail; d=linux.beauty; i=me@linux.beauty;
 	h=From:From:To:To:Cc:Cc:Subject:Subject:Date:Date:Message-ID:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=u5OiQ42AfpfxxdPNi2Pytx4tCCnkm/451hbAvgMObT4=;
-	b=XnRkFGZajPZyRV+R/ovXei0PxYeSKKYgnNT/MxY+wjEdzCtfzcclvC2Mu17emn/4
-	8Fv59qMgCaYG04sPyPtWBDteS8UAnYmYfGlZOMPhtvIKl/YDvM9kYkh6/zPDykMTXSK
-	+CNkR+CeDlGWajjX4cXuG/n+yo8or0ngUhDblit0=
-Received: by mx.zohomail.com with SMTPS id 17788367384381022.0562180561279;
-	Fri, 15 May 2026 02:18:58 -0700 (PDT)
+	bh=Sz8qtSYhZtjZ4PMIfLjdvl6NlWuqHAph/mv9kOZyj48=;
+	b=iYkSbIo6xcgc0/3k0xTeo+xg+APmv00IcNQPIaSvTMOmJwlEe7IPQ9UV8dycI/6a
+	BXnAEhPIUatELx9vHyvKsjD0NYfLITnMTSq7kFXZmaeps7gUUenxzXAUXcBp2aINIO8
+	MMSbFJr4DCSCO5e52Yx+b4viJp8CiP3HjTaPj+D8=
+Received: by mx.zohomail.com with SMTPS id 1778836742942651.9187030545834;
+	Fri, 15 May 2026 02:19:02 -0700 (PDT)
 From: Li Chen <me@linux.beauty>
 To: Zhang Yi <yi.zhang@huaweicloud.com>,
 	Theodore Ts'o <tytso@mit.edu>,
@@ -51,9 +51,9 @@ Cc: Steven Rostedt <rostedt@goodmis.org>,
 	Masami Hiramatsu <mhiramat@kernel.org>,
 	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
 	linux-trace-kernel@vger.kernel.org
-Subject: [RFC v8 3/7] ext4: fast commit: avoid waiting for FC_COMMITTING
-Date: Fri, 15 May 2026 17:18:23 +0800
-Message-ID: <20260515091829.194810-4-me@linux.beauty>
+Subject: [RFC v8 4/7] ext4: fast commit: avoid self-deadlock in inode snapshotting
+Date: Fri, 15 May 2026 17:18:24 +0800
+Message-ID: <20260515091829.194810-5-me@linux.beauty>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260515091829.194810-1-me@linux.beauty>
 References: <20260515091829.194810-1-me@linux.beauty>
@@ -66,250 +66,260 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-ZohoMailClient: External
 
-ext4_fc_track_inode() can be called while holding i_data_sem (e.g.
-fallocate). Waiting for EXT4_STATE_FC_COMMITTING in that case risks an
-ABBA deadlock: i_data_sem -> wait(FC_COMMITTING) vs FC_COMMITTING ->
-wait(i_data_sem) in the commit task.
+ext4_fc_snapshot_inodes() used igrab()/iput() to pin inodes while building
+commit-time snapshots. With ext4_fc_del() waiting for
+EXT4_STATE_FC_COMMITTING, iput() can trigger
+ext4_clear_inode()->ext4_fc_del() in the commit thread and deadlock waiting
+for the fast commit to finish.
 
-Now that fast commit snapshots inode state at commit time, updates during
-log writing do not need to block. Drop the wait and lockdep assertion in
-ext4_fc_track_inode(), and make ext4_fc_del() wait for FC_COMMITTING so an
-inode cannot be removed while the commit thread is still using it.
+ext4_fc_del() also has to re-check EXT4_STATE_FC_COMMITTING after
+waiting on EXT4_STATE_FC_FLUSHING_DATA. The commit thread clears
+FLUSHING_DATA before it sets COMMITTING, so a waiter woken from the
+flush wait must not delete the inode based on an old COMMITTING
+check.
 
-When an inode is modified during a fast commit, mark it with
-EXT4_STATE_FC_REQUEUE so cleanup keeps it queued for the next fast commit.
-This is needed because jbd2_fc_end_commit() invokes the cleanup callback
-with tid == 0, so tid-based requeue logic would requeue every inode.
+Avoid taking extra references. Collect inode pointers under s_fc_lock and
+rely on EXT4_STATE_FC_COMMITTING to pin inodes until ext4_fc_cleanup()
+clears the bit.
 
-Testing: tracepoint ext4:ext4_fc_commit_stop with two fsyncs in the same
-transaction. nblks is the number of journal blocks written for that fast
-commit. Before this change, the second fsync still wrote almost the same
-fast commit log (nblks 10->9), because tid == 0 in jbd2_fc_end_commit()
-caused the tid-based requeue logic to keep all inodes queued. After this
-change, only inodes modified during the commit are requeued, and the
-second fsync wrote a nearly empty fast commit (nblks 10->1).
+Also set EXT4_STATE_FC_COMMITTING for create-only inodes referenced
+from the dentry update queue, and wake up waiters when ext4_fc_cleanup()
+clears the bit.
 
 Signed-off-by: Li Chen <chenl311@chinatelecom.cn>
 ---
-Changes in RFC v8:
-- Base the series on "ext4: fix fast commit wait/wake bit mapping on
-  64-bit", so the FC_COMMITTING/FC_FLUSHING_DATA wait and wake paths use
-  the shared helper mapping.
+Changes in v8:
+- Factor out small ext4_fc_wait_inode_state()/ext4_fc_wake_inode_state()
+  helpers so the repeated FC state wait/wake mapping is kept in one place.
+- Re-check EXT4_STATE_FC_COMMITTING after waking from
+  EXT4_STATE_FC_FLUSHING_DATA in ext4_fc_del(), so list deletion only
+  happens after both predicates pass under the same s_fc_lock critical
+  section.
 
- fs/ext4/ext4.h        |   1 +
- fs/ext4/fast_commit.c | 106 ++++++++++++++++++++----------------------
- 2 files changed, 51 insertions(+), 56 deletions(-)
+ fs/ext4/fast_commit.c | 124 +++++++++++++++++++++++++-----------------
+ 1 file changed, 75 insertions(+), 49 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 115a3c94db16..927173bc8381 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1991,6 +1991,7 @@ enum {
- 	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
- 	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
- 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
-+	EXT4_STATE_FC_REQUEUE,		/* Inode modified during fast commit */
- };
- 
- #define EXT4_INODE_BIT_FNS(name, field, offset)				\
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0c49144e8ca2..673668860e2d 100644
+index 673668860e2d..8a6981e50ffe 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -62,9 +62,8 @@
-  *     setting "EXT4_STATE_FC_COMMITTING" state, and snapshot the inode state
-  *     needed for log writing.
-  * [5] Unlock the journal by calling jbd2_journal_unlock_updates(). This allows
-- *     starting of new handles. If new handles try to start an update on
-- *     any of the inodes that are being committed, ext4_fc_track_inode()
-- *     will block until those inodes have finished the fast commit.
-+ *     starting of new handles. Updates to inodes being fast committed are
-+ *     tracked for requeue rather than blocking.
-  * [6] Commit all the directory entry updates in the fast commit space.
-  * [7] Commit all the changed inodes in the fast commit space.
-  * [8] Write tail tag (this tag ensures the atomicity, please read the following
-@@ -218,6 +217,7 @@ void ext4_fc_init_inode(struct inode *inode)
+@@ -235,6 +235,37 @@ static bool ext4_fc_eligible(struct super_block *sb)
+ 		!(ext4_test_mount_flag(sb, EXT4_MF_FC_INELIGIBLE));
+ }
  
- 	ext4_fc_reset_inode(inode);
- 	ext4_clear_inode_state(inode, EXT4_STATE_FC_COMMITTING);
-+	ext4_clear_inode_state(inode, EXT4_STATE_FC_REQUEUE);
- 	INIT_LIST_HEAD(&ei->i_fc_list);
- 	INIT_LIST_HEAD(&ei->i_fc_dilist);
- 	ei->i_fc_snap = NULL;
-@@ -245,7 +245,10 @@ void ext4_fc_del(struct inode *inode)
- 	struct ext4_fc_dentry_update *fc_dentry;
- 	wait_queue_head_t *wq;
- 	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
--	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
-+	int committing_wait_bit =
-+		ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
-+	int flushing_wait_bit =
-+		ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
- 	int alloc_ctx;
- 
- 	if (ext4_fc_disabled(inode->i_sb))
-@@ -259,26 +262,26 @@ void ext4_fc_del(struct inode *inode)
- 	}
- 
- 	/*
--	 * Since ext4_fc_del is called from ext4_evict_inode while having a
--	 * handle open, there is no need for us to wait here even if a fast
--	 * commit is going on. That is because, if this inode is being
--	 * committed, ext4_mark_inode_dirty would have waited for inode commit
--	 * operation to finish before we come here. So, by the time we come
--	 * here, inode's EXT4_STATE_FC_COMMITTING would have been cleared. So,
--	 * we shouldn't see EXT4_STATE_FC_COMMITTING to be set on this inode
--	 * here.
--	 *
--	 * We may come here without any handles open in the "no_delete" case of
--	 * ext4_evict_inode as well. However, if that happens, we first mark the
--	 * file system as fast commit ineligible anyway. So, even in that case,
--	 * it is okay to remove the inode from the fc list.
-+	 * Wait for ongoing fast commit to finish. We cannot remove the inode
-+	 * from fast commit lists while it is being committed.
- 	 */
--	WARN_ON(ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)
--		&& !ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE));
-+	while (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
-+		DEFINE_WAIT_BIT(wait, wait_word, committing_wait_bit);
++/*
++ * Wait for an inode fast-commit state bit to clear while dropping the
++ * fast-commit lock around schedule().
++ */
++static void ext4_fc_wait_inode_state(struct inode *inode, int bit,
++				     int *alloc_ctx)
++{
++	wait_queue_head_t *wq;
++	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
++	int wait_bit = ext4_inode_state_wait_bit(bit);
 +
-+		wq = bit_waitqueue(wait_word, committing_wait_bit);
++	while (ext4_test_inode_state(inode, bit)) {
++		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
++
++		wq = bit_waitqueue(wait_word, wait_bit);
 +		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
-+		if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
-+			ext4_fc_unlock(inode->i_sb, alloc_ctx);
++		if (ext4_test_inode_state(inode, bit)) {
++			ext4_fc_unlock(inode->i_sb, *alloc_ctx);
 +			schedule();
-+			alloc_ctx = ext4_fc_lock(inode->i_sb);
++			*alloc_ctx = ext4_fc_lock(inode->i_sb);
 +		}
 +		finish_wait(wq, &wait.wq_entry);
 +	}
++}
 +
- 	while (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
--		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
-+		DEFINE_WAIT_BIT(wait, wait_word, flushing_wait_bit);
- 
--		wq = bit_waitqueue(wait_word, wait_bit);
-+		wq = bit_waitqueue(wait_word, flushing_wait_bit);
- 		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
- 		if (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
- 			ext4_fc_unlock(inode->i_sb, alloc_ctx);
-@@ -287,19 +290,22 @@ void ext4_fc_del(struct inode *inode)
- 		}
- 		finish_wait(wq, &wait.wq_entry);
- 	}
++static inline void ext4_fc_wake_inode_state(struct inode *inode, int bit)
++{
++	wake_up_bit(ext4_inode_state_wait_word(inode),
++		    ext4_inode_state_wait_bit(bit));
++}
 +
- 	ext4_fc_free_inode_snap(inode);
- 	list_del_init(&ei->i_fc_list);
- 
- 	/*
--	 * Since this inode is getting removed, let's also remove all FC
--	 * dentry create references, since it is not needed to log it anyways.
-+	 * Since this inode is getting removed, let's also remove all FC dentry
-+	 * create references, since it is not needed to log it anyways.
- 	 */
- 	if (list_empty(&ei->i_fc_dilist)) {
- 		ext4_fc_unlock(inode->i_sb, alloc_ctx);
- 		return;
- 	}
- 
--	fc_dentry = list_first_entry(&ei->i_fc_dilist, struct ext4_fc_dentry_update, fcd_dilist);
-+	fc_dentry = list_first_entry(&ei->i_fc_dilist,
-+				     struct ext4_fc_dentry_update,
-+				     fcd_dilist);
- 	WARN_ON(fc_dentry->fcd_op != EXT4_FC_TAG_CREAT);
- 	list_del_init(&fc_dentry->fcd_list);
- 	list_del_init(&fc_dentry->fcd_dilist);
-@@ -371,6 +377,8 @@ static int ext4_fc_track_template(
- 
- 	tid = handle->h_transaction->t_tid;
- 	spin_lock(&ei->i_fc_lock);
-+	if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING))
-+		ext4_set_inode_state(inode, EXT4_STATE_FC_REQUEUE);
- 	if (tid == ei->i_sync_tid) {
- 		update = true;
- 	} else {
-@@ -541,10 +549,6 @@ static int __track_inode(handle_t *handle, struct inode *inode, void *arg,
- 
- void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
+ /*
+  * Remove inode from fast commit list. If the inode is being committed
+  * we wait until inode commit is done.
+@@ -243,12 +274,6 @@ void ext4_fc_del(struct inode *inode)
  {
--	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct ext4_fc_dentry_update *fc_dentry;
 -	wait_queue_head_t *wq;
 -	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
--	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
- 	int ret;
+-	int committing_wait_bit =
+-		ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
+-	int flushing_wait_bit =
+-		ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
+ 	int alloc_ctx;
  
- 	if (S_ISDIR(inode->i_mode))
-@@ -560,21 +564,11 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
- 		return;
+ 	if (ext4_fc_disabled(inode->i_sb))
+@@ -263,32 +288,19 @@ void ext4_fc_del(struct inode *inode)
  
  	/*
--	 * If we come here, we may sleep while waiting for the inode to
--	 * commit. We shouldn't be holding i_data_sem when we go to sleep since
--	 * the commit path needs to grab the lock while committing the inode.
-+	 * Fast commit snapshots inode state at commit time, so there's no need
-+	 * to wait for EXT4_STATE_FC_COMMITTING here. If the inode is already
-+	 * on the commit queue, ext4_fc_cleanup() will requeue it for the new
-+	 * transaction once the current commit finishes.
+ 	 * Wait for ongoing fast commit to finish. We cannot remove the inode
+-	 * from fast commit lists while it is being committed.
++	 * from fast commit lists while it is being committed. If we wake from
++	 * FC_FLUSHING_DATA, re-check FC_COMMITTING before deleting because the
++	 * commit thread sets FC_COMMITTING only after clearing FLUSHING_DATA.
  	 */
--	lockdep_assert_not_held(&ei->i_data_sem);
--
 -	while (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
--		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
--
--		wq = bit_waitqueue(wait_word, wait_bit);
+-		DEFINE_WAIT_BIT(wait, wait_word, committing_wait_bit);
++	for (;;) {
++		ext4_fc_wait_inode_state(inode, EXT4_STATE_FC_COMMITTING,
++					 &alloc_ctx);
+ 
+-		wq = bit_waitqueue(wait_word, committing_wait_bit);
 -		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
--		if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING))
+-		if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
+-			ext4_fc_unlock(inode->i_sb, alloc_ctx);
 -			schedule();
+-			alloc_ctx = ext4_fc_lock(inode->i_sb);
+-		}
 -		finish_wait(wq, &wait.wq_entry);
 -	}
+-
+-	while (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
+-		DEFINE_WAIT_BIT(wait, wait_word, flushing_wait_bit);
++		if (!ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA))
++			break;
  
- 	/*
- 	 * From this point on, this inode will not be committed either
-@@ -1499,32 +1493,32 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+-		wq = bit_waitqueue(wait_word, flushing_wait_bit);
+-		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
+-		if (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
+-			ext4_fc_unlock(inode->i_sb, alloc_ctx);
+-			schedule();
+-			alloc_ctx = ext4_fc_lock(inode->i_sb);
+-		}
+-		finish_wait(wq, &wait.wq_entry);
++		ext4_fc_wait_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA,
++					 &alloc_ctx);
+ 	}
+ 
+ 	ext4_fc_free_inode_snap(inode);
+@@ -1184,13 +1196,12 @@ static int ext4_fc_snapshot_inodes(journal_t *journal)
  
  	alloc_ctx = ext4_fc_lock(sb);
- 	while (!list_empty(&sbi->s_fc_q[FC_Q_MAIN])) {
-+		bool requeue;
-+
- 		ei = list_first_entry(&sbi->s_fc_q[FC_Q_MAIN],
- 					struct ext4_inode_info,
- 					i_fc_list);
- 		list_del_init(&ei->i_fc_list);
- 		ext4_fc_free_inode_snap(&ei->vfs_inode);
-+		spin_lock(&ei->i_fc_lock);
-+		if (full)
-+			requeue = !tid_geq(tid, ei->i_sync_tid);
-+		else
-+			requeue = ext4_test_inode_state(&ei->vfs_inode,
-+							EXT4_STATE_FC_REQUEUE);
-+		if (!requeue)
-+			ext4_fc_reset_inode(&ei->vfs_inode);
-+		ext4_clear_inode_state(&ei->vfs_inode, EXT4_STATE_FC_REQUEUE);
- 		ext4_clear_inode_state(&ei->vfs_inode,
- 				       EXT4_STATE_FC_COMMITTING);
--		if (tid_geq(tid, ei->i_sync_tid)) {
--			ext4_fc_reset_inode(&ei->vfs_inode);
--		} else if (full) {
--			/*
--			 * We are called after a full commit, inode has been
--			 * modified while the commit was running. Re-enqueue
--			 * the inode into STAGING, which will then be splice
--			 * back into MAIN. This cannot happen during
--			 * fastcommit because the journal is locked all the
--			 * time in that case (and tid doesn't increase so
--			 * tid check above isn't reliable).
--			 */
-+		spin_unlock(&ei->i_fc_lock);
-+		if (requeue)
- 			list_add_tail(&ei->i_fc_list,
- 				      &sbi->s_fc_q[FC_Q_STAGING]);
--		}
- 		/*
- 		 * Make sure clearing of EXT4_STATE_FC_COMMITTING is
- 		 * visible before we send the wakeup. Pairs with implicit
--		 * barrier in prepare_to_wait() in ext4_fc_track_inode().
-+		 * barrier in prepare_to_wait() in ext4_fc_del().
+ 	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
+-		inodes[i] = igrab(&iter->vfs_inode);
+-		if (inodes[i])
+-			i++;
++		inodes[i++] = &iter->vfs_inode;
+ 	}
+ 
+ 	list_for_each_entry(fc_dentry, &sbi->s_fc_dentry_q[FC_Q_MAIN], fcd_list) {
+ 		struct ext4_inode_info *ei;
++		struct inode *inode;
+ 
+ 		if (fc_dentry->fcd_op != EXT4_FC_TAG_CREAT)
+ 			continue;
+@@ -1200,12 +1211,20 @@ static int ext4_fc_snapshot_inodes(journal_t *journal)
+ 		/* See the comment in ext4_fc_commit_dentry_updates(). */
+ 		ei = list_first_entry(&fc_dentry->fcd_dilist,
+ 				      struct ext4_inode_info, i_fc_dilist);
++		inode = &ei->vfs_inode;
+ 		if (!list_empty(&ei->i_fc_list))
+ 			continue;
+ 
+-		inodes[i] = igrab(&ei->vfs_inode);
+-		if (inodes[i])
+-			i++;
++		/*
++		 * Create-only inodes may only be referenced via fcd_dilist and
++		 * not appear on s_fc_q[MAIN]. They may hit the last iput while
++		 * we are snapshotting, but inode eviction calls ext4_fc_del(),
++		 * which waits for FC_COMMITTING to clear. Mark them FC_COMMITTING
++		 * so the inode stays pinned and the snapshot stays valid until
++		 * ext4_fc_cleanup().
++		 */
++		ext4_set_inode_state(inode, EXT4_STATE_FC_COMMITTING);
++		inodes[i++] = inode;
+ 	}
+ 	ext4_fc_unlock(sb, alloc_ctx);
+ 
+@@ -1215,10 +1234,6 @@ static int ext4_fc_snapshot_inodes(journal_t *journal)
+ 			break;
+ 	}
+ 
+-	for (nr_inodes = 0; nr_inodes < i; nr_inodes++) {
+-		if (inodes[nr_inodes])
+-			iput(inodes[nr_inodes]);
+-	}
+ 	kvfree(inodes);
+ 	return ret;
+ }
+@@ -1234,8 +1249,6 @@ static int ext4_fc_perform_commit(journal_t *journal)
+ 	int ret = 0;
+ 	u32 crc = 0;
+ 	int alloc_ctx;
+-	int flushing_wait_bit =
+-		ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
+ 
+ 	/*
+ 	 * Step 1: Mark all inodes on s_fc_q[MAIN] with
+@@ -1261,8 +1274,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
+ 	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
+ 		ext4_clear_inode_state(&iter->vfs_inode,
+ 				       EXT4_STATE_FC_FLUSHING_DATA);
+-		wake_up_bit(ext4_inode_state_wait_word(&iter->vfs_inode),
+-			    flushing_wait_bit);
++		ext4_fc_wake_inode_state(&iter->vfs_inode,
++					 EXT4_STATE_FC_FLUSHING_DATA);
+ 	}
+ 
+ 	/*
+@@ -1285,8 +1298,9 @@ static int ext4_fc_perform_commit(journal_t *journal)
+ 	jbd2_journal_lock_updates(journal);
+ 	/*
+ 	 * The journal is now locked. No more handles can start and all the
+-	 * previous handles are now drained. We now mark the inodes on the
+-	 * commit queue as being committed.
++	 * previous handles are now drained. Snapshotting happens in this
++	 * window so log writing can consume only stable snapshots without
++	 * doing logical-to-physical mapping.
+ 	 */
+ 	alloc_ctx = ext4_fc_lock(sb);
+ 	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
+@@ -1482,8 +1496,6 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 	struct ext4_inode_info *ei;
+ 	struct ext4_fc_dentry_update *fc_dentry;
+ 	int alloc_ctx;
+-	int committing_wait_bit =
+-		ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
+ 
+ 	if (full && sbi->s_fc_bh)
+ 		sbi->s_fc_bh = NULL;
+@@ -1521,8 +1533,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 		 * barrier in prepare_to_wait() in ext4_fc_del().
  		 */
  		smp_mb();
- 		wake_up_bit(ext4_inode_state_wait_word(&ei->vfs_inode),
+-		wake_up_bit(ext4_inode_state_wait_word(&ei->vfs_inode),
+-			    committing_wait_bit);
++		ext4_fc_wake_inode_state(&ei->vfs_inode,
++					 EXT4_STATE_FC_COMMITTING);
+ 	}
+ 
+ 	while (!list_empty(&sbi->s_fc_dentry_q[FC_Q_MAIN])) {
+@@ -1537,6 +1549,20 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 					      struct ext4_inode_info,
+ 					      i_fc_dilist);
+ 			ext4_fc_free_inode_snap(&ei->vfs_inode);
++			spin_lock(&ei->i_fc_lock);
++			ext4_clear_inode_state(&ei->vfs_inode,
++					       EXT4_STATE_FC_REQUEUE);
++			ext4_clear_inode_state(&ei->vfs_inode,
++					       EXT4_STATE_FC_COMMITTING);
++			spin_unlock(&ei->i_fc_lock);
++			/*
++			 * Make sure clearing of EXT4_STATE_FC_COMMITTING is
++			 * visible before we send the wakeup. Pairs with implicit
++			 * barrier in prepare_to_wait() in ext4_fc_del().
++			 */
++			smp_mb();
++			ext4_fc_wake_inode_state(&ei->vfs_inode,
++						 EXT4_STATE_FC_COMMITTING);
+ 		}
+ 		list_del_init(&fc_dentry->fcd_dilist);
+ 
 -- 
 2.53.0
