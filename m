@@ -1,221 +1,130 @@
-Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+Received: from mail-oi1-f170.google.com (mail-oi1-f170.google.com [209.85.167.170])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 291267E0E8
-	for <linux-ext4@vger.kernel.org>; Sat, 16 May 2026 01:26:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778894763; cv=none; b=JmX3kewFHg0nP/3OLKY6D8pLqr+M7VFMK3VSBIPWfImH82GZ1GrNtN6WVlGp7YTzvgjJJuP+DJnoeQJIXS0YsRhtux6URosTKXUbMxlmvAbitDEncehYHytWaPU2v+nkq9fcNLoeExMg/mnD3HzBSDeJFlyuZR5rFZTPjuGY1Xk=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778894763; c=relaxed/simple;
-	bh=MEZ68kwKCC8EHqZj2zj3xswrag63f6k9ANsxd/vD/BE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=GjIBIub5gXOH/aRdAsH+fdDawRcdwp/lf+a+HKDeByltfljWev6ma015wYC3ub60DYeDthlOlOGYZipwjDb4DlC5Wd0/V+9V4HPxcD1gTsADQLXj3iMBPoCYSZeydD+Z8Ri+QuC7Bl0rYNfg6o0gc0+P7djH4VgOwdPDL17zaqE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=FHLjzJ0f; arc=none smtp.client-ip=209.85.214.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6EF0224B05
+	for <linux-ext4@vger.kernel.org>; Sat, 16 May 2026 06:43:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.167.170
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1778913821; cv=pass; b=gL1NgJe/0QCfVPIN6xzg0uRNGgpcRWazlAxfBO8HLlsgqO2LPh31VnKys9cJ07zyKEj1uDa57dmZQP75xdcw6D5dONlKZmf/dG1Qpq0vXQQUTEU3S9OzLrn+A8+ucHjSZPjeuQbtCt9bVHuimoyZIQ9ZBJX/M4sMDkzBqlJ7+vw=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1778913821; c=relaxed/simple;
+	bh=BOu7AkGfzBlU/bzal5lpBXqw/o4zx+y8OCCvr0FI1sY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Z1arXFUwPUjb9kRyZYFqhLrYJcTkWqOjfPVXwVuJCHl/+dNSaVEzZ2EhinddvbJCt1QaFUbF9pjORyniIoC8sB3ZKNXeIffO+RmDQ2YaAavSSAbggS9nVyAuUUDDaCqOMvpP0tybf39tZK1XDXGmqNr6vPnqrXDEyLQRwKIQYIU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=lte6xRJp; arc=pass smtp.client-ip=209.85.167.170
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FHLjzJ0f"
-Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2b788a98557so2789245ad.2
-        for <linux-ext4@vger.kernel.org>; Fri, 15 May 2026 18:26:02 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lte6xRJp"
+Received: by mail-oi1-f170.google.com with SMTP id 5614622812f47-47c6f914617so307771b6e.1
+        for <linux-ext4@vger.kernel.org>; Fri, 15 May 2026 23:43:39 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1778913819; cv=none;
+        d=google.com; s=arc-20240605;
+        b=j7UwN3z1Xisot9orj/w9bKofpax8AoAzTMzJGOPSuDipXy1/cjHyna1n2Ggzwlwzdv
+         IbQkaNxa0Jrn5U1gGLb3HSzQaUVpUh7lkJgNm1XgI4HoM5EdKvw1qyMy6eKJhSlTz+TV
+         8hrHXCrbsRmWd45QqX1LEYpvzQ2t56Hu+HXMSqZcjCYik4bCid9fQRk4sGc7K5flQvdu
+         sYsNdH7URHDEb+8qs0TeYAgkWezQDnQVDgUqXx5idqqhfC7lBmStloK4QGH56Rp6rcc/
+         Ydk8bVAQcnW7dM9oKOPTAXS+8ZIe6VbM4Vco0YiXZ8OI5TcoZ16s9wpsP7cCRioNW81G
+         FY5Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=9mxy2GpAHGinIR1PnXVMvug0ztGXvMspUp7huk1TMZs=;
+        fh=Qbg1/w4PeC6GDfvKhE45g9kwK6hxIIbWqWCskJyX080=;
+        b=WMdQAeG0pCRY+U5foqTw1tMcgpwZzylBtAG066BJ0qyLN7s1Q9OiHTuNzKKExgx03P
+         GPHwlsHM++5r/t2lcH+1VGTgbjayqW7RJ8joOGcX3IftTP/awUjdO7wCl0/IFQi9VVIS
+         vKQWWCpQDMou4oMSttx1kgKOinss2Qj11xUw/XuuX4wk5r7MjjR6xE0GoeuW34QDw4V2
+         9PEnvIEwTtcAWXv+XwnGC4d4f9EmOAjxJZP8Ha+FYtkd7Cvs9JGji+DX+6DiozUfLgyk
+         LQdv1E612Q+9ilVAes+mbX37Qo2vMUkXTeqooO0ZCBWg6/k5rCbznEwaBchnEzaU7+1r
+         1wkA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1778894761; x=1779499561; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=EFPC/Xcl2WFN8rwI0P0COPsYNbJtWPXKF5O2rhC1GJk=;
-        b=FHLjzJ0fvrQwB3SDt37Eds9Ct6zwHKv5Z+23xfBOVp8stlmCc0hPMUw7vPVMcSEijn
-         O1c4mBdP5Wonc5rPf9KIAevdNTSigi7qUYNQEfdIc/UbVlS8QeWrHrSJ+jOcT8qPyzKK
-         xL22FfHA+N2CQM+9t6lENqn4ljKzgZe1cDmHRy6fkAdx0BNd3dQ8GQryLGEx7iV7EmRX
-         MqWwMpyXO0/XjruF6BysENcWH5Z7c7CFpVFbzjn2oEilzrEiOtsyKYx0tbyfVHDCgieg
-         rP2NtX9Z6OVkyJ39l/MpmVdkxM5OQ6ItNPO6NROiCj+s/MhAzd0j5pl5xmWbA5kImmWF
-         A9kw==
+        d=gmail.com; s=20251104; t=1778913819; x=1779518619; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=9mxy2GpAHGinIR1PnXVMvug0ztGXvMspUp7huk1TMZs=;
+        b=lte6xRJplRGmp/PSskcPRMRcmRHxp/3AN6A1XynLI6uXZlluhAn8u2h7mZQg7APZLK
+         oAbu6jVFzk3P9a62b4PsoqoTNSJkE7FzjLFpOPv5Z+lsxgwuhtlVTrcbfv9MbnmVX5Py
+         k/kzYjGMlhm8+gRGJfuzaDpFjgrS5WI83cFpH15WHsjn/iy/5C/Ve0iDz9Octg/QEDrA
+         DhdqK6z9WrgQK213b5HL2plz3FNcI+orhuzLw1gTevyVgHFRj7CbGxDhPlje1LF0RZp7
+         KU79gd97VCPt1LjtMq72jZt/AsJhd9asWIZ2PtbrgPLo+/sBoYkMDD8j7+KHYkro1zzO
+         kN5A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1778894761; x=1779499561;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=EFPC/Xcl2WFN8rwI0P0COPsYNbJtWPXKF5O2rhC1GJk=;
-        b=FOjckXeJsOAT0bXJutb1ZEDwAuqwoBJOc8fqsbpe7dAny9w8uaj9GPgJ7DTb+cqZNV
-         BSPKPir1ayoe7a5zDMWiDlvCneffzzU/pLq+usvCXWWzMPcUfYAn2toUZArdoWJiqh2C
-         ng3WbNIXfPxP8qXwCHBk9rm0qH4iFFBwV2RO+v0qrA/tY5hsT++pIZyFeRmFItJQNC9H
-         h87yLtIToCJWDMMstM5Edvo7E0/43lfT70NhSKPHoCUdM4L9RFQL5JWsoSeRYjQ56Tva
-         u/rqnCnZKBFCnq8sw9jraZ5GkeHY8/o8X7SsfyiNGeFv6W4NZAofAWBd8QXjq+yIBQar
-         pxmg==
-X-Forwarded-Encrypted: i=1; AFNElJ9bfYaoJxf0SzlEvRkapjcwvXQCaAFj56picE/L3aUhHbONP/ynrzPmHG6v8Ck/ILyP+j+0hCJFWagZ@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx6PRqdom/rwW0TNCoR5sTzogiU3IxwDTCC5TChZhI5a632YtQ3
-	mYxN5PIC9qK8UKOhK8UNZiJNOsvPP6kgqFQJ8+10ZtCxqa/MayTmft1flpWjKl5xuOo=
-X-Gm-Gg: Acq92OFUNYMo1egCzTkfo6O/5qAIxFvL5N3cGDMhZPrkry3a21FDm057J+gfMlZZq8r
-	hAZA7fZEQdPAWTyIJPwOVuGXA9C1mpCfBbNpxypWNAx0AXgiDhhnJUGj0G46E7jhoGFHrqTfQTs
-	qN/3b1OBuJwXpqkoDm1vgcFVq5WW2D3DgMVjpkUw/jDr9Zuh1r+SLaWorxnSs+7X3w3gvfjU5FG
-	G9I40eAH7SrcZvpDWTafNgqciQ/NNAqV71kOIXzLUf6rD+m54AFq8WXD1deoioAMUlXIE6mrMUs
-	QUJxDWIXkFYB80g/S35QCBotqBTeqecpZWVIMolLyg0mLBCxwEXdQfKeQetAkKxTWWVlGNv9Nuu
-	tkPtkpmYT+f5q5BOy4a06hI6Ya1su8J9A5/TZlhL9JUaC/MZbanh6wdL6v7msPDOhUbFzjFBgLl
-	BTN+GD2JuEx3/3vAZvNSPa9HX0XUN5+UsFEV0HxQ+DlYFVFCdLM5a3Zh/8mWZlzKhaTfWHMadpz
-	Lcyvlhty1PX
-X-Received: by 2002:a17:902:c406:b0:2b7:a1ff:b239 with SMTP id d9443c01a7336-2bd7e847effmr71079255ad.14.1778894761379;
-        Fri, 15 May 2026 18:26:01 -0700 (PDT)
-Received: from ?IPV6:240e:390:a90:65b1:e178:1161:7933:b819? ([240e:390:a90:65b1:e178:1161:7933:b819])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2bd5c2631basm68606755ad.34.2026.05.15.18.25.59
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 15 May 2026 18:26:01 -0700 (PDT)
-Message-ID: <e1baee3e-a90b-4004-9d5e-ba7b9d6791fc@gmail.com>
-Date: Sat, 16 May 2026 09:25:56 +0800
+        d=1e100.net; s=20251104; t=1778913819; x=1779518619;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=9mxy2GpAHGinIR1PnXVMvug0ztGXvMspUp7huk1TMZs=;
+        b=K3hIL5HTxlFznecPrA/ZSaK9trQCDQ2e7Nek5xjNsG0/Ab5VEMM2tixbD5gIBP1iW9
+         t+Aehpem6mdcEc/+tLekjVEZb+5kWx091kLXsbnZOE5Wc/IzMOkJjvJDok1//AUVdGzx
+         UF+YiXNsNNXoUban8j9J35MIgValud9AN48CQoiXfbB1au+621cdX2n/8ay6KYkxSfMr
+         fl5IYihnIp8u1JieRkVI8/Lo7mGXOyChJIYNgJrM1vPdBOuhaoL2BRKGPIEmoEZW32Ir
+         2adtCeXyYIs2jmIx0Wj2fr+3w8Kte7zGCY5FQoar7D+wxJWa4QVTsmvMO/thSwsI1V/g
+         /WCw==
+X-Forwarded-Encrypted: i=1; AFNElJ8ScEQucFIAeBt+8mvuWqvcZDiy+fjIH+U5xnGYND8qJ3QlZ75Go6MLbV4bKaln2Zm0YnDljZXqMsF/@vger.kernel.org
+X-Gm-Message-State: AOJu0YwF7s6CXRGgvd3vT1NOlFDsm/3Z70tggDm62haPEr1gODXbVVSV
+	Igah25vgGnSsT61IzVMLG/Y8GFSE+P2OOFZKCfpxhdjMmFegDfilq2mkPbprAfKRcLm3aT66dPW
+	DerHnpnozzvsTgdgPI7pP2VPs41mkzWI=
+X-Gm-Gg: Acq92OHAKyT8k73LGk6AboY2YMQbgBrovyQAy4pUBXI5OOtnYnVEMWmcFuJhpCXyXRQ
+	obTXYEim2eZ0L2K2f0IF1cX1dTkHe+a9uUFMxKS7Vbgjpa3vBvARgfQ2OaTibLwBsLvqfpCgBQx
+	pbj3emGRLUgjaJsjGEyHdN5q1h3aIvASoSMqwamSREObR4MFLwrz2ReoPiWP/YmnYsLMAgEuJ+R
+	bW8y3fI76AV7a1CzXizTr0uBqid/m9t/MxmveQ0oCILS9uaN/BRfoSX6OwlJFi/3eoMi+u63Dyh
+	3lpI+hlyhKxOQoPCHA==
+X-Received: by 2002:a54:4e88:0:b0:46c:e542:cc3e with SMTP id
+ 5614622812f47-482e55e65a9mr3386045b6e.6.1778913818672; Fri, 15 May 2026
+ 23:43:38 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 4/4] iomap: fix out-of-bounds bitmap_set() with
- zero-length range
-To: "Darrick J. Wong" <djwong@kernel.org>, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-ext4@vger.kernel.org, brauner@kernel.org, hch@infradead.org,
- yi.zhang@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260514062955.1183976-1-yi.zhang@huaweicloud.com>
- <20260514062955.1183976-5-yi.zhang@huaweicloud.com>
- <20260514181053.GB9555@frogsfrogsfrogs>
- <827c4380-4251-40af-bc14-207111736464@huaweicloud.com>
- <20260515173047.GC9555@frogsfrogsfrogs>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260515173047.GC9555@frogsfrogsfrogs>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+References: <20260507-case-sensitivity-v14-0-e62cc8200435@oracle.com> <20260511-wertverlust-vorbringen-070f016f3bd4@brauner>
+In-Reply-To: <20260511-wertverlust-vorbringen-070f016f3bd4@brauner>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Sat, 16 May 2026 08:43:00 +0200
+X-Gm-Features: AVHnY4LulXSgBXmlt-XknhPT4FGQR5_lEWwUy9GN7jO6BYSv7kvOdT0vcpcWCyI
+Message-ID: <CALXu0UdsurG-ayuYViqs0HXOfgyDw8gpNC+f=5y59cuuSPUbBA@mail.gmail.com>
+Subject: Re: [PATCH v14 00/15] Exposing case folding behavior
+To: Christian Brauner <brauner@kernel.org>, Chuck Lever <cel@kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-api@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org, sj1557.seo@samsung.com, 
+	yuezhang.mo@sony.com, almaz.alexandrovich@paragon-software.com, 
+	slava@dubeyko.com, glaubitz@physik.fu-berlin.de, frank.li@vivo.com, 
+	tytso@mit.edu, adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, 
+	pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com, 
+	trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org, chao@kernel.org, 
+	hansg@kernel.org, senozhatsky@chromium.org, 
+	"Darrick J. Wong" <djwong@kernel.org>, Roland Mainz <roland.mainz@nrubsig.org>, 
+	Steve French <stfrench@microsoft.com>
+Content-Type: text/plain; charset="UTF-8"
 
-On 5/16/2026 1:30 AM, Darrick J. Wong wrote:
-> On Fri, May 15, 2026 at 09:50:08AM +0800, Zhang Yi wrote:
->> On 5/15/2026 2:10 AM, Darrick J. Wong wrote:
->>> On Thu, May 14, 2026 at 02:29:55PM +0800, Zhang Yi wrote:
->>>> From: Zhang Yi <yi.zhang@huawei.com>
->>>>
->>>> ifs_set_range_dirty() and ifs_set_range_uptodate() compute last_blk
->>>> as (off + len - 1) >> i_blkbits.  When off is 0 and len is 0, the
->>>> unsigned subtraction underflows to SIZE_MAX, producing a huge
->>>> last_blk and nr_blks value that causes bitmap_set() to write far
->>>> beyond the ifs->state allocation.
->>>>
->>>> Regarding ifs_set_range_uptodate(), it is temporarily safe because len
->>>> cannot be passed in as 0. However, for ifs_set_range_dirty() this is
->>>> reachable from __iomap_write_end(): when copy_folio_from_iter_atomic()
->>>> returns 0 (e.g. user buffer fault) and the folio is already uptodate,
->>>> the guard at the top of __iomap_write_end() does not trigger because
->>>> !folio_test_uptodate() is false, and iomap_set_range_dirty() is called
->>>> with copied == 0.
->>>>
->>>> Add a !len guard to both functions before the computation, so that a
->>>> zero-length range is a no-op.
->>>>
->>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>>> ---
->>>>   fs/iomap/buffered-io.c | 23 +++++++++++++++--------
->>>>   1 file changed, 15 insertions(+), 8 deletions(-)
->>>>
->>>> diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
->>>> index 27ab33edbdee..6fe5f7e998fd 100644
->>>> --- a/fs/iomap/buffered-io.c
->>>> +++ b/fs/iomap/buffered-io.c
->>>> @@ -67,11 +67,14 @@ static bool ifs_set_range_uptodate(struct folio *folio,
->>>>   		struct iomap_folio_state *ifs, size_t off, size_t len)
->>>>   {
->>>>   	struct inode *inode = folio->mapping->host;
->>>> -	unsigned int first_blk = off >> inode->i_blkbits;
->>>> -	unsigned int last_blk = (off + len - 1) >> inode->i_blkbits;
->>>> -	unsigned int nr_blks = last_blk - first_blk + 1;
->>>> +	unsigned int first_blk, last_blk;
->>>>   
->>>> -	bitmap_set(ifs->state, first_blk, nr_blks);
->>>> +	if (!len)
->>>> +		return true;
->>>> +
->>>> +	first_blk = off >> inode->i_blkbits;
->>>> +	last_blk = (off + len - 1) >> inode->i_blkbits;
->>>> +	bitmap_set(ifs->state, first_blk, last_blk - first_blk + 1);
->>>>   	return ifs_is_fully_uptodate(folio, ifs);
->>>>   }
->>>>   
->>>> @@ -203,13 +206,17 @@ static void ifs_set_range_dirty(struct folio *folio,
->>>>   {
->>>>   	struct inode *inode = folio->mapping->host;
->>>>   	unsigned int blks_per_folio = i_blocks_per_folio(inode, folio);
->>>> -	unsigned int first_blk = (off >> inode->i_blkbits);
->>>> -	unsigned int last_blk = (off + len - 1) >> inode->i_blkbits;
->>>> -	unsigned int nr_blks = last_blk - first_blk + 1;
->>>> +	unsigned int first_blk, last_blk;
->>>>   	unsigned long flags;
->>>>   
->>>> +	if (!len)
->>>> +		return;
->>>> +
->>>> +	first_blk = off >> inode->i_blkbits;
->>>> +	last_blk = (off + len - 1) >> inode->i_blkbits;
->>>>   	spin_lock_irqsave(&ifs->state_lock, flags);
->>>> -	bitmap_set(ifs->state, first_blk + blks_per_folio, nr_blks);
->>>> +	bitmap_set(ifs->state, first_blk + blks_per_folio,
->>>> +		   last_blk - first_blk + 1);
->>>
->>> I'm curious about the inconsistency in the computations between
->>> ifs_clear_range_dirty and ifs_set_range_dirty now.  In the function that
->>> clears dirty bits, off/len are rounded inwards:
->>>
->>> 	unsigned int first_blk = round_up(off, i_blocksize(inode)) >>
->>> 				 inode->i_blkbits;
->>> 	unsigned int last_blk = (off + len) >> inode->i_blkbits;
->>> 	unsigned long flags;
->>>
->>> 	if (first_blk >= last_blk)
->>> 		return;
->>>
->>> 	spin_lock_irqsave(&ifs->state_lock, flags);
->>> 	bitmap_clear(ifs->state, first_blk + blks_per_folio,
->>> 		     last_blk - first_blk);
->>>
->>> but here we're still rounding outwards:
->>>
->>> 	if (!len)
->>> 		return;
->>>
->>> 	first_blk = off >> inode->i_blkbits;
->>> 	last_blk = (off + len - 1) >> inode->i_blkbits;
->>> 	spin_lock_irqsave(&ifs->state_lock, flags);
->>> 	bitmap_set(ifs->state, first_blk + blks_per_folio,
->>> 		   last_blk - first_blk + 1);
->>>
->>> That doesn't quite sound right to me without an explanation in the code,
->>> which currently lacks one.  I *think* the reason for the discrepancy is
->>> that if we want to dirty part of an fsblock, we need to mark the whole
->>> block dirty in the ifs so that all the blocks get written out; but when
->>> we're clearing dirty bits, we want to leave an fsblock dirty if we only
->>> wrote back part of that fsblock.  Does that sound right?
->>>
->>> --D
->>>
->>
->> Yes, that's right. The primary purpose of clearing the dirty bit is for
->> invalidating a partial folio(e.g., when punching hole). Only when a full
->> fsblock has been invalidated can its corresponding dirty bit be cleared.
->> Write-back operations never seem to write back only part of a fsblock.
->>
->> I can add comments for them in my next iteration.
-> 
-> Sounds good, thank you.
-> 
-> (Does this patch also need a fixes tag like Joanne asked?)
+On Mon, 11 May 2026 at 16:11, Christian Brauner <brauner@kernel.org> wrote:
+>
+> On Thu, 07 May 2026 04:52:53 -0400, Chuck Lever wrote:
+> > Christian, let's lock this one in. I will post subsequent changes
+> > as delta patches.
+> >
+> > Following on from:
+> >
+> > https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57fd@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
+> >
+> > [...]
+>
+> Applied to the vfs-7.2.exportfs branch of the vfs/vfs.git tree.
+> Patches in the vfs-7.2.exportfs branch should appear in linux-next soon.
 
-Yeah, I will add it as well.
+@Chuck Lever Thank you!
 
-Thanks,
-Yi.
+Does that mean the support for case-insensitive filesystems will work
+with Linux 7.2?
 
-> 
-> --D
-> 
->> Thanks,
->> Yi.
->>
->>
->>
-
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
