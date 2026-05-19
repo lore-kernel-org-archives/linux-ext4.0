@@ -1,162 +1,227 @@
-Received: from out-181.mta1.migadu.com (out-181.mta1.migadu.com [95.215.58.181])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6F903F6C4C
-	for <linux-ext4@vger.kernel.org>; Tue, 19 May 2026 09:03:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 089653FD134;
+	Tue, 19 May 2026 09:29:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779181403; cv=none; b=D7f3WQimWoNWmoI4qvIxNYcQQQXsTYY3eKtClbDLjOma8o4qjONFCh3Z87+P0Z8YarjopA+iSODSmm8v5q88f7mA/oRZGJwGRapk3RemFUkMEZnTpCyccsWaujpltAavhD5D7PDvWV9ngZz7WarmjloiZRKgtEtMjFir9l/xsXs=
+	t=1779182968; cv=none; b=QAf8Dgck7h3cOkrbRUpgMsncFHxh4GVP4RitdLV2Lon1Q7E/umvCf6ONtH4Cjuc6E70czZhsGEM6rGD1O5kcxS+Ce8CbWRBfiLemkDGbNk83mHnYdehrFQSCgTs4phpinHpZLp/GU1ZUhLwC6utPm2BOMUvq0KLKz9Fa4eadV5I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779181403; c=relaxed/simple;
-	bh=w4fG9dMjPPjIifqUT2Uw2T1K2p9ejh1dOf1Q/2ETxCA=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=dh6+PjXTivQQP41QXAe4xzbxl6UvRrRC2E8AyxY7LBFDSVp9khH71019rkU52NSnzj2ixT6KRU7mUA8LRjr+31gzxMrWJ9pqBkeYnzr2K3O/7M0eeeTGs31xKT9Ex9dSyCAmYF/0ZgbwZM+EoP8gacSQ4cmD03QSsz0a2ESoCxM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=k2MK6leB; arc=none smtp.client-ip=95.215.58.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1779182968; c=relaxed/simple;
+	bh=PMUiZ5voZItO46rTYWv/NL4e46TaxZE4b2t+dnenaqg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KTlEXfQbjjQu0ElLD5k7q8UO34oe1oBkcHg8YniRqgSQWa2QX0fCi00/6ZEu/JpHzcZESsMZSujEDO1aNov60EqYPHiJparoFKdkfJEr5F1hU2lOtrKmHzkrNE01p8JEkhFQALjnmQ/llwhbBs+e95kS2nvYN4bbYqXI1Sfa+SQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=B6NQjZ7C; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="k2MK6leB"
-Content-Type: text/plain;
-	charset=utf-8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1779181394;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=hSOauER5MyHXpewQdXwKYI24deSOfI/F1xxDMDHNKVI=;
-	b=k2MK6leBsGW1qoC6eU1zCnoqGY2YmHYRFkY3okuhRQDxBYT0wkz2qYLCOB0Yw6DijQlgXj
-	w0yKtQFaSUsGru9C6ZugTi1cNOnUHEo7wfvVP/NCc3c4A7w2KG4Y+4j7gh7yauLBXCoZ/7
-	0J8LLapTCDJP9y2SrbaCLE89k7V/1Fg=
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="B6NQjZ7C"
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64IJ5wC7220135;
+	Tue, 19 May 2026 09:28:16 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=GvCXPaY9Li9eupkMJaDNNHDxW38Vh2
+	ZOXrok0QStvNA=; b=B6NQjZ7CjmuKTMHnUvN6UlPgOLfjQ/zwwkko2a73r2D234
+	iGC3ByHTiqeyBsNiEZYCUQpvA/Dg+9At7k3vcbKM3p76f4UEMOM1AsjYzcy2TSDU
+	QbmFsQLZC3yIq5BZej9a6Jn1B/yBDmKg3zKKbcPITz2JUUSA5S/VcGOMq6Tih5n4
+	M2dEUFxBNeo3hk7PXAfxika22MEkPBe7EjcMJG24GQDrjzBEObPxCBPt4LLAmsAR
+	Q9yUz5pDoTsUZiV6gZZBKdNDVSCaGdU2FTzy4W64xAYDE4E+t5pNgmqwhxvAmQci
+	6fdrillt3medqJfwalzAHveGCosKVjtkB5+8WZgg==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4e6h9xv8nd-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 19 May 2026 09:28:15 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64J9OUld016855;
+	Tue, 19 May 2026 09:28:14 GMT
+Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4e739vt1mq-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 19 May 2026 09:28:14 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64J9SCTs31850892
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 19 May 2026 09:28:12 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 8CC282004B;
+	Tue, 19 May 2026 09:28:12 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 1383120043;
+	Tue, 19 May 2026 09:28:09 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.123.13.2])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Tue, 19 May 2026 09:28:08 +0000 (GMT)
+Date: Tue, 19 May 2026 14:58:06 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+        yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 04/23] ext4: add iomap address space operations for
+ buffered I/O
+Message-ID: <agwtJq5-B2E-t7zT@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-5-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.600.51.1.1\))
-Subject: Re: [PATCH v2] mm: do not install PMD mappings when handling a COW
- fault
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From: William Kucharski <william.kucharski@linux.dev>
-In-Reply-To: <a3c8038a-43e9-4427-92dd-8fed619001e8@huaweicloud.com>
-Date: Tue, 19 May 2026 03:02:54 -0600
-Cc: linux-mm@kvack.org,
- linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org,
- david@redhat.com,
- yi.zhang@huawei.com,
- karol.wachowski@linux.intel.com,
- wangkefeng.wang@huawei.com,
- yangerkun@huawei.com,
- liuyongqiang13@huawei.com
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <2381B9B8-FD4D-48FE-BBF3-00D3455A8197@linux.dev>
-References: <20251024102237.3332200-1-yi.zhang@huaweicloud.com>
- <a3c8038a-43e9-4427-92dd-8fed619001e8@huaweicloud.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-X-Migadu-Flow: FLOW_OUT
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260511072344.191271-5-yi.zhang@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTE5MDA4OSBTYWx0ZWRfXwfFQ+Wz8DJaR
+ bGdhWvXo+JN6yUmhM9kGGwBlm4nVIsr3EFovujef+ueKUPgaUZPvy79qAGb3Bxcy4mcl6PacxlN
+ kUQ0tke+wdX69yJd8F4MpAtZRjQLEvrV+r6rrhSrO94KNZcHL76ZVFC4LJii8r2D3NeOJBmbBU7
+ oGRiZ2BGob0tuJHUnhV4PnSxxtfOyRJSX7vmDDOvUlDragNq6qmFVWSSjnsBb1udfkOvHFv6Oyc
+ ErDGLhaRLnD8YqCNmuJ3N3auWWuCSXbTS3neyIC+5P8gjXHhOTSwR3E2LkrdRCNepmChOil/kBG
+ sey8soZSGeCc9e1CUy8YyhhpQTMtk89yszs+uRojVkuvGMRqVLAispwxInN2WjMuAsRFfC13EoL
+ V+86HAVoBwr4b7l30PME8CQohhXTsrhDwvBL6XHWAAo8beMKrOGuyQWT+RNmQqWqsWXj8xPz3C1
+ QA/zH1DrWLHdFbxdN4g==
+X-Authority-Analysis: v=2.4 cv=BNuDalQG c=1 sm=1 tr=0 ts=6a0c2d30 cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
+ a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=i0EeH86SAAAA:8
+ a=4_HcevU3tUaN4LvWHNsA:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-ORIG-GUID: YXJ2Yzw7qXJufjJsDhcnx-8SgeX-Ao83
+X-Proofpoint-GUID: q4tzlombJEIgEV1TbKYjz7nUo6b6qSaO
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
+ definitions=2026-05-19_02,2026-05-18_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ adultscore=0 priorityscore=1501 malwarescore=0 impostorscore=0 suspectscore=0
+ lowpriorityscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605130000 definitions=main-2605190089
 
+On Mon, May 11, 2026 at 03:23:24PM +0800, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> Introduce initial support for iomap in the buffered I/O path for regular
+> files on ext4.
+> 
+>   - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
+>     inode uses iomap instead of buffer_head for buffered I/O
+>   - Add helper ext4_inode_buffered_iomap() to check the flag
+>   - Add new address space operations ext4_iomap_aops with callbacks that
+>     will use generic iomap implementations
+>   - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
+> 
+> The following callbacks(read_folio(), readahead(), writepages()) are
+> provided as placeholders and will be implemented in later patches.
+> 
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
+Hi Zhang, looks good to me. Just a questions below:
+> ---
+>  fs/ext4/ext4.h  |  7 +++++++
+>  fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
+>  2 files changed, 39 insertions(+)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a991e5c..1e27d73d7427 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1972,6 +1972,7 @@ enum {
+>  	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+>  	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+>  	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+> +	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
+>  };
+>  
+>  #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+> @@ -2040,6 +2041,12 @@ static inline bool ext4_inode_orphan_tracked(struct inode *inode)
+>  		!list_empty(&EXT4_I(inode)->i_orphan);
+>  }
+>  
+> +/* Whether the inode pass through the iomap infrastructure for buffered I/O */
+> +static inline bool ext4_inode_buffered_iomap(struct inode *inode)
+> +{
+> +	return ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
+> +}
+> +
+>  /*
+>   * Codes for operating systems
+>   */
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index b1ef706987c3..178ac2be37b7 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3908,6 +3908,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
+>  	.iomap_begin = ext4_iomap_begin_report,
+>  };
+>  
+> +static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
+> +{
+> +	return 0;
+> +}
+> +
+> +static void ext4_iomap_readahead(struct readahead_control *rac)
+> +{
+> +
+> +}
+> +
+> +static int ext4_iomap_writepages(struct address_space *mapping,
+> +				 struct writeback_control *wbc)
+> +{
+> +	return 0;
+> +}
+> +
+>  /*
+>   * For data=journal mode, folio should be marked dirty only when it was
+>   * writeably mapped. When that happens, it was already attached to the
+> @@ -3994,6 +4010,20 @@ static const struct address_space_operations ext4_da_aops = {
+>  	.swap_activate		= ext4_iomap_swap_activate,
+>  };
+>  
+> +static const struct address_space_operations ext4_iomap_aops = {
+> +	.read_folio		= ext4_iomap_read_folio,
+> +	.readahead		= ext4_iomap_readahead,
+> +	.writepages		= ext4_iomap_writepages,
+> +	.dirty_folio		= iomap_dirty_folio,
+> +	.bmap			= ext4_bmap,
+> +	.invalidate_folio	= iomap_invalidate_folio,
+> +	.release_folio		= iomap_release_folio,
+> +	.migrate_folio		= filemap_migrate_folio,
+> +	.is_partially_uptodate  = iomap_is_partially_uptodate,
+> +	.error_remove_folio	= generic_error_remove_folio,
+> +	.swap_activate		= ext4_iomap_swap_activate,
+> +};
 
-> On May 19, 2026, at 02:36, Zhang Yi <yi.zhang@huaweicloud.com> wrote:
->=20
-> Gentle ping =E2=80=93 could anyone take this patch?
->=20
-> Thanks,
-> Yi.
+So one question, for ->release_folio() we are using
+iomap_release_folio() instead of ext4_release_folio() here which doesnt
+make the jbd2_journal_try_to_free_bufferes() call. IIUC this function
+seems to be trying to clean up already checkpointed buffers.
 
-Could you update the comment to clarify why you shouldn't install PMD =
-mappings
-while doing CoW rather than just state it should never be done?
+I wanted to check if ->release_folio() can be called for folios with
+ext4 metadata buffers? (from my limited understanding of
+shrink_folio_list() -> filemap_release_folio() it seems we can) And if
+it can be called, is it okay to skip the
+jbd2_journal_try_to_free_buffers call?
 
->=20
-> On 10/24/2025 6:22 PM, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>=20
->> When pinning a page with FOLL_LONGTERM in a CoW VMA and a PMD-aligned
->> (2MB on x86) large folio follow_page_mask() failed to obtain a valid
->> anonymous page, resulting in an infinite loop issue. The specific
->> triggering process is as follows:
->>=20
->> 1. User call mmap with a 2MB size in MAP_PRIVATE mode for a file that
->>   has a 2MB large folio installed in the page cache.
->>=20
->>   addr =3D mmap(NULL, 2*1024*1024, PROT_READ, MAP_PRIVATE, file_fd, =
-0);
->>=20
->> 2. The kernel driver pass this mapped address to =
-pin_user_pages_fast()
->>   in FOLL_LONGTERM mode.
->>=20
->>   pin_user_pages_fast(addr, 512, FOLL_LONGTERM, pages);
->>=20
->>  ->  pin_user_pages_fast()
->>  |   gup_fast_fallback()
->>  |    __gup_longterm_locked()
->>  |     __get_user_pages_locked()
->>  |      __get_user_pages()
->>  |       follow_page_mask()
->>  |        follow_p4d_mask()
->>  |         follow_pud_mask()
->>  |          follow_pmd_mask() //pmd_leaf(pmdval) is true because the
->>  |                            //huge PMD is installed. This is normal
->>  |                            //in the first round, but it shouldn't
->>  |                            //happen in the second round.
->>  |           follow_huge_pmd() //require an anonymous page
->>  |            return -EMLINK;
->>  |   faultin_page()
->>  |    handle_mm_fault()
->>  |     wp_huge_pmd() //remove PMD and fall back to PTE
->>  |     handle_pte_fault()
->>  |      do_pte_missing()
->>  |       do_fault()
->>  |        do_read_fault() //FAULT_FLAG_WRITE is not set
->>  |         finish_fault()
->>  |          do_set_pmd() //install a huge PMD again, this is wrong!!!
->>  |      do_wp_page() //create private anonymous pages
->>  <-    goto retry;
->>=20
->> Due to an incorrectly large PMD set in do_read_fault(),
->> follow_pmd_mask() always returns -EMLINK, causing an infinite loop.
->>=20
->> David pointed out that we can preallocate a page table and remap the =
-PMD
->> to be mapped by a PTE table in wp_huge_pmd() in the future. But now =
-we
->> can avoid this issue by not installing PMD mappings when handling a =
-COW
->> and unshare fault in do_set_pmd().
->>=20
->> Fixes: a7f226604170 ("mm/gup: trigger FAULT_FLAG_UNSHARE when =
-R/O-pinning a possibly shared anonymous page")
->> Reported-by: Karol Wachowski <karol.wachowski@linux.intel.com>
->> Closes: =
-https://lore.kernel.org/linux-ext4/844e5cd4-462e-4b88-b3b5-816465a3b7e3@li=
-nux.intel.com/
->> Suggested-by: David Hildenbrand <david@redhat.com>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> Acked-by: David Hildenbrand <david@redhat.com>
->> ---
->> mm/memory.c | 5 +++++
->> 1 file changed, 5 insertions(+)
->>=20
->> diff --git a/mm/memory.c b/mm/memory.c
->> index 0ba4f6b71847..0748a31367df 100644
->> --- a/mm/memory.c
->> +++ b/mm/memory.c
->> @@ -5212,6 +5212,11 @@ vm_fault_t do_set_pmd(struct vm_fault *vmf, =
-struct folio *folio, struct page *pa
->> if (!thp_vma_suitable_order(vma, haddr, PMD_ORDER))
->> return ret;
->>=20
->> + /* We're about to trigger CoW, so never map it through a PMD. */
->> + if (is_cow_mapping(vma->vm_flags) &&
->> +    (vmf->flags & (FAULT_FLAG_WRITE|FAULT_FLAG_UNSHARE)))
->> + return ret;
->> +
->> if (folio_order(folio) !=3D HPAGE_PMD_ORDER)
->> return ret;
->> page =3D &folio->page;
->=20
->=20
+Regards,
+ojaswin
 
+> +
+>  static const struct address_space_operations ext4_dax_aops = {
+>  	.writepages		= ext4_dax_writepages,
+>  	.dirty_folio		= noop_dirty_folio,
+> @@ -4015,6 +4045,8 @@ void ext4_set_aops(struct inode *inode)
+>  	}
+>  	if (IS_DAX(inode))
+>  		inode->i_mapping->a_ops = &ext4_dax_aops;
+> +	else if (ext4_inode_buffered_iomap(inode))
+> +		inode->i_mapping->a_ops = &ext4_iomap_aops;
+>  	else if (test_opt(inode->i_sb, DELALLOC))
+>  		inode->i_mapping->a_ops = &ext4_da_aops;
+>  	else
+> -- 
+> 2.52.0
+> 
