@@ -1,175 +1,186 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f77.google.com (mail-ot1-f77.google.com [209.85.210.77])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B21FF26CE32;
-	Tue, 19 May 2026 05:27:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E78F6351C1F
+	for <linux-ext4@vger.kernel.org>; Tue, 19 May 2026 05:54:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.77
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779168457; cv=none; b=gU1CsqJlQsme3OXdSuQ3XxW9qbOKDSS6En+z9F93RsZi1I9IAdmxYN3gWaeCvdi5bPq2R4vNR26GpI+U6bv8K4Q5hjjQMV/VGgN2wnDXLNL9FTg+9J0qVnzb/O+DOa3cliSCfHYwcCLzSCxuWto+PFkq7pR0qBS6zduqy9OzWxo=
+	t=1779170064; cv=none; b=XqK7R9nqshGDJBapQ8p3q/i3pI3AdfREMXbJTq6eiPLBcMkTBVV8DCp0IcgzoIE2fz4u7K9fqyyDy607fgstah4em3P3fIMIPHZ0WR8J3nAmHe+PwUXlGVYSXLB0H0LBJ6OcA5RjeGeiny7lkZiposFpsxdJoteMl2rmkyunE6I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779168457; c=relaxed/simple;
-	bh=m/+ciBMHqRg6iC/PpzDfyMJadbRSdC62tYBUYjBN9+E=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=VtR4i2+0MDDnWFARaXcmQaV30+2WKKFpwwxCcs03HsyZU7CYSq1Z8OaGDx8oT7pwVd9BAAimBlqFv4Ssmsyncf0YMapYHIxxo9KUbqvCQ/ygSb6Lf8gStgnwK2LMXpPSl1P0fxaj4fWKmI/QcIxZBVMn3Twb0IYoyfkWwLXewUw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=pPobGNCC; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="pPobGNCC"
-Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64IG4Mat3300127;
-	Tue, 19 May 2026 05:25:52 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=wMuFJ7YFnR4VJ5K1YoIbmpQVZEn1oM
-	v2us1dBHH22nE=; b=pPobGNCCdMJgZKXw1Ir2DFe+NIHGNkT/SU3ZI10TmViFDD
-	zPWk5UHbYR3vntc7RklxV6JAqSn1V3h3Hpos3gTdRWCE+zOHjC6yFCaUMWhPAiPq
-	uITUoFHF92u5H/GlYdNp8+13o99DlsCXUbr9k1WHmACi4Gn3X0ReIr2ldOVb9gXj
-	aLwHbJCNx8rhCq0/6t22AZWkyIIWx4V2uXDcTLlDB5mDxHMN/GnDFNDbBI2hS4v+
-	fiOYwzkLzey/1lbPCEGTzZFx9ITnIxisIbvUP00Z/rs7LwvV7+M491Mfx/nSGFuu
-	dBw4pWe6rSucCUE53ZebvVxVmFpdS8a6g87Sx+Ug==
-Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4e6h8mkaew-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 19 May 2026 05:25:51 +0000 (GMT)
-Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64J5OY2D024326;
-	Tue, 19 May 2026 05:25:50 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4e739vs8kj-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 19 May 2026 05:25:50 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64J5Pmfr52494840
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Tue, 19 May 2026 05:25:48 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 92DA120040;
-	Tue, 19 May 2026 05:25:48 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 3754120043;
-	Tue, 19 May 2026 05:25:41 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.29.191])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Tue, 19 May 2026 05:25:40 +0000 (GMT)
-Date: Tue, 19 May 2026 10:54:34 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
-        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
-        yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 01/23] ext4: simplify size updating in ext4_setattr()
-Message-ID: <agv0Ehrk2t7EpW6w@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-2-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1779170064; c=relaxed/simple;
+	bh=2WCdrXQLXVQTIuXe7pwtzfT1+rmOGcL383smRcy3OSA=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=HbtWv6bRM54l3uHvPXWQInNo56E02ctlyLDuV2M72Z7jv19HNjT7B0N54PnbvaKOLWtHyKZzEjUUIFWcXo4Q4j4orrew7/E0zpKY4+4q5dT8BDp6Nf6/lFArT93girQEz3zYncDQV3QPaOTXSUzj/UmzGV9GJpLMhy/tiw/F8NU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.210.77
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-ot1-f77.google.com with SMTP id 46e09a7af769-7dca6ecdd85so5163083a34.1
+        for <linux-ext4@vger.kernel.org>; Mon, 18 May 2026 22:54:22 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779170062; x=1779774862;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=UHkYbplKCeopozw8mgtVusCxwUiCczK3MpH2iNZEZtQ=;
+        b=BSrRe+ghn5uqgthdXqB/oI5/Gl/2Mo27k2m3/spghOTIaXImUGh29PSHKbruv4xa0n
+         Bo+F4bgGa1hFiLCU41qfML4tyeUgiUksS5GIM5cyzxXX57ln71kzmIMTpc1OOim0Q7un
+         YU2NKBxcIlNOoLmMVVs0l++VlLLLen7/6x6VsEcV6HmJj8M4p9TDVJ1MqwW+lCHZyOrj
+         kOTEO0Yc02o2Y/LoAndVuM/NtDS4q32yg67HWGpwPvEe0rggBLhLM95GnOWcVRskqES2
+         w+rc+VhLX2rx1nbSuele9/mOcqbJziPARFUUTazhKChYkrpGHo0uUhovWSdHsn5wlhQY
+         qpPQ==
+X-Forwarded-Encrypted: i=1; AFNElJ9HNXm0PbzjE5aTWrBxOdz44nBD633Amx4Hm8yUDiOZfBRzfwsZTGiEjSuma0lA2kktmL2AzaunWM34@vger.kernel.org
+X-Gm-Message-State: AOJu0YxRIGnjngJKQERxamtl5ShO1skWbqYxvGBQBs9MtRcfMLy6AjjA
+	DUZ32wtdT1b+6ZFBgTR+DSr7Kgrra7da9mGPM/3S8c/jXqW7/ktKns+xzz+dFzKPyAeM4DV0mdZ
+	UZddn6NtztQEIXtlu7+XF1wL0OzV4Hfztp7fBzQVNIx36g7q0CQxfRXX2PCk=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260511072344.191271-2-yi.zhang@huaweicloud.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: lKYbcljLORpBuyyU_z3S0dKXNZP838pZ
-X-Authority-Analysis: v=2.4 cv=GYMnWwXL c=1 sm=1 tr=0 ts=6a0bf460 cx=c_pps
- a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
- a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=i0EeH86SAAAA:8
- a=VnNF1IyMAAAA:8 a=3NWl43M1H4cGl_gAuZsA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-ORIG-GUID: JarRJJa-82URVMn6qgkqGRrGHkIEJv9Q
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTE5MDA0NyBTYWx0ZWRfXyapmj49rG1gQ
- EuhQatZbd/pggu9NReGP9HbRwavi4V9OVs4iFUsS0kdR9Ezw0c0eVuLwWe1E/5FEc/EoQKQ2w42
- 1y47Cg8WG/Njcq2w7EWUr2AgLjO6/ZeQXew4NjdDlxj6x+SHXHo84oUKnyHNDU7Vzdeid0lzF3b
- qLsnoCGlBLKHMLPNE34XWwmrgIcb0l1wMSWRGyjjhMr8spXBGN0/Dy3uRAF0heu3/SKjLfqWcC2
- oCoZYMeg66pTmSliU4vMU/Tpfe7NkuY0UO5eFUCwswa2HSluBm3lMAC3lYH0egi1Qk42XvX/PX3
- XleAth2UhIajcwHmsi5HGhJnnfR3AgLKPbzPs++pC6aTw8Z20Y4cBt3oML/9JPt7mqoLY7ioVZ2
- mFtMvouj4g0s2K6CQmt743YM0hy7TgtD+mDxgnXpWFRsTL6/l8BpCPXZv3d0ChspqmXFfoVvrHH
- SnUauORlrD4rUBIU8jQ==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-05-19_01,2026-05-18_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- phishscore=0 malwarescore=0 lowpriorityscore=0 priorityscore=1501 bulkscore=0
- adultscore=0 suspectscore=0 spamscore=0 clxscore=1011 impostorscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2605130000 definitions=main-2605190047
+X-Received: by 2002:a05:6820:98c:b0:699:b131:d5a2 with SMTP id
+ 006d021491bc7-69c942aea4fmr11053383eaf.5.1779170061853; Mon, 18 May 2026
+ 22:54:21 -0700 (PDT)
+Date: Mon, 18 May 2026 22:54:21 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a0bfb0d.050a0220.188d2a.0002.GAE@google.com>
+Subject: [syzbot] [ext4?] possible deadlock in ext4_map_blocks (3)
+From: syzbot <syzbot+1d62d734f435d85cc693@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
+	tytso@mit.edu, yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Mon, May 11, 2026 at 03:23:21PM +0800, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> The logic for updating the file size in ext4_setattr() is currently
-> somewhat messy. By directly entering the error-handling path after
-> failing to add an orphan inode, the unnecessary recovery process
-> involving old_disksize and the file size can be avoided.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+Hello,
 
-Looks good, feel free to add:
+syzbot found the following issue on:
 
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+HEAD commit:    66182ca873a4 Merge tag 'net-7.1-rc4' of git://git.kernel.o..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=10328d6a580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=f2e8ebfec4636d32
+dashboard link: https://syzkaller.appspot.com/bug?extid=1d62d734f435d85cc693
+compiler:       Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
 
-> ---
->  fs/ext4/inode.c | 22 +++++++++-------------
->  1 file changed, 9 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c2c2d6ac7f3d..0751dc55e94f 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5953,7 +5953,6 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  	if (attr->ia_valid & ATTR_SIZE) {
->  		handle_t *handle;
->  		loff_t oldsize = inode->i_size;
-> -		loff_t old_disksize;
->  		int shrink = (attr->ia_size < inode->i_size);
->  
->  		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
-> @@ -6037,6 +6036,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  			if (ext4_handle_valid(handle) && shrink) {
->  				error = ext4_orphan_add(handle, inode);
->  				orphan = 1;
-> +				if (error)
-> +					goto out_handle;
->  			}
->  
->  			if (shrink)
-> @@ -6052,23 +6053,18 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  					(attr->ia_size > 0 ? attr->ia_size - 1 : 0) >>
->  					inode->i_sb->s_blocksize_bits);
->  
-> -			down_write(&EXT4_I(inode)->i_data_sem);
-> -			old_disksize = EXT4_I(inode)->i_disksize;
-> -			EXT4_I(inode)->i_disksize = attr->ia_size;
-> -
->  			/*
->  			 * We have to update i_size under i_data_sem together
->  			 * with i_disksize to avoid races with writeback code
-> -			 * running ext4_wb_update_i_disksize().
-> +			 * updating disksize in mpage_map_and_submit_extent().
->  			 */
-> -			if (!error)
-> -				i_size_write(inode, attr->ia_size);
-> -			else
-> -				EXT4_I(inode)->i_disksize = old_disksize;
-> +			down_write(&EXT4_I(inode)->i_data_sem);
-> +			i_size_write(inode, attr->ia_size);
-> +			EXT4_I(inode)->i_disksize = attr->ia_size;
->  			up_write(&EXT4_I(inode)->i_data_sem);
-> -			rc = ext4_mark_inode_dirty(handle, inode);
-> -			if (!error)
-> -				error = rc;
-> +
-> +			error = ext4_mark_inode_dirty(handle, inode);
-> +out_handle:
->  			ext4_journal_stop(handle);
->  			if (error)
->  				goto out_mmap_sem;
-> -- 
-> 2.52.0
-> 
+Unfortunately, I don't have any reproducer for this issue yet.
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/04f707fb980e/disk-66182ca8.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/88110d832473/vmlinux-66182ca8.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/fd09a1619478/bzImage-66182ca8.xz
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+1d62d734f435d85cc693@syzkaller.appspotmail.com
+
+============================================
+WARNING: possible recursive locking detected
+syzkaller #0 Not tainted
+--------------------------------------------
+syz.4.1400/19208 is trying to acquire lock:
+ffff888040b26cd0 (&ei->i_data_sem/2){++++}-{4:4}, at: ext4_map_blocks+0x7b5/0x11d0 fs/ext4/inode.c:823
+
+but task is already holding lock:
+ffff888040b231c0 (&ei->i_data_sem/2){++++}-{4:4}, at: ext4_map_blocks+0x7b5/0x11d0 fs/ext4/inode.c:823
+
+other info that might help us debug this:
+ Possible unsafe locking scenario:
+
+       CPU0
+       ----
+  lock(&ei->i_data_sem/2);
+  lock(&ei->i_data_sem/2);
+
+ *** DEADLOCK ***
+
+ May be due to missing lock nesting notation
+
+6 locks held by syz.4.1400/19208:
+ #0: ffff888025696480 (sb_writers#4){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2724 [inline]
+ #0: ffff888025696480 (sb_writers#4){.+.+}-{0:0}, at: vfs_write+0x22d/0xba0 fs/read_write.c:684
+ #1: ffff888040b23360 (&sb->s_type->i_mutex_key#10){++++}-{4:4}, at: inode_lock include/linux/fs.h:1029 [inline]
+ #1: ffff888040b23360 (&sb->s_type->i_mutex_key#10){++++}-{4:4}, at: ext4_buffered_write_iter+0xa1/0x3a0 fs/ext4/file.c:311
+ #2: ffff888040b231c0 (&ei->i_data_sem/2){++++}-{4:4}, at: ext4_map_blocks+0x7b5/0x11d0 fs/ext4/inode.c:823
+ #3: ffffffff8e170dd8 (dquot_srcu){.+.+}-{0:0}, at: srcu_lock_acquire include/linux/srcu.h:187 [inline]
+ #3: ffffffff8e170dd8 (dquot_srcu){.+.+}-{0:0}, at: srcu_read_lock include/linux/srcu.h:294 [inline]
+ #3: ffffffff8e170dd8 (dquot_srcu){.+.+}-{0:0}, at: __dquot_alloc_space+0x18d/0xea0 fs/quota/dquot.c:1729
+ #4: ffff888062ce2a98 (&dquot->dq_lock){+.+.}-{4:4}, at: dquot_commit+0x5e/0x450 fs/quota/dquot.c:533
+ #5: ffff8880256961e8 (&s->s_dquot.dqio_sem){++++}-{4:4}, at: v2_write_dquot+0x9c/0x260 fs/quota/quota_v2.c:369
+
+stack backtrace:
+CPU: 1 UID: 0 PID: 19208 Comm: syz.4.1400 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 04/18/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ print_deadlock_bug+0x279/0x290 kernel/locking/lockdep.c:3041
+ check_deadlock kernel/locking/lockdep.c:3093 [inline]
+ validate_chain kernel/locking/lockdep.c:3895 [inline]
+ __lock_acquire+0x253f/0x2cf0 kernel/locking/lockdep.c:5237
+ lock_acquire+0x106/0x350 kernel/locking/lockdep.c:5868
+ down_write+0x3a/0x50 kernel/locking/rwsem.c:1625
+ ext4_map_blocks+0x7b5/0x11d0 fs/ext4/inode.c:823
+ ext4_getblk+0x1ca/0x780 fs/ext4/inode.c:992
+ ext4_bread+0x2a/0x180 fs/ext4/inode.c:1055
+ ext4_quota_write+0x239/0x580 fs/ext4/super.c:7398
+ qtree_write_dquot+0x25b/0x5e0 fs/quota/quota_tree.c:462
+ v2_write_dquot+0x183/0x260 fs/quota/quota_v2.c:372
+ dquot_commit+0x377/0x450 fs/quota/dquot.c:540
+ ext4_write_dquot+0x20a/0x380 fs/ext4/super.c:7010
+ mark_dquot_dirty fs/quota/dquot.c:398 [inline]
+ mark_all_dquot_dirty+0x205/0x460 fs/quota/dquot.c:438
+ __dquot_alloc_space+0x620/0xea0 fs/quota/dquot.c:1765
+ dquot_alloc_space_nodirty include/linux/quotaops.h:292 [inline]
+ dquot_alloc_space include/linux/quotaops.h:305 [inline]
+ dquot_alloc_block include/linux/quotaops.h:329 [inline]
+ ext4_mb_new_blocks+0xfb1/0x46d0 fs/ext4/mballoc.c:6276
+ ext4_ext_map_blocks+0x1515/0x5860 fs/ext4/extents.c:4461
+ ext4_map_create_blocks+0x11d/0x540 fs/ext4/inode.c:631
+ ext4_map_blocks+0x7cd/0x11d0 fs/ext4/inode.c:824
+ _ext4_get_block+0x1e3/0x470 fs/ext4/inode.c:924
+ ext4_get_block_unwritten+0x2e/0x100 fs/ext4/inode.c:957
+ ext4_block_write_begin+0xb14/0x1950 fs/ext4/inode.c:1211
+ ext4_write_begin+0xb40/0x1890 fs/ext4/ext4_jbd2.h:-1
+ ext4_da_write_begin+0x355/0xd60 fs/ext4/inode.c:3152
+ generic_perform_write+0x2af/0x8b0 mm/filemap.c:4325
+ ext4_buffered_write_iter+0xd0/0x3a0 fs/ext4/file.c:316
+ ext4_file_write_iter+0x299/0x1c10 fs/ext4/file.c:-1
+ new_sync_write fs/read_write.c:595 [inline]
+ vfs_write+0x629/0xba0 fs/read_write.c:688
+ ksys_pwrite64 fs/read_write.c:795 [inline]
+ __do_sys_pwrite64 fs/read_write.c:803 [inline]
+ __se_sys_pwrite64 fs/read_write.c:800 [inline]
+ __x64_sys_pwrite64+0x19c/0x230 fs/read_write.c:800
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x15f/0xf80 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f50b506ce59
+Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f50b32be028 EFLAGS: 00000246 ORIG_RAX: 0000000000000012
+RAX: ffffffffffffffda RBX: 00007f50b52e5fa0 RCX: 00007f50b506ce59
+RDX: 0000000000000001 RSI: 0000200000000140 RDI: 0000000000000007
+RBP: 00007f50b5102d6f R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000008080c61 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f50b52e6038 R14: 00007f50b52e5fa0 R15: 00007fff20f29238
+ </TASK>
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
