@@ -1,201 +1,148 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 438C137CD42;
-	Tue, 19 May 2026 06:10:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64AAF3E173D;
+	Tue, 19 May 2026 08:36:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779171006; cv=none; b=skHK072Anjyr1fVzltnu78gyTNDtk+4hGz7KoBXJn2hdUUxS6S9WE2t/RDPrA7CHl2SQaS7TKmpGavW28PWTdMW8FaqgF3Kj1hnxuJBjcAjTYHRyxSvtsHcZaDK8S6TvTHAF60DT/vT6b7McNjgef2Gepr3TAa0lTtBQhYLK23U=
+	t=1779179802; cv=none; b=jW6J3W4sSCMsXRexyFGXmwDlhpNZ4Apw0HpKCs7h8brwD6RNhb9SEA0oQjjuT9MEzgRAGf1ec3+/Div555slB+dWA1XiZHwphFbEJxuQpnPhPk/r9RyF+aUpZovctbHByz1N/UQCuM4RovKpOm0uFt75AgBcMaffECHWtcg/1RU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779171006; c=relaxed/simple;
-	bh=kgXS0trJ/ZYRujdVg4H14UtjkIX5cAwulCXajTjtCCg=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=XvEiK3JuKoLA7a6s0izOsVcGcjOuw2yfFYLBFPYfx246OSUD17LK6AxeUTc0HrC6OPHnoxudvlkDsCWdQ8kM/sLEs2bJzVsK6zHJiC8Sqf62Cg1TGBOQtZYkhNC44GlImF273SNW2dygxapzdCM0X/7g55ZxDGLCsdfsXcBE1Lg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=mVz5X1e4; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="mVz5X1e4"
-Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64IHU6RQ786951;
-	Tue, 19 May 2026 06:09:23 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=HbpSdB82UuMCFSHAnE2QpCj7Kf4S3p
-	SzVjMoUmBbU2o=; b=mVz5X1e4XmoPc4eaOLzgvAmL+tDu8qU2n1coZkaGIcIXXH
-	gwXYekJyYsf/3hm9bCGje7z4ZmWMZKWRf31vdWFy3EK4T/PAI70jH6xOc+/V8Ds/
-	X1zRdD1X0eLUKSyOuLbos2vASoT5+FnXHMQwbjPAAb++ltzOyegC4AhPABQ8wcGg
-	KoYGAt6liUj88JeN3h3OIGQJZRClwcPsDj+Oise9TPjiaNItjPu9X6M8fIKg1nAn
-	Z/6wKoeCXD1s6Mj+bZwlXx1ZmPSG1Q71F60VwUMPZgMtaNvFFsfQh5SeT2gBwR4F
-	lVpQap8f+YFokzogxa9apzPp783HgldliXno42mQ==
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4e6hb8au17-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 19 May 2026 06:09:22 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64J69Jjj013395;
-	Tue, 19 May 2026 06:09:21 GMT
-Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4e754g91wv-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 19 May 2026 06:09:21 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64J69KcK57016688
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Tue, 19 May 2026 06:09:20 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 28EAB2004B;
-	Tue, 19 May 2026 06:09:20 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id A5FD120043;
-	Tue, 19 May 2026 06:09:16 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.123.13.2])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Tue, 19 May 2026 06:09:16 +0000 (GMT)
-Date: Tue, 19 May 2026 11:38:12 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
-        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
-        yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 03/23] ext4: simplify error handling in ext4_setattr()
-Message-ID: <agv-TF7_GUoslr5_@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-4-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1779179802; c=relaxed/simple;
+	bh=cPJed/vSbcTm+ihKdZe8OhOMpxmNmoVQZW7YtGVvsp8=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=f7eFBr6B6jS4fmKqFOv2d3A9HGxvMIaMKstehjpv/3F1yoKZb8h0rqDjnAy8YAY0NLYx4N3D8rTvr2islUw49ObsJaudphRMKwiXABui/EeOfnXAEqZbM9FVHpzSXK+0+apLWlB3E+yvAYTxdBn/ZB8oYcMrMVvfjaLP/tUCWMg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gKSg40SB8zYQvST;
+	Tue, 19 May 2026 16:35:44 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 707F74056E;
+	Tue, 19 May 2026 16:36:26 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP4 (Coremail) with SMTP id gCh0CgD3v1sFIQxqMANpCw--.44303S3;
+	Tue, 19 May 2026 16:36:24 +0800 (CST)
+Message-ID: <a3c8038a-43e9-4427-92dd-8fed619001e8@huaweicloud.com>
+Date: Tue, 19 May 2026 16:36:21 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260511072344.191271-4-yi.zhang@huaweicloud.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTE5MDA1NyBTYWx0ZWRfX5aYlo5NisH3L
- xFQ4FtRSiZz1bEE6kZIZS2y7VGOV9WW23g5tQb4dQt2qhe75vZCCTHENIr/XSaiZb9onNKg3kmO
- +UuzTozA0JdyzItCrkkHjteBk/s/vnIRJOTcVOTByH61H8ab1Eb0oa0xKWlHW6O4sUWfMqflNGl
- qi9/FnZL6Fd1fBsamWS9MKr9zIqgPDAVaIRksjiTLhM9M5+DC1b7dGzrvqSWVJvKa8NziH2SkCl
- e40NDSSG9j5SDM9gWRs9vQ54VyI2u3wT+u21aqyYYF6FCirRLzhAqnHlVncZ1PYoqiYvpSg3+U9
- 2w4i3A73G/msl2XNB41PeEUoOY1DPFG5srqN6a1Jsuav/jqsBAQP8n7PSp84R2GNS2RdV+dfh/T
- 6nTYE7aWuoP9d7QEsW5LReWzMK97k5nZXTJfbI488fkiyAxJ6bRJSD3vj4RHNJfHSZ3Whrn8L/W
- MfTrFKoTKpfoOi8O/bg==
-X-Proofpoint-GUID: 439GNBHzESATTpZpw3hsQ_LgwyIQ35yG
-X-Proofpoint-ORIG-GUID: -hdDVd46NECFxOCaO68tRG5PBof7lZFd
-X-Authority-Analysis: v=2.4 cv=aYBRWxot c=1 sm=1 tr=0 ts=6a0bfe93 cx=c_pps
- a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
- a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=Y2IxJ9c9Rs8Kov3niI8_:22 a=i0EeH86SAAAA:8
- a=VnNF1IyMAAAA:8 a=SlX1CYLIfBWmGlgmnfUA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-05-19_02,2026-05-18_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- impostorscore=0 adultscore=0 bulkscore=0 suspectscore=0 lowpriorityscore=0
- clxscore=1015 spamscore=0 phishscore=0 priorityscore=1501 malwarescore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2605130000 definitions=main-2605190057
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] mm: do not install PMD mappings when handling a COW
+ fault
+To: linux-mm@kvack.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ david@redhat.com, yi.zhang@huawei.com, karol.wachowski@linux.intel.com,
+ wangkefeng.wang@huawei.com, yangerkun@huawei.com, liuyongqiang13@huawei.com
+References: <20251024102237.3332200-1-yi.zhang@huaweicloud.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20251024102237.3332200-1-yi.zhang@huaweicloud.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgD3v1sFIQxqMANpCw--.44303S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxCr1rWw17WFyrCF1rKw47twb_yoW5CF1Upa
+	yxGa4YkFWfWrnFyF1fuw4vkry5Z397G3yUCFyxGryUuF13Gr13u39Yga17A34kGr48AF4r
+	Xr4Ygryq9F4qg37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAK
+	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
+	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
+	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
+	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
+	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, May 11, 2026 at 03:23:23PM +0800, Zhang Yi wrote:
+Gentle ping – could anyone take this patch?
+
+Thanks,
+Yi.
+
+On 10/24/2025 6:22 PM, Zhang Yi wrote:
 > From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Refactor the error handling in ext4_setattr() for better clarity:
+> When pinning a page with FOLL_LONGTERM in a CoW VMA and a PMD-aligned
+> (2MB on x86) large folio follow_page_mask() failed to obtain a valid
+> anonymous page, resulting in an infinite loop issue. The specific
+> triggering process is as follows:
 > 
->  - Return directly on ext4_break_layouts() failure.
->  - Propagate ext4_truncate() errors using the existing error variable
->    and jump to the common 'err_out' label.
->  - Propagate posix_acl_chmod() errors also through the error variable,
->    as it theoretically does not return a non-fatal error.
+> 1. User call mmap with a 2MB size in MAP_PRIVATE mode for a file that
+>    has a 2MB large folio installed in the page cache.
 > 
-> With these changes, every error path either returns immediately or jumps
-> to err_out. Consequently, the "if (!error)" condition guarding
-> setattr_copy() and mark_inode_dirty() becomes unreachable for error
-> cases. Remove this redundant check and the unused rc variable can be
-> removed as well.
+>    addr = mmap(NULL, 2*1024*1024, PROT_READ, MAP_PRIVATE, file_fd, 0);
 > 
+> 2. The kernel driver pass this mapped address to pin_user_pages_fast()
+>    in FOLL_LONGTERM mode.
+> 
+>    pin_user_pages_fast(addr, 512, FOLL_LONGTERM, pages);
+> 
+>   ->  pin_user_pages_fast()
+>   |   gup_fast_fallback()
+>   |    __gup_longterm_locked()
+>   |     __get_user_pages_locked()
+>   |      __get_user_pages()
+>   |       follow_page_mask()
+>   |        follow_p4d_mask()
+>   |         follow_pud_mask()
+>   |          follow_pmd_mask() //pmd_leaf(pmdval) is true because the
+>   |                            //huge PMD is installed. This is normal
+>   |                            //in the first round, but it shouldn't
+>   |                            //happen in the second round.
+>   |           follow_huge_pmd() //require an anonymous page
+>   |            return -EMLINK;
+>   |   faultin_page()
+>   |    handle_mm_fault()
+>   |     wp_huge_pmd() //remove PMD and fall back to PTE
+>   |     handle_pte_fault()
+>   |      do_pte_missing()
+>   |       do_fault()
+>   |        do_read_fault() //FAULT_FLAG_WRITE is not set
+>   |         finish_fault()
+>   |          do_set_pmd() //install a huge PMD again, this is wrong!!!
+>   |      do_wp_page() //create private anonymous pages
+>   <-    goto retry;
+> 
+> Due to an incorrectly large PMD set in do_read_fault(),
+> follow_pmd_mask() always returns -EMLINK, causing an infinite loop.
+> 
+> David pointed out that we can preallocate a page table and remap the PMD
+> to be mapped by a PTE table in wp_huge_pmd() in the future. But now we
+> can avoid this issue by not installing PMD mappings when handling a COW
+> and unshare fault in do_set_pmd().
+> 
+> Fixes: a7f226604170 ("mm/gup: trigger FAULT_FLAG_UNSHARE when R/O-pinning a possibly shared anonymous page")
+> Reported-by: Karol Wachowski <karol.wachowski@linux.intel.com>
+> Closes: https://lore.kernel.org/linux-ext4/844e5cd4-462e-4b88-b3b5-816465a3b7e3@linux.intel.com/
+> Suggested-by: David Hildenbrand <david@redhat.com>
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-
-
-Looks good to me:
-
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-
+> Acked-by: David Hildenbrand <david@redhat.com>
 > ---
->  fs/ext4/inode.c | 32 +++++++++++++++-----------------
->  1 file changed, 15 insertions(+), 17 deletions(-)
+>  mm/memory.c | 5 +++++
+>  1 file changed, 5 insertions(+)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 35e958f89bd5..b1ef706987c3 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5989,7 +5989,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  		 struct iattr *attr)
->  {
->  	struct inode *inode = d_inode(dentry);
-> -	int error, rc = 0;
-> +	int error;
->  	int orphan = 0;
->  	const unsigned int ia_valid = attr->ia_valid;
->  	bool inc_ivers = true;
-> @@ -6102,10 +6102,10 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+> diff --git a/mm/memory.c b/mm/memory.c
+> index 0ba4f6b71847..0748a31367df 100644
+> --- a/mm/memory.c
+> +++ b/mm/memory.c
+> @@ -5212,6 +5212,11 @@ vm_fault_t do_set_pmd(struct vm_fault *vmf, struct folio *folio, struct page *pa
+>  	if (!thp_vma_suitable_order(vma, haddr, PMD_ORDER))
+>  		return ret;
 >  
->  		filemap_invalidate_lock(inode->i_mapping);
->  
-> -		rc = ext4_break_layouts(inode);
-> -		if (rc) {
-> +		error = ext4_break_layouts(inode);
-> +		if (error) {
->  			filemap_invalidate_unlock(inode->i_mapping);
-> -			goto err_out;
-> +			return error;
->  		}
->  
->  		if (attr->ia_size > oldsize)
-> @@ -6117,15 +6117,19 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  		}
->  
->  		filemap_invalidate_unlock(inode->i_mapping);
-> +		if (error)
-> +			goto err_out;
->  	}
->  
-> -	if (!error) {
-> -		if (inc_ivers)
-> -			inode_inc_iversion(inode);
-> -		setattr_copy(idmap, inode, attr);
-> -		mark_inode_dirty(inode);
-> -	}
-> +	if (inc_ivers)
-> +		inode_inc_iversion(inode);
-> +	setattr_copy(idmap, inode, attr);
-> +	mark_inode_dirty(inode);
->  
-> +	if (ia_valid & ATTR_MODE)
-> +		error = posix_acl_chmod(idmap, dentry, inode->i_mode);
+> +	/* We're about to trigger CoW, so never map it through a PMD. */
+> +	if (is_cow_mapping(vma->vm_flags) &&
+> +	    (vmf->flags & (FAULT_FLAG_WRITE|FAULT_FLAG_UNSHARE)))
+> +		return ret;
 > +
-> +err_out:
->  	/*
->  	 * If the call to ext4_truncate failed to get a transaction handle at
->  	 * all, we need to clean up the in-core orphan list manually.
-> @@ -6133,14 +6137,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  	if (orphan && inode->i_nlink)
->  		ext4_orphan_del(NULL, inode);
->  
-> -	if (!error && (ia_valid & ATTR_MODE))
-> -		rc = posix_acl_chmod(idmap, dentry, inode->i_mode);
-> -
-> -err_out:
-> -	if  (error)
-> +	if (error)
->  		ext4_std_error(inode->i_sb, error);
-> -	if (!error)
-> -		error = rc;
->  	return error;
->  }
->  
-> -- 
-> 2.52.0
-> 
+>  	if (folio_order(folio) != HPAGE_PMD_ORDER)
+>  		return ret;
+>  	page = &folio->page;
+
