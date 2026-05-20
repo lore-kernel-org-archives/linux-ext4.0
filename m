@@ -1,30 +1,65 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A5BB1AE877;
-	Wed, 20 May 2026 01:01:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0E3848003D
+	for <linux-ext4@vger.kernel.org>; Wed, 20 May 2026 02:50:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779238899; cv=none; b=eSWhKth0+pMgvQ3wBjEJ1TFHfrEt3j2RKF8GYqCK0rXHGWwAON6saasxtNig7vBGm2MLtNd4nD5vei2U1xSl5qpR/STCJ6ezPfE44PfdyImixbDoQnFKKIjb+CIAB4o6YvV13KhH/GsR0q1G001YxDC4PfQ9w/UG/VXaXmyN1N4=
+	t=1779245423; cv=none; b=hgPoVvPashRW6yTRqEMfigbLDbTREpO+6Z7X6gguk59P3OQdpX/7svMpo/KXI+hSlbiNKP5CUcYSAyj4+Vb2cRA7XcVodBP5rT3AaONcop3Wj0kzwc57lTy6OpC0Lsy1e/W3vzrFzrVgekmMxt1bhfExLYdDIfd6OjpBQN1gCYE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779238899; c=relaxed/simple;
-	bh=hc0ocdWHFBjwfz2drl7X12usLEv0WkOGMnXHKx3omb0=;
+	s=arc-20240116; t=1779245423; c=relaxed/simple;
+	bh=rIf1BZePprDazzVrrY4G6yrBhMlczOfEyID6WJd6pD0=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=BpEeHrK1mdzTLIVlJgn80lCYHarrwbY45gAYzqDkpYA4GQ2JQ2lbg4iu47Hah/R61PrS+XSDxv/4TBZcpiNAYwxzZurInypfDxpFSdQUhOIIiWjVCiUT6zV1mghVqMmLYTIK0g+3ftMc52EnO0rS5tEjbrulyf2SCiTfugh0zYk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gKtWd3MlyzYQv80;
-	Wed, 20 May 2026 09:00:45 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 09D3A4056B;
-	Wed, 20 May 2026 09:01:29 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP4 (Coremail) with SMTP id gCh0CgBHD1vlBw1qEKO8Cw--.60090S3;
-	Wed, 20 May 2026 09:01:26 +0800 (CST)
-Message-ID: <fb303a0a-9697-4dc2-8c75-0227f9407347@huaweicloud.com>
-Date: Wed, 20 May 2026 09:01:24 +0800
+	 In-Reply-To:Content-Type; b=eIRoR9zMc8xQOABqNLcxCB7p27bhc1QWLzl+AJ1UtBAy+fJ0hv1iFFrpJcrJbugU92KwypJ+fNiXigSZUzNx4hSrdCK8u6w0VPG0WB7efr/QHB4fpkx3yD+g2wvfoKloDRIwRP0Oz7T61M+zBNXfiGCWjJ0wDF1KdVKYRSb3ao4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jDYyqVv3; arc=none smtp.client-ip=209.85.210.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jDYyqVv3"
+Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-836ebdeb969so1981564b3a.3
+        for <linux-ext4@vger.kernel.org>; Tue, 19 May 2026 19:50:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1779245421; x=1779850221; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=jX5g9eYxBvGu4vyTxEUAFz7H4bpv/vUCrQniZV0N4y8=;
+        b=jDYyqVv36GShWovpNQtobgKCNZTBpiMGLVc+2A+8Qj2W4+l4SAXMwLijbr+xuRhhzj
+         vLS6npSlVNVDvtpxdLvKQOSDPoqKvKMX+sys5+ZQCnpMTISsLknbUGiOJwXJ8qvZ1MiU
+         rqI1WI60xGkmXRAh4OX+ZRF8J4Cni9VPCtEc/98PfW4bhGJEeOiK+MRrQCgOzc1N2g5i
+         Ileds2WF0sNrFfvV/Vb9icOAPtLKxqT01eLrHZs7Sz9NCc+8Iy7pL+zdzMRoCic9okbx
+         z5WRdPOI8nyNI6fjq9/OfdrOrvLovqoZewlmAbIm8IeOPnIZn9lFA7l7gg9N0mVj/JY5
+         DxCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779245421; x=1779850221;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=jX5g9eYxBvGu4vyTxEUAFz7H4bpv/vUCrQniZV0N4y8=;
+        b=YhlkUEoGvBk/JbNZKYXaIVEHa1qT6A6WAttuyjRZtiwKnrEIRTkXZCqJzVYiVJLtLe
+         zTU1E2QMkkVvM4DR75jj3GCPNQwZYzpRXfcSSSrPtqhAUn6pzHBeGuP8TBTGnFeVNmT5
+         4h8bj1diRitGptdQe/r3ESRPox4unnplq3jsoUtTFIgCo+9w560PWmn5ujUjxDCAv126
+         rxtGLdwfVLBN06/e+pRNC0unh5rEf+LVO1yZXNYTREnOJhSvJHnJOnjxAEEWlqgMhIiO
+         zZiDb2K6HBLc6U3PUM9gvZT8MWqcHHZ0dsitcllwnkimuTSG94cKtrfUy849Z6mVC+2c
+         0INw==
+X-Gm-Message-State: AOJu0YzxuboHN530u+GJ+X6LuPY00POs7xdh2n9cWbBF9IdSCXGw1KgJ
+	Q8NmwN9/p33S/zVd0iKNubQUlotPQLYtSaULymjt5xmWEfO13hqmNBbL
+X-Gm-Gg: Acq92OGvdisTjBE4wndS125O1JxhghH7xbzIJDNvOqoJuN5DzhXZvtawVTVy0Y4SrVT
+	GtN4bCMDp/ZpNG3+PF4LqlBHwo3aq2yZopLoV8k3qpnHOCW/QYW7xVV7YtDhh2qqLSubEJJXfSF
+	YEDMAFw6L31YQ524cQFQpdTGHnlqE5HN4j/5zD87XnqlhTLp7xOiIADTUxGDF8dG4NDIbvvO4bb
+	l9Wp97kjLtRfk+03vZaLQnaSclLN4I8U3WpIfp+MRbBs8V0U9O7K5xn2Zrgw7CazkK/lEXHc4kb
+	MaVaA9cVHdGngmRTyTkodEEs/LNTICyyDze/tPhysnEna/PSXWj9/Q5ekrJquh1BS0WQFt0gseG
+	D3CUG4KSwFmMtkVMn/s4ItBI6/Jlo2YreTSHxFfvs5WEyg4cDbwAtS52UxMrw3RG/3j4Hc20PgF
+	4wPkMeHu3OPCAV5cpspDIfWMP76PrCl/bT+I4HguSysKA=
+X-Received: by 2002:a05:6a00:4ac2:b0:82c:66f2:1226 with SMTP id d2e1a72fcca58-83f33d5494bmr21377555b3a.38.1779245421287;
+        Tue, 19 May 2026 19:50:21 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8413ac7b2b2sm35462b3a.14.2026.05.19.19.50.07
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 19 May 2026 19:50:20 -0700 (PDT)
+Message-ID: <51b3f8d5-b90f-49fe-b93e-171268db9ff8@gmail.com>
+Date: Wed, 20 May 2026 10:49:50 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,138 +67,216 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] mm: do not install PMD mappings when handling a COW
- fault
-To: William Kucharski <william.kucharski@linux.dev>
-Cc: linux-mm@kvack.org, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org, david@redhat.com, yi.zhang@huawei.com,
- karol.wachowski@linux.intel.com, wangkefeng.wang@huawei.com,
- yangerkun@huawei.com, liuyongqiang13@huawei.com
-References: <20251024102237.3332200-1-yi.zhang@huaweicloud.com>
- <a3c8038a-43e9-4427-92dd-8fed619001e8@huaweicloud.com>
- <2381B9B8-FD4D-48FE-BBF3-00D3455A8197@linux.dev>
+Subject: Re: [PATCH v4 04/23] ext4: add iomap address space operations for
+ buffered I/O
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-5-yi.zhang@huaweicloud.com>
+ <agwtJq5-B2E-t7zT@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <236657df-71f2-446d-b44b-39865219a850@huaweicloud.com>
+ <agyVb1U0US8PVgqo@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
 Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <2381B9B8-FD4D-48FE-BBF3-00D3455A8197@linux.dev>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBHD1vlBw1qEKO8Cw--.60090S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxXrW7KryfWr13tr1fZrWrKrg_yoW5KF4Dpa
-	yxG3WayFWxXFnFyr1IgwsYkryjv3yxGF4jgFyxGryjkFn0yFn3ZrWDWa15C34Dur48AF4r
-	ArWjg3sruF4jv37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
-	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1
-	v3UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <agyVb1U0US8PVgqo@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On 5/19/2026 5:02 PM, William Kucharski wrote:
-> 
-> 
->> On May 19, 2026, at 02:36, Zhang Yi <yi.zhang@huaweicloud.com> wrote:
+On 5/20/2026 12:53 AM, Ojaswin Mujoo wrote:
+> On Tue, May 19, 2026 at 08:35:51PM +0800, Zhang Yi wrote:
+>> On 5/19/2026 5:28 PM, Ojaswin Mujoo wrote:
+>>> On Mon, May 11, 2026 at 03:23:24PM +0800, Zhang Yi wrote:
+>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>
+>>>> Introduce initial support for iomap in the buffered I/O path for regular
+>>>> files on ext4.
+>>>>
+>>>>    - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
+>>>>      inode uses iomap instead of buffer_head for buffered I/O
+>>>>    - Add helper ext4_inode_buffered_iomap() to check the flag
+>>>>    - Add new address space operations ext4_iomap_aops with callbacks that
+>>>>      will use generic iomap implementations
+>>>>    - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
+>>>>
+>>>> The following callbacks(read_folio(), readahead(), writepages()) are
+>>>> provided as placeholders and will be implemented in later patches.
+>>>>
+>>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>>>> Reviewed-by: Jan Kara <jack@suse.cz>
+>>>
+>>> Hi Zhang, looks good to me. Just a questions below:
 >>
->> Gentle ping – could anyone take this patch?
+>> Hi, Ojaswin! Thank you for the review of this series.
 >>
->> Thanks,
->> Yi.
+>>>> ---
+>>>>   fs/ext4/ext4.h  |  7 +++++++
+>>>>   fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
+>>>>   2 files changed, 39 insertions(+)
+>>>>
+>>>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>>>> index 94283a991e5c..1e27d73d7427 100644
+>>>> --- a/fs/ext4/ext4.h
+>>>> +++ b/fs/ext4/ext4.h
+>>>> @@ -1972,6 +1972,7 @@ enum {
+>>>>   	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+>>>>   	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+>>>>   	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+>>>> +	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
+>>>>   };
+>>>>   
+>>>>   #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+>>>> @@ -2040,6 +2041,12 @@ static inline bool ext4_inode_orphan_tracked(struct inode *inode)
+>>>>   		!list_empty(&EXT4_I(inode)->i_orphan);
+>>>>   }
+>>>>   
+>>>> +/* Whether the inode pass through the iomap infrastructure for buffered I/O */
+>>>> +static inline bool ext4_inode_buffered_iomap(struct inode *inode)
+>>>> +{
+>>>> +	return ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
+>>>> +}
+>>>> +
+>>>>   /*
+>>>>    * Codes for operating systems
+>>>>    */
+>>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>>> index b1ef706987c3..178ac2be37b7 100644
+>>>> --- a/fs/ext4/inode.c
+>>>> +++ b/fs/ext4/inode.c
+>>>> @@ -3908,6 +3908,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
+>>>>   	.iomap_begin = ext4_iomap_begin_report,
+>>>>   };
+>>>>   
+>>>> +static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
+>>>> +{
+>>>> +	return 0;
+>>>> +}
+>>>> +
+>>>> +static void ext4_iomap_readahead(struct readahead_control *rac)
+>>>> +{
+>>>> +
+>>>> +}
+>>>> +
+>>>> +static int ext4_iomap_writepages(struct address_space *mapping,
+>>>> +				 struct writeback_control *wbc)
+>>>> +{
+>>>> +	return 0;
+>>>> +}
+>>>> +
+>>>>   /*
+>>>>    * For data=journal mode, folio should be marked dirty only when it was
+>>>>    * writeably mapped. When that happens, it was already attached to the
+>>>> @@ -3994,6 +4010,20 @@ static const struct address_space_operations ext4_da_aops = {
+>>>>   	.swap_activate		= ext4_iomap_swap_activate,
+>>>>   };
+>>>>   
+>>>> +static const struct address_space_operations ext4_iomap_aops = {
+>>>> +	.read_folio		= ext4_iomap_read_folio,
+>>>> +	.readahead		= ext4_iomap_readahead,
+>>>> +	.writepages		= ext4_iomap_writepages,
+>>>> +	.dirty_folio		= iomap_dirty_folio,
+>>>> +	.bmap			= ext4_bmap,
+>>>> +	.invalidate_folio	= iomap_invalidate_folio,
+>>>> +	.release_folio		= iomap_release_folio,
+>>>> +	.migrate_folio		= filemap_migrate_folio,
+>>>> +	.is_partially_uptodate  = iomap_is_partially_uptodate,
+>>>> +	.error_remove_folio	= generic_error_remove_folio,
+>>>> +	.swap_activate		= ext4_iomap_swap_activate,
+>>>> +};
+>>>
+>>> So one question, for ->release_folio() we are using
+>>> iomap_release_folio() instead of ext4_release_folio() here which doesnt
+>>> make the jbd2_journal_try_to_free_bufferes() call. IIUC this function
+>>> seems to be trying to clean up already checkpointed buffers.
+>>>
+>>> I wanted to check if ->release_folio() can be called for folios with
+>>> ext4 metadata buffers? (from my limited understanding of
+>>> shrink_folio_list() -> filemap_release_folio() it seems we can) And if
+>>> it can be called, is it okay to skip the
+>>> jbd2_journal_try_to_free_buffers call?
+>>
+>> Here, in ->release_folio(), folio->mapping points to inode->i_data (the
+>> file's pagecache), not the block device's pagecache. ext4 metadata
+>> resides in the block device's pagecache, which is at a different layer
+>> than this release_folio callback. So we don't need to call
+>> jbd2_journal_try_to_free_buffers() in the iomap path here.
 > 
-> Could you update the comment to clarify why you shouldn't install PMD mappings
-> while doing CoW rather than just state it should never be done?
+> Hi Yi,
+> 
+> Thanks for clarify and yes, thats what I was missing! So this
+> ->release_folio() is only for data folios. So I guess the
+> jbd2_journal_try_to_free_buffers() is mostly to handle data=journal
+> case?
 
-OK, will do.
+Yes, that's my understanding as well. Meanwhile, the comment for the
+jbd2_journal_try_to_free_buffers() function looks quite outdated and
+needs to be updated.
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 4885903bbd10..239bcf88ed1c 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2139,38 +2139,23 @@ static void __jbd2_journal_unfile_buffer(struct 
+journal_head *jh)
+  }
+
+  /**
+- * jbd2_journal_try_to_free_buffers() - try to free page buffers.
++ * jbd2_journal_try_to_free_buffers() - try to free folio buffers.
+   * @journal: journal for operation
+   * @folio: Folio to detach data from.
+   *
+- * For all the buffers on this page,
+- * if they are fully written out ordered data, move them onto BUF_CLEAN
+- * so try_to_free_buffers() can reap them.
++ * For each buffer_head on @folio, if the buffer has a journal_head but
++ * is not attached to a running or committing transaction, try to remove
++ * it from the checkpoint list.  This is needed for data=journal mode
++ * where data buffers are journaled: once they are checkpointed, the
++ * journal_head can be detached and the buffer freed.  If any buffer is
++ * still attached to a transaction, the folio cannot be released and we
++ * bail out.  Otherwise we call try_to_free_buffers() to detach all
++ * buffer_heads from the folio.
+   *
+- * This function returns non-zero if we wish try_to_free_buffers()
+- * to be called. We do this if the page is releasable by 
+try_to_free_buffers().
+- * We also do it if the page has locked or dirty buffers and the caller 
+wants
+- * us to perform sync or async writeout.
++ * For data=ordered and writeback modes, data buffers never have
++ * journal_heads, so this degenerates to a plain try_to_free_buffers().
+   *
+- * This complicates JBD locking somewhat.  We aren't protected by the
+- * BKL here.  We wish to remove the buffer from its committing or
+- * running transaction's ->t_datalist via __jbd2_journal_unfile_buffer.
+- *
+- * This may *change* the value of transaction_t->t_datalist, so anyone
+- * who looks at t_datalist needs to lock against this function.
+- *
+- * Even worse, someone may be doing a jbd2_journal_dirty_data on this
+- * buffer.  So we need to lock against that.  jbd2_journal_dirty_data()
+- * will come out of the lock with the buffer dirty, which makes it
+- * ineligible for release here.
+- *
+- * Who else is affected by this?  hmm...  Really the only contender
+- * is do_get_write_access() - it could be looking at the buffer while
+- * journal_try_to_free_buffer() is changing its state.  But that
+- * cannot happen because we never reallocate freed data as metadata
+- * while the data is part of a transaction.  Yes?
+- *
+- * Return false on failure, true on success
++ * Return: true if the folio's buffers were freed, false otherwise
+   */
+  bool jbd2_journal_try_to_free_buffers(journal_t *journal, struct folio 
+*folio)
+  {
 
 Thanks,
 Yi.
 
-> 
->>
->> On 10/24/2025 6:22 PM, Zhang Yi wrote:
->>> From: Zhang Yi <yi.zhang@huawei.com>
->>>
->>> When pinning a page with FOLL_LONGTERM in a CoW VMA and a PMD-aligned
->>> (2MB on x86) large folio follow_page_mask() failed to obtain a valid
->>> anonymous page, resulting in an infinite loop issue. The specific
->>> triggering process is as follows:
->>>
->>> 1. User call mmap with a 2MB size in MAP_PRIVATE mode for a file that
->>>   has a 2MB large folio installed in the page cache.
->>>
->>>   addr = mmap(NULL, 2*1024*1024, PROT_READ, MAP_PRIVATE, file_fd, 0);
->>>
->>> 2. The kernel driver pass this mapped address to pin_user_pages_fast()
->>>   in FOLL_LONGTERM mode.
->>>
->>>   pin_user_pages_fast(addr, 512, FOLL_LONGTERM, pages);
->>>
->>>  ->  pin_user_pages_fast()
->>>  |   gup_fast_fallback()
->>>  |    __gup_longterm_locked()
->>>  |     __get_user_pages_locked()
->>>  |      __get_user_pages()
->>>  |       follow_page_mask()
->>>  |        follow_p4d_mask()
->>>  |         follow_pud_mask()
->>>  |          follow_pmd_mask() //pmd_leaf(pmdval) is true because the
->>>  |                            //huge PMD is installed. This is normal
->>>  |                            //in the first round, but it shouldn't
->>>  |                            //happen in the second round.
->>>  |           follow_huge_pmd() //require an anonymous page
->>>  |            return -EMLINK;
->>>  |   faultin_page()
->>>  |    handle_mm_fault()
->>>  |     wp_huge_pmd() //remove PMD and fall back to PTE
->>>  |     handle_pte_fault()
->>>  |      do_pte_missing()
->>>  |       do_fault()
->>>  |        do_read_fault() //FAULT_FLAG_WRITE is not set
->>>  |         finish_fault()
->>>  |          do_set_pmd() //install a huge PMD again, this is wrong!!!
->>>  |      do_wp_page() //create private anonymous pages
->>>  <-    goto retry;
->>>
->>> Due to an incorrectly large PMD set in do_read_fault(),
->>> follow_pmd_mask() always returns -EMLINK, causing an infinite loop.
->>>
->>> David pointed out that we can preallocate a page table and remap the PMD
->>> to be mapped by a PTE table in wp_huge_pmd() in the future. But now we
->>> can avoid this issue by not installing PMD mappings when handling a COW
->>> and unshare fault in do_set_pmd().
->>>
->>> Fixes: a7f226604170 ("mm/gup: trigger FAULT_FLAG_UNSHARE when R/O-pinning a possibly shared anonymous page")
->>> Reported-by: Karol Wachowski <karol.wachowski@linux.intel.com>
->>> Closes: https://lore.kernel.org/linux-ext4/844e5cd4-462e-4b88-b3b5-816465a3b7e3@linux.intel.com/
->>> Suggested-by: David Hildenbrand <david@redhat.com>
->>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>> Acked-by: David Hildenbrand <david@redhat.com>
->>> ---
->>> mm/memory.c | 5 +++++
->>> 1 file changed, 5 insertions(+)
->>>
->>> diff --git a/mm/memory.c b/mm/memory.c
->>> index 0ba4f6b71847..0748a31367df 100644
->>> --- a/mm/memory.c
->>> +++ b/mm/memory.c
->>> @@ -5212,6 +5212,11 @@ vm_fault_t do_set_pmd(struct vm_fault *vmf, struct folio *folio, struct page *pa
->>> if (!thp_vma_suitable_order(vma, haddr, PMD_ORDER))
->>> return ret;
->>>
->>> + /* We're about to trigger CoW, so never map it through a PMD. */
->>> + if (is_cow_mapping(vma->vm_flags) &&
->>> +    (vmf->flags & (FAULT_FLAG_WRITE|FAULT_FLAG_UNSHARE)))
->>> + return ret;
->>> +
->>> if (folio_order(folio) != HPAGE_PMD_ORDER)
->>> return ret;
->>> page = &folio->page;
->>
->>
+
 
