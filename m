@@ -1,119 +1,203 @@
-Received: from mail-ed1-f48.google.com (mail-ed1-f48.google.com [209.85.208.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30C3736404D
-	for <linux-ext4@vger.kernel.org>; Wed, 20 May 2026 13:24:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.48
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779283489; cv=pass; b=cqHTJDHmZg36YAXnN0Emjp3hWYMnXbuKnYZKcC5nbAZRAuSWyR2knkBRenfj1NuwtL09Dq9Pxn6E1HPkH/S7q1uWIlo0FFNNvNMGPH1BzsUyjV5JSjj2HNw9fvsNUCqNhFO8TGRYPwzTpiWKD12G5itXxeSa2uvKm4oe+HMROFE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779283489; c=relaxed/simple;
-	bh=Rit3XOj+nAqSskgBa3AwkCsmGpVaId+gpzvsbFjHRsc=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=le11A0ILkHJzVjpJ0Aam3pvMf02u3HJ8tsk4OPIvQeitNiwqIjeQDqNIBhtj3UQZ1JYYSlDmPRhoLQhxYNzz+DNg5NWg47ViucB16/u2UJ30sFsCLh9tlzlyZHwYhIkh6uu2mBF8+A2KVeiJ9onvKRXqwIOePmzEcrSpXtfWKd8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DwKoCw/P; arc=pass smtp.client-ip=209.85.208.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE72E3E2ACD;
+	Wed, 20 May 2026 14:31:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1779287520; cv=none; b=K7GI/hiUKrizoOVL5hTPQc+KhByV/xLOYiAHyepxpJu+x42PZ6To/iyv2TqIR1OOCVcVwASO20btiU7xzqAYyhZfR2hUASDgOfQCH+UZdRS0NhYdozosQKbb6OJi5sPTDABHuGM6hzOdQ2Vj+QLu7ElFjZjU7E+n6OfxBUZ72os=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1779287520; c=relaxed/simple;
+	bh=aJ/HkvCIlSs8z3YWz3Z5JfGNPHb7A0Vul9cplEZ5KYo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=WMGCiaS3iTSAcYnBuAGt6SPx++sZNSfX3EeZu9l8dKx57ImZY8PNoPy2e4MNGCHxUMefkxJlf4ZwRJkDXcEcU7R6zdum3toeo9Te9SseWcPdERwQJ6TOqDTe1ONqofdKb588f3zmasUHxg4ySBC/ezJXxzMiL4uK8YPDUUPX/pg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fb6/y6W7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DwKoCw/P"
-Received: by mail-ed1-f48.google.com with SMTP id 4fb4d7f45d1cf-67c4aaf76ecso8281871a12.3
-        for <linux-ext4@vger.kernel.org>; Wed, 20 May 2026 06:24:46 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1779283485; cv=none;
-        d=google.com; s=arc-20240605;
-        b=Nrg1a4dhTqorso29bbnjnNmtV+Xp/LFcVrfWcwXXGZlXICkGvvBwl3nEiPY+v00qpl
-         FNpHaGizdPRc5azRJDsLvy5lG4gBTXdcnpx0qMB8lw9W+VQ+VdHgQJgOzzxpJ+fyry/C
-         ToETrvvG97Q8TLf2zSlITevFy90hsgwYplCOXcryjC/mUXbO1pEBk+zR0tiVvnH6ePLw
-         0himREM71bcbEG8+tD8mbxxmuLiGNIhjbgwCZ2WZq8qelY+kmMjgdJrvbS9wPgQPuXRK
-         x1QQJZrW3IqjXQ8Ene6OZyJmAElXzH2slhl0C9tY5GPBVPMcSBGT+r7GW3YySyqO/g04
-         lb2A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=Rit3XOj+nAqSskgBa3AwkCsmGpVaId+gpzvsbFjHRsc=;
-        fh=1ZxpIg7aXsjiLS+dOjbqvByMYJ23CX/EYEewDliNvZk=;
-        b=ieKZxKDuXc1Do0H1e2yKTGP5sJMrq1hsn55BK/W0doTrvUbfZAjAcccDWYuOqwgX3u
-         WCPRehiwWkvxEeA3TAf58jXshTMTuVvH7VOLJK9StC6LUfzg9nV4MD0rrqHylra3AkCq
-         goQU4K1UUADAcOTFKDsl4/9nkuMgn+zqJTqfputZDXi/IXuB24o9jFz7BVlfuudkG175
-         878dU1carRRn57Y8A33EckOMzvcev2QKSHV4sYoALFpFq8iyM5eneaaJvUtvBxdMl6Kb
-         HlKHZZua0uH6MCRCZAuXoh2OeUcnv1S+ICz8azGVTxgtOguw0TtQouHkL+15uyd0JG20
-         gzew==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779283485; x=1779888285; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=Rit3XOj+nAqSskgBa3AwkCsmGpVaId+gpzvsbFjHRsc=;
-        b=DwKoCw/PT7mQ10vNBMUrsTEgJ/KD0xilvxMKeI+aiO7GBDvQq7XKJJ6kyNOOhWPRFC
-         qAQRff8dLVNruj1MIMY+n75FGD1FnYxldtzIkNgu+HLnxNvGPuCim/abv25tCKOX0c4M
-         B90eJODV43Mun+Az+kck902Vl9CJYMttimw0RXk+sRWyhFsmweKWF99SC7Mwan6wOHFe
-         ECm4lVjQVlTWgUeeELJ94rOZn5g2GnGibbV9qeU8cfV+5qB+iTfrqeWOwpY9JiXUFeT2
-         qwR5fHpfjh1a5z5kJLq0R3QIzdIesXZWyZHMBltpqUvmJGhNMGt1egwYWRwxhVmDRO+w
-         Lh+g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779283485; x=1779888285;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=Rit3XOj+nAqSskgBa3AwkCsmGpVaId+gpzvsbFjHRsc=;
-        b=P+WjAmVbgJz9Ck2kazzhb0UOgrEdqliJr+cp933NZuIw9EYfxjqSiWDOKwaVxSnDc4
-         lyzfVO7kH7tGuDGsTsBgGL5H+snkiA7zIqv+PYd1nCXjwwYJ/wGMVz10/qrZRUNQ7h5+
-         QuczDe4K9vOWt8eiK+EwHTG51nXO59FZoDvUl4KlqcuxIva8u0HLkoE4khV0416TqJbX
-         5vem0onTbqdP5WyAyNXHLIDTW+10cUnBzNCwnxwyfYL2btb6TQlReVJC4RWYal9Klevn
-         7UQjQ+6MEvDyI1Z5vdQ2tSygA+VqNLzW7Fjk/tpUTzkxzwhtsJt92lwzM7mxs8CiTUAi
-         bk6Q==
-X-Forwarded-Encrypted: i=1; AFNElJ/Ure0sQEyvkMujG6TWwtBUcdwwoxlqcd2iAoK5Z2lfG8Piflnq8dulbNWnlI9jYnOUC21BpWx/vPOx@vger.kernel.org
-X-Gm-Message-State: AOJu0YzBn4JGYnfLz/TAITZZ5IpHarw9X7RFZOIaAld11EGKtRU2Q7IQ
-	EUC9mS1EGCSOwfieViJSRfJPrmLlAIb+ceZ0VFgAf8m49osP8gwRWa66QaKTNatBL0FFsofim4K
-	6UNC4aXGsiMgBUuOWB2g6/GT0JnzYPeA=
-X-Gm-Gg: Acq92OFrioJQJAZHJAdOsAgNCgoIF49vCTZCX/2Jm401+kWvfWJYFTueeQrd20mWwI/
-	TEGYzNrYOpJcos48rTyLi0hZ9er4H48GVooEyxFvECGRcWgBhj/2ob6nEgH735qEVaZE7fpiDmU
-	YTXtFdujBlNRxGkw0bueOsEQ1T3JabxVHevqtDylPGN9jR0tV5sPjWoODidLII2dHg8k2tui6x6
-	qvzfv/JS7zQgrDwWXWqZgI1IJDg5Fd2FYUJj3Z0Rt/BcinyZVJwuEndt0gSVGiEchtXQArPnT3S
-	hzn0PDxGsd5Je2uh2ZSpFGQzAUogCmnQARh4T4sadKSFsMZgUkWf
-X-Received: by 2002:a05:6402:4313:b0:687:285d:44a3 with SMTP id
- 4fb4d7f45d1cf-687285d465fmr1620985a12.15.1779283484506; Wed, 20 May 2026
- 06:24:44 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fb6/y6W7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D88A1F000E9;
+	Wed, 20 May 2026 14:31:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1779287517;
+	bh=ErGeZjBujVCDw+tIBUMwUQ/ieYQ/G25L4GkC/HRjWR4=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=fb6/y6W7lesYX2qA6apxZkVCqPfIDWJwHW4IQCUYQoqCwwQp2u+HD+p96akML/v+d
+	 ap87OQCkBjPD35ZPv9tGs7SXT+Gi4Wa3a8bGQmbGS+K0VIkGeLtrV3NlOp/piFWl0j
+	 SCMCaNsPnYQOlhhUIpuJT0rxK5Fb2RI+2D2xagucuWnA8JrHVtt5FfQHatQdyNoK+/
+	 b9AS4i2AnFW5nIO5pb97yWFhHte23l3vVJkALXzb4LTrmhXeBmcSgODW6B4/Di4Aa9
+	 ObG/IxvN8M3QSNC2sg8H7DKBGjVWq0SjDJujUgDqqiBVu60vMsZYOrKwjGDMceaY25
+	 yEFnwgaJHmGdA==
+Date: Wed, 20 May 2026 15:31:48 +0100
+From: Mark Brown <broonie@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp,
+	linkinjeon@kernel.org, sj1557.seo@samsung.com, yuezhang.mo@sony.com,
+	almaz.alexandrovich@paragon-software.com, slava@dubeyko.com,
+	glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu,
+	adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org,
+	pc@manguebit.org, ronniesahlberg@gmail.com, sprasad@microsoft.com,
+	trondmy@kernel.org, anna@kernel.org, jaegeuk@kernel.org,
+	chao@kernel.org, hansg@kernel.org, senozhatsky@chromium.org,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Roland Mainz <roland.mainz@nrubsig.org>
+Subject: Re: [PATCH v14 03/15] fat: Implement fileattr_get for case
+ sensitivity
+Message-ID: <dc69224d-9926-4414-8c6e-4c15ae98705b@sirena.org.uk>
+References: <20260507-case-sensitivity-v14-0-e62cc8200435@oracle.com>
+ <20260507-case-sensitivity-v14-3-e62cc8200435@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260520123722.405752-1-aalbersh@kernel.org> <20260520123722.405752-4-aalbersh@kernel.org>
- <n67pde3prjxt2c2u2pvjytfw7uzwbeij2yljlrwh7fixcgnzhp@piqsltgpcc4v>
-In-Reply-To: <n67pde3prjxt2c2u2pvjytfw7uzwbeij2yljlrwh7fixcgnzhp@piqsltgpcc4v>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 20 May 2026 15:24:33 +0200
-X-Gm-Features: AVHnY4Jb9lW17aXG5JPAYjGDiGqwrTNH7OJH9zvcsbDKfZCeeZ6RTdTNxiDlapc
-Message-ID: <CAOQ4uxiNN3U4datJb8kxxGVp7VNRFZB6_zEnO76kh9oEjE_-bg@mail.gmail.com>
-Subject: Re: [PATCH v10 03/22] ovl: use core fsverity ensure info interface
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, 
-	linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, djwong@kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="EE3WBxe127Z9kpbN"
+Content-Disposition: inline
+In-Reply-To: <20260507-case-sensitivity-v14-3-e62cc8200435@oracle.com>
+X-Cookie: There's no time like the pleasant.
+
+
+--EE3WBxe127Z9kpbN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, May 20, 2026 at 2:54=E2=80=AFPM Andrey Albershteyn <aalbersh@kernel=
-.org> wrote:
->
-> On 2026-05-20 14:37:01, Andrey Albershteyn wrote:
-> > fsverity now exposes fsverity_ensure_verity_info() which could be used
-> > instead of opening file to ensure that fsverity info is loaded and
-> > attached to inode.
-> >
-> > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> > Acked-by: Amir Goldstein <amir73il@gmail.com>
->
-> Amir, Eric, this is the last patch missing a review. Could one of
-> you have a look at it. Not sure who should review this.
+On Thu, May 07, 2026 at 04:52:56AM -0400, Chuck Lever wrote:
+> From: Chuck Lever <chuck.lever@oracle.com>
+>=20
+> Report FAT's case sensitivity behavior via the FS_XFLAG_CASEFOLD
+> and FS_XFLAG_CASENONPRESERVING flags. FAT filesystems are
+> case-insensitive by default.
+>=20
+> MSDOS supports a 'nocase' mount option that enables case-sensitive
+> behavior; check this option when reporting case sensitivity.
+>=20
+> VFAT long filename entries preserve case; without VFAT, only
+> uppercased 8.3 short names are stored. MSDOS with 'nocase' also
+> preserves case since the name-formatting code skips upcasing when
+> 'nocase' is set. Check both options when reporting case preservation.
 
-Feel free to upgrade my ack to:
+I'm seeing a regression in -next with the LTP statx04 test which bisects
+to this commit:
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+tst_tmpdir.c:316: TINFO: Using /tmp/LTP_sta8hUyB4 as tmpdir (tmpfs filesyst=
+em)
+tst_device.c:98: TINFO: Found free device 0 '/dev/loop0'
+tst_test.c:2047: TINFO: LTP version: 20260130
+tst_test.c:2050: TINFO: Tested kernel: 7.1.0-rc4-next-20260520 #1 SMP PREEM=
+PT @1779279361 aarch64
 
-Thanks,
-Amir.
+=2E..
+
+tst_test.c:1985: TINFO: =3D=3D=3D Testing on vfat =3D=3D=3D
+tst_test.c:1290: TINFO: Formatting /dev/loop0 with vfat opts=3D'' extra opt=
+s=3D''
+tst_test.c:1302: TINFO: Mounting /dev/loop0 to /tmp/LTP_sta8hUyB4/mntpoint =
+fstyp=3Dvfat flags=3D0
+statx04.c:121: TFAIL: STATX_ATTR_COMPRESSED not supported
+statx04.c:121: TFAIL: STATX_ATTR_APPEND not supported
+statx04.c:121: TFAIL: STATX_ATTR_IMMUTABLE not supported
+statx04.c:121: TFAIL: STATX_ATTR_NODUMP not supported
+
+Full log:
+
+   https://lava.sirena.org.uk/scheduler/job/2778994#L6373
+
+bisect log, with links to intermediate test results:
+
+# bad: [687da68900cd1a46549f7d9430c7d40346cb86a0] Add linux-next specific f=
+iles for 20260520
+# good: [2b248ec57f3dcb99f2ce423b72eb3b77553e90a0] Merge branch 'for-linux-=
+next-fixes' of https://gitlab.freedesktop.org/drm/misc/kernel.git
+# good: [1c9631527427d35668eeb7236803cc4b18f950a8] Merge branch 'vfs-7.2.pr=
+ocfs' into vfs.all
+# good: [3035e4454142327ec5faee2ff57ab7cb1e9fc712] fs: Add case sensitivity=
+ flags to file_kattr
+git bisect start '687da68900cd1a46549f7d9430c7d40346cb86a0' '2b248ec57f3dcb=
+99f2ce423b72eb3b77553e90a0' '1c9631527427d35668eeb7236803cc4b18f950a8' '303=
+5e4454142327ec5faee2ff57ab7cb1e9fc712'
+# test job: [1c9631527427d35668eeb7236803cc4b18f950a8] https://lava.sirena.=
+org.uk/scheduler/job/2774081
+# test job: [3035e4454142327ec5faee2ff57ab7cb1e9fc712] https://lava.sirena.=
+org.uk/scheduler/job/2774556
+# test job: [687da68900cd1a46549f7d9430c7d40346cb86a0] https://lava.sirena.=
+org.uk/scheduler/job/2778994
+# bad: [687da68900cd1a46549f7d9430c7d40346cb86a0] Add linux-next specific f=
+iles for 20260520
+git bisect bad 687da68900cd1a46549f7d9430c7d40346cb86a0
+# test job: [8d97e7babd9a9ff8b5be4e4105d24ad3514044ff] https://lava.sirena.=
+org.uk/scheduler/job/2774206
+# bad: [8d97e7babd9a9ff8b5be4e4105d24ad3514044ff] Merge branch 'vfs-7.2.cas=
+efold' into vfs.all
+git bisect bad 8d97e7babd9a9ff8b5be4e4105d24ad3514044ff
+# test job: [f9eba293ae7ca289e587985f94d84a390949ea31] https://lava.sirena.=
+org.uk/scheduler/job/2773899
+# bad: [f9eba293ae7ca289e587985f94d84a390949ea31] Merge branch 'kernel-7.2.=
+misc' into vfs.all
+git bisect bad f9eba293ae7ca289e587985f94d84a390949ea31
+# test job: [eeb7b37b9700f0dbb3e6fe7b9e910b466ac190dd] https://lava.sirena.=
+org.uk/scheduler/job/2774402
+# bad: [eeb7b37b9700f0dbb3e6fe7b9e910b466ac190dd] ntfs3: Implement fileattr=
+_get for case sensitivity
+git bisect bad eeb7b37b9700f0dbb3e6fe7b9e910b466ac190dd
+# test job: [c92db2ca726fe61a66580d30ecff8c192a791935] https://lava.sirena.=
+org.uk/scheduler/job/2774955
+# bad: [c92db2ca726fe61a66580d30ecff8c192a791935] fat: Implement fileattr_g=
+et for case sensitivity
+git bisect bad c92db2ca726fe61a66580d30ecff8c192a791935
+# first bad commit: [c92db2ca726fe61a66580d30ecff8c192a791935] fat: Impleme=
+nt fileattr_get for case sensitivity
+# test job: [b6fe046c30236e37e3f8c500cf5b1297c317c5ee] https://lava.sirena.=
+org.uk/scheduler/job/2776383
+# bad: [b6fe046c30236e37e3f8c500cf5b1297c317c5ee] hfs: Implement fileattr_g=
+et for case sensitivity
+git bisect bad b6fe046c30236e37e3f8c500cf5b1297c317c5ee
+# test job: [27e0b573dd4aa927670fbfd84732e569fde72078] https://lava.sirena.=
+org.uk/scheduler/job/2774607
+# bad: [27e0b573dd4aa927670fbfd84732e569fde72078] exfat: Implement fileattr=
+_get for case sensitivity
+git bisect bad 27e0b573dd4aa927670fbfd84732e569fde72078
+# test job: [ef14aa143f1dd8adcba6c9277c3bbed2fe0969b4] https://lava.sirena.=
+org.uk/scheduler/job/2774344
+# bad: [ef14aa143f1dd8adcba6c9277c3bbed2fe0969b4] vboxsf: Implement fileatt=
+r_get for case sensitivity
+git bisect bad ef14aa143f1dd8adcba6c9277c3bbed2fe0969b4
+# test job: [b6fe046c30236e37e3f8c500cf5b1297c317c5ee] https://lava.sirena.=
+org.uk/scheduler/job/2776383
+# bad: [b6fe046c30236e37e3f8c500cf5b1297c317c5ee] hfs: Implement fileattr_g=
+et for case sensitivity
+git bisect bad b6fe046c30236e37e3f8c500cf5b1297c317c5ee
+# test job: [27e0b573dd4aa927670fbfd84732e569fde72078] https://lava.sirena.=
+org.uk/scheduler/job/2774607
+# bad: [27e0b573dd4aa927670fbfd84732e569fde72078] exfat: Implement fileattr=
+_get for case sensitivity
+git bisect bad 27e0b573dd4aa927670fbfd84732e569fde72078
+# test job: [c92db2ca726fe61a66580d30ecff8c192a791935] https://lava.sirena.=
+org.uk/scheduler/job/2774955
+# bad: [c92db2ca726fe61a66580d30ecff8c192a791935] fat: Implement fileattr_g=
+et for case sensitivity
+git bisect bad c92db2ca726fe61a66580d30ecff8c192a791935
+# first bad commit: [c92db2ca726fe61a66580d30ecff8c192a791935] fat: Impleme=
+nt fileattr_get for case sensitivity
+
+--EE3WBxe127Z9kpbN
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAmoNxdMACgkQJNaLcl1U
+h9AR/gf+PBemUL4ODlI4Hfs3EledyCUDFVjnqUwLIFBkxy8s3uvAc7gM+MU52I8G
+Xuldrsvs3M0XV6Zmn8D6UsctYcsfsCNIOut25z7stoiQ/hv5UJlpOuogkdIAS0yp
+yzWi3zCVnFCbFRGKk67Ep5TDAdUyg62Qx+g8/1uzsg7UbWNIGaRO1OBw8Ea/xlJE
+7BHE60VBroQ4GdwGXSVoXzxYwZeKjXqUi3cTxkVWWvSZI7ncyZofjPRii2Wb6sqN
+w6Msvqsvok/CVV9yLbrV4sj27+K+bbPJ79KrOfePpj25RNwSnWBPcEfpLsgtoHCU
+UHg4hene6OTPk57+fNNXVpWKwHBuZw==
+=9Yxi
+-----END PGP SIGNATURE-----
+
+--EE3WBxe127Z9kpbN--
