@@ -1,130 +1,169 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE0083DB30C;
-	Tue, 19 May 2026 22:22:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A5BB1AE877;
+	Wed, 20 May 2026 01:01:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779229351; cv=none; b=WPnUgcQvlVTybTz7jeC5hWFupvpGcZJApbpsqtQuIb5XMo9k/u09Q9/0FebDeQLRtOljMULFcpFwW7kiW4xlFsSczIhZ94x3vFvo7KWKI0vPewK46U9oFCt+t2AW5r6zqNbx/UVGLV+6MM94ySPZ3J5+EsyIPQWZSi6Rst+kzqU=
+	t=1779238899; cv=none; b=eSWhKth0+pMgvQ3wBjEJ1TFHfrEt3j2RKF8GYqCK0rXHGWwAON6saasxtNig7vBGm2MLtNd4nD5vei2U1xSl5qpR/STCJ6ezPfE44PfdyImixbDoQnFKKIjb+CIAB4o6YvV13KhH/GsR0q1G001YxDC4PfQ9w/UG/VXaXmyN1N4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779229351; c=relaxed/simple;
-	bh=xYcDZk1WsDwMNBEI0IkX1AhTrdDgiZk9faTLWLXULhk=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=hOJK7wbFWLsf/GtNc6q2MVz84NAFofFceG4qM+g3HM1y03QYtnpo1QP3ayFNBECpyLMEbBx+InUth81qqzKDrAgnXJygM7zxZfHHgreHwvuyE0DtsnFduD6n0DjohIoN3e9Z7xCMAgtXIijiZHdv1gpjEJL+2r80lhhBG+BR4nE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nOnHRXmd; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nOnHRXmd"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id A2BF61F00893;
-	Tue, 19 May 2026 22:22:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779229349;
-	bh=UUjnk+fAt2LpePPYpdYfCvrYStDZPTXBjWLuLoxFuI4=;
-	h=Date:From:To:Cc:Subject;
-	b=nOnHRXmdIe3aZ6XL7qTbDwUZLn+5kITC3Bi1xf46SdPvIQCEbT64vCMtiDwTv8aaG
-	 eScQCjVrmRdF0ttV/jasauS1B70qC5mqiRfJuWJnLu2J/YpHNXAnhUIS9an4ZDCe8k
-	 G/La6orrEurvSKgDhBmZ6pg7V6X2oz54Sr5XZreRYisI3JWVXeEifYBie9zJa7w3Bu
-	 0MBWGm7TDruRUKol1wevoiPpPeLBEDo8OcU1h03xIUZIYqj8mOX+Pz5wcESX5hek2/
-	 Fk+giWsjXKwDgSlpMTrWUz28nU4YqRxWkCCHleBo0FFXVbshC1nVlzFNwr7ecqHgiT
-	 qDExjUXBIEkfA==
-Date: Tue, 19 May 2026 15:22:29 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	fuse-devel <fuse-devel@lists.linux.dev>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>,
-	Joanne Koong <joannelkoong@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>, Neal Gompa <neal@gompa.dev>,
-	Amir Goldstein <amir73il@gmail.com>,
-	Christian Brauner <brauner@kernel.org>, john@groves.net
-Subject: [PATCHBOMB v9] fuse/libfuse/e2fsprogs: faster file IO for
- containerized ext4 servers
-Message-ID: <20260519222229.GB9544@frogsfrogsfrogs>
+	s=arc-20240116; t=1779238899; c=relaxed/simple;
+	bh=hc0ocdWHFBjwfz2drl7X12usLEv0WkOGMnXHKx3omb0=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=BpEeHrK1mdzTLIVlJgn80lCYHarrwbY45gAYzqDkpYA4GQ2JQ2lbg4iu47Hah/R61PrS+XSDxv/4TBZcpiNAYwxzZurInypfDxpFSdQUhOIIiWjVCiUT6zV1mghVqMmLYTIK0g+3ftMc52EnO0rS5tEjbrulyf2SCiTfugh0zYk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gKtWd3MlyzYQv80;
+	Wed, 20 May 2026 09:00:45 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 09D3A4056B;
+	Wed, 20 May 2026 09:01:29 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP4 (Coremail) with SMTP id gCh0CgBHD1vlBw1qEKO8Cw--.60090S3;
+	Wed, 20 May 2026 09:01:26 +0800 (CST)
+Message-ID: <fb303a0a-9697-4dc2-8c75-0227f9407347@huaweicloud.com>
+Date: Wed, 20 May 2026 09:01:24 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] mm: do not install PMD mappings when handling a COW
+ fault
+To: William Kucharski <william.kucharski@linux.dev>
+Cc: linux-mm@kvack.org, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, david@redhat.com, yi.zhang@huawei.com,
+ karol.wachowski@linux.intel.com, wangkefeng.wang@huawei.com,
+ yangerkun@huawei.com, liuyongqiang13@huawei.com
+References: <20251024102237.3332200-1-yi.zhang@huaweicloud.com>
+ <a3c8038a-43e9-4427-92dd-8fed619001e8@huaweicloud.com>
+ <2381B9B8-FD4D-48FE-BBF3-00D3455A8197@linux.dev>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <2381B9B8-FD4D-48FE-BBF3-00D3455A8197@linux.dev>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgBHD1vlBw1qEKO8Cw--.60090S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxXrW7KryfWr13tr1fZrWrKrg_yoW5KF4Dpa
+	yxG3WayFWxXFnFyr1IgwsYkryjv3yxGF4jgFyxGryjkFn0yFn3ZrWDWa15C34Dur48AF4r
+	ArWjg3sruF4jv37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Hi everyone,
+On 5/19/2026 5:02 PM, William Kucharski wrote:
+> 
+> 
+>> On May 19, 2026, at 02:36, Zhang Yi <yi.zhang@huaweicloud.com> wrote:
+>>
+>> Gentle ping – could anyone take this patch?
+>>
+>> Thanks,
+>> Yi.
+> 
+> Could you update the comment to clarify why you shouldn't install PMD mappings
+> while doing CoW rather than just state it should never be done?
 
-This is the ninth public draft of a prototype to connect the Linux
-fuse driver to fs-iomap for regular file IO operations to and from files
-whose contents persist to locally attached storage devices.  With this
-release, I show that it's possible to build a fuse server for a real
-filesystem (ext4) that runs entirely in userspace yet maintains most of
-its performance.
+OK, will do.
 
-This effort is now separate from the one to run fuse servers in a
-constrained environment via systemd.  Putting fuse servers in a
-container gets you all the blast radii reduction advantages and provides
-a pathway to removing less popular filesystem drivers to reduce
-maintenance work in the kernel; now we want trade relaxation of that
-isolation for better performance.
+Thanks,
+Yi.
 
-The fuse command plumbing is very simple -- the ->iomap_begin,
-->iomap_end, and iomap ->ioend calls within iomap are turned into
-upcalls to the fuse server via a trio of new fuse commands.  Pagecache
-writeback is now a directio write.  The fuse server can upsert mappings
-into the kernel for cached access (== zero upcalls for rereads and pure
-overwrites!) and the iomap cache revalidation code works.
+> 
+>>
+>> On 10/24/2025 6:22 PM, Zhang Yi wrote:
+>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>
+>>> When pinning a page with FOLL_LONGTERM in a CoW VMA and a PMD-aligned
+>>> (2MB on x86) large folio follow_page_mask() failed to obtain a valid
+>>> anonymous page, resulting in an infinite loop issue. The specific
+>>> triggering process is as follows:
+>>>
+>>> 1. User call mmap with a 2MB size in MAP_PRIVATE mode for a file that
+>>>   has a 2MB large folio installed in the page cache.
+>>>
+>>>   addr = mmap(NULL, 2*1024*1024, PROT_READ, MAP_PRIVATE, file_fd, 0);
+>>>
+>>> 2. The kernel driver pass this mapped address to pin_user_pages_fast()
+>>>   in FOLL_LONGTERM mode.
+>>>
+>>>   pin_user_pages_fast(addr, 512, FOLL_LONGTERM, pages);
+>>>
+>>>  ->  pin_user_pages_fast()
+>>>  |   gup_fast_fallback()
+>>>  |    __gup_longterm_locked()
+>>>  |     __get_user_pages_locked()
+>>>  |      __get_user_pages()
+>>>  |       follow_page_mask()
+>>>  |        follow_p4d_mask()
+>>>  |         follow_pud_mask()
+>>>  |          follow_pmd_mask() //pmd_leaf(pmdval) is true because the
+>>>  |                            //huge PMD is installed. This is normal
+>>>  |                            //in the first round, but it shouldn't
+>>>  |                            //happen in the second round.
+>>>  |           follow_huge_pmd() //require an anonymous page
+>>>  |            return -EMLINK;
+>>>  |   faultin_page()
+>>>  |    handle_mm_fault()
+>>>  |     wp_huge_pmd() //remove PMD and fall back to PTE
+>>>  |     handle_pte_fault()
+>>>  |      do_pte_missing()
+>>>  |       do_fault()
+>>>  |        do_read_fault() //FAULT_FLAG_WRITE is not set
+>>>  |         finish_fault()
+>>>  |          do_set_pmd() //install a huge PMD again, this is wrong!!!
+>>>  |      do_wp_page() //create private anonymous pages
+>>>  <-    goto retry;
+>>>
+>>> Due to an incorrectly large PMD set in do_read_fault(),
+>>> follow_pmd_mask() always returns -EMLINK, causing an infinite loop.
+>>>
+>>> David pointed out that we can preallocate a page table and remap the PMD
+>>> to be mapped by a PTE table in wp_huge_pmd() in the future. But now we
+>>> can avoid this issue by not installing PMD mappings when handling a COW
+>>> and unshare fault in do_set_pmd().
+>>>
+>>> Fixes: a7f226604170 ("mm/gup: trigger FAULT_FLAG_UNSHARE when R/O-pinning a possibly shared anonymous page")
+>>> Reported-by: Karol Wachowski <karol.wachowski@linux.intel.com>
+>>> Closes: https://lore.kernel.org/linux-ext4/844e5cd4-462e-4b88-b3b5-816465a3b7e3@linux.intel.com/
+>>> Suggested-by: David Hildenbrand <david@redhat.com>
+>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>>> Acked-by: David Hildenbrand <david@redhat.com>
+>>> ---
+>>> mm/memory.c | 5 +++++
+>>> 1 file changed, 5 insertions(+)
+>>>
+>>> diff --git a/mm/memory.c b/mm/memory.c
+>>> index 0ba4f6b71847..0748a31367df 100644
+>>> --- a/mm/memory.c
+>>> +++ b/mm/memory.c
+>>> @@ -5212,6 +5212,11 @@ vm_fault_t do_set_pmd(struct vm_fault *vmf, struct folio *folio, struct page *pa
+>>> if (!thp_vma_suitable_order(vma, haddr, PMD_ORDER))
+>>> return ret;
+>>>
+>>> + /* We're about to trigger CoW, so never map it through a PMD. */
+>>> + if (is_cow_mapping(vma->vm_flags) &&
+>>> +    (vmf->flags & (FAULT_FLAG_WRITE|FAULT_FLAG_UNSHARE)))
+>>> + return ret;
+>>> +
+>>> if (folio_order(folio) != HPAGE_PMD_ORDER)
+>>> return ret;
+>>> page = &folio->page;
+>>
+>>
 
-At this stage I still get about 95% of the kernel ext4 driver's
-streaming directio performance on streaming IO, and 110% of its
-streaming buffered IO performance.  Random buffered IO is about 85% as
-fast as the kernel.  Random direct IO is about 80% as fast as the
-kernel; see the cover letter for the fuse2fs iomap changes for more
-details.  Unwritten extent conversions on random direct writes are
-especially painful for fuse+iomap (~90% more overhead) due to upcall
-overhead.  And that's with (now dynamic) debugging turned on!
-
-This series has been rebased to 7.1-rc4 since the eighth RFC, with
-the following kernel changes:
-
-1. The BPF stuff has been replaced with a filesystem striping mechanism.
-   This is my first attempt ever to implement raid0.
-
-2. Much tightening of the validation code based on Codex reviews so that
-   we don't expose more "ABI" than we feel like getting yelled at for
-   in 2031.
-
-3. Refactored iomap writeback mapping so that you can use the standard
-   iomap_begin functions for that.
-
-4. Better userspace helpers so that fuse server authors don't have to
-   know quite so much detail of the innards.
-
-5. The libfuse changes are based off the WIP fuse-service-container
-   branch.
-
-There are some questions remaining:
-
-a. fuse2fs doesn't support the ext4 journal.  Urk.
-
-b. I've dropped everything but the kernel patches for basic plumbing and
-   file IO paths because frankly they weren't getting looked at.
-
-c. How on earth am I going to separate out the file_operations?
-   Will it actually work to say that fuse-iomap only supports local
-   filesystems initially?  How many of the "is_iomap?" predicates are
-   actually for local filesystems and not the IO path???
-
-I would like to any part of this submission reviewed for 7.2 now that
-this has been collecting comments and tweaks in non-rfc status for 6
-months.
-
-Kernel:
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=fuse-iomap-striping
-
-libfuse:
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/libfuse.git/log/?h=fuse-iomap-striping
-
-e2fsprogs:
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git/log/?h=fuse4fs-memory-reclaim
-
-fstests:
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=fuse2fs
-
---Darrick
