@@ -1,30 +1,29 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.4])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B1543563E8;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 225AA21ABD7;
 	Fri, 22 May 2026 04:00:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.4
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.4
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779422412; cv=none; b=HlJ0SnhvTjrYMYnztgnF35+v9bCinsKA7Xa14NdlPYQGTcZXZvfadney8s8G4cvStKcBrX+wWz0p34ygjKwLVvlMdoQ/s3Q3UjrBFEn/5MhKlzunRJzAz1ss/f+aQ4deOHEgLllvn02DloXyne4gfEbkFvFJc8ybI3fmaq0ONhM=
+	t=1779422412; cv=none; b=JcDuqI6IBYaBI1sAg7OvlBQRlg63fOB5OP3yrgOlSJguMAUlEtKs1Os0gbyWvOHHuV+onoPTHZKLRETfeYLc89UqMO+9YX0NPij5nD7KyQ3sPQQCts/ESXAyTaNPsNxy5ARRoW1dd41Yed5QKrKSkKdb3d13F835v7nKXl5uNWo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1779422412; c=relaxed/simple;
-	bh=ys/WFercO1BG0GEj8pgLXktAqsELqBX339nbqtz3Hl8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gUrUCtZtnBOYiqz82nmcGHKRRtPccrv+fZiZa0i20rLYQCiwnv0lLSVqUWq80tyFVxF27Y6B/Irp5t0C7c9HWKHR2t/R+Z7GVtIAZU4sIcFoiP9JLHX+IiRR+qYSjFhQRzldL/yD77Enr9KZfEbQ6Xj4qbuKO2K3Pqc5cO/l2MM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=nF6UpPhY; arc=none smtp.client-ip=220.197.31.4
+	bh=tieXjTmzbh62WK13seIc88AJfzroIZhPrypKXFEXOcA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=gcNjm+KP/tyue+as1aVVBJp5YwflzCzfHJXvaosjkQJZznfbPsRyq3JTtqeuHIuW6OO2lOwK16fKuIL8S9caYwWBmDdAl20TQMdfC4O4akMWW1imTIsVOGSJd+OtZoUPVif3R02OnSlsZr/FXWeFM4FqubF6emWOnzKhu/v4lHg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=BWg+Ln7q; arc=none smtp.client-ip=117.135.210.4
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="nF6UpPhY"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="BWg+Ln7q"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=SM
-	YDAw6Simc31ovebDOSR++gQdumOKs9k/YiBIZ8Vpg=; b=nF6UpPhYTmVw4RqCSo
-	W8ihopEJJfCB63FkIeDm5BGOkUG3QuQyp5+ZC5NoIjxfyojlBxkoR55H82C9xPV+
-	EAEqUPiXXL4kOrWDyMMVy7pd5pddDAb7DZSuIwjPYxsUsUt6hJCX6wR8eUtbRIRS
-	/YhrVrHjtoz2w5fZHZPWFhTrg=
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=Ll
+	ZoxEz0/wllLaF4vVnyVJp8owncoVhQehmZp0aNs1E=; b=BWg+Ln7qe8wSJbtdB7
+	BrS/E12GTuQ6rGTzcYS+QY0s3cvvCF9a/eeHVzI1fsw3sv9PbvjP0U9MUL07sEYD
+	7k7FfHcO4XhoYUhdA4G8FrrMqO5Qr2gavmGVIWFiUm74OzuN1QNpyyGBYl82w2BP
+	zNK3vIjif4LpeWHu813eZNEm0=
 Received: from liubaolin-ThinkPad-E15-Gen-2 (unknown [])
-	by gzga-smtp-mtada-g0-1 (Coremail) with SMTP id _____wDX3wWO1A9qtnXKCg--.18860S4;
-	Fri, 22 May 2026 11:59:17 +0800 (CST)
+	by gzga-smtp-mtada-g0-1 (Coremail) with SMTP id _____wDX3wWO1A9qtnXKCg--.18860S2;
+	Fri, 22 May 2026 11:59:11 +0800 (CST)
 From: Baolin Liu <liubaolin12138@163.com>
 To: tytso@mit.edu,
 	adilger.kernel@dilger.ca,
@@ -37,13 +36,11 @@ To: tytso@mit.edu,
 	skhan@linuxfoundation.org
 Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Baolin Liu <liubaolin@kylinos.cn>
-Subject: [PATCH v5 v5 2/3] ext4: use READ_ONCE/WRITE_ONCE for s_mb_stats
-Date: Fri, 22 May 2026 11:59:04 +0800
-Message-ID: <20260522035905.1145743-3-liubaolin12138@163.com>
+	Baolin Liu <liubaolin12138@163.com>
+Subject: [PATCH v5 v5 0/3] ext4: improve mballoc statistics reporting and control
+Date: Fri, 22 May 2026 11:59:02 +0800
+Message-ID: <20260522035905.1145743-1-liubaolin12138@163.com>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20260522035905.1145743-1-liubaolin12138@163.com>
-References: <20260522035905.1145743-1-liubaolin12138@163.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,207 +48,38 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wDX3wWO1A9qtnXKCg--.18860S4
-X-Coremail-Antispam: 1Uf129KBjvJXoW3XFyDJrykGF1DAr18CFW7Arb_yoW3Jr4fpr
-	47ZFyUAr47Zw1xCFsrWan8W3ZYk3yIkFy7JrWfu34F9FyagFyayryaqFyjyF9rArWDCFsY
-	v3yqyrWDGrWIka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UMuWJUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6RW4g2oP1JUi5AAA3l
+X-CM-TRANSID:_____wDX3wWO1A9qtnXKCg--.18860S2
+X-Coremail-Antispam: 1Uf129KBjvdXoWrtry3Jr4DGw4rtF4ruFWxWFg_yoWDuwc_Z3
+	4kKFW5J343JFW2kay8tr4rtFWY9FWxAr18GFnIqr4fZFyDJFWDZ34DWrWDAr17Ww4akr45
+	Gr17XrW8uFnFqjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUvcSsGvfC2KfnxnUUI43ZEXa7sRM8nYUUUUUU==
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6g+2gWoP1I8vLgAA3t
 
-From: Baolin Liu <liubaolin@kylinos.cn>
+This series improves mballoc statistics reporting and control by adding
+blocks_allocated to /proc/fs/ext4/<dev>/mb_stats, using
+READ_ONCE()/WRITE_ONCE() for concurrent accesses to s_mb_stats, and 
+allowing mballoc stats to be controlled through
+/proc/fs/ext4/<dev>/mb_stats.
 
-Use READ_ONCE()/WRITE_ONCE() for concurrent accesses to
-s_mb_stats.
+Changes in v5: 
+ - Use READ_ONCE()/WRITE_ONCE() for s_mb_stats accesses instead of
+   converting s_mb_stats to atomic_t, as suggested in review.
+ - For proc mb_stats writes of -1, disable stats collection before
+   clearing the counters, then re-enable it.
 
-Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
----
- fs/ext4/mballoc.c | 24 ++++++++++++------------
- fs/ext4/sysfs.c   | 25 ++++++++++++++++++++++++-
- 2 files changed, 36 insertions(+), 13 deletions(-)
+Baolin Liu (3):
+  ext4: add blocks_allocated to mb_stats output
+  ext4: use READ_ONCE/WRITE_ONCE for s_mb_stats
+  ext4: allow controlling mballoc stats through proc mb_stats
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d36b0f7b5d7d..fed6d854877b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -924,7 +924,7 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
- 	xa_for_each_range(xa, group, grp, start, end - 1) {
- 		int err;
- 
--		if (sbi->s_mb_stats)
-+		if (READ_ONCE(sbi->s_mb_stats))
- 			atomic64_inc(&sbi->s_bal_cX_groups_considered[cr]);
- 
- 		err = ext4_mb_scan_group(ac, grp->bb_group);
-@@ -980,7 +980,7 @@ static int ext4_mb_scan_groups_p2_aligned(struct ext4_allocation_context *ac,
- 		goto wrap_around;
- 	}
- 
--	if (sbi->s_mb_stats)
-+	if (READ_ONCE(sbi->s_mb_stats))
- 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
- 
- 	/* Increment cr and search again if no group is found */
-@@ -1031,7 +1031,7 @@ static int ext4_mb_scan_groups_goal_fast(struct ext4_allocation_context *ac,
- 		goto wrap_around;
- 	}
- 
--	if (sbi->s_mb_stats)
-+	if (READ_ONCE(sbi->s_mb_stats))
- 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
- 	/*
- 	 * CR_BEST_AVAIL_LEN works based on the concept that we have
-@@ -1135,7 +1135,7 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
- 
- 	/* Reset goal length to original goal length before falling into CR_GOAL_LEN_SLOW */
- 	ac->ac_g_ex.fe_len = ac->ac_orig_goal_len;
--	if (sbi->s_mb_stats)
-+	if (READ_ONCE(sbi->s_mb_stats))
- 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
- 	ac->ac_criteria = CR_GOAL_LEN_SLOW;
- 
-@@ -1184,7 +1184,7 @@ static int ext4_mb_scan_groups_linear(struct ext4_allocation_context *ac,
- 		ac->ac_criteria++;
- 
- 	/* Processed all groups and haven't found blocks */
--	if (sbi->s_mb_stats && i == ngroups)
-+	if (READ_ONCE(sbi->s_mb_stats) && i == ngroups)
- 		atomic64_inc(&sbi->s_bal_cX_failed[cr]);
- 
- 	return 0;
-@@ -2541,7 +2541,7 @@ void ext4_mb_simple_scan_group(struct ext4_allocation_context *ac,
- 
- 		BUG_ON(ac->ac_f_ex.fe_len != ac->ac_g_ex.fe_len);
- 
--		if (EXT4_SB(sb)->s_mb_stats)
-+		if (READ_ONCE(EXT4_SB(sb)->s_mb_stats))
- 			atomic_inc(&EXT4_SB(sb)->s_bal_2orders);
- 
- 		break;
-@@ -2786,7 +2786,7 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 
- 	if (!grp)
- 		return -EFSCORRUPTED;
--	if (sbi->s_mb_stats)
-+	if (READ_ONCE(sbi->s_mb_stats))
- 		atomic64_inc(&sbi->s_bal_cX_groups_considered[ac->ac_criteria]);
- 	if (should_lock) {
- 		ext4_lock_group(sb, group);
-@@ -3097,7 +3097,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 		}
- 	}
- 
--	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND) {
-+	if (READ_ONCE(sbi->s_mb_stats) && ac->ac_status == AC_STATUS_FOUND) {
- 		atomic64_inc(&sbi->s_bal_cX_hits[ac->ac_criteria]);
- 		if (ac->ac_flags & EXT4_MB_STREAM_ALLOC &&
- 		    ac->ac_b_ex.fe_group == ac->ac_g_ex.fe_group)
-@@ -3210,7 +3210,7 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	seq_puts(seq, "mballoc:\n");
--	if (!sbi->s_mb_stats) {
-+	if (!READ_ONCE(sbi->s_mb_stats)) {
- 		seq_puts(seq, "\tmb stats collection turned off.\n");
- 		seq_puts(
- 			seq,
-@@ -3787,7 +3787,7 @@ int ext4_mb_init(struct super_block *sb)
- 
- 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
- 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
--	sbi->s_mb_stats = MB_DEFAULT_STATS;
-+	WRITE_ONCE(sbi->s_mb_stats, MB_DEFAULT_STATS);
- 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
- 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
- 	sbi->s_mb_best_avail_max_trim_order = MB_DEFAULT_BEST_AVAIL_TRIM_ORDER;
-@@ -3929,7 +3929,7 @@ void ext4_mb_release(struct super_block *sb)
- 	kfree(sbi->s_mb_offsets);
- 	kfree(sbi->s_mb_maxs);
- 	iput(sbi->s_buddy_cache);
--	if (sbi->s_mb_stats) {
-+	if (READ_ONCE(sbi->s_mb_stats)) {
- 		ext4_msg(sb, KERN_INFO,
- 		       "mballoc: %u blocks %u reqs (%u success)",
- 				atomic_read(&sbi->s_bal_allocated),
-@@ -4694,7 +4694,7 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
- 
--	if (sbi->s_mb_stats && ac->ac_g_ex.fe_len >= 1) {
-+	if (READ_ONCE(sbi->s_mb_stats) && ac->ac_g_ex.fe_len >= 1) {
- 		atomic_inc(&sbi->s_bal_reqs);
- 		atomic_add(ac->ac_b_ex.fe_len, &sbi->s_bal_allocated);
- 		if (ac->ac_b_ex.fe_len >= ac->ac_o_ex.fe_len)
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index afe12bcc1603..47e06c32c6fb 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -41,6 +41,7 @@ typedef enum {
- 	attr_pointer_atomic,
- 	attr_journal_task,
- 	attr_err_report_sec,
-+	attr_mb_stats,
- } attr_id_t;
- 
- typedef enum {
-@@ -241,6 +242,7 @@ EXT4_ATTR_FUNC(session_write_kbytes, 0444);
- EXT4_ATTR_FUNC(lifetime_write_kbytes, 0444);
- EXT4_ATTR_FUNC(reserved_clusters, 0644);
- EXT4_ATTR_FUNC(sra_exceeded_retry_limit, 0444);
-+EXT4_ATTR_FUNC(mb_stats, 0644);
- 
- EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, inode_readahead,
- 		 ext4_sb_info, s_inode_readahead_blks);
-@@ -250,7 +252,6 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
- 		 ext4_sb_info, s_mb_best_avail_max_trim_order);
- EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, s_err_report_sec);
- EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
--EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
- EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-@@ -451,6 +452,24 @@ static ssize_t ext4_generic_attr_show(struct ext4_attr *a,
- 	return 0;
- }
- 
-+static ssize_t mb_stats_show(struct ext4_sb_info *sbi, char *buf)
-+{
-+	return sysfs_emit(buf, "%u\n", READ_ONCE(sbi->s_mb_stats));
-+}
-+
-+static ssize_t mb_stats_store(struct ext4_sb_info *sbi,
-+			      const char *buf, size_t len)
-+{
-+	unsigned int t;
-+	int ret;
-+
-+	ret = kstrtouint(skip_spaces(buf), 0, &t);
-+	if (ret)
-+		return ret;
-+	WRITE_ONCE(sbi->s_mb_stats, t);
-+	return len;
-+}
-+
- static ssize_t ext4_attr_show(struct kobject *kobj,
- 			      struct attribute *attr, char *buf)
- {
-@@ -475,6 +494,8 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
- 		return sysfs_emit(buf, "%llu\n",
- 				(unsigned long long)
- 			percpu_counter_sum(&sbi->s_sra_exceeded_retry_limit));
-+	case attr_mb_stats:
-+		return mb_stats_show(sbi, buf);
- 	case attr_feature:
- 		return sysfs_emit(buf, "supported\n");
- 	case attr_first_error_time:
-@@ -559,6 +580,8 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
- 		return inode_readahead_blks_store(sbi, buf, len);
- 	case attr_trigger_test_error:
- 		return trigger_test_error(sbi, buf, len);
-+	case attr_mb_stats:
-+		return mb_stats_store(sbi, buf, len);
- 	case attr_err_report_sec:
- 		return err_report_sec_store(sbi, buf, len);
- 	default:
+ Documentation/ABI/testing/sysfs-fs-ext4 |  3 +-
+ Documentation/admin-guide/ext4.rst      |  9 ++-
+ Documentation/filesystems/proc.rst      | 13 +----
+ fs/ext4/ext4.h                          |  1 +
+ fs/ext4/mballoc.c                       | 57 ++++++++++++++-----
+ fs/ext4/sysfs.c                         | 73 ++++++++++++++++++++++++-
+ 6 files changed, 126 insertions(+), 30 deletions(-)
+
 -- 
 2.51.0
 
