@@ -1,107 +1,531 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.10])
+Received: from sender-pp-o92.zoho.in (sender-pp-o92.zoho.in [103.117.158.92])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB3A72571DA;
-	Sun, 24 May 2026 04:06:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.10
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779595587; cv=none; b=MMzHR+oIO1nZIO7l5dm3U6is7q04DH+UGC5vbrBV/lMGP/wwxHtg5VKtNUeSuu8SwSYxFGR+gwM8jlvkEOO0/oMsvou5CKKtVWJeu2Rq4ZLH/UmIx+uqhcTEqmV9KIb4P4L52LMqDL7DXfNpiilLNSgduT0vH0Te0MSSIPW0y5k=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779595587; c=relaxed/simple;
-	bh=7VU11qu0E4m0F5qePq3+C4lzpxUlj6peGYKyIbyhMPM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=qEDcfA/wSv28yDrznsrJj3z2c6jaMS6hYaGQNSS3JposN8kDCC/UWPMXaumexwz9z892AsNwbeMyuaIpspSSkDkOEP6FYd1QNi9sq5FOnKSdg3lBBQVvCMZwY8T9s1akdDUNysphpWHrxCUQyLQ22NPmOpuvMHwOnlS6dWT3H5U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=eSrmwEww; arc=none smtp.client-ip=192.198.163.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2492F2472A2;
+	Sun, 24 May 2026 05:39:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=103.117.158.92
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1779601147; cv=pass; b=SbIwGqzXFZKgewiLzpUeZcwPGQAxB6tN9hxyKVT12BN7aY6IimExP5ldwsknXOmAukyr72wycbg9340YH+2Q4yb8mrRGCsIdnf7FNRiI1GxSpzNUOTnRQWngHrKX/7S1VP6f9XmMDG2b/XzKRUDhAb+bIosrQR1vV7vQ0SWjIfs=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1779601147; c=relaxed/simple;
+	bh=YOD4bFp0hNyq2bnOAxQYm4PeuuYcNOw4BbarUYkGjtA=;
+	h=Date:From:To:Cc:Message-ID:In-Reply-To:Subject:MIME-Version:
+	 Content-Type; b=WJNmtsBhWp5cGci/MH5QYEvv+L9rfk8x+wKSzDwSeXisS0WnUMgQENvMpfg7cGYbCPVONENUp8TApdrug0KmNwUa75O80q1HxvTJrNd9c1XmHFuYMMSNIZpz9RAnNxIiGiBt+1iRaVvCGA9muIPTfLu/cqDqdAwgUVTSCsbT8UI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in; spf=pass smtp.mailfrom=zohomail.in; dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b=IlZdcS7g; arc=pass smtp.client-ip=103.117.158.92
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zohomail.in
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="eSrmwEww"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1779595585; x=1811131585;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=7VU11qu0E4m0F5qePq3+C4lzpxUlj6peGYKyIbyhMPM=;
-  b=eSrmwEwweGzCRnMsGkr06042Gn2TZfu/jPv8D6kh9zJrPWTt1bm+lluw
-   vH34saY3ScKbSTJVI9fsGhRgLajbOUBvdmLlycbhrpaLtZU1rnQ3Uy5X5
-   Rugx8txJDUPXih/6WVxLQNyb9xjC9stGYNBJRCbNa8K196qL0dv1lfoCo
-   NpthIC3C0Y2DHma8FKKUONtJpeJhF0m6Qh2xmkac+k91qRfMMdYQkCzdo
-   S9zjI4g1G0RnKswZvLT/nWU3Hv8XKbNGEyMIp+2eIwRH4rwL/K+2OJgy+
-   nvGpH/NeZXEQSFNinCLun9R8jE+AoFi6RM5p++wscLkWFqE2lEliLDiG+
-   w==;
-X-CSE-ConnectionGUID: Kgy7mP1ASa6/anrXFBZXPQ==
-X-CSE-MsgGUID: DZSzj3tkTiy2vf4YRuAZhw==
-X-IronPort-AV: E=McAfee;i="6800,10657,11795"; a="91852859"
-X-IronPort-AV: E=Sophos;i="6.24,165,1774335600"; 
-   d="scan'208";a="91852859"
-Received: from orviesa001.jf.intel.com ([10.64.159.141])
-  by fmvoesa104.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 May 2026 21:06:24 -0700
-X-CSE-ConnectionGUID: g3OT3OKsT/GnUCylcdoXHA==
-X-CSE-MsgGUID: muY/wXCGRGGTQSU6cRSjdg==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.24,165,1774335600"; 
-   d="scan'208";a="279389451"
-Received: from lkp-server01.sh.intel.com (HELO 6ba8523b1a8f) ([10.239.97.150])
-  by orviesa001.jf.intel.com with ESMTP; 23 May 2026 21:06:23 -0700
-Received: from kbuild by 6ba8523b1a8f with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1wR06W-000000000gn-1biU;
-	Sun, 24 May 2026 04:06:20 +0000
-Date: Sun, 24 May 2026 12:06:02 +0800
-From: kernel test robot <lkp@intel.com>
-To: Ashwin Gundarapu <linuxuser509@zohomail.in>, jack <jack@suse.com>
-Cc: oe-kbuild-all@lists.linux.dev, linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] ext2: Remove deprecated DAX support
-Message-ID: <202605241150.CHkeIFL0-lkp@intel.com>
-References: <19e54c7cba1.5355cb8650862.622752146451851140@zohomail.in>
+	dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b="IlZdcS7g"
+ARC-Seal: i=1; a=rsa-sha256; t=1779601140; cv=none; 
+	d=zohomail.in; s=zohoarc; 
+	b=Hp9t8F/hZcsqXYa2ty9dWNU6jB7IKoLsVAMPmNhUvQPxCdxGrde7LntxHlRidQWho4BQAH7oHd94i/rsdlZZ1ZN4hNVX9JkY9O8aC1flYIWCYIUAs+35Kyt8Hqey6sUfvqGlsHIctsbW6S+wybR0tgBFTiwHFgDXiz2XR85KnUw=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.in; s=zohoarc; 
+	t=1779601140; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=SUtwbw3SO6Em8vrojKYxHTppMcW/4ETDwMK0UCqkFPI=; 
+	b=ZdKNJ9IOoC75PD+0tZv6fD3er7WYq3Am0ebbCS28pI1nVJXOfHNG9Dd1UcelyuCi5FXXVdVE8te4bmJGrNibf6xNu7Uz+2LSx56w8Kgg9rUw8GfMPayrQAJpcjwEdUJKB3ISa9/hNT60epGtLIQiwE0deocclBD7cFD+4SkZLvs=
+ARC-Authentication-Results: i=1; mx.zohomail.in;
+	dkim=pass  header.i=zohomail.in;
+	spf=pass  smtp.mailfrom=linuxuser509@zohomail.in;
+	dmarc=pass header.from=<linuxuser509@zohomail.in>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779601140;
+	s=zoho; d=zohomail.in; i=linuxuser509@zohomail.in;
+	h=Date:Date:From:From:To:To:Cc:Cc:Message-ID:In-Reply-To:Subject:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:Reply-To;
+	bh=SUtwbw3SO6Em8vrojKYxHTppMcW/4ETDwMK0UCqkFPI=;
+	b=IlZdcS7gGMgNUSBVQE0nCHhuHFuLv3pgvs6u489/dr9obgcYALyxdJYW8iH324d7
+	wziDRYvZaXtQJY3kkmGejcxc76+Ft1xYNZglXBj/y1sVmqROt2yhMjLoiZnNfiV9zHz
+	ockn44bFsoNGLQ7z02+63KuwkJmEAkdZPPE7LyVw=
+Received: from mail.zoho.in by mx.zoho.in
+	with SMTP id 1779601133902696.8841241150915; Sun, 24 May 2026 11:08:53 +0530 (IST)
+Received: from  [106.219.3.73] by mail.zoho.in
+	with HTTP;Sun, 24 May 2026 11:08:53 +0530 (IST)
+Date: Sun, 24 May 2026 11:08:53 +0530
+From: Ashwin Gundarapu <linuxuser509@zohomail.in>
+To: "jack" <jack@suse.com>
+Cc: "linux-ext4" <linux-ext4@vger.kernel.org>,
+	"linux-kernel" <linux-kernel@vger.kernel.org>
+Message-ID: <19e587e5143.434d5026117452.233431645221906532@zohomail.in>
+In-Reply-To: 
+Subject: [PATCH v2] ext2: Remove deprecated DAX support
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <19e54c7cba1.5355cb8650862.622752146451851140@zohomail.in>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Importance: Medium
+User-Agent: Zoho Mail
+X-Mailer: Zoho Mail
 
-Hi Ashwin,
 
-kernel test robot noticed the following build warnings:
+DAX support in ext2 was deprecated in commit d5a2693f93e4
+("ext2: Deprecate DAX") with a removal deadline of end of 2025.
+Remove all DAX code from ext2 as scheduled.
 
-[auto build test WARNING on jack-fs/for_next]
-[also build test WARNING on linus/master v7.1-rc4 next-20260522]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
+This removes the DAX mount option, IOMAP DAX support, DAX file
+operations, DAX address_space_operations, and the DAX fault handler.
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Ashwin-Gundarapu/ext2-Remove-deprecated-DAX-support/20260523-202224
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_next
-patch link:    https://lore.kernel.org/r/19e54c7cba1.5355cb8650862.622752146451851140%40zohomail.in
-patch subject: [PATCH] ext2: Remove deprecated DAX support
-config: i386-randconfig-141 (https://download.01.org/0day-ci/archive/20260524/202605241150.CHkeIFL0-lkp@intel.com/config)
-compiler: gcc-14 (Debian 14.2.0-19) 14.2.0
-smatch: v0.5.0-9185-gbcc58b9c
+Signed-off-by: Ashwin Gundarapu <linuxuser509@zohomail.in>
+---
+v2: Removed unused sbi variable and fixed indentation as reported
+    by kernel test robot.
+---
+ fs/ext2/ext2.h  |   5 +-
+ fs/ext2/file.c  | 118 ++----------------------------------------------
+ fs/ext2/inode.c |  61 ++-----------------------
+ fs/ext2/super.c |  45 +++---------------
+ 4 files changed, 16 insertions(+), 213 deletions(-)
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202605241150.CHkeIFL0-lkp@intel.com/
-
-smatch warnings:
-fs/ext2/inode.c:1338 ext2_set_file_ops() warn: inconsistent indenting
-
-vim +1338 fs/ext2/inode.c
-
-^1da177e4c3f41 Linus Torvalds 2005-04-16  1333  
-fb094c90748fbe Dan Williams   2017-12-21  1334  void ext2_set_file_ops(struct inode *inode)
-fb094c90748fbe Dan Williams   2017-12-21  1335  {
-fb094c90748fbe Dan Williams   2017-12-21  1336  	inode->i_op = &ext2_file_inode_operations;
-fb094c90748fbe Dan Williams   2017-12-21  1337  	inode->i_fop = &ext2_file_operations;
-fb094c90748fbe Dan Williams   2017-12-21 @1338      inode->i_mapping->a_ops = &ext2_aops;
-fb094c90748fbe Dan Williams   2017-12-21  1339  }
-fb094c90748fbe Dan Williams   2017-12-21  1340  
-
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 3eb1f342645c..3a26308ec841 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -114,8 +114,6 @@ struct ext2_sb_info {
+ 	 */
+ 	spinlock_t s_lock;
+ 	struct mb_cache *s_ea_block_cache;
+-	struct dax_device *s_daxdev;
+-	u64 s_dax_part_off;
+ };
+ 
+ static inline spinlock_t *
+@@ -373,11 +371,10 @@ struct ext2_inode {
+ #define EXT2_MOUNT_NO_UID32		0x000200  /* Disable 32-bit UIDs */
+ #define EXT2_MOUNT_XATTR_USER		0x004000  /* Extended user attributes */
+ #define EXT2_MOUNT_POSIX_ACL		0x008000  /* POSIX Access Control Lists */
+-#define EXT2_MOUNT_XIP			0x010000  /* Obsolete, use DAX */
++#define EXT2_MOUNT_XIP			0x010000  /* Obsolete*/
+ #define EXT2_MOUNT_USRQUOTA		0x020000  /* user quota */
+ #define EXT2_MOUNT_GRPQUOTA		0x040000  /* group quota */
+ #define EXT2_MOUNT_RESERVATION		0x080000  /* Preallocation */
+-#define EXT2_MOUNT_DAX			0x100000  /* Direct Access */
+ 
+ 
+ #define clear_opt(o, opt)		o &= ~EXT2_MOUNT_##opt
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index d9b1eb34694a..0fd9208af062 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -21,7 +21,6 @@
+ 
+ #include <linux/time.h>
+ #include <linux/pagemap.h>
+-#include <linux/dax.h>
+ #include <linux/filelock.h>
+ #include <linux/quotaops.h>
+ #include <linux/iomap.h>
+@@ -32,111 +31,6 @@
+ #include "acl.h"
+ #include "trace.h"
+ 
+-#ifdef CONFIG_FS_DAX
+-static ssize_t ext2_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
+-{
+-	struct inode *inode = iocb->ki_filp->f_mapping->host;
+-	ssize_t ret;
+-
+-	if (!iov_iter_count(to))
+-		return 0; /* skip atime */
+-
+-	inode_lock_shared(inode);
+-	ret = dax_iomap_rw(iocb, to, &ext2_iomap_ops);
+-	inode_unlock_shared(inode);
+-
+-	file_accessed(iocb->ki_filp);
+-	return ret;
+-}
+-
+-static ssize_t ext2_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+-{
+-	struct file *file = iocb->ki_filp;
+-	struct inode *inode = file->f_mapping->host;
+-	ssize_t ret;
+-
+-	inode_lock(inode);
+-	ret = generic_write_checks(iocb, from);
+-	if (ret <= 0)
+-		goto out_unlock;
+-	ret = file_remove_privs(file);
+-	if (ret)
+-		goto out_unlock;
+-	ret = file_update_time(file);
+-	if (ret)
+-		goto out_unlock;
+-
+-	ret = dax_iomap_rw(iocb, from, &ext2_iomap_ops);
+-	if (ret > 0 && iocb->ki_pos > i_size_read(inode)) {
+-		i_size_write(inode, iocb->ki_pos);
+-		mark_inode_dirty(inode);
+-	}
+-
+-out_unlock:
+-	inode_unlock(inode);
+-	if (ret > 0)
+-		ret = generic_write_sync(iocb, ret);
+-	return ret;
+-}
+-
+-/*
+- * The lock ordering for ext2 DAX fault paths is:
+- *
+- * mmap_lock (MM)
+- *   sb_start_pagefault (vfs, freeze)
+- *     address_space->invalidate_lock
+- *       address_space->i_mmap_rwsem or page_lock (mutually exclusive in DAX)
+- *         ext2_inode_info->truncate_mutex
+- *
+- * The default page_lock and i_size verification done by non-DAX fault paths
+- * is sufficient because ext2 doesn't support hole punching.
+- */
+-static vm_fault_t ext2_dax_fault(struct vm_fault *vmf)
+-{
+-	struct inode *inode = file_inode(vmf->vma->vm_file);
+-	vm_fault_t ret;
+-	bool write = (vmf->flags & FAULT_FLAG_WRITE) &&
+-		(vmf->vma->vm_flags & VM_SHARED);
+-
+-	if (write) {
+-		sb_start_pagefault(inode->i_sb);
+-		file_update_time(vmf->vma->vm_file);
+-	}
+-	filemap_invalidate_lock_shared(inode->i_mapping);
+-
+-	ret = dax_iomap_fault(vmf, 0, NULL, NULL, &ext2_iomap_ops);
+-
+-	filemap_invalidate_unlock_shared(inode->i_mapping);
+-	if (write)
+-		sb_end_pagefault(inode->i_sb);
+-	return ret;
+-}
+-
+-static const struct vm_operations_struct ext2_dax_vm_ops = {
+-	.fault		= ext2_dax_fault,
+-	/*
+-	 * .huge_fault is not supported for DAX because allocation in ext2
+-	 * cannot be reliably aligned to huge page sizes and so pmd faults
+-	 * will always fail and fail back to regular faults.
+-	 */
+-	.page_mkwrite	= ext2_dax_fault,
+-	.pfn_mkwrite	= ext2_dax_fault,
+-};
+-
+-static int ext2_file_mmap_prepare(struct vm_area_desc *desc)
+-{
+-	struct file *file = desc->file;
+-
+-	if (!IS_DAX(file_inode(file)))
+-		return generic_file_mmap_prepare(desc);
+-
+-	file_accessed(file);
+-	desc->vm_ops = &ext2_dax_vm_ops;
+-	return 0;
+-}
+-#else
+-#define ext2_file_mmap_prepare	generic_file_mmap_prepare
+-#endif
+ 
+ /*
+  * Called when filp is released. This happens when all file descriptors
+@@ -285,10 +179,7 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 
+ static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
+-#ifdef CONFIG_FS_DAX
+-	if (IS_DAX(iocb->ki_filp->f_mapping->host))
+-		return ext2_dax_read_iter(iocb, to);
+-#endif
++
+ 	if (iocb->ki_flags & IOCB_DIRECT)
+ 		return ext2_dio_read_iter(iocb, to);
+ 
+@@ -297,10 +188,7 @@ static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 
+ static ssize_t ext2_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+-#ifdef CONFIG_FS_DAX
+-	if (IS_DAX(iocb->ki_filp->f_mapping->host))
+-		return ext2_dax_write_iter(iocb, from);
+-#endif
++
+ 	if (iocb->ki_flags & IOCB_DIRECT)
+ 		return ext2_dio_write_iter(iocb, from);
+ 
+@@ -321,7 +209,7 @@ const struct file_operations ext2_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext2_compat_ioctl,
+ #endif
+-	.mmap_prepare	= ext2_file_mmap_prepare,
++	.mmap_prepare = generic_file_mmap_prepare,
+ 	.open		= ext2_file_open,
+ 	.release	= ext2_release_file,
+ 	.fsync		= ext2_fsync,
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 74aca5eb572d..193acff37270 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -26,7 +26,6 @@
+ #include <linux/time.h>
+ #include <linux/highuid.h>
+ #include <linux/pagemap.h>
+-#include <linux/dax.h>
+ #include <linux/blkdev.h>
+ #include <linux/quotaops.h>
+ #include <linux/writeback.h>
+@@ -741,27 +740,6 @@ static int ext2_get_blocks(struct inode *inode,
+ 		goto cleanup;
+ 	}
+ 
+-	if (IS_DAX(inode)) {
+-		/*
+-		 * We must unmap blocks before zeroing so that writeback cannot
+-		 * overwrite zeros with stale data from block device page cache.
+-		 */
+-		clean_bdev_aliases(inode->i_sb->s_bdev,
+-				   le32_to_cpu(chain[depth-1].key),
+-				   count);
+-		/*
+-		 * block must be initialised before we put it in the tree
+-		 * so that it's not found by another thread before it's
+-		 * initialised
+-		 */
+-		err = sb_issue_zeroout(inode->i_sb,
+-				le32_to_cpu(chain[depth-1].key), count,
+-				GFP_KERNEL);
+-		if (err) {
+-			mutex_unlock(&ei->truncate_mutex);
+-			goto cleanup;
+-		}
+-	}
+ 	*new = true;
+ 
+ 	ext2_splice_branch(inode, iblock, partial, indirect_blks, count);
+@@ -811,7 +789,6 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	unsigned int blkbits = inode->i_blkbits;
+ 	unsigned long first_block = offset >> blkbits;
+ 	unsigned long max_blocks = (length + (1 << blkbits) - 1) >> blkbits;
+-	struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
+ 	bool new = false, boundary = false;
+ 	u32 bno;
+ 	int ret;
+@@ -841,10 +818,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 
+ 	iomap->flags = 0;
+ 	iomap->offset = (u64)first_block << blkbits;
+-	if (flags & IOMAP_DAX)
+-		iomap->dax_dev = sbi->s_daxdev;
+-	else
+-		iomap->bdev = inode->i_sb->s_bdev;
++        iomap->bdev = inode->i_sb->s_bdev;
+ 
+ 	if (ret == 0) {
+ 		/*
+@@ -859,8 +833,6 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	} else {
+ 		iomap->type = IOMAP_MAPPED;
+ 		iomap->addr = (u64)bno << blkbits;
+-		if (flags & IOMAP_DAX)
+-			iomap->addr += sbi->s_dax_part_off;
+ 		iomap->length = (u64)ret << blkbits;
+ 		iomap->flags |= IOMAP_F_MERGED;
+ 	}
+@@ -962,13 +934,6 @@ ext2_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 	return mpage_writepages(mapping, wbc, ext2_get_block);
+ }
+ 
+-static int
+-ext2_dax_writepages(struct address_space *mapping, struct writeback_control *wbc)
+-{
+-	struct ext2_sb_info *sbi = EXT2_SB(mapping->host->i_sb);
+-
+-	return dax_writeback_mapping_range(mapping, sbi->s_daxdev, wbc);
+-}
+ 
+ const struct address_space_operations ext2_aops = {
+ 	.dirty_folio		= block_dirty_folio,
+@@ -984,10 +949,6 @@ const struct address_space_operations ext2_aops = {
+ 	.error_remove_folio	= generic_error_remove_folio,
+ };
+ 
+-static const struct address_space_operations ext2_dax_aops = {
+-	.writepages		= ext2_dax_writepages,
+-	.dirty_folio		= noop_dirty_folio,
+-};
+ 
+ /*
+  * Probably it should be a library function... search for first non-zero word
+@@ -1186,9 +1147,6 @@ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+ 	blocksize = inode->i_sb->s_blocksize;
+ 	iblock = (offset + blocksize-1) >> EXT2_BLOCK_SIZE_BITS(inode->i_sb);
+ 
+-#ifdef CONFIG_FS_DAX
+-	WARN_ON(!rwsem_is_locked(&inode->i_mapping->invalidate_lock));
+-#endif
+ 
+ 	n = ext2_block_to_path(inode, iblock, offsets, NULL);
+ 	if (n == 0)
+@@ -1290,12 +1248,8 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+ 
+ 	inode_dio_wait(inode);
+ 
+-	if (IS_DAX(inode))
+-		error = dax_truncate_page(inode, newsize, NULL,
+-					  &ext2_iomap_ops);
+-	else
+-		error = block_truncate_page(inode->i_mapping,
+-				newsize, ext2_get_block);
++        error = block_truncate_page(inode->i_mapping,
++                                newsize, ext2_get_block);
+ 	if (error)
+ 		return error;
+ 
+@@ -1363,7 +1317,7 @@ void ext2_set_inode_flags(struct inode *inode)
+ 	unsigned int flags = EXT2_I(inode)->i_flags;
+ 
+ 	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME |
+-				S_DIRSYNC | S_DAX);
++				S_DIRSYNC);
+ 	if (flags & EXT2_SYNC_FL)
+ 		inode->i_flags |= S_SYNC;
+ 	if (flags & EXT2_APPEND_FL)
+@@ -1374,18 +1328,13 @@ void ext2_set_inode_flags(struct inode *inode)
+ 		inode->i_flags |= S_NOATIME;
+ 	if (flags & EXT2_DIRSYNC_FL)
+ 		inode->i_flags |= S_DIRSYNC;
+-	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+-		inode->i_flags |= S_DAX;
+ }
+ 
+ void ext2_set_file_ops(struct inode *inode)
+ {
+ 	inode->i_op = &ext2_file_inode_operations;
+ 	inode->i_fop = &ext2_file_operations;
+-	if (IS_DAX(inode))
+-		inode->i_mapping->a_ops = &ext2_dax_aops;
+-	else
+-		inode->i_mapping->a_ops = &ext2_aops;
++	inode->i_mapping->a_ops = &ext2_aops;
+ }
+ 
+ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 19f76d8cb473..ede4ad84828c 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -34,7 +34,6 @@
+ #include <linux/log2.h>
+ #include <linux/quotaops.h>
+ #include <linux/uaccess.h>
+-#include <linux/dax.h>
+ #include <linux/iversion.h>
+ #include "ext2.h"
+ #include "xattr.h"
+@@ -198,7 +197,6 @@ static void ext2_put_super (struct super_block * sb)
+ 	brelse (sbi->s_sbh);
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
+-	fs_put_dax(sbi->s_daxdev, NULL);
+ 	kfree(sbi);
+ }
+ 
+@@ -332,8 +330,6 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
+ 	if (test_opt(sb, XIP))
+ 		seq_puts(seq, ",xip");
+ 
+-	if (test_opt(sb, DAX))
+-		seq_puts(seq, ",dax");
+ 
+ 	if (!test_opt(sb, RESERVATION))
+ 		seq_puts(seq, ",noreservation");
+@@ -432,7 +428,7 @@ static const struct export_operations ext2_export_ops = {
+ enum {
+ 	Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid, Opt_resgid, Opt_resuid,
+ 	Opt_sb, Opt_errors, Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
+-	Opt_nobh, Opt_user_xattr, Opt_acl, Opt_xip, Opt_dax, Opt_ignore,
++	Opt_nobh, Opt_user_xattr, Opt_acl, Opt_xip, Opt_ignore,
+ 	Opt_quota, Opt_usrquota, Opt_grpquota, Opt_reservation,
+ };
+ 
+@@ -462,7 +458,6 @@ static const struct fs_parameter_spec ext2_param_spec[] = {
+ 	fsparam_flag_no	("user_xattr", Opt_user_xattr),
+ 	fsparam_flag_no	("acl", Opt_acl),
+ 	fsparam_flag	("xip", Opt_xip),
+-	fsparam_flag	("dax", Opt_dax),
+ 	fsparam_flag	("grpquota", Opt_grpquota),
+ 	fsparam_flag	("noquota", Opt_ignore),
+ 	fsparam_flag	("quota", Opt_quota),
+@@ -595,20 +590,9 @@ static int ext2_parse_param(struct fs_context *fc, struct fs_parameter *param)
+ 		ext2_msg_fc(fc, KERN_INFO, "(no)acl options not supported");
+ 		break;
+ #endif
+-	case Opt_xip:
+-		ext2_msg_fc(fc, KERN_INFO, "use dax instead of xip");
+-		ctx_set_mount_opt(ctx, EXT2_MOUNT_XIP);
+-		fallthrough;
+-	case Opt_dax:
+-#ifdef CONFIG_FS_DAX
+-		ext2_msg_fc(fc, KERN_WARNING,
+-		    "DAX enabled. Warning: DAX support in ext2 driver is deprecated"
+-		    " and will be removed at the end of 2025. Please use ext4 driver instead.");
+-		ctx_set_mount_opt(ctx, EXT2_MOUNT_DAX);
+-#else
+-		ext2_msg_fc(fc, KERN_INFO, "dax option not supported");
+-#endif
+-		break;
++        case Opt_xip:
++                ext2_msg_fc(fc, KERN_ERR, "DAX support has been removed. Please use ext4 instead.");
++                return -EINVAL;
+ 
+ #if defined(CONFIG_QUOTA)
+ 	case Opt_quota:
+@@ -906,8 +890,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
+-	sbi->s_daxdev = fs_dax_get_by_bdev(sb->s_bdev, &sbi->s_dax_part_off,
+-					   NULL, NULL);
+ 
+ 	spin_lock_init(&sbi->s_lock);
+ 	ret = -EINVAL;
+@@ -992,16 +974,8 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	}
+ 	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+ 
+-	if (test_opt(sb, DAX)) {
+-		if (!sbi->s_daxdev) {
+-			ext2_msg(sb, KERN_ERR,
+-				"DAX unsupported by block device. Turning off DAX.");
+-			clear_opt(sbi->s_mount_opt, DAX);
+-		} else if (blocksize != PAGE_SIZE) {
+-			ext2_msg(sb, KERN_ERR, "unsupported blocksize for DAX\n");
+-			clear_opt(sbi->s_mount_opt, DAX);
+-		}
+-	}
++
++
+ 
+ 	/* If the blocksize doesn't match, re-read the thing.. */
+ 	if (sb->s_blocksize != blocksize) {
+@@ -1252,7 +1226,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+ failed_mount:
+ 	brelse(bh);
+ failed_sbi:
+-	fs_put_dax(sbi->s_daxdev, NULL);
+ 	sb->s_fs_info = NULL;
+ 	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+@@ -1379,11 +1352,7 @@ static int ext2_reconfigure(struct fs_context *fc)
+ 
+ 	spin_lock(&sbi->s_lock);
+ 	es = sbi->s_es;
+-	if ((sbi->s_mount_opt ^ new_opts.s_mount_opt) & EXT2_MOUNT_DAX) {
+-		ext2_msg(sb, KERN_WARNING, "warning: refusing change of "
+-			 "dax flag with busy inodes while remounting");
+-		new_opts.s_mount_opt ^= EXT2_MOUNT_DAX;
+-	}
++
+ 	if ((bool)(flags & SB_RDONLY) == sb_rdonly(sb))
+ 		goto out_set;
+ 	if (flags & SB_RDONLY) {
+-- 
+2.43.0
