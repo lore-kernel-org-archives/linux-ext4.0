@@ -1,51 +1,51 @@
 Received: from sender-pp-o92.zoho.in (sender-pp-o92.zoho.in [103.117.158.92])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2492F2472A2;
-	Sun, 24 May 2026 05:39:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 996C11B4138;
+	Sun, 24 May 2026 09:39:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=103.117.158.92
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779601147; cv=pass; b=SbIwGqzXFZKgewiLzpUeZcwPGQAxB6tN9hxyKVT12BN7aY6IimExP5ldwsknXOmAukyr72wycbg9340YH+2Q4yb8mrRGCsIdnf7FNRiI1GxSpzNUOTnRQWngHrKX/7S1VP6f9XmMDG2b/XzKRUDhAb+bIosrQR1vV7vQ0SWjIfs=
+	t=1779615596; cv=pass; b=nwF6eNdikEUsxRhKtUelz75qtb+JQMJnYGIYTT2SW6I4YmwiIckxLiNqdO548m+OfOz0MbvPY3THgSwFbbR/BHYWRLIh0dpmMzpu95vGH+8hrKjoPdHhUdunKjbjlciXshrYCtTnbXaMDBXaltiNr4WwZWedPn+Ne/rdQ/FjDXc=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779601147; c=relaxed/simple;
-	bh=YOD4bFp0hNyq2bnOAxQYm4PeuuYcNOw4BbarUYkGjtA=;
+	s=arc-20240116; t=1779615596; c=relaxed/simple;
+	bh=uJRYL7ugGz4dUKjIf9t7mgU7Vwg7orRxYYynZpDEdIc=;
 	h=Date:From:To:Cc:Message-ID:In-Reply-To:Subject:MIME-Version:
-	 Content-Type; b=WJNmtsBhWp5cGci/MH5QYEvv+L9rfk8x+wKSzDwSeXisS0WnUMgQENvMpfg7cGYbCPVONENUp8TApdrug0KmNwUa75O80q1HxvTJrNd9c1XmHFuYMMSNIZpz9RAnNxIiGiBt+1iRaVvCGA9muIPTfLu/cqDqdAwgUVTSCsbT8UI=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in; spf=pass smtp.mailfrom=zohomail.in; dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b=IlZdcS7g; arc=pass smtp.client-ip=103.117.158.92
+	 Content-Type; b=fCQlkyR75KX+IM/3h2u1YFIxRdWGHwpaGeyibshTT3+Coibkt5YZ/yBQx+e4WkY4yn4u8Svc4djgoAq3TJYSONaMQfvE+mRyYmdnIh2HesHt1qpgWzYQxoGHQP9dAfI6k0auLbFiFHiS/zeqnBOF1JejC6rq5H3/nglZuNraifg=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in; spf=pass smtp.mailfrom=zohomail.in; dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b=CNVXEkFD; arc=pass smtp.client-ip=103.117.158.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zohomail.in
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b="IlZdcS7g"
-ARC-Seal: i=1; a=rsa-sha256; t=1779601140; cv=none; 
+	dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b="CNVXEkFD"
+ARC-Seal: i=1; a=rsa-sha256; t=1779615588; cv=none; 
 	d=zohomail.in; s=zohoarc; 
-	b=Hp9t8F/hZcsqXYa2ty9dWNU6jB7IKoLsVAMPmNhUvQPxCdxGrde7LntxHlRidQWho4BQAH7oHd94i/rsdlZZ1ZN4hNVX9JkY9O8aC1flYIWCYIUAs+35Kyt8Hqey6sUfvqGlsHIctsbW6S+wybR0tgBFTiwHFgDXiz2XR85KnUw=
+	b=dPTNcEIYZndaGAxn0HcVNzUdFmxJuNm6jBw6Cai3jEZX75rbPjTjTzRvuSZ8uiA7aMKTYgiLLzxRPW5Rdu1KlVZLRit+NY5lJHn73/yHj+NeLvy8RWqM1xJthFF5ixGkzutRVgbjwMtS0oQfcXNRlB4dNJbMpF5kUoCAFsPwiJw=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.in; s=zohoarc; 
-	t=1779601140; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=SUtwbw3SO6Em8vrojKYxHTppMcW/4ETDwMK0UCqkFPI=; 
-	b=ZdKNJ9IOoC75PD+0tZv6fD3er7WYq3Am0ebbCS28pI1nVJXOfHNG9Dd1UcelyuCi5FXXVdVE8te4bmJGrNibf6xNu7Uz+2LSx56w8Kgg9rUw8GfMPayrQAJpcjwEdUJKB3ISa9/hNT60epGtLIQiwE0deocclBD7cFD+4SkZLvs=
+	t=1779615588; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=w860oJNv29ZqAMbrZA/VzbbAdLLraaHkzKLzrqYUd40=; 
+	b=OhMvY+hCflAgjfM7Zlbv23uhVc/xs6YVnBRdM8uwJK1i3wlgxpXv5OBIYeWVi29+tPGr+7/jzBuX5My939xG/Swn1NMcntwy9KdIonMywynSZF85FPyXDOq2gZLoP1JQBM/tSX1ygRpyEK1mPZCqtNpn5PFYM/UkHqMe/lGQKhg=
 ARC-Authentication-Results: i=1; mx.zohomail.in;
 	dkim=pass  header.i=zohomail.in;
 	spf=pass  smtp.mailfrom=linuxuser509@zohomail.in;
 	dmarc=pass header.from=<linuxuser509@zohomail.in>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779601140;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779615588;
 	s=zoho; d=zohomail.in; i=linuxuser509@zohomail.in;
 	h=Date:Date:From:From:To:To:Cc:Cc:Message-ID:In-Reply-To:Subject:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=SUtwbw3SO6Em8vrojKYxHTppMcW/4ETDwMK0UCqkFPI=;
-	b=IlZdcS7gGMgNUSBVQE0nCHhuHFuLv3pgvs6u489/dr9obgcYALyxdJYW8iH324d7
-	wziDRYvZaXtQJY3kkmGejcxc76+Ft1xYNZglXBj/y1sVmqROt2yhMjLoiZnNfiV9zHz
-	ockn44bFsoNGLQ7z02+63KuwkJmEAkdZPPE7LyVw=
+	bh=w860oJNv29ZqAMbrZA/VzbbAdLLraaHkzKLzrqYUd40=;
+	b=CNVXEkFDxFXndJLtwR05Tne+sTxqO1vvo1gxROP/DQlVOWMro6fCoTopGAz0f4AZ
+	GkCpA/25wnBCJ2c7JB+IGqAc7mnDy6Td47ogGEocMbSJFpawVxrU2RfTUKGI+E2CY8O
+	wex8eslJocQvbOksR8PxRyjrMK89ZlKqhTLl3WjY=
 Received: from mail.zoho.in by mx.zoho.in
-	with SMTP id 1779601133902696.8841241150915; Sun, 24 May 2026 11:08:53 +0530 (IST)
-Received: from  [106.219.3.73] by mail.zoho.in
-	with HTTP;Sun, 24 May 2026 11:08:53 +0530 (IST)
-Date: Sun, 24 May 2026 11:08:53 +0530
+	with SMTP id 1779615581150691.0892565946989; Sun, 24 May 2026 15:09:41 +0530 (IST)
+Received: from  [157.48.183.5] by mail.zoho.in
+	with HTTP;Sun, 24 May 2026 15:09:41 +0530 (IST)
+Date: Sun, 24 May 2026 15:09:41 +0530
 From: Ashwin Gundarapu <linuxuser509@zohomail.in>
 To: "jack" <jack@suse.com>
 Cc: "linux-ext4" <linux-ext4@vger.kernel.org>,
 	"linux-kernel" <linux-kernel@vger.kernel.org>
-Message-ID: <19e587e5143.434d5026117452.233431645221906532@zohomail.in>
+Message-ID: <19e595ac3d0.1a0dcfbe128078.1031782761444069401@zohomail.in>
 In-Reply-To: 
-Subject: [PATCH v2] ext2: Remove deprecated DAX support
+Subject: [PATCH v3] ext2: Remove deprecated DAX support
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -58,7 +58,6 @@ Importance: Medium
 User-Agent: Zoho Mail
 X-Mailer: Zoho Mail
 
-
 DAX support in ext2 was deprecated in commit d5a2693f93e4
 ("ext2: Deprecate DAX") with a removal deadline of end of 2025.
 Remove all DAX code from ext2 as scheduled.
@@ -68,14 +67,16 @@ operations, DAX address_space_operations, and the DAX fault handler.
 
 Signed-off-by: Ashwin Gundarapu <linuxuser509@zohomail.in>
 ---
+v3: Restored Opt_dax for graceful mount error message. Fixed remaining
+    space-to-tab indentation. Kept EXT2_MOUNT_XIP for compilation.
 v2: Removed unused sbi variable and fixed indentation as reported
     by kernel test robot.
 ---
  fs/ext2/ext2.h  |   5 +-
  fs/ext2/file.c  | 118 ++----------------------------------------------
  fs/ext2/inode.c |  61 ++-----------------------
- fs/ext2/super.c |  45 +++---------------
- 4 files changed, 16 insertions(+), 213 deletions(-)
+ fs/ext2/super.c |  45 ++++--------------
+ 4 files changed, 18 insertions(+), 211 deletions(-)
 
 diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
 index 3eb1f342645c..3a26308ec841 100644
@@ -88,7 +89,7 @@ index 3eb1f342645c..3a26308ec841 100644
 -	struct dax_device *s_daxdev;
 -	u64 s_dax_part_off;
  };
- 
+
  static inline spinlock_t *
 @@ -373,11 +371,10 @@ struct ext2_inode {
  #define EXT2_MOUNT_NO_UID32		0x000200  /* Disable 32-bit UIDs */
@@ -228,7 +229,7 @@ index d9b1eb34694a..0fd9208af062 100644
  /*
   * Called when filp is released. This happens when all file descriptors
 @@ -285,10 +179,7 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 
+
  static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
  {
 -#ifdef CONFIG_FS_DAX
@@ -261,7 +262,7 @@ index d9b1eb34694a..0fd9208af062 100644
  	.release	= ext2_release_file,
  	.fsync		= ext2_fsync,
 diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 74aca5eb572d..193acff37270 100644
+index 74aca5eb572d..e2aa6152fa1f 100644
 --- a/fs/ext2/inode.c
 +++ b/fs/ext2/inode.c
 @@ -26,7 +26,6 @@
@@ -316,7 +317,7 @@ index 74aca5eb572d..193acff37270 100644
 -		iomap->dax_dev = sbi->s_daxdev;
 -	else
 -		iomap->bdev = inode->i_sb->s_bdev;
-+        iomap->bdev = inode->i_sb->s_bdev;
++	iomap->bdev = inode->i_sb->s_bdev;
  
  	if (ret == 0) {
  		/*
@@ -340,7 +341,7 @@ index 74aca5eb572d..193acff37270 100644
 -
 -	return dax_writeback_mapping_range(mapping, sbi->s_daxdev, wbc);
 -}
- 
+
  const struct address_space_operations ext2_aops = {
  	.dirty_folio		= block_dirty_folio,
 @@ -984,10 +949,6 @@ const struct address_space_operations ext2_aops = {
@@ -374,11 +375,11 @@ index 74aca5eb572d..193acff37270 100644
 -	else
 -		error = block_truncate_page(inode->i_mapping,
 -				newsize, ext2_get_block);
-+        error = block_truncate_page(inode->i_mapping,
-+                                newsize, ext2_get_block);
++			error = block_truncate_page(inode->i_mapping,
++								newsize, ext2_get_block);
  	if (error)
  		return error;
- 
+
 @@ -1363,7 +1317,7 @@ void ext2_set_inode_flags(struct inode *inode)
  	unsigned int flags = EXT2_I(inode)->i_flags;
  
@@ -409,7 +410,7 @@ index 74aca5eb572d..193acff37270 100644
  
  struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 19f76d8cb473..ede4ad84828c 100644
+index 19f76d8cb473..6f24d1448a40 100644
 --- a/fs/ext2/super.c
 +++ b/fs/ext2/super.c
 @@ -34,7 +34,6 @@
@@ -427,34 +428,17 @@ index 19f76d8cb473..ede4ad84828c 100644
 -	fs_put_dax(sbi->s_daxdev, NULL);
  	kfree(sbi);
  }
- 
+
 @@ -332,8 +330,6 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
  	if (test_opt(sb, XIP))
  		seq_puts(seq, ",xip");
  
 -	if (test_opt(sb, DAX))
 -		seq_puts(seq, ",dax");
- 
+
  	if (!test_opt(sb, RESERVATION))
  		seq_puts(seq, ",noreservation");
-@@ -432,7 +428,7 @@ static const struct export_operations ext2_export_ops = {
- enum {
- 	Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid, Opt_resgid, Opt_resuid,
- 	Opt_sb, Opt_errors, Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
--	Opt_nobh, Opt_user_xattr, Opt_acl, Opt_xip, Opt_dax, Opt_ignore,
-+	Opt_nobh, Opt_user_xattr, Opt_acl, Opt_xip, Opt_ignore,
- 	Opt_quota, Opt_usrquota, Opt_grpquota, Opt_reservation,
- };
- 
-@@ -462,7 +458,6 @@ static const struct fs_parameter_spec ext2_param_spec[] = {
- 	fsparam_flag_no	("user_xattr", Opt_user_xattr),
- 	fsparam_flag_no	("acl", Opt_acl),
- 	fsparam_flag	("xip", Opt_xip),
--	fsparam_flag	("dax", Opt_dax),
- 	fsparam_flag	("grpquota", Opt_grpquota),
- 	fsparam_flag	("noquota", Opt_ignore),
- 	fsparam_flag	("quota", Opt_quota),
-@@ -595,20 +590,9 @@ static int ext2_parse_param(struct fs_context *fc, struct fs_parameter *param)
+@@ -595,20 +591,12 @@ static int ext2_parse_param(struct fs_context *fc, struct fs_parameter *param)
  		ext2_msg_fc(fc, KERN_INFO, "(no)acl options not supported");
  		break;
  #endif
@@ -475,10 +459,13 @@ index 19f76d8cb473..ede4ad84828c 100644
 +        case Opt_xip:
 +                ext2_msg_fc(fc, KERN_ERR, "DAX support has been removed. Please use ext4 instead.");
 +                return -EINVAL;
- 
++		case Opt_dax:
++			ext2_msg_fc(fc, KERN_ERR, "DAX support has been removed. Please use ext4 instead.");
++			return -EINVAL;
+
  #if defined(CONFIG_QUOTA)
  	case Opt_quota:
-@@ -906,8 +890,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+@@ -906,8 +894,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
  	}
  	sb->s_fs_info = sbi;
  	sbi->s_sb_block = sb_block;
@@ -487,7 +474,7 @@ index 19f76d8cb473..ede4ad84828c 100644
  
  	spin_lock_init(&sbi->s_lock);
  	ret = -EINVAL;
-@@ -992,16 +974,8 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+@@ -992,16 +978,8 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
  	}
  	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
  
@@ -506,7 +493,7 @@ index 19f76d8cb473..ede4ad84828c 100644
  
  	/* If the blocksize doesn't match, re-read the thing.. */
  	if (sb->s_blocksize != blocksize) {
-@@ -1252,7 +1226,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+@@ -1252,7 +1230,6 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
  failed_mount:
  	brelse(bh);
  failed_sbi:
@@ -514,8 +501,8 @@ index 19f76d8cb473..ede4ad84828c 100644
  	sb->s_fs_info = NULL;
  	kfree(sbi->s_blockgroup_lock);
  	kfree(sbi);
-@@ -1379,11 +1352,7 @@ static int ext2_reconfigure(struct fs_context *fc)
- 
+@@ -1379,11 +1356,7 @@ static int ext2_reconfigure(struct fs_context *fc)
+
  	spin_lock(&sbi->s_lock);
  	es = sbi->s_es;
 -	if ((sbi->s_mount_opt ^ new_opts.s_mount_opt) & EXT2_MOUNT_DAX) {
@@ -527,5 +514,7 @@ index 19f76d8cb473..ede4ad84828c 100644
  	if ((bool)(flags & SB_RDONLY) == sb_rdonly(sb))
  		goto out_set;
  	if (flags & SB_RDONLY) {
--- 
+--
 2.43.0
+
+
