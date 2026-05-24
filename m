@@ -1,73 +1,72 @@
-Received: from mail-wr1-f52.google.com (mail-wr1-f52.google.com [209.85.221.52])
+Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05DC031E83D
-	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 376BC32B11C
+	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779655054; cv=none; b=o5L7Z865b/uR9FmFDJhhUOqXmKSJmqYmIHogRmfZHHQ12zQoa+7Kq2MUIi1E4ndGH3eU5Y0aPON+yDso82+UW9ltTyLlRDqE4kYd0ihhoj5d1PtidNddPHCIBLrF7ZlUy1MOc1oppgwqGaTbNa9ht2ZPLs6jWft23BYyGkykdh0=
+	t=1779655054; cv=none; b=H3YsvIGNoxghX7TjcRprHCaCNd9J+DTkdxBiM1yBNHhDmXfK6axUdDWzgU99AsLdea5Xo52QH+7UhX8KXZ4l62y7MfebfxxiYOphWBF8bRJcbyZCS28imqTA05pgj9suPrWArWM5JQYE4TsLVyMQjyHf9TG96W3yarY8Dw21tKs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1779655054; c=relaxed/simple;
-	bh=DKxpezYar+SEDIbG2AAunvzMxmdAicg/yUJkHeDooMU=;
+	bh=KgtPx8XdBT1wPW5bubM+bs2SL8DtrSMbTZWnx8Tw2Ao=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kFA7zAec9ShtGzoo8jwro0xYSXM8N9gMStej85APHZJjB/0fnXTbqcPcr2Uy+QnkyFo2n09V/QZEZfbNf86MBuHtGzGj1KKXeSwEvo2jqESeAvybsIa0I0t3mV+SHZAMXoy3/g0MLSFbr4u/0whxBxlsDut5SqROp/4GAE5XdZw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nit5feZo; arc=none smtp.client-ip=209.85.221.52
+	 MIME-Version; b=nKPOHlSjZ/co0Maz2lu3IHZ4bA5xHCsYobvlA5MCD8YPEuop7GPw2gYwTy4tuM4WPjoztDsTtqgW2+X84XSWgDaiB78atufFOMz+DvJetOOHZnU+7hZeOP5RW1Ky99dMFgINij8/6Ncafbe8E7GjwH49yK0GB1fUAzueNkGBdSE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=U3vdGbj2; arc=none smtp.client-ip=209.85.128.46
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nit5feZo"
-Received: by mail-wr1-f52.google.com with SMTP id ffacd0b85a97d-43d75312379so7529712f8f.1
-        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:31 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U3vdGbj2"
+Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-490388fd0dbso33578355e9.0
+        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779655050; x=1780259850; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1779655052; x=1780259852; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=b6MYqnCByUSd3X9BUZkupVm227C4OtclT5zkOTrBkjY=;
-        b=nit5feZo/kPMuKFAAaDGPdqGUP5P5A9idQNtGPR2ZKJn/WXgnY7JcRArxbNPgXaSNy
-         GI594vTJH+n7qARoBYprDvjCQaAinfowdmnadyXY+Wi6pItJDCDcN8kouoEn0GPG6DSG
-         6KuhpV4GXZWIVm7z4h0nmOefcKZ/b5mApaUtvhUTZe7ovWiakRES5X4IjS4uqJljkcaM
-         Ifr3sSBQqPNaBUzvmkHxKlzp9h7eAlkSnJTTLhcUVOzln+mae/rxvYIRfdu4kzigDHfR
-         aqdjA0g8rTvBbnJTYtz52FfEW5i7oktjXvPQ/fSenCbBOgJsFEgGQSqwyGJxkY3aWmwX
-         +7Dg==
+        bh=xSKqOFCJOf3p6Gy04EYoRXXlaFWcLfzV0saNKFxlP1E=;
+        b=U3vdGbj2KSXf5ESBuPQU5LAMW+O+ixFxuXMeDhVCEaYrtnQ2rUQZmETbq39X/VC/pc
+         xh4w+uj/uomUdCgybnYGa2mhgZ0Ce12nIHRjcUG2EbAJVbo/JpWKi8xapBKhgQF9LrZN
+         w8llTAyKA3XW3TeVT0/Hrdzr4H/gcI9E5q9/yoYE/UxkAVAwAOOJUJskuBOHZNtXWO85
+         80smGoW52z8+YzVt0Mzl9GMdTKUNB1Fc61zNCTKFINavpcS8FL4McoSamvLzyuCnC0CU
+         BdBNnqH3xTbu2ybTabvNx7b85lmxtnZfLsayAVt3+aqNRN6u5X+KAUxAgEd3scD3zc4G
+         is1A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779655050; x=1780259850;
+        d=1e100.net; s=20251104; t=1779655052; x=1780259852;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=b6MYqnCByUSd3X9BUZkupVm227C4OtclT5zkOTrBkjY=;
-        b=scx6VrhSJDtBPcXrJMAQ0JLPH4Wwk7De6lwN+aqN5GF5mj9ShEgTRdd0srJZN0ANL7
-         Boz1zZgM/6Q+QIQkEiH1Q7feWzpOK6oG+XOlw22wa4cy7Dx5r509UNSmbVnc2GUzn4ra
-         DieUDftW/Ux/wxFL5tTeqW37xwfBLpd2iPzMY2GaRzxpkzJYsnEwoy8T2laUbF/Gdhp9
-         XoMQIGw2r9J7zq394gYeZCMcZstyRnO2Ab9e13925vORIBIEWxC+fjavKpuux0kGk11c
-         rIfBTZStKsGrzeRXetFaFHHpTVaKkdCs31Iabtwk+EV9cwtDAuXmexkjAkrd1BwJbTyD
-         FaoA==
-X-Gm-Message-State: AOJu0YwEENAj0JrYeN5T4D5zvJOHyG42cYQHspyQi2wdM86rwKhVTm1n
-	OCGS6G0PPEFK0N9B6OyUv6owkn1Gsnn2PwMT4AANT3qnM7D16u7pbWvEU2rVEGzC
-X-Gm-Gg: Acq92OGDpDR7UttEHAYrvCZr/WASI+VqNpkUKS+t1MNuFmWt2CQmFnnfy2l/ZYxYgo3
-	34QCBofgCHL146rTqm8t3qx8ZLjqjYc00234ecwFOh08nFXEjGHXsRlsVvdNvkLgwim4gjBIQ/A
-	dnWMqjmFGWnILxKnLl3++bO7ni4zgsm7DSnhiCbVYHWn/5XhT6p3LOdaZrcns/nT14INb2hzfWh
-	wFEOpppF2EHQ/mhXwc+m9h63ndIljEjBT5CjfR5vlA26JmGXo6d6KNA6TNSz8VNd5gcofLT6h1D
-	95kjI/e1RFVhBxYSz4mQDm2RpAJv/KXsUjlWVBI7nRYC28RloDT5URgswiW/PfsUp5ezG6ckE4d
-	5lm0jrgXwnGiVchYZ+0YB0DWbpwnvF3641dGUBteqDUNoWV+kYeTePs/2Vfs6p7k7TwChq+r0vu
-	Cv/7UzlW3fgASSAEdohnG9tVnJ9qShJXCn19083BKh
-X-Received: by 2002:a05:600c:3b07:b0:490:f7c:b19 with SMTP id 5b1f17b1804b1-490420f67f5mr156845635e9.0.1779655050401;
-        Sun, 24 May 2026 13:37:30 -0700 (PDT)
+        bh=xSKqOFCJOf3p6Gy04EYoRXXlaFWcLfzV0saNKFxlP1E=;
+        b=orsvT4mKrwHEIirWIMw1AMIVHqZlP1SSkLkbp+LL+E2cQw5141/rT0HROkIRYsKSde
+         l77TIWRm5+VJdbj2/FUyDFTeIxg/vQeFAAvwdZ4Sq9n7gc3/4N+tnI/nSgElxpsZI3Tu
+         XEdGvHLhQsPTxAhTGbGO0cqvcATmFoEY0I3+7WVXSyuZYB7yXWqNM/J769OS3jWnNyry
+         T3WjVFGj1TxbzAVKzXEbQYKDqqRGRJP0glZrcayR2no7ekYyXVgz3ZRU2a44mXUgJiC/
+         BLCUbzc1Wo8EGWfYL3KrHAn+4QI2XP9YY1Yp2/W7DXB2Wa2SyoktkWBfoN3m+BPUWZDs
+         EjNQ==
+X-Gm-Message-State: AOJu0YxUXMKpGGh8AtjxFMs8QIfAGipeLGpubiAYni3SoezDvXEejWba
+	yVOBZgd65mi/et0gLlx/fZxx/QMq38jpnJR2+9PmXr/WQiMz6YDSkUQWkdmYZGPx
+X-Gm-Gg: Acq92OGPTEJ3ywPTtIk7SJlQUau30RvNFOb6zpehc6Jj39A009AZ3gUYGJm3aNHTRWR
+	efbMzla3u8HK6EMdgmfafmYaLZnW1lnkTWBnfTpiQ2tPwfGKRC3AzHOm6tSQkf8wYZbF9lQsmdp
+	tgmpoExZrwcsgs2ROsvP5Vz7kw0n6Pcah0V4oM+L3Wq4IeQmhNYimm+g5uDHsxVehfNFM58sjV1
+	x+7hXx5oV3GzrDjJwRUrjLTwgNT2naay50yX0D5ArwqNYYCYZQQi273ZUG+3wO4Z5YUAhr3JQzF
+	pn6uja6euI2gegdnKQpeXgAIhIX8bdRMyF7gEK6dblbWmH8rvRumUGEjRoNwmqDdF3/vpJzRjdU
+	tH9mBgUze9qWe7G+rPuFaAGkBsIlIQ5KlEiIg7A7RPdZZwsoN0aPq8nvKY3OEJDZtseQAjgE6rB
+	5KghEc+/57Rwla6TJXrL5YvsXw0nckY97vlvEDK3G2
+X-Received: by 2002:a05:600c:4ecc:b0:48e:5fb8:f80f with SMTP id 5b1f17b1804b1-490426d1ea7mr186229695e9.24.1779655051565;
+        Sun, 24 May 2026 13:37:31 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.29
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 24 May 2026 13:37:30 -0700 (PDT)
+        Sun, 24 May 2026 13:37:31 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
 	Andreas Dilger <adilger@whamcloud.com>,
 	Pravin Shelar <pravin@clusterfs.com>,
-	Etienne AUJAMES <eaujames@ddn.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 07/13] e2fsck: directory rehashing with dirdata support
-Date: Sun, 24 May 2026 16:36:52 -0400
-Message-ID: <20260524203658.12406-8-artem.blagodarenko@gmail.com>
+Subject: [PATCH 09/13] mke2fs/tune2fs: add dirdata feature support
+Date: Sun, 24 May 2026 16:36:54 -0400
+Message-ID: <20260524203658.12406-10-artem.blagodarenko@gmail.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
 References: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
@@ -79,405 +78,107 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Implement complex directory optimization and rehashing with proper dirdata
-handling. This prevents corruption when renaming duplicate entries with name
-expansion.
+Add user-facing feature support for dirdata in filesystem creation and
+modification tools. Users can now create filesystems with the dirdata feature
+or enable it on existing filesystems.
+
+Usage examples:
+  mke2fs -O dirdata /dev/sda1           # Create filesystem with dirdata
+  tune2fs -O dirdata /dev/sda1         # Enable dirdata on existing filesystem
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
-Signed-off-by: Etienne AUJAMES <eaujames@ddn.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- e2fsck/rehash.c | 235 ++++++++++++++++++++++++++++++++----------------
- 1 file changed, 156 insertions(+), 79 deletions(-)
+ e2fsck/pass2.c        | 3 +--
+ lib/ext2fs/dirblock.c | 7 ++++---
+ lib/ext2fs/ext2fs.h   | 2 +-
+ misc/mke2fs.c         | 1 +
+ misc/tune2fs.c        | 2 ++
+ 5 files changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 4847d172e..75339a67e 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -53,6 +53,9 @@
- #include "problem.h"
- #include "support/sort_r.h"
- 
-+#define min(a, b) ((a) < (b) ? (a) : (b))
-+#define max(a, b) ((a) > (b) ? (a) : (b))
-+
- /* Schedule a dir to be rebuilt during pass 3A. */
- void e2fsck_rehash_dir_later(e2fsck_t ctx, ext2_ino_t ino)
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 938942a80..9a0f6f772 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -435,8 +435,7 @@ void ext2_fix_dirent_dirdata(struct ext2_dir_entry *de)
+ int e2fsck_check_dirent_data(e2fsck_t ctx, struct ext2_dir_entry *de,
+ 			     unsigned int offset, struct problem_context *pctx)
  {
-@@ -86,6 +89,8 @@ struct fill_dir_struct {
- 	int compress;
- 	ext2_ino_t parent;
- 	ext2_ino_t dir;
-+	struct ext2_dir_entry *dot_de;
-+	struct ext2_dir_entry *dotdot_de;
- };
+-	if (!(ctx->fs->super->s_feature_incompat &
+-			EXT4_FEATURE_INCOMPAT_DIRDATA)) {
++	if (!ext2fs_has_feature_dirdata(ctx->fs->super)) {
+ 		if ((de->name_len >> 8) & ~EXT2_FT_MASK) {
+ 			/* clear dirent extra data flags. */
+ 			if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) {
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index d1d5a9e7f..fa7cc83ff 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -74,13 +74,14 @@ int ext2_get_dirdata_field_size(struct ext2_dir_entry *de,
+ 		dirdata_flags >>= 1;
+ 	}
  
- struct hash_entry {
-@@ -187,11 +192,14 @@ static int fill_dir_block(ext2_filsys fs,
- 			return BLOCK_ABORT;
- 		}
- 		if (!fd->compress && (name_len == 1) &&
--		    (dirent->name[0] == '.'))
-+		    (dirent->name[0] == '.')) {
-+			fd->dot_de = dirent;
- 			continue;
-+		}
- 		if (!fd->compress && (name_len == 2) &&
- 		    (dirent->name[0] == '.') && (dirent->name[1] == '.')) {
- 			fd->parent = dirent->inode;
-+			fd->dotdot_de = dirent;
- 			continue;
- 		}
- 		if (fd->num_array >= fd->max_array) {
-@@ -209,7 +217,7 @@ static int fill_dir_block(ext2_filsys fs,
- 		}
- 		ent = fd->harray + fd->num_array++;
- 		ent->dir = dirent;
--		fd->dir_size += ext2fs_dir_rec_len(name_len, extended);
-+		fd->dir_size += ext2fs_dirdata_rec_len(dirent, extended);
- 		ent->ino = dirent->inode;
- 		if (extended) {
- 			ent->hash = EXT2_DIRENT_HASH(dirent);
-@@ -390,66 +398,128 @@ static errcode_t get_next_block(ext2_filsys fs, struct out_dir *outdir,
- 	return 0;
+-	/* add NUL terminator byte to dirdata length */
+-	return dlen + (dlen != 0);
++	return dlen;
  }
  
-+static void increment_name(char *str, int len)
-+{
-+	int i;
-+
-+	for (i = len - 1; i >= 0; i--) {
-+		switch(str[i]) {
-+		case '~':
-+			str[i] = '1';
-+			if (i > 0 && len > 2)
-+				str[i-1] = '~';
-+			break;
-+		case '9':
-+			if (i > 1) {
-+				str[i] = '0';
-+				continue;
-+			}
-+			str[i] = 'a';
-+			break;
-+		case 'z':
-+			str[i] = 'A';
-+			break;
-+		case 'Z':
-+			str[i] = '0';
-+			continue;
-+		default:
-+			if (!isalnum(str[i]))
-+				str[i] = '~';
-+			else
-+				str[i]++;
-+		}
-+		break;
-+	}
-+}
-+
- /*
-  * This function is used to make a unique filename.  We do this by
-  * appending ~0, and then incrementing the number.  However, we cannot
-  * expand the length of the filename beyond the padding available in
-  * the directory entry.
-+ * e.g:
-+ * - test (max: 6)	-> test~0
-+ * - test~9 (max: 6)	-> tes~10
-+ * - test (max: 4)	-> te~0
-+ * - te (max: 3)	-> t~0
-+ * - t (max: 2)		-> t~
-+ * - t~ (max: 2)	-> t1
-+ * - t9 (max: 2)	-> ta
-+ * - tZ (max: 2)	-> u0
-+ * - t (max: 1)		-> u
-  */
--static void mutate_name(char *str, unsigned int *len)
-+static void mutate_name(char *str, int *len, int max_len)
+ int ext2_get_dirdata_size(struct ext2_dir_entry *de)
  {
- 	int i;
--	unsigned int l = *len;
-+	int l = *len;
- 
- 	/*
- 	 * First check to see if it looks the name has been mutated
- 	 * already
- 	 */
-+	max_len = max(max_len, l);
- 	for (i = l-1; i > 0; i--) {
--		if (!isdigit(str[i]))
-+		if (!isalnum(str[i]))
- 			break;
- 	}
--	if ((i == (int)l - 1) || (str[i] != '~')) {
--		if (((l-1) & 3) < 2)
--			l += 2;
--		else
--			l = (l+3) & ~3;
--		if (l > 255)
--			l = 255;
-+
-+	if ((i != l-1 && str[i] == '~') ||
-+	    (max_len <= 2 && max_len == l)) {
-+		increment_name(str, l);
-+		return;
-+	}
-+
-+	/* Add the first suffix: "~0" */
-+	l += min(2, max_len - l);
-+	if (l > 2) {
- 		str[l-2] = '~';
- 		str[l-1] = '0';
--		*len = l;
--		return;
-+	} else {
-+		str[l-1] = '~';
- 	}
--	for (i = l-1; i >= 0; i--) {
--		if (isdigit(str[i])) {
--			if (str[i] == '9')
--				str[i] = '0';
--			else {
--				str[i]++;
--				return;
--			}
--			continue;
--		}
--		if (i == 1) {
--			if (str[0] == 'z')
--				str[0] = 'A';
--			else if (str[0] == 'Z') {
--				str[0] = '~';
--				str[1] = '0';
--			} else
--				str[0]++;
--		} else if (i > 0) {
--			str[i] = '1';
--			str[i-1] = '~';
--		} else {
--			if (str[0] == '~')
--				str[0] = 'a';
--			else
--				str[0]++;
-+
-+	*len = l;
-+}
-+
-+
-+static errcode_t rename_dentry(struct ext2_dir_entry *de, char *new_name,
-+			       unsigned int new_len)
-+{
-+	int dirdata_size = ext2_get_dirdata_size(de);
-+	int diff = new_len - ext2fs_dirent_name_len(de);
-+	int new_dirdata_off = offsetof(typeof(*de), name) + new_len;
-+	void *mv_src, *mv_dst;
-+
-+	if (diff <= 0 || !dirdata_size) {
-+		memcpy(de->name, new_name, new_len);
-+		ext2fs_dirent_set_name_len(de, new_len);
-+	}
-+
-+	if (!dirdata_size || !diff)
-+		return 0;
-+
-+	/* move dirdata if needed */
-+	if (diff > 0 ) {
-+		int rec_len = EXT2_DIRENT_REC_LEN(de);
-+
-+		/* this should nerver happen (see mutate_name()) */
-+		if (new_dirdata_off + dirdata_size > rec_len) {
-+			com_err("rename_dentry", ERANGE,
-+				_("failed to rename %u"), de->inode);
-+			return ERANGE;
- 		}
--		break;
- 	}
-+
-+	mv_dst = (void *)de + new_dirdata_off;
-+	mv_src = mv_dst - diff;
-+	memmove(mv_dst, mv_src, dirdata_size);
-+
-+	if (diff > 0) {
-+		memcpy(de->name, new_name, new_len);
-+		ext2fs_dirent_set_name_len(de, new_len);
-+	}
-+
-+	return 0;
+-	return ext2_get_dirdata_field_size(de, ~EXT2_FT_MASK);
++	int size = ext2_get_dirdata_field_size(de, ~EXT2_FT_MASK);
++	/* Add 1 becasue NULL after the name */
++	return size + (size ? 1 : 0);
  }
  
- static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
-@@ -462,7 +532,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 	blk_t			i, j;
- 	int			fixed = 0;
- 	char			new_name[256];
--	unsigned int		new_len;
-+	int			new_len, max_len;
- 	int			hash_alg;
- 	int hash_flags = fd->inode->i_flags & EXT4_CASEFOLD_FL;
+ errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index cf12716e3..b14ba0a34 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -2276,7 +2276,7 @@ _INLINE_ struct ext2_dx_root_info *ext2fs_get_dx_root_info(ext2_filsys fs,
+ 	de = (struct ext2_dir_entry *)((char *)de + de->rec_len);
  
-@@ -507,7 +577,9 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 			continue;
- 		}
- 		memcpy(new_name, ent->dir->name, new_len);
--		mutate_name(new_name, &new_len);
-+		max_len = min(EXT2_NAME_LEN,
-+			      new_len + ext2fs_dir_rec_padding(ent->dir));
-+		mutate_name(new_name, &new_len, max_len);
- 		for (j=0; j < fd->num_array; j++) {
- 			if ((i==j) ||
- 			    !same_name(cmp_ctx, new_name, new_len,
-@@ -515,15 +587,14 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 				       ext2fs_dirent_name_len(fd->harray[j].dir))) {
- 				continue;
- 			}
--			mutate_name(new_name, &new_len);
-+			mutate_name(new_name, &new_len, max_len);
+ 	/* dx root info is after dotdot entry */
+-	de = EXT2_NEXT_DIRENT(de);
++	de = (struct ext2_dir_entry *)((char *)de + EXT2_DIRENT_REC_LEN(de));
  
- 			j = -1;
- 		}
- 		new_name[new_len] = 0;
- 		pctx.str = new_name;
--		if (fix_problem(ctx, PR_2_NON_UNIQUE_FILE, &pctx)) {
--			memcpy(ent->dir->name, new_name, new_len);
--			ext2fs_dirent_set_name_len(ent->dir, new_len);
-+		if (fix_problem(ctx, PR_2_NON_UNIQUE_FILE, &pctx) &&
-+		    !rename_dentry(ent->dir, new_name, new_len)) {
- 			ext2fs_dirhash2(hash_alg, new_name, new_len,
- 					fs->encoding, hash_flags,
- 					fs->super->s_hash_seed,
-@@ -587,8 +658,7 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 		ent = fd->harray + i;
- 		if (ent->dir->inode == 0)
- 			continue;
--		rec_len = ext2fs_dir_rec_len(ext2fs_dirent_name_len(ent->dir),
--					     hash_in_entry);
-+		rec_len = ext2fs_dirdata_rec_len(ent->dir, hash_in_entry);
- 		if (rec_len > left) {
- 			if (left) {
- 				left += prev_rec_len;
-@@ -623,8 +693,7 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 		if (retval)
- 			return retval;
- 		prev_rec_len = rec_len;
--		memcpy(dirent->name, ent->dir->name,
--		       ext2fs_dirent_name_len(dirent));
-+		memcpy(dirent->name, ent->dir->name, rec_len);
- 		if (hash_in_entry) {
- 			EXT2_DIRENT_HASHES(dirent)->hash = ext2fs_cpu_to_le32(ent->hash);
- 			EXT2_DIRENT_HASHES(dirent)->minor_hash =
-@@ -655,47 +724,52 @@ static errcode_t copy_dir_entries(e2fsck_t ctx,
- 
- static struct ext2_dx_root_info *set_root_node(ext2_filsys fs, char *buf,
- 				    ext2_ino_t ino, ext2_ino_t parent,
-+				    struct ext2_dir_entry *dot_de,
-+				    struct ext2_dir_entry *dotdot_de,
- 				    struct ext2_inode *inode)
- {
--	struct ext2_dir_entry 		*dir;
--	struct ext2_dx_root_info  	*root;
-+	struct ext2_dir_entry		*dirent;
-+	struct ext2_dx_root_info	*root;
- 	struct ext2_dx_countlimit	*limits;
--	int				filetype = 0;
- 	int				csum_size = 0;
--
--	if (ext2fs_has_feature_filetype(fs->super))
--		filetype = EXT2_FT_DIR;
-+	int				offset;
-+	int				rec_len;
- 
- 	memset(buf, 0, fs->blocksize);
--	dir = (struct ext2_dir_entry *) buf;
--	dir->inode = ino;
--	dir->name[0] = '.';
--	ext2fs_dirent_set_name_len(dir, 1);
--	ext2fs_dirent_set_file_type(dir, filetype);
--	dir->rec_len = 12;
--	dir = (struct ext2_dir_entry *) (buf + 12);
--	dir->inode = parent;
--	dir->name[0] = '.';
--	dir->name[1] = '.';
--	ext2fs_dirent_set_name_len(dir, 2);
--	ext2fs_dirent_set_file_type(dir, filetype);
--	dir->rec_len = fs->blocksize - 12;
--
--	root = (struct ext2_dx_root_info *) (buf+24);
-+	dirent = (struct ext2_dir_entry *) buf;
-+	dirent->inode = ino;
-+
-+	dirent->name_len = dot_de->name_len;
-+	offset = rec_len = dirent->rec_len = dot_de->rec_len;
-+	memcpy(dirent->name, dot_de->name, rec_len);
-+
-+	dirent = EXT2_NEXT_DIRENT(dirent);
-+	/* set to jump over the index block */
-+
-+	dirent->inode = parent;
-+
-+	dirent->name_len = dotdot_de->name_len;
-+	dirent->rec_len = fs->blocksize - rec_len;
-+	rec_len = EXT2_DIRENT_REC_LEN(dotdot_de);
-+	memcpy(dirent->name, dotdot_de->name, rec_len);
-+	offset += rec_len;
-+
-+	root = (struct ext2_dx_root_info *)(buf + offset);
- 	root->reserved_zero = 0;
- 	if (ext4_hash_in_dirent(inode))
- 		root->hash_version = EXT2_HASH_SIPHASH;
- 	else
- 		root->hash_version = fs->super->s_def_hash_version;
--	root->info_length = 8;
-+	root->info_length = sizeof(*root);
- 	root->indirect_levels = 0;
- 	root->unused_flags = 0;
-+	offset += root->info_length;
- 
- 	if (ext2fs_has_feature_metadata_csum(fs->super))
- 		csum_size = sizeof(struct ext2_dx_tail);
- 
--	limits = (struct ext2_dx_countlimit *) (buf+32);
--	limits->limit = (fs->blocksize - (32 + csum_size)) /
-+	limits = (struct ext2_dx_countlimit *) (buf + offset);
-+	limits->limit = (fs->blocksize - (offset + csum_size)) /
- 			sizeof(struct ext2_dx_entry);
- 	limits->count = 0;
- 
-@@ -773,6 +847,8 @@ static errcode_t calculate_tree(ext2_filsys fs,
- 				struct out_dir *outdir,
- 				ext2_ino_t ino,
- 				ext2_ino_t parent,
-+				struct ext2_dir_entry *dot_de,
-+				struct ext2_dir_entry *dotdot_de,
- 				struct ext2_inode *inode)
- {
- 	struct ext2_dx_root_info	*root_info;
-@@ -782,7 +858,9 @@ static errcode_t calculate_tree(ext2_filsys fs,
- 	int				i, c1, c2, c3, nblks;
- 	int				limit_offset, int_offset, root_offset;
- 
--	root_info = set_root_node(fs, outdir->buf, ino, parent, inode);
-+	root_info = set_root_node(fs, outdir->buf, ino, parent, dot_de,
-+				  dotdot_de, inode);
-+
- 	root_offset = limit_offset = ((char *) root_info - outdir->buf) +
- 		root_info->info_length;
- 	root_limit = (struct ext2_dx_countlimit *) (outdir->buf + limit_offset);
-@@ -1087,11 +1165,10 @@ resort:
- 	if (retval)
- 		goto errout;
- 
--	free(dir_buf); dir_buf = 0;
--
- 	if (!fd.compress) {
- 		/* Calculate the interior nodes */
--		retval = calculate_tree(fs, &outdir, ino, fd.parent, fd.inode);
-+		retval = calculate_tree(fs, &outdir, ino, fd.parent,
-+					fd.dot_de, fd.dotdot_de, fd.inode);
- 		if (retval)
- 			goto errout;
- 	}
+ 	return (struct ext2_dx_root_info *)de;
+ }
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index dd8c53d90..2bcb7036e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -1279,6 +1279,7 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
+ 		EXT4_FEATURE_INCOMPAT_EA_INODE|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA|
+ 		EXT4_FEATURE_INCOMPAT_64BIT|
+ 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 3db57632c..c5a40c5c9 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -192,6 +192,7 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+ 		EXT4_FEATURE_INCOMPAT_EA_INODE|
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+@@ -222,6 +223,7 @@ static __u32 clear_ok_features[3] = {
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+ 		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_DIRDATA |
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+ 		EXT4_FEATURE_INCOMPAT_CASEFOLD,
 -- 
 2.43.7
 
