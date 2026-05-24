@@ -1,62 +1,62 @@
-Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96EDA311969
-	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A11B9330328
+	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779655055; cv=none; b=po104zv+A3sZhu6cHxyNrPuqtODAQ/72Okjgwz9eF9qTNlvbGIRRdTAdCDSsnzGbkI0TpDcniwkjpF+6kYgTJLWLsucbro2dGmqlRvsIbTvlZJpYsRJXevpupotzzN9PobJUR091Mz3OaZUzTl7Cl4ZCuNrVVAbg8Zpf2n/q02E=
+	t=1779655058; cv=none; b=H4CXbLPXrACYhiW1QhZl6H9LGcZoaejbs/8db20E56FA4tgcE6tOqrO0Kp+85a3iOlJtRWjqU62DCgzWgfjp9IaoEPOKNpSQbnYoe1Vq5TWrl+u3CTkXhutOQ2mplvirVWA1KOO+UIUPc6sYRsBpurz/CIc/6UkT7tbZqnGgYbI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779655055; c=relaxed/simple;
-	bh=mxGjt3Zlev4eJ6iQsTebeLW5QjKAg+y8lRSXJCLwSis=;
+	s=arc-20240116; t=1779655058; c=relaxed/simple;
+	bh=P2wecXVBg4pSSSWA8N0UmDU3gYvUuUXWZXbtNR+gUpc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pzBVEr4awB2BNNHK6NLsYX1Ggbn+1xj1wqLyWtwhDGOtR2Jxsl+so3Hq90FhXLQ8+jN2AKYw4JN3RkKd52nnbMCmeFeUlSEE0nj7GbXDOSjWsL2qEY94goR1/wLy27TeqiW2Ket4yPMywA48nxWPjG/fKfNj1gCqD6h5BJt9SgA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cm2/XT8Y; arc=none smtp.client-ip=209.85.128.49
+	 MIME-Version; b=PJtGhYSxLpSDtQIEMtNwlQKUNJZFRDLk/GRBkoy68TMtMVfPkAQRLaxQfCl2DQOZXRMtOgieITvt/XoBZkowW8t00Y7JW8Y2nwHFr0sKqHJUo7HqOfAt7FAnJGvZLGTGClAYPt8T7r9B+oPbStY4hg4BDKcqwJ1NNfiyzr7WhAk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=iFiiuDmo; arc=none smtp.client-ip=209.85.128.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cm2/XT8Y"
-Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-4903fd19957so29601605e9.1
-        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:29 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iFiiuDmo"
+Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-490388fd0dbso33578325e9.0
+        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779655048; x=1780259848; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1779655051; x=1780259851; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=pz050xX401BGYEgmGhUdiyyeGpbred/jjTdHHnkxops=;
-        b=cm2/XT8YyeI2wvoplV2Z3XAzMRlQGTGnEHGR21WD4IbX3v9pyy76vCsBgrJKJRCzov
-         F4+qwTVoBRlYmvrqNg4flMB3zblPkaZzNr3+XmL/cvCC0Y0YI75MMJN9NVHH3s/nv2ql
-         9mkJF7CozRhu7pVlsXm6J9pT+Q/Q0PLNRU1ZKFF4mSrsv1nmR3i8FWAN9NTlvByK2T7l
-         iESDSrKKjRoh8ebbkg7l4A2kuJ9MG2tWS/M1ACKZdL7oVC1jUrpQSmJPcpCrzhlCvYUK
-         /x8OKUSw10O4trvRyB/eCjqekptMjxxxwHpDoVLcIGu8upzRZViCccR30b+xPImBlPNU
-         tPdQ==
+        bh=0JvD31AvfAtKgLNy40UibGv5gtc3KJ4h49nYRj9L9ks=;
+        b=iFiiuDmohF1oo3+6Kv58urf5SeXZgR3VvfkYm5BeghMKO5K4giey7viad79zAamXdD
+         GvE11tzOG1u0mY0JAF1YuWBVg9Q8NfwzkGYUJuulVz5Qz1jk9HJL4+Zjvss45b+oN/xH
+         Cv5ndCqGzSUbTarhZN2bOV0UfaFXaWkkRkc9HIV3zdJc7oor//BI32uLpS0wQ3WfzbkC
+         YFD9wOhCNpHtlY1coakjDilC0o7AfjD4/GSu2FpKSAdtuw6R5tQQuZXahxXZwm6CehP5
+         HJMB/xUREz+lBYrSVuv7WZT4+zuWtYOqLOwcAiuU3+u46B4a2WSJ11ARJq+CNoNhkg0R
+         dFIQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779655048; x=1780259848;
+        d=1e100.net; s=20251104; t=1779655051; x=1780259851;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=pz050xX401BGYEgmGhUdiyyeGpbred/jjTdHHnkxops=;
-        b=VzPHQ/WU5nyv3XVKFw0RIysrC10+yEV36YHzXrdiMJ8goJvdHEfH5byGpF51WZuiae
-         PucYmsG/HTJei5xehbYFXsrCfp16zfJI+eKhD1Dsrj/2+I1xDko0r0hOdGWk93dwuxOo
-         STArleO8fWVJH3OZlafuIysvw9MK2rvu7Pi2z6mRIVSXLB424XzhIx0QpZquwM7bu0Q5
-         tBZhMO4fGqaqJpplHXbdSIs/7Q0kMU4ATDTXeL5JuP04UWPxAafb9/TUsKrzoOIPGCok
-         6kgQ3orUI71PqzNwUfMm610fsUsW233wD34GdigNxOaFn4IM5NK7C4LkszNTpmfvuCC5
-         I5eg==
-X-Gm-Message-State: AOJu0YxUQA3DbJbtteYO9vPKebq9hCS4nSogF0B1fMOCwpr+nYMnJpSj
-	o+sTdScEl3nkWpOMpynYNH8Y/nRDIsVpi1vfmsrhNS46f3oCc/qPeamloNBbsEQY
-X-Gm-Gg: Acq92OFrg2o6DlCdxkdGAn/uqQtBbFEfqw3eEOEKhI7PvB2l8v5ZdtDnSAv83iWb31g
-	mnqHHT6/YU0g3670zaNJq2+VKeGucgipTVBz1SV8XnmO5JxR0blglFqkZWOpNHIa3ZDEsiDAh0A
-	V5ai8T9ixkhp4sC8xnpQhCqLj36dVm0QnV0riLBWBTm8sPC3RdIhpAM/Wjxs5dpFAgUdMlPNy/4
-	X944xZyD+1fK8tRnQ59ad7J3YNdCIfA9f4WWx2+T2w71JaHcgc147FuASE4IWobl1s6CjXuoxBs
-	q3zIA0djp1Tei9D08BWtZ3GwFudoHIgyfnvppSiNZUGUa3xB7tiHuUqnjgUcaseFkcLVTgdXdZn
-	Ktgnx52ozdYDbt/KZhnmUT9OGrIHGt6PT09lfExg/PAZNfqBfWpBs1ZeXRFaEGkybUww7KNrJKQ
-	rNktddLWascOJOXXHUQ6ACFoz81Ub/rKLDFQdJQQxc
-X-Received: by 2002:a05:600c:3e12:b0:490:40f1:5314 with SMTP id 5b1f17b1804b1-49042482845mr206667675e9.1.1779655047916;
-        Sun, 24 May 2026 13:37:27 -0700 (PDT)
+        bh=0JvD31AvfAtKgLNy40UibGv5gtc3KJ4h49nYRj9L9ks=;
+        b=IkrTXx6nEeCCMC6PQF0/zamYbDm7hr9iqYvVj+HA2zKq9h0piYBVNZBh5FE+ntbEzw
+         0+aFEvW6nZT4iJE9x030LcM50rO0Yg6KB5VwPHZDDfAY9Ll+OrkgJCceKNCcdgb37V2Z
+         4i3L3omSjASV61hpvj0e1WZ1GbNnCPnaF8s50tSHjOwv0j65UCR8oGRSwU6RxGKgui+u
+         VX1MsyX5TuxG7dFV7+gJOile6023weL0D1tcaXtaJQ67o+Fd9pWteS3CESosXSxFKEKg
+         mAPtvFtGEwc/7IY/Gu5y7yQJpGshrx0pEYunFSgLLC9Otolhj3KAVhcF1ywaupQNNEnL
+         Va7Q==
+X-Gm-Message-State: AOJu0YzVvcnGmFrF+hgjb3kKcuWm8bGKlbqBcb4oDGTiVg8IUuoqCLhM
+	Rhlvj1yGsQDl0m0aDPSatl4S6T9UBt8hxcquHCMDj7+nbhaiPPsxyPeqDB4pxc7i
+X-Gm-Gg: Acq92OEqZTJ3jJFsW4JDCgGR6GTOS/olRDvs7K9CpIF7tj6VMTbTI/WywugdftPeuuA
+	xWCXUUnO3NNzdWl1sLBfDlhaiQwOl8I/RxS8BNwP6UVNGXIVCFxrTDLaWzIFnN8bRP3skuF4lFV
+	pn/Aayd9LxZdPwXu7fIn0a+EcnWpDPTy461NX4HOwtSJ47tJA2ZyTSNLnuW3xS99UfUP0zafR4D
+	cwvBOPm0v1YKhpBsSWDWgK5J/ou63G70224AjAhgeVnHuC3vx62VhxAZastT120wdCk0xgTd8Ju
+	6JJnI2JhP08+jmFS5mm8HRq5CiX++fsHGXIgfRbmVD3KTiV6qrt8eTDKODI1dTb0ov4wbz5MG49
+	w7MmhStlsPUmVPDZwC+demDrjilS6CbSIdlWLmr4uQQNOmC429zuFgi7WtcoV3/8fQ3wZ3nkTXj
+	qU0IFcP88m++D1jHkMKMnFzBYn54i562tju5sSGQhBZeXSpmNh17g=
+X-Received: by 2002:a05:600c:4510:b0:48f:e230:c3fa with SMTP id 5b1f17b1804b1-490428ddc9fmr184004335e9.32.1779655050985;
+        Sun, 24 May 2026 13:37:30 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.27
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 24 May 2026 13:37:27 -0700 (PDT)
+        Sun, 24 May 2026 13:37:30 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
@@ -64,9 +64,9 @@ Cc: adilger.kernel@dilger.ca,
 	Andreas Dilger <adilger@whamcloud.com>,
 	Pravin Shelar <pravin@clusterfs.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 03/13] ext2fs: dirdata infrastructure and core functions
-Date: Sun, 24 May 2026 16:36:48 -0400
-Message-ID: <20260524203658.12406-4-artem.blagodarenko@gmail.com>
+Subject: [PATCH 08/13] debugfs: add dirdata display support
+Date: Sun, 24 May 2026 16:36:53 -0400
+Message-ID: <20260524203658.12406-9-artem.blagodarenko@gmail.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
 References: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
@@ -78,144 +78,175 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add dirdata support infrastructure in the new lfsck.h header, with
-data structures (lu_fid, ext4_dirent_data_header, ext4_dirent_hash)
-related to dirdata fields.
-
-Define dirdata feature add some other helper functions.
+Enhance debugfs debug utility with dirdata display capabilities. This allows
+users to inspect Lustre File IDentifier (LUFID) and checksum hash (CFHASH)
+data embedded in directory entries.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- lib/ext2fs/ext2_fs.h | 30 +++++++++++++++++++++++++++-
- lib/ext2fs/ext2fs.h  |  3 ++-
- lib/ext2fs/lfsck.h   | 47 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 78 insertions(+), 2 deletions(-)
+ debugfs/debugfs.8.in |  7 ++++-
+ debugfs/ls.c         | 63 +++++++++++++++++++++++++++++++++++++++++---
+ debugfs/ncheck.c     |  3 +++
+ 3 files changed, 69 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index a4141eb71..73e93f9b9 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -977,7 +977,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(casefold,		4, CASEFOLD)
- #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
- 				       EXT4_FEATURE_INCOMPAT_MMP| \
- 				       EXT4_FEATURE_INCOMPAT_LARGEDIR| \
--				       EXT4_FEATURE_INCOMPAT_EA_INODE)
-+				       EXT4_FEATURE_INCOMPAT_EA_INODE| \
-+				       EXT4_FEATURE_INCOMPAT_DIRDATA)
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-@@ -1135,6 +1136,33 @@ static inline unsigned int ext2fs_dir_rec_len(__u8 name_len,
- 	return rec_len;
- }
+diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
+index 08f41fdfa..5a5dd32b0 100644
+--- a/debugfs/debugfs.8.in
++++ b/debugfs/debugfs.8.in
+@@ -575,7 +575,7 @@ Instead, it will stop only when the entire log is printed or after
+ .I num_trans
+ transactions.
+ .TP
+-.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] filespec"
++.BI ls " [\-l] [\-c] [\-d] [\-p] [\-r] [\-D] filespec"
+ Print a listing of the files in the directory
+ .IR filespec .
+ The
+@@ -595,6 +595,11 @@ non-printing characters at the end of filenames.
+ The
+ .I \-r
+ flag will force the printing of the filename, even if it is encrypted.
++The
++.I \-D
++flag will print the extra data found inside each entry when the
++.I \-l
++flag is used.
+ .TP
+ .BI list_deleted_inodes " [limit]"
+ List deleted inodes, optionally limited to those deleted within
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index 613ad7380..d225982cb 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -24,6 +24,7 @@ extern char *optarg;
+ #endif
  
-+static inline unsigned int ext2fs_dirdata_rec_len(struct ext2_dir_entry *de,
-+						   int extended)
+ #include "debugfs.h"
++#include "ext2fs/lfsck.h"
+ 
+ /*
+  * list directory
+@@ -32,6 +33,7 @@ extern char *optarg;
+ #define LONG_OPT	0x0001
+ #define PARSE_OPT	0x0002
+ #define RAW_OPT		0x0004
++#define DIRDATA_OPT	0x0008
+ #define ENCRYPT_OPT	0x8000
+ 
+ struct list_dir_struct {
+@@ -44,6 +46,55 @@ struct list_dir_struct {
+ static const char *monstr[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+ 				"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+ 
++static void list_dirdata(struct list_dir_struct *ls,
++			 struct ext2_dir_entry *dirent)
 +{
-+	int rec_len = EXT2_DIRENT_REC_LEN(de);
++	unsigned char	*data;
++	int		dlen;
++	__u8		dirdata_mask;
++	__u8		file_type = dirent->name_len >> 8;
 +
-+	if (extended)
-+		rec_len += EXT2_DIR_ENTRY_HASH_LEN;
-+	return rec_len;
++	data = (unsigned char *)dirent->name +
++		(dirent->name_len & EXT2_NAME_LEN) + 1;
++
++	for (dirdata_mask = EXT2_FT_MASK + 1;
++	     dirdata_mask != 0; dirdata_mask <<= 1) {
++		if ((dirdata_mask & file_type) == 0)
++			continue;
++
++		dlen = data[0];
++
++		if (dirdata_mask == EXT2_DIRENT_LUFID) {
++			struct lu_fid fid;
++			int offset = 0;
++			fprintf(ls->f, " fid=");
++			while (offset < (dlen - 1)) {
++				memcpy(&fid, data + offset + 1, sizeof(fid));
++				fid_be_to_cpu(&fid, &fid);
++				offset += sizeof(fid);
++				fprintf(ls->f, DFID, PFID(&fid));
++				if (offset < (dlen - 1))
++					fprintf(ls->f, ",");
++			}
++		} else if (dirdata_mask == EXT2_DIRENT_CFHASH) {
++			struct ext4_dirent_hash hash;
++
++			memcpy(&hash, data, sizeof(hash));
++			hash_le_to_cpu(&hash, &hash);
++
++			fprintf(ls->f, "hash: 0x%08x, minor_hash: 0x%08x",
++				hash.dh_hash.hash, hash.dh_hash.minor_hash);
++		} else {
++			int i;
++
++			for (i = 1; i < dlen; i++)
++				fprintf(ls->f, "%02x", data[i]);
++		}
++
++		data += dlen;
++	}
 +}
 +
-+static inline unsigned int ext2fs_dir_rec_padding(struct ext2_dir_entry *de)
-+{
-+	unsigned int len = (de->name_len & EXT2_NAME_LEN) +
-+		ext2_get_dirdata_size(de);
-+
-+	len &= EXT2_DIR_ROUND;
-+	if (len)
-+		len = EXT2_DIR_PAD - len;
-+	return len;
-+}
-+
-+/* lu_fid size and NUL char */
-+#define EXT2_DIRENT_LUFID_SIZE		16
-+#define EXT2_DIRENT_LUFID		0x10
-+#define EXT2_DIRENT_INO64		0x20
-+#define EXT2_DIRENT_CFHASH		0x40
-+
- #define EXT4_ORPHAN_BLOCK_MAGIC 0x0b10ca04
- 
- /* Structure at the tail of orphan block */
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 374b8289e..91d269865 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -735,6 +735,7 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
- 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
- 					 EXT4_FEATURE_INCOMPAT_EA_INODE|\
-+					 EXT4_FEATURE_INCOMPAT_DIRDATA|\
- 					 EXT4_LIB_INCOMPAT_MMP|\
- 					 EXT4_FEATURE_INCOMPAT_64BIT|\
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
-@@ -2340,7 +2341,7 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
- 
- _INLINE_ int ext2fs_dirent_name_len(const struct ext2_dir_entry *entry)
+ static int print_filename(FILE *f, struct ext2_dir_entry *dirent, int options)
  {
--	return entry->name_len & 0xff;
-+	return entry->name_len & EXT2_NAME_LEN;
- }
+ 	unsigned char	ch;
+@@ -146,7 +197,10 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 			inode_uid(inode), inode_gid(inode));
+ 			fprintf(ls->f, "%5llu",
+ 				(unsigned long long) EXT2_I_SIZE(&inode));
+-		fprintf(ls->f, " %s ", datestr);
++		fprintf(ls->f, " %s", datestr);
++		if ((ls->options & DIRDATA_OPT) != 0)
++			list_dirdata(ls, dirent);
++		fprintf(ls->f, " ");
+ 		print_filename(ls->f, dirent, options);
+ 		fputc('\n', ls->f);
+ 	} else {
+@@ -195,7 +249,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 		return;
  
- _INLINE_ void ext2fs_dirent_set_name_len(struct ext2_dir_entry *entry, int len)
-diff --git a/lib/ext2fs/lfsck.h b/lib/ext2fs/lfsck.h
-new file mode 100644
-index 000000000..ec763f720
---- /dev/null
-+++ b/lib/ext2fs/lfsck.h
-@@ -0,0 +1,47 @@
-+#ifndef LFSCK_H
-+#define LFSCK_H
-+
-+struct ext4_dirent_data_header {
-+	/* length of this header + the whole data blob */
-+	__u8    ddh_length;
-+} __attribute__((packed));
-+
-+#ifndef DFID
-+#define DFID "[%#llx:0x%x:0x%x]"
-+#define PFID(fid) (unsigned long long)(fid)->f_seq, (fid)->f_oid, (fid)->f_ver
-+struct lu_fid {
-+	__u64   f_seq;
-+	__u32   f_oid;
-+	__u32   f_ver;
-+};
-+#endif /* !DFID */
-+
-+static inline void fid_be_to_cpu(struct lu_fid *dst, struct lu_fid *src)
-+{
-+	dst->f_seq = ext2fs_be64_to_cpu(src->f_seq);
-+	dst->f_oid = ext2fs_be32_to_cpu(src->f_oid);
-+	dst->f_ver = ext2fs_be32_to_cpu(src->f_ver);
-+}
-+
-+struct ext4_dirent_lufid {
-+	struct ext4_dirent_data_header df_header;
-+	struct lu_fid                df_fid[];
-+};
-+
-+struct ext4_dir_entry_hash {
-+        __le32 hash;
-+        __le32 minor_hash;
-+};
-+
-+struct ext4_dirent_hash {
-+	struct ext4_dirent_data_header  dh_header;
-+	struct ext4_dir_entry_hash      dh_hash;
-+} __attribute__((packed));
-+
-+static inline void hash_le_to_cpu(struct ext4_dirent_hash *dst,
-+				  struct ext4_dirent_hash *src)
-+{
-+	dst->dh_hash.hash = ext2fs_le32_to_cpu(src->dh_hash.hash);
-+	dst->dh_hash.minor_hash = ext2fs_le32_to_cpu(src->dh_hash.minor_hash);
-+}
-+#endif /* LFSCK_H */
+ 	reset_getopt();
+-	while ((c = getopt (argc, argv, "cdlpr")) != EOF) {
++	while ((c = getopt(argc, argv, "cdDlpr")) != EOF) {
+ 		switch (c) {
+ 		case 'c':
+ 			flags |= DIRENT_FLAG_INCLUDE_CSUM;
+@@ -203,6 +257,9 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 		case 'l':
+ 			ls.options |= LONG_OPT;
+ 			break;
++		case 'D':
++			ls.options |= DIRDATA_OPT;
++			break;
+ 		case 'd':
+ 			flags |= DIRENT_FLAG_INCLUDE_REMOVED;
+ 			break;
+@@ -219,7 +276,7 @@ void do_list_dir(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 
+ 	if (argc > optind+1) {
+ 	print_usage:
+-		com_err(0, 0, "Usage: ls [-c] [-d] [-l] [-p] [-r] file");
++		com_err(0, 0, "Usage: ls [-c] [-d] [-D] [-l] [-p] [-r] file");
+ 		return;
+ 	}
+ 
+diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
+index 1410e7c6d..03d1e49cf 100644
+--- a/debugfs/ncheck.c
++++ b/debugfs/ncheck.c
+@@ -51,6 +51,9 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 	iw->position++;
+ 	if (iw->position <= 2)
+ 		return 0;
++	if (current_fs->super->s_feature_incompat &
++	    EXT4_FEATURE_INCOMPAT_DIRDATA)
++		filetype &= EXT2_FT_MASK;
+ 	for (i=0; i < iw->num_inodes; i++) {
+ 		if (iw->iarray[i] == dirent->inode) {
+ 			if (!iw->parent && !iw->get_pathname_failed) {
 -- 
 2.43.7
 
