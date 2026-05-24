@@ -1,266 +1,257 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.18])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.3])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3464118DB35;
-	Sun, 24 May 2026 01:27:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CDC452AD35;
+	Sun, 24 May 2026 01:55:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.3
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779586031; cv=none; b=uzNl/5OvnITja38h4hRgDZW7TUp4vlfubEeuKSjyyMvLsl6hekEfhMv3e2sS7KvlD/Ey31ALLcaKZMIBowHDMK8gQYIWlxXSJj0QJWbwGGTEYpa97wy8CH1VqNvSRijEmZx6FrcowiAXQdx2qmxElQ8QvgTUK2w0OrcwtGhynPo=
+	t=1779587723; cv=none; b=l80DK9v/Hp/I5lsTKxfI54ta26GoWzwfbIM8UY2W3rRpv1cQBjmHK2YZubbR6YbpEbpnMbJnq+kRIDnaQEGP/w2yuGMfq3yxxQ22ZahuFp64k7XNPQWzeGBBnoCygN1WQLiZe12L9KUQKBXdNLcEtDnSUHSNLdJSGpwU+NfFvlk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779586031; c=relaxed/simple;
-	bh=w4/DKiC93rbZ/2BN1B0jXfV4Pdn5Ww9+WLlZv3ykrMQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hNxyd1V4BDvCKVdINnFQrBzXWsY2bNuAv+EN6Sma3iZAdGWaSGt3BKGXXIwkFf/pdC9imLLmPxQjFLZUoaABdOsyHf+VLLrrTodKB9azPu52Ljlj190xdQtclS/sEkE8hlFENyy4AGo5ksJtt586aDmGYfwFYkdEGeFPTbJ1Y8g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=QTu8fa0O; arc=none smtp.client-ip=192.198.163.18
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1779587723; c=relaxed/simple;
+	bh=ys/WFercO1BG0GEj8pgLXktAqsELqBX339nbqtz3Hl8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=McPFl6qlCMuWgArwzTsQ5GdJzTOZUGXy0hU2Q8LTt2vcJFRbUgE9Cz5+1Sn2Cbm6JSdpLUIIi22+bV+hoN1AKCLlfqmmXOQ3tgFfLwtPLIXY1GadRF+cPghUFnCaHmo3No38sPb8oRzudeZl/p8OAgGq75aLA0tDLKeerQUeQy8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=j9ZX0L5S; arc=none smtp.client-ip=117.135.210.3
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="QTu8fa0O"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1779586028; x=1811122028;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=w4/DKiC93rbZ/2BN1B0jXfV4Pdn5Ww9+WLlZv3ykrMQ=;
-  b=QTu8fa0OsXntycYE+PKdeU29M/v17pJH1Lk5SMNBABoE97cwNtShVZ5I
-   vbRdVb60WabcZW+b/CyTazxZ3OvLNroYlFfq9RxDeGg38HvpP54FoHdu3
-   jjz12EiIwouptR/4YhcUDZjbHxmZ96NTgb0BjCDtNEW+Y8p00pNl1n2pp
-   3LZDtW6gpGcmSu3EPTgtdNd2nlTz1Y21aRregclWc1p8lm5ylVksEaUjc
-   U8vEtaMYHgbd2WtD1cAXbjpa/p9sdm6Lf6Oxk+hhLYliQH2iawPS5HMJN
-   CKkjMKJAL8KCrVSZLZaqw2yIdQUckbLQGdkVAAqxP2KG+cAaJAAZp6xFY
-   Q==;
-X-CSE-ConnectionGUID: I6eGVbwoSzK2S0w9tMsM2A==
-X-CSE-MsgGUID: voFbhaVITHSbKNvk621vig==
-X-IronPort-AV: E=McAfee;i="6800,10657,11795"; a="79607434"
-X-IronPort-AV: E=Sophos;i="6.24,165,1774335600"; 
-   d="scan'208";a="79607434"
-Received: from fmviesa001.fm.intel.com ([10.60.135.141])
-  by fmvoesa112.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 May 2026 18:27:07 -0700
-X-CSE-ConnectionGUID: BIv9M++JTp2Sj2gJ52js1Q==
-X-CSE-MsgGUID: UTZajSRZQre4aYWDyU6PXQ==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.24,165,1774335600"; 
-   d="scan'208";a="265105510"
-Received: from lkp-server01.sh.intel.com (HELO 6ba8523b1a8f) ([10.239.97.150])
-  by fmviesa001.fm.intel.com with ESMTP; 23 May 2026 18:27:05 -0700
-Received: from kbuild by 6ba8523b1a8f with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1wQxcN-000000000XR-2tDN;
-	Sun, 24 May 2026 01:27:03 +0000
-Date: Sun, 24 May 2026 09:26:05 +0800
-From: kernel test robot <lkp@intel.com>
-To: Ashwin Gundarapu <linuxuser509@zohomail.in>, jack <jack@suse.com>
-Cc: llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] ext2: Remove deprecated DAX support
-Message-ID: <202605240952.dIQvDsdW-lkp@intel.com>
-References: <19e54c7cba1.5355cb8650862.622752146451851140@zohomail.in>
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="j9ZX0L5S"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=SM
+	YDAw6Simc31ovebDOSR++gQdumOKs9k/YiBIZ8Vpg=; b=j9ZX0L5Sp2sSillFfc
+	tjJXPSwTwKOQcwKC1MTb1h3HjOmZjPeiPBOQ4S31vySlP4QcuCNuBSC8S6NQLgBq
+	hxZI9v6fds51sb+7+p2PCXSDobXQ6SFwoALT2HNF1YoDKvJp7I0pKzjupBQPpI9Y
+	+BvfdmDgmSHdA4Fu3CpyXriHg=
+Received: from liubaolin-ThinkPad-E15-Gen-2 (unknown [])
+	by gzsmtp4 (Coremail) with SMTP id PygvCgAn6uNUWhJqz5eTEw--.270S4;
+	Sun, 24 May 2026 09:54:38 +0800 (CST)
+From: Baolin Liu <liubaolin12138@163.com>
+To: corbet@lwn.net,
+	skhan@linuxfoundation.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Baolin Liu <liubaolin@kylinos.cn>
+Subject: [PATCH v6 v6 2/3] ext4: use READ_ONCE/WRITE_ONCE for s_mb_stats
+Date: Sun, 24 May 2026 09:54:20 +0800
+Message-ID: <20260524015421.2529617-3-liubaolin12138@163.com>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20260524015421.2529617-1-liubaolin12138@163.com>
+References: <20260524015421.2529617-1-liubaolin12138@163.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <19e54c7cba1.5355cb8650862.622752146451851140@zohomail.in>
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:PygvCgAn6uNUWhJqz5eTEw--.270S4
+X-Coremail-Antispam: 1Uf129KBjvJXoW3XFyDJrykGF1DAr18CFW7Arb_yoW3Jr4fpr
+	47ZFyUAr47Zw1xCFsrWan8W3ZYk3yIkFy7JrWfu34F9FyagFyayryaqFyjyF9rArWDCFsY
+	v3yqyrWDGrWIka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UNL0OUUUUU=
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbCwh7Ml2oSWl62rQAA3g
 
-Hi Ashwin,
+From: Baolin Liu <liubaolin@kylinos.cn>
 
-kernel test robot noticed the following build warnings:
+Use READ_ONCE()/WRITE_ONCE() for concurrent accesses to
+s_mb_stats.
 
-[auto build test WARNING on jack-fs/for_next]
-[also build test WARNING on linus/master v7.1-rc4 next-20260522]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
+Signed-off-by: Baolin Liu <liubaolin@kylinos.cn>
+---
+ fs/ext4/mballoc.c | 24 ++++++++++++------------
+ fs/ext4/sysfs.c   | 25 ++++++++++++++++++++++++-
+ 2 files changed, 36 insertions(+), 13 deletions(-)
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Ashwin-Gundarapu/ext2-Remove-deprecated-DAX-support/20260523-202224
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_next
-patch link:    https://lore.kernel.org/r/19e54c7cba1.5355cb8650862.622752146451851140%40zohomail.in
-patch subject: [PATCH] ext2: Remove deprecated DAX support
-config: riscv-nommu_virt_defconfig (https://download.01.org/0day-ci/archive/20260524/202605240952.dIQvDsdW-lkp@intel.com/config)
-compiler: clang version 23.0.0git (https://github.com/llvm/llvm-project 5bac06718f502014fade905512f1d26d578a18f3)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260524/202605240952.dIQvDsdW-lkp@intel.com/reproduce)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index d36b0f7b5d7d..fed6d854877b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -924,7 +924,7 @@ static int ext4_mb_scan_groups_xa_range(struct ext4_allocation_context *ac,
+ 	xa_for_each_range(xa, group, grp, start, end - 1) {
+ 		int err;
+ 
+-		if (sbi->s_mb_stats)
++		if (READ_ONCE(sbi->s_mb_stats))
+ 			atomic64_inc(&sbi->s_bal_cX_groups_considered[cr]);
+ 
+ 		err = ext4_mb_scan_group(ac, grp->bb_group);
+@@ -980,7 +980,7 @@ static int ext4_mb_scan_groups_p2_aligned(struct ext4_allocation_context *ac,
+ 		goto wrap_around;
+ 	}
+ 
+-	if (sbi->s_mb_stats)
++	if (READ_ONCE(sbi->s_mb_stats))
+ 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
+ 
+ 	/* Increment cr and search again if no group is found */
+@@ -1031,7 +1031,7 @@ static int ext4_mb_scan_groups_goal_fast(struct ext4_allocation_context *ac,
+ 		goto wrap_around;
+ 	}
+ 
+-	if (sbi->s_mb_stats)
++	if (READ_ONCE(sbi->s_mb_stats))
+ 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
+ 	/*
+ 	 * CR_BEST_AVAIL_LEN works based on the concept that we have
+@@ -1135,7 +1135,7 @@ static int ext4_mb_scan_groups_best_avail(struct ext4_allocation_context *ac,
+ 
+ 	/* Reset goal length to original goal length before falling into CR_GOAL_LEN_SLOW */
+ 	ac->ac_g_ex.fe_len = ac->ac_orig_goal_len;
+-	if (sbi->s_mb_stats)
++	if (READ_ONCE(sbi->s_mb_stats))
+ 		atomic64_inc(&sbi->s_bal_cX_failed[ac->ac_criteria]);
+ 	ac->ac_criteria = CR_GOAL_LEN_SLOW;
+ 
+@@ -1184,7 +1184,7 @@ static int ext4_mb_scan_groups_linear(struct ext4_allocation_context *ac,
+ 		ac->ac_criteria++;
+ 
+ 	/* Processed all groups and haven't found blocks */
+-	if (sbi->s_mb_stats && i == ngroups)
++	if (READ_ONCE(sbi->s_mb_stats) && i == ngroups)
+ 		atomic64_inc(&sbi->s_bal_cX_failed[cr]);
+ 
+ 	return 0;
+@@ -2541,7 +2541,7 @@ void ext4_mb_simple_scan_group(struct ext4_allocation_context *ac,
+ 
+ 		BUG_ON(ac->ac_f_ex.fe_len != ac->ac_g_ex.fe_len);
+ 
+-		if (EXT4_SB(sb)->s_mb_stats)
++		if (READ_ONCE(EXT4_SB(sb)->s_mb_stats))
+ 			atomic_inc(&EXT4_SB(sb)->s_bal_2orders);
+ 
+ 		break;
+@@ -2786,7 +2786,7 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
+ 
+ 	if (!grp)
+ 		return -EFSCORRUPTED;
+-	if (sbi->s_mb_stats)
++	if (READ_ONCE(sbi->s_mb_stats))
+ 		atomic64_inc(&sbi->s_bal_cX_groups_considered[ac->ac_criteria]);
+ 	if (should_lock) {
+ 		ext4_lock_group(sb, group);
+@@ -3097,7 +3097,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		}
+ 	}
+ 
+-	if (sbi->s_mb_stats && ac->ac_status == AC_STATUS_FOUND) {
++	if (READ_ONCE(sbi->s_mb_stats) && ac->ac_status == AC_STATUS_FOUND) {
+ 		atomic64_inc(&sbi->s_bal_cX_hits[ac->ac_criteria]);
+ 		if (ac->ac_flags & EXT4_MB_STREAM_ALLOC &&
+ 		    ac->ac_b_ex.fe_group == ac->ac_g_ex.fe_group)
+@@ -3210,7 +3210,7 @@ int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+ 	seq_puts(seq, "mballoc:\n");
+-	if (!sbi->s_mb_stats) {
++	if (!READ_ONCE(sbi->s_mb_stats)) {
+ 		seq_puts(seq, "\tmb stats collection turned off.\n");
+ 		seq_puts(
+ 			seq,
+@@ -3787,7 +3787,7 @@ int ext4_mb_init(struct super_block *sb)
+ 
+ 	sbi->s_mb_max_to_scan = MB_DEFAULT_MAX_TO_SCAN;
+ 	sbi->s_mb_min_to_scan = MB_DEFAULT_MIN_TO_SCAN;
+-	sbi->s_mb_stats = MB_DEFAULT_STATS;
++	WRITE_ONCE(sbi->s_mb_stats, MB_DEFAULT_STATS);
+ 	sbi->s_mb_stream_request = MB_DEFAULT_STREAM_THRESHOLD;
+ 	sbi->s_mb_order2_reqs = MB_DEFAULT_ORDER2_REQS;
+ 	sbi->s_mb_best_avail_max_trim_order = MB_DEFAULT_BEST_AVAIL_TRIM_ORDER;
+@@ -3929,7 +3929,7 @@ void ext4_mb_release(struct super_block *sb)
+ 	kfree(sbi->s_mb_offsets);
+ 	kfree(sbi->s_mb_maxs);
+ 	iput(sbi->s_buddy_cache);
+-	if (sbi->s_mb_stats) {
++	if (READ_ONCE(sbi->s_mb_stats)) {
+ 		ext4_msg(sb, KERN_INFO,
+ 		       "mballoc: %u blocks %u reqs (%u success)",
+ 				atomic_read(&sbi->s_bal_allocated),
+@@ -4694,7 +4694,7 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 
+-	if (sbi->s_mb_stats && ac->ac_g_ex.fe_len >= 1) {
++	if (READ_ONCE(sbi->s_mb_stats) && ac->ac_g_ex.fe_len >= 1) {
+ 		atomic_inc(&sbi->s_bal_reqs);
+ 		atomic_add(ac->ac_b_ex.fe_len, &sbi->s_bal_allocated);
+ 		if (ac->ac_b_ex.fe_len >= ac->ac_o_ex.fe_len)
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index afe12bcc1603..47e06c32c6fb 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -41,6 +41,7 @@ typedef enum {
+ 	attr_pointer_atomic,
+ 	attr_journal_task,
+ 	attr_err_report_sec,
++	attr_mb_stats,
+ } attr_id_t;
+ 
+ typedef enum {
+@@ -241,6 +242,7 @@ EXT4_ATTR_FUNC(session_write_kbytes, 0444);
+ EXT4_ATTR_FUNC(lifetime_write_kbytes, 0444);
+ EXT4_ATTR_FUNC(reserved_clusters, 0644);
+ EXT4_ATTR_FUNC(sra_exceeded_retry_limit, 0444);
++EXT4_ATTR_FUNC(mb_stats, 0644);
+ 
+ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, inode_readahead,
+ 		 ext4_sb_info, s_inode_readahead_blks);
+@@ -250,7 +252,6 @@ EXT4_ATTR_OFFSET(mb_best_avail_max_trim_order, 0644, mb_order,
+ 		 ext4_sb_info, s_mb_best_avail_max_trim_order);
+ EXT4_ATTR_OFFSET(err_report_sec, 0644, err_report_sec, ext4_sb_info, s_err_report_sec);
+ EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
+-EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
+ EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
+@@ -451,6 +452,24 @@ static ssize_t ext4_generic_attr_show(struct ext4_attr *a,
+ 	return 0;
+ }
+ 
++static ssize_t mb_stats_show(struct ext4_sb_info *sbi, char *buf)
++{
++	return sysfs_emit(buf, "%u\n", READ_ONCE(sbi->s_mb_stats));
++}
++
++static ssize_t mb_stats_store(struct ext4_sb_info *sbi,
++			      const char *buf, size_t len)
++{
++	unsigned int t;
++	int ret;
++
++	ret = kstrtouint(skip_spaces(buf), 0, &t);
++	if (ret)
++		return ret;
++	WRITE_ONCE(sbi->s_mb_stats, t);
++	return len;
++}
++
+ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 			      struct attribute *attr, char *buf)
+ {
+@@ -475,6 +494,8 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 		return sysfs_emit(buf, "%llu\n",
+ 				(unsigned long long)
+ 			percpu_counter_sum(&sbi->s_sra_exceeded_retry_limit));
++	case attr_mb_stats:
++		return mb_stats_show(sbi, buf);
+ 	case attr_feature:
+ 		return sysfs_emit(buf, "supported\n");
+ 	case attr_first_error_time:
+@@ -559,6 +580,8 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
+ 		return inode_readahead_blks_store(sbi, buf, len);
+ 	case attr_trigger_test_error:
+ 		return trigger_test_error(sbi, buf, len);
++	case attr_mb_stats:
++		return mb_stats_store(sbi, buf, len);
+ 	case attr_err_report_sec:
+ 		return err_report_sec_store(sbi, buf, len);
+ 	default:
+-- 
+2.51.0
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202605240952.dIQvDsdW-lkp@intel.com/
-
-All warnings (new ones prefixed by >>):
-
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:838:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     838 |         insb(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:108:53: note: expanded from macro 'insb'
-     108 | #define insb(addr, buffer, count) __insb(PCI_IOBASE + (addr), buffer, count)
-         |                                          ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:846:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     846 |         insw(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:109:53: note: expanded from macro 'insw'
-     109 | #define insw(addr, buffer, count) __insw(PCI_IOBASE + (addr), buffer, count)
-         |                                          ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:854:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     854 |         insl(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:110:53: note: expanded from macro 'insl'
-     110 | #define insl(addr, buffer, count) __insl(PCI_IOBASE + (addr), buffer, count)
-         |                                          ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:863:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     863 |         outsb(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:122:55: note: expanded from macro 'outsb'
-     122 | #define outsb(addr, buffer, count) __outsb(PCI_IOBASE + (addr), buffer, count)
-         |                                            ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:872:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     872 |         outsw(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:123:55: note: expanded from macro 'outsw'
-     123 | #define outsw(addr, buffer, count) __outsw(PCI_IOBASE + (addr), buffer, count)
-         |                                            ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:881:2: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-     881 |         outsl(addr, buffer, count);
-         |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
-   arch/riscv/include/asm/io.h:124:55: note: expanded from macro 'outsl'
-     124 | #define outsl(addr, buffer, count) __outsl(PCI_IOBASE + (addr), buffer, count)
-         |                                            ~~~~~~~~~~ ^
-   In file included from fs/ext2/inode.c:28:
-   In file included from include/linux/pagemap.h:11:
-   In file included from include/linux/highmem.h:12:
-   In file included from include/linux/hardirq.h:11:
-   In file included from ./arch/riscv/include/generated/asm/hardirq.h:1:
-   In file included from include/asm-generic/hardirq.h:17:
-   In file included from include/linux/irq.h:20:
-   In file included from include/linux/io.h:12:
-   In file included from arch/riscv/include/asm/io.h:140:
-   include/asm-generic/io.h:1209:55: warning: performing pointer arithmetic on a null pointer has undefined behavior [-Wnull-pointer-arithmetic]
-    1209 |         return (port > MMIO_UPPER_LIMIT) ? NULL : PCI_IOBASE + port;
-         |                                                   ~~~~~~~~~~ ^
->> fs/ext2/inode.c:792:23: warning: unused variable 'sbi' [-Wunused-variable]
-     792 |         struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
-         |                              ^~~
-   8 warnings generated.
-
-
-vim +/sbi +792 fs/ext2/inode.c
-
-a686cd898bd999f Martin J. Bligh      2007-10-16  785  
-25f4e70291a3097 Christoph Hellwig    2016-09-19  786  static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
-c039b9979272634 Goldwyn Rodrigues    2019-10-18  787  		unsigned flags, struct iomap *iomap, struct iomap *srcmap)
-25f4e70291a3097 Christoph Hellwig    2016-09-19  788  {
-25f4e70291a3097 Christoph Hellwig    2016-09-19  789  	unsigned int blkbits = inode->i_blkbits;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  790  	unsigned long first_block = offset >> blkbits;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  791  	unsigned long max_blocks = (length + (1 << blkbits) - 1) >> blkbits;
-8cf037a8b22f71c Dan Williams         2017-08-30 @792  	struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
-25f4e70291a3097 Christoph Hellwig    2016-09-19  793  	bool new = false, boundary = false;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  794  	u32 bno;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  795  	int ret;
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  796) 	bool create = flags & IOMAP_WRITE;
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  797) 
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  798) 	/*
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  799) 	 * For writes that could fill holes inside i_size on a
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  800) 	 * DIO_SKIP_HOLES filesystem we forbid block creations: only
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  801) 	 * overwrites are permitted.
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  802) 	 */
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  803) 	if ((flags & IOMAP_DIRECT) &&
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  804) 	    (first_block << blkbits) < i_size_read(inode))
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  805) 		create = 0;
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  806) 
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  807) 	/*
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  808) 	 * Writes that span EOF might trigger an IO size update on completion,
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  809) 	 * so consider them to be dirty for the purposes of O_DSYNC even if
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  810) 	 * there is no other metadata changes pending or have been made here.
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  811) 	 */
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  812) 	if ((flags & IOMAP_WRITE) && offset + length > i_size_read(inode))
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  813) 		iomap->flags |= IOMAP_F_DIRTY;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  814  
-25f4e70291a3097 Christoph Hellwig    2016-09-19  815  	ret = ext2_get_blocks(inode, first_block, max_blocks,
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  816) 			&bno, &new, &boundary, create);
-25f4e70291a3097 Christoph Hellwig    2016-09-19  817  	if (ret < 0)
-a686cd898bd999f Martin J. Bligh      2007-10-16  818  		return ret;
-a686cd898bd999f Martin J. Bligh      2007-10-16  819  
-25f4e70291a3097 Christoph Hellwig    2016-09-19  820  	iomap->flags = 0;
-d5bfccdf38d094f Christoph Hellwig    2016-10-03  821  	iomap->offset = (u64)first_block << blkbits;
-de2051147771017 Christoph Hellwig    2021-11-29  822          iomap->bdev = inode->i_sb->s_bdev;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  823  
-25f4e70291a3097 Christoph Hellwig    2016-09-19  824  	if (ret == 0) {
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  825) 		/*
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  826) 		 * Switch to buffered-io for writing to holes in a non-extent
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  827) 		 * based filesystem to avoid stale data exposure problem.
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  828) 		 */
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  829) 		if (!create && (flags & IOMAP_WRITE) && (flags & IOMAP_DIRECT))
-fb5de4358e1aa47 Ritesh Harjani (IBM  2023-04-21  830) 			return -ENOTBLK;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  831  		iomap->type = IOMAP_HOLE;
-19fe5f643f89f29 Andreas Gruenbacher  2017-10-01  832  		iomap->addr = IOMAP_NULL_ADDR;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  833  		iomap->length = 1 << blkbits;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  834  	} else {
-25f4e70291a3097 Christoph Hellwig    2016-09-19  835  		iomap->type = IOMAP_MAPPED;
-19fe5f643f89f29 Andreas Gruenbacher  2017-10-01  836  		iomap->addr = (u64)bno << blkbits;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  837  		iomap->length = (u64)ret << blkbits;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  838  		iomap->flags |= IOMAP_F_MERGED;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  839  	}
-25f4e70291a3097 Christoph Hellwig    2016-09-19  840  
-25f4e70291a3097 Christoph Hellwig    2016-09-19  841  	if (new)
-25f4e70291a3097 Christoph Hellwig    2016-09-19  842  		iomap->flags |= IOMAP_F_NEW;
-25f4e70291a3097 Christoph Hellwig    2016-09-19  843  	return 0;
-a686cd898bd999f Martin J. Bligh      2007-10-16  844  }
-a686cd898bd999f Martin J. Bligh      2007-10-16  845  
-
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
