@@ -1,62 +1,62 @@
-Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
+Received: from mail-wm1-f47.google.com (mail-wm1-f47.google.com [209.85.128.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9A8A332913
-	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99223331A66
+	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779655052; cv=none; b=r0anpuKZIb/MTIsxg4gdJ0iFZQ1SxmdcKrVUP2/+auO70crFO0qzJiPDJmpgnLam+vC58WDcEf7Y7wngqdsPZB0rSvSDMGOhjul6/77HdrXK7wmXkvMVZjoINSIIWqSEANH/viMmvyF0uHODy1Cfp1012FYei88nOQauABycf1o=
+	t=1779655053; cv=none; b=rfjws54Gh5c439h9tvoTKvz+YAJLOBFa3N0WBDV8J5cBj0sYEs0DvUudSbXrlCOcgo/7qXZ+0xi7sXpc3LENhBtX0V0/rCH6MfhoxxISX7kykeGy2+jm2UowEtoLzBVd8y8K45qHEJkChKc1OzyfibShqCA8U7e/6gopq8kT+Rg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779655052; c=relaxed/simple;
-	bh=7Hgm6rUDFMJQhEuU4KF8MU4Po9puK31ByY+yvaSWdew=;
+	s=arc-20240116; t=1779655053; c=relaxed/simple;
+	bh=oQr0Lve5gRZisEvqQ6NnV90iV9WNdPDC51xjbOc37AA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hCTcle03rGJbR6y0rUcLxe03BSOHqsMkFemXJbP9BmNsYBTNOoDTTVgl9HU9qEPxFYBGRej00HtLXGaPVUBl96No+4M571mZ160Qxsl26aHK9OsVv3bZtS4J4epSgcKCgrLtKOtX2/Fd+2VB8r1YU5hBUG4Db+PRjlE+iaYtUOQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Gddudcg2; arc=none smtp.client-ip=209.85.128.52
+	 MIME-Version; b=HJZus7zVlemR+2A+yohDBhPEuWcacWvmkhnJUSM5KAEjYtks3UTwgxrNOGkpdAuqPabts5O2shpz0K4cIZyfwSnkIAwP+mv324yLSLQnFFQwhX8OP9XqumnZRcUcc712MsaMnnnDArb0HHc9UzOZzihv9kC86cLQZLaozY2wYpI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=rKJv2QZ7; arc=none smtp.client-ip=209.85.128.47
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Gddudcg2"
-Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4893940bb5eso48652695e9.3
-        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:30 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rKJv2QZ7"
+Received: by mail-wm1-f47.google.com with SMTP id 5b1f17b1804b1-4903f7a90d1so23271165e9.2
+        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779655049; x=1780259849; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1779655050; x=1780259850; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=AR2WIsxl3CRpba5qcvJI5LRaZAQv/V8PhHzurxksVNk=;
-        b=Gddudcg2ah4o25xHq9759mGBlsac5ltLlteUlWnpHLsZqFP7UCWkxqhWyM+wW+rLS0
-         WqP6EyDDdg2DQp2+rZva9ecnXZdl+A3gDzVaTIuxNQZ0Fq4keSTPpjEGehtnO+4zwSL4
-         OdyVuYFjCB+y8JjK73ELan/g+6GcAD62PXURtEKNwrE6Fz5BdH1+vtKpoRLV1tOVeOrM
-         /uay22H9QUG05AVqdtSfePf+QhulDj8n1jW0iY5bylP0B9lYnw+E8rmQjyqGrn3HaJxX
-         i3XnIgKQFTrQ/DQlmpQAQoKgNhWBqRbwl+G7zW8cnenMxcFGh1go1iJD7qCOGSnZXkIM
-         dePA==
+        bh=s+0Pp/QSVD0JZ5QfLBNCFE3lAE38FtcgNDJNdqTOQe0=;
+        b=rKJv2QZ7WF6drt+J7+wxD8EYYyZt8xj6BskGQ10K95lN0l/MNgMu1b4tL4Zhi41DyD
+         yTlyK4wNDIRmcBbf4V5AbFh2iWgZMO5GiBSNYJwxjcjH+QkQ5wEcACBkmHT3DxFPUTvY
+         0SimDzVHZFtzQOwZNSoio69+3qIBxYQNLDJLt8z6VCGi9so0wZy3fty6eBNVtj3paxQq
+         UbDwO5NbWP/Lz1KbPCqHC/WpkP52QQmxZeNcfFsnBUv7ttoD+/YbdtRMQX6Ve8iqIulM
+         ZL3bYJ9ZHfIcbPdr+mMUbtboNMlwFWxXHTXl97eENZsXrVjjVVB+55ToXMBn/p71Pn+X
+         kvRg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779655049; x=1780259849;
+        d=1e100.net; s=20251104; t=1779655050; x=1780259850;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=AR2WIsxl3CRpba5qcvJI5LRaZAQv/V8PhHzurxksVNk=;
-        b=BgEJkG8tYMGErIP1M8Mt5d2ac3pUbzFbh/xepuCal8LAR0RGSsMtNYxQ2GsjNS4Kv8
-         jIf8E5BoPahpwKERQtAPP9HmLfrulfZxlGV9ooJdBuhdqqzeYopBLhX8deWomO4Zbzg/
-         K/+08Zk/1uZeXJeW6eOSVqhORtqYTaS0pFL9SyXiqH+XJsn0pfI7586Wtoyzwbqc+lbL
-         dQMr86cGSccnDK1CZKeLoxVS+kthqV7atNa3bcQMI3Snsadt0+vCCfzp2AmAEmn97Klz
-         usP9U8D3VUEeyrO0/wgL9W2WvZDeWYPVpXcdvgH/TF6z7BmjJs0ZMH8p5hvvxJ81fCDR
-         EO2A==
-X-Gm-Message-State: AOJu0Yyz3vRhazfdosGgl3BgSp2s2pxfq9t6re4xsP4FRU+CSmWDhVUO
-	F/4TaYNfzLQwcU3MGgsKlPVkvw4AsP+64HFaEU5vBbrK5vG5G2hoZZXc1rfMMLKH
-X-Gm-Gg: Acq92OFJfMxzY9P2Quj6hp5PdUhABWOWSOHjenWKu/+9IxblAN4jqEF8/v+/iWaKK5v
-	3ziVc1TG89vJRupDmMhfnXZhCGk3N6wfbkOZ0Yn20nKNFgHOCQnI2zpyOLAcZ0NkfpOqy0i5MQH
-	UiJlPI5iLevXvv7BCr1B5JUa7K/0JadTKHrYc1v0SEtRzJ8k4KnZ9OIzjO5nddthK21Rys/nK+x
-	Fxd98mD1uiMJfqOQkl4iJnRKib1lIX/zEwXrGm2b32lkRrQzX2rVyk0h48m2MaKOgB/lLyOd9p7
-	eGdjqv0dOkVemoudLy20XMzOLZge+MwuQsmGoI9+Y/+SEej4YVzI++dZ6rJ+e3y3dvKjYmNgRe7
-	dNQAivx6J1jrLei0j7PjypgqTgcRIsvKAGJmEyB7Oqlur1wQwSYqD4SFOTAUROb9JpuJ4NCfrh/
-	dTOJysqWcqziMkYdcLjT7ufYT2g3vtT2GfkcrYQ3BZF6opqNYO2t4=
-X-Received: by 2002:a05:600c:3e88:b0:490:48b7:c1ff with SMTP id 5b1f17b1804b1-49048b7c21bmr176621985e9.17.1779655049154;
+        bh=s+0Pp/QSVD0JZ5QfLBNCFE3lAE38FtcgNDJNdqTOQe0=;
+        b=BMY+cGzSq8z8GFxah18/EB8wtVurjQwTpqYJO0Jae62Jagi+cyd7/LHJ8XBETSRA5u
+         L0rtbNo8UOZYad9sU5Qf3cJnLoSfX1ndTkVFtrx0rZY07bSs6ZWvBkPQhGY4/A5HD95W
+         ss6KXPUDdQndcSg4zp6FUp3WIGH4M+NuJv8kRX4I7Wbdh0klpuloidmBMggLlwfkUNmy
+         +hzMmTpKSHfTNoiYR4Ezabwt6bqRoAZyLmMcjPOIBo+MgVDAsTWHLvyJlCCYB/gzh0cv
+         xafSXpMhkrwWxrcYD+Qx8oOq0CS4gE/DGUVatHTbxLlaRKSa9Aso1MjnCDChrPN7OrWg
+         lxfw==
+X-Gm-Message-State: AOJu0Ywdjddr23yY1SHf7fff3iz5piNI1ufy3pmSjHL8lKJUSEpcV+U6
+	ETFJql3U2zBjyeP+LQt/cMfA0RO+wnk8edRMWYtI9/tNpeQNkAQ7hdPSCHtY3lQT
+X-Gm-Gg: Acq92OGlS+UDX6gA3qhIgvHc0z7/pf+57UwIQ02zDCefi0Q7aR8XlUZFiTb3aKKRSom
+	SPKT2EQ5aVnuvK3fA7dDZuLWBayMXC03DICKUG5HuNkedtRSfPSQaNKgiBrwy8PaNsQz8fLbhZR
+	h2Xu91Z5rzJ93bhF0gc8dhl6QiBauyBKDpeCZWX7n1HqD8nOHgwwT1ffJLMdQ78QLu4ml4MKjDP
+	nLWQyJcxzoW07CZxOae8vKoCHa0WRdRyb9bPZpXZDKUOf9GQw+XypBQ7vy3N9WQbdtANlCxwgue
+	trq6fPisF/Me0/v4ekKsCRVvaiV1wfq/2V+U3IUgRudbL1ByqjQplGXSxQulpYnTSsL5ciTF1P9
+	aScV9BYyFuYQD8h31PJzw7ZfElBS/qODRhKr5khluOY1jDO2a+VLb0da2ZOGu+TSsxk8Wd7JKBf
+	nqDVIxjNSUyQcs2VgKVsxaJuelCEGMLRzF1gTOcKPY
+X-Received: by 2002:a05:600d:8444:20b0:490:3b8b:6ba2 with SMTP id 5b1f17b1804b1-4904249af9amr142377265e9.8.1779655049778;
         Sun, 24 May 2026 13:37:29 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.28
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.29
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 24 May 2026 13:37:28 -0700 (PDT)
+        Sun, 24 May 2026 13:37:29 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
@@ -64,9 +64,9 @@ Cc: adilger.kernel@dilger.ca,
 	Andreas Dilger <adilger@whamcloud.com>,
 	Pravin Shelar <pravin@clusterfs.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 05/13] e2fsck: pass2 dirdata validation and repair
-Date: Sun, 24 May 2026 16:36:50 -0400
-Message-ID: <20260524203658.12406-6-artem.blagodarenko@gmail.com>
+Subject: [PATCH 06/13] e2fsck: dirdata message formatting and pass3 support
+Date: Sun, 24 May 2026 16:36:51 -0400
+Message-ID: <20260524203658.12406-7-artem.blagodarenko@gmail.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
 References: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
@@ -78,298 +78,130 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Implement comprehensive validation and repair logic for dirdata fields in
-pass 2 of e2fsck. This ensures directory entries with embedded Lustre FID
-data are properly checked and corrected.
+Add FID extraction and error message formatting for dirdata, plus pass3
+support for proper error reporting with Lustre-specific metadata.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- e2fsck/pass2.c   | 130 ++++++++++++++++++++++++++++++++++++++++++-----
- e2fsck/problem.c |   5 ++
- e2fsck/problem.h |   3 ++
- 3 files changed, 125 insertions(+), 13 deletions(-)
+ e2fsck/message.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++-
+ e2fsck/pass3.c   |  7 ++++++
+ 2 files changed, 61 insertions(+), 1 deletion(-)
 
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index cf1678c85..938942a80 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -395,13 +395,103 @@ static EXT2_QSORT_TYPE special_dir_block_cmp(const void *a, const void *b)
- 	return (int) (db_a->blockcnt - db_b->blockcnt);
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index 9c42b13fb..193d887ec 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -99,6 +99,7 @@
+ 
+ #include "e2fsck.h"
+ #include "problem.h"
++#include "ext2fs/lfsck.h"
+ 
+ #ifdef __GNUC__
+ #define _INLINE_ __inline__
+@@ -346,6 +347,41 @@ static _INLINE_ void expand_inode_expression(FILE *f, ext2_filsys fs, char ch,
+ 	}
  }
  
-+void ext2_fix_dirent_dirdata(struct ext2_dir_entry *de)
++int get_dirent_fid(struct ext2_dir_entry *dirent, struct lu_fid **fids)
 +{
-+	__u16 file_type = de->name_len & (EXT2_FT_MASK << 8);
-+	__u8 de_flags = (de->name_len >> 8) & ~EXT2_FT_MASK;
-+	__u8 name_len = de->name_len & EXT2_NAME_LEN;
-+	__u8 new_flag = 0;
-+	int i;
++	unsigned char *data = (unsigned char *)dirent->name +
++			      (dirent->name_len & EXT2_NAME_LEN) + 1;
++	__u8 file_type = dirent->name_len >> 8;
++	__u8 dirdata_mask;
++	int retlen = 0;
 +
-+	for (i = 0; i < 4; i++) {
-+		__u8 flags = new_flag | (1 << i) << 4;
++	for (dirdata_mask = EXT2_FT_MASK + 1;
++	     dirdata_mask != 0; dirdata_mask <<= 1) {
++		int dlen;
 +
-+		/* new_flag is accumulating flags that are set in de_flags
-+		 * and still fit inside rec_len. ext2_get_dirent_dirdata_size()
-+		 * returns the size of all the dirdata entries in flags, and
-+		 * chops off any that are beyond rec_len.
-+		 */
-+		if ((de_flags & flags) == flags) {
-+			int dirdatalen = ext2_get_dirdata_field_size(de,flags);
-+			int rlen = EXT2_DIR_NAME_LEN(name_len + 1 +
-+						     dirdatalen);
++		if ((dirdata_mask & file_type) == 0)
++			continue;
 +
-+			if (rlen > de->rec_len)
-+				break;
++		dlen = data[0];
++		if (dirdata_mask == EXT2_DIRENT_LUFID) {
++			struct lu_fid *fid;
++			int len = dlen;
 +
-+			new_flag |= flags;
-+		}
-+	}
-+
-+	de->name_len = name_len | file_type | (new_flag << 8);
-+}
-+
-+/*
-+ * check for dirent data in ext4 dirent.
-+ * return 0 if dirent data is ok.
-+ * return 1 if dirent data does not exist.
-+ * return 2 if dirent was modified due to error.
-+ */
-+int e2fsck_check_dirent_data(e2fsck_t ctx, struct ext2_dir_entry *de,
-+			     unsigned int offset, struct problem_context *pctx)
-+{
-+	if (!(ctx->fs->super->s_feature_incompat &
-+			EXT4_FEATURE_INCOMPAT_DIRDATA)) {
-+		if ((de->name_len >> 8) & ~EXT2_FT_MASK) {
-+			/* clear dirent extra data flags. */
-+			if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) {
-+				de->name_len &= (EXT2_FT_MASK << 8) |
-+						EXT2_NAME_LEN;
-+				return 2;
++			*fids = (struct lu_fid *)(data + 1);
++			for (fid = *fids; len >= sizeof(*fid); fid++,
++			     len -= sizeof(*fid)) {
++				memcpy(fid, data + 1, sizeof(*fid));
++				fid_be_to_cpu(fid, fid);
 +			}
++			retlen = dlen;
++			break;
 +		}
-+		return 1;
++		data += dlen;
 +	}
 +
-+	if (!((de->name_len >> 8) & ~EXT2_FT_MASK))
-+		return 1;
-+
-+	if (de->rec_len >= EXT2_DIRENT_REC_LEN(de) ||
-+	    de->rec_len + offset == EXT2_BLOCK_SIZE(ctx->fs->super)) {
-+		int lufid_size, cshash_size;
-+
-+		lufid_size = ext2_get_dirdata_field_size(de,
-+						 EXT2_DIRENT_LUFID);
-+
-+		if (lufid_size != 0 && lufid_size %
-+		    EXT2_DIRENT_LUFID_SIZE != 1) /* size byte */
-+			goto fix;
-+
-+		cshash_size = ext2_get_dirdata_field_size(de,
-+						 EXT2_DIRENT_CFHASH);
-+
-+		if (cshash_size != 0 && cshash_size !=
-+		     sizeof(struct ext2_dir_entry_hash) + 1) /* size byte */
-+			goto fix;
-+
-+		return 0;
-+	}
-+
-+fix:
-+	/* just clear dirent data flags for now */
-+	if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) {
-+		ext2_fix_dirent_dirdata(de);
-+		if (ext2_get_dirdata_field_size(de,
-+						 EXT2_DIRENT_LUFID) %
-+		    EXT2_DIRENT_LUFID_SIZE != 1)
-+			de->name_len &= ~(EXT2_DIRENT_LUFID << 8);
-+
-+		return 2;
-+	}
-+	return 1;
++	return retlen;
 +}
- 
++
  /*
-  * Make sure the first entry in the directory is '.', and that the
-  * directory entry is sane.
+  * This function expands '%dX' expressions
   */
- static int check_dot(e2fsck_t ctx,
--		     struct ext2_dir_entry *dirent,
-+		     struct ext2_dir_entry *dirent, unsigned int offset,
- 		     ext2_ino_t ino, struct problem_context *pctx)
- {
- 	struct ext2_dir_entry *nextdir;
-@@ -410,6 +500,7 @@ static int check_dot(e2fsck_t ctx,
- 	int		created = 0;
- 	problem_t	problem = 0;
- 	int		ftype = EXT2_FT_DIR;
-+	int		dir_data_error;
+@@ -361,9 +397,26 @@ static _INLINE_ void expand_dirent_expression(FILE *f, ext2_filsys fs, char ch,
+ 	dirent = ctx->dirent;
  
- 	if (!dirent->inode)
- 		problem = PR_2_MISSING_DOT;
-@@ -419,12 +510,14 @@ static int check_dot(e2fsck_t ctx,
- 	else if (dirent->name[1] != '\0')
- 		problem = PR_2_DOT_NULL_TERM;
- 
-+	dir_data_error = e2fsck_check_dirent_data(ctx, dirent, offset, pctx);
+ 	switch (ch) {
+-	case 'i':
++	case 'i': {
++		struct lu_fid *fids;
++		int i;
++		int fids_len;
 +
- 	(void) ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
- 	if (problem) {
- 		if (!ext2fs_has_feature_filetype(ctx->fs->super))
- 			ftype = EXT2_FT_UNKNOWN;
- 		if (fix_problem(ctx, problem, pctx)) {
--			if (rec_len < 12)
-+			if (rec_len < 12 && dir_data_error)
- 				rec_len = dirent->rec_len = 12;
- 			dirent->inode = ino;
- 			ext2fs_dirent_set_name_len(dirent, 1);
-@@ -443,7 +536,7 @@ static int check_dot(e2fsck_t ctx,
- 	}
- 	if (rec_len > 12) {
- 		new_len = rec_len - 12;
--		if (new_len > 12) {
-+		if (new_len > 12 && dir_data_error) {
- 			if (created ||
- 			    fix_problem(ctx, PR_2_SPLIT_DOT, pctx)) {
- 				nextdir = (struct ext2_dir_entry *)
-@@ -480,12 +573,13 @@ static int check_dot(e2fsck_t ctx,
-  * here; this gets done in pass 3.
-  */
- static int check_dotdot(e2fsck_t ctx,
--			struct ext2_dir_entry *dirent,
-+			struct ext2_dir_entry *dirent, unsigned int offset,
- 			ext2_ino_t ino, struct problem_context *pctx)
- {
- 	problem_t	problem = 0;
- 	unsigned int	rec_len;
- 	int		ftype = EXT2_FT_DIR;
-+	int		dir_data_error;
- 
- 	if (!dirent->inode)
- 		problem = PR_2_MISSING_DOT_DOT;
-@@ -496,12 +590,14 @@ static int check_dotdot(e2fsck_t ctx,
- 	else if (dirent->name[2] != '\0')
- 		problem = PR_2_DOT_DOT_NULL_TERM;
- 
-+	dir_data_error = e2fsck_check_dirent_data(ctx, dirent, offset, pctx);
+ 		fprintf(f, "%u", dirent->inode);
 +
- 	(void) ext2fs_get_rec_len(ctx->fs, dirent, &rec_len);
- 	if (problem) {
- 		if (!ext2fs_has_feature_filetype(ctx->fs->super))
- 			ftype = EXT2_FT_UNKNOWN;
- 		if (fix_problem(ctx, problem, pctx)) {
--			if (rec_len < 12)
-+			if (rec_len < 12 && dir_data_error)
- 				dirent->rec_len = 12;
- 			/*
- 			 * Note: we don't have the parent inode just
-@@ -597,6 +693,12 @@ static _INLINE_ int check_filetype(e2fsck_t ctx,
- 	int	filetype = ext2fs_dirent_file_type(dirent);
- 	int	should_be = EXT2_FT_UNKNOWN;
- 	struct ext2_inode	inode;
-+	__u8    dirdata = 0;
++		fids_len = get_dirent_fid(dirent, &fids);
++		if (fids_len > sizeof(*fids))
++			fprintf(f, " fid=");
++		while (fids_len > sizeof(*fids)) {
++			fprintf(f, DFID, PFID(fids));
++			fids++;
++			fids_len -= sizeof(*fids);
++			if (fids_len >= sizeof(*fids))
++				fprintf(f, ",");
++		}
 +
-+	if (ext2fs_has_feature_dirdata(ctx->fs->super)) {
-+		dirdata = filetype & ~EXT2_FT_MASK;
-+		filetype = filetype & EXT2_FT_MASK;
+ 		break;
 +	}
+ 	case 'n':
+ 		len = ext2fs_dirent_name_len(dirent);
+ 		if ((ext2fs_get_rec_len(fs, dirent, &rec_len) == 0) &&
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index 56798b1bc..343609832 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -706,6 +706,7 @@ static int fix_dotdot_proc(struct ext2_dir_entry *dirent,
+ 	struct fix_dotdot_struct *fp = (struct fix_dotdot_struct *) priv_data;
+ 	errcode_t	retval;
+ 	struct problem_context pctx;
++	__u16 dirdata = 0;
  
- 	if (!ext2fs_has_feature_filetype(ctx->fs->super)) {
- 		if (filetype == 0 ||
-@@ -627,8 +729,7 @@ static _INLINE_ int check_filetype(e2fsck_t ctx,
- 	if (fix_problem(ctx, filetype ? PR_2_BAD_FILETYPE : PR_2_SET_FILETYPE,
- 			pctx) == 0)
+ 	if (ext2fs_dirent_name_len(dirent) != 2)
  		return 0;
--
--	ext2fs_dirent_set_file_type(dirent, should_be);
-+	ext2fs_dirent_set_file_type(dirent, should_be | dirdata);
- 	return 1;
- }
- 
-@@ -660,8 +761,8 @@ static void parse_int_node(ext2_filsys fs,
- 		printf("\t Indirect levels: %u\n", root->indirect_levels);
- 		printf("\t Flags: %x\n", root->unused_flags);
- #endif
--
--		ent = (struct ext2_dx_entry *) (block_buf + 24 + root->info_length);
-+		ent = (struct ext2_dx_entry *)((char *)root +
-+					       root->info_length);
- 
- 		if (failed_csum &&
- 		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
-@@ -669,7 +770,7 @@ static void parse_int_node(ext2_filsys fs,
- 				&cd->pctx)))
- 			goto clear_and_exit;
- 	} else {
--		ent = (struct ext2_dx_entry *) (block_buf+8);
-+		ent = (struct ext2_dx_entry *)(block_buf + 8);
- 
- 		if (failed_csum &&
- 		    (e2fsck_dir_will_be_rehashed(cd->ctx, cd->pctx.ino) ||
-@@ -851,7 +952,6 @@ static void salvage_directory(ext2_filsys fs,
+@@ -725,11 +726,17 @@ static int fix_dotdot_proc(struct ext2_dir_entry *dirent,
+ 		fix_problem(fp->ctx, PR_3_ADJUST_INODE, &pctx);
  	}
+ 	dirent->inode = fp->parent;
++
++	dirdata  = dirent->name_len & ((__u16)~EXT2_FT_MASK << 8);
++
+ 	if (ext2fs_has_feature_filetype(fp->ctx->fs->super))
+ 		ext2fs_dirent_set_file_type(dirent, EXT2_FT_DIR);
+ 	else
+ 		ext2fs_dirent_set_file_type(dirent, EXT2_FT_UNKNOWN);
+ 
++	if (ext2fs_has_feature_dirdata(fp->ctx->fs->super))
++		dirent->name_len |= dirdata;
++
+ 	fp->done++;
+ 	return DIRENT_ABORT | DIRENT_CHANGED;
  }
- 
--#define NEXT_DIRENT(d)	((void *)((char *)(d) + (d)->rec_len))
- static errcode_t insert_dirent_tail(ext2_filsys fs, void *dirbuf)
- {
- 	struct ext2_dir_entry *d;
-@@ -1427,10 +1527,10 @@ skip_checksum:
- 		}
- 
- 		if (dot_state == 0) {
--			if (check_dot(ctx, dirent, ino, &cd->pctx))
-+			if (check_dot(ctx, dirent, offset, ino, &cd->pctx))
- 				dir_modified++;
- 		} else if (dot_state == 1) {
--			ret = check_dotdot(ctx, dirent, ino, &cd->pctx);
-+			ret = check_dotdot(ctx, dirent, offset, ino, &cd->pctx);
- 			if (ret < 0)
- 				goto abort_free_dict;
- 			if (ret)
-@@ -1446,6 +1546,10 @@ skip_checksum:
- 		if (!dirent->inode)
- 			goto next;
- 
-+		ret = e2fsck_check_dirent_data(ctx, dirent, offset, &cd->pctx);
-+		if (ret == 2)
-+			dir_modified++;
-+
- 		/*
- 		 * Make sure the inode listed is a legal one.
- 		 */
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index e433281fa..afa3d517a 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1875,6 +1875,11 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("@E references EA @i %Di.\n"),
- 	  PROMPT_CLEAR, 0, 0, 0, 0 },
- 
-+	/* Directory entry dirdata length set incorrectly */
-+	{ PR_2_CLEAR_DIRDATA,
-+	  N_("@E dirdata length set incorrectly.\n"),
-+	  PROMPT_CLEAR, PR_PREEN_OK },
-+
- 	/* Pass 3 errors */
- 
- 	/* Pass 3: Checking directory connectivity */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index ef15b8c84..1ef519908 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -1070,6 +1070,9 @@ struct problem_context {
- /* EA inode referenced from directory */
- #define PR_2_EA_INODE_DIR_LINK 0x020055
- 
-+/* Entry dirdata length set incorrectly */
-+#define PR_2_CLEAR_DIRDATA		0x020057
-+
- /*
-  * Pass 3 errors
-  */
 -- 
 2.43.7
 
