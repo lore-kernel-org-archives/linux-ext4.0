@@ -1,68 +1,73 @@
-Received: from mail-wm1-f44.google.com (mail-wm1-f44.google.com [209.85.128.44])
+Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 129D3311969
-	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.44
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9962631E83D
+	for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 20:37:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779655048; cv=none; b=kAssZtjbzgCUdoD+G2H8wX7KE2D+lIo+McHTAhMmKk7f0Le/QX0sepbZBmxl16cwd1hYGsEcjQYnSSMBDvTjLCSltTJ9p4Cu7Vy3FmrpHZQFPj3Rlp7d+sbrM3Wzh8MNEO2ZtRdlr154eYnsFpe57MDws8lrdveYyRonwyGZvAA=
+	t=1779655050; cv=none; b=iNRnlQzMZUxCWA0TOi9J4C4gTX4sPm+UjUP81SLWekOCrJ0PolseNQaiNkfT3aNc/68kO8d+bZ+JMz5WSIc44Zb9SP6CeCXYpA0nHPteJf2r8cQ+E/BYMD3Lz9SJFGrup7BqH5GWL4KAthPrJZh+jOxCx/C0Hxj575+6aP9+SF0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779655048; c=relaxed/simple;
-	bh=WJ2436+19UxA9bV0bsWlrdhM6+5WTvC4ZYeFsbKHfC8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kvrf7vx77pNHOFetzdhlMJbzQ0XCRIF0KfX4ZoVr7ZcEJ4LYG41QNSAFBJO0kAdM2FJ2FFZF4ohXUcDerx8E5XBunGfE/7ZeLGLmji/8oG07XDPzvtg7410bVfZcRNBw83Lyywz1ghBfg15drPR4PD8AW9KvTUKNnGzWcS+Twco=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qeeLLMA6; arc=none smtp.client-ip=209.85.128.44
+	s=arc-20240116; t=1779655050; c=relaxed/simple;
+	bh=CYNXz4zwWJL9v/Huwi5vpwbfvuB1GDuCXm/RcJXUH+I=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=uwxuR7ENbmgDI0Xv6b3DL0NdMWSNiqvV3pJljFmU2ly9wtnuvsnNIbVTLRcDy+AOqCD3osEQHRfCxpGmgOLyHjMlg8ly76uZvlC19LM4buNnqRL7/mshbkZaLaidd3i0Q4S6ucOiIItwGeqo24xNBA27zb7QCBIgQ0iOUQP7QVU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GWE1b43h; arc=none smtp.client-ip=209.85.128.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qeeLLMA6"
-Received: by mail-wm1-f44.google.com with SMTP id 5b1f17b1804b1-48d146705b4so95020175e9.3
-        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:26 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GWE1b43h"
+Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-4896c22fcbaso75295545e9.0
+        for <linux-ext4@vger.kernel.org>; Sun, 24 May 2026 13:37:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779655045; x=1780259845; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=p9MQdGhqO9nTzJebkyJsS0X83oLrOsluTMeAwiU1K2k=;
-        b=qeeLLMA6VvZZskCeT1Ah2/7DTIiFPTcuBzdeliLhGFesquCe0+OPVUpHea8npG0Utz
-         NtKGhp9hArNpvF4fwKzB6ba48mdIi0WRD4yIlN5CdFp4rEdnVnPd+zo5lAW3z+m4dGa5
-         +rjE0ShVlK0RXPSQk++no4777D+BHdlRYxLkt7/YKgzw8i6tpiI/lB4/VrU7HHs3oi0K
-         HPYM+PirgsB2YPWLZ6iwkbVYfTXHstazH1zJUN1vCidI/aoWovYxfZOs7hrAmUpNrYhE
-         ktAwi7S1hn6s2t8VdHEJrjjR8KQoKMxe7Uy0c0fV+4obeHAsi6bCRT9IaZ21MCpC4w54
-         cEIA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779655045; x=1780259845;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20251104; t=1779655047; x=1780259847; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=p9MQdGhqO9nTzJebkyJsS0X83oLrOsluTMeAwiU1K2k=;
-        b=MDxCmUOlwpnliAEcYcQbmXvXa3s4eaBY83Mppwta/HQPmcaNfHy2EWqiUXG8qSWUA6
-         PXpb/gfIfx3Olund+zFtXOSvRxkDW7xiDkv/UWlqihjQDgMDscYyXEHGXaAPEjur6rhC
-         sD7u85oMU4r9DqtFS3kH1T/nylRrpA08kFSBjC/ElM4LGSQulxO+0/e+XD0aqwFuZ8sG
-         YnZv/8RbrzCW60IzvYJ9bq5hbC+qx3EQcomHyR+6QODhHwlP3AgnCFHLLMbD9Ve6y5il
-         nULagWIz/A7ZC3cCrPUsCIhgZ8+YGS9ntieXpDuPyorEIBErmgw6etaT8ZSLKFj7zOEO
-         sDXQ==
-X-Gm-Message-State: AOJu0YytiIceUMjxLMqtef0/i/rOSepi0mh8g16bA0oRLhX4R9Pm8kRr
-	dpnHkBQqCQlhHnTbrH0A/jQ7nnz2nTEwClfzj0bjwm1Qas2lUrjOL33pmAs3Gg==
-X-Gm-Gg: Acq92OGA+1e17HRRaTGRDVRn6G0Axm7ID/GI1rleXcO+zvBscP9/9MvXHlxl2B62qBa
-	HgB4Kx7fhAsllitk8H9RHbKL/F9pL4PS6+GU5K5IJ/Dt+kQPqSfBPWz/he6jBGmnSvZprgtyawi
-	YXM9j99FyCYOmneZ9YWPX0eddIabzPCNVKq5PlZ+u5NiB8tcvICNrTQewhsipYwsbhv7PaRWL0C
-	OuDgAduYWSfEm7Wrae9japy1wv3mehq/VsiJhBpLv3q1JBoexCdzq2B36H/5iccY/MpRtF2iRnV
-	AbAQeKUZJSEblHlKTSufcznt+Vr+u8ffyLkws2lg08wIDKCjnB1tDPR8yll4i/iNc3JwgRgTaR0
-	MY3eqQJKaG0Gvj5kuQOPmPeJRCcWm3swP41a7fH/FsJC2AhuYkAaxC0VcSKiE6Bobx5JIkAGRXS
-	QTPcz5gYvNC6ShK4cJP7RCqkYuvKU+p1WSj8VNRh++gP99qqpvOo8=
-X-Received: by 2002:a05:600c:4ecc:b0:490:3c15:7146 with SMTP id 5b1f17b1804b1-490426cd872mr192729475e9.19.1779655045300;
-        Sun, 24 May 2026 13:37:25 -0700 (PDT)
+        bh=m7P0fG3DUnEDmle9wQEulWcAbcDYn/9AHx78F5umJiY=;
+        b=GWE1b43hqe1NH/zpqIomTqxgKOb/EAj+HhLubfeXiXvoYPQLHIAt7Z57hks5bQghmp
+         //lsGKxUthVbIdGcUsMzG6JaLTQVX1vGQB6k5LkmMLBI963h4KqE+sp+6g4443WPZWi5
+         F9WKwTg2Nza+w85i2+2lTaiE6pjKYXk+fNsoy4nXi7Lw8CsJrKeMDVKNMY30Fbfxi93Q
+         GaQJyxTAoBMnse7WNi8ihJYfpGbAzbzeN1zP9/Vw7m+eSwJWAGc7GTKeJLO/pV8yeEaB
+         wYJkKVabLed2WPq4nc19OmJFfkCQ28FdGxZBP3pbwWjxg6XwkEEUON0GqiocY8ACj6py
+         2eHg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779655047; x=1780259847;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=m7P0fG3DUnEDmle9wQEulWcAbcDYn/9AHx78F5umJiY=;
+        b=rVD5EtN/iAAJ0a9UpBCYSN+GlLgemAUuaHX4VpwC3CgZ9XfrKhDvnUw0mfveu1hmPx
+         BzSEug68D8tj+m9Ftd1xhenXKn8wNHFmSLIW9yznsFTNLpJeKBLLJ5if4/Yjuar6qoOi
+         Sppx4X4vSfckMea1WvKZj0WB3ffCU13OQqkdxVfxQXsYF2RS+1P5DEwqIcntfZyXHep4
+         C5RQS4c+kUYfzp1QxN1GJXrnpbkzIWXrDXhuu49yI9A1HdLx4foi6eBn51DHqOC+iVP6
+         Vqgc7vXjTmb4BNbZ9ykI7QvIo4lbd1DnA149mlXPkzuGgzBhkZ4IIEbEAePn92vgMxoQ
+         o9+A==
+X-Gm-Message-State: AOJu0YzvK8qjFr06+/KHyAM//xOPek0WPjT86tgJ03MhTT/5KLxSUWML
+	vIeQiNg0YlbshUEJpferkOLLjhwdDXFP4Zt2ukVnL0+gVxKv9HHYz8q0tLgfWg==
+X-Gm-Gg: Acq92OFxlNs1YIUElBGkFjSP+oztOq9nGmLWtFZIAe4SWskDYl7VUEOlUnYP6tjKXYL
+	mX7sJE11dBYCJR1tECfFBAxCJZnrMx6jv6Ndmf4MZxyvyG8wMMbRiVDHufbG878K15LVI0NUjUb
+	UP3fC+CBrb8GgH6LELY0PX37ZRCeun7+Fml3Aws0UYF6JdV5ZsxvU67LEmxws4XPnCjH4bICT82
+	Bdf3eXLGSRWB24eHbg8JlDKUOts0yNy5UGX0b8rqWZuY1zP9GXAMtDyXYZdgkmYJ+Jm6W9okCOg
+	8p3cUBeiO+6/qNNw1ovR+frHQzX/28KitKz36SRcPQpxUKjb4kEsIlfBSDnaueaIMlFawQEH1Um
+	8bvL74QDoFhXuclzWV4SPXHHzZUlfW65JDwB1CyGMJDbiyyZYEemvwmw5fm/FEAoYANKHCRL8YE
+	5qN6Pknn0YU0EGA5BvliT7jD8BQ4JwDpha6hz4ZNC5
+X-Received: by 2002:a05:600c:a402:b0:490:3d62:eb0 with SMTP id 5b1f17b1804b1-490426d7019mr161471255e9.24.1779655046634;
+        Sun, 24 May 2026 13:37:26 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.23
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4904526ca50sm187279145e9.2.2026.05.24.13.37.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 24 May 2026 13:37:24 -0700 (PDT)
+        Sun, 24 May 2026 13:37:26 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH 00/13] e2fsprogs: Add support for dirdata feature
-Date: Sun, 24 May 2026 16:36:45 -0400
-Message-ID: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
+	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+	Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH 01/13] ext2fs: Consolidate duplicate min/max macros
+Date: Sun, 24 May 2026 16:36:46 -0400
+Message-ID: <20260524203658.12406-2-artem.blagodarenko@gmail.com>
 X-Mailer: git-send-email 2.43.7
+In-Reply-To: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
+References: <20260524203658.12406-1-artem.blagodarenko@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -71,112 +76,78 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add support for the INCOMPAT_DIRDATA feature, which allows
-storing extra metadata in directory entries beyond the file
-name. This provides a unified mechanism for extending directory
-entries with additional information, including:
+Move duplicate min() and max() macro definitions from individual source
+files (alloc.c, fallocate.c, rehash.c) to the common ext2fs.h header.
 
-- hashes for encryption + casefold support
-- unique 128-bit file identifiers
-- high bits of 64-bit inode numbers
-- future directory entry extensions
+Add include guards to prevent redefinition warnings when files define
+their own versions of these macros before including ext2fs.h.
 
-If directory hashes were stored before the dirdata feature was
-introduced, the legacy hash format continues to be supported for
-backward compatibility.
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ lib/ext2fs/alloc.c     | 2 --
+ lib/ext2fs/ext2fs.h    | 9 +++++++++
+ lib/ext2fs/fallocate.c | 1 -
+ misc/e4defrag.c        | 1 -
+ 4 files changed, 9 insertions(+), 4 deletions(-)
 
-This series adds e2fsprogs support for DIRDATA, including:
-
-- libext2fs: dirdata infrastructure and helper functions
-- e2fsck: validation, repair, and reporting support for
-  dirdata fields
-- debugfs: display of dirdata fields in directory listings
-  with the -ld option for testing and debugging
-- mke2fs/tune2fs: user-visible support for enabling the
-  dirdata filesystem feature
-
-The series also adds regression tests covering directory
-optimization, duplicate directory entries, and dirdata field
-preservation to ensure metadata integrity and prevent directory
-corruption.
-
-Artem Blagodarenko (13):
-  ext2fs: Consolidate duplicate min/max macros
-  ext2fs: Clean up directory entry handling APIs
-  ext2fs: dirdata infrastructure and core functions
-  libext2fs: add helper for dx_root_info lookup
-  e2fsck: pass2 dirdata validation and repair
-  e2fsck: dirdata message formatting and pass3 support
-  e2fsck: directory rehashing with dirdata support
-  debugfs: add dirdata display support
-  mke2fs/tune2fs: add dirdata feature support
-  e2fsck: add test suite for directory optimization
-  e2fsck: add test suite for duplicate directory entries
-  e2fsck: add test suite for dirdata-specific optimization
-  ext2fs: share list_dirdata code
-
- debugfs/debugfs.8.in              |   7 +-
- debugfs/htree.c                   |   2 +-
- debugfs/ls.c                      |  14 +-
- debugfs/ncheck.c                  |   3 +
- e2fsck/message.c                  |   2 +
- e2fsck/pass1.c                    |   4 +-
- e2fsck/pass2.c                    | 151 +++++++--
- e2fsck/pass3.c                    |   7 +
- e2fsck/problem.c                  |   5 +
- e2fsck/problem.h                  |   3 +
- e2fsck/rehash.c                   | 235 +++++++++-----
- lib/ext2fs/alloc.c                |   2 -
- lib/ext2fs/dirblock.c             |  84 +++++
- lib/ext2fs/ext2_fs.h              |  47 ++-
- lib/ext2fs/ext2fs.h               |  32 +-
- lib/ext2fs/fallocate.c            |   1 -
- lib/ext2fs/inline_data.c          |  14 +-
- lib/ext2fs/lfsck.h                |  47 +++
- lib/ext2fs/link.c                 |  11 +-
- lib/ext2fs/newdir.c               |   4 +-
- misc/e4defrag.c                   |   1 -
- misc/mke2fs.c                     |   1 +
- misc/tune2fs.c                    |   2 +
- tests/f_dir_optimize/expect.1     | 511 ++++++++++++++++++++++++++++++
- tests/f_dir_optimize/expect.2     | 511 ++++++++++++++++++++++++++++++
- tests/f_dir_optimize/image.gz     | Bin 0 -> 102520 bytes
- tests/f_dir_optimize/name         |   1 +
- tests/f_dir_optimize/script       |  36 +++
- tests/f_dirdata_dup_de/expect.1   |  37 +++
- tests/f_dirdata_dup_de/expect.2   |   7 +
- tests/f_dirdata_dup_de/image.gz   | Bin 0 -> 79307 bytes
- tests/f_dirdata_dup_de/name       |   1 +
- tests/f_dirdata_mfid/expect.1     |  35 ++
- tests/f_dirdata_mfid/expect.2     |   7 +
- tests/f_dirdata_mfid/image.gz     | Bin 0 -> 116296 bytes
- tests/f_dirdata_mfid/name         |   1 +
- tests/f_dirdata_optimize/expect.1 |  10 +
- tests/f_dirdata_optimize/expect.2 |   7 +
- tests/f_dirdata_optimize/image.gz | Bin 0 -> 32121 bytes
- tests/f_dirdata_optimize/name     |   1 +
- tests/f_dirdata_optimize/script   |   3 +
- 41 files changed, 1714 insertions(+), 133 deletions(-)
- create mode 100644 lib/ext2fs/lfsck.h
- create mode 100644 tests/f_dir_optimize/expect.1
- create mode 100644 tests/f_dir_optimize/expect.2
- create mode 100644 tests/f_dir_optimize/image.gz
- create mode 100644 tests/f_dir_optimize/name
- create mode 100644 tests/f_dir_optimize/script
- create mode 100644 tests/f_dirdata_dup_de/expect.1
- create mode 100644 tests/f_dirdata_dup_de/expect.2
- create mode 100644 tests/f_dirdata_dup_de/image.gz
- create mode 100644 tests/f_dirdata_dup_de/name
- create mode 100644 tests/f_dirdata_mfid/expect.1
- create mode 100644 tests/f_dirdata_mfid/expect.2
- create mode 100644 tests/f_dirdata_mfid/image.gz
- create mode 100644 tests/f_dirdata_mfid/name
- create mode 100644 tests/f_dirdata_optimize/expect.1
- create mode 100644 tests/f_dirdata_optimize/expect.2
- create mode 100644 tests/f_dirdata_optimize/image.gz
- create mode 100644 tests/f_dirdata_optimize/name
- create mode 100644 tests/f_dirdata_optimize/script
-
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 3fd921679..ff29b888e 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -26,8 +26,6 @@
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+ 
+-#define min(a, b) ((a) < (b) ? (a) : (b))
+-
+ #undef DEBUG
+ 
+ #ifdef DEBUG
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index c4fcb10be..374b8289e 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -134,6 +134,15 @@ typedef struct ext2fs_struct_generic_bitmap_base *ext2fs_block_bitmap;
+ 
+ #define EXT2_FIRST_INODE(s)	EXT2_FIRST_INO(s)
+ 
++/*
++ * Utility macros
++ */
++#ifndef min
++#define min(a, b) ((a) < (b) ? (a) : (b))
++#endif
++#ifndef max
++#define max(a, b) ((a) > (b) ? (a) : (b))
++#endif
+ 
+ /*
+  * Badblocks list definitions
+diff --git a/lib/ext2fs/fallocate.c b/lib/ext2fs/fallocate.c
+index 1ef989cd3..82c18ab75 100644
+--- a/lib/ext2fs/fallocate.c
++++ b/lib/ext2fs/fallocate.c
+@@ -17,7 +17,6 @@
+ 
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
+-#define min(a, b) ((a) < (b) ? (a) : (b))
+ 
+ #undef DEBUG
+ 
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 68e937fdb..e07f28cf6 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -59,7 +59,6 @@
+ 	fprintf(stderr, "\t%s\n", (msg))
+ #define STATISTIC_ERR_MSG_WITH_ERRNO(msg)	\
+ 	fprintf(stderr, "\t%s:%s\n", (msg), strerror(errno))
+-#define min(x, y) (((x) > (y)) ? (y) : (x))
+ #define CALC_SCORE(ratio) \
+ 	((ratio) > 10 ? (80 + 20 * (ratio) / 100) : (8 * (ratio)))
+ /* Wrap up the free function */
 -- 
 2.43.7
 
