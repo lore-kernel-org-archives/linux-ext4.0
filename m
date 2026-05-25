@@ -1,235 +1,81 @@
-Received: from out30-112.freemail.mail.aliyun.com (out30-112.freemail.mail.aliyun.com [115.124.30.112])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0FB42C375A;
-	Mon, 25 May 2026 02:56:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.112
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EFA63A9D9B;
+	Mon, 25 May 2026 07:07:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779677775; cv=none; b=I5WfuaZ+oVCREixnoRe6jOOXV7a/DINDgmI4H2MHxvcZ6oPbiQGDoTw/KUsVieYnrMAHlvXmM73YKzPcMHTfA3+LnLWFykEz3b5VnHhyuRcrI+VZXTRQ/2PgWVLAoJ1v6NHRVyI8No90cf09y+uVsbhpTDJz8yY1Qr0kjUKYQOA=
+	t=1779692843; cv=none; b=md0gmzH3fHdV8V8NtJFM4DohULQ9mu0S2hdrysxhhlXXKBQzdeWLRkAqbts3FduEE+eppUgJ+vn+pRfXncnFHUNCG+SUhsjgQwPOLfKefZqQOYGxW4aAKRr+lNaA/JRjeAwsMD+5KU90BHBPdtB9FbBeHHmU6WnN/YOTGybQddw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779677775; c=relaxed/simple;
-	bh=i7jqF7KB60rAj2AodsD9VTYn7Kz2HqOFrxwajLcDu48=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=SIqaMcAtkfUU3tPMKGRzUMGH/t9onAOdxjGoWPkubZwVofAQ5WYN1WD1QF4r+V4o6yVqhJLzsoX0YoDPf7xZe9kNNdCXqL2hjvptlcnWYD7Z4R4R4+J6MLxIBSdP8vwL5NGGFZ4odirXXTdT9h9ynPM5uIbeRB7+FFfSuqvaRQQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=q//9YEFE; arc=none smtp.client-ip=115.124.30.112
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1779692843; c=relaxed/simple;
+	bh=ZBgjeSkb2D8Jguda1BBstvS/A0xeXLPEkhHpXqFE/HQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=tVoVbCo8r0ode/vY4zaqHmOzaCYgfBhjCemFkZyoRhjOf4fBJDD2+EVd1ElXs0hcQqO5pam/Q6JgdJQPbI8ESyAIQNCYjM8vwg5Sj+rvGlBWU8Qn3oWgX6BoN7Gl1Z2D436H6ERiYD4z8hes93Ntc2bMoYY29meGgL+ydoJjh2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=xbnspB3h; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="q//9YEFE"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1779677768; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=uKSeg2Nza4neRSzanFebtUm6bwcAHZPjsw3+MJtuG0c=;
-	b=q//9YEFEH8b+fCC/C8Kuas4QyBxwuuj/03udbzWbkC+LVfvrYtfxT6siAQd+jr+l7tF046Ajl2mjD/HNR6R8S/RurZ54sUsGc1c8sdUz5PcRLFkmWe7Lm2F1r8u8HvBHq3Z/Y6SCygvwCoeqsmMbxYPRWzkIVGIllayfdXfMe98=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R181e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033032089153;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=12;SR=0;TI=SMTPD_---0X3Ty9G._1779677440;
-Received: from 30.221.145.59(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0X3Ty9G._1779677440 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Mon, 25 May 2026 10:50:42 +0800
-Message-ID: <a5756f39-31c8-4e8b-939f-f498726c7d8a@linux.alibaba.com>
-Date: Mon, 25 May 2026 10:50:40 +0800
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="xbnspB3h"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=+d7PX2NcjtUHzTFbEE62EesXrZp/XO3eOjdCPHwyr1E=; b=xbnspB3hNQWkc/6HM/ZdrUqFGU
+	tzi1VdMadrQOnC9b1ZZVGnj1wf5SOiT10McOxugYIkHgrZpPARlJDIjfL4LUw9I7o9fSBn1+gKwdk
+	n7p4bYoZiwD4kvukPUIbnGEn00i52rDjrfhOgOx9wd5XgI+x2VReVBJ+F2M83cnt00v0xFCso1auj
+	kVZwNEeE9Yzd/fOKiOtTjCBJJ0XVyv96DvBMTA1O5G4FTPcvFFl8CjTGNTyA51TjO6AtnaajxBCdk
+	YFMcwx0CZ0VJnkZb6X6tvXGuTEqVBIkJtq492fT02h3n1vzgKgLMmEH/BjMAcSOrUPcgj4ZrRNsSH
+	vyZJaemg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wRPPF-0000000GUnL-2wj9;
+	Mon, 25 May 2026 07:07:21 +0000
+Date: Mon, 25 May 2026 00:07:21 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anand Jain <asj@kernel.org>
+Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-f2fs@vger.kernel.org, amir73il@gmail.com, zlang@redhat.com,
+	hch@infradead.org
+Subject: Re: [PATCH v5 01/10] fstests: add _loop_image_create_clone() helper
+Message-ID: <ahP1KZ6aCNVqn__m@infradead.org>
+References: <cover.1779367627.git.asj@kernel.org>
+ <7b0edc0be51fd3ba222a4d0f204cd406c98085d8.1779367627.git.asj@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 03/17] ocfs2/dlm: replace __get_free_page() with kmalloc()
-To: "Mike Rapoport (Microsoft)" <rppt@kernel.org>,
- Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
- akpm <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
- linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
- linux-ext4@vger.kernel.org, linux-mm@kvack.org
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-3-275e36a83f0e@kernel.org>
-From: Joseph Qi <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20260523-b4-fs-v1-3-275e36a83f0e@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <7b0edc0be51fd3ba222a4d0f204cd406c98085d8.1779367627.git.asj@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-
-
-On 5/24/26 1:54 AM, Mike Rapoport (Microsoft) wrote:
-> A few places in ocsfs2 allocate temporary buffers with __get_free_page() or
-> get_zeroed_page().
+On Thu, May 21, 2026 at 08:54:51PM +0800, Anand Jain wrote:
+> Introduce _loop_image_create_clone() and _loop_image_destroy() to mkfs an
+> image file and clone it to another image file, and attach a loop device to
+> them. And its destroy part.
 > 
-> kmalloc() is a better API for such use and it also provides better
-> scalability and more debugging possibilities.
-> 
-> Replace use of __get_free_page() and get_zeroed_page() with kmalloc() and
-> kzalloc() respectively.
-> 
-> Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
-
-Looks fine.
-Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-
+> Signed-off-by: Anand Jain <asj@kernel.org>
 > ---
->  fs/ocfs2/dlm/dlmdebug.c    | 24 +++++++++---------------
->  fs/ocfs2/dlm/dlmdomain.c   |  8 +++++---
->  fs/ocfs2/dlm/dlmmaster.c   |  5 ++---
->  fs/ocfs2/dlm/dlmrecovery.c |  4 ++--
->  4 files changed, 18 insertions(+), 23 deletions(-)
+>  common/rc | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 50 insertions(+)
 > 
-> diff --git a/fs/ocfs2/dlm/dlmdebug.c b/fs/ocfs2/dlm/dlmdebug.c
-> index fe4fdd09bae3..6ca8b3b68eef 100644
-> --- a/fs/ocfs2/dlm/dlmdebug.c
-> +++ b/fs/ocfs2/dlm/dlmdebug.c
-> @@ -260,10 +260,10 @@ void dlm_print_one_mle(struct dlm_master_list_entry *mle)
->  {
->  	char *buf;
->  
-> -	buf = (char *) get_zeroed_page(GFP_ATOMIC);
-> +	buf = kzalloc(PAGE_SIZE, GFP_ATOMIC);
->  	if (buf) {
->  		dump_mle(mle, buf, PAGE_SIZE - 1);
-> -		free_page((unsigned long)buf);
-> +		kfree(buf);
->  	}
+> diff --git a/common/rc b/common/rc
+> index 9632b211b58f..a2ee23c45003 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -1503,6 +1503,56 @@ _scratch_resvblks()
+>  	esac
 >  }
 >  
-> @@ -280,7 +280,7 @@ static struct dentry *dlm_debugfs_root;
->  /* begin - utils funcs */
->  static int debug_release(struct inode *inode, struct file *file)
->  {
-> -	free_page((unsigned long)file->private_data);
-> +	kfree(file->private_data);
->  	return 0;
->  }
->  
-> @@ -327,17 +327,15 @@ static int debug_purgelist_open(struct inode *inode, struct file *file)
->  	struct dlm_ctxt *dlm = inode->i_private;
->  	char *buf = NULL;
->  
-> -	buf = (char *) get_zeroed_page(GFP_NOFS);
-> +	buf = kzalloc(PAGE_SIZE, GFP_NOFS);
->  	if (!buf)
-> -		goto bail;
-> +		return -ENOMEM;
->  
->  	i_size_write(inode, debug_purgelist_print(dlm, buf, PAGE_SIZE - 1));
->  
->  	file->private_data = buf;
->  
->  	return 0;
-> -bail:
-> -	return -ENOMEM;
->  }
->  
->  static const struct file_operations debug_purgelist_fops = {
-> @@ -384,17 +382,15 @@ static int debug_mle_open(struct inode *inode, struct file *file)
->  	struct dlm_ctxt *dlm = inode->i_private;
->  	char *buf = NULL;
->  
-> -	buf = (char *) get_zeroed_page(GFP_NOFS);
-> +	buf = kzalloc(PAGE_SIZE, GFP_NOFS);
->  	if (!buf)
-> -		goto bail;
-> +		return -ENOMEM;
->  
->  	i_size_write(inode, debug_mle_print(dlm, buf, PAGE_SIZE - 1));
->  
->  	file->private_data = buf;
->  
->  	return 0;
-> -bail:
-> -	return -ENOMEM;
->  }
->  
->  static const struct file_operations debug_mle_fops = {
-> @@ -775,17 +771,15 @@ static int debug_state_open(struct inode *inode, struct file *file)
->  	struct dlm_ctxt *dlm = inode->i_private;
->  	char *buf = NULL;
->  
-> -	buf = (char *) get_zeroed_page(GFP_NOFS);
-> +	buf = kzalloc(PAGE_SIZE, GFP_NOFS);
->  	if (!buf)
-> -		goto bail;
-> +		return -ENOMEM;
->  
->  	i_size_write(inode, debug_state_print(dlm, buf, PAGE_SIZE - 1));
->  
->  	file->private_data = buf;
->  
->  	return 0;
-> -bail:
-> -	return -ENOMEM;
->  }
->  
->  static const struct file_operations debug_state_fops = {
-> diff --git a/fs/ocfs2/dlm/dlmdomain.c b/fs/ocfs2/dlm/dlmdomain.c
-> index dc9da9133c8e..97bb9400e24b 100644
-> --- a/fs/ocfs2/dlm/dlmdomain.c
-> +++ b/fs/ocfs2/dlm/dlmdomain.c
-> @@ -63,7 +63,7 @@ static inline void byte_copymap(u8 dmap[], unsigned long smap[],
->  static void dlm_free_pagevec(void **vec, int pages)
->  {
->  	while (pages--)
-> -		free_page((unsigned long)vec[pages]);
-> +		kfree(vec[pages]);
->  	kfree(vec);
->  }
->  
-> @@ -75,9 +75,11 @@ static void **dlm_alloc_pagevec(int pages)
->  	if (!vec)
->  		return NULL;
->  
-> -	for (i = 0; i < pages; i++)
-> -		if (!(vec[i] = (void *)__get_free_page(GFP_KERNEL)))
-> +	for (i = 0; i < pages; i++) {
-> +		vec[i] = kmalloc(PAGE_SIZE, GFP_KERNEL);
-> +		if (!vec[i])
->  			goto out_free;
-> +	}
->  
->  	mlog(0, "Allocated DLM hash pagevec; %d pages (%lu expected), %lu buckets per page\n",
->  	     pages, (unsigned long)DLM_HASH_PAGES,
-> diff --git a/fs/ocfs2/dlm/dlmmaster.c b/fs/ocfs2/dlm/dlmmaster.c
-> index 93eff38fdadd..aee3b4c56dcc 100644
-> --- a/fs/ocfs2/dlm/dlmmaster.c
-> +++ b/fs/ocfs2/dlm/dlmmaster.c
-> @@ -2548,7 +2548,7 @@ static int dlm_migrate_lockres(struct dlm_ctxt *dlm,
->  
->  	/* preallocate up front. if this fails, abort */
->  	ret = -ENOMEM;
-> -	mres = (struct dlm_migratable_lockres *) __get_free_page(GFP_NOFS);
-> +	mres = kmalloc(PAGE_SIZE, GFP_NOFS);
->  	if (!mres) {
->  		mlog_errno(ret);
->  		goto leave;
-> @@ -2725,8 +2725,7 @@ static int dlm_migrate_lockres(struct dlm_ctxt *dlm,
->  	if (wake)
->  		wake_up(&res->wq);
->  
-> -	if (mres)
-> -		free_page((unsigned long)mres);
-> +	kfree(mres);
->  
->  	dlm_put(dlm);
->  
-> diff --git a/fs/ocfs2/dlm/dlmrecovery.c b/fs/ocfs2/dlm/dlmrecovery.c
-> index 128872bd945d..9b97bf73df22 100644
-> --- a/fs/ocfs2/dlm/dlmrecovery.c
-> +++ b/fs/ocfs2/dlm/dlmrecovery.c
-> @@ -837,7 +837,7 @@ int dlm_request_all_locks_handler(struct o2net_msg *msg, u32 len, void *data,
->  	}
->  
->  	/* this will get freed by dlm_request_all_locks_worker */
-> -	buf = (char *) __get_free_page(GFP_NOFS);
-> +	buf = kmalloc(PAGE_SIZE, GFP_NOFS);
->  	if (!buf) {
->  		kfree(item);
->  		dlm_put(dlm);
-> @@ -933,7 +933,7 @@ static void dlm_request_all_locks_worker(struct dlm_work_item *item, void *data)
->  		}
->  	}
->  leave:
-> -	free_page((unsigned long)data);
-> +	kfree(data);
->  }
->  
->  
-> 
+> +_loop_image_create_clone()
+> +{
+
+Please add a comment explaining the function and how to use it.
+
+> +_loop_image_destroy()
+> +{
+
+Same.
 
