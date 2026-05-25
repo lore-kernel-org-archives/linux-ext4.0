@@ -1,229 +1,159 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C680188CC9
-	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 16:30:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9E213F5BF7
+	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 17:07:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779726659; cv=none; b=ch5mIewHB3edQTh3ei/0Zu2AHTY0hWsn6doYvfL29E0tIqdxIu6iZI6UirksauZGcdhOoLYr+UV776Hd2ZTJYiFtq1gjAOX+rwR5v0ckhkN4ZJEFbBCfEbFDNyCqYlULtBD+//o9uUhdnhSbQKvO4FCTv4hxHeH4VPsbn2rZYfU=
+	t=1779728864; cv=none; b=Ts6ZQsXwOunHBkwfPs7uUZyhnBEDEMqBLXk+jCoaDQ8FhddrwED1ZForKJs0Mvo1LYLhOxP9SNMBjM7OtQo//MhDwNlInVtQVBBNfDA581Vt9aai1RE/Zy42A5GKo17ETnfYb+PDe/a69tNL83NUAvAr1NOledUAAUg+/PHqh4U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779726659; c=relaxed/simple;
-	bh=lyni26bqCKiyAYN+nxmIpSx0kgLFaoeBvUmMKTcxDbk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=HYwYg9F9BpLMfmx36L2BRcRcG48EdEHtkprX8ji/PiKnZmMIJISLjYPEMvamR7zZpIS5fhQfDXWCeEij/vtyYagsZ2tKXVRAc+WIVbtVSwZ3yd8r8Bl41eoflNHexgvDtLbLw5OhPCrPl/6zjjR7dZ8DwaQdBfJ0FbjAemNlJTA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=sl1nhFXx; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=rhn0t5Ty; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=B0C0GM9k; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CB3PCLOu; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1779728864; c=relaxed/simple;
+	bh=EGS2JGmyeWkbOCbREIX2qtEvE51ujoNsVgCL48xBWXI=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=DRyQZZv1aY7a0zZF3aHThVtaG5uIp32DRCPD7PoaqXTi2NrtXBpXqCvpOMsH1R/NcpKJzwCPS1PI9xtvqbDYN+OL2nKDaxTvkSYZv4FLBhtUG2bQGbQVBeWkH2g3+P12zIN6njPhKA93MHXRAPb8hZq3q2DqDxc1NlRB6ITDgoY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=YipJI8oN; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=B4IY6GkQ; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="sl1nhFXx";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="rhn0t5Ty";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="B0C0GM9k";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CB3PCLOu"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id EE5706A8E0;
-	Mon, 25 May 2026 16:30:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779726656; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="YipJI8oN";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="B4IY6GkQ"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1779728862;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=6Kwrc2rdXxXCM0qZVoF2fhWqnmMXoqTRYHLn9OuvgcU=;
-	b=sl1nhFXxOY75f+OlTXuhbG+SlqWQv/KnSVGKNVAGhgiaJW9Exrpu7w5MkueYxTfflagP3m
-	wnVJYMv6Z1FTJFNUs6D6Gc9KgLuat/2lj/u2A9eZvQJm60MQZXuhATD1ZlyPIghkg2ypJ1
-	trmj6gELOrv6s/3XQM6wvrsXSLQsVJw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779726656;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=6Kwrc2rdXxXCM0qZVoF2fhWqnmMXoqTRYHLn9OuvgcU=;
-	b=rhn0t5TyuHA3/UnQilCsB0Qb0nfkPVVAzpnytIznecAH/NA1uMyNArVpGMg+yf3PDEmLgR
-	80fW1a2J1rl/HAAQ==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779726655; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=6Kwrc2rdXxXCM0qZVoF2fhWqnmMXoqTRYHLn9OuvgcU=;
-	b=B0C0GM9kLy01AkLd/3wAMi1eUndKDVYm+Kvww5uvUnZGbYPH3UO8eYLGuojc6pc5buVSHb
-	94HJ2OIWT08UIauryX88itzOoKNFH2Ic2Y7TkzQazQuelPZrSpiTj6SR2rKY+VGlJG7hVC
-	QHmMJQ+DuGoXBcT0levE2kOEaFL2FKM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779726655;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=6Kwrc2rdXxXCM0qZVoF2fhWqnmMXoqTRYHLn9OuvgcU=;
-	b=CB3PCLOurWbuSWtcPQ4zyG4OY0HK85nN8MnZptd6KT6WwMz8bu5r/TAIuHZiA7DJa85RvA
-	uILlG+mVp+Y1Q9Aw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DE4CF59D33;
-	Mon, 25 May 2026 16:30:55 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id oKo/Nj95FGojLQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 25 May 2026 16:30:55 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 21473A08D7; Mon, 25 May 2026 18:30:40 +0200 (CEST)
-Date: Mon, 25 May 2026 18:30:40 +0200
-From: Jan Kara <jack@suse.cz>
-To: Ashwin Gundarapu <linuxuser509@zohomail.in>
-Cc: jack <jack@suse.com>, linux-ext4 <linux-ext4@vger.kernel.org>, 
-	linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2] ext2: Remove deprecated DAX support
-Message-ID: <fxaiddid432ivmkcsqmzeovemmnkyh37nfgwn4xurxb2wx5u5y@lhkjib3tmd7e>
-References: <19e587e5143.434d5026117452.233431645221906532@zohomail.in>
+	bh=QQ8f0KL2cvJbeqS1wq3el83kZ9Z8vH79ZAL6r1+vgks=;
+	b=YipJI8oNzifyjGj3dV+yaajxgC8T0MPi5roGT47MvEIUp/68Ht8CCY5gXzIdvV2z6mIDlF
+	MwSM5DgqQijYRr6kXZzL83ayYKMFgbyAB5YSl2d7ETTr/HShRQ4JqUd3C07VRRzD6dBJq4
+	DYVCsN1lIrZNI858WbcWI5fwjx7vO8c=
+Received: from mail-yw1-f200.google.com (mail-yw1-f200.google.com
+ [209.85.128.200]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-70-kZ4zDLViNluHtvugbKm9fA-1; Mon, 25 May 2026 13:07:40 -0400
+X-MC-Unique: kZ4zDLViNluHtvugbKm9fA-1
+X-Mimecast-MFC-AGG-ID: kZ4zDLViNluHtvugbKm9fA_1779728859
+Received: by mail-yw1-f200.google.com with SMTP id 00721157ae682-7c485e98f8fso152655877b3.1
+        for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 10:07:39 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1779728859; x=1780333659; darn=vger.kernel.org;
+        h=mime-version:user-agent:content-transfer-encoding:references
+         :in-reply-to:date:cc:to:from:subject:message-id:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=QQ8f0KL2cvJbeqS1wq3el83kZ9Z8vH79ZAL6r1+vgks=;
+        b=B4IY6GkQoeA6mxx8zFvjIHv1rw5Br7ObA6BH4M64VQ4WU6Hqk1GAUiuxBN81Ysi8fR
+         ZwDRoKuZnH2y3aD88NE7jRHEBpMqrXc8vy5r5h3UTA+HgtWjx4fq5ehhF5VbbP+7movw
+         CLTuGQqyAkdTSdUBZyjv7Emf0tHIBhS00MOl7s7WeYGyoWn2jsXYdpP66s0MrFJJG4ea
+         3IivF1Xp8tUen58bukrpcQRp3jpeOEkaWT7Hw7p7lyR6GpmYkqVAJNcuLG/MJacz00Y6
+         tRDq2BUx5w3dsFFV76OzIuQ2jHxDC7lL0r/GBonXJnS4WDQun1sK6026uV0PscSu56e+
+         ohsQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779728859; x=1780333659;
+        h=mime-version:user-agent:content-transfer-encoding:references
+         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=QQ8f0KL2cvJbeqS1wq3el83kZ9Z8vH79ZAL6r1+vgks=;
+        b=KivCqjdB6pJakfWicr0I/r2PqUlSymDciodC5Jx+SUru3pMSRmjqLz3Scsea+/yEV6
+         lMaoBUZ99Mglu7SW7DvfQRpAnkVumyf3did0P+S9mX6dTby8PAyk/6AWu6JjYcSt1SeT
+         95ciRofWPkvrc7T8w46NkSh3WYzT+8HEqVIcImHsoLbQC6CSeiwu4bK+8OUawW3Fr8Et
+         q5IlsT6aSnGAB6eB+5gLuQCRn5CNMCjWPo8Bxb3NCF1uZYqT/RwIKUT8P2jcKqkFfsxb
+         o7xsq/YQpYEziGE+YNHELAU6vfwqjB3JOnU2KhwYqmfIITJUVYtPfrIFOZqlN7AS9KHn
+         uCWw==
+X-Forwarded-Encrypted: i=1; AFNElJ/inU4M1VaJsFpHhT8BBGpXteze2XSulb5R29QkHN+pho0TR/4kqW8AsxGB2dRrKPaZFjcRrzt9Pl7m@vger.kernel.org
+X-Gm-Message-State: AOJu0Yxde4pCVdv1X1tKb2DpbHEFTRgKAcgcjUPXCGdCq1rKWHVz4YXX
+	0nWW1fyBoIfOoNYlBS29q6OwrlwsyQhX33Ior3GrWkuio+6hJ4+CbVNlReEXFk6hLMPObPSH7AB
+	rnDuYfmrZPIh+vJIox+shcigBLpPkwcpFbLvN66nOUnIHMwPJAILPh5GDLAc/XUc=
+X-Gm-Gg: Acq92OF/rF7U+Dy7NWj5QJ/m2z5vyRWU1pJN7wNrfZl3CRtF9Cl4+vGpR3WZD2yhB8Z
+	7720owvHSwfb13OKeOBQYV+coi9h11WMiNp5xynd3feiWPLBUwaKpa49NjQXYRy11NZ4lxC1AVn
+	2Rts2HZR3nSFqH+t65YQaDcunB/+kjzDhdnw64ns/Vxcc7SNbaW9yZfz92NPjBwx5TXmbW8xL0j
+	qRuxYzMbiyO1Eeuv0aSJIpMKBjdDo1csjYT+rVRUIyvG67hxiIrzjkDrXjcNTeRAvFRSGqJbBuH
+	QQw/pPbRy8Ux7+8UctdBEjkI7V2Q8hbCqTGRJuz1YTkjmWfg82+YzBdU8mVPL6Br9Fo4e9Ei/OX
+	vNrkvTgcUF2DrpRbm2P8yYJEg3KDVEj8hpz3/xf/sr6PHnOB1c78x
+X-Received: by 2002:a05:690c:3708:b0:7bf:9648:8c5c with SMTP id 00721157ae682-7d3345da2e5mr155237697b3.18.1779728859430;
+        Mon, 25 May 2026 10:07:39 -0700 (PDT)
+X-Received: by 2002:a05:690c:3708:b0:7bf:9648:8c5c with SMTP id 00721157ae682-7d3345da2e5mr155237227b3.18.1779728858828;
+        Mon, 25 May 2026 10:07:38 -0700 (PDT)
+Received: from li-4c4c4544-0032-4210-804c-c3c04f423534.ibm.com ([2600:1700:6476:1430::29])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-7d389813ea8sm48480087b3.4.2026.05.25.10.07.35
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 25 May 2026 10:07:38 -0700 (PDT)
+Message-ID: <1bb537f6dc36b00788b613fb8f71579478418457.camel@redhat.com>
+Subject: Re: [PATCH 04/17] nilfs2: replace get_zeroed_page() with kzalloc()
+From: Viacheslav Dubeyko <vdubeyko@redhat.com>
+To: "Mike Rapoport (Microsoft)" <rppt@kernel.org>, Jan Kara <jack@suse.com>,
+  Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>, Joseph Qi
+ <joseph.qi@linux.alibaba.com>,  Ryusuke Konishi
+ <konishi.ryusuke@gmail.com>, Viacheslav Dubeyko <slava@dubeyko.com>, Trond
+ Myklebust	 <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Chuck
+ Lever	 <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown	 <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
+ Ngo	 <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Alexander Viro	
+ <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara
+	 <jack@suse.cz>, Dave Kleikamp <shaggy@kernel.org>, Theodore Ts'o
+ <tytso@mit.edu>,  Miklos Szeredi <miklos@szeredi.hu>, Andreas Hindborg
+ <a.hindborg@kernel.org>, Breno Leitao <leitao@debian.org>,  Kees Cook
+ <kees@kernel.org>, "Tigran A. Aivazian" <aivazian.tigran@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org
+Date: Mon, 25 May 2026 10:07:34 -0700
+In-Reply-To: <20260523-b4-fs-v1-4-275e36a83f0e@kernel.org>
+References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
+	 <20260523-b4-fs-v1-4-275e36a83f0e@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.0 (3.60.0-1.fc44app2) 
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <19e587e5143.434d5026117452.233431645221906532@zohomail.in>
-X-Spam-Score: -3.80
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_HAS_DN(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_THREE(0.00)[4];
-	TO_DN_ALL(0.00)[];
-	internal_greylist_whitelist(0.00)[10.150.64.97];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,zohomail.in:email]
-X-Spam-Flag: NO
 
-On Sun 24-05-26 11:08:53, Ashwin Gundarapu wrote:
-> 
-> DAX support in ext2 was deprecated in commit d5a2693f93e4
-> ("ext2: Deprecate DAX") with a removal deadline of end of 2025.
-> Remove all DAX code from ext2 as scheduled.
-> 
-> This removes the DAX mount option, IOMAP DAX support, DAX file
-> operations, DAX address_space_operations, and the DAX fault handler.
-> 
-> Signed-off-by: Ashwin Gundarapu <linuxuser509@zohomail.in>
+On Sat, 2026-05-23 at 20:54 +0300, Mike Rapoport (Microsoft) wrote:
+> nilfs_ioctl_wrap_copy() allocates a temporary buffer with
+> get_zeroed_page().
+>=20
+> kzalloc() is a better API for such use and it also provides better
+> scalability and more debugging possibilities.
+>=20
+> Replace use of get_zeroed_page() with kzalloc().
+>=20
+> Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
 > ---
-> v2: Removed unused sbi variable and fixed indentation as reported
->     by kernel test robot.
-
-Thanks for the patch. Some style nits below.
-
->  static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
->  {
-> -#ifdef CONFIG_FS_DAX
-> -	if (IS_DAX(iocb->ki_filp->f_mapping->host))
-> -		return ext2_dax_read_iter(iocb, to);
-> -#endif
-> +
-
-Stray empty line here.
-
->  	if (iocb->ki_flags & IOCB_DIRECT)
->  		return ext2_dio_read_iter(iocb, to);
->  
-> @@ -297,10 +188,7 @@ static ssize_t ext2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
->  
->  static ssize_t ext2_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
->  {
-> -#ifdef CONFIG_FS_DAX
-> -	if (IS_DAX(iocb->ki_filp->f_mapping->host))
-> -		return ext2_dax_write_iter(iocb, from);
-> -#endif
-> +
-
-... and here.
-
->  	if (iocb->ki_flags & IOCB_DIRECT)
->  		return ext2_dio_write_iter(iocb, from);
->  
-> @@ -321,7 +209,7 @@ const struct file_operations ext2_file_operations = {
->  #ifdef CONFIG_COMPAT
->  	.compat_ioctl	= ext2_compat_ioctl,
->  #endif
-> -	.mmap_prepare	= ext2_file_mmap_prepare,
-> +	.mmap_prepare = generic_file_mmap_prepare,
-
-Please indent this with tab the same way as other methods.
-
-> @@ -841,10 +818,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  
->  	iomap->flags = 0;
->  	iomap->offset = (u64)first_block << blkbits;
-> -	if (flags & IOMAP_DAX)
-> -		iomap->dax_dev = sbi->s_daxdev;
-> -	else
-> -		iomap->bdev = inode->i_sb->s_bdev;
-> +        iomap->bdev = inode->i_sb->s_bdev;
-
-Indented with spaces instead of tabs.
-
-> @@ -1290,12 +1248,8 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
->  
->  	inode_dio_wait(inode);
->  
-> -	if (IS_DAX(inode))
-> -		error = dax_truncate_page(inode, newsize, NULL,
-> -					  &ext2_iomap_ops);
-> -	else
-> -		error = block_truncate_page(inode->i_mapping,
-> -				newsize, ext2_get_block);
-> +        error = block_truncate_page(inode->i_mapping,
-> +                                newsize, ext2_get_block);
-
-Indented with spaces instead of tabs.
-
->  	if (error)
->  		return error;
->  
-
-...
-> +        case Opt_xip:
-> +                ext2_msg_fc(fc, KERN_ERR, "DAX support has been removed. Please use ext4 instead.");
-> +                return -EINVAL;
-
-Indented with spaces instead of tabs.
-
-> @@ -992,16 +974,8 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+>  fs/nilfs2/ioctl.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nilfs2/ioctl.c b/fs/nilfs2/ioctl.c
+> index e0a606643e87..b73f2c5d10f0 100644
+> --- a/fs/nilfs2/ioctl.c
+> +++ b/fs/nilfs2/ioctl.c
+> @@ -69,7 +69,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *nilf=
+s,
+>  	if (argv->v_index > ~(__u64)0 - argv->v_nmembs)
+>  		return -EINVAL;
+> =20
+> -	buf =3D (void *)get_zeroed_page(GFP_NOFS);
+> +	buf =3D kzalloc(PAGE_SIZE, GFP_NOFS);
+>  	if (unlikely(!buf))
+>  		return -ENOMEM;
+>  	maxmembs =3D PAGE_SIZE / argv->v_size;
+> @@ -107,7 +107,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *ni=
+lfs,
 >  	}
->  	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
->  
-> -	if (test_opt(sb, DAX)) {
-> -		if (!sbi->s_daxdev) {
-> -			ext2_msg(sb, KERN_ERR,
-> -				"DAX unsupported by block device. Turning off DAX.");
-> -			clear_opt(sbi->s_mount_opt, DAX);
-> -		} else if (blocksize != PAGE_SIZE) {
-> -			ext2_msg(sb, KERN_ERR, "unsupported blocksize for DAX\n");
-> -			clear_opt(sbi->s_mount_opt, DAX);
-> -		}
-> -	}
-> +
-> +
+>  	argv->v_nmembs =3D total;
+> =20
+> -	free_pages((unsigned long)buf, 0);
+> +	kfree(buf);
+>  	return ret;
+>  }
+> =20
 
-Stray empty lines.
+Makes sense to me.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
+
+Thanks,
+Slava.
+
