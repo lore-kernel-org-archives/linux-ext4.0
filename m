@@ -1,39 +1,39 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35F9B3E51DA
-	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 08:58:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C39423CFF71
+	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 08:58:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779699529; cv=none; b=PzHDxdzDuSSCJUQnwuEpblQL2CJeRcn2IRMNKegdVKagv8jDxKKUyNeDBs/59dn1lP1R44QWJI0pbdj3+AzqymjjOOmKIo5dkdskJ5/b/QW1A0JllWJe+wf+GykfZ9mivFYoZnrucGubdzxee8xH4pWmsqOW/R4x3lNTvEGgD18=
+	t=1779699533; cv=none; b=umLqmJmR06jfYhLSNvdixEQqL+/kshYjnaWvedPimMocCaPuH9uW7QD6cPCgQD/Kcsd8sqF3erfETsVr7fduGLHC4FUlfeOLOrK7V6D9UqCnSVDPPk7D7XZ2TcMOlZsGmh1Tn4dbAF3HV2UtZkESj8N79uzOcNfdgvfz5Q+SlFc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779699529; c=relaxed/simple;
-	bh=y/Yh2rI2ILcFNVagCjqbgSoT0wCD+uFAViLSLkYT0Ac=;
+	s=arc-20240116; t=1779699533; c=relaxed/simple;
+	bh=V0lvnGN4VQ3BCZdv7ZBs6E+Lwbc+lFVAMtQ5+XkEcsM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=FOEYaVG6goAgs0hlslHTDSUfNDnIMo/5YS1B2O/6pjX9Z7mz2D/Cd4ea5g+mOFRUYjyoYziGtSdlrvA6NdHu0rRZQ7YIGP2rDzWXiGwtpvFRdmdiKjHRdMUb51HLGyz+syLMa2D/ze+2QqnD9K7fLFkPTsBvtf09uoYTf88g6eU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=c1vE+Qjs6NHvsvLVlgqN113QQxMED2Eeua0/GKuKYzwwlAGTq1dZB5Uwe2eMUp0+8JTa8LGNAqaZpMWQVW1ZJGfu5xA+HYTE/F/xtncBiZPqeCHuRpaa45Y006EJUES32CuymEs8SvSuqrrnUzZ8LWcnHHToh0842G5/EHibzbQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 813F364B6E;
+	by smtp-out2.suse.de (Postfix) with ESMTPS id AF7687591F;
 	Mon, 25 May 2026 08:58:37 +0000 (UTC)
-Authentication-Results: smtp-out1.suse.de;
+Authentication-Results: smtp-out2.suse.de;
 	none
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7914959B70;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A385A59B6E;
 	Mon, 25 May 2026 08:58:37 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id qgVQHT0PFGrJbQAAD6G6ig
+	id DBjqJz0PFGrObQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Mon, 25 May 2026 08:58:37 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id C84C3A0A01; Mon, 25 May 2026 10:58:32 +0200 (CEST)
+	id D1D8FA0A79; Mon, 25 May 2026 10:58:32 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -42,9 +42,9 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	<linux-ext4@vger.kernel.org>,
 	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH v2 06/10] fat: Fix possibly missing inode write on fsync(2)
-Date: Mon, 25 May 2026 10:58:12 +0200
-Message-ID: <20260525085821.769119-16-jack@suse.cz>
+Subject: [PATCH v2 08/10] bfs: Fix possibly missing inode write on fsync(2)
+Date: Mon, 25 May 2026 10:58:14 +0200
+Message-ID: <20260525085821.769119-18-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260525085035.12891-1-jack@suse.cz>
 References: <20260525085035.12891-1-jack@suse.cz>
@@ -54,7 +54,7 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1396; i=jack@suse.cz; h=from:subject; bh=y/Yh2rI2ILcFNVagCjqbgSoT0wCD+uFAViLSLkYT0Ac=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqFA8ydvdxYfHwhIzR6Ohw6vT3OoShv3KsjqI04 1pgbKBlk6iJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCahQPMgAKCRCcnaoHP2RA 2bQRCACwXH91mn8xNPgxqrtYWKIpAIO5Q5DU40sm9tylX1H3tLTT1nuIhDiHeSjIDO/X5wsdUKu qqj0m471TXcwj0GDcofTs92oHVD4m4UoEXiez74uE+dS/9+S2pDdmS0pVJ78W8SLVo1nBtBACBF EdgERpIUMAmdJ2ZMQqqrsyQK41I+xBoz11d49/iaV94DDUeXuaOer5qAKv1rBJEWEv5UfpVzUm2 gXsViSvdF6AHF6BR/7DaqtslbAZft60JGSRHjkKgbAZ7bwyWElHtVP+UDiMV0IQWe94ah5QyK0+ R8sY1KKTNqe2PXdAIX863Rv+ApK8y7e5IzNHilxN8AAZy1p4
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1204; i=jack@suse.cz; h=from:subject; bh=V0lvnGN4VQ3BCZdv7ZBs6E+Lwbc+lFVAMtQ5+XkEcsM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqFA8zj7puw3ZNiHMJ4lWvAq3Ez2paSDbMPtrnM ZkiBPM5GcuJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCahQPMwAKCRCcnaoHP2RA 2eYDB/9RbglZpmZ6tdKkoZqavQ8lQy4Ba0P8qTy/Ucw45q+S50GTx1f7IUsttXhOkRY5NR4LQYR WqT+h6skd7lMz1ixA/Tnidz48IXoYIBcPPuTghzfM6tSnDyRlIykQ7LF4NdaUwQxThO1ZbHMWz0 1FK+y9G/m0dVyrVnL8Ujlj+uhPxqwAxbxiWttS8WLupogy7Q+M38hHPWVCb+8+wgLT+ABEk25Pw SoqibfJGYESzJhSsnAK8hCO4DhBQrV2eCwSUPD5j05DyuO8JYbxj05f2ENR6OsKghascUdqjaVO ltLPmyF+QKCcivQIOPF6Eybn5KmlK+mlXd/xx90/9zS4oexH
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Rspamd-Pre-Result: action=no action;
@@ -63,7 +63,7 @@ X-Rspamd-Pre-Result: action=no action;
 X-Spamd-Result: default: False [-4.00 / 50.00];
 	REPLY(-4.00)[];
 	TAGGED_RCPT(0.00)[]
-X-Rspamd-Queue-Id: 813F364B6E
+X-Rspamd-Queue-Id: AF7687591F
 X-Spam-Score: -4.00
 X-Rspamd-Pre-Result: action=no action;
 	module=replies;
@@ -78,41 +78,39 @@ inode's buffer on fsync(2).
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/fat/inode.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/bfs/inode.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
 
-diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-index 28f78df086ef..1ffbfee1a9ad 100644
---- a/fs/fat/inode.c
-+++ b/fs/fat/inode.c
-@@ -431,6 +431,9 @@ EXPORT_SYMBOL_GPL(fat_attach);
- void fat_detach(struct inode *inode)
- {
- 	struct msdos_sb_info *sbi = MSDOS_SB(inode->i_sb);
-+
-+	/* The block isn't associated with the inode anymore... */
-+	mmb_clear_inode_blk(&MSDOS_I(inode)->i_metadata_bhs);
- 	spin_lock(&sbi->inode_hash_lock);
- 	MSDOS_I(inode)->i_pos = 0;
- 	hlist_del_init(&MSDOS_I(inode)->i_fat_hash);
-@@ -906,7 +909,7 @@ static int __fat_write_inode(struct inode *inode, int wait)
- 				  &raw_entry->cdate, &raw_entry->ctime_cs);
- 	}
- 	spin_unlock(&sbi->inode_hash_lock);
--	mark_buffer_dirty(bh);
-+	mmb_mark_inode_buffer_dirty(bh, &MSDOS_I(inode)->i_metadata_bhs);
- 	err = 0;
- 	if (wait)
- 		err = sync_dirty_buffer(bh);
-@@ -925,7 +928,7 @@ static int fat_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		err = fat_clusters_flush(sb);
- 		mutex_unlock(&MSDOS_SB(sb)->s_lock);
- 	} else
--		err = __fat_write_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
-+		err = __fat_write_inode(inode, 0);
+diff --git a/fs/bfs/inode.c b/fs/bfs/inode.c
+index 19e49c8cf750..2506795c3f2c 100644
+--- a/fs/bfs/inode.c
++++ b/fs/bfs/inode.c
+@@ -136,7 +136,6 @@ static int bfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	unsigned long i_sblock;
+ 	struct bfs_inode *di;
+ 	struct buffer_head *bh;
+-	int err = 0;
  
- 	return err;
+ 	dprintf("ino=%08x\n", ino);
+ 
+@@ -164,15 +163,10 @@ static int bfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	di->i_eblock = cpu_to_le32(BFS_I(inode)->i_eblock);
+ 	di->i_eoffset = cpu_to_le32(i_sblock * BFS_BSIZE + inode->i_size - 1);
+ 
+-	mark_buffer_dirty(bh);
+-	if (wbc->sync_mode == WB_SYNC_ALL) {
+-		sync_dirty_buffer(bh);
+-		if (buffer_req(bh) && !buffer_uptodate(bh))
+-			err = -EIO;
+-	}
++	mmb_mark_inode_buffer_dirty(bh, &BFS_I(inode)->i_metadata_bhs);
+ 	brelse(bh);
+ 	mutex_unlock(&info->bfs_lock);
+-	return err;
++	return 0;
  }
+ 
+ static void bfs_evict_inode(struct inode *inode)
 -- 
 2.51.0
 
