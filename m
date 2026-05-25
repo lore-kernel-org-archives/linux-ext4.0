@@ -1,88 +1,97 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D31BF3ED5D9
-	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 15:43:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B78A37D128
+	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2026 16:10:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779723791; cv=none; b=CwZ/fIty/N+tukI0eMHgxGteDQ6+S32uo1KcRxURGbedtaazvS0d0Ebhh6yU0XovxCPxmg13X2R6/v7AMplBs/XXW0u9L0T0qiGb6O/2qb5siYy/XAmV73C870hgvlAdyCOeM1MLDcN838qP0VFLa6cHW9b+xidMQHDYA1gAvhA=
+	t=1779725406; cv=none; b=AfkA0YyO8O53qRHiWr9TzBsup/pl6qT0cvuF9ob5q1IyV38JWuJsOPR7xlWP46jsHm6rot9wfCO7wN8TYJv5ryTZGGIaiM7DAcWm0DCJXVwZ+ltd+WdovYcfQncyl6aI0OFCdUGEl+XXWNlXoEr9EYAsaZJqJoErI+tzg4eGRTI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779723791; c=relaxed/simple;
-	bh=Y4fYIPxehjCL0KYQ9k/3kcJZSfWg1/Q/QTzCuXZIQe4=;
+	s=arc-20240116; t=1779725406; c=relaxed/simple;
+	bh=LvkqacNHqa0yNV+l1XvGYAx4+tIi7P/ocAJeqA6BNpY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Oq0w7vz+8TaM1Vszdr/8NKBSf3IXQ4ata1YFBaLCJSHPuXaiHGztUTIyJFOJPoFm19KweLUeWLH/5VwHDV4ZPsmhfuHckmeoXPM03f1Zb2u6QA1oaxaeslxVVO5r3jnsMjY8i39uBNFhBJzt2oPSlAn+LzqEijSsQwQVw0wPsz8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rhIrntdq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=/kBvJAn9; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rhIrntdq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=/kBvJAn9; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=GIfT73cV8NbsKsCoXBeOJmUN4ls20Q6SaSyU+dOxg0YXzCZVVEUyApg4kk8oYSMOgr9x4tWOjQaUWWq4ltTfTCiA9DO0h13nQ1kH5l8Z8l3YRfcHiqMiyfbleItPrTnr2fq6YC2gJVzAh78bOwoZ5GlHI5cI8t5v+qa1j6S/68M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fO4rShwn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8CuABOSu; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=U/5mq3v3; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ePm/y7Ab; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rhIrntdq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="/kBvJAn9";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rhIrntdq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="/kBvJAn9"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fO4rShwn";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8CuABOSu";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="U/5mq3v3";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ePm/y7Ab"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 1BF096B1E2;
-	Mon, 25 May 2026 15:43:08 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id DF4BE67348;
+	Mon, 25 May 2026 16:10:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779723788; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1779725402; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wYojGRofkOehfu43x23RRnt9McKigI79nBMd3+tgQrQ=;
-	b=rhIrntdqHUK1pOYTx3b0YkXImT+nSWkoGG4kBuiH61z4VzDrAZ66stSEHhltIBK7iyuvxm
-	wwU0Vv9olSHsSlORUxdkG5ENxDNfK6zqdFIwip2QFfU6YAUwmlP0huaDKKPdNeIoqOtOaQ
-	Dia/z53slKAkx3mV4sz+UQ/lylojOm8=
+	bh=QzQMwNuzcTyDWDBbrPJPk+oWqpbFufgu+tYxwJzuBcA=;
+	b=fO4rShwnpRca/Qq5O5dxQ0BFI4I7JU8ZvchsxsYB2KOnAHYByNilhFy7ZhQmPdse2qBgxr
+	1EJdV6hae2L3Q2wFNfmlzmlMqdCDBUmuYcAsTvw0e7hEOeO/oASDzBJmlh8N0cUO6qkv/D
+	u/VTU/tIoYlYjbzA6JqzmS3QJkei470=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779723788;
+	s=susede2_ed25519; t=1779725402;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wYojGRofkOehfu43x23RRnt9McKigI79nBMd3+tgQrQ=;
-	b=/kBvJAn9bav5INNHNZ0DHHW38425x2p9RSBqA58L/tIQJt7Gy/T99dJ/4g15wU8BsJi2MU
-	viCFK/u9FTiiRDAg==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=rhIrntdq;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="/kBvJAn9"
+	bh=QzQMwNuzcTyDWDBbrPJPk+oWqpbFufgu+tYxwJzuBcA=;
+	b=8CuABOSukBh/JOGoxdhoaM6XBagg0YJ4CgJiNPWcgimpcpAHRDawAfN6EsFSfMjXWRl/9H
+	fQS3Dit/JgMtZyBw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="U/5mq3v3";
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="ePm/y7Ab"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779723788; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1779725401; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wYojGRofkOehfu43x23RRnt9McKigI79nBMd3+tgQrQ=;
-	b=rhIrntdqHUK1pOYTx3b0YkXImT+nSWkoGG4kBuiH61z4VzDrAZ66stSEHhltIBK7iyuvxm
-	wwU0Vv9olSHsSlORUxdkG5ENxDNfK6zqdFIwip2QFfU6YAUwmlP0huaDKKPdNeIoqOtOaQ
-	Dia/z53slKAkx3mV4sz+UQ/lylojOm8=
+	bh=QzQMwNuzcTyDWDBbrPJPk+oWqpbFufgu+tYxwJzuBcA=;
+	b=U/5mq3v3OCXAkr6Sjo6oRmqrs0tOQEwI5lkKi618l1AhAqyBkmorllMpPseqWOS0et5fHv
+	ovfPAMkU8QK34zrEPC5YWj3ZO3pym0SHQxLtDufibCoit05OiVufj9a80rYcRFqLG9XwEf
+	MZcxcPxZaybt//fplWyDTNqSi7HPLnQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779723788;
+	s=susede2_ed25519; t=1779725401;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=wYojGRofkOehfu43x23RRnt9McKigI79nBMd3+tgQrQ=;
-	b=/kBvJAn9bav5INNHNZ0DHHW38425x2p9RSBqA58L/tIQJt7Gy/T99dJ/4g15wU8BsJi2MU
-	viCFK/u9FTiiRDAg==
+	bh=QzQMwNuzcTyDWDBbrPJPk+oWqpbFufgu+tYxwJzuBcA=;
+	b=ePm/y7Ab8Y6GajHNFTPHGNLubf7O6wf3vduHG1/Gag7Bjb3cUucL32Ipd0cybpnJns+YVi
+	CKubuBr2EdjSLsBA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F14CA59D02;
-	Mon, 25 May 2026 15:43:07 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9E05359D1D;
+	Mon, 25 May 2026 16:10:01 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OfrmOgtuFGpYfAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 25 May 2026 15:43:07 +0000
+	id YBHzJVl0FGqXFwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 25 May 2026 16:10:01 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 61208A08D7; Mon, 25 May 2026 17:42:59 +0200 (CEST)
-Date: Mon, 25 May 2026 17:42:59 +0200
+	id D01BAA08D7; Mon, 25 May 2026 18:10:00 +0200 (CEST)
+Date: Mon, 25 May 2026 18:10:00 +0200
 From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH] jbd2: update outdated comment for
- jbd2_journal_try_to_free_buffers()
-Message-ID: <rccewzvv3cyixfilzq5fvffzyqti3ol6va6uobvz3zw3pspwxl@fxgitfrlipxy>
-References: <20260522030540.3896201-1-yi.zhang@huaweicloud.com>
+To: "Mike Rapoport (Microsoft)" <rppt@kernel.org>
+Cc: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>, 
+	Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>, 
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+	Dave Kleikamp <shaggy@kernel.org>, Theodore Ts'o <tytso@mit.edu>, 
+	Miklos Szeredi <miklos@szeredi.hu>, Andreas Hindborg <a.hindborg@kernel.org>, 
+	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>, 
+	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 01/17] quota: allocate dquot_hash with kmalloc()
+Message-ID: <xsmgh26s23da43wv6jza3dqrzhbxuetupiykjis2gkaq53yx3j@kttd6p2ba7f6>
+References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
+ <20260523-b4-fs-v1-1-275e36a83f0e@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,11 +100,11 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260522030540.3896201-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20260523-b4-fs-v1-1-275e36a83f0e@kernel.org>
 X-Spam-Score: -2.51
+X-Rspamd-Queue-Id: DF4BE67348
 X-Spam-Level: 
-X-Rspamd-Queue-Id: 1BF096B1E2
-X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
 X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -105,121 +114,95 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_TWELVE(0.00)[14];
+	RCPT_COUNT_TWELVE(0.00)[33];
 	MIME_TRACE(0.00)[0:+];
 	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	TO_DN_SOME(0.00)[];
-	internal_greylist_whitelist(0.00)[2a07:de40:b281:104:10:150:64:97];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TAGGED_RCPT(0.00)[];
 	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,fnnas.com];
+	R_RATELIMIT(0.00)[to_ip_from(RLpnapcpkwxdkc5mopt1ezhhna)];
+	MISSING_XM_UA(0.00)[];
+	FREEMAIL_CC(0.00)[suse.com,fasheh.com,evilplan.org,linux.alibaba.com,gmail.com,dubeyko.com,kernel.org,oracle.com,brown.name,redhat.com,talpey.com,zeniv.linux.org.uk,suse.cz,mit.edu,szeredi.hu,debian.org,vger.kernel.org,lists.linux.dev,lists.sourceforge.net,kvack.org];
 	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Rspamd-Action: no action
 X-Spam-Flag: NO
 
-On Fri 22-05-26 11:05:40, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On Sat 23-05-26 20:54:13, Mike Rapoport (Microsoft) wrote:
+> dquot_init() allocates a single page for dquot_hash with
+> __get_free_pages().
 > 
-> jbd2_journal_try_to_free_buffers() currently only tries to remove
-> checkpointed data buffers from the checkpoint list for data=journal
-> mode, and bails out if any buffer is still attached to a transaction.
-> For data=ordered and writeback modes, data buffers never have
-> journal_heads, so the function degenerates to a plain
-> try_to_free_buffers() call.
+> kmalloc() is a better API for such use and it also provides better
+> scalability and more debugging possibilities.
 > 
-> Besides, The release of metadata buffers has been delegated to the jbd2
-> journal shrinker in commit 4ba3fcdde7e3 ("jbd2,ext4: add a shrinker to
-> release checkpointed buffers"). jbd2_journal_try_to_free_buffers() is
-> not used for handling metadata buffers now.
+> Replace use of __get_free_pages() with kmalloc() and get rid of the order
+> variable that remained 0 for more than 20 years.
 > 
-> However, the comment above the function still references
-> jbd2_journal_dirty_data(), __jbd2_journal_unfile_buffer(), t_datalist,
-> BKL, and BUF_CLEAN, all of which were removed in commit 87c89c232c8f
-> ("jbd2: Remove data=ordered mode support using jbd buffer heads").
-> 
-> Replace it with a description of what the function actually does now.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
 
-Thanks for the update. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+Thanks! I've added this patch to my tree.
 
 								Honza
 
 > ---
->  fs/jbd2/transaction.c | 39 ++++++++++++---------------------------
->  1 file changed, 12 insertions(+), 27 deletions(-)
+>  fs/quota/dquot.c | 11 +++++------
+>  1 file changed, 5 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 4885903bbd10..239bcf88ed1c 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -2139,38 +2139,23 @@ static void __jbd2_journal_unfile_buffer(struct journal_head *jh)
->  }
->  
->  /**
-> - * jbd2_journal_try_to_free_buffers() - try to free page buffers.
-> + * jbd2_journal_try_to_free_buffers() - try to free folio buffers.
->   * @journal: journal for operation
->   * @folio: Folio to detach data from.
->   *
-> - * For all the buffers on this page,
-> - * if they are fully written out ordered data, move them onto BUF_CLEAN
-> - * so try_to_free_buffers() can reap them.
-> + * For each buffer_head on @folio, if the buffer has a journal_head but
-> + * is not attached to a running or committing transaction, try to remove
-> + * it from the checkpoint list.  This is needed for data=journal mode
-> + * where data buffers are journaled: once they are checkpointed, the
-> + * journal_head can be detached and the buffer freed.  If any buffer is
-> + * still attached to a transaction, the folio cannot be released and we
-> + * bail out.  Otherwise we call try_to_free_buffers() to detach all
-> + * buffer_heads from the folio.
->   *
-> - * This function returns non-zero if we wish try_to_free_buffers()
-> - * to be called. We do this if the page is releasable by try_to_free_buffers().
-> - * We also do it if the page has locked or dirty buffers and the caller wants
-> - * us to perform sync or async writeout.
-> + * For data=ordered and writeback modes, data buffers never have
-> + * journal_heads, so this degenerates to a plain try_to_free_buffers().
->   *
-> - * This complicates JBD locking somewhat.  We aren't protected by the
-> - * BKL here.  We wish to remove the buffer from its committing or
-> - * running transaction's ->t_datalist via __jbd2_journal_unfile_buffer.
-> - *
-> - * This may *change* the value of transaction_t->t_datalist, so anyone
-> - * who looks at t_datalist needs to lock against this function.
-> - *
-> - * Even worse, someone may be doing a jbd2_journal_dirty_data on this
-> - * buffer.  So we need to lock against that.  jbd2_journal_dirty_data()
-> - * will come out of the lock with the buffer dirty, which makes it
-> - * ineligible for release here.
-> - *
-> - * Who else is affected by this?  hmm...  Really the only contender
-> - * is do_get_write_access() - it could be looking at the buffer while
-> - * journal_try_to_free_buffer() is changing its state.  But that
-> - * cannot happen because we never reallocate freed data as metadata
-> - * while the data is part of a transaction.  Yes?
-> - *
-> - * Return false on failure, true on success
-> + * Return: true if the folio's buffers were freed, false otherwise
->   */
->  bool jbd2_journal_try_to_free_buffers(journal_t *journal, struct folio *folio)
+> diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+> index 64cf42721496..9850de3955d3 100644
+> --- a/fs/quota/dquot.c
+> +++ b/fs/quota/dquot.c
+> @@ -3022,7 +3022,7 @@ static const struct ctl_table fs_dqstats_table[] = {
+>  static int __init dquot_init(void)
 >  {
+>  	int i, ret;
+> -	unsigned long nr_hash, order;
+> +	unsigned long nr_hash;
+>  	struct shrinker *dqcache_shrinker;
+>  
+>  	printk(KERN_NOTICE "VFS: Disk quotas %s\n", __DQUOT_VERSION__);
+> @@ -3035,8 +3035,7 @@ static int __init dquot_init(void)
+>  				SLAB_PANIC),
+>  			NULL);
+>  
+> -	order = 0;
+> -	dquot_hash = (struct hlist_head *)__get_free_pages(GFP_KERNEL, order);
+> +	dquot_hash = kmalloc(PAGE_SIZE, GFP_KERNEL);
+>  	if (!dquot_hash)
+>  		panic("Cannot create dquot hash table");
+>  
+> @@ -3046,7 +3045,7 @@ static int __init dquot_init(void)
+>  		panic("Cannot create dquot stat counters");
+>  
+>  	/* Find power-of-two hlist_heads which can fit into allocation */
+> -	nr_hash = (1UL << order) * PAGE_SIZE / sizeof(struct hlist_head);
+> +	nr_hash = PAGE_SIZE / sizeof(struct hlist_head);
+>  	dq_hash_bits = ilog2(nr_hash);
+>  
+>  	nr_hash = 1UL << dq_hash_bits;
+> @@ -3054,8 +3053,8 @@ static int __init dquot_init(void)
+>  	for (i = 0; i < nr_hash; i++)
+>  		INIT_HLIST_HEAD(dquot_hash + i);
+>  
+> -	pr_info("VFS: Dquot-cache hash table entries: %ld (order %ld,"
+> -		" %ld bytes)\n", nr_hash, order, (PAGE_SIZE << order));
+> +	pr_info("VFS: Dquot-cache hash table entries: %ld (%ld bytes)\n",
+> +		nr_hash, PAGE_SIZE);
+>  
+>  	dqcache_shrinker = shrinker_alloc(0, "dquota-cache");
+>  	if (!dqcache_shrinker)
+> 
 > -- 
-> 2.52.0
+> 2.53.0
 > 
 -- 
 Jan Kara <jack@suse.com>
