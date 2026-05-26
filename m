@@ -1,113 +1,95 @@
-Received: from mail-wr1-f45.google.com (mail-wr1-f45.google.com [209.85.221.45])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from frasgout12.his.huawei.com (frasgout12.his.huawei.com [14.137.139.154])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E9D93D3498
-	for <linux-ext4@vger.kernel.org>; Tue, 26 May 2026 09:35:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A66DA3CAE66;
+	Tue, 26 May 2026 10:04:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=14.137.139.154
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779788156; cv=none; b=Bpih5irMNX0UtdjweHAUMyeH4oXjtuqudIUZ2y95Lgv6YqJuNepa6T7OEPEsImTGxi8ijUR0YRMqE1aLyxg84NT6vpKtXsgeHZQ+ZcZMZAxSY0tTI3vTzzULsx1cSS1GDRAeV4c4z5X2otuvOOetMCRC8kUqqnzjdklAQFbISH4=
+	t=1779789883; cv=none; b=nYKYiD9hVRZ6GoJjs93ftpl51nntx+5S8khEB69eBeiOURrkWMeVaINnnhqMfqKzvi95Ondjqwu70lkvmcipWF92kgE2Q9S8MgFXS9+vnJGRp4cpJd0tX6MEoNXX0IusAe0NyDCc99If4WzPYTA5i9ZiQ7whGXBVQPzvoa4n+wk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779788156; c=relaxed/simple;
-	bh=sjU7RHyInlH9mxFug2LKz+GK48Ojh7vR1sjgQ2TiRGM=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=NtDAhr0et50KorfErspu91sdhMlhMo9R7jmjw0AzIGyNGVota2EtmDkfHZhaeB0l2rsanjdIyBMi9VpSXu0SJvHmA2nzq6QNJ1qxpuSDqrNAJ5SnCzrO/63WmTFHRKOXrRQKCUokbSGvw3YY7raLo/GByCvpVTH47GyxHtsv9G8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=seiq+CXn; arc=none smtp.client-ip=209.85.221.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="seiq+CXn"
-Received: by mail-wr1-f45.google.com with SMTP id ffacd0b85a97d-43d73422431so7314659f8f.2
-        for <linux-ext4@vger.kernel.org>; Tue, 26 May 2026 02:35:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779788154; x=1780392954; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=2bHfAVXmh3q3FWdhM0EExqsSxnDVRJkOcr0NBrLZ8n4=;
-        b=seiq+CXni9aIGbLGM0VXkKywgsa47MjhfAeycLy7TY/OhjQlRKHdvx00QtlkzFePb0
-         94cFvPmHHU26vJWePAZj2+oA9GlBflkrO2GbNq1VpcTR9q7MzohCl2Dd1X6Ng7rQil8y
-         HdVIbj3NgV4BzluSo9r4qPLEaCSRDsKBiEkYgwXEJJdERZJsBJDWjY3UA7NIhDpqnege
-         QtFQRzkX7QvdA9XHnI+h01j8LEiDgfS4JPMni7ZC4le0GIdAHwnucmFIdvGFq9b/9vZV
-         EsuUHym5brztgaVyeivqdcarrbd8S4BvVUFDB/IExFltz22m1SxB6Dwhzw0ror8XE253
-         I70A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779788154; x=1780392954;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=2bHfAVXmh3q3FWdhM0EExqsSxnDVRJkOcr0NBrLZ8n4=;
-        b=T0vJBs40ym3n2IuA3TBk+SdR+YCBJvKT2KZuQf1tA6j57Y2tB/IDkTfH+bOVd5aL88
-         PgSWg1S/Okk6Pa8leQI1S8eMk9VAVvk8VeDMCNt7ax89BEKcJvi56aNc8A1TA1J1PmtN
-         aXJHSrpt7kYdaHl2g2/xxFDpYeADCHI8QiJp9/NobwLMYVw8KEMAOFPnTipWolgQyQfr
-         ssSkRSr9AaZCLpUb5SnLCWlHNhgl8CzUGxwS66IX3LfCjJ4Y/o6Xkdd/ChbReDkdituq
-         xPOWNq8bsvkxsDDQNZc0HmhPCaTlIsAnAEucDErOO+r68xCUjKu2IFhP0AS//gp4ggRZ
-         ATGg==
-X-Forwarded-Encrypted: i=1; AFNElJ89B2fIPinLrDNU0a4y4k3WNyqYwczk1Ngt7UYU5HAWLU7/8cgFd63S068pzkR3omym68Dr0gHsvBe7@vger.kernel.org
-X-Gm-Message-State: AOJu0YxpbDVSxICUbjnHwfyedBpHlkmxxHD0BCistnulv4pJYsfp3LWM
-	dO2qovuQD48o9lgduTjxNPwrZVp5WTmH1JJSv0klSafNJQsDOqQUvn7X
-X-Gm-Gg: Acq92OHqRJa839OycI2iuhz+rAkqh6pDM6iJVsoWVyr7tSF8ls7njCnpKOYGyCCiSQF
-	YpXZCa9FAuM2scFu2jOKXUcdzj37yh43m343W3qq49/aWj23hyMqB5MFD8fJFC29CAOk10wIePC
-	2pl32lB5u5MrhwcJoAZzK37s+c55QTK5kAeSl63T/oxkvlDlpPfXFaHYq/rSJYc30j1BsrP5Grk
-	pJ3nsmwIYQHkdH8wlw3LhyPB9378SPqZvQpNknIjMTiP9PiSP6RrbVzId267fuckMZL/P6L1sli
-	hEqFxdBL5fPf35wHvBHZFYijhoCpEpJ394C1THSE2mQpnsykQLXB9/ljquQyjuKUpLwdDQ7c2Tg
-	ACfvaEvhq7BDdTKi+G3RNRBviQ2sBp6pypdmS792nBhmojYV3KPIih70SRi0m9H7gBDYverlLcs
-	kDVhWYa7DxEw1xKtCY8w4SUES5XzykA1lb/wuv2jvZyBkSmX2KCnhqsGQjsrAuzYS6xAGkRpVuX
-	20=
-X-Received: by 2002:a05:6000:4b07:b0:43c:cf25:f29a with SMTP id ffacd0b85a97d-45eb3689049mr28173297f8f.8.1779788153530;
-        Tue, 26 May 2026 02:35:53 -0700 (PDT)
-Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-45eb6d64eb1sm38023448f8f.32.2026.05.26.02.35.52
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 May 2026 02:35:53 -0700 (PDT)
-Date: Tue, 26 May 2026 10:35:51 +0100
-From: David Laight <david.laight.linux@gmail.com>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Jan Kara <jack@suse.cz>, "Mike Rapoport (Microsoft)" <rppt@kernel.org>,
- Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>, Joel Becker
- <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>, Ryusuke
- Konishi <konishi.ryusuke@gmail.com>, Viacheslav Dubeyko
- <slava@dubeyko.com>, Trond Myklebust <trondmy@kernel.org>, Anna Schumaker
- <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, Jeff Layton
- <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Olga Kornievskaia
- <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
- <tom@talpey.com>, Alexander Viro <viro@zeniv.linux.org.uk>, Christian
- Brauner <brauner@kernel.org>, Dave Kleikamp <shaggy@kernel.org>, Theodore
- Ts'o <tytso@mit.edu>, Miklos Szeredi <miklos@szeredi.hu>, Andreas Hindborg
- <a.hindborg@kernel.org>, Breno Leitao <leitao@debian.org>, Kees Cook
- <kees@kernel.org>, "Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
- linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
- linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
- linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 10/17] jbd2: replace __get_free_pages() with kmalloc()
-Message-ID: <20260526103551.0a05ec07@pumpkin>
-In-Reply-To: <ahSNFmwAA17pMy6o@casper.infradead.org>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
-	<20260523-b4-fs-v1-10-275e36a83f0e@kernel.org>
-	<2omm5gmnv2khshoxkrag5rusd3qzrsqyjgsef2syxgryrtg6vq@ao7oabqwebgo>
-	<20260525182134.04045610@pumpkin>
-	<ahSNFmwAA17pMy6o@casper.infradead.org>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
+	s=arc-20240116; t=1779789883; c=relaxed/simple;
+	bh=f5jBmlwLuuM/+fDJ5sCCyDJMX689mLnVFQCMXhaYoDY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=GExqs/JDhqPLS2feoOxWX8bYbLKw5Svuuag6g6WmXgzCYWxHpMqQM1UYGUIk51OfLxiY6GH3PUDSbhz9JmBtax1oY51Czpxc/FqO4/MekSHzGctZznq5AkpPB+nVixq+aRwBdA+ai8PKgUjYtQg5D4OVWipdFJKTAe/743sMfcg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=14.137.139.154
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.18.224.235])
+	by frasgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gPpBn0VftzxRS9;
+	Tue, 26 May 2026 17:59:45 +0800 (CST)
+Received: from mail02.huawei.com (unknown [7.182.16.47])
+	by mail.maildlp.com (Postfix) with ESMTP id 2930840572;
+	Tue, 26 May 2026 18:04:32 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.224.106.87])
+	by APP1 (Coremail) with SMTP id LxC2BwBHrKUjcBVqcT7cAQ--.8698S2;
+	Tue, 26 May 2026 11:04:31 +0100 (CET)
+From: Bohdan Trach <bohdan.trach@huaweicloud.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Bohdan Trach <bohdan.trach@huaweicloud.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	lilith.oberhauser@huawei.com,
+	bohdan.trach@huawei.com,
+	mchehab+huawei@kernel.org
+Subject: Re: Re: [PATCH 1/2] ext4: avoid RWM atomic in EXT4_MB_GRP_TEST_AND_SET_READ
+Date: Tue, 26 May 2026 12:02:23 +0200
+Message-ID: <20260526100232.1057572-1-bohdan.trach@huaweicloud.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <wjkbwkkxz5ol3h5zo6npd7lrnzpvesox7cubor6t6gpx4hrdxa@utrefuc6apug>
+References: <wjkbwkkxz5ol3h5zo6npd7lrnzpvesox7cubor6t6gpx4hrdxa@utrefuc6apug>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:LxC2BwBHrKUjcBVqcT7cAQ--.8698S2
+X-Coremail-Antispam: 1UD129KBjvdXoW7XrWDKFyUAr4kWw4kKryxuFg_yoW3KFg_WF
+	1rJryDta4xZFWfJanYgF43Ar1YkrsrK34kXr1vgry5Ary8JF98Gr48ua4Iy3Z2g395K34S
+	gF9aqr4293W5ZjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUb3xFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6r1S6rWUM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
+	A2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr0_
+	Cr1l84ACjcxK6I8E87Iv67AKxVWUJVW8JwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gr0_Gr
+	1UM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xII
+	jxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr
+	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxa
+	n2IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4
+	AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE
+	17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMI
+	IF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4l
+	IxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvf
+	C2KfnxnUUI43ZEXa7VUbGQ6JUUUUU==
+X-CM-SenderInfo: xerkvtvqow2ttfk6x35dzhxuhorxvhhfrp/
 
-On Mon, 25 May 2026 18:55:34 +0100
-Matthew Wilcox <willy@infradead.org> wrote:
+On Mon, 25 May 2026 17:28:45, Jan Kara wrote:
+> Good idea but do we really need the 'acquire' barrier here? I don't see
+> anything that would really need this so I think
+> EXT4_MB_GRP_TEST_AND_SET_READ() can be just:
+> 
+> test_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &grp->bb_state) || \
+>   test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &grp->bb_state)
+> 
+> or am I missing something?
 
-> On Mon, May 25, 2026 at 06:21:34PM +0100, David Laight wrote:
-> > Would kvalloc() be more appropriate here?  
-> 
-> no
-> 
-> > Does __get_free_pages() return physically contiguous memory?  
-> 
-> yes
-> 
+Thanks for the review. Indeed, it should not be mandatory to use
+test_bit_acquire(), I've used it to keep the original ordering
+semantics of test_and_set_bit(), as I understood it from [1],
+and thus of the whole macro.
 
-Thankyou
+I'll use plain test_bit() in the v2 series (+taking into account your
+comment for the patch 2/2, and retest).
+
+[1] https://docs.kernel.org/core-api/wrappers/atomic_bitops.html
+
+--
+With best regards,
+Bohdan Trach
+
