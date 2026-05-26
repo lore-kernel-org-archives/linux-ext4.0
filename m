@@ -1,95 +1,74 @@
-Received: from frasgout12.his.huawei.com (frasgout12.his.huawei.com [14.137.139.154])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A66DA3CAE66;
-	Tue, 26 May 2026 10:04:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=14.137.139.154
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65A7735CB91;
+	Tue, 26 May 2026 10:19:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779789883; cv=none; b=nYKYiD9hVRZ6GoJjs93ftpl51nntx+5S8khEB69eBeiOURrkWMeVaINnnhqMfqKzvi95Ondjqwu70lkvmcipWF92kgE2Q9S8MgFXS9+vnJGRp4cpJd0tX6MEoNXX0IusAe0NyDCc99If4WzPYTA5i9ZiQ7whGXBVQPzvoa4n+wk=
+	t=1779790791; cv=none; b=rCGyFylVo25RZFHiU/ZT5rBjTsyecYHOUV7LMbvav30VV1SMo+ufZkqV8bQy1iiNnZ0h9rG8AjYNmHQBgnVkqne1USFB/Imw7mPcxNtguiR6yMGcCF86HSXE5rnGKAm6+9F9Bh42Bj6IyNvj4lug9k/r5Ke9azfte9XuTfm1oLA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779789883; c=relaxed/simple;
-	bh=f5jBmlwLuuM/+fDJ5sCCyDJMX689mLnVFQCMXhaYoDY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GExqs/JDhqPLS2feoOxWX8bYbLKw5Svuuag6g6WmXgzCYWxHpMqQM1UYGUIk51OfLxiY6GH3PUDSbhz9JmBtax1oY51Czpxc/FqO4/MekSHzGctZznq5AkpPB+nVixq+aRwBdA+ai8PKgUjYtQg5D4OVWipdFJKTAe/743sMfcg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=14.137.139.154
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.18.224.235])
-	by frasgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gPpBn0VftzxRS9;
-	Tue, 26 May 2026 17:59:45 +0800 (CST)
-Received: from mail02.huawei.com (unknown [7.182.16.47])
-	by mail.maildlp.com (Postfix) with ESMTP id 2930840572;
-	Tue, 26 May 2026 18:04:32 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.224.106.87])
-	by APP1 (Coremail) with SMTP id LxC2BwBHrKUjcBVqcT7cAQ--.8698S2;
-	Tue, 26 May 2026 11:04:31 +0100 (CET)
-From: Bohdan Trach <bohdan.trach@huaweicloud.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Bohdan Trach <bohdan.trach@huaweicloud.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	lilith.oberhauser@huawei.com,
-	bohdan.trach@huawei.com,
-	mchehab+huawei@kernel.org
-Subject: Re: Re: [PATCH 1/2] ext4: avoid RWM atomic in EXT4_MB_GRP_TEST_AND_SET_READ
-Date: Tue, 26 May 2026 12:02:23 +0200
-Message-ID: <20260526100232.1057572-1-bohdan.trach@huaweicloud.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <wjkbwkkxz5ol3h5zo6npd7lrnzpvesox7cubor6t6gpx4hrdxa@utrefuc6apug>
-References: <wjkbwkkxz5ol3h5zo6npd7lrnzpvesox7cubor6t6gpx4hrdxa@utrefuc6apug>
+	s=arc-20240116; t=1779790791; c=relaxed/simple;
+	bh=oQi8nMHL3qjqUhC1Bz0zt4vfx6dFsOpBcDtR8g2k33c=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=E0pLCKFtIVkuamnNIDo4NIsWg3WNBtXWKzH2a7TCNMzPEzDDMbqLIGewfTcXQal5nCACb9FPcvyeY+HDyAw98SnfgZ8gE/RAe9NH7WCpCwMKJrKuC1MekegvcNBzuaFvioXTutp9oMVaGH9MkfgBl68j0Y1nXQqd9IiDInJLII0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cUMA/lAq; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cUMA/lAq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D538B1F00A3C;
+	Tue, 26 May 2026 10:19:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1779790789;
+	bh=qWbiUioGQWD1oNqwL1vRZhi7+oCXyyFRIUYuY3v+xgs=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=cUMA/lAqbZLBRBVHvV8INPx+YT1E98Lmh8jjTZjyuUdXav6fgsed3ODm8/5GTF6JD
+	 woNd2WKuTr7z6+CeBrbc86JH6Pov4/A5ZQHARinht8ydGy9npfb4Ci3fBh9MYNHd2Q
+	 +JkYMCR7rM7GdLWkF99iLWWGDeHvCkDjOVtvNUWE3UIYRBSXXPMleSkZ3F19/e2PAq
+	 pOuh+w7MH3OX0CUNxFnoNS0CIs2s/NAVOepv+iGfH0D+0xX5/2o2q4ktlWxw3Oj/PV
+	 /RQR9Zl2vf1B02hYABnZpIz1Y00Vfb1oEqjVR1FdKrRPcAAQCfzJP8zVSInk+u7WB2
+	 Q7D5XFNnYFsgg==
+Date: Tue, 26 May 2026 12:19:43 +0200
+From: Carlos Maiolino <cem@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Christian Brauner <brauner@kernel.org>, 
+	Andrey Albershteyn <aalbersh@redhat.com>, Andrey Albershteyn <aalbersh@kernel.org>, 
+	linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
+	ebiggers@kernel.org, linux-ext4@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
+	djwong@kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v10 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
+References: <20260520123722.405752-1-aalbersh@kernel.org>
+ <20260521090705.GA14254@lst.de>
+ <gcw7zcg6p4s2egpufwizfig72g6ren7jfmuz5mqskkpb7xepww@e3v35j7bk7dc>
+ <ag7uW7KQ5mVyCGEv@nidhogg.toxiclabs.cc>
+ <20260522-unbehagen-baumethode-erlesen-811a4065eeac@brauner>
+ <20260522120757.GA21041@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:LxC2BwBHrKUjcBVqcT7cAQ--.8698S2
-X-Coremail-Antispam: 1UD129KBjvdXoW7XrWDKFyUAr4kWw4kKryxuFg_yoW3KFg_WF
-	1rJryDta4xZFWfJanYgF43Ar1YkrsrK34kXr1vgry5Ary8JF98Gr48ua4Iy3Z2g395K34S
-	gF9aqr4293W5ZjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUb3xFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6r1S6rWUM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
-	A2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr0_
-	Cr1l84ACjcxK6I8E87Iv67AKxVWUJVW8JwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gr0_Gr
-	1UM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xII
-	jxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr
-	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxa
-	n2IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4
-	AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE
-	17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMI
-	IF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4l
-	IxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvf
-	C2KfnxnUUI43ZEXa7VUbGQ6JUUUUU==
-X-CM-SenderInfo: xerkvtvqow2ttfk6x35dzhxuhorxvhhfrp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260522120757.GA21041@lst.de>
 
-On Mon, 25 May 2026 17:28:45, Jan Kara wrote:
-> Good idea but do we really need the 'acquire' barrier here? I don't see
-> anything that would really need this so I think
-> EXT4_MB_GRP_TEST_AND_SET_READ() can be just:
+On Fri, May 22, 2026 at 02:07:57PM +0200, Christoph Hellwig wrote:
+> On Fri, May 22, 2026 at 12:03:20PM +0200, Christian Brauner wrote:
+> > > I was expecting this to come through xfs tree too if Eric and Christian
+> > > agree.
+> > 
+> > You may take it through the xfs tree if there are no conflicts with
+> > vfs-7.2.iomap. If there are I want to add the iomap changes into
+> > vfs-7.2.iomap that you can pull in.
 > 
-> test_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &grp->bb_state) || \
->   test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &grp->bb_state)
+> Merging the iomap bits through the iomap branch might make sense, given
+> that iomap usually tends to see quite a bit of activity.
 > 
-> or am I missing something?
 
-Thanks for the review. Indeed, it should not be mandatory to use
-test_bit_acquire(), I've used it to keep the original ordering
-semantics of test_and_set_bit(), as I understood it from [1],
-and thus of the whole macro.
+That sounds good to me. If you want to go ahead and pull in the iomap
+bits, do so, and give me a heads up when you do it so I'll pull your
+branch locally.
 
-I'll use plain test_bit() in the v2 series (+taking into account your
-comment for the patch 2/2, and retest).
-
-[1] https://docs.kernel.org/core-api/wrappers/atomic_bitops.html
-
---
-With best regards,
-Bohdan Trach
-
+Cheers.
