@@ -1,110 +1,131 @@
-Received: from mail-pg1-f171.google.com (mail-pg1-f171.google.com [209.85.215.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2DAD1B78F3
-	for <linux-ext4@vger.kernel.org>; Tue, 26 May 2026 15:19:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 381A4401A32;
+	Tue, 26 May 2026 17:03:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779808775; cv=none; b=TTnjV7iorupX8dOfyfA8trVXBcOKNaf1KJmYXMKWihNRyBLHJCawpGeDtoV1osGetYjn9+RxA4Cm/CeYN6YQ7XrsgOUsxHdSojwv+mU+VG+HFj3q+L125GVKOWd56qu6s4/GA1mc/PqxIDsBueXQUAqwZdWSS+lkERhfTj1u8g8=
+	t=1779815039; cv=none; b=iveASnt7AQ2ROeMiUNP7yxKgfK2/XdR/EyE9PqWb2JxW8Z/cSLw7od7JCdGE8zTb+0dv4QKoa68zCkDbJXN5n/KzLERv5xnfMf5k3W/HharstutpdSnj2qfnyFkJOAmQ2D5+Z8biJQxM2G2EgruhKR3POhwWxuO4EykVXwTH0y0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779808775; c=relaxed/simple;
-	bh=0ZnjPi7BwnAOrVB91/FYkrKd3xmpByfSExU4BuXXulY=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=RoVErC6j8D/SO7Lac2Lm7ruuaIM2YHp7rLQ0lCuUwKWCjjYe4tNUrJ2dSTibu2G2E/o+890zozUxd2SeKzfHvrKVzQHp3Bp3CqkFpOTIWsaR5zrui7yn7uVjwJwZpfc8oF2M7O4kl7sMZXnLPBb6sHi+13a0H9BH4/MWjc9YIsc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dCcHEc51; arc=none smtp.client-ip=209.85.215.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1779815039; c=relaxed/simple;
+	bh=Jheo9sZwyglxXrHT5oNoxYP0A2kQfaIGUecuWZZQ2pM=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=udOJumeffG/yxPHm5v03AS4HeRmPf9VYhxCwSeIipgiflGaDRRPrvjvLARVygBXyi5Ao/p/XtAX7UFBArDfaHOSnoFRFw4cVFEXFpIeXHKqEn6bNmw3HrMy94VonXJfz1UgsA1OJE/xl4RQXjXlLCFTbQH0GV0ctbbr+afhFLvE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=I9r7u1n3; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dCcHEc51"
-Received: by mail-pg1-f171.google.com with SMTP id 41be03b00d2f7-c8173b2af32so8337360a12.0
-        for <linux-ext4@vger.kernel.org>; Tue, 26 May 2026 08:19:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779808774; x=1780413574; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=81JJQRQ2yMbKHbejnSmsG4QSx00hSzBR2QqgEz/z/s4=;
-        b=dCcHEc51DzUejXFJU3CnUz4cmcO4A9DHsnuI2CKbf9ITFWqspVdZziai3B7o9xl5W/
-         wtkpACv10/WcrV1U5wsAcjg1qYa5cIg8JIHId3hxsDTTtOIWFjlKXajYMY2Jfo2A4qeu
-         2eZg6r97gA8prwOlR7gY5dsNdL95tdIwk5MjZdc8ePyN/aHTOk1gnsAKgaHNy2g3aHni
-         w5oS4glZ9wgeDKbOpWhBO6sANzc65qoCEG/61ZT6FEXW2qa+uuV4ftz/r5rawMpicFyB
-         5WGrmaU5KQTPmOgJ5o1uLpEk+j2hTAXIP2a7B8PH0gv1SEDbKpM093lKjKHNKq+fI9ca
-         uu9w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779808774; x=1780413574;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=81JJQRQ2yMbKHbejnSmsG4QSx00hSzBR2QqgEz/z/s4=;
-        b=YmQFZKB/dUZZzvFR2Vb8l0Wc2dJra2jNosRnz+sx1wJoVBGuCSUMgrDu4WUDES4eYj
-         ttXZrtXO+2lWaucPPQUttryxAmFVY0DyEsP0uNesaC20ygGuMbTeG9AIMKts1UCaD4hs
-         1yJ/Lk568yCXQ9EO2dzkQDteW1AjeaNA2SM3cwl/wtPWciCkpseiOabhHvoo/3B7D1wp
-         hDOGOk3m2Gs8w7WW72pXpt7nCT/Y/2t9jIdjD0gt+N2kB0I3ykYHw4q5Dhha8D5wxOLi
-         bFpB+6FADPHStD9mh/1u2WpjcqE+qkI4os4fCyVZCCulGxqsKQ0j/DdC/9O7bGd0a+Gv
-         jiMw==
-X-Forwarded-Encrypted: i=1; AFNElJ+3NriIhOwK4f2fsz+2mdNSlvpdauMDhMvkiTExKQNcTf7CuO4dSE+ZW/nINd9hWtHVuIh3nydJuct2@vger.kernel.org
-X-Gm-Message-State: AOJu0YyP3R4wOlbppJYXn/W/dKb1CWcNrzk+8lLuqx4fwsaXRQKW0xXT
-	KwZFQogOmdt53wbV22YGyord0AuoU1GH0QP+gZ5tJcuCrUU4PTGL3huG
-X-Gm-Gg: Acq92OGl4v8Bo5axetQj+UWgR+xHyqXYmVXtFpvZGuelqM8pBorBIV4rpuG3G2sZDqB
-	OjaDjxt0t94PlvScLFzdyRvqRN7oOXzq0kHxulXRUeb13ty/vGS3XnqgpfhHxB8U72QlTukw1yz
-	bC3/v5HsQyFi3Ylui3s4lkzsWhupYkcPVqcZ91/+4SmaxwYSuKUYfzTlTD7lD4c6yUXQHqAFjE2
-	zJizwpAizYO0ctk7pmup/hb38JV1EJySHb/Ov1/vornlemv5BZPZzrPh9N0TPsAiy/G48BE+APK
-	UvHnImQI3veF1rwr6QWdkjEKxECNZaKxW0CrSRJggdPMZK5yIs+LbluWPh3aYLysFsaJ+dyzMV9
-	KPt17k+EQ9aNEo6xufYfANTiAy39QBwtJgx+e/UJPyjWWPNzHr9QlUuwRKSxDHR7/j2WXa1pyjq
-	AoaJwdtDjSgBhJfQDuNWUROrya2Ns=
-X-Received: by 2002:a05:6a21:68f:b0:3b1:a9ce:5095 with SMTP id adf61e73a8af0-3b328d940ebmr19169216637.22.1779808774114;
-        Tue, 26 May 2026 08:19:34 -0700 (PDT)
-Received: from [192.168.50.90] ([116.87.14.48])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-c8520561e94sm11447223a12.22.2026.05.26.08.19.31
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 26 May 2026 08:19:33 -0700 (PDT)
-Message-ID: <e8d0caf9-df8b-415e-9f89-bc71e73a0e32@gmail.com>
-Date: Tue, 26 May 2026 23:19:30 +0800
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="I9r7u1n3"
+Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64QAj7XS1701412;
+	Tue, 26 May 2026 17:03:31 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=VF6XnHZ8wl7wdURjPuSNpgQh9iiY5J
+	AZ1sN/2BaOZKA=; b=I9r7u1n3dKNrJEwc0algpoOJ95UCIyauo4fNiHJdHpCpg+
+	Ie/MovKS9N9V/BseUgjXVH5RyHaAOex/XumJre089CVUzVn34Q+3+Pr+poYJsYuo
+	gOAmSgTx4m53sz/6AVdwuf3ZLkG/Q6opnZgnbFsqQY4eUnVLDqaLF0pmdF6T4z1a
+	kVsJUdc2GKTP66Aou9822U4Pq7657y9pgoH0w/oe+QV5nCJufliKQ5zR1arNhl0I
+	hXDCbITCPSz/cbAEfI0mBOw1yCI0ih7jJK2QvibVPOQ1DDcWwIdM1euw53QOWk7Y
+	+w6nBXpuoyPmEz/gSzNPBPUJ9Y3InEeobCVm5vfQ==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4eb4s2dawe-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 26 May 2026 17:03:31 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64QGd7fn026899;
+	Tue, 26 May 2026 17:03:30 GMT
+Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4ebs8ya3g4-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 26 May 2026 17:03:30 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64QH3Sej42074496
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 26 May 2026 17:03:28 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 675632004F;
+	Tue, 26 May 2026 17:03:28 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 8319B20040;
+	Tue, 26 May 2026 17:03:24 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.18.153])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Tue, 26 May 2026 17:03:24 +0000 (GMT)
+Date: Tue, 26 May 2026 22:32:48 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+        yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
+        yukuai@fnnas.com
+Subject: Re: [PATCH] jbd2: update outdated comment for
+ jbd2_journal_try_to_free_buffers()
+Message-ID: <ahXSOMykmefnvO_Y@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260522030540.3896201-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v5 03/10] fstests: add test for inotify isolation on
- cloned devices
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Anand Jain <asj@kernel.org>, fstests@vger.kernel.org,
- linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-xfs@vger.kernel.org, amir73il@gmail.com, zlang@redhat.com
-References: <cover.1779367627.git.asj@kernel.org>
- <1c60be06ce79778404079c8b1c1d2e09f64cb38e.1779367627.git.asj@kernel.org>
- <ahP1tCc81ascjwxJ@infradead.org>
- <edadc872-5796-4cff-934b-cee66fde79d2@gmail.com>
- <ahU9hpwrXyZChw9X@infradead.org>
-Content-Language: en-US
-From: Anand Jain <anajain.sg@gmail.com>
-In-Reply-To: <ahU9hpwrXyZChw9X@infradead.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260522030540.3896201-1-yi.zhang@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-GUID: aJcv1VbXSaueCVXGKLHrdZ1DOypcTEGN
+X-Authority-Analysis: v=2.4 cv=Sq2gLvO0 c=1 sm=1 tr=0 ts=6a15d263 cx=c_pps
+ a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+ a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=i0EeH86SAAAA:8
+ a=VnNF1IyMAAAA:8 a=y4ZKDCiFNaCdIKpVWjoA:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTI2MDE0NCBTYWx0ZWRfXxef/7z914hVS
+ 6IlxkMWm+6783yvPxds7RN4S8gyzOC8xJHpLNn2VdnfM6d+WDD7E0QopNLTiQghfPX/Q4bwrh4Z
+ QB5oZF1r0orMv6+UYQ2nUdiXde6zsxLxWkuZgYHfRjjJ+XkKAoyyR3ecZjvHCheji0mlsyuHZGm
+ kPNQpUd25i1G9cx35+dPksWqSk4Evee4+bwLPTzhqPqUp9uQJ/Be7DYPbeLhQacUEEtZYAMyKAp
+ k1GJyojfSCdtK54shqwigK1yq3G9v5if7T4xNF91ccF2yde77P3zadsuOQ1EWf3/jAB5yHKZyHs
+ GFPbntPQfOEmwqqrcIZREN7nmeo3DJuS88qQWs0fdyagTBP+I2+WyiVWPVnorINAjo6gmnP6eEa
+ naAvBVp/jZWz+W+dxBjG5ESDpo8OhiGc0TlQiqfZp/AV/dVNLLVrtGM9BKnsMZmHZ6NHeN5TPgE
+ vaKELcjBJl5MH+wA+Sw==
+X-Proofpoint-ORIG-GUID: EiS6nBpNd3kwhq5lj0O2I8-5k7SO75gq
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-05-26_04,2026-05-26_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ bulkscore=0 priorityscore=1501 phishscore=0 impostorscore=0 malwarescore=0
+ lowpriorityscore=0 adultscore=0 clxscore=1015 suspectscore=0 spamscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605130000 definitions=main-2605260144
 
-
-
-On 26/5/26 14:28, Christoph Hellwig wrote:
-> On Mon, May 25, 2026 at 04:35:58PM +0800, Anand Jain wrote:
->>> Also any reason to rely on the obsolete inotify instead of fsnotify?
->>
->> fsnotify is exercised in patch 4/10.
->> IMO, exercising inotify ensures we don't break legacy stuff.
+On Fri, May 22, 2026 at 11:05:40AM +0800, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> fanotity and inotify use exactly the same backends, so I'm not sure
-> why testing both matters. 
+> jbd2_journal_try_to_free_buffers() currently only tries to remove
+> checkpointed data buffers from the checkpoint list for data=journal
+> mode, and bails out if any buffer is still attached to a transaction.
+> For data=ordered and writeback modes, data buffers never have
+> journal_heads, so the function degenerates to a plain
+> try_to_free_buffers() call.
+> 
+> Besides, The release of metadata buffers has been delegated to the jbd2
+> journal shrinker in commit 4ba3fcdde7e3 ("jbd2,ext4: add a shrinker to
+> release checkpointed buffers"). jbd2_journal_try_to_free_buffers() is
+> not used for handling metadata buffers now.
+> 
+> However, the comment above the function still references
+> jbd2_journal_dirty_data(), __jbd2_journal_unfile_buffer(), t_datalist,
+> BKL, and BUF_CLEAN, all of which were removed in commit 87c89c232c8f
+> ("jbd2: Remove data=ordered mode support using jbd buffer heads").
+> 
+> Replace it with a description of what the function actually does now.
+> 
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-I noticed that back then I decided to keep both.
-Since fsnotifywait -F is only supported from kernel 5.1x.
-inotifywait serves the legacy LTS kernels where required.
+Looks good Zhang, feel free to add:
 
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
-> Not that I care very strongly, I'm just a
-> bit confused.
-
-I am happy dropping inotifywait if unnecessary and confusing.
-
-Thanks.
+Regards,
+ojaswin
