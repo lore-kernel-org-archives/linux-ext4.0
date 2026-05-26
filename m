@@ -1,119 +1,63 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C797B3D090A;
-	Tue, 26 May 2026 09:07:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9C2C3CF97E;
+	Tue, 26 May 2026 09:08:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779786431; cv=none; b=uWDQeWQEsQ72u6z2U8B85g+NvvMO+XrbUKWJTUd3/1tNaAgGGYFNQBtOR1M9WDF2FvQ+Z4LZUjIz1qe+lLxfLXfU3arrpyGj4qMdL8j6LX+UwkaULgCjDaSx5D4JQgzcJmBoZ0QqtT4XAN5y+11JPRkFFHmHRnnQ2JkAjtmvpgI=
+	t=1779786484; cv=none; b=reX0X5obytfUaAe1A8zt9uLxUknHYZVH9MDOrXVbcsvbFUfC+3dGZsUPjnRDTDvvxIcqiNmnO8mSujjuw8BtGPnfPm7Apgm2oV0Pu370Atb9qbGUc+ABNZBv192O/PaMnCo9XOwTseirFfQmE6TwsUP5RpQ8TQWTdqi6oHuZ6Uw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779786431; c=relaxed/simple;
-	bh=QfLNF+8MN7+UA5jASUGjhqz1VuWW5dkCYTwYJ47UEw4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=NPFmal5myF+5CRoNB8I9fsPHdE/tPwHSXXv4qsPJOQDSgnpQ8ow0J67UDEJfDBN+5VKoWJ2lS/LrUxat4pTUa+KYe5T9OI7nXYtnEVMhZ8ZKU9IeYNXAa743aqKis+9WK4tf4Dvy0OYq1CojNTJn2C6UN/vduLiQ91jS76wT374=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RbEXU9/u; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1779786484; c=relaxed/simple;
+	bh=X6TpZOLSXA8qVc/rjxIu11TxqAw8DdSDhwJsuH09T2U=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=RPvAtsE1CDghL4+nUlayCu2TndJCEsrxx3qFUlnXx2NfJq4eIBrr5lxg1uo9KTBUr7oDPH4lS7tFfse8Fp4WXi5Z/bAZCLZ6nqGkvr9oBQUE3RgRrbzM7WW8O0ZD4akicg/WsX/rxiIfRdkAMWk0WdsiWjJ4bHhESrCuwIPIues=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=G4L3b45L; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RbEXU9/u"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C06EE1F000E9;
-	Tue, 26 May 2026 09:07:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="G4L3b45L"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 149631F000E9;
+	Tue, 26 May 2026 09:08:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779786430;
-	bh=X4dMIY6FGLg34QRadG1/HG9iWSvS0YAF4MlMdh2Kq3c=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=RbEXU9/uZCN+Vwwr63QjTBV/FcuhwVfwE1G+xkgW/pj9WZHp/LQdAuV3xkOBHeSVD
-	 AkVVQtdnRcNWv1Bw2/evi6mIuYT8M6sdvUP021zd2BviqBaFduuPTu6GVcAaL1kq+a
-	 yKhCJ/vtQe57mGf0+XB50jud7L1iGR+3Nxbqn2wdPXOcyof2MefuGY6uRaRF2CuJg7
-	 WMCo9eaUxvKLIqX4WPVlUGktTPR2+4NMiJFCzGRIAyt+qpGqLdJcQVrkOFkTQH14+C
-	 SjFKDsC537UZa+0+zKQpAXFjuIC2XAnLkx7R7IqX94mMj62X14Wy3VSmaRPz7oaMOc
-	 6AA7mo4wiYdoA==
-Date: Tue, 26 May 2026 12:06:57 +0300
-From: Mike Rapoport <rppt@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Dave Kleikamp <shaggy@kernel.org>, Theodore Ts'o <tytso@mit.edu>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Hindborg <a.hindborg@kernel.org>,
-	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 14/17] fs/namespace: use __getname() to allocate mntpath
- buffer
-Message-ID: <ahVisehwQGXEoM0g@kernel.org>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-14-275e36a83f0e@kernel.org>
- <lwnrjpmzbv6swapmnmb5jki3xxxzqsxuks5vykniwhakvhqh7i@rhff3qrwfnoj>
+	s=k20260515; t=1779786483;
+	bh=E3IuDwl5tAtYnNYkYj5j7d2B5Zm0rnZXXNK3MzgO93Y=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=G4L3b45LFb5CO2u5R9Xl1xJap9aVa2z4PbrjWu9gzdpgVl3R6PRheaisHkyrfyHQx
+	 dXzbsRqjihGstXmP/Td2LoRgR3SUK4F6b0oSJNJnPrcnVY7Y8hrScVRpORFN1GEPAe
+	 RssppEmMScBipK+J3QXGKsIpJai+wRJNjhgBZzfRHjmq/KowXqlG1AzkoN6OmaAq6C
+	 3BRlvSblC16VsL9ZP1cyJlu7Oe5D7Qk00murP3NMbysRTR5VIycOTMIFtnq+PYOlBO
+	 6VH74RHZxyggGk7WkIpssO1Q+wV371Vi7IMRgKr5mtm0pGtIoVAq1IduUHHyFgJ/xX
+	 HyDaQ/sUhpWGw==
+Message-ID: <3cc6d65c-d5c9-4cf1-9d1f-a6cf05de11b5@kernel.org>
+Date: Tue, 26 May 2026 11:08:00 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <lwnrjpmzbv6swapmnmb5jki3xxxzqsxuks5vykniwhakvhqh7i@rhff3qrwfnoj>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] jbd2: Remove special jbd2 slabs
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+ Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, "Mike Rapoport (Microsoft)" <rppt@kernel.org>
+References: <20260525201321.21717-1-willy@infradead.org>
+From: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
+Content-Language: en-US
+In-Reply-To: <20260525201321.21717-1-willy@infradead.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Mon, May 25, 2026 at 06:22:13PM +0200, Jan Kara wrote:
-> On Sat 23-05-26 20:54:26, Mike Rapoport (Microsoft) wrote:
-> > mnt_warn_timestamp_expiry() allocates memory for a path with
-> > __get_free_page() although there is a dedicated helper for allocation of
-> > file paths: __getname().
-> > 
-> > Replace __get_free_page() for allocation of a path buffer with __getname().
-> > 
-> > Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
-> > ---
-> >  fs/namespace.c | 4 ++--
-> >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/namespace.c b/fs/namespace.c
-> > index fe919abd2f01..2ed9cd846a81 100644
-> > --- a/fs/namespace.c
-> > +++ b/fs/namespace.c
-> > @@ -3303,7 +3303,7 @@ static void mnt_warn_timestamp_expiry(const struct path *mountpoint,
-> >  	   (ktime_get_real_seconds() + TIME_UPTIME_SEC_MAX > sb->s_time_max)) {
-> >  		char *buf, *mntpath;
-> >  
-> > -		buf = (char *)__get_free_page(GFP_KERNEL);
-> > +		buf = __getname();
+On 5/25/26 10:13 PM, Matthew Wilcox (Oracle) wrote:
+> When jbd2 was originally written, kmalloc() would not guarantee alignment
+> for the requested memory.  Since commit 59bb47985c1d in 2019, kmalloc
+> has guaranteed natural alignment for power-of-two allocations.  We can
+> now remove the jbd2 special slabs and just use kmalloc() directly.
 > 
-> Fair but d_path() below should then get PATH_MAX and not PAGE_SIZE.
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-Ack.
- 
-> >  		if (buf)
-> >  			mntpath = d_path(mountpoint, buf, PAGE_SIZE);
-> >  		else
-> > @@ -3319,7 +3319,7 @@ static void mnt_warn_timestamp_expiry(const struct path *mountpoint,
-> >  
-> >  		sb->s_iflags |= SB_I_TS_EXPIRY_WARNED;
-> >  		if (buf)
-> > -			free_page((unsigned long)buf);
-> > +			__putname(buf);
-> 
-> And __putname() is fine with NULL so no need for the if (buf) check here.
+Nice!
 
-Will fix.
- 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+Acked-by: Vlastimil Babka (SUSE) <vbabka@kernel.org>
 
--- 
-Sincerely yours,
-Mike.
+
+
