@@ -1,130 +1,234 @@
-Received: from frasgout13.his.huawei.com (frasgout13.his.huawei.com [14.137.139.46])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95D5E3E51D1;
-	Wed, 27 May 2026 09:04:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=14.137.139.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A8D33E3D86
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 10:38:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779872678; cv=none; b=fKWpuRwruEsrUZuBw9r3CuSkJ3hJKlNKybKhxzNbAtZMhsnP3/LC+kvCW6uOkvS2+2JnWCPfcgPZczoCJJRRmc6M8+eQj7zhYNRPGagooNAvJuUjLWJNQ/ong46pIms1ZACPrBjmMO0eX7dC4qI2DeJvGOjfRDqJv1tn13JYUrw=
+	t=1779878290; cv=none; b=emASWruGyF1OYz+vSBtglyKx4HxKxcbJ3aMNiVHT/O8yC6uT8G9WVV+DpZAEzQHadBYhy+weqJFji+QYjTx3pW+xkGhZVoLbioSq9m1cKNYuZX5j5aFV1oBuTqSKwtc/lEKoNUuw1v9sYimzb3/GvL0GBI1T4XTsCCWjAUuePjE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779872678; c=relaxed/simple;
-	bh=g++HQv3M3F4OfqVh4UO9WdoVNFfblaLRPsInQm7m8+g=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=XrNyGPsMfrA7A9A0Tf+iuRwuBP1b+2qQZ1kDavM4wnxvVULV563J5OKGhHnOOwXmq+3vemzIPtiAKqdoPmPdPoSD+qJmXNx936y7iVWdC8rRtqeAUcAng0WCdZpY2rvSGW/ma2hGptm34qadYubOwkg0dpOuDymR+mmqUDqSalw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=14.137.139.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.18.224.235])
-	by frasgout13.his.huawei.com (SkyGuard) with ESMTPS id 4gQNpp4yCdzpSwh;
-	Wed, 27 May 2026 16:59:30 +0800 (CST)
-Received: from mail02.huawei.com (unknown [7.182.16.27])
-	by mail.maildlp.com (Postfix) with ESMTP id F057F4056C;
-	Wed, 27 May 2026 17:04:34 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.224.106.87])
-	by APP2 (Coremail) with SMTP id GxC2BwBHi2eHsxZq29zpAQ--.34824S4;
-	Wed, 27 May 2026 10:04:34 +0100 (CET)
-From: Bohdan Trach <bohdan.trach@huaweicloud.com>
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>
-Cc: mchehab+huawei@kernel.org,
-	bohdan.trach@huawei.com,
-	lilith.oberhauser@huawei.com,
-	Bohdan Trach <bohdan.trach@huaweicloud.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 2/2] ext4: get ext4_group_desc in ext4_mb_prefetch only when necessary
-Date: Wed, 27 May 2026 11:03:27 +0200
-Message-ID: <20260527090329.2680170-3-bohdan.trach@huaweicloud.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20260527090329.2680170-1-bohdan.trach@huaweicloud.com>
-References: <20260527090329.2680170-1-bohdan.trach@huaweicloud.com>
+	s=arc-20240116; t=1779878290; c=relaxed/simple;
+	bh=28GNSn3/e+XJATcKmG8qgAvZ5/hI5YuKhTdxpXyoy8w=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZBXJNjLuNEyUddSiJ+pnieyBDtLn76l7ySUoXEQJEHz8nwSteyTd8xPiYzQ3kyAsuIJb8f1HFCeVsTRtYZ4XQ0CgY8P8Hil9LmOm0ngQMww+ZWeozWiredVvTUTwzs5CGcIV+AFTkuV7emvTGAy0RCdgh7zoi8ebwywE+BDnpTI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SMaZFApR; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=X0PKGWYE; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SMaZFApR; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=X0PKGWYE; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SMaZFApR";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="X0PKGWYE";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SMaZFApR";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="X0PKGWYE"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id D38F76700F;
+	Wed, 27 May 2026 10:38:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1779878286; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=gihZ+8fWDLM9rjS305SEdtXvjktruTqxjsmA3hZhlUA=;
+	b=SMaZFApRjotz5Lfuu3usucEmuslRS2VPvqmAhBolp3B44Ojs9TIw8ojBXMQK9XA28qN0cr
+	lhwgIgFnd2Izl26Ll4lnO6VM+MVGB40zKcm3Pb+7DFXM8UoFXx4kF5ksWbl8PWtlIw4E58
+	VwYyqHiTMfKRxMZsfyH+yOQn/6tlm8s=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1779878286;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=gihZ+8fWDLM9rjS305SEdtXvjktruTqxjsmA3hZhlUA=;
+	b=X0PKGWYELx79nXAXYmfEEPVpH9O0mG+wnB6ec4t9zvyjC07qNvtfnrmbaP6FCqX4kS5MDA
+	8B34WQgYQ5O7TzBw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=SMaZFApR;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=X0PKGWYE
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1779878286; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=gihZ+8fWDLM9rjS305SEdtXvjktruTqxjsmA3hZhlUA=;
+	b=SMaZFApRjotz5Lfuu3usucEmuslRS2VPvqmAhBolp3B44Ojs9TIw8ojBXMQK9XA28qN0cr
+	lhwgIgFnd2Izl26Ll4lnO6VM+MVGB40zKcm3Pb+7DFXM8UoFXx4kF5ksWbl8PWtlIw4E58
+	VwYyqHiTMfKRxMZsfyH+yOQn/6tlm8s=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1779878286;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=gihZ+8fWDLM9rjS305SEdtXvjktruTqxjsmA3hZhlUA=;
+	b=X0PKGWYELx79nXAXYmfEEPVpH9O0mG+wnB6ec4t9zvyjC07qNvtfnrmbaP6FCqX4kS5MDA
+	8B34WQgYQ5O7TzBw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CAE585A7B0;
+	Wed, 27 May 2026 10:38:06 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id uYiHMY7JFmr2dQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 27 May 2026 10:38:06 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 52B88A0EB5; Wed, 27 May 2026 12:38:02 +0200 (CEST)
+Date: Wed, 27 May 2026 12:38:02 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
+	Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 12/34] ext4; Convert __ext4_read_bh() to bh_submit()
+Message-ID: <mgyyeyydvvhtwdzlquqjpotbmjxpjoiqr5b5a2r3mdo6aeuvxk@7znuqgqbyz54>
+References: <20260525171931.4144395-1-willy@infradead.org>
+ <20260525171931.4144395-13-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:GxC2BwBHi2eHsxZq29zpAQ--.34824S4
-X-Coremail-Antispam: 1UD129KBjvJXoW7tw1rtrWDJr15Kr1xWF43trb_yoW8Zr13pa
-	nrCF1UCry3Wrn8uw4Sg3y0q3WrJ3W0gw1UJryfWws5ZF9xJryfXFZ3KF1FvF18AFZxuw1a
-	qr15Zr17uF1fC37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmj14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWUuVWrJwAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1l84
-	ACjcxK6I8E87Iv67AKxVWUJVW8JwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UM2AI
-	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
-	vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
-	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04
-	v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j
-	6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7
-	AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE
-	2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcV
-	C2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kfnx
-	nUUI43ZEXa7VUbH5lUUUUUU==
-X-CM-SenderInfo: xerkvtvqow2ttfk6x35dzhxuhorxvhhfrp/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260525171931.4144395-13-willy@infradead.org>
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: D38F76700F
+X-Spam-Flag: NO
+X-Spam-Score: -4.01
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,infradead.org:email,suse.cz:email,suse.cz:dkim];
+	RCPT_COUNT_FIVE(0.00)[6];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+]
 
-Getting ext4_group_desc structure can contribute to the cost of
-ext4_mb_prefetch() without any need, as most groups fail the
-!EXT4_MB_GRP_TEST_AND_SET_READ check.
+On Mon 25-05-26 18:19:05, Matthew Wilcox (Oracle) wrote:
+> Avoid an extra indirect function call by converting
+> ext4_end_bitmap_read() from bh_end_io_t to bio_end_io_t and
+> calling bh_submit().
+> 
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+> Cc: linux-ext4@vger.kernel.org
 
-Optimize ext4_mb_prefetch by getting the group description only when
-necessary.
+Looks good. Feel free to add:
 
-The result is further increase in performance of fallocate() system call
-path that triggers ext4_mb_prefetch() via a linear group scan.
-
-Signed-off-by: Bohdan Trach <bohdan.trach@huaweicloud.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c | 21 +++++++++++----------
- 1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 25e3d9204233..907a209eb1e8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2861,8 +2861,6 @@ ext4_group_t ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
- 
- 	blk_start_plug(&plug);
- 	while (nr-- > 0) {
--		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
--								  NULL);
- 		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
- 
- 		/*
-@@ -2872,14 +2870,17 @@ ext4_group_t ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
- 		 * prefetch once, so we avoid getblk() call, which can
- 		 * be expensive.
- 		 */
--		if (gdp && grp && !EXT4_MB_GRP_TEST_AND_SET_READ(grp) &&
--		    EXT4_MB_GRP_NEED_INIT(grp) &&
--		    ext4_free_group_clusters(sb, gdp) > 0 ) {
--			bh = ext4_read_block_bitmap_nowait(sb, group, true);
--			if (!IS_ERR_OR_NULL(bh)) {
--				if (!buffer_uptodate(bh) && cnt)
--					(*cnt)++;
--				brelse(bh);
-+		if (grp && !EXT4_MB_GRP_TEST_AND_SET_READ(grp) &&
-+		    EXT4_MB_GRP_NEED_INIT(grp)) {
-+			struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
-+
-+			if (gdp && ext4_free_group_clusters(sb, gdp) > 0) {
-+				bh = ext4_read_block_bitmap_nowait(sb, group, true);
-+				if (!IS_ERR_OR_NULL(bh)) {
-+					if (!buffer_uptodate(bh) && cnt)
-+						(*cnt)++;
-+					brelse(bh);
-+				}
- 			}
- 		}
- 		if (++group >= ngroups)
+								Honza
+
+> ---
+>  fs/ext4/ext4.h   | 10 +++++-----
+>  fs/ext4/ialloc.c |  5 ++++-
+>  fs/ext4/super.c  | 11 ++++++-----
+>  3 files changed, 15 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a991e5c..6af11f0ff1c5 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2959,7 +2959,7 @@ extern unsigned long ext4_count_dirs(struct super_block *);
+>  extern void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap);
+>  extern int ext4_init_inode_table(struct super_block *sb,
+>  				 ext4_group_t group, int barrier);
+> -extern void ext4_end_bitmap_read(struct buffer_head *bh, int uptodate);
+> +void ext4_end_bitmap_read(struct bio *bio);
+>  
+>  /* fast_commit.c */
+>  int ext4_fc_info_show(struct seq_file *seq, void *v);
+> @@ -3184,10 +3184,10 @@ extern struct buffer_head *ext4_sb_bread_unmovable(struct super_block *sb,
+>  						   sector_t block);
+>  extern struct buffer_head *ext4_sb_bread_nofail(struct super_block *sb,
+>  						sector_t block);
+> -extern void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
+> -				bh_end_io_t *end_io, bool simu_fail);
+> -extern int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+> -			bh_end_io_t *end_io, bool simu_fail);
+> +void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
+> +		bio_end_io_t end_io, bool simu_fail);
+> +int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+> +		bio_end_io_t end_io, bool simu_fail);
+>  extern int ext4_read_bh_lock(struct buffer_head *bh, blk_opf_t op_flags, bool wait);
+>  extern void ext4_sb_breadahead_unmovable(struct super_block *sb, sector_t block);
+>  extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 3fd8f0099852..2db68b1bf855 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -66,8 +66,11 @@ void ext4_mark_bitmap_end(int start_bit, int end_bit, char *bitmap)
+>  		memset(bitmap + (i >> 3), 0xff, (end_bit - i) >> 3);
+>  }
+>  
+> -void ext4_end_bitmap_read(struct buffer_head *bh, int uptodate)
+> +void ext4_end_bitmap_read(struct bio *bio)
+>  {
+> +	bool uptodate = bio->bi_status == BLK_STS_OK;
+> +	struct buffer_head *bh = bio_endio_bh(bio);
+> +
+>  	if (uptodate) {
+>  		set_buffer_uptodate(bh);
+>  		set_bitmap_uptodate(bh);
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 6a77db4d3124..fbe175951e01 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -161,7 +161,7 @@ MODULE_ALIAS("ext3");
+>  
+>  
+>  static inline void __ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+> -				  bh_end_io_t *end_io, bool simu_fail)
+> +				  bio_end_io_t end_io, bool simu_fail)
+>  {
+>  	if (simu_fail) {
+>  		clear_buffer_uptodate(bh);
+> @@ -176,13 +176,14 @@ static inline void __ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+>  	 */
+>  	clear_buffer_verified(bh);
+>  
+> -	bh->b_end_io = end_io ? end_io : end_buffer_read_sync;
+> +	if (!end_io)
+> +		end_io = bh_end_read;
+>  	get_bh(bh);
+> -	submit_bh(REQ_OP_READ | op_flags, bh);
+> +	bh_submit(bh, REQ_OP_READ | op_flags, end_io);
+>  }
+>  
+>  void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
+> -			 bh_end_io_t *end_io, bool simu_fail)
+> +			 bio_end_io_t end_io, bool simu_fail)
+>  {
+>  	BUG_ON(!buffer_locked(bh));
+>  
+> @@ -194,7 +195,7 @@ void ext4_read_bh_nowait(struct buffer_head *bh, blk_opf_t op_flags,
+>  }
+>  
+>  int ext4_read_bh(struct buffer_head *bh, blk_opf_t op_flags,
+> -		 bh_end_io_t *end_io, bool simu_fail)
+> +		 bio_end_io_t end_io, bool simu_fail)
+>  {
+>  	BUG_ON(!buffer_locked(bh));
+>  
+> -- 
+> 2.47.3
+> 
 -- 
-2.43.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
