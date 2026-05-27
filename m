@@ -1,64 +1,64 @@
-Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
+Received: from mail-pf1-f174.google.com (mail-pf1-f174.google.com [209.85.210.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B839F30CD82
-	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 19:46:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77BF73B0AF8
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 19:50:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.174
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779911218; cv=none; b=RlVI3hqxPSE6KlKMHXq/j+ZA9O6TJnk4Nsw8ZIntiyMCTJdO1GnukeLtu3dbYJBw5btiQVg39KPe2YHT9NRrlbBN3jpbhwsQGvd05UGUSVV9VoCboGSKahha4dsbcRcpu/j+mTA5O2zeA3G50y5XQx23S2W8jAIcQJxA2G/4omc=
+	t=1779911401; cv=none; b=RIdlfcsBpGKjHZd4eKSXpaF2TNTDkQJKGGxvVT9YE5ijKQPCNypLbeFV5izuXxt3nwMUNzGdkzkzXlqMHc2NlQG9vWUctAIYZ1EyFOrhzNZI/pWDmtmc3wEv1GDbh3/n+u6BaiYXjnKWhJvzhIg1ml7vQJN4Azsac0soE1p+xJ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779911218; c=relaxed/simple;
-	bh=Qo5oSVPWhALtXNm3HWU/xW24f9FA40Oy2imH/s2Ulww=;
+	s=arc-20240116; t=1779911401; c=relaxed/simple;
+	bh=39tktjVEQd6+zr//5aHm296biAPzFAZF2fjSuZq7Two=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=lMY+NNSFfj6d/U2O14ddTq4OsXfMwXeZNuzPL6XNM+IdDHsyyyTvBEWdpZS4K8TklkPSbIZSbyvWEVq4yW2/72D1Y2zATS6dFburN8eaYqObTYlma/kRWuE/J8PprJqtwomgmDSAOB7dGZcoQuAsnmZAC+5hv0XBTs+yYwui83U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=h7gWqfkf; arc=none smtp.client-ip=209.85.216.45
+	 Message-Id:References:To; b=ZJuie2w4ZFF+aQGWaWFQkULR599v+LuupcFjzYFc/0YclQJ1bAzcBMNZNQgbKhi1ruY1geaFDLJ3Q7cjGJRcSVcO+kx9P2zN4OjrSBsT49hc6yAmUOOH2soH+IKagr3WaVHcpiTJbMXAe4g2F7tbrfzY9YGHdC52f4ZHOy5cdao=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=Nb5TEOnR; arc=none smtp.client-ip=209.85.210.174
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="h7gWqfkf"
-Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-36936dcf19dso6153941a91.0
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 12:46:56 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="Nb5TEOnR"
+Received: by mail-pf1-f174.google.com with SMTP id d2e1a72fcca58-8419ab3a297so1553116b3a.2
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 12:50:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1779911216; x=1780516016; darn=vger.kernel.org;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1779911400; x=1780516200; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=NBREJ5Nt325/SQvA29idZI84oT5rKMGuXogaRknW0N4=;
-        b=h7gWqfkf3cnp42OXfipw4GI6RmA+jR5k+sRa1sbdFANvWCbhDYrl8/aKU09V6Olna0
-         QZ6q2Tw5o1lnKslKFuN+lOjWV7uaij2sH+xBMwQHaqmTT9xRP3J7Un4C1cVzn1Pj6NIw
-         SYqd1h1jwM+lfKP88JQU3toJqzPSBwSdQkNvXAe6iCgyLD9UlaZ3nsERoNH5QPEIB2jK
-         8ROi4YjX7Nml8HlTu7vgME+3xn2u01scwPRltWI3xkUZR8hpE+8quuyIPay4oy2seNso
-         5f8qLsYLXrzn005qiMlA3sOfyXmk48OSs8JoGtIPs9fpdp+qZ6N4JFCYvzEQzVNSSCbo
-         HBiw==
+        bh=39tktjVEQd6+zr//5aHm296biAPzFAZF2fjSuZq7Two=;
+        b=Nb5TEOnRZGhj0er0IE7x3uivwSAfy9B6vjQgjjt01zCv2/T98gPEVCWr+a8jVoPKwV
+         R1Pn/O9uEZX9I77V+ZDLIkLAx+AKUhT1l1Nt5dxYybTtOSGfssavmZ4X5kPGwd7+430o
+         WyHDktSaaulPpgEe+eWb3kuW90BhryAyzcx4FQwVKskUr1swBLf/qtd/QmrJVWIotDdd
+         DZk6A2GCNm/Qs7sGpmeNTo8Si4Qq/6p+gNEdQtO4S27AqG+QbpDhQgWCMqDaMbQtDQdr
+         ZYdQwmMkA7aVE2qiVMagdoSP/1KRcO0tcqaB+j5+J5jPGeja1h8t2u6Bly8tddtMvPcW
+         0+KA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779911216; x=1780516016;
+        d=1e100.net; s=20251104; t=1779911400; x=1780516200;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=NBREJ5Nt325/SQvA29idZI84oT5rKMGuXogaRknW0N4=;
-        b=XwHGntaJWeZcn3xGX7tiwJ1Z2OOtSL8YlEvu0VJ56Xkfn79qPfm/0Nbe107cl7riVk
-         KraHM7wZPcGPjduNlFzhu07LpkS1r4kuhT1idPqnyYTODGpyznIwWB20Pvk942j1EoZo
-         Pdpb/Ae62HeEftAY1wSCqFHSFFBmNbNh6C/xLEj8MiQrlftrXlADSSjRC2l7cTmrpSa3
-         c7XXdItFSPR9kzo5Ha+FVTN/FcrDj+yxFqTnGYs/zbzXN8pKF4Hl2X3Wp7UVYqJyBDFV
-         4Y25QtXQIuk3l/ANDZd46lNdM9FTmdNu419eXqIND0xOo3BsdupAT3WZmg19VTGWWK9D
-         KOJA==
-X-Forwarded-Encrypted: i=1; AFNElJ/JZ0TPho267lneBMtUCRVwezWoDFZnaJXouwywNhu40hv2I3O9GQi87AJnLI6HCk/DsMH0ezoIhAtC@vger.kernel.org
-X-Gm-Message-State: AOJu0Yxvg9C4Izo0JujjtIGBMog8J2f0UCzjPqoETr1KYBR3gje1kw3p
-	5NNooY+z2NFFmL3B4LXezGuw6XZ8I2yvQY/LrI5jcq27TVcyeUwm/S6hmWVFymM2bek=
-X-Gm-Gg: Acq92OF8baWdcOEFY0QZAJv4NoBjqUxr4nSvNWRvenxRPX4wZxowCekn3pqLzzmBunQ
-	3shG2QuDZdqzQ3MUCEBlxic8cnk6LY5FvydqWL6FeaBj9oaGl6OOFKAtuUKmZ7IMVQqnm3qWMTI
-	qb2ef3Ph6+7+q0pWEkByc3ky0IIip3Xz7T+gbWs+BoBQxQ69h9Yh1EuDfz+Sk83ULOBxvw0P2M9
-	jfS4NoK9FnC7gCg4UYfBF3SuvOBld3fE/v1aavqKtbfY+a5q1ci7hnq4dKAxJzQ5QXsXnHHwNp4
-	MsN+IAuNOmMNzghYSsDx8Z2Sgxf/kT70jzeZQ5o1qahZWmRvi1DfDHZMIaOyOz+p+oq5+6ZW2jX
-	u37OOrtDj1kYUAOUNDDF9pcvzCOEY+VDS96ZrLoFc1SEyQKjVpojHySIae9tYesb6yo/2roJNSH
-	gEIlqDQ3n1XAfhOIhgvD+a40Qz2U+4ppfBmSKmqq79ihSANqRDv9+Z0EJJFKAvw9GM/37x7n02g
-	Ug0qSUTlrmrXh0w
-X-Received: by 2002:a17:90b:2d08:b0:36a:f064:d48a with SMTP id 98e67ed59e1d1-36af064eeb6mr10856149a91.4.1779911215911;
-        Wed, 27 May 2026 12:46:55 -0700 (PDT)
+        bh=39tktjVEQd6+zr//5aHm296biAPzFAZF2fjSuZq7Two=;
+        b=kG9fGnOP0lRZpRxeje1Jhs/ztdet6phX0ZjxC4/5GOzEYIIgGle6Ez1dzIYTa5kqKd
+         vtBUKV30EybLZXmg2EeMjXN6t68FAG+oRoprUxSyMA4ALbdOsVnwOxXqHvgP624rJBa9
+         NhKAjA5qcuzBIplH/bbbAJTg4g+ulnxNkliWQqKIbPPnk1VGD/P6TitCCSk40L0K4yoN
+         C9GLCVlnwdEPyavDWjg1iPwZ5A0gZwuASLKhYcDAYUKshGMfxS0zTQUtd+UiuOGGVt3N
+         JQLYTx8J8YtJnnAphK/G003g9lpeFhGr6+22j5B1Q4lK0tUqV1Ft3PMNogq5Jk7jj2Hc
+         SV8w==
+X-Forwarded-Encrypted: i=1; AFNElJ9HpPPZAGtrvaF5KHMK21Ai2g/A8t3lO/MiZXm4BRZiqKEMJyp0fKDIuoU4WxodDekzEj5L2NMPAhY2@vger.kernel.org
+X-Gm-Message-State: AOJu0Yymxtclz9EJ53QZWVh9qXvp9NIALQ5dVIPGDVVCw3pPLWy+fxal
+	3Qg2oGrFnGfuXhcCOUWRu8xV+O+J5YscD/qRMGsCzvpjKzmdb051kxfbaM1gNXMzMuY=
+X-Gm-Gg: Acq92OHE5NNQOaHMmVUr/aKXCjnjAQY9cIOiYJmGu0ZGJNLQJBD9NJzkPOXmDGQSZRV
+	HRdQyCDsdVqGRJsrpBsggNCWwnoifeLD01Y49T5Ab1JvM7lKC8a9YTHdD0fa3gg1MEoz33GRF1g
+	NZHKBzHy1zxReeXN5Yv/OIb7ihLGd4QzQ27QgdcberhbBPngqcJ+tf5hGxyNeZmKmKX/Gu2BAuO
+	cdnB9gcUCSnRB2wjrii8eBRogQq70oeJ3PCgS39uqPM9ZtlXC8rztphE9xkBAWq+0RZ4muVjBEQ
+	S2foA6O1TfqOPBa26KenTPSYI67Qkd5kY0l0F3dysfzItZa5eZDJR/kDnc6krK34thOSdVXcsLM
+	OfrgOkLtQU1tjxXozvoua73IA10ZZZVvDI76BRsN5oaZkb4EyCgEa6zwrVWzHtxOTXS78o8cO6E
+	YGUKdaZHkXSZ8psQbkCUYik5eFgM8DvzWNjsDpq4xM0yqD5MkwzvaH8iG6fV8jsffwilvVnQH5v
+	8l69Wn+YZFlznEw
+X-Received: by 2002:a05:6a00:2d90:b0:837:666f:8fcb with SMTP id d2e1a72fcca58-8415f0e2cfcmr24261054b3a.5.1779911399888;
+        Wed, 27 May 2026 12:49:59 -0700 (PDT)
 Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-36a7263179bsm15614465a91.1.2026.05.27.12.46.54
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-841d6eae727sm3986613b3a.19.2026.05.27.12.49.58
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 27 May 2026 12:46:55 -0700 (PDT)
+        Wed, 27 May 2026 12:49:59 -0700 (PDT)
 Content-Type: text/plain;
 	charset=us-ascii
 Precedence: bulk
@@ -67,11 +67,11 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH v2 1/2] ext4: avoid RWM atomic in
- EXT4_MB_GRP_TEST_AND_SET_READ
+Subject: Re: [PATCH v2 2/2] ext4: get ext4_group_desc in ext4_mb_prefetch only
+ when necessary
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260527090329.2680170-2-bohdan.trach@huaweicloud.com>
-Date: Wed, 27 May 2026 13:46:43 -0600
+In-Reply-To: <20260527090329.2680170-3-bohdan.trach@huaweicloud.com>
+Date: Wed, 27 May 2026 13:49:47 -0600
 Cc: Theodore Ts'o <tytso@mit.edu>,
  Baokun Li <libaokun@linux.alibaba.com>,
  Jan Kara <jack@suse.cz>,
@@ -84,114 +84,35 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
  linux-ext4@vger.kernel.org,
  linux-kernel@vger.kernel.org
 Content-Transfer-Encoding: quoted-printable
-Message-Id: <2D89BCA2-8317-4399-B926-7F5094236C1C@dilger.ca>
+Message-Id: <560F1E7C-47C0-41D4-856A-ECB9BE4BDC3E@dilger.ca>
 References: <20260527090329.2680170-1-bohdan.trach@huaweicloud.com>
- <20260527090329.2680170-2-bohdan.trach@huaweicloud.com>
+ <20260527090329.2680170-3-bohdan.trach@huaweicloud.com>
 To: Bohdan Trach <bohdan.trach@huaweicloud.com>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
 On May 27, 2026, at 03:03, Bohdan Trach <bohdan.trach@huaweicloud.com> =
 wrote:
 >=20
-> EXT4_MB_GRP_TEST_AND_SET_READ uses test_and_set_bit function which
-> issues an atomic write. This can cause high overhead due to cache
-> contention when multiple threads iterate over groups in a tight loop,
-> as is the case for ext4_mb_prefetch(). We have seen this to be a
-> problem for Kunpeng 920b CPUs which uses a single ARM LSE instruction
-> for this purpose.
+> Getting ext4_group_desc structure can contribute to the cost of
+> ext4_mb_prefetch() without any need, as most groups fail the
+> !EXT4_MB_GRP_TEST_AND_SET_READ check.
 >=20
-> Avoid this unconditional atomic write by testing the bit first without
-> changing its value. This is OK for this use case as this bit is never
-> unset.
+> Optimize ext4_mb_prefetch by getting the group description only when
+> necessary.
 >=20
-> This change significantly reduces costs of fallocate() operations =
-which
-> trigger linear group scans on large multicore machines where
-> test_and_set_bit issues an atomic write operation unconditionally.
+> The result is further increase in performance of fallocate() system =
+call
+> path that triggers ext4_mb_prefetch() via a linear group scan.
 >=20
 > Signed-off-by: Bohdan Trach <bohdan.trach@huaweicloud.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Thanks for the patch.  Definitely the benchmarks in the 0/2 email show
-significant gains for the Kunpeng system, and reducing contention makes =
-sense
-as core counts increase and the likely case is that the bit is already =
-set.
+This looks reasonable, and is independent of the =
+EXT4_MB_GRP_TEST_AND_SET_READ()
+micro-optimization in the 1/2 patch.
 
-That said, I wonder if this should (also/instead) be put into =
-test_and_set_bit()
-itself, or add test_and_unlikely_set_bit() or test_and_rarely_set_bit()
-(or similar) optimized for the case where the bit is likely to already =
-be set.
-
-I see in your benchmarking that there is not "apples-to-apples" =
-comparisons for
-ARM(Kunpeng) vs. AMD on the same storage.  The storage hardware and =
-space usage
-is different for each test run, and the ARM numbers show only marginal =
-gains and
-more negative than positive results at all thread counts:
-
-> Benchmark on an existing file system for AMD 9654 (15T FS, 6% space
-> used), kernel 7.1-rc3. This shows the performance impact on a mostly
-> free file system.
-> | thr. |  base | patched |    improv. |
-> |      |  perf |    perf |            |
-> |------|-------|---------|------------|
-> |    1 | 30901 |   31191 | +0.9384810 |
-> |    2 | 50874 |   50504 | -0.7272870 |
-> |    4 | 66068 |   64108 | -2.9666404 |
-> |    8 | 63963 |   61927 | -3.1830902 |
-> |   16 | 47809 |   47044 | -1.6001171 |
-> |   32 | 42441 |   42326 | -0.2709644 |
-> |   64 | 39773 |   39929 | +0.3922259 |
-> |  128 | 37065 |   36413 | -1.7590719 |
-
-
-The performance reduction might be caused by the now double memory =
-access on
-AMD that is only adding overhead on that CPU implementation?  It would =
-be useful
-to see the testing on Kunpeng vs. AMD/Intel on the same storage =
-device/usage.
-
-That would tell us if it is more appropriate to optimize this in the =
-aarch64
-test_and_set_bit() rather than in ext4.
-
-Cheers, Andreas
-
-
-> ---
-> fs/ext4/ext4.h | 8 +++++++-
-> 1 file changed, 7 insertions(+), 1 deletion(-)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 56b82d4a15d7..f8eacf1375f8 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3551,7 +3551,13 @@ struct ext4_group_info {
->  #define EXT4_MB_GRP_CLEAR_TRIMMED(grp) \
->  	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
->  #define EXT4_MB_GRP_TEST_AND_SET_READ(grp) \
-> -	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
-&((grp)->bb_state)))
-> +	(ext4_mb_grp_test_and_set_read((grp)))
-> +
-> +static inline int ext4_mb_grp_test_and_set_read(struct =
-ext4_group_info *grp)
-> +{
-> + 	return (test_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
-&grp->bb_state) ||
-> + 		test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
-&grp->bb_state));
-> +}
->=20
-> #define EXT4_MAX_CONTENTION 8
-> #define EXT4_CONTENTION_THRESHOLD 2
-> --=20
-> 2.43.0
->=20
-
+Reviewed-by: Andreas Dilger <adilger@dilger.ca =
+<mailto:adilger@dilger.ca>>
 
 Cheers, Andreas
 
