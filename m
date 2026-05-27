@@ -1,163 +1,201 @@
-Received: from mail-lf1-f42.google.com (mail-lf1-f42.google.com [209.85.167.42])
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52D013DD874
-	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 16:02:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.167.42
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779897760; cv=pass; b=auYKxSlCI9IFvZ3thT3/YaytP/ASRrjqlVjn14tnDUpkI2AbwYH6RljGxaUp1e9HK6HmHp7tY596ByOJ0NUpQszs9vtuaUWHAlwMda8n6Aca+4pmgOTIlx7of5gsex6ou+ZU4LFjcZWQshCdM0ghfGtzZ9+VwsbTMHkSGCPs1q8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779897760; c=relaxed/simple;
-	bh=AHt0+86vpId0YnypIvt+8kocwI6bTxlsvlDW/zwRB5c=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=eENRfpbxWwNoJCHDfaPR+UBkCO/xhpiKas5984ZRm7WoinmynBBGMVuRe/7qTAg+VhwK/1j7HtNZfbR3JhZFgrgGEo6HqCyJZwY+SJ7opaEGfttGsc1zI4tXENPhuroR9geb/X+YLtszHQLOOgfux2/n5r8QIAaEEjIK5GaRtgg=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=L6AweTLN; arc=pass smtp.client-ip=209.85.167.42
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B839F30CD82
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 19:46:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1779911218; cv=none; b=RlVI3hqxPSE6KlKMHXq/j+ZA9O6TJnk4Nsw8ZIntiyMCTJdO1GnukeLtu3dbYJBw5btiQVg39KPe2YHT9NRrlbBN3jpbhwsQGvd05UGUSVV9VoCboGSKahha4dsbcRcpu/j+mTA5O2zeA3G50y5XQx23S2W8jAIcQJxA2G/4omc=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1779911218; c=relaxed/simple;
+	bh=Qo5oSVPWhALtXNm3HWU/xW24f9FA40Oy2imH/s2Ulww=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=lMY+NNSFfj6d/U2O14ddTq4OsXfMwXeZNuzPL6XNM+IdDHsyyyTvBEWdpZS4K8TklkPSbIZSbyvWEVq4yW2/72D1Y2zATS6dFburN8eaYqObTYlma/kRWuE/J8PprJqtwomgmDSAOB7dGZcoQuAsnmZAC+5hv0XBTs+yYwui83U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=h7gWqfkf; arc=none smtp.client-ip=209.85.216.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L6AweTLN"
-Received: by mail-lf1-f42.google.com with SMTP id 2adb3069b0e04-5a8721851e2so13321066e87.0
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 09:02:38 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1779897756; cv=none;
-        d=google.com; s=arc-20240605;
-        b=hlOF+muw8aHPxB5IHm+8WCsPdrIGBNf+E7MtUm5lsdmlcO4H9/piORUH2/v9cpoj46
-         wP//yU0ZT6b3YMZ95rhIBgEEBU5JgQvlbxVRXuXmR6ywmKdNtUwAbv8jAQt2vXLx7xMx
-         LTXL/XppuZUqQuZPvr8o5KSKDcrPhg3tYGfNB9HkNansfhOjExoKg6u2OqURBwxHm/hh
-         nCbFf3FKbCX47XISSW/3t4LicT6c4FpiRs9d/65kfN9gFHskmhXtn2HTJWCAeqnODf6l
-         kxVJQRjLoljf6yLlfPPVRs1wQ54ZrsQToKVOIFGO09Hmdp0zSbdJPHbty3kP/Jy8RnTQ
-         lkMA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=z2Cy0T5Ytizh+1Br6nvrDriJnRVK9iMYXygh/HS+xaY=;
-        fh=B1L+ycXK2guIrwx/CDkTLP6F+xH23+IjIU7+3qtF08I=;
-        b=LWDEXbtwZomJ+9hQemWDvOWugPNzB47/x7BY0P5ln2yCfmw82d5EZKSSvsmRyM1ua2
-         yMQvebCK9mKXu2c0Bo5HZaWU19l6RYTX3c0tSl9IFVnLraPg46BjsPBbSTOAv1kxBDOU
-         A8q8EfUdiQoxDRxvwvKdczH6p+kFLZLyOdGwg96Agfmjd2MxlilAKdnRa95hfukxfKLK
-         Ti2DlVRnfVYZr/nicmx8IPyPq93fBnY6FYhw0hKLVkVmjxhwTVcCs/FwIBjZ+SzMP/Rq
-         RWSp6fxVsy2wGXNwetWQHKsWvOmrACu4vvWFKST7rOcFQCPAyKfk1izuSaH4TWYELZ/f
-         79kA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="h7gWqfkf"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-36936dcf19dso6153941a91.0
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2026 12:46:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779897756; x=1780502556; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1779911216; x=1780516016; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=z2Cy0T5Ytizh+1Br6nvrDriJnRVK9iMYXygh/HS+xaY=;
-        b=L6AweTLNHy/Z0BzaB6cRHkDYdErwcaMUEx8sJqTCu6h0qBQaMI0UE7aPhCgR72qWxR
-         SZBJ7t2RaoXpz4Fldpeu3WtNvtR9fGkYodPHOCr6ktBnEdknHAi631onR1oC5MFvlZy2
-         moajP1VpZItzXpnNDN9Vh/8h3PzgP5amoobLKOr4RvS6L4yacQa55e2mV8a00urNt5nn
-         HTjaq768EtXo9tfUIVpinlcto7s/5nLIsy4HiNkmZN86ifJim24oHWq+N95dQY3ntf3J
-         Z5ZtSXPJv5DKW3uIy9zRs41yXQqczJ0rvHLa8rUvUrd3+qC9SeiuGsQYj4VxNAhx6cpR
-         KzGA==
+        bh=NBREJ5Nt325/SQvA29idZI84oT5rKMGuXogaRknW0N4=;
+        b=h7gWqfkf3cnp42OXfipw4GI6RmA+jR5k+sRa1sbdFANvWCbhDYrl8/aKU09V6Olna0
+         QZ6q2Tw5o1lnKslKFuN+lOjWV7uaij2sH+xBMwQHaqmTT9xRP3J7Un4C1cVzn1Pj6NIw
+         SYqd1h1jwM+lfKP88JQU3toJqzPSBwSdQkNvXAe6iCgyLD9UlaZ3nsERoNH5QPEIB2jK
+         8ROi4YjX7Nml8HlTu7vgME+3xn2u01scwPRltWI3xkUZR8hpE+8quuyIPay4oy2seNso
+         5f8qLsYLXrzn005qiMlA3sOfyXmk48OSs8JoGtIPs9fpdp+qZ6N4JFCYvzEQzVNSSCbo
+         HBiw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779897756; x=1780502556;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=z2Cy0T5Ytizh+1Br6nvrDriJnRVK9iMYXygh/HS+xaY=;
-        b=YNP1NAVvP8vAldQg6DekahJJgj+EOTsjPUGleDrqLg0qf6W1TasfrXXeoQL0RAIvON
-         lB+GNwZQ3+/cbihjJTzaInskeXZCMYz598Bcr5FQ9zTdLQjLLyed9qcM5zvjzjVS01My
-         nn8AAcKBtoSi69mc2zDwHwKSxwqc76GmFMqSloPcXgXGcGIThXTDmxbWWlGtI62JNHCc
-         pqiQ8XOEcLI5wTiGMTVQalMJc8eU9ORtOxTZ0zwmmZjn/ttv9yJ32hzrkFlL8WQGjwax
-         JxFP4JW/MOyeewc36Ilu6BEsqLQp2mT/1drZC9owG+dkrTSMe+l/RqQgNZPEC3kDZUDG
-         Q2tQ==
-X-Forwarded-Encrypted: i=1; AFNElJ8i7VF4OSAUxM/wym+myxkh+PZ9sLhQYzfJF+H94nsfU4/0jjaXQUQ4uCTfwqYtV/lAjrumxMJjyccY@vger.kernel.org
-X-Gm-Message-State: AOJu0YwGR+A9hGCjCEt3yirG6iG1ODrjNvnyrWvy2fgegOAQGFMOiz1a
-	ePnyK5m0kGAb/EVdwBTtdMQezvEdbAIhQHdM78lPtIee5e6W/TgumDJL1Z/ThJ65Np3bWY35gKF
-	ZeY9qFw3aKVuk3nWkAIVwYgO7FLPJFn8=
-X-Gm-Gg: Acq92OEvqrN2kD9vcH8TxIweWrCx1IqsDjgdX8zkUrafaA17QvpbTxrYtUWjJpl113Z
-	3+4HuVWGd7wenTKy2hnpU5faFrkWtMiqMUtx6CBlQAP9TNdfkK/zRZxdKGXHwkgm4cQc7kZW5yj
-	LdsUS+48q60OMRaPtATGO9LpeFjxyYO2fAWVNsgEp1rkuNikM6qSBWyMwUy4JsanE5egD9uLYGB
-	N6Bcjd8RxSI23wLpkXyX0iPD4dPNasop6W2PcJIaF+YhP/aZIs6YekOaQXrBfjM1ip14+OibNTK
-	miZPgqKT
-X-Received: by 2002:a05:6512:1082:b0:5a8:96cf:c8c4 with SMTP id
- 2adb3069b0e04-5aa3232a140mr8148267e87.15.1779897755653; Wed, 27 May 2026
- 09:02:35 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1779911216; x=1780516016;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:x-gm-gg:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=NBREJ5Nt325/SQvA29idZI84oT5rKMGuXogaRknW0N4=;
+        b=XwHGntaJWeZcn3xGX7tiwJ1Z2OOtSL8YlEvu0VJ56Xkfn79qPfm/0Nbe107cl7riVk
+         KraHM7wZPcGPjduNlFzhu07LpkS1r4kuhT1idPqnyYTODGpyznIwWB20Pvk942j1EoZo
+         Pdpb/Ae62HeEftAY1wSCqFHSFFBmNbNh6C/xLEj8MiQrlftrXlADSSjRC2l7cTmrpSa3
+         c7XXdItFSPR9kzo5Ha+FVTN/FcrDj+yxFqTnGYs/zbzXN8pKF4Hl2X3Wp7UVYqJyBDFV
+         4Y25QtXQIuk3l/ANDZd46lNdM9FTmdNu419eXqIND0xOo3BsdupAT3WZmg19VTGWWK9D
+         KOJA==
+X-Forwarded-Encrypted: i=1; AFNElJ/JZ0TPho267lneBMtUCRVwezWoDFZnaJXouwywNhu40hv2I3O9GQi87AJnLI6HCk/DsMH0ezoIhAtC@vger.kernel.org
+X-Gm-Message-State: AOJu0Yxvg9C4Izo0JujjtIGBMog8J2f0UCzjPqoETr1KYBR3gje1kw3p
+	5NNooY+z2NFFmL3B4LXezGuw6XZ8I2yvQY/LrI5jcq27TVcyeUwm/S6hmWVFymM2bek=
+X-Gm-Gg: Acq92OF8baWdcOEFY0QZAJv4NoBjqUxr4nSvNWRvenxRPX4wZxowCekn3pqLzzmBunQ
+	3shG2QuDZdqzQ3MUCEBlxic8cnk6LY5FvydqWL6FeaBj9oaGl6OOFKAtuUKmZ7IMVQqnm3qWMTI
+	qb2ef3Ph6+7+q0pWEkByc3ky0IIip3Xz7T+gbWs+BoBQxQ69h9Yh1EuDfz+Sk83ULOBxvw0P2M9
+	jfS4NoK9FnC7gCg4UYfBF3SuvOBld3fE/v1aavqKtbfY+a5q1ci7hnq4dKAxJzQ5QXsXnHHwNp4
+	MsN+IAuNOmMNzghYSsDx8Z2Sgxf/kT70jzeZQ5o1qahZWmRvi1DfDHZMIaOyOz+p+oq5+6ZW2jX
+	u37OOrtDj1kYUAOUNDDF9pcvzCOEY+VDS96ZrLoFc1SEyQKjVpojHySIae9tYesb6yo/2roJNSH
+	gEIlqDQ3n1XAfhOIhgvD+a40Qz2U+4ppfBmSKmqq79ihSANqRDv9+Z0EJJFKAvw9GM/37x7n02g
+	Ug0qSUTlrmrXh0w
+X-Received: by 2002:a17:90b:2d08:b0:36a:f064:d48a with SMTP id 98e67ed59e1d1-36af064eeb6mr10856149a91.4.1779911215911;
+        Wed, 27 May 2026 12:46:55 -0700 (PDT)
+Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-36a7263179bsm15614465a91.1.2026.05.27.12.46.54
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 27 May 2026 12:46:55 -0700 (PDT)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org> <20260523-b4-fs-v1-4-275e36a83f0e@kernel.org>
- <1bb537f6dc36b00788b613fb8f71579478418457.camel@redhat.com>
-In-Reply-To: <1bb537f6dc36b00788b613fb8f71579478418457.camel@redhat.com>
-From: Ryusuke Konishi <konishi.ryusuke@gmail.com>
-Date: Thu, 28 May 2026 01:02:19 +0900
-X-Gm-Features: AVHnY4KetSSI45sZ2YEgAEZTRsUQAA2DaTD5AcJyh7fDYB4FmiHhDhxOxGAj9DM
-Message-ID: <CAKFNMokr_mk8xhMQ7u8RGRd1XPQSSd_uVKXR=-ui5Zjk8AhfTw@mail.gmail.com>
-Subject: Re: [PATCH 04/17] nilfs2: replace get_zeroed_page() with kzalloc()
-To: "Mike Rapoport (Microsoft)" <rppt@kernel.org>
-Cc: Viacheslav Dubeyko <vdubeyko@redhat.com>, Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>, 
-	Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>, 
-	Viacheslav Dubeyko <slava@dubeyko.com>, Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
-	Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Dave Kleikamp <shaggy@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>, Miklos Szeredi <miklos@szeredi.hu>, 
-	Andreas Hindborg <a.hindborg@kernel.org>, Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>, 
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>, linux-kernel@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, ocfs2-devel@lists.linux.dev, 
-	linux-nilfs@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org, 
-	linux-mm@kvack.org
-Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: Re: [PATCH v2 1/2] ext4: avoid RWM atomic in
+ EXT4_MB_GRP_TEST_AND_SET_READ
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20260527090329.2680170-2-bohdan.trach@huaweicloud.com>
+Date: Wed, 27 May 2026 13:46:43 -0600
+Cc: Theodore Ts'o <tytso@mit.edu>,
+ Baokun Li <libaokun@linux.alibaba.com>,
+ Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huawei.com>,
+ mchehab+huawei@kernel.org,
+ bohdan.trach@huawei.com,
+ lilith.oberhauser@huawei.com,
+ linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org
 Content-Transfer-Encoding: quoted-printable
+Message-Id: <2D89BCA2-8317-4399-B926-7F5094236C1C@dilger.ca>
+References: <20260527090329.2680170-1-bohdan.trach@huaweicloud.com>
+ <20260527090329.2680170-2-bohdan.trach@huaweicloud.com>
+To: Bohdan Trach <bohdan.trach@huaweicloud.com>
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Tue, May 26, 2026 at 2:07=E2=80=AFAM Viacheslav Dubeyko wrote:
->
-> On Sat, 2026-05-23 at 20:54 +0300, Mike Rapoport (Microsoft) wrote:
-> > nilfs_ioctl_wrap_copy() allocates a temporary buffer with
-> > get_zeroed_page().
-> >
-> > kzalloc() is a better API for such use and it also provides better
-> > scalability and more debugging possibilities.
-> >
-> > Replace use of get_zeroed_page() with kzalloc().
-> >
-> > Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
-> > ---
-> >  fs/nilfs2/ioctl.c | 4 ++--
-> >  1 file changed, 2 insertions(+), 2 deletions(-)
-> >
-> > diff --git a/fs/nilfs2/ioctl.c b/fs/nilfs2/ioctl.c
-> > index e0a606643e87..b73f2c5d10f0 100644
-> > --- a/fs/nilfs2/ioctl.c
-> > +++ b/fs/nilfs2/ioctl.c
-> > @@ -69,7 +69,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *ni=
-lfs,
-> >       if (argv->v_index > ~(__u64)0 - argv->v_nmembs)
-> >               return -EINVAL;
-> >
-> > -     buf =3D (void *)get_zeroed_page(GFP_NOFS);
-> > +     buf =3D kzalloc(PAGE_SIZE, GFP_NOFS);
-> >       if (unlikely(!buf))
-> >               return -ENOMEM;
-> >       maxmembs =3D PAGE_SIZE / argv->v_size;
-> > @@ -107,7 +107,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *=
-nilfs,
-> >       }
-> >       argv->v_nmembs =3D total;
-> >
-> > -     free_pages((unsigned long)buf, 0);
-> > +     kfree(buf);
-> >       return ret;
-> >  }
-> >
->
-> Makes sense to me.
->
-> Reviewed-by: Viacheslav Dubeyko <slava@dubeyko.com>
->
-> Thanks,
-> Slava.
+On May 27, 2026, at 03:03, Bohdan Trach <bohdan.trach@huaweicloud.com> =
+wrote:
+>=20
+> EXT4_MB_GRP_TEST_AND_SET_READ uses test_and_set_bit function which
+> issues an atomic write. This can cause high overhead due to cache
+> contention when multiple threads iterate over groups in a tight loop,
+> as is the case for ext4_mb_prefetch(). We have seen this to be a
+> problem for Kunpeng 920b CPUs which uses a single ARM LSE instruction
+> for this purpose.
+>=20
+> Avoid this unconditional atomic write by testing the bit first without
+> changing its value. This is OK for this use case as this bit is never
+> unset.
+>=20
+> This change significantly reduces costs of fallocate() operations =
+which
+> trigger linear group scans on large multicore machines where
+> test_and_set_bit issues an atomic write operation unconditionally.
+>=20
+> Signed-off-by: Bohdan Trach <bohdan.trach@huaweicloud.com>
 
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Thanks for the patch.  Definitely the benchmarks in the 0/2 email show
+significant gains for the Kunpeng system, and reducing contention makes =
+sense
+as core counts increase and the likely case is that the bit is already =
+set.
 
-This conversion looks reasonable and won't affect the behavior of the
-ioctls that use the modified function.
+That said, I wonder if this should (also/instead) be put into =
+test_and_set_bit()
+itself, or add test_and_unlikely_set_bit() or test_and_rarely_set_bit()
+(or similar) optimized for the case where the bit is likely to already =
+be set.
 
-Thanks,
-Ryusuke Konishi
+I see in your benchmarking that there is not "apples-to-apples" =
+comparisons for
+ARM(Kunpeng) vs. AMD on the same storage.  The storage hardware and =
+space usage
+is different for each test run, and the ARM numbers show only marginal =
+gains and
+more negative than positive results at all thread counts:
+
+> Benchmark on an existing file system for AMD 9654 (15T FS, 6% space
+> used), kernel 7.1-rc3. This shows the performance impact on a mostly
+> free file system.
+> | thr. |  base | patched |    improv. |
+> |      |  perf |    perf |            |
+> |------|-------|---------|------------|
+> |    1 | 30901 |   31191 | +0.9384810 |
+> |    2 | 50874 |   50504 | -0.7272870 |
+> |    4 | 66068 |   64108 | -2.9666404 |
+> |    8 | 63963 |   61927 | -3.1830902 |
+> |   16 | 47809 |   47044 | -1.6001171 |
+> |   32 | 42441 |   42326 | -0.2709644 |
+> |   64 | 39773 |   39929 | +0.3922259 |
+> |  128 | 37065 |   36413 | -1.7590719 |
+
+
+The performance reduction might be caused by the now double memory =
+access on
+AMD that is only adding overhead on that CPU implementation?  It would =
+be useful
+to see the testing on Kunpeng vs. AMD/Intel on the same storage =
+device/usage.
+
+That would tell us if it is more appropriate to optimize this in the =
+aarch64
+test_and_set_bit() rather than in ext4.
+
+Cheers, Andreas
+
+
+> ---
+> fs/ext4/ext4.h | 8 +++++++-
+> 1 file changed, 7 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 56b82d4a15d7..f8eacf1375f8 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3551,7 +3551,13 @@ struct ext4_group_info {
+>  #define EXT4_MB_GRP_CLEAR_TRIMMED(grp) \
+>  	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+>  #define EXT4_MB_GRP_TEST_AND_SET_READ(grp) \
+> -	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
+&((grp)->bb_state)))
+> +	(ext4_mb_grp_test_and_set_read((grp)))
+> +
+> +static inline int ext4_mb_grp_test_and_set_read(struct =
+ext4_group_info *grp)
+> +{
+> + 	return (test_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
+&grp->bb_state) ||
+> + 		test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, =
+&grp->bb_state));
+> +}
+>=20
+> #define EXT4_MAX_CONTENTION 8
+> #define EXT4_CONTENTION_THRESHOLD 2
+> --=20
+> 2.43.0
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
