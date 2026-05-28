@@ -1,69 +1,47 @@
-Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com [209.85.128.42])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21FDA4028D7
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 16:07:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED2F519CD0A;
+	Thu, 28 May 2026 17:14:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779984422; cv=none; b=TcOqwkryE9V6MhM0rJszBj8lk3fanAT5B/EY2Er5dFM6ymc7A1UglNHx33hcEXbqgBhUJZXmMvC75v1TCgbt4CZ1mT9a8L7Q/YK98Kuyriv2D3mHBiIDPoaXLfjxJrdYvuZ5WBLkW1CbNQWgrg3jv8NxdUijXXpfJ1ZviaSOtmo=
+	t=1779988463; cv=none; b=Y6/ZHstIKxvNVrt/CuEmsXVL5hfD6lKm2NkW+i7hNbBgm+89J/dIP2fj6YWloR8Ann9FbBXCLNEIkvAEZPsegm1IbmGAf/4I5gtNHRcyLmJCCy0v3jBgqN5dSSWdhA6PIQ6JBbPWWx9a3dW4Wh9ysYBWbHjoYshFcht29E7/xfY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779984422; c=relaxed/simple;
-	bh=NhhlB1AJ+tWvf7EJVBnRnRvVlnSuieyH4m+PY56sS+c=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=g/EbrhVa332j6ZUP0EhhYAdm30PDNz4WavXxC6WqGUwo5IlGrM/7rK9BoWdpLMayaLX8y3994WIQFD7GqezKLg6qVvKhc+zKf/Q6FTr+VNePZTm2MeaQviDO0qWGFcNt9r2HKRwbCrv+kfmRIEckdeGgO+HwURlD4M5NH9dCZFw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=N4n6mdTo; arc=none smtp.client-ip=209.85.128.42
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1779988463; c=relaxed/simple;
+	bh=rF6yHQuyq41mwQGajnG/QvziI7otOikW3RB8+a+pxys=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=IkE52wahPhLw35jTpzG4wk/S+bHg+MvCvOd6TO4VLYr5TXxC7ZYQccxpj7XN6pbAyMwhchc0Afn3E0fQvMBH7mTYPLWiVIBuvcbsC/nGyALQmnnCDDbkkigB8XWNj4W+pz+CcOhHmo+roRWe1mLXkyMkg96LUo9KYLlcE//XD4c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=p/lcZols; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="N4n6mdTo"
-Received: by mail-wm1-f42.google.com with SMTP id 5b1f17b1804b1-490426d72f7so62718985e9.3
-        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 09:07:00 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779984419; x=1780589219; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=nyGvajXzU3/Aog9JpxDeQq4aBQFxucadRNMIY3nKXok=;
-        b=N4n6mdTobNwg07DMdQdBPKhHhEMM0Sk8v53D2uE7yKrLF09g6un5LlL1TAqLECglyV
-         QWm/bHbnQck1YuBk1gjdGoZQq5SrDERD34onfbWfSqulj9um7yWls7PuBfl/f0psBfN4
-         s0b0ASNt7oOF2wbPsQaGAyi/YfI1ZU/YayFTgY3IDws/s6H6rnjti1V+nkhXu96o6wFz
-         tU7yo43j/e566S/NhD/91BqxPosHW5wUwO7i4WlhhmcUHrpDGKu6XQFacpn1H8x0mQmH
-         2F2DcjjzVnMxdzSFDr/Y/HiU0lfx6WwgudaWj+g+Twx8MqqTXSI1ccMu3U1vS897LS9L
-         ptyQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779984419; x=1780589219;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=nyGvajXzU3/Aog9JpxDeQq4aBQFxucadRNMIY3nKXok=;
-        b=MJ35BMj5Y3RxfYHPr1maqdo+QcjcJWPszztSggYndEMhKArMzx+X7MwQ9XzhWy3JA9
-         HWRuv2uwSc/qMXp4Hqa5Qqq0usZnVIeOEKBrdNjedC8aN/iCJ5de95jp3qfarAvub8EC
-         qRPGJWWCx6ppcavnLpSoEK5f8QOiRMzt/bMilKCeVQQNt1ZRf7mHVDL946A4Bpn0AX56
-         5+Yi3swH4TJIni5bjnX7Sv7zLhwlQaw5mjKrZctHEhqg+Mx+HTQSzVbiBAZENwKf2pGh
-         mpulbygMiM6Q/4qKavKCopU48SH29J8KT+xIL7JqSeeeWXPXcc1Pe/7v1RUUNZAaJT7Z
-         ehuA==
-X-Gm-Message-State: AOJu0YzF3Rk5X3mSxoh3OtxS7LPnWdjRxbZVxXxoXN4vg0OOjV9sWLJk
-	70reC5vJpGoAX0giaTKGdADzjkWgqsz9LUGJ7KEHXH+Mq3qNyBkapEzq8sVK2e8g
-X-Gm-Gg: Acq92OEJroSgugNlQAivAyCi9MAu9PE6JVjRG4i0PQ1GMXqY7XkDTIl/oD/b0R1ofwn
-	QBazDmHxyH0RhHVRpk0ToxvU+TmswOzntZfIB6n+DeuPc0CPy6HRQXKBDQEGPTfHP1bAFj+M7WP
-	dkuXixjwmh/lAby7giImGJaSZ+nmJvTJjiA+0vxpPEr1W8PrsPfJyvWyqMiRBpCiywjTDjNjjEl
-	E2PFBLrz429uyQWbgmVpW0AoU3suM7KxIoDXij01nnBoyUV4dRZKPkUrf/GHt3EkPvFjJvhNx2H
-	RIV/gv6wdl87e7RuyCfhhXHIIryZUqt9WxHbZ6PjLRFqrZYyudwZg0NsnSgTIk0Nz+hCEOlr5oy
-	R/fFEOxJZrP74dIz1fXnmHZJZUTftXOjlGqit688bxTsNGmK2dm1aYHNpEAkwnswFr49gMFY+aS
-	x985Xvui0IV51QXts0thYfM33/G/qug8C0QA37vD5B81EXJVIcX+PTP5kxWYGjpmU=
-X-Received: by 2002:a05:600c:4fc1:b0:490:7227:100 with SMTP id 5b1f17b1804b1-49072aa14b3mr216430205e9.18.1779984419270;
-        Thu, 28 May 2026 09:06:59 -0700 (PDT)
-Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-45edb549addsm14136574f8f.5.2026.05.28.09.06.58
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 28 May 2026 09:06:58 -0700 (PDT)
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH] ext4: validate dx count against limit in dx_csum
-Date: Thu, 28 May 2026 12:05:57 -0400
-Message-ID: <20260528160557.6956-1-ablagodarenko@thelustrecollective.com>
-X-Mailer: git-send-email 2.43.7
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="p/lcZols"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+	Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+	Content-Description:In-Reply-To:References;
+	bh=yayI219qwU9Ej1ub988qZVsQMuRE/T9W1TxwrMwbSgg=; b=p/lcZols4aYpY94rhx07dzupLN
+	3xsY1Z+60mzbISW4PVRmmLVB/oCpBjxOsyaao2TIYJoJB6BAi6m/CCTXEDDVvo4Z9oB0hv4UErRqB
+	qlWv7B+rYnwoadmYz4Tjrwcaghk8KRcIg4Md09dE1gv9W156T8XgAlY6QsoZKsDn88OlymqkshVGk
+	Obof1WWLXyqic8oC1sOdfCY7uHclpL2oMmY8hwIEO2jxjo7s6o2g2tOCp8tzk9X/rPYkLovLDY2s7
+	IB8DKXAbf2ua9zeee9XnlwCkLUoUBibXw6nzrgGqcE4P/Y2QkIZeZkry3l/rSVrJgveA6uO7uU0RT
+	JK4t+ZuA==;
+Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wSeJE-00000004Z4q-26ip;
+	Thu, 28 May 2026 17:14:16 +0000
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To: "Theodore Tso" <tytso@mit.edu>
+Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Jan Kara <jack@suse.com>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	"Mike Rapoport (Microsoft)" <rppt@kernel.org>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Tal Zussman <tz2294@columbia.edu>,
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] jbd2: Remove special jbd2 slabs
+Date: Thu, 28 May 2026 18:14:11 +0100
+Message-ID: <20260528171413.1088143-1-willy@infradead.org>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -72,56 +50,298 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+When jbd2 was originally written, kmalloc() would not guarantee memory
+alignment for the requested objects.  Since commit 59bb47985c1d in 2019,
+kmalloc has guaranteed natural alignment for power-of-two allocations.
+We can now remove the jbd2 special slabs and just use kmalloc() directly.
 
-Sashiko AI, during inspection of the "ext4: replace ext4_dir_entry
-with ext4_dir_entry_2" series, reported a missing bounds check on
-count against limit in DX block checksum verification and setup
-paths.
-
-The code validates that limit fits within block boundaries, but does
-not verify that count <= limit. A maliciously crafted filesystem image
-could therefore provide an artificially large count value.
-
-Since ext4_dx_csum() uses count to determine the checksum region
-size, this may result in an out-of-bounds access crossing page
-boundaries into unmapped memory, potentially leading to a crash during
-checksum verification.
-
-The same issue exists in ext4_dx_csum_set().
-
-The bug was not introduced by the patch under review, so the fix is sent
-separately.
-
-Signed-off-by: Artem Blagodarenko artem.blagodarenko@gmail.com
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Acked-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
+Acked-by: Vlastimil Babka (SUSE) <vbabka@kernel.org>
 ---
- fs/ext4/namei.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+v2: Rmove b_size parameter (Tal Zussman)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a316fc2ac41b..20b7bac69889 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -472,7 +472,8 @@ static int ext4_dx_csum_verify(struct inode *inode,
+ fs/jbd2/commit.c      |   8 +--
+ fs/jbd2/journal.c     | 125 ++----------------------------------------
+ fs/jbd2/transaction.c |   8 +--
+ include/linux/jbd2.h  |   3 -
+ 4 files changed, 13 insertions(+), 131 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 4e91593d27e5..9ee573948dd8 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -514,10 +514,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		 * leave undo-committed data.
+ 		 */
+ 		if (jh->b_committed_data) {
+-			struct buffer_head *bh = jh2bh(jh);
+-
+ 			spin_lock(&jh->b_state_lock);
+-			jbd2_free(jh->b_committed_data, bh->b_size);
++			kfree(jh->b_committed_data);
+ 			jh->b_committed_data = NULL;
+ 			spin_unlock(&jh->b_state_lock);
+ 		}
+@@ -978,7 +976,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		 * its triggers if they exist, so we can clear that too.
+ 		 */
+ 		if (jh->b_committed_data) {
+-			jbd2_free(jh->b_committed_data, bh->b_size);
++			kfree(jh->b_committed_data);
+ 			jh->b_committed_data = NULL;
+ 			if (jh->b_frozen_data) {
+ 				jh->b_committed_data = jh->b_frozen_data;
+@@ -986,7 +984,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 				jh->b_frozen_triggers = NULL;
+ 			}
+ 		} else if (jh->b_frozen_data) {
+-			jbd2_free(jh->b_frozen_data, bh->b_size);
++			kfree(jh->b_frozen_data);
+ 			jh->b_frozen_data = NULL;
+ 			jh->b_frozen_triggers = NULL;
+ 		}
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 2040af8c84cb..1621b49de003 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -95,8 +95,6 @@ EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
+ EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
+ EXPORT_SYMBOL(jbd2_inode_cache);
+ 
+-static int jbd2_journal_create_slab(size_t slab_size);
+-
+ #ifdef CONFIG_JBD2_DEBUG
+ void __jbd2_debug(int level, const char *file, const char *func,
+ 		  unsigned int line, const char *fmt, ...)
+@@ -385,10 +383,10 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 			goto escape_done;
+ 
+ 		spin_unlock(&jh_in->b_state_lock);
+-		tmp = jbd2_alloc(bh_in->b_size, GFP_NOFS | __GFP_NOFAIL);
++		tmp = kmalloc(bh_in->b_size, GFP_NOFS | __GFP_NOFAIL);
+ 		spin_lock(&jh_in->b_state_lock);
+ 		if (jh_in->b_frozen_data) {
+-			jbd2_free(tmp, bh_in->b_size);
++			kfree(tmp);
+ 			goto copy_done;
+ 		}
+ 
+@@ -2062,14 +2060,6 @@ EXPORT_SYMBOL(jbd2_journal_update_sb_errno);
+ int jbd2_journal_load(journal_t *journal)
+ {
+ 	int err;
+-	journal_superblock_t *sb = journal->j_superblock;
+-
+-	/*
+-	 * Create a slab for this blocksize
+-	 */
+-	err = jbd2_journal_create_slab(be32_to_cpu(sb->s_blocksize));
+-	if (err)
+-		return err;
+ 
+ 	/* Let the recovery code check whether it needs to recover any
+ 	 * data from the journal. */
+@@ -2697,108 +2687,6 @@ size_t journal_tag_bytes(journal_t *journal)
+ 		return sz - sizeof(__u32);
+ }
+ 
+-/*
+- * JBD memory management
+- *
+- * These functions are used to allocate block-sized chunks of memory
+- * used for making copies of buffer_head data.  Very often it will be
+- * page-sized chunks of data, but sometimes it will be in
+- * sub-page-size chunks.  (For example, 16k pages on Power systems
+- * with a 4k block file system.)  For blocks smaller than a page, we
+- * use a SLAB allocator.  There are slab caches for each block size,
+- * which are allocated at mount time, if necessary, and we only free
+- * (all of) the slab caches when/if the jbd2 module is unloaded.  For
+- * this reason we don't need to a mutex to protect access to
+- * jbd2_slab[] allocating or releasing memory; only in
+- * jbd2_journal_create_slab().
+- */
+-#define JBD2_MAX_SLABS 8
+-static struct kmem_cache *jbd2_slab[JBD2_MAX_SLABS];
+-
+-static const char *jbd2_slab_names[JBD2_MAX_SLABS] = {
+-	"jbd2_1k", "jbd2_2k", "jbd2_4k", "jbd2_8k",
+-	"jbd2_16k", "jbd2_32k", "jbd2_64k", "jbd2_128k"
+-};
+-
+-
+-static void jbd2_journal_destroy_slabs(void)
+-{
+-	int i;
+-
+-	for (i = 0; i < JBD2_MAX_SLABS; i++) {
+-		kmem_cache_destroy(jbd2_slab[i]);
+-		jbd2_slab[i] = NULL;
+-	}
+-}
+-
+-static int jbd2_journal_create_slab(size_t size)
+-{
+-	static DEFINE_MUTEX(jbd2_slab_create_mutex);
+-	int i = order_base_2(size) - 10;
+-	size_t slab_size;
+-
+-	if (size == PAGE_SIZE)
+-		return 0;
+-
+-	if (i >= JBD2_MAX_SLABS)
+-		return -EINVAL;
+-
+-	if (unlikely(i < 0))
+-		i = 0;
+-	mutex_lock(&jbd2_slab_create_mutex);
+-	if (jbd2_slab[i]) {
+-		mutex_unlock(&jbd2_slab_create_mutex);
+-		return 0;	/* Already created */
+-	}
+-
+-	slab_size = 1 << (i+10);
+-	jbd2_slab[i] = kmem_cache_create(jbd2_slab_names[i], slab_size,
+-					 slab_size, 0, NULL);
+-	mutex_unlock(&jbd2_slab_create_mutex);
+-	if (!jbd2_slab[i]) {
+-		printk(KERN_EMERG "JBD2: no memory for jbd2_slab cache\n");
+-		return -ENOMEM;
+-	}
+-	return 0;
+-}
+-
+-static struct kmem_cache *get_slab(size_t size)
+-{
+-	int i = order_base_2(size) - 10;
+-
+-	BUG_ON(i >= JBD2_MAX_SLABS);
+-	if (unlikely(i < 0))
+-		i = 0;
+-	BUG_ON(jbd2_slab[i] == NULL);
+-	return jbd2_slab[i];
+-}
+-
+-void *jbd2_alloc(size_t size, gfp_t flags)
+-{
+-	void *ptr;
+-
+-	BUG_ON(size & (size-1)); /* Must be a power of 2 */
+-
+-	if (size < PAGE_SIZE)
+-		ptr = kmem_cache_alloc(get_slab(size), flags);
+-	else
+-		ptr = (void *)__get_free_pages(flags, get_order(size));
+-
+-	/* Check alignment; SLUB has gotten this wrong in the past,
+-	 * and this can lead to user data corruption! */
+-	BUG_ON(((unsigned long) ptr) & (size-1));
+-
+-	return ptr;
+-}
+-
+-void jbd2_free(void *ptr, size_t size)
+-{
+-	if (size < PAGE_SIZE)
+-		kmem_cache_free(get_slab(size), ptr);
+-	else
+-		free_pages((unsigned long)ptr, get_order(size));
+-};
+-
+ /*
+  * Journal_head storage management
+  */
+@@ -2972,15 +2860,15 @@ static void __journal_remove_journal_head(struct buffer_head *bh)
+ 	clear_buffer_jbd(bh);
+ }
+ 
+-static void journal_release_journal_head(struct journal_head *jh, size_t b_size)
++static void journal_release_journal_head(struct journal_head *jh)
+ {
+ 	if (jh->b_frozen_data) {
+ 		printk(KERN_WARNING "%s: freeing b_frozen_data\n", __func__);
+-		jbd2_free(jh->b_frozen_data, b_size);
++		kfree(jh->b_frozen_data);
  	}
- 	limit = le16_to_cpu(c->limit);
- 	count = le16_to_cpu(c->count);
--	if (count_offset + (limit * sizeof(struct dx_entry)) >
-+	if (!count || count > limit ||
-+	    count_offset + (limit * sizeof(struct dx_entry)) >
- 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
- 		warn_no_space_for_csum(inode);
- 		return 0;
-@@ -501,7 +502,8 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry_2 *diren
+ 	if (jh->b_committed_data) {
+ 		printk(KERN_WARNING "%s: freeing b_committed_data\n", __func__);
+-		jbd2_free(jh->b_committed_data, b_size);
++		kfree(jh->b_committed_data);
  	}
- 	limit = le16_to_cpu(c->limit);
- 	count = le16_to_cpu(c->count);
--	if (count_offset + (limit * sizeof(struct dx_entry)) >
-+	if (!count || count > limit ||
-+	    count_offset + (limit * sizeof(struct dx_entry)) >
- 	    EXT4_BLOCK_SIZE(inode->i_sb) - sizeof(struct dx_tail)) {
- 		warn_no_space_for_csum(inode);
- 		return;
+ 	journal_free_journal_head(jh);
+ }
+@@ -2999,7 +2887,7 @@ void jbd2_journal_put_journal_head(struct journal_head *jh)
+ 	if (!jh->b_jcount) {
+ 		__journal_remove_journal_head(bh);
+ 		jbd_unlock_bh_journal_head(bh);
+-		journal_release_journal_head(jh, bh->b_size);
++		journal_release_journal_head(jh);
+ 		__brelse(bh);
+ 	} else {
+ 		jbd_unlock_bh_journal_head(bh);
+@@ -3141,7 +3029,6 @@ static void jbd2_journal_destroy_caches(void)
+ 	jbd2_journal_destroy_handle_cache();
+ 	jbd2_journal_destroy_inode_cache();
+ 	jbd2_journal_destroy_transaction_cache();
+-	jbd2_journal_destroy_slabs();
+ }
+ 
+ static int __init journal_init(void)
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 4885903bbd10..48ddb566d12d 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1131,7 +1131,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 		if (!frozen_buffer) {
+ 			JBUFFER_TRACE(jh, "allocate memory for buffer");
+ 			spin_unlock(&jh->b_state_lock);
+-			frozen_buffer = jbd2_alloc(jh2bh(jh)->b_size,
++			frozen_buffer = kmalloc(jh2bh(jh)->b_size,
+ 						   GFP_NOFS | __GFP_NOFAIL);
+ 			goto repeat;
+ 		}
+@@ -1159,7 +1159,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 
+ out:
+ 	if (unlikely(frozen_buffer))	/* It's usually NULL */
+-		jbd2_free(frozen_buffer, bh->b_size);
++		kfree(frozen_buffer);
+ 
+ 	JBUFFER_TRACE(jh, "exit");
+ 	return error;
+@@ -1424,7 +1424,7 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+ 
+ repeat:
+ 	if (!jh->b_committed_data)
+-		committed_data = jbd2_alloc(jh2bh(jh)->b_size,
++		committed_data = kmalloc(jh2bh(jh)->b_size,
+ 					    GFP_NOFS|__GFP_NOFAIL);
+ 
+ 	spin_lock(&jh->b_state_lock);
+@@ -1445,7 +1445,7 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+ out:
+ 	jbd2_journal_put_journal_head(jh);
+ 	if (unlikely(committed_data))
+-		jbd2_free(committed_data, bh->b_size);
++		kfree(committed_data);
+ 	return err;
+ }
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 7e785aa6d35d..b68561187e90 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -63,9 +63,6 @@ void __jbd2_debug(int level, const char *file, const char *func,
+ #define jbd2_debug(n, fmt, a...)  no_printk(fmt, ##a)
+ #endif
+ 
+-extern void *jbd2_alloc(size_t size, gfp_t flags);
+-extern void jbd2_free(void *ptr, size_t size);
+-
+ #define JBD2_MIN_JOURNAL_BLOCKS 1024
+ #define JBD2_DEFAULT_FAST_COMMIT_BLOCKS 256
+ 
 -- 
-2.43.7
+2.47.3
 
