@@ -1,99 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C067A3F44C8
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 14:50:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2348A2E7360
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 14:56:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779979854; cv=none; b=l1kvwwmQIUVFv15SqatGXVLJCIQcsmLSOmSfcDEwRalczem1XWj8/wXRiD7InqzkAlC886vTGMpS2kOat6MuNyam3czGaT9WJj/tf8UdZINQVibVXawM9gKqyoTtCTikvdK1WE6uAX5oHU/A7zM35/2h7ChfOdMQzK1RGbtlLrQ=
+	t=1779980266; cv=none; b=nYTaFpoQzK9qJjaQBpuOEtiNWtpf3HoJcRuu5CHHwjzVhpPr8HdASvk2mG24/wexZ7odouoCjl+hlD2QRs3mov5KQ8Wcy2oywTIHdc6plMbHmBtQWu/Aws3XvaVM3jRMpd2FSd76uWpptiB4/D31/ShUW6WIe0e1bxFFu+ymFh4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779979854; c=relaxed/simple;
-	bh=XTdh+SCtDlOb+7DDE8GqAquXCqeELh5PH2AOrxbg70Q=;
+	s=arc-20240116; t=1779980266; c=relaxed/simple;
+	bh=xPqOgVgYGPTJ6C4KNZOo2bJJEjldBGZAb8uJ3RyJDwE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=izZxJRTvhEg0LsNaBf9HDdPfGYcTbBNGMlu5RYugVdyqOxFr9LrTf8f+pDWDDWy+JlU40O6eDtQNzoftXgF5DkEseFHN2btChjhHmDnzpPdbzUeXQAPiTFgDzqMnPRxrvBHLqw9iNxiZOH1vIDTUL5LYzm33tdBVRZegRxHxUnc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=PDbLJxh8; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Tg4ZnT5P; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=UGrIjDm9yR2vWmwA0ZdCds6PtD+wgBZWyvCJp5QSCxtvEfXQcjDO6Bs14BsPAYX8TouQhnv1slgizi+EVhZJSSsiN6yWy83YQhZSwB5bbR9WcO7Qp+CrUPe4KsXh28o9BGZP1NcNg+7FOGVOegjrhLNkaZayyxvxGY7pB1IKBEw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=QGpZd9wz; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="PDbLJxh8";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Tg4ZnT5P"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1779979851;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
-	b=PDbLJxh8YRqrrvjPYxj7RmYcNHwPu8ivAXRe/GjNMqp4wmeIt8cOq6rsDtLD8BfGbqMFvr
-	r64nMcVvuIi533I/RQ94DLnKs5BD2roybqHcaecVIpbQgFh/nRM4PlB0bJSJM1AzadWGWB
-	wnToAyLctZe2sPbwe9eGX/s1U3cF2po=
-Received: from mail-wr1-f69.google.com (mail-wr1-f69.google.com
- [209.85.221.69]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-674-BWqW0yxBODS162bYg43OIg-1; Thu, 28 May 2026 10:50:50 -0400
-X-MC-Unique: BWqW0yxBODS162bYg43OIg-1
-X-Mimecast-MFC-AGG-ID: BWqW0yxBODS162bYg43OIg_1779979849
-Received: by mail-wr1-f69.google.com with SMTP id ffacd0b85a97d-43d7b7bacddso8913945f8f.0
-        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 07:50:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1779979849; x=1780584649; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
-        b=Tg4ZnT5P/BrBgyQ1D+0wy/ynyGwDBviEXN7xLMQP+ozMnGUfEKVGR40bOfRb0OILYo
-         9/qm11lxJO/WmKkq+++Gk8tsjEqO4mBIeirRGDEHnpA3AStiHjrKqLZZxRChwxyucbUl
-         4Gwyc5SdRLrWg2Y7noTYRx2WyhnVf0n6vesqUcHsVy8ac97Z4uRe085mW14Qp5HCJbsa
-         2+K6FmmhH6D9gwwe3KBxmiBC/L5AgSnbdCJllS9Utc1xG6SFflms68E5RPgLWuOvjD8S
-         uYmb1DFTK1Lry4hjkv3a9lof0Vvinp3xH7IHZMVwJSGQIrVodfzdkWm77cp4d4TMa5QR
-         /RBw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779979849; x=1780584649;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
-        b=XGKhuWLxAe8YvuskSZHnrLX3+ZLAfNZIIgx2pJOyfJPq29SWxzVhpFe7X9KFRgxkoO
-         0ar16wjdJhurzd6Vn4TKivELmKAwD7ujr/RuMYoXS1NnMriyWSBxVSMQY7sVkOTEcrwr
-         yrtzbZx7W9ljxqcNSwjA3y6ICucyj3gNX3NRMfrCjNubtEfKZkpfbeFxIWDI1N4pHYwP
-         c2t92qlclrf3e6aadif8ObE0+NYTyZReMioTdAaRvAlHVPqv6499LyaA1tuSPB0EUVc1
-         42oVJg5FSyYDmVRaPC7NhCchi7sZAB1qbIDrlGqOegCyC4Vv27MGK3Z/BBAVxtrbsU3C
-         lNqQ==
-X-Forwarded-Encrypted: i=1; AFNElJ/zi/mSh2Fu+KILBEH7uW7hjd9Y8aTxyRLxV/LaUzVXIhf9eMTzR0apMq7OeWWpL1WIl4ul1DGmNnQt@vger.kernel.org
-X-Gm-Message-State: AOJu0Yxt6ZRPQreaZdKzHDzwB9b8FwrbFILg4rC7Max5hkyF1AVxB9NE
-	MKZQA8qT5o6TRorglirvnoZre3KFrfGoIu30U0e5p1bvr1DzivZ2nFNyhWI6glN1BiY2sjIUBc5
-	PGd22+cqnxLNu1AFQHOlUFbILzU2msZc/42GMnKpOfS5HF+Pj121fT/vyXVMmTQ==
-X-Gm-Gg: Acq92OFUHiLYot5XItX5QK6JQWG6Uq8svdYo3O0TxqQMzjsJHKp056fmJ1jgfAoT7E2
-	ofPJqaLY2Zud0rcJjtE9/sg7kniii8SP+oS6tV4W/Om8jlKMgWGUJIgYjNIkXFtgIq+A0dLWDQu
-	zWLQMfhoBSbD1B1sZDioljj1KBTKgTY69/IiLUgzuRdWTNUXvzt5aZSdSDXDSa8WtVgZnsjCFRQ
-	rAydi31QDUPsKLrOQpO/iBIsITtuj1KxpjGGqAVv7qMt/q6iRLKBQ6QxURM7ZWtYh3InaD+iRiy
-	TtRTlryq7N9zJUu5qrDKJsTCTXmpG3uv27Bc4NnAfIvZDWhUN3agC0Jdbskgb3JW06Zh4vvdJTu
-	g+KSOJamorvrEpcmj/vgux/2sRWCPt7ueGTvTsi4f9f68wCS8b7EPp7/1PHFQXBBTHg==
-X-Received: by 2002:a05:6000:26c1:b0:44d:1338:46b4 with SMTP id ffacd0b85a97d-45eb36731d0mr47511223f8f.9.1779979848943;
-        Thu, 28 May 2026 07:50:48 -0700 (PDT)
-X-Received: by 2002:a05:6000:26c1:b0:44d:1338:46b4 with SMTP id ffacd0b85a97d-45eb36731d0mr47511162f8f.9.1779979848360;
-        Thu, 28 May 2026 07:50:48 -0700 (PDT)
-Received: from thinky (178-221-68-189.dynamic.isp.telekom.rs. [178.221.68.189])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-45eeb36c40asm3352619f8f.13.2026.05.28.07.50.46
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 28 May 2026 07:50:47 -0700 (PDT)
-Date: Thu, 28 May 2026 16:50:45 +0200
-From: Andrey Albershteyn <aalbersh@redhat.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Carlos Maiolino <cem@kernel.org>, Christoph Hellwig <hch@lst.de>, 
-	Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, 
-	linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, linux-ext4@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
-	djwong@kernel.org, david@fromorbit.com
-Subject: Re: [PATCH v10 00/22] fs-verity support for XFS with post EOF merkle
- tree
-Message-ID: <fjdfwhwi4aogyiaoijwvw6w4npuu5mbt6ua6fkhwcp5ajlm543@ume2fkxg36cb>
-References: <20260520123722.405752-1-aalbersh@kernel.org>
- <20260521090705.GA14254@lst.de>
- <gcw7zcg6p4s2egpufwizfig72g6ren7jfmuz5mqskkpb7xepww@e3v35j7bk7dc>
- <ag7uW7KQ5mVyCGEv@nidhogg.toxiclabs.cc>
- <20260522-unbehagen-baumethode-erlesen-811a4065eeac@brauner>
- <20260522120757.GA21041@lst.de>
- <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
- <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="QGpZd9wz"
+Received: from macsyma.thunk.org (c-73-9-28-129.hsd1.il.comcast.net [73.9.28.129])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 64SEubRc017388
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 28 May 2026 10:56:38 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1779980200; bh=iqKteAK984FjwrM5PUMtor5r+Y3QTmrXtVrkLQwwr/4=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=QGpZd9wzqCbV7xQH0w76CblTqieXM7kUoSXGpxAjVPSbj1/Ypa5DYfskjVMGOk1lL
+	 UOMZoB8JI1dTstXcJNcUCLR93e/lr9X2x86cZEkeMNiY1RfXMGaqFLSeobMNftFnCY
+	 bR1bbRXL/+LefT26bWZVRa2mH5PVGu+jkSgWFZ26rURVEss6rUU2HpVXSyDyHlPYw8
+	 WaKruws0uRJ8H8rlCVbUMzbq88EEGrEa4YaURnPD6LZcBztWBjNIbAeuQJmcQ7z76V
+	 f0NSzZZyOR6t3k19wK8wcBEpc++pSnvGVq6C6Ug6GbHBu2EWVlLUaQHsc8YOvgUhHC
+	 TLIBHlcdOMD0w==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id D7F236B6C0A3; Thu, 28 May 2026 09:56:36 -0500 (CDT)
+Date: Thu, 28 May 2026 09:56:36 -0500
+From: "Theodore Tso" <tytso@mit.edu>
+To: Abdellah Ouhbi <abdououhbi1@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        skhan@linuxfoundation.org, me@brighamcampbell.com,
+        linux-kernel-mentees@lists.linuxfoundation.org
+Subject: Re: [PATCH] ext4: Use %pe to print PTR_ERR() in namei.c
+Message-ID: <3ogsm2rbiyacwos6i3han5lwkuobxjjggpwfmkjbv45hrhqwh7@6d5mxzdvidbq>
+References: <20260424152245.142308-1-abdououhbi1@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -102,41 +50,22 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
+In-Reply-To: <20260424152245.142308-1-abdououhbi1@gmail.com>
 
-On 2026-05-28 14:20:08, Christian Brauner wrote:
-> On Tue, May 26, 2026 at 12:19:43PM +0200, Carlos Maiolino wrote:
-> > On Fri, May 22, 2026 at 02:07:57PM +0200, Christoph Hellwig wrote:
-> > > On Fri, May 22, 2026 at 12:03:20PM +0200, Christian Brauner wrote:
-> > > > > I was expecting this to come through xfs tree too if Eric and Christian
-> > > > > agree.
-> > > > 
-> > > > You may take it through the xfs tree if there are no conflicts with
-> > > > vfs-7.2.iomap. If there are I want to add the iomap changes into
-> > > > vfs-7.2.iomap that you can pull in.
-> > > 
-> > > Merging the iomap bits through the iomap branch might make sense, given
-> > > that iomap usually tends to see quite a bit of activity.
-> > > 
-> > 
-> > That sounds good to me. If you want to go ahead and pull in the iomap
-> > bits, do so, and give me a heads up when you do it so I'll pull your
-> > branch locally.
+On Fri, Apr 24, 2026 at 04:22:45PM +0100, Abdellah Ouhbi wrote:
+> Fix coccicheck warning
+> ./namei.c:150:25-32: WARNING: Consider using %pe to print PTR_ERR()
 > 
-> Great, can the series please be resent based on current vfs-7.2.iomap
-> then please? Because the iomap changes in this series don't apply
-> cleanly on vfs-7.2.iomap so we already have merge conflicts...
+> Replace %ld with %pe and PTR_ERR(bh) with bh pointer.
+> The %pe specifier automatically converts error pointers to
+> human-readable error names instead of raw error codes.
 > 
+> Signed-off-by: Abdellah Ouhbi <abdououhbi1@gmail.com>
 
-hmm do you mean this branch?
-https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git/log/?h=vfs-7.2.iomap
+I've folded the three patches you had sent into a single commit.  For
+this kind of cleanup, there's no reason to have separate patches for
+each file.
 
-patches 07..09 seems to apply cleanly. The only conflict I see is in
-the overlayfs patch 03. This is because [1] (is in -rc5) is missing
-in vfs-7.2.iomap.
+Thanks,
 
-[1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/fs/overlayfs/util.c?h=v7.1-rc5&id=0c8c88b8eb82a2a41bec5f17c076d6312dc40316
-
--- 
-- Andrey
-
+						- Ted
