@@ -1,84 +1,142 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F9452D8795
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 14:39:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C067A3F44C8
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 14:50:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779979182; cv=none; b=A+TzK8+s3+UnnI+z3Nw8Ys6fgMAIboje73RvAW39LXaOG2maTpOkX8ZnY53gdJevlN88xY3+r4LpPgA2ur1x+QKqAeYgDO/qPVLLKeqjJ8A7V1/60Zk5qUmQF/tj4c8tZOhKj1YALZsnuO3eNURHoqJloZJept6e2xQ9+dJztQA=
+	t=1779979854; cv=none; b=l1kvwwmQIUVFv15SqatGXVLJCIQcsmLSOmSfcDEwRalczem1XWj8/wXRiD7InqzkAlC886vTGMpS2kOat6MuNyam3czGaT9WJj/tf8UdZINQVibVXawM9gKqyoTtCTikvdK1WE6uAX5oHU/A7zM35/2h7ChfOdMQzK1RGbtlLrQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779979182; c=relaxed/simple;
-	bh=qphTy97Jz2axouSfDB+6LflVo+XiMp9MzMare124RyU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=bNmZB2exlmeKaw/iyGC6obt475zR1UKlrpiOeVa+WHa5nl0b3p8ABTCjnPIakTS8T2hNJzIfkKLh8m7jRhTmgYkTGU2Oywf+x0agXQ/RP6s1zpe2QEsZVpe/VRwLy9YTGTo3edE9OCtVto9xCjhTl3Ff1dXL+gr+R+zzDwngAGM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=TUbbi6DR; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1779979854; c=relaxed/simple;
+	bh=XTdh+SCtDlOb+7DDE8GqAquXCqeELh5PH2AOrxbg70Q=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=izZxJRTvhEg0LsNaBf9HDdPfGYcTbBNGMlu5RYugVdyqOxFr9LrTf8f+pDWDDWy+JlU40O6eDtQNzoftXgF5DkEseFHN2btChjhHmDnzpPdbzUeXQAPiTFgDzqMnPRxrvBHLqw9iNxiZOH1vIDTUL5LYzm33tdBVRZegRxHxUnc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=PDbLJxh8; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Tg4ZnT5P; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="TUbbi6DR"
-Received: from trampoline.thunk.org (pool-173-48-119-150.bstnma.fios.verizon.net [173.48.119.150])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 64SEcghM004828
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 28 May 2026 10:38:44 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1779979129; bh=5CfOfbwetcTsuxPhpSc86mkv5WifwcAD1b3JTAtYiLM=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=TUbbi6DRNmzVlbRdYiWIuht75b+C9oZIXWn1FUvKBLsl4hJmPqdLdxp8e134hON/c
-	 fPowrrMqEusH1B4BLcGtriYe3gPPEJY0czaDcBVPpgGQ40N3mfuW4Ldho/nbd5L1QQ
-	 +BEzCE4ERbnxV8Jcdhs/WlbILTw+GOYPdmjnC7AZzIgaNNF8ssgmu0DkEEAancgl44
-	 RPaDoaptXp84l1zdFVu9W4SCtf85c0psJlp7GkhqymDdAt9oHKJMyowiQvBvHeN9q/
-	 IZHYiOACWWM2UyEbQCs/FZZ6/Edkxv2pp3IelpeTgauyXiumZHvzreDgI4qieHjFVK
-	 C1o2bSKVcSrPg==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 929672E00CF; Thu, 28 May 2026 10:38:42 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
-        Guan-Chun Wu <409411716@gms.tku.edu.tw>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, edward062254@gmail.com,
-        visitorckw@gmail.com, david.laight.linux@gmail.com
-Subject: Re: [PATCH v3 0/2] ext4: add hash Kunit tests and optimize str2hashbuf
-Date: Thu, 28 May 2026 10:38:38 -0400
-Message-ID: <177997910348.258983.12600861367754963001.b4-ty@b4>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260413065114.730231-1-409411716@gms.tku.edu.tw>
-References: <20260413065114.730231-1-409411716@gms.tku.edu.tw>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="PDbLJxh8";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Tg4ZnT5P"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1779979851;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
+	b=PDbLJxh8YRqrrvjPYxj7RmYcNHwPu8ivAXRe/GjNMqp4wmeIt8cOq6rsDtLD8BfGbqMFvr
+	r64nMcVvuIi533I/RQ94DLnKs5BD2roybqHcaecVIpbQgFh/nRM4PlB0bJSJM1AzadWGWB
+	wnToAyLctZe2sPbwe9eGX/s1U3cF2po=
+Received: from mail-wr1-f69.google.com (mail-wr1-f69.google.com
+ [209.85.221.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-674-BWqW0yxBODS162bYg43OIg-1; Thu, 28 May 2026 10:50:50 -0400
+X-MC-Unique: BWqW0yxBODS162bYg43OIg-1
+X-Mimecast-MFC-AGG-ID: BWqW0yxBODS162bYg43OIg_1779979849
+Received: by mail-wr1-f69.google.com with SMTP id ffacd0b85a97d-43d7b7bacddso8913945f8f.0
+        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 07:50:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1779979849; x=1780584649; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
+        b=Tg4ZnT5P/BrBgyQ1D+0wy/ynyGwDBviEXN7xLMQP+ozMnGUfEKVGR40bOfRb0OILYo
+         9/qm11lxJO/WmKkq+++Gk8tsjEqO4mBIeirRGDEHnpA3AStiHjrKqLZZxRChwxyucbUl
+         4Gwyc5SdRLrWg2Y7noTYRx2WyhnVf0n6vesqUcHsVy8ac97Z4uRe085mW14Qp5HCJbsa
+         2+K6FmmhH6D9gwwe3KBxmiBC/L5AgSnbdCJllS9Utc1xG6SFflms68E5RPgLWuOvjD8S
+         uYmb1DFTK1Lry4hjkv3a9lof0Vvinp3xH7IHZMVwJSGQIrVodfzdkWm77cp4d4TMa5QR
+         /RBw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779979849; x=1780584649;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=UBtkZg2KzsdpXCtGBF+S9Fg8Iz8UrMjxsxZEct4ck8E=;
+        b=XGKhuWLxAe8YvuskSZHnrLX3+ZLAfNZIIgx2pJOyfJPq29SWxzVhpFe7X9KFRgxkoO
+         0ar16wjdJhurzd6Vn4TKivELmKAwD7ujr/RuMYoXS1NnMriyWSBxVSMQY7sVkOTEcrwr
+         yrtzbZx7W9ljxqcNSwjA3y6ICucyj3gNX3NRMfrCjNubtEfKZkpfbeFxIWDI1N4pHYwP
+         c2t92qlclrf3e6aadif8ObE0+NYTyZReMioTdAaRvAlHVPqv6499LyaA1tuSPB0EUVc1
+         42oVJg5FSyYDmVRaPC7NhCchi7sZAB1qbIDrlGqOegCyC4Vv27MGK3Z/BBAVxtrbsU3C
+         lNqQ==
+X-Forwarded-Encrypted: i=1; AFNElJ/zi/mSh2Fu+KILBEH7uW7hjd9Y8aTxyRLxV/LaUzVXIhf9eMTzR0apMq7OeWWpL1WIl4ul1DGmNnQt@vger.kernel.org
+X-Gm-Message-State: AOJu0Yxt6ZRPQreaZdKzHDzwB9b8FwrbFILg4rC7Max5hkyF1AVxB9NE
+	MKZQA8qT5o6TRorglirvnoZre3KFrfGoIu30U0e5p1bvr1DzivZ2nFNyhWI6glN1BiY2sjIUBc5
+	PGd22+cqnxLNu1AFQHOlUFbILzU2msZc/42GMnKpOfS5HF+Pj121fT/vyXVMmTQ==
+X-Gm-Gg: Acq92OFUHiLYot5XItX5QK6JQWG6Uq8svdYo3O0TxqQMzjsJHKp056fmJ1jgfAoT7E2
+	ofPJqaLY2Zud0rcJjtE9/sg7kniii8SP+oS6tV4W/Om8jlKMgWGUJIgYjNIkXFtgIq+A0dLWDQu
+	zWLQMfhoBSbD1B1sZDioljj1KBTKgTY69/IiLUgzuRdWTNUXvzt5aZSdSDXDSa8WtVgZnsjCFRQ
+	rAydi31QDUPsKLrOQpO/iBIsITtuj1KxpjGGqAVv7qMt/q6iRLKBQ6QxURM7ZWtYh3InaD+iRiy
+	TtRTlryq7N9zJUu5qrDKJsTCTXmpG3uv27Bc4NnAfIvZDWhUN3agC0Jdbskgb3JW06Zh4vvdJTu
+	g+KSOJamorvrEpcmj/vgux/2sRWCPt7ueGTvTsi4f9f68wCS8b7EPp7/1PHFQXBBTHg==
+X-Received: by 2002:a05:6000:26c1:b0:44d:1338:46b4 with SMTP id ffacd0b85a97d-45eb36731d0mr47511223f8f.9.1779979848943;
+        Thu, 28 May 2026 07:50:48 -0700 (PDT)
+X-Received: by 2002:a05:6000:26c1:b0:44d:1338:46b4 with SMTP id ffacd0b85a97d-45eb36731d0mr47511162f8f.9.1779979848360;
+        Thu, 28 May 2026 07:50:48 -0700 (PDT)
+Received: from thinky (178-221-68-189.dynamic.isp.telekom.rs. [178.221.68.189])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-45eeb36c40asm3352619f8f.13.2026.05.28.07.50.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 28 May 2026 07:50:47 -0700 (PDT)
+Date: Thu, 28 May 2026 16:50:45 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Carlos Maiolino <cem@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+	Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, 
+	linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, linux-ext4@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
+	djwong@kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v10 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <fjdfwhwi4aogyiaoijwvw6w4npuu5mbt6ua6fkhwcp5ajlm543@ume2fkxg36cb>
+References: <20260520123722.405752-1-aalbersh@kernel.org>
+ <20260521090705.GA14254@lst.de>
+ <gcw7zcg6p4s2egpufwizfig72g6ren7jfmuz5mqskkpb7xepww@e3v35j7bk7dc>
+ <ag7uW7KQ5mVyCGEv@nidhogg.toxiclabs.cc>
+ <20260522-unbehagen-baumethode-erlesen-811a4065eeac@brauner>
+ <20260522120757.GA21041@lst.de>
+ <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
+ <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
 
-
-On Mon, 13 Apr 2026 14:51:12 +0800, Guan-Chun Wu wrote:
-> This series adds Kunit tests for fs/ext4/hash.c and refactors
-> the str2hashbuf_{signed,unsigned}() helpers.
+On 2026-05-28 14:20:08, Christian Brauner wrote:
+> On Tue, May 26, 2026 at 12:19:43PM +0200, Carlos Maiolino wrote:
+> > On Fri, May 22, 2026 at 02:07:57PM +0200, Christoph Hellwig wrote:
+> > > On Fri, May 22, 2026 at 12:03:20PM +0200, Christian Brauner wrote:
+> > > > > I was expecting this to come through xfs tree too if Eric and Christian
+> > > > > agree.
+> > > > 
+> > > > You may take it through the xfs tree if there are no conflicts with
+> > > > vfs-7.2.iomap. If there are I want to add the iomap changes into
+> > > > vfs-7.2.iomap that you can pull in.
+> > > 
+> > > Merging the iomap bits through the iomap branch might make sense, given
+> > > that iomap usually tends to see quite a bit of activity.
+> > > 
+> > 
+> > That sounds good to me. If you want to go ahead and pull in the iomap
+> > bits, do so, and give me a heads up when you do it so I'll pull your
+> > branch locally.
 > 
-> Patch 1 adds test coverage for ext4fs_dirhash(), including the main
-> hash variants and relevant edge cases.
+> Great, can the series please be resent based on current vfs-7.2.iomap
+> then please? Because the iomap changes in this series don't apply
+> cleanly on vfs-7.2.iomap so we already have merge conflicts...
 > 
-> Patch 2 simplifies the str2hashbuf helper implementation by processing
-> input in 4-byte chunks and removing function-pointer dispatch. This also
-> reduces overhead and shows roughly 2x improvement on longer inputs in
-> local testing.
-> 
-> [...]
 
-Applied, thanks!
+hmm do you mean this branch?
+https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git/log/?h=vfs-7.2.iomap
 
-[1/2] ext4: add Kunit coverage for directory hash computation
-      commit: a4841d91a7f57d38d3a63c18b4ce68ee5e06829b
-[2/2] ext4: improve str2hashbuf by processing 4-byte chunks and removing function pointers
-      commit: d8c73397cc49362a88a57b67c11eff6e65b525e8
+patches 07..09 seems to apply cleanly. The only conflict I see is in
+the overlayfs patch 03. This is because [1] (is in -rc5) is missing
+in vfs-7.2.iomap.
 
-Best regards,
+[1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/fs/overlayfs/util.c?h=v7.1-rc5&id=0c8c88b8eb82a2a41bec5f17c076d6312dc40316
+
 -- 
-Theodore Ts'o <tytso@mit.edu>
+- Andrey
+
