@@ -1,143 +1,157 @@
-Received: from sender-pp-o91.zoho.in (sender-pp-o91.zoho.in [103.117.158.91])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qt1-f174.google.com (mail-qt1-f174.google.com [209.85.160.174])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 200B836E478;
-	Thu, 28 May 2026 08:26:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=103.117.158.91
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779956801; cv=pass; b=EtI9au1EmVt9IWhwlZvJ68ElRQ/v2QPvZ6/ibEPEIMmVn3l+jHRYSxe+s7jHUKnfrj2bCw7TWsc+fqIg7Wg/ufWY/N6U9rg2Oc3GJNAWTNtCFZAjqtuxjtRWHequJRRx7SFQuQivO9yaNii8AXg9MncPfu2jgFo0icI69+aScAs=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779956801; c=relaxed/simple;
-	bh=/1NS+gkl7GjjY8ICVeuimsM8GB8gzdwrRtRRYetgFFg=;
-	h=Date:From:To:Cc:Message-ID:In-Reply-To:References:Subject:
-	 MIME-Version:Content-Type; b=cDlReh7ZJ0UyLcnBfsZaNRQqB8wY2nEmPjTlopRx/nJqxHarKF/h66usFAf0zPV9XwMOwuqCkNxzNZXfoXe+hA+O9aGq4AOhvsr0Dzk4Zx9X9CmRr+SF+zAyqPxOX+PIH1mTeqn8X+yQi79+BsJS6ALeYRYLfBxvALPH5azieVA=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in; spf=pass smtp.mailfrom=zohomail.in; dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b=r0VV0Meo; arc=pass smtp.client-ip=103.117.158.91
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=zohomail.in
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zohomail.in
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A13939903E
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 10:21:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.174
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1779963682; cv=none; b=hKOGYCcwAxv+1yuGSy0SUpO1DiXK1xgbGmvTvxGNpGOQuD/yosZK9knN1phG4LYQaUOdLH71IfHjJOgiiAw3okMzI2YOFhShNt+b2U8z/mViGjy+DUcrNbzFPxOWttquankidH9my6DCERzFS+ScQDFgOXkyHzwqhVPfLqcO9lo=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1779963682; c=relaxed/simple;
+	bh=jI7Cg78izFhc8YwkzdLdR1Hg35pDNSXzTk8tL+TVGH4=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=ihFlHFYyLATXTRwcDJWowqJDyfYDP8SQeCfbIV32K1jcLoOzenrZ8hb2eTn3H6wG1R4m05MaiqQ79Ohm1kjcqd93DYFQYq80zRri9mx1h3f3bI0T9DRVcESTmkYcSrnKioaFkGSDvD+Jmr5PStREfQnetkYLzQcI/UfYRUy/2oc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hViMuKTK; arc=none smtp.client-ip=209.85.160.174
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=zohomail.in header.i=linuxuser509@zohomail.in header.b="r0VV0Meo"
-ARC-Seal: i=1; a=rsa-sha256; t=1779956775; cv=none; 
-	d=zohomail.in; s=zohoarc; 
-	b=c/2YKrJKJV9nvuTGmv6roYVQmojKGuz5qRF8W4kLcf36dNTiukEJMi+gg+6Oh3197I1V3sXzxVQSf1EDtwhPXVUMWM0cWmwDS7sR4AU1BbKzOrba6yE6rKuWAbgULufitXYWVGiseV1DX8A0NRy2l8zhyJsef6SUF3ZA0f+CF6A=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.in; s=zohoarc; 
-	t=1779956775; h=Content-Type:Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:Subject:To:To:Message-Id:Reply-To; 
-	bh=u02RJ/VBMYB77bElnPcqjbbt4TJaP39IGuZGLZTk5z4=; 
-	b=Wwf+0YIfKj87kkiUC3NUT2iUkPUwxDo53s6hdRs/nncNWvMHTt0HmnZop3QiereQayeu525bZDLkOZsjbBET1U0gAfuJ3CsHATHTPBsVl+1n0Wflowm3XiI31COzpcXoF6KzLeO3DUHwk5xxoMJ3TMd0YIbWF+KTYdilVjp63uw=
-ARC-Authentication-Results: i=1; mx.zohomail.in;
-	dkim=pass  header.i=zohomail.in;
-	spf=pass  smtp.mailfrom=linuxuser509@zohomail.in;
-	dmarc=pass header.from=<linuxuser509@zohomail.in>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779956775;
-	s=zoho; d=zohomail.in; i=linuxuser509@zohomail.in;
-	h=Date:Date:From:From:To:To:Cc:Cc:Message-ID:In-Reply-To:References:Subject:Subject:MIME-Version:Content-Type:Content-Transfer-Encoding:Message-Id:Reply-To;
-	bh=u02RJ/VBMYB77bElnPcqjbbt4TJaP39IGuZGLZTk5z4=;
-	b=r0VV0MeoEKdxmXOvPs+YPRrNyLzRIfNcDjZfDWHloiPAeA2LNko1x/QO9wkpkrpj
-	pWagdDUiy+T+yufNVyZcB39gMvdzFDRn7lTrzag5iOdZmsM/iNL/5/xQ0KEJLJfqizL
-	GKZTE+Yb2tCj3U0c8jZhkpuSBYy+5f3xq/52+mTI=
-Received: from mail.zoho.in by mx.zoho.in
-	with SMTP id 1779956774306351.5153761474652; Thu, 28 May 2026 13:56:14 +0530 (IST)
-Received: from  [106.192.19.160] by mail.zoho.in
-	with HTTP;Thu, 28 May 2026 13:56:14 +0530 (IST)
-Date: Thu, 28 May 2026 13:56:14 +0530
-From: Ashwin Gundarapu <linuxuser509@zohomail.in>
-To: "kernel test robot" <lkp@intel.com>
-Cc: "jack" <jack@suse.com>, "oe-kbuild-all" <oe-kbuild-all@lists.linux.dev>,
-	"linux-ext4" <linux-ext4@vger.kernel.org>,
-	"linux-kernel" <linux-kernel@vger.kernel.org>
-Message-ID: <19e6db0f597.25d55d43200914.4102954258751814923@zohomail.in>
-In-Reply-To: <202605281203.e91xvDyr-lkp@intel.com>
-References: <19e5aa07c9b.3a2e576d130187.5289857983023045470@zohomail.in> <202605281203.e91xvDyr-lkp@intel.com>
-Subject: Re: [PATCH v4] ext2: Remove deprecated DAX support
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hViMuKTK"
+Received: by mail-qt1-f174.google.com with SMTP id d75a77b69052e-516d0119e4aso64958641cf.1
+        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 03:21:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1779963678; x=1780568478; darn=vger.kernel.org;
+        h=cc:to:message-id:content-transfer-encoding:mime-version:subject
+         :date:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=843k2tDUPYbkxqgPxtYSJoHk8y8WS2/E2oa/7Uhir+8=;
+        b=hViMuKTKvFIMvxu1HjuIlf3ZkD+TJ0rNrzf/ombQKk/rVbQ2PaLfxYmKiI2Wae8iUN
+         Ex3UE1BRYRc+pI5Bchl1IVkxYWIJ9hiOt6ZiMcQ9C8Cy4mf0qpfOgvsaraa/X2u3IGNv
+         v5QLjnYGmhLkxJCgXtul5UuQSSEERIohajkDmTNux06EM9MdM8SICU/nRc6qGPLV1QVo
+         sec7ioTJxikaZ4mhtHMRLHR0ZYgYwHB2LzmMfVO9D9vhahMQmky6DSjjGXqAzHgHmNfX
+         as2k23GhF16zVLO3xtGe0ikI1/+orCRtC8uF9h0f68G/mbfNG2aa51oxcZ0PQSC4zaOF
+         Vwaw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779963678; x=1780568478;
+        h=cc:to:message-id:content-transfer-encoding:mime-version:subject
+         :date:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=843k2tDUPYbkxqgPxtYSJoHk8y8WS2/E2oa/7Uhir+8=;
+        b=TQC6QmbW9gZ/iGGH6i+nl4pEUTqgCv+TA92yCpj4mTZ3NyVEH3ngjc+EDSowaOMdHm
+         a17PvgiBacvd5r5ZH8IdH3c8NwWNIK5vs2ulBkaPnFm7vFhTyRbyG/nEiNWqQdI/Fp28
+         vLncVfGcrODVxstOwJMepzK6aG/4bCNi6mWE4M/5WySkwPBka7S4rLOJT+GWzLuz1OqE
+         V5MITt2M5TSmainDQ2yYX4W7YaRvuzA9satVU0HBrdGg4Qu+dz/hOWtqaRKG9uMCB4aF
+         46r5rNBKPAHpQPUb3P83xrgQFmW/xNpcHnDT62dPYtf5D2KanM2DBz4+qhZAuQ3FXqU0
+         UdKw==
+X-Gm-Message-State: AOJu0YxJmy3xhREiTKodXnNlBKWIaH8VUotYMSY2AA6b1qYYKcI61ggZ
+	NH4D/rx+BqscMr9DaZDzznAdrlD85vMOc/ytKA2k3lAgYpjIlxayr+3R
+X-Gm-Gg: Acq92OHktkcdJ117atc/XQChWCvIFrzYdZYbO/YA2Xs4Qde6GCT/Z/wQt/17irDzxHP
+	uT+ZByo6PkAfSCZrHqS8/FekSHuUnt60deZ2ODrxGn9R5HP/FrD1yeT4BR0K26V+9a/ZH+VsiZm
+	2ZeVjAqgykP1Wc4TgNRmst0ib92wbiocnddKYc7YeSdiEC/ySqwkQNtmjE8VaJ3drqL+tdf34I5
+	nlc+Pb7NrPbDWMiPIMU//mZc9pYDnLb+/YdB4tiLjY2uniKkFIVmNbBwGegihHMUWqR2r6jcFJc
+	K7+z6oB9stLx0DwnEYiWDAmxe95kVF1B/PzUgKLZrZVhGExxenGmITbGwwMsKnSEYm+lGXoFbwA
+	W0XlyyEkLyIw5BYB0wwlOjSHqHj0fHpxcZr6XsfODCB1+Gp2YAsHNcsfKMbNZUolr62pe5gJB0O
+	AfGW85e908damJ5JVyDgYluyGj12/PBIDVX5itjk6+WzAQhrj04wE=
+X-Received: by 2002:ac8:5847:0:b0:516:d83d:b28 with SMTP id d75a77b69052e-51722fe9387mr7859781cf.17.1779963678071;
+        Thu, 28 May 2026 03:21:18 -0700 (PDT)
+Received: from wujing.localdomain ([23.254.208.9])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-8ccc4e8b923sm35754166d6.37.2026.05.28.03.21.14
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 28 May 2026 03:21:17 -0700 (PDT)
+From: Qiliang Yuan <realwujing@gmail.com>
+Date: Thu, 28 May 2026 18:21:13 +0800
+Subject: [PATCH] ext4: fix quota accounting WARN in bigalloc punch hole
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Importance: Medium
-User-Agent: Zoho Mail
-X-Mailer: Zoho Mail
+Message-Id: <20260528-fix-ext4-bigalloc-punch-hole-quota-v2-v1-1-32871356273b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NQQqDMBAAvyJ77oLZVin9ivSwJqtZCIkmKoL49
+ 4Ye5zAzFxTJKgU+zQVZDi2aYgXzaMB6jrOguspALfVtR2+c9EQ5txeOOnMIyeKyR+vRpyC47ml
+ jPAiJneWn6ZwZGWpryVLF/2f43vcPbTyV4HcAAAA=
+X-Change-ID: 20260528-fix-ext4-bigalloc-punch-hole-quota-v2-2adca315d1ba
+To: Theodore Ts'o <tytso@mit.edu>, 
+ Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Zijing Yin <yzjaurora@gmail.com>, Qiliang Yuan <realwujing@gmail.com>
+X-Mailer: b4 0.14.3
 
-This indentation warning is from pre-existing code (originally written in 2010) that my patch did not touch. I prefer to keep this patch focused solely on removing deprecated DAX support. A separate cleanup patch can be submitted later if desired.
-Regards,
-Ashwin Gundarapu
+When doing direct I/O write on a bigalloc filesystem, the allocated
+extent might not cover entire clusters at its boundaries, leaving
+delayed blocks in those boundary clusters.  In ext4_es_insert_extent(),
+__revise_pending() inserts new pending reservations for those boundary
+clusters, and the return value (pending=true) was added to resv_used,
+causing ext4_da_update_reserve_space() to incorrectly release the
+quota reservations for those boundary clusters.
 
-From: kernel test robot <lkp@intel.com>
-To: "Ashwin Gundarapu"<linuxuser509@zohomail.in>, "jack"<jack@suse.com>
-Cc: <oe-kbuild-all@lists.linux.dev>, "linux-ext4"<linux-ext4@vger.kernel.org>, "linux-kernel"<linux-kernel@vger.kernel.org>
-Date: Thu, 28 May 2026 09:46:32 +0530
-Subject: Re: [PATCH v4] ext2: Remove deprecated DAX support
+Later when PUNCH_HOLE removes the DIO-allocated blocks, the
+extent removal path detects the pending reservation via
+ext4_is_pending() and calls ext4_rereserve_cluster().  This tries
+to reclaim quota from dq_dqb.dqb_curspace back to dqb_rsvspace,
+but since the quota was already incorrectly released, dqb_curspace
+is insufficient, triggering:
 
- > Hi Ashwin, 
- >  
- > kernel test robot noticed the following build warnings: 
- >  
- > [auto build test WARNING on jack-fs/for_next] 
- > [also build test WARNING on linus/master v7.1-rc5 next-20260527] 
- > [If your patch is applied to the wrong git tree, kindly drop us a note. 
- > And when submitting patch, we suggest to use '--base' as documented in 
- > https://git-scm.com/docs/git-format-patch#_base_tree_information] 
- >  
- > url: https://github.com/intel-lab-lkp/linux/commits/Ashwin-Gundarapu/ext2-Remove-deprecated-DAX-support/20260524-233631 
- > base: https://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_next 
- > patch link: https://lore.kernel.org/r/19e5aa07c9b.3a2e576d130187.5289857983023045470%40zohomail.in 
- > patch subject: [PATCH v4] ext2: Remove deprecated DAX support 
- > config: arm-randconfig-r071-20260528 (https://download.01.org/0day-ci/archive/20260528/202605281203.e91xvDyr-lkp@intel.com/config) 
- > compiler: clang version 20.1.8 (https://github.com/llvm/llvm-project 87f0227cb60147a26a1eeb4fb06e3b505e9c7261) 
- > smatch: v0.5.0-9185-gbcc58b9c 
- >  
- > If you fix the issue in a separate patch/commit (i.e. not just a new version of 
- > the same patch/commit), kindly add following tags 
- > | Reported-by: kernel test robot <lkp@intel.com> 
- > | Closes: https://lore.kernel.org/oe-kbuild-all/202605281203.e91xvDyr-lkp@intel.com/ 
- >  
- > smatch warnings: 
- > fs/ext2/inode.c:1251 ext2_setsize() warn: inconsistent indenting 
- >  
- > vim +1251 fs/ext2/inode.c 
- >  
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1236 
- > 2c27c65ed0696f0 Christoph Hellwig 2010-06-04  1237  static int ext2_setsize(struct inode *inode, loff_t newsize) 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1238  { 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1239      int error; 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1240 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1241      if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) || 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1242          S_ISLNK(inode->i_mode))) 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1243          return -EINVAL; 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1244      if (ext2_inode_is_fast_symlink(inode)) 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1245          return -EINVAL; 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1246      if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1247          return -EPERM; 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1248 
- > 562c72aa57c36b1 Christoph Hellwig 2011-06-24  1249      inode_dio_wait(inode); 
- > 562c72aa57c36b1 Christoph Hellwig 2011-06-24  1250 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27 @1251              error = block_truncate_page(inode->i_mapping, 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1252                                  newsize, ext2_get_block); 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1253      if (error) 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1254          return error; 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1255 
- > 70f3bad8c3154ba Jan Kara          2021-04-12  1256      filemap_invalidate_lock(inode->i_mapping); 
- > 2c27c65ed0696f0 Christoph Hellwig 2010-06-04  1257      truncate_setsize(inode, newsize); 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1258      __ext2_truncate_blocks(inode, newsize); 
- > 70f3bad8c3154ba Jan Kara          2021-04-12  1259      filemap_invalidate_unlock(inode->i_mapping); 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1260 
- > 5cdc59fce617a2e Jeff Layton       2023-10-04  1261      inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode)); 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1262      if (inode_needs_sync(inode)) { 
- > b0439bbc29f0201 Jan Kara          2026-03-26  1263          mmb_sync(&EXT2_I(inode)->i_metadata_bhs); 
- > c37650161a53c01 Christoph Hellwig 2010-10-06  1264          sync_inode_metadata(inode, 1); 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1265      } else { 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1266          mark_inode_dirty(inode); 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1267      } 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1268 
- > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1269      return 0; 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1270  } 
- > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1271 
- >  
- > -- 
- > 0-DAY CI Kernel Test Service 
- > https://github.com/intel/lkp-tests/wiki 
- >  
- > 
+  WARNING at dquot_reclaim_space_nodirty+0x77c/0x8c0
+
+The subsequent delalloc writeback then fires a second WARN from
+dquot_claim_space_nodirty() for the same reason: dqb_rsvspace was
+depleted by the earlier incorrect release.
+
+__es_remove_extent() -> get_rsvd() already correctly excludes
+boundary clusters that still contain delayed blocks from resv_used.
+Adding pending to resv_used double-counts those boundary clusters,
+erroneously releasing reservations that are still needed.
+
+Remove the pending variable and the resv_used += pending addition.
+
+Fixes: c543e2429640 ("ext4: update delalloc data reserve spcae in ext4_es_insert_extent()")
+Reported-by: Zijing Yin <yzjaurora@gmail.com>
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221570
+Signed-off-by: Qiliang Yuan <realwujing@gmail.com>
+---
+ fs/ext4/extents_status.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 6e4a191e82191..fefe0bb8ac4d1 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -909,7 +909,7 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+ 	int err1 = 0, err2 = 0, err3 = 0;
+-	int resv_used = 0, pending = 0;
++	int resv_used = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct extent_status *es1 = NULL;
+ 	struct extent_status *es2 = NULL;
+@@ -977,7 +977,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			__free_pending(pr);
+ 			pr = NULL;
+ 		}
+-		pending = err3;
+ 	}
+ 	ext4_es_inc_seq(inode);
+ error:
+@@ -998,7 +997,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	 * any previously delayed allocated clusters instead of claim them
+ 	 * again.
+ 	 */
+-	resv_used += pending;
+ 	if (resv_used)
+ 		ext4_da_update_reserve_space(inode, resv_used,
+ 					     delalloc_reserve_used);
+
+---
+base-commit: eb3f4b7426cfd2b79d65b7d37155480b32259a11
+change-id: 20260528-fix-ext4-bigalloc-punch-hole-quota-v2-2adca315d1ba
+
+Best regards,
+-- 
+Qiliang Yuan <realwujing@gmail.com>
 
