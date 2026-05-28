@@ -1,87 +1,87 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A33D73ABD8E
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 11:18:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 203023E51EF
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 11:41:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779967138; cv=none; b=c8NQWsmv50jpxKKPK8toKvkbUxn8JPkiMVyhyBjiY+zq74JQToIh+eUb5omEaT5m7ABl1H0gSafgGVMOVpmPsvorDW+Pns2zn41AVao0geDlBlecfSTun5pSvSLbTOToi02kvV6X/aiyy1wxgxmo+n/iBOzTP56/6dECkZDyVOk=
+	t=1779968501; cv=none; b=gVcowZCNSjCywThLMD5Khhm5Et4zK8LUAafttNxC+Vp750J15MzjUccupNeAbspkOOIFeFWngzB84JN+JvptEA/jMw8oviWE/l+qjS7OphYPyCeWyXzMRK0iBAEbmBkT5y8kNtoOcTogbBSGsUhXTvlVhOsczrxWqz3k3iWqxyE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779967138; c=relaxed/simple;
-	bh=C5AS4mdgINDYGvHYOWAbFX8fFnzLIoAn8Z9u4Jez+Is=;
+	s=arc-20240116; t=1779968501; c=relaxed/simple;
+	bh=+OVO6wDzgsMJRKFYP5vd8V1YDyemaODPE1iE+5nLQoE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=mR2K4YN4y9QlYUbXJnYwKTbIpTI6NoHBdRDrQH+iXH4Aj3ZNXNJ90jAG362BXClb5l3fF/c5lBrLTbWEiyCAqEUGNt4a0f/BzMrccvft3Dd5ZxUJrlRW/CIVRdrgBIWJrMFG6Xuwgd4SwiCQo1W469RC9LS351m2p7NyYiD05uU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=T0K51g4m; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vEv0nhTM; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=T0K51g4m; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vEv0nhTM; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=puaYaYrqGi11RodHvFri1d4hQjSbsvyWq/lAH8E/9GfG1KH95Dv3b10JOssUwYfwQ+b498FqYL6YKTs/1ge7dRUHpIseiSB+oYPK1XqZdB/SxAQltcwsdCKKIOv3Dq28gsIKXAxG4tOpxVSqS/qnXwBhXi6m2448B68aJqn+xb4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zGyCGH5v; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=xPnr1sdP; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zGyCGH5v; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=xPnr1sdP; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="T0K51g4m";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vEv0nhTM";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="T0K51g4m";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vEv0nhTM"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zGyCGH5v";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="xPnr1sdP";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zGyCGH5v";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="xPnr1sdP"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id E2E756AFFC;
-	Thu, 28 May 2026 11:18:54 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 2F9DA66DBF;
+	Thu, 28 May 2026 11:41:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779967134; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1779968498; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
-	b=T0K51g4m3YO1m1lSWQAESVkTCi4YjL+D13SHtddnjeElsfVRRRrG8UzGyeb5P2DAuw5nPp
-	YBCXpLCXu4F+sfTpapDmLl4D6u1yvDHX0BjgeJy+0G9md2xha5AoqZf/6UPWx9MdzOAUM3
-	pJm2uHUuAMG4uwQIQ9a6L3ZgfvWm0Yk=
+	bh=5i6Hn7vw3BNyEnoG0FVBuklc7R49iLt8PwV0tlwvFz4=;
+	b=zGyCGH5vVWsqRxzi5ccXMDVud4qMTJzRWVzTUoy74ohWuHjSRWiRhBnnJLWoAGpxXNIqEG
+	BTgrH+AnjDm8jRx2dSuHHiptwwLXFFxV9FHZY1trshZ+0razDaF9EU7RTbN4r/EFTW7099
+	UvaqKGX3ORrg08drHY2azwW+0T+FY9s=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779967134;
+	s=susede2_ed25519; t=1779968498;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
-	b=vEv0nhTMypZDQvcUswoHP9I8Mmgxn0/dOouNDyDWIP7wiWdOx3nti1vy3hqqZ2lWdlwWU/
-	XIDsYVi2BjK+CHDg==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=T0K51g4m;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=vEv0nhTM
+	bh=5i6Hn7vw3BNyEnoG0FVBuklc7R49iLt8PwV0tlwvFz4=;
+	b=xPnr1sdPA3xuhaytvPi74FRrlYaYJMW82YheeMJ6kfqrYo72sppknIH+9vsYUN9VHUFQba
+	QQX2dlrzFjIMfkDw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=zGyCGH5v;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=xPnr1sdP
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1779967134; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1779968498; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
-	b=T0K51g4m3YO1m1lSWQAESVkTCi4YjL+D13SHtddnjeElsfVRRRrG8UzGyeb5P2DAuw5nPp
-	YBCXpLCXu4F+sfTpapDmLl4D6u1yvDHX0BjgeJy+0G9md2xha5AoqZf/6UPWx9MdzOAUM3
-	pJm2uHUuAMG4uwQIQ9a6L3ZgfvWm0Yk=
+	bh=5i6Hn7vw3BNyEnoG0FVBuklc7R49iLt8PwV0tlwvFz4=;
+	b=zGyCGH5vVWsqRxzi5ccXMDVud4qMTJzRWVzTUoy74ohWuHjSRWiRhBnnJLWoAGpxXNIqEG
+	BTgrH+AnjDm8jRx2dSuHHiptwwLXFFxV9FHZY1trshZ+0razDaF9EU7RTbN4r/EFTW7099
+	UvaqKGX3ORrg08drHY2azwW+0T+FY9s=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1779967134;
+	s=susede2_ed25519; t=1779968498;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
-	b=vEv0nhTMypZDQvcUswoHP9I8Mmgxn0/dOouNDyDWIP7wiWdOx3nti1vy3hqqZ2lWdlwWU/
-	XIDsYVi2BjK+CHDg==
+	bh=5i6Hn7vw3BNyEnoG0FVBuklc7R49iLt8PwV0tlwvFz4=;
+	b=xPnr1sdPA3xuhaytvPi74FRrlYaYJMW82YheeMJ6kfqrYo72sppknIH+9vsYUN9VHUFQba
+	QQX2dlrzFjIMfkDw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D5B185AD66;
-	Thu, 28 May 2026 11:18:54 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 260A95AD7C;
+	Thu, 28 May 2026 11:41:38 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id gWcmNJ4kGGo0OAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 28 May 2026 11:18:54 +0000
+	id 8LVJCfIpGGo4TwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 28 May 2026 11:41:38 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5A547A0905; Thu, 28 May 2026 13:18:54 +0200 (CEST)
-Date: Thu, 28 May 2026 13:18:54 +0200
+	id C1ED4A0905; Thu, 28 May 2026 13:41:37 +0200 (CEST)
+Date: Thu, 28 May 2026 13:41:37 +0200
 From: Jan Kara <jack@suse.cz>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH 0/8] super: retire sget(), convert iterators to RCU
-Message-ID: <4aw6h2zvj2fe7ezjncs2u34ydshx7sbh4r3tupg43owmq4qo2b@uhp7jtx6b74l>
-References: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Remove mention of PageWriteback
+Message-ID: <6ajazupewirr5gokbk7ibtsbr6fsq5eef777zz42caivqkrpps@l3i7m3sqi3sk>
+References: <20260526190805.341676-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,10 +90,10 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
+In-Reply-To: <20260526190805.341676-1-willy@infradead.org>
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: E2E756AFFC
+X-Rspamd-Queue-Id: 2F9DA66DBF
 X-Spam-Flag: NO
 X-Spam-Score: -2.51
 X-Spam-Level: 
@@ -115,81 +115,48 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[9];
+	RCPT_COUNT_SEVEN(0.00)[10];
 	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	TAGGED_RCPT(0.00)[];
 	MISSING_XM_UA(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,gmail.com,zeniv.linux.org.uk];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
 	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:dkim,infradead.org:email]
 
-On Tue 26-05-26 17:09:02, Christian Brauner wrote:
-> * retire sget(): CIFS plus the two ext4 KUnit tests (extents-test,
->   mballoc-test) were the last in-tree callers, and all three convert
->   cleanly to sget_fc(). That lets sget() and its prototype come out,
->   taking ~60 lines that only existed to be kept in lockstep with
->   sget_fc() on every publish-path change.
-
-This is definitely a good cleanup!
-
-> * Walk @super_blocks and @type->fs_supers under RCU, pinned by
->   refcount_inc_not_zero(&sb->s_count). iterate_supers(),
->   iterate_supers_type(), user_get_super(), do_emergency_remount(),
->   filesystems_freeze() and filesystems_thaw() no longer hold sb_lock
->   across the cursor advance.
+On Tue 26-05-26 20:08:02, Matthew Wilcox (Oracle) wrote:
+> Update a comment to refer to the concept of writeback instead of the
+> (now obsolete) detail of how it's implemented.
 > 
->   The conversion goes in four small steps. Drop sb_lock from
->   setup_bdev_super(): the {s_bdev_file, s_bdev, s_bdi,
->   SB_I_STABLE_WRITES} tuple is publication of immutable state, and
->   SB_BORN already gates every reader via super_wake()'s
->   smp_store_release paired with super_flags()'s smp_load_acquire. Then
->   convert sb->s_count to refcount_t -- mechanical, every increment is
->   still under sb_lock. Then switch the write-side list/hlist ops to
->   their _rcu variants; @super_blocks gets list_bidir_del_rcu() so the
->   reverse-walking iterators (filesystems_freeze, do_emergency_remount)
->   keep a valid ->prev on the unlinked entry, matching the canonical
->   pattern in kernel/nstree.c. Finally, convert the iterators themselves:
->   cursor advance via READ_ONCE / rcu_dereference, with the previous
->   entry kept pinned via its s_count across the rcu_read_unlock ->
->   callback -> rcu_read_lock cycle.
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-So I guess the motivation for getting rid of sb_lock is some contention on
-it you can observe? When exactly? It would be nice to mention the
-motivation as a justification for the additional complexity...
+Looks good. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> 
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 > ---
-> Christian Brauner (8):
->       ext4: convert extents KUnit test to sget_fc()
->       ext4: convert mballoc KUnit test to sget_fc()
->       smb: client: convert cifs_smb3_do_mount() to sget_fc()
->       fs: retire sget()
->       super: drop sb_lock from setup_bdev_super() tuple publication
->       super: convert sb->s_count to refcount_t
->       super: switch list manipulation to _rcu primitives
->       super: convert iterators to RCU readers + refcount_inc_not_zero
+>  fs/ext4/page-io.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
->  fs/btrfs/super.c               |   2 +-
->  fs/ext4/extents-test.c         |  22 +++++-
->  fs/ext4/mballoc-test.c         |  17 ++++-
->  fs/smb/client/cifsfs.c         |  43 ++++++-----
->  fs/smb/client/cifsfs.h         |   3 +-
->  fs/smb/client/cifsproto.h      |   3 +-
->  fs/smb/client/connect.c        |   5 +-
->  fs/smb/client/fs_context.c     |   2 +-
->  fs/super.c                     | 167 ++++++++++++++---------------------------
->  include/linux/fs.h             |   4 -
->  include/linux/fs/super_types.h |   3 +-
->  11 files changed, 127 insertions(+), 144 deletions(-)
-> ---
-> base-commit: 254f49634ee16a731174d2ae34bc50bd5f45e731
-> change-id: 20260526-work-sget-6bc80b96cba5
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index dc82e7b57e75..bc674aa4a656 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -168,7 +168,7 @@ static void ext4_release_io_end(ext4_io_end_t *io_end)
+>   * written. On IO failure, check if journal abort is needed. Note that
+>   * we are protected from truncate touching same part of extent tree by the
+>   * fact that truncate code waits for all DIO to finish (thus exclusion from
+> - * direct IO is achieved) and also waits for PageWriteback bits. Thus we
+> + * direct IO is achieved) and also waits for writeback to complete. Thus we
+>   * cannot get to ext4_ext_truncate() before all IOs overlapping that range are
+>   * completed (happens from ext4_free_ioend()).
+>   */
+> -- 
+> 2.47.3
 > 
 -- 
 Jan Kara <jack@suse.com>
