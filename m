@@ -1,43 +1,50 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8978D3E7BAF;
-	Thu, 28 May 2026 12:02:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B7553E928C;
+	Thu, 28 May 2026 12:20:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779969776; cv=none; b=SqqirJE796oxevwhMuvnZIpA5mUB+pWa1k6OTjwFk3Aj6meO/AY0vGIAmW/Scjcnp/ePxHZ9kGxYvjBDSatt7fxh1jCfFpkcxrj7iphs7rB0QnEby6+2tdiSddi3H1oHpvMLpsu6/ma2LInVeNyuPROg5jj9hR5U+IKPl79vb1c=
+	t=1779970815; cv=none; b=Ehbu7MgQu/jCeez/CHTIotCxYYB22h3Pl8P9fVZe8mE/jQSUTaxI1EYC0JCOi29NFO+e3LWkQKix7TkbR/PkfN5MdqlJCjmk+CUV9XnYKU9LyT4TXzGFn8zJKX2NMuUhrkXWVIs7MQZdY+AfP/k9VPwdVEqEETTzQ14JqtVJzi0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779969776; c=relaxed/simple;
-	bh=sy4FPeYdz1c1upnEaFo1Gzs0q8sDKHq03tALhaLTdlk=;
+	s=arc-20240116; t=1779970815; c=relaxed/simple;
+	bh=KBjHBm6+FMUZTNQGaz9411xTcFVD7lUMw7HDcOvZjE8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rj0qv4LrhTSzbNta92oEYCkADCua3fovFe/LmTg17fqO1V+zQyinpe+S+5bcn1K9wE42hxdRwRqoGjQV1yZ5GYKEOP9WbF06chWlKJDl6wjQ+MD8zl6f/iUkJmB7xgQ0FVxm1JgXmWgltsqvNyPD7pTP0H/1N0iogUoPQ+NlBMw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gfF+O8jD; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=OB8iS+hHkOy0+GX1oEQrnoOVssuQUx9v3ZO8YRyfD8EAdFdfcuRSKkb6EVTFLsdsH1coI0adShYIJ2vs4eRgU+nWA/1Rr0Fi1DtRIwXSedL27n7lYA2L/SNiqWPLFvPzLyZGvkRiuoaitqMr8rmFmoGUbP4+Rxrvz9zw0TCQ/R8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y7HGiqwA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gfF+O8jD"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 56A371F000E9;
-	Thu, 28 May 2026 12:02:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y7HGiqwA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9937F1F00A3A;
+	Thu, 28 May 2026 12:20:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779969775;
-	bh=WzuRhvTFnKVMuLosDl+wUsUU9ggU6cVs+BamrsMo9rI=;
+	s=k20260515; t=1779970814;
+	bh=VKwY9ioZhVoPUqtTyA0BwlFjGKc+POdWjVXqGmhMxaQ=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=gfF+O8jDnrcV/j5OSoQRl5T27zkLERWL2K7jASubWQkFFezswGAOiOMxnLA2U1gVb
-	 jxIYY/Yl3Kzch7fdOYJWOkLuSR3wseyrKZH/NUQpZBBloBOFiZLFNjsCndmAFOsEQ8
-	 GABBVytqyy+kdbslcFwH8FjyXUECrB6dmF1XsjxFyc3+j4L4KFVvADjOVBd3CxxV0w
-	 bsHg4s2dq0IP66hF6e0XwBt0FQ0s64VgI3LcF80JctT0a0MdPaqKWQJfw1RW95XKg1
-	 2SdDpRjRuvwBcCRyLJLwFkrDb7X1+tUkm72cDudD6uf5o33iV+Y++6vLDidkrcPXBQ
-	 D9BU+gz2ZynTA==
-Date: Thu, 28 May 2026 14:02:50 +0200
+	b=Y7HGiqwAUe1nf03HOJRK6Iaw755bslZammK1+0efrRGASVM6Ws69wszEvqTmNRgm8
+	 gnzzpdYOH706bywHqbKXllSClMMYk+jGuvHGtklya9XlCeVKCLEzxPEF5//Ru4tSZh
+	 SQrQd3bOLYpqaWM/X3vsFncLmhfGWnK0R3q2LtIF/Klss5lyJ4Zw5osf4I3wOSeaSH
+	 qLlSc+y4JQFjgXhLOOtkxCZD7efPEhYbMSaPhkdOpo1L2mhlKOx4i+ml9UfuLbNFdh
+	 5eqKj2tWGIQ18hH0H+u3gk8kdqHBaj53qmnIgqfoIMY9CJZi7W+nAkNjMxcj8U4Yrd
+	 xS5kNLPeHFY/Q==
+Date: Thu, 28 May 2026 14:20:08 +0200
 From: Christian Brauner <brauner@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH 2/8] ext4: convert mballoc KUnit test to sget_fc()
-Message-ID: <20260528-pailletten-gitter-hiermit-5198ec556b28@brauner>
-References: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
- <20260526-work-sget-v1-2-263f7025cedd@kernel.org>
- <ny6ggedljk3celsnnaaczpehmgll6hqrglqc44ku53cmxrclx5@w4qby54x6mff>
+To: Carlos Maiolino <cem@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, 
+	Andrey Albershteyn <aalbersh@redhat.com>, Andrey Albershteyn <aalbersh@kernel.org>, 
+	linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
+	ebiggers@kernel.org, linux-ext4@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
+	djwong@kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v10 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
+References: <20260520123722.405752-1-aalbersh@kernel.org>
+ <20260521090705.GA14254@lst.de>
+ <gcw7zcg6p4s2egpufwizfig72g6ren7jfmuz5mqskkpb7xepww@e3v35j7bk7dc>
+ <ag7uW7KQ5mVyCGEv@nidhogg.toxiclabs.cc>
+ <20260522-unbehagen-baumethode-erlesen-811a4065eeac@brauner>
+ <20260522120757.GA21041@lst.de>
+ <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,56 +53,26 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <ny6ggedljk3celsnnaaczpehmgll6hqrglqc44ku53cmxrclx5@w4qby54x6mff>
+In-Reply-To: <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
 
-On Tue, May 26, 2026 at 07:47:27PM -0500, Theodore Ts'o wrote:
-> On Tue, May 26, 2026 at 05:09:04PM +0200, Christian Brauner wrote:
-> > Add a no-op mbt_init_fs_context() so fs_context_for_mount() has
-> > something to call on the fake fs_type....
+On Tue, May 26, 2026 at 12:19:43PM +0200, Carlos Maiolino wrote:
+> On Fri, May 22, 2026 at 02:07:57PM +0200, Christoph Hellwig wrote:
+> > On Fri, May 22, 2026 at 12:03:20PM +0200, Christian Brauner wrote:
+> > > > I was expecting this to come through xfs tree too if Eric and Christian
+> > > > agree.
+> > > 
+> > > You may take it through the xfs tree if there are no conflicts with
+> > > vfs-7.2.iomap. If there are I want to add the iomap changes into
+> > > vfs-7.2.iomap that you can pull in.
+> > 
+> > Merging the iomap bits through the iomap branch might make sense, given
+> > that iomap usually tends to see quite a bit of activity.
+> > 
 > 
-> I was trying to figure out what needed to be in an init_fs_context()
-> functrion, and I came accross this in
-> Documentation/filesystems/mount_api.rst:
-> 
->        const struct fs_context_operations *ops
-> 
->      These are operations that can be done on a filesystem context (see
->      below).  This must be set by the ->init_fs_context() file_system_type
->      operation.    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 
-> So is it safe to just have an init_fs_context() function which doesn't
-> do this?
+> That sounds good to me. If you want to go ahead and pull in the iomap
+> bits, do so, and give me a heads up when you do it so I'll pull your
+> branch locally.
 
-
-> 
-> > +static int mbt_init_fs_context(struct fs_context *fc)
-> > +{
-> > +	return 0;
-> > +}
-> > +
-> 
-> I see in fs/fs_context.c that in some places the code protects against
-> a NULL ops pointer:
-> 
->         if (fc->need_free && fc->ops && fc->ops->free)
-> 		fc->ops->free(fc);
-> 
-> But in other places, it doesn't and we'll end up derefrencing a null
-> pointer:
-> 
->         if (fc->ops->parse_param) {
-> 		ret = fc->ops->parse_param(fc, param);
-> 
-> 	....
-> 
-> So it's unclear to me --- when is it safe (and not safe) to not bother
-> to fill in the ops pointer?
-
-Hey Ted!
-
-In these two cases it's fine. Because you're just using the allocation
-and deallocation functions to get a fs_context that's basically just an
-empty vessel to get at a superblock via sget_fc() but you're not really
-doing anything with it.
-
-IOW, you can never end up in callchains that cause issues.
+Great, can the series please be resent based on current vfs-7.2.iomap
+then please? Because the iomap changes in this series don't apply
+cleanly on vfs-7.2.iomap so we already have merge conflicts...
