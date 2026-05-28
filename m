@@ -1,157 +1,196 @@
-Received: from mail-qt1-f174.google.com (mail-qt1-f174.google.com [209.85.160.174])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A13939903E
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 10:21:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A33D73ABD8E
+	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 11:18:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779963682; cv=none; b=hKOGYCcwAxv+1yuGSy0SUpO1DiXK1xgbGmvTvxGNpGOQuD/yosZK9knN1phG4LYQaUOdLH71IfHjJOgiiAw3okMzI2YOFhShNt+b2U8z/mViGjy+DUcrNbzFPxOWttquankidH9my6DCERzFS+ScQDFgOXkyHzwqhVPfLqcO9lo=
+	t=1779967138; cv=none; b=c8NQWsmv50jpxKKPK8toKvkbUxn8JPkiMVyhyBjiY+zq74JQToIh+eUb5omEaT5m7ABl1H0gSafgGVMOVpmPsvorDW+Pns2zn41AVao0geDlBlecfSTun5pSvSLbTOToi02kvV6X/aiyy1wxgxmo+n/iBOzTP56/6dECkZDyVOk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779963682; c=relaxed/simple;
-	bh=jI7Cg78izFhc8YwkzdLdR1Hg35pDNSXzTk8tL+TVGH4=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=ihFlHFYyLATXTRwcDJWowqJDyfYDP8SQeCfbIV32K1jcLoOzenrZ8hb2eTn3H6wG1R4m05MaiqQ79Ohm1kjcqd93DYFQYq80zRri9mx1h3f3bI0T9DRVcESTmkYcSrnKioaFkGSDvD+Jmr5PStREfQnetkYLzQcI/UfYRUy/2oc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hViMuKTK; arc=none smtp.client-ip=209.85.160.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1779967138; c=relaxed/simple;
+	bh=C5AS4mdgINDYGvHYOWAbFX8fFnzLIoAn8Z9u4Jez+Is=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=mR2K4YN4y9QlYUbXJnYwKTbIpTI6NoHBdRDrQH+iXH4Aj3ZNXNJ90jAG362BXClb5l3fF/c5lBrLTbWEiyCAqEUGNt4a0f/BzMrccvft3Dd5ZxUJrlRW/CIVRdrgBIWJrMFG6Xuwgd4SwiCQo1W469RC9LS351m2p7NyYiD05uU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=T0K51g4m; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vEv0nhTM; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=T0K51g4m; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vEv0nhTM; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hViMuKTK"
-Received: by mail-qt1-f174.google.com with SMTP id d75a77b69052e-516d0119e4aso64958641cf.1
-        for <linux-ext4@vger.kernel.org>; Thu, 28 May 2026 03:21:19 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1779963678; x=1780568478; darn=vger.kernel.org;
-        h=cc:to:message-id:content-transfer-encoding:mime-version:subject
-         :date:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=843k2tDUPYbkxqgPxtYSJoHk8y8WS2/E2oa/7Uhir+8=;
-        b=hViMuKTKvFIMvxu1HjuIlf3ZkD+TJ0rNrzf/ombQKk/rVbQ2PaLfxYmKiI2Wae8iUN
-         Ex3UE1BRYRc+pI5Bchl1IVkxYWIJ9hiOt6ZiMcQ9C8Cy4mf0qpfOgvsaraa/X2u3IGNv
-         v5QLjnYGmhLkxJCgXtul5UuQSSEERIohajkDmTNux06EM9MdM8SICU/nRc6qGPLV1QVo
-         sec7ioTJxikaZ4mhtHMRLHR0ZYgYwHB2LzmMfVO9D9vhahMQmky6DSjjGXqAzHgHmNfX
-         as2k23GhF16zVLO3xtGe0ikI1/+orCRtC8uF9h0f68G/mbfNG2aa51oxcZ0PQSC4zaOF
-         Vwaw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779963678; x=1780568478;
-        h=cc:to:message-id:content-transfer-encoding:mime-version:subject
-         :date:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=843k2tDUPYbkxqgPxtYSJoHk8y8WS2/E2oa/7Uhir+8=;
-        b=TQC6QmbW9gZ/iGGH6i+nl4pEUTqgCv+TA92yCpj4mTZ3NyVEH3ngjc+EDSowaOMdHm
-         a17PvgiBacvd5r5ZH8IdH3c8NwWNIK5vs2ulBkaPnFm7vFhTyRbyG/nEiNWqQdI/Fp28
-         vLncVfGcrODVxstOwJMepzK6aG/4bCNi6mWE4M/5WySkwPBka7S4rLOJT+GWzLuz1OqE
-         V5MITt2M5TSmainDQ2yYX4W7YaRvuzA9satVU0HBrdGg4Qu+dz/hOWtqaRKG9uMCB4aF
-         46r5rNBKPAHpQPUb3P83xrgQFmW/xNpcHnDT62dPYtf5D2KanM2DBz4+qhZAuQ3FXqU0
-         UdKw==
-X-Gm-Message-State: AOJu0YxJmy3xhREiTKodXnNlBKWIaH8VUotYMSY2AA6b1qYYKcI61ggZ
-	NH4D/rx+BqscMr9DaZDzznAdrlD85vMOc/ytKA2k3lAgYpjIlxayr+3R
-X-Gm-Gg: Acq92OHktkcdJ117atc/XQChWCvIFrzYdZYbO/YA2Xs4Qde6GCT/Z/wQt/17irDzxHP
-	uT+ZByo6PkAfSCZrHqS8/FekSHuUnt60deZ2ODrxGn9R5HP/FrD1yeT4BR0K26V+9a/ZH+VsiZm
-	2ZeVjAqgykP1Wc4TgNRmst0ib92wbiocnddKYc7YeSdiEC/ySqwkQNtmjE8VaJ3drqL+tdf34I5
-	nlc+Pb7NrPbDWMiPIMU//mZc9pYDnLb+/YdB4tiLjY2uniKkFIVmNbBwGegihHMUWqR2r6jcFJc
-	K7+z6oB9stLx0DwnEYiWDAmxe95kVF1B/PzUgKLZrZVhGExxenGmITbGwwMsKnSEYm+lGXoFbwA
-	W0XlyyEkLyIw5BYB0wwlOjSHqHj0fHpxcZr6XsfODCB1+Gp2YAsHNcsfKMbNZUolr62pe5gJB0O
-	AfGW85e908damJ5JVyDgYluyGj12/PBIDVX5itjk6+WzAQhrj04wE=
-X-Received: by 2002:ac8:5847:0:b0:516:d83d:b28 with SMTP id d75a77b69052e-51722fe9387mr7859781cf.17.1779963678071;
-        Thu, 28 May 2026 03:21:18 -0700 (PDT)
-Received: from wujing.localdomain ([23.254.208.9])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-8ccc4e8b923sm35754166d6.37.2026.05.28.03.21.14
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 28 May 2026 03:21:17 -0700 (PDT)
-From: Qiliang Yuan <realwujing@gmail.com>
-Date: Thu, 28 May 2026 18:21:13 +0800
-Subject: [PATCH] ext4: fix quota accounting WARN in bigalloc punch hole
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="T0K51g4m";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vEv0nhTM";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="T0K51g4m";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vEv0nhTM"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id E2E756AFFC;
+	Thu, 28 May 2026 11:18:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1779967134; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
+	b=T0K51g4m3YO1m1lSWQAESVkTCi4YjL+D13SHtddnjeElsfVRRRrG8UzGyeb5P2DAuw5nPp
+	YBCXpLCXu4F+sfTpapDmLl4D6u1yvDHX0BjgeJy+0G9md2xha5AoqZf/6UPWx9MdzOAUM3
+	pJm2uHUuAMG4uwQIQ9a6L3ZgfvWm0Yk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1779967134;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
+	b=vEv0nhTMypZDQvcUswoHP9I8Mmgxn0/dOouNDyDWIP7wiWdOx3nti1vy3hqqZ2lWdlwWU/
+	XIDsYVi2BjK+CHDg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=T0K51g4m;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=vEv0nhTM
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1779967134; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
+	b=T0K51g4m3YO1m1lSWQAESVkTCi4YjL+D13SHtddnjeElsfVRRRrG8UzGyeb5P2DAuw5nPp
+	YBCXpLCXu4F+sfTpapDmLl4D6u1yvDHX0BjgeJy+0G9md2xha5AoqZf/6UPWx9MdzOAUM3
+	pJm2uHUuAMG4uwQIQ9a6L3ZgfvWm0Yk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1779967134;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=96XZQn4AoQGDQzzwQ6wrbPqGeiwBjDvlhAqms1kFv+g=;
+	b=vEv0nhTMypZDQvcUswoHP9I8Mmgxn0/dOouNDyDWIP7wiWdOx3nti1vy3hqqZ2lWdlwWU/
+	XIDsYVi2BjK+CHDg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D5B185AD66;
+	Thu, 28 May 2026 11:18:54 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id gWcmNJ4kGGo0OAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 28 May 2026 11:18:54 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 5A547A0905; Thu, 28 May 2026 13:18:54 +0200 (CEST)
+Date: Thu, 28 May 2026 13:18:54 +0200
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org, 
+	Alexander Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH 0/8] super: retire sget(), convert iterators to RCU
+Message-ID: <4aw6h2zvj2fe7ezjncs2u34ydshx7sbh4r3tupg43owmq4qo2b@uhp7jtx6b74l>
+References: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260528-fix-ext4-bigalloc-punch-hole-quota-v2-v1-1-32871356273b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NQQqDMBAAvyJ77oLZVin9ivSwJqtZCIkmKoL49
- 4Ye5zAzFxTJKgU+zQVZDi2aYgXzaMB6jrOguspALfVtR2+c9EQ5txeOOnMIyeKyR+vRpyC47ml
- jPAiJneWn6ZwZGWpryVLF/2f43vcPbTyV4HcAAAA=
-X-Change-ID: 20260528-fix-ext4-bigalloc-punch-hole-quota-v2-2adca315d1ba
-To: Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Zijing Yin <yzjaurora@gmail.com>, Qiliang Yuan <realwujing@gmail.com>
-X-Mailer: b4 0.14.3
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: E2E756AFFC
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,gmail.com,zeniv.linux.org.uk];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim]
 
-When doing direct I/O write on a bigalloc filesystem, the allocated
-extent might not cover entire clusters at its boundaries, leaving
-delayed blocks in those boundary clusters.  In ext4_es_insert_extent(),
-__revise_pending() inserts new pending reservations for those boundary
-clusters, and the return value (pending=true) was added to resv_used,
-causing ext4_da_update_reserve_space() to incorrectly release the
-quota reservations for those boundary clusters.
+On Tue 26-05-26 17:09:02, Christian Brauner wrote:
+> * retire sget(): CIFS plus the two ext4 KUnit tests (extents-test,
+>   mballoc-test) were the last in-tree callers, and all three convert
+>   cleanly to sget_fc(). That lets sget() and its prototype come out,
+>   taking ~60 lines that only existed to be kept in lockstep with
+>   sget_fc() on every publish-path change.
 
-Later when PUNCH_HOLE removes the DIO-allocated blocks, the
-extent removal path detects the pending reservation via
-ext4_is_pending() and calls ext4_rereserve_cluster().  This tries
-to reclaim quota from dq_dqb.dqb_curspace back to dqb_rsvspace,
-but since the quota was already incorrectly released, dqb_curspace
-is insufficient, triggering:
+This is definitely a good cleanup!
 
-  WARNING at dquot_reclaim_space_nodirty+0x77c/0x8c0
+> * Walk @super_blocks and @type->fs_supers under RCU, pinned by
+>   refcount_inc_not_zero(&sb->s_count). iterate_supers(),
+>   iterate_supers_type(), user_get_super(), do_emergency_remount(),
+>   filesystems_freeze() and filesystems_thaw() no longer hold sb_lock
+>   across the cursor advance.
+> 
+>   The conversion goes in four small steps. Drop sb_lock from
+>   setup_bdev_super(): the {s_bdev_file, s_bdev, s_bdi,
+>   SB_I_STABLE_WRITES} tuple is publication of immutable state, and
+>   SB_BORN already gates every reader via super_wake()'s
+>   smp_store_release paired with super_flags()'s smp_load_acquire. Then
+>   convert sb->s_count to refcount_t -- mechanical, every increment is
+>   still under sb_lock. Then switch the write-side list/hlist ops to
+>   their _rcu variants; @super_blocks gets list_bidir_del_rcu() so the
+>   reverse-walking iterators (filesystems_freeze, do_emergency_remount)
+>   keep a valid ->prev on the unlinked entry, matching the canonical
+>   pattern in kernel/nstree.c. Finally, convert the iterators themselves:
+>   cursor advance via READ_ONCE / rcu_dereference, with the previous
+>   entry kept pinned via its s_count across the rcu_read_unlock ->
+>   callback -> rcu_read_lock cycle.
 
-The subsequent delalloc writeback then fires a second WARN from
-dquot_claim_space_nodirty() for the same reason: dqb_rsvspace was
-depleted by the earlier incorrect release.
+So I guess the motivation for getting rid of sb_lock is some contention on
+it you can observe? When exactly? It would be nice to mention the
+motivation as a justification for the additional complexity...
 
-__es_remove_extent() -> get_rsvd() already correctly excludes
-boundary clusters that still contain delayed blocks from resv_used.
-Adding pending to resv_used double-counts those boundary clusters,
-erroneously releasing reservations that are still needed.
+								Honza
 
-Remove the pending variable and the resv_used += pending addition.
-
-Fixes: c543e2429640 ("ext4: update delalloc data reserve spcae in ext4_es_insert_extent()")
-Reported-by: Zijing Yin <yzjaurora@gmail.com>
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221570
-Signed-off-by: Qiliang Yuan <realwujing@gmail.com>
----
- fs/ext4/extents_status.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 6e4a191e82191..fefe0bb8ac4d1 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -909,7 +909,7 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	struct extent_status newes;
- 	ext4_lblk_t end = lblk + len - 1;
- 	int err1 = 0, err2 = 0, err3 = 0;
--	int resv_used = 0, pending = 0;
-+	int resv_used = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct extent_status *es1 = NULL;
- 	struct extent_status *es2 = NULL;
-@@ -977,7 +977,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 			__free_pending(pr);
- 			pr = NULL;
- 		}
--		pending = err3;
- 	}
- 	ext4_es_inc_seq(inode);
- error:
-@@ -998,7 +997,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	 * any previously delayed allocated clusters instead of claim them
- 	 * again.
- 	 */
--	resv_used += pending;
- 	if (resv_used)
- 		ext4_da_update_reserve_space(inode, resv_used,
- 					     delalloc_reserve_used);
-
----
-base-commit: eb3f4b7426cfd2b79d65b7d37155480b32259a11
-change-id: 20260528-fix-ext4-bigalloc-punch-hole-quota-v2-2adca315d1ba
-
-Best regards,
+> 
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> ---
+> Christian Brauner (8):
+>       ext4: convert extents KUnit test to sget_fc()
+>       ext4: convert mballoc KUnit test to sget_fc()
+>       smb: client: convert cifs_smb3_do_mount() to sget_fc()
+>       fs: retire sget()
+>       super: drop sb_lock from setup_bdev_super() tuple publication
+>       super: convert sb->s_count to refcount_t
+>       super: switch list manipulation to _rcu primitives
+>       super: convert iterators to RCU readers + refcount_inc_not_zero
+> 
+>  fs/btrfs/super.c               |   2 +-
+>  fs/ext4/extents-test.c         |  22 +++++-
+>  fs/ext4/mballoc-test.c         |  17 ++++-
+>  fs/smb/client/cifsfs.c         |  43 ++++++-----
+>  fs/smb/client/cifsfs.h         |   3 +-
+>  fs/smb/client/cifsproto.h      |   3 +-
+>  fs/smb/client/connect.c        |   5 +-
+>  fs/smb/client/fs_context.c     |   2 +-
+>  fs/super.c                     | 167 ++++++++++++++---------------------------
+>  include/linux/fs.h             |   4 -
+>  include/linux/fs/super_types.h |   3 +-
+>  11 files changed, 127 insertions(+), 144 deletions(-)
+> ---
+> base-commit: 254f49634ee16a731174d2ae34bc50bd5f45e731
+> change-id: 20260526-work-sget-6bc80b96cba5
+> 
 -- 
-Qiliang Yuan <realwujing@gmail.com>
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
