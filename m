@@ -1,81 +1,238 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.9])
+Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76F7B3C4557
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 09:52:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.9
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49C0B3BED31;
+	Fri, 29 May 2026 09:57:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.110
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780048358; cv=none; b=uHa7BDLbEyUUO3R285+vPePM1lLBVrfsOYk0m9OxHPxr3ffGiU21kByL1hjzD5PH84Gmp6CU6JQ8jI4NB5ipj7W1a4bADcZS3RUpnHSOwitvTT6y8cRKnIDAoIa5Qeppa//1oBgOwkW6L+w4P/+8QqYN7C3YWr4q9XWxbJWFEQo=
+	t=1780048658; cv=none; b=A9F5HYw/PtnLtvbLvSQNPDwXFOa6LQHjfEkFwrW+FynesG2BJ+jTUgsun8SWsArv0uM4FsoQJ2/TjK65tC2f2z1cY2N86SpcF5P/w1JyqQJ0mo/kFG/KP7cXV00dKHfj/Vi7DjdeS1eKPNIcNvlf/Cm3daNsnZ9EsipICGt9LsE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780048358; c=relaxed/simple;
-	bh=ck9JID+OU0b9TcMOwwP8J6YZEgRKtvBtPTyFrEazzV8=;
-	h=Date:From:To:Cc:Subject:Message-ID; b=hDkA4D3+nk2j/yYldLMfSGFb295wbMT/lWjHYBmbraqxziV4oCN8M9RF/JDB5G1NHEDQM23baDLUyeC6NW+U1bEYA/VdxKpNFR52ZaA6pivmZqNUJ/zqTMv50xehPbcn4JQ/hStA2i/CUWg7GVRn0TBUHUs+WnITvJKRZnYnIuE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=H2xApzYo; arc=none smtp.client-ip=192.198.163.9
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1780048658; c=relaxed/simple;
+	bh=Isi7qn3sJT9SqEGviSxfjuZAM3s1juSbmZkQHiHxBFM=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=GMsgZhY1bGR1Ptwja7PyjUioE2qqWUFltU2MtDMS+FpfU9cWM3fJM2YFzEcSWqsWrtobhENqCWVM3DKIHLYp2/eRhu4rJMwfCm2kmW2RjfpINlBQm92df3Rd021BVE9MDO9FKJKbv2idJ19NbOjG4vB6QdS1WW4rHUaoSSUkzO4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=kTBGBZU3; arc=none smtp.client-ip=115.124.30.110
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="H2xApzYo"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1780048356; x=1811584356;
-  h=date:from:to:cc:subject:message-id;
-  bh=ck9JID+OU0b9TcMOwwP8J6YZEgRKtvBtPTyFrEazzV8=;
-  b=H2xApzYocXQrp6QtxYndw+tOXQPZ8hc4X0sTZWPFc/61wPQL5n6kN2Aj
-   6ues890hzq7rJwcaIf9dTPc8EFQ6bIdF4G2LykokaUyLAR+FAEkuWH6XP
-   CWJ5Ox6mAxbAWqGsrk2ldDa/4pVYvdxjkvlKqtC6rC6iXkx0gMzQ83fER
-   y3Bqbkk77EdSoMbaywB2pmu1CdF7/jjsAdVe3HFfJuz03SY22WvzNKRgu
-   zziqiLM8qK+0ktFNlMPjQXbfkBZPqGWHDV7sREy6yR9JC8r8cmAyd2SIN
-   fB6y+inXOx1GZjfs3h+udrMOL5+ujrLKU1OIRk1n4FJPG59lYf7GEc02g
-   Q==;
-X-CSE-ConnectionGUID: tJl69GQcSFW9X/YODXYkfA==
-X-CSE-MsgGUID: wiDfy062QjS7+8bSWo3NTw==
-X-IronPort-AV: E=McAfee;i="6800,10657,11800"; a="91583908"
-X-IronPort-AV: E=Sophos;i="6.24,175,1774335600"; 
-   d="scan'208";a="91583908"
-Received: from fmviesa005.fm.intel.com ([10.60.135.145])
-  by fmvoesa103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 29 May 2026 02:52:36 -0700
-X-CSE-ConnectionGUID: ndmyYakyTIOQa1vne2FB+g==
-X-CSE-MsgGUID: WI0H80itQDyAeQrzCVjqOQ==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.24,175,1774335600"; 
-   d="scan'208";a="247900339"
-Received: from igk-lkp-server01.igk.intel.com (HELO 892db79562d4) ([10.211.93.152])
-  by fmviesa005.fm.intel.com with ESMTP; 29 May 2026 02:52:34 -0700
-Received: from kbuild by 892db79562d4 with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1wSttI-000000000r5-1MJg;
-	Fri, 29 May 2026 09:52:32 +0000
-Date: Fri, 29 May 2026 11:52:10 +0200
-From: kernel test robot <lkp@intel.com>
-To: "Guan-Chun Wu" <409411716@gms.tku.edu.tw>
-Cc: oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org,
- "Theodore Ts'o" <tytso@mit.edu>, Chen Hao Yu <edward062254@gmail.com>
-Subject: [tytso-ext4:dev 1/5] ERROR: modpost: "ext4fs_dirhash"
- [fs/ext4/ext4-test.ko] undefined!
-Message-ID: <202605291142.INrrPtVc-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="kTBGBZU3"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1780048646; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=ugYi+uPEVktNs1FvDiRlWULY1/dkTmCor/SYvBkmoEw=;
+	b=kTBGBZU3PysxekxH82vBH8UB3bjiabip8him3iSr4Y3iDjR8k9DRWudcgaTaY7RgJ4YKCfEXHeA+zt6lxadzXtnTTluu/7+JejcCP9BuItc0+sy/78mTrsczt5HT3UFu/yJX0KYHN8pkvjfJGcNO3oVNw/YDdNGF3jkfXwFlzMg=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X3ozooX_1780048645;
+Received: from 30.221.147.25(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X3ozooX_1780048645 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Fri, 29 May 2026 17:57:25 +0800
+Message-ID: <d737bdc8-2eb3-4ea1-a76d-4f8f26b683f7@linux.alibaba.com>
+Date: Fri, 29 May 2026 17:57:23 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix fast commit wait/wake bit mapping on 64-bit
+To: Li Chen <me@linux.beauty>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Sashiko AI review <sashiko-bot@kernel.org>
+References: <20260513085818.552432-1-me@linux.beauty>
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20260513085818.552432-1-me@linux.beauty>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-head:   87280ac61ae6ef27fc6ee78b733689754e425592
-commit: a4841d91a7f57d38d3a63c18b4ce68ee5e06829b [1/5] ext4: add Kunit coverage for directory hash computation
-config: x86_64-rhel-9.4-kunit (https://download.01.org/0day-ci/archive/20260529/202605291142.INrrPtVc-lkp@intel.com/config)
-compiler: gcc-14 (Debian 14.2.0-19) 14.2.0
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20260529/202605291142.INrrPtVc-lkp@intel.com/reproduce)
+On 2026/5/13 16:58, Li Chen wrote:
+> On 64-bit, ext4 dynamic inode states live in the upper half of i_flags,
+> and ext4_test_inode_state() applies the corresponding +32 offset.
+>
+> The fast-commit wait and wake paths open-coded the wait key with the raw
+> EXT4_STATE_* value. Add small helpers for the state wait word and bit,
+> and use them for the FC_COMMITTING and FC_FLUSHING_DATA waits so the wait
+> key follows the same mapping as the state helpers.
+>
+> Fixes: 857d32f26181 ("ext4: rework fast commit commit path")
+> Reported-by: Sashiko AI review <sashiko-bot@kernel.org>
+> Signed-off-by: Li Chen <chenl311@chinatelecom.cn>
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202605291142.INrrPtVc-lkp@intel.com/
+This cleanup looks good! Just two small nits below. Nits aside:
 
-All errors (new ones prefixed by >>, old ones prefixed by <<):
+Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 
->> ERROR: modpost: "ext4fs_dirhash" [fs/ext4/ext4-test.ko] undefined!
+> ---
+>  fs/ext4/ext4.h        | 20 +++++++++++++++++
+>  fs/ext4/fast_commit.c | 50 ++++++++++++++++---------------------------
+>  2 files changed, 38 insertions(+), 32 deletions(-)
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a991e5c..6569d1d575a0 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2000,6 +2000,8 @@ EXT4_INODE_BIT_FNS(flag, flags, 0)
+>  static inline int ext4_test_inode_state(struct inode *inode, int bit);
+>  static inline void ext4_set_inode_state(struct inode *inode, int bit);
+>  static inline void ext4_clear_inode_state(struct inode *inode, int bit);
+> +static inline unsigned long *ext4_inode_state_wait_word(struct inode *inode);
+> +static inline int ext4_inode_state_wait_bit(int bit);
 
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+The forward declarations above are only needed for macro-generated functions
+that can't be found by name search. These two helpers are spelled out
+directly,
+so the declarations are unnecessary here.
+
+>  #if (BITS_PER_LONG < 64)
+>  EXT4_INODE_BIT_FNS(state, state_flags, 0)
+>  
+> @@ -2015,6 +2017,24 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>  	/* We depend on the fact that callers will set i_flags */
+>  }
+>  #endif
+> +
+> +static inline unsigned long *ext4_inode_state_wait_word(struct inode *inode)
+> +{
+> +#if (BITS_PER_LONG < 64)
+> +	return &EXT4_I(inode)->i_state_flags;
+> +#else
+> +	return &EXT4_I(inode)->i_flags;
+> +#endif
+> +}
+> +
+> +static inline int ext4_inode_state_wait_bit(int bit)
+> +{
+> +#if (BITS_PER_LONG < 64)
+> +	return bit;
+> +#else
+> +	return bit + 32;
+> +#endif
+> +}
+
+Would it be cleaner to place these inside the existing #if
+(BITS_PER_LONG < 64)
+/ #else block alongside ext4_clear_state_flags(), the same way the rest
+of the
+state helpers are organised? That would also avoid repeating the #if guard.
+
+
+Cheers,
+Baokun
+
+>  #else
+>  /* Assume that user mode programs are passing in an ext4fs superblock, not
+>   * a kernel struct super_block.  This will allow us to call the feature-test
+> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+> index b3c22636251d..1775bce9649a 100644
+> --- a/fs/ext4/fast_commit.c
+> +++ b/fs/ext4/fast_commit.c
+> @@ -239,6 +239,8 @@ void ext4_fc_del(struct inode *inode)
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct ext4_fc_dentry_update *fc_dentry;
+>  	wait_queue_head_t *wq;
+> +	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
+> +	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
+>  	int alloc_ctx;
+>  
+>  	if (ext4_fc_disabled(inode->i_sb))
+> @@ -268,17 +270,9 @@ void ext4_fc_del(struct inode *inode)
+>  	WARN_ON(ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)
+>  		&& !ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE));
+>  	while (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
+> -#if (BITS_PER_LONG < 64)
+> -		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
+> -				EXT4_STATE_FC_FLUSHING_DATA);
+> -		wq = bit_waitqueue(&ei->i_state_flags,
+> -				   EXT4_STATE_FC_FLUSHING_DATA);
+> -#else
+> -		DEFINE_WAIT_BIT(wait, &ei->i_flags,
+> -				EXT4_STATE_FC_FLUSHING_DATA);
+> -		wq = bit_waitqueue(&ei->i_flags,
+> -				   EXT4_STATE_FC_FLUSHING_DATA);
+> -#endif
+> +		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
+> +
+> +		wq = bit_waitqueue(wait_word, wait_bit);
+>  		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
+>  		if (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
+>  			ext4_fc_unlock(inode->i_sb, alloc_ctx);
+> @@ -542,6 +536,8 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
+>  {
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	wait_queue_head_t *wq;
+> +	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
+> +	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
+>  	int ret;
+>  
+>  	if (S_ISDIR(inode->i_mode))
+> @@ -564,17 +560,9 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
+>  	lockdep_assert_not_held(&ei->i_data_sem);
+>  
+>  	while (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
+> -#if (BITS_PER_LONG < 64)
+> -		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
+> -				EXT4_STATE_FC_COMMITTING);
+> -		wq = bit_waitqueue(&ei->i_state_flags,
+> -				   EXT4_STATE_FC_COMMITTING);
+> -#else
+> -		DEFINE_WAIT_BIT(wait, &ei->i_flags,
+> -				EXT4_STATE_FC_COMMITTING);
+> -		wq = bit_waitqueue(&ei->i_flags,
+> -				   EXT4_STATE_FC_COMMITTING);
+> -#endif
+> +		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
+> +
+> +		wq = bit_waitqueue(wait_word, wait_bit);
+>  		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
+>  		if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING))
+>  			schedule();
+> @@ -1034,6 +1022,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
+>  	int ret = 0;
+>  	u32 crc = 0;
+>  	int alloc_ctx;
+> +	int flushing_wait_bit =
+> +		ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
+>  
+>  	/*
+>  	 * Step 1: Mark all inodes on s_fc_q[MAIN] with
+> @@ -1059,11 +1049,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
+>  	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
+>  		ext4_clear_inode_state(&iter->vfs_inode,
+>  				       EXT4_STATE_FC_FLUSHING_DATA);
+> -#if (BITS_PER_LONG < 64)
+> -		wake_up_bit(&iter->i_state_flags, EXT4_STATE_FC_FLUSHING_DATA);
+> -#else
+> -		wake_up_bit(&iter->i_flags, EXT4_STATE_FC_FLUSHING_DATA);
+> -#endif
+> +		wake_up_bit(ext4_inode_state_wait_word(&iter->vfs_inode),
+> +			    flushing_wait_bit);
+>  	}
+>  
+>  	/*
+> @@ -1279,6 +1266,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+>  	struct ext4_inode_info *ei;
+>  	struct ext4_fc_dentry_update *fc_dentry;
+>  	int alloc_ctx;
+> +	int committing_wait_bit =
+> +		ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
+>  
+>  	if (full && sbi->s_fc_bh)
+>  		sbi->s_fc_bh = NULL;
+> @@ -1315,11 +1304,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+>  		 * barrier in prepare_to_wait() in ext4_fc_track_inode().
+>  		 */
+>  		smp_mb();
+> -#if (BITS_PER_LONG < 64)
+> -		wake_up_bit(&ei->i_state_flags, EXT4_STATE_FC_COMMITTING);
+> -#else
+> -		wake_up_bit(&ei->i_flags, EXT4_STATE_FC_COMMITTING);
+> -#endif
+> +		wake_up_bit(ext4_inode_state_wait_word(&ei->vfs_inode),
+> +			    committing_wait_bit);
+>  	}
+>  
+>  	while (!list_empty(&sbi->s_fc_dentry_q[FC_Q_MAIN])) {
+
+
