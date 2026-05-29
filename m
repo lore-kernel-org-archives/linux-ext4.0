@@ -1,32 +1,30 @@
-Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49C0B3BED31;
-	Fri, 29 May 2026 09:57:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.110
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B65753C0630;
+	Fri, 29 May 2026 10:37:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780048658; cv=none; b=A9F5HYw/PtnLtvbLvSQNPDwXFOa6LQHjfEkFwrW+FynesG2BJ+jTUgsun8SWsArv0uM4FsoQJ2/TjK65tC2f2z1cY2N86SpcF5P/w1JyqQJ0mo/kFG/KP7cXV00dKHfj/Vi7DjdeS1eKPNIcNvlf/Cm3daNsnZ9EsipICGt9LsE=
+	t=1780051070; cv=none; b=cYX99W/BOTBl4hsDVk7klZP6yk0ANYFPnE1kKJhEhLsEQSXEK/b6HZdsnBqQ3cOUGU/Baw8ToXbT8KjQEzWZXH3Yt/G//FIrdtNiWFeXKz8W34s/eqkz3yIbh+vR8xhehPmWmcRpNwIR2HvtrnrHHsgxfF7eHsfgA7G5Kn/N3pg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780048658; c=relaxed/simple;
-	bh=Isi7qn3sJT9SqEGviSxfjuZAM3s1juSbmZkQHiHxBFM=;
+	s=arc-20240116; t=1780051070; c=relaxed/simple;
+	bh=laDzvS/8wbpJYnQti0qasxrhBW4Ey0/Zj54mq93FKuI=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=GMsgZhY1bGR1Ptwja7PyjUioE2qqWUFltU2MtDMS+FpfU9cWM3fJM2YFzEcSWqsWrtobhENqCWVM3DKIHLYp2/eRhu4rJMwfCm2kmW2RjfpINlBQm92df3Rd021BVE9MDO9FKJKbv2idJ19NbOjG4vB6QdS1WW4rHUaoSSUkzO4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=kTBGBZU3; arc=none smtp.client-ip=115.124.30.110
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="kTBGBZU3"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1780048646; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=ugYi+uPEVktNs1FvDiRlWULY1/dkTmCor/SYvBkmoEw=;
-	b=kTBGBZU3PysxekxH82vBH8UB3bjiabip8him3iSr4Y3iDjR8k9DRWudcgaTaY7RgJ4YKCfEXHeA+zt6lxadzXtnTTluu/7+JejcCP9BuItc0+sy/78mTrsczt5HT3UFu/yJX0KYHN8pkvjfJGcNO3oVNw/YDdNGF3jkfXwFlzMg=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X3ozooX_1780048645;
-Received: from 30.221.147.25(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X3ozooX_1780048645 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Fri, 29 May 2026 17:57:25 +0800
-Message-ID: <d737bdc8-2eb3-4ea1-a76d-4f8f26b683f7@linux.alibaba.com>
-Date: Fri, 29 May 2026 17:57:23 +0800
+	 In-Reply-To:Content-Type; b=erZLF7xLYWzlYMp6ZylsH8Wz/hs/IjF/9Zw39xOanEGcuJr58ApFuXYI3+2aELoBOtK3Hkrc5q3HYo3XdnwTLwJyKafXWkMXyPWXcUTkjZg1iGblx9ZDGqHpqN83+Hcl0o2p9+BsjWq0r1XI94I16AHzoc+C/uk089bVodm5trQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gRft42n2czYQvH5;
+	Fri, 29 May 2026 18:36:44 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 00B9340590;
+	Fri, 29 May 2026 18:37:43 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP4 (Coremail) with SMTP id gCh0CgAn71p2bBlquGU5EA--.37693S3;
+	Fri, 29 May 2026 18:37:43 +0800 (CST)
+Message-ID: <9cf8569a-4f79-400b-ad80-197decec4b15@huaweicloud.com>
+Date: Fri, 29 May 2026 18:37:41 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,205 +32,178 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix fast commit wait/wake bit mapping on 64-bit
-To: Li Chen <me@linux.beauty>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- Sashiko AI review <sashiko-bot@kernel.org>
-References: <20260513085818.552432-1-me@linux.beauty>
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260513085818.552432-1-me@linux.beauty>
+Subject: Re: [PATCH] ext4: fix quota accounting WARN in bigalloc punch hole
+To: Qiliang Yuan <realwujing@gmail.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
+ ritesh.list@gmail.com, ojaswin@linux.ibm.com, libaokun@linux.alibaba.com,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, yzjaurora@gmail.com
+References: <73e91ebd-27de-4834-af2f-9b4ac19a4100@huaweicloud.com>
+ <20260529083445.101050-1-realwujing@gmail.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260529083445.101050-1-realwujing@gmail.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgAn71p2bBlquGU5EA--.37693S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxWr1UZw4DJF1kGF13Gr1kAFb_yoW7Gry7pr
+	Za9rn5Wa1DJrnrZrZxZw1rXFyruwn2qF45Jrs8JryfZF9xGFySvrn8KFs09Fyj9r4xXFn8
+	XF4j9a4Uu34DuaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
+	7KsUUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 2026/5/13 16:58, Li Chen wrote:
-> On 64-bit, ext4 dynamic inode states live in the upper half of i_flags,
-> and ext4_test_inode_state() applies the corresponding +32 offset.
->
-> The fast-commit wait and wake paths open-coded the wait key with the raw
-> EXT4_STATE_* value. Add small helpers for the state wait word and bit,
-> and use them for the FC_COMMITTING and FC_FLUSHING_DATA waits so the wait
-> key follows the same mapping as the state helpers.
->
-> Fixes: 857d32f26181 ("ext4: rework fast commit commit path")
-> Reported-by: Sashiko AI review <sashiko-bot@kernel.org>
-> Signed-off-by: Li Chen <chenl311@chinatelecom.cn>
+On 5/29/2026 4:34 PM, Qiliang Yuan wrote:
+> Hi Zhang Yi,
+> 
+> On 5/29/2026 3:32 PM, Zhang Yi wrote:
+>> On 5/28/2026 6:21 PM, Qiliang Yuan wrote:
+>>> __es_remove_extent() -> get_rsvd() already correctly excludes
+>>> boundary clusters that still contain delayed blocks from resv_used.
+>>> Adding pending to resv_used double-counts those boundary clusters,
+>>> erroneously releasing reservations that are still needed.
+>>
+>> Hmm, the analysis doesn't seem correct to me. Do you mean the
+>> following case?
+>>
+>> # Assume the cluster size is 16KB.
+>> xfs_io -f -c "pwrite 12k 4k" /mnt/foo
+>> xfs_io -d -c "pwrite 0 4k" /mnt/foo
+>> xfs_io -c "fpunch 0 4k" /mnt/foo
+>>
+>> During the direct I/O write, quota space will be added in
+>> ext4_mb_new_blocks() because the EXT4_MB_DELALLOC_RESERVED flag is
+>> not set. Therefore, in ext4_es_insert_extent(), we should release the
+>> quota reservations, since this cluster has already been allocated.
+>>
+>> Then, in the third operation (punch hole), it will reclaim the added
+>> dqb_curspace. This should not cause an insufficiency.
+>>
+>> Am I missing something?
+> 
+> Thanks for the review!  Let me explain the issue with your specific
+> example.
 
-This cleanup looks good! Just two small nits below. Nits aside:
+Thanks for the explanation, some comments below.
 
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
+> 
+> After step 1 (delalloc write 4KB@12KB in a 16KB cluster), we have:
+> 
+>   ES tree: [0,1) hole, [1,3) delayed, [3,4) hole   (blocks 0..3)
 
-> ---
->  fs/ext4/ext4.h        | 20 +++++++++++++++++
->  fs/ext4/fast_commit.c | 50 ++++++++++++++++---------------------------
->  2 files changed, 38 insertions(+), 32 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 94283a991e5c..6569d1d575a0 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2000,6 +2000,8 @@ EXT4_INODE_BIT_FNS(flag, flags, 0)
->  static inline int ext4_test_inode_state(struct inode *inode, int bit);
->  static inline void ext4_set_inode_state(struct inode *inode, int bit);
->  static inline void ext4_clear_inode_state(struct inode *inode, int bit);
-> +static inline unsigned long *ext4_inode_state_wait_word(struct inode *inode);
-> +static inline int ext4_inode_state_wait_bit(int bit);
+             [0,3) hole, [3,4) delayed(blocks 0..3)  ?
 
-The forward declarations above are only needed for macro-generated functions
-that can't be found by name search. These two helpers are spelled out
-directly,
-so the declarations are unnecessary here.
+>   Quota:   dqb_rsvspace += 16KB (one cluster reserved)
 
->  #if (BITS_PER_LONG < 64)
->  EXT4_INODE_BIT_FNS(state, state_flags, 0)
->  
-> @@ -2015,6 +2017,24 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->  	/* We depend on the fact that callers will set i_flags */
->  }
->  #endif
-> +
-> +static inline unsigned long *ext4_inode_state_wait_word(struct inode *inode)
-> +{
-> +#if (BITS_PER_LONG < 64)
-> +	return &EXT4_I(inode)->i_state_flags;
-> +#else
-> +	return &EXT4_I(inode)->i_flags;
-> +#endif
-> +}
-> +
-> +static inline int ext4_inode_state_wait_bit(int bit)
-> +{
-> +#if (BITS_PER_LONG < 64)
-> +	return bit;
-> +#else
-> +	return bit + 32;
-> +#endif
-> +}
+Right.
 
-Would it be cleaner to place these inside the existing #if
-(BITS_PER_LONG < 64)
-/ #else block alongside ext4_clear_state_flags(), the same way the rest
-of the
-state helpers are organised? That would also avoid repeating the #if guard.
+> 
+> Step 2 (DIO write 4KB@0KB, RWF_DSYNC):
+> 
+>   The DIO allocates one cluster, but the mapped extent from
+>   ext4_ext_map_blocks() only covers the written range, e.g. [0,0].
+> 
+>   In ext4_es_insert_extent():
+> 
+>     a) __es_remove_extent([0,0]) removes the [0,1) hole entry, but
+>        there are no delayed extents within [0,0], so resv_used = 0.
+> 
+>        This is correct: the DIO extent [0,0] does not overlap the
+>        delayed region [1,3).
 
+Right.
+
+> 
+>     b) __revise_pending() scans outside the newly inserted extent [0,0]:
+> 
+>        - Left boundary (block 0): the range starts at cluster
+>          boundary, no blocks to scan on the left → no pending insert.
+> 
+>        - Right boundary (block 3): blocks [1,3] are outside [0,0]
+>          and are delayed → __revise_pending() inserts a pending
+>          reservation and returns pending = 1.
+> 
+>        This pending reservation means: "cluster containing block 3
+>        still has delayed blocks, keep this cluster reserved."
+
+Right.
+
+> 
+>     c) Then comes the bug:
+> 
+>          resv_used += pending;   // resv_used = 0 + 1 = 1
+> 
+>        This causes ext4_da_update_reserve_space() to release 16KB
+>        of quota reservation (dquot_release_reservation_block()).  But
+>        block 3 is still delayed!  Its quota reservation should NOT
+>        be released — no blocks within [0,0] actually used the delalloc
+>        reservation.
+
+No. Because this cluster has already been allocated, it needs to occupy
+actual quota space and can no longer use reserved counts, so the
+reserved counts must be released.
+
+For better understanding, please see the implementation of
+ext4_insert_delayed_blocks(). When a new extent is delallocated to an
+already allocated cluster using the the reserved count is not increased
+(ext4_clu_alloc_state() returns 2).
+
+> 
+>     So after DIO:
+>       dqb_rsvspace: originally 16KB, now 0 (incorrectly released)
+>       dqb_curspace: 16KB (from ext4_mb_new_blocks)
+> 
+> Step 3 (punch 4KB@0KB):
+> 
+>   ext4_remove_blocks() sees that block 0's cluster has a pending
+>   reservation → calls ext4_rereserve_cluster() → dquot_reclaim_block()
+>   tries to move 16KB from dqb_curspace to dqb_rsvspace.  But
+>   dqb_curspace may already be insufficient (depending on whether
+>   other allocs/frees have happened), triggering:
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+How exactly did it happen? All data cluster allocations are precisely
+calculated. In addition, the current example cannot reproduce the issue
+you encountered.
+
+> 
+>     WARNING at dquot_reclaim_space_nodirty
+> 
+> Step 4 (delalloc writeback of block 3):
+> 
+>   ext4_da_update_reserve_space() → dquot_claim_block() tries to
+>   move 16KB from dqb_rsvspace to dqb_curspace.  Since rsvspace was
+>   incorrectly released and not fully restored by the punch hole's
+>   rereseve, this triggers:
+> 
+>     WARNING at dquot_claim_space_nodirty
+> 
+> The key point is: pending from __revise_pending() indicates clusters
+> that *still contain delayed blocks outside the newly inserted extent*.
+> These clusters' quota reservations must be preserved — get_rsvd()
+
+Whether to reserve a quota is determined not by whether there are
+delalloc extents left, but by whether there are only pure delalloc
+extents in this cluster range.
 
 Cheers,
-Baokun
+Yi.
 
->  #else
->  /* Assume that user mode programs are passing in an ext4fs superblock, not
->   * a kernel struct super_block.  This will allow us to call the feature-test
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index b3c22636251d..1775bce9649a 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -239,6 +239,8 @@ void ext4_fc_del(struct inode *inode)
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	struct ext4_fc_dentry_update *fc_dentry;
->  	wait_queue_head_t *wq;
-> +	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
-> +	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
->  	int alloc_ctx;
->  
->  	if (ext4_fc_disabled(inode->i_sb))
-> @@ -268,17 +270,9 @@ void ext4_fc_del(struct inode *inode)
->  	WARN_ON(ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)
->  		&& !ext4_test_mount_flag(inode->i_sb, EXT4_MF_FC_INELIGIBLE));
->  	while (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
-> -#if (BITS_PER_LONG < 64)
-> -		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
-> -				EXT4_STATE_FC_FLUSHING_DATA);
-> -		wq = bit_waitqueue(&ei->i_state_flags,
-> -				   EXT4_STATE_FC_FLUSHING_DATA);
-> -#else
-> -		DEFINE_WAIT_BIT(wait, &ei->i_flags,
-> -				EXT4_STATE_FC_FLUSHING_DATA);
-> -		wq = bit_waitqueue(&ei->i_flags,
-> -				   EXT4_STATE_FC_FLUSHING_DATA);
-> -#endif
-> +		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
-> +
-> +		wq = bit_waitqueue(wait_word, wait_bit);
->  		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
->  		if (ext4_test_inode_state(inode, EXT4_STATE_FC_FLUSHING_DATA)) {
->  			ext4_fc_unlock(inode->i_sb, alloc_ctx);
-> @@ -542,6 +536,8 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
->  {
->  	struct ext4_inode_info *ei = EXT4_I(inode);
->  	wait_queue_head_t *wq;
-> +	unsigned long *wait_word = ext4_inode_state_wait_word(inode);
-> +	int wait_bit = ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
->  	int ret;
->  
->  	if (S_ISDIR(inode->i_mode))
-> @@ -564,17 +560,9 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
->  	lockdep_assert_not_held(&ei->i_data_sem);
->  
->  	while (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
-> -#if (BITS_PER_LONG < 64)
-> -		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
-> -				EXT4_STATE_FC_COMMITTING);
-> -		wq = bit_waitqueue(&ei->i_state_flags,
-> -				   EXT4_STATE_FC_COMMITTING);
-> -#else
-> -		DEFINE_WAIT_BIT(wait, &ei->i_flags,
-> -				EXT4_STATE_FC_COMMITTING);
-> -		wq = bit_waitqueue(&ei->i_flags,
-> -				   EXT4_STATE_FC_COMMITTING);
-> -#endif
-> +		DEFINE_WAIT_BIT(wait, wait_word, wait_bit);
-> +
-> +		wq = bit_waitqueue(wait_word, wait_bit);
->  		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
->  		if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING))
->  			schedule();
-> @@ -1034,6 +1022,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
->  	int ret = 0;
->  	u32 crc = 0;
->  	int alloc_ctx;
-> +	int flushing_wait_bit =
-> +		ext4_inode_state_wait_bit(EXT4_STATE_FC_FLUSHING_DATA);
->  
->  	/*
->  	 * Step 1: Mark all inodes on s_fc_q[MAIN] with
-> @@ -1059,11 +1049,8 @@ static int ext4_fc_perform_commit(journal_t *journal)
->  	list_for_each_entry(iter, &sbi->s_fc_q[FC_Q_MAIN], i_fc_list) {
->  		ext4_clear_inode_state(&iter->vfs_inode,
->  				       EXT4_STATE_FC_FLUSHING_DATA);
-> -#if (BITS_PER_LONG < 64)
-> -		wake_up_bit(&iter->i_state_flags, EXT4_STATE_FC_FLUSHING_DATA);
-> -#else
-> -		wake_up_bit(&iter->i_flags, EXT4_STATE_FC_FLUSHING_DATA);
-> -#endif
-> +		wake_up_bit(ext4_inode_state_wait_word(&iter->vfs_inode),
-> +			    flushing_wait_bit);
->  	}
->  
->  	/*
-> @@ -1279,6 +1266,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
->  	struct ext4_inode_info *ei;
->  	struct ext4_fc_dentry_update *fc_dentry;
->  	int alloc_ctx;
-> +	int committing_wait_bit =
-> +		ext4_inode_state_wait_bit(EXT4_STATE_FC_COMMITTING);
->  
->  	if (full && sbi->s_fc_bh)
->  		sbi->s_fc_bh = NULL;
-> @@ -1315,11 +1304,8 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
->  		 * barrier in prepare_to_wait() in ext4_fc_track_inode().
->  		 */
->  		smp_mb();
-> -#if (BITS_PER_LONG < 64)
-> -		wake_up_bit(&ei->i_state_flags, EXT4_STATE_FC_COMMITTING);
-> -#else
-> -		wake_up_bit(&ei->i_flags, EXT4_STATE_FC_COMMITTING);
-> -#endif
-> +		wake_up_bit(ext4_inode_state_wait_word(&ei->vfs_inode),
-> +			    committing_wait_bit);
->  	}
->  
->  	while (!list_empty(&sbi->s_fc_dentry_q[FC_Q_MAIN])) {
-
+> inside __es_remove_extent() already correctly excludes them from
+> resv_used.  Adding pending to resv_used double-counts them.
+> 
+> I also found a pre-existing retry loop issue: if __es_insert_extent()
+> fails with -ENOMEM on the first pass, resv_used carries a stale value
+> back to retry and could be double-released.  I'll include a fix for
+> that in v2.
+> 
 
