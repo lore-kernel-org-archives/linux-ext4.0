@@ -1,42 +1,68 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DAED2E7391;
-	Fri, 29 May 2026 04:39:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 084862E7383;
+	Fri, 29 May 2026 06:02:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780029597; cv=none; b=bVhZbPvFLnDoyeCUa1B8yUBLQuQi34qIQuyod/96FnkBOlIO5GVojVPFOAH1PO9m0pxuy/cJViXGnFV1+HYEJ6kRJoz6AqyfnE1uRziS5GwdzI8Dhohl1ZY8rvB+TpXS+Bl87ysSbJ9w/cTv3h/7MN4UJgc5mrQjzaQTkzKNuYM=
+	t=1780034543; cv=none; b=VvnwQou/oUo6lSzPUhgHEyiN+HnUj9uXimYHfrnfAcGaR1UEGdcqNtozFNoBU/wQH2S54e6AO3m7Z4q3FllyK6X64+O6lhZzCozcLCZkzM8iEEy6RQ8OteoW7g1yRgKSHjjma4g1mbTXQbAgJeZmIBOI89viEt9zEmhkw5sP3Wo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780029597; c=relaxed/simple;
-	bh=0LchzAw0rNobSeSvJsgPyZuJg/OSVCJgLjz7FG0eiGs=;
+	s=arc-20240116; t=1780034543; c=relaxed/simple;
+	bh=S/F0ovEUYzGRsK43Vwmg8u8Jc4EQygzK45BxL+pNFN4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=XWmLIThiS2oBNxkJW3dzMsL/q/khrOUKP5WTldcvEVhH/sZBzVtkbG2eaI+6cJi8vl6Q0E012GuHR0L9Ifd16WiFJZpaKVRXOp8el1GcWTk023x6+zukEgTlyRoaGs/4c/DDXJXOgmCSDeHFdO+bH8l0xwICJWhxdkXR8VsWCi8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OZ+hKT45; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=CYEoQIqkDLYaxZp4XByZ2G90bfThzctTjVSnzag0drlYVA+bGUPcxmKlIqX1EYSEHY65t7Bv7rh+vKIbQkMh77OJPGHXdEeyJA1FM5FtCQNBBEEndf0N7Lql4ZjrDjMSdbBJCz4XZ2bSHCRLa8rPn2Be6eVmq5zF8rNpfOn6ylg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=BWQyYmWR; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OZ+hKT45"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id C44AD1F00893;
-	Fri, 29 May 2026 04:39:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780029595;
-	bh=8W0wLWUEVCd1iMnz4p4LRMZLuTVASNeXNrW/n7LnqKA=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=OZ+hKT45oS1XCcQ318yI/N+b3pMC41KzsYRP8If9zg+AMzclXSDd1tVLyxgsUjzso
-	 XlAd11dr6PzJsYf76l6W92SjuLhFlVoP22/IzyBG30Gveo76GuAOhRQQsWelcWngP+
-	 PvLhjJ4JvHB1iOIjsSvMBxm+ufsBHWYiGJJ3Zq46oTUOV+DeyAZCWEtqGUwoiL+Cxn
-	 poHbidH2TBQS2xbKHW5IITtdWxRwDW/zdPT2zVlvFr8vNWxwuNRcNN8tbA+Lnb4Sh+
-	 D/adQOiWgU9NpphKHRfU6xfvix8X1JbJ4EeUx1A9QstnEbUSHcRXtEK6UiuhpeHkDn
-	 AG4dkB7qPJJOw==
-Date: Thu, 28 May 2026 21:39:55 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Anand Jain <asj@kernel.org>
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, zlang@redhat.com,
-	hch@infradead.org
-Subject: Re: [PATCH v6 06/11] fstests: verify f_fsid for cloned filesystems
-Message-ID: <20260529043955.GG6070@frogsfrogsfrogs>
-References: <cover.1779939330.git.asj@kernel.org>
- <e029755044a32de6ec2a0d3391f3ff0089fc3c30.1779939330.git.asj@kernel.org>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="BWQyYmWR"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64SLlhlB1684655;
+	Fri, 29 May 2026 06:02:06 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=AxJe3pRP7/XngqmdURDqLAMWLDITgp
+	l2rmW21d4mvm4=; b=BWQyYmWRRDOqdDF1oz0R8HvMcsguSDQv8d9fiF0fJouM/8
+	PHzoSjtZ7SCjE/IY8hLUIsFEHukybJBxwboLvuR3/A23m87zVtjZpoTzBmFQjt5e
+	CzeT+Rbf85p16KL0sGwjOlAF2R8UPEDF/vOIjdNkpNWNEpsuU+96WhIrdPsXjaHH
+	sD+kqU+wLusgmLvHNH4t2I4792gdOiK5T/LCVKyph6/u12eVriYgWjVi/5SJVLip
+	ZsZJxvZcgxDNlXzTuT1u8T1SPk0SJBg02oqnvQi2TLYuWnY6yQ7fJKl7RdSqdJcO
+	zyl0l5DB+YKSU6yOeptYZD2p88rn+uR9RHqUg5Dg==
+Received: from ppma23.wdc07v.mail.ibm.com (5d.69.3da9.ip4.static.sl-reverse.com [169.61.105.93])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4ee884evny-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 29 May 2026 06:02:05 +0000 (GMT)
+Received: from pps.filterd (ppma23.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma23.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64T5s4av012130;
+	Fri, 29 May 2026 06:02:04 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma23.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4edjrc3upq-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 29 May 2026 06:02:04 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64T6223157016618
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 29 May 2026 06:02:02 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 9C32320040;
+	Fri, 29 May 2026 06:02:02 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 654552004B;
+	Fri, 29 May 2026 06:01:58 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.19.141])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Fri, 29 May 2026 06:01:58 +0000 (GMT)
+Date: Fri, 29 May 2026 11:31:54 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: Remove mention of PageWriteback
+Message-ID: <ahkr0sybIQVdfYBQ@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260526190805.341676-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,118 +71,65 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <e029755044a32de6ec2a0d3391f3ff0089fc3c30.1779939330.git.asj@kernel.org>
+In-Reply-To: <20260526190805.341676-1-willy@infradead.org>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Authority-Analysis: v=2.4 cv=fIYJG5ae c=1 sm=1 tr=0 ts=6a192bde cx=c_pps
+ a=3Bg1Hr4SwmMryq2xdFQyZA==:117 a=3Bg1Hr4SwmMryq2xdFQyZA==:17
+ a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=JfrnYn6hAAAA:8
+ a=VnNF1IyMAAAA:8 a=y3F4KRkRb3-sBBmIC48A:9 a=CjuIK1q_8ugA:10
+ a=1CNFftbPRP8L7MoqJWF3:22
+X-Proofpoint-ORIG-GUID: JkyitnMRKLknxZGhpyVeLSRfanknBhcg
+X-Proofpoint-GUID: 8EN-jBmmP7dI9MLJ2Y0r4Y7xELPr0fBT
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTI5MDA1MiBTYWx0ZWRfX6I3j1Pe9CaSx
+ W7FIlBGY/Dn69lp/nIGDCd9nbheLevltr3/RdtXGuV9aI8ThTLpKWRdskIFwx/M9MIMj3lN8Wrp
+ bULvsMPFUcJCBl2wyRSUZD94NlzPtF0ZcZr4vgKgbXmFGHCqGmiBbPPEEL/QBDvPApHvxK3fmmZ
+ ADtbe9xT0d3swCOmSIDhsTyPLEXYa0cLmRklYM9T4pY8rsRVdqTxQkk5+91fNlIlfha0a6bKkpp
+ PAV+v4d2BilIwMeVb5iUh174Zf6arW1fsBJEAHbbW6P1GgBV1/46d06Aons3y5t+sDNAo8l+1P1
+ NisqSVX9EcLryKOkqcOsi5+XwJI6evAClFTU+UOZ0LzGNa1PNi9l6jsgLul01ZY89XKTWZsbVU7
+ RzLdXjdUoIgvat0eNWQfPrc8AeWBffvB/eW4U0Pbi6cxoUaMK64vFRdyY4ijq9C+TKO+lwHTPd+
+ rFHU77jH7pzRwoJNCpA==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-05-29_01,2026-05-28_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ phishscore=0 lowpriorityscore=0 suspectscore=0 impostorscore=0
+ priorityscore=1501 malwarescore=0 clxscore=1015 adultscore=0 spamscore=0
+ bulkscore=0 classifier=typeunknown authscore=0 authtc= authcc= route=outbound
+ adjust=0 reason=mlx scancount=1 engine=8.22.0-2605210000
+ definitions=main-2605290052
 
-On Thu, May 28, 2026 at 12:05:37PM +0800, Anand Jain wrote:
-> Verify that the cloned filesystem provides an f_fsid that is persistent
-> across mount cycles, yet unique from the original filesystem's f_fsid.
-
-Might want to add that last part to the test description itself, because
-otherwise I don't know what 'verify' means.
-
-> Signed-off-by: Anand Jain <asj@kernel.org>
+On Tue, May 26, 2026 at 08:08:02PM +0100, Matthew Wilcox (Oracle) wrote:
+> Update a comment to refer to the concept of writeback instead of the
+> (now obsolete) detail of how it's implemented.
+> 
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 > ---
->  tests/generic/802     | 67 +++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/802.out |  7 +++++
->  2 files changed, 74 insertions(+)
->  create mode 100644 tests/generic/802
->  create mode 100644 tests/generic/802.out
+>  fs/ext4/page-io.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/tests/generic/802 b/tests/generic/802
-> new file mode 100644
-> index 000000000000..653e74e11b53
-> --- /dev/null
-> +++ b/tests/generic/802
-> @@ -0,0 +1,67 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
-> +#
-> +# FS QA Test 802
-> +# Verify f_fsid and s_uuid of cloned filesystems across mount cycle.
-> +
-> +. ./common/preamble
-> +
-> +_begin_fstest auto quick mount clone
-> +
-> +_require_test
-> +_require_block_device $TEST_DEV
-> +_require_loop
-> +
-> +[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
-> +	"btrfs: use on-disk uuid for s_uuid in temp_fsid mounts"
-> +[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
-> +	"btrfs: derive f_fsid from on-disk fsuuid and dev_t"
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index dc82e7b57e75..bc674aa4a656 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -168,7 +168,7 @@ static void ext4_release_io_end(ext4_io_end_t *io_end)
+>   * written. On IO failure, check if journal abort is needed. Note that
+>   * we are protected from truncate touching same part of extent tree by the
+>   * fact that truncate code waits for all DIO to finish (thus exclusion from
+> - * direct IO is achieved) and also waits for PageWriteback bits. Thus we
+> + * direct IO is achieved) and also waits for writeback to complete. Thus we
 
-_fixed_by_fs_commit?
+Looks good,
 
-> +
-> +_cleanup()
-> +{
-> +	cd /
-> +	rm -r -f $tmp.*
-> +	umount $mnt1 $mnt2 2>/dev/null
-> +	_loop_image_destroy "${devs[@]}" 2> /dev/null
-> +}
-> +
-> +# Setup base loop device and its clone
-> +devs=()
-> +_loop_image_create_clone devs
-> +mkdir -p $TEST_DIR/$seq
-> +mnt1=$TEST_DIR/$seq/mnt1
-> +mnt2=$TEST_DIR/$seq/mnt2
-> +mkdir -p $mnt1
-> +mkdir -p $mnt2
-> +
-> +# Mount both filesystems simultaneously using mandatory clone mount options
-> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
-> +						_fail "Failed to mount dev1"
-> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
-> +						_fail "Failed to mount dev2"
-> +
-> +# Capture baseline filesystem IDs for comparison
-> +fsid_scratch=$(stat -f -c "%i" $mnt1)
-> +fsid_clone=$(stat -f -c "%i" $mnt2)
-> +
-> +echo "**** fsid initially ****"
-> +echo $fsid_scratch | sed -e "s/$fsid_scratch/FSID_SCRATCH/g"
-> +echo $fsid_clone | sed -e "s/$fsid_clone/FSID_CLONE/g"
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
-Why echo only to sed?
+Regards,
+Ojaswin
 
---D
-
-> +
-> +# Verify that the fsids remain stable after a mount cycle, even when the
-> +# mount order is reversed.
-> +echo "**** fsid after mount cycle ****"
-> +_unmount $mnt1
-> +_unmount $mnt2
-> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
-> +						_fail "Failed to mount dev2"
-> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
-> +						_fail "Failed to mount dev1"
-> +
-> +# Compare post mount-cycle values against the baseline
-> +stat -f -c "%i" $mnt1 | sed -e "s/$fsid_scratch/FSID_SCRATCH/g"
-> +stat -f -c "%i" $mnt2 | sed -e "s/$fsid_clone/FSID_CLONE/g"
-> +
-> +status=0
-> +exit
-> diff --git a/tests/generic/802.out b/tests/generic/802.out
-> new file mode 100644
-> index 000000000000..d1e008f122bb
-> --- /dev/null
-> +++ b/tests/generic/802.out
-> @@ -0,0 +1,7 @@
-> +QA output created by 802
-> +**** fsid initially ****
-> +FSID_SCRATCH
-> +FSID_CLONE
-> +**** fsid after mount cycle ****
-> +FSID_SCRATCH
-> +FSID_CLONE
+>   * cannot get to ext4_ext_truncate() before all IOs overlapping that range are
+>   * completed (happens from ext4_free_ioend()).
+>   */
 > -- 
-> 2.43.0
-> 
+> 2.47.3
 > 
