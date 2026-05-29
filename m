@@ -1,234 +1,411 @@
-Received: from outbound-ip191a.ess.barracuda.com (outbound-ip191a.ess.barracuda.com [209.222.82.58])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC6CD3F0AB6
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 14:32:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=209.222.82.58
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780065146; cv=fail; b=qE77U6W8t0YRPoUTwpP2p7wfg+vPbwa6hNbvVOgUc9Srbai+rWh1fWNpIHXHlKBATvwhuP2KViy9vxZOXxQ5OQRjnQiwW3eJ1j3XRSgobSU7bW1yArHn4W8Bcg8Dd1LahNwJIx3AVgpxkNKnyokex2CCiOltbsreiNeMkDq8KIE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780065146; c=relaxed/simple;
-	bh=H8Zc0BMDKyYtLwOcI52vXB5IO2YRy0zBXfW/dkngE6c=;
-	h=Date:From:To:Cc:Subject:Message-ID:Content-Type:
-	 Content-Disposition:MIME-Version; b=JBVLBJLOtaA9A7bnM9kCJH3sXhbfO86K3gUgnd2R6cfZEAXFGIReC2hfWmF2Y/74nbwyjMq+pRJ39iARZHnn8TTbnqEaNgxhiTs1jtKiWxE0WBq10Tu60oPyBqKs4C5XikfLKOkrSp8+rJz58ChKGYoV7dGrHXXnvCqiTKRHMg4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com; spf=pass smtp.mailfrom=ddn.com; dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b=ac/54Xf6; arc=fail smtp.client-ip=209.222.82.58
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ddn.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A43A3F4DCD;
+	Fri, 29 May 2026 15:33:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780068809; cv=none; b=qPomsBDd6Yy2lCnm5WE9dm5MiPlcswWaY/goB7jU87zOxgULD/otF8Jot0mjwuaeMqU5ynzPYUdX5ZoZUhRKoaTLiIxa42zDWJT83wFWDkCIgmaSQw3Bc40IyEFUjU2C0a1p/jTBBkCumFYNjLOIjtkP2xiTwObSU+HXHQnUf3M=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780068809; c=relaxed/simple;
+	bh=EHyMVDeTsUcPtHp1earH5jKUQQzrjpMNHxxlMPD5kHw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=tE/utKq5XwwjHV5yNF8en/OrKDR1yAYCMp25vMD6jjo2IAkq2KWvgvdoYdWyxPpDB6WTASBIl5QEfw4TTCJefBJBUoKuINtJgwXHY/XLtsnSgD0yanP3Ewkw11pPUORli1hk9uGDv36glYrYPO2GQ5Am+IX361Qe1gFnsqBuUts=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=s/HRfIQb; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="ac/54Xf6"
-Received: from CO1PR03CU002.outbound.protection.outlook.com (mail-westus2azon11020122.outbound.protection.outlook.com [52.101.46.122]) by mx-outbound45-218.us-east-2c.ess.aws.cudaops.com (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO); Fri, 29 May 2026 14:32:14 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=VTyCSrxIrdPIf3CM8Ntiw7QolI5PxrpLC+Nfgushm/OasiJ2UrCCqwlbje71ZQ06NEBiL5VDEAau4r/MiRNaJt2MYJ5XpbtyKpXETokj9GBAo7/iZJVC9vWmunedE6IjQtOJiTdYHiR+QS4sd9++lx/auA5bebDBTcK30nQ9/yo/Ckr+a5N4hT9gffqRij99U1JrWc7MXMhmrGdiLRCOCP2yqE3T39i0sj84H6BuflTXHHYZKL9hBCkyavCigI0nGaH85pE39BiFS/TISo16bGXhfq1R9Rm4xGOncVvp+xEurzl0QkPyFnXelap1WPxaJ0QYYiPp2TG+BmQCZ86Dew==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=jxWTuvPCxliBxz8muIjX+86jVNEIYx5ZU6r85zvi5HQ=;
- b=mqDqhwcf7+iAx6hJ0z1LO/Ns6FVo6zzXWnDPIE4/tfFS9YeWGOs0x0uPqD53kckjWRFDDJ8QUk/cDQzTtqOhBAzTxwuNI3rZvo/CHjbL04LTNczFUTAGTvxgyAHkfteNkNFIGjgFWbLdmXtHFJePqpUcBYMHcvmdb7zYJIHxMy4Hvqy9yEkTWaD5OR1wr8iryBRzoMCXQiv85aaOnejEKIyWWOi5dnJg2DhF27wxizWKhOol+hy5w2Itxdk0hcfODg19Q3dJooTnYsvTWFeJ48Ohn95DIMv8bqC4PqLHLQMhU4ICVxghug8lR796yMTxK09UqfMVA+xYEZSGm0VLUg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
- header.d=ddn.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=jxWTuvPCxliBxz8muIjX+86jVNEIYx5ZU6r85zvi5HQ=;
- b=ac/54Xf6bMdXvYhZNcy+RLTk+ji8TFaTRNEgL10z6STPpyyoU53WbbDawm/ruU6IE5hDe7VHpdwHhcK/4IkfAnfNG9tmzcqOrKrOy5jRqOz+zWnjJs5j/+44qWbBODepbqWq8uEPZI2QdojS2TKzjSjWvEH7diDBR2TWU/7rPgY=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=ddn.com;
-Received: from SA1PR19MB5570.namprd19.prod.outlook.com (2603:10b6:806:236::11)
- by PH8PR19MB6860.namprd19.prod.outlook.com (2603:10b6:510:1c0::5) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.71.15; Fri, 29 May
- 2026 11:57:19 +0000
-Received: from SA1PR19MB5570.namprd19.prod.outlook.com
- ([fe80::6167:d6e1:2c7b:a9d0]) by SA1PR19MB5570.namprd19.prod.outlook.com
- ([fe80::6167:d6e1:2c7b:a9d0%5]) with mapi id 15.21.0071.011; Fri, 29 May 2026
- 11:57:19 +0000
-Date: Fri, 29 May 2026 13:57:14 +0200
-From: eaujames@ddn.com
-To: linux-ext4@vger.kernel.org
-Cc: adilger@thelustrecollective.com, dongyangli@ddn.com
-Subject: [PATCH 2/4] libext2fs: add quota to libext2fs
-Message-ID: <ahl_GhW8EhYTEun7@eaujamesFR0130>
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-ClientProxiedBy: PR3P195CA0020.EURP195.PROD.OUTLOOK.COM
- (2603:10a6:102:b6::25) To SA1PR19MB5570.namprd19.prod.outlook.com
- (2603:10b6:806:236::11)
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="s/HRfIQb"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64TF46aE1684642;
+	Fri, 29 May 2026 15:32:53 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=slFTOH3ij0YjQwnEDO0UEENBmXyNKq
+	xZMQrHMVuKm/E=; b=s/HRfIQbp8VfKLIvnx0Erh7wKZzrfoXftxvnNQp/XmT2WD
+	AZ40GgEqJIDk+9L80EBTiCpQ531wnmV/eGS7hhmW9aNifSL5obZYDqkNl2KT7xx1
+	qvKG6ep9ZMnJWsTj0K/xzLdkLvg26qbt1xFGwr97QFxDu8vYK2PawuL7TtcymPSs
+	V+BQK5vw34VKQsk27sq3kcvHBlP9A/NXVifomiOPbQQER0IRwLskK3Jk+oau47Fv
+	lXuCtp3aVC5OP767EoKUpzFwyS1Kjt4O2c0QqMpjbsMkT3j1iWNfPGVlpK6klQF+
+	X57j5jOzDtkNHivIRmiHikEpTq546ffb9BqgrHtw==
+Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4ee884kqgy-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 29 May 2026 15:32:53 +0000 (GMT)
+Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma13.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 64TFO4tL003527;
+	Fri, 29 May 2026 15:32:52 GMT
+Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
+	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4edjrbg015-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 29 May 2026 15:32:52 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 64TFWodl50397634
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 29 May 2026 15:32:50 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 7759F20040;
+	Fri, 29 May 2026 15:32:50 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id AAA5C2004B;
+	Fri, 29 May 2026 15:32:45 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.222.122])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Fri, 29 May 2026 15:32:45 +0000 (GMT)
+Date: Fri, 29 May 2026 21:02:42 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yizhang089@gmail.com>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
+        jack@suse.cz, ritesh.list@gmail.com, djwong@kernel.org,
+        hch@infradead.org, yi.zhang@huawei.com, yangerkun@huawei.com,
+        yukuai@fnnas.com
+Subject: Re: [PATCH v4 09/23] ext4: implement writeback path using iomap
+Message-ID: <ahmxmrWzIWRR9PUm@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-10-yi.zhang@huaweicloud.com>
+ <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <458bda7a-c3c6-4cb3-9c05-0718cf2ef95f@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: SA1PR19MB5570:EE_|PH8PR19MB6860:EE_
-X-MS-Office365-Filtering-Correlation-Id: 92d48a76-c6aa-4480-b7c7-08debd796f61
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
- BCL:0;ARA:13230040|366016|10070799003|376014|1800799024|19092799006|18002099003|56012099006|11063799006;
-X-Microsoft-Antispam-Message-Info:
- YISNfBLtT8r0PrM0quuOPGaGkVIifegVDpGg+O0HKysggHgAzqHHk2cGW76CmNZsCX/cDPunEIi8ejdOlby15lAOUQkwci2PfEmV+duSmda5Vg2JWYZtz8qqQWDpJQVrCt4MH55+LNGC4ALMyCqgmn9AhUOqOwk5EI9vAzDu2D95u/qKfUTf1sfppcmCB0i4VEMZ0Fn+a3stcFz87yPumOOb6Oc67MXaiMK8yanohEYdvxhVI56uTsGIzcAguDs6gfGBR+oxaDro+BEF4ezKDFEUMfB3FicYeY159xhGTS/EdIfYZdIjccp5ob5qmn4O2BVxUKCzOsjEigCFEF5ZmVcQBpuacolUSSxwG20EZh9Xqm5++aHZx0TGh8GY+UtGva2s0eUr/wrkljzM0JoXq0jv1gvIVYadcD39SJsnAYTV3KxvBwINR/JgvqczmifloqROg/0U4KtbOblw2Iop7WMM5VLH8R051HUwXuuu4doinB5qSx3Hy7U8dMweif1e3fhK/pDjwX8r4jU6pZavlE0D7xMN8O//GVKCToqtCxWsanCh5AMt9NpGXKhJ1dUpCF+URW2eBXIt8CUR5BwLHGU2mwQ0bvOuYpZJXE+5lLMUvqTpLJuDy8qE3wCO5OoP2mkaA7L2aEvwZytxS0Dz8w==
-X-Forefront-Antispam-Report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA1PR19MB5570.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(10070799003)(376014)(1800799024)(19092799006)(18002099003)(56012099006)(11063799006);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
- =?us-ascii?Q?8clU0nyxsTHDTYaGGpo48GmWEcYlnBQBClNE21pT7FKvfLWai1UMq1N3SvE5?=
- =?us-ascii?Q?z4Vfu4TruivAQoBg6EKzd2uuTaUQYDnHMls65y/zNZ5f4KahnshX756y9lTy?=
- =?us-ascii?Q?woDDV2bZUhk65pSAJKAHkfp9h1foLVowfuwDEl95qBdkdZpKLif6sZUn8RNf?=
- =?us-ascii?Q?hZf9Y8bJQ1mI1LHhqUcQk0Pz9pxivtBpdGygzv2HURcD0iF8j1q+uHVUE+/y?=
- =?us-ascii?Q?uWN2jFe4omiRCmuvGJoDBZgnKmOnknHK2AyIsjso5ptkVBObIAIKogzDU+0Y?=
- =?us-ascii?Q?o6rhu8hxrRx3JfdjBOo3LnjWBSneL+bp5YrdODFpjjEjFZYhFJG4tkwLhNDI?=
- =?us-ascii?Q?Nzmx/eN8a7qIrUaCr0MQUIpqMSXr5mM2pOWf8jkGy2pIOBSTIpDwqwqvgBqD?=
- =?us-ascii?Q?FH1bn7Z4mab9JABsCAtQRJ3wmFL56xhoKAjhoociPS8uOAeGO/TTRqd/+yzJ?=
- =?us-ascii?Q?Q9FkfxYnZ8ItPi4TcX/jEvviwlYKxt+WuzB1JVMSifj2RYi+ZCu1U9AcoDvh?=
- =?us-ascii?Q?lWOvUdyZK5emM7RAmbIcFSlyUTH6prfKtsjRJP3LUTCK9OWEBNuHq9O5tjfq?=
- =?us-ascii?Q?o+4am5ZDXYm/cUs+BBQZ1P4YxgHDpEKMJfZIO5K9vfuatWqKICE7EqCLktQY?=
- =?us-ascii?Q?booOM8VU3iZySSUbACduSZnY3DJ/ykilJ/kk+xvTfNd1Dnaet7QlxAqnraNv?=
- =?us-ascii?Q?uaLTyuLCJD+rAQsHHPwn+4tpcvvCdV/n9EVwflY9kw5zF446uoCIuBl4mGyG?=
- =?us-ascii?Q?2WMe65jyqdX5DtcvBGco4+k4D8rEN9wxG41ZDA4KRY9WnpIZkNVyxfWWnsYU?=
- =?us-ascii?Q?E9y+8oODhaAZAp2aSkp+SFFKaJi1RTzl59sU2wfe0tx7I4RNKPv83kj72pXJ?=
- =?us-ascii?Q?/gZUDXpJUfWZQaiFrPs0dwmd94PXuK4s5nGIjc317f7Ij5FYiTrQ4B/AF8Tk?=
- =?us-ascii?Q?+RCwiCGBPK6DcFuIB2p+ih1cnTWLxo6oo8ZSgponwFSySvkmck/+Pci3i0vM?=
- =?us-ascii?Q?9zuC82ckjJI4vNbsr5qRc0EojtvWCmynP4s1WgVbZMxonW3N8Jjg+AcppAuJ?=
- =?us-ascii?Q?c1l3POKe4b+nwPcMDd1o2GV6VoiHisC2swFxY8sZ577WL98K1teYBgirzCwW?=
- =?us-ascii?Q?zLON5odh4VP1b6IK3uhtm4vyDITWwlJr6u+F1b1OuD33jIs+3BQEjoIIdTGf?=
- =?us-ascii?Q?JZzcWcqzs0gQA6z0ie0BUIr3Xg4leWKyccswAD8bLiHHgf7s04SiELXdcm7V?=
- =?us-ascii?Q?zQXA+mz0pT34C1nvHofQGO//VsBcqGw7TnrAunxnNmKrz7lw/7sUZP2E3CwY?=
- =?us-ascii?Q?lpKz12b0R2gmi28F3gYik4vT8/gFXebcbWPNYG9HjIHeSJNOG0kQ1q6SN+ti?=
- =?us-ascii?Q?VRzIkL0GMFUrx8SncXKE93uO9W0cEydth0dkHjONN0lrXTExFBZ3Dy0ogiRE?=
- =?us-ascii?Q?E6axkio6Yq4RRB81wny3mfRSURoGZTNWeVWdsfpYvY4WXcUYGSzMB9XyxwyZ?=
- =?us-ascii?Q?8pa/q1u200tf0tTzZEvZICGE+8NWyeZem0hdiSQmwcs+2SHt56oSqNzUdeZu?=
- =?us-ascii?Q?tsgNBtqpBzfXKwIqEVJp8Me30e+k94IKhHQ4DVeMHhb7PmahgFg700vgcqR+?=
- =?us-ascii?Q?xpRCjFj70CXG0grJ/Vkmn4memn+t8cyWp3+D/kL6jvxdpqsehnG8E9toQd+X?=
- =?us-ascii?Q?n5eXT34vEj1WCfzSsbQj5IzH0CN7mVO4DwlUbTmb9h/Cjp7y+IPjUJOK3q4z?=
- =?us-ascii?Q?v+na9xINdd35gASKn0dcQrIzANNailf37EcqdNzqhZjZVQv89zjt?=
-X-Exchange-RoutingPolicyChecked:
- pBaeP/JklMCpOTge0hk8jf2+x8XFgEivvi0pDUoPdI0iJanORAeIZuuqas9q6g6evQQFHr8ZrkgddoJWcVNrH4sCNPZO5XEBC4OqIXrEgaUGtBiqJhxNmybCM7KkdCqoSUtvOkHZRDa3ga8Oy8OIPHY/iEooirIelO2JD7rgEbILc2GT7S16dOLz3BXu1TE9UMB4s+K8qyR9Kahq3kyV90BWHhwsQQXo/GKs9iISwxVQbDTEKhw+iekBHQW0ytiRd41j4cHwA99LrDEL89izQAnVCDOQMKSrirAM6onDeTDmOlClRsNUZMsQOmYmQAA/apSY3TB9k9TbiFcqGjrpBw==
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
- FVUKc3d2C59HPbDYiM64xFE64kPgRauH9fzjOFNM2W4GUB+YqnhmctgKRH2pWUTbhrJFiDsYVijm6qwV/aeJSoCNX3W11l+JoMATtkHVsw6n9caOigVUAbnfiRVv4v6IY6ETebFdBao01SmY73NuyXpJ4F1+bDBfGrLn5lcWjliH5OrZMxC+0mBVPCsus1U8V4gJbYMLeSkbPlSc6njdxVLeMZgDelh6hUSqEkUxzH077m3wJTdNyJKPJ80yv2NXUtIcq3I8X9ZnlUQDmS9DwBAYXLpRe/OtCYkGvCxEeHGjJT5IhrA9bElSuJQmGAyBZ9ubRBK0tqyL3pASJIz3Cst4HICdPBhwcdHBdQUoC1WZy6/vlJr2/FdsVXHLOKdUbo2JstFmxBlggviVmPKOGR9RBlhzkj7XxFmTN+zLdraewAq89y/N2PThOccJhj1KfgP7waus0f8WUbqDsDpg4lDlBknaXS4VJXGLHtTVVQSbkJhKZo8FxKbGMHamUsQ/jr3q0sIOLhEH8RrefxWyoQTIvPvxKLVcOr5hTweaVf2/7SjniYD019eaQ6DtHSCTcOTgyUHxk96yebsKEXlvP17xhz5TIFlRdNhnB2xit3qNWaXshfX46hbYf3fsK3qCovyJ+rL46Iy1+LDkxT0/OA==
-X-OriginatorOrg: ddn.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 92d48a76-c6aa-4480-b7c7-08debd796f61
-X-MS-Exchange-CrossTenant-AuthSource: SA1PR19MB5570.namprd19.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 29 May 2026 11:57:19.1959
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: cD6V2lz1Pswe/fn7DlqOJLpq3WubrmsIDvEyv/ddyBToqMMDwVxwGo2L9PqHfD9lQIlpyxrw3ITc0eppwFc7iw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH8PR19MB6860
-X-BESS-ID: 1780065134-111738-7692-9984-1
-X-BESS-VER: 2019.1_20260519.1529
-X-BESS-Apparent-Source-IP: 52.101.46.122
-X-BESS-Parts: H4sIAAAAAAACA4uuVkqtKFGyUioBkjpK+cVKViZmRkZAVgZQ0DwxNTUt2cDE1N
-	Q8ySTJzNzcwtDYwDAlOSnNPDUtxchYqTYWAAKmXf1BAAAA
-X-BESS-Outbound-Spam-Score: 0.00
-X-BESS-Outbound-Spam-Report: Code version 3.2, rules version 3.2.2.273539 [from 
-	cloudscan23-83.us-east-2b.ess.aws.cudaops.com]
-	Rule breakdown below
-	 pts rule name              description
-	---- ---------------------- --------------------------------
-	0.00 BSF_BESS_OUTBOUND      META: BESS Outbound 
-	0.00 NO_REAL_NAME           HEADER: From: does not include a real name 
-X-BESS-Outbound-Spam-Status: SCORE=0.00 using account:ESS124931 scores of KILL_LEVEL=7.0 tests=BSF_BESS_OUTBOUND, NO_REAL_NAME
-X-BESS-BRTS-Status:1
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <458bda7a-c3c6-4cb3-9c05-0718cf2ef95f@gmail.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Authority-Analysis: v=2.4 cv=fIYJG5ae c=1 sm=1 tr=0 ts=6a19b1a5 cx=c_pps
+ a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
+ a=kj9zAlcOel0A:10 a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=i0EeH86SAAAA:8
+ a=GJt-zQSVNMDa1jerbvwA:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-ORIG-GUID: i98vXFDU8kpfzv_qKViML5NhcpQ0BdLm
+X-Proofpoint-GUID: AY1JyP07wb9PPDd-dxZIHjamb5CarCPl
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTI5MDE1MSBTYWx0ZWRfX83UT33DWfTM1
+ 0fLTNy9X3+ElF/YOPyqgkzIF0RpL/RBm99VI9+qLB/Cb0K2M198FEXHxXZ9C/yBbiruQnutAo+4
+ 5j/4tQeoLSPnASzC0BKwpZIbpLozvD8jmLEiqYfo2Pi08dCrywt+SkuvJUAS/zV1Q6x3STxX0KD
+ 67yHpihGy3KcXYGQIvpwucJOY8fXeJZ61Dt/cjm0XyGeNJ2mBEWcgiyqhji9CtT7n5IPBR4JhLi
+ 26OaoMvrz65xzR16cRuB4Q8knuUVg/I7sciqMxsLQ/Qu2uNqArI8JzG021Oez6sduNk44bi1xdw
+ Id6BXTMynKq5gCzEgbpe6CevokCZtdT7dD7ytgvMOeE3dTBBx3q7NQNMAo+TzkZm1UA/LFr7Z9H
+ cYf60foJsZYUdz+lyfIOUsPnKYP99xBVX2NNHng0JsjAcarvoBOvxv4Fqp3uhNO8Xw+VkrolFx6
+ e5Jz3btMSNZLBKU64aQ==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-05-29_04,2026-05-28_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ phishscore=0 lowpriorityscore=0 suspectscore=0 impostorscore=0
+ priorityscore=1501 malwarescore=0 clxscore=1015 adultscore=0 spamscore=0
+ bulkscore=0 classifier=typeunknown authscore=0 authtc= authcc= route=outbound
+ adjust=0 reason=mlx scancount=1 engine=8.22.0-2605210000
+ definitions=main-2605290151
 
-add quota related interface to libext2fs and install the
-relevant headers.
+On Fri, May 29, 2026 at 10:12:12PM +0800, Zhang Yi wrote:
+> Hi, Ojaswin!
+> 
+> On 5/27/2026 8:49 PM, Ojaswin Mujoo wrote:
+> > On Mon, May 11, 2026 at 03:23:29PM +0800, Zhang Yi wrote:
+> > > From: Zhang Yi <yi.zhang@huawei.com>
+> > > 
+> > > Add the iomap writeback path for ext4 buffered I/O. This introduces:
+> > > 
+> > >   - ext4_iomap_writepages(): the main writeback entry point.
+> > >   - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
+> > >     block mapping and I/O submission.
+> > >   - A new end I/O worker for converting unwritten extents, updating file
+> > >     size, and handling DATA_ERR_ABORT after I/O completion.
+> > > 
+> > > Core implementation details:
+> > > 
+> > >   - ->writeback_range() callback
+> > >     Calls ext4_iomap_map_writeback_range() to query the longest range of
+> > >     existing mapped extents. For performance, when a block range is not
+> > >     yet allocated, it allocates based on the writeback length and delalloc
+> > >     extent length, rather than allocating for a single folio at a time.
+> > >     The folio is then added to an iomap_ioend instance.
+> > > 
+> > >   - ->writeback_submit() callback
+> > >     Registers ext4_iomap_end_bio() as the end bio callback. This callback
+> > >     schedules a worker to handle:
+> > >     - Unwritten extent conversion.
+> > >     - i_disksize update after data is written back.
+> > >     - Journal abort on writeback I/O failure.
+> > 
+> > Hi Zhang, the changes look good. I have a few comments below:
+> > > 
+> > > Key changes and considerations:
+> > > 
+> > > - Append write and unwritten extents
+> > >    Since data=ordered mode is not used to prevent stale data exposure
+> > >    during append writebacks, new blocks are always allocated as unwritten
+> > >    extents (i.e. always enable dioread_nolock), and i_disksize update is
+> > >    postponed until I/O completion.
+> > 
+> > Makes sense.
+> > 
+> > >    Additionally, the deadlock that the
+> > >    reserve handle was expected to resolve does not occur anymore.
+> > 
+> > I guess this is since we don't use ordered data so we can't block on
+> > starting a txn in end io.
+> 
+> Yep.
+> 
+> > 
+> > >    Therefore, the end I/O worker can start a normal journal handle
+> > >    instead of a reserve handle when converting unwritten extents.
+> > > 
+> > > - Lock ordering
+> > >    The ->writeback_range() callback runs under the folio lock, requiring
+> > >    the journal handle to be started under that same lock. This reverses
+> > >    the order compared to the buffer_head writeback path. The lock ordering
+> > >    documentation in super.c has been updated accordingly.
+> > > 
+> > > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > > ---
+> > >   fs/ext4/ext4.h        |   4 +
+> > >   fs/ext4/inode.c       | 208 +++++++++++++++++++++++++++++++++++++++++-
+> > >   fs/ext4/page-io.c     | 126 +++++++++++++++++++++++++
+> > >   fs/ext4/super.c       |   7 +-
+> > >   fs/iomap/ioend.c      |   3 +-
+> > >   include/linux/iomap.h |   1 +
+> > >   6 files changed, 346 insertions(+), 3 deletions(-)
+> > > 
+> > > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > > index 4832e7f7db82..078feda47e36 100644
+> > > --- a/fs/ext4/ext4.h
+> > > +++ b/fs/ext4/ext4.h
+> > > @@ -1173,6 +1173,8 @@ struct ext4_inode_info {
+> > >   	 */
+> > >   	struct list_head i_rsv_conversion_list;
+> > >   	struct work_struct i_rsv_conversion_work;
+> > > +	struct list_head i_iomap_ioend_list;
+> > > +	struct work_struct i_iomap_ioend_work;
+> > >   	/*
+> > >   	 * Transactions that contain inode's metadata needed to complete
+> > > @@ -3870,6 +3872,8 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
+> > >   		size_t len);
+> > >   extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+> > >   extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
+> > > +extern void ext4_iomap_end_io(struct work_struct *work);
+> > > +extern void ext4_iomap_end_bio(struct bio *bio);
+> > >   /* mmp.c */
+> > >   extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > index 1ae7d3f4a1c8..a80195bd6f20 100644
+> > > --- a/fs/ext4/inode.c
+> > > +++ b/fs/ext4/inode.c
+> > > @@ -44,6 +44,7 @@
+> > >   #include <linux/iversion.h>
+> > >   #include "ext4_jbd2.h"
+> > > +#include "ext4_extents.h"
+> > >   #include "xattr.h"
+> > >   #include "acl.h"
+> > >   #include "truncate.h"
+> > > @@ -4120,10 +4121,215 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+> > >   	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+> > >   }
+> > > +static int ext4_iomap_map_one_extent(struct inode *inode,
+> > > +				     struct ext4_map_blocks *map)
+> > > +{
+> > > +	struct extent_status es;
+> > > +	handle_t *handle = NULL;
+> > > +	int credits, map_flags;
+> > > +	int retval;
+> > > +
+> > > +	credits = ext4_chunk_trans_blocks(inode, map->m_len);
+> > > +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
+> > > +	if (IS_ERR(handle))
+> > > +		return PTR_ERR(handle);
+> > > +
+> > > +	map->m_flags = 0;
+> > > +	/*
+> > > +	 * It is necessary to look up extent and map blocks under i_data_sem
+> > > +	 * in write mode, otherwise, the delalloc extent may become stale
+> > > +	 * during concurrent truncate operations.
+> > > +	 */
+> > > +	ext4_fc_track_inode(handle, inode);
+> > > +	down_write(&EXT4_I(inode)->i_data_sem);
+> > > +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+> > > +		retval = es.es_len - (map->m_lblk - es.es_lblk);
+> > > +		map->m_len = min_t(unsigned int, retval, map->m_len);
+> > > +
+> > > +		if (ext4_es_is_delayed(&es)) {
+> > 
+> > I understand that it is okay for us to rely on extent status ==
+> > delayed here because we never reclaim delayed es entries and hence we
+> > are sure to not skip any delayed block allocations here.
+> 
+> Yeah, right.
+> 
+> > 
+> > > +			map->m_flags |= EXT4_MAP_DELAYED;
+> > > +			trace_ext4_da_write_pages_extent(inode, map);
+> > > +			/*
+> > > +			 * Call ext4_map_create_blocks() to allocate any
+> > > +			 * delayed allocation blocks. It is possible that
+> > > +			 * we're going to need more metadata blocks, however
+> > > +			 * we must not fail because we're in writeback and
+> > > +			 * there is nothing we can do so it might result in
+> > > +			 * data loss. So use reserved blocks to allocate
+> > > +			 * metadata if possible.
+> > > +			 */
+> > > +			map_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
+> > > +				    EXT4_GET_BLOCKS_METADATA_NOFAIL |
+> > > +				    EXT4_EX_NOCACHE;
+> > > +
+> > > +			retval = ext4_map_create_blocks(handle, inode, map,
+> > > +							map_flags);
+> > > +			if (retval > 0)
+> > > +				ext4_fc_track_range(handle, inode, map->m_lblk,
+> > > +						map->m_lblk + map->m_len - 1);
+> > > +			goto out;
+> > > +		} else if (unlikely(ext4_es_is_hole(&es)))
+> > 
+> > Now that you've fixed the partial invalidate in iomap (patch 12/23)
+> > can we still hit this hole case?
+> 
+> Theoretically, no hole should be encountered; this is just defensive
+> programming.
+> 
+> > 
+> > > +			goto out;
+> > > +
+> > > +		/* Found written or unwritten extent. */
+> > > +		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
+> > > +		map->m_flags = ext4_es_is_written(&es) ?
+> > > +			       EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+> > > +		goto out;
+> > > +	}
+> > > +
+> > > +	retval = ext4_map_query_blocks(handle, inode, map, EXT4_EX_NOCACHE);
+> > > +out:
+> > > +	up_write(&EXT4_I(inode)->i_data_sem);
+> > > +	ext4_journal_stop(handle);
+> > > +	return retval < 0 ? retval : 0;
+> > > +}
+> > > +
+> > > +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+> > > +					  loff_t offset, unsigned int dirty_len)
+> > > +{
+> > > +	struct inode *inode = wpc->inode;
+> > > +	struct super_block *sb = inode->i_sb;
+> > > +	struct journal_s *journal = EXT4_SB(sb)->s_journal;
+> > > +	struct ext4_map_blocks map;
+> > > +	unsigned int blkbits = inode->i_blkbits;
+> > > +	unsigned int index = offset >> blkbits;
+> > > +	unsigned int blk_end, blk_len;
+> > > +	int ret;
+> > > +
+> > > +	ret = ext4_emergency_state(sb);
+> > > +	if (unlikely(ret))
+> > > +		return ret;
+> > > +
+> > > +	/* Check validity of the cached writeback mapping. */
+> > > +	if (offset >= wpc->iomap.offset &&
+> > > +	    offset < wpc->iomap.offset + wpc->iomap.length &&
+> > > +	    ext4_iomap_valid(inode, &wpc->iomap))
+> > > +		return 0;
+> > > +
+> > > +	blk_len = dirty_len >> blkbits;
+> > > +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
+> > > +				      (UINT_MAX - 1));
+> > 
+> > This is an interesting idea. I'm just a bit worried when we have
+> > range_end == LLONG_MAX (bg flush) and we will always be trying to allocate
+> > MAX_WRITEPAGES, incase of a slightly fragmented FS, we might keep
+> > falling into slower mballoc criterias and might waste a lot of time
+> > scanning the groups.
+> 
+> Actually, MAX_WRITEPAGES is not allocated every time; the allocated
+> length also depends on the length of data that has already been delayed
+> for writing, and the smaller value is taken. If the user has indeed
 
-Change-Id: I17e6b5aa74e0f1bb1465168a1cf4e03184e003b0
-Signed-off-by: Li Dongyang <dongyangli@ddn.com>
-Reviewed-on: https://review.whamcloud.com/38027
-Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
-Lustre-bug-id: https://jira.whamcloud.com/browse/LU-13241
-Signed-off-by: Etienne AUJAMES <eaujames@ddn.com>
----
- lib/ext2fs/Makefile.in | 43 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+Hmm so we take the blk_end based on range_end (which is LLONG_MAX for bg
+flusher) and then our blk_len will be set accordingly and would become a
+large number as well. Then we will set map.m_len based on this blk_len
+and MAX_WRITEPAGES. Am I missing something that clamps our m_len?
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index e9a6ced24..0656c4c5c 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -28,6 +28,8 @@ DEBUG_OBJS= debug_cmds.o extent_cmds.o tst_cmds.o debugfs.o util.o \
- 	create_inode_libarchive.o journal.o revoke.o recovery.o \
- 	do_journal.o do_orphan.o
- 
-+QUOTA_LIB_OBJS= mkquota.o quotaio.o quotaio_v2.o quotaio_tree.o dict.o
-+
- DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- 	$(top_srcdir)/debugfs/debugfs.c \
- 	$(top_srcdir)/debugfs/util.c \
-@@ -57,6 +59,7 @@ DEBUG_SRCS= debug_cmds.c extent_cmds.c tst_cmds.c \
- @TDB_CMT@TDB_OBJ= tdb.o
- 
- OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
-+	$(QUOTA_LIB_OBJS) \
- 	$(TEST_IO_LIB_OBJS) \
- 	ext2_err.o \
- 	alloc.o \
-@@ -236,6 +239,7 @@ SRCS= ext2_err.c \
- 
- HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
- 	tdb.h qcow2.h hashmap.h
-+QUOTA_HFILES= quotaio.h dqblk_v2.h quotaio_tree.h dict.h
- HFILES_IN=  ext2_err.h ext2_types.h
- 
- LIBRARY= libext2fs
-@@ -459,6 +463,41 @@ do_orphan.o: $(top_srcdir)/debugfs/do_orphan.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(DEBUGFS_CFLAGS) -c $< -o $@
- 
-+mkquota.o: $(top_srcdir)/lib/support/mkquota.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -c $< -o $@
-+@PROFILE_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -g -pg -o profiled/$*.o -c $<
-+@ELF_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) -fPIC -shared -o elfshared/$*.o -c $<
-+@BSDLIB_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
-+
-+quotaio.o: $(top_srcdir)/lib/support/quotaio.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -c $< -o $@
-+@PROFILE_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -g -pg -o profiled/$*.o -c $<
-+@ELF_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) -fPIC -shared -o elfshared/$*.o -c $<
-+@BSDLIB_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
-+
-+quotaio_v2.o: $(top_srcdir)/lib/support/quotaio_v2.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -c $< -o $@
-+@PROFILE_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -g -pg -o profiled/$*.o -c $<
-+@ELF_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) -fPIC -shared -o elfshared/$*.o -c $<
-+@BSDLIB_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
-+
-+quotaio_tree.o: $(top_srcdir)/lib/support/quotaio_tree.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -c $< -o $@
-+@PROFILE_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -g -pg -o profiled/$*.o -c $<
-+@ELF_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) -fPIC -shared -o elfshared/$*.o -c $<
-+@BSDLIB_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
-+
-+dict.o: $(top_srcdir)/lib/support/dict.c
-+	$(E) "	CC $<"
-+	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -c $< -o $@
-+@PROFILE_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_STLIB) -g -pg -o profiled/$*.o -c $<
-+@ELF_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) -fPIC -shared -o elfshared/$*.o -c $<
-+@BSDLIB_CMT@	$(Q) $(CC) -I$(top_srcdir)/lib/support $(ALL_CFLAGS_SHLIB) $(BSDLIB_PIC_FLAG) -o pic/$*.o -c $<
-+
- xattrs.o: $(top_srcdir)/debugfs/xattrs.c
- 	$(E) "	CC $<"
- 	$(Q) $(CC) $(DEBUGFS_CFLAGS) -c $< -o $@
-@@ -586,6 +625,10 @@ install:: all $(HFILES) $(HFILES_IN) installdirs ext2fs.pc
- 		echo "	INSTALL_DATA $(includedir)/ext2fs/$$i"; \
- 		$(INSTALL_DATA) $(srcdir)/$$i $(DESTDIR)$(includedir)/ext2fs/$$i; \
- 	done
-+	$(Q) for i in $(QUOTA_HFILES); do \
-+		echo "	INSTALL_DATA $(includedir)/ext2fs/$$i"; \
-+		$(INSTALL_DATA) $(top_srcdir)/lib/support/$$i $(DESTDIR)$(includedir)/ext2fs/$$i; \
-+	done
- 	$(Q) for i in $(HFILES_IN); do \
- 		echo "	INSTALL_DATA $(includedir)/ext2fs/$$i"; \
- 		$(INSTALL_DATA) $$i $(DESTDIR)$(includedir)/ext2fs/$$i; \
--- 
-2.43.7
+> performed delalloc writes on data of up to MAX_WRITEPAGES in length,
+> then regardless of how fragmented the file system is, I will need to
+> allocate blocks of that length. Reducing the number of calls is always
+> beneficial.
+> 
+> > 
+> > > +	if (blk_end > index + blk_len)
+> > > +		blk_len = blk_end - index + 1;
+> > > +
+> > > +retry:
+> > > +	map.m_lblk = index;
+> > > +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
+> > > +	ret = ext4_map_blocks(NULL, inode, &map,
+> > > +			      EXT4_GET_BLOCKS_IO_SUBMIT | EXT4_EX_NOCACHE);
+> > 
+> > Do we really need the IO_SUBMIT flag here now that we are:
+> > 1. Not using ordered data
+> > 2. We anyways don't use it in ext4_iomap_map_one_extent().
+> > 
+> > I think we can drop it.
+> 
+> We can't drop it, because IO_SUBMIT is also used to avoid the check of
+> ext4_check_map_extents_env() in ext4_map_blocks() under the writeback
+> path.
 
+Yes, noted :) 
+
+Thanks,
+Ojaswin
+
+> 
+> Cheers,
+> Yi.
+> 
+> > 
+> > > +	if (ret < 0)
+> > > +		return ret;
+> > > +
+> > > +	/*
+> > > +	 * The map is not a delalloc extent, it must either be a hole
+> > > +	 * or an extent which have already been allocated.
+> > > +	 */
+> > > +	if (!(map.m_flags & EXT4_MAP_DELAYED))
+> > > +		goto out;
+> > > +
+> > > +	/* Map one delalloc extent. */
+> > > +	ret = ext4_iomap_map_one_extent(inode, &map);
+> > > +	if (ret < 0) {
+> > > +		if (ext4_emergency_state(sb))
+> > > +			return ret;
+> > > +
+> > > +		/*
+> > > +		 * Retry transient ENOSPC errors, if
+> > > +		 * ext4_count_free_blocks() is non-zero, a commit
+> > > +		 * should free up blocks.
+> > > +		 */
+> > > +		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb)) {
+> > > +			jbd2_journal_force_commit_nested(journal);
+> > > +			goto retry;
+> > > +		}
+> > > +
+> > > +		ext4_msg(sb, KERN_CRIT,
+> > > +			 "Delayed block allocation failed for inode %llu at logical offset %llu with max blocks %u with error %d",
+> > > +			 inode->i_ino, (unsigned long long)map.m_lblk,
+> > > +			 (unsigned int)map.m_len, -ret);
+> > > +		ext4_msg(sb, KERN_CRIT,
+> > > +			 "This should not happen!! Data will be lost\n");
+> > > +		if (ret == -ENOSPC)
+> > > +			ext4_print_free_blocks(inode);
+> > > +		return ret;
+> > > +	}
+> > > +out:
+> > > +	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
+> > > +	return 0;
+> > > +}
+> > > +
+> > 
+> > <snip>
+> > > 
+> 
