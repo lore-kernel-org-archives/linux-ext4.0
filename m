@@ -1,32 +1,30 @@
-Received: from out30-99.freemail.mail.aliyun.com (out30-99.freemail.mail.aliyun.com [115.124.30.99])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71327348C58;
-	Fri, 29 May 2026 07:32:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.99
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 078C72D0605;
+	Fri, 29 May 2026 07:33:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780039939; cv=none; b=fbIiu/tWAfG5RKYJoI2KYuqDKIgByOFlt04I3FS/RuLVDO2XGyASsrLzVd6BcCsCWpDdVa7g5XbTV12vBb9LBls863fUQSF2RnT7dHhu5g0trcoOw2lvoOg2TWSjuhBTa7v3egnTzwUCy5oKAyPMbtFKjkvrM4yM5ofAPN7K8zg=
+	t=1780039991; cv=none; b=ROR6FXoeSSNsFT1BkqF8JQuZ3+qzjec//1gy4UdhiYSQegvQCWob0LtsxrharZOpdW5vL8rDfGFgfq9tf0RTBGJig+6Gqu4jvc0jaDThIsRFQbrtoUWKFK044ae8O83KL1adXGtvUUNrBozgUE0UZBl+Umfq1wpK1wsMSWTHzxc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780039939; c=relaxed/simple;
-	bh=HW/bSag8il2av+UJkXvbPQq2PF+9dWaghrIZKSKO6BI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
-	 In-Reply-To:Content-Type; b=UzXOibvX3jMeKed4sZy5CPn/dcbPweHyTxftWiSWpQZmDSCudrdZKeoubDPBZNWN54b5C0rG66l7fAc8O2L0vFAY4YKv0fHhWBgmcnylx/Rz6OgnS+Or31VZG/7e7Ro2awgZQMk7jkYgRkXkVoYAfEFn60xbX1GliUSkM1MbSAI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=XlbG/dBS; arc=none smtp.client-ip=115.124.30.99
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="XlbG/dBS"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1780039933; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=XsMYWbdUIEzPaql7isQ9/8c0FLW0IT7eoYaMbLPEQVY=;
-	b=XlbG/dBSzlonqu7UxABM6mwHw/wBXNK5iqA2DzzimWp+8WE8W6TCDabjm0TpYEtbq/tFB6lGUdkhHqrxG24QhEknPvX8sAb0DNb+Tods0tMsFiwhG7NtwXW5d5bb2rVMpTD9JZYI0xiHEJgckNuICcUkZ3YuIPNa3Ksyd2uLBSI=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X3ofXyX_1780039931;
-Received: from 30.221.147.25(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X3ofXyX_1780039931 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Fri, 29 May 2026 15:32:12 +0800
-Message-ID: <d1ebc755-afe5-4d14-99e5-e9638f47915c@linux.alibaba.com>
-Date: Fri, 29 May 2026 15:32:11 +0800
+	s=arc-20240116; t=1780039991; c=relaxed/simple;
+	bh=7mXu+oAU3O2kxKi7OsFcwS23Dhj769SyNfw5icSvjBo=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=LP2vtkV2nSlXWr+clW8eaUF3WwEQvohYSVmJ2md3HXndv7erHdyt26JTyWrou4zAEEcj+7hS9lLYoPw/RzcxX57bItzoBGNZNPb5wQFcvecSGhz3/3ZZ4YWI1gD///I8l2SUb3gZCx6ZIiXJVkkdWW2qA+8/Rcbi6Y3RAWR3M5Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gRZmk2MQ9zYQtpl;
+	Fri, 29 May 2026 15:31:50 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id AEF5240574;
+	Fri, 29 May 2026 15:32:49 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP4 (Coremail) with SMTP id gCh0CgAn71oeQRlqEZ8pEA--.34710S3;
+	Fri, 29 May 2026 15:32:47 +0800 (CST)
+Message-ID: <73e91ebd-27de-4834-af2f-9b4ac19a4100@huaweicloud.com>
+Date: Fri, 29 May 2026 15:32:45 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,101 +32,148 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: convert legacy ext4_debug() to standard pr_debug()
-To: lirongqing <lirongqing@baidu.com>
-References: <20260521074634.2697-1-lirongqing@baidu.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
- Zhang Yi <yi.zhang@huawei.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani
- <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260521074634.2697-1-lirongqing@baidu.com>
+Subject: Re: [PATCH] ext4: fix quota accounting WARN in bigalloc punch hole
+To: Qiliang Yuan <realwujing@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Zijing Yin <yzjaurora@gmail.com>
+References: <20260528-fix-ext4-bigalloc-punch-hole-quota-v2-v1-1-32871356273b@gmail.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260528-fix-ext4-bigalloc-punch-hole-quota-v2-v1-1-32871356273b@gmail.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgAn71oeQRlqEZ8pEA--.34710S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxXw1UWrykAw4DGr4xJryxKrg_yoWrZryrpr
+	ZI9r15J3yDJ3s7GFZ7AF15Wr1F934rXr47ursxG34fZF98JF1fXF1kKF4Y93WFvr48tFn8
+	XF4jg34Uuan09aDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 2026/5/21 15:46, lirongqing wrote:
-> From: Li RongQing <lirongqing@baidu.com>
->
-> The ext4 file system historically implemented its own debug logging macro
-> ext4_debug() via EXT4FS_DEBUG conditional compilation. This legacy
-> implementation suffers from two major drawbacks:
->
-> 1. It makes two consecutive un-serialized printk() calls, which can
->    lead to severe log interleaving and corruption under multi-core
->    concurrent workloads.
-> 2. It completely bypasses the standard modern kernel dynamic debug
->    (CONFIG_DYNAMIC_DEBUG) infrastructure.
->
-> Clean up the legacy implementation by leveraging pr_debug(). This squashes
-> the multiple printk() calls into a single atomic execution, ensuring
-> log integrity, while seamlessly hooking ext4 into the kernel's native
-> dynamic debug framework.
->
-> The redundant __FILE__ and __LINE__ macros are intentionally removed from
-> the string format because the dynamic debug infrastructure can already
-> append them automatically at runtime (via the '+fl' flags) if desired.
-> This avoids redundancy and double-logging in modern production/debugging
-> environments while keeping the macro clean and robust against dangling
-> comma compiler errors.
->
-> Signed-off-by: Li RongQing <lirongqing@baidu.com>
+Hi, Qiliang!
 
-Thanks for cleaning this up.
+On 5/28/2026 6:21 PM, Qiliang Yuan wrote:
+> When doing direct I/O write on a bigalloc filesystem, the allocated
+> extent might not cover entire clusters at its boundaries, leaving
+> delayed blocks in those boundary clusters.  In ext4_es_insert_extent(),
+> __revise_pending() inserts new pending reservations for those boundary
+> clusters, and the return value (pending=true) was added to resv_used,
+> causing ext4_da_update_reserve_space() to incorrectly release the
+> quota reservations for those boundary clusters.
+> 
+> Later when PUNCH_HOLE removes the DIO-allocated blocks, the
+> extent removal path detects the pending reservation via
+> ext4_is_pending() and calls ext4_rereserve_cluster().  This tries
+> to reclaim quota from dq_dqb.dqb_curspace back to dqb_rsvspace,
+> but since the quota was already incorrectly released, dqb_curspace
+> is insufficient, triggering:
+> 
+>   WARNING at dquot_reclaim_space_nodirty+0x77c/0x8c0
 
+Hmm, the analysis doesn't seem correct to me. Do you mean the
+following case?
+
+# Assume the cluster size is 16KB.
+xfs_io -f -c "pwrite 12k 4k" /mnt/foo
+xfs_io -d -c "pwrite 0 4k" /mnt/foo
+xfs_io -c "fpunch 0 4k" /mnt/foo
+
+During the direct I/O write, quota space will be added in
+ext4_mb_new_blocks() because the EXT4_MB_DELALLOC_RESERVED flag is
+not set. Therefore, in ext4_es_insert_extent(), we should release the
+quota reservations, since this cluster has already been allocated.
+
+Then, in the third operation (punch hole), it will reclaim the added
+dqb_curspace. This should not cause an insufficiency.
+
+Am I missing something?
+
+> 
+> The subsequent delalloc writeback then fires a second WARN from
+> dquot_claim_space_nodirty() for the same reason: dqb_rsvspace was
+> depleted by the earlier incorrect release.
+> 
+> __es_remove_extent() -> get_rsvd() already correctly excludes
+> boundary clusters that still contain delayed blocks from resv_used.
+> Adding pending to resv_used double-counts those boundary clusters,
+> erroneously releasing reservations that are still needed.
+> 
+> Remove the pending variable and the resv_used += pending addition.
+
+That's not correct. Assume the following case.
+
+# Assume the cluster size is 16KB.
+xfs_io -f -c "pwrite 0 16k" /mnt/foo
+xfs_io -c "sync_range -w 0 4k" /mnt/foo
+
+Although only part of the cluster is written back, the cluster has been
+allocated. Therefore, the quota needs to be claimed. However, since we
+only wrote back a portion of a cluster, __es_remove_extent() will not
+return the reserved clusters that need to be consumed (i.e., resv_used
+is zero). Therefore, we need to determine whether a new pending
+allocation has been created by checking the pending status, so that we
+can correctly claim the quota.
+
+Thanks,
+Yi
+
+> 
+> Fixes: c543e2429640 ("ext4: update delalloc data reserve spcae in ext4_es_insert_extent()")
+> Reported-by: Zijing Yin <yzjaurora@gmail.com>
+> Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221570
+> Signed-off-by: Qiliang Yuan <realwujing@gmail.com>
 > ---
->  fs/ext4/ext4.h | 20 ++------------------
->  1 file changed, 2 insertions(+), 18 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 94283a9..39e86ff 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -62,24 +62,8 @@
->   */
->  #define DOUBLE_CHECK__
->  
-> -/*
-> - * Define EXT4FS_DEBUG to produce debug messages
-> - */
-> -#undef EXT4FS_DEBUG
-> -
-
-This looks like it's just disabling EXT4FS_DEBUG, but it's actually
-the only toggle point — enabling debug required manually flipping this
-to #define EXT4FS_DEBUG in the source.
-
-Since balloc.c, ialloc.c, and page-io.c still have #ifdef EXT4FS_DEBUG
-blocks that weren't cleaned up here, it would be cleaner to replace
-those with CONFIG_EXT4_DEBUG so they fall under a single
-Kconfig-controlled umbrella.
-
-> -/*
-> - * Debug code
-> - */
-> -#ifdef EXT4FS_DEBUG
-> -#define ext4_debug(f, a...)						\
-> -	do {								\
-> -		printk(KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",	\
-> -			__FILE__, __LINE__, __func__);			\
-> -		printk(KERN_DEBUG f, ## a);				\
-> -	} while (0)
-> -#else
-> -#define ext4_debug(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
-> -#endif
-> +#define ext4_debug(fmt, ...)						\
-> +	pr_debug("EXT4-fs DEBUG %s: " fmt, __func__,  ##__VA_ARGS__)
-
-Nit: an extra space between __func__, and ##__VA_ARGS__.
-
->  
->   /*
->    * Turn on EXT_DEBUG to enable ext4_ext_show_path/leaf/move in extents.c
-
-Also, could ext4_debug be moved next to ext_debug and placed under
-#ifdef CONFIG_EXT4_DEBUG together, for a cleaner layout?
-
-
-Cheers,
-Baokun
+>  fs/ext4/extents_status.c | 4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 6e4a191e82191..fefe0bb8ac4d1 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -909,7 +909,7 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  	struct extent_status newes;
+>  	ext4_lblk_t end = lblk + len - 1;
+>  	int err1 = 0, err2 = 0, err3 = 0;
+> -	int resv_used = 0, pending = 0;
+> +	int resv_used = 0;
+>  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>  	struct extent_status *es1 = NULL;
+>  	struct extent_status *es2 = NULL;
+> @@ -977,7 +977,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  			__free_pending(pr);
+>  			pr = NULL;
+>  		}
+> -		pending = err3;
+>  	}
+>  	ext4_es_inc_seq(inode);
+>  error:
+> @@ -998,7 +997,6 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+>  	 * any previously delayed allocated clusters instead of claim them
+>  	 * again.
+>  	 */
+> -	resv_used += pending;
+>  	if (resv_used)
+>  		ext4_da_update_reserve_space(inode, resv_used,
+>  					     delalloc_reserve_used);
+> 
+> ---
+> base-commit: eb3f4b7426cfd2b79d65b7d37155480b32259a11
+> change-id: 20260528-fix-ext4-bigalloc-punch-hole-quota-v2-2adca315d1ba
+> 
+> Best regards,
 
