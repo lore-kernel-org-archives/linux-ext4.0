@@ -1,561 +1,383 @@
-Received: from outbound-ip168b.ess.barracuda.com (outbound-ip168b.ess.barracuda.com [209.222.82.102])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E12663A6F10
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 12:08:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=209.222.82.102
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780056515; cv=fail; b=ksCIA18QyhPexsTP5hcrSvnNxnwwMGp1OUDSVKBDdSYKxrPf41E0b3RJEip26Xhd7cREApGurfwqy2WtCoGeZ4b4IgtN8t8dhj1MhEGE9jTIlud/mINdh5uKO5sVN/MjzUT3045zDErugV3vz5cLCZZDHOXjbqfujAhCOKByyf4=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780056515; c=relaxed/simple;
-	bh=WPRjYC07mL1w53wW34Cv4QxoDONydCO2uKT1yX90cJQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:Content-Type:
-	 Content-Disposition:MIME-Version; b=OUeOxoIVav7RiOT1AtAYUmszCOblwPq835lMBjeN8MXQqonmbk/C3wskg2Q9EpEBFOti8hJYmWFfoYiaTWDwik3xn0GBGrKQrShL9aI7Sr5qBd7HRQQtXZ9FqILCjbOAxQUU8V2KJZz32qe7oW3xlgli0Qn9lXnJWQ/N6qq6LMs=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com; spf=pass smtp.mailfrom=ddn.com; dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b=ExRSAcYA; arc=fail smtp.client-ip=209.222.82.102
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ddn.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3A0E1940B0
+	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 14:12:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780063940; cv=none; b=A+HrTVq4oiWXrsmlxFdlYyByyO2OyRPTE0SiCk732V4a8y5u492U8B1H/A7lIKOp/wEUnPdd1sbBq5no9w1Z0WLTvAZDx0d3CKN6aaczQKWwNaxcAX+fLsIdav0BVZt4ao4CHRWcy9k/Ben2SBuWJrlWZETMZGplxA+1yuESJ7I=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780063940; c=relaxed/simple;
+	bh=NRtgKlLwC2XEPo/n9hVMr6Bp1BPKeoqH+gCzzU1cOKE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=uquLH3I1G/nK2FzeyvLA6LFIB1VdWU0SZBkrhVCoPcguqoTdcdp/SF43rc64QslVEvw+djAxaWz5bK8M3jHxYPbE0UPetEv1ZMQKxWXmiGB/kZnpCuSzqK8+Tm+pQ76G6YaWI2yMUu182lV9BBGh+C/7CyZ+Ch2J467UmnkyYJA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=efu7M7RF; arc=none smtp.client-ip=209.85.216.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="ExRSAcYA"
-Received: from BN1PR04CU002.outbound.protection.outlook.com (mail-eastus2azon11020116.outbound.protection.outlook.com [52.101.56.116]) by mx-outbound18-242.us-east-2b.ess.aws.cudaops.com (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO); Fri, 29 May 2026 12:08:30 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=BBSNz6IsarNbW+Ab1n/h9NRi89qX1lOyZ2hBow1w1uOVV6wg8WiNZyP5XjxP4+EqMUI9lWlw0NqAihjd2dhVgMq1q8zFjIH8ogA+tXGhQsDnv1/IswG5IVnG3D5dLIGkHsB1szEK4mc2vB9nnKhvGZKQ/jvFjH8igsTPJb2G44iWzYLvZg+0fSVDXH+u1u9CwXxY5iGtSVLTf7O0BKE47QAqoDmNUOrGDp7wjtg5Hl7ZKiFBBMWtmx1iVnQVozPummOVTh9n3CsmzQzEC/oaW1YVn5J8PCJFzntnwE1rk6g2U4Mtos3xOKbaEjwF9aGH6kEF3Yemz2e/Smr9ixgkEg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=kS+kQOiBdB6M0wK9I2dnwxhE9JGLbkbrr+8UYq3oko0=;
- b=RpPFnKLf8fEaDCnPCYBBByeuV4lkUkoc3oP40AT9FKisNONbu3bRQ1dELzl9gvztQ74Jvr4+fiNi3ysrkZ6O+BvgBwb7sfpX3HcDQ9MhCOmx3HLK5C1/ClCipcWpwUBpnF3rJF7FcCGP4wTTB1CgYWDqsaQns60O1rEFHes+l6dT/JYlWxdUGetIOue4EIQ+P1m656wVGtjHo3GPZlXFogUUGzHaiI/uLUPgcSEY9wWkmLbcPBgz1pB4rLfHSUktCk1T34kXqe62EJdr67u4nm85QJ/jEYzGgLg8fepdgchid5dhJ/LNQ5yeM1zFCL3d9k36TBPvuPzXxXCS03r5gA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
- header.d=ddn.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=kS+kQOiBdB6M0wK9I2dnwxhE9JGLbkbrr+8UYq3oko0=;
- b=ExRSAcYAL/Qlq+7MZMPBMbzVFqFeEw6Hr+IdrZZrRUdGtxg9mQZUXMKRIfygewNoJ3cH0YOwvwE6fy7KphruRx3zoSn7gN0LHNMOgDRLqVGqEE2XEA40RUrou1kX4+vcUYlKhAvqb4WMJSdDR5bgH2pG9XarEb+OSJn82sCmKaU=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=ddn.com;
-Received: from SA1PR19MB5570.namprd19.prod.outlook.com (2603:10b6:806:236::11)
- by PH8PR19MB6860.namprd19.prod.outlook.com (2603:10b6:510:1c0::5) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.71.15; Fri, 29 May
- 2026 11:54:12 +0000
-Received: from SA1PR19MB5570.namprd19.prod.outlook.com
- ([fe80::6167:d6e1:2c7b:a9d0]) by SA1PR19MB5570.namprd19.prod.outlook.com
- ([fe80::6167:d6e1:2c7b:a9d0%5]) with mapi id 15.21.0071.011; Fri, 29 May 2026
- 11:54:12 +0000
-Date: Fri, 29 May 2026 13:54:07 +0200
-From: Etienne AUJAMES <eaujames@ddn.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger@thelustrecollective.com, dongyangli@ddn.com
-Subject: [PATCH 1/4] e2fsck: fix orphaned extent files handling
-Message-ID: <ahl-X8rCc0DGt7y3@eaujamesFR0130>
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-ClientProxiedBy: PR3P189CA0072.EURP189.PROD.OUTLOOK.COM
- (2603:10a6:102:b4::17) To SA1PR19MB5570.namprd19.prod.outlook.com
- (2603:10b6:806:236::11)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="efu7M7RF"
+Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-36bba9a1089so564196a91.3
+        for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 07:12:18 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1780063938; x=1780668738; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=RRnTfBH9bYTxNsieG48Nyv91JQy6+LpC3fmsGgDXrrU=;
+        b=efu7M7RFjjKxbzK1WOu+XInuUKEMMvPeEV0JB5Im/1E7R23OVZRCScmnZR99tygDH9
+         tItbSKm0TtsSzai7v1UecT7UOsQDtlgU4Fo0179Z2G4uckzYvEll/h7Eyb3q/cGOs1DN
+         AlVO+mhf0mwJ64qGmsKtpBX6gEKNUiHbF+nKwThdYZwq0kbnBRzV7EWqM/8nFJjXcTk4
+         clGuj4dBusNIcOEeZ16HKFJTE+6C0okkp7HP2Mt1wftWr86J/jG3DB7P+SaofCiemwH/
+         /WpnlERrg/UarTST/TyS8t4RZh8e8Hh1JbvbMnHyK9/DUX1gP149TdnSRHlbHwxLQrFJ
+         njQg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1780063938; x=1780668738;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=RRnTfBH9bYTxNsieG48Nyv91JQy6+LpC3fmsGgDXrrU=;
+        b=hhts1yf5g3/UOL9VGYWuR8FPEeuOVR834HVfnw4aX+1TSwSbQJ6j5kd+TbaFj/wsHa
+         rkowE+tlm3NnObEBW7tm7ebLIzp4XB6FTbU2Y7BTCpu3ACTfDkjHduejiGmWT3uvo0lK
+         dfoCFAJPOL3JdeFHb5NV7grkbFqJ7gstM7iq9YpafUHOI3kwrGIwWyrWkbmkKbOsvsex
+         rVa7dCtuoK49FF/5Xu/UsMGHMRUqqeLDJXLUrCtOuTkDgPG17Bmm4ehNAnndrtZdpIJO
+         qDGDcDjPId2iBMI4hUWwRFaL0Uj0oWUALVYOvc+9YjcosIr9nkXTglYcnmYQ8m9DpPhl
+         g8uQ==
+X-Gm-Message-State: AOJu0YwVbW6mmZGXfyHUCwknJAqk+h77derDAKDVy+hQmjLEXBbxnKR0
+	YUx/V2gMgRAUcIEFfip6qCkkdVCrI1cHYDLIb9snukiyrQFyqObn6/LYV5iBMe86zmE=
+X-Gm-Gg: Acq92OE1ayRtkGk4FPgrqtMDvyiIrekVZ0X2Pt4Br/0Uk2DdctknzuAo0+LkxA8S32q
+	ClgMpbJQNgrZqICmi51kVdarD7JQtka8M9lD6SFjVYsUy1B1L3j27aCTLLfwwBKzaUzhzh2YOQi
+	NulkGTXdlwi8dhQuiqQyD8hepx5Go9ej/sKj8HEVJk3THnhpU5ulKp0wG3PWwWhbpo0MqC98eiC
+	dduW5p/8/c3q/4gYI/RnNuNdFwLQzsH+jKi7UVmZmRbdUB1PNhYQ0jvAu80p43DrV7dK2PFnqNI
+	uHJ21Z5RyLokwFPacWEdrhB/h0j5g9RtBtrcf/FsAsSCsKeObFo/uXlFjJzFpipBn2biava3dju
+	N/6VRa+lIO2OY1RWbDYBsZOMIZJAjTgf5+u0Kt1gG+D1K7vSCgCzY5WFkYA95hHiLPgTD8b3eIW
+	SaSAoUvVW06YkJ9K0o2Bj/q407y7BU8eaMiDwWiszku4O4U2turpswPyCzAUUFcrO88leqDNYu+
+	Kt2rfM=
+X-Received: by 2002:a17:90b:3dc4:b0:36b:9faf:8396 with SMTP id 98e67ed59e1d1-36bbcd407demr3603647a91.11.1780063937900;
+        Fri, 29 May 2026 07:12:17 -0700 (PDT)
+Received: from ?IPV6:240e:390:a90:671:f49e:f306:1054:8e7? ([240e:390:a90:671:f49e:f306:1054:8e7])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-36bc6b7c178sm2048091a91.15.2026.05.29.07.12.14
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 29 May 2026 07:12:17 -0700 (PDT)
+Message-ID: <458bda7a-c3c6-4cb3-9c05-0718cf2ef95f@gmail.com>
+Date: Fri, 29 May 2026 22:12:12 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: SA1PR19MB5570:EE_|PH8PR19MB6860:EE_
-X-MS-Office365-Filtering-Correlation-Id: cb8dee15-0716-4f60-7ed5-08debd78ffe6
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
- BCL:0;ARA:13230040|366016|10070799003|376014|1800799024|19092799006|18002099003|56012099006|11063799006|4133799003;
-X-Microsoft-Antispam-Message-Info:
- 2xffPhngkII9Kp/ntzdCNtUlCAprV9wdcAXX1mu23ba68tiQ0CuwUthXY2DWLopZIOiVIwBtGo3VJDqJDmxBgIRRPXolOheJ0AyA13wNCg4T1knj+FjNACP4sf/sayecwaxNuaabDt5VFDkzr5W1IeJ/UMggtyWixc3TDn3VS1yYd3nXD7zyomxg1GeNz7TFiQ77l7QjvWSatWOfcD9OpEB0CcyQkgIPHiSVf5Sbv1VyrGFZSHdvczhiBOZjl3i8qdTJeDThYYZeyKt5h6nZJ8oB/duiJyD78SoHVHUoa2t4BXR6aDf0ZE5q1gJ6uYj0hDGKuHUQVRLdP0qRkvq4IUKVuwf7qC1E+XBuA3P2zwRhQWAk4b7NI9Bb6amkM8mPzwUftrBrXJ5rnmZ9Ye6OWHnzsCSf3Fu3aopdiOhgly4gyougez3GvU0OwV2iV0s07OgHZZeqltT++eTTogO8Rv5Ws6ZiXqd6soGNNpG54Y6/kpB3qDlTUxXignN5tSlK/NbfvDNWIs4/oBIb9ofxsPYB0w/UvbhmuCWJKjqUmiAzy0jOeLKhLiMHHaIm8jtIDth2FKmBl0H7Ryz3bWnp4o/ffmVwhohkIRyzprfSTeCHZPjEpYBHTXk3IFHIpJ9VuTedbe+U5HZZh4U892xf3zFVWkrSU5DDhl7go+ZTI6cfUjaQxhVxmNXSGtbCn9vu
-X-Forefront-Antispam-Report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA1PR19MB5570.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(10070799003)(376014)(1800799024)(19092799006)(18002099003)(56012099006)(11063799006)(4133799003);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
- =?us-ascii?Q?oXEJWIK1kIt2owBDxNWqI29bYGJHmQOhPQtAg//EiFMzmhWWgjaFKy880K+P?=
- =?us-ascii?Q?q5TwxmdhpIlhQFikpueLeZyI5kztQ1ZDbBB9eS5ALZx17TnN9qlPEiZYc8Ag?=
- =?us-ascii?Q?vFGcwcJxTu5jGlNETC5q9pjbp1L+rxd8LcPu+UM/zjyQbTlj7h2Ew4Sfmqmb?=
- =?us-ascii?Q?t7ggqNypBQtbDrP77f6wIRlfci2bu5LeLhLlYhPreU+N3adEyQS0MfoNjtAv?=
- =?us-ascii?Q?3arzZFmMFDpO4+Y8jMkvS2qByvzEpx/CaXqiX7V+Tq5CYd00IARTHR263WaU?=
- =?us-ascii?Q?QKK5vtqdgcLsP9QR4flZ4PTJEZNF1FFMz7kodmZb82epwJYg5+dAgjkHVo4c?=
- =?us-ascii?Q?PEwhCrOBhnZ9aAkg1ldAYloFrI8Uf6vrTF6BC1GdLaFvb0/emmpRF4PKDYvs?=
- =?us-ascii?Q?IKCwdpgQ09bGHqv9qbJ3pLseKbAyCdMFGDq7sYJJhrJ1Hcx7YDHdQwAITdQS?=
- =?us-ascii?Q?Hp0/Sy43E7j9cN/KASO03LqANRe2p+fV+WVi2WRYawLLcBiVHpInQc02oAPi?=
- =?us-ascii?Q?8LWiRQhRZ43d/QgIv2OpeAfFPvkX8vIFwOG6RhcxnJqmsMZCaDrDILF2JKSg?=
- =?us-ascii?Q?/lquUsUKv3RWI6yXix24ynLe3dT4GemkavrxUXr7wVsE3fuF6kJpWpaRj4e8?=
- =?us-ascii?Q?K2V/Uv4TZA013bo1uVE3n9t1Kul1l4/b+Ni8/1L10ibGPwJLrybsg30k/c4T?=
- =?us-ascii?Q?oWsRFG8ou8z2FN7XnLvNf7K6ahYn8FTN1s6o1/8LthlGpS97VHMKDuq0JXCF?=
- =?us-ascii?Q?XQgta9lnoOAyerhSFWJj2jQBotWy5MVUDKBXLPDgMh1Dgd84eavBdX8ne/nO?=
- =?us-ascii?Q?HrN23BpBBuEHARzwDGnNsCacW1e+5qEzc9DHAD0nJzqF3RzPwN0BarUgVZz4?=
- =?us-ascii?Q?OZ0FwJiM7FrjWDAAYA7DDE4o1X/96Z0PJDelXuVoLwGaXqHzVXUN7iqrMmoQ?=
- =?us-ascii?Q?+AF6IsNGtMlPsGGCzN/1lzoA5gKm2h7fLsbuIFoclU0u7Tlzz0XQDhrl4OEe?=
- =?us-ascii?Q?vCC8xCPw8W1sudyeUjAem8GyXKQ3iSaJNAo+4XVR+QfWnVc43faCcDUdgmnI?=
- =?us-ascii?Q?DIacrbSGokgJrsLMiQk8s6K7GzhB42rElxVQLDtjbj5qURkY+HPi/fWktXqG?=
- =?us-ascii?Q?8ultOSOPff3twQXADGlZnyIqvNFTqQoDmTK7dBcs7v+pf8D3eOePg9Fiiqk3?=
- =?us-ascii?Q?17NKCq1HmeJAeT8oBE0blYUx1fxd+eKd2okNRzsRrbVXdQNOkk5WkY8iHfjB?=
- =?us-ascii?Q?ndculWuR3gS6WY8iKscQYGdMLLzbM4hGETFL3wB8NS+0qydwPQpb015awkQQ?=
- =?us-ascii?Q?dD0SXe1e4G3U9EdpFFjlHeN7gnE22Kifme5dW6JwxaqTp6Ai4/ijdfmXf9BD?=
- =?us-ascii?Q?pmO6rJWJ6bvllwU02WHRGnBMeLRNImjE/9e/jnl/tyyYM3/BVWWP+rQ+Qoix?=
- =?us-ascii?Q?EuULz1J722W4FbqZLs6PrXQMtAPQvO5NYa1Bnx5paHoIzJ7RtKoSUM8O1GQt?=
- =?us-ascii?Q?ZByi4gyQW9LfVloV8Qq6FmUG3Ibq3Q0o+h6Po1zNEtlMNDmRkm/cfjKo/fKe?=
- =?us-ascii?Q?+yhFe23rXfEWbCV4RdEcnEKxw4IcClf/ookfmjCfLgVPHIbwc48ScJVeFWKN?=
- =?us-ascii?Q?sNms1d5FTJC//VaFv9zbfwzejT2A+aD2aEClYtQucGwiSTM3C4oD9vHii//O?=
- =?us-ascii?Q?xLjZv111TlGZ4TsGnJE3ooA4/ZUPZ/9jbFInwhoJ7DU7cMJ7k9Nc80D/SSPC?=
- =?us-ascii?Q?qv4Q7Jpw5b0dWNrsx+S96h9y5NkOomQ27U/olOgJ/zvDDcf/2ChQ?=
-X-Exchange-RoutingPolicyChecked:
- r3qYUJzv+6IrbeENM4C6V1ZYTpA9nItSf+PFewyQXkITE6xa9bi+LFPTJIOGFxNcbgEwGz1Gw3wh9EUiNO/9PacZy46j/pIj/MH3SouaxapojMRoPpNssJacof7LLQTB3MX2cFUs0q34qZGtT/Zc3xZqTwTp9ifxcYxwYr8cE08Tv7bz8H+MqpoxzaEGqLV6fMw64cA1gZxh7pWy7KpHjGSTLXrH9hsxGrhH9MsbFEtK0PCN3V6a/VWARx739lUiPp32cGHqQcqJ0KHXWZhYaMcFBTqMZU4zrbxvKSvcd94qEPCKLnrDADeVvfspUEEqRd2saIN2QRKF9q8OhF4PCg==
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
- WFbBUCwSExUZMr3nsqbqoGFRGe+iCmG2l9ZVSJGauFjuL+6CIYvLC5JcdR8BP2OHFhJxNKTQrYOdp5TMtGaXb+Ne29c+4SP70A0VvWqe+xN5Mc2oSv2g6xjKM3VjVAzIuEf6tUwVbVaYPjb3Hnl4wNU50S8HxF23VzoHRqcxgRClJ1jDfb387kiSpsogUbIXXpHw9eVKApY25k455xetOR9kpUkNiQMK36nSkqCGviVhOUpnRmsRM5sq8SKpXxoPia2SjzGqqjq77rO0Vaxu32EwWrPCOYz53TpMIM1K3bC5Px1ZE2UReXZ/B3MDKUcWBDYZKHeGZ4kEm/VTB+64oA0dCByUd8YH30Jy5E1Pix2D/cgT3ay4FdWcCwit5iCiYH633TiqXZGIB4vBF9QYFOcaGv9UupisGAJfUxf1CBh7v6O4NjhsTgThdF3bEDxDTih/jFZCddIJcaW0n3UuhvZ1RTaOXo/RsbP65iOwyrR9xMgfxjVshQKdyEQXf/cjYME7Edu9aSpvf0Y0svSMqIUyRoZHW8nc6XMpPw6hRLdeCSvc/kR5mdIlRKQ8Js5ohavp0u33u6nU+uutlXmP3jniulYKfuN03SGFNi1RGRQh+L+hgjJN9mb9a0pD/fDR9FFR1ON6WJHHos9iWw4MWg==
-X-MS-Exchange-CrossTenant-Network-Message-Id: cb8dee15-0716-4f60-7ed5-08debd78ffe6
-X-MS-Exchange-CrossTenant-AuthSource: SA1PR19MB5570.namprd19.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 29 May 2026 11:54:12.1539
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 0XZMOLyBY+Ks+2HWN6hByoxYFGNWKvHD0nAN/ypro97hqcECd6GeFOuhQBxqeyFWeeq8Vr664VTN2gi64VQNxw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH8PR19MB6860
-X-OriginatorOrg: ddn.com
-X-BESS-ID: 1780056510-104850-7742-6090-1
-X-BESS-VER: 2019.1_20260519.1529
-X-BESS-Apparent-Source-IP: 52.101.56.116
-X-BESS-Parts: H4sIAAAAAAACA4uuVkqtKFGyUioBkjpK+cVKVobGFmamQGYGUDQx2Twx1czAxM
-	DY3DjNwjDFzNTC0MDC0Mg8MdEgKcXcUKk2FgBwsD/kQgAAAA==
-X-BESS-Outbound-Spam-Score: 1.43
-X-BESS-Outbound-Spam-Report: Code version 3.2, rules version 3.2.2.273537 [from 
-	cloudscan15-166.us-east-2a.ess.aws.cudaops.com]
-	Rule breakdown below
-	 pts rule name              description
-	---- ---------------------- --------------------------------
-	0.00 OBSCURED_EMAIL         BODY: Message seems to contain rot13ed address 
-	0.00 BSF_BESS_OUTBOUND      META: BESS Outbound 
-	0.68 OBSCURED_EMAIL_2       META: BODY: Message seems to contain rot13ed address 
-	0.75 BSF_RULE_7580F         META: Custom Rule 7580F 
-X-BESS-Outbound-Spam-Status: SCORE=1.43 using account:ESS124931 scores of KILL_LEVEL=7.0 tests=OBSCURED_EMAIL, BSF_BESS_OUTBOUND, OBSCURED_EMAIL_2, BSF_RULE_7580F
-X-BESS-BRTS-Status:1
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 09/23] ext4: implement writeback path using iomap
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-10-yi.zhang@huaweicloud.com>
+ <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-release_inode_blocks() does not handle corectly multi-levels extent
-files: it does not count the non-leaf blocks directly released by
-ext2fs_block_iterate3().
+Hi, Ojaswin!
 
-This patch relies on ext2fs_get_stat_i_blocks() count for quota update
-and ext2fs_free_blocks_count() to count number of blocks released by
-release_inode_blocks().
+On 5/27/2026 8:49 PM, Ojaswin Mujoo wrote:
+> On Mon, May 11, 2026 at 03:23:29PM +0800, Zhang Yi wrote:
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> Add the iomap writeback path for ext4 buffered I/O. This introduces:
+>>
+>>   - ext4_iomap_writepages(): the main writeback entry point.
+>>   - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
+>>     block mapping and I/O submission.
+>>   - A new end I/O worker for converting unwritten extents, updating file
+>>     size, and handling DATA_ERR_ABORT after I/O completion.
+>>
+>> Core implementation details:
+>>
+>>   - ->writeback_range() callback
+>>     Calls ext4_iomap_map_writeback_range() to query the longest range of
+>>     existing mapped extents. For performance, when a block range is not
+>>     yet allocated, it allocates based on the writeback length and delalloc
+>>     extent length, rather than allocating for a single folio at a time.
+>>     The folio is then added to an iomap_ioend instance.
+>>
+>>   - ->writeback_submit() callback
+>>     Registers ext4_iomap_end_bio() as the end bio callback. This callback
+>>     schedules a worker to handle:
+>>     - Unwritten extent conversion.
+>>     - i_disksize update after data is written back.
+>>     - Journal abort on writeback I/O failure.
+> 
+> Hi Zhang, the changes look good. I have a few comments below:
+>>
+>> Key changes and considerations:
+>>
+>> - Append write and unwritten extents
+>>    Since data=ordered mode is not used to prevent stale data exposure
+>>    during append writebacks, new blocks are always allocated as unwritten
+>>    extents (i.e. always enable dioread_nolock), and i_disksize update is
+>>    postponed until I/O completion.
+> 
+> Makes sense.
+> 
+>>    Additionally, the deadlock that the
+>>    reserve handle was expected to resolve does not occur anymore.
+> 
+> I guess this is since we don't use ordered data so we can't block on
+> starting a txn in end io.
 
-Add regression test: f_orphan_truncate_extents_inode
+Yep.
 
-Signed-off-by: Etienne AUJAMES <eaujames@ddn.com>
-Change-Id: Ib0c3aaaa685e7bcfae896617cda03005d19539ff
-Lustre-bug-id: https://jira.whamcloud.com/browse/LU-20049
----
- e2fsck/super.c                                | 244 +++++++++---------
- .../f_orphan_truncate_extents_inode/expect.1  |   3 +
- .../f_orphan_truncate_extents_inode/expect.2  |   7 +
- .../f_orphan_truncate_extents_inode/image.gz  | Bin 0 -> 2854 bytes
- tests/f_orphan_truncate_extents_inode/name    |   1 +
- tests/f_orphan_truncate_extents_inode/script  |   3 +
- 6 files changed, 133 insertions(+), 125 deletions(-)
- create mode 100644 tests/f_orphan_truncate_extents_inode/expect.1
- create mode 100644 tests/f_orphan_truncate_extents_inode/expect.2
- create mode 100644 tests/f_orphan_truncate_extents_inode/image.gz
- create mode 100644 tests/f_orphan_truncate_extents_inode/name
- create mode 100644 tests/f_orphan_truncate_extents_inode/script
+> 
+>>    Therefore, the end I/O worker can start a normal journal handle
+>>    instead of a reserve handle when converting unwritten extents.
+>>
+>> - Lock ordering
+>>    The ->writeback_range() callback runs under the folio lock, requiring
+>>    the journal handle to be started under that same lock. This reverses
+>>    the order compared to the buffer_head writeback path. The lock ordering
+>>    documentation in super.c has been updated accordingly.
+>>
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>> ---
+>>   fs/ext4/ext4.h        |   4 +
+>>   fs/ext4/inode.c       | 208 +++++++++++++++++++++++++++++++++++++++++-
+>>   fs/ext4/page-io.c     | 126 +++++++++++++++++++++++++
+>>   fs/ext4/super.c       |   7 +-
+>>   fs/iomap/ioend.c      |   3 +-
+>>   include/linux/iomap.h |   1 +
+>>   6 files changed, 346 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> index 4832e7f7db82..078feda47e36 100644
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -1173,6 +1173,8 @@ struct ext4_inode_info {
+>>   	 */
+>>   	struct list_head i_rsv_conversion_list;
+>>   	struct work_struct i_rsv_conversion_work;
+>> +	struct list_head i_iomap_ioend_list;
+>> +	struct work_struct i_iomap_ioend_work;
+>>   
+>>   	/*
+>>   	 * Transactions that contain inode's metadata needed to complete
+>> @@ -3870,6 +3872,8 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
+>>   		size_t len);
+>>   extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+>>   extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
+>> +extern void ext4_iomap_end_io(struct work_struct *work);
+>> +extern void ext4_iomap_end_bio(struct bio *bio);
+>>   
+>>   /* mmp.c */
+>>   extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 1ae7d3f4a1c8..a80195bd6f20 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -44,6 +44,7 @@
+>>   #include <linux/iversion.h>
+>>   
+>>   #include "ext4_jbd2.h"
+>> +#include "ext4_extents.h"
+>>   #include "xattr.h"
+>>   #include "acl.h"
+>>   #include "truncate.h"
+>> @@ -4120,10 +4121,215 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+>>   	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+>>   }
+>>   
+>> +static int ext4_iomap_map_one_extent(struct inode *inode,
+>> +				     struct ext4_map_blocks *map)
+>> +{
+>> +	struct extent_status es;
+>> +	handle_t *handle = NULL;
+>> +	int credits, map_flags;
+>> +	int retval;
+>> +
+>> +	credits = ext4_chunk_trans_blocks(inode, map->m_len);
+>> +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
+>> +	if (IS_ERR(handle))
+>> +		return PTR_ERR(handle);
+>> +
+>> +	map->m_flags = 0;
+>> +	/*
+>> +	 * It is necessary to look up extent and map blocks under i_data_sem
+>> +	 * in write mode, otherwise, the delalloc extent may become stale
+>> +	 * during concurrent truncate operations.
+>> +	 */
+>> +	ext4_fc_track_inode(handle, inode);
+>> +	down_write(&EXT4_I(inode)->i_data_sem);
+>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+>> +		retval = es.es_len - (map->m_lblk - es.es_lblk);
+>> +		map->m_len = min_t(unsigned int, retval, map->m_len);
+>> +
+>> +		if (ext4_es_is_delayed(&es)) {
+> 
+> I understand that it is okay for us to rely on extent status ==
+> delayed here because we never reclaim delayed es entries and hence we
+> are sure to not skip any delayed block allocations here.
 
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index cfc0919a2..c2ccefd54 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -62,21 +62,14 @@ static int check_super_value64(e2fsck_t ctx, const char *descr,
- 	return 1;
- }
- 
--/*
-- * helper function to release an inode
-- */
- struct process_block_struct {
--	e2fsck_t 	ctx;
--	char 		*buf;
-+	e2fsck_t	ctx;
-+	char		*buf;
- 	struct problem_context *pctx;
--	int		truncating;
--	int		truncate_offset;
- 	e2_blkcnt_t	truncate_block;
--	int		truncated_blocks;
--	int		abort;
-+	e2_blkcnt_t	truncated_blocks;
- 	errcode_t	errcode;
- 	blk64_t last_cluster;
--	struct ext2_inode_large *inode;
- };
- 
- static int release_inode_block(ext2_filsys fs,
-@@ -91,7 +84,6 @@ static int release_inode_block(ext2_filsys fs,
- 	struct problem_context	*pctx;
- 	blk64_t			blk = *block_nr;
- 	blk64_t			cluster = EXT2FS_B2C(fs, *block_nr);
--	int			retval = 0;
- 
- 	pb = (struct process_block_struct *) priv_data;
- 	ctx = pb->ctx;
-@@ -111,155 +103,157 @@ static int release_inode_block(ext2_filsys fs,
- 	if ((blk < fs->super->s_first_data_block) ||
- 	    (blk >= ext2fs_blocks_count(fs->super))) {
- 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_BLOCK_NUM, pctx);
--	return_abort:
--		pb->abort = 1;
-+		pb->errcode = EXT2_ET_BAD_BLOCK_NUM;
- 		return BLOCK_ABORT;
- 	}
- 
- 	if (!ext2fs_test_block_bitmap2(fs->block_map, blk)) {
- 		fix_problem(ctx, PR_0_ORPHAN_ALREADY_CLEARED_BLOCK, pctx);
--		goto return_abort;
-+		pb->errcode = EXT2_ET_BAD_BLOCK_NUM;
-+		return BLOCK_ABORT;
- 	}
- 
- 	/*
--	 * If we are deleting an orphan, then we leave the fields alone.
--	 * If we are truncating an orphan, then update the inode fields
--	 * and clean up any partial block data.
-+	 * We don't remove direct blocks until we've reached
-+	 * the truncation block.
- 	 */
--	if (pb->truncating) {
--		/*
--		 * We only remove indirect blocks if they are
--		 * completely empty.
--		 */
--		if (blockcnt < 0) {
--			int	i, limit;
--			blk_t	*bp;
--
--			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
--							pb->buf);
--			if (pb->errcode)
--				goto return_abort;
--
--			limit = fs->blocksize >> 2;
--			for (i = 0, bp = (blk_t *) pb->buf;
--			     i < limit;	 i++, bp++)
--				if (*bp)
--					return 0;
--		}
--		/*
--		 * We don't remove direct blocks until we've reached
--		 * the truncation block.
--		 */
--		if (blockcnt >= 0 && blockcnt < pb->truncate_block)
--			return 0;
--		/*
--		 * If part of the last block needs truncating, we do
--		 * it here.
--		 */
--		if ((blockcnt == pb->truncate_block) && pb->truncate_offset) {
--			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
--							pb->buf);
--			if (pb->errcode)
--				goto return_abort;
--			memset(pb->buf + pb->truncate_offset, 0,
--			       fs->blocksize - pb->truncate_offset);
--			pb->errcode = io_channel_write_blk64(fs->io, blk, 1,
--							 pb->buf);
--			if (pb->errcode)
--				goto return_abort;
--		}
--		pb->truncated_blocks++;
--		*block_nr = 0;
--		retval |= BLOCK_CHANGED;
-+	if (blockcnt >= 0 && blockcnt < pb->truncate_block)
-+		return 0;
-+
-+	/*
-+	 * We only remove indirect blocks if they are
-+	 * completely empty.
-+	 */
-+	if (blockcnt < 0) {
-+		int	i, limit;
-+		blk_t	*bp;
-+
-+		pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
-+						    pb->buf);
-+		if (pb->errcode)
-+			return BLOCK_ABORT;
-+
-+		limit = fs->blocksize >> 2;
-+		for (i = 0, bp = (blk_t *) pb->buf;
-+		     i < limit;	 i++, bp++)
-+			if (*bp)
-+				return 0;
- 	}
- 
--	if (ctx->qctx)
--		quota_data_sub(ctx->qctx, pb->inode, 0, ctx->fs->blocksize);
- 	ext2fs_block_alloc_stats2(fs, blk, -1);
--	ctx->free_blocks++;
--	return retval;
-+	pb->truncated_blocks++;
-+	*block_nr = 0;
-+
-+	return BLOCK_CHANGED;
- }
- 
--/*
-- * This function releases an inode.  Returns 1 if an inconsistency was
-- * found.  If the inode has a link count, then it is being truncated and
-- * not deleted.
-- */
--static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
--				struct ext2_inode_large *inode, char *block_buf,
--				struct problem_context *pctx)
-+static errcode_t truncate_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
-+				       struct ext2_inode_large *inode,
-+				       char *block_buf,
-+				       struct problem_context *pctx)
- {
--	struct process_block_struct 	pb;
--	ext2_filsys			fs = ctx->fs;
--	blk64_t				blk;
--	errcode_t			retval;
--	__u32				count;
-+	ext2_filsys fs = ctx->fs;
-+	struct process_block_struct pb = { 0 };
-+	e2_blkcnt_t truncate_block = 0;
-+	__u32 truncate_offset = 0;
-+	blk64_t blk;
-+	int ret_flags;
-+	errcode_t retval = 0;
- 
- 	if (!ext2fs_inode_has_valid_blocks2(fs, EXT2_INODE(inode)))
--		goto release_acl;
-+		return 0;
- 
--	pb.buf = block_buf + 3 * ctx->fs->blocksize;
--	pb.ctx = ctx;
--	pb.abort = 0;
--	pb.errcode = 0;
--	pb.pctx = pctx;
--	pb.last_cluster = 0;
--	pb.inode = inode;
- 	if (inode->i_links_count) {
--		pb.truncating = 1;
--		pb.truncate_block = (e2_blkcnt_t)
-+		truncate_offset = inode->i_size % fs->blocksize;
-+		truncate_block = (e2_blkcnt_t)
- 			((EXT2_I_SIZE(inode) + fs->blocksize - 1) /
- 			 fs->blocksize);
--		pb.truncate_offset = inode->i_size % fs->blocksize;
--	} else {
--		pb.truncating = 0;
--		pb.truncate_block = 0;
--		pb.truncate_offset = 0;
- 	}
--	pb.truncated_blocks = 0;
-+
-+	pb.buf = block_buf;
-+	pb.ctx = ctx;
-+	pb.pctx = pctx;
-+	pb.truncate_block = truncate_block;
- 	retval = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_DEPTH_TRAVERSE,
- 				      block_buf, release_inode_block, &pb);
- 	if (retval) {
- 		com_err("release_inode_blocks", retval,
- 			_("while calling ext2fs_block_iterate for inode %u"),
- 			ino);
--		return 1;
-+		return retval;
- 	}
--	if (pb.abort)
--		return 1;
-+	if (pb.errcode)
-+		return pb.errcode;
- 
- 	/* Refresh the inode since ext2fs_block_iterate may have changed it */
- 	e2fsck_read_inode_full(ctx, ino, EXT2_INODE(inode), sizeof(*inode),
- 			"release_inode_blocks");
- 
--	if (pb.truncated_blocks)
--		ext2fs_iblk_sub_blocks(fs, EXT2_INODE(inode),
--				pb.truncated_blocks);
--release_acl:
--	blk = ext2fs_file_acl_block(fs, EXT2_INODE(inode));
--	if (blk) {
--		retval = ext2fs_adjust_ea_refcount3(fs, blk, block_buf, -1,
--				&count, ino);
--		if (retval == EXT2_ET_BAD_EA_BLOCK_NUM) {
--			retval = 0;
--			count = 1;
--		}
--		if (retval) {
--			com_err("release_inode_blocks", retval,
--		_("while calling ext2fs_adjust_ea_refcount2 for inode %u"),
--				ino);
--			return 1;
--		}
--		if (count == 0) {
--			if (ctx->qctx)
--				quota_data_sub(ctx->qctx, inode, 0,
--						ctx->fs->blocksize);
--			ext2fs_block_alloc_stats2(fs, blk, -1);
--			ctx->free_blocks++;
--		}
--		ext2fs_file_acl_block_set(fs, EXT2_INODE(inode), 0);
-+	ext2fs_iblk_sub_blocks(fs, EXT2_INODE(inode), pb.truncated_blocks);
-+	if (!truncate_offset)
-+		return 0;
-+
-+	/* Is there an initialized block at the end? */
-+	retval = ext2fs_bmap2(fs, ino, NULL, NULL, 0,
-+			   truncate_block, &ret_flags, &blk);
-+	if (retval)
-+		return retval;
-+	if ((blk == 0) || (ret_flags & BMAP_RET_UNINIT))
-+		return 0;
-+
-+	retval = io_channel_read_blk64(fs->io, blk, 1, block_buf);
-+	if (retval)
-+		return retval;
-+
-+	memset(block_buf + truncate_offset, 0, fs->blocksize - truncate_offset);
-+	retval = io_channel_write_blk64(fs->io, blk, 1, block_buf);
-+
-+	return retval;
-+}
-+
-+/*
-+ * This function releases an inode.  Returns 1 if an inconsistency was
-+ * found.  If the inode has a link count, then it is being truncated and
-+ * not deleted.
-+ */
-+static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
-+				struct ext2_inode_large *inode, char *block_buf,
-+				struct problem_context *pctx)
-+{
-+	ext2_filsys			fs = ctx->fs;
-+	blk64_t				free_blks, ino_blks;
-+	char				*buf;
-+	errcode_t			err;
-+	int				rc = 0;
-+
-+	free_blks = ext2fs_free_blocks_count(fs->super);
-+	ino_blks = ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
-+	buf = block_buf + 3 * ctx->fs->blocksize;
-+	if (truncate_inode_blocks(ctx, ino, inode, buf, pctx)) {
-+		rc = 1;
-+		goto update_counts;
- 	}
--	return 0;
-+	if (inode->i_links_count)
-+		goto update_counts;
-+
-+	err = ext2fs_free_ext_attr(fs, ino, inode);
-+	if (err) {
-+		com_err(__func__, err,
-+			_("while calling ext2fs_free_ext_attr for inode %u"),
-+			ino);
-+		rc = 1;
-+		goto update_counts;
-+	}
-+
-+	rc = 0;
-+
-+update_counts:
-+	ctx->free_blocks += ext2fs_free_blocks_count(fs->super) - free_blks;
-+	ino_blks -= ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
-+	if (ctx->qctx)
-+		quota_data_sub(ctx->qctx, inode, 0, ino_blks << 9);
-+
-+	return rc;
- }
- 
- /* Load all quota data in preparation for orphan clearing. */
-diff --git a/tests/f_orphan_truncate_extents_inode/expect.1 b/tests/f_orphan_truncate_extents_inode/expect.1
-new file mode 100644
-index 000000000..b24aae7ad
---- /dev/null
-+++ b/tests/f_orphan_truncate_extents_inode/expect.1
-@@ -0,0 +1,3 @@
-+test_filesys: Truncating orphaned inode 12 (uid=0, gid=0, mode=0100644, size=4096)
-+test_filesys: clean, 12/128 files, 75/1024 blocks
-+Exit status is 0
-diff --git a/tests/f_orphan_truncate_extents_inode/expect.2 b/tests/f_orphan_truncate_extents_inode/expect.2
-new file mode 100644
-index 000000000..7edff9bce
---- /dev/null
-+++ b/tests/f_orphan_truncate_extents_inode/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (16.7% non-contiguous), 75/1024 blocks
-+Exit status is 0
-diff --git a/tests/f_orphan_truncate_extents_inode/image.gz b/tests/f_orphan_truncate_extents_inode/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..30681b879455b936e05d4dcbb4feaed6c4ff1eb9
-GIT binary patch
-literal 2854
-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
-Qs3(SfSGqhPU{%0>0O93B*Z=?k
+Yeah, right.
 
-literal 0
-HcmV?d00001
+> 
+>> +			map->m_flags |= EXT4_MAP_DELAYED;
+>> +			trace_ext4_da_write_pages_extent(inode, map);
+>> +			/*
+>> +			 * Call ext4_map_create_blocks() to allocate any
+>> +			 * delayed allocation blocks. It is possible that
+>> +			 * we're going to need more metadata blocks, however
+>> +			 * we must not fail because we're in writeback and
+>> +			 * there is nothing we can do so it might result in
+>> +			 * data loss. So use reserved blocks to allocate
+>> +			 * metadata if possible.
+>> +			 */
+>> +			map_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
+>> +				    EXT4_GET_BLOCKS_METADATA_NOFAIL |
+>> +				    EXT4_EX_NOCACHE;
+>> +
+>> +			retval = ext4_map_create_blocks(handle, inode, map,
+>> +							map_flags);
+>> +			if (retval > 0)
+>> +				ext4_fc_track_range(handle, inode, map->m_lblk,
+>> +						map->m_lblk + map->m_len - 1);
+>> +			goto out;
+>> +		} else if (unlikely(ext4_es_is_hole(&es)))
+> 
+> Now that you've fixed the partial invalidate in iomap (patch 12/23)
+> can we still hit this hole case?
 
-diff --git a/tests/f_orphan_truncate_extents_inode/name b/tests/f_orphan_truncate_extents_inode/name
-new file mode 100644
-index 000000000..6f16502b3
---- /dev/null
-+++ b/tests/f_orphan_truncate_extents_inode/name
-@@ -0,0 +1 @@
-+truncating an orphaned extent-mapped inode in preen mode
-diff --git a/tests/f_orphan_truncate_extents_inode/script b/tests/f_orphan_truncate_extents_inode/script
-new file mode 100644
-index 000000000..fb895e9a4
---- /dev/null
-+++ b/tests/f_orphan_truncate_extents_inode/script
-@@ -0,0 +1,3 @@
-+FSCK_OPT=-p
-+SECOND_FSCK_OPT="-yf -E no_optimize_extents"
-+. $cmd_dir/run_e2fsck
--- 
-2.43.7
+Theoretically, no hole should be encountered; this is just defensive
+programming.
+
+> 
+>> +			goto out;
+>> +
+>> +		/* Found written or unwritten extent. */
+>> +		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
+>> +		map->m_flags = ext4_es_is_written(&es) ?
+>> +			       EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+>> +		goto out;
+>> +	}
+>> +
+>> +	retval = ext4_map_query_blocks(handle, inode, map, EXT4_EX_NOCACHE);
+>> +out:
+>> +	up_write(&EXT4_I(inode)->i_data_sem);
+>> +	ext4_journal_stop(handle);
+>> +	return retval < 0 ? retval : 0;
+>> +}
+>> +
+>> +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+>> +					  loff_t offset, unsigned int dirty_len)
+>> +{
+>> +	struct inode *inode = wpc->inode;
+>> +	struct super_block *sb = inode->i_sb;
+>> +	struct journal_s *journal = EXT4_SB(sb)->s_journal;
+>> +	struct ext4_map_blocks map;
+>> +	unsigned int blkbits = inode->i_blkbits;
+>> +	unsigned int index = offset >> blkbits;
+>> +	unsigned int blk_end, blk_len;
+>> +	int ret;
+>> +
+>> +	ret = ext4_emergency_state(sb);
+>> +	if (unlikely(ret))
+>> +		return ret;
+>> +
+>> +	/* Check validity of the cached writeback mapping. */
+>> +	if (offset >= wpc->iomap.offset &&
+>> +	    offset < wpc->iomap.offset + wpc->iomap.length &&
+>> +	    ext4_iomap_valid(inode, &wpc->iomap))
+>> +		return 0;
+>> +
+>> +	blk_len = dirty_len >> blkbits;
+>> +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
+>> +				      (UINT_MAX - 1));
+> 
+> This is an interesting idea. I'm just a bit worried when we have
+> range_end == LLONG_MAX (bg flush) and we will always be trying to allocate
+> MAX_WRITEPAGES, incase of a slightly fragmented FS, we might keep
+> falling into slower mballoc criterias and might waste a lot of time
+> scanning the groups.
+
+Actually, MAX_WRITEPAGES is not allocated every time; the allocated
+length also depends on the length of data that has already been delayed
+for writing, and the smaller value is taken. If the user has indeed
+performed delalloc writes on data of up to MAX_WRITEPAGES in length,
+then regardless of how fragmented the file system is, I will need to
+allocate blocks of that length. Reducing the number of calls is always
+beneficial.
+
+> 
+>> +	if (blk_end > index + blk_len)
+>> +		blk_len = blk_end - index + 1;
+>> +
+>> +retry:
+>> +	map.m_lblk = index;
+>> +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
+>> +	ret = ext4_map_blocks(NULL, inode, &map,
+>> +			      EXT4_GET_BLOCKS_IO_SUBMIT | EXT4_EX_NOCACHE);
+> 
+> Do we really need the IO_SUBMIT flag here now that we are:
+> 1. Not using ordered data
+> 2. We anyways don't use it in ext4_iomap_map_one_extent().
+> 
+> I think we can drop it.
+
+We can't drop it, because IO_SUBMIT is also used to avoid the check of
+ext4_check_map_extents_env() in ext4_map_blocks() under the writeback
+path.
+
+Cheers,
+Yi.
+
+> 
+>> +	if (ret < 0)
+>> +		return ret;
+>> +
+>> +	/*
+>> +	 * The map is not a delalloc extent, it must either be a hole
+>> +	 * or an extent which have already been allocated.
+>> +	 */
+>> +	if (!(map.m_flags & EXT4_MAP_DELAYED))
+>> +		goto out;
+>> +
+>> +	/* Map one delalloc extent. */
+>> +	ret = ext4_iomap_map_one_extent(inode, &map);
+>> +	if (ret < 0) {
+>> +		if (ext4_emergency_state(sb))
+>> +			return ret;
+>> +
+>> +		/*
+>> +		 * Retry transient ENOSPC errors, if
+>> +		 * ext4_count_free_blocks() is non-zero, a commit
+>> +		 * should free up blocks.
+>> +		 */
+>> +		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb)) {
+>> +			jbd2_journal_force_commit_nested(journal);
+>> +			goto retry;
+>> +		}
+>> +
+>> +		ext4_msg(sb, KERN_CRIT,
+>> +			 "Delayed block allocation failed for inode %llu at logical offset %llu with max blocks %u with error %d",
+>> +			 inode->i_ino, (unsigned long long)map.m_lblk,
+>> +			 (unsigned int)map.m_len, -ret);
+>> +		ext4_msg(sb, KERN_CRIT,
+>> +			 "This should not happen!! Data will be lost\n");
+>> +		if (ret == -ENOSPC)
+>> +			ext4_print_free_blocks(inode);
+>> +		return ret;
+>> +	}
+>> +out:
+>> +	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
+>> +	return 0;
+>> +}
+>> +
+> 
+> <snip>
+>>
 
