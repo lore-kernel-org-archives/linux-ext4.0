@@ -1,383 +1,227 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outbound-ip168a.ess.barracuda.com (outbound-ip168a.ess.barracuda.com [209.222.82.36])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3A0E1940B0
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 14:12:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780063940; cv=none; b=A+HrTVq4oiWXrsmlxFdlYyByyO2OyRPTE0SiCk732V4a8y5u492U8B1H/A7lIKOp/wEUnPdd1sbBq5no9w1Z0WLTvAZDx0d3CKN6aaczQKWwNaxcAX+fLsIdav0BVZt4ao4CHRWcy9k/Ben2SBuWJrlWZETMZGplxA+1yuESJ7I=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780063940; c=relaxed/simple;
-	bh=NRtgKlLwC2XEPo/n9hVMr6Bp1BPKeoqH+gCzzU1cOKE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=uquLH3I1G/nK2FzeyvLA6LFIB1VdWU0SZBkrhVCoPcguqoTdcdp/SF43rc64QslVEvw+djAxaWz5bK8M3jHxYPbE0UPetEv1ZMQKxWXmiGB/kZnpCuSzqK8+Tm+pQ76G6YaWI2yMUu182lV9BBGh+C/7CyZ+Ch2J467UmnkyYJA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=efu7M7RF; arc=none smtp.client-ip=209.85.216.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99F353C9890
+	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 14:22:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=209.222.82.36
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780064529; cv=fail; b=sitzVQad7O5czcoJlAB/587hIf9XDSLoV2aAg2XxkQy3BJfpBSyTDWKXF/W/q/4gE6DWTimzxZbfsOKIbdqOMcQJsAMX5QVFWGtnq6msWFbH87g7v8lbIciDDLzNjNQXKuip5e4BH7iNLlQfYlfOXUzQulYkiyhbcYW2Yj2huJA=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780064529; c=relaxed/simple;
+	bh=jfqBxbrWMQ4t2mAdt0i++gU6J23Qbvk1hHJEgtLTx/o=;
+	h=Date:From:To:Cc:Subject:Message-ID:Content-Type:
+	 Content-Disposition:MIME-Version; b=QIrnNMnx1XEWSRzWjm8Y6yL6bGLEWBQI+LVyOlfGbMrqFwPhPv5pXoXBF7t4vAnFJg33OdcVOgUWW2+K3Cg/ftiJsIFUW2FcsqWXjz5gJDQpHfDjrmwXcmQarg6EnBBMOs6HRkxtJO6W7nkZdeg7gjFKd8PW1uBw+AOzLISJ0oM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com; spf=pass smtp.mailfrom=ddn.com; dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b=Vxieull2; arc=fail smtp.client-ip=209.222.82.36
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ddn.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="efu7M7RF"
-Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-36bba9a1089so564196a91.3
-        for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 07:12:18 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1780063938; x=1780668738; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=RRnTfBH9bYTxNsieG48Nyv91JQy6+LpC3fmsGgDXrrU=;
-        b=efu7M7RFjjKxbzK1WOu+XInuUKEMMvPeEV0JB5Im/1E7R23OVZRCScmnZR99tygDH9
-         tItbSKm0TtsSzai7v1UecT7UOsQDtlgU4Fo0179Z2G4uckzYvEll/h7Eyb3q/cGOs1DN
-         AlVO+mhf0mwJ64qGmsKtpBX6gEKNUiHbF+nKwThdYZwq0kbnBRzV7EWqM/8nFJjXcTk4
-         clGuj4dBusNIcOEeZ16HKFJTE+6C0okkp7HP2Mt1wftWr86J/jG3DB7P+SaofCiemwH/
-         /WpnlERrg/UarTST/TyS8t4RZh8e8Hh1JbvbMnHyK9/DUX1gP149TdnSRHlbHwxLQrFJ
-         njQg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780063938; x=1780668738;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=RRnTfBH9bYTxNsieG48Nyv91JQy6+LpC3fmsGgDXrrU=;
-        b=hhts1yf5g3/UOL9VGYWuR8FPEeuOVR834HVfnw4aX+1TSwSbQJ6j5kd+TbaFj/wsHa
-         rkowE+tlm3NnObEBW7tm7ebLIzp4XB6FTbU2Y7BTCpu3ACTfDkjHduejiGmWT3uvo0lK
-         dfoCFAJPOL3JdeFHb5NV7grkbFqJ7gstM7iq9YpafUHOI3kwrGIwWyrWkbmkKbOsvsex
-         rVa7dCtuoK49FF/5Xu/UsMGHMRUqqeLDJXLUrCtOuTkDgPG17Bmm4ehNAnndrtZdpIJO
-         qDGDcDjPId2iBMI4hUWwRFaL0Uj0oWUALVYOvc+9YjcosIr9nkXTglYcnmYQ8m9DpPhl
-         g8uQ==
-X-Gm-Message-State: AOJu0YwVbW6mmZGXfyHUCwknJAqk+h77derDAKDVy+hQmjLEXBbxnKR0
-	YUx/V2gMgRAUcIEFfip6qCkkdVCrI1cHYDLIb9snukiyrQFyqObn6/LYV5iBMe86zmE=
-X-Gm-Gg: Acq92OE1ayRtkGk4FPgrqtMDvyiIrekVZ0X2Pt4Br/0Uk2DdctknzuAo0+LkxA8S32q
-	ClgMpbJQNgrZqICmi51kVdarD7JQtka8M9lD6SFjVYsUy1B1L3j27aCTLLfwwBKzaUzhzh2YOQi
-	NulkGTXdlwi8dhQuiqQyD8hepx5Go9ej/sKj8HEVJk3THnhpU5ulKp0wG3PWwWhbpo0MqC98eiC
-	dduW5p/8/c3q/4gYI/RnNuNdFwLQzsH+jKi7UVmZmRbdUB1PNhYQ0jvAu80p43DrV7dK2PFnqNI
-	uHJ21Z5RyLokwFPacWEdrhB/h0j5g9RtBtrcf/FsAsSCsKeObFo/uXlFjJzFpipBn2biava3dju
-	N/6VRa+lIO2OY1RWbDYBsZOMIZJAjTgf5+u0Kt1gG+D1K7vSCgCzY5WFkYA95hHiLPgTD8b3eIW
-	SaSAoUvVW06YkJ9K0o2Bj/q407y7BU8eaMiDwWiszku4O4U2turpswPyCzAUUFcrO88leqDNYu+
-	Kt2rfM=
-X-Received: by 2002:a17:90b:3dc4:b0:36b:9faf:8396 with SMTP id 98e67ed59e1d1-36bbcd407demr3603647a91.11.1780063937900;
-        Fri, 29 May 2026 07:12:17 -0700 (PDT)
-Received: from ?IPV6:240e:390:a90:671:f49e:f306:1054:8e7? ([240e:390:a90:671:f49e:f306:1054:8e7])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-36bc6b7c178sm2048091a91.15.2026.05.29.07.12.14
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 29 May 2026 07:12:17 -0700 (PDT)
-Message-ID: <458bda7a-c3c6-4cb3-9c05-0718cf2ef95f@gmail.com>
-Date: Fri, 29 May 2026 22:12:12 +0800
+	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="Vxieull2"
+Received: from DM1PR04CU001.outbound.protection.outlook.com (mail-centralusazon11020082.outbound.protection.outlook.com [52.101.61.82]) by mx-outbound42-186.us-east-2c.ess.aws.cudaops.com (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO); Fri, 29 May 2026 14:22:04 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=EZVer9rfv7qzm653Nc3SNVCOWw5ripAbKG2+lqHEL7xVcGmxvZGjinrw58TKWzfJjfdBn7fRIshWIMFGoDbSZvL94ZNSMqyeaWPn9x/N65WIDgFqLi7vuZVHnTnGiD6hgmY0jpOdDi149juZfK4oEubgUUcSbboMjN1w/J3JOej4vWIuS8N+Qbhw6QGA/iIjj7nkU1oc9xQubsKKJlbrfck0O++1A0Rj4NmtE8H2woQN0yfBQpljgicNS1B9xLResCy07/TY9TQVbY9WvgaZdF61T014Nuzh61ndmLee67qmfMo7PVKxnMT40vKKMWRwxePwGW3dZYJoWvZilLYKjg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=xw+Q9xYCu8SnYIUaf5fGGcoojOmNUBx/JW2Z+1p3Eys=;
+ b=MWXj1mAzzjp4xJ4eDyoL4bW2KzICzppy2L/YE+ALM36Au67GWhK1BpX9APjQhIfGDuPfh3taQtEE3mT0t6l/JJZPrXo4DpZP0Lj3cSwyEy2HpKntYOcecPZII0noDTzUBLcjm4prQ91/0tum34kXVbEtrXLXNHvDwl3nJSX70qt8arp9nCrbNLT0LAUI/QhMJgcUaxDxvXZ1NphMUokuevyliYarsJ5GPJZP+HUP4ndlW4WFuy0eYhW/0dtBOlyd2DnxmJiGr5NJRRnnYRuVllgVXW+NE1Lw5jE/aG6uc9D0s4Q1tsEV5Oh9B+pkLE7RTNoMu9hpPJZoL2iwQZGikQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
+ header.d=ddn.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=xw+Q9xYCu8SnYIUaf5fGGcoojOmNUBx/JW2Z+1p3Eys=;
+ b=Vxieull2qhdrKfrTi/UFnG7pJnrJL5uSH8y/KgP9eGQPanUVG/u37WKSuqYmsKaYkNk6424ok099eaq8NyaZaE4e/3tmXhunvJDWB1cLLhg4iQQNzLh1spgBRMkySe4nv7hJ9AlhpL7VHvlF2txAtOITkUtxVBnkevKFd/4tEHE=
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=ddn.com;
+Received: from SA1PR19MB5570.namprd19.prod.outlook.com (2603:10b6:806:236::11)
+ by BL0PR1901MB4721.namprd19.prod.outlook.com (2603:10b6:208:1ce::19) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.71.15; Fri, 29 May
+ 2026 11:47:48 +0000
+Received: from SA1PR19MB5570.namprd19.prod.outlook.com
+ ([fe80::6167:d6e1:2c7b:a9d0]) by SA1PR19MB5570.namprd19.prod.outlook.com
+ ([fe80::6167:d6e1:2c7b:a9d0%5]) with mapi id 15.21.0071.011; Fri, 29 May 2026
+ 11:47:48 +0000
+Date: Fri, 29 May 2026 13:47:38 +0200
+From: Etienne AUJAMES <eaujames@ddn.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger@thelustrecollective.com, dongyangli@ddn.com
+Subject: [PATCH 0/4] e2fsck: Fix orphan inodes processing
+Message-ID: <ahl82qlLIuodouNz@eaujamesFR0130>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+X-ClientProxiedBy: PA7P264CA0351.FRAP264.PROD.OUTLOOK.COM
+ (2603:10a6:102:37c::7) To SA1PR19MB5570.namprd19.prod.outlook.com
+ (2603:10b6:806:236::11)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 09/23] ext4: implement writeback path using iomap
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
- djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
- yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-10-yi.zhang@huaweicloud.com>
- <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: SA1PR19MB5570:EE_|BL0PR1901MB4721:EE_
+X-MS-Office365-Filtering-Correlation-Id: 45eef8c7-5fd7-4ad6-e05f-08debd781b6c
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|19092799006|1800799024|376014|10070799003|366016|18002099003|56012099006|11063799006;
+X-Microsoft-Antispam-Message-Info:
+	J6t43UfNHqAhJ5PvcUipaMAix9zJM0LF5PbkWuxav5t8ghchpbb70NfYjgJdVzFsTKyWPjaKBnF/46jPWbRIW1r3yFy3H5Kk+/g3l6x9lbqY6Cq3BXJN7dQmS09MD88HhDkdl6qvpxE+bvAsHRYXCwtanI2sjoT6NsfYLcvg3qZAygRbxx19KiQEsJ5w0ZtxVLQmb6R5LU6zqtAVt67sG9BJWJaXFcQUyCHXljcpE8DDjyAVXb49JKBGMezlDIRpYC13qCm3gxjD39kXJqugEjnibzGsPEq6KQArEFmbgaSY4XqY4W1NpZTb41Sgg5cyvu0iJg73lX+7Q8DF/cGkQ2NakD7/evVWkx4JasfAdZQBbYd0Lq75xSUEE9UwYUq9wmmBlc1U3dws6LnH+VawyH8370SSrTPOBF6H6RyyFcrC+Q/1wwQPpNiGvUfx+YdbAAVa2x7sZdKuqOcI1FJi2rrgmVSRHCEDaUIrnO/dpxFM9O56LlGgEBIzFPfJUQPj6CKPcUKZLyb3OmpXPXkW9lAdHh6Wp+eZSte4yMrIVT3VfUfrSfvh4miusEbvp+6gWYj7p/DMrr+d1ApTVqfO2v0xCRznL1T1QDO8XfCJA39gGg8Khq7yiC58os3ya2S+KoXpfCNZM3+RgLebFE3BMZKDpTUpv6M2tojgeI2uWyKiZ7KOSrsKQb7gcqmHbrT1
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA1PR19MB5570.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(19092799006)(1800799024)(376014)(10070799003)(366016)(18002099003)(56012099006)(11063799006);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?QHD2gAZDMjhwHIsTq/RO31lq1JZU+tVLdBtl9s8Y/P0jUcqZq+l+9+GkOBEp?=
+ =?us-ascii?Q?AcOTMPvB77gJm9Zgswoeg0BrCrsURXjjHRF4J3yxjwD9xjhr2mfArLW0EzrT?=
+ =?us-ascii?Q?S7KpEkZogCqo6PWe+AW/N9SmnZBIhLR5VoBNF6kaHGPeVAxuh3B1a/Atzr80?=
+ =?us-ascii?Q?I+PxK4kOtR8MWTMkxDhhxfIAz0zZ96rz37OmjgjjiAE8tZCk9lG/jAKndGsi?=
+ =?us-ascii?Q?HJNafHqP4kjjfmkIZLUjMTApAx3F02A5n3T5wejoG3x0I6tyb9zCZcpNTJ5M?=
+ =?us-ascii?Q?zKUY2OXrYdHLG+Hk05MH9YlxeO2Ec/UM3NT7WaQD0KMVxLVeuc09G/NoDt5m?=
+ =?us-ascii?Q?N3yHghlGWtX/fUTGO6Y4VXrcnEvZeqHQKZvs4WlMz6SUvdLc1EM9GXv3GGj+?=
+ =?us-ascii?Q?yJMMGu9XZQz8CefXP0izrXeY0g0mTHvJmGGXvXvJ3DHzp6BtHN2VSVDtViWS?=
+ =?us-ascii?Q?FrMgElLwMaZcCrEPODVtrvi9ihDefFduHMW57FO66kEOqls0oYUcteK/iMIs?=
+ =?us-ascii?Q?20BYsiaC0qQrgVuftFEr0npNQ2RxOJpBSYgNuowEEfHeRZ9IDS1F7xxqTUC6?=
+ =?us-ascii?Q?KAiGYomJblhdbt13DiwneVVqm45BcKp2zTGiXviSYFUHuKBCISFh4ONwkhWq?=
+ =?us-ascii?Q?SdEw+HVmktp6e5UFihjl7onTaI5mm+GdFn6VRMxtCZEVWkXDfvHzbTyOagpk?=
+ =?us-ascii?Q?D2TQReHKdNn55PWRbNPxHZhjNFq56mjagi8n2WYDjn5LFuOJfCCf594mUPjg?=
+ =?us-ascii?Q?s1F+SDbia/eR42zrvZK/Lj7b3R2q5odnPwGb/huzajcH/8pj4zs8gtg5os9K?=
+ =?us-ascii?Q?mOM4DL4CTmwGrXh0NLiiKyvPE3aNkgRHe5NpPbj6f3F/FeQ0OchfyCljzkOv?=
+ =?us-ascii?Q?E79koGhISi3R6Y4siOYI9TUun/ESN0PFRzaG+cbARpg+Ml3DRgq9NdYLjtFE?=
+ =?us-ascii?Q?ZnkOhav/YbQEZx4CFRGSwmB5Qq5oayu70ZtZaGExoVHw/xny9u4aW6pktnw1?=
+ =?us-ascii?Q?ZESqwjRjnwcQfFBT2XrvJheStlnewbAB1N9wO642EQfShY73kAp4pWE99jMF?=
+ =?us-ascii?Q?6M1Uw4gcsP6r6m5iNANLGen912ugeSijqMUNx0koqJF9KxlM33epbyxPRBmo?=
+ =?us-ascii?Q?rAcPiThRy5OFBvEmQdHOs0HwWf3vE76fu37n9fWlUOcfUuoWWf2C7c2kPhWH?=
+ =?us-ascii?Q?nX/UMEZmHxkQbcoOJI8xOV66c0fch5UmiiWLFeibLxhzoT3NXO3g5HVw6j6A?=
+ =?us-ascii?Q?fVwIOdiOR2hBm0O9xyy7/sD+t0BOF2THooa/6802XXVlpRdxF7QnoPuhexbV?=
+ =?us-ascii?Q?uw+qJlpMlJtvtgfJ/zYuw6acTUKg8AI+lfQmlr++krRCrg/XA/gKD3skX+7W?=
+ =?us-ascii?Q?l4qpDvWOcDFrIJD6EI+BAuhtqBt3RfoHN0Lj8qvuHXqDo2aAA6shpU78BxI/?=
+ =?us-ascii?Q?Cg+skW77BHk89rVPp5TQjEN1Gev3xvkMVXD1m2DhgjW4oEU2ZHEEA1Ont2ga?=
+ =?us-ascii?Q?/IZPnq2BmGUG91n5n7OpMmZ37wjk9m0SrPoVoq1cCl90dCxlp4b0987WeESd?=
+ =?us-ascii?Q?dB0gUw4oKVdQQ288ak9Rg7dNy48MF+V2txmi5IOjNtBuilNWxXOMLIv8/uc9?=
+ =?us-ascii?Q?4Pc2Djz7MJ/2CxyijtHcmVb0uaWwc/zrygNPL0T5gOH4GClhkP3VWv+NEoms?=
+ =?us-ascii?Q?ykfPwGmg4P3fYVDd/InbKPRoCAZzOseoc2yOVdKRCNhEofuLXqiQzbqLqsYV?=
+ =?us-ascii?Q?8tvVSwoi/HaadAWjrDtfsccJLQUGKHNQGNf4v8Q3tK3dLkpdyyTv?=
+X-Exchange-RoutingPolicyChecked:
+	Tqc2kZXG+qO1L0GFlx/eYkawUgTb0cOj9NYWOjnoOyb8REixX2gTOuwnxPXbJw7PxLy6/6jSNrT66iQJ1aTfoiKqW5hGY055lBbrwsz4ZLUs/ouMYoOcCZxhXsLcTH3RI7jdqHb38eVenO00hOi8Ttf3zaMPKmtYl5XzuqBkZAIizyQLb5vwlOuk3ywOCk42RdQl9X7cc8U8hiaBB1S9PPAEWcMQYblUirv1bOpoq9mtC9Z+EgsWwpKrxNbHAu/WRhJE/Q2fwitkm4Pynh6Roj1iZKfGkxdOCFs346LPdrV/il7jvIkNmWq1hryRZ2D6LS8dmO09iI0SzFvGUbSorA==
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
+	8VDijarERH25pcIaqB9pLUtCkt4w23NmdhW2BY8CY/cWjVuYX61K76QCWJjNSIwFkz+AhAPfZ6NPWn3j0EaOl/BjfztLKSRmbvbmGpHlQUCtWKAbxl3cVBYvpprGJ0lQJT/vgWM0gdk7Jg6iGRzpVowjunnpWfN5xAOGpItjcteQJ1kktKqf+BtA9fWPDV/nB8YeuZxHsAcpvTUhkaIZlk7myCK+ZOLg2k07TZAQcOocnPWVFp7pnbWWg40YGjXsJ+sii1JwN588odIMjYtqlI15MbcWbZlwP24SkJJGhU0E7zFFkOkBCKC2A9G+W1dlMBOOgf4t+WdG96G2q+os0HQpkHxotslWlW4pGmW17ckRAfYK61NSpwIXG6VLsu5f4RN4NUlgMBAMtizd/VVIgLwHotTqgKiy+lMhEHBDxk1BluDhaZhVet8tfJuFfGVIpovNw3R8CGlE7L8w/TGUx3SZKAsAK6o23MI2d5+4BihVz7kSzN0KUiw5Nks+Qpqp9eEbF+vsSLNhkBgnW/QvWlmt7MyHj3m8WDR/t77YSNM71zTiVHU86/0VXn1uf11OUreGDorINk+d18PtthzAo0RNI3VYsQCi6/1zOaMyb5x6VLMdGo/b2drPq3/0Vsl80j20BGO2OANmdb60X/3h8w==
+X-MS-Exchange-CrossTenant-Network-Message-Id: 45eef8c7-5fd7-4ad6-e05f-08debd781b6c
+X-MS-Exchange-CrossTenant-AuthSource: SA1PR19MB5570.namprd19.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 29 May 2026 11:47:48.8541
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: sTIKTlXD93QJxnkHXPuGvX4Lb3MrLsCRijH2QwhFw9vDHbZzZEv0TeGF8YheexnjaOIgEHLJUnXCT40h3fY2Og==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR1901MB4721
+X-OriginatorOrg: ddn.com
+X-BESS-ID: 1780064524-110938-7720-7753-1
+X-BESS-VER: 2019.1_20260519.1529
+X-BESS-Apparent-Source-IP: 52.101.61.82
+X-BESS-Parts: H4sIAAAAAAACA4uuVkqtKFGyUioBkjpK+cVKVsaWpqZAVgZQMM3QLC0pLTnVyD
+	LZwtzAOCU1ySQpxdzM1MjIJNk01cxCqTYWABmmi0dBAAAA
+X-BESS-Outbound-Spam-Score: 0.00
+X-BESS-Outbound-Spam-Report: Code version 3.2, rules version 3.2.2.273539 [from 
+	cloudscan17-56.us-east-2b.ess.aws.cudaops.com]
+	Rule breakdown below
+	 pts rule name              description
+	---- ---------------------- --------------------------------
+	0.00 BSF_BESS_OUTBOUND      META: BESS Outbound 
+X-BESS-Outbound-Spam-Status: SCORE=0.00 using account:ESS124931 scores of KILL_LEVEL=7.0 tests=BSF_BESS_OUTBOUND
+X-BESS-BRTS-Status:1
 
-Hi, Ojaswin!
+e2fsck does not handle properly orphan inodes.
 
-On 5/27/2026 8:49 PM, Ojaswin Mujoo wrote:
-> On Mon, May 11, 2026 at 03:23:29PM +0800, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> Add the iomap writeback path for ext4 buffered I/O. This introduces:
->>
->>   - ext4_iomap_writepages(): the main writeback entry point.
->>   - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
->>     block mapping and I/O submission.
->>   - A new end I/O worker for converting unwritten extents, updating file
->>     size, and handling DATA_ERR_ABORT after I/O completion.
->>
->> Core implementation details:
->>
->>   - ->writeback_range() callback
->>     Calls ext4_iomap_map_writeback_range() to query the longest range of
->>     existing mapped extents. For performance, when a block range is not
->>     yet allocated, it allocates based on the writeback length and delalloc
->>     extent length, rather than allocating for a single folio at a time.
->>     The folio is then added to an iomap_ioend instance.
->>
->>   - ->writeback_submit() callback
->>     Registers ext4_iomap_end_bio() as the end bio callback. This callback
->>     schedules a worker to handle:
->>     - Unwritten extent conversion.
->>     - i_disksize update after data is written back.
->>     - Journal abort on writeback I/O failure.
-> 
-> Hi Zhang, the changes look good. I have a few comments below:
->>
->> Key changes and considerations:
->>
->> - Append write and unwritten extents
->>    Since data=ordered mode is not used to prevent stale data exposure
->>    during append writebacks, new blocks are always allocated as unwritten
->>    extents (i.e. always enable dioread_nolock), and i_disksize update is
->>    postponed until I/O completion.
-> 
-> Makes sense.
-> 
->>    Additionally, the deadlock that the
->>    reserve handle was expected to resolve does not occur anymore.
-> 
-> I guess this is since we don't use ordered data so we can't block on
-> starting a txn in end io.
+Case 1: bad free_blocks accounting with extent files
 
-Yep.
+ # e2fsck -v /tmp/ext4
+ e2fsck 1.47.3-wc2 (11-Nov-2025)
+ Truncating orphaned inode 12 (uid=0, gid=0, mode=0100644, size=4096)
+ Setting free blocks count to 2554682 (was 2554683)
+ /tmp/ext4: clean, 13/655360 files, 66758/2621440 blocks
 
-> 
->>    Therefore, the end I/O worker can start a normal journal handle
->>    instead of a reserve handle when converting unwritten extents.
->>
->> - Lock ordering
->>    The ->writeback_range() callback runs under the folio lock, requiring
->>    the journal handle to be started under that same lock. This reverses
->>    the order compared to the buffer_head writeback path. The lock ordering
->>    documentation in super.c has been updated accordingly.
->>
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> ---
->>   fs/ext4/ext4.h        |   4 +
->>   fs/ext4/inode.c       | 208 +++++++++++++++++++++++++++++++++++++++++-
->>   fs/ext4/page-io.c     | 126 +++++++++++++++++++++++++
->>   fs/ext4/super.c       |   7 +-
->>   fs/iomap/ioend.c      |   3 +-
->>   include/linux/iomap.h |   1 +
->>   6 files changed, 346 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 4832e7f7db82..078feda47e36 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -1173,6 +1173,8 @@ struct ext4_inode_info {
->>   	 */
->>   	struct list_head i_rsv_conversion_list;
->>   	struct work_struct i_rsv_conversion_work;
->> +	struct list_head i_iomap_ioend_list;
->> +	struct work_struct i_iomap_ioend_work;
->>   
->>   	/*
->>   	 * Transactions that contain inode's metadata needed to complete
->> @@ -3870,6 +3872,8 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
->>   		size_t len);
->>   extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
->>   extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
->> +extern void ext4_iomap_end_io(struct work_struct *work);
->> +extern void ext4_iomap_end_bio(struct bio *bio);
->>   
->>   /* mmp.c */
->>   extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 1ae7d3f4a1c8..a80195bd6f20 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -44,6 +44,7 @@
->>   #include <linux/iversion.h>
->>   
->>   #include "ext4_jbd2.h"
->> +#include "ext4_extents.h"
->>   #include "xattr.h"
->>   #include "acl.h"
->>   #include "truncate.h"
->> @@ -4120,10 +4121,215 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
->>   	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
->>   }
->>   
->> +static int ext4_iomap_map_one_extent(struct inode *inode,
->> +				     struct ext4_map_blocks *map)
->> +{
->> +	struct extent_status es;
->> +	handle_t *handle = NULL;
->> +	int credits, map_flags;
->> +	int retval;
->> +
->> +	credits = ext4_chunk_trans_blocks(inode, map->m_len);
->> +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
->> +	if (IS_ERR(handle))
->> +		return PTR_ERR(handle);
->> +
->> +	map->m_flags = 0;
->> +	/*
->> +	 * It is necessary to look up extent and map blocks under i_data_sem
->> +	 * in write mode, otherwise, the delalloc extent may become stale
->> +	 * during concurrent truncate operations.
->> +	 */
->> +	ext4_fc_track_inode(handle, inode);
->> +	down_write(&EXT4_I(inode)->i_data_sem);
->> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
->> +		retval = es.es_len - (map->m_lblk - es.es_lblk);
->> +		map->m_len = min_t(unsigned int, retval, map->m_len);
->> +
->> +		if (ext4_es_is_delayed(&es)) {
-> 
-> I understand that it is okay for us to rely on extent status ==
-> delayed here because we never reclaim delayed es entries and hence we
-> are sure to not skip any delayed block allocations here.
+ # e2fsck -yf /tmp/ext4
+ e2fsck 1.47.3-wc2 (11-Nov-2025)
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Pass 5: Checking group summary information
+ Free blocks count wrong (2554682, counted=2554683).
+ Fix<y>? yes
 
-Yeah, right.
+Case 2: e2fsck does not support orphan inodes with ea_inode
 
-> 
->> +			map->m_flags |= EXT4_MAP_DELAYED;
->> +			trace_ext4_da_write_pages_extent(inode, map);
->> +			/*
->> +			 * Call ext4_map_create_blocks() to allocate any
->> +			 * delayed allocation blocks. It is possible that
->> +			 * we're going to need more metadata blocks, however
->> +			 * we must not fail because we're in writeback and
->> +			 * there is nothing we can do so it might result in
->> +			 * data loss. So use reserved blocks to allocate
->> +			 * metadata if possible.
->> +			 */
->> +			map_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
->> +				    EXT4_GET_BLOCKS_METADATA_NOFAIL |
->> +				    EXT4_EX_NOCACHE;
->> +
->> +			retval = ext4_map_create_blocks(handle, inode, map,
->> +							map_flags);
->> +			if (retval > 0)
->> +				ext4_fc_track_range(handle, inode, map->m_lblk,
->> +						map->m_lblk + map->m_len - 1);
->> +			goto out;
->> +		} else if (unlikely(ext4_es_is_hole(&es)))
-> 
-> Now that you've fixed the partial invalidate in iomap (patch 12/23)
-> can we still hit this hole case?
+ # e2fsck -yf /tmp/ext4                                
+ e2fsck 1.47.3-wc2 (11-Nov-2025)
+ Clearing orphaned inode 12 (uid=0, gid=0, mode=0100644, size=0)
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Regular filesystem inode 13 has EA_INODE flag set. Clear<y>? yes
+ Unattached inode 13
+ Connect to /lost+found<y>? yes
+ Inode 13 ref count is 2, should be 1.  Fix<y>? yes
+ Pass 5: Checking group summary information
 
-Theoretically, no hole should be encountered; this is just defensive
-programming.
+Patch 1 fixes the first case.
+Patch 2 includes quota function in libext2fs (required by patch 2).
+Patch 3 fixes ext2fs_xattrs_* function to update inode iblk and quota.
+Patch 4 fixes the second case.
 
-> 
->> +			goto out;
->> +
->> +		/* Found written or unwritten extent. */
->> +		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
->> +		map->m_flags = ext4_es_is_written(&es) ?
->> +			       EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
->> +		goto out;
->> +	}
->> +
->> +	retval = ext4_map_query_blocks(handle, inode, map, EXT4_EX_NOCACHE);
->> +out:
->> +	up_write(&EXT4_I(inode)->i_data_sem);
->> +	ext4_journal_stop(handle);
->> +	return retval < 0 ? retval : 0;
->> +}
->> +
->> +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
->> +					  loff_t offset, unsigned int dirty_len)
->> +{
->> +	struct inode *inode = wpc->inode;
->> +	struct super_block *sb = inode->i_sb;
->> +	struct journal_s *journal = EXT4_SB(sb)->s_journal;
->> +	struct ext4_map_blocks map;
->> +	unsigned int blkbits = inode->i_blkbits;
->> +	unsigned int index = offset >> blkbits;
->> +	unsigned int blk_end, blk_len;
->> +	int ret;
->> +
->> +	ret = ext4_emergency_state(sb);
->> +	if (unlikely(ret))
->> +		return ret;
->> +
->> +	/* Check validity of the cached writeback mapping. */
->> +	if (offset >= wpc->iomap.offset &&
->> +	    offset < wpc->iomap.offset + wpc->iomap.length &&
->> +	    ext4_iomap_valid(inode, &wpc->iomap))
->> +		return 0;
->> +
->> +	blk_len = dirty_len >> blkbits;
->> +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
->> +				      (UINT_MAX - 1));
-> 
-> This is an interesting idea. I'm just a bit worried when we have
-> range_end == LLONG_MAX (bg flush) and we will always be trying to allocate
-> MAX_WRITEPAGES, incase of a slightly fragmented FS, we might keep
-> falling into slower mballoc criterias and might waste a lot of time
-> scanning the groups.
+Bugs tracked by: https://jira.whamcloud.com/browse/LU-20049
 
-Actually, MAX_WRITEPAGES is not allocated every time; the allocated
-length also depends on the length of data that has already been delayed
-for writing, and the smaller value is taken. If the user has indeed
-performed delalloc writes on data of up to MAX_WRITEPAGES in length,
-then regardless of how fragmented the file system is, I will need to
-allocate blocks of that length. Reducing the number of calls is always
-beneficial.
+Etienne AUJAMES (3):
+  e2fsck: fix orphaned extent files handling
+  libext2fs: update iblock when using ea_inode feature
+  libext2fs: add ext2fs_xattrs_release_all() helper
 
-> 
->> +	if (blk_end > index + blk_len)
->> +		blk_len = blk_end - index + 1;
->> +
->> +retry:
->> +	map.m_lblk = index;
->> +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
->> +	ret = ext4_map_blocks(NULL, inode, &map,
->> +			      EXT4_GET_BLOCKS_IO_SUBMIT | EXT4_EX_NOCACHE);
-> 
-> Do we really need the IO_SUBMIT flag here now that we are:
-> 1. Not using ordered data
-> 2. We anyways don't use it in ext4_iomap_map_one_extent().
-> 
-> I think we can drop it.
+Li Dongyang (1):
+  libext2fs: add quota to libext2fs
 
-We can't drop it, because IO_SUBMIT is also used to avoid the check of
-ext4_check_map_extents_env() in ext4_map_blocks() under the writeback
-path.
+ debugfs/debugfs.c                             |  33 +-
+ debugfs/xattrs.c                              |  19 +-
+ e2fsck/pass1.c                                |  12 +-
+ e2fsck/super.c                                | 295 +++++++++---------
+ lib/ext2fs/Makefile.in                        |  43 +++
+ lib/ext2fs/ext2fs.h                           |  10 +
+ lib/ext2fs/ext_attr.c                         | 268 +++++++++++-----
+ lib/ext2fs/i_block.c                          |  14 +
+ lib/support/quotaio.h                         |   1 -
+ misc/create_inode_libarchive.c                |  35 ++-
+ misc/fuse2fs.c                                | 117 +++----
+ tests/d_xattr_ea_inode/expect                 | 188 +++++++++++
+ tests/d_xattr_ea_inode/name                   |   1 +
+ tests/d_xattr_ea_inode/script                 | 104 ++++++
+ tests/f_orphan_ea_inode/expect.1              |   6 +
+ tests/f_orphan_ea_inode/expect.2              |   7 +
+ tests/f_orphan_ea_inode/image.gz              | Bin 0 -> 2139 bytes
+ tests/f_orphan_ea_inode/name                  |   1 +
+ tests/f_orphan_ea_inode/script                |   3 +
+ .../f_orphan_truncate_extents_inode/expect.1  |   3 +
+ .../f_orphan_truncate_extents_inode/expect.2  |   7 +
+ .../f_orphan_truncate_extents_inode/image.gz  | Bin 0 -> 2854 bytes
+ tests/f_orphan_truncate_extents_inode/name    |   1 +
+ tests/f_orphan_truncate_extents_inode/script  |   3 +
+ 24 files changed, 842 insertions(+), 329 deletions(-)
+ create mode 100644 tests/d_xattr_ea_inode/expect
+ create mode 100644 tests/d_xattr_ea_inode/name
+ create mode 100644 tests/d_xattr_ea_inode/script
+ create mode 100644 tests/f_orphan_ea_inode/expect.1
+ create mode 100644 tests/f_orphan_ea_inode/expect.2
+ create mode 100644 tests/f_orphan_ea_inode/image.gz
+ create mode 100644 tests/f_orphan_ea_inode/name
+ create mode 100644 tests/f_orphan_ea_inode/script
+ create mode 100644 tests/f_orphan_truncate_extents_inode/expect.1
+ create mode 100644 tests/f_orphan_truncate_extents_inode/expect.2
+ create mode 100644 tests/f_orphan_truncate_extents_inode/image.gz
+ create mode 100644 tests/f_orphan_truncate_extents_inode/name
+ create mode 100644 tests/f_orphan_truncate_extents_inode/script
 
-Cheers,
-Yi.
-
-> 
->> +	if (ret < 0)
->> +		return ret;
->> +
->> +	/*
->> +	 * The map is not a delalloc extent, it must either be a hole
->> +	 * or an extent which have already been allocated.
->> +	 */
->> +	if (!(map.m_flags & EXT4_MAP_DELAYED))
->> +		goto out;
->> +
->> +	/* Map one delalloc extent. */
->> +	ret = ext4_iomap_map_one_extent(inode, &map);
->> +	if (ret < 0) {
->> +		if (ext4_emergency_state(sb))
->> +			return ret;
->> +
->> +		/*
->> +		 * Retry transient ENOSPC errors, if
->> +		 * ext4_count_free_blocks() is non-zero, a commit
->> +		 * should free up blocks.
->> +		 */
->> +		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb)) {
->> +			jbd2_journal_force_commit_nested(journal);
->> +			goto retry;
->> +		}
->> +
->> +		ext4_msg(sb, KERN_CRIT,
->> +			 "Delayed block allocation failed for inode %llu at logical offset %llu with max blocks %u with error %d",
->> +			 inode->i_ino, (unsigned long long)map.m_lblk,
->> +			 (unsigned int)map.m_len, -ret);
->> +		ext4_msg(sb, KERN_CRIT,
->> +			 "This should not happen!! Data will be lost\n");
->> +		if (ret == -ENOSPC)
->> +			ext4_print_free_blocks(inode);
->> +		return ret;
->> +	}
->> +out:
->> +	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
->> +	return 0;
->> +}
->> +
-> 
-> <snip>
->>
+-- 
+2.43.7
 
