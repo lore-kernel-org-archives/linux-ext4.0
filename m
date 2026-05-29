@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6190434F259;
-	Fri, 29 May 2026 08:43:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEE452E7399;
+	Fri, 29 May 2026 08:43:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780044234; cv=none; b=rGlrrvhA5IbVNQVVYInrx9Fb1vqsv2Y+/mYIKqFntTsJOGu8e3sYdlDTC/5y4C7JPoetNikguYZp3A9ibS5Rqnn8f11WX0f4AaGmkMzBaMjG7E0bSx0xQNfJJD4Nj7RjuW1WvjRsogHsZ/fQsAWWY5Mh9XpUbBlGbmy2DTP/Eg8=
+	t=1780044236; cv=none; b=AxMg5uLhIouZOdpwTWMlEzAleX5hPzvR56cF+7OSfFIScO9onPIgTc5ligDGqr+CUAyfbeOyyEMZDJslPWSYs1CLsxuztEMQD6aWDhgQsU8RqFyrS+WkoV7FcGD/puIYwOAEIyw1agSX6i3P9V+Hd398AM3cnpb8ML7L8hWBjBs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780044234; c=relaxed/simple;
-	bh=jbv0e0UK8Foq77XiEZ0D9pv3i2mZ9QxiUA/GapR/NIc=;
+	s=arc-20240116; t=1780044236; c=relaxed/simple;
+	bh=KOBtZuPTgrJC+dZMhfC91v9mwXHF8GOtBZxrKD5tDKU=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=U5rEZzfKoPwgP36dux1k/I9iUIHwUAOKo+cv7Q5vTFuxf6vEphg/0Q20nQ1+ePUO+MsckW0SqCRwmVcQAJNxQN2KhOZvfxAg8k1XEE1yUsg8rZq1fBibukvrgpQneKTjx9PdLtOPE3FiIbJ+/c6AXsge7liEdK/6aWYckrcwjTg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oVfZQCto; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=IqtF03LK9e2/ZztZ4+0JNfBQSKVQmB4fddum6GPjkxDSRObp60VtWNtD+D0VdLZKj+ceIKZ7KKJO29bOJWYUQ1jdKbbnw81vLL7j3/UsGD8DXx7/yQFP907x4UMhwgFA1uuuRaWkChiYLbAw3do6ntrpMZK3c/Varbx55Q80Rz8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gR4zpL9p; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oVfZQCto"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 145D91F00899;
-	Fri, 29 May 2026 08:43:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gR4zpL9p"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 754E41F00893;
+	Fri, 29 May 2026 08:43:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780044233;
-	bh=FoBKUDf7V4kIgk99vmo9HWfzrUU9xwOAAvRzErDHe48=;
+	s=k20260515; t=1780044235;
+	bh=lPTSEQkCqju5xOcNWwjQP4gph/sltq+tC4EgXJSVwx4=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=oVfZQCto+uOmnUcJJ3y6/kj2cgd0wuyXoi2cYk++lBZbgD8QDn6Y241LH9rqrI/Vk
-	 l8l8AQZRyhInClCg41rIduGKmtYgPHWw/P6lNCpIv6JnaTvG9agPcW0evpuEAHn0Ne
-	 R12OQNyP8a46eaHZkt2Lmnxe2UCU2eXfylO21mQHPzjPAwHd5FVcUMJaxMH1rm1V5r
-	 jwl4/p6r3P56O+V/tUJgzo3Oz8EJ/5rSqIyYzBWfI94ERM+vGr4oKEXPfPQEUsRv5s
-	 89Zbe52gnUGgYSgOmem3Qeb8/h3M7utNSYtd/VP/syyBfdP4fBljwW7+zu84pT3kic
-	 e2TN3XcY3o9pw==
+	b=gR4zpL9pEzciluh1V9oVN0APaXWw76NrebsRkFfPyIZpb9FnScQxgBBu2GvkS+YfB
+	 w47DWPWcQe+zi9W5eu30kmayI0lZmYFl572bK/WHHkWuTcL036nKTiB7hTwMNAbbBg
+	 fNfrediI/s8UgUUD5b9uPTsgCPlXjjgrGudeCws1FXZRxC3A8YRpEo0giQ4JY+1Gki
+	 dbbRbNfVTbASfFp6Tc1WBB4OJBKAlfFXkjfWZZ5qIO0Og710DwbbqGX46lCUdMsFid
+	 MZSN+UcamzPVldwzpVdpS8Vqw2vkPbHflEpDNQ4hVhVJdwov63lzauteQpFviKtdrb
+	 JZU1KY4m5bldA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Fri, 29 May 2026 10:43:41 +0200
-Subject: [PATCH v2 2/4] ext4: convert mballoc KUnit test to sget_fc()
+Date: Fri, 29 May 2026 10:43:42 +0200
+Subject: [PATCH v2 3/4] smb: client: convert cifs_smb3_do_mount() to
+ sget_fc()
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260529-work-sget-v2-2-57bbe08604e4@kernel.org>
+Message-Id: <20260529-work-sget-v2-3-57bbe08604e4@kernel.org>
 References: <20260529-work-sget-v2-0-57bbe08604e4@kernel.org>
 In-Reply-To: <20260529-work-sget-v2-0-57bbe08604e4@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -47,88 +48,214 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
  linux-cifs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.16-dev-fffa9
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2130; i=brauner@kernel.org;
- h=from:subject:message-id; bh=jbv0e0UK8Foq77XiEZ0D9pv3i2mZ9QxiUA/GapR/NIc=;
- b=kA0DAAoWkcYbwGV43KIByyZiAGoZUcHIRBxKcDWKclwSxsWCNLr2EC5/6qCvC9mKUjSvFrRbS
- Ih1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmoZUcEACgkQkcYbwGV43KLsCgD/fKbP
- O3dBKJkQATlt8Rl3pztqviDEy7hPYuzpUlo/9GEBAI2ywG696OzS5rAzkhst0s9qd4iAqVASz9a
- u9Op0JhcH
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7596; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=KOBtZuPTgrJC+dZMhfC91v9mwXHF8GOtBZxrKD5tDKU=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRJBh70UyjkWv+J5zXLfDX1hTXp2TyzG3UPXb39ccu78
+ KkN0Q/Xd5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAExkbwYjwzx15oiflzffLb8r
+ 5Onrtvx/X/XSnFkJD//ITLRdNmfljKeMDPsvSOSnCOpWv/WyWLd3MZt7tQJTzC2LD253zxvbNnU
+ tZwMA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Same treatment as the extents KUnit test. The mballoc test uses sget()
-as a thin "give me an initialized superblock" wrapper for a fake
-file_system_type. Move it onto sget_fc() so sget() can go away.
+The CIFS mount path already runs through fs_context: smb3_get_tree()
+calls smb3_get_tree_common() with a struct fs_context * in hand. But
+the fc is dropped on the way to sget(). Plumb it through to sget_fc()
+so the legacy sget() interface can go.
 
-Add a no-op mbt_init_fs_context() so fs_context_for_mount() has
-something to call on the fake fs_type. mbt_set() now takes a struct
-fs_context * (still a no-op). mbt_ext4_alloc_super_block() allocates
-the fc, hands it to sget_fc() and drops the fc reference once the sb
-is published.
+cifs_smb3_do_mount() now takes (struct fs_context *, struct
+smb3_fs_context *). The old (fs_type, flags) pair is reconstructed
+from fc->fs_type and fc->sb_flags. The flags argument was always
+passed as 0 by the sole caller anyway. The cifs_dbg diagnostic now
+prints fc->sb_flags directly.
 
-No functional change.
+cifs_match_super() and cifs_set_super() were the two void-data
+callbacks for sget(). The match callback now takes
+(struct super_block *, struct fs_context *) and reads struct
+cifs_mnt_data out of fc->sget_key. The set callback is gone entirely:
+sget_fc() pre-populates sb->s_fs_info from fc->s_fs_info before
+invoking set() so set_anon_super_fc() (which just allocates an anon
+bdev) is sufficient.
+
+Before sget_fc() we stash cifs_sb in fc->s_fs_info, the per-mount data
+in fc->sget_key and force fc->sb_flags to SB_NODIRATIME | SB_NOATIME
+to reproduce the previous hard-coded behaviour (alloc_super() reads
+fc->sb_flags). The original sb_flags is saved and restored around the
+call so the rest of the mount path sees the same fc semantics as
+before.
+
+mnt_data.flags keeps its historical value of 0 so the CIFS_MS_MASK
+comparison in compare_mount_options() returns the same (always-equal)
+result.
+
+No functional change. With this in place sget() has no remaining CIFS
+caller.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/ext4/mballoc-test.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ fs/smb/client/cifsfs.c     | 43 ++++++++++++++++++++++++++-----------------
+ fs/smb/client/cifsfs.h     |  3 ++-
+ fs/smb/client/cifsproto.h  |  3 ++-
+ fs/smb/client/connect.c    |  5 +++--
+ fs/smb/client/fs_context.c |  2 +-
+ 5 files changed, 34 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/mballoc-test.c b/fs/ext4/mballoc-test.c
-index 90ed505fa4b1..d90da44aadbd 100644
---- a/fs/ext4/mballoc-test.c
-+++ b/fs/ext4/mballoc-test.c
-@@ -5,6 +5,7 @@
+diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
+index 9f76b0347fa9..d5074e3fbb85 100644
+--- a/fs/smb/client/cifsfs.c
++++ b/fs/smb/client/cifsfs.c
+@@ -12,6 +12,7 @@
  
- #include <kunit/test.h>
- #include <kunit/static_stub.h>
+ #include <linux/module.h>
+ #include <linux/fs.h>
 +#include <linux/fs_context.h>
- #include <linux/random.h>
- 
- #include "ext4.h"
-@@ -63,8 +64,14 @@ static void mbt_kill_sb(struct super_block *sb)
- 	generic_shutdown_super(sb);
+ #include <linux/filelock.h>
+ #include <linux/mount.h>
+ #include <linux/slab.h>
+@@ -966,26 +967,19 @@ cifs_get_root(struct smb3_fs_context *ctx, struct super_block *sb)
+ 	return dentry;
  }
  
-+static int mbt_init_fs_context(struct fs_context *fc)
-+{
-+	return 0;
-+}
-+
- static struct file_system_type mbt_fs_type = {
- 	.name			= "mballoc test",
-+	.init_fs_context	= mbt_init_fs_context,
- 	.kill_sb		= mbt_kill_sb,
- };
- 
-@@ -127,7 +134,7 @@ static void mbt_mb_release(struct super_block *sb)
- 	kfree(sb->s_bdev);
- }
- 
--static int mbt_set(struct super_block *sb, void *data)
-+static int mbt_set(struct super_block *sb, struct fs_context *fc)
+-static int cifs_set_super(struct super_block *sb, void *data)
+-{
+-	struct cifs_mnt_data *mnt_data = data;
+-	sb->s_fs_info = mnt_data->cifs_sb;
+-	return set_anon_super(sb, NULL);
+-}
+-
+ struct dentry *
+-cifs_smb3_do_mount(struct file_system_type *fs_type,
+-	      int flags, struct smb3_fs_context *old_ctx)
++cifs_smb3_do_mount(struct fs_context *fc, struct smb3_fs_context *old_ctx)
  {
- 	return 0;
- }
-@@ -136,13 +143,19 @@ static struct super_block *mbt_ext4_alloc_super_block(void)
- {
- 	struct mbt_ext4_super_block *fsb;
+ 	struct cifs_mnt_data mnt_data;
+ 	struct cifs_sb_info *cifs_sb;
  	struct super_block *sb;
-+	struct fs_context *fc;
- 	struct ext4_sb_info *sbi;
+ 	struct dentry *root;
++	unsigned int saved_sb_flags;
+ 	int rc;
  
- 	fsb = kzalloc_obj(*fsb);
- 	if (fsb == NULL)
- 		return NULL;
+ 	if (cifsFYI) {
+-		cifs_dbg(FYI, "%s: devname=%s flags=0x%x\n", __func__,
+-			 old_ctx->source, flags);
++		cifs_dbg(FYI, "%s: devname=%s sb_flags=0x%x\n", __func__,
++			 old_ctx->source, fc->sb_flags);
+ 	} else {
+ 		cifs_info("Attempting to mount %s\n", old_ctx->source);
+ 	}
+@@ -1012,7 +1006,7 @@ cifs_smb3_do_mount(struct file_system_type *fs_type,
  
--	sb = sget(&mbt_fs_type, NULL, mbt_set, 0, NULL);
-+	fc = fs_context_for_mount(&mbt_fs_type, 0);
-+	if (IS_ERR(fc))
-+		goto out;
-+
-+	sb = sget_fc(fc, NULL, mbt_set);
-+	put_fs_context(fc);
- 	if (IS_ERR(sb))
- 		goto out;
+ 	rc = cifs_mount(cifs_sb, cifs_sb->ctx);
+ 	if (rc) {
+-		if (!(flags & SB_SILENT))
++		if (!(fc->sb_flags & SB_SILENT))
+ 			cifs_dbg(VFS, "cifs_mount failed w/return code = %d\n",
+ 				 rc);
+ 		root = ERR_PTR(rc);
+@@ -1021,12 +1015,27 @@ cifs_smb3_do_mount(struct file_system_type *fs_type,
+ 
+ 	mnt_data.ctx = cifs_sb->ctx;
+ 	mnt_data.cifs_sb = cifs_sb;
+-	mnt_data.flags = flags;
++	mnt_data.flags = 0;
+ 
+-	/* BB should we make this contingent on mount parm? */
+-	flags |= SB_NODIRATIME | SB_NOATIME;
+-
+-	sb = sget(fs_type, cifs_match_super, cifs_set_super, flags, &mnt_data);
++	/*
++	 * sb->s_flags is set from fc->sb_flags by alloc_super(). CIFS has
++	 * historically forced SB_NODIRATIME | SB_NOATIME on every mount and
++	 * ignored the caller-supplied SB_* flags. Preserve that behaviour by
++	 * overriding fc->sb_flags around the sget_fc() call.
++	 *
++	 * Hand cifs_sb to sget_fc() via fc->s_fs_info; sget_fc() copies it
++	 * onto sb->s_fs_info before running set() and clears fc->s_fs_info
++	 * on successful publish. Pass the rest of the per-mount context to
++	 * cifs_match_super() through fc->sget_key.
++	 */
++	saved_sb_flags = fc->sb_flags;
++	fc->sb_flags = SB_NODIRATIME | SB_NOATIME;
++	fc->s_fs_info = cifs_sb;
++	fc->sget_key = &mnt_data;
++	sb = sget_fc(fc, cifs_match_super, set_anon_super_fc);
++	fc->sget_key = NULL;
++	fc->s_fs_info = NULL;
++	fc->sb_flags = saved_sb_flags;
+ 	if (IS_ERR(sb)) {
+ 		cifs_umount(cifs_sb);
+ 		return ERR_CAST(sb);
+diff --git a/fs/smb/client/cifsfs.h b/fs/smb/client/cifsfs.h
+index c455b15f2778..0a93f48924a5 100644
+--- a/fs/smb/client/cifsfs.h
++++ b/fs/smb/client/cifsfs.h
+@@ -144,8 +144,9 @@ ssize_t cifs_file_copychunk_range(unsigned int xid, struct file *src_file,
+ long cifs_ioctl(struct file *filep, unsigned int command, unsigned long arg);
+ void cifs_setsize(struct inode *inode, loff_t offset);
+ 
++struct fs_context;
+ struct smb3_fs_context;
+-struct dentry *cifs_smb3_do_mount(struct file_system_type *fs_type, int flags,
++struct dentry *cifs_smb3_do_mount(struct fs_context *fc,
+ 				  struct smb3_fs_context *old_ctx);
+ 
+ char *cifs_silly_fullpath(struct dentry *dentry);
+diff --git a/fs/smb/client/cifsproto.h b/fs/smb/client/cifsproto.h
+index 4a25afda9448..a39572cbaadb 100644
+--- a/fs/smb/client/cifsproto.h
++++ b/fs/smb/client/cifsproto.h
+@@ -19,6 +19,7 @@
+ struct statfs;
+ struct smb_rqst;
+ struct smb3_fs_context;
++struct fs_context;
+ 
+ /*
+  *****************************************************************
+@@ -236,7 +237,7 @@ void cifs_mount_put_conns(struct cifs_mount_ctx *mnt_ctx);
+ int cifs_mount_get_session(struct cifs_mount_ctx *mnt_ctx);
+ int cifs_is_path_remote(struct cifs_mount_ctx *mnt_ctx);
+ int cifs_mount_get_tcon(struct cifs_mount_ctx *mnt_ctx);
+-int cifs_match_super(struct super_block *sb, void *data);
++int cifs_match_super(struct super_block *sb, struct fs_context *fc);
+ int cifs_mount(struct cifs_sb_info *cifs_sb, struct smb3_fs_context *ctx);
+ void cifs_umount(struct cifs_sb_info *cifs_sb);
+ void cifs_mark_open_files_invalid(struct cifs_tcon *tcon);
+diff --git a/fs/smb/client/connect.c b/fs/smb/client/connect.c
+index dcde25da468d..79762e6bbe50 100644
+--- a/fs/smb/client/connect.c
++++ b/fs/smb/client/connect.c
+@@ -6,6 +6,7 @@
+  *
+  */
+ #include <linux/fs.h>
++#include <linux/fs_context.h>
+ #include <linux/net.h>
+ #include <linux/string.h>
+ #include <linux/sched/mm.h>
+@@ -2991,9 +2992,9 @@ static int match_prepath(struct super_block *sb,
+ }
+ 
+ int
+-cifs_match_super(struct super_block *sb, void *data)
++cifs_match_super(struct super_block *sb, struct fs_context *fc)
+ {
+-	struct cifs_mnt_data *mnt_data = data;
++	struct cifs_mnt_data *mnt_data = fc->sget_key;
+ 	struct smb3_fs_context *ctx;
+ 	struct cifs_sb_info *cifs_sb;
+ 	struct TCP_Server_Info *tcp_srv;
+diff --git a/fs/smb/client/fs_context.c b/fs/smb/client/fs_context.c
+index b9544eb0381b..6aba4e1c9c27 100644
+--- a/fs/smb/client/fs_context.c
++++ b/fs/smb/client/fs_context.c
+@@ -920,7 +920,7 @@ static int smb3_get_tree_common(struct fs_context *fc)
+ 	struct dentry *root;
+ 	int rc = 0;
+ 
+-	root = cifs_smb3_do_mount(fc->fs_type, 0, ctx);
++	root = cifs_smb3_do_mount(fc, ctx);
+ 	if (IS_ERR(root))
+ 		return PTR_ERR(root);
  
 
 -- 
