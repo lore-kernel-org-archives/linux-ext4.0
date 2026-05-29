@@ -1,32 +1,32 @@
-Received: from out30-124.freemail.mail.aliyun.com (out30-124.freemail.mail.aliyun.com [115.124.30.124])
+Received: from out30-99.freemail.mail.aliyun.com (out30-99.freemail.mail.aliyun.com [115.124.30.99])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 226D81E5702;
-	Fri, 29 May 2026 06:33:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71327348C58;
+	Fri, 29 May 2026 07:32:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.99
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780036431; cv=none; b=I5VDV6g+iOoOU4QePVlHVbnEwQ2P06X3BpOZAbaK+I49KwB0OOcwNL4/Sidmb5gFtUxqRhoriYupTCa2B46H1meCBt5IBwQo57Q1BUVF/3NtaOjSJ0gvrphzNdSH32fJuYn7sHvuUVcih1POliDU3pa5o3ANUdDGJO1InkSY5s8=
+	t=1780039939; cv=none; b=fbIiu/tWAfG5RKYJoI2KYuqDKIgByOFlt04I3FS/RuLVDO2XGyASsrLzVd6BcCsCWpDdVa7g5XbTV12vBb9LBls863fUQSF2RnT7dHhu5g0trcoOw2lvoOg2TWSjuhBTa7v3egnTzwUCy5oKAyPMbtFKjkvrM4yM5ofAPN7K8zg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780036431; c=relaxed/simple;
-	bh=7zdCfLBxaaNiRWcCsXYwBa94J652Pv9n4E1uUGz3YBQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=rznO+jJ4HVf+3YGZitiIWb0ZHQ+rgiQjbt9TIptGAKf96P5vHXBYHSUMEocO88B5xzcyJv3pZpUod7eZAhmxjwoC6KLtJl0TdgZfkoa9IrDeIWovBUT/Msg7YHiaUa1DE15HzGziAXtaPktSGeaftJ4bdMNcsZ+4J106MvGZ9R8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=qVGOqvvL; arc=none smtp.client-ip=115.124.30.124
+	s=arc-20240116; t=1780039939; c=relaxed/simple;
+	bh=HW/bSag8il2av+UJkXvbPQq2PF+9dWaghrIZKSKO6BI=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
+	 In-Reply-To:Content-Type; b=UzXOibvX3jMeKed4sZy5CPn/dcbPweHyTxftWiSWpQZmDSCudrdZKeoubDPBZNWN54b5C0rG66l7fAc8O2L0vFAY4YKv0fHhWBgmcnylx/Rz6OgnS+Or31VZG/7e7Ro2awgZQMk7jkYgRkXkVoYAfEFn60xbX1GliUSkM1MbSAI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=XlbG/dBS; arc=none smtp.client-ip=115.124.30.99
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="qVGOqvvL"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="XlbG/dBS"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1780036419; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=hBAxosNt11IdMQ4a4MtKmhPG8HP39YP60rQgDXB/098=;
-	b=qVGOqvvLKxl7IsRw4563cfp+ahruw24F9QlgsPIlFQWWfPCmIa8IZV1QNWbhlsiN3CM7VXbKElH8Vb9GF2L/7Nu7bL4XhyFu0ydL5lCuHumfNUX85cWBtlzdcEpX6gOg10JZsQsQc8EVRFfaFq2JqzZ+XAz6OTo3ncQC45rF7AQ=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R521e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X3oSFdN_1780036418;
-Received: from 30.221.147.25(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X3oSFdN_1780036418 cluster:ay36)
+	t=1780039933; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=XsMYWbdUIEzPaql7isQ9/8c0FLW0IT7eoYaMbLPEQVY=;
+	b=XlbG/dBSzlonqu7UxABM6mwHw/wBXNK5iqA2DzzimWp+8WE8W6TCDabjm0TpYEtbq/tFB6lGUdkhHqrxG24QhEknPvX8sAb0DNb+Tods0tMsFiwhG7NtwXW5d5bb2rVMpTD9JZYI0xiHEJgckNuICcUkZ3YuIPNa3Ksyd2uLBSI=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X3ofXyX_1780039931;
+Received: from 30.221.147.25(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X3ofXyX_1780039931 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Fri, 29 May 2026 14:33:38 +0800
-Message-ID: <72a2c70c-8611-4d42-842c-3ad51f5bf739@linux.alibaba.com>
-Date: Fri, 29 May 2026 14:33:36 +0800
+          Fri, 29 May 2026 15:32:12 +0800
+Message-ID: <d1ebc755-afe5-4d14-99e5-e9638f47915c@linux.alibaba.com>
+Date: Fri, 29 May 2026 15:32:11 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,45 +34,101 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: Remove mention of PageWriteback
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+Subject: Re: [PATCH] ext4: convert legacy ext4_debug() to standard pr_debug()
+To: lirongqing <lirongqing@baidu.com>
+References: <20260521074634.2697-1-lirongqing@baidu.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+ Zhang Yi <yi.zhang@huawei.com>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani
+ <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org,
  linux-kernel@vger.kernel.org
-References: <20260526190805.341676-1-willy@infradead.org>
 From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260526190805.341676-1-willy@infradead.org>
+In-Reply-To: <20260521074634.2697-1-lirongqing@baidu.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-On 2026/5/27 03:08, Matthew Wilcox (Oracle) wrote:
-> Update a comment to refer to the concept of writeback instead of the
-> (now obsolete) detail of how it's implemented.
+On 2026/5/21 15:46, lirongqing wrote:
+> From: Li RongQing <lirongqing@baidu.com>
 >
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+> The ext4 file system historically implemented its own debug logging macro
+> ext4_debug() via EXT4FS_DEBUG conditional compilation. This legacy
+> implementation suffers from two major drawbacks:
+>
+> 1. It makes two consecutive un-serialized printk() calls, which can
+>    lead to severe log interleaving and corruption under multi-core
+>    concurrent workloads.
+> 2. It completely bypasses the standard modern kernel dynamic debug
+>    (CONFIG_DYNAMIC_DEBUG) infrastructure.
+>
+> Clean up the legacy implementation by leveraging pr_debug(). This squashes
+> the multiple printk() calls into a single atomic execution, ensuring
+> log integrity, while seamlessly hooking ext4 into the kernel's native
+> dynamic debug framework.
+>
+> The redundant __FILE__ and __LINE__ macros are intentionally removed from
+> the string format because the dynamic debug infrastructure can already
+> append them automatically at runtime (via the '+fl' flags) if desired.
+> This avoids redundancy and double-logging in modern production/debugging
+> environments while keeping the macro clean and robust against dangling
+> comma compiler errors.
+>
+> Signed-off-by: Li RongQing <lirongqing@baidu.com>
 
-Looks good to me.
-
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
+Thanks for cleaning this up.
 
 > ---
->  fs/ext4/page-io.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/ext4/ext4.h | 20 ++------------------
+>  1 file changed, 2 insertions(+), 18 deletions(-)
 >
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index dc82e7b57e75..bc674aa4a656 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -168,7 +168,7 @@ static void ext4_release_io_end(ext4_io_end_t *io_end)
->   * written. On IO failure, check if journal abort is needed. Note that
->   * we are protected from truncate touching same part of extent tree by the
->   * fact that truncate code waits for all DIO to finish (thus exclusion from
-> - * direct IO is achieved) and also waits for PageWriteback bits. Thus we
-> + * direct IO is achieved) and also waits for writeback to complete. Thus we
->   * cannot get to ext4_ext_truncate() before all IOs overlapping that range are
->   * completed (happens from ext4_free_ioend()).
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a9..39e86ff 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -62,24 +62,8 @@
 >   */
+>  #define DOUBLE_CHECK__
+>  
+> -/*
+> - * Define EXT4FS_DEBUG to produce debug messages
+> - */
+> -#undef EXT4FS_DEBUG
+> -
 
+This looks like it's just disabling EXT4FS_DEBUG, but it's actually
+the only toggle point — enabling debug required manually flipping this
+to #define EXT4FS_DEBUG in the source.
+
+Since balloc.c, ialloc.c, and page-io.c still have #ifdef EXT4FS_DEBUG
+blocks that weren't cleaned up here, it would be cleaner to replace
+those with CONFIG_EXT4_DEBUG so they fall under a single
+Kconfig-controlled umbrella.
+
+> -/*
+> - * Debug code
+> - */
+> -#ifdef EXT4FS_DEBUG
+> -#define ext4_debug(f, a...)						\
+> -	do {								\
+> -		printk(KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",	\
+> -			__FILE__, __LINE__, __func__);			\
+> -		printk(KERN_DEBUG f, ## a);				\
+> -	} while (0)
+> -#else
+> -#define ext4_debug(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+> -#endif
+> +#define ext4_debug(fmt, ...)						\
+> +	pr_debug("EXT4-fs DEBUG %s: " fmt, __func__,  ##__VA_ARGS__)
+
+Nit: an extra space between __func__, and ##__VA_ARGS__.
+
+>  
+>   /*
+>    * Turn on EXT_DEBUG to enable ext4_ext_show_path/leaf/move in extents.c
+
+Also, could ext4_debug be moved next to ext_debug and placed under
+#ifdef CONFIG_EXT4_DEBUG together, for a cleaner layout?
+
+
+Cheers,
+Baokun
 
