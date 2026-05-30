@@ -1,60 +1,62 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA0DB33AD8A
-	for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 15:58:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77CD033FE15
+	for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 15:59:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780156738; cv=none; b=ohGmzRPuZsn6HJRpTDQu/blZdQMd84c7V9Se0WV4W0f8Mh2JNvY25X87wgltg9api+E9baBOWLXLdfsmJ4KUEzOv3DwbazGdya0ywEupOn+9e3+vNOEx/yDtoXPhEZ4o8+5DjDdHSyE8lpxyGfdenY/Sdu0eRsUWEz8YsLMthEg=
+	t=1780156743; cv=none; b=sHbyudxemNEZUyEVFOS93njp70Nm0NnSQAjYfDB1aKzEJ3WRCXMY41VXUBwy7aiicTCRh/Le9DqhU1Ptta7wMhoCS56eYV3RR5P1JhY5tv/nd8I0ucJCM0Rd49tazXqQBXYOUj/GqVWreh5PJXbez5vqLyr89GxEhChiA29RxJ4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780156738; c=relaxed/simple;
-	bh=BrCPHH6r5zsUyKSv7Mkv7S3zvmAZrWx89EVqhJ2zFFQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=HO0Z5h8dGyr/Ulox6kHFKFmQm//Gc8PeHGu5nX16kdTkYHIzMn9bVFzcZ7lGF3O58asM+GaRnNUG0rfIIk62d8jibowYtPGSqyM50iJic/jfMu7BCaEdbDOg5BAQB0hifP5UG9e+baLeOeFi6mXRut0UFYjhFxSHEmLUpddJ3Ow=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gms.tku.edu.tw; spf=pass smtp.mailfrom=gms.tku.edu.tw; dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b=AbQLaC6g; arc=none smtp.client-ip=209.85.214.169
+	s=arc-20240116; t=1780156743; c=relaxed/simple;
+	bh=FWOQ055pFxdU7ZYB0m49NCuXgnO9kc1GrJT/DGd66Kw=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=pO91RsUubQ7sg4N7g5YtNjiopsHcE8YPH42k/cJnLXz4WmGvWJlX9DaMF25PWIE1VJduoZyj4piKEVeYHNyyiqVnqiE87BmiQUKKBEiG96FEFlxHx/S9tv9lcRBjTnt/EqtCxJzmwDI4UYeWyhoGZYbBlHtpkQypX5cmJlj1qQU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gms.tku.edu.tw; spf=pass smtp.mailfrom=gms.tku.edu.tw; dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b=lpU8ukGX; arc=none smtp.client-ip=209.85.214.182
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gms.tku.edu.tw
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gms.tku.edu.tw
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b="AbQLaC6g"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2bcd730e090so116302075ad.2
-        for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 08:58:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b="lpU8ukGX"
+Received: by mail-pl1-f182.google.com with SMTP id d9443c01a7336-2c0b944f6edso1759145ad.2
+        for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 08:59:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gms-tku-edu-tw.20251104.gappssmtp.com; s=20251104; t=1780156734; x=1780761534; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=Idt+9cE9lpQYfI0YUQDcBwBnasY+aDQAevlG9dgnbbo=;
-        b=AbQLaC6gjZhUoWCJ4QKXYaeo3qlFJIiPY+94Yi4MkDKMzijsyJvniw0RMK5NsYZKNA
-         vucJhijrRr6szZUily7RIGrPLS27MwdZzbpi+2kYXsAkAhnw/XRmKUqa6BukNjsL14at
-         2/21DB0CZnvW7TgcUvk/naY1J9WcuryRW9v7NIC35ehg1bGdkb9IcpJT0aqquFb65WlH
-         5rZtS5QaGkH1WRUasFEau5HEYZzQMvpPyRhpTUu/thvD7wG1367ljEWveiXCskUuaewJ
-         cGTWOrEn9kjxBj/WocCV316taoVAgLOY7lADNlywV6gyjThrejaY4DmAkLcWYxX9tgPr
-         4btA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780156734; x=1780761534;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gms-tku-edu-tw.20251104.gappssmtp.com; s=20251104; t=1780156740; x=1780761540; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=Idt+9cE9lpQYfI0YUQDcBwBnasY+aDQAevlG9dgnbbo=;
-        b=XfSKkzy6eVCxdHk6MAIQOuSDsvfq4bQquDguhopp9wtzE3r1ktwAvw7vGbAvJtX8SG
-         9kMcWEiMufsj0B6lVajqdMiDkD/cvptET4kgdCVR4WYHILNLAw48scU6OEHX77BmADZb
-         zdVRY39XN0d6X9t1At189o7dNR3VoedriDiToZbDlmtRX1WpiDznhIRMHD47XuvOzJnF
-         oWTg1agtNHRQkxXAnINGstz+rWJg0rsknUlbSTvJyBweVGj/9l948MScFPXeoUeECb9h
-         J5AYITZNin8XoITUYdTS1MAvVxC2lvLKtItrp4etymSD8ees3hzyzjDRXjVIG9LaiDiV
-         lsSw==
-X-Gm-Message-State: AOJu0Yxr2XzgrRxskYI2kiDlS5hhis5uj+yLCHENPE+yTz5miNnBlf8n
-	/IiUXQP0lMV7lsONMhX4l7P2ktd5tgf7cfVAR7mGqOXNgrm4Yf8utZ6B8Ll7FNSohV0=
-X-Gm-Gg: Acq92OG05d58GvgAqgS+sU97yLL6/lqYv1kWmh6O/7cy6WBcPoNZ+hlE8Aj97J3pzVA
-	BCQ6YTdElkwXKR/Tp12cVO5h3Wrx1XtfASjJCgbBhYIGBLhoqGl444tLcZtWI7DgHvbZtI4IxLG
-	YJHSXGtPxCtsCjJrF+yhRwpgFy/fplS7KAZocizkgGZQZCWoBCb5Yu/jyvIdhukaPLXkRwK+B9e
-	b0ubITyXhR+O+a7tlaY1dpNtkH49Z6TaITUu9CzdalIrUJwca6VHos9WyeI4vpbdTky3pD+hT7R
-	ZIUS5PFue9o6LQf+2PjmTNkbKcQyMnwwSLUR8B5IcL8oLNLSgam8h7qm0VlJV3PePGHQFsf0YP+
-	TEBgxJxTRKZP38sf5G6Jt9OZTPUcM/ge2mlBlx8gjwzUeFsBMtzcTOxt6/Lr2xSxf9tsUYIfymn
-	nwpW2b8x4p+PqaJ17oLRFVSPL+YJJV3CMTPPRot8XxGsWU3tpg/570JuGO
-X-Received: by 2002:a17:902:d4c4:b0:2bf:2256:732e with SMTP id d9443c01a7336-2bf3684da42mr54772185ad.23.1780156734131;
-        Sat, 30 May 2026 08:58:54 -0700 (PDT)
+        bh=lXA8Kf6bemjJFZpJ/91pWHwRvg99tuK1KLXcYA1Cdqw=;
+        b=lpU8ukGXgFoFnN52sMjxNUO56PfRIGJuLEfHZMXoxWd6aUDajJskEh3RlK+AVepjYs
+         SiYUx3UjBZoEEgem5APD/B9AfAroXOHf/CDBch4g6GdmgVF69SOX95wqts+6TYi9JkiI
+         vP50gk+FpVaSgrSsfRRNXEkCk3Nu0tsQnEk9hQKUYk8nctyxLAOz2Vz4WkQ4BQJmX+WK
+         EV0ktIlzzlzPerDqyK6bsiV0a6QkjTswK6txcy7hkauoGDAls1cYZPUp0jCwxf1qbvw+
+         AKEEdxvUapsYbJ55Q98vnrwS0pOWQPxu/C5FAg+doL+X91GQt/qp+8gvTAtcfmdItFre
+         HHpA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1780156740; x=1780761540;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=lXA8Kf6bemjJFZpJ/91pWHwRvg99tuK1KLXcYA1Cdqw=;
+        b=dp9n3Ywr2AsqLYrzXEZSJjEHRn3jyEynojUYF/Lq5g1OW6KjIW3Nd8OWM344gSVl6j
+         6WHZDt7BH6qaNEH2na/Rk68no56w7s5Yq9OyCaop9Ir1bw98EN7/u/n3BxAcu6BFeYKe
+         6bhT6r3RzzEvuqui+zN4hwLQtmFhXIVDCVsOu130lGgqMB2jYlyic7vNEPYn8g4WYEEX
+         va519TuiaOhkQ48GwkFIa2aC//K8Zz1mPeR+XxoLVsyVjW7O4WtLrmZte0k6CfqSodJp
+         3UxxqhQ7o9R937brDWBte9WKgOaK7wxK/DgiXXnqmnhA0BhM5Srx44dXnWBjEIMKZCvr
+         McVg==
+X-Gm-Message-State: AOJu0Yzaru7CT3zKjnTxqKawGckoaRRO80Q9moJ01OMOoVRmr/4TmMB5
+	ESxQKoIRi3vYYq9B9SF49mrQd4ZocIUPtzrx4GOxoZ645+xynI4XvQmYsX0ajWjzmOc=
+X-Gm-Gg: Acq92OEMxCW/Urxa6Fy2GUy5pbWJ+kO0FqjJ+6OpCxtj4C40vEGYuSKkHkvfbKNP5sq
+	CpO6Qae+V4ZWTN1Aw+8HzOpvz9ggYRMIe/JXqHyYtiNr8PuOscXk9pA19DoguYhv+QeuNzDnweG
+	g8T4phUa9DiOd+z1ise1ZXqrmch2LjsF6Z6Pnyb59BnMBCwDhb0ZgBcKcCrN+rklixB11+lVFmw
+	gKd8BGABftLqxueGRgV4R3aDQN1hYrC0ihnYD/aFnDXUjvRl3qAbNGFEZtPWhyALtEwjv73T5Me
+	F9s/AOTqK5Z+GlppBV3N3gr0eWM8Kp5b9qrBkzvXAOzb0S8aMPWNosIT9U1NcT+42Sbbi9PWJiA
+	zxUAm95iRmunOd8iALG0zjaLPli6jpgxTPu5r6UB2h5RIVjOtQTNMKjSUvEXfp/x/gVzzO7t00v
+	up8mcg2UahE4PBaFOgn1pKto/SSeB0DkFIqcIBpvlPVZIWKBxMkkRdAIoJ
+X-Received: by 2002:a17:903:38d0:b0:2b2:4f43:b48c with SMTP id d9443c01a7336-2bf367a89a6mr55300905ad.14.1780156739676;
+        Sat, 30 May 2026 08:58:59 -0700 (PDT)
 Received: from wu-Pro-E500-G6-WS720T.. ([2001:288:7001:2703:429:4bda:e5dc:8a16])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2bf23c1e46asm51130855ad.61.2026.05.30.08.58.51
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2bf23c1e46asm51130855ad.61.2026.05.30.08.58.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 30 May 2026 08:58:53 -0700 (PDT)
+        Sat, 30 May 2026 08:58:59 -0700 (PDT)
 From: Guan-Chun Wu <409411716@gms.tku.edu.tw>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -69,10 +71,12 @@ Cc: linux-ext4@vger.kernel.org,
 	visitorckw@gmail.com,
 	david.laight.linux@gmail.com,
 	Guan-Chun Wu <409411716@gms.tku.edu.tw>
-Subject: [PATCH v5 0/2] ext4: add hash Kunit tests and optimize str2hashbuf
-Date: Sat, 30 May 2026 23:58:15 +0800
-Message-Id: <20260530155817.2311587-1-409411716@gms.tku.edu.tw>
+Subject: [PATCH v5 1/2] ext4: add Kunit coverage for directory hash computation
+Date: Sat, 30 May 2026 23:58:16 +0800
+Message-Id: <20260530155817.2311587-2-409411716@gms.tku.edu.tw>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260530155817.2311587-1-409411716@gms.tku.edu.tw>
+References: <20260530155817.2311587-1-409411716@gms.tku.edu.tw>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -81,45 +85,618 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This series adds Kunit tests for fs/ext4/hash.c and refactors
-the str2hashbuf_{signed,unsigned}() helpers.
+Introduce Kunit tests for fs/ext4/hash.c to verify ext4fs_dirhash()
+across the legacy, half-MD4, and TEA hash variants.
 
-Patch 1 adds test coverage for ext4fs_dirhash(), including the main
-hash variants and relevant edge cases.
+The tests cover empty, seeded hashing, and non-ASCII name handling.
+They also verify error paths, including invalid hash versions and
+SipHash without a configured key, and check that the signed and
+unsigned hash variants differ on non-ASCII input as expected.
 
-Patch 2 simplifies the str2hashbuf helper implementation by processing
-input in 4-byte chunks and removing function-pointer dispatch. This also
-reduces overhead and shows roughly 2x improvement on longer inputs in
-local testing.
+When CONFIG_UNICODE is enabled, the tests further verify casefolded-name
+hashing and the fallback behavior for invalid input.
 
-Thanks,
-Guan-Chun Wu
-
-Link: https://lore.kernel.org/lkml/20260529200308.889706-1-409411716@gms.tku.edu.tw/
-
+Co-developed-by: Chen Hao Yu <edward062254@gmail.com>
+Signed-off-by: Chen Hao Yu <edward062254@gmail.com>
+Signed-off-by: Guan-Chun Wu <409411716@gms.tku.edu.tw>
 ---
-
-v4 -> v5 :
-
-  - Fix NULL pointer dereference and out-of-bounds read in SipHash tests.
-  - Use IS_ERR() instead of NULL check for utf8_load() error handling.
-  - Fix unicode_map memory leaks on assertion failures via kunit_add_action_or_reset().
-  - Avoid a UBSAN shift warning in str2hashbuf by casting signed char values
-    to __u32 before left-shifting them.
-
----
-
-Guan-Chun Wu (2):
-  ext4: add Kunit coverage for directory hash computation
-  ext4: improve str2hashbuf by processing 4-byte chunks and removing
-    function pointers
-
  fs/ext4/Makefile    |   2 +-
  fs/ext4/hash-test.c | 560 ++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/hash.c      |  68 ++++--
- 3 files changed, 607 insertions(+), 23 deletions(-)
+ fs/ext4/hash.c      |   4 +
+ 3 files changed, 565 insertions(+), 1 deletion(-)
  create mode 100644 fs/ext4/hash-test.c
 
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 3baee4e7c..3f9fc0eb8 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -15,7 +15,7 @@ ext4-y	:= balloc.o bitmap.o block_validity.o dir.o ext4_jbd2.o extents.o \
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+ ext4-test-objs				+= inode-test.o mballoc-test.o \
+-					   extents-test.o
++					   extents-test.o hash-test.o
+ obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
+ ext4-$(CONFIG_FS_VERITY)		+= verity.o
+ ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
+diff --git a/fs/ext4/hash-test.c b/fs/ext4/hash-test.c
+new file mode 100644
+index 000000000..2da66cafb
+--- /dev/null
++++ b/fs/ext4/hash-test.c
+@@ -0,0 +1,560 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * KUnit tests for ext4 directory hash computation.
++ */
++
++#include <kunit/test.h>
++#include <linux/fs.h>
++#include <linux/string.h>
++#include <linux/unicode.h>
++#include "ext4.h"
++
++static void ext4_hash_init_fake_dir(struct inode *dir, struct super_block *sb)
++{
++	memset(sb, 0, sizeof(*sb));
++	memset(dir, 0, sizeof(*dir));
++	dir->i_sb = sb;
++	strscpy(sb->s_id, "kunit-ext4", sizeof(sb->s_id));
++}
++
++static void ext4_hash_init_fake_dir_with_sbi(struct inode *dir,
++					     struct super_block *sb,
++					     struct ext4_sb_info *sbi)
++{
++	ext4_hash_init_fake_dir(dir, sb);
++	memset(sbi, 0, sizeof(*sbi));
++	sb->s_fs_info = sbi;
++	sbi->s_sb = sb;
++}
++
++#if IS_ENABLED(CONFIG_UNICODE)
++KUNIT_DEFINE_ACTION_WRAPPER(utf8_unload_action, utf8_unload,
++			    struct unicode_map *);
++#endif
++
++static void ext4_hash_init_fake_ext4_dir(struct ext4_inode_info *ei,
++					 struct super_block *sb,
++					 struct ext4_sb_info *sbi)
++{
++	struct inode *dir = &ei->vfs_inode;
++
++	memset(sb, 0, sizeof(*sb));
++	memset(ei, 0, sizeof(*ei));
++	memset(sbi, 0, sizeof(*sbi));
++
++	strscpy(sb->s_id, "kunit-ext4", sizeof(sb->s_id));
++	sb->s_fs_info = sbi;
++	sbi->s_sb = sb;
++
++	dir->i_sb = sb;
++	dir->i_mode = S_IFDIR;
++
++#ifdef CONFIG_FS_ENCRYPTION
++	fscrypt_set_ops(sb, &ext4_cryptops);
++#endif
++}
++
++struct ext4_dirhash_test_case {
++	const char *name;
++	u32 hash_version;
++	const char *input;
++	int len;
++	u32 seed[4];
++	bool use_seed;
++	u32 expected_hash;
++	u32 expected_minor_hash;
++};
++
++static const struct ext4_dirhash_test_case ext4_dirhash_test_cases[] = {
++	{
++		.name = "legacy_abc",
++		.hash_version = DX_HASH_LEGACY,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0x75afd992,
++		.expected_minor_hash = 0x00000000,
++	},
++	{
++		.name = "legacy_unsigned_abc",
++		.hash_version = DX_HASH_LEGACY_UNSIGNED,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0x75afd992,
++		.expected_minor_hash = 0x00000000,
++	},
++	{
++		.name = "half_md4_abc",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0xd196a868,
++		.expected_minor_hash = 0xc420eb28,
++	},
++	{
++		.name = "half_md4_unsigned_abc",
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0xd196a868,
++		.expected_minor_hash = 0xc420eb28,
++	},
++	{
++		.name = "tea_abc",
++		.hash_version = DX_HASH_TEA,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0xb1435ec4,
++		.expected_minor_hash = 0x3f7eaa0e,
++	},
++	{
++		.name = "tea_unsigned_abc",
++		.hash_version = DX_HASH_TEA_UNSIGNED,
++		.input = "abc",
++		.len = 3,
++		.use_seed = false,
++		.expected_hash = 0xb1435ec4,
++		.expected_minor_hash = 0x3f7eaa0e,
++	},
++	{
++		.name = "empty_half_md4",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "",
++		.len = 0,
++		.use_seed = false,
++		.expected_hash = 0xefcdab88,
++		.expected_minor_hash = 0x98badcfe,
++	},
++	{
++		.name = "half_md4_31bytes",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "1234567890123456789012345678901",
++		.len = 31,
++		.use_seed = false,
++		.expected_hash = 0xc4db1f78,
++		.expected_minor_hash = 0xea23921b,
++	},
++	{
++		.name = "half_md4_32bytes",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "12345678901234567890123456789012",
++		.len = 32,
++		.use_seed = false,
++		.expected_hash = 0xfa6cc63e,
++		.expected_minor_hash = 0x2f77bd1c,
++	},
++	{
++		.name = "half_md4_33bytes",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "123456789012345678901234567890123",
++		.len = 33,
++		.use_seed = false,
++		.expected_hash = 0xdc0c2dec,
++		.expected_minor_hash = 0x5ca23365,
++	},
++	{
++		.name = "half_md4_unsigned_31bytes",
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++		.input = "1234567890123456789012345678901",
++		.len = 31,
++		.use_seed = false,
++		.expected_hash = 0xc4db1f78,
++		.expected_minor_hash = 0xea23921b,
++	},
++	{
++		.name = "half_md4_unsigned_32bytes",
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++		.input = "12345678901234567890123456789012",
++		.len = 32,
++		.use_seed = false,
++		.expected_hash = 0xfa6cc63e,
++		.expected_minor_hash = 0x2f77bd1c,
++	},
++	{
++		.name = "half_md4_unsigned_33bytes",
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++		.input = "123456789012345678901234567890123",
++		.len = 33,
++		.use_seed = false,
++		.expected_hash = 0xdc0c2dec,
++		.expected_minor_hash = 0x5ca23365,
++	},
++	{
++		.name = "tea_15bytes",
++		.hash_version = DX_HASH_TEA,
++		.input = "123456789abcdef",
++		.len = 15,
++		.use_seed = false,
++		.expected_hash = 0xa562903a,
++		.expected_minor_hash = 0x6174a00f,
++	},
++	{
++		.name = "tea_16bytes",
++		.hash_version = DX_HASH_TEA,
++		.input = "1234567890abcdef",
++		.len = 16,
++		.use_seed = false,
++		.expected_hash = 0x8449f258,
++		.expected_minor_hash = 0x49a16d46,
++	},
++	{
++		.name = "tea_17bytes",
++		.hash_version = DX_HASH_TEA,
++		.input = "123456789abcdefgh",
++		.len = 17,
++		.use_seed = false,
++		.expected_hash = 0xf32ec10c,
++		.expected_minor_hash = 0x58ceae61,
++	},
++	{
++		.name = "half_md4_seeded",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "same-name",
++		.len = 9,
++		.seed = { 0x11111111, 0x22222222, 0x33333333, 0x44444444 },
++		.use_seed = true,
++		.expected_hash = 0x8aebf604,
++		.expected_minor_hash = 0x66ce48fe,
++	},
++	{
++		.name = "half_md4_non_ascii_signed",
++		.hash_version = DX_HASH_HALF_MD4,
++		.input = "\x80\x81\x82\x83\x84",
++		.len = 5,
++		.use_seed = false,
++		.expected_hash = 0x8bab0498,
++		.expected_minor_hash = 0xc326632d,
++	},
++	{
++		.name = "half_md4_non_ascii_unsigned",
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++		.input = "\x80\x81\x82\x83\x84",
++		.len = 5,
++		.use_seed = false,
++		.expected_hash = 0xbc48596e,
++		.expected_minor_hash = 0xde0fad41,
++	},
++	{
++		.name = "tea_non_ascii_signed",
++		.hash_version = DX_HASH_TEA,
++		.input = "\x80\x81\x82\x83\x84",
++		.len = 5,
++		.use_seed = false,
++		.expected_hash = 0x21e3a154,
++		.expected_minor_hash = 0x90112c3d,
++	},
++	{
++		.name = "tea_non_ascii_unsigned",
++		.hash_version = DX_HASH_TEA_UNSIGNED,
++		.input = "\x80\x81\x82\x83\x84",
++		.len = 5,
++		.use_seed = false,
++		.expected_hash = 0x9b648616,
++		.expected_minor_hash = 0x011dd507,
++	},
++};
++
++static void test_ext4fs_dirhash_vectors(struct kunit *test)
++{
++	struct super_block *sb;
++	struct inode *dir;
++	int i;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	dir = kunit_kzalloc(test, sizeof(*dir), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, dir);
++
++	ext4_hash_init_fake_dir(dir, sb);
++
++	for (i = 0; i < ARRAY_SIZE(ext4_dirhash_test_cases); i++) {
++		const struct ext4_dirhash_test_case *tc =
++			&ext4_dirhash_test_cases[i];
++		struct dx_hash_info hinfo;
++		int ret;
++
++		memset(&hinfo, 0, sizeof(hinfo));
++		hinfo.hash_version = tc->hash_version;
++		hinfo.seed = tc->use_seed ? (u32 *)tc->seed : NULL;
++
++		ret = ext4fs_dirhash(dir, tc->input, tc->len, &hinfo);
++
++		KUNIT_ASSERT_EQ_MSG(test, ret, 0, "case=%s", tc->name);
++		KUNIT_EXPECT_EQ_MSG(test, hinfo.hash, tc->expected_hash,
++				    "case=%s", tc->name);
++		KUNIT_EXPECT_EQ_MSG(test, hinfo.minor_hash,
++				    tc->expected_minor_hash,
++				    "case=%s", tc->name);
++	}
++}
++
++static void test_ext4fs_dirhash_seed_changes_result(struct kunit *test)
++{
++	struct super_block *sb;
++	struct inode *dir;
++	u32 seed[4] = { 0x11111111, 0x22222222, 0x33333333, 0x44444444 };
++	struct dx_hash_info plain = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	struct dx_hash_info seeded = {
++		.hash_version = DX_HASH_HALF_MD4,
++		.seed = seed,
++	};
++	int ret_plain, ret_seeded;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	dir = kunit_kzalloc(test, sizeof(*dir), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, dir);
++
++	ext4_hash_init_fake_dir(dir, sb);
++
++	ret_plain = ext4fs_dirhash(dir, "same-name", 9, &plain);
++	ret_seeded = ext4fs_dirhash(dir, "same-name", 9, &seeded);
++
++	KUNIT_ASSERT_EQ(test, ret_plain, 0);
++	KUNIT_ASSERT_EQ(test, ret_seeded, 0);
++
++	KUNIT_EXPECT_TRUE(test,
++			  plain.hash != seeded.hash ||
++			  plain.minor_hash != seeded.minor_hash);
++}
++
++static void test_ext4fs_dirhash_invalid_version_returns_einval(struct kunit *test)
++{
++	struct super_block *sb;
++	struct inode *dir;
++	struct ext4_sb_info *sbi;
++	struct dx_hash_info hinfo = {
++		.hash = 0xdeadbeef,
++		.minor_hash = 0xcafebabe,
++		.hash_version = DX_HASH_LAST + 1,
++	};
++	int ret;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	dir = kunit_kzalloc(test, sizeof(*dir), GFP_KERNEL);
++	sbi = kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, dir);
++	KUNIT_ASSERT_NOT_NULL(test, sbi);
++
++	ext4_hash_init_fake_dir_with_sbi(dir, sb, sbi);
++
++	ret = ext4fs_dirhash(dir, "abc", 3, &hinfo);
++
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	KUNIT_EXPECT_EQ(test, hinfo.hash, 0);
++	KUNIT_EXPECT_EQ(test, hinfo.minor_hash, 0);
++}
++
++static void test_ext4fs_dirhash_siphash_without_key_returns_einval(struct kunit *test)
++{
++	struct super_block *sb;
++	struct ext4_inode_info *ei;
++	struct inode *dir;
++	struct ext4_sb_info *sbi;
++	struct dx_hash_info hinfo = {
++		.hash_version = DX_HASH_SIPHASH,
++	};
++	int ret;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	ei = kunit_kzalloc(test, sizeof(*ei), GFP_KERNEL);
++	sbi = kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, ei);
++	KUNIT_ASSERT_NOT_NULL(test, sbi);
++
++	ext4_hash_init_fake_ext4_dir(ei, sb, sbi);
++	dir = &ei->vfs_inode;
++
++	ret = ext4fs_dirhash(dir, "name", strlen("name"), &hinfo);
++
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++}
++
++static void test_ext4fs_dirhash_signed_unsigned_differ_on_nonascii(struct kunit *test)
++{
++	struct super_block *sb;
++	struct inode *dir;
++	static const char input[] = "\x80\xff\x81\xfe\101bc";
++	struct dx_hash_info legacy_signed = {
++		.hash_version = DX_HASH_LEGACY,
++	};
++	struct dx_hash_info legacy_unsigned = {
++		.hash_version = DX_HASH_LEGACY_UNSIGNED,
++	};
++	struct dx_hash_info md4_signed = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	struct dx_hash_info md4_unsigned = {
++		.hash_version = DX_HASH_HALF_MD4_UNSIGNED,
++	};
++	struct dx_hash_info tea_signed = {
++		.hash_version = DX_HASH_TEA,
++	};
++	struct dx_hash_info tea_unsigned = {
++		.hash_version = DX_HASH_TEA_UNSIGNED,
++	};
++	int ret;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	dir = kunit_kzalloc(test, sizeof(*dir), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, dir);
++
++	ext4_hash_init_fake_dir(dir, sb);
++
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &legacy_signed);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &legacy_unsigned);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_NE(test, legacy_signed.hash, legacy_unsigned.hash);
++
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &md4_signed);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &md4_unsigned);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_TRUE(test,
++			  md4_signed.hash != md4_unsigned.hash ||
++			  md4_signed.minor_hash != md4_unsigned.minor_hash);
++
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &tea_signed);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	ret = ext4fs_dirhash(dir, input, sizeof(input) - 1, &tea_unsigned);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++	KUNIT_EXPECT_TRUE(test,
++			  tea_signed.hash != tea_unsigned.hash ||
++			  tea_signed.minor_hash != tea_unsigned.minor_hash);
++}
++
++#if IS_ENABLED(CONFIG_UNICODE)
++static void test_ext4fs_dirhash_casefolded_names_hash_consistently(struct kunit *test)
++{
++	struct super_block *sb;
++	struct ext4_inode_info *ei;
++	struct ext4_sb_info *sbi;
++	struct unicode_map *um;
++	struct dx_hash_info h1 = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	struct dx_hash_info h2 = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	int ret, ret1, ret2;
++
++	sb = kunit_kzalloc(test, sizeof(*sb), GFP_KERNEL);
++	ei = kunit_kzalloc(test, sizeof(*ei), GFP_KERNEL);
++	sbi = kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb);
++	KUNIT_ASSERT_NOT_NULL(test, ei);
++	KUNIT_ASSERT_NOT_NULL(test, sbi);
++
++	um = utf8_load(UTF8_LATEST);
++	if (IS_ERR(um)) {
++		kunit_skip(test, "utf8_load(UTF8_LATEST) failed: %pe",
++			   um);
++		return;
++	}
++
++	ret = kunit_add_action_or_reset(test, utf8_unload_action, um);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ext4_hash_init_fake_ext4_dir(ei, sb, sbi);
++	sb->s_encoding = um;
++	ei->vfs_inode.i_flags |= S_CASEFOLD;
++
++	KUNIT_ASSERT_TRUE(test, IS_CASEFOLDED(&ei->vfs_inode));
++
++	ret1 = ext4fs_dirhash(&ei->vfs_inode, "Alpha", 5, &h1);
++	ret2 = ext4fs_dirhash(&ei->vfs_inode, "aLPHa", 5, &h2);
++
++	KUNIT_ASSERT_EQ(test, ret1, 0);
++	KUNIT_ASSERT_EQ(test, ret2, 0);
++	KUNIT_EXPECT_EQ(test, h1.hash, h2.hash);
++	KUNIT_EXPECT_EQ(test, h1.minor_hash, h2.minor_hash);
++}
++
++static void test_ext4fs_dirhash_casefold_fallback(struct kunit *test)
++{
++	struct super_block *sb_cf, *sb_plain;
++	struct ext4_inode_info *ei;
++	struct ext4_sb_info *sbi;
++	struct inode *plain_dir;
++	struct unicode_map *um;
++	static const char invalid_utf8[] = "\xc3\x28";
++	struct dx_hash_info folded_dir = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	struct dx_hash_info plain = {
++		.hash_version = DX_HASH_HALF_MD4,
++	};
++	int ret, ret_cf, ret_plain;
++
++	sb_cf = kunit_kzalloc(test, sizeof(*sb_cf), GFP_KERNEL);
++	sb_plain = kunit_kzalloc(test, sizeof(*sb_plain), GFP_KERNEL);
++	ei = kunit_kzalloc(test, sizeof(*ei), GFP_KERNEL);
++	sbi = kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
++	plain_dir = kunit_kzalloc(test, sizeof(*plain_dir), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, sb_cf);
++	KUNIT_ASSERT_NOT_NULL(test, sb_plain);
++	KUNIT_ASSERT_NOT_NULL(test, ei);
++	KUNIT_ASSERT_NOT_NULL(test, sbi);
++	KUNIT_ASSERT_NOT_NULL(test, plain_dir);
++
++	um = utf8_load(UTF8_LATEST);
++	if (IS_ERR(um)) {
++		kunit_skip(test, "utf8_load(UTF8_LATEST) failed: %pe",
++			   um);
++		return;
++	}
++
++	ret = kunit_add_action_or_reset(test, utf8_unload_action, um);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	ext4_hash_init_fake_ext4_dir(ei, sb_cf, sbi);
++	sb_cf->s_encoding = um;
++	ei->vfs_inode.i_flags |= S_CASEFOLD;
++
++	KUNIT_ASSERT_TRUE(test, IS_CASEFOLDED(&ei->vfs_inode));
++
++	ext4_hash_init_fake_dir(plain_dir, sb_plain);
++
++	ret_cf = ext4fs_dirhash(&ei->vfs_inode, invalid_utf8,
++				sizeof(invalid_utf8) - 1, &folded_dir);
++	ret_plain = ext4fs_dirhash(plain_dir, invalid_utf8,
++				   sizeof(invalid_utf8) - 1, &plain);
++
++	KUNIT_ASSERT_EQ(test, ret_cf, 0);
++	KUNIT_ASSERT_EQ(test, ret_plain, 0);
++	KUNIT_EXPECT_EQ(test, folded_dir.hash, plain.hash);
++	KUNIT_EXPECT_EQ(test, folded_dir.minor_hash, plain.minor_hash);
++}
++#endif
++
++static struct kunit_case ext4_hash_test_cases[] = {
++	KUNIT_CASE(test_ext4fs_dirhash_vectors),
++	KUNIT_CASE(test_ext4fs_dirhash_seed_changes_result),
++	KUNIT_CASE(test_ext4fs_dirhash_invalid_version_returns_einval),
++	KUNIT_CASE(test_ext4fs_dirhash_siphash_without_key_returns_einval),
++	KUNIT_CASE(test_ext4fs_dirhash_signed_unsigned_differ_on_nonascii),
++#if IS_ENABLED(CONFIG_UNICODE)
++	KUNIT_CASE(test_ext4fs_dirhash_casefolded_names_hash_consistently),
++	KUNIT_CASE(test_ext4fs_dirhash_casefold_fallback),
++#endif
++	{}
++};
++
++static struct kunit_suite ext4_hash_test_suite = {
++	.name = "ext4_hash",
++	.test_cases = ext4_hash_test_cases,
++};
++
++kunit_test_suites(&ext4_hash_test_suite);
++
++MODULE_LICENSE("GPL");
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 48483cd01..72645bd92 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -321,3 +321,7 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+ #endif
+ 	return __ext4fs_dirhash(dir, name, len, hinfo);
+ }
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4fs_dirhash);
++#endif
 -- 
 2.34.1
 
