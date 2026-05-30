@@ -1,74 +1,30 @@
-Received: from mx0a-00364e01.pphosted.com (mx0a-00364e01.pphosted.com [148.163.135.74])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 743D13346A5
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 21:09:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.135.74
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71E1A233920;
+	Sat, 30 May 2026 01:21:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780088996; cv=none; b=Wzyqbc/yu1/Qrbm4cwjP2MGC3K5A0N7iQQfFldQ5s64c00yQsIggFFS3urHuoTR4WxZwduywEdkM9eeQZiq98LJsbW1i27m7iPearXt01SQmxHkm3Kqc90E8QZ3dDXg62OYpsbU+Gic5Y955NBHGKkvTYKKFaV42tFZWg6LCX2s=
+	t=1780104101; cv=none; b=eFHK3UwQlcB9ZO0C1iw5Eu445+v+B0yD43nLTLEIVTXFQZzlG5MumMt6tiCF8JFIrr1Fvbfx4RJBvC+giN8ymMaooLWptxERGLxx38YW+J8aiwySv3TTudH6jUBnCMwDrsoPbO5MYibNGemoAUEs+rhUpOJHK1XWgcD+/+RkXpc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780088996; c=relaxed/simple;
-	bh=O5g6xMsaAevqgY/HknheMpshVHdDuxz98nTfkUwVwd0=;
+	s=arc-20240116; t=1780104101; c=relaxed/simple;
+	bh=I9h44NgYixv8hPi4r+t+3lTg+AVFRMIZ1pEJ0OvdHbU=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=l9hYmoBYCQ2gKGy7ZI9p+ifeeTe2uECh894HJhtXMk0wvffjs8Ls4FtcOffl3iFc3creXouRJd9HNWGPcN1zWJyAi+2YFmwchk8yoU9USjdDFRad6PuYa8Ds2DBpwYVFWWTFGeiF0v5GYhOQhB8sLWWYw1jUZmcpSpJ3P3EYcjs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu; spf=pass smtp.mailfrom=columbia.edu; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=oJVKQcRD; arc=none smtp.client-ip=148.163.135.74
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="oJVKQcRD"
-Received: from pps.filterd (m0167068.ppops.net [127.0.0.1])
-	by mx0a-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64TKgS4f978924
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 17:09:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
-	cc:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pps01; bh=qoTz
-	5OByYLW8ASq2hVpbIv/Hf6reoFP/KvxSksZK3HE=; b=oJVKQcRD+34m0jMSKpMl
-	jBnema6zmL09G2+2vFmo8x9sHWu2Dkv91PcEJuZtp+kBmypWAuZ+o5Jfln9taBii
-	GStJvRHKtxtlf55KXidP4D1OwHeMR2krZeS4FSzBZL84yMHMm9NsWh7aLP8JNu1R
-	y0PvsO4Zzarid7swIWV0MYKdml7rWA/zPKL4XbJ0kiP3yC0R95aeXkYbTK6qDJAC
-	VDaaWR9Th3JuOOvh/TNf887qgKZlz63+cU1stSEJ2cYNbWaCgFFL+zSNwoOxAWrX
-	fixnJwqYyJpFu3zrVGGQwL5sRaFqJn44CRnrrtzpHARDU1AkNlxF8Qrokpdks1lJ
-	SA==
-Received: from mail-qv1-f72.google.com (mail-qv1-f72.google.com [209.85.219.72])
-	by mx0a-00364e01.pphosted.com (PPS) with ESMTPS id 4efhmg8bdx-1
-	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 17:09:53 -0400 (EDT)
-Received: by mail-qv1-f72.google.com with SMTP id 6a1803df08f44-8ccebf7e86aso18525506d6.0
-        for <linux-ext4@vger.kernel.org>; Fri, 29 May 2026 14:09:53 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780088993; x=1780693793;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=qoTz5OByYLW8ASq2hVpbIv/Hf6reoFP/KvxSksZK3HE=;
-        b=hIVPYM4OODwB5W+76cU0tmWgOVJe9tHUjTDp6v/kaCEzgLIylvWe4CFZidpJlCY4FI
-         fnZr+tCiiQHdHzaLgMDUa/i/HPxxA0pCRaBWC1AVldDhyI5eNGHSroffSXsUyfYdWdBa
-         zeUIuX8SRnPRLPRTq3pqahcJclK5Fk7OycmTgTL2NQLyB0067Cyl9sP9v0HX69MvMV/V
-         s5Rog4BFiZ7JjqGIOZIkqD+6jpuBbbSuOvY0v3NtvT9/zkDQ5blEKUDEc5+YE05DFet6
-         RV8xxvunpfHclTDM7LoY9VeHspNdXfzJQC4Xiz2HJK2IHO2kGV+9XUIA6/hO0YdGHSP6
-         hS6Q==
-X-Forwarded-Encrypted: i=1; AFNElJ8ZV0YiqOKsw5ciPzK/2Pzt+XMGGYCYKD9aO99+ciKfCwL0FeKcqx1fxHyVVkjYaZUtCxVySs1kI+t3@vger.kernel.org
-X-Gm-Message-State: AOJu0YxDZp7tMG8SFq/d940iOzXv+OpXPbWRVqhWcX0xglWwcvELl6SI
-	HobMZm3fKaYVgScTGVIeUBFpK4RCbeVOZ+RkHE6zn6UPjV7Oa8HHqV5aX7qNqwvJcNJ3CtKzAZR
-	7Jz1+PYLK3J6wvAhX1o0dtODR0do63qbWD3/jyqoQ7woVCZia5t7+0sbK5BQ=
-X-Gm-Gg: Acq92OHApB/zj+S5RiuQmfS+dTqPtUuBE863R5BW2LtueY1UNfj9mZmWWqhmhdZAEpE
-	aQeX1Gtypy6AF28YjzvuseeMfOf32P6FP7EZq9P6ItR+6xut+wYsqHPRj1AYTvZIzyMGp5gqq9X
-	QOtQnjr4x6PwYAp3NwKUlsx7JqHByMGOEIQitCximpZDiDI5Hk0s/7e/ROP1XCVTDSDumleZSRM
-	DMSODb1Y0WJUHx7g+TGATDfbXfYbuAQZqTVsiSoG1M6ErSS7vR8LcBE4kyfy6h/Pp3CyHiVFWgS
-	R21OGFJqPxxlymQoGaldr3YC77lcezlSU/IJBamkXsl/gMF0eMsUHwPME36p3FU6u/P2R91ISi8
-	AALgcbuAP9g2OulzPVLRFGtiTSz+kzmkuecu24JSyUroz2MFout1lVQToH8+0xFDJyJNrm5E8a1
-	XuzA6M0hk6xlFvAM28G8WeUfigHw==
-X-Received: by 2002:ad4:5949:0:b0:8ca:2711:f3ff with SMTP id 6a1803df08f44-8ccf03af60amr16675346d6.22.1780088992833;
-        Fri, 29 May 2026 14:09:52 -0700 (PDT)
-X-Received: by 2002:ad4:5949:0:b0:8ca:2711:f3ff with SMTP id 6a1803df08f44-8ccf03af60amr16675066d6.22.1780088992447;
-        Fri, 29 May 2026 14:09:52 -0700 (PDT)
-Received: from ?IPV6:2600:4040:974e:fe00:c8bb:325f:9d37:a5f? ([2600:4040:974e:fe00:c8bb:325f:9d37:a5f])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-8ccea0663fesm27208736d6.14.2026.05.29.14.09.51
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 29 May 2026 14:09:51 -0700 (PDT)
-Message-ID: <5bdfe6db-b5cd-4b1a-9dc5-50869198b834@columbia.edu>
-Date: Fri, 29 May 2026 17:09:51 -0400
+	 In-Reply-To:Content-Type; b=JaRUNzqJnDx0/wrq6hVQMXmzqXJiBL6WXRZz26FMvfwyjVsLJJeUOOs6QXXqx4jeqb9dmMZAsSfmPKYOdhItzw00/R3R9FcwwTHF9co2ONEsCEdEflh/xOtLV4lxZdmkIOX6E0AlYRavb3AwuWHYfI3kuvg2LkNMVtRETcCQL3w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gS2Vf6Wl7zKHMKL;
+	Sat, 30 May 2026 09:21:14 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 968AF4056D;
+	Sat, 30 May 2026 09:21:33 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP4 (Coremail) with SMTP id gCh0CgAHz1qbOxpqCqKEEA--.54113S3;
+	Sat, 30 May 2026 09:21:33 +0800 (CST)
+Message-ID: <29370885-bd50-4032-939f-2c377330872d@huaweicloud.com>
+Date: Sat, 30 May 2026 09:21:31 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -76,57 +32,276 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] jbd2: Remove special jbd2 slabs
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        Theodore Tso <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        "Mike Rapoport (Microsoft)"
- <rppt@kernel.org>,
-        Vlastimil Babka <vbabka@kernel.org>, Jan Kara <jack@suse.cz>
-References: <20260528171413.1088143-1-willy@infradead.org>
+Subject: Re: [PATCH v4 09/23] ext4: implement writeback path using iomap
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>, Zhang Yi <yizhang089@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-10-yi.zhang@huaweicloud.com>
+ <ahboWtDYXagrgTR4@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <458bda7a-c3c6-4cb3-9c05-0718cf2ef95f@gmail.com>
+ <ahmxmrWzIWRR9PUm@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
 Content-Language: en-US
-From: Tal Zussman <tz2294@columbia.edu>
-In-Reply-To: <20260528171413.1088143-1-willy@infradead.org>
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <ahmxmrWzIWRR9PUm@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-X-Authority-Analysis: v=2.4 cv=WL9PmHsR c=1 sm=1 tr=0 ts=6a1a00a1 cx=c_pps
- a=7E5Bxpl4vBhpaufnMqZlrw==:117 a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10
- a=NGcC8JguVDcA:10 a=x7bEGLp0ZPQA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=Da8U98TiO7q1upZEImrf:22 a=usPcmh10W0ubT8QP8_c3:22 a=JfrnYn6hAAAA:8
- a=VwQbUJbxAAAA:8 a=0wBLy_mAbSS78rUt_ycA:9 a=QEXdDO2ut3YA:10 a=ZXulRonScM0A:10
- a=pJ04lnu7RYOZP9TFuWaZ:22 a=1CNFftbPRP8L7MoqJWF3:22
-X-Proofpoint-ORIG-GUID: Vyc6LKhEOhlw7hzQtVzsqSaMemGuacMj
-X-Proofpoint-GUID: Vyc6LKhEOhlw7hzQtVzsqSaMemGuacMj
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTI5MDIxMSBTYWx0ZWRfXzrWDluku6ghB
- 475StMhtFkzePCTKfOZU9cAWX6Wx258EGVQna+fEL2++HAZRZyhSFZxoGlfv4NUAnWeNA9mKiX4
- YCfl/Zhpyz/rUXReq2A8DQCGRZIDZpmNvBAReZlOgq2LpG/KoY/T3NGNpIcNRsOWVVDNCd5V3bf
- kccYfXJXPzq+5tVYsLNfRL10xN3CPtHhxPZSX6efdE7XzNMrefgQp6rPk2VSPc2UmNbn36nnmQJ
- eIEdiJYCP+daguYJN3/KQ1V6BsIhA5XrrzZMj0v8qg9FkzqOyNbmBTQRUmuf8aKxeSSV/B5cA4E
- 49DONnEjYntbWnflS24lEYKT4Gbt9tLTto3CFa8EZCXk2OlS7Pcea75mgdSzR5WYXdfuIH4Vtnp
- unedDkzCQ23bIggKlNClSVvBvYayFqC1EVwS9WRwsJ0uT6aLEJWSMf7BascPGYxQmKkryaydDB3
- J0pgaO799ZJdCOnStPg==
-X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11801
- signatures=596817
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- suspectscore=0 lowpriorityscore=10 spamscore=0 adultscore=0 bulkscore=10
- phishscore=0 priorityscore=1501 impostorscore=10 clxscore=1015 malwarescore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2605290211
+X-CM-TRANSID:gCh0CgAHz1qbOxpqCqKEEA--.54113S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxKrWUCF4DWrykGF4rAr1DJrb_yoWfuFW5pr
+	WkCF1UGr4UXry2grsavw12qrnakw48Kr47Wry3Ga4Yvr90yF1fKFWjkF1j9Fy0yr47CF1U
+	ZF4jkry7urWYyrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
+	wI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
+	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
+	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
+	0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
+	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 5/28/26 1:14 PM, Matthew Wilcox (Oracle) wrote:
-> When jbd2 was originally written, kmalloc() would not guarantee memory
-> alignment for the requested objects.  Since commit 59bb47985c1d in 2019,
-> kmalloc has guaranteed natural alignment for power-of-two allocations.
-> We can now remove the jbd2 special slabs and just use kmalloc() directly.
+On 5/29/2026 11:32 PM, Ojaswin Mujoo wrote:
+> On Fri, May 29, 2026 at 10:12:12PM +0800, Zhang Yi wrote:
+>> Hi, Ojaswin!
+>>
+>> On 5/27/2026 8:49 PM, Ojaswin Mujoo wrote:
+>>> On Mon, May 11, 2026 at 03:23:29PM +0800, Zhang Yi wrote:
+>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>
+>>>> Add the iomap writeback path for ext4 buffered I/O. This introduces:
+>>>>
+>>>>   - ext4_iomap_writepages(): the main writeback entry point.
+>>>>   - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
+>>>>     block mapping and I/O submission.
+>>>>   - A new end I/O worker for converting unwritten extents, updating file
+>>>>     size, and handling DATA_ERR_ABORT after I/O completion.
+>>>>
+>>>> Core implementation details:
+>>>>
+>>>>   - ->writeback_range() callback
+>>>>     Calls ext4_iomap_map_writeback_range() to query the longest range of
+>>>>     existing mapped extents. For performance, when a block range is not
+>>>>     yet allocated, it allocates based on the writeback length and delalloc
+>>>>     extent length, rather than allocating for a single folio at a time.
+>>>>     The folio is then added to an iomap_ioend instance.
+>>>>
+>>>>   - ->writeback_submit() callback
+>>>>     Registers ext4_iomap_end_bio() as the end bio callback. This callback
+>>>>     schedules a worker to handle:
+>>>>     - Unwritten extent conversion.
+>>>>     - i_disksize update after data is written back.
+>>>>     - Journal abort on writeback I/O failure.
+>>>
+>>> Hi Zhang, the changes look good. I have a few comments below:
+>>>>
+>>>> Key changes and considerations:
+>>>>
+>>>> - Append write and unwritten extents
+>>>>    Since data=ordered mode is not used to prevent stale data exposure
+>>>>    during append writebacks, new blocks are always allocated as unwritten
+>>>>    extents (i.e. always enable dioread_nolock), and i_disksize update is
+>>>>    postponed until I/O completion.
+>>>
+>>> Makes sense.
+>>>
+>>>>    Additionally, the deadlock that the
+>>>>    reserve handle was expected to resolve does not occur anymore.
+>>>
+>>> I guess this is since we don't use ordered data so we can't block on
+>>> starting a txn in end io.
+>>
+>> Yep.
+>>
+>>>
+>>>>    Therefore, the end I/O worker can start a normal journal handle
+>>>>    instead of a reserve handle when converting unwritten extents.
+>>>>
+>>>> - Lock ordering
+>>>>    The ->writeback_range() callback runs under the folio lock, requiring
+>>>>    the journal handle to be started under that same lock. This reverses
+>>>>    the order compared to the buffer_head writeback path. The lock ordering
+>>>>    documentation in super.c has been updated accordingly.
+>>>>
+>>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>>>> ---
+>>>>   fs/ext4/ext4.h        |   4 +
+>>>>   fs/ext4/inode.c       | 208 +++++++++++++++++++++++++++++++++++++++++-
+>>>>   fs/ext4/page-io.c     | 126 +++++++++++++++++++++++++
+>>>>   fs/ext4/super.c       |   7 +-
+>>>>   fs/iomap/ioend.c      |   3 +-
+>>>>   include/linux/iomap.h |   1 +
+>>>>   6 files changed, 346 insertions(+), 3 deletions(-)
+>>>>
+>>>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>>>> index 4832e7f7db82..078feda47e36 100644
+>>>> --- a/fs/ext4/ext4.h
+>>>> +++ b/fs/ext4/ext4.h
+>>>> @@ -1173,6 +1173,8 @@ struct ext4_inode_info {
+>>>>   	 */
+>>>>   	struct list_head i_rsv_conversion_list;
+>>>>   	struct work_struct i_rsv_conversion_work;
+>>>> +	struct list_head i_iomap_ioend_list;
+>>>> +	struct work_struct i_iomap_ioend_work;
+>>>>   	/*
+>>>>   	 * Transactions that contain inode's metadata needed to complete
+>>>> @@ -3870,6 +3872,8 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
+>>>>   		size_t len);
+>>>>   extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+>>>>   extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
+>>>> +extern void ext4_iomap_end_io(struct work_struct *work);
+>>>> +extern void ext4_iomap_end_bio(struct bio *bio);
+>>>>   /* mmp.c */
+>>>>   extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
+>>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>>> index 1ae7d3f4a1c8..a80195bd6f20 100644
+>>>> --- a/fs/ext4/inode.c
+>>>> +++ b/fs/ext4/inode.c
+>>>> @@ -44,6 +44,7 @@
+>>>>   #include <linux/iversion.h>
+>>>>   #include "ext4_jbd2.h"
+>>>> +#include "ext4_extents.h"
+>>>>   #include "xattr.h"
+>>>>   #include "acl.h"
+>>>>   #include "truncate.h"
+>>>> @@ -4120,10 +4121,215 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+>>>>   	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+>>>>   }
+>>>> +static int ext4_iomap_map_one_extent(struct inode *inode,
+>>>> +				     struct ext4_map_blocks *map)
+>>>> +{
+>>>> +	struct extent_status es;
+>>>> +	handle_t *handle = NULL;
+>>>> +	int credits, map_flags;
+>>>> +	int retval;
+>>>> +
+>>>> +	credits = ext4_chunk_trans_blocks(inode, map->m_len);
+>>>> +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
+>>>> +	if (IS_ERR(handle))
+>>>> +		return PTR_ERR(handle);
+>>>> +
+>>>> +	map->m_flags = 0;
+>>>> +	/*
+>>>> +	 * It is necessary to look up extent and map blocks under i_data_sem
+>>>> +	 * in write mode, otherwise, the delalloc extent may become stale
+>>>> +	 * during concurrent truncate operations.
+>>>> +	 */
+>>>> +	ext4_fc_track_inode(handle, inode);
+>>>> +	down_write(&EXT4_I(inode)->i_data_sem);
+>>>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+>>>> +		retval = es.es_len - (map->m_lblk - es.es_lblk);
+>>>> +		map->m_len = min_t(unsigned int, retval, map->m_len);
+>>>> +
+>>>> +		if (ext4_es_is_delayed(&es)) {
+>>>
+>>> I understand that it is okay for us to rely on extent status ==
+>>> delayed here because we never reclaim delayed es entries and hence we
+>>> are sure to not skip any delayed block allocations here.
+>>
+>> Yeah, right.
+>>
+>>>
+>>>> +			map->m_flags |= EXT4_MAP_DELAYED;
+>>>> +			trace_ext4_da_write_pages_extent(inode, map);
+>>>> +			/*
+>>>> +			 * Call ext4_map_create_blocks() to allocate any
+>>>> +			 * delayed allocation blocks. It is possible that
+>>>> +			 * we're going to need more metadata blocks, however
+>>>> +			 * we must not fail because we're in writeback and
+>>>> +			 * there is nothing we can do so it might result in
+>>>> +			 * data loss. So use reserved blocks to allocate
+>>>> +			 * metadata if possible.
+>>>> +			 */
+>>>> +			map_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
+>>>> +				    EXT4_GET_BLOCKS_METADATA_NOFAIL |
+>>>> +				    EXT4_EX_NOCACHE;
+>>>> +
+>>>> +			retval = ext4_map_create_blocks(handle, inode, map,
+>>>> +							map_flags);
+>>>> +			if (retval > 0)
+>>>> +				ext4_fc_track_range(handle, inode, map->m_lblk,
+>>>> +						map->m_lblk + map->m_len - 1);
+>>>> +			goto out;
+>>>> +		} else if (unlikely(ext4_es_is_hole(&es)))
+>>>
+>>> Now that you've fixed the partial invalidate in iomap (patch 12/23)
+>>> can we still hit this hole case?
+>>
+>> Theoretically, no hole should be encountered; this is just defensive
+>> programming.
+>>
+>>>
+>>>> +			goto out;
+>>>> +
+>>>> +		/* Found written or unwritten extent. */
+>>>> +		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
+>>>> +		map->m_flags = ext4_es_is_written(&es) ?
+>>>> +			       EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+>>>> +		goto out;
+>>>> +	}
+>>>> +
+>>>> +	retval = ext4_map_query_blocks(handle, inode, map, EXT4_EX_NOCACHE);
+>>>> +out:
+>>>> +	up_write(&EXT4_I(inode)->i_data_sem);
+>>>> +	ext4_journal_stop(handle);
+>>>> +	return retval < 0 ? retval : 0;
+>>>> +}
+>>>> +
+>>>> +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+>>>> +					  loff_t offset, unsigned int dirty_len)
+>>>> +{
+>>>> +	struct inode *inode = wpc->inode;
+>>>> +	struct super_block *sb = inode->i_sb;
+>>>> +	struct journal_s *journal = EXT4_SB(sb)->s_journal;
+>>>> +	struct ext4_map_blocks map;
+>>>> +	unsigned int blkbits = inode->i_blkbits;
+>>>> +	unsigned int index = offset >> blkbits;
+>>>> +	unsigned int blk_end, blk_len;
+>>>> +	int ret;
+>>>> +
+>>>> +	ret = ext4_emergency_state(sb);
+>>>> +	if (unlikely(ret))
+>>>> +		return ret;
+>>>> +
+>>>> +	/* Check validity of the cached writeback mapping. */
+>>>> +	if (offset >= wpc->iomap.offset &&
+>>>> +	    offset < wpc->iomap.offset + wpc->iomap.length &&
+>>>> +	    ext4_iomap_valid(inode, &wpc->iomap))
+>>>> +		return 0;
+>>>> +
+>>>> +	blk_len = dirty_len >> blkbits;
+>>>> +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
+>>>> +				      (UINT_MAX - 1));
+>>>
+>>> This is an interesting idea. I'm just a bit worried when we have
+>>> range_end == LLONG_MAX (bg flush) and we will always be trying to allocate
+>>> MAX_WRITEPAGES, incase of a slightly fragmented FS, we might keep
+>>> falling into slower mballoc criterias and might waste a lot of time
+>>> scanning the groups.
+>>
+>> Actually, MAX_WRITEPAGES is not allocated every time; the allocated
+>> length also depends on the length of data that has already been delayed
+>> for writing, and the smaller value is taken. If the user has indeed
 > 
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Acked-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
-> Acked-by: Vlastimil Babka (SUSE) <vbabka@kernel.org>
+> Hmm so we take the blk_end based on range_end (which is LLONG_MAX for bg
+> flusher) and then our blk_len will be set accordingly and would become a
+> large number as well. Then we will set map.m_len based on this blk_len
+> and MAX_WRITEPAGES. Am I missing something that clamps our m_len?
+> 
+Please take a look at ext4_iomap_map_one_extent():
 
-FWIW:
++		retval = es.es_len - (map->m_lblk - es.es_lblk);
++		map->m_len = min_t(unsigned int, retval, map->m_len);
 
-Reviewed-by: Tal Zussman <tz2294@columbia.edu>
+In this case, m_len is truncated to the length of the delalloc extent.
 
+Thanks,
+Yi.
 
