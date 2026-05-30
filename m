@@ -1,30 +1,30 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC73384CCE;
-	Sat, 30 May 2026 08:24:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03D5A61FFE;
+	Sat, 30 May 2026 09:33:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780129474; cv=none; b=HTDw8Uh62oQC8B72NpNNFqb2XFVql+7JMT9kX3G75pkUr2WZDoB9XfJk74Li5TKXM7RGdzCTJ3uvwdIv0SH0O1Y3aoD/3XKxMC991rTQdhdSCmPWZd2b8J54si6iv2EP6iopiNPkHMvdvJOFOzf2cbQ3PbkD/f00sCHpdpht97Q=
+	t=1780133586; cv=none; b=CoAeD7ldU2EJsU0zS83LAJ6ESLvdbUnhatEw5ZlipWAu8fLYSO1Bw5YYCxKiCTrzrKQuOjFiAnVFfAjdlaI7FxSkmZjLF+0nx58wHdRGrVp5iCmF6mN2DkVaixoryC5LpVfpCkHoqiu4+NRVpl3hy45Yt+AUyGWNZi554RD9RK0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780129474; c=relaxed/simple;
-	bh=vWO9cOjLke0sZ8t9/659v+UucslLDgb+1vMrUmWxNgE=;
+	s=arc-20240116; t=1780133586; c=relaxed/simple;
+	bh=qU07iCSOdJv6nZV8Ta19AIiCHaspps/03yGBRxsPeQI=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Nm49G8YzlZNx0NvXNz3BATXki8TiQuQFgtgXD8H+Qw17re4Nm9pA2aCaHaObdfA6lrP3f2Zfbt0z2KxJJ/mmndTO6YgSZe1vZWHAx+nOXyAwHBpN+fbrcbdLQe3NpIiRv8R6Yb17CGMRi1nSLzVZbclTl+hXzOAv2Ocnv1vqJrs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 In-Reply-To:Content-Type; b=D3jNv8LBAKmDyX/e0YnnkNjKUaPAXQyCNpDdasp7V5fgOeb0ZwBRFbTz0a0IoVbi7CqOEszjFUK5BwkssS3EMq3xaDrBX4VnIkfxHXsOOoCUVvd35dhkP3J4akrOllc7CSGlxFnI63jPSwV5PkSDPHAfsYFLGQwaFZc/ZhArMy8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gSCsp09V4zYQtdr;
-	Sat, 30 May 2026 16:23:26 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gSFPd4x5YzKHMZ6;
+	Sat, 30 May 2026 17:32:37 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 2BA5040574;
-	Sat, 30 May 2026 16:24:27 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id E856A40573;
+	Sat, 30 May 2026 17:32:56 +0800 (CST)
 Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP4 (Coremail) with SMTP id gCh0CgAHz1q5nhpqg3yoEA--.61117S3;
-	Sat, 30 May 2026 16:24:26 +0800 (CST)
-Message-ID: <81f4c0ec-1d80-4987-b31e-4e9ecd394c63@huaweicloud.com>
-Date: Sat, 30 May 2026 16:24:24 +0800
+	by APP4 (Coremail) with SMTP id gCh0CgAX31rGrhpqnFCuEA--.60558S3;
+	Sat, 30 May 2026 17:32:56 +0800 (CST)
+Message-ID: <b22baeed-3a20-47a4-8e7c-22f61a6eb49b@huaweicloud.com>
+Date: Sat, 30 May 2026 17:32:54 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,44 +34,42 @@ MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH v4 18/23] ext4: wait for ordered I/O in the iomap buffered
  I/O path
-To: Zhang Yi <yi.zhang@huaweicloud.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
  libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
- djwong@kernel.org, hch@infradead.org, yizhang089@gmail.com,
- yangerkun@huawei.com, yukuai@fnnas.com
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
 References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
  <20260511072344.191271-19-yi.zhang@huaweicloud.com>
  <ahcUeq_IA_X988Ca@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
- <5d2b13b9-d5a0-47ce-876c-ab01070cbe49@huaweicloud.com>
+ <ahhEV3STaaVI4dTs@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
 Content-Language: en-US
 From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <5d2b13b9-d5a0-47ce-876c-ab01070cbe49@huaweicloud.com>
+In-Reply-To: <ahhEV3STaaVI4dTs@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAHz1q5nhpqg3yoEA--.61117S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxtF4DAw47Zr1kur48ZF13urg_yoW7Cr18pr
-	Z5KFnxGw48Xry2krsIqw1IqrySvw1rKr47WrnxG3WDua90yFy2yF1IgF1F9Fyqkr4UGrWj
-	qF48Jr9rurn8ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvK14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26F1j6w1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26F4j
-	6r4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AKxVW0oV
-	Cq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0
-	I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r
-	4UM4x0Y48IcVAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kI
-	c2xKxwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbV
-	WUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF
-	67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42
-	IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF
-	0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxh
-	VjvjDU0xZFpf9x0JUd-B_UUUUU=
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:gCh0CgAX31rGrhpqnFCuEA--.60558S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxtF4DAw1DuFW7XFykAryfXrb_yoW3CF47pr
+	WrKF1rJF48Xry3uwsaq3W0qr1S93yrGr1xXFy3WrsFv398CryIkFn7tr15uFy0yrs7J3W0
+	qF4UJrZxuF98A3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
+	7KsUUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 5/30/2026 3:22 PM, Zhang Yi wrote:
-> Hi, Ojaswin!
-> 
-> On 5/27/2026 11:58 PM, Ojaswin Mujoo wrote:
+On 5/28/2026 9:34 PM, Ojaswin Mujoo wrote:
+> On Wed, May 27, 2026 at 09:28:28PM +0530, Ojaswin Mujoo wrote:
 >> On Mon, May 11, 2026 at 03:23:38PM +0800, Zhang Yi wrote:
 >>> From: Zhang Yi <yi.zhang@huawei.com>
 >>>
@@ -89,123 +87,184 @@ On 5/30/2026 3:22 PM, Zhang Yi wrote:
 >>>  fs/ext4/super.c   | 23 ++++++++++----
 >>>  4 files changed, 161 insertions(+), 13 deletions(-)
 >>>
->>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->>> index 078feda47e36..9ce2128eea3e 100644
->>> --- a/fs/ext4/ext4.h
->>> +++ b/fs/ext4/ext4.h
->>> @@ -1195,6 +1195,15 @@ struct ext4_inode_info {
->>>  #ifdef CONFIG_FS_ENCRYPTION
->>>  	struct fscrypt_inode_info *i_crypt_info;
->>>  #endif
->>> +
->>> +	/*
->>> +	 * Track ordered zeroed data during post-EOF append writes, fallocate,
->>> +	 * and truncate-up operations. These parameters are used only in the
->>> +	 * iomap buffered I/O path.
->>> +	 */
->>> +	ext4_lblk_t i_ordered_lblk;
->>> +	ext4_lblk_t i_ordered_len;
->>> +	wait_queue_head_t i_ordered_wq;
->>>  };
->>>  
->>>  /*
->>> @@ -3858,6 +3867,8 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
->>>  			     __u64 len, __u64 *moved_len);
->>>  
->>>  /* page-io.c */
->>> +#define EXT4_IOMAP_IOEND_ORDER_IO	1UL	/* This I/O is an ordered one */
->>> +
->>>  extern int __init ext4_init_pageio(void);
->>>  extern void ext4_exit_pageio(void);
->>>  extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
->>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>> index e013aeb03d7b..11fb369efeb1 100644
->>> --- a/fs/ext4/inode.c
->>> +++ b/fs/ext4/inode.c
->>> @@ -4345,6 +4345,7 @@ static int ext4_iomap_writeback_submit(struct iomap_writepage_ctx *wpc,
+[...]
+>>> @@ -4746,8 +4771,10 @@ static int ext4_iomap_submit_zero_block(struct inode *inode,
+>>>  					loff_t from, loff_t end)
 >>>  {
->>>  	struct iomap_ioend *ioend = wpc->wb_ctx;
->>>  	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
->>> +	ext4_lblk_t start, end, order_lblk, order_len;
+>>>  	struct address_space *mapping = inode->i_mapping;
+>>> +	struct ext4_inode_info *ei = EXT4_I(inode);
+>>>  	struct folio *folio;
+>>>  	bool do_submit = false;
+>>> +	int ret;
 >>>  
->>>  	/*
->>>  	 * After I/O completion, a worker needs to be scheduled when:
->>> @@ -4357,6 +4358,30 @@ static int ext4_iomap_writeback_submit(struct iomap_writepage_ctx *wpc,
->>>  	    test_opt(ioend->io_inode->i_sb, DATA_ERR_ABORT))
->>>  		ioend->io_bio.bi_end_io = ext4_iomap_end_bio;
+>>>  	folio = filemap_lock_folio(mapping, from >> PAGE_SHIFT);
+>>>  	if (IS_ERR(folio))
+>>> @@ -4757,14 +4784,50 @@ static int ext4_iomap_submit_zero_block(struct inode *inode,
+>>>  	folio_wait_writeback(folio);
+>>>  	WARN_ON_ONCE(folio_test_writeback(folio));
 >>>  
+>>> -	if (likely(folio_test_dirty(folio)))
 >>> +	/*
->>> +	 * Mark the I/O as ordered. Ordered I/O requires separate endio
->>> +	 * handling and must not be merged with regular I/O operations.
+>>> +	 * Mark the ordered range. It will be cleared upon I/O completion
+>>> +	 * in ext4_iomap_end_bio(). Any operation that extends i_disksize
+>>> +	 * (including append write end io past the zeroed boundary,
+>>> +	 * truncate up and append fallocate) must wait for this I/O to
+>>> +	 * complete before updating i_disksize.
+>>> +	 *
+>>> +	 * When multiple overlapping unaligned EOF writes are in flight, we
+>>> +	 * only need to track and wait for the first one. Subsequent writes
+>>> +	 * will zero the gap in memory and ensure that the zeroed data is
+>>> +	 * written out along with the valid data in the same block before
+>>> +	 * i_disksize is updated.
 >>> +	 */
->>> +	order_len = READ_ONCE(ei->i_ordered_len);
->>> +	if (order_len) {
+>>> +	if (likely(folio_test_dirty(folio) &&
+>>> +		   READ_ONCE(ei->i_ordered_len) == 0)) {
+>>> +		WRITE_ONCE(ei->i_ordered_lblk,
+>>> +			   from >> inode->i_blkbits);
 >>> +		/*
->>> +		 * Pair with smp_store_release() in ext4_block_zero_eof().
->>> +		 * Ensure we see the updated i_ordered_lblk that was written
->>> +		 * before the release store to i_ordered_len.
+>>> +		 * Pairs with smp_rmb() in ext4_iomap_writeback_submit()
+>>> +		 * and ext4_iomap_wb_ordered_wait(). Ensure the updated
+>>> +		 * i_ordered_lblk is visible when i_ordered_len becomes
+>>> +		 * non-zero.
 >>> +		 */
->>> +		smp_rmb();
->>> +		order_lblk = READ_ONCE(ei->i_ordered_lblk);
->>> +		start = ioend->io_offset >> ioend->io_inode->i_blkbits;
->>> +		end = EXT4_B_TO_LBLK(ioend->io_inode,
->>> +				     ioend->io_offset + ioend->io_size);
+>>> +		smp_store_release(&ei->i_ordered_len, 1);
+>>>  		do_submit = true;
+>>> +	}
+>>>  	folio_unlock(folio);
+>>>  	folio_put(folio);
+>>>  
+>>>  	/* Submit zeroed block. */
+>>> -	if (do_submit)
+>>> -		return filemap_fdatawrite_range(mapping, from, end - 1);
+>>> +	if (do_submit) {
+>>> +		ret = filemap_fdatawrite_range(mapping, from, end - 1);
+>>> +		if (ret) {
+>>> +			/*
+>>> +			 * Pairs with wait_event() in
+>>> +			 * ext4_iomap_wb_ordered_wait(). Ensure
+>>> +			 * i_ordered_len = 0 is visible before waking up
+>>> +			 * waiters.
+>>> +			 */
+>>> +			smp_store_release(&ei->i_ordered_len, 0);
+>>> +			wake_up_all(&ei->i_ordered_wq);
+>>> +			return ret;
+> 
+> Okay so even if the ordered IO fails we still let the i_disksize updates
+> go ahead? 
+
+Yes when data_err=ignore, no when data_err=abort.
+
+> I think this is a deviation from the current behavior where we
+> abort the journal. If this is acceptable we should atleast add a comment
+> on why its okay.
+> 
+
+I think this behavior is consistent with the current data=ordered mode.
+In the data_err=ignore mode, if an I/O write fails, ext4_end_io_end()
+does not abort the journal, so i_disksize is still updated normally.
+Conversely, in the data_err=abort mode, the journal is aborted, and
+since i_disksize is not updated, it cannot be updated afterwards. Am I
+missing something?
+
+>>> +		}
+>>> +	}
+>>>  	return 0;
+>>>  }
+>>>  
+>>> @@ -4827,10 +4890,13 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+>>>  		 * data=ordered mode. We submit zeroed range directly here.
+>>>  		 * Do not wait for I/O completion for performance.
+>>>  		 *
+>>> -		 * TODO: Any operation that extends i_disksize (including
+>>> -		 * append write end io past the zeroed boundary, truncate up,
+>>> -		 * and append fallocate) must wait for the relevant I/O to
+>>> -		 * complete before updating i_disksize.
+>>> +		 * The end_io handler ext4_iomap_wb_ordered_wait() will wait
+>>> +		 * for I/O completion before updating i_disksize if the write
+>>> +		 * extends beyond the zeroed boundary.
+>>> +		 *
+>>> +		 * TODO: Any other operation that extends i_disksize
+>>> +		 * (including truncate up and append fallocate) must wait for
+>>> +		 * the relevant I/O to complete before updating i_disksize.
+>>>  		 */
+>>>  		} else if (ext4_inode_buffered_iomap(inode)) {
+>>>  			err = ext4_iomap_submit_zero_block(inode, from, end);
+>>> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+>>> index 3050c887329f..ad05ebb49bf6 100644
+>>> --- a/fs/ext4/page-io.c
+>>> +++ b/fs/ext4/page-io.c
+>>> @@ -613,6 +613,46 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
+>>>  	return 0;
+>>>  }
+>>>  
+>>> +/*
+>>> + * If the old disk size is not block size aligned and the current
+>>> + * writeback range is entirely beyond the old EOF block, we should
+>>> + * wait for the zeroed data written in ext4_block_zero_eof() to be
+>>> + * written out, otherwise, it may expose stale data in that block.
+>>> + */
+>>> +static void ext4_iomap_wb_ordered_wait(struct inode *inode,
+>>> +				       loff_t pos, loff_t end)
+>>> +{
+>>> +	struct ext4_inode_info *ei = EXT4_I(inode);
+>>> +	unsigned int blocksize = i_blocksize(inode);
+>>> +	loff_t disksize = READ_ONCE(ei->i_disksize);
+>>> +	ext4_lblk_t order_lblk, order_len;
 >>> +
->>> +		if (start <= order_lblk && end >= order_lblk + order_len) {
->>
->> Hi Zhang,
->>
->> I guess this check is enough cause ordered_lblk and ordered_len will
->> always be  contained in a single block.
+>>> +	/*
+>>> +	 * Waiting for ordered I/O is unnecessary when:
+>>> +	 * - The on-disk size is block-aligned (no stale data exists).
+>>> +	 * - The write start is within the block of the old EOF
+>>> +	 *   (overwriting, or appending to a block that already contains
+>>> +	 *   valid data).
+>>> +	 */
+>>> +	if (!(disksize & (blocksize - 1)) ||
+>>> +	    pos < round_up(disksize, blocksize))
+>>> +		return;
 > 
-> Yeah.
-> 
->>
->>> +			ioend->io_bio.bi_end_io = ext4_iomap_end_bio;
->>> +			ioend->io_private = (void *)EXT4_IOMAP_IOEND_ORDER_IO;
->>> +			ioend->io_flags |= IOMAP_IOEND_BOUNDARY;
->>
->> FWIU, we are wanting the ordered IO to not be merged and submitted asap
->> since we want to wake up the waiters. Is there any other reason?
-> 
-> My original intention was to prevent the loss of the
-> EXT4_IOMAP_IOEND_ORDER_IO flag during worker processing triggered by I/O
-> completion, which could be caused by merging an ordered ioend with a
-> normal ioend.  In patch 19, we need to determine the flag to update
-> i_disksize to the correct position.
-> 
->>
->> Adding the boundary in ->writeback_submit() only affects
->> iomap_ioend_can_merge() which happens after we have woken up the waiters
->> and deferred the IO to the wq. We ideally want it affect
->> iomap_can_add_to_ioend() ie we need to add IOMAP_F_BOUNDARY in
->> ->writeback_range().
-> 
-> IIUC, merging into the same ioend during the submission stage doesn't
-> seem to cause any problems.
-> 
->>
->> Secondly, I don't think boundary is the right flag here. It ensures
->> that everything before the ordered iomap gets submitted and the ordered
->> iomap starts a new ioend. This can still keep getting merged with the
->> newer ioends untils we decide to submit the IO, which can delay waking
->> up the waiters. If we really want the "no merge" behavior, we'll have to
->> do something like [1] (Check the 2 NOMERGE flag patches).
-> 
-> Yeah, IOMAP_IOEND_BOUNDARY appears to be just a one-way barrier and
-> still cannot prevent merging. I missed this, thank you for pointing this
-> out. However, I think perhaps we should change iomap_ioend_can_merge()
-> to check the iomap_ioend->io_private. Something like:
-> 
-> 	if (ioend->io_private || next->io_private)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            ioend->io_private != next->io_private
+> Okay these checks are pretty confusing. I was intially thinking that
+> i_disksize's block would always be equal to i_ordered_lblk but seems
+> like that is not true because ext4_block_zero_eof() uses from=i_size.
 
+Yeah, this is the key point that I was a bit confused about as
+well.
 
-> 		return false;
 > 
-> What do you think?
+> So we could have a sequence where
 > 
-> Thanks,
-> Yi.
+> 1. truncate 4k (i_disksize = i_size = 4k)
+> 2. write 8k,10k (i_disksize = 4k i_size = 10k, i_ordered_len = 0 (old isisze  is block aligned)) 
+> 3. write 16k,18k (i_disksize = 4k i_size = 10k, i_ordered_len = 1, lblk=4)
+                                             18k                     lblk=2, (10k >> 12)
+> 
+> Here we issue ordered IO even though it' probably not needed.  Now if
+> write 3 finishes first we see disksize as 4k so we don't wait for
+> ordered write. Which seems okay since we don't risk any stale data
+> exposure. However, this flow is pretty confuing.
+
+Indeed!
+
+> 
+> Can't we somehow avoid having to issue/set ordered len/lblk in case it
+> is not really needed, like only issue it if i_disksize (and not i_size) 
+> is unaligned. That can simplify some of our check and avoid extra IO
+> overhead.
+> 
+
+I was also planning to explore optimizations on this point next.
+However, since the original logic in buffer_head already works this way,
+keeping the same logic in the iomap path will not introduce any
+additional side effects. To avoid unnecessary waiting, I simply added
+the disksize alignment check in ext4_iomap_wb_ordered_wait().
+
+Therefore, I do not plan to implement this optimization in this series.
+I can open a separate series later to address this optimization — perhaps
+by checking i_disksize in ext4_block_zero_eof() before issuing or adding
+ordered I/O, and the buffer_head path might also benefit from optimization.
+Meanwhile, to avoid confusion, I can add a TODO comment in this patch.
+
+What do you think?
+
+Cheers,
+Yi.
 
