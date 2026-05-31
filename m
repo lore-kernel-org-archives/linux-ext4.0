@@ -1,250 +1,201 @@
-Received: from mail-pl1-f180.google.com (mail-pl1-f180.google.com [209.85.214.180])
+Received: from mail-yx1-f52.google.com (mail-yx1-f52.google.com [74.125.224.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F6CD2C11F3
-	for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 15:59:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.180
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780156746; cv=none; b=DbyusBp3LU373iVPUtUcwz7Ar6+Q9nhrQDam8CYKBfn4owOZpiTJczzvysCTTPHUHGY4uqGOdwja8qzWtLjOG+xplq4dvaIT3B90tUHBoyvIhxWi2NV0r1u5dVjYjXRVQUCyYJw2vMd2zWy9TVzaypHkIhkCIGRjOPvWZtf+PI8=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780156746; c=relaxed/simple;
-	bh=4/z6yP3+JuzW+3nQ9d+tB8xobpPUjdjHcioAcY9jFlQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=hkMlruSTs5n4dgVDMZNMh+6g9xfow1gpztzga3ZtV3lIztoLimMZ8vHanxKT8GW+tSVG7jNkiH3dCnJwnLf3WfuSXssM7c3CIGcBKWgrLBWzBNACPWMXDy9OnYq/wq/TsZSTBx3NZMVZ4L3OP3cthQn7fh1hXrNS6RrLDcKfIxU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gms.tku.edu.tw; spf=pass smtp.mailfrom=gms.tku.edu.tw; dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b=LSV1nAVD; arc=none smtp.client-ip=209.85.214.180
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gms.tku.edu.tw
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gms.tku.edu.tw
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B736F1E492D
+	for <linux-ext4@vger.kernel.org>; Sun, 31 May 2026 01:49:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.224.52
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780192160; cv=pass; b=ggXWP+5uN6qe4RuKbCKVac8n51AP07Uo7xR1s4j+9PyeNhrGHPhey6Hgy+PfpO4wIqKMocjdlxbB/Nkm1tKNVKwkUupGGSwjVYRxgkgq8IFrtx0uhgitU91gouxYfAhPKoHLEp4J+/UIqTDRWlvKGeZCYDsY7wxtRX2ePDa0xgY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780192160; c=relaxed/simple;
+	bh=A8HLHhbwIBFhaPWuTSTtXyzEDduN3a5G/gWDMiiuKFc=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=NBt/T4O22mT+sQ1plVvlt2jBpmgT6JjkBE+byF0UAdkXNV5PX4LD6dLpuZdhb3/RW1a3nYBpOjdLH8QwlYecB1+jzedcxTRhsiVVX4x/vj2NkzOKmkP+9zX6xcmn9ElKlhLGF5/LUVWh492L63obJRT8Bf2tOZqr5qysSn2A4Kg=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MJMhscza; arc=pass smtp.client-ip=74.125.224.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gms-tku-edu-tw.20251104.gappssmtp.com header.i=@gms-tku-edu-tw.20251104.gappssmtp.com header.b="LSV1nAVD"
-Received: by mail-pl1-f180.google.com with SMTP id d9443c01a7336-2c0c20f0c0aso40955ad.0
-        for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 08:59:04 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MJMhscza"
+Received: by mail-yx1-f52.google.com with SMTP id 956f58d0204a3-6604df9ba4eso1522589d50.0
+        for <linux-ext4@vger.kernel.org>; Sat, 30 May 2026 18:49:18 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1780192158; cv=none;
+        d=google.com; s=arc-20240605;
+        b=QQ7fuCM33vcN7Iv6pj54WqJ3hzAULYFbwa4W2u8GXu9npNWMN+HXKryY1bKmkXp8Yq
+         c25T2pLBSWETqUBFxbpr2o+R14SykkMy8wJir9Pt76JOZ2XuOTzGjrs+TNJ28auS8+fC
+         t/4RolaSpe2dooAI5nu84jXxunrc6FzvKawDCjvLhmteccPDLYg7KhqAlhFFL8M46eXz
+         QnilSlGx5qkj+VO5DBhwhDacali/O4XhQ1rNEk/b2ei5ZocWG7HfFRVKv5Tya9WUJkXk
+         8bhCIROKruWbk/K/+yo72Sh+mNI5i23hwp5vyMnvO66hkTy2GDgcBD78PswKCAr3llQe
+         wmZQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=sf0WF4YnZQfmy1VY7oAHx1peijwCr//lUKmblGm638k=;
+        fh=ItR53ua/NxAh+K0BJQ0Y4PGiJKh0xe9YMBmyJboPlz8=;
+        b=TdMQYlK/A8K2b+cHHc2B5bqL+HBcpJ8+EUt9WS7CZ++ee8mlZ0idrBfuoDDLB/iDxU
+         py+0gzHqnkoqr8HsdXxbKcWoaZErRKl/GTOnP6BeDsOoGweiskV6LJZLFzTpJD8Zld81
+         WzXqt4exl7JOnV3ZHNcZ571HZU6S4YpWbUQKRZs/ke1daa2XsOUvyt2UVS1U8AV8COQo
+         JSyiE/WsBFZu8uQNnehIV0XJBXDjGRvTFvXQKxW/gnOyoSGB9pGzCnTK1WOjOVtPjs73
+         z50tIvwRV1iV0Gi71gPEWeQHlFb4APngOPBEE/3OE0taisYW9K44TdV0rdqfutq2vQyq
+         SKdA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gms-tku-edu-tw.20251104.gappssmtp.com; s=20251104; t=1780156743; x=1780761543; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+        d=gmail.com; s=20251104; t=1780192158; x=1780796958; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=QwgjGyriqartm9D+KeKxuc1rd60Ey0Lbv69xmUQfiEQ=;
-        b=LSV1nAVDGRrj97WDMhvQWlJ22AQPEFVEN5tbEtOU9woZItk0FwrK0cI+oGm7xpfJUd
-         nFvK7QZSf64oEJq5JhyD63m5vOHAlevgc68TwJ1KTM1xiNhPMnJuAmUkCejrZ1iaUfWO
-         YChsYMbmxqf6Me+rSC5FvpmVqYepg8WXQIt9Fa3Z5CvH6bHcSXPljYG5Vq5HveWbv20H
-         9v6i4x/XTF3O94fuidm1EUEgtAt6hpVoiiNxdc4LElEzwXoENRVCPQA8u0kLv5/EZjFQ
-         qO1RwvyK8FnaZJ5CXqDWjo3Ruy8LmAhh6xTbkQhQEP8aIk4whWsFPxXdhdgokSbLzqIz
-         OijA==
+        bh=sf0WF4YnZQfmy1VY7oAHx1peijwCr//lUKmblGm638k=;
+        b=MJMhscza9e4+66GT5FE9ZKHRYY0gnlHHaZbiEo72PGTqPvmXiBUfy7CWxSeDoh456K
+         IUQrm6AuKj1S+vKcd2ByqtdQgOG6qo+cWp1mQTs7FMK/qQAHZXZAdDLpnulrXQIEjkmo
+         hmYvLP1bYxGW8vutaYmpNTqvnOZK8u+nhIiC8dRohjqw7Ytdtu7VLCgw0Nuc4WgO+ifM
+         TSYudpbnYpaS8aDVQ5x/3waTjJMd+PdP5gjLZxNNJ9/Tw8coukCr3PMfGbzaJwdOySBg
+         bGZau0zezwTFBN4ngXVGzOZUViDyrZ0kHy+XMyUg3tooh04SofFF53ZkgycIIzeJAHNt
+         KWVQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780156743; x=1780761543;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+        d=1e100.net; s=20251104; t=1780192158; x=1780796958;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=QwgjGyriqartm9D+KeKxuc1rd60Ey0Lbv69xmUQfiEQ=;
-        b=tJhR+I1FQXrPdbaE3gH63/2SqnfBX0a/qgU1N/BWdnlgYbJ72IPxK2med8uaqq4px9
-         Z+hnwU7WWywhk8on3PQpSL899/Yr/brfCotadl5G3dpqkwMQz86z5iShJWcyWJSUnQAO
-         O1Naiicr82awYZbC8Vlzj1usKFI+TBsGo8lPzOAxb78pj2K9567gj+1MCj1pSKqdcq+G
-         PyZoCjSu20i+uZzIwIIORT1UcmMpqK/kj1joVE4LFejX4nJ6dVCNOro4GlMbHhoczQ80
-         PoLwCaEI7LQBXk3tjtoL3xyj+KLVFylK1cWqUNqOUHweW3dbObpoS+/gQz4hFdxb2FeH
-         f2Bg==
-X-Gm-Message-State: AOJu0YwSNK51j/D/jYWLMOs8ysjmfQbeEcSkw5EokRa0asZV8/rPFZ4g
-	Jdef04J+HSJ3mtR6xSldchv7rVAADfABvifIW5kfr4Vbj/FGaG+yVUOPIZwL7ko7HvA=
-X-Gm-Gg: Acq92OEV9mJKNfq/2k1xvK5mxW86izgrBNfHzYbRV7kwXJnlMjZ9HGZClXAqC0cTOID
-	eWjdkemrfbDMdRhAYfOtDVeLfInUj9TvYXE8y6HRbhseIaqL6MFL1jk11fVS6MywTP/1hO2JDDN
-	4ea3Z4vXDLhgmZQE5MRqH9TMkbW8RCBwuJkpdGwGIFXFjhiftPTAqEJi8pvdy8CeoHL9Xgw71sO
-	mOlMcS/w6MYMuINQ0iX5TCugRtibtsEew00KXDWwmixJVlCAi2Su32SReWW1k6uPZK38ZqGkOt0
-	hGSK+6ybxJ5D5+SJuRKAMoYUW4jOXcRumOXTXuTZ04bi6+lIi4+xdptGxCNDlIsVJjnDV0zSK9k
-	0MVYOehVOb2kQVNwJ0CvhDL4VPrWQ/T36w0xbeOLvr/Nc9zv4l2YC+Em8PWxVk1XcLCJFC5GD/h
-	XnEwEzb/jjOFl2khFNP+RSfYuvAVwWYlyllRwpWxICb0e6ddBjuEO1sC/a
-X-Received: by 2002:a17:903:1983:b0:2bf:23ad:8595 with SMTP id d9443c01a7336-2bf367b260amr49708545ad.4.1780156743412;
-        Sat, 30 May 2026 08:59:03 -0700 (PDT)
-Received: from wu-Pro-E500-G6-WS720T.. ([2001:288:7001:2703:429:4bda:e5dc:8a16])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2bf23c1e46asm51130855ad.61.2026.05.30.08.59.00
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 30 May 2026 08:59:03 -0700 (PDT)
-From: Guan-Chun Wu <409411716@gms.tku.edu.tw>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	edward062254@gmail.com,
-	visitorckw@gmail.com,
-	david.laight.linux@gmail.com,
-	Guan-Chun Wu <409411716@gms.tku.edu.tw>
-Subject: [PATCH v5 2/2] ext4: improve str2hashbuf by processing 4-byte chunks and removing function pointers
-Date: Sat, 30 May 2026 23:58:17 +0800
-Message-Id: <20260530155817.2311587-3-409411716@gms.tku.edu.tw>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260530155817.2311587-1-409411716@gms.tku.edu.tw>
-References: <20260530155817.2311587-1-409411716@gms.tku.edu.tw>
+        bh=sf0WF4YnZQfmy1VY7oAHx1peijwCr//lUKmblGm638k=;
+        b=pUghrzCi0rKfBvEAj9brt1ZEUgCRAJKIprW9G5cnFrb3NyZ2ESd9goLUuT0GYspfPY
+         qCTAVFzEHGE+KTE/b/Q+YJBXz1UO7yGf9INbiWqYRZJtjkfiv9coaoyrqmslLKkfffUh
+         M3lbnWTviPY/vwJwd/jw2hy0aZFaWIRoW0OI2OGvrxXsY7SkwOhDwEMQfZTZ6bMXbEVE
+         nmF5A83tQGqphilis3PG55nzAqMMiSKcMD8hNFMU27T3FEy+ANEpFIKRYhdS67jP9czm
+         uJjkUgLSKPBMCPMn1Wq1/nnYjfGkUBtl4ZArubZKAP0TSLZiuyGNcvtl33KKgNpDhDKM
+         clXQ==
+X-Gm-Message-State: AOJu0YwinmpiU5ZmhD9aQs02v8jVmENeMR5K3zU+fIa89lDGvD4+IHJR
+	KHwtGSE/ciI5HOL5XQW1EQLMOnzdyUqdbDnu+qZgUst/f9QzBsA8qg446ik6i23LB2a5wDwQwtC
+	ROvVsXouvjIJZorLo1FswVk7ljJ9LBBI=
+X-Gm-Gg: Acq92OGMW1yfKCOIH1y3+goTZRM1BgtIeB/Q8LyVdN5v0AAARe1jzXl9bSBZcXq78a0
+	P7+lgTcLpl4c6hnk9q5jnlZZwD5frg/YWAT7Xk71LoxI1eqKS0RJGcgfQ9E9WyH4uI5q2ykz6TX
+	qnkD3INQe2sgToXM9JUdGklqK4LVd3lhDEcv3kpC6elEm5kCEXx/5X4s64gld82nXb0fOQX7Gcu
+	MoNTZ3nJQRw9S+quCJZLsiv5UuZ0s4DxA52XhjOuE0X3cWm4YnA1DXjSMubtKR1TdhzhWYIWxKx
+	cNkwbKowCVADMxoJOXT9kbJCBFc8VaPdZJ1lWaxtVr0sl++HTxdwM6KpdESk40MWNEbJcHcnZXu
+	n82r3GQ==
+X-Received: by 2002:a05:690e:3cf:b0:65e:b380:b6c5 with SMTP id
+ 956f58d0204a3-6605efdd7e9mr3015643d50.21.1780192157707; Sat, 30 May 2026
+ 18:49:17 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260507050605.50081-1-kartikey406@gmail.com>
+In-Reply-To: <20260507050605.50081-1-kartikey406@gmail.com>
+From: Deepanshu Kartikey <kartikey406@gmail.com>
+Date: Sun, 31 May 2026 07:19:06 +0530
+X-Gm-Features: AVHnY4I2XVTjH2eMK-GKn1fRiU5_mPea2ueZJxeDcObJ0UUH2GoiY7NwzeXSeT4
+Message-ID: <CADhLXY5Rfe6=9FtwbWcOECys=3BEsidZy=NjAd0D6+pLoi=Ukg@mail.gmail.com>
+Subject: Re: [PATCH] jbd2: check for aborted handle in jbd2_journal_dirty_metadata()
+To: tytso@mit.edu, jack@suse.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	syzbot+98f651460e558a21baae@syzkaller.appspotmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-The original byte-by-byte implementation with modulo checks is less
-efficient. Refactor str2hashbuf_unsigned() and str2hashbuf_signed()
-to process input in explicit 4-byte chunks instead of using a
-modulus-based loop to emit words byte by byte.
+On Thu, May 7, 2026 at 10:36=E2=80=AFAM Deepanshu Kartikey
+<kartikey406@gmail.com> wrote:
+>
+> jbd2_journal_dirty_metadata() unconditionally dereferences
+> handle->h_transaction at function entry to obtain the journal pointer:
+>
+>         transaction_t *transaction =3D handle->h_transaction;
+>         journal_t *journal =3D transaction->t_journal;
+>
+> However, h_transaction may legitimately be NULL for an aborted handle.
+> The is_handle_aborted() helper in include/linux/jbd2.h explicitly
+> treats !h_transaction as one of the aborted states:
+>
+>         if (handle->h_aborted || !handle->h_transaction)
+>                 return 1;
+>
+> Every other entry point in fs/jbd2/transaction.c
+> (jbd2_journal_get_{write,undo,create}_access, jbd2_journal_extend,
+> jbd2_journal_restart, jbd2_journal_stop, etc.) guards against this
+> with an is_handle_aborted() check before any dereference of
+> h_transaction. jbd2_journal_dirty_metadata() was missing this guard.
+>
+> This is reachable from ocfs2's xattr code. ocfs2_xa_set() intentionally
+> falls through to ocfs2_xa_journal_dirty() even after
+> ocfs2_xa_prepare_entry() fails, on the assumption that the buffer
+> needs to be journaled to record any partial modifications (see the
+> comment above the out_dirty label in fs/ocfs2/xattr.c). If the failure
+> was caused by the journal being aborted -- e.g. an underlying I/O
+> error during a sub-operation such as __ocfs2_remove_xattr_range() --
+> the handle's h_transaction has been cleared by the abort path, and
+> the unconditional deref in jbd2_journal_dirty_metadata() becomes a
+> NULL deref.
+>
+> Reproduced by syzbot with a crafted ocfs2 image where I/O against the
+> loop device backing the mount is sabotaged via LOOP_SET_STATUS64
+> between two setxattr() calls, causing the second setxattr (which
+> truncates an external xattr value) to abort the journal mid-flight:
+>
+>   Oops: general protection fault, probably for non-canonical
+>         address 0xdffffc0000000000
+>   KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+>   RIP: jbd2_journal_dirty_metadata+0x4a/0xd30 fs/jbd2/transaction.c:1520
+>   Call Trace:
+>    ocfs2_journal_dirty+0x130/0x700 fs/ocfs2/journal.c:831
+>    ocfs2_xa_journal_dirty fs/ocfs2/xattr.c:1483 [inline]
+>    ocfs2_xa_set+0x15e3/0x2ec0 fs/ocfs2/xattr.c:2294
+>    ocfs2_xattr_block_set+0x3e0/0x33c0 fs/ocfs2/xattr.c:3016
+>    __ocfs2_xattr_set_handle+0x6b3/0xf50 fs/ocfs2/xattr.c:3418
+>    ocfs2_xattr_set+0xf3f/0x13e0 fs/ocfs2/xattr.c:3681
+>    __vfs_setxattr+0x43c/0x480 fs/xattr.c:218
+>    ...
+>
+> Fix by adding the standard is_handle_aborted() guard at the top of
+> jbd2_journal_dirty_metadata() and returning -EROFS, matching the
+> pattern used by every other entry point in this file.
+> ocfs2_journal_dirty() already handles a non-zero return from
+> jbd2_journal_dirty_metadata() correctly.
+>
+> Reported-by: syzbot+98f651460e558a21baae@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=3D98f651460e558a21baae
+> Tested-by: syzbot+98f651460e558a21baae@syzkaller.appspotmail.com
+> Signed-off-by: Deepanshu Kartikey <kartikey406@gmail.com>
+> ---
+>  fs/jbd2/transaction.c | 9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 4885903bbd10..aa0be9e9c876 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1516,14 +1516,19 @@ void jbd2_buffer_abort_trigger(struct journal_hea=
+d *jh,
+>   */
+>  int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh=
+)
+>  {
+> -       transaction_t *transaction =3D handle->h_transaction;
+> -       journal_t *journal =3D transaction->t_journal;
+> +       transaction_t *transaction;
+> +       journal_t *journal;
+>         struct journal_head *jh;
+>         int ret =3D 0;
+>
+> +       if (is_handle_aborted(handle))
+> +               return -EROFS;
+>         if (!buffer_jbd(bh))
+>                 return -EUCLEAN;
+>
+> +       transaction =3D handle->h_transaction;
+> +       journal =3D transaction->t_journal;
+> +
+>         /*
+>          * We don't grab jh reference here since the buffer must be part
+>          * of the running transaction.
+> --
+> 2.43.0
+>
 
-Additionally, the use of function pointers for selecting the appropriate
-str2hashbuf implementation has been removed. Instead, the functions are
-directly invoked based on the hash type, eliminating the overhead of
-dynamic function calls.
+Gentle Reminder. I want to know the status of this patch.
 
-Performance test (x86_64, Intel Core i7-10700 @ 2.90GHz, average over 10000
-runs, using kernel module for testing):
+Let me know if anything is required from my side.
 
-    len | orig_s | new_s | orig_u | new_u
-    ----+--------+-------+--------+-------
-      1 |   70   |   71  |   63   |   63
-      8 |   68   |   64  |   64   |   62
-     32 |   75   |   70  |   75   |   63
-     64 |   96   |   71  |  100   |   68
-    255 |  192   |  108  |  187   |   84
+Thanks
 
-This change improves performance, especially for larger input sizes.
-
-Signed-off-by: Guan-Chun Wu <409411716@gms.tku.edu.tw>
----
- fs/ext4/hash.c | 64 +++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 42 insertions(+), 22 deletions(-)
-
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 72645bd92..978bd92da 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -9,6 +9,7 @@
- #include <linux/unicode.h>
- #include <linux/compiler.h>
- #include <linux/bitops.h>
-+#include <linux/unaligned.h>
- #include "ext4.h"
- 
- #define DELTA 0x9E3779B9
-@@ -141,21 +142,28 @@ static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
- 
--	val = pad;
- 	if (len > num*4)
- 		len = num * 4;
--	for (i = 0; i < len; i++) {
--		val = ((int) scp[i]) + (val << 8);
--		if ((i % 4) == 3) {
--			*buf++ = val;
--			val = pad;
--			num--;
--		}
-+
-+	while (len >= 4) {
-+		val = ((__u32)scp[0] << 24) + ((__u32)scp[1] << 16) + ((__u32)scp[2] << 8) + scp[3];
-+		*buf++ = val;
-+		scp += 4;
-+		len -= 4;
-+		num--;
- 	}
-+
-+	val = pad;
-+
-+	for (i = 0; i < len; i++)
-+		val = scp[i] + (val << 8);
-+
- 	if (--num >= 0)
- 		*buf++ = val;
-+
- 	while (--num >= 0)
- 		*buf++ = pad;
-+
- }
- 
- static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
-@@ -167,21 +175,28 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
- 
--	val = pad;
- 	if (len > num*4)
- 		len = num * 4;
--	for (i = 0; i < len; i++) {
--		val = ((int) ucp[i]) + (val << 8);
--		if ((i % 4) == 3) {
--			*buf++ = val;
--			val = pad;
--			num--;
--		}
-+
-+	while (len >= 4) {
-+		val = get_unaligned_be32(ucp);
-+		*buf++ = val;
-+		ucp += 4;
-+		len -= 4;
-+		num--;
- 	}
-+
-+	val = pad;
-+
-+	for (i = 0; i < len; i++)
-+		val = ucp[i] + (val << 8);
-+
- 	if (--num >= 0)
- 		*buf++ = val;
-+
- 	while (--num >= 0)
- 		*buf++ = pad;
-+
- }
- 
- /*
-@@ -205,8 +220,7 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 	const char	*p;
- 	int		i;
- 	__u32		in[8], buf[4];
--	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
--				str2hashbuf_signed;
-+	bool use_unsigned = false;
- 
- 	/* Initialize the default seed for the hash checksum functions */
- 	buf[0] = 0x67452301;
-@@ -232,12 +246,15 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		hash = dx_hack_hash_signed(name, len);
- 		break;
- 	case DX_HASH_HALF_MD4_UNSIGNED:
--		str2hashbuf = str2hashbuf_unsigned;
-+		use_unsigned = true;
- 		fallthrough;
- 	case DX_HASH_HALF_MD4:
- 		p = name;
- 		while (len > 0) {
--			(*str2hashbuf)(p, len, in, 8);
-+			if (use_unsigned)
-+				str2hashbuf_unsigned(p, len, in, 8);
-+			else
-+				str2hashbuf_signed(p, len, in, 8);
- 			half_md4_transform(buf, in);
- 			len -= 32;
- 			p += 32;
-@@ -246,12 +263,15 @@ static int __ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		hash = buf[1];
- 		break;
- 	case DX_HASH_TEA_UNSIGNED:
--		str2hashbuf = str2hashbuf_unsigned;
-+		use_unsigned = true;
- 		fallthrough;
- 	case DX_HASH_TEA:
- 		p = name;
- 		while (len > 0) {
--			(*str2hashbuf)(p, len, in, 4);
-+			if (use_unsigned)
-+				str2hashbuf_unsigned(p, len, in, 4);
-+			else
-+				str2hashbuf_signed(p, len, in, 4);
- 			TEA_transform(buf, in);
- 			len -= 16;
- 			p += 16;
--- 
-2.34.1
-
+Deepanshu
