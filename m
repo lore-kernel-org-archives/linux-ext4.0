@@ -1,222 +1,203 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAF5E390989
-	for <linux-ext4@vger.kernel.org>; Mon,  1 Jun 2026 09:29:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D9603A2E2E
+	for <linux-ext4@vger.kernel.org>; Mon,  1 Jun 2026 09:52:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780306198; cv=none; b=OIIl8kjhdvwKjBtcTazCyv9RPplCcEJQ4tLQ4/xpSOObMj1lAOA8KfqTs3Si4sfmLoNNuj4796KZmm5lsB3QzqVGJcOoSuGuvTXtMuuBp6cG+FY8EC92PVIoPv9XLW7ioRDmb6kMpYgs7c75llM2PGc/n9FLU9L2OHmfEv1lMa4=
+	t=1780307555; cv=none; b=SQHsbisu+DzPh28UmjkXQWn1w11kxinQGsKLgBw9PZyMe+V9SfU6ANaD9tcmQYl8Yd5U1+UOLTTF5/74MlLM90TYUbk5ZKm6olGuvmVF9I1SseLFfNT8OA5ubYVRjaBnTwBckVPsGni1htO7ZFlog/tOZ4O9Ta8II3fEaZ8mD7Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780306198; c=relaxed/simple;
-	bh=gcL11uWBi7+521a/swSLxsPdFD2yXU9/tDxeGdKh5o0=;
+	s=arc-20240116; t=1780307555; c=relaxed/simple;
+	bh=GbH+3gui1gozOYcWfBKkNeYDATfBvIYM74/+kb9dEDg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=TauROgLdGDGo8jO0wLT5Nsw0kcjx8NipKvZkLR/oQd0rS/x0Shz3sS/ueWS+ZekqmnGpQ3dZsBZttWomt9cu6GsVX6geFZuLU9nGIDExTuOhICZH7L1Yum1Ro4VRFmZcmWHS5l7TfaYTkcGS4A/8c6oVJNgBseQwuNneXO2PUes=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fT7eOk2/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=LwwhhpTX; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fT7eOk2/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=LwwhhpTX; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=oYjQJ4ZhkE9xbKX3TZzK1a1ykSMcXPsJ7YEz58OKwc6NHzyZyJFxET3QP5r6WBKPEeBmEQ31HD9imCmKqrQPrHyCuGI9E2cwqzCJkD6mPuiDYj5D5nNjKmGqMSOtIHyM7xbBgmkPtuy9/pVfiszxrEuX+iO6N0w1hpdyl+4Db3c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=e4j5fkIh; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=OXtHlfw7; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=e4j5fkIh; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=OXtHlfw7; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fT7eOk2/";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="LwwhhpTX";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fT7eOk2/";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="LwwhhpTX"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="e4j5fkIh";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="OXtHlfw7";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="e4j5fkIh";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="OXtHlfw7"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id C2B1F66D2E;
-	Mon,  1 Jun 2026 09:29:53 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 66C556B89D;
+	Mon,  1 Jun 2026 09:52:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1780306193; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1780307543; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=DapO5g55BWAO53IfVTKZC7bT6Fm/+2GfVus0svtSJFk=;
-	b=fT7eOk2/+UsyVlLrozFsMvCcWnr9ZXOHcM+uKQhDqBNPvbLUcYpVin6v6zuzS2AbHFdCRX
-	1aiUj6rU/IbIhziR7gUdOdTr3wW3FuyRC8pFyB0C5g8XNhtMk/aCAZtO87d4Y/ohaDfvaA
-	vUWieYv/CteBaU3ojBdGa0BJ6bLQoT8=
+	bh=kACuJyVnOFQ03WjvWQPG6+N71Vy6k5l+8uIM48Wo09s=;
+	b=e4j5fkIh0awm7ivEoHtanBzvYGukdQyHA0bOc4kx/P80L7a9oUxxjmGIBolHkWb5BBA5Yg
+	tOM9eAoTVzKjwP8G5ei6CoY0JJu3T6e31cdWY4UNmrhtrG6ajbDj6ziA27ewF29nTVifnG
+	eMKARAMWbt2IttwJ/mivRiv3mdufMpk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1780306193;
+	s=susede2_ed25519; t=1780307543;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=DapO5g55BWAO53IfVTKZC7bT6Fm/+2GfVus0svtSJFk=;
-	b=LwwhhpTXUFUQlTN5Sf45zrIoZT92R2K9DJJT4orI9YSAJEJeUE8jb/NSB3nFI6g5HLH6ru
-	vXqVgTQBI8SlpRCQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="fT7eOk2/";
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=LwwhhpTX
+	bh=kACuJyVnOFQ03WjvWQPG6+N71Vy6k5l+8uIM48Wo09s=;
+	b=OXtHlfw7TFURZ+hjWV21ug0Y7FdOvDYpkzem6E7Zzbb5eEFeRxpadiKYDmPltTdDAhIIO7
+	x/ktGbmhYtmqdTCA==
+Authentication-Results: smtp-out1.suse.de;
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1780306193; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1780307543; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=DapO5g55BWAO53IfVTKZC7bT6Fm/+2GfVus0svtSJFk=;
-	b=fT7eOk2/+UsyVlLrozFsMvCcWnr9ZXOHcM+uKQhDqBNPvbLUcYpVin6v6zuzS2AbHFdCRX
-	1aiUj6rU/IbIhziR7gUdOdTr3wW3FuyRC8pFyB0C5g8XNhtMk/aCAZtO87d4Y/ohaDfvaA
-	vUWieYv/CteBaU3ojBdGa0BJ6bLQoT8=
+	bh=kACuJyVnOFQ03WjvWQPG6+N71Vy6k5l+8uIM48Wo09s=;
+	b=e4j5fkIh0awm7ivEoHtanBzvYGukdQyHA0bOc4kx/P80L7a9oUxxjmGIBolHkWb5BBA5Yg
+	tOM9eAoTVzKjwP8G5ei6CoY0JJu3T6e31cdWY4UNmrhtrG6ajbDj6ziA27ewF29nTVifnG
+	eMKARAMWbt2IttwJ/mivRiv3mdufMpk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1780306193;
+	s=susede2_ed25519; t=1780307543;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=DapO5g55BWAO53IfVTKZC7bT6Fm/+2GfVus0svtSJFk=;
-	b=LwwhhpTXUFUQlTN5Sf45zrIoZT92R2K9DJJT4orI9YSAJEJeUE8jb/NSB3nFI6g5HLH6ru
-	vXqVgTQBI8SlpRCQ==
+	bh=kACuJyVnOFQ03WjvWQPG6+N71Vy6k5l+8uIM48Wo09s=;
+	b=OXtHlfw7TFURZ+hjWV21ug0Y7FdOvDYpkzem6E7Zzbb5eEFeRxpadiKYDmPltTdDAhIIO7
+	x/ktGbmhYtmqdTCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id ADBD1779A7;
-	Mon,  1 Jun 2026 09:29:53 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5A5F7779A7;
+	Mon,  1 Jun 2026 09:52:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id hhRpKhFRHWqyUAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 01 Jun 2026 09:29:53 +0000
+	id z2MIFldWHWoxZwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 01 Jun 2026 09:52:23 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 54F76A0EBE; Mon, 01 Jun 2026 11:29:53 +0200 (CEST)
-Date: Mon, 1 Jun 2026 11:29:53 +0200
+	id F31DCA0EBE; Mon, 01 Jun 2026 11:52:22 +0200 (CEST)
+Date: Mon, 1 Jun 2026 11:52:22 +0200
 From: Jan Kara <jack@suse.cz>
-To: Ashwin Gundarapu <linuxuser509@zohomail.in>
-Cc: kernel test robot <lkp@intel.com>, jack <jack@suse.com>, 
-	oe-kbuild-all <oe-kbuild-all@lists.linux.dev>, linux-ext4 <linux-ext4@vger.kernel.org>, 
-	linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v4] ext2: Remove deprecated DAX support
-Message-ID: <mcagjzg2lqxqvhbfschylrc345m33367fue24vfuh6cuh6vybr@khd5lm7ur34p>
-References: <19e5aa07c9b.3a2e576d130187.5289857983023045470@zohomail.in>
- <202605281203.e91xvDyr-lkp@intel.com>
- <19e6db0f597.25d55d43200914.4102954258751814923@zohomail.in>
+To: Yifei Chu <yifeichu24@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org
+Subject: Re: [BUG] ext4: delayed-free buddy load error reaches BUG_ON in
+ ext4_process_freed_data
+Message-ID: <hng6exlajpjxvbodftr4pb6ekjbcd3ktgo7qd72sqemcdtjkbv@ocynwilr5uvl>
+References: <CAPJnbg+QS5z8D9kvjSukZDPnLLGv4P9jyUC3nx4enac75haecQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <19e6db0f597.25d55d43200914.4102954258751814923@zohomail.in>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAPJnbg+QS5z8D9kvjSukZDPnLLGv4P9jyUC3nx4enac75haecQ@mail.gmail.com>
 X-Spam-Level: 
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: C2B1F66D2E
-X-Rspamd-Action: no action
-X-Spamd-Result: default: False [-4.01 / 50.00];
+X-Spam-Score: -2.30
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
+	TAGGED_RCPT(0.00)[];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
 	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	MIME_TRACE(0.00)[0:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[linux.dev:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,git-scm.com:url,01.org:url,suse.cz:dkim];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_FIVE(0.00)[6];
-	FROM_EQ_ENVFROM(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
 	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
-	TO_DN_ALL(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Spam-Flag: NO
-X-Spam-Score: -4.01
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
 
-On Thu 28-05-26 13:56:14, Ashwin Gundarapu wrote:
-> This indentation warning is from pre-existing code (originally written in
-> 2010) that my patch did not touch. I prefer to keep this patch focused
-> solely on removing deprecated DAX support. A separate cleanup patch can
-> be submitted later if desired.
+Hello!
 
-Actually no, your patch indeed introduced several indentation problems (by
-removing some conditions but not reindenting internal blocks). Also there
-were some spurious empty lines added. No need to resend, I've fixed that up
-on commit. Thanks for the patch.
+On Sun 24-05-26 11:14:43, Yifei Chu wrote:
+> Short version: I am reporting an ext4 delayed-free error-path bug found
+> with targeted fault injection. The injected -EIO is in
+> ext4_mb_load_buddy()’s normal error-return domain, and the injection is
+> placed at the helper return boundary for the delayed-free caller. With that
+> rare lower-layer failure made deterministic, ext4_free_data_in_buddy()
+> reaches BUG_ON(err != 0) and crashes the kernel.
+
+So how did you inject the EIO error? ext4_mb_load_buddy() returns EIO only
+if the folio is not uptodate. Did you manage to hit non-uptodate folio when
+ext4_mb_load_buddy() is called from ext4_free_data_in_buddy()? Checking the
+code it actually might be possible as I don't see where the buddy folio
+would be actually pinned in memory these days but I'd like to to verify...
 
 								Honza
 
+> 
+> Tested kernel:
+> 
+> v7.1-rc4-640-g79bd2dded182
+> 79bd2dded182b1d458b18e62684b7f82ffc682e5
+> x86_64 QEMU, KASAN config
+> 
+> The relevant code shape in fs/ext4/mballoc.c is:
+> 
+> err = ext4_mb_load_buddy(sb, entry->efd_group, &e4b);
+> /* we expect to find existing buddy because it’s pinned */
+> BUG_ON(err != 0);
+> 
+> The point of the injection is not to corrupt ext4 state. It only makes a
+> plausible buddy/bitmap load failure deterministic at this caller, so the
+> caller’s error handling can be tested. ext4_mb_load_buddy() already has
+> normal negative error returns from metadata loading paths.
+> 
+> Reproducer shape:
+> 
+>    1. Mount a fresh ext4 filesystem.
+>    2. Create and fsync a 256 KiB file.
+>    3. Unlink the file.
+>    4. Call sync() to force delayed-free processing.
+>    5. The instrumentation forces ext4_mb_load_buddy() to return -EIO at the
+>    delayed-free callsite.
+> 
+> Two fresh image runs reproduced the same crash:
+> 
+> AGENT_INIT: unlink ret=0 errno=0 (Success)
+> AGENT_INIT: calling sync to force delayed free processing
+> EXT4-fs: AGENT_EXT4_FREE_DATA_BUDDY_BUGON: forcing ext4_mb_load_buddy EIO
+> before BUG_ON
+> kernel BUG at fs/ext4/mballoc.c:3990!
+> Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
+> RIP: 0010:ext4_process_freed_data+0x1fe/0x510
+> 
+> I did a local duplicate sweep and found related older
+> ext4_mb_load_buddy()/mballoc fixes, but I did not find a direct
+> current-upstream fix for this delayed-free BUG_ON(err != 0) path.
+> 
+> Expected behavior:
+> 
+> A metadata load failure during delayed-free processing should go through
+> ext4 error handling / transaction abort / filesystem error propagation,
+> rather than treating the error as an impossible invariant and BUGing the
+> kernel.
+> 
+> The attached tarball includes README.md, repro_init.c,
+> instrumentation.patch, and both full serial logs.
+> 
+> Thanks,
+> Chuyifei
 
-> Regards,
-> Ashwin Gundarapu
-> 
-> From: kernel test robot <lkp@intel.com>
-> To: "Ashwin Gundarapu"<linuxuser509@zohomail.in>, "jack"<jack@suse.com>
-> Cc: <oe-kbuild-all@lists.linux.dev>, "linux-ext4"<linux-ext4@vger.kernel.org>, "linux-kernel"<linux-kernel@vger.kernel.org>
-> Date: Thu, 28 May 2026 09:46:32 +0530
-> Subject: Re: [PATCH v4] ext2: Remove deprecated DAX support
-> 
->  > Hi Ashwin, 
->  >  
->  > kernel test robot noticed the following build warnings: 
->  >  
->  > [auto build test WARNING on jack-fs/for_next] 
->  > [also build test WARNING on linus/master v7.1-rc5 next-20260527] 
->  > [If your patch is applied to the wrong git tree, kindly drop us a note. 
->  > And when submitting patch, we suggest to use '--base' as documented in 
->  > https://git-scm.com/docs/git-format-patch#_base_tree_information] 
->  >  
->  > url: https://github.com/intel-lab-lkp/linux/commits/Ashwin-Gundarapu/ext2-Remove-deprecated-DAX-support/20260524-233631 
->  > base: https://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_next 
->  > patch link: https://lore.kernel.org/r/19e5aa07c9b.3a2e576d130187.5289857983023045470%40zohomail.in 
->  > patch subject: [PATCH v4] ext2: Remove deprecated DAX support 
->  > config: arm-randconfig-r071-20260528 (https://download.01.org/0day-ci/archive/20260528/202605281203.e91xvDyr-lkp@intel.com/config) 
->  > compiler: clang version 20.1.8 (https://github.com/llvm/llvm-project 87f0227cb60147a26a1eeb4fb06e3b505e9c7261) 
->  > smatch: v0.5.0-9185-gbcc58b9c 
->  >  
->  > If you fix the issue in a separate patch/commit (i.e. not just a new version of 
->  > the same patch/commit), kindly add following tags 
->  > | Reported-by: kernel test robot <lkp@intel.com> 
->  > | Closes: https://lore.kernel.org/oe-kbuild-all/202605281203.e91xvDyr-lkp@intel.com/ 
->  >  
->  > smatch warnings: 
->  > fs/ext2/inode.c:1251 ext2_setsize() warn: inconsistent indenting 
->  >  
->  > vim +1251 fs/ext2/inode.c 
->  >  
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1236 
->  > 2c27c65ed0696f0 Christoph Hellwig 2010-06-04  1237  static int ext2_setsize(struct inode *inode, loff_t newsize) 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1238  { 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1239      int error; 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1240 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1241      if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) || 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1242          S_ISLNK(inode->i_mode))) 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1243          return -EINVAL; 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1244      if (ext2_inode_is_fast_symlink(inode)) 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1245          return -EINVAL; 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1246      if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1247          return -EPERM; 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1248 
->  > 562c72aa57c36b1 Christoph Hellwig 2011-06-24  1249      inode_dio_wait(inode); 
->  > 562c72aa57c36b1 Christoph Hellwig 2011-06-24  1250 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27 @1251              error = block_truncate_page(inode->i_mapping, 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1252                                  newsize, ext2_get_block); 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1253      if (error) 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1254          return error; 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1255 
->  > 70f3bad8c3154ba Jan Kara          2021-04-12  1256      filemap_invalidate_lock(inode->i_mapping); 
->  > 2c27c65ed0696f0 Christoph Hellwig 2010-06-04  1257      truncate_setsize(inode, newsize); 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1258      __ext2_truncate_blocks(inode, newsize); 
->  > 70f3bad8c3154ba Jan Kara          2021-04-12  1259      filemap_invalidate_unlock(inode->i_mapping); 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1260 
->  > 5cdc59fce617a2e Jeff Layton       2023-10-04  1261      inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode)); 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1262      if (inode_needs_sync(inode)) { 
->  > b0439bbc29f0201 Jan Kara          2026-03-26  1263          mmb_sync(&EXT2_I(inode)->i_metadata_bhs); 
->  > c37650161a53c01 Christoph Hellwig 2010-10-06  1264          sync_inode_metadata(inode, 1); 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1265      } else { 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1266          mark_inode_dirty(inode); 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1267      } 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1268 
->  > 737f2e93b9724a3 Nicholas Piggin   2010-05-27  1269      return 0; 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1270  } 
->  > ^1da177e4c3f415 Linus Torvalds    2005-04-16  1271 
->  >  
->  > -- 
->  > 0-DAY CI Kernel Test Service 
->  > https://github.com/intel/lkp-tests/wiki 
->  >  
->  > 
-> 
+
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
