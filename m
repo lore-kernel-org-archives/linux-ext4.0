@@ -1,158 +1,288 @@
-Received: from OS8PR02CU002.outbound.protection.outlook.com (mail-japanwestazon11012020.outbound.protection.outlook.com [40.107.75.20])
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D9A43491D0;
-	Mon,  1 Jun 2026 07:00:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.75.20
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780297216; cv=fail; b=d18o3U4+D9zwNKxxGe9nxIObgwIf7vgVqecmn12jsOFx9+cnF53WvsQkt6JLhvUpwWySmsN3GeTnQ0mNxYJ/S8KgDgzkWs4XpNNylR6nSUgei2kOdqYEqPqm2EwVuGQwkfsFUqL8ibyxFsX9xxfp5XWnep600i80CbhCoSnCddA=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780297216; c=relaxed/simple;
-	bh=D2D4LQxcNQaEITbQ7jcqvG31+JSyTsNYdIqyNsywxSg=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=NJ+NDsByGGi6elzUH//McQEROJlR0Yyy7BmKF8CvDpx0wqqzUFpxsAlYwqfjoATEwrn5ZS/Jw41LyJ7yy1jwTQqvJHcwXsoFF1sKSMu6hP6RJqyGRuEsiP/aSqd11fczuRPGVRWeUNHsPtNXDsJSDpeQVLq1Me/mzfA3gw7/6Po=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com; spf=pass smtp.mailfrom=vivo.com; dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b=SqknXjmK; arc=fail smtp.client-ip=40.107.75.20
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vivo.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1332F34678E;
+	Mon,  1 Jun 2026 09:14:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780305275; cv=none; b=pvouVrb5HxL4AF1TuhqfnBMjAc9JNQEBxBa8yJ3OJomEGS9q0TvEVo09634PX38jj0HJQg1Nc1VyFrWR8HPP79tFwCSKQQ5En5+L1IExek87JoRejYieRM8qtGVijo5VIVuLGl+xO/4lN9m28ciaVW67n80OHQqvShYj6X/5z3Q=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780305275; c=relaxed/simple;
+	bh=nvzDpfCUEHp4A/f/bu32YssOqxAB8+5uO+5T/kn0qBs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ItVpk+62uq8FrtfQpPDbUYgKHdn0Z2mhU1gF89M2gDj9Q9ZkWkFeZl9RCr5f/q/qVVoSw5eLCOWrcRzxcG+VhDBRO+S0Nc+GGNYQRbKQVp8AscCA8gxy/jWt6nHKMlYiEYhonIsN7Q8XRdlmpfuCuqU2UEUwemzGKTHmYDkyo0c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=HezIXJu2; arc=none smtp.client-ip=148.163.158.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b="SqknXjmK"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=NzQ4bUGbHXCe+y1p6d+0lmPyxFzlGdQw9cRQUPhyHdihZrdr03tM7ZSxYHh+izr9r7EjfZfq7GSBT/JscRzaKQGZEciEoxRn5YElIU13vjywFnC+oYdxFzc6wj+BjeY0OwwbK/db9cmdAeqCJJaaMu/LQKomrZNQU5hz/GZ6Wat7q1xA9agN3GEI/M3XkoRQ0N69y+2Ta11Cq7mFRmzUyOIjkByj8FTa4e4S8RltMC/yLxVSNOzWG1+HbbrdSaYZmJYjy5lZFGm9vJUZ7THfhUsxlzGymAgPzxgsNm8ZB3EQjmCDZ2DrWBBi2WtMWlIj6N/KrnVxsN9s8/mAwKgf8A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=EKA6xhCkGGc92tOH2XryW8AJYkHuuUNhD/GTs/44a7c=;
- b=pKg1MLT6gcrvc1F4Q7InLm1NaULAEOIpIUSAsDFocmqths3tpHlp9Zll/Sg7rrSF4piM3kBPYV5w0BjR7/y4SNGBOVoV+I7eD9bvLfK+g45bl+P+A81K6widRGK4AzMnz586u1o0BYGJN4/5Ro+1T40E8+lp280pvkQARzfCsb0/XJVesGDelLoL+c+LkxOXPATUChIK3JwGSKetri8/tnWsiz0KEw3/+aUxI4hph1JxmFqsF511hRk/FgfZI3+rXA0y/ZwS8twCFJ08ZZ2vXNX2r5JehlsA9Ax3TkMoFpa/pvFgH2MwhbQczLqagOlQLYBYkCF16nowpOIDrbrzCQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=vivo.com; dmarc=pass action=none header.from=vivo.com;
- dkim=pass header.d=vivo.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=vivo.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=EKA6xhCkGGc92tOH2XryW8AJYkHuuUNhD/GTs/44a7c=;
- b=SqknXjmK+SCI/F1Q8jWN8oWv6ujpaf+LQKy+PlIk8Qs++uPnLrArSP3ch9WRycEMQp5AA2+fTVp7bVWn0pbAgNrLZ0GlHqopS/8fNkcPS2b2EVlLjAYyDp5dUGTZxUoJq9wQbM/j10tDRVpGi8iHajqZ8/FfBD8WH7YjG39r66fS2TAesQcBlU67ILaNDXIAFVTA2435mMaITWfuOAZA1oHLBSCYxRTqwBUYVulDP3i1EETZqn8uZGmwQKkiwtP5o6KiM4nzpdf+Y2FM9VtzEdXVXldm/pL6h3biiSn6/dV3RZWB8zkV7TTIk8k09fKifPmByKGMgCK7ga+DvBsQGw==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=vivo.com;
-Received: from TYSPR06MB6921.apcprd06.prod.outlook.com (2603:1096:400:468::6)
- by KUXPR06MB8655.apcprd06.prod.outlook.com (2603:1096:d10:a0::20) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.71.16; Mon, 1 Jun 2026
- 07:00:11 +0000
-Received: from TYSPR06MB6921.apcprd06.prod.outlook.com
- ([fe80::ee5b:12c7:2366:cd1e]) by TYSPR06MB6921.apcprd06.prod.outlook.com
- ([fe80::ee5b:12c7:2366:cd1e%6]) with mapi id 15.21.0071.015; Mon, 1 Jun 2026
- 07:00:10 +0000
-Message-ID: <be69ac6f-7a4d-4fa9-a686-f6988a985a38@vivo.com>
-Date: Mon, 1 Jun 2026 15:00:05 +0800
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 3/4] pipe: mark blocking pipe read and FIFO open sleeps as
- freezable
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
- brauner@kernel.org, tytso@mit.edu, jack@suse.com,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20260527064912.1038-1-daijunbing@vivo.com>
- <20260527064912.1038-4-daijunbing@vivo.com>
- <j44pojzowtbta2pxeb6nfwnw3mu4thlx5o73es3a5kivibwnvs@cqhwry46h2fy>
-From: daijunbing <daijunbing@vivo.com>
-In-Reply-To: <j44pojzowtbta2pxeb6nfwnw3mu4thlx5o73es3a5kivibwnvs@cqhwry46h2fy>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: TP0P295CA0008.TWNP295.PROD.OUTLOOK.COM
- (2603:1096:910:2::20) To TYSPR06MB6921.apcprd06.prod.outlook.com
- (2603:1096:400:468::6)
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="HezIXJu2"
+Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6514A0En2665916;
+	Mon, 1 Jun 2026 09:08:54 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=ePqr8G
+	+uhvgc4TDXRbMbR+lfZ8wXynEktV7+aShQnoc=; b=HezIXJu2fedqqJa/BUXCng
+	x7l5T40mkqIFi23AzH8qSCalKydEa4Zo0rkNmFqiUpmhlTsHG325iobueQG7iLhm
+	852U42vmFE8N8vL2yz0MGkSil1GqPdaR/FLcp5sFgu7osW1IV3C+kvsZSAtDBC4I
+	z+bCicxJAw1yIiB+ZNuk5tiQyfXFVqB3d3pb6I4tcL8jiDwHFl/Kph/3TySQK6q8
+	yyQuo8hAS1EANCVY6+F4OjeLZXO6ze1zxBNeNMkbYzmwvCtsAT2j26V2BBBnnHw/
+	k4VApAsW+McH0W745d3UfUXm/c10mvI49qYZtglUq4r+U1v+DfcBIlUbAjczxKPg
+	==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4efqhsyh3p-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 01 Jun 2026 09:08:54 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6518s5iA031258;
+	Mon, 1 Jun 2026 09:08:53 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4egakvnff7-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 01 Jun 2026 09:08:53 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 65198pMw57278836
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 1 Jun 2026 09:08:51 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 39B9520040;
+	Mon,  1 Jun 2026 09:08:51 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 8733B2004E;
+	Mon,  1 Jun 2026 09:08:46 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.21.185])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Mon,  1 Jun 2026 09:08:46 +0000 (GMT)
+Date: Mon, 1 Jun 2026 14:38:43 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+        yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 17/23] ext4: submit zeroed post-EOF data immediately
+ in the iomap buffered I/O path
+Message-ID: <ah1MG1b89ELKM-Fl@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-18-yi.zhang@huaweicloud.com>
+ <ahb0fqVCige08_--@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <7c24dc47-0c3e-4ee9-b113-f9ca9f3a6ebf@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: TYSPR06MB6921:EE_|KUXPR06MB8655:EE_
-X-MS-Office365-Filtering-Correlation-Id: 783c67a8-8e21-4242-a715-08debfab6ba0
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|366016|1800799024|376014|22082099003|18002099003|5023799004|3023799007|11063799006|4143699003|56012099006;
-X-Microsoft-Antispam-Message-Info:
-	sm3qjzx+XoQ5BUgFuTjeA0wcMx/e+SA0aRTPVZz4uPmUYe5qvGc5vEUKHXK3BDicjzX+GbbZCrZ8YQj1yy8N6bzIZa2CRjWrm9MB9xpJdtI6cd7eXEdtPcm6uJstrhGPurp7jrs2nvjYoN1wZ68GgTulmhRbXw5XyIVnXO/t5K0eitvXYQst2rI2jm5hKGJmjapXMQI3f6UCHJ3OTZCHt4pzgfT1RpfgSStlyxF8Z+sT0Yj4f6BTTyd5MiC+pZMAKgOWMVca/SySiGoE6sQK4+L5uBivWt+VlwHZn2kcgJkvdHqrVioNtDs3ZCTxHp8SQuDqfl/hdwkRdHOn1HX0ONVbi8sClcZ67RvCsGtY0Xakf5F5ENvQknn5ViGOU/v0pODy3EA/gHnFyJ0Nmeh+gubMxO2r8KzdcYVY8BP+7j5GdF/OL/oVnpyv/7wxM8XHgGRwNE+VWlQ4rlXZZs+gXbDgT7Yuuj9UB9jlD0NljIxj6Pn+4LNECrrjQlc4m8B+IJEyHCgRAblSIq2gju9i9uMQnGcxYLljqZxnSydx+PoTpQrB3SYYeKetns5KU0oyIKvKrkH6aJCf2d6RCyFT1N+lFE48eoh2YoW1sskWwDusU0m2NpQgSLXdb7oVqcMK90jE52pXOjHapWRl5GsLNyUjK4U1YmQEFI4M9zjHUD3KbtCN9O3A3hZrUg767IBH
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:TYSPR06MB6921.apcprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(376014)(22082099003)(18002099003)(5023799004)(3023799007)(11063799006)(4143699003)(56012099006);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?dHdYaFVWTVpWYlkySmFiVTV0Sm9QdDMxTmdVOVM2SGFjdlhER3VCL3hPS0p3?=
- =?utf-8?B?MytkRXhtYmRCUHdrRHNZMXhZdW1GSS95WHFHcTBhMDQ4blVWeW5SRHR1MEd5?=
- =?utf-8?B?SEdPS3dYTjFUZmc1WlJqeFAyelFNb1QxVmpHYmw4L0lubCt1TElNNXdVT0dJ?=
- =?utf-8?B?WUhLYit0VWVHMzNLL0h0akhQaHFVT0JMcHovMHlPOS9DRUxyM2IzQzhWbTJI?=
- =?utf-8?B?R3BuUm11cWJ1eFk1anVPc2RxQ1l6T1BqSHFmUEFHTis5a3VuVjhwQjM1Z3lU?=
- =?utf-8?B?cHZQRXdwSktmS21CTmlna2dGTlplV0dUeVozQ1BUZGl2U0FhMFdHOXZRU1kv?=
- =?utf-8?B?RjhvU3ZYdGN2R3U3Z2FoU1dQMzdjSjFiSGZEQzg5MmxpQm5yM29CV3kyMTFn?=
- =?utf-8?B?c2Yza1dkYmVYaVd2SHNWWXIxdW44cE10MmtxTEQ5TW5tZDBLTjM3WDJlUTFz?=
- =?utf-8?B?bDA4bU01TFE2dW9obk53VE9YWmxwcnZYTGRhcUJlYTUrWUd2VEVldUhBNURI?=
- =?utf-8?B?YjBBTXhrYkZGNjdudkU3ZHk2amRPU0VDODhXTjd5a2dHdjJGS2pmUzU1R0p1?=
- =?utf-8?B?aU9FR1ZTeDRKS0FPNThxTG0xbi9Fd3hjc093dGZjc1ZZTnB3eFJjN2QvY2w3?=
- =?utf-8?B?SHBkbWVIRnB3cDRGakpnS2RUQUJxSERpQVZWd0F6V2RBc0dKeTZnY25QNDNa?=
- =?utf-8?B?R003QXk2dWhTL0dTcERkQlJHSUptcUo5ejhnNE9FZ3N1blc1aGtmNmc0ekhj?=
- =?utf-8?B?WUpJa0VucW5rQU9QK3BCZ0h4ZERaOWdVMXlnZjIyOGorb3hLdVJBNTZjd2M2?=
- =?utf-8?B?MXYrSWttY05wbjRpS3Q1YmJKOXpQbEVCMDFORmtEMWlldjVBLy9GMnc0aHl1?=
- =?utf-8?B?d1Fid0x3TGVYTHk5TkZyRHJzUG5vKzhmLzNJQ2hhcjd3ZDZPTDZ2b3crRWJo?=
- =?utf-8?B?YTExdHRCT1FBQ1NOVzFXTzdxTzhTalZ4L0FSNzNNQ0FVQjk2UVBKU3cxN3BN?=
- =?utf-8?B?TDR5elU1ajI1SUJOVWNpSW95ZS9ZRDFSbkhqeGNsekd4WDF4WFF2RjhnRUlz?=
- =?utf-8?B?bkh4bUJhckNCNFNiOWVBVWtIaFd6ekF5cVppdk82ODRoOXVvMElhM3V6cjRS?=
- =?utf-8?B?T1ROaVNyRmlNTXptUXlyY1hJQkY3SXpSQjZnWWt4SmM2L0lSdi80UU0waU1V?=
- =?utf-8?B?c3R4S2lFbG9leStqajN4QVZwN1NYRHk2UnFLN2xFeFdwVmtrNTZtL0R2eGR6?=
- =?utf-8?B?VjJLdlBQWnllRTJ4eHpPdFpPc3NQQzcyTHR2bVFMeVRaRWViblBNeHZwZTdI?=
- =?utf-8?B?VHNrbTJqQSt6dGlIWEo3WUFTcS9McTJOQ3UyakVmQVZ6WC9SU1hkUlk1bmsx?=
- =?utf-8?B?ZTVXd1E2MXFEK01PNVNBc2k2MkRtYVJMZGZzN0N6LzVCTC9wK1pnNnFEMjNP?=
- =?utf-8?B?Y1Vva0lwS2VSNk1RZ3d3Tis0ZjllS21LNWc2Y3RnTUNUTmdidUMrTG9CaHB3?=
- =?utf-8?B?Rk1yQXFOWUpZWjJLbUV1MjVVUkJEbFpaMVByWGk5amtwdmxtNElSd1hiUTNP?=
- =?utf-8?B?UkVPcWsreHlrdU52RXJQTHB5QVZ1K1ZNdXJOMU1tRHQwa3JlTGNRdHdVZWli?=
- =?utf-8?B?RWloeUdoaVhJQS91dVUvWXM0NC8zS0FWMUdxVjhCY09LWi9KT0FUZ29Na3lp?=
- =?utf-8?B?S0JONE5wWmNXZk4wVEMzbThVMkFOODFjMDY0cThQWlpRSDVWSTNUWUlablhm?=
- =?utf-8?B?bHl5R0VYVng0VFpIaUV3Uk8vREhVSWFid3BnaXJ4WktRYzZCL0NYT0QvbU9P?=
- =?utf-8?B?SmwvRjg1c1NCdjYydTUxZkRZZzNPbmJ2NXhhK0ROZFNydTYwdjB2cUlyWkZK?=
- =?utf-8?B?dXExMXl0aHdTVHNZZGRxbWVmWks4cWVlVlRrVGIvOUp0K1lkRzdSVGpCNkxY?=
- =?utf-8?B?UFZEZmFkaVN6QlFNUXBGdDV2cUpWdGJRNWlYRk1rbzA0ZzdKWWE1TEtWRXpn?=
- =?utf-8?B?aTZJdVptWDYyaHRQK2JUcjNTRC85dDJ2a3R6V1l3cThtUGY3aTc1Vmo2UU5W?=
- =?utf-8?B?L3h6bVlkTHExZGo1S1ZQUFVRUGxvVWJucllsem4xaUhzak9LQ3JXYlNyRVpu?=
- =?utf-8?B?aEI3bDJ5TWhQZlI3bkdiM21aNWF5bGU5WTNOQU9HMEYwWlZlbnVsRjJCK0xq?=
- =?utf-8?B?blk3S2NoTFhwZ0RDSmtuRzFWMW1EK1g5YTk2VVFYRktQbjlVWHNORVNSczda?=
- =?utf-8?B?M1N5YUM0dWNIR21yNEh2V1ozejdIbkY1ZXdBNC8rQk9sU2E2NGhzWko1dVk4?=
- =?utf-8?B?a1UxNnpicFZoK08vVnF6SExiM3Y3WXRmNWRLN2lYUTRRbDdNRTdldz09?=
-X-OriginatorOrg: vivo.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 783c67a8-8e21-4242-a715-08debfab6ba0
-X-MS-Exchange-CrossTenant-AuthSource: TYSPR06MB6921.apcprd06.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 01 Jun 2026 07:00:10.3135
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 923e42dc-48d5-4cbe-b582-1a797a6412ed
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 3kUnOwV/XIhwTREn0Od2RCJQRFPxEcxAxxqDpEvLERTTuI4acU/jM/lLMrXjayyXpbrZJxe2lHQiUZjt/1kHdw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: KUXPR06MB8655
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <7c24dc47-0c3e-4ee9-b113-f9ca9f3a6ebf@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-GUID: 8hzA-q7io8FOnSAESPqLCEzgky39zx5U
+X-Authority-Analysis: v=2.4 cv=fv/sol4f c=1 sm=1 tr=0 ts=6a1d4c26 cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
+ a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=VwQbUJbxAAAA:8
+ a=i0EeH86SAAAA:8 a=S0_6nHQI0jZsUKqVwwcA:9 a=3ZKOabzyN94A:10 a=QEXdDO2ut3YA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjAxMDA5MSBTYWx0ZWRfX9q1DXGcRQ9eb
+ OJ4wuKC685B/DYcLzpIsuYkl9R12UHmPY0gN06YJWsqCTOoS6RYn030T47yeTPBuIcN1U3SGGxD
+ /GIlRnxXhL3DGjmnEyMGA6po3Kgr1KjyPBWkEF7Ud0bEptvPicRpWb6t2ILRLWksF7zMfSHx/CV
+ 6gGhf/KJT3H9hidzBEVEqVOjwBEClS02m1a75s564RzcPgNksoH/3FUUGRQI6F2Pv+EyvqOgaQa
+ xVynsg6oY3IwGystMNDx0i80kcThowhd+MOxVsH04KOqxC4E5pudG35Y2rsQK/PMKaSjJjofD0l
+ 6PKBvVWWgo6Du/s9RFGDl0eFZ5p5FZmVz8P3WcZEj+5hozBXRaRQDvLmkPXTtq/Fl+aV1fzvP0S
+ /G9w8S3eQLQyg4XwrJvgHW0l6f5r0IPLF6wegrBGGg0nyE3ZjJbxwAXKasWUigVyNoF6c4deGQG
+ fHRJCj8xzxmuA4StzQg==
+X-Proofpoint-ORIG-GUID: wymYjKhxEs6-xMNBVcz6nSvk9KEO5v02
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-01_02,2026-05-28_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ adultscore=0 priorityscore=1501 spamscore=0 phishscore=0 clxscore=1015
+ impostorscore=0 suspectscore=0 bulkscore=0 lowpriorityscore=0 malwarescore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606010091
 
-Hi,
+On Sat, May 30, 2026 at 10:53:24AM +0800, Zhang Yi wrote:
+> On 5/27/2026 9:41 PM, Ojaswin Mujoo wrote:
+> > On Mon, May 11, 2026 at 03:23:37PM +0800, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> In the generic buffered_head I/O path, we rely on the data=order mode to
+> >> ensure that the zeroed EOF block data is written before updating
+> >> i_disksize, thus preventing stale data from being exposed.
+> >>
+> >> However, the iomap buffered I/O path cannot use this mechanism. Instead,
+> >> we issue the I/O immediately after performing the zero operation
+> >> (without synchronous waiting for performance). This can reduce the risk
+> >> of exposing stale data, but it does not guarantee that the zero data
+> >> will be flushed to disk before the metadata of i_disksize is updated.
+> >> The subsequent patches will wait for this I/O to complete before
+> >> updating i_disksize.
+> >>
+> >> Suggested-by: Jan Kara <jack@suse.cz>
+> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > 
+> > I think we discussed that we may not need to do this [1] but I guess
+> > you've decided to make the tradeoff of issuing the IO to avoid having to
+> > wait for bg flush to complete the tail page zeroing 
+> > 
+> 
+> Yes. For truncate up and append fallocate, originally i_disksize would
+> be updated immediately, and the change would be persisted via the
+> journal within default 5 seconds. But now, if the tail page is not
+> committed immediately, the update to i_disksize will be delayed by about
+> 30 seconds, and persistence will be postponed to around 35 seconds. I'm
+> not sure what impact this change might have — I just don't really want
+> to introduce it.
 
-Please drop this patch from vfs-7.2.misc.
+> For normal append writes, the impact is minimal, unless we call
+> sync_range to sync the portion of data that extends beyond EOF.
 
-After further review, I believe this change is not sufficiently justified.
-In particular, I do not have a solid enough analysis to show that making
-the anon_pipe_read() wait freezable is safe with respect to freeze-time
-lock/resource constraints across all relevant call paths.
+Hmm while trying to retain the behavior for falloc and truncate up,
+we end up changing it for append writes :) But anyways, I understand
+your reasoning and don't have any strong opinions against it. I'll let
+Jan pitch in since he had some comments around this.
 
-While this change has been running on our devices for about a year without
-any reported issues, I am not confident that this is sufficient to 
-justify it for upstream use in the general case.
+> 
+> In addition, if the zeroed page is not issued here immediately, the
+> logic will become more complex because we need to more careful about the
+> order of write-back IOs to prevent deadlock issues caused by mutual
+> waiting.
 
-This concern only affects this patch; the rest of the series should be
-unaffected.
+You mean an endio completion waiting for ordered IO to complete but
+ordered IO writeback is somehow waiting for this endio completion? Is that
+actually possible?
+> 
+> > However, I think one side effect might be many threads calling the
+> > writeback mechanism to issue zero IOs which might not scale well. I
+> > don't know if it'll be a huge problem though, I guess it's a sort of
+> > thing we will have to deal with in case we see it in real world
+> > workloads.
+> > 
+> 
+> I agree with you. However, I suspect that unless we run some specific
+> benchmark tests, it should be difficult to encounter a large number of
+> post-EOF append writes and truncate up operations in real-world usage
+> scenarios — and I haven't come across such scenarios yet. For
+> simplicity, I'd like to proceed with this implementation for now. If we
+> do run into actual problems later, we can consider not issuing I/O
+> directly here, but instead: 1) find the ordered block in
+> ext4_sync_file() and perform writeback; 2) ensure writeback ordering
+> for normal background writeback as well — otherwise, there is a risk of
+> deadlock (mutual waiting). What do you think?
 
-Thanks,
+Yes sounds good Yi, we can deal with performance tuning later.
 
+Regards,
+Ojaswin
 
-在 2026/5/30 18:10, Jan Kara 写道:
-> Making sure we don't hold any lock is rather non-trivial in some cases. For
-> example in your case here, anon_pipe_read() is used in .read_iter method so
-> you should make sure all places calling .read_iter don't hold some lock. If
-> nothing else, I'm missing this analysis in the changelog and I actually
-> strongly suspect it is not true in some cor
-
+> 
+> Cheers,
+> Yi.
+> 
+> > [1] https://lore.kernel.org/linux-ext4/yhy4cgc4fnk7tzfejuhy6m6ljo425ebpg6khss6vtvpidg6lyp@5xcyabxrl6zm/
+> > 
+> >> ---
+> >>  fs/ext4/inode.c | 66 ++++++++++++++++++++++++++++++++++++++++---------
+> >>  1 file changed, 55 insertions(+), 11 deletions(-)
+> >>
+> >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> >> index 239d387ffaf2..e013aeb03d7b 100644
+> >> --- a/fs/ext4/inode.c
+> >> +++ b/fs/ext4/inode.c
+> >> @@ -4742,6 +4742,32 @@ static int ext4_block_zero_range(struct inode *inode,
+> >>  					zero_written);
+> >>  }
+> >>  
+> >> +static int ext4_iomap_submit_zero_block(struct inode *inode,
+> >> +					loff_t from, loff_t end)
+> >> +{
+> >> +	struct address_space *mapping = inode->i_mapping;
+> >> +	struct folio *folio;
+> >> +	bool do_submit = false;
+> >> +
+> >> +	folio = filemap_lock_folio(mapping, from >> PAGE_SHIFT);
+> >> +	if (IS_ERR(folio))
+> >> +		/* Already writeback and clear? */
+> >> +		return PTR_ERR(folio) == -ENOENT ? 0 : PTR_ERR(folio);
+> >> +
+> >> +	folio_wait_writeback(folio);
+> >> +	WARN_ON_ONCE(folio_test_writeback(folio));
+> >> +
+> >> +	if (likely(folio_test_dirty(folio)))
+> >> +		do_submit = true;
+> >> +	folio_unlock(folio);
+> >> +	folio_put(folio);
+> >> +
+> >> +	/* Submit zeroed block. */
+> >> +	if (do_submit)
+> >> +		return filemap_fdatawrite_range(mapping, from, end - 1);
+> >> +	return 0;
+> >> +}
+> >> +
+> >>  /*
+> >>   * Zero out a mapping from file offset 'from' up to the end of the block
+> >>   * which corresponds to 'from' or to the given 'end' inside this block.
+> >> @@ -4765,8 +4791,10 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+> >>  	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
+> >>  		return 0;
+> >>  
+> >> -	if (length > blocksize - offset)
+> >> +	if (length > blocksize - offset) {
+> >>  		length = blocksize - offset;
+> >> +		end = from + length;
+> >> +	}
+> >>  
+> >>  	err = ext4_block_zero_range(inode, from, length,
+> >>  				    &did_zero, &zero_written);
+> >> @@ -4781,18 +4809,34 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+> >>  	 * TODO: In the iomap path, handle this by updating i_disksize to
+> >>  	 * i_size after the zeroed data has been written back.
+> >>  	 */
+> >> -	if (ext4_should_order_data(inode) &&
+> >> -	    did_zero && zero_written && !IS_DAX(inode)) {
+> >> -		handle_t *handle;
+> >> +	if (did_zero && zero_written && !IS_DAX(inode)) {
+> >> +		if (ext4_should_order_data(inode)) {
+> >> +			handle_t *handle;
+> >>  
+> >> -		handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+> >> -		if (IS_ERR(handle))
+> >> -			return PTR_ERR(handle);
+> >> +			handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+> >> +			if (IS_ERR(handle))
+> >> +				return PTR_ERR(handle);
+> >>  
+> >> -		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
+> >> -		ext4_journal_stop(handle);
+> >> -		if (err)
+> >> -			return err;
+> >> +			err = ext4_jbd2_inode_add_write(handle, inode, from,
+> >> +							length);
+> >> +			ext4_journal_stop(handle);
+> >> +			if (err)
+> >> +				return err;
+> >> +		/*
+> >> +		 * inodes using the iomap buffered I/O path do not use the
+> >> +		 * data=ordered mode. We submit zeroed range directly here.
+> >> +		 * Do not wait for I/O completion for performance.
+> >> +		 *
+> >> +		 * TODO: Any operation that extends i_disksize (including
+> >> +		 * append write end io past the zeroed boundary, truncate up,
+> >> +		 * and append fallocate) must wait for the relevant I/O to
+> >> +		 * complete before updating i_disksize.
+> >> +		 */
+> >> +		} else if (ext4_inode_buffered_iomap(inode)) {
+> >> +			err = ext4_iomap_submit_zero_block(inode, from, end);
+> >> +			if (err)
+> >> +				return err;
+> >> +		}
+> >>  	}
+> >>  
+> >>  	return 0;
+> >> -- 
+> >> 2.52.0
+> >>
+> 
