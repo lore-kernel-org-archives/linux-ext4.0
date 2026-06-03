@@ -1,87 +1,130 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A60CD145FE0;
-	Tue,  2 Jun 2026 20:09:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1DC4937FF53;
+	Wed,  3 Jun 2026 01:44:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780430972; cv=none; b=q3XulPBu0ICLOvAEOogky0CGvSUMJbNdehUNJNNA9794TNyDjha8V7S8/jW/wWiKKi/SeFlUfx0rWVR/2QKAqr9T1LsXokYW5ABilMWamF+US4gRa+VKlBGrm+a4R2UoTDSN4F5QXZF9f7aGZA6F36L1wsWkkuNH8dmqTSX0QD4=
+	t=1780451054; cv=none; b=a8AHhAi4kJajRqfPfqF2v095UEnz6K/lDMSYKZ1gJOxuxLpTAuXbIkuaVm5aRtjuM+idPkhGO5sXLNwLkG+gYNaGt04Hlg/7cVOAjFhBjCA0pXgzAdkGLT+nhn/6QXOsFmslUT63HeGTuFssXlV98TfNI8A4UrRUO5Sz7pjbZKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780430972; c=relaxed/simple;
-	bh=dse0fSeQIzHmXLihQLU4iYzX1+cWq3tl1wF5/UYdSKc=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=b3FmJvE6F2zwzsYjgIPTz+DwrWx6wmsOK5jGrJal0Ojw8GFkSgRmJe2l2xf3obo36IojhUQlyzDme8ZmB9uM7VBEzygwF7NBTO8HIKW/YtYReYKfU97/8ByGp10uIeowRBoj7p7Q9KvUxKQcmJDcOS4NWUwJrjpbqUNOwq+kHk4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BvpO3Eb7; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BvpO3Eb7"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 677AF1F00893;
-	Tue,  2 Jun 2026 20:09:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780430971;
-	bh=RCTqdMUIQL2wPOqBPUz/XcErDodBJvj0B3QqO1rdp0s=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BvpO3Eb7BPEzluCrqCkH6rc3op61E+WQQNdp6Wrul7YVkgjPb9iGzbb8nx4aRzq1k
-	 7WKSykOfbdkIm0doMDJ7D49fjaAdH2edxb860X94/FKyZN5dR3IzNjvTWUNOY/dd+i
-	 KLoZM6ywHHypWr/X51FxTpjjni9U6DlCijss6pt5OYtdguTTQgZizdeQgkETXJffCU
-	 1fjWCwMnLmUAuHa8tMWRgJ4bi2Ia4zZ5vXyYrRNfLnXb9hnevvz+7BqUfU1G5fMucL
-	 gCSv363bK4/GQQnIGxxcZ1hkc5BQUSntVyuJZY3z9WuhDcWyKHuCCJkfUqTo4HO8Fc
-	 VW5WjoSNEMBMg==
-Date: Tue, 2 Jun 2026 13:09:30 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Disha Goel <disgoel@linux.ibm.com>
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, ritesh.list@gmail.com,
-	ojaswin@linux.ibm.com, xfs <linux-xfs@vger.kernel.org>
-Subject: Re: [PATCH] common/defrag: Skip defrag tests on DAX-enabled
- filesystems
-Message-ID: <20260602200930.GB6054@frogsfrogsfrogs>
-References: <20260602101418.55131-1-disgoel@linux.ibm.com>
+	s=arc-20240116; t=1780451054; c=relaxed/simple;
+	bh=L/ekwo7GKsnru2+zPvQaLMNVVjcMgUe8qQK2MWwSs2s=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=hLLHdDUgXkrh4ENROueDlmMY2Il9JIuYRN3dhfVMHUrtUu0Zzz0GNhju9GmcMPz2hzSOUS0wUpUuULSeXuduZotyN4QRzWKxrOYc5OmQ7XgWFbgDA9Ymdy0F6MmhRVWPtEzfDOr50uBmNBGYR8pcrR5ttaxcs4H7S+FC028Xj0Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gVVph5z4bzKHMNy;
+	Wed,  3 Jun 2026 09:43:40 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id F1FE64056D;
+	Wed,  3 Jun 2026 09:44:05 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgAndzzkhh9qJLKxAQ--.52545S3;
+	Wed, 03 Jun 2026 09:44:05 +0800 (CST)
+Message-ID: <d6e493d3-8f9e-49c0-b36c-536ef6120011@huaweicloud.com>
+Date: Wed, 3 Jun 2026 09:44:04 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260602101418.55131-1-disgoel@linux.ibm.com>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 08/23] ext4: implement buffered write path using iomap
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-9-yi.zhang@huaweicloud.com>
+ <ahXUBgoivo5CFl39@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <83e36f9c-aeb1-40d4-9265-fd22120a7fa9@huaweicloud.com>
+ <ah6q3bx27P1wptTg@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <ah6q3bx27P1wptTg@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:cCh0CgAndzzkhh9qJLKxAQ--.52545S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7CrW5Jw1rXw4fuFyktFyrZwb_yoW8KF43pr
+	ZYk3W7tr4kGr1rXFs29F1xWF40k3WfXr47Xr45Xr12vFn0kFySqFW7tF1UuFykKrs3t3Wj
+	qrWUZryxZ3yjyaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
+	0PfPUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Tue, Jun 02, 2026 at 03:44:18PM +0530, Disha Goel wrote:
-> Online defragmentation is not supported on DAX-enabled filesystems
-> because DAX bypasses the page cache required for defrag operations.
+On 6/2/2026 6:05 PM, Ojaswin Mujoo wrote:
+> On Fri, May 29, 2026 at 05:13:55PM +0800, Zhang Yi wrote:
+>> Hi, Ojaswin!
+>>
+>> On 5/27/2026 1:10 AM, Ojaswin Mujoo wrote:
+>>> On Mon, May 11, 2026 at 03:23:28PM +0800, Zhang Yi wrote:
+>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>
+>>>> Introduce two new iomap_ops instances for ext4 buffered writes:
+>>>>
+>>>>  - ext4_iomap_buffered_da_write_ops: for delayed allocation mode, using
+>>>>    ext4_da_map_blocks() to map delalloc extents.
+>>>>  - ext4_iomap_buffered_write_ops: for non-delayed allocation mode, using
+>>>>    ext4_iomap_get_blocks() to directly allocate blocks.
+>>>>
+>>>> Also add ext4_iomap_valid() for the iomap infrastructure to check extent
+>>>> validity.
+>>>>
+>>>> Key changes and considerations:
+>>>>
+>>>>  - Unwritten extents for new blocks (dioread_nolock always on)
+>>>>    Since data=ordered mode is not used to prevent stale data exposure in
+>>>>    the non-delayed allocation path, new blocks are always allocated as
+>>>>    unwritten extents.
+>>>
+>>> Okay makes sense.
+>>>
+>>>>
+>>>>  - Short write and write failure handling
+>>>>    a. Delalloc path: On short write or failure, the stale delalloc range
+>>>>       must be dropped and its space reservation released. Otherwise, a
+>>>>       clean folio may cover leftover delalloc extents, causing
+>>>>       inaccurate space reservation accounting.
+>>>
+>>> Hmm, okay so in the usual buffer head path, seems like during a short
+>>> write we still zero the new buffers we couldn't write and keep it dirty
+>>> (folio_zero_new_buffers()). This way they are still written back and
+>>> the delalloc reservations are used up.
+>>>
+>>
+>> In fact, in the normal buffer head path, writeback does not consume
+>> delalloc reservations. Instead, the reservations are retained until the
+>> inode is released or the area is written again using delalloc. This is
+>> because i_size is not updated during short writes. Therefore, when a
+>> zeroed dirty folio is written back, no block mapping is created for it.
+>> For details, please see the lblk >= blocks judgment in
+>> mpage_process_page_bufs().
 > 
-> Add check in _require_defrag() to skip tests when DAX is enabled,
-> avoiding false failures on ext4/301-304, ext4/308 and generic/018.
+> Oh okay I see, I'm not very clear on the code path but what about a case
+> where i_size is beyond the short write range.
 > 
-> Signed-off-by: Disha Goel <disgoel@linux.ibm.com>
-> ---
->  common/defrag | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/common/defrag b/common/defrag
-> index 055d0d0e..28db2f7a 100644
-> --- a/common/defrag
-> +++ b/common/defrag
-> @@ -6,6 +6,10 @@
->  
->  _require_defrag()
->  {
-> +    # Defragmentation is not supported on DAX-enabled filesystems
-> +    if echo "$MOUNT_OPTIONS" | grep -qw "dax"; then
-> +        _notrun "Defragmentation not supported on DAX-enabled filesystem"
-> +    fi
 
-Defrag doesn't work on XFS on DAX as well?  It seems to work fine on my
-VMs...
+Yeah, You're right. When i_size extends beyond the short write range,
+the delalloc reservation will be consumed during writeback.
 
-<confused>
+Thanks,
+Yi.
 
---D
 
->      case "$FSTYP" in
->      xfs)
->          # xfs_fsr does preallocates, require "falloc"
-> -- 
-> 2.45.1
-> 
-> 
+
