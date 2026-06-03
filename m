@@ -1,189 +1,240 @@
-Received: from mail-oo1-f72.google.com (mail-oo1-f72.google.com [209.85.161.72])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5FA41D7E41
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Jun 2026 06:43:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.72
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 753193CCA11;
+	Wed,  3 Jun 2026 11:09:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780468989; cv=none; b=oq+1ZaYfzqs9yRyEKORjxuYULhiXzbkREpKGBolmpjpTjv+jr9brz2qTTA1jCulWRzcwxBRgE4RQID6XU6429YB4ogF3zgKpzdOa69MJlkosk1k8+EFbDQ4rHffn2pbp8CiLNBJXmfupwmROelHzI32jZ3MTLb9Zrw7iw2ysTIQ=
+	t=1780484943; cv=none; b=Yu8AgmcpKdv2XlXIGv58/jNPAXsyMwsEWCnuT+def0KpNTj/qbEEP7QCod7RNaY1kvvm3X4Z030U9icQc0SG7WLRVca+jAbWCQFLwpCs8R7COVSjuwoWLmoP/J9taOy4nqDohWN0LKqWwB7Z9s9y07Xde+M2L5VrNcxSdVxvPPw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780468989; c=relaxed/simple;
-	bh=CGT7gEJWsfdmL4PputUa7LMdCWKNz5EziUoO4YB1Cv0=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
-	 Content-Type; b=N+JgO8MgOHTg1Lu3ulFZjP5JEFWQU9PDW4GINEl+/f43eY8HTaePOS8FdnT10jmaC9APhMdNzCsVAdvhGq/0cSSksFn6fhRVksz3tMttidRHwZI1FTwaMUqPZHMBOXM7gjhi2TBOyVyx3YVfQEBByjVmW0/D+87qchNSfxBPLmY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.72
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f72.google.com with SMTP id 006d021491bc7-69dc9cb3663so10579421eaf.1
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Jun 2026 23:43:07 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780468987; x=1781073787;
-        h=cc:to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=BXLTeHlKrc/+j7C9QPbOJLUrs1rqjWUe2L1pYvC54MA=;
-        b=X5L72HIqBZcpquv01ktyBMDmVOc3eCmg+DVieS13UGNFTFrhzvkqsyfBmztOkzhZrG
-         PeVD3b2I11ZO62UhHArNrKXJBMdtZEGUcj1lE1LmJseoDfMY2L3vfjF7Vq/GCo+MmIye
-         6W3BJU7+9u6gaX53ajDruU1NN0FS2YvMdp+/M+qQ4Wbt0m/jMH3ccWj3/tRvgq94QQP/
-         WUje+cMha8rvzRyU7CcW+ZAEuyFUFuzi5Vhn8qhegGoIUlf8PVRvh4NxOzQncsDc+cOY
-         tJrPjx6Xvz5o0JpIGAvciHkm0EI6NJgQPJOtKIhZ0my094bYj0gShsJFrFOYCFqk8K0J
-         oUWA==
-X-Forwarded-Encrypted: i=1; AFNElJ+fuq+gz9gdAMiRwQmud4rtoNDlCpf+BXeqFJpneZklsX8CqJYu54UQ9KAa8eNIVmywY4ImJN1/n35o@vger.kernel.org
-X-Gm-Message-State: AOJu0YwPZJtbIX7ZnTUjheblzS2lxcvTHtiXV/0qKaK/7GytutBu7WkM
-	39GkKppGWgGoOsPFbt4P+ZpUHs8xdb4SOrQu+Ofa3Z7cDFxHX94ic7Y8kl3v4NuKbD9B7OQEOIu
-	qNUu4ar4Oo27TtpX8NfAmMCR6yZNH5q2bJnfdVyjuRFrY3R7spis05WS70OY=
+	s=arc-20240116; t=1780484943; c=relaxed/simple;
+	bh=rFY77fZCBIc0VoAuD9WjxYdEfpmFV5Q0IuieG3fwkY8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=BUQwcoMvpCtI2ZMRVtFeSPl2FRU145ygf7xFxuBr3ys9UIyQKr/8Qfxm9KpvjEujeU32TXwiFwmGy3JoPRJMIgt6x6qwvaJjghcEu6lRid/DfZGS+syQ2eL63Cq5VRp4bL2j+tnUaNJY4r5u3Vke+Vq+SlC54Z9IQkcWbnMGE48=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=MPZr7Stp; arc=none smtp.client-ip=148.163.158.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="MPZr7Stp"
+Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65357lLe103884;
+	Wed, 3 Jun 2026 11:08:19 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=HKktcI
+	ZIJ33bByBHfYcdgTusH/lX96BFVSb9B1NPYbM=; b=MPZr7Stp1j6UPL6nKdtXuZ
+	34bYjv/77jLDQTaLchjMdouA2ZxrAqqul+z/7mRh3LtiQol0Cz9wsGJqNlSaZRBo
+	QHM7R6/IGQTwcz5l6BJFCAv1AbYrsa7svQWddWi7Egb00PPanZPt2/4olmCjEv1z
+	Fy3d/LtazBvoBUxdNlLAbZhYi/BZq+1khgeYYb3F11NYGFs0p1fyp+TB7pk4R1nJ
+	A2IQQy+WmLqsFuw1Q2Jy7/yFEXHBnzwATUkKyj/1PZ0wu1AVjguG1NPl+8scJ5kL
+	hLPWvoIot7zWgZazXzVC9c1rYrjd05BOc7N5OrfziEVxV9GyMOAdQE1AYy+Oj46g
+	==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4efpaea1y6-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 03 Jun 2026 11:08:18 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 653As7s2015366;
+	Wed, 3 Jun 2026 11:08:17 GMT
+Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4egb7k7v4b-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 03 Jun 2026 11:08:17 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 653B8Feu47055116
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 3 Jun 2026 11:08:15 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id ACAA02004F;
+	Wed,  3 Jun 2026 11:08:15 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 07C932004E;
+	Wed,  3 Jun 2026 11:08:11 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.208.122])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Wed,  3 Jun 2026 11:08:10 +0000 (GMT)
+Date: Wed, 3 Jun 2026 16:38:08 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+        yizhang089@gmail.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 08/23] ext4: implement buffered write path using iomap
+Message-ID: <aiALGM49qRS-8TAd@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-9-yi.zhang@huaweicloud.com>
+ <ah6vwa_MytxBN-Z8@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <cc05c17d-163e-4251-b2c9-aa3a6f9555d7@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:180c:b0:696:637e:4831 with SMTP id
- 006d021491bc7-69e47f0669emr1446323eaf.25.1780468986990; Tue, 02 Jun 2026
- 23:43:06 -0700 (PDT)
-Date: Tue, 02 Jun 2026 23:43:06 -0700
-In-Reply-To: <20260602-work-super-bdev_holder_global-v1-0-bb0fd82f3861@kernel.org>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a1fccfa.278b5b03.2bcf39.0048.GAE@google.com>
-Subject: [syzbot ci] Re: fs: support freeze/thaw/mark_dead/sync with shared devices
-From: syzbot ci <syzbot+ci2e0a11d6a5730bb0@syzkaller.appspotmail.com>
-To: axboe@kernel.dk, brauner@kernel.org, cem@kernel.org, clm@fb.com, 
-	dsterba@suse.com, hch@lst.de, jack@suse.cz, linux-block@vger.kernel.org, 
-	linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org, 
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org, tytso@mit.edu, 
-	viro@zeniv.linux.org.uk, xiang@kernel.org
-Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <cc05c17d-163e-4251-b2c9-aa3a6f9555d7@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Authority-Analysis: v=2.4 cv=Zt3d7d7G c=1 sm=1 tr=0 ts=6a200b22 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
+ a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=i0EeH86SAAAA:8
+ a=VnNF1IyMAAAA:8 a=P4J-yphnatDKpaeizhQA:9 a=3ZKOabzyN94A:10 a=QEXdDO2ut3YA:10
+X-Proofpoint-GUID: i2BOwBOZoZ6ZOVKEAU9kOfuG1IgiWmqS
+X-Proofpoint-ORIG-GUID: ACpkptQBULm1NCC67mk29psTKXDuecNr
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjAzMDEwNiBTYWx0ZWRfX2GmWdywZ1X74
+ u3MvtXlMT0IXgGgmQHqPGkXbNc4kfSoBmRsjiguDWl68gBk9mVyegLfBEV0/voddG7P7KwYMluH
+ 3AuNobC1ReU6fRXsUCUzKvEYo4i11224gzKdjEw9bLiZAGsIWrlOjymGOuqksUDvKamChyiA4hx
+ AMEMXyk9huvRyVWeQvJINXl3h0H6wj6EDeWwi16hl6ctuR6WUh4qf4P1JcfRgxNAvl+IYaRB1g2
+ /wQQHRW+wxqusvJJpARivx//W7RhA73QJkTo22tPs+NA6q2lbSAdKItva6//A/nBavRWf7lIQf4
+ 1gj/HGNXhuu3oxZjGS259wI4Ipg+1DbtqPIPoAHm89n0R3oihnhafNH/X9GtmCR8OrDBHHDXvOC
+ OoPDp5XbVMP852tqTspk7IlYWzLC7sFk6JXnokhIWVpAvtjONLUjEdL/ynkTN0Hk+AC8vmjYTgJ
+ i7HNluTXr8gZSAU3UWg==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-03_04,2026-05-28_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ impostorscore=0 suspectscore=0 priorityscore=1501 bulkscore=0 clxscore=1015
+ phishscore=0 spamscore=0 malwarescore=0 adultscore=0 lowpriorityscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606030106
 
-syzbot ci has tested the following series
+On Wed, Jun 03, 2026 at 10:56:34AM +0800, Zhang Yi wrote:
+> On 6/2/2026 6:26 PM, Ojaswin Mujoo wrote:
+> > On Mon, May 11, 2026 at 03:23:28PM +0800, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> Introduce two new iomap_ops instances for ext4 buffered writes:
+> >>
+> >>  - ext4_iomap_buffered_da_write_ops: for delayed allocation mode, using
+> >>    ext4_da_map_blocks() to map delalloc extents.
+> >>  - ext4_iomap_buffered_write_ops: for non-delayed allocation mode, using
+> >>    ext4_iomap_get_blocks() to directly allocate blocks.
+> >>
+> >> Also add ext4_iomap_valid() for the iomap infrastructure to check extent
+> >> validity.
+> >>
+> >> Key changes and considerations:
+> >>
+> >>  - Unwritten extents for new blocks (dioread_nolock always on)
+> >>    Since data=ordered mode is not used to prevent stale data exposure in
+> >>    the non-delayed allocation path, new blocks are always allocated as
+> >>    unwritten extents.
+> >>
+> >>  - Short write and write failure handling
+> >>    a. Delalloc path: On short write or failure, the stale delalloc range
+> >>       must be dropped and its space reservation released. Otherwise, a
+> >>       clean folio may cover leftover delalloc extents, causing
+> >>       inaccurate space reservation accounting.
+> >>    b. Non-delalloc path: No cleanup of allocated blocks is needed on
+> >>       short write.
+> >>
+> >>  - Lock ordering reversal
+> >>    The folio lock and transaction start ordering is reversed compared to
+> >>    the buffer_head buffered write path. To handle this, the journal
+> >>    handle must be stopped in iomap_begin() callbacks. The lock ordering
+> >>    documentation in super.c has been updated accordingly.
+> >>
+> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > 
+> > I went through this again and after our discussion the changes looks
+> > okay. Just a small quesiton below but otherwise feel free to add:
+> > 
+> > Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> 
+> Thank you a lot for your careful review!
+> 
+> > 
+> >> ---
+> >>  fs/ext4/ext4.h  |   4 ++
+> >>  fs/ext4/file.c  |  20 +++++-
+> >>  fs/ext4/inode.c | 165 +++++++++++++++++++++++++++++++++++++++++++++++-
+> >>  fs/ext4/super.c |  10 ++-
+> >>  4 files changed, 192 insertions(+), 7 deletions(-)
+> >>
+> >> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> >> index 1e27d73d7427..4832e7f7db82 100644
+> >> --- a/fs/ext4/ext4.h
+> >> +++ b/fs/ext4/ext4.h
+> >> @@ -3057,6 +3057,7 @@ int ext4_walk_page_buffers(handle_t *handle,
+> >>  int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+> >>  				struct buffer_head *bh);
+> >>  void ext4_set_inode_mapping_order(struct inode *inode);
+> >> +int ext4_nonda_switch(struct super_block *sb);
+> >>  #define FALL_BACK_TO_NONDELALLOC 1
+> >>  #define CONVERT_INLINE_DATA	 2
+> > 
+> > <snip>
+> > 
+> >> +	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
+> >> +	return 0;
+> >> +}
+> >> +
+> >> +static int ext4_iomap_buffered_write_begin(struct inode *inode,
+> >> +		loff_t offset, loff_t length, unsigned int flags,
+> >> +		struct iomap *iomap, struct iomap *srcmap)
+> >> +{
+> >> +	return ext4_iomap_buffered_do_write_begin(inode, offset, length, flags,
+> >> +						  iomap, srcmap, false);
+> >> +}
+> >> +
+> >> +static int ext4_iomap_buffered_da_write_begin(struct inode *inode,
+> >> +		loff_t offset, loff_t length, unsigned int flags,
+> >> +		struct iomap *iomap, struct iomap *srcmap)
+> >> +{
+> >> +	return ext4_iomap_buffered_do_write_begin(inode, offset, length, flags,
+> >> +						  iomap, srcmap, true);
+> >> +}
+> >> +
+> >> +/*
+> >> + * On write failure, drop the stale delayed allocation range and release
+> >> + * its reserved space for both start and end blocks. Otherwise, we may
+> >> + * leave a range of delayed extents covered by a clean folio, which can
+> >> + * result in inaccurate space reservation accounting.
+> >> + */
+> >> +static void ext4_iomap_punch_delalloc(struct inode *inode, loff_t offset,
+> >> +				     loff_t length, struct iomap *iomap)
+> >> +{
+> >> +	down_write(&EXT4_I(inode)->i_data_sem);
+> >> +	ext4_es_remove_extent(inode, offset >> inode->i_blkbits,
+> >> +			DIV_ROUND_UP_ULL(length, EXT4_BLOCK_SIZE(inode->i_sb)));
+> >> +	up_write(&EXT4_I(inode)->i_data_sem);
+> >> +}
+> >> +
+> >> +static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+> >> +					    loff_t length, ssize_t written,
+> >> +					    unsigned int flags,
+> >> +					    struct iomap *iomap)
+> >> +{
+> >> +	loff_t start_byte, end_byte;
+> >> +
+> >> +	/* If we didn't reserve the blocks, we're not allowed to punch them. */
+> >> +	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
+> > 
+> > Will we ever get IOMAP_F_NEW here? I think the da_write_begin() call
+> > either creates a new IOMAP_DELALLOC extent or finds older ones which
+> > won't have EXT4_MAP_NEW set
+> > 
+> 
+> Oops. This is a bug！ In ext4_da_map_blocks(), when allocating a new
+> delalloc extent, the EXT4_MAP_NEW flag should be set. If this flag is
+> not set, then when a short write occurs, we cannot distinguish whether
+> an extent is a pre-existing delalloc extent or a newly allocated one.
+> This prevents the subsequent truncate operation from being executed,
+> leaving the newly allocated delalloc extent behind. I will fix this in
+> next iteration.
 
-[v1] fs: support freeze/thaw/mark_dead/sync with shared devices
-https://lore.kernel.org/all/20260602-work-super-bdev_holder_global-v1-0-bb0fd82f3861@kernel.org
-* [PATCH RFC 1/8] fs, block: move blk_mode_t and fop_flags_t into <linux/types.h>
-* [PATCH RFC 2/8] fs: add a global device to super block hash table
-* [PATCH RFC 3/8] fs: refuse to claim any frozen block device
-* [PATCH RFC 4/8] xfs: port to fs_bdev_file_open_by_path()
-* [PATCH RFC 5/8] btrfs: open via dedicated fs bdev helpers
-* [PATCH RFC 6/8] ext4: open via dedicated fs bdev helpers
-* [PATCH RFC 7/8] erofs: open via dedicated fs bdev helpers
-* [PATCH RFC 8/8] super: make fs_holder_ops private
+Yes thats true I misread the condition and missed that we will always
+exit early here :/
 
-and found the following issue:
-general protection fault in close_fs_devices
+Regards,
+ojaswin
 
-Full report is available here:
-https://ci.syzbot.org/series/9511f00a-a3c2-44ab-9a0b-2d65de5bbd49
-
-***
-
-general protection fault in close_fs_devices
-
-tree:      bpf-next
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/bpf/bpf-next.git
-base:      254f49634ee16a731174d2ae34bc50bd5f45e731
-arch:      amd64
-compiler:  Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
-config:    https://ci.syzbot.org/builds/4af26755-5773-453e-807d-ee451d2fdec5/config
-syz repro: https://ci.syzbot.org/findings/2d8d96f7-d133-47dc-b4ca-5c0c65e1b6c9/syz_repro
-
-btrfs: Deprecated parameter 'usebackuproot'
-BTRFS warning: 'usebackuproot' is deprecated, use 'rescue=usebackuproot' instead
-BTRFS: device fsid ed167579-eb65-4e76-9a50-61ac97e9b59d devid 1281 transid 8 /dev/loop1 (7:1) scanned by syz.1.18 (5863)
-Oops: general protection fault, probably for non-canonical address 0xdffffc00000000f8: 0000 [#1] SMP KASAN PTI
-KASAN: null-ptr-deref in range [0x00000000000007c0-0x00000000000007c7]
-CPU: 1 UID: 0 PID: 5863 Comm: syz.1.18 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-RIP: 0010:btrfs_close_bdev fs/btrfs/volumes.c:1140 [inline]
-RIP: 0010:btrfs_close_one_device fs/btrfs/volumes.c:1161 [inline]
-RIP: 0010:close_fs_devices+0x47c/0x860 fs/btrfs/volumes.c:1204
-Code: 3c 08 00 74 08 48 89 ef e8 b1 95 38 fe 48 8b 6d 00 b8 c0 07 00 00 48 01 c5 48 89 e8 48 c1 e8 03 48 b9 00 00 00 00 00 fc ff df <80> 3c 08 00 74 08 48 89 ef e8 86 95 38 fe 48 8b 75 00 4c 89 ff e8
-RSP: 0018:ffffc90004007a48 EFLAGS: 00010202
-RAX: 00000000000000f8 RBX: 1ffff110368c440b RCX: dffffc0000000000
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-RBP: 00000000000007c0 R08: ffff8881b462206f R09: 1ffff110368c440d
-R10: dffffc0000000000 R11: ffffed10368c440e R12: ffff8881b4622000
-R13: ffff8881b4622068 R14: ffff8881b4622058 R15: ffff8881707b7a00
-FS:  00007f849d6ce6c0(0000) GS:ffff8882a9292000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f849c786a00 CR3: 00000001bbbcc000 CR4: 00000000000006f0
-Call Trace:
- <TASK>
- btrfs_close_devices+0xcd/0x570 fs/btrfs/volumes.c:1219
- btrfs_free_fs_info+0x4f/0x360 fs/btrfs/disk-io.c:1205
- deactivate_locked_super+0xbc/0x130 fs/super.c:477
- btrfs_get_tree_super fs/btrfs/super.c:-1 [inline]
- btrfs_get_tree_subvol fs/btrfs/super.c:2087 [inline]
- btrfs_get_tree+0xca6/0x1910 fs/btrfs/super.c:2121
- vfs_get_tree+0x92/0x2a0 fs/super.c:1928
- fc_mount fs/namespace.c:1193 [inline]
- do_new_mount_fc fs/namespace.c:3758 [inline]
- do_new_mount+0x341/0xd30 fs/namespace.c:3834
- do_mount fs/namespace.c:4167 [inline]
- __do_sys_mount fs/namespace.c:4383 [inline]
- __se_sys_mount+0x31d/0x420 fs/namespace.c:4360
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x15f/0xf80 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f849c79e0ca
-Code: 48 c7 c2 e8 ff ff ff f7 d8 64 89 02 b8 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 49 89 ca b8 a5 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f849d6cde58 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 00007f849d6cdee0 RCX: 00007f849c79e0ca
-RDX: 00002000000055c0 RSI: 0000200000000340 RDI: 00007f849d6cdea0
-RBP: 00002000000055c0 R08: 00007f849d6cdee0 R09: 0000000000000408
-R10: 0000000000000408 R11: 0000000000000246 R12: 0000200000000340
-R13: 00007f849d6cdea0 R14: 00000000000055f5 R15: 0000200000000380
- </TASK>
-Modules linked in:
----[ end trace 0000000000000000 ]---
-RIP: 0010:btrfs_close_bdev fs/btrfs/volumes.c:1140 [inline]
-RIP: 0010:btrfs_close_one_device fs/btrfs/volumes.c:1161 [inline]
-RIP: 0010:close_fs_devices+0x47c/0x860 fs/btrfs/volumes.c:1204
-Code: 3c 08 00 74 08 48 89 ef e8 b1 95 38 fe 48 8b 6d 00 b8 c0 07 00 00 48 01 c5 48 89 e8 48 c1 e8 03 48 b9 00 00 00 00 00 fc ff df <80> 3c 08 00 74 08 48 89 ef e8 86 95 38 fe 48 8b 75 00 4c 89 ff e8
-RSP: 0018:ffffc90004007a48 EFLAGS: 00010202
-
-RAX: 00000000000000f8 RBX: 1ffff110368c440b RCX: dffffc0000000000
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-RBP: 00000000000007c0 R08: ffff8881b462206f R09: 1ffff110368c440d
-R10: dffffc0000000000 R11: ffffed10368c440e R12: ffff8881b4622000
-R13: ffff8881b4622068 R14: ffff8881b4622058 R15: ffff8881707b7a00
-FS:  00007f849d6ce6c0(0000) GS:ffff8882a9292000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000557941c2b058 CR3: 00000001bbbcc000 CR4: 00000000000006f0
-----------------
-Code disassembly (best guess):
-   0:	3c 08                	cmp    $0x8,%al
-   2:	00 74 08 48          	add    %dh,0x48(%rax,%rcx,1)
-   6:	89 ef                	mov    %ebp,%edi
-   8:	e8 b1 95 38 fe       	call   0xfe3895be
-   d:	48 8b 6d 00          	mov    0x0(%rbp),%rbp
-  11:	b8 c0 07 00 00       	mov    $0x7c0,%eax
-  16:	48 01 c5             	add    %rax,%rbp
-  19:	48 89 e8             	mov    %rbp,%rax
-  1c:	48 c1 e8 03          	shr    $0x3,%rax
-  20:	48 b9 00 00 00 00 00 	movabs $0xdffffc0000000000,%rcx
-  27:	fc ff df
-* 2a:	80 3c 08 00          	cmpb   $0x0,(%rax,%rcx,1) <-- trapping instruction
-  2e:	74 08                	je     0x38
-  30:	48 89 ef             	mov    %rbp,%rdi
-  33:	e8 86 95 38 fe       	call   0xfe3895be
-  38:	48 8b 75 00          	mov    0x0(%rbp),%rsi
-  3c:	4c 89 ff             	mov    %r15,%rdi
-  3f:	e8                   	.byte 0xe8
-
-
-***
-
-If these findings have caused you to resend the series or submit a
-separate fix, please add the following tag to your commit message:
-  Tested-by: syzbot@syzkaller.appspotmail.com
-
----
-This report is generated by a bot. It may contain errors.
-syzbot ci engineers can be reached at syzkaller@googlegroups.com.
-
-To test a patch for this bug, please reply with `#syz test`
-(should be on a separate line).
-
-The patch should be attached to the email.
-Note: arguments like custom git repos and branches are not supported.
+> 
+> Thanks,
+> Yi.
+> 
