@@ -1,52 +1,47 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80075175A70
-	for <linux-ext4@vger.kernel.org>; Wed,  3 Jun 2026 13:52:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2DA6381B0D
+	for <linux-ext4@vger.kernel.org>; Wed,  3 Jun 2026 14:18:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780494750; cv=none; b=DcvQHqU1ME2H3AI090wmIAfm7D6HZkvUYLWJdMPa3YeKJha/reWpn4bTLmcPOoGaDyHrXvxyXqFcTr6l3dMnbBqwRWV0nSXHaQ+aND1uRzxqfUqknYTe3aDDDu6hKARtHdQ7wVWTzzYl62Db+ixxlJRCBYZFZL0Ju8i22kbFSEM=
+	t=1780496287; cv=none; b=R9aO4GEZVL0YfvbIenUJkMhnIVDVfrOa+5JKaXSSELG8GQDEPVE595Knk6eZIO1+f4zPMrubQjHbHbSe8d/PHOOx9/XJxeuLcdqYfK3yPFG+ycZOQh6L/K8IC6YJ03WGcte3SFPp8Gvdn/iiliC9JtMi49ozbEp4lCsBCCYtw3I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780494750; c=relaxed/simple;
-	bh=IonJWp4e+rdj1pgt5uR3o6HNhhWGZ82gM+sFn8+HTDE=;
+	s=arc-20240116; t=1780496287; c=relaxed/simple;
+	bh=1CBF/Rb9qVYQ5QyPpj20wcZlcXJ40hy4okKutLG/HS8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=dvxLTmdWimLvZvkirfBPl02Uyw8Q8YHJHlvto6D86RoH3/yTGzp2raj1RCVhZ2BIKA44cXsULLd+hQ0fI4u2U4BICQEAS+YZdhKMSQBBQCqDN2r/QJIz2mUYxWYUSe896UMYwrhyggv6IIiAVHWFgKgZWkraZsQekVF3SN8RojU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=eS/O96ha; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=DfSrwPOObjR6NKGMH6jrejK0+AmGI2Hf0H6SQ/XtXXmcypFNxNGmeBHmelwCn8QqW4abobmFseYOaCP9W1Vza9dsuhMvv8lZKHDHoo0l4qvBkpYX7VXXUknJFbqHq8JQxK1j3HUEstm/+/tghTLw3fm5tjgL9px4eMB/AMxyMvQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HJt3Y9zx; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="eS/O96ha"
-Received: from macsyma.thunk.org ([104.135.218.91])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HJt3Y9zx"
+Received: from macsyma.thunk.org ([104.135.218.90])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 653DqHZs026988
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 653EHoX7007434
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 3 Jun 2026 09:52:18 -0400
+	Wed, 3 Jun 2026 10:17:52 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1780494740; bh=C9egDyRQuCmmuYUzZxv3ARCVxDOyCyC/MWLWmcoeqGQ=;
+	t=1780496273; bh=TMfv6hWYRSSrWx5RnZ1/1kMXl6wD1l6vkv0zX73Tj+o=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=eS/O96ha/pZKJdnjD1IjrhcAZ6EIzmlzroT6I/ytlfxb/FNO+hG6wFYG/VmrWDGJB
-	 xxCIyykihk/GA1d1csCrBeP79F7gdoP3MHMsmjuRbZz6kdZCKBKf9S0KaR7txHsg+H
-	 FROVuN06gMBm/WlJQSvJE5Dwczr6rP7Ley3t/wY5DuEQ4EVJfRzHXJSuQ3cQMTlatM
-	 +wcokxlempkwS01JSMCWi2oLVkFT5K7TVTkzoyhTfkMWxLdPZnllaTjWTROXkKbxIB
-	 ZmrHjnI6hGIsMRcabF1MDnqC1KCm1/IWEo0fNNL0pwXdH+udQr5zmpdCoDZmZuQDBc
-	 Z4A4OpIII9tZg==
+	b=HJt3Y9zxYUd/yWXHbU6u+CDDfjGLFELdDdiGi+vPCri/rSq4yg305ZRkFgHDSMgRU
+	 BEV+qvnon/tW/TBzuzLWayJrTsXIETrycRfDyX9bmys2S1Zp9p1qzVADAgNWgoqjNY
+	 v1wctj8u4HTqs6VjcGBMRxKYh6u/ySPxOdnjwth59xtn64VmBRFLPEPBwKjlKkeyq4
+	 LpOD5RGrT1sfP5LHSuE4eo5Z7BbraqqPilymAE78v+uAWd4KqUfPrt0QvMOPd/naVr
+	 e9WCCqhyDQnQQx88FBva45jwJIT6htbHFrz/eN9fCnP5YJegTyKfaBRxNh7Sl/K67u
+	 dkaOBvkjqyRZQ==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id DA8F435DF02; Wed,  3 Jun 2026 09:52:16 -0400 (EDT)
-Date: Wed, 3 Jun 2026 09:52:16 -0400
+	id 8A61035EA54; Wed,  3 Jun 2026 10:17:50 -0400 (EDT)
+Date: Wed, 3 Jun 2026 10:17:50 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: Christian Brauner <brauner@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH 2/8] ext4: convert mballoc KUnit test to sget_fc()
-Message-ID: <iujcj4lpvgmzlyzb6vs2m5tb2xhuqdkgpkkpzzgdogg3kburtz@igmkmk3avqqe>
-References: <20260526-work-sget-v1-0-263f7025cedd@kernel.org>
- <20260526-work-sget-v1-2-263f7025cedd@kernel.org>
- <ny6ggedljk3celsnnaaczpehmgll6hqrglqc44ku53cmxrclx5@w4qby54x6mff>
- <20260528-pailletten-gitter-hiermit-5198ec556b28@brauner>
+To: sashiko@lists.linux.dev
+Cc: linux-ext4@vger.kernel.org, Baokun Li <libaokun@linux.alibaba.com>
+Subject: Re: [PATCH RFC 10/17] ext4: use fast incremental CRC update in
+ ext4_free_inode()
+Message-ID: <h3n7jlfhyna64dn5o76qxcspnhxdddcs6crpxftmy7gnl7b3sx@jenszfpcsnit>
+References: <20260508121539.4174601-11-libaokun@linux.alibaba.com>
+ <20260508233305.EB600C2BCB0@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,21 +50,41 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260528-pailletten-gitter-hiermit-5198ec556b28@brauner>
+In-Reply-To: <20260508233305.EB600C2BCB0@smtp.kernel.org>
 
-On Thu, May 28, 2026 at 02:02:50PM +0200, Christian Brauner wrote:
+On Fri, May 08, 2026 at 11:33:05PM +0000, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [High] ext4_inode_bitmap_csum_set_fast() corrupts the inode bitmap checksum if EXT4_INODES_PER_GROUP(sb) is not a multiple of 8.
+>
+> > -	ext4_inode_bitmap_csum_set(sb, gdp, bitmap_bh);
+> > +	ext4_inode_bitmap_csum_set_fast(sb, gdp, bit);
 > 
-> In these two cases it's fine. Because you're just using the allocation
-> and deallocation functions to get a fs_context that's basically just an
-> empty vessel to get at a superblock via sget_fc() but you're not really
-> doing anything with it.
+> Can this corrupt the inode bitmap checksum if EXT4_INODES_PER_GROUP(sb) is not
+> a multiple of 8?
+> 
+> In ext4_inode_bitmap_csum_set(), the CRC32c checksum is computed over exactly
+> EXT4_INODES_PER_GROUP(sb) >> 3 bytes. If s_inodes_per_group is not a multiple
+> of 8, any trailing fractional bits are strictly excluded from the checksum
+> calculation.
+> 
+> Because ext4_fill_super() does not enforce that s_inodes_per_group is a
+> multiple of 8, a crafted filesystem can have an unaligned s_inodes_per_group.
 
-If you're OK with, I have no objects, but...
+The reason why ext4_fill_super() doesn't enforce that
+s_inodes_per_group is a multiple of 8 was that a long time ago, back
+when Android was allergic to GPLv2 in userspace, they implemented
+their own version of mke2fs (and didn't run fsck on the file system,
+sigh).  Their MIT licensed version of make_ext4fs would occasionally
+make file systems that were not a multiple of 8, and this ran afoul of
+e2fsck[1] if someone actually tried to repair a corrupted Android user
+data file system (as opposed to just wiping the flash and starting
+from scratch).
 
-I'm sure it's fine today.  But is this something which is documented
-to be fine in the future?  It just seems a little fragile and is
-contrary to the documentation.
+[1] https://sourceforge.net/p/e2fsprogs/bugs/292/
 
-Thanks,
+This was fixed long ago (over a decade ago), and so at this point, I'm
+pretty sure any such mobile handsets are in the landfill, so we
+probably should fix this by adding a check in ext4_fill_super() and a
+corresponding check in e2fsck.
 
-						- Ted
+					- Ted
