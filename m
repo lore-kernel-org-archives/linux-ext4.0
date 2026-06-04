@@ -1,92 +1,100 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91F813093B5
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 14:48:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 723522F1FD7;
+	Thu,  4 Jun 2026 14:54:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780584502; cv=none; b=AbDIXup2vaR4eoIbGG3+OSFCEfy4+r+6cLTyJOr7usNql4+xG0MJvRJWOjpOmXWRr1AYGHXGcZvFsOTmFVU0BRAwE/6ySNKH1KIk2V8fkLn+kIj6GkoIL3bhoMq1Pkm2D1pMKtJLCTTRdrM5s7WyAuIRgE0hxylTBunhTM/ugUE=
+	t=1780584876; cv=none; b=PF6/dHl53o1wCEcJT/vgRa7dVV8bbRtk21QL+RomVjCksfboX6bIQLeyPXAMSgXP7pAnh4SzWXJ/aRMBd3FUQJ/FAYQg5YyG/dColpxUNez2xRg7zNbHDak/3tOtLQI82sx3qYwwhC/q01ra9LkTOu+k0d7BkF9pbZBilpGUPpM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780584502; c=relaxed/simple;
-	bh=5Fu4qY1GmiwIURGlUvfJKFwG81u/TcJ+SCFMpL1goYE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=tf3zsTDElFulTPAQjpZGe9++YXueWiIe/FcCFOf9/9HvD2xl0iFlLh60zgJqXjersT/izKvXH6hu/m6Ry/S4BPUVPK0FiK/rdpQTydzrRFN09xonmiFQkSPjTyH2FEWtuAoSuoK8KJM7Tip7Zd0w8nNMXY2iJSBESFPY3OYuqnU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ms0/nnUB; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1780584876; c=relaxed/simple;
+	bh=eZQRnc2hngZ8wZTdYUmztz3eLlRj5DpKU3KAT1prh34=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZwOMqTiWVx3rRO6Bt5VLs4fexIhDOdYCSxfJWepllHhCxqv68cb1CJv+/oPzDyDJWP/2TmK1S68SDrm+BQOfv27b6bZ9tYDaR2ukYaOb+GjokEBjtfpXwygWnd63CZqbmRj6GQkrAnM+F4J+Yew0TUWAgZLRe/bpC8qLAy+EFRs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oA8lYKdm; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ms0/nnUB"
-Received: from trampoline.thunk.org (pool-173-48-113-247.bstnma.fios.verizon.net [173.48.113.247])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 654Ejvko012396
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 4 Jun 2026 10:45:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1780584360; bh=iQLaUZ6KfLqeynbU8qNojf2wT+pmng1jb1yjgIcTcQI=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=ms0/nnUB+doR92NlAb7eBy1AnnDptOyzqWGZjrBf4uQFDErWyLQMMj1EC/0YOkN+V
-	 hH3/B6OstW0sxhQymdg4zz5X70ezjVHjLQAE/T8pqx9YRSFSG2Kp3M65+s46IAoxtz
-	 5CqIBvp4NHCBLFs8C+xRAgsPJ+qYBq+z9etO06QbTSSUgE+CabInghCXEZf96JiSCD
-	 yK7lsXjkz0EW19AiGqBQdkcOJmHKAGiFs2jQvVUGnssUqsaHWiV7nCfRbHpM47ZaUm
-	 ROmd3376plOXveaQBIr1jxD2zWnbOYhHj6/TfWXdAVKH0wzcLpdryd6uTLsvdzhrk1
-	 6WdJlsF0Q4plA==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 6FB522E00D3; Thu, 04 Jun 2026 10:45:57 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Zhang Yi <yi.zhang@huaweicloud.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, Li Chen <me@linux.beauty>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Steven Rostedt <rostedt@goodmis.org>,
-        Masami Hiramatsu <mhiramat@kernel.org>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        linux-ext4@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC v8 0/7] ext4: fast commit: snapshot inode state for FC log
-Date: Thu,  4 Jun 2026 10:45:51 -0400
-Message-ID: <178058434004.388727.5524896340442581601.b4-ty@b4>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260515091829.194810-1-me@linux.beauty>
-References: <20260515091829.194810-1-me@linux.beauty>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oA8lYKdm"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 2AF7F1F00893;
+	Thu,  4 Jun 2026 14:54:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1780584875;
+	bh=IAsgpmL47mR1epNw0yHyfkb7zo+DMc2V/DOQZzwoZys=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=oA8lYKdmVj4O8OKPmDRk/Gel34yIO6a/0WjHpmUbNTnUSm5Mz/9UhQx4QlTuWfTBh
+	 gY2qUwSd+LZNPNofF51uJx+0CUImWBzktq47Y0/Bc5mHLiR1pxFDjqpW0mtu8lmQY/
+	 ZxP7JlGTK4m8NY2gv1AhflL6h8LTBYKa4JI+E3w7sWvI7aR1sact44eInzGva3b12i
+	 VcJxSCP9Vypyo88XrkvVP7rlHgGc26cEr7fUhG2jaYSvKcXDsG5sVPa6jJ6etuQEbQ
+	 Hxb5/e78epCZiS7qJto1RWsLIsjk1RVyyKns6AKvDqPggK8Uj9i+QsE5Pr2HIlbI1k
+	 EBgeFcQibgMng==
+Date: Thu, 4 Jun 2026 07:54:34 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Disha Goel <disgoel@linux.ibm.com>
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	ritesh.list@gmail.com, ojaswin@linux.ibm.com
+Subject: Re: [PATCH v2] common/defrag: skip defrag tests on DAX-enabled
+ filesystems
+Message-ID: <20260604145434.GG6095@frogsfrogsfrogs>
+References: <20260604122305.39805-1-disgoel@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260604122305.39805-1-disgoel@linux.ibm.com>
 
-
-On Fri, 15 May 2026 17:18:20 +0800, Li Chen wrote:
-> (This RFC v8 series is rebased onto linux-next master as of 2026-05-09,
-> commit e98d21c170b0 ("Add linux-next specific files for 20260508"), and
-> depends on patch "ext4: fix fast commit wait/wake bit mapping on
-> 64-bit" [0]).
+On Thu, Jun 04, 2026 at 05:53:05PM +0530, Disha Goel wrote:
+> Online defragmentation is not supported on ext4 DAX-enabled filesystems.
+> The ext4 defrag ioctl (EXT4_IOC_MOVE_EXT) returns EOPNOTSUPP when used
+> on DAX files.
 > 
-> Zhang Yi in RFC v3 review pointed out that postponing lockdep assertions only
-> masks the issue, and that sleeping in ext4_fc_track_inode() while holding
-> i_data_sem can form a real ABBA deadlock if the fast commit writer also needs
-> i_data_sem while the inode is in FC_COMMITTING.
+> Add an ext4-specific check in _require_defrag() to skip tests when DAX
+> is enabled, avoiding false failures on ext4/301-304, ext4/308, and
+> generic/018.
 > 
-> [...]
+> XFS defrag works with DAX, so this check is ext4-specific.
+> 
+> Signed-off-by: Disha Goel <disgoel@linux.ibm.com>
+> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> ---
+> Changes in v2:
+> - Made the check ext4-specific as XFS defrag works with DAX
+>   (feedback from Darrick)
+> - Use __scratch_uses_fsdax() instead of grepping MOUNT_OPTIONS
+> - Removed unnecessary comment as _notrun message is self-explanatory
+> 
+>  common/defrag | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/common/defrag b/common/defrag
+> index 055d0d0e..f17271cd 100644
+> --- a/common/defrag
+> +++ b/common/defrag
+> @@ -6,6 +6,10 @@
+>  
+>  _require_defrag()
+>  {
+> +    if [ "$FSTYP" = "ext4" ] && __scratch_uses_fsdax; then
 
-Applied, thanks!
+Shouldn't this be:
 
-[1/7] ext4: fast commit: snapshot inode state before writing log
-      commit: e9c6e0b8e096255feb71ec996c77bdfbe9c36e91
-[2/7] ext4: lockdep: handle i_data_sem subclassing for special inodes
-      commit: 7f473f971382d73a58e386afa7efdaac294b89f0
-[3/7] ext4: fast commit: avoid waiting for FC_COMMITTING
-      commit: b3060e96533dc3157fc6d3d45dc19927c566977b
-[4/7] ext4: fast commit: avoid self-deadlock in inode snapshotting
-      commit: 2b9b216628fd9352f9c791701c8990d05736aa90
-[5/7] ext4: fast commit: avoid i_data_sem by dropping ext4_map_blocks() in snapshots
-      commit: 22d887e06a57261df58404c8dce50c4ef37549ed
-[6/7] ext4: fast commit: add lock_updates tracepoint
-      commit: d2f6e83bbbef31169ea363af4277f5c09c914eda
-[7/7] ext4: fast commit: export snapshot stats in fc_info
-      commit: 56bb0b64f4b198bad5ce674509c10793d471148f
+	ext4)
+		__scratch_uses_fsdax && _notrun "..."
+		;;
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+in the case statement below?
+
+--D
+
+> +        _notrun "ext4 online defrag not supported with DAX"
+> +    fi
+> +
+>      case "$FSTYP" in
+>      xfs)
+>          # xfs_fsr does preallocates, require "falloc"
+> -- 
+> 2.45.1
+> 
