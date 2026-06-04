@@ -1,124 +1,79 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D09A2EA732;
-	Thu,  4 Jun 2026 14:46:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50969212566
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 14:46:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780584403; cv=none; b=nYCgH+12EcwSHr53FlXnGbFBYs/M5z4cU8SEGFH8l4bvlzfGjKf1Qxui73hyqfhCDmYmg8rO7jE3rIi2Omt/WTjOnARItL7LwVTwFzoVnwU8FGBmUnhcZr3Crm1YqPnJNyzeJ9bQcS7wWHlGB0D/mZ02g659AaTRdYv0YZbMb3M=
+	t=1780584411; cv=none; b=QsXZPb6dJoK3TCryJE3MTVpCta68FD6NMK4IrxkdgB3Jk309dw5fxqweshgAPKELAjZ+jJKZJH5yyhB3GjbaMALTLLN8j/H2oiOFQdOw344W9MJaS98dzTxWuyN0C6CCG0uSI8+klavdFpCMySvmWY08cXQun1z++hGR3S9NPX0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780584403; c=relaxed/simple;
-	bh=kUWiuBPrxX5exwSfkCtfd/7XL6RB7gxIWFebCVnPH+o=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CDtUT33FqSpfxCRlqFR1WRslNubLxUu7ci2cXZKqm9UaA3L6VfGIkdXH2J3uQ43Itk8yvR/kIHeaZyWWPztXzqYre2QdZ/+ORf7nct7Y0iEjSFzhQbuAz1gDY4F8YVbBJ/+fuzkPFEjnb7mRVIzAnyaQcv41e4m7Ow7VEA15bIo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=niy8gQ+G; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1780584411; c=relaxed/simple;
+	bh=tP5JKnhBF39Wb5k7qSsh8k4mZKvFxHvxQEwwTvvNT+o=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Pgye8TGpbHH2lEwSyCj/y7o1jUqpacUSgfOiXzJT+Yzjiae0lvJpZI84NbclE5L6D/sAkaZH7r1FMV87KoJl7PkqDzJyhLKkjgYvurRQmEFbTTMgrkkw36Dsm3YU5cGfDU8VSj7PCoJCJrdCKBPlMAX/f7RFVKC4QzIuqScgCPk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=XjGi4Khf; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="niy8gQ+G"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=V97EjziPWX7/aWg2UdD5uDnb3HG95TQLDqrOqOVej0g=; b=niy8gQ+GsklXMudI64cl6QUE5W
-	PusadtssOexwTK1gOY6YfSiIZk8qPfZMLZqZKDbr2D9LPzlERlOwh09zygRqx6HxjXCXGcJdtAmMZ
-	POnFqCq8OdkcmIyEb3PuLPIJ/nK6lenV0stesjXWfqY6rKtaoE3LSDfNLS78swMmacO3n535Gxceq
-	wKrVGtNXL+RjdTXGduiuwW/Q4ykv06GRzswmQ0A/KbL0BfZHRne1PUTDKZ+lC8lW4UKqno0rOScRt
-	IfLWtpjB3ixeK+TFnCGQOcwvyFIDtsJICOpf/lUWnYXrasc19dnYxhzIBgS838XtY6oODL/hZp1Im
-	/tbghusA==;
-Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wV9Kt-000000064Qn-0gwN;
-	Thu, 04 Jun 2026 14:46:19 +0000
-Date: Thu, 4 Jun 2026 15:46:19 +0100
-From: Matthew Wilcox <willy@infradead.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Mike Rapoport <rppt@kernel.org>, Jan Kara <jack@suse.com>,
-	Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Hindborg <a.hindborg@kernel.org>,
-	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 10/17] jbd2: replace __get_free_pages() with kmalloc()
-Message-ID: <aiGPu2XwaM31fvl9@casper.infradead.org>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-10-275e36a83f0e@kernel.org>
- <yfzx3jgzwesernofl7mzixa2mhjfii5v3o7yapghtmozixrpfu@6bsh7iixyiov>
- <aiEX4UTxEnBTjVKo@kernel.org>
- <ximvn6jwgtam665a4droqkp73o55kwvd5uukyidwjesmysobth@oe7rigpsjfkz>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="XjGi4Khf"
+Received: from trampoline.thunk.org (pool-173-48-113-247.bstnma.fios.verizon.net [173.48.113.247])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 654Ejx0q012420
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 4 Jun 2026 10:46:00 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1780584363; bh=j5wM2952woz1uz28Bltb9K9N8B/fTEeBFbj3QHbSzZs=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=XjGi4KhfXWDudYg6hBc/4kseCQKihzgjT4kcmUk5y7erZyfU6DywMiCEvT2g4+9JG
+	 cg2nPgTuTsTrDaEk33QPt+qTvQuELotzhafIfGOIQzVSu/10j4i51d4dE84Sw/frQT
+	 LEB0ht4FuvT4O7QhuyqdySkfDtvBGX9BYlj5/n+pwcPC0tkAYfnqqqvVaK8WzlX6O0
+	 YHUK9S3zecSj/62wIb8jpEyG3eV2QMGulIk7K8tvb4Ysmjvrnrurc1zJK6y60ZbTQW
+	 S/Iz2dZ6AqeRdkRCmUp+4DUCy9nIJlGWIs2vTiBo5H6gd94JzTY41bSAdlmynVvMP6
+	 PXboeF4kzRuzQ==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 765572E00D5; Thu, 04 Jun 2026 10:45:57 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
+        yangerkun@huawei.com,
+        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com
+Subject: Re: [PATCH] ext4: fix LOGFLUSH shutdown ordering to allow ordered-mode data writeback
+Date: Thu,  4 Jun 2026 10:45:53 -0400
+Message-ID: <178058433997.388727.14058923901564780428.b4-ty@b4>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
+References: <20260424104201.1930823-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ximvn6jwgtam665a4droqkp73o55kwvd5uukyidwjesmysobth@oe7rigpsjfkz>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-I'm hoping you'll take my "Remove special jbd2 slabs" patch instead of
-this one, but answering here anyway ...
 
-On Thu, Jun 04, 2026 at 10:05:52AM -0400, Theodore Tso wrote:
-> On Thu, Jun 04, 2026 at 09:14:57AM +0300, Mike Rapoport wrote:
-> > There's no memory overhead when order == 1.
-> > As for the CPU overhead, the difference for the fast path allocations is
-> > not measurable and for the slow path it is anyway determined by the amount
-> > of reclaim involved rather than by what allocator is used.
+On Fri, 24 Apr 2026 18:42:01 +0800, Zhang Yi wrote:
+> In EXT4_GOING_FLAGS_LOGFLUSH mode, the EXT4_FLAGS_SHUTDOWN flag was set
+> before calling ext4_force_commit().  This caused ordered-mode data
+> writeback (triggered by journal commit) to fail with -EIO, since
+> ext4_do_writepages() checks for the shutdown flag.  The journal would
+> then be aborted prematurely before the commit could succeed.
 > 
-> Thanks for confirming!
+> Fix this by calling ext4_force_commit() first, then setting the
+> shutdown flag, so that pending data can be written back correctly.
 > 
-> > Larger allocations (> PAGE_SIZE * 2) go straight to the page allocator.
+> [...]
 
-That is a detail subject to change.  I have some ideas ...
+Applied, thanks!
 
-What users are guaranteed is that kmalloc returns physically contiguous
-memory.  And that if it's a power-of-two that it's naturally aligned.
+[1/1] ext4: fix LOGFLUSH shutdown ordering to allow ordered-mode data writeback
+      commit: d99748ef1695ce17eaf51c64b7a06952fa7cddab
 
-> Another question: Today, we can either use kmalloc() (or
-> __get_free_pages, previously) or vmalloc().  Is there a way a file
-> system can say, "give me physically contiguous pages if possible, but
-> if it's too hard --- with some TBD to specify what 'too hard' means or
-> can be specified --- fall back to a vmalloc-style approach, with the
-> page table / TLB overhead that this might imply"?
-> 
-> I suppose we could do it with kmalloc() with some flags which to
-> prevent forced reclaim / compaction, and if that fails, then fall back
-> to vmalloc().  Is there a better way?
-
-I think we'd like to avoid doing that.  A lot of code has various
-workarounds for deficiencies in the memory allocator (some of which have
-been fixed and thus the workarounds only complicate matters).  If the
-memory allocator(s) aren't providing what you need (be it performance
-under load, fragmentation avoidance or whatever), it's best to get that
-fixed rather than having fallback paths.
-
-There have been people who have suggested "What if folios could be
-physically discontiguous", and sometimes I've hhumoured them, but the
-simplifications enabled by requiring folios to be contiguous are quite
-immense.
-
-We've been trying to move in the direction of exposing more high-level
-APIs so people can say "I want to allocate 10MB of memory but it doesn't
-need to be contiguous" and have the allocator either fail the whole
-thing up front or make efforts to ensure that you get the whole 10MB.
-It's a lot more efficient than calling get_free_page() 2500 times
-and possibly having reclaim run a dozen different times.
-
-(anyone else try to create a brd that's actually larger than system ram?
-;-)
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
