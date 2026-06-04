@@ -1,93 +1,149 @@
-Received: from mailgw.kylinos.cn (mailgw.kylinos.cn [124.126.103.232])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9983D391E49;
-	Thu,  4 Jun 2026 07:36:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=124.126.103.232
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE3ED3EDE67
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 09:04:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780558619; cv=none; b=f3jBvO/HsmYmMY4bwyllgplSLCyVsnAsAgbRIlzBAYltLq3z2stiUvoxpf9owLcJZwL5rDmhLVpwmYBzZicpGJopH93YBVRB/dxLnbg4ZA6vllLn3e22zTpyoc9x7iKz/xDv+8n2d5GkgSvvQN42KpnnAii/bBwjGgkUq69Eggk=
+	t=1780563879; cv=none; b=odnnVNWH9RoF7D3Zn002Ktb9zhHbRdqRCXMmqyimJT/kMY8m65u7LMahSC9YkZi7Q7K9Zw6Vn9/WNIdCs4vHm1luThkABdIlbyQ3VjQGFfHCIsW27YSUmQqdb4lwuAp29vUnFA4Ur9TXDgaRKtOVgft1KMHalwKg6bJKqjkYrg0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780558619; c=relaxed/simple;
-	bh=fIaJSmVjC22uSCZ/bvL3JCp0QGmlxjI9kPCwX7pU/qc=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=QO/RoBv7CPhG2cGKFJLQw8o6j0ZXimwwnVRmLWE6xj4+wi3ltMqdJXB7ReNASAT4del/+kF66782HkkzqQ5vd+fnGh7g5m4lRowKZhFDCsnyYAPEqebm8lg0vGrCgK/VNqDLKhYtAxzIdwJipGQfub9PEeRKExDX7FQedX12Q6U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn; spf=pass smtp.mailfrom=kylinos.cn; arc=none smtp.client-ip=124.126.103.232
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kylinos.cn
-X-UUID: 271636385fe811f1aa26b74ffac11d73-20260604
-X-CID-P-RULE: Release_Ham
-X-CID-O-INFO: VERSION:1.3.12,REQID:694b5c62-a43d-41eb-a8b7-f1168845157a,IP:0,U
-	RL:0,TC:0,Content:0,EDM:0,RT:0,SF:0,FILE:0,BULK:0,RULE:Release_Ham,ACTION:
-	release,TS:0
-X-CID-META: VersionHash:e7bac3a,CLOUDID:c2ede84e310fa58621bc8912ff95acf3,BulkI
-	D:nil,BulkQuantity:0,Recheck:0,SF:102|850|865|898,TC:nil,Content:0|15|50,E
-	DM:-3,IP:nil,URL:0,File:nil,RT:nil,Bulk:nil,QS:nil,BEC:nil,COL:0,OSI:0,OSA
-	:0,AV:0,LES:1,SPR:NO,DKR:0,DKP:0,BRR:0,BRE:0,ARC:0
-X-CID-BVR: 2,SSN|SDN
-X-CID-BAS: 2,SSN|SDN,0,_
-X-CID-FACTOR: TF_CID_SPAM_SNR
-X-CID-RHF: D41D8CD98F00B204E9800998ECF8427E
-X-UUID: 271636385fe811f1aa26b74ffac11d73-20260604
-X-User: zenghongling@kylinos.cn
-Received: from localhost.localdomain [(10.44.16.150)] by mailgw.kylinos.cn
-	(envelope-from <zenghongling@kylinos.cn>)
-	(Generic MTA with TLSv1.3 TLS_AES_256_GCM_SHA384 256/256)
-	with ESMTP id 662302851; Thu, 04 Jun 2026 15:36:51 +0800
-From: Hongling Zeng <zenghongling@kylinos.cn>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	neil@brown.name,
-	brauner@kernel.org,
-	jlayton@kernel.org
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	zhongling0719@126.com,
-	Hongling Zeng <zenghongling@kylinos.cn>
-Subject: [PATCH v2] ext4: Fix ERR_PTR(0) in ext4_mkdir()
-Date: Thu,  4 Jun 2026 15:36:47 +0800
-Message-Id: <20260604073647.211279-1-zenghongling@kylinos.cn>
-X-Mailer: git-send-email 2.25.1
+	s=arc-20240116; t=1780563879; c=relaxed/simple;
+	bh=PDUUSU7kmVZUxeHMY1MJ5BVFtGwJ68ein9IpwK/HpUg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dTMBQ7XzNA0Urf5wYGGW/rc+5I6ZRZLHKH3FFn2t3yISz9ny7DnFv2l8hoYETPuz7RTHTiW4c54RD+iRckV/rXv/MD17pw8e87hlrwDCYBSQWbLzPnZU68wtCNj6YTZdn494RfPQv+0CzlnBDc8VvtLA6vZYG5p2ZVF/9tlCg0U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=OX0cU1VZ; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Qz9GLDgt; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OX0cU1VZ";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Qz9GLDgt"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1780563876;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=2lQs9dI0tAeFPaJ8i1YwQIsal8XYYdyr4lp1F85T2xk=;
+	b=OX0cU1VZzlzQXUJiY0B5ejGyseFhdkB4n7aBW/tHtF3vXB6jvkQJ58nYLfVWzAJrHwxSGv
+	jl5i5uSfsa7NYGN30V658NXVInBl/ALnwYReJ81SZZigU7zNkTW5sqVsskKpYoT5GQfrkO
+	HSm0xNw3D8LRQjrm+UVrrRfE93bd1Vc=
+Received: from mail-wr1-f72.google.com (mail-wr1-f72.google.com
+ [209.85.221.72]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-107-aKHnexiANPOfR-U14e1Qbg-1; Thu, 04 Jun 2026 05:04:35 -0400
+X-MC-Unique: aKHnexiANPOfR-U14e1Qbg-1
+X-Mimecast-MFC-AGG-ID: aKHnexiANPOfR-U14e1Qbg_1780563874
+Received: by mail-wr1-f72.google.com with SMTP id ffacd0b85a97d-45eec2badc4so237591f8f.2
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Jun 2026 02:04:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1780563874; x=1781168674; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=2lQs9dI0tAeFPaJ8i1YwQIsal8XYYdyr4lp1F85T2xk=;
+        b=Qz9GLDgtLtISnCfgP/4urs6jsoO4Q4b9/whS91RL5tIMBYkAqf30YvWT9E3QDi7l/Q
+         QyOi0ycgRCwywfL8W0BkAKo/dRS1HhC1SUbF8j7uUT7ipAZ+YMKJQtM/k9XumtfIVxbn
+         bxGcCjGX2kN205Qmc/HEe7kkdoKweYVdypewv2jJmfeDpLw2vUTFWuAssI9DANnBTZoB
+         9jCC4k2pMXQQH+10xJJAGqE27mj931J4fLsC+ZQ91eA+IXFkn6/C8SqemPhFjMHTt2aI
+         OaQF5GfZSAqUCgpASg0uiyqRbM19a60sRZ+xKIK266mpRsZcsjBbbpk3liP9wbTyy7hg
+         v45g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1780563874; x=1781168674;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=2lQs9dI0tAeFPaJ8i1YwQIsal8XYYdyr4lp1F85T2xk=;
+        b=L2GvgJl2r0npqbUdWoJ4awlLLBmkWLJOrlQAuLTK4rMJvnjsrXsSeGZXdVxqLea4dg
+         xHuyV19etqowOYz1F1fSEcAgCcgW4pGQHjyh80T6MIsGzUL+4la6k5Ozd218aJzkay9o
+         aAEfacYEgK+W+02C0SDY+UkOwIHfO1X/5dxeXaCxd6JcG/2yqf90tQb+Sv/lxskRkt/R
+         vb5LgJCg8bRnvyC59i6k6YPqahVoI4z+BVz1EN60xeV1TcM6u/a9/JyW/aoZLKeY39+0
+         duX8nMg3QExVjdt2yfwqvqwPPV4+qR3qaEwAgV0sndvzdmFBKFgDQK60M5mgLmb6EnQi
+         ElAg==
+X-Forwarded-Encrypted: i=1; AFNElJ/bPFTSiK9AoXboEjI0/39e5ECyVSvsGvWgCGLepOW4bUi8dNUEFIr5H+Zfy+2hPbyUTSYxDIj9uuAi@vger.kernel.org
+X-Gm-Message-State: AOJu0YzkaOgj4iRajoE8S6gctj8IiY7hoaqOOBGHSh5JyfcH7AM/frxM
+	8Tk8SBQCyyPeKHfK3tp3759nwMl20m8Fbb0z7Wv6xxLe4zBvXtbgtiHL4JLUYaAfy3URyW47XcA
+	Bhbj2sE2p+IDn3S20JUsb6wiVwMqGAcNtjwW+gi9REG5dJwMtU+sAu+PPO2gGXw==
+X-Gm-Gg: Acq92OHZPttl8x5j06WXAedfAxIPU+hV2gs5hUYe2NMdD5n8I2nsgbEihWvnuqHYO3g
+	x+L9LdF8NE2FHLJgMPA1M6EL3yR65G2V+krLdhOAmt/PyD4iLgeMeg9ZPOQiresY91O7LiclmDq
+	yw/2+DW7Gw9pTYANoEUigtiz8AmBzP6K5z0AKbAPRRgpzncfS7ZDRPfQlpE781Cd2tNsZBwuEGP
+	bJ+p2JNlwCtz0VI3L9n76Hb22I5hKROBX+gUky71d32U+6eQoubA0w2ui594en1o6JE1xhb+Xwl
+	GIXlFbgW2ENJkqjDK5y0MimTYKzDWCMAwHqB22nJZzgXXthVk88XrQ7nDSlFYOwVWi6cdNOB8MW
+	+4fdUjm7aITgjEQY2eIJ55AOGiUFJhWdKOzBYtRQyRd1yINhdGuKvjXKLq9H3zm35fU4=
+X-Received: by 2002:a05:6000:43d4:20b0:460:f36:79b0 with SMTP id ffacd0b85a97d-4602182b90dmr8717146f8f.19.1780563874076;
+        Thu, 04 Jun 2026 02:04:34 -0700 (PDT)
+X-Received: by 2002:a05:6000:43d4:20b0:460:f36:79b0 with SMTP id ffacd0b85a97d-4602182b90dmr8717074f8f.19.1780563873372;
+        Thu, 04 Jun 2026 02:04:33 -0700 (PDT)
+Received: from aalbersh-thinkpadx1carbongen13.rmtcz.csb ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4601f2dcde3sm16539954f8f.1.2026.06.04.02.04.32
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 04 Jun 2026 02:04:32 -0700 (PDT)
+Date: Thu, 4 Jun 2026 11:04:32 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Carlos Maiolino <cem@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+	Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, fsverity@lists.linux.dev, 
+	linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, linux-ext4@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, 
+	djwong@kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v10 00/22] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <aiE_YQc6SGSdWlcE@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260520123722.405752-1-aalbersh@kernel.org>
+ <20260521090705.GA14254@lst.de>
+ <gcw7zcg6p4s2egpufwizfig72g6ren7jfmuz5mqskkpb7xepww@e3v35j7bk7dc>
+ <ag7uW7KQ5mVyCGEv@nidhogg.toxiclabs.cc>
+ <20260522-unbehagen-baumethode-erlesen-811a4065eeac@brauner>
+ <20260522120757.GA21041@lst.de>
+ <ahVzkf8JoKP-kSC2@nidhogg.toxiclabs.cc>
+ <20260528-offiziell-luftleer-misswirtschaft-3503bda2ad70@brauner>
+ <fjdfwhwi4aogyiaoijwvw6w4npuu5mbt6ua6fkhwcp5ajlm543@ume2fkxg36cb>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <fjdfwhwi4aogyiaoijwvw6w4npuu5mbt6ua6fkhwcp5ajlm543@ume2fkxg36cb>
 
-When mkdir succeeds, ext4_mkdir() returns ERR_PTR(0) which is incorrect.
-It should return NULL instead for success and ERR_PTR() only with
-negative error codes for failure.
+On 2026-05-28 16:50:45, Andrey Albershteyn wrote:
+> On 2026-05-28 14:20:08, Christian Brauner wrote:
+> > On Tue, May 26, 2026 at 12:19:43PM +0200, Carlos Maiolino wrote:
+> > > On Fri, May 22, 2026 at 02:07:57PM +0200, Christoph Hellwig wrote:
+> > > > On Fri, May 22, 2026 at 12:03:20PM +0200, Christian Brauner wrote:
+> > > > > > I was expecting this to come through xfs tree too if Eric and Christian
+> > > > > > agree.
+> > > > > 
+> > > > > You may take it through the xfs tree if there are no conflicts with
+> > > > > vfs-7.2.iomap. If there are I want to add the iomap changes into
+> > > > > vfs-7.2.iomap that you can pull in.
+> > > > 
+> > > > Merging the iomap bits through the iomap branch might make sense, given
+> > > > that iomap usually tends to see quite a bit of activity.
+> > > > 
+> > > 
+> > > That sounds good to me. If you want to go ahead and pull in the iomap
+> > > bits, do so, and give me a heads up when you do it so I'll pull your
+> > > branch locally.
+> > 
+> > Great, can the series please be resent based on current vfs-7.2.iomap
+> > then please? Because the iomap changes in this series don't apply
+> > cleanly on vfs-7.2.iomap so we already have merge conflicts...
+> > 
+> 
+> hmm do you mean this branch?
+> https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git/log/?h=vfs-7.2.iomap
+> 
+> patches 07..09 seems to apply cleanly. The only conflict I see is in
+> the overlayfs patch 03. This is because [1] (is in -rc5) is missing
+> in vfs-7.2.iomap.
+> 
+> [1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/fs/overlayfs/util.c?h=v7.1-rc5&id=0c8c88b8eb82a2a41bec5f17c076d6312dc40316
 
-Fixes: 88d5baf69082 ("Change inode_operations.mkdir to return struct dentry *")
-Signed-off-by: Hongling Zeng <zenghongling@kylinos.cn>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
+Christian, ping
 
----
-Change in v2:
- -Add pre-reivewer
----
- fs/ext4/namei.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Would be nice to have iomap in vfs, so Carlos can pull and test the
+rest
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4a47fbd8dd30..8cadaeb15b2b 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3054,7 +3054,7 @@ static struct dentry *ext4_mkdir(struct mnt_idmap *idmap, struct inode *dir,
- out_retry:
- 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
- 		goto retry;
--	return ERR_PTR(err);
-+	return err ? ERR_PTR(err) : NULL;
- }
- 
- /*
 -- 
-2.25.1
+- Andrey
 
