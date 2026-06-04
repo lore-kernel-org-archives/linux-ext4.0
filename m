@@ -1,121 +1,93 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mailgw.kylinos.cn (mailgw.kylinos.cn [124.126.103.232])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A1E93D6664;
-	Thu,  4 Jun 2026 06:15:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9983D391E49;
+	Thu,  4 Jun 2026 07:36:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=124.126.103.232
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780553711; cv=none; b=YwpXpRyac0zMKTITkcSG77j+ivcxA+XdcmJM6vh80QbElxM1ys/n/OL38V0JQNIphAyAYpIoCVFDrTm3kxyrRhb2/jMFghlVIHWqTOEv4dsxbF8I0TCBLVsRPzxkafNHF6dkq5XaiEo3dsVJ9UVC8Vz1w3icQmXrzvNislspcyM=
+	t=1780558619; cv=none; b=f3jBvO/HsmYmMY4bwyllgplSLCyVsnAsAgbRIlzBAYltLq3z2stiUvoxpf9owLcJZwL5rDmhLVpwmYBzZicpGJopH93YBVRB/dxLnbg4ZA6vllLn3e22zTpyoc9x7iKz/xDv+8n2d5GkgSvvQN42KpnnAii/bBwjGgkUq69Eggk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780553711; c=relaxed/simple;
-	bh=atVSAfHhDYBovprcHMCjWAChHvgsN9Zly/q2GkqZTdM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=HsSXpO8srZ6x0paQBdomoVZac5qJ6y8fWyb9dHJTenYOQFkVehtDnMX04uyoKLwHGpT2uJJrwW3hzPQrhqDUbDALnitmkVsRlkUQ9BaRzSk8foi4mvbjn3oorBLKxDi0zuYB0BArUChRHx43RBAzMJPbdQ4NG6cB3SlU9PwucbQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YZdzENTk; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YZdzENTk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE6611F00893;
-	Thu,  4 Jun 2026 06:15:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780553709;
-	bh=maKYg38a30VxIX8QCcSBujTuAdCuRyvh3rWBPMbaTa8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=YZdzENTkOazs5XSTumSTfKjNe97Bx1gIjbWPEe0rEOYizlJ+PG3Skn0hS26Ux74Jl
-	 AXCvUF5ahoFRq9So4PlOjS3IWyCIq5NTGNUoudm5MMRDdJhNBKN1LdgBDErw0LtVFd
-	 jzKhcofKN8uPI1V71amXjFQlau+IKLTXzAiqIsn/g+sTxSoMC/LouWT+HEHb+idjuI
-	 8F/5ZnoIZWEz4pT/Oim/JLh5w98h2ycR5nXmcdy58o4NERbYl1r+Hpa7rpblTquRvP
-	 owmPxKztmOlhAuoaO/iNyxsWnpCrb8pm0xA6MdS2Qr/cnlFMvHA1Yq1Qntrgg1OIwG
-	 JJVS4xnu2W56g==
-Date: Thu, 4 Jun 2026 09:14:57 +0300
-From: Mike Rapoport <rppt@kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Hindborg <a.hindborg@kernel.org>,
-	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 10/17] jbd2: replace __get_free_pages() with kmalloc()
-Message-ID: <aiEX4UTxEnBTjVKo@kernel.org>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-10-275e36a83f0e@kernel.org>
- <yfzx3jgzwesernofl7mzixa2mhjfii5v3o7yapghtmozixrpfu@6bsh7iixyiov>
+	s=arc-20240116; t=1780558619; c=relaxed/simple;
+	bh=fIaJSmVjC22uSCZ/bvL3JCp0QGmlxjI9kPCwX7pU/qc=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=QO/RoBv7CPhG2cGKFJLQw8o6j0ZXimwwnVRmLWE6xj4+wi3ltMqdJXB7ReNASAT4del/+kF66782HkkzqQ5vd+fnGh7g5m4lRowKZhFDCsnyYAPEqebm8lg0vGrCgK/VNqDLKhYtAxzIdwJipGQfub9PEeRKExDX7FQedX12Q6U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn; spf=pass smtp.mailfrom=kylinos.cn; arc=none smtp.client-ip=124.126.103.232
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kylinos.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kylinos.cn
+X-UUID: 271636385fe811f1aa26b74ffac11d73-20260604
+X-CID-P-RULE: Release_Ham
+X-CID-O-INFO: VERSION:1.3.12,REQID:694b5c62-a43d-41eb-a8b7-f1168845157a,IP:0,U
+	RL:0,TC:0,Content:0,EDM:0,RT:0,SF:0,FILE:0,BULK:0,RULE:Release_Ham,ACTION:
+	release,TS:0
+X-CID-META: VersionHash:e7bac3a,CLOUDID:c2ede84e310fa58621bc8912ff95acf3,BulkI
+	D:nil,BulkQuantity:0,Recheck:0,SF:102|850|865|898,TC:nil,Content:0|15|50,E
+	DM:-3,IP:nil,URL:0,File:nil,RT:nil,Bulk:nil,QS:nil,BEC:nil,COL:0,OSI:0,OSA
+	:0,AV:0,LES:1,SPR:NO,DKR:0,DKP:0,BRR:0,BRE:0,ARC:0
+X-CID-BVR: 2,SSN|SDN
+X-CID-BAS: 2,SSN|SDN,0,_
+X-CID-FACTOR: TF_CID_SPAM_SNR
+X-CID-RHF: D41D8CD98F00B204E9800998ECF8427E
+X-UUID: 271636385fe811f1aa26b74ffac11d73-20260604
+X-User: zenghongling@kylinos.cn
+Received: from localhost.localdomain [(10.44.16.150)] by mailgw.kylinos.cn
+	(envelope-from <zenghongling@kylinos.cn>)
+	(Generic MTA with TLSv1.3 TLS_AES_256_GCM_SHA384 256/256)
+	with ESMTP id 662302851; Thu, 04 Jun 2026 15:36:51 +0800
+From: Hongling Zeng <zenghongling@kylinos.cn>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	neil@brown.name,
+	brauner@kernel.org,
+	jlayton@kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	zhongling0719@126.com,
+	Hongling Zeng <zenghongling@kylinos.cn>
+Subject: [PATCH v2] ext4: Fix ERR_PTR(0) in ext4_mkdir()
+Date: Thu,  4 Jun 2026 15:36:47 +0800
+Message-Id: <20260604073647.211279-1-zenghongling@kylinos.cn>
+X-Mailer: git-send-email 2.25.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <yfzx3jgzwesernofl7mzixa2mhjfii5v3o7yapghtmozixrpfu@6bsh7iixyiov>
+Content-Transfer-Encoding: 8bit
 
-Hi Ted,
+When mkdir succeeds, ext4_mkdir() returns ERR_PTR(0) which is incorrect.
+It should return NULL instead for success and ERR_PTR() only with
+negative error codes for failure.
 
-On Wed, Jun 03, 2026 at 09:50:15AM -0400, Theodore Tso wrote:
-> On Sat, May 23, 2026 at 08:54:22PM +0300, Mike Rapoport (Microsoft) wrote:
-> > jbd2_alloc() falls back from kmem_cache_alloc() to __get_free_pages() for
-> > allocations larger than PAGE_SIZE.
-> > But kmalloc() can handle such cases with essentially the same fallback.
-> > 
-> > Replace use of __get_free_pages() with kmalloc() and simplify
-> > jbd2_free() as both kmem_cache_alloc() and kmalloc() allocations can be
-> > freed with kfree().
-> > 
-> > Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
-> 
-> So historically __get_free_pages() was more efficient than kmalloc
-> since previously the kmalloc overhead meant that a single 4k
-> allocation would take two pages instead of one.  I'm guessing that has
-> since changed?
+Fixes: 88d5baf69082 ("Change inode_operations.mkdir to return struct dentry *")
+Signed-off-by: Hongling Zeng <zenghongling@kylinos.cn>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 
-Today there's no memory overhead for kmalloc(PAGE_SIZE). Cache refill takes
-more pages of course, but they will be handed over to the next
-kmalloc(PAGE_SIZE).
+---
+Change in v2:
+ -Add pre-reivewer
+---
+ fs/ext4/namei.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 4a47fbd8dd30..8cadaeb15b2b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3054,7 +3054,7 @@ static struct dentry *ext4_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ out_retry:
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+-	return ERR_PTR(err);
++	return err ? ERR_PTR(err) : NULL;
+ }
  
-> Can you explain to someone who hasn't been tracking the changes in
-> kmalloc over time:
-> 
->   * How does the efficiency of kmalloc compare to __get_free_page when
->     order == 1?  What is the overhead in terms of memory overhead?
->     I'm a bit less concerned about CPU overhead, but it would be good
->     to know that?
-
-There's no memory overhead when order == 1.
-As for the CPU overhead, the difference for the fast path allocations is
-not measurable and for the slow path it is anyway determined by the amount
-of reclaim involved rather than by what allocator is used.
- 
->   * What does kmalloc() do when a size > PAGE_SIZE is passed?  Will it
->     return contiguous memory, or return an error or worse, BUG?  And
->     same question as above; what is the overhead of kmalloc() when
->     size is 2*PAGE_SIZE?  8*PAGE_SIZE?
-
-For size >= PAGE_SIZE kmalloc() always returns contiguous page aligned
-memory.
-
-Larger allocations (> PAGE_SIZE * 2) go straight to the page allocator. 
-
-> Thanks,
-> 
-> 						- Ted
-
+ /*
 -- 
-Sincerely yours,
-Mike.
+2.25.1
+
