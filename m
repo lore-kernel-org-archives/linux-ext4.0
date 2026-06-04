@@ -1,97 +1,77 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2208F42EEAD
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 14:08:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E9EA28DB49
+	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 14:46:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780582112; cv=none; b=oT6aMlA9a1C/bfk+fN7XuE2jsBW/gKQc9CA3grwGqReCsXs2vmrYegWBAp7GO2ZqkRT6VuunR4srEGC8Atv6QCPCSYCxPobAtm+Zw5vGbYeUtU5zGtfCCWWW9Prlumg0N418EK6+ru/rBgW2yGsHbf+PzzqT4ix99qTZhu+FspY=
+	t=1780584367; cv=none; b=qjY2U5KwmW/STfTISBgkEMkbdTCK6di8Dx1GwxwfmgmyATz7I920ErJfTLTAru1qo/XXTGiUEbY7ZhuiYzn5pzujGbMsRfYO/KSr0mot0qXIXlEc8JR3OAfUafXmKV9gTLR1GrXwWKO1uKbO4zGORP6QgJUZzKQRf2asOifuUCQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780582112; c=relaxed/simple;
-	bh=mvIP8ngdXo4jA96Ea8p105NJqwzP24HZicHRCFQ/FdQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Qq1PNf28Icu7UeXrbjyO85kd7njUoKxQgVnn0mntDdc9vwvrF7kpVgy/VfXAjaXmbE/bt9MLUipwiNLxMIQN+pr3KUf0uDwSgUBccsb+4hlVjw+Lj3Jj+wYJaevb8MD1tt0xV7xnSj3Z1BYcYZEB3aM8UdvJ0LHlHgL1kPShWEU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=mb/IBx2t; arc=none smtp.client-ip=18.9.28.11
+	s=arc-20240116; t=1780584367; c=relaxed/simple;
+	bh=sKDG1+0bP+0stoqmsGoqt3Bj3VvOLMlftH9EsZJGYto=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=uvCdThpYvOq9RFAxMfoHUW4Dc90BDHoHRRr6FTlEBtfZQGogZu380f4ACw1T2rvtYrBX5dHD30pFVKvEPMIeb/UYwFySO7KBtWLHQPjnJA2+v7bYjukACVXb5+jn/EUhk5Rvv8oDoay6VJeasc/25WwS5+w9vmXFXiBPtWV74qA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=dD0Wy/lD; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="mb/IBx2t"
-Received: from macsyma.thunk.org (pool-173-48-113-247.bstnma.fios.verizon.net [173.48.113.247])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="dD0Wy/lD"
+Received: from trampoline.thunk.org (pool-173-48-113-247.bstnma.fios.verizon.net [173.48.113.247])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 654E6rvL025698
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 654Ejv33012382
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 4 Jun 2026 10:06:54 -0400
+	Thu, 4 Jun 2026 10:45:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1780582020; bh=5s99V2F+cdxC+MwrT27Mau0Uu2siNBpgurBs08PszHI=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=mb/IBx2t4Epn1180cTZPKExA+5u946+tIwlV31jpfDtN0UiOTyD0Hl31IYSdo6HEC
-	 kuQbQnyc5edecobCL5JrbpcyK5pHbtgHcD/Jc8TQWSO1qBkfNL95JoWIgDAs8IGKBt
-	 uBG9CP9x40IWHSEnEPklfmc8Uei3gfqs9m/dTJEFJODXZ6nVP3b/R8vroBVkUEW1Gq
-	 tr4zxnTzkZEmmCDYotcI+GORmTAykiAacHUlAIw/6Z/bI4lAyVeYWvg7XuwidEXkQe
-	 60NEfoN/RFaTuY9hSDI9GhFLE2N+msS6oWqaHWyRFqJPqBnGuLGlZsZ0vrl0RBcYOl
-	 I/KRqdjz9TCRQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id ED63E37A6B9; Thu,  4 Jun 2026 10:05:52 -0400 (EDT)
-Date: Thu, 4 Jun 2026 10:05:52 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Mike Rapoport <rppt@kernel.org>
-Cc: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        Viacheslav Dubeyko <slava@dubeyko.com>,
-        Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
-        NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
-        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-        Dave Kleikamp <shaggy@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-        Andreas Hindborg <a.hindborg@kernel.org>,
-        Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
-        "Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 10/17] jbd2: replace __get_free_pages() with kmalloc()
-Message-ID: <ximvn6jwgtam665a4droqkp73o55kwvd5uukyidwjesmysobth@oe7rigpsjfkz>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-10-275e36a83f0e@kernel.org>
- <yfzx3jgzwesernofl7mzixa2mhjfii5v3o7yapghtmozixrpfu@6bsh7iixyiov>
- <aiEX4UTxEnBTjVKo@kernel.org>
+	t=1780584359; bh=KZQDeRpXYnIRd615Dbd3Px9hZLAqRNMpZTVHcldihJQ=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=dD0Wy/lDb5f5uZUa8ZdBnYb4pfiybARFoxb2zm/B7w1W77N+9LcI6ZuAvo/HjhN2D
+	 QcJBtjEue5/JdfUGcKfesP3Zzaf/y0ZTdhzwuca6+JS1ipcO5zTsNnQb4XQktqzIJg
+	 zq5Ru3sVBWbZ+fUKq4YQhuDUEzAFQ0MrN0LbcD/nZr2hHANtzU2WZlmw985JHhanSr
+	 GoLSIxl5/Vi89ffyNRuPOxaAnMbmFSUvbv4KGBoazcFNZFsxU5uNz1lwNIyJKYiKbm
+	 0rl6YKjzEQQlj2XOGeE4us/K8ZFHleFJjtOiQEeOCIvBxrD/5VkHQKkQZP9VhckaNu
+	 c8s33jx6YaKEg==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 690172E00D0; Thu, 04 Jun 2026 10:45:57 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: jack@suse.com, Deepanshu Kartikey <kartikey406@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        syzbot+98f651460e558a21baae@syzkaller.appspotmail.com
+Subject: Re: [PATCH] jbd2: check for aborted handle in jbd2_journal_dirty_metadata()
+Date: Thu,  4 Jun 2026 10:45:49 -0400
+Message-ID: <178058433999.388727.14788289165393698815.b4-ty@b4>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260507050605.50081-1-kartikey406@gmail.com>
+References: <20260507050605.50081-1-kartikey406@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aiEX4UTxEnBTjVKo@kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-On Thu, Jun 04, 2026 at 09:14:57AM +0300, Mike Rapoport wrote:
-> There's no memory overhead when order == 1.
-> As for the CPU overhead, the difference for the fast path allocations is
-> not measurable and for the slow path it is anyway determined by the amount
-> of reclaim involved rather than by what allocator is used.
 
-Thanks for confirming!
+On Thu, 07 May 2026 10:36:05 +0530, Deepanshu Kartikey wrote:
+> jbd2_journal_dirty_metadata() unconditionally dereferences
+> handle->h_transaction at function entry to obtain the journal pointer:
+> 
+> 	transaction_t *transaction = handle->h_transaction;
+> 	journal_t *journal = transaction->t_journal;
+> 
+> However, h_transaction may legitimately be NULL for an aborted handle.
+> The is_handle_aborted() helper in include/linux/jbd2.h explicitly
+> treats !h_transaction as one of the aborted states:
+> 
+> [...]
 
-> Larger allocations (> PAGE_SIZE * 2) go straight to the page allocator.
+Applied, thanks!
 
-Another question: Today, we can either use kmalloc() (or
-__get_free_pages, previously) or vmalloc().  Is there a way a file
-system can say, "give me physically contiguous pages if possible, but
-if it's too hard --- with some TBD to specify what 'too hard' means or
-can be specified --- fall back to a vmalloc-style approach, with the
-page table / TLB overhead that this might imply"?
+[1/1] jbd2: check for aborted handle in jbd2_journal_dirty_metadata()
+      commit: 8fc197cf366beaabaeb46575c8cf46fe5076b943
 
-I suppose we could do it with kmalloc() with some flags which to
-prevent forced reclaim / compaction, and if that fails, then fall back
-to vmalloc().  Is there a better way?
-
-Thanks,
-
-					- Ted
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
