@@ -1,210 +1,167 @@
-Received: from mail-oa1-f78.google.com (mail-oa1-f78.google.com [209.85.160.78])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96DB9495500
-	for <linux-ext4@vger.kernel.org>; Thu,  4 Jun 2026 21:33:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.78
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5767E44E045;
+	Fri,  5 Jun 2026 07:02:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780608814; cv=none; b=eFzD7t43I7f0mINvkkBhU335QIks5etkGUjerlhVgIwr9fEnwsfD2wT3+FdRGBsR5LJ/qBQMmlfFT+Kt8nKFcFT2wnzDNrnTSwBKkdamwFyWzP5FLPbKNT1Evl3ehTCNGRojL3Z8oaWb5sjD+EufsP9/gA94L+KesQSqeASN/mM=
+	t=1780642949; cv=none; b=LUVvfqsGmvz/Yh4PD1eLqowOfCkoHzLM2tHjnNSxmGM65SxSi0eVwGSZL78jFrbZnKkpAXyc0tXOuXfA9LP0He0ZR17XCwPaxSRGjGcg/GdGB8s4Tc5X4npnsS+iALx8t0NNbiCAmeXYi15nS2h5exHbpxWEDZlrvkq0qnaR0so=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780608814; c=relaxed/simple;
-	bh=pyFc6Bl5jdsAF/lR6EWrYHzNgPwR+Ynyed2NUjuaUI4=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=lVGVIk61cyzqp0xDUFz2xGNpY8gt9jU/bV6iwxb3td4DQ8mcVrVBHzEG35rzdeasikp27LadmWagxIOP+wgXACkZxZjf0jaF6g7yJ2V2iqHSZv+ixE2qZPhuciNXVuOfpH7ubftaIbcoX/xnwAXm5e6UGbSJbkwsyyedIT7CRAc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.160.78
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oa1-f78.google.com with SMTP id 586e51a60fabf-43d1fa463d0so1682554fac.0
-        for <linux-ext4@vger.kernel.org>; Thu, 04 Jun 2026 14:33:32 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780608811; x=1781213611;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=5fRp0rtFh81Fn8m28u+cah1AL7sUPsmKU6z3BIZnz7Q=;
-        b=nNBktR+MdCSQRVQCNzCeLUjUWJyPJCfj6yQBnX/juGTsE7Z1PoC7CnepebQdGSAJng
-         dysTGyXesjq+p2LvwD5o9Yok3NBmPneybFQpPzZQ0wgjTGVP8V6YfRN5EQgwXKdWr6n6
-         S+/u483vtkfbIPT9GaAeRedMWLbITMk5PwsVLmCbjVBHnuhydyufcQQYRQoRk4QmzYby
-         0t2fJLmVeitLqI/u8bZjnMj1QTCWOEkbk0JAQeKbmAOKn4NnxvschiQtp7BLrkbXLAeB
-         1f9+4qH7nXL55xSk77ruSccUqAIAia4OVGOUEs9ZRRWkIfOgrNuXtuBSC8L48mVGg0Ai
-         qlew==
-X-Forwarded-Encrypted: i=1; AFNElJ/tlEselDmp+E4+7TFbBoz5/Pk1sjeomUqgIxxWP2mgBqhs0YGkRIO/fs2CUXZCWBpybqAhpPRwPoXz@vger.kernel.org
-X-Gm-Message-State: AOJu0YwOG0VLUtQloMdiJ04xNhdTwCXgjqxXvNfMTV5+8hWtVTeN1/TT
-	L4uygdFyslLR95fESXfZnU7vmdaPxXBuT4BqOCAS2yXQk5w1LCmIr4bOQ1KSe3pKVuwN0q4O4Wh
-	LUBJx0+qSaxi+QG5/7KKK1kEaaAYBVaPEFrqR5t0UVf2QJhHpfeW6onkUcxY=
+	s=arc-20240116; t=1780642949; c=relaxed/simple;
+	bh=w/+/6rrBfGmqhksp9cE3QPWt/MoxgHkXtUArdGf6IAk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=NN3djC2NdO6CAwyI4vwID9SlVPo1SODq2KYoKcBeNVQyfF2/l02Cek5vxfSt3bu6OVD5lj4CgYeMT7d8OL8GIeUwWSror/Pjlw9/ayEqf7juGpFnPInVpiN/4C7Lq+Hj4vh8Z9oO7Y7y39zzgBchZLtipwhLSbnQyWWV2cgNUvk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=cKWA04Gd; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="cKWA04Gd"
+Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6553q5HC1276410;
+	Fri, 5 Jun 2026 07:02:26 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=lMmZTP
+	BvVmAfWw6UHCNYOCnoU5hGtfEHL+4LcPu4gWA=; b=cKWA04Gd+M2TSKGl5kLwrw
+	t2j0N5UtZ65P4hC51snUmmLoGICPMMJ6tnD3veP1AqoAH/MaSlr9QK6/yIuh+CdA
+	GQquDQWXuzdkzQIspVaRbYKCRC94b6i4psxXyEx17hj26s6MavdbsFLQ6S5gVgNO
+	wVGIQhZenuMo6MBXriSKYEpgj6PHXGHksezCkKo4UeRE6lfl+AnAaNYNq5CPTLWo
+	xvvcLM844aodwTFehgOcYn0yq/I5VQ1prZP7ebyzup9YXpgq62wpp/9BAHCGbLAk
+	M2Qngy6tD57Jgi+HLKGTEEBrIWnFiGlCXlGB1KnjoRp7Z0flGmsSIsqg4FfO8rig
+	==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4efqm5b741-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 05 Jun 2026 07:02:25 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6556s8Fs006380;
+	Fri, 5 Jun 2026 07:02:24 GMT
+Received: from smtprelay04.fra02v.mail.ibm.com ([9.218.2.228])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4egb7kgkqc-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 05 Jun 2026 07:02:24 +0000 (GMT)
+Received: from smtpav05.fra02v.mail.ibm.com (smtpav05.fra02v.mail.ibm.com [10.20.54.104])
+	by smtprelay04.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 65572MCt15073676
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 5 Jun 2026 07:02:22 GMT
+Received: from smtpav05.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 5B81A20043;
+	Fri,  5 Jun 2026 07:02:22 +0000 (GMT)
+Received: from smtpav05.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 75F7420040;
+	Fri,  5 Jun 2026 07:02:20 +0000 (GMT)
+Received: from [9.124.211.90] (unknown [9.124.211.90])
+	by smtpav05.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Fri,  5 Jun 2026 07:02:20 +0000 (GMT)
+Message-ID: <7b7bc867-8cc5-4741-9ea0-eb2036dabbd1@linux.ibm.com>
+Date: Fri, 5 Jun 2026 12:32:19 +0530
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:4c8b:b0:69d:a224:6ee7 with SMTP id
- 006d021491bc7-69e68cb64efmr577923eaf.54.1780608811698; Thu, 04 Jun 2026
- 14:33:31 -0700 (PDT)
-Date: Thu, 04 Jun 2026 14:33:31 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a21ef2b.a88f22c3.173579.0016.GAE@google.com>
-Subject: [syzbot] [overlayfs?] [ext4?] possible deadlock in
- lock_two_nondirectories (2)
-From: syzbot <syzbot+ad6118a7584b607c67f2@syzkaller.appspotmail.com>
-To: amir73il@gmail.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-unionfs@vger.kernel.org, 
-	miklos@szeredi.hu, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] common/defrag: skip defrag tests on DAX-enabled
+ filesystems
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        ritesh.list@gmail.com, ojaswin@linux.ibm.com
+References: <20260604122305.39805-1-disgoel@linux.ibm.com>
+ <20260604145434.GG6095@frogsfrogsfrogs>
+Content-Language: en-GB
+From: Disha Goel <disgoel@linux.ibm.com>
+In-Reply-To: <20260604145434.GG6095@frogsfrogsfrogs>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-GUID: OQiP-1nUzOUUg7e5EercHgIf8apcxpZh
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjA1MDA2MSBTYWx0ZWRfXwkiwUIFrmnGP
+ ZxVU8la3UOrDXOgjV7zcX+PfnG7N+rLJ3myYn9KkgKCHUkQ0zNQRzPrblmZxikpTeQ+ZNiqLMur
+ /+lEIWg7YhVuQhAFt9h9a5UWi79yviVJFNy1W0arPGPyZI5LRvWBCHnlQwQmKhXojQh053q4NFr
+ Y9yryqhw3Uzq34bwZroqU9ZWEg5eaa3VzTsW9cDOXv12ASS0gW6Kvaxnbn1eVcfZx8MoixYTs7H
+ Phtb/v6exC44ugJ6g8PCoMCvG5u2z7tM6BI2HDBzNvRORbs4/JevYCup8iz5Hb2K9cfVCJsMZQu
+ VZVVX+6si+3g12FeGX3O0LbyQvM8WmeIvNK/AL3hom6T9dq17yomOY8ehNeIm8atPQ7Fca4Nf7S
+ yb/5i+mcto7v+nRpQWjkE6cNl5XrmYMbBBVa1cqAxSLRLsFma7X2YRtsnQrnG4B1FoGGcAlHxVb
+ 7JIcBfp+vyzRAY5X7jA==
+X-Proofpoint-ORIG-GUID: yCLECjlm1GS25DxfgPClcs-ndgmH5sl3
+X-Authority-Analysis: v=2.4 cv=Vf3H+lp9 c=1 sm=1 tr=0 ts=6a227482 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
+ a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=VnNF1IyMAAAA:8
+ a=M2Qx3g68xeCqwtJH3wQA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-05_01,2026-05-28_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 suspectscore=0 adultscore=0 bulkscore=0 impostorscore=0
+ phishscore=0 lowpriorityscore=0 malwarescore=0 clxscore=1015 spamscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606050061
 
-Hello,
+On 04/06/26 8:24 pm, Darrick J. Wong wrote:
+> On Thu, Jun 04, 2026 at 05:53:05PM +0530, Disha Goel wrote:
+>> Online defragmentation is not supported on ext4 DAX-enabled filesystems.
+>> The ext4 defrag ioctl (EXT4_IOC_MOVE_EXT) returns EOPNOTSUPP when used
+>> on DAX files.
+>>
+>> Add an ext4-specific check in _require_defrag() to skip tests when DAX
+>> is enabled, avoiding false failures on ext4/301-304, ext4/308, and
+>> generic/018.
+>>
+>> XFS defrag works with DAX, so this check is ext4-specific.
+>>
+>> Signed-off-by: Disha Goel <disgoel@linux.ibm.com>
+>> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+>> ---
+>> Changes in v2:
+>> - Made the check ext4-specific as XFS defrag works with DAX
+>>    (feedback from Darrick)
+>> - Use __scratch_uses_fsdax() instead of grepping MOUNT_OPTIONS
+>> - Removed unnecessary comment as _notrun message is self-explanatory
+>>
+>>   common/defrag | 4 ++++
+>>   1 file changed, 4 insertions(+)
+>>
+>> diff --git a/common/defrag b/common/defrag
+>> index 055d0d0e..f17271cd 100644
+>> --- a/common/defrag
+>> +++ b/common/defrag
+>> @@ -6,6 +6,10 @@
+>>   
+>>   _require_defrag()
+>>   {
+>> +    if [ "$FSTYP" = "ext4" ] && __scratch_uses_fsdax; then
+> 
+> Shouldn't this be:
+> 
+> 	ext4)
+> 		__scratch_uses_fsdax && _notrun "..."
+> 		;;
+> 
+> in the case statement below?
+> 
+> --D
 
-syzbot found the following issue on:
+Yes, that makes more sense. Keeping the ext4-specific check inside the
+ext4 case is cleaner and more consistent with the existing structure.
 
-HEAD commit:    ba3e43a9e601 Merge tag 'soc-fixes-7.1-2' of git://git.kern..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=1033aa56580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=bd38685893011045
-dashboard link: https://syzkaller.appspot.com/bug?extid=ad6118a7584b607c67f2
-compiler:       Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17e2f3ec580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=174c2a66580000
+I'll send v3 with this change.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/8759ddf1bfa7/disk-ba3e43a9.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/e2f0e563c705/vmlinux-ba3e43a9.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/b40bdb37a0d7/bzImage-ba3e43a9.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/4074e1f6d9f8/mount_0.gz
-  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=1103db7e580000)
+> 
+>> +        _notrun "ext4 online defrag not supported with DAX"
+>> +    fi
+>> +
+>>       case "$FSTYP" in
+>>       xfs)
+>>           # xfs_fsr does preallocates, require "falloc"
+>> -- 
+>> 2.45.1
+>>
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+ad6118a7584b607c67f2@syzkaller.appspotmail.com
+-- 
+Regards,
+Disha
 
-EXT4-fs: Ignoring removed bh option
-EXT4-fs (loop0): stripe (5) is not aligned with cluster size (16), stripe is disabled
-EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: none.
-======================================================
-WARNING: possible circular locking dependency detected
-syzkaller #0 Not tainted
-------------------------------------------------------
-syz.0.22/5968 is trying to acquire lock:
-ffff88805aab44a0 (&ovl_i_mutex_key[depth]){+.+.}-{4:4}, at: inode_lock include/linux/fs.h:1029 [inline]
-ffff88805aab44a0 (&ovl_i_mutex_key[depth]){+.+.}-{4:4}, at: lock_two_nondirectories+0xe7/0x180 fs/inode.c:1254
-
-but task is already holding lock:
-ffff88803ea9c480 (sb_writers#4){.+.+}-{0:0}, at: mnt_want_write_file+0x63/0x210 fs/namespace.c:537
-
-which lock already depends on the new lock.
-
-
-the existing dependency chain (in reverse order) is:
-
--> #1 (sb_writers#4){.+.+}-{0:0}:
-       percpu_down_read_internal include/linux/percpu-rwsem.h:53 [inline]
-       percpu_down_read_freezable include/linux/percpu-rwsem.h:83 [inline]
-       __sb_start_write include/linux/fs/super.h:19 [inline]
-       sb_start_write+0x4d/0x1c0 include/linux/fs/super.h:125
-       file_start_write include/linux/fs.h:2724 [inline]
-       vfs_iter_write+0x1f8/0x610 fs/read_write.c:982
-       do_backing_file_write_iter fs/backing-file.c:226 [inline]
-       backing_file_write_iter+0x5e7/0x950 fs/backing-file.c:274
-       ovl_write_iter+0x2fd/0x3d0 fs/overlayfs/file.c:370
-       new_sync_write fs/read_write.c:595 [inline]
-       vfs_write+0x629/0xba0 fs/read_write.c:688
-       ksys_pwrite64 fs/read_write.c:795 [inline]
-       __do_sys_pwrite64 fs/read_write.c:803 [inline]
-       __se_sys_pwrite64 fs/read_write.c:800 [inline]
-       __x64_sys_pwrite64+0x19c/0x230 fs/read_write.c:800
-       do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
-       do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
--> #0 (&ovl_i_mutex_key[depth]){+.+.}-{4:4}:
-       check_prev_add kernel/locking/lockdep.c:3165 [inline]
-       check_prevs_add kernel/locking/lockdep.c:3284 [inline]
-       validate_chain kernel/locking/lockdep.c:3908 [inline]
-       __lock_acquire+0x15a5/0x2cf0 kernel/locking/lockdep.c:5237
-       lock_acquire+0x106/0x350 kernel/locking/lockdep.c:5868
-       down_write+0x3a/0x50 kernel/locking/rwsem.c:1625
-       inode_lock include/linux/fs.h:1029 [inline]
-       lock_two_nondirectories+0xe7/0x180 fs/inode.c:1254
-       ext4_move_extents+0x20f/0x3950 fs/ext4/move_extent.c:589
-       __ext4_ioctl fs/ext4/ioctl.c:1657 [inline]
-       ext4_ioctl+0x3092/0x4b40 fs/ext4/ioctl.c:1922
-       vfs_ioctl fs/ioctl.c:51 [inline]
-       __do_sys_ioctl fs/ioctl.c:597 [inline]
-       __se_sys_ioctl+0xff/0x170 fs/ioctl.c:583
-       do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
-       do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-other info that might help us debug this:
-
- Possible unsafe locking scenario:
-
-       CPU0                    CPU1
-       ----                    ----
-  rlock(sb_writers#4);
-                               lock(&ovl_i_mutex_key[depth]);
-                               lock(sb_writers#4);
-  lock(&ovl_i_mutex_key[depth]);
-
- *** DEADLOCK ***
-
-1 lock held by syz.0.22/5968:
- #0: ffff88803ea9c480 (sb_writers#4){.+.+}-{0:0}, at: mnt_want_write_file+0x63/0x210 fs/namespace.c:537
-
-stack backtrace:
-CPU: 0 UID: 0 PID: 5968 Comm: syz.0.22 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 04/18/2026
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- print_circular_bug+0x2e1/0x300 kernel/locking/lockdep.c:2043
- check_noncircular+0x12e/0x150 kernel/locking/lockdep.c:2175
- check_prev_add kernel/locking/lockdep.c:3165 [inline]
- check_prevs_add kernel/locking/lockdep.c:3284 [inline]
- validate_chain kernel/locking/lockdep.c:3908 [inline]
- __lock_acquire+0x15a5/0x2cf0 kernel/locking/lockdep.c:5237
- lock_acquire+0x106/0x350 kernel/locking/lockdep.c:5868
- down_write+0x3a/0x50 kernel/locking/rwsem.c:1625
- inode_lock include/linux/fs.h:1029 [inline]
- lock_two_nondirectories+0xe7/0x180 fs/inode.c:1254
- ext4_move_extents+0x20f/0x3950 fs/ext4/move_extent.c:589
- __ext4_ioctl fs/ext4/ioctl.c:1657 [inline]
- ext4_ioctl+0x3092/0x4b40 fs/ext4/ioctl.c:1922
- vfs_ioctl fs/ioctl.c:51 [inline]
- __do_sys_ioctl fs/ioctl.c:597 [inline]
- __se_sys_ioctl+0xff/0x170 fs/ioctl.c:583
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fb592a3ce59
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007ffc3443e838 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
-RAX: ffffffffffffffda RBX: 00007fb592cb5fa0 RCX: 00007fb592a3ce59
-RDX: 0000200000000040 RSI: 00000000c028660f RDI: 0000000000000005
-RBP: 00007fb592ad2d6f R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007fb592cb5fac R14: 00007fb592cb5fa0 R15: 00007fb592cb5fa0
- </TASK>
-
-
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
