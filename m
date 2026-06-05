@@ -1,97 +1,52 @@
-Received: from mail-lf1-f54.google.com (mail-lf1-f54.google.com [209.85.167.54])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A72D3D411B
-	for <linux-ext4@vger.kernel.org>; Fri,  5 Jun 2026 09:51:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E76C330B2E;
+	Fri,  5 Jun 2026 14:24:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780653062; cv=none; b=pWBIqaUajohg8rLkMcQTh9cnIDmBJfksK3Sb5X9/Z7oCVdzEo24zly6WEMJL51ao8HwuvSLOmLzAF/lhiaYv1lmJH43V9Be8Kw+9bq4CIBT0n7XBbnwwR+5EdOoDQ1wLzSemAP02CaPTP9XayRnMhSx9cU1DXrbJtVzFc/j6j8Q=
+	t=1780669479; cv=none; b=MePpAoFDSayR+drFt/Mr+9Ccezr7QywhXujKtxuJbkIl+HvaMifwG6a3TyLRR09yXALfCd2Mw3gS21FOVvQg+Hstq/gYvle2fOdJauNMbD85XooXrx2ZGCXipXbh1Z9HkK6tJMoNLvrkuTkRvuYG0I8LdHneaU2mM4ljebDQDP4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780653062; c=relaxed/simple;
-	bh=Eu3wfuEQrxBBkGKCkeAzZasx5ExuiXoVmmjPgYkiKnE=;
-	h=From:Date:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cKxJPXvbu9HZMnxICMkxRcoJ2e9cAsD+R3ieAkEZsHP+gVSpArLJle2ts2Mna3w1CgU9k371QckB30FEhUbdRMeWhYIFZAc3bffDugOyRpBdZZw/4eUXV3/pbRg0MnKTjuI/ye+K1Ej6l0eJMVrYYv1rWubkpJLub2JYtIeg2xk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=eW47JDlk; arc=none smtp.client-ip=209.85.167.54
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1780669479; c=relaxed/simple;
+	bh=tsWcgyf+GmgWflUyW+jWruDPSGWLDIwoyP4cQPgmOGA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=iakUUekP3g5BVWEtAuA5cF04nf+NObpMgB7eIk3U0GLcNH5mrSNkwEutJVNjGwkeiQIQCDFXBVcnNWapMd71z6Us42iHQ2dKiqH0eURmkINh5bWvddTGiuVCoet64QYlWs2N/WPnqIKoIu11H9AFCk/lkG1zykmydvQnZY0wunU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=hAYMOubf; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eW47JDlk"
-Received: by mail-lf1-f54.google.com with SMTP id 2adb3069b0e04-5aa2c25c632so1802113e87.1
-        for <linux-ext4@vger.kernel.org>; Fri, 05 Jun 2026 02:51:00 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1780653059; x=1781257859; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:date:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=xjcf+ZeYGf95GdPFKMkbVvi+CX0UN2Mwhbe9F7S/JCk=;
-        b=eW47JDlkG9AyVc+yVGis+R03w+8ToWfDDo4Y3viCp57B3kR5wbz/FAqd47r4pYFSOm
-         FkRIMiTET+hwmWxpKsFkhnrafbjsavxC2M0FzEaXg835X22wv9ZLa4QkUuqymYu4Ynaq
-         8FkbMu3QVv/Fd70C0BDUvwGZRDz7ZT2lzCOFjoZlgISZM4oKJPZzqpBAS4ySo6D4fL3A
-         uTv071a7XkMBuJViLY3t3Z9lGSFGUfs5ijatPPH8V36SOWbRCQaIaB/SNBIWePTCrX/V
-         qbxnHIbjcApzVvHgh0B6WI7h5dc1xUH/mh/dz9blSkfPG/zCpE9t73QUCYijukbosPXu
-         fQDA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780653059; x=1781257859;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:date:from:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=xjcf+ZeYGf95GdPFKMkbVvi+CX0UN2Mwhbe9F7S/JCk=;
-        b=LGMzoVIaWm1BulIXAgqC+qf/9NYv0QDG8o+VARigv3DSxjxoVbaNj1YS2pp4Yn/ENc
-         KzRJFbUiuLYqz1J4OkkXFIKwtDN9CZVZbM+QJ9pEJbbxgGFrBbwvfaTSfe2ZSYR1OTvQ
-         r1rvqebDoWch1OtcGi6jvOg1p2d7ivLeYnBELEJEumqPA8XRT+M1v1GpwwOwlCg/iLzD
-         UUWBjuXzH+jmfIqlMXT8kId0qTLz7tuJn1lMvugv1qwpjh2vidxegIo+U4NEo8p0HNlw
-         lCrWNrXI617M4m19VksYhk9n/srPwe2vn3W+04FpzM1twSo9pcQOb+iX/dXs/IySeGvX
-         TSLA==
-X-Forwarded-Encrypted: i=1; AFNElJ9LGjytuhuK6cnjmhWMteBkOFa6SIQAXvmQnQjjSmLEwPLaRRI4VyO3jOxGkscZny4uwmHOnZbC7yQL@vger.kernel.org
-X-Gm-Message-State: AOJu0YyqpbcS1xEuzFQyeAOW0ULBMr6VCoVQJLnGpvYYHPH/T/lR8zPr
-	DlNWUEz8WVF5K9SES8RBufE4YlQaEyTIdVHOs0DrQufEsieumNRKcLUeYaZW206wRX4=
-X-Gm-Gg: Acq92OHGUkQtQ6ObRA3Tj3LyT00eZ1fms2lvf0RkXQnCrsDSJjOVDNQqYusg9aeKzs0
-	giM1mJZMa30qrhzD/HjK+DuemqnB4JrXp5YFc9AfpRs+SlKf+s4tlQQi4/Ck0xtFOHShcMbRmRs
-	eH2yFhHYddo88hFgGyoUT+8RS29Xh5/eaG6HTHemtC35yNR6AG/71XrMm9H7AiFK15I7/vzMKlB
-	nbubZneVJWT25sfDYhWqtlL9nTCLuLhqB/sjmPJKE3cBAlqruZiLb8HORQ/yqhfaJwMRyP/IJgA
-	XPjkW9wa0ZwPGIeB17BfkMU4ToIrRJTptLyo7+UUOG9wAcPSSgUOTiTlYltYzcXvYgzSRwq/xNB
-	idwwEQIYARJFr8OKbFILwseJN57TOeCzOn8wigwWPQfqoRC4KHCopdvWF0qpSKXaIh47f+FWLy0
-	4iAARXoD+B1KuDeOkYXHo=
-X-Received: by 2002:ac2:4e0e:0:b0:5a8:6cbc:60f3 with SMTP id 2adb3069b0e04-5aa87c03398mr899588e87.34.1780653058812;
-        Fri, 05 Jun 2026 02:50:58 -0700 (PDT)
-Received: from pc636 ([2001:9b1:d5a0:a500:de96:9acf:5dca:ede4])
-        by smtp.gmail.com with ESMTPSA id 2adb3069b0e04-5aa7b97a71fsm1761298e87.46.2026.06.05.02.50.57
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 05 Jun 2026 02:50:58 -0700 (PDT)
-From: Uladzislau Rezki <urezki@gmail.com>
-X-Google-Original-From: Uladzislau Rezki <urezki@pc636>
-Date: Fri, 5 Jun 2026 11:50:56 +0200
-To: David Laight <david.laight.linux@gmail.com>
-Cc: Theodore Tso <tytso@mit.edu>, Mike Rapoport <rppt@kernel.org>,
-	Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-	Viacheslav Dubeyko <slava@dubeyko.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="hAYMOubf"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=A0TtP6N5mhqRYValCyJdilT+d9rpBNYThtLMIWxSlBc=; b=hAYMOubfHzR+fx7UlN7oHoRNw6
+	8cuYEoYS+7fYyPKrQWoEcHI/B5Ydn4f2exRN1yWQqTsrBc+Jorc93hHEpyHR89TzWiK261Jo/mGUn
+	A/Ttsjg6bFD/aWaUfI9ah0GvsZRJdjYc/UhKlaUn2xbkkRHsw2ZBzaFTb9JxXuuoiwEJOhbI5lVC6
+	5KTKVaOAb7h2SnLSvhOHUIYb+7POJ3z3aGlBZL5jwzqopBMJIeLACzRngM4drxD+7oNKlgZAnlxBq
+	aas4SumT1HsHBt/S0WVS8mPHFgPkgcsD0r8X8CQKhwj+M96VvjfBZCkdblmX2BahPZ0rNCSr85h0m
+	wTam6UUQ==;
+Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wVVTB-000000083Zm-0AlL;
+	Fri, 05 Jun 2026 14:24:21 +0000
+Date: Fri, 5 Jun 2026 15:24:20 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Jia Zhu <zhujia.zj@bytedance.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Dave Kleikamp <shaggy@kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Hindborg <a.hindborg@kernel.org>,
-	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
-	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 10/17] jbd2: replace __get_free_pages() with kmalloc()
-Message-ID: <aiKcAIbzz3z9vN9a@pc636>
-References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
- <20260523-b4-fs-v1-10-275e36a83f0e@kernel.org>
- <yfzx3jgzwesernofl7mzixa2mhjfii5v3o7yapghtmozixrpfu@6bsh7iixyiov>
- <aiEX4UTxEnBTjVKo@kernel.org>
- <ximvn6jwgtam665a4droqkp73o55kwvd5uukyidwjesmysobth@oe7rigpsjfkz>
- <20260605093332.7b067876@pumpkin>
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: avoid full buffer walks for large folio partial
+ writes
+Message-ID: <aiLcFP2drmHGjEL2@casper.infradead.org>
+References: <20260603134800.25155-1-zhujia.zj@bytedance.com>
+ <aiBuZE5NWMfOGAA6@casper.infradead.org>
+ <20260605090253.32822-1-zhujia.zj@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -100,21 +55,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260605093332.7b067876@pumpkin>
+In-Reply-To: <20260605090253.32822-1-zhujia.zj@bytedance.com>
 
-On Fri, Jun 05, 2026 at 09:33:32AM +0100, David Laight wrote:
-> On Thu, 4 Jun 2026 10:05:52 -0400
-> "Theodore Tso" <tytso@mit.edu> wrote:
+On Fri, Jun 05, 2026 at 05:02:53PM +0800, Jia Zhu wrote:
+> On Wed, Jun 03, 2026 at 07:11:48PM +0100, Matthew Wilcox wrote:
+> > Is this a common case for you, or is this something you noticed by
+> > inspection?
 > 
-> ...
-> > I suppose we could do it with kmalloc() with some flags which to
-> > prevent forced reclaim / compaction, and if that fails, then fall back
-> > to vmalloc().  Is there a better way?
+> This was found by our kernel release benchmark.  We run libMicro as part
+> of that test suite:
 > 
-> There is already kvalloc().
-> I'm not sure how hard that tries to get kmalloc() to succeed.
+>   https://github.com/rzezeski/libMicro
 > 
-I assume you mean kvmalloc()? kvalloc() is something unknown to me.
+> The regression shows up in buffered write/pwrite/writev overwrite tests
+> on ext4 large folios.
 
---
-Uladzislau Rezki
+Makes sense.  I'll assume this can correspond to a reasonable workload.
+It certainly seems like something that could exist.
+
+> > Wouldn't you get just as much benefit from this?
+> 
+> Yes.  I tested this approach, and it gives almost the same result as my
+> original partial-commit helper.
+
+Excellent!  Obviously it'd be even better if we didn't have to walk the
+leading buffer_heads ... but there's no way to do this with the data
+structure we have.
+
+> Agreed.  The original ext4_block_write_begin() change was too aggressive.
+> Seeking directly to @from also skips the prefix buffers, which makes the
+> old side effects harder to prove.
+> 
+> For v2 I plan to drop that part and keep the existing walk from the head.
+> The ext4 change would only stop after @to when the folio was already
+> uptodate on entry, similar to your block_commit_write() suggestion:
+> 
+> +       bool folio_uptodate = folio_test_uptodate(folio);
+> +
+>         for (bh = head, block_start = 0;
+> -            bh != head || !block_start;
+> +            (bh != head || !block_start) &&
+> +            (!folio_uptodate || block_start < to);
+>              block++, block_start = block_end, bh = bh->b_this_page) {
+>                 ...
+>         }
+
+Yes, I think that's a good approach.
+
+> So the prefix path and all in-range handling stay unchanged.  The only
+> skipped work is the tail part after @to, and only for a folio that was
+> already uptodate before write_begin() started.
+> 
+> > ... converting ext4 to use iomap instead of buffer heads.
+> 
+> I strongly agree that iomap is the right direction for ext4.  The iomap
+> buffered write path would make this particular buffer-head walk cost go
+> away.
+> 
+> The reason I am still looking at this path is that the regression is
+> visible in our LTS upgrade testing from 6.12 to 6.18.  It was introduced
+> by the ext4 large-folio enablement in v6.16.  For example, in our
+> libMicro release benchmark with THP always enabled, usecs/call, lower is
+> better:
+> 
+> case        v6.12        v6.18        regression
+> write_u1k   0.609        4.659        +665.0%
+> write_u10k  1.408        4.869        +245.8%
+
+Ouch ;-)  No wonder you want to address this.  Do you recover all the
+regression with this fix?
+
+> The iomap conversion is the long-term fix, but it does not help kernels
+> which still use the buffer-head buffered write path.  I would like to keep
+> this as a small regression fix for that path, and make it minimal enough
+> to be suitable for stable/LTS backport.
+
+Is it that you're using some ext4 features that aren't supported by
+iomap yet?  Could you say which ones?  That might motivate someone to
+prioritise that support.
+
+> Would this v2 direction look OK to you?
+
+Absolutely.  Very happy with this approach.
