@@ -1,197 +1,139 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 230CC408008;
-	Mon,  8 Jun 2026 14:59:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D46C3FD140;
+	Mon,  8 Jun 2026 15:26:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780930766; cv=none; b=DYpn7sRol/tvV9PXzV3DzvXJ7rGx1kmSUke2OeW3nNc9ZXS9A7NS1PiyBrN+1ZXPErUM/kOBrzP201QdaH3FCCqrrU9cJNuqrfWkrVtQo+mdRotySEOVQHIVdIbT+LpjqNqrpaAd53YKgih0+8IsyRRCCJ4Rk4JvUoo1SP1Uncw=
+	t=1780932381; cv=none; b=M7yr2yiDOa1JqB2jnq8q/eKIHwX2PV5y6UDKEu8swfUkRis5iGTOcbwcmDLf9JB0C4KTIC74aIDOey4dFUpOE340D/SVcthxu0B7dYT/XsVOMocYYN06Dz8vS8wUZrJcwJMjI4hbdK9BKa5yFHvnVBs/OJs5f+haSBC1as4vRYo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780930766; c=relaxed/simple;
-	bh=HmDOSXQx7i2XjtJYq+q3DTWBCiyZoqUEp12WVkqP4ZM=;
-	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
-	 In-Reply-To:Content-Type; b=J+q9O2oAB4tZnBz1r839u+Br0IoQ7n0ffISX4Hz4/ANmaCGrNZRSc2lj47gzZ4Hp95wGmET+dq/37cektwqlkp+hWvH6morbZ98lkcgUWxGQsDXa0dbBRsm0gjvl1uIOZIa2a+u06Y35zqw53VKnTJSTh65Yzm4WwEtFCOtGD94=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Lh4KA5B+; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1780932381; c=relaxed/simple;
+	bh=sapMXFPHMvmzto9KFp7qWBBRcKWBT8Q1/5bkQCxL3Rw=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=tTd9ZV64IVAHl1Y9i//uNpnf5zhBFRy7UFnn3CRmCeIB3PclZAy8pgGl0EncEWOWo/Ki9T2VbFIDpuLJKAh4Ywr5/DhkXVPLIoQQ5J9RACZAGRmgH9VH5Ruqmy9G8fHvf9w60g9qfDMT77gA/spVJ7YHJ+GsZMyOWJ53uDDjSu4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=Ui88opgr; arc=none smtp.client-ip=205.220.166.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Lh4KA5B+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD62F1F0089A;
-	Mon,  8 Jun 2026 14:59:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780930763;
-	bh=JnAZ1H5PgHjSI2fcCNl7cro1QFov5yMV1RvlkQXKBX4=;
-	h=Date:From:Subject:To:Cc:References:In-Reply-To;
-	b=Lh4KA5B+YOKFtiIUsG3/u9KKoH0uT2tpJj+5j6PO6jQoeMqkxqVGLFkEzX4kQn7mv
-	 bmJN/1L1+qlZwJc+MS4xN4OxLCGv280bLg4UkmtArdU0Dzdke+AoAO1uRpINuGxgk0
-	 O2Zv+KyLlRHxwKrMeG4EV/n6JrK9/eUBaKfpoqsAPIsN4NOx1j7RuevL6r03OMjMew
-	 8I1Ujur15CZsA7+RorFRg3fFbr442sA7S6CvliB+yDkz/OUeOu4erJwtIrj5JsnMqs
-	 1opL7zjP97l2KitDssyhRS/F/M+tONTKhbg2Qc6z9RrPcYYE0bE8IEdXdA+J6d72c4
-	 RGyB8Oy+Us9SA==
-Message-ID: <cad74c16-ecb3-41ba-b349-66814abcf5e9@kernel.org>
-Date: Mon, 8 Jun 2026 22:59:18 +0800
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="Ui88opgr"
+Received: from pps.filterd (m0250810.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 658EZjsp300336;
+	Mon, 8 Jun 2026 08:25:26 -0700
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:message-id:mime-version:subject:to; s=PPS06212021; bh=qv3h/vmau
+	6Iw78C1ublWCFGWUbSvihxFZ/IMg9zx2l4=; b=Ui88opgrAfYLdBgVk75zbAKBQ
+	RLAZo3YjyqilrSUh+vU+l8C2hM9rGxV2DuVvtYPT53xTCtiDnAiy0r2SqrKT8rie
+	51ls/tXIF6UEJ0ke1D5V1L7VPxa7eqPFwoSu+KjctbEXpWTppYgG3Ah4nwY3Ugj1
+	GQ+pkXTuVSYqnhd2G3iIee9hD9JYklXrS4azUtcZ5epeEAo81EDsOaX1EYKybMu2
+	zRu32rWgKna9U1yHREo7tb7e11JOEn0LMF3EQhR4DoqjDY77TeVKcS2e1JiCCPOi
+	Oe/dZOAHLGQTCYhEyVInHO0xO54pKh/+waG4agxs4MkbGLb1HCIz5yebkTpTA==
+Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4emety2qss-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Mon, 08 Jun 2026 08:25:26 -0700 (PDT)
+Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Mon, 8 Jun 2026 08:25:25 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Mon, 8 Jun 2026 08:25:24 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>, <dmonakhov@openvz.org>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <yun.zhou@windriver.com>
+Subject: [PATCH] ext4: validate donor file superblock early in EXT4_IOC_MOVE_EXT
+Date: Mon, 8 Jun 2026 23:25:21 +0800
+Message-ID: <20260608152521.1292656-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-From: Anand Suveer Jain <asj@kernel.org>
-Subject: Re: [PATCH v6 06/11] fstests: verify f_fsid for cloned filesystems
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
- linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, zlang@redhat.com, hch@infradead.org
-References: <cover.1779939330.git.asj@kernel.org>
- <e029755044a32de6ec2a0d3391f3ff0089fc3c30.1779939330.git.asj@kernel.org>
- <20260529043955.GG6070@frogsfrogsfrogs>
-Content-Language: en-US
-In-Reply-To: <20260529043955.GG6070@frogsfrogsfrogs>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-ORIG-GUID: L8TP6Dg3br0ojLR0dIIItateyo1B-PBb
+X-Authority-Analysis: v=2.4 cv=VKjtWdPX c=1 sm=1 tr=0 ts=6a26dee6 cx=c_pps
+ a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=HK-ge7EqtdluswH-FwHe:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=sbZrjurcE57j4PJPAZIA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjA4MDE0NyBTYWx0ZWRfX0IxKiO5dDHSB
+ iAOvYCQbqrSb6BkyX6OjaMV5U/eMVnvafkC3uoLiKiptu3ZNUBwT3JNdhEsJCXUgQ5Q3jvTLwBR
+ EBPVEhlZ7N05yZmmrR5W5Quqf/EfhgKT/3nI31qOm4JRnY/Ha8Haqbe00W/n2SOBA1G+FFX9e6+
+ ZYOWe6yscUx54fm/FPayfxksFxVEuopZ4L06CN8l4Xm50ADfzbqmiTWc0K+pMXtBMXsIgTwrykk
+ yOIB9x/bdCIWDpg5QnQr71Qdh8Ff7AfbFpR3EjdyR0ZFaU44qcwutjbGODsEIjnKOe/ycggKuKM
+ 4A6NVRw9gvGX42u7jAspGFKqvsjDgtzPuWlhoc8UWEaN/jPe8S35HxNO68uKfY41VzF7avOMhiE
+ jlEW53OMgzCUQL/qSoslULl0FkIHO0Sb/Y0mXDaecDhK/PCO8NurILa2vvLc3TOTUE9nd3IKkQp
+ pWr/gIe6EYYZqwID5eg==
+X-Proofpoint-GUID: L8TP6Dg3br0ojLR0dIIItateyo1B-PBb
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-08_04,2026-06-05_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ clxscore=1011 impostorscore=0 bulkscore=0 adultscore=0 lowpriorityscore=0
+ spamscore=0 suspectscore=0 phishscore=0 malwarescore=0 priorityscore=1501
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606080147
 
-On 29/5/26 12:39, Darrick J. Wong wrote:
-> On Thu, May 28, 2026 at 12:05:37PM +0800, Anand Jain wrote:
->> Verify that the cloned filesystem provides an f_fsid that is persistent
->> across mount cycles, yet unique from the original filesystem's f_fsid.
-> 
-> Might want to add that last part to the test description itself, because
-> otherwise I don't know what 'verify' means.
-> 
+Reject the EXT4_IOC_MOVE_EXT ioctl early if the donor file does not
+belong to the same superblock as the original file.  Currently, this
+validation is performed inside ext4_move_extents() by
+mext_check_validity(), but only after lock_two_nondirectories() has
+already acquired the inode locks.  When the donor fd refers to a file
+on a different filesystem (e.g., overlayfs), this late validation
+creates a circular lock dependency:
 
+  CPU0 (overlayfs write)            CPU1 (ext4 ioctl)
+  ----                              ----
+  inode_lock(ovl_inode)
+                                    mnt_want_write_file(filp)
+                                      sb_start_write(ext4_sb)   [sb_writers]
+    backing_file_write_iter()
+      vfs_iter_write(real_file)
+        file_start_write(real_file)
+          sb_start_write(ext4_sb)   [blocked by freeze]
+                                    lock_two_nondirectories()
+                                      inode_lock(ovl_inode)     [blocked]
 
-Looks like there's going to be v7, I have updated the test description..
+With a concurrent freeze operation holding sb_writers write side, this
+forms a deadlock cycle: CPU0 waits for freeze to complete, freeze waits
+for CPU1's sb_writers reader to exit, CPU1 waits for CPU0's inode lock.
 
--------
-+# Check that the cloned filesystem provides an f_fsid that is persistent
-+# across mount cycles if the block device maj:min remains unchanged.
--------
+Since EXT4_IOC_MOVE_EXT exchanges physical extents between two files,
+it fundamentally requires both files to reside on the same ext4
+filesystem.  Moving the superblock check before any lock acquisition
+is both semantically correct and eliminates the circular dependency
+by ensuring that cross-filesystem donor fds are rejected before
+sb_writers or inode locks are taken.
 
->> Signed-off-by: Anand Jain <asj@kernel.org>
->> ---
->>  tests/generic/802     | 67 +++++++++++++++++++++++++++++++++++++++++++
->>  tests/generic/802.out |  7 +++++
->>  2 files changed, 74 insertions(+)
->>  create mode 100644 tests/generic/802
->>  create mode 100644 tests/generic/802.out
->>
->> diff --git a/tests/generic/802 b/tests/generic/802
->> new file mode 100644
->> index 000000000000..653e74e11b53
->> --- /dev/null
->> +++ b/tests/generic/802
->> @@ -0,0 +1,67 @@
->> +#! /bin/bash
->> +# SPDX-License-Identifier: GPL-2.0
->> +# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
->> +#
->> +# FS QA Test 802
->> +# Verify f_fsid and s_uuid of cloned filesystems across mount cycle.
->> +
->> +. ./common/preamble
->> +
->> +_begin_fstest auto quick mount clone
->> +
->> +_require_test
->> +_require_block_device $TEST_DEV
->> +_require_loop
->> +
->> +[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
->> +	"btrfs: use on-disk uuid for s_uuid in temp_fsid mounts"
->> +[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
->> +	"btrfs: derive f_fsid from on-disk fsuuid and dev_t"
-> 
-> _fixed_by_fs_commit?
-> 
+Fixes: fcf6b1b729bc ("ext4: refactor ext4_move_extents code base")
+Reported-by: syzbot+ad6118a7584b607c67f2@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=ad6118a7584b607c67f2
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+---
+ fs/ext4/ioctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Oh right! I completely forgot about the new helper _fixed_by_fs_commit.
-Now fixed. Thanks.
-
--[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
-+_fixed_by_fs_commit btrfs xxxxxxxxxxxx \
-         "btrfs: use on-disk uuid for s_uuid in temp_fsid mounts"
--[ "$FSTYP" = "btrfs" ] && _fixed_by_kernel_commit xxxxxxxxxxxx \
-+_fixed_by_fs_commit btrfs xxxxxxxxxxxx \
-         "btrfs: derive f_fsid from on-disk fsuuid and dev_t"
-
->> +
->> +_cleanup()
->> +{
->> +	cd /
->> +	rm -r -f $tmp.*
->> +	umount $mnt1 $mnt2 2>/dev/null
->> +	_loop_image_destroy "${devs[@]}" 2> /dev/null
->> +}
->> +
->> +# Setup base loop device and its clone
->> +devs=()
->> +_loop_image_create_clone devs
->> +mkdir -p $TEST_DIR/$seq
->> +mnt1=$TEST_DIR/$seq/mnt1
->> +mnt2=$TEST_DIR/$seq/mnt2
->> +mkdir -p $mnt1
->> +mkdir -p $mnt2
->> +
->> +# Mount both filesystems simultaneously using mandatory clone mount options
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
->> +						_fail "Failed to mount dev1"
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
->> +						_fail "Failed to mount dev2"
->> +
->> +# Capture baseline filesystem IDs for comparison
->> +fsid_scratch=$(stat -f -c "%i" $mnt1)
->> +fsid_clone=$(stat -f -c "%i" $mnt2)
->> +
->> +echo "**** fsid initially ****"
->> +echo $fsid_scratch | sed -e "s/$fsid_scratch/FSID_SCRATCH/g"
->> +echo $fsid_clone | sed -e "s/$fsid_clone/FSID_CLONE/g"
-> 
-> Why echo only to sed?
-> 
-
-I tried to keep both the .out log and the script readable.
-Since a bare echo FSID_SCRATCH and echo FSID_CLONE has no
-clear reference to $fsid_scratch and $fsid_clone, I just
-added a little extra code around them.
-
-However, I'm completely fine with removing both viz,
-expected output and its script (for the first mount part).
-As I'm pretty sure there will be a v7 now, ;-)
-I can make those changes.
-
-Thanks, Anand
-
->> +
->> +# Verify that the fsids remain stable after a mount cycle, even when the
->> +# mount order is reversed.
->> +echo "**** fsid after mount cycle ****"
->> +_unmount $mnt1
->> +_unmount $mnt2
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
->> +						_fail "Failed to mount dev2"
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
->> +						_fail "Failed to mount dev1"
->> +
->> +# Compare post mount-cycle values against the baseline
->> +stat -f -c "%i" $mnt1 | sed -e "s/$fsid_scratch/FSID_SCRATCH/g"
->> +stat -f -c "%i" $mnt2 | sed -e "s/$fsid_clone/FSID_CLONE/g"
->> +
->> +status=0
->> +exit
->> diff --git a/tests/generic/802.out b/tests/generic/802.out
->> new file mode 100644
->> index 000000000000..d1e008f122bb
->> --- /dev/null
->> +++ b/tests/generic/802.out
->> @@ -0,0 +1,7 @@
->> +QA output created by 802
->> +**** fsid initially ****
->> +FSID_SCRATCH
->> +FSID_CLONE
->> +**** fsid after mount cycle ****
->> +FSID_SCRATCH
->> +FSID_CLONE
->> -- 
->> 2.43.0
->>
->>
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 1d0c3d4bdf47..f7cd419a3218 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1650,6 +1650,9 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		if (!(fd_file(donor)->f_mode & FMODE_WRITE))
+ 			return -EBADF;
+ 
++		if (file_inode(filp)->i_sb != file_inode(fd_file(donor))->i_sb)
++			return -EXDEV;
++
+ 		err = mnt_want_write_file(filp);
+ 		if (err)
+ 			return err;
+-- 
+2.43.0
 
