@@ -1,48 +1,49 @@
-Received: from va-1-115.ptr.blmpb.com (va-1-115.ptr.blmpb.com [209.127.230.115])
+Received: from va-1-114.ptr.blmpb.com (va-1-114.ptr.blmpb.com [209.127.230.114])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB701372EFB
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 12:01:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.115
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91EBB372ED2
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 12:01:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.114
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780920107; cv=none; b=sNFeNN5L4XNOT2N1+bhoWEoNeomm2wX7Gtn9NP38kSIld81bI6O8no8OHi0eNvNTv7kwvM/RftAoatDbXvXPjlIHvmnDuM4tuU0AJ1AkSN46ZCkKDGgYDwcssqRX5TV8izesVrpvgg3YaLcJ6dMHJQ4zdOAe4GNZyXop4mzdc3U=
+	t=1780920109; cv=none; b=nzdv5zFMvvG/181BHUM2d5xLXn7fjMfMo4LmM2iE0Jrf82cfbHflfwVM9CpWawGw8Lh5nXq48LyFuzF1g+yK6bvr7X+lLZvt5/z0Yq4yGmxY4oJTCNIwFf8fabzvEpbpZy4V8HFbeRtN0hw2bWyw+o68q8jtjCXYRAqwkRBN3TY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780920107; c=relaxed/simple;
-	bh=wxWvBk5S1GNJR6O3oCaVFUg2J3fD8SJG2heZUJAWFTw=;
-	h=Content-Type:To:From:Mime-Version:References:Subject:Date:Cc:
-	 Message-Id:In-Reply-To; b=PnWVnr9HCJG/NYzJV42byw52ckODTUfKC0xUeOME+v64fUUMFrTtpvRWVrSyLBRJyMU4+6xr4FGWmzAJ5UrMAIWrxCpoUedqwFoz6HhBA3s38AA3nbYL9dmVqjoX4S9Nx2sNRuvlJXlmLQbEZH/y2poJO+qAYG6J/FwDNVrB/iU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=lCC1PENW; arc=none smtp.client-ip=209.127.230.115
+	s=arc-20240116; t=1780920109; c=relaxed/simple;
+	bh=nxBReTtgXEOdoK08ecCVK6IIiXQNBL2ng8ZgSRyirdg=;
+	h=Content-Type:From:Subject:Mime-Version:References:In-Reply-To:To:
+	 Message-Id:Cc:Date; b=sk0+jfTaCkiidnVXBLI6fads61SPhqqsdFGrGMFAMf4UlmuuljaHSdHM9DVt+sQxoEAuvBOaJd/BTqqwGTtCkJDTGfWzrDzOA22BLye+KoDhJ8XpMZXp7Pb+mu7YzKeM8YD8OZXK9X80fB3I7jjxp6KpII5P3/d6oOAnxKltHLw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=jAKVpKVB; arc=none smtp.client-ip=209.127.230.114
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="lCC1PENW"
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="jAKVpKVB"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1780920100; h=from:subject:
+ s=2212171451; d=bytedance.com; t=1780920103; h=from:subject:
  mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
  mime-version:in-reply-to:message-id;
- bh=xSsEgVbAmxGOedx+6CLOAx4Uzox4bh9t0p/Bj6Qx9MQ=;
- b=lCC1PENWQmMgIYaCZEHSdvYzrBxLarYY79F/fyYmpSlIC74dRyFyR2C42mjnpyB4NMn7HE
- F7c+Mf7SCjdtZX/vG6aCsTFWoJdo8QU0V/Q/HAarIYd7dngl19XwRqWZb8yXM/MlkpSRqu
- e97z9MME4SP6+0pSU3K5qIUOJvkfGD/RgF1M6GKpuDuEgRMPfaCXfmU9NfEgJP28YpQFM7
- Lp+zCBU02KFzt8JUfqsDogrkWsFSO+Nes1SpU+APdWsxy7YVwfsR+ZHkJ3FtLbdIPHD9ik
- rpAWdC6kMeh0yITkdQkt8FK/vwotxrxnIMPqgwttJtluHhcsyDbFOduIF93A3Q==
+ bh=CZ3e7zSW6X1XPqE/y8VQoOiYZsVskqQHsMXJNCoC5TU=;
+ b=jAKVpKVBuk6l0FkW9lyocz1aSaSs3qNT7OlDIROsXdjsY3C7p/F7QlXQvL+eBEDWVWUrl1
+ 69KNVtEcHRKzAA2QBXD7CTWt8ksf8eBijcXIluYdyUrbAQqTmm91hgn3jmkhie0Nm8xKPT
+ WxVGR/5Q7i2RdB4u9lLJbG6hWK66WxjTaWp0D4vULcMAooZhLVPkYI9+n4+fycs7umjS1G
+ vUUXg+CarlnafvuaIyqLnIMqheCgMwbmG1nQFyGeMJWoK+AwQlNGMds0EQPF0v0jfnK6kf
+ NMSx67zMBlslrbh+vDTD+xNmHY/Vxeb8G2mzAP2A5xfQD+x8daNVA8MJxfu66A==
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
 Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>, 
-	"Andreas Dilger" <adilger.kernel@dilger.ca>
 From: "Jia Zhu" <zhujia.zj@bytedance.com>
+Subject: [PATCH v2 2/2] ext4: avoid tail write_begin walk for uptodate folios
 X-Original-From: Jia Zhu <zhujia.zj@bytedance.com>
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 References: <20260603134800.25155-1-zhujia.zj@bytedance.com> <20260608120131.45146-1-zhujia.zj@bytedance.com>
-Subject: [PATCH v2 1/2] fs/buffer: avoid tail commit walk for uptodate folios
-Date: Mon,  8 Jun 2026 20:01:30 +0800
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-X-Lms-Return-Path: <lba+26a26af22+2b5445+vger.kernel.org+zhujia.zj@bytedance.com>
+In-Reply-To: <20260608120131.45146-1-zhujia.zj@bytedance.com>
+To: "Theodore Ts'o" <tytso@mit.edu>, 
+	"Andreas Dilger" <adilger.kernel@dilger.ca>
+Message-Id: <20260608120131.45146-3-zhujia.zj@bytedance.com>
+X-Lms-Return-Path: <lba+26a26af25+7df8eb+vger.kernel.org+zhujia.zj@bytedance.com>
 Cc: "Matthew Wilcox" <willy@infradead.org>, 
 	"Alexander Viro" <viro@zeniv.linux.org.uk>, 
 	"Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>, 
@@ -52,59 +53,91 @@ Cc: "Matthew Wilcox" <willy@infradead.org>,
 	"Zhang Yi" <yi.zhang@huawei.com>, <linux-ext4@vger.kernel.org>, 
 	<linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>, 
 	"Jia Zhu" <zhujia.zj@bytedance.com>
-Message-Id: <20260608120131.45146-2-zhujia.zj@bytedance.com>
-In-Reply-To: <20260608120131.45146-1-zhujia.zj@bytedance.com>
+Date: Mon,  8 Jun 2026 20:01:31 +0800
 
-block_commit_write() always walks every buffer_head attached to the
-folio.  That was cheap for order-0 folios, but large folios can contain
-hundreds of buffer_heads.  For a small buffered overwrite of an
-already-uptodate large folio, the commit work is therefore proportional
-to the folio size rather than the copied range.
+Ext4 buffered writes into large folios also pay a full buffer_head
+walk in ext4_block_write_begin().  For a small overwrite of an existing
+cached folio, the folio is already uptodate and the write only needs to
+prepare the buffers through the written range.  Walking the suffix still
+makes the write_begin cost proportional to the folio size.
 
-This became visible with ext4 regular-file large folios, where cached
-small overwrites reach block_commit_write() through block_write_end().
-Before ext4 enabled large folios for regular files, this path was only
-hit with order-0 folios for normal ext4 buffered writes, so the full walk
-was bounded.  The ext4 large-folio commit is therefore the regression
-point for this generic helper cost.
+Before ext4 enabled large folios for regular files, the same loop was
+bounded by a single page of buffers.  That commit made the existing
+full-folio walk visible as a regression for cached small overwrites.
 
-The full walk is still needed when the folio is not uptodate, because
-block_commit_write() uses per-buffer uptodate state to decide whether
-the whole folio can be marked uptodate.  Keep those folios on the old
-full-buffer path.
+The suffix walk is needed for non-uptodate folios, where ext4 may have
+to submit reads for partial blocks, preserve new-buffer cleanup, and run
+error zeroing.  Keep those folios on the old full walk.
 
-For a folio that was already uptodate on entry, the commit no longer
-needs tail buffers for folio-uptodate discovery.  The copied range has
-already been processed once block_start reaches @to, so stop there and
-avoid the suffix walk.
+For already-uptodate folios, keep the walk starting at the first buffer
+rather than seeking directly to from.  This preserves the existing prefix
+buffer state handling.  Stop once block_start reaches the end of the
+write range, because the skipped suffix would only repeat the
+outside-range uptodate handling for buffers beyond @to.
+
+On current master, the libMicro ext4 large-folio overwrite test shows
+the following full-series result.  Results are median usecs/call over 10
+runs, lower is better:
+
+case        nofix     this series   improvement
+write_u1k   1.418     0.3405        76.0%
+write_u10k  1.887     0.4175        77.9%
+pwrite_u1k  1.6775    0.3390        79.8%
+pwrite_u10k 1.9035    0.4130        78.3%
 
 Fixes: 7ac67301e82f0 ("ext4: enable large folio for regular file")
-Suggested-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 Signed-off-by: Jia Zhu <zhujia.zj@bytedance.com>
 ---
- fs/buffer.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/ext4/inode.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b0b3792b1496e..c8c41c799030d 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2096,6 +2096,7 @@ void block_commit_write(struct folio *folio, size_t from, size_t to)
- {
- 	size_t block_start, block_end;
- 	bool partial = false;
-+	bool uptodate = folio_test_uptodate(folio);
- 	unsigned blocksize;
- 	struct buffer_head *bh, *head;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c2c2d6ac7f3d1..d63785fcd2acb 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1182,6 +1182,7 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
+ 	int nr_wait = 0;
+ 	int i;
+ 	bool should_journal_data = ext4_should_journal_data(inode);
++	bool folio_uptodate = folio_test_uptodate(folio);
  
-@@ -2118,6 +2119,8 @@ void block_commit_write(struct folio *folio, size_t from, size_t to)
- 			clear_buffer_new(bh);
+ 	BUG_ON(!folio_test_locked(folio));
+ 	BUG_ON(to > folio_size(folio));
+@@ -1193,13 +1194,14 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
+ 		head = create_empty_buffers(folio, blocksize, 0);
+ 	block = EXT4_PG_TO_LBLK(inode, folio->index);
  
- 		block_start = block_end;
-+		if (uptodate && block_start >= to)
-+			break;
- 		bh = bh->b_this_page;
- 	} while (bh != head);
- 
+-	for (bh = head, block_start = 0; bh != head || !block_start;
++	for (bh = head, block_start = 0;
++	     (bh != head || !block_start) &&
++	     (!folio_uptodate || block_start < to);
+ 	    block++, block_start = block_end, bh = bh->b_this_page) {
+ 		block_end = block_start + blocksize;
+ 		if (block_end <= from || block_start >= to) {
+-			if (folio_test_uptodate(folio)) {
++			if (folio_uptodate)
+ 				set_buffer_uptodate(bh);
+-			}
+ 			continue;
+ 		}
+ 		if (WARN_ON_ONCE(buffer_new(bh)))
+@@ -1220,7 +1222,7 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
+ 				if (should_journal_data)
+ 					do_journal_get_write_access(handle,
+ 								    inode, bh);
+-				if (folio_test_uptodate(folio)) {
++				if (folio_uptodate) {
+ 					/*
+ 					 * Unlike __block_write_begin() we leave
+ 					 * dirtying of new uptodate buffers to
+@@ -1237,7 +1239,7 @@ int ext4_block_write_begin(handle_t *handle, struct folio *folio,
+ 				continue;
+ 			}
+ 		}
+-		if (folio_test_uptodate(folio)) {
++		if (folio_uptodate) {
+ 			set_buffer_uptodate(bh);
+ 			continue;
+ 		}
 -- 
 2.20.1
