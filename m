@@ -1,123 +1,112 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6554C25B08C
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 12:53:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11651296BCC
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 12:56:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780923223; cv=none; b=IrydW0TDkMUzROPoTIsrgiiEdEXAzKs2R2Ea14pVBa5snlgIsxPRO2jYjXcU7QXVcm5J7XfMn/BB4sgycsoiO6lMn3AWlfJgX6l1zsQZM8YQOsKbIHy/6pyKGvfEw5nfVnSBFk6fSfT2AqXU8hkGU6PC3Qh5B0xFIMYkwa0Q9/I=
+	t=1780923383; cv=none; b=IX6rOsFxe+y4j0rAVc0WllEGmH5DsnIUT21S93gBZf61WF7sY4uQJ5uQIGf7QZMeQuNi0IH1EJUBLHNTHbSIraM4VvIYe9tlm9IdgFPggAhGvIPxXa+JZzt5b2QDLnQuVVe78l80o8YlyS72yrdctLBLR7Lql6G29MobDBPA9/g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780923223; c=relaxed/simple;
-	bh=ZMAd28BIWSoYiPNRQv3kZrH5Br8lkOJ9WB3d+gIjZ6Y=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=KpEcRr2pYeKKsLWijBN+0R8b0F+MXFBS6JvOHFfDxkQbvzoc4q4AQj++kwcNQu2cSEXS7Bp9dMgxZpbOvgT4wgUY0dMS6Hap+KfD9ddz2NsXeS8NZiLV3GtrKN4erGm6ueYDmkN1wGkVGnXhDfvmomsGV84tTUNv/45Ou99mC9g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gYsQl3P1kzKHLtw
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 20:53:03 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 684ED4056B
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 20:53:37 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgBHlzxMuyZqIJtEBA--.25960S3;
-	Mon, 08 Jun 2026 20:53:34 +0800 (CST)
-Message-ID: <a773f737-8c0a-4b48-ae26-9c96d28db3bb@huaweicloud.com>
-Date: Mon, 8 Jun 2026 20:53:32 +0800
+	s=arc-20240116; t=1780923383; c=relaxed/simple;
+	bh=raRms3Uz4P+ZGsMhZvPi/mx8pP0+LXnyaI5/NjF4Jqw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=alrBjCQboWQWTaf3bcs8U0x3Yqhe2No8PKDwgw5LZGzFe0cWWp7348sAlYpg9vfUgSun5ppopQVfhIb6m834SGLc/iVqPLrbwJOuwSMbpieypKBnKr2/FenQ4LU+Lh+qa0H1dkxhtzJNRsyAIK4vhVZFmQfNaX7jWvFR6t4CcaU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ZvE4a78D; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ZvE4a78D"
+Received: from macsyma.thunk.org (pool-173-48-114-243.bstnma.fios.verizon.net [173.48.114.243])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 658Ctp5x032249
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 8 Jun 2026 08:55:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1780923353; bh=2skHyqe9UZfkiqcrlo0/zRibYCQ7FiOdicerJqM5eUE=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=ZvE4a78DcNoiPXEhGOiKGUlP1pbnevmugg75Aw7LvjTV332nuRddSn0HwQjHejfxK
+	 vn3idvnSkieamzxPIYTYMzuuYLnnySS36xEWzGVHw591ZeH3nfhYkawWxX05lv6AtM
+	 tHL6x1L/pXaqbl1yFgBxpMkmH5r+1l9hOOsBONrTCH2NXyqIwhVMIhUmniIfzVZts2
+	 sRkbJD9w0O2ufoZXGxaXHS3vC5Z1mRJmN+0uhPDu9GHYmLtNoQQSUv5xsJwCj9jGgW
+	 FTXpKgqckwd0bhYFpYXqnyypiCU0E4xRUvruidtMp0m/HdP0OxHAHWDp4G+OT0KCTa
+	 l2MWHpWkUdsUQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 4A43A3F9E1E; Mon,  8 Jun 2026 08:54:51 -0400 (EDT)
+Date: Mon, 8 Jun 2026 08:54:51 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Feng Xue <feng.xue@outlook.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Re: security bug reporting: e2fsprogs: Path Traversal and heap
+ overflow
+Message-ID: <uzwt2qkkiwa4tzb3wkvx2fgguptmno5wbqmglay5znqvus2qtr@ggkveweeirpa>
+References: <SY0P300MB0070F750CCF6F2C3A2A91FDE901F2@SY0P300MB0070.AUSP300.PROD.OUTLOOK.COM>
+ <9237265C-CB9C-48BD-A77E-25AE61DA8550@dilger.ca>
+ <SY0P300MB0070B3B68E4E4FC0C78DE355901C2@SY0P300MB0070.AUSP300.PROD.OUTLOOK.COM>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 1/3] ext4: reject mount if clusters/inodes per group
- are not 8-aligned
-To: Baokun Li <libaokun@linux.alibaba.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- Sashiko <sashiko-bot@kernel.org>
-References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
- <20260608111150.827117-2-libaokun@linux.alibaba.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260608111150.827117-2-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgBHlzxMuyZqIJtEBA--.25960S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxXr4xur1ruw48JFyxZFy8AFb_yoW5Gr4Dpa
-	yDAF13ur15Xryq9a1xGr92gF1Sg3WkGanrGrWI9r15ur9Fqa40gr95tFn0kF4DK3y8XF10
-	q3W5ur47uFyfJ37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUwxhLUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <SY0P300MB0070B3B68E4E4FC0C78DE355901C2@SY0P300MB0070.AUSP300.PROD.OUTLOOK.COM>
 
-On 6/8/2026 7:11 PM, Baokun Li wrote:
-> The block and inode bitmap checksums are computed over a whole number of
-> bytes: ext4_inode_bitmap_csum_*() use EXT4_INODES_PER_GROUP(sb) >> 3 and
-> ext4_block_bitmap_csum_*() use EXT4_CLUSTERS_PER_GROUP(sb) / 8 as the
-> length passed to ext4_chksum().
+On Mon, Jun 08, 2026 at 10:18:38AM +0000, Feng Xue wrote:
+> Hi Andres,
 > 
-> If s_inodes_per_group or s_clusters_per_group is not a multiple of 8, the
-> trailing fractional bits are excluded from the checksum.  Those bits are
-> then unprotected, and any incremental csum update path that assumes a
-> byte-aligned bitmap can compute a checksum inconsistent with the full
-> recalculation, corrupting the on-disk bitmap checksum.
-> 
-> Reject such filesystems at mount time by adding the missing " & 7"
-> alignment checks alongside the existing range validation.
-> 
-> Suggested-by: Theodore Ts'o <tytso@mit.edu>
-> Link: https://patch.msgid.link/h3n7jlfhyna64dn5o76qxcspnhxdddcs6crpxftmy7gnl7b3sx@jenszfpcsnit
-> Reported-by: Sashiko <sashiko-bot@kernel.org>
-> Closes: https://sashiko.dev/#/patchset/20260508121539.4174601-1-libaokun%40linux.alibaba.com?part=10
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+> Thanks for the quick turn around.
+> Agree with you on the inode one.
 
-Looks good to me. Thanks!
+Anreas, thanks for the the patch.  I had reviewed Feng's security
+report and my assessment had aligned with yours.  I had it on my todo
+list, along with a mental note to make sure that this particular
+corrupted file system would be caught by the kernel's fs/ext4/super.c.
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> For the debugfs, yes it is not what people would run on a daily
+> basis. it turns interesting in scenarios like incident response and
+> forensic, so yes it depends on the ROI and definitely your call to
+> whether it should be fixed.
 
-> ---
->  fs/ext4/super.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 6a77db4d3124..3ddcb4a8d4db 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4472,8 +4472,9 @@ static int ext4_handle_clustersize(struct super_block *sb)
->  		sbi->s_cluster_bits = 0;
->  	}
->  	sbi->s_clusters_per_group = le32_to_cpu(es->s_clusters_per_group);
-> -	if (sbi->s_clusters_per_group > sb->s_blocksize * 8) {
-> -		ext4_msg(sb, KERN_ERR, "#clusters per group too big: %lu",
-> +	if (sbi->s_clusters_per_group > sb->s_blocksize * 8 ||
-> +	    sbi->s_clusters_per_group & 7) {
-> +		ext4_msg(sb, KERN_ERR, "invalid #clusters per group: %lu",
->  			 sbi->s_clusters_per_group);
->  		return -EINVAL;
->  	}
-> @@ -5304,8 +5305,9 @@ static int ext4_block_group_meta_init(struct super_block *sb, int silent)
->  		return -EINVAL;
->  	}
->  	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
-> -	    sbi->s_inodes_per_group > sb->s_blocksize * 8) {
-> -		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
-> +	    sbi->s_inodes_per_group > sb->s_blocksize * 8 ||
-> +	    sbi->s_inodes_per_group & 7) {
-> +		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu",
->  			 sbi->s_inodes_per_group);
->  		return -EINVAL;
->  	}
+The debugfs concern (as well as another related one) has already been
+reported on github[1][2].
 
+[1] https://github.com/tytso/e2fsprogs/issues/272
+[2] https://github.com/tytso/e2fsprogs/issues/273
+
+It "should" be fixed, but I'm quite busy these days, and part of it is
+many kernel developers needing to react to the large number of
+LLM-reported security bugs[3][4][5].  And so we have to prioritize the
+order in which we address security or other bug fix reports.
+
+[3] https://lwn.net/Articles/1063303/
+[4] https://www.tomshardware.com/software/linux/linus-torvalds-says-ai-bug-reports-have-made-the-linux-security-mailing-list-almost-entirely-unmanageable
+[5] https://medium.com/@tridge60/rsync-and-outrage-d9849599e5a0
+
+I do appreciate that your report included a suggested fix.  The thing
+that would make it even *more* useful (and gain you an a win of a
+patch landed in e2fsprogs or the Linux kernel :-) would be if the
+report came with an formal patch submission.  If you send it using the
+git send-email (and see the Linux kernel's instructions for how to
+submit changes[6]), to any mailing list at linux-*@vger.kernel.org,
+including linux-ext4@vger.kernel.org, the Linux kernel changes will
+get automatically get reviewed by an LLM agent, Sashiko[7].
+
+[6] https://www.kernel.org/doc/html/latest/process/submitting-patches.html
+[7] https://lwn.net/Articles/1063303/
+
+For bonus points, if your AI agent can also create a regression test
+much like how Andreas's patch, that would be great.  And if we can
+collaborate on a skills.md that can teach AI agent how to create
+reports that are easier for Linux developers to consume, and perhaps
+to even create patches that require much less work on Linux developers
+(or which Linux developers can use themselves), that would be really
+exciting.  Yeah, that could result in a certain amount of LLM fear and
+yourage as with rsync[5], but we have that with the Linux kernel
+already.  :-)
+
+Cheers,
+
+						- Ted
