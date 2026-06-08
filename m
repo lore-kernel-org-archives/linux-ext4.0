@@ -1,589 +1,246 @@
-Received: from va-2-112.ptr.blmpb.com (va-2-112.ptr.blmpb.com [209.127.231.112])
+Received: from mail-pg1-f170.google.com (mail-pg1-f170.google.com [209.85.215.170])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1767313E17
-	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 07:33:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.231.112
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50CA0327C0D
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 09:49:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780903994; cv=none; b=XVki3/hrCW4W8LmxTv/j5SDgxzQXrCorsOrvyCW6H8JTz9YA5AUrWMKMG3fGeS2wQGZ6xhpjHkbHzFLO1OEqnYCASQr6tAdD0gMtLPUoNKu/nGNRF0ln0I6DSmlul6QziB4Cc1X7Ay/Ixz0apy2q5QfJh1PdS6R2FyoYuEWcPEQ=
+	t=1780912199; cv=none; b=Jc4RLsJVeyy4DWWIukOnpO/Ujf5A56DyNh5/DFtminR3At0kGpFp8aZAHTKgv3R4SCqd2+bVXMIQH4v5LurUt6r3jIFNXRj2aQx7EjPdcGTeay4RSzneMU4eRhIEw2EdDeh6MWl/bpv9NGzYA0qoo81akNFfM0geSZ3KuDh6l1k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780903994; c=relaxed/simple;
-	bh=jMDxYi9bSGDpcLgim82R0ETgcuybreeRgKPsLYvEeos=;
-	h=To:Message-Id:Mime-Version:Content-Type:Subject:Cc:From:Date; b=nJftn3P9kqUg83FhrVn6wujYNnIEtISptb+nroh8q1jBoa8P6nL/Qtx5uQUpSPOt55dlpaVID6bQiF9Pr3neqrOwiol4T9NZKQD3EQuuP3CLPtJOmk8Pj1Apwz7XICD37UMQa02q0uHlUCtT4fK/AoMtjWHLZDASKZRY9n11XQQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=g8ZnjlZZ; arc=none smtp.client-ip=209.127.231.112
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1780912199; c=relaxed/simple;
+	bh=x5UtNrP4CVL8+nvqN9ZEMCMu6PTLn+s69FAGMqhh1QE=;
+	h=From:Message-Id:Content-Type:Mime-Version:Subject:Date:
+	 In-Reply-To:Cc:To:References; b=AdqezzPe4qgeIbZ6VDrIwGVjEASQcmAu2pgvFMN/WIe+VYkVxK6f+zVWcrIChq1DMM1vxajPDo7x1gmLzIySoK4/fG1mFJSPSmLV5BIIijsfTFeB+5OJHCxGgAcaqgQtBCpWlQsmZJAr1l4uqxx3O8yZMESfpecwQlSDVoPvZ2w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=n6nQFd1N; arc=none smtp.client-ip=209.85.215.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="g8ZnjlZZ"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1780903982; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=v/a4KSkF1+q1L1dGr/wbyoSKAQjmfLscwWEn5p/2D5U=;
- b=g8ZnjlZZM0ABGXuGSxgUn3S9YLDIJjRIZ/7GiMuMCNiTO2NgesH3V/T+eIHg51l7V5y7H0
- AgNjSdW+IIwYMAukkcR8RvLjD9DuoQNZBBJ+TfOMavHtFgwDTI/dOkNtV+Bamg22BSommG
- xE2e3E/of0A4Vz5IK/dCaMzY+rydSHyUv3iWbYTE08NPwY5EQWrljaHPsBwLCqcqGaGybe
- b6/TwD19ndGVyLOFt8CujZIh20KdeleBJnf3mGaHHLE5d8mq3HG/BA0L3G41Uy+uRbOwXU
- sEPw3yCL4X3eVPyuWarIbONy/1iHLSTbSDRZ4k1AJCauZrZax++BRcpp2kW8aw==
-To: <brauner@kernel.org>, <djwong@kernel.org>, <hch@infradead.org>, 
-	<ojaswin@linux.ibm.com>, <dgc@kernel.org>, <linux-xfs@vger.kernel.org>, 
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
-	<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>
-Message-Id: <20260608073134.95964-1-changfengnan@bytedance.com>
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="n6nQFd1N"
+Received: by mail-pg1-f170.google.com with SMTP id 41be03b00d2f7-c85893bce34so1552728a12.1
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2026 02:49:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1780912196; x=1781516996; darn=vger.kernel.org;
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=BSSYBL6pygMRnuM8zKQPdEAFqJRiIj/TrOyZ1tE8iLM=;
+        b=n6nQFd1NV0kKBH4+3MlGJpv7u1ZRBBK0R5v775wLf+HpuQJBCJ6jYxsr6ChHjlX6Mn
+         2KlY2wVg92AeF2ARDvH5Q/hclnIL143qTsOn5k7KAWRv7DhfST47D8mdcXXBIN2kEONr
+         pUkSz5ZZWYL06SfYqG4OjVN5lpBK6sP72/5+nsNn7WjlP2KWa82opkKztTvqacEWeSTO
+         i5zraq1lThUIM5fP5bHt6d1R63sfeC6Fo5DuDCdBmVjAH/h/mJB0LxQqoQZaZV3HY2is
+         Cd9QXrR4CX0AGmJIEprS9t+/KtZwzIoOhimSfaQC+++gRZuaTxMH9H6uqSPWb50Lh+IZ
+         +DRw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1780912196; x=1781516996;
+        h=references:to:cc:in-reply-to:date:subject:mime-version:message-id
+         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=BSSYBL6pygMRnuM8zKQPdEAFqJRiIj/TrOyZ1tE8iLM=;
+        b=DxCY7tu7bUA2LoeNrWiyYy5hFFCMPJPHG0ANmFcg9ddsjdMEuAmNAztw+uob50Qmhz
+         NcsvfJThDgWIA35BbJDQbrxoyUNy+d1zswv99e942Pz4gaY8ebAGrO9JCXEc3X2Q+6P0
+         JVzoV/kFwHvObWBsaH15lirAtuR/eMQbedfgsMkqz7DLLgOsIzFOwuwx0qF9qKiVOtWg
+         oAWAyU8iHulAzFNxg75xJTX/CmFj0WOJtdPEJsARFwKNwkLtxFRD4DKHIEof3hyXF/VW
+         Zcv2DTHbI3m+bmzOrBcycfdlzIG65GovoGs79DO43zbczZUy1n8I6M7nNFlKG7kjLwR2
+         X9eQ==
+X-Forwarded-Encrypted: i=1; AFNElJ978BgegEy5Ml0jW8/sAGpDb/JkmRwHY4mpDLMr6rw/BD4CTAsuoNSbwbB97IUnG6RC2kkD7qbIZkJd@vger.kernel.org
+X-Gm-Message-State: AOJu0YwPwF5M/brGsOmO5XrsjoYdyz3Nht8ISKTXIn7WItP8FfAbSkMc
+	zNUJRS+W7M/0LR9WNPybQlz2uEocjFJA5S3VBSFwYD4dMrI3PWAXZAvZ5qorxflndGE=
+X-Gm-Gg: Acq92OF1TpefhhD2B36GRVdXEIBMLKos3LqdICY36OesmtDTGuf/YdhnpDPHNPEEi8c
+	PPxDSLzdqg4D5HqAT8JpvwsM/nK1f6AZzEVEkGvtaLN/yxm8Fhy/2q8Kr/tdHhAZPvIwDrWRK3p
+	KNgwde6AbGexji3Q9Y5xTcD3CN4EcUlKzxakDmYNEYJc7PUCIOrhE/nVdk9zeC2stixf/P1+sue
+	fNyXC9cqpG2Eh/FNFKiVk8jru0L5+tr7lNW8XMyurNfmaDzzH6T6YreRo4cWNwPXk0vupquklSF
+	niRTTuh/3C4IqKSmAGXsHljq9SGlofUekHtY3vF28KWlKOVQpqOqN5kwUxAwg2HcNZ5XIXp/BZz
+	tP9AooDBWThSjB/QT3yrkT/UAs4ABA+mtaUwgJlnpniUxbwDoMxbJKD/6VTcLiu/AwKQcjrlF/w
+	5KRj5jRdNjKqSZuKurfXIXAmro2XtvLSL7hVynnbAvx6FJGRTeEz6qk9ebkkH8tGnZ41YNRhYJM
+	4cY8IiMx/Q48p39
+X-Received: by 2002:a05:6a00:b911:b0:841:71fd:60c4 with SMTP id d2e1a72fcca58-842b0e13003mr14403963b3a.4.1780912196489;
+        Mon, 08 Jun 2026 02:49:56 -0700 (PDT)
+Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-842828821d0sm17361985b3a.28.2026.06.08.02.49.55
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 08 Jun 2026 02:49:55 -0700 (PDT)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <9237265C-CB9C-48BD-A77E-25AE61DA8550@dilger.ca>
+Content-Type: multipart/mixed;
+	boundary="Apple-Mail=_91631063-8ECE-42D5-A143-2C96AD196BDB"
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-X-Original-From: Fengnan Chang <changfengnan@bytedance.com>
-X-Lms-Return-Path: <lba+26a26702b+6dd0dc+vger.kernel.org+changfengnan@bytedance.com>
-Content-Type: text/plain; charset=UTF-8
-Subject: [PATCH v4] iomap: add simple read path for small direct I/O
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-Cc: "Fengnan Chang" <changfengnan@bytedance.com>
-From: "Fengnan Chang" <changfengnan@bytedance.com>
-Date: Mon,  8 Jun 2026 15:31:33 +0800
-Content-Transfer-Encoding: 7bit
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: Re: security bug reporting: e2fsprogs: Path Traversal and heap
+ overflow
+Date: Mon, 8 Jun 2026 03:49:44 -0600
+In-Reply-To: <SY0P300MB0070F750CCF6F2C3A2A91FDE901F2@SY0P300MB0070.AUSP300.PROD.OUTLOOK.COM>
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Feng Xue <feng.xue@outlook.com>
+References: <SY0P300MB0070F750CCF6F2C3A2A91FDE901F2@SY0P300MB0070.AUSP300.PROD.OUTLOOK.COM>
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-When running 4K random read workloads on high-performance Gen5 NVMe
-SSDs, the software overhead in the iomap direct I/O path
-(__iomap_dio_rw) becomes a significant bottleneck.
 
-Using io_uring with poll mode for a 4K randread test on a raw block
-device:
-taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
--n1 -P1 /dev/nvme10n1
-Result: ~3.2M IOPS
+--Apple-Mail=_91631063-8ECE-42D5-A143-2C96AD196BDB
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Running the exact same workload on ext4 and XFS:
-taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
--n1 -P1 /mnt/testfile
-Result: ~1.92M IOPS
+Hello Feng Xue,
+thank you for your report.  The inode blocks overflow looks legitimate, =
+and trivial to fix.  The reproducer is a bit strange, since it is a =
+python script that generates a synthetic ext4 image directly rather than =
+writing an e2fsck test case like "f_64kblock" using mke2fs to create the =
+filesystem with mostly appropriate parameters, and debugfs to overwrite =
+the values.
 
-Profiling the ext4 workload reveals that a significant portion of CPU
-time is spent on memory allocation and the iomap state machine
-iteration:
-  5.33%  [kernel]  [k] __iomap_dio_rw
-  3.26%  [kernel]  [k] iomap_iter
-  2.37%  [kernel]  [k] iomap_dio_bio_iter
-  2.35%  [kernel]  [k] kfree
-  1.33%  [kernel]  [k] iomap_dio_complete
+Then e2fsck can be run on the filesystem to fix the superblock =
+s_blocks_per_group value.
 
-Introduce simple reads to reduce the overhead of iomap, simple read path
-is triggered when the request satisfies:
-- I/O size is <= inode blocksize (fits in a single block, no splits).
-- No custom `iomap_dio_ops` (dops) registered by the filesystem.
+A patch is attached with the trivial code fix for review and includes a =
+test case.
 
-After this optimization, the heavy generic functions disappear from the
-profile, replaced by a single streamlined execution path:
-  4.83%  [kernel]  [k] iomap_dio_simple_read
 
-With this patch, 4K random read IOPS on ext4 increases from 1.92M to
-2.19M in the original single-core io_uring poll-mode workload.
+The debugfs issue seems less important, since this requires the =
+administrator to run the specific debugfs command on the specific file. =20=
 
-Below are the test results using fio:
 
-fs    workload       qd    simple=0      simple=1      gain
-ext4  libaio         1     18,768        18,796        +0.15%
-ext4  libaio         64    462,459       479,435       +3.67%
-ext4  libaio         128   462,427       478,411       +3.46%
-ext4  libaio         256   461,579       477,561       +3.46%
-ext4  io_uring       1     18,898        18,914        +0.08%
-ext4  io_uring       64    564,405       590,145       +4.56%
-ext4  io_uring       128   563,322       592,365       +5.16%
-ext4  io_uring       256   562,281       590,593       +5.04%
-ext4  io_uring_poll  1     19,292        19,271        -0.11%
-ext4  io_uring_poll  64    994,612       1,006,334     +1.18%
-ext4  io_uring_poll  128   1,421,945     1,518,535     +6.79%
-ext4  io_uring_poll  256   1,576,507     1,772,901     +12.46%
-xfs   libaio         1     18,778        18,781        +0.01%
-xfs   libaio         64    459,617       476,411       +3.65%
-xfs   libaio         128   461,642       477,571       +3.45%
-xfs   libaio         256   459,828       475,224       +3.35%
-xfs   io_uring       1     18,898        18,923        +0.13%
-xfs   io_uring       64    557,195       583,320       +4.69%
-xfs   io_uring       128   560,109       585,549       +4.54%
-xfs   io_uring       256   559,117       581,846       +4.07%
-xfs   io_uring_poll  1     19,257        19,301        +0.23%
-xfs   io_uring_poll  64    983,827       998,497       +1.49%
-xfs   io_uring_poll  128   1,389,644     1,489,604     +7.19%
-xfs   io_uring_poll  256   1,523,554     1,702,827     +11.77%
+> On Jun 7, 2026, at 07:34, Feng Xue <feng.xue@outlook.com> wrote:
+>=20
+> Hi there,
+>=20
+> I'd like to report two potential security bugs for your review.
+> detailed report and pocs attached.
+>=20
+> Best,
+> Feng
 
-v4:
-fix fserror report and update test data based on v7.1-rc3.
 
-v3:
-Test data updated based on v7.1-rc3.
+Cheers, Andreas
 
-Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
----
- fs/iomap/direct-io.c | 390 +++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 376 insertions(+), 14 deletions(-)
 
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index b36ee619cdcdd..3cb179752612e 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -10,6 +10,9 @@
- #include <linux/iomap.h>
- #include <linux/task_io_accounting_ops.h>
- #include <linux/fserror.h>
-+#include <linux/kobject.h>
-+#include <linux/sysfs.h>
-+#include <linux/init.h>
- #include "internal.h"
- #include "trace.h"
- 
-@@ -88,9 +91,9 @@ static inline enum fserror_type iomap_dio_err_type(const struct iomap_dio *dio)
- 	return FSERR_DIRECTIO_READ;
- }
- 
--static inline bool should_report_dio_fserror(const struct iomap_dio *dio)
-+static inline bool should_report_dio_fserror(int error)
- {
--	switch (dio->error) {
-+	switch (error) {
- 	case 0:
- 	case -EAGAIN:
- 	case -ENOTBLK:
-@@ -110,7 +113,7 @@ ssize_t iomap_dio_complete(struct iomap_dio *dio)
- 
- 	if (dops && dops->end_io)
- 		ret = dops->end_io(iocb, dio->size, ret, dio->flags);
--	if (should_report_dio_fserror(dio))
-+	if (should_report_dio_fserror(dio->error))
- 		fserror_report_io(file_inode(iocb->ki_filp),
- 				  iomap_dio_err_type(dio), offset, dio->size,
- 				  dio->error, GFP_NOFS);
-@@ -237,23 +240,29 @@ static void iomap_dio_done(struct iomap_dio *dio)
- 	iomap_dio_complete_work(&dio->aio.work);
- }
- 
--static void __iomap_dio_bio_end_io(struct bio *bio, bool inline_completion)
-+static inline void iomap_dio_bio_release_pages(struct bio *bio,
-+		unsigned int dio_flags, bool error)
- {
--	struct iomap_dio *dio = bio->bi_private;
--
- 	if (bio_integrity(bio))
- 		fs_bio_integrity_free(bio);
- 
--	if (dio->flags & IOMAP_DIO_BOUNCE) {
--		bio_iov_iter_unbounce(bio, !!dio->error,
--				dio->flags & IOMAP_DIO_USER_BACKED);
-+	if (dio_flags & IOMAP_DIO_BOUNCE) {
-+		bio_iov_iter_unbounce(bio, error,
-+				dio_flags & IOMAP_DIO_USER_BACKED);
- 		bio_put(bio);
--	} else if (dio->flags & IOMAP_DIO_USER_BACKED) {
-+	} else if (dio_flags & IOMAP_DIO_USER_BACKED) {
- 		bio_check_pages_dirty(bio);
- 	} else {
- 		bio_release_pages(bio, false);
- 		bio_put(bio);
- 	}
-+}
-+
-+static void __iomap_dio_bio_end_io(struct bio *bio, bool inline_completion)
-+{
-+	struct iomap_dio *dio = bio->bi_private;
-+
-+	iomap_dio_bio_release_pages(bio, dio->flags, !!dio->error);
- 
- 	/* Do not touch bio below, we just gave up our reference. */
- 
-@@ -398,6 +407,14 @@ static ssize_t iomap_dio_bio_iter_one(struct iomap_iter *iter,
- 	return ret;
- }
- 
-+static inline unsigned int iomap_dio_alignment(struct inode *inode,
-+		struct block_device *bdev, unsigned int dio_flags)
-+{
-+	if (dio_flags & IOMAP_DIO_FSBLOCK_ALIGNED)
-+		return i_blocksize(inode);
-+	return bdev_logical_block_size(bdev);
-+}
-+
- static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- {
- 	const struct iomap *iomap = &iter->iomap;
-@@ -416,10 +433,7 @@ static int iomap_dio_bio_iter(struct iomap_iter *iter, struct iomap_dio *dio)
- 	 * File systems that write out of place and always allocate new blocks
- 	 * need each bio to be block aligned as that's the unit of allocation.
- 	 */
--	if (dio->flags & IOMAP_DIO_FSBLOCK_ALIGNED)
--		alignment = fs_block_size;
--	else
--		alignment = bdev_logical_block_size(iomap->bdev);
-+	alignment = iomap_dio_alignment(inode, iomap->bdev, dio->flags);
- 
- 	if ((pos | length) & (alignment - 1))
- 		return -EINVAL;
-@@ -891,12 +905,352 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- }
- EXPORT_SYMBOL_GPL(__iomap_dio_rw);
- 
-+struct iomap_dio_simple_read {
-+	struct kiocb		*iocb;
-+	size_t			size;
-+	unsigned int		dio_flags;
-+	atomic_t		state;
-+	union {
-+		struct task_struct	*waiter;
-+		struct work_struct	work;
-+	};
-+	/*
-+	 * Align @bio to a cacheline boundary so that, combined with the
-+	 * front_pad passed to bioset_init(), the bio sits at the start of
-+	 * a cacheline in memory returned by the (HWCACHE-aligned) bio
-+	 * slab.  This keeps the hot fields block layer touches on submit
-+	 * and completion (bi_iter, bi_status, ...) within a single line.
-+	 */
-+	struct bio	bio ____cacheline_aligned_in_smp;
-+};
-+
-+static struct bio_set iomap_dio_simple_read_pool;
-+
-+/*
-+ * In the async simple read path, we need to prevent bio_endio() from
-+ * triggering iocb->ki_complete() before the submitter has returned
-+ * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently.
-+ *
-+ * We use a three-state rendezvous to synchronize the submitter and end_io:
-+ *
-+ * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the bio.
-+ *
-+ * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and will
-+ * return -EIOCBQUEUED. If end_io sees this state, it takes over and calls
-+ * ki_complete().
-+ *
-+ * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished the
-+ * submit path. end_io sets this state and does nothing else. The submitter
-+ * will see this state and handle the completion synchronously (bypassing
-+ * ki_complete() and returning the actual result).
-+ */
-+enum {
-+	IOMAP_DIO_SIMPLE_SUBMITTING = 0,
-+	IOMAP_DIO_SIMPLE_QUEUED,
-+	IOMAP_DIO_SIMPLE_DONE,
-+};
-+
-+static ssize_t iomap_dio_simple_read_finish(struct kiocb *iocb,
-+		struct bio *bio, ssize_t ret)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	struct iomap_dio_simple_read *sr = bio->bi_private;
-+
-+	if (likely(!ret)) {
-+		ret = sr->size;
-+		iocb->ki_pos += ret;
-+	} else if (should_report_dio_fserror(ret)) {
-+		fserror_report_io(inode, FSERR_DIRECTIO_READ, iocb->ki_pos,
-+				  sr->size, ret, GFP_NOFS);
-+	}
-+
-+	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
-+
-+	return ret;
-+}
-+
-+static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
-+		struct bio *bio)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	ssize_t ret;
-+
-+	WRITE_ONCE(iocb->private, NULL);
-+
-+	ret = iomap_dio_simple_read_finish(iocb, bio,
-+			blk_status_to_errno(bio->bi_status));
-+
-+	inode_dio_end(inode);
-+	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
-+	return ret;
-+}
-+
-+static void iomap_dio_simple_read_complete_work(struct work_struct *work)
-+{
-+	struct iomap_dio_simple_read *sr =
-+		container_of(work, struct iomap_dio_simple_read, work);
-+	struct kiocb *iocb = sr->iocb;
-+	ssize_t ret;
-+
-+	ret = iomap_dio_simple_read_complete(iocb, &sr->bio);
-+	iocb->ki_complete(iocb, ret);
-+}
-+
-+static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_read *sr)
-+{
-+	struct kiocb *iocb = sr->iocb;
-+
-+	if (unlikely(sr->bio.bi_status)) {
-+		struct inode *inode = file_inode(iocb->ki_filp);
-+
-+		INIT_WORK(&sr->work, iomap_dio_simple_read_complete_work);
-+		queue_work(inode->i_sb->s_dio_done_wq, &sr->work);
-+		return;
-+	}
-+
-+	iomap_dio_simple_read_complete_work(&sr->work);
-+}
-+
-+static void iomap_dio_simple_read_end_io(struct bio *bio)
-+{
-+	struct iomap_dio_simple_read *sr = bio->bi_private;
-+
-+	if (sr->waiter) {
-+		struct task_struct *waiter = sr->waiter;
-+
-+		WRITE_ONCE(sr->waiter, NULL);
-+		blk_wake_io_task(waiter);
-+		return;
-+	}
-+
-+	if (likely(atomic_read(&sr->state) == IOMAP_DIO_SIMPLE_QUEUED) ||
-+	    atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
-+			   IOMAP_DIO_SIMPLE_DONE) == IOMAP_DIO_SIMPLE_QUEUED)
-+		iomap_dio_simple_read_async_done(sr);
-+}
-+
-+static inline bool iomap_dio_simple_read_supported(struct kiocb *iocb,
-+		struct iov_iter *iter, unsigned int dio_flags)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	size_t count = iov_iter_count(iter);
-+
-+	if (iov_iter_rw(iter) != READ)
-+		return false;
-+	if (!count)
-+		return false;
-+	/*
-+	 * Simple read is an optimization for small IO. Filter out large IO
-+	 * early as it's the most common case to fail for typical direct IO
-+	 * workloads.
-+	 */
-+	if (count > inode->i_sb->s_blocksize)
-+		return false;
-+	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL))
-+		return false;
-+	if (iocb->ki_pos + count > i_size_read(inode))
-+		return false;
-+
-+	return true;
-+}
-+
-+static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
-+		struct iov_iter *iter, const struct iomap_ops *ops,
-+		void *private, unsigned int dio_flags)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	size_t count = iov_iter_count(iter);
-+	int nr_pages;
-+	struct iomap_dio_simple_read *sr;
-+	unsigned int alignment;
-+	struct iomap_iter iomi = {
-+		.inode		= inode,
-+		.pos		= iocb->ki_pos,
-+		.len		= count,
-+		.flags		= IOMAP_DIRECT,
-+		.private	= private,
-+	};
-+	struct bio *bio;
-+	bool wait_for_completion = is_sync_kiocb(iocb);
-+	ssize_t ret;
-+
-+	if (dio_flags & IOMAP_DIO_BOUNCE)
-+		nr_pages = bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
-+	else
-+		nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
-+
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		iomi.flags |= IOMAP_NOWAIT;
-+
-+	ret = kiocb_write_and_wait(iocb, count);
-+	if (ret)
-+		return ret;
-+
-+	inode_dio_begin(inode);
-+
-+	ret = ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
-+			       &iomi.iomap, &iomi.srcmap);
-+	if (ret) {
-+		inode_dio_end(inode);
-+		return ret;
-+	}
-+
-+	if (iomi.iomap.type != IOMAP_MAPPED ||
-+	    iomi.iomap.offset > iomi.pos ||
-+	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count ||
-+	    (iomi.iomap.flags & IOMAP_F_INTEGRITY)) {
-+		ret = -ENOTBLK;
-+		goto out_iomap_end;
-+	}
-+
-+	alignment = iomap_dio_alignment(inode, iomi.iomap.bdev, dio_flags);
-+	if ((iomi.pos | count) & (alignment - 1)) {
-+		ret = -EINVAL;
-+		goto out_iomap_end;
-+	}
-+
-+	if (!wait_for_completion && unlikely(!inode->i_sb->s_dio_done_wq)) {
-+		ret = sb_init_dio_done_wq(inode->i_sb);
-+		if (ret < 0)
-+			goto out_iomap_end;
-+	}
-+
-+	trace_iomap_dio_rw_begin(iocb, iter, dio_flags, 0);
-+
-+	if (user_backed_iter(iter))
-+		dio_flags |= IOMAP_DIO_USER_BACKED;
-+
-+	bio = bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
-+			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
-+			       GFP_KERNEL, &iomap_dio_simple_read_pool);
-+	sr = container_of(bio, struct iomap_dio_simple_read, bio);
-+
-+	fscrypt_set_bio_crypt_ctx(bio, inode, iomi.pos, GFP_KERNEL);
-+	sr->iocb = iocb;
-+	sr->dio_flags = dio_flags;
-+
-+	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
-+	bio->bi_ioprio = iocb->ki_ioprio;
-+	bio->bi_private = sr;
-+	bio->bi_end_io = iomap_dio_simple_read_end_io;
-+
-+	if (dio_flags & IOMAP_DIO_BOUNCE)
-+		ret = bio_iov_iter_bounce(bio, iter, count);
-+	else
-+		ret = bio_iov_iter_get_pages(bio, iter, alignment - 1);
-+	if (unlikely(ret))
-+		goto out_bio_put;
-+
-+	if (bio->bi_iter.bi_size != count) {
-+		iov_iter_revert(iter, bio->bi_iter.bi_size);
-+		ret = -ENOTBLK;
-+		goto out_bio_release_pages;
-+	}
-+
-+	sr->size = bio->bi_iter.bi_size;
-+
-+	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
-+	    !(dio_flags & IOMAP_DIO_BOUNCE))
-+		bio_set_pages_dirty(bio);
-+
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		bio->bi_opf |= REQ_NOWAIT;
-+	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
-+		bio->bi_opf |= REQ_POLLED;
-+		bio_set_polled(bio, iocb);
-+		WRITE_ONCE(iocb->private, bio);
-+	}
-+
-+	if (wait_for_completion) {
-+		sr->waiter = current;
-+		blk_crypto_submit_bio(bio);
-+	} else {
-+		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
-+		sr->waiter = NULL;
-+		blk_crypto_submit_bio(bio);
-+		ret = -EIOCBQUEUED;
-+	}
-+
-+	if (ops->iomap_end)
-+		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
-+			       &iomi.iomap);
-+
-+	if (wait_for_completion) {
-+		for (;;) {
-+			set_current_state(TASK_UNINTERRUPTIBLE);
-+			if (!READ_ONCE(sr->waiter))
-+				break;
-+			blk_io_schedule();
-+		}
-+		__set_current_state(TASK_RUNNING);
-+
-+		ret = iomap_dio_simple_read_finish(iocb, bio,
-+				blk_status_to_errno(bio->bi_status));
-+		inode_dio_end(inode);
-+		trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0,
-+					 ret > 0 ? ret : 0);
-+	} else if (atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
-+				  IOMAP_DIO_SIMPLE_QUEUED) ==
-+		   IOMAP_DIO_SIMPLE_DONE) {
-+		ret = iomap_dio_simple_read_complete(iocb, bio);
-+	} else {
-+		trace_iomap_dio_rw_queued(inode, iomi.pos, count);
-+	}
-+
-+	return ret;
-+
-+out_bio_release_pages:
-+	if (dio_flags & IOMAP_DIO_BOUNCE)
-+		bio_iov_iter_unbounce(bio, true, false);
-+	else
-+		bio_release_pages(bio, false);
-+out_bio_put:
-+	bio_put(bio);
-+out_iomap_end:
-+	if (ops->iomap_end)
-+		ops->iomap_end(inode, iomi.pos, count, 0, iomi.flags,
-+			       &iomi.iomap);
-+	inode_dio_end(inode);
-+	return ret;
-+}
-+
- ssize_t
- iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
- 		unsigned int dio_flags, void *private, size_t done_before)
- {
- 	struct iomap_dio *dio;
-+	ssize_t ret;
-+
-+	/*
-+	 * Fast path for small, block-aligned reads that map to a single
-+	 * contiguous on-disk extent.
-+	 *
-+	 * @dops must be NULL: a non-NULL @dops means the caller wants its
-+	 * ->end_io / ->submit_io hooks invoked, and in particular wants its
-+	 * bios to be allocated from the filesystem-private @dops->bio_set
-+	 * (whose front_pad sizes a filesystem-private wrapper around the
-+	 * bio).  The fast path instead allocates from the shared
-+	 * iomap_dio_simple_read_pool, whose front_pad matches
-+	 * struct iomap_dio_simple_read; the two wrappers are not
-+	 * interchangeable, so we must fall back to __iomap_dio_rw() in
-+	 * that case.
-+	 *
-+	 * @done_before must be zero: a non-zero caller-accumulated residual
-+	 * cannot be carried through a single-bio inline completion.
-+	 *
-+	 * -ENOTBLK is the private sentinel returned by iomap_dio_simple_read()
-+	 * when it decides the request does not fit the fast path.
-+	 * In that case we proceed to the generic __iomap_dio_rw() slow
-+	 * path.  Any other errno is a real result and is propagated as-is,
-+	 * in particular -EAGAIN for IOCB_NOWAIT must reach the caller.
-+	 */
-+	if (!dops && !done_before &&
-+	    iomap_dio_simple_read_supported(iocb, iter, dio_flags)) {
-+		ret = iomap_dio_simple_read(iocb, iter, ops, private, dio_flags);
-+		if (ret != -ENOTBLK)
-+			return ret;
-+	}
- 
- 	dio = __iomap_dio_rw(iocb, iter, ops, dops, dio_flags, private,
- 			     done_before);
-@@ -905,3 +1259,11 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	return iomap_dio_complete(dio);
- }
- EXPORT_SYMBOL_GPL(iomap_dio_rw);
-+
-+static int __init iomap_dio_init(void)
-+{
-+	return bioset_init(&iomap_dio_simple_read_pool, 4,
-+			   offsetof(struct iomap_dio_simple_read, bio),
-+			   BIOSET_NEED_BVECS | BIOSET_PERCPU_CACHE);
-+}
-+fs_initcall(iomap_dio_init);
--- 
-2.39.5 (Apple Git-154)
+--Apple-Mail=_91631063-8ECE-42D5-A143-2C96AD196BDB
+Content-Disposition: attachment;
+	filename=0001-libext2fs-fix-inode_blocks-overflow-in-ext2fs_open.patch
+Content-Type: application/octet-stream;
+	x-unix-mode=0644;
+	name="0001-libext2fs-fix-inode_blocks-overflow-in-ext2fs_open.patch"
+Content-Transfer-Encoding: quoted-printable
+
+=46rom=20bd5490e494dc3638b2f1e3a737f54b7eb67721ef=20Mon=20Sep=2017=20=
+00:00:00=202001=0AFrom:=20Andreas=20Dilger=20<adilger@dilger.ca>=0ADate:=20=
+Mon,=208=20Jun=202026=2003:06:14=20-0600=0ASubject:=20[PATCH]=20=
+libext2fs:=20fix=20inode_blocks=20overflow=20in=20ext2fs_open()=0A=0AFix=20=
+an=20overflow=20when=20calculating=20inode_blocks_per_group=20with=20an=0A=
+intermediate=2032-bit=20variable=20for=20an=20invalid=20=
+s_inodes_per_group=20value.=0AWith=20blocksize=3D65536,=20=
+inodes_per_group=3D262145=20*=20inodesize=3D16384=0Aintermediate=20=
+product=20overflows=202^32=20temporarily=20before=20being=20reduced=0A=
+again=20by=20the=20blocksize.=0A=0ACheck=20inodes_per_group=20validity=20=
+before=20using=20it=20in=20the=20calculation,=0Ato=20avoid=20=
+intermediate=20overflow,=20but=20also=20use=20a=2064-bit=20variable=20in=0A=
+the=20inode_blocks_per_group=20calculation=20in=20case=20of=20future=20=
+expansion=0Ain=20the=20number=20of=20inodes=20per=20group=20or=20the=20=
+blocksize.=0A=0ASigned-off-by:=20Andreas=20Dilger=20<adilger@dilger.ca>=0A=
+Change-Id:=20I30472e69dafed4dc1791fad2dde6fc7c43aed0ef=0A---=0A=20=
+lib/ext2fs/openfs.c=20=20=20=20=20|=2011=20+++++---=0A=20=
+tests/f_64kblock/expect=20|=2035=20+++++++++++++++++++++++++=0A=20=
+tests/f_64kblock/name=20=20=20|=20=201=20+=0A=20tests/f_64kblock/script=20=
+|=2058=20+++++++++++++++++++++++++++++++++++++++++=0A=204=20files=20=
+changed,=20101=20insertions(+),=204=20deletions(-)=0A=20create=20mode=20=
+100644=20tests/f_64kblock/expect=0A=20create=20mode=20100644=20=
+tests/f_64kblock/name=0A=20create=20mode=20100755=20=
+tests/f_64kblock/script=0A=0Adiff=20--git=20a/lib/ext2fs/openfs.c=20=
+b/lib/ext2fs/openfs.c=0Aindex=202b8e0e753c..da4b3d9cec=20100644=0A---=20=
+a/lib/ext2fs/openfs.c=0A+++=20b/lib/ext2fs/openfs.c=0A@@=20-356,10=20=
++356,14=20@@=20retry:=0A=20=09=09retval=20=3D=20=
+EXT2_ET_CORRUPT_SUPERBLOCK;=0A=20=09=09goto=20cleanup;=0A=20=09}=0A-=09=
+fs->inode_blocks_per_group=20=3D=20((EXT2_INODES_PER_GROUP(fs->super)=20=
+*=0A+=09if=20(EXT2_INODES_PER_GROUP(fs->super)=20>=0A+=09=20=20=20=20=
+EXT2_MAX_INODES_PER_GROUP(fs->super))=20{=0A+=09=09retval=20=3D=20=
+EXT2_ET_CORRUPT_SUPERBLOCK;=0A+=09=09goto=20cleanup;=0A+=09}=0A+=09=
+fs->inode_blocks_per_group=20=3D=20=
+(((__u64)EXT2_INODES_PER_GROUP(fs->super)=20*=0A=20=09=09=09=09=20=20=20=20=
+=20=20=20EXT2_INODE_SIZE(fs->super)=20+=0A-=09=09=09=09=20=20=20=20=20=20=
+=20EXT2_BLOCK_SIZE(fs->super)=20-=201)=20/=0A-=09=09=09=09=20=20=20=20=20=
+=20EXT2_BLOCK_SIZE(fs->super));=0A+=09=09=09=09=20=20=20=20=20=20=20=
+fs->blocksize=20-=201)=20/=20fs->blocksize);=0A=20=09if=20(block_size)=20=
+{=0A=20=09=09if=20(block_size=20!=3D=20fs->blocksize)=20{=0A=20=09=09=09=
+retval=20=3D=20EXT2_ET_UNEXPECTED_BLOCK_SIZE;=0A@@=20-394,7=20+398,6=20=
+@@=20retry:=0A=20=09blocks_per_group=20=3D=20=
+EXT2_BLOCKS_PER_GROUP(fs->super);=0A=20=09if=20(blocks_per_group=20<=208=20=
+||=0A=20=09=20=20=20=20blocks_per_group=20>=20=
+EXT2_MAX_BLOCKS_PER_GROUP(fs->super)=20||=0A-=09=20=20=20=20=
+fs->inode_blocks_per_group=20>=20EXT2_MAX_INODES_PER_GROUP(fs->super)=20=
+||=0A=20=20=20=20=20=20=20=20=20=20=20=20EXT2_DESC_PER_BLOCK(fs->super)=20=
+=3D=3D=200=20||=0A=20=20=20=20=20=20=20=20=20=20=20=20=
+fs->super->s_first_data_block=20>=3D=20ext2fs_blocks_count(fs->super))=20=
+{=0A=20=09=09retval=20=3D=20EXT2_ET_CORRUPT_SUPERBLOCK;=0Adiff=20--git=20=
+a/tests/f_64kblock/expect=20b/tests/f_64kblock/expect=0Anew=20file=20=
+mode=20100644=0Aindex=200000000000..abbe524121=0A---=20/dev/null=0A+++=20=
+b/tests/f_64kblock/expect=0A@@=20-0,0=20+1,35=20@@=0A+mke2fs=20-F=20-o=20=
+Linux=20-b=2065536=20-g=20262144=20-I=2016384=20-N=2024=20test.img=20=
+131072=0A+Warning:=20blocksize=2065536=20not=20usable=20on=20most=20=
+systems.=0A+Warning:=2065536-byte=20blocks=20too=20big=20for=20system=20=
+(max=204096),=20forced=20to=20continue=0A+Creating=20filesystem=20with=20=
+131056=2064k=20blocks=20and=2016=20inodes=0A+Superblock=20backups=20=
+stored=20on=20blocks:=20=0A+=0965528=0A+=0A+Allocating=20group=20tables:=20=
+=20=20=20=08=08=08done=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
+=20=20=20=20=20=20=20=20=20=20=20=0A+Writing=20inode=20tables:=20=20=20=20=
+=08=08=08done=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
+=20=20=20=20=20=20=20=20=0A+Writing=20superblocks=20and=20filesystem=20=
+accounting=20information:=20=20=20=20=08=08=08done=0A+=0A+Pass=201:=20=
+Checking=20inodes,=20blocks,=20and=20sizes=0A+Pass=202:=20Checking=20=
+directory=20structure=0A+Pass=203:=20Checking=20directory=20connectivity=0A=
++Pass=204:=20Checking=20reference=20counts=0A+Pass=205:=20Checking=20=
+group=20summary=20information=0A+test_filesys:=2011/16=20files=20(0.0%=20=
+non-contiguous),=2016/131056=20blocks=0A+Exit=20status=20is=200=0A=
++-----------------------------------------------=0A+=20=0A+debugfs=20-R=20=
+'set_super_value=20inodes_per_group=20262145'=20-w=20test.img=0A+Exit=20=
+status=20is=200=0A+debugfs=20-R=20'lsdel'=20test.img=0A+debugfs:=20The=20=
+ext2=20superblock=20is=20corrupt=20while=20trying=20to=20open=20test.img=0A=
++lsdel:=20Filesystem=20not=20open=0A+Exit=20status=20is=200=0A+Pass=201:=20=
+Checking=20inodes,=20blocks,=20and=20sizes=0A+Pass=202:=20Checking=20=
+directory=20structure=0A+Pass=203:=20Checking=20directory=20connectivity=0A=
++Pass=204:=20Checking=20reference=20counts=0A+Pass=205:=20Checking=20=
+group=20summary=20information=0A+=0A+test_filesys:=20*****=20FILE=20=
+SYSTEM=20WAS=20MODIFIED=20*****=0A+test_filesys:=2011/16=20files=20(0.0%=20=
+non-contiguous),=2016/131056=20blocks=0A+Exit=20status=20is=201=0Adiff=20=
+--git=20a/tests/f_64kblock/name=20b/tests/f_64kblock/name=0Anew=20file=20=
+mode=20100644=0Aindex=200000000000..f737e26fd7=0A---=20/dev/null=0A+++=20=
+b/tests/f_64kblock/name=0A@@=20-0,0=20+1=20@@=0A+calculate=20=
+inode_blocks_per_group=20for=20large-block=20fs=0Adiff=20--git=20=
+a/tests/f_64kblock/script=20b/tests/f_64kblock/script=0Anew=20file=20=
+mode=20100755=0Aindex=200000000000..9ae0c0d55c=0A---=20/dev/null=0A+++=20=
+b/tests/f_64kblock/script=0A@@=20-0,0=20+1,58=20@@=0A=
++test_description=3D"debugfs=20inode_overflow=20check"=0A+if=20!=20test=20=
+-x=20$DEBUGFS_EXE;=20then=0A+=09echo=20"$test_name:=20$test_description:=20=
+skipped=20(no=20debugfs)"=0A+=09return=200=0A+fi=0A+=0A+FSCK_OPT=3D-yf=0A=
++OUT=3D$test_name.log=0A+if=20[=20-f=20$test_dir/expect.gz=20];=20then=0A=
++=09EXP=3D$test_name.tmp=0A+=09gunzip=20<=20$test_dir/expect.gz=20>=20=
+$EXP=0A+else=0A+=09EXP=3D$test_dir/expect=0A+fi=0A+=0A=
++TMPFILE=3D$test_dir/test_img=0A+dd=20if=3D/dev/zero=20of=3D$TMPFILE=20=
+bs=3D1k=20count=3D512=20>=20/dev/null=202>&1=0A+=0A+echo=20mke2fs=20-F=20=
+-o=20Linux=20-b=2065536=20-g=20262144=20-I=2016384=20-N=2024=20test.img=20=
+131072=20>=20$OUT.new=0A+$MKE2FS=20-F=20-o=20Linux=20-b=2065536=20-g=20=
+262144=20-I=2016384=20-N=2024=20$TMPFILE=20131072=20>>=20$OUT.new=202>&1=0A=
++=0A+$FSCK=20$FSCK_OPT=20=20-N=20test_filesys=20$TMPFILE=20>>=20$OUT.new=20=
+2>&1=0A+status=3D$?=0A+echo=20Exit=20status=20is=20$status=20>>=20=
+$OUT.new=0A+=0A+echo=20-----------------------------------------------=20=
+>>=20$OUT.new=0A+=0A+echo=20"=20"=20>>=20$OUT.new=0A+echo=20"debugfs=20=
+-R=20'set_super_value=20inodes_per_group=20262145'=20-w=20test.img"=20>>=20=
+$OUT.new=0A+$DEBUGFS=20-R=20"set_super_value=20inodes_per_group=20=
+262145"=20-w=20$TMPFILE=20>>=20$OUT.new=202>&1=0A+status=3D$?=0A+echo=20=
+Exit=20status=20is=20$status=20>>=20$OUT.new=0A+=0A+echo=20"debugfs=20-R=20=
+'lsdel'=20test.img"=20>>=20$OUT.new=0A+$DEBUGFS=20=20-R=20"lsdel"=20=
+$TMPFILE=20>>=20$OUT.new=202>&1=0A+status=3D$?=0A+echo=20Exit=20status=20=
+is=20$status=20>>=20$OUT.new=0A+=0A+$FSCK=20$FSCK_OPT=20-b=2065528=20-B=20=
+65536=20-N=20test_filesys=20$TMPFILE=20>>=20$OUT.new=202>&1=0A+status=3D$?=
+=0A+echo=20Exit=20status=20is=20$status=20>>=20$OUT.new=0A+=0A+sed=20-f=20=
+$cmd_dir/filter.sed=20$OUT.new=20>=20$OUT=0A+rm=20-f=20$OUT.new=0A+=0A=
++cmp=20-s=20$OUT=20$EXP=0A+status=3D$?=0A+=0A+if=20[=20"$status"=20=3D=20=
+0=20]=20;=20then=0A+=09echo=20"$test_name:=20$test_description:=20ok"=0A=
++=09touch=20$test_name.ok=0A+else=0A+=09echo=20"$test_name:=20=
+$test_description:=20failed"=0A+=09diff=20$DIFF_OPTS=20$EXP=20$OUT=20>=20=
+$test_name.failed=0A+=09rm=20-f=20tmp_expect=0A+fi=0A+=0A+unset=20IMAGE=20=
+FSCK_OPT=20OUT=20EXP=0A--=20=0A2.43.0=0A=0A=
+
+--Apple-Mail=_91631063-8ECE-42D5-A143-2C96AD196BDB--
