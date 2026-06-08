@@ -1,66 +1,41 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from out30-130.freemail.mail.aliyun.com (out30-130.freemail.mail.aliyun.com [115.124.30.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB0BC3B8BA5;
-	Mon,  8 Jun 2026 10:23:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A80C346E70
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2026 11:12:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780914231; cv=none; b=nfqZnwGJq5Qbtvd2inHrI98V+BM+6cU6E7TLq2LXAtD5q2xcwLncY8hpg+V8007WXxstA/nCykD2SMoHSL75unl7eZYUn8V5J0ZIid5Q7buHE4gKhptDDCJyieF98KN5a5WGLMA16qFfo7DpiWTgx2MsH/RuXHHDM3wKfhmW+Is=
+	t=1780917126; cv=none; b=CeKa5hu/KacrccRKolA3SwUJ8ynqiqAZP/yfGTwMPro3UCb1KiD6bFVpxZ5ZlzZV9yxd0idsvxmPWk7At7KxI/b/c4RQUnO5SdKOegAxA+Czg0J7hHhWHHfX1Z7Y3qAPB0wHzhXMzhCNsB8FqsLNW4m+a79d+Tvt3j0T01P1ExM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780914231; c=relaxed/simple;
-	bh=yFroTsxMoyGyLVbYUE4ZAISy4tR84QoNnQ6Pd2QnGiY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=PDQpYTGJuZPXNIp1tjkkmWyA5EJvFEhqMX5nbZ+HdJzrLIy4b2+TUPE7lBMbwHilOPwTK7tggcpd4Te28KmRJIToUyuQZVUclCSsiFKPnaD2kiIJkj3znJfZ0/hPFD8l56U9ACrXwWawVghPKF1SMZ1F9KiaUYGX4oqOwEH/ioM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=MNxAD268; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1780917126; c=relaxed/simple;
+	bh=M7yrcL/EzM1tz/bSFknfQeNFsncLaVJd/iSeSs8fgjA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=gEDh0P/dxwkfD1yQAL77BI6Hw31wZk18NrpV5MZcN5yTzJCT5buP6V2Es5MVM2yy7nviH/Zb6DlxgeTO+vw6en4rOcO6s/Xke65axu82TCUlz1CDbV7PpdFORQRmF56xsED/xVm0fn5gZDya9K5eI3Al8MeKbco2P7I/LBc/GJg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=Tta5IHjM; arc=none smtp.client-ip=115.124.30.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="MNxAD268"
-Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 657JF1CO3711216;
-	Mon, 8 Jun 2026 10:23:49 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:date:from:message-id:mime-version
-	:subject:to; s=pp1; bh=Xh9qce66+IJFbnXRatQkRCySdWtsqLisqhjzMZqwu
-	PY=; b=MNxAD268UqhJiTkpGM9EmxBCgIyzkO6x4sYrIcLTHT+9/ZpdQAYD49W+Z
-	JZCgnVqCocXpBlN9xY8LlcFpEqV4mOCSmWSoQhdKHYyXzKcw6wBXIaSyxDULUF0A
-	VuSc4gNdzHS/Tk+l0xOv5EGfg6mfrPNayF2g8eMwxof0QjX3ykwVywtCoaJE4PYV
-	64uRs3qhPLlFjZyuAwp2FweJXtTYC3heg7Hlk2L7UJcNVx3C0z1VRCvL9o3CWjSt
-	GtHFmQH2bcIIKqLLRXfC/e4/7Q5rEoo1DZq/GSJHSprD3G/GZoGR2GMHSEIjQGdh
-	cK7r9yKyPOSpsMiRkZwpg7bkrkMFQ==
-Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4emb23psut-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 08 Jun 2026 10:23:48 +0000 (GMT)
-Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 658AJdNp009127;
-	Mon, 8 Jun 2026 10:23:47 GMT
-Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
-	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4emx8vvy90-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 08 Jun 2026 10:23:47 +0000 (GMT)
-Received: from smtpav07.fra02v.mail.ibm.com (smtpav07.fra02v.mail.ibm.com [10.20.54.106])
-	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 658ANhpe57344426
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 8 Jun 2026 10:23:43 GMT
-Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 89A3E2004E;
-	Mon,  8 Jun 2026 10:23:43 +0000 (GMT)
-Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 86C4F20040;
-	Mon,  8 Jun 2026 10:23:41 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.39.26.125])
-	by smtpav07.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Mon,  8 Jun 2026 10:23:41 +0000 (GMT)
-From: Disha Goel <disgoel@linux.ibm.com>
-To: fstests@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, ritesh.list@gmail.com,
-        ojaswin@linux.ibm.com, djwong@kernel.org,
-        Disha Goel <disgoel@linux.ibm.com>
-Subject: [PATCH v3] common/defrag: skip defrag tests on DAX-enabled filesystems
-Date: Mon,  8 Jun 2026 15:53:28 +0530
-Message-ID: <20260608102328.40916-1-disgoel@linux.ibm.com>
-X-Mailer: git-send-email 2.45.1
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="Tta5IHjM"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1780917122; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=qJ4c1jrpBGmta4Y8+T335OrN8ukx1Sm8v2BMNxxp+QU=;
+	b=Tta5IHjMJYF/9UddEkHXTImbj8xiZC/cJXcNzBChmZtOq74sCIzzpaBsVvL6JSVyURzKwKnUwVOYD5k0Aqt+K/2lRraOxu9+gBduc7a7aP1vukCg8vkoPcJWax9PBWFPmKyZb4N4AuCtn4lu8w6ikubp6WlUV1rfPyIvAhk51vc=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R921e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X4Nw8OR_1780917110;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X4Nw8OR_1780917110 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 08 Jun 2026 19:12:01 +0800
+From: Baokun Li <libaokun@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com
+Subject: [PATCH v2 0/3] ext4: tighten mount-time superblock geometry validation
+Date: Mon,  8 Jun 2026 19:11:47 +0800
+Message-ID: <20260608111150.827117-1-libaokun@linux.alibaba.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -68,66 +43,43 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Authority-Analysis: v=2.4 cv=b4uCJNGx c=1 sm=1 tr=0 ts=6a269834 cx=c_pps
- a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=RnoormkPH1_aCDwRdu11:22
- a=iQ6ETzBq9ecOQQE5vZCe:22 a=VwQbUJbxAAAA:8 a=VnNF1IyMAAAA:8
- a=2rdxVvfoxuaEPwCrBBkA:9
-X-Proofpoint-ORIG-GUID: 4ii1CnxzA8vtLckAbLZqJ8d3HSKTa5kJ
-X-Proofpoint-GUID: TgcKqz0t2BK30RAAgJdOw7s3tf1xfPZp
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjA4MDA5NCBTYWx0ZWRfX2JZd5nHWfkUk
- 73DfNB+TciWzhL1XiPE4LYhvmGFbllidhKgz6iVy6Ias2eHaMmrdEozSCsj1ha5GfgG5zagX0OI
- W6Y6xXQFQlVXhh4pL5gxQXXgNPPJaZcBqAX06cbvsp6VSZCuqo0eQAM6ZyaebBwCYDDtKNkrCA6
- Iu+QCO5TBfMj2DkksF5jHseQX/83pS0uLWFi27JU2uZvhXyLcd4Twgb7EIrIbqF9v+37ju37pE+
- ehhQk8FC6M3P9FMop/sWx/U3AbuoN5W88vezBahWzCit0EZ1IN+fiILZly8624i7vqtLUI5Ezzq
- RUpDfk2ZPcZltzqOICrDkQiy2s0mz8a0FMfEkr1uq+0bJNL8SkJrrn+n3nlKUTmZsOhgn1k8ANF
- CvoRTvIz7im8tQ6ZejZ1lU498TOIrYLm5XOtMdvLsswO3p1Gs4Q0k4ZnC4lQxljzOw0slE+s7vd
- 6roo+OLScZiD4rtZ7Kw==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-08_02,2026-06-05_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1015 spamscore=0 bulkscore=0 phishscore=0 priorityscore=1501
- lowpriorityscore=0 adultscore=0 malwarescore=0 impostorscore=0 suspectscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606080094
 
-Online defragmentation is not supported on ext4 DAX-enabled filesystems.
-The ext4 defrag ioctl (EXT4_IOC_MOVE_EXT) returns EOPNOTSUPP when used
-on DAX files.
+Changes since v1:
+ * Patch 1: Removed a spurious newline in the error message format string.
+ * Added Patches 2 and 3 to fix additional issues reported by Sashiko
+   (independent of Patch 1).
 
-Add an ext4-specific check in _require_defrag() to skip tests when DAX
-is enabled, avoiding false failures on ext4/301-304, ext4/308, and
-generic/018.
+v1: https://patch.msgid.link/20260608061112.392391-1-libaokun@linux.alibaba.com
 
-XFS defrag works with DAX, so this check is ext4-specific.
+This series adds missing mount-time sanity checks for superblock
+geometry parameters, preventing crafted filesystem images from causing
+bitmap checksum corruption, integer overflow, or out-of-bounds inode
+table access.
 
-Suggested-by: Darrick J. Wong <djwong@kernel.org>
-Signed-off-by: Disha Goel <disgoel@linux.ibm.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
----
-Changes in v3:
-- Move the DAX check inside the ext4 case statement as
-  suggested by Darrick
+Patch 1 rejects filesystems where s_clusters_per_group or
+s_inodes_per_group is not 8-aligned, since the bitmap checksum
+functions operate on whole bytes and would leave trailing bits
+unprotected.
 
- common/defrag | 2 ++
- 1 file changed, 2 insertions(+)
+Patch 2 reduces EXT4_MAX_CLUSTER_LOG_SIZE from 30 to 28 to match
+the documented 256MB limit in mke2fs, preventing a 32-bit overflow
+in the blocks-per-group consistency check on bigalloc filesystems.
 
-diff --git a/common/defrag b/common/defrag
-index 055d0d0e..baf05d94 100644
---- a/common/defrag
-+++ b/common/defrag
-@@ -13,6 +13,8 @@ _require_defrag()
-         DEFRAG_PROG="$XFS_FSR_PROG"
- 	;;
-     ext4)
-+        __scratch_uses_fsdax && _notrun "ext4 online defrag not supported with DAX"
-+
- 	testfile="$TEST_DIR/$$-test.defrag"
- 	donorfile="$TEST_DIR/$$-donor.defrag"
- 	bsize=`_get_block_size $TEST_DIR`
+Patch 3 rejects filesystems where s_inodes_per_group is not a
+multiple of s_inodes_per_block, preventing truncation in the
+s_itb_per_group calculation that could lead __ext4_get_inode_loc()
+to read beyond the inode table.
+
+Baokun Li (3):
+  ext4: reject mount if clusters/inodes per group are not 8-aligned
+  ext4: reduce max cluster size to match documented 256MB limit
+  ext4: reject mount if inodes per group is not a multiple of inodes per
+    block
+
+ fs/ext4/ext4.h  |  2 +-
+ fs/ext4/super.c | 11 +++++++----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
 -- 
-2.45.1
+2.43.7
 
