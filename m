@@ -1,278 +1,121 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-ej1-f50.google.com (mail-ej1-f50.google.com [209.85.218.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6579841930D
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 12:46:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781009176; cv=none; b=r3Zn/wGAhMDsETXh2xX3n3zuq/xMz4ytPL2qzUYU2UuAokisUDwHNmkNKZjYDSqQFEA6CvW7ueJdVFAj22Su93KvcbLZF5hEleSr98e+NLNryIe4W/yDoh2U8C63JT1VZRrmI6qVrBWaBnQvYaFKXYXbi/vkxhjbezCYlrahZr0=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781009176; c=relaxed/simple;
-	bh=fE3eZVBnWeB9ahFjyWgxpCCLEo11IT0jOjnbajak6Wk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Kkqmr552AkuXRAXtCpYq+MNf1H1zBgKSF33cmAgAzyy1eR+Wh2hvJUO3dwhaUf1HQ2/jS4LaQZ07PI0FDecln0wx4vglHB1vPCwN25291gX8/1QNU961Rp1ASTzm1d/ncsRoOXrKbCWhY4HdIy2S6pW1ww3sGsGlBz3yfqRTC4I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=MHOs6ZMS; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=whSOL94V; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rYpANsnI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0Mys4V4/; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F88341930D
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 13:08:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.50
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781010523; cv=pass; b=TNlICbFHtFdxKwnKR5c48a9A5vrav5et4LwXUtdEIXM/j228ZWmN/PMzFRuHNjLZ/W/0df2KV7Qm0BZw/l8na98AfLQtNCsHrzlTVx/xM6yFETGHNdu2PxhvBm2gbneX1imOX7gNK5wU03MC3dc+6Qe+KojOFn9sA5Ftmh7o1UE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781010523; c=relaxed/simple;
+	bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=arTxzpbNYmlT4Ds/bzKpPX132hBVvtNlFH7OXLqZv7/hSMw+5I2Y4qsenty6zUlRsc//3C5//Fb9KghHsbnyhH6Oh9n+qscPon52k3gzz9xzCjadh5pfWi59fxCcUpWErGG2ts2Wjc5TB7dTRMKjTVoS36zaf9wy0klJ+SYc27o=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=novlLNgo; arc=pass smtp.client-ip=209.85.218.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="MHOs6ZMS";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="whSOL94V";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rYpANsnI";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0Mys4V4/"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id A1CE96AC26;
-	Tue,  9 Jun 2026 12:46:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781009172; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lFjhoDkKfP9T+VfW5xMOmX7DwEy3VQJf66luBo3J/r0=;
-	b=MHOs6ZMStkF9YaD+6v5hMc7TVsl+9XDddefDEVPLxHcQuDGGdCpzfJrP6jRSnljSieOgSt
-	hj5HHHuBnHvBnFktBI/zPjVwSnzrCX3BUXXy6+Gdg1p/EX0AKJe96K1AUn3EaMuHhOGRgE
-	TVe3AsoFIDgSA5YeTg5owY76TiZ42hk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781009172;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lFjhoDkKfP9T+VfW5xMOmX7DwEy3VQJf66luBo3J/r0=;
-	b=whSOL94VCBdtHZEBt4Qni88O9OTtAFa6vEUTtYFUrityUui+YtM/NDeENa5iHuBilFu0UQ
-	y9tDYi9uPw6YsjDg==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781009168; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lFjhoDkKfP9T+VfW5xMOmX7DwEy3VQJf66luBo3J/r0=;
-	b=rYpANsnIJolYaU0YHWFyIgrzoma1o/or5n8MxgtYpjtbORTk1f77QSEd8VrQhEkB9Wg4O/
-	xIy3p/tv2rUDN0EPuy3SJjme842Q6hp+NauOuOyKXb1aZ90TU//smgY+TNccM85mjMAveB
-	2ehV3vPOHFH+52CTv9RXTDMmwz9PCVI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781009168;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=lFjhoDkKfP9T+VfW5xMOmX7DwEy3VQJf66luBo3J/r0=;
-	b=0Mys4V4/W7UTKRQiJr34LUrwsnzK5MAYXAZ23hZK35gU6ma0cahfMSIduTbzZWOKUk/Wky
-	GT4BibokhKZV4DAA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 93AD2779A7;
-	Tue,  9 Jun 2026 12:46:08 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id v0sEJBALKGqAaQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 09 Jun 2026 12:46:08 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 31E5EA0A90; Tue, 09 Jun 2026 14:46:04 +0200 (CEST)
-Date: Tue, 9 Jun 2026 14:46:04 +0200
-From: Jan Kara <jack@suse.cz>
-To: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Subject: Re: [PATCH v4] ext4: fix kernel BUG in ext4_write_inline_data_end
-Message-ID: <o3k4wongcbuacu4rjsb7h2utzsrhpnun55vzdnp46imnlbn5x6@matvyu6j2xhc>
-References: <20260609062005.1702-1-aditya.ansh182@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="novlLNgo"
+Received: by mail-ej1-f50.google.com with SMTP id a640c23a62f3a-becfa735b9aso744550066b.1
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Jun 2026 06:08:42 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1781010521; cv=none;
+        d=google.com; s=arc-20240605;
+        b=FTflQMO9JvnSLXxlDLxQa/VJ7ZioyLhjtjXuRusgwHZOmyJL+V9s8yeAgyU7BS6Gvo
+         RAjBkcIxlZQLD+6ImsRlSc5Omub1SQ5XtfVY3ZVgL/wFsenQn3/Pr2O5a81nkyau4ss9
+         ubUaqGL91nCQ3huLA4LgT8/YXamtUlp6iv/eQatGvlNT2y1GZnAPF6/l/SZzJa02kUdW
+         GCzOoc7KuGLGIfmOfFdT5kNgU18XwGKW50LWTjUcWr8DeqFBWa4sx05PXiPax4DZBGAi
+         CWt1Q0Pmij1vV/1+oboPj/X6ruGt4b81b6jiNoQXCssJmf+d6/9iBhhWGBZLkaxgl1W+
+         5ICA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
+        fh=advpllnjB1v6VtfZm+DJ3JJoxipbzrtEX2UX16wi6DY=;
+        b=P8JuZoMKhd34oeTaW6sqaK9kfHBlFPO9wa23hRLxl9iWRvjrgt/5XdWIc6C7V//ZlH
+         0WO5Vol+p8CXino9j121lMx+/zVi5g2VcCVPHjIlDkSdmuUQjDdmNYHszTY+vDr1O4Pe
+         wtcycDOrz40k6cE8zqlm3dU3/+OdlVDVl+NyaYAI6QxJYPGHCnYxD1QBg95lVDHK3Nr+
+         lT8fx/NPefI/YSJpG4GZuteQf54kVxEAkbYCWuKDWS4v8HoqKd6RJ6/V7we7ABKHMF/d
+         2vyeCftPhMs24qxK4Ibphi1D2D7J/xEes6vB0elUWYZ2U0W7zaOH9NLhnR6GYvoydPuJ
+         AqBg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1781010521; x=1781615321; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
+        b=novlLNgo139N4KYKWd1pLMmBRO5YQxLdpA9SedHTEsANokt8VN6MCWSRPznpkp597L
+         MX28AdtmdpzoWdBEcJyGBfynMLXa4lil5gZr7y2LpzTEEL9rCJJC43i+X+y7KgvUdAdJ
+         9pkBllI9dSAipMs7USpVv8nuODkypAjXJvfigtoZ3Lg9WrjS2UsORulK/c7vGF4u3+eF
+         eFvurU08Cg3deoGvMDIzxs44I6RiH8r5LQQxe/eU1ndO561c3RmMxwE+uo1LDg5bntT+
+         IiTybDXXOkXNKQ2svlMBBjYh7yAZJR0PUODNggRPvRvGem79ViQIwlSw5zLzQeLpLUKv
+         RPjA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1781010521; x=1781615321;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
+        b=sAtRD8JTk6TjbsMIhdYU8aHLkqExfj3IaQS9hyT9Zc8/u6CG7UVMxtxY0ITeSVmwTz
+         JfjQB4QTVyCgBiblsA2pVQkMX36eWperFxbx0ANO7YOPKa4FF6frpFQmoWGcH0n6vSA7
+         xAq25v3tl3O6QMpbfc26OaaxvdfVAsni5UAEJ7AIy3WPCju2PZzXOw/X9P1iYCC5P3+i
+         x/EW0wRn9hmI+xoLW7425fkFeExtVGi1WMUyA1c0mdqkt/PEEOI2gwFZVjNJkgjHAQlH
+         gcP5hmUD9fAn81V6pCOy+fdwuCQEpEuZ8rB7IhX89QY2ygw2f4JBpW6LpnRU4WGhaSdM
+         3WAg==
+X-Forwarded-Encrypted: i=1; AFNElJ/iD2UC1RXbIlReWLPNiEblO+Dg28toCyeT+5C7oMhUeMjjadTaAgjcvUZutpio/dKf6V3rD4AcWKG6@vger.kernel.org
+X-Gm-Message-State: AOJu0YzHBIoMNyg54hGx88JMLleIVVvGGtSOivvfcvYzWCH5voRBxeD2
+	uiX7dBACvWiNUcFXzQRInqbXmhCv7V4V1oyfIGp5yQMsJgnZIslQA2kARGjtYvWBk0CUC/kWow9
+	drbkDSRZGg1Ky9sbBoPq/HB3KLLCdFD8=
+X-Gm-Gg: Acq92OH1MLm0OJm4or4sd2z7j5Pcs6SG+3RzPFUvE5eQV99dFRdYYCV3VpjP6MZ8cjY
+	vxChaScboSEANp3miLWwKF6ULqquNa3T+Hrh++DywoyAGRskEmJuLfDNgfsTQgdlvmluCkXIdtl
+	l3q7NxVbKvwpt6ct+YUEDxadk3couct9TvC907FwGlbcx/rmkDaqSQXpT+HrzMrfL8Km74vz6Ea
+	B+CbZFVZIRz5NwxB0mCORTiulbSzLlOic+PDUickzNldROkel8+0QcLD8LFIf6zxm84W7FqZVhd
+	5xeZKOQ45T68aM+1RcqAOwq3LbzPBnuCHoDkzlvoDt+FpuezbQ==
+X-Received: by 2002:a17:907:3f07:b0:bdc:ac75:73b9 with SMTP id
+ a640c23a62f3a-bf373a032a0mr1102504066b.43.1781010520517; Tue, 09 Jun 2026
+ 06:08:40 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260609062005.1702-1-aditya.ansh182@gmail.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	URIBL_BLOCKED(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,iloc.bh:url];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[12];
-	TAGGED_RCPT(0.00)[0c89d865531d053abb2d];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,lists.linux.dev,vger.kernel.org,syzkaller.appspotmail.com];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,iloc.bh:url,syzkaller.appspot.com:url,appspotmail.com:email,suse.com:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+References: <20260609062005.1702-1-aditya.ansh182@gmail.com> <o3k4wongcbuacu4rjsb7h2utzsrhpnun55vzdnp46imnlbn5x6@matvyu6j2xhc>
+In-Reply-To: <o3k4wongcbuacu4rjsb7h2utzsrhpnun55vzdnp46imnlbn5x6@matvyu6j2xhc>
+From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+Date: Tue, 9 Jun 2026 18:38:27 +0530
+X-Gm-Features: AVVi8CfZC1RqwwBADreq6qsprBnJ703dxJwRvA8K-MP701ezqTH9LpeReoFjIWQ
+Message-ID: <CAK5ssPPArwEQyU1+icZXJMrd2zmkJwzOSov-0iQ+TVRpU-g9yw@mail.gmail.com>
+Subject: Re: [PATCH v4] ext4: fix kernel BUG in ext4_write_inline_data_end
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
+	sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, 
+	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue 09-06-26 06:20:05, Aditya Prakash Srivastava wrote:
-> When the data=journal mount option is used, the ext4_journalled_write_end()
-> function incorrectly calls ext4_write_inline_data_end() without checking
-> if the EXT4_STATE_MAY_INLINE_DATA flag is still set on the inode.
-> 
-> If a previous attempt to convert the inline data to an extent failed (e.g.
-> due to ENOSPC), the EXT4_STATE_MAY_INLINE_DATA flag is cleared, but
-> the EXT4_INODE_INLINE_DATA flag remains set. In this scenario, the next
-> call to ext4_write_begin() will not prepare the inline data xattr for
-> writing, but ext4_journalled_write_end() will incorrectly attempt to write
-> to it, triggering a BUG_ON(pos + len > EXT4_I(inode)->i_inline_size) in
-> ext4_write_inline_data() since i_inline_size was not expanded.
-> 
-> Additionally, two separate TOCTOU race conditions exist due to concurrent
-> ext4_page_mkwrite() execution:
-> 1) A concurrent ext4_page_mkwrite() can execute ext4_convert_inline_data()
-> between write_begin and write_end, clearing the inline flags. Since block
-> buffers were not allocated in write_begin, this results in a NULL pointer
-> dereference in the write_end fallback paths because folio_buffers(folio) is
-> NULL.
-> 2) If ext4_convert_inline_data() clears the flags exactly after the inline
-> flags checks pass in write_end, but before ext4_write_inline_data_end()
-> acquires the xattr semaphore, the subsequent check will hit a panic via
-> BUG_ON(!ext4_has_inline_data(inode)).
+Hi Jan,
 
-Yes, locking of inline data writes is broken (and difficult to fix). Your
-v1 patch was actually simple and obvious improvement of the situation.
-These additional fixes belong into separate patches.
+Thank you very much for the incredibly detailed review and the design
+insights!
 
-> Fix these issues completely by:
-> 1) Having write_end functions (ext4_write_end(),
-> ext4_journalled_write_end(), and ext4_da_do_write_end()) return 0
-> (VFS retry) if they fall through to the block fallback path and detect
-> that folio_buffers(folio) is NULL, after safely stopping any active
-> journal handle (protecting against a NULL handle panic in
-> ext4_put_nojournal()).
-> 2) Replacing BUG_ON(!ext4_has_inline_data(inode)) inside
-> ext4_write_inline_data_end() with a graceful error path. If the inline flag
-> is cleared after locking the xattr, we unlock the xattr, release the iloc,
-> unlock/put the folio, stop the journal, and return 0 to trigger a retry.
-> 
-> Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
-> Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
-> Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-> ---
-> v4:
->   - Address critical TOCTOU race condition (reported by Sashiko AI review):
->     * Scenario: A buffered write holds the folio lock and evaluates the inline
->       flags checks in write_end to true. Before it enters or locks the xattr_sem
->       in ext4_write_inline_data_end(), a concurrent memory-mapped page fault
->       (ext4_page_mkwrite()) converts the inline data to an extent. This page fault
->       bypasses the folio lock (since ext4_convert_inline_data() runs lockless),
->       acquires the xattr_sem, and clears the inline flags. When the buffered write
->       resumes and enters ext4_write_inline_data_end(), it acquires the xattr_sem
->       and immediately triggers BUG_ON(!ext4_has_inline_data(inode)) causing a
->       kernel panic.
->     * Fix: Replace the BUG_ON() with a graceful error-handling retry path that
->       releases all resources (locks/buffers/folios/journals) and returns 0.
-> v3:
->   - Fix journal handle leak and NULL handle crash (reported by Sashiko AI review):
->     * Scenario 1 (leak): During a delayed allocation write (ext4_da_write_begin),
->       inline data was prepared and a transaction handle started. If a concurrent
->       page fault converts the inline data before write_end, ext4_da_write_end()
->       falls through to ext4_da_do_write_end(). If the fallback check for
->       !folio_buffers(folio) returns 0 to retry without calling ext4_journal_stop(),
->       the transaction handle is leaked open-ended, eventually hanging the filesystem.
->     * Scenario 2 (crash): If we blindly call ext4_journal_stop() on a NULL handle
->       (e.g., when no transaction was started because we never took the inline path),
->       __ext4_journal_stop() delegates to ext4_put_nojournal(NULL) which triggers
->       BUG_ON(ref_cnt == 0), panicking the kernel.
->     * Fix: Retrieve the active handle in ext4_da_do_write_end() and stop it
->       if non-NULL. Also explicitly check "if (handle)" before calling
->       ext4_journal_stop() in ext4_write_end() and ext4_journalled_write_end().
-> v2:
->   - Address TOCTOU race condition (reported by Sashiko AI review):
->     * Scenario: A concurrent ext4_page_mkwrite() converts inline data to extents
->       and clears the flags between ext4_write_begin() and write_end(). The
->       write_end function falls through to the block fallback path. Since block
->       buffers were not allocated in write_begin (because it took the inline path),
->       folio_buffers(folio) is NULL, causing a NULL pointer dereference in
->       ext4_journalled_zero_new_buffers() or ext4_walk_page_buffers(), or silent
->       data loss in the standard write path.
->     * Fix: Have the write_end functions return 0 if folio_buffers(folio) is NULL,
->       triggering a safe VFS-level retry. On the next write attempt, the inline
->       flags will be detected as cleared, and blocks/buffers will be properly allocated.
->  fs/ext4/inline.c |  9 ++++++++-
->  fs/ext4/inode.c  | 24 ++++++++++++++++++++++--
->  2 files changed, 30 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index 8045e4ff270c..161136e84661 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -812,7 +812,14 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
->  			goto out;
->  		}
->  		ext4_write_lock_xattr(inode, &no_expand);
-> -		BUG_ON(!ext4_has_inline_data(inode));
-> +		if (unlikely(!ext4_has_inline_data(inode))) {
-> +			ext4_write_unlock_xattr(inode, &no_expand);
-> +			brelse(iloc.bh);
-> +			folio_unlock(folio);
-> +			folio_put(folio);
-> +			ext4_journal_stop(handle);
-> +			return 0;
-> +		}
+I completely agree with your suggestion. Rushing too many fixes for
+complex, concurrent race conditions into a single patch makes the
+code harder to review and risks introducing subtle regressions.
 
-This deserves a comment before the 'if' that we could have raced with
-ext4_page_mkwrite() converting the inode and so we just retry the whole
-write.
+Let's go ahead with the simple and straightforward v1 patch (which
+has your Reviewed-by) to fix the original syzbot crash for now.
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c2c2d6ac7f3d..bc2688e03c19 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1455,6 +1455,14 @@ static int ext4_write_end(const struct kiocb *iocb,
->  		return ext4_write_inline_data_end(inode, pos, len, copied,
->  						  folio);
->  
-> +	if (unlikely(!folio_buffers(folio))) {
-> +		folio_unlock(folio);
-> +		folio_put(folio);
-> +		if (handle)
-> +			ext4_journal_stop(handle);
-> +		return 0;
-> +	}
-> +
+I will take your excellent suggestion to use fsdata for state
+communication between write_begin and write_end, and I will work on
+formulating a separate, cleaner patch series in the future to
+address the remaining concurrent locking races you mentioned.
 
-Ouch, this is a crude hack. I think much cleaner solution would be for
-ext4_write_begin() to set in fsdata in what state it prepared the inode
-(inline, extent based) - we already use that mechanism to communicate some
-state for delayed allocations. Then ->write_end handler will use fsdata
-(not inode state) to determine what function to call. IMHO the code will be
-much more obvious that way.
+I will withdraw this v4 thread for now.
 
-> @@ -3231,7 +3248,10 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	if (unlikely(!folio_buffers(folio))) {
->  		folio_unlock(folio);
->  		folio_put(folio);
-> -		return -EIO;
-> +		handle = ext4_journal_current_handle();
-> +		if (handle)
-> +			ext4_journal_stop(handle);
-> +		return 0;
->  	}
->  	/*
->  	 * block_write_end() will mark the inode as dirty with I_DIRTY_PAGES
+Thanks again for your guidance!
 
-Huh, what is this about? It definitely looks very suspicious...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Best regards,
+Aditya Prakash Srivastava
