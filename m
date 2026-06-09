@@ -1,179 +1,180 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C514E378838
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:04:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31D862248BE
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:12:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781003081; cv=none; b=oXXsu84KC0OL49d+Wy5V1sfBOWou5ovkQhosQaLeuA6IqZQGa4MGltawUBKK0iOR/eAXxdFNxK+cw902Ad1xp8h24GUzbQkXAFfBITNJM5wD/qUOKg1Sd+bH5bKENp59EbiRGNJOh6UGocxMRyHDBYXhdFVPnJE1wxjpytYYqnM=
+	t=1781003535; cv=none; b=smq42vgi97bpcR93ut3CPbSRldkDlVHaozHLda/tmu+vL4hEMgjjcDYh7FcwcHVjoY4eNk9MFo8koFRmUVBsMdQkI7zJn8Ja5vcfngYXzvlnRDFdmHzT/o90hKB7LarBC+ZMzGxplOLB2Pg9zzT5YjPlyMyvuFLMYKx096XFJjA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781003081; c=relaxed/simple;
-	bh=etkUgiTgvahr8VblWwOlhbCBVBQk/raso/UZ69pxstg=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=UaNx/j1JQ8nRKnt9xchOzTEPNTtzQ9RYME58tQgQdIdMvFkCgCpuKVv0WPZC8c87X7l5LGSkZhDrqjREn62FKstdcddV/iPurZ2DSbvRXHOScQgssAAptPUG9WjNzKCNnHUhza906Q0IfeVLQHQN1gF5GQNK5vyZZa55aVR8BVA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=FmEssnns; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QtAGgGIg; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=FmEssnns; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QtAGgGIg; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="FmEssnns";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QtAGgGIg";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="FmEssnns";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QtAGgGIg"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 0E2F568029;
-	Tue,  9 Jun 2026 11:04:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781003078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
-	b=FmEssnnsdbkIzIq+JR2QsC+b836dUIqbnFuTQk1xGBRo+dwSbqox18JS7SDCF40MObqfWr
-	0qt7kZPyRBZmlcKyIBgkY+EaRyB/71CL0d6Q98bMLUYS3BduSeTDLWnMKil3nyJI0Lmct7
-	wALnRQk8IOefD92tir3x7JISJ3kmV8A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781003078;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
-	b=QtAGgGIg2gZGsqkoEKFISkSe2BsmCOl8S2GxG1PjHpSFIAut5nnFS9t2Hrn7f+4aI7Wsn9
-	VC5FDPfEpnAtbpCg==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781003078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
-	b=FmEssnnsdbkIzIq+JR2QsC+b836dUIqbnFuTQk1xGBRo+dwSbqox18JS7SDCF40MObqfWr
-	0qt7kZPyRBZmlcKyIBgkY+EaRyB/71CL0d6Q98bMLUYS3BduSeTDLWnMKil3nyJI0Lmct7
-	wALnRQk8IOefD92tir3x7JISJ3kmV8A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781003078;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
-	b=QtAGgGIg2gZGsqkoEKFISkSe2BsmCOl8S2GxG1PjHpSFIAut5nnFS9t2Hrn7f+4aI7Wsn9
-	VC5FDPfEpnAtbpCg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 05034779A7;
-	Tue,  9 Jun 2026 11:04:38 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id oBU1AUbzJ2oFAwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 09 Jun 2026 11:04:38 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A27D6A0A90; Tue, 09 Jun 2026 13:04:37 +0200 (CEST)
-Date: Tue, 9 Jun 2026 13:04:37 +0200
-From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, Sashiko <sashiko-bot@kernel.org>
-Subject: Re: [PATCH v2 2/3] ext4: reduce max cluster size to match documented
- 256MB limit
-Message-ID: <ef3fjehtaztdof6p5eojjn5kpx5s4pihc7fqyglwcpvhrskq5y@is2zyakfliku>
-References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
- <20260608111150.827117-3-libaokun@linux.alibaba.com>
+	s=arc-20240116; t=1781003535; c=relaxed/simple;
+	bh=YJ5yBrbkzoqM4V8UJOgvSKoVZqkH6NFXlovsWbsbbKk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=cG249ztOuq6iweBJerImqk26FJETnFzXF251B86/qCp+2EB0lGuUyf7YJOiWMV84vpWJbb6c5V2TQ9Z7UKdt2bMJRW640TBtnyxDLuc4nO+aCnqXgyYn+xJ0cnhTQcE4tt+BfYxm1JmK1k7uquk0OjwwR+CkH7jEN79vRZORm/I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gZR7T5HHszYQttp
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 19:11:49 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 7B4FF4058D
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 19:12:06 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgBXpzwD9SdqhZC0BA--.42871S3;
+	Tue, 09 Jun 2026 19:12:04 +0800 (CST)
+Message-ID: <5b155ff7-8a9a-4aa5-a672-9b4f91f0fd82@huaweicloud.com>
+Date: Tue, 9 Jun 2026 19:12:03 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260608111150.827117-3-libaokun@linux.alibaba.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	URIBL_BLOCKED(0.00)[alibaba.com:email,imap1.dmz-prg2.suse.org:helo,sashiko.dev:url,suse.com:email];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[alibaba.com:email,sashiko.dev:url,suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 2/3] ext4: reduce max cluster size to match documented
+ 256MB limit
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ Sashiko <sashiko-bot@kernel.org>
+References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
+ <20260608111150.827117-3-libaokun@linux.alibaba.com>
+ <06543725-5f38-4cac-9fdd-8a72cfb28f84@huaweicloud.com>
+ <d3afb165-49f7-4c7a-b110-95d6a94a8845@linux.alibaba.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <d3afb165-49f7-4c7a-b110-95d6a94a8845@linux.alibaba.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgBXpzwD9SdqhZC0BA--.42871S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxur15Aw1rGw4kZFW7ZrW8Zwb_yoWrCw45pF
+	W8tFyFqws8JFnrXFsFkwn2v34rK34xG34UJw4kXryI9rn0kryxKrsxKrya9F97Grs5J3Z0
+	vFWa9a4293s8ZFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij64vI
+	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
+	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
+	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUwxhLUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon 08-06-26 19:11:49, Baokun Li wrote:
-> The mke2fs man page documents:
+On 6/9/2026 5:43 PM, Baokun Li wrote:
+> On 2026/6/9 10:48, Zhang Yi wrote:
+>> Hi, Baokun!
 > 
->   Valid cluster-size values are from 2048 to 256M bytes per cluster.
+> Hi Yi,
 > 
-> but EXT4_MAX_CLUSTER_LOG_SIZE was set to 30 (1GB), allowing crafted
-> filesystem images to specify cluster sizes up to 1GB.
+> Thank you for you review!
 > 
-> On 32-bit systems with bigalloc enabled, the consistency check in
-> ext4_handle_clustersize():
+>> On 6/8/2026 7:11 PM, Baokun Li wrote:
+>>> The mke2fs man page documents:
+>>>
+>>>   Valid cluster-size values are from 2048 to 256M bytes per cluster.
+>> Hmm, I checked the mke2fs(8)[1] and didn't find this sentence, instead,
+>> it said:
+>>
+>>   Valid cluster-size values range from 2 to 32768 times the filesystem
+>>   block size and must be a power of 2.
 > 
->   s_blocks_per_group == s_clusters_per_group * (clustersize / blocksize)
+> Oh, I was indeed looking at a slightly older man page. It was changed to
+> the current description in commit 87cbb381f2e2 ("e2fsprogs:
+> misc/mke2fs.8.in: Correct valid cluster-size values").
 > 
-> can overflow when the cluster ratio is large enough. Since
-> s_blocks_per_group is not range-checked in the bigalloc path, the
-> wrapped product can pass the consistency check, leading to inconsistent
-> group geometry and potential out-of-bounds block allocation.
+> That commit assumes the number of blocks in a cluster cannot exceed the
+> maximum number of blocks that a single extent can hold
+> (EXT_INIT_MAX_LEN = 32768). I believe this is wrong — a single cluster
+> can be covered by multiple extents. So we should fix the bug in
+> ext_falloc_helper() rather than working around it by adding a
+> restriction to the documentation.
 > 
-> Reduce EXT4_MAX_CLUSTER_LOG_SIZE to 28 to match the documented 256MB
-> limit. With this cap, the maximum product is:
+> The root cause is in ext_falloc_helper():
 > 
->   (blocksize * 8) * (256M / blocksize) = 2^31
+>     max_uninit_len = EXT_UNINIT_MAX_LEN & ~EXT2FS_CLUSTER_MASK(fs);
+>     max_init_len = EXT_INIT_MAX_LEN & ~EXT2FS_CLUSTER_MASK(fs);
 > 
-> which fits safely in a 32-bit unsigned long for all block sizes.
+> When cluster_ratio >= EXT_INIT_MAX_LEN (32768), the `& ~CLUSTER_MASK`
+> operation zeroes out both values, causing ext2fs_new_range() to receive
+> len=0 and return EXT2_ET_INVALID_ARGUMENT.
 > 
-> Reported-by: Sashiko <sashiko-bot@kernel.org>
-> Closes: https://sashiko.dev/#/patchset/20260608061112.392391-1-libaokun%40linux.alibaba.com
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+> The kernel handles this correctly — ext4_ext_map_blocks() simply
+> truncates m_len to EXT_INIT_MAX_LEN and lets the caller loop.  On
+> subsequent iterations, get_implied_cluster_alloc() detects that the
+> requested block falls within an already-allocated cluster by examining
+> adjacent extents, and returns the physical address without allocating a
+> new cluster.
+> 
+> I'll send a patch to fix ext_falloc_helper() so that when
+> cluster_ratio >= EXT_INIT_MAX_LEN, the allocation loop can create
+> multiple extents within the same cluster — skipping ext2fs_new_range()
+> and claim_range() for mid-cluster iterations where the physical blocks
+> are already claimed.
+> 
+>>
+>> However, the implementation of mkfs does not seem to respect this
+>> constraint and instead directly uses static macros to limit the
+>> user-specified cluster size.
+>>
+>>   #define EXT2_MIN_BLOCK_LOG_SIZE         10      /* 1024 */
+>>   #define EXT2_MIN_CLUSTER_LOG_SIZE       EXT2_MIN_BLOCK_LOG_SIZE
+>>   #define EXT2_MAX_CLUSTER_LOG_SIZE       29      /* 512MB  */
+> 
+> I was going to set EXT2_MAX_CLUSTER_LOG_SIZE to 28 to align with the
+> kernel's EXT4_MAX_CLUSTER_LOG_SIZE.
+> 
+>>
+>> This is confusing, or perhaps I missed something. If I understand
+>> correctly, users can now format an image with a maximum cluster size of
+>> 512 MB (I tried it, and it worked).
+> 
+> 
+> Yes, a 512M cluster size also works correctly on the current kernel.
+> The upper limit on cluster size here is to avoid the 32-bit overflow issue
+> that Sashiko mentioned — theoretically the maximum could be 512M.
+> 
+> It's just that the old mke2fs documentation originally specified 256M as
+> the intended maximum, so both the kernel and e2fsprogs target 256M as the
+> upper limit. If anyone prefers 512M, I'm happy to change it.
+> 
+>>  If the kernel's
+>> EXT4_MAX_CLUSTER_LOG_SIZE is limited to 28, this would cause such
+>> existing images to become unmountable, even though I don't think images
+>> with such a large cluster size actually exist in practice. Therefore,
+>> I'm not sure this is safe.
+>>
+>> [1] https://man7.org/linux/man-pages/man8/mke2fs.8.html
+>>
+> 
+> I personally don't think such images are likely to exist in practice,
+> since formatting with the default 4K block size would already fail.
+> 
+> 
 
-I guess I'll leave it up to Ted to decide whether 28 or 29 in the right
-value. Both are fine with me if we are consistent with them :)
+FYI, I tried the following parameter:
 
-								Honza
+ # mkfs.ext4 -F -C 512M -O bigalloc,^has_journal /dev/sda
+ mke2fs 1.47.0 (5-Feb-2023)
 
-> ---
->  fs/ext4/ext4.h | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 94283a991e5c..11e41a864db8 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -334,7 +334,7 @@ struct ext4_io_submit {
->  #define	EXT4_MAX_BLOCK_SIZE		65536
->  #define EXT4_MIN_BLOCK_LOG_SIZE		10
->  #define EXT4_MAX_BLOCK_LOG_SIZE		16
-> -#define EXT4_MAX_CLUSTER_LOG_SIZE	30
-> +#define EXT4_MAX_CLUSTER_LOG_SIZE	28
->  #ifdef __KERNEL__
->  # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
->  #else
-> -- 
-> 2.43.7
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+ Warning: bigalloc file systems with a cluster size greater than
+ 16 times the block size is considered experimental
+ /dev/sda contains a ext4 file system
+         created on Tue Jun  9 07:01:10 2026
+ Creating filesystem with 39321600 4k blocks and 304 inodes
+
+ Allocating group tables: done
+ Writing inode tables: done
+ Writing superblocks and filesystem accounting information: done
+
+After this patch, the kernel refuse to mount this filesystem and complain:
+
+ EXT4-fs (sda): Invalid log cluster size: 19
+
+Thanks,
+Yi.
+
