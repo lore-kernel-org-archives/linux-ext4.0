@@ -1,87 +1,87 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7DB412BEC3F
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:00:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C514E378838
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:04:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781002850; cv=none; b=NeAeE30Ncay6jBu32NS4HTyngSUln0395yxg7wb9IPIgtqTM0w68b2Cjq7bi5K7poilMvhMDNU4gyVcc6D0nSGcPFcJW+QaLhydiH8xYICoo1FgHqKbEj3GR0ZLTnyQPSL41Uoen8nRLwjpREaeNtoBbJN0zU9fUqalJTtS1i3Q=
+	t=1781003081; cv=none; b=oXXsu84KC0OL49d+Wy5V1sfBOWou5ovkQhosQaLeuA6IqZQGa4MGltawUBKK0iOR/eAXxdFNxK+cw902Ad1xp8h24GUzbQkXAFfBITNJM5wD/qUOKg1Sd+bH5bKENp59EbiRGNJOh6UGocxMRyHDBYXhdFVPnJE1wxjpytYYqnM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781002850; c=relaxed/simple;
-	bh=zIZzeqr9P6G8A8Zitj/lqUomymBegRBUR8uA8grIOII=;
+	s=arc-20240116; t=1781003081; c=relaxed/simple;
+	bh=etkUgiTgvahr8VblWwOlhbCBVBQk/raso/UZ69pxstg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=OAWm6SCIVPY+y5I3EKVyHzI/JCWqXKE7VVRaqvjJ3LA08rQzgOP0YN3dEI1FfYmykiM3t5x3MkBiOuZStom5EDfW4FYhhX7KUyHCNT5x9tM9hwSO44llD0qrNgf7EssPmJZ1dM47v5HCo+Msxc1p4dizGc7Jrd8XdCspYB9TFkc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tuHMoZtk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2TROaznk; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tuHMoZtk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2TROaznk; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=UaNx/j1JQ8nRKnt9xchOzTEPNTtzQ9RYME58tQgQdIdMvFkCgCpuKVv0WPZC8c87X7l5LGSkZhDrqjREn62FKstdcddV/iPurZ2DSbvRXHOScQgssAAptPUG9WjNzKCNnHUhza906Q0IfeVLQHQN1gF5GQNK5vyZZa55aVR8BVA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=FmEssnns; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QtAGgGIg; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=FmEssnns; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QtAGgGIg; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tuHMoZtk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2TROaznk";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tuHMoZtk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2TROaznk"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="FmEssnns";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QtAGgGIg";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="FmEssnns";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QtAGgGIg"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id A1A9B6A97C;
-	Tue,  9 Jun 2026 11:00:47 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 0E2F568029;
+	Tue,  9 Jun 2026 11:04:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781002847; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781003078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sBusdAtNQHGcO5dvYdC26vXS439bb3hRj2MIL30dEdc=;
-	b=tuHMoZtkozG5pbxqtgbbyM6/0H+4IIdcqfST4HRBZKo7PaVz5Aa2eST5GhI5umYqCbKuiQ
-	jWi8+CiAarCosI+e06zW3q9nVhIStEXuJx3AEVh3b8hfiXy7jr5E5yyi1IzAZA9W3qQR3j
-	4VG/4Aj4e85W3DdD1B2ke0mE6EIeUUc=
+	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
+	b=FmEssnnsdbkIzIq+JR2QsC+b836dUIqbnFuTQk1xGBRo+dwSbqox18JS7SDCF40MObqfWr
+	0qt7kZPyRBZmlcKyIBgkY+EaRyB/71CL0d6Q98bMLUYS3BduSeTDLWnMKil3nyJI0Lmct7
+	wALnRQk8IOefD92tir3x7JISJ3kmV8A=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781002847;
+	s=susede2_ed25519; t=1781003078;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sBusdAtNQHGcO5dvYdC26vXS439bb3hRj2MIL30dEdc=;
-	b=2TROaznkySzLZm0od/rQOs/zU3gr5UWzkaflLE+Z+EbMNqkwhoPCbuvu9Qo1b6HEFVX4GK
-	SCcgERsWmD7zh6Ag==
-Authentication-Results: smtp-out1.suse.de;
+	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
+	b=QtAGgGIg2gZGsqkoEKFISkSe2BsmCOl8S2GxG1PjHpSFIAut5nnFS9t2Hrn7f+4aI7Wsn9
+	VC5FDPfEpnAtbpCg==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781002847; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781003078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sBusdAtNQHGcO5dvYdC26vXS439bb3hRj2MIL30dEdc=;
-	b=tuHMoZtkozG5pbxqtgbbyM6/0H+4IIdcqfST4HRBZKo7PaVz5Aa2eST5GhI5umYqCbKuiQ
-	jWi8+CiAarCosI+e06zW3q9nVhIStEXuJx3AEVh3b8hfiXy7jr5E5yyi1IzAZA9W3qQR3j
-	4VG/4Aj4e85W3DdD1B2ke0mE6EIeUUc=
+	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
+	b=FmEssnnsdbkIzIq+JR2QsC+b836dUIqbnFuTQk1xGBRo+dwSbqox18JS7SDCF40MObqfWr
+	0qt7kZPyRBZmlcKyIBgkY+EaRyB/71CL0d6Q98bMLUYS3BduSeTDLWnMKil3nyJI0Lmct7
+	wALnRQk8IOefD92tir3x7JISJ3kmV8A=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781002847;
+	s=susede2_ed25519; t=1781003078;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sBusdAtNQHGcO5dvYdC26vXS439bb3hRj2MIL30dEdc=;
-	b=2TROaznkySzLZm0od/rQOs/zU3gr5UWzkaflLE+Z+EbMNqkwhoPCbuvu9Qo1b6HEFVX4GK
-	SCcgERsWmD7zh6Ag==
+	bh=nTJ4i2+8lkkrLPf4NrMDCRIylkF9+Qrbf1eg0q8cUN4=;
+	b=QtAGgGIg2gZGsqkoEKFISkSe2BsmCOl8S2GxG1PjHpSFIAut5nnFS9t2Hrn7f+4aI7Wsn9
+	VC5FDPfEpnAtbpCg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 973D4779A7;
-	Tue,  9 Jun 2026 11:00:47 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 05034779A7;
+	Tue,  9 Jun 2026 11:04:38 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id VoXqJF/yJ2qcfgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 09 Jun 2026 11:00:47 +0000
+	id oBU1AUbzJ2oFAwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 09 Jun 2026 11:04:38 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3BD17A0A90; Tue, 09 Jun 2026 13:00:43 +0200 (CEST)
-Date: Tue, 9 Jun 2026 13:00:43 +0200
+	id A27D6A0A90; Tue, 09 Jun 2026 13:04:37 +0200 (CEST)
+Date: Tue, 9 Jun 2026 13:04:37 +0200
 From: Jan Kara <jack@suse.cz>
 To: Baokun Li <libaokun@linux.alibaba.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
 	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
 	ritesh.list@gmail.com, Sashiko <sashiko-bot@kernel.org>
-Subject: Re: [PATCH v2 3/3] ext4: reject mount if inodes per group is not a
- multiple of inodes per block
-Message-ID: <m77rk2zvnkvinh3a3uwlhklvdekswegyc2tcwaccgflgqg4wdd@eesjsul5oddc>
+Subject: Re: [PATCH v2 2/3] ext4: reduce max cluster size to match documented
+ 256MB limit
+Message-ID: <ef3fjehtaztdof6p5eojjn5kpx5s4pihc7fqyglwcpvhrskq5y@is2zyakfliku>
 References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
- <20260608111150.827117-4-libaokun@linux.alibaba.com>
+ <20260608111150.827117-3-libaokun@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,7 +90,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260608111150.827117-4-libaokun@linux.alibaba.com>
+In-Reply-To: <20260608111150.827117-3-libaokun@linux.alibaba.com>
 X-Spam-Flag: NO
 X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
@@ -108,7 +108,7 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	MIME_TRACE(0.00)[0:+];
 	RCPT_COUNT_SEVEN(0.00)[9];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	URIBL_BLOCKED(0.00)[alibaba.com:email,suse.cz:email,sashiko.dev:url,suse.com:email,imap1.dmz-prg2.suse.org:helo];
+	URIBL_BLOCKED(0.00)[alibaba.com:email,imap1.dmz-prg2.suse.org:helo,sashiko.dev:url,suse.com:email];
 	FROM_HAS_DN(0.00)[];
 	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,kernel.org];
 	RCVD_COUNT_THREE(0.00)[3];
@@ -116,50 +116,61 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[sashiko.dev:url,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email,alibaba.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[alibaba.com:email,sashiko.dev:url,suse.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Level: 
 X-Spam-Score: -2.30
 
-On Mon 08-06-26 19:11:50, Baokun Li wrote:
-> If s_inodes_per_group is not a multiple of s_inodes_per_block, the
-> division that computes s_itb_per_group truncates, reserving fewer blocks
-> for the inode table than needed.
+On Mon 08-06-26 19:11:49, Baokun Li wrote:
+> The mke2fs man page documents:
 > 
-> On a crafted filesystem image, this allows __ext4_get_inode_loc() to
-> compute a block offset beyond the inode table, reading unrelated data as
-> an inode structure.
+>   Valid cluster-size values are from 2048 to 256M bytes per cluster.
 > 
-> Add the missing divisibility check alongside the existing validation in
-> ext4_block_group_meta_init().
+> but EXT4_MAX_CLUSTER_LOG_SIZE was set to 30 (1GB), allowing crafted
+> filesystem images to specify cluster sizes up to 1GB.
+> 
+> On 32-bit systems with bigalloc enabled, the consistency check in
+> ext4_handle_clustersize():
+> 
+>   s_blocks_per_group == s_clusters_per_group * (clustersize / blocksize)
+> 
+> can overflow when the cluster ratio is large enough. Since
+> s_blocks_per_group is not range-checked in the bigalloc path, the
+> wrapped product can pass the consistency check, leading to inconsistent
+> group geometry and potential out-of-bounds block allocation.
+> 
+> Reduce EXT4_MAX_CLUSTER_LOG_SIZE to 28 to match the documented 256MB
+> limit. With this cap, the maximum product is:
+> 
+>   (blocksize * 8) * (256M / blocksize) = 2^31
+> 
+> which fits safely in a 32-bit unsigned long for all block sizes.
 > 
 > Reported-by: Sashiko <sashiko-bot@kernel.org>
 > Closes: https://sashiko.dev/#/patchset/20260608061112.392391-1-libaokun%40linux.alibaba.com
 > Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+I guess I'll leave it up to Ted to decide whether 28 or 29 in the right
+value. Both are fine with me if we are consistent with them :)
 
 								Honza
 
 > ---
->  fs/ext4/super.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+>  fs/ext4/ext4.h | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3ddcb4a8d4db..5ec9e1ef00c0 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5306,7 +5306,8 @@ static int ext4_block_group_meta_init(struct super_block *sb, int silent)
->  	}
->  	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
->  	    sbi->s_inodes_per_group > sb->s_blocksize * 8 ||
-> -	    sbi->s_inodes_per_group & 7) {
-> +	    sbi->s_inodes_per_group & 7 ||
-> +	    sbi->s_inodes_per_group % sbi->s_inodes_per_block) {
->  		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu",
->  			 sbi->s_inodes_per_group);
->  		return -EINVAL;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a991e5c..11e41a864db8 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -334,7 +334,7 @@ struct ext4_io_submit {
+>  #define	EXT4_MAX_BLOCK_SIZE		65536
+>  #define EXT4_MIN_BLOCK_LOG_SIZE		10
+>  #define EXT4_MAX_BLOCK_LOG_SIZE		16
+> -#define EXT4_MAX_CLUSTER_LOG_SIZE	30
+> +#define EXT4_MAX_CLUSTER_LOG_SIZE	28
+>  #ifdef __KERNEL__
+>  # define EXT4_BLOCK_SIZE(s)		((s)->s_blocksize)
+>  #else
 > -- 
 > 2.43.7
 > 
