@@ -1,104 +1,126 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-1-111.ptr.blmpb.com (va-1-111.ptr.blmpb.com [209.127.230.111])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20EB9370D44
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 03:33:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01D5535E925
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 03:52:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.111
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780976021; cv=none; b=gIFdAeY/1V8jvC4skAX9RQ5WCDDv/YzbBxFPUCBjcgwBR8UZkM0ITEyF0+uD+7hKoD2KGCvPntkufbG+AxRjlGvApyWTsxVUQbueQ5i+ggWkp6NsrRrR/z9e6ErDEF3u2pNCVZwEFYUyp9zsBx0TV9vBydhWBB8lr07449pZ6Y0=
+	t=1780977137; cv=none; b=G2auFML+5hm4Vbe6WdXuYdf9OGVBaCkUOm+0gryU3usVft0mgqoD2bgeogzRmIV0mPISsG8J5doNtPNVHWE/zUlEbroEVhRncaG0emeF2BAzAUqcck0PEgse4n4a/SLQA5IMuVVs+r7I4Ot60GiZJCvwdnaC2gvrAo4T82XGHXU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780976021; c=relaxed/simple;
-	bh=wYixzlbK3N5pUlIu7aXX20rOYApz4HC3YC2T7FGXcCA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=tQT9Tf3qi4Z3wRo4AR+qukh6TGAI69N2nJzvBMXBx0+b3fJmnOiUAnYyhs8RRfNfNMu1u3+OoAIL7RdYAT7qQAxBc1BpWEto40ycn1aD+MzRaI+a9CTSp4hOBV0n1JZq9m5o2c0yNNCR4Kpai+kqik3KBfnMJMBbrNTBckugiVw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gZDy05FMBzKHLvY
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:32:56 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id A15C840574
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 11:33:31 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgAXGj+IiSdqIhWOBA--.63111S3;
-	Tue, 09 Jun 2026 11:33:30 +0800 (CST)
-Message-ID: <930f4453-d4ab-4d8f-9d17-73073efcaaa8@huaweicloud.com>
-Date: Tue, 9 Jun 2026 11:33:28 +0800
+	s=arc-20240116; t=1780977137; c=relaxed/simple;
+	bh=hdSVW6bl8+h5i6KnjDI3UWtf5kZ5kcQDkOrWk0z4KKs=;
+	h=From:Subject:To:Mime-Version:Date:Content-Type:Cc:Message-Id; b=ju/wkNUgY+nAUGmf6vHwSGjyMKmh4g4ukyzUEEt4GJzNkLyuKne0DQMYAB1EyyyrVvZTNA7/xr3QEblXC+1OW92y7TiKXtRaYZ5RFxh4hqRbaVusNDl7o5CHn457SfC9RykTNgkLiWIVKvWavoVvZNVoFht24AGcR+C1qPLAhos=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=b8or/2rz; arc=none smtp.client-ip=209.127.230.111
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="b8or/2rz"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1780977129; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=3OgIEj2yUui+EzX4hPJghiUVKL6AAFLi2lczr6j1EMo=;
+ b=b8or/2rzrG0eV6jeyCVrs2+RSpr8UPuWjTe6rUTfRwkGaY4LPznbQ9rl4ESK9uUj5ruPcy
+ 0nJosWBPP+YLaXqJ3rWn90rRs18L8DVX/MtzbK2kt7GLAn0hd7W1GSIKYSuWPkP0+H0Bq3
+ PxGvapGe9kpXWxJVpuDZFOtSzGQCUuarc7++8UlhTzsB+RyLle++rpkr15j+1sR2Aboxzg
+ t47mwMrE2Swr4MK+rGP/Xw6EfjMKygGiivm0x7dV0YLAOzvysyznz+cDhaPBLfHfHFLGxE
+ Q59OsOT/tqt6GwLwCXmYAzB889u0TTzMmN+FfUN+PzvPuLi9StZW2ZiMP8Lc1w==
+From: "Jia Zhu" <zhujia.zj@bytedance.com>
+Subject: [PATCH v3 0/2] ext4: avoid tail walks for cached large-folio writes
+To: "Theodore Ts'o" <tytso@mit.edu>, 
+	"Andreas Dilger" <adilger.kernel@dilger.ca>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 3/3] ext4: reject mount if inodes per group is not a
- multiple of inodes per block
-To: Baokun Li <libaokun@linux.alibaba.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- Sashiko <sashiko-bot@kernel.org>
-References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
- <20260608111150.827117-4-libaokun@linux.alibaba.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260608111150.827117-4-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
+Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgAXGj+IiSdqIhWOBA--.63111S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7tFWkGryUGr1fArWDArWDArb_yoW8XrWfpa
-	n7CF1xur1rWryq9a1kCrWIvF1Ig3WkKa17GryxZr18GrW2q340qrs5t3WjkFsFqaykZr1S
-	q3WI9rW7Za48J37anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1veHDUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Date: Tue,  9 Jun 2026 11:52:00 +0800
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Content-Type: text/plain; charset=UTF-8
+X-Lms-Return-Path: <lba+26a278de7+cb8082+vger.kernel.org+zhujia.zj@bytedance.com>
+Cc: "Matthew Wilcox" <willy@infradead.org>, 
+	"Alexander Viro" <viro@zeniv.linux.org.uk>, 
+	"Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>, 
+	"Baokun Li" <libaokun@linux.alibaba.com>, 
+	"Ojaswin Mujoo" <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani" <ritesh.list@gmail.com>, 
+	"Zhang Yi" <yi.zhang@huawei.com>, <linux-ext4@vger.kernel.org>, 
+	<linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>, 
+	"Jia Zhu" <zhujia.zj@bytedance.com>
+Message-Id: <20260609035202.90669-1-zhujia.zj@bytedance.com>
+X-Original-From: Jia Zhu <zhujia.zj@bytedance.com>
 
-On 6/8/2026 7:11 PM, Baokun Li wrote:
-> If s_inodes_per_group is not a multiple of s_inodes_per_block, the
-> division that computes s_itb_per_group truncates, reserving fewer blocks
-> for the inode table than needed.
-> 
-> On a crafted filesystem image, this allows __ext4_get_inode_loc() to
-> compute a block offset beyond the inode table, reading unrelated data as
-> an inode structure.
-> 
-> Add the missing divisibility check alongside the existing validation in
-> ext4_block_group_meta_init().
-> 
-> Reported-by: Sashiko <sashiko-bot@kernel.org>
-> Closes: https://sashiko.dev/#/patchset/20260608061112.392391-1-libaokun%40linux.alibaba.com
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+Hi,
 
-Looks good to me.
+This series addresses a buffered-write regression we found during our
+v6.12 -> v6.18 LTS upgrade testing on ext4.
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+The regression is in the remaining buffer_head path.  A small overwrite
+of an already cached, uptodate large folio still walks every buffer_head
+attached to the folio in both write_begin and write_end.  With order-0
+folios this was bounded by the page size.  After ext4 enabled large
+folios for regular files, the same loops became proportional to the
+folio size.
 
-> ---
->  fs/ext4/super.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 3ddcb4a8d4db..5ec9e1ef00c0 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5306,7 +5306,8 @@ static int ext4_block_group_meta_init(struct super_block *sb, int silent)
->  	}
->  	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
->  	    sbi->s_inodes_per_group > sb->s_blocksize * 8 ||
-> -	    sbi->s_inodes_per_group & 7) {
-> +	    sbi->s_inodes_per_group & 7 ||
-> +	    sbi->s_inodes_per_group % sbi->s_inodes_per_block) {
->  		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu",
->  			 sbi->s_inodes_per_group);
->  		return -EINVAL;
+I agree that converting ext4 buffered I/O to iomap is the right long-term
+direction, and that would avoid this problem.  This series is meant as a
+small fix for current and LTS kernels that still use the buffer_head path.
 
+Patch 1 follows Willy's suggestion for block_commit_write(): if the folio
+was already uptodate on entry, stop the commit walk once the copied range
+has been processed.
+
+Patch 2 applies the same conservative shape to ext4_block_write_begin().
+It keeps walking from the first buffer, so prefix buffer state handling is
+unchanged, and only skips the suffix for folios that were already
+uptodate on entry.
+
+The workload is from libMicro, which we use in kernel release testing:
+
+  https://github.com/rzezeski/libMicro
+
+The table below includes the v6.12 baseline from the same release
+benchmark.  The v6.12 and v6.18 columns were run with THP=always.  The
+last column is v6.18 with this series applied.  Results are usecs/call,
+lower is better, and the improvement is relative to unpatched v6.18.
+
+case           v6.12    v6.18   v6.18 + series   improvement
+write_u1k      0.609    4.659       0.528           88.7%
+write_u10k     1.408    4.869       0.809           83.4%
+pwrite_u1k     0.609    4.659       0.538           88.5%
+pwrite_u10k    1.399    4.889       0.819           83.2%
+writev_u1k     2.238    5.277       1.179           77.7%
+writev_u10k   11.057    8.029       4.219           47.5%
+
+For the cases that regressed from v6.12 to v6.18 in this test, this
+series brings the v6.18 numbers back below the v6.12 cost.
+
+Previous versions:
+v2:
+  https://lore.kernel.org/r/20260608120131.45146-1-zhujia.zj@bytedance.com
+v1:
+  https://lore.kernel.org/r/20260603134800.25155-1-zhujia.zj@bytedance.com
+
+Changes since v2:
+- simplify the ext4 loop condition as suggested by Jan;
+- add Reviewed-by tags from Jan;
+- add stable Cc tags.
+
+Changes since v1:
+- replace the ext4 seek-to-@from optimization with a conservative tail
+  break that preserves prefix buffer handling;
+- add the block_commit_write() tail break suggested by Willy;
+- add v6.12 and v6.18 benchmark results for the full series.
+
+Jia Zhu (2):
+  fs/buffer: avoid tail commit walk for uptodate folios
+  ext4: avoid tail write_begin walk for uptodate folios
+
+ fs/buffer.c     |  3 +++
+ fs/ext4/inode.c | 11 ++++++-----
+ 2 files changed, 9 insertions(+), 5 deletions(-)
+
+-- 
+2.20.1
