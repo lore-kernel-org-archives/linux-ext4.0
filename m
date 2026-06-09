@@ -1,149 +1,142 @@
-Received: from mail-oi1-f205.google.com (mail-oi1-f205.google.com [209.85.167.205])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9D4963E9F95
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 08:13:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.205
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F03A622423A;
+	Tue,  9 Jun 2026 08:40:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780992813; cv=none; b=b1UwtMNuc8AyfnXTTk5CvO1PDsh8Vac8rQIS3/5JatxPyb/xFDnz+sX/wz4fV3o8TiKi2y6DI2ucQeO/9VfkLsTrTLk1s41WXxtRUqTN9XnIZNlhCKcZZaQOwbXsJT2FX3Fwo49ZE8qJcA2OZpczPou4eqMmKyhFrG4/CkSTX3g=
+	t=1780994460; cv=none; b=kRkpqqfgCFmLcEx8WKwvDpgQAcnUaH8ICdZ8XrUAEfNbys3sntXVyWLK/Seqf+QAOjycrautOk/2ZrZi8LPPpvp21Hq+n7RJgN3u7P2dW94SiEaB6bOaxXrae5zeljmB8Qe9ctQZugHqxpFqSfhBsGllPFe69dk4R6+/GpIWQ8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780992813; c=relaxed/simple;
-	bh=n5hyP3LVHyRUQkbvS5A24VNqYIm2kjdagQ9KAMVnHCc=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=jO6glwZbGkuBARvbTbHkQvMDoZsm9Amu/wuwY7At0DSrT13r2gt3fJlQmoalut3MyMgPofrM0jEFvZp60VHFa7+xkycer6iLEDRvtCwO/xshWAInMSNOFAfAigEw0ZENPi60LexQ1oiqu1XgYzwPT5aBNPQZezqMBpXSrwJfci8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.205
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f205.google.com with SMTP id 5614622812f47-4865626337fso4826112b6e.2
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Jun 2026 01:13:31 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780992810; x=1781597610;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=3eq3WMalkM9GMlydsQkwRqIOwz/Njz7Td6cqXUE8VZU=;
-        b=KHfoMhOfXv+C17Kt28RKCrpL/2IgOPt0dWcVZsRsiI2/jLx60owQ1IbvifDKj4M0DU
-         nEPWYg8fQZ8yJI2L/VhaTuFKknad1XBJTf5Ee8UYT7V0pG4FpABVFsfpp2GYwhdODapO
-         CguuBFtpv7B/bn4IX+shN7IcPHSj5njoLAEoxnP0CHXGstRI/x9sXPJHHxMhqOjZPxjq
-         NpwRdUncote9bK57NktDitch0TQ/tQ6Q/TGWtFFcecQ+Yay3rKpHMM1N9fg59ZPOob8E
-         nRm2GX/bGJdFKW2dEHU8x+ONNWlKxKdmwWIe6bYLK18b1g6IyFlfIAC5VPjMJ5KqcEoK
-         N1mg==
-X-Forwarded-Encrypted: i=1; AFNElJ/pAuYsQnSBt9VnENuN47Ua0v4MdvBesF7DKKK8XGP4C1pGOSKXdV2q5jbyFkAhN65Uoytn+i9M87Wp@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy0dPOlgZbSTauNpJ38fa90pQ+Ai01gjqI8ZHamcE2NcSNCFsBG
-	b0/DmP1T7AmPOjQ5UqycuRElK17dGMLpybwg0r5JqFbkFwJufy33GPZ70ECxQyQpPb7N417Jfpj
-	neuo10bTSO11Gu/6g3fBa6MKVTyjO2H8idVCkkMsMN0eGK0bi8KFthx7xAmM=
+	s=arc-20240116; t=1780994460; c=relaxed/simple;
+	bh=3CvKZcMjo8H65x99mYmnk4KR29HYklIHPgWJf2U6+N4=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=fzkQ5IChTdJGT9mmJKSb/o7SXJTrbP9dpz12JQqkjkJD+AQdqL/pSMGxMcVyXfyN61EPJk4/qsJ3fgZlBt29aLzPnfTSDcttj7w1gOvmGODb7NNACg+5yx6Iv3rNYw6CYzuV5vOtluRgO8zzjjt2Kfz/UQce9H9ht69WbysI9/s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=GLCP89go; arc=none smtp.client-ip=205.220.178.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="GLCP89go"
+Received: from pps.filterd (m0250812.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6597xJrh1939008;
+	Tue, 9 Jun 2026 08:40:12 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:message-id:mime-version:subject:to; s=PPS06212021; bh=+iBGZs1MN
+	Dp8B/04ZrI7WmJq+squVS9WGmMyKzP7n1A=; b=GLCP89goKa9katY79hIEJAEOr
+	AQ9e7CF32GZ2aCN7SEnCMo7JafCxOy8uU18W9gznO1kn0DyK6RXpfrSK+N6rna4O
+	BxqTvWvvNiKWkjJYODjwm2a4p0NSklhyFDaYdLTC5i/5e7bcIN6rpmDZ8NPjKBtM
+	T4pZcWPejMBEU6IqL87sDjsT0Qq+gBhuCGQ8nPxfNw3EAP4FRfT4UV2YvID4YbNm
+	FKGd7DrAx0Om2hOBsfRRYzFVvwg5B2lBGrjmL8kYSgDRykAGrrywkL26vrVMN2GJ
+	nalG2p2bNtwPSFcQQHgLIDcHjTve9rgFcK+q8cLUk18rWse2Foeq6/SOmkIhg==
+Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4emah7c5tv-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Tue, 09 Jun 2026 08:40:12 +0000 (GMT)
+Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Tue, 9 Jun 2026 01:40:11 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Tue, 9 Jun 2026 01:40:08 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windriver.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH] ext4: fix circular lock dependency in ext4_ext_migrate
+Date: Tue, 9 Jun 2026 16:40:07 +0800
+Message-ID: <20260609084007.3432061-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:8591:20b0:69e:41d8:f7e3 with SMTP id
- 006d021491bc7-69e68c18c94mr7773663eaf.38.1780992810614; Tue, 09 Jun 2026
- 01:13:30 -0700 (PDT)
-Date: Tue, 09 Jun 2026 01:13:30 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a27cb2a.39669fcc.33b062.008b.GAE@google.com>
-Subject: [syzbot] [ext4?] kernel BUG in ext4_write_inline_data (5)
-From: syzbot <syzbot+53c8bd6136cfbe85197e@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
-	tytso@mit.edu, yi.zhang@huawei.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjA5MDA4MCBTYWx0ZWRfX1gnuhLii73nL
+ F0hxBXrK4P6v48AOUDHcsvTGT4G3b1AeJMfE2kVviy0UYD/d5YmzqKzKPHjmSvDzo6RhITlOjC5
+ n0QerhljH4nUQGw8UdHP1mKhX8zzzYyuTqgqlLo2cFSE4bS53kUtYezopZnU8b1Ejp0bpaUDOaL
+ tlRazEouBHlKTMru7xj3YZJWsfkpAbxy1NxDIJGH0Q+Biu9t7m0JzpB+BgliefOWJWXsyAgsVMU
+ jKhXrTzSBbhKjNdqIhW8rrTFVs1m9ss1Vp4hL/vFD8vVyfq+nAal5wJ/hMA2MWju722oW6Y6yLB
+ LCxWqlIZJa/yPqt8elnCOLFeObbcgGrncS+f9f2Z8u9F5XVQD526qxxWQYYlDU98lz96KB+2NJi
+ kzCw3A8LKQoUt4PeQ0ii5dpQLVf+aGilZ9Nz2QMHTxGX9th6MFa1GvLt4VSHD4B+7DSbkQB4TZm
+ +lSEmFF9ouFzZl8Jizw==
+X-Proofpoint-GUID: QoRF62_cE5qdfTgxxKroKMBegq9V_KOe
+X-Authority-Analysis: v=2.4 cv=NbDWEWD4 c=1 sm=1 tr=0 ts=6a27d16c cx=c_pps
+ a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=fTW__CHxibyLmBMfj2wP:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=y7x6ovvD-WywBiYXLLAA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-ORIG-GUID: QoRF62_cE5qdfTgxxKroKMBegq9V_KOe
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-09_02,2026-06-09_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ impostorscore=0 spamscore=0 clxscore=1011 phishscore=0 lowpriorityscore=0
+ priorityscore=1501 adultscore=0 bulkscore=0 suspectscore=0 malwarescore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606090080
 
-Hello,
+Move iput(tmp_inode) after ext4_writepages_up_write() to avoid a
+circular lock dependency between s_writepages_rwsem and sb_internal
+(freeze protection).
 
-syzbot found the following issue on:
+The deadlock scenario:
 
-HEAD commit:    9154c4af7829 Merge tag 'mmc-v7.1-rc3' of git://git.kernel...
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=161d8f2e580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=bd38685893011045
-dashboard link: https://syzkaller.appspot.com/bug?extid=53c8bd6136cfbe85197e
-compiler:       Debian clang version 21.1.8 (++20251221033036+2078da43e25a-1~exp1~20251221153213.50), Debian LLD 21.1.8
+  CPU0 (EXT4_IOC_MIGRATE)        CPU1 (orphan cleanup during mount)
+  ----                           ----
+  ext4_ext_migrate()
+    ext4_writepages_down_write()
+      s_writepages_rwsem (write)
+                                 ext4_evict_inode()
+                                   sb_start_intwrite()   [sb_internal]
+                                   ...
+                                     ext4_writepages()
+                                       s_writepages_rwsem (read) [BLOCKED]
+    iput(tmp_inode)
+      ext4_evict_inode()
+        sb_start_intwrite()         [BLOCKED]
 
-Unfortunately, I don't have any reproducer for this issue yet.
+The tmp_inode is a temporary inode with nlink=0 created solely for
+building the extent tree.  Its eviction does not require
+s_writepages_rwsem protection, so deferring iput() until after
+releasing the rwsem is safe.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/d4d939a8f4d3/disk-9154c4af.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/6fd4009d5e57/vmlinux-9154c4af.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/d924d24cd0a4/bzImage-9154c4af.xz
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+53c8bd6136cfbe85197e@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inline.c:240!
-Oops: invalid opcode: 0000 [#1] SMP KASAN PTI
-CPU: 1 UID: 0 PID: 6427 Comm: syz.2.110 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 05/09/2026
-RIP: 0010:ext4_write_inline_data+0x43c/0x440 fs/ext4/inline.c:240
-Code: c1 38 c1 0f 8c 19 ff ff ff 48 89 df 49 89 d7 e8 7a 1f b0 ff 4c 89 fa e9 06 ff ff ff e8 3d f2 48 ff 90 0f 0b e8 35 f2 48 ff 90 <0f> 0b 66 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 0f 1f
-RSP: 0000:ffffc9000d34f808 EFLAGS: 00010293
-RAX: ffffffff827b79eb RBX: 0000000000002cf3 RCX: ffff88803ec71ec0
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-RBP: ffff88804391b8fa R08: 0000000000000000 R09: 0000000000000000
-R10: dffffc0000000000 R11: ffffed100bc12881 R12: 000000000000003c
-R13: ffffc9000d34f8e0 R14: 0000000000002cf2 R15: ffff88804391b1e8
-FS:  00007f7639c7d6c0(0000) GS:ffff888126283000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000200000000813 CR3: 000000003cc4a000 CR4: 00000000003526f0
-Call Trace:
- <TASK>
- ext4_write_inline_data_end+0x332/0xaf0 fs/ext4/inline.c:825
- generic_perform_write+0x5f7/0x8b0 mm/filemap.c:4346
- ext4_buffered_write_iter+0xd0/0x3a0 fs/ext4/file.c:316
- ext4_file_write_iter+0x299/0x1c10 fs/ext4/file.c:-1
- new_sync_write fs/read_write.c:595 [inline]
- vfs_write+0x629/0xba0 fs/read_write.c:688
- ksys_pwrite64 fs/read_write.c:795 [inline]
- __do_sys_pwrite64 fs/read_write.c:803 [inline]
- __se_sys_pwrite64 fs/read_write.c:800 [inline]
- __x64_sys_pwrite64+0x19c/0x230 fs/read_write.c:800
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f763ba4ce59
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f7639c7d028 EFLAGS: 00000246 ORIG_RAX: 0000000000000012
-RAX: ffffffffffffffda RBX: 00007f763bcc6090 RCX: 00007f763ba4ce59
-RDX: 0000000000000001 RSI: 0000200000000140 RDI: 0000000000000004
-RBP: 00007f763bae2d6f R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000002cf2 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f763bcc6128 R14: 00007f763bcc6090 R15: 00007ffe7dfe22b8
- </TASK>
-Modules linked in:
----[ end trace 0000000000000000 ]---
-RIP: 0010:ext4_write_inline_data+0x43c/0x440 fs/ext4/inline.c:240
-Code: c1 38 c1 0f 8c 19 ff ff ff 48 89 df 49 89 d7 e8 7a 1f b0 ff 4c 89 fa e9 06 ff ff ff e8 3d f2 48 ff 90 0f 0b e8 35 f2 48 ff 90 <0f> 0b 66 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 0f 1f
-RSP: 0000:ffffc9000d34f808 EFLAGS: 00010293
-RAX: ffffffff827b79eb RBX: 0000000000002cf3 RCX: ffff88803ec71ec0
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-RBP: ffff88804391b8fa R08: 0000000000000000 R09: 0000000000000000
-R10: dffffc0000000000 R11: ffffed100bc12881 R12: 000000000000003c
-R13: ffffc9000d34f8e0 R14: 0000000000002cf2 R15: ffff88804391b1e8
-FS:  00007f7639c7d6c0(0000) GS:ffff888126283000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000200000000813 CR3: 000000003cc4a000 CR4: 00000000003526f0
-
-
+Reported-by: syzbot+f0b58a1f5075a90dd9a5@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=f0b58a1f5075a90dd9a5
+Fixes: cb85f4d23f79 ("ext4: fix race between writepages and enabling EXT4_EXTENTS_FL")
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/migrate.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 477d43d7e294..25368eb44e85 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -464,6 +464,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	if (IS_ERR(tmp_inode)) {
+ 		retval = PTR_ERR(tmp_inode);
+ 		ext4_journal_stop(handle);
++		tmp_inode = NULL;
+ 		goto out_unlock;
+ 	}
+ 	/*
+@@ -591,9 +592,10 @@ int ext4_ext_migrate(struct inode *inode)
+ 	ext4_journal_stop(handle);
+ out_tmp_inode:
+ 	unlock_new_inode(tmp_inode);
+-	iput(tmp_inode);
+ out_unlock:
+ 	ext4_writepages_up_write(inode->i_sb, alloc_ctx);
++	if (tmp_inode)
++		iput(tmp_inode);
+ 	return retval;
+ }
+ 
+-- 
+2.43.0
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
