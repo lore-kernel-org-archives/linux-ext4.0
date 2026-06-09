@@ -1,121 +1,176 @@
-Received: from mail-ej1-f50.google.com (mail-ej1-f50.google.com [209.85.218.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F88341930D
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 13:08:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.50
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781010523; cv=pass; b=TNlICbFHtFdxKwnKR5c48a9A5vrav5et4LwXUtdEIXM/j228ZWmN/PMzFRuHNjLZ/W/0df2KV7Qm0BZw/l8na98AfLQtNCsHrzlTVx/xM6yFETGHNdu2PxhvBm2gbneX1imOX7gNK5wU03MC3dc+6Qe+KojOFn9sA5Ftmh7o1UE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781010523; c=relaxed/simple;
-	bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=arTxzpbNYmlT4Ds/bzKpPX132hBVvtNlFH7OXLqZv7/hSMw+5I2Y4qsenty6zUlRsc//3C5//Fb9KghHsbnyhH6Oh9n+qscPon52k3gzz9xzCjadh5pfWi59fxCcUpWErGG2ts2Wjc5TB7dTRMKjTVoS36zaf9wy0klJ+SYc27o=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=novlLNgo; arc=pass smtp.client-ip=209.85.218.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A67652E1F06;
+	Tue,  9 Jun 2026 14:37:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781015868; cv=none; b=ttYT3W0X3hGV8S457QWhDdZOCsLZNQAabYy8yENfYDkzpydMXaBEhWsh3Os4suKqc/KC+9I2sXkilWVRIXF8Vi2t+z5reNHXltBczet1YmE8kd7hpl746U0tbhsDvFgcw9vd5UgOG+2gQtmHW+ZFcFLS3P+1mOkZU9OFtUuC0Ik=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781015868; c=relaxed/simple;
+	bh=5V7YN0sGJU82TW7Hx4zLzYRmIOeFqeizIyoHB+R4xH0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=gtJZe5SlN0Dfu1TsJCURXKJn91bLkkIhYbHQr29ZrRUN8UZhyqjW9Nk++YN3JT6RclZBt00Ph6gRWBb71AdrFpY4zcVTCeqhVmq9elkdQEle5WP7tu6UIoeoW5aBUPoMSo5nODGcxKEQUjxhGXndjhdcuChBovSFeh61HTOnrj4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=X6+bIDKL; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="novlLNgo"
-Received: by mail-ej1-f50.google.com with SMTP id a640c23a62f3a-becfa735b9aso744550066b.1
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Jun 2026 06:08:42 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1781010521; cv=none;
-        d=google.com; s=arc-20240605;
-        b=FTflQMO9JvnSLXxlDLxQa/VJ7ZioyLhjtjXuRusgwHZOmyJL+V9s8yeAgyU7BS6Gvo
-         RAjBkcIxlZQLD+6ImsRlSc5Omub1SQ5XtfVY3ZVgL/wFsenQn3/Pr2O5a81nkyau4ss9
-         ubUaqGL91nCQ3huLA4LgT8/YXamtUlp6iv/eQatGvlNT2y1GZnAPF6/l/SZzJa02kUdW
-         GCzOoc7KuGLGIfmOfFdT5kNgU18XwGKW50LWTjUcWr8DeqFBWa4sx05PXiPax4DZBGAi
-         CWt1Q0Pmij1vV/1+oboPj/X6ruGt4b81b6jiNoQXCssJmf+d6/9iBhhWGBZLkaxgl1W+
-         5ICA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
-        fh=advpllnjB1v6VtfZm+DJ3JJoxipbzrtEX2UX16wi6DY=;
-        b=P8JuZoMKhd34oeTaW6sqaK9kfHBlFPO9wa23hRLxl9iWRvjrgt/5XdWIc6C7V//ZlH
-         0WO5Vol+p8CXino9j121lMx+/zVi5g2VcCVPHjIlDkSdmuUQjDdmNYHszTY+vDr1O4Pe
-         wtcycDOrz40k6cE8zqlm3dU3/+OdlVDVl+NyaYAI6QxJYPGHCnYxD1QBg95lVDHK3Nr+
-         lT8fx/NPefI/YSJpG4GZuteQf54kVxEAkbYCWuKDWS4v8HoqKd6RJ6/V7we7ABKHMF/d
-         2vyeCftPhMs24qxK4Ibphi1D2D7J/xEes6vB0elUWYZ2U0W7zaOH9NLhnR6GYvoydPuJ
-         AqBg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781010521; x=1781615321; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
-        b=novlLNgo139N4KYKWd1pLMmBRO5YQxLdpA9SedHTEsANokt8VN6MCWSRPznpkp597L
-         MX28AdtmdpzoWdBEcJyGBfynMLXa4lil5gZr7y2LpzTEEL9rCJJC43i+X+y7KgvUdAdJ
-         9pkBllI9dSAipMs7USpVv8nuODkypAjXJvfigtoZ3Lg9WrjS2UsORulK/c7vGF4u3+eF
-         eFvurU08Cg3deoGvMDIzxs44I6RiH8r5LQQxe/eU1ndO561c3RmMxwE+uo1LDg5bntT+
-         IiTybDXXOkXNKQ2svlMBBjYh7yAZJR0PUODNggRPvRvGem79ViQIwlSw5zLzQeLpLUKv
-         RPjA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781010521; x=1781615321;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=p1w4dDG43UhRDLwUBFWbpr/Q0ulJgmdjjjGOiAAhk8Y=;
-        b=sAtRD8JTk6TjbsMIhdYU8aHLkqExfj3IaQS9hyT9Zc8/u6CG7UVMxtxY0ITeSVmwTz
-         JfjQB4QTVyCgBiblsA2pVQkMX36eWperFxbx0ANO7YOPKa4FF6frpFQmoWGcH0n6vSA7
-         xAq25v3tl3O6QMpbfc26OaaxvdfVAsni5UAEJ7AIy3WPCju2PZzXOw/X9P1iYCC5P3+i
-         x/EW0wRn9hmI+xoLW7425fkFeExtVGi1WMUyA1c0mdqkt/PEEOI2gwFZVjNJkgjHAQlH
-         gcP5hmUD9fAn81V6pCOy+fdwuCQEpEuZ8rB7IhX89QY2ygw2f4JBpW6LpnRU4WGhaSdM
-         3WAg==
-X-Forwarded-Encrypted: i=1; AFNElJ/iD2UC1RXbIlReWLPNiEblO+Dg28toCyeT+5C7oMhUeMjjadTaAgjcvUZutpio/dKf6V3rD4AcWKG6@vger.kernel.org
-X-Gm-Message-State: AOJu0YzHBIoMNyg54hGx88JMLleIVVvGGtSOivvfcvYzWCH5voRBxeD2
-	uiX7dBACvWiNUcFXzQRInqbXmhCv7V4V1oyfIGp5yQMsJgnZIslQA2kARGjtYvWBk0CUC/kWow9
-	drbkDSRZGg1Ky9sbBoPq/HB3KLLCdFD8=
-X-Gm-Gg: Acq92OH1MLm0OJm4or4sd2z7j5Pcs6SG+3RzPFUvE5eQV99dFRdYYCV3VpjP6MZ8cjY
-	vxChaScboSEANp3miLWwKF6ULqquNa3T+Hrh++DywoyAGRskEmJuLfDNgfsTQgdlvmluCkXIdtl
-	l3q7NxVbKvwpt6ct+YUEDxadk3couct9TvC907FwGlbcx/rmkDaqSQXpT+HrzMrfL8Km74vz6Ea
-	B+CbZFVZIRz5NwxB0mCORTiulbSzLlOic+PDUickzNldROkel8+0QcLD8LFIf6zxm84W7FqZVhd
-	5xeZKOQ45T68aM+1RcqAOwq3LbzPBnuCHoDkzlvoDt+FpuezbQ==
-X-Received: by 2002:a17:907:3f07:b0:bdc:ac75:73b9 with SMTP id
- a640c23a62f3a-bf373a032a0mr1102504066b.43.1781010520517; Tue, 09 Jun 2026
- 06:08:40 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="X6+bIDKL"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 3A4791F00893;
+	Tue,  9 Jun 2026 14:37:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781015867;
+	bh=lL08VxpC+fvKfvxxiZW5i89/CQrjnPa2IrCmxpJFjzU=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=X6+bIDKLdkj2W0Lb7IltN17ZG2SOht70RK/4CN90rs/RaFDcXTKPK90ZKgElO8hCT
+	 o9/5CpKIkEISeBQZKusBNnqymcuLjpOYZShxN7CSIq+9fVe/B0lw7FvygEoWlN071n
+	 AoYxrdFZ7Nv2s0FAWgiYFwkbWxroS0smkPCU0UuERhs67aooJYOi5QwmmWl1El5jz4
+	 PM4xcwc+U0QrAZGBvulYq2JfVzUWEjz73k6IvLs/fhIV/ZMpXDPn3tWNVzIB5vWWql
+	 bzUSvmXvNCvSEiHPaPt3sKcHofH04djqtyChyd2wTUpGf9r5cNkLs9HFMdSbI8akKH
+	 mavK6tlp7TALw==
+Date: Tue, 9 Jun 2026 07:37:46 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Anand Suveer Jain <asj@kernel.org>
+Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net, zlang@redhat.com,
+	hch@infradead.org
+Subject: Re: [PATCH v6 01/11] fstests: add _loop_image_create_clone() helper
+Message-ID: <20260609143746.GL6070@frogsfrogsfrogs>
+References: <cover.1779939330.git.asj@kernel.org>
+ <421c7cdd5aae27b99d04dddf08c5d9df79c2f790.1779939330.git.asj@kernel.org>
+ <20260529042743.GB6070@frogsfrogsfrogs>
+ <9c0989d8-202f-42ab-9347-df082c25aa72@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260609062005.1702-1-aditya.ansh182@gmail.com> <o3k4wongcbuacu4rjsb7h2utzsrhpnun55vzdnp46imnlbn5x6@matvyu6j2xhc>
-In-Reply-To: <o3k4wongcbuacu4rjsb7h2utzsrhpnun55vzdnp46imnlbn5x6@matvyu6j2xhc>
-From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-Date: Tue, 9 Jun 2026 18:38:27 +0530
-X-Gm-Features: AVVi8CfZC1RqwwBADreq6qsprBnJ703dxJwRvA8K-MP701ezqTH9LpeReoFjIWQ
-Message-ID: <CAK5ssPPArwEQyU1+icZXJMrd2zmkJwzOSov-0iQ+TVRpU-g9yw@mail.gmail.com>
-Subject: Re: [PATCH v4] ext4: fix kernel BUG in ext4_write_inline_data_end
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
-	sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, 
-	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <9c0989d8-202f-42ab-9347-df082c25aa72@kernel.org>
 
-Hi Jan,
+On Mon, Jun 08, 2026 at 10:39:04PM +0800, Anand Suveer Jain wrote:
+> On 29/5/26 12:27, Darrick J. Wong wrote:
+> > On Thu, May 28, 2026 at 12:05:32PM +0800, Anand Jain wrote:
+> > > Introduce _loop_image_create_clone() and _loop_image_destroy() to mkfs an
+> > > image file and clone it to another image file, and attach a loop device to
+> > > them. And its destroy part.
+> > > 
+> > > Signed-off-by: Anand Jain <asj@kernel.org>
+> > > ---
+> > >  common/rc | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> > >  1 file changed, 63 insertions(+)
+> > > 
+> > > diff --git a/common/rc b/common/rc
+> > > index 79189e7e6e94..d7e3e0bdfb1e 100644
+> > > --- a/common/rc
+> > > +++ b/common/rc
+> > > @@ -1520,6 +1520,69 @@ _scratch_resvblks()
+> > >  	esac
+> > >  }
+> > > +# Create a small loop image, run an optional tuning function ($2) on it,
+> > > +# clone it, and attach both to loop devices, returned in ($1).
+> > > +# Args:
+> > > +#   $1: Nameref to return the array of allocated loop devices [base, clone].
+> > > +#   $2: Optional callback function to tune the base filesystem before cloning.
+> > > +_loop_image_create_clone()
+> > > +{
+> > > +	local -n _ret=$1
+> > 
+> > That switch   ^^ is very clever.  I always wondered how one did indirect
+> > variables in bash.
+> > 
+> > > +	local pre_clone_tune_func="$2"
+> > > +	local img_file=$TEST_DIR/${seq}.img
+> > > +	local img_file_clone=$TEST_DIR/${seq}_clone.img
+> > > +	local size=$(_small_fs_size_mb 128) # Smallest possible
+> > > +	local loop_devs
+> > > +
+> > > +	# Since we copy the block device image, we keep its size small.
+> > > +	_require_fs_space $TEST_DIR $((size * 1024))
+> > > +
+> > > +	_create_file_sized $((size * 1024 * 1024)) $img_file ||
+> > > +				_fail "Failed: Create $img_file $size"
+> > > +
+> > > +	loop_devs=$(_create_loop_device $img_file)
+> > > +	_ret=($loop_devs)
+> > 
+> > Should this check that a loopdev actually got created?
+> > 
+> 
+> Hmm, in the function _create_loop_device(), we are
+> calling _fail if create fails, so no need to duplicate, right?
 
-Thank you very much for the incredibly detailed review and the design
-insights!
+Oh right.  Question withdrawn.
 
-I completely agree with your suggestion. Rushing too many fixes for
-complex, concurrent race conditions into a single patch makes the
-code harder to review and risks introducing subtle regressions.
+> > > +	case $FSTYP in
+> > > +	xfs)
+> > > +		_mkfs_dev "-s size=4096" ${loop_devs[0]}
+> > > +		;;
+> > > +	btrfs)
+> > > +		_mkfs_dev ${loop_devs[0]}
+> > > +		;;
+> > > +	*)
+> > > +		_mkfs_dev ${loop_devs[0]}
+> > > +		;;
+> > > +	esac
+> > > +
+> > > +	# Only execute if the function argument is not empty
+> > > +	if [ -n "$pre_clone_tune_func" ]; then
+> > > +		$pre_clone_tune_func ${loop_devs[0]}
+> > > +	fi
+> > > +
+> > > +	sync ${loop_devs[0]}
+> > > +	cp $img_file $img_file_clone
+> > > +
+> 
+> 
+> > > +	loop_devs="$loop_devs $(_create_loop_device $img_file_clone)"
+> > 
+> > 	local lodev="$(_create_loop_device ...)"
+> > 
+> > 	test -z "$lodev" && _fail "second loopdev not created"
+> > 	_ret+=("$lodev")
+> > 
+> > ?
+> 
+> If the second `_create_loop_device()` happens to fail, it will
+> already have called `_fail`, so "second loopdev..." won't be
+> used at all.
 
-Let's go ahead with the simple and straightforward v1 patch (which
-has your Reviewed-by) to fix the original syzbot crash for now.
+<nod> Both comments withdrawn :)
 
-I will take your excellent suggestion to use fsdata for state
-communication between write_begin and write_end, and I will work on
-formulating a separate, cleaner patch series in the future to
-address the remaining concurrent locking races you mentioned.
+--D
 
-I will withdraw this v4 thread for now.
-
-Thanks again for your guidance!
-
-Best regards,
-Aditya Prakash Srivastava
+> 
+> Thanks, Anand
+> 
+> 
+> 
+> > > +
+> > > +	_ret=($loop_devs)
+> > > +}
+> > > +
+> > > +# Teardown loop devices and delete their underlying backing image files.
+> > > +# Accepts a list of loop device paths (e.g., /dev/loop0 /dev/loop1).
+> > > +_loop_image_destroy()
+> > > +{
+> > > +	for d in "$@"; do
+> > > +		# Retrieve the path of the backing file
+> > > +		local f=$(losetup --noheadings --output BACK-FILE $d)
+> > > +
+> > > +		# Detach the loop device from the backing file
+> > > +		_destroy_loop_device "$d"
+> > > +
+> > > +		# Clean up the backing disk image file
+> > > +		[ -n "$f" ] && rm -f "$f"
+> > > +	done
+> > > +}
+> > >  # Repair scratch filesystem.  Returns 0 if the FS is good to go (either no
+> > >  # errors found or errors were fixed) and nonzero otherwise; also spits out
+> > > -- 
+> > > 2.43.0
+> > > 
+> > > 
+> 
+> 
