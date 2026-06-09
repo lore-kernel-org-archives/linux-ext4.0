@@ -1,81 +1,81 @@
-Received: from smtp153-165.sina.com.cn (smtp153-165.sina.com.cn [61.135.153.165])
+Received: from out30-130.freemail.mail.aliyun.com (out30-130.freemail.mail.aliyun.com [115.124.30.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CE1D28980F
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 01:25:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=61.135.153.165
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBDAD19E992
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 01:46:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780968325; cv=none; b=bL2yzzaLWjN/l+ZYkthAIeaG4ICcuW6Q/9wJ1mSR+IfEmi8t+3vsF1KA2OagA6bldtvKtreAzBljU3jFd5FMZ2kZwUHr5MdBJcL8IjKhXk/srdv88Z0fYhQRmM2I55H7NxWxgcyr0vTpVHck2fJhv+bNkWNv0wD4TcpsESmfE0w=
+	t=1780969586; cv=none; b=CeAjwdgxRcmF4Ep5LYY6RAzVaWiafNXi73swqp0mOoNFbTEobyXTGkTMQNAUOkH8ybvMRf4U7bGkA82dPhPwPA5hLtY5z/Gxpa3sijmj91utlEaMsNwFAp3NJrBW4u0m4CUhIjftvXAKFWHV1yYWCyc2ZTbAS0caSoDUYbqOZ5A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780968325; c=relaxed/simple;
-	bh=wZYs57/4Gwd1AtNmrbA4OTlKLJtgshAoYIJktLqURKM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=G+BJe/Rhyk0yPpA52SQL66mFwMeL2Ge5d13Lx2/2ceTFouON6B5D3yiEs0IJNHNqf29+PLMKA7/XWXk1pUk6gC6ewPBQHgDtJP2z5KWHFqtvEFrkTy0ThLNDBRE9pqwymkqWTv/cudWfJEznz1ibVDOhrTaOqg9jppBU+8kVBMk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sina.com; spf=pass smtp.mailfrom=sina.com; dkim=pass (1024-bit key) header.d=sina.com header.i=@sina.com header.b=zRJDmhXv; arc=none smtp.client-ip=61.135.153.165
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sina.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sina.com
+	s=arc-20240116; t=1780969586; c=relaxed/simple;
+	bh=xAXEJQ6zFvUmZTSm/NTD1FhLtmguA+9RMD2beNe/Dhg=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=aRSFFIsHJe12nVRxF1arjgRmpPKIF2K/ipzxyzqy1Hr5MB835jJDIeZpYyJhkfgpmjcAAUXa9I3asJGC1d/5xA1Dy/XXLUEQEuYBeQbs5l1KX67l7BOxflvXZ0kLa4xe4l6+Dv9hAZnmsEfuaTr7/VdgmX2+7fYTsAIYDwGook8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=t24pF2yi; arc=none smtp.client-ip=115.124.30.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=sina.com header.i=@sina.com header.b="zRJDmhXv"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sina.com; s=201208; t=1780968319;
-	bh=ukkFDX0syLajMKrCkjr+nKhiOSxKdxUsCHEYd0H9dl8=;
-	h=From:Subject:Date:Message-ID;
-	b=zRJDmhXv5b23uBLpzIYcWHpI2KnNaHE0x4G4bw0tWAiueOJg6kFC1wkSBhU2YGeFg
-	 QmcFDUdOA+uV+PKn6bI1611QJ4L6LClXp2TBOifjTezrVti3MuhNbw+9GHrB/ymwQh
-	 sBT5QPXRveVJFapuzEQBxX+3WdmzM0CCE1xEuqbs=
-X-SMAIL-HELO: localhost.localdomain
-Received: from unknown (HELO localhost.localdomain)([114.249.62.144])
-	by sina.com (10.54.253.32) with ESMTP
-	id 6A27693300007951; Tue, 9 Jun 2026 09:15:34 +0800 (CST)
-X-Sender: hdanton@sina.com
-X-Auth-ID: hdanton@sina.com
-Authentication-Results: sina.com;
-	 spf=none smtp.mailfrom=hdanton@sina.com;
-	 dkim=none header.i=none;
-	 dmarc=none action=none header.from=hdanton@sina.com
-X-SMAIL-MID: 7876384456651
-X-SMAIL-UIID: 25C3511104FF4E1CB922C55EF6C675A8-20260609-091534-1
-From: Hillf Danton <hdanton@sina.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: tytso@mit.edu,
-	jack@suse.cz,
-	Yun Zhou <yun.zhou@windriver.com>,
-	Amir Goldstein <amir73il@gmail.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: validate donor file superblock early in EXT4_IOC_MOVE_EXT
-Date: Tue,  9 Jun 2026 09:15:21 +0800
-Message-ID: <20260609011522.1708-1-hdanton@sina.com>
-In-Reply-To: <5D214F11-047A-4414-B9BC-8ED669817145@dilger.ca>
-References: 
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="t24pF2yi"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1780969581; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=VLsNSc9ihZvXS2mzoTjkX/upjEWneFchXK2MEKHy8fY=;
+	b=t24pF2yix/Qcygwa3RHVaex+I4RTnnwufdX+SJ56vRNt9krOmw1ytOkHNa9/XAFctyPk+EWEv4qldGHlWn+RBAjfRccYEmSlsNEOr0eDq31yzgNR1AwfLqA+VGbVsCL9EPdFBZxwZ3XcOvKyC3LkgHp3jGuyWjikBejA34HfHqk=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R211e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0X4UVnaM_1780969580;
+Received: from 30.221.147.173(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X4UVnaM_1780969580 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Tue, 09 Jun 2026 09:46:20 +0800
+Message-ID: <54cc03dd-5e23-4b91-b0b4-ce51f8391fa0@linux.alibaba.com>
+Date: Tue, 9 Jun 2026 09:46:20 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 3/3] ext4: reject mount if inodes per group is not a
+ multiple of inodes per block
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+ yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ Sashiko <sashiko-bot@kernel.org>
+References: <20260608111150.827117-1-libaokun@linux.alibaba.com>
+ <20260608111150.827117-4-libaokun@linux.alibaba.com>
+ <097CFB85-3C4A-4BDF-829C-E6B2322386EC@dilger.ca>
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <097CFB85-3C4A-4BDF-829C-E6B2322386EC@dilger.ca>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-On Mon, 8 Jun 2026 12:20:07 -0600 Andreas Dilger wrote:
-> On Jun 8, 2026, at 09:25, Yun Zhou <yun.zhou@windriver.com> wrote:
-> > 
-> > Reject the EXT4_IOC_MOVE_EXT ioctl early if the donor file does not
-> > belong to the same superblock as the original file.  Currently, this
-> > validation is performed inside ext4_move_extents() by
-> > mext_check_validity(), but only after lock_two_nondirectories() has
-> > already acquired the inode locks.  When the donor fd refers to a file
-> > on a different filesystem (e.g., overlayfs), this late validation
-> > creates a circular lock dependency:
-> > 
-> >  CPU0 (overlayfs write)            CPU1 (ext4 ioctl)
-> >  ----                              ----
-> >  inode_lock(ovl_inode)
-> >                                    mnt_want_write_file(filp)
-> >                                      sb_start_write(ext4_sb)   [sb_writers]
-> >    backing_file_write_iter()
-> >      vfs_iter_write(real_file)
-> >        file_start_write(real_file)
-> >          sb_start_write(ext4_sb)   [blocked by freeze]
-> >                                    lock_two_nondirectories()
-> >                                      inode_lock(ovl_inode)     [blocked]
+On 2026/6/9 02:27, Andreas Dilger wrote:
+> On Jun 8, 2026, at 05:11, Baokun Li <libaokun@linux.alibaba.com> wrote:
+>> If s_inodes_per_group is not a multiple of s_inodes_per_block, the
+>> division that computes s_itb_per_group truncates, reserving fewer blocks
+>> for the inode table than needed.
+>>
+>> On a crafted filesystem image, this allows __ext4_get_inode_loc() to
+>> compute a block offset beyond the inode table, reading unrelated data as
+>> an inode structure.
+>>
+>> Add the missing divisibility check alongside the existing validation in
+>> ext4_block_group_meta_init().
+>>
+>> Reported-by: Sashiko <sashiko-bot@kernel.org>
+>> Closes: https://sashiko.dev/#/patchset/20260608061112.392391-1-libaokun%40linux.alibaba.com
+>> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+
+Hi Andreas,
+
+Thank you for your review!
+
+> Looks good.  Is this also fixed/checked in e2fsprogs?  
+Yes, a similar patchset adding analogous checks to e2fsprogs is also in
+the works.
+> There is really no reason *not* to use all the space in the last itable block for inodes.
 >
-Why does it exist if the locking order on CPU0 is incorrect?
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca <mailto:adilger@dilger.ca>>
+
+Indeed. Images created by mke2fs do not exhibit this issue; it only
+occurs with certain crafted, malformed images. Thanks, Baokun
+
