@@ -1,63 +1,63 @@
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 663CF2F260C
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 04:17:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA080363C77
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 05:00:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780978655; cv=none; b=Fk+peLJxJXxkCFR/ZBHOBK3lUbNQnXhF5K9J2Qj7qQiSqBL6HrbU0XVUKUloqU2W3NcpANxeeY5J5CUF88gA0cb+1iOnbZPJ6fxSdbIZZ1vicZjFhIYENvMqp7zSCTo/289okCTnb8cTGV5Si5xgaC1Eckv5PofmcZIehB7eG38=
+	t=1780981228; cv=none; b=Z+p4MUAoV9BGNu7LmEg3CYm26SU8fU6EZcw5FRmY9ZXb/uZ/FtzvvBp3wDrqbcm2zIPuI73+Y/NE3/5VjaNPeDGZV1iiYtRhsb7oVvLLQ5r8TaBAErSC6Onw3u6K670vQJ3G5SkM4cqsULpWGQS3PDqPi3DFSqpe5RfQst2hs8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780978655; c=relaxed/simple;
-	bh=U4Np9Ii9wtElKPYq5/Att3d025QkxteJXmh4QQc94mc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=sGJXejO8O5lusKdNh8rVxQXLClWqvT4ls/qX2gcujFOY8w2B1eE3G97IcxXgYSEOI+mkW7oGX4kdNRDQDqYxInj1nA0SSyJi05Rt9yMtc1lBcTtsB/J0idTe8wDHpzgos6kB4Ft1g5x/DvaKRjvAfHONqNxc/VbxN4ALUYB3YEU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZcJTYbNM; arc=none smtp.client-ip=209.85.214.174
+	s=arc-20240116; t=1780981228; c=relaxed/simple;
+	bh=yaKP7/UvUzQTM1UAwBovHUg+etg/wRkptdb8tOq3nbY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=q5M4V6t+IFsHx1oz5kHkTlltedwQBII+TrK3Dfsy1SoLmJdPhjJ0zrxUzmpD7OXc5b/aBK1Zes9RL/wAlysStOPsuHIxJ5LtY7vz76RysTbirTAr3gkJ/8dqMKhtdF6WXht8xHjj/oSb86kuoLlV+15XpSdDX6MoGFaw64RYKWE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=T1hFIbT9; arc=none smtp.client-ip=209.85.214.169
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZcJTYbNM"
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2c168baac83so23324415ad.2
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2026 21:17:33 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T1hFIbT9"
+Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2bf3781ca51so47753475ad.0
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2026 22:00:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1780978653; x=1781583453; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1780981227; x=1781586027; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=q406pH5lUADnbt61DxG138tUfOLYKP8K5yUgAEXHh5w=;
-        b=ZcJTYbNME++VZEHgAwsJFlkKFtxJL0POKkbjHAqrsTEoIVJBHcpx3rP/p6FitVUQKs
-         ATiWIQ04W2ufoan+N+l0+1ZRvwOjuStV64VzcNViTES1eL9tf+4YQKi6LKoq8R8xh08C
-         i5abNhwZUzJsvbg26lGOaU+qH1OkaSlFrR1AoBh0UO8f4KTIF+4oDqBygB9NyS4RRRaH
-         +7olvecBlprSD8fu2pdWS/Ry/TmMF4N1P9vp/T6fcYVIXhRQYCUVn+hzPAB+weBHJdy0
-         jGq464bYWJ2nD4GViEWTjBr2/aBzxOQCG74EyIXjtH8qNbyEijd4yfw2CiccgZIPsxUe
-         DqOg==
+        bh=fBlgRbs5zbK19LMQRjJDNeRT5MSpRwsmVLifXE9+D5M=;
+        b=T1hFIbT9R8QTbb/qu9Gk47tvFch0v4pKf/C8LkdamMOudWdi5Ul9eyYHk6PqgxviXY
+         dLpeFtFoKDYrO9U+7XP/vxpnmdplgSZktkuIVOGn9w4Q8RfWN0GqY1E/ABY02TvLErGf
+         FIkoIPSeKKdbUx4zwwoXrgwL9jsf7ABo02yp2tsFJi/wqHevOlAuqLAvEb5X77WDM956
+         MNKM8bC99QUxgaF6T66qQhHoVet+f5TNIFjuhK6ZZ+OMa652sIqiRqhDFD1DFu0X6vXp
+         80AqAZCZX0ESiTlwfkzawG2qGW5NtCa+jphqyoyCSI3h2B/5XT8Xwu/Dq5U42DGcWIac
+         g81g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780978653; x=1781583453;
+        d=1e100.net; s=20251104; t=1780981227; x=1781586027;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=q406pH5lUADnbt61DxG138tUfOLYKP8K5yUgAEXHh5w=;
-        b=K59VJKw/vvQNrtUUrYreRto0oeXVMfJsNnqMJ7Q+JHb1QcWec/ziYAYIL63xytQehD
-         BaPF3z+FY6f99h6+09JXIhbIb6YXQ3VCPkKdfxvenPRdqns/j2eGAF9fNGQfDgbhC07O
-         AL1IdO0d7cbBFhfhNjliAqNk7H1XZNKCZ8AcbifVa/K6IasfL0ACYfuQs6A4+7vytNAA
-         oNW+KVxpMzXICEvP6weFTmCy3BCrPNZ4+8qMANordEWGNr3P8cVCg+GgNy3Ye1nmc/VY
-         xttOAuXT06My2Bsk+/WozHW1VeI/RBJb+T2MIO82Tyw46LLOkgIr0ZvdZ7iP8tBM3YSk
-         4SbQ==
-X-Forwarded-Encrypted: i=1; AFNElJ/lHqgxzu3fnjq+0MrX2SQxY5GJUuwDe4beZdZMUk7F9m2LSEE38VrTc3VPsw4Tn8MYsi4DxEyEpCLQ@vger.kernel.org
-X-Gm-Message-State: AOJu0YyAS4qEIASwRM150AoWFLhkbgN+16BlKc8wpIyODZp+D3E+Yuzt
-	OVR0RienSZBiVrxkBihs0F/wzpTSNcP6tCuYnPnSGe8iUH2vvLy3EJAB
-X-Gm-Gg: Acq92OHAO6nj3UzpUi0DeOJo77sMTh06SXX+/xDiakti02Id1PNiZg7Q/ibPjZUJSPI
-	ZegOiZeMfJxKr7RI+Feo0nVwGwxudvSbC2UWUCBpK4ZEd+LdR10vza7Hvyv082+E8V8+jE/p+7r
-	II7wfARwdQu0YGElTHURLwirO7GEGEy/Y+AUGkFza91FQR+rJkvB9iKuhCiCiJrPQl8dnykoAzM
-	QXNd5JALuffkrfzYo3u7mU4/XMI2YLgRFW8eRdFx2lOx9+7qrSj2EsDgbkRPcn61f15ts7O8bg/
-	u1rdoY1syEauslgNGFlHztuOV1xcEuFCMxcfEA8BVV/oaUoth69FxkklnW25GXGi6HXyQJ0fE7M
-	YeS8lBUhO0rIkMSCnevguGy1lKCVbv9/ohSi0Lj5AMekx2J7EX3hdynMlo5/6zMbU9jsWrCgTcg
-	/gvr3wdNVEsEw+YefJSiAQe/ssXUO17OAuTzggBG9MTZw5S1UhlbLIArguSGOidU6qsKDSm2G2Y
-	U+Gok+0khlS4FU5VnxSapJ6axlLkvhh2PHBglhN+3d+gZ41SjjGphbFrd0O9O5fiJz3gqEIBJmC
-	DXk7QrWsYFJCS/aTnCygOH1g+TMU3UcPA8fnI88m8uAb/S4/9A==
-X-Received: by 2002:a17:903:2450:b0:2c1:27a3:6859 with SMTP id d9443c01a7336-2c1e79e22dcmr216110905ad.7.1780978652716;
-        Mon, 08 Jun 2026 21:17:32 -0700 (PDT)
+        bh=fBlgRbs5zbK19LMQRjJDNeRT5MSpRwsmVLifXE9+D5M=;
+        b=hwxdfKst6pH+m+jKcBSt906fPDU3Jlz2hHoJNM5ZwRG7lNWzyaePaSCeKZyPscQ4ie
+         KLv7y/gKwxBJRYHKa3CIBIxUfiVQ3vZsXiagGl1flvzHnrtNWf2YEnqjjmVWxISDkjYw
+         uXiWr1GMaFJ3u9W2liFalV5WUbug/+XjtiKKDB/BIOwtr+KT38Gi0gfZJU4kGetfEBBF
+         PwLWdPGl4jG6HJEMxFKG4zTyFksawmWQtmT8Ih+Sd/ik1nAomP8RpPzKXbWBtyp32zmu
+         x2WAjg1DrLYIcXRMkUjnJh2wiTkqj1eDbDVXc1hFnX/r0alxlGABsRjXBZCdnUtKu2j/
+         cVWQ==
+X-Forwarded-Encrypted: i=1; AFNElJ/raQ7qXiP5tomT0BG+gC4PzHM1wz+bYVu8mw9J6v1hOtZWjm1cPIKE9nu1rjIwWjbn2g+QwTpEUgX+@vger.kernel.org
+X-Gm-Message-State: AOJu0Yxw1XlZlZMGgwWpFpbQUPuDsNDspXjfygZcrwulYTtDGj70JH6F
+	1XKJYW6rrZl7lAIzMExNOdeakZPLGvE25S2EV/phgoqDCRXc1G5kpGFS
+X-Gm-Gg: Acq92OHOOLVCD22fU/LSe9oGKPtDZwfT4fUUMaPmFlRb8faI9rI9ugDetx2fZlLa75+
+	jJFWWqdpzQOKetKlYh7LkwZFTwxYxb66PrTu+zKql2daBmqU5C8X4eDCX7U1p3wAHjl2YfwUK1O
+	BZJUFWn8OB12GS3LIEA8JA45bnRMdle3C5WXUhJ7ik5iOBpGzPdhdi9XkpTySScdlD2VDWMhyTl
+	TKxQBqA0Geup2SdW5kDOiu9bBavODD0jT9n33aVlnBUM8iNAnw6jtpjCna8GlNDsFnzevya/9Ef
+	ToKzGj/s6tFucxDP8rLnmfa/cxv6cZrtyMivz5+fuz/HVKmm+N2FJ4wIEwpzxbjQ1rX1XQLbewk
+	TxaUUba7BKq/IxAoTzPRU+4UaWmOZT5T06JnKfBJavFt1aEnjVk+1hRqoat8aNWai4OGBaHnsht
+	SjugPgvnNklhTEyzg8hAdeZK9HKlYhGo0EbHtnfFROS3ABwQVNyN/JBQ7TQZPv5VcjQS9dbl/gK
+	rc+e0Dgvlurr80Zg9ZBtY4lA/mbccm0taqG2ABe8FSsAusfqtBRFPNgGb4TOsR5OgVCzzaXONX2
+	eo0jA++27hS1zeeI2Ynz+ZsGqXwKoGO7b8m9fQOFJCfj4IHhig==
+X-Received: by 2002:a17:902:fc4c:b0:2c2:1982:527a with SMTP id d9443c01a7336-2c2198254f0mr152300195ad.16.1780981222155;
+        Mon, 08 Jun 2026 22:00:22 -0700 (PDT)
 Received: from cs-1047136853211-default.asia-southeast1-b.c.d33bddc1d573818c7-tp.internal (192.152.126.34.bc.googleusercontent.com. [34.126.152.192])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c249aeb62csm74641005ad.68.2026.06.08.21.17.29
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c166391d53sm254648635ad.65.2026.06.08.22.00.18
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 08 Jun 2026 21:17:32 -0700 (PDT)
+        Mon, 08 Jun 2026 22:00:21 -0700 (PDT)
 From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
@@ -71,9 +71,9 @@ Cc: Jan Kara <jack@suse.cz>,
 	linux-kernel@vger.kernel.org,
 	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>,
 	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Subject: [PATCH v2] ext4: fix kernel BUG in ext4_write_inline_data_end
-Date: Tue,  9 Jun 2026 04:17:03 +0000
-Message-ID: <20260609041704.1709-1-aditya.ansh182@gmail.com>
+Subject: [PATCH v3] ext4: fix kernel BUG in ext4_write_inline_data_end
+Date: Tue,  9 Jun 2026 04:59:55 +0000
+Message-ID: <20260609045956.1910-1-aditya.ansh182@gmail.com>
 X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -110,11 +110,23 @@ through from the inline data check. Returning 0 signals
 generic_perform_write() to revert the write iterator and retry the
 entire write operation, which will then properly allocate block buffers.
 
+To prevent transaction handle leaks and subsequent filesystem hangs during
+retries, we stop any active journal handle via ext4_journal_stop() before
+returning 0. We also explicitly check that the retrieved handle is non-NULL
+prior to stopping it, preventing a potential NULL pointer crash inside
+ext4_put_nojournal().
+
 Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
 Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
 Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
 Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 ---
+v3:
+  - Fix journal handle leak in ext4_da_do_write_end() by stopping the active
+    handle before returning 0 on the fallback path.
+  - Safely check if the retrieved handle is non-NULL before calling
+    ext4_journal_stop() in ext4_write_end() and ext4_journalled_write_end()
+    to prevent a kernel crash inside ext4_put_nojournal().
 v2:
   - Address TOCTOU race condition (reported by Sashiko AI review):
     A concurrent ext4_page_mkwrite() can execute ext4_convert_inline_data()
@@ -125,28 +137,29 @@ v2:
     to trigger a VFS retry. This prevents a NULL pointer dereference in
     ext4_journalled_zero_new_buffers() and ext4_walk_page_buffers().
   - Add check for ext4_write_end() and ext4_da_do_write_end().
- fs/ext4/inode.c | 19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c2c2d6ac7f3d..d6c934b2ae31 100644
+index c2c2d6ac7f3d..bc2688e03c19 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1455,6 +1455,13 @@ static int ext4_write_end(const struct kiocb *iocb,
+@@ -1455,6 +1455,14 @@ static int ext4_write_end(const struct kiocb *iocb,
  		return ext4_write_inline_data_end(inode, pos, len, copied,
  						  folio);
  
 +	if (unlikely(!folio_buffers(folio))) {
 +		folio_unlock(folio);
 +		folio_put(folio);
-+		ext4_journal_stop(handle);
++		if (handle)
++			ext4_journal_stop(handle);
 +		return 0;
 +	}
 +
  	copied = block_write_end(pos, len, copied, folio);
  	/*
  	 * it's important to update i_size while still holding folio lock:
-@@ -1560,10 +1567,18 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
+@@ -1560,10 +1568,19 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
  
  	BUG_ON(!ext4_handle_valid(handle));
  
@@ -159,18 +172,22 @@ index c2c2d6ac7f3d..d6c934b2ae31 100644
 +	if (unlikely(!folio_buffers(folio))) {
 +		folio_unlock(folio);
 +		folio_put(folio);
-+		ext4_journal_stop(handle);
++		if (handle)
++			ext4_journal_stop(handle);
 +		return 0;
 +	}
 +
  	if (unlikely(copied < len) && !folio_test_uptodate(folio)) {
  		copied = 0;
  		ext4_journalled_zero_new_buffers(handle, inode, folio,
-@@ -3231,7 +3246,7 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+@@ -3231,7 +3248,10 @@ static int ext4_da_do_write_end(struct address_space *mapping,
  	if (unlikely(!folio_buffers(folio))) {
  		folio_unlock(folio);
  		folio_put(folio);
 -		return -EIO;
++		handle = ext4_journal_current_handle();
++		if (handle)
++			ext4_journal_stop(handle);
 +		return 0;
  	}
  	/*
