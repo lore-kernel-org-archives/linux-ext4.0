@@ -1,63 +1,63 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA080363C77
-	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 05:00:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 716032E7391
+	for <linux-ext4@vger.kernel.org>; Tue,  9 Jun 2026 06:24:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780981228; cv=none; b=Z+p4MUAoV9BGNu7LmEg3CYm26SU8fU6EZcw5FRmY9ZXb/uZ/FtzvvBp3wDrqbcm2zIPuI73+Y/NE3/5VjaNPeDGZV1iiYtRhsb7oVvLLQ5r8TaBAErSC6Onw3u6K670vQJ3G5SkM4cqsULpWGQS3PDqPi3DFSqpe5RfQst2hs8M=
+	t=1780986280; cv=none; b=cspPdpPOYHxVtkao62pWOBU/aUeyLpdVkPqFFsgDpJMljaop7vcRkbjdKAeEyoPspU9afOzG/OphFisK7p0YH2PH/8EPmtoXHi3/0Nba2bdsYQA0GXQsHSo/NAObahb+xVF114W24x83Z2MfuTWehc+XyLWqozYozmepfSqM/aQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780981228; c=relaxed/simple;
-	bh=yaKP7/UvUzQTM1UAwBovHUg+etg/wRkptdb8tOq3nbY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=q5M4V6t+IFsHx1oz5kHkTlltedwQBII+TrK3Dfsy1SoLmJdPhjJ0zrxUzmpD7OXc5b/aBK1Zes9RL/wAlysStOPsuHIxJ5LtY7vz76RysTbirTAr3gkJ/8dqMKhtdF6WXht8xHjj/oSb86kuoLlV+15XpSdDX6MoGFaw64RYKWE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=T1hFIbT9; arc=none smtp.client-ip=209.85.214.169
+	s=arc-20240116; t=1780986280; c=relaxed/simple;
+	bh=gxdXkhPdeB27/kOhL4gfSF2FNgquQm99OxSBd1GkHwU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kwBhprbDvSlcReld8/CX7Vi+DWjXaZ2dMiJl7ji0NsaOvo6nTOa5RyFA3vVQfjV0+5kt7MCTSPUoh7AG6yjVcpYerBxwuo//zTZ8foJu45T3ii4jpb7s/2xLckIYcg8FMFNXdMXfYfRwKw4seEqcLGoTq9NI1zlNeYNmyudo7gw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Ndy3Fjs5; arc=none smtp.client-ip=209.85.216.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T1hFIbT9"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2bf3781ca51so47753475ad.0
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2026 22:00:27 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ndy3Fjs5"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-36baec934b6so3412361a91.0
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Jun 2026 23:24:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1780981227; x=1781586027; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1780986279; x=1781591079; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=fBlgRbs5zbK19LMQRjJDNeRT5MSpRwsmVLifXE9+D5M=;
-        b=T1hFIbT9R8QTbb/qu9Gk47tvFch0v4pKf/C8LkdamMOudWdi5Ul9eyYHk6PqgxviXY
-         dLpeFtFoKDYrO9U+7XP/vxpnmdplgSZktkuIVOGn9w4Q8RfWN0GqY1E/ABY02TvLErGf
-         FIkoIPSeKKdbUx4zwwoXrgwL9jsf7ABo02yp2tsFJi/wqHevOlAuqLAvEb5X77WDM956
-         MNKM8bC99QUxgaF6T66qQhHoVet+f5TNIFjuhK6ZZ+OMa652sIqiRqhDFD1DFu0X6vXp
-         80AqAZCZX0ESiTlwfkzawG2qGW5NtCa+jphqyoyCSI3h2B/5XT8Xwu/Dq5U42DGcWIac
-         g81g==
+        bh=3jhi+W8bAr8azxKU4Q0p1B06xZdGDUeBs2ccd1mUisI=;
+        b=Ndy3Fjs5cXcaCPKZ7IakKh7b1qo9UUHjkfpBGtvmg0JI6S2BlP+qWXepHdmIEwvMXL
+         Fsp1z322JXXnyiE+M2+GmC5wqFRv0hAdpI0zYd41WQujW28Y4GW75vEQbl0QIu3Du41T
+         AwG/qReaqDQGphz480mcWjISfxq/ahHGwqg/ggymD0gS60OuDk6bytmALcbIN0/XgMvo
+         IN5nCoY8bWhnDFEewBU7bg7TQuKAAzGXYj0KSVbxid9uClqdF0C115NF/iR8kuWsAO2H
+         9KvJvRSaaKs1XoX5W67MyLHr0vsCk3snmXl7uZW42oIrzCOUyeoTplpPH34T+PZUiIg6
+         yeog==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780981227; x=1781586027;
+        d=1e100.net; s=20251104; t=1780986279; x=1781591079;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=fBlgRbs5zbK19LMQRjJDNeRT5MSpRwsmVLifXE9+D5M=;
-        b=hwxdfKst6pH+m+jKcBSt906fPDU3Jlz2hHoJNM5ZwRG7lNWzyaePaSCeKZyPscQ4ie
-         KLv7y/gKwxBJRYHKa3CIBIxUfiVQ3vZsXiagGl1flvzHnrtNWf2YEnqjjmVWxISDkjYw
-         uXiWr1GMaFJ3u9W2liFalV5WUbug/+XjtiKKDB/BIOwtr+KT38Gi0gfZJU4kGetfEBBF
-         PwLWdPGl4jG6HJEMxFKG4zTyFksawmWQtmT8Ih+Sd/ik1nAomP8RpPzKXbWBtyp32zmu
-         x2WAjg1DrLYIcXRMkUjnJh2wiTkqj1eDbDVXc1hFnX/r0alxlGABsRjXBZCdnUtKu2j/
-         cVWQ==
-X-Forwarded-Encrypted: i=1; AFNElJ/raQ7qXiP5tomT0BG+gC4PzHM1wz+bYVu8mw9J6v1hOtZWjm1cPIKE9nu1rjIwWjbn2g+QwTpEUgX+@vger.kernel.org
-X-Gm-Message-State: AOJu0Yxw1XlZlZMGgwWpFpbQUPuDsNDspXjfygZcrwulYTtDGj70JH6F
-	1XKJYW6rrZl7lAIzMExNOdeakZPLGvE25S2EV/phgoqDCRXc1G5kpGFS
-X-Gm-Gg: Acq92OHOOLVCD22fU/LSe9oGKPtDZwfT4fUUMaPmFlRb8faI9rI9ugDetx2fZlLa75+
-	jJFWWqdpzQOKetKlYh7LkwZFTwxYxb66PrTu+zKql2daBmqU5C8X4eDCX7U1p3wAHjl2YfwUK1O
-	BZJUFWn8OB12GS3LIEA8JA45bnRMdle3C5WXUhJ7ik5iOBpGzPdhdi9XkpTySScdlD2VDWMhyTl
-	TKxQBqA0Geup2SdW5kDOiu9bBavODD0jT9n33aVlnBUM8iNAnw6jtpjCna8GlNDsFnzevya/9Ef
-	ToKzGj/s6tFucxDP8rLnmfa/cxv6cZrtyMivz5+fuz/HVKmm+N2FJ4wIEwpzxbjQ1rX1XQLbewk
-	TxaUUba7BKq/IxAoTzPRU+4UaWmOZT5T06JnKfBJavFt1aEnjVk+1hRqoat8aNWai4OGBaHnsht
-	SjugPgvnNklhTEyzg8hAdeZK9HKlYhGo0EbHtnfFROS3ABwQVNyN/JBQ7TQZPv5VcjQS9dbl/gK
-	rc+e0Dgvlurr80Zg9ZBtY4lA/mbccm0taqG2ABe8FSsAusfqtBRFPNgGb4TOsR5OgVCzzaXONX2
-	eo0jA++27hS1zeeI2Ynz+ZsGqXwKoGO7b8m9fQOFJCfj4IHhig==
-X-Received: by 2002:a17:902:fc4c:b0:2c2:1982:527a with SMTP id d9443c01a7336-2c2198254f0mr152300195ad.16.1780981222155;
-        Mon, 08 Jun 2026 22:00:22 -0700 (PDT)
-Received: from cs-1047136853211-default.asia-southeast1-b.c.d33bddc1d573818c7-tp.internal (192.152.126.34.bc.googleusercontent.com. [34.126.152.192])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c166391d53sm254648635ad.65.2026.06.08.22.00.18
+        bh=3jhi+W8bAr8azxKU4Q0p1B06xZdGDUeBs2ccd1mUisI=;
+        b=IHmRAh5sr6Xq31H/xdOrPogy+Dds4eKuAfxbBhx45j0LPFfwKQ5Ullmj/HDCk8Nyms
+         MuiBme7vKldg6SPOYbXnnzkqR9HfvNULNmZwD1mvd4ZoYclqr/3rR0bwuPkyvg4NQzvM
+         3owQvKTS6HckWsTa3v7BK5JW+XflxRPk9PG5ZNqgt6D17+kqVqfQZmXagt8xZ+XTbxsf
+         A2qXOD4O2sqY/HYiMpyWI9UFraTj2rL9qdYsHqBf61EO/5V/Rqpib7yUX390ytTfp4g+
+         gLY5n1nCIsBdfnrAp08d5WBkq1/KVbapynzclfVaSrDzhlJcQNeI2MPRT7I5AV2bp7uA
+         yieg==
+X-Forwarded-Encrypted: i=1; AFNElJ+FrgJ/7WNrJ16v46Bx/CFXjk8YeNQVxaQ+hm/P8t96H7yhBA1evwoEfDnHbuDSQDSRvreyD/PeV3eG@vger.kernel.org
+X-Gm-Message-State: AOJu0YxANLj3huAnzwDiyji6fzMndnSlaiWQQLxJlLYMvUSoJI8izXW0
+	vt8nOvDYzfT4vC4hzGwNTE8NRJ+xS9RvyebWCiP4XQ5PM2bAjjlKR90d
+X-Gm-Gg: Acq92OG9NMsQQwPVd5ILsF06TRGTttsR09XjGMJcmP2UdhCb8pB7RLvF4SOxuEW7zva
+	1V50wiIJZ38Xo+H+3mWQotXGCLnun7GVikIuHcdja3hWHyC+7Bla9WDhbXWGmGQxNcLg+vdw3Oe
+	JmVqv7hCCw7wrbzKV0pZax7Yco/bbwZ9/q1Hm1LRbbOSC+jojpWqmDSC6oBRW+AH2n8mjtmDeUo
+	EvmB07JoCf4d4Hw5CPuiFiPwjGivO3mSDSd15NL8XubtrJ04E0Y1ccNcAheR/gV3qh/WDfX+zk1
+	duV/bVra3EabXGThnRmX5rMcnE0b4gND/kDd+GTlX+L3oqmqgrcyFIdGVNIIekvPe7HxeymIOu+
+	4n6jxcIOSTMyMXePiNdlB+YBy3ou/LaYcdJTWwfitglQeG8iGtl09hmPsfAdVBWezYtcx7qXpHo
+	QDhqsx9LSGUdHJuaRoNyB8EUIqaYv4u7XzzqBwiyvc8YA3AAxkb/W0EADUjRuLgoxhiuYek3kEa
+	vQT6hQ5gjsf+Hz3JxjL9jmjCgB5MSrFWO4zPIYEIm1ZO7POknFD+c+1CeIGHWz8jjsDia5yLuB2
+	Ki89Fh5HaP+xMG8nnWIr4UWtq2rXvegZ0YpAYAEMd44wObk=
+X-Received: by 2002:a17:90b:4d11:b0:369:1dbb:4732 with SMTP id 98e67ed59e1d1-3712cd075a0mr13846211a91.0.1780986278715;
+        Mon, 08 Jun 2026 23:24:38 -0700 (PDT)
+Received: from cs-1047136853211-default.asia-southeast1-b.c.d33bddc1d573818c7-tp.internal (77.152.143.34.bc.googleusercontent.com. [34.143.152.77])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-37134116c2esm8794702a91.1.2026.06.08.23.24.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 08 Jun 2026 22:00:21 -0700 (PDT)
+        Mon, 08 Jun 2026 23:24:38 -0700 (PDT)
 From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>
@@ -71,9 +71,9 @@ Cc: Jan Kara <jack@suse.cz>,
 	linux-kernel@vger.kernel.org,
 	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>,
 	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Subject: [PATCH v3] ext4: fix kernel BUG in ext4_write_inline_data_end
-Date: Tue,  9 Jun 2026 04:59:55 +0000
-Message-ID: <20260609045956.1910-1-aditya.ansh182@gmail.com>
+Subject: [PATCH v4] ext4: fix kernel BUG in ext4_write_inline_data_end
+Date: Tue,  9 Jun 2026 06:20:05 +0000
+Message-ID: <20260609062005.1702-1-aditya.ansh182@gmail.com>
 X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -95,51 +95,99 @@ writing, but ext4_journalled_write_end() will incorrectly attempt to write
 to it, triggering a BUG_ON(pos + len > EXT4_I(inode)->i_inline_size) in
 ext4_write_inline_data() since i_inline_size was not expanded.
 
-Additionally, a concurrent ext4_page_mkwrite() can execute
-ext4_convert_inline_data() between ext4_write_begin() and ext4_write_end()
-since it only takes xattr_sem. This concurrent path converts the inline
-data to an extent and clears both the EXT4_INODE_INLINE_DATA and
-EXT4_STATE_MAY_INLINE_DATA flags. Since the block buffers were not
-allocated in ext4_write_begin(), falling through to the block fallback path
-causes a NULL pointer dereference because folio_buffers(folio) is NULL.
+Additionally, two separate TOCTOU race conditions exist due to concurrent
+ext4_page_mkwrite() execution:
+1) A concurrent ext4_page_mkwrite() can execute ext4_convert_inline_data()
+between write_begin and write_end, clearing the inline flags. Since block
+buffers were not allocated in write_begin, this results in a NULL pointer
+dereference in the write_end fallback paths because folio_buffers(folio) is
+NULL.
+2) If ext4_convert_inline_data() clears the flags exactly after the inline
+flags checks pass in write_end, but before ext4_write_inline_data_end()
+acquires the xattr semaphore, the subsequent check will hit a panic via
+BUG_ON(!ext4_has_inline_data(inode)).
 
-Fix this by ensuring that the write_end functions (including
-ext4_write_end() and ext4_da_do_write_end()) safely return 0 to trigger
-a VFS retry if they detect folio_buffers(folio) is NULL after falling
-through from the inline data check. Returning 0 signals
-generic_perform_write() to revert the write iterator and retry the
-entire write operation, which will then properly allocate block buffers.
-
-To prevent transaction handle leaks and subsequent filesystem hangs during
-retries, we stop any active journal handle via ext4_journal_stop() before
-returning 0. We also explicitly check that the retrieved handle is non-NULL
-prior to stopping it, preventing a potential NULL pointer crash inside
-ext4_put_nojournal().
+Fix these issues completely by:
+1) Having write_end functions (ext4_write_end(),
+ext4_journalled_write_end(), and ext4_da_do_write_end()) return 0
+(VFS retry) if they fall through to the block fallback path and detect
+that folio_buffers(folio) is NULL, after safely stopping any active
+journal handle (protecting against a NULL handle panic in
+ext4_put_nojournal()).
+2) Replacing BUG_ON(!ext4_has_inline_data(inode)) inside
+ext4_write_inline_data_end() with a graceful error path. If the inline flag
+is cleared after locking the xattr, we unlock the xattr, release the iloc,
+unlock/put the folio, stop the journal, and return 0 to trigger a retry.
 
 Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
 Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
 Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
 Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 ---
+v4:
+  - Address critical TOCTOU race condition (reported by Sashiko AI review):
+    * Scenario: A buffered write holds the folio lock and evaluates the inline
+      flags checks in write_end to true. Before it enters or locks the xattr_sem
+      in ext4_write_inline_data_end(), a concurrent memory-mapped page fault
+      (ext4_page_mkwrite()) converts the inline data to an extent. This page fault
+      bypasses the folio lock (since ext4_convert_inline_data() runs lockless),
+      acquires the xattr_sem, and clears the inline flags. When the buffered write
+      resumes and enters ext4_write_inline_data_end(), it acquires the xattr_sem
+      and immediately triggers BUG_ON(!ext4_has_inline_data(inode)) causing a
+      kernel panic.
+    * Fix: Replace the BUG_ON() with a graceful error-handling retry path that
+      releases all resources (locks/buffers/folios/journals) and returns 0.
 v3:
-  - Fix journal handle leak in ext4_da_do_write_end() by stopping the active
-    handle before returning 0 on the fallback path.
-  - Safely check if the retrieved handle is non-NULL before calling
-    ext4_journal_stop() in ext4_write_end() and ext4_journalled_write_end()
-    to prevent a kernel crash inside ext4_put_nojournal().
+  - Fix journal handle leak and NULL handle crash (reported by Sashiko AI review):
+    * Scenario 1 (leak): During a delayed allocation write (ext4_da_write_begin),
+      inline data was prepared and a transaction handle started. If a concurrent
+      page fault converts the inline data before write_end, ext4_da_write_end()
+      falls through to ext4_da_do_write_end(). If the fallback check for
+      !folio_buffers(folio) returns 0 to retry without calling ext4_journal_stop(),
+      the transaction handle is leaked open-ended, eventually hanging the filesystem.
+    * Scenario 2 (crash): If we blindly call ext4_journal_stop() on a NULL handle
+      (e.g., when no transaction was started because we never took the inline path),
+      __ext4_journal_stop() delegates to ext4_put_nojournal(NULL) which triggers
+      BUG_ON(ref_cnt == 0), panicking the kernel.
+    * Fix: Retrieve the active handle in ext4_da_do_write_end() and stop it
+      if non-NULL. Also explicitly check "if (handle)" before calling
+      ext4_journal_stop() in ext4_write_end() and ext4_journalled_write_end().
 v2:
   - Address TOCTOU race condition (reported by Sashiko AI review):
-    A concurrent ext4_page_mkwrite() can execute ext4_convert_inline_data()
-    which takes xattr_sem and converts the inline data to extents, clearing
-    both EXT4_INODE_INLINE_DATA and EXT4_STATE_MAY_INLINE_DATA flags between
-    ext4_write_begin() and write_end().
-  - Safely return 0 from write_end functions if folio_buffers(folio) is NULL
-    to trigger a VFS retry. This prevents a NULL pointer dereference in
-    ext4_journalled_zero_new_buffers() and ext4_walk_page_buffers().
-  - Add check for ext4_write_end() and ext4_da_do_write_end().
- fs/ext4/inode.c | 24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
+    * Scenario: A concurrent ext4_page_mkwrite() converts inline data to extents
+      and clears the flags between ext4_write_begin() and write_end(). The
+      write_end function falls through to the block fallback path. Since block
+      buffers were not allocated in write_begin (because it took the inline path),
+      folio_buffers(folio) is NULL, causing a NULL pointer dereference in
+      ext4_journalled_zero_new_buffers() or ext4_walk_page_buffers(), or silent
+      data loss in the standard write path.
+    * Fix: Have the write_end functions return 0 if folio_buffers(folio) is NULL,
+      triggering a safe VFS-level retry. On the next write attempt, the inline
+      flags will be detected as cleared, and blocks/buffers will be properly allocated.
+ fs/ext4/inline.c |  9 ++++++++-
+ fs/ext4/inode.c  | 24 ++++++++++++++++++++++--
+ 2 files changed, 30 insertions(+), 3 deletions(-)
 
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..161136e84661 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -812,7 +812,14 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 			goto out;
+ 		}
+ 		ext4_write_lock_xattr(inode, &no_expand);
+-		BUG_ON(!ext4_has_inline_data(inode));
++		if (unlikely(!ext4_has_inline_data(inode))) {
++			ext4_write_unlock_xattr(inode, &no_expand);
++			brelse(iloc.bh);
++			folio_unlock(folio);
++			folio_put(folio);
++			ext4_journal_stop(handle);
++			return 0;
++		}
+ 
+ 		/*
+ 		 * ei->i_inline_off may have changed since
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 index c2c2d6ac7f3d..bc2688e03c19 100644
 --- a/fs/ext4/inode.c
