@@ -1,103 +1,208 @@
-Received: from mail-ej1-f49.google.com (mail-ej1-f49.google.com [209.85.218.49])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 406071A6814
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2026 03:16:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.49
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781061419; cv=pass; b=g4nPQKB8HtVqq2TMd91JmtnPISqD3GMdvVlcTx4SeIuQZl/N1/C9wHYDOHXJj3QFvE9f+5lII13Qyrmlo0GHuxloBrCgNUMQe+ZY7jBJ5k27G3qkO4zuEfOzrlvtI4KroECU8bJPh1kan7USif2ibN0QvWNPfGXBIKlSqe8/6Dc=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781061419; c=relaxed/simple;
-	bh=6ivu6G+abonV8rFlC/Up7NjXHcRzSyWTsA0ccngp0IQ=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=PTJXjWfpIuYbpqepgXUvXWdXxaOdshW6MoW2Qgy7aCoz07YMSNrVvnVgnq9i9IgXtB+0Nc5NwGlN5HnT6N2DwmyDanIU25WMRnjSVMsZH5bHf0qGX6b8Y04mUeMEEowSovssEFhQQfW/sNxqt+GyowH3wyy3QlWuF5fCIaOdLt4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=H3MfmEzl; arc=pass smtp.client-ip=209.85.218.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1F5632B112;
+	Wed, 10 Jun 2026 05:09:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781068169; cv=none; b=jF0WFVCKB32dXAF7UjTW/5mO5V2kOnCOxB1ndUJKAhicLnA1TSy4SgB7eCli0+RiRHyPbHESo9EEC5KLioWDsbYRc64r1fAlH2WQ0UwmJnqjrMnce5yQwT3/07HUr8P3bn6JDYc/7LFKkiizDL52ZtFom/D0c/KJCGkXAOYNOuM=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781068169; c=relaxed/simple;
+	bh=wY1/xzUFDBMhvqi2UnZsUIzR6eleQu5mVYb49if05FE=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=nk5WUubeL8V1V5UL2MAzpQwQ4sRnB4H/v6lNsgkMXjSn0rPyqefNLWfhBRgFNn/WddEQ37UsNuUKbY0FjOTNd4CN3dAXXb39PnFtSL3+hzMzUUZt7jyZMFA78xHMQoqPLT4yQBRTiRrgdv9nIgCIA0L7qtJAWOMbDoLmyvDhYmo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=bsTfqkze; arc=none smtp.client-ip=205.220.178.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="H3MfmEzl"
-Received: by mail-ej1-f49.google.com with SMTP id a640c23a62f3a-bdb3fd39045so918691066b.3
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Jun 2026 20:16:58 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1781061417; cv=none;
-        d=google.com; s=arc-20240605;
-        b=ZEZ/reDmAPqRlwER9E/t9FcudIGr/K22GOnibUIZdNrO7GjeuXhhEOsJcPqyL90MwV
-         gEAcqKP9KvznNxrXCpMu02x4z+xmg8lNl/gYbrQPJXDtyuWglbbdGQaEy2Im3191TDgE
-         vBCt1ROzPGFbFQdSeH3bRKAc0gE7jPpDQ2iJ61qcZd8ijL87dGI1NmL4yFaN/Oh5KzvW
-         O7/x2qcka2gFIrxN/1EDO7C38vpiQffMSz6OVO087ZxAgKfoKLGb5GxmBmkDJe+nGDxp
-         UZXjQaSniar42FyNQYVsOgzOZ+qwniFUD2OtmetzpX1Uv6w9g9Jglo8+WrrRvzVXEjGM
-         m5wA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=6ivu6G+abonV8rFlC/Up7NjXHcRzSyWTsA0ccngp0IQ=;
-        fh=AI+B5ZpTtR0TlKDZd1FM3firQjS+JgdDla2BQ1dtdLM=;
-        b=Hq5g8sq/e+tlkLEeyvD0aK3HVE8duwT7HIitFPLEANGQ7UyuuQONvbo40vv5zoeWoc
-         80afs6kplNx402pNlj6ma8iCNPO/csbwmDtOqmZy6+6wcHw19lTdkVsDGRqhNaUkvXtf
-         99zrqmXtKEQP/iH/t/chuwny9Fgy/425sr9zX/L29SMkCcmBQWCiBKMB81AMKDeYiD1f
-         T5FMdbbhoCjrYt6lfBd4JhOxSQFDT8TiFbOOgQCet8+rDwkv1PuY0NngrXGrkZOnKX/5
-         4VCnwQgXBvGeK6EcyaXMSJQ9vC/25cHh6o500Lszv/Uaog6o7Lxw6tCaGpANy2Bz48q8
-         QxuA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781061417; x=1781666217; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=6ivu6G+abonV8rFlC/Up7NjXHcRzSyWTsA0ccngp0IQ=;
-        b=H3MfmEzl7d1APfW9tVXC7PN/26hXINTKJCo4QEgajXz+/ysGSJnmkM6otdsVmTvv+z
-         l/7/0Ih83N3VhHOqhOKxAyFFRt/PRArQH2lcnLwwZC0KNKyGGNSnfL+YYZ6muN73kYsS
-         XPOcV3Si9boJynTdWyqk8Brl5EPXtVC8j3rBiDea7E8CeVX+DWTyFJ7MoKUg+6mH1fSq
-         UmCUfjomUTPZQb7TwEPmHGdn5DeH/x0QdIM80sjg+BNxnWw+mKBtUNuePBJT2eLcoIY5
-         Xk9lTb6Bn+wVLuOkCTqZ7MpM3y60h5Wy8zZZk3FL7BwByruEQumxzfAdgLzrBzcKgt2O
-         Kx+w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781061417; x=1781666217;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=6ivu6G+abonV8rFlC/Up7NjXHcRzSyWTsA0ccngp0IQ=;
-        b=AQvUfijwBvhzQakGiD/42Kn7g4W8qAQrURaZBNs89gj1PP+lNhNLO1gbkdJtKBb+ZW
-         d8TR3vkYGcnRL/ZRClWfXyJSqHvvNYPeJDCKS2XH048tsg9l9/Z5ObmvHpT6JMmMpONs
-         Rl8ynqoiT/9MYqXBFjHnh+Z/9zaOT0c2l+tp/YIBXVOyKD9Ztph0gs7DPODYm4i0jbhF
-         On8v9y0n4MO3Quk27GoyKOFWap90qkjTBaMQQF9jSveveYIXT0eLKaOpQuqtuw/qc9O9
-         S0A7ypPYx0T4pQ09BAz3J1P1pS4KxhEKa0XGCgWiNG4nrUrJ0/6xEHxrpbAptk/qOlyt
-         ohhw==
-X-Forwarded-Encrypted: i=1; AFNElJ/XomAg0a4yBTg8A40cUlTbRBXqvPW967NKtZksPEZVVUSbBsr4mG3mH9uAxKxztBoOx0VL6Ztox3bX@vger.kernel.org
-X-Gm-Message-State: AOJu0YzHVle6QFhVbn/+rf7dIQxxeERrQXbmkQVeyPfTXBTC5v+ZQZ3K
-	JTaKzydU//V3oCEDgPHbUQ/4LjdAZ8V5J3//a2T5P6KaD6rEBHjPBJlFKPisgEjJzm45gqrFWfb
-	ra08YOd6uNAJkH0It0iGvzT+mPfZ7X5E=
-X-Gm-Gg: Acq92OEX5YfNcppK2FmuXBqfrpLho0zV9m7arcfbUVtwPMPiDGrdRCo4iHOyGOK8reL
-	RzyecYQLTMI6yBMbu+qvdOFOEV9MiQ5KxV6Ntvx+a8T7VG1jVa+iIrGWW/ohcw2BmKT1HmJ+NEW
-	WfiCD46Xb4JUdtaqn20dnfdts/xCfTh+D4qD4qbDfUhytv5zWMz1GvRJ44HkpdvQQ0TSy2snwRo
-	rC5Z+rYZ39zNsU3YID3wafQn6+rHonWe4s3aWZ/o2/ZOY1MNrwcLlVaypqJtXkxIzWdZxdXTEBQ
-	phSXx2ONtLFlkny3rOhcfBHKGkzQ7ennjmIylCHrlokhSGC4pLHzx+jZakZ+LVU=
-X-Received: by 2002:a17:907:d40e:b0:bed:4545:8bfb with SMTP id
- a640c23a62f3a-bf372e1f898mr1139353866b.40.1781061416521; Tue, 09 Jun 2026
- 20:16:56 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="bsTfqkze"
+Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65A3h4kI136221;
+	Wed, 10 Jun 2026 05:08:43 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	PPS06212021; bh=bXavdpV5FBAkKNSxxOLkvVdf/DFn4jq55p6k+WmJ3Xg=; b=
+	bsTfqkzeP+zHn0ecuQ0Ki38HHw34zZKst0pJg/hN5ZVuNmaKIBM2wILF5/EQmIvQ
+	n0376VsVvqfBAFr/nSKpeu7Z9IGko4iAG8vfkrIU6wODA/nknyvD4dUkY1Qj+XmF
+	kx+1KNzF5A9obJrMPE4B+Hju4HwtasE9KrNEniq07DyJ+5Wt4CAzLBs5vPTv0Jm0
+	rjDaVjd8RdRFyZF2TGZqbdx6nOfslE50eJrUtcooOZtwf18166UuL3rVALw5VUgI
+	GjluVFEW29mENsZM0Jjg429v/T/uEhXVEKoWQlKoxZI2qwxXQmfiA6gCiiFy7tyd
+	dK+sz/iqvzUxOq6a2Z5H/Q==
+Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4epwkq86py-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Wed, 10 Jun 2026 05:08:43 +0000 (GMT)
+Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Tue, 9 Jun 2026 22:08:40 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Tue, 9 Jun 2026 22:08:38 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windriver.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH v2] ext4: drop s_writepages_rwsem around ext4_destroy_inline_data
+Date: Wed, 10 Jun 2026 13:08:37 +0800
+Message-ID: <20260610050837.2768429-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20260609154505.2104659-1-yun.zhou@windriver.com>
+References: <20260609154505.2104659-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260608065227.3018-1-aditya.ansh182@gmail.com> <w7zmtkoa4ieb676gkl6m2ax5hp76dxr2rhkfzgqvlydvw4hpfr@hixijfpumliv>
-In-Reply-To: <w7zmtkoa4ieb676gkl6m2ax5hp76dxr2rhkfzgqvlydvw4hpfr@hixijfpumliv>
-From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-Date: Wed, 10 Jun 2026 08:46:46 +0530
-X-Gm-Features: AVVi8CdmHTdjmzm-xXekP1RWa0tQhnpmr79eDmKg8jlZDk76gqFK198UsyBagV8
-Message-ID: <CAK5ssPMvamn1fuz4ss5RUkErC79GpdgVs0AZgZky8CPhsMof3A@mail.gmail.com>
-Subject: Re: [PATCH] ext4: fix kernel BUG in ext4_write_inline_data_end
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, 
-	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjEwMDA0NSBTYWx0ZWRfX2mr7GVQlyaGm
+ e3DZfPArQl0uHA6QZH8szmVjSBjvlj3FyDDHek1vkxcDZrKw4F4o6ketWeHRkR8PSNCM2vJ1MXL
+ dfj72dOBnJ/S5Nc1K0eKi3XjvYMuMElVCYsVI/h0c9Ub8mnyx+EBt5GEbiFi4xMALIpvA+JWUnH
+ 8y/oTWRbFKhC1iIW4Z+Q/MwPpV5zUJl51L72tBI6iIXzWW46tktPbNmPcyfpZ2+qX6LBt77/fPn
+ ZpJ0IzVMXE2bL/DqcHxV/HBqJcRF+Re4JlJTqQkAXmQUKrxbvmG6tdu+Gidvr84q/D0PZOM+ytU
+ yBbePEatW22DOCT2hzgUpPG2pfDaWLS3SOxySpWZ/X6rBEXl11co0dYwl8+u86QdTACZA1b9NiJ
+ p5ohZNqdryWNjeaS+boPdfHuz8p5dkhUM3A9lf7+n2lkBhn7i8vdmZJnlWdtaPhZJEKoskyXTPI
+ CKh1wnGZN+EZui1Mhkg==
+X-Proofpoint-ORIG-GUID: CrVSvASnxpCqc4ITAtxVn3__rUlaT4pt
+X-Authority-Analysis: v=2.4 cv=eOAjSnp1 c=1 sm=1 tr=0 ts=6a28f15b cx=c_pps
+ a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=PexMM_OV13WYALEybcEA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-GUID: CrVSvASnxpCqc4ITAtxVn3__rUlaT4pt
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-10_01,2026-06-09_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ phishscore=0 suspectscore=0 impostorscore=0 malwarescore=0 clxscore=1015
+ bulkscore=0 adultscore=0 spamscore=0 lowpriorityscore=0 priorityscore=1501
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606100045
 
-Hi Jan,
+ext4_do_writepages() calls ext4_destroy_inline_data() which acquires
+xattr_sem while s_writepages_rwsem is held (read).  This creates a
+circular lock dependency:
 
-Thank you for the review and for the Reviewed-by tag!
+  CPU0                               CPU1
+  ----                               ----
+  ext4_writepages()
+    ext4_writepages_down_read()
+      [holds s_writepages_rwsem]
+                                     ext4_evict_inode()
+                                       __ext4_mark_inode_dirty()
+                                         ext4_expand_extra_isize_ea()
+                                           ext4_xattr_block_set()
+                                             [holds xattr_sem]
+                                             iput(old_bh inode)
+                                               write_inode_now()
+                                                 ext4_writepages()
+                                                   ext4_writepages_down_read()
+                                                   [BLOCKED on s_writepages_rwsem]
+    ext4_do_writepages()
+      ext4_destroy_inline_data()
+        down_write(xattr_sem)
+        [BLOCKED on xattr_sem]
 
-Best regards,
-Aditya Prakash Srivastava
+Fix by temporarily dropping s_writepages_rwsem around the call to
+ext4_destroy_inline_data().  This is safe because:
+
+ - This code runs before any block mapping or IO submission, so no
+   writepages state depends on the rwsem being held at this point.
+
+ - Inline data destruction is a one-way format transition (once cleared,
+   EXT4_INODE_INLINE_DATA is never set again).  The rwsem is
+   re-acquired immediately after, ensuring format stability for the
+   remainder of writepages.
+
+ - The can_map flag naturally identifies the ext4_writepages() path
+   (holds rwsem) vs ext4_normal_submit_inode_data_buffers() (does not),
+   so the drop/reacquire is skipped when the rwsem is not held.
+
+Also check the return value of ext4_destroy_inline_data() -- previously
+ignored, a failure would leave inline data intact while writepages
+proceeds assuming block-mapped layout.
+
+Reported-by: syzbot+bb2455d02bda0b5701e3@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=bb2455d02bda0b5701e3
+Fixes: c8585c6fcaf2 ("ext4: fix races between changing inode journal mode and ext4_writepages")
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+---
+v2:
+ - Instead of moving inline data handling to ext4_writepages(),
+   temporarily drop s_writepages_rwsem around ext4_destroy_inline_data()
+   in ext4_do_writepages(). The move approach had a race where concurrent
+   writes could create dirty pages with inline data after the early check,
+   and unconditional destruction without dirty pages would lose data.
+
+ fs/ext4/inode.c | 23 +++++++++++++++++++----
+ 1 file changed, 19 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c2c2d6ac7f3d..7ec16adf4685 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1694,6 +1694,9 @@ struct mpage_da_data {
+ 	struct writeback_control *wbc;
+ 	unsigned int can_map:1;	/* Can writepages call map blocks? */
+ 
++	/* Saved memalloc context from ext4_writepages_down_read() */
++	int alloc_ctx;
++
+ 	/* These are internal state of ext4_do_writepages() */
+ 	loff_t start_pos;	/* The start pos to write */
+ 	loff_t next_pos;	/* Current pos to examine */
+@@ -2824,8 +2827,21 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+ 		}
+ 		BUG_ON(ext4_test_inode_state(inode,
+ 				EXT4_STATE_MAY_INLINE_DATA));
+-		ext4_destroy_inline_data(handle, inode);
++		/*
++		 * Temporarily drop s_writepages_rwsem because
++		 * ext4_destroy_inline_data() acquires xattr_sem, which has
++		 * a higher lock ordering rank.  Holding both would create a
++		 * circular dependency with ext4_xattr_block_set() -> iput()
++		 * -> ext4_writepages() -> s_writepages_rwsem.
++		 */
++		if (mpd->can_map)
++			ext4_writepages_up_read(inode->i_sb, mpd->alloc_ctx);
++		ret = ext4_destroy_inline_data(handle, inode);
++		if (mpd->can_map)
++			mpd->alloc_ctx = ext4_writepages_down_read(inode->i_sb);
+ 		ext4_journal_stop(handle);
++		if (ret)
++			goto out_writepages;
+ 	}
+ 
+ 	/*
+@@ -3032,13 +3048,12 @@ static int ext4_writepages(struct address_space *mapping,
+ 		.can_map = 1,
+ 	};
+ 	int ret;
+-	int alloc_ctx;
+ 
+ 	ret = ext4_emergency_state(sb);
+ 	if (unlikely(ret))
+ 		return ret;
+ 
+-	alloc_ctx = ext4_writepages_down_read(sb);
++	mpd.alloc_ctx = ext4_writepages_down_read(sb);
+ 	ret = ext4_do_writepages(&mpd);
+ 	/*
+ 	 * For data=journal writeback we could have come across pages marked
+@@ -3047,7 +3062,7 @@ static int ext4_writepages(struct address_space *mapping,
+ 	 */
+ 	if (!ret && mpd.journalled_more_data)
+ 		ret = ext4_do_writepages(&mpd);
+-	ext4_writepages_up_read(sb, alloc_ctx);
++	ext4_writepages_up_read(sb, mpd.alloc_ctx);
+ 
+ 	return ret;
+ }
+-- 
+2.43.0
+
