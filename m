@@ -1,240 +1,214 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32E6A379C3F;
-	Wed, 10 Jun 2026 06:43:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3817381B10;
+	Wed, 10 Jun 2026 06:56:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.97
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781073792; cv=none; b=i05lrSSk9epfqazfMNjplf8a6fXUOJEAWPvqVsClmB+hiIPBeMAeTTjvh+ulKYUTVVJFxMJ5OmqtRv5I0Oow4Cy4Yl04rbJgqp5mp8Ur9C+Z1UnUe4/+GwDdasHnz/6jU7Ydgp3g9CyScm99BFxHyN0WNuQFWfhAft5ZRoIKEaY=
+	t=1781074568; cv=none; b=HIPpeupgSTQEVDgRvQsPRJrnON1epPhsR7vQtiPZloOYK8h0rnJMNujW0qPF662+N6Xnmls1+tU9m/fjIU/gZzWsiW0KfV9EdiMoLgA4AjN80CP2xOoARsY2aiXE5h8bDmIkLLFDFIBWxcrZtXSpaZ668x9s75C4znxpSfHTOGI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781073792; c=relaxed/simple;
-	bh=fD7S+j4dBXGvPVPnKXk5HbR3FaikKlQ1GQ3woaiex5E=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=KKMTjONMOwYIyT5oCSayFJBpoGA486DDdtN6mNUKnMsuw1im1ypUyO0090kvhQQI3C2Tt9o9MVOqmW8gBao2fCWy54PI7FH5mrFeUTyQ+Ccv4+nLCGJV3unhs5sfjDGoVxbNiXDTM2ImlMZQPM3VHA8ESNgQuaSWadj+sW9Y6v4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=pLrDnuOY; arc=none smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	s=arc-20240116; t=1781074568; c=relaxed/simple;
+	bh=rRDfpSzw3X6enhuhpGqG6t8VOaobODgmutXYPZvFcJg=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=BIV4QqlhujrT17+c8450TMq2cE90pC2cpniEEr7pom0515Rh8MqJSQ5cA6UmOD2dlj3Do9et2YkHhxfpPA810P5sU732tPuhUj4SBtX3DfTwuUhOjV6644JZ1DJzARhTaIEtvjzAYE2cck0hRV1NAD9MjoqIs0Kaonli9NjV4cs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=aNQ7PbRk; arc=none smtp.client-ip=115.124.30.97
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="pLrDnuOY"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65A5nPXY353212;
-	Wed, 10 Jun 2026 06:37:34 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=2COof7nKzxniXU0wu3qy33JexswggqQ8KVLk7O6LtVQ=; b=
-	pLrDnuOY8p2u/GF8CUMVgN3F7k1N9t52VIEShxBi34WW86DwMjvegqvXF0CR3CVr
-	tb7ldvjnVItj7C6fgrkfFQaFPtQRWyP1EM5bENBx1LYapI7v2TnA+OrvdqKwE8VE
-	ARLo8xT8RytwPaS+NDUK8VwjuyuYXennp/q5ewooBcf1qlVZUqkpLfeDMKf7Gnuf
-	V3yerWLBipp10TjLAuoIa1L8ir5ZxeUPRutDe3cFDMpxN6FjtOpQ88hHgEOU3AQR
-	SPrXvNq03+t10xXUThhSxHhhat4i0NvGIlB8gvMRWYQkGf4EXbmseEz0JGQOQ/Uv
-	lHNktBiTZ+nudWf8WCaGzg==
-Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4epwkq88t9-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Wed, 10 Jun 2026 06:37:33 +0000 (GMT)
-Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Tue, 9 Jun 2026 23:37:32 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Tue, 9 Jun 2026 23:37:29 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windriver.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: [PATCH v3] ext4: drop s_writepages_rwsem around inline data handling in writepages
-Date: Wed, 10 Jun 2026 14:37:29 +0800
-Message-ID: <20260610063729.3294915-1-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20260609154505.2104659-1-yun.zhou@windriver.com>
-References: <20260609154505.2104659-1-yun.zhou@windriver.com>
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="aNQ7PbRk"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1781074556; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=tHKZXlYHzQiuz4CuXIVUBayRBgQEvDJmST6DE9mf+8g=;
+	b=aNQ7PbRkZItFf11r6vye/H8dRDn2Z6ZAjuVVWvn0YNKanggFZPXafrhDoQui5jX0eHL87te9FysI5HQa/o/wTuo4pGFqDZdwSkh4X9Fmze5auj2q9kC249IitnczyEeadQwx8k3Dv6Ayl1JqDryyulYUiVOs5hAajrIAlZLwxGU=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R961e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=17;SR=0;TI=SMTPD_---0X4ZbVxy_1781074555;
+Received: from 30.221.130.225(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0X4ZbVxy_1781074555 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Wed, 10 Jun 2026 14:55:56 +0800
+Message-ID: <e4aa171b-ac0f-4cd1-8605-91a3f82a4faf@linux.alibaba.com>
+Date: Wed, 10 Jun 2026 14:55:54 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjEwMDA2MCBTYWx0ZWRfX46/fb7uAThm4
- gUZwxP7NYnAAbAATFfAHp+1MN5vW4pNOlB5xpAP6szv+l6R10WOOUEAkBufglEyd9Q7Vi0aQrtM
- +0s40BZGMbwi1KmS+rgLSYtwa/uceYnkxDbefoN1of2L7boWsZbI13vp1XR/EX19pIOOxTPwbXn
- odMIUN2SiZ3AOgkwEa29IPSaa2FDxZg03HVuJFPs8NkkJTFLlFQHwci3R2t0Ee1uDesPHBJ9V/3
- 2HKwcdp3eOMATxPe3DQ9d2LWRc/O5ipOQp/FfsKyd0Tbkcn1D6ArAW5eO7Rp8r59MK9PpnWlBzm
- 7iXHrmF5ypu4I4vDUh6NY/Gg1wdpprVOjVB2fYD13rFyh7kHWzZ5jWRgMOHO6PyaO2tuHXwdr+H
- 0Zl05AzMQYu8OU5h9Oixd73eqAxzNLH2eroZYYCftCR+4DsjEFfPWy4sK7L/waOQik0x3o81QfK
- 3Ck/LH8x/8KbZ20YLfg==
-X-Proofpoint-ORIG-GUID: TV3Uh8aKV3IzTUpCcLlUWgYDkzDBOS8c
-X-Authority-Analysis: v=2.4 cv=eOAjSnp1 c=1 sm=1 tr=0 ts=6a29062d cx=c_pps
- a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
- a=bJwlv0obxc_OLVI2mnQA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
- a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-GUID: TV3Uh8aKV3IzTUpCcLlUWgYDkzDBOS8c
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-10_01,2026-06-09_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- phishscore=0 suspectscore=0 impostorscore=0 malwarescore=0 clxscore=1015
- bulkscore=0 adultscore=0 spamscore=0 lowpriorityscore=0 priorityscore=1501
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2605210000 definitions=main-2606100060
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH RFC 7/8] erofs: open via dedicated fs bdev helpers
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jens Axboe <axboe@kernel.dk>, Alexander Viro <viro@zeniv.linux.org.uk>,
+ linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, Carlos Maiolino <cem@kernel.org>,
+ linux-xfs@vger.kernel.org, Chris Mason <clm@fb.com>,
+ David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+ Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+ Gao Xiang <xiang@kernel.org>, linux-erofs@lists.ozlabs.org,
+ Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>
+References: <20260602-work-super-bdev_holder_global-v1-0-bb0fd82f3861@kernel.org>
+ <20260602-work-super-bdev_holder_global-v1-7-bb0fd82f3861@kernel.org>
+ <7c5bfcf0-36a3-4cc6-bf31-6af4fc901c37@linux.alibaba.com>
+ <20260603-nieder-ausdehnen-siebdruck-aa96f40ebec6@brauner>
+From: Gao Xiang <hsiangkao@linux.alibaba.com>
+In-Reply-To: <20260603-nieder-ausdehnen-siebdruck-aa96f40ebec6@brauner>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-ext4_do_writepages() calls ext4_destroy_inline_data() which acquires
-xattr_sem while s_writepages_rwsem is held (read).  This creates a
-circular lock dependency:
+Hi Christian,
 
-  CPU0                               CPU1
-  ----                               ----
-  ext4_writepages()
-    ext4_writepages_down_read()
-      [holds s_writepages_rwsem]
-                                     ext4_evict_inode()
-                                       __ext4_mark_inode_dirty()
-                                         ext4_expand_extra_isize_ea()
-                                           ext4_xattr_block_set()
-                                             [holds xattr_sem]
-                                             iput(old_bh inode)
-                                               write_inode_now()
-                                                 ext4_writepages()
-                                                   ext4_writepages_down_read()
-                                                   [BLOCKED on s_writepages_rwsem]
-    ext4_do_writepages()
-      ext4_destroy_inline_data()
-        down_write(xattr_sem)
-        [BLOCKED on xattr_sem]
+On 2026/6/3 21:42, Christian Brauner wrote:
+>> May I ask if it's an urgent 7.2 work? If not, I could
+> 
+> No no, it's way too late for that this cycle.
+> 
+>> make a preparation patch for the upcoming 7.2 cycle
+>> to handle erofs_map_dev() failure here so you don't
+>> need to bother with this in this patchset.
+> 
+> Sounds good. I take it you can just do this yourself without me.
+> 
+>> I will seek more time to resolve the recent todos
+> 
+> Thanks!
+> 
+>> yet always intercepted by other unrelated stuffs.
+> 
+> :)
 
-Fix by temporarily dropping s_writepages_rwsem for the entire inline
-data handling block, including the journal handle start/stop.  The
-rwsem must be dropped before ext4_journal_start() -- not between
-journal_start and journal_stop -- to avoid a secondary deadlock with
-ext4_change_inode_journal_flag() which takes rwsem (write) and then
-calls jbd2_journal_lock_updates() waiting for active handles to stop.
+I removed .shutdown() and .remove_bdev() implementations since I
+think it doesn't quite seem necessary for immutable fses, but
+would like to know your thoughts too, my overall own comments are
+documented in the commit message below:
 
-This is safe because:
 
- - This code runs before any block mapping or IO submission, so no
-   writepages state depends on the rwsem being held at this point.
+ From 933f6c6f2e704116d9a15815c880196bec7b9ee3 Mon Sep 17 00:00:00 2001
+From: Christian Brauner <brauner@kernel.org>
+Date: Tue, 2 Jun 2026 12:10:13 +0200
+Subject: [PATCH] erofs: open via dedicated fs bdev helpers
 
- - Inline data destruction is a one-way format transition (once cleared,
-   EXT4_INODE_INLINE_DATA is never set again).  The rwsem is
-   re-acquired after journal_stop, ensuring format stability for the
-   remainder of writepages.
+Route opens through fs_bdev_file_open_by_path() so each external device
+is registered against the correct superblock, and convert the matching
+releases.
 
- - The can_map flag identifies the ext4_writepages() path (holds rwsem)
-   vs ext4_normal_submit_inode_data_buffers() (does not), so the
-   drop/reacquire is skipped when the rwsem is not held.
+Gao Xiang: I think typical immutable filesystems don't need .shutdown()
+and .remove_bdev() for the following reasons:
 
-Also check the return value of ext4_destroy_inline_data() to avoid
-proceeding with an inconsistent inode format on failure.
+  - blk_mark_disk_dead() sets GD_DEAD in advance of fs_bdev_mark_dead()
+    so that the following bios will fail immediately; block_device
+    references are still valid so it seems overkill to handle dead
+    blockdevs in the deep filesystem I/O submission path.
 
-Reported-by: syzbot+bb2455d02bda0b5701e3@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=bb2455d02bda0b5701e3
-Fixes: c8585c6fcaf2 ("ext4: fix races between changing inode journal mode and ext4_writepages")
-Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+  - Immutable filesystems like EROFS don't have write paths and journals,
+    so they don't need to block writes (i.e., new dirty pages), metadata
+    changes, and abort journals.
+
+  - The comment above loop_change_fd() documents a valid read-only use
+    case we need to support anyway, but it calls disk_force_media_change()
+    which will call fs_bdev_mark_dead() later: we don't want loop_change_fd()
+    shutdowns the active filesystems and return -EIO unconditionally.
+
+Currently I think the default behavior (shrink_dcache_sb + evict_inodes)
+in fs_bdev_mark_dead() is enough for immutable filesystems, tried to
+document in the commit here for later reference.
+
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Signed-off-by: Gao Xiang <hsiangkao@linux.alibaba.com>
 ---
-v3: Drop s_writepages_rwsem before ext4_journal_start() and reacquire
-    after ext4_journal_stop(), instead of dropping between journal_start
-    and journal_stop as in v2.  This avoids two issues identified in v2
-    review:
-    - memalloc_nofs_restore() in ext4_writepages_up_read() would clear
-      PF_MEMALLOC_NOFS while the jbd2 handle is active.
-    - Reacquiring s_writepages_rwsem while holding a handle creates an
-      ABBA deadlock with ext4_change_inode_journal_flag() which takes
-      the rwsem (write) then calls jbd2_journal_lock_updates().
+  fs/erofs/super.c | 35 +++++++++++++++++++++++------------
+  1 file changed, 23 insertions(+), 12 deletions(-)
 
-v2: Instead of moving inline data handling to ext4_writepages(),
-    temporarily drop s_writepages_rwsem around ext4_destroy_inline_data()
-    in ext4_do_writepages(). The move approach had a race where concurrent
-    writes could create dirty pages with inline data after the early check,
-    and unconditional destruction without dirty pages would lose data.
+diff --git a/fs/erofs/super.c b/fs/erofs/super.c
+index 802add6652fd..def9cbfbc9d8 100644
+--- a/fs/erofs/super.c
++++ b/fs/erofs/super.c
+@@ -153,8 +153,8 @@ static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
+  	} else if (!sbi->devs->flatdev) {
+  		file = erofs_is_fileio_mode(sbi) ?
+  				filp_open(dif->path, O_RDONLY | O_LARGEFILE, 0) :
+-				bdev_file_open_by_path(dif->path,
+-						BLK_OPEN_READ, sb->s_type, NULL);
++				fs_bdev_file_open_by_path(dif->path,
++						BLK_OPEN_READ, sb->s_type, sb);
+  		if (IS_ERR(file)) {
+  			if (file == ERR_PTR(-ENOTBLK))
+  				return -EINVAL;
+@@ -843,11 +843,16 @@ static int erofs_fc_reconfigure(struct fs_context *fc)
 
-v1: Moved inline data cleanup from ext4_do_writepages() to
-      ext4_writepages() before acquiring s_writepages_rwsem.
+  static int erofs_release_device_info(int id, void *ptr, void *data)
+  {
++	struct super_block *sb = data;
+  	struct erofs_device_info *dif = ptr;
 
- fs/ext4/inode.c | 31 ++++++++++++++++++++++++++-----
- 1 file changed, 26 insertions(+), 5 deletions(-)
+  	fs_put_dax(dif->dax_dev, NULL);
+-	if (dif->file)
+-		fput(dif->file);
++	if (dif->file) {
++		if (S_ISBLK(file_inode(dif->file)->i_mode))
++			fs_bdev_file_release(dif->file, sb);
++		else
++			fput(dif->file);
++	}
+  	erofs_fscache_unregister_cookie(dif->fscache);
+  	dif->fscache = NULL;
+  	kfree(dif->path);
+@@ -855,18 +860,19 @@ static int erofs_release_device_info(int id, void *ptr, void *data)
+  	return 0;
+  }
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c2c2d6ac7f3d..cd7588a3fa45 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1694,6 +1694,9 @@ struct mpage_da_data {
- 	struct writeback_control *wbc;
- 	unsigned int can_map:1;	/* Can writepages call map blocks? */
- 
-+	/* Saved memalloc context from ext4_writepages_down_read() */
-+	int alloc_ctx;
-+
- 	/* These are internal state of ext4_do_writepages() */
- 	loff_t start_pos;	/* The start pos to write */
- 	loff_t next_pos;	/* Current pos to examine */
-@@ -2816,16 +2819,35 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
- 	 * we'd better clear the inline data here.
- 	 */
- 	if (ext4_has_inline_data(inode)) {
--		/* Just inode will be modified... */
-+		/*
-+		 * Temporarily drop s_writepages_rwsem because
-+		 * ext4_destroy_inline_data() acquires xattr_sem, which has
-+		 * a higher lock ordering rank.  Holding both would create a
-+		 * circular dependency with ext4_xattr_block_set() -> iput()
-+		 * -> ext4_writepages() -> s_writepages_rwsem.
-+		 *
-+		 * Drop the rwsem before starting the journal handle to also
-+		 * avoid a deadlock with ext4_change_inode_journal_flag(),
-+		 * which takes rwsem (write) then jbd2_journal_lock_updates().
-+		 */
-+		if (mpd->can_map)
-+			ext4_writepages_up_read(inode->i_sb, mpd->alloc_ctx);
- 		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
- 		if (IS_ERR(handle)) {
-+			if (mpd->can_map)
-+				mpd->alloc_ctx =
-+					ext4_writepages_down_read(inode->i_sb);
- 			ret = PTR_ERR(handle);
- 			goto out_writepages;
- 		}
- 		BUG_ON(ext4_test_inode_state(inode,
- 				EXT4_STATE_MAY_INLINE_DATA));
--		ext4_destroy_inline_data(handle, inode);
-+		ret = ext4_destroy_inline_data(handle, inode);
- 		ext4_journal_stop(handle);
-+		if (mpd->can_map)
-+			mpd->alloc_ctx = ext4_writepages_down_read(inode->i_sb);
-+		if (ret)
-+			goto out_writepages;
- 	}
- 
- 	/*
-@@ -3032,13 +3054,12 @@ static int ext4_writepages(struct address_space *mapping,
- 		.can_map = 1,
- 	};
- 	int ret;
--	int alloc_ctx;
- 
- 	ret = ext4_emergency_state(sb);
- 	if (unlikely(ret))
- 		return ret;
- 
--	alloc_ctx = ext4_writepages_down_read(sb);
-+	mpd.alloc_ctx = ext4_writepages_down_read(sb);
- 	ret = ext4_do_writepages(&mpd);
- 	/*
- 	 * For data=journal writeback we could have come across pages marked
-@@ -3047,7 +3068,7 @@ static int ext4_writepages(struct address_space *mapping,
- 	 */
- 	if (!ret && mpd.journalled_more_data)
- 		ret = ext4_do_writepages(&mpd);
--	ext4_writepages_up_read(sb, alloc_ctx);
-+	ext4_writepages_up_read(sb, mpd.alloc_ctx);
- 
- 	return ret;
- }
--- 
-2.43.0
+-static void erofs_free_dev_context(struct erofs_dev_context *devs)
++static void erofs_free_dev_context(struct erofs_dev_context *devs,
++				   struct super_block *sb)
+  {
+  	if (!devs)
+  		return;
+-	idr_for_each(&devs->tree, &erofs_release_device_info, NULL);
++	idr_for_each(&devs->tree, &erofs_release_device_info, sb);
+  	idr_destroy(&devs->tree);
+  	kfree(devs);
+  }
+
+-static void erofs_sb_free(struct erofs_sb_info *sbi)
++static void erofs_sb_free(struct erofs_sb_info *sbi, struct super_block *sb)
+  {
+-	erofs_free_dev_context(sbi->devs);
++	erofs_free_dev_context(sbi->devs, sb);
+  	kfree(sbi->fsid);
+  	kfree_sensitive(sbi->domain_id);
+  	if (sbi->dif0.file)
+@@ -879,8 +885,13 @@ static void erofs_fc_free(struct fs_context *fc)
+  {
+  	struct erofs_sb_info *sbi = fc->s_fs_info;
+
+-	if (sbi) /* free here if an error occurs before transferring to sb */
+-		erofs_sb_free(sbi);
++	/*
++	 * Freed here only if an error occurs before the sb is set up; at that
++	 * point no block-backed device has been claimed (that happens in
++	 * fill_super), so the NULL sb never reaches fs_bdev_file_release().
++	 */
++	if (sbi)
++		erofs_sb_free(sbi, NULL);
+  }
+
+  static const struct fs_context_operations erofs_context_ops = {
+@@ -936,7 +947,7 @@ static void erofs_kill_sb(struct super_block *sb)
+  	erofs_drop_internal_inodes(sbi);
+  	fs_put_dax(sbi->dif0.dax_dev, NULL);
+  	erofs_fscache_unregister_fs(sb);
+-	erofs_sb_free(sbi);
++	erofs_sb_free(sbi, sb);
+  	sb->s_fs_info = NULL;
+  }
+
+@@ -948,7 +959,7 @@ static void erofs_put_super(struct super_block *sb)
+  	erofs_shrinker_unregister(sb);
+  	erofs_xattr_prefixes_cleanup(sb);
+  	erofs_drop_internal_inodes(sbi);
+-	erofs_free_dev_context(sbi->devs);
++	erofs_free_dev_context(sbi->devs, sb);
+  	sbi->devs = NULL;
+  	erofs_fscache_unregister_fs(sb);
+  }
+--
+2.43.5
+
 
