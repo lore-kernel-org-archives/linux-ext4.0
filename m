@@ -1,71 +1,72 @@
-Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
+Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com [209.85.128.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B44973DDDB8
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2026 15:25:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 531BF3DBD7A
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2026 15:25:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781105136; cv=none; b=sk0Xwu+mO9aDGpTPo1TVDAxn2vFdEwbekXPe9xhOsndfuKW6DZwOZgppRmy4M+udk3cFn2dI4iZ1Zkx4mKsn98Jns8MaiBOVJME0PW4Byu/zx9dLT0/Da+uoCFHwvUUmkSPDJRZTETtwHDj5FQG65WqFET0LMiSzL9U2whZy2zs=
+	t=1781105137; cv=none; b=OL6MRaBUmmNXWPZrewl35ntHg8pZ4txi1Q2PsR0aTubDa9+T4V7whXbpFMK6r9HAJrckFPYlf3AscVDzl/S4qLuFCA1I51WqF4QnUOmDvs+WSONnQA+M5eqfEo/wWhKqxfx9q67K3GoSnTU8YdEq/EUS+QhTFjGVPcCsqfoMAps=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781105136; c=relaxed/simple;
-	bh=//tuF8ajv9v1sDxaFizHJuZF3K+BJ2hAu1/8lrGhlso=;
+	s=arc-20240116; t=1781105137; c=relaxed/simple;
+	bh=/hfHMY/a31E0dURp864pbsms9/cwcOck7I0ynRjsYCo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=nSuP4jLBljdBkj5Vb+RzuZylc1EOumxW7k2+wIAaGZyPoz2Uqx5b2V/1yM+vkFHWg0kfz2HwYlrOtey0OfKnGAktMR4m+ZBVX0MPl0JWSuplaSzbM+nzrn7czb57Y+6zpUMVH4SLdJJE3nsZ6qjPWIQg7Oey7GP+ae4g9Mae1f0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YiPwjXMY; arc=none smtp.client-ip=209.85.128.51
+	 MIME-Version; b=t3DxUKYHLwAM/oF6XwxP5OM4ISMyJfRUtlPe7TVxfaj4HEgYp8xUUfQ64z30UKnYf+B3tjOHU5GS3yxxNmBuAjPscrSiggAwBjKYaoOj8PuGVEoxsOLbE/L3C8dqxaTW+DzGC0Kop5nVPtopO9Yd2TfKbp65s59Pd7K8NE9fKCA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KaCJLgPI; arc=none smtp.client-ip=209.85.128.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YiPwjXMY"
-Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-490c0c92cffso50511985e9.2
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2026 08:25:34 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KaCJLgPI"
+Received: by mail-wm1-f42.google.com with SMTP id 5b1f17b1804b1-490be29c1c5so87986935e9.2
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2026 08:25:35 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781105133; x=1781709933; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1781105134; x=1781709934; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=LTCJFV5eTJQyXBT+Frp1TWPPfAMYrH1FS/ZKAxqqceg=;
-        b=YiPwjXMYynfQc7V693pPCL0Q+soAXtuw7TkVnM4s/mbw7/2EnWtuHmwqDu1pbz6K9U
-         4tC62NQeZXtnhFb8oSST29YdvKKy941q7oHhnevC3fhmg0irUIG95QDJHdEPsplX8g5R
-         8LEfuU2I9TYbMWliq2GqVlbuKQ+S08vXmUWxa6iTkmgbAh4OQlZCo3V6sbRrbFZ0WzuP
-         c1SL2yWtHdopc77Gl0wRYlEbFJfqrY7XRL9qckylmPnaRYcVHBrDQROuEu5HlhgkYIbE
-         dyPIP1AauHAXCUtRHx2aV/CgC3EHI8d5icIcYkxN2kDKRNQGB5FYNrxGfN+IrRrTPeXe
-         STYw==
+        bh=guFgs8MJd9JAwh43mH0r7zG1rJ9EBTZkoC14doqwn24=;
+        b=KaCJLgPIEA5YX6xnwU02G2+HmJZe5z1eTiPKQveMn143WpiwBXTbbi3yxVGrvQpg1z
+         MyxVU+/eqahliHcO88mFVv3RDGrmj01QG19a7NEe+lLeTj6BzvvAAUXehnLQWy7i/oiK
+         ML7xkL+Tf4hyO3tlacaJQHlJ0voftJ+fDSZ4SffYbRm2GOHdNOwo6gyn3zljD1Ndr0ty
+         gk/vb+hngPD6Py3cwx0bAMgfnZ2OAOEANcfAZ5sYBouMJpNUy/t92CvP/fiWLBSxgihZ
+         2dcjyagWPUoAEfjX32T0TLRWTt0ogPnTkeUEx/HyH7b0pbGaHUzNGUMxSayTufWBL+0E
+         CdDw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781105133; x=1781709933;
+        d=1e100.net; s=20251104; t=1781105134; x=1781709934;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=LTCJFV5eTJQyXBT+Frp1TWPPfAMYrH1FS/ZKAxqqceg=;
-        b=RCJvpIOYabhnUXYv6M8IFBeyPqvdc2fJLhyRv02ShiVyrmAA4s/KYRuhMjFwfNOXA0
-         dDWjFwFnHpVwiUeYUrLkzBBFBNrfASnR7cdYPpR+5cgDd6cRYA8P8DBL1onuzdmgljFA
-         UQvVK8bvc3GkAUF+kDUy5Td/XQ2oRqLzZ3C0yVXDK7d7AB/B2APkMkOagpmp4HDgLuP4
-         IzFzo71G0QVXxxtirTokVQEmF4R0iUG6HvNjpEvHgQlcHdBlOIDeI056Um79zPEDrMtc
-         0r47FfG1R+tL8VBJaPGU7RcF62jM51kiFwD0XCZA7KYgrOl/s9AgOxSAflJp6DxIXfRy
-         MfzA==
-X-Gm-Message-State: AOJu0YxBY4e6vgASljexh4tmvuYkI1xMhfm5fFNsPPjiTohaRKpx3xi4
-	rD1VBy80pNW6nvE2o0W9bcvUFPqADdo/d3bf5rxCAA1m7m+ui40/45SxZPt9K4qPt4Y=
-X-Gm-Gg: Acq92OEivI8F2pmU0P6KQObXti2fzUScElj8SLW8OdmVliIqEhyCbzvvdB07PLUINJy
-	8hGdc6htKcT095PlhvuokCAEa0NLi1Bs3WJKZjROtQri3Zongq+rdE10dntit8WB5b7fkFsffYK
-	ipJwCxKGWLs9ikF0JgffKxO2wKMGGl8gfx8jvhVOCVGZ1Zwtt7D5blUwkx/O3ZYz5y8NeDV/Bg8
-	mlonjWDWeff+I6qZAbmzlay0ywlhToONQ7SF2MKxopD9b02qVXQV8/21BoAHFXBpnb0Tn7eb8ax
-	z/kZ/WYGtsdsMI2t7awEP691xa/a8kDcStx6WqFsE5PXzoUYHP4KeIr3B6rCcWaBqBdufjuh2iN
-	kj9xM3KGbEVutoa53qYJPW2o1Pio3ddvUB+7anT7Bl+6jfRIi3ZwkuKcUfDtRlfyv5nHVV/lG8O
-	+N+MLBB//ayu8xzvTpudvJvjqHEsArlev9NOJfYSMEKD1suA+ssJMfGc8daE3fSm4=
-X-Received: by 2002:a05:600c:1f90:b0:490:c032:ae92 with SMTP id 5b1f17b1804b1-490c2610b21mr411177145e9.33.1781105132972;
-        Wed, 10 Jun 2026 08:25:32 -0700 (PDT)
+        bh=guFgs8MJd9JAwh43mH0r7zG1rJ9EBTZkoC14doqwn24=;
+        b=UrV2q9LlFOgjevejlan5gUUTKggoeX7iwUlelGDd6uPSPMHDlgfkOCvvlwY5M3SQGR
+         2CNMm9Qw7Mq1ak2C0fTkFbDxno6v52sQgA3Hc87/yZCHRiU+0TInPDXPcAbDBL3bpKYM
+         MuBdllJcFzfuzAHYZwDRRSgfqhV/JMHtMkYuJEdCv30/j1SnSbjqwfZ0Nr2K+HqSQD9W
+         V1x/fzr2BM3s77EpAcsa0GIgjHORw3tSB9gNzroh3oq7LmldFY+7jXjDHPu0rNB8/g9n
+         kn6+zbpiHzMkXQ5h0DsrbrCrlYTAUyOxc476vMFXMgNhyW3DTS/SxjWndlC/dvvbmN9+
+         iEfw==
+X-Gm-Message-State: AOJu0YwVxR3tuzzCsKdmAuU/R0IKXFh8g1G+zjavopfadZ5cX/qnYWnk
+	ANDLe2HetJCOt2Uoy8sjLpnvPIsCHhkiKkgx+Gi0CQGwkHufpHiKurC/MFsGE3jf1o4=
+X-Gm-Gg: Acq92OEnZsYGlxPBmAvTMcBfyhewO04SWf1yY42A8ozJ0GTfuH8R+AJBhoWNYxpu2dK
+	3Sq9SEcpm0Fjw1EzvkgxzzDUZhBs3f9ro0zfhdDRITrYregxjr3t/2SKDUrm/A7Ejvx0cHgSdiY
+	wn/QXvAXpYFzZzfZrk54TjK+LCQ0Pp4FrDy4gl9LVGorEz6bzZqvkHn6f0kB/zp3PS3jxf5X1A8
+	5NqD+CHUH4iEs87z2jvebn5Sbrj+3FdYbit4dyENfz8RuaCf+MDD0kyY5xNHJsu24B8HxSm/tx9
+	5GE3/hDbea51x5WraIl3FFyxQrHuw6WYo/OOgjAndBJHshsCiwZNqnj9bB8yvwhTsnrxpa3wJ8/
+	/ucDyTUFvrSJdja9eLIzS/3keuUo9w1Nlgrot7pitLnNw3Ap7g/h8mCFqi5kHKFipBPEN/30VWz
+	bNdshVkMOfXC8r6S6xb9RrclMCNQZumNUk0gKryH/akakrMwSImp7Esm0djtEUgdK8YeF0Sj71l
+	A==
+X-Received: by 2002:a05:600c:8486:b0:490:e196:6574 with SMTP id 5b1f17b1804b1-490e196664fmr16210575e9.13.1781105133553;
+        Wed, 10 Jun 2026 08:25:33 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-490bc3d6c65sm559103835e9.12.2026.06.10.08.25.32
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-490bc3d6c65sm559103835e9.12.2026.06.10.08.25.33
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 10 Jun 2026 08:25:32 -0700 (PDT)
+        Wed, 10 Jun 2026 08:25:33 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v2 01/10] ext4: replace ext4_dir_entry with ext4_dir_entry_2
-Date: Wed, 10 Jun 2026 11:24:04 -0400
-Message-ID: <20260610152417.13576-2-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v2 02/10] ext4: add ext4_dir_entry_is_tail()
+Date: Wed, 10 Jun 2026 11:24:05 -0400
+Message-ID: <20260610152417.13576-3-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260610152417.13576-1-ablagodarenko@thelustrecollective.com>
 References: <20260610152417.13576-1-ablagodarenko@thelustrecollective.com>
@@ -79,154 +80,69 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Replace remaining uses of struct ext4_dir_entry in namei.c
-with struct ext4_dir_entry_2.
-
-The code paths affected by this change already depend on the
-filetype feature, so using struct ext4_dir_entry_2 is
-appropriate and avoids mixing the two directory entry types
-unnecessarily.
-
-This change does not affect support for 16-bit rec_len.
+Replace open-coded checks for directory tail entries with a call
+to ext4_dir_entry_is_tail(). This helper will also be used by
+upcoming changes.
 
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/namei.c | 38 +++++++++++++++++++-------------------
- 1 file changed, 19 insertions(+), 19 deletions(-)
+ fs/ext4/ext4.h  | 16 ++++++++++++++++
+ fs/ext4/namei.c |  7 +------
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 94283a991e5c..01b1222b1454 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3917,6 +3917,22 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
+ 		io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
+ }
+ 
++/*
++ * ext4_dir_entry_is_tail() - Check if a directory entry is a tail entry.
++ * @de: directory entry to check
++ *
++ * Returns true if @de is a directory block tail entry (checksum record).
++ */
++static inline bool ext4_dir_entry_is_tail(struct ext4_dir_entry_2 *de)
++{
++	struct ext4_dir_entry_tail *t = (struct ext4_dir_entry_tail *)de;
++
++	return !t->det_reserved_zero1 &&
++	       le16_to_cpu(t->det_rec_len) == sizeof(*t) &&
++	       !t->det_reserved_zero2 &&
++	       t->det_reserved_ft == EXT4_FT_DIR_CSUM;
++}
++
+ extern const struct iomap_ops ext4_iomap_ops;
+ extern const struct iomap_ops ext4_iomap_report_ops;
+ 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 4a47fbd8dd30..5805001ff1d9 100644
+index 5805001ff1d9..0196d954cba1 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -102,7 +102,7 @@ static struct buffer_head *ext4_append(handle_t *handle,
- }
- 
- static int ext4_dx_csum_verify(struct inode *inode,
--			       struct ext4_dir_entry *dirent);
-+			       struct ext4_dir_entry_2 *dirent);
- 
- /*
-  * Hints to ext4_read_dirblock regarding whether we expect a directory
-@@ -128,7 +128,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 						unsigned int line)
+@@ -314,7 +314,6 @@ static struct ext4_dir_entry_tail *get_dirent_tail(struct inode *inode,
+ 						   struct buffer_head *bh)
  {
- 	struct buffer_head *bh;
--	struct ext4_dir_entry *dirent;
-+	struct ext4_dir_entry_2 *dirent;
- 	int is_dx_block = 0;
- 
- 	if (block >= inode->i_size >> inode->i_blkbits) {
-@@ -160,7 +160,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 	}
- 	if (!bh)
- 		return NULL;
--	dirent = (struct ext4_dir_entry *) bh->b_data;
-+	dirent = (struct ext4_dir_entry_2 *) bh->b_data;
- 	/* Determine whether or not we have an index block */
- 	if (is_dx(inode)) {
- 		if (block == 0)
-@@ -317,13 +317,13 @@ static struct ext4_dir_entry_tail *get_dirent_tail(struct inode *inode,
- 	int blocksize = EXT4_BLOCK_SIZE(inode->i_sb);
+ 	struct ext4_dir_entry_tail *t;
+-	int blocksize = EXT4_BLOCK_SIZE(inode->i_sb);
  
  #ifdef PARANOID
--	struct ext4_dir_entry *d, *top;
-+	struct ext4_dir_entry_2 *d, *top;
+ 	struct ext4_dir_entry_2 *d, *top;
+@@ -334,11 +333,7 @@ static struct ext4_dir_entry_tail *get_dirent_tail(struct inode *inode,
+ 	t = EXT4_DIRENT_TAIL(bh->b_data, EXT4_BLOCK_SIZE(inode->i_sb));
+ #endif
  
--	d = (struct ext4_dir_entry *)bh->b_data;
--	top = (struct ext4_dir_entry *)(bh->b_data +
-+	d = (struct ext4_dir_entry_2 *)bh->b_data;
-+	top = (struct ext4_dir_entry_2 *)(bh->b_data +
- 		(blocksize - sizeof(struct ext4_dir_entry_tail)));
- 	while (d < top && ext4_rec_len_from_disk(d->rec_len, blocksize))
--		d = (struct ext4_dir_entry *)(((void *)d) +
-+		d = (struct ext4_dir_entry_2 *)(((void *)d) +
- 		    ext4_rec_len_from_disk(d->rec_len, blocksize));
+-	if (t->det_reserved_zero1 ||
+-	    (ext4_rec_len_from_disk(t->det_rec_len, blocksize) !=
+-	     sizeof(struct ext4_dir_entry_tail)) ||
+-	    t->det_reserved_zero2 ||
+-	    t->det_reserved_ft != EXT4_FT_DIR_CSUM)
++	if (!ext4_dir_entry_is_tail((struct ext4_dir_entry_2 *)t))
+ 		return NULL;
  
- 	if (d != top)
-@@ -410,22 +410,22 @@ int ext4_handle_dirty_dirblock(handle_t *handle,
- }
- 
- static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
--					       struct ext4_dir_entry *dirent,
-+					       struct ext4_dir_entry_2 *dirent,
- 					       int *offset)
- {
--	struct ext4_dir_entry *dp;
-+	struct ext4_dir_entry_2 *de;
- 	struct dx_root_info *root;
- 	int count_offset;
- 	int blocksize = EXT4_BLOCK_SIZE(inode->i_sb);
- 	unsigned int rlen = ext4_rec_len_from_disk(dirent->rec_len, blocksize);
- 
- 	if (rlen == blocksize)
--		count_offset = 8;
-+		count_offset = sizeof(struct dx_node);
- 	else if (rlen == 12) {
--		dp = (struct ext4_dir_entry *)(((void *)dirent) + 12);
--		if (ext4_rec_len_from_disk(dp->rec_len, blocksize) != blocksize - 12)
-+		de = (struct ext4_dir_entry_2 *)(((void *)dirent) + 12);
-+		if (ext4_rec_len_from_disk(de->rec_len, blocksize) != blocksize - 12)
- 			return NULL;
--		root = (struct dx_root_info *)(((void *)dp + 12));
-+		root = (struct dx_root_info *)(((void *)de + 12));
- 		if (root->reserved_zero ||
- 		    root->info_length != sizeof(struct dx_root_info))
- 			return NULL;
-@@ -438,7 +438,7 @@ static struct dx_countlimit *get_dx_countlimit(struct inode *inode,
- 	return (struct dx_countlimit *)(((void *)dirent) + count_offset);
- }
- 
--static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
-+static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry_2 *dirent,
- 			   int count_offset, int count, struct dx_tail *t)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -456,7 +456,7 @@ static __le32 ext4_dx_csum(struct inode *inode, struct ext4_dir_entry *dirent,
- }
- 
- static int ext4_dx_csum_verify(struct inode *inode,
--			       struct ext4_dir_entry *dirent)
-+			       struct ext4_dir_entry_2 *dirent)
- {
- 	struct dx_countlimit *c;
- 	struct dx_tail *t;
-@@ -485,7 +485,7 @@ static int ext4_dx_csum_verify(struct inode *inode,
- 	return 1;
- }
- 
--static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
-+static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry_2 *dirent)
- {
- 	struct dx_countlimit *c;
- 	struct dx_tail *t;
-@@ -515,7 +515,7 @@ static inline int ext4_handle_dirty_dx_node(handle_t *handle,
- 					    struct inode *inode,
- 					    struct buffer_head *bh)
- {
--	ext4_dx_csum_set(inode, (struct ext4_dir_entry *)bh->b_data);
-+	ext4_dx_csum_set(inode, (struct ext4_dir_entry_2 *)bh->b_data);
- 	return ext4_handle_dirty_metadata(handle, inode, bh);
- }
- 
-@@ -1488,7 +1488,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
- }
- 
- static int is_dx_internal_node(struct inode *dir, ext4_lblk_t block,
--			       struct ext4_dir_entry *de)
-+			       struct ext4_dir_entry_2 *de)
- {
- 	struct super_block *sb = dir->i_sb;
- 
-@@ -1619,7 +1619,7 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
- 		}
- 		if (!buffer_verified(bh) &&
- 		    !is_dx_internal_node(dir, block,
--					 (struct ext4_dir_entry *)bh->b_data) &&
-+					 (struct ext4_dir_entry_2 *)bh->b_data) &&
- 		    !ext4_dirblock_csum_verify(dir, bh)) {
- 			EXT4_ERROR_INODE_ERR(dir, EFSBADCRC,
- 					     "checksumming directory "
+ 	return t;
 -- 
 2.43.7
 
