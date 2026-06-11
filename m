@@ -1,135 +1,84 @@
-Received: from va-1-113.ptr.blmpb.com (va-1-113.ptr.blmpb.com [209.127.230.113])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCC353EF0AC
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 12:04:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.113
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB6903F7885
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 12:36:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781179485; cv=none; b=sQ+q1k5HajjhtdstNbIeEBURBUFS0EWm+AvP8NDI4NKBsXe1zuB98eUtrM4SL0QNb4cyF7V4lRuda1fTo2AMkYy3H0rYOReHpt858XMw7l5vJov/G8WWo9e6b56RVaJZfDv6Pwu8zNFk3Ni6TlG+1SE96oRnFYEzXf+TfjK+rhA=
+	t=1781181378; cv=none; b=QKdwcZVETbgIHCE8R4F5WR16VKzZ7er9NoZLYpGpVeDuUpe1nvCQ+H65pv+A/zGDhG9G6a/ef0iUjUugSit6N+2Qd6Q9kMarYZVw3lNxjYnrYstXCbUcg9adY5x4OZ+iKZJKuiYP9InUunLk3GTUupkz3QC2hCEaB1IyDQq4ITE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781179485; c=relaxed/simple;
-	bh=uQUF9Xqx89luykxEpk3DwSoDVKAaGgQdsXZa7rBK+6Y=;
-	h=Date:Cc:From:Mime-Version:References:In-Reply-To:Content-Type:To:
-	 Subject:Message-Id; b=UW8IiQPZaTHvitlA0oOk0O9wGq5Z8xmMnNlwmgCJ35VtCk/ghJd2lFcoseUSSdnJ/84kNFjuONxyx0SmyaMdoc7dMG9hYMqWwMX1c+UBxsjQ6OeRqPVlDoxo+48SLE89cD7/nooSae3Z8MuEVy8nFZvloinfrM1so74Xt2VM5DY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=OqJFn4e8; arc=none smtp.client-ip=209.127.230.113
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1781181378; c=relaxed/simple;
+	bh=0o09vuj6JlkMcUCPruU4qbt0WCpPEYadeGi6N8eUSO4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=QfWz2YTM0kldNMIOQVy2wa6VOfCXpC2Cf0OM3hHAFIvZGvPTp0pwFrlM+c7gZoGuBYfZ+iEthla7sdxcbKGaB54g7Yw4lV9Xjhpb8L0fAvQPHcKflayj1MywNi2OFrDE6+PDeGgbcwk3KEZes+ODiIGIGiAPWs/PGtDzvFcWaVQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=JdGSSk6F; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="OqJFn4e8"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1781179473; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=HAqbApc74Vvmxdiwfv58VrOQf84K2/1rA7Lf7R9JEmI=;
- b=OqJFn4e8Iq9UB5tEsj3Uww/KgF3bk7ZlpuMtSJsdVPB405v6uI492a6wuINvd8no+PAsx5
- rjONwDxs7P7lgGamKKpDau7VdtzsaIkYhlDcJTOn12xy1SD02698Z6LkqUu4tefG8R1oAx
- M5DcNxYtDTFo2mAyMQP6LXSuLHmShF1KKd3Ge9jqXMivxkyDrXlCFUdi24CxpEEL7LKdn8
- hg0eXZHCqn4pchZu8yzOmgUqeiNWTEN8jrJlxs122a1Y/xxjOHwblFQRb/MfuAUfMeBz1Q
- LizppIP6rwJ4JpilajZbmaf57Cnt2k8PZfai18eky5tg02PQa6ejKrfMd1pWYg==
-Date: Thu, 11 Jun 2026 20:04:14 +0800
-Content-Transfer-Encoding: quoted-printable
-Cc: <brauner@kernel.org>, <djwong@kernel.org>, <hch@infradead.org>, 
-	<ojaswin@linux.ibm.com>, <dgc@kernel.org>, <linux-xfs@vger.kernel.org>, 
-	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
-	<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>, 
-	<p.raghav@samsung.com>
-From: "Fengnan" <changfengnan@bytedance.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="JdGSSk6F"
+Received: from trampoline.thunk.org (pool-173-48-113-189.bstnma.fios.verizon.net [173.48.113.189])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 65BCZTqg008242
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 11 Jun 2026 08:35:30 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1781181336; bh=Rx+LdEHsr3fkwaOg3QTw51ewMl4HfNH39Mi9ttL+zj4=;
+	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	b=JdGSSk6Fh5MK45uAfy7ILLTZ9bCrvvoX5ub+vHUptqOy9nKRxSPhiYBRsBGam3V9A
+	 bIXrQlhuMMHnyggRllNQeRdHil+HUgLSrFD9aXGPwnJe4lGDNO6qKtMGHSxO9Wi8Ym
+	 4jFgqGYY4fklfkVASrATuXvOK9Pm1oSjoA74YrpjgLX07a4q5j9DnfE0xeRRIRJZVz
+	 g7LrDpAWvtFdHFeAfYCcR2futg+Qx7hCxrZGhvTGpZnqL88y+33j373B4DHXu4nFMv
+	 aEh1Bap2Zrlm82Xo7DQBgrw2m4oXLgqYHptW/Fy/YNeIKECMuZ/cdC0/4w6SkMzkeb
+	 qioL0ShgSBkSg==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 0E5702E00D0; Thu, 11 Jun 2026 08:35:29 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Baokun Li <libaokun@linux.alibaba.com>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+        sashiko-reviews@lists.linux.dev, linux-kernel@vger.kernel.org,
+        syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
+Subject: Re: [PATCH v4] ext4: fix kernel BUG in ext4_write_inline_data_end
+Date: Thu, 11 Jun 2026 08:35:18 -0400
+Message-ID: <178118128407.522716.4641375865971694376.b4-ty@b4>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260609062005.1702-1-aditya.ansh182@gmail.com>
+References: <20260609062005.1702-1-aditya.ansh182@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-References: <20260608073134.95964-1-changfengnan@bytedance.com> <mmbe4kdeqg6zlblhysi27qno22dtkaahv7bzslaqopsg4k3qs7@nofv525nnl6c>
-In-Reply-To: <mmbe4kdeqg6zlblhysi27qno22dtkaahv7bzslaqopsg4k3qs7@nofv525nnl6c>
-Content-Type: text/plain; charset=UTF-8
-X-Lms-Return-Path: <lba+26a2aa44f+b35cc0+vger.kernel.org+changfengnan@bytedance.com>
-User-Agent: Mozilla Thunderbird
-To: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
-Subject: Re: [PATCH v4] iomap: add simple read path for small direct I/O
-Message-Id: <94fac0c6-13fe-4d5d-a794-04b43678a295@bytedance.com>
-X-Original-From: Fengnan <changfengnan@bytedance.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-=E5=9C=A8 2026/6/11 17:36, Pankaj Raghav (Samsung) =E5=86=99=E9=81=93:
->> +static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
->> +		struct bio *bio)
->> +{
->> +	struct inode *inode =3D file_inode(iocb->ki_filp);
->> +	ssize_t ret;
->> +
->> +	WRITE_ONCE(iocb->private, NULL);
->> +
->> +	ret =3D iomap_dio_simple_read_finish(iocb, bio,
->> +			blk_status_to_errno(bio->bi_status));
->> +
->> +	inode_dio_end(inode);
->> +	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
-> Shouldn't the second parameter here be
-> blk_status_to_errno(bio->bi_status)?
->
-> I think that will be more meaningful for tracing here.
-> trace_iomap_dio_complete(iocb, blk_status_to_errno(bio->bi_status), ret);
-Makes sense. I=E2=80=99ll update it in the next version.
 
->
-> <snip>
->> +	return ret;
->> +}
->> +
->> +	sr->iocb =3D iocb;
->> +	sr->dio_flags =3D dio_flags;
->> +
->> +	bio->bi_iter.bi_sector =3D iomap_sector(&iomi.iomap, iomi.pos);
->> +	bio->bi_ioprio =3D iocb->ki_ioprio;
->> +	bio->bi_private =3D sr;
->> +	bio->bi_end_io =3D iomap_dio_simple_read_end_io;
->> +
->> +	if (dio_flags & IOMAP_DIO_BOUNCE)
->> +		ret =3D bio_iov_iter_bounce(bio, iter, count);
->> +	else
->> +		ret =3D bio_iov_iter_get_pages(bio, iter, alignment - 1);
->> +	if (unlikely(ret))
->> +		goto out_bio_put;
->> +
->> +	if (bio->bi_iter.bi_size !=3D count) {
->> +		iov_iter_revert(iter, bio->bi_iter.bi_size);
->> +		ret =3D -ENOTBLK;
->> +		goto out_bio_release_pages;
->> +	}
->> +
->> +	sr->size =3D bio->bi_iter.bi_size;
->> +
->> +	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
->> +	    !(dio_flags & IOMAP_DIO_BOUNCE))
->> +		bio_set_pages_dirty(bio);
->> +
->> +	if (iocb->ki_flags & IOCB_NOWAIT)
->> +		bio->bi_opf |=3D REQ_NOWAIT;
->> +	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
->> +		bio->bi_opf |=3D REQ_POLLED;
->> +		bio_set_polled(bio, iocb);
-> This results in build failure as the following patch removed this call:
-> https://lore.kernel.org/linux-block/20260518062917.506483-1-hch@lst.de/
->
-> I think this call can just be removed as you are setting REQ_POLLED
-> anyway.
-You=E2=80=99re right. I=E2=80=99ll update that in the next version too.
+On Tue, 09 Jun 2026 06:20:05 +0000, Aditya Prakash Srivastava wrote:
+> When the data=journal mount option is used, the ext4_journalled_write_end()
+> function incorrectly calls ext4_write_inline_data_end() without checking
+> if the EXT4_STATE_MAY_INLINE_DATA flag is still set on the inode.
+> 
+> If a previous attempt to convert the inline data to an extent failed (e.g.
+> due to ENOSPC), the EXT4_STATE_MAY_INLINE_DATA flag is cleared, but
+> the EXT4_INODE_INLINE_DATA flag remains set. In this scenario, the next
+> call to ext4_write_begin() will not prepare the inline data xattr for
+> writing, but ext4_journalled_write_end() will incorrectly attempt to write
+> to it, triggering a BUG_ON(pos + len > EXT4_I(inode)->i_inline_size) in
+> ext4_write_inline_data() since i_inline_size was not expanded.
+> 
+> [...]
 
-Thanks.
+Applied, thanks!
 
->
->> +		WRITE_ONCE(iocb->private, bio);
->> +	}
->> +
->> +	if (wait_for_completion) {
->> +		sr->waiter =3D current;
->> +		blk_crypto_submit_bio(bio);
->> +	} else {
->> +		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
->> +		sr->waiter =3D NULL;
->> +		blk_crypto_submit_bio(bio);
->> +		ret =3D -EIOCBQUEUED;
->> +	}
->> +
-> --
-> Pankaj
+[1/1] ext4: fix kernel BUG in ext4_write_inline_data_end
+      commit: ad09aa45965d3fafaf9963bc78109b73c0f9ac8d
+
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
