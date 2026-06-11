@@ -1,145 +1,135 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-1-113.ptr.blmpb.com (va-1-113.ptr.blmpb.com [209.127.230.113])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 884BE3E7BCD
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 11:43:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCC353EF0AC
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 12:04:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.113
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781178196; cv=none; b=j95Yjw2kD2B6cq4Y1qSkPj7zW9WNwzNl89Kor19Tu9nXPpo3BBQNwI/dITTEtb0OJJCWXtoNmhR2UAqS4ry+DAFADDUqsOanrGTvlCzmwZh/Y09ZqTbu5LbgKQ4JHpJsTwUmkh8UsKbZxk5Ou0dXFeleubv+RozYt73ojaWzIog=
+	t=1781179485; cv=none; b=sQ+q1k5HajjhtdstNbIeEBURBUFS0EWm+AvP8NDI4NKBsXe1zuB98eUtrM4SL0QNb4cyF7V4lRuda1fTo2AMkYy3H0rYOReHpt858XMw7l5vJov/G8WWo9e6b56RVaJZfDv6Pwu8zNFk3Ni6TlG+1SE96oRnFYEzXf+TfjK+rhA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781178196; c=relaxed/simple;
-	bh=rPiYnZCoMo+4r1uoyQpZsPfds62Fg4F7Xo8U9CMYfBw=;
-	h=Subject:To:References:Cc:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=lMKm90+9XAmxpGgrTorqy8U8/Rtfy9i9fpNekyKJW1JdkYOzFKiU4i0S3Sd83HwERS1OO3vS8lZUzusd7jIEewzGP5Ls55lnsw/7DHVHiU77D7QSlreFRGr724/hWNK9UhF0T6kS1StrmBB/vn8XpCkOgoz10AHqE9ujET6ZU9k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gbgjr5fw4zKHLxN
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 19:42:24 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 7195040539
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2026 19:43:03 +0800 (CST)
-Received: from [10.174.178.185] (unknown [10.174.178.185])
-	by APP1 (Coremail) with SMTP id cCh0CgAndzxCnypqu5WnBQ--.14056S3;
-	Thu, 11 Jun 2026 19:43:00 +0800 (CST)
-Subject: Re: [PATCH v2 0/4] show orphan file inode detail info
-To: Jan Kara <jack@suse.cz>
-References: <20260415105505.342358-1-yebin@huaweicloud.com>
- <lweohtnu6fdvhi2fnbo7obo7vtvehsr4m6u4zwgeqx2abhgx3w@dv5e6zapdwlq>
- <6A26AB14.8050508@huaweicloud.com>
- <a5v57ie6feotxznmhrf3i22gzplw2ucotlnw3y7hmjhkalbb26@bx2lzoil75ks>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-From: yebin <yebin@huaweicloud.com>
-Message-ID: <6A2A9F42.7070702@huaweicloud.com>
-Date: Thu, 11 Jun 2026 19:42:58 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
- Thunderbird/38.1.0
+	s=arc-20240116; t=1781179485; c=relaxed/simple;
+	bh=uQUF9Xqx89luykxEpk3DwSoDVKAaGgQdsXZa7rBK+6Y=;
+	h=Date:Cc:From:Mime-Version:References:In-Reply-To:Content-Type:To:
+	 Subject:Message-Id; b=UW8IiQPZaTHvitlA0oOk0O9wGq5Z8xmMnNlwmgCJ35VtCk/ghJd2lFcoseUSSdnJ/84kNFjuONxyx0SmyaMdoc7dMG9hYMqWwMX1c+UBxsjQ6OeRqPVlDoxo+48SLE89cD7/nooSae3Z8MuEVy8nFZvloinfrM1so74Xt2VM5DY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=OqJFn4e8; arc=none smtp.client-ip=209.127.230.113
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="OqJFn4e8"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1781179473; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=HAqbApc74Vvmxdiwfv58VrOQf84K2/1rA7Lf7R9JEmI=;
+ b=OqJFn4e8Iq9UB5tEsj3Uww/KgF3bk7ZlpuMtSJsdVPB405v6uI492a6wuINvd8no+PAsx5
+ rjONwDxs7P7lgGamKKpDau7VdtzsaIkYhlDcJTOn12xy1SD02698Z6LkqUu4tefG8R1oAx
+ M5DcNxYtDTFo2mAyMQP6LXSuLHmShF1KKd3Ge9jqXMivxkyDrXlCFUdi24CxpEEL7LKdn8
+ hg0eXZHCqn4pchZu8yzOmgUqeiNWTEN8jrJlxs122a1Y/xxjOHwblFQRb/MfuAUfMeBz1Q
+ LizppIP6rwJ4JpilajZbmaf57Cnt2k8PZfai18eky5tg02PQa6ejKrfMd1pWYg==
+Date: Thu, 11 Jun 2026 20:04:14 +0800
+Content-Transfer-Encoding: quoted-printable
+Cc: <brauner@kernel.org>, <djwong@kernel.org>, <hch@infradead.org>, 
+	<ojaswin@linux.ibm.com>, <dgc@kernel.org>, <linux-xfs@vger.kernel.org>, 
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>, 
+	<p.raghav@samsung.com>
+From: "Fengnan" <changfengnan@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-In-Reply-To: <a5v57ie6feotxznmhrf3i22gzplw2ucotlnw3y7hmjhkalbb26@bx2lzoil75ks>
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgAndzxCnypqu5WnBQ--.14056S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxJF47Zw1Dur1DAw1ktrWxCrg_yoWrAw4rpa
-	y5Ca1YqFWDJFn5Gr4vy3W8XFWxtr4fGa1UWr1Yg343Can0vrySgF1xK3yj9a4kGrWxAr4q
-	vr4jq3sIvr98ZaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyKb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxk0xIA0c2IEe2xFo4CEbIxvr21l42xK82IYc2Ij
-	64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-	8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE
-	2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42
-	xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF
-	7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUzsqWUUUUU
-X-CM-SenderInfo: p1hex046kxt4xhlfz01xgou0bp/
+Mime-Version: 1.0
+References: <20260608073134.95964-1-changfengnan@bytedance.com> <mmbe4kdeqg6zlblhysi27qno22dtkaahv7bzslaqopsg4k3qs7@nofv525nnl6c>
+In-Reply-To: <mmbe4kdeqg6zlblhysi27qno22dtkaahv7bzslaqopsg4k3qs7@nofv525nnl6c>
+Content-Type: text/plain; charset=UTF-8
+X-Lms-Return-Path: <lba+26a2aa44f+b35cc0+vger.kernel.org+changfengnan@bytedance.com>
+User-Agent: Mozilla Thunderbird
+To: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
+Subject: Re: [PATCH v4] iomap: add simple read path for small direct I/O
+Message-Id: <94fac0c6-13fe-4d5d-a794-04b43678a295@bytedance.com>
+X-Original-From: Fengnan <changfengnan@bytedance.com>
 
+=E5=9C=A8 2026/6/11 17:36, Pankaj Raghav (Samsung) =E5=86=99=E9=81=93:
+>> +static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
+>> +		struct bio *bio)
+>> +{
+>> +	struct inode *inode =3D file_inode(iocb->ki_filp);
+>> +	ssize_t ret;
+>> +
+>> +	WRITE_ONCE(iocb->private, NULL);
+>> +
+>> +	ret =3D iomap_dio_simple_read_finish(iocb, bio,
+>> +			blk_status_to_errno(bio->bi_status));
+>> +
+>> +	inode_dio_end(inode);
+>> +	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
+> Shouldn't the second parameter here be
+> blk_status_to_errno(bio->bi_status)?
+>
+> I think that will be more meaningful for tracing here.
+> trace_iomap_dio_complete(iocb, blk_status_to_errno(bio->bi_status), ret);
+Makes sense. I=E2=80=99ll update it in the next version.
 
+>
+> <snip>
+>> +	return ret;
+>> +}
+>> +
+>> +	sr->iocb =3D iocb;
+>> +	sr->dio_flags =3D dio_flags;
+>> +
+>> +	bio->bi_iter.bi_sector =3D iomap_sector(&iomi.iomap, iomi.pos);
+>> +	bio->bi_ioprio =3D iocb->ki_ioprio;
+>> +	bio->bi_private =3D sr;
+>> +	bio->bi_end_io =3D iomap_dio_simple_read_end_io;
+>> +
+>> +	if (dio_flags & IOMAP_DIO_BOUNCE)
+>> +		ret =3D bio_iov_iter_bounce(bio, iter, count);
+>> +	else
+>> +		ret =3D bio_iov_iter_get_pages(bio, iter, alignment - 1);
+>> +	if (unlikely(ret))
+>> +		goto out_bio_put;
+>> +
+>> +	if (bio->bi_iter.bi_size !=3D count) {
+>> +		iov_iter_revert(iter, bio->bi_iter.bi_size);
+>> +		ret =3D -ENOTBLK;
+>> +		goto out_bio_release_pages;
+>> +	}
+>> +
+>> +	sr->size =3D bio->bi_iter.bi_size;
+>> +
+>> +	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
+>> +	    !(dio_flags & IOMAP_DIO_BOUNCE))
+>> +		bio_set_pages_dirty(bio);
+>> +
+>> +	if (iocb->ki_flags & IOCB_NOWAIT)
+>> +		bio->bi_opf |=3D REQ_NOWAIT;
+>> +	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
+>> +		bio->bi_opf |=3D REQ_POLLED;
+>> +		bio_set_polled(bio, iocb);
+> This results in build failure as the following patch removed this call:
+> https://lore.kernel.org/linux-block/20260518062917.506483-1-hch@lst.de/
+>
+> I think this call can just be removed as you are setting REQ_POLLED
+> anyway.
+You=E2=80=99re right. I=E2=80=99ll update that in the next version too.
 
-On 2026/6/9 19:13, Jan Kara wrote:
-> On Mon 08-06-26 19:44:20, yebin wrote:
->> On 2026/4/16 1:59, Jan Kara wrote:
->>> On Wed 15-04-26 18:55:01, Ye Bin wrote:
->>>> From: Ye Bin <yebin10@huawei.com>
->>>>
->>>> Diffs v2 vs v1:
->>>> (1) Fix sashiko review issues:
->>>> https://sashiko.dev/#/patchset/20260403082507.1882703-1-yebin%40huaweicloud.com
->>>> (2) Change "orphan_list" file mode from 0444 to 0400;
->>>> (3) The display format of the "orphan_list" file is modified according
->>>>       to Andreas' suggestions.
->>>> Fault injection tests have been conducted to address the issues raised
->>>> in the sashik review. There is no UAF issue in the ext4_seq_orphan_release()
->>>> function. The reason for this has already been explained in the code comments.
->>>> In addition to the fault injection tests, we also performed a stress test by
->>>> observing the /proc/fs/ext4/XX/orphan_list and the concurrent processes of
->>>> adding and removing orphan nodes, and no issues were found so far.
->>>>
->>>>
->>>> In actual production environments, the issue of inconsistency between
->>>> df and du is frequently encountered. In many cases, the cause of the
->>>> problem can be identified through the use of lsof. However, when
->>>> overlayfs is combined with project quota configuration, the issue becomes
->>>> more complex and troublesome to diagnose. First, to determine the project
->>>> ID, one needs to obtain orphaned nodes using `fsck.ext4 -fn /dev/xx`, and
->>>> then retrieve file information through `debugfs`. However, the file names
->>>> cannot always be obtained, and it is often unclear which files they are.
->>>> To identify which files these are, one would need to use crash for online
->>>> debugging or use kprobe to gather information incrementally. However, some
->>>> customers in production environments do not agree to upload any tools, and
->>>> online debugging might impact the business. There are also scenarios where
->>>> files are opened in kernel mode, which do not generate file descriptors(fds),
->>>> making it impossible to identify which files were deleted but still have
->>>> references through lsof. This patchset adds a procfs interface to query
->>>> information about orphaned nodes, which can assist in the analysis and
->>>> localization of such issues.
->>>
->>> Ye, did you read my comments to the v1 of the patchset [1]? I didn't see
->>> any reply from you. I don't think this is a good way how to expose orphan
->>> information for a filesystem for reasons I've outlined in that email.
->>>
->>
->> Hi Jan
->>
->> I thought about how to prevent resource exhaustion caused by making too many
->> FDs in a single application. My idea is that IOCTL should only obtain one FD
->> at a time, and the next time it should start obtaining orphan nodes from the
->> inode after the previous one. Each time an fd is obtained, the previous fd
->> should be closed. I expect that after traversing all the fds from the beginning,
->> they will all be closed and there will be no need for user space to close them
->> manually. I wonder if this approach is feasible? Or do you have any good
->> suggestions?
->
-> Hum, I think you've misunderstood my suggestion in [1]. What I suggested
-> is:
->
-> 1) Provide ioctl GET_ORPHAN_FILES that will return one "virtual" fd that
-> tracks state of iteration over orphan entries of a superblock
->
-> 2) Reading from this fd will be returning file *handles* (as struct
-> file_handle) describing the orphan inodes. There are no kernel resources
-> struct file_handle occupies in the kernel. It is essentially just a
-> filesystem agnostic container for inode number and inode generation number.
-> Userspace can then use open_by_handle() syscall to convert struct
-> file_handle into normal file descriptor but that is upto userspace and what
-> it wants orphan information for.
->
-> Is the design clearer now?
->
-Thank you for your patient explanation. I have implemented it according to
-your suggestion and am currently testing it locally. After the testing is
-complete, I will release it. I hope I have not misunderstood your meaning
-this time.
-> 								Honza
->
-> [1] https://lore.kernel.org/all/n4sccudy5avcgnkdhc27rzofzoprxqtwhfrlmsh3yyrj6vbc6d@mmu73gmtawkq/
->
+Thanks.
 
+>
+>> +		WRITE_ONCE(iocb->private, bio);
+>> +	}
+>> +
+>> +	if (wait_for_completion) {
+>> +		sr->waiter =3D current;
+>> +		blk_crypto_submit_bio(bio);
+>> +	} else {
+>> +		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
+>> +		sr->waiter =3D NULL;
+>> +		blk_crypto_submit_bio(bio);
+>> +		ret =3D -EIOCBQUEUED;
+>> +	}
+>> +
+> --
+> Pankaj
