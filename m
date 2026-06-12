@@ -1,355 +1,488 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86F263E1205
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Jun 2026 13:00:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 240F33EB7F8;
+	Fri, 12 Jun 2026 13:19:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781269211; cv=none; b=VEPmbnUw3/siw4tFEMFzPRAnd/0L9xKpHf0Am8UwgOOoe3pI+lR80TgE7Pjt/p8D8Xzkcz2Vt4urtZh+8F37jGS9cYHJPntvPyi15tsZBmGErl7tcC4YoRoQPv/0F5NZ7o41b1W32gnmo7kLHexGZorpHpIGwGZS9OsKgFHJMxQ=
+	t=1781270386; cv=none; b=haIKyRCtmOPej/cowOZn2+KaT0AP6Hd+abaerlZeraUs+yMExspGVmTIwKRd1HGRZqHGlBLYjjBb7hfbaJnj0MNCVuRONEjvQJZeWNhXBZj11BwAnfUSCmDOOhets2pnhcpKYG38Ylv6fyRlH/qbGNoO9I6gCpEIQaJmKgnAnf8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781269211; c=relaxed/simple;
-	bh=I145eEPvXqTc02iPssedIJLBMYt/WF0aWwtC4kn6jvY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Q+/7cvvDtT31HE5ujdesNYEgdfzOAVkj/YOep8a/fgXjIsPNngaeC6OxHhJppBMHmo9F+6SFvxfdQCUo9TIt9Pr3uZihcQFGfHb2LwrJJgNihBag8opr6Z38m688r/yXuZ7y1GTIwmgXJ5SCJfw7gjBl4M6SNlRL5WoiJY0bL9k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rONDfRFN; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=062PMEdO; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2kvzrT1G; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=hnnBwq3a; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1781270386; c=relaxed/simple;
+	bh=/dgJ+c6dBf37dQkM0SfMw1ro228XKcS08rBqs7CbOZA=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=NA5tWnTB3d3iVxWRP4MfO9NhQ5vQXsGrBekxhhENNOg5zIE+5ryIA7zQ6T4dcgkOn6T8fTQLuTEKyylCa58888mkS6v26weP0WV6QCaDvVWLlJ7ubBPAlnys4ZATGn4RVhZqPw0Ab2vfVWxAWAc27nFAZHojkY1Ncb3vZ3vgZsY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=iR9tunWi; arc=none smtp.client-ip=205.220.166.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rONDfRFN";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="062PMEdO";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2kvzrT1G";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="hnnBwq3a"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id EFBE06C299;
-	Fri, 12 Jun 2026 12:55:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781268944; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aLncq6uCGwDcG32MfHXkw/lHxB/4rqvNEyzE4wtdKuE=;
-	b=rONDfRFNuIj54L2oFIbmh1AMiLi5cOPpUR1G5w0aXhBErXIGfoURyTRJb2baiKL3jTp9Q+
-	KYrLfqmTPlslPKNUk5bIZqnRG+t6BMsWr4RPzri2D/9JaQtVXh0X0umVl6a+nSA4j81rBv
-	aC3ERBKM+03uUXWTsztrt0qVni9+W7o=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781268944;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aLncq6uCGwDcG32MfHXkw/lHxB/4rqvNEyzE4wtdKuE=;
-	b=062PMEdOaOUyRUV11pqxTI9PmvM0U/9IoVq7REzlB4kW3DvbG5zWQtopHdo9Bv4+lOSeYA
-	xZ98NZCogc6X9iCA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781268943; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aLncq6uCGwDcG32MfHXkw/lHxB/4rqvNEyzE4wtdKuE=;
-	b=2kvzrT1G3ZJm2giwUtXL1R84fnwRJ253sCyo/kkl/3vrzqqb10Gc+msOnpJHtJm8W32lMr
-	W50OUYdU3olF4cjC4zOaeRIRohpHTA5208OBFecZVaJYj/FX4dM+BrJvlB5Fizu/PqM6gp
-	AA0S4dWGBsAVJMXgqk02NXrCe3esBQk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781268943;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aLncq6uCGwDcG32MfHXkw/lHxB/4rqvNEyzE4wtdKuE=;
-	b=hnnBwq3a1INb3RO1DSjztZSmvjRKtHOjxg3ZIUCe3X+wBvNhaQR1buP5GxVz2m03w13N7f
-	ouebrrBUQ7jfrhAQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E19CA779A7;
-	Fri, 12 Jun 2026 12:55:42 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id zcsMN84BLGoQSQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 12 Jun 2026 12:55:42 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 83F4DA0EB4; Fri, 12 Jun 2026 14:55:42 +0200 (CEST)
-Date: Fri, 12 Jun 2026 14:55:42 +0200
-From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, peng_wang@linux.alibaba.com
-Subject: Re: [PATCH 2/2] ext4: base unaligned DIO lock decision on partial
- block zeroing
-Message-ID: <nyafwuvgfkjb5rl4qbcv3l6uinawaraq4qrx57g6zmny4uocg6@fbyxdc5hvzsr>
-References: <20260611163441.2431805-1-libaokun@linux.alibaba.com>
- <20260611163441.2431805-3-libaokun@linux.alibaba.com>
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="iR9tunWi"
+Received: from pps.filterd (m0250809.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65CBVS6N2143984;
+	Fri, 12 Jun 2026 06:19:13 -0700
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	PPS06212021; bh=vdTsmrC0ON6MTHsaNyFHQVWGgD4dASWjJO2ORFoojzw=; b=
+	iR9tunWipF3ksUL02eLKtJWyjbiK8jBao/k8m4uVmdvxI/mlIxjSA2ipjdLtODBa
+	GgycjXjRKlIotJK903ta7ekY56t5/2dC9qfwAWjsi/F9Sf3rr0QOBj8p2GBZu6zh
+	66AzIkKDqaC6NB9UEPYJpoRP+hv4zWh6a3HBMGJYevbd7lvO40BqVoUMa4Yl+eQa
+	8PhfSNJoFPJSvO8TBLDCVbXLAvX5jDjlWCtWceYStACe2McOPHOxg3XlThONjzED
+	oJsQufj2Ysyvhi88bouMYBKst83LN8kbQCS24I1jid5tT0I+SaC1yYkWcQK4dSBq
+	rjN9XggIbxMJcTjSm5zmWQ==
+Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4eqe7ajrw9-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Fri, 12 Jun 2026 06:19:12 -0700 (PDT)
+Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Fri, 12 Jun 2026 06:19:12 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Fri, 12 Jun 2026 06:19:09 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windriver.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH v3] ext4: defer iput() in ext4_xattr_block_set() to avoid deadlock with writepages
+Date: Fri, 12 Jun 2026 21:19:08 +0800
+Message-ID: <20260612131908.2470757-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20260612095846.1024470-1-yun.zhou@windriver.com>
+References: <20260612095846.1024470-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260611163441.2431805-3-libaokun@linux.alibaba.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,linux.alibaba.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,alibaba.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-ORIG-GUID: 2CTzwRlT6VwuSrfjawCBVZFlkf4McGAB
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjEyMDEyMiBTYWx0ZWRfX+ZbAyPfcchBD
+ CuDvdPWjd5cG+lcZFpUX7zQ5cRG4kHYvsny0RjJjh/GG3Hy86388d8PLvmS8AzJ8H0jSxdA3q+Q
+ JmTRI++4/EuBc7RYb4cTpNJoqkn0dY2xwM8z4wYzxE2ugOIDCJ4S8xDCfrYYBkYrh10MBv/Wzn3
+ JQWq05q8iPVksCabEsJeAkY9ZjAt69L/4NyA88nOtQr9wsWjIuvEf5+UfimySaEwpEki4HnzI1J
+ 097d51IZVA2Mnosd5OlofKlEUNMhMe2nRWMTbMEHaUx9sZ6xxfEH5bvCV+dKdp1P0xyJclqqMmr
+ +sOhvLVl2kZIlKMYXoez2NSWGxQ3UiEDLeFdgkeKAWwSZ0qE+Ilr+3Cf34TneS03AO3t//h5gGw
+ Ht2BiRXVX9dhvGQPEUVpaOcWZQ+TFUzRTVswFryF3K8cEDNdEiYcmvFUgKugtLk3wmw/5FHM52T
+ B54PY74DhTEFMOmPzDw==
+X-Proofpoint-GUID: 2CTzwRlT6VwuSrfjawCBVZFlkf4McGAB
+X-Authority-Analysis: v=2.4 cv=P+cKQCAu c=1 sm=1 tr=0 ts=6a2c0751 cx=c_pps
+ a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=iKiJcTA2PjBS6x5JeXcw:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=N8XA07ESJKoyqESaXDYA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjEyMDEyMiBTYWx0ZWRfX9S75pZ24kJkh
+ QC6YVq2Br6veYBLz5QZgz6ePszXp506c02qbVcHr+pGA6ZwftWW2HfYUAko3xidqGZEOslKiuCs
+ 2gtzkEcZQH+LKNl49n72dKUXgvZsFWFqCqKZQ8kf4peimIpYBhQO
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-12_01,2026-06-12_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ bulkscore=0 adultscore=0 clxscore=1015 priorityscore=1501 lowpriorityscore=0
+ malwarescore=0 spamscore=0 suspectscore=0 impostorscore=0 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606040000 definitions=main-2606120122
 
-On Fri 12-06-26 00:34:41, Baokun Li wrote:
-> For unaligned DIO writes, the previous ext4_overwrite_io() required the
-> entire range to fall within a single written extent.  This was overly
-> conservative: the DIO layer only performs partial block zeroing for the
-> head and tail blocks when they are partially covered by the write.
-> Middle blocks that are fully covered are written as whole blocks
-> without any zeroing, so they are safe regardless of extent state.
-> 
-> Therefore exclusive lock is only required when partial block zeroing
-> will actually happen:
->  - The head partial block (if any) lands on a hole or unwritten extent.
->  - The tail partial block (if any) lands on a hole or unwritten extent.
-> 
-> Middle full-cover blocks can be in any state (hole, unwritten, or
-> written) - block allocation under shared lock is safe per the previous
-> patch's analysis (inode_dio_begin + i_data_sem protection).
-> 
-> Replace ext4_overwrite_io() with ext4_dio_needs_zeroing(), which
-> directly answers the question driving the lock decision.  It uses at
-> most two ext4_map_blocks() calls: one for the head partial block (also
-> catching the case where it spans through the tail), and one for the
-> tail partial block if not already covered.
-> 
-> This enables shared lock for previously-rejected scenarios such as:
->  - Unaligned write spanning written extent + mid-range hole + written
->    extent at the tail.
->  - Unaligned write where the partial blocks land on written extents but
->    the middle has unwritten extents.
-> 
-> Performance:
-> 
-> Hardware: /dev/sda (rotational disk, ~1 GB/s sustained write)
-> Filesystem: ext4 default mkfs
-> 
-> Unaligned DIO writes (14336 bytes at +512 within each 16K stripe).
-> Each stripe is laid out as [written][unwritten][unwritten][written],
-> so the head and tail partial blocks land on written extents but the
-> middle is unwritten.  Metric: IOPS.
-> 
->   JOBS      Before        After    speedup
->   ----    --------    ---------    -------
->      1      15,547       17,381      1.12x
->      2      15,910       34,172      2.15x
->      4      15,014       57,567      3.83x
->      8      15,022       81,947      5.46x
->     16      14,586       99,126      6.80x
->     32      14,047       92,519      6.59x
-> 
-> Wall time at JOBS=32: 149.3s (Before) -> 22.7s (After), 6.58x faster.
-> 
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+ext4_xattr_block_set() calls iput() on ea_inode while its callers hold
+xattr_sem.  If this iput() drops the last reference, it can trigger
+write_inode_now() -> ext4_writepages() -> s_writepages_rwsem, which
+violates the lock ordering since ext4_writepages() already establishes
+s_writepages_rwsem -> jbd2_handle ordering:
 
-Looks good. Feel free to add:
+  CPU0 (writeback worker)            CPU1 (file create)
+  ----                               ----
+  ext4_writepages()
+    s_writepages_rwsem (read)        ext4_create()
+    ext4_do_writepages()               __ext4_new_inode()
+      ext4_journal_start()               [holds jbd2 handle]
+        wait_transaction_locked()        ext4_xattr_set_handle()
+        [WAIT for jbd2_handle]             xattr_sem (write)
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+  CPU2 (xattr set or isize expand)
+  ----
+  ext4_xattr_set_handle() or ext4_try_to_expand_extra_isize()
+    xattr_sem (write)
+    ext4_xattr_block_set()
+      iput(ea_inode)
+        write_inode_now()
+          ext4_writepages()
+            s_writepages_rwsem (read) [DEADLOCK]
 
-								Honza
+This forms a circular dependency on lock classes:
 
-> ---
->  fs/ext4/file.c | 108 +++++++++++++++++++++++++++++++++----------------
->  1 file changed, 73 insertions(+), 35 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 6f3886465ce3..aa926e641739 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -213,31 +213,60 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
->  	return false;
->  }
->  
-> -/* Is IO overwriting allocated or initialized blocks? */
-> -static bool ext4_overwrite_io(struct inode *inode,
-> -			      loff_t pos, loff_t len, bool *unwritten)
-> +/*
-> + * Does an unaligned DIO write require partial block zeroing?
-> + *
-> + * Partial block zeroing is performed only for the head and tail blocks
-> + * when they are partially covered by the write and the underlying extent
-> + * is a hole or unwritten. Middle blocks (fully covered by the write)
-> + * are written as whole blocks without zeroing.
-> + *
-> + * When zeroing is required, two concurrent unaligned DIO writes to the
-> + * same partial block can race and corrupt each other's data, so the
-> + * caller must take the exclusive i_rwsem and drain in-flight DIO. When
-> + * zeroing is not required, shared lock is safe -- block allocation and
-> + * unwritten conversion for middle blocks are protected by i_data_sem
-> + * and inode_dio_begin().
-> + */
-> +static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
->  {
->  	struct ext4_map_blocks map;
->  	unsigned int blkbits = inode->i_blkbits;
-> -	int err, blklen;
-> +	unsigned long blockmask = inode->i_sb->s_blocksize - 1;
-> +	bool head_partial, tail_partial;
-> +	ext4_lblk_t head_lblk, tail_lblk;
-> +	int err;
->  
->  	if (pos + len > i_size_read(inode))
-> -		return false;
-> +		return true;
->  
-> -	map.m_lblk = pos >> blkbits;
-> -	map.m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
-> -	blklen = map.m_len;
-> +	head_partial = (pos & blockmask) != 0;
-> +	tail_partial = ((pos + len) & blockmask) != 0;
-> +	head_lblk = pos >> blkbits;
-> +	tail_lblk = (pos + len - 1) >> blkbits;
-> +
-> +	/* Check the head partial block. */
-> +	if (head_partial) {
-> +		map.m_lblk = head_lblk;
-> +		map.m_len = tail_lblk - head_lblk + 1;
-> +		err = ext4_map_blocks(NULL, inode, &map, 0);
-> +		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
-> +			return true;
-> +		/* If this mapping already covers the tail block, we're done. */
-> +		if (!tail_partial || map.m_lblk + err > tail_lblk)
-> +			return false;
-> +	}
->  
-> -	err = ext4_map_blocks(NULL, inode, &map, 0);
-> -	if (err != blklen)
-> -		return false;
-> -	/*
-> -	 * 'err==len' means that all of the blocks have been preallocated,
-> -	 * regardless of whether they have been initialized or not. We need to
-> -	 * check m_flags to distinguish the unwritten extents.
-> -	 */
-> -	*unwritten = !(map.m_flags & EXT4_MAP_MAPPED);
-> -	return true;
-> +	/* Check the tail partial block. */
-> +	if (tail_partial) {
-> +		map.m_lblk = tail_lblk;
-> +		map.m_len = 1;
-> +		err = ext4_map_blocks(NULL, inode, &map, 0);
-> +		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
-> +			return true;
-> +	}
-> +
-> +	return false;
->  }
->  
->  static ssize_t ext4_generic_write_checks(struct kiocb *iocb,
-> @@ -446,9 +475,10 @@ static const struct iomap_dio_ops ext4_dio_write_ops = {
->   *    i_data_sem serializes concurrent extent tree modifications.
->   *
->   * 4. Otherwise, the write is unaligned and non-extending. Shared lock is
-> - *    only safe for pure written-extent overwrites. Unwritten extents or
-> - *    holes require exclusive lock because concurrent partial block zeroing
-> - *    in the DIO layer could corrupt data.
-> + *    safe unless the DIO layer needs to perform partial block zeroing --
-> + *    i.e. the head or tail partial block sits on a hole or unwritten
-> + *    extent. In that case upgrade to the exclusive lock and drain
-> + *    in-flight DIO to avoid races with concurrent partial block zeroing.
->   */
->  static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  				     bool *ilock_shared, bool *extend,
-> @@ -459,7 +489,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  	loff_t offset;
->  	size_t count;
->  	ssize_t ret;
-> -	bool overwrite = true, unaligned_io, unwritten = false;
-> +	bool needs_zeroing = false;
->  
->  restart:
->  	ret = ext4_generic_write_checks(iocb, from);
-> @@ -469,21 +499,22 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  	offset = iocb->ki_pos;
->  	count = ret;
->  
-> -	unaligned_io = ext4_unaligned_io(inode, from, offset);
->  	*extend = ext4_extending_io(inode, offset, count);
->  
->  	/*
-> -	 * For unaligned writes we need to know the extent state to determine
-> -	 * whether shared lock is safe. For aligned writes we skip this check
-> -	 * entirely since allocation under shared lock is safe.
-> +	 * For unaligned writes, check whether partial block zeroing will be
-> +	 * needed. If so, exclusive lock is required to serialize against
-> +	 * concurrent DIO that could race with the zeroing.
-> +	 *
-> +	 * For aligned writes we skip this check entirely since allocation
-> +	 * under shared lock is safe.
->  	 */
-> -	if (unaligned_io)
-> -		overwrite = ext4_overwrite_io(inode, offset, count, &unwritten);
-> +	if (ext4_unaligned_io(inode, from, offset))
-> +		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count);
->  
->  	/* Determine whether we need to upgrade to an exclusive lock. */
->  	if (*ilock_shared &&
-> -	    ((!IS_NOSEC(inode) || *extend ||
-> -	     (unaligned_io && (!overwrite || unwritten))))) {
-> +	    (!IS_NOSEC(inode) || *extend || needs_zeroing)) {
->  		if (iocb->ki_flags & IOCB_NOWAIT) {
->  			ret = -EAGAIN;
->  			goto out;
-> @@ -497,16 +528,23 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  	/*
->  	 * Now that locking is settled, determine dio flags and exclusivity
->  	 * requirements. We don't use DIO_OVERWRITE_ONLY because we enforce
-> -	 * behavior already. The inode lock is already held exclusive if the
-> -	 * write is unaligned non-overwrite or extending, so drain all
-> -	 * outstanding dio and set the force wait dio flag.
-> +	 * behavior already. When holding the exclusive lock for a write that
-> +	 * needs partial block zeroing or is extending the file, we must wait
-> +	 * for the I/O to complete synchronously:
-> +	 *
-> +	 *  - needs_zeroing: drain in-flight DIO whose end_io could race with
-> +	 *    our partial block zeroing, and force synchronous completion so we
-> +	 *    don't leave in-flight zeroing bios for the next writer to drain.
-> +	 *
-> +	 *  - extend: the caller must update i_disksize after I/O completion,
-> +	 *    which requires the data to be on disk first.
->  	 */
-> -	if (!*ilock_shared && (unaligned_io || *extend)) {
-> +	if (!*ilock_shared && (needs_zeroing || *extend)) {
->  		if (iocb->ki_flags & IOCB_NOWAIT) {
->  			ret = -EAGAIN;
->  			goto out;
->  		}
-> -		if (unaligned_io && (!overwrite || unwritten))
-> +		if (needs_zeroing)
->  			inode_dio_wait(inode);
->  		*dio_flags = IOMAP_DIO_FORCE_WAIT;
->  	}
-> -- 
-> 2.43.7
-> 
+  s_writepages_rwsem --> jbd2_handle --> xattr_sem --> s_writepages_rwsem
+
+Fix by deferring iput() calls inside ext4_xattr_block_set() via the
+existing ext4_xattr_inode_array mechanism.  The array is threaded
+through the call chain and freed by callers after releasing xattr_sem.
+
+Reported-by: syzbot+5d19358d7eb30ffb0cc5@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
+Fixes: c8585c6fcaf2 ("ext4: fix races between changing inode journal mode and ext4_writepages")
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+---
+v3: Address AI review feedback on v2:
+  - Check ext4_expand_inode_array() return value; fallback to
+    direct iput() on ENOMEM to prevent inode leak.
+  - Make ext4_xattr_set_handle() take an optional ea_inode_array
+    output parameter so callers can free after ext4_journal_stop(),
+	avoiding the jbd2_handle vs s_writepages_rwsem AB-BA.
+  - Pass ea_inode_array directly to ext4_xattr_release_block()
+    instead of using a local array freed under xattr_sem.
+  - Move ext4_xattr_inode_array_free() after ext4_journal_stop()
+
+v2: Defer iput() in ext4_xattr_block_set() via ea_inode_array,
+	freed after xattr_sem is released. Fixes the root cause.
+
+v1: Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() to skip expand
+	on inodes being deleted. Only fixes the syzbot reproducer, not
+	the underlying lock ordering violation.
+
+ fs/ext4/acl.c            |  2 +-
+ fs/ext4/crypto.c         |  4 ++--
+ fs/ext4/inode.c          | 13 ++++++----
+ fs/ext4/xattr.c          | 51 ++++++++++++++++++++++++++--------------
+ fs/ext4/xattr.h          |  6 +++--
+ fs/ext4/xattr_security.c |  3 ++-
+ 6 files changed, 51 insertions(+), 28 deletions(-)
+
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 3bffe862f954..21de8276b558 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -215,7 +215,7 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+ 	}
+ 
+ 	error = ext4_xattr_set_handle(handle, inode, name_index, "",
+-				      value, size, xattr_flags);
++				      value, size, xattr_flags, NULL);
+ 
+ 	kfree(value);
+ 	if (!error)
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index f41f320f4437..bca760751c1d 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -173,7 +173,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 		res = ext4_xattr_set_handle(handle, inode,
+ 					    EXT4_XATTR_INDEX_ENCRYPTION,
+ 					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+-					    ctx, len, XATTR_CREATE);
++					    ctx, len, XATTR_CREATE, NULL);
+ 		if (!res) {
+ 			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+ 			ext4_clear_inode_state(inode,
+@@ -202,7 +202,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 
+ 	res = ext4_xattr_set_handle(handle, inode, EXT4_XATTR_INDEX_ENCRYPTION,
+ 				    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+-				    ctx, len, 0);
++				    ctx, len, 0, NULL);
+ 	if (!res) {
+ 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+ 		/*
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cd7588a3fa45..2cf68d27e896 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6408,7 +6408,8 @@ ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
+ static int __ext4_expand_extra_isize(struct inode *inode,
+ 				     unsigned int new_extra_isize,
+ 				     struct ext4_iloc *iloc,
+-				     handle_t *handle, int *no_expand)
++				     handle_t *handle, int *no_expand,
++				     struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct ext4_inode *raw_inode;
+ 	struct ext4_xattr_ibody_header *header;
+@@ -6453,7 +6454,7 @@ static int __ext4_expand_extra_isize(struct inode *inode,
+ 
+ 	/* try to expand with EAs present */
+ 	error = ext4_expand_extra_isize_ea(inode, new_extra_isize,
+-					   raw_inode, handle);
++					   raw_inode, handle, ea_inode_array);
+ 	if (error) {
+ 		/*
+ 		 * Inode size expansion failed; don't try again
+@@ -6475,6 +6476,7 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
+ {
+ 	int no_expand;
+ 	int error;
++	struct ext4_xattr_inode_array *ea_inode_array = NULL;
+ 
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND))
+ 		return -EOVERFLOW;
+@@ -6496,8 +6498,9 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
+ 		return -EBUSY;
+ 
+ 	error = __ext4_expand_extra_isize(inode, new_extra_isize, &iloc,
+-					  handle, &no_expand);
++					  handle, &no_expand, &ea_inode_array);
+ 	ext4_write_unlock_xattr(inode, &no_expand);
++	ext4_xattr_inode_array_free(ea_inode_array);
+ 
+ 	return error;
+ }
+@@ -6509,6 +6512,7 @@ int ext4_expand_extra_isize(struct inode *inode,
+ 	handle_t *handle;
+ 	int no_expand;
+ 	int error, rc;
++	struct ext4_xattr_inode_array *ea_inode_array = NULL;
+ 
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND)) {
+ 		brelse(iloc->bh);
+@@ -6534,7 +6538,7 @@ int ext4_expand_extra_isize(struct inode *inode,
+ 	}
+ 
+ 	error = __ext4_expand_extra_isize(inode, new_extra_isize, iloc,
+-					  handle, &no_expand);
++					  handle, &no_expand, &ea_inode_array);
+ 
+ 	rc = ext4_mark_iloc_dirty(handle, inode, iloc);
+ 	if (!error)
+@@ -6543,6 +6547,7 @@ int ext4_expand_extra_isize(struct inode *inode,
+ out_unlock:
+ 	ext4_write_unlock_xattr(inode, &no_expand);
+ 	ext4_journal_stop(handle);
++	ext4_xattr_inode_array_free(ea_inode_array);
+ 	return error;
+ }
+ 
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index e91af66db7a7..fa9a16c86fd8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1906,7 +1906,8 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
+ static int
+ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 		     struct ext4_xattr_info *i,
+-		     struct ext4_xattr_block_find *bs)
++		     struct ext4_xattr_block_find *bs,
++		     struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *new_bh = NULL;
+@@ -2158,7 +2159,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 					ext4_warning_inode(ea_inode,
+ 							   "dec ref error=%d",
+ 							   error);
+-				iput(ea_inode);
++				if (ext4_expand_inode_array(ea_inode_array, ea_inode))
++					iput(ea_inode);
+ 				ea_inode = NULL;
+ 			}
+ 
+@@ -2190,12 +2192,9 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 
+ 	/* Drop the previous xattr block. */
+ 	if (bs->bh && bs->bh != new_bh) {
+-		struct ext4_xattr_inode_array *ea_inode_array = NULL;
+-
+ 		ext4_xattr_release_block(handle, inode, bs->bh,
+-					 &ea_inode_array,
++					 ea_inode_array,
+ 					 0 /* extra_credits */);
+-		ext4_xattr_inode_array_free(ea_inode_array);
+ 	}
+ 	error = 0;
+ 
+@@ -2211,7 +2210,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			ext4_xattr_inode_free_quota(inode, ea_inode,
+ 						    i_size_read(ea_inode));
+ 		}
+-		iput(ea_inode);
++		if (ext4_expand_inode_array(ea_inode_array, ea_inode))
++			iput(ea_inode);
+ 	}
+ 	if (ce)
+ 		mb_cache_entry_put(ea_block_cache, ce);
+@@ -2356,7 +2356,7 @@ static struct buffer_head *ext4_xattr_get_block(struct inode *inode)
+ int
+ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		      const char *name, const void *value, size_t value_len,
+-		      int flags)
++		      int flags, struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct ext4_xattr_info i = {
+ 		.name_index = name_index,
+@@ -2371,6 +2371,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	struct ext4_xattr_block_find bs = {
+ 		.s = { .not_found = -ENODATA, },
+ 	};
++	struct ext4_xattr_inode_array *local_array = NULL;
+ 	int no_expand;
+ 	int error;
+ 
+@@ -2379,6 +2380,9 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	if (strlen(name) > 255)
+ 		return -ERANGE;
+ 
++	if (!ea_inode_array)
++		ea_inode_array = &local_array;
++
+ 	ext4_write_lock_xattr(inode, &no_expand);
+ 
+ 	/* Check journal credits under write lock. */
+@@ -2438,7 +2442,8 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		if (!is.s.not_found)
+ 			error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+ 		else if (!bs.s.not_found)
+-			error = ext4_xattr_block_set(handle, inode, &i, &bs);
++			error = ext4_xattr_block_set(handle, inode, &i, &bs,
++						     ea_inode_array);
+ 	} else {
+ 		error = 0;
+ 		/* Xattr value did not change? Save us some work and bail out */
+@@ -2455,7 +2460,8 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 		error = ext4_xattr_ibody_set(handle, inode, &i, &is);
+ 		if (!error && !bs.s.not_found) {
+ 			i.value = NULL;
+-			error = ext4_xattr_block_set(handle, inode, &i, &bs);
++			error = ext4_xattr_block_set(handle, inode, &i, &bs,
++						     ea_inode_array);
+ 		} else if (error == -ENOSPC) {
+ 			if (EXT4_I(inode)->i_file_acl && !bs.s.base) {
+ 				brelse(bs.bh);
+@@ -2464,7 +2470,8 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 				if (error)
+ 					goto cleanup;
+ 			}
+-			error = ext4_xattr_block_set(handle, inode, &i, &bs);
++			error = ext4_xattr_block_set(handle, inode, &i, &bs,
++						     ea_inode_array);
+ 			if (!error && !is.s.not_found) {
+ 				i.value = NULL;
+ 				error = ext4_xattr_ibody_set(handle, inode, &i,
+@@ -2503,6 +2510,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	brelse(is.iloc.bh);
+ 	brelse(bs.bh);
+ 	ext4_write_unlock_xattr(inode, &no_expand);
++	ext4_xattr_inode_array_free(local_array);
+ 	return error;
+ }
+ 
+@@ -2547,6 +2555,7 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ {
+ 	handle_t *handle;
+ 	struct super_block *sb = inode->i_sb;
++	struct ext4_xattr_inode_array *ea_inode_array = NULL;
+ 	int error, retries = 0;
+ 	int credits;
+ 
+@@ -2567,10 +2576,13 @@ ext4_xattr_set(struct inode *inode, int name_index, const char *name,
+ 		int error2;
+ 
+ 		error = ext4_xattr_set_handle(handle, inode, name_index, name,
+-					      value, value_len, flags);
++					      value, value_len, flags,
++					      &ea_inode_array);
+ 		ext4_fc_mark_ineligible(inode->i_sb, EXT4_FC_REASON_XATTR,
+ 					handle);
+ 		error2 = ext4_journal_stop(handle);
++		ext4_xattr_inode_array_free(ea_inode_array);
++		ea_inode_array = NULL;
+ 		if (error == -ENOSPC &&
+ 		    ext4_should_retry_alloc(sb, &retries))
+ 			goto retry;
+@@ -2612,7 +2624,8 @@ static void ext4_xattr_shift_entries(struct ext4_xattr_entry *entry,
+  */
+ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 				    struct ext4_inode *raw_inode,
+-				    struct ext4_xattr_entry *entry)
++				    struct ext4_xattr_entry *entry,
++				    struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct ext4_xattr_ibody_find *is = NULL;
+ 	struct ext4_xattr_block_find *bs = NULL;
+@@ -2676,7 +2689,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 		goto out;
+ 
+ 	/* Move ea entry from the inode into the block */
+-	error = ext4_xattr_block_set(handle, inode, &i, bs);
++	error = ext4_xattr_block_set(handle, inode, &i, bs, ea_inode_array);
+ 	if (error)
+ 		goto out;
+ 
+@@ -2702,7 +2715,8 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ static int ext4_xattr_make_inode_space(handle_t *handle, struct inode *inode,
+ 				       struct ext4_inode *raw_inode,
+ 				       int isize_diff, size_t ifree,
+-				       size_t bfree, int *total_ino)
++				       size_t bfree, int *total_ino,
++				       struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
+ 	struct ext4_xattr_entry *small_entry;
+@@ -2752,7 +2766,7 @@ static int ext4_xattr_make_inode_space(handle_t *handle, struct inode *inode,
+ 			total_size += EXT4_XATTR_SIZE(
+ 					      le32_to_cpu(entry->e_value_size));
+ 		error = ext4_xattr_move_to_block(handle, inode, raw_inode,
+-						 entry);
++						 entry, ea_inode_array);
+ 		if (error)
+ 			return error;
+ 
+@@ -2769,7 +2783,8 @@ static int ext4_xattr_make_inode_space(handle_t *handle, struct inode *inode,
+  * Returns 0 on success or negative error number on failure.
+  */
+ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+-			       struct ext4_inode *raw_inode, handle_t *handle)
++			       struct ext4_inode *raw_inode, handle_t *handle,
++			       struct ext4_xattr_inode_array **ea_inode_array)
+ {
+ 	struct ext4_xattr_ibody_header *header;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+@@ -2841,7 +2856,7 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 
+ 	error = ext4_xattr_make_inode_space(handle, inode, raw_inode,
+ 					    isize_diff, ifree, bfree,
+-					    &total_ino);
++					    &total_ino, ea_inode_array);
+ 	if (error) {
+ 		if (error == -ENOSPC && !tried_min_extra_isize &&
+ 		    s_min_extra_isize) {
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 1fedf44d4fb6..9c3f1a96895d 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -179,7 +179,8 @@ extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
+ 
+ extern int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
+ extern int ext4_xattr_set(struct inode *, int, const char *, const void *, size_t, int);
+-extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *, const void *, size_t, int);
++extern int ext4_xattr_set_handle(handle_t *, struct inode *, int, const char *,
++		const void *, size_t, int, struct ext4_xattr_inode_array **);
+ extern int ext4_xattr_set_credits(struct inode *inode, size_t value_len,
+ 				  bool is_create, int *credits);
+ extern int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
+@@ -192,7 +193,8 @@ extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ extern void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *array);
+ 
+ extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+-			    struct ext4_inode *raw_inode, handle_t *handle);
++			    struct ext4_inode *raw_inode, handle_t *handle,
++			    struct ext4_xattr_inode_array **ea_inode_array);
+ extern void ext4_evict_ea_inode(struct inode *inode);
+ 
+ extern const struct xattr_handler * const ext4_xattr_handlers[];
+diff --git a/fs/ext4/xattr_security.c b/fs/ext4/xattr_security.c
+index 776cf11d24ca..6b7ab6e703ad 100644
+--- a/fs/ext4/xattr_security.c
++++ b/fs/ext4/xattr_security.c
+@@ -44,7 +44,8 @@ ext4_initxattrs(struct inode *inode, const struct xattr *xattr_array,
+ 		err = ext4_xattr_set_handle(handle, inode,
+ 					    EXT4_XATTR_INDEX_SECURITY,
+ 					    xattr->name, xattr->value,
+-					    xattr->value_len, XATTR_CREATE);
++					    xattr->value_len, XATTR_CREATE,
++					    NULL);
+ 		if (err < 0)
+ 			break;
+ 	}
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.43.0
+
