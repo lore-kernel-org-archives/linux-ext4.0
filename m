@@ -1,86 +1,77 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 817BA3EEAEB;
-	Fri, 12 Jun 2026 13:23:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+Received: from zucker2.schokokeks.org (zucker2.schokokeks.org [178.63.68.90])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id B50BA224AF2
+	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 09:05:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=178.63.68.90
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781270624; cv=none; b=jutnBgo/nzxodid9PQFw2mCnR1XPHL9047cuunvbqSBPGXJvIT2QOJs7J2xn0acbKS0I2Rf381Itj5MpBXqq81nZtUXSHlgir8mgz1s34S9wAVFeFGTtd1tUE6C0yZSfWVHXapBh7gApkmtqzra8YtvsJUnMAG/ex0WviRbp+Ng=
+	t=1781341510; cv=none; b=Hqm0hhHkHFg1BR0ZntpEz8lSES1Q+Z6ThxkLke2nnIiR72RMM+P8aJ15mRdHRLtFwRKFtZyZirE9z5lJY1MZudbPA8LKU2+bkP5Xbp8K84j298gpdqU/y5SaYvrplVRPoICUGQZMTOwUhC+kCMP7q7TF9e0P//Yv02HFOI9QtJQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781270624; c=relaxed/simple;
-	bh=BxRUG9yCparzdVEFNUqMGYsgRIhB/MMDsOFELKdEY5s=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=JZikm1nv8bNMJ1UKwvxm9ZLlyK1KmFbnp6/YSehDqLJSmUaKj627Ory8wy+qhHkGkMTGi3a/q7M2wh3FFseW3MIalCAu+5eapIW65Ew1yUmgiG21zW8CefcJvKhedfKjhb9ETrDzs6DikD1EUEd6Dk5ighRU5l4KS6FDbRDSt1g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RWBSe3uU; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1781341510; c=relaxed/simple;
+	bh=loIdqTL0RKxSshfbX1MM17OcdW1BGXu3ZG+9CDKQt9E=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type; b=O8lHZHJtm8mcgqJI40XdUcgYXO8o8xCWvUdZoSsnp8xKeguhiFk1UNYL5Js7DPyWgrbtmHqxvU0AcDJJSMxBEp2ZzkmSdjdyiRRyIZ0AA3v8bBrP1fzo2TCtpl0CN5qZz0M9tWOH2WtlGORrrXwFkMfj41ArZc+lFM9BeFSEI+0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hboeck.de; spf=pass smtp.mailfrom=hboeck.de; dkim=fail (2048-bit key) header.d=hboeck.de header.i=@hboeck.de header.b=IdGuNx/H reason="signature verification failed"; arc=none smtp.client-ip=178.63.68.90
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hboeck.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hboeck.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RWBSe3uU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA7DF1F000E9;
-	Fri, 12 Jun 2026 13:23:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781270623;
-	bh=Q1S8kYZanYqjeMjwN9+vX2OdI/tveSbKG5tSQXbtX3Q=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=RWBSe3uUTYDEnYDY6VMRpKsIV02r4tVXyXvdQlFjfnzn2UZTmpMziQyG/Pf6zr8ah
-	 G9EK21TGC1CPNPWAVv4S/PjOW6cyznrGCkrEMHbkPj26M7o04lYHhCYqOUX38yODmN
-	 gLIzuJwOANFr7dXKxhxOtFHhisXef9a1n64ltmdhTEENzR9anDF97YsHliSJttEVra
-	 z5yo9FY0AKI4EjWa/ZU+CwPDqw0VGZRwW1+g6/dflG3ktYyUyOVkBq9ZICYRGI8e6U
-	 ma1bchx6cRYkbEk9O2C8CHiDWhsPO15n7Y6mhbqflH0jh+OaU43rcDv8jD+gNrzRXo
-	 v+hdrpt8CzEWw==
-Date: Fri, 12 Jun 2026 15:23:37 +0200
-From: Carlos Maiolino <cem@kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Keith Busch <kbusch@kernel.org>, brauner@kernel.org, 
-	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-xfs@vger.kernel.org, Hannes Reinecke <hare@suse.de>, 
-	"Martin K. Petersen" <martin.petersen@oracle.com>, Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH] iomap: enforce DIO alignment check in iomap
-Message-ID: <aiwIGv4xWH-bfDfT@nidhogg.toxiclabs.cc>
-References: <20260610145218.141369-1-cem@kernel.org>
- <20260611055744.GA18538@lst.de>
- <aiqBvF93P4NjfaDR@nidhogg.toxiclabs.cc>
- <aiqwy5DfHI79KXuZ@kbusch-mbp>
- <20260611133833.GA14645@lst.de>
- <airX6BmMQ14Rvjcb@nidhogg.toxiclabs.cc>
- <20260612052831.GA9010@lst.de>
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=hboeck.de header.i=@hboeck.de header.b="IdGuNx/H"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hboeck.de; s=key1;
+	t=1781341507; bh=6uMp872Kz38jj5kiearkYjfbqBcfZ8eIBHalFUl830Q=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding;
+	b=IdGuNx/HCh2MYtx6X/KKXpg4/mJZTlMzW5nPibk6DXJdgWUD9swJzgC4igPkWU6OD
+	 N3BsYQ/8m5pQhhV4TYOwIbUVVlBSRyK9lfB3ASVld79vX+B2NwoHkvIIxqz8bgoTu2
+	 oUXLfPxUaCl4wSbqov7BV/u318LG4HWmcjMQpPz6F8uE+ChZtEhruSXcwev3pTrIXW
+	 CLKorH+uvPaafyU7uyV39Ha4UOvUmjGfZDk2+dXdNGNFWMJrmxkCZMatacwAmt3pC8
+	 WGdqtKuSmqZAumM0/VO8z2N7SVYPMSa74hzEvTHS5Be8iF6P6Zim+kdtkYwLGf4vMG
+	 y84h/kj4EkbZA==
+Original-Subject: [PATCH] e2fsprogs/resize2fs: allow online resizing with
+ CONFIG_BLK_DEV_WRITE_MOUNTED disabled
+Author: Hanno =?UTF-8?B?QsO2Y2s=?= <hanno@hboeck.de>
+Date: Sat, 13 Jun 2026 11:05:07 +0200
+From: Hanno =?UTF-8?B?QsO2Y2s=?= <hanno@hboeck.de>
+To: linux-ext4@vger.kernel.org
+Cc: theodore.tso@gmail.com
+Subject: [PATCH] e2fsprogs/resize2fs: allow online resizing with
+ CONFIG_BLK_DEV_WRITE_MOUNTED disabled
+Message-ID: <20260613110507.67289f68@hboeck.de>
+X-Mailer: Claws Mail 4.4.0 (GTK 3.24.52; x86_64-pc-linux-gnu)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260612052831.GA9010@lst.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Jun 12, 2026 at 07:28:31AM +0200, Christoph Hellwig wrote:
-> On Thu, Jun 11, 2026 at 05:47:07PM +0200, Carlos Maiolino wrote:
-> > On Thu, Jun 11, 2026 at 03:38:33PM +0200, Christoph Hellwig wrote:
-> > > On Thu, Jun 11, 2026 at 06:57:47AM -0600, Keith Busch wrote:
-> > > > It's entirely possible a device supports byte aligned addresses. The
-> > > > block layer just doesn't let a driver report that. So either it really
-> > > > was successful because you found a bug that skips the alignment checks,
-> > > > or your device silently corrupted your payload.
-> > 
-> > I tried this on different hardware, I find it hard to say all those
-> > devices were corrupting the payload.
-> 
-> I think in the other thread we agreed that we are currently missing
-> the alignment check for fast-path bios not hitting the splitting code,
-> so maybe that is something you see.  Additionally we're missing the
-> checks for purely bio based drivers not calling the splitting helper
-> at all, but I don't think that applies here.
-> 
-> > > > Anyway, my earlier suggestion should work. Ming thinks it may go to far,
-> > > > though, in not taking the optimization when it was possible. So here's
-> > > > an alternative suggestion that should get things working as expected:
-> > > 
-> > > The fix below looks like it is addressing a real bug.  I'm not sure if
-> > > Carlos is hitting it, but we were missing the alignment checks for
-> > > single-bvec fast path bios so far indeed.
-> > 
-> > You left context out so I'm assuming by the fix you meant Keith's patch.
-> 
-> Yes.
+Kernels since version 6.8 have an option CONFIG_BLK_DEV_WRITE_MOUNTED
+that, if disabled, prevents accidental writes to and data corruption of
+mounted devices.
 
-The fix indeed seems to fix the behavior I'm seeing. Keith could you Cc
-me if you end up sending an official version?
+This breaks online resizing with resize2fs, as it opens the device with
+O_RDWR. However, it appears that this is not necessary and by changing
+it to O_RDONLY, online resizing works again.
+
+See also: https://unix.stackexchange.com/a/796881
+
+Signed-off-by: Hanno B=C3=B6ck <hanno@hboeck.de>
+--- a/resize/main.c	2026-03-06 18:17:36.000000000 +0100
++++ b/resize/main.c	2026-06-13 10:53:46.165030199 +0200
+@@ -256,7 +256,7 @@ int main (int argc, char ** argv)
+ 	int		force_min_size =3D 0;
+ 	int		print_min_size =3D 0;
+ 	int		fd, ret;
+-	int		open_flags =3D O_RDWR;
++	int		open_flags =3D O_RDONLY;
+ 	blk64_t		new_size =3D 0;
+ 	blk64_t		max_size =3D 0;
+ 	blk64_t		min_size =3D 0;
+@@ -364,9 +364,6 @@ int main (int argc, char ** argv)
+ 		len =3D 2 * len;
+ 	}
+=20
+-	if (print_min_size)
+-		open_flags =3D O_RDONLY;
+-
+ 	fd =3D ext2fs_open_file(device_name, open_flags, 0);
+ 	if (fd < 0) {
+ 		com_err("open", errno, _("while opening %s"),
