@@ -1,272 +1,155 @@
-Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
+Received: from mail-pj1-f42.google.com (mail-pj1-f42.google.com [209.85.216.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95375257845
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 22:16:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.169
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781388963; cv=pass; b=n1n+6G3GRfHflZAue4ttV1H2iwJyx36bgPtYlGS8hJOa9DcHvXDuT/dvlps8CC5Ep1leIFVd2fqGZrRKE3e2E1JqiGu8t0OuFPfKkAOltgOv/YNJJMt3vQFa1v5KCSX8ciXRAzyLl73LzVgqCX8e2wzFRuKpNEU/S0phrvdyFV8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781388963; c=relaxed/simple;
-	bh=gfPG9llT8fRYRjxJuYldKY/cP5EobsF3J+I2WRLNQKY=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=uxBILPgTYA55xLY0u8YGBAI1GMmrsPfWEVXkywT7oui0JTbxpt47DQNNktU7vC5o8tGRJOAvWNIqFPjpdt+MItK/+3vLiHZ7SHJHIUorAOqsvvT+sRfUU44pHxUMLZqq6nvsANTZrMvxWawJaooS6TT6n/cJkBx14WAmC71SRl0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=ACeqWnvs; arc=pass smtp.client-ip=209.85.210.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0812F257845
+	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 22:20:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.42
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781389242; cv=none; b=dCMJMUgLMiR3EatFv7jLTunM245P56QkQyJ4/RQnnZtKd2M6CEiYNLIgo61ODn0zfv50qLOC45L6hpIUO5zkQ3Ee6LyM30BlOFbbXoD/4E+n96nT6vqSlOdZ+SlXF/3kJsxF3g6pF3b/6bKRjDyL6c67BlyePvbG1z4XZLLO7Rc=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781389242; c=relaxed/simple;
+	bh=airLqzG/L7e/wziP//7I+GC4eYKfQmDRXFoekkvGuI4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=KlSzmsfn6zBAD5LG+K47IVfAlRt2tBmCFyHEM7ww2l0Nimto5/5MmkNsSMcxT7fJRsPLGgswukUzLNY/ZvRNR9/M3uv1HbC6gWjMgx2Yr7RIMlSG4PL3HxL6nlH4RHXLB52+r2QgA/u75G5z7Pyb4COKm6DZFu5WXtKNNOu2hN8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=DKyxDFOt; arc=none smtp.client-ip=209.85.216.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=asu.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="ACeqWnvs"
-Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-84275887a3fso2191020b3a.1
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 15:16:01 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1781388961; cv=none;
-        d=google.com; s=arc-20240605;
-        b=Qy1dN6+RVu7ZZKtB2eNb5ZdL1/mh80Kl+r8xPUlMl8/gWgufMz26btRBr7rhcxO45/
-         Qn6K+2fOdUbMR6rjNkDICchF4cR0ONdqwCzm9zP6vp6Qlg5P+hIyr3BpPuyT1HLGU48E
-         RXHzUToYavu1ZOW/F9roN3vevlvUROUTVrvd63gGOUE8ynv3rzzWTsk6jQ5QWKgN3daD
-         qfn59pebHsu5tfhayyO/SMQCnxRHs/+2R2EJz2jadE/fuKle2omGU4Nps9//tisFr7Ay
-         haybhfZ8jaOwk3ftjr41sKFvG9P8hLodUMBW43ufK1NM6xbDLp1Bfz8+95sXgGjV8XGd
-         9b9g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=MSAIzyEhiIIYvGBU6bRfL2C30KbRbdKsUwB2PcICdSI=;
-        fh=/KsSh7Bbq0s8IsxyG9YUv+ObyE7ksXPKe14g2XxDU6M=;
-        b=fN61nx3TyB0cQ2MdIlulnIPEz/Ue7LydcCI8EzIz6XZqth8/TPPH2KaPR3Tshiw+/U
-         7xh9i09wm/GF4wrULQuzqML7Fnnbzr9Koaz6dIyYp87C1exyRararPQDVhWaas/+Zkc2
-         BI5pXKE2ILPWF9/zxo0+qkpXovJ/L22qEZQWtaNah6OqSCyyb9399do5luASuF32NQ6X
-         12QxGvu9/7S5XzYeLsYPpBkI+jiRDKxGDiBCipt+J2MyRYMB4vXRZzz1xyyMUWP+ameO
-         7Abpxihx6zuyi7t9RMQmZJNQ0JMNATmOqhFB7eCKcYkP2vrIntoKSeA8LxDqe7fMB1LU
-         GHWw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="DKyxDFOt"
+Received: by mail-pj1-f42.google.com with SMTP id 98e67ed59e1d1-36bcbd7821fso1045580a91.2
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 15:20:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=asu.edu; s=google; t=1781388961; x=1781993761; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=MSAIzyEhiIIYvGBU6bRfL2C30KbRbdKsUwB2PcICdSI=;
-        b=ACeqWnvsNC5PtigFji932mRTm9ETo5I3YKNBZp0P5WfOCkv2Zd6ALlX3CCVzsiraR/
-         4q9Zf3jVVZm59GhLovHhgtxcE/+V1sJgNfnSaZiE+q/p7njtckaAlWhXFfYFcP1xNr2V
-         +3SvSJcFlIyf7YnIo5KS278P6828XZxRAosKtAq4EVKOLtX8KsY52/tC3JacJFt0JH5k
-         s22TCTpJvQkqtVIVEnlqlSZ6D+u9306v//uD1oRlRKVU3CSDE5jusG4qyjKvoOCH6mX5
-         TJx2lX+s3ZRH4HcRcdsouG6tzygnGD+U/ei2VdMT5fHjjqNUudicF5IxlVr7BGeHUoVG
-         g22Q==
+        d=asu.edu; s=google; t=1781389240; x=1781994040; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=n66YruYocOh5knrDPtGgjglYitjlbKeUlxMM8lYrh5U=;
+        b=DKyxDFOtbgDPE5lW+tRgcx8TZ/+kSSg6wUtKOCnbIFCgYHij+UyBQ2LZo94H/K4eB0
+         SHk+U0RqOAMk7jmNivOE1uUqPk0DI3QtGkQry3YEnel9qOTP1ek2krzXwF+10pqYnHcc
+         8ISnCWMC5Yiyb8rISDUBVGqNnbfWPczhx3riOAHbSiTbA10uY+VhUeeCheoj1jfQdOzo
+         +dVAF4SzcbyLA4jVN0Ope6QC8dGk/SO8b7pppiOeMJSTECx9MiJlFAgfcPpyDzDvmQ+h
+         XwyDQRg+6f7yldA93cZAd1ZSsu3BD0AraGnkX7sVsai8XpTJeoTw53stzdz9zlXq6sEV
+         Y9kg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781388961; x=1781993761;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=MSAIzyEhiIIYvGBU6bRfL2C30KbRbdKsUwB2PcICdSI=;
-        b=N8k52VMoiL4/zw/QB3qgo2rh+XqfHBFH3UiH8C5p4m+pIipwG7iggTHHBjZPUcjti5
-         DZxTqm74qyxm8VIjvEER0wLTxdSx1LeXamcQ8Ct9eHZ+KQMATMyPeb87ARhYccNnPgW2
-         DDm19chWCtHzwSErxNYr+3vgd32Ap5k+qpHcmknBdKH/ULAsoWvy+9F6jEALLZ8h4eVi
-         WHmqdfNvHxvARGTp9aLWKNBeUgCAWLwet1xZ4VYt0i2hCZfWoiJ+2ib9JVQAR3ztAJIN
-         vU3BgsjiBgTxEG1bjxn0+z6qNwCqAjlBAWRuD7SJA+69eNiga3GDhkZmcK1FL4Ji3t95
-         IzOQ==
-X-Gm-Message-State: AOJu0YyLarGa4LcWx8sufqfst8z3zx+ODw+OnE93T+SDRIEaSebDkTIm
-	VTasbazDLk/cDcEq2fOJflvwKcUBTW0JmZB7eg0BTgTjn8dKuIabd7PKG2b294t9kU9fccAywiI
-	frxpVKG8r8pdoOIMKnBbjzdQHFBJfF7J0SdEqJdug
-X-Gm-Gg: Acq92OGjSWoZXmzgsYSkXJk/cIZzlPXNq6Mqq4bRXLokKQVwUODhInAZ9bCuM533rXy
-	uptdCoC1P0O9+Klb/bRbWGxsJyCCbMuCvlv6sFcf9o9x7+4almxo36Sc1zp+ygtfS63ZeIsGMjc
-	jbB95MJtl4SDM79AlVbeUkPoHv7m79vOLPtSVuS4bphdr7YOXvCfCel3mWjGpQL0gRpEom2aHWA
-	ZV/U9IDcACTTIz0eCsbmhjyAzmPA9Q9boRJDCMCr/0HwQmlzt0h4EPvH9k07sTxjMXYSaRUOSC9
-	Y+XSoaOX3MOJauJ51fCFBuDj+fTwmwu+vuq4QE5anmCTI/fsIw==
-X-Received: by 2002:a05:6a20:7f99:b0:3b4:701f:a0ee with SMTP id
- adf61e73a8af0-3b785853bacmr7338141637.19.1781388960920; Sat, 13 Jun 2026
- 15:16:00 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1781389240; x=1781994040;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=n66YruYocOh5knrDPtGgjglYitjlbKeUlxMM8lYrh5U=;
+        b=ELWx/0Hs8ULG+Rj2kY2MPOlKIUBsjesDPSk+Ou/st39DXEO3oeLy6XjUFOQIcjy2wm
+         UqHrPgySosNmTnncnKwULWQV11cFgR1eB+gA7VLPJkJXjwo9GCuOvMHTzxMk6wG6wMID
+         r43evltb8TbuJ664p/3W7ma5za6P2Eydnnk+9gFVlQ4zwRtBdOL2z7iLRUxtH0bG3ZeQ
+         2k6Evjtt34Tp026gO3A25EoIZt5dvcJX9yVMTN7yww//ZXm48GhJDi+0bOfnoHgCNcFY
+         EyfSOlEIlXseSMibpwAsUPGPRvu3Z3DH3GYxWCP3JnL/98FhfGknzNHcx8ZHlDYNioee
+         H4Ig==
+X-Gm-Message-State: AOJu0Yzc9OKJ+Mx5ty0uf3AVIYeCOdJsiJFPMJ8WQ4qM9Z/OE8L6EJp5
+	xHRAUMCDmkEX8uASgOHrbzSUy6VdXruz3kNXwpQ2xIzakdkSLc91qmW8EPMf4r1kuyHCmiD3z1L
+	Y7zb87S8h
+X-Gm-Gg: Acq92OGmmNiKGVSuO3GVGMdxSKe2Q7LaoQTlJpDloB0Pz/fB/kzVgi7syxsyyqOJmZr
+	VFSg6b+OFYzhPpdbRsiEiu6UEE2AHu8Evd4L3C+a4cM9UEuhBRFruGBhz5sBwDCU/X5FqnaC5uU
+	cqCIQxev6rZIxjw8E6HMkF3f3v43/GpjvJZaBh0xrTvFb2scB7B9dK4EKHX1r6MM5P+aU9bD01z
+	iFJnSZn5pZ8bH/T/9ADiaT/BBcH0pWg+3KweZjvO3MxaxHNTJCyAMHpjWycih046/S42/ozUC4x
+	BWicJSC2FJgvEpOcBMxpLNzgDqykIcuDEFnTqSMUXKR0oikZ1o9N7McDlyxr+ZZXAQttUm9QhWw
+	AxmorLvsmqxHh3LTDSs+e/x1pL1L407zeRG4rfme04/HBdN3LksrnaGSYuWTypr7F9Z23jmzmVe
+	wtVBITa5bAXA==
+X-Received: by 2002:a17:90b:2d48:b0:368:78da:803 with SMTP id 98e67ed59e1d1-37a038e556fmr8308182a91.12.1781389240277;
+        Sat, 13 Jun 2026 15:20:40 -0700 (PDT)
+Received: from p1.. ([172.56.108.175])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-379c3240b5esm3948090a91.0.2026.06.13.15.20.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 13 Jun 2026 15:20:39 -0700 (PDT)
+From: Xiang Mei <xmei5@asu.edu>
+To: linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Weiming Shi <bestswngs@gmail.com>,
+	Xiang Mei <xmei5@asu.edu>
+Subject: [PATCH ext4 v3] ext4: fix out-of-bounds read in ext4_read_inline_dir()
+Date: Sat, 13 Jun 2026 15:18:36 -0700
+Message-ID: <20260613221836.556019-1-xmei5@asu.edu>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260609010739.2278172-1-xmei5@asu.edu> <p2kykhe5532mxqgnmgyrg24cmlpcz24qn2erw3lkzabjjubbyq@i2c3mfdm7mpc>
- <CAPpSM+TS=mXfKXqN65ic5xFA+S3YvJfa5BuSQ5VwEA1O19VqzA@mail.gmail.com>
-In-Reply-To: <CAPpSM+TS=mXfKXqN65ic5xFA+S3YvJfa5BuSQ5VwEA1O19VqzA@mail.gmail.com>
-From: Xiang Mei <xmei5@asu.edu>
-Date: Sat, 13 Jun 2026 15:15:49 -0700
-X-Gm-Features: AVVi8Cdk71VYrFdaUnyVtmP_aGSdob0ZL7uB-jKHQYU9m4gE1EMDRt6Btwt358I
-Message-ID: <CAPpSM+SZzNznbLU=q4qVPFBGs0qkxQyorUCQTmQk4PbeZ65Y6Q@mail.gmail.com>
-Subject: Re: [PATCH net v2] ext4: fix out-of-bounds read in ext4_read_inline_dir()
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Weiming Shi <bestswngs@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Sat, Jun 13, 2026 at 3:06=E2=80=AFPM Xiang Mei <xmei5@asu.edu> wrote:
->
-> On Wed, Jun 10, 2026 at 3:01=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
-> >
-> > What does the 'net' in [PATCH net v2] mean?
-> >
-> > On Mon 08-06-26 18:07:39, Xiang Mei wrote:
-> > > ext4_read_inline_dir() reads de->rec_len / de->name past the end of i=
-ts
-> > > inline buffer for a crafted or corrupted inline directory, triggering=
- a
-> > > slab-out-of-bounds read during getdents64():
-> > >
-> > >   BUG: KASAN: slab-out-of-bounds in filldir64 (fs/readdir.c:371)
-> > >   Read of size 8 at addr ffff88800fd3da3c by task exploit/146
-> > >    ...
-> > >    kasan_report (mm/kasan/report.c:595)
-> > >    filldir64 (fs/readdir.c:371)
-> > >    iterate_dir (fs/readdir.c:110)
-> > >    ...
-> > >
-> > > The payload is copied into a buffer of exactly inline_size bytes:
-> > >
-> > >       dir_buf =3D kmalloc(inline_size, GFP_NOFS);
-> > >
-> > > but iteration runs in a logical position space extra_offset bytes lar=
-ger
-> > > than the buffer (extra_size =3D extra_offset + inline_size), so the s=
-ynthetic
-> > > "." and ".." entries land at the offsets they would have in a block-b=
-ased
-> > > directory. A real dirent is formed at "dir_buf + pos - extra_offset",=
- yet
-> > > the loop bounds and the ext4_check_dir_entry() length argument are al=
-l
-> > > expressed in the larger extra_size. Two reachable sites dereference a
-> > > dirent before confirming its physical offset is inside the allocation=
-:
-> > >
-> > > In the main loop, ctx->pos is attacker-controlled via lseek() and the=
- entry
-> > > is validated with extra_size, so ext4_check_dir_entry() accepts a dir=
-ent
-> > > running up to extra_offset bytes past the allocation before its lengt=
-h
-> > > check fires. ctx->pos is also a signed loff_t: an lseek() to a small =
-value
-> > > below extra_offset makes "ctx->pos - extra_offset" negative, so a che=
-ck
-> > > that only bounds the top of the buffer is bypassed by underflow and d=
-e is
-> > > formed before dir_buf.
-> > >
-> > > In the cookie-rescan loop, entered when i_version changed since the l=
-ast
-> > > readdir(2), the walk restarts from the beginning with i bounded by
-> > > extra_size, so as i approaches extra_size the unconditional read of
-> > > de->rec_len runs past the allocation before any validation.
-> > >
-> > > Both are the same defect, logical extra_size space versus the physica=
-l
-> > > inline_size buffer. In each loop, reject a dirent whose header would =
-not
-> > > fit within inline_size before forming de, and in the main loop also r=
-eject a
-> > > position that underflows below extra_offset. Validate the main-loop e=
-ntry
-> > > against inline_size rather than extra_size. Entries that legitimately=
- fill
-> > > the inline data still pass.
-> > >
-> > > Fixes: c4d8b0235aa9 ("ext4: fix readdir error in case inline_data+^di=
-r_index.")
-> > > Reported-by: Weiming Shi <bestswngs@gmail.com>
-> > > Assisted-by: Claude:claude-opus-4-8
-> > > Signed-off-by: Xiang Mei <xmei5@asu.edu>
-> >
-> > Thanks for the analysis and the patch. See some suggestions for improve=
-ment
-> > below:
-> >
-> > > @@ -1488,10 +1491,20 @@ int ext4_read_inline_dir(struct file *file,
-> > >                       continue;
-> > >               }
-> > >
-> > > +             /*
-> > > +              * de lives at dir_buf + ctx->pos - extra_offset, so th=
-e dirent
-> > > +              * header must fit within inline_size.  ctx->pos is a s=
-igned,
-> > > +              * lseek()-controlled loff_t: check the lower bound fir=
-st, or
-> > > +              * ctx->pos < extra_offset underflows and points de bef=
-ore dir_buf.
-> > > +              */
-> > > +             if (ctx->pos < extra_offset ||
-> > > +                 ctx->pos - extra_offset + ext4_dir_rec_len(1, NULL)=
- >
-> > > +                 inline_size)
-> > > +                     goto out;
-> >
-> > So I don't think this is really possible. ctx->pos isn't really fully u=
-ser
-> > controlled. When you use seek to modify ctx->pos, ext4_dir_llseek() doe=
-s
-> > set info->cookie to invalid value so the next time we enter
-> > ext4_read_inline_dir() we are guaranteed to revalidate the offset and r=
-eset
-> > it to 0, dotdot_offset, or some value greater than extra_size.
->
-> Please ignore v3. It doesn't actually fix the original bug, and the PoC
-> still triggers KASAN with v3 applied.
->
-> You're right that lseek() poisons info->cookie and the next
-> ext4_read_inline_dir() always takes the !inode_eq_iversion() rescan path.
-> But the rescan doesn't reset ctx->pos to a safe value. It walks forward:
->
-> i +=3D ext4_rec_len_from_disk(de->rec_len, extra_size);
->
-> i.e. it advances i by the rec_len field of each inline dirent, which is
-> attacker-controlled, and the only per-entry check is the "non-zero rec_le=
-n"
-> probe (which itself reads de->rec_len). It then commits "offset =3D i;
-> ctx->pos =3D offset;". So the rescan can legitimately land ctx->pos at a
-> position whose dirent header already lies past inline_size - it is not
-> clamped to a valid in-bounds entry.
->
-> The main loop then forms de =3D dir_buf + ctx->pos - extra_offset and cal=
-ls
-> ext4_check_dir_entry(), which dereferences de->rec_len before the length
-> check fires. With v3 (which only fixed the rescan probe and the size
-> argument, but had no bounds check on the committed ctx->pos), this still
-> reads past the buffer:
->
-> BUG: KASAN: slab-out-of-bounds in __ext4_check_dir_entry
-> Read of size 2 at addr ... (0 bytes to the right of a 60-byte
-> kmalloc-64 region)
-> __ext4_check_dir_entry
-> ext4_read_inline_dir
-> iterate_dir
->
-> You were right about one thing: the lower-bound (ctx->pos < extra_offset,
-> "de before dir_buf") case I once guarded against can't happen, since
-> ctx->pos never comes in below the dotdot offsets. v4 drops that and keeps
-> only the upper-bound check in the main loop, which I've confirmed stops t=
-he
-> reproducer. Sorry for sending a patch I hadn't fully verified.
->
-> v4 to follow.
-My bad again. I didn't send out the broken v3. So the correct version
-would be the corrected v3.
-v3 to follow.
+ext4_read_inline_dir() can read a dirent header past the end of its inline
+buffer, triggering a slab-out-of-bounds read during getdents64():
 
-Xiang
->
-> Xiang
->
-> >
-> > >               de =3D (struct ext4_dir_entry_2 *)
-> > >                       (dir_buf + ctx->pos - extra_offset);
-> > >               if (ext4_check_dir_entry(inode, file, de, iloc.bh, dir_=
-buf,
-> > > -                                      extra_size, ctx->pos))
-> > > +                                      inline_size, ctx->pos))
-> > >                       goto out;
-> > >               if (le32_to_cpu(de->inode)) {
-> > >                       if (!dir_emit(ctx, de->name, de->name_len,
-> >
-> > Otherwise the patch looks good.
-> >
-> >                                                                 Honza
-> > --
-> > Jan Kara <jack@suse.com>
-> > SUSE Labs, CR
+  BUG: KASAN: slab-out-of-bounds in __ext4_check_dir_entry
+  Read of size 2 at addr ffff88800f3dd23c by task exploit/148
+   ...
+   __ext4_check_dir_entry
+   ext4_read_inline_dir
+   iterate_dir
+
+The dirent payload lives in a buffer of exactly inline_size bytes:
+
+	dir_buf = kmalloc(inline_size, GFP_NOFS);
+
+but iteration runs in a position space extra_offset bytes larger
+(extra_size = extra_offset + inline_size) so the synthetic "." and ".."
+land at their block-dir offsets. A dirent is formed at "dir_buf + pos -
+extra_offset", yet the loop bound (ctx->pos < extra_size) and the
+ext4_check_dir_entry() length argument both use the larger extra_size. A
+ctx->pos that is valid in extra_size space but whose de lies past 
+inline_size is therefore accepted, and the rescan loop's rec_len probe 
+and ext4_check_dir_entry() dereference de->rec_len before the entry is
+rejected.
+
+Bound the dirent header by inline_size in both loops: break out of the
+rescan loop once a minimum-size header no longer fits, reject such a
+position in the main loop before forming de, and pass inline_size rather
+than extra_size to ext4_check_dir_entry().
+
+Fixes: c4d8b0235aa9 ("ext4: fix readdir error in case inline_data+^dir_index.")
+Reported-by: Weiming Shi <bestswngs@gmail.com>
+Assisted-by: Claude:claude-opus-4-8
+Signed-off-by: Xiang Mei <xmei5@asu.edu>
+---
+ fs/ext4/inline.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..1266c8827cca 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1454,6 +1454,9 @@ int ext4_read_inline_dir(struct file *file,
+ 			/* for other entry, the real offset in
+ 			 * the buf has to be tuned accordingly.
+ 			 */
++			if (i - extra_offset + ext4_dir_rec_len(1, NULL) >
++			    inline_size)
++				break;
+ 			de = (struct ext4_dir_entry_2 *)
+ 				(dir_buf + i - extra_offset);
+ 			/* It's too expensive to do a full
+@@ -1488,10 +1491,18 @@ int ext4_read_inline_dir(struct file *file,
+ 			continue;
+ 		}
+ 
++		/*
++		 * de lives at dir_buf + ctx->pos - extra_offset, within the
++		 * kmalloc(inline_size) buffer.  Make sure its header fits before
++		 * ext4_check_dir_entry() dereferences de->rec_len.
++		 */
++		if (ctx->pos - extra_offset + ext4_dir_rec_len(1, NULL) >
++		    inline_size)
++			goto out;
+ 		de = (struct ext4_dir_entry_2 *)
+ 			(dir_buf + ctx->pos - extra_offset);
+ 		if (ext4_check_dir_entry(inode, file, de, iloc.bh, dir_buf,
+-					 extra_size, ctx->pos))
++					 inline_size, ctx->pos))
+ 			goto out;
+ 		if (le32_to_cpu(de->inode)) {
+ 			if (!dir_emit(ctx, de->name, de->name_len,
+-- 
+2.43.0
+
