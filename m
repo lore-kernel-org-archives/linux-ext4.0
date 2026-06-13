@@ -1,79 +1,79 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+Received: from mail-pj1-f51.google.com (mail-pj1-f51.google.com [209.85.216.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59AFA395AC5
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 21:42:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B86AF3A6B8D
+	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 22:06:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.51
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781386958; cv=pass; b=KvhN1QjmA5CvKDy2Aq1+KNjRxNzU2TjG0LvO/uu1GE3AGOuzU5vWoHtw8lpfi0W4MW3wWQuZtMmwSknYT90jiVu3ZzVy+k1bLayyeFN8jYffVD16Of01ALtfRpZGrCWAfAa9sZAPestg4MaGSxYt1zP2yVm/ZgpIrT0h6ZBMwcY=
+	t=1781388401; cv=pass; b=CLfB/e7Xyf5COhdLHUASVq/cLjNjUkWSR16ggjHaqwkt9AQi1jW+759tW16P+NNeUi8YRMdZLgrBljnavybeoWP5aLcA+JyWspf/6i4iUPGbVrPVbZEQmpUHvZLFLG+ClLdo2I/bMclGsXmCwRcDpWiDajAhfR9J8pENDq9bgHE=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781386958; c=relaxed/simple;
-	bh=jQFu4QrQL57xgpA4cjSw4CKyactirzcEJBZrobG4AdE=;
+	s=arc-20240116; t=1781388401; c=relaxed/simple;
+	bh=smYpYroXbRMxeElrClAUPBRpLfHIP1hnfQBrFTAhqps=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=Ge6kyyp4zWKiWGwiWrJk0BQ25FkLkr3MioAKM1ZrzND9qDRDoVtyqYRQJLxkSuBVEjnf5UJaGsxiMmU+cUDgqFFtNBELG1euboB0t39w+IZs4WxM3LINbaCklIsZhnmTKR0OV0QQ3yWG/edHTFosgwWDRtv9lrIPdNCJHYxUtZU=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=ktUVpavA; arc=pass smtp.client-ip=209.85.216.41
+	 To:Cc:Content-Type; b=Tk74PagxNj9/eGcNfAcBkEskXzCaSv0jlN0iHySHiKdGxF3CI1INuzKhzs+4/de/lCP70hyVPFur1wsVhuUbts86i2NlLNFg4FhylDsazUob/UqpMx8s1JnrKzcC9aMe2c28dxMJnUdbE72iOV/uA/z5b8JNSkrNQoXwID8d6n0=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=OniaztyD; arc=pass smtp.client-ip=209.85.216.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=asu.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="ktUVpavA"
-Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-36b9d265355so996063a91.2
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 14:42:34 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1781386953; cv=none;
+	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="OniaztyD"
+Received: by mail-pj1-f51.google.com with SMTP id 98e67ed59e1d1-36c68964315so1158202a91.2
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 15:06:28 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1781388388; cv=none;
         d=google.com; s=arc-20240605;
-        b=JsTlgmEEz2e9ROMJPSjQsLwHjDoeZyW2qtNu2lZE4//K+GSGSWNmyz4i2U/QsEtKaI
-         3oAP3FmAhCZKf5TYV2tgzlIqnELKCl7PFZhtcnfSpuBa+j6NNBP7KQ8RRcBlxH9Jn5tY
-         cbaGgoYCSc2VAHaHVSaA2TnlFjNWwBmhipXqrsBM+z9NWFemQi9XYNHsSK0sUzcojWOW
-         f526sc7T7sYnvyINPcMZdBnpiWHdeDAeeoIqPXOsih7X6DVlhf9dRagP8AJn0xuXWl9r
-         7sFPcGdHpmRlcMhZYgmqeBN5BCmYaZZY22WjHeBwYGTK5ttrNTLIJNl929DfvfsmRaYq
-         1yOQ==
+        b=WUkE6T3zKD3SPTF6o4r34iaWX39lvN+DuEyv0vd5lpJQ0anJW/56yXVz1CeHzBtfU7
+         OkpBbypsDlG799YBYtYYlhQrru6vx8R2ADbuosqDj66W5paJS1qtduuVwBrses+JKPZb
+         xRPAR1FggH4ZQFAT528cT7UepEUgk776mBjzbw4oEQAS1pl2l7gomsk6rOo406vKsnIL
+         A+kb18R6escdheMTyfnHhf2c4ktU3uK2y2FFPaSoCL5YKFCMN4dOUIBRZ1E5oJ/rb2Xt
+         0I09tmTx5KWX2eUJ2G+ajzBnaklYZcCJZBYhrMWx7EpWTt4d8OAo0IK9gLDSEVsi3GLL
+         O/Pw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=ultZNaGaqV7RNfa5QFGaS6CtECtOjYOtoxxzVnB9Lu8=;
+        bh=vYxmNl+Ra7ib6Ur/a3W5FBzrxAR+q39iMHHS4yEQ9RU=;
         fh=/KsSh7Bbq0s8IsxyG9YUv+ObyE7ksXPKe14g2XxDU6M=;
-        b=hnH29GpJ7HPMXN57Nk9N0e+XIVZjZ0w+1xMQIzbyRJ7LSGtBM1ycLQXq3pcv593Yob
-         RjWvZOZgnJ5O+12bdY3Nue4ybWQE7tli7vZBAF/9nNiyqYx8qImzvjtlOYm13eEBM+AB
-         HPGH5C/6m0SDNMTkW2tv6MXkhmZApff26AbWKlaRCXd16JuAjajr+clovBYmXtX/er5U
-         TvTEMFANzwbzQxHdPDLIf2kpe675CZhAY7qJyuFR5bG4EUvL8f9T0Bjd4K+/rck4MYTb
-         wsWxMrgHNhj8ZBjyWEMNbJsvdv4ZC8iFIn4hsVyynsHaEuxTEZKix85E2lwM8eJwpBnr
-         dtlA==;
+        b=XadNlXDbYS+AsUJ+gHUv44ZVDbyn0TZCor/W4kpJrCwZOdY1pzgjkaOA7F6Ss9PAlK
+         nWiTLG1WPFnzM7L754+2Cf/WK0B18Ll7oDZPjIglXp72snbNF2nSfZALn1h0Jy26aKty
+         03NAyDCTpoyppf4CzA87lq+0GzaYzNFF/0FiNeW/vpN78e+s1VSzWvURXdcwCNWiIAVH
+         Qm1oG5x9rP0N52He6YjaS2sCWvl2S/QV/oQ4xjx+nc22cmd6OwC8C8041iuWkcUgIOo4
+         PQViiIhEyO2pWKO7mgJV6Qrr+fVjHTMZNjzsf+6H/2Xf12GAXZ43SwvbJS8hCzDb+2HF
+         YlsA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=asu.edu; s=google; t=1781386953; x=1781991753; darn=vger.kernel.org;
+        d=asu.edu; s=google; t=1781388388; x=1781993188; darn=vger.kernel.org;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=ultZNaGaqV7RNfa5QFGaS6CtECtOjYOtoxxzVnB9Lu8=;
-        b=ktUVpavAX6zy22ITXdiXqmOFR7n6XJcu8b2BPyk2Mbs2pJg5dBoRng8R24LbyTaEtf
-         Hvdsm6FlX6WpIOwZnKz+ciRJj+lo/n+aPZ7Hy0s1b75gtFIyi20V6T4JOCCntpsKvhD5
-         uxB+8Oxfk/8R2u4+vGKrHN2Nnkct4ZvgQYaGGIbk0v0Fz1/vZLkDNLpxRX665ma2CI/E
-         Xj0x2GxK8rn7fjSNWCdtTVLrhzcAcc2zzT6k06c3HSGPYolWWOjWcJvIlksaFA+OVOp+
-         cgIaj4pG0zvO/gdDEVo33JQY6ZJekH6TZ9vwo/awnBJpakoq5ogCnBGfVr5PXZXjelJP
-         otAw==
+        bh=vYxmNl+Ra7ib6Ur/a3W5FBzrxAR+q39iMHHS4yEQ9RU=;
+        b=OniaztyDQod45FGF7+DLcGKQ7Pq3qbrP5bFyvhSOtHZm1VJNBWNKiYTEcS3YQ5Cljg
+         mrn5mdEVy1IwliJ9ygeSttDhsEjmSxMugw2iQXyMxXRqhAIcn0mjhtCizwzONExiGQEv
+         d6KQCz1hWFif9aaGuTXDD1at5F41SrdoH6ewW80459/rMvt6InTiVP32vQX/d815ZEi8
+         tLjGYMrl+kA3et5aKJ01PpH/9/5VCMqq7hVmNPrzdnp6NQ04AUYiXFT8KWuwyiWIi9bY
+         Q/1LDkfWDYHdhimWsF0kW27PSsr0YTFA1lDE+HW2ieQGHqLgN5Y//7e4Au26+6OjulLL
+         HcQw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781386953; x=1781991753;
+        d=1e100.net; s=20251104; t=1781388388; x=1781993188;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=ultZNaGaqV7RNfa5QFGaS6CtECtOjYOtoxxzVnB9Lu8=;
-        b=oD40BlHqsl/aRrGGOqIpKNWG8HE6Rya0+W5SjLR8qkFlozz19udks6zMA42/2/m1JA
-         EOyhPbPPyhE8wrl7Iv1j+WNQZ1qG1OB+3mv12Uvzc1iqzDBWwSrpQfl8hL5b37j9bqDl
-         cy+jJLis5zLDceIZRj8LywzbXjpHPxrkTJAx5c6p8PSVbfvQM/d8mX+U0tchkZgOxdjy
-         VueT/G76/bBUIFBy4r554YKGFpjo+hQq9HWoBSYgJrVmX2RhJ+iNlijs/AndEYArCTVa
-         OewwwP6jEZGUCuW/ZaC7Idnqzz/D/DxOVzMtnAz9HszfZnOHdLvY9PyE2EFdkhbe5pwg
-         aQkQ==
-X-Gm-Message-State: AOJu0YzDJreujqm+GMqr40/S4/vUPd4VTCruhezaAGLSutikwrCBhefC
-	ugfbZ6rUmwYfDZL0QwJDMrXyBnhGpMf911yFQkjRQUNKGHodPh8KPHMfcbCn8PP52sfWj2TQKOk
-	iJafxqK3XDgRZSaKNuuWNGgNSszkaz0a/fOhJD9d+
-X-Gm-Gg: Acq92OGfJJ9hal9vNW0LbZfsBF51qYpIA0D6qvrOFiaCs8Wv+UVOC9xz8vhe3ocBSTK
-	7JMzqvSICGNitzEHKMAoFgD+vuiapGQNoMQ+dsKQf20w+8KyaDtMelf4I+8gjKv+QMar+CY7ouZ
-	cNNSuHxdS+Xf07Bba0x0cw6+GuAeOz0w1Czteb1sAkllv6cNJ8LBk+32p0CevvgyGHdctXeD+2/
-	3F/xP0eYA6akB5VZs9l6GsajY/ZGqgJS+fpcG5lEUKrYGGdEJdt+9qKZoUmjWnRb5BSZcUOhLP6
-	IE5p/RwFrVM8Upasqm+r9PMvVt5UVDX0I6jADaas3Zb+inN9Mw==
-X-Received: by 2002:a05:6a20:3d22:b0:3b3:fc6:622d with SMTP id
- adf61e73a8af0-3b784021914mr8858468637.38.1781386953396; Sat, 13 Jun 2026
- 14:42:33 -0700 (PDT)
+        bh=vYxmNl+Ra7ib6Ur/a3W5FBzrxAR+q39iMHHS4yEQ9RU=;
+        b=eYcOG9Dvd34JNFgSHI1qmXbbwp9Wby+EA4BFYHMx9ungTB5dxSQ6t1SUbcjPNAvdQ5
+         m17/5yf9sE8WGLnCKBLigU0PKBAJ/BZEoPXA6d3P2ZteyHPwPD7MURjR5RJLj/HIzvGl
+         bUaDHJGDnK/vwqfBK5zqIKhNKErbSyWHad2ti6DemlZtV7YA4VH4onKs/VaceCDABSzj
+         g3u6crb32ufqOr2CXK9bvACcsx7/MR0+TYwWQkaElnOPpdVkdfxw17y4SUIk5seu5EuF
+         48cRmXIt/sZbl169StC/ulnptbw87ZmNmdVyHyHOeSK9CgcbpqvezKUikbxwCh7lrjz1
+         rRUQ==
+X-Gm-Message-State: AOJu0YyFIR1rwZvb+tQ8op6N8ep02tQrw13mUWfY/wfJ4MNJdbAIEj9c
+	y3g2dqB3Iub2BeE5zxAVNqRdII+QlImb1Yo1kqX0ESjglRvWrk8a4wGoT4jtM2w6kACbllSD2E4
+	A4OwTbVNzGYJ6mJ2ip8bhe+nvlstUcjnsjVn9XDTG
+X-Gm-Gg: Acq92OF6Xt8KyBbH5ovfbhR59Ub9oGEIi70G/QLAfw1cPTJbonQ4Cbxi3gpl1a2mT4j
+	eNQcaLDvrW74Dz8klUOrCIruX7Y+LGobW6uCN0jetREfqXxFWhA3UGcsJWsEUMCxgFkKYGvzeTH
+	87NSawyue/BxJQW4ewpoIw5sCqNJrDlscJj3jFxfPCNGU6iWdwOKG+Ta9rCEgnzptoryqhQPAsF
+	BIcqHpJG1Ou9U678NztrqrbLRr8TCuDNN/XDeCUQ7Rq8V4vBh3EtsvJPBaI2bJhNfEPr8GV8CU2
+	aq3kqTESRZfE+j8DGQB6I3tBv9hB26U88l01X7A=
+X-Received: by 2002:a17:90a:c890:b0:36d:a510:f8eb with SMTP id
+ 98e67ed59e1d1-37a01846de6mr9119887a91.3.1781388387992; Sat, 13 Jun 2026
+ 15:06:27 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -83,9 +83,9 @@ MIME-Version: 1.0
 References: <20260609010739.2278172-1-xmei5@asu.edu> <p2kykhe5532mxqgnmgyrg24cmlpcz24qn2erw3lkzabjjubbyq@i2c3mfdm7mpc>
 In-Reply-To: <p2kykhe5532mxqgnmgyrg24cmlpcz24qn2erw3lkzabjjubbyq@i2c3mfdm7mpc>
 From: Xiang Mei <xmei5@asu.edu>
-Date: Sat, 13 Jun 2026 14:42:22 -0700
-X-Gm-Features: AVVi8CdyafpTKFdj8wQD-Ft3763dPkqjS-1-9FYz98WJJ3tBPV4xU7qo8MnUM0A
-Message-ID: <CAPpSM+RHdnie8BxervEMnN12DEyByyMNrFLQpMuRiB=XKd2OAg@mail.gmail.com>
+Date: Sat, 13 Jun 2026 15:06:16 -0700
+X-Gm-Features: AVVi8CfU1313IV9FsfYZ3OfXHdp075s9mtVMB3nuUfFOothBauzf0nZjfbWMNRA
+Message-ID: <CAPpSM+TS=mXfKXqN65ic5xFA+S3YvJfa5BuSQ5VwEA1O19VqzA@mail.gmail.com>
 Subject: Re: [PATCH net v2] ext4: fix out-of-bounds read in ext4_read_inline_dir()
 To: Jan Kara <jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>, 
@@ -99,7 +99,6 @@ On Wed, Jun 10, 2026 at 3:01=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
 >
 > What does the 'net' in [PATCH net v2] mean?
 >
-Sorry, it was a mistake. It should be ext4.
 > On Mon 08-06-26 18:07:39, Xiang Mei wrote:
 > > ext4_read_inline_dir() reads de->rec_len / de->name past the end of its
 > > inline buffer for a crafted or corrupted inline directory, triggering a
@@ -195,10 +194,45 @@ r
 et
 > it to 0, dotdot_offset, or some value greater than extra_size.
 
-You're right, thanks. The rescan path rebuilds ctx->pos, so the
-underflow can't happen. I'll drop this in v3.
+Please ignore v3. It doesn't actually fix the original bug, and the PoC
+still triggers KASAN with v3 applied.
+
+You're right that lseek() poisons info->cookie and the next
+ext4_read_inline_dir() always takes the !inode_eq_iversion() rescan path.
+But the rescan doesn't reset ctx->pos to a safe value. It walks forward:
+
+i +=3D ext4_rec_len_from_disk(de->rec_len, extra_size);
+
+i.e. it advances i by the rec_len field of each inline dirent, which is
+attacker-controlled, and the only per-entry check is the "non-zero rec_len"
+probe (which itself reads de->rec_len). It then commits "offset =3D i;
+ctx->pos =3D offset;". So the rescan can legitimately land ctx->pos at a
+position whose dirent header already lies past inline_size - it is not
+clamped to a valid in-bounds entry.
+
+The main loop then forms de =3D dir_buf + ctx->pos - extra_offset and calls
+ext4_check_dir_entry(), which dereferences de->rec_len before the length
+check fires. With v3 (which only fixed the rescan probe and the size
+argument, but had no bounds check on the committed ctx->pos), this still
+reads past the buffer:
+
+BUG: KASAN: slab-out-of-bounds in __ext4_check_dir_entry
+Read of size 2 at addr ... (0 bytes to the right of a 60-byte
+kmalloc-64 region)
+__ext4_check_dir_entry
+ext4_read_inline_dir
+iterate_dir
+
+You were right about one thing: the lower-bound (ctx->pos < extra_offset,
+"de before dir_buf") case I once guarded against can't happen, since
+ctx->pos never comes in below the dotdot offsets. v4 drops that and keeps
+only the upper-bound check in the main loop, which I've confirmed stops the
+reproducer. Sorry for sending a patch I hadn't fully verified.
+
+v4 to follow.
 
 Xiang
+
 >
 > >               de =3D (struct ext4_dir_entry_2 *)
 > >                       (dir_buf + ctx->pos - extra_offset);
