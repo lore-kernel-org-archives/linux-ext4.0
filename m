@@ -1,75 +1,51 @@
-Received: from mail-pj1-f42.google.com (mail-pj1-f42.google.com [209.85.216.42])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0812F257845
-	for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 22:20:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 652AF26F2B9;
+	Sun, 14 Jun 2026 03:55:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781389242; cv=none; b=dCMJMUgLMiR3EatFv7jLTunM245P56QkQyJ4/RQnnZtKd2M6CEiYNLIgo61ODn0zfv50qLOC45L6hpIUO5zkQ3Ee6LyM30BlOFbbXoD/4E+n96nT6vqSlOdZ+SlXF/3kJsxF3g6pF3b/6bKRjDyL6c67BlyePvbG1z4XZLLO7Rc=
+	t=1781409331; cv=none; b=HYf0modpyefHTI5ainCqmw4D5PyU12aSLncw3WqcSJBNgDHEGFCFPjC4xZ8Pu9+xR3E6k/jleuU5PZtyTU33J33kMrxvgKUrl+51QNpi8AOO5i3mVrmCTxkW/qC+WNdh0E/5ZYLKUOwNj+6P0okb/3jVjMB0AAitUqMas1PazDk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781389242; c=relaxed/simple;
-	bh=airLqzG/L7e/wziP//7I+GC4eYKfQmDRXFoekkvGuI4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=KlSzmsfn6zBAD5LG+K47IVfAlRt2tBmCFyHEM7ww2l0Nimto5/5MmkNsSMcxT7fJRsPLGgswukUzLNY/ZvRNR9/M3uv1HbC6gWjMgx2Yr7RIMlSG4PL3HxL6nlH4RHXLB52+r2QgA/u75G5z7Pyb4COKm6DZFu5WXtKNNOu2hN8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=DKyxDFOt; arc=none smtp.client-ip=209.85.216.42
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=asu.edu
+	s=arc-20240116; t=1781409331; c=relaxed/simple;
+	bh=W+v/edvtg5wwcSFTF9R73S1f+/fam1oej6vvv70CMK8=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Yp357fOE+ZGjaEN/5RUfF7+PCba56OgyZT/Sv9V+MSU+QNJAuIueaW58yuW1dFLfL+EyUmvnXQP2nizqbe7s4dKNl0b8HKwOC1b5r0KlxjnT8kDwuNb0qTKVQ2ayCXqwapxRVHHa2SECnytPl1qcg4dJN3QmnR3aP6+roh/pzxQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=q7Mp4GZe; arc=none smtp.client-ip=205.220.166.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="DKyxDFOt"
-Received: by mail-pj1-f42.google.com with SMTP id 98e67ed59e1d1-36bcbd7821fso1045580a91.2
-        for <linux-ext4@vger.kernel.org>; Sat, 13 Jun 2026 15:20:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=asu.edu; s=google; t=1781389240; x=1781994040; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=n66YruYocOh5knrDPtGgjglYitjlbKeUlxMM8lYrh5U=;
-        b=DKyxDFOtbgDPE5lW+tRgcx8TZ/+kSSg6wUtKOCnbIFCgYHij+UyBQ2LZo94H/K4eB0
-         SHk+U0RqOAMk7jmNivOE1uUqPk0DI3QtGkQry3YEnel9qOTP1ek2krzXwF+10pqYnHcc
-         8ISnCWMC5Yiyb8rISDUBVGqNnbfWPczhx3riOAHbSiTbA10uY+VhUeeCheoj1jfQdOzo
-         +dVAF4SzcbyLA4jVN0Ope6QC8dGk/SO8b7pppiOeMJSTECx9MiJlFAgfcPpyDzDvmQ+h
-         XwyDQRg+6f7yldA93cZAd1ZSsu3BD0AraGnkX7sVsai8XpTJeoTw53stzdz9zlXq6sEV
-         Y9kg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781389240; x=1781994040;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=n66YruYocOh5knrDPtGgjglYitjlbKeUlxMM8lYrh5U=;
-        b=ELWx/0Hs8ULG+Rj2kY2MPOlKIUBsjesDPSk+Ou/st39DXEO3oeLy6XjUFOQIcjy2wm
-         UqHrPgySosNmTnncnKwULWQV11cFgR1eB+gA7VLPJkJXjwo9GCuOvMHTzxMk6wG6wMID
-         r43evltb8TbuJ664p/3W7ma5za6P2Eydnnk+9gFVlQ4zwRtBdOL2z7iLRUxtH0bG3ZeQ
-         2k6Evjtt34Tp026gO3A25EoIZt5dvcJX9yVMTN7yww//ZXm48GhJDi+0bOfnoHgCNcFY
-         EyfSOlEIlXseSMibpwAsUPGPRvu3Z3DH3GYxWCP3JnL/98FhfGknzNHcx8ZHlDYNioee
-         H4Ig==
-X-Gm-Message-State: AOJu0Yzc9OKJ+Mx5ty0uf3AVIYeCOdJsiJFPMJ8WQ4qM9Z/OE8L6EJp5
-	xHRAUMCDmkEX8uASgOHrbzSUy6VdXruz3kNXwpQ2xIzakdkSLc91qmW8EPMf4r1kuyHCmiD3z1L
-	Y7zb87S8h
-X-Gm-Gg: Acq92OGmmNiKGVSuO3GVGMdxSKe2Q7LaoQTlJpDloB0Pz/fB/kzVgi7syxsyyqOJmZr
-	VFSg6b+OFYzhPpdbRsiEiu6UEE2AHu8Evd4L3C+a4cM9UEuhBRFruGBhz5sBwDCU/X5FqnaC5uU
-	cqCIQxev6rZIxjw8E6HMkF3f3v43/GpjvJZaBh0xrTvFb2scB7B9dK4EKHX1r6MM5P+aU9bD01z
-	iFJnSZn5pZ8bH/T/9ADiaT/BBcH0pWg+3KweZjvO3MxaxHNTJCyAMHpjWycih046/S42/ozUC4x
-	BWicJSC2FJgvEpOcBMxpLNzgDqykIcuDEFnTqSMUXKR0oikZ1o9N7McDlyxr+ZZXAQttUm9QhWw
-	AxmorLvsmqxHh3LTDSs+e/x1pL1L407zeRG4rfme04/HBdN3LksrnaGSYuWTypr7F9Z23jmzmVe
-	wtVBITa5bAXA==
-X-Received: by 2002:a17:90b:2d48:b0:368:78da:803 with SMTP id 98e67ed59e1d1-37a038e556fmr8308182a91.12.1781389240277;
-        Sat, 13 Jun 2026 15:20:40 -0700 (PDT)
-Received: from p1.. ([172.56.108.175])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-379c3240b5esm3948090a91.0.2026.06.13.15.20.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 13 Jun 2026 15:20:39 -0700 (PDT)
-From: Xiang Mei <xmei5@asu.edu>
-To: linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	Weiming Shi <bestswngs@gmail.com>,
-	Xiang Mei <xmei5@asu.edu>
-Subject: [PATCH ext4 v3] ext4: fix out-of-bounds read in ext4_read_inline_dir()
-Date: Sat, 13 Jun 2026 15:18:36 -0700
-Message-ID: <20260613221836.556019-1-xmei5@asu.edu>
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="q7Mp4GZe"
+Received: from pps.filterd (m0250810.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65E3o37k1884570;
+	Sat, 13 Jun 2026 20:54:54 -0700
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:message-id:mime-version:subject:to; s=PPS06212021; bh=ZRBv62Gfa
+	GFM6ZPVmRMPLyCRyLninox12W/42yIqzXA=; b=q7Mp4GZekhCyjR3bul+vorD4+
+	bg1ilDW67gaQvyCVQWTQnAO9/1A71vyuyusny0rnHHrb0VTqAhQiongp5vE49McB
+	DM65btzGNGMb7lAc68l4qL+/2iMpORSBDsqCIZhn2fPeVihlCResZ+X4zO+Lt5ao
+	1f5qAC99CRrU1B4Cl5Dh2Rm8pxavCKKNFTkstLyXJFeWiIrIZdbn0sOLCYG7Uzag
+	ICD5F7n+nU/fXtoIP1pRzg+UvGpE/n6BjBp3QLIIyUA1jpyE+oGRt6cqKJoglVsA
+	Z3iXm3xUpRier2ZF2+vxsAdfR+kby+oz9ywCerti8Cqp0DmvIvA5/ByDqOwtw==
+Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4es2g08x77-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Sat, 13 Jun 2026 20:54:53 -0700 (PDT)
+Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Sat, 13 Jun 2026 20:54:53 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Sat, 13 Jun 2026 20:54:50 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windrive.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH v3] ext4: validate EA inode i_nlink in ext4_xattr_inode_iget
+Date: Sun, 14 Jun 2026 11:54:49 +0800
+Message-ID: <20260614035449.235442-1-yun.zhou@windriver.com>
 X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -78,78 +54,100 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Authority-Analysis: v=2.4 cv=ZJ/nX37b c=1 sm=1 tr=0 ts=6a2e260d cx=c_pps
+ a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=HK-ge7EqtdluswH-FwHe:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=L5zdWEjsUepxmB3FffwA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjE0MDAzMyBTYWx0ZWRfXyDhBnPh0bFxT
+ gU5geQQAYdIyUQWnyW/YL377RZShiWEo7yko9CB+L56kY4UbZWMVHm0ItJgMNVYckoRwTx0Ucqx
+ NCotKk4dRIbffJIT8Fu1Sv8MmtHKTP4Ipz8kzMqpiJ3xtxVwpx2PqMlLO1wkFTvW4oJVBw5iEfo
+ x7k0IB0tTJLF3y3zJZLsLTfNcmtPG92t7ooHeDQdyjYADoZNBvzfAvN31WVlcNMmS86gCC6Utvu
+ dwTpBr6u5EEvd70o3iXvc//GmFXOXtZl9r5CyzGErGTt1aFmnzeWXUHWAxjYJZ1fvhADyETmPnb
+ XDWSiufPkwVPISKo6ve7rYWU0dMILiXC/HjGvFfZ++SP6Wsk0+R7WzbvSgS0hAS8DKLMg6s1sBM
+ RY2rsoCiKpdkyfBHmeaeBvIUfxyL6XIukwEYY9tFn64NAwGoN5UiKXtqUKIFDxT8tcN44OTZ0Pa
+ QrCzGc+ZTvRy9NHe6WA==
+X-Proofpoint-ORIG-GUID: ThPPrOu_Qw79rOrzHrGeBF312Dwz7day
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjE0MDAzMyBTYWx0ZWRfX1JcInN7Hw5Lv
+ d6Ho4OXjqZzons3NQzSJwC1wwr+0fqFWpFZCSWn5llXoYOolM9cqh2IwMtSqLbKr26HzSBQupYz
+ WxuGFVAkWfTfjP8EgWNSHECZq+BRosWk6vv3CywXQeefClgJhfAX
+X-Proofpoint-GUID: ThPPrOu_Qw79rOrzHrGeBF312Dwz7day
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-13_05,2026-06-12_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 adultscore=0 priorityscore=1501 clxscore=1011
+ lowpriorityscore=0 suspectscore=0 spamscore=0 bulkscore=0 impostorscore=0
+ phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606040000
+ definitions=main-2606140033
 
-ext4_read_inline_dir() can read a dirent header past the end of its inline
-buffer, triggering a slab-out-of-bounds read during getdents64():
+Validate EA inode state in ext4_xattr_inode_iget() to prevent
+WARN_ONCE triggers in ext4_xattr_inode_update_ref() and reject
+corrupted EA inodes before they can cause further damage.
 
-  BUG: KASAN: slab-out-of-bounds in __ext4_check_dir_entry
-  Read of size 2 at addr ffff88800f3dd23c by task exploit/148
-   ...
-   __ext4_check_dir_entry
-   ext4_read_inline_dir
-   iterate_dir
+When a corrupted ext4 image has an EA inode with inconsistent i_nlink
+and ref_count values, the code currently allows it through and later
+hits WARN_ONCE when ref_count transitions cross the 0/1 boundary.
+While this is not a security or stability issue -- it only fires on
+crafted filesystem images and merely prints a call trace -- it is
+better handled as an early sanity check that returns -EFSCORRUPTED,
+consistent with how ext4 treats other on-disk corruption.
 
-The dirent payload lives in a buffer of exactly inline_size bytes:
+Since ext4_xattr_inode_iget() resolves references from active xattr
+entries, the target EA inode must be in active state (i_nlink=1,
+ref_count>0).  Reject any inode that does not satisfy this.
 
-	dir_buf = kmalloc(inline_size, GFP_NOFS);
-
-but iteration runs in a position space extra_offset bytes larger
-(extra_size = extra_offset + inline_size) so the synthetic "." and ".."
-land at their block-dir offsets. A dirent is formed at "dir_buf + pos -
-extra_offset", yet the loop bound (ctx->pos < extra_size) and the
-ext4_check_dir_entry() length argument both use the larger extra_size. A
-ctx->pos that is valid in extra_size space but whose de lies past 
-inline_size is therefore accepted, and the rescan loop's rec_len probe 
-and ext4_check_dir_entry() dereference de->rec_len before the entry is
-rejected.
-
-Bound the dirent header by inline_size in both loops: break out of the
-rescan loop once a minimum-size header no longer fits, reject such a
-position in the main loop before forming de, and pass inline_size rather
-than extra_size to ext4_check_dir_entry().
-
-Fixes: c4d8b0235aa9 ("ext4: fix readdir error in case inline_data+^dir_index.")
-Reported-by: Weiming Shi <bestswngs@gmail.com>
-Assisted-by: Claude:claude-opus-4-8
-Signed-off-by: Xiang Mei <xmei5@asu.edu>
+Reported-by: syzbot+76916a45d2294b551fd9@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=76916a45d2294b551fd9
+Fixes: dec214d00e0d ("ext4: xattr inode deduplication")
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
 ---
- fs/ext4/inline.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+v3:
+ - Move check after Lustre branch to avoid false positives on Lustre EA inodes
+ - Merge into single condition: i_nlink != 1 || !ref_count
+ - Add make_bad_inode() before iput() to avoid truncation in active txn
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 8045e4ff270c..1266c8827cca 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1454,6 +1454,9 @@ int ext4_read_inline_dir(struct file *file,
- 			/* for other entry, the real offset in
- 			 * the buf has to be tuned accordingly.
- 			 */
-+			if (i - extra_offset + ext4_dir_rec_len(1, NULL) >
-+			    inline_size)
-+				break;
- 			de = (struct ext4_dir_entry_2 *)
- 				(dir_buf + i - extra_offset);
- 			/* It's too expensive to do a full
-@@ -1488,10 +1491,18 @@ int ext4_read_inline_dir(struct file *file,
- 			continue;
- 		}
+v2:
+ - Add ref_count validation to also catch i_nlink=1, ref_count=0 case
+
+ fs/ext4/xattr.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 982a1f831e22..77c11e4096bb 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -464,6 +464,27 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+ 		inode_unlock(inode);
+ 	}
  
++	/*
++	 * Since this function resolves references from active xattr entries,
++	 * the EA inode must be in active state (i_nlink=1, ref_count>0).
++	 * i_nlink > 1, i_nlink == 0 (dangling reference), or ref_count == 0
++	 * (inconsistent with an active entry) all indicate corruption.
++	 */
++	if (inode->i_nlink != 1 || !ext4_xattr_inode_get_ref(inode)) {
++		ext4_error(parent->i_sb,
++			   "EA inode %lu has unexpected i_nlink=%u ref_count=%llu",
++			   ea_ino, inode->i_nlink,
++			   ext4_xattr_inode_get_ref(inode));
 +		/*
-+		 * de lives at dir_buf + ctx->pos - extra_offset, within the
-+		 * kmalloc(inline_size) buffer.  Make sure its header fits before
-+		 * ext4_check_dir_entry() dereferences de->rec_len.
++		 * Mark rejected inode to prevent ext4_evict_inode() from
++		 * attempting truncation on a corrupted inode within an active
++		 * transaction, which could exhaust journal credits.
 +		 */
-+		if (ctx->pos - extra_offset + ext4_dir_rec_len(1, NULL) >
-+		    inline_size)
-+			goto out;
- 		de = (struct ext4_dir_entry_2 *)
- 			(dir_buf + ctx->pos - extra_offset);
- 		if (ext4_check_dir_entry(inode, file, de, iloc.bh, dir_buf,
--					 extra_size, ctx->pos))
-+					 inline_size, ctx->pos))
- 			goto out;
- 		if (le32_to_cpu(de->inode)) {
- 			if (!dir_emit(ctx, de->name, de->name_len,
++		make_bad_inode(inode);
++		iput(inode);
++		return -EFSCORRUPTED;
++	}
++
+ 	*ea_inode = inode;
+ 	return 0;
+ }
 -- 
 2.43.0
 
