@@ -1,164 +1,170 @@
-Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B2D237DE90;
-	Mon, 15 Jun 2026 11:58:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A4B373FC5BE
+	for <linux-ext4@vger.kernel.org>; Mon, 15 Jun 2026 14:51:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781524722; cv=none; b=j1hn5VImT2rNOwFuGaLwCtTsijX9aslNQwYsGsCpxnz6l34uLbG3KqlusR24oHZO3KxgEfNQs02+Bpyqf+9Q+kTFz2qA+pUwiFiEPTQVn9pI5LGHpoDzy+zx81VFXRxK6k5D2YBOy2Unaa/m6flpDA6vupPBdKmvU7/BNQdFe3I=
+	t=1781535066; cv=none; b=lMRlaiszdbQ5RjJQox0/EQM8uj5mgLp5sHCwCEHKQuohXlBFLrRuTBrvgFCGNrCyg0COGpS/fy6bXMFikbC7wz9hrx8gBrAgkVE1esUAwYZOpBaIYH0g+8qrOX0dND/+ZgOhtyPsQvi+zx6iE4awM9IH4PAa7dRAA1PABFFpdpI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781524722; c=relaxed/simple;
-	bh=84jRwwVDp7h7Xc43j7IXCGcgg1AfFKEh/RzqOx6kALA=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=MjBHatGkUdlueA1sCzRMlYhSBatf9LkKk8WegUk4adzXPACtfL8iiav1iYd3u5AHp7J6hPte/qg6KXQ5LfjvLE4qLV4weR8R0dEE1O303t7ULvVhNYbXaH9ZhA/iZzC/gEBbvuUoxnohfW+gtq1CmEHcQ8gyX8ZvFCC/eLx0iJE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=Gnz+7fF7; arc=none smtp.client-ip=205.220.166.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	s=arc-20240116; t=1781535066; c=relaxed/simple;
+	bh=IPTkm+YhpY6UMCKnO6ZrtfLxAIN8rKAY5iR9c6tPHP8=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=qnehlL16YOv5B9hWGSNAl3EVyEdglZW3h822W9czQaOgRXj1ljsdT2x7M97vOCXCaoU4BZ0b3MsitqSfqCCazmy6N9VIO8tXLzvCxwxHq36xCVAAPkaTvAxYBiSyhJEByH+ysFEXrWGO78W5mm5r1kUzv/elsAbVg3V3K73mN4I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=L0/OzoHr; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=oojR1LlQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=L0/OzoHr; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=oojR1LlQ; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="Gnz+7fF7"
-Received: from pps.filterd (m0250809.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65FApTUI1060872;
-	Mon, 15 Jun 2026 04:53:21 -0700
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:message-id:mime-version:subject:to; s=PPS06212021; bh=bcGA5SdK2
-	vYbK/cFcaKzLvvSiZeg6bHzORpobUv0lHY=; b=Gnz+7fF7/gD1WwS0SW13KXG6+
-	+XJrUR+mO7RsPM9k0I5n3MVEGG8pxrWJUcZ/tjJMoz01HrK58xxtLPvpv7QoVYH1
-	HjHPf0URvBxs/w6J7oUxp7xRl6VFMTWO6X0q61iGIg0gsp/SuJjTcjSs6/OF+ksh
-	cGOjeP9eVL7F8swiYemwN8dvPlkS0SXIZ2T+NFJu3Q0jq7B8uw3Ynxdx0Cj8A/eI
-	9nUB5yrWxVrbqrTXpnIYFlzp3wj+hW0TFDIa6S6O2XnsXtw1wov9EayGViI8t3wn
-	1Nwc2FXsib4n/UFwrWlVL9Ye+1NslNuryEj7AmVp55zFFSUBPdGvxtpbKL66w==
-Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4es6qdt4hh-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Mon, 15 Jun 2026 04:53:21 -0700 (PDT)
-Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Mon, 15 Jun 2026 04:53:20 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Mon, 15 Jun 2026 04:53:18 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>, <ebiggers@google.com>, <yun.zhou@windriver.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: [PATCH v5 0/3] ext4: fix xattr iput deadlock with s_writepages_rwsem
-Date: Mon, 15 Jun 2026 19:53:14 +0800
-Message-ID: <20260615115317.3549469-1-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="L0/OzoHr";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="oojR1LlQ";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="L0/OzoHr";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="oojR1LlQ"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id D36506AE07;
+	Mon, 15 Jun 2026 14:51:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781535061; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type;
+	bh=u5pX+4kXpIEH1Es58vNjLIJ94ivgk1qs0Tq+l5JnFxQ=;
+	b=L0/OzoHro6AP4ts1f+laSQnBfylKtvmV9+Nd9MfyD1wS8XoVuHKUMU3EYzXx6jC1XMsDi5
+	cViHQ1e6I+z3icvpez54lXd0vE3BG5CjY4gKDaEwLzmzUyGS1r4SOwd/MY7Bb9EdqPXhKm
+	AhjDOqwhiBXP4CaiSVXFZ6ShddlYENI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781535061;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type;
+	bh=u5pX+4kXpIEH1Es58vNjLIJ94ivgk1qs0Tq+l5JnFxQ=;
+	b=oojR1LlQDA4YOtR5icsFRqMD8KuQ7v+gTY683Px7prsku8U1vVzKGecj5SPAQ1nTGjxx2N
+	byGSFsQbyQUmT6CA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="L0/OzoHr";
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=oojR1LlQ
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781535061; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type;
+	bh=u5pX+4kXpIEH1Es58vNjLIJ94ivgk1qs0Tq+l5JnFxQ=;
+	b=L0/OzoHro6AP4ts1f+laSQnBfylKtvmV9+Nd9MfyD1wS8XoVuHKUMU3EYzXx6jC1XMsDi5
+	cViHQ1e6I+z3icvpez54lXd0vE3BG5CjY4gKDaEwLzmzUyGS1r4SOwd/MY7Bb9EdqPXhKm
+	AhjDOqwhiBXP4CaiSVXFZ6ShddlYENI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781535061;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type;
+	bh=u5pX+4kXpIEH1Es58vNjLIJ94ivgk1qs0Tq+l5JnFxQ=;
+	b=oojR1LlQDA4YOtR5icsFRqMD8KuQ7v+gTY683Px7prsku8U1vVzKGecj5SPAQ1nTGjxx2N
+	byGSFsQbyQUmT6CA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CBEF5779A7;
+	Mon, 15 Jun 2026 14:51:01 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id EJ6+MVURMGrmBAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 15 Jun 2026 14:51:01 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 6E233A12D2; Mon, 15 Jun 2026 16:51:01 +0200 (CEST)
+Date: Mon, 15 Jun 2026 16:51:01 +0200
+From: Jan Kara <jack@suse.cz>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: [GIT PULL] udf, isofs, ext2, quota fixes and cleanups for 7.2-rc1
+Message-ID: <jpb2wjkfh7j73dpinuvwe5qddkr54px64vmvx6bclzd5ter6hk@mjwwwgohsyxy>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Authority-Analysis: v=2.4 cv=DLq/JSNb c=1 sm=1 tr=0 ts=6a2fe7b1 cx=c_pps
- a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=iKiJcTA2PjBS6x5JeXcw:22 a=edf1wS77AAAA:8 a=qKkoInzyUaplSM5oE94A:9
- a=DcSpbTIhAlouE1Uv7lRv:22
-X-Proofpoint-GUID: jqmZ7NSxSfVbDSIdRatvc7qYOgYpcPIe
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjE1MDEyNSBTYWx0ZWRfX5T5lh+DPCxgv
- TZGZNn98eOMfiOauSdN6jtbSAKwLRpw4LbTdZUuukciJJ6ghTqf2PX6cdl9ULLMa8amgeOCJa9m
- 3sL/1zQ267/WnRjSQKf1pliQWB4J02omfaxnDvQHA+a3FkpNRgxn+udBOJMG1yLdIRI3eLtA3b8
- 1862VSX02eCGiDGZJeqk4POnTgzbIQh6qzKnUTTgX692+7FtwwnlBsi9+K9WlLdpewo+EDt10PL
- Ovp6lChdkeUzt9LBAn4fsUhVgl/Zu01i4KkSQn4RRnm8Jmo5+ZoxWMHqEhPbStrsHMnEuor9mpv
- gxJwxZZwVQ4OFLSN2M9iM+Cjl1wQM9USd6BZlo6M3Tjo78SmG1Wvo7y0BJgq921ZKPleP/vr9fS
- 7uBkBH8TJKo4KOfVFVSoWtEkIh7p383+24rIZYgnbxFAD7w6ofDrK7hxjZN/1OPwmW44FgLGFBC
- OYGAdAaas2FqonL+iNg==
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjE1MDEyNSBTYWx0ZWRfX7+uNUatIIDSI
- 1KWocqaGV3nign+u8nRdIV4WsC5/ENaUORbSXZGYBamdkROpvuS4RwTxt0VJPkGEBJQ7RhMJazv
- aUxUH4KYwi6jRSPG7DC0VAMuyHtIbNh5uFzzvtzes5dL5xQuGhbF
-X-Proofpoint-ORIG-GUID: jqmZ7NSxSfVbDSIdRatvc7qYOgYpcPIe
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-15_03,2026-06-15_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1015 priorityscore=1501 suspectscore=0 phishscore=0 adultscore=0
- impostorscore=0 spamscore=0 bulkscore=0 malwarescore=0 lowpriorityscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606040000 definitions=main-2606150125
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: D36506AE07
+X-Spam-Flag: NO
+X-Spam-Score: -4.01
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email];
+	MISSING_XM_UA(0.00)[];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 
-This series fixes a circular lock dependency reported by syzbot:
+  Hello Linus,
 
-  s_writepages_rwsem --> jbd2_handle --> xattr_sem --> s_writepages_rwsem
+  could you please pull from
 
-The deadlock occurs when iput() on an ea_inode triggers write_inode_now()
-while xattr_sem and a jbd2 handle are held.  The triggering path is
-during mount-time orphan cleanup (!SB_ACTIVE) where iput_final() calls
-write_inode_now() synchronously.
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs_for_v7.2-rc1
 
-Patch 1 blocks the deadlock by skipping extra isize expansion when
-!SB_ACTIVE -- this prevents the xattr manipulation path from being
-entered during mount.
+to get:
+  * Assorted udf & isofs fixes for maliciously formatted devices
+  * Cleanups to use kmalloc() instead of __get_free_page()
+  * Removal of deprecated DAX code from ext2
 
-Patch 2 is a belt-and-suspenders semantic improvement: an inode under
-eviction never needs extra isize expansion.
+Top of the tree is 5163e6ee1ea7. The full shortlog is:
 
-Patch 3 is a structural improvement: defer all ea_inode iput() calls
-until after xattr_sem is released, reducing lock nesting depth and
-preventing future code paths from reintroducing the lock ordering issue.
+Ashwin Gundarapu (1):
+      ext2: Remove deprecated DAX support
 
-Link: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
+Bryam Vargas (3):
+      isofs: bound Rock Ridge symlink components to the SL record
+      udf: validate sparing table length as an entry count, not a byte count
+      udf: validate VAT header length against the VAT inode size
 
-v5:
- - Split into 3 patches for easier review.
- - Add explicit !SB_ACTIVE early-return in ext4_try_to_expand_extra_isize()
-   to block ALL mount-time paths (ext4_process_orphan -> ext4_truncate ->
-   ext4_mark_inode_dirty), not just the eviction path. v4 only relied on
-   EXT4_STATE_NO_EXPAND which doesn't cover orphan truncation.
+Danila Chernetsov (1):
+      ext2: fix ignored return value of generic_write_sync()
 
-v4:
- - Comprehensive rewrite of the deferred iput mechanism.
- - Thread ea_inode_array through ext4_expand_extra_isize_ea() and
-   ext4_xattr_move_to_block() so ALL ea_inode iputs in the expand
-   path are deferred, not just those in ext4_xattr_block_set().
- - Add NULL safety to ext4_expand_inode_array(): when ea_inode_array
-   pointer is NULL, fall back to synchronous iput (for callers like
-   ext4_initxattrs that only run with SB_ACTIVE).
- - Use __GFP_NOFAIL to guarantee deferred array growth, eliminating
-   fallback to synchronous iput under locks.
- - Update ext4_xattr_ibody_set() and ext4_xattr_set_entry() signatures
-   to accept ea_inode_array, converting ALL iput(ea_inode) calls.
- - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() before
-   ext4_mark_inode_dirty().
+Jan Kara (1):
+      udf: validate VAT inode size for old VAT format
 
-v3:
- - Check ext4_expand_inode_array() return value; fallback to
-   direct iput() on ENOMEM to prevent inode leak.
- - Make ext4_xattr_set_handle() take an optional ea_inode_array
-   output parameter so callers can free after ext4_journal_stop(),
-   avoiding the jbd2_handle vs s_writepages_rwsem AB-BA.
- - Pass ea_inode_array directly to ext4_xattr_release_block()
-   instead of using a local array freed under xattr_sem.
- - Move ext4_xattr_inode_array_free() after ext4_journal_stop()
+Michael Bommarito (1):
+      udf: validate free block extents against the partition length
 
-v2:
- - Defer iput() in ext4_xattr_block_set() via ea_inode_array,
-   freed after xattr_sem is released. Fixes the root cause.
+Mike Rapoport (Microsoft) (2):
+      quota: allocate dquot_hash with kmalloc()
+      isofs: replace __get_free_page() with kmalloc()
 
-v1:
- - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() to skip expand
-   on inodes being deleted. Only fixes the syzbot reproducer, not
-   the underlying lock ordering violation.
+The diffstat is
 
-Yun Zhou (3):
-  ext4: skip extra isize expansion during mount to prevent deadlock
-  ext4: set EXT4_STATE_NO_EXPAND in ext4_evict_inode
-  ext4: defer iput() on ea_inodes to reduce lock holding scope
+ fs/ext2/ext2.h   |   4 --
+ fs/ext2/file.c   | 125 ++++---------------------------------------------------
+ fs/ext2/inode.c  |  60 ++------------------------
+ fs/ext2/super.c  |  39 ++---------------
+ fs/isofs/dir.c   |   5 ++-
+ fs/isofs/rock.c  |  11 +++++
+ fs/quota/dquot.c |  11 +++--
+ fs/udf/balloc.c  |   5 ++-
+ fs/udf/super.c   |  16 ++++++-
+ 9 files changed, 51 insertions(+), 225 deletions(-)
 
- fs/ext4/acl.c            |  2 +-
- fs/ext4/crypto.c         |  4 +-
- fs/ext4/inline.c         |  8 ++--
- fs/ext4/inode.c          | 26 +++++++++--
- fs/ext4/xattr.c          | 93 ++++++++++++++++++++++++----------------
- fs/ext4/xattr.h          | 10 +++--
- fs/ext4/xattr_security.c |  3 +-
- 7 files changed, 95 insertions(+), 51 deletions(-)
+							Thanks
+								Honza
 
 -- 
-2.43.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
