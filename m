@@ -1,226 +1,146 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from SEYPR02CU001.outbound.protection.outlook.com (mail-koreacentralazon11013024.outbound.protection.outlook.com [40.107.44.24])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CEA6421F11
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2026 09:36:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781602600; cv=none; b=mO9Wrs5bEugKFB7En35M1/JOcDYIJjYMRTjTrii7O6js+KpCKBqNAjbVpVsBg2dqOY1RLUG9PwnCCuZWv862zwhkiCgHSVYOanEEzeeuXJZUnNQ/ILx3uJZ3yduWjLIUL9GBmM7C/yHJT5lJfZTe//494git3yyYtThZtvTYsik=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781602600; c=relaxed/simple;
-	bh=PSbkvenPKBGJGnKcaPquPBICUzfQsNK1RXm6+oZS5r4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=YDBrC1vquNGqFiNSlvRlOLz1O2Xri+X7BMnenQMs/oCfv78jEfZtUe9cWvDYc2alhIFi9M7VN4vKreI8tOkzLPaojOtq6vfez/5G6ZIj4+lDFxZ9R1W5F0KbGS218V5mkNri9s30DdaiofsC8CHTZubnQ6g+KwUj3/b6i2Wshzo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cX/S/SCI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=pratbqcP; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cX/S/SCI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=pratbqcP; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81E3335A384;
+	Tue, 16 Jun 2026 09:46:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.44.24
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781603188; cv=fail; b=lIeTPtnhH2oyH5yiXxLHgo2ELx66Jbb+cYe+njoCXVuh/4oJnPfBEG/qMBzVOEZl971NZp2bTVvT+3o+jl/SAEKAeB+hIIZ2IUtvgOZQpkLCDHuKOr+4ChNvNy7Vn2zV3JYQqGI6AsBEZGYM7MkxyTqlYsmsoH+Tq3rwkBp/2bU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781603188; c=relaxed/simple;
+	bh=H83fYrj9XvhFb5i44qB3Zo2OlAVP2u2LHxupGylFnOo=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=LLRzE1wMoTbgkYJuUTqDILC0+ssoPmOrezZ8JS/12fj6kxLi9BX3hGXmgGOy+XDgWnwdthP7e67QdBkpmjB9E5tiPrqwQAi9XnBoBI5Fd5vXv4TIg1tDxcNSGU69A+zFLX/1Z/PA3P0yZqfV8t+RlpEhR8GaePDSSWyUmP+3Jk4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com; spf=pass smtp.mailfrom=vivo.com; dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b=Ap8egWZr; arc=fail smtp.client-ip=40.107.44.24
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vivo.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vivo.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cX/S/SCI";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="pratbqcP";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cX/S/SCI";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="pratbqcP"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 513C96CA96;
-	Tue, 16 Jun 2026 09:36:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781602592; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FKXOPgkTCEku3Y3W+R4Ytz+xhr4vhbVdQhO9wJpwQ9k=;
-	b=cX/S/SCIjQr2qnlrHUMRoAGBrWgNNij34tiZinhh2b3IDheeNZNWDecglo7DjdxYC95cIZ
-	hErRfiVUDlveZcZp00hE01yR2q9qnF/trA8GF7Hj2k6iDOZtnupfjA2gRKDhiXA7dmtrvH
-	Erp/dkKxj7tl/5mUnaPxbprLrna+LO8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781602592;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FKXOPgkTCEku3Y3W+R4Ytz+xhr4vhbVdQhO9wJpwQ9k=;
-	b=pratbqcPLSpOccocUIMk/8jYa/ukeB6H7Bq8iyvKu0eJOabAqeg/cB/p8vwfeGOfeYEpmE
-	U9nyw0SisPBqE0CQ==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781602592; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FKXOPgkTCEku3Y3W+R4Ytz+xhr4vhbVdQhO9wJpwQ9k=;
-	b=cX/S/SCIjQr2qnlrHUMRoAGBrWgNNij34tiZinhh2b3IDheeNZNWDecglo7DjdxYC95cIZ
-	hErRfiVUDlveZcZp00hE01yR2q9qnF/trA8GF7Hj2k6iDOZtnupfjA2gRKDhiXA7dmtrvH
-	Erp/dkKxj7tl/5mUnaPxbprLrna+LO8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781602592;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FKXOPgkTCEku3Y3W+R4Ytz+xhr4vhbVdQhO9wJpwQ9k=;
-	b=pratbqcPLSpOccocUIMk/8jYa/ukeB6H7Bq8iyvKu0eJOabAqeg/cB/p8vwfeGOfeYEpmE
-	U9nyw0SisPBqE0CQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 41130779A8;
-	Tue, 16 Jun 2026 09:36:32 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id q6DeDyAZMWoqQAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 16 Jun 2026 09:36:32 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id D82FAA12D3; Tue, 16 Jun 2026 11:36:27 +0200 (CEST)
-Date: Tue, 16 Jun 2026 11:36:27 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com, yizhang089@gmail.com, 
-	yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 03/23] ext4: simplify error handling in ext4_setattr()
-Message-ID: <o4y5u6dnub7aswxpjagiomrxy27lflqsvquvglq7wzwhabtuq3@eu4p2yjrunq4>
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-4-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=vivo.com header.i=@vivo.com header.b="Ap8egWZr"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=uJMfvmsJnIO6IIRxZ6bIpfG93xuOnk6KQzT88eGB+pJhCa5n6cToZB5KFDeOr1NzLFkfuzHVvkU63sXjIx3h7/3USWlQ0xoDmXmUvpMy9HrLUO8d9dSJ4pJjLD4KvYbUuiNkwl8vzG1MsEhrnVMBCqvsvaSgnDTXFzm4euCGriJd2QyvHnuE3HHkYOhCRjtm5deja7QMJDL84Ki9d+qx52pIhFVMAjaRl7/T1Nat+WBzD+/OLlQLRPujD3jpwZmjR8A9a9PMQ95KeHrAdZds77WFdmTPXDcA6/7M9piKZlVHzfclH9Um4xAfOQ7h6GTNuyOlwy+M26TauF/YdtTJhA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=H83fYrj9XvhFb5i44qB3Zo2OlAVP2u2LHxupGylFnOo=;
+ b=hi2WI0MCiuYHABtgeuG0loVRaL3NSMO529IeJiZqi3j++vgqGVTX2zyZnhRvGb044ICzmWoSCa596HujVVXN9IoxM+iXsuuZiGWQfP/chGtqZKv7cyTNPuxsQs0mJXNTGBFfJmqmlMU5dmfTNX6XABp1/kb2yRrljVwoMR+Scsd8SZowy6gDiFMOTGgJAK/pR6Ju/vXx/dHkF3Vj8AgdFV2tRboG1kXRiY1BnosptB8+IQ1d7DoFajnPWLpR5o43fHZs8Itkh7VKOJSkfCjHuzixBQmt1fNmjGoOt/5hszTSt8iA7nrtInXgaYYXa1mAxLKB/FJWzS4ljI9tpNWzNw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=vivo.com; dmarc=pass action=none header.from=vivo.com;
+ dkim=pass header.d=vivo.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=vivo.com; s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=H83fYrj9XvhFb5i44qB3Zo2OlAVP2u2LHxupGylFnOo=;
+ b=Ap8egWZrM7dkuhG4FgV0fmtXaxlsYdfFKek/80VaH7/bMDwn9QGsMDk5bXhSWn29tt/7YJ2IMacOwt0zDEoB4BPCifOSdNnE5parUXoSHPhEAl1QZmMkLFw1UnmYkzKGmI73w1hoX1dDAil5yS7yp5aU+0th4HUlRNTFdqFhQLt/9HkBM4+gpcfuL+H6WMViUaQF8U/Geq8Bk33fqlG1FqhIg44k4CEEQwb62tHJREGBjiLrj/72FcO4yJiuOW7Ugr51FPji6OhlgK7slD9a9mnrSVC2qkDXcGTrqtKhV4kMPf0Fe4vxTrrXtV8yw1wlfALs4CVa8apmhY85l8gUCQ==
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=vivo.com;
+Received: from SEZPR06MB5576.apcprd06.prod.outlook.com (2603:1096:101:c9::14)
+ by SEZPR06MB5438.apcprd06.prod.outlook.com (2603:1096:101:9a::10) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.113.18; Tue, 16 Jun
+ 2026 09:46:23 +0000
+Received: from SEZPR06MB5576.apcprd06.prod.outlook.com
+ ([fe80::24bc:5613:3ffa:cb96]) by SEZPR06MB5576.apcprd06.prod.outlook.com
+ ([fe80::24bc:5613:3ffa:cb96%6]) with mapi id 15.21.0113.015; Tue, 16 Jun 2026
+ 09:46:23 +0000
+From: LiaoYuanhong-vivo <liaoyuanhong@vivo.com>
+To: ebiggers@kernel.org
+Cc: chao@kernel.org,
+	corbet@lwn.net,
+	jaegeuk@kernel.org,
+	liaoyuanhong@vivo.com,
+	linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-fscrypt@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	skhan@linuxfoundation.org,
+	tytso@mit.edu
+Subject: Re: [PATCH v3 0/3] f2fs: support encrypted inline data
+Date: Tue, 16 Jun 2026 17:46:12 +0800
+Message-Id: <20260616094612.45505-1-liaoyuanhong@vivo.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260615193728.GA1764@quark>
+References: <20260615193728.GA1764@quark>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: SI2PR01CA0018.apcprd01.prod.exchangelabs.com
+ (2603:1096:4:191::7) To SEZPR06MB5576.apcprd06.prod.outlook.com
+ (2603:1096:101:c9::14)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260511072344.191271-4-yi.zhang@huaweicloud.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCPT_COUNT_TWELVE(0.00)[16];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email,huawei.com:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: SEZPR06MB5576:EE_|SEZPR06MB5438:EE_
+X-MS-Office365-Filtering-Correlation-Id: 80e92ae2-b14c-491d-1a28-08decb8c2048
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|366016|1800799024|7416014|52116014|376014|23010399003|38350700014|22082099003|18002099003|56012099006|11063799006;
+X-Microsoft-Antispam-Message-Info:
+	YNINnTguk7H3bsJlV4xadxnP3PoWcftC+Og2DZ7Jk5gFPpit6GledtWfNNPaGtQJSdLM02EQa8aMVvfNOAruHKwW8lCN2FHwwGyK4isNOlOmlDFZi6CDgpVKqe3z3aPogU/WLSzg20Ax28a93oU0SAz2ASQxfgn5E6pRL+lDHNzmKm8vTxzuqM6yGcjvQsWw3Cw8uYIg4pWp7rXCpPDxub/eGWRZkQHBnqdheCaE04qghKlgqTGPQhlqeB8zsesZgKOvaS7t847E9A8d+J6q1joal5UugwT+XHfTxgZdexmEAHAuBVIYf4LgCgPEHlzGtGXaPLIpagtqdoMEoX1CLG4rsUCnTuE63t324y81sbVlL7igRwa/8Nc9ImSfWXcP8RLYNIrcU3b+a0XVhGv0ZWD3zhsEE4FWaXIsHVyarxxGo2MCmVA/6njoJ1eEJMRp5wuSRwspDYpi9qaRV35hFurmHUvLzzEwpmAXMip0D71HjsNh1ORp0IoGKXy7XE872JRHemoQxnV1+1akU8fAIRWpoRKTNMM6MS7BGiqTVMTn5Srd3i6st+ftAoGGhYxwjHiVXfVcX4telbelHCVE3zObWHX9lUYpeIkb39VWy8IQEOOYTU4776jusyu8nXfHmxn7DdftnhCupYZ5mB6+9gnjeSNEP7RWcuUbACk5VziIxUzu+s2fpUh/ckcQs79qh/La3KWMUzDnQ80Bocu4Imqc6AT1bgJN0D6LGeDOg6Oh+VwTlQUNhwh+zN6ZA9eh
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SEZPR06MB5576.apcprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(7416014)(52116014)(376014)(23010399003)(38350700014)(22082099003)(18002099003)(56012099006)(11063799006);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?wUfFfoC6PBeQgOG/Qe2RqZd4oMj4+dwKCbOiiVKl3gidIDbVW3mMMVdJ5FRQ?=
+ =?us-ascii?Q?aFmuCSYbJK+sz8DDllil1ZgSDRg7nbcYwCtMEvR3FOJASw7G2H/iqwGKnyJg?=
+ =?us-ascii?Q?tuo24DF23emBIkPf8an0KupCbeluPQfaIjgyfjJ1l0EQzfF3pS5wJiUHS5UU?=
+ =?us-ascii?Q?JJkw3CiXt03QEOxUm7dCcNkM+1Qtdd7VYeTVu4GfqlkPjEd3VV0HZZqL/ry3?=
+ =?us-ascii?Q?6bUfXh9pJb+7lXO9YomhQjGAIEjxPiu7/agjN5xQDTKkOiydVSdjiX4DPM0w?=
+ =?us-ascii?Q?ZYV9zzh7g6U5U7STjM72VHjqQfBm0bH9gxzwEhZIo4j8YXAZuFAm5R91/+Vl?=
+ =?us-ascii?Q?8+FLH4xMd5hYRGWndfND9h6OVMsXV30ma77UL/AfLto481+sYyhRQpBXnoqz?=
+ =?us-ascii?Q?7rRVpbZA/6QrBAUBzP5DVWKKtVZIyg6I4hNyuMhO1fDOjqjymY/1R7dMrNnb?=
+ =?us-ascii?Q?7IeqpXr7HNb4wpyRo9mhddJcEUM1inyXxLhZH5n8nKZLXS2P1P9CuE9V5/3+?=
+ =?us-ascii?Q?V3bUiQMvY42mU9wRxiXvUbjoYYsCSn/SHslh7Xh4nbFqE1OTtYbbsaZdQpUr?=
+ =?us-ascii?Q?VB9WZNRvdRucwY6gci/dgUnA44bsMp8kbZQcqpoqXhcDBB/jY6jC13AROFjn?=
+ =?us-ascii?Q?IH0S/MzFZeegu4dGK0MKHWI0+g+lyP9Eh0ghtKsf8qarzbID+AomRXMcUTbg?=
+ =?us-ascii?Q?iDicv6J33JieEsjLTvI0esW2SuzMwYAPYE1n7bEEd25YtBfQrVJORz6aHPRQ?=
+ =?us-ascii?Q?8v6wxJh0QpENlezWOlZMg6GQ6vvnT8YTRD4x9GY/pHNuJHdZdXwce05Tq2tC?=
+ =?us-ascii?Q?M203Yp2uxxejORYIbhbiEIObfEjzyu6MPaPfa4uRVeTKyibYTkpwC3xDcPQY?=
+ =?us-ascii?Q?Ddn4F/9Z0KYmdJ3SpOUSHfR4Ihg7qtItW9DAv5V38U1drjSiJhji5s66Ra4m?=
+ =?us-ascii?Q?IS788yD38MoATwqS1OQGOv/U7yZJAT+HIQHGJbpF6kkrzdf8LPMgW5IV3MWP?=
+ =?us-ascii?Q?16vfrvumeTQKyy/4SKXx3w+U8wGwrETcvF/+CTPEY/eoHeEOL5XNPAWZMJK4?=
+ =?us-ascii?Q?ql3CCDAw4bdFr9ZLOZhb5dyZQHjFkm9cpVVzvzXJLbHgAN2/5zZ8ptNBZ2+1?=
+ =?us-ascii?Q?M3N1qYVXaLZMiptfxAehw7zYNf+6npsoS9wiG/+E4sHhhwetuds2maJPgXU1?=
+ =?us-ascii?Q?Ugrqa5jqI930wQvj0CLQWy/0Vz2Wz/lcgkmIWUY0tqJ7TJo73XiWGvEp5/Aa?=
+ =?us-ascii?Q?t1rKMTxLKA/eNTB6704yD6sZZzf2SgycCZfH6qm6aoFpnAA02xWRF9TKP83P?=
+ =?us-ascii?Q?cA6LjZDbZfZ0Y5TGcEHWYPmM5J2hUXsboMDCKTVTjvKBVa3erxIc4a/yVtU8?=
+ =?us-ascii?Q?BNxXzHPLvYC5YsCF3KuXwrVFUlXvRLlSxMBQsqTlzX2CDivSbDUBRsF9d0m5?=
+ =?us-ascii?Q?WlzbNM2G2w/GlqFfiE2Nvc4yDynF/wTM8ItKcbI47Uv2EVt6aMWaRh3K/B/2?=
+ =?us-ascii?Q?eN9gcsKRMdTe/23acm+J5Dul9AStf5WDhmYAzxsM+UexCZEo5TrzXNLXz3hF?=
+ =?us-ascii?Q?bEtztIgjAAajLxADzLs8LF7JbrSrTDuvNkcz/9YGpkmh2fsLWg9k0bvL7GUq?=
+ =?us-ascii?Q?vOKsKfwr4hEwso14dubmJa+l3nx9W3KbCRVwB193p1zOGxTVWdivIIxwcrii?=
+ =?us-ascii?Q?GC4POVCVnXTmRm0+2zVae+Xsi8I54QnJBtID+ADSJ2K4mEmhb9+OVw2o7/gk?=
+ =?us-ascii?Q?UQ9SIWK7ag=3D=3D?=
+X-OriginatorOrg: vivo.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 80e92ae2-b14c-491d-1a28-08decb8c2048
+X-MS-Exchange-CrossTenant-AuthSource: SEZPR06MB5576.apcprd06.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 16 Jun 2026 09:46:23.3995
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 923e42dc-48d5-4cbe-b582-1a797a6412ed
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: LUF+ajaARsiUT+OeyYKsSQUjw8JlvBCkr0M5ZOUrEVAx2Lk2YOiR3FB3v6SJQLZX8EmOTJYHQu1A7Syrh0VNhg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SEZPR06MB5438
 
-On Mon 11-05-26 15:23:23, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> Refactor the error handling in ext4_setattr() for better clarity:
-> 
->  - Return directly on ext4_break_layouts() failure.
->  - Propagate ext4_truncate() errors using the existing error variable
->    and jump to the common 'err_out' label.
->  - Propagate posix_acl_chmod() errors also through the error variable,
->    as it theoretically does not return a non-fatal error.
-> 
-> With these changes, every error path either returns immediately or jumps
-> to err_out. Consequently, the "if (!error)" condition guarding
-> setattr_copy() and mark_inode_dirty() becomes unreachable for error
-> cases. Remove this redundant check and the unused rc variable can be
-> removed as well.
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Hi Eric,
 
-Looks good. Feel free to add:
+Thanks for the explanation.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+I understand the concern about deriving software contents keys from
+sw_secret for hardware-wrapped-key files. I agree this is not the right
+security model, and I will stop pursuing this direction for now.
 
-								Honza
+Could you share more about the direction you have in mind for simplifying
+f2fs/ext4 contents encryption around blk-crypto?
 
-> ---
->  fs/ext4/inode.c | 32 +++++++++++++++-----------------
->  1 file changed, 15 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 35e958f89bd5..b1ef706987c3 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5989,7 +5989,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  		 struct iattr *attr)
->  {
->  	struct inode *inode = d_inode(dentry);
-> -	int error, rc = 0;
-> +	int error;
->  	int orphan = 0;
->  	const unsigned int ia_valid = attr->ia_valid;
->  	bool inc_ivers = true;
-> @@ -6102,10 +6102,10 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  
->  		filemap_invalidate_lock(inode->i_mapping);
->  
-> -		rc = ext4_break_layouts(inode);
-> -		if (rc) {
-> +		error = ext4_break_layouts(inode);
-> +		if (error) {
->  			filemap_invalidate_unlock(inode->i_mapping);
-> -			goto err_out;
-> +			return error;
->  		}
->  
->  		if (attr->ia_size > oldsize)
-> @@ -6117,15 +6117,19 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  		}
->  
->  		filemap_invalidate_unlock(inode->i_mapping);
-> +		if (error)
-> +			goto err_out;
->  	}
->  
-> -	if (!error) {
-> -		if (inc_ivers)
-> -			inode_inc_iversion(inode);
-> -		setattr_copy(idmap, inode, attr);
-> -		mark_inode_dirty(inode);
-> -	}
-> +	if (inc_ivers)
-> +		inode_inc_iversion(inode);
-> +	setattr_copy(idmap, inode, attr);
-> +	mark_inode_dirty(inode);
->  
-> +	if (ia_valid & ATTR_MODE)
-> +		error = posix_acl_chmod(idmap, dentry, inode->i_mode);
-> +
-> +err_out:
->  	/*
->  	 * If the call to ext4_truncate failed to get a transaction handle at
->  	 * all, we need to clean up the in-core orphan list manually.
-> @@ -6133,14 +6137,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
->  	if (orphan && inode->i_nlink)
->  		ext4_orphan_del(NULL, inode);
->  
-> -	if (!error && (ia_valid & ATTR_MODE))
-> -		rc = posix_acl_chmod(idmap, dentry, inode->i_mode);
-> -
-> -err_out:
-> -	if  (error)
-> +	if (error)
->  		ext4_std_error(inode->i_sb, error);
-> -	if (!error)
-> -		error = rc;
->  	return error;
->  }
->  
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+For f2fs inline_data, there is still a real space-saving benefit on phones,
+since many encrypted files are smaller than 4K. Is there any acceptable
+future direction to support this kind of inode-resident data with
+blk-crypto or hardware-wrapped keys?
+
+Thanks,
+Liao Yuanhong
