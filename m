@@ -1,169 +1,201 @@
-Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 001A9377EC3
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2026 13:10:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.132
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C959337688;
+	Tue, 16 Jun 2026 14:08:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781615435; cv=none; b=XrDEIsxqBdQjCdXHT7oK88hubVKqhDO9JTxO89aeTaEyelemIrN1uvXsuNrBRTw3q0GLDnJ553CVWOueQ3Sd5SEYL+xNbRpdCocHrsh2gRppuxgTtAIDgJMCqb7eB6qKFr30islGBxl8Ff8NzFnzcCyfPOa9DsbuDN2PvfQFqDY=
+	t=1781618916; cv=none; b=K3hsjxHISjLvKWP+XmAwAqvqPv028C3SmNOF8f3SUo48dQtzoPWl94m4TxE1PWs2hfRhL9gPNdVj9yAjZxoyepzew25EDKYUDw/XuKG3JrcLbbtfHShLL4j9AaP8PSgPtNFEyqi1L4meUd9KtVFKr9ZAmjzxDBEVB/eHoNXxct4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781615435; c=relaxed/simple;
-	bh=kGI9SmCfJc2T7tFwIKJvib66L1GFSOzeRJB4HHgajUo=;
-	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
-	 In-Reply-To:Content-Type; b=TZ2cZ4LU4h/36YxJrhaXMwZmP/PoYrPdZxW2rWQmmYd7S9nIEMix8hwwXs9tlJzVUorsvL3VOicJaqjtuxicf8qzEluzkUMvgx7i9qBP4I3cM0VzH7zHtjz3SqisiGWQIGcUETumutshu40gGD9WLNqixsF8X64wv5emAz0LaX0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=ZLiWBXEa; arc=none smtp.client-ip=115.124.30.132
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1781618916; c=relaxed/simple;
+	bh=Do5i3EDmjVE1e/AZzgM+lKWOADPulnojqc5162s3uhI=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=QOMJmE2h1KF84BcpuEr0DW3+mZEvcKuTxJ55jKegEVeR0AicCatoivj9l6Upi87EqQE4U4qkRvKaULoWuymJKKYh81FOkpsMw2TGa6u+cxRrBN0lkEttBYnnRpOsXFWd3dKUKigvRxJsOPxCaFR40h+VlYTnMqHSUjrbIsMDrLU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZugUIHc6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="ZLiWBXEa"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1781615415; h=Message-ID:Date:MIME-Version:Subject:From:To:Content-Type;
-	bh=kGI9SmCfJc2T7tFwIKJvib66L1GFSOzeRJB4HHgajUo=;
-	b=ZLiWBXEaK81RwYq3KygD808nnmfWUf9Wqv08m8/2ajp1VGwrgt3+e6Jomqij1RAnvxFGZ9GSCOjUVee4G/YpmW3AcG4E6g4elCEkB4aMSabrhn+Q9WA5BnwgSGb6rv4FGDoYrOPFB8nXBLfYa37aZ9TWXwz/USGArrmQ0sUhb20=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0X5.YP5p_1781615413;
-Received: from 30.221.147.255(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X5.YP5p_1781615413 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Tue, 16 Jun 2026 21:10:14 +0800
-Message-ID: <060f63e0-d64f-40df-99a7-af53862049ee@linux.alibaba.com>
-Date: Tue, 16 Jun 2026 21:10:12 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZugUIHc6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD56D1F000E9;
+	Tue, 16 Jun 2026 14:08:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781618915;
+	bh=vrChKgbTI+0aqivTF5YP6Yuwbv2q4OzzhaoctlYZpaM=;
+	h=From:Subject:Date:To:Cc;
+	b=ZugUIHc6Aq2rgs4tUnGQK0fzxOeCN1jy0iKf7Vf80qCDDLK6ylLvc7KuHXyUyhlJo
+	 AZ4pjovOvM3AIeDSgPv6PO7A3whILphjqK9LHMVXxNFU1VZF7lkNhlYMB1jOWnB6Sz
+	 UhG//CfYLOufFNQ3ZrNvx+91YNRibbLrP0hKQDE9bHZeHr42naAiKqwRFynVRymqLi
+	 tthie1w5XTiStq4bfzD81mlkabTxkvEI+0KDgVDwLsuvBOSI4blFtuQ3tL7AkjR3Th
+	 e+/ppRyquEfTGTEP7bmj54Wozv4CxsR3CgH6qa1mkKZw9x2vuID8QiTAyb+NUfiPxK
+	 UlR6GzLBYJVZg==
+From: Christian Brauner <brauner@kernel.org>
+Subject: [PATCH RFC v2 00/18] fs: support freeze/thaw/mark_dead/sync with
+ shared devices
+Date: Tue, 16 Jun 2026 16:08:16 +0200
+Message-Id: <20260616-work-super-bdev_holder_global-v2-0-7df6b864028e@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] ext4: base unaligned DIO lock decision on partial
- block zeroing
-From: Baokun Li <libaokun@linux.alibaba.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz,
- yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- peng_wang@linux.alibaba.com
-References: <20260611163441.2431805-1-libaokun@linux.alibaba.com>
- <20260611163441.2431805-3-libaokun@linux.alibaba.com>
-In-Reply-To: <20260611163441.2431805-3-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIANBYMWoC/42OQW6DMBRErxJ5XSPjCIS6ilSpB+i2ipA/HsAJt
+ dE3kKYRdw8mF+hyRjNv5iEi2CGK98NDMBYXXfCb0G8H0fTGd5DOblpopUtVKi1vga8yziNYksV
+ S92Gw4LobAplBVg2ZAoUm2EJsjJHRut+d/y2+Pj/E+WXGmS5opkROMTIRktj4pk9W2sj2jaxl4
+ A+1hb/X8xgnhvlJjd7FKfB9/73kO/6fF5dcKkmkWlvp9liV+ekK9hiywJ04r+v6BAABAjoUAQA
+ A
+X-Change-ID: 20260602-work-super-bdev_holder_global-8cba5e52bed5
+To: Jan Kara <jack@suse.cz>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>, linux-block@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
+ Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>, 
+ linux-btrfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+ linux-ext4@vger.kernel.org, Gao Xiang <xiang@kernel.org>, 
+ linux-erofs@lists.ozlabs.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, 
+ syzbot@syzkaller.appspotmail.com, Gao Xiang <xiang@kernel.org>
+X-Mailer: b4 0.16-dev-4090c
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7470; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=Do5i3EDmjVE1e/AZzgM+lKWOADPulnojqc5162s3uhI=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWQZRtybLbr8y1c30W0vfldvvn/t+KZpW5xrNywXP/AsY
+ 8Z9Kb8S3Y5SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJbJ3LyLDwJO/0vkcmKru2
+ 6XiG/mJda+zzliVE2GuCZfDrg0x9zVUM/1St7sWmptTujS90iCkP2LhzYvzXgFUePaVnmsr+zs5
+ +wQMA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Hi all,
+This is a generalization of the device number to superblock so it works
+for actual block device and anonymous (or even mtd) devices.
 
-Thank you for your review!
+fs_holder_ops recovers the affected superblock from bdev->bd_holder. That
+forces the holder of a block device to be exactly one superblock and makes
+it impossible for several superblocks to share a single device.
 
-After extensive testing, I found that after merging this patch, generic/746
-started failing intermittently on ext3 (mkfs.ext4 -O ^extents).  The test
-triggers a "Page cache invalidation failure on direct I/O" warning, and
-subsequent fsync returns -EIO.
+erofs does exactly that. It can mount read-only "blob" devices that are
+shared between many superblocks: a metadata-only erofs that indexes a set
+of per-layer blobs (one filesystem instead of one per OCI layer), or an
+incremental image whose base device is shared by several updates. Because
+the block layer only tracks a single holder, a freeze, thaw, removal or
+sync on such a device is never propagated to all the superblocks using it,
+and the current infrastructure has no way to find them.
 
-The underlying race existed before this patch, but this patch appears to
-have widened the reproduction window considerably, so I thought it worth
-trying to address.  Here is my analysis:
+This series replaces the bd_holder-based lookup with a global, dev_t-keyed
+table mapping each block device to the superblock(s) using it. The holder
+argument becomes purely the block layer's exclusivity token -- a superblock,
+or the file_system_type for a device shared within one filesystem type --
+and the fs_holder_ops callbacks look the device up in the table and act on
+every superblock registered for it: 1:1 for most filesystems, 1:many for
+erofs.
 
-On no-extent inodes, DIO writes that hit holes cannot use unwritten
-extents.  ext4_iomap_alloc() leaves m_flags=0, so ext4_map_blocks()
-returns 0 for a hole, and:
+Filesystems claim and release their devices through new
+fs_bdev_file_open_by_{dev,path}() and fs_bdev_file_release() helpers; the
+per-fs patches convert xfs, btrfs, ext4, f2fs and erofs over to them and
+fix cramfs and romfs, which released the registered main device with a
+raw bdev_fput().
 
-        if (!m_flags && !ret)
-                ret = -ENOTBLK;
+Since every superblock is registered under its s_dev the table also
+replaces the last s_dev-keyed walk of the super_blocks list:
+user_get_super() resolves device numbers through it, so ustat() and
+quotactl() now work on any device a filesystem claims and no longer
+take sb_lock.
 
-The iomap layer returns -ENOTBLK to ext4, which falls back to buffered
-I/O.  The fallback path dirties pages in the page cache, then flushes
-and invalidates them.  However, concurrent async DIO completions to
-other blocks on the same inode can run kiocb_invalidate_post_direct_write()
-without holding the inode lock.
+The longer-term motivation is to let userspace decide which devices may be
+onlined from one central place, without having to teach every filesystem
+about it individually.
 
-Consider a file with two 4k extents: [hole][written].  Thread A does DIO
-to the written extent, while thread B does DIO spanning both extents:
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+Changes in v2:
+- super: rework the device-to-superblock table reference counting: each
+  (device, superblock) entry carries a single claim count and holds one
+  passive reference on its superblock for the entry's lifetime. New prep
+  patches convert s_count to refcount_t s_passive and make put_super()
+  self-locking.
+- super: preallocate the entry in alloc_super() and register it from the
+  set callbacks through set_anon_super()/set_bdev_super(); an insert
+  failure unwinds exactly like a set callback failure. The superblock
+  stashes the entry in sb->s_super_dev and kill_super_notify() drops the
+  claim through it.
+- super: initialize the table from mnt_init(); the rootfs and shm mounts
+  are created long before any initcall runs.
+- super: fold the v1 "refuse to claim a frozen block device" patch into
+  the registration helper and restore the EBUSY check for the primary
+  device in setup_bdev_super(): additional devices (the xfs log, the ext4
+  journal, erofs blobs) are now refused while frozen as well, answering
+  Jan's question on v1 3/8.
+- Split the core patch into table/helpers/switch-over and move the
+  xfs/btrfs/ext4 conversions before the fs_holder_ops switch so no
+  freeze/mark_dead events are lost mid-series; erofs follows the switch.
+- New prep patches: the ext4 KUnit tests allocate anonymous devices and
+  ocfs2 stops resetting s_dev on dismount.
+- New: convert user_get_super() to the device table, plus a ustat()
+  selftest.
+- New: fix a pre-existing double release of the realtime device file and
+  dangling buftarg pointers in xfs_open_devices()'s error unwind.
+- New: convert f2fs's additional devices to the helpers; fix cramfs and
+  romfs releasing the registered main device with a raw bdev_fput().
+- erofs: drop the .shutdown() and .remove_bdev() implementations and the
+  per-device "dead" flag. Immutable filesystems don't need them: the block
+  layer sets GD_DEAD before fs_bdev_mark_dead() so in-flight bios fail
+  anyway, erofs has no write path or journal to stop, and the read-only
+  loop_change_fd() case must not be forced to -EIO. Patch from Gao Xiang,
+  applied verbatim - thanks!
+- btrfs: fix a general protection fault in close_fs_devices() on a failed
+  mount (reported by syzbot). The release path took the superblock from
+  device->fs_info, which is still NULL if open_ctree() fails before
+  btrfs_init_devices_late(); it now uses bdev_file->private_data.
+- erofs: the v1 conversion was sent with a generic boilerplate changelog;
+  superseded by Gao's patch above.
+- Collect Reviewed-by from Jan Kara and Tested-by from syzbot.
+- Rebase onto v7.1-rc1.
+- Link to v1: https://patch.msgid.link/20260602-work-super-bdev_holder_global-v1-0-bb0fd82f3861@kernel.org
 
-  kworker A (4k DIO, allocated block)    kworker B (8k DIO, hole->fallback)
-  -----------------------------------    -----------------------------------
-  inode_lock_shared()                    inode_lock_shared()
-  iomap_dio_rw():                        iomap_dio_rw():
-    kiocb_invalidate_pages -> clean        iomap_begin -> -ENOTBLK
-    submit_bio (async)                     dio->size = 0
-  inode_unlock_shared()                  inode_unlock_shared()
+---
+Christian Brauner (18):
+      xfs: fix the error unwind in xfs_open_devices()
+      super: convert s_count to refcount_t s_passive
+      super: take lock after last reference count
+      fs, block: move blk_mode_t and fop_flags_t into <linux/types.h>
+      ext4: use anonymous devices for KUnit test superblocks
+      ocfs2: don't reset s_dev on dismount
+      fs: maintain a global device-to-superblock table
+      fs: add dedicated block device open helpers for filesystems
+      xfs: port to fs_bdev_file_open_by_path()
+      btrfs: open via dedicated fs bdev helpers
+      ext4: open via dedicated fs bdev helpers
+      fs: look up superblocks via the device table in fs_holder_ops
+      fs: tolerate per-superblock freeze errors on shared devices
+      erofs: open via dedicated fs bdev helpers
+      f2fs: open via dedicated fs bdev helpers
+      super: make fs_holder_ops private
+      fs: look up the superblock via the device table in user_get_super()
+      selftests/filesystems: add ustat() coverage
 
-  [bio pending in block layer]           /* fallback: inode lock released */
-                                         ext4_buffered_write_iter()
-                                           inode_lock(exclusive)
-                                           generic_perform_write()
-                                             -> dirty pages [0, 8k]
-                                           inode_unlock(exclusive)
-
-                                         /* pages still dirty here */
-  [bio completes]                        filemap_write_and_wait_range()
-  iomap_dio_complete()                     -> flush dirty pages
-    kiocb_invalidate_post_direct_write() invalidate_mapping_pages()
-      invalidate_inode_pages2_range()
-      -> finds dirty page!               /* window closed */
-      -> dio_warn_stale_pagecache()
-      -> errseq_set(-EIO)
-
-The critical window is the gap between ext4_buffered_write_iter() dirtying
-pages and filemap_write_and_wait_range() flushing them.  In this window the
-inode lock is not held, so another thread's async DIO completion is free to
-invalidate the still-dirty pages in the page cache.
-
-This race has always existed on ext3 because indirect-block inodes lack
-unwritten-extent support.  However, the window was extremely narrow in
-practice, because the old ext4_overwrite_io() checked every block and
-would conservatively take an exclusive lock.  This patch replaced it
-with ext4_dio_needs_zeroing(), which only checks head and tail blocks,
-making unaligned DIO more likely to take a shared lock and
-proportionally increasing the chance of hitting the race.
-
-I tried a couple of alternatives before settling on the patch below:
-
-1. Force exclusive lock + IOMAP_DIO_FORCE_WAIT for all no-extent DIO.
-   This closes the window for new DIO submissions, but does not protect
-   against bio completions from previously submitted async DIO, which
-   run independently of the inode lock.
-
-2. Wrap the fallback dirty+flush+invalidate sequence in
-   filemap_invalidate_lock().  However, the ext4 DIO and iomap layers
-   do not use this lock, so it would not serialise against DIO
-   completions.
-
-One straightforward approach that seems correct is to skip direct I/O
-for no-extent inodes entirely, by returning 0 from ext4_dio_alignment():
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -6131,6 +6131,8 @@ u32 ext4_dio_alignment(struct inode *inode)
- {
-        if (fsverity_active(inode))
-                return 0;
-+       if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+               return 0;
-        if (ext4_should_journal_data(inode))
-                return 0;
-        if (ext4_has_inline_data(inode))
-
-With this, ext4_should_use_dio() returns false for no-extent inodes, and
-all I/O goes through ext4_buffered_write_iter() directly, bypassing the
-DIO path entirely.  On ext3, DIO to a hole already falls back to buffered
-I/O, so there is essentially no performance benefit to using DIO in the
-first place.
-
-Note that with this change, the fallback branch in ext4_dio_write_iter():
-
-        if (ret >= 0 && iov_iter_count(from)) {
-                /* buffered fallback */
-        }
-
-would also become dead code for extent-based inodes (since unwritten
-extents guarantee iomap_dio_rw() never returns zero with unconsumed
-data), and could be removed in a follow-up cleanup.
-
-Thoughts?  Is there a reason to preserve DIO on no-extent inodes that
-I'm missing?
-
-Looking forward to your feedback.
-
-
-Thanks,
-Baokun
-
+ fs/btrfs/volumes.c                               |  31 +-
+ fs/cramfs/inode.c                                |   2 +-
+ fs/erofs/super.c                                 |  35 +-
+ fs/ext4/extents-test.c                           |   9 +-
+ fs/ext4/mballoc-test.c                           |   9 +-
+ fs/ext4/super.c                                  |  12 +-
+ fs/f2fs/super.c                                  |   6 +-
+ fs/internal.h                                    |   1 +
+ fs/namespace.c                                   |   2 +
+ fs/ocfs2/super.c                                 |   1 -
+ fs/romfs/super.c                                 |   2 +-
+ fs/super.c                                       | 620 ++++++++++++++++-------
+ fs/xfs/xfs_buf.c                                 |   2 +-
+ fs/xfs/xfs_super.c                               |  13 +-
+ include/linux/blkdev.h                           |   9 -
+ include/linux/fs.h                               |   2 -
+ include/linux/fs/super.h                         |   8 +
+ include/linux/fs/super_types.h                   |   4 +-
+ include/linux/types.h                            |   2 +
+ tools/testing/selftests/filesystems/.gitignore   |   1 +
+ tools/testing/selftests/filesystems/Makefile     |   2 +-
+ tools/testing/selftests/filesystems/ustat_test.c | 135 +++++
+ 22 files changed, 647 insertions(+), 261 deletions(-)
+---
+base-commit: 0c0d974f62e6603d4514e1a8035658edb353c68f
+change-id: 20260602-work-super-bdev_holder_global-8cba5e52bed5
 
