@@ -1,195 +1,254 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8BCD63939AE
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 10:54:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18DEA30E838
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 10:57:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781693663; cv=none; b=UX4G9h7C4kc2pBqTP6HKymTVWh44FvJRMBTvCY3Vuuw0rTEEznoQJZ/QmWMNsamwAXlHVMJ+YE7Vc5L0ylKK2ususJtYQvtJKSPGHIcJG5ryTzwUIsRUeVM8CIwdaFmuCaTnE5ahR3CocY+Z8lSffbk0prZC7gtF786S40EacA4=
+	t=1781693822; cv=none; b=IHRtZ0wjpJ3Hw9egVD2KcmH227U1VrR2p+RU7NdcKg0uEV9G3CKTBbM1P+hOrr/dxnQFyqvIL3impW/e7jSlgfYu3B9+Zs44z9LjS6jL7HK2TJ1ujDSWlci5/Y1j9I/WQPcIapj7lCAmt7l+u57VlmT637Zdelh6u5HWU2hA+XA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781693663; c=relaxed/simple;
-	bh=mTCYehxELbv5eHQ2U+LtFuDMwe0gLbkW+NlwH0NBdpI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=CwaVLp195HlusQvyP2l5rOpn7gS4Ym8k2XjFGJ3A12SegkmNAL4CW2rpHhUAWWioAHIlwWdu0+WXr2igkHUrHLEvtb7b9QDcbFlfZUBOdRNWPdejnJxJRmg3Th+mm4q8LARwmficgvV2L/avouHSmQ5XvFFi7Mrq8MJh6vbEG7o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ggLLP6fsNzKHMQR
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 18:53:17 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 350F84056E
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 18:54:06 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgAnKT7MfDJqBHV0CA--.17386S3;
-	Wed, 17 Jun 2026 18:54:06 +0800 (CST)
-Message-ID: <8dd17689-b596-40ab-a32f-551aadc7bbe8@huaweicloud.com>
-Date: Wed, 17 Jun 2026 18:54:04 +0800
+	s=arc-20240116; t=1781693822; c=relaxed/simple;
+	bh=AgXfTxRZp5SbLOlNKlUE4Yek2MI0HsDJWKzS6PMiap0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=kXhqeHScjXIJVo0xbeKeS5I9VirbqnC40h2HYu6MVXj56mAuRqlihAykztmQm0X7u3zKpnDPx500Lth3ZpshzgXc6o1wI59BTaCYB/WSMxZwxs4VtIkJQoKyhjx0fys6mRuL9m0KdKow+1GbYLXXLPjeoAyjOJXKdUozOhUNPMc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=HR3hcS66; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="HR3hcS66"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1781693820;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=AzN1lnaE+nfuZ1o7+Sss2Yj7fYHb4+awBZ3lZc9UDnI=;
+	b=HR3hcS66mdNPwkBKwuvQMo90O4QB1ZIh91I1DJ2sZc/KcSI/hmRRoQfK81AKenIpVLMDUV
+	gigZerz1JGjdUxggJDM89+UshZ7mFDn7kkcJSSpQb/I2chI408Kboml8u34eKiMPn7KqMz
+	uZa0T8vhdWTOOK3o6qqMAKo7Lj19WZc=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-345-il43_cpPPSOgnRsnYQNOFg-1; Wed,
+ 17 Jun 2026 06:56:56 -0400
+X-MC-Unique: il43_cpPPSOgnRsnYQNOFg-1
+X-Mimecast-MFC-AGG-ID: il43_cpPPSOgnRsnYQNOFg_1781693814
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 627F81955F17;
+	Wed, 17 Jun 2026 10:56:53 +0000 (UTC)
+Received: from bfoster (unknown [10.22.89.36])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5F19A180058C;
+	Wed, 17 Jun 2026 10:56:49 +0000 (UTC)
+Date: Wed, 17 Jun 2026 06:56:47 -0400
+From: Brian Foster <bfoster@redhat.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, djwong@kernel.org,
+	hch@infradead.org, yi.zhang@huawei.com, yizhang089@gmail.com,
+	yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 14/23] ext4: implement partial block zero range path
+ using iomap
+Message-ID: <ajJ9b91fTbM6qApg@bfoster>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-15-yi.zhang@huaweicloud.com>
+ <c2q54d6u724xctkzwm6x7sbmg5cpvcackfz3toc47qts6iaj77@ci2czn4fqjik>
+ <16cccb83-cdad-4113-8182-e8ea9e3049a2@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] ext4: base unaligned DIO lock decision on partial
- block zeroing
-To: Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yizhang089@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- peng_wang@linux.alibaba.com
-References: <20260611163441.2431805-1-libaokun@linux.alibaba.com>
- <20260611163441.2431805-3-libaokun@linux.alibaba.com>
- <060f63e0-d64f-40df-99a7-af53862049ee@linux.alibaba.com>
- <d1adcf7c-c276-458d-9cac-68a4410f7626@gmail.com>
- <4f4800dc-0a2c-48e2-9535-f32b21628bdb@linux.alibaba.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <4f4800dc-0a2c-48e2-9535-f32b21628bdb@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgAnKT7MfDJqBHV0CA--.17386S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3Ar4DJry5tF45uFykAryxKrg_yoW7Kr15pF
-	93KFy7J348GrWkJr47tF1Uury8Kr1UJw4UXryrJF18X34DAr4jqrsrXr10gryDJrW8Cr17
-	Jr4UAr9rZr1UJ3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1v3UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+In-Reply-To: <16cccb83-cdad-4113-8182-e8ea9e3049a2@huaweicloud.com>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-On 6/17/2026 3:52 PM, Baokun Li wrote:
-> On 2026/6/17 10:45, Zhang Yi wrote:
->> Hi, Baokun!
->>
->> On 6/16/2026 9:10 PM, Baokun Li wrote:
->>> Hi all,
->>>
->>> Thank you for your review!
->>>
->>> After extensive testing, I found that after merging this patch,
->>> generic/746
->>> started failing intermittently on ext3 (mkfs.ext4 -O ^extents).  The
->>> test
->>> triggers a "Page cache invalidation failure on direct I/O" warning, and
->>> subsequent fsync returns -EIO.
->>>
->>> The underlying race existed before this patch, but this patch appears to
->>> have widened the reproduction window considerably, so I thought it worth
->>> trying to address.  Here is my analysis:
->>>
->>> On no-extent inodes, DIO writes that hit holes cannot use unwritten
->>> extents.  ext4_iomap_alloc() leaves m_flags=0, so ext4_map_blocks()
->>> returns 0 for a hole, and:
->>>
->>>          if (!m_flags && !ret)
->>>                  ret = -ENOTBLK;
->>>
->>> The iomap layer returns -ENOTBLK to ext4, which falls back to buffered
->>> I/O.  The fallback path dirties pages in the page cache, then flushes
->>> and invalidates them.  However, concurrent async DIO completions to
->>> other blocks on the same inode can run
->>> kiocb_invalidate_post_direct_write()
->>> without holding the inode lock.
->>>
->>> Consider a file with two 4k extents: [hole][written].  Thread A does DIO
->>> to the written extent, while thread B does DIO spanning both extents:
->>>
->>>    kworker A (4k DIO, allocated block)    kworker B (8k DIO,
->>> hole->fallback)
->>>    -----------------------------------   
->>> -----------------------------------
->>>    inode_lock_shared()                    inode_lock_shared()
->>>    iomap_dio_rw():                        iomap_dio_rw():
->>>      kiocb_invalidate_pages -> clean        iomap_begin -> -ENOTBLK
->>>      submit_bio (async)                     dio->size = 0
->>>    inode_unlock_shared()                  inode_unlock_shared()
->>>
->>>    [bio pending in block layer]           /* fallback: inode lock
->>> released */
->>>                                           ext4_buffered_write_iter()
->>>                                             inode_lock(exclusive)
->>>                                             generic_perform_write()
->>>                                               -> dirty pages [0, 8k]
->>>                                             inode_unlock(exclusive)
->>>
->>>                                           /* pages still dirty here */
->>>    [bio completes]                        filemap_write_and_wait_range()
->>>    iomap_dio_complete()                     -> flush dirty pages
->>>      kiocb_invalidate_post_direct_write() invalidate_mapping_pages()
->>>        invalidate_inode_pages2_range()
->>>        -> finds dirty page!               /* window closed */
->>>        -> dio_warn_stale_pagecache()
->>>        -> errseq_set(-EIO)
->>>
->>
->> It looks like this issue occurs when invalidate_inode_pages2_range()
->> checks beyond the DIO write range, which may only happen when folio size
->> is larger than block size. Is that correct?
-> Thanks for looking at this!
+On Wed, Jun 17, 2026 at 04:14:40PM +0800, Zhang Yi wrote:
+> On 6/16/2026 8:28 PM, Jan Kara wrote:
+> > On Mon 11-05-26 15:23:34, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> Introduce a new iomap_ops instance, ext4_iomap_zero_ops, along with
+> >> ext4_iomap_block_zero_range() to implement block zeroing via the iomap
+> >> infrastructure for ext4.
+> >>
+> >> ext4_iomap_block_zero_range() calls iomap_zero_range() with
+> >> ext4_iomap_zero_begin() as the callback. The callback locates and zeros
+> >> out either a mapped partial block or a dirty, unwritten partial block.
+> >>
+> >> Important constraints:
+> >>
+> >> Zeroing out under an active journal handle can cause deadlock, because
+> >> the order of acquiring the folio lock and starting a handle is
+> >> inconsistent with the iomap writeback path.
+> >>
+> >> Therefore, ext4_iomap_block_zero_range():
+> >> - Must NOT be called under an active handle.
+> >> - Cannot rely on data=ordered mode to ensure zeroed data persistence
+> >>   before updating i_disksize (for the cases of post-EOF append write,
+> >>   post-EOF fallocate, and truncate up). In subsequent patches, we will
+> >>   address this by synchronizing commit I/O but doesn't waiting for
+> >>   completion, and updating i_disksize to i_size only after the zeroed
+> >>   data has been written back.
+> >>
+> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> >> ---
+> >>  fs/ext4/inode.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++
+> >>  1 file changed, 92 insertions(+)
+> >>
+> >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> >> index c6fe42d012fc..e0dae2501292 100644
+> >> --- a/fs/ext4/inode.c
+> >> +++ b/fs/ext4/inode.c
+> >> @@ -4101,6 +4101,51 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+> >>  	return 0;
+> >>  }
+> >>  
+> >> +static int ext4_iomap_zero_begin(struct inode *inode,
+> >> +		loff_t offset, loff_t length, unsigned int flags,
+> >> +		struct iomap *iomap, struct iomap *srcmap)
+> >> +{
+> >> +	struct iomap_iter *iter = container_of(iomap, struct iomap_iter, iomap);
+> > 
+> > This looks like a layering violation to me. I don't think you can safely
+> > assume the iomap you're passed is a part of iomap_iter...
+> > 
+> >> +	struct ext4_map_blocks map;
+> >> +	u8 blkbits = inode->i_blkbits;
+> >> +	unsigned int iomap_flags = 0;
+> >> +	int ret;
+> >> +
+> >> +	ret = ext4_emergency_state(inode->i_sb);
+> >> +	if (unlikely(ret))
+> >> +		return ret;
+> >> +
+> >> +	if (WARN_ON_ONCE(!(flags & IOMAP_ZERO)))
+> >> +		return -EINVAL;
+> >> +
+> >> +	ret = ext4_iomap_map_blocks(inode, offset, length, NULL, &map);
+> >> +	if (ret < 0)
+> >> +		return ret;
+> >> +
+> >> +	/*
+> >> +	 * Look up dirty folios for unwritten mappings within EOF. Providing
+> >> +	 * this bypasses the flush iomap uses to trigger extent conversion
+> >> +	 * when unwritten mappings have dirty pagecache in need of zeroing.
+> >> +	 */
+> >> +	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
+> >> +		loff_t start = ((loff_t)map.m_lblk) << blkbits;
+> >> +		loff_t end = ((loff_t)map.m_lblk + map.m_len) << blkbits;
+> >> +
+> >> +		iomap_fill_dirty_folios(iter, &start, end, &iomap_flags);
+> >> +		if ((start >> blkbits) < map.m_lblk + map.m_len)
+> >> +			map.m_len = (start >> blkbits) - map.m_lblk;
+> >> +	}
+> > 
+> > ... and you need access to iter only for this which seems to be really a
+> > hack that's trying to outsmart the iomap code. I have to admit I don't
+> > fully understand what you are trying to achieve here. Are you trying to
+> > avoid flushing of the range that will be zeroed out?
 > 
-> Not quite — the scenario involves an 8k file with layout
+> This logic is copied from the XFS and iomap infrastructure. Its primary
+> purpose is to optimize the zeroing operations on dirty written extents.
+> It was introduced by Brian in [1].
 > 
->  [hole at 0-4k] [written extent at 4k-8k]
+> The history as I understand it: originally, the iomap infrastructure
+> could not zero dirty unwritten extents during zero range processing,
+> which led to stale data exposure. XFS had to flush dirty ranges itself
+> before zeroing — a workaround that was not generic.
 > 
-> and two DIO threads. Thread A does a 4k DIO write at offset 4k; since
-> the target block is a written extent, no fallback occurs. Thread B
-> does an 8k DIO write at offset 0; since blocks 0-4k are a hole on an
-> indirect-block inode and ext3 does not support unwritten extents,
-> iomap returns -ENOTBLK and the entire 8k write falls back to buffered
-> I/O.
+> In c5c810b94cf ("iomap: fix handling of dirty folios over unwritten
+> extents"), Brian added an unconditional flush in the iomap
+> infrastructure, ensuring that by the time zeroing runs the extent has
+> already been converted to written so the zero can proceed correctly.
+> However, this flush was too heavy and introduced noticeable performance
+> overhead.
 > 
-> Normally the kernel would prevent concurrent BIO and DIO to
-> overlapping ranges on the same file. But because Thread A holds only
-> a shared inode lock (pure overwrite on a written extent), and
-> Thread B's DIO has already returned -ENOTBLK before its buffered
-> fallback begins, both paths can proceed concurrently:
+> This was then optimized in 7d9b474ee4cc3 ("iomap: make zero range flush
+> conditional on unwritten mappings"), which restricts flushing to only
+> dirty pagecache over unwritten or hole mappings.
 > 
+> Brian later proposed a different approach: rather than relying on flush
+> to convert the extent type, find dirty folios ahead of the zero range
+> and zero the dirty unwritten extents directly. In [1] he added this
+> lookup logic. The filesystem now supplies a folio batch (a collection of
+> dirty folios) via the iomap begin callback, and zero range iterates over
+> these dirty folios to perform zeroing. Clean regions not covered by the
+> batch are simply skipped. This entirely eliminates the need to flush.
 > 
-> Thread A: 4k DIO at offset 4k     Thread B: 8k DIO at offset 0
-> ─────────────────────────────     ─────────────────────────────
-> kiocb_invalidate_pages            iomap_begin → -ENOTBLK
->   → page index 1 already clean      (indirect inode hole, m_flags=0)
-> submit_bio (async)                dio->size = 0
-> inode_unlock_shared()             inode_unlock_shared()
+> [1] https://lore.kernel.org/linux-xfs/20251003134642.604736-1-bfoster@redhat.com/
 > 
->                                   ext4_buffered_write_iter()
-> [bio pending]                       → dirty page 0 [0, 4k]
->                                     → dirty page 1 [4k, 8k]
->                                   inode_unlock()
->                                   // pages dirty, no lock
+> If I understand correctly, the current approach is a compromise, and
+> Brian is still working on this. Perhaps ext4 and XFS could work together
+> on improvements in the future?
 > 
-> [bio completes]
-> iomap_dio_complete():
->   kiocb_invalidate_post_direct_write()
->     start = 4096 >> 12 = 1
->     end = (8191) >> 12 = 1
->     invalidate_inode_pages2_range(1, 1)
->       → page 1 [4k,8k] is DIRTY
->       → -EBUSY → errseq_set(-EIO)
-> 
-> Page index 1 corresponds to file offset [4k, 8k], which is exactly
-> Thread A's DIO range. The invalidation is not going beyond the DIO
-> range — the dirty page was placed there by Thread B's buffered
-> fallback, which wrote to [0, 8k] and dirtied the same page.
-> 
-> No large folio is needed; 4k pages and 4k blocks are sufficient.
-> 
-> From the user's perspective, when performing concurrent DIO on a
-> holed ext3 file, the file contents can become corrupted with some
-> probability. If the file is used as a loop device's backing file,
-> this manifests as filesystem corruption inside the loop device.
 
-Ha, fair enough. Thanks for the details.
+I think that about covers it!
 
-Cheers,
-Yi.
+I do agree wrt to the iomap_iter thing in that it doesn't seem like the
+most elegant thing. I considered that a bit of a roadblock when first
+hacking on the batch stuff, but IIRC somebody pointed out that there was
+precedent already so I didn't think too hard about it after that. Indeed
+if you poke around, other filesystems use a similar pattern to access
+iter->private for whatever private context is carried around.
+
+FWIW, one of the longer term thoughts for the dirty folio stuff was to
+eventually lift it out of the callback and just have iomap do it for the
+fs. That would eliminate this particular pattern and probably clean
+things up a bit, but there were also some other caveats with that that
+aren't top of mind atm (IIRC, things like dealing with map trimming,
+etc., but I haven't had a chance to think about it in a while).
+
+Also note that this isn't necessarily a hard requirement. It's an
+optional optimization. iomap will flush and retry in the dirty
+pagecache+unwritten extent case if the fs hasn't otherwised provided
+folios to make sure it zeroes properly, it's just that performance of
+that may or may not be acceptable for your use case.
+
+Brian
+
+> > 
+> >> +	ret = iomap_zero_range(inode, from, length, did_zero,
+> >> +			       &ext4_iomap_zero_ops, &ext4_iomap_write_ops,
+> >> +			       NULL);
+> >> +	if (ret)
+> >> +		return ret;
+> >> +
+> >> +	/*
+> >> +	 * TODO: The iomap does not distinguish between different types of
+> >> +	 * zeroing and always sets zero_written if a zeroing operation is
+> >> +	 * performed, which may result in unnecessary order operations.
+> >> +	 */
+> > 
+> > Is this still true after your fix to did_zero handling?
+> 
+> Yeah. Currently, iomap_zero_range() can only report whether a zeroing
+> operation has occurred through did_zero parameter, but it cannot
+> distinguish whether the zeroed range is a written extent that already
+> exists on disk. That is, even if the zeroing is performed on a delalloc
+> extent, did_zero will still return true.
+> 
+> Thanks,
+> Yi.
+> 
+> > 
+> >> +	if (did_zero && zero_written)
+> >> +		*zero_written = *did_zero;
+> >> +
+> >> +	return 0;
+> >> +}
+> >> +
+> >>  /*
+> >>   * Zeros out a mapping of length 'length' starting from file offset
+> >>   * 'from'.  The range to be zero'd must be contained with in one block.
+> > 
+> > 								Honza
+> 
 
