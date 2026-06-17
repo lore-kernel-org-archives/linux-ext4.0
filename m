@@ -1,87 +1,88 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59157367B61
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 18:13:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4CF62F6920
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 18:42:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781720002; cv=none; b=BJAMqdlL+f5E3lrS//jnNy4smCy/8R16nW7HBVEyo66ZXHgdZmPdP5KC/pwm9ed9YdkbNqzLvr7Or4PrshwWJEuQ7lVbdMQNauaywAsayAEwOly7EaUxs/DnPfsICt3ScaUxcDOihzEouxb+jUidvVtFscE0oF9+RtXuNC1xKL8=
+	t=1781721742; cv=none; b=vBhWT6J5B6ftAl4QpHDnpPOQ2QRt2+LjUcRRm74z7q3Mr4FOe5lkL+s/0W/+eOdBxrIuqUK2iaUHo+vKpkUybkvNHRAq50SM7JTatdg3ZuA4beacAREOrmB+UsTSuDqHG/ys7J8S5/Fgwudmo3CR7OO9pKMegax7Xb4U8H8akU0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781720002; c=relaxed/simple;
-	bh=4NlvvutN4M6ymuCO3RLZ4PPy9sVzCOohDdnu+UbhEE8=;
+	s=arc-20240116; t=1781721742; c=relaxed/simple;
+	bh=BXMxyBcoLVy2vs3VfzP6eoaaqZZPKLakk9UwfgR8YSY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=aHPWjnYlI8DBLLZABqrZi4Xv4kbmi+puFXpqL7/WmMAXD/gck9RECWosxgxA/zxwIoScqQPsGXynz+fdBVulNKNUDZoLf4hbWITKTN03yntpdER+xzQ840oOgzStojrNfKlgklNSuiFlPM9CIdY7ndM/kN4jEMS3vFhOKMnSRU4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rumZMqZW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o/+OG6u4; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rumZMqZW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o/+OG6u4; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=Wa+G9zk1cM+GfSvbH8awP+j7T53kXkSjO9wzi4ZOPYSIkW8SUOJmppxU23Lyo6RQFFef2dn0ecJvF5KUoCAl8hVCt5MxaC4ADlGEg0ytNq6zPUq/mByl32kme9DNSF0moThOfVd5AugzLY2oJXylvF7JIlClGRSOhI57Qq43wGI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Yg7ZQsmZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=A6N3kmye; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Yg7ZQsmZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=A6N3kmye; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rumZMqZW";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o/+OG6u4";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rumZMqZW";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o/+OG6u4"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Yg7ZQsmZ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="A6N3kmye";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Yg7ZQsmZ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="A6N3kmye"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 5FB556C198;
-	Wed, 17 Jun 2026 18:13:18 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 2E9A56BFB9;
+	Wed, 17 Jun 2026 18:42:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781719998; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781721739; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
-	b=rumZMqZWbOABbUXvEb8UKfiUOFne7VJBt10MBbBZGyiSpgeZLXrX7QtT9C6HfQZSTHGppg
-	tk25pcgMSJRDQueLPR9GYGbt8u31ENCSid3AbLEXPrhOdVgR3H2Y8eNfhsDK6xlB900mLk
-	AoK2ZLIXkuujJsB4ELg5uWLAn7JHUv0=
+	bh=ei5+YRxaye/GQJVd6OEnNbhr9nBK6ENNGoXj7DqIA+8=;
+	b=Yg7ZQsmZa90Eugzei+4dTmXt2vBZbn0d19HvVi7mOfbux/BGlnINPMs4Xn18HfB3nVYTcG
+	zmKeZiK5UYF+LrMqvyLqPjpLS4sm+fHhz8nP7/mS3QVrT31dDkyXqHzSML8aOV2lV7cBpw
+	iScjaao9HanhVepBNaZautDVYjmmx9Y=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781719998;
+	s=susede2_ed25519; t=1781721739;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
-	b=o/+OG6u4tDGTLLcYlR7HftpUPnF/Ahq0I+JnZtFvhtrmxhdPI5XupGj4r2srvwI0f63AW4
-	giFUyVGx9p8DTQAg==
+	bh=ei5+YRxaye/GQJVd6OEnNbhr9nBK6ENNGoXj7DqIA+8=;
+	b=A6N3kmyePayco2tOeYo/4fo0IKc7rGGRO4c1bM0UKJsX+PIma5ZBOH8jqusCWGKoTDZfgi
+	XYwwf/88w1dDzJDA==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=rumZMqZW;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="o/+OG6u4"
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Yg7ZQsmZ;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=A6N3kmye
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781719998; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781721739; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
-	b=rumZMqZWbOABbUXvEb8UKfiUOFne7VJBt10MBbBZGyiSpgeZLXrX7QtT9C6HfQZSTHGppg
-	tk25pcgMSJRDQueLPR9GYGbt8u31ENCSid3AbLEXPrhOdVgR3H2Y8eNfhsDK6xlB900mLk
-	AoK2ZLIXkuujJsB4ELg5uWLAn7JHUv0=
+	bh=ei5+YRxaye/GQJVd6OEnNbhr9nBK6ENNGoXj7DqIA+8=;
+	b=Yg7ZQsmZa90Eugzei+4dTmXt2vBZbn0d19HvVi7mOfbux/BGlnINPMs4Xn18HfB3nVYTcG
+	zmKeZiK5UYF+LrMqvyLqPjpLS4sm+fHhz8nP7/mS3QVrT31dDkyXqHzSML8aOV2lV7cBpw
+	iScjaao9HanhVepBNaZautDVYjmmx9Y=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781719998;
+	s=susede2_ed25519; t=1781721739;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
-	b=o/+OG6u4tDGTLLcYlR7HftpUPnF/Ahq0I+JnZtFvhtrmxhdPI5XupGj4r2srvwI0f63AW4
-	giFUyVGx9p8DTQAg==
+	bh=ei5+YRxaye/GQJVd6OEnNbhr9nBK6ENNGoXj7DqIA+8=;
+	b=A6N3kmyePayco2tOeYo/4fo0IKc7rGGRO4c1bM0UKJsX+PIma5ZBOH8jqusCWGKoTDZfgi
+	XYwwf/88w1dDzJDA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 210F5779A8;
-	Wed, 17 Jun 2026 18:13:18 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 17772779A8;
+	Wed, 17 Jun 2026 18:42:19 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id AfUHCL7jMmptfwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 17 Jun 2026 18:13:18 +0000
+	id sqK1BYvqMmpvHAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 17 Jun 2026 18:42:19 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 97A12A0EC0; Wed, 17 Jun 2026 20:13:14 +0200 (CEST)
-Date: Wed, 17 Jun 2026 20:13:14 +0200
+	id AF003A0EC0; Wed, 17 Jun 2026 20:42:14 +0200 (CEST)
+Date: Wed, 17 Jun 2026 20:42:14 +0200
 From: Jan Kara <jack@suse.cz>
 To: Yun Zhou <yun.zhou@windriver.com>
 Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
 	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
 	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v7 0/4] ext4: fix xattr iput deadlock with
- s_writepages_rwsem
-Message-ID: <o63nwdmeoqscllaitti32enjhet4fcvstv5eh4wooviwxmsosl@mooyvfa5dfqm>
+Subject: Re: [PATCH v7 3/4] ext4: introduce ext4_put_ea_inode() for safe
+ deferred iput
+Message-ID: <jxcbsd2ot63wy3dcoximemkuitwoqn2a7jgxcsfdwaf5q3ecdu@sahahqqopo6y>
 References: <20260616151558.1728881-1-yun.zhou@windriver.com>
+ <20260616151558.1728881-4-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,9 +91,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260616151558.1728881-1-yun.zhou@windriver.com>
+In-Reply-To: <20260616151558.1728881-4-yun.zhou@windriver.com>
 X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 5FB556C198
+X-Rspamd-Queue-Id: 2E9A56BFB9
 X-Spam-Flag: NO
 X-Spam-Score: -2.51
 X-Spam-Level: 
@@ -105,147 +106,165 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_DN_SOME(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	ARC_NA(0.00)[];
 	RCVD_COUNT_THREE(0.00)[3];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
 	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCPT_COUNT_SEVEN(0.00)[10];
 	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
 	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	TAGGED_RCPT(0.00)[];
 	DKIM_TRACE(0.00)[suse.cz:+];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 
-On Tue 16-06-26 23:15:54, Yun Zhou wrote:
-> This series fixes a circular lock dependency reported by syzbot:
+On Tue 16-06-26 23:15:57, Yun Zhou wrote:
+> Calling iput() on EA inodes while holding xattr_sem or a jbd2 handle
+> can trigger write_inode_now() -> ext4_writepages() -> s_writepages_rwsem,
+> creating a lock ordering issue during mount (!SB_ACTIVE).
 > 
->   s_writepages_rwsem --> jbd2_handle --> xattr_sem --> s_writepages_rwsem
+> Add ext4_put_ea_inode() which safely releases EA inode references:
+> when SB_ACTIVE, it calls iput() directly (write_inode_now cannot be
+> triggered); during mount (!SB_ACTIVE), it queues the inode on a per-sb
+> lock-free llist and schedules a worker to call iput() in a clean
+> context without holding any ext4 locks.
 > 
-> The deadlock occurs when iput() on an EA inode triggers write_inode_now()
-> while xattr_sem and a jbd2 handle are held.  The triggering path is
-> during mount-time orphan cleanup (!SB_ACTIVE) where iput_final() calls
-> write_inode_now() synchronously.
+> Convert the iput in ext4_xattr_block_set()'s "Drop the previous xattr
+> block" path to use ext4_xattr_inode_array_free_deferred(), which
+> releases EA inodes via ext4_put_ea_inode().  This path previously called
+> ext4_xattr_inode_array_free() (synchronous iput) while holding xattr_sem
+> and a jbd2 handle.
 > 
-> Patch 1 blocks the deadlock by skipping extra isize expansion when
-> !SB_ACTIVE -- this prevents the xattr manipulation path from being
-> entered during mount.
+> The worker is flushed in ext4_put_super() before journal destruction to
+> ensure all pending EA inode cleanup completes while the journal is still
+> available.
 > 
-> Patch 2 is a belt-and-suspenders semantic improvement: an inode under
-> eviction never needs extra isize expansion.
-> 
-> Patches 3-4 are a structural improvement using a per-sb workqueue:
-> 
->   Patch 3 introduces ext4_put_ea_inode(), which does direct iput() when
->   SB_ACTIVE (zero overhead) and defers to a workqueue when !SB_ACTIVE.
->   It also converts the first call site (ext4_xattr_block_set release
->   path) which previously called iput under xattr_sem + jbd2 handle.
-> 
->   Patch 4 converts the remaining EA inode iput() calls that execute
->   under locks.  Sites where direct iput() is provably safe (i_nlink=0
->   after dec_ref, or lookup-only paths) are left unchanged with comments.
-> 
-> Link: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
+> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
 
-Please don't send the series so quickly. I'd say twice per week is about
-maximum sensible cadence. It takes time (easily several days) for people to
-get to look at your patches and sending your patches sometimes even several
-times per day just creates a mess in the mailbox.
+Yes, this goes in the direction I intended. But I have couple of
+suggestions:
 
-Also in some previous version, I gave my Reviewed-by tag for patch 1 and
-some comment and Reviewed-by tag for patch 2. So please reflect that in the
-next posting.
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 94283a991e5c..690202303269 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1706,6 +1706,11 @@ struct ext4_sb_info {
+>  	struct ext4_es_stats s_es_stats;
+>  	struct mb_cache *s_ea_block_cache;
+>  	struct mb_cache *s_ea_inode_cache;
+> +
+> +	/* Deferred iput for EA inodes to avoid lock ordering issues */
+> +	struct llist_head s_ea_inode_to_free;
+> +	struct work_struct s_ea_inode_work;
+> +
+
+I'd probably use delayed work and schedule it with a delay of one jiffie so
+that some inodes can accumulate before we process them which should reduce
+the amount of task switching to workqueues.
+
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 6a77db4d3124..b777bb0a81ea 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1308,6 +1308,9 @@ static void ext4_put_super(struct super_block *sb)
+>  	destroy_workqueue(sbi->rsv_conversion_wq);
+>  	ext4_release_orphan_info(sb);
+>  
+> +	/* Flush deferred EA inode iputs before destroying journal */
+> +	flush_work(&sbi->s_ea_inode_work);
+> +
+
+This should happen earlier in ext4_put_super(). At this place quotas were
+already turned off and so quota accounting would go wrong.
+
+> @@ -3025,6 +3028,74 @@ void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *ea_inode_array)
+>  	kfree(ea_inode_array);
+>  }
+>  
+> +static void ext4_xattr_inode_array_free_deferred(struct super_block *sb,
+> +				struct ext4_xattr_inode_array *array)
+> +{
+> +	int idx;
+> +
+> +	if (array == NULL)
+> +		return;
+> +
+> +	for (idx = 0; idx < array->count; ++idx)
+> +		ext4_put_ea_inode(sb, array->inodes[idx]);
+> +	kfree(array);
+> +}
+
+The array of EA inodes used in xattr handling is just another mechanism
+used for delaying iput() of EA inodes. It doesn't make sense to stack these
+to one on top of another. Just completely replace the array mechanism with
+always deferring iput of EA inode into the workqueue.
+
+> +struct ext4_ea_iput_entry {
+> +	struct llist_node node;
+> +	struct inode *inode;
+> +};
+> +
+> +/*
+> + * Worker function for deferred EA inode iput.  Processes all inodes queued
+> + * on s_ea_inode_to_free in a context free of xattr_sem/jbd2 handle locks.
+> + */
+> +void ext4_ea_inode_work(struct work_struct *work)
+> +{
+> +	struct ext4_sb_info *sbi = container_of(work, struct ext4_sb_info,
+> +						s_ea_inode_work);
+> +	struct llist_node *node = llist_del_all(&sbi->s_ea_inode_to_free);
+> +	struct llist_node *next;
+> +
+> +	while (node) {
+> +		struct ext4_ea_iput_entry *entry = container_of(node,
+> +				struct ext4_ea_iput_entry, node);
+> +		next = node->next;
+> +		iput(entry->inode);
+> +		kfree(entry);
+> +		node = next;
+> +	}
+> +}
+
+Allocating ext4_ea_iput_entry for dropping each inode is somewhat wasteful.
+I want to suggest another scheme (somewhat more involved but more efficient
+scheme):
+
+1) Create a VFS helper bool iput_if_not_last(struct inode *inode) which
+drops inode reference if it is not the last one (and returns true in that
+case). Basically:
+
+bool iput_if_not_last(struct inode *inode)
+{
+	return atomic_add_unless(&inode->i_count, -1, 1);
+}
+
+This needs to be a separate patch as it should get vetting from VFS
+maintainers.
+
+2) Use iput_if_not_last() in ext4_put_ea_inode(). If it returns true, we
+are done. Otherwise we know we were at least for a moment holders of the
+last inode reference, so we link the inode to the list of inodes to drop
+through llist_node embedded in ext4_inode_info. We cannot race with anybody
+else trying to link the same inode into the list because we hold one inode
+ref and so nobody else can hit this "I was holding the last ref" path.
+I'd union this llist_node say with xattr_sem which is unused for EA inodes
+to avoid growing ext4_inode_info.
+
+This way we avoid offloading unless really necessary and we don't have to
+do allocations just to drop EA inode ref.
 
 								Honza
-
-> v7:
->  - Replaced the deferred-iput array threading approach (v4-v6) with a
->    simpler per-sb workqueue + lock-free llist design.  No function
->    signature changes needed.  ext4_put_ea_inode() does direct iput when
->    SB_ACTIVE (zero overhead in normal operation) and defers to the
->    workqueue only during mount (!SB_ACTIVE).
->  - Converted the iput in ext4_xattr_delete_inode()'s quota accounting
->    loop to ext4_put_ea_inode() to eliminate a lockdep-reportable lock
->    ordering violation (jbd2_handle -> iput -> s_writepages_rwsem).
->  - Moved flush_work() before the if (sbi->s_journal) check in
->    ext4_put_super() to cover nojournal mode.
-> 
-> v6:
->  - ext4_inline_data_truncate(): use local ea_inode_array instead of
->    passing NULL, freed after ext4_journal_stop().  Fixes a deadlock
->    reachable via crafted filesystem where inline data xattr entry has
->    e_value_inum set: orphan cleanup -> ext4_truncate ->
->    ext4_inline_data_truncate -> iput under !SB_ACTIVE.
-> 
-> v5:
->  - Split into 3 patches for easier review.
->  - Add explicit !SB_ACTIVE early-return in ext4_try_to_expand_extra_isize()
->    to block ALL mount-time paths (ext4_process_orphan -> ext4_truncate ->
->    ext4_mark_inode_dirty), not just the eviction path. v4 only relied on
->    EXT4_STATE_NO_EXPAND which doesn't cover orphan truncation.
-> 
-> v4:
->  - Comprehensive rewrite of the deferred iput mechanism.
->  - Thread ea_inode_array through ext4_expand_extra_isize_ea() and
->    ext4_xattr_move_to_block() so ALL ea_inode iputs in the expand
->    path are deferred, not just those in ext4_xattr_block_set().
->  - Add NULL safety to ext4_expand_inode_array(): when ea_inode_array
->    pointer is NULL, fall back to synchronous iput (for callers like
->    ext4_initxattrs that only run with SB_ACTIVE).
->  - Use __GFP_NOFAIL to guarantee deferred array growth, eliminating
->    fallback to synchronous iput under locks.
->  - Update ext4_xattr_ibody_set() and ext4_xattr_set_entry() signatures
->    to accept ea_inode_array, converting ALL iput(ea_inode) calls.
->  - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() before
->    ext4_mark_inode_dirty().
-> 
-> v3:
->  - Check ext4_expand_inode_array() return value; fallback to
->    direct iput() on ENOMEM to prevent inode leak.
->  - Make ext4_xattr_set_handle() take an optional ea_inode_array
->    output parameter so callers can free after ext4_journal_stop(),
->    avoiding the jbd2_handle vs s_writepages_rwsem AB-BA.
->  - Pass ea_inode_array directly to ext4_xattr_release_block()
->    instead of using a local array freed under xattr_sem.
->  - Move ext4_xattr_inode_array_free() after ext4_journal_stop()
-> 
-> v2:
->  - Defer iput() in ext4_xattr_block_set() via ea_inode_array,
->    freed after xattr_sem is released. Fixes the root cause.
-> 
-> v1:
->  - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() to skip expand
->    on inodes being deleted. Only fixes the syzbot reproducer, not
->    the underlying lock ordering violation.
-> 
-> Yun Zhou (4):
->   ext4: skip extra isize expansion during mount to prevent deadlock
->   ext4: set EXT4_STATE_NO_EXPAND in ext4_evict_inode
->   ext4: introduce ext4_put_ea_inode() for safe deferred iput
->   ext4: convert remaining EA inode iput() calls to ext4_put_ea_inode()
-> 
->  fs/ext4/ext4.h  |   5 +++
->  fs/ext4/inode.c |  11 +++++
->  fs/ext4/super.c |   6 +++
->  fs/ext4/xattr.c | 105 +++++++++++++++++++++++++++++++++++++++++++-----
->  fs/ext4/xattr.h |   2 +
->  5 files changed, 120 insertions(+), 9 deletions(-)
-> 
-> -- 
-> 2.43.0
-> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
