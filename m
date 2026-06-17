@@ -1,287 +1,251 @@
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 290BC3F1AC1
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 13:22:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59157367B61
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 18:13:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781702539; cv=none; b=Sy87ct0Yypxn6JOM7zBF1e81xxkp2YbJ3G4RfvDMjRHghinLz/OZeAj/XkVSs1MBgg1jsK1r4sK6qWuI+TRe2xItkaq2TO4FdYGTgkGQmeomDnV3t0vce19vvvqsTIQsnSWg8TIGo3xFgmcqkcb21ZJHJ7oi3ViSXkxwDkas5Gw=
+	t=1781720002; cv=none; b=BJAMqdlL+f5E3lrS//jnNy4smCy/8R16nW7HBVEyo66ZXHgdZmPdP5KC/pwm9ed9YdkbNqzLvr7Or4PrshwWJEuQ7lVbdMQNauaywAsayAEwOly7EaUxs/DnPfsICt3ScaUxcDOihzEouxb+jUidvVtFscE0oF9+RtXuNC1xKL8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781702539; c=relaxed/simple;
-	bh=cl9Zq1MYYIwqx/qUH20r2SBwJINs5XA50B3Ivl1XHi0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=cjeMepw/zVi8Gog6CXS+qC/4IbZ2MaZWdalNq6z6RTgQW0bilk6YmNKF5gJB49vFX5jM2o6v90sloLpjBorgg/O38Zns6+j18RmcTxEjarq8XLC0+exNkQScp5tAMJBZLL90Bry6N+KCmXa47z7x4W3B0dSFziF4TWbXoc6g4Nk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PZkO5XRe; arc=none smtp.client-ip=209.85.214.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1781720002; c=relaxed/simple;
+	bh=4NlvvutN4M6ymuCO3RLZ4PPy9sVzCOohDdnu+UbhEE8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=aHPWjnYlI8DBLLZABqrZi4Xv4kbmi+puFXpqL7/WmMAXD/gck9RECWosxgxA/zxwIoScqQPsGXynz+fdBVulNKNUDZoLf4hbWITKTN03yntpdER+xzQ840oOgzStojrNfKlgklNSuiFlPM9CIdY7ndM/kN4jEMS3vFhOKMnSRU4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rumZMqZW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o/+OG6u4; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rumZMqZW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o/+OG6u4; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PZkO5XRe"
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2c6ab886da6so9892675ad.0
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 06:22:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781702536; x=1782307336; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=VEWyYTJkFHrNJL0Tf6CUABwXAes876mCeFHO3nb8fr4=;
-        b=PZkO5XReUhIo+uFKC1BWc5C2HRdyRHskFUkKqTM/yVU5QcBQKUqIkFvjqmXE6sQES6
-         2AimmAsdbiLSl7l5KuAuXiJ6w+IaY9uxwB+18d8fO29yGzUYCSJPi2gmXw2jpcK2meKM
-         Oi+CVqSoAHJ7M/i87DmdPqNv1aKFuqH/TYJ6Mf/d/TjQHb2Xv0MSprl9IvHMcFFqmOlS
-         Q+yMvxCgU/PgDEchCk8NLnYKm79qDJznoKbHh4ew/2FebJVMo7bOul9CXREzKaiZKXrx
-         G76vIkbjRexxeHgGMLnC/3sQnwS9Jkm8q1bXCVPYz2Blymg1Lqpa/t9rOI7CIrMCusHE
-         yMzQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781702536; x=1782307336;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=VEWyYTJkFHrNJL0Tf6CUABwXAes876mCeFHO3nb8fr4=;
-        b=KncMyWNm6KCmfBioayWSCDLPA/7n+MxPS3Hq18+hq89vp7bJpRx2Avxe0b1TIZfah3
-         le/7OxTKUDFbmO8LWtD5LVip14VzZKUc9BM5x3tRUqZhC+Nyl6XRvAqJmVI+38LbwLyJ
-         CY9vSr3NASQOCbGPIHlYwDLWRAGxqtWWmZuU+IxgS+/R/bL/gz1QQCKNwe0KgzuLyxJF
-         ufu2/JCDy+mWLqhdzYJYft/AhmDRlPTwpJaYcg/+XlxYMy7zlZJyoUdUGm7fDpnfhkAE
-         s6nyAS9Terrg2kzucHoznocGxdiSs6/9/j1gS3Nh+XRuDjNvnVEyxbDVKDJZOf+SFUR3
-         lDbA==
-X-Forwarded-Encrypted: i=1; AFNElJ8HdRIhyMoFC/u3oJ/AEj2wnz5YzpEEiwRpK3+SlbVp3TCQxIQws67PAhjGB75zdcfrGU9S1jq8zgoD@vger.kernel.org
-X-Gm-Message-State: AOJu0Yza81Bo14Grwn/rIRinYeoFbTxmY8RXJFQH2c5Jv8OPFN7V4Ubs
-	X7faByYCbyadsh3vMW+Cet+jhMhkiGMDZJCUUmZ5b/22R3V5Mqbm82ji
-X-Gm-Gg: AfdE7cmu7sacQAudgODorefo+4IIRmpEOUILi2bVzlLnDKNTzm4it5E1hTQWTqdZDEU
-	rwMgWa373M/7jS4DJEQ7tjYEfx2OVG07ngy4udiTepJqp9+VLNi5s1gZ4dGuYmCl8ncWpWlfLKS
-	F6YZn3UST0wz5iVZjNF6n21ZTymeb9jntMj7O0f8vNpmMFokNf7ypN9bDPs8HKhYS2CeZa2rlOw
-	xfvMxyPMBnsct3VWrp9G2WfbOiI29gBk2doIB0vrJPP9zmu5PxtzPorqF+BJnib4ZEE5JJFMMQp
-	Nqp1lWM9NNzQ4frf23ml1gN62jgZeQeL5UcP3t7pEya7Z8v0vwihLqhYNUO3++MQRH5tdi6y0uL
-	RU6MyJ0t45V5p60GqLiLXc4e+T1R6GzSRfss591hTILAsbwAYmNOpFKbJpm8ZdrGDdaesOoACLE
-	Q6Zibl6eG8sl0sDKOQ4ERJXu/tJhIpAsWM+YuSyNaCaR7ihAJ8hL/IW41AIsjY9rI=
-X-Received: by 2002:a17:903:19ed:b0:2c2:50c7:58a4 with SMTP id d9443c01a7336-2c6bc223ee0mr37937805ad.22.1781702536299;
-        Wed, 17 Jun 2026 06:22:16 -0700 (PDT)
-Received: from ?IPV6:240e:390:a92:e6d1:ed78:8bd4:5db9:c767? ([240e:390:a92:e6d1:ed78:8bd4:5db9:c767])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c4327acca5sm149502475ad.51.2026.06.17.06.22.12
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 17 Jun 2026 06:22:15 -0700 (PDT)
-Message-ID: <22315c1e-d13f-440c-b944-138ce4b7caa0@gmail.com>
-Date: Wed, 17 Jun 2026 21:22:10 +0800
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rumZMqZW";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o/+OG6u4";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rumZMqZW";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o/+OG6u4"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 5FB556C198;
+	Wed, 17 Jun 2026 18:13:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781719998; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
+	b=rumZMqZWbOABbUXvEb8UKfiUOFne7VJBt10MBbBZGyiSpgeZLXrX7QtT9C6HfQZSTHGppg
+	tk25pcgMSJRDQueLPR9GYGbt8u31ENCSid3AbLEXPrhOdVgR3H2Y8eNfhsDK6xlB900mLk
+	AoK2ZLIXkuujJsB4ELg5uWLAn7JHUv0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781719998;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
+	b=o/+OG6u4tDGTLLcYlR7HftpUPnF/Ahq0I+JnZtFvhtrmxhdPI5XupGj4r2srvwI0f63AW4
+	giFUyVGx9p8DTQAg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=rumZMqZW;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="o/+OG6u4"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781719998; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
+	b=rumZMqZWbOABbUXvEb8UKfiUOFne7VJBt10MBbBZGyiSpgeZLXrX7QtT9C6HfQZSTHGppg
+	tk25pcgMSJRDQueLPR9GYGbt8u31ENCSid3AbLEXPrhOdVgR3H2Y8eNfhsDK6xlB900mLk
+	AoK2ZLIXkuujJsB4ELg5uWLAn7JHUv0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781719998;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=Lt2uvuQza1nPpqeCcr9Dxk84JcYzwxH5ioocpOEzCA8=;
+	b=o/+OG6u4tDGTLLcYlR7HftpUPnF/Ahq0I+JnZtFvhtrmxhdPI5XupGj4r2srvwI0f63AW4
+	giFUyVGx9p8DTQAg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 210F5779A8;
+	Wed, 17 Jun 2026 18:13:18 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id AfUHCL7jMmptfwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 17 Jun 2026 18:13:18 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 97A12A0EC0; Wed, 17 Jun 2026 20:13:14 +0200 (CEST)
+Date: Wed, 17 Jun 2026 20:13:14 +0200
+From: Jan Kara <jack@suse.cz>
+To: Yun Zhou <yun.zhou@windriver.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v7 0/4] ext4: fix xattr iput deadlock with
+ s_writepages_rwsem
+Message-ID: <o63nwdmeoqscllaitti32enjhet4fcvstv5eh4wooviwxmsosl@mooyvfa5dfqm>
+References: <20260616151558.1728881-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 14/23] ext4: implement partial block zero range path
- using iomap
-To: Brian Foster <bfoster@redhat.com>, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
- ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org,
- yi.zhang@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-15-yi.zhang@huaweicloud.com>
- <c2q54d6u724xctkzwm6x7sbmg5cpvcackfz3toc47qts6iaj77@ci2czn4fqjik>
- <16cccb83-cdad-4113-8182-e8ea9e3049a2@huaweicloud.com>
- <ajJ9b91fTbM6qApg@bfoster>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <ajJ9b91fTbM6qApg@bfoster>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260616151558.1728881-1-yun.zhou@windriver.com>
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: 5FB556C198
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 
-On 6/17/2026 6:56 PM, Brian Foster wrote:
-> On Wed, Jun 17, 2026 at 04:14:40PM +0800, Zhang Yi wrote:
->> On 6/16/2026 8:28 PM, Jan Kara wrote:
->>> On Mon 11-05-26 15:23:34, Zhang Yi wrote:
->>>> From: Zhang Yi <yi.zhang@huawei.com>
->>>>
->>>> Introduce a new iomap_ops instance, ext4_iomap_zero_ops, along with
->>>> ext4_iomap_block_zero_range() to implement block zeroing via the iomap
->>>> infrastructure for ext4.
->>>>
->>>> ext4_iomap_block_zero_range() calls iomap_zero_range() with
->>>> ext4_iomap_zero_begin() as the callback. The callback locates and zeros
->>>> out either a mapped partial block or a dirty, unwritten partial block.
->>>>
->>>> Important constraints:
->>>>
->>>> Zeroing out under an active journal handle can cause deadlock, because
->>>> the order of acquiring the folio lock and starting a handle is
->>>> inconsistent with the iomap writeback path.
->>>>
->>>> Therefore, ext4_iomap_block_zero_range():
->>>> - Must NOT be called under an active handle.
->>>> - Cannot rely on data=ordered mode to ensure zeroed data persistence
->>>>    before updating i_disksize (for the cases of post-EOF append write,
->>>>    post-EOF fallocate, and truncate up). In subsequent patches, we will
->>>>    address this by synchronizing commit I/O but doesn't waiting for
->>>>    completion, and updating i_disksize to i_size only after the zeroed
->>>>    data has been written back.
->>>>
->>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>>> ---
->>>>   fs/ext4/inode.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++
->>>>   1 file changed, 92 insertions(+)
->>>>
->>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>>> index c6fe42d012fc..e0dae2501292 100644
->>>> --- a/fs/ext4/inode.c
->>>> +++ b/fs/ext4/inode.c
->>>> @@ -4101,6 +4101,51 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
->>>>   	return 0;
->>>>   }
->>>>   
->>>> +static int ext4_iomap_zero_begin(struct inode *inode,
->>>> +		loff_t offset, loff_t length, unsigned int flags,
->>>> +		struct iomap *iomap, struct iomap *srcmap)
->>>> +{
->>>> +	struct iomap_iter *iter = container_of(iomap, struct iomap_iter, iomap);
->>>
->>> This looks like a layering violation to me. I don't think you can safely
->>> assume the iomap you're passed is a part of iomap_iter...
->>>
->>>> +	struct ext4_map_blocks map;
->>>> +	u8 blkbits = inode->i_blkbits;
->>>> +	unsigned int iomap_flags = 0;
->>>> +	int ret;
->>>> +
->>>> +	ret = ext4_emergency_state(inode->i_sb);
->>>> +	if (unlikely(ret))
->>>> +		return ret;
->>>> +
->>>> +	if (WARN_ON_ONCE(!(flags & IOMAP_ZERO)))
->>>> +		return -EINVAL;
->>>> +
->>>> +	ret = ext4_iomap_map_blocks(inode, offset, length, NULL, &map);
->>>> +	if (ret < 0)
->>>> +		return ret;
->>>> +
->>>> +	/*
->>>> +	 * Look up dirty folios for unwritten mappings within EOF. Providing
->>>> +	 * this bypasses the flush iomap uses to trigger extent conversion
->>>> +	 * when unwritten mappings have dirty pagecache in need of zeroing.
->>>> +	 */
->>>> +	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
->>>> +		loff_t start = ((loff_t)map.m_lblk) << blkbits;
->>>> +		loff_t end = ((loff_t)map.m_lblk + map.m_len) << blkbits;
->>>> +
->>>> +		iomap_fill_dirty_folios(iter, &start, end, &iomap_flags);
->>>> +		if ((start >> blkbits) < map.m_lblk + map.m_len)
->>>> +			map.m_len = (start >> blkbits) - map.m_lblk;
->>>> +	}
->>>
->>> ... and you need access to iter only for this which seems to be really a
->>> hack that's trying to outsmart the iomap code. I have to admit I don't
->>> fully understand what you are trying to achieve here. Are you trying to
->>> avoid flushing of the range that will be zeroed out?
->>
->> This logic is copied from the XFS and iomap infrastructure. Its primary
->> purpose is to optimize the zeroing operations on dirty written extents.
->> It was introduced by Brian in [1].
->>
->> The history as I understand it: originally, the iomap infrastructure
->> could not zero dirty unwritten extents during zero range processing,
->> which led to stale data exposure. XFS had to flush dirty ranges itself
->> before zeroing — a workaround that was not generic.
->>
->> In c5c810b94cf ("iomap: fix handling of dirty folios over unwritten
->> extents"), Brian added an unconditional flush in the iomap
->> infrastructure, ensuring that by the time zeroing runs the extent has
->> already been converted to written so the zero can proceed correctly.
->> However, this flush was too heavy and introduced noticeable performance
->> overhead.
->>
->> This was then optimized in 7d9b474ee4cc3 ("iomap: make zero range flush
->> conditional on unwritten mappings"), which restricts flushing to only
->> dirty pagecache over unwritten or hole mappings.
->>
->> Brian later proposed a different approach: rather than relying on flush
->> to convert the extent type, find dirty folios ahead of the zero range
->> and zero the dirty unwritten extents directly. In [1] he added this
->> lookup logic. The filesystem now supplies a folio batch (a collection of
->> dirty folios) via the iomap begin callback, and zero range iterates over
->> these dirty folios to perform zeroing. Clean regions not covered by the
->> batch are simply skipped. This entirely eliminates the need to flush.
->>
->> [1] https://lore.kernel.org/linux-xfs/20251003134642.604736-1-bfoster@redhat.com/
->>
->> If I understand correctly, the current approach is a compromise, and
->> Brian is still working on this. Perhaps ext4 and XFS could work together
->> on improvements in the future?
->>
+On Tue 16-06-26 23:15:54, Yun Zhou wrote:
+> This series fixes a circular lock dependency reported by syzbot:
 > 
-> I think that about covers it!
+>   s_writepages_rwsem --> jbd2_handle --> xattr_sem --> s_writepages_rwsem
 > 
-> I do agree wrt to the iomap_iter thing in that it doesn't seem like the
-> most elegant thing. I considered that a bit of a roadblock when first
-> hacking on the batch stuff, but IIRC somebody pointed out that there was
-> precedent already so I didn't think too hard about it after that. Indeed
-> if you poke around, other filesystems use a similar pattern to access
-> iter->private for whatever private context is carried around.
+> The deadlock occurs when iput() on an EA inode triggers write_inode_now()
+> while xattr_sem and a jbd2 handle are held.  The triggering path is
+> during mount-time orphan cleanup (!SB_ACTIVE) where iput_final() calls
+> write_inode_now() synchronously.
 > 
-> FWIW, one of the longer term thoughts for the dirty folio stuff was to
-> eventually lift it out of the callback and just have iomap do it for the
-> fs. That would eliminate this particular pattern and probably clean
-> things up a bit, but there were also some other caveats with that that
-> aren't top of mind atm (IIRC, things like dealing with map trimming,
-> etc., but I haven't had a chance to think about it in a while).
+> Patch 1 blocks the deadlock by skipping extra isize expansion when
+> !SB_ACTIVE -- this prevents the xattr manipulation path from being
+> entered during mount.
+> 
+> Patch 2 is a belt-and-suspenders semantic improvement: an inode under
+> eviction never needs extra isize expansion.
+> 
+> Patches 3-4 are a structural improvement using a per-sb workqueue:
+> 
+>   Patch 3 introduces ext4_put_ea_inode(), which does direct iput() when
+>   SB_ACTIVE (zero overhead) and defers to a workqueue when !SB_ACTIVE.
+>   It also converts the first call site (ext4_xattr_block_set release
+>   path) which previously called iput under xattr_sem + jbd2 handle.
+> 
+>   Patch 4 converts the remaining EA inode iput() calls that execute
+>   under locks.  Sites where direct iput() is provably safe (i_nlink=0
+>   after dec_ref, or lookup-only paths) are left unchanged with comments.
+> 
+> Link: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
 
-Thanks for the additional information. This looks like a promising
-direction. The usage on the ext4 side is relatively simple at the
-moment, so the main concern is whether this would cause any issues for
-XFS and other filesystems. This can be investigated later when time
-permits — it's not urgent at this point.
+Please don't send the series so quickly. I'd say twice per week is about
+maximum sensible cadence. It takes time (easily several days) for people to
+get to look at your patches and sending your patches sometimes even several
+times per day just creates a mess in the mailbox.
 
+Also in some previous version, I gave my Reviewed-by tag for patch 1 and
+some comment and Reviewed-by tag for patch 2. So please reflect that in the
+next posting.
+
+								Honza
+
+> v7:
+>  - Replaced the deferred-iput array threading approach (v4-v6) with a
+>    simpler per-sb workqueue + lock-free llist design.  No function
+>    signature changes needed.  ext4_put_ea_inode() does direct iput when
+>    SB_ACTIVE (zero overhead in normal operation) and defers to the
+>    workqueue only during mount (!SB_ACTIVE).
+>  - Converted the iput in ext4_xattr_delete_inode()'s quota accounting
+>    loop to ext4_put_ea_inode() to eliminate a lockdep-reportable lock
+>    ordering violation (jbd2_handle -> iput -> s_writepages_rwsem).
+>  - Moved flush_work() before the if (sbi->s_journal) check in
+>    ext4_put_super() to cover nojournal mode.
 > 
-> Also note that this isn't necessarily a hard requirement. It's an
-> optional optimization. iomap will flush and retry in the dirty
-> pagecache+unwritten extent case if the fs hasn't otherwised provided
-> folios to make sure it zeroes properly, it's just that performance of
-> that may or may not be acceptable for your use case.
+> v6:
+>  - ext4_inline_data_truncate(): use local ea_inode_array instead of
+>    passing NULL, freed after ext4_journal_stop().  Fixes a deadlock
+>    reachable via crafted filesystem where inline data xattr entry has
+>    e_value_inum set: orphan cleanup -> ext4_truncate ->
+>    ext4_inline_data_truncate -> iput under !SB_ACTIVE.
 > 
-> Brian
-
-Yes, we will try to adopt the folio batch approach as much as possible,
-hoping to reduce unnecessary performance overhead through it.
-
-Thanks,
-Yi.
-
+> v5:
+>  - Split into 3 patches for easier review.
+>  - Add explicit !SB_ACTIVE early-return in ext4_try_to_expand_extra_isize()
+>    to block ALL mount-time paths (ext4_process_orphan -> ext4_truncate ->
+>    ext4_mark_inode_dirty), not just the eviction path. v4 only relied on
+>    EXT4_STATE_NO_EXPAND which doesn't cover orphan truncation.
 > 
->>>
->>>> +	ret = iomap_zero_range(inode, from, length, did_zero,
->>>> +			       &ext4_iomap_zero_ops, &ext4_iomap_write_ops,
->>>> +			       NULL);
->>>> +	if (ret)
->>>> +		return ret;
->>>> +
->>>> +	/*
->>>> +	 * TODO: The iomap does not distinguish between different types of
->>>> +	 * zeroing and always sets zero_written if a zeroing operation is
->>>> +	 * performed, which may result in unnecessary order operations.
->>>> +	 */
->>>
->>> Is this still true after your fix to did_zero handling?
->>
->> Yeah. Currently, iomap_zero_range() can only report whether a zeroing
->> operation has occurred through did_zero parameter, but it cannot
->> distinguish whether the zeroed range is a written extent that already
->> exists on disk. That is, even if the zeroing is performed on a delalloc
->> extent, did_zero will still return true.
->>
->> Thanks,
->> Yi.
->>
->>>
->>>> +	if (did_zero && zero_written)
->>>> +		*zero_written = *did_zero;
->>>> +
->>>> +	return 0;
->>>> +}
->>>> +
->>>>   /*
->>>>    * Zeros out a mapping of length 'length' starting from file offset
->>>>    * 'from'.  The range to be zero'd must be contained with in one block.
->>>
->>> 								Honza
->>
+> v4:
+>  - Comprehensive rewrite of the deferred iput mechanism.
+>  - Thread ea_inode_array through ext4_expand_extra_isize_ea() and
+>    ext4_xattr_move_to_block() so ALL ea_inode iputs in the expand
+>    path are deferred, not just those in ext4_xattr_block_set().
+>  - Add NULL safety to ext4_expand_inode_array(): when ea_inode_array
+>    pointer is NULL, fall back to synchronous iput (for callers like
+>    ext4_initxattrs that only run with SB_ACTIVE).
+>  - Use __GFP_NOFAIL to guarantee deferred array growth, eliminating
+>    fallback to synchronous iput under locks.
+>  - Update ext4_xattr_ibody_set() and ext4_xattr_set_entry() signatures
+>    to accept ea_inode_array, converting ALL iput(ea_inode) calls.
+>  - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() before
+>    ext4_mark_inode_dirty().
 > 
-
+> v3:
+>  - Check ext4_expand_inode_array() return value; fallback to
+>    direct iput() on ENOMEM to prevent inode leak.
+>  - Make ext4_xattr_set_handle() take an optional ea_inode_array
+>    output parameter so callers can free after ext4_journal_stop(),
+>    avoiding the jbd2_handle vs s_writepages_rwsem AB-BA.
+>  - Pass ea_inode_array directly to ext4_xattr_release_block()
+>    instead of using a local array freed under xattr_sem.
+>  - Move ext4_xattr_inode_array_free() after ext4_journal_stop()
+> 
+> v2:
+>  - Defer iput() in ext4_xattr_block_set() via ea_inode_array,
+>    freed after xattr_sem is released. Fixes the root cause.
+> 
+> v1:
+>  - Set EXT4_STATE_NO_EXPAND in ext4_evict_inode() to skip expand
+>    on inodes being deleted. Only fixes the syzbot reproducer, not
+>    the underlying lock ordering violation.
+> 
+> Yun Zhou (4):
+>   ext4: skip extra isize expansion during mount to prevent deadlock
+>   ext4: set EXT4_STATE_NO_EXPAND in ext4_evict_inode
+>   ext4: introduce ext4_put_ea_inode() for safe deferred iput
+>   ext4: convert remaining EA inode iput() calls to ext4_put_ea_inode()
+> 
+>  fs/ext4/ext4.h  |   5 +++
+>  fs/ext4/inode.c |  11 +++++
+>  fs/ext4/super.c |   6 +++
+>  fs/ext4/xattr.c | 105 +++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/ext4/xattr.h |   2 +
+>  5 files changed, 120 insertions(+), 9 deletions(-)
+> 
+> -- 
+> 2.43.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
