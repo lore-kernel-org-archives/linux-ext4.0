@@ -1,65 +1,66 @@
-Received: from mail-pj1-f54.google.com (mail-pj1-f54.google.com [209.85.216.54])
+Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4309C3FD131
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 13:00:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 290BC3F1AC1
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 13:22:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781701251; cv=none; b=u3VDgvFMpEAghcfDvDJJRaHWsrA5O0nl8WDPj9qG47d53dPHYfcgjPm1HgU7BYhkinLS4bqZiABh6DVT7YZH+zVnj7EEifE0Q98nHGTCBlzwlGdil2BUnxwCVQc1Bk1xliRrD3kE7LgERZZDgJyDnbFAYq6c215FL+jY9t7MVA8=
+	t=1781702539; cv=none; b=Sy87ct0Yypxn6JOM7zBF1e81xxkp2YbJ3G4RfvDMjRHghinLz/OZeAj/XkVSs1MBgg1jsK1r4sK6qWuI+TRe2xItkaq2TO4FdYGTgkGQmeomDnV3t0vce19vvvqsTIQsnSWg8TIGo3xFgmcqkcb21ZJHJ7oi3ViSXkxwDkas5Gw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781701251; c=relaxed/simple;
-	bh=UEOqeZy4nuSiMcJbDnhYvbNKPHX4GO6itY+DAaN4aYY=;
+	s=arc-20240116; t=1781702539; c=relaxed/simple;
+	bh=cl9Zq1MYYIwqx/qUH20r2SBwJINs5XA50B3Ivl1XHi0=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=ov9EWPNJs31CemA7pq+5nU54kwfNgNZHPPFMwLyf0yH886p/Q1NG6ysPUaZSLRDH7Vp9eGIppe8YExob7GnVa6H8ZJR7ZAIX/qPZxswr+J9RsLZRxF0g49/8AzFNsUirZTPNAG1nw/lu3CZ29ANOPdCLSXZNJeMkVRc1IBmLNHA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HtjdaZGI; arc=none smtp.client-ip=209.85.216.54
+	 In-Reply-To:Content-Type; b=cjeMepw/zVi8Gog6CXS+qC/4IbZ2MaZWdalNq6z6RTgQW0bilk6YmNKF5gJB49vFX5jM2o6v90sloLpjBorgg/O38Zns6+j18RmcTxEjarq8XLC0+exNkQScp5tAMJBZLL90Bry6N+KCmXa47z7x4W3B0dSFziF4TWbXoc6g4Nk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PZkO5XRe; arc=none smtp.client-ip=209.85.214.174
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HtjdaZGI"
-Received: by mail-pj1-f54.google.com with SMTP id 98e67ed59e1d1-37c5b9d42efso457972a91.1
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 06:00:50 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PZkO5XRe"
+Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2c6ab886da6so9892675ad.0
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2026 06:22:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781701250; x=1782306050; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1781702536; x=1782307336; darn=vger.kernel.org;
         h=content-transfer-encoding:in-reply-to:from:content-language
          :references:cc:to:subject:user-agent:mime-version:date:message-id
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=1k2m3aSHTjqA6bdTXWu0OZg7gZ+wtGbmj+2TwUuz208=;
-        b=HtjdaZGIt71DANrlStykmIbZJ6NYy7wf4Bmf/+FsHNupNMZm/GLQ/lzmVbVJ1788VY
-         fadHx6vLegwJ9JJkLUemxjcwqoFI11carrj+pvsurlHfpFP7TLwy0bC2t6VQji3nYvGT
-         qz+Gv+joHGjaLs9jLZcXD6zThrUhh33ZQ5FngmR/uFaaR1gSknEPDfr3CpYIJHpcytXP
-         8bLwv+MDqC3YR2y791vbtXPLZaGqZfoCyVBZDrGFUnowqkBmlnI+YqzjSSfYhVovqbkd
-         dpuXAP6MZWEyq7ILgKKNLpt5MmEIIfVlDg2/65djQfsA6LtRboNhNSXbKO9a7NLWUeex
-         c0zw==
+        bh=VEWyYTJkFHrNJL0Tf6CUABwXAes876mCeFHO3nb8fr4=;
+        b=PZkO5XReUhIo+uFKC1BWc5C2HRdyRHskFUkKqTM/yVU5QcBQKUqIkFvjqmXE6sQES6
+         2AimmAsdbiLSl7l5KuAuXiJ6w+IaY9uxwB+18d8fO29yGzUYCSJPi2gmXw2jpcK2meKM
+         Oi+CVqSoAHJ7M/i87DmdPqNv1aKFuqH/TYJ6Mf/d/TjQHb2Xv0MSprl9IvHMcFFqmOlS
+         Q+yMvxCgU/PgDEchCk8NLnYKm79qDJznoKbHh4ew/2FebJVMo7bOul9CXREzKaiZKXrx
+         G76vIkbjRexxeHgGMLnC/3sQnwS9Jkm8q1bXCVPYz2Blymg1Lqpa/t9rOI7CIrMCusHE
+         yMzQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781701250; x=1782306050;
+        d=1e100.net; s=20251104; t=1781702536; x=1782307336;
         h=content-transfer-encoding:in-reply-to:from:content-language
          :references:cc:to:subject:user-agent:mime-version:date:message-id
          :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=1k2m3aSHTjqA6bdTXWu0OZg7gZ+wtGbmj+2TwUuz208=;
-        b=mNzAzzmqX7eHtuzCXTZpjfeAHgwbJC0hq+jlLR891EdfPL7+Yee0TPwyXOk0Dm5I0e
-         3Llf8eAobC1aEz7etE/guhsGyqe48KpDXcWliENoVSktjpSrsEOxLVm8j9jQTUXQ3WTW
-         YePAo7OffgMjZFO38MlphDH/jecfhKuJjn9PEJOGeFGagJj9lEVEnfR0mA2TDdBTM5Xf
-         xYXft6otSXekyE83VaAMGJ5NwaNkkXg2CQP8TXM9de+fnVX2MrqgSVaY1Pg4DKowaLpt
-         MHDI/8/snwy10Pszw2I1jrzKI2HbRjbwesqwBUL7XunNKICirCwZrbqPjuihRihaD5MN
-         Ctyw==
-X-Gm-Message-State: AOJu0YxpgAHiGajpZbm4qwsQ/xQQhpSn4S/hR2Xb+gvlrkjEJ1qAMCmY
-	ulC514e72Ow9vq82OpYbzsJkJezIPM8S6NymbeL8DRoTuYLjoJu/AMld
-X-Gm-Gg: AfdE7ckYMqzCXls2OipRnRGGEBIbjhQ2xOFS9vgh4HqWb5QEJFKCIquZd0lveRSqVIf
-	01+fj9EJY4U5AX2gDjK/BpkI6FWEGCtm/OguusyrAHedHiJymvBvXMnNI08yYXUkrU4mzxUsYP4
-	/LxhgaVntVCltjJCYAbnU/WCOb7Gn4dSAaDmVTi+qQt9tFYepz4v/mtgfKzPZxgojCvvba+nCxT
-	DB02gjFC3ZXTZLCK39dU/Nl+HsbR7hcN88irprP+BfjX/IPUsD8F/WmD6UDbSfPFy4kM3cNP+n9
-	hzjF/i5B47zuBxJ4dQ1jmRtR6qb7h9MvKYUdXp42DxUrsAJpIUX7I7/CHPNmTbmNOcqVxtFwAQX
-	GHU+uMyDV6OIqZbfCEr8lGQ4w+KSUkEcK3vV4BOuLRgAbXc72YXqNYuKhNxXwTixZdV4OykpDYo
-	Cpx5/Twmkrn+2L/TjmePSgurDnL5DnXxC689ms/AFuWkiG3mDWm5h4Qf2HmqKpmrE=
-X-Received: by 2002:a17:90b:2704:b0:37c:543f:b7c with SMTP id 98e67ed59e1d1-37ca718e760mr2033578a91.10.1781701248124;
-        Wed, 17 Jun 2026 06:00:48 -0700 (PDT)
+        bh=VEWyYTJkFHrNJL0Tf6CUABwXAes876mCeFHO3nb8fr4=;
+        b=KncMyWNm6KCmfBioayWSCDLPA/7n+MxPS3Hq18+hq89vp7bJpRx2Avxe0b1TIZfah3
+         le/7OxTKUDFbmO8LWtD5LVip14VzZKUc9BM5x3tRUqZhC+Nyl6XRvAqJmVI+38LbwLyJ
+         CY9vSr3NASQOCbGPIHlYwDLWRAGxqtWWmZuU+IxgS+/R/bL/gz1QQCKNwe0KgzuLyxJF
+         ufu2/JCDy+mWLqhdzYJYft/AhmDRlPTwpJaYcg/+XlxYMy7zlZJyoUdUGm7fDpnfhkAE
+         s6nyAS9Terrg2kzucHoznocGxdiSs6/9/j1gS3Nh+XRuDjNvnVEyxbDVKDJZOf+SFUR3
+         lDbA==
+X-Forwarded-Encrypted: i=1; AFNElJ8HdRIhyMoFC/u3oJ/AEj2wnz5YzpEEiwRpK3+SlbVp3TCQxIQws67PAhjGB75zdcfrGU9S1jq8zgoD@vger.kernel.org
+X-Gm-Message-State: AOJu0Yza81Bo14Grwn/rIRinYeoFbTxmY8RXJFQH2c5Jv8OPFN7V4Ubs
+	X7faByYCbyadsh3vMW+Cet+jhMhkiGMDZJCUUmZ5b/22R3V5Mqbm82ji
+X-Gm-Gg: AfdE7cmu7sacQAudgODorefo+4IIRmpEOUILi2bVzlLnDKNTzm4it5E1hTQWTqdZDEU
+	rwMgWa373M/7jS4DJEQ7tjYEfx2OVG07ngy4udiTepJqp9+VLNi5s1gZ4dGuYmCl8ncWpWlfLKS
+	F6YZn3UST0wz5iVZjNF6n21ZTymeb9jntMj7O0f8vNpmMFokNf7ypN9bDPs8HKhYS2CeZa2rlOw
+	xfvMxyPMBnsct3VWrp9G2WfbOiI29gBk2doIB0vrJPP9zmu5PxtzPorqF+BJnib4ZEE5JJFMMQp
+	Nqp1lWM9NNzQ4frf23ml1gN62jgZeQeL5UcP3t7pEya7Z8v0vwihLqhYNUO3++MQRH5tdi6y0uL
+	RU6MyJ0t45V5p60GqLiLXc4e+T1R6GzSRfss591hTILAsbwAYmNOpFKbJpm8ZdrGDdaesOoACLE
+	Q6Zibl6eG8sl0sDKOQ4ERJXu/tJhIpAsWM+YuSyNaCaR7ihAJ8hL/IW41AIsjY9rI=
+X-Received: by 2002:a17:903:19ed:b0:2c2:50c7:58a4 with SMTP id d9443c01a7336-2c6bc223ee0mr37937805ad.22.1781702536299;
+        Wed, 17 Jun 2026 06:22:16 -0700 (PDT)
 Received: from ?IPV6:240e:390:a92:e6d1:ed78:8bd4:5db9:c767? ([240e:390:a92:e6d1:ed78:8bd4:5db9:c767])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-37c70aa47f0sm3238095a91.13.2026.06.17.06.00.38
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c4327acca5sm149502475ad.51.2026.06.17.06.22.12
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 17 Jun 2026 06:00:47 -0700 (PDT)
-Message-ID: <070f205c-11d6-4f7f-8b15-a928e37bb37e@gmail.com>
-Date: Wed, 17 Jun 2026 21:00:35 +0800
+        Wed, 17 Jun 2026 06:22:15 -0700 (PDT)
+Message-ID: <22315c1e-d13f-440c-b944-138ce4b7caa0@gmail.com>
+Date: Wed, 17 Jun 2026 21:22:10 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,25 +70,25 @@ MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH v4 14/23] ext4: implement partial block zero range path
  using iomap
-To: Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
- yangerkun@huawei.com, yukuai@fnnas.com, Brian Foster <bfoster@redhat.com>
+To: Brian Foster <bfoster@redhat.com>, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org,
+ yi.zhang@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
 References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
  <20260511072344.191271-15-yi.zhang@huaweicloud.com>
  <c2q54d6u724xctkzwm6x7sbmg5cpvcackfz3toc47qts6iaj77@ci2czn4fqjik>
  <16cccb83-cdad-4113-8182-e8ea9e3049a2@huaweicloud.com>
- <n3bxam2j3iwdo3u6od5esn4pjqrtgxbdzdyemzpufpor4u2lbh@itrun3kmz52e>
+ <ajJ9b91fTbM6qApg@bfoster>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <n3bxam2j3iwdo3u6od5esn4pjqrtgxbdzdyemzpufpor4u2lbh@itrun3kmz52e>
+In-Reply-To: <ajJ9b91fTbM6qApg@bfoster>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-On 6/17/2026 6:50 PM, Jan Kara wrote:
-> On Wed 17-06-26 16:14:40, Zhang Yi wrote:
+On 6/17/2026 6:56 PM, Brian Foster wrote:
+> On Wed, Jun 17, 2026 at 04:14:40PM +0800, Zhang Yi wrote:
 >> On 6/16/2026 8:28 PM, Jan Kara wrote:
 >>> On Mon 11-05-26 15:23:34, Zhang Yi wrote:
 >>>> From: Zhang Yi <yi.zhang@huawei.com>
@@ -175,10 +176,7 @@ On 6/17/2026 6:50 PM, Jan Kara wrote:
 >> This logic is copied from the XFS and iomap infrastructure. Its primary
 >> purpose is to optimize the zeroing operations on dirty written extents.
 >> It was introduced by Brian in [1].
-> 
-> Ah, I see. I still find it hacky but apparently it is an established hack
-> in iomap :). Fair.
-> 
+>>
 >> The history as I understand it: originally, the iomap infrastructure
 >> could not zero dirty unwritten extents during zero range processing,
 >> which led to stale data exposure. XFS had to flush dirty ranges itself
@@ -204,18 +202,57 @@ On 6/17/2026 6:50 PM, Jan Kara wrote:
 >> batch are simply skipped. This entirely eliminates the need to flush.
 >>
 >> [1] https://lore.kernel.org/linux-xfs/20251003134642.604736-1-bfoster@redhat.com/
+>>
+>> If I understand correctly, the current approach is a compromise, and
+>> Brian is still working on this. Perhaps ext4 and XFS could work together
+>> on improvements in the future?
+>>
 > 
-> Thanks for the summary! So I was confused because somehow I thought this is
-> about fallocate(FALLOC_FL_ZERO_RANGE) and so I was wondering why we just
-> cannot evict the page cache and be done with that. Only after reading
-> everything again I've realized this is about zeroing partial blocks on hole
-> punch etc. And we may need to really handle multiple folios because XFS
-> also uses this mechanism to implement FALLOC_FL_ZERO_RANGE for zoned
-> storage. Ugh. OK, anyway for now this looks like your patch is following
-> how things are expected to be done so feel free to add:
+> I think that about covers it!
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+> I do agree wrt to the iomap_iter thing in that it doesn't seem like the
+> most elegant thing. I considered that a bit of a roadblock when first
+> hacking on the batch stuff, but IIRC somebody pointed out that there was
+> precedent already so I didn't think too hard about it after that. Indeed
+> if you poke around, other filesystems use a similar pattern to access
+> iter->private for whatever private context is carried around.
 > 
+> FWIW, one of the longer term thoughts for the dirty folio stuff was to
+> eventually lift it out of the callback and just have iomap do it for the
+> fs. That would eliminate this particular pattern and probably clean
+> things up a bit, but there were also some other caveats with that that
+> aren't top of mind atm (IIRC, things like dealing with map trimming,
+> etc., but I haven't had a chance to think about it in a while).
+
+Thanks for the additional information. This looks like a promising
+direction. The usage on the ext4 side is relatively simple at the
+moment, so the main concern is whether this would cause any issues for
+XFS and other filesystems. This can be investigated later when time
+permits — it's not urgent at this point.
+
+> 
+> Also note that this isn't necessarily a hard requirement. It's an
+> optional optimization. iomap will flush and retry in the dirty
+> pagecache+unwritten extent case if the fs hasn't otherwised provided
+> folios to make sure it zeroes properly, it's just that performance of
+> that may or may not be acceptable for your use case.
+> 
+> Brian
+
+Yes, we will try to adopt the folio batch approach as much as possible,
+hoping to reduce unnecessary performance overhead through it.
+
+Thanks,
+Yi.
+
+> 
+>>>
+>>>> +	ret = iomap_zero_range(inode, from, length, did_zero,
+>>>> +			       &ext4_iomap_zero_ops, &ext4_iomap_write_ops,
+>>>> +			       NULL);
+>>>> +	if (ret)
+>>>> +		return ret;
+>>>> +
 >>>> +	/*
 >>>> +	 * TODO: The iomap does not distinguish between different types of
 >>>> +	 * zeroing and always sets zero_written if a zeroing operation is
@@ -229,17 +266,22 @@ On 6/17/2026 6:50 PM, Jan Kara wrote:
 >> distinguish whether the zeroed range is a written extent that already
 >> exists on disk. That is, even if the zeroing is performed on a delalloc
 >> extent, did_zero will still return true.
+>>
+>> Thanks,
+>> Yi.
+>>
+>>>
+>>>> +	if (did_zero && zero_written)
+>>>> +		*zero_written = *did_zero;
+>>>> +
+>>>> +	return 0;
+>>>> +}
+>>>> +
+>>>>   /*
+>>>>    * Zeros out a mapping of length 'length' starting from file offset
+>>>>    * 'from'.  The range to be zero'd must be contained with in one block.
+>>>
+>>> 								Honza
+>>
 > 
-> So maybe write in the comment explicitely, that this may result in
-> unnecessary flushing of folios if zeroing happened in
-> delayed-not-yet-allocated blocks?
-> 
-> 								Honza
-
-Sure, I'll include it in the next iteration. :)
-
-Thanks,
-Yi.
-
-
 
