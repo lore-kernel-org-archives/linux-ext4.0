@@ -1,30 +1,30 @@
-Received: from out30-111.freemail.mail.aliyun.com (out30-111.freemail.mail.aliyun.com [115.124.30.111])
+Received: from out30-101.freemail.mail.aliyun.com (out30-101.freemail.mail.aliyun.com [115.124.30.101])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D30302EA75E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB6E33F4DE6
 	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 12:58:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.111
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781787487; cv=none; b=sjtljKYpMD2SJ/l4NMfsBNCuFlFxG4iiuWGy06mZ+tksnHGu3WY1GwjcT8dRNX1RZ3Bcrw9eRZKDx56WC4UnJdRtQjoHrL3xmFb8mFUqoIw57HTKI2WSAh/kCarj94bPEQ6DZLp25QgCSjwkFroTpLPkU1K88odvcmxBd0x+if8=
+	t=1781787487; cv=none; b=adFW6wsm4sf2sIqGBJUNRea7t24wUYvBDvle5FLG/SUwxawwdtoypbpQKWraYJr5cFr3REEEP3gxr95Fj6815LM8j9ivXS+Fj9ZhxfV6COGnUq9nFsXHO7QRezu1el/q0BvW+eERZJeGBEXYxQ17f7SbdyxpSDZkTWJalD3Y8rM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1781787487; c=relaxed/simple;
-	bh=w8JLSZHS89WPpcR1qYPc7cy2CSYrAg+fci3jkJdUmyI=;
+	bh=xnM+RTYGakAvLXqjTq1skOkyoJQcU8toxw0tXxPL3f0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=egPLFWqjRDGlaVAnQxpHeo5eW1bPMSmB8ZEvd2d/Mn1SDL4x3pUOZbKU3cuih/7JAWYYbEz6wn89vSIPtmuP5ASm2KJX7O0jMUEI5RxqOParju+Dh5fnhNVT9M3zj8VvGkEsO4NZ7hAh45sNPq+5VpWKULBUZjblqROrgwFxGik=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=cnLdTAs+; arc=none smtp.client-ip=115.124.30.111
+	 MIME-Version; b=jYNAqWCx9c1seAa9ZeUYx2J6/jTAUvFaO9LEugnAhHxUB9n7Y2pcrdyJqT4NGW2x20rEdUGPiKPad7/i8lLZXEKVDuMEWTDYeITMzWD71G9eLEf/YztnxVhSXarRIDu0gUpoNkJ30kknaWdRNWSPYKrJVgH+wyhrQmZHnUAHqY4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=jyNe2JJ+; arc=none smtp.client-ip=115.124.30.101
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="cnLdTAs+"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="jyNe2JJ+"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1781787476; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=NaV14lUj5MTUp1BM/THdCgFkLMtNRwOtmVnGGle5vT0=;
-	b=cnLdTAs+pX1cc+ruZokzwd8V91JLTjTUkE0qoRrDK5tqYGfgMX31gE/b8Zhl/1qlAAtOt7XZdu2Ee1o2VVxPnepQFN+K/hMu7IuN5Xrmb2ah/HRBO+gJZXkhSEE6bhW3OvZKW2OskMRIZ+qIDRXy57VPpQMsw3PwlywMWyr0WwQ=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R411e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575f2N_1781787475;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575f2N_1781787475 cluster:ay36)
+	t=1781787477; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=qCTgE6b32ab8Yspn9FTQpVk7t9wsUd2ROh+hJbRBOYc=;
+	b=jyNe2JJ+lOqch2efyaYXSNUqe7P2PUyOo66fuVsg5rZqMNMJlEEgId3uB70EHaHdDceOmU0VU7b5bQivGrI8dv2NaPi4mq4ZeldYcfQu9mgIpIl7lTk6w4UvZNr47ZeofRG1pyzkuUKcmPq7+w7VkVqpz/CCnxBWEYa7ykuyDzQ=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575f2Y_1781787475;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575f2Y_1781787475 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Thu, 18 Jun 2026 20:57:55 +0800
+          Thu, 18 Jun 2026 20:57:56 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -34,9 +34,9 @@ Cc: tytso@mit.edu,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	peng_wang@linux.alibaba.com
-Subject: [PATCH v2 6/8] ext4: return -EAGAIN from ext4_map_blocks() in NOWAIT cache miss
-Date: Thu, 18 Jun 2026 20:57:33 +0800
-Message-ID: <20260618125735.4156639-7-libaokun@linux.alibaba.com>
+Subject: [PATCH v2 7/8] ext4: handle IOMAP_NOWAIT in ext4_iomap_begin() with cache-only lookup
+Date: Thu, 18 Jun 2026 20:57:34 +0800
+Message-ID: <20260618125735.4156639-8-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
 References: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
@@ -48,53 +48,64 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Make ext4_map_blocks() return -EAGAIN instead of 0 when
-EXT4_GET_BLOCKS_CACHED_NOWAIT is set and the extent status cache
-misses. This allows callers to easily distinguish between a successful
-cache lookup (positive return value) and a cache miss requiring disk
-access (-EAGAIN), simplifying error handling in NOWAIT paths.
+Pass EXT4_GET_BLOCKS_CACHED_NOWAIT flag to ext4_map_blocks() when
+IOMAP_NOWAIT is set, ensuring that extent lookups only use the cached
+extent status tree. If the cache misses, ext4_map_blocks() returns
+-EAGAIN instead of sleeping on down_read(i_data_sem) to read extent
+tree from disk.
 
-The change affects two locations:
-1. After cache hit: return retval ? retval : -EAGAIN
-   (return -EAGAIN if cache hit is hole/delayed)
-2. After cache miss: return -EAGAIN
-   (instead of 0, indicating need for disk lookup)
-
-The only existing caller using EXT4_GET_BLOCKS_CACHED_NOWAIT is the
-ext4_get_link() -> ext4_getblk() path. Although ext4_getblk() now
-takes a different return branch (err < 0 instead of err == 0) and
-propagates -EAGAIN instead of NULL, ext4_get_link() converts both
-cases to -ECHILD via IS_ERR_OR_NULL(), so the final error seen by
-the VFS remains unchanged.
+This applies to both write and read paths in ext4_iomap_begin(),
+allowing DIO/DAX operations with RWF_NOWAIT to avoid blocking on
+extent tree lookups.
 
 Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 ---
- fs/ext4/inode.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 832794294ccf..03adbca3ec78 100644
+index 03adbca3ec78..09f85cd6c118 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -760,7 +760,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+@@ -3781,6 +3781,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	struct ext4_map_blocks map;
+ 	u8 blkbits = inode->i_blkbits;
+ 	unsigned int orig_mlen;
++	int map_flags = 0;
+ 
+ 	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
+ 		return -EINVAL;
+@@ -3795,6 +3796,12 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
+ 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
+ 	orig_mlen = map.m_len;
++	/*
++	 * In NOWAIT context, only use cached extent info. If es cache misses,
++	 * return -EAGAIN to avoid sleeping on down_read(i_data_sem).
++	 */
++	if (flags & IOMAP_NOWAIT)
++		map_flags = EXT4_GET_BLOCKS_CACHED_NOWAIT;
+ 
+ 	if (flags & IOMAP_WRITE) {
+ 		/*
+@@ -3804,7 +3811,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 		 * especially in multi-threaded overwrite requests.
+ 		 */
+ 		if (offset + length <= i_size_read(inode)) {
+-			ret = ext4_map_blocks(NULL, inode, &map, 0);
++			ret = ext4_map_blocks(NULL, inode, &map, map_flags);
+ 			/*
+ 			 * For DAX we convert extents to initialized ones before
+ 			 * copying the data, otherwise we do it after I/O so
+@@ -3825,7 +3832,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
  		}
+ 		ret = ext4_iomap_alloc(inode, &map, flags);
+ 	} else {
+-		ret = ext4_map_blocks(NULL, inode, &map, 0);
++		ret = ext4_map_blocks(NULL, inode, &map, map_flags);
+ 	}
  
- 		if (flags & EXT4_GET_BLOCKS_CACHED_NOWAIT)
--			return retval;
-+			return retval ? retval : -EAGAIN;
-+
- #ifdef ES_AGGRESSIVE_TEST
- 		ext4_map_blocks_es_recheck(handle, inode, map,
- 					   &orig_map, flags);
-@@ -776,7 +777,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	 * cannot find extent in the cache.
- 	 */
- 	if (flags & EXT4_GET_BLOCKS_CACHED_NOWAIT)
--		return 0;
-+		return -EAGAIN;
- 
- 	/*
- 	 * Try to see if we can get the block without requesting a new
+ 	if (ret < 0)
 -- 
 2.43.7
 
