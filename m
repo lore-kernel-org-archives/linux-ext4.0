@@ -1,30 +1,30 @@
-Received: from out30-99.freemail.mail.aliyun.com (out30-99.freemail.mail.aliyun.com [115.124.30.99])
+Received: from out30-100.freemail.mail.aliyun.com (out30-100.freemail.mail.aliyun.com [115.124.30.100])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED6B53EFFC9
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0831540D59A
 	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 12:57:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.99
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781787479; cv=none; b=JOr6gZVX2UKpKiYXoRCc0vZZKuXreDbpj2PP0fiHaf5Ud7AFQCKfcusyJxbGnQLlgmTBnW7PNTNbyZfKrf8KxkVbjQNX0MC1ZS/XkdE6Bs8aRq4TkYzYR9T9LmqO077H98pPsQj4ZEawD/FZT1EepOCHLXIlEgPJBR1A50zpbA8=
+	t=1781787479; cv=none; b=EKrgNHKs/6Ifvi1wKcVl05/K9bmtepm7P/UA9kpubBctBPTs/RfjqnXSmzfMUdr7cZBClsFb8OXb/xKkfPX82ex9+24FTjukDjjHG3+ZljaoyfkjjncCyPc82UBf0ruqI7h+PySbIBQ7F/Z7YH5m1t0cN14uE0zs99jhXWxrvAw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1781787479; c=relaxed/simple;
-	bh=f8n2UDmqn1QB+yqJ0QszoqnqqBEsBHInfGeBaRszs/A=;
+	bh=+XlTe81V68Yn4jeT6gbEVMaegynMI4lptSbbiazmqqM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ZZGZvEZW9qMSlVs5mbMdukb6YYpcxrL4p59uasgPyWQTqq8/Dv1R9it+lhKLHQKMDTeo6ETqgMvwqb3Wq9XMa5BUzAu4H5qi+MH6BGIipDCubeU1w7Vs7VkaRfshQHhe1oYV9hxFQdvX9wFEBJg5xwaz3yA2mmS4FU1ozy+NYdQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=Wl0T6TyP; arc=none smtp.client-ip=115.124.30.99
+	 MIME-Version; b=ops87yggfPqMI2hrKUEFo0XRDQvkQVjmebgQDYCkU9JE2uRuFUe+k7oA+aud01DORXfiyy5GtlWPa1YyYhIrghiqS7OPyZXkkkS28DfUjQqJ4OTbpziy+53qa4b9GVwewFOUhAcS8oRx1mTiodzgRAtZILULZz5NCPk3WLH2u8g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=rMTMvCaW; arc=none smtp.client-ip=115.124.30.100
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="Wl0T6TyP"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="rMTMvCaW"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1781787472; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=AJ7VUW7pZ4022n21yA3uAQTvzOvkMAlNXE7YezW+1qo=;
-	b=Wl0T6TyPgU0fbdAaYJvJo+7QPDMjmEGQdwBTDMMuZ1v7FheFCS3lJC7+/8o9xvtL7bMNRrLmukv0m2Rd/a4ucwAzqeChX/QlDCJESjb8B1wBwFv2lkYQY0NvdECRJBJ0RDAmdnvSD2o/3mfjlDr1UtLCuZ7UDAzgu8TWGETYcEw=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575f1M_1781787471;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575f1M_1781787471 cluster:ay36)
+	t=1781787473; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=iXNkZfWCeF5SrPb8ocwZ8qTD9rAyR0Un2ztI8nsgg2Q=;
+	b=rMTMvCaWatCyO0qbcMm4lYk7avVhynnNs9HpMi4/5Vg8V3FHowm/w3BMOvCuiL791i4CrX33UgD0IElonittnmN0+UMFtLU2szMC4u+Xq60HBRUQ16boaj0MXfiucWYI0marQi3Wm4fIJGbLd+B5DXGmZb8Q7Hin/1h2xIg0dao=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R291e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575f1Y_1781787472;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575f1Y_1781787472 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Thu, 18 Jun 2026 20:57:52 +0800
+          Thu, 18 Jun 2026 20:57:53 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -34,9 +34,9 @@ Cc: tytso@mit.edu,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	peng_wang@linux.alibaba.com
-Subject: [PATCH v2 2/8] ext4: drain in-flight DIO before buffered write fallback
-Date: Thu, 18 Jun 2026 20:57:29 +0800
-Message-ID: <20260618125735.4156639-3-libaokun@linux.alibaba.com>
+Subject: [PATCH v2 3/8] ext4: skip overwrite check for aligned non-extending DIO writes
+Date: Thu, 18 Jun 2026 20:57:30 +0800
+Message-ID: <20260618125735.4156639-4-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
 References: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
@@ -48,92 +48,162 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-generic/746 started failing intermittently on ext3 (no-extent inodes).
-The test triggers 'Page cache invalidation failure on direct I/O'
-warnings and subsequent fsync returns -EIO. Adding a 50ms delay
-between ext4_buffered_write_iter() and filemap_write_and_wait_range()
-in ext4_dio_write_iter() makes the race almost always reproducible.
+Currently, ext4_dio_write_checks() calls ext4_overwrite_io() to
+determine if a write is a pure overwrite, and upgrades to exclusive
+i_rwsem if not. However, ext4_overwrite_io() uses a single
+ext4_map_blocks() call which only returns the first contiguous extent of
+the same type. A write spanning multiple pre-allocated extents (e.g.
+written + unwritten, or two physically discontiguous written extents)
+produces a false negative, forcing an unnecessary exclusive lock upgrade.
 
-On no-extent inodes, DIO writes to holes cannot use unwritten extents,
-so ext4_iomap_alloc() leaves m_flags=0 and ext4_map_blocks() returns 0.
-The iomap layer then returns -ENOTBLK, causing fallback to buffered I/O.
+After commit 5d87c7fca2c1 ("ext4: avoid starting handle when dio
+writing an unwritten extent") and commit 012924f0eeef ("ext4: remove
+useless ext4_iomap_overwrite_ops"), ext4_iomap_begin()'s fast path
+accepts both EXT4_MAP_MAPPED and EXT4_MAP_UNWRITTEN without starting a
+journal transaction. The iomap iteration naturally handles multi-extent
+ranges: each call returns the mapping for the current segment, and
+unwritten-to-written conversion is deferred to ext4_dio_write_end_io().
+This means the common case of mixed written/unwritten extents never
+reaches ext4_iomap_alloc() at all.
 
-The fallback path in ext4_dio_write_iter() calls
-ext4_buffered_write_iter() which dirties pages, then does flush and
-invalidate. However, there's an unprotected window between
-ext4_buffered_write_iter() returning (with inode lock released) and
-the subsequent flush+invalidate.
+Even for the less common case where the range contains a hole and
+ext4_iomap_alloc() is needed, exclusive i_rwsem is still unnecessary for
+aligned non-extending writes:
 
-Concurrent async DIO completions from other threads can run
-kiocb_invalidate_post_direct_write() during this window. If pages have
-been re-dirtied, post-invalidation finds dirty pages and triggers the
-warning, setting -EIO in the error sequence.
+ - truncate/punch_hole are kept out: they require exclusive i_rwsem
+   (blocked by our shared lock during allocation), and inode_dio_begin()
+   keeps their inode_dio_wait() blocked until in-flight bios complete.
+ - i_data_sem write-lock inside ext4_map_blocks() serializes concurrent
+   extent tree modifications (parallel writers to the same hole).
+ - The journal handle is per-thread and does not require i_rwsem
+   exclusion.
+ - i_disksize and orphan list are not involved in non-extending writes.
 
-Consider a file with two 4k extents: [hole][written]. Thread A does
-DIO to the written extent, while thread B does DIO spanning both:
+Skip the ext4_overwrite_io() check entirely for aligned writes by
+initializing overwrite to true and only calling ext4_overwrite_io() for
+unaligned writes. Unaligned writes still need the extent state check
+because concurrent partial block zeroing in the DIO layer requires
+exclusive serialization unless the range is a pure written-extent
+overwrite.
 
-  kworker A (4k DIO, allocated block)    kworker B (8k DIO, fallback)
-  -----------------------------------    ----------------------------
-  inode_lock_shared()                    inode_lock_shared()
-  iomap_dio_rw():                        iomap_dio_rw():
-    kiocb_invalidate_pages -> clean        iomap_begin -> -ENOTBLK
-    submit_bio (async)                     dio->size = 0
-  inode_unlock_shared()                  inode_unlock_shared()
+Performance:
 
-  [bio pending in block layer]           /* fallback: lock released */
-                                         ext4_buffered_write_iter()
-                                           inode_lock(exclusive)
-                                           generic_perform_write()
-                                             -> dirty pages [0, 8k]
-                                           inode_unlock(exclusive)
+Hardware: /dev/sda (rotational disk, ~1 GB/s sustained write)
+Filesystem: ext4 default mkfs
 
-                                         /* pages dirty, no lock */
-  [bio completes]                        filemap_write_and_wait_range()
-  iomap_dio_complete()                     -> flush dirty pages
-    kiocb_invalidate_post_direct_write() invalidate_mapping_pages()
-      invalidate_inode_pages2_range()
-      -> finds dirty page!
-      -> dio_warn_stale_pagecache()
-      -> errseq_set(-EIO)
+Aligned 8K DIO writes spanning written+unwritten extent boundaries.
+Each thread writes its own 1G region sequentially; the file is rebuilt
+between runs so every block is written exactly once. Metric: IOPS.
 
-This issue can be triggered through normal I/O paths, not just
-intentionally overlapping DIO writes from userspace. For example,
-generic/746 uses a loop device where multiple kworkers issue concurrent
-I/O to the backing file. Additionally, when block_size < folio_size,
-non-overlapping DIO writes that share a large folio can also trigger
-the race.
+  JOBS      Before        After    speedup
+  ----    --------    ---------    -------
+     1      42,322       43,329      1.02x
+     2      68,516       70,677      1.03x
+     4      62,489       97,072      1.55x
+     8      58,701      110,819      1.89x
+    16      58,569      116,392      1.99x
+    32      60,860      117,244      1.93x
 
-Add inode_dio_wait() in ext4_buffered_write_iter() before
-generic_perform_write() to drain all in-flight DIO. This ensures
-that all DIO clears existing pages before submitting IO (via
-kiocb_invalidate_pages()), and all BIO waits for all DIO to
-complete (via inode_dio_wait()), thus eliminating the race.
+Wall time at JOBS=32: 69.2s (Before) -> 35.4s (After), 1.96x faster.
 
-Fixes: 378f32bab371 ("ext4: introduce direct I/O write using iomap infrastructure")
-Suggested-by: Zhang Yi <yi.zhang@huawei.com>
-Link: https://patch.msgid.link/d1adcf7c-c276-458d-9cac-68a4410f7626@gmail.com
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 ---
- fs/ext4/file.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/ext4/file.c | 52 +++++++++++++++++++++++++++++---------------------
+ 1 file changed, 30 insertions(+), 22 deletions(-)
 
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index eb1a323962b1..9f9bc0b13772 100644
+index 9f9bc0b13772..886b73247aab 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -313,6 +313,12 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 	if (ret <= 0)
- 		goto out;
+@@ -434,16 +434,27 @@ static const struct iomap_dio_ops ext4_dio_write_ops = {
+  * condition requires an exclusive inode lock. If yes, then we restart the
+  * whole operation by releasing the shared lock and acquiring exclusive lock.
+  *
+- * - For unaligned_io we never take shared lock as it may cause data corruption
+- *   when two unaligned IO tries to modify the same block e.g. while zeroing.
++ * The decision is layered, evaluated in this order:
+  *
+- * - For extending writes case we don't take the shared lock, since it requires
+- *   updating inode i_disksize and/or orphan handling with exclusive lock.
++ * 1. If file_modified() needs to update security info (!IS_NOSEC), upgrade
++ *    to the exclusive lock -- the security update itself requires it,
++ *    regardless of whether the write extends the file or is aligned.
+  *
+- * - shared locking will only be true mostly with overwrites, including
+- *   initialized blocks and unwritten blocks.
++ * 2. If the write extends i_size or i_disksize, upgrade to the exclusive
++ *    lock to safely update i_disksize and the orphan list, regardless of
++ *    alignment.
+  *
+- * - Otherwise we will switch to exclusive i_rwsem lock.
++ * 3. Otherwise, for aligned non-extending writes, shared lock is always
++ *    sufficient regardless of extent state (written, unwritten, or hole).
++ *    truncate/punch_hole cannot run while we hold the shared i_rwsem
++ *    (they need it exclusively); after we release it, inode_dio_begin()
++ *    keeps their inode_dio_wait() blocked until in-flight bios complete.
++ *    i_data_sem serializes concurrent extent tree modifications.
++ *
++ * 4. Otherwise, the write is unaligned and non-extending. Shared lock is
++ *    only safe for pure written-extent overwrites. Unwritten extents or
++ *    holes require exclusive lock because concurrent partial block zeroing
++ *    in the DIO layer could corrupt data.
+  */
+ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 				     bool *ilock_shared, bool *extend,
+@@ -454,7 +465,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	loff_t offset;
+ 	size_t count;
+ 	ssize_t ret;
+-	bool overwrite, unaligned_io, unwritten;
++	bool overwrite = true, unaligned_io, unwritten = false;
  
-+	/*
-+	 * Prevent concurrent DIO and BIO to the same file range.
-+	 * Wait for all in-flight DIO to complete before dirtying pages.
-+	 */
-+	inode_dio_wait(inode);
+ restart:
+ 	ret = ext4_generic_write_checks(iocb, from);
+@@ -466,22 +477,19 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 
+ 	unaligned_io = ext4_unaligned_io(inode, from, offset);
+ 	*extend = ext4_extending_io(inode, offset, count);
+-	overwrite = ext4_overwrite_io(inode, offset, count, &unwritten);
+ 
+ 	/*
+-	 * Determine whether we need to upgrade to an exclusive lock. This is
+-	 * required to change security info in file_modified(), for extending
+-	 * I/O, any form of non-overwrite I/O, and unaligned I/O to unwritten
+-	 * extents (as partial block zeroing may be required).
+-	 *
+-	 * Note that unaligned writes are allowed under shared lock so long as
+-	 * they are pure overwrites. Otherwise, concurrent unaligned writes risk
+-	 * data corruption due to partial block zeroing in the dio layer, and so
+-	 * the I/O must occur exclusively.
++	 * For unaligned writes we need to know the extent state to determine
++	 * whether shared lock is safe. For aligned writes we skip this check
++	 * entirely since allocation under shared lock is safe.
+ 	 */
++	if (unaligned_io)
++		overwrite = ext4_overwrite_io(inode, offset, count, &unwritten);
 +
- 	ret = generic_perform_write(iocb, from);
- 
- out:
++	/* Determine whether we need to upgrade to an exclusive lock. */
+ 	if (*ilock_shared &&
+-	    ((!IS_NOSEC(inode) || *extend || !overwrite ||
+-	     (unaligned_io && unwritten)))) {
++	    ((!IS_NOSEC(inode) || *extend ||
++	     (unaligned_io && (!overwrite || unwritten))))) {
+ 		if (iocb->ki_flags & IOCB_NOWAIT) {
+ 			ret = -EAGAIN;
+ 			goto out;
+@@ -496,8 +504,8 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	 * Now that locking is settled, determine dio flags and exclusivity
+ 	 * requirements. We don't use DIO_OVERWRITE_ONLY because we enforce
+ 	 * behavior already. The inode lock is already held exclusive if the
+-	 * write is non-overwrite or extending, so drain all outstanding dio and
+-	 * set the force wait dio flag.
++	 * write is unaligned non-overwrite or extending, so drain all
++	 * outstanding dio and set the force wait dio flag.
+ 	 */
+ 	if (!*ilock_shared && (unaligned_io || *extend)) {
+ 		if (iocb->ki_flags & IOCB_NOWAIT) {
 -- 
 2.43.7
 
