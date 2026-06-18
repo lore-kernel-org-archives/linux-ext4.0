@@ -1,168 +1,247 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out30-119.freemail.mail.aliyun.com (out30-119.freemail.mail.aliyun.com [115.124.30.119])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC4428C86C
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 07:22:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EA5793E5577
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 09:49:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781767331; cv=none; b=U193Fj+ZQeo8dGGYgCTEa8ix/d8+u8qJyBMuCoJS1XkHeoc/kpKUp5b1AMmGfCo4JN9ZW8PlYmqDKWRi/TIIzUUGD3UCbThzFsTPfs9iGgrNFlCXtmG46ULa6tBt6DUqfJsL3HQuS8LO3P+FOBAdom9ij5hp+kNeLdvuvgEvsuk=
+	t=1781776165; cv=none; b=NhZ/z8NA61JzWF6vqGyexAFbLH90de78AXkq0lFgc/OmCJJfEJcvdo/XhAtcpxzL7Rq4Fcg9mKEMBWFW+uxb4OeD0J9PmqhqKahKyii6aDdwmCSn7HxjoHCqaoh+ytWsemM09uqz8vOg0q+L2NiIG4qa/VokXTuKnojQUiEvcSw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781767331; c=relaxed/simple;
-	bh=uZ3+xapxFKqnNLW5I7KNEVIzKnxiKUnh58Bx8yarE68=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pnfAu6Y+6bjq0a7DmifLsWHcr9m3xsSm4SkLK+DoVxbkOANguI0AXmZjW9osl1zrj01lkp32V+9oMuvzICM9A6Xlb/n9JMR4fj79uDm75iswsKUXpXzzEiLGYoHASENc4V8xRItCBXGCFcKMBAszvvaLvQ9i0iY7Vd9atpinBaA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=k3hfGGuQ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RzocQxaY; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Sgp4jykB; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0qUl6/yq; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1781776165; c=relaxed/simple;
+	bh=joXGFqPukUUTGbI3DqbSJFHl2RLHgtCqaSh2CrO/aLs=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=DCNp/zxEbCuuDNr7IuR12sRV63zoKSEARFSCOBLCm9BNhFc7aQ+/HsxYSFc8+29pvGoAPIIv5C0s1/frE1SiRQGfkfEQIC211XM0BEpqmtYsPuqYrMnjbX4PXf2FcmhG6bDd61dy+kaieWDHPh7e5AL1dGI1oAv7mYviBdH6mEY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=ghzsM9gF; arc=none smtp.client-ip=115.124.30.119
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="k3hfGGuQ";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RzocQxaY";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Sgp4jykB";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0qUl6/yq"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id C892275D2A;
-	Thu, 18 Jun 2026 07:22:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781767328; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
-	b=k3hfGGuQDOtz47C5i+GSveFEEeSVJ/wz9Y0oq75j/ayOHK1HOaInR/Na9g795xWbONacfF
-	dA/8L232rq9aiIX3sFLI/CpG76h27wbrt1b+R7kImIwl/kio34iSCGXqpmrHTHhrATfHH8
-	s+JMRthRKVkQYNlEEO650pAIc7dhT+0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781767328;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
-	b=RzocQxaYT070YATBqW1XJoLMaXEptJnMY/QatlAWy70Pv8btP84L2hsEc/ErmSZyWzVH0W
-	H9wktKvZgqVsneCQ==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781767326; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
-	b=Sgp4jykBBNf5d+jMiVQ/bklBQBshB3eGrqqJkCCaE+kCXTUvQljTQBzn1lQNVxMLoG0hMY
-	FUYn3S9wbnd2LfNFxEo2n4x7yG6InpCexWgLyV5NUejm92FZrK2rc0Dtq25Pf911Gci/8u
-	5UXLhQumpPb40IcN+BQCq4Z+m7RaavU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781767326;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
-	b=0qUl6/yqWdAV/nfWf6yus1+T007s9C9ofdi5R5Jwh/GZ8bbbSRhxUuskWoRVubI6Z93IBL
-	dkxx8YNG+9ehNuAQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BCA4B779A8;
-	Thu, 18 Jun 2026 07:22:06 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 62MLLp6cM2qAbAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 18 Jun 2026 07:22:06 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5BFA6A0EC0; Thu, 18 Jun 2026 09:21:58 +0200 (CEST)
-Date: Thu, 18 Jun 2026 09:21:58 +0200
-From: Jan Kara <jack@suse.cz>
-To: "Zhou, Yun" <yun.zhou@windriver.com>
-Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, ebiggers@google.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v4] ext4: validate EA inode i_nlink in
- ext4_xattr_inode_iget
-Message-ID: <yee323q3l2tvonhf2ng6n4hmitygksbbsayr5xzyyo6xwxhxru@ctqxpvzi6nio>
-References: <20260615053512.1315992-1-yun.zhou@windriver.com>
- <xzd6pbxhxxwf3ngj5v5pz2ilhykh7vsegohe6iwfkfytfuuv4o@5obqeoc5wocr>
- <ee05e46d-6ec8-4291-a61e-213812934da3@windriver.com>
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="ghzsM9gF"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1781776155; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=3Rcgb96eBo95eOi4w1vZQbn15Z5vilP5CAkVORS5Ojc=;
+	b=ghzsM9gFWWXakXwv8ru8jSQY6R5UdJxwNFb5ibpDrPRKoGJRsL2q9uvYUtwUJ/uL60K1K8YQ1je4UJtZMTDW83vpXj9dxdz4YS/Dnbrt8/jckYrb81mOr8qbzDVId08wdWR0tM4XU4LU8utUCycKb5LifVXRSURKYRFVsd9SE94=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R301e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037026112;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X56WpvC_1781776154;
+Received: from 30.221.149.201(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X56WpvC_1781776154 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Thu, 18 Jun 2026 17:49:15 +0800
+Message-ID: <063f1230-4014-4686-8308-f35736fd691e@linux.alibaba.com>
+Date: Thu, 18 Jun 2026 17:49:14 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ee05e46d-6ec8-4291-a61e-213812934da3@windriver.com>
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,google.com,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Level: 
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 2/2] ext4: base unaligned DIO lock decision on partial
+ block zeroing
+To: Jan Kara <jack@suse.cz>
+Cc: Zhang Yi <yizhang089@gmail.com>, linux-ext4@vger.kernel.org,
+ tytso@mit.edu, adilger.kernel@dilger.ca, yi.zhang@huawei.com,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, peng_wang@linux.alibaba.com
+References: <20260611163441.2431805-1-libaokun@linux.alibaba.com>
+ <20260611163441.2431805-3-libaokun@linux.alibaba.com>
+ <060f63e0-d64f-40df-99a7-af53862049ee@linux.alibaba.com>
+ <d1adcf7c-c276-458d-9cac-68a4410f7626@gmail.com>
+ <4f4800dc-0a2c-48e2-9535-f32b21628bdb@linux.alibaba.com>
+ <wbgohsiks4355iejpa2xhvjdgyd4hfpg2gjcpgrv2wcbnevwao@mhik7uhkzzhx>
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <wbgohsiks4355iejpa2xhvjdgyd4hfpg2gjcpgrv2wcbnevwao@mhik7uhkzzhx>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Thu 18-06-26 09:02:10, Zhou, Yun wrote:
-> 
-> 
-> On 6/18/26 04:25, Jan Kara wrote:
-> > On Mon 15-06-26 13:35:12, Yun Zhou wrote:
-> > 
-> > --- a/fs/ext4/xattr.c
-> > +++ b/fs/ext4/xattr.c
-> > @@ -464,6 +464,33 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
-> >                inode_unlock(inode);
-> >        }
-> > 
-> > +     /*
-> > +      * Since this function resolves references from active xattr entries,
-> > +      * the EA inode must be in active state (i_nlink=1, ref_count>0).
-> > +      * i_nlink > 1, i_nlink == 0 (dangling reference), or ref_count == 0
-> > +      * (inconsistent with an active entry) all indicate corruption or
-> > +      * a concurrent last-reference drop.
-> > +      */
-> > +     if (inode->i_nlink != 1 || !ext4_xattr_inode_get_ref(inode)) {
-> > +             ext4_error(parent->i_sb,
-> > +                        "EA inode %lu has unexpected i_nlink=%u ref_count=%llu",
-> > +                        ea_ino, inode->i_nlink,
-> > +                        ext4_xattr_inode_get_ref(inode));
-> > Hum, given motivation of this is syzbot corrupted fs image, I'd just put
-> > check in ext4_iget() verifying ext4_xattr_inode_get_ref() is > 0 and be
-> > done with it. Much simpler and catches at least the obvious cases. The
-> > consistency of xattr refcount and i_nlink is otherwise guarded by
-> > ext4_xattr_inode_update_ref() and it can never be perfect as in the kernel
-> > we don't have the full view of the filesystem and so cannot ascertain that
-> > xattr ref count matches reality...
-> > 
-> Thanks very much for your review and suggestions, The issue should be easily
-> fixed after "introduce ext4_put_ea_inode() for safe deferred iput" merged.
-> Just need to defer iput() and no longer to make inode bad.
+On 2026/6/17 19:08, Jan Kara wrote:
+> On Wed 17-06-26 15:52:24, Baokun Li wrote:
+>> On 2026/6/17 10:45, Zhang Yi wrote:
+>>> On 6/16/2026 9:10 PM, Baokun Li wrote:
+>>>> Thank you for your review!
+>>>>
+>>>> After extensive testing, I found that after merging this patch,
+>>>> generic/746
+>>>> started failing intermittently on ext3 (mkfs.ext4 -O ^extents).  The
+>>>> test
+>>>> triggers a "Page cache invalidation failure on direct I/O" warning, and
+>>>> subsequent fsync returns -EIO.
+>>>>
+>>>> The underlying race existed before this patch, but this patch appears to
+>>>> have widened the reproduction window considerably, so I thought it worth
+>>>> trying to address.  Here is my analysis:
+>>>>
+>>>> On no-extent inodes, DIO writes that hit holes cannot use unwritten
+>>>> extents.  ext4_iomap_alloc() leaves m_flags=0, so ext4_map_blocks()
+>>>> returns 0 for a hole, and:
+>>>>
+>>>>          if (!m_flags && !ret)
+>>>>                  ret = -ENOTBLK;
+>>>>
+>>>> The iomap layer returns -ENOTBLK to ext4, which falls back to buffered
+>>>> I/O.  The fallback path dirties pages in the page cache, then flushes
+>>>> and invalidates them.  However, concurrent async DIO completions to
+>>>> other blocks on the same inode can run
+>>>> kiocb_invalidate_post_direct_write()
+>>>> without holding the inode lock.
+>>>>
+>>>> Consider a file with two 4k extents: [hole][written].  Thread A does DIO
+>>>> to the written extent, while thread B does DIO spanning both extents:
+>>>>
+>>>>    kworker A (4k DIO, allocated block)    kworker B (8k DIO,
+>>>> hole->fallback)
+>>>>    -----------------------------------   
+>>>> -----------------------------------
+>>>>    inode_lock_shared()                    inode_lock_shared()
+>>>>    iomap_dio_rw():                        iomap_dio_rw():
+>>>>      kiocb_invalidate_pages -> clean        iomap_begin -> -ENOTBLK
+>>>>      submit_bio (async)                     dio->size = 0
+>>>>    inode_unlock_shared()                  inode_unlock_shared()
+>>>>
+>>>>    [bio pending in block layer]           /* fallback: inode lock
+>>>> released */
+>>>>                                           ext4_buffered_write_iter()
+>>>>                                             inode_lock(exclusive)
+>>>>                                             generic_perform_write()
+>>>>                                               -> dirty pages [0, 8k]
+>>>>                                             inode_unlock(exclusive)
+>>>>
+>>>>                                           /* pages still dirty here */
+>>>>    [bio completes]                        filemap_write_and_wait_range()
+>>>>    iomap_dio_complete()                     -> flush dirty pages
+>>>>      kiocb_invalidate_post_direct_write() invalidate_mapping_pages()
+>>>>        invalidate_inode_pages2_range()
+>>>>        -> finds dirty page!               /* window closed */
+>>>>        -> dio_warn_stale_pagecache()
+>>>>        -> errseq_set(-EIO)
+>>>>
+>>> It looks like this issue occurs when invalidate_inode_pages2_range()
+>>> checks beyond the DIO write range, which may only happen when folio size
+>>> is larger than block size. Is that correct?
+>> Thanks for looking at this!
+>>
+>> Not quite — the scenario involves an 8k file with layout
+>>
+>>  [hole at 0-4k] [written extent at 4k-8k]
+>>
+>> and two DIO threads. Thread A does a 4k DIO write at offset 4k; since
+>> the target block is a written extent, no fallback occurs. Thread B
+>> does an 8k DIO write at offset 0; since blocks 0-4k are a hole on an
+>> indirect-block inode and ext3 does not support unwritten extents,
+>> iomap returns -ENOTBLK and the entire 8k write falls back to buffered
+>> I/O.
+> Right, but for this to happen userspace had to submit two overlapping
+> direct IO writes. This always had undefined behavior so some inconsistent
+> content in the file is more or less acceptable. But as Zhang pointed out,
+> the same failure can also appear when block_size < folio_size and there we
+> should really strive to provide consistent data.
+Agreed, overlapping DIO is UB from userspace's perspective. However,
+neither the loop device usage in generic/746 nor the BS < PS scenario
+that Yi mentioned involves userspace intentionally submitting
+overlapping DIO writes. Both are triggered through normal I/O paths,
+so the issue still needs to be addressed.
+>
+>>>> The critical window is the gap between ext4_buffered_write_iter()
+>>>> dirtying
+>>>> pages and filemap_write_and_wait_range() flushing them.  In this
+>>>> window the
+>>>> inode lock is not held, so another thread's async DIO completion is
+>>>> free to
+>>>> invalidate the still-dirty pages in the page cache.
+>>>>
+>>>> This race has always existed on ext3 because indirect-block inodes lack
+>>>> unwritten-extent support.  However, the window was extremely narrow in
+>>>> practice, because the old ext4_overwrite_io() checked every block and
+>>>> would conservatively take an exclusive lock.  This patch replaced it
+>>>> with ext4_dio_needs_zeroing(), which only checks head and tail blocks,
+>>>> making unaligned DIO more likely to take a shared lock and
+>>>> proportionally increasing the chance of hitting the race.
+>>>>
+>>>> I tried a couple of alternatives before settling on the patch below:
+>>>>
+>>>> 1. Force exclusive lock + IOMAP_DIO_FORCE_WAIT for all no-extent DIO.
+>>>>     This closes the window for new DIO submissions, but does not protect
+>>>>     against bio completions from previously submitted async DIO, which
+>>>>     run independently of the inode lock.
+>>>>
+>>>> 2. Wrap the fallback dirty+flush+invalidate sequence in
+>>>>     filemap_invalidate_lock().  However, the ext4 DIO and iomap layers
+>>>>     do not use this lock, so it would not serialise against DIO
+>>>>     completions.
+>>>>
+>>> Could we add a call to inode_dio_wait() before falling back to buffered
+>>> I/O? That is, in thread B, when falling back to buffered I/O, could we
+>>> acquire the exclusive inode lock and then call inode_dio_wait() to wait
+>>> for in-flight DIO to complete? This should close the race window. Since
+>>> scenarios where DIO writes to holes on ext3 are relatively rare, the
+>>> performance impact should be minimal (I suppose).
+>>>
+>> That's a great idea, thank you!
+>>
+>> I had been trying to fix this on the DIO side and didn't consider
+>> waiting from the buffered fallback path.
+>>
+>> I've tested the approach locally and it closes the race; I'll add a
+>> patch using it in the next version.
+> Yes, this looks like the best solution so far. The fallback doesn't have to
+> be fast. It was always - you are doing something stupid and we try to fixup
+> for you - kind of thing and bad performance is acceptable in that case.
+Agreed.
+>>>> One straightforward approach that seems correct is to skip direct I/O
+>>>> for no-extent inodes entirely, by returning 0 from ext4_dio_alignment():
+>>>>
+>>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>>> --- a/fs/ext4/inode.c
+>>>> +++ b/fs/ext4/inode.c
+>>>> @@ -6131,6 +6131,8 @@ u32 ext4_dio_alignment(struct inode *inode)
+>>>>   {
+>>>>          if (fsverity_active(inode))
+>>>>                  return 0;
+>>>> +       if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+>>>> +               return 0;
+>>>>          if (ext4_should_journal_data(inode))
+>>>>                  return 0;
+>>>>          if (ext4_has_inline_data(inode))
+>>>>
+>>>> With this, ext4_should_use_dio() returns false for no-extent inodes, and
+>>>> all I/O goes through ext4_buffered_write_iter() directly, bypassing the
+>>>> DIO path entirely.  On ext3, DIO to a hole already falls back to
+>>>> buffered
+>>>> I/O, so there is essentially no performance benefit to using DIO in the
+>>>> first place.
+>>>>
+>>>> Note that with this change, the fallback branch in
+>>>> ext4_dio_write_iter():
+>>>>
+>>>>          if (ret >= 0 && iov_iter_count(from)) {
+>>>>                  /* buffered fallback */
+>>>>          }
+>>>>
+>>>> would also become dead code for extent-based inodes (since unwritten
+>>>> extents guarantee iomap_dio_rw() never returns zero with unconsumed
+>>>> data), and could be removed in a follow-up cleanup.
+>>>>
+>>>> Thoughts?  Is there a reason to preserve DIO on no-extent inodes that
+>>>> I'm missing?
+>>>>
+>>> Hmm, this would also cause DIO to fall back to buffered I/O in common
+>>> extending write cases, which I think would be unacceptable.
+>> Fair point, the regression on extending writes is hard to justify.  That
+>> said, until we had a better fix, I'd argue a behavioural change was
+>> still preferable to potential data corruption. With the inode_dio_wait()
+>> approach above, this trade-off goes away. 
+> But heavily regressing performance for overwrites or extending DIO writes
+> even on indirect block based files is not really acceptable. There are
+> still users who for whatever reasons stay with old filesystems having
+> indirect block based files and they'd likely notice the regression.
+>
+> 								Honza
 
-OK, just to make it clear, calling make_bad_inode() is never a right thing
-to do once the inode has been exposed to other users. It is only usable
-within iget functions when loading inode into memory and finding out the
-content isn't valid. This function is one of the traps we have in VFS...
+Agreed. Significantly degrading performance for common workloads
+(overwrites, extending writes) to handle a rare race condition is
+unacceptable for production systems. The current fix with
+inode_dio_wait() only impacts the fallback path (DIO → buffered I/O),
+which is already an exceptional and slow path, so the performance
+impact there is acceptable.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+Thanks,
+Baokun
+
