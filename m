@@ -1,179 +1,168 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F08539FD9;
-	Thu, 18 Jun 2026 01:43:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC4428C86C
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 07:22:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781746996; cv=none; b=nMN0ogYbOovw7mOVoqO+tWEP5Ic4QQFWSElxh4DpHuPe1VuYnM43hRpSSGnRy2wlENfdKRILtjW8GWqwnOHYidAFUK6CwjxYIxOF6G+q/Xye6UkmamdcK3wA7f3iS0Qf+7ELseGlQra429db6MBp01SWpGyk4u5J5BL4FNzQ15E=
+	t=1781767331; cv=none; b=U193Fj+ZQeo8dGGYgCTEa8ix/d8+u8qJyBMuCoJS1XkHeoc/kpKUp5b1AMmGfCo4JN9ZW8PlYmqDKWRi/TIIzUUGD3UCbThzFsTPfs9iGgrNFlCXtmG46ULa6tBt6DUqfJsL3HQuS8LO3P+FOBAdom9ij5hp+kNeLdvuvgEvsuk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781746996; c=relaxed/simple;
-	bh=CnE+tHift91NW7KVcz4F90uocoWIyRwmZf0x46qY59I=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=RKi0f+Cly0pDIWMWtKO/zW8k5FAfof70D96jbAqplWfSU4pmIl+0pFKOsfDp3I4R6xnl9TiqvOiEfWqKC3ZjMMsvSeIEDq5EwZPvjEMOfhLY/i0+/8wlmL+2yeE0vfA9sFh2IMTrUI8gSOWhA6UdI7brEUoJNy0Gkkie6eTxutw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ggk4B1WBFzKHMZm;
-	Thu, 18 Jun 2026 09:42:18 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 738A740583;
-	Thu, 18 Jun 2026 09:43:07 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with SMTP id cCh0CgA3OT4pTTNqwnq+CA--.30640S3;
-	Thu, 18 Jun 2026 09:43:07 +0800 (CST)
-Message-ID: <cf4b41a7-a1ee-42d8-aafc-f8ddc6687a49@huaweicloud.com>
-Date: Thu, 18 Jun 2026 09:43:05 +0800
+	s=arc-20240116; t=1781767331; c=relaxed/simple;
+	bh=uZ3+xapxFKqnNLW5I7KNEVIzKnxiKUnh58Bx8yarE68=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=pnfAu6Y+6bjq0a7DmifLsWHcr9m3xsSm4SkLK+DoVxbkOANguI0AXmZjW9osl1zrj01lkp32V+9oMuvzICM9A6Xlb/n9JMR4fj79uDm75iswsKUXpXzzEiLGYoHASENc4V8xRItCBXGCFcKMBAszvvaLvQ9i0iY7Vd9atpinBaA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=k3hfGGuQ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RzocQxaY; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Sgp4jykB; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0qUl6/yq; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="k3hfGGuQ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RzocQxaY";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Sgp4jykB";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0qUl6/yq"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id C892275D2A;
+	Thu, 18 Jun 2026 07:22:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781767328; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
+	b=k3hfGGuQDOtz47C5i+GSveFEEeSVJ/wz9Y0oq75j/ayOHK1HOaInR/Na9g795xWbONacfF
+	dA/8L232rq9aiIX3sFLI/CpG76h27wbrt1b+R7kImIwl/kio34iSCGXqpmrHTHhrATfHH8
+	s+JMRthRKVkQYNlEEO650pAIc7dhT+0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781767328;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
+	b=RzocQxaYT070YATBqW1XJoLMaXEptJnMY/QatlAWy70Pv8btP84L2hsEc/ErmSZyWzVH0W
+	H9wktKvZgqVsneCQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1781767326; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
+	b=Sgp4jykBBNf5d+jMiVQ/bklBQBshB3eGrqqJkCCaE+kCXTUvQljTQBzn1lQNVxMLoG0hMY
+	FUYn3S9wbnd2LfNFxEo2n4x7yG6InpCexWgLyV5NUejm92FZrK2rc0Dtq25Pf911Gci/8u
+	5UXLhQumpPb40IcN+BQCq4Z+m7RaavU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1781767326;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=x/UpBSxdLrbqRpbxVAOK6fH/d7zjPCxA7A2lBhDqbaw=;
+	b=0qUl6/yqWdAV/nfWf6yus1+T007s9C9ofdi5R5Jwh/GZ8bbbSRhxUuskWoRVubI6Z93IBL
+	dkxx8YNG+9ehNuAQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BCA4B779A8;
+	Thu, 18 Jun 2026 07:22:06 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 62MLLp6cM2qAbAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 18 Jun 2026 07:22:06 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 5BFA6A0EC0; Thu, 18 Jun 2026 09:21:58 +0200 (CEST)
+Date: Thu, 18 Jun 2026 09:21:58 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Zhou, Yun" <yun.zhou@windriver.com>
+Cc: Jan Kara <jack@suse.cz>, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, ebiggers@google.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v4] ext4: validate EA inode i_nlink in
+ ext4_xattr_inode_iget
+Message-ID: <yee323q3l2tvonhf2ng6n4hmitygksbbsayr5xzyyo6xwxhxru@ctqxpvzi6nio>
+References: <20260615053512.1315992-1-yun.zhou@windriver.com>
+ <xzd6pbxhxxwf3ngj5v5pz2ilhykh7vsegohe6iwfkfytfuuv4o@5obqeoc5wocr>
+ <ee05e46d-6ec8-4291-a61e-213812934da3@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 06/23] ext4: pass out extent seq counter when mapping
- da blocks
-To: Jan Kara <jack@suse.cz>, Zhang Yi <yizhang089@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
- yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-7-yi.zhang@huaweicloud.com>
- <ghe4izo4od2b4fcgmiayopkaombyjjopao266sseuqim72t5sj@h2meez5lalsl>
- <58ee3009-8a0e-4657-a473-475ea998316e@gmail.com>
- <xt3zkmgktl7wpbwt4de76wh4q576fkmytw6udeojmj4goi6ul6@np4zgi2zinkg>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <xt3zkmgktl7wpbwt4de76wh4q576fkmytw6udeojmj4goi6ul6@np4zgi2zinkg>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3OT4pTTNqwnq+CA--.30640S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxZFy3uF43Kw43AF4UAw43Jrb_yoWrAw43pa
-	90kF15KrsxZ348uF4xtF1xXr1F9a1UKrW7Wr43Xw1FgF90kFySgF47WF12kFy8Kr4xJr10
-	qF4jkryxur1FyrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
-	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
-	7KsUUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ee05e46d-6ec8-4291-a61e-213812934da3@windriver.com>
+X-Spam-Flag: NO
+X-Spam-Score: -2.30
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,google.com,vger.kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Spam-Level: 
 
-On 6/18/2026 4:29 AM, Jan Kara wrote:
-> On Tue 16-06-26 20:37:00, Zhang Yi wrote:
->> On 6/16/2026 6:04 PM, Jan Kara wrote:
->>> On Mon 11-05-26 15:23:26, Zhang Yi wrote:
->>>> From: Zhang Yi <yi.zhang@huawei.com>
->>>>
->>>> The iomap buffered write path does not hold any locks between querying
->>>> inode extent mapping information and performing buffered writes. It
->>>> relies on the sequence counter saved in the inode to detect stale
->>>> mappings.
->>>
->>> Now that I'm looking at it again, I've got a bit confused here. Buffered
->>> write path is holding i_rwsem between mapping blocks and using them so
->>> there shouldn't be races.  Perhaps you mean buffered *writeback* path? But
->>> then ext4_da_map_blocks() should not ever get called in the writeback path
->>> because it is allocating delayed blocks... So this change looks unnecessary
->>> to me now. Am I missing something?
->>>
->>> 								Honza
->>>
->>
->> Hi Jan,
->>
->> Thanks for coming back to this series. Sorry for the inaccurate
->> description in the commit message. However, this change is still needed.
->>
->> As mentioned in the comment before the ->iomap_valid() callback in
->> iomap_write_begin(), consider the following scenario — a buffered write
->> to a dirty unwritten extent, with this concurrent race:
->>
->>   Buffer write (holds i_rwsem)    Writeback (no i_rwsem)
->>   ext4_da_map_blocks()
->>     // ext4_es_lookup_extent()
->>     // finds UNWRITTEN extent
->>   ext4_set_iomap()
->>     // type = IOMAP_UNWRITTEN
->>     // validity_cookie = m_seq
->>                                   ext4_iomap_writepages()
->>                                     // writeback for unwritten extent
->>                                     // ext4_convert_unwritten_extents()
->>                                     // extent tree: UNWRITTEN → WRITTEN
->>                                     // advancing i_es_seq
->>   __iomap_write_begin()
->>     // ext4_iomap_valid(): cookie != i_es_seq
->>     // iomap invalidated, re-maps
->>     // gets type = IOMAP_MAPPED (WRITTEN)
->>     // iomap_block_needs_zeroing(): FALSE
->>
->> Without passing out m_seq, the stale IOMAP_UNWRITTEN type from the iomap
->> would cause __iomap_write_begin()->iomap_block_needs_zeroing() to zero
->> out blocks that have already been written, corrupting data on partial
->> writes.
+On Thu 18-06-26 09:02:10, Zhou, Yun wrote:
 > 
-> Ah, right, thanks for explanation. So please update the description to
-> explicitely mention that iomap doesn't hold folio lock between mapping the
-> extent and copying data and thus can race with writeback modifying the
-> extent type. Thanks!
 > 
-> 								Honza
+> On 6/18/26 04:25, Jan Kara wrote:
+> > On Mon 15-06-26 13:35:12, Yun Zhou wrote:
+> > 
+> > --- a/fs/ext4/xattr.c
+> > +++ b/fs/ext4/xattr.c
+> > @@ -464,6 +464,33 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+> >                inode_unlock(inode);
+> >        }
+> > 
+> > +     /*
+> > +      * Since this function resolves references from active xattr entries,
+> > +      * the EA inode must be in active state (i_nlink=1, ref_count>0).
+> > +      * i_nlink > 1, i_nlink == 0 (dangling reference), or ref_count == 0
+> > +      * (inconsistent with an active entry) all indicate corruption or
+> > +      * a concurrent last-reference drop.
+> > +      */
+> > +     if (inode->i_nlink != 1 || !ext4_xattr_inode_get_ref(inode)) {
+> > +             ext4_error(parent->i_sb,
+> > +                        "EA inode %lu has unexpected i_nlink=%u ref_count=%llu",
+> > +                        ea_ino, inode->i_nlink,
+> > +                        ext4_xattr_inode_get_ref(inode));
+> > Hum, given motivation of this is syzbot corrupted fs image, I'd just put
+> > check in ext4_iget() verifying ext4_xattr_inode_get_ref() is > 0 and be
+> > done with it. Much simpler and catches at least the obvious cases. The
+> > consistency of xattr refcount and i_nlink is otherwise guarded by
+> > ext4_xattr_inode_update_ref() and it can never be perfect as in the kernel
+> > we don't have the full view of the filesystem and so cannot ascertain that
+> > xattr ref count matches reality...
+> > 
+> Thanks very much for your review and suggestions, The issue should be easily
+> fixed after "introduce ext4_put_ea_inode() for safe deferred iput" merged.
+> Just need to defer iput() and no longer to make inode bad.
 
-Sure, thanks for pointing this out.
+OK, just to make it clear, calling make_bad_inode() is never a right thing
+to do once the inode has been exposed to other users. It is only usable
+within iget functions when loading inode into memory and finding out the
+content isn't valid. This function is one of the traps we have in VFS...
 
-Cheers,
-Yi.
-
-> 
->>
->> Thanks,
->> Yi
->>
->>>>
->>>> Commit 07c440e8da8f ("ext4: pass out extent seq counter when mapping
->>>> blocks") added the m_seq field to ext4_map_blocks to pass out extent
->>>> sequence numbers, but it missed two callsites within
->>>> ext4_da_map_blocks(). These callsites are on the delayed allocation
->>>> path, which is also used in the iomap buffered write path. Pass out the
->>>> sequence counter to ensure stale mappings can be detected.
->>>>
->>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>>> Reviewed-by: Jan Kara <jack@suse.cz>
->>>> ---
->>>>   fs/ext4/inode.c | 4 ++--
->>>>   1 file changed, 2 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>>> index 6c4d9137b279..39577a6b65b9 100644
->>>> --- a/fs/ext4/inode.c
->>>> +++ b/fs/ext4/inode.c
->>>> @@ -1929,7 +1929,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
->>>>   	ext4_check_map_extents_env(inode);
->>>>   	/* Lookup extent status tree firstly */
->>>> -	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
->>>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
->>>>   		map->m_len = min_t(unsigned int, map->m_len,
->>>>   				   es.es_len - (map->m_lblk - es.es_lblk));
->>>> @@ -1982,7 +1982,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
->>>>   	 * is held in write mode, before inserting a new da entry in
->>>>   	 * the extent status tree.
->>>>   	 */
->>>> -	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
->>>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
->>>>   		map->m_len = min_t(unsigned int, map->m_len,
->>>>   				   es.es_len - (map->m_lblk - es.es_lblk));
->>>> -- 
->>>> 2.52.0
->>>>
->>
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
