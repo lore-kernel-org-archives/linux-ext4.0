@@ -1,208 +1,179 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 335FF40D56D;
-	Thu, 18 Jun 2026 01:03:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.178.238
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781744607; cv=fail; b=c2bT1SZnNdACntWLvxQmqaFIWv48IvJEsQj3QkRrh6uIlTvCkDs/maZumLvwzjD8ldrKYNg3/FQ/FzltPD+wOSIacWBJ2atAPsA6UU06/XAaalb2xIdfcj1mKJyteWN12RLwN5RxLaE87YOLlgj4YAo8lPG2cetFo24+Odl7JTw=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781744607; c=relaxed/simple;
-	bh=siISPltdbSwbuBAQhTUyjrAxfos6YFSu1ftbTcO4gow=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=QHfqNF+/qtWg6qRRViQRozqhUvQ5YQNmlITrn0WPvfTpdmmP0uv4K9yuO9/LtMBAjbSAVPYb/e1M0pASczyZEvsh1cdhsHHZfwhNYy19TzmwOHR1ISjFAiQ1qfAIDbb6b28uZox/iO0muWXKwVyQ6lyy6XE4Mov6kCx9KkhFveA=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=n6j2MTSg; arc=fail smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="n6j2MTSg"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65I0fk0n2944073;
-	Thu, 18 Jun 2026 01:02:23 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=HBTKWm0fu1eo0lRn5jGvPOCJjK5AfFHJtd86oWiXQVc=; b=
-	n6j2MTSg7btLihb3ppsBHdMfCE3z0cRFWLKGgyfBWxrXyHQcY1fURHl26NJmfQfa
-	pjcOfGkr3+cYFFm0ZWRhw3b31b3QMxZSC2cAnkNcrBIDnT3uHuSB4jZopIH5uzUY
-	LCJ5CT3OZTC/ozYDn4w6UEE8ycwqaXx3SCdW74V6iz4yBq8TCkDh3z0mofrDtsqK
-	WO80MggY0m3iJvzTR++lwmk4c+V5EohEgq/EeNHmCCO0Gsel7bs8TKKNwxq2kn3S
-	VSkdSPGIKJyyiqA4Jpb46JZwSDpuq1cGn51up/KwUaKY2Fn8kstOE4Pzh7k50/RK
-	8dV4BBqsco7FWkiDoabGGw==
-Received: from ch4pr04cu002.outbound.protection.outlook.com (mail-northcentralusazon11013027.outbound.protection.outlook.com [40.107.201.27])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4euefc1y86-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Thu, 18 Jun 2026 01:02:23 +0000 (GMT)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=awoAkQRjjvNk+YgiO5InZxn5QQTFFLScmdVRwExmHZSkzExyX0DuZEVhpmgafwWrQR8LxV53sxYd1U69st651KwPRxxAwkhZ/GEB0RzGSlzz7gMqQ/YUwDs8E4omBvuDvtsBXqJ+g+jOGUuGBDDlHOHFSF6i6IJZjR9nWAoWb1EqeN/xO2pYEJyYg+Ftigq06zGh3Veh2BiZx3d9QfbJLTXgbR9v62CBID6dQiCvxk6M315807OgxUxSqK/WhGcg96Gd9K5CgsRcNP5HGtuuzd3CUSUiWoFwjGVR+FfwkICEVxQ4uaO734fe4fZq/F4RCSmssrqx33viX1xRtA6x6w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=HBTKWm0fu1eo0lRn5jGvPOCJjK5AfFHJtd86oWiXQVc=;
- b=RA4DKz0gqrTQyHDGWkRiPtmxLz2qcVmAc6bNu2UN92mQCy1Yl6fH3vssAhdnQ5bBB4CtAogTWkK8N61abauX5xKNdLSn5EtcVg0u5pkqxG7MDXedzw46l05MGzEnGtVS6EVJn8BLLxQex9/ClhR/7iXAmu9zYfb7+NCl8tqt/bGa1hdy/JRV+3sHYN+WLGQn2IeSrMFy3c90A/5A8+qz4l+Sgj4fblaTkZcv9gP8gYVDqPScaowX+r9aYbNxUtA2NMsLq9tFEY9sJu4gSKOtbymJYpZfDJPb3tFYJ5VXmW89nQaQBnVBjVJofndxp3N3M5Td60t+KLiPOnZfIMswBw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=windriver.com; dmarc=pass action=none
- header.from=windriver.com; dkim=pass header.d=windriver.com; arc=none
-Received: from CH0PR11MB5332.namprd11.prod.outlook.com (2603:10b6:610:bf::17)
- by IA4PR11MB9035.namprd11.prod.outlook.com (2603:10b6:208:55e::21) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.139.12; Thu, 18 Jun
- 2026 01:02:18 +0000
-Received: from CH0PR11MB5332.namprd11.prod.outlook.com
- ([fe80::8f86:8d08:45bf:ec13]) by CH0PR11MB5332.namprd11.prod.outlook.com
- ([fe80::8f86:8d08:45bf:ec13%6]) with mapi id 15.21.0139.009; Thu, 18 Jun 2026
- 01:02:18 +0000
-Message-ID: <ee05e46d-6ec8-4291-a61e-213812934da3@windriver.com>
-Date: Thu, 18 Jun 2026 09:02:10 +0800
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4] ext4: validate EA inode i_nlink in
- ext4_xattr_inode_iget
-To: Jan Kara <jack@suse.cz>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        ebiggers@google.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <20260615053512.1315992-1-yun.zhou@windriver.com>
- <xzd6pbxhxxwf3ngj5v5pz2ilhykh7vsegohe6iwfkfytfuuv4o@5obqeoc5wocr>
-Content-Language: en-US
-From: "Zhou, Yun" <yun.zhou@windriver.com>
-In-Reply-To: <xzd6pbxhxxwf3ngj5v5pz2ilhykh7vsegohe6iwfkfytfuuv4o@5obqeoc5wocr>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: SL2P216CA0150.KORP216.PROD.OUTLOOK.COM
- (2603:1096:101:35::16) To CH0PR11MB5332.namprd11.prod.outlook.com
- (2603:10b6:610:bf::17)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F08539FD9;
+	Thu, 18 Jun 2026 01:43:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781746996; cv=none; b=nMN0ogYbOovw7mOVoqO+tWEP5Ic4QQFWSElxh4DpHuPe1VuYnM43hRpSSGnRy2wlENfdKRILtjW8GWqwnOHYidAFUK6CwjxYIxOF6G+q/Xye6UkmamdcK3wA7f3iS0Qf+7ELseGlQra429db6MBp01SWpGyk4u5J5BL4FNzQ15E=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781746996; c=relaxed/simple;
+	bh=CnE+tHift91NW7KVcz4F90uocoWIyRwmZf0x46qY59I=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=RKi0f+Cly0pDIWMWtKO/zW8k5FAfof70D96jbAqplWfSU4pmIl+0pFKOsfDp3I4R6xnl9TiqvOiEfWqKC3ZjMMsvSeIEDq5EwZPvjEMOfhLY/i0+/8wlmL+2yeE0vfA9sFh2IMTrUI8gSOWhA6UdI7brEUoJNy0Gkkie6eTxutw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4ggk4B1WBFzKHMZm;
+	Thu, 18 Jun 2026 09:42:18 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 738A740583;
+	Thu, 18 Jun 2026 09:43:07 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgA3OT4pTTNqwnq+CA--.30640S3;
+	Thu, 18 Jun 2026 09:43:07 +0800 (CST)
+Message-ID: <cf4b41a7-a1ee-42d8-aafc-f8ddc6687a49@huaweicloud.com>
+Date: Thu, 18 Jun 2026 09:43:05 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: CH0PR11MB5332:EE_|IA4PR11MB9035:EE_
-X-MS-Office365-Filtering-Correlation-Id: 7d8ccc4b-92e2-447c-b53c-08deccd53e52
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|376014|7416014|366016|1800799024|23010399003|56012099006|11063799006|18002099003|22082099003|4143699003;
-X-Microsoft-Antispam-Message-Info:
-	l7bKEuX7VJJpIa3lv8XMzZNLKdan3tVbUd0i+4KutMho0xzn/4cC7eNfdjL6TaZG9benbQM/BPm9CO/MtEOl0oU+L973W4YFUiMO+SIaj5ariO8ATGthhdwiVxy/k7mdW15FweJuGYqncwP80ZlP1LsvwswR1WD/A0LSGJ+z7ExFUA0vNG4ElO8KKeOBcP4+Q+wlO7oI7PXPtzlVnVU0XKqFiEamcoFKL72Vj8Tdu87m15+HwEMYsCUJhNvZVpkaicHuu2NBdk2v/RW7vgWqlZzhBpXjdHMYhC0bq5Qd+HZEr6i0aRoEAxtnxw54Q6wfSZibv9UH5WGGoqE0jno+7MASG1ry0C7STYBYWKOX6Q53KZS5FH23BL6Z8C+nqe+SShXksh+OXHh6ye9mLHpKeJMt05WFyaC9ZwNTLad98+4vdvGZJBJ0syHhhSo2PsSJSjfVtF+4MzZv9n0NofQK0NZ001fOqmgMVZczCJQY9GDwkSFQLvLZc+NT2tzPj1g8VxOfC6EewS08cqElbfK0+ZsIaWJNprEuUqOLgoK/Umm39rvOzDNIPC9S2IcaaSPzMP+rw0JyZ8Cl34FqhHP++c/cCU8ApndgHpLvyndy/6USqJAeRpGyO7uML44GWei4u6swptCsjJjdsdhabG2iUojdk1XQuSObREsx2/Y9UB2MS1IFzThBThUFsRp4uCPu
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR11MB5332.namprd11.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(7416014)(366016)(1800799024)(23010399003)(56012099006)(11063799006)(18002099003)(22082099003)(4143699003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?Uzg3R1ZCTjYwaDhucmJhWHlrbXpzM1c5UjJmdGVxWEtGdkRtREp6eVFzZmJ5?=
- =?utf-8?B?cW50WHp6OXFtbGFFVDlXR0tLdjlyTlhiNmtPQkxyWEwrczZsYXkrN1IwazlK?=
- =?utf-8?B?ZFd0SGRSdW9BVzJwOEs0cjcwd0x1em5CMUxGRGYrQTRqY0xtamlQMTZjLzRn?=
- =?utf-8?B?TTdRTEJUVm5XRVNlSXUrUExDd0Y3OXgzaW04NitveTJ1SDdjaGpLUVlxNHpq?=
- =?utf-8?B?M1lVckRjYXVMbkFqMCtwS3dGY0FOQ29YWXljRkJQVS9BTEh0djR3MGwvc1RH?=
- =?utf-8?B?eUJkZE14R2traVlTbkxBY0lkY2RMSzdJM3lkelVMNmM0NlVlY1N0cllMWm94?=
- =?utf-8?B?Z2lkQ0w0NTZKVXRYa1hHaFZZVzdON0FVN09wdzBhRm16MlRRdTk4MHFIK25i?=
- =?utf-8?B?Myt5QWlxT3dMZWZTaTNsdXZ5elFWV0xwbnlNVm8xMXVYVndPakxBK1lESXp4?=
- =?utf-8?B?eUpjZDZtakFaOUthdXlFQUtWM0xkYWJUbVIvL2hVK3JiempKL0pzWnZJd041?=
- =?utf-8?B?K3RReC9UY0xhcGorUjhJOERFM1A4K2xwdS9vakdoeU91d0pVbS9XTWJtM3dY?=
- =?utf-8?B?NStEZzJRdlVVT20vRDBLRjNyT256VmlScm42VWdPaEtYYy94WWU3ZnoxejMw?=
- =?utf-8?B?Y3pYbitjY0ZpcmhveVplaDg0NjZMRTVjQUFLOHhJUHJQSEw2N3dmWmFkVFZL?=
- =?utf-8?B?TnZuZVk3Nk50RVdCaWg4Q3VYQVBDa1VDbTkvalV4WWdheC83Yk9lU0s4aXFU?=
- =?utf-8?B?dGwvQVJxS1Q3Vk5PRzZySDhtQkdrcFRDWFJKVkJYcmdTOVBoanFPZlFQVUx6?=
- =?utf-8?B?WHZzREQrNXdaMjdhZFB0SThsVHBUaFN2eUg0YndMd21vNU52U3lkQ29nZTdI?=
- =?utf-8?B?SFNjd3NTenh1L01jZEtrYU4zY1BoZUJCNS96bG9GdHRrajNhQVRKb2dIZCtB?=
- =?utf-8?B?azl5dzJzL3FUZzh2YmdYZ09VYkZvTXd6Q3ZkWkJES003dWZMSjJIM3Y1SzFY?=
- =?utf-8?B?OU1PRWV2YTkrK3VIR09vMGcvWUF5dTcvMmg4aFVyR2xKRUJySkhvWldtQjYx?=
- =?utf-8?B?WFRtMTc4a2tBUk1CcEtmNk85d3I3cFl3TVA5S0ZJbGx4UkdPeGcvemY0Ly9z?=
- =?utf-8?B?TDlGdVR5SEhJTDNyeU9OUDFjNWtXNlpKVUVwbTlmYUQ1VGt2RmZDNGo0dk9r?=
- =?utf-8?B?c0dvZmdrRmxpbWxyS3NvbW1lQ2hWZkhMaXNqcWd6UWhmbEFueDY4NFgwREtL?=
- =?utf-8?B?T2E5TVhycERnMzZxZ1VtNmp6Vjkvb2xvVHUyVVFKZzlrMW8vWFFKY1VOUUx3?=
- =?utf-8?B?bG9RSTk4S3hiWEZJSDA4cFZJMmFkZG4zckJ1UzZZTnA2TFlqVGJkQXYzTjBL?=
- =?utf-8?B?UWdZbitLbGNvVUlwaitjUFI5RTMyaWZMejg2TmFuNzAvUzg3N21RdnBYUERq?=
- =?utf-8?B?UlM1MTNvQUJ5b09QMEhzalhRc1hYZmVOTWZpUEVvUnUwZ1JDQkxEeWFxc0xl?=
- =?utf-8?B?UlJoTUVNa3oxK2ZVYVp0eWpNRlNZNTZPWVpRZSsybEZxVFVFWVZBUk9RUURH?=
- =?utf-8?B?ZnNPRE16bW1vOGJWdTVVNkZQMEdPK210U2h1YkJTYXVZNzVkcTJOTWNvVkYz?=
- =?utf-8?B?dmpPZjJRKzArQ2lZMzlqN1JPNFJrSHkyNU1XeSsxWHVNd1phbnVXOXFWMHNj?=
- =?utf-8?B?Zkc5VVVxV0pod3Z6UGk5OEhhQTl6WHA5ckZmdGplRzZwejRvUEdkTTF4MmRa?=
- =?utf-8?B?T2l4a1JYaEJWUDlySU5oMU92TWdxMW9td1RGYVc5bHJMdmFqeEFHaTNGdGdY?=
- =?utf-8?B?L3VrTlhOWkdjQTl4Uk5jTUo4L01pVHgraXJURzgza0RDZ29VenorVk0zV01S?=
- =?utf-8?B?TUdkQU95T2lKSWRvRGt0Rm1CUHVYcnczTlFVUC9CNGkzQVBDdG8zd09vVjlv?=
- =?utf-8?B?a0wydHpwVkxtU2xqYlIxbTNwaUtIeTM5bEdrVmd5Yitxd0hSWUlKMkk3MDcx?=
- =?utf-8?B?cWdhbGZCbWxMUVpNdldudE94SHhacmk2cWJIejBLY0ZCTjBreGhrYVl2b0Fu?=
- =?utf-8?B?eHVSMVBGUW83bnhXVnB0OGRhL253WHFNSzAwaEQybkdRbjJyS21DUnFqN2Rh?=
- =?utf-8?B?U2FqbklWQ2dqTXRwSExHY3g2TFhhaU8vZUZ2aDFla0FwSHFFTjlSNjdKaE5W?=
- =?utf-8?B?MksrRGJJYUhoQTd1L2lEMWd6ck5GS3BpTzU3eVpnS1RFN1pCWENua1VNYm9y?=
- =?utf-8?B?RzJxSHJKb2tib2RobEJrUTQvRkdtQVphdU5VeDNGQ3l4K29KZ2NlRkZrY3VW?=
- =?utf-8?B?WHA3bWplcDZjaG5TMmx4SHozaUFXU1ExK2JmNVJ1b0wxMnlRaVh2QT09?=
-X-Exchange-RoutingPolicyChecked:
-	NwuuzNxElrDocwY33cAopZWT8GqHoGtWZ+vLCmMgNTZCwqZlmcvLQehuJZ/6D3L4AJo2ALMkDAawk+W6a3BcHLqoKXNc9S5Fgj7tMxIsHcCSOFe+NOqzghOm3NUeQsCl8CRF4dxOjqeQu1zeZEzeFxLf4PfOFnLTXioNZkXyZcBqILDo9aKCL77RODZ7K8TvnNuO582NQvp/rAE+JeuRNvXcuQ3SMV2WMaWDcRWOuaO4eEHRQlw4Pohx1MvfOCK7x+MKVJiY0yfjkJWVXXto+Br0knNckZmQVXE01lCmU59u0R2i9B7TuIYlbfehtjlmI042RFdh4BY/xz9vf03dqg==
-X-OriginatorOrg: windriver.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7d8ccc4b-92e2-447c-b53c-08deccd53e52
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR11MB5332.namprd11.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 18 Jun 2026 01:02:18.1609
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 8ddb2873-a1ad-4a18-ae4e-4644631433be
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 3j+QB8TnAAW967ZGPeLcvrel0IAEGZMQFDMRzhcU/6lQZyH7n3punTIhiZ38WAQRRxqxM7AIV02JlYJoP6ssrw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: IA4PR11MB9035
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjE4MDAwNyBTYWx0ZWRfX+pehPgQ+QxSs
- rWalh7losxZYDjhHzWmGHZEDxsGOudoqQ3LcnBl2u2PawKecTUcAvf3K1+XxqjhlHrB3fkDU0Cg
- 9KOzkU9KColokbS0JACjYwZPuofSc7twaexQYnh6Rjchf/8jZAy/
-X-Proofpoint-GUID: _QyTGBobj5f-Iq-LXMV6AeKBcPKD2EqU
-X-Proofpoint-ORIG-GUID: _QyTGBobj5f-Iq-LXMV6AeKBcPKD2EqU
-X-Authority-Analysis: v=2.4 cv=ObGoyBTY c=1 sm=1 tr=0 ts=6a33439f cx=c_pps
- a=KTU/bV3Cu5xqMUx6SKv27w==:117 a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19
- a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19 a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19
- a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10
- a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22 a=klDOsUkWDRETUCZYPvoE:22
- a=Q0pTk6tcEJjPcLLv9bQA:9 a=QEXdDO2ut3YA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjE4MDAwNyBTYWx0ZWRfX//UWV6xRfaKt
- 8WhHY7YneWIROS6v7la3abFxpazjltvb/0h/vr7e3Ax0z73Oa61LWp9aJ+wXp0yoPuPThYl+a+T
- mTGVnSIlFDKN5z3P4Qt/PLfantW1KUSVOC3WWTR/DP040K1OhqkIgKUqnu+1Epe+U4UvDC/Srg1
- jxS5eKLLwQvEljrzFG4GVnalMvQthogmtMnDRsbcR2NHxsXDoR6RkzN4rsva1gPU8bKYQsFi1M/
- gBD17dCKndax1tyydwWBkQw+u2rvrgJV/RfnguaKZCvi5yCEgA+ZJfN4vMPxPXI/m0KU2adN5HK
- SG5hsETWXHbanOr4u0Ft+zd98hdw6DzNN5pRItESkVh/NP9G2utrzNfNUGvW42y1DC7fLNW2xRh
- w5rIxgHVon6qlKSC6Q0zj2ymhMHBZnX+tN6oAjVwUuzr/AcfezPtSIgboKzPuG61nr3pcrUg5lj
- s9xAO7sGfQBoVciYYAA==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-17_02,2026-06-17_03,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- bulkscore=0 clxscore=1015 adultscore=0 spamscore=0 priorityscore=1501
- impostorscore=0 phishscore=0 lowpriorityscore=0 malwarescore=0 suspectscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606180007
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 06/23] ext4: pass out extent seq counter when mapping
+ da blocks
+To: Jan Kara <jack@suse.cz>, Zhang Yi <yizhang089@gmail.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
+ yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-7-yi.zhang@huaweicloud.com>
+ <ghe4izo4od2b4fcgmiayopkaombyjjopao266sseuqim72t5sj@h2meez5lalsl>
+ <58ee3009-8a0e-4657-a473-475ea998316e@gmail.com>
+ <xt3zkmgktl7wpbwt4de76wh4q576fkmytw6udeojmj4goi6ul6@np4zgi2zinkg>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <xt3zkmgktl7wpbwt4de76wh4q576fkmytw6udeojmj4goi6ul6@np4zgi2zinkg>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgA3OT4pTTNqwnq+CA--.30640S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxZFy3uF43Kw43AF4UAw43Jrb_yoWrAw43pa
+	90kF15KrsxZ348uF4xtF1xXr1F9a1UKrW7Wr43Xw1FgF90kFySgF47WF12kFy8Kr4xJr10
+	qF4jkryxur1FyrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
+	7KsUUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+On 6/18/2026 4:29 AM, Jan Kara wrote:
+> On Tue 16-06-26 20:37:00, Zhang Yi wrote:
+>> On 6/16/2026 6:04 PM, Jan Kara wrote:
+>>> On Mon 11-05-26 15:23:26, Zhang Yi wrote:
+>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>
+>>>> The iomap buffered write path does not hold any locks between querying
+>>>> inode extent mapping information and performing buffered writes. It
+>>>> relies on the sequence counter saved in the inode to detect stale
+>>>> mappings.
+>>>
+>>> Now that I'm looking at it again, I've got a bit confused here. Buffered
+>>> write path is holding i_rwsem between mapping blocks and using them so
+>>> there shouldn't be races.  Perhaps you mean buffered *writeback* path? But
+>>> then ext4_da_map_blocks() should not ever get called in the writeback path
+>>> because it is allocating delayed blocks... So this change looks unnecessary
+>>> to me now. Am I missing something?
+>>>
+>>> 								Honza
+>>>
+>>
+>> Hi Jan,
+>>
+>> Thanks for coming back to this series. Sorry for the inaccurate
+>> description in the commit message. However, this change is still needed.
+>>
+>> As mentioned in the comment before the ->iomap_valid() callback in
+>> iomap_write_begin(), consider the following scenario — a buffered write
+>> to a dirty unwritten extent, with this concurrent race:
+>>
+>>   Buffer write (holds i_rwsem)    Writeback (no i_rwsem)
+>>   ext4_da_map_blocks()
+>>     // ext4_es_lookup_extent()
+>>     // finds UNWRITTEN extent
+>>   ext4_set_iomap()
+>>     // type = IOMAP_UNWRITTEN
+>>     // validity_cookie = m_seq
+>>                                   ext4_iomap_writepages()
+>>                                     // writeback for unwritten extent
+>>                                     // ext4_convert_unwritten_extents()
+>>                                     // extent tree: UNWRITTEN → WRITTEN
+>>                                     // advancing i_es_seq
+>>   __iomap_write_begin()
+>>     // ext4_iomap_valid(): cookie != i_es_seq
+>>     // iomap invalidated, re-maps
+>>     // gets type = IOMAP_MAPPED (WRITTEN)
+>>     // iomap_block_needs_zeroing(): FALSE
+>>
+>> Without passing out m_seq, the stale IOMAP_UNWRITTEN type from the iomap
+>> would cause __iomap_write_begin()->iomap_block_needs_zeroing() to zero
+>> out blocks that have already been written, corrupting data on partial
+>> writes.
+> 
+> Ah, right, thanks for explanation. So please update the description to
+> explicitely mention that iomap doesn't hold folio lock between mapping the
+> extent and copying data and thus can race with writeback modifying the
+> extent type. Thanks!
+> 
+> 								Honza
 
+Sure, thanks for pointing this out.
 
-On 6/18/26 04:25, Jan Kara wrote:
-> On Mon 15-06-26 13:35:12, Yun Zhou wrote:
->
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -464,6 +464,33 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
->                inode_unlock(inode);
->        }
->
-> +     /*
-> +      * Since this function resolves references from active xattr entries,
-> +      * the EA inode must be in active state (i_nlink=1, ref_count>0).
-> +      * i_nlink > 1, i_nlink == 0 (dangling reference), or ref_count == 0
-> +      * (inconsistent with an active entry) all indicate corruption or
-> +      * a concurrent last-reference drop.
-> +      */
-> +     if (inode->i_nlink != 1 || !ext4_xattr_inode_get_ref(inode)) {
-> +             ext4_error(parent->i_sb,
-> +                        "EA inode %lu has unexpected i_nlink=%u ref_count=%llu",
-> +                        ea_ino, inode->i_nlink,
-> +                        ext4_xattr_inode_get_ref(inode));
-> Hum, given motivation of this is syzbot corrupted fs image, I'd just put
-> check in ext4_iget() verifying ext4_xattr_inode_get_ref() is > 0 and be
-> done with it. Much simpler and catches at least the obvious cases. The
-> consistency of xattr refcount and i_nlink is otherwise guarded by
-> ext4_xattr_inode_update_ref() and it can never be perfect as in the kernel
-> we don't have the full view of the filesystem and so cannot ascertain that
-> xattr ref count matches reality...
->
-Thanks very much for your review and suggestions, The issue should be easily
-fixed after "introduce ext4_put_ea_inode() for safe deferred iput" 
-merged. Just
-need to defer iput() and no longer to make inode bad.
+Cheers,
+Yi.
+
+> 
+>>
+>> Thanks,
+>> Yi
+>>
+>>>>
+>>>> Commit 07c440e8da8f ("ext4: pass out extent seq counter when mapping
+>>>> blocks") added the m_seq field to ext4_map_blocks to pass out extent
+>>>> sequence numbers, but it missed two callsites within
+>>>> ext4_da_map_blocks(). These callsites are on the delayed allocation
+>>>> path, which is also used in the iomap buffered write path. Pass out the
+>>>> sequence counter to ensure stale mappings can be detected.
+>>>>
+>>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>>>> Reviewed-by: Jan Kara <jack@suse.cz>
+>>>> ---
+>>>>   fs/ext4/inode.c | 4 ++--
+>>>>   1 file changed, 2 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>>> index 6c4d9137b279..39577a6b65b9 100644
+>>>> --- a/fs/ext4/inode.c
+>>>> +++ b/fs/ext4/inode.c
+>>>> @@ -1929,7 +1929,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+>>>>   	ext4_check_map_extents_env(inode);
+>>>>   	/* Lookup extent status tree firstly */
+>>>> -	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+>>>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+>>>>   		map->m_len = min_t(unsigned int, map->m_len,
+>>>>   				   es.es_len - (map->m_lblk - es.es_lblk));
+>>>> @@ -1982,7 +1982,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+>>>>   	 * is held in write mode, before inserting a new da entry in
+>>>>   	 * the extent status tree.
+>>>>   	 */
+>>>> -	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
+>>>> +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+>>>>   		map->m_len = min_t(unsigned int, map->m_len,
+>>>>   				   es.es_len - (map->m_lblk - es.es_lblk));
+>>>> -- 
+>>>> 2.52.0
+>>>>
+>>
+
