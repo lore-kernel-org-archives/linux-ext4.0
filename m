@@ -1,90 +1,45 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50F843FBEC1
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 12:59:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9169430FC1A
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 13:00:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781787552; cv=none; b=Rt5bXXl/8k7Y88Qt62niWgPf4dwDDGl0hW7vmBBNQuAM/2QkPe28HtKORdxLcvnCy3VV15WeDO7orFH/tLvrBOsrVo9qoqfdAl6d52GSoWuWAa9+rBolv/iW6TjexwiYpXXFJ7n3PJwwl+1sSrw95uyxnNuLCwrL6Ya2AviBbH0=
+	t=1781787619; cv=none; b=PwCv3LJnwa+20iCBGVCASWbn7LZQCrSBGcfKOh9apG3nWZvX6CFAJILGIMsi6xOLx7kcNWGz3G4dqC3jApWikyv0E53trllXvJQoTeDk8UFJ7/SS28XqExTY/PRqH25e1L/tmT/IFVjWUaXS0pmnzxC/hQ/Cp0vr0R05L+8ZNd0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781787552; c=relaxed/simple;
-	bh=jzoc1vb5EUHnbhnaqtjmFJqUbpDqeNVOj67mCDu1m/4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=H4D1K4tRkCvjhNIgWeyYYQiBzylUFNhez24xswlEgsG+pXFS5UXAJ3K4ytMNFfvItDd3P+y6TfaUxOyaCzk2Itz3E/NOyDN0mMkbroggJ7cLcVYzeb3U+gG+rlotQLXgSS/Hr4R5zTweVna/2n+3gxXGzuBaiNZ9geugZ3IaoE8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=prNZZvEx; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=rz9qB9JV; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=prNZZvEx; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=rz9qB9JV; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1781787619; c=relaxed/simple;
+	bh=C9VwVVAIC87BALFIB26HsMCHw2km0VZd0AYByMtDNno=;
+	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=g1MTTNkp0u8nQMKDh4njKohXEC18W6Sm25eJ4FOTV39oa2T6HJ4neX1CDVVhRTFcW7PFQn6Ss1CSa9/Q04N9QjAoBK00DfA2UZj5+US930dc5nJ1VQ2BFlvkTn5H2pDmVBbChKIIxqFrx3A9Ho4ouRyP+Et1HTNJ4T5Vuc98u48=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=CHkp6wPT; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="prNZZvEx";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="rz9qB9JV";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="prNZZvEx";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="rz9qB9JV"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 7F884758B5;
-	Thu, 18 Jun 2026 12:59:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781787549; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FluZdMq4Eaoni5JIdNOz8GFv7L77aIi1EXFolnNiBM0=;
-	b=prNZZvExhNuFswf7Fof2G7EVcivsZCtK4tZZ16DYFjxaRjlwoWZGwVU9nbXSVECBproC55
-	Vk3Ep7FYaXEIK49zcB7F9YMe12fGkw3Pxr7hdu4nWnxuXJMEtYIpUzFWar0VLvJDM52Jsr
-	taeQ3UPU5feNShFQHHPVeisN7LZjYqw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781787549;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FluZdMq4Eaoni5JIdNOz8GFv7L77aIi1EXFolnNiBM0=;
-	b=rz9qB9JVxQY18lEAmflDzeMAXTotxlDLClU57KJafUvZfIZwQBakaaJGCByIPa7iRww7Ld
-	bgHHkoKx9socnZCg==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=prNZZvEx;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=rz9qB9JV
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781787549; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FluZdMq4Eaoni5JIdNOz8GFv7L77aIi1EXFolnNiBM0=;
-	b=prNZZvExhNuFswf7Fof2G7EVcivsZCtK4tZZ16DYFjxaRjlwoWZGwVU9nbXSVECBproC55
-	Vk3Ep7FYaXEIK49zcB7F9YMe12fGkw3Pxr7hdu4nWnxuXJMEtYIpUzFWar0VLvJDM52Jsr
-	taeQ3UPU5feNShFQHHPVeisN7LZjYqw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781787549;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FluZdMq4Eaoni5JIdNOz8GFv7L77aIi1EXFolnNiBM0=;
-	b=rz9qB9JVxQY18lEAmflDzeMAXTotxlDLClU57KJafUvZfIZwQBakaaJGCByIPa7iRww7Ld
-	bgHHkoKx9socnZCg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7420A779AB;
-	Thu, 18 Jun 2026 12:59:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id uSNUHJ3rM2p7QAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 18 Jun 2026 12:59:09 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 0DB7DA12D9; Thu, 18 Jun 2026 14:59:05 +0200 (CEST)
-Date: Thu, 18 Jun 2026 14:59:05 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com, yizhang089@gmail.com, 
-	yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 17/23] ext4: submit zeroed post-EOF data immediately
- in the iomap buffered I/O path
-Message-ID: <g6jho4eosvuwuaw6sxzvyrahl43vbhuznqtr2fbd2nhukd6a3v@fx5udwaepwrx>
-References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
- <20260511072344.191271-18-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="CHkp6wPT"
+Received: from trampoline.thunk.org (pool-173-48-112-62.bstnma.fios.verizon.net [173.48.112.62])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 65ID01Fd018723
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 18 Jun 2026 09:00:04 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1781787604; bh=hq3ZjnHxbr/R5UiNYSKdDmQfEmNOHC49mE2XplW0Sss=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=CHkp6wPT9J1yiic7r7QAvfHt5HsUKrBmubsc0nm6MbknsTDjXz/uOcps6v24lGdiN
+	 X2xByNrw4sgR3h7mGMepEUo6ZQuERMqR7ItH7sh3t+QGKiFoBvk2pDJp8V5pL7ZCFL
+	 179cVBgqFm83y8OOelOjhYwBcn9nQekA1HkkOdOak5sDAplrL7nSpliWkPfVKclEPJ
+	 jPsSV9nOioN1jQUUl6krN8MqjhSZYbpVO+9HTs4CCiOXqDC3N18RzHSaqkvpGTbYuU
+	 cJnBVm8zREeacLXFLhME0Jy2YtuH/XkwuWiB0YATMPShbM69KT9jumJi20iNUv2Gze
+	 Wn4he/BrXIY+w==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id CED382E2AAC; Thu, 18 Jun 2026 09:00:01 -0400 (EDT)
+Date: Thu, 18 Jun 2026 09:00:01 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: [GIT PULL] ext4 changes for 7.2-rc1
+Message-ID: <ajPrqTd4FaxlpYPs@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -93,172 +48,99 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260511072344.191271-18-yi.zhang@huaweicloud.com>
-X-Spam-Flag: NO
-X-Rspamd-Action: no action
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_TWELVE(0.00)[16];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 7F884758B5
-X-Spam-Score: -2.51
 
-On Mon 11-05-26 15:23:37, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> In the generic buffered_head I/O path, we rely on the data=order mode to
-> ensure that the zeroed EOF block data is written before updating
-> i_disksize, thus preventing stale data from being exposed.
-> 
-> However, the iomap buffered I/O path cannot use this mechanism. Instead,
-> we issue the I/O immediately after performing the zero operation
-> (without synchronous waiting for performance). This can reduce the risk
-> of exposing stale data, but it does not guarantee that the zero data
-> will be flushed to disk before the metadata of i_disksize is updated.
-> The subsequent patches will wait for this I/O to complete before
-> updating i_disksize.
-> 
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+The following changes since commit 5200f5f493f79f14bbdc349e402a40dfb32f23c8:
 
-Two nits below:
+  Linux 7.1-rc4 (2026-05-17 13:59:58 -0700)
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 239d387ffaf2..e013aeb03d7b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4742,6 +4742,32 @@ static int ext4_block_zero_range(struct inode *inode,
->  					zero_written);
->  }
->  
-> +static int ext4_iomap_submit_zero_block(struct inode *inode,
-> +					loff_t from, loff_t end)
-> +{
-> +	struct address_space *mapping = inode->i_mapping;
-> +	struct folio *folio;
-> +	bool do_submit = false;
-> +
-> +	folio = filemap_lock_folio(mapping, from >> PAGE_SHIFT);
-> +	if (IS_ERR(folio))
-> +		/* Already writeback and clear? */
-		   ^^^ Already written back and reclaimed
+are available in the Git repository at:
 
-> +		return PTR_ERR(folio) == -ENOENT ? 0 : PTR_ERR(folio);
-> +
-> +	folio_wait_writeback(folio);
-> +	WARN_ON_ONCE(folio_test_writeback(folio));
-> +
-> +	if (likely(folio_test_dirty(folio)))
-> +		do_submit = true;
-> +	folio_unlock(folio);
-> +	folio_put(folio);
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.2-rc1
 
-So how is what you do here more efficient than just:
+for you to fetch changes up to c143957520c6c9b5cd72e0de8b52b814f0c576fe:
 
-	filemap_fdatawrite_range(mapping, from, end - 1)
+  ext4: validate donor file superblock early in EXT4_IOC_MOVE_EXT (2026-06-10 10:53:50 -0400)
 
-? That will also do nothing if the folio isn't dirty, won't it?
+----------------------------------------------------------------
+Various ext4 updates for 7.2-rc1:
 
-								Honza
+* A major rework of the fast commit mechanism to avoid lock
+  contention and deadlocks.  We also export snapshot statistics
+  in /proc/fs/ext4/*/fc_info.
+* Performance optimization for directory hash computation by
+  processing input in 4-byte chunks and removing function pointers,
+  along with new KUnit tests for directory hash.
+* Cleanups in JBD2 to remove special slabs and use kmalloc() instead.
+* Various bug fixes, including:
+   - Early validation of donor superblock in EXT4_IOC_MOVE_EXT to avoid
+     cross-fs deadlock
+   - Fix for a kernel BUG in ext4_write_inline_data_end under
+     data=journal
+   - Fix for a NULL dereference in jbd2_journal_dirty_metadata when
+     handle is aborted
+   - Fix for an underflow in JBD2 fast commit block initialization check
+   - Fix for LOGFLUSH shutdown ordering to ensure ordered data writeback
+   - Miscellaneous fixes for error path return values and KUnit assertions.
 
-> +
-> +	/* Submit zeroed block. */
-> +	if (do_submit)
-> +		return filemap_fdatawrite_range(mapping, from, end - 1);
-> +	return 0;
-> +}
-> +
->  /*
->   * Zero out a mapping from file offset 'from' up to the end of the block
->   * which corresponds to 'from' or to the given 'end' inside this block.
-> @@ -4765,8 +4791,10 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
->  	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
->  		return 0;
->  
-> -	if (length > blocksize - offset)
-> +	if (length > blocksize - offset) {
->  		length = blocksize - offset;
-> +		end = from + length;
-> +	}
->  
->  	err = ext4_block_zero_range(inode, from, length,
->  				    &did_zero, &zero_written);
-> @@ -4781,18 +4809,34 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
->  	 * TODO: In the iomap path, handle this by updating i_disksize to
->  	 * i_size after the zeroed data has been written back.
->  	 */
-> -	if (ext4_should_order_data(inode) &&
-> -	    did_zero && zero_written && !IS_DAX(inode)) {
-> -		handle_t *handle;
-> +	if (did_zero && zero_written && !IS_DAX(inode)) {
-> +		if (ext4_should_order_data(inode)) {
-> +			handle_t *handle;
->  
-> -		handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
-> -		if (IS_ERR(handle))
-> -			return PTR_ERR(handle);
-> +			handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
-> +			if (IS_ERR(handle))
-> +				return PTR_ERR(handle);
->  
-> -		err = ext4_jbd2_inode_add_write(handle, inode, from, length);
-> -		ext4_journal_stop(handle);
-> -		if (err)
-> -			return err;
-> +			err = ext4_jbd2_inode_add_write(handle, inode, from,
-> +							length);
-> +			ext4_journal_stop(handle);
-> +			if (err)
-> +				return err;
-> +		/*
-> +		 * inodes using the iomap buffered I/O path do not use the
-> +		 * data=ordered mode. We submit zeroed range directly here.
-> +		 * Do not wait for I/O completion for performance.
-> +		 *
-> +		 * TODO: Any operation that extends i_disksize (including
-> +		 * append write end io past the zeroed boundary, truncate up,
-> +		 * and append fallocate) must wait for the relevant I/O to
-> +		 * complete before updating i_disksize.
-> +		 */
-> +		} else if (ext4_inode_buffered_iomap(inode)) {
-> +			err = ext4_iomap_submit_zero_block(inode, from, end);
-> +			if (err)
-> +				return err;
-> +		}
->  	}
->  
->  	return 0;
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+----------------------------------------------------------------
+Abdellah Ouhbi (1):
+      ext4: Use %pe to print PTR_ERR()
+
+Aditya Prakash Srivastava (1):
+      ext4: fix kernel BUG in ext4_write_inline_data_end
+
+Deepanshu Kartikey (1):
+      jbd2: check for aborted handle in jbd2_journal_dirty_metadata()
+
+Guan-Chun Wu (2):
+      ext4: add Kunit coverage for directory hash computation
+      ext4: improve str2hashbuf by processing 4-byte chunks and removing function pointers
+
+Hongling Zeng (1):
+      ext4: fix ERR_PTR(0) in ext4_mkdir()
+
+Junrui Luo (1):
+      jbd2: fix integer underflow in jbd2_journal_initialize_fast_commit()
+
+Li Chen (8):
+      ext4: fix fast commit wait/wake bit mapping on 64-bit
+      ext4: fast commit: snapshot inode state before writing log
+      ext4: lockdep: handle i_data_sem subclassing for special inodes
+      ext4: fast commit: avoid waiting for FC_COMMITTING
+      ext4: fast commit: avoid self-deadlock in inode snapshotting
+      ext4: fast commit: avoid i_data_sem by dropping ext4_map_blocks() in snapshots
+      ext4: fast commit: add lock_updates tracepoint
+      ext4: fast commit: export snapshot stats in fc_info
+
+Matthew Wilcox (Oracle) (2):
+      ext4: remove mention of PageWriteback
+      jbd2: remove special jbd2 slabs
+
+Ryota Sakamoto (1):
+      ext4: replace KUnit tests for memcmp() with KUNIT_ASSERT_MEMEQ()
+
+Yun Zhou (1):
+      ext4: validate donor file superblock early in EXT4_IOC_MOVE_EXT
+
+Zhang Yi (1):
+      ext4: fix LOGFLUSH shutdown ordering to allow ordered-mode data writeback
+
+ fs/ext4/Makefile            |   2 +-
+ fs/ext4/ext4.h              |  93 ++++-
+ fs/ext4/extents.c           |   4 +-
+ fs/ext4/fast_commit.c       | 784 ++++++++++++++++++++++++++++++++---------
+ fs/ext4/hash-test.c         | 567 +++++++++++++++++++++++++++++
+ fs/ext4/hash.c              |  68 ++--
+ fs/ext4/inode.c             |  54 ++-
+ fs/ext4/ioctl.c             |  15 +-
+ fs/ext4/mballoc-test.c      |   9 +-
+ fs/ext4/namei.c             |   6 +-
+ fs/ext4/page-io.c           |   2 +-
+ fs/ext4/super.c             |  13 +-
+ fs/jbd2/commit.c            |   8 +-
+ fs/jbd2/journal.c           | 127 +------
+ fs/jbd2/transaction.c       |  17 +-
+ include/linux/jbd2.h        |   3 -
+ include/trace/events/ext4.h |  61 ++++
+ 17 files changed, 1495 insertions(+), 338 deletions(-)
+ create mode 100644 fs/ext4/hash-test.c
