@@ -1,29 +1,30 @@
-Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
+Received: from out30-111.freemail.mail.aliyun.com (out30-111.freemail.mail.aliyun.com [115.124.30.111])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42EFF3F23AF
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 12:57:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.132
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D87CD3F58FB
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 12:58:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.111
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781787482; cv=none; b=YndEVrh5z0Lhcm/WPvk07p13+sBpU/A2AE73fgc8JeS87TzqJgbE/Pjeh315AflAV5zB26HRW5pCjr+LRKi617pNJByw6wmWuZG1Zgw9zDkPXntBhaXEsKBrE8Q5EFeilQWanfxBye6sQha5ibueDX8N9AX/hrZDy2LCqS/QHg0=
+	t=1781787485; cv=none; b=G9/RhVLZaivNRCUCnVBhzi09wAOkXNoOEqtv0ddsY2Fh05u9BCSReaF4zlWoMccYfKL92vGlA2qohWw2gxb/GmQa8TsAebbRtB/Kl/ckL7qNFVOGTHYpm/8CJQuuYkAl1w6tbr9KtMWap0mzuZaLy39QRrHanD3gafRpee8h4yA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781787482; c=relaxed/simple;
-	bh=8C5vMKxyPp0nFH1lvZNL9fPA60ZkdsV8wjR8ZtkYKjA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lp/8W8C3alalBGZYshgGOsbb0fvu6BfWEmm0LtbwhknJHIb9MnO5cQi8n3M2Mne4UFM2rVnRWSN/iK3qhftyogL+kyWcGrFMhtnvTGENzTgK5js2Wac8QVnkUe9LENUq3ur4DiojlStu0FLorrHu3Q4AkQF7FOcWwFSka3k5D4Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=MYMdE9S2; arc=none smtp.client-ip=115.124.30.132
+	s=arc-20240116; t=1781787485; c=relaxed/simple;
+	bh=6xK8UIJ4y8A63YAMUb5+IJ4HgEqVPc0dopcM0GWOfMc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ivV9eWFjE34/5dWFNOsOWpUCpLmDwBOwpjtheKv7UvNTb8WxjGqJY6QE/CpX0hFbXvXW8O75Rmz87SMXfeOh9drYpGpo/X6Uift1QnT2pvaAbu/mYiSoQMEsCVaI9l62tTLINR8D4ax2PSKiWfg+ua5iLF277gRsQ8HrfR2sSJ4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=E2dbtSMR; arc=none smtp.client-ip=115.124.30.111
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="MYMdE9S2"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="E2dbtSMR"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1781787471; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=QkEAZ9Hih6DN0hN7+8vaN2j2tDNt4lj3JjHwXN4ep28=;
-	b=MYMdE9S2dayJGi12K7vflcPe/c0TIxfN3SkoAyEhIv62Hc/avo2Wqht5nneYjeUKS/EoiIvOcMmjmVEhrwAI6EymZUQ0Ek9heVm/hVsWDvmUaVcL/MdBC4Ny5MXd0h9/THBTBgN8Mft6PkYc+0jMyRz2vV7dWLJ6rjmxi7mW7BQ=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R181e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575ez3_1781787455;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575ez3_1781787455 cluster:ay36)
+	t=1781787474; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=WfcR1QKMCzOhHKLAVzxBU6Rdr/QaXP16p3Iuv/2dv/4=;
+	b=E2dbtSMRSBpqfjAtWie7LY44tm+PwB55Wb0mVmArD1dxtA7Xi6t+MiBXPJA8s/AzHJx5g9VqqeNdUAC/4PP51sbDGfrmJ+aW5NWISXZjXfPURKtBgV9xntm3YxZmzbzDyjvDk3z5q+n25Ez4KTwTGvSGOLmaiAfjS8P4xxCc3xQ=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X575f1t_1781787473;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X575f1t_1781787473 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Thu, 18 Jun 2026 20:57:50 +0800
+          Thu, 18 Jun 2026 20:57:53 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -33,10 +34,12 @@ Cc: tytso@mit.edu,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	peng_wang@linux.alibaba.com
-Subject: [PATCH v2 0/8] ext4: allow more DIO writes under shared i_rwsem
-Date: Thu, 18 Jun 2026 20:57:27 +0800
-Message-ID: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
+Subject: [PATCH v2 4/8] ext4: base unaligned DIO lock decision on partial block zeroing
+Date: Thu, 18 Jun 2026 20:57:31 +0800
+Message-ID: <20260618125735.4156639-5-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
+In-Reply-To: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
+References: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,144 +48,228 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
+For unaligned DIO writes, the previous ext4_overwrite_io() required the
+entire range to fall within a single written extent.  This was overly
+conservative: the DIO layer only performs partial block zeroing for the
+head and tail blocks when they are partially covered by the write.
+Middle blocks that are fully covered are written as whole blocks
+without any zeroing, so they are safe regardless of extent state.
 
-Changes since v1:
-  * Collect RVB from Honza and Yi. (Thank you for your review!)
-  * Added Patch 1 to fix NOWAIT issues reported by Sashiko.
-  * Added Patch 2 to fix ext3 DIO and DIO fallback data race issue.
-    (Patch 4 increases the probability of this race)
-  * Added Patches 5-8 to fix other NOWAIT issues discovered during
-    investigation.
+Therefore exclusive lock is only required when partial block zeroing
+will actually happen:
+ - The head partial block (if any) lands on a hole or unwritten extent.
+ - The tail partial block (if any) lands on a hole or unwritten extent.
 
-v1: https://patch.msgid.link/20260611163441.2431805-1-libaokun@linux.alibaba.com
+Middle full-cover blocks can be in any state (hole, unwritten, or
+written) - block allocation under shared lock is safe per the previous
+patch's analysis (inode_dio_begin + i_data_sem protection).
 
+Replace ext4_overwrite_io() with ext4_dio_needs_zeroing(), which
+directly answers the question driving the lock decision.  It uses at
+most two ext4_map_blocks() calls: one for the head partial block (also
+catching the case where it spans through the tail), and one for the
+tail partial block if not already covered.
 
-======
+This enables shared lock for previously-rejected scenarios such as:
+ - Unaligned write spanning written extent + mid-range hole + written
+   extent at the tail.
+ - Unaligned write where the partial blocks land on written extents but
+   the middle has unwritten extents.
 
-Hi all,
-
-This series relaxes the i_rwsem requirements of ext4_dio_write_iter()
-so that more direct I/O writes can proceed under the shared lock.
-
-It continues the work started by Peng Wang's RFC [1]; I'm taking
-over this effort going forward.
-
-ext4_dio_write_checks() currently calls ext4_overwrite_io() to decide
-whether the shared lock is sufficient. Its single ext4_map_blocks()
-lookup only sees the first contiguous extent of the same type, which
-forces the exclusive lock for two cases that are actually safe under
-the shared lock (see individual patches for the full safety
-argument):
-
-  1. Aligned writes spanning multiple already-allocated extents (e.g.
-     written + unwritten, or two discontiguous written extents).
-
-  2. Unaligned writes whose head/tail partial blocks land on written
-     extents but the fully-covered middle blocks include hole or
-     unwritten extents.
-
-Patch 1 fixes a NOWAIT issue where ext4_iomap_alloc() may sleep when
-IOMAP_NOWAIT is set.
-
-Patch 2 fixes a data race between DIO completion and buffered I/O
-fallback on ext3 (no-extent inodes). This race was made more likely
-by Patch 4.
-
-Patch 3 skips the ext4_overwrite_io() pre-check entirely for aligned
-non-extending writes, letting them proceed under the shared lock
-regardless of extent state.
-
-Patch 4 replaces ext4_overwrite_io() with ext4_dio_needs_zeroing(),
-which directly answers the question driving the lock decision. It
-checks only the head and tail partial blocks (at most two
-ext4_map_blocks() calls), and ignores the state of middle blocks.
-
-Patch 5 fixes a NOWAIT issue by using kiocb_modified instead of
-file_modified in DIO/DAX write paths.
-
-Patch 6 makes ext4_map_blocks() to return -EAGAIN instead of 0 when
-EXT4_GET_BLOCKS_CACHED_NOWAIT is set and cache lookup misses.
-
-Patch 7 adds cache-only lookup support to ext4_iomap_begin() for
-IOMAP_NOWAIT requests.
-
-Patch 8 adds cache-only lookup support to ext4_dio_needs_zeroing()
-for IOCB_NOWAIT requests.
-
-
-Testing
-=======
-
-"kvm-xfstests -c ext4/all -g auto" passes with no new failures.
-
-
-Performance
-===========
+Performance:
 
 Hardware: /dev/sda (rotational disk, ~1 GB/s sustained write)
 Filesystem: ext4 default mkfs
 
-Test 1: aligned 8K DIO writes spanning written+unwritten extent
-boundaries. Each thread writes its own 1G region sequentially; the
-file is rebuilt between runs so every block is written exactly once.
-Metric: IOPS.
+Unaligned DIO writes (14336 bytes at +512 within each 16K stripe).
+Each stripe is laid out as [written][unwritten][unwritten][written],
+so the head and tail partial blocks land on written extents but the
+middle is unwritten.  Metric: IOPS.
 
-  JOBS         base    +patch 3    +patch 3+4    speedup
-  ----    ---------    --------    ----------    -------
-     1       42,322      43,329        43,087      1.02x
-     2       68,516      70,677        66,958      1.03x
-     4       62,489      97,072       101,468      1.62x
-     8       58,701     110,819       113,679      1.94x
-    16       58,569     116,392       115,272      1.97x
-    32       60,860     117,244       119,621      1.97x
+  JOBS      Before        After    speedup
+  ----    --------    ---------    -------
+     1      15,547       17,381      1.12x
+     2      15,910       34,172      2.15x
+     4      15,014       57,567      3.83x
+     8      15,022       81,947      5.46x
+    16      14,586       99,126      6.80x
+    32      14,047       92,519      6.59x
 
-Wall time at JOBS=32: 69.2s (base) -> 35.4s (patched), 1.96x faster.
+Wall time at JOBS=32: 149.3s (Before) -> 22.7s (After), 6.58x faster.
 
-Test 2: unaligned DIO writes (14336 bytes at +512 within each 16K
-stripe). Each stripe is laid out as [written][unwritten][unwritten]
-[written], so the head and tail partial blocks land on written
-extents but the middle is unwritten. Metric: IOPS.
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+---
+ fs/ext4/file.c | 108 +++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 73 insertions(+), 35 deletions(-)
 
-  JOBS         base    +patch 3    +patch 3+4    speedup
-  ----    ---------    --------    ----------    -------
-     1       15,547      15,975        17,381      1.12x
-     2       15,910      14,808        34,172      2.15x
-     4       15,014      14,828        57,567      3.83x
-     8       15,022      14,648        81,947      5.46x
-    16       14,586      14,262        99,126      6.80x
-    32       14,047      13,809        92,519      6.59x
-
-Wall time at JOBS=32: 149.3s (base) -> 22.7s (patched), 6.58x faster.
-
-In test 2, patch 3 alone has no effect (slight noise) because patch 3
-only touches the aligned write path. Patch 4 introduces
-ext4_dio_needs_zeroing() which precisely identifies when partial
-block zeroing is required, allowing the shared lock for the much
-larger set of unaligned writes that don't actually trigger zeroing.
-
-Comments and questions are, as always, welcome.
-
-Thanks,
-Baokun
-
-[1]: https://patch.msgid.link/20260607124935.6168-1-peng_wang@linux.alibaba.com
-
-Baokun Li (8):
-  ext4: prevent sleeping allocation in NOWAIT write path
-  ext4: drain in-flight DIO before buffered write fallback
-  ext4: skip overwrite check for aligned non-extending DIO writes
-  ext4: base unaligned DIO lock decision on partial block zeroing
-  ext4: use kiocb_modified instead of file_modified in DIO/DAX write
-    path
-  ext4: return -EAGAIN from ext4_map_blocks() in NOWAIT cache miss
-  ext4: handle IOMAP_NOWAIT in ext4_iomap_begin() with cache-only lookup
-  ext4: handle IOCB_NOWAIT in ext4_dio_needs_zeroing() with cache-only
-    lookup
-
- fs/ext4/file.c  | 148 +++++++++++++++++++++++++++++++++---------------
- fs/ext4/inode.c |  19 +++++--
- 2 files changed, 118 insertions(+), 49 deletions(-)
-
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 886b73247aab..2681f148e7b8 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -213,31 +213,60 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
+ 	return false;
+ }
+ 
+-/* Is IO overwriting allocated or initialized blocks? */
+-static bool ext4_overwrite_io(struct inode *inode,
+-			      loff_t pos, loff_t len, bool *unwritten)
++/*
++ * Does an unaligned DIO write require partial block zeroing?
++ *
++ * Partial block zeroing is performed only for the head and tail blocks
++ * when they are partially covered by the write and the underlying extent
++ * is a hole or unwritten. Middle blocks (fully covered by the write)
++ * are written as whole blocks without zeroing.
++ *
++ * When zeroing is required, two concurrent unaligned DIO writes to the
++ * same partial block can race and corrupt each other's data, so the
++ * caller must take the exclusive i_rwsem and drain in-flight DIO. When
++ * zeroing is not required, shared lock is safe -- block allocation and
++ * unwritten conversion for middle blocks are protected by i_data_sem
++ * and inode_dio_begin().
++ */
++static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
+ {
+ 	struct ext4_map_blocks map;
+ 	unsigned int blkbits = inode->i_blkbits;
+-	int err, blklen;
++	unsigned long blockmask = inode->i_sb->s_blocksize - 1;
++	bool head_partial, tail_partial;
++	ext4_lblk_t head_lblk, tail_lblk;
++	int err;
+ 
+ 	if (pos + len > i_size_read(inode))
+-		return false;
++		return true;
+ 
+-	map.m_lblk = pos >> blkbits;
+-	map.m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
+-	blklen = map.m_len;
++	head_partial = (pos & blockmask) != 0;
++	tail_partial = ((pos + len) & blockmask) != 0;
++	head_lblk = pos >> blkbits;
++	tail_lblk = (pos + len - 1) >> blkbits;
++
++	/* Check the head partial block. */
++	if (head_partial) {
++		map.m_lblk = head_lblk;
++		map.m_len = tail_lblk - head_lblk + 1;
++		err = ext4_map_blocks(NULL, inode, &map, 0);
++		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
++			return true;
++		/* If this mapping already covers the tail block, we're done. */
++		if (!tail_partial || map.m_lblk + err > tail_lblk)
++			return false;
++	}
+ 
+-	err = ext4_map_blocks(NULL, inode, &map, 0);
+-	if (err != blklen)
+-		return false;
+-	/*
+-	 * 'err==len' means that all of the blocks have been preallocated,
+-	 * regardless of whether they have been initialized or not. We need to
+-	 * check m_flags to distinguish the unwritten extents.
+-	 */
+-	*unwritten = !(map.m_flags & EXT4_MAP_MAPPED);
+-	return true;
++	/* Check the tail partial block. */
++	if (tail_partial) {
++		map.m_lblk = tail_lblk;
++		map.m_len = 1;
++		err = ext4_map_blocks(NULL, inode, &map, 0);
++		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
++			return true;
++	}
++
++	return false;
+ }
+ 
+ static ssize_t ext4_generic_write_checks(struct kiocb *iocb,
+@@ -452,9 +481,10 @@ static const struct iomap_dio_ops ext4_dio_write_ops = {
+  *    i_data_sem serializes concurrent extent tree modifications.
+  *
+  * 4. Otherwise, the write is unaligned and non-extending. Shared lock is
+- *    only safe for pure written-extent overwrites. Unwritten extents or
+- *    holes require exclusive lock because concurrent partial block zeroing
+- *    in the DIO layer could corrupt data.
++ *    safe unless the DIO layer needs to perform partial block zeroing --
++ *    i.e. the head or tail partial block sits on a hole or unwritten
++ *    extent. In that case upgrade to the exclusive lock and drain
++ *    in-flight DIO to avoid races with concurrent partial block zeroing.
+  */
+ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 				     bool *ilock_shared, bool *extend,
+@@ -465,7 +495,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	loff_t offset;
+ 	size_t count;
+ 	ssize_t ret;
+-	bool overwrite = true, unaligned_io, unwritten = false;
++	bool needs_zeroing = false;
+ 
+ restart:
+ 	ret = ext4_generic_write_checks(iocb, from);
+@@ -475,21 +505,22 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	offset = iocb->ki_pos;
+ 	count = ret;
+ 
+-	unaligned_io = ext4_unaligned_io(inode, from, offset);
+ 	*extend = ext4_extending_io(inode, offset, count);
+ 
+ 	/*
+-	 * For unaligned writes we need to know the extent state to determine
+-	 * whether shared lock is safe. For aligned writes we skip this check
+-	 * entirely since allocation under shared lock is safe.
++	 * For unaligned writes, check whether partial block zeroing will be
++	 * needed. If so, exclusive lock is required to serialize against
++	 * concurrent DIO that could race with the zeroing.
++	 *
++	 * For aligned writes we skip this check entirely since allocation
++	 * under shared lock is safe.
+ 	 */
+-	if (unaligned_io)
+-		overwrite = ext4_overwrite_io(inode, offset, count, &unwritten);
++	if (ext4_unaligned_io(inode, from, offset))
++		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count);
+ 
+ 	/* Determine whether we need to upgrade to an exclusive lock. */
+ 	if (*ilock_shared &&
+-	    ((!IS_NOSEC(inode) || *extend ||
+-	     (unaligned_io && (!overwrite || unwritten))))) {
++	    (!IS_NOSEC(inode) || *extend || needs_zeroing)) {
+ 		if (iocb->ki_flags & IOCB_NOWAIT) {
+ 			ret = -EAGAIN;
+ 			goto out;
+@@ -503,16 +534,23 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	/*
+ 	 * Now that locking is settled, determine dio flags and exclusivity
+ 	 * requirements. We don't use DIO_OVERWRITE_ONLY because we enforce
+-	 * behavior already. The inode lock is already held exclusive if the
+-	 * write is unaligned non-overwrite or extending, so drain all
+-	 * outstanding dio and set the force wait dio flag.
++	 * behavior already. When holding the exclusive lock for a write that
++	 * needs partial block zeroing or is extending the file, we must wait
++	 * for the I/O to complete synchronously:
++	 *
++	 *  - needs_zeroing: drain in-flight DIO whose end_io could race with
++	 *    our partial block zeroing, and force synchronous completion so we
++	 *    don't leave in-flight zeroing bios for the next writer to drain.
++	 *
++	 *  - extend: the caller must update i_disksize after I/O completion,
++	 *    which requires the data to be on disk first.
+ 	 */
+-	if (!*ilock_shared && (unaligned_io || *extend)) {
++	if (!*ilock_shared && (needs_zeroing || *extend)) {
+ 		if (iocb->ki_flags & IOCB_NOWAIT) {
+ 			ret = -EAGAIN;
+ 			goto out;
+ 		}
+-		if (unaligned_io && (!overwrite || unwritten))
++		if (needs_zeroing)
+ 			inode_dio_wait(inode);
+ 		*dio_flags = IOMAP_DIO_FORCE_WAIT;
+ 	}
 -- 
 2.43.7
 
