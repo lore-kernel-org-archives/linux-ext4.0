@@ -1,87 +1,87 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6652C2D97BB
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 14:10:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DFB13F1AC5
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2026 14:23:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781791833; cv=none; b=rzR9pHqsAzwv85ixwz0wmMaOozFT1Yfoz36GmwTvksXVY+VNh5YR1GdcZtIIxhx2LO+XPN6Zg4oFTNFtGDr8ICsdYJGOvgu3cYYJBfVLE1so8XcQUwd+yySvppOCN3MLMPqFccRhHz5sozIeXd1CiHd5u7l+70BYyyvZBo+FCnc=
+	t=1781792603; cv=none; b=AqZGz0DK6ij7FWee5tNDiraBZGWTfbNKcGYyFaJAuTrQjZJyYerW3pC61rPbccE4Ih1mSdTzr7I6x847w5Ut4bi8zl0QubWWI9G3CFJ9qTyIGStm0LZ2VQ918FFk4h/eUtddHFY6NohtkZFVvKuh+rHZc3rpnjBiqaC1WrkY8Vg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781791833; c=relaxed/simple;
-	bh=+kFohhxfIEbxWAU+cH+Fr27GTWnloCUKy4q8WwUl+6A=;
+	s=arc-20240116; t=1781792603; c=relaxed/simple;
+	bh=RkW8V9/AkBLhV7Qstendnrh3Cxozv/GQl0pkAbnT1i4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=S2CqNKf9WriFBRhi/HUR9+URt2yZGCsPMlQTlq8JZniCjzO+9fSYg86NCtkmi5m30pvf5eXtQXlCOkLOdchgF+0+brXZ3njpjieqDtRi09D39UYnHqvONEmZoEZjTENq5qSDfZKMH5an1qrBQRdE0w+GNhvIqbXFMky8vYEWcSc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=WpLy4R+a; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=nqy/OhcL; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=WpLy4R+a; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=nqy/OhcL; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=fxZbbwSA5Y+LYhSY0035ppZJ3l/H1oGQemKyAhi5D+b7S/q5rXmiREJNACM61rOIuWxEtPYjDkpx0dPwyPdTbr6PiF+ydbBMFQJYdmXwzsUU/tgQr9XDl4fwvSS67/a4ZjbqFeluNCEVaagOQqVMESePzjYMW7Kq9iPK0UdUfEg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zJwGtrVT; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=e5EqIvdL; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=eb7ODAbg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=HM2nldvB; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="WpLy4R+a";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="nqy/OhcL";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="WpLy4R+a";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="nqy/OhcL"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zJwGtrVT";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="e5EqIvdL";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="eb7ODAbg";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="HM2nldvB"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id B52FF6D3D3;
-	Thu, 18 Jun 2026 14:10:30 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 523EB6D3DF;
+	Thu, 18 Jun 2026 14:23:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781791830; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781792598; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Vf61mp0IwxXPRB6nJ3X2jaWZF9nlxRMRToffXvdvsh4=;
-	b=WpLy4R+atACNrf73xh5V0iXZwNtdJQikgHSM9JJxOFl44KQyy5SxPRWggCq609pJmmwJLn
-	mRTHYrGN4qZ8rudLpQEdH7Qjr5qaACSWsTnWeUucmUI8bnFnD1HGCYwNm8rmmavYPUKTvd
-	idyxvR2nxJycnWjZpQqCCViAH3yQhsk=
+	bh=II99zyyMurluio6pQ/cJFUShCMFkTNmTS/JuCle5RZw=;
+	b=zJwGtrVTi8KLuYgSGym/dKVVbhFUMxS70msBo6nvbmoEwppD27wyVwEQxVtWve9a5eZv9X
+	/hXXXgefnMv7osHB6vSgGSVTnPajEqyZDSwvRyf9hlxkBx1WQ8i1QUIBLSGDUEZPN1Mygk
+	LuosnrjbRd1uXya8zZhIx3g4eu1ZowY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781791830;
+	s=susede2_ed25519; t=1781792598;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Vf61mp0IwxXPRB6nJ3X2jaWZF9nlxRMRToffXvdvsh4=;
-	b=nqy/OhcLe0wXKJ1hSEuo2WnKd2NFCdZwI1VDS6G0TmzECer4J+MP1IQGhFNqNO4qyN6oyO
-	FgAPTy6iTYCGGdBQ==
+	bh=II99zyyMurluio6pQ/cJFUShCMFkTNmTS/JuCle5RZw=;
+	b=e5EqIvdL8Nwxjj6V8tp7AA71Sria8lOd1W1n09W73GERGqaHZm7/EmiljlPRpVcgt1USa0
+	a4W1Rkv+Byt1wsDg==
 Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1781791830; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1781792597; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Vf61mp0IwxXPRB6nJ3X2jaWZF9nlxRMRToffXvdvsh4=;
-	b=WpLy4R+atACNrf73xh5V0iXZwNtdJQikgHSM9JJxOFl44KQyy5SxPRWggCq609pJmmwJLn
-	mRTHYrGN4qZ8rudLpQEdH7Qjr5qaACSWsTnWeUucmUI8bnFnD1HGCYwNm8rmmavYPUKTvd
-	idyxvR2nxJycnWjZpQqCCViAH3yQhsk=
+	bh=II99zyyMurluio6pQ/cJFUShCMFkTNmTS/JuCle5RZw=;
+	b=eb7ODAbgcQOHpsGA+LJsD+i9fc52lbfX1ihkKuI/PX5hMZUOSiqSt8HZPXbrNUZmQEpixE
+	RHgvskLwH6stcAuHgSV+5tU6zNn7XgpjkxzNfNpYcRsJjUKhIITqXS4bh18ZQ7HVsZ44TC
+	x/5O4ulyCDjIN2vxqa+kQeE6KaqboWI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1781791830;
+	s=susede2_ed25519; t=1781792597;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Vf61mp0IwxXPRB6nJ3X2jaWZF9nlxRMRToffXvdvsh4=;
-	b=nqy/OhcLe0wXKJ1hSEuo2WnKd2NFCdZwI1VDS6G0TmzECer4J+MP1IQGhFNqNO4qyN6oyO
-	FgAPTy6iTYCGGdBQ==
+	bh=II99zyyMurluio6pQ/cJFUShCMFkTNmTS/JuCle5RZw=;
+	b=HM2nldvBpuolcZsYtiw32x4Z0/QwTu4mCRwucFXzIIthkYLuk49H4hiBgUuysb4cG6aYje
+	NGUc5kVdC0UQ0GDw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A6FAC779A8;
-	Thu, 18 Jun 2026 14:10:30 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3AE61779AB;
+	Thu, 18 Jun 2026 14:23:17 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id SuTCKFb8M2qDCgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 18 Jun 2026 14:10:30 +0000
+	id fsZbDlX/M2ptFwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 18 Jun 2026 14:23:17 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5C1F5A12D9; Thu, 18 Jun 2026 16:10:30 +0200 (CEST)
-Date: Thu, 18 Jun 2026 16:10:30 +0200
+	id D525DA12D9; Thu, 18 Jun 2026 16:23:16 +0200 (CEST)
+Date: Thu, 18 Jun 2026 16:23:16 +0200
 From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, peng_wang@linux.alibaba.com
-Subject: Re: [PATCH v2 8/8] ext4: handle IOCB_NOWAIT in
- ext4_dio_needs_zeroing() with cache-only lookup
-Message-ID: <ktw6csahokq6qmm74mkp4wpr2bbetoc3s7kesql4qv4j5wm3nx@dux4mkmyvwp4>
-References: <20260618125735.4156639-1-libaokun@linux.alibaba.com>
- <20260618125735.4156639-9-libaokun@linux.alibaba.com>
+To: Yun Zhou <yun.zhou@windriver.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, ebiggers@google.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3] ext4: drop s_writepages_rwsem around inline data
+ handling in writepages
+Message-ID: <rvwzagttciesrgonspk37dm4sxkxxgd7marnwtz5c6cpag747e@wvnqduid6hv7>
+References: <20260615061015.1523668-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -90,9 +90,8 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260618125735.4156639-9-libaokun@linux.alibaba.com>
+In-Reply-To: <20260615061015.1523668-1-yun.zhou@windriver.com>
 X-Spam-Flag: NO
-X-Spam-Score: -2.30
 X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -106,103 +105,182 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	MISSING_XM_UA(0.00)[];
 	TAGGED_RCPT(0.00)[];
 	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[9];
+	RCPT_COUNT_SEVEN(0.00)[11];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,linux.alibaba.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,google.com,vger.kernel.org];
 	RCVD_COUNT_THREE(0.00)[3];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email,alibaba.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[windriver.com:email,syzkaller.appspot.com:url,appspotmail.com:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Level: 
+X-Spam-Score: -2.30
 
-On Thu 18-06-26 20:57:35, Baokun Li wrote:
-> Add a nowait parameter to ext4_dio_needs_zeroing() and pass
-> EXT4_GET_BLOCKS_CACHED_NOWAIT flag to ext4_map_blocks() when
-> IOCB_NOWAIT is set. This ensures the needs_zeroing check only uses
-> cached extent info. If cache misses, ext4_map_blocks() returns
-> -EAGAIN, causing ext4_dio_needs_zeroing() to conservatively return
-> true (needs zeroing). The caller then tries to upgrade to exclusive
-> lock, which returns -EAGAIN for NOWAIT, avoiding potential sleep on
-> down_read(i_data_sem).
+On Mon 15-06-26 14:10:15, Yun Zhou wrote:
+> ext4_do_writepages() calls ext4_destroy_inline_data() which acquires
+> xattr_sem while s_writepages_rwsem is held (read).  This creates a
+> circular lock dependency:
 > 
-> The caller in ext4_dio_write_checks() is updated to pass the
-> IOCB_NOWAIT flag from the kiocb.
-> 
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+>   CPU0                               CPU1
+>   ----                               ----
+>   ext4_writepages()
+>     ext4_writepages_down_read()
+>       [holds s_writepages_rwsem]
+>                                      ext4_evict_inode()
+>                                        __ext4_mark_inode_dirty()
+>                                          ext4_expand_extra_isize_ea()
+>                                            ext4_xattr_block_set()
+>                                              [holds xattr_sem]
+>                                              iput(old_bh inode)
+>                                                write_inode_now()
+>                                                  ext4_writepages()
+>                                                    ext4_writepages_down_read()
+>                                                    [BLOCKED on s_writepages_rwsem]
+>     ext4_do_writepages()
+>       ext4_destroy_inline_data()
+>         down_write(xattr_sem)
+>         [BLOCKED on xattr_sem]
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+You have fixed this differently (not expanding extra isize from
+ext4_evict_inode()) and furthermore this scenario is really impossible
+because you cannot be inside ext4_writepages() on inode that's undergoing
+eviction. SO let's discard this patch.
 
 								Honza
 
-> ---
->  fs/ext4/file.c | 14 ++++++++++----
->  1 file changed, 10 insertions(+), 4 deletions(-)
 > 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 5ffc1afd8050..44d1658d2b5a 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -228,7 +228,8 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
->   * unwritten conversion for middle blocks are protected by i_data_sem
->   * and inode_dio_begin().
->   */
-> -static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
-> +static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len,
-> +				   bool nowait)
->  {
->  	struct ext4_map_blocks map;
->  	unsigned int blkbits = inode->i_blkbits;
-> @@ -236,10 +237,14 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
->  	bool head_partial, tail_partial;
->  	ext4_lblk_t head_lblk, tail_lblk;
->  	int err;
-> +	int map_flags = 0;
+> Fix by temporarily dropping s_writepages_rwsem for the entire inline
+> data handling block, including the journal handle start/stop.  The
+> rwsem must be dropped before ext4_journal_start() -- not between
+> journal_start and journal_stop -- to avoid a secondary deadlock with
+> ext4_change_inode_journal_flag() which takes rwsem (write) and then
+> calls jbd2_journal_lock_updates() waiting for active handles to stop.
+> 
+> This is safe because:
+> 
+>  - This code runs before any block mapping or IO submission, so no
+>    writepages state depends on the rwsem being held at this point.
+> 
+>  - Inline data destruction is a one-way format transition (once cleared,
+>    EXT4_INODE_INLINE_DATA is never set again).  The rwsem is
+>    re-acquired after journal_stop, ensuring format stability for the
+>    remainder of writepages.
+> 
+>  - The can_map flag identifies the ext4_writepages() path (holds rwsem)
+>    vs ext4_normal_submit_inode_data_buffers() (does not), so the
+>    drop/reacquire is skipped when the rwsem is not held.
+> 
+> Also check the return value of ext4_destroy_inline_data() to avoid
+> proceeding with an inconsistent inode format on failure.
+> 
+> Reported-by: syzbot+bb2455d02bda0b5701e3@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=bb2455d02bda0b5701e3
+> Fixes: c8585c6fcaf2 ("ext4: fix races between changing inode journal mode and ext4_writepages")
+> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+> ---
+> v3: Drop s_writepages_rwsem before ext4_journal_start() and reacquire
+>     after ext4_journal_stop(), instead of dropping between journal_start
+>     and journal_stop as in v2.  This avoids two issues identified in v2
+>     review:
+>     - memalloc_nofs_restore() in ext4_writepages_up_read() would clear
+>       PF_MEMALLOC_NOFS while the jbd2 handle is active.
+>     - Reacquiring s_writepages_rwsem while holding a handle creates an
+>       ABBA deadlock with ext4_change_inode_journal_flag() which takes
+>       the rwsem (write) then calls jbd2_journal_lock_updates().
+> 
+> v2: Instead of moving inline data handling to ext4_writepages(),
+>     temporarily drop s_writepages_rwsem around ext4_destroy_inline_data()
+>     in ext4_do_writepages(). The move approach had a race where concurrent
+>     writes could create dirty pages with inline data after the early check,
+>     and unconditional destruction without dirty pages would lose data.
+> 
+> v1: Moved inline data cleanup from ext4_do_writepages() to
+>       ext4_writepages() before acquiring s_writepages_rwsem.
+> 
+>  fs/ext4/inode.c | 31 ++++++++++++++++++++++++++-----
+>  1 file changed, 26 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c2c2d6ac7f3d..cd7588a3fa45 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1694,6 +1694,9 @@ struct mpage_da_data {
+>  	struct writeback_control *wbc;
+>  	unsigned int can_map:1;	/* Can writepages call map blocks? */
 >  
->  	if (pos + len > i_size_read(inode))
->  		return true;
->  
-> +	if (nowait)
-> +		map_flags = EXT4_GET_BLOCKS_CACHED_NOWAIT;
+> +	/* Saved memalloc context from ext4_writepages_down_read() */
+> +	int alloc_ctx;
 > +
->  	head_partial = (pos & blockmask) != 0;
->  	tail_partial = ((pos + len) & blockmask) != 0;
->  	head_lblk = pos >> blkbits;
-> @@ -249,7 +254,7 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
->  	if (head_partial) {
->  		map.m_lblk = head_lblk;
->  		map.m_len = tail_lblk - head_lblk + 1;
-> -		err = ext4_map_blocks(NULL, inode, &map, 0);
-> +		err = ext4_map_blocks(NULL, inode, &map, map_flags);
->  		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
->  			return true;
->  		/* If this mapping already covers the tail block, we're done. */
-> @@ -261,7 +266,7 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
->  	if (tail_partial) {
->  		map.m_lblk = tail_lblk;
->  		map.m_len = 1;
-> -		err = ext4_map_blocks(NULL, inode, &map, 0);
-> +		err = ext4_map_blocks(NULL, inode, &map, map_flags);
->  		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
->  			return true;
->  	}
-> @@ -516,7 +521,8 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  	 * under shared lock is safe.
+>  	/* These are internal state of ext4_do_writepages() */
+>  	loff_t start_pos;	/* The start pos to write */
+>  	loff_t next_pos;	/* Current pos to examine */
+> @@ -2816,16 +2819,35 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
+>  	 * we'd better clear the inline data here.
 >  	 */
->  	if (ext4_unaligned_io(inode, from, offset))
-> -		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count);
-> +		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count,
-> +						iocb->ki_flags & IOCB_NOWAIT);
+>  	if (ext4_has_inline_data(inode)) {
+> -		/* Just inode will be modified... */
+> +		/*
+> +		 * Temporarily drop s_writepages_rwsem because
+> +		 * ext4_destroy_inline_data() acquires xattr_sem, which has
+> +		 * a higher lock ordering rank.  Holding both would create a
+> +		 * circular dependency with ext4_xattr_block_set() -> iput()
+> +		 * -> ext4_writepages() -> s_writepages_rwsem.
+> +		 *
+> +		 * Drop the rwsem before starting the journal handle to also
+> +		 * avoid a deadlock with ext4_change_inode_journal_flag(),
+> +		 * which takes rwsem (write) then jbd2_journal_lock_updates().
+> +		 */
+> +		if (mpd->can_map)
+> +			ext4_writepages_up_read(inode->i_sb, mpd->alloc_ctx);
+>  		handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+>  		if (IS_ERR(handle)) {
+> +			if (mpd->can_map)
+> +				mpd->alloc_ctx =
+> +					ext4_writepages_down_read(inode->i_sb);
+>  			ret = PTR_ERR(handle);
+>  			goto out_writepages;
+>  		}
+>  		BUG_ON(ext4_test_inode_state(inode,
+>  				EXT4_STATE_MAY_INLINE_DATA));
+> -		ext4_destroy_inline_data(handle, inode);
+> +		ret = ext4_destroy_inline_data(handle, inode);
+>  		ext4_journal_stop(handle);
+> +		if (mpd->can_map)
+> +			mpd->alloc_ctx = ext4_writepages_down_read(inode->i_sb);
+> +		if (ret)
+> +			goto out_writepages;
+>  	}
 >  
->  	/* Determine whether we need to upgrade to an exclusive lock. */
->  	if (*ilock_shared &&
+>  	/*
+> @@ -3032,13 +3054,12 @@ static int ext4_writepages(struct address_space *mapping,
+>  		.can_map = 1,
+>  	};
+>  	int ret;
+> -	int alloc_ctx;
+>  
+>  	ret = ext4_emergency_state(sb);
+>  	if (unlikely(ret))
+>  		return ret;
+>  
+> -	alloc_ctx = ext4_writepages_down_read(sb);
+> +	mpd.alloc_ctx = ext4_writepages_down_read(sb);
+>  	ret = ext4_do_writepages(&mpd);
+>  	/*
+>  	 * For data=journal writeback we could have come across pages marked
+> @@ -3047,7 +3068,7 @@ static int ext4_writepages(struct address_space *mapping,
+>  	 */
+>  	if (!ret && mpd.journalled_more_data)
+>  		ret = ext4_do_writepages(&mpd);
+> -	ext4_writepages_up_read(sb, alloc_ctx);
+> +	ext4_writepages_up_read(sb, mpd.alloc_ctx);
+>  
+>  	return ret;
+>  }
 > -- 
-> 2.43.7
+> 2.43.0
 > 
 -- 
 Jan Kara <jack@suse.com>
