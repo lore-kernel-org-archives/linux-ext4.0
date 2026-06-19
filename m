@@ -1,60 +1,59 @@
-Received: from outbound-ip168b.ess.barracuda.com (outbound-ip168b.ess.barracuda.com [209.222.82.102])
+Received: from outbound-ip191a.ess.barracuda.com (outbound-ip191a.ess.barracuda.com [209.222.82.58])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42D0C37B3FD
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 18:07:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=209.222.82.102
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EAF4C37B3FD
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 18:07:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=209.222.82.58
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781892428; cv=fail; b=eX1+3EYUTtbk0gkMbl4l0uX4fT56hDgM8p85Yrf8p6ilgC7k5IUDbMAvMHXxdwYN3CN7TSaNM7fzUy2jk0bzPKHxNzhrb9irjQjXRu1AfMjafi0ojN/JyG8PvRtvTtDaVUhFLygvg1/awwVy+DNv5vq3Kn2SQ20BUhXux44WHQM=
+	t=1781892443; cv=fail; b=Yr7nxjc907e3LlmvddyDUXIF1PMq7Qgmb7Yas4pMSafIUZFiiFaPD5pO+gf0NRESRjSoyZ0JWPHPfTS/SpbZg/HVGHGtXy4DodVIUrxAY0Y5w5NXAkSGjITZO7rjCchigtEyPZdtK7MuOcxeg/g6coKx3zFKfIneFEMhorPpaZA=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781892428; c=relaxed/simple;
-	bh=yfZMvPapUhfbL+pDBZEHjeDvT2yy22WZOGcnMrF81mc=;
+	s=arc-20240116; t=1781892443; c=relaxed/simple;
+	bh=izoYxFp7wQV6H0bLvfDp+u5VpsfvC9Q7Tt9QJj6K6QI=;
 	h=Date:From:To:Cc:Subject:Message-ID:Content-Type:
-	 Content-Disposition:In-Reply-To:MIME-Version; b=ut/UmggpbhDG+DBxP35zrg7+TaylLLnNXaQt9ZU3ET0+0RWXuCHPRqOz0zAbTJnncJgdwFizk7rynKSSf7Z5Fh4+f5SzhD2biVud+tHqlKyfU6wqk45T017Lxi0rX+sHppfm1VWEEwa1dTHbpQSODYsc8Ye9A7YZEiJX19vfZ90=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com; spf=pass smtp.mailfrom=ddn.com; dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b=fSeOyVgt; arc=fail smtp.client-ip=209.222.82.102
+	 Content-Disposition:In-Reply-To:MIME-Version; b=XOK9G8INHAeOtmbhANFkN0UDSjptV2WmjvlNFAWfTzzFbBAtMuOu2WtF8ffhIYCuDO5A7VmOqzWTC/Ivqw/ZzXnS3bMbQezJPf5Nm1mwNcTh1LdDG9bPMWOLLNJPARlAl3YdtV4Xih7XevBkwSpbRxn1Md+VPjtoHxR0WFGMDZA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com; spf=pass smtp.mailfrom=ddn.com; dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b=yBUHie/z; arc=fail smtp.client-ip=209.222.82.58
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ddn.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ddn.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="fSeOyVgt"
-Received: from SJ2PR03CU001.outbound.protection.outlook.com (mail-westusazon11022095.outbound.protection.outlook.com [52.101.43.95]) by mx-outbound44-101.us-east-2c.ess.aws.cudaops.com (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO); Fri, 19 Jun 2026 18:07:02 +0000
+	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="yBUHie/z"
+Received: from SJ2PR03CU001.outbound.protection.outlook.com (mail-westusazon11022111.outbound.protection.outlook.com [52.101.43.111]) by mx-outbound40-102.us-east-2c.ess.aws.cudaops.com (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO); Fri, 19 Jun 2026 18:07:17 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=K9UpeMMU/rtDqOyrAHglYjI2/n4UwZUK8w5fWadNd3qrRaui9k3ypmumS+HCusVlPF1jbIBMVAcBnTaPlz0VEB2VOZnmucOUlCLhcIyiZLVWiUVK8vRc9lj8h4FHDvkoTiEQq6UgZjDBCXt39njwpculc/UYdQOM6XUAKXyt3xeNKkvBE8ckbMLSs7bqXe+9+m3bCfV/qKUlts0yWO3B/ycsPJgqGO2WI6qkADmcwlFe1yQoGpeEBXhFb+BF0FGDfIRVCREnWYLrG0orYqecJcscZqSRWQSaGt0667T72uKMIzd8S7yi4opojcQjt67j4HTFtdB1d4ma6kp67OBFhA==
+ b=qor/K9bxk8pTUz/xzyndsRzWFkbO9mJf98BP7MdaJLEqq9hvb3ENn0cvXP6ri1ppsDlojpsV73oekNUZJ65V8jWtW/VBm/+cv/5W68Lg/2nqteuLYl97bb3jvICXANOwTwd2+THpR5fU3gRJkhXp1Yq8n9HFcd97o6HA4CC31k2RNU6rvVBn1pBg2VLCidktKy1gNhSr38/7aLOOolkGK0L3PGsaJxqkX8ndWpUkuoXAvJ8vNYT26FVz1sk/n05V2WpjX4YQAwyWnZ+j3G6rY7lqwfzFaNO0UhpgE2GqkrgPCdssOgSGMR4gTRm6TtvOIZ8Qd17vDGtJ1I+vRYovAA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector10001;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=5tuYgOVWNFrss6V+jXZBjuAWCEEOM77LrOGkZcg/Zs0=;
- b=Dqr4BDwFYcsPUFcwdSneA3SDpiFQPoauHjtV4d729uH0l+/48I3cWKkyeYO3Z8ZuocNUxzXnQUM4GEtqtWMHgMg621glKuJHvXgJnc8S0aZc8PNtc3TEXWxVr3zCQhrZfqCxbiGoUeVFrTENhZUeHyAUKf9TeF6PX5bDUae82+TLsZynsPf6vBRzWSKfR9Tlw8b8tfeqAmjR+0SdT4RtOIuqVM4nJ2Mj6HF8Id6GYMduBvvWL1whnYxS5RGLo7J3vckFM5S+A4hMAw871jf6nK5ooUhbOzt1PedjpDFeZmSDNaERhOeq4IAk95HfcwZQMOF05eED0mQuqRaCbSl3og==
+ bh=XHHLdWzJzuD0ZlCuMtTItUfjtdmW4wLja3Dv45iiJ+Y=;
+ b=jmEFpjyiVvZnSDctDdxvyk/rGFwS7ZVfhPeiwptZVFhXCRHGxt7OXZjbUSJPS5s54oJubl1SyvIKh/NcDv71fQprNA/63VJm/uEDU97nJdWgrDVm0ZfqjBODIxAtE+ocEikDismAWeuES31D6GmmRZhE61nRExKxFa1uU54NyjjBJk9/7/bfYk97zMYcLBj5UkhX1jYejG014NBVvceBRkxHhgFwhSZo2xI0lwDU0CwXlphDLPicCLIDuykbfNkdW3m4APt1VOIq2tvJdX5x/+QePP+zX0u0saXWNBz0qyMOrHP7iyFPRP+PG5UseMT+YIR9ci6Sqs3CjiD4Wz4bEA==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
  header.d=ddn.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=5tuYgOVWNFrss6V+jXZBjuAWCEEOM77LrOGkZcg/Zs0=;
- b=fSeOyVgtBH9VZGYMvKKRaJFhomNcmAsDHl0eDa/8Oz4RVmVUJm9OPZ7u2+/EuQeKt9M2WoBzfJNekGrB44HNzUtfHnojuMFJipLX0c+ty8YXu30o2c4Yy9lzL83eJt77u+hUfHYDMwLb8zlPL2Q/G5pOBNNLILxMC7NV0wWVlO8=
+ bh=XHHLdWzJzuD0ZlCuMtTItUfjtdmW4wLja3Dv45iiJ+Y=;
+ b=yBUHie/zIl5Y1k0jvm9WGaH1tTgE7qpXETk3SGNO4O3Wl7/qXMCmJZRtzuKvc1djSA9+676pnu0X7jggWrZUZ44lB89LKyXjH6Rbl/dXOHsZIUDGIl32O03TTILEeTfity5HMMip6IZJ70/IxguVNemw+B37W31HhYK3Gx4plac=
 Authentication-Results: dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=ddn.com;
 Received: from SA1PR19MB5570.namprd19.prod.outlook.com (2603:10b6:806:236::11)
  by SA3PR19MB7816.namprd19.prod.outlook.com (2603:10b6:806:300::8) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.139.11; Fri, 19 Jun
- 2026 15:32:55 +0000
+ 2026 15:33:22 +0000
 Received: from SA1PR19MB5570.namprd19.prod.outlook.com
  ([fe80::6167:d6e1:2c7b:a9d0]) by SA1PR19MB5570.namprd19.prod.outlook.com
  ([fe80::6167:d6e1:2c7b:a9d0%5]) with mapi id 15.21.0113.015; Fri, 19 Jun 2026
- 15:32:55 +0000
-Date: Fri, 19 Jun 2026 17:32:50 +0200
+ 15:33:22 +0000
+Date: Fri, 19 Jun 2026 17:33:17 +0200
 From: Etienne AUJAMES <eaujames@ddn.com>
 To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Cc: Andreas Dilger <adilger@thelustrecollective.com>,
 	Li Dongyang <dongyangli@ddn.com>
-Subject: [PATCH RESEND 3/4] libext2fs: update iblock when using ea_inode
- feature
-Message-ID: <ajVhIljrFH78NMnD@eaujamesFR0130>
+Subject: [PATCH RESEND 4/4] libext2fs: add ext2fs_xattrs_release_all() helper
+Message-ID: <ajVhPVDjGvTExQVW@eaujamesFR0130>
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <ajVdnQUu9tSrKldW@eaujamesFR0130>
-X-ClientProxiedBy: PA7P264CA0448.FRAP264.PROD.OUTLOOK.COM
- (2603:10a6:102:398::21) To SA1PR19MB5570.namprd19.prod.outlook.com
+X-ClientProxiedBy: PA7P264CA0027.FRAP264.PROD.OUTLOOK.COM
+ (2603:10a6:102:2df::19) To SA1PR19MB5570.namprd19.prod.outlook.com
  (2603:10b6:806:236::11)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -64,908 +63,650 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: SA1PR19MB5570:EE_|SA3PR19MB7816:EE_
-X-MS-Office365-Filtering-Correlation-Id: 19a3c04e-e188-4015-ab73-08dece18088a
+X-MS-Office365-Filtering-Correlation-Id: 3031374c-c027-4415-d59b-08dece181873
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam:
- BCL:0;ARA:13230040|10070799003|376014|366016|19092799006|23010399003|1800799024|18002099003|22082099003|11063799006|6133799003|56012099006;
+ BCL:0;ARA:13230040|10070799003|376014|366016|19092799006|23010399003|1800799024|18002099003|22082099003|11063799006|56012099006;
 X-Microsoft-Antispam-Message-Info:
- FaaEiUJTyEAerdcpLlksvFU/NvsdDs14Jkoyv/YTBtsNsdxSj58dFNDRiHJDCOPzDE1t1CJeJjCNNzwPai7ipvwXMP8DbVBbEVZ7qxtm4zyJt1gyvH9QUDn3uENoR9k+YxTL3XZ638GBfo2U21/dMvIQDSrPfJG0cGeBubDaTjUdDQDv3be7u2SvnTSBqJCheDZ+L2k+cdGJT1GvXTraPR1r09zbFXFXXG3sa777rFYLBnNzykZxNLdrsy+Gh71HcL7Xxed9NfK43a5Px0+CoNLXsCGE74Y8rHqceFXf0k179aJqmsYWZv3G1us5Mp+rLTXe/equzSM/yMs6/7XcJPR8inDhplZxCa9yzI+5vxZM2SVSTyEn0vbL5A/KgN8sEorQYLIiVgp16vqB/kokCz/zBLfOVrnEvEtyLgkj79Oe0imx4EcvEfOm+He8BvIF4gY3AaFtkc4VeGpahrKTgOOAu5zysbHlqg/Gv01aT60mdX6CxgNXCSWqQ5Xz4v8bOnVAAdaao72jTsqOopStH3eY/MWBU5hXE2LWY0013JBrKHpCHts87q+XVhCl8tmLinhTTj61eL0zot3h8fTzLwHSrIWirZDCcJlU6J/WJR57NMe545zzgiyznDzGYxcmvx6EQm/e00YLYps7EyGDegKzSB09sx++txN5maDr3gg=
+ Cuup+W4U3Bbm5K2KdfdMfZqvPrlyrw+quX/pnYzct2Erws4tHYy3xCTDFtd0DF2qR4ih3h2Vw9q8YZ/CltpNFqbiunoZAVbpY3RFOP+W6FaTS4+AuF1oLXnY5w1Cp68rzgQfzmnY31z6ToNAy9LFQUQPTn9roWDxZT9ROFjvKhmCE2EiQrPBNMM0m+GMiA13dSH9YDJh3+rP/GbK5g9IyTOp0yX01byx21kdT5vqy3zwfAMpZKOWsnN3NxV8CpuveTMbOHdOzz97GzKOJ8DFxl3JE0bRPfxYmTF8LCW2GvUfB1/vPpc4mYdBrmqEOmXVH5+oMlja436vtUsNeJzKo17Wp5H1Brn+W4MGdOqjsu1yt6PnsibX4erCcvZTS0eqV52XQj5WnGYsXcDrRkq6ccQPw0HtcvwrIK0CAch65a6b4AwEjoIHPX55aX9DIkY771cP2b5gs50Pkvf6NPSXLqneJcEv8wA/NKry2OFZYXempetSn61woa7tkDEQiDcQBxi/W58yntcr7peT1JffBEejU5JlHpBoOCC6rKNVIN4aoNlVWk7UMCZ9fXatLn5ST0CeEAsqEgVh/nXoDyBAdi4zuAXkeE5KuAiOYLJvaEe/6PmthP1xxo18z9bYV8fe18c0q+RnYBXAz0xGuyxmu3pFRdzOA8cqSCXhaY1ULwk=
 X-Forefront-Antispam-Report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA1PR19MB5570.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(10070799003)(376014)(366016)(19092799006)(23010399003)(1800799024)(18002099003)(22082099003)(11063799006)(6133799003)(56012099006);DIR:OUT;SFP:1102;
+ CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA1PR19MB5570.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(10070799003)(376014)(366016)(19092799006)(23010399003)(1800799024)(18002099003)(22082099003)(11063799006)(56012099006);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-MessageData-0:
- =?us-ascii?Q?F1iCf9un4Q4hMIorD/21r84cgocOE6vFYsvh8jby767SVZphE+AIMIctMNIQ?=
- =?us-ascii?Q?qvFFNKnnUnjhfuOQJ6wKs6c0toMb6Kqlz0mioDfBiD7OFCBOHRLWWRrKvS3E?=
- =?us-ascii?Q?h4EXPz8L803QiObVA3CD6vOPhs+ZWpwgQhGntq66NP1Zix0QQkYGkWHwPtqr?=
- =?us-ascii?Q?YR7gLqrINx95lelenFqXEzpRmBO8iIrBFZJ+lHxv1uFqVQ93YLCmpiQeOud6?=
- =?us-ascii?Q?WA2SRlhUyDx7RGa9a5eFJF0DDMMiDmtNFrHMcdVptEocmGi8ZR5I4cjmOnD6?=
- =?us-ascii?Q?9HF7bYXAoL/F0hh2Ycvoi4qigNfWMl7ka5rXb55F+8AlaRNIUoC5/WtQisWo?=
- =?us-ascii?Q?I3ir8CTb/WcSrQ7WzhT1+fdJKha8sowrsXhIKjnymW8+6V49DZjX0phgAhya?=
- =?us-ascii?Q?U5az+oOmmYiVGMr4yUbJ2LrMmB7rpGdp3uxGj5hO6op9mwAwKrSaN0TyCYj4?=
- =?us-ascii?Q?Xqgts/LUTzsayN5RxuH5PG7CpMrmKmedlHD2kLGCqhYmXqUqw8JrCExQ8rsx?=
- =?us-ascii?Q?cQRUZglXrZDeoPT08ThJK6k1Y43QpKdkZMbbbsHoEzl/zBG0h0/5oGs81NjG?=
- =?us-ascii?Q?1RPdlUmjROwPCuhqPa0n9Pf9s+draSqGSmSKWl3lsBhxBV4MQ0AeCbGGJqHT?=
- =?us-ascii?Q?Fkeoehhj+myb2xBzpmWmQ/1SfYyZttoip99cBdFpUxTv5EV8Q3wjPeJEjLrw?=
- =?us-ascii?Q?zwPxnbLOlStxLIv1tZm6cqIOTWEqnIunFNuXKanK7hhJ8hyvRlnBTwsqAFBN?=
- =?us-ascii?Q?QT4fxLKkaDkhwcJSRIXM11ZYYmx0XZO4NwEoCP1FZngv/A7SKTEKlbJbR/bW?=
- =?us-ascii?Q?qCI1Gp6l4SHnC+ck4zKInRuRityCJ9HiHDjAseM5joJToIceepEAKhXYSr+u?=
- =?us-ascii?Q?SkoETwGxD9f70TAFbW51Xint0pR0Xk6/ESd2WrKOU1KDVibSfcUq/UI531I9?=
- =?us-ascii?Q?N6szMwDeHaWuRpbbxEqHALrx1tvXx2FMBkdwXeonfWinwN5yZQI5EbtsjN18?=
- =?us-ascii?Q?ggpyXKe4Q47q3NmskRTW/isJ1Dgsq6eNRxt6sl8WQg2fFLxE8cYnQoeEnB6j?=
- =?us-ascii?Q?ehoEkXJNrPPdL44OFxjoIfRmktu9nwicRhkOvPfX5A1l7ZKA2XRD5Jwy8ORp?=
- =?us-ascii?Q?X/3boY7/4HGt6Z2gAlhi9wPN8zkf5O3jSRww9wTs+b8xiC1+JElFFjivfeVv?=
- =?us-ascii?Q?C/YqtSnmAF2Zq6xb8W6h5Dk93gsilu59fipTrF9yzM2zrPQvwuZrMpnGzyhC?=
- =?us-ascii?Q?fVNsQYz4Hxrc6B6cB51YMLN2Tb0poVoaxAN5zcFQSD4QW12WhNaleKCdz825?=
- =?us-ascii?Q?O3Jmk2d8jdcj8nGWokOiL3LKCLJNYnXg19LrL2+izAhMYNFYkJWhK1QGruoK?=
- =?us-ascii?Q?kcMdbXhq6UqR5mzbMiVVib6YhEYcqQ3Kyqo6zRzgyAaU5AmsQkUu5AslwPkT?=
- =?us-ascii?Q?H1/gTZ//3CLTMwWnk7mza9Z3QSweSWDdUUY+z0sENHkbz829wKV4N40JToyZ?=
- =?us-ascii?Q?fQeWIQYDmXlpeetZHdPdLEj9X2BJnHhDyAECUJWaGtIoFJaTMjLcjjBNkORk?=
- =?us-ascii?Q?w8sUkKp0Slxt/CGPtoyJB1e5wV8uY5FFAfsFgdg2//ZKRZCU7/pad82Zk85g?=
- =?us-ascii?Q?MbQFhS21umJUqIHrI9ilk5NwPAXK4kEZQQen2zPL2xQhXQEiDw0qKGJpPelW?=
- =?us-ascii?Q?0hTbAgOIgRcRKgLQEuI/SS+2aESBnQJJAX7sLRg3cJI3JgyHOrJd28Y73ojH?=
- =?us-ascii?Q?HOmXuaMyrsHErJrfQNRmdwvlQx0kXnHYiGC5h1syrP3AMkvmRss0?=
+ =?us-ascii?Q?nYMz5BjpSKW0FZq0KsG301MXGODSLww34gFWePGkv6HrG/p2+P0befQW6fX+?=
+ =?us-ascii?Q?Dbit8ZJmr+VqQudKLLpnP8R25WBHEHkDZ19a+3TYiDwTL2fWMhe2SaRfy+25?=
+ =?us-ascii?Q?ksMvGL3NaAM1z2RsWYc3Rg9vkw9bjzs4EB6zasx/YKyAXqqgu7JQm91tnr7P?=
+ =?us-ascii?Q?zAiZpjq/fyKqhfT+aVG09HsiFqTYJaelFt/n0OinrKV7RXcMRPC+VRJeDRjw?=
+ =?us-ascii?Q?9OKZrQEi6Y3Qzgk917mSp+4YyC/8XMVaQEjklWxAYm4ZnjdNPsNemE4YCLc5?=
+ =?us-ascii?Q?bza9QbIyMv8I64reeW233IHPquiTRW4L1Eyd0lvSBlfJee68A+WiqVKQ7g0U?=
+ =?us-ascii?Q?fRJcwg7xo15ftOF95ak0oHWxRhrGLs8P3wAXzAKXsZQq5fDwYIZBjNGzjC0/?=
+ =?us-ascii?Q?xkXiS4F8hLfBm9sYdcWBg1gd5IjSawwsKis5ZsOpaSLyyPT62cExIyC2GbQ5?=
+ =?us-ascii?Q?2RZ/RF/nDjjrcjArlgzWfkmiXelHB3GliGf5AZVGOKyW6U5Zd92HtlAyi7Wk?=
+ =?us-ascii?Q?zP3+r/aQR0le/A2MrspC/YdBUi9bcdZe20Q6m9MOwY10BgPxuOVJJJR6jdT9?=
+ =?us-ascii?Q?UegEIXT3aEZh9CKJ5PuQZ0ZKSwDGhUCRY4oznIJJ4acyEz069ySo5bPHkRdF?=
+ =?us-ascii?Q?FY5uInNcfpxH2NOq8lVp0uvnLSEI+qvMXwsGuSz1LB+dSZD6jlVXxbvEzw4t?=
+ =?us-ascii?Q?n/9j6d3Ahfbs/AS20cj+TIVmH48hseizeXwBVaKzDOws3ODvzuPTOopI1d7t?=
+ =?us-ascii?Q?YQY2tjY3s1+7JBvf2Ay2Ykc1AuFrfCMvxHZvmbLTgl3py6PI4hmQT7Ydhmnw?=
+ =?us-ascii?Q?oO6DQBJ820kIzaH7Hyre/JbNqT3Dv1q2cP2c+RFZRurTl2cOF3uyK2VdM454?=
+ =?us-ascii?Q?vuYTlnsjbTQDRbUYlNCPWtdYsFcm9xwNmVaagiMi9lkOaAaTRLosHX9IJvxU?=
+ =?us-ascii?Q?UhfP44MuDaeaDnek2KY4Jyk9DmYsiJ0o9HD6ojDbLgxxZYeZ/9dzcOWC0yoM?=
+ =?us-ascii?Q?4804f8yJwJsaDHoDyoqet4+EN0EdgxK0jlQHdYK8z+Fr0F5a4EUe/tCZzjY9?=
+ =?us-ascii?Q?sUsSUSnVlIcri0OXwjlOIO913WxWcFK8tiF10DxnMdcorOlJKCFxYIrQIJ0z?=
+ =?us-ascii?Q?y5zJCdwZSwnkvyRqF9I45asrDQ+mahPAKDefqOUMw2WI9TVGGMbJ0g2tPw48?=
+ =?us-ascii?Q?1yCWbETar7HGvIW75GO3bmg2fHYGzzQDE5d2KaUgjmmGlKX8p5T6O3UxToXd?=
+ =?us-ascii?Q?GwPHHWoHhvKG+YvjgLDAN/3XVQ4bC4r/ekpUXQjupgmpswdxRQOZtx2o5rk7?=
+ =?us-ascii?Q?v7W0vAEk/RORur3+v8P49FtM3qWkwSCasAaLedI9DJNUdAIc1i8Aj47O1xky?=
+ =?us-ascii?Q?kx8TADgPlarOIVvs5SLK7gbuKX0KbjWg5Aoq8d1ZsnXq/qTCDbC+Wfp5E5LO?=
+ =?us-ascii?Q?ZcbOa6kLPraJ93tOsDmYJ9f3BGlOedBV7BzG4ACz2FnYCqjPjZXfJrwTDNKc?=
+ =?us-ascii?Q?Y3gtEwKeEPHRfwXfY+vnYiKaGAffrUUhdbpcc7zKgS0D9qspxVdza/hclMwE?=
+ =?us-ascii?Q?vEQk+jwWacT71cPKsBn/Abmb7E3IvZBr+pmbTaGPWoTcUrrsAkpF+c2pAV7f?=
+ =?us-ascii?Q?PrJ/f08KQjyPg9tkYmmbXG+CAjXxUSzv3SpI98BSGNuC7aboYCSRYlzJ7jAQ?=
+ =?us-ascii?Q?w3aPyBlsQM/IdmZ0SwHCX0mMXmwi36x1CRFTDT6RJQN7904hPnu4uOuMKtZx?=
+ =?us-ascii?Q?WvEymd9dNL2LSAzIBh/Vr4pvC2mveeeYpeA1pAq4wEwhteke6uAx?=
 X-Exchange-RoutingPolicyChecked:
- T9EjruEXW6FGzEPkBe1cjiyKtdfUUFwxAGQebzAtq5/9rE6c/enQ+HOyL8yxMT+eh1b4RSVOahzT5gDQqsGESdn2dF9oo46oJc4H5SQj+9jTACk/pO8VDTuvj9+J7wujWmUTraV5uauoFPiI1XKnkg6jeKELBcOBU60x37ErW12h7jnIRSCErgwgK8LmHpr0EAIp7WlMIJYeMtbv5RKPozj/HNVPgeGiUoTfU/Zeiwo9I1KRvJIJLpN2wz55Rd4GPH3sda66dxMyKI+fUq2N/jljixiBrI6wUZmRhaLEc1beSTw6phAPZ1osRNFjjJFdVgg910GCCsz+gskiAsEdcg==
+ k6zqm0XLUhR/c7SSxmNaqfbQ5O7nXS5mJgiQfG2xMWpSiBylJApvttcLWQBsCv57IuVUPe9+akIvapsTRUzpGuv1Wu9NYaQA/ROsAVRG1nEXka3IQ3qce7kyLGp1bxpUED0xXAbC4UNTicmfsgYruTMkuzGtRXUbraO8sHoP5/bu2TX5L1F27QsR4MGpm7xLmDr4k+Ak6lNuBSJAuOwzm7swZXTjBRIrVDXFFzo+Z9++p8rCN53wxI3dcEvuY9O2FruQMsBzmYEYRbmaCzm5zE99FiZg7LAgdMievHmiGtxJ4tKcn4d9YfAlASJD7fh77xoWYUGI4tjybwFEVKGlyA==
 X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
- lPtvKNQhY9+xeKb5P3vpHvZ1LLzMmfNAGMgzjyYQuKdNSnaEYy9rKrQXu/20Ub+jIxbHKUGNu9im8ipdRTIozPtmTF08mFCdRhYcQ3LjghyTPmDcWxIUDftX/BhY7/kcM6v9e6russ48SiIUZXilhEtHh681LJsNfcA/VoCd4uthe3jYdbyAstZ7Xm4Dh2kgkehpcXHaS/INMeHBsiyAJxopD+mX/hkJmHxZvGC42Hp1hVZjCb5xHT8VhC+j9J3J6sQUBZ5cUVl+hb/H2mwjhdpUDR9zQQrb3XOYSCv39Aj8GxTh39qng2Tr9AnjyQMdNTIB+MKUofdqsOlA14kfFIiqevaWZ539ARTvV6YdsEtP20hxdsazQ+TFUi02U0AhDH7qG+wjp6L1li2l2qm6rOE2lejN7jUHo/xwc2dqVIcz9eI/dQl0zOWdxvCaovBC/2m3g8vs7qZHCnqwYr8Y8scgCSlOazlo+gJksZABer5icM3nfGG01ag9v1ZfsKg+u9xxtbfLMENLEgrnEOcnlA/d6VUWfXAY9RkR35ht5fV7gwayzFXNXb0j505HI9VM+QzCLeuzqK8l5V42lDgdo2DAk7skyLaMBEEbwgDlOI/qHH5wfPWGHWn2JP+7AXRIGxB2mjXJqDcjdFIWm9Q+gQ==
+ JLxmDB19Qgh/nFmCXNbshElGB3eKc02UG02qKB+jemRBMsi/LFnWPRm/FqJsseI21QyZooHC+92qgbaRZBy3BCC81re6M2XeQwGKs9vbPKK0Z+uaWxIr0tidsJu/+J4qhz6qZq/BCpcvytLjtPtEjvvDBhOi86hgW7sHLRKT49wN7pAJBk85i8UcOX3Sd/AabOSLQCqQRUJ0C42S+AB+VL02BFoYNVAU1Io2U0ZHLqxdMK8PxIMqxaaL8f51peOfKSjnVhGbzhCLd0O3uiEmCpCc08vHct9jX5Z6zQco15XyithVQ78N5ffUCIT4MR5JsnV7Cq5OcRkBUP4FNnQUI21UErI+JcA6Gob9aB59S/Ak+kbC6OMMycyrLQUz9a8EF3z9SFtzyNmkENkJDMBdxZHN5tRjwRoS8qBmHgaV1Q1i3MmAabINMr/n3xrmtWNw/j7nxX23w1iWKpkOTPxlWNX/ibzE/+FeFdt3DoxGPSNIdR00H4QdKtz8NTQxLvqZMdYeXbcTOY/0vJNUUU63BPqYLH+YCFcp/N6mHExwjmNMhN8OD36pIDVUl/rryNjknyTX7vKCU+peVyLBRV/GCXrWlxEqJMDneefW8bmjJWfXRpNGkJJ66o6GDDCxHHHvmGGMR3uRcRZSSJwqiIUiYw==
 X-OriginatorOrg: ddn.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 19a3c04e-e188-4015-ab73-08dece18088a
+X-MS-Exchange-CrossTenant-Network-Message-Id: 3031374c-c027-4415-d59b-08dece181873
 X-MS-Exchange-CrossTenant-AuthSource: SA1PR19MB5570.namprd19.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 19 Jun 2026 15:32:55.3364
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 19 Jun 2026 15:33:22.0585
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: dsESCfBTkM5y1xcgDxZE9UKiTAMLWwObu0ivYlYbecb92QGg0t1bU1E3hGz00nRNKCTtFP/+gCPbk6VzNbFsfg==
+X-MS-Exchange-CrossTenant-UserPrincipalName: m/8+cmolMFLO3lWRjbg+6oiEn+8/3tUs2hOKCIYJ4EwdtwddBoi5fch+/FLJtPgN464YpwGHajUl9lsM2vSFhg==
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: SA3PR19MB7816
-X-BESS-ID: 1781892422-111365-7726-499-1
+X-BESS-ID: 1781892437-110342-7734-6636-1
 X-BESS-VER: 2019.1_20260610.2305
-X-BESS-Apparent-Source-IP: 52.101.43.95
-X-BESS-Parts: H4sIAAAAAAACA4uuVkqtKFGyUioBkjpK+cVKVkaWZpYmQGYGUDTJwiw1NSUtxS
-	jZxDgxxSQl2djc1MQk0czEzNAkySjNSKk2FgBlOmOuQgAAAA==
-X-BESS-Outbound-Spam-Score: 0.00
+X-BESS-Apparent-Source-IP: 52.101.43.111
+X-BESS-Parts: H4sIAAAAAAACA4uuVkqtKFGyUioBkjpK+cVKVkamFuZGQGYGUNQyJSXZwCLRLM
+	3cMtkk0djQ3CAtJckyySA1ydTMPMXQXKk2FgDH6VF6QgAAAA==
+X-BESS-Outbound-Spam-Score: 0.68
 X-BESS-Outbound-Spam-Report: Code version 3.2, rules version 3.2.2.274043 [from 
-	cloudscan18-196.us-east-2b.ess.aws.cudaops.com]
+	cloudscan13-223.us-east-2a.ess.aws.cudaops.com]
 	Rule breakdown below
 	 pts rule name              description
 	---- ---------------------- --------------------------------
-	0.00 BSF_BESS_OUTBOUND      META: BESS Outbound 
+	0.00 OBSCURED_EMAIL         BODY: Message seems to contain rot13ed address 
 	0.00 BSF_SC0_MISMATCH_TO    META: Envelope rcpt doesn't match header 
-X-BESS-Outbound-Spam-Status: SCORE=0.00 using account:ESS124931 scores of KILL_LEVEL=7.0 tests=BSF_BESS_OUTBOUND, BSF_SC0_MISMATCH_TO
+	0.00 BSF_BESS_OUTBOUND      META: BESS Outbound 
+	0.68 OBSCURED_EMAIL_2       META: BODY: Message seems to contain rot13ed address 
+X-BESS-Outbound-Spam-Status: SCORE=0.68 using account:ESS124931 scores of KILL_LEVEL=7.0 tests=OBSCURED_EMAIL, BSF_SC0_MISMATCH_TO, BSF_BESS_OUTBOUND, OBSCURED_EMAIL_2
 X-BESS-BRTS-Status:1
 
-When a xattr is stored in an ea_inode, ext2fs_xattrs_* functions do
-not update the inode block count.
+This patch adds a helper function ext2fs_xattrs_release_all() which
+removes all extended attributes and updates the quota accordingly.
 
-This patch uses a cached inode to update the block count and quota
-when writing xattrs.
-It also fix an xattr remove case: the current ACL block was not
-release by ext2fs_xattrs_write().
+The main purpose of this is to handle ea_inode xattrs in e2fsck when
+deleting orphan inodes:
 
-Add a helper function ext2fs_iblk_get() to get the inode block count
-in cluster count unit.
+ # e2fsck -yf /tmp/ext4
+ e2fsck 1.47.3-wc2 (11-Nov-2025)
+ Clearing orphaned inode 12 (uid=0, gid=0, mode=0100644, size=0)
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 4: Checking reference counts
+ Regular filesystem inode 13 has EA_INODE flag set. Clear<y>? yes
+ Unattached inode 13
+ Connect to /lost+found<y>? yes
+ Inode 13 ref count is 2, should be 1.  Fix<y>? yes
 
-Add ext2fs_xattrs_open_inode() to specify an optional cached inode to
-use or update.
-The function handle an optional quota context argument to update quota
-accounting. It is hard to predict inode quota usage with ea_inode
-deduplication.
+fuse2fs, debugfs and mke2fs are updated to use this function and
+handle ea_inode on inode deletion.
 
-For testing purposes, modify the debugfs "ea_set" command to handle
-input file larger than the FS block size.
+Update d_xattr_ea_inode to check for the inode deletion case.
+Add a regression test: f_orphan_ea_inode
 
-Add a regression test: d_xattr_ea_inode
-
-Fixes: 50d0998cfe ("libext2fs: add ea_inode support to set xattr")
 Signed-off-by: Etienne AUJAMES <eaujames@ddn.com>
-Change-Id: I34733255bb76ffe2386d8cd6c19ce4561be4da3a
+Change-Id: I4a84a50d43b8b9aab2dfc352a92256c710a3659e
 Lustre-bug-id: https://jira.whamcloud.com/browse/LU-20049
 ---
- debugfs/xattrs.c              |  19 ++-
- e2fsck/pass1.c                |  12 +-
- lib/ext2fs/ext2fs.h           |   7 ++
- lib/ext2fs/ext_attr.c         | 227 ++++++++++++++++++++++------------
- lib/ext2fs/i_block.c          |  14 +++
- lib/support/quotaio.h         |   1 -
- tests/d_xattr_ea_inode/expect | 137 ++++++++++++++++++++
- tests/d_xattr_ea_inode/name   |   1 +
- tests/d_xattr_ea_inode/script |  85 +++++++++++++
- 9 files changed, 415 insertions(+), 88 deletions(-)
- create mode 100644 tests/d_xattr_ea_inode/expect
- create mode 100644 tests/d_xattr_ea_inode/name
- create mode 100644 tests/d_xattr_ea_inode/script
+ debugfs/debugfs.c                |  33 +++++++--
+ e2fsck/super.c                   |  67 +++++++++++-------
+ lib/ext2fs/ext2fs.h              |   3 +
+ lib/ext2fs/ext_attr.c            |  41 +++++++++++
+ misc/create_inode_libarchive.c   |  35 ++++-----
+ misc/fuse2fs.c                   | 117 +++++++++++--------------------
+ tests/d_xattr_ea_inode/expect    |  51 ++++++++++++++
+ tests/d_xattr_ea_inode/script    |  55 ++++++++++-----
+ tests/f_orphan_ea_inode/expect.1 |   6 ++
+ tests/f_orphan_ea_inode/expect.2 |   7 ++
+ tests/f_orphan_ea_inode/image.gz | Bin 0 -> 2139 bytes
+ tests/f_orphan_ea_inode/name     |   1 +
+ tests/f_orphan_ea_inode/script   |   3 +
+ 13 files changed, 277 insertions(+), 142 deletions(-)
+ create mode 100644 tests/f_orphan_ea_inode/expect.1
+ create mode 100644 tests/f_orphan_ea_inode/expect.2
+ create mode 100644 tests/f_orphan_ea_inode/image.gz
+ create mode 100644 tests/f_orphan_ea_inode/name
+ create mode 100644 tests/f_orphan_ea_inode/script
 
-diff --git a/debugfs/xattrs.c b/debugfs/xattrs.c
-index b518941c9..8364281f4 100644
---- a/debugfs/xattrs.c
-+++ b/debugfs/xattrs.c
-@@ -14,6 +14,7 @@ extern int optind;
- extern char *optarg;
- #endif
- #include <ctype.h>
-+#include <unistd.h>
- #include "support/cstring.h"
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index b9f248be2..d316293d2 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -1861,21 +1861,40 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
  
- #include "debugfs.h"
-@@ -299,10 +300,24 @@ void do_set_xattr(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
- 		goto out;
- 
- 	if (fp) {
--		err = ext2fs_get_mem(current_fs->blocksize, &buf);
-+		struct stat st;
-+
-+		if (fstat(fileno(fp), &st)) {
-+			err = errno;
-+			goto out;
-+		}
-+		if (st.st_size > sysconf(_SC_ARG_MAX)) {
-+			err = EFBIG;
-+			goto out;
-+		}
-+		err = ext2fs_get_mem(st.st_size, &buf);
- 		if (err)
- 			goto out;
--		buflen = fread(buf, 1, current_fs->blocksize, fp);
-+		buflen = fread(buf, 1, st.st_size, fp);
-+		if (ferror(fp)) {
-+			err = errno;
-+			goto out;
-+		}
- 	} else {
- 		buf = argv[optind + 2];
- 		buflen = parse_c_string(buf);
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index fdde76cc2..364128f4d 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -968,18 +968,18 @@ static void reserve_block_for_lnf_repair(e2fsck_t ctx)
- 
- static errcode_t get_inline_data_ea_size(ext2_filsys fs, ext2_ino_t ino,
- 					 struct ext2_inode *inode,
--					 size_t *sz)
-+					 size_t inode_size, size_t *sz)
+ static void kill_file_by_inode(ext2_ino_t inode)
  {
- 	void *p;
- 	struct ext2_xattr_handle *handle;
- 	errcode_t retval;
+-	struct ext2_inode inode_buf;
++	struct ext2_inode_large *inode_buf;
++	size_t inode_size = EXT2_INODE_SIZE(current_fs->super);
++	errcode_t err;
  
--	retval = ext2fs_xattrs_open(fs, ino, &handle);
-+	retval = ext2fs_xattrs_open_inode(fs, ino, inode, inode_size, NULL,
-+					  &handle);
- 	if (retval)
- 		return retval;
+-	if (debugfs_read_inode(inode, &inode_buf, 0))
+-		return;
+-	ext2fs_set_dtime(current_fs,  &inode_buf);
+-	if (debugfs_write_inode(inode, &inode_buf, 0))
++	err = ext2fs_get_memzero(inode_size, &inode_buf);
++	if (err)
+ 		return;
+-	if (ext2fs_inode_has_valid_blocks2(current_fs, &inode_buf)) {
++
++	err = ext2fs_read_inode_full(current_fs, inode, EXT2_INODE(inode_buf),
++				     inode_size);
++	if (err) {
++		com_err(__func__, err, "while reading inode %u", inode);
++		goto out;
++	}
++
++	ext2fs_set_dtime(current_fs,  EXT2_INODE(inode_buf));
++	ext2fs_xattrs_release_all(current_fs, inode, inode_buf, inode_size,
++				  NULL);
++	if (ext2fs_inode_has_valid_blocks2(current_fs, EXT2_INODE(inode_buf))) {
+ 		blk64_t last_cluster = 0;
+ 		ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY,
+ 				      NULL, release_blocks_proc, &last_cluster);
+ 	}
+ 	printf("\n");
+ 	ext2fs_inode_alloc_stats2(current_fs, inode, -1,
+-				  LINUX_S_ISDIR(inode_buf.i_mode));
++				  LINUX_S_ISDIR(inode_buf->i_mode));
++
++	err = ext2fs_write_inode_full(current_fs, inode, EXT2_INODE(inode_buf),
++				     inode_size);
++	if (err)
++		com_err(__func__, err, "while writing inode %u", inode);
++
++out:
++	ext2fs_free_mem(&inode_buf);
+ }
  
--	retval = ext2fs_xattrs_read_inode(handle,
--					  (struct ext2_inode_large *)inode);
-+	retval = ext2fs_xattrs_read(handle);
- 	if (retval)
- 		goto err;
  
-@@ -1580,6 +1580,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			size_t size = 0;
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index c2ccefd54..1a94ba567 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -156,13 +156,14 @@ static errcode_t truncate_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 	struct process_block_struct pb = { 0 };
+ 	e2_blkcnt_t truncate_block = 0;
+ 	__u32 truncate_offset = 0;
+-	blk64_t blk;
++	blk64_t blk, iblks;
+ 	int ret_flags;
+ 	errcode_t retval = 0;
  
- 			pctx.errcode = get_inline_data_ea_size(fs, ino, inode,
-+							       inode_size,
- 							       &size);
- 			if (!pctx.errcode &&
- 			    fix_problem(ctx, PR_1_INLINE_DATA_FEATURE, &pctx)) {
-@@ -1603,7 +1604,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 			flags = fs->flags;
- 			if (failed_csum)
- 				fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
--			err = get_inline_data_ea_size(fs, ino, inode, &size);
-+			err = get_inline_data_ea_size(fs, ino, inode,
-+						      inode_size, &size);
- 			fs->flags = (flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) |
- 				    (fs->flags & ~EXT2_FLAG_IGNORE_CSUM_ERRORS);
+ 	if (!ext2fs_inode_has_valid_blocks2(fs, EXT2_INODE(inode)))
+ 		return 0;
  
++	iblks = ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
+ 	if (inode->i_links_count) {
+ 		truncate_offset = inode->i_size % fs->blocksize;
+ 		truncate_block = (e2_blkcnt_t)
+@@ -190,6 +191,10 @@ static errcode_t truncate_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 			"release_inode_blocks");
+ 
+ 	ext2fs_iblk_sub_blocks(fs, EXT2_INODE(inode), pb.truncated_blocks);
++	iblks -= ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
++	if (ctx->qctx)
++		quota_data_sub(ctx->qctx, inode, ino, iblks * 512);
++
+ 	if (!truncate_offset)
+ 		return 0;
+ 
+@@ -217,17 +222,19 @@ static errcode_t truncate_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+  * not deleted.
+  */
+ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+-				struct ext2_inode_large *inode, char *block_buf,
++				struct ext2_inode_large *inode,
++				size_t inode_size, char *block_buf,
+ 				struct problem_context *pctx)
+ {
+ 	ext2_filsys			fs = ctx->fs;
+-	blk64_t				free_blks, ino_blks;
++	blk64_t				free_blks;
++	__u32				free_inodes;
+ 	char				*buf;
+ 	errcode_t			err;
+ 	int				rc = 0;
+ 
++	free_inodes = fs->super->s_free_inodes_count;
+ 	free_blks = ext2fs_free_blocks_count(fs->super);
+-	ino_blks = ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
+ 	buf = block_buf + 3 * ctx->fs->blocksize;
+ 	if (truncate_inode_blocks(ctx, ino, inode, buf, pctx)) {
+ 		rc = 1;
+@@ -236,7 +243,7 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 	if (inode->i_links_count)
+ 		goto update_counts;
+ 
+-	err = ext2fs_free_ext_attr(fs, ino, inode);
++	err = ext2fs_xattrs_release_all(fs, ino, inode, inode_size, ctx->qctx);
+ 	if (err) {
+ 		com_err(__func__, err,
+ 			_("while calling ext2fs_free_ext_attr for inode %u"),
+@@ -249,9 +256,8 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
+ 
+ update_counts:
+ 	ctx->free_blocks += ext2fs_free_blocks_count(fs->super) - free_blks;
+-	ino_blks -= ext2fs_get_stat_i_blocks(fs, EXT2_INODE(inode));
+-	if (ctx->qctx)
+-		quota_data_sub(ctx->qctx, inode, 0, ino_blks << 9);
++	free_inodes = fs->super->s_free_inodes_count - free_inodes;
++	ctx->free_inodes += free_inodes;
+ 
+ 	return rc;
+ }
+@@ -312,44 +318,55 @@ static int release_orphan_inode(e2fsck_t ctx, ext2_ino_t *ino, char *block_buf)
+ {
+ 	ext2_filsys fs = ctx->fs;
+ 	struct problem_context pctx;
+-	struct ext2_inode_large inode;
++	struct ext2_inode_large *inode;
++	size_t inode_size = EXT2_INODE_SIZE(fs->super);
+ 	ext2_ino_t next_ino;
++	int rc = 1;
++
++	if (ext2fs_get_memzero(inode_size, &inode))
++		return 1;
+ 
+-	e2fsck_read_inode_full(ctx, *ino, EXT2_INODE(&inode),
+-				sizeof(inode), "release_orphan_inode");
++	e2fsck_read_inode_full(ctx, *ino, EXT2_INODE(inode),
++				     inode_size, __func__);
+ 	clear_problem_context(&pctx);
+ 	pctx.ino = *ino;
+-	pctx.inode = EXT2_INODE(&inode);
+-	pctx.str = inode.i_links_count ? _("Truncating") : _("Clearing");
++	pctx.inode = EXT2_INODE(inode);
++	pctx.str = inode->i_links_count ? _("Truncating") : _("Clearing");
+ 
+ 	fix_problem(ctx, PR_0_ORPHAN_CLEAR_INODE, &pctx);
+ 
+-	next_ino = inode.i_dtime;
++	next_ino = inode->i_dtime;
+ 	if (next_ino &&
+ 	    ((next_ino < EXT2_FIRST_INODE(fs->super)) ||
+ 	     (next_ino > fs->super->s_inodes_count))) {
+ 		pctx.ino = next_ino;
+ 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_INODE, &pctx);
+-		return 1;
++		goto out;
+ 	}
+ 
+-	if (release_inode_blocks(ctx, *ino, &inode, block_buf, &pctx))
+-		return 1;
++	if (release_inode_blocks(ctx, *ino, inode, inode_size, block_buf,
++				 &pctx))
++		goto out;
+ 
+-	if (!inode.i_links_count) {
++	if (!inode->i_links_count) {
+ 		if (ctx->qctx)
+-			quota_data_inodes(ctx->qctx, &inode, *ino, -1);
++			quota_data_inodes(ctx->qctx, inode, *ino, -1);
+ 		ext2fs_inode_alloc_stats2(fs, *ino, -1,
+-					  LINUX_S_ISDIR(inode.i_mode));
++					  LINUX_S_ISDIR(inode->i_mode));
+ 		ctx->free_inodes++;
+-		ext2fs_set_dtime(fs, EXT2_INODE(&inode));
++		ext2fs_set_dtime(fs, EXT2_INODE(inode));
+ 	} else {
+-		inode.i_dtime = 0;
++		inode->i_dtime = 0;
+ 	}
+-	e2fsck_write_inode_full(ctx, *ino, EXT2_INODE(&inode),
+-				sizeof(inode), "delete_file");
++	e2fsck_write_inode_full(ctx, *ino, EXT2_INODE(inode),
++				      inode_size, __func__);
+ 	*ino = next_ino;
+-	return 0;
++	rc = 0;
++
++out:
++	ext2fs_free_mem(&inode);
++
++	return rc;
+ }
+ 
+ struct process_orphan_block_data {
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index c4fcb10be..56de5ea50 100644
+index 56de5ea50..cb3f1a3a1 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -94,6 +94,8 @@ typedef __s64 __bitwise		ext2_off64_t;
- typedef __s64 __bitwise		e2_blkcnt_t;
- typedef __u32 __bitwise		ext2_dirhash_t;
- 
-+typedef struct quota_ctx *quota_ctx_t;
-+
- #if EXT2_FLAT_INCLUDES
- #include "com_err.h"
- #include "ext2_io.h"
-@@ -1408,6 +1410,10 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *handle,
- errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
- 			      const char *key);
- errcode_t ext2fs_xattr_remove_all(struct ext2_xattr_handle *handle);
-+errcode_t ext2fs_xattrs_open_inode(ext2_filsys fs, ext2_ino_t ino,
-+				   struct ext2_inode *inode, size_t inode_size,
-+				   quota_ctx_t qctx,
-+				   struct ext2_xattr_handle **handle);
- errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
- 			     struct ext2_xattr_handle **handle);
- errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle);
-@@ -1607,6 +1613,7 @@ errcode_t ext2fs_iblk_add_blocks(ext2_filsys fs, struct ext2_inode *inode,
- errcode_t ext2fs_iblk_sub_blocks(ext2_filsys fs, struct ext2_inode *inode,
- 				 blk64_t num_blocks);
- errcode_t ext2fs_iblk_set(ext2_filsys fs, struct ext2_inode *inode, blk64_t b);
-+blk64_t ext2fs_iblk_get(ext2_filsys fs, struct ext2_inode *inode);
- 
- /* imager.c */
- extern errcode_t ext2fs_image_inode_write(ext2_filsys fs, int fd, int flags);
+@@ -1425,6 +1425,9 @@ errcode_t ext2fs_xattr_inode_max_size(ext2_filsys fs, ext2_ino_t ino,
+ #define XATTR_HANDLE_FLAG_RAW	0x0001
+ errcode_t ext2fs_xattrs_flags(struct ext2_xattr_handle *handle,
+ 			      unsigned int *new_flags, unsigned int *old_flags);
++errcode_t ext2fs_xattrs_release_all(ext2_filsys fs, ext2_ino_t ino,
++				    struct ext2_inode_large *inode,
++				    size_t inode_size, quota_ctx_t qctx);
+ extern void ext2fs_ext_attr_block_rehash(struct ext2_ext_attr_header *header,
+ 					 struct ext2_ext_attr_entry *end);
+ extern __u32 ext2fs_get_ea_inode_hash(struct ext2_inode *inode);
 diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 7723d0f91..3b90b70bb 100644
+index 3b90b70bb..2a2e79acd 100644
 --- a/lib/ext2fs/ext_attr.c
 +++ b/lib/ext2fs/ext_attr.c
-@@ -22,6 +22,7 @@
- #include "ext2_fs.h"
- #include "ext2_ext_attr.h"
- #include "ext4_acl.h"
-+#include "support/quotaio.h"
- 
- #include "ext2fsP.h"
- 
-@@ -361,8 +362,14 @@ struct ext2_xattr_handle {
- 	int capacity;
- 	int count;
- 	int ibody_count;
-+	struct ext2_inode *in_inode;
-+	size_t in_inode_size;
-+	struct ext2_inode_large *alloc_inode;
-+	struct ext2_inode_large *inode;
-+	size_t inode_size;
- 	ext2_ino_t ino;
- 	unsigned int flags;
-+	quota_ctx_t qctx;
- };
- 
- static errcode_t ext2fs_xattrs_expand(struct ext2_xattr_handle *h,
-@@ -499,9 +506,11 @@ out:
- 	return err;
+@@ -1868,3 +1868,44 @@ errcode_t ext2fs_xattrs_flags(struct ext2_xattr_handle *handle,
+ 		handle->flags = *new_flags;
+ 	return 0;
  }
- 
--static errcode_t prep_ea_block_for_write(ext2_filsys fs, ext2_ino_t ino,
--					 struct ext2_inode_large *inode)
-+static errcode_t prep_ea_block_for_write(ext2_filsys fs,
-+					 struct ext2_xattr_handle *handle)
- {
-+	struct ext2_inode_large *inode = handle->inode;
-+	ext2_ino_t ino = handle->ino;
- 	struct ext2_ext_attr_header *header;
- 	void *block_buf = NULL;
- 	blk64_t blk, goal;
-@@ -541,11 +550,15 @@ static errcode_t prep_ea_block_for_write(ext2_filsys fs, ext2_ino_t ino,
- 		if (err)
- 			goto out2;
- 	} else {
--		/* No block, we must increment i_blocks */
-+		/* No block, we must increment i_blocks and quota */
- 		err = ext2fs_iblk_add_blocks(fs, (struct ext2_inode *)inode,
- 					     1);
- 		if (err)
- 			goto out;
 +
-+		if (handle->qctx)
-+			quota_data_add(handle->qctx, handle->inode, handle->ino,
-+				       EXT2FS_C2B(fs, 1) * fs->blocksize);
- 	}
- 
- 	/* Allocate a block */
-@@ -744,8 +757,7 @@ write_xattrs_to_buffer(ext2_filsys fs, struct ext2_xattr *attrs, int count,
- errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- {
- 	ext2_filsys fs = handle->fs;
--	const unsigned int inode_size = EXT2_INODE_SIZE(fs->super);
--	struct ext2_inode_large *inode;
-+	struct ext2_inode_large *inode = handle->inode;
- 	char *start, *block_buf = NULL;
- 	struct ext2_ext_attr_header *header;
- 	__u32 ea_inode_magic;
-@@ -755,21 +767,12 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	errcode_t err;
- 
- 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
--	i = inode_size;
--	if (i < sizeof(*inode))
--		i = sizeof(*inode);
--	err = ext2fs_get_memzero(i, &inode);
--	if (err)
--		return err;
--
--	err = ext2fs_read_inode_full(fs, handle->ino, EXT2_INODE(inode),
--				     inode_size);
--	if (err)
--		goto out;
-+	if (!inode)
-+		return EINVAL;
- 
- 	/* If extra_isize isn't set, we need to set it now */
- 	if (inode->i_extra_isize == 0 &&
--	    inode_size > EXT2_GOOD_OLD_INODE_SIZE) {
-+	    handle->inode_size > EXT2_GOOD_OLD_INODE_SIZE) {
- 		char *p = (char *)inode;
- 		size_t extra = fs->super->s_want_extra_isize;
- 
-@@ -778,22 +781,20 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 		memset(p + EXT2_GOOD_OLD_INODE_SIZE, 0, extra);
- 		inode->i_extra_isize = extra;
- 	}
--	if (inode->i_extra_isize & 3) {
--		err = EXT2_ET_INODE_CORRUPTED;
--		goto out;
--	}
-+	if (inode->i_extra_isize & 3)
-+		return EXT2_ET_INODE_CORRUPTED;
- 
- 	/* Does the inode have space for EA? */
- 	if (inode->i_extra_isize < sizeof(inode->i_extra_isize) ||
--	    inode_size <= EXT2_GOOD_OLD_INODE_SIZE + inode->i_extra_isize +
--								sizeof(__u32))
-+	    handle->inode_size <= EXT2_GOOD_OLD_INODE_SIZE +
-+	    inode->i_extra_isize + sizeof(__u32))
- 		goto write_ea_block;
- 
- 	/* Write the inode EA */
- 	ea_inode_magic = EXT2_EXT_ATTR_MAGIC;
- 	memcpy(((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 	       inode->i_extra_isize, &ea_inode_magic, sizeof(__u32));
--	storage_size = inode_size - EXT2_GOOD_OLD_INODE_SIZE -
-+	storage_size = handle->inode_size - EXT2_GOOD_OLD_INODE_SIZE -
- 				inode->i_extra_isize - sizeof(__u32);
- 	start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 				inode->i_extra_isize + sizeof(__u32);
-@@ -801,17 +802,16 @@ errcode_t ext2fs_xattrs_write(struct ext2_xattr_handle *handle)
- 	err = write_xattrs_to_buffer(fs, handle->attrs, handle->ibody_count,
- 				     start, storage_size, 0, 0);
- 	if (err)
--		goto out;
-+		return err;
- write_ea_block:
- 	/* Are we done? */
--	if (handle->ibody_count == handle->count &&
--	    !ext2fs_file_acl_block(fs, EXT2_INODE(inode)))
-+	if (handle->ibody_count == handle->count)
- 		goto skip_ea_block;
- 
- 	/* Write the EA block */
- 	err = ext2fs_get_memzero(fs->blocksize, &block_buf);
- 	if (err)
--		goto out;
-+		return err;
- 
- 	storage_size = fs->blocksize - sizeof(struct ext2_ext_attr_header);
- 	start = block_buf + sizeof(struct ext2_ext_attr_header);
-@@ -820,7 +820,7 @@ write_ea_block:
- 				     handle->count - handle->ibody_count, start,
- 				     storage_size, start - block_buf, 1);
- 	if (err)
--		goto out2;
-+		goto out;
- 
- 	/* Write a header on the EA block */
- 	header = (struct ext2_ext_attr_header *) block_buf;
-@@ -829,15 +829,15 @@ write_ea_block:
- 	header->h_blocks = 1;
- 
- 	/* Get a new block for writing */
--	err = prep_ea_block_for_write(fs, handle->ino, inode);
-+	err = prep_ea_block_for_write(fs, handle);
- 	if (err)
--		goto out2;
-+		goto out;
- 
- 	/* Finally, write the new EA block */
- 	blk = ext2fs_file_acl_block(fs, EXT2_INODE(inode));
- 	err = ext2fs_write_ext_attr3(fs, blk, block_buf, handle->ino);
- 	if (err)
--		goto out2;
-+		goto out;
- 
- skip_ea_block:
- 	blk = ext2fs_file_acl_block(fs, (struct ext2_inode *)inode);
-@@ -845,19 +845,26 @@ skip_ea_block:
- 		/* xattrs shrunk, free the block */
- 		err = ext2fs_free_ext_attr(fs, handle->ino, inode);
- 		if (err)
--			goto out;
++errcode_t ext2fs_xattrs_release_all(ext2_filsys fs, ext2_ino_t ino,
++				    struct ext2_inode_large *inode,
++				    size_t inode_size, quota_ctx_t qctx)
++{
++	struct ext2_xattr_handle *h;
++	errcode_t err = 0;
++
++	if (!ext2fs_has_feature_ea_inode(fs->super)) {
++		blk64_t blk = ext2fs_file_acl_block(fs, EXT2_INODE(inode));
++
++		if (!blk)
++			return 0;
++
++		err = ext2fs_free_ext_attr(fs, ino, inode);
++		if (err || !qctx)
 +			return err;
-+		if (handle->qctx)
-+			quota_data_sub(handle->qctx, inode, handle->ino,
-+				       EXT2FS_C2B(fs, 1) * fs->blocksize);
- 	}
- 
- 	/* Write the inode */
- 	err = ext2fs_write_inode_full(fs, handle->ino, EXT2_INODE(inode),
--				      inode_size);
-+				      handle->inode_size);
- 	if (err)
--		goto out2;
-+		goto out;
 +
-+	/* Update the caller cached inode if provided */
-+	if (handle->in_inode && handle->in_inode != EXT2_INODE(handle->inode))
-+		memcpy(handle->in_inode, EXT2_INODE(handle->inode),
-+		       handle->in_inode_size);
- 
--out2:
--	ext2fs_free_mem(&block_buf);
- out:
--	ext2fs_free_mem(&inode);
-+	ext2fs_free_mem(&block_buf);
-+
- 	return err;
- }
- 
-@@ -1130,29 +1137,51 @@ out:
- 	return err;
- }
- 
--errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *handle)
-+errcode_t ext2fs_xattrs_read(struct ext2_xattr_handle *h)
- {
--	struct ext2_inode_large *inode;
--	size_t inode_size = EXT2_INODE_SIZE(handle->fs->super);
- 	errcode_t err;
- 
--	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EA_HANDLE);
-+	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
-+
-+	h->inode_size = EXT2_INODE_SIZE(h->fs->super);
-+	if (h->inode_size < sizeof(*h->inode))
-+		h->inode_size = sizeof(*h->inode);
-+
-+	/* Use the caller cached inode if possible */
-+	if (h->in_inode &&  h->in_inode_size >= h->inode_size) {
-+		h->inode = (struct ext2_inode_large *) h->in_inode;
-+		goto xattrs_read;
++		quota_data_sub(qctx, inode, ino,
++			       EXT2FS_C2B(fs, 1) * fs->blocksize);
++		return 0;
 +	}
 +
-+	/* Flush the caller cached inode if provided */
-+	if (h->in_inode) {
-+		err = ext2fs_write_inode_full(h->fs, h->ino, h->in_inode,
-+					     h->in_inode_size);
-+		if (err)
-+			goto err;
-+	}
- 
--	if (inode_size < sizeof(*inode))
--		inode_size = sizeof(*inode);
--	err = ext2fs_get_memzero(inode_size, &inode);
-+	err = ext2fs_get_memzero(h->inode_size, &h->alloc_inode);
- 	if (err)
- 		return err;
- 
--	err = ext2fs_read_inode_full(handle->fs, handle->ino, EXT2_INODE(inode),
--				     EXT2_INODE_SIZE(handle->fs->super));
-+	err = ext2fs_read_inode_full(h->fs, h->ino, EXT2_INODE(h->alloc_inode),
-+				     h->inode_size);
- 	if (err)
--		goto out;
-+		goto err;
- 
--	err = ext2fs_xattrs_read_inode(handle, inode);
-+	h->inode = h->alloc_inode;
- 
--out:
--	ext2fs_free_mem(&inode);
-+xattrs_read:
-+	err = ext2fs_xattrs_read_inode(h, h->inode);
++	err = ext2fs_xattrs_open_inode(fs, ino, EXT2_INODE(inode), inode_size,
++				       qctx, &h);
 +	if (err)
-+		goto err;
++		return err;
 +
-+	return 0;
++	err = ext2fs_xattrs_read(h);
++	if (err)
++		goto out_close;
 +
-+err:
-+	h->inode_size = 0;
-+	ext2fs_free_mem(&h->alloc_inode);
- 
- 	return err;
- }
-@@ -1272,12 +1301,15 @@ out:
- 	return err;
- }
- 
--static errcode_t xattr_create_ea_inode(ext2_filsys fs, const void *value,
--				       size_t value_len, ext2_ino_t *ea_ino)
-+static errcode_t xattr_create_ea_inode(struct ext2_xattr_handle *handle,
-+				       const void *value, size_t value_len,
-+				       ext2_ino_t *ea_ino)
++	err = ext2fs_xattr_remove_all(h);
++	if (err)
++		goto out_close;
++
++out_close:
++	ext2fs_xattrs_close(&h);
++
++	return err;
++}
+diff --git a/misc/create_inode_libarchive.c b/misc/create_inode_libarchive.c
+index fadf0721f..4736e8c22 100644
+--- a/misc/create_inode_libarchive.c
++++ b/misc/create_inode_libarchive.c
+@@ -261,46 +261,49 @@ static inline unsigned int __round_up(unsigned int quantity, unsigned int size)
+ static int remove_inode(ext2_filsys fs, ext2_ino_t ino)
  {
-+	ext2_filsys fs = handle->fs;
- 	struct ext2_inode inode;
- 	ext2_ino_t ino;
- 	ext2_file_t file;
-+	blk64_t	iblk;
- 	__u32 hash;
- 	errcode_t ret;
+ 	errcode_t ret = 0;
+-	struct ext2_inode_large inode;
++	struct ext2_inode_large *inode;
++	size_t inode_size = EXT2_INODE_SIZE(fs->super);
  
-@@ -1317,16 +1349,30 @@ static errcode_t xattr_create_ea_inode(ext2_filsys fs, const void *value,
- 	if (ret)
- 		return ret;
- 
-+	ret = ext2fs_read_inode(fs, ino, &inode);
+-	memset(&inode, 0, sizeof(inode));
+-	ret = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
+-				     sizeof(inode));
++	ret = ext2fs_get_memzero(inode_size, &inode);
 +	if (ret)
 +		return ret;
 +
- 	ext2fs_inode_alloc_stats2(fs, ino, 1 /* inuse */, 0 /* isdir */);
-+	iblk = ext2fs_iblk_get(fs, &inode);
-+	ext2fs_iblk_add_blocks(fs, EXT2_INODE(handle->inode), iblk);
-+	if (handle->qctx) {
-+		quota_data_add(handle->qctx, handle->inode, handle->ino,
-+			       EXT2FS_C2B(fs, iblk) * fs->blocksize);
-+		quota_data_inodes(handle->qctx, handle->inode, handle->ino, +1);
-+	}
++	ret = ext2fs_read_inode_full(fs, ino, EXT2_INODE(inode), inode_size);
+ 	if (ret)
+ 		goto out;
  
- 	*ea_ino = ino;
- 	return 0;
- }
+-	switch (inode.i_links_count) {
++	switch (inode->i_links_count) {
+ 	case 0:
+ 		return 0; /* XXX: already done? */
+ 	case 1:
+-		inode.i_links_count--;
+-		ext2fs_set_dtime(fs, EXT2_INODE(&inode));
++		inode->i_links_count--;
++		ext2fs_set_dtime(fs, EXT2_INODE(inode));
+ 		break;
+ 	default:
+-		inode.i_links_count--;
++		inode->i_links_count--;
+ 	}
  
--static errcode_t xattr_inode_dec_ref(ext2_filsys fs, ext2_ino_t ino)
-+static errcode_t xattr_inode_dec_ref(struct ext2_xattr_handle *handle,
-+				     ext2_ino_t ino)
- {
-+	ext2_filsys fs = handle->fs;
- 	struct ext2_inode_large inode;
- 	__u64 ref_count;
-+	blk64_t	iblk;
- 	errcode_t ret;
- 
- 	ret = ext2fs_read_inode_full(fs, ino, (struct ext2_inode *)&inode,
-@@ -1338,6 +1384,14 @@ static errcode_t xattr_inode_dec_ref(ext2_filsys fs, ext2_ino_t ino)
- 	ref_count--;
- 	ext2fs_set_ea_inode_ref(EXT2_INODE(&inode), ref_count);
- 
-+	iblk = ext2fs_iblk_get(fs, EXT2_INODE(&inode));
-+	ext2fs_iblk_sub_blocks(fs, EXT2_INODE(handle->inode), iblk);
-+	if (handle->qctx) {
-+		quota_data_sub(handle->qctx, handle->inode, handle->ino,
-+			       EXT2FS_C2B(fs, iblk) * fs->blocksize);
-+		quota_data_inodes(handle->qctx, handle->inode, handle->ino, -1);
-+	}
-+
- 	if (ref_count)
+-	if (inode.i_links_count)
++	if (inode->i_links_count)
  		goto write_out;
  
-@@ -1365,7 +1419,8 @@ out:
- 	return ret;
- }
- 
--static errcode_t xattr_update_entry(ext2_filsys fs, struct ext2_xattr *x,
-+static errcode_t xattr_update_entry(struct ext2_xattr_handle *handle,
-+				    struct ext2_xattr *x,
- 				    const char *name, const char *short_name,
- 				    int index, const void *value,
- 				    size_t value_len, int in_inode)
-@@ -1390,13 +1445,13 @@ static errcode_t xattr_update_entry(ext2_filsys fs, struct ext2_xattr *x,
- 	memcpy(new_value, value, value_len);
- 
- 	if (in_inode) {
--		ret = xattr_create_ea_inode(fs, value, value_len, &ea_ino);
-+		ret = xattr_create_ea_inode(handle, value, value_len, &ea_ino);
- 		if (ret)
- 			goto fail;
- 	}
- 
- 	if (x->ea_ino) {
--		ret = xattr_inode_dec_ref(fs, x->ea_ino);
-+		ret = xattr_inode_dec_ref(handle, x->ea_ino);
- 		if (ret)
- 			goto fail;
- 	}
-@@ -1419,7 +1474,7 @@ fail:
- 	if (new_value)
- 		ext2fs_free_mem(&new_value);
- 	if (ea_ino)
--		xattr_inode_dec_ref(fs, ea_ino);
-+		xattr_inode_dec_ref(handle, ea_ino);
- 	return ret;
- }
- 
-@@ -1486,7 +1541,7 @@ static errcode_t xattr_array_update(struct ext2_xattr_handle *h,
- 		}
- 
- 		/* Update the existing entry. */
--		ret = xattr_update_entry(h->fs, &h->attrs[old_idx], name,
-+		ret = xattr_update_entry(h, &h->attrs[old_idx], name,
- 					 shortname, name_idx, value,
- 					 value_len, in_inode);
- 		if (ret)
-@@ -1515,7 +1570,7 @@ static errcode_t xattr_array_update(struct ext2_xattr_handle *h,
- 
- 	if (old_idx >= 0) {
- 		/* Update the existing entry. */
--		ret = xattr_update_entry(h->fs, &h->attrs[old_idx], name,
-+		ret = xattr_update_entry(h, &h->attrs[old_idx], name,
- 					 shortname, name_idx, value,
- 					 value_len, in_inode);
- 		if (ret)
-@@ -1551,7 +1606,7 @@ add_new:
- 			return ret;
- 	}
- 
--	ret = xattr_update_entry(h->fs, &h->attrs[h->count], name, shortname,
-+	ret = xattr_update_entry(h, &h->attrs[h->count], name, shortname,
- 				 name_idx, value, value_len, in_inode);
+ 	/* Nobody holds this file; free its blocks! */
+-	ret = ext2fs_free_ext_attr(fs, ino, &inode);
++	ret = ext2fs_xattrs_release_all(fs, ino, inode, inode_size, NULL);
  	if (ret)
- 		return ret;
-@@ -1594,8 +1649,7 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *h,
- 			   size_t value_len)
+ 		goto write_out;
+ 
+-	if (ext2fs_inode_has_valid_blocks2(fs, (struct ext2_inode *)&inode)) {
+-		ret = ext2fs_punch(fs, ino, (struct ext2_inode *)&inode, NULL,
+-				   0, ~0ULL);
++	if (ext2fs_inode_has_valid_blocks2(fs, EXT2_INODE(inode))) {
++		ret = ext2fs_punch(fs, ino, EXT2_INODE(inode), NULL, 0, ~0ULL);
+ 		if (ret)
+ 			goto write_out;
+ 	}
+ 
+-	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
++	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode->i_mode));
+ 
+ write_out:
+-	ret = ext2fs_write_inode_full(fs, ino, (struct ext2_inode *)&inode,
+-				      sizeof(inode));
++	ret = ext2fs_write_inode_full(fs, ino, EXT2_INODE(inode), inode_size);
+ out:
++	ext2fs_free_mem(&inode);
++
+ 	return ret;
+ }
+ 
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 94e289fab..11141f645 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -2274,123 +2274,88 @@ static int fuse2fs_unlink(struct fuse2fs *ff, const char *path,
+ 	return 0;
+ }
+ 
+-static int remove_ea_inodes(struct fuse2fs *ff, ext2_ino_t ino,
+-			    struct ext2_inode_large *inode)
++static int remove_inode(struct fuse2fs *ff, ext2_ino_t ino)
  {
- 	ext2_filsys fs = h->fs;
--	const int inode_size = EXT2_INODE_SIZE(fs->super);
--	struct ext2_inode_large *inode = NULL;
-+	struct ext2_inode_large *inode = h->inode;
- 	struct ext2_xattr *x;
- 	char *new_value;
- 	int ibody_free, block_free;
-@@ -1605,6 +1659,8 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *h,
- 	errcode_t ret;
+ 	ext2_filsys fs = ff->fs;
+-	struct ext2_xattr_handle *h;
+ 	errcode_t err;
++	struct ext2_inode_large *inode;
++	size_t inode_size = EXT2_INODE_SIZE(fs->super);
+ 	int ret = 0;
  
- 	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
-+	if (!inode || !h->inode_size)
-+		return EINVAL;
+-	/*
+-	 * The xattr handle maintains its own private copy of the inode, so
+-	 * write ours to disk so that we can read it.
+-	 */
+-	err = fuse2fs_write_inode(fs, ino, inode);
++	err = ext2fs_get_memzero(inode_size, &inode);
+ 	if (err)
+ 		return translate_error(fs, ino, err);
  
- 	ret = ext2fs_get_mem(value_len, &new_value);
- 	if (ret)
-@@ -1632,23 +1688,14 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *h,
- 			break;
- 		}
+-	err = ext2fs_xattrs_open(fs, ino, &h);
+-	if (err)
+-		return translate_error(fs, ino, err);
+-
+-	err = ext2fs_xattrs_read(h);
++	err = ext2fs_read_inode_full(fs, ino, EXT2_INODE(inode), inode_size);
+ 	if (err) {
+ 		ret = translate_error(fs, ino, err);
+-		goto out_close;
+-	}
+-
+-	err = ext2fs_xattr_remove_all(h);
+-	if (err) {
+-		ret = translate_error(fs, ino, err);
+-		goto out_close;
++		goto out;
  	}
 -
--	ret = ext2fs_get_memzero(inode_size, &inode);
+-out_close:
+-	ext2fs_xattrs_close(&h);
 -	if (ret)
--		goto out;
--	ret = ext2fs_read_inode_full(fs, h->ino,
--				     (struct ext2_inode *)inode,
--				     inode_size);
--	if (ret)
--		goto out;
--	if (inode_size > EXT2_GOOD_OLD_INODE_SIZE) {
-+	if (h->inode_size > EXT2_GOOD_OLD_INODE_SIZE) {
- 		extra_isize = inode->i_extra_isize;
- 		if (extra_isize == 0) {
- 			extra_isize = fs->super->s_want_extra_isize;
- 			if (extra_isize == 0)
- 				extra_isize = sizeof(__u32);
- 		}
--		ibody_free = inode_size - EXT2_GOOD_OLD_INODE_SIZE;
-+		ibody_free = h->inode_size - EXT2_GOOD_OLD_INODE_SIZE;
- 		ibody_free -= extra_isize;
- 		/* Extended attribute magic and final null entry. */
- 		ibody_free -= sizeof(__u32) * 2;
-@@ -1694,8 +1741,6 @@ errcode_t ext2fs_xattr_set(struct ext2_xattr_handle *h,
+-		return ret;
+-
+-	/* Now read the inode back in. */
+-	err = fuse2fs_read_inode(fs, ino, inode);
+-	if (err)
+-		return translate_error(fs, ino, err);
+-
+-	return 0;
+-}
+-
+-static int remove_inode(struct fuse2fs *ff, ext2_ino_t ino)
+-{
+-	ext2_filsys fs = ff->fs;
+-	errcode_t err;
+-	struct ext2_inode_large inode;
+-	int ret = 0;
+-
+-	err = fuse2fs_read_inode(fs, ino, &inode);
+-	if (err)
+-		return translate_error(fs, ino, err);
+-
+ 	dbg_printf(ff, "%s: put ino=%d links=%d\n", __func__, ino,
+-		   inode.i_links_count);
++		   inode->i_links_count);
+ 
+-	if (S_ISDIR(inode.i_mode)) {
++	if (S_ISDIR(inode->i_mode)) {
+ 		/*
+ 		 * Caller should have checked that this is an empty directory
+ 		 * before starting the unlink process.  nlink is usually 2, but
+ 		 * it could be 1 if this dir ever had more than 65000 subdirs.
+ 		 * Zero the link count.
+ 		 */
+-		if (!ext2fs_dir_link_empty(EXT2_INODE(&inode)))
+-			return translate_error(fs, ino, EXT2_ET_INODE_CORRUPTED);
+-		inode.i_links_count = 0;
+-		ext2fs_set_dtime(fs, EXT2_INODE(&inode));
++		if (!ext2fs_dir_link_empty(EXT2_INODE(inode))) {
++			ret = translate_error(fs, ino, EXT2_ET_INODE_CORRUPTED);
++			goto out;
++		}
++		inode->i_links_count = 0;
++		ext2fs_set_dtime(fs, EXT2_INODE(inode));
+ 	} else {
+ 		/*
+ 		 * Any other file type can be hardlinked, so all we need to do
+ 		 * is decrement the nlink.
+ 		 */
+-		if (inode.i_links_count == 0)
+-			return translate_error(fs, ino, EXT2_ET_INODE_CORRUPTED);
+-		inode.i_links_count--;
+-		if (!inode.i_links_count)
+-			ext2fs_set_dtime(fs, EXT2_INODE(&inode));
++		if (inode->i_links_count == 0) {
++			ret = translate_error(fs, ino, EXT2_ET_INODE_CORRUPTED);
++			goto out;
++		}
++		inode->i_links_count--;
++		if (!inode->i_links_count)
++			ext2fs_set_dtime(fs, EXT2_INODE(inode));
+ 	}
+ 
+-	ret = update_ctime(fs, ino, &inode);
++	ret = update_ctime(fs, ino, inode);
+ 	if (ret)
+-		return ret;
++		goto out;
+ 
+ 	/* Still linked?  Leave it be. */
+-	if (inode.i_links_count)
++	if (inode->i_links_count)
+ 		goto write_out;
+ 
+-	if (ext2fs_has_feature_ea_inode(fs->super)) {
+-		ret = remove_ea_inodes(ff, ino, &inode);
+-		if (ret)
+-			return ret;
+-	}
+-
+ 	/* Nobody holds this file; free its blocks! */
+-	err = ext2fs_free_ext_attr(fs, ino, &inode);
+-	if (err)
+-		return translate_error(fs, ino, err);
++	err = ext2fs_xattrs_release_all(fs, ino, inode, inode_size, NULL);
++	if (err) {
++		ret = translate_error(fs, ino, err);
++		goto out;
++	}
+ 
+-	if (ext2fs_inode_has_valid_blocks2(fs, EXT2_INODE(&inode))) {
+-		err = ext2fs_punch(fs, ino, EXT2_INODE(&inode), NULL,
++	if (ext2fs_inode_has_valid_blocks2(fs, EXT2_INODE(inode))) {
++		err = ext2fs_punch(fs, ino, EXT2_INODE(inode), NULL,
+ 				   0, ~0ULL);
+-		if (err)
+-			return translate_error(fs, ino, err);
++		if (err) {
++			ret = translate_error(fs, ino, err);
++			goto out;
++		}
+ 	}
+ 
+ 	ext2fs_inode_alloc_stats2(fs, ino, -1,
+-				  LINUX_S_ISDIR(inode.i_mode));
++				  LINUX_S_ISDIR(inode->i_mode));
+ 
  write_out:
- 	ret = ext2fs_xattrs_write(h);
- out:
--	if (inode)
--		ext2fs_free_mem(&inode);
- 	ext2fs_free_mem(&new_value);
- 	return ret;
- }
-@@ -1712,7 +1757,7 @@ errcode_t ext2fs_xattr_remove(struct ext2_xattr_handle *handle,
- 			ext2fs_free_mem(&x->name);
- 			ext2fs_free_mem(&x->value);
- 			if (x->ea_ino)
--				xattr_inode_dec_ref(handle->fs, x->ea_ino);
-+				xattr_inode_dec_ref(handle, x->ea_ino);
- 			memmove(x, x + 1, (end - x - 1)*sizeof(*x));
- 			memset(end - 1, 0, sizeof(*end));
- 			if (x < handle->attrs + handle->ibody_count)
-@@ -1736,7 +1781,7 @@ errcode_t ext2fs_xattr_remove_all(struct ext2_xattr_handle *handle)
- 		ext2fs_free_mem(&x->name);
- 		ext2fs_free_mem(&x->value);
- 		if (x->ea_ino)
--			xattr_inode_dec_ref(handle->fs, x->ea_ino);
-+			xattr_inode_dec_ref(handle, x->ea_ino);
- 	}
- 
- 	handle->ibody_count = 0;
-@@ -1744,8 +1789,14 @@ errcode_t ext2fs_xattr_remove_all(struct ext2_xattr_handle *handle)
- 	return ext2fs_xattrs_write(handle);
- }
- 
--errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
--			     struct ext2_xattr_handle **handle)
-+/* If the inode size is set to EXT2_INODE_SIZE(fs), the input inode is used
-+ * directly. Otherwise, the ext2fs_xattrs_* functions operate on a separate copy
-+ * (with inline xattrs) and update the caller's cached inode on write.
-+ */
-+errcode_t ext2fs_xattrs_open_inode(ext2_filsys fs, ext2_ino_t ino,
-+				   struct ext2_inode *inode, size_t inode_size,
-+				   quota_ctx_t qctx,
-+				   struct ext2_xattr_handle **handle)
- {
- 	struct ext2_xattr_handle *h;
- 	errcode_t err;
-@@ -1754,6 +1805,9 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
- 	    !ext2fs_has_feature_inline_data(fs->super))
- 		return EXT2_ET_MISSING_EA_FEATURE;
- 
-+	if (inode && inode_size < sizeof(*inode))
-+		return EINVAL;
-+
- 	err = ext2fs_get_memzero(sizeof(*h), &h);
+-	err = fuse2fs_write_inode(fs, ino, &inode);
++	err = ext2fs_write_inode_full(fs, ino, EXT2_INODE(inode), inode_size);
  	if (err)
- 		return err;
-@@ -1768,11 +1822,23 @@ errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 	h->count = 0;
- 	h->ino = ino;
-+	h->in_inode = inode;
-+	h->in_inode_size = inode_size;
-+	h->alloc_inode = NULL;
-+	h->inode = NULL;
-+	h->inode_size = 0;
- 	h->fs = fs;
-+	h->qctx = qctx;
- 	*handle = h;
- 	return 0;
+-		return translate_error(fs, ino, err);
++		ret = translate_error(fs, ino, err);
++out:
++	ext2fs_free_mem(&inode);
+ 
+-	return 0;
++	return ret;
  }
  
-+errcode_t ext2fs_xattrs_open(ext2_filsys fs, ext2_ino_t ino,
-+			     struct ext2_xattr_handle **handle)
-+{
-+	return ext2fs_xattrs_open_inode(fs, ino, NULL, 0, NULL, handle);
-+}
-+
- errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
- {
- 	struct ext2_xattr_handle *h = *handle;
-@@ -1780,6 +1846,7 @@ errcode_t ext2fs_xattrs_close(struct ext2_xattr_handle **handle)
- 	EXT2_CHECK_MAGIC(h, EXT2_ET_MAGIC_EA_HANDLE);
- 	xattrs_free_keys(h);
- 	ext2fs_free_mem(&h->attrs);
-+	ext2fs_free_mem(&h->alloc_inode);
- 	ext2fs_free_mem(handle);
- 	return 0;
- }
-diff --git a/lib/ext2fs/i_block.c b/lib/ext2fs/i_block.c
-index 2eecf02fc..064a5c989 100644
---- a/lib/ext2fs/i_block.c
-+++ b/lib/ext2fs/i_block.c
-@@ -88,3 +88,17 @@ errcode_t ext2fs_iblk_set(ext2_filsys fs, struct ext2_inode *inode, blk64_t b)
- 		return EOVERFLOW;
- 	return 0;
- }
-+
-+blk64_t ext2fs_iblk_get(ext2_filsys fs, struct ext2_inode *inode)
-+{
-+	blk64_t	blk = inode->i_blocks;
-+
-+	if (ext2fs_has_feature_huge_file(fs->super))
-+		blk += ((blk64_t) inode->osd2.linux2.l_i_blocks_hi) << 32;
-+
-+	if (!ext2fs_has_feature_huge_file(fs->super) ||
-+	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
-+		blk /= fs->blocksize / 512;
-+
-+	return EXT2FS_B2C(fs, blk);
-+}
-diff --git a/lib/support/quotaio.h b/lib/support/quotaio.h
-index 6152416fb..c76486919 100644
---- a/lib/support/quotaio.h
-+++ b/lib/support/quotaio.h
-@@ -58,7 +58,6 @@ enum quota_type {
- #define QUOTA_PRJ_BIT (1 << PRJQUOTA)
- #define QUOTA_ALL_BIT (QUOTA_USR_BIT | QUOTA_GRP_BIT | QUOTA_PRJ_BIT)
- 
--typedef struct quota_ctx *quota_ctx_t;
- struct dict_t;
- 
- struct quota_ctx {
+ static int __op_unlink(struct fuse2fs *ff, const char *path)
 diff --git a/tests/d_xattr_ea_inode/expect b/tests/d_xattr_ea_inode/expect
-new file mode 100644
-index 000000000..aaad9c5b3
---- /dev/null
+index aaad9c5b3..e1878c3dc 100644
+--- a/tests/d_xattr_ea_inode/expect
 +++ b/tests/d_xattr_ea_inode/expect
-@@ -0,0 +1,137 @@
-+debugfs edit extended attributes with ea_inode feature
-+mke2fs -Fq -b 4096 -O ea_inode test.img 1m
-+Exit status is 0
-+Generate xattr value (8292 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test1
-+Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test1
-+Exit status is 0
-+Compare xattr values (8292 bytes)
-+stat /
-+Blockcount: 32
-+Exit status is 0
-+ea_rm / user.test1
-+Exit status is 0
-+e2fsck -yf -N test_filesys
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 11/128 files (0.0% non-contiguous), 18/256 blocks
-+Exit status is 0
-+
-+Generate xattr value (4097 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test1
-+Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test1
-+Exit status is 0
-+Compare xattr values (4097 bytes)
-+stat /
-+Blockcount: 24
-+Exit status is 0
-+e2fsck -yf -N test_filesys
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 20/256 blocks
-+Exit status is 0
-+
-+Generate xattr value (102 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test2
-+Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test2
-+Exit status is 0
-+Compare xattr values (102 bytes)
-+stat /
-+Blockcount: 32
-+Exit status is 0
-+e2fsck -yf -N test_filesys
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 21/256 blocks
-+Exit status is 0
-+
-+Generate xattr value (5005 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test2
-+Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test2
-+Exit status is 0
-+Compare xattr values (5005 bytes)
-+stat /
-+Blockcount: 40
-+Exit status is 0
-+ea_rm / user.test2
-+Exit status is 0
-+e2fsck -yf -N test_filesys
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/128 files (0.0% non-contiguous), 20/256 blocks
-+Exit status is 0
-+
-+Generate xattr value (512 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test1
-+Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test1
-+Exit status is 0
-+Compare xattr values (512 bytes)
-+stat /
-+Blockcount: 16
-+Exit status is 0
-+ea_rm / user.test1
-+Exit status is 0
-+e2fsck -yf -N test_filesys
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 11/128 files (0.0% non-contiguous), 18/256 blocks
+@@ -135,3 +135,54 @@ Pass 5: Checking group summary information
+ test_filesys: 11/128 files (0.0% non-contiguous), 18/256 blocks
+ Exit status is 0
+ 
++write d_xattr_ea_inode.tmp test_file
++Allocated inode: 12
 +Exit status is 0
 +
 +Generate xattr value (1024 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test1
++ea_set -f d_xattr_ea_inode.tmp test_file user.test1
 +Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test1
++ea_get -f d_xattr_ea_inode.ver.tmp test_file user.test1
 +Exit status is 0
 +Compare xattr values (1024 bytes)
-+stat /
++stat test_file
 +Blockcount: 16
 +Exit status is 0
 +e2fsck -yf -N test_filesys
@@ -974,19 +715,29 @@ index 000000000..aaad9c5b3
 +Pass 3: Checking directory connectivity
 +Pass 4: Checking reference counts
 +Pass 5: Checking group summary information
-+test_filesys: 11/128 files (0.0% non-contiguous), 19/256 blocks
++test_filesys: 12/128 files (0.0% non-contiguous), 20/256 blocks
 +Exit status is 0
 +
-+Generate xattr value (5000 bytes)
-+ea_set -f d_xattr_ea_inode.tmp / user.test1
++Generate xattr value (16384 bytes)
++ea_set -f d_xattr_ea_inode.tmp test_file user.test2
 +Exit status is 0
-+ea_get -f d_xattr_ea_inode.ver.tmp / user.test1
++ea_get -f d_xattr_ea_inode.ver.tmp test_file user.test2
 +Exit status is 0
-+Compare xattr values (5000 bytes)
-+stat /
-+Blockcount: 24
++Compare xattr values (16384 bytes)
++stat test_file
++Blockcount: 48
 +Exit status is 0
-+ea_rm / user.test1
++e2fsck -yf -N test_filesys
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 13/128 files (0.0% non-contiguous), 24/256 blocks
++Exit status is 0
++
++rm test_file
++
 +Exit status is 0
 +e2fsck -yf -N test_filesys
 +Pass 1: Checking inodes, blocks, and sizes
@@ -996,105 +747,171 @@ index 000000000..aaad9c5b3
 +Pass 5: Checking group summary information
 +test_filesys: 11/128 files (0.0% non-contiguous), 18/256 blocks
 +Exit status is 0
-+
-diff --git a/tests/d_xattr_ea_inode/name b/tests/d_xattr_ea_inode/name
-new file mode 100644
-index 000000000..9e36dc986
---- /dev/null
-+++ b/tests/d_xattr_ea_inode/name
-@@ -0,0 +1 @@
-+edit extended attributes in debugfs with ea_inode feature
 diff --git a/tests/d_xattr_ea_inode/script b/tests/d_xattr_ea_inode/script
-new file mode 100644
-index 000000000..84104549c
---- /dev/null
+index 84104549c..c24eb6cd5 100644
+--- a/tests/d_xattr_ea_inode/script
 +++ b/tests/d_xattr_ea_inode/script
-@@ -0,0 +1,85 @@
-+#!/bin/bash
+@@ -15,32 +15,33 @@ VERIFY_DATA=$test_name.ver.tmp
+ echo "debugfs edit extended attributes with ea_inode feature" > $OUT.new
+ 
+ d_xattr_ea_inode_check() {
+-	local xattr_size=$1
+-	local xattr_name=$2
+-	local ea_rm=$3
++	local path=$1
++	local xattr_size=$2
++	local xattr_name=$3
++	local ea_rm=$4
+ 
+ 	echo "Generate xattr value ($xattr_size bytes)" >> $OUT.new
+ 	echo $xattr_size |
+ 		awk '{srand();for(i=0;i<$1;i++) printf("%c",97+int(rand()*26));}' > $TEST_DATA
+ 
+-	echo "ea_set -f $TEST_DATA / $xattr_name" >> $OUT.new
+-	$DEBUGFS -w -R "ea_set -f $TEST_DATA / $xattr_name" $TMPFILE >> $OUT.new 2>&1
++	echo "ea_set -f $TEST_DATA $path $xattr_name" >> $OUT.new
++	$DEBUGFS -w -R "ea_set -f $TEST_DATA $path $xattr_name" $TMPFILE >> $OUT.new 2>&1
+ 	echo Exit status is $? >> $OUT.new
+ 
+-	echo "ea_get -f $VERIFY_DATA / $xattr_name" >> $OUT.new
+-	$DEBUGFS -w -R "ea_get -f $VERIFY_DATA / $xattr_name" $TMPFILE >> $OUT.new 2>&1
++	echo "ea_get -f $VERIFY_DATA $path $xattr_name" >> $OUT.new
++	$DEBUGFS -w -R "ea_get -f $VERIFY_DATA $path $xattr_name" $TMPFILE >> $OUT.new 2>&1
+ 	echo Exit status is $? >> $OUT.new
+ 
+ 	echo "Compare xattr values ($xattr_size bytes)" >> $OUT.new
+ 	diff -u $TEST_DATA $VERIFY_DATA >> $OUT.new
+ 
+-	echo "stat /" >> $OUT.new
+-	($DEBUGFS -c -R "stat /" $TMPFILE | grep -Eo "Blockcount: [0-9]+") >> $OUT.new 2>&1
++	echo "stat $path" >> $OUT.new
++	($DEBUGFS -c -R "stat $path" $TMPFILE | grep -Eo "Blockcount: [0-9]+") >> $OUT.new 2>&1
+ 	echo Exit status is $? >> $OUT.new
+ 
+ 	if $ea_rm; then
+-		echo "ea_rm / $xattr_name" >> $OUT.new
+-		$DEBUGFS -w -R "ea_rm / $xattr_name" $TMPFILE >> $OUT.new 2>&1
++		echo "ea_rm $path $xattr_name" >> $OUT.new
++		$DEBUGFS -w -R "ea_rm $path $xattr_name" $TMPFILE >> $OUT.new 2>&1
+ 		echo Exit status is $? >> $OUT.new
+ 	fi
+ 
+@@ -56,15 +57,33 @@ echo "mke2fs -Fq -b 4096 -O ea_inode test.img 1m" >> $OUT.new
+ $MKE2FS -Fq -b 4096 -O ea_inode $TMPFILE 1m > /dev/null 2>&1
+ echo Exit status is $? >> $OUT.new
+ 
+-d_xattr_ea_inode_check 8292 user.test1 true
++d_xattr_ea_inode_check / 8292 user.test1 true
+ 
+-d_xattr_ea_inode_check 4097 user.test1 false
+-d_xattr_ea_inode_check 102  user.test2 false
+-d_xattr_ea_inode_check 5005 user.test2 true
+-d_xattr_ea_inode_check 512  user.test1 true
++d_xattr_ea_inode_check / 4097 user.test1 false
++d_xattr_ea_inode_check / 102  user.test2 false
++d_xattr_ea_inode_check / 5005 user.test2 true
++d_xattr_ea_inode_check / 512  user.test1 true
+ 
+-d_xattr_ea_inode_check 1024 user.test1 false
+-d_xattr_ea_inode_check 5000 user.test1 true
++d_xattr_ea_inode_check / 1024 user.test1 false
++d_xattr_ea_inode_check / 5000 user.test1 true
 +
-+if ! test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped (no debugfs)"
-+	return 0
-+fi
++# Create and remove a file with ea_inode
++echo "test_file_content" > $TEST_DATA
++echo "write $TEST_DATA test_file" >> $OUT.new
++$DEBUGFS -w -R "write $TEST_DATA test_file" $TMPFILE >> $OUT.new 2>&1
++echo Exit status is $? >> $OUT.new
++echo >> $OUT.new
 +
-+OUT=$test_name.log
-+EXP=$test_dir/expect
-+VERIFY_FSCK_OPT=-yf
++d_xattr_ea_inode_check test_file 1024  user.test1 false
++d_xattr_ea_inode_check test_file 16384 user.test2 false
 +
-+TEST_DATA=$test_name.tmp
-+VERIFY_DATA=$test_name.ver.tmp
-+
-+echo "debugfs edit extended attributes with ea_inode feature" > $OUT.new
-+
-+d_xattr_ea_inode_check() {
-+	local xattr_size=$1
-+	local xattr_name=$2
-+	local ea_rm=$3
-+
-+	echo "Generate xattr value ($xattr_size bytes)" >> $OUT.new
-+	echo $xattr_size |
-+		awk '{srand();for(i=0;i<$1;i++) printf("%c",97+int(rand()*26));}' > $TEST_DATA
-+
-+	echo "ea_set -f $TEST_DATA / $xattr_name" >> $OUT.new
-+	$DEBUGFS -w -R "ea_set -f $TEST_DATA / $xattr_name" $TMPFILE >> $OUT.new 2>&1
-+	echo Exit status is $? >> $OUT.new
-+
-+	echo "ea_get -f $VERIFY_DATA / $xattr_name" >> $OUT.new
-+	$DEBUGFS -w -R "ea_get -f $VERIFY_DATA / $xattr_name" $TMPFILE >> $OUT.new 2>&1
-+	echo Exit status is $? >> $OUT.new
-+
-+	echo "Compare xattr values ($xattr_size bytes)" >> $OUT.new
-+	diff -u $TEST_DATA $VERIFY_DATA >> $OUT.new
-+
-+	echo "stat /" >> $OUT.new
-+	($DEBUGFS -c -R "stat /" $TMPFILE | grep -Eo "Blockcount: [0-9]+") >> $OUT.new 2>&1
-+	echo Exit status is $? >> $OUT.new
-+
-+	if $ea_rm; then
-+		echo "ea_rm / $xattr_name" >> $OUT.new
-+		$DEBUGFS -w -R "ea_rm / $xattr_name" $TMPFILE >> $OUT.new 2>&1
-+		echo Exit status is $? >> $OUT.new
-+	fi
-+
-+	echo e2fsck $VERIFY_FSCK_OPT -N test_filesys >> $OUT.new
-+	$FSCK $VERIFY_FSCK_OPT -N test_filesys $TMPFILE >> $OUT.new 2>&1
-+	echo Exit status is $? >> $OUT.new
-+	echo >> $OUT.new
-+}
-+
-+truncate -s1M $TMPFILE 2>&1
-+
-+echo "mke2fs -Fq -b 4096 -O ea_inode test.img 1m" >> $OUT.new
-+$MKE2FS -Fq -b 4096 -O ea_inode $TMPFILE 1m > /dev/null 2>&1
++echo "rm test_file" >> $OUT.new
++$DEBUGFS -w -R "rm test_file" $TMPFILE >> $OUT.new 2>&1
 +echo Exit status is $? >> $OUT.new
 +
-+d_xattr_ea_inode_check 8292 user.test1 true
-+
-+d_xattr_ea_inode_check 4097 user.test1 false
-+d_xattr_ea_inode_check 102  user.test2 false
-+d_xattr_ea_inode_check 5005 user.test2 true
-+d_xattr_ea_inode_check 512  user.test1 true
-+
-+d_xattr_ea_inode_check 1024 user.test1 false
-+d_xattr_ea_inode_check 5000 user.test1 true
-+
-+sed -f $cmd_dir/filter.sed $OUT.new > $OUT
-+
-+#
-+# Do the verification
-+#
-+
-+rm -f $TMPFILE $TEST_DATA $VERIFY_DATA $OUT.new
-+
-+if cmp -s $OUT $EXP; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
-+fi
-+
-+unset VERIFY_FSCK_OPT VERIFY_DATA TEST_DATA OUT EXP d_xattr_ea_inode_check
++echo e2fsck $VERIFY_FSCK_OPT -N test_filesys >> $OUT.new
++$FSCK $VERIFY_FSCK_OPT -N test_filesys $TMPFILE >> $OUT.new 2>&1
++echo Exit status is $? >> $OUT.new
+ 
+ sed -f $cmd_dir/filter.sed $OUT.new > $OUT
+ 
+diff --git a/tests/f_orphan_ea_inode/expect.1 b/tests/f_orphan_ea_inode/expect.1
+new file mode 100644
+index 000000000..3eba3d718
+--- /dev/null
++++ b/tests/f_orphan_ea_inode/expect.1
+@@ -0,0 +1,6 @@
++test_filesys: Clearing orphaned inode 12 (uid=0, gid=0, mode=0100644, size=0)
++test_filesys: Clearing orphaned inode 13 (uid=1000, gid=1000, mode=0100644, size=6)
++test_filesys: Clearing orphaned inode 14 (uid=1001, gid=1001, mode=0100644, size=0)
++test_filesys: Clearing orphaned inode 15 (uid=1002, gid=1002, mode=0100644, size=6)
++test_filesys: clean, 13/128 files, 23/256 blocks
++Exit status is 0
+diff --git a/tests/f_orphan_ea_inode/expect.2 b/tests/f_orphan_ea_inode/expect.2
+new file mode 100644
+index 000000000..bf76a5c25
+--- /dev/null
++++ b/tests/f_orphan_ea_inode/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 13/128 files (0.0% non-contiguous), 23/256 blocks
++Exit status is 0
+diff --git a/tests/f_orphan_ea_inode/image.gz b/tests/f_orphan_ea_inode/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..95f0e53aebd45e041b4b1f53be7c374c8144c1b7
+GIT binary patch
+literal 2139
+zcmeH`ZB){C6vzM8Hrp}7g@%~MtYvweYvyWYCGO-yK4OW}V<wpzXd)%L%m=7B52Z~^
+zQ={e6O5&KqaG4HETqaXUP01LVmg2*F0G7z3!f&v>*_*xGyS^{(x%d9g@7#Mo=U!CN
+zx^;`kZBo{(O(w?UlOWkxD8Vt(5&DxMNiEw;EPH7y+Ew~8s5^)kG8_|gs>t&FoaZqP
+zhX^f4FF$nsWQ%V%)-Su+(l6Bj)v?|nzO6mdz3EPOer?uZ1ll)s&Ai{i%Nu890TO2K
+zshf0{b{<Zv_<<poPxa+^D#yc4?<l;OGK`3u+<CLg<*w-W<I&Z&TQxBKQZK^k`xB!I
+z(xSjWKVP%@5e;nGe!!u<P+^A{(m#3T?#y#3+&#B^K;w?n8!FVs+wQPuX=y9mv_BLa
+z=6Qv2PmV?vhTVTy7c;X9{Xof3m)GR|oFiSpu)UCoih#ockGL374P)C>)fKnfhQuM3
+ztE3o$LWqHZD0#-n3TAl<f}q;T^&2Retol@MQ}DTA*g>%tf_w_xidVV}P2DUekE)eD
+zT(0*hq{s=2DLZ|=cfjpP$NK%@=c#ATI5bt|@jRbe)6n{i=2q(KOUp^UXH_U#Uun@v
+zibGUrxGp$!c<IY}PVE{YCR5k~q_VDufa}qrdE~6*s9_O;x6eT`O1@ed`+(FRn2_dR
+zy?yp+&_3XFs02d_6Stp^N{Bi#Yr8ZraBTIL_E9OTb@d@SI&nN#{_FNup8eKF^qsOO
+zqmqFvSOVkM=-~sio=0EA9y8h{L<fM1e&apib)L>gIAYUPiAMJD3-(ra9L!`-503X&
+zkE^6#8;v0xBSQ8}OeIL;lcoEH!L8Ob?!DL*>IBEr%AXAqYhC(lf<e&c!9rpa1t~yN
+zROqvHMj-DAi1se&rBWj}t3|)vFRr%EM^&ByvH|gy4IU$Un2?-Mx~$FA^ip}&LeisK
+zMvT5Alb4%Cyn)UP1b6qGr{*f{1-#`qLPf<rz=XvKHf=M{A^}#ihNMxl8`(<!IBOM7
+z=?Vu{qUa390%0_(p($2JAJg$)p88HTI~3?`q@4qkMSSqK%?ZGaTsb#=nv};~c|3`S
+z;tkGKjZz$r3up$s<cf@zu0*Io+u5{!G4)1V1%K%aHgejF{rVU<@yn7Td!-oe>@~D*
+z0Vc{mZQ6tXP$#y`cS52**Q|e%QQ8=WpBK$J4K_}_l~<2P(lgK;5~jzBUMu8J=*SB{
+zu6o87DJL#ukb`Hs$o89qW=2h^DO_^T0O|gm1q7WOdI3WMASpos)5bw|%t04(St-?I
+zI<+XXZ&F+7Op7CM4HI=7$IonKxlbh#x3CCTLZL{v1h~&|gDaytp6nCp!M9BLOtX(e
+z)ppMY*hgR0Ug#Q`KxpXdycinpU<q<si|6gN=q#7j;8mhaAKp)|TL9rd#RA&=v>uJ!
+zB?fibNa<QO0K9aI&P3I~31I2szuSflXauk3xuJ7kIrh1K({`9b!eg3<AD9nik=amQ
+z4A7F1hyxGu5`+1`8GRLqB}7xt%qp6>bru0;9?UEe*0yT@Se{ymzx_(1Yw1fztv6+{
+z&4>Pe{l|1(NBH&nZ1g*N%U^UYwDJ`y93DU>!vnq1xwwn%W;V>4G3=h2i~ss#c00=v
+i9Rno8r?2x(P~Yhtfp-M{Zvr7`V4?Up>pcjvf&Kz@_kh^|
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/f_orphan_ea_inode/name b/tests/f_orphan_ea_inode/name
+new file mode 100644
+index 000000000..b892ff960
+--- /dev/null
++++ b/tests/f_orphan_ea_inode/name
+@@ -0,0 +1 @@
++clearing orphan inodes with ea_inode and quota features
+diff --git a/tests/f_orphan_ea_inode/script b/tests/f_orphan_ea_inode/script
+new file mode 100644
+index 000000000..9650d07d0
+--- /dev/null
++++ b/tests/f_orphan_ea_inode/script
+@@ -0,0 +1,3 @@
++FSCK_OPT=-p
++SECOND_FSCK_OPT="-yf"
++. $cmd_dir/run_e2fsck
 -- 
 2.43.7
 
