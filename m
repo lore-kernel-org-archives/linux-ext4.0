@@ -1,136 +1,88 @@
-Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com [209.85.208.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E8E25313E2B
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 07:28:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.53
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781854126; cv=pass; b=uKVfB7S22znelhqgLwNEg/YmSTCB49heCV6m6ggVS7n0FjZdm7U2P1xpILvI/QKMZEeTrpvVuMSTfuqysYT7vjGa2H+XWgkYhMHxPtbzQGr7AM8CPgOPgaXI+yYaLHUAO29ffs/p3DidW2M5X9Bo5YV9aPJ2wPzssr1ieQEEma0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781854126; c=relaxed/simple;
-	bh=PLjuf5U1Ldp+lKMspivltGTyqfvutQwDbWwFfF6CvPI=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=FBeLyryBmqRviRnju4nkmhg9HpOdKw02F4Ra+gdXlyXxaHYJcZfeuIzwX19e4htO2wEh/+lIuFf/XMxOtDtHE2eEBOIhH4Jd5pxtahqz6Rgh/A2tb2qUpR+PYwLk6jA3LibGolC0f2M1hiTHZlGGjQnZUwf6stnupN3F4i4l0FA=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EKTQcXfm; arc=pass smtp.client-ip=209.85.208.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B956B256C6D;
+	Fri, 19 Jun 2026 13:34:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781876085; cv=none; b=Br+E3WKiO7+56mW0VaN7FX0CJIUiknPkzBlE4Hmv8HtOrd1/vdTG+gIrrs0DCw4QIpJZYslrHOau17a+Sn829Tnk7E94FVCRkasJH99s6TZG3xZ4FRqhGqRowkTu4c3/b/PfFTRmgjOZTuu5wUhJOBIvEfT546Ym/VH/9DknlI4=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781876085; c=relaxed/simple;
+	bh=wJSYTDKPdve4Hglr/PTBasRjzxbdQ3Wtx3k0E8HsWgQ=;
+	h=From:To:In-Reply-To:References:Subject:Message-Id:Date:
+	 MIME-Version:Content-Type; b=qH6k+88k0MeDltbSRUZTeTlOsKNYuWFC73DOae1BbRSOZhCVd99c8+kHW+yEcu1bt3suAe9Dat8/7/A/AXKhtupbMujOd+uhUTsQQW2cqPTSbGZFQgNhC/ddZ8hMfoOjJENkQV2U130gcl9YPAaIC3w345F1KmARulEawm/EzNc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gP8uGFLd; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EKTQcXfm"
-Received: by mail-ed1-f53.google.com with SMTP id 4fb4d7f45d1cf-693c69b97e7so2886955a12.2
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 00:28:44 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1781854123; cv=none;
-        d=google.com; s=arc-20240605;
-        b=Fj5MJ6Z3Jeb8XJT50D6hXXwHX1x6/m9GoqkwknMMRayKz0riL9KfkmIpRgIHhPy08n
-         RusYmmm9bTKtzrJXaTlhw18NVWBpbkDCkUjC3Mfo7BIzeygJwx7SZ5Sd51WLcUNeUPXg
-         +5YxFUDdkv0rSYUKfSGE9wf2+vUr0SZ/LKX2ZFxgdwzHL0i2qRcwIDgDwD7vwl7BxA6K
-         Kn5lF83DBcXnW5iqVBlviTCIElFgdEWWJfEW7Yfrshdvrwm+z2qUDQvBSnJuSTi1Qywa
-         4WnnCqV5O6R6pqq+f6zJ18vKirliqp1ZvMrFwo6zorO18D91ig8exjFLu2RB3/M0AdJY
-         0b/A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=cXsAttpCRAfo1jUwXpOflkS7AbE4OJcRHMhxuP67MIc=;
-        fh=c1xpJ78A4KJJp8ygCpywanrgF855BE9NQ5eMWHPZ96U=;
-        b=JpPzBO8izSzENAmj4Zo3e+FdB+o9auzFBCdZpY/uwvQHTMcfo73iR/naETJU0zEZ5+
-         nESRC3Q8GQZzIE6sTrLsyU8AZ13PyoAPl+GBM6hP38lW4nnQE47zx3fHkkL5e8q0Tvdd
-         XXE+ljXDm1yZNvP1vT0JVYCrHPgQxp8yHfJJDVeDbYxGXq+c/SBnt1sE0bJ4xbrO7xpZ
-         15XS3BpSYv9t7AUI1sVsGsDL2/cHQdVq4XrCIvbmMTZ9g58j/h4JR/W+PV/2OlVUZojH
-         JSbe1hK9yF16MXMD2bw5et38XsEouh4Vl2bkc5etJIah0rlQyFFWX/MlcmgEzaW590OU
-         Us5A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781854123; x=1782458923; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=cXsAttpCRAfo1jUwXpOflkS7AbE4OJcRHMhxuP67MIc=;
-        b=EKTQcXfmTpSi/O7oXABloqzK4/JL++I7lANtSI92FSwbPSaHSyI+Ly8uLgGGwc1czJ
-         YtYQI1UH6Uizdt0GwLZqdw2hO65NG7CfVB0eP71OayhIh1bgU1DaOg15/9a9kMa2zgBW
-         zdQNfNRTcXpnOjFC0pWD2Qy8AAunFSt5GVlRmax9ecbpzBv06uE4YFJ4+8celdU/Mj1B
-         MGNL1NDGi6M4Os0QZhfGMRwpocG1MmdFdOgNugrBvNpnHeADOFto20dQ5EA6cQgJtC5/
-         S6OL7JKPrJ0cmvFh1esu4XnUeP+wn0wTEaOxYUfcyAwVCO0NjXfBZnXTUOLQKFc0fC2I
-         AXOw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781854123; x=1782458923;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=cXsAttpCRAfo1jUwXpOflkS7AbE4OJcRHMhxuP67MIc=;
-        b=Mm5QEcTtBOrZHJ5Z7/uMv/ZQmfVzBcBHihdakuBKOp19rLU7clyu+npYfI9mc2sUVy
-         1vnqThKGbX5xeOyflgg/aoDn6comLjnyxXef9t590eHNol0tmQQlSrFW2MbKOZEDmx9S
-         D1cfp6Scl4smxMreyOUwXE3hWB4OVkaN7OeL1dNjgRLocKLClyB0TsxpodXmJosVrm+S
-         L0ZpGWV7ZnEuXOxJzU8uZ0/koUmWI0XHSxJN8snG2+pQWOMKgkpV8yexSaxeX7rForSY
-         f2RH+OM0lMV+mszGbmnWYxuB0g7FBC2J6SwU/BA9zMwo95RZiRTfCaVYl2ILFu0KWF19
-         N+VA==
-X-Forwarded-Encrypted: i=1; AFNElJ+qfla0NHjaHtUuakvhLkCyniM6jexl3/2NeIT2WtBr0PvJIeICRU6AaaWWInwLCGa/IceX1ebUj3Yb@vger.kernel.org
-X-Gm-Message-State: AOJu0YxEA3K+/mou1jyGBIXowsxXSgiEeJi/WdjOsE57Yzhf5KTkXZEP
-	xW/1CIZZ29ObzE2zNdTPwcK8TxtNhYHf2ujilCap/+RvW+LKZkG9pktDOCOOCgTHoAl7sH+5iDL
-	/TOxHfwXJ+/YZatR7e72iu1FRKbK+nnQ=
-X-Gm-Gg: AfdE7cmZWsQcA2CKykwCqUq6FtmthtePR4hTIxvg3EKp9KsWoS0hJbcZnYwPXxlSLgZ
-	16p6iTRR71PyOHvS72nEli3F+FCYgMI9is1z+kEr1dpRuQGB96v5xlzGaVU+RUtM8qOI2RYQvtF
-	Z52xIqAwnxCamBVJRtEcXiroF3Xl8Cjdjz1vIUNbejTwlyCa7e/+2OELqugPoRX7BIUV1Hi0YUf
-	ic55c+b3qE+i3YE9SISqDbr9cgRF4HiyKCpnKpdclVPurT37/PgSEpkqhjMklJrBudnnQq576/d
-	9y2ZD9lwOz6JN7iybLKke6yGbF0hNde2oQLoBRLx4Q==
-X-Received: by 2002:a05:6402:5107:b0:695:572a:7ab5 with SMTP id
- 4fb4d7f45d1cf-69711e00675mr1216968a12.19.1781854123208; Fri, 19 Jun 2026
- 00:28:43 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gP8uGFLd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DF9A1F000E9;
+	Fri, 19 Jun 2026 13:34:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781876084;
+	bh=gn17cQCePjBQfMUfpssQOXYu0z2N4p1QUEwYP/AkeOE=;
+	h=From:To:In-Reply-To:References:Subject:Date;
+	b=gP8uGFLdmhQRsFrwmrRvVGv/xTtkN6phv+9xfrbqMbvvmj9yo5lErBl6FcAz0hFOQ
+	 9BWf1sBT5/gBEGNFsYncOqt/jLN9cuZ3HEPU8h6m7N4OmeOJd2KWdUDbuGpmQs+kIS
+	 zXwQd102jX3vZ0RiKGixBxRe8bE1ZuzRbFnGWE6z44Pxu9/ZjzrB570X6dEs973POz
+	 Afie79FuNgbtrk/9No/u0HNU2hhQyH+xOVNSylBQwotVeuBlGOiyrcsPex+MjdL1/T
+	 9Sde4/BoWWTGwWjauFT4bYLfhR9Ll3S6J4dLg6qJcvE0asX04s3AL3jjt9Q/Yx4IKg
+	 eAbIhL/E5GgwQ==
+From: Christian Brauner <brauner@kernel.org>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>, 
+ shuo chen <1289151713@qq.com>, Theodore Ts'o <tytso@mit.edu>, 
+ linux-kernel-mentees@lists.linux.dev, shuah@kernel.org, 
+ patch-reply@agatha.dev, Agatha Isabelle Moreira <code@agatha.dev>
+In-Reply-To: <ag4PEP52c8rxrYPc@guidai>
+References: <ag4PEP52c8rxrYPc@guidai>
+Subject: Re: [PATCH 0/2] fs: refactor code to use clear_and_wake_up_bit()
+Message-Id: <178187607630.350634.13398595827280324425.b4-ty@b4>
+Date: Fri, 19 Jun 2026 15:34:36 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260520123722.405752-1-aalbersh@kernel.org> <20260520123722.405752-4-aalbersh@kernel.org>
- <20260520190719.GB3424023@google.com>
-In-Reply-To: <20260520190719.GB3424023@google.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Fri, 19 Jun 2026 09:28:31 +0200
-X-Gm-Features: AVVi8CcyPPKNjODd0CeG8qbXXsZeOsRanxA9PmKFMYeTLACw7w0uBX2gqOCDc0w
-Message-ID: <CAOQ4uxh_hfiSwMw8ABhhrz7GguZWjHEiBmvb3eq16Wfqw0+ZrQ@mail.gmail.com>
-Subject: Re: [PATCH v10 03/22] ovl: use core fsverity ensure info interface
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, djwong@kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Mailer: b4 0.16-dev-aeb64
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1208; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=wJSYTDKPdve4Hglr/PTBasRjzxbdQ3Wtx3k0E8HsWgQ=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWSZuhb+LWnfVJRhI2RgnpfNPVd4ys0pb0sCo3/L/7+vp
+ iBd3ynYUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJGFcxkZrlxSmJS6TdssoUu8
+ Vbtf/92aS58nFHtcXckU5aiW4pV7i+EPf99uQf9Nm7z8JhfWGP2wPP7+2hPjHf/9/+9R235BvIS
+ FFwA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-On Wed, May 20, 2026 at 9:07=E2=80=AFPM Eric Biggers <ebiggers@kernel.org> =
-wrote:
->
-> On Wed, May 20, 2026 at 02:37:01PM +0200, Andrey Albershteyn wrote:
-> > fsverity now exposes fsverity_ensure_verity_info() which could be used
-> > instead of opening file to ensure that fsverity info is loaded and
-> > attached to inode.
-> >
-> > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> > Acked-by: Amir Goldstein <amir73il@gmail.com>
-> > ---
-> >  fs/overlayfs/util.c | 14 +++-----------
-> >  1 file changed, 3 insertions(+), 11 deletions(-)
->
-> Reviewed-by: Eric Biggers <ebiggers@kernel.org>
->
-> I'm still confused by the new implementation of fsverity_active() that
-> got introduced by "fsverity: use a hashtable to find the fsverity_info",
-> though.  I should have caught this during review of that commit.  For
-> one its comment is outdated, but also the memory barrier seems to be
-> specific to the fsverity_get_info() caller and probably should be moved
-> to there.  Anyway, that's not directly related to this patch.
+On Wed, 20 May 2026 16:45:35 -0300, Agatha Isabelle Moreira wrote:
+> fs: refactor code to use clear_and_wake_up_bit()
+> 
+> Refactor code to use `clear_and_wake_up_bit()` instead of manual calls
+> to:
+>        	clear_bit_unlock();
+> 	smp_mb__after_atomic();
+> 	wake_up_bit();
+> 
+> [...]
 
-Eric, Andrey,
+Applied to the vfs-7.3.misc branch of the vfs/vfs.git tree.
+Patches in the vfs-7.3.misc branch should appear in linux-next soon.
 
-Did you see the Sashiko review for this patch and others in this series?
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
 
-https://sashiko.dev/#/patchset/20260520123722.405752-1-aalbersh%40kernel.or=
-g
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
 
-It annotated some review comments as high and critical.
-For this patch it is about interaction with fscrypt.
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
 
-Please take a look and say if this is concerning or false positive.
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: vfs-7.3.misc
 
-Thanks,
-Amir.
+[1/2] fs: buffer: use clear_and_wake_up_bit() in unlock_buffer()
+      https://git.kernel.org/vfs/vfs/c/1a6e4692deca
+[2/2] fs: jbd2: use clear_and_wake_up_bit() in journal_end_buffer_io_sync()
+      https://git.kernel.org/vfs/vfs/c/8efd38683c81
+
