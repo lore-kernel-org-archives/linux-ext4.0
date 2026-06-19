@@ -1,69 +1,73 @@
-Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
+Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52E174964F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E810632B12F
 	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 19:53:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781898794; cv=none; b=nfiXWMikZzwoQbadwoxHKOzpSe5rwDZNXVIbEEfoRCEZRobo2jzDH//A6ndxFb0MqNsDH/xTeZGbkfQgN/45B1Vy0Pn/Uju+9HuvejmOqF2XjviwaBxPK4Sg53/aqwAiRJoWxhbWUPOOKjpxNOkuG1FJtqb4ii2YA4uH+VtphTI=
+	t=1781898795; cv=none; b=Uh64bTqMtPJxHcV5dp5W1bd3ZGJPBcYqhmexDtvdJiMHTK58ntBl1c0uN7prG6deNrPvGyQmFAVJFvBYUguoocqj8kzhuI3Br3DcfogbdjTFPadeIDcbfJ3Isvrb6qwN3CTpRZLbwssDz4gJiJWs5oNuiOFijElx85TriUsjmHY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781898794; c=relaxed/simple;
-	bh=hcbV0DkhKBkQUJA+w51I84mPYMelfvbNgYLSRjD74KA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DasoBv8Qdeg4ar5nxoQB8nvEZeFinuGhuTAl++vvHm2C9THGt07+iaGPxVwkJK0ORKFBbYjut5NHTO4lGLpn2gTMdk97pW0uTluF4ZdqRxzO6tYuTPSa3b/APeCKoSvaQ9zdFMr/7sSi20vOH/r//LEEYD6nbcQ62Fz0U7jJvTI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nxj0DSES; arc=none smtp.client-ip=209.85.128.51
+	s=arc-20240116; t=1781898795; c=relaxed/simple;
+	bh=fcIVVjMTnsHrHPjWk+UW6TiRSJVHZWP/y4W4/70ixlU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=dELwKP7h1mbL8ffat62rvtphSYhEo/wFEiF4bbh3+rx71d+jmyPL+wMnF0v97Sn/fzNwiLWoElKnLrWuHQNX6YI67u+tkVNdGXd+gM6BiaOxKhtPNqnRO7NnpudAzSs+RYI6Q1lTVSxQ60L+f07I1VrIKzySLeFJEU7P9MfwSEw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GXjs2lnU; arc=none smtp.client-ip=209.85.221.49
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nxj0DSES"
-Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-490b8ac62baso33748715e9.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GXjs2lnU"
+Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-460662fcb4eso1752779f8f.0
         for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 12:53:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20251104; t=1781898792; x=1782503592; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=YpYtYSOUJ6LlhvZr4y6DbKdAXzo3rUfrqUgg3dSAJcE=;
-        b=nxj0DSESGYltz7223mosnyGfUJbKCXyrCwo2Bl0lTC6bFgoCggBApmf2mI9W5CpZxU
-         4waQm4ODD/7SUlJDAhcHX46cRQsqHQURSdLttPsiSHgsd3j2HPtLbKyatCSfOvZToaHl
-         9ZYccuUL/08jsy4VW+Z49Nfx45dDC72Je99mDw7/4SxT2ZRimUI9WYJyCIi66VD7eyNQ
-         jYsiWdCUcNY9eBQD72nHCRYaoTB0yVd7SUnw2FKFHyBPWbfbizLITK2Cgc3Ejm0G82WH
-         HUXNsZ0y0JlLIF24OvL0Kjl7v0N6E3OwO0I5u5Ai6KJqnLXjKUMBHVac5EOHplSmWJGA
-         kybA==
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=DMNfU7q4dd9MHwipiuthwvO8NxbdPRHZEOigHuhTmt4=;
+        b=GXjs2lnUTl7dm5g96w/eYbvG80M7t+b+exJjLdqGmsCH3f48e6AysMelwG2dOZ1JJK
+         A8UGU/S/78FcgiGxEK1a6iU7dZFJKjQb0S5YqFYfoMJ1qIA1sHDG7ZtpQCgrGM7F06Vp
+         Q/BBek92tOngUWAqNHRLdg51RMQLzJ5YcXw5ic9cqjSnMpc7JPJZSrkwdNffGG9WTvvN
+         JqRR4n2mBzdgxPUHQxadTIR32usK5X7bfJK6DznKdm3fn0pENZQeyAKX1SRFTEX27o0L
+         L7QzvtQFLhJ+BDw37R4LoP7FkSgrzqIRAcsqODALdexbxyLILk/Z7B9Gg8WCrZH5MSwU
+         hBSA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20251104; t=1781898792; x=1782503592;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=YpYtYSOUJ6LlhvZr4y6DbKdAXzo3rUfrqUgg3dSAJcE=;
-        b=WNB2c+ToF7r1orgOzJii7lK/tw8ta0Az6bYqldaSCUiYv2DuP0UbeoHY3aT6VmhoZq
-         cvnhYMBpkWowSshror0OtxpiqD5ZUweXwb1GvrBbK429ag4uTecb4aCkar72zpvIq3zw
-         aEKJmZQE+MKiG2fIGjsz0tXCGGzgOZW2AQ2kr+4h3Avfcif9Ycck2w2/bllBABq0AjXy
-         CgT5d5u0shWW7WEmdHgkwLAy+ydJq3XnBK2f8UXTFG+j9TFGDvQw+tB9kYWxuBk5Ljuk
-         9nBCKzTHDOBnY5AXp7ZzNEObXK6q449aaq6BHhg0BCm4cSCGzjM06Kz99aTMJpJMAO1p
-         ajVw==
-X-Gm-Message-State: AOJu0YzdgvUEhEzGqs6juJvqo59/yZ1z+Ax08CP3HZv6ohn19CEkuwU2
-	Ki0LIHkin1isN7WVN0NFx1Az1MkH2eQA0O893kOevKmGnf1iZVPm2PTUGt7mF4IzBaPBMA==
-X-Gm-Gg: AfdE7cmZlKevgZofVbAeMva6QitMjeM15V6IdAIFPGiFP9pg8EbeVmCJvMulvfjwfia
-	CKMmHe9M8MTO9Sk/ucxWYlfixdlmdEE/STXrR/m1AZp/NMrTSkYkb+EBQxTspLSwjBLkuExOnKx
-	ie37UX9p2pyXSRLRrpIxpnXSyvGrxg1+KdMdXqna6tj+n7u+eisBQcuYismG2e46vY6ENPm+xfK
-	HF4WNXjopc7xAC2yKFksNopx4qUd4zVXpRafJsPRnsG/kdcdtDGgwHTvAwpWIbvh9p34y7zwIUY
-	g61ZdjfY9gKivUFxn0IvpIEyhtuw/kOvtlLnu69k9aqJV6hTM9rEeYrVUfOA8gicGSddw4fjzez
-	hVIBKLZVMy8rWlvezgPItVnEKl71aVDzAgSwoLF98nvgWCbKtJGdZyvLmEPghpFyZDpzl+Vk1ot
-	/nc708NWy5fVGfWuuVj202i8yR0yVuMd2Zoa903cbHUA==
-X-Received: by 2002:a05:600c:4889:b0:492:4658:ac00 with SMTP id 5b1f17b1804b1-4924658ac64mr21846255e9.6.1781898791755;
-        Fri, 19 Jun 2026 12:53:11 -0700 (PDT)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=DMNfU7q4dd9MHwipiuthwvO8NxbdPRHZEOigHuhTmt4=;
+        b=l62nAuAP3VluI4Suui7Q7Z50RPxjUChwuhx6mqdXFsTS/naWRfdAvXfuInrRR/ILsl
+         P0yLxkVvGkYQkATslHf44uw+MIZpipGQuARX/q7EN3P1wbV2A93YtbYaPMwGpKoi4TMk
+         66AtIlcp8MhG4QP1Mu4JmW9G68m+Q242hxkg/V53e8G2zGXxO1EvEIjZDcRddMacm+8r
+         peehaLZSEw3/TD+9md0M8wi1GpIe1i0x3c/nfdB3R3kdfb5JoRLElWbIGz/7qMp0Rqp2
+         Zlv+LCClgu3ZxesGaaXkCB56nBuoJPe5O8/ODF9RFRGtE8Bx6BlKvYxyIqRUjRDAYVnX
+         Dn3g==
+X-Gm-Message-State: AOJu0Yw4FIr1E553QgP8NFtKIF2whZF8w4YgZyrymdDAjXIIzsyTWKNm
+	cBnmjjXhkDfu2GqgY3vThst6TYzxo0ZnJ55zjGU47QG+HsiAoU9/nB5d+hbrF/xLMas9yA==
+X-Gm-Gg: AfdE7cmJVOulK/9FviPhN5FeTfrgfi9UndKRGuqzgVL/jMu33dELZU7klZRp7dWpRuG
+	cIKStD+s2h1vWKCiXUimlgDx4vJVUfor8KC734hNfci2TvGvlgyC9CqX9OYsnbS6Z/76Af8GCfb
+	fyUn/4+vh0uHeyNWAgZkv6H9JCzWa3Q1kolVmZbzOmUqTO4AcPlCw4+a940/S1QVXPakDe2W6wX
+	4rmUPEkljvDWH9PuAlXKUtjwfhXk7PJOUUfhdPnLOYeETg/aJS/MyeZUM4vlZEC7z78dDMlAgW/
+	BYK1K3IFEsspjb27yxwcU2A2soxHCH00b2S6KW9pFSXXbfFkO7BAtZtTaKfnvoX/hNuyK3VpWn+
+	VDTkxGfSJfvy7GMRV8yGZb9q0HEdC0i4sftLJzi0Z/HH3NCkcbgAB0YQcaD3IjSAc+1sxcVbbuL
+	4XN0EGokmf/ICF593Ar2X2t+qdr4QdslpPWr4xED65rQ==
+X-Received: by 2002:a05:6000:41e2:b0:465:767a:3a15 with SMTP id ffacd0b85a97d-465767a3ad9mr6855375f8f.18.1781898792314;
+        Fri, 19 Jun 2026 12:53:12 -0700 (PDT)
 Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
         by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-466643f4e3esm1430822f8f.8.2026.06.19.12.53.11
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 19 Jun 2026 12:53:11 -0700 (PDT)
+        Fri, 19 Jun 2026 12:53:12 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-Subject: [RFC PATCH v2 0/6] ext4: tests for the dirdata feature (encryption+casefold, LUFID)
-Date: Fri, 19 Jun 2026 15:51:59 -0400
-Message-ID: <20260619195205.29384-1-ablagodarenko@thelustrecollective.com>
+	Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [RFC PATCH v2 1/6] ext4: add common helper to check whether dirdata is applied
+Date: Fri, 19 Jun 2026 15:52:00 -0400
+Message-ID: <20260619195205.29384-2-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
+In-Reply-To: <20260619195205.29384-1-ablagodarenko@thelustrecollective.com>
+References: <20260619195205.29384-1-ablagodarenko@thelustrecollective.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -72,61 +76,60 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-These tests cover the ext4 "dirdata" feature (storing extra metadata
-in directory entries beyond the file name), sent separately from the
-kernel and e2fsprogs dirdata patch series for reference and review.
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-ext4/064 and ext4/065 verify that encryption and case-insensitive
-(casefold) directories continue to work both without and with
-dirdata enabled. ext4/066 and ext4/067 exercise the LUFID (Locally
-Unique File ID) use of dirdata via a new EXT4_IOC_SET_LUFID ioctl,
-using a small set_lufid helper utility added in this series.
+Add a helper that lists a directory with the -lD flags and checks
+whether any dirdata fields exist.
 
-Changes in v2:
-- Ted Ts'o pointed out that the v1 tests exercised the
-  encryption+casefold/dirdata feature combination without actually
-  validating that the encrypted hash was stored as a dirdata
-  attribute.
-  ext4/064 and ext4/065 now use the new _dump_dir_structure helper
-  (debugfs-based) to dump and check the on-disk directory entry
-  content, confirming the hash is actually present as dirdata rather
-  than just exercising the feature combination.
-- Added ext4/066 and ext4/067, plus a new common/ext4 helper and the
-  src/set_lufid.c utility, to directly verify LUFID data is correctly
-  stored in and retrieved from dirdata via EXT4_IOC_SET_LUFID, including
-  in combination with encryption+casefold.
+This helper will be used by subsequent dirdata-related patches.
 
-Artem Blagodarenko (6):
-  ext4: add common helper to check whether dirdata is applied
-  ext4/064 encryption + casefold feature combination WITHOUT dirdata
-  ext4/065 encryption + casefold + dirdata feature combination
-  ext4: add set_lufid utility
-  ext4/066: verify LUFID dirdata operations
-  ext4/067: LUFID and encryption+casefold+dirdata
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ common/ext4 | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
 
- common/config      |   1 +
- common/ext4        |  34 +++++++
- src/Makefile       |   2 +-
- src/set_lufid.c    | 196 ++++++++++++++++++++++++++++++++++++++++
- tests/ext4/064     | 153 ++++++++++++++++++++++++++++++++
- tests/ext4/064.out |  17 ++++
- tests/ext4/065     | 217 +++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/065.out |  26 ++++++
- tests/ext4/066     | 158 +++++++++++++++++++++++++++++++++
- tests/ext4/066.out |   4 +
- tests/ext4/067     | 137 ++++++++++++++++++++++++++++
- tests/ext4/067.out |   4 +
- 12 files changed, 948 insertions(+), 1 deletion(-)
- create mode 100644 src/set_lufid.c
- create mode 100755 tests/ext4/064
- create mode 100644 tests/ext4/064.out
- create mode 100755 tests/ext4/065
- create mode 100644 tests/ext4/065.out
- create mode 100755 tests/ext4/066
- create mode 100644 tests/ext4/066.out
- create mode 100755 tests/ext4/067
- create mode 100644 tests/ext4/067.out
-
+diff --git a/common/ext4 b/common/ext4
+index a2ce456d..47c31db9 100644
+--- a/common/ext4
++++ b/common/ext4
+@@ -242,3 +242,37 @@ _ext4_get_inum_iflags() {
+ 	debugfs -R "stat <${inumber}>" "${dev}" 2> /dev/null | \
+ 			sed -n 's/^.*Flags: \([0-9a-fx]*\).*$/\1/p'
+ }
++
++# Helper to dump directory structure with hash info (requires dirdata feature)
++# This is useful for verifying that dirdata is storing hash information
++_dump_dir_structure()
++{
++	local dir=$1
++	local dir_name=$(basename $dir)
++	local expected=$3
++
++	local debugfs_output=$({
++		echo "cd $dir_name"
++		echo "ls -lD ."
++		echo "quit"
++	} | debugfs $SCRATCH_DEV 2>/dev/null)
++
++	# DEBUG: uncomment to see full debugfs output
++	# echo "  [DEBUG] debugfs output for $dir_name:"
++	# echo "$debugfs_output" | grep -v "^debugfs:" | sed 's/^/    /'
++
++	# Check if hash data is present (encryption+casefold+dirdata case)
++	# or if fid data is present (dirdata+encryption or dirdata only case)
++	if echo "$debugfs_output" | grep -q "fid="; then
++		local fid_value=$(echo "$debugfs_output" | grep -o "fid=[^ ]*" | head -1 | sed 's/^fid=//')
++		if [ "$fid_value" = "$expected" ]; then
++			echo "  Directory structure of $dir_name: OK (dirdata verified)"
++		else
++			echo "  Directory structure of $dir_name: FAILED (fid mismatch: got '$fid_value', expected '$expected')"
++		fi
++	elif echo "$debugfs_output" | grep -q "hash="; then
++		echo "  Directory structure of $dir_name: OK (dirdata verified)"
++	else
++		echo "  Directory structure of $dir_name: FAILED (no dirdata)"
++	fi
++}
 -- 
 2.43.7
 
