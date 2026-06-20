@@ -1,73 +1,57 @@
-Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5A8C336885
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 19:53:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2143719CD1B;
+	Sat, 20 Jun 2026 01:40:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781898798; cv=none; b=ujXcmraPERkiL7WiMkiERHigKjdUdKnM2z6HRxgA3nKoYhbVsmL3fBJRQNpYdOJsIzDTl1knyi/RoQ+QgVNh90aefXrUZwI2CN/QOj2wcBQ8hHIAnRsC0WT5p6MTK8mbcOXqgSSu/4al3DzeeiVKxgyhfHXkhjvkpH6p1y3Mdbw=
+	t=1781919622; cv=none; b=khz0I+D65JKqlogsg3wHzI/6l1fj7xLH7mmCnZP+RS6l6dzT6QY0jitrveABIaA5smpEsiXYMJr6qYzBLn41Sd60gmQ0E4uozZr1E5TkzvsBYMYxwC2C47Ibcb4XfVqwjAck9h65hJUOr7g7zo70VN9Boe80IiV4GaxavjzWvEM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781898798; c=relaxed/simple;
-	bh=e+ohwOSN6LbpmLGd/izSBp6CeixeLtMlkFS2LHQyMIs=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=EOpRABMx3n0wsoQmHtHVYuxi1lb/cCBIFm7IPgDHSJsdVTLQ+k48YEt/US8KS5WYl1XfuoAaHdPdoFTO/vTsj4F1RcpGggaWPbgss+1/Z5DxsN5FD0MKcAPtbktyTQ0nPGeM5Z29H1O9/WRohlgKNGX9DOuRxb6b+ZxfCgg3nCM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=JsDA2fXU; arc=none smtp.client-ip=209.85.221.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1781919622; c=relaxed/simple;
+	bh=kpLahbmgCbjh29EOoQs3zFJCxx0NDikY0yLq+mcFV4U=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=QVz8gwk8vztJVu1J9hdVfk962NDi+tuXhCFwDKV0rRb7KVQ2/4yCTuLGAyRvXnuieR9LZ5iA591DUIU/0axyMy+k/6hIqhGhVzkv1ZncnUTeBpdA9q7nAKN+SZokPfBcy+mUQfugCfbaop4uK8jviY/LnUiVR+cpkPfnnJmjVL4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=LSsDl6eI; arc=none smtp.client-ip=205.220.178.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JsDA2fXU"
-Received: by mail-wr1-f51.google.com with SMTP id ffacd0b85a97d-461edb387ddso2379424f8f.3
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2026 12:53:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781898795; x=1782503595; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=WJzUOqF8t8KNC63eLRFBx4UYUm1u+tRaMVpSKwDOOqQ=;
-        b=JsDA2fXU9Youjubc3LLIt3eXW6Q8gjS07GA1n7EV7F463XQamrakjHWVnRjCCIL5ad
-         403dz8UXhxOY2CwQT2aVROQSdB8iGYy7KFUKxU6udTSm3ZP0dkwsYBMLlEE7WZ4bYUE2
-         l6NTd5KsAin7lmGF6+q1ULzznzUzGwlzMQrMO/7YkrptR8vqb2jqEow8Fn+rjSq1eM9G
-         U3LvuAKBngasHFGMDdCdOVWS56I9LjpJ6KuJ6mjPBiYww7Ew+EqiJepLi3ZQYoW8xUks
-         a695ejdczUCaRzM/8S3LJZxSzfHkUA+/SdcPTrnc3j8ngd1unabQvh68wShZ3o6JixnD
-         mElQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781898795; x=1782503595;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=WJzUOqF8t8KNC63eLRFBx4UYUm1u+tRaMVpSKwDOOqQ=;
-        b=NgM7GQJooBoEOlrbqjTECw6xAMO5QnYmknqDgQJHUOc1fywpIm19CqVwPdfkyd8dAD
-         EKlT533mqw+ybQ0/QKy+SfW8a5uXxZ4G5qkoI3Onrvt2BDBm1Um8t3PeWmABHMtvGoPL
-         FwXh8MNeeHtkVGnljsINaNfO/pU4ji1mt/zH7S8rOzmMM0PU/5q3bnZiEvBIAdTEIrw7
-         D548jP7qaT2fQiyC7L9j1XL217MeP0gnFWJW+q1RoOwUOZYn9l2VQ8gcp5+LOHpBd5Z7
-         dByXqaeD+fnb1/SrVH1EQBLdhoh8Rt2FvJUTwcTzpImVfExeZhlRH2cPUb2s+5WxXnm+
-         JQpg==
-X-Gm-Message-State: AOJu0YzRVui+Tjwgto8z9rdlx9LPo+1FcpO3+RbFVjzvZmOXhIST5shF
-	yQXpAOw6vLVy352JKWGNS/aiUnkjiAliTI4i9eHTO8B0RCMoBbsf/cxOnoRudlM9ez7NKg==
-X-Gm-Gg: AfdE7cm1RH+X7IU+Jc+J8BavnuSFAistKptVXOT0S0+UT0H001nQg7SC8c0AQ5ZXn0A
-	K0MUfMPgviJ+KT9TDCzXw68c7O3+ozGz6TOPoJSMq6IpDtJpxxRU1mXcoTO0x8Y6FuHOTmE7K83
-	F6JgnlnJtmA8jF/wGJniaQrtXCt2HK70MKH5QNMuT8DsC93bSb5mS6ga5WM1m38dXZ82TSymOeR
-	QWELQp2ivsqDsWZvInX0/APNhiNHj00oOur0Svf71/rQr0A9NEyF0WbHXvNIfEPSFzlcRS70E/R
-	V6+KsV489PJDRAxItXAbYkaPGoH8gItsTDi8Fk2GEP8+8bKmg4Pu9fJvCAG8F+fcaY76lqiPm13
-	1xA/O3z+A0qki28nfIajZL3tA4sPLol9WP8TTyV+ycJ2DsP4hXAmx+V1/54HpxHjggX1W4Xpi3o
-	JAs5SAuDxaTlna8EbkNOOdAvf0k8v5KOJ5EeA2ufRwUaPmmWsFseFs
-X-Received: by 2002:a5d:6b8d:0:b0:45e:db3b:921d with SMTP id ffacd0b85a97d-465091bbdbemr6638982f8f.31.1781898795323;
-        Fri, 19 Jun 2026 12:53:15 -0700 (PDT)
-Received: from Cluster1.local ([2a00:23c7:90c1:9201:ef47:d559:d907:fd0b])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-466643f4e3esm1430822f8f.8.2026.06.19.12.53.14
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 19 Jun 2026 12:53:14 -0700 (PDT)
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [RFC PATCH v2 6/6] ext4/067: LUFID and encryption+casefold+dirdata
-Date: Fri, 19 Jun 2026 15:52:05 -0400
-Message-ID: <20260619195205.29384-7-ablagodarenko@thelustrecollective.com>
-X-Mailer: git-send-email 2.43.7
-In-Reply-To: <20260619195205.29384-1-ablagodarenko@thelustrecollective.com>
-References: <20260619195205.29384-1-ablagodarenko@thelustrecollective.com>
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="LSsDl6eI"
+Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65K1U2bG3822841;
+	Sat, 20 Jun 2026 01:39:44 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	PPS06212021; bh=qpAw0tZ+ZDrwtnFCHPOP9dbpXPmJ/tfKREqNKCDgw8M=; b=
+	LSsDl6eIc+twAvRA1hZUW6lGGIQG+BoHSXr0pqlAU1SX+Q1e2fQamwiH8VHRfnVj
+	uzRzY42kxRK9/u8JBKwCNFRD8kr/Dr5UJXRkp9LHyDRSuAIHDJ+gp0uX7bpTWifk
+	yRY9jBHVHbsJAQP2qmFoSmO0/h4QQYVG2/dRZKERDCz2XfGf80qgQS5ckV8k+svS
+	mXq0aNtotL5theqh2Kwz1xtXvxOCp+zlFLyFJ/zGERMsrOE8WdpzMkxYgR9FuVhI
+	fg2DkBlVdgu0NMXFCoczmdZJC1k0KQHJ0X2wWud/kR0FfriQ/enrQ2NfYUaZo4fa
+	ERlDbMqvmeFVmdcgWj8I5w==
+Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4ewg2wr1st-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Sat, 20 Jun 2026 01:39:44 +0000 (GMT)
+Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Fri, 19 Jun 2026 18:39:43 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Fri, 19 Jun 2026 18:39:40 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <yun.zhou@windriver.com>
+Subject: [PATCH v8 1/4] ext4: skip extra isize expansion during mount to prevent deadlock
+Date: Sat, 20 Jun 2026 09:39:34 +0800
+Message-ID: <20260620013937.2564269-2-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20260620013937.2564269-1-yun.zhou@windriver.com>
+References: <20260620013937.2564269-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -75,179 +59,88 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-ORIG-GUID: Xyu9TVFKIr-xKCkIxAUGh7l3b444IUrR
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjIwMDAxNCBTYWx0ZWRfX9ZzYgUH13KNz
+ U4gww0orFh5Zco9prlJHxiP+mACKiWuzIUW7Up1am00gM0O+/SgqaCFg/5PcJnfShbW4nVVC8wu
+ VaBp102ax63qSQbFq0Y+GRATrEn4wrsqZ3Ehw5m9qSsWvpAGWzUX
+X-Proofpoint-GUID: Xyu9TVFKIr-xKCkIxAUGh7l3b444IUrR
+X-Authority-Analysis: v=2.4 cv=Xdm5Co55 c=1 sm=1 tr=0 ts=6a35ef60 cx=c_pps
+ a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=nphdFjCg5VZFgBW92ZIA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjIwMDAxNCBTYWx0ZWRfX27dI2dkjkMkK
+ SIj1EnFs5IwtRTa7weqvJNOKj3bxly1Z61CRKKqDl+hJdopqJ7ZkdHg3nJz+VKf5sXhpypxaptq
+ 5QhdMX7UJobZreMQZ+KXqftiQuGuozPFgqFNqd134eRCObzS9EAt2dbnzvF0XjTrAT8nx/e8Evd
+ yQ/SVp3T+aXHQmOwtWCMLL+KDc/G2JCrmR3zTlAfULdl84S1bi0jVF0g0cpcwz8f9w0m3KBZUjP
+ 3K2C+BaOtHV0e2EJbktpEt3apgVMa8yzco65Q6X8QQZQtvRNF0V515l8UqRPsiKVoJ3hmT02VBL
+ W3cz3zPeUfo7gBsG1uLnNieoBmo7H9tzkBpdSF48+JeW06XnG85wma02huLTwqNTn6SJ6avG2GC
+ g+x8jtedqDU6BXpImh2LSt0FKm1lLidBS1Qjr4rNHyKHlr+V63LUvxZgmVpxtLD7bwc9iu+WKmA
+ VHC4hWepaEJHT4jFtgQ==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-19_05,2026-06-18_03,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ lowpriorityscore=0 spamscore=0 priorityscore=1501 adultscore=0
+ impostorscore=0 malwarescore=0 clxscore=1015 bulkscore=0 suspectscore=0
+ phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2606200014
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+ext4_try_to_expand_extra_isize() is called from __ext4_mark_inode_dirty()
+while holding an active jbd2 handle.  During mount (!SB_ACTIVE), the
+expand path may move xattrs to external blocks and release ea_inodes via
+iput().  When !SB_ACTIVE, iput() calls write_inode_now() which acquires
+s_writepages_rwsem, creating a circular lock dependency:
 
-Test ext4 LUFID  functionality in the complex combination of
-encryption, casefold (case-insensitive), and dirdata features.
+  s_writepages_rwsem --> jbd2_handle --> xattr_sem --> s_writepages_rwsem
 
-Verification uses 'debugfs ls -lD' to check for 'fid: or hash:' markers.
-Tests also verify that case-insensitive lookups work correctly and that
-encrypted file content is preserved after setting LUFID.
+This can be triggered via:
 
-This test validates that LUFID works correctly when encryption and
-casefold features are enabled, ensuring feature interactions don't
-break the LUFID functionality.
+  ext4_process_orphan() -> ext4_truncate() -> ext4_mark_inode_dirty()
+    -> ext4_try_to_expand_extra_isize()
 
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+or:
+
+  ext4_evict_inode() -> ext4_mark_inode_dirty()
+    -> ext4_try_to_expand_extra_isize()
+
+Skip expansion when !SB_ACTIVE.  This is a minor loss of functionality
+(extra isize won't grow for these inodes during mount), which e2fsck
+can resolve later if needed.
+
+Reported-by: syzbot+5d19358d7eb30ffb0cc5@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
+Fixes: c8585c6fcaf2 ("ext4: fix races between changing inode journal mode and ext4_writepages")
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- tests/ext4/067     | 137 +++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/067.out |   4 ++
- 2 files changed, 141 insertions(+)
+ fs/ext4/inode.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/tests/ext4/067 b/tests/ext4/067
-new file mode 100755
-index 00000000..acb49c40
---- /dev/null
-+++ b/tests/ext4/067
-@@ -0,0 +1,137 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 The Lustre Collective. All Rights Reserved.
-+# Author: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-+#
-+# FS QA Test ext4/067
-+#
-+# Test ext4 LUFID  with encryption and casefold.
-+# EXT4_IOC_SET_LUFID is an ioctl that allows LUFID data to be set on a directory entry.
-+# directory name hash is stored by EXT4 when casefold and encryption features are enabled.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c2c2d6ac7f3d..09dcfb6bf48c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6458,6 +6458,16 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_NO_EXPAND))
+ 		return -EOVERFLOW;
+ 
++	/*
++	 * Skip expansion during mount (!SB_ACTIVE).  Expanding extra isize
++	 * may move xattrs to external blocks and release ea_inodes via iput.
++	 * When !SB_ACTIVE, iput triggers write_inode_now() which acquires
++	 * s_writepages_rwsem, causing a deadlock with the caller's active
++	 * jbd2 handle (lock order: s_writepages_rwsem -> jbd2_handle).
++	 */
++	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE)))
++		return -EBUSY;
 +
-+. ./common/preamble
-+_begin_fstest auto quick encrypt casefold
-+
-+# Import common functions
-+. ./common/filter
-+. ./common/encrypt
-+. ./common/casefold
-+. ./common/attr
-+. ./common/ext4
-+
-+_exclude_fs ext2
-+_exclude_fs ext3
-+
-+_require_scratch_nocheck
-+_require_scratch_encryption
-+_require_scratch_casefold
-+_require_command "$SET_LUFID_PROG"
-+
-+# Check if dirdata feature is supported (required for LUFID IOCTL)
-+_require_scratch_dirdata()
-+{
-+	if test ! -f /sys/fs/ext4/features/dirdata ; then
-+		_notrun "dirdata feature not supported by kernel (required for LUFID)"
-+	fi
-+
-+	# Verify that mkfs supports dirdata
-+	if ! $MKFS_EXT4_PROG -O dirdata -n $SCRATCH_DEV &>>$seqres.full ; then
-+		_notrun "mkfs.ext4 does not support dirdata feature"
-+	fi
-+
-+	# Verify kernel can mount filesystem with encrypt+casefold+dirdata
-+	if ! _scratch_mkfs -O encrypt,casefold,dirdata &>>$seqres.full ; then
-+		_notrun "failed to create filesystem with encrypt+casefold+dirdata"
-+	fi
-+	if ! _try_scratch_mount &>>$seqres.full ; then
-+		_notrun "kernel cannot mount filesystem with encrypt+casefold+dirdata"
-+	fi
-+	_scratch_unmount
-+}
-+
-+_require_scratch_dirdata
-+
-+# Helper to add a v2 encryption key and set policy on a directory
-+_setup_encrypted_dir()
-+{
-+	local dir=$1
-+	local raw_key=$(_generate_raw_encryption_key)
-+	local keyspec=$(_add_enckey $SCRATCH_MNT "$raw_key" | awk '{print $NF}')
-+	_set_encpolicy $dir $keyspec
-+	_casefold_set_attr $dir
-+	echo $keyspec
-+}
-+
-+# Create a filesystem with encryption, casefold, and dirdata features
-+_scratch_mkfs -O encrypt,casefold,dirdata &>>$seqres.full
-+_scratch_mount
-+
-+# Test: Create file in encrypted+casefolded directory and set three 16-byte LUFIDs
-+echo "Test: Set three 16-byte LUFIDs on file in encrypted+casefolded directory"
-+mkdir $SCRATCH_MNT/encrypted_dir
-+_setup_encrypted_dir $SCRATCH_MNT/encrypted_dir > /dev/null
-+
-+echo "encrypted content" > $SCRATCH_MNT/encrypted_dir/testfile.txt
-+
-+lufid_payload=$'\xde\xad\xbe\xef\x01\x02\x03\x04\x11\x12\x13\x14\x21\x22\x23\x24\xca\xfe\xba\xbe\x05\x06\x07\x08\x31\x32\x33\x34\x41\x42\x43\x44\xfe\xed\xfa\xce\x09\x0a\x0b\x0c\x51\x52\x53\x54\x61\x62\x63\x64'
-+expected_fid='[0xdeadbeef01020304:0x11121314:0x21222324],[0xcafebabe05060708:0x31323334:0x41424344],[0xfeedface090a0b0c:0x51525354:0x61626364]'
-+
-+# Set three LUFIDs on the file at the same time (48 bytes total: three 16-byte FIDs)
-+# First FID:  [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
-+# Second FID: [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
-+# Third FID:  [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
-+set_lufid $SCRATCH_MNT/encrypted_dir testfile.txt "$lufid_payload" >>$seqres.full 2>&1
-+if [ $? -ne 0 ]; then
-+	echo "FAIL: Could not set three LUFIDs on encrypted+casefolded file"
-+	_scratch_unmount
-+	_check_scratch_fs
-+	status=1
-+	exit
-+fi
-+
-+# Verify file is still accessible
-+if [ ! -f $SCRATCH_MNT/encrypted_dir/testfile.txt ]; then
-+	echo "FAIL: Encrypted file not accessible after setting LUFID"
-+	_scratch_unmount
-+	_check_scratch_fs
-+	status=1
-+	exit
-+fi
-+
-+# Verify file content is preserved
-+enc_content=$(cat $SCRATCH_MNT/encrypted_dir/testfile.txt 2>/dev/null)
-+if [ "$enc_content" != "encrypted content" ]; then
-+	echo "FAIL: Encrypted file content not preserved after setting LUFID"
-+	_scratch_unmount
-+	_check_scratch_fs
-+	status=1
-+	exit
-+fi
-+
-+# Test case-insensitive lookup still works with LUFID
-+if [ ! -f "$SCRATCH_MNT/encrypted_dir/TESTFILE.TXT" ]; then
-+	echo "FAIL: Case-insensitive lookup doesn't work with LUFID"
-+	_scratch_unmount
-+	_check_scratch_fs
-+	status=1
-+	exit
-+fi
-+
-+echo "Successfully set and verified three 16-byte LUFIDs on encrypted+casefolded file"
-+
-+# Dump directory structure to verify dirdata
-+if ! _dump_dir_structure $SCRATCH_MNT/encrypted_dir testfile.txt "$expected_fid"; then
-+	echo "FAIL: Stored LUFID does not match expected value"
-+	_scratch_unmount
-+	_check_scratch_fs
-+	status=1
-+	exit
-+fi
-+
-+# Cleanup and verify filesystem
-+_scratch_unmount
-+_check_scratch_fs
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/ext4/067.out b/tests/ext4/067.out
-new file mode 100644
-index 00000000..1c9a8126
---- /dev/null
-+++ b/tests/ext4/067.out
-@@ -0,0 +1,4 @@
-+QA output created by 067
-+Test: Set three 16-byte LUFIDs on file in encrypted+casefolded directory
-+Successfully set and verified three 16-byte LUFIDs on encrypted+casefolded file
-+  Directory structure of encrypted_dir: OK (dirdata verified)
+ 	/*
+ 	 * In nojournal mode, we can immediately attempt to expand
+ 	 * the inode.  When journaled, we first need to obtain extra
 -- 
-2.43.7
+2.43.0
 
