@@ -1,106 +1,132 @@
-Received: from relay.hostedemail.com (smtprelay0013.hostedemail.com [216.40.44.13])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f47.google.com (mail-wm1-f47.google.com [209.85.128.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 664EA74BE1;
-	Sun, 21 Jun 2026 10:39:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=216.40.44.13
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0AA436605A
+	for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2026 12:55:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782038355; cv=none; b=VbgtBVqJ1l6tMSan5tH3KZjP6Jj5W66NQwDI08U5eZO+TNUxWGJTJKHKGP6GBk0WRAd4vEPITWDaBgneHpMWCNMKZlyEIUGKqRt+0sZZB38FYzhFUnbAnKqQoChdsgOu10smHklERHOPj+Td344KsLqtUgRKDF3wjxOSh3QdAuY=
+	t=1782046537; cv=none; b=LSx4+AETyh+zpx1t3RAILzJ3rhNCIbL8wc2MSiGJ70FY20AnT1TfPMTGr4eVV92wdQX+lJP+OWcNgqGtmjMAXaZOHaMpGumJF6D/zXDKOCMcvufEU5RI6PhNj2b0c7nGssI/1xGvbtbJDCKCA70sTNCHm3Bb0KvJITkkj9sIV/w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782038355; c=relaxed/simple;
-	bh=vG8e9limOnj0jrCGh5nGVxswyihBpxRX/4JwXlAAtP4=;
-	h=Date:From:To:CC:Subject:In-Reply-To:References:Message-ID:
-	 MIME-Version:Content-Type; b=AbQoSgQPGMGaEYn07z1GhB8n9P6YE3OEfdUDhXs1LoyPeVG6t8exqvYWsPQek3pxdQEeYL/yoDHzFbN6fcODYVSI5LomLMatLJZwmIVc1GbKm4ggEXm+0g93Qm83eYKeEONoMVCI3PjdCpV925c6F78nqLkWgLOMBTaXrCPvmrE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org; spf=pass smtp.mailfrom=goodmis.org; arc=none smtp.client-ip=216.40.44.13
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=goodmis.org
-Received: from omf15.hostedemail.com (lb01a-stub [10.200.18.249])
-	by unirelay05.hostedemail.com (Postfix) with ESMTP id A4F80403B5;
-	Sun, 21 Jun 2026 10:39:03 +0000 (UTC)
-Received: from [HIDDEN] (Authenticated sender: rostedt@goodmis.org) by omf15.hostedemail.com (Postfix) with ESMTPA id A063517;
-	Sun, 21 Jun 2026 10:38:58 +0000 (UTC)
-Date: Sun, 21 Jun 2026 11:38:55 +0100
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Thomas Gleixner <tglx@kernel.org>, Steven Rostedt <rostedt@kernel.org>,
- linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org
-CC: Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
- Andrew Morton <akpm@linux-foundation.org>,
- Linus Torvalds <torvalds@linux-foundation.org>,
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
- John Ogness <john.ogness@linutronix.de>,
- Peter Zijlstra <peterz@infradead.org>, Julia Lawall <julia.lawall@inria.fr>,
- Yury Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
+	s=arc-20240116; t=1782046537; c=relaxed/simple;
+	bh=FrBpf/gkssNS0FzrmeyqCp0e1iIN10xNwwkHFwdCrQE=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=UzzBQMfA9qo+Di7ZRTIOHn+FbQp85i0admouad8QiXXijnVSWPNK1oo3a9snUKtWLTVkFrIsYaCqgY8JTPswXA/2Lz1RhT+0cTLHaY8YhrGmgnioQqesG4AikAr7ClMahD7Np+k1R4GtFwrwQebjpKuNNgrTlvdA4zU8eJscghc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HEPnlA7i; arc=none smtp.client-ip=209.85.128.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HEPnlA7i"
+Received: by mail-wm1-f47.google.com with SMTP id 5b1f17b1804b1-490c0c92cffso23475815e9.2
+        for <linux-ext4@vger.kernel.org>; Sun, 21 Jun 2026 05:55:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782046534; x=1782651334; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=WU+6TPSMrQeQnOmPDKoUDmLIYSzXbxEWNqGQFFhaaZU=;
+        b=HEPnlA7ilq5cBLXmRCRdE+fi/N7aST+SdfMD+MJXNx44EBemiG9rjXiFv70GGeXSoz
+         OL+YA0wO4DZ+Vojg0dtpiA/+jHjShkgs9abDLGW3cDtqvdjyeSWyTCBZv9ntyUJ8YgkF
+         2LlW/c9NPd35YBu9qUTAvTzk/cctdfAz/26y+X+lPsuttpW4Px8uT6A7LWPw6p25qqh3
+         LN5ymox0l7svelgtmlOUVvfqkISw+y7pTMmkNCOhS+m102IwN1RYhV1E2cNi38XRGRkb
+         7yoF60g0aJidx7f0xIQvNERu2I7c6x6JhnU0pe9CGHXzsLJzdkQSpMm4duLjoPK4meQd
+         64yg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782046534; x=1782651334;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=WU+6TPSMrQeQnOmPDKoUDmLIYSzXbxEWNqGQFFhaaZU=;
+        b=lNUKWCVPexZO7pGZxJ2juzA+Fk7Ujkugy6vLyHe1odiKwCeaKg+++VNsNplaGEQ4/q
+         +SxGO6506L1SHChIumZkHTxstJpaRi5ePL1GMgPhVwhE20nZ0sRsuidD0+AvqeZbvjij
+         DtISuFXvtWIaV/vt6yrm645yXYlrcVgw02OIJGTA47CkgUjJPgTMhcfRa1giUsmhRtz6
+         CDL4I6BgOjvusLovFrZiGDkaZ7dz5gH9VogzyDvI89J2/hVz43cKGbO6knwllc1FwtLc
+         ynaWAPIyW4sUGxtZZ+G2tzPNhHcDjI3Fe8ZPgLhwAA7mV6vtYv98TDETRibVjrFQO9gB
+         pQLg==
+X-Forwarded-Encrypted: i=1; AFNElJ/wg7uc1qf0z9bdfr/jmacTfXsQZ6vOz5k0/5fpWAgJ5zcMVzeHoXX0krGglcC7qXDxyfipyJSoKbiq@vger.kernel.org
+X-Gm-Message-State: AOJu0YwnSYkUOs5yTdZKv7HYHoM39PhLB6DWboIQ1uMJGgl6NLI3zwUG
+	rtHdoe5wVKEXqoKbvEPXrA7MV6kcwFf+evO3Tfe0sLiFgL6ljDM0reRy
+X-Gm-Gg: AfdE7cnchL21WIdZc5VBTI/K5jNFWVDdb0fH3wybxbZVKPjAfNit0NQ8bS+CQLZS50b
+	Jkl4hPXoKaEyBV1C3wyOD6CPlYUDYAqOGdFkx2tb6LHxEkljG7x9bTNfd1mKwsMin0Bo6dCc9mA
+	Yd0JDeJGWizTI7HPqJ1OTX/xk08iPG/ZCTrOjhey7v8uRJ1sh6yPuuEpprU9ZTxYvE0xqsHTejM
+	UX8yVQ3I73vI1VmnnCLNh+nsgWiheXb58Y7x750mVYp9KxVQ/6HTSRh0yVi/jQH8ZBUCiHbmtbo
+	7NdKyni5IbEO+Se3wmdYyMRddMnv3pUnVQsGx3PTiOgNujTMSzwDDvoMpSMM7GREnsk6R4x5Qd3
+	vhIT8wKkcxT1YMzaemv2lq/qruP9NQzwnzoOzZkdCofNoO7oH98lw7OYuX3LcaaL4eOBFMZ6B2+
+	qElo+7LY30HC7SBlCcyp5vqIxvoMW5uv6Wpu/s5OXZA1As82Ie9Q==
+X-Received: by 2002:a05:600c:e547:20b0:48f:d5b8:5b07 with SMTP id 5b1f17b1804b1-49240e81b22mr113459545e9.20.1782046534244;
+        Sun, 21 Jun 2026 05:55:34 -0700 (PDT)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49249238900sm129230375e9.4.2026.06.21.05.55.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 21 Jun 2026 05:55:33 -0700 (PDT)
+Date: Sun, 21 Jun 2026 13:55:31 +0100
+From: David Laight <david.laight.linux@gmail.com>
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: Steven Rostedt <rostedt@kernel.org>, linux-kernel@vger.kernel.org,
+ linux-trace-kernel@vger.kernel.org, Masami Hiramatsu <mhiramat@kernel.org>,
+ Mark Rutland <mark.rutland@arm.com>, Mathieu Desnoyers
+ <mathieu.desnoyers@efficios.com>, Andrew Morton
+ <akpm@linux-foundation.org>, Linus Torvalds
+ <torvalds@linux-foundation.org>, Sebastian Andrzej Siewior
+ <bigeasy@linutronix.de>, John Ogness <john.ogness@linutronix.de>, Peter
+ Zijlstra <peterz@infradead.org>, Julia Lawall <julia.lawall@inria.fr>, Yury
+ Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
  linux-kbuild@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
  dri-devel@lists.freedesktop.org, linux-stm32@st-md-mailman.stormreply.com,
  linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
  linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
  linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
  intel-gfx@lists.freedesktop.org
-Subject: =?US-ASCII?Q?Re=3A_=5BPATCH_2/2=5D_tracing=3A_Add_CONFIG=5FTRA?=
- =?US-ASCII?Q?CE=5FPRINTK=5FDEBUGGING_to_clean_up_kernel=2Eh?=
-User-Agent: K-9 Mail for Android
+Subject: Re: [PATCH 2/2] tracing: Add CONFIG_TRACE_PRINTK_DEBUGGING to clean
+ up kernel.h
+Message-ID: <20260621135531.243375d9@pumpkin>
 In-Reply-To: <87ik7cmcb7.ffs@fw13>
-References: <20260621093430.264983361@kernel.org> <20260621093811.168514984@kernel.org> <87ik7cmcb7.ffs@fw13>
-Message-ID: <65FD4729-3DEB-44BF-B085-1F72A0B7BF3A@goodmis.org>
+References: <20260621093430.264983361@kernel.org>
+	<20260621093811.168514984@kernel.org>
+	<87ik7cmcb7.ffs@fw13>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain;
- charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-X-Stat-Signature: 1rpq566iuu696tbe6de19udoqya4ijdw
-X-Rspamd-Server: rspamout02
-X-Rspamd-Queue-Id: A063517
-X-Session-Marker: 726F737465647440676F6F646D69732E6F7267
-X-Session-ID: U2FsdGVkX1+altd1Yz9Y3NVTA4Q+RMlDrpJ2CoeKO4s=
-X-HE-Tag: 1782038338-801961
-X-HE-Meta: U2FsdGVkX1+UIJ7kmLtbV5k3wlv8csQwDalYtg7WqKufnOv7be+VuRDa3ft8H3X3zzwfr+uJaQZNz0sDC4oyI98+t0mZe8z4QM7YVjOJ7k9IvaQO5X/gwLzm/T/snIDf9B1tqJjVQMbg/Fnqr36PDksXLybxk5Wk4szMxT0dI7RGk8YrmbCkpbiPzakXtErPJu/4LvGLwyxtHWX9zek973SlOgxvLlgqkXDRAT2+DqJr5WMtzWdQf68LXDneXrIH36GLwhtQHs9JqXlxGiQxIii+hAq+RQvxokuLaf3ukb8Kl6fOR60wgmpjUFzbMjevVHTotC5pRIjw762yNXa4cwdML3kSKjmj+IzsGxPuo8Puez99eB9siQ==
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
+On Sun, 21 Jun 2026 12:13:00 +0200
+Thomas Gleixner <tglx@kernel.org> wrote:
 
+> On Sun, Jun 21 2026 at 05:34, Steven Rostedt wrote:
+> > Instead of having trace_printk.h included in kernel.h, create a config
+> > TRACE_PRINTK_DEBUGGING that when set will update the CFLAGS in the
+> > Makefile to allow developers to add trace_printk() without the need to add
+> > the include for it. Having it included in the Makefile keeps it from being
+> > in the dependency chain and it will not waste extra CPU cycles for those
+> > building the kernel without using trace_printk.  
+> 
+> IOW, you make it worse just because.
+> 
+> With the header being separate I add the three trace_printk()s and the
+> include to the source file I'm investigating. The recompile will build
+> exactly this source file.
+> 
+> Having to enable the config knob will result in a full kernel rebuild
+> for no value.
 
-On June 21, 2026 11:13:00 AM GMT+01:00, Thomas Gleixner <tglx@kernel=2Eorg=
-> wrote:
->On Sun, Jun 21 2026 at 05:34, Steven Rostedt wrote:
->> Instead of having trace_printk=2Eh included in kernel=2Eh, create a con=
-fig
->> TRACE_PRINTK_DEBUGGING that when set will update the CFLAGS in the
->> Makefile to allow developers to add trace_printk() without the need to =
-add
->> the include for it=2E Having it included in the Makefile keeps it from =
-being
->> in the dependency chain and it will not waste extra CPU cycles for thos=
-e
->> building the kernel without using trace_printk=2E
->
->IOW, you make it worse just because=2E
->
->With the header being separate I add the three trace_printk()s and the
->include to the source file I'm investigating=2E The recompile will build
->exactly this source file=2E
->
->Having to enable the config knob will result in a full kernel rebuild
->for no value=2E
->
->Seriously?
+Indeed...
+Isn't trace_printk() just an extern?
+Having it defined somewhere isn't going to make any difference to build times.
 
-Like having lockdep enabled, this would always be set in the development e=
-nvironment=2E It's not something to only enable when you need to add a trac=
-e_printk=2E If you don't want to rebuild everything, by all means add the i=
-nclude file by file=2E There's nothing preventing you to do that with this =
-solution=2E
+	David
+ 
 
--- Steve=20
+> 
+> Seriously?
+> 
+> Thanks,
+> 
+>         tglx
+> 
+> 
+> 
 
-P=2ES=2E I'm replying on my phone as I'm in the London Tube=2E Thus why I'=
-m not trimming my email=2E
-
-
->
->Thanks,
->
->        tglx
->
