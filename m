@@ -1,91 +1,90 @@
-Received: from mail-yx1-f41.google.com (mail-yx1-f41.google.com [74.125.224.41])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B45A73B14B0
-	for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2026 13:11:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.224.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE1693B38B9
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2026 13:35:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782133912; cv=none; b=C9yee4LLw5kB9NrSZz1UpVp83oaoF8WgxwEOXXvipHgb+eWHZAQG8Ht4xDYhIMoCALpd/LGGLrGjAfn8qgpqJ5ewaStvG3v0tgmjT6rhUAYWsTvas4BWtci2AJ8dtmwN7Hq/B9tZYV6JkLECaXE0M+R9vr4riOTE+GN3EB94XbI=
+	t=1782135358; cv=none; b=D0iL4hodw9Xmk58Wxz8G19QauKlJrckTKHY0ONIhGJ6QtMzivBLB2QNAWffyRyNJCs4HmOLKgDJi03aKP9k06oRai0rlzLx0fQuVhJrtz5cl5YUiNlT4Xg/mb5uaTaqmiAOB6FP+lbIUGu6NHRUhuvy5zKCldJoo79IbhhN/mzk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782133912; c=relaxed/simple;
-	bh=HQz5Bgb9Ix6CxIn/K74tfrlANhIDMynRIFpNpd4eCGE=;
-	h=From:Date:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=t9/OiXKWSFullYGHCcIya2u5dzuop4OQbpffCsWdRyslZ8TKv/IhQTLCEK23sz5N4tyMdoJNAyUi33h+BEkizwLX+zCzuUeZy0tP5nnuiPHqEkrTPecRlQ2tq3/Tjekc2cZervCFYy03XVVgswAC5csDBMfYZKrxamJGY6Z1S9w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=k/i5uTze; arc=none smtp.client-ip=74.125.224.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1782135358; c=relaxed/simple;
+	bh=SBvpZlbgi6NWzmSj4Dr0aKTGqCZG+pQtHmST1nh4zYg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=g9vrje5nUrjYRzwVT4uriaD7qGD2aco8Ft4gIbyuetkbbWGp/5iRZ9uVBvpDnVFgje/HE2hFZ5MsRViXQdWepeW+wz0u/bgKJGAWlYF2h7eVOD24CXOdsjfTJkb7yViuzk5inTnFbqW/AKCcHHRkhTuT9uSx11ldJqEvuGeETUA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=c3IjOeoA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=pTObOnwz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=aCK/J0Dg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=R9Y2ILYW; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k/i5uTze"
-Received: by mail-yx1-f41.google.com with SMTP id 956f58d0204a3-66043ecf6b3so3874414d50.0
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2026 06:11:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1782133911; x=1782738711; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:date:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=XkaEWxUJkCuHp/17+ud4oWXJ3qqAKnltzqopfMTtFIs=;
-        b=k/i5uTzeJQR4+7Wet36cQgSo4sxL7JHnWkI80+xtkrP/9oBTFyHZ8X3t1Q2CnMTDp6
-         Psigzn+fygxUIibpKJV8vugNaeMafjx2dbtYSsLvity3z1Woqbw59/7qieJHFyH4Adan
-         iIRyDi8CMOCz/az4EFMKhiAYGCpfEhizDTOzb65ymOvZsLNvI1F9BvcwvMSLbbcXXmc6
-         lyPBLK7m1zPmKDIwdT1nVVOesfeemXdJZa83ea/kP7geAEZB8UZ24UFkA43weVCRdqNX
-         kqhXI7Jym8KGVdZHNk1qUH7mqWCLBnaTI9Bl96kF6LQYh6lfzYB59dUz5+jAHbpHTf5O
-         SP5w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782133911; x=1782738711;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:date:from:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=XkaEWxUJkCuHp/17+ud4oWXJ3qqAKnltzqopfMTtFIs=;
-        b=U1yObjh4/RBNfOKKTVJf/FyvRC7p356lUeAMMfzpxh22CcYnCfzkST96GAkZ4r0Y6u
-         XfacbAtKIKA6fE5iYDq6+rZXDY2zZ4jNPr2kb+Po1HyCb9d5wlzONghVPHXjAfwxA753
-         p2ChRLYeb1O8iI/esCdiJMtmVJxzF/M6a71kvSqRCxnv/T54nLuC+4ejprgUbPDpeaXm
-         LnqN/XFDVzyZgNdUHTrDlKRF69xiHN5tjo9QNyGt7aFxSZUEDFDvYFUdAZ+eB1tZoLM1
-         3KPV59leYp0eIcOuUQT6X5Pj4IcgSNhsOAm0J4Vsk6dOa80ADxHHUBA8jUZGEpkGlCBZ
-         Wskg==
-X-Forwarded-Encrypted: i=1; AHgh+Rr1pvQGC7dvoT5mij0TTw+vQk+VNMWsx+ckHmmKuPo4bt6IpD08osnCsuNBDoSVkS55CP8vBKyta+VN@vger.kernel.org
-X-Gm-Message-State: AOJu0Yzs5q6IDmoMIrL5l7BOFPghNAU/SlWTWTYn+/woAuxUr8IWN2Lu
-	MxDIbBDK+lNOXEB+kwCqaNyr9zQva5MTaeEX3mgZXjEGUJwOAtJ5x7FJ
-X-Gm-Gg: AfdE7cnE3fYBQuyTWd6i5C5UqUVTEHMa+mjXd2s9saCxIXONOb9HM160tnLQYIBxhJg
-	8hoFotIkOHuB4svwEh54pIAwrjJ1drGAn7cvhsPS8rRtNvHld3VQFCiTUbVlEq5yrU9rXcoEekk
-	BvELkr5IbZEF+YSqbdREOOhyY+RIMpDR1u2R0kTh2MQidCw2qIMphCuz1qiG4OKHYsY4b0d8YxW
-	YATtrbrDkJQrcda3Z5qdkprmWLEKPquHjdJBMfQqTmRdtr8LE1q+N+fdkb6Jm8rktCtsw9IQ07W
-	4XRh3OTPfTDvbet9ZMiLfl/B0wAfjOIW9tqbcnykJ8ZQoETxn2RtY48wV+Z/NU7SE6Ojn9s0nY3
-	WUsheWQRBAuc4p4Slg8qrFujIW9qHw6EMieOpMvDEY7iH7h00Pbzyzw4+uCVDFUYqxstzZEgQ8F
-	V0dYTHXkg=
-X-Received: by 2002:a05:690e:120c:b0:660:54e4:5dd1 with SMTP id 956f58d0204a3-6630333ac1bmr11505521d50.44.1782133910591;
-        Mon, 22 Jun 2026 06:11:50 -0700 (PDT)
-Received: from localhost ([38.101.158.131])
-        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-66314ac3f96sm3600882d50.1.2026.06.22.06.11.50
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 22 Jun 2026 06:11:50 -0700 (PDT)
-From: Yury Norov <yury.norov@gmail.com>
-X-Google-Original-From: Yury Norov <ynorov@nvidia.com>
-Date: Mon, 22 Jun 2026 09:11:49 -0400
-To: Steven Rostedt <rostedt@kernel.org>
-Cc: "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>,
-	linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
-	Masami Hiramatsu <mhiramat@kernel.org>,
-	Mark Rutland <mark.rutland@arm.com>,
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
-	John Ogness <john.ogness@linutronix.de>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Peter Zijlstra <peterz@infradead.org>,
-	Julia Lawall <julia.lawall@inria.fr>,
-	Yury Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
-	linux-kbuild@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-	dri-devel@lists.freedesktop.org,
-	linux-stm32@st-md-mailman.stormreply.com,
-	linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
-	linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
-	intel-gfx@lists.freedesktop.org
-Subject: Re: [PATCH 0/2] tracing: Move trace_printk.h out of kernel.h
-Message-ID: <ajk0lT9P0SeuD94j@yury>
-References: <20260621093430.264983361@kernel.org>
- <dbb5915e-6587-4de9-87f3-76bea5024da8@kernel.org>
- <20260622090826.20efadb3@fedora>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="c3IjOeoA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="pTObOnwz";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="aCK/J0Dg";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="R9Y2ILYW"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id D277275CC2;
+	Mon, 22 Jun 2026 13:35:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1782135355; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=klHx9ZWC+iv1arsVCPKl7bjBSJ7l+Dg5khZq7zu+UWs=;
+	b=c3IjOeoAiqHBStIClfAkdBrQ81syPvT60HMpyaCi8OCJO7SRqMspy88/oqPJPyNe7FfpJD
+	Kb6/2PAOfqTrF1WFj63A+c200oC1vNbyoGP/aOf84FEAjzbXYcNWWIoB9QXhwdLGbmP+67
+	2pMzcebI1Nmju9mSahIYbkamOn9F28g=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1782135355;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=klHx9ZWC+iv1arsVCPKl7bjBSJ7l+Dg5khZq7zu+UWs=;
+	b=pTObOnwzJKLeZNkaE+dbeKEhi3V/oOUzjBkVEYEasSKXX+RDKXM2xiqCox86wO155vzeHo
+	Qw/Jz1E2aTjZBUDA==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1782135353; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=klHx9ZWC+iv1arsVCPKl7bjBSJ7l+Dg5khZq7zu+UWs=;
+	b=aCK/J0DgzlDu0PkQWF53wPRQemLRiciaQEpCAYcnBmb35l5RhbllXz5eReXSW22M/N5M4S
+	oDu93z93H60JJ5oSkB0p19x7Iq28s9Q8uJB3nKqu+RGmDFDrWIRWVtOs+Z5m25wrm+YlNT
+	JeHcCHymlwqZ+raJ0kFyj6V9N/yY00A=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1782135353;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=klHx9ZWC+iv1arsVCPKl7bjBSJ7l+Dg5khZq7zu+UWs=;
+	b=R9Y2ILYW4cwgfwgw0UOJGwlHo6W4aIaPAQKOAYw8Ww+Rf6CRGBYsJiIi/EmVu2qXEVFP0u
+	pHijboeLS4BrhHCA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C6698779A8;
+	Mon, 22 Jun 2026 13:35:53 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id rn1tMDk6OWqbLAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 22 Jun 2026 13:35:53 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 5C7D7A093E; Mon, 22 Jun 2026 15:35:53 +0200 (CEST)
+Date: Mon, 22 Jun 2026 15:35:53 +0200
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>, 
+	Jens Axboe <axboe@kernel.dk>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, Chris Mason <clm@fb.com>, 
+	David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+	linux-ext4@vger.kernel.org, Gao Xiang <xiang@kernel.org>, linux-erofs@lists.ozlabs.org
+Subject: Re: [PATCH RFC v2 01/18] xfs: fix the error unwind in
+ xfs_open_devices()
+Message-ID: <mz2myo6clekydj7y7vyro3ebzi43irhmzcueypgjv43ra7rcp7@tsgf3enlgvrm>
+References: <20260616-work-super-bdev_holder_global-v2-0-7df6b864028e@kernel.org>
+ <20260616-work-super-bdev_holder_global-v2-1-7df6b864028e@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -94,20 +93,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260622090826.20efadb3@fedora>
+In-Reply-To: <20260616-work-super-bdev_holder_global-v2-1-7df6b864028e@kernel.org>
+X-Spam-Flag: NO
+X-Spam-Score: -3.80
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MISSING_XM_UA(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[17];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Level: 
 
-On Mon, Jun 22, 2026 at 09:08:26AM -0400, Steven Rostedt wrote:
-> On Mon, 22 Jun 2026 10:05:13 +0200
-> "Christophe Leroy (CS GROUP)" <chleroy@kernel.org> wrote:
+On Tue 16-06-26 16:08:17, Christian Brauner wrote:
+> Since the rt and log block devices are closed in xfs_free_buftarg() the
+> buftarg owns the device file. The error unwind does not respect that:
+> when the log buftarg allocation fails, out_free_rtdev_targ frees the rt
+> buftarg - releasing rtdev_file - and then falls through to
+> out_close_rtdev and releases it a second time.
 > 
-> > > There's been complaints about trace_printk() being defined in kernel.h as it
-> > > can increase the compilation time. As it is only used by some developers for
-> > > debugging purposes, it should not be in kernel.h causing lots of wasted CPU
-> > > cycles for those that do not ever care about it.  
-> > 
-> > Do we have a measurement of the increased compilation time ?
+> The unwind also leaves mp->m_rtdev_targp and mp->m_ddev_targp pointing
+> to the freed buftargs. The failed mount continues into
+> deactivate_locked_super() -> xfs_kill_sb() -> xfs_mount_free(), which
+> frees them again.
 > 
-> I believe Yury does.
+> Clear the buftarg pointers once the unwind freed them and clear
+> rtdev_file once the rt buftarg owns it, so nothing is released twice.
+> 
+> Reachable when a buftarg allocation fails after the data buftarg was
+> set up: an I/O error in sync_blockdev() or an allocation failure in
+> xfs_init_buftarg() while mounting with external rt and log devices.
+> 
+> Fixes: 41233576e9a4 ("xfs: close the RT and log block devices in xfs_free_buftarg")
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-I re-run compilation is a more strict environment, and the difference
-is negligible.
+Looks good to me. As a small nit I'd probably do rtdev_file = NULL just
+after we've successfully allocated m_rtdev_targp but that's really minor.
+Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/xfs/xfs_super.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> index eac7f9503805..8531d526fc44 100644
+> --- a/fs/xfs/xfs_super.c
+> +++ b/fs/xfs/xfs_super.c
+> @@ -534,8 +534,11 @@ xfs_open_devices(
+>   out_free_rtdev_targ:
+>  	if (mp->m_rtdev_targp)
+>  		xfs_free_buftarg(mp->m_rtdev_targp);
+> +	mp->m_rtdev_targp = NULL;
+> +	rtdev_file = NULL;	/* released by xfs_free_buftarg() */
+>   out_free_ddev_targ:
+>  	xfs_free_buftarg(mp->m_ddev_targp);
+> +	mp->m_ddev_targp = NULL;
+>   out_close_rtdev:
+>  	 if (rtdev_file)
+>  		bdev_fput(rtdev_file);
+> 
+> -- 
+> 2.47.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
