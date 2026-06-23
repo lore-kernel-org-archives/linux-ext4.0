@@ -1,176 +1,172 @@
-Received: from mail-dy1-f181.google.com (mail-dy1-f181.google.com [74.125.82.181])
+Received: from mail-ot1-f72.google.com (mail-ot1-f72.google.com [209.85.210.72])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 561423655D4
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 09:59:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.82.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 811442F39CE
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 13:13:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.72
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782208774; cv=none; b=dELlxf0P3CvzFIqFd4b2DNGLnZiJuXMvmbSw5UtVAQdLuCxjiSwPxO88D9ym4McMXqmMtekG559Yjs8ZD14GKBjAQHLcFOj3quqDK0opipGYblANrsfPKu51rRB7un+tX1Z+KFfqNxTYLKx+044PmfBUbjWpZZrykJfXfxRIGYE=
+	t=1782220400; cv=none; b=n5Ar1g/up9ztLeWPnNd0gxwbMggXheoX6FIwIHD5kVpwb1qp4ihkhQ6IdRnulAewUQuzH21XId1+12Qhq9TKR6rUI23EXHgo3FEzgae1Stf0VPC49kcjyYINjRZdtSk0k7bcBqCVzRBtQgNb5cf6uGei1fUSyZX2jHp2V7ugzaE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782208774; c=relaxed/simple;
-	bh=ad9aIFbJdgL/UzzfV6fm4Lv+5IKLPp9bn0onxiSVWPQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DaJhLTfCnd8Yl2X9Z0qRTW5hI98GsgcQZFDpddoPNFc8qr0AampM4tsvpvuASDpY63YmQAs78XV4UKOJ5TUGEwiQ73aPl11WjX+Awwv6a2WdbRrP5q3pGH1Fqm1RlmjpJgom+OxVQuVgtsukpd1raCvY3K/9HcNKuLMZIGxeIpQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=I3dVP6HW; arc=none smtp.client-ip=74.125.82.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I3dVP6HW"
-Received: by mail-dy1-f181.google.com with SMTP id 5a478bee46e88-30c03b09e02so9882124eec.1
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 02:59:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1782208771; x=1782813571; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=m8A+H93fHwrfEYMrct/wizOSxd5tVbtevsUUu6gMQPc=;
-        b=I3dVP6HWHjEN6wjFaY+9EY8oycrerjJBsCyNJz6G+mEExHBfWNP7Pmg42SHjszz2ok
-         WFHf4GFHzGSHz0gFVRARHMiu6g4t8X2PnZQ5XhfWH2zWyKvrix+Q0h40mocABHM5IBM7
-         Rs2NExT8QThmYDHyZta3sI2Yzwh95lMW5UUOqplTVj40LQBOWHoGkS035g8sBX7qQ8rq
-         /T8Hj3/EzZF+ea00uY7zSbGvvpRRcED3180dcKZwMH+aAHXlMGFxkz9F2UskUPBGYNF0
-         aCtHRQEym1hmbJ6GCckuyjmWz0v8hb93Lw+1pOwFKXyvtsm2CkSxCMKLkJvGTnunLqt3
-         l7rg==
+	s=arc-20240116; t=1782220400; c=relaxed/simple;
+	bh=kA+UIsNS62YX12orZbM8JTTK7tZpQBCweb+L8j6v3Ro=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
+	 Content-Type; b=ESgIWkvJY7fgQ6hYlhVYp+DYXdGRbfNNXhMM4Dy1N8Lch/rOM4zvP0NiUQOom1xWZ2UDtAzBRQb7HLH5Dcmx1FG8VkfVKmi+ABh3z4J5dYCPYudq9eKfJKUOJG3vnJuFoYON70Qvr7hxdECBeiVSFK26FJsuLhue9C2hdS24bzI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.210.72
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-ot1-f72.google.com with SMTP id 46e09a7af769-7e7624e584dso10494134a34.2
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 06:13:19 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782208771; x=1782813571;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=m8A+H93fHwrfEYMrct/wizOSxd5tVbtevsUUu6gMQPc=;
-        b=X9DJp6SKb9l19UR0CEWAaiUSOuAxMhOqiyTW0RJ4tRDshGDSTZCvOdeL1NjORXXPKm
-         Ym+j9kEYGUVA3WcISHn+mOzzKjY+rcxjirH2yNLWYR27Nd+4v+rylISsufB7BPiwy7W4
-         ZdZbpgDwFrL3Mml6fyFYb34EdANUXCZ8UtpkBLM1/nPjxHwXXafk/7qDtXk59KuY+qe6
-         20E60JAW5j/GTrRWb0AbW/NB0xoa/Zj70il1FQdYKBV6K8Mi8rH/L5p1WPMnpq+2WXG5
-         X86zqDzLMpM+VdIIAFjHEsZ+COMU/1GlO2bGIsonJDs2wI/JGSGEg26T3i8hLmvJVZAb
-         Vpww==
-X-Forwarded-Encrypted: i=1; AHgh+RqRVCWPoCUKHzC4pTvtJAx8ESztfyRYWd4P8M6a5TeuclEI9BOx7HLDb7I5xJOvgJiE+XcrNIfwhGyi@vger.kernel.org
-X-Gm-Message-State: AOJu0YwefwzSnH/sjJhM5ZBfF62rIhscQi6wbczLFKVl9Xg1Y98s9TI9
-	vjOK/p5ma3Fb6kDKdR4ynam15vcouI4GyHeRcu6OKvsZLF12KzV8Awlk
-X-Gm-Gg: AfdE7clR9OjZgGVSaU/6Ywd86mguO/X2pYM60MBOZBngYkzNWDW41IuDmDG30jdw9GK
-	unV6z5APgqLIhREYMc7/zcjF6SayvHiICC6bG7Lnxgr1Qdx6qMlS2+NiMfVyzhV5GclkjB9bDI9
-	ZbZK3xa+NsD4CfougaHcmRiuc1Ewv69TCyFyQxo/IPcWDJOq98H9+rnYoAD3K1mCZRj9193RAIr
-	wHd24o1iyoextwPa2djXXXbT11sWdJrrQESh8d/wcGRMB3apzn4WMfM+6i0VH7SsRzgmytL9G5K
-	s+ubdAfMJgNOkYdPwmY0omJuhl3/SbuwsSKkhN4k7c3y8PvVqlbNPBuFjsnABy1U+CujcyVNcyd
-	W+/jMLQUSTOKNjMGpqb4rDDHT369AFGybmfJMJosK4ElMLozsmzfmQ0Vd4GKVGFZshP8jaPiDBT
-	TJIi7WBqz3AwcAcPG5rCbc8Aw+coHUJ6IzfdTJpm8lKBqQj664+xdfuvhiZInVvvs5mjxE38e1b
-	h8zkGxUKoTg2YE1CeyOjR9rdn7SHu3GB45j228Oj6kOpUKRJU2sxCr0mV45u8fbMCE6xrHIThoJ
-	TnIHgEZFgGe1GTqdlBC5DmybnYN3F0nm0slv
-X-Received: by 2002:a05:7301:5f09:b0:304:e72a:d4d9 with SMTP id 5a478bee46e88-30c58b66e50mr2001603eec.19.1782208771435;
-        Tue, 23 Jun 2026 02:59:31 -0700 (PDT)
-Received: from cs-1047136853211-default.asia-southeast1-a.c.d33bddc1d573818c7-tp.internal (69.129.240.35.bc.googleusercontent.com. [35.240.129.69])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-30c1bd8d6edsm15415857eec.14.2026.06.23.02.59.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 23 Jun 2026 02:59:30 -0700 (PDT)
-From: Aditya Srivastava <aditya.ansh182@gmail.com>
-To: tytso@mit.edu
-Cc: jack@suse.cz,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>,
-	Colin Ian King <colin.i.king@gmail.com>
-Subject: [PATCH v2] ext4: fix ABBA deadlock in ext4_xattr_inode_cache_find()
-Date: Tue, 23 Jun 2026 09:59:11 +0000
-Message-ID: <20260623095911.2372-1-aditya.ansh182@gmail.com>
-X-Mailer: git-send-email 2.43.0
+        d=1e100.net; s=20251104; t=1782220398; x=1782825198;
+        h=cc:to:from:subject:message-id:in-reply-to:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=QFXXWE9fBxsiphisMz3jKhcIk0QDsz2y2XoZ0YQGi0I=;
+        b=YhyRKpo0f/iUUIGVUnJO5yFISGb7516t8YsHIt6CYkE3vQ0wOfK/GqYPcEMgtMdjlZ
+         P2quSSvqfkHLEfj60vsY2Z/ltAetXElMYVp1KbUZ4kgbJg0ws5hsGIveJh7k9Sz7i6iO
+         FD9Bn8BjLUr35X85l40HDd1yH8uWKs9X/EXEN7Wr1d22ayPtc9AhRO+TFotwLJ9/Pr0i
+         yQgXUmBCJBdOMt7ypsNa3YBTMshnAyp/kpBLUoQuxicj5akIUf4kXJ9AQOE9DZbdRQjP
+         yQkF/V5tqX0cjJaGCz2YyZBFH9Khl1WeoLxJnDmZgNt1Xbo3IPGZCbrHk0GC5TLVjTf7
+         lOfg==
+X-Forwarded-Encrypted: i=1; AFNElJ8yzx9tGmHJXszgf5AUV1U1POYYH7MbztQWk2W6m9JXv0apLnK5is86tTmvs7kSR+u3ODZ1Uhp9/tAi@vger.kernel.org
+X-Gm-Message-State: AOJu0Yyl1Fhu+mviUg+B8Nn5x6UIFcPbo5ab6H+cHMmlIYy4uxpwNqAT
+	7fWgR+49QE4y8YmLe+gl59l50vR9iwXu4e5z/MKt0Ky1gazUGWyi8olsfg46eyNK3EmQ8E0Z7Tq
+	9znyQYffo6wIO9js3i5MGJ3muuBjTlCu5SHnQWGS0kvzFJyHCNtBGyJSJ6mg=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6808:c1f7:b0:489:443d:a8ed with SMTP id
+ 5614622812f47-4896ac4a91amr16299113b6e.32.1782220398523; Tue, 23 Jun 2026
+ 06:13:18 -0700 (PDT)
+Date: Tue, 23 Jun 2026 06:13:18 -0700
+In-Reply-To: <20260623083540.2744885-1-yun.zhou@windriver.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a3a866e.c358b6d0.89040.0003.GAE@google.com>
+Subject: [syzbot ci] Re: ext4: deferred iput framework for EA inodes
+From: syzbot ci <syzbot+ci7b0958cccc507600@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, tytso@mit.edu, 
+	yi.zhang@huawei.com, yun.zhou@windriver.com
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+syzbot ci has tested the following series
 
-Syzbot/stress-ng reported an ABBA deadlock in ext4 when exercising
-concurrent xattr workloads (using the ea_inode mount/format option).
+[v9] ext4: deferred iput framework for EA inodes
+https://lore.kernel.org/all/20260623083540.2744885-1-yun.zhou@windriver.com
+* [PATCH v9 1/4] fs: add iput_if_not_last() helper
+* [PATCH v9 2/4] ext4: introduce ext4_put_ea_inode() for safe deferred iput
+* [PATCH v9 3/4] ext4: convert all EA inode iput() calls to ext4_put_ea_inode()
+* [PATCH v9 4/4] ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
 
-The deadlock occurs between the running transaction and the eviction
-thread:
-- Task 1 (stress-ng): Holds a reference to a shared mbcache_entry (ce)
-  and calls ext4_xattr_inode_cache_find() -> ext4_iget() to retrieve
-  the corresponding EA inode. Since the EA inode is currently being
-  evicted, ext4_iget() blocks in __wait_on_freeing_inode() waiting for
-  eviction to complete.
-- Task 2 (eviction thread): Currently evicting the same EA inode in
-  ext4_evict_ea_inode(). It calls mb_cache_entry_wait_unused(oe) which
-  blocks waiting for Task 1 to release the reference to the mbcache_entry.
+and found the following issue:
+WARNING: ODEBUG bug in flush_delayed_work
 
-To break this deadlock, perform a non-blocking lookup of the EA inode
-using VFS's find_inode_nowait() API. If the EA inode is currently being
-evicted (marked with I_FREEING or I_WILL_FREE), simply skip it (treat
-as a cache miss) rather than waiting for eviction to complete. If the
-returned inode is found to be I_NEW, wait for its initialization to
-clear using wait_on_new_inode().
+Full report is available here:
+https://ci.syzbot.org/series/acc1a7bd-816f-451e-86ee-a62f88ad8fcc
 
-This deadlock was made much easier to hit after commit 0a46ef234756
-("ext4: do not create EA inode under buffer lock") which removed
-synchronization on the buffer lock.
+***
 
-Reported-by: Colin Ian King <colin.i.king@gmail.com>
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=219283
-Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
-Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+WARNING: ODEBUG bug in flush_delayed_work
+
+tree:      torvalds
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
+base:      502d801f0ab03e4f32f9a33d203154ce84887921
+arch:      amd64
+compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
+config:    https://ci.syzbot.org/builds/79d2cdf0-fde6-4e70-a88c-04d44c9d3e44/config
+syz repro: https://ci.syzbot.org/findings/9b2e3f5d-279a-469f-9f2a-05f96ea11587/syz_repro
+
+EXT4-fs warning (device loop2): ext4_multi_mount_protect:287: Invalid MMP block in superblock
+------------[ cut here ]------------
+ODEBUG: assert_init not available (active state 0) object: ffff8881bf08c9e0 object type: timer_list hint: 0x0
+WARNING: lib/debugobjects.c:632 at debug_print_object+0xec/0x230 lib/debugobjects.c:629, CPU#1: syz.2.19/5833
+Modules linked in:
+CPU: 1 UID: 0 PID: 5833 Comm: syz.2.19 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+RIP: 0010:debug_print_object+0x18a/0x230 lib/debugobjects.c:629
+Code: f8 48 c1 e8 03 80 3c 18 00 74 08 4c 89 ff e8 5d 04 71 fd 4d 8b 0f 4c 89 ef 48 8b 74 24 08 48 89 ea 44 89 e1 4d 89 f0 ff 34 24 <67> 48 0f b9 3a 48 83 c4 08 ff 05 a3 23 70 0b 48 83 c4 10 5b 41 5c
+RSP: 0018:ffffc9000179f848 EFLAGS: 00010046
+
+RAX: 1ffffffff179eacc RBX: dffffc0000000000 RCX: 0000000000000000
+RDX: ffffffff8c2a9980 RSI: ffffffff8c2a93e0 RDI: ffffffff903ddbf0
+RBP: ffffffff8c2a9980 R08: ffff8881bf08c9e0 R09: ffffffff8bcf69c0
+R10: dffffc0000000000 R11: ffffffff81b25990 R12: 0000000000000000
+R13: ffffffff903ddbf0 R14: ffff8881bf08c9e0 R15: ffffffff8bcf5660
+FS:  00007fd11e12e6c0(0000) GS:ffff8882a922d000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffe46d80f88 CR3: 00000001bf40e000 CR4: 00000000000006f0
+Call Trace:
+ <TASK>
+ debug_object_assert_init+0x237/0x370 lib/debugobjects.c:1075
+ debug_timer_assert_init kernel/time/timer.c:803 [inline]
+ debug_assert_init kernel/time/timer.c:848 [inline]
+ __try_to_del_timer_sync kernel/time/timer.c:1457 [inline]
+ __timer_delete_sync+0x181/0x520 kernel/time/timer.c:1621
+ flush_delayed_work+0x48/0x100 kernel/workqueue.c:4414
+ ext4_drain_ea_inode_work fs/ext4/xattr.h:196 [inline]
+ __ext4_fill_super fs/ext4/super.c:5795 [inline]
+ ext4_fill_super+0x54c7/0x66d0 fs/ext4/super.c:5844
+ get_tree_bdev_flags+0x430/0x4f0 fs/super.c:1634
+ vfs_get_tree+0x92/0x2a0 fs/super.c:1694
+ fc_mount fs/namespace.c:1198 [inline]
+ do_new_mount_fc fs/namespace.c:3765 [inline]
+ do_new_mount+0x319/0xdc0 fs/namespace.c:3841
+ do_mount fs/namespace.c:4174 [inline]
+ __do_sys_mount fs/namespace.c:4390 [inline]
+ __se_sys_mount+0x31d/0x420 fs/namespace.c:4367
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7fd11d19e0ca
+Code: 48 c7 c2 e8 ff ff ff f7 d8 64 89 02 b8 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 49 89 ca b8 a5 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007fd11e12de58 EFLAGS: 00000246
+ ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffda RBX: 00007fd11e12dee0 RCX: 00007fd11d19e0ca
+RDX: 0000200000000400 RSI: 0000200000000340 RDI: 00007fd11e12dea0
+RBP: 0000200000000400 R08: 00007fd11e12dee0 R09: 000000000021c91c
+R10: 000000000021c91c R11: 0000000000000246 R12: 0000200000000340
+R13: 00007fd11e12dea0 R14: 000000000000051a R15: 0000200000000240
+ </TASK>
+----------------
+Code disassembly (best guess):
+   0:	f8                   	clc
+   1:	48 c1 e8 03          	shr    $0x3,%rax
+   5:	80 3c 18 00          	cmpb   $0x0,(%rax,%rbx,1)
+   9:	74 08                	je     0x13
+   b:	4c 89 ff             	mov    %r15,%rdi
+   e:	e8 5d 04 71 fd       	call   0xfd710470
+  13:	4d 8b 0f             	mov    (%r15),%r9
+  16:	4c 89 ef             	mov    %r13,%rdi
+  19:	48 8b 74 24 08       	mov    0x8(%rsp),%rsi
+  1e:	48 89 ea             	mov    %rbp,%rdx
+  21:	44 89 e1             	mov    %r12d,%ecx
+  24:	4d 89 f0             	mov    %r14,%r8
+  27:	ff 34 24             	push   (%rsp)
+* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
+  2f:	48 83 c4 08          	add    $0x8,%rsp
+  33:	ff 05 a3 23 70 0b    	incl   0xb7023a3(%rip)        # 0xb7023dc
+  39:	48 83 c4 10          	add    $0x10,%rsp
+  3d:	5b                   	pop    %rbx
+  3e:	41 5c                	pop    %r12
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
 ---
-Changes in v2:
-  - Read inode state locklessly using inode_state_read_once() to resolve
-    a lockdep assertion on cache hit.
-  - Manually restore essential inode/ea_inode validations on the retrieved
-    inode (is_bad_inode, EXT4_EA_INODE_FL, file_acl, and xattr checks) to
-    match VFS safety guarantees and prevent using corrupted/failed inodes.
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
 
- fs/ext4/xattr.c | 29 ++++++++++++++++++++++++++---
- 1 file changed, 26 insertions(+), 3 deletions(-)
+To test a patch for this bug, please reply with `#syz test`
+(should be on a separate line).
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 982a1f831e22..ef13e7a76153 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1523,6 +1523,20 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
- 	return ea_inode;
- }
- 
-+static int ext4_xattr_inode_match(struct inode *inode, u64 ino, void *data)
-+{
-+	if (inode->i_ino != ino)
-+		return 0;
-+	spin_lock(&inode->i_lock);
-+	if (inode_state_read(inode) & (I_FREEING | I_WILL_FREE)) {
-+		spin_unlock(&inode->i_lock);
-+		return 0;
-+	}
-+	__iget(inode);
-+	spin_unlock(&inode->i_lock);
-+	return 1;
-+}
-+
- static struct inode *
- ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 			    size_t value_len, u32 hash)
-@@ -1549,10 +1563,19 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 	}
- 
- 	while (ce) {
--		ea_inode = ext4_iget(inode->i_sb, ce->e_value,
--				     EXT4_IGET_EA_INODE);
--		if (IS_ERR(ea_inode))
-+		ea_inode = find_inode_nowait(inode->i_sb, ce->e_value,
-+					     ext4_xattr_inode_match, NULL);
-+		if (!ea_inode)
- 			goto next_entry;
-+		if (inode_state_read_once(ea_inode) & I_NEW)
-+			wait_on_new_inode(ea_inode);
-+		if (is_bad_inode(ea_inode) ||
-+		    !(EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) ||
-+		    ext4_test_inode_state(ea_inode, EXT4_STATE_XATTR) ||
-+		    EXT4_I(ea_inode)->i_file_acl) {
-+			iput(ea_inode);
-+			goto next_entry;
-+		}
- 		ext4_xattr_inode_set_class(ea_inode);
- 		if (i_size_read(ea_inode) == value_len &&
- 		    !ext4_xattr_inode_read(ea_inode, ea_data, value_len) &&
--- 
-2.47.3
-
+The patch should be attached to the email.
+Note: arguments like custom git repos and branches are not supported.
