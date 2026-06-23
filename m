@@ -1,172 +1,160 @@
-Received: from mail-ot1-f72.google.com (mail-ot1-f72.google.com [209.85.210.72])
+Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 811442F39CE
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 13:13:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.72
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2939B30D414
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 16:12:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782220400; cv=none; b=n5Ar1g/up9ztLeWPnNd0gxwbMggXheoX6FIwIHD5kVpwb1qp4ihkhQ6IdRnulAewUQuzH21XId1+12Qhq9TKR6rUI23EXHgo3FEzgae1Stf0VPC49kcjyYINjRZdtSk0k7bcBqCVzRBtQgNb5cf6uGei1fUSyZX2jHp2V7ugzaE=
+	t=1782231128; cv=none; b=gJDajrrLm4AGYLVda+istR+EJqSO9cXqpdtIhrbClNX9UEuAlzdiXJ6l4uhdwFsJhS+Fx4EF/6/eyR4R9adhdMOaD2nOJOEbasOgwhge8YDQjTnQpzCbi4EFShs5SpZQCZBmHYvbsmZm3wPQa5HyGfGd3fZASLF/P++19rUso7U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782220400; c=relaxed/simple;
-	bh=kA+UIsNS62YX12orZbM8JTTK7tZpQBCweb+L8j6v3Ro=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
-	 Content-Type; b=ESgIWkvJY7fgQ6hYlhVYp+DYXdGRbfNNXhMM4Dy1N8Lch/rOM4zvP0NiUQOom1xWZ2UDtAzBRQb7HLH5Dcmx1FG8VkfVKmi+ABh3z4J5dYCPYudq9eKfJKUOJG3vnJuFoYON70Qvr7hxdECBeiVSFK26FJsuLhue9C2hdS24bzI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.210.72
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-ot1-f72.google.com with SMTP id 46e09a7af769-7e7624e584dso10494134a34.2
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 06:13:19 -0700 (PDT)
+	s=arc-20240116; t=1782231128; c=relaxed/simple;
+	bh=uN1EZRClgoUwwTbPHXOy9C9cJoeMminRViXVtG5lQMI=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ObhWWDmmkVuQ+3xCrp1rS2Ta4MgslLfKwl4YjPSa8AaXUyOoYgKKaNwPf6JDlb958MAVnp/TQRm2Ti0N710EynYcAoWNBvGOUrnk+B73vqS9QfzSIUTERaUYRJAYJfrukwK0+VnLVpHNs7Jp8aChAxIqJm6uyaOoRKwx6xvMqDk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Jihbb/sQ; arc=none smtp.client-ip=209.85.216.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Jihbb/sQ"
+Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-37d82f3a244so89750a91.2
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2026 09:12:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782231126; x=1782835926; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=5VLqiXbHUSk8P6cXgMo32lHHndXjEJIEyZZ29AUICc8=;
+        b=Jihbb/sQzVerVw7UA52m0+yyIBIgMBm/zdlvgYS5fegFApXfEr9p6xO8e4mj558pTc
+         lMgegIKuXCOBWwS1SB/DAW4tw6RPSD0EoVRUhaxUz4rmCLiqijV4qzxGs33R+TBTMt4p
+         UGfX42luAa/P92dtZ0TUpIp+hTLbAEht+XOpLqkDTUh+I7CleanUdZNPSx+/0b6GUxKQ
+         R6OisCD57osVXUa7ALEVVoXxmKtEiyIKUd0GWZfeIvJEEetiufbJLOp8EKCd5VI9vYH5
+         IXxvbn8EZfMoPAKz0SEwgY+VE+abUWrOQtWw0RXmZxgyiapb6/ZPMoZmg/xY+nFl1Kgj
+         pH0A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782220398; x=1782825198;
-        h=cc:to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=QFXXWE9fBxsiphisMz3jKhcIk0QDsz2y2XoZ0YQGi0I=;
-        b=YhyRKpo0f/iUUIGVUnJO5yFISGb7516t8YsHIt6CYkE3vQ0wOfK/GqYPcEMgtMdjlZ
-         P2quSSvqfkHLEfj60vsY2Z/ltAetXElMYVp1KbUZ4kgbJg0ws5hsGIveJh7k9Sz7i6iO
-         FD9Bn8BjLUr35X85l40HDd1yH8uWKs9X/EXEN7Wr1d22ayPtc9AhRO+TFotwLJ9/Pr0i
-         yQgXUmBCJBdOMt7ypsNa3YBTMshnAyp/kpBLUoQuxicj5akIUf4kXJ9AQOE9DZbdRQjP
-         yQkF/V5tqX0cjJaGCz2YyZBFH9Khl1WeoLxJnDmZgNt1Xbo3IPGZCbrHk0GC5TLVjTf7
-         lOfg==
-X-Forwarded-Encrypted: i=1; AFNElJ8yzx9tGmHJXszgf5AUV1U1POYYH7MbztQWk2W6m9JXv0apLnK5is86tTmvs7kSR+u3ODZ1Uhp9/tAi@vger.kernel.org
-X-Gm-Message-State: AOJu0Yyl1Fhu+mviUg+B8Nn5x6UIFcPbo5ab6H+cHMmlIYy4uxpwNqAT
-	7fWgR+49QE4y8YmLe+gl59l50vR9iwXu4e5z/MKt0Ky1gazUGWyi8olsfg46eyNK3EmQ8E0Z7Tq
-	9znyQYffo6wIO9js3i5MGJ3muuBjTlCu5SHnQWGS0kvzFJyHCNtBGyJSJ6mg=
+        d=1e100.net; s=20251104; t=1782231126; x=1782835926;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=5VLqiXbHUSk8P6cXgMo32lHHndXjEJIEyZZ29AUICc8=;
+        b=lRTkwkK1VihibFyUpFkJEgnwXaiLInaOkEMPQNe39aTh5WitVbjkob1En5XOMBi0Os
+         IZiEJiWJPupst8WwS1rQDb2u2AI57VCvKB4QnQeCYmyo+LnJd+dbBmB1sfnFNYguBDD6
+         sTvGTCHmUqx6MyZnVHjnV0NLTG8cUVfm4mmd4HoUG0riIa4XrfqKqSbw5/98VO3vhZYB
+         GOir+XpvRQkuI5RZ9l4VCRYA5g4lgNEFn1lsdaluG59rNfKmANpKlw6HUbJu3URNZ51s
+         dtn1vvSrbjK3UpQcykVCHl1mp6FtJtO4E1lHae9TXXgt98neGFEFKDnUtiouAQhxuj9t
+         LjTw==
+X-Forwarded-Encrypted: i=1; AHgh+RqVLyIQ0Qp8NyN7MGx3b8l4e1+7tCNkVTyw+vDpEjdA896kkDIOPveZrQ4hX1nsw3nRCMzB0H+5w1th@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy4ktI7d60DSO85xeJPeMK+Yk0onBltcalQXGQp/tDt9hiFf8zl
+	aUaIbXTkPSudslUxI5l9R4A/ZB/+c/K+tdnYBMxS9+fToyrxz8A9l5qm
+X-Gm-Gg: AfdE7cnDX+qGu3d/FNHMiKMyvthuXUMZ4uOrp/5nS3NQScsmIH7xNRWkJe9CJ/2tJy+
+	eZ8CwrgRBBeVKNxDvbBVRXKzh0HB8fXrnle7q2Pqkw1OcyP0hZgKfbSzC+HyPPPKCG7DRPNuHdr
+	0gO11JhM4tqbDPRxpxbGJgJSuP1MxK9QnszdtxH4ktz7kQZPirgsvFOd9Y27vG+S5UL1OPa3Uji
+	klEpLxbu3B8TKPTN+rC1DiHFO9s+yzLVn9xcJeo+Lqtn3NTacb2Z/wdm3q61oNp311tl/qLhsLW
+	3Sk1BeIuGsucxglgTT/7Y4mF1ONhu8w3PFedcfunb4sffif50wsBBcySHWwLqqFrt0Hgrr7vSsI
+	h9wQKkWbpEaGUYzROyHvLDUL5+lHISit2GG8rBJaHqelCjCWvhhd5BJbpsrh+CfNbTAupqqRkoy
+	USxFes5Fxsl+g6KmguiHqdt0rSUBQAS0D9wbW1ylueT2axYgMAkdMj+8ic26fnHlRDTlz0xv3ZI
+	e6cuxDPmg3C+OPiRJoYa60aBYeHd5va643TirltjhPuFnXwmZyt7bpM+ZJRxPQSzv0YnbOoNdO9
+	yQYwhxL/yx8ZlWhuAAAhZPMy/toA
+X-Received: by 2002:a17:902:d504:b0:2c2:8659:da2c with SMTP id d9443c01a7336-2c7425d58aamr162095025ad.14.1782231126211;
+        Tue, 23 Jun 2026 09:12:06 -0700 (PDT)
+Received: from cs-1047136853211-default.asia-southeast1-a.c.d33bddc1d573818c7-tp.internal (235.235.240.35.bc.googleusercontent.com. [35.240.235.235])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2c7439f8e42sm109281705ad.48.2026.06.23.09.12.03
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 23 Jun 2026 09:12:05 -0700 (PDT)
+From: Aditya Srivastava <aditya.ansh182@gmail.com>
+To: tytso@mit.edu
+Cc: jack@suse.cz,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>,
+	Anthony Rebello <arebello@redhat.com>
+Subject: [PATCH] ext4, jbd2: abort journal on file data write error under data_err=abort
+Date: Tue, 23 Jun 2026 16:11:31 +0000
+Message-ID: <20260623161131.2189-1-aditya.ansh182@gmail.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:c1f7:b0:489:443d:a8ed with SMTP id
- 5614622812f47-4896ac4a91amr16299113b6e.32.1782220398523; Tue, 23 Jun 2026
- 06:13:18 -0700 (PDT)
-Date: Tue, 23 Jun 2026 06:13:18 -0700
-In-Reply-To: <20260623083540.2744885-1-yun.zhou@windriver.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a3a866e.c358b6d0.89040.0003.GAE@google.com>
-Subject: [syzbot ci] Re: ext4: deferred iput framework for EA inodes
-From: syzbot ci <syzbot+ci7b0958cccc507600@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, tytso@mit.edu, 
-	yi.zhang@huawei.com, yun.zhou@windriver.com
-Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-syzbot ci has tested the following series
+From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 
-[v9] ext4: deferred iput framework for EA inodes
-https://lore.kernel.org/all/20260623083540.2744885-1-yun.zhou@windriver.com
-* [PATCH v9 1/4] fs: add iput_if_not_last() helper
-* [PATCH v9 2/4] ext4: introduce ext4_put_ea_inode() for safe deferred iput
-* [PATCH v9 3/4] ext4: convert all EA inode iput() calls to ext4_put_ea_inode()
-* [PATCH v9 4/4] ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
+The "data_err=abort" mount option in ext4 is designed to abort the
+journal and force the filesystem into read-only mode if a file data
+writeback failure is detected (to prevent silent data loss and stale
+data exposure).
 
-and found the following issue:
-WARNING: ODEBUG bug in flush_delayed_work
+However, in standard data=ordered mode, file data writeback is executed
+and waited for during transaction commit in
+journal_finish_inode_data_buffers(). When
+filemap_fdatawait_range_keep_errors() detects and returns a data writeback
+error (e.g. -EIO), JBD2 merely prints a warning message and then
+discards the error. This results in the transaction committing
+successfully, exposing stale/corrupted data and defeating the purpose
+of the data_err=abort option.
 
-Full report is available here:
-https://ci.syzbot.org/series/acc1a7bd-816f-451e-86ee-a62f88ad8fcc
+Fix this by:
+1. Defining a new JBD2 configuration flag, JBD2_ABORT_ON_DATA_ERR.
+2. In JBD2, if JBD2_ABORT_ON_DATA_ERR is set, abort the transaction commit
+   and the journal thread via jbd2_journal_abort() if writeback fails.
+3. In ext4, configure JBD2_ABORT_ON_DATA_ERR on the journal based on the
+   ext4 "data_err=abort" mount option in ext4_init_journal_params().
 
-***
-
-WARNING: ODEBUG bug in flush_delayed_work
-
-tree:      torvalds
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
-base:      502d801f0ab03e4f32f9a33d203154ce84887921
-arch:      amd64
-compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
-config:    https://ci.syzbot.org/builds/79d2cdf0-fde6-4e70-a88c-04d44c9d3e44/config
-syz repro: https://ci.syzbot.org/findings/9b2e3f5d-279a-469f-9f2a-05f96ea11587/syz_repro
-
-EXT4-fs warning (device loop2): ext4_multi_mount_protect:287: Invalid MMP block in superblock
-------------[ cut here ]------------
-ODEBUG: assert_init not available (active state 0) object: ffff8881bf08c9e0 object type: timer_list hint: 0x0
-WARNING: lib/debugobjects.c:632 at debug_print_object+0xec/0x230 lib/debugobjects.c:629, CPU#1: syz.2.19/5833
-Modules linked in:
-CPU: 1 UID: 0 PID: 5833 Comm: syz.2.19 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-RIP: 0010:debug_print_object+0x18a/0x230 lib/debugobjects.c:629
-Code: f8 48 c1 e8 03 80 3c 18 00 74 08 4c 89 ff e8 5d 04 71 fd 4d 8b 0f 4c 89 ef 48 8b 74 24 08 48 89 ea 44 89 e1 4d 89 f0 ff 34 24 <67> 48 0f b9 3a 48 83 c4 08 ff 05 a3 23 70 0b 48 83 c4 10 5b 41 5c
-RSP: 0018:ffffc9000179f848 EFLAGS: 00010046
-
-RAX: 1ffffffff179eacc RBX: dffffc0000000000 RCX: 0000000000000000
-RDX: ffffffff8c2a9980 RSI: ffffffff8c2a93e0 RDI: ffffffff903ddbf0
-RBP: ffffffff8c2a9980 R08: ffff8881bf08c9e0 R09: ffffffff8bcf69c0
-R10: dffffc0000000000 R11: ffffffff81b25990 R12: 0000000000000000
-R13: ffffffff903ddbf0 R14: ffff8881bf08c9e0 R15: ffffffff8bcf5660
-FS:  00007fd11e12e6c0(0000) GS:ffff8882a922d000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007ffe46d80f88 CR3: 00000001bf40e000 CR4: 00000000000006f0
-Call Trace:
- <TASK>
- debug_object_assert_init+0x237/0x370 lib/debugobjects.c:1075
- debug_timer_assert_init kernel/time/timer.c:803 [inline]
- debug_assert_init kernel/time/timer.c:848 [inline]
- __try_to_del_timer_sync kernel/time/timer.c:1457 [inline]
- __timer_delete_sync+0x181/0x520 kernel/time/timer.c:1621
- flush_delayed_work+0x48/0x100 kernel/workqueue.c:4414
- ext4_drain_ea_inode_work fs/ext4/xattr.h:196 [inline]
- __ext4_fill_super fs/ext4/super.c:5795 [inline]
- ext4_fill_super+0x54c7/0x66d0 fs/ext4/super.c:5844
- get_tree_bdev_flags+0x430/0x4f0 fs/super.c:1634
- vfs_get_tree+0x92/0x2a0 fs/super.c:1694
- fc_mount fs/namespace.c:1198 [inline]
- do_new_mount_fc fs/namespace.c:3765 [inline]
- do_new_mount+0x319/0xdc0 fs/namespace.c:3841
- do_mount fs/namespace.c:4174 [inline]
- __do_sys_mount fs/namespace.c:4390 [inline]
- __se_sys_mount+0x31d/0x420 fs/namespace.c:4367
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fd11d19e0ca
-Code: 48 c7 c2 e8 ff ff ff f7 d8 64 89 02 b8 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 49 89 ca b8 a5 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007fd11e12de58 EFLAGS: 00000246
- ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 00007fd11e12dee0 RCX: 00007fd11d19e0ca
-RDX: 0000200000000400 RSI: 0000200000000340 RDI: 00007fd11e12dea0
-RBP: 0000200000000400 R08: 00007fd11e12dee0 R09: 000000000021c91c
-R10: 000000000021c91c R11: 0000000000000246 R12: 0000200000000340
-R13: 00007fd11e12dea0 R14: 000000000000051a R15: 0000200000000240
- </TASK>
-----------------
-Code disassembly (best guess):
-   0:	f8                   	clc
-   1:	48 c1 e8 03          	shr    $0x3,%rax
-   5:	80 3c 18 00          	cmpb   $0x0,(%rax,%rbx,1)
-   9:	74 08                	je     0x13
-   b:	4c 89 ff             	mov    %r15,%rdi
-   e:	e8 5d 04 71 fd       	call   0xfd710470
-  13:	4d 8b 0f             	mov    (%r15),%r9
-  16:	4c 89 ef             	mov    %r13,%rdi
-  19:	48 8b 74 24 08       	mov    0x8(%rsp),%rsi
-  1e:	48 89 ea             	mov    %rbp,%rdx
-  21:	44 89 e1             	mov    %r12d,%ecx
-  24:	4d 89 f0             	mov    %r14,%r8
-  27:	ff 34 24             	push   (%rsp)
-* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
-  2f:	48 83 c4 08          	add    $0x8,%rsp
-  33:	ff 05 a3 23 70 0b    	incl   0xb7023a3(%rip)        # 0xb7023dc
-  39:	48 83 c4 10          	add    $0x10,%rsp
-  3d:	5b                   	pop    %rbx
-  3e:	41 5c                	pop    %r12
-
-
-***
-
-If these findings have caused you to resend the series or submit a
-separate fix, please add the following tag to your commit message:
-  Tested-by: syzbot@syzkaller.appspotmail.com
-
+Reported-by: Anthony Rebello <arebello@redhat.com>
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=207729
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 ---
-This report is generated by a bot. It may contain errors.
-syzbot ci engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/super.c      | 4 ++++
+ fs/jbd2/commit.c     | 2 ++
+ include/linux/jbd2.h | 1 +
+ 3 files changed, 7 insertions(+)
 
-To test a patch for this bug, please reply with `#syz test`
-(should be on a separate line).
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7283108d7609..de34490a5b68 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5875,6 +5875,10 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
+ 		journal->j_flags |= JBD2_BARRIER;
+ 	else
+ 		journal->j_flags &= ~JBD2_BARRIER;
++	if (test_opt(sb, DATA_ERR_ABORT))
++		journal->j_flags |= JBD2_ABORT_ON_DATA_ERR;
++	else
++		journal->j_flags &= ~JBD2_ABORT_ON_DATA_ERR;
+ 	/*
+ 	 * Always enable journal cycle record option, letting the journal
+ 	 * records log transactions continuously between each mount.
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index d8577725a2fb..49acc9d0809e 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -768,6 +768,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		printk(KERN_WARNING
+ 			"JBD2: Detected IO errors %d while flushing file data on %s\n",
+ 			err, journal->j_devname);
++		if (journal->j_flags & JBD2_ABORT_ON_DATA_ERR)
++			jbd2_journal_abort(journal, err);
+ 		err = 0;
+ 	}
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 7e785aa6d35d..e39679656de6 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1410,6 +1410,7 @@ JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
+ #define JBD2_FLUSHED	0x008	/* The journal superblock has been flushed */
+ #define JBD2_LOADED	0x010	/* The journal superblock has been loaded */
+ #define JBD2_BARRIER	0x020	/* Use IDE barriers */
++#define JBD2_ABORT_ON_DATA_ERR	0x040	/* Abort the journal on file data write errors */
+ #define JBD2_CYCLE_RECORD		0x080	/* Journal cycled record log on
+ 						 * clean and empty filesystem
+ 						 * logging area */
+-- 
+2.47.3
 
-The patch should be attached to the email.
-Note: arguments like custom git repos and branches are not supported.
