@@ -1,54 +1,54 @@
 Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 280873CE4B5;
-	Tue, 23 Jun 2026 08:38:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 439703CF1F1;
+	Tue, 23 Jun 2026 08:38:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782203894; cv=none; b=T2QLVsAIzS7b1X9wbUhwKQAczSkUlVCY3EDOSj20lwaZUoRsqpx+UnL5zSciEv6PdMjQTnc7gsEmfS96X3G/D/WTEONLkGpRq5FHhJiDttHXkVX3WaTyEhnQEGEYA5VSvslJdrt57FxqtxubpnDVYrvW3NnMCCt81Y2iJGBQ7E0=
+	t=1782203895; cv=none; b=NOvRJxqN85FXq8hyNXlDRswqH5Tb46h15IuyRxjS7UMogiVdpWaqOnWDDim5i4JZ+k62iaCVNBztL1YhOZIVEZ7kUtnalDnt3gU1h6K4rZksf+6P7Sk/0VQKt1zHTcLL8Pa9xoG28zPS4a7t0Dfgw4BGJhTWAxTS4Ntc2quonZ4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782203894; c=relaxed/simple;
-	bh=7qX5PxOZFCtuuEqounfZX8OvsYIKviwn8Dxc9sX/y7k=;
+	s=arc-20240116; t=1782203895; c=relaxed/simple;
+	bh=GiEHYyXSv4KPbI6KvBl2B8FXPEEOC/UmbWu7TWVjas4=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=o9L21+6VWSrhuw09LR0QK0jtAAGC8vFvhgZBo0w2wnWMaCk96S2wX2u6ltmDlK9RjHpIZfPglwmgwsQEtqJbd+Zf9qLOYL+hWrDawuAbL/ugXPCSfEdqQl4LWY2Z3vnNYcJTGUdq1fIdAYoau8LfZrySklmzZ3Cc3HOJ85bewC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=FKLs780X; arc=none smtp.client-ip=205.220.178.238
+	 MIME-Version:Content-Type; b=M3wt9WXyvWTFw+P7oGs9+omrf8rv2jb7SPy5R32ftNwrVCwLxrmTrmT4MtZTXlRl4Z4gPmVa5GMw2AONfkPn9Gzq9YtWt9vHtK9HOi4isNHuRufe/MN0oFrSRrZLWmlwp3/TBvF7fhINdim51AJ4o1Qn15GEyy+kE0Vfv6wiX1Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=S/Mq5OCG; arc=none smtp.client-ip=205.220.178.238
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="FKLs780X"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65N6ni0u3337966;
-	Tue, 23 Jun 2026 08:35:48 GMT
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="S/Mq5OCG"
+Received: from pps.filterd (m0250812.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65N6jM1L2817485;
+	Tue, 23 Jun 2026 08:35:54 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
 	 h=cc:content-transfer-encoding:content-type:date:from
 	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=QJjTXBsZQ0cJpWN4Cy+e34JE0ClahDpK6gFd/pPry7I=; b=
-	FKLs780XPM+GzkoOMjmIknqQIrzVIxwTFGeZ4j90TPSIwoIX0Iy/IFHdmsSMfYLO
-	0uiaROkDsP96vtf9FIDD5BxcAmYe41G8P3dLwDcpM6QugXR+E8kqpvymWDFHeSBQ
-	451xIyy+OS/zACy6WVPYnIZeDdWhl1ertKAALALTO3R5XTi0p+hm2CWUP6+7NGsr
-	Ei4pxH99iR90kER/BqQgOKN3DshLy1hXQn3FbRIjI6iAUMSkFdVNnRaCjQRCydCR
-	2HgJ3kuY94G/8RoVgCxvdEB0yoigyyH2Qvk05/RJhEShRn5A3zlAa9yTjlr+ZIet
-	g/WjXGnR0kQys/HWwWDG0g==
+	PPS06212021; bh=x35jGbhQ/BfDQx9ToRkqBMLd0DWy+HVaRK2+3ygZOTY=; b=
+	S/Mq5OCGc3Af3JnNtvp2ZeCY2hHmpKOnHAFE31VfnGFD2LuO4rjF+grwgzt6uDQI
+	ZTc1EAsE0HZdHwxQDvbJHxs2Lr3NJ0DZFkXR2lKL8ukbt4jAR/sPplbdHLdBzCrw
+	WYa1BXqtNNokgs4AMi6cYzh9eZV4pmGP1jHNOMtvWeVy6AIMJsh+Yr2ayd1M9Il7
+	YD3maV3qflevY6yKoY2LlKBCbms1bxE7vP5uCFxBSQcBwl4mI7w1jAAMuPmJU1MY
+	c22YBBYPQTVA0FujiezqtfFcE0z7gB/ZgeuseHHidVRrLXRjcKh65k53/QLIL3mv
+	k+hf5P2d0BaRZNwqcL/FiA==
 Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4ewg2wu7pe-1
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4ewhu5b551-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Tue, 23 Jun 2026 08:35:48 +0000 (GMT)
+	Tue, 23 Jun 2026 08:35:53 +0000 (GMT)
 Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
  ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Tue, 23 Jun 2026 01:35:46 -0700
+ 15.1.2507.61; Tue, 23 Jun 2026 01:35:52 -0700
 Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
  ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Tue, 23 Jun 2026 01:35:44 -0700
+ 15.1.2507.61 via Frontend Transport; Tue, 23 Jun 2026 01:35:49 -0700
 From: Yun Zhou <yun.zhou@windriver.com>
 To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
         <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
         <yi.zhang@huawei.com>
 CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <yun.zhou@windriver.com>
-Subject: [PATCH v9 1/4] fs: add iput_if_not_last() helper
-Date: Tue, 23 Jun 2026 16:35:37 +0800
-Message-ID: <20260623083540.2744885-2-yun.zhou@windriver.com>
+Subject: [PATCH v9 3/4] ext4: convert all EA inode iput() calls to ext4_put_ea_inode()
+Date: Tue, 23 Jun 2026 16:35:39 +0800
+Message-ID: <20260623083540.2744885-4-yun.zhou@windriver.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20260623083540.2744885-1-yun.zhou@windriver.com>
 References: <20260623083540.2744885-1-yun.zhou@windriver.com>
@@ -60,76 +60,194 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-Proofpoint-ORIG-GUID: rrHMABjFZ0xjwNBYfN1tuGFhNyImOZLB
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjIzMDA2OCBTYWx0ZWRfX1jmOPNh5/Qy0
- sAce/viXPrZmBMnwiUj6GxKhelWglvvSErBiDxMrZ+nMejGTtjTnlA2OBCf6B0Sh+JAKtPXjJ+f
- DktLdtv5nyT3MyZ/JkWXJW6U9oNX1iZSMrFC14fOhENHsP95xF1S
-X-Proofpoint-GUID: rrHMABjFZ0xjwNBYfN1tuGFhNyImOZLB
-X-Authority-Analysis: v=2.4 cv=Xdm5Co55 c=1 sm=1 tr=0 ts=6a3a4564 cx=c_pps
+X-Proofpoint-ORIG-GUID: JOj_RBRtuF4QDNhplm5QeWKqX-fExRP7
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjIzMDA2OCBTYWx0ZWRfX3lqSbwECrMii
+ 4AeWv6HNNqx8eodUNH8xN0U3Q+FnzgN/gHcr8wjjEP6hdEjPOin4esZPIi3XnHdBAa2D5T0qj1m
+ TOheNhWF0tM1+9cAiR5eeM73dgmtwv5fbuf50iItzNP3DN/Th/x1
+X-Proofpoint-GUID: JOj_RBRtuF4QDNhplm5QeWKqX-fExRP7
+X-Authority-Analysis: v=2.4 cv=ILwyzAvG c=1 sm=1 tr=0 ts=6a3a4569 cx=c_pps
  a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
  a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=t7CeM3EgAAAA:8 a=vCr0if_IiwaKUNF-nsEA:9
+ a=fTW__CHxibyLmBMfj2wP:22 a=t7CeM3EgAAAA:8 a=4Hxdw77LFoERu1OnU-oA:9
  a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjIzMDA2OCBTYWx0ZWRfX8BBUXLz8oje3
- QBmqO+RJeOi/m4HlFnLMi1J2AsWSHJzHl2l80Axj35XQd/uR0CDZCNqs8eZWDqGKhENA5DouOta
- SSptSdXYlPYYYAemkha3YzFb9VhiFxjFAa9zd0CEgdD3PaM2fTHCASJD81I+2+0aKibimoYrVPJ
- cISFsEHv1F4Men+Jqszl6N+2lDvv9FUm17NiRjhe7ILajG0AJZ/8INzDASgFiYLn9N8OgH4twzI
- makLyiY+O7QzdojAoO0wVf5ckRlZRCyTncJ2gX8WJR+tDqlO/ut5lHmqyEhe+4Y1E7IBW7YHiYm
- 185FgB+fmrIOUEMyNrlr5C4hligOZ8eV4v7gEtWUBYRPo+2Zs/BE2XuSRe0kHfJZtOMH+O4zK0N
- 0+L/KiIbPMLEu0whNRax02g5F0M9FaENDzSPzkZTCxl6++9/itJSn4dML2I4tb9YIpGCUP6hE+A
- BqDuVyBS40gwIlgG9Jw==
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjIzMDA2OCBTYWx0ZWRfX7IFBzdNrxH4B
+ 8AZThJAJ1C62KpIlYRGQfpM7O5bYbbOlLlFvvP0zNo2Ex4rIJxrFfsRz5TL9w6ORUnuPuDwcoWW
+ p7kCD53ANHpvGwa6i53Dk79jNC4cFzcTC5bGi9EZ8SXSzVqpTet1w1ptxDHf7xxY05z2FtVUBlW
+ Bfuu8ELzQmkz/g3cPl77iuYMa/wJb9EjxISGc66Ep8u6Hkpr32cWIpBrjl8cbkX17pOM7CT+0NK
+ dfLE3HPjP73iIkJOyGdyXaD31GSIYITMJjAO9s9dRpJ3AHUBMMI3YIF2tZc7ZrpcYf/hCXB6I3X
+ TM8c53i9+HllDFfwwxwnPXVd/rsiJjmxwu2Xa1xUUUn8eXz7rfTTSZOseHin5NiaAStFhk7wWHi
+ VEUIq7EEusFOYZcrRffrZ6l3g4xZvnKQaJFfOjaihGLhZ4Cmjzcc8DPZ6CEP2681YMV0fo3tEG8
+ fpkCd+h1QSuE2ZCbIqA==
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
  definitions=2026-06-23_02,2026-06-22_01,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- lowpriorityscore=0 spamscore=0 priorityscore=1501 adultscore=0
- impostorscore=0 malwarescore=0 clxscore=1015 bulkscore=0 suspectscore=0
- phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
- definitions=main-2606230068
+ lowpriorityscore=0 clxscore=1015 suspectscore=0 spamscore=0 malwarescore=0
+ adultscore=0 impostorscore=0 phishscore=0 bulkscore=0 priorityscore=1501
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606230068
 
-Add a helper that drops an inode reference only if the caller does not
-hold the last one.  Returns true if the reference was dropped, false
-otherwise.
+Convert all iput() calls on EA inodes in xattr code paths to use
+ext4_put_ea_inode().  This establishes a uniform rule: every EA inode
+reference release in ext4 xattr code goes through ext4_put_ea_inode(),
+eliminating the need to analyze each call site individually for lock
+safety.
 
-This is useful for filesystems that need to release inode references
-in contexts where triggering final iput (and thus eviction) would be
-unsafe due to lock ordering constraints.  The caller can check the
-return value and defer the final iput to a safe context.
+Converted sites:
 
-Unlike iput_not_last() which BUG_ON's if called with the last ref,
-this variant is designed to be called speculatively.
+- ext4_xattr_inode_get() read path
+- ext4_xattr_inode_inc_ref_all() main loop and cleanup path
+- ext4_xattr_inode_dec_ref_all() error paths
+- ext4_xattr_inode_create() error path
+- ext4_xattr_inode_cache_find() mismatch path
+- ext4_xattr_inode_lookup_create() out_err
+- ext4_xattr_set_entry() old_ea_inode
+- ext4_xattr_block_set() new block path, cleanup, and tmp_inode
+- ext4_xattr_ibody_set() error and success paths
+- ext4_xattr_delete_inode() quota loop
+
+For most of these, iput_if_not_last() will succeed (the EA inode has
+other references) making the overhead a single atomic operation.
 
 Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
-Suggested-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/fs.h | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ fs/ext4/xattr.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6da44573ce45..4916a9d54347 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2418,6 +2418,19 @@ static inline void super_set_sysfs_name_generic(struct super_block *sb, const ch
- extern void ihold(struct inode * inode);
- extern void iput(struct inode *);
- void iput_not_last(struct inode *);
-+
-+/**
-+ * iput_if_not_last - drop an inode reference only if it is not the last one
-+ * @inode: inode to put
-+ *
-+ * Returns true if the reference was dropped, false if this was the last
-+ * reference and the caller must arrange for final iput() in a safe context.
-+ */
-+static inline bool iput_if_not_last(struct inode *inode)
-+{
-+	return atomic_add_unless(&inode->i_count, -1, 1);
-+}
-+
- int inode_update_time(struct inode *inode, enum fs_update_time type,
- 		unsigned int flags);
- int generic_update_time(struct inode *inode, enum fs_update_time type,
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index ecdad5920b14..90b693b78a45 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -569,7 +569,7 @@ ext4_xattr_inode_get(struct inode *inode, struct ext4_xattr_entry *entry,
+ 					ea_inode->i_ino, true /* reusable */);
+ 	}
+ out:
+-	iput(ea_inode);
++	ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 	return err;
+ }
+ 
+@@ -1106,10 +1106,10 @@ static int ext4_xattr_inode_inc_ref_all(handle_t *handle, struct inode *parent,
+ 		err = ext4_xattr_inode_inc_ref(handle, ea_inode);
+ 		if (err) {
+ 			ext4_warning_inode(ea_inode, "inc ref error %d", err);
+-			iput(ea_inode);
++			ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 			goto cleanup;
+ 		}
+-		iput(ea_inode);
++		ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 	}
+ 	return 0;
+ 
+@@ -1135,7 +1135,7 @@ static int ext4_xattr_inode_inc_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err)
+ 			ext4_warning_inode(ea_inode, "cleanup dec ref error %d",
+ 					   err);
+-		iput(ea_inode);
++		ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 	}
+ 	return saved_err;
+ }
+@@ -1203,7 +1203,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err) {
+ 			ext4_warning_inode(ea_inode,
+ 					   "Expand inode array err=%d", err);
+-			iput(ea_inode);
++			ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 			continue;
+ 		}
+ 
+@@ -1507,7 +1507,7 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
+ 			if (ext4_xattr_inode_dec_ref(handle, ea_inode))
+ 				ext4_warning_inode(ea_inode,
+ 					"cleanup dec ref error %d", err);
+-			iput(ea_inode);
++			ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 			return ERR_PTR(err);
+ 		}
+ 
+@@ -1566,7 +1566,7 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
+ 			kvfree(ea_data);
+ 			return ea_inode;
+ 		}
+-		iput(ea_inode);
++		ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 	next_entry:
+ 		ce = mb_cache_entry_find_next(ea_inode_cache, ce);
+ 	}
+@@ -1617,7 +1617,7 @@ static struct inode *ext4_xattr_inode_lookup_create(handle_t *handle,
+ 				      ea_inode->i_ino, true /* reusable */);
+ 	return ea_inode;
+ out_err:
+-	iput(ea_inode);
++	ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 	ext4_xattr_inode_free_quota(inode, NULL, value_len);
+ 	return ERR_PTR(err);
+ }
+@@ -1850,7 +1850,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 
+ 	ret = 0;
+ out:
+-	iput(old_ea_inode);
++	ext4_put_ea_inode(inode->i_sb, old_ea_inode);
+ 	return ret;
+ }
+ 
+@@ -2012,7 +2012,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 				old_ea_inode_quota = le32_to_cpu(
+ 						s->here->e_value_size);
+ 			}
+-			iput(tmp_inode);
++			ext4_put_ea_inode(inode->i_sb, tmp_inode);
+ 
+ 			s->here->e_value_inum = 0;
+ 			s->here->e_value_size = 0;
+@@ -2152,7 +2152,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 					ext4_warning_inode(ea_inode,
+ 							   "dec ref error=%d",
+ 							   error);
+-				iput(ea_inode);
++				ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 				ea_inode = NULL;
+ 			}
+ 
+@@ -2206,7 +2206,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 			ext4_xattr_inode_free_quota(inode, ea_inode,
+ 						    i_size_read(ea_inode));
+ 		}
+-		iput(ea_inode);
++		ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 	}
+ 	if (ce)
+ 		mb_cache_entry_put(ea_block_cache, ce);
+@@ -2288,7 +2288,7 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 
+ 			ext4_xattr_inode_free_quota(inode, ea_inode,
+ 						    i_size_read(ea_inode));
+-			iput(ea_inode);
++			ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 		}
+ 		return error;
+ 	}
+@@ -2300,7 +2300,7 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 		header->h_magic = cpu_to_le32(0);
+ 		ext4_clear_inode_state(inode, EXT4_STATE_XATTR);
+ 	}
+-	iput(ea_inode);
++	ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 	return 0;
+ }
+ 
+@@ -2989,7 +2989,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 					continue;
+ 				ext4_xattr_inode_free_quota(inode, ea_inode,
+ 					      le32_to_cpu(entry->e_value_size));
+-				iput(ea_inode);
++				ext4_put_ea_inode(inode->i_sb, ea_inode);
+ 			}
+ 
+ 		}
 -- 
 2.43.0
 
