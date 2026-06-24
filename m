@@ -1,185 +1,317 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-yw1-f175.google.com (mail-yw1-f175.google.com [209.85.128.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B39CD2253B0
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 12:32:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782304367; cv=none; b=T5UksQjaauoPTkNhA9fy0QeKooBYri5Nkl4P8xfb4cQsy9jB06Qo38ScuHvy7cLGX1IBoYlukzcmgN3Y8xIGmJdRbYRsl5qrp4FrmfSF71RQAEvHSPff3EDbUbAgQp+H/6AGu/20qAfK7BeC1Xij/myo44aNxNKH3+rXli5uo6M=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782304367; c=relaxed/simple;
-	bh=1nfNxqXNEotcmGX35uyaBU2McLbyXdNu8TfrVYyikNo=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=eDfRuWRz7sVXnd8L27bcKFsjy6zt0DooP72zflTx1dF2ZIe+gfXWjkIu2yrh9VLexlEu9KcIG+5A525bzaZ4WX/LC/PXA57BgtZGqM91ZvJtQv62t5qRQWdU55dbCTeWftvxzNQjlq+6FWwM/vrVWdI1uwwcg2pEne8v7m45pEw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=gO78/Ria; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=87EI2CLE; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=kpvtle5U; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=uLUlAiN6; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 549AB221723
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 12:33:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.175
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782304403; cv=pass; b=fSw+TSuqKhKvAYI3C266J4WhJAb2I6JnBLyYo4iema+2meoPZ5vSvkxqhmDAPoOiYuViqWAELGLsrwBV4RBx6AzwKiu2rP/+bO7JHSrDryKH6rlkwgkJRsoTXqz1w8KxfY/8wIgDVFd3ELgx7ORNJC3Ty8Qq6+uAA9KQn/7xB+U=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782304403; c=relaxed/simple;
+	bh=kY5ABHvPzSieba4p4i7ESG01+qD4QO+dw5f1mtRIUEg=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=NCpnszFquBgkj3Q+XcqksDE9kpHO5fpCLJRlxQp2TWLP1kEzz+chyzfv6Xwby/163mAlu04/ZYPGdAQHxB9r3SaaAsUW3sfFtjSGLGuIbk09Qk4nnBCOO8YLrg+4D0MHnI9ID5ugpHBOJJ0l0H9htAbTmRh3ycSOmtF+u17Ndgc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=iUwtWZKj; arc=pass smtp.client-ip=209.85.128.175
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="gO78/Ria";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="87EI2CLE";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="kpvtle5U";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="uLUlAiN6"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id E07BD761B0;
-	Wed, 24 Jun 2026 12:32:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782304363; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FhW8V1lQcHi9f3NBpYZEyRelNO4ARaBYoHkSvTL08Pc=;
-	b=gO78/RiaHqU1GUVCKHUCkHbWwjYZk9WRm9xeG054V5QtuRDlZOJpvLgZavM/SQRa4KxbyX
-	6+c61KOPcaauPs65oBH3Tvewp3vOww/nhyn3pDbJ4ez6IIlKh1mmJpj1qn+bPfbVBiXaRu
-	XkDPaUp5ABLZXzNbfln5WlXcZEWbngY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782304363;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FhW8V1lQcHi9f3NBpYZEyRelNO4ARaBYoHkSvTL08Pc=;
-	b=87EI2CLE11Tzjj2oYdOpoW6MoTVjNv99AcMkJ2zHZTGEs/uvXxqUpPJAphJrpCxFXjvpS8
-	xnmi714BPk35tAAQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=kpvtle5U;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=uLUlAiN6
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782304362; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FhW8V1lQcHi9f3NBpYZEyRelNO4ARaBYoHkSvTL08Pc=;
-	b=kpvtle5UJf9ToTQjRr4AqqhI3UYT7/0HTgATpDFklc6SECl5KnU6gTwapB18B2PX60YkTP
-	YB+UCuE3lO0eqvHeEyYrmpZZacUJiDxPap2dgjVS+UJr//ppULbR9UL3DM0zH0WmmBSOet
-	FZ51m2QgHt+6Uq9yLRKzZtl0yFwhBaE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782304362;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FhW8V1lQcHi9f3NBpYZEyRelNO4ARaBYoHkSvTL08Pc=;
-	b=uLUlAiN6r1kyrZQaDvKmUOx3ZUXeiWOEQQP54Kz+CrDTVcxufaLywV0kBNHM6Fmi8M+E5m
-	Herb+RkZP8BdoYCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D6A60779A8;
-	Wed, 24 Jun 2026 12:32:42 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id tfBkNGrOO2rQUAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 24 Jun 2026 12:32:42 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 91A09A093E; Wed, 24 Jun 2026 14:32:42 +0200 (CEST)
-Date: Wed, 24 Jun 2026 14:32:42 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhu Jia <zhujia.zj@bytedance.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: cancel dirty accounting for folios without buffers
-Message-ID: <zm2zycnujo3h33h4ovwycoqihtnpvn6bxf5r3f7h5ut6j7tyg2@y4cykmdey4sa>
-References: <20260623094947.7853-1-zhujia.zj@bytedance.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iUwtWZKj"
+Received: by mail-yw1-f175.google.com with SMTP id 00721157ae682-7dbcb505578so10891177b3.3
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 05:33:22 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1782304401; cv=none;
+        d=google.com; s=arc-20240605;
+        b=W6svhcTiQfHOmNmhZgT8x2++7nya5Z2sy0FPfroIf6fKvncw98zGJJTikx9YbLQ+fP
+         tOXBsOsnElGX/q4F0gA4OmlKxqeBR14X1GH2yHoeRv1V3UkERGZcSUy3I8DdEUCguDVa
+         6snokqnuMgKcXBH/dMtT870M+IGIjsAX1RO+nbEooUkhuTTtMHJgs9LQKjMLqU92WVB5
+         dQRdIFVXG6o+UcdVbEVjEyQDQYwUrc+cs9KrvR8RWQpPGSIkVRlzgTWytqirJoxzML2+
+         ngLu6gvKQqPZ/hVYlYdbS903QQCXz5JBzIgqd8y8L4fxj8DHtqGO640JV8tsPz1NkAaq
+         hv/g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=lOA0leNyBg0GwokNzkKsWkbqUZ/PN9LB3gsQZgKrRss=;
+        fh=4Xx4GEChmv5yR2Ab0BiPXtJFILOUEQDwPOA8KwqOEVw=;
+        b=XVer6jP45G9+NJCeGlpYmTaBy0YUf17+B1XvarSmMPrgQSOPQQ0fBy9O3uooBEsae1
+         XqoUTpE3F1LwV5/xMh+sTq4INUteGRAHuiM+BGZzGnOjMUjMNSbrsmve7jffU1abTUfl
+         0nNM1Im1R+WlrrD8XMH5RiyeslXoiTd4yAXY1PMzRSz6Wdtttpt6JmA7y/miWPxcOL4k
+         ANtte5xTFT+Vn+Yf64iKpkCpaOhZXqqOd1h7/RqiV9deQNWWO1U8mTk+VscJyXb0TJzQ
+         5c9YkBXJJ6gBed6zFDPuvFRfpS7NPyUUy4zSZs8Lv2W0KMQcMF9B6xdMaIoRfXQNwk7C
+         PECQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782304401; x=1782909201; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=lOA0leNyBg0GwokNzkKsWkbqUZ/PN9LB3gsQZgKrRss=;
+        b=iUwtWZKjiqP7I4A8lpbDBsm3V3Wo+eUKq5H+zXCBwCa5gq8g1boLksPUomDm8hgDkQ
+         nG2djWhKLWJ5Sx4gQvzl0CaU9mf7hO8zB8yFgoQNDq2/szgE1pl43UUjX+FJQ3/YZcQ5
+         C8sC4+26CPIhKBBL5VHCbukbNSf/le/3Dyf+0z+KTb3K62nK9IWtb+XNzSeEbCWq0nYQ
+         hZNuAqmnnwzf57OXOiDbPj08wd2Z+gu/3YSCMsEBhl7CBodtjB7yocTwk6wJHkf9Ilel
+         rifYTEZ0YYOs0894XUOfkt00d852tXJalbj8ShkWXmnSZ0No8n7hknQ4UnUJinLtYDwd
+         6jwg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782304401; x=1782909201;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=lOA0leNyBg0GwokNzkKsWkbqUZ/PN9LB3gsQZgKrRss=;
+        b=gNz+7neXqqEeWLaowV0nlj1he55P3dYKEn6/gGa9XS7Ko7t2VaXojYJajFDDlYxEdX
+         50aXORY4lOdoBp9y9+tD7E59+MPEG0WXcloEeVxFJ4CTjuTREl1N42b3qXYQc/0l9QIN
+         HD25op1LcHtiye23W2cYbYipAPVwV10TnXstzh0l6aUcYsdElJul3I4fEN2rrqaPsTg0
+         WRJpePt0RPG4Ff5TiSz2pGNMiMbSjys8TnaA5MqpmtouGFF1wLuzwxV5SNC7u0Nostx+
+         CPInMpeb4a7ZXHKqqyfb67jqRV9yowqyi4AphZzj2haRcbgT9XEa+zVLdN2NhREirKvt
+         jPOg==
+X-Gm-Message-State: AOJu0YzKgg+wlAjy2ZB5plc3oCtmJgNcVqR710bjJMZkNcJ1FausxFp2
+	9sc/UEofE3egLLI//lkXLC+Tcvvmu9KK/eatjxfMgFmWtwBzdEkzkIW2H/ZP/Um6dmoZJ/Bgqoc
+	YWcHH4WB4shpeDynzAIRKFNveaSjO4zg=
+X-Gm-Gg: AfdE7cnt2MlZap9iVzDHOjOXmc808QGqOfyX9jdXLvlNYnLgQv0wQ9JYfLG9brAEV0G
+	+lXRjzaK8bjyUhs07uB+nepfumS928AgNFhjsZ8MQLNIQIXwRI96vLnPlWj3F3yyYdhAQaxhXWS
+	Gul/wzQOHioFynPuLwQKaHbmp9XqcuZlU8SrazAesh7V5Rrvt8GZPwg7Bv5AFX8NKvY7uUZsP0Y
+	heGJDDpgsolPop5wYtS5w7UJS2gdmK9FqzkqglPEuBQ0Bg6/tgtN47/vyudZr8CDuBMMlx7z/1c
+	/ZRVkVGTRaAFl5Uv6ZyIPWSTe34vXQ==
+X-Received: by 2002:a05:690c:b03:b0:7b3:3a49:752 with SMTP id
+ 00721157ae682-807ef05a04amr29905207b3.41.1782304401344; Wed, 24 Jun 2026
+ 05:33:21 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260623094947.7853-1-zhujia.zj@bytedance.com>
-X-Spam-Flag: NO
-X-Rspamd-Action: no action
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,bytedance.com:email]
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: E07BD761B0
-X-Spam-Score: -2.51
+References: <20260619191022.27008-1-ablagodarenko@thelustrecollective.com>
+ <20260619191022.27008-11-ablagodarenko@thelustrecollective.com> <tencent_2D1051E0281A7550C4CA60798593BF905B09@qq.com>
+In-Reply-To: <tencent_2D1051E0281A7550C4CA60798593BF905B09@qq.com>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Date: Wed, 24 Jun 2026 13:33:10 +0100
+X-Gm-Features: AVVi8Cc5efZGVGqz-1iLGq0jobKnrz34OqNPyjCCIsUX4qd9oeJ41rxM7naGNzk
+Message-ID: <CA+rD4x-FRNsuaujWtnXYo6fK3FgD-BWuMb8w85NL9eAPMpai=w@mail.gmail.com>
+Subject: Re: [PATCH v3 10/10] ext4: Add EXT4_IOC_SET_LUFID ioctl for setting
+ LUFID on directory entries
+To: XIAO WU <xiaowu.417@qq.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, 
+	Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Tue 23-06-26 17:49:47, Zhu Jia wrote:
-> Since commit cc5095747edf ("ext4: don't BUG if someone dirty pages
-> without asking ext4 first"), mpage_prepare_extent_to_map() handles dirty
-> folios without buffer heads by warning, clearing PG_dirty, and skipping
-> them. ext4 cannot write these folios because there are no buffer heads to
-> map and submit.
-> 
-> That recovery leaves dirty accounting behind: folio_clear_dirty() clears
-> PG_dirty but does not undo the accounting charged when the folio was
-> dirtied. We have seen this in production as Dirty/nr_dirty staying high
-> while Writeback/nr_writeback and device write IO stayed near zero, with
-> many writer tasks blocked in balance_dirty_pages() throttling. Thus the
-> warning-and-skip recovery can still become a dirty-throttle DoS.
-> 
-> Use folio_cancel_dirty() so dropping PG_dirty also cancels the dirty
-> accounting.
-> 
-> Fixes: cc5095747edf ("ext4: don't BUG if someone dirty pages without asking ext4 first")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Zhu Jia <zhujia.zj@bytedance.com>
+Hi Xiao,
 
-Good point. Feel free to add:
+Thanks for the detailed reproducer and analysis of the race condition on
+EXT4_I(inode)->i_dirdata, and for the additional issues you flagged from
+the same Sashiko AI review. I've confirmed all of them by reading the
+code directly and fixed each one:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+- ddh_length was missing the header's own length (only esl_data_len was
+used), which silently dropped the last byte of every LUFID payload set
+through this ioctl. Fixed to include the header size, and tightened the
+esl_data_len upper bound so the result can't wrap the __u8 field.
+- '.' and '..' are now rejected -- they must stay the fixed first two
+entries of the directory's first block, and can't go through this
+ioctl's general delete+re-add path.
+- The handler now checks inode_permission(dir, MAY_WRITE) before
+proceeding, instead of relying only on mnt_want_write_file().
+- ext4_dirdata_set_lufid() now also locks the target inode (nested under
+the parent directory, consistently dir-then-inode) for the
+i_dirdata set/use/restore window, closing the race you reproduced
+between concurrent calls on different hardlinks of the same inode.
 
-								Honza
+All four fixes will be included in the next version of this series.
 
-> ---
->  fs/ext4/inode.c | 8 +++++++-
->  1 file changed, 7 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c2c2d6ac7f3d1..7ea280e70c06e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2715,7 +2715,13 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
->  			 */
->  			if (!folio_buffers(folio)) {
->  				ext4_warning_inode(mpd->inode, "page %lu does not have buffers attached", folio->index);
-> -				folio_clear_dirty(folio);
-> +				/*
-> +				 * folio_cancel_dirty() pairs the dropped dirty
-> +				 * state with dirty accounting, but leaves stale
-> +				 * PAGECACHE_TAG_DIRTY/TOWRITE tags behind. Later
-> +				 * writeback may rescan this clean folio.
-> +				 */
-> +				folio_cancel_dirty(folio);
->  				folio_unlock(folio);
->  				continue;
->  			}
-> -- 
-> 2.20.1
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks again for the thorough reproducers -- they were a big help in
+pinning down the root causes.
+
+Artem
+
+On Mon, 22 Jun 2026 at 18:21, XIAO WU <xiaowu.417@qq.com> wrote:
+>
+> Hi Artem,
+>
+> I came across the Sashiko AI review [1] of this patch and was able to
+> reproduce a kernel crash triggered by a race condition in
+> ext4_dirdata_set_lufid().  I wanted to share the evidence in case it's
+> helpful.
+>
+> The core issue is that EXT4_I(inode)->i_dirdata is set to a
+> stack-local pointer without locking the target inode:
+>
+>  > +static int ext4_dirdata_set_lufid(struct inode *dir,
+>  > +                                  const char *name, int namelen,
+>  > +                                  struct ext4_dentry_param *edp)
+>  > +{
+>  > ...
+>  > +    EXT4_I(inode)->i_dirdata =3D edp;
+>
+> The function locks the parent directory (inode_lock(dir)), but does NOT
+> lock the target inode.  If two threads operate on different hardlinks
+> to the *same* inode (in different directories), they race to overwrite
+> inode->i_dirdata with each other's stack-local edp pointers.  The
+> winner's stack pointer is later consumed through ext4_add_entry() =E2=86=
+=92
+> ext4_lookup() =E2=86=92 ext4_dentry_get_fid(), reading from a stale or
+> overwritten stack frame.
+>
+> With KASAN enabled this manifests as a null-ptr-deref because KASAN
+> poisons freed stack memory.
+>
+> [Reproduction]
+>
+> The PoC creates two subdirectories (/mnt/test/da and /mnt/test/db),
+> hardlinks the same file into both, then runs 8 child processes that
+> hammer EXT4_IOC_SET_LUFID on the two directories simultaneously via
+> ioctl().  Each child is pinned to a specific CPU to maximize the race
+> window.  The kernel panics within a few seconds.
+>
+> [Crash log =E2=80=94 kernel 7.1.0-next-20260618, CONFIG_KASAN=3Dy, SMP]
+>
+>    Oops: general protection fault, probably for non-canonical address
+>    0xdffffc0000000000: 0000 [#1] SMP KASAN NOPTI
+>    KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+>
+>    RIP: 0010:ext4_dirdata_set_lufid+0x3e8/0xb00
+>    RAX: dffffc0000000000 RBX: 0000000000000000
+>    ...
+>    Call Trace:
+>     <TASK>
+>     ext4_ioctl_set_lufid+0x2d9/0x350
+>     __ext4_ioctl+0x1d2/0x43c0
+>     __x64_sys_ioctl+0x193/0x210
+>     do_syscall_64+0x129/0x850
+>     entry_SYSCALL_64_after_hwframe+0x77/0x7f
+>     </TASK>
+>
+> The same crash was independently hit by a second thread at [#2],
+> confirming the race condition.
+>
+> Additionally, the Sashiko review [1] noted a few other issues in this
+> patch that may be worth checking:
+>
+> - The ioctl does not reject '.' and '..' =E2=80=94 modifying these specia=
+l
+>    entries via EXT4_IOC_SET_LUFID would corrupt the directory layout.
+>
+> - The ddh_length computation in ext4_find_dest_de() appears to
+>    exclude the header size (1 byte), which can cause the header and
+>    data insertion to overflow by one byte into the adjacent directory
+>    entry when (fname_len + esl_data_len) % 4 =3D=3D 0.
+>
+> - The handler calls mnt_want_write_file() but omits an explicit
+>    inode_permission(dir, MAY_WRITE) check, which may allow an
+>    unprivileged user with read-only access to the directory to
+>    modify directory entries.
+>
+> The PoC is attached below.  It compiles with:
+>
+>    gcc -o poc poc.c -static
+>
+> [1]
+> https://sashiko.dev/#/patchset/20260619191022.27008-1-ablagodarenko%40the=
+lustrecollective.com
+>      (Sashiko AI code review =E2=80=94 "Dangling Pointer", Severity: Crit=
+ical)
+>
+> Thanks,
+> XIAO
+>
+> // PoC: race on EXT4_I(inode)->i_dirdata via EXT4_IOC_SET_LUFID
+> #define _GNU_SOURCE
+> #include <stdio.h>
+> #include <stdlib.h>
+> #include <string.h>
+> #include <unistd.h>
+> #include <stdint.h>
+> #include <sys/types.h>
+> #include <sys/stat.h>
+> #include <sys/ioctl.h>
+> #include <sys/mount.h>
+> #include <sys/wait.h>
+> #include <fcntl.h>
+> #include <errno.h>
+> #include <sched.h>
+> #include <linux/loop.h>
+> #include <linux/fs.h>
+>
+> struct ext4_set_lufid {
+>      uint8_t  esl_name_len;
+>      char     esl_name[256];
+>      uint8_t  esl_data_len;
+>      char     esl_data[255];
+> };
+> #define EXT4_IOC_SET_LUFID _IOW('f', 47, struct ext4_set_lufid)
+> #define MNT "/mnt/test"
+>
+> int main(void)
+> {
+>      int fd, ret;
+>
+>      setvbuf(stdout, NULL, _IONBF, 0);
+>      printf("=3D=3D=3D EXT4_IOC_SET_LUFID PoC =3D=3D=3D\n\n");
+>
+>      /* Setup loopback ext4 filesystem */
+>      system("umount -l /mnt/test 2>/dev/null; losetup -d /dev/loop0
+> 2>/dev/null; true");
+>      system("rm -rf /mnt/test /tmp/img 2>/dev/null");
+>      mkdir(MNT, 0755);
+>      system("dd if=3D/dev/zero of=3D/tmp/img bs=3D1M count=3D64 2>/dev/nu=
+ll");
+>      system("losetup /dev/loop0 /tmp/img 2>/dev/null");
+>      system("mkfs.ext4 -F -b 1024 -O ^metadata_csum,^64bit,^flex_bg
+> /dev/loop0 2>/dev/null");
+>      if (mount("/dev/loop0", MNT, "ext4", 0, NULL) !=3D 0) {
+>          printf("Mount failed\n"); return 1;
+>      }
+>
+>      /* Create target file with two hardlinks in different directories */
+>      mkdir(MNT "/da", 0755);
+>      mkdir(MNT "/db", 0755);
+>      close(open(MNT "/t", O_CREAT|O_WRONLY, 0644));
+>      link(MNT "/t", MNT "/da/t");
+>      link(MNT "/t", MNT "/db/t");
+>
+>      printf("Racing EXT4_IOC_SET_LUFID on hardlinks...\n");
+>      for (int r =3D 0; r < 20; r++) {
+>          pid_t kids[8];
+>          for (int i =3D 0; i < 8; i++) {
+>              kids[i] =3D fork();
+>              if (kids[i] =3D=3D 0) {
+>                  /* Half target /da, half target /db =E2=80=94 same inode=
+ */
+>                  const char *dir =3D (i < 4) ? MNT "/da" : MNT "/db";
+>                  cpu_set_t cpuset;
+>                  CPU_ZERO(&cpuset);
+>                  CPU_SET(i % 2, &cpuset);
+>                  sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
+>
+>                  for (int j =3D 0; j < 5000; j++) {
+>                      struct ext4_set_lufid l =3D {0};
+>                      l.esl_name_len =3D 2;
+>                      memcpy(l.esl_name, "t\0", 2);
+>                      l.esl_data_len =3D 5;
+>                      memcpy(l.esl_data, "ABCDE", 5);
+>                      int f =3D open(dir, O_RDONLY);
+>                      if (f >=3D 0) {
+>                          ioctl(f, EXT4_IOC_SET_LUFID, &l);
+>                          close(f);
+>                      }
+>                  }
+>                  _exit(0);
+>              }
+>          }
+>          for (int i =3D 0; i < 8; i++) {
+>              int ws;
+>              waitpid(kids[i], &ws, 0);
+>          }
+>          printf("."); fflush(stdout);
+>      }
+>      printf("\n");
+>
+>      printf("\n=3D=3D=3D dmesg =3D=3D=3D\n"); fflush(stdout);
+>      system("dmesg | grep -iE 'KASAN|BUG:|Call Trace|general protection'
+> | tail -40");
+>
+>      umount(MNT);
+>      system("losetup -d /dev/loop0 2>/dev/null");
+>      printf("Done.\n");
+>      return 0;
+> }
+>
