@@ -1,124 +1,105 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.3])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C0033A1A2D;
-	Wed, 24 Jun 2026 08:59:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3496E3B71B7;
+	Wed, 24 Jun 2026 09:53:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.3
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782291590; cv=none; b=Bc55lRkgWEC+2MKFqS1/SdHVIa+piWj6SWtj0wuOsDrdznck9xlFC5vmCiaz+/Dmr/lpw1QNXe1OdAdFl1rjqv1UDdN9ghkw4R3orlttR/QRbYEsYUtpqXbp+QD479pTbsD9wafOaxnKNubgjkw3BQAH3/QT8I5lMJdrpNApXz0=
+	t=1782294800; cv=none; b=Ex7RrbzeK0pk4q3JHDOuEjt9M7MXFs9bMsB8IOxpxxzxX0X6+S+FZc48bH0FZoQzwRgt6n1+XljxBhaHl9pByDCzgz2KfmQfo8+7oUNuEgq8D+YMrTTuofMR/fvEdacUKGGCat5DeNwjjSQ6KGt4AMXPEQQLjnvJ/QMmLOPzBik=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782291590; c=relaxed/simple;
-	bh=ETK/3fIWVJgZ66RkvKFMZ1xoiAvUnqVHg8A9UlR6oO4=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=hHLdk0ycu2OHmAfj13QPiVL5MhORtVtnq3dBCY6ji4ISmSakj7PCEVyY8Nif+7DfaYYQaVMqYSjff0wJ84dQqkDNWUT9JD+XE2BdN8/Eq8Epctp4lfSvKxSnP+FJ6IvFPg7s9x8yxiTuNPkmKGj7I1pDWHkYKIfsq3vGn7t6N5k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Cmfji3PW; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782294800; c=relaxed/simple;
+	bh=/RsimXtUZeALvhTpnPBGO4O42IfyXVnXJNCQqvgaa7w=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=B5U8QxJXgAQH+Krwryu3UkJhbhHGodlMMwlCVWrZgNLfPAOQeqCN9qwFF1eByJ/+pRwaWC7loWzq6rPZsdj7kC+0Uat2czTZmXd2SMZMn6V2wbiJrXcfMOX4eMNRXWZvj5hy4O1DJjZ2nGsr3cvet6XhEy47WZ74mg8skMXoiaQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=EFxlUVgI; arc=none smtp.client-ip=220.197.31.3
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Cmfji3PW"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5E931F00A3D;
-	Wed, 24 Jun 2026 08:59:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782291587;
-	bh=DCKt4O2HlnFxHy8Mhm2C2zuPcXHOFrNOinuxD1UUcRc=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=Cmfji3PW0AVDGKQ4BufZEBDJWiQm1o8/rQsb7n4IPtwL2Bri4DpGeykggivNXbeKl
-	 bstR8Aj141x+SXVVytHk70wMVpKQ2bDQeC4RGdfuf925UT+hEoMCDYVxscMlqcrn3d
-	 6xnEmkWJdCUcpVMSWDpNGerH9VyGcglmIk/mUCMD0BiEP0cv0fwfWo3JgHR5YPVrnL
-	 Jte9tPT/yzkvqV00w5paETjF56VjF6ALEXGUBYhw0wOJsEeEWA+2CMVQPU75HFlWVo
-	 MQXB30pU37MXc/fscX12cEexVJBV1ND0Xny4mZBk5+ARKMHfjuwtW9baGkR7d+IuXL
-	 XUjSsQ4FUeCjg==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 196D839EF964;
-	Wed, 24 Jun 2026 08:59:37 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="EFxlUVgI"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
+	Content-Type; bh=r5fzx6RclqJpv4vFUryyFQdWO/HXnDdYJq/f+ro6hcc=;
+	b=EFxlUVgI0cOTHsqrpEIa8kB60e8KS3mWsJNrk3gNyaGTwc8zEyPXaTYR83XpDa
+	qFBBHduEvoK0wC79MPZ/jgig8aeAiocO1HmP3kxMs4q/pGip9i63IH/prLVYTnJk
+	YuyqMdtN7E4ThcVXqNK+eu6po2S08H3ROE3QvYWNA0Glw=
+Received: from [192.168.127.68] (unknown [])
+	by gzga-smtp-mtada-g0-2 (Coremail) with SMTP id _____wDnb3XZqDtqZczYFQ--.44085S2;
+	Wed, 24 Jun 2026 17:52:28 +0800 (CST)
+Message-ID: <0360a4a5-07cd-4a21-b247-d55d95b4ab79@163.com>
+Date: Wed, 24 Jun 2026 17:52:25 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v6 v6 0/3] ext4: improve mballoc statistics reporting and
+ control
+To: corbet@lwn.net, skhan@linuxfoundation.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Baolin Liu <liubaolin@kylinos.cn>
+References: <20260524015421.2529617-1-liubaolin12138@163.com>
+ <1816234d.8a1b.19ef8ff3f2e.Coremail.liubaolin12138@163.com>
+From: liubaolin <liubaolin12138@163.com>
+In-Reply-To: <1816234d.8a1b.19ef8ff3f2e.Coremail.liubaolin12138@163.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-Subject: Re: [f2fs-dev] [PATCH v8 00/17] Subject: Exposing case folding
- behavior
-From: patchwork-bot+f2fs@kernel.org
-Message-Id: 
- <178229157577.2577930.354083176752004996.git-patchwork-notify@kernel.org>
-Date: Wed, 24 Jun 2026 08:59:35 +0000
-References: <20260217214741.1928576-1-cel@kernel.org>
-In-Reply-To: <20260217214741.1928576-1-cel@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz,
- pc@manguebit.org, yuezhang.mo@sony.com, cem@kernel.org,
- almaz.alexandrovich@paragon-software.com, adilger.kernel@dilger.ca,
- linux-cifs@vger.kernel.org, sfrench@samba.org, slava@dubeyko.com,
- linux-ext4@vger.kernel.org, linkinjeon@kernel.org, sprasad@microsoft.com,
- frank.li@vivo.com, ronniesahlberg@gmail.com, glaubitz@physik.fu-berlin.de,
- jaegeuk@kernel.org, hirofumi@mail.parknet.co.jp, linux-nfs@vger.kernel.org,
- tytso@mit.edu, linux-api@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
- senozhatsky@chromium.org, chuck.lever@oracle.com, hansg@kernel.org,
- anna@kernel.org, linux-fsdevel@vger.kernel.org, sj1557.seo@samsung.com,
- trondmy@kernel.org
+X-CM-TRANSID:_____wDnb3XZqDtqZczYFQ--.44085S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7trW8Kr45uFyUGw4rWF13CFg_yoW8XFW7pF
+	WUKan5GF1UZr13Jrs7Kr4rur4Sqa4fC345JrsFv348uF98tr1ftFZ8trWruFyDCrWq93W8
+	Xr4jyr93Cry2yaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UY0PhUUUUU=
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbCwRzKlWo7qNyqAQAA3M
 
-Hello:
+Dear Maintainer,
+    I was wondering if there are still any concerns or questions 
+regarding this patch series.
 
-This series was applied to jaegeuk/f2fs.git (dev)
-by Christian Brauner <brauner@kernel.org>:
+    The patches have been updated based on the previous review comments 
+and have also passed the Sashiko AI review.
+    I would appreciate any further feedback and look forward to your reply.
 
-On Tue, 17 Feb 2026 16:47:24 -0500 you wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
+Best regards,
+Baolin
+
+在 2026/6/24 17:38, Baolin Liu 写道:
 > 
-> Following on from
 > 
-> https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57fd@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
 > 
-> I'm attempting to implement enough support in the Linux VFS to
-> enable file services like NFSD and ksmbd (and user space
-> equivalents) to provide the actual status of case folding support
-> in local file systems. The default behavior for local file systems
-> not explicitly supported in this series is to reflect the usual
-> POSIX behaviors:
 > 
-> [...]
-
-Here is the summary with links:
-  - [f2fs-dev,v8,01/17] fs: Move file_kattr initialization to callers
-    (no matching commit)
-  - [f2fs-dev,v8,02/17] fs: Add case sensitivity flags to file_kattr
-    https://git.kernel.org/jaegeuk/f2fs/c/3035e4454142
-  - [f2fs-dev,v8,03/17] fat: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,04/17] exfat: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,05/17] ntfs3: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,06/17] hfs: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,07/17] hfsplus: Report case sensitivity in fileattr_get
-    (no matching commit)
-  - [f2fs-dev,v8,08/17] ext4: Report case sensitivity in fileattr_get
-    (no matching commit)
-  - [f2fs-dev,v8,09/17] xfs: Report case sensitivity in fileattr_get
-    (no matching commit)
-  - [f2fs-dev,v8,10/17] cifs: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,11/17] nfs: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,12/17] f2fs: Add case sensitivity reporting to fileattr_get
-    (no matching commit)
-  - [f2fs-dev,v8,13/17] vboxsf: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,14/17] isofs: Implement fileattr_get for case sensitivity
-    (no matching commit)
-  - [f2fs-dev,v8,15/17] nfsd: Report export case-folding via NFSv3 PATHCONF
-    (no matching commit)
-  - [f2fs-dev,v8,16/17] nfsd: Implement NFSv4 FATTR4_CASE_INSENSITIVE and FATTR4_CASE_PRESERVING
-    (no matching commit)
-  - [f2fs-dev,v8,17/17] ksmbd: Report filesystem case sensitivity via FS_ATTRIBUTE_INFORMATION
-    (no matching commit)
-
-You are awesome, thank you!
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+> 
+> 
+> 
+> At 2026-05-24 09:54:18, "Baolin Liu" <liubaolin12138@163.com> wrote:
+>>From: Baolin Liu <liubaolin@kylinos.cn>
+>>
+>>This series improves mballoc statistics reporting and control by adding
+>>blocks_allocated to /proc/fs/ext4/<dev>/mb_stats, using
+>>READ_ONCE()/WRITE_ONCE() for concurrent accesses to s_mb_stats, and
+>>allowing mballoc stats to be controlled through
+>>/proc/fs/ext4/<dev>/mb_stats.
+>>
+>>Changes in v6:
+>> - Serialize proc and sysfs updates to s_mb_stats with a mutex so that
+>>   clearing mb_stats through the proc control path cannot race with
+>>   concurrent administrative writes.
+>>
+>>Baolin Liu (3):
+>>  ext4: add blocks_allocated to mb_stats output
+>>  ext4: use READ_ONCE/WRITE_ONCE for s_mb_stats
+>>  ext4: allow controlling mballoc stats through proc mb_stats
+>>
+>> Documentation/ABI/testing/sysfs-fs-ext4 |  3 +-
+>> Documentation/admin-guide/ext4.rst      |  9 ++-
+>> Documentation/filesystems/proc.rst      | 13 +---
+>> fs/ext4/ext4.h                          |  2 +
+>> fs/ext4/mballoc.c                       | 58 ++++++++++++++----
+>> fs/ext4/sysfs.c                         | 80 ++++++++++++++++++++++++-
+>> 6 files changed, 135 insertions(+), 30 deletions(-)
+>>
+>>-- 
+>>2.51.0
 
