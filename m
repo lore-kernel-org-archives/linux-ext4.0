@@ -1,87 +1,97 @@
-Received: from va-1-113.ptr.blmpb.com (va-1-113.ptr.blmpb.com [209.127.230.113])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECC113955EC
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 09:54:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.113
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72B833AFAFE;
+	Wed, 24 Jun 2026 10:00:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.4
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782294859; cv=none; b=gluJJsXOk/HmTTlcVqkJuoFfKraM5omDpnIwljolMRFMqCKlE38fqTZAPMWHMitqKVV4vpe3tYuT+6hLZNWAmNBmcC4igmmUODJasBdBGDacZoOhKjAxz5mGl6ar9zM+v2VBOsIIluy791kGE8bhUXO4BQxLJQ+1rrj4Rg1HbzE=
+	t=1782295258; cv=none; b=Cfm2xYUHukFRuSJvOp6xW14F5qHxijJ9jrXtQeIixC0BN9BHxboJeRrva982qbt5MLCzxCXF5GmEnOzrzsL5qVp/54PL3tg/vUpNy5cPkITJL0xcs/bo9tYM/x9WiVcv81flDYtGP796ARhfmAudFPL0R8Rs+JHuapWp6QWtZ0M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782294859; c=relaxed/simple;
-	bh=joBK+B3mYaMGNAxp3fOJTks/CETcFMfVsK+aX1v74NQ=;
-	h=To:Cc:Message-Id:Mime-Version:In-Reply-To:Content-Type:References:
-	 Subject:Date:From; b=cZiNEftXUUl3vrsmI0DhrBW9OK0F/dwEqNWz6oP2WwoHGOFL2FfuSbpJlAMEo5RWms/JtNp9/nVkxN04/1/IRDgpMvmynCK5VxnLX17rfSPEiKlFFbmXeD5zuLdv7NUoLjQ0B/qiQvnJMDH9ouTZ5FPK/vDR6hb1LG3EgHM/P3c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=Qo4SovjB; arc=none smtp.client-ip=209.127.230.113
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1782295258; c=relaxed/simple;
+	bh=20/mOkQUeE5Qx0c9o4NqSxdUCKBphBYonBFfLmfcBss=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=fLoi9MuLnLmxD6gC3mVf2D0wfL/BlL4GyQJjBag9RI9D3+rRcjS0hAmJ0x7KAvpXZjfLMwAT8iSaEpVP9vu1rwOAYZLMS5HFMgvcP1flB3TWrMGnTQwo/cyzwYvubtvx5yb0ne4DVRGo7VP7veVNrw5rJLIeYDnUPcUsr55b+3c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=ZVDAoBwm; arc=none smtp.client-ip=220.197.31.4
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="Qo4SovjB"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1782294733; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=umShoTivTMViTlH/8dCfBir+diXBA0Qrg1F+tK6uXyw=;
- b=Qo4SovjBUNNjajxoqY/MsOZpFTAcbYMwHsGsALJDkMiBQkEQMq3mKh5ZZboe+cCTxsNuic
- proxRLjemkMxaMZaWbanMUS2cB9L54CP/j+X4F170Q5YdcXGC/Y0RdYdBI436SA07KFDBG
- frT81FqmsOOn2KHVSGyIDtSQL3UMT/mcstZo3/AgY8kSymMOfd0T0eHnY+cSgYFpDsM3Iw
- RqtoapK54KOHXjyjiECSuuwPOvAfI2vO5LL4E7kIFaJGNCNVT6fosN7vJUH+QTofoeN1UJ
- HBbLYPNPFHROWVPtI6QCxvCGqq1j1W7L4fIOmHiKgTo8kWD+10980/yPv/0vuQ==
-To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Content-Transfer-Encoding: 7bit
-Cc: "Zhu Jia" <zhujia.zj@bytedance.com>, <tytso@mit.edu>, 
-	<adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>, <jack@suse.cz>, 
-	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, 
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>, 
-	<stable@vger.kernel.org>
-Message-Id: <20260624094535.1-zhujia.zj@bytedance.com>
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="ZVDAoBwm"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
+	Content-Type; bh=lGzrfY6rus5jPWJ2WjZMjuKUCPfSROVDpjLZUTappyA=;
+	b=ZVDAoBwml7pcZ7k5kO6bxeUiifbEsjRLALCyb/IahNcdSpPbTZSSjNm8ujCZ0e
+	6T3D7hjIRHLm6kaOT1k+B2C6QzFiT5rLER9GJNP02JCfM7y1tby1lApcb2kE81/l
+	AQIk3bz91XDZsaYjucSN7VMrNOOpmm0PsYGIF/z7/PCDw=
+Received: from [192.168.127.68] (unknown [])
+	by gzga-smtp-mtada-g1-0 (Coremail) with SMTP id _____wCXNnOfqjtqnbgSFQ--.2742S2;
+	Wed, 24 Jun 2026 18:00:03 +0800 (CST)
+Message-ID: <51efbdd8-76c1-4577-b5ff-a47658c7c0b2@163.com>
+Date: Wed, 24 Jun 2026 17:59:59 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-In-Reply-To: <81ed36cc-b5c8-41cf-8b7d-16611e61e294@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
-References: <20260623094947.7853-1-zhujia.zj@bytedance.com> <81ed36cc-b5c8-41cf-8b7d-16611e61e294@huaweicloud.com>
-Subject: Re: [PATCH] ext4: cancel dirty accounting for folios without buffers
-Date: Wed, 24 Jun 2026 17:52:06 +0800
-X-Original-From: Zhu Jia <zhujia.zj@bytedance.com>
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-From: "Zhu Jia" <zhujia.zj@bytedance.com>
-X-Lms-Return-Path: <lba+26a3ba8cb+b21b49+vger.kernel.org+zhujia.zj@bytedance.com>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v6 v6 0/3] ext4: improve mballoc statistics reporting and
+ control
+To: corbet@lwn.net, skhan@linuxfoundation.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
+ liubaolin12138@163.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Baolin Liu <liubaolin@kylinos.cn>, liubaolin12138@163.com
+References: <20260524015421.2529617-1-liubaolin12138@163.com>
+ <1816234d.8a1b.19ef8ff3f2e.Coremail.liubaolin12138@163.com>
+From: liubaolin <liubaolin12138@163.com>
+In-Reply-To: <1816234d.8a1b.19ef8ff3f2e.Coremail.liubaolin12138@163.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_____wCXNnOfqjtqnbgSFQ--.2742S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7Wr1xGr4DXr18Ar48Jr4rGrg_yoW8JF1DpF
+	yDKan8GF15ur13JrsxKrn5Ww4Sqa4fCw1UJrsIv3409F98tr1ftrZxtryruFyDGrWjva48
+	XrW2yry3CFy2ya7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0JUsNVDUUUUU=
+X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbCwgM8B2o7qqPWTQAA35
 
-Hi Yi,
+Add recipient: liubaolin12138@163.com
 
-Thanks for taking a look.
+在 2026/6/24 17:38, Baolin Liu 写道:
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> At 2026-05-24 09:54:18, "Baolin Liu" <liubaolin12138@163.com> wrote:
+>>From: Baolin Liu <liubaolin@kylinos.cn>
+>>
+>>This series improves mballoc statistics reporting and control by adding
+>>blocks_allocated to /proc/fs/ext4/<dev>/mb_stats, using
+>>READ_ONCE()/WRITE_ONCE() for concurrent accesses to s_mb_stats, and
+>>allowing mballoc stats to be controlled through
+>>/proc/fs/ext4/<dev>/mb_stats.
+>>
+>>Changes in v6:
+>> - Serialize proc and sysfs updates to s_mb_stats with a mutex so that
+>>   clearing mb_stats through the proc control path cannot race with
+>>   concurrent administrative writes.
+>>
+>>Baolin Liu (3):
+>>  ext4: add blocks_allocated to mb_stats output
+>>  ext4: use READ_ONCE/WRITE_ONCE for s_mb_stats
+>>  ext4: allow controlling mballoc stats through proc mb_stats
+>>
+>> Documentation/ABI/testing/sysfs-fs-ext4 |  3 +-
+>> Documentation/admin-guide/ext4.rst      |  9 ++-
+>> Documentation/filesystems/proc.rst      | 13 +---
+>> fs/ext4/ext4.h                          |  2 +
+>> fs/ext4/mballoc.c                       | 58 ++++++++++++++----
+>> fs/ext4/sysfs.c                         | 80 ++++++++++++++++++++++++-
+>> 6 files changed, 135 insertions(+), 30 deletions(-)
+>>
+>>-- 
+>>2.51.0
 
-Yes, clearing PAGECACHE_TAG_DIRTY/TOWRITE would make the page-cache state
-cleaner. I had a version that did this by adding a helper around
-folio_cancel_dirty() and clearing the xarray tags after confirming the
-folio was still the same clean page-cache entry.
-
-It looked like this:
-
-static void ext4_cancel_dirty_folio(struct address_space *mapping,
-				    struct folio *folio)
-{
-	XA_STATE(xas, &mapping->i_pages, folio->index);
-	unsigned long flags;
-
-	folio_cancel_dirty(folio);
-
-	xas_lock_irqsave(&xas, flags);
-	if (xas_load(&xas) == folio && !folio_test_dirty(folio)) {
-		xas_clear_mark(&xas, PAGECACHE_TAG_DIRTY);
-		xas_clear_mark(&xas, PAGECACHE_TAG_TOWRITE);
-	}
-	xas_unlock_irqrestore(&xas, flags);
-}
-
-The reason I left the tags unchanged in this version is that I was not sure
-whether it is appropriate for ext4 to open-code xarray tag cleanup directly.
-
-If you think this is the right direction, I can add the helper back and
-send a v2.
-
-Thanks,
-Jia
