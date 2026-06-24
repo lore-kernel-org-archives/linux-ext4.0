@@ -1,142 +1,119 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9BE8389E1A;
-	Wed, 24 Jun 2026 07:00:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5FCE3AC0FB;
+	Wed, 24 Jun 2026 08:20:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782284445; cv=none; b=hHPFJKppvQYNv7QwsvbmmCQ7N3qPuA0jLuNpppkzm+Ig2fLfWovjM2K24jTUccb31cyAziIdT+nD1AS83G5DAperM4IlDpVaA/VNdFttnmftgMqkIO1eDBySI5Uw7yc44fOMSovGhm3tyP6gGL4eiLJv7jMyvc4/34KDOqgcONU=
+	t=1782289218; cv=none; b=CYWvUJHUGb33iQgvuAkfDLl43GryWzVuoYeM/3HDIunKUIJj/tJ5IcTjyJu7VdRq4QsZUPztjuHZVs/sv625PbminTLwDlHcmXn9C2pMR4qoeanWsWigiVuWeFEYH8UIhbBW4vUqcFaVQ8h3J5cVy8VkglPY5cK1RIhdb9W1s6s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782284445; c=relaxed/simple;
-	bh=ggV0YlVXI7DTbFlsUaAX4URfNCfmC1nJrLJMMdvOKtU=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=bq+Yvw1geCF2X3rtrHYQoNTMWcbaDN+6lk0OzD2oMyVnuty8T6v+JYFW0bY75IZiT2zhdGg6KyYBACP/W0hA9EyMcWpJUxFdw0QIbtXUgmvXiKXoo93izcY/lw9yHMnmuWuWe32Vkm96jwGId13XTNgnRh/ESuJzdDwhekKNpv4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=Al3Db5u2; arc=none smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="Al3Db5u2"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65O5tR8s1541164;
-	Wed, 24 Jun 2026 06:59:53 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:message-id:mime-version:subject:to; s=PPS06212021; bh=ssK4+tt9A
-	hggdla44TnItEVKxHpVDYREzC6KKMhvxFw=; b=Al3Db5u2rkV9YXkaIr0Cu1cz/
-	3fPe3Zase5tvptagk+Ui8vo9QlgG1xsP6641DDZiKqoNwlIOdjNOwD84tIrmLQfn
-	LTIz8wKUHLv2Uxe4hoVCGM0r5iW5MNi2sX0GCtyNn92vPNm8FsYgy/faJdInwKY/
-	STfGb3dHFwljgHnzun7ek+l5SNHKYOF+hOxd90jwNOgLAz66iehVoP1qwRVR7oPR
-	0KBmO0vFu6P2g3YWkQVogKkEbJ7P0InPUsdrxQBonH3uehydtgfWrKjXEynxFiMP
-	4o/wto1cCVJW5bMftSNtgH7PRC6uSmaBXRLsRLqPEUbNr6M9fnfg99IV3o6cg==
-Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4ewg2wvsjq-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Wed, 24 Jun 2026 06:59:52 +0000 (GMT)
-Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Tue, 23 Jun 2026 23:59:51 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Tue, 23 Jun 2026 23:59:49 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <yun.zhou@windriver.com>
-Subject: [PATCH] ext4: zero non-uptodate buffers before encryption in writeback
-Date: Wed, 24 Jun 2026 14:59:48 +0800
-Message-ID: <20260624065948.85415-1-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
+	s=arc-20240116; t=1782289218; c=relaxed/simple;
+	bh=2zg9BWH7scCDsn2NtD/89iAObk1ppChjKw5IxGVKxL4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=s4o0d1ih43igsD1uGt1gR0RBH1ddMx/cH6BSmTkC0Z+jukSXA/n43bY3vIxjLzZXh6lc7my77/GBNFUCmS3vdS4wV0ubSlE+7Oaj2k+43xnKQ6xeNqMIDbH8Y3Mw+FRIl/wWS4jTN5kXzMOaRxzLM5Mq/63YSYDXTcKgmERhS6Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4glZbX6w08zYQtsg;
+	Wed, 24 Jun 2026 16:19:20 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 25620409D9;
+	Wed, 24 Jun 2026 16:20:03 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with SMTP id cCh0CgBXWj8xkztqw3mxCw--.15244S3;
+	Wed, 24 Jun 2026 16:20:02 +0800 (CST)
+Message-ID: <81ed36cc-b5c8-41cf-8b7d-16611e61e294@huaweicloud.com>
+Date: Wed, 24 Jun 2026 16:20:00 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Proofpoint-ORIG-GUID: k4GGvfsE8oqU6y5virmR4R1pGZebZv3H
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI0MDA1NiBTYWx0ZWRfX8r7ByVbXFNS0
- 6zQr8DJlppfKMnHHf9/10UzdDvV0BQiJaIZ55QzBkYbjeHDx2rZGP5wOhD6jC7ycPVyRLcsmcRf
- 4kNwv/pR6604IgD+IalNHVeRxNAyshj25K7vQxrSJGRLde0DVP5a
-X-Proofpoint-GUID: k4GGvfsE8oqU6y5virmR4R1pGZebZv3H
-X-Authority-Analysis: v=2.4 cv=Xdm5Co55 c=1 sm=1 tr=0 ts=6a3b8068 cx=c_pps
- a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
- a=zHBmtUlt6j9fkuvYlXkA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
- a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI0MDA1NiBTYWx0ZWRfXw9kDDMDwgata
- bcYknCFUL5121f9GadhiFX3r049cNLL/xlHfd6LVmYqxVRA09Ol8VMQDNQdZ/RVimATM1k0gCmX
- 9hn2e0f29gvaVdQ84htXsZ7pGnhSLYRS8rtQkr0nVP1u6UnUcoFoA6bHIcqjSXVjMYAEODCiwV7
- WIxu1YHuCPXKbJngKtH02H3rvQx25vo1iZ7BL10EbgdrqThDlz2svrXUBu9gYtvOF/48+n/ktbP
- 4ugsZ+QBXI+KGxaM4a9AeHr8hd9DrGwfKSJmGMz6B3sy5vA6o3jwigAo4wF86lV2r/3H9QP0J2C
- IqVNJWEwYjiGuplUkG+i59JN8mmCEU1AaBSYzYOdBuxSKBdg2ydX7t4UrHBO/16qUIgGXc3fwt8
- tEc6Y2m9krBB0UE7jlb6BfbtHDL5p6DUYn4eW+SJOkIlyoXoxP0bygp7NXxrgefyCk+mXE6WXI+
- GD+HTB3k1vEJb6KH/IQ==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-24_02,2026-06-23_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- lowpriorityscore=0 spamscore=0 priorityscore=1501 adultscore=0
- impostorscore=0 malwarescore=0 clxscore=1015 bulkscore=0 suspectscore=0
- phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
- definitions=main-2606240056
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: cancel dirty accounting for folios without buffers
+To: Zhu Jia <zhujia.zj@bytedance.com>, tytso@mit.edu, adilger.kernel@dilger.ca
+Cc: libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <20260623094947.7853-1-zhujia.zj@bytedance.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260623094947.7853-1-zhujia.zj@bytedance.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:cCh0CgBXWj8xkztqw3mxCw--.15244S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7ArWUGw4UJFWUuFW3Wr1fXrb_yoW8tr18pF
+	W5KFZ8JrsYqasxCa43ua1UXr1UK393Wa1UGFy7J3Wjva45GFy2grW8KF18uF13Jr1xJFWF
+	qF4jgw17WF4UCrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
+	wI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
+	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43
+	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
+	0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
+	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-ext4_bio_write_folio() encrypts the folio content from offset 0 up to
-round_up(len, blocksize) before submitting IO. When blocksize < PAGE_SIZE,
-this range may include blocks that are not being written out (holes,
-delay, or unwritten blocks). If the folio was freshly allocated by the
-page cache (via write_begin) for a partial-page write, these non-target
-blocks may remain uninitialized from the buddy allocator.
+On 6/23/2026 5:49 PM, Zhu Jia wrote:
+> Since commit cc5095747edf ("ext4: don't BUG if someone dirty pages
+> without asking ext4 first"), mpage_prepare_extent_to_map() handles dirty
+> folios without buffer heads by warning, clearing PG_dirty, and skipping
+> them. ext4 cannot write these folios because there are no buffer heads to
+> map and submit.
+> 
+> That recovery leaves dirty accounting behind: folio_clear_dirty() clears
+> PG_dirty but does not undo the accounting charged when the folio was
+> dirtied. We have seen this in production as Dirty/nr_dirty staying high
+> while Writeback/nr_writeback and device write IO stayed near zero, with
+> many writer tasks blocked in balance_dirty_pages() throttling. Thus the
+> warning-and-skip recovery can still become a dirty-throttle DoS.
+> 
+> Use folio_cancel_dirty() so dropping PG_dirty also cancels the dirty
+> accounting.
 
-The encryption engine (AES-XTS) then reads these uninitialized bytes as
-operands, triggering a KMSAN uninit-value report in aes_encrypt().
+Hi, Zhu jia!
 
-Fix this by zeroing any non-uptodate buffer that is not being written
-out, before calling fscrypt_encrypt_pagecache_blocks(). This ensures the
-crypto engine never operates on uninitialized data regardless of which
-blocks are actually being submitted for IO.
+Thanks for the patch. This overall looks good to me. But should we also
+clear PAGECACHE_TAG_DIRTY and PAGECACHE_TAG_TOWRITE here? Since the folio
+won't be written back again until it gets dirtied, it seems cleaner to
+remove these tags as well. Are there any side-effects I'm missing?
 
-The common case of blocksize == PAGE_SIZE is unaffected since there can
-be no non-overlapping blocks within a single-block folio.
+Thanks,
+Yi.
 
-Reported-by: syzbot+7add5c56bc2a14145d20@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=7add5c56bc2a14145d20
-Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
----
- fs/ext4/page-io.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
-
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index bc674aa4a656..2d380b5a1501 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -555,12 +555,22 @@ int ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
- 	 * block which might be needed.  This may cause some unneeded blocks
- 	 * (e.g. holes) to be unnecessarily encrypted, but this is rare and
- 	 * can't happen in the common case of blocksize == PAGE_SIZE.
-+	 *
-+	 * Zero out any non-uptodate buffers that are not being written out,
-+	 * to prevent uninitialized memory from being fed into the crypto
-+	 * engine.
- 	 */
- 	if (fscrypt_inode_uses_fs_layer_crypto(inode)) {
- 		gfp_t gfp_flags = GFP_NOFS;
- 		unsigned int enc_bytes = round_up(len, i_blocksize(inode));
- 		struct page *bounce_page;
- 
-+		do {
-+			if (!buffer_async_write(bh) && !buffer_uptodate(bh))
-+				folio_zero_range(folio, bh_offset(bh),
-+						 bh->b_size);
-+		} while ((bh = bh->b_this_page) != head);
-+
- 		/*
- 		 * Since bounce page allocation uses a mempool, we can only use
- 		 * a waiting mask (i.e. request guaranteed allocation) on the
--- 
-2.43.0
+> 
+> Fixes: cc5095747edf ("ext4: don't BUG if someone dirty pages without asking ext4 first")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Zhu Jia <zhujia.zj@bytedance.com>
+> ---
+>  fs/ext4/inode.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c2c2d6ac7f3d1..7ea280e70c06e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2715,7 +2715,13 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+>  			 */
+>  			if (!folio_buffers(folio)) {
+>  				ext4_warning_inode(mpd->inode, "page %lu does not have buffers attached", folio->index);
+> -				folio_clear_dirty(folio);
+> +				/*
+> +				 * folio_cancel_dirty() pairs the dropped dirty
+> +				 * state with dirty accounting, but leaves stale
+> +				 * PAGECACHE_TAG_DIRTY/TOWRITE tags behind. Later
+> +				 * writeback may rescan this clean folio.
+> +				 */
+> +				folio_cancel_dirty(folio);
+>  				folio_unlock(folio);
+>  				continue;
+>  			}
 
