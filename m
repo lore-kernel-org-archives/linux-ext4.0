@@ -1,72 +1,71 @@
-Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
+Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5298A3B8BA1
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 13:38:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2EFA235F16F
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 13:38:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782308290; cv=none; b=GbagH2uLLusYX4V5gtbJT8I/suxz9/wkIhAweJzr5SDDyyAOSc3G5WuDMfikR98bSJsty4B2swcDnjN0sltOny4GsO8n/ECI5tMQIxItuFxDECHZ7NbFi/OMsmLMFcM+bNPylUZJsIzXpQC1qmWFfHb+6v00+384CUj5/LP0ihQ=
+	t=1782308291; cv=none; b=s3o49L3tPMavYPuyijQttDz8HpziQ9sHDgO0mA9nbhoU5frFKe3a5D5rLdyPSaFxOb+aR2I9KOki0o25+3oFATdufPaP2qAA5m3TI4GfgxTWKGRa3xn+gtthoJ9IxlNHUP2DDiqlsos+e/1skPzo2CLz5Mq0qaLVNAqyHVg8psw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782308290; c=relaxed/simple;
-	bh=QeckxND3nDN3zl1CIjxV5NdBBJfjUh2RIIbcEkShKrc=;
+	s=arc-20240116; t=1782308291; c=relaxed/simple;
+	bh=OThOFHIElOUX1c/ZB6TWjLgE8iB04DaKWfOWIg0SNzM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qKmE86s2KZ8Zeqs/cU4VS2ixhahxBE6Uio6A6dlbPKE38BldGSiqmD97sUSz1HzGUNc1kjHsGPamburekMXURraEux34iizt9124ynfkRBd8K2jrokIZlR1oW6TMg9HP0pqAIEXkAo9xqyJh/LGuyO7rEXdcGdstW/SC7x3hhE4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YtGxcSp8; arc=none smtp.client-ip=209.85.128.48
+	 MIME-Version; b=jY/RkqppMIgrmx8Vl7KwFS66iaLXhJpw8/YGxS99wZ0r06OHC5r1H1GTozdlNvaQhq3lIKucotj1qV95qkM6KX3HgEz7IB8sA/pCMCQWS3jlGtJE5IlvrlYQLBs1wjE4CCF4aFjANMuawr9I93y66oEgqPPrDpUKT9+GpqZ3bCU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=FynhOy6G; arc=none smtp.client-ip=209.85.221.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YtGxcSp8"
-Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4924593f45dso11839585e9.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FynhOy6G"
+Received: by mail-wr1-f51.google.com with SMTP id ffacd0b85a97d-45eeba68948so724687f8f.1
         for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 06:38:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1782308288; x=1782913088; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1782308289; x=1782913089; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=IzkM0Q1hFcFf8NoRp32si9ptcicnnZIjZIxXDx0tujg=;
-        b=YtGxcSp84OGQ2f+hLj3ao2ls5yoCoH+EHiWwyKqxjuiP+DkBuKPxTt846xaKpDRqMP
-         /2sWoSIa/6BM5PHV1rr/L2Bi63dVSMcV9y5XkPJcrulMmok45zcdyChc1MH6XrV0E1Ji
-         fL0NfWnq7AxY6PI8uS8VJ3IIFF/OA/i+mEslVY9eiNFwi5+Wa93ZViJ8sfDeq9xDpW2x
-         kP49sgY8qG3NzEKSHYrCkjE88mxNUQNJxY/nqHKPyovP0xhtyxFj0PI6Bbn2JXNE/Fud
-         wGoBSPHEpwqTzhQB17VePW3M76oSbj1h8j+YzqeeWAOo3pytfS0j/SMr5WonbpC4AlAG
-         pEEA==
+        bh=eO/0qFG1J/XyoZlo2kspw5sa44LNbKpl9dfwZgOZg3c=;
+        b=FynhOy6GoEY9xqpKGOyXdirXbDmeWfpnKCwQddoNXR9vcqg/RoGf32lCuyomKvIqyM
+         8meojja5DmziQxEEnA1mJJP5xZSC0C38MlHwWVjLukOdfn+glbhhiZ0aHVXc1Q++iBPK
+         0WEGqFSsyrPgw9NEe33eDMBD6gH6CT61qSw6sjHGt+HF7nfH/tTieE3O5nmrz0sgivOU
+         rf3A2dNnBq4dAZWyH/v0NqL+XneUwZB20KBC/F7zqZhFBcbQzcVGH3nEequkyf9MXL9s
+         PiWKg2YGPFP3tcoZtSYEnld7NSZ2evv1eqktsK16i6pi8xVG+PQl36M/H5b89m4SukmA
+         M+WA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782308288; x=1782913088;
+        d=1e100.net; s=20251104; t=1782308289; x=1782913089;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=IzkM0Q1hFcFf8NoRp32si9ptcicnnZIjZIxXDx0tujg=;
-        b=WlZCjR87JmbxygK1LDnG98eQh/rb/3fn1nPQWG8YFhIYgEPUAS6lnN3aIPLZThnOwn
-         aRZZzSiCw5jdDUrGwplA8B+fkUhBFz17qwvFh82AmMCuvdFM1l/aVTLcRRNdm/8k6EI1
-         rBlPNoV8/f9EE1qjPj63GDt8eAyVxSOuXTK8f7OByeElx8+IzyNEOMb/cCaHgJagEj2w
-         BpgG/cXBFZenIjzG4iAscI2qhLv9Cw7KTT6DIJ956dLQxvqGoJ5lrdJRrtc7NHtKJ5nr
-         r86R2UKI2DqqTOdw2J29pShcaOM+s3XxvgtgaExQoNyt7CAhhgs75yfa/EeLMlJaUV6p
-         4lcg==
-X-Gm-Message-State: AOJu0Yxgw/jfr8LkesRGFjOHmdgKovNbGOMe44zpJvDCYQDwwC+GcNLD
-	0UasnhVhYcL/CfDTCbJOFJl5WMv0f+nCl50tpWZzdPDnced6MJWNlsKbEL0whP7WE4k=
-X-Gm-Gg: AfdE7ckypiZAoFFaTAOTtS+KER5UZbrxsYf61MnavbfJdsp/D4rfnwzVoWOWNbOPOfN
-	y+YAi3hp5w7MUVnnk1McVYl8pR3a0D06lkR+252JieL2rHaEvlgxewv+wJi3+rKoXukZNdmZIdH
-	qQPOa4+4B2bN2tZLFPgwLkvQ3NaIqrRbdlLIu4wtL8Ypg6q31bKMZdtmiIOkCKwZbm79lVgJXmd
-	05VhYjC5FtOxmfQf/6zqzs0PBehTuBFuVrju9OqVAhZK4LQQQ2x/pmcn2UrLCcCHWbCo1qPUwgS
-	4f/p8gRmVlCTqLaMwsDtgfVkS7Tjs9v+tjuauBTa0s/nEsJ7MojRs58t4qADf9xWNRBkpxwJL3K
-	rfPwr98GYC1t2iFCW72S4zQYLGeWnWlZhkRvDZVVt5S5zKxVS1E7v0joupvzG5/Z05DYW5YK6xm
-	qduwM9pbU0/jedNbhn+AFkJQnmIBnXgDX8CCn6IDlBBAtt
-X-Received: by 2002:a05:600c:e547:10b0:492:1e36:bb04 with SMTP id 5b1f17b1804b1-4926087b5d6mr33702945e9.37.1782308287571;
-        Wed, 24 Jun 2026 06:38:07 -0700 (PDT)
+        bh=eO/0qFG1J/XyoZlo2kspw5sa44LNbKpl9dfwZgOZg3c=;
+        b=IjzdQvIZ92B0FBk2ZbX4OvkFecykhY5CjAT1TJliKkWLGrHUQTGvbyCZFXX2GQlOKA
+         lOs1fzzI0SE5izqwLjoAP57/TfsJpNa9OuHhAGhT/o8Ix+q9OXtWZaF+Muwo0vw3WhLx
+         S4fxVL7hASBtCwAh1TZdgaDJkQdEqTI9YvYS1oukzdnHdiPeVS8GkuinozzcGltmg8oM
+         PigGyMTMvhQldjndJQouBouOYj8pjl/9ZsJGlKbW61RK9SFvBBDOHNQbneMLy5vVyvP3
+         wu4WCJ9Fi1jqxDBSIuDCbDRdXjkC172iofeB8AADFllWU2I1vtMBB6evr8ULB453kThN
+         F7BQ==
+X-Gm-Message-State: AOJu0YxV08sv8ahhMCsKVcz73n5jHvl0dTasAY5U4h70EqjXaNQrcWKu
+	ztZN63D2etRdRQAKxHDhD9caZmB+MPctdYjkn3m9IHDvLgV2OYBei0oyfZ2wGe+/1JM=
+X-Gm-Gg: AfdE7cmRR5PO0xiWhZq7HVOmD/N558an2ohLBbuT3HzGr83v7fdMO1LWCVbBk311IXT
+	/jHqMgT9DR1IIYlt6ukHc7x0m8dxbiPYqmKRZlprT9N0YfFyg+X8gzYIY1XV64WRmofiCfg5RGr
+	ueUIFFo1eTAmH9MOuXvqS2hRuPVmYrxZEbHajl2/hbd0/7CU+KBv7EHCt2+18lDP3WlFQ+WNGWt
+	UVTNKLNhObQEALOoBWe/sHm3IRctJB9vkLdorBcWVMOtsGY40M29J254od1CmNJfMAV9rYmG0mQ
+	wyeZuwT1zx2xja4iW0r0Geh/F9xQNSk93Km/BuCzSMQ5Hh23DyHCDdZUFc8AOV1CjrbVmiTHV2+
+	/KJcqd3oPFfPA9q+J34D9XULW1hoktbvXKasJu4C2UTRGoeUfvLHEfOMDBN9fToyiRLM/k0SYYI
+	vr1Ljt4OHAY1pYwxC/9NYy7uDkYcjoFP5+IyzaEZesNEq0
+X-Received: by 2002:a05:600c:3f18:b0:492:4d52:315f with SMTP id 5b1f17b1804b1-492607f5933mr52602135e9.0.1782308288391;
+        Wed, 24 Jun 2026 06:38:08 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:8ee:1201:acf4:9ddd:6ede:2d9a])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4923fd33dafsm501416155e9.8.2026.06.24.06.38.06
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4923fd33dafsm501416155e9.8.2026.06.24.06.38.07
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 24 Jun 2026 06:38:06 -0700 (PDT)
+        Wed, 24 Jun 2026 06:38:07 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-	Pravin Shelar <pravin.shelar@sun.com>,
-	Andreas Dilger <adilger@diliger.ca>
-Subject: [PATCH v4 05/11] ext4: add dirdata format definitions and access helpers
-Date: Wed, 24 Jun 2026 09:36:34 -0400
-Message-ID: <20260624133642.18438-6-ablagodarenko@thelustrecollective.com>
+	Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH v4 06/11] ext4: preserve dirdata bits in get_dtype()
+Date: Wed, 24 Jun 2026 09:36:35 -0400
+Message-ID: <20260624133642.18438-7-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260624133642.18438-1-ablagodarenko@thelustrecollective.com>
 References: <20260624133642.18438-1-ablagodarenko@thelustrecollective.com>
@@ -80,138 +79,42 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Define the on-disk format for ext4 directory entry extension data.
+Mask the filetype with EXT4_FT_MASK when indexing
+ext4_filetype_table[] to avoid using dirdata bits as an index.
 
-The upper four bits of de->file_type indicate the presence of
-optional data stored after the filename NUL terminator.  This patch
-defines flags for LUFID, 64-bit inode numbers, and casefold hash
-data stored in that area.
+Preserve the extra bits
+stored in the upper part of filetype and propagate them to the
+returned dtype value.
 
-Add struct ext4_dirent_data_header to describe variable-length
-extension records and struct ext4_dirent_hash for hash storage used
-by casefold and fscrypt.
-
-Provide ext4_dirdata_next() to advance to the next extension record
-and ext4_dirent_get_data_len() to compute the total extension data
-length associated with a directory entry.
-
-No functional changes.
-
-Signed-off-by: Pravin Shelar <pravin.shelar@sun.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Reviewed-by: Andreas Dilger <adilger@diliger.ca>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/ext4.h | 83 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 83 insertions(+)
+ fs/ext4/ext4.h | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9400bc2858a5..98603aa44693 100644
+index 98603aa44693..2f29f50a12ac 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2556,6 +2556,49 @@ struct ext4_dir_entry_tail {
- #define EXT4_FT_SYMLINK		7
+@@ -3046,12 +3046,15 @@ static const unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+ };
  
- #define EXT4_FT_MAX		8
-+#define EXT4_FT_MASK		0xf
+-static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
++static inline unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+-	if (!ext4_has_feature_filetype(sb) || filetype >= EXT4_FT_MAX)
++	unsigned char fl_index = filetype & EXT4_FT_MASK;
 +
-+#if EXT4_FT_MAX > EXT4_FT_MASK
-+#error "conflicting EXT4_FT_MAX and EXT4_FT_MASK"
-+#endif
-+
-+/*
-+ * d_type has 4 unused bits, so it can hold four types of data. These different
-+ * types of data (e.g. fscypt hash, high 32 bits of 64-bit inode number) can be
-+ * stored, in flag order, after file-name in ext4 dirent.
-+ *
-+ * These flags are added to d_type if ext4 dirent has extra data after
-+ * filename. This data length is variable and length is stored in first byte
-+ * of data. Data starts after filename NUL byte.
-+ */
-+#define EXT4_DIRENT_LUFID		0x10
-+#define EXT4_DIRENT_INO64		0x20
-+#define EXT4_DIRENT_CFHASH		0x40
-+
-+struct ext4_fid {
-+	char    fid[16];     /* 128-bit unique file identifier */
-+};
-+
-+struct ext4_dirent_data_header {
-+	/* length of this header + the whole data blob */
-+	__u8	ddh_length;
-+} __packed;
-+
-+struct ext4_dirent_fid {
-+	struct ext4_dirent_data_header df_header;
-+	struct ext4_fid                df_fid[];
-+};
-+
-+#define EXT4_LUFID_MAGIC    0xAD200907UL
-+struct ext4_dentry_param {
-+	__u32			edp_magic;	/* EXT4_LUFID_MAGIC */
-+	struct ext4_dirent_fid	edp_dfid;
-+};
-+
-+struct ext4_dirent_hash {
-+	struct ext4_dirent_data_header	dh_header;
-+	struct ext4_dir_entry_hash	dh_hash;
-+} __packed;
++	if (!ext4_has_feature_filetype(sb) || fl_index >= EXT4_FT_MAX)
+ 		return DT_UNKNOWN;
  
- #define EXT4_FT_DIR_CSUM	0xDE
- 
-@@ -4004,6 +4047,12 @@ static inline void ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
- 		io_end->flag &= ~EXT4_IO_END_UNWRITTEN;
+-	return ext4_filetype_table[filetype];
++	return (ext4_filetype_table[fl_index]) |
++		(filetype & ~EXT4_FT_MASK);
  }
- 
-+/*
-+ * Advance to the next dirdata record header starting from @ddh.
-+ */
-+#define ext4_dirdata_next(ddh) \
-+	((struct ext4_dirent_data_header *)((char *)(ddh) + (ddh)->ddh_length))
-+
- /*
-  * ext4_dir_entry_is_tail() - Check if a directory entry is a tail entry.
-  * @de: directory entry to check
-@@ -4020,6 +4069,40 @@ static inline bool ext4_dir_entry_is_tail(struct ext4_dir_entry_2 *de)
- 	       t->det_reserved_ft == EXT4_FT_DIR_CSUM;
- }
- 
-+/*
-+ * ext4_dirent_get_data_len() - Compute the total dirdata length for an entry.
-+ * @de: directory entry
-+ *
-+ * Computes the length of optional data stored after the filename (and its
-+ * implicit NUL terminator).  Each extension is indicated by a bit in the
-+ * high 4 bits of de->file_type; the first byte of each extension is its
-+ * length (including that length byte itself).
-+ *
-+ * Returns 0 for tail entries and for entries with no dirdata.
-+ */
-+static inline int ext4_dirent_get_data_len(struct ext4_dir_entry_2 *de)
-+{
-+	__u8 extra_data_flags;
-+	struct ext4_dirent_data_header *ddh;
-+	int dlen = 0;
-+
-+	if (ext4_dir_entry_is_tail(de))
-+		return 0;
-+
-+	extra_data_flags = (de->file_type & ~EXT4_FT_MASK) >> 4;
-+	ddh = (struct ext4_dirent_data_header *)(de->name + de->name_len +
-+						 1 /* NUL terminator */);
-+
-+	while (extra_data_flags) {
-+		if (extra_data_flags & 1) {
-+			dlen += ddh->ddh_length + (dlen == 0);
-+			ddh = ext4_dirdata_next(ddh);
-+		}
-+		extra_data_flags >>= 1;
-+	}
-+	return dlen;
-+}
-+
- extern const struct iomap_ops ext4_iomap_ops;
- extern const struct iomap_ops ext4_iomap_report_ops;
- 
+ extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
+ 			     void *buf, int buf_size);
 -- 
 2.43.7
 
