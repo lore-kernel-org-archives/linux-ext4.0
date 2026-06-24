@@ -1,406 +1,568 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54D422F1FDE;
-	Wed, 24 Jun 2026 15:37:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDA233DCD9B
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 17:16:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782315442; cv=none; b=PxcZuHkgtdHp69sjZ54YpCFumLfp9wcpNorMMze5H9RrEdFWes+Kbza9gr0vVKYHaCPYayPkQMjD09DmKuJxIj5C06TMtLsXQbfVRrnT9j3y1ZKBKTCEb2Fgs48RKpqJ6AUwMk5LXoS7ojkUUpE40DbIj4CSa21HvPW/6BgUEhk=
+	t=1782321372; cv=none; b=utOv8bcAX3WdruCoKokNBSNWxWu6WJIMF6jXPjyjshS7LkcgpEdRBQMxOVX6SyTH4Jp1X50sPeMtyUMJ//nmkzZbJd1J3c7zqQ45jWGaM4U8OseLX7NMrS0wgJlCGwm+Yyw9COQ+B0b6Vq0sq+U4Jw4vV44yvRh5s0SyLY7w4uA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782315442; c=relaxed/simple;
-	bh=cFugtTwxxaEoi2fJ2FJORcZobWI5qVxzdoA1OTGvYTE=;
+	s=arc-20240116; t=1782321372; c=relaxed/simple;
+	bh=mnk+MaFYZIjDVr49emGYvLirzGWkgLi8Ls0Z3FF/D3o=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=NFJGwi1T6hFXGELEMxFmfDvxilLG/fxvP/+OgkaSMhBgTggkG7KX9VarnkqgyJ1rNy63DX+GZNfYvsGGrxygNRCCKnFQkf6gxtNNJPemElBSgn51Ej6zjLRWm1t5G8W4i4m+2ULsAP5QTZl/a5StEe8rAkfWvibC7nhBJl2D5+4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=3G4e5+I3; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=t+OhFMq4gbQ9uzs4n62Xr1Y1xngSYMp/BmcqgQw/PX3bbGK5okNLvqj+o+ZtcXR8gv65CNBKetogPms4qHvniAqjSa5qYyM99Ev71fxrmcI6gPuKPb7QUk8HwC0AHdVS+zcRkz6Yk9fryDB6nKQOUZFg7z3Qq74dJTncKkGG7YA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cG88Yh8t; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ETWlur62; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cG88Yh8t; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ETWlur62; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="3G4e5+I3"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=Rf//pWD/IJO6Nea1GlpoLIi2frum3iYrUvWorumtOFk=; b=3G4e5+I3Hb58Y1LJQl20ZZSozn
-	q5wUwUzVjI+XxHkNJiuN6oW/psabfJ6BNXn5Osmx7gk95dpIBcCjt9lN5NixkE6FaQ5o2De7+cxfE
-	afPvby33pMseDx4s17Jc9Qj1ISw2ASSHvPmkig8gZa9PkTxgB6wjhPPQLExAAbS9xOT0av0S9/jzW
-	eWP17ilQOl3Iwno8L3Qfwj/ThMNmZhC1k6E/np7FEDggcPV8uTR1xzD6KG3F5yR/OjQBys6pE3khC
-	6fzhVRFZCxYkDD9FaqxdjKbfBTUfRRqBVNvRRbxShjI2jW+jn4AejWIfegJGnGDc/+4I+pXmyKncs
-	gzd4b3rQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wcPf4-0000000811u-0yv1;
-	Wed, 24 Jun 2026 15:37:10 +0000
-Date: Wed, 24 Jun 2026 08:37:10 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Fengnan Chang <changfengnan@bytedance.com>
-Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
-	ojaswin@linux.ibm.com, dgc@kernel.org, linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, lidiangang@bytedance.com
-Subject: Re: [PATCH v4] iomap: add simple read path for small direct I/O
-Message-ID: <ajv5pqNureiK80Eu@infradead.org>
-References: <20260608073134.95964-1-changfengnan@bytedance.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cG88Yh8t";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ETWlur62";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cG88Yh8t";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ETWlur62"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 081F675DF7;
+	Wed, 24 Jun 2026 17:16:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1782321368; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fnfm/u07tTzZ3KHZVaEOqxpuFyqPWvfSpYowoFbmSv8=;
+	b=cG88Yh8t7fvh0BJMABp11oJGJ//gQ5g7pTS3Sfum+lpA8gSv18xP1Slv4zJ/LrhjuFwFk9
+	aVBSspiwVsYY8zVzPOJypcibTNRnzXgnwSinnUDEKnZc2aBNiFl47JQy+Z2A2oOZFtNYaa
+	9GMV/peShUh+7SCv0NXg6PDu5jKYGTc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1782321368;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fnfm/u07tTzZ3KHZVaEOqxpuFyqPWvfSpYowoFbmSv8=;
+	b=ETWlur62CEq9c/N32N5f/Z+1QhzlrIyafMToLMcO6jYCGmAt83fZC4Xc7QzNOmtKvLBKKs
+	tLqwlSoTlgTEVFCw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=cG88Yh8t;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=ETWlur62
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1782321368; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fnfm/u07tTzZ3KHZVaEOqxpuFyqPWvfSpYowoFbmSv8=;
+	b=cG88Yh8t7fvh0BJMABp11oJGJ//gQ5g7pTS3Sfum+lpA8gSv18xP1Slv4zJ/LrhjuFwFk9
+	aVBSspiwVsYY8zVzPOJypcibTNRnzXgnwSinnUDEKnZc2aBNiFl47JQy+Z2A2oOZFtNYaa
+	9GMV/peShUh+7SCv0NXg6PDu5jKYGTc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1782321368;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fnfm/u07tTzZ3KHZVaEOqxpuFyqPWvfSpYowoFbmSv8=;
+	b=ETWlur62CEq9c/N32N5f/Z+1QhzlrIyafMToLMcO6jYCGmAt83fZC4Xc7QzNOmtKvLBKKs
+	tLqwlSoTlgTEVFCw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E80CC779A8;
+	Wed, 24 Jun 2026 17:16:07 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id KEQlONcQPGplZQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 24 Jun 2026 17:16:07 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 8159DA10A0; Wed, 24 Jun 2026 19:16:03 +0200 (CEST)
+Date: Wed, 24 Jun 2026 19:16:03 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yizhang089@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huaweicloud.com>, 
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org, 
+	yi.zhang@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 09/23] ext4: implement writeback path using iomap
+Message-ID: <i536qqwj5eyulec3r2ki2ycnelqdd4bkpat2drn7t72t6p622k@ktueynysgo3j>
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-10-yi.zhang@huaweicloud.com>
+ <jxlc26s4ez5mug27innhntsubeddyishy7wlz6nv6dfugvz7c3@ztgmhhe2333m>
+ <b0781809-4759-4e12-be17-71555b764f48@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260608073134.95964-1-changfengnan@bytedance.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <b0781809-4759-4e12-be17-71555b764f48@gmail.com>
+X-Spam-Flag: NO
+X-Rspamd-Action: no action
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[16];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,huaweicloud.com,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,kernel.org,infradead.org,huawei.com,fnnas.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email]
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 081F675DF7
+X-Spam-Score: -2.51
 
-Sorry for the delay in getting back to this, I'm a bit overloaded at
-the moment.
+On Mon 22-06-26 20:36:02, Zhang Yi wrote:
+> On 6/16/2026 7:47 PM, Jan Kara wrote:
+> > On Mon 11-05-26 15:23:29, Zhang Yi wrote:
+> > > From: Zhang Yi <yi.zhang@huawei.com>
+> > > 
+> > > Add the iomap writeback path for ext4 buffered I/O. This introduces:
+> > > 
+> > >   - ext4_iomap_writepages(): the main writeback entry point.
+> > >   - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
+> > >     block mapping and I/O submission.
+> > >   - A new end I/O worker for converting unwritten extents, updating file
+> > >     size, and handling DATA_ERR_ABORT after I/O completion.
+> > > 
+> > > Core implementation details:
+> > > 
+> > >   - ->writeback_range() callback
+> > >     Calls ext4_iomap_map_writeback_range() to query the longest range of
+> > >     existing mapped extents. For performance, when a block range is not
+> > >     yet allocated, it allocates based on the writeback length and delalloc
+> > >     extent length, rather than allocating for a single folio at a time.
+> > >     The folio is then added to an iomap_ioend instance.
+> > > 
+> > >   - ->writeback_submit() callback
+> > >     Registers ext4_iomap_end_bio() as the end bio callback. This callback
+> > >     schedules a worker to handle:
+> > >     - Unwritten extent conversion.
+> > >     - i_disksize update after data is written back.
+> > >     - Journal abort on writeback I/O failure.
+> > > 
+> > > Key changes and considerations:
+> > > 
+> > > - Append write and unwritten extents
+> > >    Since data=ordered mode is not used to prevent stale data exposure
+> > >    during append writebacks, new blocks are always allocated as unwritten
+> > >    extents (i.e. always enable dioread_nolock), and i_disksize update is
+> > >    postponed until I/O completion. Additionally, the deadlock that the
+> > >    reserve handle was expected to resolve does not occur anymore.
+> > >    Therefore, the end I/O worker can start a normal journal handle
+> > >    instead of a reserve handle when converting unwritten extents.
+> > > 
+> > > - Lock ordering
+> > >    The ->writeback_range() callback runs under the folio lock, requiring
+> > >    the journal handle to be started under that same lock. This reverses
+> > >    the order compared to the buffer_head writeback path. The lock ordering
+> > >    documentation in super.c has been updated accordingly.
+> > > 
+> > > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > > ---
+> > >   fs/ext4/ext4.h        |   4 +
+> > >   fs/ext4/inode.c       | 208 +++++++++++++++++++++++++++++++++++++++++-
+> > >   fs/ext4/page-io.c     | 126 +++++++++++++++++++++++++
+> > >   fs/ext4/super.c       |   7 +-
+> > >   fs/iomap/ioend.c      |   3 +-
+> > >   include/linux/iomap.h |   1 +
+> > >   6 files changed, 346 insertions(+), 3 deletions(-)
+> > > 
+> > > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > > index 4832e7f7db82..078feda47e36 100644
+> > > --- a/fs/ext4/ext4.h
+> > > +++ b/fs/ext4/ext4.h
+> > > @@ -1173,6 +1173,8 @@ struct ext4_inode_info {
+> > >   	 */
+> > >   	struct list_head i_rsv_conversion_list;
+> > >   	struct work_struct i_rsv_conversion_work;
+> > > +	struct list_head i_iomap_ioend_list;
+> > > +	struct work_struct i_iomap_ioend_work;
+> > 
+> > Ugh, this adds 48 bytes to ext4 inode. That's pretty heavy. Cannot we reuse
+> > i_rsv_conversion_list / work for this? For each inode only one of them
+> > should be used AFAICS.
+> 
+> Thanks for your suggestion. I think we should be able to reuse
+> i_rsv_conversion_list / work. We can choose the corresponding
+> initialization function for i_rsv_conversion_work based on the buffered
+> write path at initialization time, and then reinitialize the work
+> handler when changing the path via the ioctl that sets the journal
+> flag. That should be sufficient.
 
-> -static inline bool should_report_dio_fserror(const struct iomap_dio *dio)
-> +static inline bool should_report_dio_fserror(int error)
+Great, thanks.
 
-Can you split all the refactoring into prep patches?
+> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > index 1ae7d3f4a1c8..a80195bd6f20 100644
+> > > --- a/fs/ext4/inode.c
+> > > +++ b/fs/ext4/inode.c
+> > > @@ -44,6 +44,7 @@
+> > >   #include <linux/iversion.h>
+> > >   #include "ext4_jbd2.h"
+> > > +#include "ext4_extents.h"
+> > >   #include "xattr.h"
+> > >   #include "acl.h"
+> > >   #include "truncate.h"
+> > > @@ -4120,10 +4121,215 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+> > >   	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+> > >   }
+> > > +static int ext4_iomap_map_one_extent(struct inode *inode,
+> > > +				     struct ext4_map_blocks *map)
+> > > +{
+> > > +	struct extent_status es;
+> > > +	handle_t *handle = NULL;
+> > > +	int credits, map_flags;
+> > > +	int retval;
+> > > +
+> > > +	credits = ext4_chunk_trans_blocks(inode, map->m_len);
+> > > +	handle = ext4_journal_start(inode, EXT4_HT_WRITE_PAGE, credits);
+> > > +	if (IS_ERR(handle))
+> > > +		return PTR_ERR(handle);
+> > > +
+> > > +	map->m_flags = 0;
+> > > +	/*
+> > > +	 * It is necessary to look up extent and map blocks under i_data_sem
+> > > +	 * in write mode, otherwise, the delalloc extent may become stale
+> > > +	 * during concurrent truncate operations.
+> > > +	 */
+> > > +	ext4_fc_track_inode(handle, inode);
+> > > +	down_write(&EXT4_I(inode)->i_data_sem);
+> > > +	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
+> > > +		retval = es.es_len - (map->m_lblk - es.es_lblk);
+> > > +		map->m_len = min_t(unsigned int, retval, map->m_len);
+> > > +
+> > > +		if (ext4_es_is_delayed(&es)) {
+> > > +			map->m_flags |= EXT4_MAP_DELAYED;
+> > > +			trace_ext4_da_write_pages_extent(inode, map);
+> > > +			/*
+> > > +			 * Call ext4_map_create_blocks() to allocate any
+> > > +			 * delayed allocation blocks. It is possible that
+> > > +			 * we're going to need more metadata blocks, however
+> > > +			 * we must not fail because we're in writeback and
+> > > +			 * there is nothing we can do so it might result in
+> > > +			 * data loss. So use reserved blocks to allocate
+> > > +			 * metadata if possible.
+> > > +			 */
+> > > +			map_flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
+> > > +				    EXT4_GET_BLOCKS_METADATA_NOFAIL |
+> > > +				    EXT4_EX_NOCACHE;
+> > > +
+> > > +			retval = ext4_map_create_blocks(handle, inode, map,
+> > > +							map_flags);
+> > > +			if (retval > 0)
+> > > +				ext4_fc_track_range(handle, inode, map->m_lblk,
+> > > +						map->m_lblk + map->m_len - 1);
+> > > +			goto out;
+> > > +		} else if (unlikely(ext4_es_is_hole(&es)))
+> > > +			goto out;
+> > > +
+> > > +		/* Found written or unwritten extent. */
+> > > +		map->m_pblk = ext4_es_pblock(&es) + map->m_lblk - es.es_lblk;
+> > > +		map->m_flags = ext4_es_is_written(&es) ?
+> > > +			       EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+> > > +		goto out;
+> > > +	}
+> > > +
+> > > +	retval = ext4_map_query_blocks(handle, inode, map, EXT4_EX_NOCACHE);
+> > > +out:
+> > > +	up_write(&EXT4_I(inode)->i_data_sem);
+> > > +	ext4_journal_stop(handle);
+> > > +	return retval < 0 ? retval : 0;
+> > > +}
+> > > +
+> > > +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+> > > +					  loff_t offset, unsigned int dirty_len)
+> > > +{
+> > > +	struct inode *inode = wpc->inode;
+> > > +	struct super_block *sb = inode->i_sb;
+> > > +	struct journal_s *journal = EXT4_SB(sb)->s_journal;
+> > > +	struct ext4_map_blocks map;
+> > > +	unsigned int blkbits = inode->i_blkbits;
+> > > +	unsigned int index = offset >> blkbits;
+> > > +	unsigned int blk_end, blk_len;
+> > > +	int ret;
+> > > +
+> > > +	ret = ext4_emergency_state(sb);
+> > > +	if (unlikely(ret))
+> > > +		return ret;
+> > > +
+> > > +	/* Check validity of the cached writeback mapping. */
+> > > +	if (offset >= wpc->iomap.offset &&
+> > > +	    offset < wpc->iomap.offset + wpc->iomap.length &&
+> > > +	    ext4_iomap_valid(inode, &wpc->iomap))
+> > > +		return 0;
+> > > +
+> > > +	blk_len = dirty_len >> blkbits;
+> > > +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
+> > > +				      (UINT_MAX - 1));
+> > > +	if (blk_end > index + blk_len)
+> > > +		blk_len = blk_end - index + 1;
+> > > +
+> > > +retry:
+> > > +	map.m_lblk = index;
+> > > +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
+> > > +	ret = ext4_map_blocks(NULL, inode, &map,
+> > > +			      EXT4_GET_BLOCKS_IO_SUBMIT | EXT4_EX_NOCACHE);
+> > > +	if (ret < 0)
+> > > +		return ret;
+> > > +
+> > > +	/*
+> > > +	 * The map is not a delalloc extent, it must either be a hole
+> > > +	 * or an extent which have already been allocated.
+> > > +	 */
+> > > +	if (!(map.m_flags & EXT4_MAP_DELAYED))
+> > > +		goto out;
+> > > +
+> > > +	/* Map one delalloc extent. */
+> > > +	ret = ext4_iomap_map_one_extent(inode, &map);
+> > 
+> > So it looks somewhat strange that here we call ext4_map_blocks() (which
+> > consults extent status tree and then possibly on-disk extent tree) and then
+> > we call ext4_iomap_map_one_extent() which manipulates with the extent
+> > status tree and possibly extent tree as well. Is all this complexity to
+> > avoid starting a jbd2 handle unless really needed? If yes, is that really
+> > worth it? Given iomap code caches the extent we'd start the transaction
+> > only once per mapped extent which shouldn't be that bad?
+> > 
+> > If you have some benchmark showing this is really worth it,
+> 
+> There are actually two reasons for this. First, we want to avoid
+> starting a journal handle in overwrite scenarios. Second, we want to
+> be able to query the extent locklessly without holding i_data_sem in
+> overwrite cases as well (note that ext4_es_lookup_extent() in
+> ext4_iomap_map_one_extent() is called with i_data_sem held).
+> 
+> I ran a set of benchmark tests in my VM, performing the following FIO
+> overwrite test on a 500GB ramdisk:
+> 
+> $fio -filename=/test_dir/foo -direct=0 -iodepth=8 -fsync=0 -rw=write \
+>            -numjobs=1 -bs=4k -ioengine=io_uring -size=20G -uncached=1 \
+>            -runtime=30 --ramp_time=5s -time_based -norandommap=0 \
+>            -fallocate=none -overwrite=1 \
+>            -group_reportin -name=test --output=/tmp/log
+> 
+> The results are as follows:
+> 
+> a: on a non-fragmented file
+> A: on a fragmented file [1]
+> b: no background metadata pressure
+> B: with background metadata pressure [2]
+> 
+>      buffer_head | iomap pre-map w/o journal | iomap directly map
+> a+b:    680                 691                   690
+> a+B:    560                 568                   567
+> A+b:    637                 633                   579
+> A+B:    540                 571                   495
+> 
+> [1] The file is pre-fragmented such that each block occupies a separate
+>     extent.
+> [2] A background fsstress process is running (only contains metadata
+>     ops):
+>     taskset -c 2 fsstress -c -d /test_dir -l 0 -n 1000 -f clonerange=0 \
+>             -f copyrange=0 -f awrite=0 -f aread=0 -f dread=0 \
+>             -f dwrite=0 -f mread=0 -f mwrite=0 -f readv=0 -f write=0 \
+>             -f writev=0 -f read=0 -f sync=0 -f afsync=0 -f fsync=0
+> 
+> As can be seen, for large contiguous files, the performance impact is
+> minimal. However, in heavily fragmented scenarios or under other
+> metadata pressure, pre-querying the mapping brings noticeable gains.
+> However, this is testing the most extreme case — I'm not sure about
+> the real-world impact, so I don't have a strong preference either way.
+> But I suppose faster is better, at least not slower than the old
+> buffer_head path. :)
 
-> +/*
-> + * In the async simple read path, we need to prevent bio_endio() from
-> + * triggering iocb->ki_complete() before the submitter has returned
-> + * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently.
-> + *
-> + * We use a three-state rendezvous to synchronize the submitter and end_io:
-> + *
-> + * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the bio.
-> + *
-> + * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and will
-> + * return -EIOCBQUEUED. If end_io sees this state, it takes over and calls
-> + * ki_complete().
-> + *
-> + * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished the
-> + * submit path. end_io sets this state and does nothing else. The submitter
-> + * will see this state and handle the completion synchronously (bypassing
-> + * ki_complete() and returning the actual result).
-> + */
+OK, thanks for the test! So for fragmented files the optimization of not
+starting a transaction seems indeed worth it. I still dislike the
+opencoding :) So given we have the reversed lock ordering now, why don't we
+teach ext4_map_blocks() to start a transaction (if not provided) just
+before it acquires i_data_sem for writing? This should be quite elegant. I
+know you have some concerns about possible races below so let's discuss
+that separately but at least in terms of performance and code complexity
+this would look ideal :).
 
-I don't think we actually need any of this.  For the sync case we
-can just use submit_bio_wait, and for async just always complete
-from the end_io handler.  This will simplify the implementation a lot,
-and also avoid the atomic.
+> > then I'd
+> > probably prefer coming up with an ext4_get_blocks flag which tells it to
+> > start a transaction on its own if we need to allocate blocks... That would
+> > be much simpler than opencoding all this.
+> 
+> Additionally, there is a key point here. The reason I open-coded
+> ext4_iomap_map_writeback_range() is that we must ensure extent query
+> and allocation are performed atomically under i_data_sem. Otherwise,
+> concurrent truncate could lead to quota leaks.
+> 
+> Specifically, consider the following scenario: we call
+> ext4_map_blocks() to allocate blocks. Suppose there is a delalloc
+> extent covering blocks [0,3). While writeback is submitting block 0, a
+> concurrent truncate(block 1) occurs:
+> 
+> wb                         truncate
+> ext4_es_lookup_extent()    ext4_truncate_down()
+>   //get [0,3)
+>                             truncate_inode_pages_range()
+>                                //clear page 1&2
+>                             ext4_truncate()
+>                              down_write(i_data_sem)
+>                               ext4_es_remove_extent()
+>                                //drop extent [1,3)
+>                                //i_reserved_data_blocks: 3->1
+>                               up_write(i_data_sem)
+> down_write(i_data_sem)
+> ext4_map_create_blocks()
+>   //alloc 3 blocks
+>  ext4_es_insert_extent()
+>   //only reclaim 1 block，stale 2 blocks
+> up_write(i_data_sem)
+> 
+> Therefore, If we don't open-coding this part, we would need to
+> significantly rework ext4_map_blocks(), which might have a larger
+> impact at this point. What do you think?
 
-> +static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_read *sr)
+Hum, is something like this really possible? I mean iomap_writepages() will
+lookup and lock folio. Only then it calls ->iomap_begin to map it to
+underlying blocks. And folio lock synchronizes against
+truncate_inode_pages_range() so how would writeback end up trying to
+allocate something underlying pages 1 or 2?
 
-Btw, I'd drop the _read in the name.  Most of this would work as-is
-for trivial overwrites if we figure out when to use them.
+> > > +	if (ret < 0) {
+> > > +		if (ext4_emergency_state(sb))
+> > > +			return ret;
+> > > +
+> > > +		/*
+> > > +		 * Retry transient ENOSPC errors, if
+> > > +		 * ext4_count_free_blocks() is non-zero, a commit
+> > > +		 * should free up blocks.
+> > > +		 */
+> > > +		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb)) {
+> > > +			jbd2_journal_force_commit_nested(journal);
+> > > +			goto retry;
+> > > +		}
+> > > +
+> > > +		ext4_msg(sb, KERN_CRIT,
+> > > +			 "Delayed block allocation failed for inode %llu at logical offset %llu with max blocks %u with error %d",
+> > > +			 inode->i_ino, (unsigned long long)map.m_lblk,
+> > > +			 (unsigned int)map.m_len, -ret);
+> > > +		ext4_msg(sb, KERN_CRIT,
+> > > +			 "This should not happen!! Data will be lost\n");
+> > > +		if (ret == -ENOSPC)
+> > > +			ext4_print_free_blocks(inode);
+> > > +		return ret;
+> > > +	}
+> > > +out:
+> > > +	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
+> > > +	return 0;
+> > > +}
+> > > +
+> > 
+> > ...
+> > 
+> > > +void ext4_iomap_end_bio(struct bio *bio)
+> > > +{
+> > > +	struct iomap_ioend *ioend = iomap_ioend_from_bio(bio);
+> > > +	struct inode *inode = ioend->io_inode;
+> > > +	struct ext4_inode_info *ei = EXT4_I(inode);
+> > > +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> > > +	unsigned long flags;
+> > > +
+> > > +	/* Needs to convert unwritten extents or update the i_disksize. */
+> > > +	if ((ioend->io_flags & IOMAP_IOEND_UNWRITTEN) ||
+> > > +	    ioend->io_offset + ioend->io_size > READ_ONCE(ei->i_disksize))
+> > > +		goto defer;
+> > > +
+> > > +	/* Needs to abort the journal on data_err=abort.  */
+> > > +	if (unlikely(ioend->io_bio.bi_status))
+> > > +		goto defer;
+> > > +
+> > > +	iomap_finish_ioend(ioend, 0);
+> > > +	return;
+> > > +defer:
+> > > +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+> > > +	if (list_empty(&ei->i_iomap_ioend_list))
+> > > +		queue_work(sbi->rsv_conversion_wq, &ei->i_iomap_ioend_work);
+> > > +	list_add_tail(&ioend->io_list, &ei->i_iomap_ioend_list);
+> > > +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+> > > +}
+> > 
+> > For now, I'd prefer to do what XFS does and offload everything. Then you
+> > don't have to export iomap_finish_ioend() (which would need to be in a
+> > separate patch and acked by iomap maintainers) and the code is more
+> > standard. There's a patchset in the works which adds general ioend offloading
+> > infrastructure into iomap [1] and when that lands we should get all these
+>                       ^^^^^ block layer?
+> 
+> > bells and whistles (even better ones with percpu work queues, batching,
+> > etc.) for free.
+> > 
+> > [1] https://lore.kernel.org/all/20260514-blk-dontcache-v6-0-782e2fa7477b@columbia.edu/
+> > 
+> > 								Honza
+> 
+> Ha, I've noticed this patchset, so I haven't implemented
+> uncached I/O handling for now. As a side note, I have a question:
+> if we convert all endio processing to worker threads, IIRC, my
+> recollection from previous performance tests is that pure overwrite
+> scenarios would see at least a 20% degradation. Is that acceptable?
 
-> +	if (dio_flags & IOMAP_DIO_BOUNCE)
-> +		nr_pages = bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
-> +	else
-> +		nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
+No, but the latest version of the patches exactly does IO completion in the
+interrupt unless the bio is flagged as needing IO completion from process
+context or unless end_io handler returns a particular error - which means
+IO completion wasn't actually done and needs offloading into process
+context instead.
 
-Bounce buffering requires dops, so all this can be dropped.
+> I understand why uncached I/O might need the entire completion path
+> in a worker, but can we complete the I/O in interrupt context for
+> pure overwrite and then release the page cache in a worker? Must
+> page cache invalidation and I/O completion be synchronous?
 
-> +	ret = ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
-> +			       &iomi.iomap, &iomi.srcmap);
-> +	if (ret) {
-> +		inode_dio_end(inode);
-> +		return ret;
-> +	}
-> +
-> +	if (iomi.iomap.type != IOMAP_MAPPED ||
-> +	    iomi.iomap.offset > iomi.pos ||
+Strictly speaking no, we can first complete the IO and evict page cache
+independently later. But it would be quite tricky locking wise (folios and
+the mapping containing them can get evicted once folio writeback bit gets
+cleared) so the whole uncached writes handling would have to be reworked. I
+don't think it's worth it at this point.
+ 
+> The reason I kept ext4_iomap_end_bio() handling I/O completion in
+> interrupt context is for overwrite performance. XFS also handles
+> overwrites in interrupt context (via ioend_writeback_end_bio()).
+> However, ext4 has the data_error=abort mount option — when this mode
+> is set and an I/O error occurs, we must abort the journal in a
+> worker. Since we cannot predict I/O errors at submission time, we
+> can't directly use ioend_writeback_end_bio() and must instead bind
+> our own ext4_iomap_end_bio(). At the same time, I want to avoid
+> spawning a worker for pure overwrites when no I/O error occurs, so I
+> exported iomap_finish_ioend(). What do you think?
 
-I don't think offset > pos can happen
+So data_error=abort handling can exactly use the new generic framework - if
+we detect during processing IO completion we cannot actually do it in the
+interrupt (like in case of error), we just return appropriately from the
+handler and the generic code will handle offloading and call the ->end_io
+callback again.
 
-> +	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count ||
-> +	    (iomi.iomap.flags & IOMAP_F_INTEGRITY)) {
-> +		ret = -ENOTBLK;
-> +		goto out_iomap_end;
-> +	}
-
-Given that we already have a fallback here, I'm not sure why this is
-limited to a single file system block.  Anything that:
-
-  a) fits into the iomap
-  b) fits into a single bio
-
-can be easily supported.  The first condition is a trivial, and for
-the second we could just check if iter->nr_segs is larger than
-BIO_MAX_VECS.
-
-> +	if (user_backed_iter(iter))
-> +		dio_flags |= IOMAP_DIO_USER_BACKED;
-
-> +	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
-> +	bio->bi_ioprio = iocb->ki_ioprio;
-> +	bio->bi_private = sr;
-> +	bio->bi_end_io = iomap_dio_simple_read_end_io;
-> +
-> +	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
-> +	    !(dio_flags & IOMAP_DIO_BOUNCE))
-> +		bio_set_pages_dirty(bio);
-> +
-> +	if (iocb->ki_flags & IOCB_NOWAIT)
-> +		bio->bi_opf |= REQ_NOWAIT;
-> +	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
-> +		bio->bi_opf |= REQ_POLLED;
-> +		bio_set_polled(bio, iocb);
-> +		WRITE_ONCE(iocb->private, bio);
-> +	}
-
-Can you check if sone more of this can be factored into a shared
-helper?
-
-Below is a completely untested patch implementing my suggestion
-for the completion simplification.  It compiles, but that's about
-the guarantees I can give for it:
-
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index 3cb179752612..c785512e5339 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -909,11 +909,7 @@ struct iomap_dio_simple_read {
- 	struct kiocb		*iocb;
- 	size_t			size;
- 	unsigned int		dio_flags;
--	atomic_t		state;
--	union {
--		struct task_struct	*waiter;
--		struct work_struct	work;
--	};
-+	struct work_struct	work;
- 	/*
- 	 * Align @bio to a cacheline boundary so that, combined with the
- 	 * front_pad passed to bioset_init(), the bio sits at the start of
-@@ -926,35 +922,12 @@ struct iomap_dio_simple_read {
- 
- static struct bio_set iomap_dio_simple_read_pool;
- 
--/*
-- * In the async simple read path, we need to prevent bio_endio() from
-- * triggering iocb->ki_complete() before the submitter has returned
-- * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently.
-- *
-- * We use a three-state rendezvous to synchronize the submitter and end_io:
-- *
-- * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the bio.
-- *
-- * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and will
-- * return -EIOCBQUEUED. If end_io sees this state, it takes over and calls
-- * ki_complete().
-- *
-- * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished the
-- * submit path. end_io sets this state and does nothing else. The submitter
-- * will see this state and handle the completion synchronously (bypassing
-- * ki_complete() and returning the actual result).
-- */
--enum {
--	IOMAP_DIO_SIMPLE_SUBMITTING = 0,
--	IOMAP_DIO_SIMPLE_QUEUED,
--	IOMAP_DIO_SIMPLE_DONE,
--};
--
--static ssize_t iomap_dio_simple_read_finish(struct kiocb *iocb,
--		struct bio *bio, ssize_t ret)
-+static ssize_t iomap_dio_simple_read_complete(struct iomap_dio_simple_read *sr)
- {
-+	struct bio *bio = &sr->bio;
-+	struct kiocb *iocb = sr->iocb;
- 	struct inode *inode = file_inode(iocb->ki_filp);
--	struct iomap_dio_simple_read *sr = bio->bi_private;
-+	ssize_t ret = blk_status_to_errno(bio->bi_status);
- 
- 	if (likely(!ret)) {
- 		ret = sr->size;
-@@ -965,21 +938,6 @@ static ssize_t iomap_dio_simple_read_finish(struct kiocb *iocb,
- 	}
- 
- 	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
--
--	return ret;
--}
--
--static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
--		struct bio *bio)
--{
--	struct inode *inode = file_inode(iocb->ki_filp);
--	ssize_t ret;
--
--	WRITE_ONCE(iocb->private, NULL);
--
--	ret = iomap_dio_simple_read_finish(iocb, bio,
--			blk_status_to_errno(bio->bi_status));
--
- 	inode_dio_end(inode);
- 	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
- 	return ret;
-@@ -988,45 +946,26 @@ static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
- static void iomap_dio_simple_read_complete_work(struct work_struct *work)
- {
- 	struct iomap_dio_simple_read *sr =
--		container_of(work, struct iomap_dio_simple_read, work);
--	struct kiocb *iocb = sr->iocb;
--	ssize_t ret;
-+			container_of(work, struct iomap_dio_simple_read, work);
- 
--	ret = iomap_dio_simple_read_complete(iocb, &sr->bio);
--	iocb->ki_complete(iocb, ret);
-+	WRITE_ONCE(sr->iocb->private, NULL);
-+	sr->iocb->ki_complete(sr->iocb, iomap_dio_simple_read_complete(sr));
- }
- 
--static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_read *sr)
-+static void iomap_dio_simple_read_end_io(struct bio *bio)
- {
--	struct kiocb *iocb = sr->iocb;
-+	struct iomap_dio_simple_read *sr =
-+		container_of(bio, struct iomap_dio_simple_read, bio);
- 
- 	if (unlikely(sr->bio.bi_status)) {
--		struct inode *inode = file_inode(iocb->ki_filp);
-+		struct inode *inode = file_inode(sr->iocb->ki_filp);
- 
- 		INIT_WORK(&sr->work, iomap_dio_simple_read_complete_work);
- 		queue_work(inode->i_sb->s_dio_done_wq, &sr->work);
- 		return;
- 	}
- 
--	iomap_dio_simple_read_complete_work(&sr->work);
--}
--
--static void iomap_dio_simple_read_end_io(struct bio *bio)
--{
--	struct iomap_dio_simple_read *sr = bio->bi_private;
--
--	if (sr->waiter) {
--		struct task_struct *waiter = sr->waiter;
--
--		WRITE_ONCE(sr->waiter, NULL);
--		blk_wake_io_task(waiter);
--		return;
--	}
--
--	if (likely(atomic_read(&sr->state) == IOMAP_DIO_SIMPLE_QUEUED) ||
--	    atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
--			   IOMAP_DIO_SIMPLE_DONE) == IOMAP_DIO_SIMPLE_QUEUED)
--		iomap_dio_simple_read_async_done(sr);
-+	sr->iocb->ki_complete(sr->iocb, iomap_dio_simple_read_complete(sr));
- }
- 
- static inline bool iomap_dio_simple_read_supported(struct kiocb *iocb,
-@@ -1046,11 +985,13 @@ static inline bool iomap_dio_simple_read_supported(struct kiocb *iocb,
- 	 */
- 	if (count > inode->i_sb->s_blocksize)
- 		return false;
--	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL))
-+	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL |
-+			 IOMAP_DIO_BOUNCE))
- 		return false;
- 	if (iocb->ki_pos + count > i_size_read(inode))
- 		return false;
- 
-+	// XXX: reject fscrypt
- 	return true;
- }
- 
-@@ -1060,7 +1001,6 @@ static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	size_t count = iov_iter_count(iter);
--	int nr_pages;
- 	struct iomap_dio_simple_read *sr;
- 	unsigned int alignment;
- 	struct iomap_iter iomi = {
-@@ -1074,11 +1014,6 @@ static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
- 	bool wait_for_completion = is_sync_kiocb(iocb);
- 	ssize_t ret;
- 
--	if (dio_flags & IOMAP_DIO_BOUNCE)
--		nr_pages = bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
--	else
--		nr_pages = bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
--
- 	if (iocb->ki_flags & IOCB_NOWAIT)
- 		iomi.flags |= IOMAP_NOWAIT;
- 
-@@ -1120,24 +1055,18 @@ static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
- 	if (user_backed_iter(iter))
- 		dio_flags |= IOMAP_DIO_USER_BACKED;
- 
--	bio = bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
--			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
--			       GFP_KERNEL, &iomap_dio_simple_read_pool);
-+	bio = bio_alloc_bioset(iomi.iomap.bdev,
-+			bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS),
-+			REQ_OP_READ | REQ_SYNC | REQ_IDLE,
-+			GFP_KERNEL, &iomap_dio_simple_read_pool);
- 	sr = container_of(bio, struct iomap_dio_simple_read, bio);
--
--	fscrypt_set_bio_crypt_ctx(bio, inode, iomi.pos, GFP_KERNEL);
- 	sr->iocb = iocb;
- 	sr->dio_flags = dio_flags;
- 
- 	bio->bi_iter.bi_sector = iomap_sector(&iomi.iomap, iomi.pos);
- 	bio->bi_ioprio = iocb->ki_ioprio;
--	bio->bi_private = sr;
--	bio->bi_end_io = iomap_dio_simple_read_end_io;
- 
--	if (dio_flags & IOMAP_DIO_BOUNCE)
--		ret = bio_iov_iter_bounce(bio, iter, count);
--	else
--		ret = bio_iov_iter_get_pages(bio, iter, alignment - 1);
-+	ret = bio_iov_iter_get_pages(bio, iter, alignment - 1);
- 	if (unlikely(ret))
- 		goto out_bio_put;
- 
-@@ -1161,49 +1090,22 @@ static ssize_t iomap_dio_simple_read(struct kiocb *iocb,
- 		WRITE_ONCE(iocb->private, bio);
- 	}
- 
--	if (wait_for_completion) {
--		sr->waiter = current;
--		blk_crypto_submit_bio(bio);
--	} else {
--		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
--		sr->waiter = NULL;
--		blk_crypto_submit_bio(bio);
--		ret = -EIOCBQUEUED;
--	}
--
- 	if (ops->iomap_end)
- 		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
- 			       &iomi.iomap);
- 
--	if (wait_for_completion) {
--		for (;;) {
--			set_current_state(TASK_UNINTERRUPTIBLE);
--			if (!READ_ONCE(sr->waiter))
--				break;
--			blk_io_schedule();
--		}
--		__set_current_state(TASK_RUNNING);
--
--		ret = iomap_dio_simple_read_finish(iocb, bio,
--				blk_status_to_errno(bio->bi_status));
--		inode_dio_end(inode);
--		trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0,
--					 ret > 0 ? ret : 0);
--	} else if (atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
--				  IOMAP_DIO_SIMPLE_QUEUED) ==
--		   IOMAP_DIO_SIMPLE_DONE) {
--		ret = iomap_dio_simple_read_complete(iocb, bio);
--	} else {
-+	if (!wait_for_completion) {
-+		bio->bi_end_io = iomap_dio_simple_read_end_io;
-+		submit_bio(bio);
- 		trace_iomap_dio_rw_queued(inode, iomi.pos, count);
-+		return -EIOCBQUEUED;
- 	}
- 
--	return ret;
-+	submit_bio_wait(bio);
-+	return iomap_dio_simple_read_complete(sr);
- 
- out_bio_release_pages:
--	if (dio_flags & IOMAP_DIO_BOUNCE)
--		bio_iov_iter_unbounce(bio, true, false);
--	else
--		bio_release_pages(bio, false);
-+	bio_release_pages(bio, false);
- out_bio_put:
- 	bio_put(bio);
- out_iomap_end:
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
