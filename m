@@ -1,219 +1,141 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 954813B2FF9
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 13:13:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 749B91A9FB0
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 13:30:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782306805; cv=none; b=tm5I6mvN0EiQIQOnp9xIwFzUFCgALUpS5M16A+k78BbYdDsCq23GGdyUgH8MyNH+GcV8+gNAh2zxlkH20hNYZY0x2CShO5TfqRsqUf/UVTbwaHmw7FV6jSQROfT0EhWKLYuCiCKymAvfM93PJTO1ka+puN7E5af9cg1n+ItsnN0=
+	t=1782307818; cv=none; b=ICsj/bNNWmxAOY91waSfMPUqHyyhd1lk82epZ9jSe6N+xmx6xN8pn29bsHhZLyfhFHaKUEZUXcadlFMISouDt2eRVd2zgsTdXUH8ZNBEnQ1BW2HwukCBlkuJZ3CzHVow4iLRYU0I/z6xe8pnvbCU52g+nAYEU7aj3JZTbw4mgzQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782306805; c=relaxed/simple;
-	bh=mC8Gzx0hRBhEGjzLBdhXV/BUGoJ1meZWTLAjjmi63sA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hThHAdqY5tHJVQZ71y3rExLQDlu7GMv3Wq27rrU8b6wzCakq7+zOPND0Z5J/UKKsYtTDa5ner5EGk/RxrTPYPFApEv9YEM9zuFIpnSc7cgUa+MIKPuSitZbDx8BcVKS7xvF633A5pHCkCUy/Jb8rgQBk+t+xvPGwo3ejEm7CJCQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=a0c31hek; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=KT4dlhot; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=a0c31hek; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=KT4dlhot; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1782307818; c=relaxed/simple;
+	bh=x5J///5NPUcpX55tKsjGNahFZmgb6VfI1DKrdJb5DwA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=MnJNuA//dsgnmlbiDh9//oqZbbJMvHabvge3QHVXO5U6cyq4TSFs0/kDuNMaf/1tuHMNUSHSKPuoHpB/ho9bOF2PITNyiwqsJfdtqwIRrK218eMUcrr3CHiO8czZQNytzVW0MZ1abofL1VSHlTK0JK9tiQmJY9hwwrl2TTLp3Hc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=IoCBCgC8; arc=none smtp.client-ip=209.85.210.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="a0c31hek";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="KT4dlhot";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="a0c31hek";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="KT4dlhot"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3F9EC75ED7;
-	Wed, 24 Jun 2026 13:13:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782306801; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=LX6xJumGntXXDUbv4cEYrK5CrV1eQ+w6mTItoSxKhxA=;
-	b=a0c31hekPNDGxzflcjKgbHIbo6n4oW4HM+RNtWMXPZaOmb7FEi4wVi6dJAgs2ntXxysoqr
-	xa4CV3Co89WvSpBjr318ohXh4DD/H+mMJnN9x9osyWAgxQObfuOlGa6kMutynqHK6RRICs
-	Jm2lqXKAG58EGDoi2OhGmx47DX2YZMs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782306801;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=LX6xJumGntXXDUbv4cEYrK5CrV1eQ+w6mTItoSxKhxA=;
-	b=KT4dlhotsL8ZmWaO24EjzMp/BrwBz1JFXznkdyQsff90PkcaIEJGVEWF37GsYG5byAwWma
-	cke/Wx/k7ls7uhCA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782306801; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=LX6xJumGntXXDUbv4cEYrK5CrV1eQ+w6mTItoSxKhxA=;
-	b=a0c31hekPNDGxzflcjKgbHIbo6n4oW4HM+RNtWMXPZaOmb7FEi4wVi6dJAgs2ntXxysoqr
-	xa4CV3Co89WvSpBjr318ohXh4DD/H+mMJnN9x9osyWAgxQObfuOlGa6kMutynqHK6RRICs
-	Jm2lqXKAG58EGDoi2OhGmx47DX2YZMs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782306801;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=LX6xJumGntXXDUbv4cEYrK5CrV1eQ+w6mTItoSxKhxA=;
-	b=KT4dlhotsL8ZmWaO24EjzMp/BrwBz1JFXznkdyQsff90PkcaIEJGVEWF37GsYG5byAwWma
-	cke/Wx/k7ls7uhCA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 34E2C779A8;
-	Wed, 24 Jun 2026 13:13:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id mxTkDPHXO2qOeAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 24 Jun 2026 13:13:21 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id D83D3A093E; Wed, 24 Jun 2026 15:13:20 +0200 (CEST)
-Date: Wed, 24 Jun 2026 15:13:20 +0200
-From: Jan Kara <jack@suse.cz>
-To: Aditya Srivastava <aditya.ansh182@gmail.com>
-Cc: tytso@mit.edu, jack@suse.cz, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, ritesh.list@gmail.com, yi.zhang@huawei.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	Colin Ian King <colin.i.king@gmail.com>
-Subject: Re: [PATCH v2] ext4: fix ABBA deadlock in
- ext4_xattr_inode_cache_find()
-Message-ID: <rq3vdbtn2mm4jjs6rsk6xtsvykj2mzc5ug42eyrlolj7m7eojp@tizep73vm3yo>
-References: <20260623095911.2372-1-aditya.ansh182@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IoCBCgC8"
+Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-7e6fa36a1b6so709552a34.1
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 06:30:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782307816; x=1782912616; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=nJMUfV0d4iL8GIoizfgvCU8470KRE9mKLUPI4sCYS14=;
+        b=IoCBCgC8J/FaPjb3ZmV3dvAWFh1cGzYjQ+5K8fgyXGPNVIljDt6xT4UXEu4+cv4y/9
+         DeBVwlxZMztbZL4E+e13jCkSA1IZTaJmMlCdmMHIRMpitSDY/lmLpjEtM3pF4oYITJzZ
+         ABhpQmn/IAY2FgjuGE4XKCnw6sWQHVDo5MxS8IzRQHKkSSz8uBS5yLefqJwtHwUux26C
+         P3Ke24y4GxblSfUQZFm53iFlm3yjnOAfAteDRVGBx0giT4F4S1zC/dqaau9JlXXI6LYk
+         zN4/31Aev4CLe61zMLdaOGkSlRBQfuSa9poB6r2voQYH2Nfl3Lct6O6yPa2DwYhgDkwR
+         VEpA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782307816; x=1782912616;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=nJMUfV0d4iL8GIoizfgvCU8470KRE9mKLUPI4sCYS14=;
+        b=sRAlvy/idoNwNYQilRcupIzv/btd4huN5+LD5hvCFoGNCYKKoVRrEF53bDf9sRVWIR
+         wqwMHlcR0XBoUb7P4jdLJmbbTAXVAIsaTYw1KYMnC50FiBEczc8FbEWFpjnHHimAIwDF
+         bb074f79IrWGFQ4R4m1SXVvcg/FOBcDeeTqSAsqwEtAr3fpjq6mZM/qH6WbGYoJ1UtPx
+         aeLDm6MvDnGdyj3nDDI18HIbi6KvxjSh7uRNLxA3jI5zYFqHSUO+4+qjYRdKSWqDcIH8
+         AFowStNHuHwgZygwq4dJBk95xVX/Sws0LSX+57AcdFwvruow2gzptgwRnGl1V77H0eED
+         3dEw==
+X-Forwarded-Encrypted: i=1; AFNElJ9ynU9kQpPWM4049m/nnaPb2QsvR7r5J4A49K9B1Tgio/CvesJ5dt9Zlr8jzsXYSEwngUxjF45X5Aos@vger.kernel.org
+X-Gm-Message-State: AOJu0YxPOhZOd0mXEv+He2/Z6qouDh8z0RgSHNo0jPf6CXQYgxcyBziN
+	YFZbUhfCryBy0qJViBe//9E/GS31ZOYllYLdgBzbqq2J7H50owAipHBw
+X-Gm-Gg: AfdE7cl8zntgLJQOrZ55TbDgJyzTPhu2IrqbntGeEuOK4qjlXnCG5+AXEKUHy7sFn/8
+	5ikYptiM9v6UhKq7ju1E+5FaitfiLF6OxcqItyq4DOODLccbyPCooBML6YdKIvbktetXOgoVwh1
+	I1vZT0jkLRfbdoay7lWC6/iXfNSZ1/KlLMC9+wtt7DKNkOQILELcUayWu9M0xWX+0/vmSfeLxfk
+	xEEo2voTPkXyd7M+8gGHzRkcVtZ00ZtivO97Fyyl39J4+v50ZeFJi1sItdeNrtMJPN+FiCzVSso
+	qFyG+DfWhhluch2+9c20zWJVPV9mymJcQk4lk4wsxjHL2rzRy23YKl+uO6dmFA+IdQYdgR0Tb3x
+	zw4yAvzstSQt8eQVKEJLL84Q7UnKLvClfVJl0IcXRBnbqcAZSXx4x1MR5NrKDloyMk4qQ3m1QJo
+	ycbiE9JwoitvWGBnctHHjCDEWIHXEaIgz6
+X-Received: by 2002:a05:6830:2a0d:b0:7e7:62f:727e with SMTP id 46e09a7af769-7e986cc0cb8mr2435079a34.22.1782307816330;
+        Wed, 24 Jun 2026 06:30:16 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7e944008fe7sm11846550a34.6.2026.06.24.06.30.01
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 24 Jun 2026 06:30:15 -0700 (PDT)
+Message-ID: <7471b9cb-158a-4ed4-a1ce-95270ef38974@gmail.com>
+Date: Wed, 24 Jun 2026 21:29:58 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260623095911.2372-1-aditya.ansh182@gmail.com>
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,suse.cz,dilger.ca,linux.alibaba.com,gmail.com,huawei.com,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Level: 
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: cancel dirty accounting for folios without buffers
+To: Jan Kara <jack@suse.cz>, Zhu Jia <zhujia.zj@bytedance.com>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <20260623094947.7853-1-zhujia.zj@bytedance.com>
+ <81ed36cc-b5c8-41cf-8b7d-16611e61e294@huaweicloud.com>
+ <20260624094535.1-zhujia.zj@bytedance.com>
+ <x3jm3mhgsr7zx4hvfgdvmwoqyz5vxx2fjyxy6gs6him46767f6@dkkirnw54x6x>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <x3jm3mhgsr7zx4hvfgdvmwoqyz5vxx2fjyxy6gs6him46767f6@dkkirnw54x6x>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-On Tue 23-06-26 09:59:11, Aditya Srivastava wrote:
-> From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+On 6/24/2026 8:32 PM, Jan Kara wrote:
+> On Wed 24-06-26 17:52:06, Zhu Jia wrote:
+>> Hi Yi,
+>>
+>> Thanks for taking a look.
+>>
+>> Yes, clearing PAGECACHE_TAG_DIRTY/TOWRITE would make the page-cache state
+>> cleaner. I had a version that did this by adding a helper around
+>> folio_cancel_dirty() and clearing the xarray tags after confirming the
+>> folio was still the same clean page-cache entry.
+>>
+>> It looked like this:
+>>
+>> static void ext4_cancel_dirty_folio(struct address_space *mapping,
+>> 				    struct folio *folio)
+>> {
+>> 	XA_STATE(xas, &mapping->i_pages, folio->index);
+>> 	unsigned long flags;
+>>
+>> 	folio_cancel_dirty(folio);
+>>
+>> 	xas_lock_irqsave(&xas, flags);
+>> 	if (xas_load(&xas) == folio && !folio_test_dirty(folio)) {
+>> 		xas_clear_mark(&xas, PAGECACHE_TAG_DIRTY);
+>> 		xas_clear_mark(&xas, PAGECACHE_TAG_TOWRITE);
+>> 	}
+>> 	xas_unlock_irqrestore(&xas, flags);
+>> }
+>>
+>> The reason I left the tags unchanged in this version is that I was not sure
+>> whether it is appropriate for ext4 to open-code xarray tag cleanup directly.
+>>
+>> If you think this is the right direction, I can add the helper back and
+>> send a v2.
 > 
-> Syzbot/stress-ng reported an ABBA deadlock in ext4 when exercising
-> concurrent xattr workloads (using the ea_inode mount/format option).
+> That was a good judgement! Playing with xarray tags like this in filesystem
+> code is certainly not a good thing. For now, I'd leave the xarray tags
+> dangling - they will be eventually synced with reality on next writeback
+> attempt. If this inconsistency of tags needs to be fixed, the fix belongs
+> to the generic code (so that it can be used in other places as well).
 > 
-> The deadlock occurs between the running transaction and the eviction
-> thread:
-> - Task 1 (stress-ng): Holds a reference to a shared mbcache_entry (ce)
->   and calls ext4_xattr_inode_cache_find() -> ext4_iget() to retrieve
->   the corresponding EA inode. Since the EA inode is currently being
->   evicted, ext4_iget() blocks in __wait_on_freeing_inode() waiting for
->   eviction to complete.
-> - Task 2 (eviction thread): Currently evicting the same EA inode in
->   ext4_evict_ea_inode(). It calls mb_cache_entry_wait_unused(oe) which
->   blocks waiting for Task 1 to release the reference to the mbcache_entry.
-> 
-> To break this deadlock, perform a non-blocking lookup of the EA inode
-> using VFS's find_inode_nowait() API. If the EA inode is currently being
-> evicted (marked with I_FREEING or I_WILL_FREE), simply skip it (treat
-> as a cache miss) rather than waiting for eviction to complete. If the
-> returned inode is found to be I_NEW, wait for its initialization to
-> clear using wait_on_new_inode().
-> 
-> This deadlock was made much easier to hit after commit 0a46ef234756
-> ("ext4: do not create EA inode under buffer lock") which removed
-> synchronization on the buffer lock.
-> 
-> Reported-by: Colin Ian King <colin.i.king@gmail.com>
-> Closes: https://bugzilla.kernel.org/show_bug.cgi?id=219283
-> Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
-> Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+> 								Honza
 
-I was looking into this for quite some time in the past and then run out of
-time when redesigning locking of the xattrs (which is a mess). Your
-solution is a bit hacky but as a quick stability fix before we can rework
-xattr locking it actually looks as a neat idea!
+Yes, I agree. Directly clearing the tag via open code is not a good
+approach. However, I took a look at the !nr_to_submit branch in
+ext4_bio_write_folio(), and it seems to have a similar simple handling
+pattern—it directly calls __folio_start_writeback() and
+folio_end_writeback(), which appears to be an elegant way to clear them.
+Could we also call these two helpers just after folio_cancel_dirty()
+here?
 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 982a1f831e22..ef13e7a76153 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1523,6 +1523,20 @@ static struct inode *ext4_xattr_inode_create(handle_t *handle,
->  	return ea_inode;
->  }
->  
-> +static int ext4_xattr_inode_match(struct inode *inode, u64 ino, void *data)
-> +{
-> +	if (inode->i_ino != ino)
-> +		return 0;
-> +	spin_lock(&inode->i_lock);
-> +	if (inode_state_read(inode) & (I_FREEING | I_WILL_FREE)) {
-> +		spin_unlock(&inode->i_lock);
-> +		return 0;
-> +	}
+Thanks,
+Yi.
 
-I think you should also skip I_CREATING inodes here... I don't think you
-can really spot them here but just that we don't have to worry.
 
-> +	__iget(inode);
-> +	spin_unlock(&inode->i_lock);
-> +	return 1;
-> +}
-> +
->  static struct inode *
->  ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
->  			    size_t value_len, u32 hash)
-> @@ -1549,10 +1563,19 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
->  	}
->  
->  	while (ce) {
-> -		ea_inode = ext4_iget(inode->i_sb, ce->e_value,
-> -				     EXT4_IGET_EA_INODE);
-> -		if (IS_ERR(ea_inode))
-> +		ea_inode = find_inode_nowait(inode->i_sb, ce->e_value,
-> +					     ext4_xattr_inode_match, NULL);
-> +		if (!ea_inode)
->  			goto next_entry;
-> +		if (inode_state_read_once(ea_inode) & I_NEW)
-> +			wait_on_new_inode(ea_inode);
-> +		if (is_bad_inode(ea_inode) ||
-> +		    !(EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) ||
-> +		    ext4_test_inode_state(ea_inode, EXT4_STATE_XATTR) ||
-> +		    EXT4_I(ea_inode)->i_file_acl) {
-> +			iput(ea_inode);
-> +			goto next_entry;
-> +		}
-
-So instead of opencoding these checks here, I'd rather implement
-EXT4_IGET_NOWAIT flag which will use find_inode_nowait() like above for the
-inode lookup and then you don't have to opencode the sanity checks here and
-they can stay contained in ext4_iget() code...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
