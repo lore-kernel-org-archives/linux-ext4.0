@@ -1,54 +1,54 @@
 Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5995A175A66;
-	Thu, 25 Jun 2026 15:35:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F22F326ED5D;
+	Thu, 25 Jun 2026 15:35:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782401734; cv=none; b=PD5IBgumIWQpzkofDgDEieNoEeHQoxt3AXTmn6eRfXG4at9IUoRsWvL+NeIcMyCyXYZJtwe5UI+IIaNKzOED5IPguUTS+X9r/QrWo9nYjM5EyIj0lbaFLfiJne7c86CqsvmpDeZQOxHl4kxiS35RLcZBVES94EWCxA2RI4/JWnk=
+	t=1782401736; cv=none; b=KaRBqiTt0ntwYZFnXIXZtY9q/ZAK/bxjKuuSMdA8WwLpgUKHQwdG+BfKESD8uWksd88H9b7SaCf9dHx8QKgWjycyd3FRCNIp4HX46Vb0TOq2I2yHRH2HBPwyOuhVIiyNyrxkflHfsaWyqLJfXmr4M4wq4ksNRB6wYkE892HVeHc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782401734; c=relaxed/simple;
-	bh=Et3TtpFrHjQI7w8PIYbEUEZyW2HwUqHqRZ8Hvnf2DzY=;
+	s=arc-20240116; t=1782401736; c=relaxed/simple;
+	bh=Oxkhy3YsiODoXLhVxfcpaI5I5l5sMPy/erQ5NMoFIYI=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=NVOCJus5vdQ4nJiQ1Nx4ksqo/xKWV22rNqdch3TLyo4k80IzvbtIv+rJ60Nvllda2qMiohS+qV3VDvylyfd70MfATmgZ1eVR67snEdRAtszFKDeaYpJYSzhjIJ12JXffld6ldrwhmzcbDpF9Q9QhPT8dcnfuBF+WdqUsp8DPJgc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=ee9dOO5a; arc=none smtp.client-ip=205.220.178.238
+	 MIME-Version:Content-Type; b=DDdR5kjRZEAfOT/ei1QeHX7ImARcuUdHwb2XVPX6STkx2jnh16N9FH24LdjbDWSd5O1WVJSur93Ss4YBvq4NWyVvsZ4iEKWESf3Q9RR10Cb3fHkiVLt2zXP17xE8RiLZre91ikhXxfuHlmgWB6lM/2A91Ir+yF/4915iNFugxUo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=iZEXvcLg; arc=none smtp.client-ip=205.220.178.238
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="ee9dOO5a"
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="iZEXvcLg"
 Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65P4qur2465947;
-	Thu, 25 Jun 2026 15:30:07 GMT
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65P4qCtm464768;
+	Thu, 25 Jun 2026 15:30:03 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
 	 h=cc:content-transfer-encoding:content-type:date:from
 	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=py38bHvAHJvAeiZv/r40O8xm67xMaIUVLj0j0lC+WNE=; b=
-	ee9dOO5aqTAFMZ38+j2NGw9SCpF0viKxPi1QeWvDe1Ac4GyrRaMiOdsQYYVTyntx
-	39KtG/HDc7bb78EQc4yj2/4LuMzmU1Tn5WQTPaM6LXYTfeeP9dCHFJj5LgUXOg0Y
-	2BUTL+ivia5XIRZKPq3RgcayIF8W/RcwmFgikt09lqcUpMsmTqvQ9taOydXCEoIP
-	aJ1BNflbgCjKlAGNn54iwpssVlkakGR8E7Gu7+rqGwRt4oOIIux5lQ46Z3W2i2Ly
-	p1XSB60EXZ1Ju67CD/CiV5unO3S4Q+rz25N1QCYA4hn6KpBAGVN1lALkAUoTyVR7
-	I146YoHh8vAxN8mTZtLhKw==
-Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f0t2c8vam-1
+	PPS06212021; bh=DtNbKaD2b2jujnKV7hbUi1BS3lYR7NNecpqJg17zR8Q=; b=
+	iZEXvcLgQz4iathdDxPrBCd89/gExKyMRJV5Yvzw+bSU+L2jOxP0iy5Jfgq18pTe
+	6bMxTaUk5khBpZy4JikqWg9hQV59eCorKlPDuji4zmufUTEQmCCU3A1pG9pWXX7F
+	HyAF2uS2EC46pH0aqQvw5vNlEN4TCPXTdBdF1bVuGfOtji4XFspfnTPsAJ+mkchO
+	8SOiaGbjhUN5yXc1NKU2BIpSn5QshFwhz/mVxpEmslbH3n8vghtK39S/IJ5hqHVs
+	iXQhH6wawAfPMuZv7jT3QOLLFCRIHE61PsfDYAqT5x67QxtXvzQz7uW7Zs6Bri+h
+	srwmgzGmmt4pe+oB50D/hA==
+Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f0t2c8vae-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Thu, 25 Jun 2026 15:30:07 +0000 (GMT)
+	Thu, 25 Jun 2026 15:30:03 +0000 (GMT)
 Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Thu, 25 Jun 2026 08:30:03 -0700
+ 15.1.2507.61; Thu, 25 Jun 2026 08:29:59 -0700
 Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
  ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Thu, 25 Jun 2026 08:30:00 -0700
+ 15.1.2507.61 via Frontend Transport; Thu, 25 Jun 2026 08:29:56 -0700
 From: Yun Zhou <yun.zhou@windriver.com>
 To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
         <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
         <yi.zhang@huawei.com>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>
 CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <yun.zhou@windriver.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v10 5/5] ext4: prevent deadlock from duplicate EA inode references on corrupted fs
-Date: Thu, 25 Jun 2026 23:29:41 +0800
-Message-ID: <20260625152941.24788-6-yun.zhou@windriver.com>
+Subject: [PATCH v10 4/5] ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
+Date: Thu, 25 Jun 2026 23:29:40 +0800
+Message-ID: <20260625152941.24788-5-yun.zhou@windriver.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <20260625152941.24788-1-yun.zhou@windriver.com>
 References: <20260625152941.24788-1-yun.zhou@windriver.com>
@@ -60,24 +60,24 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfXwQawlRtnLqa9
- uhql1phXjdkmsTTi3NLI066J/XtGZCyXURKCdp7f0P1X0tmz+8LkWtMsw/So7Oe/FqNuwg/I1ZQ
- iB4dtRpPYAGqOIJBfXaYKT/8iz8Soc31vdJx3FYwRjrGzon8A5HlAXn1CeTYAmChX/VRws+dKQT
- f3yh48dE3sln92fxJMOTuentTj1XNM7ioXpPwS97mox3bDbxtWd01lVA0Tp+xyOHIuSjWCK6ISx
- XvWS3meo8iASdrGFQ9TFDaabN96aB4j6fRXaDVBdcSJTOrcRqKml4496g4nwe5b7zEPpgKtIIFv
- vxxvhs4zOh2vDPxSTQSHyEYMJbw94PlrTjCnKOZzo2fFbpdvQE+brqyx2N9jTOaW81Vl3+oTQT7
- 8zQnwQzsEav1415jMNaSqQm5BTwqbHgzHTN8EifMJpo8rj6bH3MWmfQxkFeE/LG/WWA5Jh22yZk
- A2X7yN8mfWUp3p0QbZA==
-X-Proofpoint-GUID: 6ZKAIyUlbKGfxEiFXSdguEVbusxjO8XB
-X-Proofpoint-ORIG-GUID: 6ZKAIyUlbKGfxEiFXSdguEVbusxjO8XB
-X-Authority-Analysis: v=2.4 cv=U4Oiy+ru c=1 sm=1 tr=0 ts=6a3d497f cx=c_pps
- a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfX0RXCS28v+UL4
+ 0jplA7EJKXD1QzXqJMwd0OPcqkHhEy7BcO/ClA3rylxGIIhuH5ow5eGPAm62e7CEvkeenbSxZzF
+ gryI1h0XG4QsDCuv6Bh6p0WZDMOKGJCO5EiAyctzekHTGuCNS/V7fkAugJCTprhDtVqflf27bl7
+ tS2SCMqJ36g5w8Dn6od29KoKPMLtQFn5hM2EiIL8M9lCKfAzYEXlp/tu+3qM9vno4AnWomYx10I
+ gRw3DuzpBNiUdERWL4AvOzVyKeon+Tugq7j0RX0SDZiEV/L5/pisQSZh/d4kjyhgCAiWKTj+0/H
+ vRbesIhXOz4aCLwFpLIudkPAcKEi9zhXIU7TNST2BwcaWk+zVUZyYtvNVLlSZ4zitUARs7Uu0uz
+ cGRyQsMLlaprIFYx3vMU1Ja0/cv6DHvcXk9PUtgOZu9YT52q9MQzX3Z0LhHq7h8fKMd1dVFv2LL
+ rZKopGHXY5Fnl6m5Tzg==
+X-Proofpoint-GUID: YExbDbHA0Mhn_E7BOHFYFoOjpHd5Z6WB
+X-Proofpoint-ORIG-GUID: YExbDbHA0Mhn_E7BOHFYFoOjpHd5Z6WB
+X-Authority-Analysis: v=2.4 cv=U4Oiy+ru c=1 sm=1 tr=0 ts=6a3d497b cx=c_pps
+ a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
  a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=t7CeM3EgAAAA:8 a=Ysc6yqohfg-ZzZjRp7kA:9
+ a=klDOsUkWDRETUCZYPvoE:22 a=t7CeM3EgAAAA:8 a=9aDgUxOzpnIOwVdy1lkA:9
  a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfX2oquDtXCluNa
- IS00Vi4ZjhRl2OlBz+PHeU1NjBn8/A7Z7hpuy1CxigwOHOZdsSPZLaMIeZhBzoe5iTxoEmIk2fu
- XwiwYl1Nd9pOI5W8kFywBAbLq73JQbo1Mq8krdAIH+yYQGpa0GT5
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfX8jMIwkxNRqBD
+ FlCh7NqmlitvTL8gFz8bvt59GZl/wr79CybTyRHEJ6oUUQYitHzgyVnXADmyklBoRiG/gTHr3QY
+ maHu3/hT42D5oGifvJs+Y/N0ITRDDr0JZhytjWo6IEa51yhMNaAs
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
  definitions=2026-06-25_01,2026-06-24_01,2025-10-01_01
@@ -87,181 +87,301 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606250133
 
-On a corrupted filesystem, multiple xattr entries may reference the same
-EA inode.  When ext4_xattr_inode_dec_ref_all() processes such entries, it
-can dec_ref the EA inode (setting nlink=0) and queue it for deferred iput.
-If the deferred worker runs before the loop processes the duplicate entry,
-the second iget() may block on I_FREEING while the worker's eviction waits
-for the caller's transaction to commit -- classic ABBA deadlock.
+Now that ext4_put_ea_inode() handles deferred iput safely for all cases
+(using iput_if_not_last + embedded llist_node), the ea_inode_array
+mechanism for batching deferred iputs is redundant.
 
-Fix by tracking successfully processed EA inodes on a per-call llist
-(reusing i_ea_iput_node) and skipping any ea_ino already in the list.
-This covers both intra-block duplicates and cross ibody/block duplicates
-in ext4_xattr_delete_inode().
+Remove:
+- ext4_expand_inode_array() and ext4_xattr_inode_array_free()
+- ext4_xattr_inode_array_free_deferred()
+- struct ext4_xattr_inode_array and EIA_INCR/EIA_MASK defines
+- ea_inode_array parameter from ext4_xattr_inode_dec_ref_all(),
+  ext4_xattr_release_block(), and ext4_xattr_delete_inode()
+- ea_inode_array variable from ext4_evict_inode()
 
-The actual ext4_put_ea_inode() is deferred until after the processing
-loop completes (ext4_put_ea_inode_llist), ensuring no EA inode is queued
-for eviction while the loop is still iterating.
+Instead, ext4_xattr_inode_dec_ref_all() now calls ext4_put_ea_inode()
+directly after processing each EA inode.  This simplifies the code
+by eliminating multi-layer parameter threading and removes the need
+for callers to manage array lifetime.
 
 Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+Suggested-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/xattr.c | 68 ++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 61 insertions(+), 7 deletions(-)
+ fs/ext4/inode.c |  6 +---
+ fs/ext4/xattr.c | 95 +++----------------------------------------------
+ fs/ext4/xattr.h |  7 ----
+ 3 files changed, 6 insertions(+), 102 deletions(-)
 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0d131371ad3d..6f1b84e46a2e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -176,7 +176,6 @@ void ext4_evict_inode(struct inode *inode)
+ 	 * (xattr block freeing), bitmap, group descriptor (inode freeing)
+ 	 */
+ 	int extra_credits = 6;
+-	struct ext4_xattr_inode_array *ea_inode_array = NULL;
+ 	bool freeze_protected = false;
+ 
+ 	trace_ext4_evict_inode(inode);
+@@ -282,8 +281,7 @@ void ext4_evict_inode(struct inode *inode)
+ 	}
+ 
+ 	/* Remove xattr references. */
+-	err = ext4_xattr_delete_inode(handle, inode, &ea_inode_array,
+-				      extra_credits);
++	err = ext4_xattr_delete_inode(handle, inode, extra_credits);
+ 	if (err) {
+ 		ext4_warning(inode->i_sb, "xattr delete (err %d)", err);
+ stop_handle:
+@@ -291,7 +289,6 @@ void ext4_evict_inode(struct inode *inode)
+ 		ext4_orphan_del(NULL, inode);
+ 		if (freeze_protected)
+ 			sb_end_intwrite(inode->i_sb);
+-		ext4_xattr_inode_array_free(ea_inode_array);
+ 		goto no_delete;
+ 	}
+ 
+@@ -321,7 +318,6 @@ void ext4_evict_inode(struct inode *inode)
+ 	ext4_journal_stop(handle);
+ 	if (freeze_protected)
+ 		sb_end_intwrite(inode->i_sb);
+-	ext4_xattr_inode_array_free(ea_inode_array);
+ 	return;
+ no_delete:
+ 	/*
 diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 7f334349bd4f..5c929043e44a 100644
+index 90b693b78a45..7f334349bd4f 100644
 --- a/fs/ext4/xattr.c
 +++ b/fs/ext4/xattr.c
-@@ -1152,11 +1152,41 @@ static int ext4_xattr_restart_fn(handle_t *handle, struct inode *inode,
- 	return 0;
- }
+@@ -114,12 +114,6 @@ const struct xattr_handler * const ext4_xattr_handlers[] = {
+ #define EA_INODE_CACHE(inode)	(((struct ext4_sb_info *) \
+ 				inode->i_sb->s_fs_info)->s_ea_inode_cache)
  
-+/* Check if an EA inode number is already in the processed llist. */
-+static bool ext4_ea_ino_in_llist(unsigned int ea_ino,
-+				 struct llist_head *processed)
-+{
-+	struct ext4_inode_info *ei;
-+
-+	llist_for_each_entry(ei, processed->first, i_ea_iput_node) {
-+		if (ei->vfs_inode.i_ino == ea_ino)
-+			return true;
-+	}
-+	return false;
-+}
-+
-+/* Put all EA inodes on a processed llist via ext4_put_ea_inode. */
-+static void ext4_put_ea_inode_llist(struct super_block *sb,
-+				    struct llist_head *processed)
-+{
-+	struct llist_node *node = llist_del_all(processed);
-+	struct llist_node *next;
-+
-+	while (node) {
-+		struct ext4_inode_info *ei = container_of(node,
-+				struct ext4_inode_info, i_ea_iput_node);
-+		next = node->next;
-+		ext4_put_ea_inode(sb, &ei->vfs_inode);
-+		node = next;
-+	}
-+}
-+
- static void
+-static int
+-ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
+-			struct inode *inode);
+-static void ext4_xattr_inode_array_free_deferred(struct super_block *sb,
+-				struct ext4_xattr_inode_array *array);
+-
+ #ifdef CONFIG_LOCKDEP
+ void ext4_xattr_inode_set_class(struct inode *ea_inode)
+ {
+@@ -1162,7 +1156,6 @@ static void
  ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
  			     struct buffer_head *bh,
  			     struct ext4_xattr_entry *first, bool block_csum,
--			     int extra_credits, bool skip_quota)
-+			     int extra_credits, bool skip_quota,
-+			     struct llist_head *processed)
+-			     struct ext4_xattr_inode_array **ea_inode_array,
+ 			     int extra_credits, bool skip_quota)
  {
  	struct inode *ea_inode;
- 	struct ext4_xattr_entry *entry;
-@@ -1186,6 +1216,11 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		if (!entry->e_value_inum)
+@@ -1199,14 +1192,6 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err)
  			continue;
- 		ea_ino = le32_to_cpu(entry->e_value_inum);
-+
-+		/* Skip if already processed (duplicate on corrupted fs) */
-+		if (ext4_ea_ino_in_llist(ea_ino, processed))
-+			continue;
-+
- 		err = ext4_xattr_inode_iget(parent, ea_ino,
- 					    le32_to_cpu(entry->e_hash),
- 					    &ea_inode);
-@@ -1235,7 +1270,12 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 
+-		err = ext4_expand_inode_array(ea_inode_array, ea_inode);
+-		if (err) {
+-			ext4_warning_inode(ea_inode,
+-					   "Expand inode array err=%d", err);
+-			ext4_put_ea_inode(parent->i_sb, ea_inode);
+-			continue;
+-		}
+-
+ 		err = ext4_journal_ensure_credits_fn(handle, credits, credits,
+ 			ext4_free_metadata_revoke_credits(parent->i_sb, 1),
+ 			ext4_xattr_restart_fn(handle, parent, bh, block_csum,
+@@ -1214,6 +1199,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err < 0) {
+ 			ext4_warning_inode(ea_inode, "Ensure credits err=%d",
+ 					   err);
++			ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 			continue;
+ 		}
+ 		if (err > 0) {
+@@ -1223,6 +1209,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 				ext4_warning_inode(ea_inode,
+ 						"Re-get write access err=%d",
+ 						err);
++				ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 				continue;
+ 			}
+ 		}
+@@ -1231,6 +1218,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err) {
+ 			ext4_warning_inode(ea_inode, "ea_inode dec ref err=%d",
+ 					   err);
++			ext4_put_ea_inode(parent->i_sb, ea_inode);
+ 			continue;
+ 		}
+ 
+@@ -1247,6 +1235,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
  		entry->e_value_inum = 0;
  		entry->e_value_size = 0;
  
--		ext4_put_ea_inode(parent->i_sb, ea_inode);
-+		/*
-+		 * Collect processed EA inodes for dedup and deferred iput.
-+		 * ext4_put_ea_inode_llist() handles the actual release
-+		 * after the loop, preventing iget deadlocks on duplicates.
-+		 */
-+		llist_add(&EXT4_I(ea_inode)->i_ea_iput_node, processed);
++		ext4_put_ea_inode(parent->i_sb, ea_inode);
  		dirty = true;
  	}
  
-@@ -1262,7 +1302,8 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+@@ -1273,7 +1262,6 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
  static void
  ext4_xattr_release_block(handle_t *handle, struct inode *inode,
  			 struct buffer_head *bh,
--			 int extra_credits)
-+			 int extra_credits,
-+			 struct llist_head *processed)
+-			 struct ext4_xattr_inode_array **ea_inode_array,
+ 			 int extra_credits)
  {
  	struct mb_cache *ea_block_cache = EA_BLOCK_CACHE(inode);
- 	u32 hash, ref;
-@@ -1304,7 +1345,8 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+@@ -1315,7 +1303,6 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 			ext4_xattr_inode_dec_ref_all(handle, inode, bh,
  						     BFIRST(bh),
  						     true /* block_csum */,
+-						     ea_inode_array,
  						     extra_credits,
--						     true /* skip_quota */);
-+						     true /* skip_quota */,
-+						     processed);
+ 						     true /* skip_quota */);
  		ext4_free_blocks(handle, inode, bh, 0, 1,
- 				 EXT4_FREE_BLOCKS_METADATA |
- 				 EXT4_FREE_BLOCKS_FORGET);
-@@ -2171,8 +2213,12 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+@@ -2184,13 +2171,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
  
  	/* Drop the previous xattr block. */
  	if (bs->bh && bs->bh != new_bh) {
-+		LLIST_HEAD(processed);
-+
+-		struct ext4_xattr_inode_array *ea_inode_array = NULL;
+-
  		ext4_xattr_release_block(handle, inode, bs->bh,
--					 0 /* extra_credits */);
-+					 0 /* extra_credits */,
-+					 &processed);
-+		ext4_put_ea_inode_llist(inode->i_sb, &processed);
+-					 &ea_inode_array,
+ 					 0 /* extra_credits */);
+-		ext4_xattr_inode_array_free_deferred(inode->i_sb,
+-						     ea_inode_array);
  	}
  	error = 0;
  
-@@ -2866,6 +2912,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	struct ext4_xattr_entry *entry;
- 	struct inode *ea_inode;
- 	int error;
-+	LLIST_HEAD(processed);
+@@ -2866,46 +2848,6 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 	return error;
+ }
  
- 	error = ext4_journal_ensure_credits(handle, extra_credits,
- 			ext4_free_metadata_revoke_credits(inode->i_sb, 1));
-@@ -2897,7 +2944,8 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+-#define EIA_INCR 16 /* must be 2^n */
+-#define EIA_MASK (EIA_INCR - 1)
+-
+-/* Add the large xattr @inode into @ea_inode_array for deferred iput().
+- * If @ea_inode_array is new or full it will be grown and the old
+- * contents copied over.
+- */
+-static int
+-ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
+-			struct inode *inode)
+-{
+-	if (*ea_inode_array == NULL) {
+-		/*
+-		 * Start with 15 inodes, so it fits into a power-of-two size.
+-		 */
+-		(*ea_inode_array) = kmalloc_flex(**ea_inode_array, inodes,
+-						 EIA_MASK, GFP_NOFS);
+-		if (*ea_inode_array == NULL)
+-			return -ENOMEM;
+-		(*ea_inode_array)->count = 0;
+-	} else if (((*ea_inode_array)->count & EIA_MASK) == EIA_MASK) {
+-		/* expand the array once all 15 + n * 16 slots are full */
+-		struct ext4_xattr_inode_array *new_array = NULL;
+-
+-		new_array = kmalloc_flex(**ea_inode_array, inodes,
+-					 (*ea_inode_array)->count + EIA_INCR,
+-					 GFP_NOFS);
+-		if (new_array == NULL)
+-			return -ENOMEM;
+-		memcpy(new_array, *ea_inode_array,
+-		       struct_size(*ea_inode_array, inodes,
+-				   (*ea_inode_array)->count));
+-		kfree(*ea_inode_array);
+-		*ea_inode_array = new_array;
+-	}
+-	(*ea_inode_array)->count++;
+-	(*ea_inode_array)->inodes[(*ea_inode_array)->count - 1] = inode;
+-	return 0;
+-}
+-
+ /*
+  * ext4_xattr_delete_inode()
+  *
+@@ -2916,7 +2858,6 @@ ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
+  * references on xattr block and xattr inodes.
+  */
+ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+-			    struct ext4_xattr_inode_array **ea_inode_array,
+ 			    int extra_credits)
+ {
+ 	struct buffer_head *bh = NULL;
+@@ -2955,7 +2896,6 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 			ext4_xattr_inode_dec_ref_all(handle, inode, iloc.bh,
  						     IFIRST(header),
  						     false /* block_csum */,
+-						     ea_inode_array,
  						     extra_credits,
--						     false /* skip_quota */);
-+						     false /* skip_quota */,
-+						     &processed);
+ 						     false /* skip_quota */);
  	}
+@@ -2994,7 +2934,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
  
- 	if (EXT4_I(inode)->i_file_acl) {
-@@ -2921,6 +2969,11 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 			     entry = EXT4_XATTR_NEXT(entry)) {
- 				if (!entry->e_value_inum)
- 					continue;
-+				/* Skip EA inodes already dec_ref'd from ibody */
-+				if (ext4_ea_ino_in_llist(
-+					    le32_to_cpu(entry->e_value_inum),
-+					    &processed))
-+					continue;
- 				error = ext4_xattr_inode_iget(inode,
- 					      le32_to_cpu(entry->e_value_inum),
- 					      le32_to_cpu(entry->e_hash),
-@@ -2935,7 +2988,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
  		}
  
- 		ext4_xattr_release_block(handle, inode, bh,
--					 extra_credits);
-+					 extra_credits, &processed);
+-		ext4_xattr_release_block(handle, inode, bh, ea_inode_array,
++		ext4_xattr_release_block(handle, inode, bh,
+ 					 extra_credits);
  		/*
  		 * Update i_file_acl value in the same transaction that releases
- 		 * block.
-@@ -2951,6 +3004,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	}
- 	error = 0;
- cleanup:
-+	ext4_put_ea_inode_llist(inode->i_sb, &processed);
- 	brelse(iloc.bh);
- 	brelse(bh);
+@@ -3016,31 +2956,6 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
  	return error;
+ }
+ 
+-void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *ea_inode_array)
+-{
+-	int idx;
+-
+-	if (ea_inode_array == NULL)
+-		return;
+-
+-	for (idx = 0; idx < ea_inode_array->count; ++idx)
+-		iput(ea_inode_array->inodes[idx]);
+-	kfree(ea_inode_array);
+-}
+-
+-static void ext4_xattr_inode_array_free_deferred(struct super_block *sb,
+-				struct ext4_xattr_inode_array *array)
+-{
+-	int idx;
+-
+-	if (array == NULL)
+-		return;
+-
+-	for (idx = 0; idx < array->count; ++idx)
+-		ext4_put_ea_inode(sb, array->inodes[idx]);
+-	kfree(array);
+-}
+-
+ /*
+  * Worker function for deferred EA inode iput.  Processes all inodes queued
+  * on s_ea_inode_to_free in a context free of xattr_sem/jbd2 handle locks.
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index 9883ba5569a1..8214a31fe001 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -131,11 +131,6 @@ struct ext4_xattr_ibody_find {
+ 	struct ext4_iloc iloc;
+ };
+ 
+-struct ext4_xattr_inode_array {
+-	unsigned int count;
+-	struct inode *inodes[] __counted_by(count);
+-};
+-
+ extern const struct xattr_handler ext4_xattr_user_handler;
+ extern const struct xattr_handler ext4_xattr_trusted_handler;
+ extern const struct xattr_handler ext4_xattr_security_handler;
+@@ -187,9 +182,7 @@ extern int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
+ 				bool is_create);
+ 
+ extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+-				   struct ext4_xattr_inode_array **array,
+ 				   int extra_credits);
+-extern void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *array);
+ extern void ext4_init_ea_inode_work(struct ext4_sb_info *sbi);
+ extern void ext4_put_ea_inode(struct super_block *sb, struct inode *inode);
+ 
 -- 
 2.43.0
 
