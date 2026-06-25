@@ -1,57 +1,82 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+Received: from smtp-relay-internal-0.canonical.com (smtp-relay-internal-0.canonical.com [185.125.188.122])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F22F326ED5D;
-	Thu, 25 Jun 2026 15:35:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9ED0F3594A
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 16:02:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.188.122
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782401736; cv=none; b=KaRBqiTt0ntwYZFnXIXZtY9q/ZAK/bxjKuuSMdA8WwLpgUKHQwdG+BfKESD8uWksd88H9b7SaCf9dHx8QKgWjycyd3FRCNIp4HX46Vb0TOq2I2yHRH2HBPwyOuhVIiyNyrxkflHfsaWyqLJfXmr4M4wq4ksNRB6wYkE892HVeHc=
+	t=1782403324; cv=none; b=ShkrJ5F4j2vKOyu3wALwNEi8d28FyprVKD/o6vXNo75xGBAQdUzl1p3xzJCU51rtXOmMw+0sWYxT3cGalMeTL8KKhIEz+WXz+ULitEgoTanJkR1yT2ot3E5vb4X+Eo4dqqIb25I1wnxrir/0Eqf8N0INRCIF9abHIHFnLEgchAM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782401736; c=relaxed/simple;
-	bh=Oxkhy3YsiODoXLhVxfcpaI5I5l5sMPy/erQ5NMoFIYI=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=DDdR5kjRZEAfOT/ei1QeHX7ImARcuUdHwb2XVPX6STkx2jnh16N9FH24LdjbDWSd5O1WVJSur93Ss4YBvq4NWyVvsZ4iEKWESf3Q9RR10Cb3fHkiVLt2zXP17xE8RiLZre91ikhXxfuHlmgWB6lM/2A91Ir+yF/4915iNFugxUo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=iZEXvcLg; arc=none smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	s=arc-20240116; t=1782403324; c=relaxed/simple;
+	bh=ZVUdaX39cciik8oymsDnTnRfNBQRZR/at9uixyQ3+88=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=A4PVb+b0TOlr+x/5mWiMv53ey7BM39/CZChCsnXsB9L/Z2g17gzOf7RUi4o7frOAADnXlCH6o/218KKt3RyvSt2stxv8fFvOBG7EhJjmlAsXNnjEWMAFBJzC3QIgVrYw9fRdf+UPUylmaBOoFVGhXl3AbDbXnLelAu318FbtGbM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=canonical.com; spf=pass smtp.mailfrom=canonical.com; dkim=pass (4096-bit key) header.d=canonical.com header.i=@canonical.com header.b=JSWM8k+a; arc=none smtp.client-ip=185.125.188.122
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=canonical.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=canonical.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="iZEXvcLg"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65P4qCtm464768;
-	Thu, 25 Jun 2026 15:30:03 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=DtNbKaD2b2jujnKV7hbUi1BS3lYR7NNecpqJg17zR8Q=; b=
-	iZEXvcLgQz4iathdDxPrBCd89/gExKyMRJV5Yvzw+bSU+L2jOxP0iy5Jfgq18pTe
-	6bMxTaUk5khBpZy4JikqWg9hQV59eCorKlPDuji4zmufUTEQmCCU3A1pG9pWXX7F
-	HyAF2uS2EC46pH0aqQvw5vNlEN4TCPXTdBdF1bVuGfOtji4XFspfnTPsAJ+mkchO
-	8SOiaGbjhUN5yXc1NKU2BIpSn5QshFwhz/mVxpEmslbH3n8vghtK39S/IJ5hqHVs
-	iXQhH6wawAfPMuZv7jT3QOLLFCRIHE61PsfDYAqT5x67QxtXvzQz7uW7Zs6Bri+h
-	srwmgzGmmt4pe+oB50D/hA==
-Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f0t2c8vae-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Thu, 25 Jun 2026 15:30:03 +0000 (GMT)
-Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Thu, 25 Jun 2026 08:29:59 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Thu, 25 Jun 2026 08:29:56 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <yun.zhou@windriver.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v10 4/5] ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
-Date: Thu, 25 Jun 2026 23:29:40 +0800
-Message-ID: <20260625152941.24788-5-yun.zhou@windriver.com>
+	dkim=pass (4096-bit key) header.d=canonical.com header.i=@canonical.com header.b="JSWM8k+a"
+Received: from mail-pf1-f200.google.com (mail-pf1-f200.google.com [209.85.210.200])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-relay-internal-0.canonical.com (Postfix) with ESMTPS id C96B53FB8E
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 16:01:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canonical.com;
+	s=20251003; t=1782403313;
+	bh=HsI/zhaHcjURUsS0gYFNBz5PQ/oAtSwS9o+2GT8rorw=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version;
+	b=JSWM8k+ahzsQ6xP5FH4QkFnYgBtdc4Xxcr89wRCHOxTFa0sXdoZKfSYZNoD4+Fytk
+	 SMonNLAOGcwBgktbHSQBek2Gj/v4yBKV0qWQYWYR9SUphjqIp1WAylKkwVtG5TA5SI
+	 7pHgFBjz85P+z8WNI0wsyLiEn8rlCD4zng6+vATIzw+UrsaKxzbAoHZo2FTTOvDIOq
+	 LgnRK7xx55CGKa/KHNvuqe/D8agR+IocMUrDSbuc78BB6a/IzXRqlmVduruVo+9P+K
+	 GS3LvNtdFJkphWU7PG0f+CoHQz8npi7XgNCp2avGyySzv+/fO4lnr8T9xG+TeUgnz2
+	 9iRUm79bj0VGamw64U+lLpBcZWNQtcYxGjd+v93p26uadI9TE8A/O2cF8VAZ1CIcxj
+	 zjVRN+TsDre0El4yo9Z6nMxJLhR1I1od8Ju5lvKJIbAcSSP6Vp2cQomSkefNmYQzJt
+	 bTja43+bMwi9RwWP4U0cISmd3Ro1fVpGHwk0ak5g/zKKaK0PhiRWZoOlpcXLLaG+r4
+	 2BY9g73LQ3BwY5x4g1TE7JtDmoXyzf6jX3+E6JgdrjqO5FX8Pui7Ve4lMfuj+hRa11
+	 KajYFT0rGjj2tbij4UCm7CSJU+obEAjiTkEYfxjAhcZZ5/Qj9a5vBKTO5gdcirG/Eg
+	 uTRBxaOqY1GX/kZZyKaFHTiw=
+Received: by mail-pf1-f200.google.com with SMTP id d2e1a72fcca58-8422382178bso1740444b3a.2
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 09:01:53 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782403312; x=1783008112;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=HsI/zhaHcjURUsS0gYFNBz5PQ/oAtSwS9o+2GT8rorw=;
+        b=TJ45CrVg68ojDWROC4xnIivaQmqx+qFrRK4KFAYyTUKwqhh4TfhA9qnSgFIOE6NjXX
+         2UvJ6u+dbSVGe/8wl38NdqUNUppZyCZ2bim55WG0rAwWX+u9teJwYW4TXYBxox5/oVju
+         mwGKQ5xB6H74uA/ihoY3zTcpYN6Oij5PF1iVXLjB3kZ4C5nRQKHMjCq2O8DEASCzCzfy
+         CN6pQrH8BQmuKfl8h1QrKCHOHbpBqB4/wZW+3km4c5EdgSWAZvLCGE15f8HkBFgZ4dm0
+         z5+ymfu52DIbB+uHk8T3YrCqnjeFyxT7DTB6/WC8O9gBMRT14qRILw9gAukx4xD/4NkW
+         Y8yA==
+X-Gm-Message-State: AOJu0YxzXwEFnAUpa2r40Dz+yyxMem6/D8O9eSWUPl4AFCK8q1TaC5rj
+	Rz5vgPrW8aesCXTN6bS+05n3OPXtrWgCQib//gsKcDegJuyuQULiFRSdnU0QFNZOUqmHyY5vM7F
+	JSgXAIfkJFFlxYKbWaDtWyrkHFJkmdNJrzhrJec731hrF4WGeow//FtvfUFYHjp41HEK8qRThdB
+	HbOc7lrYIE248=
+X-Gm-Gg: AfdE7cnvLETMfMNk0EbdZ//wciiv4xN6WuBqxUgGNNMXOqnzg5kunTwNMu2X5VQuFtn
+	/Vmy62Eoaz4U3fF6asx2OqsY/lyEgasZbZyhEAC8OPNFKH6/oZzbmv0hOasnxBvAG7WpO/oZ3Zn
+	rJLYt5Awz8+0pE7Hdb6+Hjvx+YWLFMDdLjbzFo91LOR8VB8rIFgf/rkHs3m5yvAC+rRtMyLeBrY
+	vRBNLa2EWJJlpFkfvBmwbCHf7IQ1vvKwB4pKBEwj1ipG/opWQHAofZ4ug9DAcSCcSOL7sp4e/2t
+	EnWTVUmLJv9SBwd8p0I6oKMP3LxQrcSCFRqQoko5F7kGg2YJpv2Jt5Sir+Ef8ip52YPdk4/TdV8
+	2OV32aft4yPslCSp/1+HEp6kxoY3biwOXVZkN0xFYn0rJJCYe+DPGQJuOqLlHdlpPPzkP
+X-Received: by 2002:a05:6a00:2387:b0:845:4397:df60 with SMTP id d2e1a72fcca58-845b3b8c70bmr4001501b3a.30.1782403311929;
+        Thu, 25 Jun 2026 09:01:51 -0700 (PDT)
+X-Received: by 2002:a05:6a00:2387:b0:845:4397:df60 with SMTP id d2e1a72fcca58-845b3b8c70bmr4001457b3a.30.1782403311380;
+        Thu, 25 Jun 2026 09:01:51 -0700 (PDT)
+Received: from localhost.localdomain (118-163-61-247.hinet-ip.hinet.net. [118.163.61.247])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-845b8655227sm1536396b3a.5.2026.06.25.09.01.49
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 25 Jun 2026 09:01:50 -0700 (PDT)
+From: Gerald Yang <gerald.yang@canonical.com>
+To: tytso@mit.edu,
+	jack@suse.cz
+Cc: linux-ext4@vger.kernel.org,
+	gerald.yang.tw@gmail.com
+Subject: [PATCH v2] ext4: clear stale xarray tags on folios skipped during writeback
+Date: Fri, 26 Jun 2026 00:01:23 +0800
+Message-ID: <20260625160127.162272-1-gerald.yang@canonical.com>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20260625152941.24788-1-yun.zhou@windriver.com>
-References: <20260625152941.24788-1-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -59,329 +84,111 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfX0RXCS28v+UL4
- 0jplA7EJKXD1QzXqJMwd0OPcqkHhEy7BcO/ClA3rylxGIIhuH5ow5eGPAm62e7CEvkeenbSxZzF
- gryI1h0XG4QsDCuv6Bh6p0WZDMOKGJCO5EiAyctzekHTGuCNS/V7fkAugJCTprhDtVqflf27bl7
- tS2SCMqJ36g5w8Dn6od29KoKPMLtQFn5hM2EiIL8M9lCKfAzYEXlp/tu+3qM9vno4AnWomYx10I
- gRw3DuzpBNiUdERWL4AvOzVyKeon+Tugq7j0RX0SDZiEV/L5/pisQSZh/d4kjyhgCAiWKTj+0/H
- vRbesIhXOz4aCLwFpLIudkPAcKEi9zhXIU7TNST2BwcaWk+zVUZyYtvNVLlSZ4zitUARs7Uu0uz
- cGRyQsMLlaprIFYx3vMU1Ja0/cv6DHvcXk9PUtgOZu9YT52q9MQzX3Z0LhHq7h8fKMd1dVFv2LL
- rZKopGHXY5Fnl6m5Tzg==
-X-Proofpoint-GUID: YExbDbHA0Mhn_E7BOHFYFoOjpHd5Z6WB
-X-Proofpoint-ORIG-GUID: YExbDbHA0Mhn_E7BOHFYFoOjpHd5Z6WB
-X-Authority-Analysis: v=2.4 cv=U4Oiy+ru c=1 sm=1 tr=0 ts=6a3d497b cx=c_pps
- a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=t7CeM3EgAAAA:8 a=9aDgUxOzpnIOwVdy1lkA:9
- a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI1MDEzMyBTYWx0ZWRfX8jMIwkxNRqBD
- FlCh7NqmlitvTL8gFz8bvt59GZl/wr79CybTyRHEJ6oUUQYitHzgyVnXADmyklBoRiG/gTHr3QY
- maHu3/hT42D5oGifvJs+Y/N0ITRDDr0JZhytjWo6IEa51yhMNaAs
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-25_01,2026-06-24_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- impostorscore=0 phishscore=0 adultscore=0 malwarescore=0 clxscore=1015
- lowpriorityscore=0 spamscore=0 priorityscore=1501 bulkscore=0 suspectscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606250133
 
-Now that ext4_put_ea_inode() handles deferred iput safely for all cases
-(using iput_if_not_last + embedded llist_node), the ea_inode_array
-mechanism for batching deferred iputs is redundant.
+In data=journal mode, the writeback thread can hit the
+WARN_ON_ONCE(sb_rdonly(sb)) in ext4_journal_check_start() while the
+superblock is being remounted read-only during reboot:
 
-Remove:
-- ext4_expand_inode_array() and ext4_xattr_inode_array_free()
-- ext4_xattr_inode_array_free_deferred()
-- struct ext4_xattr_inode_array and EIA_INCR/EIA_MASK defines
-- ea_inode_array parameter from ext4_xattr_inode_dec_ref_all(),
-  ext4_xattr_release_block(), and ext4_xattr_delete_inode()
-- ea_inode_array variable from ext4_evict_inode()
+Workqueue: writeback wb_workfn (flush-253:0)
+RIP: 0010:ext4_journal_check_start+0x8b/0xd0
+Call Trace:
+  __ext4_journal_start_sb+0x3c/0x1e0
+  mpage_prepare_extent_to_map+0x4af/0x580
+  ext4_do_writepages+0x3c0/0x1080
+  ext4_writepages+0xc8/0x1a0
+  do_writepages+0xc4/0x180
+  __writeback_single_inode+0x45/0x2f0
+  writeback_sb_inodes+0x26b/0x5d0
+  __writeback_inodes_wb+0x54/0x100
+  wb_writeback+0x1ac/0x320
+  wb_workfn+0x394/0x470
 
-Instead, ext4_xattr_inode_dec_ref_all() now calls ext4_put_ea_inode()
-directly after processing each EA inode.  This simplifies the code
-by eliminating multi-layer parameter threading and removes the need
-for callers to manage array lifetime.
+And followed by the warning:
+EXT4-fs warning (device vda1): ext4_evict_inode:195: inode #6263:
+comm (sd-umount): data will be lost
 
-Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
-Suggested-by: Jan Kara <jack@suse.cz>
+This issue is not reproduced every time, but frequently.
+The reproduction step is to create a VM with 8 CPUs, 16G memory and
+setup data=journal:
+sudo tune2fs -o journal_data /dev/vda1
+Run fio:
+rm -f fiotest
+fio --name=fiotest --rw=randwrite --bs=4k --runtime=6 --ioengine=libaio
+--iodepth=256 --numjobs=8 --filename=fiotest --filesize=30G
+--group_reporting
+Reboot the VM, and check the console output from:
+virsh console testvm
+
+But there is no dirty inode, folio_clear_dirty_for_io clears PG_dirty
+but leaves tags PAGECACHE_TAG_DIRTY and PAGECACHE_TAG_TOWRITE set which
+are only cleared by __folio_start_writeback.
+In data=journal mode, jbd2 checkpoints the journalled data to its final
+location and clears its own dirty flag without touching folio PG_dirty
+or xarray dirty flags.
+The commit f4a2b42e7891 ("ext4: fix stale xarray tags after writeback")
+fixes when PG_dirty is still set but there is no dirty page.
+Another case is PG_dirty is cleared, but PAGECACHE_TAG_DIRTY and
+PAGECACHE_TAG_TOWRITE is still set. In this case, writeback thread
+checks clean folio and skips it in mpage_prepare_extent_to_map:
+if (!folio_test_dirty(folio) ||
+    ...
+        folio_unlcok(folio);
+	continue
+
+And never reaches ext4_bio_write_folio where the commit f4a2b42e7891
+clears the stale xarray tags. Print debug logs after the filesystem
+is remounted read-only:
+writepages RDONLY nrpages=2048 dirtytag=1 wbtag=0 towrite=1 sync=0
+And all folios are actually clean:
+folio idx=3 dirty=0 wb=0 checked=0 dirtybuf=0 jbddirty=0 mapped=1
+...
+
+We need to clear the xarray stale tags for such clean folios by
+cycling them through writeback in the skip path, the same way
+f4a2b42e7891 does in ext4_bio_write_folio.
+
+Fixes: dff4ac75eeee ("ext4: move keep_towrite handling to ext4_bio_write_page()")
+Signed-off-by: Gerald Yang <gerald.yang@canonical.com>
 ---
- fs/ext4/inode.c |  6 +---
- fs/ext4/xattr.c | 95 +++----------------------------------------------
- fs/ext4/xattr.h |  7 ----
- 3 files changed, 6 insertions(+), 102 deletions(-)
+Changes in v2:
+Split the top level condition based on Jan's suggestion
+
+ fs/ext4/inode.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0d131371ad3d..6f1b84e46a2e 100644
+index ce99807c5f5b..150f8789f0aa 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -176,7 +176,6 @@ void ext4_evict_inode(struct inode *inode)
- 	 * (xattr block freeing), bitmap, group descriptor (inode freeing)
- 	 */
- 	int extra_credits = 6;
--	struct ext4_xattr_inode_array *ea_inode_array = NULL;
- 	bool freeze_protected = false;
- 
- 	trace_ext4_evict_inode(inode);
-@@ -282,8 +281,7 @@ void ext4_evict_inode(struct inode *inode)
- 	}
- 
- 	/* Remove xattr references. */
--	err = ext4_xattr_delete_inode(handle, inode, &ea_inode_array,
--				      extra_credits);
-+	err = ext4_xattr_delete_inode(handle, inode, extra_credits);
- 	if (err) {
- 		ext4_warning(inode->i_sb, "xattr delete (err %d)", err);
- stop_handle:
-@@ -291,7 +289,6 @@ void ext4_evict_inode(struct inode *inode)
- 		ext4_orphan_del(NULL, inode);
- 		if (freeze_protected)
- 			sb_end_intwrite(inode->i_sb);
--		ext4_xattr_inode_array_free(ea_inode_array);
- 		goto no_delete;
- 	}
- 
-@@ -321,7 +318,6 @@ void ext4_evict_inode(struct inode *inode)
- 	ext4_journal_stop(handle);
- 	if (freeze_protected)
- 		sb_end_intwrite(inode->i_sb);
--	ext4_xattr_inode_array_free(ea_inode_array);
- 	return;
- no_delete:
- 	/*
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 90b693b78a45..7f334349bd4f 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -114,12 +114,6 @@ const struct xattr_handler * const ext4_xattr_handlers[] = {
- #define EA_INODE_CACHE(inode)	(((struct ext4_sb_info *) \
- 				inode->i_sb->s_fs_info)->s_ea_inode_cache)
- 
--static int
--ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
--			struct inode *inode);
--static void ext4_xattr_inode_array_free_deferred(struct super_block *sb,
--				struct ext4_xattr_inode_array *array);
--
- #ifdef CONFIG_LOCKDEP
- void ext4_xattr_inode_set_class(struct inode *ea_inode)
- {
-@@ -1162,7 +1156,6 @@ static void
- ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 			     struct buffer_head *bh,
- 			     struct ext4_xattr_entry *first, bool block_csum,
--			     struct ext4_xattr_inode_array **ea_inode_array,
- 			     int extra_credits, bool skip_quota)
- {
- 	struct inode *ea_inode;
-@@ -1199,14 +1192,6 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		if (err)
- 			continue;
- 
--		err = ext4_expand_inode_array(ea_inode_array, ea_inode);
--		if (err) {
--			ext4_warning_inode(ea_inode,
--					   "Expand inode array err=%d", err);
--			ext4_put_ea_inode(parent->i_sb, ea_inode);
--			continue;
--		}
--
- 		err = ext4_journal_ensure_credits_fn(handle, credits, credits,
- 			ext4_free_metadata_revoke_credits(parent->i_sb, 1),
- 			ext4_xattr_restart_fn(handle, parent, bh, block_csum,
-@@ -1214,6 +1199,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		if (err < 0) {
- 			ext4_warning_inode(ea_inode, "Ensure credits err=%d",
- 					   err);
-+			ext4_put_ea_inode(parent->i_sb, ea_inode);
- 			continue;
- 		}
- 		if (err > 0) {
-@@ -1223,6 +1209,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 				ext4_warning_inode(ea_inode,
- 						"Re-get write access err=%d",
- 						err);
-+				ext4_put_ea_inode(parent->i_sb, ea_inode);
+@@ -2694,13 +2694,25 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			 * page is already under writeback and we are not doing
+ 			 * a data integrity writeback, skip the page
+ 			 */
+-			if (!folio_test_dirty(folio) ||
+-			    (folio_test_writeback(folio) &&
+-			     (mpd->wbc->sync_mode == WB_SYNC_NONE)) ||
++			if ((folio_test_writeback(folio) &&
++			    mpd->wbc->sync_mode == WB_SYNC_NONE) ||
+ 			    unlikely(folio->mapping != mapping)) {
+ 				folio_unlock(folio);
  				continue;
  			}
- 		}
-@@ -1231,6 +1218,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		if (err) {
- 			ext4_warning_inode(ea_inode, "ea_inode dec ref err=%d",
- 					   err);
-+			ext4_put_ea_inode(parent->i_sb, ea_inode);
- 			continue;
- 		}
++			/*
++			 * If the folio is clean, skip writing it back.
++			 * Cycle the folio through the writeback state
++			 * though, to clear stale xarray tags.
++			 */
++			if (!folio_test_dirty(folio)) {
++				if (!folio_test_writeback(folio)) {
++					__folio_start_writeback(folio, false);
++					folio_end_writeback(folio);
++				}
++				folio_unlock(folio);
++				continue;
++			}
  
-@@ -1247,6 +1235,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		entry->e_value_inum = 0;
- 		entry->e_value_size = 0;
- 
-+		ext4_put_ea_inode(parent->i_sb, ea_inode);
- 		dirty = true;
- 	}
- 
-@@ -1273,7 +1262,6 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- static void
- ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 			 struct buffer_head *bh,
--			 struct ext4_xattr_inode_array **ea_inode_array,
- 			 int extra_credits)
- {
- 	struct mb_cache *ea_block_cache = EA_BLOCK_CACHE(inode);
-@@ -1315,7 +1303,6 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
- 			ext4_xattr_inode_dec_ref_all(handle, inode, bh,
- 						     BFIRST(bh),
- 						     true /* block_csum */,
--						     ea_inode_array,
- 						     extra_credits,
- 						     true /* skip_quota */);
- 		ext4_free_blocks(handle, inode, bh, 0, 1,
-@@ -2184,13 +2171,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 
- 	/* Drop the previous xattr block. */
- 	if (bs->bh && bs->bh != new_bh) {
--		struct ext4_xattr_inode_array *ea_inode_array = NULL;
--
- 		ext4_xattr_release_block(handle, inode, bs->bh,
--					 &ea_inode_array,
- 					 0 /* extra_credits */);
--		ext4_xattr_inode_array_free_deferred(inode->i_sb,
--						     ea_inode_array);
- 	}
- 	error = 0;
- 
-@@ -2866,46 +2848,6 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	return error;
- }
- 
--#define EIA_INCR 16 /* must be 2^n */
--#define EIA_MASK (EIA_INCR - 1)
--
--/* Add the large xattr @inode into @ea_inode_array for deferred iput().
-- * If @ea_inode_array is new or full it will be grown and the old
-- * contents copied over.
-- */
--static int
--ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
--			struct inode *inode)
--{
--	if (*ea_inode_array == NULL) {
--		/*
--		 * Start with 15 inodes, so it fits into a power-of-two size.
--		 */
--		(*ea_inode_array) = kmalloc_flex(**ea_inode_array, inodes,
--						 EIA_MASK, GFP_NOFS);
--		if (*ea_inode_array == NULL)
--			return -ENOMEM;
--		(*ea_inode_array)->count = 0;
--	} else if (((*ea_inode_array)->count & EIA_MASK) == EIA_MASK) {
--		/* expand the array once all 15 + n * 16 slots are full */
--		struct ext4_xattr_inode_array *new_array = NULL;
--
--		new_array = kmalloc_flex(**ea_inode_array, inodes,
--					 (*ea_inode_array)->count + EIA_INCR,
--					 GFP_NOFS);
--		if (new_array == NULL)
--			return -ENOMEM;
--		memcpy(new_array, *ea_inode_array,
--		       struct_size(*ea_inode_array, inodes,
--				   (*ea_inode_array)->count));
--		kfree(*ea_inode_array);
--		*ea_inode_array = new_array;
--	}
--	(*ea_inode_array)->count++;
--	(*ea_inode_array)->inodes[(*ea_inode_array)->count - 1] = inode;
--	return 0;
--}
--
- /*
-  * ext4_xattr_delete_inode()
-  *
-@@ -2916,7 +2858,6 @@ ext4_expand_inode_array(struct ext4_xattr_inode_array **ea_inode_array,
-  * references on xattr block and xattr inodes.
-  */
- int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
--			    struct ext4_xattr_inode_array **ea_inode_array,
- 			    int extra_credits)
- {
- 	struct buffer_head *bh = NULL;
-@@ -2955,7 +2896,6 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 			ext4_xattr_inode_dec_ref_all(handle, inode, iloc.bh,
- 						     IFIRST(header),
- 						     false /* block_csum */,
--						     ea_inode_array,
- 						     extra_credits,
- 						     false /* skip_quota */);
- 	}
-@@ -2994,7 +2934,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 
- 		}
- 
--		ext4_xattr_release_block(handle, inode, bh, ea_inode_array,
-+		ext4_xattr_release_block(handle, inode, bh,
- 					 extra_credits);
- 		/*
- 		 * Update i_file_acl value in the same transaction that releases
-@@ -3016,31 +2956,6 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	return error;
- }
- 
--void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *ea_inode_array)
--{
--	int idx;
--
--	if (ea_inode_array == NULL)
--		return;
--
--	for (idx = 0; idx < ea_inode_array->count; ++idx)
--		iput(ea_inode_array->inodes[idx]);
--	kfree(ea_inode_array);
--}
--
--static void ext4_xattr_inode_array_free_deferred(struct super_block *sb,
--				struct ext4_xattr_inode_array *array)
--{
--	int idx;
--
--	if (array == NULL)
--		return;
--
--	for (idx = 0; idx < array->count; ++idx)
--		ext4_put_ea_inode(sb, array->inodes[idx]);
--	kfree(array);
--}
--
- /*
-  * Worker function for deferred EA inode iput.  Processes all inodes queued
-  * on s_ea_inode_to_free in a context free of xattr_sem/jbd2 handle locks.
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 9883ba5569a1..8214a31fe001 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -131,11 +131,6 @@ struct ext4_xattr_ibody_find {
- 	struct ext4_iloc iloc;
- };
- 
--struct ext4_xattr_inode_array {
--	unsigned int count;
--	struct inode *inodes[] __counted_by(count);
--};
--
- extern const struct xattr_handler ext4_xattr_user_handler;
- extern const struct xattr_handler ext4_xattr_trusted_handler;
- extern const struct xattr_handler ext4_xattr_security_handler;
-@@ -187,9 +182,7 @@ extern int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
- 				bool is_create);
- 
- extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
--				   struct ext4_xattr_inode_array **array,
- 				   int extra_credits);
--extern void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *array);
- extern void ext4_init_ea_inode_work(struct ext4_sb_info *sbi);
- extern void ext4_put_ea_inode(struct super_block *sb, struct inode *inode);
- 
+ 			folio_wait_writeback(folio);
+ 			BUG_ON(folio_test_writeback(folio));
 -- 
 2.43.0
 
