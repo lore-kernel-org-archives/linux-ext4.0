@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE2A4260580
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:40:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 477B9260580
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:41:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782416455; cv=none; b=YSXmj5iSMe3XGVZP6BzskxSa6oBUlUykzOLiqy396WvrGE5Cy3173HSwd1XdB5CkRc7uJkDuMYCdNPwERg8l7ZlsL1XCyfD+Kw8G3wuDIhJllug/87rRo3j+2sFDpe8cyMNzNmPsiU9/qD7VBWZo+/y4s80XNrdXQFygyUKxkXE=
+	t=1782416470; cv=none; b=JZ/HHKjXnUjqmPivFjeqfKfuPQmSfCTdJq5vvuvlt3mQucCE4801FlgfkxaLRcpMFfebd0XLL+SEEWZaqbNQFLKT8f4dC/uwVOebLyTNw7ZHBJr5crFUg06wC2Vb0ngLmL+KXD4joWWsPP6unziEjZlpAbDjZM6nLogSJpO5Cb0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782416455; c=relaxed/simple;
-	bh=pqi5QpTRFPgL3DZtjIMiwPK5gowl44KANR+gn4qMqy4=;
+	s=arc-20240116; t=1782416470; c=relaxed/simple;
+	bh=kiD3lVLW3bJbqhz6X9ESXi/TrGY5YegLuJ6STWFVpRI=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WmyXRit37ovgk1daxnXxmlkMqj7AatOH5vVJICAeEl6lSZjlmKP0rNt9YzL4Y2ychuhhTZy289pchyKqHucAQceFRxtTn4kzd166BbCXe8Dudd+3GOIbfP0qGzwxkwc64EUcnM62qbXh56aGBIfPAqe66mDogvCmOiyhtHLuVB8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YMe34J4o; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=PWvBCGZmVcUh+LwKD+48iLWseTzypdqJLJPPgvw6itYql7zEL7T8u/e25g6l3QsYB1CwXis0h5H1H9kl5G3uorGHS1Bye9Z1yRBFYF78m1HbwDPFleljP5vHdjIVSGkC3CS1EoIITZeUaJCgQjzILTGPs3cEOq/kISKD8W7lnSA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VOVRUZAI; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YMe34J4o"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 8D4FA1F000E9;
-	Thu, 25 Jun 2026 19:40:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VOVRUZAI"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 17DE31F000E9;
+	Thu, 25 Jun 2026 19:41:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782416453;
-	bh=INrfgrZTfU3uljAN8HacoU/NEL+OSn4/ciKRiO44fCo=;
+	s=k20260515; t=1782416469;
+	bh=G9JOuBCafbo4F/O3+aS+PDzz9uHx7LFuFdqwX1ZmypQ=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References;
-	b=YMe34J4oUvB0lIXImvsgMyL77FGK7q1ToEcuHOT7O4YuAcr0dqZBhuvbD71kK8FEm
-	 STPnKzdnaUc3Sk6yS1Q3sv6P5D8Bh6vzzLgQtubY1VtmEzYbltJ6+6JPn2HA4bA6uW
-	 Q2bmhZ6FhC8T+SW7MSME4ktGdXVeLGPIb5WDZaVrBvNs7CpVKM//ao3Ozm4qkwjGbG
-	 sUPPrQ/cA8f0ZBbwji00K2tlvmu6dkfvcstJnYLRC/xUPZj/ahm8lNHuVoYL5i408n
-	 gFUgOsDZyrlL8gqfE43YWf4KSpHF85dGGLkLXz3xQpjyC/zFOquqikY+4co3RVWuu+
-	 zlVAfKxizi2gg==
-Date: Thu, 25 Jun 2026 12:40:53 -0700
-Subject: [PATCH 6/6] libext2fs: improve caching for inodes
+	b=VOVRUZAIpIYQ7Y8qGnL6NelPEGr39le4rpEmOHhsKqJ7/ZJYLWRJ3WKuAfUUB0oiR
+	 7mOV1SRAhhi9lvsxY6nfXIBoK4ns1nJXpS3clwmbAC11YNAL7d7c3Sn6jqQukUprjA
+	 g4pg8aunNU9Fp8Zmx+xgROfrwthArZYTyLQ59JFhnkDG9GgeAyG2TAhJ3Z0p+R5Hh2
+	 zfCsBDZwMHGsANLYDJy53buMsVoe22icYzoMAxgwy5upqta2xsVCwL9Lh5D++dIMzc
+	 1XhPxD1q887U9i1n2lGbZYKaFfFBYPzl7rXxS09ZYH654cWWklgKtU2t623ImXWLjQ
+	 PRHBUQGrjlY0A==
+Date: Thu, 25 Jun 2026 12:41:08 -0700
+Subject: [PATCH 1/4] libsupport: add pressure stall monitor
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org
-Message-ID: <178241607256.1810839.11925242613739595276.stgit@frogsfrogsfrogs>
-In-Reply-To: <178241607127.1810839.16661954075518963408.stgit@frogsfrogsfrogs>
-References: <178241607127.1810839.16661954075518963408.stgit@frogsfrogsfrogs>
+Message-ID: <178241607423.1811120.6458744076100134488.stgit@frogsfrogsfrogs>
+In-Reply-To: <178241607392.1811120.7216807779096078422.stgit@frogsfrogsfrogs>
+References: <178241607392.1811120.7216807779096078422.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,710 +45,680 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-Use our new cache code to improve the ondisk inode cache inside
-libext2fs.  Oops, list.h duplication, and libext2fs needs to link
-against libsupport now.
+Create some monitoring code that will sit in the background and watch
+for resource pressure stalls and call some sort of handler when this
+happens.  This will be useful for shrinking the buffer cache when memory
+gets tight.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- lib/ext2fs/ext2fsP.h     |   13 ++-
- debugfs/Makefile.in      |    8 +-
- e2fsck/Makefile.in       |   12 +--
- fuse4fs/Makefile.in      |    8 +-
- lib/ext2fs/Makefile.in   |   69 +++++++--------
- lib/ext2fs/inline_data.c |    4 -
- lib/ext2fs/inode.c       |  215 ++++++++++++++++++++++++++++++++++++----------
- misc/Makefile.in         |    8 +-
- resize/Makefile.in       |   11 +-
- tests/fuzz/Makefile.in   |    4 -
- tests/progs/Makefile.in  |    4 -
- 11 files changed, 239 insertions(+), 117 deletions(-)
+ lib/support/list.h      |    6 +
+ lib/support/psi.h       |   57 +++++
+ lib/support/Makefile.in |    4 
+ lib/support/iocache.c   |   19 ++
+ lib/support/psi.c       |  510 +++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 596 insertions(+)
+ create mode 100644 lib/support/psi.h
+ create mode 100644 lib/support/psi.c
 
 
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index bdc92991e7dda0..272de454bf4d65 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -82,21 +82,26 @@ struct dir_context {
- 	errcode_t	errcode;
- };
+diff --git a/lib/support/list.h b/lib/support/list.h
+index 54e8e236048af7..831a40efc9b4f0 100644
+--- a/lib/support/list.h
++++ b/lib/support/list.h
+@@ -4,6 +4,12 @@
  
-+#include "support/list.h"
-+#include "support/cache.h"
+ #include <stdbool.h>
+ 
++#ifdef __GNUC__
++#define EXT2FS_ATTR(x) __attribute__(x)
++#else
++#define EXT2FS_ATTR(x)
++#endif
 +
- /*
-  * Inode cache structure
-  */
- struct ext2_inode_cache {
- 	void *				buffer;
- 	blk64_t				buffer_blk;
--	int				cache_last;
--	unsigned int			cache_size;
- 	int				refcount;
--	struct ext2_inode_cache_ent	*cache;
-+	struct cache			cache;
+ struct list_head {
+ 	struct list_head *next, *prev;
  };
- 
- struct ext2_inode_cache_ent {
-+	struct cache_node	node;
- 	ext2_ino_t		ino;
--	struct ext2_inode	*inode;
-+	uint8_t			access;
+diff --git a/lib/support/psi.h b/lib/support/psi.h
+new file mode 100644
+index 00000000000000..675ebeb553da3e
+--- /dev/null
++++ b/lib/support/psi.h
+@@ -0,0 +1,57 @@
++/*
++ * psi.h - Pressure stall monitor
++ *
++ * Copyright (C) 2025-2026 Oracle.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++#ifndef __PSI_H__
++#define __PSI_H__
 +
-+	/* bytes representing a host-endian ext2_inode_large object */
-+	char			raw[];
- };
- 
- /*
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index 700ae87418c268..8bee4b67fc2de7 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -38,15 +38,15 @@ SRCS= debug_cmds.c $(srcdir)/debugfs.c $(srcdir)/util.c $(srcdir)/ls.c \
- 	$(srcdir)/../e2fsck/recovery.c $(srcdir)/do_journal.c \
- 	$(srcdir)/do_orphan.c
- 
--LIBS= $(LIBSUPPORT) $(LIBEXT2FS) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
-+LIBS= $(LIBEXT2FS) $(LIBSUPPORT) $(LIBE2P) $(LIBSS) $(LIBCOM_ERR) $(LIBBLKID) \
- 	$(LIBUUID) $(LIBMAGIC) $(SYSLIBS) $(LIBARCHIVE)
--DEPLIBS= $(DEPLIBSUPPORT) $(LIBEXT2FS) $(LIBE2P) $(DEPLIBSS) $(DEPLIBCOM_ERR) \
-+DEPLIBS= $(LIBEXT2FS) $(DEPLIBSUPPORT) $(LIBE2P) $(DEPLIBSS) $(DEPLIBCOM_ERR) \
- 	$(DEPLIBBLKID) $(DEPLIBUUID)
- 
--STATIC_LIBS= $(STATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBSS) \
-+STATIC_LIBS= $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBSS) \
- 	$(STATIC_LIBCOM_ERR) $(STATIC_LIBBLKID) $(STATIC_LIBUUID) \
- 	$(STATIC_LIBE2P) $(LIBMAGIC) $(SYSLIBS)
--STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) \
-+STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) $(DEPSTATIC_LIBSS) \
- 		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBUUID) \
- 		$(DEPSTATIC_LIBE2P)
- 
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index 52fad9cbfd2b23..d72244f47e47c0 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -16,22 +16,22 @@ PROGS=		e2fsck
- MANPAGES=	e2fsck.8
- FMANPAGES=	e2fsck.conf.5
- 
--LIBS= $(LIBSUPPORT) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
-+LIBS= $(LIBEXT2FS) $(LIBSUPPORT) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
- 	$(LIBINTL) $(LIBE2P) $(LIBMAGIC) $(SYSLIBS)
--DEPLIBS= $(DEPLIBSUPPORT) $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
-+DEPLIBS= $(LIBEXT2FS) $(DEPLIBSUPPORT) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
- 	 $(DEPLIBUUID) $(DEPLIBE2P)
- 
--STATIC_LIBS= $(STATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
-+STATIC_LIBS= $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) \
- 	     $(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(STATIC_LIBE2P) \
- 	     $(LIBMAGIC) $(SYSLIBS)
--STATIC_DEPLIBS= $(DEPSTATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) \
-+STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) \
- 		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBBLKID) \
- 		$(DEPSTATIC_LIBUUID) $(DEPSTATIC_LIBE2P)
- 
--PROFILED_LIBS= $(PROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
-+PROFILED_LIBS= $(PROFILED_LIBEXT2FS) $(PROFILED_LIBSUPPORT) \
- 	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
- 	       $(PROFILED_LIBE2P) $(LIBINTL) $(LIBMAGIC) $(SYSLIBS)
--PROFILED_DEPLIBS= $(DEPPROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
-+PROFILED_DEPLIBS= $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBSUPPORT) \
- 		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
- 		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
- 
-diff --git a/fuse4fs/Makefile.in b/fuse4fs/Makefile.in
-index 8fbbfabe7be1e7..44ae3b78a29b9d 100644
---- a/fuse4fs/Makefile.in
-+++ b/fuse4fs/Makefile.in
-@@ -37,11 +37,11 @@ SRCS=\
- 
- LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBSUPPORT)
- DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBSUPPORT)
--PROFILED_LIBS= $(LIBSUPPORT) $(PROFILED_LIBEXT2FS) $(PROFILED_LIBCOM_ERR)
--PROFILED_DEPLIBS= $(DEPLIBSUPPORT) $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBCOM_ERR)
-+PROFILED_LIBS= $(PROFILED_LIBEXT2FS) $(PROFILED_LIBSUPPORT) $(PROFILED_LIBCOM_ERR)
-+PROFILED_DEPLIBS= $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBSUPPORT) $(DEPPROFILED_LIBCOM_ERR)
- 
--STATIC_LIBS= $(LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
--STATIC_DEPLIBS= $(DEPLIBSUPPORT) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+STATIC_LIBS= $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR)
-+STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 
- LIBS_E2P= $(LIBE2P) $(LIBCOM_ERR)
- DEPLIBS_E2P= $(LIBE2P) $(DEPLIBCOM_ERR)
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 1d0991defff804..45cd3814d4f2c7 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -246,7 +246,7 @@ ELF_SO_VERSION = 2
- ELF_IMAGE = libext2fs
- ELF_MYDIR = ext2fs
- ELF_INSTALL_DIR = $(root_libdir)
--ELF_OTHER_LIBS = -lcom_err
-+ELF_OTHER_LIBS = -lcom_err $(top_builddir)/../lib/libsupport.a
- 
- BSDLIB_VERSION = 2.1
- BSDLIB_IMAGE = libext2fs
-@@ -283,54 +283,54 @@ ext2fs.pc: $(srcdir)/ext2fs.pc.in $(top_builddir)/config.status
- 	$(E) "	CONFIG.STATUS $@"
- 	$(Q) cd $(top_builddir); CONFIG_FILES=lib/ext2fs/ext2fs.pc ./config.status
- 
--tst_badblocks: tst_badblocks.o $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_badblocks: tst_badblocks.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_badblocks tst_badblocks.o $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
- tst_digest_encode: $(srcdir)/digest_encode.c $(srcdir)/ext2_fs.h
- 	$(E) "	CC $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) $(ALL_CFLAGS) -o tst_digest_encode \
- 		$(srcdir)/digest_encode.c -DUNITTEST $(SYSLIBS)
- 
--tst_icount: $(srcdir)/icount.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_icount: $(srcdir)/icount.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_icount $(srcdir)/icount.c -DDEBUG \
- 		$(ALL_CFLAGS) $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_iscan: tst_iscan.o $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_iscan: tst_iscan.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_iscan tst_iscan.o $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_getsize: tst_getsize.o $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_getsize: tst_getsize.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_getsize tst_getsize.o $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_ismounted: $(srcdir)/ismounted.c $(STATIC_LIBEXT2FS) \
-+tst_ismounted: $(srcdir)/ismounted.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 		$(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_ismounted $(srcdir)/ismounted.c \
--		$(STATIC_LIBEXT2FS) -DDEBUG $(ALL_CFLAGS) $(ALL_LDFLAGS) \
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) -DDEBUG $(ALL_CFLAGS) $(ALL_LDFLAGS) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_byteswap: tst_byteswap.o $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_byteswap: tst_byteswap.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_byteswap tst_byteswap.o $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_bitops: tst_bitops.o $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_bitops: tst_bitops.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_bitops tst_bitops.o $(ALL_CFLAGS) $(ALL_LDFLAGS) \
--		$(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_getsectsize: tst_getsectsize.o getsectsize.o $(STATIC_LIBEXT2FS) \
-+tst_getsectsize: tst_getsectsize.o getsectsize.o $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 			$(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_getsectsize tst_getsectsize.o getsectsize.o \
--		$(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
-+		$(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) \
- 		$(SYSLIBS)
- 
- tst_types.o: $(srcdir)/tst_types.c ext2_types.h 
-@@ -490,11 +490,11 @@ tst_bitmaps_cmd.c: tst_bitmaps_cmd.ct
- 	$(Q) DIR=$(srcdir) $(MK_CMDS) $(srcdir)/tst_bitmaps_cmd.ct
- 
- tst_bitmaps: tst_bitmaps.o tst_bitmaps_cmd.o $(srcdir)/blkmap64_rb.c \
--		$(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSS) $(DEPSTATIC_LIBCOM_ERR)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBSS) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o $@ tst_bitmaps.o tst_bitmaps_cmd.o \
- 		-DDEBUG_RB $(srcdir)/blkmap64_rb.c $(ALL_CFLAGS) \
--		$(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) $(STATIC_LIBSS) \
-+		$(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBSS) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
- tst_extents: $(srcdir)/extent.c $(DEBUG_OBJS) $(DEPSTATIC_LIBSS) libext2fs.a \
-@@ -503,8 +503,8 @@ tst_extents: $(srcdir)/extent.c $(DEBUG_OBJS) $(DEPSTATIC_LIBSS) libext2fs.a \
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_extents $(srcdir)/extent.c \
- 		$(ALL_CFLAGS) $(ALL_LDFLAGS) -DDEBUG $(DEBUG_OBJS) \
--		$(STATIC_LIBSS) $(STATIC_LIBE2P) $(LIBSUPPORT) \
--		$(STATIC_LIBEXT2FS) $(LIBBLKID) $(LIBUUID) \
-+		$(STATIC_LIBSS) $(STATIC_LIBE2P) \
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(LIBSUPPORT) $(LIBBLKID) $(LIBUUID) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS) -I $(top_srcdir)/debugfs
- 
- tst_libext2fs: $(DEBUG_OBJS) \
-@@ -512,38 +512,38 @@ tst_libext2fs: $(DEBUG_OBJS) \
- 	$(DEPLIBBLKID) $(DEPSTATIC_LIBCOM_ERR) $(DEPLIBSUPPORT)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_libext2fs $(ALL_LDFLAGS) -DDEBUG $(DEBUG_OBJS) \
--		$(STATIC_LIBSS) $(STATIC_LIBE2P) $(LIBSUPPORT) \
--		$(STATIC_LIBEXT2FS) $(LIBBLKID) $(LIBUUID) $(LIBMAGIC) \
-+		$(STATIC_LIBSS) $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
-+		$(LIBSUPPORT) $(LIBBLKID) $(LIBUUID) $(LIBMAGIC) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS) $(LIBARCHIVE) -I $(top_srcdir)/debugfs
- 
--tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_inline: $(srcdir)/inline.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_inline $(srcdir)/inline.c $(ALL_CFLAGS) \
--		$(ALL_LDFLAGS) -DDEBUG $(STATIC_LIBEXT2FS) \
-+		$(ALL_LDFLAGS) -DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_inline_data: inline_data.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_inline_data $(srcdir)/inline_data.c $(ALL_CFLAGS) \
--		$(ALL_LDFLAGS) -DDEBUG $(STATIC_LIBEXT2FS) \
-+		$(ALL_LDFLAGS) -DDEBUG $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 		$(STATIC_LIBCOM_ERR) $(SYSLIBS)
- 
--tst_csum: csum.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) $(STATIC_LIBE2P) \
-+tst_csum: csum.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR) $(STATIC_LIBE2P) \
- 		$(top_srcdir)/lib/e2p/e2p.h
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o tst_csum $(srcdir)/csum.c -DDEBUG \
--		$(ALL_CFLAGS) $(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) \
-+		$(ALL_CFLAGS) $(ALL_LDFLAGS) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 		$(STATIC_LIBCOM_ERR) $(STATIC_LIBE2P) $(SYSLIBS)
- 
--tst_crc32c: $(srcdir)/crc32c.c $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+tst_crc32c: $(srcdir)/crc32c.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 	$(Q) $(CC) $(ALL_LDFLAGS) $(ALL_CFLAGS) -o tst_crc32c $(srcdir)/crc32c.c \
--		-DUNITTEST $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
-+		-DUNITTEST $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR) \
- 		$(SYSLIBS)
- 
--mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
-+mkjournal: mkjournal.c $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(DEPLIBCOM_ERR)
- 	$(E) "	LD $@"
- 	$(Q) $(CC) -o mkjournal $(srcdir)/mkjournal.c -DDEBUG \
--		$(STATIC_LIBEXT2FS) $(LIBCOM_ERR) $(ALL_CFLAGS) $(SYSLIBS)
-+		$(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(LIBCOM_ERR) $(ALL_CFLAGS) $(SYSLIBS)
- 
- fullcheck check:: tst_bitops tst_badblocks tst_iscan tst_types tst_icount \
-     tst_super_size tst_types tst_inode_size tst_csum tst_crc32c tst_bitmaps \
-@@ -976,7 +976,8 @@ inode.o: $(srcdir)/inode.c $(top_builddir)/lib/config.h \
-  $(srcdir)/ext2fs.h $(srcdir)/ext2_fs.h $(srcdir)/ext3_extents.h \
-  $(top_srcdir)/lib/et/com_err.h $(srcdir)/ext2_io.h \
-  $(top_builddir)/lib/ext2fs/ext2_err.h $(srcdir)/ext2_ext_attr.h \
-- $(srcdir)/hashmap.h $(srcdir)/bitops.h $(srcdir)/e2image.h
-+ $(srcdir)/hashmap.h $(srcdir)/bitops.h $(srcdir)/e2image.h \
-+ $(srcdir)/../support/cache.h $(srcdir)/../support/list.h
- inode_io.o: $(srcdir)/inode_io.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/ext2_fs.h \
-  $(top_builddir)/lib/ext2fs/ext2_types.h $(srcdir)/ext2fs.h \
-diff --git a/lib/ext2fs/inline_data.c b/lib/ext2fs/inline_data.c
-index bd52e37708ccad..8ff4a23397f499 100644
---- a/lib/ext2fs/inline_data.c
-+++ b/lib/ext2fs/inline_data.c
-@@ -817,10 +817,6 @@ int main(int argc, char *argv[])
- 				"tst_inline_data: init inode cache failed\n");
- 			exit(1);
- 		}
--
--		/* setup inode cache */
--		for (i = 0; i < fs->icache->cache_size; i++)
--			fs->icache->cache[i].ino = first_ino++;
- 	}
- 
- 	/* test */
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index c9389a2324be07..8ca82af1ab35d3 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -59,18 +59,145 @@ struct ext2_struct_inode_scan {
- 	int			reserved[6];
- };
- 
-+struct ext2_inode_cache_key {
-+	ext2_filsys		fs;
-+	ext2_ino_t		ino;
++struct psi;
++struct psi_handler;
++
++enum psi_type {
++	PSI_MEMORY,
 +};
 +
-+#define ICKEY(key)	((struct ext2_inode_cache_key *)(key))
-+#define ICNODE(node)	(container_of((node), struct ext2_inode_cache_ent, node))
++void psi_destroy(struct psi **psip);
 +
-+static unsigned int
-+ext2_inode_cache_hash(cache_key_t key, unsigned int hashsize,
-+		      unsigned int hashshift)
++/* call malloc_trim after calling handlers */
++#define PSI_TRIM_HEAP		(1U << 0)
++
++#define PSI_FLAGS		(PSI_TRIM_HEAP)
++
++int psi_create(enum psi_type type, unsigned int psi_flags,
++	       uint64_t stall_us, uint64_t window_us, uint64_t timeout_us,
++	       struct psi **psip);
++
++/* psi triggered due to timeout (and not pressure) */
++#define PSI_REASON_TIMEOUT	(1U << 0)
++
++/*
++ * Prototype of a function to call when a stall occurs.  Implementations must
++ * not block on any resources that are held if psi_stop_thread is called.
++ */
++typedef void (*psi_handler_fn)(const struct psi *psi, unsigned int reasons,
++			       void *data);
++
++int psi_add_handler(struct psi *psi, psi_handler_fn callback, void *data,
++		    struct psi_handler **hanp);
++void psi_del_handler(struct psi *psi, struct psi_handler **hanp);
++void psi_cancel_handler(struct psi *psi, struct psi_handler **hanp);
++
++int psi_start_thread(struct psi *psi);
++void psi_stop_thread(struct psi *psi);
++
++bool psi_thread_cancelled(const struct psi *psi);
++
++static inline bool psi_active(struct psi *psi)
 +{
-+	uint64_t	hashval = ICKEY(key)->ino;
-+	uint64_t	tmp;
-+
-+	tmp = hashval ^ (GOLDEN_RATIO_PRIME + hashval) / CACHE_LINE_SIZE;
-+	tmp = tmp ^ ((tmp ^ GOLDEN_RATIO_PRIME) >> hashshift);
-+	return tmp % hashsize;
++	return psi != NULL;
 +}
 +
-+static int ext2_inode_cache_compare(struct cache_node *node, cache_key_t key)
-+{
-+	struct ext2_inode_cache_ent *ent = ICNODE(node);
-+	struct ext2_inode_cache_key *ikey = ICKEY(key);
-+
-+	if (ent->ino == ikey->ino)
-+		return CACHE_HIT;
-+
-+	return CACHE_MISS;
-+}
-+
-+static struct cache_node *ext2_inode_cache_alloc(struct cache *c,
-+						 cache_key_t key)
-+{
-+	struct ext2_inode_cache_key *ikey = ICKEY(key);
-+	struct ext2_inode_cache_ent *ent;
-+
-+	ent = calloc(1, sizeof(struct ext2_inode_cache_ent) +
-+			EXT2_INODE_SIZE(ikey->fs->super));
-+	if (!ent)
-+		return NULL;
-+
-+	ent->ino = ikey->ino;
-+	return &ent->node;
-+}
-+
-+static bool ext2_inode_cache_flush(struct cache *c, struct cache_node *node)
-+{
-+	/* can always drop inode cache */
-+	return 0;
-+}
-+
-+static void ext2_inode_cache_relse(struct cache *c, struct cache_node *node)
-+{
-+	struct ext2_inode_cache_ent *ent = ICNODE(node);
-+
-+	free(ent);
-+}
-+
-+static unsigned int ext2_inode_cache_bulkrelse(struct cache *cache,
-+					       struct list_head *list)
-+{
-+	struct cache_node *cn, *n;
-+	int count = 0;
-+
-+	if (list_empty(list))
-+		return 0;
-+
-+	list_for_each_entry_safe(cn, n, list, cn_mru) {
-+		ext2_inode_cache_relse(cache, cn);
-+		count++;
-+	}
-+
-+	return count;
-+}
-+
-+static const struct cache_operations ext2_inode_cache_ops = {
-+	.hash		= ext2_inode_cache_hash,
-+	.alloc		= ext2_inode_cache_alloc,
-+	.flush		= ext2_inode_cache_flush,
-+	.relse		= ext2_inode_cache_relse,
-+	.compare	= ext2_inode_cache_compare,
-+	.bulkrelse	= ext2_inode_cache_bulkrelse,
-+	.resize		= cache_gradual_resize,
-+};
-+
-+static errcode_t ext2_inode_cache_iget(ext2_filsys fs, ext2_ino_t ino,
-+				       unsigned int getflags,
-+				       struct ext2_inode_cache_ent **entp)
-+{
-+	struct ext2_inode_cache_key ikey = {
-+		.fs = fs,
-+		.ino = ino,
-+	};
-+	struct cache_node *node = NULL;
-+
-+	cache_node_get(&fs->icache->cache, &ikey, getflags, &node);
-+	if (!node)
-+		return ENOMEM;
-+
-+	*entp = ICNODE(node);
-+	return 0;
-+}
-+
-+static void ext2_inode_cache_iput(ext2_filsys fs,
-+				  struct ext2_inode_cache_ent *ent)
-+{
-+	cache_node_put(&fs->icache->cache, &ent->node);
-+}
-+
-+static int ext2_inode_cache_ipurge(ext2_filsys fs, ext2_ino_t ino,
-+				   struct ext2_inode_cache_ent *ent)
-+{
-+	struct ext2_inode_cache_key ikey = {
-+		.fs = fs,
-+		.ino = ino,
-+	};
-+
-+	return cache_node_purge(&fs->icache->cache, &ikey, &ent->node);
-+}
-+
-+static void ext2_inode_cache_ibump(ext2_filsys fs,
-+				   struct ext2_inode_cache_ent *ent)
-+{
-+	if (++ent->access > 50) {
-+		cache_node_bump_priority(&fs->icache->cache, &ent->node);
-+		ent->access = 0;
-+	}
-+}
-+
- /*
-  * This routine flushes the icache, if it exists.
-  */
- errcode_t ext2fs_flush_icache(ext2_filsys fs)
- {
--	unsigned	i;
--
- 	if (!fs->icache)
++#endif /* __PSI_H__ */
+diff --git a/lib/support/Makefile.in b/lib/support/Makefile.in
+index 22242758b4e618..7cab855c24fc50 100644
+--- a/lib/support/Makefile.in
++++ b/lib/support/Makefile.in
+@@ -23,6 +23,7 @@ OBJS=		bthread.o \
+ 		print_fs_flags.o \
+ 		profile_helpers.o \
+ 		prof_err.o \
++		psi.o \
+ 		quotaio.o \
+ 		quotaio_v2.o \
+ 		quotaio_tree.o \
+@@ -41,6 +42,7 @@ SRCS=		$(srcdir)/argv_parse.c \
+ 		$(srcdir)/profile.c \
+ 		$(srcdir)/profile_helpers.c \
+ 		prof_err.c \
++		$(srcdir)/psi.c \
+ 		$(srcdir)/quotaio.c \
+ 		$(srcdir)/quotaio_tree.c \
+ 		$(srcdir)/quotaio_v2.c \
+@@ -204,3 +206,5 @@ cache.o: $(srcdir)/cache.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/list.h $(srcdir)/cache.h
+ iocache.o: $(srcdir)/iocache.c $(top_builddir)/lib/config.h \
+  $(srcdir)/iocache.h $(srcdir)/cache.h $(srcdir)/list.h
++psi.o: $(srcdir)/psi.c $(top_builddir)/lib/config.h \
++ $(srcdir)/psi.h $(srcdir)/list.h
+diff --git a/lib/support/iocache.c b/lib/support/iocache.c
+index 4ed941ff2d3ae6..faf434a95becc6 100644
+--- a/lib/support/iocache.c
++++ b/lib/support/iocache.c
+@@ -452,6 +452,20 @@ static errcode_t iocache_set_option(io_channel channel, const char *option,
+ 	if (!strcmp(option, "cache"))
  		return 0;
  
--	for (i=0; i < fs->icache->cache_size; i++)
--		fs->icache->cache[i].ino = 0;
-+	cache_purge(&fs->icache->cache);
- 
- 	fs->icache->buffer_blk = 0;
- 	return 0;
-@@ -81,23 +208,20 @@ errcode_t ext2fs_flush_icache(ext2_filsys fs)
-  */
- void ext2fs_free_inode_cache(struct ext2_inode_cache *icache)
- {
--	unsigned i;
--
- 	if (--icache->refcount)
- 		return;
- 	if (icache->buffer)
- 		ext2fs_free_mem(&icache->buffer);
--	for (i = 0; i < icache->cache_size; i++)
--		ext2fs_free_mem(&icache->cache[i].inode);
--	if (icache->cache)
--		ext2fs_free_mem(&icache->cache);
-+	if (cache_initialized(&icache->cache)) {
-+		cache_purge(&icache->cache);
-+		cache_destroy(&icache->cache);
++	if (!strcmp(option, "cache_auto_shrink")) {
++		if (!arg)
++			return EXT2_ET_INVALID_ARGUMENT;
++		if (!strcmp(arg, "on")) {
++			cache_set_flag(&data->cache, CACHE_AUTO_SHRINK);
++			return 0;
++		}
++		if (!strcmp(arg, "off")) {
++			cache_clear_flag(&data->cache, CACHE_AUTO_SHRINK);
++			return 0;
++		}
++		return EXT2_ET_INVALID_ARGUMENT;
 +	}
- 	icache->buffer_blk = 0;
- 	ext2fs_free_mem(&icache);
- }
++
+ 	if (!strcmp(option, "cache_blocks")) {
+ 		long long size;
  
- errcode_t ext2fs_create_inode_cache(ext2_filsys fs, unsigned int cache_size)
- {
--	unsigned	i;
- 	errcode_t	retval;
- 
- 	if (fs->icache)
-@@ -112,22 +236,12 @@ errcode_t ext2fs_create_inode_cache(ext2_filsys fs, unsigned int cache_size)
- 		goto errout;
- 
- 	fs->icache->buffer_blk = 0;
--	fs->icache->cache_last = -1;
--	fs->icache->cache_size = cache_size;
- 	fs->icache->refcount = 1;
--	retval = ext2fs_get_array(fs->icache->cache_size,
--				  sizeof(struct ext2_inode_cache_ent),
--				  &fs->icache->cache);
-+	retval = cache_init(0, cache_size, &ext2_inode_cache_ops,
-+			    &fs->icache->cache);
- 	if (retval)
- 		goto errout;
- 
--	for (i = 0; i < fs->icache->cache_size; i++) {
--		retval = ext2fs_get_mem(EXT2_INODE_SIZE(fs->super),
--					&fs->icache->cache[i].inode);
--		if (retval)
--			goto errout;
--	}
--
- 	ext2fs_flush_icache(fs);
- 	return 0;
- errout:
-@@ -762,12 +876,12 @@ errcode_t ext2fs_read_inode2(ext2_filsys fs, ext2_ino_t ino,
- 	unsigned long 	block, offset;
- 	char 		*ptr;
- 	errcode_t	retval;
--	unsigned	i;
- 	int		clen, inodes_per_block;
- 	io_channel	io;
- 	int		length = EXT2_INODE_SIZE(fs->super);
- 	struct ext2_inode_large	*iptr;
--	int		cache_slot, fail_csum;
-+	struct ext2_inode_cache_ent *ent = NULL;
-+	int		fail_csum;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
- 
-@@ -794,12 +908,12 @@ errcode_t ext2fs_read_inode2(ext2_filsys fs, ext2_ino_t ino,
- 			return retval;
+@@ -467,6 +481,11 @@ static errcode_t iocache_set_option(io_channel channel, const char *option,
+ 		return 0;
  	}
- 	/* Check to see if it's in the inode cache */
--	for (i = 0; i < fs->icache->cache_size; i++) {
--		if (fs->icache->cache[i].ino == ino) {
--			memcpy(inode, fs->icache->cache[i].inode,
--			       (bufsize > length) ? length : bufsize);
--			return 0;
--		}
-+	ext2_inode_cache_iget(fs, ino, CACHE_GET_INCORE, &ent);
-+	if (ent) {
-+		memcpy(inode, ent->raw, (bufsize > length) ? length : bufsize);
-+		ext2_inode_cache_ibump(fs, ent);
-+		ext2_inode_cache_iput(fs, ent);
+ 
++	if (!strcmp(option, "cache_shrink")) {
++		cache_shrink(&data->cache);
 +		return 0;
- 	}
- 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
- 		inodes_per_block = fs->blocksize / EXT2_INODE_SIZE(fs->super);
-@@ -827,8 +941,10 @@ errcode_t ext2fs_read_inode2(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
- 
--	cache_slot = (fs->icache->cache_last + 1) % fs->icache->cache_size;
--	iptr = (struct ext2_inode_large *)fs->icache->cache[cache_slot].inode;
-+	retval = ext2_inode_cache_iget(fs, ino, 0, &ent);
-+	if (retval)
-+		return retval;
-+	iptr = (struct ext2_inode_large *)ent->raw;
- 
- 	ptr = (char *) iptr;
- 	while (length) {
-@@ -863,13 +979,15 @@ errcode_t ext2fs_read_inode2(ext2_filsys fs, ext2_ino_t ino,
- 			       0, length);
- #endif
- 
--	/* Update the inode cache bookkeeping */
--	if (!fail_csum) {
--		fs->icache->cache_last = cache_slot;
--		fs->icache->cache[cache_slot].ino = ino;
--	}
- 	memcpy(inode, iptr, (bufsize > length) ? length : bufsize);
- 
-+	/* Update the inode cache bookkeeping */
-+	if (!fail_csum)
-+		ext2_inode_cache_ibump(fs, ent);
-+	ext2_inode_cache_iput(fs, ent);
-+	if (fail_csum)
-+		ext2_inode_cache_ipurge(fs, ino, ent);
++	}
 +
- 	if (!(fs->flags & EXT2_FLAG_IGNORE_CSUM_ERRORS) &&
- 	    !(flags & READ_INODE_NOCSUM) && fail_csum)
- 		return EXT2_ET_INODE_CSUM_INVALID;
-@@ -899,8 +1017,8 @@ errcode_t ext2fs_write_inode2(ext2_filsys fs, ext2_ino_t ino,
- 	unsigned long block, offset;
- 	errcode_t retval = 0;
- 	struct ext2_inode_large *w_inode;
-+	struct ext2_inode_cache_ent *ent;
- 	char *ptr;
--	unsigned i;
- 	int clen;
- 	int length = EXT2_INODE_SIZE(fs->super);
- 
-@@ -933,19 +1051,20 @@ errcode_t ext2fs_write_inode2(ext2_filsys fs, ext2_ino_t ino,
- 	}
- 
- 	/* Check to see if the inode cache needs to be updated */
--	if (fs->icache) {
--		for (i=0; i < fs->icache->cache_size; i++) {
--			if (fs->icache->cache[i].ino == ino) {
--				memcpy(fs->icache->cache[i].inode, inode,
--				       (bufsize > length) ? length : bufsize);
--				break;
--			}
--		}
--	} else {
-+	if (!fs->icache) {
- 		retval = ext2fs_create_inode_cache(fs, 4);
- 		if (retval)
- 			goto errout;
- 	}
+ 	retval = iocache_flush_cache(data);
+ 	if (retval)
+ 		return retval;
+diff --git a/lib/support/psi.c b/lib/support/psi.c
+new file mode 100644
+index 00000000000000..26ce6ee1985641
+--- /dev/null
++++ b/lib/support/psi.c
+@@ -0,0 +1,510 @@
++/*
++ * psi.c - Pressure stall monitor
++ *
++ * Copyright (C) 2025-2026 Oracle.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
++ */
++#include "config.h"
++#include <stdint.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <errno.h>
++#include <poll.h>
++#include <pthread.h>
++#include <malloc.h>
++#include <signal.h>
++#include <limits.h>
 +
-+	retval = ext2_inode_cache_iget(fs, ino, 0, &ent);
-+	if (retval)
-+		goto errout;
++#include "support/list.h"
++#include "support/psi.h"
 +
-+	memcpy(ent->raw, inode, (bufsize > length) ? length : bufsize);
-+	ext2_inode_cache_ibump(fs, ent);
-+	ext2_inode_cache_iput(fs, ent);
++enum psi_state {
++	/* waiting to be put in the running state */
++	PSI_WAITING,
++	/* running */
++	PSI_RUNNING,
++	/* cancelled */
++	PSI_CANCELLED,
++};
 +
- 	memcpy(w_inode, inode, (bufsize > length) ? length : bufsize);
- 
- 	if (!(fs->flags & EXT2_FLAG_RW)) {
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index 48bd42b8272572..6f46ae7007018c 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -115,11 +115,11 @@ SRCS=	$(srcdir)/tune2fs.c $(srcdir)/mklost+found.c $(srcdir)/mke2fs.c $(srcdir)/
- 
- LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBSUPPORT)
- DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBSUPPORT)
--PROFILED_LIBS= $(LIBSUPPORT) $(PROFILED_LIBEXT2FS) $(PROFILED_LIBCOM_ERR)
--PROFILED_DEPLIBS= $(DEPLIBSUPPORT) $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBCOM_ERR)
-+PROFILED_LIBS= $(PROFILED_LIBEXT2FS) $(PROFILED_LIBSUPPORT) $(PROFILED_LIBCOM_ERR)
-+PROFILED_DEPLIBS= $(PROFILED_LIBEXT2FS) $(DEPPROFILED_LIBSUPPORT) $(DEPPROFILED_LIBCOM_ERR)
- 
--STATIC_LIBS= $(LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR)
--STATIC_DEPLIBS= $(DEPLIBSUPPORT) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR)
-+STATIC_LIBS= $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) $(STATIC_LIBCOM_ERR)
-+STATIC_DEPLIBS= $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) $(DEPSTATIC_LIBCOM_ERR)
- 
- LIBS_E2P= $(LIBE2P) $(LIBCOM_ERR)
- DEPLIBS_E2P= $(LIBE2P) $(DEPLIBCOM_ERR)
-diff --git a/resize/Makefile.in b/resize/Makefile.in
-index 27f721305e052e..101cdbeaa9f1ef 100644
---- a/resize/Makefile.in
-+++ b/resize/Makefile.in
-@@ -28,12 +28,13 @@ SRCS= $(srcdir)/extent.c \
- 	$(srcdir)/resource_track.c \
- 	$(srcdir)/sim_progress.c
- 
--LIBS= $(LIBE2P) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBINTL) $(SYSLIBS)
--DEPLIBS= $(LIBE2P) $(LIBEXT2FS) $(DEPLIBCOM_ERR)
-+LIBS= $(LIBE2P) $(LIBEXT2FS) $(LIBSUPPORT) $(LIBCOM_ERR) $(LIBINTL) $(SYSLIBS)
-+DEPLIBS= $(LIBE2P) $(LIBEXT2FS) $(DEPLIBSUPPORT) $(DEPLIBCOM_ERR)
- 
--STATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
--	$(LIBINTL) $(SYSLIBS)
--DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBCOM_ERR) 
-+STATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
-+	     $(STATIC_LIBCOM_ERR) $(LIBINTL) $(SYSLIBS)
-+DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) \
-+		$(DEPSTATIC_LIBCOM_ERR)
- 
- .c.o:
- 	$(E) "	CC $<"
-diff --git a/tests/fuzz/Makefile.in b/tests/fuzz/Makefile.in
-index 949579e7c6501f..2b959f612e2079 100644
---- a/tests/fuzz/Makefile.in
-+++ b/tests/fuzz/Makefile.in
-@@ -24,9 +24,9 @@ LOCAL_LDFLAGS= @fuzzer_ldflags@
- LIBS= $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBSUPPORT)
- DEPLIBS= $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBSUPPORT)
- 
--STATIC_LIBS= $(LIBSUPPORT) $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) \
-+STATIC_LIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(STATIC_LIBSUPPORT) \
- 	$(STATIC_LIBCOM_ERR)
--STATIC_DEPLIBS= $(DEPLIBSUPPORT) $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) \
-+STATIC_DEPLIBS= $(STATIC_LIBE2P) $(STATIC_LIBEXT2FS) $(DEPSTATIC_LIBSUPPORT) \
- 	$(DEPSTATIC_LIBCOM_ERR)
- 
- FUZZ_LDFLAGS= $(ALL_LDFLAGS)
-diff --git a/tests/progs/Makefile.in b/tests/progs/Makefile.in
-index 1a8e9299a1c1ca..64069a52c57cd3 100644
---- a/tests/progs/Makefile.in
-+++ b/tests/progs/Makefile.in
-@@ -23,8 +23,8 @@ TEST_ICOUNT_OBJS=	test_icount.o test_icount_cmds.o
- SRCS=	$(srcdir)/test_icount.c \
- 	$(srcdir)/test_rel.c
- 
--LIBS= $(LIBEXT2FS) $(LIBSS) $(LIBCOM_ERR) $(SYSLIBS)
--DEPLIBS= $(LIBEXT2FS) $(DEPLIBSS) $(DEPLIBCOM_ERR)
-+LIBS= $(LIBEXT2FS) $(LIBSUPPORT) $(LIBSS) $(LIBCOM_ERR) $(SYSLIBS)
-+DEPLIBS= $(LIBEXT2FS) $(DEPLIBSUPPORT) $(DEPLIBSS) $(DEPLIBCOM_ERR)
- 
- .c.o:
- 	$(E) "	CC $<"
++struct psi_handler {
++	struct list_head list;
++	psi_handler_fn callback;
++	void *data;
++};
++
++struct psi {
++	int system_fd;
++	int cgroup_fd;
++	unsigned int flags;
++	uint64_t timeout_us;
++
++	pthread_t thread;
++	pthread_mutex_t lock;
++	struct list_head handlers;
++
++	enum psi_type type;
++	enum psi_state state;
++};
++
++static const char *psi_system_path(enum psi_type type)
++{
++	switch (type) {
++	case PSI_MEMORY:
++		return "/proc/pressure/memory";
++	default:
++		return NULL;
++	}
++}
++
++static const char *psi_cgroup_fname(enum psi_type type)
++{
++	switch (type) {
++	case PSI_MEMORY:
++		return "memory.pressure";
++	default:
++		return NULL;
++	}
++}
++
++static const char *psi_shortname(enum psi_type type)
++{
++	switch (type) {
++	case PSI_MEMORY:
++		return "psi:memory";
++	default:
++		return NULL;
++	}
++}
++
++static void psi_run_callbacks(struct psi *psi, unsigned int reasons)
++{
++	struct psi_handler *h, *i;
++
++	pthread_mutex_lock(&psi->lock);
++	list_for_each_entry_safe(h, i, &psi->handlers, list)
++		h->callback(psi, reasons, h->data);
++	pthread_mutex_unlock(&psi->lock);
++
++	if (psi->flags & PSI_TRIM_HEAP)
++		malloc_trim(0);
++}
++
++static inline void psi_fill_pollfd(struct pollfd *pfd, int fd)
++{
++	memset(pfd, 0, sizeof(*pfd));
++	pfd->fd = fd;
++	pfd->events = POLLPRI | POLLRDHUP | POLLERR | POLLHUP;
++}
++
++static unsigned int psi_fill_pollfds(struct psi *psi, struct pollfd *pfds)
++{
++	unsigned int ret = 0;
++
++	if (psi->system_fd >= 0) {
++		psi_fill_pollfd(pfds, psi->system_fd);
++		pfds++;
++		ret++;
++	}
++
++	if (psi->cgroup_fd >= 0) {
++		psi_fill_pollfd(pfds, psi->cgroup_fd);
++		pfds++;
++		ret++;
++	}
++
++	return ret;
++}
++
++static void *psi_thread(void *arg)
++{
++	struct psi *psi = arg;
++	int oldstate;
++
++	/*
++	 * Don't let pthread_cancel kill us except while we're in poll()
++	 * because we don't hold any resources during that call.  Everywhere
++	 * else, there could be resource cleanups that would have to be done.
++	 * Hence we just turn off cancelling for simplicity's sake.
++	 */
++	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
++
++	pthread_mutex_lock(&psi->lock);
++	psi->state = PSI_RUNNING;
++	pthread_mutex_unlock(&psi->lock);
++
++	while (1) {
++		struct pollfd pfds[2];
++		unsigned int nr_pfds;
++		int timeout_ms;
++		int n;
++
++		pthread_mutex_lock(&psi->lock);
++		if (psi_thread_cancelled(psi)) {
++			pthread_mutex_unlock(&psi->lock);
++			break;
++		}
++
++		nr_pfds = psi_fill_pollfds(psi, pfds);
++		timeout_ms = psi->timeout_us ? psi->timeout_us / 1000 : -1;
++		pthread_mutex_unlock(&psi->lock);
++
++		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
++		n = poll(pfds, nr_pfds, timeout_ms);
++		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
++		if (n == 0) {
++			/* run callbacks on timeout */
++			psi_run_callbacks(psi, PSI_REASON_TIMEOUT);
++			continue;
++		}
++		if (n < 0) {
++			perror(psi_shortname(psi->type));
++			break;
++		}
++
++		/* psi fd closed */
++		if ((pfds[0].revents & POLLNVAL) ||
++		    (pfds[1].revents & POLLNVAL))
++			break;
++
++		if ((pfds[0].revents & POLLERR) ||
++		    (pfds[1].revents & POLLERR)) {
++			fprintf(stderr, "%s: event source dead?\n",
++				psi_shortname(psi->type));
++			break;
++		}
++
++		/* POLLPRI on a psi fd means we hit the pressure threshold */
++		if ((pfds[0].revents & POLLPRI) ||
++		    (pfds[1].revents & POLLPRI)) {
++			psi_run_callbacks(psi, 0);
++			continue;
++		}
++
++		fprintf(stderr, "%s: unknown events 0x%x/0x%x, ignoring.\n",
++			psi_shortname(psi->type), pfds[0].revents,
++			pfds[1].revents);
++	}
++
++	pthread_setcancelstate(oldstate, NULL);
++	return NULL;
++}
++
++/* Call a function whenever there is resource pressure */
++int psi_add_handler(struct psi *psi, psi_handler_fn callback, void *data,
++		    struct psi_handler **hanp)
++{
++	struct psi_handler *handler;
++
++	handler = malloc(sizeof(*handler));
++	if (!handler)
++		return -1;
++
++	INIT_LIST_HEAD(&handler->list);
++	handler->callback = callback;
++	handler->data = data;
++
++	pthread_mutex_lock(&psi->lock);
++	list_add_tail(&handler->list, &psi->handlers);
++	pthread_mutex_unlock(&psi->lock);
++
++	*hanp = handler;
++	return 0;
++}
++
++/* Stop calling this handler when there is resource pressure */
++void psi_del_handler(struct psi *psi, struct psi_handler **hanp)
++{
++	struct psi_handler *handler = *hanp;
++
++	if (handler) {
++		pthread_mutex_lock(&psi->lock);
++		list_del_init(&handler->list);
++		pthread_mutex_unlock(&psi->lock);
++		free(handler);
++	}
++
++	*hanp = NULL;
++}
++
++/* Cancel a running handler. */
++void psi_cancel_handler(struct psi *psi, struct psi_handler **hanp)
++{
++	struct psi_handler *handler = *hanp;
++
++	if (handler) {
++		list_del_init(&handler->list);
++		free(handler);
++	}
++
++	*hanp = NULL;
++}
++
++/*
++ * Stop monitoring for resource pressure stalls.  The monitor cannot be
++ * restarted after this call completes.
++ */
++void psi_stop_thread(struct psi *psi)
++{
++	int system_fd;
++	int cgroup_fd;
++	enum psi_state old_state;
++
++	pthread_mutex_lock(&psi->lock);
++	system_fd = psi->system_fd;
++	cgroup_fd = psi->cgroup_fd;
++	old_state = psi->state;
++	psi->system_fd = -1;
++	psi->cgroup_fd = -1;
++	psi->state = PSI_CANCELLED;
++	pthread_mutex_unlock(&psi->lock);
++
++	if (system_fd >= 0)
++		close(system_fd);
++	if (cgroup_fd >= 0)
++		close(cgroup_fd);
++
++	if (old_state == PSI_RUNNING) {
++		/* Cancelling the thread interrupts the poll() call */
++		pthread_cancel(psi->thread);
++		pthread_join(psi->thread, NULL);
++	}
++}
++
++/* Is this stall monitor active and its thread running? */
++bool psi_thread_cancelled(const struct psi *psi)
++{
++	return !psi || psi->state == PSI_CANCELLED;
++}
++
++/* Destroy this resource pressure stall monitor having stopped the thread */
++void psi_destroy(struct psi **psip)
++{
++	struct psi *psi = *psip;
++
++	if (psi) {
++		psi_stop_thread(psi);
++		pthread_mutex_destroy(&psi->lock);
++		free(psi);
++	}
++
++	*psip = NULL;
++}
++
++static int psi_open_control(const char *path)
++{
++	return open(path, O_RDWR | O_NONBLOCK);
++}
++
++static void psi_open_system_control(struct psi *psi)
++{
++	/* PSI may not exist, so we don't error if it's not there */
++	psi->system_fd = psi_open_control(psi_system_path(psi->type));
++}
++
++static ssize_t psi_cgroup_path(enum psi_type type, char *path, size_t pathsize)
++{
++	char cgpath[PATH_MAX];
++	char *p = cgpath;
++	ssize_t bytes;
++	int pscgroupfd = open("/proc/self/cgroup", O_RDONLY);
++	int nr_colons = 0;
++
++	/*
++	 * Read the contents of /proc/self/cgroup, which should have the
++	 * format:
++	 *
++	 * <id>:<stuff>:<absolute path under cgroupfs>\n
++	 *
++	 * We care about the cgroupfs path (column 3) and not the newline.
++	 */
++	if (pscgroupfd < 0)
++		return 0;
++
++	bytes = read(pscgroupfd, cgpath, sizeof(cgpath) - 1);
++	close(pscgroupfd);
++	if (bytes < 0)
++		return 0;
++	cgpath[bytes] = 0;
++
++	/*
++	 * Find the second colon, turn it into a dot so that we have a relative
++	 * path.  sysfs paths can contain colons, so this will always be the
++	 * last column... right?
++	 */
++	while (*p != 0) {
++		if (*p == ':')
++			nr_colons++;
++		if (nr_colons == 2) {
++			*p = '.';
++			break;
++		}
++
++		p++;
++	}
++
++	if (nr_colons != 2)
++		return 0;
++
++	/* Trim trailing newline, p points to column 3 */
++	bytes = strlen(p);
++	if (p[bytes - 1] == '\n')
++		p[bytes - 1] = 0;
++
++	/* /sys/fs/cgroup/$col3/$psi_cgroup_fname */
++	return snprintf(path, pathsize, "/sys/fs/cgroup/%s/%s", p,
++			psi_cgroup_fname(type));
++}
++
++static void psi_open_cgroup_control(struct psi *psi)
++{
++	char path[PATH_MAX];
++	ssize_t pathlen;
++
++	pathlen = psi_cgroup_path(psi->type, path, sizeof(path));
++	if (!pathlen || pathlen >= sizeof(path)) {
++		psi->cgroup_fd = -1;
++		return;
++	}
++
++	/* PSI may not exist, so we don't error if it's not there */
++	psi->cgroup_fd = psi_open_control(path);
++}
++
++static int psi_config_fd(struct psi *psi, int fd, uint64_t stall_us,
++			 uint64_t window_us)
++{
++	char buf[256];
++	size_t bytes;
++	ssize_t written;
++
++	if (fd < 0)
++		return 0;
++
++	/*
++	 * The kernel blindly nulls out the last byte we write into the psi
++	 * file, so put a newline at the end because I bet they're only testing
++	 * this with bash scripts.
++	 */
++	bytes = snprintf(buf, sizeof(buf), "some %llu %llu\n",
++			 (unsigned long long)stall_us,
++			 (unsigned long long)window_us);
++	if (bytes > sizeof(buf))
++		return -1;
++
++	written = write(fd, buf, bytes);
++	if (written >= 0 && written != bytes) {
++		written = -1;
++		errno = EMSGSIZE;
++	}
++	if (written < 0) {
++		perror(psi_shortname(psi->type));
++		return -1;
++	}
++
++	return 0;
++}
++
++static inline struct psi *psi_alloc(enum psi_type type, unsigned int psi_flags,
++				    uint64_t timeout_us)
++{
++	struct psi *psi = calloc(1, sizeof(*psi));
++	if (!psi)
++		return NULL;
++
++	psi->type = type;
++	psi->flags = psi_flags;
++	psi->timeout_us = timeout_us;
++	psi->state = PSI_WAITING;
++	INIT_LIST_HEAD(&psi->handlers);
++	pthread_mutex_init(&psi->lock, NULL);
++
++	return psi;
++}
++
++/*
++ * Create a pressure stall indicator monitor thread that monitors for
++ * resource availability stalls exceeding @stall_us in any @window_us time
++ * period and calls any attached handlers.  If @timeout_us is nonzero, the
++ * handlers will be called at that interval with PSI_REASON_TIMEOUT.
++ *
++ * Unprivileged processes are not allowed to set a @window_us that is not a
++ * multiple of 2 seconds(!)
++ *
++ * Returns 0 on success.  On error, returns -1 and sets errno.  errno values
++ * are as follows:
++ *
++ *    ENOENT means the monitor file cannot be found
++ *    EACCESS or EPERM mean that monitoring is not available
++ *    EINVAL means the window values are not valid
++ *    Any other errno is a sign of deeper problems
++ */
++int psi_create(enum psi_type type, unsigned int psi_flags, uint64_t stall_us,
++	       uint64_t window_us, uint64_t timeout_us, struct psi **psip)
++{
++	struct psi *psi;
++	int ret;
++
++	if (psi_flags & ~PSI_FLAGS) {
++		errno = EINVAL;
++		return -1;
++	}
++
++	psi = psi_alloc(type, psi_flags, timeout_us);
++	if (!psi)
++		return -1;
++
++	psi_open_system_control(psi);
++	psi_open_cgroup_control(psi);
++
++	if (psi->system_fd < 0 && psi->cgroup_fd < 0 && !psi->timeout_us) {
++		errno = ENOENT;
++		goto out_fds;
++	}
++
++	ret = psi_config_fd(psi, psi->system_fd, stall_us, window_us);
++	if (ret)
++		goto out_fds;
++
++	ret = psi_config_fd(psi, psi->cgroup_fd, stall_us, window_us);
++	if (ret)
++		goto out_fds;
++
++	*psip = psi;
++	return 0;
++
++out_fds:
++	psi_destroy(&psi);
++	return -1;
++}
++
++/* Start monitoring for resource pressure stalls */
++int psi_start_thread(struct psi *psi)
++{
++	int error;
++
++	if (psi->state != PSI_WAITING) {
++		fprintf(stderr, "%s: psi already torn down\n",
++			psi_shortname(psi->type));
++		errno = EINVAL;
++		return -1;
++	}
++
++	error = pthread_create(&psi->thread, NULL, psi_thread, psi);
++	if (error) {
++		fprintf(stderr, "%s: could not create thread: %s\n",
++			psi_shortname(psi->type), strerror(error));
++		errno = error;
++		return -1;
++	}
++
++	pthread_setname_np(psi->thread, psi_shortname(psi->type));
++	return 0;
++}
 
