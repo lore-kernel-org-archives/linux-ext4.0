@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0F663126CA
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:38:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54214314D15
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:39:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782416331; cv=none; b=Vw5FAKb17CzGNBdU7vZEqtXKr5fS4Wz4C5QqBzNe+e9PiAucyO8IIv2HsNNCMbLnGYEmh7fI3r36CSfeRKIo14AKIqQkXt+gpOlI/Wbnm0IdcE7cUoNygNL3IbsVoGwiioxDR2yGZ1iq0pHQYtPsB5OKl6JeoJE5Y8hQFbrjmz8=
+	t=1782416346; cv=none; b=UP9yhmSJGxCG6OPcJv45PZqSoEzHXiEQH4LbqWl84OZYVWfqrOUaipm2CcMta6VNB0ILQH7eT/nejUL8EbsgTLHqxrtoIe+ugS8YRo94hNA6OvYfXrb98iBktVG5KxPKZKeePSKbTE2UPEpJB4S4Aygw6ikLdMJpQKXHbSOeF8w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782416331; c=relaxed/simple;
-	bh=TGyzchCVbQzLtb4vpxDD2GtypC4Nsl5agJc1c/6I9RQ=;
+	s=arc-20240116; t=1782416346; c=relaxed/simple;
+	bh=nug6uKHKCkkX9fFAcDoGMR49piT6uz7YSUyAStDmX4c=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=q1RvMIx1H3DkVfmFxXjFZciMI9064ocm0ulhV4AW+VDongknS6NX00qTSQLNxXTFOV6IGjjVcfvuedunnn0UXwd5Z3+Ed5vDseXB6ilSwyZig6SRx7pqcmYQmEzIsaUoEF9UZgofnbFzevh3ZrqqqGqt/00624aPacQFAPyfabw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=k3zBzbOO; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=IKUm5ipYsyXT8TkOsiLl8E51kcLk9aojvkfPrtOJMgLYETkNz8Y4uvi2MWu7zolmlUTNwTYWcSSY49FwFbkCS+KjTe7G8fI5qcDie9tjGQoMuOeg2EYTIa5yzOyk/PHBnWsps1e39nw0zX/h4edWzlAKW9xN2VuUIeMr4q57LFM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UG83Uhi5; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="k3zBzbOO"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 6BFAB1F000E9;
-	Thu, 25 Jun 2026 19:38:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UG83Uhi5"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id E858D1F000E9;
+	Thu, 25 Jun 2026 19:39:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782416329;
-	bh=S6GjOj6nmFY2jC8eYqWKgCKoF/hcRcYYnRTO1BzANOw=;
+	s=k20260515; t=1782416345;
+	bh=0YZ8apnokee7fkYkKU93Wc/Qq4LAGQg6SNX0EVmsFwQ=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References;
-	b=k3zBzbOOjpO2r55DMPgSatFetxATC+NabFhCOQvOPxG+KI7lSEhCb1m1E41/1McT7
-	 wEFHxwMjTZ/rRY52mIsTQOd0f5C2OC143o3AtOr3uOiT9PhFgt4eseuFO14gVMwPwC
-	 LmNi0G/fxRysYHxxLov5KhYvp799JlIRDSfIytfP6eAr+nWNCRVbvVADiHK9jza1fx
-	 Pg/I9N4KZ/YHVrUUKt0l+/Kf305BQaT9l+/TkAFAGeUsMlDj9//B+cnW8k06zwcGUx
-	 LyK6TnxWSnmpJDR9jfT/AVBWsBuzun/XE4Q96ICRkWBGWpM+YInT5mvD6jxPOTGI+m
-	 gkRDbkI2E49ug==
-Date: Thu, 25 Jun 2026 12:38:49 -0700
-Subject: [PATCH 08/10] fuse4fs: set proc title when in fuse service mode
+	b=UG83Uhi5C03PJcG81c2w2Zyv2lGqVzrXiUkNeeGTBdfoTcsy++LX4LVFn8zTMm39q
+	 QlJOJS5Cquy/oRic582RqTE0WTXpI0YTa1HJL7xvim5eVxqZ1lQo/bBrKUsgEVjlau
+	 ep0PZXUYCX/yKLWi63WoPhevprbR0jMB7TgFr0nSBNLUhO28K+TMdjHXuKGcU0th8x
+	 UdyDXLbniPIaKgxZozVc3jc6RJb0gQywPN/tdaYe/DVcBoxFsxB+ObfOSGFDoZXZSF
+	 Qf1pgD1X4sJTymbR6TzLE3BI+Ah+hIdOjaElw48B4kG3QgBLNdDVzLqVP9vm66RZUU
+	 br8DlKNyxdKTg==
+Date: Thu, 25 Jun 2026 12:39:04 -0700
+Subject: [PATCH 09/10] fuse4fs: make MMP work correctly in safe service mode
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org
-Message-ID: <178241606956.1810414.3869961086945742727.stgit@frogsfrogsfrogs>
+Message-ID: <178241606974.1810414.9246244817707238835.stgit@frogsfrogsfrogs>
 In-Reply-To: <178241606773.1810414.1910863348345107939.stgit@frogsfrogsfrogs>
 References: <178241606773.1810414.1910863348345107939.stgit@frogsfrogsfrogs>
 Precedence: bulk
@@ -45,286 +45,99 @@ Content-Transfer-Encoding: 7bit
 
 From: Darrick J. Wong <djwong@kernel.org>
 
-When in fuse service mode, set the process title so that we can identify
-fuse servers by mount arguments.  When the service ends, amend the title
-again to say that we're cleaning up.  This is done to make ps aux a bit
-more communicative as to what is going on.
+Normally, the libext2fs MMP code open()s a complete separate file
+descriptor to read and write the MMP block so that it can have its own
+private open file with its own access mode and file position.  However,
+if the unixfd IO manager is in use, it will reuse the io channel, which
+means that MMP and the unixfd share the same open file and hence the
+access mode and file position.
+
+MMP requires directio access to block devices so that changes are
+immediately visible on other nodes.  Therefore, we need the IO channel
+(and thus the filesystem) to be running in directio mode if MMP is in
+use.
+
+To make this work correctly with the sole unixfd IO manager user
+(fuse4fs in unprivileged service mode), we must set O_DIRECT on the
+bdev fd and mount the filesystem in directio mode.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
- configure           |  109 +++++++++++++++++++++++++++++++++++++++++++++++++++
- configure.ac        |   13 ++++++
- fuse4fs/Makefile.in |    2 -
- fuse4fs/fuse4fs.c   |   47 ++++++++++++++++++++++
- lib/config.h.in     |    6 +++
- 5 files changed, 176 insertions(+), 1 deletion(-)
+ fuse4fs/fuse4fs.c |   51 ++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 48 insertions(+), 3 deletions(-)
 
 
-diff --git a/configure b/configure
-index 87960ad2cae3c3..b0531eb58b2b64 100755
---- a/configure
-+++ b/configure
-@@ -696,6 +696,7 @@ gcc_ranlib
- gcc_ar
- UNI_DIFF_OPTS
- SEM_INIT_LIB
-+LIBBSD_LIB
- FUSE4FS_CMT
- FUSE2FS_CMT
- fuse_service_socket_perms
-@@ -15022,6 +15023,114 @@ printf "%s\n" "#define HAVE_FUSE_CACHE_READDIR 1" >>confdefs.h
- 
- fi
- 
-+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for setproctitle in -lbsd" >&5
-+printf %s "checking for setproctitle in -lbsd... " >&6; }
-+if test ${ac_cv_lib_bsd_setproctitle+y}
-+then :
-+  printf %s "(cached) " >&6
-+else case e in #(
-+  e) ac_check_lib_save_LIBS=$LIBS
-+LIBS="-lbsd  $LIBS"
-+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-+/* end confdefs.h.  */
-+
-+/* Override any GCC internal prototype to avoid an error.
-+   Use char because int might match the return type of a GCC
-+   builtin and then its argument prototype would still apply.
-+   The 'extern "C"' is for builds by C++ compilers;
-+   although this is not generally supported in C code supporting it here
-+   has little cost and some practical benefit (sr 110532).  */
-+#ifdef __cplusplus
-+extern "C"
-+#endif
-+char setproctitle (void);
-+int
-+main (void)
-+{
-+return setproctitle ();
-+  ;
-+  return 0;
-+}
-+_ACEOF
-+if ac_fn_c_try_link "$LINENO"
-+then :
-+  ac_cv_lib_bsd_setproctitle=yes
-+else case e in #(
-+  e) ac_cv_lib_bsd_setproctitle=no ;;
-+esac
-+fi
-+rm -f core conftest.err conftest.$ac_objext conftest.beam \
-+    conftest$ac_exeext conftest.$ac_ext
-+LIBS=$ac_check_lib_save_LIBS ;;
-+esac
-+fi
-+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_bsd_setproctitle" >&5
-+printf "%s\n" "$ac_cv_lib_bsd_setproctitle" >&6; }
-+if test "x$ac_cv_lib_bsd_setproctitle" = xyes
-+then :
-+  LIBBSD_LIB=-lbsd
-+fi
-+
-+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for setproctitle_init in -lbsd" >&5
-+printf %s "checking for setproctitle_init in -lbsd... " >&6; }
-+if test ${ac_cv_lib_bsd_setproctitle_init+y}
-+then :
-+  printf %s "(cached) " >&6
-+else case e in #(
-+  e) ac_check_lib_save_LIBS=$LIBS
-+LIBS="-lbsd  $LIBS"
-+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-+/* end confdefs.h.  */
-+
-+/* Override any GCC internal prototype to avoid an error.
-+   Use char because int might match the return type of a GCC
-+   builtin and then its argument prototype would still apply.
-+   The 'extern "C"' is for builds by C++ compilers;
-+   although this is not generally supported in C code supporting it here
-+   has little cost and some practical benefit (sr 110532).  */
-+#ifdef __cplusplus
-+extern "C"
-+#endif
-+char setproctitle_init (void);
-+int
-+main (void)
-+{
-+return setproctitle_init ();
-+  ;
-+  return 0;
-+}
-+_ACEOF
-+if ac_fn_c_try_link "$LINENO"
-+then :
-+  ac_cv_lib_bsd_setproctitle_init=yes
-+else case e in #(
-+  e) ac_cv_lib_bsd_setproctitle_init=no ;;
-+esac
-+fi
-+rm -f core conftest.err conftest.$ac_objext conftest.beam \
-+    conftest$ac_exeext conftest.$ac_ext
-+LIBS=$ac_check_lib_save_LIBS ;;
-+esac
-+fi
-+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_bsd_setproctitle_init" >&5
-+printf "%s\n" "$ac_cv_lib_bsd_setproctitle_init" >&6; }
-+if test "x$ac_cv_lib_bsd_setproctitle_init" = xyes
-+then :
-+  LIBBSD_LIB=-lbsd
-+fi
-+
-+
-+if test "$ac_cv_lib_bsd_setproctitle" = yes ; then
-+
-+printf "%s\n" "#define HAVE_SETPROCTITLE 1" >>confdefs.h
-+
-+fi
-+if test "$ac_cv_lib_bsd_setproctitle_init" = yes ; then
-+
-+printf "%s\n" "#define HAVE_SETPROCTITLE_INIT 1" >>confdefs.h
-+
-+fi
-+
- { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for PR_SET_IO_FLUSHER" >&5
- printf %s "checking for PR_SET_IO_FLUSHER... " >&6; }
- cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-diff --git a/configure.ac b/configure.ac
-index 381bb15d920a0f..8a5e95cd4eb866 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1622,6 +1622,19 @@ then
- 		  [Define to 1 if fuse supports cache_readdir])
- fi
- 
-+dnl
-+dnl see if setproctitle exists
-+dnl
-+AC_CHECK_LIB(bsd, setproctitle, [LIBBSD_LIB=-lbsd])
-+AC_CHECK_LIB(bsd, setproctitle_init, [LIBBSD_LIB=-lbsd])
-+AC_SUBST(LIBBSD_LIB)
-+if test "$ac_cv_lib_bsd_setproctitle" = yes ; then
-+	AC_DEFINE(HAVE_SETPROCTITLE, 1, [Define to 1 if setproctitle present in libbsd])
-+fi
-+if test "$ac_cv_lib_bsd_setproctitle_init" = yes ; then
-+	AC_DEFINE(HAVE_SETPROCTITLE_INIT, 1, [Define to 1 if setproctitle_init present in libbsd])
-+fi
-+
- dnl
- dnl see if PR_SET_IO_FLUSHER exists
- dnl
-diff --git a/fuse4fs/Makefile.in b/fuse4fs/Makefile.in
-index 67b8afd54493b0..bb859369914a36 100644
---- a/fuse4fs/Makefile.in
-+++ b/fuse4fs/Makefile.in
-@@ -76,7 +76,7 @@ fuse4fs: $(FUSE4FS_OBJS) $(DEPLIBS) $(DEPLIBBLKID) $(DEPLIBUUID) \
- 	$(E) "	LD $@"
- 	$(Q) $(CC) $(ALL_LDFLAGS) -o fuse4fs $(FUSE4FS_OBJS) $(LIBS) \
- 		$(LIBFUSE) $(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBINTL) \
--		$(CLOCK_GETTIME_LIB) $(SYSLIBS) $(LIBS_E2P)
-+		$(CLOCK_GETTIME_LIB) $(SYSLIBS) $(LIBS_E2P) @LIBBSD_LIB@
- 
- %.socket: %.socket.in $(DEP_SUBSTITUTE)
- 	$(E) "	SUBST $@"
 diff --git a/fuse4fs/fuse4fs.c b/fuse4fs/fuse4fs.c
-index 97e668fadc2398..5fa51569a1167f 100644
+index 5fa51569a1167f..fdd4327a4c0907 100644
 --- a/fuse4fs/fuse4fs.c
 +++ b/fuse4fs/fuse4fs.c
-@@ -45,6 +45,9 @@
- #ifdef HAVE_FUSE4FS_SERVICE
- # include <sys/mount.h>
- # include <fuse_service.h>
-+# ifdef HAVE_SETPROCTITLE
-+#  include <bsd/unistd.h>
-+# endif
- #endif
- #ifdef __SET_FOB_FOR_FUSE
- # undef _FILE_OFFSET_BITS
-@@ -295,6 +298,9 @@ struct fuse4fs {
- 	struct cache inodes;
- #ifdef HAVE_FUSE4FS_SERVICE
- 	struct fuse_service *service;
-+# ifdef HAVE_SETPROCTITLE
-+	char *svc_cmdline;
-+# endif
- 	int bdev_fd;
- #endif
- };
-@@ -1291,6 +1297,35 @@ static errcode_t fuse4fs_check_support(struct fuse4fs *ff)
- 	return 0;
+@@ -1423,12 +1423,57 @@ static int fuse4fs_service_get_config(struct fuse4fs *ff)
  }
  
-+#if defined(HAVE_FUSE4FS_SERVICE) && defined(HAVE_SETPROCTITLE)
-+static void fuse4fs_service_set_proc_cmdline(struct fuse4fs *ff, int argc,
-+					     char *argv[],
-+					     struct fuse_args *args)
-+{
-+#ifdef HAVE_SETPROCTITLE_INIT
-+	setproctitle_init(argc, argv, environ);
-+#endif
-+
-+	ff->svc_cmdline = fuse_service_cmdline(argc, (const char * const *)argv, args);
-+	if (!ff->svc_cmdline)
-+		return;
-+
-+	setproctitle("-%s", ff->svc_cmdline);
-+}
-+
-+static void fuse4fs_service_finish_proc_cmdline(struct fuse4fs *ff)
-+{
-+	if (!ff->svc_cmdline)
-+		return;
-+
-+	setproctitle("-%s [cleaning up]", ff->svc_cmdline);
-+	free(ff->svc_cmdline);
-+}
-+#else
-+# define fuse4fs_service_set_proc_cmdline(...)		((void)0)
-+# define fuse4fs_service_finish_proc_cmdline(...)	((void)0)
-+#endif
-+
- #ifdef HAVE_FUSE4FS_SERVICE
- static int fuse4fs_service_connect(struct fuse4fs *ff, struct fuse_args *args)
+ static errcode_t fuse4fs_service_openfs(struct fuse4fs *ff, char *options,
+-					int flags)
++					int *flags)
  {
-@@ -1324,6 +1359,8 @@ static int fuse4fs_service_exit(struct fuse4fs *ff, int exitcode)
- 	if (!fuse4fs_is_service(ff))
- 		return exitcode;
++	struct stat statbuf;
+ 	char path[64];
++	errcode_t retval;
++	int ret;
  
-+	fuse4fs_service_finish_proc_cmdline(ff);
++	ret = fstat(ff->bdev_fd, &statbuf);
++	if (ret)
++		return errno;
 +
- 	fuse_service_send_goodbye(ff->service, exitcode);
- 	fuse_service_release(ff->service);
- 	close(ff->bdev_fd);
-@@ -6395,6 +6432,16 @@ int main(int argc, char *argv[])
- 		goto out_exit;
- 	}
- 
 +	/*
-+	 * For fuse services, make the /proc title include the arguments that
-+	 * we got from the mount helper.  Do this before parsing argc/argv
-+	 * because that may overwrite the argv area.  Note that the procfs
-+	 * listing might not reflect the options that actually get enabled,
-+	 * just like regular fuse4fs.
++	 * Open the filesystem with SKIP_MMP so that we can find out if the
++	 * filesystem actually has MMP.
 +	 */
-+	if (fuse4fs_is_service(&fctx))
-+		fuse4fs_service_set_proc_cmdline(&fctx, argc, argv, &args);
+ 	snprintf(path, sizeof(path), "/dev/fd/%d", ff->bdev_fd);
+-	return ext2fs_open2(path, options, flags, 0, 0, unixfd_io_manager,
++	retval = ext2fs_open2(path, options, *flags | EXT2_FLAG_SKIP_MMP, 0, 0,
++			      unixfd_io_manager, &ff->fs);
++	if (retval)
++		return retval;
 +
- 	ret = fuse_opt_parse(&args, &fctx, fuse4fs_opts, fuse4fs_opt_proc);
- 	if (ret)
- 		goto out_exit;
-diff --git a/lib/config.h.in b/lib/config.h.in
-index 15b99c6d28c59e..0973413b5c11e2 100644
---- a/lib/config.h.in
-+++ b/lib/config.h.in
-@@ -379,6 +379,12 @@
- /* Define to 1 if you have the 'setmntent' function. */
- #undef HAVE_SETMNTENT
- 
-+/* Define to 1 if setproctitle present in libbsd */
-+#undef HAVE_SETPROCTITLE
++	/*
++	 * If the fs doesn't have MMP then we're good to go.  Otherwise close
++	 * the filesystem so that we can reopen it with MMP enabled.
++	 */
++	if (!ext2fs_has_feature_mmp(ff->fs->super))
++		return 0;
 +
-+/* Define to 1 if setproctitle_init present in libbsd */
-+#undef HAVE_SETPROCTITLE_INIT
++	retval = ext2fs_close_free(&ff->fs);
++	if (retval)
++		return retval;
 +
- /* Define to 1 if you have the 'setresgid' function. */
- #undef HAVE_SETRESGID
- 
++	/*
++	 * If the filesystem is not on a regular file, MMP will share the same
++	 * fd as the unixfd IO channel.  We need to set O_DIRECT on the bdev_fd
++	 * and open the filesystem in directio mode.
++	 */
++	if (!S_ISREG(statbuf.st_mode)) {
++		int fflags = fcntl(ff->bdev_fd, F_GETFL);
++
++		if (!(fflags & O_DIRECT)) {
++			ret = fcntl(ff->bdev_fd, F_SETFL, fflags | O_DIRECT);
++			if (ret)
++				return EXT2_ET_MMP_OPEN_DIRECT;
++		}
++
++		ff->directio = 1;
++		*flags |= EXT2_FLAG_DIRECT_IO;
++	}
++
++	return ext2fs_open2(path, options, *flags, 0, 0, unixfd_io_manager,
+ 			    &ff->fs);
+ }
+ #else
+@@ -1568,7 +1613,7 @@ static errcode_t fuse4fs_open(struct fuse4fs *ff)
+ 	deadline = init_deadline(FUSE4FS_OPEN_TIMEOUT);
+ 	do {
+ 		if (fuse4fs_is_service(ff))
+-			err = fuse4fs_service_openfs(ff, options, flags);
++			err = fuse4fs_service_openfs(ff, options, &flags);
+ 		else
+ 			err = ext2fs_open2(ff->device, options, flags, 0, 0,
+ 					   unix_io_manager, &ff->fs);
 
