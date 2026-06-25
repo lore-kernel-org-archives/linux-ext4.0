@@ -1,39 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAC8625771
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:35:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83E3E315793
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 19:36:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782416159; cv=none; b=iUMsM95h/lEYUWi7pnWdbPRtudMMqTIpQDPB7c0gUcJjHuN1AO1w9XVodDCytjeALGVrqjw+JSrQ4IysXr7EOv/c0wzPyBlyFnJE3WcpgxBg83quYMz6Mpk0qjlTrwmFDrorqc9v7/N1idagXsIYypkfucdhnW4JCKKdnePs5Hw=
+	t=1782416175; cv=none; b=hdBJO+EFJHH8f/lKEY5fZn3RQwJf3OIOmVeA+mjppsH3oGNQpuAF5gkg5mRy82ADwY5Ce6SGlTRFofRxB1EbctjLlUNCVo0z9+bMwy3h9wEx5oklrlziFKzCKE6h2vb+VJx8A1VM7hkIOpggAdnKdZMjHw/SVYqNr8d8BO1+jkI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782416159; c=relaxed/simple;
-	bh=0miVKQjoU1h9A2yD/zxXcTNCh0p6MTw2oKs/RRJFFyY=;
+	s=arc-20240116; t=1782416175; c=relaxed/simple;
+	bh=CPVapfxOdzK79ldUNiY74kvv1H/1tR7u2G/bXa+WsOY=;
 	h=Date:Subject:From:To:Cc:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=YJ2qITwTjkqH1jgm5F6z2ihrv0zVfsQbdW1npmooj6qroKZ/hitGwqLhruyId23VDrNXRBfXO8FvwsqZuTd7yo5AJSNsz1j2s0aP1bN5QqpXKam3OkVvojYUrcpd7VN98cC1C2O/x8FmbOdVIGpfF/3zM0Tk+Xpy+mYRJRwekgE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VLGwMQaB; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=XlxqxfA1VdkW4V91W2C+VKAl8RXLNHCFoE1I5AkwOZEyVPkhaIT9tylMEhiRcTjhF7VbN+Igb0CgK7BYQzwj93QqSP8C+7RGoeEWbZT/BmIZuYy+h/4hVdlx7ybsyNp1Htx6ryLP3RCJHE776GMU/unhZPsnpW6LMcGORQL8jkI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Yw/7wr/K; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VLGwMQaB"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 832311F000E9;
-	Thu, 25 Jun 2026 19:35:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Yw/7wr/K"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 138111F000E9;
+	Thu, 25 Jun 2026 19:36:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782416158;
-	bh=/a39uv6bb3qTAD6DZ3SAEcWRz69VNBoWUrmCyeh99ts=;
+	s=k20260515; t=1782416174;
+	bh=eNF+9g03n9g4shmUdt4YwknMuc5b1mSLrquhXby7I+s=;
 	h=Date:Subject:From:To:Cc:In-Reply-To:References;
-	b=VLGwMQaBdPvpEY7NMDSliREcHlQuZNMG5ZOatFFXAeKYoPWs27kUEcvZRF4XDUHmR
-	 5kvXd7JXvkCil2DJVxpK3Y5RA0Vcd4mlOXhGhrTx1rTGn9a9Bn6PalbCOUebVgai1v
-	 yQ7Mvfop49TgVZGKvOBAJzE5yVkHAo1ZK9K7oEDIf9B/Yfqdowe+bAciWFRuejfxfK
-	 gHDn9QPPpJX8BdkwPnG1B0DmWZQ25j7+LG44vnhSQz0JRG+g7to/nOVP3q45EVD+qa
-	 Jf/vlRcelbpwwgJTz0XlsQz0FdQhvYHOywms+X139bfVXAzA0qxTL9PMPApoWw3xj2
-	 O2X24BBXa7Lpw==
-Date: Thu, 25 Jun 2026 12:35:58 -0700
-Subject: [PATCHSET v6 4/4] fuse4fs: reclaim buffer cache under memory pressure
+	b=Yw/7wr/Kg/zJBamv1BRap1id0hgRV/+t5dqZ+EsevWODhZ0RkpPXl+qMLAbNpbnf7
+	 LYj6u+jsMKIuWAoqPDCON6ahA45THcZIqB73bjVtBdKSV/zQ0AekYhNLQOHEwk2ZT4
+	 MFmq2EVQc8WuT2dmjHt1muGGnR6P3TmhjNQTkzah1tZpxUNJdvHsmfx9MRtYuYi+kc
+	 oM2RO/00i2X0hLP18r6rzOtf2c2+W13GmRxvnupJs/lUxHhlbGzKjzuviXKt+/OaQI
+	 VMZD7/eDK5cfv6a+DGXU1UbdMdhu7xwzL8M0anCbd5FApBQMxAlgpUQ4zi6CAwQ8qR
+	 +IHgaTV0Ks6uQ==
+Date: Thu, 25 Jun 2026 12:36:13 -0700
+Subject: [PATCH 1/3] libext2fs: always fsync the device when flushing the
+ cache
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org
-Message-ID: <178241607392.1811120.7216807779096078422.stgit@frogsfrogsfrogs>
-In-Reply-To: <20260625193302.GC6054@frogsfrogsfrogs>
-References: <20260625193302.GC6054@frogsfrogsfrogs>
+Message-ID: <178241606599.1810243.4814097157374595875.stgit@frogsfrogsfrogs>
+In-Reply-To: <178241606573.1810243.8333361812351601871.stgit@frogsfrogsfrogs>
+References: <178241606573.1810243.8333361812351601871.stgit@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -43,43 +44,32 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 
-Hi all,
+From: Darrick J. Wong <djwong@kernel.org>
 
-Having a static buffer cache limit of 32MB is very conservative.  When
-there's plenty of free memory, evicting metadata from the cache isn't
-actually a good idea, so we'd like to let it grow to handle large
-working sets.  However, we also don't want to OOM the kernel or (in the
-future) the fuse4fs container cgroup, so we need to listen for memory
-reclamation events in the kernel.
+When we're flushing the unix IO manager's buffer cache, we should always
+fsync the block device, because something could have written to the
+block device -- either the buffer cache itself, or a direct write.
+Regardless, the callers all want all dirtied regions to be persisted to
+stable media.
 
-The solution to this is to open the kernel memory pressure stall
-indicator files, configure an event when too much time is spent waiting
-for reclamation, and to trim the buffer cache when the events happen.
-
-If you're going to start using this code, I strongly recommend pulling
-from my git trees, which are linked below.
-
-Comments and questions are, as always, welcome.
-
-e2fsprogs git tree:
-https://git.kernel.org/cgit/linux/kernel/git/djwong/e2fsprogs.git/log/?h=fuse4fs-memory-reclaim
+Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
-Commits in this patchset:
- * libsupport: add pressure stall monitor
- * fuse2fs: only reclaim buffer cache when there is memory pressure
- * fuse4fs: enable memory pressure monitoring with service containers
- * fuse2fs: flush dirty metadata periodically
----
- lib/support/list.h      |    6 +
- lib/support/psi.h       |   66 ++++++
- fuse4fs/Makefile.in     |    3 
- fuse4fs/fuse4fs.c       |  258 +++++++++++++++++++++-
- lib/support/Makefile.in |    4 
- lib/support/iocache.c   |   19 ++
- lib/support/psi.c       |  557 +++++++++++++++++++++++++++++++++++++++++++++++
- misc/Makefile.in        |    3 
- misc/fuse2fs.c          |  189 +++++++++++++++-
- 9 files changed, 1091 insertions(+), 14 deletions(-)
- create mode 100644 lib/support/psi.h
- create mode 100644 lib/support/psi.c
+ lib/ext2fs/unix_io.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index abd33ba839f7e9..b6feebef93fa5b 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -1531,7 +1531,8 @@ static errcode_t unix_flush(io_channel channel)
+ 	retval = flush_cached_blocks(channel, data, 0);
+ #endif
+ #ifdef HAVE_FSYNC
+-	if (!retval && fsync(data->dev) != 0)
++	/* always fsync the device, even if flushing our own cache failed */
++	if (fsync(data->dev) != 0 && !retval)
+ 		return errno;
+ #endif
+ 	return retval;
 
