@@ -1,396 +1,446 @@
-Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+Received: from va-1-114.ptr.blmpb.com (va-1-114.ptr.blmpb.com [209.127.230.114])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3ECA83A1A23
-	for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 23:18:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.199
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B518C3AA1A1
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2026 02:24:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.114
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782343121; cv=none; b=qRpcuOjJATFKkx8nIHkPZi4yaEwM06rX9AsVvPB2rspFQr07CFDDf8CoozfldOdjPwW90VUOvgjLEfdWKsMb9bXlpxJkYv9ZmWaCEXc/v6ktj6uCPKpPjACIboEs+/ZVP4wyMKnfkIYoCpvk43ffMS+dgn8DHRV9MUV8zW60TF8=
+	t=1782354292; cv=none; b=jM99448qbSKJoskCiDmopI7JYnv3KpaUwXQeS3twho1s88zYlv5a9ayQcMq5dnR11m3axtDehYBayH3xiiu+URZ2j6GxsmdHbjwAIfhkgXuc6sWGtfl9tU5o9MsJ3NqBeZ9DAaoUCCdY99zFa9BI2yDGutY28za03nepB+V0MUg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782343121; c=relaxed/simple;
-	bh=jOimYQQgTQKtJEGGJJtxmlMyYjtG1RgQczZ1VlkhC/8=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
-	 Content-Type; b=otUDdW2THV/sVlhAh8oOQX6mVGRBKPKQDK14syZpf2UMFd9HFMRm/dIVo7L7zGxOpPwiWJREldGKnvdpylfsmdGkdpsMhRxPzam1A+Rbh7+SJG0/iEGh2WxMqEyZfbiGgexOTKLDTOIlntlqFBIlQ33UG48TmjRToLludiYGU8w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.199
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-487059fb570so2154821b6e.0
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Jun 2026 16:18:38 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782343118; x=1782947918;
-        h=cc:to:from:subject:message-id:in-reply-to:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=plsHfYcRVnvrH8Fuz1HjXcY4Xc51OvjKhFCNmmIJnrM=;
-        b=sgObjLqazJX/zSO7hBbfRasyl3ODLMPAbkCqU2LlZXFgWRNACKq9Oi8+bgxVj7FdZ6
-         pogzz1JnyOPn9sqHakG12jRy4UAVGZlPNu/kf7vi8F3wiVnT3yNXlY/2piYNjYsJx/U5
-         SGD4yrg5D6mPMxgeYGWwFTBIrSipRJxAKbw9Q4MpgTCZ1Ewrrf2ziiA1lEXKwgyvx9Fq
-         vnO4FoODL0PTLlX1StlO820EjfKZuLB2oFzjAXUEE29eJGpjbgPYsvLOQImxRYOTFI9j
-         w0hCDYOYWD0qGjOTyJfn5qbxwt9qtWPghC7pOF5Fgmftkxt4ScOHuJfVwxErzosQjceo
-         Lycw==
-X-Forwarded-Encrypted: i=1; AFNElJ96N+O7uyu3Lql2Z/a+OwsnnqT6pShjLtiFCt74eETUW6jLZAu43LZAcoDG+N5PQtUcDG40XsJD1qdC@vger.kernel.org
-X-Gm-Message-State: AOJu0YzwHgQQzP8AyVmw19Mmu2dihKu3oHBFl2LQaLySBYf/YgFpsb5b
-	NwmUVmYtZk2lkoc3Zh+2ZMUuAyWk3bSJQlSR1H2N3hvxpba46ZumJDUVnVRs+2U0+bbFgQLsGPC
-	TFHNZcgEPhcOa19VRd/X9YoVMY0j+57OTx+OfRS7Mu8RK0HydIaYkHGE7L88=
+	s=arc-20240116; t=1782354292; c=relaxed/simple;
+	bh=YN9iVpUcM/JZJozaZQLMWltb6cNG4E7B7QuYYCQ1iuU=;
+	h=Content-Type:In-Reply-To:Date:Mime-Version:To:From:Message-Id:
+	 References:Cc:Subject; b=rfQbLlUt1aM30iqYyBTV09wM/XckanKuPMs3GVGEx33/nfZpsfxFm3ejG06IITLc2S/8tl+T+InhTiDVeFX57kKbqu3uBVcRj0Fjyks+tJyDI6UoPKyMA9UM1gIGvYQT5LHjh6TEFRLzafm4XmbJ+pqKszLEgAbNPJbhdxoPpn8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=CUoXXSvL; arc=none smtp.client-ip=209.127.230.114
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="CUoXXSvL"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1782354282; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=7OytZyb9otFtfIGullITk4Ck3jXIU6Jsyait6h8rTgA=;
+ b=CUoXXSvLKZz0HBiJZT20gX0m+gkofl308A5m0BQMAtAOAYlcCDi6u4pj+q9kNH2bVE+jqQ
+ ZXy/nfZYkyknbMv+G25YVTSxT8u+/DXfUatHjwPss4CaROgzZcTvRfAYlMApGwdLfIBVv5
+ HTKcgIsDVRKXJzxuNJtSn+XjD2jFagTAqQmdYsvmG0lYZkHRny7qs3tUD7sY7F1Cc2L50J
+ k0LY5r4sSd9mITHCYWKUqgLumfv0ZUqXGMj3PkELvMbfPEBBJ5hNUiEbaIqAqym0GkWuwJ
+ haBEfsD8w3aZnhHs8GA5nny6+4jqCizhdkKPzSYceH++xFyEe7IRhvIjQJ5xtQ==
+Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <ajv5pqNureiK80Eu@infradead.org>
+Date: Thu, 25 Jun 2026 10:24:25 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-X-Received: by 2002:a05:6808:320c:b0:489:6b1e:1b8e with SMTP id
- 5614622812f47-49215249ee4mr230324b6e.8.1782343118266; Wed, 24 Jun 2026
- 16:18:38 -0700 (PDT)
-Date: Wed, 24 Jun 2026 16:18:38 -0700
-In-Reply-To: <20260624133642.18438-1-ablagodarenko@thelustrecollective.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a3c65ce.43b4ff68.30a095.0002.GAE@google.com>
-Subject: [syzbot ci] Re: Data in direntry (dirdata) feature
-From: syzbot ci <syzbot+ci09062967a4098270@syzkaller.appspotmail.com>
-To: ablagodarenko@thelustrecollective.com, adilger.kernel@dilger.ca, 
-	adilger@dilger.ca, adilger@diliger.ca, artem.blagodarenko@gmail.com, 
-	linux-ext4@vger.kernel.org, pravin.shelar@sun.com, xiaowu.417@qq.com
-Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+X-Lms-Return-Path: <lba+26a3c9168+9d4b16+vger.kernel.org+changfengnan@bytedance.com>
+To: "Christoph Hellwig" <hch@infradead.org>
+From: "Fengnan" <changfengnan@bytedance.com>
+Message-Id: <6f9bd250-1808-4396-9f6b-4987a7ac7ee0@bytedance.com>
+X-Original-From: Fengnan <changfengnan@bytedance.com>
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Mozilla Thunderbird
+References: <20260608073134.95964-1-changfengnan@bytedance.com> <ajv5pqNureiK80Eu@infradead.org>
+Cc: <brauner@kernel.org>, <djwong@kernel.org>, <ojaswin@linux.ibm.com>, 
+	<dgc@kernel.org>, <linux-xfs@vger.kernel.org>, 
+	<linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>
+Subject: Re: [PATCH v4] iomap: add simple read path for small direct I/O
 
-syzbot ci has tested the following series
+=E5=9C=A8 2026/6/24 23:37, Christoph Hellwig =E5=86=99=E9=81=93:
+> Sorry for the delay in getting back to this, I'm a bit overloaded at
+> the moment.
+>
+>> -static inline bool should_report_dio_fserror(const struct iomap_dio *di=
+o)
+>> +static inline bool should_report_dio_fserror(int error)
+> Can you split all the refactoring into prep patches?
+off course
 
-[v4] Data in direntry (dirdata) feature
-https://lore.kernel.org/all/20260624133642.18438-1-ablagodarenko@thelustrecollective.com
-* [PATCH v4 01/11] ext4: validate count against limit in ext4_dx_csum_verify/_set
-* [PATCH v4 02/11] ext4: replace ext4_dir_entry with ext4_dir_entry_2
-* [PATCH v4 03/11] ext4: add ext4_dir_entry_is_tail()
-* [PATCH v4 04/11] ext4: refactor dx_root to support variable dirent sizes
-* [PATCH v4 05/11] ext4: add dirdata format definitions and access helpers
-* [PATCH v4 06/11] ext4: preserve dirdata bits in get_dtype()
-* [PATCH v4 07/11] ext4: add ext4_dir_entry_len() and harden dirdata parsing
-* [PATCH v4 08/11] ext4: rename ext4_dir_rec_len() and clarify dirdata usage
-* [PATCH v4 09/11] ext4: dirdata feature
-* [PATCH v4 10/11] ext4: add dirdata set/get helpers
-* [PATCH v4 11/11] ext4: Add EXT4_IOC_SET_LUFID ioctl for setting LUFID on directory entries
+>
+>> +/*
+>> + * In the async simple read path, we need to prevent bio_endio() from
+>> + * triggering iocb->ki_complete() before the submitter has returned
+>> + * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently=
+.
+>> + *
+>> + * We use a three-state rendezvous to synchronize the submitter and end=
+_io:
+>> + *
+>> + * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the=
+ bio.
+>> + *
+>> + * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and =
+will
+>> + * return -EIOCBQUEUED. If end_io sees this state, it takes over and ca=
+lls
+>> + * ki_complete().
+>> + *
+>> + * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished th=
+e
+>> + * submit path. end_io sets this state and does nothing else. The submi=
+tter
+>> + * will see this state and handle the completion synchronously (bypassi=
+ng
+>> + * ki_complete() and returning the actual result).
+>> + */
+> I don't think we actually need any of this.  For the sync case we
+> can just use submit_bio_wait, and for async just always complete
+> from the end_io handler.  This will simplify the implementation a lot,
+> and also avoid the atomic.
 
-and found the following issues:
-* KASAN: slab-use-after-free Read in ext4_inlinedir_to_tree
-* KASAN: use-after-free Read in ext4_inlinedir_to_tree
+I was wrong before, in simple read path, we won't use sr after submit bio.
+>
+>> +static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_re=
+ad *sr)
+> Btw, I'd drop the _read in the name.  Most of this would work as-is
+> for trivial overwrites if we figure out when to use them.
+ok, let's rename to iomap_dio_simple_xxx
 
-Full report is available here:
-https://ci.syzbot.org/series/7075f9f8-5dad-4e13-83ee-2f76e1e06dcf
+>
+>> +	if (dio_flags & IOMAP_DIO_BOUNCE)
+>> +		nr_pages =3D bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
+>> +	else
+>> +		nr_pages =3D bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
+> Bounce buffering requires dops, so all this can be dropped.
+Get .
+>
+>> +	ret =3D ops->iomap_begin(inode, iomi.pos, count, iomi.flags,
+>> +			       &iomi.iomap, &iomi.srcmap);
+>> +	if (ret) {
+>> +		inode_dio_end(inode);
+>> +		return ret;
+>> +	}
+>> +
+>> +	if (iomi.iomap.type !=3D IOMAP_MAPPED ||
+>> +	    iomi.iomap.offset > iomi.pos ||
+> I don't think offset > pos can happen
 
-***
+>
+>> +	    iomi.iomap.offset + iomi.iomap.length < iomi.pos + count ||
+>> +	    (iomi.iomap.flags & IOMAP_F_INTEGRITY)) {
+>> +		ret =3D -ENOTBLK;
+>> +		goto out_iomap_end;
+>> +	}
+> Given that we already have a fallback here, I'm not sure why this is
+> limited to a single file system block.  Anything that:
+>
+>    a) fits into the iomap
+>    b) fits into a single bio
+>
+> can be easily supported.  The first condition is a trivial, and for
+> the second we could just check if iter->nr_segs is larger than
+> BIO_MAX_VECS.
+The reason I only added a simple path for 4K reads is that, in current
+NVMe, 4K random reads suffer from a significant bottleneck, whereas
+8K reads and 4K writes do not.
+Considering that if an 8K or larger block size does not fit within a single
+BIO, two iomap_begin/iomap_end calls would be required, resulting in
+additional overhead.
+Of course, even without considering this scenario, there would still be
+some benefit, it=E2=80=99s just not as significant.
+How do you approach this issue?
 
-KASAN: slab-use-after-free Read in ext4_inlinedir_to_tree
+>
+>> +	if (user_backed_iter(iter))
+>> +		dio_flags |=3D IOMAP_DIO_USER_BACKED;
+>> +	bio->bi_iter.bi_sector =3D iomap_sector(&iomi.iomap, iomi.pos);
+>> +	bio->bi_ioprio =3D iocb->ki_ioprio;
+>> +	bio->bi_private =3D sr;
+>> +	bio->bi_end_io =3D iomap_dio_simple_read_end_io;
+>> +
+>> +	if ((dio_flags & IOMAP_DIO_USER_BACKED) &&
+>> +	    !(dio_flags & IOMAP_DIO_BOUNCE))
+>> +		bio_set_pages_dirty(bio);
+>> +
+>> +	if (iocb->ki_flags & IOCB_NOWAIT)
+>> +		bio->bi_opf |=3D REQ_NOWAIT;
+>> +	if ((iocb->ki_flags & IOCB_HIPRI) && !wait_for_completion) {
+>> +		bio->bi_opf |=3D REQ_POLLED;
+>> +		bio_set_polled(bio, iocb);
+>> +		WRITE_ONCE(iocb->private, bio);
+>> +	}
+> Can you check if sone more of this can be factored into a shared
+> helper?
+I'll try.
 
-tree:      torvalds
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
-base:      840ef6c78e6a2f694b578ecb9063241c992aaa9e
-arch:      amd64
-compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
-config:    https://ci.syzbot.org/builds/c9c607fc-012f-4e4c-88e7-89d5bade9f75/config
-syz repro: https://ci.syzbot.org/findings/3badb95c-16ec-4f87-adf6-da2aca94c39c/syz_repro
+>
+> Below is a completely untested patch implementing my suggestion
+> for the completion simplification.  It compiles, but that's about
+> the guarantees I can give for it:
+I'll apply and do some test.
 
-EXT4-fs (loop1): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: none.
-==================================================================
-BUG: KASAN: slab-use-after-free in ext4_dirent_get_data_len fs/ext4/ext4.h:4156 [inline]
-BUG: KASAN: slab-use-after-free in ext4_dir_entry_len fs/ext4/ext4.h:4189 [inline]
-BUG: KASAN: slab-use-after-free in ext4_inlinedir_to_tree+0x864/0x1030 fs/ext4/inline.c:1339
-Read of size 1 at addr ffff888108ff7c19 by task syz.1.18/5891
-
-CPU: 0 UID: 0 PID: 5891 Comm: syz.1.18 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- print_address_description+0x55/0x1e0 mm/kasan/report.c:378
- print_report+0x58/0x70 mm/kasan/report.c:482
- kasan_report+0x117/0x150 mm/kasan/report.c:595
- ext4_dirent_get_data_len fs/ext4/ext4.h:4156 [inline]
- ext4_dir_entry_len fs/ext4/ext4.h:4189 [inline]
- ext4_inlinedir_to_tree+0x864/0x1030 fs/ext4/inline.c:1339
- ext4_htree_fill_tree+0x4b9/0x2140 fs/ext4/namei.c:1206
- ext4_dx_readdir fs/ext4/dir.c:600 [inline]
- ext4_readdir+0x2e2a/0x3720 fs/ext4/dir.c:146
- iterate_dir+0x2e2/0x4d0 fs/readdir.c:110
- ovl_dir_read+0x141/0x4a0 fs/overlayfs/readdir.c:388
- ovl_check_d_type_supported+0xc5/0x150 fs/overlayfs/readdir.c:1167
- ovl_make_workdir fs/overlayfs/super.c:695 [inline]
- ovl_get_workdir fs/overlayfs/super.c:836 [inline]
- ovl_fill_super_creds fs/overlayfs/super.c:1449 [inline]
- ovl_fill_super+0x3a43/0x5d40 fs/overlayfs/super.c:1560
- vfs_get_super fs/super.c:1267 [inline]
- get_tree_nodev+0xbb/0x150 fs/super.c:1286
- vfs_get_tree+0x92/0x2a0 fs/super.c:1694
- fc_mount fs/namespace.c:1198 [inline]
- do_new_mount_fc fs/namespace.c:3765 [inline]
- do_new_mount+0x319/0xdc0 fs/namespace.c:3841
- do_mount fs/namespace.c:4174 [inline]
- __do_sys_mount fs/namespace.c:4390 [inline]
- __se_sys_mount+0x31d/0x420 fs/namespace.c:4367
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f09e159ce59
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f09e24a9028 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 00007f09e1815fa0 RCX: 00007f09e159ce59
-RDX: 0000200000000000 RSI: 0000200000000100 RDI: 0000000000000000
-RBP: 00007f09e1632e6f R08: 00002000000000c0 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f09e1816038 R14: 00007f09e1815fa0 R15: 00007fff17222ac8
- </TASK>
-
-Allocated by task 5642:
- kasan_save_stack mm/kasan/common.c:57 [inline]
- kasan_save_track+0x3e/0x80 mm/kasan/common.c:78
- poison_kmalloc_redzone mm/kasan/common.c:398 [inline]
- __kasan_kmalloc+0x93/0xb0 mm/kasan/common.c:415
- kasan_kmalloc include/linux/kasan.h:263 [inline]
- __do_kmalloc_node mm/slub.c:5362 [inline]
- __kmalloc_node_track_caller_noprof+0x4c3/0x730 mm/slub.c:5497
- kmemdup_noprof+0x2b/0x70 mm/util.c:138
- kmemdup_noprof include/linux/fortify-string.h:715 [inline]
- xfrm6_net_sysctl_init net/ipv6/xfrm6_policy.c:206 [inline]
- xfrm6_net_init+0x86/0x180 net/ipv6/xfrm6_policy.c:261
- ops_init+0x35d/0x5d0 net/core/net_namespace.c:137
- setup_net+0x118/0x350 net/core/net_namespace.c:446
- copy_net_ns+0x4f9/0x720 net/core/net_namespace.c:579
- create_new_namespaces+0x3f0/0x6b0 kernel/nsproxy.c:132
- unshare_nsproxy_namespaces+0x149/0x190 kernel/nsproxy.c:234
- ksys_unshare+0x57d/0xa00 kernel/fork.c:3267
- __do_sys_unshare kernel/fork.c:3341 [inline]
- __se_sys_unshare kernel/fork.c:3339 [inline]
- __x64_sys_unshare+0x38/0x50 kernel/fork.c:3339
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-Freed by task 12:
- kasan_save_stack mm/kasan/common.c:57 [inline]
- kasan_save_track+0x3e/0x80 mm/kasan/common.c:78
- kasan_save_free_info+0x40/0x50 mm/kasan/generic.c:584
- poison_slab_object mm/kasan/common.c:253 [inline]
- __kasan_slab_free+0x5c/0x80 mm/kasan/common.c:285
- kasan_slab_free include/linux/kasan.h:235 [inline]
- slab_free_hook mm/slub.c:2705 [inline]
- slab_free mm/slub.c:6405 [inline]
- kfree+0x1c5/0x640 mm/slub.c:6720
- xfrm6_net_sysctl_exit net/ipv6/xfrm6_policy.c:238 [inline]
- xfrm6_net_exit+0x79/0xa0 net/ipv6/xfrm6_policy.c:270
- ops_exit_list net/core/net_namespace.c:199 [inline]
- ops_undo_list+0x43d/0x8d0 net/core/net_namespace.c:252
- cleanup_net+0x572/0x810 net/core/net_namespace.c:702
- process_one_work kernel/workqueue.c:3322 [inline]
- process_scheduled_works+0xa8e/0x14e0 kernel/workqueue.c:3405
- worker_thread+0xa47/0xfb0 kernel/workqueue.c:3486
- kthread+0x388/0x470 kernel/kthread.c:436
- ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
- ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
-
-The buggy address belongs to the object at ffff888108ff7c00
- which belongs to the cache kmalloc-64 of size 64
-The buggy address is located 25 bytes inside of
- freed 64-byte region [ffff888108ff7c00, ffff888108ff7c40)
-
-The buggy address belongs to the physical page:
-page: refcount:0 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x108ff7
-flags: 0x17ff00000000000(node=0|zone=2|lastcpupid=0x7ff)
-page_type: f5(slab)
-raw: 017ff00000000000 ffff8881000418c0 dead000000000100 dead000000000122
-raw: 0000000000000000 0000000800200020 00000000f5000000 0000000000000000
-page dumped because: kasan: bad access detected
-page_owner tracks the page as allocated
-page last allocated via order 0, migratetype Unmovable, gfp_mask 0xd2cc0(GFP_KERNEL|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_NOMEMALLOC), pid 1, tgid 1 (swapper/0), ts 14581267674, free_ts 0
- set_page_owner include/linux/page_owner.h:32 [inline]
- post_alloc_hook+0x1f9/0x250 mm/page_alloc.c:1859
- prep_new_page mm/page_alloc.c:1867 [inline]
- get_page_from_freelist+0x21fa/0x2270 mm/page_alloc.c:3946
- __alloc_frozen_pages_noprof+0x18d/0x380 mm/page_alloc.c:5304
- alloc_slab_page mm/slub.c:3294 [inline]
- allocate_slab+0x79/0x5e0 mm/slub.c:3408
- new_slab mm/slub.c:3454 [inline]
- refill_objects+0x2d5/0x350 mm/slub.c:7338
- refill_sheaf mm/slub.c:2832 [inline]
- __pcs_replace_empty_main+0x2bf/0x6b0 mm/slub.c:4703
- alloc_from_pcs mm/slub.c:4801 [inline]
- slab_alloc_node mm/slub.c:4933 [inline]
- __do_kmalloc_node mm/slub.c:5361 [inline]
- __kmalloc_noprof+0x485/0x720 mm/slub.c:5387
- _kmalloc_noprof include/linux/slab.h:973 [inline]
- _kzalloc_noprof include/linux/slab.h:1290 [inline]
- kobject_get_path+0xc5/0x2f0 lib/kobject.c:161
- kobject_uevent_env+0x29e/0x9e0 lib/kobject_uevent.c:548
- device_add+0x544/0xb80 drivers/base/core.c:3738
- device_create_groups_vargs drivers/base/core.c:4454 [inline]
- device_create+0x269/0x300 drivers/base/core.c:4493
- mon_bin_add+0xb6/0x130 drivers/usb/mon/mon_bin.c:1371
- mon_bus_init+0x162/0x2a0 drivers/usb/mon/mon_main.c:291
- mon_bus_add drivers/usb/mon/mon_main.c:188 [inline]
- mon_notify+0x10c/0x3f0 drivers/usb/mon/mon_main.c:219
- notifier_call_chain+0x1a5/0x3d0 kernel/notifier.c:85
- blocking_notifier_call_chain+0x6a/0x90 kernel/notifier.c:380
-page_owner free stack trace missing
-
-Memory state around the buggy address:
- ffff888108ff7b00: 00 00 00 00 00 00 00 04 fc fc fc fc fc fc fc fc
- ffff888108ff7b80: fa fb fb fb fb fb fb fb fc fc fc fc fc fc fc fc
->ffff888108ff7c00: fa fb fb fb fb fb fb fb fc fc fc fc fc fc fc fc
-                            ^
- ffff888108ff7c80: 00 00 00 00 00 00 00 fc fc fc fc fc fc fc fc fc
- ffff888108ff7d00: 00 00 00 00 00 00 fc fc fc fc fc fc fc fc fc fc
-==================================================================
-
-
-***
-
-KASAN: use-after-free Read in ext4_inlinedir_to_tree
-
-tree:      torvalds
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
-base:      840ef6c78e6a2f694b578ecb9063241c992aaa9e
-arch:      amd64
-compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
-config:    https://ci.syzbot.org/builds/c9c607fc-012f-4e4c-88e7-89d5bade9f75/config
-syz repro: https://ci.syzbot.org/findings/560b0247-7e29-4a4c-91b8-c73d275cb34f/syz_repro
-
-loop0: lost filesystem error report for type 5 error -117
-EXT4-fs (loop0): mounted filesystem 00000000-0000-0000-0000-000000000000 r/w without journal. Quota mode: none.
-==================================================================
-BUG: KASAN: use-after-free in ext4_dirent_get_data_len fs/ext4/ext4.h:4156 [inline]
-BUG: KASAN: use-after-free in ext4_dir_entry_len fs/ext4/ext4.h:4189 [inline]
-BUG: KASAN: use-after-free in ext4_inlinedir_to_tree+0x864/0x1030 fs/ext4/inline.c:1339
-Read of size 1 at addr ffff888113752019 by task syz.0.17/5794
-
-CPU: 0 UID: 0 PID: 5794 Comm: syz.0.17 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- print_address_description+0x55/0x1e0 mm/kasan/report.c:378
- print_report+0x58/0x70 mm/kasan/report.c:482
- kasan_report+0x117/0x150 mm/kasan/report.c:595
- ext4_dirent_get_data_len fs/ext4/ext4.h:4156 [inline]
- ext4_dir_entry_len fs/ext4/ext4.h:4189 [inline]
- ext4_inlinedir_to_tree+0x864/0x1030 fs/ext4/inline.c:1339
- ext4_htree_fill_tree+0x4b9/0x2140 fs/ext4/namei.c:1206
- ext4_dx_readdir fs/ext4/dir.c:600 [inline]
- ext4_readdir+0x2e2a/0x3720 fs/ext4/dir.c:146
- iterate_dir+0x2e2/0x4d0 fs/readdir.c:110
- ovl_dir_read+0x141/0x4a0 fs/overlayfs/readdir.c:388
- ovl_check_d_type_supported+0xc5/0x150 fs/overlayfs/readdir.c:1167
- ovl_make_workdir fs/overlayfs/super.c:695 [inline]
- ovl_get_workdir fs/overlayfs/super.c:836 [inline]
- ovl_fill_super_creds fs/overlayfs/super.c:1449 [inline]
- ovl_fill_super+0x3a43/0x5d40 fs/overlayfs/super.c:1560
- vfs_get_super fs/super.c:1267 [inline]
- get_tree_nodev+0xbb/0x150 fs/super.c:1286
- vfs_get_tree+0x92/0x2a0 fs/super.c:1694
- fc_mount fs/namespace.c:1198 [inline]
- do_new_mount_fc fs/namespace.c:3765 [inline]
- do_new_mount+0x319/0xdc0 fs/namespace.c:3841
- do_mount fs/namespace.c:4174 [inline]
- __do_sys_mount fs/namespace.c:4390 [inline]
- __se_sys_mount+0x31d/0x420 fs/namespace.c:4367
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f427399ce59
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007ffce99c0f38 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 00007f4273c15fa0 RCX: 00007f427399ce59
-RDX: 0000200000000000 RSI: 0000200000000100 RDI: 0000000000000000
-RBP: 00007f4273a32e6f R08: 00002000000000c0 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f4273c15fac R14: 00007f4273c15fa0 R15: 00007f4273c15fa0
- </TASK>
-
-The buggy address belongs to the physical page:
-page: refcount:0 mapcount:0 mapping:0000000000000000 index:0xffff888113752e00 pfn:0x113752
-flags: 0x17ff00000000000(node=0|zone=2|lastcpupid=0x7ff)
-raw: 017ff00000000000 ffffea0004296d08 ffffea0004501b08 0000000000000000
-raw: ffff888113752e00 0000000000000000 00000000ffffffff 0000000000000000
-page dumped because: kasan: bad access detected
-page_owner tracks the page as freed
-page last allocated via order 1, migratetype Unmovable, gfp_mask 0xd20c0(__GFP_IO|__GFP_FS|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_NOMEMALLOC), pid 5462, tgid 5462 (rm), ts 46014589837, free_ts 77936825094
- set_page_owner include/linux/page_owner.h:32 [inline]
- post_alloc_hook+0x1f9/0x250 mm/page_alloc.c:1859
- prep_new_page mm/page_alloc.c:1867 [inline]
- get_page_from_freelist+0x21fa/0x2270 mm/page_alloc.c:3946
- __alloc_frozen_pages_noprof+0x18d/0x380 mm/page_alloc.c:5304
- alloc_slab_page mm/slub.c:3294 [inline]
- allocate_slab+0x79/0x5e0 mm/slub.c:3408
- new_slab mm/slub.c:3454 [inline]
- refill_objects+0x2d5/0x350 mm/slub.c:7338
- refill_sheaf mm/slub.c:2832 [inline]
- __prefill_sheaf_pfmemalloc mm/slub.c:5035 [inline]
- kmem_cache_prefill_sheaf+0x2fb/0x550 mm/slub.c:5123
- mt_get_sheaf lib/maple_tree.c:154 [inline]
- mas_alloc_nodes+0x1c2/0x350 lib/maple_tree.c:1119
- mas_preallocate+0x2cf/0x630 lib/maple_tree.c:4961
- vma_iter_prealloc mm/vma.h:577 [inline]
- __split_vma+0x318/0xa50 mm/vma.c:529
- vms_gather_munmap_vmas+0x322/0x1370 mm/vma.c:1427
- __mmap_setup mm/vma.c:2439 [inline]
- __mmap_region mm/vma.c:2756 [inline]
- mmap_region+0x8f9/0x2310 mm/vma.c:2860
- do_mmap+0xc3b/0x10c0 mm/mmap.c:560
- vm_mmap_pgoff+0x272/0x4e0 mm/util.c:581
- ksys_mmap_pgoff+0x4dc/0x760 mm/mmap.c:606
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-page last free pid 5736 tgid 5736 stack trace:
- reset_page_owner include/linux/page_owner.h:25 [inline]
- __free_pages_prepare mm/page_alloc.c:1406 [inline]
- __free_frozen_pages+0xc1e/0xd10 mm/page_alloc.c:2950
- __slab_free+0x274/0x2c0 mm/slub.c:5767
- qlink_free mm/kasan/quarantine.c:163 [inline]
- qlist_free_all+0x99/0x100 mm/kasan/quarantine.c:179
- kasan_quarantine_reduce+0x148/0x160 mm/kasan/quarantine.c:286
- __kasan_slab_alloc+0x22/0x80 mm/kasan/common.c:350
- kasan_slab_alloc include/linux/kasan.h:253 [inline]
- slab_post_alloc_hook mm/slub.c:4612 [inline]
- slab_alloc_node mm/slub.c:4945 [inline]
- __kmalloc_cache_noprof+0x2ab/0x660 mm/slub.c:5511
- _kmalloc_noprof include/linux/slab.h:969 [inline]
- _kzalloc_noprof include/linux/slab.h:1290 [inline]
- ref_tracker_alloc+0x15b/0x4b0 lib/ref_tracker.c:270
- __netdev_tracker_alloc include/linux/netdevice.h:4489 [inline]
- netdev_hold include/linux/netdevice.h:4518 [inline]
- rx_queue_add_kobject net/core/net-sysfs.c:1236 [inline]
- net_rx_queue_update_kobjects+0x1c4/0x780 net/core/net-sysfs.c:1301
- register_queue_kobjects net/core/net-sysfs.c:2093 [inline]
- netdev_register_kobject+0x21f/0x310 net/core/net-sysfs.c:2341
- register_netdevice+0x1433/0x1eb0 net/core/dev.c:11439
- ipvlan_link_new+0x3e3/0xa90 drivers/net/ipvlan/ipvlan_main.c:593
- rtnl_newlink_create+0x310/0xb00 net/core/rtnetlink.c:3905
- __rtnl_newlink net/core/rtnetlink.c:4036 [inline]
- rtnl_newlink+0x167f/0x1bd0 net/core/rtnetlink.c:4151
- rtnetlink_rcv_msg+0x802/0xc00 net/core/rtnetlink.c:7068
- netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
- netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
- netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
-
-Memory state around the buggy address:
- ffff888113751f00: 00 00 00 00 00 00 00 04 fc fc fc fc fc fc fc fc
- ffff888113751f80: fa fb fb fb fb fb fb fb fc fc fc fc fc fc fc fc
->ffff888113752000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-                            ^
- ffff888113752080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
- ffff888113752100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-==================================================================
-
-
-***
-
-If these findings have caused you to resend the series or submit a
-separate fix, please add the following tag to your commit message:
-  Tested-by: syzbot@syzkaller.appspotmail.com
-
----
-This report is generated by a bot. It may contain errors.
-syzbot ci engineers can be reached at syzkaller@googlegroups.com.
-
-To test a patch for this bug, please reply with `#syz test`
-(should be on a separate line).
-
-The patch should be attached to the email.
-Note: arguments like custom git repos and branches are not supported.
+>
+> diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+> index 3cb179752612..c785512e5339 100644
+> --- a/fs/iomap/direct-io.c
+> +++ b/fs/iomap/direct-io.c
+> @@ -909,11 +909,7 @@ struct iomap_dio_simple_read {
+>   	struct kiocb		*iocb;
+>   	size_t			size;
+>   	unsigned int		dio_flags;
+> -	atomic_t		state;
+> -	union {
+> -		struct task_struct	*waiter;
+> -		struct work_struct	work;
+> -	};
+> +	struct work_struct	work;
+>   	/*
+>   	 * Align @bio to a cacheline boundary so that, combined with the
+>   	 * front_pad passed to bioset_init(), the bio sits at the start of
+> @@ -926,35 +922,12 @@ struct iomap_dio_simple_read {
+>  =20
+>   static struct bio_set iomap_dio_simple_read_pool;
+>  =20
+> -/*
+> - * In the async simple read path, we need to prevent bio_endio() from
+> - * triggering iocb->ki_complete() before the submitter has returned
+> - * -EIOCBQUEUED. Otherwise, the caller might free the iocb concurrently.
+> - *
+> - * We use a three-state rendezvous to synchronize the submitter and end_=
+io:
+> - *
+> - * IOMAP_DIO_SIMPLE_SUBMITTING: Initial state set before submitting the =
+bio.
+> - *
+> - * IOMAP_DIO_SIMPLE_QUEUED: The submitter has safely queued the IO and w=
+ill
+> - * return -EIOCBQUEUED. If end_io sees this state, it takes over and cal=
+ls
+> - * ki_complete().
+> - *
+> - * IOMAP_DIO_SIMPLE_DONE: end_io fired before the submitter finished the
+> - * submit path. end_io sets this state and does nothing else. The submit=
+ter
+> - * will see this state and handle the completion synchronously (bypassin=
+g
+> - * ki_complete() and returning the actual result).
+> - */
+> -enum {
+> -	IOMAP_DIO_SIMPLE_SUBMITTING =3D 0,
+> -	IOMAP_DIO_SIMPLE_QUEUED,
+> -	IOMAP_DIO_SIMPLE_DONE,
+> -};
+> -
+> -static ssize_t iomap_dio_simple_read_finish(struct kiocb *iocb,
+> -		struct bio *bio, ssize_t ret)
+> +static ssize_t iomap_dio_simple_read_complete(struct iomap_dio_simple_re=
+ad *sr)
+>   {
+> +	struct bio *bio =3D &sr->bio;
+> +	struct kiocb *iocb =3D sr->iocb;
+>   	struct inode *inode =3D file_inode(iocb->ki_filp);
+> -	struct iomap_dio_simple_read *sr =3D bio->bi_private;
+> +	ssize_t ret =3D blk_status_to_errno(bio->bi_status);
+>  =20
+>   	if (likely(!ret)) {
+>   		ret =3D sr->size;
+> @@ -965,21 +938,6 @@ static ssize_t iomap_dio_simple_read_finish(struct k=
+iocb *iocb,
+>   	}
+>  =20
+>   	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
+> -
+> -	return ret;
+> -}
+> -
+> -static ssize_t iomap_dio_simple_read_complete(struct kiocb *iocb,
+> -		struct bio *bio)
+> -{
+> -	struct inode *inode =3D file_inode(iocb->ki_filp);
+> -	ssize_t ret;
+> -
+> -	WRITE_ONCE(iocb->private, NULL);
+> -
+> -	ret =3D iomap_dio_simple_read_finish(iocb, bio,
+> -			blk_status_to_errno(bio->bi_status));
+> -
+>   	inode_dio_end(inode);
+>   	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret > 0 ? ret : 0);
+>   	return ret;
+> @@ -988,45 +946,26 @@ static ssize_t iomap_dio_simple_read_complete(struc=
+t kiocb *iocb,
+>   static void iomap_dio_simple_read_complete_work(struct work_struct *wor=
+k)
+>   {
+>   	struct iomap_dio_simple_read *sr =3D
+> -		container_of(work, struct iomap_dio_simple_read, work);
+> -	struct kiocb *iocb =3D sr->iocb;
+> -	ssize_t ret;
+> +			container_of(work, struct iomap_dio_simple_read, work);
+>  =20
+> -	ret =3D iomap_dio_simple_read_complete(iocb, &sr->bio);
+> -	iocb->ki_complete(iocb, ret);
+> +	WRITE_ONCE(sr->iocb->private, NULL);
+> +	sr->iocb->ki_complete(sr->iocb, iomap_dio_simple_read_complete(sr));
+>   }
+>  =20
+> -static void iomap_dio_simple_read_async_done(struct iomap_dio_simple_rea=
+d *sr)
+> +static void iomap_dio_simple_read_end_io(struct bio *bio)
+>   {
+> -	struct kiocb *iocb =3D sr->iocb;
+> +	struct iomap_dio_simple_read *sr =3D
+> +		container_of(bio, struct iomap_dio_simple_read, bio);
+>  =20
+>   	if (unlikely(sr->bio.bi_status)) {
+> -		struct inode *inode =3D file_inode(iocb->ki_filp);
+> +		struct inode *inode =3D file_inode(sr->iocb->ki_filp);
+>  =20
+>   		INIT_WORK(&sr->work, iomap_dio_simple_read_complete_work);
+>   		queue_work(inode->i_sb->s_dio_done_wq, &sr->work);
+>   		return;
+>   	}
+>  =20
+> -	iomap_dio_simple_read_complete_work(&sr->work);
+> -}
+> -
+> -static void iomap_dio_simple_read_end_io(struct bio *bio)
+> -{
+> -	struct iomap_dio_simple_read *sr =3D bio->bi_private;
+> -
+> -	if (sr->waiter) {
+> -		struct task_struct *waiter =3D sr->waiter;
+> -
+> -		WRITE_ONCE(sr->waiter, NULL);
+> -		blk_wake_io_task(waiter);
+> -		return;
+> -	}
+> -
+> -	if (likely(atomic_read(&sr->state) =3D=3D IOMAP_DIO_SIMPLE_QUEUED) ||
+> -	    atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
+> -			   IOMAP_DIO_SIMPLE_DONE) =3D=3D IOMAP_DIO_SIMPLE_QUEUED)
+> -		iomap_dio_simple_read_async_done(sr);
+> +	sr->iocb->ki_complete(sr->iocb, iomap_dio_simple_read_complete(sr));
+>   }
+>  =20
+>   static inline bool iomap_dio_simple_read_supported(struct kiocb *iocb,
+> @@ -1046,11 +985,13 @@ static inline bool iomap_dio_simple_read_supported=
+(struct kiocb *iocb,
+>   	 */
+>   	if (count > inode->i_sb->s_blocksize)
+>   		return false;
+> -	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL))
+> +	if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMAP_DIO_PARTIAL |
+> +			 IOMAP_DIO_BOUNCE))
+>   		return false;
+>   	if (iocb->ki_pos + count > i_size_read(inode))
+>   		return false;
+>  =20
+> +	// XXX: reject fscrypt
+>   	return true;
+>   }
+>  =20
+> @@ -1060,7 +1001,6 @@ static ssize_t iomap_dio_simple_read(struct kiocb *=
+iocb,
+>   {
+>   	struct inode *inode =3D file_inode(iocb->ki_filp);
+>   	size_t count =3D iov_iter_count(iter);
+> -	int nr_pages;
+>   	struct iomap_dio_simple_read *sr;
+>   	unsigned int alignment;
+>   	struct iomap_iter iomi =3D {
+> @@ -1074,11 +1014,6 @@ static ssize_t iomap_dio_simple_read(struct kiocb =
+*iocb,
+>   	bool wait_for_completion =3D is_sync_kiocb(iocb);
+>   	ssize_t ret;
+>  =20
+> -	if (dio_flags & IOMAP_DIO_BOUNCE)
+> -		nr_pages =3D bio_iov_bounce_nr_vecs(iter, REQ_OP_READ);
+> -	else
+> -		nr_pages =3D bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS);
+> -
+>   	if (iocb->ki_flags & IOCB_NOWAIT)
+>   		iomi.flags |=3D IOMAP_NOWAIT;
+>  =20
+> @@ -1120,24 +1055,18 @@ static ssize_t iomap_dio_simple_read(struct kiocb=
+ *iocb,
+>   	if (user_backed_iter(iter))
+>   		dio_flags |=3D IOMAP_DIO_USER_BACKED;
+>  =20
+> -	bio =3D bio_alloc_bioset(iomi.iomap.bdev, nr_pages,
+> -			       REQ_OP_READ | REQ_SYNC | REQ_IDLE,
+> -			       GFP_KERNEL, &iomap_dio_simple_read_pool);
+> +	bio =3D bio_alloc_bioset(iomi.iomap.bdev,
+> +			bio_iov_vecs_to_alloc(iter, BIO_MAX_VECS),
+> +			REQ_OP_READ | REQ_SYNC | REQ_IDLE,
+> +			GFP_KERNEL, &iomap_dio_simple_read_pool);
+>   	sr =3D container_of(bio, struct iomap_dio_simple_read, bio);
+> -
+> -	fscrypt_set_bio_crypt_ctx(bio, inode, iomi.pos, GFP_KERNEL);
+>   	sr->iocb =3D iocb;
+>   	sr->dio_flags =3D dio_flags;
+>  =20
+>   	bio->bi_iter.bi_sector =3D iomap_sector(&iomi.iomap, iomi.pos);
+>   	bio->bi_ioprio =3D iocb->ki_ioprio;
+> -	bio->bi_private =3D sr;
+> -	bio->bi_end_io =3D iomap_dio_simple_read_end_io;
+>  =20
+> -	if (dio_flags & IOMAP_DIO_BOUNCE)
+> -		ret =3D bio_iov_iter_bounce(bio, iter, count);
+> -	else
+> -		ret =3D bio_iov_iter_get_pages(bio, iter, alignment - 1);
+> +	ret =3D bio_iov_iter_get_pages(bio, iter, alignment - 1);
+>   	if (unlikely(ret))
+>   		goto out_bio_put;
+>  =20
+> @@ -1161,49 +1090,22 @@ static ssize_t iomap_dio_simple_read(struct kiocb=
+ *iocb,
+>   		WRITE_ONCE(iocb->private, bio);
+>   	}
+>  =20
+> -	if (wait_for_completion) {
+> -		sr->waiter =3D current;
+> -		blk_crypto_submit_bio(bio);
+> -	} else {
+> -		atomic_set(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING);
+> -		sr->waiter =3D NULL;
+> -		blk_crypto_submit_bio(bio);
+> -		ret =3D -EIOCBQUEUED;
+> -	}
+> -
+>   	if (ops->iomap_end)
+>   		ops->iomap_end(inode, iomi.pos, count, count, iomi.flags,
+>   			       &iomi.iomap);
+>  =20
+> -	if (wait_for_completion) {
+> -		for (;;) {
+> -			set_current_state(TASK_UNINTERRUPTIBLE);
+> -			if (!READ_ONCE(sr->waiter))
+> -				break;
+> -			blk_io_schedule();
+> -		}
+> -		__set_current_state(TASK_RUNNING);
+> -
+> -		ret =3D iomap_dio_simple_read_finish(iocb, bio,
+> -				blk_status_to_errno(bio->bi_status));
+> -		inode_dio_end(inode);
+> -		trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0,
+> -					 ret > 0 ? ret : 0);
+> -	} else if (atomic_cmpxchg(&sr->state, IOMAP_DIO_SIMPLE_SUBMITTING,
+> -				  IOMAP_DIO_SIMPLE_QUEUED) =3D=3D
+> -		   IOMAP_DIO_SIMPLE_DONE) {
+> -		ret =3D iomap_dio_simple_read_complete(iocb, bio);
+> -	} else {
+> +	if (!wait_for_completion) {
+> +		bio->bi_end_io =3D iomap_dio_simple_read_end_io;
+> +		submit_bio(bio);
+>   		trace_iomap_dio_rw_queued(inode, iomi.pos, count);
+> +		return -EIOCBQUEUED;
+>   	}
+>  =20
+> -	return ret;
+> +	submit_bio_wait(bio);
+> +	return iomap_dio_simple_read_complete(sr);
+>  =20
+>   out_bio_release_pages:
+> -	if (dio_flags & IOMAP_DIO_BOUNCE)
+> -		bio_iov_iter_unbounce(bio, true, false);
+> -	else
+> -		bio_release_pages(bio, false);
+> +	bio_release_pages(bio, false);
+>   out_bio_put:
+>   	bio_put(bio);
+>   out_iomap_end:
