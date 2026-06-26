@@ -1,103 +1,148 @@
-Received: from va-1-115.ptr.blmpb.com (va-1-115.ptr.blmpb.com [209.127.230.115])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out30-119.freemail.mail.aliyun.com (out30-119.freemail.mail.aliyun.com [115.124.30.119])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B513351C10
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 10:07:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.115
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32C843ACF05
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 10:10:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782468480; cv=none; b=ZnP2Uzt/7oVYyu9FIE90IdszHjA2e2gwY8tGSl+vPLsfeb2kGL0SkVctyVeJUKL1/U/x0Wv+lnmojiaKAiDUXGiPJt0VvPXkME5+ckfwY+zthErf0jmDOK6kDQTBLycZD+JVsqOHcr5y6Cq67SUXtVOk4+UNFgi3j9vQ2m6E24c=
+	t=1782468647; cv=none; b=iTJybt5nyDtWiLrUouR5jyJeiHjpZUeQCmIcUuXAAEQ5fy/eUe1QUQDT87/u5l4d2RYD2qIlWRUvDSbppQUuGWOfI6SmRxkVIDnmUAKdq9xxIgsTPRZh3MRwJYb5nyFZQtojeNDLkl+eF1rjTddXytUngkxoEm40KXsFGyOymD8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782468480; c=relaxed/simple;
-	bh=496daIy9Oynkrnkj9PQ6+RVEEu0Tbv+Ca2uKBtp295I=;
-	h=Cc:From:Subject:Date:Content-Type:Mime-Version:To:Message-Id; b=cL8jFo+KCjccp6Pk8zigQ+MiNLZUGmPwvVZIqBsFYjZzGD4l3+A4GXNJbab22oKkdOnj+k7SI4YRkmXzuiRvGmpasJG1nqTYYKfud75IQMBOdSjC37slP0o5I4v8d12XtCYnqFHAul17JBPTNYmUsFXDcb4mxeDlSi6duXakWZQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=b306XkxQ; arc=none smtp.client-ip=209.127.230.115
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1782468647; c=relaxed/simple;
+	bh=In609y8wiB9Igiw93tYhKPDLXXbh2sIdVHslX2oPt2k=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=raG2m5F3Jicn3Qbi2/g2kPmHxGDfmxR/o08og2hBwGV0+Gu0dVnT8LsRDpZ1pJKdrn9IUcm0mbEM9ZdSZH6fy8R4QrQyxQGdtbT+FVGMHWMuN7a6UOGb7UwEQrARpfSdu0H7MIRggx+wkLbMRWUriciqC+R7uhsmQt6Jwba2k+I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=ZMnPWRf9; arc=none smtp.client-ip=115.124.30.119
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="b306XkxQ"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1782468466; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=wbsYFv/aAybDSG7qH0hXOfSoTmIEui7F1AIt3Vyenn8=;
- b=b306XkxQJFxtsg5iQm1zrJtSr57z67MfuUEKzyizS3JsdlZzPLThnji7TCZkxKYXXIXPSS
- cbN5TFK074TwnLA+BFs8ytl0xlrx1l8stgiLSenWJvr+TPwDRl496cC+6r5+lYaQfgfwwv
- aEZXbK/SkB4BnrPbSR4tf5KRNK95MgudaibejLrvNqz0TLHoszT+gdQGB2ghnkPayrPoub
- TI6kRaFiv9t0QW+7wM5OTZtFRCbpsn5FUP8tezIptw7vPBbjf7S4qzdn4JYx+eXTrJtyUa
- octFUSFhuhlGv7WNEo51mrhJwxDjsHn6/LRIsueeTwcv/ZNop1TW8D8/uV3heg==
-Cc: <libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
-	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
-	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>, 
-	"Zhu Jia" <zhujia.zj@bytedance.com>, <stable@vger.kernel.org>, 
-	"Zhang Yi" <yizhang089@gmail.com>
-From: "Zhu Jia" <zhujia.zj@bytedance.com>
-Subject: [PATCH v2] ext4: cancel dirty accounting for folios without buffers
-Date: Fri, 26 Jun 2026 18:07:40 +0800
-Content-Transfer-Encoding: 7bit
-X-Lms-Return-Path: <lba+26a3e4f70+67c9c1+vger.kernel.org+zhujia.zj@bytedance.com>
-X-Original-From: Zhu Jia <zhujia.zj@bytedance.com>
-Content-Type: text/plain; charset=UTF-8
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="ZMnPWRf9"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1782468641; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=3QLH0rG8v8LotA8W6RSWbfUmmujFyeY8tdl4kIuYy/g=;
+	b=ZMnPWRf91Aw9bnvohkruvwBR+4Wo2MHP4hgo+mpUGGRJZh0z6BVn4yMkiYAfjOXZxrBI/l65xo+uds6Ewte1fd7iw/W+5F5TIBkUmPo9A3fcHkF41RFdAJXdjhkod2NtHdj/HtRrscmZuKeo9KoAYoxSYSwNnaIeohwF2/fAfpo=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R531e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0X5eZcwl_1782468631;
+Received: from 30.221.129.204(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X5eZcwl_1782468631 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Fri, 26 Jun 2026 18:10:41 +0800
+Message-ID: <a5ab0b56-85c0-40cf-8610-9bd044dcbd55@linux.alibaba.com>
+Date: Fri, 26 Jun 2026 18:10:31 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>
-Message-Id: <20260626100740.52455-1-zhujia.zj@bytedance.com>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 6/9] ext4: improve EXT4_GET_BLOCKS_CACHED_NOWAIT
+ handling in ext4_map_blocks
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: tytso@mit.edu, sashiko-reviews@lists.linux.dev,
+ Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+ Zhang Yi <yi.zhang@huawei.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+References: <20260626083518.1064517-1-libaokun@linux.alibaba.com>
+ <20260626083518.1064517-7-libaokun@linux.alibaba.com>
+ <20260626085003.BD4BC1F000E9@smtp.kernel.org>
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20260626085003.BD4BC1F000E9@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Since commit cc5095747edf ("ext4: don't BUG if someone dirty pages
-without asking ext4 first"), mpage_prepare_extent_to_map() handles dirty
-folios without buffer heads by warning, clearing PG_dirty, and skipping
-them. ext4 cannot write these folios because there are no buffer heads to
-map and submit.
+On 2026/6/26 16:50, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 2 potential issue(s) to consider:
+>
+> New issues:
+> - [High] Encountering an invalid block during EXT4_GET_BLOCKS_CACHED_NOWAIT causes ext4_error_inode() to block while in RCU-walk mode.
+>
+> Pre-existing issues:
+> - [High] check_block_validity() is bypassed for unwritten extents because EXT4_MAP_MAPPED is not set, leaving the filesystem vulnerable to arbitrary block reads.
+> --
+>
+> commit 16a7856d68391995dd0a737adac6e20b3e6ddb76
+> Author: Baokun Li <libaokun@linux.alibaba.com>
+>
+> ext4: improve EXT4_GET_BLOCKS_CACHED_NOWAIT handling in ext4_map_blocks
+>
+> When EXT4_GET_BLOCKS_CACHED_NOWAIT is set and the extent status cache hits,
+> ext4_map_blocks() returns immediately without running check_block_validity().
+> This allows malicious extents from crafted filesystem images to bypass
+> validation if they have been cached by a previous blocking read.
+>
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index a60ecf0bebd04..2479f8d93ec8b 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -759,8 +759,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+>>  			BUG();
+>>  		}
+>>  
+>> +		/* Skip blocking operations and jump to extent validation. */
+>>  		if (flags & EXT4_GET_BLOCKS_CACHED_NOWAIT)
+>> -			return retval;
+>> +			goto found;
+> [Severity: High]
+> Can jumping to the extent validation cause a scheduling while atomic BUG?
+>
+> If a crafted filesystem provides a malicious extent that is successfully cached,
+> a subsequent path walk in RCU mode will call ext4_getblk() with
+> EXT4_GET_BLOCKS_CACHED_NOWAIT.
+>
+> Jumping to found executes check_block_validity(). If the extent is malicious,
+> this calls ext4_error_inode(), which can block:
+>
+> check_block_validity()
+>   __check_block_validity()
+>     ext4_error_inode()
+>       ext4_handle_error()
+>         ext4_commit_super()
+>           wait_on_buffer()
+>
+> Since RCU-walk mode holds rcu_read_lock(), will blocking in wait_on_buffer()
+> cause a crash?
 
-That recovery leaves dirty accounting behind: folio_clear_dirty() clears
-PG_dirty but does not undo the accounting charged when the folio was
-dirtied. We have seen this in production as Dirty/nr_dirty staying high
-while Writeback/nr_writeback and device write IO stayed near zero, with
-many writer tasks blocked in balance_dirty_pages() throttling. Thus the
-warning-and-skip recovery can still become a dirty-throttle DoS.
+Ah~ not doing check_block_validity() now will directly use potentially
+abnormal extents, but doing check_block_validity() might sleep in atomic
+context. It seems that validation before inserting into the es tree is the
+thorough solution.
 
-Use folio_cancel_dirty() so dropping PG_dirty also cancels the dirty
-accounting. Then cycle the folio through writeback state so the generic
-writeback helpers update the xarray DIRTY/TOWRITE tags.
+> [Severity: High]
+> This isn't a bug introduced by this patch, but does the extent validation
+> actually check unwritten extents?
+>
+> When looking up an unwritten extent in the ES cache, the flags are set to
+> EXT4_MAP_UNWRITTEN but omit EXT4_MAP_MAPPED:
+>
+> ext4_map_blocks() {
+>     ...
+>     map->m_flags |= ext4_es_is_written(&es) ?
+>                     EXT4_MAP_MAPPED : EXT4_MAP_UNWRITTEN;
+>     ...
+> }
+>
+> At the found label, check_block_validity() is only called if EXT4_MAP_MAPPED
+> is set:
+>
+> found:
+>     if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+>         ret = check_block_validity(inode, map);
+>         ...
+>
+> Since unwritten extents skip check_block_validity(), could an attacker craft
+> a filesystem with an unwritten extent in a directory pointing to critical
+> metadata, forcing ext4_getblk() to read those blocks and leak their contents?
+>
+This is a false positive:
 
-Fixes: cc5095747edf ("ext4: don't BUG if someone dirty pages without asking ext4 first")
-Cc: stable@vger.kernel.org
-Suggested-by: Zhang Yi <yizhang089@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Zhu Jia <zhujia.zj@bytedance.com>
----
-Changes since v1:
-- After folio_cancel_dirty(), cycle the folio through writeback state so
-  generic writeback helpers update PAGECACHE_TAG_DIRTY/TOWRITE, as
-  suggested by Yi and Jan.
+1. Symlinks cannot have unwritten extents. ext4 only creates
+   unwritten extents via fallocate for regular files; symlink
+   data is always fully written at creation time.
 
- fs/ext4/inode.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+2. Reading unwritten extents does not leak stale data.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c2c2d6ac7f3d1..4c25dcd47fb15 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2715,7 +2715,15 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
- 			 */
- 			if (!folio_buffers(folio)) {
- 				ext4_warning_inode(mpd->inode, "page %lu does not have buffers attached", folio->index);
--				folio_clear_dirty(folio);
-+				/*
-+				 * folio_cancel_dirty() pairs the dropped dirty
-+				 * state with dirty accounting. Cycle through
-+				 * writeback state so the generic writeback
-+				 * helpers update the xarray tags.
-+				 */
-+				folio_cancel_dirty(folio);
-+				folio_start_writeback(folio);
-+				folio_end_writeback(folio);
- 				folio_unlock(folio);
- 				continue;
- 			}
--- 
-2.20.1
+3. Writing to unwritten extents triggers re-validation. The
+   unwritten-to-written conversion re-maps through the full
+   ext4_map_blocks() path (without CACHED_NOWAIT), which runs
+   check_block_validity() before any user data reaches the
+   extent.
+
