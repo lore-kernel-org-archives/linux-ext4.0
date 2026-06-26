@@ -1,184 +1,153 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01CE53E6DE8
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 14:29:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11DBA18FDDE
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 14:32:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782484181; cv=none; b=lnW00gPhvqNx1ZuKuLuHgu0QNCNTba6zGy/JJnskDJ84mwxeZgfVskeEUiDLjGIlsxGmpZ6RoUnOpIk3UVZYLv8LnKTD7+dn9P1WA30xY+TccBXkifoSTIEdtSkyTAC2vjRD4Rw8Mb6dBFLhslwLZAkeVA0hc8M/cV0FRMvhpmA=
+	t=1782484343; cv=none; b=fxwDOmou6P6XfZ+OXByFtxTJ6/xHTXR2DDT9pWcx7gpnJMsFNfq0F+f8ctYoi0tWTeIVCTk85CuoaCdL4/PHaL7FUoQ6TLz0xfiM9xX6xbZQ5aKnYEjFOBxh9S4hAnT2Fyt8M6fgsEiP9lT0iZhJCOv5p8d7OztfvX2tR8ZmcfQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782484181; c=relaxed/simple;
-	bh=/vm7/XyovAf1DkxVnKVrGMlc4qZf8Xw30xj7uXkOGa0=;
+	s=arc-20240116; t=1782484343; c=relaxed/simple;
+	bh=q004am3Ss9EtM8C1z9OVdeV+82au7U9vSknA9tJd5f4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=gqzw9jjNtdDBXiRiX63ny1GrhDuRdjCd02aysVaTt+v/PKS3Nu9OoMoPnR9+1KyylMIOU99f5q0xSt3jBV2v0xQYIiSQuyVUxY3aBKF9o759gTA2swW/T8uKmM+kvdiDmfBfeEL+RWYMU4ld7tZfrkzE3g84YYo0q4MHFlxnqoI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=DL1cxoMd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RM2KAAzg; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=DL1cxoMd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RM2KAAzg; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=kqjd8cg1xZw9D7MRV550iY9WDxPOMfzgPCYJwn/LY9QU1j3txHsc91zw0f5/t93DZ4RwVZ6pt+K10NiEzY3Q8t2XSxNjQuUz0uGu0xXnA1OYwMGYvw9a4DR1x75yqdvNgE0XMkqh1Em+2Fo5C0G0a3jMnVEXf2Qxz3/ZKUSQmM0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=HlqrezgP; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EwaRyawS; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=HlqrezgP; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EwaRyawS; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="DL1cxoMd";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RM2KAAzg";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="DL1cxoMd";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RM2KAAzg"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="HlqrezgP";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EwaRyawS";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="HlqrezgP";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EwaRyawS"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 0E0087583D;
-	Fri, 26 Jun 2026 14:29:37 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 3F850759ED;
+	Fri, 26 Jun 2026 14:32:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782484177; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782484340; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=TN0rZu05alKdoPMzwU6denfgHKnIMieqwDj2EfaGSY0=;
-	b=DL1cxoMdsUpBTgMOWb3c+saU/Viy9xGeDUmW0aN31rF2Q2aHLsXPtASjoD2fBAKVBYBMzZ
-	av61DTwlrMEIE16kwTrkH5P+CV1TtnPOZ+ggY+iFEtmgCmFGRZ8BSDiAZOOrb+pS1ipDFt
-	0GgAFHGZA3T+mlOc+Qr+8nnMIB60lOU=
+	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
+	b=HlqrezgPa8zH7WgieacL12NxUmkhxW8ybrK2y8f6B6EQFbwUET8TKd24JlVHfH0m4y7ZK4
+	Dy944h629mpxnt9/pIp+BPgk5w4k0Jb0e+aEAKKOAeRq2qzEqUf6sMD+XXIyZ0iRl/ttaw
+	JsZOzR+DT2zfT4JpzptJr98+1jalMn4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782484177;
+	s=susede2_ed25519; t=1782484340;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=TN0rZu05alKdoPMzwU6denfgHKnIMieqwDj2EfaGSY0=;
-	b=RM2KAAzgRlEz074XO/v2nOyJmiVwjdmirGiZIsRGK/Zv0J5dpHMpS43Oqj8iBFRJBlqUL9
-	eOaAf5CkXNrzO8CQ==
+	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
+	b=EwaRyawSXWCcwbQg5CN3AN7N5B/wWzRZg2kmsMsg5WndWxkQlrViZ5Noj7sbdR9vWDxjVt
+	a9+eTOK1OU7KP+AQ==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=DL1cxoMd;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=RM2KAAzg
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782484177; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782484340; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=TN0rZu05alKdoPMzwU6denfgHKnIMieqwDj2EfaGSY0=;
-	b=DL1cxoMdsUpBTgMOWb3c+saU/Viy9xGeDUmW0aN31rF2Q2aHLsXPtASjoD2fBAKVBYBMzZ
-	av61DTwlrMEIE16kwTrkH5P+CV1TtnPOZ+ggY+iFEtmgCmFGRZ8BSDiAZOOrb+pS1ipDFt
-	0GgAFHGZA3T+mlOc+Qr+8nnMIB60lOU=
+	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
+	b=HlqrezgPa8zH7WgieacL12NxUmkhxW8ybrK2y8f6B6EQFbwUET8TKd24JlVHfH0m4y7ZK4
+	Dy944h629mpxnt9/pIp+BPgk5w4k0Jb0e+aEAKKOAeRq2qzEqUf6sMD+XXIyZ0iRl/ttaw
+	JsZOzR+DT2zfT4JpzptJr98+1jalMn4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782484177;
+	s=susede2_ed25519; t=1782484340;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=TN0rZu05alKdoPMzwU6denfgHKnIMieqwDj2EfaGSY0=;
-	b=RM2KAAzgRlEz074XO/v2nOyJmiVwjdmirGiZIsRGK/Zv0J5dpHMpS43Oqj8iBFRJBlqUL9
-	eOaAf5CkXNrzO8CQ==
+	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
+	b=EwaRyawSXWCcwbQg5CN3AN7N5B/wWzRZg2kmsMsg5WndWxkQlrViZ5Noj7sbdR9vWDxjVt
+	a9+eTOK1OU7KP+AQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F2550779A8;
-	Fri, 26 Jun 2026 14:29:36 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 28054779A8;
+	Fri, 26 Jun 2026 14:32:20 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id XR4dO9CMPmqfaAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 26 Jun 2026 14:29:36 +0000
+	id BU/DCXSNPmqLawAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 26 Jun 2026 14:32:20 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 70CA9A10A3; Fri, 26 Jun 2026 16:29:36 +0200 (CEST)
-Date: Fri, 26 Jun 2026 16:29:36 +0200
+	id B399DA10A3; Fri, 26 Jun 2026 16:32:15 +0200 (CEST)
+Date: Fri, 26 Jun 2026 16:32:15 +0200
 From: Jan Kara <jack@suse.cz>
-To: Aditya Srivastava <aditya.ansh182@gmail.com>
-Cc: tytso@mit.edu, jack@suse.cz, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, ritesh.list@gmail.com, yi.zhang@huawei.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	Colin Ian King <colin.i.king@gmail.com>
-Subject: Re: [PATCH v6] ext4: fix ABBA deadlock in
- ext4_xattr_inode_cache_find()
-Message-ID: <bipyfjnmca4gx7dguiigrxgnrinalmcovio3tsepyqxdusz5av@4b7cbxjh27f7>
-References: <20260626054821.1729-1-aditya.ansh182@gmail.com>
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
+	ritesh.list@gmail.com, peng_wang@linux.alibaba.com, Sashiko <sashiko-bot@kernel.org>
+Subject: Re: [PATCH v3 9/9] ext4: fix NOWAIT semantic violation in DAX
+ extending writes
+Message-ID: <4rrujvd7k6q6su7qupltfgg5imeul6k5updm2yd53c7j63eqyx@fvqgx2rbx2mu>
+References: <20260626083518.1064517-1-libaokun@linux.alibaba.com>
+ <20260626083518.1064517-10-libaokun@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260626054821.1729-1-aditya.ansh182@gmail.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20260626083518.1064517-10-libaokun@linux.alibaba.com>
 X-Spam-Flag: NO
-X-Rspamd-Action: no action
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.51 / 50.00];
+X-Spam-Score: -2.30
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	ARC_NA(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,suse.cz,dilger.ca,linux.alibaba.com,gmail.com,huawei.com,vger.kernel.org];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 0E0087583D
-X-Spam-Score: -2.51
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,linux.alibaba.com,kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,sashiko.dev:url]
+X-Spam-Level: 
 
-On Fri 26-06-26 05:48:21, Aditya Srivastava wrote:
-> From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+On Fri 26-06-26 16:35:18, Baokun Li wrote:
+> When a DAX write starts before EOF but extends past i_disksize,
+> ext4_write_checks() skips the IOCB_NOWAIT check because
+> iocb->ki_pos <= old_size. However, ext4_dax_write_iter() later calls
+> ext4_journal_start() to prepare for inode extension, which can sleep
+> waiting for journal space or transaction commit.
 > 
-> Syzbot/stress-ng reported an ABBA deadlock in ext4 when exercising
-> concurrent xattr workloads (using the ea_inode mount/format option).
+> This violates NOWAIT semantics and can stall asynchronous I/O frameworks
+> like io_uring that rely on non-blocking behavior.
 > 
-> The deadlock occurs between the running transaction and the eviction
-> thread:
-> - Task 1 (stress-ng): Holds a reference to a shared mbcache_entry (ce)
->   and calls ext4_xattr_inode_cache_find() -> ext4_iget() to retrieve
->   the corresponding EA inode. Since the EA inode is currently being
->   evicted, ext4_iget() blocks in __wait_on_freeing_inode() waiting for
->   eviction to complete.
-> - Task 2 (eviction thread): Currently evicting the same EA inode in
->   ext4_evict_ea_inode(). It calls mb_cache_entry_wait_unused(oe) which
->   blocks waiting for Task 1 to release the reference to the mbcache_entry.
+> Fix this by checking IOCB_NOWAIT before calling ext4_journal_start()
+> in the extending write path. If NOWAIT is set and extension is needed,
+> return -EAGAIN so the caller can retry in blocking context.
 > 
-> To break this deadlock, implement a new ext4_iget() configuration flag
-> named EXT4_IGET_NOWAIT. When set, perform a non-blocking lookup of the
-> inode via VFS's find_inode_nowait() API.
+> Example scenario:
+>   - File: i_size = 1000, i_disksize = 1000
+>   - DAX NOWAIT write: offset = 500, count = 2000
+>   - ext4_write_checks(): ki_pos (500) <= old_size (1000), skip NOWAIT check
+>   - ext4_dax_write_iter(): offset + count (2500) > i_disksize (1000)
+>   - ext4_journal_start() → may sleep → violates NOWAIT
 > 
-> If the inode is currently being evicted (marked with I_FREEING or
-> I_WILL_FREE) or created (I_CREATING), or if it is not present in the VFS
-> inode cache (cache miss), simply skip it (returning -ENOENT) rather than
-> waiting for eviction/creation to complete, breaking the ABBA cycle.
-> 
-> Since we return -ENOENT immediately on a cache miss, we never attempt to
-> allocate a new inode or call iget_locked(), completely eliminating any
-> TOCTOU race window.
-> 
-> If the returned inode is I_NEW, wait for its initialization to clear via
-> wait_on_new_inode(). If initialization fails and the inode is unhashed
-> during wait_on_new_inode() waking up (e.g., due to an I/O read error in
-> another thread), safely drop the reference and return -ENOENT. This
-> unhashed check is executed unconditionally on all cache-hit pathways to
-> properly handle concurrent initialization failures.
-> 
-> Finally, standard validation checks (including is_bad_inode,
-> EXT4_EA_INODE_FL, file_acl, and xattr flags) are executed as normal inside
-> check_igot_inode() to fully guarantee VFS-layer safety.
-> 
-> In ext4_xattr_inode_cache_find(), invoke ext4_iget() with the new
-> EXT4_IGET_NOWAIT flag to perform the non-blocking cache search.
-> 
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Reported-by: Colin Ian King <colin.i.king@gmail.com>
-> Closes: https://bugzilla.kernel.org/show_bug.cgi?id=219283
-> Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
-> Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+> Reported-by: Sashiko <sashiko-bot@kernel.org>
+> Closes: https://sashiko.dev/#/patchset/20260618125735.4156639-1-libaokun@linux.alibaba.com?part=5
+> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 
 Looks good. Feel free to add:
 
@@ -187,132 +156,27 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
-> Changes in v6:
->   - Drop the redundant is_freeing tracking variable completely, as pointed
->     out by Jan Kara.
->   - Return -ENOENT instead of -ESTALE on cache misses and unhashed inode
->     checks, as requested by Jan Kara.
+>  fs/ext4/file.c | 5 +++++
+>  1 file changed, 5 insertions(+)
 > 
-> Changes in v5:
->   - Address two critical concurrency issues flagged by the Sashiko AI bot in v4:
->     1. Resolve the Time-Of-Check to Time-Of-Use (TOCTOU) race window between
->        find_inode_nowait() and iget_locked() by returning -ESTALE immediately
->        on a VFS cache miss. This completely bypasses fallback to iget_locked()
->        and prevents potential ABBA deadlocks.
->     2. Fix the improperly nested inode_unhashed() safety check by moving it
->        outside the I_NEW condition block, ensuring it runs unconditionally
->        on all cache-hit pathways to prevent false-positive filesystem
->        corruption errors during concurrent initialization failures.
-> 
-> Changes in v4:
->   - Check if the inode was unhashed during wait_on_new_inode() waking up
->     to handle transient initialization failures (like I/O read errors)
->     gracefully. Dropping the reference and returning -ESTALE prevents
->     false filesystem corruption errors (__ext4_error), as found by the
->     Sashiko AI bot.
-> 
-> Changes in v3:
->   - Implement a new ext4_iget() configuration flag named EXT4_IGET_NOWAIT to
->     fully contain the non-blocking lookup and VFS-level validations within
->     inode.c, as requested by Jan Kara.
->   - Skip inodes currently being created (I_CREATING), following Jan Kara's
->     direct feedback.
->   - Remove all open-coded match helpers and VFS state-checks from xattr.c.
-> 
-> Changes in v2:
->   - Read inode state locklessly using inode_state_read_once() to resolve
->     a lockdep assertion on cache hit.
->   - Manually restore essential inode/ea_inode validations on the retrieved
->     inode (is_bad_inode, EXT4_EA_INODE_FL, file_acl, and xattr checks) to
->     match VFS safety guarantees and prevent using corrupted/failed inodes.
-> 
->  fs/ext4/ext4.h  |  3 ++-
->  fs/ext4/inode.c | 35 ++++++++++++++++++++++++++++++++---
->  fs/ext4/xattr.c |  2 +-
->  3 files changed, 35 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index b37c136ea3ab..c76dd0bdd3d8 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3144,7 +3144,8 @@ typedef enum {
->  	EXT4_IGET_SPECIAL =	0x0001, /* OK to iget a system inode */
->  	EXT4_IGET_HANDLE = 	0x0002,	/* Inode # is from a handle */
->  	EXT4_IGET_BAD =		0x0004, /* Allow to iget a bad inode */
-> -	EXT4_IGET_EA_INODE =	0x0008	/* Inode should contain an EA value */
-> +	EXT4_IGET_EA_INODE =	0x0008,	/* Inode should contain an EA value */
-> +	EXT4_IGET_NOWAIT =	0x0010	/* Non-blocking lookup (skip if freeing) */
->  } ext4_iget_flags;
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 49074cc13751..610e109fcd36 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -731,6 +731,11 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+>  	count = iov_iter_count(from);
 >  
->  extern struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ce99807c5f5b..a091a43959a3 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -5270,6 +5270,20 @@ void ext4_set_inode_mapping_order(struct inode *inode)
->  	mapping_set_folio_order_range(inode->i_mapping, min_order, max_order);
->  }
->  
-> +static int ext4_iget_match(struct inode *inode, u64 ino, void *data)
-> +{
-> +	if (inode->i_ino != ino)
-> +		return 0;
-> +	spin_lock(&inode->i_lock);
-> +	if (inode_state_read(inode) & (I_FREEING | I_WILL_FREE | I_CREATING)) {
-> +		spin_unlock(&inode->i_lock);
-> +		return -1;
-> +	}
-> +	__iget(inode);
-> +	spin_unlock(&inode->i_lock);
-> +	return 1;
-> +}
-> +
->  struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
->  			  ext4_iget_flags flags, const char *function,
->  			  unsigned int line)
-> @@ -5298,9 +5312,24 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
->  		return ERR_PTR(-EFSCORRUPTED);
->  	}
->  
-> -	inode = iget_locked(sb, ino);
-> -	if (!inode)
-> -		return ERR_PTR(-ENOMEM);
-> +	if (flags & EXT4_IGET_NOWAIT) {
-> +		inode = find_inode_nowait(sb, ino, ext4_iget_match, NULL);
-> +		if (!inode)
-> +			return ERR_PTR(-ENOENT);
-> +
-> +		if (inode_state_read_once(inode) & I_NEW)
-> +			wait_on_new_inode(inode);
-> +
-> +		if (unlikely(inode_unhashed(inode))) {
-> +			iput(inode);
-> +			return ERR_PTR(-ENOENT);
+>  	if (offset + count > EXT4_I(inode)->i_disksize) {
+> +		if (iocb->ki_flags & IOCB_NOWAIT) {
+> +			ret = -EAGAIN;
+> +			goto out;
 > +		}
-> +	} else {
-> +		inode = iget_locked(sb, ino);
-> +		if (!inode)
-> +			return ERR_PTR(-ENOMEM);
-> +	}
 > +
->  	if (!(inode_state_read_once(inode) & I_NEW)) {
->  		ret = check_igot_inode(inode, flags, function, line);
->  		if (ret) {
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 982a1f831e22..21b5670d8503 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1550,7 +1550,7 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
->  
->  	while (ce) {
->  		ea_inode = ext4_iget(inode->i_sb, ce->e_value,
-> -				     EXT4_IGET_EA_INODE);
-> +				     EXT4_IGET_EA_INODE | EXT4_IGET_NOWAIT);
->  		if (IS_ERR(ea_inode))
->  			goto next_entry;
->  		ext4_xattr_inode_set_class(ea_inode);
+>  		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+>  		if (IS_ERR(handle)) {
+>  			ret = PTR_ERR(handle);
 > -- 
-> 2.47.3
+> 2.43.7
 > 
 -- 
 Jan Kara <jack@suse.com>
