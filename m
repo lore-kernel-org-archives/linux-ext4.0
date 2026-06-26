@@ -1,94 +1,86 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out162-62-57-252.mail.qq.com (out162-62-57-252.mail.qq.com [162.62.57.252])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9214813D53C;
-	Fri, 26 Jun 2026 06:50:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8ECC63D891B;
+	Fri, 26 Jun 2026 07:09:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.252
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782456618; cv=none; b=uNbnQW2TkcJMHJc51cwK5KNBVBW7f7uPsoX07XDfQ6BKtJscmDktG5hSmkN0tZbVIHGw3lKtQ0IKT0Zfa6+jMaCaNQQ5KHXOnkc6Toxw2yvnLdDtbiT2mlRYlhKw50jgFTXKnCmqqFNxPMT3GuSly8tBlCrw4EIUfdH9KKCMPoI=
+	t=1782457783; cv=none; b=Yu1gjL+6Ws70w1LlktUvtw2h+7l0iSS2/pR0+QeYTvNyudrxchE3cvOD4DnHGdy3WYHJ4WsYw9/mgJk6DK3WT76fXXWjwYqk2wMaHPrnKJQpf3h5lUejSmsu2kh9VzmVk32mX+ggtMkOeV5okRiQguPzhvO6VLy2e86pyATJB5Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782456618; c=relaxed/simple;
-	bh=LBSc1M6lAKhpzmWvVqpi0wWwTMAQNjfzcAviK9ozj70=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=DIo/IvOyRfz79z409eZdw6ewnPBpnwScU/3Sy8R6FO2ogYE16mGUd6/qX0nNmKYZndK4pUz5L727DpSC5KO6o/tv5EmjEIYTqVHNIwU9DGPBBbeft5VbUnvPlVmiTS3J1DvL3AMvcnaLmS455VnGRoeQzZGyd6XOaIBNFsJEwVA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=eDAyVICS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782457783; c=relaxed/simple;
+	bh=H0rIl8IMroax6WrZL4md7RY9Ay+Hp5SuVhxcFaXxkcQ=;
+	h=Message-ID:From:To:Cc:Subject:Date:In-Reply-To:References:
+	 MIME-Version; b=jLlD6h8u+FQaCLKU3VZ+tVzEKUQ2dtK+C0rngLLuYZR+i/GZmRfiT2++d0TzGdRMkdknKvtAsmOq+Hy5dYABlPqUT9F+hq/zu6kudthl9bFg2dYCUMoh9i4W/Af8tDtUHxOF6nmu2J6K42oKCX+fR5w5+jwLKEbqcQusAyUH7zg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=Q4uD/o4j; arc=none smtp.client-ip=162.62.57.252
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="eDAyVICS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 815C31F00A3A;
-	Fri, 26 Jun 2026 06:50:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linuxfoundation.org;
-	s=korg; t=1782456617;
-	bh=1GopiY0AHS4sS8HbWiUzsJHkk+10yK7VoiIRb9D8Txs=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=eDAyVICSWcfi2SDA98ZV/ULFiJSiTnnXmLYpmMfZ5Rhbupa6Jm2+RHae1xxrVoJi6
-	 /dS3WzPuzhiI8EG6mvU4jxsLWMgkrpmoQWlY5aUMQwjI+O7Mlqt2qB1mtEulzOzCEA
-	 jTwKXjf21cuFYr/Y0NzzfGBKlJmLqmFXeD3bs2YQ=
-Date: Fri, 26 Jun 2026 07:49:04 +0100
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Wang Jun <1742789905@qq.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-	libaokun1@huawei.com, 25125332@bjtu.edu.cn, Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Subject: Re: [PATCH] ext4: get rid of ppath in get_ext_path()
-Message-ID: <2026062643-tamer-limes-a320@gregkh>
-References: <tencent_C982B0201FE8F041BD5B4FC1ED7D646A740A@qq.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="Q4uD/o4j"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1782457771; bh=H0rIl8IMroax6WrZL4md7RY9Ay+Hp5SuVhxcFaXxkcQ=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Q4uD/o4j0PZj6eT4cS3gNY94ZMMslIIMKjyGlM+M0l8x/qLMKZgMvTnA0s0VB8RWx
+	 iaF7mbRwVgVm+hg0gnSgHNVoE7pnDPPMKBxx/zZSQy1v1jdPK2DZP5vVPk0PB0xZ2z
+	 0maVXWXVWUxiVrIYehLKvI3likQgtYjBK9Sw+pAY=
+Received: from June.localdomain ([123.121.145.35])
+	by newxmesmtplogicsvrszb51-0.qq.com (NewEsmtp) with SMTP
+	id 21586E06; Fri, 26 Jun 2026 15:08:21 +0800
+X-QQ-mid: xmsmtpt1782457701tpq07hp1i
+Message-ID: <tencent_E1AD8BE1AA3FE434224010902B7526A0BC09@qq.com>
+X-QQ-XMAILINFO: MiFcTO7j4Hd/Xgi7YcbabokbXn9GjppQ2RnQR43i//0mq+NZIZK51I7PnjSnHC
+	 LIFBA60+NkhD0AbOhwf5N2Xb8UQSY9RrFEnqkEyzGDNafKKc7tWyI0XT97ga4qiofSpJGoFUJtWY
+	 ZqyQqGado9juaw8kVYXof3gTWy+pIQdukJzkUdjCgczmJcclkPC0RpuUeYNO1LWzIoUZwMdFfr6p
+	 q9oWDfAG5erWFksyZZO65r3hZIQvQT6V75uZ8wmXe6P8HkeUihedmhBSRV1itgzlM9U+jXXeNfOI
+	 7R/78D5SKaxiJQ7gSma7qoOTkiFiy3wHnpNCIF3tleX5A3FDAkuQK4pgCOtsnd2My54SQbWP4pjp
+	 Lg/VXC184RbZ12a73UoJCOtVu+budkE2JyuiED4FvUFw0Lnc1SGtLsNboRw37CLBJQVE7hDl8hs4
+	 kYVoRFz3kTrfDX3fQgKBUTrlQAXbB3HqcP/k7Lf5aG6ezTolGFIxstThIy/j0xz501/vFevW2Egm
+	 +x0cJGyS5TYkbcIB/QbxNMtE2jPnpclYTcZptY1HFds68s9c4joEgrtrM2n1KCxdTgld8Lil4D1I
+	 1XUTO0+o6cNGdPLd54BcM33NtaMUBocQXClv1JcGaBaqmwYISDDWT2XoKFiLM3XTYwvlVNh6XxJX
+	 CKT55KtZfz1uFqQW+qJ1aRwpjgIq6DtSomWzYcgPmILQAhRnRKK/3RCoROfMgHR43bHAfmtnFwo4
+	 spCKWaQQ1p5rlHgMEXTZimxX4fxwD4q9dZe4qqt5VUCs4gLnrmsdwxLz1BhearwcnUEyVkJvGDXT
+	 WbkbDObX6EurS7YjUTFolf/Ham3kQ/VnL0Fj/TedhOUVBp2L6tE8T7QeslVtUjXUvn5y2Ougw3g+
+	 eJ1hJOGN4vFnT2zK7I+rwFSmU8bT3cE+ffcdTeNHSyjdB6dYJxa2uD8N2JQ21Q+Idad4ME73iGrr
+	 89U7Blb5Jt+do5BwAbmJQmEhhz7jScQSilgcnSGwlXmO4YfT3DI8Nf75/O/DkW+i7SpspuOJnxNH
+	 UOpSUq9A8fEDhDowhK4OC+KsiKnHaqrXV1GG4bOlnLZztg6OSkRpRIVt4TDLfRK5HqHJmzylQggK
+	 ivd88gZ2LCT3LYBI75b44TYJRVGRkabKqMdgH7
+X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
+From: Wang Jun <1742789905@qq.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	libaokun1@huawei.com,
+	25125332@bjtu.edu.cn
+Subject: Re: [PATCH] ext4: fix crash when ext4_ext_insert_extent() returns error
+Date: Fri, 26 Jun 2026 15:08:21 +0800
+X-OQ-MSGID: <20260626070821.15979-1-1742789905@qq.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <2026062643-tamer-limes-a320@gregkh>
+References: <2026062643-tamer-limes-a320@gregkh>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <tencent_C982B0201FE8F041BD5B4FC1ED7D646A740A@qq.com>
+Content-Transfer-Encoding: 8bit
 
-On Fri, Jun 26, 2026 at 01:17:21PM +0800, Wang Jun wrote:
-> [ Upstream commit 6b854d552711aa33f59eda334e6d94a00d8825bb ]
-> 
-> The use of path and ppath is now very confusing, so to make the code more
-> readable, pass path between functions uniformly, and get rid of ppath.
-> 
-> After getting rid of ppath in get_ext_path(), its caller may pass an error
-> pointer to ext4_free_ext_path(), so it needs to teach ext4_free_ext_path()
-> and ext4_ext_drop_refs() to skip the error pointer. No functional changes.
-> 
-> Without this fix, ext4_ext_insert_extent() returning ERR_PTR(-ENOSPC) in
-> ext4_ext_map_blocks() triggers a kernel Oops, observed via SyzKing
-> fuzzing on v6.6.142:
-> 
->   BUG: unable to handle page fault for address: ffffffffffffffec
->   R15: ffffffffffffffe4  (= ERR_PTR(-ENOSPC))
->   RIP: ext4_ext_drop_refs+0x...->ext4_free_ext_path+0x...->
->        ext4_ext_map_blocks+0x509/0x53a0
-> 
-> Signed-off-by: Baokun Li <libaokun1@huawei.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Wang Jun <1742789905@qq.com>
-> ---
->  fs/ext4/extents.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index a94798e23..8e23563bb 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4510,7 +4510,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->  	allocated = map->m_len;
->  	ext4_ext_show_leaf(inode, path);
->  out:
-> -	ext4_free_ext_path(path);
-> +	if (!IS_ERR(path))
-> +		ext4_free_ext_path(path);
->  
->  	trace_ext4_ext_map_blocks_exit(inode, flags, map,
->  				       err ? err : allocated);
-> -- 
-> 2.43.0
-> 
-> 
+Hi,
 
-What stable kernel(s) is this for?
+This patch fixes a NULL/error pointer dereference issue that I triggered
+and verified on the v6.6.142 kernel using syzkaller.
+
+Based on this, I believe this fix should be backported to the **v6.6.y**
+stable kernel series.
+
+For other currently supported stable series (e.g., v6.1.y, v5.15.y,
+v5.10.y, etc.), I have not yet verified if they contain the same
+vulnerable code path. It would be prudent to check and potentially
+backport the fix there as well, if applicable.
+
+Please let me know if you need any further information or testing.
+
+Thanks,
+Wang Jun
+
