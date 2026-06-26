@@ -1,182 +1,187 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11DBA18FDDE
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 14:32:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CDD993FB7E9
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 16:30:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782484343; cv=none; b=fxwDOmou6P6XfZ+OXByFtxTJ6/xHTXR2DDT9pWcx7gpnJMsFNfq0F+f8ctYoi0tWTeIVCTk85CuoaCdL4/PHaL7FUoQ6TLz0xfiM9xX6xbZQ5aKnYEjFOBxh9S4hAnT2Fyt8M6fgsEiP9lT0iZhJCOv5p8d7OztfvX2tR8ZmcfQ=
+	t=1782491427; cv=none; b=C/TswYt811edhH8YEAdWawF/LX9CvwD6cgmbCHq5MaTfNhR1oHMsr8cUQwq09YEeQZYcfRNC1rHOtFd5pTiYJlN6+bu7Ovhp/fIjd707vndX59J+ZowF7a+4SENZ5LvPSeKdwM5urDsaXlu7Z7YxZebzDsk3PA/PHEhtU6noFe8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782484343; c=relaxed/simple;
-	bh=q004am3Ss9EtM8C1z9OVdeV+82au7U9vSknA9tJd5f4=;
+	s=arc-20240116; t=1782491427; c=relaxed/simple;
+	bh=FSBUERRSuusoPYBYVb1ev6KT9dsw7t18FqnTyI9KV7M=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=kqjd8cg1xZw9D7MRV550iY9WDxPOMfzgPCYJwn/LY9QU1j3txHsc91zw0f5/t93DZ4RwVZ6pt+K10NiEzY3Q8t2XSxNjQuUz0uGu0xXnA1OYwMGYvw9a4DR1x75yqdvNgE0XMkqh1Em+2Fo5C0G0a3jMnVEXf2Qxz3/ZKUSQmM0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=HlqrezgP; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EwaRyawS; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=HlqrezgP; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EwaRyawS; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=jaOoXOffrhTLHXB6rpTEKeIeKruPlVecWP24RyT561PKck82ZvpkcmChwV4sPBIZNyZ6tqPheZzuS7X51pbhZhkBS0rxIQvN3BSfdCMbCwB5jWOp2+xtiahh4CUh6KJ+Gse4HakylLvTqrUzBzFAzIwjBqjMgH0wXfuvSIJN+Wc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZaBxR0Rz; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=I8pvMrYQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rRtq/6Zz; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=S9yrPtCj; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="HlqrezgP";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EwaRyawS";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="HlqrezgP";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EwaRyawS"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZaBxR0Rz";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="I8pvMrYQ";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rRtq/6Zz";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="S9yrPtCj"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3F850759ED;
-	Fri, 26 Jun 2026 14:32:20 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id D64C3710B0;
+	Fri, 26 Jun 2026 16:30:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782484340; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782491424; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
-	b=HlqrezgPa8zH7WgieacL12NxUmkhxW8ybrK2y8f6B6EQFbwUET8TKd24JlVHfH0m4y7ZK4
-	Dy944h629mpxnt9/pIp+BPgk5w4k0Jb0e+aEAKKOAeRq2qzEqUf6sMD+XXIyZ0iRl/ttaw
-	JsZOzR+DT2zfT4JpzptJr98+1jalMn4=
+	bh=LPpCIJOMFDBBanuAGfZP+Mf6d8nWX1cIvyZCJZPyRvs=;
+	b=ZaBxR0RzRSAAUWUT122KnanfLutR0UoZP76iIi8n6lDiMldP/A6a06BHKKSU91pPhl2HH5
+	yppBvP6Cg9LO31zyiQZ+LK0Bu/Wtrgu0TvmvVLyQncUi7+k8kZvGxjuQMxSBFeLsMLiLo/
+	gwwlJ4ewN167SFKY/r29ANSNP/OwCqg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782484340;
+	s=susede2_ed25519; t=1782491424;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
-	b=EwaRyawSXWCcwbQg5CN3AN7N5B/wWzRZg2kmsMsg5WndWxkQlrViZ5Noj7sbdR9vWDxjVt
-	a9+eTOK1OU7KP+AQ==
-Authentication-Results: smtp-out2.suse.de;
-	none
+	bh=LPpCIJOMFDBBanuAGfZP+Mf6d8nWX1cIvyZCJZPyRvs=;
+	b=I8pvMrYQ50Djqa7SoHatv2oL+IxvfdRlRe6fUDGLY7G/AhmYluajreDZEUADAT2UMCSaZS
+	H/m3q5wPxUNFlODQ==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="rRtq/6Zz";
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=S9yrPtCj
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782484340; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782491423; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
-	b=HlqrezgPa8zH7WgieacL12NxUmkhxW8ybrK2y8f6B6EQFbwUET8TKd24JlVHfH0m4y7ZK4
-	Dy944h629mpxnt9/pIp+BPgk5w4k0Jb0e+aEAKKOAeRq2qzEqUf6sMD+XXIyZ0iRl/ttaw
-	JsZOzR+DT2zfT4JpzptJr98+1jalMn4=
+	bh=LPpCIJOMFDBBanuAGfZP+Mf6d8nWX1cIvyZCJZPyRvs=;
+	b=rRtq/6Zzc+8/P/ymG9EEAN6crx4i47M9AW0H9rmp4h4+2qOt3HxWSZXmvFbgZvjdlaMhCC
+	7L0oNdfwwxQ4lVseUxQwxS81HQNCe0nVsOG7Kzch/KDTDCNKYUZkh9mZqfK5HDOlymTGhT
+	0HmFDl1dXldFioCSox4LGFpj7PhYVIk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782484340;
+	s=susede2_ed25519; t=1782491423;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=z8PK2vdUw41rrmpE/c7N8wIg8qIvSdAxJO2s77oCgSA=;
-	b=EwaRyawSXWCcwbQg5CN3AN7N5B/wWzRZg2kmsMsg5WndWxkQlrViZ5Noj7sbdR9vWDxjVt
-	a9+eTOK1OU7KP+AQ==
+	bh=LPpCIJOMFDBBanuAGfZP+Mf6d8nWX1cIvyZCJZPyRvs=;
+	b=S9yrPtCj7aEfbLbPkNFVW+QcphKskHKBd1ZAsCpOiMfSCmmFpwSxOLlmqEo/XrBUern30l
+	jENZ8VjfAtUCsuBQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 28054779A8;
-	Fri, 26 Jun 2026 14:32:20 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CB9CD779A8;
+	Fri, 26 Jun 2026 16:30:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id BU/DCXSNPmqLawAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 26 Jun 2026 14:32:20 +0000
+	id XdzHMR+pPmqJXQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 26 Jun 2026 16:30:23 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id B399DA10A3; Fri, 26 Jun 2026 16:32:15 +0200 (CEST)
-Date: Fri, 26 Jun 2026 16:32:15 +0200
+	id 5E8F1A10A3; Fri, 26 Jun 2026 18:30:15 +0200 (CEST)
+Date: Fri, 26 Jun 2026 18:30:15 +0200
 From: Jan Kara <jack@suse.cz>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	jack@suse.cz, yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, peng_wang@linux.alibaba.com, Sashiko <sashiko-bot@kernel.org>
-Subject: Re: [PATCH v3 9/9] ext4: fix NOWAIT semantic violation in DAX
- extending writes
-Message-ID: <4rrujvd7k6q6su7qupltfgg5imeul6k5updm2yd53c7j63eqyx@fvqgx2rbx2mu>
-References: <20260626083518.1064517-1-libaokun@linux.alibaba.com>
- <20260626083518.1064517-10-libaokun@linux.alibaba.com>
+To: Yun Zhou <yun.zhou@windriver.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, viro@zeniv.linux.org.uk, brauner@kernel.org, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v10 1/5] fs: add iput_if_not_last() helper
+Message-ID: <7yskwsnguq5y5j444asgtrmnygemjkzrkeqyst7supaqtbqvz6@xiprfaevpkrq>
+References: <20260625152941.24788-1-yun.zhou@windriver.com>
+ <20260625152941.24788-2-yun.zhou@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20260626083518.1064517-10-libaokun@linux.alibaba.com>
+In-Reply-To: <20260625152941.24788-2-yun.zhou@windriver.com>
 X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Rspamd-Action: no action
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	URIBL_BLOCKED(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,windriver.com:email];
 	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[13];
 	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
+	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,huawei.com,linux.ibm.com,gmail.com,linux.alibaba.com,kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
+	FROM_HAS_DN(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,sashiko.dev:url]
-X-Spam-Level: 
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,zeniv.linux.org.uk,kernel.org,vger.kernel.org];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email]
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: D64C3710B0
+X-Spam-Score: -2.51
 
-On Fri 26-06-26 16:35:18, Baokun Li wrote:
-> When a DAX write starts before EOF but extends past i_disksize,
-> ext4_write_checks() skips the IOCB_NOWAIT check because
-> iocb->ki_pos <= old_size. However, ext4_dax_write_iter() later calls
-> ext4_journal_start() to prepare for inode extension, which can sleep
-> waiting for journal space or transaction commit.
+On Thu 25-06-26 23:29:37, Yun Zhou wrote:
+> Add a helper that drops an inode reference only if the caller does not
+> hold the last one.  Returns true if the reference was dropped, false
+> otherwise.
 > 
-> This violates NOWAIT semantics and can stall asynchronous I/O frameworks
-> like io_uring that rely on non-blocking behavior.
+> This is useful for filesystems that need to release inode references
+> in contexts where triggering final iput (and thus eviction) would be
+> unsafe due to lock ordering constraints.  The caller can check the
+> return value and defer the final iput to a safe context.
 > 
-> Fix this by checking IOCB_NOWAIT before calling ext4_journal_start()
-> in the extending write path. If NOWAIT is set and extension is needed,
-> return -EAGAIN so the caller can retry in blocking context.
+> Unlike iput_not_last() which BUG_ON's if called with the last ref,
+> this variant is designed to be called speculatively.
 > 
-> Example scenario:
->   - File: i_size = 1000, i_disksize = 1000
->   - DAX NOWAIT write: offset = 500, count = 2000
->   - ext4_write_checks(): ki_pos (500) <= old_size (1000), skip NOWAIT check
->   - ext4_dax_write_iter(): offset + count (2500) > i_disksize (1000)
->   - ext4_journal_start() → may sleep → violates NOWAIT
-> 
-> Reported-by: Sashiko <sashiko-bot@kernel.org>
-> Closes: https://sashiko.dev/#/patchset/20260618125735.4156639-1-libaokun@linux.alibaba.com?part=5
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+> Suggested-by: Jan Kara <jack@suse.cz>
 
-Looks good. Feel free to add:
+Yes, I think this is a sensible addition to the inode refcounting API which
+will allow filesystems to save the hassle of iput offloading in the common
+case. Just one nit below, otherwise feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 6da44573ce45..4916a9d54347 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2418,6 +2418,19 @@ static inline void super_set_sysfs_name_generic(struct super_block *sb, const ch
+>  extern void ihold(struct inode * inode);
+>  extern void iput(struct inode *);
+>  void iput_not_last(struct inode *);
+> +
+> +/**
+> + * iput_if_not_last - drop an inode reference only if it is not the last one
+> + * @inode: inode to put
+> + *
+> + * Returns true if the reference was dropped, false if this was the last
+> + * reference and the caller must arrange for final iput() in a safe context.
+> + */
+> +static inline bool iput_if_not_last(struct inode *inode)
+
+I'd add __must_check to the declaration.
+
 								Honza
 
-> ---
->  fs/ext4/file.c | 5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 49074cc13751..610e109fcd36 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -731,6 +731,11 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
->  	count = iov_iter_count(from);
->  
->  	if (offset + count > EXT4_I(inode)->i_disksize) {
-> +		if (iocb->ki_flags & IOCB_NOWAIT) {
-> +			ret = -EAGAIN;
-> +			goto out;
-> +		}
+> +{
+> +	return atomic_add_unless(&inode->i_count, -1, 1);
+> +}
 > +
->  		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
->  		if (IS_ERR(handle)) {
->  			ret = PTR_ERR(handle);
+>  int inode_update_time(struct inode *inode, enum fs_update_time type,
+>  		unsigned int flags);
+>  int generic_update_time(struct inode *inode, enum fs_update_time type,
 > -- 
-> 2.43.7
+> 2.43.0
 > 
 -- 
 Jan Kara <jack@suse.com>
