@@ -1,30 +1,30 @@
 Received: from out30-100.freemail.mail.aliyun.com (out30-100.freemail.mail.aliyun.com [115.124.30.100])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7EA003E5A03
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B94263E5A0E
 	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 08:35:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782462940; cv=none; b=Kj+acwpFWuQApN+Vz0x4f/Y1kHtDz4cNqcieQzgH/rfJ4TyQmDH91EGEBspkjpN2Qb/Tx1Yc/VmFXMqxGIBNgzcI4sYpHQfnH/QaQd/oiHRtxO3kE30fQNjDSel+FMCafqLQy7/+WThJgF6nBMZLFl7bOKB5nwb6LX7ZXu2iYLs=
+	t=1782462940; cv=none; b=ToOPCAmcezE7yhoWzlpGJ4e9CVhqIBorUNNJ5/r2OS2jSyivhuN44+ez5GpIT15PiPPv64OUGv4YZcbeEkSt6YWok0OunvqgX6hfreN4a7nv/S48I4C8F2CTLsSLxko9udxFYGuq6maMztYsc+PRno0AZOsBb6H+yG6t1++MPPU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1782462940; c=relaxed/simple;
-	bh=dT4G6h9UlVfmz1f1zCIzZ8GmQmzSSqwdzUcAoOUfzOM=;
+	bh=P0qOZP6qlhaHDgDVOI3Lve6Adqc82JA3FxSyKwQRV6U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Rde6GHcpD2o4HNvvoSM5llrpK71ksAXmZUgv/5UTPsNwE4pAvnkQ4Br3tg9D8C6SdKtE6EKyIKwlRxvvbF7+KUDGffbWxUpHumxPTExBQlLiaTODSIAEjd2NJ0HNtLUyFh427PVYmCg/EMKYipZ32ANFE3EcMdFWptVxBx0xwGc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=dXrS6Q1K; arc=none smtp.client-ip=115.124.30.100
+	 MIME-Version; b=rr1whiwUhCxQCrf8LhKcDgz6ZEQ+L3XXXq+A+nhOHpGb1jvBK9mSCnaKvoSBDfaLn7aGlQhmd5Rw5jcshvM73Mjfs3b+ayIFz1tRqJs6wKlPQOMP9lgaIJWzsAI7OMiJW1JDhbBIgN/5kf1V8AopnvSoWK4Gr3PXmQ90eBxs9oo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=aejR0Vnu; arc=none smtp.client-ip=115.124.30.100
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="dXrS6Q1K"
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="aejR0Vnu"
 DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
 	d=linux.alibaba.com; s=default;
-	t=1782462936; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=WC7kQqp+MzBwm1AHUR4tI60tjNa+UN2pRvGQCVNE5a8=;
-	b=dXrS6Q1Ktw4pOrkRBLv0+HFJ9KrOXdD5M8nXujLlckSLVWssymebHgrX4Z/0KDeBOhTXYWW4GIQtvawjA0N/ac8Mt1Xfpgz/88WhOn4Wyh7pyxxJtItmYnyXagGNNYN17Fg2zk2jknfa1gyMx/phvTItOYBO1L90YhqEJOKCROA=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R231e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X5e4zk1_1782462935;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X5e4zk1_1782462935 cluster:ay36)
+	t=1782462934; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=R3iEPNkGzrutdD+McFKciSRaA6GFKouIvrBMNLHmYQ4=;
+	b=aejR0VnulhlMUaeA3D2Y+wSwS3IjjL9NOBdtfAwmiQuaJkHeBEUqV8FUISO2Wv4xBXScUfUxaqkqZhpS3MF0ZefQwvGPTRNkcTokk9Lo/Zlk/8cjpoVgJqtxit8GVyFGRv2JN4d367JfGr6UcYpL/d5HY/JFgyZlSlgj9p5AlX8=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R171e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X5e4zjF_1782462933;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X5e4zjF_1782462933 cluster:ay36)
           by smtp.aliyun-inc.com;
-          Fri, 26 Jun 2026 16:35:35 +0800
+          Fri, 26 Jun 2026 16:35:34 +0800
 From: Baokun Li <libaokun@linux.alibaba.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -34,9 +34,9 @@ Cc: tytso@mit.edu,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	peng_wang@linux.alibaba.com
-Subject: [PATCH v3 8/9] ext4: handle IOCB_NOWAIT in ext4_dio_needs_zeroing() with cache-only lookup
-Date: Fri, 26 Jun 2026 16:35:17 +0800
-Message-ID: <20260626083518.1064517-9-libaokun@linux.alibaba.com>
+Subject: [PATCH v3 6/9] ext4: improve EXT4_GET_BLOCKS_CACHED_NOWAIT handling in ext4_map_blocks
+Date: Fri, 26 Jun 2026 16:35:15 +0800
+Message-ID: <20260626083518.1064517-7-libaokun@linux.alibaba.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260626083518.1064517-1-libaokun@linux.alibaba.com>
 References: <20260626083518.1064517-1-libaokun@linux.alibaba.com>
@@ -48,82 +48,67 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Add a nowait parameter to ext4_dio_needs_zeroing() and pass
-EXT4_GET_BLOCKS_CACHED_NOWAIT flag to ext4_map_blocks() when
-IOCB_NOWAIT is set. This ensures the needs_zeroing check only uses
-cached extent info. If cache misses, ext4_map_blocks() returns
--EAGAIN, causing ext4_dio_needs_zeroing() to conservatively return
-true (needs zeroing). The caller then tries to upgrade to exclusive
-lock, which returns -EAGAIN for NOWAIT, avoiding potential sleep on
-down_read(i_data_sem).
+When EXT4_GET_BLOCKS_CACHED_NOWAIT is set and the extent status cache
+hits, ext4_map_blocks() returns immediately without running
+check_block_validity(). This allows malicious extents from crafted
+filesystem images to bypass validation if they have been cached by a
+previous blocking read.
 
-The caller in ext4_dio_write_checks() is updated to pass the
-IOCB_NOWAIT flag from the kiocb.
+Make three improvements to the EXT4_GET_BLOCKS_CACHED_NOWAIT handling:
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+1. Change the cache-hit path from "return retval" to "goto found" so
+   that check_block_validity() always runs, closing the security bypass.
+
+2. Return -EAGAIN instead of 0 on cache miss to distinguish it from a
+   cache hit on a hole or delayed extent (which returns 0). The only
+   existing caller (ext4_get_link() -> ext4_getblk() -> ERR_PTR())
+   converts both -EAGAIN and 0 to ERR_PTR(-ECHILD), so the end result
+   is unchanged.
+
+3. Add WARN_ON_ONCE after the EXT4_GET_BLOCKS_CREATE==0 early return
+   to assert that EXT4_GET_BLOCKS_CREATE and EXT4_GET_BLOCKS_CACHED_NOWAIT
+   are never combined, since EXT4_GET_BLOCKS_CREATE requires blocking on
+   i_data_sem.
+
 Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 ---
- fs/ext4/file.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 0e9448a110dc..49074cc13751 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -228,7 +228,8 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
-  * unwritten conversion for middle blocks are protected by i_data_sem
-  * and inode_dio_begin().
-  */
--static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
-+static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len,
-+				   bool nowait)
- {
- 	struct ext4_map_blocks map;
- 	unsigned int blkbits = inode->i_blkbits;
-@@ -236,10 +237,14 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
- 	bool head_partial, tail_partial;
- 	ext4_lblk_t head_lblk, tail_lblk;
- 	int err;
-+	int map_flags = 0;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 832794294ccf..7f9ae584ad98 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -759,8 +759,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			BUG();
+ 		}
  
- 	if (pos + len > i_size_read(inode))
- 		return true;
- 
-+	if (nowait)
-+		map_flags = EXT4_GET_BLOCKS_CACHED_NOWAIT;
-+
- 	head_partial = (pos & blockmask) != 0;
- 	tail_partial = ((pos + len) & blockmask) != 0;
- 	head_lblk = pos >> blkbits;
-@@ -249,7 +254,7 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
- 	if (head_partial) {
- 		map.m_lblk = head_lblk;
- 		map.m_len = tail_lblk - head_lblk + 1;
--		err = ext4_map_blocks(NULL, inode, &map, 0);
-+		err = ext4_map_blocks(NULL, inode, &map, map_flags);
- 		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
- 			return true;
- 		/* If this mapping already covers the tail block, we're done. */
-@@ -261,7 +266,7 @@ static bool ext4_dio_needs_zeroing(struct inode *inode, loff_t pos, loff_t len)
- 	if (tail_partial) {
- 		map.m_lblk = tail_lblk;
- 		map.m_len = 1;
--		err = ext4_map_blocks(NULL, inode, &map, 0);
-+		err = ext4_map_blocks(NULL, inode, &map, map_flags);
- 		if (err <= 0 || !(map.m_flags & EXT4_MAP_MAPPED))
- 			return true;
- 	}
-@@ -517,7 +522,8 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- 	 * under shared lock is safe.
++		/* Skip blocking operations and jump to extent validation. */
+ 		if (flags & EXT4_GET_BLOCKS_CACHED_NOWAIT)
+-			return retval;
++			goto found;
+ #ifdef ES_AGGRESSIVE_TEST
+ 		ext4_map_blocks_es_recheck(handle, inode, map,
+ 					   &orig_map, flags);
+@@ -776,7 +777,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * cannot find extent in the cache.
  	 */
- 	if (ext4_unaligned_io(inode, from, offset))
--		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count);
-+		needs_zeroing = ext4_dio_needs_zeroing(inode, offset, count,
-+						iocb->ki_flags & IOCB_NOWAIT);
+ 	if (flags & EXT4_GET_BLOCKS_CACHED_NOWAIT)
+-		return 0;
++		return -EAGAIN;
  
- 	/* Determine whether we need to upgrade to an exclusive lock. */
- 	if (*ilock_shared &&
+ 	/*
+ 	 * Try to see if we can get the block without requesting a new
+@@ -797,6 +798,9 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0)
+ 		return retval;
+ 
++	/* EXT4_GET_BLOCKS_CREATE cannot operate in NOWAIT mode */
++	WARN_ON_ONCE(flags & EXT4_GET_BLOCKS_CACHED_NOWAIT);
++
+ 	/*
+ 	 * Returns if the blocks have already allocated
+ 	 *
 -- 
 2.43.7
 
