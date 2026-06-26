@@ -1,98 +1,85 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-1-112.ptr.blmpb.com (va-1-112.ptr.blmpb.com [209.127.230.112])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDC903E3DAB;
-	Fri, 26 Jun 2026 08:51:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DB3A3E959A
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Jun 2026 10:05:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.112
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782463887; cv=none; b=OTd11UIZpvmCNVNUzzMXj6oCtpU4gRRQKuwXUnGTF/KaCh0ryE2pr4Z0mYVYJld9v9+L856+uC/f8SPR9FFwAIenswL9MUc3vHNPlZ68qa3A9Easa01HMZ3PlC9ml5dy1fv60jpGAbfeFnxLY1HeKBoB5Dcq5svG+XRJgip29no=
+	t=1782468332; cv=none; b=WMYwMWEflyUSv7X5uDsUea4OZkZ1g8taXAdPFgZZZrowZ+9MjaMBi5yjeB3I0E+s7fBXxU3/NGCsvGRY2oAVABSSTKBAk8GP7fS10Y8SXlPpC1vwC0npt4gCT4oG4asd8v4OlXeMYOxmbbj3Gc7D7h3tIOqBGE6KBcoAelkGylk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782463887; c=relaxed/simple;
-	bh=72LW1Sqy+CyJluT8dJ+TRAWGIYqhMfoj0D3AB5ay3hw=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=EqOoRqSNcWYnhnT9yQRZjaV08cPeRk7nSijS+easOoLCIpkZO5ydHJzsmT32rxIHXTjTbyJAqxPpUnJSr5KqlIKkq2WXS7rn79IOk+/KxtkVexSIJ0v6oxfQ3Ci8tlacvSD6G75y+qK7AXN41huxj1mNcTrjjxfWF9qCDwvWpzk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZuN86shS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782468332; c=relaxed/simple;
+	bh=C6g3oSTRv01LcmdPXswFH3AfN8+ZBuwOKaByhSZrN6o=;
+	h=References:Mime-Version:To:Cc:From:Message-Id:Subject:In-Reply-To:
+	 Date:Content-Type; b=nAQ97M4WDtx00Y8/4x1vkpDUGKn611MWdO8MAH425d/erjojW/DUS1j5n1P7N9TqX/zeH6WgVY588nI0XJ/Ii2Aiy/R5AiwZsgY7HXHgbXB8PjL+KzWns7bpR2ftlQhknXmY7FHsvZf8qKTmp+q4EyaPe9xpUqCxzNWL6pPGxm4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=JE4g0LCy; arc=none smtp.client-ip=209.127.230.112
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZuN86shS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55C131F000E9;
-	Fri, 26 Jun 2026 08:51:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782463886;
-	bh=dczgg0EG8SzCmQOx10ra7Wu7tyi/QlMQ5W656css9gI=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=ZuN86shSSyy0XeJHxDjAleAAh3O8h5DItrYs4TSav34bAuZW0MAx9ZBBE9S3nKp+q
-	 JUucAqzuWIOp1XCgdpd9P3oFXnLbWNeWduuAN7d3BLmln+qoARZNZxKF2O06nPeYv4
-	 1dAdVGA0JDyuC0sJVCZD2wvL+fK7VqCql7n7upa+dFP/qqyZ8tCeX05jqkcgPFDC5w
-	 tFX0+2mg/DvZd1BW9undZCZbfHnid5R0fV0ghRYpjUgkCITPyYbrNbnJWUD3Su88Bu
-	 iGHlEwHR4XUomu86ZdOshDLSTLNHrTMNbY7gs9BX+9uYtxaMeTpyySj/HlKZUt2HrK
-	 5/RKab/63CQEw==
-Date: Fri, 26 Jun 2026 04:51:19 -0400
-From: Steven Rostedt <rostedt@kernel.org>
-To: Nathan Chancellor <nathan@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, Masami
- Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Andrew Morton
- <akpm@linux-foundation.org>, Linus Torvalds
- <torvalds@linux-foundation.org>, Sebastian Andrzej Siewior
- <bigeasy@linutronix.de>, John Ogness <john.ogness@linutronix.de>, Thomas
- Gleixner <tglx@kernel.org>, Peter Zijlstra <peterz@infradead.org>, Julia
- Lawall <julia.lawall@inria.fr>, Yury Norov <yury.norov@gmail.com>,
- linux-doc@vger.kernel.org, linux-kbuild@vger.kernel.org,
- linuxppc-dev@lists.ozlabs.org, dri-devel@lists.freedesktop.org,
- linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
- linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
- intel-gfx@lists.freedesktop.org
-Subject: Re: [PATCH v4 2/2] tracing: Remove trace_printk.h from kernel.h
-Message-ID: <20260626045119.659d1e6b@fedora>
-In-Reply-To: <20260625234158.GA261868@ax162>
-References: <20260625104007.041432666@kernel.org>
-	<20260625104402.210473477@kernel.org>
-	<20260625234158.GA261868@ax162>
-X-Mailer: Claws Mail 4.4.0 (GTK 3.24.52; x86_64-redhat-linux-gnu)
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="JE4g0LCy"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1782468319; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=vrWJEdeaP+BWIo9pqHkAnAToTeZrL9b56uLfVI+0FFw=;
+ b=JE4g0LCyQ3qb74xBJGriRR4hLPlC4XEf5BqV6mY13ZRAeZzIzjHHbsWb7rU2J5hqQN/+Xc
+ E7r8alvuKMEZ3kfnoRrupPr5ZcRV21wOkV6/ndzU0jXx4rSOBwGmitxJYzzzwNqqV/E52T
+ 3GXpY2sG94I9O/333tZJdcndXRYmRYf9ds9lGg0zPtpnCcCNAeVB10PeixKcWNMe1vN2dd
+ Z5OzUeYAWWMbblQAKtP9uAZcUKNzMTr4tO3Xmj9xza8F/nIVPxRnR28FFgym0Aebz91ugX
+ XBkGr8IJOcK7vh/TfnhqAvRC8vVhEmqWNKqR/+gEX6v+F7kjo8RfQ9tdCdxi8A==
+References: <20260623094947.7853-1-zhujia.zj@bytedance.com> <81ed36cc-b5c8-41cf-8b7d-16611e61e294@huaweicloud.com> <20260624094535.1-zhujia.zj@bytedance.com> <x3jm3mhgsr7zx4hvfgdvmwoqyz5vxx2fjyxy6gs6him46767f6@dkkirnw54x6x> <7471b9cb-158a-4ed4-a1ce-95270ef38974@gmail.com> <qwe3wrfaoqoowiywhskhewfcjbh5aolmgeoy7am6xcl7id4fam@zxqmz7266uaq>
+X-Original-From: Zhu Jia <zhujia.zj@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
+To: "Jan Kara" <jack@suse.cz>, "Zhang Yi" <yizhang089@gmail.com>
+Cc: "Zhu Jia" <zhujia.zj@bytedance.com>, 
+	"Zhang Yi" <yi.zhang@huaweicloud.com>, "Theodore Ts'o" <tytso@mit.edu>, 
+	"Andreas Dilger" <adilger.kernel@dilger.ca>, 
+	"Baokun Li" <libaokun@linux.alibaba.com>, 
+	"Ojaswin Mujoo" <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani" <ritesh.list@gmail.com>, <linux-ext4@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, <stable@vger.kernel.org>
+From: "Zhu Jia" <zhujia.zj@bytedance.com>
+Message-Id: <20260626095734.1-zhujia.zj@bytedance.com>
+Subject: Re: [PATCH] ext4: cancel dirty accounting for folios without buffers
+In-Reply-To: <qwe3wrfaoqoowiywhskhewfcjbh5aolmgeoy7am6xcl7id4fam@zxqmz7266uaq>
+Date: Fri, 26 Jun 2026 18:05:12 +0800
+Content-Type: text/plain; charset=UTF-8
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+X-Lms-Return-Path: <lba+26a3e4edd+cf508d+vger.kernel.org+zhujia.zj@bytedance.com>
 
-On Thu, 25 Jun 2026 16:41:58 -0700
-Nathan Chancellor <nathan@kernel.org> wrote:
+On Thu, Jun 25, 2026 at 01:18:31PM +0200, Jan Kara wrote:
+> On Wed 24-06-26 21:29:58, Zhang Yi wrote:
+> > On 6/24/2026 8:32 PM, Jan Kara wrote:
+> > > On Wed 24-06-26 17:52:06, Zhu Jia wrote:
+> > > > The reason I left the tags unchanged in this version is that I was not sure
+> > > > whether it is appropriate for ext4 to open-code xarray tag cleanup directly.
+> > > > 
+> > > > If you think this is the right direction, I can add the helper back and
+> > > > send a v2.
+> > > 
+> > > That was a good judgement! Playing with xarray tags like this in filesystem
+> > > code is certainly not a good thing. For now, I'd leave the xarray tags
+> > > dangling - they will be eventually synced with reality on next writeback
+> > > attempt. If this inconsistency of tags needs to be fixed, the fix belongs
+> > > to the generic code (so that it can be used in other places as well).
+> > 
+> > Yes, I agree. Directly clearing the tag via open code is not a good
+> > approach. However, I took a look at the !nr_to_submit branch in
+> > ext4_bio_write_folio(), and it seems to have a similar simple handling
+> > pattern - it directly calls __folio_start_writeback() and
+> > folio_end_writeback(), which appears to be an elegant way to clear them.
+> > Could we also call these two helpers just after folio_cancel_dirty()
+> > here?
+>
+> Right, that would be actually doable there and would keep things more
+> consistent so I think that's a good idea! Thanks!
 
-
-> The following diff resolves it for me, should I send it as a separate
-> patch or do you want to just fold it in with a note?
-> 
-> diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-> index 621566345406..2301a701ffbb 100644
-> --- a/include/linux/lockdep.h
-> +++ b/include/linux/lockdep.h
-> @@ -10,6 +10,7 @@
->  #ifndef __LINUX_LOCKDEP_H
->  #define __LINUX_LOCKDEP_H
->  
-> +#include <linux/instruction_pointer.h>
-
-Ah, so the reason for this breakage is because lockdep was relying on
-instruction_pointer.h, that just happened to be included in kernel.h
-via trace_printk.h.
-
-This is a separate issue, so it should be a separate patch. I'll add it
-as patch 1 of this series.
-
-Can you send me the config you used. This didn't trigger in my tests.
+Thanks Jan and Yi, your discussion makes sense. I will send v2 shortly.
 
 Thanks,
-
--- Steve
-
-
-
->  #include <linux/lockdep_types.h>
->  #include <linux/smp.h>
->  #include <asm/percpu.h>
-
+Jia
