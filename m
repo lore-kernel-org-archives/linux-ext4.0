@@ -1,204 +1,343 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C77D2D3ED2;
-	Sun, 28 Jun 2026 08:35:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.178.238
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782635751; cv=fail; b=gMUTHCQ6/xqucEfGr2G5imzQ5VEmrWj3sTL0nRrUX2VhfU8rN+TJh+yb4jmpcbfqUYO37xt4w4tLCsd50pKlrYr8eUwx4E38o8cACG57KaheIsgV07zDiKyBeY8BjjvPl5Lc5cKxKP5iDONDlA5NCNMv7tLeSDOwN1CoPksaAMk=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782635751; c=relaxed/simple;
-	bh=HYFXlxlvUfdmo70mVUqhGKg7iB4HVZ3ON3pP/1H9BK0=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=kNCHcqnuKBGeNNx38KRPu0fe/roFs0W8zXjF41xn5KpcsbZ6tgCVVJ2exIVmn+4aNxGaQE5ufQ1Ri8dmmou0LM8c41Bw8E1mcgoQvKQ7x5wSfyUGS+veTXSQLJDj1DK9DqzuYO05nsWFpcqSuLu7HbzHXg2SQaHjJUoqJEUHmvo=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=GqFTukUf; arc=fail smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 866AC23BD1B;
+	Sun, 28 Jun 2026 18:57:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=43.163.128.50
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782673060; cv=none; b=muNwUnE5zMjGHEMcLaFYKIag75s9UPfqNOALP5smSInv1oncr5B59BjlDOmW5bDXFzpSxpDm8onIOrZgrgxPR5LH0dMUlB229H+qEYysKY9yTyYEAkG2uojAJ2NA4bJA9w0bvMUCoJ6hgPJH9CYLTiFsokW058lwVYl4TREZ+x0=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782673060; c=relaxed/simple;
+	bh=XF7RcKuQCaaaQyV7TgTh/Dh3UR5tR0JCU/b/DlBCZzw=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=TiRIMlaRxXD4ln4tkIDmIrk7h9ZheNrFc3wfPHIjAisXcb7yCfqu6iTWyeAFVJqtqz6DQt5SEQ67BlQFawzE7eHryyGAqST8JB6slwOWh2ddkCREf5pHEqgo620PiCGY6EyscccX0CCju/P0499CZPJ1lz8pNPGE0oVBCY+Ezhg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=rQjD09NM; arc=none smtp.client-ip=43.163.128.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="GqFTukUf"
-Received: from pps.filterd (m0250812.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65S8A1FJ3993030;
-	Sun, 28 Jun 2026 08:35:24 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=gTzw4yVMZ+NJBVygxwBG80t51DQlL0WhAP5jykBOcqE=; b=
-	GqFTukUfy3X2s3ySohFr2ni8Drs32zxc359oqsIpx6/3MCvOeOZfA5nobDFZMtIQ
-	9Tn+h5tetdWIRT2HrvGJ7a2eSI6VjlBBQ7uzxoQA5HiD+wgAGNQw1Klaz+XOqKAk
-	4i6A+NRGox3+dj6cbxHcuQjrapKXt8/68uw4lcbv3NSOaZv7sktPueIr8zUqs6Dc
-	fpJzPrZ0XpnRXVfLhT7EzzYorC+Rmtr/zjPUTSLK5GIff2Zj/Y6MCSjDejcRkAVm
-	jHbNW/vNCxmEuaaG6lui37E66tFfNyJq3P9BOtf1oLDURgYhxjRy02YjIgArMQLM
-	pXjb7kD3t3O53oFB8EM89g==
-Received: from ph7pr06cu001.outbound.protection.outlook.com (mail-westus3azon11010009.outbound.protection.outlook.com [52.101.201.9])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f25g5gyyx-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Sun, 28 Jun 2026 08:35:24 +0000 (GMT)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=wm8xwLS19A3D413X31GOok4p53LGgOROA65Bz/c8nfEsHTgODIAFn++7acaZR0zbQJvE7gAmhOaqeXvzfWdUeVTk2uDW3EDC5SGL4XC6jwqwTFTO1r69jf/PHJIg+flGWdHJ8fSp9FUzjUuSHwG0sHLtdlFVXsY2bF1nvdCjVDuChhmRiVrZLtVBuO7/Uvb0G3Mf9MDiBk+i5GPpCSNfPe2bfMA9ZFdlWd2qexBBdLCF0+TQRl4FmXWwzqBBuVsu9EcxWyXvOEaWwbSWxiAOK3RsCBU9V++vsuRo3Fh3CmuGb38NHJ8tOS2Lqye89Qvgrsn4n6jFFTfiO5ULOmyRMA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=gTzw4yVMZ+NJBVygxwBG80t51DQlL0WhAP5jykBOcqE=;
- b=SSh9ux0TpmJ1IyGEC1gWsR2180b47CIS2+qvIUN9O++frxcsitLGp8ncXyA2nknGDN0T8FIkiC3KewoVwB62VA4e36549elD+/Pnc7+ZEffnlsZCM//dZhY4tTNpz4nba3MHU2Xpa/DwF9xxAot/hUa4PmrDk76kuItsnETmRGfQ9yfjRH3hJbwJthudWUncFOjmdCtpGQf4SF5jqSqfluzBMULeh+rXrJ/k4ofYSG8NhQyIcNZNTrwXmIOgLib1vV/bQXAvuhIQQEYsv59igmcRewTpEKazDUDK1iINwkgKS3HhJ0r0+wyvhNAENfc+pTCDjLPHjjbuzphMrfqT5w==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=windriver.com; dmarc=pass action=none
- header.from=windriver.com; dkim=pass header.d=windriver.com; arc=none
-Received: from BL1PR11MB5333.namprd11.prod.outlook.com (2603:10b6:208:309::23)
- by MW4PR11MB7102.namprd11.prod.outlook.com (2603:10b6:303:22b::21) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.159.18; Sun, 28 Jun
- 2026 08:35:20 +0000
-Received: from BL1PR11MB5333.namprd11.prod.outlook.com
- ([fe80::f5ec:bde8:d36f:ff]) by BL1PR11MB5333.namprd11.prod.outlook.com
- ([fe80::f5ec:bde8:d36f:ff%3]) with mapi id 15.21.0159.018; Sun, 28 Jun 2026
- 08:35:20 +0000
-Message-ID: <c66cf839-ce82-483c-a463-31204cd2cb5b@windriver.com>
-Date: Sun, 28 Jun 2026 16:35:10 +0800
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v10 5/5] ext4: prevent deadlock from duplicate EA inode
- references on corrupted fs
-To: Jan Kara <jack@suse.cz>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        viro@zeniv.linux.org.uk, brauner@kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-References: <20260625152941.24788-1-yun.zhou@windriver.com>
- <20260625152941.24788-6-yun.zhou@windriver.com>
- <ipqfj2abofanrrcapw2qp4wx6x6m647nqjrhqpuynpxxlh5ugr@utgka6gkeufw>
-Content-Language: en-US
-From: "Zhou, Yun" <yun.zhou@windriver.com>
-In-Reply-To: <ipqfj2abofanrrcapw2qp4wx6x6m647nqjrhqpuynpxxlh5ugr@utgka6gkeufw>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: TY6P301CA0013.JPNP301.PROD.OUTLOOK.COM
- (2603:1096:405:3be::11) To CH0PR11MB5332.namprd11.prod.outlook.com
- (2603:10b6:610:bf::17)
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="rQjD09NM"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1782673048; bh=Vec2D5eQKzQ74gZxdAs44uQsPqe5tItUtvWLO7lctY0=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=rQjD09NMcbIrHIHqJDmyFnWTD1jxDIeYFU7hW+uGw4fs5zd5Y4BFYV7Im6g//5p0b
+	 /36A6g5q9qtqGqpnWf5ozlMuhUv6tSr4iBjTdrXLi9LSwCggGQTVp8kD71FrPcaIvh
+	 C4sUQW1Wx1N0r6QKdBI32Erut9ndK8ArGjLx3Rd4=
+Received: from [192.168.1.102] ([223.77.180.178])
+	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
+	id E583D820; Mon, 29 Jun 2026 02:57:24 +0800
+X-QQ-mid: xmsmtpt1782673044tc5qh6a6x
+Message-ID: <tencent_B515F296245B20D721AEC2C9367AA188940A@qq.com>
+X-QQ-XMAILINFO: NbgegmlEc3JuRORqMjrekPGZUXgzah05C82kWrxNL6IqhCnA4n5bMsn76dV1OP
+	 X7G1mY/Fql/qvyU0hYMWVWMXSBbsDLh1ng6HL+FCmYz3ZEORrJJeRRJbEGvn8mz4ZbthbpvOXTg2
+	 aPR1T9Oi1IHXPfU2G4Q+923HXaB8E7dgqzXeQ+0xVDbz2pErRda9fywdKEkAjoP12DKY78lis3uf
+	 uqRH2pmVT/dUd7k6CKIiYDaal1c6+eH1OgfwMedoiF30HI57HhhlnoXY0s337nti63m8aFUV+BMW
+	 GS8rNnqv1fWFpIK2cvP20iu2gd2HipcfYHGCUr4jz5PMS8YYrp/+2/ywrnfxX/gUf0SXuqbXLPiI
+	 lgKGXejsiVqXmgFM3wg/4zBm5ubOBzJR1v4MjJf9xa5u+by/HchLsjAoyYkqtXqv6oqH/9YE1WUM
+	 aJ3i+SEPZEJf9l4DLYnZMbSgPeDrflDE1+5MvxD84sBhI9if6X6AgT0yGdOBllXbxtOFG8t+9yJr
+	 Gko0sp+qr6HEnGyrV3wYv4RW/yY1Ye2NwEJgq8Px90dDazC/DFBBn/XeoWxxhanbE02d1Bb+fnOQ
+	 mMDKNW+4v+jtUvRkDhhDYFyb6q6Yyk7PGKoZgYGoIKaMh1Jml8DCSep7zrh6+yOB6cI3U0dIa/2B
+	 tDvGKfAqKB4Ctbl+xMB+FeoGxu5Ci3zebonZIoSf/wiHqQjGD6hSRn128d/s4CrGSSY4R3Rumx1e
+	 tWhmgN0xrBB6+iaygEXYkslHoXo3oH8ZpHIKf+dL3tgGaNKMiLf4v8ki/nPK7A0wPSGShuVdwvzf
+	 F8iUaCHNQ0NzfXaHRj8Su6E90hrHnjb42VLrKQS2R5WCEwgwkFTGTtsde2AWOSjhzypUi9X7g0ka
+	 ClchT5WT/BmKQ3GpQIoxt6WKr81Oc5+XmMsViBf3OALit72q5wziZYIuGvWdSXk0RxE1FF9RSCA6
+	 u+K2O+UMvg23sdrWCMeCIYTzhiLacJhdvwp7ou+Nt9Iytzf6ZZ8W+VfsAbhqiagyViqwtnSKvwFJ
+	 wrFcabrPCRZ4uAYQpk7HoHFA95pbfRENYQZQdP79763hY68h5qe2N2zLpVi4WxcEt6p8O0Bw==
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+X-OQ-MSGID: <5eccf43d-3e9b-48d7-83d8-54fdae452962@qq.com>
+Date: Mon, 29 Jun 2026 02:57:24 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: BL1PR11MB5333:EE_|MW4PR11MB7102:EE_
-X-MS-Office365-Filtering-Correlation-Id: 920c5086-a692-4e6b-b31c-08ded4f02f9a
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|376014|7416014|1800799024|23010399003|366016|56012099006|11063799006|18002099003|4143699003|22082099003;
-X-Microsoft-Antispam-Message-Info:
-	qORNzs2VYOamIn5pVbnEiRiIt3GUk+P1tBKbLGaBVYD8WRwABm7dtPSF9jse4dSnciQxFDuQE0NncuTeP0cKe2aUpUTFLEYVpb+sIgN9DPfOWV3nHR+QwrL/Vfq1RcspljYLYcse02B4bMtb19t19EKceRWRZBj/ByGejj6o9bV34GAzgfI6h98M3gnFr926tL2Zqf0YcYensFheUCineEE/m6QijZW7FQyUo73HWfZwTf2e3vBLQm5QRx4AQVZvy4Ggf7/x7tssft1Fi4B6cav8MzOlmkLK+hNMbBVJSNot53/bWRI8d26+j2z1tPNA6i/PThZ7mfcZjwJhiZp+jqidZs2RTMYTThRYEtFgG94bKeJCcto81D84QszihxFbud2sxF8kxw2xSQ6QYRzoeqLydcy9yqAUKuQusVPc6jhdgXNJa/YHy2CUwab1ydn1zuD1H/AaXbSnRkct1A3CBhar95bUSnqdCfdkzr3FFPjbtEi6+5HK+W3qaVP7OTzOAMbw9oelsDdwbHfhCqchF1qyGMdTG1f0o8A4mpIq8oaFV9rFXu7cA0rjkz8SOVAzfQkh4DMAhf8I6Ro3RoH9PT8o9a+Jy8/JDQUKTTdJ6Yq9L6crgE/SmypF0YMd/ldqwLS2aXvWIT0dvaM40RxlvxBDECPztuBZIcU0N8sPzoI=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BL1PR11MB5333.namprd11.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(7416014)(1800799024)(23010399003)(366016)(56012099006)(11063799006)(18002099003)(4143699003)(22082099003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?b1M4WjBwSlUvV28rSmdXMml3MkFZcForV2xzMmpHNFlZNTB0azhvVjRBOXln?=
- =?utf-8?B?MDMzRW9OUUVOY1A2RGtSdklmS1F3enVZb1hGMEIvZUM3YzJhQWxyQUh0a1RT?=
- =?utf-8?B?dEFGZHBzR3B6eUY1WlJRSEdxZXhtaDVVbWo1TnhuR0R4dFNUSDNWeUZBWlBz?=
- =?utf-8?B?SGlrMXVQMDBqTVpqbHBWVEtBdTBSYlZHSldudG5nYzFJOFVBWnNwSEtHa1FG?=
- =?utf-8?B?TjFUdEhIRDlNbXFqdmwveFkwU09neDcwOU5OMzZwWmxTa0RzQjRieTEzYS91?=
- =?utf-8?B?V3U5Q1V5S04rVnhoVUYwUXdCWDdQOTlvN0JGc1d3eldOaHVXVThGTlFvVDBm?=
- =?utf-8?B?RHcyU08zQnVMTUdZZ2ZINldId29ORWZqMnhvNUFCdlU0V2NNMC83c3BSSmNE?=
- =?utf-8?B?TVdVVFpmb25mSEJFOGx1NFBYUWMxZ0ROdmhvT3psQ2l6YUl1cGxQR3VyYm1S?=
- =?utf-8?B?bTlZRDVUbEcwWGk0WkNOZks5ellGTUFaNkg5ZVYzdTBVRWJnOS94U2dYS0hU?=
- =?utf-8?B?VkxqQ3BCTnJtQ0pNRVpFeXJCek1wa2FuOCtPMVB3NG84Ykd2WGpqUFp3M0JC?=
- =?utf-8?B?T1lmTDBHSURhdUNqZ0xlV1FVSUZneng0UlhtS1BtMnl5OG5wb1JjU0EyOURV?=
- =?utf-8?B?UmFhTUJZdm5BZE1JdHlVY1VSRVFaOU1VU25WbkEzcExpN2RuQU0yanhWb1A0?=
- =?utf-8?B?MENmU2dyWUpMY0VaYlNOSGJVVlFjL1o1RGV0emRNOGtxVEI0RHdMM2hMYklP?=
- =?utf-8?B?RmUweTNqem5NSmk5WExtVmxzRFBPQ2RHcGtncUFOWWc0TjlDTmxJVFhrYTRl?=
- =?utf-8?B?TDRFSGg5Z2Job2tPaithbWFzRTB1cmUxT25Sc0lNM3p5eHBxd2JINEE0clZQ?=
- =?utf-8?B?YnZ3eVF0S2ZFS1B4NGN5VlVUbVdmSkg4WmlzZEdTVFdLZGE1d1Y2dGRYajJ4?=
- =?utf-8?B?MFZuaDRGaTc0WmN0Q0syV0daK21SZnJ5ZHNBMStETGE2U3VocE1FSkFTdHhP?=
- =?utf-8?B?Q1NsM24wYjIwa3dodFJPWTVocmY1RmdOWFQ4aG1zUjNVeEl2dmhBRS9ub0hq?=
- =?utf-8?B?WnJSQUtuWE4vU2hmT3BsYk4zdk5kNVZGNldSNG9kQVFiSUFWdTc3VHVTcmNv?=
- =?utf-8?B?LzVaWURHYTNOTmtwRmRLUTJjbVhkYWpCVklPY0ZINjhKRFYvUzM4cHFqV0gw?=
- =?utf-8?B?bm9rVFYwQ3BzTWJJSzFCQ0dZazFhR2E1amY2VWhMYUNLZlEvTHdmK1FieXhm?=
- =?utf-8?B?MXVoRkdPbzNtbFFzWVYwQnQ5eVFZVCs1cngrTEZDclRJR0dHZzhzVTVtVjBG?=
- =?utf-8?B?a2FnbDZXSWliTFVFWWVmaGM5NENlbWdIOGhFZGYzRVlYWForT2RMRkx3N2V3?=
- =?utf-8?B?V1RmdTBMcUNqK2hxb0pjdDJlVXFsWDFaUmdwL2I5V21qVnMyVy9raUVuLzRW?=
- =?utf-8?B?eVkycy9BZlgrNEJxMVcrbFBXWVQ5MzN3dVJBT0dFcWRxN0FZU09NWFNXS1R0?=
- =?utf-8?B?VmpFcEpIYXJCY25vcDFzQ3VuelI4dVVESmc1eUNZMDNxaUt2MW1tZno0N3Z5?=
- =?utf-8?B?VDY4cWJuWWhMOFJud3ZEdW1hL3RDbkQxeVpuOVhLbFJ5OTE5Q3NGYmNaV3oy?=
- =?utf-8?B?cXBoUkZNS3o1bGdVdm1DMFA3ejVGUVQ2bFZFRktKeFZjMllQbUgwQ1Z3WFp3?=
- =?utf-8?B?QjlyanF4WkxpRkozWUY2Ni9mUjByNE9KWGVvQzBTQ1BGbTFSWFhQYTdJWTht?=
- =?utf-8?B?MW5Lb21kVlV2WHlOWXRtUlgyM2N2TllBV1FlL0FnWllsUW9NRUdJWDZOSk8x?=
- =?utf-8?B?ODc4NjJFOXpsaEdFR1F3ZzhqZlYvdTNGdFVnblZCREE0ZFNORFkwWCtqYU1h?=
- =?utf-8?B?emE0ZTZxVHZLTWhzV0NXKzZGb3lLbXMwekQveW05Q0h0QnJPbTQvQU9PL3Zw?=
- =?utf-8?B?RWZZd3d6WWRNZW1MNC9mSnlMdUFlZ214K1h5ZldsaitDUEMwRmNuTmdPZGFU?=
- =?utf-8?B?cUlMakpOd3BrUktac24wUFNqUzdTSFVWTHlRNGNSbzA5L1pBL0NoTU5LaVcv?=
- =?utf-8?B?TFhUamMwcEZJWitxWkFJZ2FLblRmU3VQa1FIbjFWdlUvcGtMbnk3K0s1bFZ1?=
- =?utf-8?B?VW52cCtyamZudUd5MFJiSytFR1B3dHRraUxWOE1iOG05YW9UVmVkUWgwSFZm?=
- =?utf-8?B?RElYSDlaME53YUNqQmlBQlZjYjZPREI3VXBVeTRDYVlWcHR2YlJRcG9CaXBq?=
- =?utf-8?B?RXRxdlFtNHkzMlQ5cmJkRDUvYTJsaUpBU2lOZ2FXdURKdG04Q29Xbis1U3dM?=
- =?utf-8?B?SUFDUU01NzV1dkVhQWVxV0trMDhEQ1JYVzQ4UlpBKzZTZ2VmVzFvZz09?=
-X-Exchange-RoutingPolicyChecked:
-	EXnFFb4iylJLNlJnpEzegeCAlt4i8QoB542cO2OC2i6IgCQ/2NEJtGQMGXaRGYe1NicthUA4rVZ9wl+yy2A3/xtvsy2JI3MEgno9eHiMnPMPTGs0QYm3ADaIC+33/SeCENdTGgTwXvyPRTwu6J+WcvWwQxJfhYrl+aac+Nev0ruOxpYRLD7AViwSL52p7axszokfNIkZl4J6Kby98bWK3IcpTa0vDMsftHhwg/zBLXVmSIoQQz8OsR8Lvc7m5x0CNG56a/KM+ZOyhLHmLY+nO5HHrIfElpH69PoRLlDMUWsKVIa2C+1IlzgpDJVjrEGf1X1vMAXkwfC41wIaFKLX9g==
-X-OriginatorOrg: windriver.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 920c5086-a692-4e6b-b31c-08ded4f02f9a
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR11MB5332.namprd11.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 28 Jun 2026 08:35:20.2147
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 8ddb2873-a1ad-4a18-ae4e-4644631433be
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: ihiW520A5TPlRj3+9pFFNZhwk0Yv2ibZI2mp34nsUSlCQujPjgYZslcFd+Ye5fV+GdUEPClKCpZWjZ3PYn9QCA==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MW4PR11MB7102
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI4MDA3MyBTYWx0ZWRfX1U2kBIHAAaA0
- sKC2wCnLMF15n4LhoCNV4LJIb9gycIZ7zz3yYh1V1VvC6GfBsrN0/F6/Di6o/aBLMj88eS66rPr
- OZWZ19aDrio1KC8b9hMkJX8wNbn8kAszctRlZGNBgny/BPBOUcjm
-X-Proofpoint-ORIG-GUID: f3fKnA_qTURp7b87vDxz2JrEDFGqHE5F
-X-Proofpoint-GUID: f3fKnA_qTURp7b87vDxz2JrEDFGqHE5F
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI4MDA3MyBTYWx0ZWRfX9sKPSYbG84EK
- WDhk28/o2AWz+9evb3GeLqvI/wwuOQT8CZKof9NfI+sEcJtzuSiUX8JBMtp1jD6DeK+QgWnAlNj
- 6dskVugTyvE7/0uUjdqqUgvp5Bsu6EYiZ4oy7fA5o8U5zQgQniwTbd7KGOq2cUcE+NfDhVLGXco
- 8+hmQAYhZPMCbnxU+8uYtIhQRyOUvfinSi50Xho40ghNF3ucBbsVJ671HuMZDEh9gaEkon0sNQB
- DlrO4gj+IsW0o3goSEKV/zf1m1r7gzhwEgEOjsGvKHdeD5O/8CEB5SQLCEeeYQULu3IxsRCfe1q
- 6YKD/pMgMEvEa4hf6jIMcG62tTf94YkAv6xGMNVGn6A2aN2xrtqfcejlcXUkSSZNI7lRu7JWKDF
- arax1OAp0P6tKeDo41WOlxFbXai53AsquszMxz6vWQifIvtRN7ZRej9PznaqKTfU53z7oYTvYoB
- wSOM0d4dT6A+3/tw8oQ==
-X-Authority-Analysis: v=2.4 cv=TvLWQjXh c=1 sm=1 tr=0 ts=6a40dccc cx=c_pps
- a=AhJDvPO6yzy99x9PXTlr3w==:117 a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19
- a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19 a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19
- a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10
- a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22 a=fTW__CHxibyLmBMfj2wP:22
- a=Ua6EApRU29KFdewkOcYA:9 a=QEXdDO2ut3YA:10
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-28_02,2026-06-26_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- malwarescore=0 lowpriorityscore=0 spamscore=0 phishscore=0 clxscore=1015
- priorityscore=1501 bulkscore=0 suspectscore=0 impostorscore=0 adultscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606280073
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v10 5/5] ext4: prevent deadlock from duplicate EA inode
+ references on corrupted fs
+To: Yun Zhou <yun.zhou@windriver.com>, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
+ viro@zeniv.linux.org.uk, brauner@kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org
+References: <20260625152941.24788-1-yun.zhou@windriver.com>
+ <20260625152941.24788-6-yun.zhou@windriver.com>
+From: XIAO WU <xiaowu.417@qq.com>
+In-Reply-To: <20260625152941.24788-6-yun.zhou@windriver.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+
+Hi,
+
+I've been following the sashiko-bot reviews on this series and was able
+to reproduce the llist corruption issue that the bot has flagged — it
+triggers a kernel BUG at ext4_put_super() when an EA inode is leaked
+onto the orphan list at unmount.
+
+The sashiko review is at:
+https://sashiko.dev/#/patchset/20260625152941.24788-1-yun.zhou@windriver.com
+
+ > +/* Put all EA inodes on a processed llist via ext4_put_ea_inode. */
+ > +static void ext4_put_ea_inode_llist(struct super_block *sb,
+ > +                                    struct llist_head *processed)
+ > +{
+ > +    struct llist_node *node = llist_del_all(processed);
+ > +    struct llist_node *next;
+ > +
+ > +    while (node) {
+ > +        struct ext4_inode_info *ei = container_of(node,
+ > +                        struct ext4_inode_info, i_ea_iput_node);
+ > +        next = node->next;
+ > +        ext4_put_ea_inode(sb, &ei->vfs_inode);
+ > +        node = next;
+ > +    }
+ > +}
+
+The per-call `processed` llist is declared on the stack of
+ext4_xattr_delete_inode().  If two threads concurrently evict files
+that share the same EA inode (same large xattr value), both threads
+call llist_add() on the SAME embedded i_ea_iput_node, each trying to
+add it to their own stack-local llist head.
+
+Since llist_add() unconditionally writes `node->next = head->first`
+(which is a stack address from the caller's frame), the two threads
+corrupt each other's `node->next` pointer.  When
+ext4_put_ea_inode_llist() later traverses the list, it follows a
+dangling next pointer into freed/concurrent stack memory, causing the
+EA inode to be silently skipped during deferred iput processing.
+
+=== Reproduction ===
+
+Kernel: 7.1.0-next-20260624-gb27bd6a65c17 #1 SMP PREEMPT_RT
+Config: CONFIG_EXT4_FS=y, CONFIG_EXT4_FS_POSIX_ACL=y, CONFIG_KASAN=y
+QEMU:   QEMU Standard PC (Q35 + ICH9, 2009)
+
+The PoC creates two files sharing the same large xattr value (thus
+sharing the same EA inode), then concurrently unlinks them from two
+pthreads synchronized by a barrier on the same CPU.  This triggers the
+llist_add() race on the shared i_ea_iput_node, leaving the EA inode
+unprocessed.  The EA inode (nlink=0) sits on the orphan list, and
+umount hits the BUG() assertion.
+
+=== Crash Log ===
+
+[  959.127015][T10365] EXT4-fs (loop0): unmounting filesystem...
+[  959.217461][T10365] EXT4-fs (loop0): sb orphan head is 15
+[  959.217516][T10365] sb_info orphan list:
+[  959.217516][T10365]   inode loop0:15 at ffff88802e27be40: mode 
+100600, nlink 0, next 0
+[  959.217530][T10365] Assertion failure in ext4_put_super() at 
+fs/ext4/super.c:1354: 'list_empty(&sbi->s_orphan)'
+[  959.217704][T10365] ------------[ cut here ]------------
+[  959.217708][T10365] kernel BUG at fs/ext4/super.c:1354!
+[  959.217757][T10365] Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
+[  959.217832][T10365] CPU: 0 UID: 0 PID: 10365 Comm: umount Not tainted 
+7.1.0-next-20260624-gb27bd6a65c17 #1
+[  959.217843][T10365] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009)
+[  959.217849][T10365] RIP: 0010:ext4_put_super+0xf41/0x12c0
+[  959.217978][T10365] Call Trace:
+[  959.217978][T10365]  ? __pfx_ext4_put_super+0x10/0x10
+[  959.217987][T10365]  generic_shutdown_super+0x163/0x390
+[  959.218042][T10365]  kill_block_super+0x40/0xa0
+[  959.218061][T10365]  ext4_kill_sb+0x6f/0xb0
+[  959.218103][T10365]  deactivate_locked_super+0xc6/0x1a0
+[  959.218125][T10365]  deactivate_super+0xe3/0x110
+[  959.218148][T10365]  cleanup_mnt+0x22a/0x460
+[  959.218197][T10365]  task_work_run+0x155/0x250
+[  959.218381][T10365]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+[  959.218511][T10365] ---[ end trace 0000000000000000 ]---
+
+The orphan inode (loop0:15, nlink=0) is an EA inode that was not
+processed by ext4_put_ea_inode_llist() due to the corrupted llist.
+
+=== PoC ===
+
+Build:  gcc -o poc poc.c -static -lpthread
+Run:    ./poc [iterations]   (requires root for mount/loop)
+
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+  * PoC: llist race in ext4 EA inode deferred iput (patch 5/5)
+  *
+  * Two threads concurrently unlink files sharing the same EA inode,
+  * racing on llist_add() to the shared i_ea_iput_node.  The corrupted
+  * llist causes the EA inode to be leaked -> orphan list BUG at umount.
+  */
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/mount.h>
+#include <sys/syscall.h>
+#include <fcntl.h>
+#include <sched.h>
+#include <signal.h>
+#include <pthread.h>
+
+#define EA_VALUE_SIZE 4032
+#define MAX_ITER 2000
+
+static const char *mnt = "/mnt/ea_race";
+static const char *f1 = "/mnt/ea_race/f1";
+static const char *f2 = "/mnt/ea_race/f2";
+static const char *loopdev = "/dev/loop0";
+static const char *img = "/tmp/ea_race.img";
+
+static volatile int stop = 0;
+static int iterations = MAX_ITER;
+static pthread_barrier_t barrier;
+static char shared_value[EA_VALUE_SIZE];
+
+static int do_setxattr(const char *path, const char *name,
+                        const void *value, size_t size, int flags)
+{
+     int ret = syscall(SYS_setxattr, path, name, value, size, flags);
+     if (ret < 0 && errno == ENODATA) return ret;
+     return ret;
+}
+
+static void pin_cpu(int cpu)
+{
+     cpu_set_t cpuset;
+     CPU_ZERO(&cpuset);
+     CPU_SET(cpu, &cpuset);
+     sched_setaffinity(0, sizeof(cpuset), &cpuset);
+}
+
+static int create_file_with_xattr(const char *path,
+                                    const void *value, size_t valuelen)
+{
+     int fd = open(path, O_CREAT | O_WRONLY, 0644);
+     if (fd < 0) return -1;
+     close(fd);
+     if (do_setxattr(path, "user.large", value, valuelen, 0) < 0) {
+         unlink(path);
+         fd = open(path, O_CREAT | O_WRONLY, 0644);
+         if (fd < 0) return -1;
+         close(fd);
+         if (do_setxattr(path, "user.large", value, valuelen, 0) < 0)
+             return -1;
+     }
+     return 0;
+}
+
+struct racer_data {
+     const char *file;
+     int thread_id;
+     int *setup_done;
+     pthread_mutex_t *setup_lock;
+};
+
+static void *racer_thread(void *arg)
+{
+     struct racer_data *rd = (struct racer_data *)arg;
+     pin_cpu(0);
+
+     for (int i = 0; i < iterations && !stop; i++) {
+         if (create_file_with_xattr(rd->file, shared_value, 
+EA_VALUE_SIZE) < 0) {
+             char alt_val[EA_VALUE_SIZE];
+             memset(alt_val, 'A' + rd->thread_id, EA_VALUE_SIZE);
+             create_file_with_xattr(rd->file, alt_val, EA_VALUE_SIZE);
+             do_setxattr(rd->file, "user.large", shared_value, 
+EA_VALUE_SIZE, 0);
+         }
+
+         pthread_mutex_lock(rd->setup_lock);
+         (*rd->setup_done)++;
+         pthread_mutex_unlock(rd->setup_lock);
+
+         pthread_barrier_wait(&barrier);
+         unlink(rd->file);    /* RACE: concurrent eviction of shared EA 
+inode */
+         pthread_barrier_wait(&barrier);
+     }
+     return NULL;
+}
+
+static void sig_handler(int sig) { stop = 1; }
+
+static void setup_fs(void)
+{
+     char cmd[512];
+     remove(img); mkdir(mnt, 0755);
+     snprintf(cmd, sizeof(cmd),
+              "dd if=/dev/zero of=%s bs=1M count=64 2>/dev/null", img);
+     system(cmd);
+     snprintf(cmd, sizeof(cmd),
+              "mkfs.ext4 -F -O ea_inode -b 4096 %s 2>/dev/null", img);
+     system(cmd);
+     snprintf(cmd, sizeof(cmd), "losetup %s %s 2>/dev/null", loopdev, img);
+     system(cmd);
+     snprintf(cmd, sizeof(cmd), "mount %s %s 2>/dev/null", loopdev, mnt);
+     system(cmd);
+     printf("Filesystem ready at %s\n", mnt);
+}
+
+static void cleanup_fs(void)
+{
+     char cmd[512];
+     snprintf(cmd, sizeof(cmd), "umount %s 2>/dev/null", mnt);
+     system(cmd);
+     snprintf(cmd, sizeof(cmd), "losetup -d %s 2>/dev/null", loopdev);
+     system(cmd);
+     remove(img); rmdir(mnt);
+}
+
+int main(int argc, char *argv[])
+{
+     pthread_t t1, t2;
+     struct racer_data rd1, rd2;
+     int setup_done = 0;
+     pthread_mutex_t setup_lock = PTHREAD_MUTEX_INITIALIZER;
+
+     if (argc > 1) iterations = atoi(argv[1]);
+     if (iterations < 1) iterations = 1;
+     if (iterations > MAX_ITER) iterations = MAX_ITER;
+
+     signal(SIGINT, sig_handler);
+     signal(SIGTERM, sig_handler);
+
+     printf("=== ext4 EA inode llist Race PoC ===\n");
+     printf("Iterations: %d\n", iterations);
+
+     setup_fs();
+
+     memset(shared_value, 'Z', EA_VALUE_SIZE);
+     pthread_barrier_init(&barrier, NULL, 2);
+
+     rd1 = (struct racer_data){ f1, 1, &setup_done, &setup_lock };
+     rd2 = (struct racer_data){ f2, 2, &setup_done, &setup_lock };
+
+     printf("Starting race threads...\n");
+     pthread_create(&t1, NULL, racer_thread, &rd1);
+     pthread_create(&t2, NULL, racer_thread, &rd2);
+
+     pthread_join(t1, NULL);
+     pthread_join(t2, NULL);
+     pthread_barrier_destroy(&barrier);
+
+     printf("\nRace loop complete.\n");
+     printf("Check dmesg for crash evidence.\n");
+     system("dmesg | tail -50 | grep -E 'KASAN|BUG:|orphan|RIP:' || echo 
+'(none)'");
+
+     cleanup_fs();
+     printf("Done.\n");
+     return 0;
+}
+
+I see that Jan suggested leaving this patch out for now and that you're
+planning an improved version for v11.  This PoC should help verify
+whether the improved llist handling in v11 resolves the race.
+
+Thanks,
+Xiao
 
 
-
-On 6/27/26 01:23, Jan Kara wrote:
-> On Thu 25-06-26 23:29:41, Yun Zhou wrote:
->> On a corrupted filesystem, multiple xattr entries may reference the same
->> EA inode.  When ext4_xattr_inode_dec_ref_all() processes such entries, it
->> can dec_ref the EA inode (setting nlink=0) and queue it for deferred iput.
->> If the deferred worker runs before the loop processes the duplicate entry,
->> the second iget() may block on I_FREEING while the worker's eviction waits
->> for the caller's transaction to commit -- classic ABBA deadlock.
-> 
-> Hum, this looks possible but it isn't a new thing this patch set
-> introduces. Even before if you had corrupted filesystem,
-> ext4_xattr_inode_array_free() from ext4_evict_inode() could deadlock in a
-> similar way against say ext4_xattr_inode_dec_ref_all() (but practially
-> anything calling ext4_xattr_inode_iget() while holding a transaction
-> handle). So please leave this alone for now. We can look into that once
-> other EA inode settle.
-> 
-
-Mainly because sashiko-bot always flags this issue every time. I've further
-improved the patch and believe I've thoroughly plugged this loophole. I will
-include it in v11, and please take a look when you have a chance. If it 
-still
-has issues, or if you think it's redundant or inelegant, we can just 
-drop it.
-
-BR,
-Yun
