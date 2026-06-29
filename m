@@ -1,343 +1,270 @@
-Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.50])
+Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 866AC23BD1B;
-	Sun, 28 Jun 2026 18:57:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=43.163.128.50
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782673060; cv=none; b=muNwUnE5zMjGHEMcLaFYKIag75s9UPfqNOALP5smSInv1oncr5B59BjlDOmW5bDXFzpSxpDm8onIOrZgrgxPR5LH0dMUlB229H+qEYysKY9yTyYEAkG2uojAJ2NA4bJA9w0bvMUCoJ6hgPJH9CYLTiFsokW058lwVYl4TREZ+x0=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782673060; c=relaxed/simple;
-	bh=XF7RcKuQCaaaQyV7TgTh/Dh3UR5tR0JCU/b/DlBCZzw=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=TiRIMlaRxXD4ln4tkIDmIrk7h9ZheNrFc3wfPHIjAisXcb7yCfqu6iTWyeAFVJqtqz6DQt5SEQ67BlQFawzE7eHryyGAqST8JB6slwOWh2ddkCREf5pHEqgo620PiCGY6EyscccX0CCju/P0499CZPJ1lz8pNPGE0oVBCY+Ezhg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=rQjD09NM; arc=none smtp.client-ip=43.163.128.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 385A81A3172;
+	Mon, 29 Jun 2026 03:18:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.178.238
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782703091; cv=fail; b=vBBgTLXwMCQ1O9wfikzZN5Hr5Qd+YlrS2Brgd8fMWLJuMRwRCsHeVluWPzEF1exSTiWD1FcSF5vkd6yWfGX15qAWHMehcR6/Js48IceiO3/GH0epApiBteJ4+OKgtOtKXla0mvNWgwt3LiCBZ0v/+hinSbgIUG5JsWuAnSI3+XU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782703091; c=relaxed/simple;
+	bh=NT4yRsGc67O0nHMuYxkzdELSTCr3+4GBQ7KtQsqbeIM=;
+	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
+	 Content-Type:MIME-Version; b=ooPjnaolEtMd8zfgFKkUwCL9XI5MgrgWwp7HzOhdiU5FlWFDYt8Njuuw+3tNNwZ/6z3x5Yk+xLq4JyZf3BzcRr+Y0lNJkU4BackvUooDDHc/TD3chhmdykCGBJpli4rYmcJTE+OtvdAG7c02gppc4a1pFRgRQl++2E4BZ7an9PM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=d9viA7DT; arc=fail smtp.client-ip=205.220.178.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="rQjD09NM"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1782673048; bh=Vec2D5eQKzQ74gZxdAs44uQsPqe5tItUtvWLO7lctY0=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=rQjD09NMcbIrHIHqJDmyFnWTD1jxDIeYFU7hW+uGw4fs5zd5Y4BFYV7Im6g//5p0b
-	 /36A6g5q9qtqGqpnWf5ozlMuhUv6tSr4iBjTdrXLi9LSwCggGQTVp8kD71FrPcaIvh
-	 C4sUQW1Wx1N0r6QKdBI32Erut9ndK8ArGjLx3Rd4=
-Received: from [192.168.1.102] ([223.77.180.178])
-	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
-	id E583D820; Mon, 29 Jun 2026 02:57:24 +0800
-X-QQ-mid: xmsmtpt1782673044tc5qh6a6x
-Message-ID: <tencent_B515F296245B20D721AEC2C9367AA188940A@qq.com>
-X-QQ-XMAILINFO: NbgegmlEc3JuRORqMjrekPGZUXgzah05C82kWrxNL6IqhCnA4n5bMsn76dV1OP
-	 X7G1mY/Fql/qvyU0hYMWVWMXSBbsDLh1ng6HL+FCmYz3ZEORrJJeRRJbEGvn8mz4ZbthbpvOXTg2
-	 aPR1T9Oi1IHXPfU2G4Q+923HXaB8E7dgqzXeQ+0xVDbz2pErRda9fywdKEkAjoP12DKY78lis3uf
-	 uqRH2pmVT/dUd7k6CKIiYDaal1c6+eH1OgfwMedoiF30HI57HhhlnoXY0s337nti63m8aFUV+BMW
-	 GS8rNnqv1fWFpIK2cvP20iu2gd2HipcfYHGCUr4jz5PMS8YYrp/+2/ywrnfxX/gUf0SXuqbXLPiI
-	 lgKGXejsiVqXmgFM3wg/4zBm5ubOBzJR1v4MjJf9xa5u+by/HchLsjAoyYkqtXqv6oqH/9YE1WUM
-	 aJ3i+SEPZEJf9l4DLYnZMbSgPeDrflDE1+5MvxD84sBhI9if6X6AgT0yGdOBllXbxtOFG8t+9yJr
-	 Gko0sp+qr6HEnGyrV3wYv4RW/yY1Ye2NwEJgq8Px90dDazC/DFBBn/XeoWxxhanbE02d1Bb+fnOQ
-	 mMDKNW+4v+jtUvRkDhhDYFyb6q6Yyk7PGKoZgYGoIKaMh1Jml8DCSep7zrh6+yOB6cI3U0dIa/2B
-	 tDvGKfAqKB4Ctbl+xMB+FeoGxu5Ci3zebonZIoSf/wiHqQjGD6hSRn128d/s4CrGSSY4R3Rumx1e
-	 tWhmgN0xrBB6+iaygEXYkslHoXo3oH8ZpHIKf+dL3tgGaNKMiLf4v8ki/nPK7A0wPSGShuVdwvzf
-	 F8iUaCHNQ0NzfXaHRj8Su6E90hrHnjb42VLrKQS2R5WCEwgwkFTGTtsde2AWOSjhzypUi9X7g0ka
-	 ClchT5WT/BmKQ3GpQIoxt6WKr81Oc5+XmMsViBf3OALit72q5wziZYIuGvWdSXk0RxE1FF9RSCA6
-	 u+K2O+UMvg23sdrWCMeCIYTzhiLacJhdvwp7ou+Nt9Iytzf6ZZ8W+VfsAbhqiagyViqwtnSKvwFJ
-	 wrFcabrPCRZ4uAYQpk7HoHFA95pbfRENYQZQdP79763hY68h5qe2N2zLpVi4WxcEt6p8O0Bw==
-X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
-X-OQ-MSGID: <5eccf43d-3e9b-48d7-83d8-54fdae452962@qq.com>
-Date: Mon, 29 Jun 2026 02:57:24 +0800
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="d9viA7DT"
+Received: from pps.filterd (m0250812.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65T3BkDI1730419;
+	Mon, 29 Jun 2026 03:17:36 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	PPS06212021; bh=YOZd4NSFzXeAoFOQ0wXt2tAN1MIWHr4/WIg1YplLB9Y=; b=
+	d9viA7DT0nMksLJIJAOCe3Q9VWWAQjxb6oYNioYJWIMfDVo5Jb4ylu70WAUYiDp+
+	v6yPa0GUwkjb26GlmRHe80u/hXVZhypD5rx5EKGwq2QDZU0xkDFsztsURNtdIMIq
+	JJTvDFxtP4RD8KzHcGyWvqssrcq5OIbQ6H5iU6G7pCR5/fvdiH2eYl0dL0Yt6f8Q
+	J1fqpCLdhLgAgBkJtToJQUTYwAGjo18KEzHFIBPK0eljNQpZP6w5yT+43m/QHZFD
+	5mV9IWixkx+l8Oj3aQk0NEw508TelKuMhlEL2EIfBgUBn3YozjOSmdqYs9hlPCuN
+	b4+eGto2+DbIF8vvpGGWNA==
+Received: from bl2pr02cu003.outbound.protection.outlook.com (mail-eastusazon11011052.outbound.protection.outlook.com [52.101.52.52])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f25g5hmf7-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Mon, 29 Jun 2026 03:17:36 +0000 (GMT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=istyOm7zYjgKNC4Fef8e4OjmjpWCPF/utD/6z5V4PkzdVaiYyfqhwaLIWF4LSc7VqJymn89T5x5D7UAYEYNSVvQnbv5pn+VuoesjLIsT3bgF/+p0f7W1frVGosj21E1V2g3GaCG/QPpLZ47eUDhPZ4w+2cdpTc4jfVGDArd6t7e0qbvPuG5KGbtGENbNsOIc3b2iG0ALvRgSdWzlrQu5xwX7E4gH2EGz2nwsYk9k4wULhFCb7N8mNrchvuFlc0p8+J2Nk7uMT6y9X62wGcDtMH1whY+ng6z/TK5zjEJz+7WEmdsNG5mUBEpbrQOXbvEXEAJHkUGz7ERiZ5ZfoipWgQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=YOZd4NSFzXeAoFOQ0wXt2tAN1MIWHr4/WIg1YplLB9Y=;
+ b=s3LON3F5Zlj1E2uKMkndR4jjESkML1j+HnSjg44mS7xaWPtaZ+aQK4FNzPwxMn5DgZf6eEjQzVkN19N5ZR4LNV4UpdpUaDqdKN+/NvaEN4XrYYBKXJ+ZacFnDPlAiJ2k/PTjP+76dF1LjlDO2VgGKoT2Q31Kk94zc6eSDQxMT71Tbu6Kq1rLncK73sb+mJAhSfRah2L2PPOsi5nnOxcCyDuJ7wUdJUbszOb5SL+UWcBz7UGfqbIm5eGErhZbbz7q/FrOV6bdDfzIWIXdqV5N5SiWg1tvCBpUYTw+BhOlZCdG1Gs/GfqDcQ/kKHmeota1u55nz8xuvpSQvCuYZpjzbA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=windriver.com; dmarc=pass action=none
+ header.from=windriver.com; dkim=pass header.d=windriver.com; arc=none
+Received: from CH0PR11MB5332.namprd11.prod.outlook.com (2603:10b6:610:bf::17)
+ by PH7PR11MB6029.namprd11.prod.outlook.com (2603:10b6:510:1d0::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.159.19; Mon, 29 Jun
+ 2026 03:17:33 +0000
+Received: from CH0PR11MB5332.namprd11.prod.outlook.com
+ ([fe80::8f86:8d08:45bf:ec13]) by CH0PR11MB5332.namprd11.prod.outlook.com
+ ([fe80::8f86:8d08:45bf:ec13%6]) with mapi id 15.21.0159.018; Mon, 29 Jun 2026
+ 03:17:33 +0000
+Message-ID: <93a088e3-f5bd-4d64-8a0a-f5aad14ac3c9@windriver.com>
+Date: Mon, 29 Jun 2026 11:17:24 +0800
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v10 5/5] ext4: prevent deadlock from duplicate EA inode
+ references on corrupted fs
+To: XIAO WU <xiaowu.417@qq.com>, tytso@mit.edu, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, yi.zhang@huawei.com, viro@zeniv.linux.org.uk,
+        brauner@kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+References: <20260625152941.24788-1-yun.zhou@windriver.com>
+ <20260625152941.24788-6-yun.zhou@windriver.com>
+ <tencent_B515F296245B20D721AEC2C9367AA188940A@qq.com>
+Content-Language: en-US
+From: "Zhou, Yun" <yun.zhou@windriver.com>
+In-Reply-To: <tencent_B515F296245B20D721AEC2C9367AA188940A@qq.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: TYCP286CA0327.JPNP286.PROD.OUTLOOK.COM
+ (2603:1096:400:3b7::20) To CH0PR11MB5332.namprd11.prod.outlook.com
+ (2603:10b6:610:bf::17)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v10 5/5] ext4: prevent deadlock from duplicate EA inode
- references on corrupted fs
-To: Yun Zhou <yun.zhou@windriver.com>, tytso@mit.edu,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
- viro@zeniv.linux.org.uk, brauner@kernel.org
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-fsdevel@vger.kernel.org
-References: <20260625152941.24788-1-yun.zhou@windriver.com>
- <20260625152941.24788-6-yun.zhou@windriver.com>
-From: XIAO WU <xiaowu.417@qq.com>
-In-Reply-To: <20260625152941.24788-6-yun.zhou@windriver.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-
-Hi,
-
-I've been following the sashiko-bot reviews on this series and was able
-to reproduce the llist corruption issue that the bot has flagged — it
-triggers a kernel BUG at ext4_put_super() when an EA inode is leaked
-onto the orphan list at unmount.
-
-The sashiko review is at:
-https://sashiko.dev/#/patchset/20260625152941.24788-1-yun.zhou@windriver.com
-
- > +/* Put all EA inodes on a processed llist via ext4_put_ea_inode. */
- > +static void ext4_put_ea_inode_llist(struct super_block *sb,
- > +                                    struct llist_head *processed)
- > +{
- > +    struct llist_node *node = llist_del_all(processed);
- > +    struct llist_node *next;
- > +
- > +    while (node) {
- > +        struct ext4_inode_info *ei = container_of(node,
- > +                        struct ext4_inode_info, i_ea_iput_node);
- > +        next = node->next;
- > +        ext4_put_ea_inode(sb, &ei->vfs_inode);
- > +        node = next;
- > +    }
- > +}
-
-The per-call `processed` llist is declared on the stack of
-ext4_xattr_delete_inode().  If two threads concurrently evict files
-that share the same EA inode (same large xattr value), both threads
-call llist_add() on the SAME embedded i_ea_iput_node, each trying to
-add it to their own stack-local llist head.
-
-Since llist_add() unconditionally writes `node->next = head->first`
-(which is a stack address from the caller's frame), the two threads
-corrupt each other's `node->next` pointer.  When
-ext4_put_ea_inode_llist() later traverses the list, it follows a
-dangling next pointer into freed/concurrent stack memory, causing the
-EA inode to be silently skipped during deferred iput processing.
-
-=== Reproduction ===
-
-Kernel: 7.1.0-next-20260624-gb27bd6a65c17 #1 SMP PREEMPT_RT
-Config: CONFIG_EXT4_FS=y, CONFIG_EXT4_FS_POSIX_ACL=y, CONFIG_KASAN=y
-QEMU:   QEMU Standard PC (Q35 + ICH9, 2009)
-
-The PoC creates two files sharing the same large xattr value (thus
-sharing the same EA inode), then concurrently unlinks them from two
-pthreads synchronized by a barrier on the same CPU.  This triggers the
-llist_add() race on the shared i_ea_iput_node, leaving the EA inode
-unprocessed.  The EA inode (nlink=0) sits on the orphan list, and
-umount hits the BUG() assertion.
-
-=== Crash Log ===
-
-[  959.127015][T10365] EXT4-fs (loop0): unmounting filesystem...
-[  959.217461][T10365] EXT4-fs (loop0): sb orphan head is 15
-[  959.217516][T10365] sb_info orphan list:
-[  959.217516][T10365]   inode loop0:15 at ffff88802e27be40: mode 
-100600, nlink 0, next 0
-[  959.217530][T10365] Assertion failure in ext4_put_super() at 
-fs/ext4/super.c:1354: 'list_empty(&sbi->s_orphan)'
-[  959.217704][T10365] ------------[ cut here ]------------
-[  959.217708][T10365] kernel BUG at fs/ext4/super.c:1354!
-[  959.217757][T10365] Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
-[  959.217832][T10365] CPU: 0 UID: 0 PID: 10365 Comm: umount Not tainted 
-7.1.0-next-20260624-gb27bd6a65c17 #1
-[  959.217843][T10365] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009)
-[  959.217849][T10365] RIP: 0010:ext4_put_super+0xf41/0x12c0
-[  959.217978][T10365] Call Trace:
-[  959.217978][T10365]  ? __pfx_ext4_put_super+0x10/0x10
-[  959.217987][T10365]  generic_shutdown_super+0x163/0x390
-[  959.218042][T10365]  kill_block_super+0x40/0xa0
-[  959.218061][T10365]  ext4_kill_sb+0x6f/0xb0
-[  959.218103][T10365]  deactivate_locked_super+0xc6/0x1a0
-[  959.218125][T10365]  deactivate_super+0xe3/0x110
-[  959.218148][T10365]  cleanup_mnt+0x22a/0x460
-[  959.218197][T10365]  task_work_run+0x155/0x250
-[  959.218381][T10365]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
-[  959.218511][T10365] ---[ end trace 0000000000000000 ]---
-
-The orphan inode (loop0:15, nlink=0) is an EA inode that was not
-processed by ext4_put_ea_inode_llist() due to the corrupted llist.
-
-=== PoC ===
-
-Build:  gcc -o poc poc.c -static -lpthread
-Run:    ./poc [iterations]   (requires root for mount/loop)
-
-// SPDX-License-Identifier: GPL-2.0-only
-/*
-  * PoC: llist race in ext4 EA inode deferred iput (patch 5/5)
-  *
-  * Two threads concurrently unlink files sharing the same EA inode,
-  * racing on llist_add() to the shared i_ea_iput_node.  The corrupted
-  * llist causes the EA inode to be leaked -> orphan list BUG at umount.
-  */
-
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <sys/mount.h>
-#include <sys/syscall.h>
-#include <fcntl.h>
-#include <sched.h>
-#include <signal.h>
-#include <pthread.h>
-
-#define EA_VALUE_SIZE 4032
-#define MAX_ITER 2000
-
-static const char *mnt = "/mnt/ea_race";
-static const char *f1 = "/mnt/ea_race/f1";
-static const char *f2 = "/mnt/ea_race/f2";
-static const char *loopdev = "/dev/loop0";
-static const char *img = "/tmp/ea_race.img";
-
-static volatile int stop = 0;
-static int iterations = MAX_ITER;
-static pthread_barrier_t barrier;
-static char shared_value[EA_VALUE_SIZE];
-
-static int do_setxattr(const char *path, const char *name,
-                        const void *value, size_t size, int flags)
-{
-     int ret = syscall(SYS_setxattr, path, name, value, size, flags);
-     if (ret < 0 && errno == ENODATA) return ret;
-     return ret;
-}
-
-static void pin_cpu(int cpu)
-{
-     cpu_set_t cpuset;
-     CPU_ZERO(&cpuset);
-     CPU_SET(cpu, &cpuset);
-     sched_setaffinity(0, sizeof(cpuset), &cpuset);
-}
-
-static int create_file_with_xattr(const char *path,
-                                    const void *value, size_t valuelen)
-{
-     int fd = open(path, O_CREAT | O_WRONLY, 0644);
-     if (fd < 0) return -1;
-     close(fd);
-     if (do_setxattr(path, "user.large", value, valuelen, 0) < 0) {
-         unlink(path);
-         fd = open(path, O_CREAT | O_WRONLY, 0644);
-         if (fd < 0) return -1;
-         close(fd);
-         if (do_setxattr(path, "user.large", value, valuelen, 0) < 0)
-             return -1;
-     }
-     return 0;
-}
-
-struct racer_data {
-     const char *file;
-     int thread_id;
-     int *setup_done;
-     pthread_mutex_t *setup_lock;
-};
-
-static void *racer_thread(void *arg)
-{
-     struct racer_data *rd = (struct racer_data *)arg;
-     pin_cpu(0);
-
-     for (int i = 0; i < iterations && !stop; i++) {
-         if (create_file_with_xattr(rd->file, shared_value, 
-EA_VALUE_SIZE) < 0) {
-             char alt_val[EA_VALUE_SIZE];
-             memset(alt_val, 'A' + rd->thread_id, EA_VALUE_SIZE);
-             create_file_with_xattr(rd->file, alt_val, EA_VALUE_SIZE);
-             do_setxattr(rd->file, "user.large", shared_value, 
-EA_VALUE_SIZE, 0);
-         }
-
-         pthread_mutex_lock(rd->setup_lock);
-         (*rd->setup_done)++;
-         pthread_mutex_unlock(rd->setup_lock);
-
-         pthread_barrier_wait(&barrier);
-         unlink(rd->file);    /* RACE: concurrent eviction of shared EA 
-inode */
-         pthread_barrier_wait(&barrier);
-     }
-     return NULL;
-}
-
-static void sig_handler(int sig) { stop = 1; }
-
-static void setup_fs(void)
-{
-     char cmd[512];
-     remove(img); mkdir(mnt, 0755);
-     snprintf(cmd, sizeof(cmd),
-              "dd if=/dev/zero of=%s bs=1M count=64 2>/dev/null", img);
-     system(cmd);
-     snprintf(cmd, sizeof(cmd),
-              "mkfs.ext4 -F -O ea_inode -b 4096 %s 2>/dev/null", img);
-     system(cmd);
-     snprintf(cmd, sizeof(cmd), "losetup %s %s 2>/dev/null", loopdev, img);
-     system(cmd);
-     snprintf(cmd, sizeof(cmd), "mount %s %s 2>/dev/null", loopdev, mnt);
-     system(cmd);
-     printf("Filesystem ready at %s\n", mnt);
-}
-
-static void cleanup_fs(void)
-{
-     char cmd[512];
-     snprintf(cmd, sizeof(cmd), "umount %s 2>/dev/null", mnt);
-     system(cmd);
-     snprintf(cmd, sizeof(cmd), "losetup -d %s 2>/dev/null", loopdev);
-     system(cmd);
-     remove(img); rmdir(mnt);
-}
-
-int main(int argc, char *argv[])
-{
-     pthread_t t1, t2;
-     struct racer_data rd1, rd2;
-     int setup_done = 0;
-     pthread_mutex_t setup_lock = PTHREAD_MUTEX_INITIALIZER;
-
-     if (argc > 1) iterations = atoi(argv[1]);
-     if (iterations < 1) iterations = 1;
-     if (iterations > MAX_ITER) iterations = MAX_ITER;
-
-     signal(SIGINT, sig_handler);
-     signal(SIGTERM, sig_handler);
-
-     printf("=== ext4 EA inode llist Race PoC ===\n");
-     printf("Iterations: %d\n", iterations);
-
-     setup_fs();
-
-     memset(shared_value, 'Z', EA_VALUE_SIZE);
-     pthread_barrier_init(&barrier, NULL, 2);
-
-     rd1 = (struct racer_data){ f1, 1, &setup_done, &setup_lock };
-     rd2 = (struct racer_data){ f2, 2, &setup_done, &setup_lock };
-
-     printf("Starting race threads...\n");
-     pthread_create(&t1, NULL, racer_thread, &rd1);
-     pthread_create(&t2, NULL, racer_thread, &rd2);
-
-     pthread_join(t1, NULL);
-     pthread_join(t2, NULL);
-     pthread_barrier_destroy(&barrier);
-
-     printf("\nRace loop complete.\n");
-     printf("Check dmesg for crash evidence.\n");
-     system("dmesg | tail -50 | grep -E 'KASAN|BUG:|orphan|RIP:' || echo 
-'(none)'");
-
-     cleanup_fs();
-     printf("Done.\n");
-     return 0;
-}
-
-I see that Jan suggested leaving this patch out for now and that you're
-planning an improved version for v11.  This PoC should help verify
-whether the improved llist handling in v11 resolves the race.
-
-Thanks,
-Xiao
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: CH0PR11MB5332:EE_|PH7PR11MB6029:EE_
+X-MS-Office365-Filtering-Correlation-Id: f5e3ad73-8914-4b09-cabf-08ded58cf5c2
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|366016|23010399003|376014|7416014|1800799024|921020|18002099003|22082099003|4143699003|11063799006|6133799003|56012099006;
+X-Microsoft-Antispam-Message-Info:
+	nvRw/FD7zsxpaVE7IxwLCGZ5d4gvo9coIJ3Blz0ZrrEA6aEY+i63OC7NBRSmjclIVAGEHNtylS/d8bU6QecBPc6tw21x4qh+jvF/97ZuiiPSkOU+qkheBaYaG7fbbtlJpR523j8H4l8Luja4wNqyTuNdXdQs4Qc3zzZaVNKqsvcPixhu4+j9AZ0J77Tqto75XbQu1KBnDSxKhsz9ovzeX4QCQ8krZWOFSj/SYmWyphjLIjlttKMjK+7xzzNRSlPxxJMpo4bXw0IdRDSsNYqsucOcMx6yF8sOmkWfZIPHpzL3kL40g/i1WShYywS1gK1NxO9+2WvPrP/++dfxc5tOfSK4o4kqkVhUA826MXQCH2V03IviLRo+kkerp6DMIn/Sm72aN7AaKy1AZ8YUKIFOfZi9aRHqFs71vlkMFl7mVf3HdbXUK31zmy/wyaEBASb/j5iw0GpFELATU30VqUaDjsNLQpdTFZfiUU1ul55XVx0pxWSl5bnWSB2mW2ZbOf7q4q3JiV58Iap4r7oajzgQtCpAozyoQfYsCJR6qvtQ3L15zX+ocTLO8+eyLCaHF2gEE31JMtpQxY3MD40ArJCjxQII6eUz5Hq4QJnJaUalN/Fg0GS8mPyB/phyoBBaMHLOPRzkLvw+akRYYU2paxgNhA==
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR11MB5332.namprd11.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(23010399003)(376014)(7416014)(1800799024)(921020)(18002099003)(22082099003)(4143699003)(11063799006)(6133799003)(56012099006);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?utf-8?B?R2pBWW1zMGw1NzNiUjZTQi9URVdpZ3kvaHVVbEc3eDRJR2o2VVQ1SXRwYzlt?=
+ =?utf-8?B?MFQvS04vU3FqUUdZcFNYSUdCV3ZIbjduSlNoUEpNTkt6THNBRi9aRzFzM2Jw?=
+ =?utf-8?B?bGM0d0tpWHlEUHFnNlgxRDlsRHptRmZqNkVzTy9aT3FNRFQ3OWt5WGlEMEda?=
+ =?utf-8?B?ZndmTDVPYk1TSmhFeVZkS2Y1Slo2TVQxVVIvUmdCVU9KemtZOTVON1pURFdv?=
+ =?utf-8?B?REo2cXlQWW9vTHlESmpQSkhVQmJpZjVLQ0VDdnB4ekpENldoVHNuTGVxT2RW?=
+ =?utf-8?B?OERBYnhDVFRWcWxxcExoeGdvWCtoSWpFUVBibWpMNHYzYkxhVzFMcERwV2t6?=
+ =?utf-8?B?SVJ5WlQ3eUNQK2J1MXA0bDh5MXE3U1B4WmptWVlLbndCOGdXVkk1SWorak1Z?=
+ =?utf-8?B?Q3JiV3NVeTR0WTJOMEM1MWFabHEvRE1qbXFvM2hWR2RSaXBMNUloaVYwS0N1?=
+ =?utf-8?B?Z3pDVi9lMUFLODBNc1hlNnd3anNDYzV1UnZJOVlOSU9VaU5lT1Z0dXVCaGNI?=
+ =?utf-8?B?TVlienQwRi9sSzJwRmdKdnk0MFNNTU5Odm54emhIc2RmTk1ycGdod3ZpaDBV?=
+ =?utf-8?B?SG9yQWNnZDJnOVFhYmt0bmcvbVVDRXJUSitiMEZHYWovcDR6R0pja21UbzQ2?=
+ =?utf-8?B?UDQ4QWVnS2Y5MHJFbFBFcjZBVDY4N3h4Njg0VzhrUDFGdmlZVzR3d2NjSnFE?=
+ =?utf-8?B?T2xVMUVCdEdGTEt3WngvYUNFV1o5RUZpcDFoN3JLTS9yMlMvaHZIZlZkQTJB?=
+ =?utf-8?B?aUpIV0w3U3ByVzBzUlJxcmNZVjA1a0ZBQitCcVc3MEx6eHQ0UEx1eXVvVTJ3?=
+ =?utf-8?B?blZvU3NxSTY5UGQxT0pYc2FjNzBoY09YWW1CdDVmbWM4VmRGN1U5SSs2aXl4?=
+ =?utf-8?B?WWVyMWRBaGorMWxTWS9ZUGpkV01wdXpKak1tWjlQcWpvUFVpTHZXZ2xCMkRJ?=
+ =?utf-8?B?b1BwbC9sSFRNa2JDdHR5L0FKRzF4YS9CUEhjVEV5dTcra0FGQ3R1aGR2NC9t?=
+ =?utf-8?B?ZEM5ZlowOEx1T3p0V29VSjN1NDV4ODJJY1pPODVGcHlOSW93clNiODBnTmVI?=
+ =?utf-8?B?dFFKbTlVSTRJOE14bWgwRHV4aU5EWWtIK2dvYzFTUEtlOE5wc2ZGZy8zcllD?=
+ =?utf-8?B?am80Y244cjFQSW5TRmxnNEFpdDJCUzVCL0JSUVVmQ0NsKzhpL0t5YmVlY3Vx?=
+ =?utf-8?B?TGZIMk9PWkhaekxqV01pSG02cnNwN3dzK1Z5T0ZnWXNveDRBcXZhNmdhVnR4?=
+ =?utf-8?B?YTFqTmZ0Z1E0TzkxdGRHSm9LSnZpR1QzN1pZTWIxRVlOZmdpMDJNa3FyL0ZM?=
+ =?utf-8?B?Q2s4Q2hYQUlwdjkwS1A4b0VOY01sT3NaamlsWlYrb2Fvb2Jmb3BsTnNxUHBw?=
+ =?utf-8?B?TVpTRHlKSGc5czVJMml1Rk9WeEVVd1cxZjlFRlVUZi83b3BXVVVlWjlRK09X?=
+ =?utf-8?B?eWJ4N29DZzRGTWhsbWxNTVEyUDNLSTFHTnNWaTd3dm16RUxxR2FhVXdPMGlX?=
+ =?utf-8?B?M3ZBN0U5SnAwdEJvTGdnU0VjaGx4RTBzRkxTWmhyRXErV1FNdDRVbkNPOVBv?=
+ =?utf-8?B?OE1ONmVZeThIdzh5UnA5ZWc1Q0pxSUxVcmZsWGNuam92dGJ1VERHKzNKU2hJ?=
+ =?utf-8?B?bWYwWFJMb3czN3hRM1g4Q2trVFFpR1RuYjVpOGRkZ1RnR2xBb212ZG9SWWRk?=
+ =?utf-8?B?TnZqTDVUSEE3TXRGemZ1YkZqUTJCd3hXRGUvYjFGSHM0SkFUVmRMTnA2QW82?=
+ =?utf-8?B?T3hyTStBRE9QeFJ5Ylo2T0FOdWFSSk5xSjNWTGJ1SStuK0dWQnZLOHJKRkNZ?=
+ =?utf-8?B?emJ2TFF2SFJlSi9KbUF6dHd2eGQyUVNEeTlxZWtwNW82VEwwU29GNkVBTmRt?=
+ =?utf-8?B?WTVOMzZSaFNXenR0dzZ2Z21XYjJHeUNPd05ZSzNISmUrYytLOHFoTGJrVjBq?=
+ =?utf-8?B?TEczOEFGVU1JRHlCMDN2OVYxMWJkTm1mS2VhbWsydEUraC9BU3J5b1VIaFRS?=
+ =?utf-8?B?aFI0NUFUYWhaVHlVSWVFZE9sSTRKMzlJa3FvcUxBN1gwMmJFZmxZc2RCT3l2?=
+ =?utf-8?B?RWhOKzNuYUlXdlYrTkV5K1VvQXRqRmZ5VEdJMGpUaGVQQW9QUmRRUUxqWno0?=
+ =?utf-8?B?d0ZtcWZYY3Awa1lFaFhFY0pQYkF2anFZb1Q1bXFUQzljRUFPQ1I4TTZQVnJX?=
+ =?utf-8?B?ZVdSSjhIcHJPRGFrc2tGZ0U0RGM3cEh0VTRmR3Q3Z2RweGhhN29ibnFlZDND?=
+ =?utf-8?B?akpzY2tOOXppY2ZRTVk5K1BvU2p2TWtGZVF4VGpqUHAvb2xnTTVDL1ZBWTRv?=
+ =?utf-8?B?V3BheStib2dyWkd1cXZlZlZlQVJpTnpUeDVsdU5BNE52MVlMcitSZz09?=
+X-Exchange-RoutingPolicyChecked:
+	bJJjH7UKMbd62mNPWbZLd1k+YiUYyz1dpsZK6nXUOgKqJh2fHvHeqRBuz5e1D0r9TS6eZpUKocXmoGWxXQHtakHluEvU8EmmLoEkv0xpUhTgGa1JuHWnzEBhAVagl2xCPIUU/1O2wLsDIppEq+tIfD7kKj6d5KY/ZvMw9q0Vx7uYAy7vcL8h9Z+CftWrrSm8FKalZm99LhCHI+voMwhCAABw4s9Mwmj+gh3TLR5Ks7R1XrlqpXLgVL/pB7CM9Z3lps9Xz1QaqCqMQH71/yDBwk/tmMpilF7uQjS1nXmOqB3rwMBAD4BXbrv70e+MzCbtMz9iQnuYqKx1xen+KqvCig==
+X-OriginatorOrg: windriver.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: f5e3ad73-8914-4b09-cabf-08ded58cf5c2
+X-MS-Exchange-CrossTenant-AuthSource: CH0PR11MB5332.namprd11.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 29 Jun 2026 03:17:33.1030
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 8ddb2873-a1ad-4a18-ae4e-4644631433be
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: OmUqROeWBlCT88BSmMuNlnPTJvdqYX32s4Xz9UUyyAvKO0xMdFeMT4af445eaKT7ZuYOFjgv70b5TUNhrov6fA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH7PR11MB6029
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI5MDAyNSBTYWx0ZWRfX/DEXqxWD5vbk
+ RU/pt/ux1shhnRRuNTYnrlg2Spj5WK05dFKhemZ71aKzuR8KW3jFAqvGeb1mH/UCaxybJLwu8gA
+ SG8SWhlMTOCQvn1z0xNnbEnoYI6sBH7FyDK+rGHQinis7b817QZv
+X-Proofpoint-ORIG-GUID: bVOxBxki7qk8JzeTfnGUDWwPccp8MIAI
+X-Proofpoint-GUID: bVOxBxki7qk8JzeTfnGUDWwPccp8MIAI
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI5MDAyNSBTYWx0ZWRfX7e9g4CxXERIC
+ 7mbCvKl5zUQkmKvGy56anvu4j51cBq9wxjfKRjK6hdselQoBVXWvHBchihy8ydV2AgFpaA4T/lO
+ R61DrYE5F1NoCpRMqz8Adug8nKjC6v7FUIZMvfxAyYVX05F1SbsJj0ZO3neNX3sT/9Sd/mBipGc
+ hFPUk/Hf54k+HJnXHMZIZgq4BRUQG3rih2HuPYSeCETko2IwwwAh1nblMXRGl8OpRaikRGT9qLR
+ N4wc0KnWF9Icx5oPHNJ9xzvAxbGI5WjM5Omv1pOWFGydlKTqSNlXUWGYVx0T4BJMKc00zIhAbIa
+ sST+rALD7AlO8c06qpMyLiiup8i/o9fYw+AdCrhFMeP+xZ7QlnjFl4w7AW0o/JT66gSM/NT+H8K
+ l1ZZP86nlFisJ6vMtuPkXLxO9pJU3zEC4ocFhcEutGRfiJZ32z3qz3+7XIgDByt2+zLLh/Ic8HI
+ nMqsJmy8PPjlYGY6XGw==
+X-Authority-Analysis: v=2.4 cv=TvLWQjXh c=1 sm=1 tr=0 ts=6a41e3d0 cx=c_pps
+ a=MCVANC9+7Y5oazsiooDUXw==:117 a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19
+ a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19 a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19
+ a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10 a=FelO9ux0wxsA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22 a=fTW__CHxibyLmBMfj2wP:22
+ a=c92rfblmAAAA:8 a=t7CeM3EgAAAA:8 a=OmZe0yJs8ERP5gnB7g8A:9 a=3ZKOabzyN94A:10
+ a=QEXdDO2ut3YA:10 a=GvGzcOZaWPEFPQC_NcjD:22 a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-29_01,2026-06-26_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 lowpriorityscore=0 spamscore=0 phishscore=0 clxscore=1011
+ priorityscore=1501 bulkscore=0 suspectscore=0 impostorscore=0 adultscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606290025
 
 
+On 6/29/26 02:57, XIAO WU wrote:
+> 
+> Hi,
+> 
+> I've been following the sashiko-bot reviews on this series and was able
+> to reproduce the llist corruption issue that the bot has flagged — it
+> triggers a kernel BUG at ext4_put_super() when an EA inode is leaked
+> onto the orphan list at unmount.
+> 
+> The sashiko review is at:
+> https://sashiko.dev/#/patchset/20260625152941.24788-1- 
+> yun.zhou@windriver.com
+> 
+>  > +/* Put all EA inodes on a processed llist via ext4_put_ea_inode. */
+>  > +static void ext4_put_ea_inode_llist(struct super_block *sb,
+>  > +                                    struct llist_head *processed)
+>  > +{
+>  > +    struct llist_node *node = llist_del_all(processed);
+>  > +    struct llist_node *next;
+>  > +
+>  > +    while (node) {
+>  > +        struct ext4_inode_info *ei = container_of(node,
+>  > +                        struct ext4_inode_info, i_ea_iput_node);
+>  > +        next = node->next;
+>  > +        ext4_put_ea_inode(sb, &ei->vfs_inode);
+>  > +        node = next;
+>  > +    }
+>  > +}
+> 
+> The per-call `processed` llist is declared on the stack of
+> ext4_xattr_delete_inode().  If two threads concurrently evict files
+> that share the same EA inode (same large xattr value), both threads
+> call llist_add() on the SAME embedded i_ea_iput_node, each trying to
+> add it to their own stack-local llist head.
+> 
+> Since llist_add() unconditionally writes `node->next = head->first`
+> (which is a stack address from the caller's frame), the two threads
+> corrupt each other's `node->next` pointer.  When
+> ext4_put_ea_inode_llist() later traverses the list, it follows a
+> dangling next pointer into freed/concurrent stack memory, causing the
+> EA inode to be silently skipped during deferred iput processing.
+> 
+> === Reproduction ===
+> 
+> Kernel: 7.1.0-next-20260624-gb27bd6a65c17 #1 SMP PREEMPT_RT
+> Config: CONFIG_EXT4_FS=y, CONFIG_EXT4_FS_POSIX_ACL=y, CONFIG_KASAN=y
+> QEMU:   QEMU Standard PC (Q35 + ICH9, 2009)
+> 
+> The PoC creates two files sharing the same large xattr value (thus
+> sharing the same EA inode), then concurrently unlinks them from two
+> pthreads synchronized by a barrier on the same CPU.  This triggers the
+> llist_add() race on the shared i_ea_iput_node, leaving the EA inode
+> unprocessed.  The EA inode (nlink=0) sits on the orphan list, and
+> umount hits the BUG() assertion.
+> 
+
+Thank you very much for testing and sharing the PoC. I used it to verify 
+the issue and found a pre-existing bug (fixed by a new patch), but the 
+issue reported by sashiko-ai could not be reproduced.
+
+# ./repro-xiaowu
+=== ext4 EA inode llist Race PoC ===
+Iterations: 2000
+Discarding device blocks: done
+Creating filesystem with 16384 4k blocks and 16384 inodes
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (1024 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+Filesystem ready at /mnt/ea_race
+Starting race threads...
+[   44.741752][ T3761] EXT4-fs error (device loop0): 
+ext4_xattr_inode_cache_find:1616: inode #14: comm repro-xiaowu: missing 
+EA_INODE flag
+[   44.743426][ T3762] EXT4-fs error (device loop0): 
+ext4_xattr_inode_cache_find:1616: inode #14: comm repro-xiaowu: missing 
+EA_INODE flag
+[   44.923046][ T3762] EXT4-fs error (device loop0): 
+ext4_xattr_inode_cache_find:1616: inode #14: comm repro-xiaowu: missing 
+EA_INODE flag
+[   44.924562][ T3761] EXT4-fs error (device loop0): 
+ext4_xattr_inode_cache_find:1616: inode #14: comm repro-xiaowu: missing 
+EA_INODE flag
+
+Race loop complete.
+Check dmesg for crash evidence.
+(none)
+Done.
+
+Thanks again,
+Yun
