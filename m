@@ -1,132 +1,154 @@
-Received: from mail-vk1-f171.google.com (mail-vk1-f171.google.com [209.85.221.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59E04364E84
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2026 06:06:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.171
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782713216; cv=pass; b=Gk0NciJDTob6OJcsXUU6IWlKW/Xt1bI6wdoFA1qWO3mdVS0WqexXpyrFDoxfnt7edvVGoMKgqeQ19ZzcscGxVmTr8UA9UTrfPup4p9MmbFsip4GBUfgjrjxhgDyF7Zc1pRPTtxOuEgOrdHDlvumDwp14GBUFQpNe7v7U77X5/j0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782713216; c=relaxed/simple;
-	bh=uSYFsWDft4ce2TkyTi4lT0svGSpVyfGASiwdqD98qT8=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=X5pnS42bAkdevP1nMchcJdaeaJz7wKFcPDRUtel+aVEr4vCFtBpfiuQq/F53/K5rSzyzc8/CnMlnmaR68MBqA71LKppJiy2wTIWFv9UYUfMGpJTr/pyHoycL6ETtrSDmqbnkvTpKVmu6uhXaccM8JgHhGRgQU+fPhDPeevZNfNk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MmDB7Qtz; arc=pass smtp.client-ip=209.85.221.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7014D305667;
+	Mon, 29 Jun 2026 06:33:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782714792; cv=none; b=IU7OBlrxjHhYtKjR0WnAsKpOqJbebSi7t5yiqU9ORsIoUO+UeATwr4UUwWnHyDCfgXggeCqsDywWVu494jjeWvR+y/7q3x4Fm/jNRoS87mss2kTSHSDQDc6pBhZNAuQxQapXtLSgEDkuXQ/hacGV48NKf76xOyxOGKiiuzzoH/U=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782714792; c=relaxed/simple;
+	bh=Cjh2h4lvJTs1QDS1Sy/ZG/tkVo7J8Yr5csCJ4qyvjOg=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Y1ypjAF2lsloUxA5XXmh9jkeNymMdyXxnevYQWkrm9yllFh8O1QLT39G8NeWS7Ah0Id2JOoEITh+pKRsKI71NMyHlxqr8e04zHtzkHZjiZd+OWLuU+cLwRj4debTXJsQbPlMtY8sGg0u8TKzfay7WzKiwYjVuiZCk/JLpwHY5w8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=AGBXh5lT; arc=none smtp.client-ip=205.220.178.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MmDB7Qtz"
-Received: by mail-vk1-f171.google.com with SMTP id 71dfb90a1353d-5bd7309af69so1179081e0c.0
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Jun 2026 23:06:55 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1782713214; cv=none;
-        d=google.com; s=arc-20260327;
-        b=djy3HdSmMv30oMG7mxpCDB9SZE/2fNJiWyuaJo5BU7Epsqt4rw36Dp2zN3pho2zb3v
-         1PLqzR4kCrESvLWVKX/3kKzzzQ7xK6P9bSKgBgwjoXfpldkZhF1X5PTzzvwG5qG4lUv2
-         KRRrxM4zF1bBrH8od21AOPku+aS4O+YmH3m2qJiN4NHmg54Fag5rdg7zuR1e/wTA4WjC
-         0ObCGDEtzY081s+1eK/qcXsR4CH5OHYerXtySoL0mhe4I4TpFfDotnN40X5AVfgXoOpf
-         +D1IxBqLGHwQ8iTZ+vFh2LIc02N3acj+VNZBDD91ZEBH6N2S19SVusBf4o5tKApMxYYf
-         v9XA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=uSYFsWDft4ce2TkyTi4lT0svGSpVyfGASiwdqD98qT8=;
-        fh=Y3i85rAca9MqroOYiSOcMZ2uavL2MnVRhqEnzAkU0SQ=;
-        b=QiZuDDW8ojHwPpZfNapxvQ7paR07gIXABfE3nWbdI6VoXlhMrxGYRbWLbp7JeQ8kf4
-         Kz912lYVGCeSvyYeLk4lmtJqJ5LlaFuFwIhR5RpC1AC2j7+ysNNHM5IrtZs51zSpL5Vs
-         ywj1khcRSM4BG8THp0eSOz3IaUwbacrcPV7vhDh4+xXvu0DBI/PpMer2VVHNZGA+RE26
-         HV/wM1/5CnQ6NOgCDvJN9kTRB0c2rrfT4+BJ/LCCfI8SrxO8Q3sXsJAn9f3Xqea3GqV3
-         8HayzvZQtUPTJuX4r7rFXPeXJBYR75QdLsM7eP7i4utnid1gnd0HDTbU8dCVBrPpdHUS
-         St+Q==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1782713214; x=1783318014; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=uSYFsWDft4ce2TkyTi4lT0svGSpVyfGASiwdqD98qT8=;
-        b=MmDB7Qtzjo8U2Xa5FGVNSfY+rzzO2xftpOvHxg1fgZbzQ5dduUoYzDYKkgif87QU15
-         XJbXMWdzxtrJp3PYaeTXrL6gNVSPR9Ll6dsRyvY4GENoQOlFYLlLJCrPgiGf7vDD6I9S
-         0yl6DIAyL04Sa7U6/kYb+uLLNwR8ivA+ti5rbv6nf0lO3CxVdfAmY1umb+WVjz/sKlbP
-         6efV7yYLbZPSSKOpag+TOdWfCG06zt0hSdvVDZl2V/QAqON8Q8Kev2rSquHwMdQDBDA7
-         MRLVSqEqYMaSvfdP/Gf3rsm3UxTUsbyCfmJSB8XZ8c4HEUADYciD33h454qaHr4GqfI5
-         CMrQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782713214; x=1783318014;
-        h=cc:to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=uSYFsWDft4ce2TkyTi4lT0svGSpVyfGASiwdqD98qT8=;
-        b=bvevB0bkWlTNkJugbOO4Fquh8WKe7AkFAvYda1TYOdoxm7Yw6j+vG+0UNmmnf2ePir
-         fRwYOJJQI1IHzYR49k46B9WMCfRkfbvSFNBFc6GtSWRfH4x8aHr/IcvQYrDoWaZuO4aj
-         T4CohPB12gwa0h3TvFMaZhkr6Tmkn6cgYq4MRubgcSuxeByqk9eUn0nsCM/0ZIKq0IpM
-         SSJ++SG9sZU8VP6bPUbGGM0hkB3dc0Os1o7s58jEG/jwZfCDZ9w5CF6tdRfqdPcEnZqV
-         IbauceM41qszPpbi83X0ajXxJ7ce0g+5kz74Pw9vuCiHZlut8YHoY0YYUPtj2nmxS8in
-         tHSw==
-X-Forwarded-Encrypted: i=1; AHgh+RqF8a6rVaHEs2X3nj16Oo2aJYbRDrMSK2T10pUC2NXBHNO2ULhQjL24O56bUOo73+2tCMi6TI2C+8Px@vger.kernel.org
-X-Gm-Message-State: AOJu0YwsmYGcjYFOlxgdxIzsxcZc1CZXYYbY8oYBvY/4FD7XM1KlVt8d
-	5gz8wgOGF1PpQp5/5GENyT/j9xBU21kExqV+YAcTIe/wHZn6Qpsvn3/wK7bAS+WX181fkbIfKo2
-	jDqqSJuYgSYkCHHXUShZFtBgjs7xwzx9h2JciHG9IS9JD
-X-Gm-Gg: AfdE7ckosLOJZFVVWLbVofGHfcbUgpp+FyI/iFjmbU5iEjOKXR2k1BnkYlmu8AaeSvl
-	Jq3AYZthdp/eCceaB6BoqBdqK6gAmAqR2BiY9dxCczJ450h5YF+qHI0y0BKsEVZWa3YNTQNYnax
-	1HVZOEDFDRizTyoIuqJJpN28F95DcU28K37P4v8zDCBRVKFblJZFaHTZUA77ePy2VG6yGZw3b2e
-	QtsEy7DW4yBu/AvAXT+YZRKoxvCxXzjyZSF0cUh7Exr9G6ylPZQnnoLZHQRUR4k41Z+/nE6/EU0
-	IXQJbLj16C+nNW7+5qSpMNoTqQ==
-X-Received: by 2002:a05:6102:dd3:b0:611:e0c2:1604 with SMTP id
- ada2fe7eead31-736339f22acmr4307992137.19.1782713214259; Sun, 28 Jun 2026
- 23:06:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="AGBXh5lT"
+Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65T5gQF02033213;
+	Mon, 29 Jun 2026 06:27:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:message-id:mime-version:subject:to; s=PPS06212021; bh=e7QwzxIGS
+	rsEoWkOalXCs0/hsEwo/krYT/+cPZYdCjI=; b=AGBXh5lTqYy4VO1i9qfxlDCgq
+	Db8Dtn2aBkrjo4umgWGjR87ergo0Z6yyjsia+P+bj1YpmwiYkNhkE0fXuEApzVfU
+	JojV69RmNRByVC6Jjp6F4h11rClDGudHp0JiNuhmIT1SZ+wnmHxlLkl9/haXwstb
+	m+0rwEyOMd7h5Q3VwYWURgr6UJyQYrFL5Jl5UOo2XONJMf+g1Eh4ufjba0kVC3FT
+	VOYubEw95VizG6X5+4EQKxN4M63cdd/yphEXxl9pNuQnSnkfZRlu33ZRGpUv3O7s
+	bUkOdX7pf0OFPGsQhYXYMLz8M+8RK5QWwMfqp9/7ZHnzmZ/07nR3CtNXM6xUw==
+Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f23r09u0a-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Mon, 29 Jun 2026 06:27:38 +0000 (GMT)
+Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Sun, 28 Jun 2026 23:27:37 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Sun, 28 Jun 2026 23:27:34 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <yun.zhou@windriver.com>
+Subject: [PATCH v2] ext4: fix deadlock in ext4_evict_ea_inode() vs cache_find()
+Date: Mon, 29 Jun 2026 14:27:33 +0800
+Message-ID: <20260629062733.1788981-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Xianying Wang <wangxianying546@gmail.com>
-Date: Mon, 29 Jun 2026 14:06:43 +0800
-X-Gm-Features: AVVi8CdPRpggITfdcp6loMshhxzFwsuy2-cDc0MBPIusMahmexXayVSBmluHxHQ
-Message-ID: <CAOU40uCDtH22BaNLr16JgcqCVPJsct-M=ud830ES-yfpfLsjow@mail.gmail.com>
-Subject: [BUG] KASAN: use-after-free Read in ext4_find_extent
-To: adilger.kernel@dilger.ca
-Cc: libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, yi.zhang@huawei.com, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Authority-Analysis: v=2.4 cv=DNC/JSNb c=1 sm=1 tr=0 ts=6a42105a cx=c_pps
+ a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
+ a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=c92rfblmAAAA:8 a=t7CeM3EgAAAA:8
+ a=hSkVLCK3AAAA:8 a=XvSWbZsiBRkCmCy2_jIA:9 a=DcSpbTIhAlouE1Uv7lRv:22
+ a=GvGzcOZaWPEFPQC_NcjD:22 a=FdTzh2GWekK77mhwV6Dw:22 a=cQPPKAXgyycSBL8etih5:22
+X-Proofpoint-ORIG-GUID: _pXOAgcM8hQK7fJJf_sVhPSNyHKWG-52
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI5MDA1MiBTYWx0ZWRfX9IrqV6x8FlW6
+ JmBvX3weAYb6NJ0K5P5kLiD/PNWXp+LYNcHMd4/ryCvkq7Er8fuFE5V3MiADRs9bwh4/EIpMgNS
+ E1AbxQGlCs06vh2D6SEJdiUWEOG0e9b5gxBGlXlgA42WHsuB7thLzNeqxI0mKJzzHoT3D6oN9WP
+ Jt2YvBGpc0EvKxhWlGC/4RF+5RCiySSXif5mJ5/NxluDXtl6a/cAkfNgQY92jvcZkmqiporsgAx
+ RroLHxTv3gnj7nnjBYj1ufKsAszwBMTTxt3jNAga/zUZ4ksp4Xx6RgHVVqLlY6DL05oNItQcgu2
+ 2n8zhe8sM8OaZsxwwvdEL57qgx623tiMtOAeCO0dS4dkGv2TBEFmrQkP+5BMNH9mTMfKi8d1Pd0
+ 8o46m0jfppPQDHPbA+xO/U62XAjXKV58ANWXmK/lZvWNgTs0QcUcFukDZTeJOHaKBCryL0t5ogh
+ zaL2GxVZBVsSff3sWeQ==
+X-Proofpoint-GUID: _pXOAgcM8hQK7fJJf_sVhPSNyHKWG-52
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI5MDA1MiBTYWx0ZWRfXyErphr2V85CH
+ 88qxr3GEGobte44sTPBA3ghli34s3tgjzO7XRrR31TciLzGHnKM8mU/cJqTglbkuXJDcbIJcxA4
+ rNfKqhDeuwGIv9Bwd2Po2X1HiEbG0KUdDIeTZkYZgGQgb2NzAU7u
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-06-29_01,2026-06-26_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 spamscore=0 phishscore=0 adultscore=0 impostorscore=0
+ lowpriorityscore=0 malwarescore=0 clxscore=1015 bulkscore=0 suspectscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606290052
 
-Hi,
+ext4_evict_ea_inode() calls mb_cache_entry_wait_unused() to wait for
+the EA inode's mb_cache entry refcount to drop before deleting it.
+This can deadlock against ext4_xattr_inode_cache_find() which holds
+an mb_cache entry reference while calling ext4_iget():
 
-I would like to report a KASAN use-after-free triggered by a syzkaller
-reproducer in the ext4 filesystem writeback path.
+  Thread A (evicting EA inode X):
+    ext4_evict_ea_inode -> mb_cache_entry_wait_unused  [waits for refcnt]
 
-The issue was observed on Linux 7.1-rc5 with KASAN enabled. The crash
-happens in the background writeback worker while it is flushing dirty
-pages from an ext4 filesystem mounted from a crafted image.
+  Thread B (setxattr looking for dedup):
+    ext4_xattr_inode_cache_find -> mb_cache_entry_find  [holds refcnt]
+      -> ext4_iget(X) -> __wait_on_freeing_inode        [waits on I_FREEING]
 
-Based on the execution context, the issue appears to be related to the
-interaction between corrupted ext4 inode metadata and the
-writeback/extent mapping path. After the crafted image causes
-ext4_reserve_inode_write() to detect a corrupt filesystem, dirty pages
-still remain pending for writeback. When the background writeback
-worker later tries to map blocks for these pages, ext4_find_extent()
-appears to access a stale extent path, extent block, or metadata page
-that has already been released.
+Thread A's eviction sets I_FREEING and then waits for the mb_cache
+refcount to drop.  Thread B holds that refcount and waits for
+I_FREEING to clear -- circular dependency.
 
-So the suspected problem is that the ext4 error handling path after
-corrupted inode metadata does not fully prevent later writeback from
-walking invalid or freed extent metadata, which results in a
-use-after-free in ext4_find_extent().
+Fix by making ext4_evict_ea_inode() non-blocking: try to delete the
+entry once, and if it's currently in use, clear MBE_REUSABLE_B and
+release it.  Clearing the reusable bit prevents future cache lookups
+from finding this entry (mb_cache_entry_find skips non-reusable
+entries), avoiding stale hits that could trigger spurious filesystem
+errors when the inode number is later reused for a non-EA inode.
 
-This can be reproduced on:
+Fixes: 458aee4a6e5b ("ext4: remove EA inode entry from mbcache on inode eviction")
+Reported-by: syzbot+fd5533bcd0f7343bb8ca@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=fd5533bcd0f7343bb8ca
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+---
+v2:
+ - Clear MBE_REUSABLE_B on the in-use entry instead of just leaving it
+   stale.  This prevents future cache lookups from finding the entry,
+   avoiding spurious ext4_error_inode() if the inode number is later
+   reallocated to a non-EA inode. [1]
 
-HEAD commit:
+[1] https://sashiko.dev/#/patchset/20260629052732.1442618-1-yun.zhou@windriver.com?part=1
 
-e7ae89a0c97ce2b68b0983cd01eda67cf373517d
+ fs/ext4/xattr.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-report: https://pastebin.com/raw/VRd13DKh
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 85ad2561474b..3588fe933d5e 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -471,10 +471,17 @@ void ext4_evict_ea_inode(struct inode *inode)
+ 
+ 	if (!EA_INODE_CACHE(inode))
+ 		return;
+-	/* Wait for entry to get unused so that we can remove it */
+-	while ((oe = mb_cache_entry_delete_or_get(EA_INODE_CACHE(inode),
+-			ext4_xattr_inode_get_hash(inode), inode->i_ino))) {
+-		mb_cache_entry_wait_unused(oe);
++	/*
++	 * Try to delete the cache entry.  If it's currently in use by
++	 * another thread (e.g. ext4_xattr_inode_cache_find), mark it
++	 * non-reusable so future lookups won't find it.  Waiting here
++	 * would deadlock if the other thread's iget is blocked on this
++	 * inode's I_FREEING.
++	 */
++	oe = mb_cache_entry_delete_or_get(EA_INODE_CACHE(inode),
++			ext4_xattr_inode_get_hash(inode), inode->i_ino);
++	if (oe) {
++		clear_bit(MBE_REUSABLE_B, &oe->e_flags);
+ 		mb_cache_entry_put(EA_INODE_CACHE(inode), oe);
+ 	}
+ }
+-- 
+2.43.0
 
-console output :https://pastebin.com/raw/GU72hhyf
-
-kernel config : https://pastebin.com/raw/fUwrL2uz
-
-C reproducer : https://pastebin.com/raw/7cc4hyXf
-
-Let me know if you need more details or testing.
-
-Best regards,
-
-Xianying
