@@ -1,154 +1,141 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs1-f43.google.com (mail-vs1-f43.google.com [209.85.217.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7014D305667;
-	Mon, 29 Jun 2026 06:33:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782714792; cv=none; b=IU7OBlrxjHhYtKjR0WnAsKpOqJbebSi7t5yiqU9ORsIoUO+UeATwr4UUwWnHyDCfgXggeCqsDywWVu494jjeWvR+y/7q3x4Fm/jNRoS87mss2kTSHSDQDc6pBhZNAuQxQapXtLSgEDkuXQ/hacGV48NKf76xOyxOGKiiuzzoH/U=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782714792; c=relaxed/simple;
-	bh=Cjh2h4lvJTs1QDS1Sy/ZG/tkVo7J8Yr5csCJ4qyvjOg=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Y1ypjAF2lsloUxA5XXmh9jkeNymMdyXxnevYQWkrm9yllFh8O1QLT39G8NeWS7Ah0Id2JOoEITh+pKRsKI71NMyHlxqr8e04zHtzkHZjiZd+OWLuU+cLwRj4debTXJsQbPlMtY8sGg0u8TKzfay7WzKiwYjVuiZCk/JLpwHY5w8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=AGBXh5lT; arc=none smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94C2839B4A3
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2026 06:44:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.217.43
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1782715449; cv=pass; b=kQcsAG+Z7l+6ZJ31SaASORL0dcamLUA4heM4yTq8nCovC0Xl28nlaJbVninSOFqQeskkDoKeO7B3tjwP+exAi8PGnjCwzwt2Ewyz3de3qq6pHrnOmDf8/p+ulRT7O3GwVXneajCnAQPR+qqM8lwZgbQUQFcoQql1C3mG7Mlp6Pg=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1782715449; c=relaxed/simple;
+	bh=diUnEjqdxWIPzg1/3l00da815doPDGDw/EqU3W4dTnk=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=I/+VM0NSUMFbiARXKN/6E7YHwUVQCRawshChOBzIUaQJMA3fk1qyUkE/paCrqsWP0efmaios28RPXwesooSjcatcJY6+3vCWVvpoeF2Xogh9BNimdTvUSTW+aT34b9qhBqszsi8GkbRWqYEzMbRaA0wiqQj5sRzBCZ/Zbsy+O1Y=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GlONSkR/; arc=pass smtp.client-ip=209.85.217.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="AGBXh5lT"
-Received: from pps.filterd (m0250811.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 65T5gQF02033213;
-	Mon, 29 Jun 2026 06:27:38 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:message-id:mime-version:subject:to; s=PPS06212021; bh=e7QwzxIGS
-	rsEoWkOalXCs0/hsEwo/krYT/+cPZYdCjI=; b=AGBXh5lTqYy4VO1i9qfxlDCgq
-	Db8Dtn2aBkrjo4umgWGjR87ergo0Z6yyjsia+P+bj1YpmwiYkNhkE0fXuEApzVfU
-	JojV69RmNRByVC6Jjp6F4h11rClDGudHp0JiNuhmIT1SZ+wnmHxlLkl9/haXwstb
-	m+0rwEyOMd7h5Q3VwYWURgr6UJyQYrFL5Jl5UOo2XONJMf+g1Eh4ufjba0kVC3FT
-	VOYubEw95VizG6X5+4EQKxN4M63cdd/yphEXxl9pNuQnSnkfZRlu33ZRGpUv3O7s
-	bUkOdX7pf0OFPGsQhYXYMLz8M+8RK5QWwMfqp9/7ZHnzmZ/07nR3CtNXM6xUw==
-Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [128.224.246.37])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f23r09u0a-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Mon, 29 Jun 2026 06:27:38 +0000 (GMT)
-Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
- ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Sun, 28 Jun 2026 23:27:37 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Sun, 28 Jun 2026 23:27:34 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <yun.zhou@windriver.com>
-Subject: [PATCH v2] ext4: fix deadlock in ext4_evict_ea_inode() vs cache_find()
-Date: Mon, 29 Jun 2026 14:27:33 +0800
-Message-ID: <20260629062733.1788981-1-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GlONSkR/"
+Received: by mail-vs1-f43.google.com with SMTP id ada2fe7eead31-738cdd667ceso122148137.3
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Jun 2026 23:44:08 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1782715447; cv=none;
+        d=google.com; s=arc-20260327;
+        b=DG9cttQ0PscIuG4dIxt7a85nU+slgEHfkZASrLxFFWkq/49rBhcZnn8e9rYiNDZPT3
+         qdQKoq+JOeTzqGApzluFREP4zSY1EirA4vVRU5uHeWgk7CVFiXZczBXMY4JOacIr4UTk
+         Ec0JQ34VZdAjElj/Lf1V40ZxrbFj6CzB1L/l5BTTzDyYROuzaQd0QN+IsH1e82aDqZzp
+         CjS9dhccXYAKh8ru0ho+TejCSJItLs1jV6YkWKsQJ7ObKUBBXQFHIalQ/xQjXXfkX0Pl
+         TJ2PQTdaZZsfoo5twHMZp4gNFAUAa1aKo1/mfF91yVzcy0mt3swxwvJjs/58w00Kn5oU
+         yoEQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=diUnEjqdxWIPzg1/3l00da815doPDGDw/EqU3W4dTnk=;
+        fh=XVP+rggXX44upFVECP5SE97VAbXQh1zqkE6OgDa7DC4=;
+        b=jnePxyqH2A2/j/Hg4GLnDeVrkNpFYCyAbYz8bW8+/qXa+//H7urZ2eZNosL+hB1src
+         o6Ck9u6ylZV02dVxMDahuQzKxk4+XUv/WMwX+K66S+eEgJfbXy6vfYj++/G0BJVwpNDp
+         h2pPrcJnxMTCit6cescoYwY7hJLdVjHUppsTfy2CvYuIYBfoG+isKyIlwZgdINoxRvWP
+         Y8eBZJ2QiE4M9w04CBaF8k/T0OggBtCL3q2f0xBPGELO+CtsAKGJabzl1F9WsFaMpBBp
+         GfqV0a2GRLi7H3ESe63ZZ4MDfTrpSt13hLz5SVq9HLsTHlpopjaJFoMAEXrwO5kaOoCs
+         n3+w==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782715447; x=1783320247; darn=vger.kernel.org;
+        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=diUnEjqdxWIPzg1/3l00da815doPDGDw/EqU3W4dTnk=;
+        b=GlONSkR/HDJYFswyifESam6q8cAIqXbtBm87y4P/sLmOJRdxRWufHFJSUzCoFmTw7U
+         Z94E+0YWxzRDLhTwUGOEl1locBS+Sz845OFWDAeve0FmgNO5bCCZzM8WXxs2/7r1Tj2R
+         pA6VBRz1CZ3kuj3bZEi+OlyxRerlSDhZcTNBBcR8vzYe1+HTCNuH4axsPLd2e5TVlD/D
+         pbjejm3NtJjomAQGnvfekf/Iweoi2rjBvgdJ6hBpPAVxOrdeR/ltMmz832yVl06c/km5
+         aPC2x1H4dMAABj/o48j1nre7qdv4lHWZt59jK556zrPQw52iXOrsUYuMEFeKux5WGmK/
+         g7+Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782715447; x=1783320247;
+        h=cc:to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=diUnEjqdxWIPzg1/3l00da815doPDGDw/EqU3W4dTnk=;
+        b=G0cSyWbM709EHfgsMhnBs/ctwIPfYn32FY+awn0PznY78D+5rbgNOhlE4C9GJr2z/K
+         z3fDBO25h2RNAEVyunPnTNgRTynHlYp3An2jxwYQ6nZ/Ksz6u2suWV/yOWbtYSjz+Qtq
+         pASSHX+TgRZURBSrblxlu9FgKZB2vsRfQX1c3ygT/D0yqg2Y8I1OIl0Cb1dJDx2Jb2pH
+         9dR0XYH0EKLmn1N95p44E68cCE6wyhdCFcHa7YcY05VUCFXh1Y48n8NdoyUwth5UJi2f
+         CIZB2ih+GGgbjplTZTAOrtNGp90nAQqun5vn49jRdaNKYnOAEQTkJc1zjz3kz7Rt9lB2
+         iPMQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rq8otyqRG/zanZpPflODg0AqE0hNXN6fV1sAIuI041hJlZEpvhA6i3t7eU4It/Os/GAu0eHmG9FeDfz@vger.kernel.org
+X-Gm-Message-State: AOJu0YybfcsvWEKvgiQBrXqbenvm0M6vuhGTJ/UIMDEz3kka2o7FhnlV
+	R6U0UyzAS07uQrqq55Pj28u5cU4u0+5MzQXIR3EQG2gtoaYIVe1u2wFcJ9E4idx7rFS7PyMUypJ
+	IlTB5ll/zMeYoTdTYbCLx25oryvTQIh0=
+X-Gm-Gg: AfdE7cneXUEaZ0+z/rxdn47jsQXH+/rz7p1QQwcTR52ekC9nLVCWJ2nW6lbWEMeXVsj
+	URiHPM2ULBve080AM3uMHPZRYzjZOljrARIM2T1j8UTga+URiTjCGCQY/Ln5k7S0oXWa9PSSw+S
+	yZ6BkucYPm8Keh5giQQ74RyLWvUmda6CID5fyt+yc2uz3x6bYfXRO/uunT2wjRo8z4I1tj9FYaT
+	wt0ip9uDnQwOJ4+mxXYd+JPpnLuhQjq0SCX5+twd5KXgJjqL7rfrlV4yIP7AX2d9ti85dXF1xbC
+	foXsekr79pY0a478dArdjImfIog=
+X-Received: by 2002:a05:6102:2b95:b0:631:23fa:38d7 with SMTP id
+ ada2fe7eead31-7343619eafdmr7063781137.14.1782715447497; Sun, 28 Jun 2026
+ 23:44:07 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Authority-Analysis: v=2.4 cv=DNC/JSNb c=1 sm=1 tr=0 ts=6a42105a cx=c_pps
- a=Lg6ja3A245NiLSnFpY5YKQ==:117 a=Lg6ja3A245NiLSnFpY5YKQ==:17
- a=FelO9ux0wxsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=klDOsUkWDRETUCZYPvoE:22 a=edf1wS77AAAA:8 a=c92rfblmAAAA:8 a=t7CeM3EgAAAA:8
- a=hSkVLCK3AAAA:8 a=XvSWbZsiBRkCmCy2_jIA:9 a=DcSpbTIhAlouE1Uv7lRv:22
- a=GvGzcOZaWPEFPQC_NcjD:22 a=FdTzh2GWekK77mhwV6Dw:22 a=cQPPKAXgyycSBL8etih5:22
-X-Proofpoint-ORIG-GUID: _pXOAgcM8hQK7fJJf_sVhPSNyHKWG-52
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNjI5MDA1MiBTYWx0ZWRfX9IrqV6x8FlW6
- JmBvX3weAYb6NJ0K5P5kLiD/PNWXp+LYNcHMd4/ryCvkq7Er8fuFE5V3MiADRs9bwh4/EIpMgNS
- E1AbxQGlCs06vh2D6SEJdiUWEOG0e9b5gxBGlXlgA42WHsuB7thLzNeqxI0mKJzzHoT3D6oN9WP
- Jt2YvBGpc0EvKxhWlGC/4RF+5RCiySSXif5mJ5/NxluDXtl6a/cAkfNgQY92jvcZkmqiporsgAx
- RroLHxTv3gnj7nnjBYj1ufKsAszwBMTTxt3jNAga/zUZ4ksp4Xx6RgHVVqLlY6DL05oNItQcgu2
- 2n8zhe8sM8OaZsxwwvdEL57qgx623tiMtOAeCO0dS4dkGv2TBEFmrQkP+5BMNH9mTMfKi8d1Pd0
- 8o46m0jfppPQDHPbA+xO/U62XAjXKV58ANWXmK/lZvWNgTs0QcUcFukDZTeJOHaKBCryL0t5ogh
- zaL2GxVZBVsSff3sWeQ==
-X-Proofpoint-GUID: _pXOAgcM8hQK7fJJf_sVhPSNyHKWG-52
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNjI5MDA1MiBTYWx0ZWRfXyErphr2V85CH
- 88qxr3GEGobte44sTPBA3ghli34s3tgjzO7XRrR31TciLzGHnKM8mU/cJqTglbkuXJDcbIJcxA4
- rNfKqhDeuwGIv9Bwd2Po2X1HiEbG0KUdDIeTZkYZgGQgb2NzAU7u
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-06-29_01,2026-06-26_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- priorityscore=1501 spamscore=0 phishscore=0 adultscore=0 impostorscore=0
- lowpriorityscore=0 malwarescore=0 clxscore=1015 bulkscore=0 suspectscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2606290052
+From: Xianying Wang <wangxianying546@gmail.com>
+Date: Mon, 29 Jun 2026 14:43:55 +0800
+X-Gm-Features: AVVi8CcEx3czD9MCsHg8rySwnRwcuh6hXqZx-UDG_Q-mFwNWg8VBDIKE00LqPm0
+Message-ID: <CAOU40uDfHk-8FxOuHO=rWcfjN0cV4psXhgdxckYhgaoaGZ51qg@mail.gmail.com>
+Subject: [BUG] kernel BUG in __ext4_journal_stop
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz, 
+	ojaswin@linux.ibm.com, yi.zhang@huawei.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-ext4_evict_ea_inode() calls mb_cache_entry_wait_unused() to wait for
-the EA inode's mb_cache entry refcount to drop before deleting it.
-This can deadlock against ext4_xattr_inode_cache_find() which holds
-an mb_cache entry reference while calling ext4_iget():
+Hi,
 
-  Thread A (evicting EA inode X):
-    ext4_evict_ea_inode -> mb_cache_entry_wait_unused  [waits for refcnt]
+I would like to report that this bug has been reported before, but it
+can still be triggered on Linux 7.1-rc5 by a syzkaller reproducer.
 
-  Thread B (setxattr looking for dedup):
-    ext4_xattr_inode_cache_find -> mb_cache_entry_find  [holds refcnt]
-      -> ext4_iget(X) -> __wait_on_freeing_inode        [waits on I_FREEING]
+The issue is a kernel BUG in the ext4 inline-data write path. Before
+the crash, ext4 reports corrupted block allocation metadata:
 
-Thread A's eviction sets I_FREEING and then waits for the mb_cache
-refcount to drop.  Thread B holds that refcount and waits for
-I_FREEING to clear -- circular dependency.
+EXT4-fs error: ext4_mb_generate_buddy: group 0, block bitmap and bg
+descriptor inconsistent
 
-Fix by making ext4_evict_ea_inode() non-blocking: try to delete the
-entry once, and if it's currently in use, clear MBE_REUSABLE_B and
-release it.  Clearing the reusable bit prevents future cache lookups
-from finding this entry (mb_cache_entry_find skips non-reusable
-entries), avoiding stale hits that could trigger spurious filesystem
-errors when the inode number is later reused for a non-EA inode.
+The crash happens while the reproducer is writing to an ext4 file
+through sendfile64(). The write path reaches the ext4 buffered write
+and inline-data write-end code, and then triggers a BUG when stopping
+the journal handle.
 
-Fixes: 458aee4a6e5b ("ext4: remove EA inode entry from mbcache on inode eviction")
-Reported-by: syzbot+fd5533bcd0f7343bb8ca@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=fd5533bcd0f7343bb8ca
-Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
----
-v2:
- - Clear MBE_REUSABLE_B on the in-use entry instead of just leaving it
-   stale.  This prevents future cache lookups from finding the entry,
-   avoiding spurious ext4_error_inode() if the inode number is later
-   reallocated to a non-EA inode. [1]
+Based on the execution context, the issue appears to be related to the
+interaction between corrupted ext4 block allocation metadata and the
+inline-data buffered write path. After ext4 detects that the block
+bitmap and block group descriptor are inconsistent, the sendfile64()
+write still proceeds into ext4_write_inline_data_end(). During this
+phase, ext4 needs to update inline-data/inode metadata and stop the
+journal transaction. However, the journal handle or the inline-data
+write state appears to be inconsistent, and __ext4_journal_stop()
+eventually hits an internal BUG_ON().
 
-[1] https://sashiko.dev/#/patchset/20260629052732.1442618-1-yun.zhou@windriver.com?part=1
+So the suspected problem is that the ext4 error handling path after
+detecting corrupted allocation metadata does not fully prevent the
+inline-data write-end path from continuing with an invalid or
+unexpected journal handle state. This results in a kernel BUG in
+__ext4_journal_stop().
 
- fs/ext4/xattr.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+This can be reproduced on:
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 85ad2561474b..3588fe933d5e 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -471,10 +471,17 @@ void ext4_evict_ea_inode(struct inode *inode)
- 
- 	if (!EA_INODE_CACHE(inode))
- 		return;
--	/* Wait for entry to get unused so that we can remove it */
--	while ((oe = mb_cache_entry_delete_or_get(EA_INODE_CACHE(inode),
--			ext4_xattr_inode_get_hash(inode), inode->i_ino))) {
--		mb_cache_entry_wait_unused(oe);
-+	/*
-+	 * Try to delete the cache entry.  If it's currently in use by
-+	 * another thread (e.g. ext4_xattr_inode_cache_find), mark it
-+	 * non-reusable so future lookups won't find it.  Waiting here
-+	 * would deadlock if the other thread's iget is blocked on this
-+	 * inode's I_FREEING.
-+	 */
-+	oe = mb_cache_entry_delete_or_get(EA_INODE_CACHE(inode),
-+			ext4_xattr_inode_get_hash(inode), inode->i_ino);
-+	if (oe) {
-+		clear_bit(MBE_REUSABLE_B, &oe->e_flags);
- 		mb_cache_entry_put(EA_INODE_CACHE(inode), oe);
- 	}
- }
--- 
-2.43.0
+HEAD commit:
 
+e7ae89a0c97ce2b68b0983cd01eda67cf373517d
+
+report: https://pastebin.com/raw/1aWWc2Uj
+
+console output : https://pastebin.com/raw/MS8YxkTn
+
+kernel config : https://pastebin.com/raw/fUwrL2uz
+
+C reproducer : https://pastebin.com/raw/HgPfLbKs
+
+Let me know if you need more details or testing.
+
+Best regards,
+
+Xianying
