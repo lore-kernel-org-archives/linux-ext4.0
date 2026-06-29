@@ -1,180 +1,199 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out30-124.freemail.mail.aliyun.com (out30-124.freemail.mail.aliyun.com [115.124.30.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA10234A773
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2026 11:37:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35A9D3B960B
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2026 11:38:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782733074; cv=none; b=mkXlfCrf8z4g+FV+EhIGZozsM70OnwBudtAs0fHOdYIFvoMTtzSuipwzqLKIlh49NQqXllD0ayuSoh2v+BiNs3Roc+jLBViGKf40ibNYqhJ6w46g40Dr88yWpkTG2Xw6luE4Rj7CQO/fvVSZURn5XzRWp1/z2D4EPTKRbOgaq0E=
+	t=1782733123; cv=none; b=Q9qB8vMAWzlzlfg8OC77vDcP/ipyHN+fHJQv2lU9nO5/C2npaPL8GQ8bcCzFUUDx885skpIlmoAG0nYHuprVqQU8He9O9LYi6EBir0f8Rlb1n4ZzO6C6xSXk7rN30tll2cEm9CeObyMb3C4R05Cra3oT2pBEosp6gi68YXVz0eo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782733074; c=relaxed/simple;
-	bh=jWN2p9ror6Y86hZXk/tLl8y2DxtoBCUT4hQLpTZrn70=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=SDN4kt/rzduD5TfAYOsZXPnNBi40E9QC9+HYz8FcAWfuFJNVkGPCKSvjHciS8oEJT5t7nYtiEQoHV4Z2YfSeO/hQArYn0h4k2nG+yWuEAR8zk+rlIHF3I1lat5kpEpz/vzyIBrrGfbnsqAFljjhIOV9q7aZPEeQTeBb27aQJTwE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=AcdymO3A; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7K8hjG7I; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=AcdymO3A; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7K8hjG7I; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1782733123; c=relaxed/simple;
+	bh=pMgvH7fZ5Gpe7yhjz5/YWGcBDFF4sCprQRp+3tL+S9k=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=WhAoAQudjM7M5aTWrASobKuSNOqp/1dQbtebnMM2j7iT1QP7gMMFFVmTKKKWxdoO5SWDcJphYXGImHZi3dSjoO7H9zGY1AqnsNTa4B6s5cVdYn+Vl5WRGgKh9iNL0/OYm/XXfw6Qs3BSXN5wuUuT9Z/mM7wnDYtr8xsC5U6ZJfI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=mnd5/gof; arc=none smtp.client-ip=115.124.30.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="AcdymO3A";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7K8hjG7I";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="AcdymO3A";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7K8hjG7I"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 051157304B;
-	Mon, 29 Jun 2026 11:37:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782733071; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=bLC3qw/vmbZxhW2/s5UndiO5IYcBI53VNN28GArFeLs=;
-	b=AcdymO3Ac2jhNQABuakDiOrYdbtxYrGH/wKpEgcaVYmJWReRp6nSQ2GQmuT02vESCnZgku
-	hlYK55NVEww3erlMc/9439j+rtVGhg66W215fwdFq14tqD9dHUAy3GLdMSavVl5lAkqjHu
-	PjvxJZP2CCFg2sHgLokqL7bPRr1cxVs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782733071;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=bLC3qw/vmbZxhW2/s5UndiO5IYcBI53VNN28GArFeLs=;
-	b=7K8hjG7IZbLv7d4LRb93ZrN0x60DxdhXYoqr/P0alkhYp2DR2er39UzW2/LiZY6SqydTYZ
-	lESB3G7TjaJfHeBA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782733071; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=bLC3qw/vmbZxhW2/s5UndiO5IYcBI53VNN28GArFeLs=;
-	b=AcdymO3Ac2jhNQABuakDiOrYdbtxYrGH/wKpEgcaVYmJWReRp6nSQ2GQmuT02vESCnZgku
-	hlYK55NVEww3erlMc/9439j+rtVGhg66W215fwdFq14tqD9dHUAy3GLdMSavVl5lAkqjHu
-	PjvxJZP2CCFg2sHgLokqL7bPRr1cxVs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782733071;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=bLC3qw/vmbZxhW2/s5UndiO5IYcBI53VNN28GArFeLs=;
-	b=7K8hjG7IZbLv7d4LRb93ZrN0x60DxdhXYoqr/P0alkhYp2DR2er39UzW2/LiZY6SqydTYZ
-	lESB3G7TjaJfHeBA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E5BFF779A8;
-	Mon, 29 Jun 2026 11:37:50 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id nmegNw5ZQmqqYgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 29 Jun 2026 11:37:50 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 88C19A10B5; Mon, 29 Jun 2026 13:37:46 +0200 (CEST)
-Date: Mon, 29 Jun 2026 13:37:46 +0200
-From: Jan Kara <jack@suse.cz>
-To: Yun Zhou <yun.zhou@windriver.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, viro@zeniv.linux.org.uk, brauner@kernel.org, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	xiaowu.417@qq.com
-Subject: Re: [PATCH v11 2/5] ext4: introduce ext4_put_ea_inode() for safe
- deferred iput
-Message-ID: <gyrelvt577bxfhq5e5k4rwdr5r2m455c3dn44hx7jgrgnvoqqn@bfc43qrask7g>
-References: <20260629110848.3085662-1-yun.zhou@windriver.com>
- <20260629110848.3085662-3-yun.zhou@windriver.com>
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="mnd5/gof"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1782733116; h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type;
+	bh=5nqG643/Y76cAHUykitAmpHU5/qBtG2oaI6vBn1hME8=;
+	b=mnd5/gofJsUeONG28VzXOqwznCbP46otB3jZwSEyPoiUkCM2BehRiy2eabAnMceGoleV1mdiG+5qBpzUjE57jEWxFf2wimcR0otXQe/YePCQQ6E7X+IF63pW7JOPZ8FTNvnnr0B105czegfmea3daMUfUkJtgwpU6eDN9vFhV08=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=10;SR=0;TI=SMTPD_---0X5sgd7l_1782733107;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X5sgd7l_1782733107 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 29 Jun 2026 19:38:36 +0800
+From: Baokun Li <libaokun@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	yi.zhang@huawei.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	peng_wang@linux.alibaba.com
+Subject: [PATCH v4 0/6] ext4: allow more DIO writes under shared i_rwsem
+Date: Mon, 29 Jun 2026 19:38:21 +0800
+Message-ID: <20260629113827.4074335-1-libaokun@linux.alibaba.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260629110848.3085662-3-yun.zhou@windriver.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	ARC_NA(0.00)[];
-	URIBL_BLOCKED(0.00)[suse.cz:email,suse.com:email,windriver.com:email,imap1.dmz-prg2.suse.org:helo];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,zeniv.linux.org.uk,kernel.org,vger.kernel.org,qq.com];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,windriver.com:email,suse.cz:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Mon 29-06-26 19:08:45, Yun Zhou wrote:
-> Calling iput() on EA inodes while holding xattr_sem or a jbd2 handle
-> can trigger write_inode_now() -> ext4_writepages() -> s_writepages_rwsem,
-> creating a lock ordering issue during mount (!SB_ACTIVE).
-> 
-> Add ext4_put_ea_inode() which uses iput_if_not_last() as a fast path.
-> If this is not the last reference, it is dropped immediately.  If this
-> is the last reference, the inode is linked onto a per-sb lock-free llist
-> via i_ea_iput_node (embedded in ext4_inode_info, sharing space with the
-> unused xattr_sem of EA inodes via a union) and a delayed worker
-> (1 jiffie) performs the final iput() in a clean context.  This avoids
-> per-iput memory allocation.
-> 
-> Flush points are placed before quota shutdown (ext4_put_super and
-> failed_mount9) and before freeing structures that eviction depends on
-> (failed_mount_wq and failed_mount3a).  Initialization is placed before
-> journal loading since fast commit replay may trigger evictions that call
-> ext4_put_ea_inode().
-> 
-> Also moves init_rwsem(xattr_sem) from init_once to ext4_alloc_inode to
-> handle slab object reuse after the union field has been overwritten.
-> 
-> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
-> Suggested-by: Jan Kara <jack@suse.cz>
+Changes since v3:
+  * Collect RVB from Honza. (Thank you for your review!)
+  * Dropped Patches 6-8 (EXT4_GET_BLOCKS_CACHED_NOWAIT handling,
+    cache-only lookup in ext4_iomap_begin, and cache-only lookup in
+    ext4_dio_needs_zeroing). The NOWAIT support in ext4_map_blocks()
+    and the i_size anomaly reported by Sashiko are pre-existing
+    issues, not introduced by the lock relaxation in this series.
+    They will be addressed in a separate patchset.
+  * Patches 1-5 and 9 from v3 are unchanged (renumbered to 1-6).
 
-...
+Changes since v2:
+  * Collect RVB from Honza and Yi. (Thank you for your review!)
+  * Patch 6: improved EXT4_GET_BLOCKS_CACHED_NOWAIT handling - cache-hit
+    path now uses "goto found" to run check_block_validity(), closing a
+    security bypass for malicious extents from crafted filesystem images.
+  * Added Patch 9 to fix NOWAIT semantic violation in DAX extending writes
+    reported by Sashiko.
 
-> +/*
-> + * Release a VFS reference on an EA inode.  Must be used instead of iput()
-> + * in any context where xattr_sem or a jbd2 handle is held.
-> + *
-> + * If this is not the last reference, drops it immediately via
-> + * iput_if_not_last() with no further action needed.
-> + *
-> + * If this is the last reference, the inode is linked onto a per-sb
-> + * llist via i_ea_iput_node (embedded in ext4_inode_info, sharing space
-> + * with the unused xattr_sem) and a delayed worker performs the final
-> + * iput() in a clean context.
-> + *
-> + * Note: while an inode is on s_ea_inode_to_free, the unconsumed i_count
-> + * reference (still 1) keeps it in the inode cache, so any concurrent
-> + * iget() bumps i_count to >= 2 and iput_if_not_last() will succeed.
-> + * Nobody will add the inode a second time until ext4_ea_inode_work()
-> + * drops that reference via iput().
-> + */
-> +void ext4_put_ea_inode(struct super_block *sb, struct inode *inode)
+Changes since v1:
+  * Collect RVB from Honza and Yi. (Thank you for your review!)
+  * Added Patch 1 to fix NOWAIT issues reported by Sashiko.
+  * Added Patch 2 to fix ext3 DIO and DIO fallback data race issue.
+    (Patch 4 increases the probability of this race)
+  * Added Patches 5-8 to fix other NOWAIT issues discovered during
+    investigation.
 
-One small question here: Any reason why you explicitely pass sb here
-instead of using inode->i_sb? EA inodes are guaranteed to be from the same
-superblock... It would somewhat simplify the callers.
+v1: https://lore.kernel.org/linux-ext4/20260611163441.2431805-1-libaokun@linux.alibaba.com/
+v2: https://lore.kernel.org/linux-ext4/20260618125735.4156639-1-libaokun@linux.alibaba.com/
+v3: https://lore.kernel.org/linux-ext4/20260626083518.1064517-1-libaokun@linux.alibaba.com/
 
-								Honza
+======
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Hi all,
+
+This series relaxes the i_rwsem requirements of ext4_dio_write_iter()
+so that more direct I/O writes can proceed under the shared lock.
+
+It continues the work started by Peng Wang's RFC [1]; I'm taking
+over this effort going forward.
+
+ext4_dio_write_checks() currently calls ext4_overwrite_io() to decide
+whether the shared lock is sufficient.  Its single ext4_map_blocks()
+lookup only sees the first contiguous extent of the same type, which
+forces the exclusive lock for two cases that are actually safe under
+the shared lock (see individual patches for the full safety
+argument):
+
+  1. Aligned writes spanning multiple already-allocated extents (e.g.
+     written + unwritten, or two discontiguous written extents).
+
+  2. Unaligned writes whose head/tail partial blocks land on written
+     extents but the fully-covered middle blocks include hole or
+     unwritten extents.
+
+Patch 1 fixes a NOWAIT issue where ext4_iomap_alloc() may sleep when
+IOMAP_NOWAIT is set.
+
+Patch 2 fixes a data race between DIO completion and buffered I/O
+fallback on ext3 (no-extent inodes).  This race was made more likely
+by Patch 4.
+
+Patch 3 skips the ext4_overwrite_io() pre-check entirely for aligned
+non-extending writes, letting them proceed under the shared lock
+regardless of extent state.
+
+Patch 4 replaces ext4_overwrite_io() with ext4_dio_needs_zeroing(),
+which directly answers the question driving the lock decision.  It
+checks only the head and tail partial blocks (at most two
+ext4_map_blocks() calls), and ignores the state of middle blocks.
+
+Patch 5 fixes a NOWAIT issue by using kiocb_modified instead of
+file_modified in DIO/DAX write paths.
+
+Patch 6 fixes a NOWAIT semantic violation in DAX extending writes
+where ext4_journal_start() could sleep when the write extends past
+i_disksize.
+
+
+Testing
+=======
+
+"kvm-xfstests -c ext4/all -g auto" passes with no new failures.
+
+
+Performance
+===========
+
+Hardware: /dev/sda (rotational disk, ~1 GB/s sustained write)
+Filesystem: ext4 default mkfs
+
+Test 1: aligned 8K DIO writes spanning written+unwritten extent
+boundaries.  Each thread writes its own 1G region sequentially; the
+file is rebuilt between runs so every block is written exactly once.
+Metric: IOPS.
+
+  JOBS         base    +patch 3    +patch 3+4    speedup
+  ----    ---------    --------    ----------    -------
+     1       42,322      43,329        43,087      1.02x
+     2       68,516      70,677        66,958      1.03x
+     4       62,489      97,072       101,468      1.62x
+     8       58,701     110,819       113,679      1.94x
+    16       58,569     116,392       115,272      1.97x
+    32       60,860     117,244       119,621      1.97x
+
+Wall time at JOBS=32: 69.2s (base) -> 35.4s (patched), 1.96x faster.
+
+Test 2: unaligned DIO writes (14336 bytes at +512 within each 16K
+stripe).  Each stripe is laid out as [written][unwritten][unwritten]
+[written], so the head and tail partial blocks land on written
+extents but the middle is unwritten.  Metric: IOPS.
+
+  JOBS         base    +patch 3    +patch 3+4    speedup
+  ----    ---------    --------    ----------    -------
+     1       15,547      15,975        17,381      1.12x
+     2       15,910      14,808        34,172      2.15x
+     4       15,014      14,828        57,567      3.83x
+     8       15,022      14,648        81,947      5.46x
+    16       14,586      14,262        99,126      6.80x
+    32       14,047      13,809        92,519      6.59x
+
+Wall time at JOBS=32: 149.3s (base) -> 22.7s (patched), 6.58x faster.
+
+In test 2, patch 3 alone has no effect (slight noise) because patch 3
+only touches the aligned write path.  Patch 4 introduces
+ext4_dio_needs_zeroing() which precisely identifies when partial
+block zeroing is required, allowing the shared lock for the much
+larger set of unaligned writes that don't actually trigger zeroing.
+
+Comments and questions are, as always, welcome.
+
+Thanks,
+Baokun
+
+[1]: https://lore.kernel.org/linux-ext4/20260607124935.6168-1-peng_wang@linux.alibaba.com/
+
+Baokun Li (6):
+  ext4: prevent sleeping allocation in NOWAIT write path
+  ext4: drain in-flight DIO before buffered write fallback
+  ext4: skip overwrite check for aligned non-extending DIO writes
+  ext4: base unaligned DIO lock decision on partial block zeroing
+  ext4: use kiocb_modified instead of file_modified in DIO/DAX write
+    path
+  ext4: fix NOWAIT semantic violation in DAX extending writes
+
+ fs/ext4/file.c  | 148 +++++++++++++++++++++++++++++++++---------------
+ fs/ext4/inode.c |   3 +
+ 2 files changed, 106 insertions(+), 45 deletions(-)
+
+--
+2.43.7
+
