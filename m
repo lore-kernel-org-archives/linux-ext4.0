@@ -1,89 +1,46 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 648873ED3CA
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Jun 2026 11:34:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 405A2346AD6;
+	Tue, 30 Jun 2026 11:48:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782819285; cv=none; b=g+kwbvJ4qzqT/cxne4jc7h1iH+8eaAosVrb+5jpqWQhcV9rDtVrGgyLYFr2AptK4BOHSUPM0AbBFOm2II5nTYwXJxTiO3yN2TQxwwj54trqzoriIH59SviQpf1J9pfZTeyEpb9A7W+9yhrVBRigPaJMWh+RX4k3FS1nHpXrbIYc=
+	t=1782820129; cv=none; b=TKeOAWxb+OR5qXrXoi3Tza3z481toU2qwRScnXoWCjKZC8UitQWNYBKim12q9FXsi4uiemwmGlq30xDirwoD2GoIRtOOU8S6ej0tI2j3tOU15/Fa6/qSuR3C9JXjGipNrxOGv/aFx1rWWXHgw8dpehnMLlWQ0OFCU8jxHGfJNac=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782819285; c=relaxed/simple;
-	bh=ZHDBAloNxKfruFaT0EwbBh8RxtlbOYic49TrN4hatF4=;
+	s=arc-20240116; t=1782820129; c=relaxed/simple;
+	bh=sw/xZYZ7Ir7A52GOlocplivHztuhGIYD/SJF9Wzg360=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=jbnH70qdlM9WpgPLpGrM3BE396bMZQGOKwyXVkdjAlT5wq8pmEligZmfBWEV/bUJ3v5oY4lUpahe8SNGDydkmxdRPfGG2Vu8PlwZS2DAqcghCQuBAMu6rbtZHPcl9GpOQhmaSh27o/fT2h+JDemsW0VYYK/rHDgPRnxYZYS3VXI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=IRRUubZC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=fjC/Nb9/; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=IRRUubZC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=fjC/Nb9/; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=o7vOPx1VXbKb8g37JQfhnwnPOWrHOC2413EIxBlSzkNxYO/0NRMziG81+ZyP+030LNhrbeCF7gR3B/FQjvXCKREUCLQFDtS47V6aVXp9vOQPE6+WVZqGJYVy2REK6XJP/NZgvDBvLgN/eb29y64fGnAHJ4hVvy6CaAkWvs3DMRQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=itceAvM5; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="IRRUubZC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="fjC/Nb9/";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="IRRUubZC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="fjC/Nb9/"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 9D81675E82;
-	Tue, 30 Jun 2026 11:34:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782819282; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=EM1+if+i9skt0PcMuKsDrXYi4eXzKwWWIyPOYV25LeU=;
-	b=IRRUubZCDFXBHEq+a/zlC0YQP3nph+aY5jBy2tehgPdOTBnfbNm41JjyfEe+cf6XI7NfqH
-	zXSMYeQ2EcT5f/WtmnNPnylw+2Vdo8iL4js/M21WVjyOod4ODF0tGhQQriQgrPYgKZ/i4w
-	XL14W7r39Xbw9oKY4wICRMNO9VpeMis=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782819282;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=EM1+if+i9skt0PcMuKsDrXYi4eXzKwWWIyPOYV25LeU=;
-	b=fjC/Nb9/b1tatKFITtJ5fE6vzo1Z+4r9UsyFWhLeDKdXcL9lE9kW0eAI+0T8MC4Olk38Ij
-	TBxp10Ytz3ghFjDQ==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782819282; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=EM1+if+i9skt0PcMuKsDrXYi4eXzKwWWIyPOYV25LeU=;
-	b=IRRUubZCDFXBHEq+a/zlC0YQP3nph+aY5jBy2tehgPdOTBnfbNm41JjyfEe+cf6XI7NfqH
-	zXSMYeQ2EcT5f/WtmnNPnylw+2Vdo8iL4js/M21WVjyOod4ODF0tGhQQriQgrPYgKZ/i4w
-	XL14W7r39Xbw9oKY4wICRMNO9VpeMis=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782819282;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=EM1+if+i9skt0PcMuKsDrXYi4eXzKwWWIyPOYV25LeU=;
-	b=fjC/Nb9/b1tatKFITtJ5fE6vzo1Z+4r9UsyFWhLeDKdXcL9lE9kW0eAI+0T8MC4Olk38Ij
-	TBxp10Ytz3ghFjDQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 90E82779A8;
-	Tue, 30 Jun 2026 11:34:42 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id Az9cI9KpQ2rqTwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 30 Jun 2026 11:34:42 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 27031A10B7; Tue, 30 Jun 2026 13:34:42 +0200 (CEST)
-Date: Tue, 30 Jun 2026 13:34:42 +0200
-From: Jan Kara <jack@suse.cz>
-To: Mateusz Guzik <mjguzik@gmail.com>
-Cc: Yun Zhou <yun.zhou@windriver.com>, tytso@mit.edu, 
-	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, yi.zhang@huawei.com, viro@zeniv.linux.org.uk, brauner@kernel.org, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	xiaowu.417@qq.com
-Subject: Re: [PATCH v11 1/5] fs: add iput_if_not_last() helper
-Message-ID: <txvgbvn77wjgfz4ywdb25v7ol4ecszqh5yg3p4g56sbxq6prlo@rpfwveotnfvz>
-References: <20260629110848.3085662-1-yun.zhou@windriver.com>
- <20260629110848.3085662-2-yun.zhou@windriver.com>
- <4k4crl4oobz4xtmvjoqwoefrd6in46xf725z3ewme3smgh5ide@6dmywcnp6o6y>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="itceAvM5"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=3pRI0I/sedCyfhTiQbpEge2gLbMRG4ocIB2FDj+0Hg0=; b=itceAvM5VG5GscShzJI3l+ke+H
+	/+Q4+ic+ZFnzPSc07R6c6laIlwbr5bQ7tRpj/57hdL22lQ3llaa6UbGLYFp2/AO4FSevVK6ulzXrw
+	zl0xvzpVOWUuEgilhxanrYUR0z3sm763PuSdXsJJM1bB/qwp/lIKwDWme5AGpovDWRAPmZvExGsXE
+	Ha3OpamVRs1bj8NMdK492425y369J+E0iko3x/H8AqkLxw2EOsgLF4D4OsDmBCeInlyXK/Rbgmcjg
+	NNQ9IohuRjQowF7CAdLeOY0O7v1ubzg79IWxgQuZh5tlUQ9snG+JOXcs6gzmK2fC6oKKDulRtwH//
+	2doOIZrw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1weWxH-0000000GstI-2Khv;
+	Tue, 30 Jun 2026 11:48:43 +0000
+Date: Tue, 30 Jun 2026 04:48:43 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Fengnan Chang <changfengnan@bytedance.com>
+Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
+	ojaswin@linux.ibm.com, dgc@kernel.org, linux-xfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, lidiangang@bytedance.com,
+	pankaj.raghav@linux.dev
+Subject: Re: [PATCH v5 4/4] iomap: add simple dio path for small direct I/O
+Message-ID: <akOtG5_gNb8btWCx@infradead.org>
+References: <20260629120124.25223-1-changfengnan@bytedance.com>
+ <20260629120124.25223-5-changfengnan@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -92,87 +49,109 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <4k4crl4oobz4xtmvjoqwoefrd6in46xf725z3ewme3smgh5ide@6dmywcnp6o6y>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[15];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[windriver.com,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,zeniv.linux.org.uk,kernel.org,vger.kernel.org,qq.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,windriver.com:email,suse.com:email,suse.cz:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+In-Reply-To: <20260629120124.25223-5-changfengnan@bytedance.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Tue 30-06-26 11:05:50, Mateusz Guzik wrote:
-> On Mon, Jun 29, 2026 at 07:08:44PM +0800, Yun Zhou wrote:
-> > Add a helper that drops an inode reference only if the caller does not
-> > hold the last one.  Returns true if the reference was dropped, false
-> > otherwise.
-> > 
-> > This is useful for filesystems that need to release inode references
-> > in contexts where triggering final iput (and thus eviction) would be
-> > unsafe due to lock ordering constraints.  The caller can check the
-> > return value and defer the final iput to a safe context.
-> > 
-> > Unlike iput_not_last() which BUG_ON's if called with the last ref,
-> > this variant is designed to be called speculatively.
-> > 
-> > Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
-> > Suggested-by: Jan Kara <jack@suse.cz>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  include/linux/fs.h | 13 +++++++++++++
-> >  1 file changed, 13 insertions(+)
-> > 
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index d10897b3a1e3..04f0de78fa7a 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -2413,6 +2413,19 @@ static inline void super_set_sysfs_name_generic(struct super_block *sb, const ch
-> >  extern void ihold(struct inode * inode);
-> >  extern void iput(struct inode *);
-> >  void iput_not_last(struct inode *);
-> > +
-> > +/**
-> > + * iput_if_not_last - drop an inode reference only if it is not the last one
-> > + * @inode: inode to put
-> > + *
-> > + * Returns true if the reference was dropped, false if this was the last
-> > + * reference and the caller must arrange for final iput() in a safe context.
-> > + */
-> > +static inline bool __must_check iput_if_not_last(struct inode *inode)
-> > +{
-> > +	return atomic_add_unless(&inode->i_count, -1, 1);
-> > +}
-> > +
-> 
-> This still could assert on the count, for example:
-> 	VFS_BUG_ON_INODE(inode_state_read_once(inode) & (I_FREEING | I_CLEAR), inode);
-> 	VFS_BUG_ON_INODE(atomic_read(&inode->i_count) < 1, inode);
+On Mon, Jun 29, 2026 at 08:01:24PM +0800, Fengnan Chang wrote:
+> +#include <linux/kobject.h>
+> +#include <linux/sysfs.h>
 
-Yes, it makes sense to be consistent with other helpers. Thanks for the
-idea.
+I don't think these two headers are actually used by the new code.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> +struct iomap_dio_simple {
+> +	struct kiocb		*iocb;
+> +	size_t			size;
+> +	unsigned int		dio_flags;
+> +	struct work_struct	work;
+> +	/*
+> +	 * Align @bio to a cacheline boundary so that, combined with the
+> +	 * front_pad passed to bioset_init(), the bio sits at the start of
+> +	 * a cacheline in memory returned by the (HWCACHE-aligned) bio
+> +	 * slab.  This keeps the hot fields block layer touches on submit
+> +	 * and completion (bi_iter, bi_status, ...) within a single line.
+> +	 */
+> +	struct bio	bio ____cacheline_aligned_in_smp;
+
+Add an extra tab here so it aligns with the fields above the comment?
+
+> +	int error = blk_status_to_errno(bio->bi_status);
+> +	ssize_t ret = error;
+> +
+> +	if (likely(!ret)) {
+> +		ret = sr->size;
+> +		iocb->ki_pos += ret;
+> +	} else if (should_report_dio_fserror(ret)) {
+> +		fserror_report_io(inode, FSERR_DIRECTIO_READ, iocb->ki_pos,
+> +				  sr->size, ret, GFP_NOFS);
+> +	}
+> +
+> +	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
+> +	inode_dio_end(inode);
+> +	trace_iomap_dio_complete(iocb, error, ret);
+
+I think some of this could be micro-optimized a bit more and
+cleaned up at the same time:
+
+	ssize_t ret;
+
+	if (unlikely(bio->bi_status) {
+		ret = blk_status_to_errno(bio->bi_status);
+		if (should_report_dio_fserror(ret)) {
+			fserror_report_io(inode, FSERR_DIRECTIO_READ,
+					iocb->ki_pos, sr->size, ret,
+					GFP_NOFS);
+		}
+	} else {
+		ret = sr->size;
+		iocb->ki_pos += ret;
+	}
+
+	iomap_dio_bio_release_pages(bio, sr->dio_flags, ret < 0);
+	inode_dio_end(inode);
+	trace_iomap_dio_complete(iocb, ret < 0 ? ret : 0, ret);
+
+	return ret;
+
+> +
+> +static void iomap_dio_simple_complete_work(struct work_struct *work)
+> +{
+> +	struct iomap_dio_simple *sr =
+> +			container_of(work, struct iomap_dio_simple, work);
+
+A single tab indent is enough here. (and used in the next function)
+
+> +	struct bio *bio;
+> +	bool wait_for_completion = is_sync_kiocb(iocb);
+> +	ssize_t ret;
+
+Nitpick: keep variables initialized at declaration time above those
+that are not initalized.
+
+> +	/*
+> +	 * Fast path for small, block-aligned direct I/Os that map to a
+> +	 * single contiguous on-disk extent.
+> +	 *
+> +	 * @dops must be NULL: a non-NULL @dops means the caller wants its
+> +	 * ->end_io / ->submit_io hooks invoked, and in particular wants its
+> +	 * bios to be allocated from the filesystem-private @dops->bio_set
+> +	 * (whose front_pad sizes a filesystem-private wrapper around the
+> +	 * bio).  The fast path instead allocates from the shared
+> +	 * iomap_dio_simple_pool, whose front_pad matches
+> +	 * struct iomap_dio_simple; the two wrappers are not
+> +	 * interchangeable, so we must fall back to __iomap_dio_rw() in
+> +	 * that case.
+> +	 *
+> +	 * @done_before must be zero: a non-zero caller-accumulated residual
+> +	 * cannot be carried through a single-bio inline completion.
+> +	 *
+> +	 * -ENOTBLK is the private sentinel returned by iomap_dio_simple()
+> +	 * when it decides the request does not fit the fast path.
+> +	 * In that case we proceed to the generic __iomap_dio_rw() slow
+> +	 * path.  Any other errno is a real result and is propagated as-is,
+> +	 * in particular -EAGAIN for IOCB_NOWAIT must reach the caller.
+
+I think this documentation belongs above iomap_dio_simple, not
+here.  And maye it should also mention that iomap_dio_simple_supported
+enforces these limitations.  Mostly anyway, and maybe the other two
+checks should go into that as well for completeness?
+
