@@ -1,353 +1,255 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-pg1-f172.google.com (mail-pg1-f172.google.com [209.85.215.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5D80406803
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Jun 2026 11:49:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B746E34A3DB
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Jun 2026 12:07:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782820156; cv=none; b=to3aQUawFmlhOViKf3TBr+lkFiCCyp2QeaFegi/B8ITEcjbhM6mer0JLR1UXLWe+wNxxd+tr56ZcEgMl33/ZzMLUoF/BxHBJ2/bhtdC9hC3F7Jk4MAzdy7uuJe/eHb/d3EWwPX/iTV/SBUeSY2YDHI1VYLXKtlozgxeJMIDeesw=
+	t=1782821230; cv=none; b=NdDpd9EASl2Ba6Ui0W3YoBVkP2gLE3aSj5zlQZ2Bv9uyb8CwcWEcAi3T1P9Zld7gHgIka1l6ns8DMuRDAMNKPrygZIr/IUSqw8ESV1swhKjtDcDIBU8jI7EpnUFQ6IyWUFZJtT37hd9ko1i2BJkCxfnDA+SPSSan1UKoSgN7KZM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782820156; c=relaxed/simple;
-	bh=wULC1sAyWDhuOeXmdjv9FE7sA2HQer4YiakKpxA+/CA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ayHO4j2Om6mzWiIDLZa62bmdSoH9qKlQkBGGcXclwOV2+xqa1opB573CP83GqgZicspZZqkORxQJHLEBzrFIP77SF3wkFyWNSB93/m3/qRsjhJkEE3nGMwvt4LCIV2Vxs71mJeBEhKyt5rkSt8Qx12+S/YJv8VlPlqnJ735rVP0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=O31PccuW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=61s9O1Yj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=P7EphrIR; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yigm5euv; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1782821230; c=relaxed/simple;
+	bh=itAlsaST6j0kxNgKTm7bL9oYDa4zsO9/SWJNPboIP6s=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=CzhNfLf5J677wKyp1NBwADweZJYFFSbGswYhDt3V+qzOw98bCku8/jZ65bmxsjJow2KPPzPI3tsDAC3dqEoTgB/mczgKxep63iO6x8hZu9eGHXWH2wr5f84UYShV7Nl5ojobOBWhlNaroLjBou/gVb0vJFCBn0zmLGl906mcWqo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=bQi7pGOY; arc=none smtp.client-ip=209.85.215.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="O31PccuW";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="61s9O1Yj";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="P7EphrIR";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yigm5euv"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id EBC8575D18;
-	Tue, 30 Jun 2026 11:49:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782820153; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=oIi5oBbXEmpG5BdJMGT/hNBWP9kD8e9wo7NfU/OGTlU=;
-	b=O31PccuWEEWVCS2K1u5a13F8wsRojnVMcTSkmPMeAjqf8pq+L2XFiEu9Qjz8OifCI+kUE8
-	NEkAhL+LtcKjnIBxTExqDmiMuLsbmGsc5yy2SgzEDmifjmMXvc8B+oYIz4LVpLCjG06Rp6
-	/aoHGEK8i505oJiwQakIPKCtAH1oRmk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782820153;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=oIi5oBbXEmpG5BdJMGT/hNBWP9kD8e9wo7NfU/OGTlU=;
-	b=61s9O1Yjn1GHT/0LgI/rAORfveUGJHAgKO8OkKD2/9moE1r4X6hozNPs/0jeY4/LhiQY7E
-	XhxLxlcj3Sa2hEAw==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782820152; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=oIi5oBbXEmpG5BdJMGT/hNBWP9kD8e9wo7NfU/OGTlU=;
-	b=P7EphrIRonGbkNOU1EaxsWdZoUlmFusvfp1sdMoPIUA/8cRQmTZKj8r/BfzrRRyWS8bydT
-	4KaPMIUWgGDAuC5e/ixTnf3zBGIyu3oWkB6/aq8s3kXaq9fernaHDZ/Txl18XOKHi4ergU
-	ndi2hhc10pks+5Ght5vuXp4gIJBCpo4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782820152;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=oIi5oBbXEmpG5BdJMGT/hNBWP9kD8e9wo7NfU/OGTlU=;
-	b=yigm5euvousxSGCCBzXczpYIbdxR7HhB5JKWI2ylUU1s9yEfAWt+M18fKxW5ovjroqIBD/
-	3YHHodKKGr1dOBBw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8C2BB779A8;
-	Tue, 30 Jun 2026 11:49:12 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id fdkoIjitQ2rzXgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 30 Jun 2026 11:49:12 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id F0986A10B7; Tue, 30 Jun 2026 13:49:11 +0200 (CEST)
-Date: Tue, 30 Jun 2026 13:49:11 +0200
-From: Jan Kara <jack@suse.cz>
-To: Yun Zhou <yun.zhou@windriver.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, viro@zeniv.linux.org.uk, brauner@kernel.org, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v12 2/4] ext4: introduce ext4_put_ea_inode() for safe
- deferred iput
-Message-ID: <4ikaxj56aewrknjojqg3t4lf7xhquei5puhwwqqzgqppaqocaj@jponnzx3nicq>
-References: <20260630100829.1257618-1-yun.zhou@windriver.com>
- <20260630100829.1257618-3-yun.zhou@windriver.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bQi7pGOY"
+Received: by mail-pg1-f172.google.com with SMTP id 41be03b00d2f7-c88973b6965so254299a12.1
+        for <linux-ext4@vger.kernel.org>; Tue, 30 Jun 2026 05:07:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782821227; x=1783426027; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=GRsif6n23PSbdnHewtfXyh6tsaYmvVnWO2OghT4M8iw=;
+        b=bQi7pGOY+8eQMuWvIyFd3o5pFpvTrsO1NQsl+ysdfjY3bVp/3iaS0U1j67xzHIjzl7
+         deeuYpjDg5eYig7ATE1NU2iN/o0XHEL+EFjG6nIrguXGcfVyZKIIdVvmcfycPSp4oNlN
+         UUyRgZmssQvUd59y8daKGTTpHOm5BI/9wfdhIC96fe3z0M08a4gLIqNc3YydYh9mtoJo
+         bTK2OtQIIi05zxZ/703pT+6lNdyhOkQxfSX8cGo/1LkFrN4r6mrQWFF622M3Wjri+fps
+         vTob7qasnZq8W3PKl+a4Rj/xmloBAjZAai+CNJu+vLQ+7EQIf7ErWRQEmZGyO0QfiBYb
+         96Jg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782821227; x=1783426027;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=GRsif6n23PSbdnHewtfXyh6tsaYmvVnWO2OghT4M8iw=;
+        b=ohZ2xfSAOtHUfIeOr9tXvluFWhdOAp5sD/Clu+qfeV7crn4Jy1icG5Sr1j4MGE4SrR
+         iFNIe62loJaUkLC0yYVphLS2AOW1z80VtUdD9NvcxfpS/dc1hHDsZw9s0hUdEA0ktdrP
+         XvrRJYtmPkjW+XJhB0phSrORnvL/1ZmGsh3LdjNN5i0UzZ2CSZ7Ui3IPUdhqlBDnbfQu
+         cCt25B6QmONo2jVj5fm4IGjprZCIb45vC+mHz/nSIK0fOqhNc1saXYbkBl/dOidiFz1f
+         wpOWBuDYSFjQYDvu3ZyvhgY9bTqFvo2p3MYHd+z6nDVxWk09/58FcQuIwGPBptrktCEj
+         SNsw==
+X-Forwarded-Encrypted: i=1; AFNElJ9SDUko2HZRnzOlv18Isyg2zUoBLKBPdae2a8JdboE5RwGy3tUBgdKfA9g70GZ81WzxD02L7YmoT+4R@vger.kernel.org
+X-Gm-Message-State: AOJu0Yw3XnO4SHg9vw9/THU5tNPjm7Ab93TA6SDZN6zmIl536/xIKUXP
+	BOZYCVqBj+FrtiDE1EIDA6w14d8V6jxmuKF4WrZ2mfBvHG9WqkwN7UZvdeztvsNbRLs=
+X-Gm-Gg: AfdE7cnn2cdcZog87IhW+sWR+71ukdmD2ZK7jdACOnOYsLNQzVA+/vjwyQMacIy8ZUU
+	UxpRAG0MPuHUAfsi4AIZR4trZoXx7BcOQskS1Lf323izpltysWURM8/pKxu2fyI7x5K0dksR4PV
+	yvfAoPPP/VG3XRIIJsxkLWWbazZQIbvytVn0HJWhQBTOrg7j8vJwsEZ1jLeURok9+OBI/JcuKZH
+	6V8PcUC6Mto8+5p3mSQKGPH7zz2Ub4j0MRCPFZVkBYNCt/JnwC9fkEL7nYAolJQnqUF9yAJe8A1
+	mSFViBaosg29deO8pLu3ULYHA+kL8xPPj6Q0fXnZ36zh0EUvK8J7/gt8B1gYhOZBlVcPqkMEKXR
+	Hh5MtH6X0M9U3RK2WheEh4zXL2yUP89j4uNtfhlCqoRxgNGta4AF37axgrRGdoDiE72GEI+iv4x
+	zRE7Iji0sBrsSQrsomFAEddlSZpfbDACfn
+X-Received: by 2002:a05:6a21:4596:b0:3bf:990d:3fc7 with SMTP id adf61e73a8af0-3bfd2849358mr1111547637.20.1782821226742;
+        Tue, 30 Jun 2026 05:07:06 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-c9bc02082ebsm1471182a12.26.2026.06.30.05.06.57
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 30 Jun 2026 05:07:06 -0700 (PDT)
+Message-ID: <8999aa70-073c-47f9-ae6e-39af3cc1fe32@gmail.com>
+Date: Tue, 30 Jun 2026 20:06:55 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260630100829.1257618-3-yun.zhou@windriver.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,zeniv.linux.org.uk,kernel.org,vger.kernel.org];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo,windriver.com:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 18/23] ext4: wait for ordered I/O in the iomap buffered
+ I/O path
+To: Jan Kara <jack@suse.cz>
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>, linux-ext4@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org,
+ yi.zhang@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260511072344.191271-1-yi.zhang@huaweicloud.com>
+ <20260511072344.191271-19-yi.zhang@huaweicloud.com>
+ <k3w5c3cyg2py4kums7nhdwjg6b6pm43qtweepuolk57xtmnotz@yxkm2k6sqfc6>
+ <9ab9281d-c5dc-4183-8bc9-b53b5a4ac9c0@gmail.com>
+ <3n6ge2tfe4bd65eicc7l2csxkzupcjtdtc4ojpl6bvtf7cwll6@sxmlt3uciw4c>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <3n6ge2tfe4bd65eicc7l2csxkzupcjtdtc4ojpl6bvtf7cwll6@sxmlt3uciw4c>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Tue 30-06-26 18:08:27, Yun Zhou wrote:
-> Calling iput() on EA inodes while holding xattr_sem or a jbd2 handle
-> can trigger write_inode_now() -> ext4_writepages() -> s_writepages_rwsem,
-> creating a lock ordering issue during mount (!SB_ACTIVE).
+On 6/25/2026 5:42 PM, Jan Kara wrote:
+> On Mon 22-06-26 11:32:16, Zhang Yi wrote:
+>> On 6/18/2026 9:48 PM, Jan Kara wrote:
+>>> On Mon 11-05-26 15:23:38, Zhang Yi wrote:
+>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>
+>>>> For append writes, wait for ordered I/O to complete before updating
+>>>> i_disksize. This ensures that zeroed data is flushed to disk before the
+>>>> metadata update, preventing stale data from being exposed during
+>>>> unaligned post-EOF append writes.
+>>>>
+>>>> Suggested-by: Jan Kara <jack@suse.cz>
+>>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+>>>
+>>> Frankly, this all looks too complex to me. Plus your are adding 32-bytes to
+>>> struct ext4_inode_info which isn't great either. Why don't you just do
+>>> filemap_fdatawait() for the byte at old i_disksize and be done with it?
+>>>
+>>> I believe we have to simplify this. All this complexity (and thus
+>>> maintenance burden) across several patches for the corner case of zeroing
+>>> tail block on extention is in my opinion difficult to justify.
+>>>
+>>> 								Honza
+>>
+>> Hi, Jan!
+>>
+>> Thanks for the review. I understand the concern about complexity and the
+>> 32-byte increase to ext4_inode_info. I tried using
+>> filemap_fdatawait_range() as you suggested, but found two issues where
+>> this solution doesn't work.
+>>
+>> 1. ioend worker deadlock
+>>
+>> Since worker concurrency resources are limited, we cannot wait for
+>> another ioend worker to complete within one ioend worker with the same
+>> work_struct. If the worker calls
+>> filemap_fdatawait_range(byte_at_old_disksize) to wait for the zeroed
+>> block's folio writeback to complete, it sleeps holding the only worker
+>> slot. If the folio contains blocks requiring extent conversion, its
+>> writeback bit is cleared by iomap_finish_ioends() running inside
+>> another worker -- which can only run after the current worker finishes
+>> its batch.
+>>
+>> Concretely:
+>>    - Worker W1 processes ioend A, calls filemap_fdatawait_range() on
+>>      the old EOF byte, sleeps.
+>>    - The zeroed data is in ioend B. bio_endio defers it to
+>>      i_iomap_ioend_list and calls queue_work().
+>>    - queue_work() on i_iomap_ioend_work is idempotent: it returns false
+>>      because the work is currently executing (even though sleeping).
+>>    - ioend B sits in the list, never gets processed.
+>>    - The folio writeback bit is only cleared by processing ioend B.
+>>    - W1 sleeps forever -> deadlock.
 > 
-> Add ext4_put_ea_inode() which uses iput_if_not_last() as a fast path.
-> If this is not the last reference, it is dropped immediately.  If this
-> is the last reference, the inode is linked onto a per-sb lock-free llist
-> via i_ea_iput_node (embedded in ext4_inode_info, sharing space with the
-> unused xattr_sem of EA inodes via a union) and a delayed worker
-> (1 jiffie) performs the final iput() in a clean context.  This avoids
-> per-iput memory allocation.
+> Yes, good point. We cannot wait for folio writeback completion from end_io
+> processing for another folio.
 > 
-> Flush points are placed before quota shutdown (ext4_put_super and
-> failed_mount9) and before freeing structures that eviction depends on
-> (failed_mount_wq and failed_mount3a).  Initialization is placed before
-> journal loading since fast commit replay may trigger evictions that call
-> ext4_put_ea_inode().
+>> Therefore, I think we have to put the wakeup logic in
+>> ext4_iomap_end_bio() that runs in interrupt context without consuming
+>> a worker thread. The ordered range tracking and wait queue are what
+>> make that possible.
+>>
+>> 2. Truncate-up needs an accurate state query
+>>
+>> In the follow-up patch 19, ext4_set_inode_size() must make a precise
+>> decision when updating i_disksize during truncate up.
+>>
+>> This needs a state query: "is there ordered zero I/O in flight right
+>> now?" If yes, the i_disksize update is deferred to
+>> ext4_iomap_wb_update_disksize(is_ordered=true), which advances
+>> i_disksize to i_size when the ordered I/O completes. If no, we must
+>> advance i_disksize immediately, otherwise we will lose the updating
+>> forever.
+>>
+>> Therefore, we need to track the state of the ordered range. Simply
+>> using filemap_fdatawait_range() doesn't work. i_ordered_len serves as
+>> a maintained state flag that both the ioend completion path and the
+>> setattr path can read atomically without sleeping.
+>>
+>> Suggestions?
 > 
-> Also moves init_rwsem(xattr_sem) from init_once to ext4_alloc_inode to
-> handle slab object reuse after the union field has been overwritten.
+> I see. Thanks for explanation. I went back to our discussion back from
+> February to remind myself about the constraints on the tail block zeroing
+> and the i_disksize update mechanism. And in the light of complexity of the
+> current mechanism, I think we've discarded the following possibility too
+> easily:
 > 
-> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
-> Suggested-by: Jan Kara <jack@suse.cz>
+> * On file extend / truncate up just zero tail folio in the page cache, mark
+>    it dirty, keep i_disksize at old value, update i_size to the new value,
+>    add inode to orphan list.
+>    If the i_disksize was block aligned (and so we skip zeroing), we just
+>    update i_disksize rightaway.
+> 
+> * In io end processing if the folio for which we end io has a block which
+>    straddles i_disksize, we update i_disksize to current i_size. We defer
+>    removing inode from orphan list e.g. to file close time (doing it from
+>    end_io processing is problematic locking wise as we need i_rwsem for it).
+> 
+> This is a very simple scheme with very good performace. It makes sure stale
+> data in the tail block cannot be seen on disk after a crash.
 
-Looks good. Feel free to add:
+Hmm, I think this solution has a problem. Since i_disksize is advanced
+to i_size only when the ioend covering the i_disksize block completes,
+we must ensure that i_size is updated before the zeroed folio's
+writeback completes. Otherwise the ioend worker reads the old i_size,
+advances i_disksize to the old value (a no-op), and i_disksize stays
+stale forever after i_size is updated.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Currently, neither truncate-up nor file-extend paths guarantee this
+ordering -- in both, ext4_block_zero_eof() runs before the i_size
+update.
 
-								Honza
+For truncate-up and fallocate, we might be able to split
+ext4_update_inode_size() / ext4_set_inode_size() so that i_size is
+updated before ext4_block_zero_eof(), and then decide whether to
+update i_disksize based on whether i_disksize is block-aligned. I'm
+not yet sure what side effects this reordering would have, but I feel
+uneasy about this.
 
-> ---
->  fs/ext4/ext4.h  | 13 ++++++++++-
->  fs/ext4/super.c | 18 ++++++++++++++-
->  fs/ext4/xattr.c | 60 +++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/xattr.h |  2 ++
->  4 files changed, 91 insertions(+), 2 deletions(-)
+The append-write case is hard to solve. We can't know the final i_size
+before the write completes, so we can't update i_size ahead of
+ext4_block_zero_eof(). When the zeroed folio is later written back, it's
+treated as an ordinary overwriting write -- i_disksize is not advanced.
+And when the subsequent buffered-write data is written back, i_disksize
+still isn't advanced either. The size update is lost.
+
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index b37c136ea3ab..b9b0ada7774b 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1070,8 +1070,14 @@ struct ext4_inode_info {
->  	 * between readers of EAs and writers of regular file data, so
->  	 * instead we synchronize on xattr_sem when reading or changing
->  	 * EAs.
-> +	 *
-> +	 * EA inodes (EXT4_EA_INODE_FL) do not use xattr_sem; they reuse
-> +	 * the space for deferred iput linkage.
->  	 */
-> -	struct rw_semaphore xattr_sem;
-> +	union {
-> +		struct rw_semaphore xattr_sem;
-> +		struct llist_node i_ea_iput_node;
-> +	};
->  
->  	/*
->  	 * Inodes with EXT4_STATE_ORPHAN_FILE use i_orphan_idx. Otherwise
-> @@ -1770,6 +1776,11 @@ struct ext4_sb_info {
->  	struct ext4_es_stats s_es_stats;
->  	struct mb_cache *s_ea_block_cache;
->  	struct mb_cache *s_ea_inode_cache;
-> +
-> +	/* Deferred iput for EA inodes to avoid lock ordering issues */
-> +	struct llist_head s_ea_inode_to_free;
-> +	struct delayed_work s_ea_inode_work;
-> +
->  	spinlock_t s_es_lock ____cacheline_aligned_in_smp;
->  
->  	/* Journal triggers for checksum computation */
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 245f67d10ded..3efa5a817bef 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1303,6 +1303,8 @@ static void ext4_put_super(struct super_block *sb)
->  			 &sb->s_uuid);
->  
->  	ext4_unregister_li_request(sb);
-> +	/* Drain deferred EA inode iputs while quota is still active. */
-> +	flush_delayed_work(&sbi->s_ea_inode_work);
->  	ext4_quotas_off(sb, EXT4_MAXQUOTAS);
->  
->  	destroy_workqueue(sbi->rsv_conversion_wq);
-> @@ -1423,6 +1425,13 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->  	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
->  #endif
->  	ei->jinode = NULL;
-> +	/*
-> +	 * Reinitialize xattr_sem every allocation because EA inodes
-> +	 * share this space with i_ea_iput_node (via union) which may
-> +	 * have overwritten the semaphore when the slab object was
-> +	 * previously used as an EA inode.
-> +	 */
-> +	init_rwsem(&ei->xattr_sem);
->  	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
->  	spin_lock_init(&ei->i_completed_io_lock);
->  	ei->i_sync_tid = 0;
-> @@ -1488,7 +1497,6 @@ static void init_once(void *foo)
->  	struct ext4_inode_info *ei = foo;
->  
->  	INIT_LIST_HEAD(&ei->i_orphan);
-> -	init_rwsem(&ei->xattr_sem);
->  	init_rwsem(&ei->i_data_sem);
->  	inode_init_once(&ei->vfs_inode);
->  	ext4_fc_init_inode(&ei->vfs_inode);
-> @@ -5497,6 +5505,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
->  			  ext4_has_feature_orphan_present(sb) ||
->  			  ext4_has_feature_journal_needs_recovery(sb));
->  
-> +	ext4_init_ea_inode_work(sbi);
-> +
->  	if (ext4_has_feature_mmp(sb) && !sb_rdonly(sb)) {
->  		err = ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block));
->  		if (err)
-> @@ -5747,6 +5757,8 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
->  	return 0;
->  
->  failed_mount9:
-> +	/* Drain deferred EA inode iputs before quota shutdown */
-> +	flush_delayed_work(&sbi->s_ea_inode_work);
->  	ext4_quotas_off(sb, EXT4_MAXQUOTAS);
->  failed_mount8: __maybe_unused
->  	ext4_release_orphan_info(sb);
-> @@ -5767,6 +5779,8 @@ failed_mount8: __maybe_unused
->  	if (EXT4_SB(sb)->rsv_conversion_wq)
->  		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
->  failed_mount_wq:
-> +	/* Drain deferred EA inode iputs before freeing structures */
-> +	flush_delayed_work(&sbi->s_ea_inode_work);
->  	ext4_xattr_destroy_cache(sbi->s_ea_inode_cache);
->  	sbi->s_ea_inode_cache = NULL;
->  
-> @@ -5777,6 +5791,8 @@ failed_mount8: __maybe_unused
->  		ext4_journal_destroy(sbi, sbi->s_journal);
->  	}
->  failed_mount3a:
-> +	/* Drain deferred EA inode iputs from journal replay */
-> +	flush_delayed_work(&sbi->s_ea_inode_work);
->  	ext4_es_unregister_shrinker(sbi);
->  failed_mount3:
->  	/* flush s_sb_upd_work before sbi destroy */
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 982a1f831e22..d5bccc64b032 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -3025,6 +3025,66 @@ void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *ea_inode_array)
->  	kfree(ea_inode_array);
->  }
->  
-> +
-> +/*
-> + * Worker function for deferred EA inode iput.  Processes all inodes queued
-> + * on s_ea_inode_to_free in a context free of xattr_sem/jbd2 handle locks.
-> + */
-> +static void ext4_ea_inode_work(struct work_struct *work)
-> +{
-> +	struct ext4_sb_info *sbi = container_of(to_delayed_work(work),
-> +						struct ext4_sb_info,
-> +						s_ea_inode_work);
-> +	struct llist_node *node = llist_del_all(&sbi->s_ea_inode_to_free);
-> +
-> +	while (node) {
-> +		struct ext4_inode_info *ei = container_of(node,
-> +					struct ext4_inode_info, i_ea_iput_node);
-> +		node = node->next;
-> +		iput(&ei->vfs_inode);
-> +	}
-> +}
-> +
-> +/*
-> + * Release a VFS reference on an EA inode.  Must be used instead of iput()
-> + * in any context where xattr_sem or a jbd2 handle is held.
-> + *
-> + * If this is not the last reference, drops it immediately via
-> + * iput_if_not_last() with no further action needed.
-> + *
-> + * If this is the last reference, the inode is linked onto a per-sb
-> + * llist via i_ea_iput_node (embedded in ext4_inode_info, sharing space
-> + * with the unused xattr_sem) and a delayed worker performs the final
-> + * iput() in a clean context.
-> + *
-> + * Note: while an inode is on s_ea_inode_to_free, the unconsumed i_count
-> + * reference (still 1) keeps it in the inode cache, so any concurrent
-> + * iget() bumps i_count to >= 2 and iput_if_not_last() will succeed.
-> + * Nobody will add the inode a second time until ext4_ea_inode_work()
-> + * drops that reference via iput().
-> + */
-> +void ext4_put_ea_inode(struct inode *inode)
-> +{
-> +	if (!inode)
-> +		return;
-> +	WARN_ON_ONCE(!(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL));
-> +	if (iput_if_not_last(inode))
-> +		return;
-> +	llist_add(&EXT4_I(inode)->i_ea_iput_node,
-> +		  &EXT4_SB(inode->i_sb)->s_ea_inode_to_free);
-> +	/*
-> +	 * Use a short delay to allow multiple EA inodes to accumulate,
-> +	 * reducing workqueue wakeups when several are released together.
-> +	 */
-> +	schedule_delayed_work(&EXT4_SB(inode->i_sb)->s_ea_inode_work, 1);
-> +}
-> +
-> +void ext4_init_ea_inode_work(struct ext4_sb_info *sbi)
-> +{
-> +	init_llist_head(&sbi->s_ea_inode_to_free);
-> +	INIT_DELAYED_WORK(&sbi->s_ea_inode_work, ext4_ea_inode_work);
-> +}
-> +
->  /*
->   * ext4_xattr_block_cache_insert()
->   *
-> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-> index 1fedf44d4fb6..2ff4b6eccd40 100644
-> --- a/fs/ext4/xattr.h
-> +++ b/fs/ext4/xattr.h
-> @@ -190,6 +190,8 @@ extern int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
->  				   struct ext4_xattr_inode_array **array,
->  				   int extra_credits);
->  extern void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *array);
-> +extern void ext4_init_ea_inode_work(struct ext4_sb_info *sbi);
-> +extern void ext4_put_ea_inode(struct inode *inode);
->  
->  extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
->  			    struct ext4_inode *raw_inode, handle_t *handle);
-> -- 
-> 2.43.0
+> Potential problems with this:
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> * We need to do i_disksize update from io end processing which means starting a
+>    transaction. So this mechanism has to be restricted to buffered IO iomap
+>    path due to locking constraints. If the inode uses old ordered mode, it
+>    has to keep using it also for handling of the tail block zeroing.
+>    I think that's acceptable as we want to transition everything to iomap
+>    anyway so this duplicity will eventually go away.
+> 
+> * After a crash we can see i_disksize already updated but file content will
+>    show zeros. This is not breaking any guarantees, it just changes how ext4
+>    behaves after a crash. Again, I think this is acceptable tradeoff for the
+>    simplicity.
+
+These two points are fine with me. My current implementation also has
+these same tradeoffs.
+
+> 
+> What do you think? Any problems I have missed? I'm sorry for poking into
+> this mechanism again and again but I want to keep the code as simple as
+> possible to make our life easier in the future...
+
+That's fine. Although it's a corner case, it's quite subtle, and
+handling it properly takes some careful thought. I would very much
+like to solve it in a simple and elegant way. Any good suggestions
+are welcome.
+
+Thanks,
+Yi.
+
+> 
+>> Regarding the bloat of ext4_inode_info, perhaps we can drop the
+>> wait_queue_head_t (24 bytes) and use wait_var_event()/ wake_up_var()
+>> instead. Would this be acceptable?
+> 
+> Yes, that would be a good way to reduce the bloat if we still need this.
+> 
+> 								Honza
+
