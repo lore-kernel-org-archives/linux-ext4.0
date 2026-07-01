@@ -1,94 +1,141 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f182.google.com (mail-pg1-f182.google.com [209.85.215.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 213C748097B;
-	Wed,  1 Jul 2026 12:44:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EF713438B5
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Jul 2026 14:20:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782909894; cv=none; b=jT/LJVZRjZqKgH8lxI5Fdx/ngUX64hUJUVZj97ltVvkQCEs+h2yZ3S/sELeT7u2JX695TkrbQmEtizhyp3rRczDVPixe6Nz8g2VbHKPt77lIdd9z8dUFxhWaxU3h5zrtMNBKwUp64yUQC7fQuIxTW3jfKJUFIXNk/jfo25ENhN4=
+	t=1782915637; cv=none; b=PFrBevyVqxst0JrXD2Sp26oT1yXFT7unMEact2424ct1lh2F7XLYrdqTYdzFmbITE6PQwOCXe/nLr9ZQSNVYpGocEfbrGsYPVEWwuoVJWiEr+95OYSbp9TlMO2qut0eZcQU5nXQVqCFpQZRa5bumyDIFM0nhtvgXqWWRkHbzZyk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782909894; c=relaxed/simple;
-	bh=/mi043GlxodWc85mAs/LQBfO935RjZ6oJndQuFhRG3s=;
-	h=From:To:In-Reply-To:References:Subject:Message-Id:Date:
-	 MIME-Version:Content-Type; b=GGvczHIHV4Bl6BFBtgE9Ox1MuHon7aYBTs/YeUmTsmfAS1/syR3xIIsvRvMYoZYI0H78V/wMOLqS0L70DrhMldLizx8nLRiFLHdHImgVEjKDdKPkkDF17RzzByp9lEQLXpQX1T/C5AJyy5azdgDRmk1bgECbeaBm+sOzHjKr1Y4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UiMnTGb+; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782915637; c=relaxed/simple;
+	bh=Fb4m7RM02pybVE+aIJPJZ3nvE8N/Yp2mY5olzcic/Rg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=sTMEcvw+21qGvWn05ZnpZXZ41A5hyyR6htVkkHqb9dP5WXtVIkaDE9HOSXeg9JhYyix3QxAmItT4HWr/uq9aVcBOF8yyR27wvufqubp1J/7mhsYgSj3slffWwE9eddAzqwhJJaNkQeKvCvyBGtM9WLCCZKaJnrUihvdx22rMtjk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TY3d0JrQ; arc=none smtp.client-ip=209.85.215.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UiMnTGb+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B8481F000E9;
-	Wed,  1 Jul 2026 12:44:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782909892;
-	bh=+Hwm5iIojRq+2LD99vX3C2yOpsYLR+FkvNmWjUoqtxU=;
-	h=From:To:In-Reply-To:References:Subject:Date;
-	b=UiMnTGb+l8ebGYuCZjHMjGJ222VIpxCgp0j9N1Ef5AZmjLPTI5MWWhdqEPO53LRar
-	 BBUTy8cVYHcqbb9KqSAN81O7GJrngXxwQ2hOiFcCiacHwoI8QVCgL8TJ9MlXaP1Ern
-	 93t4UWJPloP6m7QQTVLZmR2X7HOcfSS0Gi1b9Uz3ySX4XtHS7YI6ylYSUOCBdMO5o3
-	 GN3PIzQ40+pjA6U+FgtZknl6F5+BYlVi6cwSivuPwM55ODRfXfn9Qh0JFg9+dKANym
-	 SgxcHBFcFLihcrnWHiMijma/J4YUS6JOEptK0M1lBwXl+iaS7EcswGsRvGSKDJjpyb
-	 /hTksbB4+UipQ==
-From: Christian Brauner <brauner@kernel.org>
-To: djwong@kernel.org, hch@infradead.org, ojaswin@linux.ibm.com, 
- dgc@kernel.org, linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- lidiangang@bytedance.com, pankaj.raghav@linux.dev, 
- Fengnan Chang <changfengnan@bytedance.com>
-In-Reply-To: <20260701033253.46420-1-changfengnan@bytedance.com>
-References: <20260701033253.46420-1-changfengnan@bytedance.com>
-Subject: Re: [PATCH v6 0/3] iomap: add simple dio path for small direct I/O
-Message-Id: <20260701-abnutzung-laugenbrezel-wurzel-c0d111534aed@brauner>
-Date: Wed, 01 Jul 2026 14:44:45 +0200
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TY3d0JrQ"
+Received: by mail-pg1-f182.google.com with SMTP id 41be03b00d2f7-c96cb024ee0so219753a12.1
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Jul 2026 07:20:36 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782915636; x=1783520436; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=nD2OwIScAIp/QX9OAmRACvwCunUHX0Zy3/ChkfevH3o=;
+        b=TY3d0JrQFTz5Kl7tfLZSym9E/+7l3FVxWvXI0FPfqnRMHHQ0m9PDzn3f0Quf+6Eeox
+         2Z4ilzF5Whz/frAu2DPFd09OForpa7l7aXZQkN6WQpAypAZPS27CG0kFJTIarZtKXV3m
+         9fuf+c7bDQ3UxiWwSneI6GqumEGJS8jAw4+odwhr8zLLz91TpfC2qRZ7S74xJHjDedPS
+         lEf1aO+koR+dO136qO74XGJT7uaCk0wtY08SFMI/SiT7thuWtMFg2bYw0+earf3gQqJN
+         KjN8qifx71sR2dN5gXHooEbHInxXn+PG/YGi2YBRWalmcMoJENSicnp1R5VjGLLU1wMx
+         9/tQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782915636; x=1783520436;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=nD2OwIScAIp/QX9OAmRACvwCunUHX0Zy3/ChkfevH3o=;
+        b=FaN3xggllmm8I0c0KAcP/ESRTa59c0ZDIXHw7GAERiD6TC6VBMfRNZN5Mx65UgSL/0
+         nB94e/3zVmeFqdyMS6W2pBvRRYwsXaLGl0HWgRyV76SA+Kqs/Jqjr3/cJmjhJ+BSbiMB
+         KP5uQpJ7io9R6QyilMMVpYNb5fFsAy6UsC71z2jyYCI2F1pFsCnN4hn1PYSo0miP7b+g
+         blCey1l8JT6twri3Db2hnm2rqVzEJ5jnO5AoCeaSM4d8Tab252/hSKiexhOFnMlVF7aL
+         Go8ZKpEQG9nk0RwG6lk3Jsgs+eoB4mI6bjx85hKc1jqSDsy8KL3t+B/w0Zj3EeRT8vZn
+         W+4w==
+X-Gm-Message-State: AOJu0Yxgph9lBd7JMzf9zv/91jb92impGBfd2lPPN392eb23OXL2VJOB
+	8ah54ic4Dv+CyzXujAOwAxTppknQ5iuWe7VBqMK9G1bdfoQWpZoeRd4Xu4+HB1GXHY8=
+X-Gm-Gg: AfdE7ckVxwYzvFMzQJUjQXwmGJgGqr/TjcPjAS7s0PHwhExQi8f7SMHFYV3c2TMJGrA
+	qwIougTXqwaYTplZtc5pd26oCLjVW9R9F6FxZ68IcCmGZ8Lc8YysRQ552L6NSLTrySU31zJqz3G
+	xE32JLny+D0Al8/pgZOULPlbpE16F3uXG7ttS1nb1WDDiPSmTtqkZ3sTfFgtmm/sYrTjv9ICXEz
+	h7ipapoPnLWOBMDwUMl2/Z11yQaSJ77L7AIkJF7BMHWoTvpt6A3TzwtJhAe7lRQ1Sni4H5BkQRA
+	S75mZn/P3yUxTI/+kcQc/fqWWdDZTvKPplPxJM6hmpwuWgi2cRZ3LkPfmiUFLOzm2jofY2YU3fI
+	+bb/pqBvBYZWWBEsRbUsrXutj6kALQLZBsGyFrb3SBpC+KIQR19myz+rgazTQeDJX8c5JxTplKJ
+	Ikazs05Fn+sNnbWceV2VGJMlAC8lUltgvx
+X-Received: by 2002:a05:6a20:918e:b0:3bf:9fc0:f6c2 with SMTP id adf61e73a8af0-3bfed1bfe6bmr1905706637.11.1782915635572;
+        Wed, 01 Jul 2026 07:20:35 -0700 (PDT)
+Received: from DESKTOP-DK6PUT8.localdomain ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-c9e32ef8e49sm383894a12.19.2026.07.01.07.20.26
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 01 Jul 2026 07:20:34 -0700 (PDT)
+From: yizhang089@gmail.com
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	chengzhihao1@huawei.com,
+	yangerkun@huawei.com
+Subject: [PATCH 0/6] ext4: fix unaligned edge handling in FALLOC_FL_WRITE_ZEROES
+Date: Wed,  1 Jul 2026 22:20:03 +0800
+Message-ID: <20260701142009.1510104-1-yizhang089@gmail.com>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.16-dev-4217c
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1517; i=brauner@kernel.org;
- h=from:subject:message-id; bh=/mi043GlxodWc85mAs/LQBfO935RjZ6oJndQuFhRG3s=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS5ch9iWP7HWULZ/uj9AoG1WYEz5lhYqNT8bDTwiJ+zK
- yfs9N6lHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhvCxSkAEzmRwPBP5174P0O7Vz8zny5o
- T3O3E2NYqBY1sdZA1cM+PTF2Dk8wwz+VvC9pb9glfdU3btn8TfSf+aGzhz4+jEttlXvIrfd++31
- mAA==
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-On Wed, 01 Jul 2026 11:32:50 +0800, Fengnan Chang wrote:
-> iomap: add simple dio path for small direct I/O
-> 
-> When running 4K random read workloads on high-performance Gen5 NVMe
-> SSDs, the software overhead in the iomap direct I/O path
-> (__iomap_dio_rw) becomes a significant bottleneck.
-> 
-> Using io_uring with poll mode for a 4K randread test on a raw block
-> device:
-> taskset -c 30 ./t/io_uring -p1 -d512 -b4096 -s32 -c32 -F1 -B1 -R1 -X1
-> -n1 -P1 /dev/nvme10n1
-> Result: ~3.2M IOPS
-> 
-> [...]
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Applied to the vfs-7.3.iomap branch of the vfs/vfs.git tree.
-Patches in the vfs-7.3.iomap branch should appear in linux-next soon.
+Hi,
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+The current FALLOC_FL_WRITE_ZEROES implementation in ext4 does not
+correctly handle unaligned edge blocks. FALLOC_FL_WRITE_ZEROES is
+needed to convert the requested range to written extents with zeroed
+content, but the existing code only partially zero the edges and never
+guarantees that:
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
+  1) edges that are clean unwritten extents or holes get promoted to
+     written extents, and
+  2) edges that are dirty unwritten or delalloc get their underlying
+     extents converted to written before the syscall returns.
 
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
+Both cases leave the on-disk extent type unwritten, violating the
+WRITE_ZEROES contract, and in these cases a subsequent sync buffered
+overwrite would still observe pending metadata changes from the
+conversion work that should have been completed by WRITE_ZEROES itself.
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.3.iomap
+This series fixes the unaligned edge handling and cleans up a related
+redundant i_disksize update. The first three patches are preparatory:
+moving ext4_zero_partial_blocks() earlier in ext4_zero_range(),
+documenting the return semantics of ext4_load_tail_bh(), and
+replacing the single bool output of ext4_zero_partial_blocks() with a
+per-edge bitmask (EXT4_PARTIAL_ZERO_START/END). The next two patches
+fix the two scenarios above by expanding the aligned allocation range
+outward for skipped (clean unwritten or hole) edges, and by writing
+back partial-zeroed edges so the underlying extents are converted to
+written. The final patch drops the now-redundant
+ext4_update_disksize_before_punch() call on the WRITE_ZEROES path,
+since WRITE_ZEROES is mutually exclusive with KEEP_SIZE and the
+i_disksize update is already handled by ext4_alloc_file_blocks().
 
-[1/3] iomap: factor out iomap_dio_alignment helper
-      https://git.kernel.org/vfs/vfs/c/acb8815f181f
-[2/3] iomap: pass error code to should_report_dio_fserror directly
-      https://git.kernel.org/vfs/vfs/c/281e3e52acbf
-[3/3] iomap: add simple dio path for small direct I/O
-      https://git.kernel.org/vfs/vfs/c/de2f9ebea176
+Thanks,
+Yi.
+
+Discussion Link:
+  https://lore.kernel.org/linux-xfs/0b7f1a4f-da1c-4297-8099-98d738070ab7@huaweicloud.com/
+
+Zhang Yi (6):
+  ext4: move partial block zeroing earlier in ext4_zero_range()
+  ext4: clarify return semantics of ext4_load_tail_bh()
+  ext4: track partial-zero outcome per edge in
+    ext4_zero_partial_blocks()
+  ext4: zero out whole block for clean edges in WRITE_ZEROES
+  ext4: write back partial-zeroed edges in WRITE_ZEROES
+  ext4: skip ext4_update_disksize_before_punch() in WRITE_ZEROES
+
+ fs/ext4/ext4.h    |  5 ++++-
+ fs/ext4/extents.c | 47 +++++++++++++++++++++++++++++++++++++----------
+ fs/ext4/inode.c   | 42 +++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 76 insertions(+), 18 deletions(-)
+
+-- 
+2.53.0
 
