@@ -1,60 +1,80 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA9E53A6EF0
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 18:21:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 893DA394498
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 18:21:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783016494; cv=none; b=lNceu7Q55WYk59FzRfPcP/6u2WxTErHXpfh7Uh2XM2ihoGqoMmeCAOFIdUJcb7DUM/BlmEw49qqVSkfs1E9HXZgGodnuTboTz5QF6A2OVK4U8RJWyD9ZvurSSiOm4+E4wVuuu8eZ7z4S7ZZEu7NYGiT/HFQ/AhkHcwEbNI3+x1U=
+	t=1783016495; cv=none; b=u7W4RSt6opxZu9GpMgBrqFrG8QRKmTxBF7vxvMgEll9nx3malMep855uYgZEozEg9n9X5+nn5b0FfXZtPgr1MlIFunFvO3DFW1xM501xaM6NUGHVTvoT9x2rlE56z9UX6Ku1vOH1lYOber8t/f5wLOxzkIwHA1108uf6C11RD5E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783016494; c=relaxed/simple;
-	bh=lCLdoytTOUGx1v7oqdqnfZTxyA3BlMBH34J8iPYWMjM=;
+	s=arc-20240116; t=1783016495; c=relaxed/simple;
+	bh=2c8BVcZA/EPlKjnaeWd9jYCRiZaeXyt6Zg3HihfU3Qk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=PQxYU0Ns+1bSPD/Ic7VlOUxkwtuv60Cn+RZhXkBuNSJDv+P4ERgEtLLqboprUFIW+bUQIK8dBKEqH2cTFmP1FCt26lM1mdxGpdo+oLlnIN1eQlZ8XXhTtcL2cRJeqo4BrG6KCWRgi9A+WGjp0h1T02CjFNGfLy7d/hEZr3JG1Tw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=pqbZ4lqa; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=lywdUXo0; arc=none smtp.client-ip=195.135.223.131
+	 MIME-Version; b=L/T3vqm49vEZQlt2kcIVd3dXmcHcsSnbvpCPAcPc3j0wpo6/Q+Rqi6O4YRmVR68H50wJ4AQ9IlKOdK9C84+iCeoLsBkAeUyxnIPp0VVLDuB46ekJKQ8jbLlVjhO8I+2xIXJdpAkfYM4holuMabMwsrHQOpeKyhKr9SPmYHIKooY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SuK/CvTl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CsGvXcsz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SuK/CvTl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CsGvXcsz; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="pqbZ4lqa";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="lywdUXo0"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SuK/CvTl";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CsGvXcsz";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SuK/CvTl";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CsGvXcsz"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id B1FBA760E1;
-	Thu,  2 Jul 2026 18:21:20 +0000 (UTC)
-Authentication-Results: smtp-out2.suse.de;
-	none
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 4C51C7435F;
+	Thu,  2 Jul 2026 18:21:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1783016480; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1783016481; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hh/T6RKIqi39FLo5IcT+l+smt+dxsJh0xD8E76s0EIM=;
-	b=pqbZ4lqamKI7qBC72JHN6kOr/S7Dt7kZ5muY2jCq+dLskuvobjOjsWxgZJy3tJ1RXNc5+h
-	iDgQ1Ex9lciVVWH8aYZULKRdUU9XcqL6nzg6ZvsCTPCDk6vEAD8tmq9Ez0tXH/rLGAQdKd
-	Bqq1lolkT59qwUlA1Z2+U1w1Ey4Hg7I=
+	bh=rC9hmEF437MFTeZo9o8MxESUTEUlfXTe3ifIMkHUlBI=;
+	b=SuK/CvTlHDUL/zORYmxs+TEpcwdRj5oGHLIZM+EQtT80+y0OB0xTMdcU4gCqpuEDpq8ObN
+	JyBnX+3/g9hpqxvxprdu4SLq1Ay25VOtgP7mi20o1KLJXDlcNuOIwR/hu2q59vnIk6/y+G
+	Stcbeo0Hnsrrx47WXMMhoo74zTourug=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1783016480;
+	s=susede2_ed25519; t=1783016481;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hh/T6RKIqi39FLo5IcT+l+smt+dxsJh0xD8E76s0EIM=;
-	b=lywdUXo0gMacB0HdEGCUmL4Aa8m8helenHrB/5FhjA7HN0mZc5RrkGrdp7VyZscTMrfl+t
-	46D/RcfZNFXwS8AQ==
+	bh=rC9hmEF437MFTeZo9o8MxESUTEUlfXTe3ifIMkHUlBI=;
+	b=CsGvXcsz8p+KPNbj6UZ960WSv+6IYRfD5pSl+G/aHw4mVcAmShLLB38XXcb5jiq7U772GT
+	65bDc2jb82rTaTDw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783016481; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rC9hmEF437MFTeZo9o8MxESUTEUlfXTe3ifIMkHUlBI=;
+	b=SuK/CvTlHDUL/zORYmxs+TEpcwdRj5oGHLIZM+EQtT80+y0OB0xTMdcU4gCqpuEDpq8ObN
+	JyBnX+3/g9hpqxvxprdu4SLq1Ay25VOtgP7mi20o1KLJXDlcNuOIwR/hu2q59vnIk6/y+G
+	Stcbeo0Hnsrrx47WXMMhoo74zTourug=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783016481;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rC9hmEF437MFTeZo9o8MxESUTEUlfXTe3ifIMkHUlBI=;
+	b=CsGvXcsz8p+KPNbj6UZ960WSv+6IYRfD5pSl+G/aHw4mVcAmShLLB38XXcb5jiq7U772GT
+	65bDc2jb82rTaTDw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A265F779AD;
-	Thu,  2 Jul 2026 18:21:20 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 42FBB779AC;
+	Thu,  2 Jul 2026 18:21:21 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id eCywJyCsRmrrFwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 18:21:20 +0000
+	id 6K1YECGsRmoDGAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 18:21:21 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 0F36BA10A1; Thu, 02 Jul 2026 20:21:16 +0200 (CEST)
+	id 3E94BA10AD; Thu, 02 Jul 2026 20:21:16 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -62,11 +82,10 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	Ted Tso <tytso@mit.edu>,
 	<linux-ext4@vger.kernel.org>,
 	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Jan Kara <jack@suse.cz>,
-	Sashiko <sashiko-bot@kernel.org>
-Subject: [PATCH v3 02/19] fs: Fix possible UAF in mark_buffer_write_io_error()
-Date: Thu,  2 Jul 2026 20:20:59 +0200
-Message-ID: <20260702182057.2832980-21-jack@suse.cz>
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH v3 11/19] udf: Write all metadata for IS_SYNC inodes
+Date: Thu,  2 Jul 2026 20:21:08 +0200
+Message-ID: <20260702182057.2832980-30-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260702175436.12226-1-jack@suse.cz>
 References: <20260702175436.12226-1-jack@suse.cz>
@@ -76,63 +95,86 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1576; i=jack@suse.cz; h=from:subject; bh=lCLdoytTOUGx1v7oqdqnfZTxyA3BlMBH34J8iPYWMjM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqRqwKErioIRacwcJcg4nXKac0E4sPK8sy4vXCP ek16dHgma+JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCakasCgAKCRCcnaoHP2RA 2UIEB/wNm4XVhnZ9Z9WBsZgpgNSYy4iPFGMmwpbI0ST0hjXxzHTYqSg9MNYIrgfbOhHYoXHYmIx XvsuU9tGHnb9HO/LpKBNr/nqBEo+D6lu7c2bRwBb3XmQ063ct/RDGELl1R+ZdWsODKtAwKbJ0Ji gzCcbE23+Gwdh7TwUCNoJPhnDEXTmDIpgnln4pZROUsDO19uQb/n2x50EOQOgmlqA+NTestoJEl ib79DsPU0kikGf+Lia8uBzr4XJ5qk1UNb8q1m9fa9iwJz5SZD1oi7vCIX8/LNrHMD+xtWABhbhs 7XzScru4TJLhlTBxa8SRujXVzYFBlLhQ8xi53RvgjvBRWKZ1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1624; i=jack@suse.cz; h=from:subject; bh=2c8BVcZA/EPlKjnaeWd9jYCRiZaeXyt6Zg3HihfU3Qk=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqRqwSCrBVoL7LWOzcxbupWQur2+1poa32BHoM6 nYR6hm0cSeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCakasEgAKCRCcnaoHP2RA 2ZtyB/4rMTUwqDm2usEUg0mZ/unLVHi+Zfg8McwtBFSTcGRYzQVQMq2ePrcp3VQvHlPXIc01usW 2Lan4a3uxuygdVxGtNLX8N5LFJh3OgxnEBHUMPHAlqkRWdEmQwY15t7PX2WMnR47/gOfVKGfYq2 lU/05CDPmGPrzgblzdeID3W0akW2wO6nT39ZxNGhBcCyFtxhqF8qsLmAfCNC9/FKvZZhTZCkZFo Q9vMDoPwUPZzs7oiUYC+eHE1LgcI6L7dqGiS1JCIT6IyxwIQfpdTc98EBICFUxe1bbKLhZDw44B yKeWgKh/a8Qm5qB3yJ8nIOMsJ1vveAtgimQVtwvglLmbJ7p9
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
-X-Rspamd-Queue-Id: B1FBA760E1
 X-Spam-Flag: NO
-X-Spam-Score: -4.00
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Pre-Result: action=no action;
-	module=replies;
-	Message is reply to one we originated
-X-Spamd-Result: default: False [-4.00 / 50.00];
+X-Spamd-Result: default: False [-5.30 / 50.00];
 	REPLY(-4.00)[];
-	TAGGED_RCPT(0.00)[]
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_CONTAINS_FROM(1.00)[];
+	R_MISSING_CHARSET(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	TO_DN_SOME(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[kernel.org,gmail.com,mit.edu,vger.kernel.org,mail.parknet.co.jp,suse.cz];
+	R_RATELIMIT(0.00)[to_ip_from(RLck8brw5hxmszoarioc7838it)];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:mid];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com]
+X-Spam-Level: 
+X-Spam-Score: -5.30
 
-When filesystem is freeing inode it calls mmb_invalidate() which removes
-bhs from inode's metadata bh tracking and clears b_mmb for them. However
-if the inode is getting deleted, we don't bother with calling mmb_sync()
-before and thus these buffers can be under IO and we can be racing with
-IO completion handler calling mark_buffer_write_io_error(). This race
-can lead to mark_buffer_write_io_error() either hitting NULL pointer
-reference or trying to operate on already freed inode. Protect the
-mapping handling with RCU to make sure mmb and inode aren't freed before
-we are done with them.
+Currently udf_getblk() didn't write all inode related metadata for
+IS_SYNC inodes. Fix the problem by calling udf_sync_inode_metadata() and
+remove now unused udf_sync_inode().
 
-Reported-by: Sashiko <sashiko-bot@kernel.org>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/udf/inode.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 9af5f061a1f8..daaa6614a6d6 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1123,12 +1123,18 @@ EXPORT_SYMBOL(mark_buffer_dirty);
+diff --git a/fs/udf/inode.c b/fs/udf/inode.c
+index 600705f5edf9..d5396d42df18 100644
+--- a/fs/udf/inode.c
++++ b/fs/udf/inode.c
+@@ -52,7 +52,6 @@ struct udf_map_rq;
  
- void mark_buffer_write_io_error(struct buffer_head *bh)
- {
-+	struct mapping_metadata_bhs *mmb;
-+
- 	set_buffer_write_io_error(bh);
- 	/* FIXME: do we need to set this in both places? */
- 	if (bh->b_folio && bh->b_folio->mapping)
- 		mapping_set_error(bh->b_folio->mapping, -EIO);
--	if (bh->b_mmb)
--		mapping_set_error(bh->b_mmb->mapping, -EIO);
-+	/* Protect us from mmb & inode getting freed while we work on it */
-+	rcu_read_lock();
-+	mmb = READ_ONCE(bh->b_mmb);
-+	if (mmb)
-+		mapping_set_error(mmb->mapping, -EIO);
-+	rcu_read_unlock();
+ static umode_t udf_convert_permissions(struct fileEntry *);
+ static int udf_update_inode(struct inode *, int);
+-static int udf_sync_inode(struct inode *inode);
+ static int udf_alloc_i_data(struct inode *inode, size_t size);
+ static int inode_getblk(struct inode *inode, struct udf_map_rq *map);
+ static int udf_insert_aext(struct inode *, struct extent_position,
+@@ -938,9 +937,10 @@ static int inode_getblk(struct inode *inode, struct udf_map_rq *map)
+ 	iinfo->i_next_alloc_goal = newblocknum + 1;
+ 	inode_set_ctime_current(inode);
+ 
+-	if (IS_SYNC(inode))
+-		udf_sync_inode(inode);
+-	else
++	if (IS_SYNC(inode)) {
++		udf_update_inode(inode, 0);
++		udf_sync_inode_metadata(inode, NULL);
++	} else
+ 		mark_inode_dirty(inode);
+ 	ret = 0;
+ out_free:
+@@ -1733,11 +1733,6 @@ int udf_sync_inode_metadata(struct inode *inode, struct writeback_control *wbc)
+ 	return err;
  }
- EXPORT_SYMBOL(mark_buffer_write_io_error);
  
+-static int udf_sync_inode(struct inode *inode)
+-{
+-	return udf_update_inode(inode, 1);
+-}
+-
+ static void udf_adjust_time(struct udf_inode_info *iinfo, struct timespec64 time)
+ {
+ 	if (iinfo->i_crtime.tv_sec > time.tv_sec ||
 -- 
 2.51.0
 
