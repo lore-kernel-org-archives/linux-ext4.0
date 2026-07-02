@@ -1,195 +1,103 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F6B30C15A
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 16:43:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 193F9317146;
+	Thu,  2 Jul 2026 16:51:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783010598; cv=none; b=tpfhHKxWm4gpUvfeHtECRqF4uNidnCTr84WBOh0WA+RQBGpBLNpT0ewtfFuHDUHOptIHipF2x1FQxCh8d16pcGZJ/HnuuCr+tS6xvT7CS6TfDHdtyBRyA/Tk65R/YL3gYro4V83Xj5brhXSTLYkmAAFEe8SxvDtuxzyzyZxdxho=
+	t=1783011079; cv=none; b=aoztfLET7ZB9xbDTxc7Rdgxmm3J1IinhQ/x8XiBgVxMBm+s5DsfhHM1N2Q2bqvDsl/qRmvWJWE3HcXxDszdkG20+FOSr1bnZLlPUeHziU31nj6QdzMQq8E9mOd6ypXFeUgI5612YQf6f6EmktkNktc7krhyxDepsJvMS1p3tqzY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783010598; c=relaxed/simple;
-	bh=JYaeIpzqxeQ6N1LpNnHE2w9sFxJC2Ppx6Tk7l7dK8Bg=;
+	s=arc-20240116; t=1783011079; c=relaxed/simple;
+	bh=biYNUAbSLkMakBI2InMvj+slMvc5J5VSiUpkwej/21U=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EerqyKei28eeWCrQdmSP6vpYElX2+8WP4YFDeLHU+wRP0Q2drwsGWHmM3NaWqM+Sru+eNXEoI8YudgPCYrRLH+DT/egG17OlwnIY1cPhwr1H6Eic1soeR8kUytxqUW//YMpH9D1EeADnhw2AzTg47k99rpvBMADyVYQ0qKtFysY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UbJR0vaf; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yXkDxaqz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UbJR0vaf; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yXkDxaqz; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=rM8CmaCCNP/7TloF7PDZGL9YjQeXPeyW2QBOBCLoLVRWMx6yIffy27XauQzN80+3Vj05Fo37lGrflmo8/bfl1JGeqDnsmAl4aFMBzMUAD0Whgz9u9fSo5rvkqXHVG60QddQKz2d0qT/QOO2thQtk2BbNCoinZtz1vWkM4cLWR6U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ymepa36T; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UbJR0vaf";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yXkDxaqz";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UbJR0vaf";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yXkDxaqz"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 59BDF727B3;
-	Thu,  2 Jul 2026 16:43:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1783010595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
-	b=UbJR0vafkTSmueUnb1eah/rTxaNq+rfXmW7YtSititW8MAvobNxX3cLV1yN+P68zrsLq5H
-	xSmaNeA9Egyvwha5eFwTObAgSOVs0oNhrFif1u6slFK9FGsIMqOK74LJuCgPpRzt+9e5A7
-	IlXIS1RE5ItmtFUkX9Y8qobBh5GEA78=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1783010595;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
-	b=yXkDxaqz4gs+u2z/9t/b6cZjFlb+/Dk5lu2mokDFUaGMAhVFePquW+iF0IJLmgmxiC0t/P
-	r3WcOaU26cnjW2AA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1783010595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
-	b=UbJR0vafkTSmueUnb1eah/rTxaNq+rfXmW7YtSititW8MAvobNxX3cLV1yN+P68zrsLq5H
-	xSmaNeA9Egyvwha5eFwTObAgSOVs0oNhrFif1u6slFK9FGsIMqOK74LJuCgPpRzt+9e5A7
-	IlXIS1RE5ItmtFUkX9Y8qobBh5GEA78=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1783010595;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
-	b=yXkDxaqz4gs+u2z/9t/b6cZjFlb+/Dk5lu2mokDFUaGMAhVFePquW+iF0IJLmgmxiC0t/P
-	r3WcOaU26cnjW2AA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4761E779AA;
-	Thu,  2 Jul 2026 16:43:15 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DNn9ECOVRmpVNwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 16:43:15 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id C37B1A0AE1; Thu, 02 Jul 2026 18:43:14 +0200 (CEST)
-Date: Thu, 2 Jul 2026 18:43:14 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yizhang089@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu, 
-	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, yi.zhang@huawei.com, yi.zhang@huaweicloud.com, 
-	chengzhihao1@huawei.com, yangerkun@huawei.com
-Subject: Re: [PATCH 2/6] ext4: clarify return semantics of ext4_load_tail_bh()
-Message-ID: <5xgyaw3ufsymz7tqoyrkwo64a2uup75hnuaudtrejozhb2qnox@owzep3gkgf2v>
-References: <20260701142009.1510104-1-yizhang089@gmail.com>
- <20260701142009.1510104-3-yizhang089@gmail.com>
- <qpxvjsdnq6jgigjnwzkxny6lms6gi6t4bq5l33rr2f6m6l4oum@5e6ayymrgcbd>
- <a54c9df2-63e6-41ad-b32f-54d2f0356d5c@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ymepa36T"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id D15C81F000E9;
+	Thu,  2 Jul 2026 16:51:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1783011078;
+	bh=ydgqm4JLD9wHorHnF+2XAPjVnBLFS4UbABn2TMKW9lg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Ymepa36TovSJKNYZV3u+xpDtmvDD0jgD8tu6oITOhStEqSB4dFm2GSNjYvX6a/XhD
+	 idd1sj/Z9E/KlApdD9cMjRLqTlqdgS1ZGfahdEB1adsC1jHUM18Idy2FDJdP+91o7q
+	 QlYswMBkWSAqfhgV/t0BjA2QDKkEneDGjH+Gl5qKC5w3Z9fiVXFpsrFrRHn8BhtWaG
+	 lcACOAbDkojouQsXQtSoi47LOb5OGkLJW+AXDJEZT+ElhlEosUQhZ2/nNXhEJR9+aI
+	 PyMC3eJrsnz1BJ5WVFaLKabv6f9zwLwtBLpgZ7fU4xVDkd9t8o3JJ3wtYAC95RX0Zj
+	 PrPeMRFBP/AuA==
+Date: Thu, 2 Jul 2026 09:51:17 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Joanne Koong <joannelkoong@gmail.com>, brauner@kernel.org,
+	willy@infradead.org, hsiangkao@linux.alibaba.com,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	Jens Axboe <axboe@kernel.dk>, Chris Mason <clm@fb.com>,
+	David Sterba <dsterba@suse.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	Dan Williams <djbw@kernel.org>, Gao Xiang <xiang@kernel.org>,
+	Chao Yu <chao@kernel.org>, Yue Hu <zbestahu@gmail.com>,
+	Jeffle Xu <jefflexu@linux.alibaba.com>,
+	Sandeep Dhavale <dhavale@google.com>,
+	Hongbo Li <lihongbo22@huawei.com>,
+	Chunhai Guo <guochunhai@vivo.com>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Sungjong Seo <sj1557.seo@samsung.com>,
+	Yuezhang Mo <yuezhang.mo@sony.com>, Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Carlos Maiolino <cem@kernel.org>,
+	Damien Le Moal <dlemoal@kernel.org>,
+	Naohiro Aota <naohiro.aota@wdc.com>,
+	Johannes Thumshirn <jth@kernel.org>,
+	"open list:BLOCK LAYER" <linux-block@vger.kernel.org>,
+	open list <linux-kernel@vger.kernel.org>,
+	"open list:BTRFS FILE SYSTEM" <linux-btrfs@vger.kernel.org>,
+	"open list:FILESYSTEM DIRECT ACCESS (DAX)" <nvdimm@lists.linux.dev>,
+	"open list:EROFS FILE SYSTEM" <linux-erofs@lists.ozlabs.org>,
+	"open list:EXT2 FILE SYSTEM" <linux-ext4@vger.kernel.org>,
+	"open list:F2FS FILE SYSTEM" <linux-f2fs-devel@lists.sourceforge.net>,
+	"open list:FUSE FILESYSTEM [CORE]" <fuse-devel@lists.linux.dev>,
+	"open list:GFS2 FILE SYSTEM" <gfs2@lists.linux.dev>,
+	"open list:NTFS3 FILESYSTEM" <ntfs3@lists.linux.dev>
+Subject: Re: [PATCH v2 17/18] iomap: pass iomap_next_fn directly instead of
+ struct iomap_ops
+Message-ID: <20260702165117.GK9392@frogsfrogsfrogs>
+References: <20260701000949.1666714-1-joannelkoong@gmail.com>
+ <20260701000949.1666714-18-joannelkoong@gmail.com>
+ <20260702140705.GE21339@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <a54c9df2-63e6-41ad-b32f-54d2f0356d5c@gmail.com>
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Level: 
-X-Spam-Score: -2.30
+In-Reply-To: <20260702140705.GE21339@lst.de>
 
-On Thu 02-07-26 22:40:17, Zhang Yi wrote:
-> On 7/2/2026 5:53 PM, Jan Kara wrote:
-> > On Wed 01-07-26 22:20:05, yizhang089@gmail.com wrote:
-> > > From: Zhang Yi <yi.zhang@huawei.com>
-> > > 
-> > > ext4_load_tail_bh() returns NULL for both holes and clean unwritten
-> > > buffers, but the conditions that lead to this are not obvious from the
-> > > code alone. Document this behavior to clarify the return value, so that
-> > > readers do not mistakenly assume that only holes result in a NULL
-> > > return.
-> > > 
-> > > Also update the inline comment following the ext4_get_block() call to
-> > > reflect this: both holes and clean unwritten buffers fall through to the
-> > > "nothing to do" path.
-> > > 
-> > > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> > > ---
-> > >   fs/ext4/inode.c | 6 +++++-
-> > >   1 file changed, 5 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > > index c2c2d6ac7f3d..0b31fa873743 100644
-> > > --- a/fs/ext4/inode.c
-> > > +++ b/fs/ext4/inode.c
-> > > @@ -4026,6 +4026,10 @@ void ext4_set_aops(struct inode *inode)
-> > >    * because it might have data in pagecache (eg, if called from ext4_zero_range,
-> > >    * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
-> > >    * racing writeback can come later and flush the stale pagecache to disk.
-> > > + *
-> > > + * Return the loaded bh if it actually needs zeroing - in written, dirty
-> > > + * unwritten, or delalloc state. Return NULL if it's clean (i.e., a hole or
-> > > + * a clean unwritten block).
-> > >    */
-> > 
-> > Great that you're adding this comment because when I was reading previous
-> > patch, I've spent like 10 minutes trying to figure that out :). But as far
-> > as I'm reading the code, ext4_load_tail_bh() will return the unwritten bh
-> > even if it is clean - map_bh() in _ext4_get_block() will set
-> > buffer_mapped() even for unwritten extent. What am I missing? BTW, it also
-> > seems to be ext4_load_tail_bh() could attempt to ext4_read_bh_lock() on
-> > unwritten bh if things align wrongly...
-> > 
-> > 								Honza
+On Thu, Jul 02, 2026 at 04:07:05PM +0200, Christoph Hellwig wrote:
+> Looks good:
 > 
-> Thank you for the review!
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 > 
-> Please note the ext4_update_bh_state(bh, map.m_flags) call in
-> _ext4_get_block() — it restores the mapped flag back to unwritten. As a
-> result, the !buffer_mapped(bh) check will evaluate to true for a clean
-> unwritten block, the function will return NULL.
+> In terms of merge logistics, I wonder if we should delay this and
+> the previous patch to the next merge window so that we can minimize the
+> cross-subsystem merge pain with more file system iomap conversion.
+> If none of them actually happen until rc6 or so, orif  the merges aren't
+> painful we could still pick them up late in the merge window.
 
-Argh, right. But ext4_ext_map_blocks() sets both BH_Unwritten and BH_Mapped
-in the returned map->m_flags for unwritten extents. So I think my comment
-still applies. Plus there's a very strange inconsistency between this and
-the lookup in extent status tree in ext4_map_blocks() where (as you
-indicate) we only set BH_Unwritten but *not* BH_Mapped. AFAICT there's
-something buggy in here :) Note that when we don't set BH_Mapped flag e.g.
-from ext4_get_block_unwritten() (which gets used when delalloc is disabled),
-then writes to unwritten extent will get lost because
-ext4_bio_write_folio() will just treat them as holes...
+I'd say everything but this patch should go in during the merge window
+for 7.3, along with clear instructions to brauner/torvalds to expect
+this patch to appear right before 7.3-rc1 gets tagged, to clean up all
+the other changes that come in.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+--D
