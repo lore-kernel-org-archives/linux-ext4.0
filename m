@@ -1,53 +1,71 @@
-Received: from mx0b-0064b401.pphosted.com (mx0b-0064b401.pphosted.com [205.220.178.238])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f45.google.com (mail-wr1-f45.google.com [209.85.221.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFAB830D412;
-	Thu,  2 Jul 2026 15:28:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.178.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11467331EAF
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 15:48:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783006084; cv=none; b=K1k5OSC7dCJFvUD7Yg3i1OX2eT41ykR6lik8CTzO6FbpyAMVlB3n6/Znwv5T0Ls7sADuc/0hb/EOGWLIsXgRP7bKSbzp0WAb5B1GY6ZDQMZWJ9iHhBjHw1rzmBCWXeftkK+Ml9393ryKmuuuGK+JvkmrGSFRpMR0h8RGDPY+jCM=
+	t=1783007329; cv=none; b=h+Na1vwS+7Q4HGKbO6rsJXY5+63WX/MhN2lV0PFE2gauZR9jVp4lw3OlnOUxn96SVDEDtrMIFq0t10twYKDeTRGitffOmk4hMnVDSvKyxq0CU9vQT71sHqb3LoX5fekKu23xRvDhlFtafYZtna/B0m04NI8S0yIGisCWW5dHKxM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783006084; c=relaxed/simple;
-	bh=5eUXJ5FDvu3Ukqb7pD4PKCorbNamowsnQTxPJT9wabc=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=uj0HVuPwZN7o449S6uInUHZgEIpD04FHxlaIdgkVABieKQTJDumSTfijlAeCOM+excLx9zKcUplW7M7/7mZUjl9MUtXG03EK2J63Jh1+OvneG3ox9lKRHstfrGChCWTmxbGswUQjAyiyQNmgR/m0K9Qc3VosNKBaeLuJEB4yih4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=GvZ2tX1Z; arc=none smtp.client-ip=205.220.178.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	s=arc-20240116; t=1783007329; c=relaxed/simple;
+	bh=GHe4f0gJmEY4HTStiVAVdP5FYbjDD0vlOpHVKNuxEy4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=A3+1EPRieyGRwX/2ueCmyHHR1R0N/+kZyQAL1GInJFIfxIbHj+kNqm1y3F56lEXc+aEdk4VQTwYlA/qy2oRm4GitaYVROQueC/44PmXugkHoEDXaBUag5hsL7878TzHcH3R6qwum2AHR+ihCNwxMuLlLkjpmz8e2/Q71RpDKaTY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=smile.fr; spf=pass smtp.mailfrom=smile.fr; dkim=pass (1024-bit key) header.d=smile.fr header.i=@smile.fr header.b=nQFzvMGU; arc=none smtp.client-ip=209.85.221.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=smile.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=smile.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="GvZ2tX1Z"
-Received: from pps.filterd (m0250812.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 662E3xZA1908682;
-	Thu, 2 Jul 2026 15:22:30 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:message-id:mime-version:subject:to; s=PPS06212021; bh=/w35vLLNv
-	xBB1Tzw3g6sWcCRoQuPkM2OB3acch05eZI=; b=GvZ2tX1ZLrGO+YzLoPusVKlh2
-	o488vZa2zo109O87KCSY6Obt0Uw8OlmocA32HY9tP2x5/L8mo6cufhFmlKIoS5wj
-	JrXlPnwyeDa9CKJaqQ0vlRQTeD7AlT9Nx+669FtKzVnTmO9STWOo6vznL3uu4VWJ
-	f4eNJAFK5WmiUXcBWi3qr74QKMmcdEra7AMkwTZwj4DSFDU+0MYt2p/XaG/YVGBB
-	VwfYQ8QDVWiFDGZjSvTCeAYZzbmss8Vm1p7VYtovAHzcozIjk85Egk3ixeNK5E70
-	2w38+jC9y3LN9PEneLh8uynHl73i5xcY6NFqtkqsSzgwRFuEY1YonIql4E9Ug==
-Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f25g5qtd4-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Thu, 02 Jul 2026 15:22:30 +0000 (GMT)
-Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Thu, 2 Jul 2026 08:22:28 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Thu, 2 Jul 2026 08:22:25 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <yun.zhou@windriver.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v13 0/4] ext4: deferred iput framework for EA inodes
-Date: Thu, 2 Jul 2026 23:22:20 +0800
-Message-ID: <20260702152225.4071746-1-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (1024-bit key) header.d=smile.fr header.i=@smile.fr header.b="nQFzvMGU"
+Received: by mail-wr1-f45.google.com with SMTP id ffacd0b85a97d-470174001a0so1462671f8f.0
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2026 08:48:47 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=smile.fr; s=google; t=1783007326; x=1783612126; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=cKj12gt7daFFKUdXxcgEMCasVJqe5u0XDbVIMbqELsI=;
+        b=nQFzvMGUQvQI6EZOe0f5vgqCjTjZ5zGyoHAouupznJn54kFGa+XSQanNNML1Q+prB7
+         eh2OTzsy3DVO/c6MJrue4dsvXfZYMHlTYJHM1GNnxz5eCAdHR4PCC2XrUuWKLnnsFJdX
+         m23pyJAui+jBLsB+hXtXNc2p0rDEP1H7rRuZ8=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1783007326; x=1783612126;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=cKj12gt7daFFKUdXxcgEMCasVJqe5u0XDbVIMbqELsI=;
+        b=RrayZmAi/MFozFaWHWx68YajOmxbDtaOKhZWFX9ZaqTHtpQjfDR3sSrXCmj0RlO7CL
+         n6WxIPjERKsd6Nl7fxJCRgZ5sf5H1FccZX6GuJu4EIu9M7iVxSugKKo1t1SVC6g0GDXl
+         4H1gRpUS9M2klUuwZ23229oQuT+A47dTHvgJZo412FDjugcT3rE7yd9RmPEl095hGj9b
+         txIp1hUvcPFqqcOO9lb7CB2pKK1ESLeISJDCxSBArcBSDW1lFevxtBrTK25iFodSBPpr
+         NKmsEHY5osFpAxeSiLC8EG2jij98E1rSS6gZ/uHC5yKwBJCBzTHducZoTwoP9+ux0ZfX
+         MrNg==
+X-Gm-Message-State: AOJu0Yzz1/nH6TNV3ggPoqgxV9iYZPkP/BDKAW9GrUZbO/m6QA1bZM8d
+	aTEDy5mnT4X89T+kd8+kpv+TKUIRX1se1tUwPqbyIOiXxrtn764xIHduW1c46A1ttx4=
+X-Gm-Gg: AfdE7clHVeHs8GS7nGnrp9JhlWxgp0OutxKIxLfhBPBKJcr89P2M6IwOwzyOrHwEGMM
+	Dh0ytOwvDIcN0r/5i4gaTx0iXAbq7tyt6w12U1sPnsIvxQXA7cpSxIbODYTteAYUAx3DlEKFq6B
+	8bWUo0L5EaiWIMgfTklKHWjBepkwVOw5X4yAZkAGAsAZ6FRMB6JQtKVnD4ZMxL0t6vdtVgkq9oM
+	MZwVsnBaPh4YJP+4fgBT6eFK5nahOPpKOABzYWAM2f1PBIwHr/N1ovvFqu9u6LgnTrTbJ+JEX1l
+	lvXMWKiGYa7pZdd6nflvYdHKp2MLPakFEcdDGS6hqEx5Bb2Ndamwzy+kX/joexhkCn/Ej5IjK68
+	KucQDQilds26vKeCp4hkXYnIe7EQ/Y3DcoybjcuC6thc+OTUztwJCfHtk4pQrf9e88VjKNmmdl0
+	C7rqhx91gTWfJGNZd0kf/JgeBB8DfyTY7ledMgxPy2hGCt2RHw+RhDrj/pvcUAV4YDf9gSRjwF/
+	gytaAXsC+vRAMX/bxBw4LhrmELq
+X-Received: by 2002:a05:6000:2507:b0:473:975c:4fd1 with SMTP id ffacd0b85a97d-477b3d5c5bfmr8449841f8f.25.1783007326422;
+        Thu, 02 Jul 2026 08:48:46 -0700 (PDT)
+Received: from FRSMI25-LASER.home (2a01cb001331aa00c56cc01f8c3c1c95.ipv6.abo.wanadoo.fr. [2a01:cb00:1331:aa00:c56c:c01f:8c3c:1c95])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-477de3dc77bsm10042468f8f.33.2026.07.02.08.48.45
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 02 Jul 2026 08:48:46 -0700 (PDT)
+From: Yoann Congal <yoann.congal@smile.fr>
+To: stable@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Yoann Congal <yoann.congal@smile.fr>,
+	Baokun Li <libaokun1@huawei.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Subject: [PATCH 6.6.y] ext4: get rid of ppath in get_ext_path()
+Date: Thu,  2 Jul 2026 17:48:10 +0200
+Message-ID: <20260702154810.3435236-1-yoann.congal@smile.fr>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,150 +73,127 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNzAyMDE2MSBTYWx0ZWRfX9TpisIS+C7KC
- iNZV2PG0uOru3Mf2JUtBNUXvJ++z/YwMgW1mUyfyLZO7iGbPh+mEJnfjc3R8LdcGZrt/HIoeHNk
- nVRaOeMtRLzLiMpmwLmvMiuvHUEdrtUVTU9V8P7++vQ8HIfVmBT7
-X-Proofpoint-ORIG-GUID: 7k874Q40-MdYsgFtOXaXzrZEFMACYoxj
-X-Proofpoint-GUID: 7k874Q40-MdYsgFtOXaXzrZEFMACYoxj
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzAyMDE2MSBTYWx0ZWRfXwVNPFBp+LkUj
- /jxp/MkOLxzV9JX2ToFpXrCEFLTRmUj2HFHprfxLQWR/n8gDxI70g6avoQkIGX6BiU/i9icjPht
- sJ4ZnjNKz4Q6LSua5RaMRoeMfvOYAmCiARqfI++5pxtYgA7uvBk8En1esmxY+yXj36sQd/6lXK+
- GqbetPqy3AzC77s5NEGEG5lzCM8MG7sKdSnEjUCOoTv6Ehx+bRfR1Sju0wmU3CIDJPoZqGtbe0i
- kGYzPjGWoNzTWOIuxRt6E7xiomQuNmreWiU0bliLXGZay17kgHkbNG0bVWAH5P4r+7n+aos0TR8
- cjbAvgUxE91VHfo3rFaFzYestauaozpT8l7Hm1w4e7/BL3Nkmjk9NKcejVhK0GBYWaeaM/0wc9X
- n49eaimvXlyqyZsYG6KrNrq+CfaTOtEDUihFzMnqzs5os4bZV9ASEqxITbpo/Kkp4fz35owG3xF
- CCnIOcz8pezuh8AxSyQ==
-X-Authority-Analysis: v=2.4 cv=TvLWQjXh c=1 sm=1 tr=0 ts=6a468236 cx=c_pps
- a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
- a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=fTW__CHxibyLmBMfj2wP:22 a=edf1wS77AAAA:8 a=V-Be077b3uO8ztIljxAA:9
- a=DcSpbTIhAlouE1Uv7lRv:22
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
- definitions=2026-07-02_02,2026-06-26_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- malwarescore=0 lowpriorityscore=0 spamscore=0 phishscore=0 clxscore=1015
- priorityscore=1501 bulkscore=0 suspectscore=0 impostorscore=0 adultscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607020161
 
-This series introduces a deferred-iput framework for EA inodes to
-eliminate a class of lock ordering issues in ext4 xattr code.
+From: Baokun Li <libaokun1@huawei.com>
 
-The problem: iput() on EA inodes while holding xattr_sem or a jbd2
-handle can trigger eviction, which may acquire those same locks or
-s_writepages_rwsem, creating circular dependencies.  The immediate
-deadlock (during mount-time orphan cleanup) is fixed by two separate
-patches already reviewed and posted:
+[ Upstream commit 6b854d552711aa33f59eda334e6d94a00d8825bb ]
 
-  ext4: skip extra isize expansion during mount to prevent deadlock
-  ext4: set EXT4_STATE_NO_EXPAND in ext4_evict_inode
+The use of path and ppath is now very confusing, so to make the code more
+readable, pass path between functions uniformly, and get rid of ppath.
 
-This series provides the structural fix that makes the code safe
-regardless of calling context:
+After getting rid of ppath in get_ext_path(), its caller may pass an error
+pointer to ext4_free_ext_path(), so it needs to teach ext4_free_ext_path()
+and ext4_ext_drop_refs() to skip the error pointer. No functional changes.
 
-Patch 1 adds a VFS helper iput_if_not_last() which drops an inode
-reference only if it is not the last one, using atomic_add_unless().
-Annotated with __must_check to ensure callers handle the failure case.
+Signed-off-by: Baokun Li <libaokun1@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Link: https://patch.msgid.link/20240822023545.1994557-13-libaokun@huaweicloud.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Patch 2 introduces ext4_put_ea_inode() using iput_if_not_last() as
-a fast path (single atomic, zero overhead for the common case).  If
-this is the last reference, the inode is linked onto a per-sb llist
-(via i_ea_iput_node embedded in ext4_inode_info, union with xattr_sem
-which is unused for EA inodes) and a delayed worker (1 jiffie) performs
-the final iput() in a clean context.  No per-iput allocation needed.
-Also moves init_rwsem(xattr_sem) from init_once to ext4_alloc_inode
-to handle slab reuse after the union field has been overwritten.
+Signed-off-by: Yoann Congal <yoann.congal@smile.fr>
+---
+ fs/ext4/extents.c     |  5 +++--
+ fs/ext4/move_extent.c | 34 +++++++++++++++++-----------------
+ 2 files changed, 20 insertions(+), 19 deletions(-)
 
-Patch 3 converts all EA inode iput() calls in xattr code to use
-ext4_put_ea_inode() uniformly -- no exceptions to reason about.
-
-Patch 4 removes the now-redundant ea_inode_array mechanism (parameter
-threading, struct, expand/free functions), replaced entirely by direct
-ext4_put_ea_inode() calls.  This is a net code reduction.
-
-The only change since v12 is a minor addition of two VFS_BUG_ON_INODE
-assertions in iput_if_not_last() (patch 1), as suggested by Mateusz
-Guzik.  All existing Reviewed-by tags are retained.  The series has
-been fully reviewed and is ready to be merged.
-
-Link: https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5
-
-v13:
- - Patch 1: add VFS_BUG_ON_INODE assertions in iput_if_not_last() to
-   catch misuse on inodes in I_FREEING/I_CLEAR state or with zero
-   refcount (suggested by Mateusz Guzik).
-
-v12:
- - Drop patch 5 (dedup array for corrupted fs duplicate entries).
- - Simplify ext4_put_ea_inode() to take only an inode argument (sb is
-   derived from inode->i_sb).
-
-v11:
- - Patch 1: add __must_check annotation to iput_if_not_last().
- - Patch 2: remove ext4_drain_ea_inode_work() wrapper, use direct
-   flush_delayed_work() at drain points.  Re-arm is not possible
-   because check_igot_inode() in __ext4_iget() already rejects EA
-   inodes with extended attributes, so evicting an EA inode never
-   enters ext4_xattr_delete_inode().  Drop the ext4_evict_inode()
-   guard (was patch 5 in v10) -- it is unnecessary given the above.
-   Remove ext4_xattr_inode_array_free_deferred() intermediate function
-   -- mechanism is introduced without converting any call site.
- - Patch 2: add comment on ext4_put_ea_inode() documenting why the
-   inode cannot be double-queued to s_ea_inode_to_free (reviewer
-   request).
- - Patch 2: simplify ext4_ea_inode_work() by removing 'next' variable.
- - Patch 5: replace per-call llist (i_ea_iput_node reuse) with a simple
-   on-stack ino array + __GFP_NOFAIL dynamic growth.  This eliminates
-   all concurrent access concerns on i_ea_iput_node and avoids the
-   need for EXT4_STATE_EA_DEC_REF or ihold tricks.  Only EA inodes
-   whose nlink drops to 0 are tracked, so legitimate dedup with
-   ref_count > 1 is correctly processed multiple times.
-
-v10:
- - New patch 5: prevent deadlock from duplicate EA inode references
-   on corrupted filesystems.  Track processed EA inodes on a per-call
-   llist to skip duplicates before iget, and defer ext4_put_ea_inode()
-   until after the loop to avoid queuing an inode for eviction while
-   the same loop may still iget it.
- - Patch 2: move ext4_init_ea_inode_work() before ext4_multi_mount_protect()
-   so that failed_mount3a drain does not hit an uninitialized delayed_work
-   when MMP check fails.
-
-v9:
- - Add iput_if_not_last() as proper VFS helper (per reviewer: don't
-   let filesystems manipulate inode refcount without VFS abstraction).
- - Use iput_if_not_last() + llist_node embedded in ext4_inode_info
-   (union with xattr_sem) to avoid per-iput allocation entirely.
- - Convert ALL EA inode iput() calls uniformly -- no exceptions.
- - Remove entire ea_inode_array mechanism.
- - Add WARN_ON_ONCE in ext4_put_ea_inode() to catch misuse on non-EA
-   inodes (protects the xattr_sem union safety).
- - Move INIT_DELAYED_WORK before journal loading (fast commit replay
-   may trigger evictions).
- - Drain before ext4_quotas_off() for correct quota accounting.
- - Add flush in failed_mount_wq and failed_mount3a error paths for
-   journal replay case.
- - Move init_rwsem(xattr_sem) from init_once to ext4_alloc_inode to
-   handle slab object reuse after union overwrite.
- - Encapsulate worker init into ext4_init_ea_inode_work(), making
-   ext4_ea_inode_work() static to xattr.c.
-
-Yun Zhou (4):
-  fs: add iput_if_not_last() helper
-  ext4: introduce ext4_put_ea_inode() for safe deferred iput
-  ext4: convert all EA inode iput() calls to ext4_put_ea_inode()
-  ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
-
- fs/ext4/ext4.h     |  13 +++-
- fs/ext4/inode.c    |   6 +-
- fs/ext4/super.c    |  18 +++++-
- fs/ext4/xattr.c    | 154 +++++++++++++++++++++------------------------
- fs/ext4/xattr.h    |   9 +--
- include/linux/fs.h |  15 +++++
- 6 files changed, 119 insertions(+), 96 deletions(-)
-
--- 
-2.43.0
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a94798e23c1af..9c2d23958146b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -114,7 +114,7 @@ static void ext4_ext_drop_refs(struct ext4_ext_path *path)
+ {
+ 	int depth, i;
+ 
+-	if (!path)
++	if (IS_ERR_OR_NULL(path))
+ 		return;
+ 	depth = path->p_depth;
+ 	for (i = 0; i <= depth; i++, path++) {
+@@ -125,6 +125,8 @@ static void ext4_ext_drop_refs(struct ext4_ext_path *path)
+ 
+ void ext4_free_ext_path(struct ext4_ext_path *path)
+ {
++	if (IS_ERR_OR_NULL(path))
++		return;
+ 	ext4_ext_drop_refs(path);
+ 	kfree(path);
+ }
+@@ -4242,7 +4244,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 	path = ext4_find_extent(inode, map->m_lblk, NULL, 0);
+ 	if (IS_ERR(path)) {
+ 		err = PTR_ERR(path);
+-		path = NULL;
+ 		goto out;
+ 	}
+ 
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index d5636a2a718a8..96a84de321690 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -17,27 +17,23 @@
+  * get_ext_path() - Find an extent path for designated logical block number.
+  * @inode:	inode to be searched
+  * @lblock:	logical block number to find an extent path
+- * @ppath:	pointer to an extent path pointer (for output)
++ * @path:	pointer to an extent path
+  *
+- * ext4_find_extent wrapper. Return 0 on success, or a negative error value
+- * on failure.
++ * ext4_find_extent wrapper. Return an extent path pointer on success,
++ * or an error pointer on failure.
+  */
+-static inline int
++static inline struct ext4_ext_path *
+ get_ext_path(struct inode *inode, ext4_lblk_t lblock,
+-		struct ext4_ext_path **ppath)
++	     struct ext4_ext_path *path)
+ {
+-	struct ext4_ext_path *path = *ppath;
+-
+-	*ppath = NULL;
+ 	path = ext4_find_extent(inode, lblock, path, EXT4_EX_NOCACHE);
+ 	if (IS_ERR(path))
+-		return PTR_ERR(path);
++		return path;
+ 	if (path[ext_depth(inode)].p_ext == NULL) {
+ 		ext4_free_ext_path(path);
+-		return -ENODATA;
++		return ERR_PTR(-ENODATA);
+ 	}
+-	*ppath = path;
+-	return 0;
++	return path;
+ }
+ 
+ /**
+@@ -95,9 +91,11 @@ mext_check_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
+ 	int ret = 0;
+ 	ext4_lblk_t last = from + count;
+ 	while (from < last) {
+-		*err = get_ext_path(inode, from, &path);
+-		if (*err)
+-			goto out;
++		path = get_ext_path(inode, from, path);
++		if (IS_ERR(path)) {
++			*err = PTR_ERR(path);
++			return ret;
++		}
+ 		ext = path[ext_depth(inode)].p_ext;
+ 		if (unwritten != ext4_ext_is_unwritten(ext))
+ 			goto out;
+@@ -634,9 +632,11 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+ 		int offset_in_page;
+ 		int unwritten, cur_len;
+ 
+-		ret = get_ext_path(orig_inode, o_start, &path);
+-		if (ret)
++		path = get_ext_path(orig_inode, o_start, path);
++		if (IS_ERR(path)) {
++			ret = PTR_ERR(path);
+ 			goto out;
++		}
+ 		ex = path[path->p_depth].p_ext;
+ 		cur_blk = le32_to_cpu(ex->ee_block);
+ 		cur_len = ext4_ext_get_actual_len(ex);
