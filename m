@@ -1,94 +1,91 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F42B4DB570
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 14:25:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 159171D86E4
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 14:29:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783002322; cv=none; b=DuwFaNzP1bSDuN2Z0wbA5IqggcGUyFXUuRH3C1pS3mVi/yb9nZ514l/nF4OBfZt4mcKBpkQbjSQlP7ZVDgl85HcF3UBGDIWzCo/ml8K9UEUCzTrSX7n/oP0YakjCDkYCwsKqBMIp+KzdnX3AffldKUfjibV2FifwGfvQetYf6Bo=
+	t=1783002575; cv=none; b=aBF3J/fIAstKGTw2SFpcJS89kP2ScvBbeGVl15c3GQMdZi4oGriTO+ca6LOQbB6fUnQHtlJEfUZn0RAucgLAQJOxtFiQ5Qm4iIVAf18zI2jSPxF4Zaq9NxYrZwiTrfs2vchRmWDDtIzISIg8P289l1jZfW4M+9rHWHg00SNDOuc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783002322; c=relaxed/simple;
-	bh=btHQyhunEiGffs5qzss/5oZqFMdk46YqSCN2OMLKq1Q=;
+	s=arc-20240116; t=1783002575; c=relaxed/simple;
+	bh=ciQ3qgaDnN4+BvW8UeXpyFaZghj+hvCeoZo+2ACqkZg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=D0wOgZmP2JLaTdpXGEl1AHG1rbUPHAoF8U4HBxS8WrCK6vPYNjIcDX6Uzi/tpCueoDpF++QmQtRC81CxTR1yvvHq7uw/30AC9ORVSfbMIXWYRBt0EdgcppzERdwo4i5OVr7HuWlebbBpZyJnlky88C2CUJAXtXvha/U3HY5uS7c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=xILfie6E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=L+k0vvab; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=xILfie6E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=L+k0vvab; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=fpgbbIwQKOy51dfnEUvu2xfLIsvVtN3Am9t24VsHSbW2yN4/QpHC8tI8d1uckRTE1LtGTqkmmzdn6A5dGChoIOdEpAHSCqpmUqAl5R8jfDgLZ5HEIGIJwXWCr+8BXgfDXKlLZVTi7coBJvVK50EzldGqWno2xSRS2Elm3EidcI4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=0YtUMD7h; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FX6URIOn; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=0YtUMD7h; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FX6URIOn; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="xILfie6E";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="L+k0vvab";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="xILfie6E";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="L+k0vvab"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="0YtUMD7h";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FX6URIOn";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="0YtUMD7h";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FX6URIOn"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 1912574220;
-	Thu,  2 Jul 2026 14:25:17 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 44EE275853;
+	Thu,  2 Jul 2026 14:29:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1783002317; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1783002571; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=2mvTo13UDZWasKlGkpxWAfxMxVwyDQyTfMbb5Z+ZZwQ=;
-	b=xILfie6E/VoLZTXpXn/hdEsmcNU+o6jfjAkAVAI06RYkZ9JKQRiD4YZFGXEGrIK5eK8sik
-	a0uWerXTcPJV/3SiKWHO2HjaI+zmP4P7PSno7bMxz+Y6BlhcveefIPyTpEaUOwyiiGS1ix
-	84jetfKYrTTHdNfrg6bpG98Ly/rc8Ow=
+	bh=ZuXaNzbLUjh54CYOSO5+US4E4ezHXPNDl/gXOinpe3A=;
+	b=0YtUMD7huXD33OsaeybL8sIY3F6P59stTBHqwD0yMCjqIHX863DY3r0B1BfitQHgW5Yz2Q
+	MGuvDUv08i3Fj7RQey2Iuf4eZdbr4gFQOm3PtEeT6ifq6vkIR940vTJRauHmw0rHRlvZCx
+	swnMjLEMgmKAyzg+6wvq3DkYQFilmrY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1783002317;
+	s=susede2_ed25519; t=1783002571;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=2mvTo13UDZWasKlGkpxWAfxMxVwyDQyTfMbb5Z+ZZwQ=;
-	b=L+k0vvabmFkiESfu3iM36vVFMWX70RQMlJTdR3VdhGYrBjyLuspjSM634bH7AMu+Z4qLLq
-	g/Q4XwihiFaZCfAw==
-Authentication-Results: smtp-out1.suse.de;
+	bh=ZuXaNzbLUjh54CYOSO5+US4E4ezHXPNDl/gXOinpe3A=;
+	b=FX6URIOnZR7WQ7esiuivEayCT+pFrbeuF84BgY/oL5hJB4hXX01JytSt68t0RTPS8zTpxH
+	kT6dxMGiZ/eFY/Cw==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1783002317; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1783002571; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=2mvTo13UDZWasKlGkpxWAfxMxVwyDQyTfMbb5Z+ZZwQ=;
-	b=xILfie6E/VoLZTXpXn/hdEsmcNU+o6jfjAkAVAI06RYkZ9JKQRiD4YZFGXEGrIK5eK8sik
-	a0uWerXTcPJV/3SiKWHO2HjaI+zmP4P7PSno7bMxz+Y6BlhcveefIPyTpEaUOwyiiGS1ix
-	84jetfKYrTTHdNfrg6bpG98Ly/rc8Ow=
+	bh=ZuXaNzbLUjh54CYOSO5+US4E4ezHXPNDl/gXOinpe3A=;
+	b=0YtUMD7huXD33OsaeybL8sIY3F6P59stTBHqwD0yMCjqIHX863DY3r0B1BfitQHgW5Yz2Q
+	MGuvDUv08i3Fj7RQey2Iuf4eZdbr4gFQOm3PtEeT6ifq6vkIR940vTJRauHmw0rHRlvZCx
+	swnMjLEMgmKAyzg+6wvq3DkYQFilmrY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1783002317;
+	s=susede2_ed25519; t=1783002571;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=2mvTo13UDZWasKlGkpxWAfxMxVwyDQyTfMbb5Z+ZZwQ=;
-	b=L+k0vvabmFkiESfu3iM36vVFMWX70RQMlJTdR3VdhGYrBjyLuspjSM634bH7AMu+Z4qLLq
-	g/Q4XwihiFaZCfAw==
+	bh=ZuXaNzbLUjh54CYOSO5+US4E4ezHXPNDl/gXOinpe3A=;
+	b=FX6URIOnZR7WQ7esiuivEayCT+pFrbeuF84BgY/oL5hJB4hXX01JytSt68t0RTPS8zTpxH
+	kT6dxMGiZ/eFY/Cw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0A8A4779AA;
-	Thu,  2 Jul 2026 14:25:17 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 32277779AA;
+	Thu,  2 Jul 2026 14:29:31 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id q+aQAs10RmpELQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 14:25:17 +0000
+	id EA09DMt1RmogMQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 14:29:31 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 4DF56A0AE1; Thu, 02 Jul 2026 16:25:08 +0200 (CEST)
-Date: Thu, 2 Jul 2026 16:25:08 +0200
+	id 92054A0AE1; Thu, 02 Jul 2026 16:29:30 +0200 (CEST)
+Date: Thu, 2 Jul 2026 16:29:30 +0200
 From: Jan Kara <jack@suse.cz>
-To: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Tao Ma <boyu.mt@taobao.com>, 
-	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: use fsdata to track inline data write state and
- fix race
-Message-ID: <g5eysqk2ksqaigvjn6a6ffkmrukpaorfd5e6eyhdamqwtz5idg@ta5veoyzfab4>
-References: <20260702050724.1658-1-aditya.ansh182@gmail.com>
- <3sbocdflzeajcievmbdwprrgzkztd7ogn7mmjx4quptorotwak@rlzklako3yht>
- <CAK5ssPOM-rddJR6=QJ4RSCeQvamKKAbJS+NCOLbsC2eSODydkQ@mail.gmail.com>
- <zwfhyqxdxfigm5nced3hgsp4mygwxgwc4cxzeyl7glrmie73rm@r66bdrw7fjsj>
- <CAK5ssPPPfkL889aCK_z9EnDNbKBuHRQd45uLzXpeUVrVkFkzbw@mail.gmail.com>
- <CAK5ssPOxredbV5dDsyc4YLdDBVPEv5b6qOKCxiWPLMWSc7VyaQ@mail.gmail.com>
+To: "Zhou, Yun" <yun.zhou@windriver.com>
+Cc: Jan Kara <jack@suse.cz>, Mateusz Guzik <mjguzik@gmail.com>, 
+	tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com, 
+	viro@zeniv.linux.org.uk, brauner@kernel.org, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, xiaowu.417@qq.com
+Subject: Re: [PATCH v11 1/5] fs: add iput_if_not_last() helper
+Message-ID: <mqchxi74vrsmsitr46gtnw5w7tooj7go2tm2jadg4mktppjafc@5uplsind6ooq>
+References: <20260629110848.3085662-1-yun.zhou@windriver.com>
+ <20260629110848.3085662-2-yun.zhou@windriver.com>
+ <4k4crl4oobz4xtmvjoqwoefrd6in46xf725z3ewme3smgh5ide@6dmywcnp6o6y>
+ <txvgbvn77wjgfz4ywdb25v7ol4ecszqh5yg3p4g56sbxq6prlo@rpfwveotnfvz>
+ <6c4e9256-5727-44b2-b63c-e18fe1b95194@windriver.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -97,98 +94,94 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAK5ssPOxredbV5dDsyc4YLdDBVPEv5b6qOKCxiWPLMWSc7VyaQ@mail.gmail.com>
+In-Reply-To: <6c4e9256-5727-44b2-b63c-e18fe1b95194@windriver.com>
 X-Spam-Flag: NO
 X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
+	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[0c89d865531d053abb2d];
 	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[13];
+	MISSING_XM_UA(0.00)[];
 	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[15];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
 	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,taobao.com,syzkaller.appspotmail.com,vger.kernel.org];
+	FREEMAIL_CC(0.00)[suse.cz,gmail.com,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,huawei.com,zeniv.linux.org.uk,kernel.org,vger.kernel.org,qq.com];
 	RCVD_COUNT_THREE(0.00)[3];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email]
 X-Spam-Level: 
 X-Spam-Score: -2.30
 
-Hi Aditya,
+Hi!
 
-On Thu 02-07-26 18:15:21, Aditya Prakash Srivastava wrote:
-> Thought a bit more about it. Treating fsdata as
-> bitwise flags rather than mutually exclusive enums is a much
-> cleaner and more robust design. It completely decouples the
-> different write path states.
+On Thu 02-07-26 21:35:47, Zhou, Yun wrote:
+> On 6/30/2026 7:34 PM, Jan Kara wrote:
+> > On Tue 30-06-26 11:05:50, Mateusz Guzik wrote:
+> > > On Mon, Jun 29, 2026 at 07:08:44PM +0800, Yun Zhou wrote:
+> > > > Unlike iput_not_last() which BUG_ON's if called with the last ref,
+> > > > this variant is designed to be called speculatively.
+> > > > 
+> > > > Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+> > > > Suggested-by: Jan Kara <jack@suse.cz>
+> > > > Reviewed-by: Jan Kara <jack@suse.cz>
+> > > > ---
+> > > >   include/linux/fs.h | 13 +++++++++++++
+> > > >   1 file changed, 13 insertions(+)
+> > > > 
+> > > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > > index d10897b3a1e3..04f0de78fa7a 100644
+> > > > --- a/include/linux/fs.h
+> > > > +++ b/include/linux/fs.h
+> > > > @@ -2413,6 +2413,19 @@ static inline void super_set_sysfs_name_generic(struct super_block *sb, const ch
+> > > >   extern void ihold(struct inode * inode);
+> > > >   extern void iput(struct inode *);
+> > > >   void iput_not_last(struct inode *);
+> > > > +
+> > > > +/**
+> > > > + * iput_if_not_last - drop an inode reference only if it is not the last one
+> > > > + * @inode: inode to put
+> > > > + *
+> > > > + * Returns true if the reference was dropped, false if this was the last
+> > > > + * reference and the caller must arrange for final iput() in a safe context.
+> > > > + */
+> > > > +static inline bool __must_check iput_if_not_last(struct inode *inode)
+> > > > +{
+> > > > +   return atomic_add_unless(&inode->i_count, -1, 1);
+> > > > +}
+> > > > +
+> > > 
+> > > This still could assert on the count, for example:
+> > >        VFS_BUG_ON_INODE(inode_state_read_once(inode) & (I_FREEING | I_CLEAR), inode);
+> > >        VFS_BUG_ON_INODE(atomic_read(&inode->i_count) < 1, inode);
+> > 
+> > Yes, it makes sense to be consistent with other helpers. Thanks for the
+> > idea.
 > 
-> To implement this, I will define:
+> Should I wait for now, or go ahead and include the two macros mentioned
+> above in v13 as Mateusz suggested? As you know, the v12 series has been
+> fully reviewed [1] , and I'm wondering if making this change now might cause
+> any inconvenience to everyone.
 > 
-> #define FALL_BACK_TO_NONDELALLOC 1
-> #define CONVERT_INLINE_DATA 2
-> #define EXT4_WRITE_DATA_INLINE 4
-> 
-> This ensures that the flags are fully independent and do not
-> overlap.
-> 
-> Regarding unrolling the state on exit, there is a slight
-> asymmetry in the VFS interface. ext4_write_begin() receives
-> fsdata as a pointer-to-pointer (void **fsdata), while
-> ext4_write_end() receives it by value (void *fsdata).
-> 
-> Because write_end() receives fsdata by value, modifying it in
-> the write_end handlers has no effect on the caller's
-> (generic_perform_write()) local stack variable. As a result, a
-> stale EXT4_WRITE_DATA_INLINE bit would remain in the VFS across
-> a retry.
+> [1] https://lore.kernel.org/linux-ext4/20260630100829.1257618-1-yun.zhou@windriver.com/T/#t
 
-Right, my bad.
-
-> To handle this cleanly within the constraints of the VFS
-> interface, I propose clearing the stale bit on entry to
-> ext4_write_begin():
-> 
-> static int ext4_write_begin(..., void **fsdata)
-> {
-> ...
-> 
-> /* Clear any stale inline flag from a previous retry. */
-> *fsdata = (void *)((unsigned long)*fsdata &
->   ~EXT4_WRITE_DATA_INLINE);
-> 
-> ...
-> }
-> 
-> This ensures that:
-> 
-> any stale inline flag from a previous retry is cleared from
-> the VFS stack variable before the next attempt;
-> 
-> the FALL_BACK_TO_NONDELALLOC bit remains preserved; and
-> 
-> if the retry prepares an inline write, ext4_write_begin()
-> simply sets the bit again.
-> 
-> Please let me know whether this write_begin unrolling approach
-> looks good to you, and I'll submit the v3 series shortly.
-
-Yes, that should work and should be clean.
+I think there will be no more feedback to this series. So just include this
+suggested change (keeping current Reviewed-by tags - the change is minimal)
+and submit one more version. Mention in the cover letter that there's only
+minor adjustment to this one patch, everything is reviewed and ready to be
+merged so that Ted knows.
 
 								Honza
-
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
