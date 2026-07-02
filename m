@@ -1,199 +1,195 @@
-Received: from mail-wr1-f45.google.com (mail-wr1-f45.google.com [209.85.221.45])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11467331EAF
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 15:48:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F6B30C15A
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 16:43:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783007329; cv=none; b=h+Na1vwS+7Q4HGKbO6rsJXY5+63WX/MhN2lV0PFE2gauZR9jVp4lw3OlnOUxn96SVDEDtrMIFq0t10twYKDeTRGitffOmk4hMnVDSvKyxq0CU9vQT71sHqb3LoX5fekKu23xRvDhlFtafYZtna/B0m04NI8S0yIGisCWW5dHKxM=
+	t=1783010598; cv=none; b=tpfhHKxWm4gpUvfeHtECRqF4uNidnCTr84WBOh0WA+RQBGpBLNpT0ewtfFuHDUHOptIHipF2x1FQxCh8d16pcGZJ/HnuuCr+tS6xvT7CS6TfDHdtyBRyA/Tk65R/YL3gYro4V83Xj5brhXSTLYkmAAFEe8SxvDtuxzyzyZxdxho=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783007329; c=relaxed/simple;
-	bh=GHe4f0gJmEY4HTStiVAVdP5FYbjDD0vlOpHVKNuxEy4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=A3+1EPRieyGRwX/2ueCmyHHR1R0N/+kZyQAL1GInJFIfxIbHj+kNqm1y3F56lEXc+aEdk4VQTwYlA/qy2oRm4GitaYVROQueC/44PmXugkHoEDXaBUag5hsL7878TzHcH3R6qwum2AHR+ihCNwxMuLlLkjpmz8e2/Q71RpDKaTY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=smile.fr; spf=pass smtp.mailfrom=smile.fr; dkim=pass (1024-bit key) header.d=smile.fr header.i=@smile.fr header.b=nQFzvMGU; arc=none smtp.client-ip=209.85.221.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=smile.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=smile.fr
+	s=arc-20240116; t=1783010598; c=relaxed/simple;
+	bh=JYaeIpzqxeQ6N1LpNnHE2w9sFxJC2Ppx6Tk7l7dK8Bg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=EerqyKei28eeWCrQdmSP6vpYElX2+8WP4YFDeLHU+wRP0Q2drwsGWHmM3NaWqM+Sru+eNXEoI8YudgPCYrRLH+DT/egG17OlwnIY1cPhwr1H6Eic1soeR8kUytxqUW//YMpH9D1EeADnhw2AzTg47k99rpvBMADyVYQ0qKtFysY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UbJR0vaf; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yXkDxaqz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=UbJR0vaf; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yXkDxaqz; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=smile.fr header.i=@smile.fr header.b="nQFzvMGU"
-Received: by mail-wr1-f45.google.com with SMTP id ffacd0b85a97d-470174001a0so1462671f8f.0
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2026 08:48:47 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=smile.fr; s=google; t=1783007326; x=1783612126; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=cKj12gt7daFFKUdXxcgEMCasVJqe5u0XDbVIMbqELsI=;
-        b=nQFzvMGUQvQI6EZOe0f5vgqCjTjZ5zGyoHAouupznJn54kFGa+XSQanNNML1Q+prB7
-         eh2OTzsy3DVO/c6MJrue4dsvXfZYMHlTYJHM1GNnxz5eCAdHR4PCC2XrUuWKLnnsFJdX
-         m23pyJAui+jBLsB+hXtXNc2p0rDEP1H7rRuZ8=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783007326; x=1783612126;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=cKj12gt7daFFKUdXxcgEMCasVJqe5u0XDbVIMbqELsI=;
-        b=RrayZmAi/MFozFaWHWx68YajOmxbDtaOKhZWFX9ZaqTHtpQjfDR3sSrXCmj0RlO7CL
-         n6WxIPjERKsd6Nl7fxJCRgZ5sf5H1FccZX6GuJu4EIu9M7iVxSugKKo1t1SVC6g0GDXl
-         4H1gRpUS9M2klUuwZ23229oQuT+A47dTHvgJZo412FDjugcT3rE7yd9RmPEl095hGj9b
-         txIp1hUvcPFqqcOO9lb7CB2pKK1ESLeISJDCxSBArcBSDW1lFevxtBrTK25iFodSBPpr
-         NKmsEHY5osFpAxeSiLC8EG2jij98E1rSS6gZ/uHC5yKwBJCBzTHducZoTwoP9+ux0ZfX
-         MrNg==
-X-Gm-Message-State: AOJu0Yzz1/nH6TNV3ggPoqgxV9iYZPkP/BDKAW9GrUZbO/m6QA1bZM8d
-	aTEDy5mnT4X89T+kd8+kpv+TKUIRX1se1tUwPqbyIOiXxrtn764xIHduW1c46A1ttx4=
-X-Gm-Gg: AfdE7clHVeHs8GS7nGnrp9JhlWxgp0OutxKIxLfhBPBKJcr89P2M6IwOwzyOrHwEGMM
-	Dh0ytOwvDIcN0r/5i4gaTx0iXAbq7tyt6w12U1sPnsIvxQXA7cpSxIbODYTteAYUAx3DlEKFq6B
-	8bWUo0L5EaiWIMgfTklKHWjBepkwVOw5X4yAZkAGAsAZ6FRMB6JQtKVnD4ZMxL0t6vdtVgkq9oM
-	MZwVsnBaPh4YJP+4fgBT6eFK5nahOPpKOABzYWAM2f1PBIwHr/N1ovvFqu9u6LgnTrTbJ+JEX1l
-	lvXMWKiGYa7pZdd6nflvYdHKp2MLPakFEcdDGS6hqEx5Bb2Ndamwzy+kX/joexhkCn/Ej5IjK68
-	KucQDQilds26vKeCp4hkXYnIe7EQ/Y3DcoybjcuC6thc+OTUztwJCfHtk4pQrf9e88VjKNmmdl0
-	C7rqhx91gTWfJGNZd0kf/JgeBB8DfyTY7ledMgxPy2hGCt2RHw+RhDrj/pvcUAV4YDf9gSRjwF/
-	gytaAXsC+vRAMX/bxBw4LhrmELq
-X-Received: by 2002:a05:6000:2507:b0:473:975c:4fd1 with SMTP id ffacd0b85a97d-477b3d5c5bfmr8449841f8f.25.1783007326422;
-        Thu, 02 Jul 2026 08:48:46 -0700 (PDT)
-Received: from FRSMI25-LASER.home (2a01cb001331aa00c56cc01f8c3c1c95.ipv6.abo.wanadoo.fr. [2a01:cb00:1331:aa00:c56c:c01f:8c3c:1c95])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-477de3dc77bsm10042468f8f.33.2026.07.02.08.48.45
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 02 Jul 2026 08:48:46 -0700 (PDT)
-From: Yoann Congal <yoann.congal@smile.fr>
-To: stable@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yoann Congal <yoann.congal@smile.fr>,
-	Baokun Li <libaokun1@huawei.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Subject: [PATCH 6.6.y] ext4: get rid of ppath in get_ext_path()
-Date: Thu,  2 Jul 2026 17:48:10 +0200
-Message-ID: <20260702154810.3435236-1-yoann.congal@smile.fr>
-X-Mailer: git-send-email 2.47.3
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UbJR0vaf";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yXkDxaqz";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="UbJR0vaf";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yXkDxaqz"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 59BDF727B3;
+	Thu,  2 Jul 2026 16:43:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783010595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
+	b=UbJR0vafkTSmueUnb1eah/rTxaNq+rfXmW7YtSititW8MAvobNxX3cLV1yN+P68zrsLq5H
+	xSmaNeA9Egyvwha5eFwTObAgSOVs0oNhrFif1u6slFK9FGsIMqOK74LJuCgPpRzt+9e5A7
+	IlXIS1RE5ItmtFUkX9Y8qobBh5GEA78=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783010595;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
+	b=yXkDxaqz4gs+u2z/9t/b6cZjFlb+/Dk5lu2mokDFUaGMAhVFePquW+iF0IJLmgmxiC0t/P
+	r3WcOaU26cnjW2AA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783010595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
+	b=UbJR0vafkTSmueUnb1eah/rTxaNq+rfXmW7YtSititW8MAvobNxX3cLV1yN+P68zrsLq5H
+	xSmaNeA9Egyvwha5eFwTObAgSOVs0oNhrFif1u6slFK9FGsIMqOK74LJuCgPpRzt+9e5A7
+	IlXIS1RE5ItmtFUkX9Y8qobBh5GEA78=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783010595;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=sVrUtnbzAuo01Kl88y8qu+dkR8XfaDM0W0MTSxnBlIk=;
+	b=yXkDxaqz4gs+u2z/9t/b6cZjFlb+/Dk5lu2mokDFUaGMAhVFePquW+iF0IJLmgmxiC0t/P
+	r3WcOaU26cnjW2AA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4761E779AA;
+	Thu,  2 Jul 2026 16:43:15 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id DNn9ECOVRmpVNwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 16:43:15 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id C37B1A0AE1; Thu, 02 Jul 2026 18:43:14 +0200 (CEST)
+Date: Thu, 2 Jul 2026 18:43:14 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yizhang089@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu, 
+	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, 
+	ritesh.list@gmail.com, yi.zhang@huawei.com, yi.zhang@huaweicloud.com, 
+	chengzhihao1@huawei.com, yangerkun@huawei.com
+Subject: Re: [PATCH 2/6] ext4: clarify return semantics of ext4_load_tail_bh()
+Message-ID: <5xgyaw3ufsymz7tqoyrkwo64a2uup75hnuaudtrejozhb2qnox@owzep3gkgf2v>
+References: <20260701142009.1510104-1-yizhang089@gmail.com>
+ <20260701142009.1510104-3-yizhang089@gmail.com>
+ <qpxvjsdnq6jgigjnwzkxny6lms6gi6t4bq5l33rr2f6m6l4oum@5e6ayymrgcbd>
+ <a54c9df2-63e6-41ad-b32f-54d2f0356d5c@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <a54c9df2-63e6-41ad-b32f-54d2f0356d5c@gmail.com>
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MISSING_XM_UA(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Spam-Level: 
+X-Spam-Score: -2.30
 
-From: Baokun Li <libaokun1@huawei.com>
+On Thu 02-07-26 22:40:17, Zhang Yi wrote:
+> On 7/2/2026 5:53 PM, Jan Kara wrote:
+> > On Wed 01-07-26 22:20:05, yizhang089@gmail.com wrote:
+> > > From: Zhang Yi <yi.zhang@huawei.com>
+> > > 
+> > > ext4_load_tail_bh() returns NULL for both holes and clean unwritten
+> > > buffers, but the conditions that lead to this are not obvious from the
+> > > code alone. Document this behavior to clarify the return value, so that
+> > > readers do not mistakenly assume that only holes result in a NULL
+> > > return.
+> > > 
+> > > Also update the inline comment following the ext4_get_block() call to
+> > > reflect this: both holes and clean unwritten buffers fall through to the
+> > > "nothing to do" path.
+> > > 
+> > > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> > > ---
+> > >   fs/ext4/inode.c | 6 +++++-
+> > >   1 file changed, 5 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > index c2c2d6ac7f3d..0b31fa873743 100644
+> > > --- a/fs/ext4/inode.c
+> > > +++ b/fs/ext4/inode.c
+> > > @@ -4026,6 +4026,10 @@ void ext4_set_aops(struct inode *inode)
+> > >    * because it might have data in pagecache (eg, if called from ext4_zero_range,
+> > >    * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
+> > >    * racing writeback can come later and flush the stale pagecache to disk.
+> > > + *
+> > > + * Return the loaded bh if it actually needs zeroing - in written, dirty
+> > > + * unwritten, or delalloc state. Return NULL if it's clean (i.e., a hole or
+> > > + * a clean unwritten block).
+> > >    */
+> > 
+> > Great that you're adding this comment because when I was reading previous
+> > patch, I've spent like 10 minutes trying to figure that out :). But as far
+> > as I'm reading the code, ext4_load_tail_bh() will return the unwritten bh
+> > even if it is clean - map_bh() in _ext4_get_block() will set
+> > buffer_mapped() even for unwritten extent. What am I missing? BTW, it also
+> > seems to be ext4_load_tail_bh() could attempt to ext4_read_bh_lock() on
+> > unwritten bh if things align wrongly...
+> > 
+> > 								Honza
+> 
+> Thank you for the review!
+> 
+> Please note the ext4_update_bh_state(bh, map.m_flags) call in
+> _ext4_get_block() — it restores the mapped flag back to unwritten. As a
+> result, the !buffer_mapped(bh) check will evaluate to true for a clean
+> unwritten block, the function will return NULL.
 
-[ Upstream commit 6b854d552711aa33f59eda334e6d94a00d8825bb ]
+Argh, right. But ext4_ext_map_blocks() sets both BH_Unwritten and BH_Mapped
+in the returned map->m_flags for unwritten extents. So I think my comment
+still applies. Plus there's a very strange inconsistency between this and
+the lookup in extent status tree in ext4_map_blocks() where (as you
+indicate) we only set BH_Unwritten but *not* BH_Mapped. AFAICT there's
+something buggy in here :) Note that when we don't set BH_Mapped flag e.g.
+from ext4_get_block_unwritten() (which gets used when delalloc is disabled),
+then writes to unwritten extent will get lost because
+ext4_bio_write_folio() will just treat them as holes...
 
-The use of path and ppath is now very confusing, so to make the code more
-readable, pass path between functions uniformly, and get rid of ppath.
-
-After getting rid of ppath in get_ext_path(), its caller may pass an error
-pointer to ext4_free_ext_path(), so it needs to teach ext4_free_ext_path()
-and ext4_ext_drop_refs() to skip the error pointer. No functional changes.
-
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Tested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Link: https://patch.msgid.link/20240822023545.1994557-13-libaokun@huaweicloud.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-Signed-off-by: Yoann Congal <yoann.congal@smile.fr>
----
- fs/ext4/extents.c     |  5 +++--
- fs/ext4/move_extent.c | 34 +++++++++++++++++-----------------
- 2 files changed, 20 insertions(+), 19 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a94798e23c1af..9c2d23958146b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -114,7 +114,7 @@ static void ext4_ext_drop_refs(struct ext4_ext_path *path)
- {
- 	int depth, i;
- 
--	if (!path)
-+	if (IS_ERR_OR_NULL(path))
- 		return;
- 	depth = path->p_depth;
- 	for (i = 0; i <= depth; i++, path++) {
-@@ -125,6 +125,8 @@ static void ext4_ext_drop_refs(struct ext4_ext_path *path)
- 
- void ext4_free_ext_path(struct ext4_ext_path *path)
- {
-+	if (IS_ERR_OR_NULL(path))
-+		return;
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
- }
-@@ -4242,7 +4244,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	path = ext4_find_extent(inode, map->m_lblk, NULL, 0);
- 	if (IS_ERR(path)) {
- 		err = PTR_ERR(path);
--		path = NULL;
- 		goto out;
- 	}
- 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index d5636a2a718a8..96a84de321690 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -17,27 +17,23 @@
-  * get_ext_path() - Find an extent path for designated logical block number.
-  * @inode:	inode to be searched
-  * @lblock:	logical block number to find an extent path
-- * @ppath:	pointer to an extent path pointer (for output)
-+ * @path:	pointer to an extent path
-  *
-- * ext4_find_extent wrapper. Return 0 on success, or a negative error value
-- * on failure.
-+ * ext4_find_extent wrapper. Return an extent path pointer on success,
-+ * or an error pointer on failure.
-  */
--static inline int
-+static inline struct ext4_ext_path *
- get_ext_path(struct inode *inode, ext4_lblk_t lblock,
--		struct ext4_ext_path **ppath)
-+	     struct ext4_ext_path *path)
- {
--	struct ext4_ext_path *path = *ppath;
--
--	*ppath = NULL;
- 	path = ext4_find_extent(inode, lblock, path, EXT4_EX_NOCACHE);
- 	if (IS_ERR(path))
--		return PTR_ERR(path);
-+		return path;
- 	if (path[ext_depth(inode)].p_ext == NULL) {
- 		ext4_free_ext_path(path);
--		return -ENODATA;
-+		return ERR_PTR(-ENODATA);
- 	}
--	*ppath = path;
--	return 0;
-+	return path;
- }
- 
- /**
-@@ -95,9 +91,11 @@ mext_check_coverage(struct inode *inode, ext4_lblk_t from, ext4_lblk_t count,
- 	int ret = 0;
- 	ext4_lblk_t last = from + count;
- 	while (from < last) {
--		*err = get_ext_path(inode, from, &path);
--		if (*err)
--			goto out;
-+		path = get_ext_path(inode, from, path);
-+		if (IS_ERR(path)) {
-+			*err = PTR_ERR(path);
-+			return ret;
-+		}
- 		ext = path[ext_depth(inode)].p_ext;
- 		if (unwritten != ext4_ext_is_unwritten(ext))
- 			goto out;
-@@ -634,9 +632,11 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
- 		int offset_in_page;
- 		int unwritten, cur_len;
- 
--		ret = get_ext_path(orig_inode, o_start, &path);
--		if (ret)
-+		path = get_ext_path(orig_inode, o_start, path);
-+		if (IS_ERR(path)) {
-+			ret = PTR_ERR(path);
- 			goto out;
-+		}
- 		ex = path[path->p_depth].p_ext;
- 		cur_blk = le32_to_cpu(ex->ee_block);
- 		cur_len = ext4_ext_get_actual_len(ex);
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
