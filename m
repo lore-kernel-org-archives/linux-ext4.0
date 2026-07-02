@@ -1,89 +1,89 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68AC439EF39
-	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 10:19:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CEFE390614
+	for <linux-ext4@vger.kernel.org>; Thu,  2 Jul 2026 10:35:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782987598; cv=none; b=CXEwQq5aluiYIJhhLTlvR2zGjjUUAVdS9fCtUupQzBW6SFRGrZ2gjuKsgENAowtIQresqKotMYJq0rmNWKMva+/ub6nuOI28VJASePQqKDeO9yJPRj+hIxNrekrmEw93xlOCfeqz4ONUkfL5/H2s5H1pxW1zp398MNAU+IaeRC0=
+	t=1782988517; cv=none; b=p+35wfM2TAthE5hdb8Mymw7kAzD5E9HmJ7Jk8jeTu63QpBGLDUJY9e3CbIANu/NZF/boxTZwBR058Fp6uhHHxnVdKNtWfZS7QysSiIu19UHJL3cLi74yK7uB4F6MzHv0AVf2dr8/wnhfKFons3Pb9Cmli4mHH9HVCsCCsmVnBLs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782987598; c=relaxed/simple;
-	bh=0r3uwQjn7I0wLk1WaDQdhrrhvNOACHllczEws6QwEtk=;
+	s=arc-20240116; t=1782988517; c=relaxed/simple;
+	bh=zA8/JfuoJtOKPWef1l2QsHLqnhF8vaUF/3M0tZd+CNE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=O8GnfQm2BwqGFiAPI0z+OrcY2MGH4LTC3sDTnBxbME21Vyw8LE4/icKcejoIQ50T2bca2FP2VGslVeYggDhoqGzCDOS+TEuyhQdmy7M0sYrotuyoESbRvG79wN+PGng3VAayZokVlThBJHZZeQewNj3/lw6+xe/iM9uMjO7fIQM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2HPPvC5K; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yTu2rlMf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=xexrTsng; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QB9lUFyq; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=hoKo5Td9A3To87S4OJM33b483IQ+CmGMAS1S7UAI0YLHO0+B/u1tTqZpGNZgRkz+rw8td6LdJIWyF+futUZ5oaAGn+4rZb9Bo7/8cV/OgOelCf9mt+Frz3mi6PZqc2MLveDxyz5GFl3o/LZfvtgZ+apmA/CAIjV+q4V45lOHWm0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Dn+eoZJT; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=fCsPriwr; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Dn+eoZJT; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=fCsPriwr; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2HPPvC5K";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yTu2rlMf";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="xexrTsng";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QB9lUFyq"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Dn+eoZJT";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="fCsPriwr";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Dn+eoZJT";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="fCsPriwr"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id A7C1C7412D;
-	Thu,  2 Jul 2026 10:19:54 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 931D575C30;
+	Thu,  2 Jul 2026 10:35:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782987595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782988511; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=KXaQjDnf9nei9NemUmQcnQJjjLoXtg/2FI2y8fr4vc8=;
-	b=2HPPvC5KbPmzzTBYkpUhiLR1zbuc/MiAEH2iz9pAcjU597j//43RbBgwGuKbt9JO92pp9M
-	DylsXisr5nlwWcaQKbSdBvEPCLUCjxvxhpfZ5hDFcXZNx9ISQcNMpXboQqv/ifWfs8DOGn
-	/1kfM1mXiPNGMSeghoQ4m9efis0Ec78=
+	bh=H70H9ScjTqa9HthzG+YtXg4uCHqj5Vl1Zcd9Qa8tD1Y=;
+	b=Dn+eoZJTUDdAp0jWFmoOCEGROFrFbgcZX6wZsQQOLAooHDt5ey//dE6z54+SOn804jeSRS
+	cd1w3hls7zCkxHRgw6BfhTXMLrNyOMwvAB5wGZ8WLOxUHVcmiL/Ly7VXc/yPsWhrrgWzhY
+	vEmh6wrz4lsb9sByrxRAbX63LEFEgRU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782987595;
+	s=susede2_ed25519; t=1782988511;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=KXaQjDnf9nei9NemUmQcnQJjjLoXtg/2FI2y8fr4vc8=;
-	b=yTu2rlMf0kzV1Chyk9NRUQDHGfLnLOUO5LAnqNRlGycbJREZXjeXoEm0HQDdZim3gfkqv3
-	kY/AShdyHyp+7bAQ==
-Authentication-Results: smtp-out1.suse.de;
+	bh=H70H9ScjTqa9HthzG+YtXg4uCHqj5Vl1Zcd9Qa8tD1Y=;
+	b=fCsPriwrRBFBNHnG5W4ZGgOMcPbO7GhaNmDC7kpBlX9W61KDFmI2d9eKMsqRRAsGv1kKvm
+	6R1aSh+CcbFVkOAQ==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1782987594; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1782988511; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=KXaQjDnf9nei9NemUmQcnQJjjLoXtg/2FI2y8fr4vc8=;
-	b=xexrTsngZZ5HWsiyj7vNjY8VYDQ/oD9q/I3JRVQpIaS4Usjo9E24n0xKXkUIGq+Hj4Gzf8
-	Wd1+D+fpzahZ3NHiHFJwrGKGw2gzM0W98GOeCb83/oHe4Fxn8XsKBjOMISpcL9XmRmvLcW
-	aDp8NvbXihj/6XY7QwLe3sng/vOrHhE=
+	bh=H70H9ScjTqa9HthzG+YtXg4uCHqj5Vl1Zcd9Qa8tD1Y=;
+	b=Dn+eoZJTUDdAp0jWFmoOCEGROFrFbgcZX6wZsQQOLAooHDt5ey//dE6z54+SOn804jeSRS
+	cd1w3hls7zCkxHRgw6BfhTXMLrNyOMwvAB5wGZ8WLOxUHVcmiL/Ly7VXc/yPsWhrrgWzhY
+	vEmh6wrz4lsb9sByrxRAbX63LEFEgRU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1782987594;
+	s=susede2_ed25519; t=1782988511;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=KXaQjDnf9nei9NemUmQcnQJjjLoXtg/2FI2y8fr4vc8=;
-	b=QB9lUFyq6IkNmyEss6DUd3xW1ra4zz7CRd56pIRD698yv1Y5Gdpcu8r+r5/TPd5JGrItI7
-	Q/W4WeFDwRPsU3Bg==
+	bh=H70H9ScjTqa9HthzG+YtXg4uCHqj5Vl1Zcd9Qa8tD1Y=;
+	b=fCsPriwrRBFBNHnG5W4ZGgOMcPbO7GhaNmDC7kpBlX9W61KDFmI2d9eKMsqRRAsGv1kKvm
+	6R1aSh+CcbFVkOAQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 954C3779AA;
-	Thu,  2 Jul 2026 10:19:54 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 85F59779AA;
+	Thu,  2 Jul 2026 10:35:11 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id RDcHJEo7RmpmMAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 10:19:54 +0000
+	id vQizIN8+RmqyPwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 02 Jul 2026 10:35:11 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1DD4BA12AD; Thu, 02 Jul 2026 12:19:50 +0200 (CEST)
-Date: Thu, 2 Jul 2026 12:19:50 +0200
+	id 2A39CA12AD; Thu, 02 Jul 2026 12:35:03 +0200 (CEST)
+Date: Thu, 2 Jul 2026 12:35:03 +0200
 From: Jan Kara <jack@suse.cz>
-To: yizhang089@gmail.com
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, yi.zhang@huaweicloud.com, chengzhihao1@huawei.com, 
-	yangerkun@huawei.com
-Subject: Re: [PATCH 6/6] ext4: skip ext4_update_disksize_before_punch() in
- WRITE_ZEROES
-Message-ID: <3f6ao5amv7glbgigndtegcucgo3n34ij3lau6l3da3hgdxgn3v@ev66wv3r5umt>
-References: <20260701142009.1510104-1-yizhang089@gmail.com>
- <20260701142009.1510104-7-yizhang089@gmail.com>
+To: Aditya Srivastava <aditya.ansh182@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, Tao Ma <boyu.mt@taobao.com>, 
+	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: use fsdata to track inline data write state and
+ fix race
+Message-ID: <3sbocdflzeajcievmbdwprrgzkztd7ogn7mmjx4quptorotwak@rlzklako3yht>
+References: <20260702050724.1658-1-aditya.ansh182@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -92,7 +92,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260701142009.1510104-7-yizhang089@gmail.com>
+In-Reply-To: <20260702050724.1658-1-aditya.ansh182@gmail.com>
 X-Spam-Flag: NO
 X-Spam-Score: -2.30
 X-Spamd-Result: default: False [-2.30 / 50.00];
@@ -102,77 +102,190 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	FREEMAIL_TO(0.00)[gmail.com];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
 	FUZZY_RATELIMITED(0.00)[rspamd.com];
 	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[0c89d865531d053abb2d];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_TO(0.00)[gmail.com];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	FROM_EQ_ENVFROM(0.00)[];
+	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,taobao.com,syzkaller.appspotmail.com,vger.kernel.org];
 	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_NONE(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,huawei.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.com:email,appspotmail.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Level: 
 
-On Wed 01-07-26 22:20:09, yizhang089@gmail.com wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On Thu 02-07-26 05:07:24, Aditya Srivastava wrote:
+> From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 > 
-> FALLOC_FL_WRITE_ZEROES is mutually exclusive with FALLOC_FL_KEEP_SIZE.
-> In ext4_zero_range(), when end > i_disksize, new_size is always set to
-> end for WRITE_ZEROES, so the i_disksize update should not be lost.
+> Instead of checking the live inode state (ext4_has_inline_data(inode)
+> and ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) in the
+> write_end handlers, use the fsdata parameter of the address space
+> operations to explicitly pass down the state in which write_begin
+> prepared the write.
 > 
-> The ext4_update_disksize_before_punch() call is only needed for the
-> ZERO_RANGE path in ext4_zero_range(), as it handles the case where
-> KEEP_SIZE may preserve the original disk size. Skip it for WRITE_ZEROES
-> to avoid unnecessary work and potential confusion.
+> A concurrent thread (such as ext4_page_mkwrite()) can convert the
+> inline data to an extent between write_begin and write_end. If this
+> happens, the write_end handlers would previously miss the inline
+> write_end path and fall through to extent-based write_end logic.
+> However, since block buffers were never allocated in write_begin,
+> this resulted in NULL pointer dereferences or data loss because
+> folio_buffers(folio) was NULL.
 > 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> Define EXT4_WRITE_DATA_INLINE (3) and communicate this state via
+> fsdata:
+> 1) ext4_write_begin() and ext4_da_write_begin() explicitly set
+>    *fsdata to EXT4_WRITE_DATA_INLINE when an inline write is
+>    successfully prepared.
+> 2) ext4_write_end(), ext4_journalled_write_end(), and
+>    ext4_da_write_end() rely solely on fsdata / write_mode to
+>    invoke ext4_write_inline_data_end().
+> 
+> Furthermore, during a buffered write, ext4_write_inline_data_end()
+> acquires the xattr lock after preparing the write. If a concurrent
+> page fault (ext4_page_mkwrite()) converts the inline data to an extent
+> after the write_end handlers check the state but before
+> ext4_write_inline_data_end() acquires the xattr write lock, the
+> subsequent check will trigger a kernel panic via
+> BUG_ON(!ext4_has_inline_data(inode)).
+> 
+> Replace the BUG_ON check in ext4_write_inline_data_end() with a graceful
+> error-handling retry path. If the inline data is cleared after locking
+> the xattr, we safely release all resources (releasing iloc.bh,
+> unlocking/putting the folio, stopping the active journal transaction
+> handle) and return 0 (VFS retry) to let the generic write path retry
+> the operation safely.
+> 
+> Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
+> Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
+> Suggested-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 
-Hum, but suppose i_disksize is before the start of our zeroed range, i_size
-is beyond the end of the zeroed range. Now
-ext4_alloc_file_blocks(EXT4_GET_BLOCKS_CREATE_ZERO) will create some zeroed
-written extents beyond i_disksize and if we crash before
-ext4_update_inode_size() runs, we have inconsistent filesystem with
-written extents beyond i_disksize... Hum, actually that could have been the
-case even before, just now there are more cases where this can happen. So I
-think FALLOC_FL_WRITE_ZEROES mode needs to add the inode to the orphan list
-to truncate the inode properly in case of crash.
+Looks good! Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext4/extents.c | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
+> Changes in v2:
+> - Folded the BUG_ON fix from the second patch into the first one to
+>   ensure bisectability across git history, as suggested by Jan Kara.
+> - Removed the pointless initialization `*fsdata = NULL` on entry to
+>   `ext4_write_begin()`.
+> - Removed the redundant check `if (fsdata)` in `ext4_write_begin()`.
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index c083703bf704..38753c2ef910 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4748,9 +4748,11 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>  fs/ext4/ext4.h   |  1 +
+>  fs/ext4/inline.c | 14 +++++++++++++-
+>  fs/ext4/inode.c  | 18 +++++++++---------
+>  3 files changed, 23 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b37c136ea3ab..521bd5d6321c 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3138,6 +3138,7 @@ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+>  void ext4_set_inode_mapping_order(struct inode *inode);
+>  #define FALL_BACK_TO_NONDELALLOC 1
+>  #define CONVERT_INLINE_DATA	 2
+> +#define EXT4_WRITE_DATA_INLINE	 3
+>  
+>  typedef enum {
+>  	EXT4_IGET_NORMAL =	0,
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 8045e4ff270c..cfd591dc1d9c 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -812,7 +812,19 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+>  			goto out;
+>  		}
+>  		ext4_write_lock_xattr(inode, &no_expand);
+> -		BUG_ON(!ext4_has_inline_data(inode));
+> +		/*
+> +		 * We could have raced with ext4_page_mkwrite() converting
+> +		 * the inode and clearing the inline data flag, so we just
+> +		 * release resources and retry the whole write.
+> +		 */
+> +		if (unlikely(!ext4_has_inline_data(inode))) {
+> +			ext4_write_unlock_xattr(inode, &no_expand);
+> +			brelse(iloc.bh);
+> +			folio_unlock(folio);
+> +			folio_put(folio);
+> +			ext4_journal_stop(handle);
+> +			return 0;
+> +		}
+>  
+>  		/*
+>  		 * ei->i_inline_off may have changed since
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ce99807c5f5b..d3d9e1999670 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1316,8 +1316,10 @@ static int ext4_write_begin(const struct kiocb *iocb,
+>  						    foliop);
+>  		if (ret < 0)
 >  			return ret;
+> -		if (ret == 1)
+> +		if (ret == 1) {
+> +			*fsdata = (void *)EXT4_WRITE_DATA_INLINE;
+>  			return 0;
+> +		}
 >  	}
 >  
-> -	ret = ext4_update_disksize_before_punch(inode, offset, len);
-> -	if (ret)
-> -		return ret;
-> +	if (mode & FALLOC_FL_ZERO_RANGE) {
-> +		ret = ext4_update_disksize_before_punch(inode, offset, len);
-> +		if (ret)
-> +			return ret;
-> +	}
+>  	/*
+> @@ -1450,8 +1452,7 @@ static int ext4_write_end(const struct kiocb *iocb,
 >  
->  	/* Now release the pages and zero block aligned part of pages */
->  	ret = ext4_truncate_page_cache_block_range(inode, offset, end);
+>  	trace_ext4_write_end(inode, pos, len, copied);
+>  
+> -	if (ext4_has_inline_data(inode) &&
+> -	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+> +	if (fsdata == (void *)EXT4_WRITE_DATA_INLINE)
+>  		return ext4_write_inline_data_end(inode, pos, len, copied,
+>  						  folio);
+>  
+> @@ -1560,8 +1561,7 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
+>  
+>  	BUG_ON(!ext4_handle_valid(handle));
+>  
+> -	if (ext4_has_inline_data(inode) &&
+> -	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+> +	if (fsdata == (void *)EXT4_WRITE_DATA_INLINE)
+>  		return ext4_write_inline_data_end(inode, pos, len, copied,
+>  						  folio);
+>  
+> @@ -3161,8 +3161,10 @@ static int ext4_da_write_begin(const struct kiocb *iocb,
+>  						     foliop, fsdata, true);
+>  		if (ret < 0)
+>  			return ret;
+> -		if (ret == 1)
+> +		if (ret == 1) {
+> +			*fsdata = (void *)EXT4_WRITE_DATA_INLINE;
+>  			return 0;
+> +		}
+>  	}
+>  
+>  retry:
+> @@ -3299,9 +3301,7 @@ static int ext4_da_write_end(const struct kiocb *iocb,
+>  
+>  	trace_ext4_da_write_end(inode, pos, len, copied);
+>  
+> -	if (write_mode != CONVERT_INLINE_DATA &&
+> -	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) &&
+> -	    ext4_has_inline_data(inode))
+> +	if (write_mode == EXT4_WRITE_DATA_INLINE)
+>  		return ext4_write_inline_data_end(inode, pos, len, copied,
+>  						  folio);
+>  
 > -- 
-> 2.53.0
+> 2.47.3
 > 
 -- 
 Jan Kara <jack@suse.com>
