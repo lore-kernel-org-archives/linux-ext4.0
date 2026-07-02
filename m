@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47EA623B61B;
-	Thu,  2 Jul 2026 00:38:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1DAF723EA84;
+	Thu,  2 Jul 2026 00:38:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782952721; cv=none; b=dDyg6hR3WxH8LxncgkHBy0OBYf1hV6X8lHAdEsHbevodg8Z11vXQOcbJPWZdb0w0+FTkPurMMP1kuFe5+EcEA9qOHzeMx+qT2Pz0I9fWjZtyjg2AfUXZFiISvyKyClxZH1wtdVT6F6vw758wHPCCubnTnTaanZ962dKLDGb4T7A=
+	t=1782952722; cv=none; b=A6qDlaoSxDI0G7rBcv67De6ZzyXSHgjyN2SZm6Ev94Zu/cz3R0TkYtEYEfSciDT+2Avl9KkoLaxvs5vF9JeAsnJCEl0LuwpdTxAUFu0TTwums+abCSPW94P9p08Yzi9ahANrKp6V6kw5+LeQabx35BzrTxlL/g9AZk+Ja104S5A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782952721; c=relaxed/simple;
-	bh=aRG4O+I6jK55hPDMKWhHXFa1eKpsXzBYh+ww3EGsXDQ=;
+	s=arc-20240116; t=1782952722; c=relaxed/simple;
+	bh=a6vCZh7qQ5ltEbHUkQzu66tNw9GjojCxbWkvzXLnnS0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=mCVtQArmHIXaCn9XugJxfM/0jVgomJpKUibLAQhLO3N68qpA8XmeT/ioUMMOJBSaJFCFIoGDN0VYNLLe3hXbCliCt5rUel8flXq16qUx6VNFM21KVq7hb4LPZ5XlHrMVqegCE8vrHbjJzVE0nBdYemWofJVxuffXSC5hZuMUmrs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JN0GB4kO; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=STBUVjlKEQiZ5qIqPWdYSX7KtT6Jpl7EAG5eKkyyvNFrWKWbix/2JUXyo7odO2b3rWB79zITjz3AqmQ6hNvh4TX4LyLKGtk7VoEFEJF4lrMJToDU8KFn1rMWzL3zCuEowdvVw6GKsPVTfxs9hDLxx7rF4eYZQhMwKlXFW9ccp5E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WFVLZ4Lr; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JN0GB4kO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12BD91F000E9;
-	Thu,  2 Jul 2026 00:38:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WFVLZ4Lr"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 265D41F00A3D;
+	Thu,  2 Jul 2026 00:38:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782952719;
-	bh=2VNvMz/Bancvl/GRZoT7uvBoPMV/wa1vgslEmo+Ns9A=;
+	s=k20260515; t=1782952720;
+	bh=FirefrJifF+hN9FiUE8KWPoLfzeDTpIGvbAYAcbCzTQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=JN0GB4kOScBsJWjNpGt6HqG3zHqO8Q6IQIjxH0bX3Ryzz0V2jTQQXqoPldPHyTLsU
-	 nbx9o4oYzBODC5ZFkFllBvS1ZW0WdiBu8x/72q11fR6MXSV2H+T6CZl/fgi9RTODaq
-	 Fewdztl+dMOUwYu3eY90CDtTRUB0N6hasJeQswSDmcM8U2IeWQ4GkSwl/DAZTcupKm
-	 +W388wuXBGXVfqTSSxnGS2z14yQ9axm52ofJrFQZyThgAT97qmJFJc6U8vJqqTebkE
-	 tU5nmdG+fN+d/6htWbCCpbkP+Okt9He8Mq6PnJTEw2Ia8yizHBgpguu8V5o1j657j/
-	 Gmlv/9hBCoHDA==
+	b=WFVLZ4Lrywfp5yJF2+YAwdE31CZckQ5r1f/Sqkn+Gc8pw2XQVwg0bxwtpzKcy+NbK
+	 usr8Ch6ssEmvHGMbFI2tO6M0W4PBMs6w9QHHif041QNnPf1jIycs8zmTWDswqRRkDi
+	 ZrCkS+a4E/UWtNtqSDd08vv0nb6CzGU+XLDVgvPpbik/AJ6+x5NVbVaXOqYax1KxZo
+	 xIQ4+X1XaGfUxpdb4qc7yoRkplE1g1HbRrjGeXhKpGMah1lV4SD1LXEYlxpzKZ6/vf
+	 ddt5Z17ijj1ujmuUPEx+sCvfF8qz4jz+JD9RO+Nrc/+Q9nI7TnjS6fp+53bApwh3gk
+	 flx5YbTW8VR+Q==
 From: Sasha Levin <sashal@kernel.org>
 To: stable@vger.kernel.org
 Cc: Sasha Levin <sashal@kernel.org>,
@@ -34,12 +34,12 @@ Cc: Sasha Levin <sashal@kernel.org>,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Yuto Ohnuki <ytohnuki@amazon.com>
-Subject: Re: [PATCH 6.1.y] ext4: add bounds check for inline data length in ext4_read_inline_page
-Date: Wed,  1 Jul 2026 20:38:24 -0400
-Message-ID: <stable-reply-ext4-inline-61-20260701193800@kernel.org>
+Subject: Re: [PATCH 5.15.y] ext4: add bounds check for inline data length in ext4_read_inline_page
+Date: Wed,  1 Jul 2026 20:38:25 -0400
+Message-ID: <stable-reply-ext4-inline-515-20260701193800@kernel.org>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260630163552.47781-2-ytohnuki@amazon.com>
-References: <20260630163552.47781-2-ytohnuki@amazon.com>
+In-Reply-To: <20260630163923.50039-2-ytohnuki@amazon.com>
+References: <20260630163923.50039-2-ytohnuki@amazon.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -56,7 +56,7 @@ Content-Transfer-Encoding: 8bit
 > ext4_read_inline_page() and the BUG_ON was never present, so this patch
 > adds the bounds check directly.
 
-Queued for 6.1.y, thanks.
+Queued for 5.15.y, thanks.
 
 -- 
 Thanks,
