@@ -1,35 +1,40 @@
-Received: from omta003.cacentral1.a.cloudfilter.net (omta001.cacentral1.a.cloudfilter.net [3.97.99.32])
+Received: from omta004.cacentral1.a.cloudfilter.net (omta002.cacentral1.a.cloudfilter.net [3.97.99.33])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D11031F91F6
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B956E17736
 	for <linux-ext4@vger.kernel.org>; Fri,  3 Jul 2026 23:32:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=3.97.99.32
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=3.97.99.33
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783121523; cv=none; b=FHJJqD9RMlBrxRqSeKStfz/8NHbhWkNJtpxfe19YG8wl79BWj2y0Vq5FdG/OzcQHHTaJOemg1EDAwkICYxU3+blVspM1xKq9ec6m0NVxPAACz/uqd9S6wnqXLsHiW0O2pNziNXhnWBQ4+vNkwZghF4cqIaK/z8FNBcoqZn8fmUQ=
+	t=1783121524; cv=none; b=OyZomKnptBdj3n4TrEt5l/znxtS8jVdBiBEU+fWAgKEWNeCMs/HiIt51zTP2RAJHC+dI2gKkYScUXYAzqhMxrNrqosUl03RIsRWimOjuBZn8stEC4XrDjRajWbUwspRol9H0vrK/Qkla2eVECZgIPWBuVP8nNx9s6ESRY2G+fxA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783121523; c=relaxed/simple;
-	bh=7mlAtpFW4hDGrlFMwGeFUZ3koOA78cC0FMAw8+GRFhk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=TL3ydis+QxNl10auLfoHX7te4WB9TyYCQkakW7Nzo0V1/AIsu/0el478h+WgS6mt/aYNFREZs1h/k8jBV6+bpWv5+3wpD/L7RfsOHzEIMJm46q+Zu7DMGHTIf7e8A3h3YI6lpWqT4MYWAaSyYPgq8zsTRAs18Jalnm9TILW91YY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; arc=none smtp.client-ip=3.97.99.32
+	s=arc-20240116; t=1783121524; c=relaxed/simple;
+	bh=EHRNgsTSOWIhcY2kfe2HHhS/an+qm5bhrOAkYRaqwrM=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=jDegtPyEGqh0hGm0eLEJX7/Scv8LL17IbFCiD/0GgFKsmOY0g8CC8a2ED2XlqjnIXIWzkDb0CxSnf1FsoPfmUFQtSooHxDyB6lR2x7FOPeJvEeT7Qvh9IQOFHHVcg5l2BV4vycSujtLIuhJVbjBg3EzVYH5YT5KwQ4vt+SJeMc0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; arc=none smtp.client-ip=3.97.99.33
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Received: from shw-obgw-4002b.ext.cloudfilter.net ([10.228.9.233])
 	by cmsmtp with ESMTPS
-	id fdeVwBPcvYhkUfnKywrYa6; Fri, 03 Jul 2026 23:30:24 +0000
+	id fdeVwWDbI2ZUlfnKyweSke; Fri, 03 Jul 2026 23:30:24 +0000
 Received: from cabot.adilger.int ([70.77.200.158])
 	by cmsmtp with ESMTP
-	id fnKxw5uqbDkZufnKxweBzc; Fri, 03 Jul 2026 23:30:24 +0000
+	id fnKxw5uqbDkZufnKyweBzh; Fri, 03 Jul 2026 23:30:24 +0000
 X-Authority-Analysis: v=2.4 cv=IP4PywvG c=1 sm=1 tr=0 ts=6a484610
- a=0Thh8+fbYSyN3T2vM72L7A==:117 a=0Thh8+fbYSyN3T2vM72L7A==:17 a=RPJ6JBhKAAAA:8
- a=NQubAXW-KNysZy_nRmAA:9 a=fa_un-3J20JGBB2Tu-mn:22
+ a=0Thh8+fbYSyN3T2vM72L7A==:117 a=0Thh8+fbYSyN3T2vM72L7A==:17 a=UqCG9HQmAAAA:8
+ a=RPJ6JBhKAAAA:8 a=nkeG-6mv0YwDr5m2u2MA:9 a=3ZKOabzyN94A:10
+ a=fa_un-3J20JGBB2Tu-mn:22
 From: Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v2 1/2] e2fsck: limit blocks_per_group in get_backup_sb()
-Date: Fri,  3 Jul 2026 17:29:32 -0600
-Message-ID: <20260703233023.666459-1-adilger@dilger.ca>
+	Andreas Dilger <adilger@dilger.ca>,
+	Feng Xue <feng.xue@outlook.com>
+Subject: [PATCH v2 2/2] libext2fs: fix inode_blocks overflow in ext2fs_open()
+Date: Fri,  3 Jul 2026 17:29:33 -0600
+Message-ID: <20260703233023.666459-2-adilger@dilger.ca>
 X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260703233023.666459-1-adilger@dilger.ca>
+References: <20260703233023.666459-1-adilger@dilger.ca>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -38,81 +43,195 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-CMAE-Envelope: MS4xfDVWDEuGwbTGDYL8/RqToP3l41BQ6JPfl7RIONu9YjZFZlgSOBBLCxOm1mnmff1JRXkQV+uOjqonRN5i7g+/RPi7dWJygazCoFbOX9ftxnjRIYCHhzDO
- IgEeYorVhd/+bfnIvQ3QS/k37kWhLyGblzKAbZm7IwXkia/2KtozJtBe18hnpK7nQfmkawjLLOOuZbpNhiQG8D/gQvk8ENcbyX2prmFLPH4IxPqxgmnwklCM
- hBd7VX0hA9Zs65adiVC+4A==
+ IgEeYorVhd/+bUdTO3n/O0cKA9NUlykFI6v/GObKwfD3JdyTl51IY6qkCNTo7LKVQVnKCXQ9ODRz2mAFwkLrm86OVjDExV87GpgZW0wvi1ifK26EFxEWCHvy
+ KcXIvi13hMI22Jun8yBbbseXQJLj/joeLza4M+OK1K7XOiBId+UEhFDofBdOBUZM
 
-When e2fsck calls get_backup_sb() to scanning for backup superblocks
-with large block sizes, it should limit the number of blocks per group
-estimate of (blocksize * 8), otherwise it misses backup superblocks.
+Fix an overflow when calculating inode_blocks_per_group with an
+intermediate 32-bit variable for an invalid s_inodes_per_group value.
+With blocksize=65536, inodes_per_group=262145 * inodesize=16384
+intermediate product overflows 2^32 temporarily before being reduced
+again by the blocksize.
 
-The bpg = (blocksize * 8) guess works for blocksize <= 4096, but with
-large blocks this is limited by the __u16 bg_free_blocks_count field,
-so at most any group will have ((1 << 16) - 8) = 65528 blocks.
+Check inodes_per_group validity before using it in the calculation,
+to avoid intermediate overflow, but also use a 64-bit variable in
+the inode_blocks_per_group calculation just in case.
 
-Fixes: f7ef5f3e35 ("e2fsck: check all sparse_super backups")
+Add the f_64kblock test case to verify that debugfs does not consider
+this a valid filesystem, and e2fsck will flag that superblock as bad
+and load a backup superblock to get a valid s_inodes_per_group value.
+
+Filter out the mke2fs warnings about large blocksize from test output
+since these will be different/absent depending on the host page size.
+
+Reported-by: Feng Xue <feng.xue@outlook.com>
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- e2fsck/util.c        | 11 +++++++++--
- lib/ext2fs/ext2_fs.h |  6 +++---
- 2 files changed, 12 insertions(+), 5 deletions(-)
+ lib/ext2fs/openfs.c     | 11 +++++---
+ tests/f_64kblock/expect | 37 +++++++++++++++++++++++++
+ tests/f_64kblock/name   |  1 +
+ tests/f_64kblock/script | 60 +++++++++++++++++++++++++++++++++++++++++
+ tests/filter.sed        |  2 ++
+ 5 files changed, 107 insertions(+), 4 deletions(-)
+ create mode 100644 tests/f_64kblock/expect
+ create mode 100644 tests/f_64kblock/name
+ create mode 100755 tests/f_64kblock/script
 
-diff --git a/e2fsck/util.c b/e2fsck/util.c
-index 7c17a3bad8..54b58369c6 100644
---- a/e2fsck/util.c
-+++ b/e2fsck/util.c
-@@ -562,13 +562,18 @@ blk64_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs, const char *name,
- 	void			*buf = NULL;
- 	unsigned int		blocksize = EXT2_MIN_BLOCK_SIZE;
- 	int			blocksize_known = 0;
--	blk_t			bpg = 0;
-+	blk_t			bpg = 0, bpg_max;
- 	blk64_t			ret_sb = 8193;
- 
- 	if (fs && fs->super) {
- 		blocksize = fs->blocksize;
- 		blocksize_known = 1;
- 		bpg = fs->super->s_blocks_per_group;
-+		bpg_max = EXT2_MAX_BLOCKS_PER_GROUP(fs->super);
-+		if (bpg > bpg_max)
-+			bpg = 0;
-+	} else {
-+		bpg_max = EXT2_MAX_CLUSTERS_PER_GROUP(NULL);
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 2b8e0e753c..da4b3d9cec 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -356,10 +356,14 @@ retry:
+ 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
+ 		goto cleanup;
  	}
- 
- 	if (ctx && ctx->blocksize) {
-@@ -588,10 +593,12 @@ blk64_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs, const char *name,
- 
- 	for (; blocksize <= EXT2_MAX_BLOCK_SIZE; blocksize *= 2) {
- 		dgrp_t grp, three = 1, five = 5, seven = 7;
--		dgrp_t limit;
- 		blk_t this_bpg = bpg ? bpg : blocksize * 8;
-+		dgrp_t limit;
- 		blk64_t	num_blocks;
- 
-+		if (this_bpg > bpg_max)
-+			this_bpg = bpg_max;
- 		if (fs && fs->super) {
- 			limit = ext2fs_blocks_count(fs->super) / this_bpg;
- 		} else if (ctx && ext2fs_get_device_size2(ctx->filesystem_name,
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index fcd4205566..b1b0c179f3 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -287,11 +287,11 @@ struct ext2_dx_tail {
- #define EXT2_INODES_PER_GROUP(s)	(EXT2_SB(s)->s_inodes_per_group)
- #define EXT2_CLUSTERS_PER_GROUP(s)	(EXT2_SB(s)->s_clusters_per_group)
- #define EXT2_INODES_PER_BLOCK(s)	(EXT2_BLOCK_SIZE(s)/EXT2_INODE_SIZE(s))
--/* limits imposed by 16-bit value gd_free_{blocks,inode}_count */
--#define EXT2_MAX_BLOCKS_PER_GROUP(s)	((((unsigned) 1 << 16) - 8) *	\
-+/* limits imposed by 16-bit value bg_free_{blocks,inode}_count */
-+#define EXT2_MAX_CLUSTERS_PER_GROUP(s)	(((unsigned) 1 << 16) - 8)
-+#define EXT2_MAX_BLOCKS_PER_GROUP(s)	(EXT2_MAX_CLUSTERS_PER_GROUP(super) * \
- 					 (EXT2_CLUSTER_SIZE(s) / \
- 					  EXT2_BLOCK_SIZE(s)))
--#define EXT2_MAX_CLUSTERS_PER_GROUP(s)	(((unsigned) 1 << 16) - 8)
- #define EXT2_MAX_INODES_PER_GROUP(s)	(((unsigned) 1 << 16) - \
- 					 EXT2_INODES_PER_BLOCK(s))
- #ifdef __KERNEL__
+-	fs->inode_blocks_per_group = ((EXT2_INODES_PER_GROUP(fs->super) *
++	if (EXT2_INODES_PER_GROUP(fs->super) >
++	    EXT2_MAX_INODES_PER_GROUP(fs->super)) {
++		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
++		goto cleanup;
++	}
++	fs->inode_blocks_per_group = (((__u64)EXT2_INODES_PER_GROUP(fs->super) *
+ 				       EXT2_INODE_SIZE(fs->super) +
+-				       EXT2_BLOCK_SIZE(fs->super) - 1) /
+-				      EXT2_BLOCK_SIZE(fs->super));
++				       fs->blocksize - 1) / fs->blocksize);
+ 	if (block_size) {
+ 		if (block_size != fs->blocksize) {
+ 			retval = EXT2_ET_UNEXPECTED_BLOCK_SIZE;
+@@ -394,7 +398,6 @@ retry:
+ 	blocks_per_group = EXT2_BLOCKS_PER_GROUP(fs->super);
+ 	if (blocks_per_group < 8 ||
+ 	    blocks_per_group > EXT2_MAX_BLOCKS_PER_GROUP(fs->super) ||
+-	    fs->inode_blocks_per_group > EXT2_MAX_INODES_PER_GROUP(fs->super) ||
+            EXT2_DESC_PER_BLOCK(fs->super) == 0 ||
+            fs->super->s_first_data_block >= ext2fs_blocks_count(fs->super)) {
+ 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
+diff --git a/tests/f_64kblock/expect b/tests/f_64kblock/expect
+new file mode 100644
+index 0000000000..59814959bc
+--- /dev/null
++++ b/tests/f_64kblock/expect
+@@ -0,0 +1,37 @@
++mke2fs -F -o Linux -b 65536 -I 16384 -N 24 test.img 262144
++Creating filesystem with 262112 64k blocks and 32 inodes
++Superblock backups stored on blocks: 
++	65528, 196584
++
++Allocating group tables:    done                            
++Writing inode tables:    done                            
++Writing superblocks and filesystem accounting information:    done
++
++../e2fsck/e2fsck -yf -N test_filesys f_64kblock/test_img
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 11/32 files (0.0% non-contiguous), 29/262112 blocks
++Exit status is 0
++-----------------------------------------------
++ 
++debugfs -R 'set_super_value inodes_per_group 262145' -w test.img
++Exit status is 0
++debugfs -R 'lsdel' test.img
++debugfs: The ext2 superblock is corrupt while trying to open test.img
++lsdel: Filesystem not open
++Exit status is 0
++../e2fsck/e2fsck -yf -N test_filesys f_64kblock/test_img
++ext2fs_open2: The ext2 superblock is corrupt
++../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 11/32 files (0.0% non-contiguous), 29/262112 blocks
++Exit status is 1
+diff --git a/tests/f_64kblock/name b/tests/f_64kblock/name
+new file mode 100644
+index 0000000000..f737e26fd7
+--- /dev/null
++++ b/tests/f_64kblock/name
+@@ -0,0 +1 @@
++calculate inode_blocks_per_group for large-block fs
+diff --git a/tests/f_64kblock/script b/tests/f_64kblock/script
+new file mode 100755
+index 0000000000..6907d393fa
+--- /dev/null
++++ b/tests/f_64kblock/script
+@@ -0,0 +1,60 @@
++test_description="debugfs inode_overflow check"
++if ! test -x $DEBUGFS_EXE; then
++	echo "$test_name: $test_description: skipped (no debugfs)"
++	return 0
++fi
++
++FSCK_OPT=-yf
++OUT=$test_name.log
++if [ -f $test_dir/expect.gz ]; then
++	EXP=$test_name.tmp
++	gunzip < $test_dir/expect.gz > $EXP
++else
++	EXP=$test_dir/expect
++fi
++
++TMPFILE=$test_dir/test_img
++dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
++
++echo mke2fs -F -o Linux -b 65536 -I 16384 -N 24 test.img 262144 > $OUT.new
++$MKE2FS -F -o Linux -b 65536 -I 16384 -N 24 $TMPFILE 262144 >> $OUT.new 2>&1
++
++echo $FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT.new
++$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++
++echo ----------------------------------------------- >> $OUT.new
++
++echo " " >> $OUT.new
++echo "debugfs -R 'set_super_value inodes_per_group 262145' -w test.img" >> $OUT.new
++$DEBUGFS -R "set_super_value inodes_per_group 262145" -w $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++
++echo "debugfs -R 'lsdel' test.img" >> $OUT.new
++$DEBUGFS  -R "lsdel" $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++
++echo $FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT.new
++$FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
++status=$?
++echo Exit status is $status >> $OUT.new
++
++sed -f $cmd_dir/filter.sed $OUT.new > $OUT
++rm -f $OUT.new
++
++cmp -s $OUT $EXP
++status=$?
++
++if [ "$status" = 0 ] ; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff $DIFF_OPTS $EXP $OUT > $test_name.failed
++	rm -f tmp_expect
++fi
++
++unset IMAGE FSCK_OPT OUT EXP
+diff --git a/tests/filter.sed b/tests/filter.sed
+index 265f458ca2..eb2ed7b842 100644
+--- a/tests/filter.sed
++++ b/tests/filter.sed
+@@ -40,3 +40,5 @@ s/mmp_update_date: .*/mmp_update_date: test date/
+ s/mmp_update_time: .*/mmp_update_time: test_time/
+ s/MMP last updated by '.*' on .*/MMP last updated by 'test_node' on test date/
+ s/MMP update by '.*' at .*/MMP last updated by 'test_node' on test date/
++/Warning: blocksize 65536 not usable on most systems/d
++/Warning: 65536-byte blocks too big for system/d
 -- 
 2.52.0
 
