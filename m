@@ -1,206 +1,279 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C946D314D34;
-	Fri,  3 Jul 2026 03:39:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A80E2175A7D
+	for <linux-ext4@vger.kernel.org>; Fri,  3 Jul 2026 04:25:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783049968; cv=none; b=YxRn2Jd85YmOCPFXa9WpXZk5s8Les+oqjZR2uzz6O/raTbeES19W8cjkNNKDPABdmsgsMI1juJvBqCrts0RWVFr5DZKCBgwZUdwp32kRCJYpoVYgdvsN2QCGCEUnFLL1kbMMcwYcsiR583kIZLmtm+UHpQbUmg8BtblATFVjQyM=
+	t=1783052728; cv=none; b=Kg83G4nCJJjxFEsBHphESeTA6Z785aW2dQqbs7+IxqcCTo1k4Zj8lsm4Uuj+RGZ9dEZRQ6PTtbP3At4h0mmCYCEJ4GXbb6w5m0YY+NuzN6oF9e0Dcf4jnF9HNOyyuH/mHhUS412J4r9o2HDxgCuncUcE+/+HCGGWTbnkVTW0gvQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783049968; c=relaxed/simple;
-	bh=VFby4seUU78zGYKEEAs1W1sFStQFVzrd4qz75Nwb994=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=uAvo9psHC+mBnhbUNNnEHyvk8ELQiG1197d+u2dBl+QVinKWOBMbHklqLdSb3pvdKM6fXMoSI3fgJf5f89Vl3jNyHM57hab8/Ly9LMm++sRolVGYnKW06UUI/kmCBCclpNnBmutEurbiQ+URx7KEzdhtyP+ZZaLKvgQ7JOu7D5Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4grzxn6fQ9zKHMRP;
-	Fri,  3 Jul 2026 11:38:53 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.75])
-	by mail.maildlp.com (Postfix) with ESMTP id 2F4F74058F;
-	Fri,  3 Jul 2026 11:39:06 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP2 (Coremail) with UTF8SMTPSA id Syh0CgDnVvTYLkdqUBexAg--.24243S3;
-	Fri, 03 Jul 2026 11:39:05 +0800 (CST)
-Message-ID: <89a20f31-39e5-4592-9bc5-d444b6c1c7f4@huaweicloud.com>
-Date: Fri, 3 Jul 2026 11:39:03 +0800
+	s=arc-20240116; t=1783052728; c=relaxed/simple;
+	bh=lFpkZ4hLyujAZZSPkQA0jkSN/QGSA37oQVkYFmyEAB8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=cXoBrVxZFMLeDashqJSXctYkuD9iBqVhboqrvulGStSs5glsuL1Uyey6soNFAjJAoacI3ahZD+/Djasyy4DxMQ3B/GMRP8Qr7l9ALB9FHFnUNkk2OfkAP9ZgpfRwB0FQc1qnqGeXzTPf6dVecWwoPi0g3svX+Gb8Ue0yOQN2zKc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LylOCr53; arc=none smtp.client-ip=209.85.210.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LylOCr53"
+Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-845e47133c9so743395b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2026 21:25:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1783052714; x=1783657514; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=PadUhAX8JU7W3vYotKGvueCt2WpXGLFXJEVXJ+5nFKA=;
+        b=LylOCr53OMJC1nden83SBTJKm5v9w7Wg3j53b7HSFqfN2IiZiisQ5GgNLZMo/NVKaA
+         0lrWYgHH3tnpVub8eq+IrUaGKjgAj0xs4y1jwbCJiS159qyjNH5wDKCfpi7YRVXaYqeM
+         eqYJ9ztH6it0Pw+9wNLy0YaXMEZugr+1rS1O6y/IujwkcwEchSjOyazfx+WyDINKPf7W
+         toms7GXC08dhRbDMrhqpFk58RRx3Pg2+Avr0QMEFSkHplP+UXLSgv5+AfzjoGWZKUFjs
+         +6aqLDnNDyHKhrPoytXPYhT7XJoQzvA0KEJg2q4hGZq7AcFTKkufel2/ltAYF80BFtrD
+         p+2w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1783052714; x=1783657514;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=PadUhAX8JU7W3vYotKGvueCt2WpXGLFXJEVXJ+5nFKA=;
+        b=rXauBuvIlsYyXIawkcBhGemDJMZjKVm3ir+VJlkKhuBogIScfLGbdZrZo42QbEH3+O
+         5UMK3HmVFA9H+g55mAW0FMNRp4s8Hi2jkNdCPbhzQhAi6qH11i8i3Ahl1mBLPKY3rdCd
+         STkhc3SBiOf41ajg9hMnvH2/M07sRYpmcC1pA+LCAqhuDAQKRP3uBET/qfwbAHNtS0/A
+         AdqK4htnJbHZ3jYZr2pIdwiURUS4nYAo3/bVCYxgXPjsInT/vcnx3CH9daAM2kM+/LHx
+         S9ZJc2p9MAOZK3ivW86J5gJ1WH4x2OmjtHudh+/VPNI17zDYgZcVwJHUjJc83pYUvW0+
+         CQaQ==
+X-Forwarded-Encrypted: i=1; AFNElJ9frYiLRV4rXLdyKxMVAH6vdp6HIrKy18arddQl2ScyLH42yu8MUPO37huvev9HbmBEgS2B0yj7iNHI@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx8I6B2QwE6m2+WoJv3XbVyO7K87Pk13MoCbGmeDRmdAHnpkY7X
+	tLpGRymmFmuKkggMCjsKCNvo7ocKt8IZs80I05pwyDXHwH48g/CsXOsp
+X-Gm-Gg: AfdE7cmU/PJLbokbTUJijX7YMI7d3k5P0oMJ72q6+CoVjcvbxJndPjIG1FzAaUKeTmY
+	Mt+LdARaf5ACnrQNOCSopXuzNHhAP/7qtL030U9fwAGPbSUTiSqsrQyhuPNArGsmi9/TCLJuqUE
+	dJcaT4TeuKAUUSkgZvlv+biM8Tz0D4rVnJkmFXgelgnmhBcTgXgFeKALdr2AqscNgNFx0FET0v+
+	EFQm7WxhxRvYjwWiIq+tNT8DZxJR4xOm7zMVFolpxRxVpcSPXIe+e6YwFzZimqLWLprTxOv9iZD
+	Ls3AenfM0AugSv3MXK93wNVaSTPnATnCkFHDgrifHDcVT9gGBf2lnh+JiMxym6KCrMLlzky/JiC
+	nuHs/8Cc7k/ZhShJaVUuWwlHK4um5KDX4Gl6C4iNHpeiSEJhzBLp+oj15+2eCeOSSV2u5fC/rVj
+	wz9yfWRSaufOhGwtByN9n6NGiC5BJ8k+Go90FV6SChyjJleK5OWWeQx99FOa8GIQb40KzzOJqTE
+	M6VFOmx5GuwCyUD+WXBJeXCswSvxL2EsxegkZWxObv+xAZG9ONaLxn/ssqzM5MSJdoJHDUCJNKV
+	MWGDhBl4pgN+/qjhQjibD/Q=
+X-Received: by 2002:a05:6a21:487:b0:398:76d4:c7e9 with SMTP id adf61e73a8af0-3c01cbdb181mr3398227637.35.1783052713667;
+        Thu, 02 Jul 2026 21:25:13 -0700 (PDT)
+Received: from cs-1047136853211-default.asia-southeast1-a.c.d33bddc1d573818c7-tp.internal (213.28.87.34.bc.googleusercontent.com. [34.87.28.213])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-30f116065c5sm13284830eec.11.2026.07.02.21.25.10
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 02 Jul 2026 21:25:13 -0700 (PDT)
+From: Aditya Srivastava <aditya.ansh182@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jan Kara <jack@suse.cz>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Tao Ma <boyu.mt@taobao.com>,
+	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+Subject: [PATCH v3] ext4: use fsdata to track inline data write state and fix race
+Date: Fri,  3 Jul 2026 04:24:42 +0000
+Message-ID: <20260703042443.1655-1-aditya.ansh182@gmail.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/6] ext4: clarify return semantics of ext4_load_tail_bh()
-To: Jan Kara <jack@suse.cz>, Zhang Yi <yizhang089@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- yi.zhang@huawei.com, chengzhihao1@huawei.com, yangerkun@huawei.com
-References: <20260701142009.1510104-1-yizhang089@gmail.com>
- <20260701142009.1510104-3-yizhang089@gmail.com>
- <qpxvjsdnq6jgigjnwzkxny6lms6gi6t4bq5l33rr2f6m6l4oum@5e6ayymrgcbd>
- <a54c9df2-63e6-41ad-b32f-54d2f0356d5c@gmail.com>
- <5xgyaw3ufsymz7tqoyrkwo64a2uup75hnuaudtrejozhb2qnox@owzep3gkgf2v>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <5xgyaw3ufsymz7tqoyrkwo64a2uup75hnuaudtrejozhb2qnox@owzep3gkgf2v>
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:Syh0CgDnVvTYLkdqUBexAg--.24243S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3Jr1DCFyUAr18AFWkJFyxZrb_yoWxZFyDpa
-	9I9F1UKr4kJa409ayIy3W8Wrn2k34kJrW7urW8Kryjvas8Jr1SyF12gFy5uFyjkrs3WF1a
-	qrWUKryxXFs8AFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
-	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU1
-	7KsUUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 7/3/2026 12:43 AM, Jan Kara wrote:
-> On Thu 02-07-26 22:40:17, Zhang Yi wrote:
->> On 7/2/2026 5:53 PM, Jan Kara wrote:
->>> On Wed 01-07-26 22:20:05, yizhang089@gmail.com wrote:
->>>> From: Zhang Yi <yi.zhang@huawei.com>
->>>>
->>>> ext4_load_tail_bh() returns NULL for both holes and clean unwritten
->>>> buffers, but the conditions that lead to this are not obvious from the
->>>> code alone. Document this behavior to clarify the return value, so that
->>>> readers do not mistakenly assume that only holes result in a NULL
->>>> return.
->>>>
->>>> Also update the inline comment following the ext4_get_block() call to
->>>> reflect this: both holes and clean unwritten buffers fall through to the
->>>> "nothing to do" path.
->>>>
->>>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->>>> ---
->>>>   fs/ext4/inode.c | 6 +++++-
->>>>   1 file changed, 5 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>>> index c2c2d6ac7f3d..0b31fa873743 100644
->>>> --- a/fs/ext4/inode.c
->>>> +++ b/fs/ext4/inode.c
->>>> @@ -4026,6 +4026,10 @@ void ext4_set_aops(struct inode *inode)
->>>>    * because it might have data in pagecache (eg, if called from ext4_zero_range,
->>>>    * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
->>>>    * racing writeback can come later and flush the stale pagecache to disk.
->>>> + *
->>>> + * Return the loaded bh if it actually needs zeroing - in written, dirty
->>>> + * unwritten, or delalloc state. Return NULL if it's clean (i.e., a hole or
->>>> + * a clean unwritten block).
->>>>    */
->>>
->>> Great that you're adding this comment because when I was reading previous
->>> patch, I've spent like 10 minutes trying to figure that out :). But as far
->>> as I'm reading the code, ext4_load_tail_bh() will return the unwritten bh
->>> even if it is clean - map_bh() in _ext4_get_block() will set
->>> buffer_mapped() even for unwritten extent. What am I missing? BTW, it also
->>> seems to be ext4_load_tail_bh() could attempt to ext4_read_bh_lock() on
->>> unwritten bh if things align wrongly...
->>>
->>> 								Honza
->>
->> Thank you for the review!
->>
->> Please note the ext4_update_bh_state(bh, map.m_flags) call in
->> _ext4_get_block() — it restores the mapped flag back to unwritten. As a
->> result, the !buffer_mapped(bh) check will evaluate to true for a clean
->> unwritten block, the function will return NULL.
-> 
-> Argh, right. But ext4_ext_map_blocks() sets both BH_Unwritten and BH_Mapped
-> in the returned map->m_flags for unwritten extents. So I think my comment
-> still applies. 
+From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
 
-Because ext4_get_block() is called with create = 0, this is purely a
-lookup operation. Therefore, in ext4_ext_map_blocks() ->
-ext4_ext_handle_unwritten_extents(), only EXT4_MAP_UNWRITTEN is set,
-and EXT4_MAP_MAPPED is not (please see the branch where
-if (flags & EXT4_GET_BLOCKS_CREATE) == 0)). So at this point, whether
-the lookup is served from the extent status cache or from the on-disk
-query, it works correctly now.
+Instead of checking the live inode state (ext4_has_inline_data(inode)
+and ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) in the
+write_end handlers, use the fsdata parameter of the address space
+operations to explicitly pass down the state in which write_begin
+prepared the write.
 
-> Plus there's a very strange inconsistency between this and
-> the lookup in extent status tree in ext4_map_blocks() where (as you
-> indicate) we only set BH_Unwritten but *not* BH_Mapped. AFAICT there's
-> something buggy in here :) Note that when we don't set BH_Mapped flag e.g.
-> from ext4_get_block_unwritten() (which gets used when delalloc is disabled),
-> then writes to unwritten extent will get lost because
-> ext4_bio_write_folio() will just treat them as holes...
-> 
-> 								Honza
+A concurrent thread (such as ext4_page_mkwrite()) can convert the
+inline data to an extent between write_begin and write_end. If this
+happens, the write_end handlers would previously miss the inline
+write_end path and fall through to extent-based write_end logic.
+However, since block buffers were never allocated in write_begin,
+this resulted in NULL pointer dereferences or data loss because
+folio_buffers(folio) was NULL.
 
-In fact, there is no real problem here. For the write path that gets an
-unwritten block, EXT4_GET_BLOCKS_UNWRIT_EXT and
-EXT4_GET_BLOCKS_CREATE are always passed together. This ensures that
-even if we find the unwritten extent in the extent status cache, we
-still call ext4_map_create_blocks() (due to EXT4_GET_BLOCKS_CREATE)
-and go through ext4_ext_handle_unwritten_extents(). Inside that
-function, because the flags contain EXT4_GET_BLOCKS_UNWRIT_EXT,
-EXT4_MAP_MAPPED is set. So for the write path, ext4_bio_write_folio()
-still writes back correctly.
+Define EXT4_WRITE_DATA_INLINE (4) as a bit flag (Bit 2), treating
+fsdata as bitwise flags rather than mutually exclusive enums to keep
+states of the write path independent. Communicate this state via
+fsdata:
+1) ext4_write_begin() and ext4_da_write_begin() set the
+   EXT4_WRITE_DATA_INLINE bit in *fsdata via bitwise OR when an inline
+   write is successfully prepared.
+2) On entry, ext4_write_begin() clears the EXT4_WRITE_DATA_INLINE bit
+   to safely handle VFS retries (where generic_perform_write() bypasses
+   the fsdata initialization on its retry jump).
+3) The write_end handlers perform a bitwise AND to check if the
+   EXT4_WRITE_DATA_INLINE bit is set and invoke the inline write_end
+   helper accordingly.
 
-That said, the semantic inconsistency between the lookup-only and
-allocation paths has been bothering me for a while. I had to be very
-careful about this when developing the buffered I/O iomap path, because
-this semantics also differs from the iomap infrastructure. In iomap, for
-an unwritten extent, IOMAP_UNWRITTEN and IOMAP_MAPPED are not set
-simultaneously; IOMAP_MAPPED always represents a written extent. The
-good news is that this conversion is not complicated.
+Furthermore, during a buffered write, ext4_write_inline_data_end()
+acquires the xattr lock after preparing the write. If a concurrent
+page fault (ext4_page_mkwrite()) converts the inline data to an extent
+after the write_end handlers check the state but before
+ext4_write_inline_data_end() acquires the xattr write lock, the
+subsequent check will trigger a kernel panic via
+BUG_ON(!ext4_has_inline_data(inode)).
 
-I asked an agent to look into the historical reasons, and here is what
-he told me:
+To keep git history working and bisectability clean, replace the
+BUG_ON check in ext4_write_inline_data_end() with a graceful error-
+handling retry path in this same commit. If the inline data is cleared
+after locking the xattr, we safely release all resources (releasing
+iloc.bh, unlocking/putting the folio, stopping the active journal
+transaction handle) and return 0 (VFS retry) to let the generic write
+path retry the operation safely.
 
-  When ext4 introduced fallocate + delalloc in 2008-2009, it followed
-  the XFS convention that "unwritten is not mapped." However, ext4's
-  writeback path (mpage_da_submit_io) depended on BH_MAPPED to issue
-  I/O, which meant that unwritten buffers would never be written out.
-  Commit bf068ee266f9 was the first fix - it converted unwritten to
-  mapped during the writepages stage. Commit 29fa89d08894 was the
-  second fix - it made unwritten carry mapped at the write-begin stage.
-  Commit 2a8964d63d50 was a revert patch - it cleared the unwritten
-  flag in the create = 1 path to avoid duplicate get_block() calls.
+Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
+Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+---
+Changes in v3:
+- Changed EXT4_WRITE_DATA_INLINE to 4 (Bit 2) and treat fsdata as
+  bitwise flags, allowing decoupling of independent states in the
+  write path (e.g. standard fallback and inline writes), as suggested
+  by Jan Kara.
+- Clear the EXT4_WRITE_DATA_INLINE bit on entry to ext4_write_begin() to
+  safely unroll state for any VFS write retries.
+- Perform bitwise AND checks for EXT4_WRITE_DATA_INLINE and
+  FALL_BACK_TO_NONDELALLOC flags in the write_end and da_write_end
+  handlers.
 
-  Then the extent status cache was introduced in 2013. Commits
-  a25a4e1a5d5d (Zheng Liu, 2013-02) and d100eef2440f (2013) added the
-  ES-cache lookup path. In that path, ext4_es_is_unwritten returns
-  EXT4_MAP_UNWRITTEN without EXT4_MAP_MAPPED - this was not a new
-  design decision, but rather a continuation of the old 2009 convention
-  that "unwritten is not mapped." Zheng Liu's commit message did not
-  discuss whether MAPPED should be set at the same time; it only said
-  "ext4_map_blocks needs to use this flag to determine the extent
-  status." He was simply implementing the ES-cache lookup, and the
-  status semantics followed the old implementation.
+Changes in v2:
+- Folded the BUG_ON fix from the second patch into the first one to
+  ensure bisectability across git history, as suggested by Jan Kara.
+- Removed the pointless initialization `*fsdata = NULL` on entry to
+  `ext4_write_begin()`.
+- Removed the redundant check `if (fsdata)` in `ext4_write_begin()`.
 
-  The comment in ext4_map_blocks() - which says "if blocks have been
-  preallocated ext4_ext_map_blocks() returns with buffer head unmapped"
-  - was inherited from Aneesh's 2009 code. It was not a new decision
-  made in 2013.
+ fs/ext4/ext4.h   |  1 +
+ fs/ext4/inline.c | 14 +++++++++++++-
+ fs/ext4/inode.c  | 24 +++++++++++++-----------
+ 3 files changed, 27 insertions(+), 12 deletions(-)
 
-So my understanding is that this inconsistency in ext4_map_blocks() is
-a historical legacy problem. There are many places where handling these
-two flags is also semantically ambiguous. Some may treat those with the
-BH_mapped flag set as written, such as ext4_load_tail_bh(). Therefore,
-setting the mapped flag may cause many issues, and it can only be done
-by setting the unwritten flag when performing a query. If I am wrong
-about any of this, please correct me.
-
-Going forward, I think we should revisit and clearly redefine the
-semantics of these two flags, and unify the behavior of ext4_get_block().
-Otherwise, carrying this historical baggage will only hinder future
-development. :-)
-
-Thanks,
-Yi.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b37c136ea3ab..9e6f6467bdeb 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3138,6 +3138,7 @@ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
+ void ext4_set_inode_mapping_order(struct inode *inode);
+ #define FALL_BACK_TO_NONDELALLOC 1
+ #define CONVERT_INLINE_DATA	 2
++#define EXT4_WRITE_DATA_INLINE	 4
+ 
+ typedef enum {
+ 	EXT4_IGET_NORMAL =	0,
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..cfd591dc1d9c 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -812,7 +812,19 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 			goto out;
+ 		}
+ 		ext4_write_lock_xattr(inode, &no_expand);
+-		BUG_ON(!ext4_has_inline_data(inode));
++		/*
++		 * We could have raced with ext4_page_mkwrite() converting
++		 * the inode and clearing the inline data flag, so we just
++		 * release resources and retry the whole write.
++		 */
++		if (unlikely(!ext4_has_inline_data(inode))) {
++			ext4_write_unlock_xattr(inode, &no_expand);
++			brelse(iloc.bh);
++			folio_unlock(folio);
++			folio_put(folio);
++			ext4_journal_stop(handle);
++			return 0;
++		}
+ 
+ 		/*
+ 		 * ei->i_inline_off may have changed since
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ce99807c5f5b..4e1bf54e511d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1302,6 +1302,8 @@ static int ext4_write_begin(const struct kiocb *iocb,
+ 	if (unlikely(ret))
+ 		return ret;
+ 
++	*fsdata = (void *)((unsigned long)*fsdata & ~EXT4_WRITE_DATA_INLINE);
++
+ 	trace_ext4_write_begin(inode, pos, len);
+ 	/*
+ 	 * Reserve one block more for addition to orphan list in case
+@@ -1316,8 +1318,10 @@ static int ext4_write_begin(const struct kiocb *iocb,
+ 						    foliop);
+ 		if (ret < 0)
+ 			return ret;
+-		if (ret == 1)
++		if (ret == 1) {
++			*fsdata = (void *)((unsigned long)*fsdata | EXT4_WRITE_DATA_INLINE);
+ 			return 0;
++		}
+ 	}
+ 
+ 	/*
+@@ -1450,8 +1454,7 @@ static int ext4_write_end(const struct kiocb *iocb,
+ 
+ 	trace_ext4_write_end(inode, pos, len, copied);
+ 
+-	if (ext4_has_inline_data(inode) &&
+-	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
++	if ((unsigned long)fsdata & EXT4_WRITE_DATA_INLINE)
+ 		return ext4_write_inline_data_end(inode, pos, len, copied,
+ 						  folio);
+ 
+@@ -1560,8 +1563,7 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
+ 
+ 	BUG_ON(!ext4_handle_valid(handle));
+ 
+-	if (ext4_has_inline_data(inode) &&
+-	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
++	if ((unsigned long)fsdata & EXT4_WRITE_DATA_INLINE)
+ 		return ext4_write_inline_data_end(inode, pos, len, copied,
+ 						  folio);
+ 
+@@ -3161,8 +3163,10 @@ static int ext4_da_write_begin(const struct kiocb *iocb,
+ 						     foliop, fsdata, true);
+ 		if (ret < 0)
+ 			return ret;
+-		if (ret == 1)
++		if (ret == 1) {
++			*fsdata = (void *)((unsigned long)*fsdata | EXT4_WRITE_DATA_INLINE);
+ 			return 0;
++		}
+ 	}
+ 
+ retry:
+@@ -3291,17 +3295,15 @@ static int ext4_da_write_end(const struct kiocb *iocb,
+ 			     struct folio *folio, void *fsdata)
+ {
+ 	struct inode *inode = mapping->host;
+-	int write_mode = (int)(unsigned long)fsdata;
++	unsigned long write_mode = (unsigned long)fsdata;
+ 
+-	if (write_mode == FALL_BACK_TO_NONDELALLOC)
++	if (write_mode & FALL_BACK_TO_NONDELALLOC)
+ 		return ext4_write_end(iocb, mapping, pos,
+ 				      len, copied, folio, fsdata);
+ 
+ 	trace_ext4_da_write_end(inode, pos, len, copied);
+ 
+-	if (write_mode != CONVERT_INLINE_DATA &&
+-	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) &&
+-	    ext4_has_inline_data(inode))
++	if (write_mode & EXT4_WRITE_DATA_INLINE)
+ 		return ext4_write_inline_data_end(inode, pos, len, copied,
+ 						  folio);
+ 
+-- 
+2.47.3
 
