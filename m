@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4618834107D;
-	Fri,  3 Jul 2026 10:09:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFC913161A4;
+	Fri,  3 Jul 2026 10:37:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783073355; cv=none; b=InAdH339aCsmSfcqeogSdY6+Z2pvLPsBCip7ieuYQWvYjCY9j7eGXbCdRL9SJqnKWqnegrEYZSZTR2FRbaKonYRqpGSun3RkH2zMY9HQxD+Pz86hDN4qUkvKg22E23HCxbykN3TowCXErz5sjbhzdKTQVGYVXzFXO9zYI+/kS3o=
+	t=1783075048; cv=none; b=NBkBuqmD3Z5C6dTQsW77a+YcJFPPOziPoA3ob4nzYFi0JXEIw8x2g9QYDQmozRLcLVEA0UJGuHjbeCObklCztB8zGF1djZxm3mAj3mTlR9BmgBVbwzmjfhW2VoAYsaSveP50I99WnYb+0O/azEyB85v2gFiRxUEHMbc4w5uyiCk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783073355; c=relaxed/simple;
-	bh=fqHGFkQ/uMNgUnBpeH+E4QtycunIZVDXtaaz/Bp+0yU=;
+	s=arc-20240116; t=1783075048; c=relaxed/simple;
+	bh=d4s4dMLniDIuK4LTsTNvbrHzQ5sC7wrFJBhb2lMg/u0=;
 	h=MIME-Version:Content-Type:Subject:From:To:Cc:In-Reply-To:
-	 References:Date:Message-Id; b=FCGYwyEzJwrCezRqaJSlSxZxsVzvjIndHDBXnOd4I7lE7vhOvfbi2K9pSNRWt3Pc6eJLZr5KqC74ORycZXd4mvz/VthwPNmYVtl7Vq+k/vRzfuNHaaWKD3TB99Vudnv3FA3mvZUWvovzuzmsaxZfch+8L28nZ44W5wKeIS7q+ys=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mcLraPN1; arc=none smtp.client-ip=100.103.45.18
+	 References:Date:Message-Id; b=hzO8GDLQc6WIhHSjeerGPh7k8fUjKV3P+oVBPa2o1gs+zNEJx+gYtkqBlQQ5HUpwLj+7mv44jiOXvB/4BAY5MGZeeyRc4VvUXBxU5NC1yv16WkrII7ia2zP+UU3CK1ipCkODCRnJj6SEesA7ax/OBI8S6aVfKX1GgUs4K/JiFvM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W8LzFtRD; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mcLraPN1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 640CE1F000E9;
-	Fri,  3 Jul 2026 10:09:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W8LzFtRD"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E6CFA1F000E9;
+	Fri,  3 Jul 2026 10:37:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783073354;
-	bh=DV57qCjUZpfPbDnSrLBCDL2EOZGWZj+b5zIBbWejluA=;
+	s=k20260515; t=1783075047;
+	bh=ibq5yGoOYYUKiAiXchC0WA0gL3l+/26cw0R84LkFjaY=;
 	h=Subject:From:To:Cc:In-Reply-To:References:Date;
-	b=mcLraPN10yP6HXPN9P1vmGwujxjj9uXH198p/MIIsjMeisZvsoem1Ww3Jk4F3ouKw
-	 Nb2ync7hOsSKSv/EYHgShRPkN9cv53OlHn5uZFEtFs9FTLHpCLrk5pgmmcZdZZjzUU
-	 EfaKvwC5Uvpea9ylBiS63tSgimkZL419/vsF3eiYYErKvqb8dot9inHX6RpBva/nZB
-	 +udg3luhbG3dpQGHyglnC/eLSWmhn2UUqYvB0gOVqz+/d8QEOtu+V9CWaj81VlR9j+
-	 rd58Vfz7BkF49NgMF3vllzHdB4lqZfMcP++gky/TZOeU04Mp4S9LVxl/c81H2sc36m
-	 jm/pEXOsBMFgw==
+	b=W8LzFtRDEJ+LA4ga+f6QzIP5wIjhPrvbgSkeN5H9fdUp8ldRpYac+VP2pbFWqLIaZ
+	 VOZRYcIErzh7ZZVI1opgKNPyPdXZNYzLlXZRZvIfpIEGsP8CRSvmh6dp1f1DUAQ8eT
+	 REmssNKn6FgP95Nylwk1jyDskOejoq/ZtxJV6+SZMcueW6AmnmkTRlSc0afIY2ZaY4
+	 0j6EQgUmekHKxLsbkP1RtsOiATrm0qsMc/rLKl6p2+xyg60HQXm8THGcRmHmGEbsA5
+	 +KIVTrOUxI8EdD77tZ08aAlBNDaVgctnhdPNMu6u++MTrLUeeidjuDh4Pwu7QdGwKu
+	 L34A4eoQ9xeiA==
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -33,71 +33,92 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Subject: Re: [PATCH v3 0/19] fs: Fix missed inode write during fsync
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH v2 17/18] iomap: pass iomap_next_fn directly instead of
+ struct iomap_ops
 From: Christian Brauner <brauner@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, Christian Brauner <brauner@kernel.org>, 
- aivazian.tigran@gmail.com, Ted Tso <tytso@mit.edu>, 
- linux-ext4@vger.kernel.org, OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-In-Reply-To: <20260702175436.12226-1-jack@suse.cz>
-References: <20260702175436.12226-1-jack@suse.cz>
-Date: Fri, 03 Jul 2026 12:09:09 +0200
-Message-Id: <20260703-fahrbahn-tierwelt-anrechnen-e055769a5edb@brauner>
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+ brauner@kernel.org, willy@infradead.org, hsiangkao@linux.alibaba.com, 
+ linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org, 
+ Jens Axboe <axboe@kernel.dk>, Chris Mason <clm@fb.com>, 
+ David Sterba <dsterba@suse.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Jan Kara <jack@suse.cz>, Dan Williams <djbw@kernel.org>, 
+ Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, 
+ Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>, 
+ Sandeep Dhavale <dhavale@google.com>, Hongbo Li <lihongbo22@huawei.com>, 
+ Chunhai Guo <guochunhai@vivo.com>, Namjae Jeon <linkinjeon@kernel.org>, 
+ Sungjong Seo <sj1557.seo@samsung.com>, Yuezhang Mo <yuezhang.mo@sony.com>, 
+ Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Baokun Li <libaokun@linux.alibaba.com>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>, Jaegeuk Kim <jaegeuk@kernel.org>, 
+ Miklos Szeredi <miklos@szeredi.hu>, 
+ Andreas Gruenbacher <agruenba@redhat.com>, 
+ Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>, 
+ Hyunchul Lee <hyc.lee@gmail.com>, 
+ Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
+ Carlos Maiolino <cem@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
+ Naohiro Aota <naohiro.aota@wdc.com>, Johannes Thumshirn <jth@kernel.org>, 
+ "open list:BLOCK LAYER" <linux-block@vger.kernel.org>, 
+ open list <linux-kernel@vger.kernel.org>, 
+ "open list:BTRFS FILE SYSTEM" <linux-btrfs@vger.kernel.org>, 
+ "open list:FILESYSTEM DIRECT ACCESS (DAX)" <nvdimm@lists.linux.dev>, 
+ "open list:EROFS FILE SYSTEM" <linux-erofs@lists.ozlabs.org>, 
+ "open list:EXT2 FILE SYSTEM" <linux-ext4@vger.kernel.org>, 
+ "open list:F2FS FILE SYSTEM" <linux-f2fs-devel@lists.sourceforge.net>, 
+ "open list:FUSE FILESYSTEM [CORE]" <fuse-devel@lists.linux.dev>, 
+ "open list:GFS2 FILE SYSTEM" <gfs2@lists.linux.dev>, 
+ "open list:NTFS3 FILESYSTEM" <ntfs3@lists.linux.dev>
+In-Reply-To: <CAJnrk1b8j5WHtbHOWNXc4=QBFOxde1f2QxTOeui7Ta8O-xWcTA@mail.gmail.com>
+References: <20260701000949.1666714-1-joannelkoong@gmail.com>
+ <20260701000949.1666714-18-joannelkoong@gmail.com>
+ <20260702140705.GE21339@lst.de> <20260702165117.GK9392@frogsfrogsfrogs>
+ <CAJnrk1b8j5WHtbHOWNXc4=QBFOxde1f2QxTOeui7Ta8O-xWcTA@mail.gmail.com>
+Date: Fri, 03 Jul 2026 12:37:14 +0200
+Message-Id: <20260703-nachrangig-gegeben-befestigen-8219a53648c7@brauner>
 X-Mailer: b4 0.16-dev-4217c
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2284; i=brauner@kernel.org;
- h=from:subject:message-id; bh=fqHGFkQ/uMNgUnBpeH+E4QtycunIZVDXtaaz/Bp+0yU=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS5d3mc3rzUrNhr/2f3ZWFLzzLe+P/h9BPOCzHTLW7c7
- JVlTzbW6ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZiIcTjDfwcnMUmd9Vucv23Z
- +Dkp5ueLyfdWOdTHLtt/JvtdpX5fsDjD//SknSfU1mwTVs0XqOnZPGnv0euqP9+E578X2nRN++J
- EbhYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1636; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=d4s4dMLniDIuK4LTsTNvbrHzQ5sC7wrFJBhb2lMg/u0=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWS5T7iz7fS6t1kzwm8fcparv3KDyXRbpMKKF15fNPbwT
+ dVe5OMk1lHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRtgxGhmMbHf76zT147eA7
+ nZiMnzu9Q+v+PNtl5pjYUP6f6/XP/z8YGe7siubVVw14xJBz7G+cn2VOrNK0S08/rfgQ3Ddj8wq
+ eCi4A
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-> Hello,
+On 2026-07-02 18:47 -0700, Joanne Koong wrote:
+> On Thu, Jul 2, 2026 at 9:51 AM Darrick J. Wong <djwong@kernel.org> wrote:
+> >
+> > On Thu, Jul 02, 2026 at 04:07:05PM +0200, Christoph Hellwig wrote:
+> > > Looks good:
+> > >
+> > > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > >
+> > > In terms of merge logistics, I wonder if we should delay this and
+> > > the previous patch to the next merge window so that we can minimize the
+> > > cross-subsystem merge pain with more file system iomap conversion.
+> > > If none of them actually happen until rc6 or so, orif  the merges aren't
+> > > painful we could still pick them up late in the merge window.
+> >
+> > I'd say everything but this patch should go in during the merge window
+> > for 7.3, along with clear instructions to brauner/torvalds to expect
+> > this patch to appear right before 7.3-rc1 gets tagged, to clean up all
+> > the other changes that come in.
 > 
-> here is v3 of the patch series which fixes the possibly missing inode write
-> during fsync(2) for filesystems using generic metadata bh tracking. This is
-> a heavily reworked version since v2 mostly based on problems Sashiko found
-> which prompted me to redesign the whole approach.
-> 
-> The series now strives to make sure sync_inode_metadata() ->
-> writeback_single_inode() will end up to properly persisting not only the inode
-> but also all metadata associated with the inode. This is beneficial for several
-> reasons:
-> 
-> 1) This removes the need for separate mmb_fsync() implementations. Filesystems
-> can just use simple_fsync().
-> 
-> 2) This makes sure all metadata is written for IS_SYNC / IS_DIRSYNC inodes.
-> Currently most filesystems just write inode itself.
-> 
-> 3) This fixes races when multiple fsyncs race for a while where mmb_sync()
-> could return before all buffers were really persisted (now I_SYNC state flag
-> properly serializes everything).
-> 
-> To be able to achieve this we add new .sync_inode_metadata superblock operation
-> which gets called from __writeback_single_inode() and new I_METADATA_WRITEBACK
-> state flag (putting everything into .write_inode is possible but it looked too
-> ugly so I've decided for the new operation).
-> 
-> This scheme with I_METADATA_WRITEBACK state flag also fixes the problem that
-> when WB_SYNC_NONE writeback happened between write(2) and fsync(2), fsync(2)
-> would fail to properly persist the inode. Note that this problem isn't specific
-> to filesystems using the generic metadata bh tracking. This patch set doesn't
-> fix such filesystems as it is already big enough but the universality of this
-> problem among simple filesystems is another reason why I've chosen the new
-> superblock operation instead of trying to somehow hack up metadata bh tracking
-> infrastructure.
-> 
-> Patches passed some basic testing with fstests, more tests are still running
-> but I guess the patch set is good enough for people to have a look.
-> 
-> Changes since v2:
-> * redesigned the patch set to use new superblock operation
+> Just to clarify, did you mean this patch and the previous one? If i'm
+> interpreting Christoph's concern correctly, I think he's worried about
+> other filesystems converting to iomap using the ->iomap_begin() /
+> ->iomap_end() functions still? That sounds like a good plan to me, for
+> v3 I'll submit everything but this patch and the last one and then
 
-I think this is a clear win and a lot easier to follow than what we have before.
-So I'm all for this.
+Ok, so we'll do the prep for vfs-7.3.iomap (aka to be merged in the
+v7.3-rc1 cycle)...
 
--- 
-Christian Brauner <brauner@kernel.org>
+> submit these patches (and any cleanup ones that become necessary) to
+> Christian right before 7.3-rc1 gets tagged (which as I understand it,
+> is when the merge window is about to close).
+
+and merge these _after_ v7.3-rc1 has been tagged...
+
