@@ -1,126 +1,250 @@
-Received: from mail-wm1-f53.google.com (mail-wm1-f53.google.com [209.85.128.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2D49285CA2
-	for <linux-ext4@vger.kernel.org>; Fri,  3 Jul 2026 03:05:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.53
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783047959; cv=pass; b=F9puHZKRotXbPUmg2AS2HX8g6JPBPmaDnWjJweQdpsKUwI5ucucime80GLffgJ5OXGm2dXt2XfC6gOEUfXyhMF5KtP8w1AeYH5zNOytrz9AY2eOldw+Ja7DBTFo/F+SzuZVMIUi2z7pGMF1UX5tEb/Vd+NbkpQQjx14rI4J4xEI=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783047959; c=relaxed/simple;
-	bh=L+H3GdulcKLSn6s39Xisy3yxUPpEpZqQt/6NPjm2hT4=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=rM+QcRjcp4zqc+DtWdWA9zh/ZlSjtfsEVHs4H7cPGwvRMYnmwO+rSNThvHmnnXH2mCDe58GSReKDxc76B6QXn5qxp7BtOvCqBKlsAecJoX6mPw1jxUYDiWWGLIrIWQ5ABijSHIBWGCmNMpMx25zGxxiSSlT0zAciw0AWvSuFCs0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EeDkho1p; arc=pass smtp.client-ip=209.85.128.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DDC82F9984;
+	Fri,  3 Jul 2026 03:23:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1783049020; cv=none; b=aLPbq2OraOi3MBVwo4oj0az4G7DZydrpEsmDOwRVXSz2uarYLSDupuILcEB0T9dvXLS6Pnwd3ZvbDWMjh4exL3OX5NjW+/tpY9ESIjxK6Jv4RwuQxD5PkYF7zRKc73RDmJ+1UD0EIXyaA29/g244rdP6QqF59NdzW9+1lAlGegY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1783049020; c=relaxed/simple;
+	bh=X2SI7UvmclVAS8Ei57K3cAeV+SKDgtAA+HDWQZHKm9k=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=iJ927UqxR5S4KYGxHks+Mb3rULYk8XVTgRdFO1Dg64dDu4/ZDrszVp7wROcPcu1gHZMMZeXIYZ/27xTpBbnw+5V8bGBNrKCBKLR0OdrVqbisx61Fo/dWlnwta4pd/2XgqQdWSSSVDGONUD9ZGEbfWokcoHaUSWVNq+Sp1hyhyiA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=aB7N4hOK; arc=none smtp.client-ip=205.220.166.238
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EeDkho1p"
-Received: by mail-wm1-f53.google.com with SMTP id 5b1f17b1804b1-493ae59eca6so346215e9.1
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2026 20:05:57 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1783047956; cv=none;
-        d=google.com; s=arc-20260327;
-        b=ei8LC8obIz341sIYsNOqUrboznl+Q7vVOp9JI54KUmRZc0nlsoapg7V9jxWFrKjBWI
-         srd05rxhbYCzNi8JZ53Mz0rqXs0IkkR55jJ77lfVN2hYSYdb7TMG6OqNZqDdjYkkCvGJ
-         TJH481PeCF4O7T9BshMHu16RcyYA/3s9JI7U5++RjMpex8hw9gcJcVxliZGFoTKldzQ7
-         yhsFZvl11bW5AnQDzrnumvintR5xPxFvaPL1uFenC7XiHqJ61L3POyQBKhqHVcqQ3YjK
-         yGM1k/j8SdAOrPeNiOVqbp/8Bq4UEmYW9AoSMsUSySJ+YEnZeRwGVJz7dghfWIYs7J9J
-         2g1A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=L+H3GdulcKLSn6s39Xisy3yxUPpEpZqQt/6NPjm2hT4=;
-        fh=5t23YIxqmwLECY+WDkDBY8SveG6KzZp2ZO/6QJc/j8Y=;
-        b=AQ7BVHxdQ+bqTESiOUAYmuUl5QdB06VOen8Vt/G8hSoDrwPKxP0fIrsZBHAiEGnfkc
-         st5cCMbfHDGVPnMqnrdZWA17H13M1QVzi7zhKrZiJkdM5YNb+OkT0LUWhO34Ta9i7b+Z
-         hnJ6pjNRhKzqlaQsZQ72zQ//WndRM9waFzCRzwc0h3eP9my9cxbEzVYly4X/1RQNpWb4
-         oZLjrej/IRuR0gyJJIjQkdkm1ZXu918y396DH6hyvjtk0oPO0sXX1cgyxioVvRHXub/h
-         rPhXSafZQR+g2zoqqr3FkenaYNATgRnOnRs7HzPV/X70cos4zzGZB4oShTyoQO9HtRDf
-         2RDQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783047956; x=1783652756; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=L+H3GdulcKLSn6s39Xisy3yxUPpEpZqQt/6NPjm2hT4=;
-        b=EeDkho1p38ZO22WDSFypik9GdRJBnA+hMGgltuEEi7yE5dOIEj9CVMtTfHZXnCeeh5
-         5S3nGoLhb/sTUnk5InAuevla/JvQUID/1utipgwbUYEX0iHlWRZtgVke6p//pqLHct1N
-         BeLworJR14NmtSnzoMrQjZDD7QNBrCWnJVT9EsYFsyOVGXxL6760xBoOp/3PtYJgEYay
-         4LkzdbbfFhtCIq5Zulul3GTsnoTlZijODF8NTQy0/q9919N14dHXs3fRvTY/yFx7LSIM
-         jVYnCfrOrRnwp/WCXDXecj4nyLPui8a+HFQ2IDvL/fLLQiFRfbbB58e6wrwns24iukZH
-         gg6A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783047956; x=1783652756;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=L+H3GdulcKLSn6s39Xisy3yxUPpEpZqQt/6NPjm2hT4=;
-        b=oKR4ESxZjArOxb8kdGfQwQrdskQJybmmPLDAYBy5i9agnZdFdegRGNK0ifM9C/d0lk
-         upbsgZJHoasWD5yzNy180v06ag6VziLsNBYTgSn4LUAcbFI2/Lo0wYZa9ldOXh4pb/v2
-         cQD3P6sasWc/cKgVtOoYUtOZTpICtxf3CPykDGsQvO7ehDP5cafTil+Ab3fWb0xxtnUF
-         8g8vvBnsIHsFE+D8TQhDYBvbLxsKfvUyhKHl/okyxuwd07SXiU5uasiBrUswKhEZe/YE
-         yXbNLcHLRllu4WZdR1oRiDcxnG9BVzuv4kZMf4Ke0PbJ5hneuZqeOm4eCy46Fuxqm6n0
-         CKPA==
-X-Forwarded-Encrypted: i=1; AFNElJ/H6h0xYBGri2Wk3QnvTJCwwbTXgTLLVhkEgwyq6aqXNyhIY3wMr6UTFZNupN9zgE9zG6Ud5JCYHpj9@vger.kernel.org
-X-Gm-Message-State: AOJu0YzG1ZLnL25TfQfZkgDXsGUyAH5rH/CrMCklcCYUhChJvb//pesQ
-	G+0vm0RO74zX/NKWXkcjZyE3hQSVunuAujcoX37eAt6yT0qOgoytTvDCIc6najC2pevMqtNtToL
-	fYZovG+V5CMHlowxAerReVboVwuW7pOU=
-X-Gm-Gg: AfdE7cle4cvuuT8p40la8t8gAnF91zzrhQZguLyJG/8XDIGOfvPhvF8LyvYfMtBSs+Z
-	aUaYAJgO4ey40TyAeokmPRU5By5th3jtO2Xd7GWPdSL72q/qSRLB5LciZu3rQFarvODICXnQgOK
-	jc2ol8lvn1ysSJbEYJE1tTxH+OJwJOFNWIhDv9qX45qmVA8ZQ5G8dpRoj0EKGPR2xiw8+9Xx26G
-	BwPu0gq9FtNMFT2QVGVUufkVRhqs6IWCUQtmHWBVK7MhkcIBeSOHeUU6+D1St2HgZanglCkZavC
-	t8k09AkiAKQwa+EbvnOIiwNyz4mrmVmKWivZiuXIJ9HnBdENDcGL
-X-Received: by 2002:a05:600d:840c:10b0:493:b9cd:1272 with SMTP id
- 5b1f17b1804b1-493c3cf2f50mr85170315e9.23.1783047955834; Thu, 02 Jul 2026
- 20:05:55 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="aB7N4hOK"
+Received: from pps.filterd (m0250809.ppops.net [127.0.0.1])
+	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6632t3ig3348555;
+	Thu, 2 Jul 2026 20:23:08 -0700
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
+	 h=cc:content-transfer-encoding:content-type:date:from
+	:message-id:mime-version:subject:to; s=PPS06212021; bh=/CzHcWGqx
+	VgUtiWKtueGj4vnyKDNUQr1LUkcqBBy+t4=; b=aB7N4hOKcD/TUoXUcw8a49JDn
+	paTEI4+QhkJt6goLVqJtigb9+V90VK6n5wIEU+QEguP3PbF4K1ytbTGOwd8kVOmi
+	rWbWFK7nkMTom+JdmmV6TGqKAZwaktgLEhI8OD4dxR7u3ap4oumK/EJIIDAEHvoH
+	nPFzxSfOlmF0DcVJaIOEjG35jOCcEpD6KAlG2fBLC7WQXFDIY+/3xONUgBftpZbV
+	065kOz4xmGC/HXvTnx7HyjNovnH3OjgGX3X9nAJ5cHPP9H9KOSfwt3RzlVyvV8BB
+	cB6bJku6+l8PFFzfMrkI8vSuyBVsdZ1RLKPwUd/7bYB4lQ6MY4oV29NhXCG8Q==
+Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4f2e1h0rej-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
+	Thu, 02 Jul 2026 20:23:07 -0700 (PDT)
+Received: from ala-exchng01.corp.ad.wrs.com (10.11.224.121) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2507.61; Thu, 2 Jul 2026 20:23:07 -0700
+Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
+ ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server id
+ 15.1.2507.61 via Frontend Transport; Thu, 2 Jul 2026 20:23:04 -0700
+From: Yun Zhou <yun.zhou@windriver.com>
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+        <yi.zhang@huawei.com>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <yun.zhou@windriver.com>
+Subject: [PATCH v3] ext4: fix race in ext4_convert_inline_data() leading to BUG_ON in writepages
+Date: Fri, 3 Jul 2026 11:23:03 +0800
+Message-ID: <20260703032304.4088040-1-yun.zhou@windriver.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260701033253.46420-1-changfengnan@bytedance.com>
- <20260701033253.46420-4-changfengnan@bytedance.com> <akT4tJzFSfrBxqdq@infradead.org>
- <CAJnrk1Y3yPeXBeBNo+DjTt8eRN-mc2F9apBCUn+j=GV7GMzi4g@mail.gmail.com> <akZ3GErzJSTtOn-H@infradead.org>
-In-Reply-To: <akZ3GErzJSTtOn-H@infradead.org>
-From: Joanne Koong <joannelkoong@gmail.com>
-Date: Thu, 2 Jul 2026 20:05:42 -0700
-X-Gm-Features: AVVi8CfZKbXMpL8snbpx3vl7cTayO8vf5li7UT5PBriPQUNElwm8EQYO8_inLP4
-Message-ID: <CAJnrk1ZijiWYU8YOmRf24xxwX0kH6vCe3ta89LfoX7v7j_JYLQ@mail.gmail.com>
-Subject: Re: [PATCH v6 3/3] iomap: add simple dio path for small direct I/O
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Fengnan Chang <changfengnan@bytedance.com>, brauner@kernel.org, djwong@kernel.org, 
-	ojaswin@linux.ibm.com, dgc@kernel.org, linux-xfs@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, lidiangang@bytedance.com, 
-	pankaj.raghav@linux.dev, Brian Foster <bfoster@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Proofpoint-ORIG-GUID: cKNmnNzTNdgeDSNIk5mBmUerMamaujQr
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzAzMDAyOCBTYWx0ZWRfXxeIpzRYmLIQH
+ lFrW2iuXE4HluOOXJkCzMq2r4YacPUqWiSKiWGxeCnxYljgnaOLDZVxbGpaUz4QBLbxorSJojNT
+ vTahYRGMmVoAm+QHteuCtH1ChLRI4US0oEpHJqVETTHOvfctoYHL
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzAzMDAyOCBTYWx0ZWRfX/HG8iOmplGLB
+ hjTmSeXp00in3itRtCD1usjaZCzA42oW8op3ikW8wPhFdLKMs8knSm4FNuapq8M7EezHv0DTeaT
+ wPNZxE8KGKVgjiIIklkwgvNYaH76dN8ouy9G0N4Up+LIkiBvGNX76T4hhqVAaMtMyez2yllukAj
+ eJfbO4ChdSEGENXKCwxhT+z5MFSVcnUqIxynr/r+BR3xhlKUgrXotacA3Zk/CSyPdHOSgOpzPZe
+ U8kkV3ZUPQJctShEXM0MJ06OX3vwQNz7bFgy4zPAVxu5jIHN2dgZrC6jSuFwSzq4tRPCVTeUBic
+ UGHxzosReyia92ay9SUaEMfF3oTxkl3i9yCoQLBL6vboKa/ThFXEjwWcbaFpl6tqBCpR+NkwMYt
+ Cu/flJGGvYZHpGazZD+j/EV3oH7jOVsoSIRZ2Lrm5KwvM89dNIyqGdQeqTOlvB657QjQOp3DAk+
+ wnBmEJoqoxB7DS2agZA==
+X-Proofpoint-GUID: cKNmnNzTNdgeDSNIk5mBmUerMamaujQr
+X-Authority-Analysis: v=2.4 cv=GsByPE1C c=1 sm=1 tr=0 ts=6a472b1b cx=c_pps
+ a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
+ a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
+ a=iKiJcTA2PjBS6x5JeXcw:22 a=edf1wS77AAAA:8 a=hSkVLCK3AAAA:8 a=t7CeM3EgAAAA:8
+ a=6yhk5WB4rwwjWNa3LaoA:9 a=DcSpbTIhAlouE1Uv7lRv:22 a=cQPPKAXgyycSBL8etih5:22
+ a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.125,FMLib:17.12.100.49
+ definitions=2026-07-03_01,2026-06-26_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ suspectscore=0 phishscore=0 lowpriorityscore=0 clxscore=1015 bulkscore=0
+ spamscore=0 malwarescore=0 priorityscore=1501 impostorscore=0 adultscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607030028
 
-On Thu, Jul 2, 2026 at 7:35=E2=80=AFAM Christoph Hellwig <hch@infradead.org=
-> wrote:
->
-> On Wed, Jul 01, 2026 at 12:35:24PM -0700, Joanne Koong wrote:
-> > I think it ends up being pretty simple to get it integrated since
-> > ->iomap_next already contains the logic to only begin the mapping at
-> > the start and only finish the mapping when the iter has been fully
-> > consumed, eg
->
-> I wonder if this adds overhead that the simple path removed.
+ext4_convert_inline_data() has two unsafe lockless fast paths that can
+observe a transient state from a concurrent convert_inline_data_nolock()
+that has destroyed inline data but then fails and restores it.  A racing
+thread sees the transient state, concludes no conversion is needed, and
+creates dirty pages via block_page_mkwrite().  The restoring thread then
+re-sets inline data + MAY_INLINE_DATA, leaving dirty pages coexisting
+with inline data, triggering BUG_ON in ext4_do_writepages().
 
-Ah I see now, the whole point of Fengnan's series is to k eep the
-logic minimal...
+A similar race exists with ext4_da_convert_inline_data_to_extent():
+after it copies data to page cache and clears MAY_INLINE_DATA, a
+concurrent convert_inline_data_nolock() can restore MAY_INLINE_DATA.
 
-Fengnan, I think you had mentioned earlier [1] that enabling
-iomap_next brought the simple-read gain down from 10% to 7%? Thanks
-for running those numbers. Would you be able to share the changes you
-made to iomap_dio_rw to support iomap_next for those benchmarks you
-ran?
+Simply moving the MAY_INLINE_DATA check inside xattr_sem would require
+taking the write lock, starting a journal handle, and reading the inode
+location on every call -- even for inodes that have long since been
+converted.  This causes measurable performance regression on filesystems
+with the inline_data feature enabled.
 
-Thanks,
-Joanne
+Fix this by introducing EXT4_STATE_INLINE_CONVERTED, a monotonic
+(set once, never cleared) per-inode state bit indicating that inline
+data has been successfully copied out to page cache or a data block.
+This provides:
 
-[1] https://lore.kernel.org/linux-fsdevel/e85e73bd-5fbe-4d11-89ba-7b42c237d=
-d34@bytedance.com/
+1. A safe lockless fast path in ext4_convert_inline_data(): once the
+   bit is set, return 0 immediately without any locking overhead.
+
+2. A WARN_ON_ONCE guard in convert_inline_data_nolock(): if the bit
+   is unexpectedly set at restore time, warn.  This should not happen
+   given the MAY_INLINE_DATA check prevents entering nolock when DA
+   conversion is in progress.
+
+3. Inside xattr_sem, only call convert_inline_data_nolock() when both
+   has_inline_data AND MAY_INLINE_DATA are set.  When has_inline_data
+   is set but MAY_INLINE_DATA is clear, DA conversion is in progress;
+   skip convert_nolock to avoid destroy+restore re-setting MAY.
+
+The bit is set in all successful conversion paths:
+- ext4_convert_inline_data_nolock() on success
+- ext4_convert_inline_data() when inline data is gone after nolock
+- ext4_da_convert_inline_data_to_extent() after page cache copy
+- ext4_convert_inline_data_to_extent() after block_commit_write
+
+Fixes: 7b4cc9787fe3 ("ext4: evict inline data when writing to memory map")
+Reported-by: syzbot+d1da16f03614058fdc48@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=d1da16f03614058fdc48
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+---
+v3:
+- Introduce EXT4_STATE_INLINE_CONVERTED monotonic bit for safe lockless
+  fast path, avoiding performance regression from always taking xattr_sem.
+- Add WARN_ON_ONCE at restore point as sanity check.
+- Skip convert_nolock when MAY_INLINE_DATA is clear (DA convert in
+  progress) to prevent destroy+restore re-setting MAY.
+
+v2:
+- Reworked fix: root cause confirmed via ftrace.
+- Removed both unsafe lockless fast paths, serialize under xattr_sem.
+- Skip convert_nolock when MAY_INLINE_DATA is clear (DA convert in
+  progress) to prevent destroy+restore from re-setting MAY.
+
+ fs/ext4/ext4.h   |  1 +
+ fs/ext4/inline.c | 44 ++++++++++++++++++++++++++------------------
+ 2 files changed, 27 insertions(+), 18 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b9b0ada7774b..310aeb14f9f0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2049,6 +2049,7 @@ enum {
+ 	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+ 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+ 	EXT4_STATE_FC_REQUEUE,		/* Inode modified during fast commit */
++	EXT4_STATE_INLINE_CONVERTED,	/* inline data copied out, do not restore */
+ };
+ 
+ #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..1b6abacf12e6 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -671,6 +671,8 @@ static int ext4_convert_inline_data_to_extent(struct address_space *mapping,
+ 
+ 	if (folio)
+ 		block_commit_write(folio, from, to);
++	if (folio && !ret)
++		ext4_set_inode_state(inode, EXT4_STATE_INLINE_CONVERTED);
+ out:
+ 	if (folio) {
+ 		folio_unlock(folio);
+@@ -921,6 +923,7 @@ static int ext4_da_convert_inline_data_to_extent(struct address_space *mapping,
+ 	clear_buffer_new(folio_buffers(folio));
+ 	folio_mark_dirty(folio);
+ 	folio_mark_uptodate(folio);
++	ext4_set_inode_state(inode, EXT4_STATE_INLINE_CONVERTED);
+ 	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 	*fsdata = (void *)CONVERT_INLINE_DATA;
+ 
+@@ -1172,8 +1175,14 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 	}
+ 
+ out_restore:
+-	if (error)
+-		ext4_restore_inline_data(handle, inode, iloc, buf, inline_size);
++	if (error) {
++		WARN_ON_ONCE(ext4_test_inode_state(inode,
++					EXT4_STATE_INLINE_CONVERTED));
++		ext4_restore_inline_data(handle, inode, iloc, buf,
++					 inline_size);
++	} else {
++		ext4_set_inode_state(inode, EXT4_STATE_INLINE_CONVERTED);
++	}
+ 
+ out:
+ 	brelse(data_bh);
+@@ -1959,22 +1968,16 @@ int ext4_convert_inline_data(struct inode *inode)
+ 	handle_t *handle;
+ 	struct ext4_iloc iloc;
+ 
+-	if (!ext4_has_inline_data(inode)) {
+-		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	if (!ext4_has_feature_inline_data(inode->i_sb))
++		return 0;
++
++	/*
++	 * Once inline data has been successfully copied out (to page
++	 * cache or a data block), this bit is set and never cleared.
++	 * It is safe to check without locks -- the bit is monotonic.
++	 */
++	if (ext4_test_inode_state(inode, EXT4_STATE_INLINE_CONVERTED))
+ 		return 0;
+-	} else if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
+-		/*
+-		 * Inode has inline data but EXT4_STATE_MAY_INLINE_DATA is
+-		 * cleared. This means we are in the middle of moving of
+-		 * inline data to delay allocated block. Just force writeout
+-		 * here to finish conversion.
+-		 */
+-		error = filemap_flush(inode->i_mapping);
+-		if (error)
+-			return error;
+-		if (!ext4_has_inline_data(inode))
+-			return 0;
+-	}
+ 
+ 	needed_blocks = ext4_chunk_trans_extent(inode, 1);
+ 
+@@ -1990,8 +1993,13 @@ int ext4_convert_inline_data(struct inode *inode)
+ 	}
+ 
+ 	ext4_write_lock_xattr(inode, &no_expand);
+-	if (ext4_has_inline_data(inode))
++	if (ext4_has_inline_data(inode) &&
++	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+ 		error = ext4_convert_inline_data_nolock(handle, inode, &iloc);
++	if (!ext4_has_inline_data(inode)) {
++		ext4_set_inode_state(inode, EXT4_STATE_INLINE_CONVERTED);
++		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	}
+ 	ext4_write_unlock_xattr(inode, &no_expand);
+ 	ext4_journal_stop(handle);
+ out_free:
+-- 
+2.43.0
+
