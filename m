@@ -1,66 +1,79 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F40D83CAE68
-	for <linux-ext4@vger.kernel.org>; Fri,  3 Jul 2026 11:48:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39D3E393DF0;
+	Fri,  3 Jul 2026 12:40:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783079324; cv=none; b=mWguu8iuk8eRlE51GEwpOHwnEGht4eJ0V2U4GO5E7FnfjsEThcRAWApOG++XBrsUUvZa/CBfZbbLpqF2Xa2bsQYrRi5w7BK6+G1ZbGqD1ZQrGbc77y6RG2yrVz2OCCT966WCKuBi54zPIwFeCZaiKV86xJ+8fEkjf/1kB5p+22A=
+	t=1783082434; cv=none; b=TFFezQ+8qi9HstrpIjzRDyJfWUTQ28f0/EmnBNN/1hcGgyKrlaOHppaBDZnle/+C3yYcdKWulPoCU7RHG/DicfDSj1gSCXq14y7UhpvduutLnyo3n0p0rWNikYkIyCYcmySWiroRtqLnOIar27+6prqHF0SoSsA5q9jfTH7KZMU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783079324; c=relaxed/simple;
-	bh=5JqLuEiREk8klCaoqV+K5aWMLAGYc2iXBg4rGhZbat4=;
+	s=arc-20240116; t=1783082434; c=relaxed/simple;
+	bh=7cUXbrCBsw1H+qVGHgFH+O3Wk3ageTgVBw985gf4Xxw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=fVClYoPXTLuMvRDvn6exbHefpo+bMxFFLhQ7z5VbEMwHIiF2OpjZTG3cvSxdDGNyhEokSw73nQfKmWupTiQ3ef9I07EiUqNIpR+ttdHwZ4hV6FkQcxQfRUacFGEtbH82ABVFUA/t9wvP8VWvl4L8evQcYOX0XS8i+3SKuXQYv2k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
-Received: from macsyma.thunk.org (syn-072-043-125-131.biz.spectrum.com [72.43.125.131])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 663Bm81Q002631
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 3 Jul 2026 07:48:10 -0400
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id CD31589CE68; Fri,  3 Jul 2026 07:48:08 -0400 (EDT)
-Date: Fri, 3 Jul 2026 07:48:08 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: Greg KH <gregkh@linuxfoundation.org>,
-        Jiayuan Chen <jiayuan.chen@linux.dev>, Wang Jun <1742789905@qq.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        25125332@bjtu.edu.cn, Jan Kara <jack@suse.cz>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Subject: Re: [PATCH] ext4: get rid of ppath in get_ext_path()
-Message-ID: <akehR1wEgK23wFp4@mit.edu>
-References: <tencent_C982B0201FE8F041BD5B4FC1ED7D646A740A@qq.com>
- <2026062643-tamer-limes-a320@gregkh>
- <rrsgndgpxyrmu6okb43u6wkdaibbidlbyqgugeeijd2b44sf4y@6lzmm4v4xvdp>
- <2026070210-catty-grape-2568@gregkh>
- <b93095c6-0717-4616-9702-570b2927429b@linux.alibaba.com>
- <2026070315-crescent-factoid-616d@gregkh>
- <2904d1db-11fa-450a-89ea-20fe133fa268@linux.alibaba.com>
+	 Content-Type:Content-Disposition:In-Reply-To; b=h8QCU9+vwNNCzEiuCLlnx8aiWcU4BbNVUhVNKbXoInPXfqA4QqwaznP/XVYjXQ48xPqKkJtdw48RdEwQUeWf8gYKfklxFdYUQcq/CUNEJQ7hPww+tYitIFsmTULX5/aYPDv7xgCDLnKmqjtYszW4fL8iebv0gw3yN0HhRUermds=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=T90yowTV; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="T90yowTV"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
+	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=A9wGX8nTXW8lGUnj40eQqnGa+P4VEkL/Sfdhj5SdBxI=; b=T90yowTV4LxywuUKSMUxfGBg9G
+	8D4pu9mlvKDNm1y3HjYZ4YootgWr8PJXdKwdCyk8pLojBd8iOwSN1c4CncoHG/S9XPGyZn1EE4j9h
+	Ld4D9RzNATvPWYXJLFSQKQOU8jLSfikhDJzv+7N7mHNlMGgIqgeYvq/8PdTd/QhJ069GWYZAavIOP
+	+eawoP1VZj9ww+QYidKIoHXmkoP691qsvfjH8ZBDGYYnAKLxgcvzrpbZZbAkMWYiNeA2zvHa2NAGF
+	PJlxDQHqZbRtlF/s1zqTaaHeP+eABXPXTD6AUASAY16zO5oSdj/yf9IeXAAEcj2D2mSdaO1RuxbMd
+	i3cEhRpg==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wfdBt-00000006zFU-0ZdG;
+	Fri, 03 Jul 2026 12:40:21 +0000
+Date: Fri, 3 Jul 2026 05:40:21 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: changfengnan <changfengnan@bytedance.com>
+Cc: Joanne Koong <joannelkoong@gmail.com>,
+	Christoph Hellwig <hch@infradead.org>, brauner <brauner@kernel.org>,
+	djwong <djwong@kernel.org>, ojaswin <ojaswin@linux.ibm.com>,
+	dgc <dgc@kernel.org>, linux-xfs <linux-xfs@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	lidiangang@bytedance.com, "pankaj.raghav" <pankaj.raghav@linux.dev>,
+	Brian Foster <bfoster@redhat.com>
+Subject: Re: [PATCH v6 3/3] iomap: add simple dio path for small direct I/O
+Message-ID: <akettUm5gBD8nj56@infradead.org>
+References: <20260701033253.46420-1-changfengnan@bytedance.com>
+ <20260701033253.46420-4-changfengnan@bytedance.com>
+ <akT4tJzFSfrBxqdq@infradead.org>
+ <CAJnrk1Y3yPeXBeBNo+DjTt8eRN-mc2F9apBCUn+j=GV7GMzi4g@mail.gmail.com>
+ <akZ3GErzJSTtOn-H@infradead.org>
+ <CAJnrk1ZijiWYU8YOmRf24xxwX0kH6vCe3ta89LfoX7v7j_JYLQ@mail.gmail.com>
+ <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.e3ea485f.90a4.4656.9103.275b1cd29206@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <2904d1db-11fa-450a-89ea-20fe133fa268@linux.alibaba.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.e3ea485f.90a4.4656.9103.275b1cd29206@bytedance.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Fri, Jul 03, 2026 at 04:44:32PM -0500, Baokun Li wrote:
-> >> Either applying this fix patchset or reverting the incorrectly merged
-> >> commit should resolve the issue.
-> > How about submitting a revert so that we can start fresh and work from
-> > there?
-> 
-> Alright, I can help review the patches.
+On Fri, Jul 03, 2026 at 05:13:12PM +0800, changfengnan wrote:
+> taken, which introduced some overhead. 
+> I implemented some optimizations based on Christoph’s suggestions and
+> made some modifications to `iomap_process`; 
+> Now, XFS performance is essentially unchanged, while ext4 still shows a
+> 1.5% drop; I will continue to investigate the cause..   I’ve attached the patch.
+> Actually, I had expected that switching to `iomap_next` would improve
+> performance, since it avoids an indirect call.
 
-Can you also double check whether your patchset actually fixes a bug
-in 6.6?  As near as I can tell, it wasn't needed for 6.1 at all.
-
-Thanks,
-
-						- Ted
+I don't think it will for you - the direct I/O readers don't have
+iomap_end methods, so you still have the same number of indirect
+calls.  What could help is to inline the iterator as seen in Joannes'
+fist demo series.  We could even look into doing that only for simple
+dio in a first step, shifting the burden to use the simple method
+to the callers (at least for the POC).
