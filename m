@@ -1,279 +1,182 @@
-Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from canpmsgout01.his.huawei.com (canpmsgout01.his.huawei.com [113.46.200.216])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A80E2175A7D
-	for <linux-ext4@vger.kernel.org>; Fri,  3 Jul 2026 04:25:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAF5131355D;
+	Fri,  3 Jul 2026 04:32:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783052728; cv=none; b=Kg83G4nCJJjxFEsBHphESeTA6Z785aW2dQqbs7+IxqcCTo1k4Zj8lsm4Uuj+RGZ9dEZRQ6PTtbP3At4h0mmCYCEJ4GXbb6w5m0YY+NuzN6oF9e0Dcf4jnF9HNOyyuH/mHhUS412J4r9o2HDxgCuncUcE+/+HCGGWTbnkVTW0gvQ=
+	t=1783053142; cv=none; b=GX7RZA4/FDeLuFZiNs2yRaYIQU3PCldocEmzhabfjuezbJW84e5AuDRuPQtDJCkghBOXqMcCKQJP0ysDOkGFdbc3MQzICsKfe56/Eg9xmYyooJ1q3+MHfKw/ivPxbi6odVMlzVYRvY0EIP3KJJcSSJVcLESSQ8qQgBdsKx5IFyM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783052728; c=relaxed/simple;
-	bh=lFpkZ4hLyujAZZSPkQA0jkSN/QGSA37oQVkYFmyEAB8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=cXoBrVxZFMLeDashqJSXctYkuD9iBqVhboqrvulGStSs5glsuL1Uyey6soNFAjJAoacI3ahZD+/Djasyy4DxMQ3B/GMRP8Qr7l9ALB9FHFnUNkk2OfkAP9ZgpfRwB0FQc1qnqGeXzTPf6dVecWwoPi0g3svX+Gb8Ue0yOQN2zKc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LylOCr53; arc=none smtp.client-ip=209.85.210.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1783053142; c=relaxed/simple;
+	bh=+vfMny8iQWNF2bpqNsMDQjrGHops71bmrWA5ibwzqhk=;
+	h=Subject:To:CC:References:From:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=pvCXEgnMcuEAqYkei+/w15OA1zk0t4+5nyutBTT0wAcW8pGQcrxRXw8ICGC/z1A+sRM9On5dXomEutDlGPciRMqgvOAzMfEoCMNDPXgifCkMTLDZTV/5OQQekf/dG0Blz79bX8lGp9I41HnFEVYKBSFepY9sfNpaXaj2+HNGAh8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=ugF+lHNd; arc=none smtp.client-ip=113.46.200.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LylOCr53"
-Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-845e47133c9so743395b3a.0
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2026 21:25:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783052714; x=1783657514; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=PadUhAX8JU7W3vYotKGvueCt2WpXGLFXJEVXJ+5nFKA=;
-        b=LylOCr53OMJC1nden83SBTJKm5v9w7Wg3j53b7HSFqfN2IiZiisQ5GgNLZMo/NVKaA
-         0lrWYgHH3tnpVub8eq+IrUaGKjgAj0xs4y1jwbCJiS159qyjNH5wDKCfpi7YRVXaYqeM
-         eqYJ9ztH6it0Pw+9wNLy0YaXMEZugr+1rS1O6y/IujwkcwEchSjOyazfx+WyDINKPf7W
-         toms7GXC08dhRbDMrhqpFk58RRx3Pg2+Avr0QMEFSkHplP+UXLSgv5+AfzjoGWZKUFjs
-         +6aqLDnNDyHKhrPoytXPYhT7XJoQzvA0KEJg2q4hGZq7AcFTKkufel2/ltAYF80BFtrD
-         p+2w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783052714; x=1783657514;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=PadUhAX8JU7W3vYotKGvueCt2WpXGLFXJEVXJ+5nFKA=;
-        b=rXauBuvIlsYyXIawkcBhGemDJMZjKVm3ir+VJlkKhuBogIScfLGbdZrZo42QbEH3+O
-         5UMK3HmVFA9H+g55mAW0FMNRp4s8Hi2jkNdCPbhzQhAi6qH11i8i3Ahl1mBLPKY3rdCd
-         STkhc3SBiOf41ajg9hMnvH2/M07sRYpmcC1pA+LCAqhuDAQKRP3uBET/qfwbAHNtS0/A
-         AdqK4htnJbHZ3jYZr2pIdwiURUS4nYAo3/bVCYxgXPjsInT/vcnx3CH9daAM2kM+/LHx
-         S9ZJc2p9MAOZK3ivW86J5gJ1WH4x2OmjtHudh+/VPNI17zDYgZcVwJHUjJc83pYUvW0+
-         CQaQ==
-X-Forwarded-Encrypted: i=1; AFNElJ9frYiLRV4rXLdyKxMVAH6vdp6HIrKy18arddQl2ScyLH42yu8MUPO37huvev9HbmBEgS2B0yj7iNHI@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx8I6B2QwE6m2+WoJv3XbVyO7K87Pk13MoCbGmeDRmdAHnpkY7X
-	tLpGRymmFmuKkggMCjsKCNvo7ocKt8IZs80I05pwyDXHwH48g/CsXOsp
-X-Gm-Gg: AfdE7cmU/PJLbokbTUJijX7YMI7d3k5P0oMJ72q6+CoVjcvbxJndPjIG1FzAaUKeTmY
-	Mt+LdARaf5ACnrQNOCSopXuzNHhAP/7qtL030U9fwAGPbSUTiSqsrQyhuPNArGsmi9/TCLJuqUE
-	dJcaT4TeuKAUUSkgZvlv+biM8Tz0D4rVnJkmFXgelgnmhBcTgXgFeKALdr2AqscNgNFx0FET0v+
-	EFQm7WxhxRvYjwWiIq+tNT8DZxJR4xOm7zMVFolpxRxVpcSPXIe+e6YwFzZimqLWLprTxOv9iZD
-	Ls3AenfM0AugSv3MXK93wNVaSTPnATnCkFHDgrifHDcVT9gGBf2lnh+JiMxym6KCrMLlzky/JiC
-	nuHs/8Cc7k/ZhShJaVUuWwlHK4um5KDX4Gl6C4iNHpeiSEJhzBLp+oj15+2eCeOSSV2u5fC/rVj
-	wz9yfWRSaufOhGwtByN9n6NGiC5BJ8k+Go90FV6SChyjJleK5OWWeQx99FOa8GIQb40KzzOJqTE
-	M6VFOmx5GuwCyUD+WXBJeXCswSvxL2EsxegkZWxObv+xAZG9ONaLxn/ssqzM5MSJdoJHDUCJNKV
-	MWGDhBl4pgN+/qjhQjibD/Q=
-X-Received: by 2002:a05:6a21:487:b0:398:76d4:c7e9 with SMTP id adf61e73a8af0-3c01cbdb181mr3398227637.35.1783052713667;
-        Thu, 02 Jul 2026 21:25:13 -0700 (PDT)
-Received: from cs-1047136853211-default.asia-southeast1-a.c.d33bddc1d573818c7-tp.internal (213.28.87.34.bc.googleusercontent.com. [34.87.28.213])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-30f116065c5sm13284830eec.11.2026.07.02.21.25.10
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 02 Jul 2026 21:25:13 -0700 (PDT)
-From: Aditya Srivastava <aditya.ansh182@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Jan Kara <jack@suse.cz>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	Tao Ma <boyu.mt@taobao.com>,
-	syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
-Subject: [PATCH v3] ext4: use fsdata to track inline data write state and fix race
-Date: Fri,  3 Jul 2026 04:24:42 +0000
-Message-ID: <20260703042443.1655-1-aditya.ansh182@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="ugF+lHNd"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=zN6H3um3rHBIN6VOu/Rtc9l4/p3Gp9cG6ReZMncnnJg=;
+	b=ugF+lHNdI0bEkTDG6JZBkC0oTnY74uMo/hRUJpYGc/aRn/vtR3D4PUnG1Gh/f/DREy7zrafOF
+	CINRO52V1PQeEmTPnfVFE0XuY6sOnGaNfCgnpdUxADPSheKF4CFxcL6cX1YekC4V6FqAsW//CXN
+	7NGsiQuFu8IvNjQ7fhYMzQE=
+Received: from mail.maildlp.com (unknown [172.19.162.144])
+	by canpmsgout01.his.huawei.com (SkyGuard) with ESMTPS id 4gs0wf5zVwz1T50l;
+	Fri,  3 Jul 2026 12:22:58 +0800 (CST)
+Received: from whupemo200011.china.huawei.com (unknown [7.152.185.179])
+	by mail.maildlp.com (Postfix) with ESMTPS id 21B8C4056D;
+	Fri,  3 Jul 2026 12:31:52 +0800 (CST)
+Received: from [10.174.178.46] (10.174.178.46) by
+ whupemo200011.china.huawei.com (7.152.185.179) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Fri, 3 Jul 2026 12:31:50 +0800
+Subject: Re: [PATCH] ext4: validate readdir offset before accessing dirent
+To: Yao Kai <yaokai34@huawei.com>, <linux-ext4@vger.kernel.org>,
+	<tytso@mit.edu>
+CC: <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>, <jack@suse.cz>,
+	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
+	<linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+	<liuyongqiang13@huawei.com>,
+	<syzbot+5322c5c260eb44d209ed@syzkaller.appspotmail.com>
+References: <20260703015106.3570064-1-yaokai34@huawei.com>
+From: Zhihao Cheng <chengzhihao1@huawei.com>
+Message-ID: <0161d800-e6fd-953d-9fc9-5df5db3dbed0@huawei.com>
+Date: Fri, 3 Jul 2026 12:31:49 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+In-Reply-To: <20260703015106.3570064-1-yaokai34@huawei.com>
+Content-Type: text/plain; charset="gbk"; format=flowed
 Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems200002.china.huawei.com (7.221.188.68) To
+ whupemo200011.china.huawei.com (7.152.185.179)
 
-From: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
+ÔÚ 2026/7/3 9:51, Yao Kai Ð´µÀ:
+> A corrupted directory can trigger the following KASAN report when
+> ext4_readdir() resumes from an invalid position:
+> 
+>    BUG: KASAN: use-after-free in __ext4_check_dir_entry+0x5ef/0x820
+>    Read of size 2 at addr ffff88810a646000 by task repro_linear/509
+> 
+>    Call Trace:
+>     <TASK>
+>     dump_stack_lvl+0x53/0x70
+>     print_report+0xd0/0x630
+>     kasan_report+0xce/0x100
+>     __ext4_check_dir_entry+0x5ef/0x820
+>     ext4_readdir+0xcde/0x2b70
+>     iterate_dir+0x1a1/0x520
+>     __x64_sys_getdents64+0x12b/0x220
+>     do_syscall_64+0xf9/0x540
+>     entry_SYSCALL_64_after_hwframe+0x77/0x7f
+>     </TASK>
+> 
+> KASAN reports use-after-free because the out-of-bounds access lands in an
+> adjacent freed page. The directory buffer itself is still referenced.
+> 
+> ext4_dir_llseek() invalidates the directory cookie so that ext4_readdir()
+> rescans directory entries from the start of the block. The rescan checks
+> only the lower bound of rec_len before advancing. A corrupted rec_len can
+> therefore place the offset where the block has insufficient space for a
+> complete directory entry. The rescan itself may dereference that truncated
+> entry, or the main loop may pass it to __ext4_check_dir_entry(). The latter
+> reads de->rec_len before validating the range. For example:
+> 
+>    block offset  0                           4092  4096
+>                  |---- de1.rec_len = 4092 -----|----|
+>                                                 de2.inode
+>                                                      | de2.rec_len
+>                                                      ^ OOB, reported as UAF
+> 
+> de2 starts at offset 4092 in this 4 KiB block. Its four-byte inode fits in
+> the block, but its rec_len starts at offset 4096 and crosses the boundary.
+> 
+> The minimum safe length is inode-dependent. Encrypted and casefolded
+> directory entries need eight additional hash bytes, while a valid metadata
+> checksum tail is only 12 bytes.
+> 
+> Cache the metadata checksum feature state and derive the minimum directory
+> entry length from the on-disk format. Use it to bound both the rescan and
+> the offset passed to the main loop. Report an offset in a truncated block
+> tail and skip the remainder of the block, while continuing to accept an
+> offset exactly at the block boundary.
+> 
+> Reported-by: syzbot+5322c5c260eb44d209ed@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=5322c5c260eb44d209ed
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Signed-off-by: Yao Kai <yaokai34@huawei.com>
+> ---
+>   fs/ext4/dir.c | 20 ++++++++++++++++++--
+>   1 file changed, 18 insertions(+), 2 deletions(-)
+> 
 
-Instead of checking the live inode state (ext4_has_inline_data(inode)
-and ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) in the
-write_end handlers, use the fsdata parameter of the address space
-operations to explicitly pass down the state in which write_begin
-prepared the write.
-
-A concurrent thread (such as ext4_page_mkwrite()) can convert the
-inline data to an extent between write_begin and write_end. If this
-happens, the write_end handlers would previously miss the inline
-write_end path and fall through to extent-based write_end logic.
-However, since block buffers were never allocated in write_begin,
-this resulted in NULL pointer dereferences or data loss because
-folio_buffers(folio) was NULL.
-
-Define EXT4_WRITE_DATA_INLINE (4) as a bit flag (Bit 2), treating
-fsdata as bitwise flags rather than mutually exclusive enums to keep
-states of the write path independent. Communicate this state via
-fsdata:
-1) ext4_write_begin() and ext4_da_write_begin() set the
-   EXT4_WRITE_DATA_INLINE bit in *fsdata via bitwise OR when an inline
-   write is successfully prepared.
-2) On entry, ext4_write_begin() clears the EXT4_WRITE_DATA_INLINE bit
-   to safely handle VFS retries (where generic_perform_write() bypasses
-   the fsdata initialization on its retry jump).
-3) The write_end handlers perform a bitwise AND to check if the
-   EXT4_WRITE_DATA_INLINE bit is set and invoke the inline write_end
-   helper accordingly.
-
-Furthermore, during a buffered write, ext4_write_inline_data_end()
-acquires the xattr lock after preparing the write. If a concurrent
-page fault (ext4_page_mkwrite()) converts the inline data to an extent
-after the write_end handlers check the state but before
-ext4_write_inline_data_end() acquires the xattr write lock, the
-subsequent check will trigger a kernel panic via
-BUG_ON(!ext4_has_inline_data(inode)).
-
-To keep git history working and bisectability clean, replace the
-BUG_ON check in ext4_write_inline_data_end() with a graceful error-
-handling retry path in this same commit. If the inline data is cleared
-after locking the xattr, we safely release all resources (releasing
-iloc.bh, unlocking/putting the folio, stopping the active journal
-transaction handle) and return 0 (VFS retry) to let the generic write
-path retry the operation safely.
-
-Reported-by: syzbot+0c89d865531d053abb2d@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=0c89d865531d053abb2d
-Fixes: 3fdcfb668fd7 ("ext4: add journalled write support for inline data")
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Aditya Prakash Srivastava <aditya.ansh182@gmail.com>
----
-Changes in v3:
-- Changed EXT4_WRITE_DATA_INLINE to 4 (Bit 2) and treat fsdata as
-  bitwise flags, allowing decoupling of independent states in the
-  write path (e.g. standard fallback and inline writes), as suggested
-  by Jan Kara.
-- Clear the EXT4_WRITE_DATA_INLINE bit on entry to ext4_write_begin() to
-  safely unroll state for any VFS write retries.
-- Perform bitwise AND checks for EXT4_WRITE_DATA_INLINE and
-  FALL_BACK_TO_NONDELALLOC flags in the write_end and da_write_end
-  handlers.
-
-Changes in v2:
-- Folded the BUG_ON fix from the second patch into the first one to
-  ensure bisectability across git history, as suggested by Jan Kara.
-- Removed the pointless initialization `*fsdata = NULL` on entry to
-  `ext4_write_begin()`.
-- Removed the redundant check `if (fsdata)` in `ext4_write_begin()`.
-
- fs/ext4/ext4.h   |  1 +
- fs/ext4/inline.c | 14 +++++++++++++-
- fs/ext4/inode.c  | 24 +++++++++++++-----------
- 3 files changed, 27 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b37c136ea3ab..9e6f6467bdeb 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3138,6 +3138,7 @@ int do_journal_get_write_access(handle_t *handle, struct inode *inode,
- void ext4_set_inode_mapping_order(struct inode *inode);
- #define FALL_BACK_TO_NONDELALLOC 1
- #define CONVERT_INLINE_DATA	 2
-+#define EXT4_WRITE_DATA_INLINE	 4
- 
- typedef enum {
- 	EXT4_IGET_NORMAL =	0,
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 8045e4ff270c..cfd591dc1d9c 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -812,7 +812,19 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
- 			goto out;
- 		}
- 		ext4_write_lock_xattr(inode, &no_expand);
--		BUG_ON(!ext4_has_inline_data(inode));
-+		/*
-+		 * We could have raced with ext4_page_mkwrite() converting
-+		 * the inode and clearing the inline data flag, so we just
-+		 * release resources and retry the whole write.
-+		 */
-+		if (unlikely(!ext4_has_inline_data(inode))) {
-+			ext4_write_unlock_xattr(inode, &no_expand);
-+			brelse(iloc.bh);
-+			folio_unlock(folio);
-+			folio_put(folio);
-+			ext4_journal_stop(handle);
-+			return 0;
-+		}
- 
- 		/*
- 		 * ei->i_inline_off may have changed since
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ce99807c5f5b..4e1bf54e511d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1302,6 +1302,8 @@ static int ext4_write_begin(const struct kiocb *iocb,
- 	if (unlikely(ret))
- 		return ret;
- 
-+	*fsdata = (void *)((unsigned long)*fsdata & ~EXT4_WRITE_DATA_INLINE);
-+
- 	trace_ext4_write_begin(inode, pos, len);
- 	/*
- 	 * Reserve one block more for addition to orphan list in case
-@@ -1316,8 +1318,10 @@ static int ext4_write_begin(const struct kiocb *iocb,
- 						    foliop);
- 		if (ret < 0)
- 			return ret;
--		if (ret == 1)
-+		if (ret == 1) {
-+			*fsdata = (void *)((unsigned long)*fsdata | EXT4_WRITE_DATA_INLINE);
- 			return 0;
-+		}
- 	}
- 
- 	/*
-@@ -1450,8 +1454,7 @@ static int ext4_write_end(const struct kiocb *iocb,
- 
- 	trace_ext4_write_end(inode, pos, len, copied);
- 
--	if (ext4_has_inline_data(inode) &&
--	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
-+	if ((unsigned long)fsdata & EXT4_WRITE_DATA_INLINE)
- 		return ext4_write_inline_data_end(inode, pos, len, copied,
- 						  folio);
- 
-@@ -1560,8 +1563,7 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
- 
- 	BUG_ON(!ext4_handle_valid(handle));
- 
--	if (ext4_has_inline_data(inode) &&
--	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
-+	if ((unsigned long)fsdata & EXT4_WRITE_DATA_INLINE)
- 		return ext4_write_inline_data_end(inode, pos, len, copied,
- 						  folio);
- 
-@@ -3161,8 +3163,10 @@ static int ext4_da_write_begin(const struct kiocb *iocb,
- 						     foliop, fsdata, true);
- 		if (ret < 0)
- 			return ret;
--		if (ret == 1)
-+		if (ret == 1) {
-+			*fsdata = (void *)((unsigned long)*fsdata | EXT4_WRITE_DATA_INLINE);
- 			return 0;
-+		}
- 	}
- 
- retry:
-@@ -3291,17 +3295,15 @@ static int ext4_da_write_end(const struct kiocb *iocb,
- 			     struct folio *folio, void *fsdata)
- {
- 	struct inode *inode = mapping->host;
--	int write_mode = (int)(unsigned long)fsdata;
-+	unsigned long write_mode = (unsigned long)fsdata;
- 
--	if (write_mode == FALL_BACK_TO_NONDELALLOC)
-+	if (write_mode & FALL_BACK_TO_NONDELALLOC)
- 		return ext4_write_end(iocb, mapping, pos,
- 				      len, copied, folio, fsdata);
- 
- 	trace_ext4_da_write_end(inode, pos, len, copied);
- 
--	if (write_mode != CONVERT_INLINE_DATA &&
--	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) &&
--	    ext4_has_inline_data(inode))
-+	if (write_mode & EXT4_WRITE_DATA_INLINE)
- 		return ext4_write_inline_data_end(inode, pos, len, copied,
- 						  folio);
- 
--- 
-2.47.3
+Reviewed-by: Zhihao Cheng <chengzhihao1@huawei.com>
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 17edd678fa87..5c943d18882a 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -138,6 +138,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>   	struct buffer_head *bh = NULL;
+>   	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
+>   	struct dir_private_info *info = file->private_data;
+> +	bool has_csum = ext4_has_feature_metadata_csum(sb);
+>   
+>   	err = fscrypt_prepare_readdir(inode);
+>   	if (err)
+> @@ -149,7 +150,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>   			return err;
+>   
+>   		/* Can we just clear INDEX flag to ignore htree information? */
+> -		if (!ext4_has_feature_metadata_csum(sb)) {
+> +		if (!has_csum) {
+>   			/*
+>   			 * We don't set the inode dirty flag since it's not
+>   			 * critical that it gets flushed back to the disk.
+> @@ -235,7 +236,10 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>   		 * dirent right now.  Scan from the start of the block
+>   		 * to make sure. */
+>   		if (!inode_eq_iversion(inode, info->cookie)) {
+> -			for (i = 0; i < sb->s_blocksize && i < offset; ) {
+> +			for (i = 0;
+> +			     i <= sb->s_blocksize -
+> +				  ext4_dir_rec_len(1, has_csum ? NULL : inode) &&
+> +			     i < offset;) {
+>   				de = (struct ext4_dir_entry_2 *)
+>   					(bh->b_data + i);
+>   				/* It's too expensive to do a full
+> @@ -257,6 +261,17 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>   			info->cookie = inode_query_iversion(inode);
+>   		}
+>   
+> +		if (unlikely(offset < sb->s_blocksize &&
+> +			     offset > sb->s_blocksize -
+> +			     ext4_dir_rec_len(1, has_csum ? NULL : inode))) {
+> +			EXT4_ERROR_FILE(file, bh->b_blocknr,
+> +					"bad entry in directory: %s - offset=%u, size=%lu",
+> +					"directory entry too close to block end",
+> +					offset, sb->s_blocksize);
+> +			ctx->pos = (ctx->pos | (sb->s_blocksize - 1)) + 1;
+> +			goto next_block;
+> +		}
+> +
+>   		while (ctx->pos < inode->i_size
+>   		       && offset < sb->s_blocksize) {
+>   			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
+> @@ -312,6 +327,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>   			ctx->pos += ext4_rec_len_from_disk(de->rec_len,
+>   						sb->s_blocksize);
+>   		}
+> +next_block:
+>   		if ((ctx->pos < inode->i_size) && !dir_relax_shared(inode))
+>   			goto done;
+>   		brelse(bh);
+> 
 
