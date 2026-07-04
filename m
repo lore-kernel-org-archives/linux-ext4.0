@@ -1,47 +1,52 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94ADD433E84;
-	Sat,  4 Jul 2026 02:05:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AB00340401;
+	Sat,  4 Jul 2026 02:05:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783130729; cv=none; b=nz59R6vGdoLFy/sJkkPDObR6flzuK+bhkbL54DGnJ0+1Y+z5XwSbUMDhzpyaaC+KReVD2hdUFzmJpoI/jFquWO2SnFksq21QItkeLUJ9duuacgqXrSxZI/qZkbo5U5e7wd1EXc7WwRlEOKE5q4eUsdQ2dSFsQcnG68SjvjE2Mbo=
+	t=1783130731; cv=none; b=qIuGR7gRL66upLbkuZmoJ/J/beDA1ui936kAafmdL9mATTLh1GteELPEkKMzIJE2RWsgLEd6gS4OhjrNO6kIkYHIcdpdEk0bAHW5h7rkcAU4W/T1lQx3eCs0fbdClRdAt6+X7SdohHbJgdGWh3zfZvOOqGKlp5LZzv8KDpQCKFo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783130729; c=relaxed/simple;
-	bh=b9Eq2HkDjvdZwP+PG/EXhTApS/R76hFjc0OXy9Mo6n8=;
+	s=arc-20240116; t=1783130731; c=relaxed/simple;
+	bh=d+jCZsvE2NN0h2KPqrxeTBa+OxYc/1gcZUHO9hIwJpU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UigA1+h90n/3UcM8xtkdatFEQvGw6v5N1c1DmebXQjtkNkOmbR8oaNhYOCuNPTCjNfYIAg1VwaOcFLqkYm8FXypjZs5MHne6kba+A0WPq8p5w+yrwUYp8ZHJep9LzgkOSC8oBXtbWW3n30SjlelF0Hlhpu+ha1Cu08BNwoSOY4U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FbURZTtX; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=tNS2aDJtWucOiqsSbeff4FKg05CT1JcNXx50gyxWKbKQEp0x7ojb4GJThhudQ3QitkcafUvamc83iQbAIkna474O+H+ACgy9GWEbW1sXPDnPQgYPIbPqGQcBmF/Mh2sxTbj+DDZBHnL1C+zwqFtKElysyagbyZykDjyVAD9mX90=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J0cxT74n; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FbURZTtX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C0681F000E9;
-	Sat,  4 Jul 2026 02:05:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J0cxT74n"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78C911F00A3D;
+	Sat,  4 Jul 2026 02:05:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783130728;
-	bh=Oy9QO9LmW9JkyXSyS5R5t8f98QdLOmBIOlFsvp3RayY=;
+	s=k20260515; t=1783130729;
+	bh=ms16ql0lL617YAWUt52UQdJew+4Xrx7tESvlfR9hv3U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=FbURZTtX7hZIZJVDjHL+DUL0jmpSUbzpwxuTbmzQxlSXbSqoFtwkwjvd5bkHHsIPL
-	 /fqkYh2s2v5ovR/F7I9sH5GCW2ssPgyIwkNSy5YvEEVkFqDMluRDRWQ+rRafcoOu3a
-	 su9xxrgUWRP0ehCTZgnESASS8+2p7Olp0Qv1XWOpMITa32SCQsGA8FwSB3PxAGpmNa
-	 NQnc4Yk4edgHp3VqvmuqXgyAQBrvnBphgfSCY0rtm4QXrkqINTV99up6wCMqfHm9xE
-	 DR3vb5GnvWE3cL98QX1V9St2R9Raljy7P0djPtiFJWDtUG4RjGewMChQBzSXqNxDVg
-	 Zb7kTJj6+CmvQ==
+	b=J0cxT74nmhw8y1cfHZSEwZ6T2U5/kQxrtdwROTt9SNbujOcyPzcLdpXUqvBTWBXKY
+	 1rC1LCIA2s8edcx4xPsHgTU/iH5g9FYS3c3eXN73GWJeEP4ZCQ1mA2fwSp34E4F/cQ
+	 Ys+xpEqf7+nGz0JPf5ZlpMdM5y1jyhL9Xd91L838AvBPJO3hfrQFY7afgx3A2SbWeC
+	 uSSSsB4/ou7tXrk+Tz1n2i7eN+tca5OAuetOh1X/Px6ps1QLqQ/hFuxTVo/LCMV6J3
+	 YmO7rBOdMG7JdM6lDM7yCVORCzgmX4DQxLVs8Shok16ufZd9fh2PO/pSzKrjUtXN2G
+	 qQwDgN4ZYbOPA==
 From: Sasha Levin <sashal@kernel.org>
-To: stable@vger.kernel.org
+To: Baokun Li <libaokun@linux.alibaba.com>
 Cc: Sasha Levin <sashal@kernel.org>,
+	Jiayuan Chen <jiayuan.chen@linux.dev>,
+	Wang Jun <1742789905@qq.com>,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
 	linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Yoann Congal <yoann.congal@smile.fr>,
-	Baokun Li <libaokun1@huawei.com>,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	libaokun1@huawei.com,
+	25125332@bjtu.edu.cn,
 	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Subject: Re: [PATCH 6.6.y] ext4: get rid of ppath in get_ext_path()
-Date: Fri,  3 Jul 2026 22:04:56 -0400
-Message-ID: <2026070315-stable-reply-0001@kernel.org>
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: [PATCH] ext4: get rid of ppath in get_ext_path()
+Date: Fri,  3 Jul 2026 22:04:57 -0400
+Message-ID: <2026070315-stable-reply-0002@kernel.org>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260702154810.3435236-1-yoann.congal@smile.fr>
-References: <20260702154810.3435236-1-yoann.congal@smile.fr>
+In-Reply-To: <2026070315-crescent-factoid-616d@gregkh>
+References: <2026070315-crescent-factoid-616d@gregkh>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,19 +55,26 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-On Thu, Jul 02, 2026 at 05:48:10PM +0200, Yoann Congal wrote:
-> From: Baokun Li <libaokun1@huawei.com>
+On Fri, Jul 03, 2026 at 10:20:35AM +0200, Greg KH wrote:
+> On Fri, Jul 03, 2026 at 03:57:09PM +0800, Baokun Li wrote:
+> > Either applying this fix patchset or reverting the incorrectly merged
+> > commit should resolve the issue.
 >
-> [ Upstream commit 6b854d552711aa33f59eda334e6d94a00d8825bb ]
->
-> The use of path and ppath is now very confusing, so to make the code more
-> readable, pass path between functions uniformly, and get rid of ppath.
->
-> After getting rid of ppath in get_ext_path(), its caller may pass an error
-> pointer to ext4_free_ext_path(), so it needs to teach ext4_free_ext_path()
-> and ext4_ext_drop_refs() to skip the error pointer. No functional changes.
+> How about submitting a revert so that we can start fresh and work from
+> there?
 
-Queued for 6.6.y, thanks!
+I've queued upstream 6b854d552711 ("ext4: get rid of ppath in get_ext_path()")
+for 6.6.y. It completes the partial series that went into 6.6.130 (which
+stopped one patch short of it) and adds the IS_ERR_OR_NULL() checks to
+ext4_free_ext_path() / ext4_ext_drop_refs(), resolving the reported oops. Yoann
+Congal also posted a backport of the same commit yesterday.
+
+Given that 6.6.y is nine patches into this series, completing it looked
+less risky than unwinding all of them plus redoing the fixes on top.
+
+Baokun, if the other two patches from yangerkun's April set
+(ext4_force_split_extent_at() / convert_initialized_extent()) are still
+needed on 6.6.y, I'm happy to take those as well.
 
 -- 
 Thanks,
