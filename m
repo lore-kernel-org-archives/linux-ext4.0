@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id D73423CE084;
-	Mon,  6 Jul 2026 06:19:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E733F3D332A;
+	Mon,  6 Jul 2026 06:19:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783318805; cv=none; b=m02gOwuZqNlpC2cfng0ptsDmjwmxiKc+K+zcTgjZ07/58U6B7UqGwjnrl7kKHP4L5mEgzKLscmG5bbc7oCq8aq+9U7//T/PvoC8ArpgcaEqSRDYR4csQqLzlqTAiGDVQk+yCCL8wFJQtquO2sRV/q45V77JpMdv1sgnbikF+G64=
+	t=1783318814; cv=none; b=Des3SckQhN52Jaomwy5yGdt9/ewpodUbvbWG65UGhdXtE/BiY8g2YOypTWEzilwzKRjTxYpMFFehLS3peZxEkmgCEqbMaMb5BpECS1OXy+ebhS4izLcJLrN/0v81XgnePl5hr2OfMyRAItlm0E6s0+74S0D9vBlZBMoObk392uI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783318805; c=relaxed/simple;
-	bh=Bw+5Ne6spVWh6PrS9oguNhBplYyIHw1zmMdPFF5IdTU=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=EmOEZYL572n5f8FTqRys3pqFqKip+7YiLmVN2/0IrxIJNhYWx/xKuyL6REbmBRYnj6mhXquL4edYrGht2hcLtCXSP6RzSp7PupJtkM2kmhdfTjl0D1QTuR1LkDA2MpxwS5K4prKC9Fz2VXMvXBtjis2vydwH2hHXsPbzUkAW+WU=
+	s=arc-20240116; t=1783318814; c=relaxed/simple;
+	bh=WnSmpg5G2wbr/brFYnnARQAmSTi3zKP3MjAsHRGsg80=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=VCUa/3YINacvasYQoMYvmhemSWXD+k3dqwNGVMr26BNtZWjQNBoTwO4sXaChr0Uuty1gENiE/x4AgswB3qdzxs+n57S7V3ZYT4UqSrh69FqJAiscZAKdCyewG2fBbzld5KE06436j3tDC3s3LgQTJ7ejawWfCdbtVKUPFwroW7s=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-f0-6a4b48fce368
+X-AuditID: a67dfc5b-c45ff70000001609-30-6a4b48fdf99a
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: max.byungchul.park@gmail.com,
@@ -178,45 +178,45 @@ Cc: max.byungchul.park@gmail.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v19 06/40] dept: distinguish each kernel context from another
-Date: Mon,  6 Jul 2026 15:18:54 +0900
-Message-Id: <20260706061928.66713-7-byungchul@sk.com>
+Subject: [PATCH v19 08/40] dept: add a mechanism to refill the internal memory pools on running out
+Date: Mon,  6 Jul 2026 15:18:56 +0900
+Message-Id: <20260706061928.66713-9-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20260706061928.66713-1-byungchul@sk.com>
 References: <20260706061928.66713-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTHfe597ks7ai7VzItGMY2CcRGmcctJROKX6ROMi86Y+Bpsxo0t
-	b7oWOlmm1jENICqTFCIVx4vUCkWxTBBCN4bC1kALzAUqsMEcVstLWRrBKAijEL+c/HL+v3M+
-	/Xla2cus5LWpaZIuVZ2sYuVYPh5SummW7E78+FZPCGRdOAcDg8MM9JxvxvDOXM/B4GQWgtfT
-	ZhouNMxhePWmn4M5RxsCT9cvNBT6zmMo8po58LXugt6pMQSW4VkK3hUkwbSrc14wdSEI+IYQ
-	PM97QMOT4aXgNF1iYbz7BgUl3zkY6O4YRVBsvobA2+egILP8HgsFxXYMDUONHHSPzlBQZd8D
-	gxYvhva8MgoK7q8Ac2EmNT9eUtBRPoDBYlwPz6xFHLRVveDg7ngnA/XGIQ7sT1sR2HK9NDj6
-	PoLrNwdYaHI4MbQ9fEZBbs0DBv62zTFgNL9moKu5nYH2tt8xOIvuYOh3XeWgs7GagYrebgpq
-	XR00TF1ZBZ685wiq/WUs5Pu9CJ4WjnE7EkhlbR1FbDdtiLyqyKTJo7EJmlS0j7HkVvZbivzg
-	2kQaiv7iSIk9ndRaN5LyJh9FSgOTDLFXZrPEHrjGkYGeJpb43W5ub+RheUyClKw1SLro2ONy
-	zRXfh6eyD51uzTdhI2rcmYN4XhS2iiNmTQ6SLeDjygk2yKwQKXo8b+ggLxfWirWXvUwOkvO0
-	8CRczLVcxsFgmbBHHPnvZxRkLKwXy0ZtCwcK4ROx/yc/u/g0XKyqaV7Yy4RPxbszxVSQlUFn
-	4je86JTLxDt/xC1ymPir1YPzkKIELalESm2qIUWtTd4apclI1Z6O+vJkih3N181yZubIQxTo
-	2t+CBB6pQhSwIy5RyagN+oyUFiTytGq5ImLD7kSlIkGd8Y2kOxmvS0+W9C1oFY9VKxRbpr5O
-	UAon1GlSkiSdknTvU4qXrTQilXgmRajzG85e/JOrsfZapqPlafGh/+6LMk2W5h9csnSv5oN9
-	rvokw4nQyENxEdf7Rh7pZ5elfxvjdGwJcxz9LDZ9e4vTus6d/8XnvD5WGZ9zQBZ69p/Vm931
-	pq9+DDsWHr02fI39qqPO9bJ17vusiMdHkxTHx2OPNBe7A8xtunpbjArrNerNG2mdXv0/Sh//
-	dGoDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSWUwTcRDG/e9ut0u1ZlOJrPAANirEKN5mosaoibJKNL6IURO16kYKpZBW
-	ETyigI0FrYFqi1JBBKlaKkcBtZgqoOJJuFQIp0dFK0cJUgxQwFbjy+Q3833fZB6GwkUPef6U
-	VH6MU8glMjEpIAQ71qYsdrPhUUvbSgNBrToLHd12HnxMqiLANawm4EaxmYQJw0M+qC3XefCq
-	JZmAhqJCBN0uNYLf4wYcVNYpAia0tXwYHm3ngy4JwZStFoG+UYtDa8NTHMzlSRj8KpkkoffZ
-	EALdZzsJmY4kApzGSwiyegx8cLwIg/7uxzyY6vyOQctIHwKjfRIDe9UFBBP6aLiZV+aJ6wdJ
-	GK+rxyFT14Dg1udOHIYcnxCU13YhsN1NJuFbegUOzfaZ8N7lJOG17iIJ/Y03MBgoISE32caD
-	xne9CLINWgQ9bTYMUvKLSdBnWwiwfqrkQ2OvG4MOvRaDQst26Db2EPA2PQ/znOtxlfqBITMF
-	85QfGOjuP8Zg1GjibyhA7G/VZYI1lT3AWFXTBMmac8yIHR/TIna4IAVnVeme9lmfE2fPl51g
-	C972keyY6wPJ2kZyCfZNHsPeTh3D2Iy6xaw1q5O/c+NewbojnEwazymWrD8oiLzsmB2Xuifh
-	xRUdcQ5VbklDPhRDr2Sem5ykl0k6mGltHcW97EsHMWWaHl4aElA43RzIXDJqCK8wi97O/Bx8
-	grxM0POZvF7z34CQXsW0lw+Q/5YGMoUlVX/nPvRqpsidjXlZ5PU4XxLpSJCLppmQr1QeHyOR
-	ylaFKqMjE+XShNDDsTEW5Hkn4xl3xiM03BxWg2gKiWcIYcO2KBFPEq9MjKlBDIWLfYULQsKj
-	RMIjksSTnCL2gOK4jFPWoACKEPsJt+3mDoroo5JjXDTHxXGK/ypG+fifQzn1+ju77oRe4xzF
-	83L2uzZV2AdWSFy5IZp3QebY98Hh8XWnwmaOdA0tl3csiFCvy7f+yGoaXXN10T486Oike06X
-	baxadyH2XvTmUFO/dsaVr1dLv/hV/9RkzJ0+bckeu9Mie2KtOF3hH+Gqjqg/pPCvZPrC7QHn
-	qa0fA11a7RZaIyaUkZJlC3GFUvIHD3HWhkoDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxjF97/3f28v1S531YSrhGhqxEUnc74sj4kyvnkzsmhiNL4sGx3c
+	2bIC2iIDEqXgCh0iYc2EQH0pWBuVBroWEBlVwFhhgFIriIgisTQiYCMCjkph7YzffnnOc875
+	chhS2k+tZJRpGYI6Ta6S0WIsnlxatXGBT0jZ5MnfCXpdLpyrs9IQNF4Xgd5eQUHHo3wMwzN6
+	BLobixiCBpcIpueeiOBsHoJFpwtBmdtAgrU+j4C3tgUaxm9PISgfy8NQ6TOKYOzOLrB4Fwjw
+	thYiuFjtoOF9z30Sys/2IqgaeUrC1NhzBPWuZwhGSxtI8Hg/hUn3OQJe22gw5TspcHePIzhv
+	NCDwDToJOHWpjgb3+DwBQ2UGAmrs38GwxYdDnTSU/RUJxvJTBHRfGsJg0a4FY4+HgkVTOtRO
+	3qeg81k/BcN3CyiwP76DYPrhCAHWYh8J+uYZDM7BDVBVYMZQcWGIhhZnJwZ9cBpBsa2BAq3x
+	HQW9rV0UPKjpxdDl6sDQWXkVxyfx73QlmL/maCR46wUr4t8HDIjXlYbo9oSf5C93TdB8YKaP
+	5p2zJsz/U83x5t8DBP9Hz0b+RuVTEf/bzUERb7If5x1X1u/ZfEi8I1lQKTMF9ZdxiWLFPd0s
+	dXQoPuv5y0KkRS1bilAEw7FbuT9f6NFHzr/uEYWZZtdxAwNzZJiXs6s5xxkfVYTEDMl6VnHF
+	ljM4LCxjk7gm878hM8Ngdi1XZBSHzxJ2G9cfCJIfMldxNbbW/zmC/ZqrnT9PhFka+nniv4vD
+	mRxbE8EVTozSHwwruLYrA7gUSUzok2tIqkzLTJUrVVtjFdlpyqzYpPRUOwqtzXJi/nATmurd
+	245YBsmWSiD+2xQpJc/UZKe2I44hZcslMZ8npEglyfLsHEGd/qP6uErQtKMoBssiJZtnf02W
+	skfkGcIvgnBUUH9UCSZipRapqqPcP8Q0dJtLY+O0zEj9mtw3+05HX23MXX3y1U85hXWjy6JN
+	QXnL3+7oYx0Gu3m+7s1Ap1phe3Cg2buhP+azqT3esV2ntwQ25SZW+L+JK5jz97W5NEuaT+x+
+	/b04pydx5FbUhKJkf8mKm7MHv8hoIh0/N+2MZA/2+bOquxtr2xK2y7BGIf9qPanWyP8D69ex
+	EWkDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxTGPffe3nu5s3rt6rxhMWqTOWKC0zj1JCMbfpl/FZ3Zh2mMyWz0
+	SsubptUqyxal2IEoWqttoxVlTKqhiAgqIDYyzPDdgWyAyqvpOhkoCwOU0mttNX45+Z3zPOfJ
+	+XB4WlOjiueNWTtkU5Y+Q8cKjLDmi9xEhaxKW3C0gsF82x7s7AmosC2ngcHRkXwGT14oZ1Hx
+	1HCYX3VchbfarQw2V/gAe0bzAV9OeGi01UUYVBxNHI6MP+HQmQMY8TcBulocNHY0X6ex/FIO
+	hf9XvmZx4MYwoLMvwKK7P4fBIe9BwBNBD4f9vy/H5z31Kox0/UNh+9ggoDfwmsJAQx6g4krH
+	0yXV0XXXfyxO3P+DRrezGfCXvi4ah/t7AS81dQP6z1lZ/Nt+mcbWwBT8c3SIxdvOAyw+bzlJ
+	4YtKFoutfhW23BsALPI4AIOP/RTm/nqBRVdRFYN1vVc5bBkIU9jpclDoq1qNPd4gg3ftJVT0
+	3Kjr4gz0uHOpaHlGofN8PYXj3jIuuRTIS9shhpRVX6GI7aHCkvJT5UAmQg4gI6W5NLHZo+2N
+	wSGa7KveRUrvDrIkNPoXS/xjxQy5UyKRM/tDFDlyP5HUneji1i7bICRtkTOMFtn02ZebBMMD
+	25hqe2fy7t5nebAXri0qgDheEj+XrDWtXIxZ8VOpo2OcjrFWnC1VFwZVBSDwtNg6SzroLWRi
+	wofiZqn2zCsoAJ5nxE+kAo8QG6vFxVJbSKHfZc6SfJUNbzlOXCJVhIuoGGuinidDNxk7CMUw
+	qQy0xixLpt6YsXi+Od2QnWXcPX/ztswqiL6T96fwkVoYaV3eCCIPuslqTF6ZplHpLebszEaQ
+	eFqnVc9NWJWmUW/RZ/8gm7Z9b9qZIZsb4WOe0c1Qr1wnb9KIqfodcrosb5dN71WKj4vfC1uF
+	V+t99ZxS8sG6aSFryqnutR/Fb/xKm5QXf/Fbi+H6sjsJaJjk5qdO1/7LKwkLE3XhJXtSZ1/x
+	9dce/vE3GzEOLzgtGVa4go+SOgSLHUr7vnNHeuc8rFsj+SwzU857n8b9vGIpsUsR5Vh7c/HX
+	L7qtbVNT9n0TPhtIfVoo1As6xmzQL5xHm8z6NyRj8I5KAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -224,379 +224,271 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Each unique kernel context, in dept's point of view, should be
-identified on every entrance to kernel mode e.g. system call or user
-oriented fault.  Otherwise, dept may track meaningless dependencies
-across different kernel context.
+dept engine works in a constrained environment.  For example, dept
+cannot make use of dynamic allocation e.g. kmalloc().  So dept has been
+using static pools to keep memory chunks dept uses.
+
+However, dept would barely work once any of the pools gets run out.  So
+implemented a mechanism for the refill on the lack, using irq work and
+workqueue that fits on the contrained environment.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept.h              | 17 +++++---
- include/linux/irq-entry-common.h  |  4 ++
- include/linux/sched.h             | 10 ++---
- kernel/dependency/dept.c          | 67 ++++++++++++++++---------------
- kernel/dependency/dept_internal.h | 12 +++---
- 5 files changed, 61 insertions(+), 49 deletions(-)
+ kernel/dependency/dept.c          | 108 +++++++++++++++++++++++++-----
+ kernel/dependency/dept_internal.h |  19 ++++--
+ kernel/dependency/dept_object.h   |  10 +--
+ kernel/dependency/dept_proc.c     |   8 +--
+ 4 files changed, 116 insertions(+), 29 deletions(-)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index b1c55305be17..0b012d3799f2 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -24,11 +24,16 @@ struct task_struct;
- #define DEPT_MAX_SUBCLASSES_USR		(DEPT_MAX_SUBCLASSES / DEPT_MAX_SUBCLASSES_EVT)
- #define DEPT_MAX_SUBCLASSES_CACHE	2
- 
--#define DEPT_SIRQ			0
--#define DEPT_HIRQ			1
--#define DEPT_IRQS_NR			2
--#define DEPT_SIRQF			(1UL << DEPT_SIRQ)
--#define DEPT_HIRQF			(1UL << DEPT_HIRQ)
-+enum {
-+	DEPT_CXT_SIRQ = 0,
-+	DEPT_CXT_HIRQ,
-+	DEPT_CXT_IRQS_NR,
-+	DEPT_CXT_PROCESS = DEPT_CXT_IRQS_NR,
-+	DEPT_CXTS_NR
-+};
-+
-+#define DEPT_SIRQF			(1UL << DEPT_CXT_SIRQ)
-+#define DEPT_HIRQF			(1UL << DEPT_CXT_HIRQ)
- 
- struct dept_key {
- 	union {
-@@ -146,6 +151,7 @@ void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip, const c
- void dept_ecxt_exit(struct dept_map *m, unsigned long e_f, unsigned long ip);
- void dept_sched_enter(void);
- void dept_sched_exit(void);
-+void dept_update_cxt(void);
- 
- static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
- {
-@@ -193,6 +199,7 @@ struct dept_map { };
- #define dept_ecxt_exit(m, e_f, ip)			do { } while (0)
- #define dept_sched_enter()				do { } while (0)
- #define dept_sched_exit()				do { } while (0)
-+#define dept_update_cxt()				do { } while (0)
- #define dept_ecxt_enter_nokeep(m)			do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
-diff --git a/include/linux/irq-entry-common.h b/include/linux/irq-entry-common.h
-index d26d1b1bcbfb..37ef4f20bdc4 100644
---- a/include/linux/irq-entry-common.h
-+++ b/include/linux/irq-entry-common.h
-@@ -9,6 +9,7 @@
- #include <linux/syscalls.h>
- #include <linux/tick.h>
- #include <linux/unwind_deferred.h>
-+#include <linux/dept.h>
- 
- #include <asm/entry-common.h>
- 
-@@ -88,6 +89,9 @@ static __always_inline bool arch_in_rcu_eqs(void) { return false; }
-  */
- static __always_inline void enter_from_user_mode(struct pt_regs *regs)
- {
-+	/* Make dept work with a new context. */
-+	dept_update_cxt();
-+
- 	arch_enter_from_user_mode(regs);
- 	lockdep_hardirqs_off(CALLER_ADDR0);
- 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 11c2efbf59b3..63360eb2301a 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -833,19 +833,19 @@ struct dept_task {
- 	int				wait_hist_pos;
- 
- 	/*
--	 * sequential id to identify each IRQ context
-+	 * sequential id to identify each context
- 	 */
--	unsigned int			irq_id[DEPT_IRQS_NR];
-+	unsigned int			cxt_id[DEPT_CXTS_NR];
- 
- 	/*
- 	 * for tracking IRQ-enabled points with cross-event
- 	 */
--	unsigned int			wgen_enirq[DEPT_IRQS_NR];
-+	unsigned int			wgen_enirq[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * for keeping up-to-date IRQ-enabled points
- 	 */
--	unsigned long			enirq_ip[DEPT_IRQS_NR];
-+	unsigned long			enirq_ip[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * for reserving a current stack instance at each operation
-@@ -899,7 +899,7 @@ struct dept_task {
- 	.wait_hist = { { .wait = NULL, } },			\
- 	.ecxt_held_pos = 0,					\
- 	.wait_hist_pos = 0,					\
--	.irq_id = { 0U },					\
-+	.cxt_id = { 0U },					\
- 	.wgen_enirq = { 0U },					\
- 	.enirq_ip = { 0UL },					\
- 	.stack = NULL,						\
 diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index fd091ae28ae2..1c4de1b55730 100644
+index 1c4de1b55730..4b4b28ddc819 100644
 --- a/kernel/dependency/dept.c
 +++ b/kernel/dependency/dept.c
-@@ -230,9 +230,9 @@ static struct dept_class *dep_tc(struct dept_dep *d)
+@@ -75,6 +75,9 @@
+ #include <linux/dept.h>
+ #include <linux/utsname.h>
+ #include <linux/kernel.h>
++#include <linux/workqueue.h>
++#include <linux/irq_work.h>
++#include <linux/vmalloc.h>
+ #include "dept_internal.h"
  
- static const char *irq_str(int irq)
- {
--	if (irq == DEPT_SIRQ)
-+	if (irq == DEPT_CXT_SIRQ)
- 		return "softirq";
--	if (irq == DEPT_HIRQ)
-+	if (irq == DEPT_CXT_HIRQ)
- 		return "hardirq";
- 	return "(unknown)";
- }
-@@ -410,7 +410,7 @@ static void initialize_class(struct dept_class *c)
- {
- 	int i;
+ static int dept_stop;
+@@ -143,9 +146,11 @@ static inline struct dept_task *dept_task(void)
+ 		}							\
+ 	})
  
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		struct dept_iecxt *ie = &c->iecxt[i];
- 		struct dept_iwait *iw = &c->iwait[i];
+-#define DEPT_INFO_ONCE(s...) pr_warn_once("DEPT_INFO_ONCE: " s)
++#define DEPT_INFO_ONCE(s...)	pr_warn_once("DEPT_INFO_ONCE: " s)
++#define DEPT_INFO(s...)		pr_warn("DEPT_INFO: " s)
  
-@@ -436,7 +436,7 @@ static void initialize_ecxt(struct dept_ecxt *e)
- {
- 	int i;
+ static arch_spinlock_t dept_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
++static arch_spinlock_t dept_pool_spin = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED;
  
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		e->enirq_stack[i] = NULL;
- 		e->enirq_ip[i] = 0UL;
- 	}
-@@ -452,7 +452,7 @@ static void initialize_wait(struct dept_wait *w)
- {
- 	int i;
+ /*
+  * The DEPT internal engine should be cautious when using external functions
+@@ -268,6 +273,7 @@ static bool valid_key(struct dept_key *k)
  
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		w->irq_stack[i] = NULL;
- 		w->irq_ip[i] = 0UL;
- 	}
-@@ -491,7 +491,7 @@ static void destroy_ecxt(struct dept_ecxt *e)
- {
- 	int i;
+ #define OBJECT(id, nr)							\
+ static struct dept_##id spool_##id[nr];					\
++static struct dept_##id rpool_##id[nr];					\
+ static DEFINE_PER_CPU(struct llist_head, lpool_##id);
+ 	#include "dept_object.h"
+ #undef OBJECT
+@@ -276,14 +282,74 @@ struct dept_pool dept_pool[OBJECT_NR] = {
+ #define OBJECT(id, nr) {						\
+ 	.name = #id,							\
+ 	.obj_sz = sizeof(struct dept_##id),				\
+-	.obj_nr = ATOMIC_INIT(nr),					\
++	.obj_nr = nr,							\
++	.tot_nr = nr,							\
++	.acc_sz = ATOMIC_INIT(sizeof(spool_##id) + sizeof(rpool_##id)), \
+ 	.node_off = offsetof(struct dept_##id, pool_node),		\
+ 	.spool = spool_##id,						\
++	.rpool = rpool_##id,						\
+ 	.lpool = &lpool_##id, },
+ 	#include "dept_object.h"
+ #undef OBJECT
+ };
  
--	for (i = 0; i < DEPT_IRQS_NR; i++)
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
- 		if (e->enirq_stack[i])
- 			put_stack(e->enirq_stack[i]);
- 	if (e->class)
-@@ -507,7 +507,7 @@ static void destroy_wait(struct dept_wait *w)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++)
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
- 		if (w->irq_stack[i])
- 			put_stack(w->irq_stack[i]);
- 	if (w->class)
-@@ -665,7 +665,7 @@ static void print_diagram(struct dept_dep *d)
- 	const char *tc_n = tc->sched_map ? "<sched>" : (tc->name ?: "(unknown)");
- 
- 	irqf = e->enirqf & w->irqf;
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		if (!firstline)
- 			pr_warn("\nor\n\n");
- 		firstline = false;
-@@ -698,7 +698,7 @@ static void print_dep(struct dept_dep *d)
- 	const char *tc_n = tc->sched_map ? "<sched>" : (tc->name ?: "(unknown)");
- 
- 	irqf = e->enirqf & w->irqf;
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		pr_warn("%s has been enabled:\n", irq_str(irq));
- 		print_ip_stack(e->enirq_ip[irq], e->enirq_stack[irq]);
- 		pr_warn("\n");
-@@ -866,7 +866,7 @@ static void bfs(void *root, struct bfs_ops *ops, void *in, void **out)
-  */
- 
- static unsigned long cur_enirqf(void);
--static int cur_irq(void);
-+static int cur_cxt(void);
- static unsigned int cur_ctxt_id(void);
- 
- static struct dept_iecxt *iecxt(struct dept_class *c, int irq)
-@@ -1443,7 +1443,7 @@ static void add_dep(struct dept_ecxt *e, struct dept_wait *w)
- 	if (d) {
- 		check_dl_bfs(d);
- 
--		for (i = 0; i < DEPT_IRQS_NR; i++) {
-+		for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 			struct dept_iwait *fiw = iwait(fc, i);
- 			struct dept_iecxt *found_ie;
- 			struct dept_iwait *found_iw;
-@@ -1487,7 +1487,7 @@ static void add_wait(struct dept_class *c, unsigned long ip,
- 	struct dept_task *dt = dept_task();
- 	struct dept_wait *w;
- 	unsigned int wg;
--	int irq;
-+	int cxt;
- 	int i;
- 
- 	if (DEPT_WARN_ON(!valid_class(c)))
-@@ -1503,9 +1503,9 @@ static void add_wait(struct dept_class *c, unsigned long ip,
- 	w->wait_stack = get_current_stack();
- 	w->sched_sleep = sched_sleep;
- 
--	irq = cur_irq();
--	if (irq < DEPT_IRQS_NR)
--		add_iwait(c, irq, w);
-+	cxt = cur_cxt();
-+	if (cxt == DEPT_CXT_HIRQ || cxt == DEPT_CXT_SIRQ)
-+		add_iwait(c, cxt, w);
- 
- 	/*
- 	 * Avoid adding dependency between user aware nested ecxt and
-@@ -1579,7 +1579,7 @@ static struct dept_ecxt_held *add_ecxt(struct dept_map *m,
- 	eh->sub_l = sub_l;
- 
- 	irqf = cur_enirqf();
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR)
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR)
- 		add_iecxt(c, irq, e, false);
- 
- 	del_ecxt(e);
-@@ -1728,7 +1728,7 @@ static void do_event(struct dept_map *m, struct dept_map *real_m,
- 			add_dep(eh->ecxt, wh->wait);
- 	}
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		struct dept_ecxt *e;
- 
- 		if (before(dt->wgen_enirq[i], wg))
-@@ -1775,7 +1775,7 @@ static void disconnect_class(struct dept_class *c)
- 		call_rcu(&d->rh, del_dep_rcu);
- 	}
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		stale_iecxt(iecxt(c, i));
- 		stale_iwait(iwait(c, i));
- 	}
-@@ -1800,27 +1800,21 @@ static unsigned long cur_enirqf(void)
- 	return 0UL;
- }
- 
--static int cur_irq(void)
-+static int cur_cxt(void)
- {
- 	if (lockdep_softirq_context(current))
--		return DEPT_SIRQ;
-+		return DEPT_CXT_SIRQ;
- 	if (lockdep_hardirq_context())
--		return DEPT_HIRQ;
--	return DEPT_IRQS_NR;
-+		return DEPT_CXT_HIRQ;
-+	return DEPT_CXT_PROCESS;
- }
- 
- static unsigned int cur_ctxt_id(void)
- {
- 	struct dept_task *dt = dept_task();
--	int irq = cur_irq();
-+	int cxt = cur_cxt();
- 
--	/*
--	 * Normal process context
--	 */
--	if (irq == DEPT_IRQS_NR)
--		return 0U;
--
--	return dt->irq_id[irq] | (1UL << irq);
-+	return dt->cxt_id[cxt] | (1UL << cxt);
- }
- 
- static void enirq_transition(int irq)
-@@ -1877,7 +1871,7 @@ static void dept_enirq(unsigned long ip)
- 
- 	flags = dept_enter();
- 
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		dt->enirq_ip[irq] = ip;
- 		enirq_transition(irq);
- 	}
-@@ -1923,6 +1917,13 @@ void noinstr dept_hardirqs_off(void)
- 	dept_task()->hardirqs_enabled = false;
- }
- 
-+void noinstr dept_update_cxt(void)
++static void dept_wq_work_fn(struct work_struct *work)
 +{
-+	struct dept_task *dt = dept_task();
++	int i;
 +
-+	dt->cxt_id[DEPT_CXT_PROCESS] += 1UL << DEPT_CXTS_NR;
++	for (i = 0; i < OBJECT_NR; i++) {
++		struct dept_pool *p = dept_pool + i;
++		int sz = p->tot_nr * p->obj_sz;
++		void *rpool;
++		bool need;
++
++		local_irq_disable();
++		arch_spin_lock(&dept_pool_spin);
++		need = !p->rpool;
++		arch_spin_unlock(&dept_pool_spin);
++		local_irq_enable();
++
++		if (!need)
++			continue;
++
++		rpool = vmalloc(sz);
++
++		if (!rpool) {
++			DEPT_STOP("Failed to extend internal resources.\n");
++			break;
++		}
++
++		local_irq_disable();
++		arch_spin_lock(&dept_pool_spin);
++		if (!p->rpool) {
++			p->rpool = rpool;
++			rpool = NULL;
++			atomic_add(sz, &p->acc_sz);
++		}
++		arch_spin_unlock(&dept_pool_spin);
++		local_irq_enable();
++
++		if (rpool)
++			vfree(rpool);
++		else
++			DEPT_INFO("Dept object(%s) just got refilled successfully.\n", p->name);
++	}
++}
++
++static DECLARE_WORK(dept_wq_work, dept_wq_work_fn);
++
++static void dept_irq_work_fn(struct irq_work *w)
++{
++	schedule_work(&dept_wq_work);
++}
++
++static DEFINE_IRQ_WORK(dept_irq_work, dept_irq_work_fn);
++
++static void request_rpool_refill(void)
++{
++	irq_work_queue(&dept_irq_work);
 +}
 +
  /*
-  * Ensure it's the outmost softirq context.
-  */
-@@ -1930,7 +1931,7 @@ void dept_softirq_enter(void)
- {
- 	struct dept_task *dt = dept_task();
+  * We can use llist regardless of whether CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG
+  * is enabled, because NMI and other contexts on the same CPU never run
+@@ -319,19 +385,31 @@ static void *from_pool(enum object_t t)
+ 	/*
+ 	 * Try static pool.
+ 	 */
+-	if (atomic_read(&p->obj_nr) > 0) {
+-		int idx = atomic_dec_return(&p->obj_nr);
++	arch_spin_lock(&dept_pool_spin);
++
++	if (!p->obj_nr) {
++		p->spool = p->rpool;
++		p->obj_nr = p->rpool ? p->tot_nr : 0;
++		p->rpool = NULL;
++		request_rpool_refill();
++	}
++
++	if (p->obj_nr) {
++		void *ret;
++
++		p->obj_nr--;
++		ret = p->spool + (p->obj_nr * p->obj_sz);
++		arch_spin_unlock(&dept_pool_spin);
  
--	dt->irq_id[DEPT_SIRQ] += 1UL << DEPT_IRQS_NR;
-+	dt->cxt_id[DEPT_CXT_SIRQ] += 1UL << DEPT_CXTS_NR;
+-		if (idx >= 0)
+-			return p->spool + (idx * p->obj_sz);
++		return ret;
+ 	}
++	arch_spin_unlock(&dept_pool_spin);
+ 
+-	DEPT_INFO_ONCE("---------------------------------------------\n"
+-		"  Some of Dept internal resources are run out.\n"
+-		"  Dept might still work if the resources get freed.\n"
+-		"  However, the chances are Dept will suffer from\n"
+-		"  the lack from now. Needs to extend the internal\n"
+-		"  resource pools. Ask max.byungchul.park@gmail.com\n");
++	DEPT_INFO("------------------------------------------\n"
++		"  Dept object(%s) is run out.\n"
++		"  Dept is trying to refill the object.\n"
++		"  Nevertheless, if it fails, Dept will stop.\n",
++		p->name);
+ 	return NULL;
  }
  
- /*
-@@ -1940,7 +1941,7 @@ void noinstr dept_hardirq_enter(void)
- {
- 	struct dept_task *dt = dept_task();
- 
--	dt->irq_id[DEPT_HIRQ] += 1UL << DEPT_IRQS_NR;
-+	dt->cxt_id[DEPT_CXT_HIRQ] += 1UL << DEPT_CXTS_NR;
+@@ -2957,8 +3035,8 @@ void __init dept_init(void)
+ 	pr_info("... DEPT_MAX_ECXT_HELD  : %d\n", DEPT_MAX_ECXT_HELD);
+ 	pr_info("... DEPT_MAX_SUBCLASSES : %d\n", DEPT_MAX_SUBCLASSES);
+ #define OBJECT(id, nr)							\
+-	pr_info("... memory used by %s: %zu KB\n",			\
+-	       #id, B2KB(sizeof(struct dept_##id) * nr));
++	pr_info("... memory initially used by %s: %zu KB\n",		\
++	       #id, B2KB(sizeof(spool_##id) + sizeof(rpool_##id)));
+ 	#include "dept_object.h"
+ #undef OBJECT
+ #define HASH(id, bits)							\
+@@ -2966,6 +3044,6 @@ void __init dept_init(void)
+ 	       #id, B2KB(sizeof(struct hlist_head) * (1 << (bits))));
+ 	#include "dept_hash.h"
+ #undef HASH
+-	pr_info("... total memory used by objects and hashs: %zu KB\n", B2KB(mem_total));
++	pr_info("... total memory initially used by objects and hashs: %zu KB\n", B2KB(mem_total));
+ 	pr_info("... per task memory footprint: %zu bytes\n", sizeof(struct dept_task));
  }
- 
- void dept_sched_enter(void)
 diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
-index 732f297710aa..f5023365b3fd 100644
+index f5023365b3fd..051d4ee4e6e1 100644
 --- a/kernel/dependency/dept_internal.h
 +++ b/kernel/dependency/dept_internal.h
-@@ -106,8 +106,8 @@ struct dept_class {
- 			/*
- 			 * for tracking IRQ dependencies
- 			 */
--			struct dept_iecxt iecxt[DEPT_IRQS_NR];
--			struct dept_iwait iwait[DEPT_IRQS_NR];
-+			struct dept_iecxt iecxt[DEPT_CXT_IRQS_NR];
-+			struct dept_iwait iwait[DEPT_CXT_IRQS_NR];
+@@ -26,9 +26,19 @@ struct dept_pool {
+ 	size_t				obj_sz;
  
- 			/*
- 			 * classified by a map embedded in task_struct,
-@@ -169,8 +169,8 @@ struct dept_ecxt {
- 			/*
- 			 * where the IRQ-enabled happened
- 			 */
--			unsigned long	enirq_ip[DEPT_IRQS_NR];
--			struct dept_stack *enirq_stack[DEPT_IRQS_NR];
-+			unsigned long	enirq_ip[DEPT_CXT_IRQS_NR];
-+			struct dept_stack *enirq_stack[DEPT_CXT_IRQS_NR];
+ 	/*
+-	 * the number of the static array
++	 * the remaining number of the object in spool
+ 	 */
+-	atomic_t			obj_nr;
++	int				obj_nr;
++
++	/*
++	 * the number of the object in spool
++	 */
++	int				tot_nr;
++
++	/*
++	 * accumulated amount of memory used by the object in byte
++	 */
++	atomic_t			acc_sz;
  
- 			/*
- 			 * where the event context started
-@@ -214,8 +214,8 @@ struct dept_wait {
- 			/*
- 			 * where the IRQ wait happened
- 			 */
--			unsigned long	irq_ip[DEPT_IRQS_NR];
--			struct dept_stack *irq_stack[DEPT_IRQS_NR];
-+			unsigned long	irq_ip[DEPT_CXT_IRQS_NR];
-+			struct dept_stack *irq_stack[DEPT_CXT_IRQS_NR];
+ 	/*
+ 	 * offset of ->pool_node
+@@ -38,9 +48,10 @@ struct dept_pool {
+ 	/*
+ 	 * pointer to the pool
+ 	 */
+-	void				*spool;
++	void				*spool; /* static pool */
++	void				*rpool; /* reserved pool */
+ 	struct llist_head		boot_pool;
+-	struct llist_head __percpu	*lpool;
++	struct llist_head __percpu	*lpool; /* local pool */
+ };
  
- 			/*
- 			 * where the wait happened
+ struct dept_ecxt;
+diff --git a/kernel/dependency/dept_object.h b/kernel/dependency/dept_object.h
+index 0b7eb16fe9fb..4f936adfa8ee 100644
+--- a/kernel/dependency/dept_object.h
++++ b/kernel/dependency/dept_object.h
+@@ -6,8 +6,8 @@
+  * nr: # of the object that should be kept in the pool.
+  */
+ 
+-OBJECT(dep, 1024 * 8)
+-OBJECT(class, 1024 * 8)
+-OBJECT(stack, 1024 * 32)
+-OBJECT(ecxt, 1024 * 16)
+-OBJECT(wait, 1024 * 32)
++OBJECT(dep, 1024 * 4 * 2)
++OBJECT(class, 1024 * 4)
++OBJECT(stack, 1024 * 4 * 8)
++OBJECT(ecxt, 1024 * 4 * 2)
++OBJECT(wait, 1024 * 4 * 4)
+diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
+index 97beaf397715..f28992834588 100644
+--- a/kernel/dependency/dept_proc.c
++++ b/kernel/dependency/dept_proc.c
+@@ -74,12 +74,10 @@ static int dept_stats_show(struct seq_file *m, void *v)
+ {
+ 	int r;
+ 
+-	seq_puts(m, "Availability in the static pools:\n\n");
++	seq_puts(m, "Accumulated amount of memory used by pools:\n\n");
+ #define OBJECT(id, nr)							\
+-	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
+-	if (r < 0)							\
+-		r = 0;							\
+-	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
++	r = atomic_read(&dept_pool[OBJECT_##id].acc_sz);		\
++	seq_printf(m, "%s\t%d KB\n", #id, r / 1024);
+ 	#include "dept_object.h"
+ #undef  OBJECT
+ 
 -- 
 2.17.1
 
