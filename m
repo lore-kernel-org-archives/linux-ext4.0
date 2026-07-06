@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id A28743D565D;
-	Mon,  6 Jul 2026 06:20:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 0A3EA3D953D;
+	Mon,  6 Jul 2026 06:20:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783318816; cv=none; b=WJ88BjzwEw1zAbj36q+kH7+MGGlYzZkY+NklHH14PuAbeEWt7OJChPd67Bgj/ThfiYFvdz8duDEcdQIpycxjfxOiBzyflXWlu6kMxz5xjEiEgTy2gCQRwcw/OsPlalPtX2JRPrdKh3WIAtZOJOqxnkJ+xjXMaU7LT7C+a8+Deyo=
+	t=1783318829; cv=none; b=e20vn4/8jRReqB1BjJsIYxLs+fg3fmTNfQ56e6NkmVbsLtP8X4Gs05U8zdYHodUvovHJm2O6Z/oK9WGNaQSrFQgBVPnyjYvk+fidQEMmatXv8zj2lprmZKlVqWTRFm7bpznZ1QtdgLRSW/cq5j6r7i5EhtRqu7R/j4Hb342psS4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783318816; c=relaxed/simple;
-	bh=kGgEzobFbLUd8tx4gLWx/R771yHZRXgu8kLDW12YZyE=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Dd9Px3vMQwL/v3ZSiNPP2eiEetf67eH5EVQW98So+ZbDO8rOkXuAYtnhbISiZsCc19+yDvwSXMe9jQaYA/wqIdpkaUy4DZMjl5tLMwwQgthtCx1JNdBIseH9HM0MYSdKW2MShN4u17yKPgIVdaC9eZyzCjDRLwX+A5ZtsK6xl9w=
+	s=arc-20240116; t=1783318829; c=relaxed/simple;
+	bh=mVczWw5AJvTGaUa2k+kGuAdITLqzYAqLiO2CNQ+CNGE=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=G6tjvMxHEcv1DFa3O7vBexkZViBHlH5CRoH+9cRrznuJfO7AtzFo4YvXMDgfIFaeB785LNoieEoP1hoT5ySCUz/0gMPuZbO5cjPhftjyWTjQGr6vWjpLRq6T3y+kdBGkOzCDET0qvAlELiKOnN+uxvNA0APBqXP6rW5hDB2BKMQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-4e-6a4b48fd70e1
+X-AuditID: a67dfc5b-c45ff70000001609-6c-6a4b48fd8945
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: max.byungchul.park@gmail.com,
@@ -178,45 +178,45 @@ Cc: max.byungchul.park@gmail.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v19 09/40] dept: record the latest one out of consecutive waits of the same class
-Date: Mon,  6 Jul 2026 15:18:57 +0900
-Message-Id: <20260706061928.66713-10-byungchul@sk.com>
+Subject: [PATCH v19 10/40] dept: apply sdt_might_sleep_{start,end}() to wait_for_completion()/complete()
+Date: Mon,  6 Jul 2026 15:18:58 +0900
+Message-Id: <20260706061928.66713-11-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20260706061928.66713-1-byungchul@sk.com>
 References: <20260706061928.66713-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTdxjG9z/nfy6tdJ5UMw5O49Kpcy46MW55XdRo9mEnI2xOE122BD2R
-	EyhrCxYssmSRq1Yuk5C1xFYUJNZa8LJ2KLqxVUCQLYayClQu1ja12AFjmgIjokgxfvvleX/P
-	8+llSWU/tYxV63IkvU7UqGg5lo/H1a2fE5IyNk4/SwBjyVEY8oco6CtwY5iMGjE8t15nwOg8
-	RcGd/kIM/kkjgulnVhJKbsxhiM4MMmAqQGDuqSLB5/mDBFMgREN1pACDJWxlIHL7M5gbHiGg
-	f2oMgS30goCQ+ziCs+dcNIya/5t3TR4EdYFhEp5GHiL4peMBghZ7IQ3e0Jtwb3KChi5TGQ3j
-	PacJCA+0EFBUf4UGc40Tw5C5ioAGZzL4bWEM5p/jwVr9mIAZm4MB610vBUG7hYHZQCLM1WZC
-	R8MIA8MnTRguj3dT0PWgjwJ/5zEKruc/ZMB5/zaC6L0AAY3lYRJOnRmiwfg8iqCjOUhA+dUm
-	Cjzuvyj4u8GDoctyEcPg3ZMMdN+8RO1IFRyua4TQeKYRCdHzRaRQUjlPbWMTpFDsyhVapmqx
-	8Oc5XrhhGWaE4t8HGKHWeVgobh+nBJd9nVD/W4QQBka3CU7HCXrX+m/kW1Mljdog6T/cfkCe
-	3lddiLMeLTrypOIflI/aZaVIxvLcZn7EU0aWInaBz5o1sZjm3uN9vhkyxku5d3hXRZgqRXKW
-	5Lwr+XJbBY75SziR77SsjTmYW81HTjThGCu4j/mfmiqIV/Mr+Yar7oUd2Xx+ebZmIVdyH/GD
-	E504tslzLhn/Y9RNvyok8LfsPlyJFLXoDQdSqnUGrajWbN6QnqdTH9lwMFPrRPPvZvth9ttm
-	9NSzpxVxLFLFKWDH5xlKSjRk52lbEc+SqqWKNWuTMpSKVDHve0mfuV9/WCNlt6K3WayKV2ya
-	yk1VcmlijvSdJGVJ+tdXgpUty0e6TxIvjUa2uH1JJXvTktum3992+oPFcUe394h9dmWKtnir
-	fTdf3VuzEw5UNfs64w0bn+Q+Tqi/ORpuMXj+/1oabH43ecyaNr0n5d8L0Z3x2rTd+d5fV3k/
-	vXjokaO7t3L5lcCxYEbwkP+Lr8KeMkXwrboVX3oP7mrvXdK2z52TlTJZpMLZ6WLiOlKfLb4E
-	eVVQ9moDAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUxTZxTGfd/79vbSreymYrxxZtYmfibiR6Y52YxzyyLvUJa5GHWLiTR6
-	MwqlmJahmMxBWbPKxECztkphMja6CVWwpcyONBKc+IFuMFSIikBSO/moddiCfBTWmuyfk995
-	znOenD8OxyhaJEs4jS5f1OvUWhUrI7KP3y1ZF6M7szcEhxaB2fQ1PBoISOB+cRuBaMRMoKrR
-	xULM8ZsUzO6zErjRayTQdbEBwUDUjGByxsGAyTdPIGbpkEJk6qEUrMUI5v0dCGzdFgb6uq4w
-	4GouxvCiaY6F0avjCKxDARbsw8UEws5TCCqDDikMX0uD0ECrBOb7/8HQOzGGwBmYwxBo+xZB
-	zJYD52o98XXbcxZm7vzFgN3aheDHoX4GxocHETR3PEbg/9XIwpNyLwM9gWS4Gw2zcNP6HQuh
-	7ioMz5pYqDH6JdB9exRBtcOCIPjAj6Hkp0YWbNVuAr7B36XQPTqL4ZHNgqHBnQEDziCBzvJa
-	HD837rq0GBz2EhwvTzFYL7RimHLWS7fXITppOk1ovacFU9PfMZa6fnAhOjNtQTRSV8JQU3m8
-	vToWZug3nqO0rnOMpdPReyz1T9QQeqtWoD+fnMa04s466qvsl37y/ueyrYdFraZA1K/flinL
-	um83kiNPXjv2b9kIKkJ/JJUijhP4t4VzNm0pSuJYfpXQ1zfFJDiFVwqesqCkFMk4hu9ZJpxy
-	lpGEfyGvFq5Xrk54CL9CGD7pJQmW81uE771lOMECv0xoaGp7lZMU1y/OVr/SFfxm4WH4OilH
-	shq0oB6laHQFuWqNdnOqISerUKc5lnooL9eN4t/k/Gq24jKK9KS1I55DqtflsD09WyFRFxgK
-	c9uRwDGqFPnK1TuzFfLD6sLjoj7voP5LrWhoR29yRLVYnr5PzFTwX6jzxRxRPCLq/59iLmlJ
-	EVo/M/l8xJmVtyHT/eLTzL3LXbrI8bSwYsK49mb2NvbDkMerpKEP7r2XMXcldvCNqvyMz5TK
-	j6K9e3z1l996WtR/YvC81N16djL9WajTu/uXpSs2rTnxznLf/v3U32LHXoUn19y8JrXiwAiX
-	vGNTLz9undc2vVyAd201K/9sbD+afEZFDFnqjWsZvUH9H6rrtARJAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTdxjG+Z9bD501x4rhiPGyGqbReI2Xd4kh6IftH2UG3aZGP2gjJ1Is
+	F1sEMS4BBG1wJlhHiRSwVmwqFNRWjYpVrIqiUatFqBGoZR1YpWpYiyG21lbjt1+e53mfPB9e
+	lpR20ymsIq9QUOXJlTJGTIkDE4wLonhdzuJ39T9Dn8dHQ09ZBwWhoIaC+nMWBjTWEzTc7y2n
+	wNnWgsAT0iCoKUMQtXcicDtvkmC5WEZAjdfHQN2QXgT+u79CwNNOQ7R/mIDesREEJt9nAnwd
+	hxFEdLvhpNHGQG2NE8Epbz8Jo/5XCC52DiCwm8sZ+K/6Egku30ToqjnCQOBpPQGGcjsNDXot
+	Al2DlYI+nZaAFutv8LDaSECtnwHdhWTQ1x6MrWhtJ2Dc1CwCU2kq6B+5aBg014kg7F0CUUM+
+	dLYMi6At8ISGroEeGt4OaRnw3DtEg/XFXQTBbi8BmmshCqz/xtwTjX0MXLd3UaCJBBF0Xhkk
+	wHWtnoEBS5SGUv1HGs4Nu4n0LNxsu0zgymcRBlsaLQgHzxwkcWV1jG6PvCdxha0Y28cMFH5g
+	5PGxRwvw1bp+ETZY9+KKOwEa28zz8OnrfgKfGg3RmfO3ildlCUpFkaBalLZDnP3JUUUU2Cft
+	e/3ciUqRbWIVYlmeW8b3N6Z8x7A3owolsgw3h3e7x8k4J3GzeNvRIboKiVmSc83k/zYdpeL5
+	yVw2//BwcTxDcal8U9NlKs4SbgXfesyP4sxzM/mW8x1fexJjelu4gYizlFvOv3x/j4p38pwt
+	ke9wdDPfDqbyt8xuqhpJDCihGUkVeUW5coVy2cLskjzFvoU783OtKPZrpr/C266gUefvDsSx
+	SDZBAulrc6S0vEhdkutAPEvKkiQ/zV2XI5VkyUv2C6r87aq9SkHtQNNYSpYsWTpWnCXldskL
+	hd2CUCCovrsEm5hSitSrb68dEKWFFx/5Z+kfZR96IjMSKhnFpoDJeFaHZ0xpnyJuVq7/cfok
+	dTJsGJxeaDyesfNC8I3ro+Lsjk1NN1rLvfnBxwk9f+4picy2fNiyecvGNPWiaWv+bzrwuLcx
+	84w2+EtgvVblPt72Q3qSY9Z4gTXz08qKjDt+80iIu5G6fIVHRqmz5UvmkSq1/At0alP3ZwMA
+	AA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTWRCAPeee3l661lxrozds1kc3ovG1LgGdjWZ9ROVE1JhoYqI/pNG7
+	tlCQtAhiYhBqY0UlpUlLtKIsQiXlIVJFURuxruCK7ILoShBEYkUraNcKGh4VWxP/TL6Z+WYy
+	P4ZjFPWSaE6bliHq09Q6FSsjsi0rjItDNDF5qb8yBsymHOju9Ungv9xGAsNDZgJnL1WxEHJc
+	k4K57rQE7j/NI9BWU4mgd9iM4POYgwFTwwSBkLVJCkMjz6Rgy0Uw4WlCYG+3MtDZdpuBqiu5
+	GD7WfmFh4G4Qga3Px0KRP5dAwHkSwZl+hxT89xLgXe9NCUz0vMbw9NMgAqfvCwZf4zEEIXsK
+	nC91h8ft/7Mw1vovA0W2NgR/9vUwEPS/QHCl6TkCT0UeC68sVxno8E2Bx8MBFv62nWDhXftZ
+	DO9rWSjJ80ig/eEAgmKHFUF/lweD8cIlFuzFdQQaXtyQQvvAOIZuuxVDZd1m6HX2E2ixlOLw
+	uWHr8gxwFBlxOLzBYKu+iWHE6ZKuLkf0s6mAUJe7HlPToxBLq85VITo2akV0qNzIUJMlnN4d
+	DDD0qDuLlrcMsnR0+AlLPZ9KCH1QKtCy46OYFrYupg1neqRb1+yUrdwr6rSZov6X35NkmjFv
+	Pk73TD345kkbOoLcU/IRxwl8nDDetykfRXEsP0/o7BxhIqzkZwvuU/2SfCTjGL5jlnDSeYpE
+	/Gm8Rmg5lhVxCD9XKCurJxGW88uE6kI/irDAzxIqaxu/7YkK12vGi3GEFXy88CzQTCxIVoIm
+	uZBSm5aZqtbq4pcYUjTZadqDS/bsT61D4W9yHh4vvI6GOhK8iOeQarIcVm9MVkjUmYbsVC8S
+	OEallMfMT0xWyPeqsw+J+v279Qd0osGLfuSIaoZ84w4xScHvU2eIKaKYLuq/dzEXFX0E3S+y
+	ZEVXX3UpD2z46bd/ZD+YNk+yXWhaXpDgDV5sTsw5rFNeW3Ti0byVyT9PD0TlXF7/h/FDkut9
+	gSW24mXf9pnb1sbpg493zWbNSmdw+m59fOivD0lYIqbfWXduQ2tzRheRrVtaqj7dPedo3MOu
+	WPz21sShNe6FWbF07YNVg6tiXmtUxKBR/7qA0RvUXwEVU+f6SQMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -224,54 +224,78 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-The current code records all the waits for later use to track relation
-between waits and events within each context.  However, since the same
-class is handled the same way, it'd be okay to record only one on behalf
-of the others if they all have the same class.
-
-Even though it's the ideal to search the whole history buffer for that,
-since it'd cost too high, alternatively, let's keep the latest one when
-the same class'ed waits consecutively appear.
+Make dept able to track dependencies by wait_for_completion()/complete().
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/dependency/dept.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ include/linux/completion.h | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 4b4b28ddc819..3af360ba17d8 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1486,9 +1486,28 @@ static struct dept_wait_hist *new_hist(void)
- 	return wh;
- }
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index fb2915676574..bd2c207481d6 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -10,6 +10,7 @@
+  */
  
-+static struct dept_wait_hist *last_hist(void)
+ #include <linux/swait.h>
++#include <linux/dept_sdt.h>
+ 
+ /*
+  * struct completion - structure used to maintain state for a "completion"
+@@ -26,14 +27,33 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
++	struct dept_map dmap;
+ };
+ 
++#define init_completion(x)				\
++do {							\
++	sdt_map_init(&(x)->dmap);			\
++	__init_completion(x);				\
++} while (0)
++
++/*
++ * XXX: No use cases for now. Fill the body when needed.
++ */
+ #define init_completion_map(x, m) init_completion(x)
+-static inline void complete_acquire(struct completion *x) {}
+-static inline void complete_release(struct completion *x) {}
++
++static inline void complete_acquire(struct completion *x)
 +{
-+	int pos_n = hist_pos_next();
-+	struct dept_wait_hist *wh_n = hist(pos_n);
-+
-+	/*
-+	 * This is the first try.
-+	 */
-+	if (!pos_n && !wh_n->wait)
-+		return NULL;
-+
-+	return hist(pos_n + DEPT_MAX_WAIT_HIST - 1);
++	sdt_might_sleep_start(&x->dmap);
 +}
 +
- static void add_hist(struct dept_wait *w, unsigned int wg, unsigned int ctxt_id)
- {
--	struct dept_wait_hist *wh = new_hist();
-+	struct dept_wait_hist *wh;
-+
-+	wh = last_hist();
-+
-+	if (!wh || wh->wait->class != w->class || wh->ctxt_id != ctxt_id)
-+		wh = new_hist();
++static inline void complete_release(struct completion *x)
++{
++	sdt_might_sleep_end();
++}
  
- 	if (likely(wh->wait))
- 		put_wait(wh->wait);
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait) }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), \
++	  .dmap = DEPT_MAP_INITIALIZER(work, NULL), }
+ 
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+@@ -75,13 +95,13 @@ static inline void complete_release(struct completion *x) {}
+ #endif
+ 
+ /**
+- * init_completion - Initialize a dynamically allocated completion
++ * __init_completion - Initialize a dynamically allocated completion
+  * @x:  pointer to completion structure that is to be initialized
+  *
+  * This inline function will initialize a dynamically created completion
+  * structure.
+  */
+-static inline void init_completion(struct completion *x)
++static inline void __init_completion(struct completion *x)
+ {
+ 	x->done = 0;
+ 	init_swait_queue_head(&x->wait);
 -- 
 2.17.1
 
