@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 36D213E4C87;
-	Mon,  6 Jul 2026 06:21:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1BB313E6392;
+	Mon,  6 Jul 2026 06:20:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783318892; cv=none; b=RJmdLEq6y0HUprxrsRGmo0kadzYBjM6cL9UzK7BqCvsgzjQM7T+9iQX2mNJ2aieS/ko8EAc/D1u+hq/sxy0erq8atGwZPekaLoeno9oJaHX0UlTpS5Sjdee1xK6uTcnA4pFMKAY2/ghcoHSJ5fjGn8xZkqsva5SmcO77f0ZANKE=
+	t=1783318885; cv=none; b=W7X8vcooTrF6ZexKahsdTEede2jKFnKeRcIvSMKUU/151KCnqLP0w4dfKLmAaJv7TNy/fTg/LCwkFmXj8XSN8fdln9BsVUFLsMaJfr7aAy8z7XzKsLyOGtyAIqKlGtVkjm+rX8/rVjbXwQs1Qg2aAyFCk36mD9FqMDQGxE9AGYg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783318892; c=relaxed/simple;
-	bh=w+C1tGe+D2gcMh5vmD2+eMhKBKW1r3S6v2wTTfvfqWM=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=W55eyDz3YGvbGK2ENy9c/bikFgBjhwd1Fe/kDMgxm0xtAVpZfoQNgUBCFBK77BBCCgMchYeJMIrHUDm2N7RhZo7bapL2lN26smPn+ICNb1yjbE3QJQUtEDR3k1XkoTU6tA3ny8jmOxD6jkG77XQ7nJeBqE3+hXi+E3Gpl/qe4aM=
+	s=arc-20240116; t=1783318885; c=relaxed/simple;
+	bh=USof1/oiICp6mrFMlXObfo51TjySfTnFgIgWh9aYqa4=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=aCjQygQokON0WQVcNI30dtDQA+sgrDxRq1Vi+kjLDHt1/PnMdWLCl8769RMXt7+1jJTjsBnD7d8FvwyKjY6YR8DevkBcIJTabvWZhJm1nHFtd5yRSmxDrMcWuqq4LTecMSZOTEJJhGt7k9LhBGXbt+52sf2W2Hs/fN9B7bt+jE8=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-d4-6a4b4905193c
+X-AuditID: a67dfc5b-c45ff70000001609-1c-6a4b4903b9ee
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: max.byungchul.park@gmail.com,
@@ -178,45 +178,45 @@ Cc: max.byungchul.park@gmail.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v19 30/40] dept: make dept stop from working on debug_locks_off()
-Date: Mon,  6 Jul 2026 15:19:18 +0900
-Message-Id: <20260706061928.66713-31-byungchul@sk.com>
+Subject: [PATCH v19 24/40] locking/lockdep: prevent various lockdep assertions when lockdep_off()'ed
+Date: Mon,  6 Jul 2026 15:19:12 +0900
+Message-Id: <20260706061928.66713-25-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20260706061928.66713-1-byungchul@sk.com>
 References: <20260706061928.66713-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0xTZxjG/c75zoXaZmfVzCMmY6nZNGTqmLq8ccaRzCzfdJhd/pvLtgZO
-	pKwgHrDKphlEunVTWG1kRCc3mazSUrBMYwGRtcNdvFBxsKLtBDEVLHgp0OpkdgeI/zz55b08
-	efLm5WntdSaZN+QVSnKe3qhjVVg1rq5bwb69OeeV4MlUCN64xUB/SReGqUkLBov7MAN+lwOB
-	2ZPAUFGCIHH2PIKA/xwNzp9LKJhoecJCxBdFUDlagiERuk3Bra6vEURHBxH8UbGfhfC1sxTs
-	q29mwTPYxsGVyDQFDncGXLAeo+D7k4vgh8p9lCIjFFQ0tVNwsT6IYXooDULfVWBwjfcwEAnb
-	WLC0TWFwD/czcLg6yMI/zoSSresCA70OP4bm2wEKetqaGIiVLwH/wTJlK9ZAg/1BJQPhvq8o
-	OF/7HJyo+QmBLRzl4NQ5sxLyxxiGYPkdDH8NtCPotAxScNw+zoDb2c+Cb2qMgj9DExz8Gzqj
-	nMVWw8Kp7jgHjx8eZeFhyzADVZNpMOloZNPTSdxcjomz2omI2aqIb+weTUpbdxHPkRBHSjuv
-	caTWvZO02lNJfccoRdyN37DEHbVxpO7xCE2C/R0suXv5Mke8Pgt6N+VD1fosyWgwSfKqDZ+q
-	spsTj5j8bs1u+8gAKkbm+d+iJF4U1oj/uU4wT9kTr59lVlgmBgKP6BleKLwgtpaFlbqKp4Wr
-	KeKBhjI801ggvCc648fRDGPhRbEz2jPLGuE10RqNsHOmKaKjpWvWKEmpu6arqBnWCmvF6/d+
-	w3MzNUli76+vz/Fi8Rd7AFuRphbNa0RaQ54pV28wrlmZXZRn2L0yc3uuGykv17B3eusZFPV/
-	4EUCj3RqDaRvytEyelNBUa4XiTytW6h5afnmHK0mS1/0uSRv/0TeaZQKvGgJj3WLNK/GdmVp
-	hW36QukzScqX5Kddik9KLkZ71qUfGrqbyXnvd291HqqZ93uqaZntTp/vjUL1xEbXJSnjgb24
-	KbZYKOxdrclYr74Y//gg5PNW4ctN+eOrnu9LfEHfxLJz/w7zsSfy0mf6qjpM8to9E40bSGRL
-	8pj9o6VqPPB+adnpI+8wpPPNv4efDQ29zC8ncp1ozLzSXul5S4cLsvVpqbRcoP8fHQuW9W4D
-	AAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH/d3H787V4rIGXYyyFj3oYQVZJ4owirxpRQUhCJUjLzmfsZVp
-	EKlrtN5rsUlOy1aOmitNe61aipaVFmlmWmYrWqZpWUsdPubaiv45fM73e86X88cRkdI7dJhI
-	mb5XUKUrUuVYTIk3rdAsoNfHJi86vR102kPw3uWm4U1uNQUD/ToKCsvsGHzmOwzoKs7R8LQ1
-	j4LG66UIXAM6BN4RMwlah58Cn6GOgf6hdgaMuQj8zjoEpiYDCW2NVSTYb+YS8Lt8DENPrQeB
-	8ZMbQ353LgV91hMICjrNDHQ/jobvrvs0+Du+EtA62IvA6h4jwF19BIHPlAIXLJWBddNPDCMv
-	XpKQb2xEcPFTBwme7o8IbtZ9QOC8kofhi/4WCc3uCfB6oA/DM+NxDN+bCgn4UY6hOM9JQ9Pz
-	HgRFZgOCzndOAjSXyjCYiioocHy8x0BTzygB700GAkorNoLL2klBg95CBM4NTN2YBOZ8DREo
-	XQQYr90nYMhqY6JKEO/VnqJ4W+Vtgte+8mHeft6O+JFhA+L7SzQkr9UH2trePpI/XLmfL2no
-	xfzwQAvmnYPFFF9v4fjLR4cJ/syLBbyjoIPZvDpevDJRSFVmCqqFqxLESWX+IXrPY0nWla63
-	KAdpxx1DoSKOXcI5vJfoIGN2NtfWNkQGWcZO4ypPdgZ0sYhkm8O5E9aTVNCYyG7h7N4SFGSK
-	nck99Lz8yxJ2Kaf39OB/oeFcaXn136DQgH59tIgIspSN5Nr7nlB6JC5GITYkU6ZnpimUqZER
-	6pSk7HRlVsSujLQKFHgn68HRM3dRf3N0DWJFSD5eAlExyVJakanOTqtBnIiUyySz5sQmSyWJ
-	iuwDgipjp2pfqqCuQZNFlHySJCZOSJCyuxV7hRRB2COo/ruEKDQsBxGcKjZtnX5HiPLz88Mt
-	svqYQ1cPREc9NNhCcnaTM260tIdV2fCaKeE7lt36mUjqLK1bxlDD4KMMZt+ci9uy8FpXVcRw
-	pGwwbkWkGk3vUnXMPRsV88FvfVvgy1weHf7mV6zrQve8qfUHv82vjbfcU6zVF2q+mJgNq70W
-	j2MrfpAgp9RJisVzSZVa8Qc5S0vSSgMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxTG97/3f1/a0ezasXHVD5gmqCPBuUXnyeIW4mK4ypaZ+fJhGKXa
+	m7UIhbSKssWsIJ0VRREHBOqQF9M05UVsgwixruLAF0LoVkzaorYQrJAGMR3FICC2GL+c/PI8
+	z3mSkxyWlPupVaxGe1TUaZW5ClqKpVMJjWl4R2bOxif1EjAZf4fHgXEKojMmDIvmLgZM9loK
+	3O0tCIzdSzGtsp+BmbkRBrzuv0n4v+MNDeG7EQRVo+M01EwWY5i2nEMw2ZcB467TCBarj0C4
+	+iUN84NDJNRUuRFEJoMInNYSGp5VdJIwHJ2m4UHVWRqm/r1MQMjvJOBU8zUauoM9DAQsIQwD
+	FU1ErJyG6utJYK45RcTGBAEWQwqYBz0UjFnrGFhqyIf+lucMhEOVNATu/UFBlyHIgN3Xh2Bm
+	eJQAU08UQ239YxpuOR9gMC3OIPD0XKbhaesSBQbzq9ilrgEKrj33EjDQfx/DyOAFBoZ62igY
+	DXopaHvRRMOlFyEElug0A/+5GggovtOM01XCK+N5LNgcNwihtb4VCfOvK5FQ6jgudNc9YYTS
+	235GaLAfE0r/maIEhzVVaL41SQiNkSgl+MPfCHbbGVqwRyoZoXF+gtyV9rN0q0rM1RSKus+/
+	zZaqWxZ8VIFvxYnZJj9hQJaPyhDL8twm3mpMK0OSZTT1ldBxprl1vNc7R8Y5kVvDO8pDVBmS
+	siTnSebPWcpx3PiYU/H9vrblEOZS+PmrD4k4y7iv+JGSKeZdaTLf0uFazkhievvCX8sZObeZ
+	H5m+h+OlPHdFwrsfTlDvFlbyd6xeXIFkDegDG5JrtIV5Sk3upg3qIq3mxIbD+Xl2FPs4y8mF
+	rJso4t7dizgWKRJkkL4zR04pC/VFeb2IZ0lFomzt+swcuUylLPpV1OUf1B3LFfW9aDWLFUmy
+	L2ePq+TcL8qj4hFRLBB1712ClawyoE8+JMs3SrYmlvHnbb72/TvrMjLO3k3forYbO3+4en9P
+	QcC+8tNocM7c2/fbvpdWjw0l/bRDr87UF6eMov2pr5+6kuUGx9o3n9VvUw9v/86pm7Nk30hy
+	/nlo9sxFx0nl3vRw1oGusUfur4kmz3jtUPDH9houCxd2XNFWfJ9ABCRjCqxXK79IJXV65VvG
+	SGIPbQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSWUwTcRDG/f93u12q1bWCrvoAaeIRE6gmaibxwhjDCtHok9eDNrKRcqcV
+	EBW1xWpVUGzSEqkoVGm0oCDFA0ljUwIiXtSqgFCRpBa5xChHoEUsGF8m38z3my/zMDQheSpY
+	QitSj/HKVHmylBKRol0bciPRjrjE1bqeMNBpz0Bnl1cAn9QOEkaGdSTcqKygYNL0RAi66usC
+	aGrVkNDyoBxB14gOwZjfRIC2doqESX2jEIbHO4RgUCOYsjciMLr0BLS1PCegokaN4XfVHwr6
+	638hMHR7KSjsVZMwZMlDUOQzCaG3IQYGu+oEMOXpwdA6OoDA4v2Dweu4gGDSmAS3zLbguvEn
+	Bf437wgoNLQgKO32EPCr9yuCmsYvCOx3NRR8K3hEgNs7Fz6MDFHw0nCZgkHXDQw/qigo0dgF
+	4Hrdj6DYpEfg+2zHkHu7kgJjcTUJtV+fCcHVH8DQadRjKK/eCV0WHwmvCsw4eG6QergITIW5
+	OFi+YzDcr8MwbrEKo8sQN6a9QnJW22PMad9PUlzFzQrE+Sf0iBsuyyU4bUGwrR8YIrhztiyu
+	7NUAxU2MfKQ4+2gJyTWbWe7OxQnMXXsTydUWeYS7tx4QbYznkxWZvFK2+bAooTzQLkhvn398
+	1PwZn0WWeZdQCM0ya1ldg4aa1hSzgm1rGyemdSgTwdryfYJLSEQTjDuczbPkk9PGAiaebWy/
+	PwORzDLWf6cZT2sxs57t0AwK/4WGs+VVjhkmJDh/ECieYSTMOrZj6AVZgEQlaJYVhSpSM1Pk
+	iuR1UaqkhOxUxfGoI2kp1Sj4T5acwLWnaNgd40QMjaRzxBAdmygRyDNV2SlOxNKENFS8fGVc
+	okQcL88+wSvTDikzknmVEy2lSekicexe/rCEOSo/xifxfDqv/O9iOmTJWZR/MnDryLy+0zhs
+	ftJYSd76TVZ8hc36Ltvc0Fm6Xfuxx20mbFnnn2yL89S6dy683uw692xLd2xlmG9FpPOUsWjr
+	qNP6yL+nN73uXloP3fdT2SSbnXOw+NPiWQRTE1DLbE2uiGUx+xXRUB8+eDqq9KrN0WSPWDzm
+	cQT2ybQZbwkpqUqQr1lFKFXyv5jOPbtLAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -224,66 +224,60 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-For many reasons, debug_locks_off() is called to stop lock debuging
-feature e.g. on panic().  dept should also stop it in the conditions.
+lockdep provides APIs for assertion only if lockdep is enabled at the
+moment asserting to avoid unnecessary confusion, using the following
+condition, debug_locks && !this_cpu_read(lockdep_recursion).
+
+However, lockdep_{off,on}() are also used for disabling and enabling
+lockdep for a simular purpose.  Add !lockdep_recursing(current) that is
+updated by lockdep_{off,on}() to the condition so that the assertions
+are aware of !__lockdep_enabled if lockdep_off()'ed.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept.h     | 2 ++
- kernel/dependency/dept.c | 6 ++++++
- lib/debug_locks.c        | 2 ++
- 3 files changed, 10 insertions(+)
+ include/linux/lockdep.h  |  3 ++-
+ kernel/locking/lockdep.c | 10 ++++++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index f3cc7566ddf2..236e57befb13 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -142,6 +142,7 @@ struct dept_ext_wgen {
- 	unsigned int wgen;
- };
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 60b17a2ff555..5113b7053b62 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -303,6 +303,7 @@ extern void lock_unpin_lock(struct lockdep_map *lock, struct pin_cookie);
+ 	lockdep_assert_once(!current->lockdep_depth)
  
-+void dept_stop_emerg(void);
- void dept_on(void);
- void dept_off(void);
- void dept_init(void);
-@@ -194,6 +195,7 @@ struct dept_ext_wgen { };
+ #define lockdep_recursing(tsk)	((tsk)->lockdep_recursion)
++extern bool lockdep_recursing_current(void);
  
- #define DEPT_MAP_INITIALIZER(n, k) { }
+ #define lockdep_pin_lock(l)	lock_pin_lock(&(l)->dep_map)
+ #define lockdep_repin_lock(l,c)	lock_repin_lock(&(l)->dep_map, (c))
+@@ -630,7 +631,7 @@ DECLARE_PER_CPU(int, hardirqs_enabled);
+ DECLARE_PER_CPU(int, hardirq_context);
+ DECLARE_PER_CPU(unsigned int, lockdep_recursion);
  
-+#define dept_stop_emerg()				do { } while (0)
- #define dept_on()					do { } while (0)
- #define dept_off()					do { } while (0)
- #define dept_init()					do { } while (0)
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 048348ea64d2..007e1bc7d201 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -187,6 +187,12 @@ static void dept_unlock(void)
- 	arch_spin_unlock(&dept_spin);
+-#define __lockdep_enabled	(debug_locks && !this_cpu_read(lockdep_recursion))
++#define __lockdep_enabled	(debug_locks && !this_cpu_read(lockdep_recursion) && !lockdep_recursing_current())
+ 
+ #define lockdep_assert_irqs_enabled()					\
+ do {									\
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index dc97f2753ef8..39b9e3e27c0b 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -6900,3 +6900,13 @@ void lockdep_rcu_suspicious(const char *file, const int line, const char *s)
+ 	warn_rcu_exit(rcu);
  }
- 
-+void dept_stop_emerg(void)
+ EXPORT_SYMBOL_GPL(lockdep_rcu_suspicious);
++
++/*
++ * For avoiding header dependency when using (struct task_struct *)current
++ * and lockdep_recursing() at the same time.
++ */
++noinstr bool lockdep_recursing_current(void)
 +{
-+	WRITE_ONCE(dept_stop, 1);
++	return lockdep_recursing(current);
 +}
-+EXPORT_SYMBOL_GPL(dept_stop_emerg);
-+
- enum bfs_ret {
- 	BFS_CONTINUE,
- 	BFS_DONE,
-diff --git a/lib/debug_locks.c b/lib/debug_locks.c
-index a75ee30b77cb..14a965914a8f 100644
---- a/lib/debug_locks.c
-+++ b/lib/debug_locks.c
-@@ -38,6 +38,8 @@ EXPORT_SYMBOL_GPL(debug_locks_silent);
-  */
- int debug_locks_off(void)
- {
-+	dept_stop_emerg();
-+
- 	if (debug_locks && __debug_locks_off()) {
- 		if (!debug_locks_silent) {
- 			console_verbose();
++EXPORT_SYMBOL_GPL(lockdep_recursing_current);
 -- 
 2.17.1
 
