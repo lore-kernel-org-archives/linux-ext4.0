@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5BB433E5A34;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 5DC9E3E5ED6;
 	Mon,  6 Jul 2026 06:20:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783318875; cv=none; b=XtzuHAFgoIUTs0exfIpiNVt5El/iYCwSi+tgwCj8/Q+kF1fRD8aXIy313w2tDTO/39TsfhzzoHRgv4eewEXIugQlUJKJdY7Nn+o6qmJ7dRgEgWey88tHjDA017NyVcoOw0x94mwO52TJzfmqlZtGL9ljU2ZX3T2HyZWvPiTwZiY=
+	t=1783318876; cv=none; b=cUwq4WQUngdVoCnIboOY9bQ0JNae5SCTHiQbUAz9nfYl4vQ2ljmxu3m6KgfTDN+jZvYo0fVBDYTa+tBebq3Ph2wfjFz0kD9NvhvBLueXac0REzrmydjkry4Drly1cL3ZMV0QdRsJMXQiBFP2cLULfEAE+aKh2c9E/r4Jtr2VL2k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783318875; c=relaxed/simple;
-	bh=uG3xryX72/VrJ5xN0YK0iTHXuo6Y0vSJs70jtDbKz5M=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=suxdQuxTsK4ZLPj0bODCg6/Up40/bDvm1bCZnG7An31vQMYaX9LK2b+Qt9FiEuAcOw8lrlaDUuowfj2atF5ZDee7EUkxwFYpFHELexDuFSmMFHBVP1N3apc7LYldXpvm8EL29S7Z2deFX4T4LXZw9MEu/D3W4Wpsd0jbdeV2gK4=
+	s=arc-20240116; t=1783318876; c=relaxed/simple;
+	bh=8QxqVTvQNk4PDz8BMEshl8ljgDS1QxX/eiRvLEbbWtk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=hVCtuYlRO4cqh6x8+QNNfIQIB7dQdehhO60CCYk3n1aRLDfppJ4q0mnnuM8RghQOL/VKFfPSjPwIXTDasq46ImdtTu1zihOwPiVOfhd3psgVWjgdLs4YtKm0QlmRqd/WhZCQRyIIEUL/Z9vsYVGey/+/Kjhiz3rImhgi1yXLru4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-9d-6a4b4900359e
+X-AuditID: a67dfc5b-c2dff70000001609-f9-6a4b49011fa5
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: max.byungchul.park@gmail.com,
@@ -178,44 +178,44 @@ Cc: max.byungchul.park@gmail.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v19 20/40] dept: apply timeout consideration to dma fence wait
-Date: Mon,  6 Jul 2026 15:19:08 +0900
-Message-Id: <20260706061928.66713-21-byungchul@sk.com>
+Subject: [PATCH v19 23/40] dept: print staged wait's stacktrace on report
+Date: Mon,  6 Jul 2026 15:19:11 +0900
+Message-Id: <20260706061928.66713-24-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20260706061928.66713-1-byungchul@sk.com>
 References: <20260706061928.66713-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSaUxTaRSG57v3u0sbO7mpqFfMqNPEJYqKhpoTlxl/6XUZY9SI0R/YyA0U
-	SqlFQTSmrFoRlGBwoYgsStAqYutGEUVQsAJJAbWVrSCIIhQjUoyIGQvGPyfPOc+b8+tlSbmT
-	8mfV2oOiXqvSKGgplnqmFCwhNm6OCKwpXw3GVAO0u3speJ1YhcE7YsTww3SfAaPlIgXPnUkY
-	HKVmBG6vEUFq+f8+m1XLQHYignNNWSS4HI9JGKgZRpDd3UvD+f5EDDl9Jgb6n20Aj7uCAufo
-	IILLhVYahvu7ENyp7UTQ0vsneJpyCRgqoyE/qZKCpoYBBH2tlQQkF92iobzLxoDZ8h+4i/sw
-	1GcWEnDu9gwwnU8mfOMDAdk3KwhoKGrHUJwwD0yNLRTUmt8z0HEmG4O98zUF7rrjFFjePEMw
-	8rKbAKPNi8HS4xMFx69guJjXTsPDSjuG2gdvCWix5dKQXnaXAkdVPQXNZgeGW+9dBNhzrmFo
-	azzDQHeXiwJrYwMJo6dnrQsVrlvvEUJq8w9auJF3Awnfx7KQMHI1mRRSM31rzeAnUkixxglX
-	6wdpYcz7ihZeFPLClZNjhFCe08EIKY9aGSHfckhIeeqhti3fI10TKmrUsaJ+2T/7pOGdVWVI
-	V80ebrvtpBOQiUlDLMtzQXzPl52/MT3lrzQkYWluAe9yfSMn2I+by1sz+qg0JGVJrmUOn16c
-	gSfEVG4rf7K7Z5IxN4/3njpLTLCMW8l/PtVBTzDPzeHNZVWTjyS+e+n4pcmMnFPybZ/q8K9M
-	kYRPGAj8xTP5JyUunIlk+eiP60iu1sZGqdSaoKXh8Vr14aX7o6MsyFe34mPjex+gYceOasSx
-	SDFFBus2RcgpVWxMfFQ14llS4Sebv3BzhFwWqoo/IuqjQ/SHNGJMNZrFYsUM2YrRuFA5F6Y6
-	KEaKok7U/7YEK/FPQGj7abbO4N296kLSkSblXac79+/SxriKE/4hwfbpX+2aCB0beSmjZFqk
-	De4r+aChDeMG6f4tG/99Fxh8YG3Xt02GZWqt0i86JC/Ac4Ki02Z/XPgmTLXraKCyQCxp1gUP
-	dRjGXhGt12yLwyQBZ48FlCbFetNvvrBo/N9S3j3rdQ0KHBOuWr6I1MeofgIhpKRoagMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUhTcRTG/d97d3cdri5L6qKVMcii0GZkHKjE8ENXI4k+WPmlVl1yOjW2
-	mhpIvg1fC11tUnNlpiN8KdvK0liJ5XuSZqXkW9JciTNNN0Xdsin05fA753nOw/lwKFz0kudH
-	yZKucookqVxMCghB9KHsIK/I4/GSIbsQ8tQ3YHjMyoOvmc0EOB15BJQ9rSXBrX/JhzzTXR50
-	DGQR0PukBsGYMw/B4ooeB3XjKgFuTRsfHEtDfNBmIli1tCHQ9WlwGOx9i0Pt80wM5uv/kjD1
-	bg6BdtxKQulkJgEzxiIE92x6Pky2HoPpsdc8WB35icHAgh2B0foXA2tzLgK3LgEeVJg967pZ
-	ElZ6PuJQqu1F8HB8BIe5ye8InreNIrA8ziJhovgFDv3WDfDZOUNCp7aQhOm+Mgx+15NQnmXh
-	Qd+HKQQGvQaB7ZsFg+xHT0nQGUwENH5v4kPflAuDYZ0GgxrTCRgz2gjoLq7APOd6XM+2gL40
-	G/OUXxho615jsGSs5odXIXZRfYtgq80NGKv+5CbZ2vu1iF1Z1iDWUZWNs+piT/vOPoOzOeYU
-	tqrbTrLLzi8ka1koJ9iuCoatzF/G2JKeILbx3gj/5NFYweFLnFym4hT7ws4L4kab69GVFip1
-	6NkAmYH0/AJEUQx9gCnK2VaAvCmS3sUMDi7ha+xL72DMN228AiSgcLo/gCky3iTWhE10NJM/
-	/mOdCXon4yy8ja2xkD7I/CkcIdeYoQOYmvrm9SBvz/yJy7DuEdGhzNBMO1GMBOXIqxr5ypJU
-	iVKZPDRYmRCXliRLDb6YnGhCnncyprtKXiFH/7EWRFNI7COE8Kh4EU+qUqYltiCGwsW+wsDd
-	x+NFwkvStOucIvmc4pqcU7Ygf4oQbxFGnebOi+jL0qtcAsdd4RT/VYzy9stAHf3BnRMbG8os
-	e832tuWm9sCFriZDTOvmif3zDRkqn5AISeAZVVNybpeY8Xeafjnzj368LA/pif3htp1uOKJ/
-	Izn5wCU72xUUERwzrkuX7Ke3ihqn0COv+YW7F+4c0kZHSlzhH3inZt/7mO/7bo+rdESEpchj
-	VlPrYvPrug2CSjGhjJOG7MEVSuk/SRws0EoDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSb0wTdxjH97v73V1p7HKpZN5YDKSJzjFlg8DykCwE35hjxERDzBbdv0Zu
+	0g4qKYgCMQO0pS5FS5URqNUWsDLaSWmFAVoDGCAhqaDNRnGgIrRCVJp0UCOK2GJ898n3+f55
+	84hI6RSVIFKoSgW1Sl4oo8VY/HyTdReZk6v80mD8DHSa32BlWYfhYqeDholrdgQPV3QINH3r
+	GNaMIwyse0YQOK5XE9AwO09D42I1hpBNj6A5aGLg+cMbFExGniGYH6hFcLnFHbU0TCCwzs6Q
+	cH3kAQJPew0NAUM3Cb75D2HJSYOlxkOB2WRE8IfZhcHu2gumxgUCXto6GDB5fRQ8bm9m4GnQ
+	SINrajg6rw+SoOtfweCa+5cCz/3Pwaptw9B0aZoGX/9FGh441ikY7/+LgiuTdwnwGwIIbCsh
+	Bu4NWAioHmzFEPxHS0C4LYJB+/8bCkbrBgioXbhBg9d0hwJtWxcBt3SPCOgM3iZhdaaXgtWr
+	0W1vzxgDYXM0Yb+LoXv4BQPm5dTsbF5zb43mHZcciH+1akS8xhCl289CJH/afZz3RCyYH2vh
+	+HrvLr6veYbhT9+6z/AW1zHe3Z7Mt95cJHhXxxmad4WNzL6kg+Kv84VCRZmg/iLrZ3FBU9Mc
+	VTyYdeKcDVchS9rvKE7EselcR2Caes+rVzuZGNPsp5zf/5KMcTybxLnrglGPWESyvkROb6vD
+	scNmNofrCl/YCGN2G1ffsLQRkLBfcb3jo8y70kTO7hzY0OOi+rXXZiLGUjaD+y80imOlHNsa
+	x9Xf6aHfBT7mBtv92IAkFvRBB5IqVGVFckVhekpBuUpxIuXw0SIXij6c7eTrQ70oPJE3hFgR
+	km2SQPY3SiklLyspLxpCnIiUxUu278hVSiX58vIKQX30J/WxQqFkCH0iwrItkrTI8Xwpe0Re
+	KvwqCMWC+v2VEMUlVKH4b/c7t4ZzA8ocrlh7qqJ4LuUH49bx7j+zkkL7n+48+0q6u2Cpypm4
+	vWeixh7ecjiZcKaPs5WqTP0vurO7I7N76rct/5h5YHPqd3+vpYjdZ9YOZN6czMTW832Lmp2V
+	aXTrqaa8tOrLXRnKvfpaq8+Nj3xErPvlnh2136t7nniTAjJcUiBPTSbVJfK3vqqFUmwDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+93nXC0uS+hilDHoSVnZg0NFDyi8FVkRUZqQSy85nZabmkYP
+	dQ1XaeloE13aslyi5mProcnIjNTeListNY2WJZoz08zpss3on8PnfL/nezh/HAEuvkf6CGQx
+	cbwiRiqXUEJCGLhOtRRt2xG5XJtOgkZ9Bto77SS8S6klYHhIQ8CV8lIKXIZ7NGjMOSQ0tqQS
+	0FRWgqBzWINgZMyAg7p6ggCXtp6GodE2GnQpCCas9Qj0Ni0OrU0PcCi9nYLBz4o/FPQ+GkSg
+	+2SnILsnhQCHKR1BbreBhp7HAfC9s4aEiY6vGLT86kNgsv/BwF6bhsClj4KrBRZ3XD9AwdiL
+	Vzhk65oQXPvUgcNgTxeC2/UfEViLUin4knkHh2b7dHgz7KDgie4CBd9tVzDor6DAmGolwfa8
+	F0GeQYug+4MVA9X1cgr0eWYCqrvu02DrHcegXa/FoMS8EzpN3QQ8yyzA3Oe6pypngiFbhbnL
+	Nwx0t2owGDUV05sKETeivkhwxZa7GKd+7aK40vxSxI05tYgbKlThnDrT3T7qc+DcWctxrvBZ
+	H8U5h99SnPWXkeCeFrDcjXNOjMt6sZSrzu2gd28OFq4P5+WyBF6xbEOoMCIn5zN57OGGxEsm
+	IhkZ/c8jLwHLrGKdN8tpD1PMAra1dRT3sDczl7VkdJPnkVCAM82+bLopg/AYM5htbOXgZdLD
+	BDOPzdL1TwZEzBq26lUD/W+pL1tSUTupe7n1svE8zMNiZjXb5mggMpHQiKYUI29ZTEK0VCZf
+	7aeMikiKkSX6hR2NNiP3O5lOjWdVoaHmgDrECJBkmgg2bY8Uk9IEZVJ0HWIFuMRbNH/hjkix
+	KFyadIJXHD2kiJfzyjo0S0BIZoq27+dDxcwRaRwfxfPHeMV/FxN4+SQj+cY5IckZ1/yDl71e
+	sijsNMp1TOSvuiHlEu8OvG+Zv2fNysCtEdNP+vrP3tv/1Tpg6bplaTi4r3FLUGHJtBBsQVFl
+	bbPm4+OHIQdiD7w8Wc2qfI3xcwfXFsU25k59sn+qT1DTHLPj4m+RS1Xc/yPW1DWaX3Y4rTyt
+	oGfEaQs87dy764uEUEZIVyzGFUrpX8zaz9NKAwAA
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -223,36 +223,251 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Now that CONFIG_DEPT_AGGRESSIVE_TIMEOUT_WAIT was introduced, apply the
-consideration to dma fence wait.
+Currently, print nothing about what event wakes up in report.  However,
+it makes hard to interpret dept's report.
+
+Make it print wait's stacktrace that the event wakes up.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- drivers/dma-buf/dma-fence.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ include/linux/sched.h             |  2 ++
+ kernel/dependency/dept.c          | 59 ++++++++++++++++++++++++++-----
+ kernel/dependency/dept_internal.h |  5 +++
+ 3 files changed, 57 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/dma-buf/dma-fence.c b/drivers/dma-buf/dma-fence.c
-index f7498c770035..b75b7b9c445a 100644
---- a/drivers/dma-buf/dma-fence.c
-+++ b/drivers/dma-buf/dma-fence.c
-@@ -823,7 +823,7 @@ dma_fence_default_wait(struct dma_fence *fence, bool intr, signed long timeout)
- 	cb.task = current;
- 	list_add(&cb.base.node, &fence->cb_list);
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index a4e6dce98f36..b2fbcf0f00f4 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -871,6 +871,7 @@ struct dept_task {
+ 	const char			*stage_w_fn;
+ 	unsigned long			stage_ip;
+ 	bool				stage_timeout;
++	struct dept_stack		*stage_wait_stack;
+ 	arch_spinlock_t			stage_lock;
  
--	sdt_might_sleep_start(NULL);
-+	sdt_might_sleep_start_timeout(NULL, timeout);
- 	while (!dma_fence_test_signaled_flag(fence) && ret > 0) {
- 		if (intr)
- 			__set_current_state(TASK_INTERRUPTIBLE);
-@@ -927,7 +927,7 @@ dma_fence_wait_any_timeout(struct dma_fence **fences, uint32_t count,
- 		}
+ 	/*
+@@ -912,6 +913,7 @@ struct dept_task {
+ 	.stage_w_fn = NULL,					\
+ 	.stage_ip = 0UL,					\
+ 	.stage_timeout = false,					\
++	.stage_wait_stack = NULL,				\
+ 	.stage_lock = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED,\
+ 	.missing_ecxt = 0,					\
+ 	.hardirqs_enabled = false,				\
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index e425d3ab05e5..5bf32633e1fb 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -523,6 +523,7 @@ static void initialize_ecxt(struct dept_ecxt *e)
+ 	e->enirqf = 0UL;
+ 	e->event_ip = 0UL;
+ 	e->event_stack = NULL;
++	e->ewait_stack = NULL;
+ }
+ SET_CONSTRUCTOR(ecxt, initialize_ecxt);
+ 
+@@ -578,6 +579,8 @@ static void destroy_ecxt(struct dept_ecxt *e)
+ 		put_stack(e->ecxt_stack);
+ 	if (e->event_stack)
+ 		put_stack(e->event_stack);
++	if (e->ewait_stack)
++		put_stack(e->ewait_stack);
+ }
+ SET_DESTRUCTOR(ecxt, destroy_ecxt);
+ 
+@@ -794,6 +797,11 @@ static void print_dep(struct dept_dep *d)
+ 
+ 		pr_warn("[E] %s(%s:%d):\n", e_fn, fc_n, fc->sub_id);
+ 		print_ip_stack(e->event_ip, e->event_stack);
++
++		if (valid_stack(e->ewait_stack)) {
++			pr_warn("(wait to wake up)\n");
++			print_ip_stack(0, e->ewait_stack);
++		}
  	}
  
--	sdt_might_sleep_start(NULL);
-+	sdt_might_sleep_start_timeout(NULL, timeout);
- 	while (ret > 0) {
- 		if (intr)
- 			set_current_state(TASK_INTERRUPTIBLE);
+ 	if (!irqf) {
+@@ -807,6 +815,11 @@ static void print_dep(struct dept_dep *d)
+ 
+ 		pr_warn("[E] %s(%s:%d):\n", e_fn, fc_n, fc->sub_id);
+ 		print_ip_stack(e->event_ip, e->event_stack);
++
++		if (valid_stack(e->ewait_stack)) {
++			pr_warn("(wait to wake up)\n");
++			print_ip_stack(0, e->ewait_stack);
++		}
+ 	}
+ }
+ 
+@@ -1657,7 +1670,8 @@ static void add_wait(struct dept_class *c, unsigned long ip,
+ 
+ static struct dept_ecxt_held *add_ecxt(struct dept_map *m,
+ 		struct dept_class *c, unsigned long ip, const char *c_fn,
+-		const char *e_fn, int sub_l)
++		const char *e_fn, int sub_l,
++		struct dept_stack *ewait_stack)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	struct dept_ecxt_held *eh;
+@@ -1691,6 +1705,7 @@ static struct dept_ecxt_held *add_ecxt(struct dept_map *m,
+ 	e->class = get_class(c);
+ 	e->ecxt_ip = ip;
+ 	e->ecxt_stack = ip ? get_current_stack() : NULL;
++	e->ewait_stack = ewait_stack ? get_stack(ewait_stack) : NULL;
+ 	e->event_fn = e_fn;
+ 	e->ecxt_fn = c_fn;
+ 
+@@ -1797,7 +1812,7 @@ static int find_hist_pos(unsigned int wg)
+ 
+ static void do_event(struct dept_map *m, struct dept_map *real_m,
+ 		struct dept_class *c, unsigned int wg, unsigned long ip,
+-		const char *e_fn)
++		const char *e_fn, struct dept_stack *ewait_stack)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	struct dept_wait_hist *wh;
+@@ -1825,7 +1840,7 @@ static void do_event(struct dept_map *m, struct dept_map *real_m,
+ 	 */
+ 	if (find_ecxt_pos(real_m, c, false) != -1)
+ 		return;
+-	eh = add_ecxt(m, c, 0UL, NULL, e_fn, 0);
++	eh = add_ecxt(m, c, 0UL, NULL, e_fn, 0, ewait_stack);
+ 
+ 	if (!eh)
+ 		return;
+@@ -2360,7 +2375,8 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+  */
+ static void __dept_event(struct dept_map *m, struct dept_map *real_m,
+ 		unsigned long e_f, unsigned long ip, const char *e_fn,
+-		bool sched_map, unsigned int wg)
++		bool sched_map, unsigned int wg,
++		struct dept_stack *ewait_stack)
+ {
+ 	struct dept_class *c;
+ 	struct dept_key *k;
+@@ -2382,7 +2398,7 @@ static void __dept_event(struct dept_map *m, struct dept_map *real_m,
+ 	c = check_new_class(&m->map_key, k, sub_id(m, e), m->name, sched_map);
+ 
+ 	if (c)
+-		do_event(m, real_m, c, wg, ip, e_fn);
++		do_event(m, real_m, c, wg, ip, e_fn, ewait_stack);
+ }
+ 
+ void dept_wait(struct dept_map *m, unsigned long w_f,
+@@ -2498,6 +2514,9 @@ static void __dept_clean_stage(struct dept_task *dt)
+ 	dt->stage_w_fn = NULL;
+ 	dt->stage_ip = 0UL;
+ 	dt->stage_timeout = false;
++	if (dt->stage_wait_stack)
++		put_stack(dt->stage_wait_stack);
++	dt->stage_wait_stack = NULL;
+ }
+ 
+ void dept_clean_stage(void)
+@@ -2561,6 +2580,14 @@ void dept_request_event_wait_commit(void)
+ 
+ 	wg = next_wgen();
+ 	WRITE_ONCE(dt->stage_m.wgen, wg);
++
++	/*
++	 * __schedule() can be hit multiple times between
++	 * dept_stage_wait() and dept_clean_stage().  In that case,
++	 * keep the first stacktrace only.  That's enough.
++	 */
++	if (!dt->stage_wait_stack)
++		dt->stage_wait_stack = get_current_stack();
+ 	arch_spin_unlock(&dt->stage_lock);
+ 
+ 	__dept_wait(&dt->stage_m, 1UL, ip, w_fn, 0, true, sched_map, timeout);
+@@ -2579,6 +2606,7 @@ void dept_ttwu_stage_wait(struct task_struct *requestor, unsigned long ip)
+ 	struct dept_map m;
+ 	struct dept_map *real_m;
+ 	bool sched_map;
++	struct dept_stack *ewait_stack;
+ 
+ 	if (unlikely(!dept_working()))
+ 		return;
+@@ -2597,6 +2625,10 @@ void dept_ttwu_stage_wait(struct task_struct *requestor, unsigned long ip)
+ 	m = dt_req->stage_m;
+ 	sched_map = dt_req->stage_sched_map;
+ 	real_m = dt_req->stage_real_m;
++	ewait_stack = dt_req->stage_wait_stack;
++	if (ewait_stack)
++		get_stack(ewait_stack);
++
+ 	__dept_clean_stage(dt_req);
+ 	arch_spin_unlock(&dt_req->stage_lock);
+ 
+@@ -2607,8 +2639,12 @@ void dept_ttwu_stage_wait(struct task_struct *requestor, unsigned long ip)
+ 	if (!m.keys)
+ 		goto exit;
+ 
+-	__dept_event(&m, real_m, 1UL, ip, "try_to_wake_up", sched_map, m.wgen);
++	__dept_event(&m, real_m, 1UL, ip, "try_to_wake_up", sched_map,
++			m.wgen, ewait_stack);
+ exit:
++	if (ewait_stack)
++		put_stack(ewait_stack);
++
+ 	dept_exit(flags);
+ }
+ 
+@@ -2688,7 +2724,7 @@ void dept_map_ecxt_modify(struct dept_map *m, unsigned long e_f,
+ 	k = m->keys ?: &m->map_key;
+ 	c = check_new_class(&m->map_key, k, sub_id(m, new_e), m->name, false);
+ 
+-	if (c && add_ecxt(m, c, new_ip, new_c_fn, new_e_fn, new_sub_l))
++	if (c && add_ecxt(m, c, new_ip, new_c_fn, new_e_fn, new_sub_l, NULL))
+ 		goto exit;
+ 
+ 	/*
+@@ -2740,7 +2776,7 @@ void dept_ecxt_enter(struct dept_map *m, unsigned long e_f, unsigned long ip,
+ 	k = m->keys ?: &m->map_key;
+ 	c = check_new_class(&m->map_key, k, sub_id(m, e), m->name, false);
+ 
+-	if (c && add_ecxt(m, c, ip, c_fn, e_fn, sub_l))
++	if (c && add_ecxt(m, c, ip, c_fn, e_fn, sub_l, NULL))
+ 		goto exit;
+ missing_ecxt:
+ 	dt->missing_ecxt++;
+@@ -2840,7 +2876,7 @@ void dept_event(struct dept_map *m, unsigned long e_f,
+ 
+ 	flags = dept_enter();
+ 
+-	__dept_event(m, m, e_f, ip, e_fn, false, READ_ONCE(*wg_p));
++	__dept_event(m, m, e_f, ip, e_fn, false, READ_ONCE(*wg_p), NULL);
+ 
+ 	/*
+ 	 * Keep the map diabled until the next sleep.
+@@ -2912,6 +2948,11 @@ void dept_task_exit(struct task_struct *t)
+ 		dt->stack = NULL;
+ 	}
+ 
++	if (dt->stage_wait_stack) {
++		put_stack(dt->stage_wait_stack);
++		dt->stage_wait_stack = NULL;
++	}
++
+ 	for (i = 0; i < dt->ecxt_held_pos; i++) {
+ 		if (dt->ecxt_held[i].class) {
+ 			put_class(dt->ecxt_held[i].class);
+diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
+index 3d1cd1a9b6d4..c02783ecf0c4 100644
+--- a/kernel/dependency/dept_internal.h
++++ b/kernel/dependency/dept_internal.h
+@@ -194,6 +194,11 @@ struct dept_ecxt {
+ 			 */
+ 			unsigned long	event_ip;
+ 			struct dept_stack *event_stack;
++
++			/*
++			 * wait that this event ttwu
++			 */
++			struct dept_stack *ewait_stack;
+ 		};
+ 	};
+ };
 -- 
 2.17.1
 
