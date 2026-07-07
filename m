@@ -1,232 +1,457 @@
-Received: from CWXP265CU010.outbound.protection.outlook.com (mail-ukwestazon11022112.outbound.protection.outlook.com [52.101.101.112])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f43.google.com (mail-ej1-f43.google.com [209.85.218.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08DC53B810D;
-	Tue,  7 Jul 2026 14:18:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.101.112
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3426227BB9
+	for <linux-ext4@vger.kernel.org>; Tue,  7 Jul 2026 23:51:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.43
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783433919; cv=fail; b=R4BDoCDjAl4P7n4pjBDBj0BXTYhVCsu2m1pTdyDYufLISbEiWQHw3xRCo6hCTe7+PIUO9hDK0QG3yS1Fc6ed+d3Qcjk5asNwaKGwsfV56B+J0zRxYFTlBWlqhX+SBfgIacwcB9VDg2vYfqKaoKGFB+hCrH5kRcv3JY1R/vseHsk=
+	t=1783468291; cv=pass; b=aozrH+xTB1747Zuc9xDCbJLwbzAYBInqKtok5dUCyS0IIbzrgcQYepxVTJGqHRoIjIexzQPYz+RorYZQuV0sUlAdlzmrVsLs/iKedIV9hAtdrUKsk03dvY26ZpfpaRsIKHjyztyo2zSB2uTfJfRrVMgXeKbaGRDYndNf8pMVEMc=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783433919; c=relaxed/simple;
-	bh=nGQqlNp3YeJ7+ZZbboYIlsBOlPsUNfXO942fidU2Xa0=;
-	h=Content-Type:Date:Message-Id:Subject:From:To:Cc:References:
-	 In-Reply-To:MIME-Version; b=XwPS2N4fNQQjICCh5gapd6dxn3FZiKAfR9dqWfPXYLlv11WX0DcvRSeTP68+vLXwt0IiNEjgG1jNWCmYRM9duvz4pCLBvf+d10Olto7q1uWdded+q0N/uXjCSWfz8j709Hp71A5pG+IJPj86sZrlYyBEWliKsss+fjXsxffkAZw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=garyguo.net; spf=pass smtp.mailfrom=garyguo.net; dkim=pass (1024-bit key) header.d=garyguo.net header.i=@garyguo.net header.b=NWZ/YLks; arc=fail smtp.client-ip=52.101.101.112
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=garyguo.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=garyguo.net
+	s=arc-20240116; t=1783468291; c=relaxed/simple;
+	bh=fCdKrt6S52Rs+o5Li+xODoASMkI82WdBePlDaUxEWt8=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=X0uLsQ3Iu/Dmbz4NGxHra9CBVAZY9I9SUnRo7eRgiYp6RK/XWoEXhlCDbC5CEcg8GjaG2XrrdfkbcIKD6OMLhMWm20vXC7RJeifyAWH1Dnus7t1CX/aCXz+CH3ma4lUeS0OKNulz2gxqTEj8H/DFnKMOmd9jRe0ImunSwW3uG+o=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qEgCVH33; arc=pass smtp.client-ip=209.85.218.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=garyguo.net header.i=@garyguo.net header.b="NWZ/YLks"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=BKDQeu9IlFAlo0LXNhMGclBfY4Jpvky/RMgKFotFK9FWyqhodXPxug+Lm3rfT3W0SMMd3aDPVS24CduSUWQJLe9joS3NBq7SpZAVpUL7Yt1o6aNJ4YAgfHwH+tA+22sdb79yVj4v2rwQhZk2hVXjARS53+3dNmj4J9+ftztrbAdSfSUnyV8HgKd8SMIOI/B5HmYfHczGnnhvW3FICNosje0licJeGpa9i3UhkVIwfUDE8JAZ+IiK4du7xtLi4Sjcez4DT6VLJvjh98gMR/yYupOyWC/0yCZRwVyj/x0StZmEFvVPtxVZ0a+mW3GJ1LTErJFIrHxI6s6RRpBlXXP4yA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=V2495W9AUH/xDqzTFv2+wN86aHY/fhXZuyw1/6uJ7Ic=;
- b=rSjXGPPqYqet8CJZlHufoQxZ4HOh0Li/ZHUA3VIvrkmB1vxWjiQjhuNExtIInqz3nPiuXtWyu/hsa2sY1+J6wuk6aImgQl0UUFKlwuFUUejZPBrG9iwbey8a2vBc19b7b0O3Jaf8PsJ+ZDoGPPCLfEQdXPTMUUswQMrb0WrZup70/VOargLrgqutep1o//pRwDIcZFoxloo4S3s9Vdt18PxfONuNL1eWmRlnRc/i4IZC8RJYyk1uIfk4FTXPh6iuRhWxEWd4Rkq32t9v9C1X2ubqqYEgeBapzqLzJ7jC3EXlp2R4S8MY8461xWa37L4ZYOnRuw7OOWUh6NATUmIMpg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=garyguo.net; dmarc=pass action=none header.from=garyguo.net;
- dkim=pass header.d=garyguo.net; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=garyguo.net;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=V2495W9AUH/xDqzTFv2+wN86aHY/fhXZuyw1/6uJ7Ic=;
- b=NWZ/YLksCnZHeP+4M8JWrPRWGxuojC3aVv+ukQinFMEW90zPgQP1b6RQjPdgTjxi2CLpebSakZ5TQLIdjGo+XGX3o91Wc3HUxOCQPI0ltDLuaXu1R8VRdqzc5jPFUS1drx3aJ+Shs532vWYVwlvZu5ex58RZ94ymreFyrh0psc0=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=garyguo.net;
-Received: from LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM (2603:10a6:600:488::16)
- by LOBP265MB8415.GBRP265.PROD.OUTLOOK.COM (2603:10a6:600:46d::7) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.181.10; Tue, 7 Jul
- 2026 14:18:31 +0000
-Received: from LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM
- ([fe80::1c3:ceba:21b4:9986]) by LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM
- ([fe80::1c3:ceba:21b4:9986%4]) with mapi id 15.21.0181.008; Tue, 7 Jul 2026
- 14:18:31 +0000
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=UTF-8
-Date: Tue, 07 Jul 2026 15:18:29 +0100
-Message-Id: <DJSEK3KA2ECQ.1512A4KGOBSCV@garyguo.net>
-Subject: Re: [PATCH v19 31/40] dept: assign unique dept_key to each distinct
- wait_for_completion() caller
-From: "Gary Guo" <gary@garyguo.net>
-To: "Byungchul Park" <byungchul@sk.com>, <linux-kernel@vger.kernel.org>
-Cc: <max.byungchul.park@gmail.com>, <kernel_team@skhynix.com>,
- <torvalds@linux-foundation.org>, <damien.lemoal@opensource.wdc.com>,
- <linux-ide@vger.kernel.org>, <adilger.kernel@dilger.ca>,
- <linux-ext4@vger.kernel.org>, <mingo@redhat.com>, <peterz@infradead.org>,
- <will@kernel.org>, <tglx@linutronix.de>, <rostedt@goodmis.org>,
- <joel@joelfernandes.org>, <sashal@kernel.org>, <daniel.vetter@ffwll.ch>,
- <duyuyang@gmail.com>, <johannes.berg@intel.com>, <tj@kernel.org>,
- <tytso@mit.edu>, <willy@infradead.org>, <david@fromorbit.com>,
- <amir73il@gmail.com>, <gregkh@linuxfoundation.org>, <kernel-team@lge.com>,
- <linux-mm@kvack.org>, <akpm@linux-foundation.org>, <mhocko@kernel.org>,
- <minchan@kernel.org>, <hannes@cmpxchg.org>, <vdavydov.dev@gmail.com>,
- <sj@kernel.org>, <jglisse@redhat.com>, <dennis@kernel.org>, <cl@linux.com>,
- <penberg@kernel.org>, <rientjes@google.com>, <vbabka@suse.cz>,
- <ngupta@vflare.org>, <linux-block@vger.kernel.org>, <josef@toxicpanda.com>,
- <linux-fsdevel@vger.kernel.org>, <jack@suse.cz>, <jlayton@kernel.org>,
- <dan.j.williams@intel.com>, <hch@infradead.org>, <djwong@kernel.org>,
- <dri-devel@lists.freedesktop.org>, <rodrigosiqueiramelo@gmail.com>,
- <melissa.srw@gmail.com>, <hamohammed.sa@gmail.com>, <harry.yoo@oracle.com>,
- <chris.p.wilson@intel.com>, <gwan-gyeong.mun@intel.com>,
- <boqun.feng@gmail.com>, <longman@redhat.com>, <yunseong.kim@ericsson.com>,
- <ysk@kzalloc.com>, <yeoreum.yun@arm.com>, <netdev@vger.kernel.org>,
- <matthew.brost@intel.com>, <her0gyugyu@gmail.com>, <corbet@lwn.net>,
- <catalin.marinas@arm.com>, <bp@alien8.de>, <x86@kernel.org>,
- <hpa@zytor.com>, <luto@kernel.org>, <sumit.semwal@linaro.org>,
- <gustavo@padovan.org>, <christian.koenig@amd.com>, <andi.shyti@kernel.org>,
- <arnd@arndb.de>, <lorenzo.stoakes@oracle.com>, <Liam.Howlett@oracle.com>,
- <rppt@kernel.org>, <surenb@google.com>, <mcgrof@kernel.org>,
- <petr.pavlu@suse.com>, <da.gomez@kernel.org>, <samitolvanen@google.com>,
- <paulmck@kernel.org>, <frederic@kernel.org>, <neeraj.upadhyay@kernel.org>,
- <joelagnelf@nvidia.com>, <josh@joshtriplett.org>, <urezki@gmail.com>,
- <mathieu.desnoyers@efficios.com>, <jiangshanlai@gmail.com>,
- <qiang.zhang@linux.dev>, <juri.lelli@redhat.com>,
- <vincent.guittot@linaro.org>, <dietmar.eggemann@arm.com>,
- <bsegall@google.com>, <mgorman@suse.de>, <vschneid@redhat.com>,
- <chuck.lever@oracle.com>, <neil@brown.name>, <okorniev@redhat.com>,
- <Dai.Ngo@oracle.com>, <tom@talpey.com>, <trondmy@kernel.org>,
- <anna@kernel.org>, <kees@kernel.org>, <bigeasy@linutronix.de>,
- <clrkwllms@kernel.org>, <mark.rutland@arm.com>, <ada.coupriediaz@arm.com>,
- <kristina.martsenko@arm.com>, <wangkefeng.wang@huawei.com>,
- <broonie@kernel.org>, <kevin.brodsky@arm.com>, <dwmw@amazon.co.uk>,
- <shakeel.butt@linux.dev>, <ast@kernel.org>, <ziy@nvidia.com>,
- <yuzhao@google.com>, <baolin.wang@linux.alibaba.com>,
- <usamaarif642@gmail.com>, <joel.granados@kernel.org>,
- <richard.weiyang@gmail.com>, <geert+renesas@glider.be>,
- <tim.c.chen@linux.intel.com>, <linux@treblig.org>,
- <alexander.shishkin@linux.intel.com>, <lillian@star-ark.net>,
- <chenhuacai@kernel.org>, <francesco@valla.it>,
- <guoweikang.kernel@gmail.com>, <link@vivo.com>, <jpoimboe@kernel.org>,
- <masahiroy@kernel.org>, <brauner@kernel.org>,
- <thomas.weissschuh@linutronix.de>, <oleg@redhat.com>, <mjguzik@gmail.com>,
- <andrii@kernel.org>, <wangfushuai@baidu.com>, <linux-doc@vger.kernel.org>,
- <linux-arm-kernel@lists.infradead.org>, <linux-media@vger.kernel.org>,
- <linaro-mm-sig@lists.linaro.org>, <linux-i2c@vger.kernel.org>,
- <linux-arch@vger.kernel.org>, <linux-modules@vger.kernel.org>,
- <rcu@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
- <linux-rt-devel@lists.linux.dev>, <2407018371@qq.com>, <dakr@kernel.org>,
- <miguel.ojeda.sandonis@gmail.com>, <neilb@ownmail.net>,
- <bagasdotme@gmail.com>, <wsa+renesas@sang-engineering.com>,
- <dave.hansen@intel.com>, <geert@linux-m68k.org>, <ojeda@kernel.org>,
- <alex.gaynor@gmail.com>, <gary@garyguo.net>, <bjorn3_gh@protonmail.com>,
- <lossin@kernel.org>, <a.hindborg@kernel.org>, <aliceryhl@google.com>,
- <tmgross@umich.edu>, <rust-for-linux@vger.kernel.org>
-X-Mailer: aerc 0.21.0
-References: <20260706061928.66713-1-byungchul@sk.com>
- <20260706061928.66713-32-byungchul@sk.com>
-In-Reply-To: <20260706061928.66713-32-byungchul@sk.com>
-X-ClientProxiedBy: LO4P265CA0242.GBRP265.PROD.OUTLOOK.COM
- (2603:10a6:600:350::16) To LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM
- (2603:10a6:600:488::16)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qEgCVH33"
+Received: by mail-ej1-f43.google.com with SMTP id a640c23a62f3a-c15c7c07a57so6271466b.1
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jul 2026 16:51:29 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1783468288; cv=none;
+        d=google.com; s=arc-20260327;
+        b=PO2M1XopE5tBPv0HG1MhWfk8M0jCl8RI8KVfrIL9rg064pgrDJhzKLdSVPY2husAO5
+         D9s5SUjHtXvrr8JlxsgFbJMt00/6yBbwO4LzibdneexTvVLaqZP6Kx76EF2o9o+o5jNu
+         rMdKUZV9oKURlzaY3MS5xcgY0juaXInlPLmG51AUA71hqejpjYhxMBuqSj0sV5OvbBUB
+         E7oYPocmP2GJjE5QnbKvKKeqzSIlS0RT++IGIkO5obTu3EmoxGtG81wcnz9F8Jex0o1s
+         +mnWc6ZkJJc3s4caUCiF+monmPLIQPuYHo5TRis6cteJ2fJwAh77su5fMip/oefHnUf2
+         e7uQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=VzQA9Ii47wk5w4/oRPeKvCpxuH7rTBYjW89AULLteQM=;
+        fh=wsh9FgNtVGEreILu8+IRF48LvlgVzo4OVCbdcaZr2VU=;
+        b=Zn2zso92QCzv9S/MC37vaE8srI2FuD3vrjlvPVhpJkH7nC2/momjzwqFJH2FqJXdfp
+         hlvQIy11pwmlWo1zOq0SSrK+1+hLHjFp/8mBs1dyExNgT2fbWPmoHPzoin7WobEgRE1b
+         M8Qc30neC+iMmBrQA2tflwcN6J0orJn7AkNZKRGwoxqVDrmwgrZB+KbYdDyU9wt4UdGj
+         SOrxPa4dAtLwERmmAUPqcXU9NFPgKlkamigpoPMdmplulBdPrlvZVhq90V+TBjkWuZez
+         vyPIv1RgPFPDMyfuJMqVRz7CXHuxvaTam1xLK/ZfDLH24uZm9IxQ0z3be3BaetDJZY2i
+         VnEQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1783468288; x=1784073088; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=VzQA9Ii47wk5w4/oRPeKvCpxuH7rTBYjW89AULLteQM=;
+        b=qEgCVH33qivamHjJCSeoG9LGqhcg3k6uG6ECz19Tqyz3tUCKdO7FOQSU9MHEsLqhGI
+         Tf27CayvCtgpyqYa5LJAjGMdnmxCjnOzN6CosyO6HE3H663UwJ4Zo79bkiWXrKKmMuJD
+         ZG83vdVrZVuTCmYeMIomm//Tfy2XcOhfqNCsiPmPpbZhn7690wSIJNFrOsDVNjwsSAYo
+         bCSTQFo+w48R9dCuZdJFxAqp6ZZy1MYh5cdTREu9Lf4wKSXRdwTRjylsUsbkc2IdPRJG
+         uiQvf9fsrzp7XGiMQ5FPpUfZzg9mK3tRclTihHoGvWJMszl32jxaq6iI25a7J3p6V/gC
+         lHoQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1783468288; x=1784073088;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=VzQA9Ii47wk5w4/oRPeKvCpxuH7rTBYjW89AULLteQM=;
+        b=G7Ad9JquyBOoZCsTwnFqBWW6jbIMefafG1J4daPA0/KV/GvvxHubmACV/ethma4xx9
+         VE/SxFi+Hl5s6Gvac6B+5UCl6yqTl1d+fjFLjdW3wQOdnT7/RFPH5a4IO55Mi9IoeftZ
+         NWB61uigkgI3m152OWJpGF6aFrqT2UFaKe07t8uB4fEUSFaik2wgH1wRf2l3LdqOtAzP
+         9DHuoyPak8c14NxBggPtU4Vh83C/1i7jHaC0dIDcy4rLiIWERpQZcc1INBWcpztDh6mz
+         G4PxGl43rT/u51hm5GHlRhIMDNHYYK7Ur9tt1dLrMNXIwnmllEtbNpXabD/hS4xdjTn0
+         Ms9Q==
+X-Gm-Message-State: AOJu0Yyh5uNrVP9dEky5/Yf2AfE26AOYni7fZcQKf4exjyhbMk3ihDu1
+	/A0NAQiWL/YocPqfjxXuGnmJRtR5JQerbptx50tKBGwjQagMbGdKzNFy8APRG8zLiamNXDUKf/x
+	su4qe7mYBI0XGITPc4nGNwPwa3LB98uIJh3SaIlQ=
+X-Gm-Gg: AfdE7ckx4rZqv9Y8JRnuNNm/tbpCQNE41tihRw33bxd7JxkCFIHFFSmppTFRl5mAwYo
+	JLKel/WvJvgMfj0FGFMBVKNhyJYSO3Yq6u5fjoxCwShk4o9vS2VUk+QjDr1hii7Pz6CA6pTzgYA
+	8c7DK7PQlCuGc8Rr8phT/NnQKpgOsf86QOXZB0AsFQnBU0/32m69kFrzxw3f+jmjVRSJt31SBTd
+	fjKsmIV1LrC9kFQau/E+ASzQ7RilrbqgvFKW3UuHGt49crTK/xy2KTBo8mS20SGATz3Zmd7YfsM
+	r/Lt5RiE0juOSk3i3GmhCsN/iDB78w==
+X-Received: by 2002:a17:907:2684:b0:c12:cacc:92c6 with SMTP id
+ a640c23a62f3a-c15ce229e98mr8955866b.59.1783468287980; Tue, 07 Jul 2026
+ 16:51:27 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: LOVP265MB8871:EE_|LOBP265MB8415:EE_
-X-MS-Office365-Filtering-Correlation-Id: 4652dfb6-009e-4dec-ee96-08dedc329f75
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|1800799024|10070799003|376014|7416014|366016|23010399003|4143699003|22082099003|56012099006|18002099003|6133799003;
-X-Microsoft-Antispam-Message-Info:
-	sPJhIVLuBxSy/+rdGbdejuVaMB89bRlTOhB9Ef3MQU7+tAoU3bnI7OuRYkS/QSmvbHfc7P0Ecr5pOYnOKPTBV34f4r80yKnKQoQBHACXB+aFKmuBxFSE8lloULqi2xdsNIGbGW4EKsPN91y60dYur8yO2uDW7tk5tqyGOnSuGRxz/vVuT6jYwYhPk78FSep9jrc1SDcffhmblJ8gF+4a5Z0xh4dNhD4j4J2RRAjcLjO7FLEXJ+WW3ehuorvujUVpwsPNr8G1JTp+KzS3It34LY0R30Fa1zGQ8YKeyYIOMMBGNPsVgyQ1OsVYuRg8YAXs1BMynhzM/pyL43hK4ujNBMcEuCCk7m2Ljn8o5bnClRKZbybYqAlwTBgLq/hLOJVGd8dAR02lu6kwcxJgfO9R43cpplkLtI4Aaj6CuubKIXrqQ3fwYldO17lPBXGCxW2Xsz2h6GWlSEZL5930QoaY09jU5OIIEslYdDvDS5G5QrDE5zfWtRnW8Ltu82fM3SN5IznedGagFNkzOQn5bIWhUaBsfDmialvKwVyAIiW/Z+hdYIYIz/S4AcG4MBKcKq9Kx5C2u+NqUwrtw70dXeY72h/yPPgAXvww0ArBRT9BprSuRXlhG+E4iVORCTnjJfNhQ+4W0FBgKphAwviCsxb+NZAZDaFwu+dWcu/+59fX1w8=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(10070799003)(376014)(7416014)(366016)(23010399003)(4143699003)(22082099003)(56012099006)(18002099003)(6133799003);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?bzVwaUtjNmxkZTZtVTBwS3hCSndRdW5abDd3RHUrbnVRNVIzMmUzVU0yOVhO?=
- =?utf-8?B?V2lSODVGbkVEcmsrK3VYd08xZzg0WTh1djE3VnBFbUZ3RkpXVENZQXJzUWlO?=
- =?utf-8?B?U3hGb0ptYUdxYjFNZ3AvaXdmZU5VZU1TR3Z2MGZHQ1ZBeEdzSkdwSENlVGxH?=
- =?utf-8?B?RmV4T2x3VlQxY1RUMEs1dkNidXNybTlPVVlVenl0M0lLVEtKZklSZ0FQZGxD?=
- =?utf-8?B?d3dnRmVYN1d6bXlsUGpyQ0gxUThuUjlsZVA5VEt4aThXWXYwUW5vOUNhNE5I?=
- =?utf-8?B?a204L0l2citOSnJUNzBrY2xhbVF4VFhjWlYyZWJDVkZPT0pOeW9WRjI3dC9t?=
- =?utf-8?B?ZW9IelZEUmtXblVYdmM3SXRjZmV2eXdtRkZaa2czRndGVkVlUU9IWmwzckFC?=
- =?utf-8?B?S1MrM1RaV1VEc1IrRjBzeVdiM2VnaHRPN2ExZlNIKzBKTDVaallQVlRUK3p6?=
- =?utf-8?B?NkRpdm5xYU1YTmwxRkZIejduaU1SV1VlMUQ4UzJMSll4Z0Y0NW1XWHZtYTdm?=
- =?utf-8?B?dTRGQnp4dXU3emI0dDVlc2dNc1lnOXh5dHZQMnJUQUxhT1VPeEIvaVBFV1U3?=
- =?utf-8?B?VzRXRWlyYUlTUGVxRWNwcXY2aitoRlY5blI0SUgvbHNuVCtJMU9uWGIxQUxE?=
- =?utf-8?B?OUk1cWRtTUUzQlBFMnBKQzEyeFdCN1EzejJKREdRMjNrVXdGaDBKazdBUHpy?=
- =?utf-8?B?ZGFpQWRvSk80ZTF0RFRwZFlVd3RoczlQWjg5R2d4RXg0L0s0eXBuaVBxK3dN?=
- =?utf-8?B?NWZLV2RURUFmZVN0UldCUm52NmQwT0hTRUNrK0sreDNCZ0pORnArTk9BdnRR?=
- =?utf-8?B?cUp6bE9NRVdib2x3Z2JOem12OHVZelhLK2lJYy9NdHZMcFFaT21USkFTQjhC?=
- =?utf-8?B?L1FuemloSlkrM3pVY3NwMVkwbmxLVFh1RDdFbmEvd0JQUlVmeEdTSGdTWFhM?=
- =?utf-8?B?RUFBelIyM1gyNEROaDBsRWk1dzFkNjJkd0V2bXQxRC9PeGpaeFJlc3FQbkJN?=
- =?utf-8?B?bVd3aVVOemYwRXZ2L21wckYvS3Ywelloa0s1N01wRlZzVHJMZGJVK0lxU1NO?=
- =?utf-8?B?eDRHRDJJcThFU3dlQy9GYWZ4akl3dmh2Q2gxbVJ0ZGZZSzBSdmhvck1takM2?=
- =?utf-8?B?dVVqK21LY2pHU2hjQUFuRFdxQ1Y1eERUQzRrb0R6WUM2bnZUMjRzV1dsVWp1?=
- =?utf-8?B?MXF1M1MrVU5oWTlZRkc3N0pBWWlrTWdlVGhJaFFsUm9ZNTRaOWlPQ1htUFpp?=
- =?utf-8?B?RlN1VnFuL3RWQ2Q2d1M0MStJTStTRDI5akJXcVhIbFVrYURaV2FJS0x4Vlg5?=
- =?utf-8?B?RWhRWW5JbGtibDhvQU1TbkRxSWltNklISXhZQzVoZ2kzTlFHK3FpdVQ3TWZQ?=
- =?utf-8?B?VThyZ2tHWmU3T05jM1F1Z25wNVJmN3JXZ0cxWXRoVUllN3hvMFo0QlhMUW9S?=
- =?utf-8?B?Mml4d3dKQU4rOXNGdXUzZ2c5NWVja2RlZ1dHUFVHY3JiSDV1U2xwMjcyZ2RK?=
- =?utf-8?B?bWRHT1lGdnJsbHdxeEFxaFlxZmJEZnkzdXBkdkd4TkFBa25nbTJ4QWpEbFhq?=
- =?utf-8?B?S3IyWkVGWHB2TWtyOENTK1UrdlExbnEyeWxlazVLNkFVWUFPejMrTTVZdXZp?=
- =?utf-8?B?Sk9abGRXVGV1S1V1R25WTmxZUzJzNGw4ODV0WFZ5cnBTSWFCTldLcm1HYkZU?=
- =?utf-8?B?TWsvNG9lTUZDUXM1QXFMdkVreS81ODhDRDNBYW5RbFVRcVpCK0ZQWk1LTzRy?=
- =?utf-8?B?Y0JPRHNzSWF5WEJiU01WOWFacFdqbFUzaldiQlhTYzVPTlVxZm9lUUF0L0V0?=
- =?utf-8?B?ZTQ1dmhyVFlLcDVWcUkwdnVyZnlFR2E0alB4c0dOYVZia2hnTmlPclQ4QmZv?=
- =?utf-8?B?dytZN045ZVJoMFczRDdNSGEyN0VrYjhaR2VZT0thdEtROTU1N2h5MTBnTVc1?=
- =?utf-8?B?b0ZYdFNET3U1cGRGdWpnbzdSQ3JTZ3hzZFpYdmoyZHZNR1FjM0pEUTN4NzZr?=
- =?utf-8?B?U2V4M1VIdjEwSXAzTEtOYXJFUHVTQkRCTTZCeStTYkdRQUlUMDVVekZhdXJj?=
- =?utf-8?B?Ry9kZFpXQzRtZkF0clplSXlNcnZDUFpGSTZ5bGF0YXozUm5mUW1KcHpRbmUv?=
- =?utf-8?B?K0lsWU1Id3pPM1o5S2xWUmcwMGU0b2VDcitZOUp2dUlaOXE3ZE4yK2pyR2o1?=
- =?utf-8?B?WVI3Wmg0TjhCZmJ3TW1Yc05WQ0dZRTdkTDFiQXV0UnNrL25DRXF2QTFsaFlX?=
- =?utf-8?B?L0hpUDAyMURTL0lWaWMxQjcxNnlwcjZoOTgyc0JMVnNxcU1uYi80V3I3Myta?=
- =?utf-8?B?Nm8rMUllZmprMmdsVEkzTUc4Wm84aXU2TC9RZDRSV2pUQXdOR3MyZz09?=
-X-OriginatorOrg: garyguo.net
-X-MS-Exchange-CrossTenant-Network-Message-Id: 4652dfb6-009e-4dec-ee96-08dedc329f75
-X-MS-Exchange-CrossTenant-AuthSource: LOVP265MB8871.GBRP265.PROD.OUTLOOK.COM
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Jul 2026 14:18:31.6428
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: bbc898ad-b10f-4e10-8552-d9377b823d45
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: yLW0jF1+QNZkZCfKBjmPqfGZ3gYXiwuG7Bva2L0FDgPAnCm3tZwSNsGceq1tyP4GEVmd0iYuw3AMhJhfXuj6wQ==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: LOBP265MB8415
+From: Michael Hicklen <michael.s.hicklen@gmail.com>
+Date: Tue, 7 Jul 2026 18:51:14 -0500
+X-Gm-Features: AVVi8Cc5vz3H8zTEQzKttdRKWMwXk_BxE5Jc1EkFsEUUga8KWImXFXYEqUovpuw
+Message-ID: <CALhAV-Bzbe5BtGsH=tdd9KBK+53w3Nwy8drWcAkAeq=UyoH4xA@mail.gmail.com>
+Subject: kernel NULL pointer dereference in drain_obj_stock during ext4 e4defrag
+To: linux-ext4@vger.kernel.org, linux-mm@kvack.org, 
+	linux-kernel@vger.kernel.org
+Cc: tytso@mit.edu, hannes@cmpxchg.org, vbabka@suse.cz
+Content-Type: text/plain; charset="UTF-8"
 
-On Mon Jul 6, 2026 at 7:19 AM BST, Byungchul Park wrote:
-> wait_for_completion() can be used at various points in the code and it's
-> very hard to distinguish wait_for_completion()s between different usages.
-> Using a single dept_key for all the wait_for_completion()s could trigger
-> false positive reports.
->
-> Assign unique dept_key to each distinct wait_for_completion() caller to
-> avoid false positive reports.
->
-> While at it, add a rust helper for wait_for_completion() to avoid build
-> errors.
+Kernel: 7.1.2-arch3-1
+Arch: x86_64
+Hardware: MSI MS-7C95 / PRO B550M-VC WIFI
+CPU: AMD (kvm_amd loaded)
 
-This will cause Rust code to share the same dept_key, so it will have all t=
-he
-false positives that the change is trying to avoid.
+Workload:
 
-In general it is easy to create Rust bindings for static inline C functions
-because it'll be just some computation, while creating bindings for C
-function-like macros that define additional statics can be challenging.
+4 concurrent e4defrag processes operating on 4 separate ext4
+filesystems on 4 separate HDDs.
 
-Is dept_key similar to lock_class_key, where only the address matters? If s=
-o,
-the approach that I use in
-https://lore.kernel.org/rust-for-linux/DJP0CDOR98N5.29BK8PUFRWRUK@garyguo.n=
-et
-could be used for dept_key as well, then we can keep Rust `wait_for_complet=
-ion`
-still a function; otherwise we have to turn it into a macro too on the Rust=
- side
-to create such statics, which isn't ideal.
+The crash happens during memory reclaim while ext4_move_extents() is running.
 
-Best,
-Gary
+First oops:
 
->
-> Signed-off-by: Byungchul Park <byungchul@sk.com>
-> ---
->  include/linux/completion.h | 100 +++++++++++++++++++++++++++++++------
->  kernel/sched/completion.c  |  60 +++++++++++-----------
->  rust/helpers/completion.c  |   5 ++
->  3 files changed, 120 insertions(+), 45 deletions(-)
+BUG: kernel NULL pointer dereference, address: 0000000000000676
+#PF: supervisor read access in kernel mode
+
+RIP: drain_obj_stock+0x175/0x310
+
+Call trace:
+
+__refill_obj_stock
+__memcg_slab_free_hook
+kmem_cache_free
+free_buffer_head
+try_to_free_buffers
+shrink_folio_list
+evict_folios
+try_to_shrink_lruvec
+shrink_node
+do_try_to_free_pages
+try_to_free_pages
+__alloc_pages_slowpath
+folio_alloc_noprof
+__filemap_get_folio_mpol
+mext_move_extent
+ext4_move_extents
+__ext4_ioctl
+__x64_sys_ioctl
+do_syscall_64
+
+After the initial oops, the kernel also reports:
+
+exited with irqs disabled
+exited with preempt_count 1
+
+followed by recursive faults and an eventual hard reboot requirement.
+
+I have not yet reproduced this on a vanilla kernel.
+
+dmesg:
+
+BUG: kernel NULL pointer dereference, address: 0000000000000676
+#PF: supervisor read access in kernel mode
+#PF: error_code(0x0000) - not-present page
+PGD 0 P4D 0
+SMP NOPTI
+CPU: 7 UID: 0 PID: 3310 Comm: e4defrag Tainted: G      D W
+7.1.2-arch3-1 #1 PREEMPT(full)
+914ec70c9fc54a99dc91d290948a1dd1bb226c49
+Tainted: [D]=DIE, [W]=WARN
+Hardware name: Micro-Star International Co., Ltd. MS-7C95/PRO B550M-VC
+WIFI (MS-7C95), BIOS H.D0 03/21/2025
+RIP: 0010:drain_obj_stock+0x175/0x310
+Code: 02 48 8b 84 f0 70 06 00 00 48 83 c0 40 48 3b 88 20 06 00 00 0f
+85 29 01 00 00 48 8b 40 c0 48 63 89 80 a4 02 00 be 05 00 00 00 <48> 8b
+bc c8 70 06 00 00 e8 ee e4 ff ff e8 d9 22 ce ff 8b 53 1c c7
+RSP: 0018:ffffd02f86007168 EFLAGS: 00010292
+RAX: 0000000000000006 RBX: ffff8ade5ddf4880 RCX: 0000000000000000
+RDX: ffffffffffffff90 RSI: 0000000000000005 RDI: ffff8ade5ddf4880
+RBP: ffff8ad31b54f5c0 R08: ffff8ad4ff0b1c00 R09: ffffffff97424af2
+R10: fffff33ed3692f00 R11: ffff8acf8030f800 R12: ffff8ad31b54e5c0
+R13: fffff33ed3692f00 R14: ffff8acf8030f800 R15: ffffd02f86007230
+FS:  00007f6aaaf63780(0000) GS:ffff8adec3d11000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000676 CR3: 0000000662da2000 CR4: 0000000000f50ef0
+PKRU: 55555554
+Call Trace:
+ <TASK>
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ __refill_obj_stock+0x36/0x100
+ __memcg_slab_free_hook+0xea/0x1b0
+ kmem_cache_free+0x284/0x470
+ ? free_buffer_head+0x22/0x70
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ free_buffer_head+0x22/0x70
+ try_to_free_buffers+0x9e/0x110
+ shrink_folio_list+0xa99/0xfd0
+ evict_folios+0x30c/0x7d0
+ try_to_shrink_lruvec+0x16c/0x270
+ shrink_one+0xcf/0x210
+ shrink_node+0xa90/0xcc0
+ do_try_to_free_pages+0xac/0x490
+ try_to_free_pages+0xfb/0x240
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ __alloc_pages_slowpath.constprop.0+0x837/0x1170
+ __alloc_frozen_pages_noprof+0x31e/0x380
+ alloc_pages_mpol+0xb2/0x160
+ folio_alloc_noprof+0x54/0xa0
+ __filemap_get_folio_mpol+0x17c/0x320
+ mext_move_extent+0x1e0/0xcf0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? __check_block_validity.constprop.0+0x3d/0x90
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? ext4_map_blocks+0x2a3/0x3a0
+ ext4_move_extents+0x3b2/0x4e0
+ __ext4_ioctl+0x1633/0x1c40
+ ? __memcg_slab_free_hook+0x153/0x1b0
+ ? kmem_cache_free+0x284/0x470
+ ? vms_complete_munmap_vmas+0x179/0x230
+ ? vm_area_free+0x24/0xd0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ __x64_sys_ioctl+0xb9/0x100
+ do_syscall_64+0xaa/0x660
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? __vm_munmap+0x133/0x200
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? do_syscall_64+0xaa/0x660
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? ksys_mmap_pgoff+0x168/0x200
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? do_syscall_64+0xaa/0x660
+ ? ksys_write+0x7b/0x110
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? do_syscall_64+0xaa/0x660
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? do_syscall_64+0x5f/0x660
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ entry_SYSCALL_64_after_hwframe+0x76/0x7e
+RIP: 0033:0x7f6aaad17b9d
+Code: 04 25 28 00 00 00 48 89 45 c8 31 c0 48 8d 45 10 c7 45 b0 10 00
+00 00 48 89 45 b8 48 8d 45 d0 48 89 45 c0 b8 10 00 00 00 0f 05 <89> c2
+3d 00 f0 ff ff 77 1a 48 8b 45 c8 64 48 2b 04 25 28 00 00 00
+RSP: 002b:00007ffdf0e0f0a0 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 0000000000001000 RCX: 00007f6aaad17b9d
+RDX: 00007ffdf0e0f190 RSI: 00000000c028660f RDI: 0000000000000007
+RBP: 00007ffdf0e0f0f0 R08: 0000000000017000 R09: 00007f6aaae12ac0
+R10: 0000000000000004 R11: 0000000000000246 R12: 0000000017000000
+R13: 00005620cd1d5690 R14: 0000000000001000 R15: 00007f6a93c00000
+ </TASK>
+Modules linked in: xt_connmark xt_conntrack xt_MASQUERADE xt_tcpudp
+xt_mark nft_compat x_tables nft_chain_nat nf_nat nf_conntrack
+nf_defrag_ipv6 nf_defrag_ipv4 tun nf_tables nfnetlink vfat fat amd_atl
+intel_rapl_msr intel_rapl_common snd_hda_codec_alc662
+snd_hda_codec_realtek_lib snd_hda_codec_generic mt7921e
+snd_hda_codec_atihdmi mt7921_common snd_hda_codec_hdmi mt792x_lib
+btusb snd_hda_intel mt76_connac_lib kvm_amd btmtk mt76 snd_hda_codec
+mac80211 snd_hda_core btrtl btbcm snd_intel_dspcfg kvm r8169 btintel
+snd_intel_sdw_acpi jc42 snd_hwdep realtek irqbypass phy_package
+cfg80211 bluetooth snd_pcm ee1004 aesni_intel mdio_devres gf128mul
+sp5100_tco rfkill snd_timer rapl libphy wmi_bmof libarc4 i2c_piix4
+aead snd pcspkr mdio_bus k10temp ccp i2c_smbus joydev soundcore
+gpio_amdpt gpio_generic mac_hid dm_mod amdgpu drm_buddy amdxcp
+i2c_algo_bit drm_ttm_helper ttm drm_exec drm_panel_backlight_quirks
+gpu_sched drm_suballoc_helper nvme drm_display_helper video nvme_core
+cec nvme_keyring nvme_auth wmi
+CR2: 0000000000000676
+---[ end trace 0000000000000000 ]---
+RIP: 0010:__refill_obj_stock+0xdd/0x100
+Code: f0 01 47 18 c1 eb 0c 89 de 75 b8 48 8b 1c 24 4c 8b 64 24 10 48
+83 c4 18 e9 1b 94 98 ff e8 4b 87 cd ff 49 8b 04 24 a8 03 75 0e <65> 48
+ff 00 e8 9a 12 ce ff e9 57 ff ff ff 49 8b 44 24 08 f0 48 83
+RSP: 0018:ffffd02f85a77a10 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 0000000000000070 RCX: fffff02f7f841e00
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8acf8ad35340
+RBP: ffff8ade5de74880 R08: ffffffffffffffff R09: 0000000000000000
+R10: fffff33ef5e616c0 R11: ffff8acf8030f800 R12: ffff8acfa2586e00
+R13: fffff33ef5e616c0 R14: ffff8acf8030f800 R15: ffffd02f85a77a98
+FS:  00007f6aaaf63780(0000) GS:ffff8adec3d11000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000676 CR3: 0000000662da2000 CR4: 0000000000f50ef0
+PKRU: 55555554
+exited with irqs disabled
+exited with preempt_count 1
+------------[ cut here ]------------
+tsk->plug
+WARNING: kernel/exit.c:903 at do_exit+0x8ee/0xba0, CPU#7: e4defrag/3310
+Modules linked in: xt_connmark xt_conntrack xt_MASQUERADE xt_tcpudp
+xt_mark nft_compat x_tables nft_chain_nat nf_nat nf_conntrack
+nf_defrag_ipv6 nf_defrag_ipv4 tun nf_tables nfnetlink vfat fat amd_atl
+intel_rapl_msr intel_rapl_common snd_hda_codec_alc662
+snd_hda_codec_realtek_lib snd_hda_codec_generic mt7921e
+snd_hda_codec_atihdmi mt7921_common snd_hda_codec_hdmi mt792x_lib
+btusb snd_hda_intel mt76_connac_lib kvm_amd btmtk mt76 snd_hda_codec
+mac80211 snd_hda_core btrtl btbcm snd_intel_dspcfg kvm r8169 btintel
+snd_intel_sdw_acpi jc42 snd_hwdep realtek irqbypass phy_package
+cfg80211 bluetooth snd_pcm ee1004 aesni_intel mdio_devres gf128mul
+sp5100_tco rfkill snd_timer rapl libphy wmi_bmof libarc4 i2c_piix4
+aead snd pcspkr mdio_bus k10temp ccp i2c_smbus joydev soundcore
+gpio_amdpt gpio_generic mac_hid dm_mod amdgpu drm_buddy amdxcp
+i2c_algo_bit drm_ttm_helper ttm drm_exec drm_panel_backlight_quirks
+gpu_sched drm_suballoc_helper nvme drm_display_helper video nvme_core
+cec nvme_keyring nvme_auth wmi
+CPU: 7 UID: 0 PID: 3310 Comm: e4defrag Tainted: G      D W
+7.1.2-arch3-1 #1 PREEMPT(full)
+914ec70c9fc54a99dc91d290948a1dd1bb226c49
+Tainted: [D]=DIE, [W]=WARN
+Hardware name: Micro-Star International Co., Ltd. MS-7C95/PRO B550M-VC
+WIFI (MS-7C95), BIOS H.D0 03/21/2025
+RIP: 0010:do_exit+0x8ee/0xba0
+Code: 83 b0 0d 00 00 e9 5a fd ff ff 48 8b bb 70 0b 00 00 31 f6 e8 14
+e0 ff ff e9 0d fd ff ff 48 89 df e8 07 6b 17 00 e9 d8 f8 ff ff <0f> 0b
+e9 66 f7 ff ff 48 8d 54 24 08 b9 04 00 00 00 31 c0 48 89 d7
+RSP: 0018:ffffd02f86007ee0 EFLAGS: 00010286
+RAX: 0000000000000282 RBX: ffff8acf81281bc0 RCX: 000000000000270f
+RDX: 0000000080000000 RSI: 0000000000002710 RDI: 0000000000000009
+RBP: 0000000000000000 R08: 0000000000000009 R09: ffff8acf81281bc0
+R10: ffffd02f86007de8 R11: ffffd02f86007de0 R12: 0000000000000009
+R13: 0000000000000000 R14: ffff8acf81281bc0 R15: 0000000000000000
+FS:  00007f6aaaf63780(0000) GS:ffff8adec3d11000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000676 CR3: 0000000662da2000 CR4: 0000000000f50ef0
+PKRU: 55555554
+Call Trace:
+ <TASK>
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ make_task_dead+0x8d/0x90
+ rewind_stack_and_make_dead+0x16/0x20
+RIP: 0033:0x7f6aaad17b9d
+Code: 04 25 28 00 00 00 48 89 45 c8 31 c0 48 8d 45 10 c7 45 b0 10 00
+00 00 48 89 45 b8 48 8d 45 d0 48 89 45 c0 b8 10 00 00 00 0f 05 <89> c2
+3d 00 f0 ff ff 77 1a 48 8b 45 c8 64 48 2b 04 25 28 00 00 00
+RSP: 002b:00007ffdf0e0f0a0 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 0000000000001000 RCX: 00007f6aaad17b9d
+RDX: 00007ffdf0e0f190 RSI: 00000000c028660f RDI: 0000000000000007
+RBP: 00007ffdf0e0f0f0 R08: 0000000000017000 R09: 00007f6aaae12ac0
+R10: 0000000000000004 R11: 0000000000000246 R12: 0000000017000000
+R13: 00005620cd1d5690 R14: 0000000000001000 R15: 00007f6a93c00000
+ </TASK>
+---[ end trace 0000000000000000 ]---
+BUG: unable to handle page fault for address: ffffffffffff0a00
+#PF: supervisor read access in kernel mode
+#PF: error_code(0x0000) - not-present page
+PGD aea25067 P4D aea25067 PUD aea27067 PMD 0
+SMP NOPTI
+CPU: 7 UID: 0 PID: 3310 Comm: e4defrag Tainted: G      D W
+7.1.2-arch3-1 #1 PREEMPT(full)
+914ec70c9fc54a99dc91d290948a1dd1bb226c49
+Tainted: [D]=DIE, [W]=WARN
+Hardware name: Micro-Star International Co., Ltd. MS-7C95/PRO B550M-VC
+WIFI (MS-7C95), BIOS H.D0 03/21/2025
+RIP: 0010:blk_mq_submit_bio+0x80/0x9f0
+Code: e6 00 08 06 00 83 fe 01 45 19 f6 41 83 c6 01 89 4c 24 0c 4d 85
+e4 0f 84 30 07 00 00 49 8b 6c 24 10 48 85 ed 0f 84 9e 03 00 00 <4c> 3b
+6d 00 0f 85 94 03 00 00 48 8b 4d 10 0f b7 b1 fc 00 00 00 39
+RSP: 0018:ffffd02f860078a0 EFLAGS: 00010286
+RAX: 0000000000000001 RBX: ffff8ad4fb23e600 RCX: 0000000000000000
+RDX: 0000000000003000 RSI: ffff8acf81281bc0 RDI: ffff8ad4fb23e600
+RBP: ffffffffffff0a00 R08: 00000003a3812000 R09: 0000000000000008
+R10: 0000000000001000 R11: ffff8acf8a8e43c0 R12: ffffd02f86007630
+R13: ffff8acf893a2f88 R14: 0000000000000001 R15: 0000000000000540
+FS:  0000000000000000(0000) GS:ffff8adec3d11000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffffffffffff0a00 CR3: 00000000aea22000 CR4: 0000000000f50ef0
+PKRU: 55555554
+Call Trace:
+ <TASK>
+ ? xas_load+0xd/0xb0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? filemap_get_entry+0xd5/0x130
+ __submit_bio+0xbd/0x260
+ ? find_get_block_common+0x369/0x450
+ submit_bio_noacct_nocheck+0x2b2/0x390
+ ? submit_bh_wbc+0x15b/0x1d0
+ ext4_read_block_bitmap_nowait+0x43d/0x6d0
+ ext4_mb_init_cache+0x130/0x6f0
+ ? __filemap_get_folio_mpol+0x1b4/0x320
+ ext4_mb_init_group+0x173/0x390
+ ext4_mb_load_buddy_gfp+0x3aa/0x450
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ext4_free_blocks+0x3e0/0xaf0
+ ? jbd2_write_access_granted+0x67/0x90
+ ext4_ext_remove_space+0xabf/0x1480
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ ? ext4_es_remove_extent+0xed/0x1e0
+ ext4_ext_truncate+0xa4/0xd0
+ ext4_truncate+0x33f/0x4a0
+ ? __ext4_journal_start_sb+0x42/0x1b0
+ ext4_evict_inode+0x297/0x7a0
+ evict+0x13e/0x2b0
+ __dentry_kill+0x79/0x1e0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ finish_dput+0x23/0xc0
+ __fput+0x146/0x2d0
+ task_work_run+0x66/0xa0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ do_exit+0x304/0xba0
+ make_task_dead+0x8d/0x90
+ rewind_stack_and_make_dead+0x16/0x20
+RIP: 0033:0x7f6aaad17b9d
+Code: Unable to access opcode bytes at 0x7f6aaad17b73.
+RSP: 002b:00007ffdf0e0f0a0 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 0000000000001000 RCX: 00007f6aaad17b9d
+RDX: 00007ffdf0e0f190 RSI: 00000000c028660f RDI: 0000000000000007
+RBP: 00007ffdf0e0f0f0 R08: 0000000000017000 R09: 00007f6aaae12ac0
+R10: 0000000000000004 R11: 0000000000000246 R12: 0000000017000000
+R13: 00005620cd1d5690 R14: 0000000000001000 R15: 00007f6a93c00000
+ </TASK>
+Modules linked in: xt_connmark xt_conntrack xt_MASQUERADE xt_tcpudp
+xt_mark nft_compat x_tables nft_chain_nat nf_nat nf_conntrack
+nf_defrag_ipv6 nf_defrag_ipv4 tun nf_tables nfnetlink vfat fat amd_atl
+intel_rapl_msr intel_rapl_common snd_hda_codec_alc662
+snd_hda_codec_realtek_lib snd_hda_codec_generic mt7921e
+snd_hda_codec_atihdmi mt7921_common snd_hda_codec_hdmi mt792x_lib
+btusb snd_hda_intel mt76_connac_lib kvm_amd btmtk mt76 snd_hda_codec
+mac80211 snd_hda_core btrtl btbcm snd_intel_dspcfg kvm r8169 btintel
+snd_intel_sdw_acpi jc42 snd_hwdep realtek irqbypass phy_package
+cfg80211 bluetooth snd_pcm ee1004 aesni_intel mdio_devres gf128mul
+sp5100_tco rfkill snd_timer rapl libphy wmi_bmof libarc4 i2c_piix4
+aead snd pcspkr mdio_bus k10temp ccp i2c_smbus joydev soundcore
+gpio_amdpt gpio_generic mac_hid dm_mod amdgpu drm_buddy amdxcp
+i2c_algo_bit drm_ttm_helper ttm drm_exec drm_panel_backlight_quirks
+gpu_sched drm_suballoc_helper nvme drm_display_helper video nvme_core
+cec nvme_keyring nvme_auth wmi
+CR2: ffffffffffff0a00
+---[ end trace 0000000000000000 ]---
+RIP: 0010:__refill_obj_stock+0xdd/0x100
+Code: f0 01 47 18 c1 eb 0c 89 de 75 b8 48 8b 1c 24 4c 8b 64 24 10 48
+83 c4 18 e9 1b 94 98 ff e8 4b 87 cd ff 49 8b 04 24 a8 03 75 0e <65> 48
+ff 00 e8 9a 12 ce ff e9 57 ff ff ff 49 8b 44 24 08 f0 48 83
+RSP: 0018:ffffd02f85a77a10 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 0000000000000070 RCX: fffff02f7f841e00
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8acf8ad35340
+RBP: ffff8ade5de74880 R08: ffffffffffffffff R09: 0000000000000000
+R10: fffff33ef5e616c0 R11: ffff8acf8030f800 R12: ffff8acfa2586e00
+R13: fffff33ef5e616c0 R14: ffff8acf8030f800 R15: ffffd02f85a77a98
+FS:  0000000000000000(0000) GS:ffff8adec3d11000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffffffffffff0a00 CR3: 00000000aea22000 CR4: 0000000000f50ef0
+PKRU: 55555554
+exited with irqs disabled
+Fixing recursive fault but reboot is needed!
+rcu: INFO: rcu_preempt detected stalls on CPUs/tasks:
+rcu:         Tasks blocked on level-0 rcu_node (CPUs 0-15): P2709/1:b..l
+rcu:         (detected by 2, t=600017 jiffies, g=884049, q=129532 ncpus=16)
+task:e4defrag        state:D stack:0     pid:2709  tgid:2709
+ppid:2614   task_flags:0x44010c flags:0x00080801
+Call Trace:
+ <TASK>
+ __schedule+0x457/0x1870
+ ? free_pcppages_bulk+0x1b6/0x2f0
+ schedule+0x27/0xd0
+ io_schedule+0x46/0x70
+ folio_wait_bit_common+0x15d/0x350
+ ? __pfx_wake_page_function+0x10/0x10
+ truncate_inode_pages_range+0x43b/0x4a0
+ ext4_evict_inode+0x156/0x7a0
+ evict+0x13e/0x2b0
+ __dentry_kill+0x79/0x1e0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ finish_dput+0x23/0xc0
+ __fput+0x146/0x2d0
+ task_work_run+0x66/0xa0
+ ? srso_alias_return_thunk+0x5/0xfbef5
+ do_exit+0x304/0xba0
+ make_task_dead+0x8d/0x90
+ rewind_stack_and_make_dead+0x16/0x20
+RIP: 0033:0x7f8d52d17b9d
+RSP: 002b:00007ffd9e2287d0 EFLAGS: 00000246 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 0000000000001000 RCX: 00007f8d52d17b9d
+RDX: 00007ffd9e2288c0 RSI: 00000000c028660f RDI: 0000000000000006
+RBP: 00007ffd9e228820 R08: 0000000000078000 R09: 00007f8d52e12ac0
+R10: 0000000000000004 R11: 0000000000000246 R12: 0000000078000000
+R13: 0000559d58184890 R14: 0000000000001000 R15: 00007f8cdac00000
+ </TASK>
