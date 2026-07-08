@@ -1,63 +1,50 @@
-Received: from out203-205-221-155.mail.qq.com (out203-205-221-155.mail.qq.com [203.205.221.155])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE2443ACF0B;
-	Wed,  8 Jul 2026 05:25:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.155
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 231323BFAE0;
+	Wed,  8 Jul 2026 06:28:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783488340; cv=none; b=O4WpVsiEwMysVap8E+xijj8FWIoDDMBytqerS1TPosfDzwHvgpyQ1BtYwgP8+2hhlVw5gEUDeJK4Saj7w3SMd0wOWNvqaCDpHv4CAAgwAyC55GEhZIDDp7Q50dv1GuUOObDkXVMS0UpT+uqwARWOp1rGS+p1sb0hV3cAqdEfAUg=
+	t=1783492132; cv=none; b=sW3Bbcnzc5kgdfgMsXJGT8lXO3f+DCki2u2D/hJZwMfFlOk8XYKd7etKLg7QjQkeDHkNnESjqgz59Zc5tmeQLCvh1fc3EgcJcAyZU9S6zdo93y7RSDuHmkIaWVj9BkPTVP4xW5uFatXmt490kvsKu7K+4toRS5R4SwEqfq6vhLc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783488340; c=relaxed/simple;
-	bh=rXR8XAvvpo+mg08LuX2pRgUHy/vbdzQCFeWFga7gwlY=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=axqCPn9Hfu4hl5wah6eYHbpCPnic00/g8uMCYx16gPzfchl/1HN9Jbii0xf1fhdB9vfbIlETrQLUhduehjuxveyLv8tm9kcFy+vi6Fkkq3jWe9Rv/6UXdFyGeYhdOqi3ErrJEZoanG0slOBNtDe7dEIUBwy8NXGXkIspbSvM1aM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=X6000ENs; arc=none smtp.client-ip=203.205.221.155
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="X6000ENs"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1783488329; bh=VhEh3akExY0m4gRFgqfV6CJtZUwnYS2BHigDLqqg5Yg=;
-	h=From:To:Cc:Subject:Date;
-	b=X6000ENsnp9jdJnykA799CtM/rlOtB195lenk++eNNrzH7jr+MG7XagGwe/dWW4L9
-	 XxAISiQw52jdCXytmZrNQSYjo0+/cVKxrRxCQH8gLd2TKnVr6oMKgbh31zDF3wRl1p
-	 FD+twz+dAOq1aKdfPrEnqUKlkNgs+8KoGqQ1eBNE=
-Received: from ubuntu.. ([123.52.25.101])
-	by newxmesmtplogicsvrsza73-0.qq.com (NewEsmtp) with SMTP
-	id 60B194EF; Wed, 08 Jul 2026 13:24:11 +0800
-X-QQ-mid: xmsmtpt1783488251t785fqibn
-Message-ID: <tencent_B6A92A781E14093CF74314DD20201262EC09@qq.com>
-X-QQ-XMAILINFO: MvbG2zern085JB6oqmRoh6w1YQnIyMwsJcG3G4Q7GimdjnyLvn/t1Kc90ucwHR
-	 CDjwsBMuz8XVIajKVjJ5Tdtub6m7jNUdK4YzE9ihA1Jf5iXZNmGcTh8bNXE22/RZBo6cPghUZBYW
-	 w3uTt6xN+G/3xnEI77STf+trE9AJzyyN8hKD5IUk1zpxJa56ErDkqPffuvrDkjPwJ/JpbBO1HJOm
-	 ntVGnsTFvWgMyZuc7XQO9+d3WegWyCs0ZfUyNHN7fgmidOLBSa3SkA/FpJxUG5APZxa5OW2futC+
-	 1AEZci+XxiYtRsMq/A70nPt7hRHPx2Yt4lvx6MOG6SApmyqyNWB6wzCgofjhbrRqK/6Hj+vSR39K
-	 m7tpAgAv2JyGK+r5SgH06BZHFvWEXVB/iObmpbGHhXqAE/bHuYmvnRKuWsyh6RmAbGPjPnW35pKp
-	 dpg/Hc6qXKkMcRXP6h3Rp5x6WIL7KVYeh5UktiHU6Lg5Hsc9MgYOwUgsZRoNwyZvV/PQFfDI0oOM
-	 L+B/n3CoimoBjw0W3kck26bhAmUkHLjIfVzc6KT9l1dWbzVKE5C66hS73cXI0JwtVCeI9tRL8wt0
-	 vyUBAFya7U3Pe0Kv3OZzOHtZ70YwWTCklbJfDDFY4m+oiVCTrVFz/g2F3swRClKur7OSzPRAVPfM
-	 K56rtkP31MiNGc3pF1LfCy19eUX3VaRHU4NK4RtMRPzR7St/OVFjxdNisneydk43vMhfBDTafnE/
-	 S2aZnY/EcHuVeBEof1wk8mbN9AlxNcyGtwNQuq3LIg2DUxop6k5qIdHpQGSMxNlLTCIhuehDsDQI
-	 vcyAE7THCEi9lFwkIozK9RWMGHYB//rp7vB18rLYKv2UV8rKmojIRmpZg+TJA8Jvvf0oT4Z3ZjfW
-	 Tt/ORoebEg5qO8nPdksAhW6Y+H6YlOpXZIFzPNnWzlr7QvT7km0JhbT5TMKRTl14Jq0Gc/WSKUXa
-	 iW+yfOMWMuTlmhAEDS1d/3C09DR4xA5Mq2CtEPeYD4gKykeKKaPaxnswOuS9pYWTfuMuzMEEm4IE
-	 18jsiVX7mb1kWD0CP4W9H+5PbbHZMtD2CC2kRYR3HgSFjycPK2o4Rf8OrXLIuNt04xPEQ/pCqcuV
-	 Ho9aaPt9Kcc/20h2BeIAHy2kc2GkncJ6HvQEEsvnUs3H+ouTg=
-X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
-From: Guanghui Yang <3497809730@qq.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	linux-ext4@vger.kernel.org,
+	s=arc-20240116; t=1783492132; c=relaxed/simple;
+	bh=gi0hgWFkKIc5QLNT/ucok7g/HdEgmfTQbnGEoSB45/k=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=uKWvcP8mOXrSF7t6YOCKCdFxTYuQMUqsWPH4aWReSQUbskTB1BRUjfa9tQe/F/Einv5it3LweIfjH3//kW06HTQPjwkVo9tqHl6cR9fYYnTN7Csw+dIDU1+ikei3PNEB83j5Y79iZVWm37T7aZgEb4FACH1oUTB3YrVXIvOTUGo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gw7TQ5Th6zYQtlK;
+	Wed,  8 Jul 2026 14:28:42 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 5979540A24;
+	Wed,  8 Jul 2026 14:28:47 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCnt3MT7k1q4VPeAQ--.18748S12;
+	Wed, 08 Jul 2026 14:28:47 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Guanghui Yang <3497809730@qq.com>
-Subject: [PATCH] ext4: fix buffer_head leak in ext4_init_orphan_info
-Date: Wed,  8 Jul 2026 05:24:08 +0000
-X-OQ-MSGID: <20260708052408.920377-1-3497809730@qq.com>
-X-Mailer: git-send-email 2.34.1
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	chengzhihao1@huawei.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v3 8/9] ext4: write back partial-zeroed edges in WRITE_ZEROES
+Date: Wed,  8 Jul 2026 14:20:48 +0800
+Message-ID: <20260708062049.1982410-9-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260708062049.1982410-1-yi.zhang@huaweicloud.com>
+References: <20260708062049.1982410-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -65,58 +52,68 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgCnt3MT7k1q4VPeAQ--.18748S12
+X-Coremail-Antispam: 1UD129KBjvJXoW7ur4kury7GrWkKw18WrWxJFb_yoW8AF48pa
+	y3Gr1UKrWUW3y7u393CF1093Wqk3Z3GrW7CrW3Gw4jvay5Xr15KFyjgF1jgF10gFWrC3y8
+	ZFsxK345Kr43Aa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
+	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
+	x0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
+	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
+	ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
+	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
+	AF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1l
+	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
+	1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
+	CTnIWIevJa73UjIFyTuYvjfUriihUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-ext4_init_orphan_info() reads orphan file blocks with ext4_bread()
-and stores the returned buffer_head in oi->of_binfo[i].ob_bh.
+From: Zhang Yi <yi.zhang@huawei.com>
 
-If ext4_bread() succeeds but the orphan block magic or checksum
-validation fails, the function jumps to out_free. However, out_free
-starts releasing buffers from i - 1, so the current buffer_head at
-index i is skipped.
+FALLOC_FL_WRITE_ZEROES requires that all blocks in the requested range
+end up as written extents with zeroed content. For unaligned edges that
+were partial-zeroed in dirty unwritten or delalloc state, the buffer
+is left dirty while the underlying extent may not yet be converted to
+written. As a result, a subsequent SYNC write to this range would still
+trigger metadata changes, which violates the semantics of WRITE_ZEROES.
 
-This leaks the buffer_head reference obtained by ext4_bread() on the
-bad magic and bad checksum error paths.
+Fix this by calling filemap_write_and_wait_range() for partial-zeroed
+edges to flush out the zeroed data and ensure the extent conversion
+is complete.
 
-Fix this by tracking the number of successfully read buffer_heads and
-releasing exactly those buffer_heads on the error path.
-
-Fixes: 02f310fcf47f ("ext4: Speedup ext4 orphan inode handling")
-Signed-off-by: Guanghui Yang <3497809730@qq.com>
+Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
+Cc: stable@vger.kernel.org
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/orphan.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ext4/extents.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
-index 64ea47624233..baa11e079185 100644
---- a/fs/ext4/orphan.c
-+++ b/fs/ext4/orphan.c
-@@ -572,6 +572,7 @@ int ext4_init_orphan_info(struct super_block *sb)
- 	int i, j;
- 	int ret;
- 	int free;
-+	int loaded = 0;
- 	__le32 *bdata;
- 	int inodes_per_ob = ext4_inodes_per_orphan_block(sb);
- 	struct ext4_orphan_block_tail *ot;
-@@ -613,6 +614,7 @@ int ext4_init_orphan_info(struct super_block *sb)
- 			ret = -EIO;
- 			goto out_free;
- 		}
-+		loaded++;
- 		ot = ext4_orphan_block_tail(sb, oi->of_binfo[i].ob_bh);
- 		if (le32_to_cpu(ot->ob_magic) != EXT4_ORPHAN_BLOCK_MAGIC) {
- 			ext4_error(sb, "orphan file block %d: bad magic", i);
-@@ -635,8 +637,8 @@ int ext4_init_orphan_info(struct super_block *sb)
- 	iput(inode);
- 	return 0;
- out_free:
--	for (i--; i >= 0; i--)
--		brelse(oi->of_binfo[i].ob_bh);
-+	while (loaded-- > 0)
-+		brelse(oi->of_binfo[loaded].ob_bh);
- 	kvfree(oi->of_binfo);
- out_put:
- 	iput(inode);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c34505765521..c083703bf704 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4791,7 +4791,15 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+ 	if (IS_ALIGNED(offset | end, blocksize))
+ 		return ret;
+ 
+-	if (((file->f_flags & O_SYNC) || IS_SYNC(inode)) && partial_zeroed) {
++	/*
++	 * In FALLOC_FL_WRITE_ZEROES mode, edges that have been partially
++	 * zeroed must be written back to ensure the entire zeroed range
++	 * is converted to the written state. In SYNC mode, writeback is
++	 * also required to persist the zeroed data to disk.
++	 */
++	if (partial_zeroed &&
++	    ((mode & FALLOC_FL_WRITE_ZEROES) ||
++	     (file->f_flags & O_SYNC) || IS_SYNC(inode))) {
+ 		ret = filemap_write_and_wait_range(inode->i_mapping, offset,
+ 						   end - 1);
+ 		if (ret)
 -- 
-2.34.1
+2.52.0
 
