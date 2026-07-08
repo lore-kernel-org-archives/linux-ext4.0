@@ -1,428 +1,122 @@
-Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out203-205-221-155.mail.qq.com (out203-205-221-155.mail.qq.com [203.205.221.155])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 020433B47E5
-	for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2026 02:07:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.47
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783476431; cv=pass; b=Ujkua76ePg97wPMtWh5H2Owls6Z+x+0LZxhUobH3WF8sRL8Vs9xsAmm1n8NYvKmk2i1yPpragzbdF3/2fRFeTMmmyCthmckPniJfGq+OJA0VI65+Nh3bJflU5lUJdsmOYTyHsdG5z78xsF220ekPWpfAQCjMRKx4KmTHywFFre0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783476431; c=relaxed/simple;
-	bh=a4s51OJSKt+NHGQxXJTYWDvPEeNPY/woXPXav6DxxX8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=XR5CWdfFroLuE9l/Zn6R/qkX4FnlfnuJ8xsbcYISdqLeY7oIktV+ejDMoVlVsOlA74Ge3aKUi26rIB5m2jhHaSLg1bI+evoGgfD0yqK8oEFf5dJrqhKTVbgGmC32uAvUotalAH7VxP22uXPNir3HdgzQXdS0dln9Xv0EPNpgILc=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=V+R0WLlU; arc=pass smtp.client-ip=209.85.221.47
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE2443ACF0B;
+	Wed,  8 Jul 2026 05:25:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.155
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1783488340; cv=none; b=O4WpVsiEwMysVap8E+xijj8FWIoDDMBytqerS1TPosfDzwHvgpyQ1BtYwgP8+2hhlVw5gEUDeJK4Saj7w3SMd0wOWNvqaCDpHv4CAAgwAyC55GEhZIDDp7Q50dv1GuUOObDkXVMS0UpT+uqwARWOp1rGS+p1sb0hV3cAqdEfAUg=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1783488340; c=relaxed/simple;
+	bh=rXR8XAvvpo+mg08LuX2pRgUHy/vbdzQCFeWFga7gwlY=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=axqCPn9Hfu4hl5wah6eYHbpCPnic00/g8uMCYx16gPzfchl/1HN9Jbii0xf1fhdB9vfbIlETrQLUhduehjuxveyLv8tm9kcFy+vi6Fkkq3jWe9Rv/6UXdFyGeYhdOqi3ErrJEZoanG0slOBNtDe7dEIUBwy8NXGXkIspbSvM1aM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=X6000ENs; arc=none smtp.client-ip=203.205.221.155
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="V+R0WLlU"
-Received: by mail-wr1-f47.google.com with SMTP id ffacd0b85a97d-47c6e9a694bso77488f8f.1
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jul 2026 19:07:08 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1783476427; cv=none;
-        d=google.com; s=arc-20260327;
-        b=PkZtWUMA5CuMmp+evVLOd2irC1orcm0BwZeDQYjVtWKCyadk4fKTgIs45JDY4Kteyn
-         mXLFXTWpa08gEILRQcKnbfXVGN4/7SbEQgCbyaMovTCy5GsJIdmT+9nrp9cFPGq6BiRr
-         htEysBez9zFMxrsmH7R5eH6Ey6hjC6aMHFPbVBidWzV6j2MLnN0kzPd/soGU+HltgfyO
-         fwa3VScbCEHbxVZkDLmKrQsyXKK7S/vz/Qp1Z+zSjf12uV40WaMi5b/lw13qtf3bVgJz
-         CDLtpQ+TXyYUBbgQVv9uEZCJlXkZ+WPjaCXe4w8AW8tP/S4DO5pprho5zXB/r4EgVSwC
-         Ul4w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=ORF6ttoTrmazHMg6VNy9Hoketi9Owk/y4zWX+03jHq4=;
-        fh=WUZuqkG2pDzcAawtWtTSdKSCzxtCHPWBVpBrjJwh77M=;
-        b=LSsD2xdk8x0D+PwW2NT1mLyQ63bOp6jddkihpOL4/1D7IQ+NcZD/kuAzGRvhg4VqLX
-         XN6bTuAQMBv+vL3fhUBiwFK8FjiTMEQTTTQr505S/Qzdb8NplWNHGF6xtbwBUOhE5S7/
-         rvOAzwZJkTwxFvw0z1dlbxgmCgd7r+yhZAkN4LwVHZSNbNMpIFSljckXTdRuubnMXT+W
-         bY7JaXP1lyC3J7QvNvZxSPalW648p4YdnVh58YyPjqoYrgNsP2qrKHo/Dc8YO4s3qVpm
-         Iw+tYl8kBD3VEwtQsHoSj+oSMxh8e3u+f+uUdA5uocsKDamo72Aj9Ietmdh8C/J84RfA
-         cQwQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783476427; x=1784081227; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=ORF6ttoTrmazHMg6VNy9Hoketi9Owk/y4zWX+03jHq4=;
-        b=V+R0WLlUWhLf3i9ucQ4ADMTQwP8A40RSGMCVqxIhZXv1LWn+KpAkmmcAN7EXcn2RSe
-         YER2C6vrIyZGNpUi98VLnwi1NtjYeTg9mTd7xLWVGuhVqwi1WhXBJRmsNHtzkiY5zkGE
-         RYN920y1l9gl8BrfuTAWI9qz5V4pAwozHF9guuVXRBQw6V7abEwLJ6Ae+IhtSRnybJNv
-         DONZH1NgdiPBoenyeE+zQwisccRxYzExbbaXu90m3F3O1J55oNfFG0Mpl/Z6QFUnVX1+
-         Ovu3hUAuUIP8zIAnnSf8WUQnF6voKrdPQtFg/sgJkohltOh6jriw5OYAd2XWXnOKiALg
-         7Gsg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783476427; x=1784081227;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ORF6ttoTrmazHMg6VNy9Hoketi9Owk/y4zWX+03jHq4=;
-        b=DH5a1RSbOZtcJXSP9agKilSX3DrKk3TMZdnCdaMXOITHkT0Ly01G+Ya47Y8x7AKxRQ
-         bm1l+0Yna4FjKhuVGEib7PObCIiQREadSOnKCntrF6BvH5UVsm7H9h6N4UJPNYFGzzVO
-         NFkMDPUPRWeZnW8GeOLOWfBXojr3CNpvEauQ2QEo74ty/ZyyciiqzOj+MmiiuBOFDGWW
-         41uKRgF5LbEazF7YG0Mv0BfHeoAWCQn2DNsf098MFIg4H+QysCwh9CtZvprDHMXFX1mW
-         CQA/IxVLkS/NyjstDkJxrhsOo/ff+5igerjVV8dIiMnk40ON5DRlA4l2r8Wzaydv6k/t
-         pq0w==
-X-Forwarded-Encrypted: i=1; AHgh+Rq5Ay9mDxYqYsUGEErn7EKIuOl606CPNqqrSp74cUSUFJwFIT0ExGkbmGfLQmgDBxnk5F2KO5qra9N3@vger.kernel.org
-X-Gm-Message-State: AOJu0YwBpQq6XCvzT7zKUdbQQ3/qkQ8DssvWF95H1YmnsJ0/RlcFxK0r
-	2v1NaayPvc7rkdonLJUZXNPhW7k5eefs1t1jTBXEb0JQWQVuiVytbxUwNdAu/mIYRfatDceOZgi
-	wN7spIyJkHglC0mGXcAgB92F0FQdMsdc=
-X-Gm-Gg: AfdE7cmdpAyZqxSW+0mapOuXp/Fb+s8yLJqVLIrXKhTi329vAomc9112HufyjUfeTA7
-	X7MhAlGXekudJTwsCTmhf1eoY15+TjI5OBRpZX5xIf/Y0QjvXj1/UEL3UNq1c2FyDgekah//WhA
-	i1C/u8PAQAYgNB+KlQQwFVIyruejEmfshIGvX5EBdfDpQBrO0zG31hj4+/XJQ+QAmnjG0nzi/ED
-	k/1A/qYvT/80UqaR0PZr744HgnqU+h1l/pK6Mh6NEOBpH4WSQYg3CwgxNgO6cdNq8rQsCTJ5qLm
-	xkyzMp851WqOuPAxBumMQRyl03hJGYV1leH1Mt+SBDHfI0jc7tKP
-X-Received: by 2002:a5d:5846:0:b0:47c:de1f:7ad1 with SMTP id
- ffacd0b85a97d-47df081e2b9mr171008f8f.57.1783476427128; Tue, 07 Jul 2026
- 19:07:07 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="X6000ENs"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1783488329; bh=VhEh3akExY0m4gRFgqfV6CJtZUwnYS2BHigDLqqg5Yg=;
+	h=From:To:Cc:Subject:Date;
+	b=X6000ENsnp9jdJnykA799CtM/rlOtB195lenk++eNNrzH7jr+MG7XagGwe/dWW4L9
+	 XxAISiQw52jdCXytmZrNQSYjo0+/cVKxrRxCQH8gLd2TKnVr6oMKgbh31zDF3wRl1p
+	 FD+twz+dAOq1aKdfPrEnqUKlkNgs+8KoGqQ1eBNE=
+Received: from ubuntu.. ([123.52.25.101])
+	by newxmesmtplogicsvrsza73-0.qq.com (NewEsmtp) with SMTP
+	id 60B194EF; Wed, 08 Jul 2026 13:24:11 +0800
+X-QQ-mid: xmsmtpt1783488251t785fqibn
+Message-ID: <tencent_B6A92A781E14093CF74314DD20201262EC09@qq.com>
+X-QQ-XMAILINFO: MvbG2zern085JB6oqmRoh6w1YQnIyMwsJcG3G4Q7GimdjnyLvn/t1Kc90ucwHR
+	 CDjwsBMuz8XVIajKVjJ5Tdtub6m7jNUdK4YzE9ihA1Jf5iXZNmGcTh8bNXE22/RZBo6cPghUZBYW
+	 w3uTt6xN+G/3xnEI77STf+trE9AJzyyN8hKD5IUk1zpxJa56ErDkqPffuvrDkjPwJ/JpbBO1HJOm
+	 ntVGnsTFvWgMyZuc7XQO9+d3WegWyCs0ZfUyNHN7fgmidOLBSa3SkA/FpJxUG5APZxa5OW2futC+
+	 1AEZci+XxiYtRsMq/A70nPt7hRHPx2Yt4lvx6MOG6SApmyqyNWB6wzCgofjhbrRqK/6Hj+vSR39K
+	 m7tpAgAv2JyGK+r5SgH06BZHFvWEXVB/iObmpbGHhXqAE/bHuYmvnRKuWsyh6RmAbGPjPnW35pKp
+	 dpg/Hc6qXKkMcRXP6h3Rp5x6WIL7KVYeh5UktiHU6Lg5Hsc9MgYOwUgsZRoNwyZvV/PQFfDI0oOM
+	 L+B/n3CoimoBjw0W3kck26bhAmUkHLjIfVzc6KT9l1dWbzVKE5C66hS73cXI0JwtVCeI9tRL8wt0
+	 vyUBAFya7U3Pe0Kv3OZzOHtZ70YwWTCklbJfDDFY4m+oiVCTrVFz/g2F3swRClKur7OSzPRAVPfM
+	 K56rtkP31MiNGc3pF1LfCy19eUX3VaRHU4NK4RtMRPzR7St/OVFjxdNisneydk43vMhfBDTafnE/
+	 S2aZnY/EcHuVeBEof1wk8mbN9AlxNcyGtwNQuq3LIg2DUxop6k5qIdHpQGSMxNlLTCIhuehDsDQI
+	 vcyAE7THCEi9lFwkIozK9RWMGHYB//rp7vB18rLYKv2UV8rKmojIRmpZg+TJA8Jvvf0oT4Z3ZjfW
+	 Tt/ORoebEg5qO8nPdksAhW6Y+H6YlOpXZIFzPNnWzlr7QvT7km0JhbT5TMKRTl14Jq0Gc/WSKUXa
+	 iW+yfOMWMuTlmhAEDS1d/3C09DR4xA5Mq2CtEPeYD4gKykeKKaPaxnswOuS9pYWTfuMuzMEEm4IE
+	 18jsiVX7mb1kWD0CP4W9H+5PbbHZMtD2CC2kRYR3HgSFjycPK2o4Rf8OrXLIuNt04xPEQ/pCqcuV
+	 Ho9aaPt9Kcc/20h2BeIAHy2kc2GkncJ6HvQEEsvnUs3H+ouTg=
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+From: Guanghui Yang <3497809730@qq.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Guanghui Yang <3497809730@qq.com>
+Subject: [PATCH] ext4: fix buffer_head leak in ext4_init_orphan_info
+Date: Wed,  8 Jul 2026 05:24:08 +0000
+X-OQ-MSGID: <20260708052408.920377-1-3497809730@qq.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260701033253.46420-1-changfengnan@bytedance.com>
- <20260701033253.46420-4-changfengnan@bytedance.com> <akT4tJzFSfrBxqdq@infradead.org>
- <CAJnrk1Y3yPeXBeBNo+DjTt8eRN-mc2F9apBCUn+j=GV7GMzi4g@mail.gmail.com>
- <akZ3GErzJSTtOn-H@infradead.org> <CAJnrk1ZijiWYU8YOmRf24xxwX0kH6vCe3ta89LfoX7v7j_JYLQ@mail.gmail.com>
- <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.e3ea485f.90a4.4656.9103.275b1cd29206@bytedance.com>
- <akettUm5gBD8nj56@infradead.org> <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.a1148d7a.4a0d.4c6a.b14d.4583b6b728ce@bytedance.com>
- <CAJnrk1avS6qra8OvJdbexqM0xGT-FVZxVKe+TH4ZkFgfFv_oEQ@mail.gmail.com> <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.20f172db.1248.4925.882c.ef1d31b23985@bytedance.com>
-In-Reply-To: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.20f172db.1248.4925.882c.ef1d31b23985@bytedance.com>
-From: Joanne Koong <joannelkoong@gmail.com>
-Date: Tue, 7 Jul 2026 19:06:53 -0700
-X-Gm-Features: AVVi8Ce9dVSv5gb-MmQR63RNcTJ_JQ4saHZsMR2pN8NmucDCrIPXFtHDdz5i5Mo
-Message-ID: <CAJnrk1aPS3Z_N+6Fto_B=Sgo6Wt62Cr6XHEwa-KzqjtQWyJ4Vg@mail.gmail.com>
-Subject: Re: [PATCH v6 3/3] iomap: add simple dio path for small direct I/O
-To: changfengnan <changfengnan@bytedance.com>
-Cc: Christoph Hellwig <hch@infradead.org>, brauner <brauner@kernel.org>, djwong <djwong@kernel.org>, 
-	ojaswin <ojaswin@linux.ibm.com>, dgc <dgc@kernel.org>, 
-	linux-xfs <linux-xfs@vger.kernel.org>, linux-fsdevel <linux-fsdevel@vger.kernel.org>, 
-	linux-ext4 <linux-ext4@vger.kernel.org>, linux-kernel <linux-kernel@vger.kernel.org>, 
-	lidiangang@bytedance.com, "pankaj.raghav" <pankaj.raghav@linux.dev>, 
-	Brian Foster <bfoster@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Jul 6, 2026 at 11:57=E2=80=AFPM changfengnan <changfengnan@bytedanc=
-e.com> wrote:
->
->
-> > From: "Joanne Koong"<joannelkoong@gmail.com>
-> > Date:  Tue, Jul 7, 2026, 03:27
-> > Subject:  Re: [PATCH v6 3/3] iomap: add simple dio path for small direc=
-t I/O
-> > To: "changfengnan"<changfengnan@bytedance.com>
-> > Cc: "Christoph Hellwig"<hch@infradead.org>, "brauner"<brauner@kernel.or=
-g>, "djwong"<djwong@kernel.org>, "ojaswin"<ojaswin@linux.ibm.com>, "dgc"<dg=
-c@kernel.org>, "linux-xfs"<linux-xfs@vger.kernel.org>, "linux-fsdevel"<linu=
-x-fsdevel@vger.kernel.org>, "linux-ext4"<linux-ext4@vger.kernel.org>, "linu=
-x-kernel"<linux-kernel@vger.kernel.org>, <lidiangang@bytedance.com>, "panka=
-j.raghav"<pankaj.raghav@linux.dev>, "Brian Foster"<bfoster@redhat.com>
-> > On Mon, Jul 6, 2026 at 4:10=E2=80=AFAM changfengnan <changfengnan@byted=
-ance.com> wrote:
-> > >
-> > > > From: "Christoph Hellwig"<hch@infradead.org>
-> > > > Date:  Fri, Jul 3, 2026, 20:40
-> > > > Subject:  Re: [PATCH v6 3/3] iomap: add simple dio path for small d=
-irect I/O
-> > > > To: "changfengnan"<changfengnan@bytedance.com>
-> > > > Cc: "Joanne Koong"<joannelkoong@gmail.com>, "Christoph Hellwig"<hch=
-@infradead.org>, "brauner"<brauner@kernel.org>, "djwong"<djwong@kernel.org>=
-, "ojaswin"<ojaswin@linux.ibm.com>, "dgc"<dgc@kernel.org>, "linux-xfs"<linu=
-x-xfs@vger.kernel.org>, "linux-fsdevel"<linux-fsdevel@vger.kernel.org>, "li=
-nux-ext4"<linux-ext4@vger.kernel.org>, "linux-kernel"<linux-kernel@vger.ker=
-nel.org>, <lidiangang@bytedance.com>, "pankaj.raghav"<pankaj.raghav@linux.d=
-ev>, "Brian Foster"<bfoster@redhat.com>
-> > > > On Fri, Jul 03, 2026 at 05:13:12PM +0800, changfengnan wrote:
-> > > > > taken, which introduced some overhead.
-> > > > > I implemented some optimizations based on Christoph=E2=80=99s sug=
-gestions and
-> > > > > made some modifications to `iomap_process`;
-> > > > > Now, XFS performance is essentially unchanged, while ext4 still s=
-hows a
-> > > > > 1.5% drop; I will continue to investigate the cause..   I=E2=80=
-=99ve attached the patch.
-> > > > > Actually, I had expected that switching to `iomap_next` would imp=
-rove
-> > > > > performance, since it avoids an indirect call.
-> > > >
-> > > > I don't think it will for you - the direct I/O readers don't have
-> > > > iomap_end methods, so you still have the same number of indirect
-> > > > calls.  What could help is to inline the iterator as seen in Joanne=
-s'
-> > > > fist demo series.  We could even look into doing that only for simp=
-le
-> > > > dio in a first step, shifting the burden to use the simple method
-> > > > to the callers (at least for the POC).
-> > >
-> > > I'm not sure if this is what you had in mind, but I made some
-> > > adjustments referencing Joannes' first patch, and using this approach=
-,
-> > > there was no performance degradation.
-> >
-> > Thanks, Fengnan. This is awesome that it got the degradation down to ze=
-ro.
-> >
-> > Would you be able to test how this change performs on your benchmarks?:
->
-> XFS basically has no performance degradation, while ext4 experiences
-> a 1-1.5% performance degradation.
->
-> Round 1:
->     d67      xfs : 2.04M, 2.05M, 2.04M, 2.04M, 2.04M  avg=3D2.042M
->     d67      ext4: 2.12M, 2.12M, 2.12M, 2.12M, 2.12M  avg=3D2.120M
->     joanne86 xfs : 2.13M, 2.05M, 2.04M, 2.05M, 2.05M  avg=3D2.064M
->     joanne86 ext4: 2.11M, 2.11M, 2.11M, 2.11M, 2.11M  avg=3D2.110M
->
->   Round 2:
->     d67      xfs : 2.05M, 2.05M, 2.05M, 2.05M, 2.05M  avg=3D2.050M
->     d67      ext4: 2.12M, 2.12M, 2.12M, 2.12M, 2.12M  avg=3D2.120M
->     joanne86 xfs : 2.04M, 2.04M, 2.04M, 2.04M, 2.05M  avg=3D2.042M
->     joanne86 ext4: 2.09M, 2.08M, 2.09M, 2.10M, 2.09M  avg=3D2.090M
->
->   Round 3:
->     d67      xfs : 2.04M, 2.04M, 2.04M, 2.04M, 2.05M  avg=3D2.042M
->     d67      ext4: 2.12M, 2.12M, 2.11M, 2.12M, 2.12M  avg=3D2.118M
->     joanne86 xfs : 2.04M, 2.05M, 2.04M, 2.04M, 2.04M  avg=3D2.042M
->     joanne86 ext4: 2.09M, 2.09M, 2.08M, 2.09M, 2.09M  avg=3D2.088M
->
+ext4_init_orphan_info() reads orphan file blocks with ext4_bread()
+and stores the returned buffer_head in oi->of_binfo[i].ob_bh.
 
-Thanks. I'm not sure why it makes ext4 worse. Maybe it being inlined
-bloats it too much so it leads to more frontend stalls/icache misses
-than what the devirtualization helps with? Looking at the begin
-functions, ext4's is around 2.5x larger than xfs's. It also looks like
-ext4's read_iomap_begin function has 2 callers, so I think that may
-not get automatically inlined whereas xfs's will since
-xfs_read_iomap_begin just has 1 caller, though I don't know if that
-ends up mattering.
+If ext4_bread() succeeds but the orphan block magic or checksum
+validation fails, the function jumps to out_free. However, out_free
+starts releasing buffers from i - 1, so the current buffer_head at
+index i is skipped.
 
-I'm seeing that ext4_iomap_begin is ~1570 bytes vs.
-xfs_read_iomap_begin is ~635 bytes. It looks like though
-ext4_iomap_begin is a combined read + write begin, whereas xfs's is a
-dedicated read-only begin. If we separate ext4_iomap_begin into
-dedicated read vs write begins, then I think this gets
-ext4_read_iomap_begin down to ~230 bytes.
+This leaks the buffer_head reference obtained by ext4_bread() on the
+bad magic and bad checksum error paths.
 
-Would you be able to test if this improves the ext4 performance you're seei=
-ng?:
+Fix this by tracking the number of successfully read buffer_heads and
+releasing exactly those buffer_heads on the error path.
 
-change #1: separate out ext4_iomap_begin into ext4_read/write_iomap_begin
+Fixes: 02f310fcf47f ("ext4: Speedup ext4 orphan inode handling")
+Signed-off-by: Guanghui Yang <3497809730@qq.com>
+---
+ fs/ext4/orphan.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4c30dd8dbec7..54cdecbc7539 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3771,8 +3771,46 @@ static int ext4_iomap_alloc(struct inode
-*inode, struct ext4_map_blocks *map,
- }
+diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+index 64ea47624233..baa11e079185 100644
+--- a/fs/ext4/orphan.c
++++ b/fs/ext4/orphan.c
+@@ -572,6 +572,7 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 	int i, j;
+ 	int ret;
+ 	int free;
++	int loaded = 0;
+ 	__le32 *bdata;
+ 	int inodes_per_ob = ext4_inodes_per_orphan_block(sb);
+ 	struct ext4_orphan_block_tail *ot;
+@@ -613,6 +614,7 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 			ret = -EIO;
+ 			goto out_free;
+ 		}
++		loaded++;
+ 		ot = ext4_orphan_block_tail(sb, oi->of_binfo[i].ob_bh);
+ 		if (le32_to_cpu(ot->ob_magic) != EXT4_ORPHAN_BLOCK_MAGIC) {
+ 			ext4_error(sb, "orphan file block %d: bad magic", i);
+@@ -635,8 +637,8 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 	iput(inode);
+ 	return 0;
+ out_free:
+-	for (i--; i >= 0; i--)
+-		brelse(oi->of_binfo[i].ob_bh);
++	while (loaded-- > 0)
++		brelse(oi->of_binfo[loaded].ob_bh);
+ 	kvfree(oi->of_binfo);
+ out_put:
+ 	iput(inode);
+-- 
+2.34.1
 
-
--static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t len=
-gth,
--               unsigned flags, struct iomap *iomap, struct iomap *srcmap)
-+static int ext4_read_iomap_begin(struct inode *inode, loff_t offset,
-+               loff_t length, unsigned int flags, struct iomap *iomap,
-+               struct iomap *srcmap)
-+{
-+       int ret;
-+       struct ext4_map_blocks map;
-+       u8 blkbits =3D inode->i_blkbits;
-+
-+       if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-+               return -EINVAL;
-+
-+       if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-+               return -ERANGE;
-+
-+       /*
-+        * Calculate the first and last logical blocks respectively.
-+        */
-+       map.m_lblk =3D offset >> blkbits;
-+       map.m_len =3D min_t(loff_t, (offset + length - 1) >> blkbits,
-+                         EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
-+
-+       ret =3D ext4_map_blocks(NULL, inode, &map, 0);
-+       if (ret < 0)
-+               return ret;
-+
-+       /*
-+        * When inline encryption is enabled, sometimes I/O to an encrypted=
- file
-+        * has to be broken up to guarantee DUN contiguity.  Handle this by
-+        * limiting the length of the mapping returned.
-+        */
-+       map.m_len =3D fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len)=
-;
-+
-+       ext4_set_iomap(inode, iomap, &map, offset, length, flags);
-+
-+       return 0;
-+}
-+
-+static int ext4_write_iomap_begin(struct inode *inode, loff_t offset,
-+               loff_t length, unsigned int flags, struct iomap *iomap,
-+               struct iomap *srcmap)
- {
-        int ret;
-        struct ext4_map_blocks map;
-@@ -3793,37 +3831,33 @@ static int ext4_iomap_begin(struct inode
-*inode, loff_t offset, loff_t length,
-                          EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
-        orig_mlen =3D map.m_len;
-
--       if (flags & IOMAP_WRITE) {
-+       /*
-+        * We check here if the blocks are already allocated, then we
-+        * don't need to start a journal txn and we can directly return
-+        * the mapping information. This could boost performance
-+        * especially in multi-threaded overwrite requests.
-+        */
-+       if (offset + length <=3D i_size_read(inode)) {
-+               ret =3D ext4_map_blocks(NULL, inode, &map, 0);
-                /*
--                * We check here if the blocks are already allocated, then =
-we
--                * don't need to start a journal txn and we can directly re=
-turn
--                * the mapping information. This could boost performance
--                * especially in multi-threaded overwrite requests.
-+                * For DAX we convert extents to initialized ones before
-+                * copying the data, otherwise we do it after I/O so
-+                * there's no need to call into ext4_iomap_alloc().
-                 */
--               if (offset + length <=3D i_size_read(inode)) {
--                       ret =3D ext4_map_blocks(NULL, inode, &map, 0);
-+               if ((map.m_flags & EXT4_MAP_MAPPED) ||
-+                   (!(flags & IOMAP_DAX) &&
-+                    (map.m_flags & EXT4_MAP_UNWRITTEN))) {
-                        /*
--                        * For DAX we convert extents to initialized ones b=
-efore
--                        * copying the data, otherwise we do it after I/O s=
-o
--                        * there's no need to call into ext4_iomap_alloc().
-+                        * For atomic writes the entire requested
-+                        * length should be mapped.
-                         */
--                       if ((map.m_flags & EXT4_MAP_MAPPED) ||
--                           (!(flags & IOMAP_DAX) &&
--                            (map.m_flags & EXT4_MAP_UNWRITTEN))) {
--                               /*
--                                * For atomic writes the entire requested
--                                * length should be mapped.
--                                */
--                               if (ret =3D=3D orig_mlen ||
--                                   (!(flags & IOMAP_ATOMIC) && ret > 0))
--                                       goto out;
--                       }
--                       map.m_len =3D orig_mlen;
-+                       if (ret =3D=3D orig_mlen ||
-+                           (!(flags & IOMAP_ATOMIC) && ret > 0))
-+                               goto out;
-                }
--               ret =3D ext4_iomap_alloc(inode, &map, flags);
--       } else {
--               ret =3D ext4_map_blocks(NULL, inode, &map, 0);
-+               map.m_len =3D orig_mlen;
-        }
-+       ret =3D ext4_iomap_alloc(inode, &map, flags);
-
-        if (ret < 0)
-                return ret;
-@@ -3850,6 +3884,16 @@ static int ext4_iomap_begin(struct inode
-*inode, loff_t offset, loff_t length,
-        return 0;
- }
-
-+static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t len=
-gth,
-+               unsigned flags, struct iomap *iomap, struct iomap *srcmap)
-+{
-+       if (flags & IOMAP_WRITE)
-+               return ext4_write_iomap_begin(inode, offset, length, flags,
-+                                             iomap, srcmap);
-+       return ext4_read_iomap_begin(inode, offset, length, flags, iomap,
-+                                    srcmap);
-+}
-+
- int ext4_iomap_next(const struct iomap_iter *iter, struct iomap *iomap,
-                           struct iomap *srcmap)
- {
-
-
-change #2: use ext4_read_iomap_next in iomap_dio_rw
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 755fde1baf03..bef2851d5466 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -4006,6 +4006,8 @@ static inline void
-ext4_clear_io_unwritten_flag(ext4_io_end_t *io_end)
-
- int ext4_iomap_next(const struct iomap_iter *iter, struct iomap *iomap,
-                struct iomap *srcmap);
-+int ext4_read_iomap_next(const struct iomap_iter *iter, struct iomap *ioma=
-p,
-+               struct iomap *srcmap);
- int ext4_iomap_next_report(const struct iomap_iter *iter, struct iomap *io=
-map,
-                struct iomap *srcmap);
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index bf0c18cf1017..48c6a76a16a1 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -91,7 +91,7 @@ static ssize_t ext4_dio_read_iter(struct kiocb
-*iocb, struct iov_iter *to)
-                return generic_file_read_iter(iocb, to);
-        }
-
--       ret =3D iomap_dio_rw(iocb, to, ext4_iomap_next, NULL,
-+       ret =3D iomap_dio_rw(iocb, to, ext4_read_iomap_next, NULL,
-                           IOMAP_DIO_NO_IOMAP_END, NULL, 0);
-        inode_unlock_shared(inode);
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 54cdecbc7539..6e7c77276d58 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3771,9 +3771,9 @@ static int ext4_iomap_alloc(struct inode *inode,
-struct ext4_map_blocks *map,
- }
-
-
--static int ext4_read_iomap_begin(struct inode *inode, loff_t offset,
--               loff_t length, unsigned int flags, struct iomap *iomap,
--               struct iomap *srcmap)
-+static __always_inline int ext4_read_iomap_begin(struct inode *inode,
-+               loff_t offset, loff_t length, unsigned int flags,
-+               struct iomap *iomap, struct iomap *srcmap)
- {
-        int ret;
-        struct ext4_map_blocks map;
-@@ -3900,6 +3900,12 @@ int ext4_iomap_next(const struct iomap_iter
-*iter, struct iomap *iomap,
-        return iomap_process(iter, iomap, srcmap, ext4_iomap_begin, NULL);
- }
-
-+int ext4_read_iomap_next(const struct iomap_iter *iter, struct iomap *ioma=
-p,
-+                          struct iomap *srcmap)
-+{
-+       return iomap_process(iter, iomap, srcmap, ext4_read_iomap_begin, NU=
-LL);
-+}
-+
- static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
-                                   loff_t length, unsigned int flags,
-                                   struct iomap *iomap, struct iomap *srcma=
-p)
-
-The github link for the changes are in [1].
-
-Thanks for your patience with this!
-
-[1] https://github.com/joannekoong/linux/commits/iomap_simple_dio_iomap_nex=
-t_ext4/
