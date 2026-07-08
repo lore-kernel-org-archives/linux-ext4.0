@@ -1,42 +1,63 @@
-Received: from mail.synology.com (mail.synology.com [211.23.38.101])
+Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 903143B19D0
-	for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2026 07:33:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=211.23.38.101
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D39222DAFBD;
+	Wed,  8 Jul 2026 08:12:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=43.163.128.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783496021; cv=none; b=iMx3/9omEQWf1aci69us4BeTzsrreq12miMTLPCMt+eP9WKLLfz/k9uiCW2lQ41oY0qeE3GeYELky/ew1BIpd5Lywe9DjxCorBOQIH7kRQtkaOg3tcN7RBnRZyFWkPrc+EvXu9FtJOpHPaqvoV80aMM6IUIWfL9Y7BOoOdrk34I=
+	t=1783498353; cv=none; b=BazYXBCY01qM6PTZnvFV+d3Znc5DCdLLk28ffxK5o4m8rcgY6aY/5iNpApFuNcufdzlPQk26PTTd/eB7M252Aw/zYZPJ4zwml2Af9RxKMdIolHUxxlmDnlEgfl+xfA6G/axtb3c+5R7/ONH7HuYc/T0eMIggv+Kb0KNrAVH2Or4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783496021; c=relaxed/simple;
-	bh=HCW4TKCi65mgymYWwQoa6YWRcYP0Fry1G5zTZcCSzV8=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=Bvaalbu8FuYpZEqqH8gHWI2LpIh8MiF9gWPy9eIKUpQBgD0yO0Ydu8CCmzvw55q4csjvZB2CtelxmEUSLw+o1X/ZdO+9JMNv7Se1MrE7BI9IlIfCW98hnPKusVuqAyR5pLoGTGd+7mVzT6vwhTZBEgB2pO9vLMO9POaUn6IPntU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=synology.com; spf=pass smtp.mailfrom=synology.com; dkim=pass (1024-bit key) header.d=synology.com header.i=@synology.com header.b=VCN2XXqS; arc=none smtp.client-ip=211.23.38.101
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=synology.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=synology.com
+	s=arc-20240116; t=1783498353; c=relaxed/simple;
+	bh=ymhXvroLX3CH4eR2SGkSdoQGnSfT5q1/U6mh3CKl768=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=nbHTTMwKfeErTqmUDa/YkjrPQkgm8Z67+5H/wyk/o62TgtyWvff8EYGqS4IQwCgGNRmLQeM2HdbSwsNdb5+m/mw1p6hL3tnAsg6iS/wJuhHRpkSRlJdZotNQ6/vy73rFzTpJyX8yf9UGQOLxUrVHe3PC7mYYDsEpmeFaihpH/+0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=FLZbJMrT; arc=none smtp.client-ip=43.163.128.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=synology.com header.i=@synology.com header.b="VCN2XXqS"
-Received: from 10511-DT-003.. (unknown [10.17.46.51])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange x25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mail.synology.com (Postfix) with ESMTPSA id 4gw8w71r1HzKXPXTQ;
-	Wed, 08 Jul 2026 15:33:27 +0800 (CST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=synology.com;
-	s=123; t=1783496007;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=D23xn9YQU7NkkxIZlgmhqsEm2yeIZ87b8WkOzyJSWFk=;
-	b=VCN2XXqSRCK5cqItfQ1IVd7JO6LYlDmHywTwDH3S5pMUUtIyI07R7HzMOkOSwu8c9zf756
-	OHps+XnAN6bgJGbF4h772M2JKOyTx3rkn82ccdTm2QPf4oWL+xPJZFUbzMeX260x6dXKlm
-	EB41r1i+S6d4jCVwwe24yRdawbitDxU=
-From: Ting-Chang Hou <tchou@synology.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="FLZbJMrT"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1783498340; bh=SnX/BxqxHOFgdRa7DP80F2nItStdQQssUzZaSW66+Yg=;
+	h=From:To:Cc:Subject:Date;
+	b=FLZbJMrT6siq6hYkGYFz+wElonRlV1a6OgCWuWQ7CPS3th82ys2pBSVv4OSD+XNc7
+	 7IlvvfG5OPNOyI98UtJBgQQBdpv9WXuc2hzN7QwZzbl1GkDVr1taxGDjSURuFlLkcs
+	 vF8Au8hvJQKJkar4EGR4DIPzdyHa7ExhWJG7fVuY=
+Received: from ubuntu.. ([218.196.207.7])
+	by newxmesmtplogicsvrszc43-0.qq.com (NewEsmtp) with SMTP
+	id 3079D4A5; Wed, 08 Jul 2026 16:12:07 +0800
+X-QQ-mid: xmsmtpt1783498327ta8cpmedd
+Message-ID: <tencent_E3622146846A84C75C31C7D32AC4D5AD0605@qq.com>
+X-QQ-XMAILINFO: MllZffuBkEb55+1pNaYaxXA4sA6k+xzHEMn2Zw9BM7Wy+uZla4RJct4it5QFmY
+	 dFmHDdE3hGRCF/KI5OXHOTMZIjn6Haz33tVvMw5/ryNzZvvejZbLq2Du6c3tGT3gwerQc6tEhHsE
+	 uqoekNzBQSdxmpf0qtgTd/7GvPI8kPS0HJxLyazbEqap5jyaLtww1cF1ooT0gpY8grF/318ZQO/J
+	 F0yaVfwrp4E6I73y+Q+JnI+iuINaNADBsj0eCBJNqJvP+94UCXWvGjLpniGoGD3kLAxS3BSgZFsk
+	 R3E8qNRjRnNXtVFZCrXhAtBRc67YunIvlUfyeHYr8v8Y79XRw6g8mv5PhiEVIUGsBNwvKlYmzwnz
+	 C4I9Ly0jdq4By/DQgT4f9IgzqMnTebOC+QRQCQdEm9LHbuwWBWpCL1rHHQ4Dj/ux692cFH/fTNaV
+	 3a5TGVGMzxtxy5c6JZJY6Z1ZzONHCjXwDM9iInXOqDCoKZNlkEIvzQFYR7VdTNTrVHJBQg9KeYTA
+	 4TzM1jdFD7sw2OFkCL9z08i0TLUBekwVeXaxmdGiuh8TeBiK+5/ak0kJWQnPJKqYogBse8iaIBa5
+	 AD9mOKol+MaeJoZfziPaqABommoj1NWjOLqi9RBJ7Eg4dYLBEHbO6enSVZkw4KOdNCnfY/P490nN
+	 Fz8KnYe8HY02DMUjJ7l4qi727ebDC3i28qN3vDxpDqG0lMTslHqdNax4G5DpCxGRrEDK5PHxvhFM
+	 AeLqNimNkAYYAnCiFYamp6izbI5MYejKH2mSWPF6aMYC/VEIzEtuAAC3RdubB60/40lqUz6+KlRt
+	 FKe2bPpGwZBcYmt8xe5+bZwbidkZjgSyfdgeUEq28YWniQZWAcYQmpYYoOKJ2wMxD8+0HgptpE6d
+	 4v60ElxGIqTQQeyj9fbuxRzZii6YOr56ye/qdP3otMKdIjEmFHNK4qhSrrmyJLjU+qJgQoMk8NUE
+	 xMGEpZrgZ9wMW1fNXDKenCdv3nrg1UgwAQprr4QXYJhO86N/waiFzykld7zobkC0DqUjuRp+j40R
+	 Yn8tMlBuLvaDvQjr6Dbwi41NEzbGYYFcL5U794EEPGndWmj3dB
+X-QQ-XMRINFO: Mp0Kj//9VHAxzExpfF+O8yhSrljjwrznVg==
+From: Guanghui Yang <3497809730@qq.com>
 To: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	Ting-Chang Hou <tchou@synology.com>
-Subject: [PATCH] libext2fs: fix fullmap icount allocation overflow on huge inode counts
-Date: Wed,  8 Jul 2026 15:33:22 +0800
-Message-Id: <20260708073322.404521-1-tchou@synology.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org,
+	Guanghui Yang <3497809730@qq.com>
+Subject: [PATCH] ext4: propagate errors from fast commit range replay
+Date: Wed,  8 Jul 2026 08:12:04 +0000
+X-OQ-MSGID: <20260708081204.924947-1-3497809730@qq.com>
 X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -45,74 +66,90 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Synology-Spam-Status: score=0, required 6, WHITELIST_FROM_ADDRESS 0
-X-Synology-Spam-Flag: no
-X-Synology-Virus-Status: no
-X-Synology-MCP-Status: no
-X-Synology-Auth: pass
-Content-Type: text/plain
 
-alloc_icount() computes the EXT2_ICOUNT_OPT_FULLMAP allocation size
-in an "unsigned int":
+ext4_fc_replay() stops replaying fast commit tags only when a tag
+handler returns a negative error. However, ext4_fc_replay_add_range()
+and ext4_fc_replay_del_range() currently return 0 from their common
+exit paths even after internal failures.
 
-	unsigned sz = sizeof(*icount->fullmap) * icount->num_inodes;
+This hides errors from ext4_fc_record_modified_inode(),
+ext4_map_blocks(), ext4_find_extent(), ext4_ext_insert_extent(),
+ext4_ext_replay_update_ex(), and ext4_ext_remove_space(). As a result,
+a failed ADD_RANGE or DEL_RANGE replay can be treated as successful and
+the replay code may continue with subsequent fast commit tags.
 
-num_inodes is a 32-bit ext2_ino_t taken from s_inodes_count, so for
-file systems with s_inodes_count >= 2^31 the assignment truncates the
-product: at s_inodes_count == 2^31 the allocation collapses to zero
-bytes, and at the ext4 maximum of 2^32 - 1 (seen in the field on an
-84 TiB file system created with a dense inode ratio) only half of the
-array is allocated.  Running e2fsck -E inode_count_fullmap on such a
-file system then reads and writes gigabytes past the end of the
-buffer in pass 2 and pass 4, corrupting e2fsck's own heap while it
-decides what to repair.
+This is particularly problematic for DEL_RANGE because it may already
+have marked blocks as free before ext4_ext_remove_space() fails. If the
+error is swallowed, replay may continue from a partially applied range
+operation.
 
-The array is also one element too small on every file system: valid
-inode numbers run from 1 to num_inodes inclusive and fullmap is
-indexed by inode number, but only num_inodes elements are allocated,
-so fullmap[num_inodes] is out of bounds.  Pass 4 fetches the count of
-every inode up to and including s_inodes_count, so every fullmap run
-performs a 2-byte out-of-bounds access of the last element.
+Return the saved error from the common exit paths and make the
+ERR_PTR() cases in ADD_RANGE store PTR_ERR() before jumping to out.
 
-Compute the size in size_t, allocate num_inodes + 1 entries, and skip
-the fullmap optimization (falling back to the bitmap + list variant)
-when the size would not fit in the unsigned long taken by
-ext2fs_get_mem(), which also keeps the computation from wrapping on
-32-bit builds.
-
-Signed-off-by: Ting-Chang Hou <tchou@synology.com>
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Cc: stable@vger.kernel.org
+Signed-off-by: Guanghui Yang <3497809730@qq.com>
 ---
- lib/ext2fs/icount.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ fs/ext4/fast_commit.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index 888a90b2..08b6bb28 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -115,8 +115,19 @@ static errcode_t alloc_icount(ext2_filsys fs, int flags, ext2_icount_t *ret)
- 	icount->num_inodes = fs->super->s_inodes_count;
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 8e2259799614..fbb486d917b0 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -2196,8 +2196,11 @@ static int ext4_fc_replay_add_range(struct super_block *sb, u8 *val)
+ 		if (ret == 0) {
+ 			/* Range is not mapped */
+ 			path = ext4_find_extent(inode, cur, path, 0);
+-			if (IS_ERR(path))
++			if (IS_ERR(path)) {
++				ret = PTR_ERR(path);
++				path = NULL;
+ 				goto out;
++			}
+ 			memset(&newex, 0, sizeof(newex));
+ 			newex.ee_block = cpu_to_le32(cur);
+ 			ext4_ext_store_pblock(
+@@ -2209,8 +2212,11 @@ static int ext4_fc_replay_add_range(struct super_block *sb, u8 *val)
+ 			path = ext4_ext_insert_extent(NULL, inode,
+ 						      path, &newex, 0);
+ 			up_write((&EXT4_I(inode)->i_data_sem));
+-			if (IS_ERR(path))
++			if (IS_ERR(path)) {
++				ret = PTR_ERR(path);
++				path = NULL;
+ 				goto out;
++			}
+ 			goto next;
+ 		}
  
- 	if ((flags & EXT2_ICOUNT_OPT_FULLMAP) &&
--	    (flags & EXT2_ICOUNT_OPT_INCREMENT)) {
--		unsigned sz = sizeof(*icount->fullmap) * icount->num_inodes;
-+	    (flags & EXT2_ICOUNT_OPT_INCREMENT) &&
-+	    icount->num_inodes < ~0UL / sizeof(*icount->fullmap)) {
-+		/*
-+		 * fullmap is indexed by inode number, which runs from
-+		 * 1 to num_inodes inclusive; allocate num_inodes + 1
-+		 * entries.  num_inodes can be as large as 2^32 - 1, so
-+		 * compute the size in size_t and skip fullmap (falling
-+		 * back to the bitmap + list variant below) where the
-+		 * result would not fit in the unsigned long taken by
-+		 * ext2fs_get_mem().
-+		 */
-+		size_t sz = sizeof(*icount->fullmap) *
-+			((size_t) icount->num_inodes + 1);
+@@ -2257,10 +2263,11 @@ static int ext4_fc_replay_add_range(struct super_block *sb, u8 *val)
+ 	}
+ 	ext4_ext_replay_shrink_inode(inode, i_size_read(inode) >>
+ 					sb->s_blocksize_bits);
++	ret = 0;
+ out:
+ 	ext4_free_ext_path(path);
+ 	iput(inode);
+-	return 0;
++	return ret;
+ }
  
- 		retval = ext2fs_get_mem(sz, &icount->fullmap);
- 		/* If we can't allocate, fall back */
+ /* Replay DEL_RANGE tag */
+@@ -2320,9 +2327,10 @@ ext4_fc_replay_del_range(struct super_block *sb, u8 *val)
+ 	ext4_ext_replay_shrink_inode(inode,
+ 		i_size_read(inode) >> sb->s_blocksize_bits);
+ 	ext4_mark_inode_dirty(NULL, inode);
++	ret = 0;
+ out:
+ 	iput(inode);
+-	return 0;
++	return ret;
+ }
+ 
+ static void ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
+
+base-commit: 0e35b9b6ec0ffcc5e23cbdec09f5c622ad532b53
 -- 
 2.34.1
 
-
-Disclaimer: The contents of this e-mail message and any attachments are confidential and are intended solely for addressee. The information may also be legally privileged. This transmission is sent in trust, for the sole purpose of delivery to the intended recipient. If you have received this transmission in error, any use, reproduction or dissemination of this transmission is strictly prohibited. If you are not the intended recipient, please immediately notify the sender by reply e-mail or phone and delete this message and its attachments, if any.
