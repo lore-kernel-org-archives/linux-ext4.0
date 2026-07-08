@@ -1,94 +1,94 @@
-Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com [209.85.221.46])
+Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12E303E120B
-	for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2026 20:57:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EFB73F58C2
+	for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2026 21:30:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.48
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783544247; cv=pass; b=MI9rlzuE4F+AfSsSR0RxHCdGalgFr+ufSD9E9xUfN5oSlBpKBb/7WT7dkVWAluYD6FT3KWyAk5a73Vc3gLRH1UAI6Qg4ciJ+Wvxcq5ZSGzLMIV6JYggfKAQV6+f7tsyN8y7L8z+YZrU/l45SyiLdu7xI39XTNiSeyCMtnMGBp3I=
+	t=1783546222; cv=pass; b=MfUE1DCdc6xuiZHrNyXK3OTwDuMCesyrcl4o2qwXy2IfsZEAA4JVuxXs/2WoB0hHDLevo5DbBtE0D+OZU/kBUQphTmgkXcDlLkePR/nz3jysECKmVeVVZx76/pRVHUm928uN9gQkd79b7qwkWgcn5XydtU+B7YTZy0IOuYIN6ro=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783544247; c=relaxed/simple;
-	bh=fQxqZpmVN2OjS/KTdRomuIujK83Xx3uJi3ZT6vlrZ5Q=;
+	s=arc-20240116; t=1783546222; c=relaxed/simple;
+	bh=kgvdwCop/aLSvgkbu/K8xvwikDak1ekolcORsUSIrk8=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=dOvhXPkx2yr9rsOcqBlGlblqZFaS/pxeYdrEA8w3dz6FKETBXbzJVhG9GVawXk/8Ym6++mCU47CDbw8LerME17lgkWvlbi3460UXqBkfJ7uNLh04XrBTCJMhGka53q1RwVqUMm9v1MxilCHnXhceD+P2mlj2EiASWHr+sQ5uCPU=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VRGL3DYF; arc=pass smtp.client-ip=209.85.221.46
+	 To:Cc:Content-Type; b=Z1JCqnrjvZxLaihyLU3t4wwtn8TG92If32TcgiekRYsS8MWYhIx7l6l6rShf1SEYHKjFbAJ5T28m8u7CO2J8nQyAQfSXeJNH46CfZDFYnAlAP1s6+RyNFr9OrJ/PNhfX2gqtYXSwEtUssIrDJajiF0bleri12TLNM5EqGOhVHCI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=RJQy0fpJ; arc=pass smtp.client-ip=209.85.221.48
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VRGL3DYF"
-Received: by mail-wr1-f46.google.com with SMTP id ffacd0b85a97d-4759b4f0897so689047f8f.1
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Jul 2026 13:57:25 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1783544244; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RJQy0fpJ"
+Received: by mail-wr1-f48.google.com with SMTP id ffacd0b85a97d-47ddf7b09aaso812595f8f.3
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Jul 2026 14:30:21 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1783546220; cv=none;
         d=google.com; s=arc-20260327;
-        b=ilN3YsQCau2RK2XVRbAJpSBZRpPmQq/l1xirpaLy8+VUvmaNz99mDh+KKLr86pzb4A
-         tiADkLgFtFcXG7xH0FFpvmNGiiQV7Q9UKm2to1BabCAEH8oJtj1abn9IUJPbZZuEkgo4
-         ngyuX/blqg68AwWwnyf7dSSd5Qx1z7IgCozT5n40t7/mGEf6utGOWIYZkwUziAJNXwZa
-         Yi+NM/5WSWuD6N4a8m9sNYyj6C8+kw/oOTzrtM+q5HufjgMruorCHZqImn/tbJhOJy/M
-         EuWY932DjMXXER3lwMUWBBJ5YnMhX/ZIYG9TrcoRMVTD3ij1ldWdEMcLsPCntTLEglkw
-         1KuQ==
+        b=WSdy8RTLhpwHNYsfVUrj7Ay64Q/6i2FYiJnIKSFbsIkav8QGkSM0gamHRAwX6OKyC6
+         Hsh7rJhxhrWcmAUC4oreYuBpdaw8scrESZZ54CRHyOdzN0f1sHARfg3nYufSWQ38NmD3
+         R0SrPrUSlMN0utgryyFPOi5GPucgYofXM48hrojOjjzPI1WH7of9It2eErih6IJvUyh4
+         YiNMV7M06SdZn2eXML9bdPvdtIfXNNIwiuxovtPuo/cm1irMEI8iL5mBk9f0NOo1/yfV
+         4oEmPBrvRbcVVSBlLiPMh5SMtD5UjWuFcgAP5w8tcXsXJLQ0kWl8xErwiTcOZInRqSNb
+         7RiA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=fQxqZpmVN2OjS/KTdRomuIujK83Xx3uJi3ZT6vlrZ5Q=;
-        fh=2oBhC/GzeJQWvt5WI+6DQ/m6HEOswY6mtIhjnDMyV18=;
-        b=HBatJ6TcFhc/FRaGlkFeHLw9PBB9cj70lGrtPiEbNN/fSXkk3RRYbUZ53nml8AidSV
-         IkKr+joZjhaRji3GPlcpytvmJDZYcVzwEcC/UVuUlgMU8x6z72kOSnUrnsY8ZDwe5FNQ
-         Fp0lPDBz97+WICTmLAlDxfnLcvQ5t1OEyqBSoLZVU9XYJxpRH47e6hLOlJJtkUyg3BV9
-         rFHH8B+sSrilHqSg6v6FRpLCpn+rwf/jJZHRk9UvadXsJuJawmJ15HgGClBYr2Y+mKBG
-         /WYl153I0UrYLB6B+xGezwMkUURen/xPpHyMah1onc0oTfSEK9Jc3hj2othSe7P7ogDo
-         b4Og==;
+        bh=oysFZq6tAMslUX12xXRG6mkqYiMd4xCFaT2TvkVCwfg=;
+        fh=N+GL6h0Qw7Sr9dY7GysjZvwI+fb4yeIvSr7bU0y8Kl4=;
+        b=bnykf/X1wbPqmR2ZqQnB77DDfRO9BNpa/YXXqyrMhI3ncgGi7b1Dw6X9XrEhx3N75V
+         wigUA1MU28oUuD1Zd94428Ty9aOq+/UHedukGIhvd6kOX7yJcmwdgVvKvmPXxCIxf8Rc
+         HkDUimaXcIxZh4OcmbzCMiwIid4sFpPOzbjxZC4Nux2ulVUWUN4cNikkqWhRHUqERba2
+         Ieh5MUUvB+qyqYtRw8f6xbArpxXFVmG3HHGfo6Tz/kRsJyS+L5oPzuN1flz31hyEsOKy
+         WPLjR75E2Cr1bsNBEe52vlHh0BAJY5VhkNVpWxEBUrA7N+ofZ4uN6XzzqNtH+04zCG1c
+         d/TQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783544244; x=1784149044; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1783546220; x=1784151020; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=fQxqZpmVN2OjS/KTdRomuIujK83Xx3uJi3ZT6vlrZ5Q=;
-        b=VRGL3DYF3/HWVEPQi7js832v1iGwNNDxbVIjK2dD/vjclbwE7Q+2/dIWXK/OovusOG
-         zS5AKlAaNWBdp785L5E0BUmEy2qVjTMdECIWVBy9b4MuZijB8M4srfZlOx59GhblSRse
-         4mHQ/wfv9+5p34DqzI/Vygjgonp5w3jF3xtaGDtGEoT2oz6bAM/BO8NQ1Ywx90EdbnR3
-         1vvIbj9Kj/7tVK0XcKg8X3s2403H1aGOHVBtIMrmA/gzhnd6GEmW/nVUOjnMsxb/qn29
-         5UWPHdpFL37BJWWrnrGpwQWuGKUCC7VSyRnM0wrTiGDsgjw7wEJQSudH1V+cqA/2v9fW
-         13vg==
+        bh=oysFZq6tAMslUX12xXRG6mkqYiMd4xCFaT2TvkVCwfg=;
+        b=RJQy0fpJv3jey4oVW3Jth+gMCS0D+qKWsZcVqK3QeSsQ16gmCFNS9CbpLD60E8A3K9
+         TR6GMD4UmkmNdFvZaOPUhqUGwikiGSeaCAju2UOUhlbPWVCZVPLnjZPMxBSXi54koZ0F
+         2H+qXyoHa9QRiF3yaFUfz0g1NU7tN9rNwXzcIDLuh2QKElrAlPHNL/LWqpY6p/+HyKWS
+         AIrIDoqIE6vUo0+XdOw4g1DKMIynTJ3oZ9ud93GyU4yZ1+ig5asjfElCGEFwAh3LMI3N
+         m3WEVBmDXtAAcC1nFvf5FzcJRztFbfE/O0sNannv8vHK+RwGLDhGQ9m+DluCnjakM9GY
+         Ew5Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783544244; x=1784149044;
+        d=1e100.net; s=20251104; t=1783546220; x=1784151020;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=fQxqZpmVN2OjS/KTdRomuIujK83Xx3uJi3ZT6vlrZ5Q=;
-        b=buUHCAZk5W552QgRKT75jMj1QqmStWmEW1z9Js0pc33/m5dAGPayEv6AL35rrycf2w
-         bYV4A4sqT2zP5rMsHup6NsPIV3W4l4LC+szOUAECeIxam1cNw4byNCWXdarPhI6cNvMG
-         zRkPOolyC7fk/tvqmzQes6JlXXhz3tcm2uaNyEzt9APRA4cPLc3uWKyJYwv9/80AQikF
-         P2Ajccya+cc+y+Jry/vJ5mvm8LpodpRJglR53919FA+yue+NpaniW1hldi8wvh705JaC
-         GgOukiyM79mVvGKDWcBOJySNCNjjmiT3ojgKGBoQnU95Jg3NgqqOcoOzlGouW3YZ/kOo
-         6V/Q==
-X-Forwarded-Encrypted: i=1; AHgh+Rp/+GQA66/OeQA0fmrVFw38z//pJHjby2U5I72DbBJZCPPkhHpkP95wHeHMAkaGVLVN59Yqve0mxy7c@vger.kernel.org
-X-Gm-Message-State: AOJu0Ywxgjax3UsQsHSuRr2LFiqCNS9+DV5x6KbHv2oCjXi5xddS1id+
-	fDonKGJ1TN6Nv2/NlV80AVFLGfXjVtpu8FTlKK8lJ6dLN3JKmcNwwg5+/6tqGpSmC4Plza31Z6R
-	UExRdpMj5vhf0KA/FOUrNV7FCRbNYkAk=
-X-Gm-Gg: AfdE7cnGWomv4kcUnoHyaPldfnk8SsWmJzYWcrLbFtkWguFh8lpDIFv/GoXeZ8igwJu
-	qn8NlQKwZ5itlQDdKLcQo93kf3k4Pf49Z7WSi0MrYsR0TiAshJH5WAJf2g7dnvd5TR9ux89ItVo
-	AXpbEudB/3YSJHnr+mBQmggN92XTHiA2NRvn/DrBXMoo+3GUwteNTC1+BPlRZwlXcypllZoLLO9
-	WJvn1nQkKHaDMefPy6Pww5z9g+ZTBh8f1P+5p7IPs20mB8WbGXag3aBtxjeW2MPv0LsYByqdKAN
-	NS6k8QJLB/EeOo4YiA7PFkASqla4yGr0ZoWn1PmfpHNF6LOcvYV+
-X-Received: by 2002:a05:6000:2004:b0:47a:c103:8a2e with SMTP id
- ffacd0b85a97d-47df0808ff0mr4522829f8f.45.1783544244470; Wed, 08 Jul 2026
- 13:57:24 -0700 (PDT)
+        bh=oysFZq6tAMslUX12xXRG6mkqYiMd4xCFaT2TvkVCwfg=;
+        b=olygjmfQ9yIDvWmmYBWuzCBoRakzoN5+muRqDWXTi8sCjoIE0U/nKqmg5tk/B6Mr3q
+         p/9eQZ0DJ8zWAMXBzXtaUZOnfDG4ZUVbiz8Y4Rhhs0R3QxtrayBRaqKysNexTt3ST8Zc
+         wOtMSVOmw88qpraJpfHiqRp64TMCZki8GDYv9X8V18jPs5+pKfQYe+sCfRe7CW2DGF3u
+         9Xx5JU2UzrMicgJldqHjmaumv/4vpQX8VviClPNUgvTlavO7pMHbVdhvUA3Bt661AdXw
+         Z9ozLfcnsGEywS1rjSCAssX0t1bwKW/MV05hj0EvTnbswMZnJoEyouoKxxEmYybFl2PK
+         9GlQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rphx3TADwZNIzl3nuuzFx6H5TLiZKkC6gifaY+PigwhaTseJNzfrAfYo+cazKicuv17FkpqQWhx2Min@vger.kernel.org
+X-Gm-Message-State: AOJu0YyMEcri5eJTkXuQ2gZ0b7NnKniddoU47P8tKSLwW6s7DF+4LTu0
+	8o/2+vDHFOUNHa5dmVafgJv71xopCwDHFL2UiE4dej00pRP93CXTYU7YTrjN3Fx5OR8SbkhQHxG
+	4Qqgfrhd83xkkiupfRyxw4fWw9/AONLY=
+X-Gm-Gg: AfdE7cnLcWP6MPM/LOicgN/xDfq/2GnupV7dVSIto2nHorYKgMftkH5ShVkG8+4yTRX
+	9BmMhvq27cqC0QlkGs4zPOmzSLv6/Nzl63ACNs2Nois9vS70zyP4TUWt4zwxe7mheHTDeDe6zEQ
+	W14/je2VtFTXPsGzsskK0+cEBhFdep1K0OHfmaRXw7NoL7BAiSFRAeIojuTW5BAqTjm4PfXiJCy
+	hTB3w45UyPPvPdUraYTzvCN7q2/4YqAkMSQTfJBkDI3of3mhCmhknmtz5Y5pmqQJHmsyY59jEIj
+	0VEPPJBEIfQo63C0gvSqNehF+RWMBJVabHBLLEIkglethkeRW84H
+X-Received: by 2002:a05:6000:1a8d:b0:46e:997e:b4c5 with SMTP id
+ ffacd0b85a97d-47df07318ebmr4686335f8f.18.1783546219649; Wed, 08 Jul 2026
+ 14:30:19 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260520030357.679687-1-yi.zhang@huaweicloud.com> <20260520030357.679687-2-yi.zhang@huaweicloud.com>
-In-Reply-To: <20260520030357.679687-2-yi.zhang@huaweicloud.com>
+References: <20260520030357.679687-1-yi.zhang@huaweicloud.com> <20260520030357.679687-3-yi.zhang@huaweicloud.com>
+In-Reply-To: <20260520030357.679687-3-yi.zhang@huaweicloud.com>
 From: Joanne Koong <joannelkoong@gmail.com>
-Date: Wed, 8 Jul 2026 13:57:12 -0700
-X-Gm-Features: AUfX_myQ8YTw0YdCEbZNt9d5CTUFLRbMZHIi911QIv69S8S5We_R1LPqmYg6pLQ
-Message-ID: <CAJnrk1ZnO50z7C_e0y-0SVUXtd5S39VMsWfzuwD4LEHmuZw_wg@mail.gmail.com>
-Subject: Re: [PATCH v2 1/5] iomap: correct the range of a partial dirty clear
+Date: Wed, 8 Jul 2026 14:30:05 -0700
+X-Gm-Features: AUfX_mze2KSMzcr9sNQr-lNuBFUay6tZXCOW1WB9AHVpL4GFldBmQybXidQ8yFw
+Message-ID: <CAJnrk1Yeqij31Geuv55Es+si0zRqzCGe-B=hpw_DjT11AsRcTQ@mail.gmail.com>
+Subject: Re: [PATCH v2 2/5] iomap: support invalidating partial folios
 To: Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org, 
 	linux-ext4@vger.kernel.org, brauner@kernel.org, djwong@kernel.org, 
@@ -102,31 +102,45 @@ On Tue, May 19, 2026 at 8:09=E2=80=AFPM Zhang Yi <yi.zhang@huaweicloud.com>=
 >
 > From: Zhang Yi <yi.zhang@huawei.com>
 >
-> The block range calculation in ifs_clear_range_dirty() is incorrect when
-> partially clearing a range in a folio. We cannot clear the dirty bit of
-> the first block or the last block if the start or end offset is not
-> blocksize-aligned. This has not yet caused any issues since we always
-> clear a whole folio in iomap_writeback_folio().
-
-If this isn't currently reachable, does this still need the stable@
-tag? My understanding from the stable document [1] is that "it must
-either fix a real bug that bothers people or just add a device ID"?
-[1]
-
+> Current iomap_invalidate_folio() can only invalidate an entire folio. If
+> we truncate a partial folio on a filesystem where the block size is
+> smaller than the folio size, it will leave behind dirty bits for the
+> truncated or punched blocks. During the write-back process, it will
+> attempt to map the invalid hole range. Fortunately, this has not caused
+> any real problems so far because the ->writeback_range() function
+> corrects the length.
 >
-> Fix this by rounding up the first block to blocksize alignment, and
-> calculate the last block by rounding down (using truncation). Correct
-> the nr_blks calculation accordingly.
+> However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
+> the support for invalidating partial folios. When ext4 partially zeroes
+> out a dirty and unwritten folio, it does not perform a flush first like
+> XFS. Therefore, if the dirty bits of the corresponding area cannot be
+> cleared, the zeroed area after writeback remains in the written state
+> rather than reverting to the unwritten state. Fix this by supporting
+> invalidation of partial folios.
 >
-> Fixes: 4ce02c679722 ("iomap: Add per-block dirty state tracking to improv=
-e performance")
-> Cc: <stable@vger.kernel.org> # v6.6
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+> ---
+>  fs/iomap/buffered-io.c | 2 ++
+>  1 file changed, 2 insertions(+)
+>
+> diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
+> index 64351a448a8b..876c2f507f58 100644
+> --- a/fs/iomap/buffered-io.c
+> +++ b/fs/iomap/buffered-io.c
+> @@ -761,6 +761,8 @@ void iomap_invalidate_folio(struct folio *folio, size=
+_t offset, size_t len)
+>                 WARN_ON_ONCE(folio_test_writeback(folio));
+>                 folio_cancel_dirty(folio);
+>                 ifs_free(folio);
+> +       } else {
+> +               iomap_clear_range_dirty(folio, offset, len);
+>         }
+>  }
+>  EXPORT_SYMBOL_GPL(iomap_invalidate_folio);
+> --
+> 2.52.0
+>
+>
 
 Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
-
-Thanks,
-Joanne
-
-[1] https://www.kernel.org/doc/Documentation/process/stable-kernel-rules.rs=
-t
