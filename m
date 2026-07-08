@@ -1,50 +1,43 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from mail.synology.com (mail.synology.com [211.23.38.101])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BD393C0A19;
-	Wed,  8 Jul 2026 06:28:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 903143B19D0
+	for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2026 07:33:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=211.23.38.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783492136; cv=none; b=f1Gi2KKDUEOb4rBxAMLGQdVP36nQB65W/lFxD72TpkbfHA4E07zniPnTjszfBH0bVLMYJxJk8um6gYqDFf+Lh8XRp1juJyO4XOBI1Y3RoUML9i55XAJRiEnhm6v/nZFdugW0AUdqpNht40VU/WvR7zHUM+5MiRTSJwyw/XpUlCE=
+	t=1783496021; cv=none; b=iMx3/9omEQWf1aci69us4BeTzsrreq12miMTLPCMt+eP9WKLLfz/k9uiCW2lQ41oY0qeE3GeYELky/ew1BIpd5Lywe9DjxCorBOQIH7kRQtkaOg3tcN7RBnRZyFWkPrc+EvXu9FtJOpHPaqvoV80aMM6IUIWfL9Y7BOoOdrk34I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783492136; c=relaxed/simple;
-	bh=eGqb1J7zlBnZGVUqymP38GQJ1YUIFjzCMAFESdpj3Io=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=og8q8EzCE91DtcaoPH9Nf7QckKXed4KmHyMr+rgl15Zmy1qOAHKf8MtmEyUI4vtrctqVgXy8jEtecugHpQHIy8H7IPXaIIeTvTs0s0o364VZOLh9sr7Ck64XehKGcgQbOMX7A6O9bn7EforhiE7QLCIg18OI3txEiot5hG5MuXE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gw7T62Cp9zKHMND;
-	Wed,  8 Jul 2026 14:28:26 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id D04A140A1C;
-	Wed,  8 Jul 2026 14:28:46 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCnt3MT7k1q4VPeAQ--.18748S5;
-	Wed, 08 Jul 2026 14:28:46 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	yizhang089@gmail.com,
-	chengzhihao1@huawei.com,
-	yangerkun@huawei.com,
-	yukuai@fnnas.com
-Subject: [PATCH v3 1/9] ext4: use FGP_WRITEBEGIN for tail block zeroing
-Date: Wed,  8 Jul 2026 14:20:41 +0800
-Message-ID: <20260708062049.1982410-2-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260708062049.1982410-1-yi.zhang@huaweicloud.com>
-References: <20260708062049.1982410-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1783496021; c=relaxed/simple;
+	bh=HCW4TKCi65mgymYWwQoa6YWRcYP0Fry1G5zTZcCSzV8=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=Bvaalbu8FuYpZEqqH8gHWI2LpIh8MiF9gWPy9eIKUpQBgD0yO0Ydu8CCmzvw55q4csjvZB2CtelxmEUSLw+o1X/ZdO+9JMNv7Se1MrE7BI9IlIfCW98hnPKusVuqAyR5pLoGTGd+7mVzT6vwhTZBEgB2pO9vLMO9POaUn6IPntU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=synology.com; spf=pass smtp.mailfrom=synology.com; dkim=pass (1024-bit key) header.d=synology.com header.i=@synology.com header.b=VCN2XXqS; arc=none smtp.client-ip=211.23.38.101
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=synology.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=synology.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=synology.com header.i=@synology.com header.b="VCN2XXqS"
+Received: from 10511-DT-003.. (unknown [10.17.46.51])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange x25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mail.synology.com (Postfix) with ESMTPSA id 4gw8w71r1HzKXPXTQ;
+	Wed, 08 Jul 2026 15:33:27 +0800 (CST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=synology.com;
+	s=123; t=1783496007;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=D23xn9YQU7NkkxIZlgmhqsEm2yeIZ87b8WkOzyJSWFk=;
+	b=VCN2XXqSRCK5cqItfQ1IVd7JO6LYlDmHywTwDH3S5pMUUtIyI07R7HzMOkOSwu8c9zf756
+	OHps+XnAN6bgJGbF4h772M2JKOyTx3rkn82ccdTm2QPf4oWL+xPJZFUbzMeX260x6dXKlm
+	EB41r1i+S6d4jCVwwe24yRdawbitDxU=
+From: Ting-Chang Hou <tchou@synology.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	Ting-Chang Hou <tchou@synology.com>
+Subject: [PATCH] libext2fs: fix fullmap icount allocation overflow on huge inode counts
+Date: Wed,  8 Jul 2026 15:33:22 +0800
+Message-Id: <20260708073322.404521-1-tchou@synology.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,52 +45,74 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgCnt3MT7k1q4VPeAQ--.18748S5
-X-Coremail-Antispam: 1UD129KBjvdXoWrur4DWw4fAryUKrW3ZF4xWFg_yoWDWFX_Ja
-	4vqw48W3yrJwn3uFsYya9Iqr1vvFyrGr4fCF48JFn3WryFvan5GwnYyFy5JFW7Wr4jgrZ8
-	Wr1xXrWftF17WjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbk8FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
-	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
-	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
-	wVC0I7IYx2IY67AKxVWUCVW8JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwA2z4
-	x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1le2I2
-	62IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcV
-	AFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG
-	0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0xkIwI
-	1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_
-	Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17
-	CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0
-	I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I
-	8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73
-	UjIFyTuYvjfUewIqUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-Synology-Spam-Status: score=0, required 6, WHITELIST_FROM_ADDRESS 0
+X-Synology-Spam-Flag: no
+X-Synology-Virus-Status: no
+X-Synology-MCP-Status: no
+X-Synology-Auth: pass
+Content-Type: text/plain
 
-From: Zhang Yi <yi.zhang@huawei.com>
+alloc_icount() computes the EXT2_ICOUNT_OPT_FULLMAP allocation size
+in an "unsigned int":
 
-ext4_load_tail_bh() returns a locked folio that callers immediately
-mutate through folio_zero_range() and mark_buffer_dirty().  Use
-FGP_WRITEBEGIN so that, on backing devices that require stable writes,
-__filemap_get_folio() waits for writeback to finish before returning
-the folio; on regular devices the wait is a no-op.
+	unsigned sz = sizeof(*icount->fullmap) * icount->num_inodes;
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+num_inodes is a 32-bit ext2_ino_t taken from s_inodes_count, so for
+file systems with s_inodes_count >= 2^31 the assignment truncates the
+product: at s_inodes_count == 2^31 the allocation collapses to zero
+bytes, and at the ext4 maximum of 2^32 - 1 (seen in the field on an
+84 TiB file system created with a dense inode ratio) only half of the
+array is allocated.  Running e2fsck -E inode_count_fullmap on such a
+file system then reads and writes gigabytes past the end of the
+buffer in pass 2 and pass 4, corrupting e2fsck's own heap while it
+decides what to repair.
+
+The array is also one element too small on every file system: valid
+inode numbers run from 1 to num_inodes inclusive and fullmap is
+indexed by inode number, but only num_inodes elements are allocated,
+so fullmap[num_inodes] is out of bounds.  Pass 4 fetches the count of
+every inode up to and including s_inodes_count, so every fullmap run
+performs a 2-byte out-of-bounds access of the last element.
+
+Compute the size in size_t, allocate num_inodes + 1 entries, and skip
+the fullmap optimization (falling back to the bitmap + list variant)
+when the size would not fit in the unsigned long taken by
+ext2fs_get_mem(), which also keeps the computation from wrapping on
+32-bit builds.
+
+Signed-off-by: Ting-Chang Hou <tchou@synology.com>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ lib/ext2fs/icount.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c2c2d6ac7f3d..7b2face041ef 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4037,7 +4037,7 @@ static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
- 	int err = 0;
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index 888a90b2..08b6bb28 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -115,8 +115,19 @@ static errcode_t alloc_icount(ext2_filsys fs, int flags, ext2_icount_t *ret)
+ 	icount->num_inodes = fs->super->s_inodes_count;
  
- 	folio = __filemap_get_folio(mapping, from >> PAGE_SHIFT,
--				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
-+				    FGP_WRITEBEGIN | FGP_ACCESSED,
- 				    mapping_gfp_constraint(mapping, ~__GFP_FS));
- 	if (IS_ERR(folio))
- 		return ERR_CAST(folio);
+ 	if ((flags & EXT2_ICOUNT_OPT_FULLMAP) &&
+-	    (flags & EXT2_ICOUNT_OPT_INCREMENT)) {
+-		unsigned sz = sizeof(*icount->fullmap) * icount->num_inodes;
++	    (flags & EXT2_ICOUNT_OPT_INCREMENT) &&
++	    icount->num_inodes < ~0UL / sizeof(*icount->fullmap)) {
++		/*
++		 * fullmap is indexed by inode number, which runs from
++		 * 1 to num_inodes inclusive; allocate num_inodes + 1
++		 * entries.  num_inodes can be as large as 2^32 - 1, so
++		 * compute the size in size_t and skip fullmap (falling
++		 * back to the bitmap + list variant below) where the
++		 * result would not fit in the unsigned long taken by
++		 * ext2fs_get_mem().
++		 */
++		size_t sz = sizeof(*icount->fullmap) *
++			((size_t) icount->num_inodes + 1);
+ 
+ 		retval = ext2fs_get_mem(sz, &icount->fullmap);
+ 		/* If we can't allocate, fall back */
 -- 
-2.52.0
+2.34.1
 
+
+Disclaimer: The contents of this e-mail message and any attachments are confidential and are intended solely for addressee. The information may also be legally privileged. This transmission is sent in trust, for the sole purpose of delivery to the intended recipient. If you have received this transmission in error, any use, reproduction or dissemination of this transmission is strictly prohibited. If you are not the intended recipient, please immediately notify the sender by reply e-mail or phone and delete this message and its attachments, if any.
