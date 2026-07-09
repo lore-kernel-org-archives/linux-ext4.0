@@ -1,30 +1,30 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 921C4351C27;
-	Thu,  9 Jul 2026 02:47:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6D6E331EB1;
+	Thu,  9 Jul 2026 03:14:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783565265; cv=none; b=owzPphDPY+JWJ2c0ov5PfREqGUQwi/bgDlxxPSXBxDYnrCV5wrQo1vPojMRjtMIOlEeH+CTSnrZ6OVnBqmuZxjF9ytWyXChUQJY+0Krp+THjrGpfO598T7VqMDGs+BysWm7A21ADNQapHF7FfALoDJunGDIel3DPUjGCdHjFSCw=
+	t=1783566856; cv=none; b=n5BPYKZSnCl7PrSpB4EdSPpWLYw71seQU6Oh8KRGD+n3X/NiDAD3cK8qiU9Rx3V3ZhqWmUakQKrBgZDsG7zGOM/jIYYOw4UCH4+ZSJ07aFVxSTFe47tURVkVMzmLmsWqF9K2Bj4bjZs6toZNOF4fhGgC52x5ziSBOy7EyQLtcag=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783565265; c=relaxed/simple;
-	bh=MYlh+5/4RDk/VQbOTGtJplh34pLnTmXSWRmrczPuUDE=;
+	s=arc-20240116; t=1783566856; c=relaxed/simple;
+	bh=sFY3IJPLB3VCnBY4TSr/pQh+xXRRB+4VSytgWoW3MrU=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=UGLUVjNKOKvDX4m0Smv9BFPqwy7o9zCHo9OS1yLblbTHP07XuTS+CFN8bOGiQ8zclUXxUqFF10dVTRxVqOaAocww2T02E72+RQ1gBCxad7YaVX/EiopMUk9GStK6Mov/oAR9JNH4ro/OkkCi6J07zdmICzhW1KHJb3PEkUwEq58=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 In-Reply-To:Content-Type; b=q3VGKMbTHnaBajrsBpnZzYuhQPkhZyFTTYziPIYFDwAlHVCGvh8uQvruetbChcl9uyO8Svzo/6B4FwOq3lwufX7C+9A447JSfOlohI33h19j1ZsNxMoWgZbZ70PA6Zq40ixmpBRd47dvFlxVIUVAXd9tQJmhhsuTAUPFFmW420I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gwfWl258PzYQtjR;
-	Thu,  9 Jul 2026 10:47:31 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gwfjz0CYLzKHMN1;
+	Thu,  9 Jul 2026 10:56:23 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 521DC4057D;
-	Thu,  9 Jul 2026 10:47:37 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id E48AC4058F;
+	Thu,  9 Jul 2026 10:56:44 +0800 (CST)
 Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCntnLHC09qBBpEAg--.32295S3;
-	Thu, 09 Jul 2026 10:47:37 +0800 (CST)
-Message-ID: <970e38ef-fcb3-4255-a599-f18acd69cba1@huaweicloud.com>
-Date: Thu, 9 Jul 2026 10:47:35 +0800
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCntnLrDU9qnd1EAg--.32414S3;
+	Thu, 09 Jul 2026 10:56:44 +0800 (CST)
+Message-ID: <8a980822-fe8f-4497-8202-0eda40f627a9@huaweicloud.com>
+Date: Thu, 9 Jul 2026 10:56:43 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,107 +32,110 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 1/5] iomap: correct the range of a partial dirty clear
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-ext4@vger.kernel.org, brauner@kernel.org, hch@infradead.org,
- joannelkoong@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
- yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260520030357.679687-1-yi.zhang@huaweicloud.com>
- <20260520030357.679687-2-yi.zhang@huaweicloud.com>
- <20260708214019.GE9368@frogsfrogsfrogs>
+Subject: Re: [PATCH v2 2/6] ext4: clarify return semantics of
+ ext4_load_tail_bh()
+To: Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ yizhang089@gmail.com, chengzhihao1@huawei.com, yangerkun@huawei.com,
+ yukuai@fnnas.com
+References: <20260707021338.1182268-1-yi.zhang@huawei.com>
+ <20260707021338.1182268-3-yi.zhang@huawei.com>
+ <fn6frodirjc2zvd3sl5zwh4h7q5dfbbha2le3eylq2sne4k7fm@upemtxsqhsz3>
 Content-Language: en-US
 From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260708214019.GE9368@frogsfrogsfrogs>
+In-Reply-To: <fn6frodirjc2zvd3sl5zwh4h7q5dfbbha2le3eylq2sne4k7fm@upemtxsqhsz3>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgCntnLHC09qBBpEAg--.32295S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxJw48tFykKry8Jr45ArW3Awb_yoW5Jw48pr
-	4fKF45Kr4DXry8uw1IqFWrXF1rKa97JF48GrW3Gwn5WFs8ZFy5KF1v9ay5uFyvkr17AF10
-	vF12qry7CrWDAaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+X-CM-TRANSID:cCh0CgCntnLrDU9qnd1EAg--.32414S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxCw4UuF45Jr45XFyftr47Arb_yoW5GrWrp3
+	s8KasrGr4rWa4v9a1xJ3W7Xr1YgasxGr4UWFWrK3W2yas0gr1IvF1IkFyS9F42yrWfKrWY
+	qFWjgFy3Ga1DArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvFb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
 	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
 	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
-	e7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_
-	GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	UQ6p9UUUUU=
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6x
+	kF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02
+	F40Ex7xfMcIj6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4I
+	kC6x0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAa
+	w2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxV
+	Aqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q
+	6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6x
+	kF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AK
+	xVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvj
+	xUOBMKDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 7/9/2026 5:40 AM, Darrick J. Wong wrote:
-> On Wed, May 20, 2026 at 11:03:53AM +0800, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
+On 7/8/2026 11:26 PM, Jan Kara wrote:
+> On Tue 07-07-26 10:13:34, Zhang Yi wrote:
+>> ext4_load_tail_bh() returns NULL for both holes and clean unwritten
+>> buffers, but the conditions that lead to this are not obvious from the
+>> code alone. Document this behavior to clarify the return value, so that
+>> readers do not mistakenly assume that only holes result in a NULL
+>> return.
 >>
->> The block range calculation in ifs_clear_range_dirty() is incorrect when
->> partially clearing a range in a folio. We cannot clear the dirty bit of
->> the first block or the last block if the start or end offset is not
->> blocksize-aligned. This has not yet caused any issues since we always
->> clear a whole folio in iomap_writeback_folio().
+>> Also update the inline comment following the ext4_get_block() call to
+>> reflect this, and note that a lookup-only get_block (without
+>> EXT4_GET_BLOCKS_CREATE) never sets BH_Mapped for clean unwritten
+>> extents, which is why a clean unwritten bh falls through to the
+>> "nothing to do" path.
 >>
->> Fix this by rounding up the first block to blocksize alignment, and
->> calculate the last block by rounding down (using truncation). Correct
->> the nr_blks calculation accordingly.
->>
->> Fixes: 4ce02c679722 ("iomap: Add per-block dirty state tracking to improve performance")
->> Cc: <stable@vger.kernel.org> # v6.6
 >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 > 
-> My apologies for the unnecessary delay, I was on vacation when this came
-> through and I never saw it. :/
+> Looks good. Feel free to add:
 > 
-> Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> 								Honza
 
-Thank you for the review!
+Hi, Jan!
 
-No worries. The ext4 iomap conversion work is still ongoing, so this isn't
-particularly urgent. Now, I think this series is ready to go. Besides,
-There is also one more fix patch that I need to send out, but I can send it
-separately. :)
+Thank you for the review. I have already sent out v3 of this series.
+Sorry I forgot to mention it earlier. It includes fixes for some
+pre-existing issues in Sashiko. Could you please take a look at that
+version?
+
+https://lore.kernel.org/linux-ext4/20260708062049.1982410-1-yi.zhang@huaweicloud.com/
 
 Thanks,
 Yi.
 
 > 
-> --D
-> 
 >> ---
->>  fs/iomap/buffered-io.c | 12 ++++++++----
->>  1 file changed, 8 insertions(+), 4 deletions(-)
+>>  fs/ext4/inode.c | 11 ++++++++++-
+>>  1 file changed, 10 insertions(+), 1 deletion(-)
 >>
->> diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
->> index d7b648421a70..64351a448a8b 100644
->> --- a/fs/iomap/buffered-io.c
->> +++ b/fs/iomap/buffered-io.c
->> @@ -176,13 +176,17 @@ static void ifs_clear_range_dirty(struct folio *folio,
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index c2c2d6ac7f3d..45a7e6cdb2a1 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -4026,6 +4026,10 @@ void ext4_set_aops(struct inode *inode)
+>>   * because it might have data in pagecache (eg, if called from ext4_zero_range,
+>>   * ext4_punch_hole, etc) which needs to be properly zeroed out. Otherwise a
+>>   * racing writeback can come later and flush the stale pagecache to disk.
+>> + *
+>> + * Return the loaded bh if it actually needs zeroing - in written, dirty
+>> + * unwritten, or delalloc state. Return NULL if it's clean (i.e., a hole or
+>> + * a clean unwritten block).
+>>   */
+>>  static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
 >>  {
->>  	struct inode *inode = folio->mapping->host;
->>  	unsigned int blks_per_folio = i_blocks_per_folio(inode, folio);
->> -	unsigned int first_blk = (off >> inode->i_blkbits);
->> -	unsigned int last_blk = (off + len - 1) >> inode->i_blkbits;
->> -	unsigned int nr_blks = last_blk - first_blk + 1;
->> +	unsigned int first_blk = round_up(off, i_blocksize(inode)) >>
->> +				 inode->i_blkbits;
->> +	unsigned int last_blk = (off + len) >> inode->i_blkbits;
->>  	unsigned long flags;
->>  
->> +	if (first_blk >= last_blk)
->> +		return;
->> +
->>  	spin_lock_irqsave(&ifs->state_lock, flags);
->> -	bitmap_clear(ifs->state, first_blk + blks_per_folio, nr_blks);
->> +	bitmap_clear(ifs->state, first_blk + blks_per_folio,
->> +		     last_blk - first_blk);
->>  	spin_unlock_irqrestore(&ifs->state_lock, flags);
->>  }
->>  
+>> @@ -4065,7 +4069,12 @@ static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
+>>  	if (!buffer_mapped(bh)) {
+>>  		BUFFER_TRACE(bh, "unmapped");
+>>  		ext4_get_block(inode, iblock, bh, 0);
+>> -		/* unmapped? It's a hole - nothing to do */
+>> +		/*
+>> +		 * It's a hole or a clean unwritten block - nothing to do.
+>> +		 * Note that a lookup-only get_block (without
+>> +		 * EXT4_GET_BLOCKS_CREATE) never sets BH_Mapped for clean
+>> +		 * unwritten extents.
+>> +		 */
+>>  		if (!buffer_mapped(bh)) {
+>>  			BUFFER_TRACE(bh, "still unmapped");
+>>  			goto unlock;
 >> -- 
 >> 2.52.0
->>
 >>
 
