@@ -1,145 +1,126 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
+Received: from out162-62-58-211.mail.qq.com (out162-62-58-211.mail.qq.com [162.62.58.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAA46322DAF;
-	Thu,  9 Jul 2026 13:46:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F36E21E098;
+	Thu,  9 Jul 2026 14:42:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.58.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783604811; cv=none; b=cHTex22LWF7mbBkdtdFiAJfhe9j68f8vUOLlfS+0VFsagdJ7Yy/flTR80jEqsC2IFuOhWTmMAB7v9wD7beZL4o18p7wiqxsnyI0VqNOCz7OcyKWbIZDUqMAylhfUjjYZMyq3GugjLsZHlUYapUeREnZShfmyK7OlNXVFbt+m83A=
+	t=1783608128; cv=none; b=s4cVRFgPYdvQFi218pE+ci1mNC4ujYZnTuyJHHX7TAGmQZEFytAzlXu704UfVxmT3XVIhne1wYHZkk5NavTxuj+lsmu/hpEN741rqWg+1svElfqMdsugZ/Iu4sDVbq+lQC1ueZWmC8agVbSWU/q/7LuFVFhO3AneFqCE1boVyU4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783604811; c=relaxed/simple;
-	bh=oGHg4067996uNiEtNixTYXz6HafokbvtLz/6EMplmuw=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=bF16pYX1XNhgKMdIWYYn5fVYEkf7/2IQVqEjLzUzwGjqG6sIEzGtUN7Iv3ti73srzc1pDR0Knwf5tF0Ug6mmguKbgu5sUeWseiGuLZT+8zwDdpvKc5dlbAn5G2VhGo3Y75fYiuhK2HW7lrboO4yyr5NQb7ZCws4ChYVCw/fgK+s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=lf0nvBCM; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1783608128; c=relaxed/simple;
+	bh=5ottCpNDE1WmqbJevyWvrX4ev7Blag38xS8h4rofc4I=;
+	h=Message-ID:From:To:Cc:Subject:Date:In-Reply-To:References:
+	 MIME-Version; b=naGURp1p1mMMpRjbyySPP6llYEruNq5+GxwZnVoDhsPVVJCFKWGXrKqPSLJJ9AbP494uwzOe9HzLHaq1ycV6gi+W/lCPgGDjG8jQ20V30ABoyEawSlMmTkxZEoANwLBRol6b5CItiJuTAxBjDc7jpVYAFUHwALpgmuAYaUlMJrY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=zfuRROv4; arc=none smtp.client-ip=162.62.58.211
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="lf0nvBCM"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=2osXVDxgVvuGU+T2YOX7g61cy9uE4ngVaflraIX5Kjs=; b=lf0nvBCMYSHnQRhvptl+at6CaC
-	EvJMHEFfJWWszDemx7tscb7Ycv2hjjWE2JqXJ2TT2xLFWfTSPlF9Kuk4eeMdf2MIUCg5aOcxc09Fp
-	BX2vcZkhK3Dn5xVXUS2ZPNeOqnE7RYl27Nzr0KSEeDabX9yGWaDyhatT/mCsrogktEST072KUoaa3
-	rFMtCJa6VxFMuN+fKtw+qqbVwECq6f+OQyA+vmlyd4DVz9zgz27DnvE2FdgbEGJ01KyRZ4ksPfBsl
-	9t8n7Lkhc+1OVUXakQnHWKiiDoT9Khayoi7TZAPbYtOWCDrtZa7GY2+5VopVVRi9QF/qFMba+Io1c
-	P7yw5Pqg==;
-Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1whp5P-00000004vCI-3e6I;
-	Thu, 09 Jul 2026 13:46:43 +0000
-Date: Thu, 9 Jul 2026 14:46:43 +0100
-From: Matthew Wilcox <willy@infradead.org>
-To: Longxing Li <coregee2000@gmail.com>, Theodore Ts'o <tytso@mit.edu>
-Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix use-after-free in ext4 delayed I/O completion
-Message-ID: <ak-mQ2DnbaxIO_WU@casper.infradead.org>
-References: <20260709075613.854-1-coregee2000@gmail.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="zfuRROv4"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1783608114; bh=qJfTiMAAPHiz4ejXAjMxJoec/42G8cxNQn5dvFkF8RA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=zfuRROv4fNaaFPiFgESnDsba5AeUCSr+I8bdmCmR6zmaOSQ7reC2tuz8GoF9/qBs4
+	 1EJlXoT92ij6vsAbBvzemRWZtHOeeJ7NoY2ThAeDS9Jux1RKDAqpGHHUBi6OaiQ5re
+	 QhVwYg7vej+0LHQcz3vmKb3Tat/3LJcUPvSuUdeg=
+Received: from ubuntu.. ([218.196.207.7])
+	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
+	id A733B0A3; Thu, 09 Jul 2026 22:41:51 +0800
+X-QQ-mid: xmsmtpt1783608111tq9mveypv
+Message-ID: <tencent_B38798612A159E21450ECF959016371B0807@qq.com>
+X-QQ-XMAILINFO: OK7NBzdNss/RstsQSmPAqdubzjnsAHrdftMO6m7yDHtn4uvtysDFUfuiFIZ5qL
+	 /AGzjKln5dHm6GwCCfzw0oG4qidmW3+j8Uu3KCduGQbv94ou8H7ZTguhSkFf79Xp92rqAR3i+ji0
+	 POl/qXEkcD6VseaueSviPvJ603MXE5Yzw8uHzsRL+39X/Yp5bKovjqcIAOvsuQ58en5lKZLaPEM6
+	 GNti6m0zLElWCv+qRk/M8hs1wBN97EZJmgtmaWVLXST78hv8asQVmHHOc6XLosojP+XN6J9tqHUE
+	 ieGfcDTiZ458sNeZuFcxyIYZI/mJqfNhRBjYgLMw+DzCVzA7LAKEb5FEOuNLfCZVaoPH7Tfa2Nbt
+	 /REaTxCNNit5gnTiJeU3pP7FZGe5MZBYly7MddBMVTnMJFi/C9FJadncNu2jOgt2YTJYj5WJHWGD
+	 rVDTjWuPr/2+vFRAEWTvVtWGZSzShellrJiWRTUazFTzkv3VW+zkrSF72Iu6LA+/j91jWnyl7Uvd
+	 4LCsDzEasqKL3PF98hH2CJYfXdaj2uqSBJyPGq5vcyb2P1+52EtrY3DoB5Vg7B1NKVxN0oyUnA4/
+	 NcpxXHS0x782nLj6RmBSI7s99FNx4mBisfvxmoiIGnWiABmXTkQ5ssQrrFF9/rK8JeM+GrQlaOQJ
+	 cBlDsJ/X33Q8lJGlLVpdXo4bS5EvEHGEg6TCok/B7Q7J5wUGwKh/Tu5fZzjoOcS6HrRJGZW1+s/T
+	 GHcsjGy+F/wGY2wzJMe54GDWsQB4lLmRJYvi5Iv31XeNVy4iCNLv6cNRmyraubA0+jR4SN8/s5eM
+	 sHdTrCtXzIr2PkAwJCJSQmBxIvo+wSf+BMj1+/ii4GW7bFA6YU2JScBBx/OWT7Yfn3Q5pMYlpxEm
+	 9xOo3WbzE5/4u6juZyAk7a8oglHmHHzMkGkyieh2eG1oEkTBwRMlxQflEoes1UZkFgOqX/0Rc638
+	 fYjtYJlj3IN4dcw0tsfgMWnp7uV62JOp5q70hd28M6haRQ6dG9Z2xYwnZreZT+OpCWGTrK+VhCZ3
+	 UDr7Ydy92cCztVsat2hfJxguu+T6KZOHDENCJuEs3Ilfb5YcuH63Bl/Jvv906khlGsGhw6rQ==
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+From: Guanghui Yang <3497809730@qq.com>
+To: Jan Kara <jack@suse.cz>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Guanghui Yang <3497809730@qq.com>
+Subject: [PATCH v2] ext4: fix buffer_head leak in ext4_init_orphan_info
+Date: Thu,  9 Jul 2026 14:41:51 +0000
+X-OQ-MSGID: <20260709144151.1050695-1-3497809730@qq.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <wxzgqewgav3zhaoxbv6eyztoebyvrusaiajyu6rq4yoyitzowd@jzruszx6eetq>
+References: <wxzgqewgav3zhaoxbv6eyztoebyvrusaiajyu6rq4yoyitzowd@jzruszx6eetq>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260709075613.854-1-coregee2000@gmail.com>
+Content-Transfer-Encoding: 8bit
 
-On Thu, Jul 09, 2026 at 03:56:13PM +0800, Longxing Li wrote:
-> ext4_add_complete_io() queues the inode's i_rsv_conversion_work without
-> holding an extra reference to the inode. If the inode is unlinked and
-> evicted before the delayed work runs, the inode slab object gets freed.
-> When ext4_do_flush_completed_IO() later accesses io_end->inode, it is
-> accessing a freed/reallocated object -- a use-after-free detected by KASAN.
-> 
-> Take igrab(inode) when first queueing the work (only when list is empty to
-> avoid duplicate references), and drop the reference in
-> ext4_do_flush_completed_IO() after processing all io_ends.
-> A per-inode bit (i_rsv_need_iput) tracks whether the extra reference
-> was taken.
-> 
-> This is a defense-in-depth fix complementary to the upstream fix
-> c678bdc99875 ("ext4: fix inode use after free in ext4_end_io_rsv_work()")
-> which adds consistency checks in ext4_io_end_defer_completion(). Both fixes
-> address the same root race but from different angles.
+ext4_init_orphan_info() reads orphan file blocks with ext4_bread()
+and stores the returned buffer_head in oi->of_binfo[i].ob_bh.
 
-Um.  You've cc'd everybody except the maintainer.  And this is already
-fixed, but you want to fix it even more?  I don't get it.
+If ext4_bread() succeeds but the orphan block magic or checksum
+validation fails, the function jumps to out_free. However, the old
+out_free loop starts releasing buffers from i - 1, so the current
+buffer_head at index i is skipped.
 
-(also if this patch isn't AI slop, it's doing a Really Good Job of
-pretending to be AI slop.  Why would you choose 'unsigned short' as
-the type?)
+This leaks the buffer_head reference obtained by ext4_bread() on the
+bad magic and bad checksum error paths.
 
-> Fixes: ce51afb8cc5e ("ext4: abort journal on data writeback failure if in data_err=abort mode")
-> Reported-by: Longxing Li <coregee2000@gmail.com>
-> Signed-off-by: Longxing Li <coregee2000@gmail.com>
-> ---
->  fs/ext4/ext4.h    |  2 ++
->  fs/ext4/page-io.c | 15 +++++++++++++--
->  fs/ext4/super.c   |  1 +
->  3 files changed, 16 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 56112f201cac..239e6c0a3d3c 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1179,6 +1179,8 @@ struct ext4_inode_info {
->  
->  	/* Lock protecting lists below */
->  	spinlock_t i_completed_io_lock;
-> +	/* Track if ext4_add_complete_io() took an extra inode reference. */
-> +	unsigned short i_rsv_need_iput:1;
->  	/*
->  	 * Completed IOs that need unwritten extents handling and have
->  	 * transaction reserved
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 39abfeec5f36..294c0bcbbb7f 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -262,8 +262,12 @@ static void ext4_add_complete_io(ext4_io_end_t *io_end)
->  
->  	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
->  	wq = sbi->rsv_conversion_wq;
-> -	if (list_empty(&ei->i_rsv_conversion_list))
-> -		queue_work(wq, &ei->i_rsv_conversion_work);
-> +	if (list_empty(&ei->i_rsv_conversion_list)) {
-> +		if (igrab(io_end->inode)) {
-> +			ei->i_rsv_need_iput = 1;
-> +			queue_work(wq, &ei->i_rsv_conversion_work);
-> +		}
-> +	}
->  	list_add_tail(&io_end->list, &ei->i_rsv_conversion_list);
->  	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
->  }
-> @@ -291,6 +295,13 @@ static int ext4_do_flush_completed_IO(struct inode *inode,
->  		if (unlikely(!ret && err))
->  			ret = err;
->  	}
-> +
-> +	/* Release inode reference from ext4_add_complete_io. */
-> +	if (ei->i_rsv_need_iput) {
-> +		ei->i_rsv_need_iput = 0;
-> +		iput(&ei->vfs_inode);
-> +	}
-> +
->  	return ret;
->  }
->  
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 87205660c5d0..10a5d863d9b9 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1418,6 +1418,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->  	ei->jinode = NULL;
->  	INIT_LIST_HEAD(&ei->i_rsv_conversion_list);
->  	spin_lock_init(&ei->i_completed_io_lock);
-> +	ei->i_rsv_need_iput = 0;
->  	ei->i_sync_tid = 0;
->  	ei->i_datasync_tid = 0;
->  	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
-> -- 
-> 2.34.1
-> 
+Fix this by tracking the number of successfully read buffer_heads and
+releasing exactly those buffer_heads on the error path.
+
+Fixes: 02f310fcf47f ("ext4: Speedup ext4 orphan inode handling")
+Signed-off-by: Guanghui Yang <3497809730@qq.com>
+---
+ fs/ext4/orphan.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+index 64ea47624233..7095ba1564f6 100644
+--- a/fs/ext4/orphan.c
++++ b/fs/ext4/orphan.c
+@@ -572,6 +572,7 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 	int i, j;
+ 	int ret;
+ 	int free;
++	int loaded = 0;
+ 	__le32 *bdata;
+ 	int inodes_per_ob = ext4_inodes_per_orphan_block(sb);
+ 	struct ext4_orphan_block_tail *ot;
+@@ -613,6 +614,7 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 			ret = -EIO;
+ 			goto out_free;
+ 		}
++		loaded++;
+ 		ot = ext4_orphan_block_tail(sb, oi->of_binfo[i].ob_bh);
+ 		if (le32_to_cpu(ot->ob_magic) != EXT4_ORPHAN_BLOCK_MAGIC) {
+ 			ext4_error(sb, "orphan file block %d: bad magic", i);
+@@ -635,8 +637,10 @@ int ext4_init_orphan_info(struct super_block *sb)
+ 	iput(inode);
+ 	return 0;
+ out_free:
+-	for (i--; i >= 0; i--)
+-		brelse(oi->of_binfo[i].ob_bh);
++	while (loaded > 0) {
++		loaded--;
++		brelse(oi->of_binfo[loaded].ob_bh);
++	}
+ 	kvfree(oi->of_binfo);
+ out_put:
+ 	iput(inode);
+-- 
+2.34.1
+
