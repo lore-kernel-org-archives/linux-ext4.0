@@ -1,187 +1,185 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id BCC83233958;
-	Fri, 10 Jul 2026 05:54:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from mail-oi1-f198.google.com (mail-oi1-f198.google.com [209.85.167.198])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 182A53CB8EB
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 07:48:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783662853; cv=none; b=ueCD2zFrv+MdlRfIJHrHCJdhZo9HanZ55ZK/uRY8v2OQNFNLp5ENywz/DMih1EI0vWDe8BbiGhjXkG2ncSCxwBLfLaw5NJcTj2rAwjnC1i+C7132BtbKDJVFuKva1RfsB2+DHWa+gBYpoEqEGKsy/0rpIvbhwPnmwYTsjY2SClo=
+	t=1783669698; cv=none; b=Huv13ZeAH5Sq8t5kSZzUTVol586+TFjIzX1ley4tfcnKbMQV2i0ZV+Ft8euMUOo0ENYGDF06b2RzVMWvsQCP6WWDXxpU0dpf0qH9hq7ZOAEHrthJjO8eQAlN8AUmq4gj7vFTFTmoMUCbE0Sf6GyLIfQ8751EkacA8VfFcmrj/rg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783662853; c=relaxed/simple;
-	bh=nyDBnktELM+hz7RvTSyEr5tTXDizK+ufnQXY3jTKq48=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=HHnNTng40LYlxMTCqM6XcjVREF4/k/oaH9ahfyy5Arw+jpXnGc2i8Ro68QoH8dv0kZTkQHDUG5mFrx9Gx8Rpj42bJHAz2j5bVoS/6hG1WcF2kODfR8+yWe798+pf5Lz/2Ys5KXyOkrwWnt1aveZUFtJtjAV3PUMe3YYQo+V6YOM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-cb-6a5088f7cfdd
-Date: Fri, 10 Jul 2026 14:53:54 +0900
-From: Byungchul Park <byungchul@sk.com>
-To: Gary Guo <gary@garyguo.net>
-Cc: linux-kernel@vger.kernel.org, max.byungchul.park@gmail.com,
-	kernel_team@skhynix.com, torvalds@linux-foundation.org,
-	damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-	tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-	sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-	johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-	willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-	gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
-	akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
-	hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
-	jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-	penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-	ngupta@vflare.org, linux-block@vger.kernel.org,
-	josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
-	djwong@kernel.org, dri-devel@lists.freedesktop.org,
-	rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-	hamohammed.sa@gmail.com, harry.yoo@oracle.com,
-	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com,
-	boqun.feng@gmail.com, longman@redhat.com, yunseong.kim@ericsson.com,
-	ysk@kzalloc.com, yeoreum.yun@arm.com, netdev@vger.kernel.org,
-	matthew.brost@intel.com, her0gyugyu@gmail.com, corbet@lwn.net,
-	catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
-	hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
-	gustavo@padovan.org, christian.koenig@amd.com,
-	andi.shyti@kernel.org, arnd@arndb.de, lorenzo.stoakes@oracle.com,
-	Liam.Howlett@oracle.com, rppt@kernel.org, surenb@google.com,
-	mcgrof@kernel.org, petr.pavlu@suse.com, da.gomez@kernel.org,
-	samitolvanen@google.com, paulmck@kernel.org, frederic@kernel.org,
-	neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com,
-	josh@joshtriplett.org, urezki@gmail.com,
-	mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
-	qiang.zhang@linux.dev, juri.lelli@redhat.com,
-	vincent.guittot@linaro.org, dietmar.eggemann@arm.com,
-	bsegall@google.com, mgorman@suse.de, vschneid@redhat.com,
-	chuck.lever@oracle.com, neil@brown.name, okorniev@redhat.com,
-	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org,
-	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
-	clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
-	kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
-	broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
-	shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
-	yuzhao@google.com, baolin.wang@linux.alibaba.com,
-	usamaarif642@gmail.com, joel.granados@kernel.org,
-	richard.weiyang@gmail.com, geert+renesas@glider.be,
-	tim.c.chen@linux.intel.com, linux@treblig.org,
-	alexander.shishkin@linux.intel.com, lillian@star-ark.net,
-	chenhuacai@kernel.org, francesco@valla.it,
-	guoweikang.kernel@gmail.com, link@vivo.com, jpoimboe@kernel.org,
-	masahiroy@kernel.org, brauner@kernel.org,
-	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com,
-	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org,
-	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org,
-	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org,
-	rcu@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org,
-	miguel.ojeda.sandonis@gmail.com, neilb@ownmail.net,
-	bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
-	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
-	alex.gaynor@gmail.com, bjorn3_gh@protonmail.com, lossin@kernel.org,
-	a.hindborg@kernel.org, aliceryhl@google.com, tmgross@umich.edu,
-	rust-for-linux@vger.kernel.org
-Subject: Re: [PATCH v19 31/40] dept: assign unique dept_key to each distinct
- wait_for_completion() caller
-Message-ID: <20260710055354.GA37630@system.software.com>
-References: <20260706061928.66713-1-byungchul@sk.com>
- <20260706061928.66713-32-byungchul@sk.com>
- <DJSEK3KA2ECQ.1512A4KGOBSCV@garyguo.net>
+	s=arc-20240116; t=1783669698; c=relaxed/simple;
+	bh=h61h9WIIFeHMbJuEewtasNelafK1V+4qeyCgDSxP4hk=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
+	 Content-Type; b=eHgmZI9ygacGXRfX0IaMKVw9A862FyRoBFNCU63xZI3Hqao9h6fdFkAhBAm68js/mGEQrO6g5R+1imUvU//VHzTJaFvfVyyt/xlJW/KHhMaN9zzYPN/034icIrGZ0gdhGs0t9F2I+kcWODCR3LDGDRcpcrTMyM6FUyoRlf+CP/g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.198
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f198.google.com with SMTP id 5614622812f47-49ab6a82cd5so687929b6e.2
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 00:48:16 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1783669696; x=1784274496;
+        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=18vfEjJh39zqM38jFcXdkikUnYbrKM4RExAzoNks+6k=;
+        b=qpQaKTBJ+PkvpXbqv2TnQH5AOL20vIKdMXsGSZu1eg7z9H0EECvL7TXdKLry5qdNzg
+         ZdbZFJsmdK4uDkNSGAxWQX9IzTfHJBieWelvrSZf6tgpJ856YADg8G8bABUve1LOmLtd
+         tdx/3hsI5++DGUrUx6KOlvvz8+99z5i/qtdkAh+yyQLLUyMUlraP6oZnWnbyJkOq0LgW
+         yqEhY1IgkfgkH1UHjX3oLVbq0JL3uSANzsQtyQ1A3/lxU1wNA9TdpqM8HXVgCxA1zIWl
+         bT7fNaMQ7HlYSB5WSK7WPJSULrutBxC/BBQ3wmLamcPff5WpQHhvJH+Fl6M5mR0aSu66
+         O7CQ==
+X-Forwarded-Encrypted: i=1; AFNElJ94jcguS8J0+aG7cRW+enBPlh5WZ+ao8tDn6pF7yQVTkjXdsMhPy4VeAjCNYX30vqf7j2HpIQ4ZcbKm@vger.kernel.org
+X-Gm-Message-State: AOJu0Yww6Wb4uv/G06x8oMPoMzScoGtBL5OcyfFqxqPjjvMHz4OPl22m
+	MQQD2UXxb6gbthEsQp/IqbNCLZQwNDnBpxKgBH9FZJEIwR7v8xRwo5/f070OlTMUS3gW+n5E11J
+	C4DlyEmviNn1EBaWn7dPiMaLpWyUWHcAfU51OuSiD9OKeVICrGs8UXR2cBFA=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <DJSEK3KA2ECQ.1512A4KGOBSCV@garyguo.net>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0yTdxTG93/vNDR56WT7C7t2LltYdOIlHp0xkizxTeaGyZYscR9mI+9G
-	paBpBcHEKGNIvYDYbHa0CuU2uVQg5TJXMDKEAmYd2LFSMy6WmzhaFaTVAaUrVTO//fKc5zzn
-	+XA4UlbJxHDKtMOiOk2hkjMSSuKNLF37RLvnwPpsezRoc4/DxXozA1pLEQ09g99RMOrTInD1
-	XyfB3JRNgGHKyIJ3tJWGQb8HwUR7HoLAhRQoKWtkYNHeR0Kpe5iEJtsIgsnCZhIGfA8YuPX7
-	DIJLRh2CnPJ6BoYu6Agw6qcJWHLHg632LgvD536koM7bR8PMlI6B0e6TNMwPuAkwn50iQWv1
-	UWAZd9JQVDwUaheYR2C7OkbAn9aLDIyYgzT0Gqop+Nt+joU+6xUaKgdvEeC+46LBVTiJ4Lbe
-	w4Kj3URA1ayehuprdgZspleg+Xougrzp1lCngn8o6Kz/hYAbPg8BTl0JA/aWmywYswsQaDv9
-	JDTMXmag4I9d8KRhPNSutoaBKwEnAmPXCLtzp5DrCDCCudiMhPnKHFJY8P3FCNf8Jkq4WYaF
-	ilMLhHDevlb41TDMCiZLumCpOcUIljkdK5QuTpPCkLONEXp+WqSEiQE9sWfNXsn2JFGlzBDV
-	H+7YJ0nuqmihDhVHZVqn2sgTaFZ6GkVwmN+Eg3W11HMe62yjV5ji38XeHA+7wgz/Hna5/iVX
-	eBX/JrbUlBGnkYQj+aI3sMPfG154mU/BS1X3wiYpD/iGszxskvH5CNsWjPTTQRTuLZoIXyP5
-	OOxavhcycSGOxZeXuRU5gt+MHzbNhQ9H8+/g9pbucA7mxyLwD03BZ01X49+qXFQh4g0vxBpe
-	iDX8H2tCZA2SKdMyUhVK1aZ1yVlpysx1+w+mWlDoeX8+tvTVVTTX/3kH4jkkj5SuP554QEYr
-	MjRZqR0Ic6R8lfTOayFJmqTIOiqqD36tTleJmg4Uy1HyV6Ub/EeSZPy3isNiiigeEtXPpwQX
-	EXMCfbT68dmSjEcboh7sqBYeJSYc5S59sezemOh4W7mldZ7dpo0MNH7g399g8yWc2V5uD3q8
-	j83tL/V8Ulea3510X+yK7y52n+wTtlYob79Fzk1+s9uTrylMOO/I/D5Gr7qf93GjpGHX+0FZ
-	+mdL2XfjzlQd+3T89X39bbutX0Y3z2xrdcTKKU2yIj6OVGsU/wHjrPZquAMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0xTZxjH877n9PTQWT0UCCdek5rFhEyRTZIn2bKLmXpivPCNhCzRRk9G
-	5aJpEWUJU6iN1ampTVqk9QJFKitMsCCOSyMBrUPnbLlIo7DCUuu6giBQCJeWnWKMfnnye57n
-	/8vzfnhpQrYkWk0r8wt4Vb4iV05JSMm+LzWbZ3UZR7bet6aCTnsKBn1+ETwv6SAhPK0j4Wp9
-	HQURyz0x6BzlIvhjoJQE9+1aBL6wDsHsgoUAbcsSCRGDSwzTcy/FYCxBsOR0ITB5DAR43fcJ
-	qGsqwTDVEKUg1DWJwDjip6AsWELCuO0CAnPAIobgw10w5msTwdLQawwDM6MIbP4oBn/HWQQR
-	Uw7csDYKummCgoWnzwgoM7oRVI4METAZHEbQ5PobgbOmlIJX+rsE9PpXQl94nIJu4y8UjHmu
-	YnjTQEFFqVMEnj9DCK5ZDAgCL5wYNFX1FJiuOUhoGW4Vgye0iGHQZMBQ69gLPluAhCd6Kxae
-	K6TuJIOlTIOF8i8G429tGOZsdvG31Yib1V4iOXtjM+a0PRGKq7teh7iFeQPipqs1BKfVC23X
-	6DjBnWk8wVU/GaW4+XA/xTlnKkjusZXlbp6bx9zlp5u5FvOQOOO7LMlXh/lcZSGvSv36oCT7
-	4c1m8tj1+JOtgXbiNHorPY/iaJbZxv7zoF0UY5L5lB3TjIpjTDGbWK93johxIrOBddit+DyS
-	0ARTvp7tmeleFhKYHHaxJrgckjLAdj2vWg7JmIuIdc1bRO8W8Wx3uZ+MMcGksN5oUAjRAq9h
-	b0Xp2DiOSWcnmiaXDycxG9mO5kdYj6Tmj2zzR7b5g12BCDtKVOYX5imUuelb1DnZRfnKk1sO
-	Hc1zIOFb2ooXL/+Opnt3dSKGRvIV0q2n9h+RiRSF6qK8TsTShDxROrxWGEkPK4p+4lVHD6iO
-	5/LqTrSGJuXJ0t2Z/EEZ86OigM/h+WO86v0W03GrT6NNrXcKip9lq88W7zBMeONTd//X03ku
-	lLh36pXsojnl5aNP0jrazUWRAcnaK+4+Q8iV3PD5TllCZtKqxuTt4YxfM+9VfpEU/N7zwD5Y
-	2+/ybf+mH+uyVuzYqV73Q3Pv20D6SNvdqopV6/V861Rl9K8+RVZC8DO38/XjffXMngvlB9J+
-	lpPqbEVaCqFSK/4HtzJC/ZIDAAA=
-X-CFilter-Loop: Reflected
+X-Received: by 2002:a05:6808:1a10:b0:492:f15e:3626 with SMTP id
+ 5614622812f47-4a206affb0dmr7600731b6e.40.1783669696285; Fri, 10 Jul 2026
+ 00:48:16 -0700 (PDT)
+Date: Fri, 10 Jul 2026 00:48:16 -0700
+In-Reply-To: <20260709075613.854-1-coregee2000@gmail.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a50a3c0.c76b52dc.2a15e.000b.GAE@google.com>
+Subject: [syzbot ci] Re: ext4: fix use-after-free in ext4 delayed I/O completion
+From: syzbot ci <syzbot+ci87fd14106ebafa1b@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, akpm@linux-foundation.org, coregee2000@gmail.com, 
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-mm@kvack.org, willy@infradead.org
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, Jul 07, 2026 at 03:18:29PM +0100, Gary Guo wrote:
-> On Mon Jul 6, 2026 at 7:19 AM BST, Byungchul Park wrote:
-> > wait_for_completion() can be used at various points in the code and it's
-> > very hard to distinguish wait_for_completion()s between different usages.
-> > Using a single dept_key for all the wait_for_completion()s could trigger
-> > false positive reports.
-> >
-> > Assign unique dept_key to each distinct wait_for_completion() caller to
-> > avoid false positive reports.
-> >
-> > While at it, add a rust helper for wait_for_completion() to avoid build
-> > errors.
-> 
-> This will cause Rust code to share the same dept_key, so it will have all the
-> false positives that the change is trying to avoid.
+syzbot ci has tested the following series
 
-Thank you for the input.
+[v1] ext4: fix use-after-free in ext4 delayed I/O completion
+https://lore.kernel.org/all/20260709075613.854-1-coregee2000@gmail.com
+* [PATCH] ext4: fix use-after-free in ext4 delayed I/O completion
 
-> In general it is easy to create Rust bindings for static inline C functions
-> because it'll be just some computation, while creating bindings for C
-> function-like macros that define additional statics can be challenging.
-> 
-> Is dept_key similar to lock_class_key, where only the address matters? If so,
-> the approach that I use in
-> https://lore.kernel.org/rust-for-linux/DJP0CDOR98N5.29BK8PUFRWRUK@garyguo.net
+and found the following issue:
+inconsistent lock state in igrab
 
-Yes, dept_key is similar to lock_class_key.  IIUC, the way you tried for
-lock_class_key can be applied to DEPT too.  I will do:
+Full report is available here:
+https://ci.syzbot.org/series/91c98fac-dc4f-4090-8c56-abbc36b7cd36
 
-   1) add 'key' parameter to sdt_might_sleep_start_timeout()
-   2) introduce init_completion_dkey() to allow custom keys
-   3) remove init_completion_dmap() and adjust the existing users
+***
 
-Just in case, it's worth noting that the custom keys must be
-well-managed using e.g. dept_key_destroy() when the key gets freed.
+inconsistent lock state in igrab
 
-	Byungchul
+tree:      mm-new
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/akpm/mm.git
+base:      86f436567f2516a0083b210bedc933544826a2c3
+arch:      amd64
+compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
+config:    https://ci.syzbot.org/builds/7d4608a1-deef-4f49-aff7-ee231c101f0a/config
 
-> could be used for dept_key as well, then we can keep Rust `wait_for_completion`
-> still a function; otherwise we have to turn it into a macro too on the Rust side
-> to create such statics, which isn't ideal.
-> 
-> Best,
-> Gary
-> 
-> >
-> > Signed-off-by: Byungchul Park <byungchul@sk.com>
-> > ---
-> >  include/linux/completion.h | 100 +++++++++++++++++++++++++++++++------
-> >  kernel/sched/completion.c  |  60 +++++++++++-----------
-> >  rust/helpers/completion.c  |   5 ++
-> >  3 files changed, 120 insertions(+), 45 deletions(-)
+================================
+WARNING: inconsistent lock state
+syzkaller #0 Not tainted
+--------------------------------
+inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage.
+swapper/0/0 [HC0[0]:SC1[1]:HE0:SE0] takes:
+ffff888112ebb350 (&sb->s_type->i_lock_key#23){+.?.}-{3:3}, at: igrab+0x2d/0x1e0
+{SOFTIRQ-ON-W} state was registered at:
+  lock_acquire+0x116/0x340
+  _raw_spin_lock+0x2e/0x40
+  iget_locked+0x397/0x6a0
+  __ext4_iget+0x242/0x4290
+  ext4_get_journal_inode+0x30/0x1c0
+  ext4_load_and_init_journal+0x231/0x23f0
+  ext4_fill_super+0x3a64/0x6560
+  get_tree_bdev_flags+0x430/0x4f0
+  vfs_get_tree+0x92/0x2a0
+  do_new_mount+0x325/0xac0
+  init_mount+0xc3/0x110
+  do_mount_root+0xf4/0x260
+  mount_root_generic+0x1a7/0x370
+  prepare_namespace+0x71/0xa0
+  kernel_init_freeable+0x36e/0x4b0
+  kernel_init+0x1d/0x1d0
+  ret_from_fork+0x5b0/0xb20
+  ret_from_fork_asm+0x1a/0x30
+irq event stamp: 682389
+hardirqs last  enabled at (682388): [<ffffffff81862340>] handle_softirqs+0x1a0/0x850
+hardirqs last disabled at (682389): [<ffffffff8b73ff0e>] _raw_spin_lock_irqsave+0x8e/0x100
+softirqs last  enabled at (682374): [<ffffffff81862c35>] __irq_exit_rcu+0xd5/0x1f0
+softirqs last disabled at (682387): [<ffffffff81862c35>] __irq_exit_rcu+0xd5/0x1f0
+
+other info that might help us debug this:
+ Possible unsafe locking scenario:
+
+       CPU0
+       ----
+  lock(&sb->s_type->i_lock_key#23);
+  <Interrupt>
+    lock(&sb->s_type->i_lock_key#23);
+
+ *** DEADLOCK ***
+
+1 lock held by swapper/0/0:
+ #0: ffff888112ebb880 (&ei->i_completed_io_lock){..-.}-{3:3}, at: ext4_put_io_end_defer+0x442/0x700
+
+stack backtrace:
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+Call Trace:
+ <IRQ>
+ dump_stack_lvl+0x1a9/0x280
+ print_usage_bug+0x28b/0x2e0
+ mark_lock_irq+0x410/0x420
+ mark_lock+0x115/0x190
+ __lock_acquire+0x65c/0x2cd0
+ lock_acquire+0x116/0x340
+ _raw_spin_lock+0x2e/0x40
+ igrab+0x2d/0x1e0
+ ext4_put_io_end_defer+0x4d0/0x700
+ blk_update_request+0x57b/0xe30
+ scsi_end_request+0x77/0x820
+ scsi_io_completion+0x133/0x360
+ blk_done_softirq+0x10a/0x160
+ handle_softirqs+0x275/0x850
+ __irq_exit_rcu+0xd5/0x1f0
+ irq_exit_rcu+0x9/0x30
+ common_interrupt+0xbb/0xe0
+ </IRQ>
+ <TASK>
+ asm_common_interrupt+0x26/0x40
+RIP: 0010:pv_native_safe_halt+0xf/0x20
+Code: 57 5e 02 c3 cc cc cc cc cc cc cc 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa eb 07 0f 00 2d d3 07 18 00 fb f4 <e9> cc f3 02 00 cc cc cc cc cc cc cc cc cc cc cc cc 90 90 90 90 90
+RSP: 0018:ffffffff8e007d80 EFLAGS: 00000286
+RAX: ec158cdc8cc84600 RBX: ffffffff8198983a RCX: ec158cdc8cc84600
+RDX: 0000000000000001 RSI: ffffffff8da4eee4 RDI: ffffffff8be557c0
+RBP: ffffffff8e007eb0 R08: ffff8881210336db R09: 1ffff110242066db
+R10: dffffc0000000000 R11: ffffed10242066dc R12: 1ffffffff1c12a78
+R13: dffffc0000000000 R14: 0000000000000000 R15: 1ffffffff1c00fbc
+ default_idle+0x9/0x20
+ default_idle_call+0x72/0xb0
+ do_idle+0x1ea/0x4e0
+ cpu_startup_entry+0x43/0x60
+ rest_init+0x2de/0x300
+ start_kernel+0x3a6/0x400
+ x86_64_start_reservations+0x24/0x30
+ x86_64_start_kernel+0x137/0x1b0
+ common_startup_64+0x13e/0x147
+ </TASK>
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
+---
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
+
+To test a patch for this bug, please reply with `#syz test`
+(should be on a separate line).
+
+The patch should be attached to the email.
+Note: arguments like custom git repos and branches are not supported.
