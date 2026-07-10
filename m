@@ -1,49 +1,45 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0065021CFE0
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 14:06:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD7EC363C5B;
+	Fri, 10 Jul 2026 15:22:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783692384; cv=none; b=KI2tEwUloOw7XoLTOrnbt3uDRODC150LKUe+6ONcDkvWm4Xp8NzhNVF7sPifDh1PeAKPz+d3m31fKMMy5C2kVKknTqLVjZvefF2+bwZPYoIlNPR4c6gzLhs5n1b/36/lxDDcR4lYGVCwQImlmiBud7dr8pgm7q4uZv9t+cEct3k=
+	t=1783696955; cv=none; b=g00qFfOcQI7v311xrMTEHperVHbxIiilXiXO6R+xLH4LtjBURW+4DJ1ovj9OK8smKbMALeXlFxHjcBLDfjyXF12UZ/7UWpNG9Fuvdc1q01l1i/OXW2Yo/iZxSVD1yhTdtqC90dSeud+MYTnh5WZed7lo5ZuY+PPGIRikGwNuZpE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783692384; c=relaxed/simple;
-	bh=BSeqkT/sEU5VxdBERoioOlbKUWq/F11AD9eueJxDQiA=;
+	s=arc-20240116; t=1783696955; c=relaxed/simple;
+	bh=8gzFoNNR4YwjlaVrX0OmmylnRCGx7JLjJgNqHpDhGus=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=d3bJW4EOYYKIC2qZwhONwd+Ks800EapVToW6II/qonl+YVPYTyYpi/cLKpbOGuEXHvVwaeXeXhkIo4W/pZCXmDe7AN/qnpLysGgTcvNh98eXhoSlxHFF/FUiywfM/ScwDU7uRcr7S+J8KkFXikD9vsRY+5mLHk3VV3Kco1TLZd8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=izD/LZLr; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=re7BE0OkUHmK9l8IDDmxLPRhoBBuD+x8a1b77kc4g3NrpW5BsUAcscro3QuZwzro34TCN3sdOdjmKztemwThY9MJJrw5uSOAnFNeh0/v0G392bHlXR/QES0lq1SwbstsbZB04skZAuWcPUCATtq1juQnGyDpdJKMO7mtNglnrMk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UClDCNbC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="izD/LZLr"
-Received: from macsyma.thunk.org ([151.240.45.41])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66AE660J028346
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 10 Jul 2026 10:06:07 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1783692370; bh=3zqoMSC9CKLV7T331cHIk+yii31h/xyMfRSAoEynpd8=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=izD/LZLrNcYJlmA98WB7rJMHDCpuwZoblZaecWzVR7nBh+GXIC4umyXWcURJwfi0O
-	 6WWuP6xzMThrqr7JfhOR6kog63mYv5R4jV/p/+FTxd/4cu8RnmuWtHW12s9koFEwjN
-	 YNh9Mrl01WjMvJJVPmGUR8ZzA4vN3J2OXvT+D/XDES2ClRO/+8O7i1TBRLW9PytlAH
-	 YPkL8fis/pizDGNdhWCqoRPSY3m4lVzwbl/SiRkbm+sBBDmC3kxya1BQJL3D5TtdcE
-	 bAGEMPy20l/7WMYAt5Vep+DWJ1CNX7U3ee2Bs2hB3d3YpsZue3iv3C8RQz28oy/iwR
-	 L9tXi20wtyTuA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 09B1B9552B1; Fri, 10 Jul 2026 10:06:06 -0400 (EDT)
-Date: Fri, 10 Jul 2026 10:06:05 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Longxing Li <coregee2000@gmail.com>, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix use-after-free in ext4 delayed I/O completion
-Message-ID: <alD7q_AUlNaUwAup@mit.edu>
-References: <20260709075613.854-1-coregee2000@gmail.com>
- <ak-mQ2DnbaxIO_WU@casper.infradead.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UClDCNbC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B83291F000E9;
+	Fri, 10 Jul 2026 15:22:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1783696953;
+	bh=BZBmbz6+BQI2Kzh1iUDOvyORAvj/yICrOCZDo+Rp0kw=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=UClDCNbCQfNVRQhm1i8d0xb29cuN0tYD1gSYn7nGQxcwS7UY+Fj+hD+7dJGoKu6Zg
+	 5dYucbOrXi+v7T24cB56Kj8GAb1o3zBc9NpvUvN5qN3+YfFzwGuu96lk54Lzoit87D
+	 P/hGUwB9WQjR82lZLQWwQitL+/Bv5Y8BZH6R/S5wyEVMfzdFEcixq45ps9RC5QDPjc
+	 iSoPzj/1r4B8qaXm++3azwoC4Yb8dd/t/FKEfXkTGZYSqWjTHmfxIksx4hz8WTp+TP
+	 xjssz+2VAgXF7xqPMcYBg54aH6eutuE3PC4QXMK3tooi3O/AVmgdjEBLUn+HPAXBxF
+	 9d+WnwGLCmO8A==
+Date: Fri, 10 Jul 2026 09:22:31 -0600
+From: Keith Busch <kbusch@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Keith Busch <kbusch@meta.com>, linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	axboe@kernel.dk, jack@suse.cz, brauner@kernel.org, cem@kernel.org,
+	jaegeuk@kernel.org, aalbersh@kernel.org, tytso@mit.edu
+Subject: Re: [PATCH] fs: report direct io constraints through file_getattr
+Message-ID: <alEON9EQ3BAX_D35@kbusch-mbp>
+References: <20260708011843.1036846-1-kbusch@meta.com>
+ <20260709071352.GA20180@lst.de>
+ <ak-mQqt-a-jy6ZoV@kbusch-mbp>
+ <20260710043519.GA6205@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,31 +48,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <ak-mQ2DnbaxIO_WU@casper.infradead.org>
+In-Reply-To: <20260710043519.GA6205@lst.de>
 
-On Thu, Jul 09, 2026 at 02:46:43PM -0500, Matthew Wilcox wrote:
+On Fri, Jul 10, 2026 at 06:35:19AM +0200, Christoph Hellwig wrote:
+> On Thu, Jul 09, 2026 at 07:46:42AM -0600, Keith Busch wrote:
+> > On Thu, Jul 09, 2026 at 09:13:52AM +0200, Christoph Hellwig wrote:
+> > > On Tue, Jul 07, 2026 at 06:18:43PM -0700, Keith Busch wrote:
+> > > 
+> > > > +	fa->fsx_dio_mem_align = bdev_dma_alignment(bdev) + 1;
+> > > > +	fa->fsx_dio_offset_align = bdev_logical_block_size(bdev);
+> > > > +	fa->fsx_dio_read_offset_align = bdev_logical_block_size(bdev);
+> > > > +	fa->fsx_dio_virt_boundary_align = bdev_virt_boundary_alignment(bdev);
+> > > > +	fa->fsx_max_segments = bdev_max_segments(bdev);
+> > > 
+> > > How is the max_segments value defined in a way that is meaningful to
+> > > userspace?
+> > 
+> > It tells you how many sub-sector vectors you can submit in your
+> > readv/writev before it needs to add up to a logical block size.
+> > 
+> > Ex: 4k logical block size, 4 byte DMA, 256 max segments. You can define
+> > 4-byte iov's in your command, but you'll hit the max segment count
+> > before you have a valid IO if they're all that small.
 > 
-> (also if this patch isn't AI slop, it's doing a Really Good Job of
-> pretending to be AI slop.  Why would you choose 'unsigned short' as
-> the type?)
+> Ah, makes sense.  But besides the missing documentation I think
+> max_segments is a bit of a misleading name for that.
+> 
+> Something like max_vecs_per_block (although we don't expose blocks
+> in the UAPI) or max_vecs_per_granularity (I think grammar wants a word
+> with me for that, though...) might be a bit more suitable.
 
-It's AI slop that didn't even bother to run it by an AI patch quality
-review process such as Sashiko:
+The granularity it has to add up to is defined by the
+fsx_dio_offset_align attribute. This is a bit long, but to make that
+relationship clear, how about:
 
-- [High] Skipping `queue_work()` when `igrab()` fails causes a permanent deadlock
-during inode eviction by stranding pages in writeback state.
-- [High] A data race and logical flaw with the 1-bit `i_rsv_need_iput` flag causes
-permanent inode reference leaks during concurrent I/O completions.
-
-Syzbot also reported the inconsistent igrab state issue.  So it's AI
-slop that wasted resources both with Shashiko and Syzbot....
-
-Longxing Li, whether or not this is AI slop, this patch will tend to
-cause me to distrust any future code submissions form you.  I suggest
-that you test patches and look at the code much more carefully before
-sending, if you don't want to have a bad reputation as a patch
-submitter.
-
-Best regards,
-
-					- Ted
+  fsx_dio_max_vecs_per_offset_align
