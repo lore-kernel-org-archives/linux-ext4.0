@@ -1,97 +1,127 @@
-Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CF862C1594
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 20:32:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.200
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B65D23BB104;
+	Fri, 10 Jul 2026 21:21:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783715558; cv=none; b=p7g8TiEnn8RTLsxRKHcCmUUNzFN01QyRJ74ykA+wAFjazPxUqzgGlQK1XoVtpZh90TPHi7nocJEtN3AJJQNg+R7DETWPlXRnDDeBeDtjeQZ+cVqSFOOror9gZhfeE2/zVmAEJEvxR+EXdXvFJ97Thpos+AX5cF6WAH/C2brcDc0=
+	t=1783718462; cv=none; b=qU6dZFIpjBEG7kY8lS33MP73BJRumHyPta34kbPZjECjJUNVeryaGcCp7axIaNT8hFhaP7xQXiO8QHDvhbFYbXlXn/39eqVbffjRMoqXnbGOuZr3XE4yI8x6n/bsTyj9Xv2YVOPVZQBEdiK4IPX8ohsKYQepiBqICR9Kf7f1m+8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783715558; c=relaxed/simple;
-	bh=mWYD7Q50FDfQf6w7M4HUN6gmfnf/y3B0S+J4f7n0cB4=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=pbYjkgge4plZNVC0H07HFZKqpUJAVxv6qxQ6mJNQbACYRkVr8a5NwS0//GADL+FxzBXlSmNA1nCeWQyUXFI79Q3kUQ9h5UmVGSLZkIVSxEw1g98TDI4Uf8dgLGcSbdVHSdf8oXBgotUjEx/qOhtlOWYNn5pW3aVinnRA0m+1EGQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.200
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-495f7693e7dso1815893b6e.0
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 13:32:37 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783715556; x=1784320356;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=nUEgiD1J/jUpSu7xqyRakoZnB2687wEHAw9UnAHeRGQ=;
-        b=N4poJ3bwJfKOxKkv019EWdVZ7CJX8GbfHemQLaRslgIwpycoIMZVEfFgLiwV0uslRK
-         kKbYDzj/qpp2aK5HxYS/QyNTlqYVvoPpNW38q8ZR9Nvcqvp34tgBCgeWadMrvXnMXMxE
-         nE1PzI/r/efhxzbbCcm6e0YhIzlfcWW2Zm64HU7rlzOWVVAup8Nnt6fzNW4cH8gDPkZL
-         RrrxM0ikmHXh2pwEpPyaMEE9AjSd/WCVTNV1O2iE0MQWgQ/ZSRw4iHvukNb62JzXtaZm
-         5ZKIR/YwwL9ORIiKUJ7uwf7SLOQexdIPyOfeLjVX1RhBP40M+UVMA1Wngi7l9jroC2b2
-         bTEQ==
-X-Gm-Message-State: AOJu0YwsbH/DTp8DTR45E6euxFld0NCupVOid1u3k0wgQz97D14oGGPP
-	eJj48lH5MSS0nBey8YX9+gJxjk1pe2GF1e+7JXczs/82PSR9SrnhgbBapZ3N0jV5ULqXYHKGsIf
-	gWdfw0PjB4NYmz+eYphSjRPVQ8vMWx3SuwIl3/hZm96JHMKEGb6JKYngamVE=
+	s=arc-20240116; t=1783718462; c=relaxed/simple;
+	bh=Yu7FaItOyQ97Y3H+g+6UdGzrpiu9kbL3S+vFEvpdqxI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=qUDp+K5l/HaSYtiQMaISSUv2LIhB1dP8YeE6ZEuvuqfMohCCKEDwDKPCtxSH0SL5QNQLWtMVBany89HZAW5ljhtMS/nDsHGH2YBu6L0SEqpUJ5swMdnOFkt+RWR6UfjF4u7Jx5WutYQlrwHKE2CDSVaP1Dw0JyS/3Ox8aZAnzjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KvOgHlBC; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KvOgHlBC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A08441F00A3A;
+	Fri, 10 Jul 2026 21:21:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1783718461;
+	bh=5BQm0+FF2Y11s+9pd0PZFqqp7gSzrclRG7lcSdtnYbk=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=KvOgHlBCxTMds7JGf88d1FDy0YLjxJWrUGe88FDcoMMVE9ACDdP836QVj9SdrDLaH
+	 9oUVKLK6vXnvpxnivKL9c6lrKEiPWPpdbMBJZPqEeKxpqwG/8BAWbw7nVEXp+KPTOX
+	 eoAFUhz46f8RgCfAXENpOQlQNb1JLoeB4yEBoMpc13GxbJGSN2zDQUzRE1NhB6942E
+	 ofjSvALajEVdj5j4mr5F0fZpHsGbErhJ3tLVtzm15rlBKvdS9gBbV2Va18Le0QcA1i
+	 xxPB08sFruQQkl7l26toezxuDsEf5GWHmXZRKwawskj8LrmxLPaV01HDJDMS1xGgEM
+	 vCYHjd3jA1Gxw==
+Date: Fri, 10 Jul 2026 17:20:58 -0400
+From: Eric Biggers <ebiggers@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Christoph Hellwig <hch@lst.de>, Keith Busch <kbusch@meta.com>,
+	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	axboe@kernel.dk, brauner@kernel.org, cem@kernel.org,
+	jaegeuk@kernel.org, aalbersh@kernel.org, tytso@mit.edu,
+	Keith Busch <kbusch@kernel.org>
+Subject: Re: [PATCH] fs: report direct io constraints through file_getattr
+Message-ID: <20260710212058.GA1911@quark>
+References: <20260708011843.1036846-1-kbusch@meta.com>
+ <20260709071352.GA20180@lst.de>
+ <neamg3phll7hjwd765ddtqebtxasdvkoskff75dqzmgzv2xy5i@mf4agr6yoizn>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:6a94:b0:496:117b:1f04 with SMTP id
- 5614622812f47-4a40ecbe896mr2874028b6e.2.1783715556486; Fri, 10 Jul 2026
- 13:32:36 -0700 (PDT)
-Date: Fri, 10 Jul 2026 13:32:36 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a5156e4.278cdcd2.e885.0006.GAE@google.com>
-Subject: [syzbot] Monthly ext4 report (Jul 2026)
-From: syzbot <syzbot+listc4528d3e21bc58f7fcb2@syzkaller.appspotmail.com>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <neamg3phll7hjwd765ddtqebtxasdvkoskff75dqzmgzv2xy5i@mf4agr6yoizn>
 
-Hello ext4 maintainers/developers,
+On Thu, Jul 09, 2026 at 11:14:47AM +0200, Jan Kara wrote:
+> On Thu 09-07-26 09:13:52, Christoph Hellwig wrote:
+> > On Tue, Jul 07, 2026 at 06:18:43PM -0700, Keith Busch wrote:
+> > > +		u32 dio_align = ext4_dio_alignment(inode);
+> > > +
+> > > +		if (dio_align != 0) {
+> > 
+> > 
+> > > +			struct block_device *bdev = inode->i_sb->s_bdev;
+> > > +
+> > > +			if (dio_align == 1) {
+> > > +				fa->fsx_dio_mem_align = bdev_dma_alignment(bdev) + 1;
+> > > +				fa->fsx_dio_offset_align = bdev_logical_block_size(bdev);
+> > > +				fa->fsx_dio_read_offset_align = bdev_logical_block_size(bdev);
+> > > +			} else {
+> > > +				fa->fsx_dio_mem_align = dio_align;
+> > > +				fa->fsx_dio_offset_align = dio_align;
+> > > +				fa->fsx_dio_read_offset_align = dio_align;
+> > > +			}
+> > 
+> > Call bdev_fileattr and override the relevant field as needed?
+> > 
+> > Question to the ext4 maintainers: why does ext4_dio_alignment
+> > affect the in-memory alignment?  If it does so, it should probably
+> > also affect the virt boundry alignment..
+> 
+> I guess that is mostly a historical accident. ext4_dio_alignment() returns
+> 1 (iomap alignment is used and that's different for memory and file offset
+> alignment), 0 (dio not supported, memory and file offset alignment is
+> indeed the same), and blocksize (a special case which can happen for
+> fscrypt if it supports dio and where I believe memory alignment
+> requirements may be in fact different). I'm adding Eric to CC to answer
+> what actual requirements fscrypt has for memory buffers for direct IO. I'd
+> expect with inline encryption we would have the same requirements as
+> ordinary iomap direct IO and for other code paths I'm not sure... Eric?
 
-This is a 31-day syzbot report for the ext4 subsystem.
-All related reports/information can be found at:
-https://syzkaller.appspot.com/upstream/s/ext4
+Please see Documentation/filesystems/fscrypt.rst:
 
-During the period, 3 new issues were detected and 0 were fixed.
-In total, 44 issues are still open and 178 have already been fixed.
-There are also 8 low-priority issues.
+    The I/O request must be fully aligned to the filesystem block size.
+    This means that the file position the I/O is targeting, the lengths
+    of all I/O segments, and the memory addresses of all I/O buffers
+    must be multiples of this value.  Note that the filesystem block
+    size may be greater than the logical block size of the block device.
 
-Some of the still happening issues:
+We go over this about once a year, whenever someone suggests that the
+memory alignment requirement is not needed.  blk-crypto-fallback needs
+it, the block layer itself needs it, and at least some storage drivers
+need it.
 
-Ref  Crashes Repro Title
-<1>  16116   Yes   possible deadlock in ext4_writepages (2)
-                   https://syzkaller.appspot.com/bug?extid=eb5b4ef634a018917f3c
-<2>  7757    Yes   KASAN: out-of-bounds Read in ext4_xattr_set_entry
-                   https://syzkaller.appspot.com/bug?extid=f792df426ff0f5ceb8d1
-<3>  132     Yes   WARNING in ext4_iomap_begin (3)
-                   https://syzkaller.appspot.com/bug?extid=626aa13bf52efc3aa86e
-<4>  30      No    possible deadlock in evict (4)
-                   https://syzkaller.appspot.com/bug?extid=a30a00d3e694e4fa1315
-<5>  7       Yes   divide error in qnx6_mmi_fill_super
-                   https://syzkaller.appspot.com/bug?extid=6a0633f11d3fb88860bf
-<6>  4       No    WARNING in jbd2_journal_dirty_metadata (3)
-                   https://syzkaller.appspot.com/bug?extid=a5f824f1c49dd97fcff0
-<7>  3       Yes   INFO: task hung in ext4_write_end
-                   https://syzkaller.appspot.com/bug?extid=16bf7cd0ebeb1de93aa5
-<8>  2998    Yes   INFO: task hung in sync_inodes_sb (5)
-                   https://syzkaller.appspot.com/bug?extid=30476ec1b6dc84471133
-<9>  2204    Yes   INFO: task hung in jbd2_journal_commit_transaction (5)
-                   https://syzkaller.appspot.com/bug?extid=3071bdd0a9953bc0d177
-<10> 810     Yes   possible deadlock in do_writepages (2)
-                   https://syzkaller.appspot.com/bug?extid=756f498a88797cda9299
+To support less memory alignment, we'd need to:
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+   - Make some fairly complex updates to blk-crypto-fallback to support
+     en/decrypting data units split across pages.  Note that there's no
+     way to do this with zero overhead on other requests.
 
-To disable reminders for individual bugs, reply with the following command:
-#syz set <Ref> no-reminders
+   - Update the block layer to not split crypto data units across bvecs,
+     regardless of memory alignment.  This also would add more overhead
+     to all requests.
 
-To change bug's subsystems, reply with:
-#syz set <Ref> subsystems: new-subsystem
+   - Test the hardware support on each eMMC and UFS host controller
+     individually and opt in the ones that actually correctly handle
+     crypto data units split across DMA segments.  We already know it
+     does *not* work on at least one.
 
-You may send multiple commands in a single email message.
+   - And finally update the filesystems as the last step, not the first.
+
+So far I haven't seen the point.  Yes, applications can benefit from the
+lower alignment in theory.  But especially with encryption/decryption,
+it isn't at all easy to support.  This has apparently been getting
+learned the hard way, as (for example) alignment was initially relaxed
+for dm-crypt without testing it, and it had to be reverted
+(https://lore.kernel.org/dm-devel/20221103152559.1909328-1-kbusch@meta.com/).
+
+- Eric
