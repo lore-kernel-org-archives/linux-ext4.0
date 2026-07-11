@@ -1,133 +1,141 @@
-Received: from mail-oa1-f80.google.com (mail-oa1-f80.google.com [209.85.160.80])
+Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 367EC12D21B
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Jul 2026 01:29:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.80
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCE6233F583
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Jul 2026 06:38:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783733377; cv=none; b=UAsHWsOKhBqNlg5tagsXH9nB/vPkEWI7i61Ah9IaGa3r/HJnMCNWF12MQ5ssMJf5e+zaf14nHQOmRC1tilGquWLHF7yQPJ2jNA3WmPi3fvoDaAlXS2qvMzM/yaZ9cVyrELmZhASUwmT7pgtXZ12xYgY9Hk1o878Qd3fXF+FySFI=
+	t=1783751910; cv=none; b=LFEUmoqQ8UJpmF5O+dHWHPNgCy51RlwydHihh3+LUu8s6NixGchhswb1UzMY0KB8mzgiS5gvngVCSLiQJFfMI/zR0nuZJ8q7g4riLTf5XJpa8Vn3GdFC0199sN6Vpx58FXovRnukKbTA7Z1633l18sW8aUiaD7+wXQTqNXK4z+o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783733377; c=relaxed/simple;
-	bh=bZ8vSwKapDpmEcMHkBO+peiSiS2E/XgcrTa5VImBMGs=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=cnvbCszreuVnuIcpyNUCHs/4TfNfhAdMLkkVPemH/JgFQJUb2RPwQPe/B2KT4zFJNep9vzg961pvkCXaks26zSIdzXTF4lcsSaYsc4nxFBQYObGNzNOKUP6b+l/atIpJAo+vKRvo2Vj2w9nzipRhZ5miZd3ZGDFgV8Si/6xwwQg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.160.80
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oa1-f80.google.com with SMTP id 586e51a60fabf-451acf33124so764159fac.0
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 18:29:35 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783733375; x=1784338175;
-        h=content-type:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+	s=arc-20240116; t=1783751910; c=relaxed/simple;
+	bh=dWWAMJSMfGrLurlCO2n/jTCqsh5B1l9WE2bnm0I5Roc=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=UfVRCwpGx/Uzk9tLWQ6lpxeaubA+MbcGbmAh3uNSGH+ctuwVnxWJQnf4wVuiGo4W2tzamAPgR9oAdbfcFxvmSilY/hzvGqYl6zQHODSBKd2TVaQnDc2M+mO/w3G/SCLWRaeCpZvTuH4DiHLyTRGEM0ISmR3eilktz7fCnvO+dok=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=f3ykabJo; arc=none smtp.client-ip=209.85.128.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="f3ykabJo"
+Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-493f4638f4aso14493145e9.3
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 23:38:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1783751907; x=1784356707; darn=vger.kernel.org;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:from:to:cc:subject:date:message-id
          :reply-to:content-type;
-        bh=/O3+zFLYKutGnfLXu3OIZFsMm9QJilupY1FpO0OjtrY=;
-        b=k2ssx3yK/5xR+7seP3zS4tYUpgaxH+OWQjzzrLx1neYybT54ksXe5SXDWFVw9Rkcd+
-         3oWzP2080Jzt0K79LkcOALCcjF23ffA32DqgOFVIMKe+siPwe20MpfjWF2KF+DNczCfX
-         VYj9NCuTm6Q5pbe81liJnrFBsaLzzwYslvokel9f1KipEhWBIw9cteflwXny6+lmWiVH
-         4/1CWGTyGvg4Sh6aqNvd2S3iY1CVWzhURgLfYw+sEcnY51K7GeTN74feS7niFeLrcQEm
-         Qf/skr8m45mPahzpa6reGOSXj8DqcAV7zsXlm9ly/6F2dV2zBBe0NhDCkF2Bg1AqDLAz
-         Ufxw==
-X-Forwarded-Encrypted: i=1; AFNElJ/n9p9xPdABtQoQM1cuqRRF9IL8Y/Kojjf1IV+nLK4wHuBgo9OmUUsU2aRGgg4r5fCcQnHTDqK3J4L+@vger.kernel.org
-X-Gm-Message-State: AOJu0YyZ9p7fisivVIWpgWBLMXuxEmgwH/iUYFXXxhoGlgVzHBZLPb5X
-	6RjstW+qGbY+Vr9aSysyQxh89NT8S1tSC0QjK93rLtqe0RXc/btIUPL+vlqEV5FtxNjga1TkT49
-	ajva3GSVzn+Dn0SLb+0iCQ8e3YP8zj5wXQIhvQIBwZx4I7iV+IoXFSN/1BPo=
+        bh=/s+2rX7eEUkFVusG/7aG24rqZbgQVdZ6GO/PTTSZUO0=;
+        b=f3ykabJoCg30VJgvb0yCbuxi1OZl1JJioLG/WRQarXjpIONGv449ncNhzMdRq/mGsM
+         Uvy+D0rlbSRBIPEwQo6fH8/HJ7Us4DQHbbG2dtg6Y1cgpAJmIA/efTz7LVbS/rGRL0Tv
+         hzx59wzpT9DAcZGgTykUOnPQXpKz17/WgVL/uTjcjZ3bkUmKvsXaCXOH9DGORpsOFxG6
+         BmZUElA9kkQOtfhjcDV07LbyvbvxKjaqXzR8dPoCu2d7b/NV4cM5BHxcA5PwtkoYZNTT
+         tlCRQbx5qTvN7IR8kSua7XGCncxyfOT6PDRIdIVJIrcZCJZDTi3pk6npcEvVXw4dhmDX
+         17Yg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1783751907; x=1784356707;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:x-gm-gg:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=/s+2rX7eEUkFVusG/7aG24rqZbgQVdZ6GO/PTTSZUO0=;
+        b=UBGCl8ge7/JCJYu9A8NERz+tCWH3RosFVmbEkyLvB22Z9SCCnA9f6B9j3ac3O/fvXi
+         2/fOZ3bqJgrWjCo5N8AjWo3Wph80erUc2BBN5Xgf09IjBFpOj5wEbq0X/EwHhxiduXHX
+         rWDqyXjrBMKP8R+EVOKx34HmUGagpDbdHLUbHBfRTinOWnF1JQGxOHdymvJzHyVBKFxt
+         l49SBv6w2W+AmdpjkUEyRBuuCc3I8VJCIKnATLfff/7Gk1HgcwHmGB8E9fB25c5QHgOQ
+         0wsXvjcReZOhYhmUsNVCGiqM1qAqTS8GbiPWpgZx/Z2k6fAaL1OR3vqyAQHjGzwCmkZl
+         P8qw==
+X-Gm-Message-State: AOJu0Yyrt674pHCVXVI3T85p0eP66ZEb8G/3DYLPXG7GlYAAry/Zo+hP
+	BwNFPUxqJM5lIAEVlHiOuUBU5Jk5gmy89e0bCwYzI4VesHvmG+NG+6G8bVUvmPXz
+X-Gm-Gg: AfdE7clotm8wDcQFvsR5+GQPOocMtrvS38jvrkbUsUnme2Oo8KSCHndYE02prfsUo8u
+	LB5qx22AZoPkaf+CaxK00wIs0ZKP0nqBCDCA23dKL0GFJS7AV7Tg1VkaAhV5NWhbQBnqlZKUaJ7
+	6MGzAOQkmN8bjsrx7eq7E5jiqTcCpNbmRR2ViN3P2q9QloTaPYo6P/Jtl1r8neKkVl7LJQLSfYd
+	klPt8DGudQT8q/E1l6extKrILLDBDXhulqpcONWwzf0M6JLGiKTAT4qiUp2KIrI8u53JQjWv03z
+	SpR9TxXI8OyFvKba65pJrKUBqeRb0qGYJG3g773EG89iGTbItCIoT8JWjTN41LnDUvJMCs0Lnyl
+	j2uZZ8K2nDULHQU7XTEtW86KZz3X3hF5TdP71Ke2D8N412HMsKwIEsa8qfgR1qE4FRX1lBbrwH1
+	FkdbiNzBCOk4cq1cWTM4xdq/Wry5yDjVKRbMLOJJHdIJ/rjYRgSlciNAcg65CFuGtlOKR1fu7o+
+	6H/MYWjrb7QB36SFhTgJPN2KR5xZ7T68xrn5te0p/AYOL9wb8coMn69hO3rxIrAhEbQ+5MBDDyL
+	DTPtSQde/0fZmlgwDUkZ1dps85O7xTi7VgDpOfbpstw99HhiU0aC6g==
+X-Received: by 2002:a05:6000:26c7:b0:46d:55a5:8ec5 with SMTP id ffacd0b85a97d-47f2dcf9e3emr1466458f8f.33.1783751907045;
+        Fri, 10 Jul 2026 23:38:27 -0700 (PDT)
+Received: from [192.168.1.187] ([2a02:8308:4092:11f0::f9f])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47a9de1e736sm70744243f8f.7.2026.07.10.23.38.26
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 10 Jul 2026 23:38:26 -0700 (PDT)
+From: Joshua Crofts <joshua.crofts1@gmail.com>
+Date: Sat, 11 Jul 2026 08:38:18 +0200
+Subject: [PATCH] ext4: use str_plural() instead of custom macro
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:2387:b0:497:e7e2:756e with SMTP id
- 5614622812f47-4a42aca9d0emr1052338b6e.13.1783733375235; Fri, 10 Jul 2026
- 18:29:35 -0700 (PDT)
-Date: Fri, 10 Jul 2026 18:29:35 -0700
-In-Reply-To: <6a27cb2a.39669fcc.33b062.008b.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a519c7f.278cdcd2.e885.000c.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] kernel BUG in ext4_write_inline_data (5)
-From: syzbot <syzbot+53c8bd6136cfbe85197e@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
-	tytso@mit.edu, yi.zhang@huawei.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260711-remove-plural-macro-v1-1-b3dcd44e4068@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBG4avIrDuQuGjaXkVcDPGPDkQjEyqCe
+ PeGLr/FexdVmKLSp7vIcGjVsjX4R0dxkW0G69RMveufLnjPhrUc4D1/TTKvEq1wQEzyCu8UBdT
+ K3ZD0/F+H8b5/3i6w9mUAAAA=
+X-Change-ID: 20260711-remove-plural-macro-7ecfa879fcae
+To: Theodore Ts'o <tytso@mit.edu>, 
+ Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joshua Crofts <joshua.crofts1@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783751906; l=1303;
+ i=joshua.crofts1@gmail.com; s=20260530; h=from:subject:message-id;
+ bh=dWWAMJSMfGrLurlCO2n/jTCqsh5B1l9WE2bnm0I5Roc=;
+ b=lmuVrHFGc/gjExIXjwRFMNDC8aAsJm6goNGOpZnR7co1i4kdwNxQZLrsUIVxkUNcL+xVweE1E
+ leVj2NQNZ19BjuCP2jSpN0sCTRcAnYrtDZhI4Wjp1BIci7Y4eX4oh+8
+X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
+ pk=RTDOoVwgeL4oFdASj9U+cxJuIjXuXk73zkjnGOJKbEo=
 
-syzbot has found a reproducer for the following issue on:
+Remove the custom PLURAL() macro and use str_plural() from
+string_choices.h instead.
 
-HEAD commit:    a635d6748234 Merge tag 'v7.2-rc2-smb3-server-fixes' of git..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=10c8b0b9580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=8578cb30af0c1c29
-dashboard link: https://syzkaller.appspot.com/bug?extid=53c8bd6136cfbe85197e
-compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12d41346580000
+Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+---
+ fs/ext4/orphan.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/5cfb3b35578d/disk-a635d674.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/4f49a13f1718/vmlinux-a635d674.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/1c79dac0ba82/bzImage-a635d674.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/e19a0b652c4c/mount_0.gz
-  fsck result: failed (log: https://syzkaller.appspot.com/x/fsck.log?x=125ac0b9580000)
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+53c8bd6136cfbe85197e@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inline.c:240!
-Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
-CPU: 1 UID: 0 PID: 6277 Comm: syz.5.64 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 05/09/2026
-RIP: 0010:ext4_write_inline_data+0x40b/0x4f0 fs/ext4/inline.c:240
-Code: fe e8 e9 e7 36 ff 42 8d 44 23 c4 bb 3c 00 00 00 89 44 24 08 44 29 e3 e9 aa fe ff ff e8 ce e7 36 ff 90 0f 0b e8 c6 e7 36 ff 90 <0f> 0b e8 be e7 36 ff 48 8d 3d f7 52 56 0e 48 c7 c2 e0 95 ed 8b 4c
-RSP: 0018:ffffc90003d7f8e0 EFLAGS: 00010293
-RAX: 0000000000000000 RBX: 0000000000000078 RCX: ffffffff82d2c53b
-RDX: ffff8880280cdd00 RSI: ffffffff82d2c75a RDI: ffff8880280cdd00
-RBP: ffff88807127e000 R08: 0000000000000006 R09: 0000000000000080
-R10: 000000000000003c R11: 0000000000000000 R12: 0000000000000008
-R13: 0000000000000080 R14: ffffc90003d7f980 R15: ffff88807127e58a
-FS:  00007f45fb4396c0(0000) GS:ffff888123eed000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007ff59e5b7000 CR3: 000000007855a000 CR4: 0000000000350ef0
-Call Trace:
- <TASK>
- ext4_write_inline_data_end+0x2a8/0xdb0 fs/ext4/inline.c:825
- ext4_da_write_end+0x51e/0xe70 fs/ext4/inode.c:3305
- generic_perform_write+0x513/0xa40 mm/filemap.c:4379
- ext4_buffered_write_iter+0xdc/0x3b0 fs/ext4/file.c:316
- ext4_file_write_iter+0xa2f/0x1cb0 fs/ext4/file.c:735
- new_sync_write fs/read_write.c:595 [inline]
- vfs_write+0x6ac/0x1050 fs/read_write.c:687
- ksys_write+0x12a/0x250 fs/read_write.c:739
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x115/0x870 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f45fa59de59
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f45fb439028 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 00007f45fa825fa0 RCX: 00007f45fa59de59
-RDX: 0000000000000078 RSI: 00002000000000c0 RDI: 0000000000000004
-RBP: 00007f45fa633e6f R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007f45fa826038 R14: 00007f45fa825fa0 R15: 00007fff8e2c70e8
- </TASK>
-Modules linked in:
----[ end trace 0000000000000000 ]---
-RIP: 0010:ext4_write_inline_data+0x40b/0x4f0 fs/ext4/inline.c:240
-Code: fe e8 e9 e7 36 ff 42 8d 44 23 c4 bb 3c 00 00 00 89 44 24 08 44 29 e3 e9 aa fe ff ff e8 ce e7 36 ff 90 0f 0b e8 c6 e7 36 ff 90 <0f> 0b e8 be e7 36 ff 48 8d 3d f7 52 56 0e 48 c7 c2 e0 95 ed 8b 4c
-RSP: 0018:ffffc90003d7f8e0 EFLAGS: 00010293
-RAX: 0000000000000000 RBX: 0000000000000078 RCX: ffffffff82d2c53b
-RDX: ffff8880280cdd00 RSI: ffffffff82d2c75a RDI: ffff8880280cdd00
-RBP: ffff88807127e000 R08: 0000000000000006 R09: 0000000000000080
-R10: 000000000000003c R11: 0000000000000000 R12: 0000000000000008
-R13: 0000000000000080 R14: ffffc90003d7f980 R15: ffff88807127e58a
-FS:  00007f45fb4396c0(0000) GS:ffff888123ded000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007ff59e5b6000 CR3: 000000007855a000 CR4: 0000000000350ef0
-
+diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+index 64ea47624233..e307d6d55451 100644
+--- a/fs/ext4/orphan.c
++++ b/fs/ext4/orphan.c
+@@ -4,6 +4,7 @@
+ #include <linux/fs.h>
+ #include <linux/quotaops.h>
+ #include <linux/buffer_head.h>
++#include <linux/string_choices.h>
+ 
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+@@ -486,14 +487,13 @@ void ext4_orphan_cleanup(struct super_block *sb, struct ext4_super_block *es)
+ 		}
+ 	}
+ 
+-#define PLURAL(x) (x), ((x) == 1) ? "" : "s"
+ 
+ 	if (nr_orphans)
+ 		ext4_msg(sb, KERN_INFO, "%d orphan inode%s deleted",
+-		       PLURAL(nr_orphans));
++			 nr_orphans, str_plural(nr_orphans));
+ 	if (nr_truncates)
+ 		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
+-		       PLURAL(nr_truncates));
++			 nr_truncates, str_plural(nr_truncates));
+ #ifdef CONFIG_QUOTA
+ 	/* Turn off quotas if they were enabled for orphan cleanup */
+ 	if (quota_update) {
 
 ---
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
+base-commit: c143957520c6c9b5cd72e0de8b52b814f0c576fe
+change-id: 20260711-remove-plural-macro-7ecfa879fcae
+
+Best regards,
+-- 
+Kind regards
+
+CJD
+
