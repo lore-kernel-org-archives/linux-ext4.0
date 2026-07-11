@@ -1,141 +1,164 @@
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+Received: from mail-pj1-f52.google.com (mail-pj1-f52.google.com [209.85.216.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCE6233F583
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Jul 2026 06:38:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783751910; cv=none; b=LFEUmoqQ8UJpmF5O+dHWHPNgCy51RlwydHihh3+LUu8s6NixGchhswb1UzMY0KB8mzgiS5gvngVCSLiQJFfMI/zR0nuZJ8q7g4riLTf5XJpa8Vn3GdFC0199sN6Vpx58FXovRnukKbTA7Z1633l18sW8aUiaD7+wXQTqNXK4z+o=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783751910; c=relaxed/simple;
-	bh=dWWAMJSMfGrLurlCO2n/jTCqsh5B1l9WE2bnm0I5Roc=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=UfVRCwpGx/Uzk9tLWQ6lpxeaubA+MbcGbmAh3uNSGH+ctuwVnxWJQnf4wVuiGo4W2tzamAPgR9oAdbfcFxvmSilY/hzvGqYl6zQHODSBKd2TVaQnDc2M+mO/w3G/SCLWRaeCpZvTuH4DiHLyTRGEM0ISmR3eilktz7fCnvO+dok=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=f3ykabJo; arc=none smtp.client-ip=209.85.128.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A154A3C1406
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Jul 2026 12:13:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.52
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1783772001; cv=pass; b=TB1vKZFarmfQ5yA/T3PrmirrXToRRASfnPR2/rsvWhxQRsFeDv1rYGrRtGGPYBzzrjUDQJ4gqkxBv4JNubc4BP/TDRtwQko54j2/bpCEvrey8bzLdEqgCVkHmvkUR+p+vjHx7W7O10ny8oYtObooruwzbeQlGNIikr7k11W+eNo=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1783772001; c=relaxed/simple;
+	bh=80vo3JIjnCsKn8zo158HX4vkfRXd32w7uPzzJAtLaF0=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=K7AeBtbrysa03RQO7Y3e3j90F0Oj8Y6kqi8oFT5O9O/KXnXblwMPAU2wVGM9GF2DN3xVD49rkliVk0YqmesNZWob/gxkt/tJ7cgaEUt7GlN9CTovTwp2udZGGVawJ9ZALJAQMa1RN/zPLSjf4gr0UTIWC1K5RR51PHCjG5q4Sss=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gHFB0fSe; arc=pass smtp.client-ip=209.85.216.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="f3ykabJo"
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-493f4638f4aso14493145e9.3
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2026 23:38:28 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gHFB0fSe"
+Received: by mail-pj1-f52.google.com with SMTP id 98e67ed59e1d1-3856d4015e0so265638a91.2
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Jul 2026 05:13:19 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1783771999; cv=none;
+        d=google.com; s=arc-20260327;
+        b=RT8N1INUeD+XAxliP04njdPjdZW66vz/wQI+eVu5pueUaAC94d/s5ewkeQ2rG5NfYx
+         rW7qMLwlCPKaveKO/E4l07n5WjLi+DYLjtKV+k3cFmZHfK0YryQEVwaLoZ23U3A9rrAq
+         Y2bjBj3hboAmlmFlJDjNVoAIBoQ1bbsBs8g4TGMvJtfotrh2LMbyLOPVdZ7bCVBzhRYM
+         iAT6F9h3GesGnefmlJzNi49jdIAiUQ+nsdHUPdjHvzQQGpvjx0cVJ36j+55L4wrttEG3
+         HUg1sABVNY7KralridkeF71IgNrjdqRpgEYlMGBjah4nkxzaNa8K3qeo0CrjUpiRr4Ry
+         sB1w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=80vo3JIjnCsKn8zo158HX4vkfRXd32w7uPzzJAtLaF0=;
+        fh=HSO7f5nJQJ0uZRtOz3e5oXUrE5VsXZqmRo2xEQKEiOA=;
+        b=Gouk1d8sHH+TnUrju0KEsd7X7pj46e8fugznlnbZ+xAxpOBawKudQbZCtXGdbaRWKq
+         +715IwsEq5LSiyY3Wc0xK0z6iYa0c4bknTw7pJbdXKS7FpR5bFCMa1IFPTvOhZRnXiXQ
+         WhvQI7bJbYu8HoS3Oh/koFl3xKTThZIVOmhh4jALJNEmgn6ET3RBprG38AMVOK1R3rXU
+         dgcrcxXiIO1OvCh5TQfU7a9VJe+6gZK//3H0ORD/4tYke8M0t0nSUeQIag9s3h9kh+FQ
+         YgXast2WQCoBRvYUi/pRLGKSiYgWH5YnGznLMDw0Lv1XGAJHN52habm34a0D6jOceAT7
+         cs1w==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783751907; x=1784356707; darn=vger.kernel.org;
-        h=cc:to:message-id:content-transfer-encoding:content-type
-         :mime-version:subject:date:from:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=/s+2rX7eEUkFVusG/7aG24rqZbgQVdZ6GO/PTTSZUO0=;
-        b=f3ykabJoCg30VJgvb0yCbuxi1OZl1JJioLG/WRQarXjpIONGv449ncNhzMdRq/mGsM
-         Uvy+D0rlbSRBIPEwQo6fH8/HJ7Us4DQHbbG2dtg6Y1cgpAJmIA/efTz7LVbS/rGRL0Tv
-         hzx59wzpT9DAcZGgTykUOnPQXpKz17/WgVL/uTjcjZ3bkUmKvsXaCXOH9DGORpsOFxG6
-         BmZUElA9kkQOtfhjcDV07LbyvbvxKjaqXzR8dPoCu2d7b/NV4cM5BHxcA5PwtkoYZNTT
-         tlCRQbx5qTvN7IR8kSua7XGCncxyfOT6PDRIdIVJIrcZCJZDTi3pk6npcEvVXw4dhmDX
-         17Yg==
+        d=gmail.com; s=20251104; t=1783771999; x=1784376799; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=80vo3JIjnCsKn8zo158HX4vkfRXd32w7uPzzJAtLaF0=;
+        b=gHFB0fSemSn6s4jVp/EuBtir/qlPGO8Vq2wg3sOO56WQSEm3m1wgLV+PH+YCzCwe4w
+         40XUJ8N3llKffVv3KvwlpEx0PwjFhEP4ejwfKckXHhOrs4COlZYMuCDJVCD700HVWfby
+         Wef44AYzEvkwlRh4pmvCSPrnSSb+EuoMS7xAp1fqanhd4vgQUbVFs9DMhr/aX2ve4EZi
+         XKK9VbugY1ax8izR6ls1BpqL9Fr7yUJMtkts2rZtlWUvAdEs5tvYZoRcRU9pXB0Y6W76
+         RQw5PmUpYS6rrCfKNmEtUvADgYNWM7gb8xCEbJGzjwstKv7ju7GWWD5f6bQVByQhgD9b
+         Verg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783751907; x=1784356707;
-        h=cc:to:message-id:content-transfer-encoding:content-type
-         :mime-version:subject:date:from:x-gm-gg:x-gm-message-state:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=/s+2rX7eEUkFVusG/7aG24rqZbgQVdZ6GO/PTTSZUO0=;
-        b=UBGCl8ge7/JCJYu9A8NERz+tCWH3RosFVmbEkyLvB22Z9SCCnA9f6B9j3ac3O/fvXi
-         2/fOZ3bqJgrWjCo5N8AjWo3Wph80erUc2BBN5Xgf09IjBFpOj5wEbq0X/EwHhxiduXHX
-         rWDqyXjrBMKP8R+EVOKx34HmUGagpDbdHLUbHBfRTinOWnF1JQGxOHdymvJzHyVBKFxt
-         l49SBv6w2W+AmdpjkUEyRBuuCc3I8VJCIKnATLfff/7Gk1HgcwHmGB8E9fB25c5QHgOQ
-         0wsXvjcReZOhYhmUsNVCGiqM1qAqTS8GbiPWpgZx/Z2k6fAaL1OR3vqyAQHjGzwCmkZl
-         P8qw==
-X-Gm-Message-State: AOJu0Yyrt674pHCVXVI3T85p0eP66ZEb8G/3DYLPXG7GlYAAry/Zo+hP
-	BwNFPUxqJM5lIAEVlHiOuUBU5Jk5gmy89e0bCwYzI4VesHvmG+NG+6G8bVUvmPXz
-X-Gm-Gg: AfdE7clotm8wDcQFvsR5+GQPOocMtrvS38jvrkbUsUnme2Oo8KSCHndYE02prfsUo8u
-	LB5qx22AZoPkaf+CaxK00wIs0ZKP0nqBCDCA23dKL0GFJS7AV7Tg1VkaAhV5NWhbQBnqlZKUaJ7
-	6MGzAOQkmN8bjsrx7eq7E5jiqTcCpNbmRR2ViN3P2q9QloTaPYo6P/Jtl1r8neKkVl7LJQLSfYd
-	klPt8DGudQT8q/E1l6extKrILLDBDXhulqpcONWwzf0M6JLGiKTAT4qiUp2KIrI8u53JQjWv03z
-	SpR9TxXI8OyFvKba65pJrKUBqeRb0qGYJG3g773EG89iGTbItCIoT8JWjTN41LnDUvJMCs0Lnyl
-	j2uZZ8K2nDULHQU7XTEtW86KZz3X3hF5TdP71Ke2D8N412HMsKwIEsa8qfgR1qE4FRX1lBbrwH1
-	FkdbiNzBCOk4cq1cWTM4xdq/Wry5yDjVKRbMLOJJHdIJ/rjYRgSlciNAcg65CFuGtlOKR1fu7o+
-	6H/MYWjrb7QB36SFhTgJPN2KR5xZ7T68xrn5te0p/AYOL9wb8coMn69hO3rxIrAhEbQ+5MBDDyL
-	DTPtSQde/0fZmlgwDUkZ1dps85O7xTi7VgDpOfbpstw99HhiU0aC6g==
-X-Received: by 2002:a05:6000:26c7:b0:46d:55a5:8ec5 with SMTP id ffacd0b85a97d-47f2dcf9e3emr1466458f8f.33.1783751907045;
-        Fri, 10 Jul 2026 23:38:27 -0700 (PDT)
-Received: from [192.168.1.187] ([2a02:8308:4092:11f0::f9f])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47a9de1e736sm70744243f8f.7.2026.07.10.23.38.26
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 10 Jul 2026 23:38:26 -0700 (PDT)
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Sat, 11 Jul 2026 08:38:18 +0200
-Subject: [PATCH] ext4: use str_plural() instead of custom macro
+        d=1e100.net; s=20251104; t=1783771999; x=1784376799;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=80vo3JIjnCsKn8zo158HX4vkfRXd32w7uPzzJAtLaF0=;
+        b=CgRzgdWylwDPVYEVeqKmJcwiSF3kFJG5JN8uy/2uK5fOy0wxnLKJZgk9bQ588Dbd7D
+         1l3Oz41FEb1JKBzaAbV6E0l2hKKG5ZpHlWY3sMSWlB7EUumXmO+9fyliA7HkG42D7cp9
+         Sdqo6Uezi7p+HHyEM1Y9vXWVHR7AwjVl+u0dQyfgOEeg8qbTNSmDs2/ybGw5hR3nLRAV
+         JJpdH73VoQGoUOo5TAeGMli6RLcwqbkeHQhz8t63zrUFUChhdanYWfhV/kplPndAkAyG
+         pBjF+ah8qCXgYFQpfk29nLi/ZinPTlPf70zBxCXX8mHRikXCUI8c/XvQszcmrOZXDiFd
+         J1LQ==
+X-Forwarded-Encrypted: i=1; AHgh+RqjADQWnquk1IuNQPg3qQBIXadQUfyczp/SnxyCi4rkCTAN+slClvUzYzbewjPeVPhQLIiEiCzwFvPE@vger.kernel.org
+X-Gm-Message-State: AOJu0YxRDAUWlkna0wtBbtre181q8kEqKTIaFI4Heby5W0Td5urPgBSM
+	+m9zS6fN6AcP2UhcPk59YYuTSHDlcvTmEKMB0mBHUTuyMUTI7wt2ServTyhp9DAxlGf7EO0WiXa
+	SdeJzKNrmQ8EgIEEJ0Ouznwygx8wj+MA=
+X-Gm-Gg: AfdE7cmynBruCDZyu+4k7OQhr7RNzoWs+rpaAOzoQH5++yQASxV9MrxFG/VnjK8QUST
+	S8KNHNz+63AtzG283H+N2SVbPwr5x4gkM9wnemFGxKcWKsvf39f+LwUwcCou1RnDvCKgD7CnNPQ
+	eynX1a5PssXJiI7ZNOq5GFNqRnnwk0nox1o87IhQtFOg7WVSMYvqkiljO8L51pbQAnpvtOuAQr3
+	AzdrdjAlbolOYj4S70INSjQoi38SPZRgEA9JFcEXS9plbZVtio/8l7jg3ESx2XucNL7wxJ5MOZ0
+	hhEPrrJPy/eubJelqRveLgRSQq7iifWhJlPB+OfWlM9GaKXJY5QSlblHf5U+CHu+TxO6IBprUvH
+	wUhM7aUnaYNxH
+X-Received: by 2002:a17:90b:4984:b0:380:9cd1:d985 with SMTP id
+ 98e67ed59e1d1-38dc7c111a8mr1909664a91.6.1783771998816; Sat, 11 Jul 2026
+ 05:13:18 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-remove-plural-macro-v1-1-b3dcd44e4068@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBG4avIrDuQuGjaXkVcDPGPDkQjEyqCe
- PeGLr/FexdVmKLSp7vIcGjVsjX4R0dxkW0G69RMveufLnjPhrUc4D1/TTKvEq1wQEzyCu8UBdT
- K3ZD0/F+H8b5/3i6w9mUAAAA=
-X-Change-ID: 20260711-remove-plural-macro-7ecfa879fcae
-To: Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783751906; l=1303;
- i=joshua.crofts1@gmail.com; s=20260530; h=from:subject:message-id;
- bh=dWWAMJSMfGrLurlCO2n/jTCqsh5B1l9WE2bnm0I5Roc=;
- b=lmuVrHFGc/gjExIXjwRFMNDC8aAsJm6goNGOpZnR7co1i4kdwNxQZLrsUIVxkUNcL+xVweE1E
- leVj2NQNZ19BjuCP2jSpN0sCTRcAnYrtDZhI4Wjp1BIci7Y4eX4oh+8
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=RTDOoVwgeL4oFdASj9U+cxJuIjXuXk73zkjnGOJKbEo=
+References: <20260706061928.66713-1-byungchul@sk.com> <20260706061928.66713-40-byungchul@sk.com>
+In-Reply-To: <20260706061928.66713-40-byungchul@sk.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Sat, 11 Jul 2026 14:13:05 +0200
+X-Gm-Features: AUfX_mwWK6GqFCLIKCx9ivosmcno3i0b64L6R15FyNFXSSwj0HKdZlNefQKWcgc
+Message-ID: <CANiq72kEo=bGcHNaSA9JZhv4iuE+YDvu0kN+Z7aopVp3=2C+Wg@mail.gmail.com>
+Subject: Re: [PATCH v19 39/40] rust: completion: Add __rust_helper to rust_helper_wait_for_completion()
+To: Byungchul Park <byungchul@sk.com>, Gary Guo <gary@garyguo.net>
+Cc: linux-kernel@vger.kernel.org, max.byungchul.park@gmail.com, 
+	kernel_team@skhynix.com, torvalds@linux-foundation.org, 
+	damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org, 
+	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, mingo@redhat.com, 
+	peterz@infradead.org, will@kernel.org, tglx@linutronix.de, 
+	rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org, 
+	daniel.vetter@ffwll.ch, duyuyang@gmail.com, johannes.berg@intel.com, 
+	tj@kernel.org, tytso@mit.edu, willy@infradead.org, david@fromorbit.com, 
+	amir73il@gmail.com, gregkh@linuxfoundation.org, kernel-team@lge.com, 
+	linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org, 
+	minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org, 
+	jglisse@redhat.com, dennis@kernel.org, cl@linux.com, penberg@kernel.org, 
+	rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org, 
+	linux-block@vger.kernel.org, josef@toxicpanda.com, 
+	linux-fsdevel@vger.kernel.org, jack@suse.cz, jlayton@kernel.org, 
+	dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org, 
+	dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com, 
+	melissa.srw@gmail.com, hamohammed.sa@gmail.com, harry.yoo@oracle.com, 
+	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com, boqun.feng@gmail.com, 
+	longman@redhat.com, yunseong.kim@ericsson.com, ysk@kzalloc.com, 
+	yeoreum.yun@arm.com, netdev@vger.kernel.org, matthew.brost@intel.com, 
+	her0gyugyu@gmail.com, corbet@lwn.net, catalin.marinas@arm.com, bp@alien8.de, 
+	x86@kernel.org, hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org, 
+	gustavo@padovan.org, christian.koenig@amd.com, andi.shyti@kernel.org, 
+	arnd@arndb.de, lorenzo.stoakes@oracle.com, Liam.Howlett@oracle.com, 
+	rppt@kernel.org, surenb@google.com, mcgrof@kernel.org, petr.pavlu@suse.com, 
+	da.gomez@kernel.org, samitolvanen@google.com, paulmck@kernel.org, 
+	frederic@kernel.org, neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com, 
+	josh@joshtriplett.org, urezki@gmail.com, mathieu.desnoyers@efficios.com, 
+	jiangshanlai@gmail.com, qiang.zhang@linux.dev, juri.lelli@redhat.com, 
+	vincent.guittot@linaro.org, dietmar.eggemann@arm.com, bsegall@google.com, 
+	mgorman@suse.de, vschneid@redhat.com, chuck.lever@oracle.com, neil@brown.name, 
+	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org, 
+	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de, clrkwllms@kernel.org, 
+	mark.rutland@arm.com, ada.coupriediaz@arm.com, kristina.martsenko@arm.com, 
+	wangkefeng.wang@huawei.com, broonie@kernel.org, kevin.brodsky@arm.com, 
+	dwmw@amazon.co.uk, shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com, 
+	yuzhao@google.com, baolin.wang@linux.alibaba.com, usamaarif642@gmail.com, 
+	joel.granados@kernel.org, richard.weiyang@gmail.com, geert+renesas@glider.be, 
+	tim.c.chen@linux.intel.com, linux@treblig.org, 
+	alexander.shishkin@linux.intel.com, lillian@star-ark.net, 
+	chenhuacai@kernel.org, francesco@valla.it, guoweikang.kernel@gmail.com, 
+	link@vivo.com, jpoimboe@kernel.org, masahiroy@kernel.org, brauner@kernel.org, 
+	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com, 
+	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org, 
+	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org, 
+	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org, 
+	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org, 
+	rcu@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org, 
+	neilb@ownmail.net, bagasdotme@gmail.com, wsa+renesas@sang-engineering.com, 
+	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org, 
+	alex.gaynor@gmail.com, bjorn3_gh@protonmail.com, lossin@kernel.org, 
+	a.hindborg@kernel.org, aliceryhl@google.com, tmgross@umich.edu, 
+	rust-for-linux@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Remove the custom PLURAL() macro and use str_plural() from
-string_choices.h instead.
+On Mon, Jul 6, 2026 at 8:22=E2=80=AFAM Byungchul Park <byungchul@sk.com> wr=
+ote:
+>
+> This is needed to inline these helpers into Rust code, which is required
+> for DEPT to play with wait_for_completion().
+>
+> Signed-off-by: Byungchul Park <byungchul@sk.com>
 
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
----
- fs/ext4/orphan.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Apart from what Gary said -- why did you need to do this in a separate
+patch in the same series?
 
-diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
-index 64ea47624233..e307d6d55451 100644
---- a/fs/ext4/orphan.c
-+++ b/fs/ext4/orphan.c
-@@ -4,6 +4,7 @@
- #include <linux/fs.h>
- #include <linux/quotaops.h>
- #include <linux/buffer_head.h>
-+#include <linux/string_choices.h>
- 
- #include "ext4.h"
- #include "ext4_jbd2.h"
-@@ -486,14 +487,13 @@ void ext4_orphan_cleanup(struct super_block *sb, struct ext4_super_block *es)
- 		}
- 	}
- 
--#define PLURAL(x) (x), ((x) == 1) ? "" : "s"
- 
- 	if (nr_orphans)
- 		ext4_msg(sb, KERN_INFO, "%d orphan inode%s deleted",
--		       PLURAL(nr_orphans));
-+			 nr_orphans, str_plural(nr_orphans));
- 	if (nr_truncates)
- 		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
--		       PLURAL(nr_truncates));
-+			 nr_truncates, str_plural(nr_truncates));
- #ifdef CONFIG_QUOTA
- 	/* Turn off quotas if they were enabled for orphan cleanup */
- 	if (quota_update) {
-
----
-base-commit: c143957520c6c9b5cd72e0de8b52b814f0c576fe
-change-id: 20260711-remove-plural-macro-7ecfa879fcae
-
-Best regards,
--- 
-Kind regards
-
-CJD
-
+Cheers,
+Miguel
