@@ -1,27 +1,28 @@
 Received: from PH0PR06CU001.outbound.protection.outlook.com (mail-westus3azon11021103.outbound.protection.outlook.com [40.107.208.103])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0E8F18AE2;
-	Sun, 12 Jul 2026 16:57:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CC363655D4;
+	Sun, 12 Jul 2026 16:57:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.208.103
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783875443; cv=fail; b=lpc5jb2sxbhZ6QcBXu/t7vr8fAvHDCaTsJGjQBv5jcjWfrVhpnjg8X4lmI6YSc71PxIcpmi+UXclRcd88ySlpq+xBljeZ/gYWi+4+PdilFtqwTkwMg79HMYnConWHyX+3A7oWtwD77e4sPFbkK+bGsTbVqrKHvTEhEuMjiKEg68=
+	t=1783875447; cv=fail; b=rkNejG+wTm0MybFErH0l/qB/L9ObC0rKgKVL5wzNfL+yjeLnIVyjB81aGRdQBJKQhTvOfeAhc81BWFGZTYio/H8TVu5tEp/ULHmchR8PcJodVsOzqUNpOyPrPpg+UOuIC04iV8oo25jeiaZqSfr4kxis3M8XM5dki/CogvAjuBI=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783875443; c=relaxed/simple;
-	bh=RWnPQT9xHpxitKmu1JwJBgRek/+Coc1XZa31GwuY3ks=;
-	h=From:To:Cc:Subject:Date:Message-Id:Content-Type:MIME-Version; b=Y2M6ornhkSA6bZIayVJnLTSNq9xuXGjyXqLkdymjn+WXv25bfrKHnRK2dT5qVR3/dnkP7juQK9b3ZMmqPYVrMz5ZKj2s6PUyBmZvpUdZ/85Xn5+5+3QBPByqEWfd2E71mS9df0SVbqAvoEIls4yUvw/DIQOZ8boCKfAz399KjCk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=U7A2C0CG; arc=fail smtp.client-ip=40.107.208.103
+	s=arc-20240116; t=1783875447; c=relaxed/simple;
+	bh=fC7/UjpUBETYpcNwgSUH/OIoKeGj5zNm5XGDJIx7sFc=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=Cgy3YXmGUAI7bjc2k7b1WSavBqhk+9HuHNJ30qjYnPBvdTIYVYqR8kSpB6/FnMP7YZhl8gnFL9oxPuuXUP03zuFtQn35OsAQiFnj5OGmyt8BCsYyE7AmrMXTIy4QiFbHzYPHKdgMrFV7NP9WzZugSBm5B5KjTybzCUoPz87s7b8=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=gnVM8ZEM; arc=fail smtp.client-ip=40.107.208.103
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="U7A2C0CG"
+	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="gnVM8ZEM"
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=oTTYu2h8BbC11Y0SwJG//HRkLxSGrAJGqr7cP+QFWd7EP18QAYPeR0onvknvYO/TVNeMrf/iJPGLow949sGUVJz5Iu4WEskLVvsas2VnI6xCk6Wu3FbX0yL6e0TBO+RbP42wcRyzcRaSOX3bEvuLDBxHpP+L9K4hVxH+rBR088Xy9dNxCojgOi54RWdyPv7W6spLYG0LcKGULD4224xddgMZzB5hSQAHu0Qnf8SlWfHP/TJpgE/A/eBgelungTnWXzS6ZdW0ESJ36Q3AFYhWlwgye0Nd3yO/0FmBra/cCW+yvjFOz5UPPV3PSvh7TS7ptgxIwkrhIMPfj8iQOE21Bw==
+ b=Ys/PFojuK3IcvHYxic/i1aC2nqZP9b5ucF2ivanqCjH0EvOMRIbYSFuT9BrwDgXhEVToUqzKqjDI6nJudiUifEDbP4FthBzx+mz5epZ4qDaLpsFikAUvfj6ie9rDEtqrnsnY7JfyJnSUlvPuEvJMLPXFpndUrQl5U11OpMRN2ZiMTdT0UNdlpnpcy6JyTM51OQOp9Aa54tPWliZTXmR0kyUg1hn9Yg4hO6dFYDPYGZ1QpwrZNoXvGxBtZ158uH1JG0Jl7n2V3swsVKY4yozQjpRYkD+75/9yTHw+upe68xVbB9yW4Oq4MTa9idINGRj9xswtVzjy/pcvPvnPO484bg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector10001;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=R7ZSR9Pie1QSRe7egGrrikvvi+PtT4oZsC1GLW9BlQc=;
- b=hIPQNJjpB9pm4xFox4CosyiOQnwX+JGSXN8+YfffaGQYtCa6NhThtRlas4WKNWje7u5vVK7VW3CEfgUh3/fGt5iUZMj9wvxaNFHGMmPlt6jaTMJ3pCeiW/vndetfOKF7C/NLsvzE2nzGZu3FSKEnLDhOoZNTUqdOc0pQVf1h+sHQYHX/NGT+8jeycxOLCB/nXAEn6LuEprqgWcJHIE8vgjO14DSjtHw4klBTL4uWaNewcY/sXreWccUxy72ALMGmQaduCO7OFIOvLAnt+aYMLOfP9rST2alPGDoNWs3JAw6dT1+f54Cy38TgKhvWGAYgiFbbNhIIcxUlfnAqXJoHFA==
+ bh=SXYZbtylJ0maHI/y3r5JjLHzVcaXwYFwSUY9PbIPyFs=;
+ b=Jdd+Bpgu8eN2vU32jahocMYiWIX4kX+XoLFjR5tlgIR7BIoHleGf5xpJosTBLctnqsDaXBUjM0pTCjY2s5e6cEuAXtosptG9skh5g288JV8puTQcTNmaFwiMZBPg4dCpofttu92kP1ZeWu77nfVqAq57yxfTVhMdwaZ2kVkH6NXoZ62zODxM6YRUVuAVxXhDx9ors3H072J84tDdhPSW1vCqFOlZam//gIjJPOfAGS7S+S5c+eVQwfMoP1f1AHfWABJ61MoroE3pQtZoYktMH8+l3C7uugtwaffWEIhbgW8HoFIzeMTfGqRG1mLSEc9hQRBE2qQpVAg6gPmQuS+2Qw==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
  header.from=thelustrecollective.com; dkim=pass
@@ -29,19 +30,19 @@ ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=thelustrecollective.com; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=R7ZSR9Pie1QSRe7egGrrikvvi+PtT4oZsC1GLW9BlQc=;
- b=U7A2C0CGloZHVcYzLfS/wc4y7YkbuIley/Mes8R7A3N19ve9iUO/qLcR3bIfCJKT4VPLeI+f2+JjFs4ECqTZQX662+ISasVdYhH6QoMl7PIlUFOhFvkjAuBDlINd8RskofcrzhuhuSXf32NeWM3oT4tfMjSH0CyshTFgOc3pS07ZwIzp9HsYW9sNsPNrFUl+nnqqIsRuGDmzrqnd6VUAhfyH/TAZYkPiRnoi+wgCzAIfrX1DD5pMYRX4JBnm9EbmIQAqIrjwEByP8VHOy5EjRu1SNiKID1/8qqdSY4mCBpI5Y3fivg59f0NAt1kcgCR2Hp1FJGhmdhuf6MK0r/LLQA==
+ bh=SXYZbtylJ0maHI/y3r5JjLHzVcaXwYFwSUY9PbIPyFs=;
+ b=gnVM8ZEMmh2+CLZwa9ZhfHEWZ+7ODFQC6pn1Bkj1+BPzaaq3CR2zk+KPXMYDSjTBsCxAPKoEKH4Jrnym8tNTji+Vc/7SMcYC5qIPsVAATZ2aIIm47f1aiEaFsQFyfJy06DTw6OzPlgsidfZ+UFYl1wDDOo1xvOGy3G+nwIrseAPCs+EU1NewMmQ6F9A7AKxWdfadhxwFW/P64Qzh+Psx7uzU//4eC3Wf2Ap+IRBMc6aHmJZ/HPhtWiT6JHP2KYzLrTqxIWDzwKMmodBjOKKiwKW+UZBJhUABx4DSofQmqHPx2tf7H7En9umkMfWGBwF/tqp9wlcg4Gd7DUTaUiLavg==
 Authentication-Results: dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
 Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
  SJ0PR04MB7488.namprd04.prod.outlook.com (2603:10b6:a03:329::10) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.181.23; Sun, 12 Jul
- 2026 16:57:18 +0000
+ 2026 16:57:19 +0000
 Received: from DM6PR04MB4682.namprd04.prod.outlook.com
  ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
  ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0181.019; Sun, 12 Jul 2026
- 16:57:18 +0000
+ 16:57:19 +0000
 From: Timothy Day <timday@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: Jan Kara <jack@suse.com>,
@@ -49,10 +50,12 @@ Cc: Jan Kara <jack@suse.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Timothy Day <timday@thelustrecollective.com>
-Subject: [PATCH v1 0/9] Support Clang context analysis for ext2
-Date: Sun, 12 Jul 2026 12:56:01 -0400
-Message-Id: <20260712165610.366474-1-timday@thelustrecollective.com>
+Subject: [PATCH v1 1/9] ext2: fix ext2_xattr_delete_inode() context analysis warning
+Date: Sun, 12 Jul 2026 12:56:02 -0400
+Message-Id: <20260712165610.366474-2-timday@thelustrecollective.com>
 X-Mailer: git-send-email 2.39.5
+In-Reply-To: <20260712165610.366474-1-timday@thelustrecollective.com>
+References: <20260712165610.366474-1-timday@thelustrecollective.com>
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
 X-ClientProxiedBy: MN2PR15CA0062.namprd15.prod.outlook.com
@@ -66,107 +69,92 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|SJ0PR04MB7488:EE_
-X-MS-Office365-Filtering-Correlation-Id: e2a2bb31-9e89-4575-64ad-08dee036a204
+X-MS-Office365-Filtering-Correlation-Id: 0b5d7773-4dcd-413d-c27d-08dee036a293
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|23010399003|376014|1800799024|366016|56012099006|18002099003;
+	BCL:0;ARA:13230040|23010399003|376014|1800799024|366016|6133799003|56012099006|18002099003|22082099003;
 X-Microsoft-Antispam-Message-Info:
-	tXBcWMf7EmqZtgKrzNS0GvE/HMNTkuAw1cJ0qyaZ8vHMQ9NHVBY/CcM3C8mpFFw/S5/HN4DNhFe8CPdA5lSegJOGbbrh5O6mbkvDf9khD0dGCQ9yxSwyKKGDGm5gZ8nHEfZV32WZkirNXtKPHtSha43AUt7Mu/lfGs3Z91axlMVwl6Cyas1LCrq5CRTN+HDXaHueWdAbYV4a2jf1tBn9xy/MSuePcMlDgzB8YQIlsO8dQHfPyr6/G9NXqAIllcUEswlYY80fQDB9kVvhRFzegzuTOXi3UiD4iccgk60RKjxLbJOULFMyocU2u0EBZH6NWFHgQl+C+jF9umFXx5qFanAl+Lk7LGvW8sKj/HaWGWJ7vB7d3mbxL5jNeUGhlVSTi85THceH3UT0Jnnn9iHXRSdRJbxdRcUwFpVWGSsgK8T9gOCFoVxph2KoF3mLTCwaSWKWRpeVfgEUZoe98CeMdE/qfyb0CVYy5ukvyxzUSbhZU7NZYm4AHSmLiIPu2tazT3RnbAKWOCAgtaPgBefBfXUHta49ixEL2Vgjq9Prnqj9878bf6yRlQOZ0PKHPiqCt4UD3n0xMF5qOYNvWEtXvNyE38iijlXf/abtqXdg/cVJYuxZdmxG3rlHrG7RYjOZ/5voFyCSmsZZQY63EVpku2X1ZbwCBWVH+j+/Wi/FvxA=
+	JWILGKLJ1YuvyUJZyp1mk2aGy2NWPSdX27ZAPsy+vZMGjbbg0mdpDzSeuideBpzf31xw1SJDvw1Xvim2FcQxlyE0twclHn+wc5pc9OsxpF3xtaGbu0f6zmGYXXGK6BufUSBjricofyNpQsRnzV9KtB0pqvdfCb/m+lOMMshaDmZbETQYC29rcQa89FfemJAhRhJJ6T7V2PnFhB9cgXR1Wt/F8PKcVcFI7nCocK8AxUuN2HFFrAHexfEMBg445gYjpF7LDOntqdUNvXiYAatyM7Y+HFeiyHUFoqMuksJTx+2o+0JAyUj636BLxEICopOzi4n94p4GaT/p3PIBlRNrToHJrs0pJ2jHt3Q0zRY/d9kTZT/SVHurXM4Ad0LWmDGWWKAwmZFRLGnSpwT89n2k46YxZUprrIM6Z6yEFpcyaRZ7r+1qlhaD9+6mwk73u3wh/NbvehttDxYN24EYovGHof6Rd4vTWhl9WVg/h9/YXP9lX4g+Gkr3UDT7lmcnt7EpjxjFNoJT1kxsKsi4J/2tgXfJt0qz6qb8aEHlNWoL1UjWpnajb5JKIHcpMscfM8DndC8qU/8SSXO57b1vC1MK/mu/T+7AdU5eD4tQAtW9PfHBzIWUsJvSduieKU/DpR3AgIlCFnxKOIPtzYZ7DqDRn4CirSIsX6QkTIn7+OH2/Dc=
 X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(23010399003)(376014)(1800799024)(366016)(56012099006)(18002099003);DIR:OUT;SFP:1102;
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(23010399003)(376014)(1800799024)(366016)(6133799003)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?+X0Vk7qNRShwtu5q61xW2xwaPq0tBEUlFdTBpzlc183CuMekfU+xrDgU+voy?=
- =?us-ascii?Q?t4+9QOM09nZwySahlH5k4EqKKMSIXAoOHnv76bTvQHxoiQlg4ioVQZ2gvajY?=
- =?us-ascii?Q?NHBQundiDuKgIZl7KTHw9LFWbjqYoDxLP10mZ7cAUfgsJWQE4Xu+ocuwiKKG?=
- =?us-ascii?Q?LQkQiKS1oQggXJrGh9v5+BVsj1sjtu59EUqTKBsdNm6Ki/nXI9ZZQsmQlXpQ?=
- =?us-ascii?Q?XRwxHQ0cZmVAK/RyFL8nouafyFm+Ivfcb8AH/G3vtwk47laSEEiT5T2Yr2iu?=
- =?us-ascii?Q?ohRuSjvHLhy0hVnpg70Ks1VU0YHSKy+JVVavq3VcJqAQwcG0WMYXzpbEMd9l?=
- =?us-ascii?Q?CTXkbBivOWPvThDGpJlhaVQDDEcuOo8qmZPNcAY73r6GvJRTVvbwXZGtWrVt?=
- =?us-ascii?Q?b6XNoJ1lnxk3oGz1+yp+mNhyTmksyjn27NNQT2KwbJ2pdc9IdQGZbMgRKBCb?=
- =?us-ascii?Q?3AzbDvQeZLgElPvXjEK0vZAWYCrX1Hz60k1u5OGWaynUPGS/tjfW5/mkVT6w?=
- =?us-ascii?Q?8WZtauLjSK/e82x8Pe3BKc/wHxeYz2gsHrrLljUlRP4bvCvIxBkCrB1bw62U?=
- =?us-ascii?Q?9HHZVx56h7p3eC+37or2GrPkOJ7yDEpHvWsTd90OpJ2CSyWHUwBOCySxbBpD?=
- =?us-ascii?Q?G1zZrmNEPD628bRX2GBTnRjN8dxEpvB7MxZ0vYH/W9t15GDw0tnnkK+GEnOK?=
- =?us-ascii?Q?T6wkpM0l1xrVMq8MA/AkjMz/1oIrErTX8qsh7Jcs4xBD4jXZYsMRsfV87v8m?=
- =?us-ascii?Q?yC46bPLsVLUSlRlS3Krfdzpx6FEvs/Qom2LXRVoJaNH2BsLhUfxb4uZyvfJY?=
- =?us-ascii?Q?QVoyg27Rn/2s+M3butONGXzxRRhNkg4DT5Ogz8diDPAgRJciqfW34PaStJfZ?=
- =?us-ascii?Q?xVPpHiEJFh+RtSYR/HaSBvbnjB8h9mxJ++O01MXdp/DFLvvw3Si8sF9FYIql?=
- =?us-ascii?Q?jXVklMDzo27E5Zvt+Ml21R3lB83Yw1I+wgm0GEB+RmSd5V6QUH4DPj2E2cJk?=
- =?us-ascii?Q?aEy7iLngYtzG7L4jqNSqkh/H3l9w45JAVzXovKDbnwRfp5Gig7/v71orjfVF?=
- =?us-ascii?Q?2h41sGBYxtHaHgmQm/6xXoQjYGRw6U3AUTvLSw5ifKNjST02fioPsgSCPONl?=
- =?us-ascii?Q?Achw6hJk3t7P/egV9aDwmbpeypOiyLstIs2WQ3Op5jIME5jW1sK7iOLV2/eW?=
- =?us-ascii?Q?WzfYCeACU2gIMKMgGPhMEla5Nzbrs0NoeIUHq+QW2xGy3HLMfrscREhh5vdl?=
- =?us-ascii?Q?CWLlOKcUQK3PolCkmDkGuMTvIdM5jSPoDWkM5nshzfMoVoN4kxvYKAT3F7im?=
- =?us-ascii?Q?stg/wotrefxTlZQf1B9AIm3ENvZ/Lu+NZNlCqNdUoNNny9HAnuqPyWCqaaEU?=
- =?us-ascii?Q?2uOua8lDFQZbdew4uRZeSzg7XgNZsuYG/zBhvepn9Dr2FBWByPUcnYoUGEXz?=
- =?us-ascii?Q?9mPPphcb5+wnmXN0EAc+ltHqud7k4l7ReaxTgNvahgz24EOF8uMIpo31I47B?=
- =?us-ascii?Q?JgaAQZ/O1G08wNr6UWOVxsLjHuOBYVwK28RdMGhV7xLnduye6lZkVmohvSvW?=
- =?us-ascii?Q?gy8fEPoe+lt8VpsByYKg5labruX43pI8hBnMN07YNZuEH/+Q6ouW7P1Nnp3A?=
- =?us-ascii?Q?xzCFisFRAfhEzhhTRKnP4NaB3tXGx4U3Y18gDba+5UxktVsHXWxo0vYmJJPZ?=
- =?us-ascii?Q?H92nTE4B+F5mQ76oBXlaDoa2BOQI7fT7Hc557dD+sl1E8C3pITIShVt0k9K8?=
- =?us-ascii?Q?d0uCefoUEpWUbyCokckikvR4R3859/g=3D?=
+	=?us-ascii?Q?O6AVV1RFk4f5WGcXIcmu3tMOc0OPi9Ysp8JnseDlTt4TPejSwiFHLbdgBNiP?=
+ =?us-ascii?Q?J4/RAilvxhSDO+SmKHT6P2ICCyzlu7QQdhlVCfjSDbwJdafk7NAUeb4INM8L?=
+ =?us-ascii?Q?jghGdUe1wIm/iVa3iNUoyE2c+UMX+Y6lMldfnd1QgOzQFtSSvZoWawDYUlz0?=
+ =?us-ascii?Q?5xLbZbMSyr5yZKznyVkN/1wT/RpcGVM6oUY7UPZmHMipYb1jzTg8hJEeEaTr?=
+ =?us-ascii?Q?vQOyQeenq1/qN8kF7+uzrE9iZ+z4OsBv0PoIQcCuFHLRxRxaa2diEYgxicIr?=
+ =?us-ascii?Q?XeoUc0lNf6HqI7tQGKohnBOHFvJZh3t7U+n/VtAQM89cag7hyEqM6beX6s4k?=
+ =?us-ascii?Q?a4MI8OT4RCem1DPwU6r+tN273imSoBDvKawk4pxC/ZIfofTzfBbKJKTFRiWT?=
+ =?us-ascii?Q?xPjKy4uI1Vvq+g8tYykNY0yEVc3n7v9v61Ur20mKamjkPoG3XcQOntsFB+5K?=
+ =?us-ascii?Q?IOJ0yiE+l+hUeu/Chp2uoSwCps+Ws/uX1VZfKoekqsXXDErvgSmK2G1EEsK9?=
+ =?us-ascii?Q?ZiagJEsReJkaWdfl+7qckZ3Lcez/G3rI7grBUh9LTSVVB1O3qucB79smTuzl?=
+ =?us-ascii?Q?dW+h+k2DOHjjG8SELZIrf/tcIA2KlCD2yFpBWQZvhjXNuuJdyAF1e2+7vaQn?=
+ =?us-ascii?Q?7x41Che+rhZ41DMeWN1mFxZI3C4aYxf9OfImKNYh0lRE8DQpc5xNz0kNMhI8?=
+ =?us-ascii?Q?Hm4I73gxlf52VIHL7BLLAJhH9LGfO4Yh+SfU6S+rVhxPv4hpqfpTSlrsyFAB?=
+ =?us-ascii?Q?kIY7yXaC1gJ2dwj39XhhhPYuYiRB3XDzfFsfY9fgBvd6FF49lFqvlCKOqaDX?=
+ =?us-ascii?Q?eX+Ur/nES/aZkn04Mlrt11F2XmOdU6fKxGGuLB86CYthHqBmxPcrvoDqcd00?=
+ =?us-ascii?Q?KYzB0mNMAtpBZ3U232YzHe8Zw9/7RbL7l2dXZUn1IhS9r3ZdYq47U12l3mT2?=
+ =?us-ascii?Q?Ab+F7saNZzMoi6aU52BVxLOae7IkOdR7cgQ7Pi02nUasNyXqQoDA7K6z3mUH?=
+ =?us-ascii?Q?T17SuQE0STcLTNiRBGmWg9syiyQ71ouXgyrTIJMVuB3pkBDpwaXr1Lll6WtA?=
+ =?us-ascii?Q?VNI7gdXey3xXJEooVTpyEER9PeWfbZWVolgZ7oNvaQYyr8o2UVPJYtuNlPpA?=
+ =?us-ascii?Q?rKwCXuw+gV+oeQln6sfp4ivePnM1ZzQoQy2aVcqaKcq5ZqEB/ikEaiyuNPI4?=
+ =?us-ascii?Q?Jt2AjOOAjAGYmmhsLhqEmN4mgzXYfAHwt+7DlxYn+VMC98HQDaOgwvlu4rbG?=
+ =?us-ascii?Q?IzcSzlaH/wP+6t0KUa4XSyzc1G52LGOH0bE4NN93hflxRIwxq3IZkFlvQ1Rx?=
+ =?us-ascii?Q?kn+gPcMcg7WuO19nXjEmYa4J2+AQ81kNi9h3jqg7gsqx89MZdh3zo3Sg8fbv?=
+ =?us-ascii?Q?8XJcaygPe3weghcJL3KNRLjzatMz40TecIWd77Sdrv0918Tn2Ol8xJvzBbnL?=
+ =?us-ascii?Q?frTkJsXC0oB52BKuuwTt/U+ieJlUqOsekvBcBNtLvKxYUMY4tdaM8WQ0Ki0a?=
+ =?us-ascii?Q?EqUIwt2ZS/mKU13uXbtBUhrJQ8oPVOuWqcm3gtnN9QXrmIs3dlKvdJc3wPbN?=
+ =?us-ascii?Q?+RZ+EBEJLVV9z5GJxTTdGCeCNVORJtQY81tm3z2M7KorTiuJ0dWlt9o63vVb?=
+ =?us-ascii?Q?oA0x8RvKcVFhtEjOmXJKELZPpq9K7Vq724j8VEzhs9zyUldxygGuB5YHdsKl?=
+ =?us-ascii?Q?VJj2RTs8VSWXeaSaEy6IFEO59EfiIzVxajaAFJIYLEyiA3Fc6xKv/6nv40NM?=
+ =?us-ascii?Q?vjb7s1QRTnzRecTJm4cG2z9ULz2rt2E=3D?=
 X-OriginatorOrg: thelustrecollective.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: e2a2bb31-9e89-4575-64ad-08dee036a204
+X-MS-Exchange-CrossTenant-Network-Message-Id: 0b5d7773-4dcd-413d-c27d-08dee036a293
 X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Jul 2026 16:57:18.5380
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Jul 2026 16:57:19.6598
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: EqN0ptCjMr0413NkN8YXLiBJxk6igO6lO2Ipjwhvu1Ae1Uqa9SiCGd6nU1MHq7rKxnzEpDxSQfvGmMGalnh8mKJD9MXZZokD2tCVdKlEDsY=
+X-MS-Exchange-CrossTenant-UserPrincipalName: XvMBoY3fvpGCYVaaNvCZm9CPxhFaET4+pIaE7VXszcE8QEpX2PCzi6Ij/7rSSd2/tnZ+3H4dPbx6Izwcm6eucwRAChOgldbJFQs/5HURhR4=
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR04MB7488
 
-This series adds annotations for Clang's context analysis to ext2.
-Clang context analysis was recently added in a series by Marco
-Elver [1]. This allows the compiler to validate different
-locking patterns at compile time.
+Clang reports the following warning when context analysis is enabled:
 
-This series enables context analysis, fixes pre-existing warnings,
-and adds new annotations. It is inspired by similar series in the
-block layer (NVMe host driver, for example [2]).
+fs/ext2/xattr.c:829:6: error: rw_semaphore 'EXT2_I().xattr_sem' is not \
+  held on every path through here [-Werror,-Wthread-safety-analysis]
+  829 |         if (WARN_ON_ONCE(!down_write_trylock(&EXT2_I(inode)->xattr_sem)))
+      |             ^
 
-I'm starting with ext2 since it's smaller and simpler compared to
-ext4/btrfs/etc. After ext2, I'd be interested in converting the
-other filesystems and infrastructure code in fs/. I think the ultimate
-goal would be to enable this by default across all of fs/.
+When WARN_ON_ONCE() wraps down_write_trylock(), it adds an unlikely()
+annotation which hides the conditional acquire annotation from Clang's
+context analysis. This triggers a false positive. Pull the trylock out
+of the macro to silence this warning.
 
-The series was built and tested with Clang 23 with
-CONFIG_WARN_CONTEXT_ANALYSIS enabled. I based on 7.2-rc2 (since the
-minimum Clang version was recently bumped to 23 in 7.2+ [3]).
+Signed-off-by: Timothy Day <timday@thelustrecollective.com>
+---
+ fs/ext2/xattr.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-I'd appreciate reviews and suggestions. I'm especially interested in
-suggestions on how we can make this easier to enable for other
-filesystems.
-
-Thanks!
-
-[1] https://lore.kernel.org/lkml/20251219154418.3592607-1-elver@google.com/
-[2] https://lore.kernel.org/all/20260706141452.3008233-1-nilay@linux.ibm.com/
-[3] https://lore.kernel.org/all/20260515124426.2227783-1-elver@google.com/
-
-Timothy Day (9):
-  ext2: fix ext2_xattr_delete_inode() context analysis warning
-  ext2: mark s_next_generation as guarded by s_next_gen_lock
-  ext2: annotate ext2_update_dynamic_rev() as requiring s_lock
-  ext2: mark statfs overhead cache as guarded by s_lock
-  ext2: mark s_mount_state as guarded by s_lock
-  ext2: annotate ext2_init_block_alloc_info() as requiring
-    truncate_mutex
-  ext2: annotate block-mapping helpers as requiring truncate_mutex
-  ext2: annotate s_rsv_window_root as requiring s_rsv_window_lock
-  ext2: enabled context analysis support for ext2 filesystem
-
- fs/ext2/Makefile |  2 ++
- fs/ext2/balloc.c |  4 ++++
- fs/ext2/ext2.h   | 19 +++++++++++--------
- fs/ext2/inode.c  |  7 +++++++
- fs/ext2/super.c  | 18 +++++++++++++-----
- fs/ext2/xattr.c  |  4 +++-
- 6 files changed, 40 insertions(+), 14 deletions(-)
-
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index e55d16abf422f..e5ed27f2ae733 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -826,8 +826,10 @@ ext2_xattr_delete_inode(struct inode *inode)
+ 	 * here to avoid false-positive warning from lockdep about reclaim
+ 	 * circular dependency.
+ 	 */
+-	if (WARN_ON_ONCE(!down_write_trylock(&EXT2_I(inode)->xattr_sem)))
++	if (!down_write_trylock(&EXT2_I(inode)->xattr_sem)) {
++		WARN_ON_ONCE(1);
+ 		return;
++	}
+ 	if (!EXT2_I(inode)->i_file_acl)
+ 		goto cleanup;
+ 
 -- 
 2.39.5
 
