@@ -1,28 +1,28 @@
-Received: from PH0PR06CU001.outbound.protection.outlook.com (mail-westus3azon11021103.outbound.protection.outlook.com [40.107.208.103])
+Received: from BL0PR03CU003.outbound.protection.outlook.com (mail-eastusazon11022104.outbound.protection.outlook.com [52.101.53.104])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 644D5368D51;
-	Sun, 12 Jul 2026 16:57:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.208.103
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E055A368D4F;
+	Sun, 12 Jul 2026 16:57:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.53.104
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783875455; cv=fail; b=dIW8GUhjScBKjTyw3R5tZ4z3a9JZpUVloP6kKNdQWAKv4Xk0ycMM1C9+gKPJ5wuYIOjK7efKqhTDk5b/W/yF5MrLc37GMFwk0ajn8+qQBHa6+HvBiT48OJ/cyR94Fe++E77oZ0Vzw++MePXAkJ20Q6BkLTb6+aC7vE0q0y+6HuA=
+	t=1783875455; cv=fail; b=uov57Fd0+6QLLyKvHEggrPd3g3x8J88n6WGMKt2dNPFPltKOTh6sCWQHguiHDizwuf9DEm/wcrSBS+xgh5xiiXchXTD89KUP+HBlaT4BiR6PADQUTkCF2ygIrHICb4wx2zDos5MUpsqciEth92J8oVm4rmTSyI7CMeUhy79fKHM=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1783875455; c=relaxed/simple;
-	bh=w0WXIFHjaF5tdnQ5MjqhMOCeYPge39pH45IqWVDkAU0=;
+	bh=anIY/j2BzOPzs/dGO02zFFA77WzysjKU7EFaCz3mlII=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=UveU0vHY/0vB/FBNSuiySt4hAArIHdNQkAETlYB8J0guwUeZcXOZ5AuRZ7/JLTEDHd/SybquZSV01HG0HPrE83RPXSs/xKYSMvogSS4MPa/jwHXz1HEIObfHvmvYnHhDWB6ESf/Z4+EDbcrfrLMgnG+PJHp+aOLqNAAuH0qbJRc=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=lGimLSQI; arc=fail smtp.client-ip=40.107.208.103
+	 Content-Type:MIME-Version; b=q3jXj6eeiS7Ki/9wMBG5TB3SewiryspCAJjdPhx+OqoTp1lg4R1IPHZ7dhoAgo3chYwnyxLGT1BD27y4PXt3p8EqItAhZVYHjTyRlZ7NYZyVMq3gg/uoyQDRrbAhUOcFS/frTS8RwiHbn52Kcek88blExjDWysgTmqjQ8n2GknY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=GRTqJh3t; arc=fail smtp.client-ip=52.101.53.104
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="lGimLSQI"
+	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="GRTqJh3t"
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=Y53q0vegzgv9Wj58R9nrrP+MyIKCucV6CYANfkAG91BYDvc6q5HustPxa3PNP1hCgtiPCq78WoSdLhY3TCZx1GhTnj39LfWw0fFt/D+e6I+nPoPBwmPp8K6R+tEgs3FX8bK6Avr45oZjc6cGnJxXd+YRXRWo8yaIHfMGDBOhaTB3/IznA1MddVknZ8u86FqBlvl/gWUTMrsPU+VtX9H4M+9KickgVDWrtbyVtGYBZfin6k8oAIhurxPxy705sACHUM8ozApsCIuj0CJgh1NwEQYYsmoCHufWQlaQ2V/DP/Y+HgIC6BcjMnq7481qnyKPt/P5tKio75kwLuZE/dAqkw==
+ b=VChuv3fYK+Pvo0xJFfov0Y8su8IiLcSmIX2PJmKkCdoqvr6Abqc6/Kt7gr+P6zobaogFFsfvaRi0laQJsCZq9TdWcmhOCojl6gM0kdzhiai71delunVEJ+O6CmuhBbR+zDdY0hj6nTjgrjISbKDOEm4+SO6tJJA72iSq/sV8pDfzWlU4Z8lYTCaHb2mMX4yLqbJJZquK2DArc3giHsJwR4XbIJuKp5n3nZib1xXRK70zO0LAsvuFyHbxnwDQkGHxE7wNnRs3AWIo+9H0Td9zkOdhiBv5UKpcfUh6OmvOvonWTgWw8CIVwJLWo8hzcRSETnMC7THdorXD7DjtPDwd9g==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector10001;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=q5D0pAm9auicgv0VLWRxtPfQybwrgBaGrwIwsNCT7DE=;
- b=cQ3RjQ1AZYUjAkVy/0tuOFvPlHA+g7rx3SybPRRawHbOTPzP3LNrXB9nQqt/j5oeUlcgYHcrt4PW7JBE9x7sSmjtIq8lJwe8blkRDLv2pT1oYRNyu6PAuXgA5KXzYw8ujp0TrYfYrMMHdplnE3zILXQfRVdvL2Z92HkyhzlnvC8nKvZ8piriauz/TO1SCLbOV0uHm96svZeBLOLnKGgNBwhEMG08GCHb10KVePTuU8v/VAjDIffEdJUoJxpU38zgC689N2eqBDleA41zneMlMOPDqijP/FiP/GyrLiuxPRrkNx+2PSk+miMWV640E8tci1i0D68RtNWX0jfripgElw==
+ bh=79oUgI+nwsBduoMt7eEJ8KtI5jtaeCL8jSKzVYuuowo=;
+ b=FiTrzkRBeVnxKiHGEa79PAhfJ4MecO/2u66o883241ecI5FfF/7HAvHYD1p3f9R/lpSuAnsFWoc4yYoUPuWJcfpyHi6IqASYOwQolLWmKAVne5l1wdqWkevsBFye3yuReTjmg53Kd1ZpJE3F69B3vOb593c+lWa+Bc6uhNuLEqc7788Euu0SWBhqFlxYCzSdF0btQ93nAzpnxhJ5sXMRI1zdjxNsJwY5GxE0AxH0ZI8wQth2ltBBWVfSAnLpBdm+kLD3ynmWsYaLuwrydKMaPG2O6ddIMFvtv0wIFSD/3cFmIY1jgAf4KzG2jio8E2I3hrjQ+yDA2FZPlQYyUl0/GQ==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
  header.from=thelustrecollective.com; dkim=pass
@@ -30,15 +30,15 @@ ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=thelustrecollective.com; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=q5D0pAm9auicgv0VLWRxtPfQybwrgBaGrwIwsNCT7DE=;
- b=lGimLSQI2NGtjF6u+dOzudzvsHvH+CBf6C4bXPMwxKZTYyC7QxJ65Uj6YJf18MzEvBoCBiiuJrWoE97n50LfslSs7QAbTxNEQtHfLk//FiH3YUPHqYdoYEiDnVChQiT9X0hwMgNLkzCd2r27EM7TQn/P3eGNGAmFpxhVV4x9Rw+wH7DrreClhmtlZECsIgBXo/AQxKGpZFo3bYi3DZprzyq5f5imQTGDE4yuWwXnXbu0l84xy92PhEXr7GHZVOFd3/OZgloYbVVlbbhbwCP7j4efekNcDwPhwpCw4ib/gqPhY1prFk/L30ue+zh+3yeb0V+PuxAB6tHFnWzIajfMug==
+ bh=79oUgI+nwsBduoMt7eEJ8KtI5jtaeCL8jSKzVYuuowo=;
+ b=GRTqJh3tQuPnI1IMwefSjYdw2VISwCQ6lLiyal0PFlwbiCa8/EdAtVPelyR6C8KVEl4gXPVUL4Mx/Ba2kTanj1mDRMuoY32IzfravzvO+3q2DJCpEKda7BP/TzhuQnM1zvn91Vd94GRGbsQ4z6LNg2cTqSVodjdoSL46sixl0pd1IARaUn3/hRqkh5e8nrwSAQBErjxfvksPkQ3G5YhOgQKcg+xk1PIV+0+n8yB5y3DGrmiPQUinm8PKTtHSJrl3n02ZotaaHBZqJos0X+ZLw0gGB/6S6+npICl5VTB/2utzZLZvuPYaIU4h99VkWOW+Y4YtGH0jNJDJM0GVjq/YoQ==
 Authentication-Results: dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
 Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
  SJ0PR04MB7488.namprd04.prod.outlook.com (2603:10b6:a03:329::10) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.181.23; Sun, 12 Jul
- 2026 16:57:24 +0000
+ 2026 16:57:23 +0000
 Received: from DM6PR04MB4682.namprd04.prod.outlook.com
  ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
  ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0181.019; Sun, 12 Jul 2026
@@ -50,9 +50,9 @@ Cc: Jan Kara <jack@suse.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Timothy Day <timday@thelustrecollective.com>
-Subject: [PATCH v1 7/9] ext2: annotate block-mapping helpers as requiring truncate_mutex
-Date: Sun, 12 Jul 2026 12:56:08 -0400
-Message-Id: <20260712165610.366474-8-timday@thelustrecollective.com>
+Subject: [PATCH v1 6/9] ext2: annotate ext2_init_block_alloc_info() as requiring truncate_mutex
+Date: Sun, 12 Jul 2026 12:56:07 -0400
+Message-Id: <20260712165610.366474-7-timday@thelustrecollective.com>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20260712165610.366474-1-timday@thelustrecollective.com>
 References: <20260712165610.366474-1-timday@thelustrecollective.com>
@@ -69,136 +69,98 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|SJ0PR04MB7488:EE_
-X-MS-Office365-Filtering-Correlation-Id: a2872367-302f-40ce-242c-08dee036a53f
+X-MS-Office365-Filtering-Correlation-Id: b7ddd097-344b-4bf3-c4ae-08dee036a4d2
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam:
 	BCL:0;ARA:13230040|23010399003|376014|1800799024|366016|56012099006|18002099003|22082099003;
 X-Microsoft-Antispam-Message-Info:
-	sn3jekJP/5fARNLblA4tqwxQy6pBzv7XUcsxcxgLQ7487SIYpsS1kJ/mlnMlcLQT1eV+vI6kcPJr+5rzi+mgmF74a6MNqvSgODQRBk4j3mZqE0yLUSzGL/QR8RPVA+N2KkttvrjfGXzgoiLmxBIcHZGjO9ZGLNgzs1O5d3xtJXjTEauOKnBKz9VacX2pO9zV43mmgUJWVkI1zVcwTh5H/CZn3RjIV0PgHZiEL+XydfJdZYQrAc8v5LFa2b2SCGTvfmeOV2DWVH1eLkfxccy6gsa4ua4UCIhkF46gJeMncPnKHtrmYDHlfAWH/r8d0T7x+WKtCVFZOx1OVFCUhcqr5fBrla4NITlI4Th7Xu0zBzL4y/jPw3LfREno81tqedzoUWtQEkPAIBzv3JbcAMWvuBlDQT+rT4H1HIeWD/SyaOyhdOorMRpYpM95hAo8WOqDsWh/T5I77Eyo2yhgoXmJX8GSULqxARfwOZ5q9SmF1RTVkZ4ZopXyAXXaEE4x8qOiuu7aUrq27Cv0H/fIeFG+Z9Uw4Ua6pxG8FpUuQLiGk8932shSucy7fhke+HwAqoY2mr/BxWa9+/OKkPYLqNDp+g0i5HuROszsp+AN5t0zUCS5kOcHGn/H3GZ4UkcR+GD5tmZEcTAxHKILWxndjVbnLikgFXgL6yiSjUWYE6sNLmI=
+	kg8Ilp9WTve++KGeN5CmR/9nCd1Z2emHv/8eF1RDmVV2DBEJiiGgO7d/7lPgLu+1c2h8i/O7HFIBvYRCDa9BeCFm37YB6Fq3uXcyK3yypLnNaf/sohbq3tm1QD73M3HaSkjt7RMgiEYFuTb8/9ALA/46UFfNZFLotXzpE7Hl2Q5Z17bN/giVOwKrMYV7wcHsdv0Bc1xq8d/M+cPIq6aAh7sp8iD+Qhyju1yPcVUYVV6nKy+mRghjoMV8KM5Sg8MkPaVj3gF1+fIiBaPjlmOQ9QHZ/GMzWRy/86bEDqJiLWxCRx9cB0PwDhxWGkOzvlgwDNpOMbO559hH5Vi2Jib+Rdf+GeOFV4D7UaFi75SsMK6dEua4Hf3csZBnG7xbqnJWqsR58Otol8RtIj6M0nX0kPbnEB2soGSZdt9uV1uVCDGQYI9DRl843GxDU7Wi5B9qOTRxe2z5UnbExS2yslb7+xc8c5Zf9x5gePYzDdfIPgVAq0kOek8d2j+7Sq5wQBg46vJ4o5EQqilD22fv8y10xTWQC7WyLNFD2egQhad9c3xrwFWO3lCuhpFrugwNixKWWxg0lkIMJkHCbC+/OucxKJ9vclS8ztuwuE+Qf6HewTs/fZg3OqxArcFb3w5S+5P97Y/fLeM0BZgaTQgqMxAXhEZuoPGdr6CZBJZ1GmRK3Q8=
 X-Forefront-Antispam-Report:
 	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(23010399003)(376014)(1800799024)(366016)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
 X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?FecHa6YPjen6cnzT7HuFc2gX/0BuL09LuuzRzp63ZQMFWszOja3yMXCKVpHn?=
- =?us-ascii?Q?hG27yL+axTfFMktSp19sZncy+Hf1ELLl17qssjLZHNdkCzR2sMifJoXIKfjD?=
- =?us-ascii?Q?LjB5ckqkTb0LRxOLSGwd9pz53UMsZlqt01hSucg3+WwCBhqv3wvSihBjOsVV?=
- =?us-ascii?Q?a3QLml1PbkIKf0Y0mLJrE5Z/kCh+ZJ3qv5MrQrxKPnnO0QjrUGjZ8LAL4PmO?=
- =?us-ascii?Q?KdhGpozhSwIZ4hzbiGwD8HgCR9LxDWYse+rmuCbo3Ra2WIB9PaLdbFS8t6SB?=
- =?us-ascii?Q?+m4LAfGUhUs9CmZCIMD1F5GNopbO7d2e+Vr7gNSZvOLiWhWuygkTQrOVOfu0?=
- =?us-ascii?Q?t6wMchk0ovCmNI1ABNLTjxXaF5tz5o8BIznAb6N13X4ozf6WLMMHAlbPI6nC?=
- =?us-ascii?Q?fODxzs1Vn23CyptH5J06+FQgkiyXaFccEmNa/Wji9+Od3DpVhdMIPdB8URJv?=
- =?us-ascii?Q?aZ1bcjv9fKFnHl4LRdTuTxAf+cFPl0btzAGTrgrcbxwIfZepXfKp/LRhGbQz?=
- =?us-ascii?Q?uYEvBFq1Pv8YJT/SsOApVQl96atwqUgvQpZRkiBqz4UuNpkF+939iNSryIjl?=
- =?us-ascii?Q?JX/WUWTkHVtZm0UqAEhT5wVuFtWrAUDB+hDkpUZpgO358Rb1+ewy7NAy4kVI?=
- =?us-ascii?Q?YaZIjArKl53smUtojZ5/et3XP+okE/Jq4qeF3174lgPYzIt68+DRkNsnYMpv?=
- =?us-ascii?Q?QJ+jAhv5htRDoztwjlXJf23V2eeOSkyHNKj4fEemRJ/0MKvu68RgPOl9MRUp?=
- =?us-ascii?Q?eKbafJJbB0WdtqNTtL7bPH21McmZRlofb7f+7QWnSbZ02JtYWjTMUvK463ZL?=
- =?us-ascii?Q?5QjNVhhLuRBtNeQzSpPTJzGIgDL0e467i6sny15vfRTkDPvQVxBhrtoYc7fd?=
- =?us-ascii?Q?Q0Zox96tiAD0O5F1Q3d1eGyYrjyvGGl3QnmVBdaHo4HWXDVUwbVqPbbbCoVn?=
- =?us-ascii?Q?byw55XOp/KYGOnUVCr1/hokHawYc+qfQL/OEfSGDSqzQ83HjfBYSmYyDqz9o?=
- =?us-ascii?Q?Sui+R8bWwU9Y+TPUVQJFL+lmq9gX+Bbt+k5lCrTZZjgP/bHP1Ryh6G1MDoEG?=
- =?us-ascii?Q?EclP9q/BMwjE5K6AekgfFi8pzSdwG8mvppa3drvrmyJNlyWVbBNzqP6XzQ1l?=
- =?us-ascii?Q?EBNI3WMguDosIJwRH24sqkXoMbio36zyeRicNAK0dinzvE22JgdTkwMcpDhn?=
- =?us-ascii?Q?vBrU7pzBJLXw37yr9zISS+XLXBCjOBIn9H6r65ze0Xq/5Eu4T9H0oUdJd0yP?=
- =?us-ascii?Q?K8ROEoBOaxFTkjfCCc9p+q3mX85urB8N1ptjiLd0BUVCwHzOs+AreEJFqU0R?=
- =?us-ascii?Q?wiQPI6gjOII5M7S1bpWoaDvUBbJ2mEcmI/ctuR6yV1ZH7IkS+PzTdvuc3sS8?=
- =?us-ascii?Q?bkLDBWhIav1GYA6wU3ovD9r0tKWvvm5seoYQ9oV8dHEYJoZONf3w+0Ayn2EX?=
- =?us-ascii?Q?qYX65QprlefeP0dVm2DyIPhMVb94+XS/oKOBXOldzWcOeqmdv3sYlUV2iADf?=
- =?us-ascii?Q?HfD5cqytE4H7mC+KBYTNjvM6NJvdzeyT7Y8r/y+7O6MG1hiDtscYofUt6EaI?=
- =?us-ascii?Q?d945NfFfIhpCRE8MR2fOcEVnluPMHLakwvh1//AfAwOHOtfx5c9oaIhIS3cP?=
- =?us-ascii?Q?13IMelUD3CyLe3DJAbU8Miz+i9uy2dxlt2H6sjGrCPNuAoqcaTPHMm0wNQEi?=
- =?us-ascii?Q?t/cyRaZRp3tcUk3nT5eG3vwuSG7nPetU5ciVxqleFXZJwgZGKuasbE4cgDS4?=
- =?us-ascii?Q?WqVy5iKwS0Rbb1W6Q2PdAiJQPYHWuQk=3D?=
+	=?us-ascii?Q?wtdYBP2IQJK4IMx7Kt2X6v3IyehS5DbyEhCo024Hqv3fRNKPP77ZmHdseuAJ?=
+ =?us-ascii?Q?prBlqEUxLiE6EezjNKEV59vv+89Nh7ubb70mv7CgEgDvV7IVJr7tdbUQotsk?=
+ =?us-ascii?Q?KHkwIa+fiBb1/UBz7epUH7RQ2bS6Y6AACiGfocWZvXDXW+T2fI1BlLgvO5Wn?=
+ =?us-ascii?Q?5/WnBWPEIA2UvxpRxj4lrY2JSGT2nmk15y0h/87W92nvkyYmIcoaaKwj68WI?=
+ =?us-ascii?Q?oVsJ2pZfqU9VuDB5dR2Ddjrs4IbEGtAeVpp0Tgues7lHCsM2+KMOpdMM5ql8?=
+ =?us-ascii?Q?pqJR99IfYzZ6kVZ39d/pPEcVs82kMXwRDktgXWpqsCxxxrVM+a6K5B5AWkk/?=
+ =?us-ascii?Q?0zkkrOSSLV39q/XoVgZ4SYcZPYs/AXwB+OKtBlxpIIShnXLzfl1aiDUV5XUu?=
+ =?us-ascii?Q?MQHacJhYoPfnrbo758QOLn2BrUWGITYLqEXPncE3qYpzNKGCUrBEa1/Z93Lb?=
+ =?us-ascii?Q?5LbKzALhmJ3NzCDoKfzptaIVU40kPHsPChGZxaez0tdUsViTbFWj+W9PPq6z?=
+ =?us-ascii?Q?u8rHhg4k2QpZj5A26RCnWnQOQrhnCOP1NM31q2JpOSXjjiYdb43CmrS9SDlg?=
+ =?us-ascii?Q?xwzoXv84iZlBnkCYSoB3P78RghViL+G21EzJzdsSYZguVEpOBRz8PjSSrVJ9?=
+ =?us-ascii?Q?APNl25eDxroDSEaeQP94O7YFtnimv0T62eYIxvoGw8qYO7Q1CU906iKRJeS3?=
+ =?us-ascii?Q?2xyFiZ11NWeMMMvVx/1uIq6XqouUBAIHULA7c5rYp6GZJ6fSfQ7Ufe2VZkVA?=
+ =?us-ascii?Q?ofJvTOORv6cwdikYZbpHoDPZfZYYe2tm7n+CwLHr7MIn0OC/wMo4+uLHbgEP?=
+ =?us-ascii?Q?8MkL7JAZ1kCf+SJv9DNM3Ex0P29lwJrSIdpilzMjqqEM+l2kj6vb0xBektrX?=
+ =?us-ascii?Q?gahxPXtEEGY1M8YrqiokrTRFOToZ6Rl0Y4UxvhRQaH1VsPmrcvtzHYWlSFSN?=
+ =?us-ascii?Q?oqCLL7xLELiHSNQlP68JXoXCnWrMH1ebEBAKZPJN2/trwb9x3vPIcIG4L+iR?=
+ =?us-ascii?Q?lalyHWxzoOz3OGqNsrM+HbhyBCiUZvkkWgPSNBF9hfBHxovz/i2t2n6J2ZOU?=
+ =?us-ascii?Q?2eVGLK+Sb6JWsRgjvau2gM6YgM0B/3t2Qcb5Elv1mPlbVOmt8CcnFK3hdU3J?=
+ =?us-ascii?Q?fo/ItAwaf84+ER+bEQ9MN9BifRiG/4/bxQ2Zg/66ltLB+LswjaPlEXre34WG?=
+ =?us-ascii?Q?LV78EHn/9WApBlcsWhnnOsQUCiB7TAQEstIpTFpA1NX8bKVcskBzyMCFjXWw?=
+ =?us-ascii?Q?jaOZF17/ndktWPagsy97rurJh/9ecWVKXlH3eWJLvrU1lMKkgKndJbbq1qcF?=
+ =?us-ascii?Q?zv/TllUeiISWP9dvE06zmz4qIfPrm3jB+kWw+Nqs0eQPBgbJ7aJkjY/L1zIb?=
+ =?us-ascii?Q?dEJFlZkPBMGYV5aFHd3dQtDKTRafzuqfZK8RO1D8sgttitzhyStzpX1perjF?=
+ =?us-ascii?Q?ZblU6sy9wgXU2hz4oZHevOSsZGmh7coEPQicyVekt1yw8xgWpiu5KcUMByzp?=
+ =?us-ascii?Q?glfH+BG+akucPdtNjT+sBF4Mv7q6nIfM8BGCPVndYqldiZnO9d/IQdIgMKqB?=
+ =?us-ascii?Q?/YZ7oNEST6mBSDuP8Jldvd6YMT4FQVY71yibMY2uVvS7u5LOd9gqz0mEkfDj?=
+ =?us-ascii?Q?7sa0+19EAQpnm9ulEaqIBZ8t0yfkTD5z67PfLTAXcRNsCMpBolFMli1U2pnD?=
+ =?us-ascii?Q?n+P898QIReq+p6Mz756OTAFs8oJ0MnO4JXxkiSylYCfh7mIjEIPA3u+XDzih?=
+ =?us-ascii?Q?lx7Sx9rtALFYzkTHeIn40OwTZ5iCO7U=3D?=
 X-OriginatorOrg: thelustrecollective.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: a2872367-302f-40ce-242c-08dee036a53f
+X-MS-Exchange-CrossTenant-Network-Message-Id: b7ddd097-344b-4bf3-c4ae-08dee036a4d2
 X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Jul 2026 16:57:23.9412
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Jul 2026 16:57:23.2214
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: bWBYyxmuGQV1utkPMhRI01Mt8me0Ephs4XNvZQbp/ymc6mPBfrhFRT3ovoTsRJL8/bvVXpRWRjme2HtnHRNR/708J3mPep3INNfpJ/QPgKA=
+X-MS-Exchange-CrossTenant-UserPrincipalName: RTXq6K/8X9o31yPl6BXWb2SWEMLeqnsmdZrmPbLiNpDPY6Ee6Xz/GEX0oW1bYXfl8NjhrACWgAX96lej37i6yYx84tJmKzHFm5lUEgR1baI=
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR04MB7488
 
-The indirect-block mapping helpers in inode.c all run under the
-inode's truncate_mutex.
+ext2_init_block_alloc_info() sets up the inode's block reservation info
+and is already documented as needing truncate_mutex protection. Express
+that with __must_hold() for Clang's context analysis.
 
-ext2_find_goal(), ext2_alloc_blocks(), ext2_alloc_branch() and
-ext2_splice_branch() are reached only from ext2_get_blocks() while
-it holds the mutex. ext2_find_shared(), ext2_free_data() and
-ext2_free_branches() are called from __ext2_truncate_blocks() while
-it holds the mutex.
-
-Add __must_hold() annotations for the Clang's context analysis to reflect
-this.
+Both callers (ext2_get_blocks() and ext2_ioctl()) already hold
+truncate_mutex.
 
 Signed-off-by: Timothy Day <timday@thelustrecollective.com>
 ---
- fs/ext2/inode.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/ext2/balloc.c | 1 +
+ fs/ext2/ext2.h   | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 29808629cce56..f0be5236d04e0 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -329,6 +329,7 @@ static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
- 
- static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
- 					  Indirect *partial)
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index adf0f31fbddd1..53c91cb38bdee 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -414,6 +414,7 @@ static inline int rsv_is_empty(struct ext2_reserve_window *rsv)
+  * Needs truncate_mutex protection prior to calling this function.
+  */
+ void ext2_init_block_alloc_info(struct inode *inode)
 +	__must_hold(&EXT2_I(inode)->truncate_mutex)
  {
+ 	struct ext2_inode_info *ei = EXT2_I(inode);
  	struct ext2_block_alloc_info *block_i;
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 4c30d6f5c9726..b6ae29b2e6ec1 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -710,7 +710,8 @@ extern struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
+ 						    struct buffer_head ** bh);
+ extern void ext2_discard_reservation (struct inode *);
+ extern int ext2_should_retry_alloc(struct super_block *sb, int *retries);
+-extern void ext2_init_block_alloc_info(struct inode *);
++extern void ext2_init_block_alloc_info(struct inode *inode)
++	__must_hold(&EXT2_I(inode)->truncate_mutex);
+ extern void ext2_rsv_window_add(struct super_block *sb, struct ext2_reserve_window_node *rsv);
  
-@@ -399,6 +400,7 @@ ext2_blks_to_allocate(Indirect * branch, int k, unsigned long blks,
- static int ext2_alloc_blocks(struct inode *inode,
- 			ext2_fsblk_t goal, int indirect_blks, int blks,
- 			ext2_fsblk_t new_blocks[4], int *err)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	int target, i;
- 	unsigned long count = 0;
-@@ -479,6 +481,7 @@ static int ext2_alloc_blocks(struct inode *inode,
- static int ext2_alloc_branch(struct inode *inode,
- 			int indirect_blks, int *blks, ext2_fsblk_t goal,
- 			int *offsets, Indirect *branch)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	int blocksize = inode->i_sb->s_blocksize;
- 	int i, n = 0;
-@@ -560,6 +563,7 @@ static int ext2_alloc_branch(struct inode *inode,
-  */
- static void ext2_splice_branch(struct inode *inode,
- 			long block, Indirect *where, int num, int blks)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	int i;
- 	struct ext2_block_alloc_info *block_i;
-@@ -1002,6 +1006,7 @@ static Indirect *ext2_find_shared(struct inode *inode,
- 				int offsets[4],
- 				Indirect chain[4],
- 				__le32 *top)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	Indirect *partial, *p;
- 	int k, err;
-@@ -1057,6 +1062,7 @@ static Indirect *ext2_find_shared(struct inode *inode,
-  *	appropriately.
-  */
- static inline void ext2_free_data(struct inode *inode, __le32 *p, __le32 *q)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	ext2_fsblk_t block_to_free = 0, count = 0;
- 	ext2_fsblk_t nr;
-@@ -1097,6 +1103,7 @@ static inline void ext2_free_data(struct inode *inode, __le32 *p, __le32 *q)
-  *	appropriately.
-  */
- static void ext2_free_branches(struct inode *inode, __le32 *p, __le32 *q, int depth)
-+	__must_hold(&EXT2_I(inode)->truncate_mutex)
- {
- 	struct buffer_head * bh;
- 	ext2_fsblk_t nr;
+ /* dir.c */
 -- 
 2.39.5
 
