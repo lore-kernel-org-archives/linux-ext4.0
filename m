@@ -1,138 +1,188 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B7DF19F121;
-	Mon, 13 Jul 2026 12:53:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A871F417357
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 13:09:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783947237; cv=none; b=VhynDyzxs9nUBujB1DXfiCmrXKzNsRkVJ9e3/j0InL8xtofjyiH8V7OnneOo9ipnB2sXrzRiwB32Z6K7TMVtYhsLXg+XTR+XlsQoj0JZP+MD0hiNbSCJN+BnXlY5NAgIf1ISLhzmxqfietlF0qS0wHVlVKzyME3CcLA8f6xhV6o=
+	t=1783948192; cv=none; b=D8euPA/XMJcX0nIVLC8WNLrtAd5UiJvtxPDFMtjpJKb12sv2suLTSNfvqfMdUf2uMxHaz5A23FlJTuX7D2s18a7Nfzumlhj9obKQntjgZSDl6Bncom0sKwM7majwqshugltULCPPx9gdZksfmhrWMcVCCbwp1V7Uownpyq/bNg4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783947237; c=relaxed/simple;
-	bh=rOdfaeBSDGv2gKQxWCOHdhIsJAODpSFLhZy1gZuV2yE=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=dw+w8QkaR0IBBW8elbtSnWUKkZUCNIDPqbHUDF8vROKoV7Yus9HNfVAJvHXd53QMkZtEXSWdd4d2SQtvG7phVtFcbGTBGTGgTugVEXshqqdg0M91ZRi9O10C1R7wWDWeIez+hyGTrx949eERYarcA/qme7oy9Ygl9ME+PRkewfk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gzMmy1P6BzKHMWp;
-	Mon, 13 Jul 2026 20:53:22 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 4ADE940590;
-	Mon, 13 Jul 2026 20:53:51 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCXp3Pd31Rqkw5ZBA--.43198S3;
-	Mon, 13 Jul 2026 20:53:51 +0800 (CST)
-Message-ID: <80184b10-f5b5-4b95-9c35-9a5d4208d579@huaweicloud.com>
-Date: Mon, 13 Jul 2026 20:53:49 +0800
+	s=arc-20240116; t=1783948192; c=relaxed/simple;
+	bh=eCLGgV4HCtUZ+915iey1H9NMtEJmuJ83xDIaUAfZJZ4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=mmAxhh9RcaieodFlfOeV6nI9fNLhsVHZkYBjOkrELQ7zBozeAHnCbzXFlMEYLNBIHnyQTTFce1acHcyr3n75AT/omVtGDE4angwhodZz6mohVmSNvzYVUjjfeSJQx4sNnEtxZgmgPvs96JuShEive3Y8I7VS6JkLd40M3sqgbvU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1ge613Gl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=5Y8E4Egh; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=0UcYh23w; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=jPEjMzl9; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1ge613Gl";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="5Y8E4Egh";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="0UcYh23w";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="jPEjMzl9"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id DB661778B8;
+	Mon, 13 Jul 2026 13:09:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783948189; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=B5bcDpqM5eKuQnyIND1xQt5zCdEio+/KkxYIjdf2PAs=;
+	b=1ge613GlkcOPwRjOXT4FKu0MPQ5fSg2077Kiefu1lkyHbrBtXC07B6eOmOJPOV/JNEbcCf
+	NxoQjuOFNFl+ZzwDb5QXrTQBLeSyS8ntfY8oicHpMBjH8ZKKjl4dPSt6+kSUxD/927Fyek
+	g7UuG1hg0isS64Sx6Qk1tNxnSdx3QKU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783948189;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=B5bcDpqM5eKuQnyIND1xQt5zCdEio+/KkxYIjdf2PAs=;
+	b=5Y8E4EghWLcuV6jCxIGFiFQtorLadq1iBtYWGi8DafXUZDGMjI+zS/AHZsbbUkDbCLkMQA
+	4IgmmQOUPjIQuKDg==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783948188; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=B5bcDpqM5eKuQnyIND1xQt5zCdEio+/KkxYIjdf2PAs=;
+	b=0UcYh23weZ2D5uPyst6acFL1jSrC60Vc6x2/Fkq7lMwFkViNiWWt966U7BsyGQyofGyCkM
+	XM7gjGR4XifRmNMfe0FuyyA3gRvqwWKq/i0+wQ+7ULXN3eapFEnR1PrvIBu6IOyf9nWUDx
+	S3FVEZMK8xggygHUGZkVwvEqi6GqZfU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783948188;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=B5bcDpqM5eKuQnyIND1xQt5zCdEio+/KkxYIjdf2PAs=;
+	b=jPEjMzl9JErnqY36vQrOcEqCwHi7mDwU7Z0h7fRSfzox3V+cDIXt7B+uKG14AQuexpmdp/
+	gVdX5qUTWu6QjfAg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C5B82779AE;
+	Mon, 13 Jul 2026 13:09:48 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id YWo/MJzjVGoHWwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 13 Jul 2026 13:09:48 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 71BDFA131A; Mon, 13 Jul 2026 15:09:48 +0200 (CEST)
+Date: Mon, 13 Jul 2026 15:09:48 +0200
+From: Jan Kara <jack@suse.cz>
+To: Xiang Mei <xmei5@asu.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	Daniel Rosenberg <drosen@google.com>, Weiming Shi <bestswngs@gmail.com>
+Subject: Re: [PATCH] ext4: check dir entry fits before reading the hash
+ trailer in ext4_search_dir()
+Message-ID: <kokbbtjua37msovatv4ahnauqqof53ndzqooayk4l7qyamys6w@srqaissjlt3f>
+References: <20260709184101.441348-1-xmei5@asu.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 0/2] jbd2: bound j_list_lock hold time in the checkpoint
- shrinker
-To: Max Kellermann <max.kellermann@ionos.com>, tytso@mit.edu, jack@suse.com,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20260713102229.1598812-1-max.kellermann@ionos.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260713102229.1598812-1-max.kellermann@ionos.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgCXp3Pd31Rqkw5ZBA--.43198S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxurW7Jr17Kw13Xw4kWr4fuFg_yoW5ZF48pF
-	Z0g3y8Xr4ku34xZrsIva18JFWFqa1kuryUWanF9r1Fvw4rXF4Sgry2kr42gFyUKFyfWw43
-	tFyUWwnrWa1jyaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7IU80fO7UUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260709184101.441348-1-xmei5@asu.edu>
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[12];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,google.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo,asu.edu:email]
+X-Spam-Level: 
+X-Spam-Score: -2.30
 
-On 7/13/2026 6:22 PM, Max Kellermann wrote:
-> We hit recurring RCU stalls / soft lockups on a busy ext4 filesystem
-> that serves as the CacheFiles backing store for a Ceph (fscache)
-> client.  The stall is always the journal commit thread spinning on
-> journal->j_list_lock:
+On Thu 09-07-26 11:41:01, Xiang Mei wrote:
+> For casefolded encrypted directories ext4 stores an 8-byte hash trailer
+> after the name (EXT4_DIRENT_HASHES()), at an offset derived from
+> de->name_len.  On the sb_no_casefold_compat_fallback() path ext4_match()
+> reads that trailer, but ext4_search_dir()'s by-hand pre-check only tests
+> de->name + de->name_len <= dlimit, which proves the name fits, not the
+> rounded trailer.  A crafted entry whose name ends at the block boundary
+> passes the check while EXT4_DIRENT_HASHES(de) lands past the block end,
+> so ext4_match() reads out of bounds on an ordinary lookup.  KASAN reports
+> it as a use-after-free when the page after the directory block holds a
+> freed object:
 > 
->   rcu: INFO: rcu_sched self-detected stall on CPU
->   rcu:   106-....: (2099 ticks this GP) ... (t=2100 jiffies)
->   CPU: 106 Comm: jbd2/nvme1n1p1-
->   RIP: 0010:queued_spin_lock_slowpath+0x20a/0x240
+>   BUG: KASAN: use-after-free in ext4_match (fs/ext4/namei.c:1435)
+>   Read of size 4 at addr ffff888010458000 by task exploit
 >   Call Trace:
->    jbd2_journal_write_metadata_buffer+0x1c0/0x310
->    jbd2_journal_commit_transaction+0x5e2/0x16e0
->    kjournald2+0xa1/0x220
->    kthread+0xe4/0x1d0
+>    ext4_match (fs/ext4/namei.c:1435)
+>    ext4_search_dir (fs/ext4/namei.c:1470)
+>    __ext4_find_entry (fs/ext4/namei.c:1268 fs/ext4/namei.c:1632)
+>    ext4_lookup (fs/ext4/namei.c:1703 fs/ext4/namei.c:1769)
+>    ...
+>    filename_lookup (fs/namei.c:2842)
+>    vfs_statx (fs/stat.c:353)
+>    __do_sys_newfstatat (fs/stat.c:538)
+>    do_syscall_64 (arch/x86/entry/syscall_64.c:94)
+>    entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:121)
+> 
+> Require, for hash-in-dirent directories, that the whole entry including
+> the rounded trailer fits before calling ext4_match().  This is the same
+> bound ext4_check_dir_entry() already enforces via ext4_dir_rec_len(), so
+> no well-formed entry is rejected.  The other caller, ext4_find_dest_de(),
+> runs ext4_check_dir_entry() first and is unaffected.
+> 
+> Fixes: 471fbbea7ff7 ("ext4: handle casefolding with encryption")
+> Reported-by: Weiming Shi <bestswngs@gmail.com>
+> Assisted-by: Claude:claude-opus-4-8
+> Signed-off-by: Xiang Mei <xmei5@asu.edu>
 
-Hi, Max!
+Looks good. Feel free to add:
 
-Thanks for the report!
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I'm a bit curious about which kernel version and CONFIG you
-encountered this issue on. IIRC, after commits [1] and [2], the
-spin_needbreak() in jbd2_journal_shrink_checkpoint_list() should
-always be effective (unless the hardware does not support it, i.e.,
-ARCH_NO_PREEMPT). Moreover, the number of buffer_heads in the
-checkpoint list of a single transaction should not be large enough
-to trigger such soft lockups. So I suspect this issue should be
-unlikely to occur on the latest kernel releases.
+									Honza
 
-[1] 7dadeaa6e851 ("sched: Further restrict the preemption modes")
-[2] 7c70cb94d29c ("sched: Add Lazy preemption model")
-
-Thanks,
-Yi.
-
+> ---
+>  fs/ext4/namei.c | 2 ++
+>  1 file changed, 2 insertions(+)
 > 
-> kjournald2 has already passed the "wait for outstanding handles"
-> barrier and is in the metadata write-out loop; it is simply unable to
-> acquire j_list_lock for >21s.  The lock holder is the jbd2 checkpoint
-> shrinker.
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index cc49ae04a6f6..3b9740c1c16d 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1467,6 +1467,8 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+>  		/* this code is executed quadratically often */
+>  		/* do minimal checking `by hand' */
+>  		if (de->name + de->name_len <= dlimit &&
+> +		    (!ext4_hash_in_dirent(dir) ||
+> +		     (char *)de + ext4_dir_rec_len(de->name_len, dir) <= dlimit) &&
+>  		    ext4_match(dir, fname, de)) {
+>  			/* found a match - just to be sure, do
+>  			 * a full check */
+> -- 
+> 2.43.0
 > 
-> Under memory pressure, the shrinker (jbd2_journal_shrink_scan ->
-> jbd2_journal_shrink_checkpoint_list -> journal_shrink_one_cp_list)
-> walks a transaction's checkpoint list under j_list_lock.  On this
-> workload, the lists are large and dominated by busy buffers (dirty /
-> under writeback / attached to the running transaction), and
-> journal_shrink_one_cp_list() can therefore hold j_list_lock for a time
-> proportional to the whole list length, for two reasons:
-> 
-> 1. The JBD2_SHRINK_BUSY_SKIP path uses "continue", which also skips
->    the need_resched() check, so the scan does not yield even when a
->    reschedule is pending.
-> 
-> 2. The scan budget (nr_to_scan) is decremented only for buffers that
->    are actually freed, so busy buffers do not consume it and the loop
->    is not bounded by the shrinker's batch at all.
-> 
-> Both were introduced by commit b98dba273a0e ("jbd2: remove
-> journal_clean_one_cp_list()"), which folded
-> journal_clean_one_cp_list() into journal_shrink_one_cp_list() and
-> dropped the per-examined-buffer budget that the shrinker previously
-> had.
-> 
-> The result is a self-reinforcing collapse: shrinker instances across
-> many CPUs hold/contend j_list_lock, kjournald2 cannot commit, the
-> journal fills, CacheFiles lookups block in ext4, fscache cookies get
-> stuck in LOOKING_UP, and netfs I/O times out.
-> 
-> Max Kellermann (2):
->   jbd2: check need_resched() when skipping busy checkpoint buffers
->   jbd2: bound shrinker scans by examined checkpoint buffers
-> 
->  fs/jbd2/checkpoint.c | 28 +++++++++++++++-------------
->  1 file changed, 15 insertions(+), 13 deletions(-)
-> 
-
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
