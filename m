@@ -1,48 +1,86 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECE523EFFB9;
-	Mon, 13 Jul 2026 12:00:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D65E44071F9
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 12:16:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783944009; cv=none; b=UhdstMa8p9e3sN4j6PrtFo+f0HSVLfH/ANRrJ88ZYLki3BX2F7UFGchhAzTl4xOzmQM+0a5Hsp0ICIVhpaci49ASyaf5aKM1mvpakGZVIZQ2gY5bovhMgmXWthnlCII3DTTwSmf5zGT287+NHqUJrCfxTUntZWy0ElrqGaRMUrU=
+	t=1783945010; cv=none; b=mdeJpN+2haVC5+ZONZp4qcyNNC+IRwuInmo8xZDt7pQS+cBQyuNkC5sMZrcDS1lBsm/fYRF2dxrsCWj9eQkuhLSTLw6ONwve4cgNcmDVUSmO/CzZathsQsejZrKq8gqYPkd2OZ9xHy1Zv9e1Jbj50TLpA5I4RWio7SxllKRur8w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783944009; c=relaxed/simple;
-	bh=xrh7lf/j+INDpBIQuxKKEaAe66A3IiJwW82dONtLcSw=;
+	s=arc-20240116; t=1783945010; c=relaxed/simple;
+	bh=ZvrxzDz4VJp9YWoA71W3GebSHfN/LE/a/CMiuLKqzSs=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hNOUAqn9o395UOkGlDuRT8raHG7TWafMSW8QhlxomJ3u9TGRfc9j7l9Vc/6slD6qSeIegibEhshiDA2xsu/+0Gn1I66JC3njzJt4KZhcW6vv4MeIvhK/B8KXgAEBIn5LL+6RkA6+C1wM9NJef5fYg7OglkZJhJgRyAi+THEZ2os=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=dCaEjrZ6; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=cvRxHuyUr0oJiLUg4g0GR6f+oXT4UNyd0q7ojLt3k+POcBZv7IbwZP50kUc25xpr7PBfLmplmeU2Yscu+lDfzrhqm9xtVPiKIKWvok1zVKzQyUYcWq/G75VidJx2iDni/tDT2ok40EXXyvlxmLMRmQMFXbui+x82yj5XdpsjAj0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=iuP4U7s6; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ANHOzPXf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=U8CbI0yT; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ya+j8VU9; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="dCaEjrZ6"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=tQYMjoiTYjYW1olQ44tmxQBfF3EMsN52ax3nXVxNLJk=; b=dCaEjrZ6fLHwI0XLAxmjHgIYZa
-	1IBSKVZzD0flrK2WUENb+JAbS3Rf02/YVO+5rgeQPlYKpYOvM9aK7/3JyShsIq2HX4RfbczOToBAM
-	lRdB60hf8h2XcdDZehKZqEBoiFuKqe2Ew0jscy71bjR4ya1leGMkKBpbMU7YNLHFl3rEvU3uRdq6R
-	eKTAfppC2AtOLbEy0ijYImRsh8dcqH0bojGZqwbdn5oXNLUtW8P59VEt4yRBq9KsLlvG+qY27oBh6
-	5lRKqIx1aVStoEZXh182roeTFj3Bm4Ec+TMUIT8eQvcIkTjKgfeNpinZ6Jd9HVYNL690yV30dTqLD
-	tLExMRHw==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wjFKQ-000000096Qi-0M9M;
-	Mon, 13 Jul 2026 12:00:06 +0000
-Date: Mon, 13 Jul 2026 05:00:06 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Keith Busch <kbusch@meta.com>
-Cc: linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-	axboe@kernel.dk, jack@suse.cz, brauner@kernel.org, cem@kernel.org,
-	jaegeuk@kernel.org, aalbersh@kernel.org, tytso@mit.edu,
-	Keith Busch <kbusch@kernel.org>
-Subject: Re: [PATCHv2 3/5] xfs: report direct io attributes through
- file_getattr
-Message-ID: <alTTRoOEglwuf4vg@infradead.org>
-References: <20260710210646.3576365-1-kbusch@meta.com>
- <20260710210646.3576365-4-kbusch@meta.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="iuP4U7s6";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ANHOzPXf";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="U8CbI0yT";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ya+j8VU9"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id E66C277523;
+	Mon, 13 Jul 2026 12:16:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783945007; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=pFa3CkPB5/zsm1kI7wziE+HM9O4DamB/IWX3voiemsQ=;
+	b=iuP4U7s6SUoY5Rj0/R+wZCiJjmKvHHdxCYdndFZZrDwxid3dh5Gizgi6pR3iCVJqPkuFVn
+	kewvRlJEFuapc1Y2smeFOv8buAacVhsogl/rR68UwysIxDq3wleOpuMrF3dPsqadouCn0O
+	EcVg+ZvQnZ89vBpkKVALgNL9wHCCPFs=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783945007;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=pFa3CkPB5/zsm1kI7wziE+HM9O4DamB/IWX3voiemsQ=;
+	b=ANHOzPXfxSeXDSGHiwbS85/aSBpS0KYmnljCCz02esJYJG9T1dibkZAu3rlGe6SaSBuyzE
+	BjAMLLmi+cx+dcAQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1783945005; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=pFa3CkPB5/zsm1kI7wziE+HM9O4DamB/IWX3voiemsQ=;
+	b=U8CbI0yTC6+vNVfaCTj1KgTZh/1IKuGOeplzkSqjv07C74PDjCdb24O74bXf+CZrjKQ/o0
+	/nbzOq1RLlq35d8K4xBe4mZ4IPHZVpTY9BsLTECdrBCPoB8d5BKcjU5Dz2D6H3BVN+sPjG
+	crl6q/56YvqIEqt7eqSChbJ5q6gSg6Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1783945005;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=pFa3CkPB5/zsm1kI7wziE+HM9O4DamB/IWX3voiemsQ=;
+	b=ya+j8VU9SnwI3thpLYZqwBQFIrd/CaonD9Eyfkr3G1paiK03KkXc2u+DY4w244src3tjOm
+	1rWie1VdEF87jEBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D9729779AE;
+	Mon, 13 Jul 2026 12:16:45 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id a1YPNS3XVGpOJQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 13 Jul 2026 12:16:45 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 7C404A131A; Mon, 13 Jul 2026 14:16:45 +0200 (CEST)
+Date: Mon, 13 Jul 2026 14:16:45 +0200
+From: Jan Kara <jack@suse.cz>
+To: Max Kellermann <max.kellermann@ionos.com>
+Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH 1/2] jbd2: check need_resched() when skipping busy
+ checkpoint buffers
+Message-ID: <aexnpfdnuwyhydqo5lxvcxf7nezbiqmb5j7dg6yqqj2n4b5d2b@4qwrxth5wgla>
+References: <20260713102229.1598812-1-max.kellermann@ionos.com>
+ <20260713102229.1598812-2-max.kellermann@ionos.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -51,33 +89,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260710210646.3576365-4-kbusch@meta.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20260713102229.1598812-2-max.kellermann@ionos.com>
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MISSING_XM_UA(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCPT_COUNT_FIVE(0.00)[6];
+	FROM_EQ_ENVFROM(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,ionos.com:email,suse.cz:email,suse.com:email]
+X-Spam-Level: 
+X-Spam-Score: -3.80
 
-On Fri, Jul 10, 2026 at 02:06:44PM -0700, Keith Busch wrote:
-> +static void
-> +xfs_fill_fsxattr_dio(
-> +	struct xfs_inode	*ip,
-> +	int			whichfork,
-> +	struct file_kattr	*fa)
-> +{
-> +	struct xfs_buftarg *target;
+On Mon 13-07-26 12:22:28, Max Kellermann wrote:
+> journal_shrink_one_cp_list() skips busy checkpoint buffers when called
+> with JBD2_SHRINK_BUSY_SKIP.  The continue statement on this path also
+> skips the need_resched() check at the end of the loop body.
+> 
+> Consequently, when a checkpoint list contains mostly busy buffers, the
+> shrinker can walk the entire list while holding journal->j_list_lock,
+> even when a reschedule has been requested.  Large checkpoint lists under
+> memory pressure can therefore cause long lock hold times and leave other
+> CPUs spinning on j_list_lock, resulting in soft lockups or RCU stalls.
+> 
+> Route the busy-buffer path through the need_resched() check so that the
+> shrinker can release j_list_lock and reschedule promptly, restoring
+> parity with the clean-buffer path, which already checks need_resched().
+> This does not change which checkpoint buffers are eligible for removal.
+> 
+> Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
 
-Same alignment for the variables as for the arguments.
+Good catch! Thanks for fixing this. Feel free to add:
 
-> +
-> +	if (whichfork != XFS_DATA_FORK || !S_ISREG(VFS_I(ip)->i_mode))
-> +		return;
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Move this check to th caller?  Although this and similar check in
-the other file system patches miss block device nodes, for which we'd
-need a special case, or one in the caller to override the attrs.
+								Honza
 
-Or maybe using the file attr for this isn't actually a good idea,
-and we should do an ioctl instead which automatically gets routed to
-the block device fops?
-
-> +	target = xfs_inode_buftarg(ip);
-
-.. and initialize the variable at declaration time?
-
+> ---
+>  fs/jbd2/checkpoint.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 1508e2f54462..5266017565ac 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -389,7 +389,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
+>  			ret = jbd2_journal_try_remove_checkpoint(jh);
+>  			if (ret < 0) {
+>  				if (type == JBD2_SHRINK_BUSY_SKIP)
+> -					continue;
+> +					goto next;
+>  				break;
+>  			}
+>  		}
+> @@ -400,6 +400,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
+>  			break;
+>  		}
+>  
+> +next:
+>  		if (need_resched())
+>  			break;
+>  	} while (jh != last_jh);
+> -- 
+> 2.47.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
