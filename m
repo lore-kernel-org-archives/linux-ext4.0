@@ -1,47 +1,32 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 916A93BF676;
-	Mon, 13 Jul 2026 08:49:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F8137A84A;
+	Mon, 13 Jul 2026 10:04:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783932550; cv=none; b=p5iN2TJ4BVHNerFg9nKH80S4KWy0xwlUQZmXl5ChHeI/8gi/gFUAahkAQQhytYSivJr4TsyFF/DTEs8qknGDt39o4ZStC+0aNmfLzTrBemAh+vYtyZUAheQR3/N+r0PzaPF02K+IxeMLrsTHkWHqaEa8Btla/yE8mGUAMlEtulA=
+	t=1783937060; cv=none; b=Ju7Qq5LM5zThghY/yX3HWfhA1W8DPMv5j22Xhmdrp/pr5rK6kbvuJ+ax1KWk0vv7EddcYykM2VNFMoDk/Fo6CLkgPP/RSe+WuJ+g3Ig42TBP+8P9g1oCQQEVzBHeh75RKDup/Dd5jTYWoTEBHlAjR1tvAaw14Hzbd4+KRr7/wQg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783932550; c=relaxed/simple;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
+	s=arc-20240116; t=1783937060; c=relaxed/simple;
+	bh=VgBiPBWeo4HmSIIjDpKu69PrpGRLPzcwcVo89dqKRiw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=dGGAaXbgsu0FJYyas1txgtv6ZAF3rPynU/yhvXSv9Ap/K95f4VPfsVmeAtiRW9rpevHh/PQIZYfQnLiAGEL/OegOdToQ+pc9BaXr4vYOtV10w6UMA28j8C/+A2mH3M4+vd5JZ2+eTJvmJuy/sX9OzCIn/ocBt8NVP6HkQ39BnZE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=Ctt6iov8; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Ctt6iov8"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=; b=Ctt6iov8XlyZ5qweUkDc2AMakv
-	1cquxBIKMtidre6tqOBfQMFC4JdkLEwWsUTaQlkFp6wWOdSiv3oQyNqdAquV5Gse5ZKpgikOFUW59
-	LfcJ+xw0+kxvCGFiv5xFp8SKurUL2u0J4LkyeFxqcKGjJffQKsLeoUvkJS2p3SkJVFxW6bwDkr/29
-	JC6VlnilcS5dDW+QLnRduSY/Zk71wY99TWODyrZMLg34dKfWHifY1tnC2VDp8Iw28ggsnKRNWg7nx
-	DAdQuDOFwDN6SzE0nKdoOna42hUG6i90lFOJBfbR/a+dRLCzpRVeps3gMRkOoyjaL3mS5dae+8PHx
-	9vYReOfQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wjCLY-00000008dLa-3uYr;
-	Mon, 13 Jul 2026 08:49:04 +0000
-Date: Mon, 13 Jul 2026 01:49:04 -0700
-From: Christoph Hellwig <hch@infradead.org>
+	 Content-Type:Content-Disposition:In-Reply-To; b=G0OmROj7v9WVnZYZrY+mbsdi1We401hNm38xZ3n5ZSU4lo2s6jUYrWWHET7H3RQQh5DGT8sYzt6j+ZkBFCy/6w32+mGv4DEXWQJft/VvBTPawfLhLmdc86hvu7SpZT13PFbLou9Np0VtXb/gros/Tmu4Rp7kzwfsRPV3lRUL7os=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id A65F468C4E; Mon, 13 Jul 2026 12:04:14 +0200 (CEST)
+Date: Mon, 13 Jul 2026 12:04:14 +0200
+From: Christoph Hellwig <hch@lst.de>
 To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, brauner@kernel.org, djwong@kernel.org,
-	hch@infradead.org, joannelkoong@gmail.com, yi.zhang@huawei.com,
-	yizhang089@gmail.com, chengzhihao1@huawei.com, yangerkun@huawei.com,
-	yukuai@fnnas.com
-Subject: Re: [PATCH v3 5/5] iomap: add comments for
- ifs_clear/set_range_dirty()
-Message-ID: <alSmgEpoqRruwoh7@infradead.org>
-References: <20260713072906.1726059-1-yi.zhang@huaweicloud.com>
- <20260713072906.1726059-6-yi.zhang@huaweicloud.com>
+Cc: Pankaj Raghav <p.raghav@samsung.com>, zlang@kernel.org,
+	linux-xfs@vger.kernel.org, hch@lst.de, pankaj.raghav@linux.dev,
+	fstests@vger.kernel.org, djwong@kernel.org, yi.zhang@huawei.com,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH v2] generic/795: add unaligned boundary test cases for
+ WRITE_ZEROES
+Message-ID: <20260713100414.GA11013@lst.de>
+References: <20260709083048.3849610-1-p.raghav@samsung.com> <1adabe60-17d5-49ff-a6e6-33f90debf6fe@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,10 +35,25 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260713072906.1726059-6-yi.zhang@huaweicloud.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <1adabe60-17d5-49ff-a6e6-33f90debf6fe@huaweicloud.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-Looks good:
+On Fri, Jul 10, 2026 at 04:23:27PM +0800, Zhang Yi wrote:
+> Thank you for the test! The changes look good to me, and it works well
+> with my ext4 fixes as well.
+> 
+> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> Unfortunately, I've found a bug in filefrag that causes delalloc extents
+> to be reported with a length of 0. This means this test case can miss
+> delalloc extents. The issue is in misc/filefrag.c's print_extent_info(),
+> where ext_len is incorrectly set to 0 for the FIEMAP_EXTENT_UNKNOWN or
+> EXT4_FIEMAP_EXTENT_HOLE cases. Could you please send a patch to fix this
+> as well?
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+We can't really rely on having a bleeding edge filefrag for xfstests
+(well, at least without a feature check for it, but even that
+would not a good usability story).  I guess at least for now
+we might have to add  a little tool that just calls FIEMAP for
+us to xfstests?
 
