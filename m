@@ -1,77 +1,72 @@
-Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
+Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3A613D9533
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 10:22:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B78B36A361
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 10:22:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783938159; cv=none; b=NlgEAfs4y/Nh/c4AtjtboTyvLeJ/IJH9riLrz1xgy/503e9oT7zA5QdGm6cewgcJ8xRLTncAcFg+LIsOxFC8dwPmj3+H8IK5j9QzrRTOkH3IiaxbXSfJtRojkR3HYwd6ZYegrobYkLDSLihxrqcgK8VBc/v9b9kUDoVL7MMDSBY=
+	t=1783938160; cv=none; b=KfxOLV4XVvxbywafeC2kA++y79bluKdKkU0epzmiV3Hya6xEvXAlfOl7dUOwBx9g83FOeuL4JmZNBco6sIIZkBSPHasI9IopGTF5l0LqO8JWBwdKQwFhD8w/vgFgobITUuuCvwcQ8cWI3wC0p0j9bZDyj3k0B6iaF/AwF8+63Qg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783938159; c=relaxed/simple;
-	bh=S0apE44jg4thzwLs2H4ktkq49NTNQCRu8dBmqyqkmPo=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ec5eGCVLFprmtWSkRalnT/0Zhd0zalSnXmuVcp/lDV47yTceLKbgCld65Jlsu19ouz1TJo1WOp+FzuqwRQXgF1Cg86cdw4KJcf2VFJlNA6ASY72oTqQGgWpWB7nqT0ccY7iVIKW1YVB5KM12VOEz8rGwBk6kdkwwrS3vahprHnY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ionos.com; spf=pass smtp.mailfrom=ionos.com; dkim=pass (2048-bit key) header.d=ionos.com header.i=@ionos.com header.b=JPH7XAer; arc=none smtp.client-ip=209.85.221.51
+	s=arc-20240116; t=1783938160; c=relaxed/simple;
+	bh=l8axt9Tk9geBEkN8bylkeCe0FVdnGDnLH1I3RigAbJU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hVCmerW4n5t36IozUUI5KGvcvCTsSzdCYwkRyxkBlsq6p+c2/2/UXttrZf5pUifwT44e8kB7yaY0VIkdPSwQw+X6MKT+f6bsEnAFpa8KsLsEEDssLsoCuh5kWdo/uKK7GXxIXUQ+xjOEpbPKX7XozxXAbrOVQhAOVc9hZzVQ1QY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ionos.com; spf=pass smtp.mailfrom=ionos.com; dkim=pass (2048-bit key) header.d=ionos.com header.i=@ionos.com header.b=QeyyZXiI; arc=none smtp.client-ip=209.85.221.53
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ionos.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ionos.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ionos.com header.i=@ionos.com header.b="JPH7XAer"
-Received: by mail-wr1-f51.google.com with SMTP id ffacd0b85a97d-47de0093c42so2319040f8f.3
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 03:22:37 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=ionos.com header.i=@ionos.com header.b="QeyyZXiI"
+Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-474560436c3so2264181f8f.0
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 03:22:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ionos.com; s=google; t=1783938156; x=1784542956; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=d9qPFT2w9NJfNkCDFx/9oMKsPCaLSc0nA2j4Q4SrUdM=;
-        b=JPH7XAerNSnuSOAfQUJJqz1Q1b3tAESXIXh+94UkDqA0kZ+spQdux8lkZHJhjQRFRH
-         e8DVf5i9AWFFbrCGy5BYKvqS+FNXbGL4mSY3AgWX2NWx5ZoxXgPdVzLCuuFJJR2bDtPi
-         mU1jnnXbCv3++vY/UkBJ2Y/JwI5gcdAzOvsIxleSBk4G5wJpunQWFIdekWgwYwjShAOe
-         Twf4rmdWRBx1lETml+MAFp9cghIYaZb2flgeGcb1LFqorPcCy1BdkhUl3E4bEvDfWuJ3
-         F5bWYNdejlq679WHyv4Tk7tFbOwEiQUZ862kTDXmz/9hPFSTifibnsrSiBSdc2Hh5Sgz
-         VgRw==
+        d=ionos.com; s=google; t=1783938155; x=1784542955; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=uuK9JeqClTwXWplH5M0lC/009LSJw3bFvJurNVCcSgk=;
+        b=QeyyZXiI2sEENdtWCA1M47I2OgG3d4R+FWr78FcvSnsEthd/VsZvwuY5S3k9V8Uh/Z
+         eVuax1pheEmYQwZy5AhD+9tooQG9YpauilvJ9cg3yE4LVqmC18VqxP3v8/bwHGMkBPTw
+         ZE3C03dACJbERXWvJsHRTP6srzdSmPNgZi4xKlTWf61tE84MijLT6p07QEgqm52lczmh
+         /V1jGkXN5ceP7UHUeQ6XJnIuoP8Irh5DRhfeVgEq6vcb01DdQgsWcOxved1pOgFO+/ZY
+         QVABYjs1GaYVQ9420gId0zHCec6sd/h+/H8jkUtiZHkLGHn3C1ysjfbxpqjLmn4bZxae
+         ejWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783938156; x=1784542956;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=d9qPFT2w9NJfNkCDFx/9oMKsPCaLSc0nA2j4Q4SrUdM=;
-        b=NaWQboMH1+jJZRdUs7Vir3qDnGGrbYkB6ZjJuumSFerjyH9KZjERugZKjMw0u0PtpK
-         bSzSoFYIRACnOAxSxiMUAn1HUhDcdLhpzZVs2tfnGAUC4xFXbCGY2NzWam5g2oEj9pNW
-         QNSmmaGgFHX7EettHiYtGCBz3Si2PB+LXEORHs+T0v7E1PtLpo4v9ld4gXWUDqYjJ4Ey
-         zNC5rAQ6IzHxOqF/nIKy9diVv+PM8QdXgjFe9dp9iXPCW/h66oH2xYxdTeCC9cUe9TRb
-         8RN3hEaNHT9mtY/rN9FWcTsfvFNvnth+pGfTvgbK7NjY8EDNP7YUS6PsDDYz9uYiKCFm
-         4WwA==
-X-Forwarded-Encrypted: i=1; AHgh+RpLbl39GbhiNIpHU7XPTBPliMdl476d6U4ulUaIom95XLLeoSZvv7YxuCJEUcnzNY7+r0g9wihU3IT+@vger.kernel.org
-X-Gm-Message-State: AOJu0YwGualemq39vPeRfyIyL3JrtReW1cCUNtC+3XAbQ+aPjE9+AroX
-	KYPWmD0lnxr6NQyGzsy7Hn+DklGKKSYRilLV/Fi2vSYEyLWbAxBNeZTY4wtmJLPmSxc=
-X-Gm-Gg: AfdE7ckeytqWxg58zSEkOHsAIn+aTTIks42B6P+H5LxJk+9piiAXcyJ46iETpZrtI3f
-	3aQZ3yGIYGSl5BWplWbmnclhBYDXQNn6Pod6tPbJXfVHVt4H4KpEYJAoev4X7TpOpc5K/qipoIx
-	3la6PSVmgCzjD/pz0nCznMJ8IARWFmOCEiUOkwBimxs3VYhy53lkKcS/9UWWhgHYHKRrR1OcfjL
-	3YMn1/xMO7juvVQp8k2HgAYRjtPgRHQ5cxvRR0uLonshQ8F/xao6/1/+Va9JTdYjKMX4ubYmQpm
-	3RCGAOZjfZPwK7osPiT/KCnbwBIpGanMGhG/57y3ZXAqcxh3Uu6morsN97wXqohY6zYAw2/zhBn
-	z60jFZogA+KhVjZavdvYBz5PEBESxRuQw7QCCf54S1JGXQp6ZjotZwLCrl0HS0W0qv8C17kRShF
-	TNFYRYza3OJwOK5k7BWtt+21BbLY+kIlY8hSe9PoaCmwtmH42gXnDxnMHc1YCe5kxHyDgnBT9lc
-	9LuiDHnTR/hPNSijntjxFcFxcY=
-X-Received: by 2002:a5d:6f0a:0:b0:47f:250f:71fc with SMTP id ffacd0b85a97d-47f2dd139c2mr10176696f8f.54.1783938156185;
-        Mon, 13 Jul 2026 03:22:36 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1783938155; x=1784542955;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=uuK9JeqClTwXWplH5M0lC/009LSJw3bFvJurNVCcSgk=;
+        b=lmGqHzZE7+jsYw/lxs42j9WZrSsJpPEjgTnuPxEYVs797xgFYQun4viTuk8cPAGRQV
+         4oG8laHlTZBvqfC3wYoJg7Y/ZV1cFCIMGzPh/DA7PLgCRwQFR9B4m/ifndOw9vKrPgjm
+         vW50j8xa/S7Jm/8LksLGwAInsKUOn8PGeBaTJfkdBmR0DChP+sG4u+xTv7Zp+pPl1/Ji
+         YR5sKp+FxSx3fgyZPQk/jim1bTUG7uhe8kTj5Y1HLHcsHGoqU5VIMEstZKewJVQt6axu
+         nttb4Wv+0VUZnlwFA6Xb7RsFStzAqoU5ynsOqvC74MAERA2BonczpVSmK6/ol/STDnvN
+         7gdw==
+X-Forwarded-Encrypted: i=1; AHgh+RrHFtg8Hq64EYjbu9aF3uc+yg5CgkPi4geBQwCWHLPK1/e1MOsNhxufousIEt21DOlq2e+jhaKpVjyz@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz29erTl3ixr3N2ygSN9U3REQ/WOowy6Q6/gY1KGpHMe9puXwdB
+	w2f4d6KvNL2gzdmyD7GRmVq9UceSf8t5etyNLpeXWm+J5wC4sdbYKocV6Vi8fD25o4k=
+X-Gm-Gg: AfdE7ckX8zCaQUfj4SF26JQS42fwNAas5YTeZUjz8+lWuhlUINNc3TJBDEAy7asVyjX
+	RUMChN04/PBzwRcqsPj2y9Luk2rU5Oka+SaOQL3YDRuI+nZe08JTLw1G1dfIch4wv88fVakXylb
+	fW64Ki8h8xQxLELUUkl8HRT4pb/iubTlkkMhJzokSF7NeC+XxeCpd/OILuZRzmsvrjLC9lg+42D
+	iuLTHKVfgKa3OUXRiEZHFlnhwHfL/YI/lAx+frvSspQ9CpLDj3xv4/TZckQw4s8iYHbWjzDRjmz
+	pv8FRUAG7CaJCoVF8f+uY607bUWMUNas8Tx54X0tACIiBGb7pLdkVS68lwrxOxL5IsiQ64WSHvr
+	rJ19qwGV2LHW2IGndlVsYZCXPk5F3YLOwBkekMvog041K71m+lxUW4+gfaY/wh+2+SF09nvvtYv
+	TqPa9jD+QWXUtTQhzsjYH4QHZbcN81u4JPjSvnFtL82PoFvXfeJ9mlqZd3JPqTS6qNjEwvLDCya
+	i1vQALg4F5GB4fT
+X-Received: by 2002:a05:6000:1a86:b0:45e:f439:9def with SMTP id ffacd0b85a97d-47f2dcbffdemr9467962f8f.15.1783938154686;
+        Mon, 13 Jul 2026 03:22:34 -0700 (PDT)
 Received: from raven.intern.cm-ag (p200300dc6f484700023064fffe740809.dip0.t-ipconnect.de. [2003:dc:6f48:4700:230:64ff:fe74:809])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47aa09608d4sm84858344f8f.25.2026.07.13.03.22.34
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47aa09608d4sm84858344f8f.25.2026.07.13.03.22.32
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 13 Jul 2026 03:22:35 -0700 (PDT)
+        Mon, 13 Jul 2026 03:22:33 -0700 (PDT)
 From: Max Kellermann <max.kellermann@ionos.com>
 To: tytso@mit.edu,
 	jack@suse.com,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Cc: Max Kellermann <max.kellermann@ionos.com>,
-	stable@vger.kernel.org
-Subject: [PATCH 1/2] jbd2: check need_resched() when skipping busy checkpoint buffers
-Date: Mon, 13 Jul 2026 12:22:28 +0200
-Message-ID: <20260713102229.1598812-2-max.kellermann@ionos.com>
+Cc: Max Kellermann <max.kellermann@ionos.com>
+Subject: [PATCH 0/2] jbd2: bound j_list_lock hold time in the checkpoint shrinker
+Date: Mon, 13 Jul 2026 12:22:27 +0200
+Message-ID: <20260713102229.1598812-1-max.kellermann@ionos.com>
 X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20260713102229.1598812-1-max.kellermann@ionos.com>
-References: <20260713102229.1598812-1-max.kellermann@ionos.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -80,49 +75,60 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-journal_shrink_one_cp_list() skips busy checkpoint buffers when called
-with JBD2_SHRINK_BUSY_SKIP.  The continue statement on this path also
-skips the need_resched() check at the end of the loop body.
+We hit recurring RCU stalls / soft lockups on a busy ext4 filesystem
+that serves as the CacheFiles backing store for a Ceph (fscache)
+client.  The stall is always the journal commit thread spinning on
+journal->j_list_lock:
 
-Consequently, when a checkpoint list contains mostly busy buffers, the
-shrinker can walk the entire list while holding journal->j_list_lock,
-even when a reschedule has been requested.  Large checkpoint lists under
-memory pressure can therefore cause long lock hold times and leave other
-CPUs spinning on j_list_lock, resulting in soft lockups or RCU stalls.
+  rcu: INFO: rcu_sched self-detected stall on CPU
+  rcu:   106-....: (2099 ticks this GP) ... (t=2100 jiffies)
+  CPU: 106 Comm: jbd2/nvme1n1p1-
+  RIP: 0010:queued_spin_lock_slowpath+0x20a/0x240
+  Call Trace:
+   jbd2_journal_write_metadata_buffer+0x1c0/0x310
+   jbd2_journal_commit_transaction+0x5e2/0x16e0
+   kjournald2+0xa1/0x220
+   kthread+0xe4/0x1d0
 
-Route the busy-buffer path through the need_resched() check so that the
-shrinker can release j_list_lock and reschedule promptly, restoring
-parity with the clean-buffer path, which already checks need_resched().
-This does not change which checkpoint buffers are eligible for removal.
+kjournald2 has already passed the "wait for outstanding handles"
+barrier and is in the metadata write-out loop; it is simply unable to
+acquire j_list_lock for >21s.  The lock holder is the jbd2 checkpoint
+shrinker.
 
-Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
-Cc: stable@vger.kernel.org
-Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
----
- fs/jbd2/checkpoint.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Under memory pressure, the shrinker (jbd2_journal_shrink_scan ->
+jbd2_journal_shrink_checkpoint_list -> journal_shrink_one_cp_list)
+walks a transaction's checkpoint list under j_list_lock.  On this
+workload, the lists are large and dominated by busy buffers (dirty /
+under writeback / attached to the running transaction), and
+journal_shrink_one_cp_list() can therefore hold j_list_lock for a time
+proportional to the whole list length, for two reasons:
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 1508e2f54462..5266017565ac 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -389,7 +389,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
- 			ret = jbd2_journal_try_remove_checkpoint(jh);
- 			if (ret < 0) {
- 				if (type == JBD2_SHRINK_BUSY_SKIP)
--					continue;
-+					goto next;
- 				break;
- 			}
- 		}
-@@ -400,6 +400,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
- 			break;
- 		}
- 
-+next:
- 		if (need_resched())
- 			break;
- 	} while (jh != last_jh);
+1. The JBD2_SHRINK_BUSY_SKIP path uses "continue", which also skips
+   the need_resched() check, so the scan does not yield even when a
+   reschedule is pending.
+
+2. The scan budget (nr_to_scan) is decremented only for buffers that
+   are actually freed, so busy buffers do not consume it and the loop
+   is not bounded by the shrinker's batch at all.
+
+Both were introduced by commit b98dba273a0e ("jbd2: remove
+journal_clean_one_cp_list()"), which folded
+journal_clean_one_cp_list() into journal_shrink_one_cp_list() and
+dropped the per-examined-buffer budget that the shrinker previously
+had.
+
+The result is a self-reinforcing collapse: shrinker instances across
+many CPUs hold/contend j_list_lock, kjournald2 cannot commit, the
+journal fills, CacheFiles lookups block in ext4, fscache cookies get
+stuck in LOOKING_UP, and netfs I/O times out.
+
+Max Kellermann (2):
+  jbd2: check need_resched() when skipping busy checkpoint buffers
+  jbd2: bound shrinker scans by examined checkpoint buffers
+
+ fs/jbd2/checkpoint.c | 28 +++++++++++++++-------------
+ 1 file changed, 15 insertions(+), 13 deletions(-)
+
 -- 
 2.47.3
 
