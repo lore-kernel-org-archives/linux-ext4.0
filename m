@@ -1,38 +1,45 @@
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87A7F3B2FFF;
-	Mon, 13 Jul 2026 08:34:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C936D3BCD20;
+	Mon, 13 Jul 2026 08:44:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783931651; cv=none; b=hnVpv7sLAlhG8P94smPDPbSFsFjOLfZzPObEGDYmWSbMum86c5i5uyutMmhTPjDXG+9CTm+v5/lfugILO81OvbdOCOd0gf6IbsI6KwpTad+GJyr16PWivwm/VYJh7Mh4e/iv/qZi4dSiw1jTURhxTyduuNhEfdzIZQBHcb5SeoQ=
+	t=1783932277; cv=none; b=f9/xZcyggYNLYbRLiI/PNXiuWww0gbGc6AjTMWkArLDsL0aMkBMrfROEqm0xDxsQ4azCcnzQGmmKoRm/ygwvc51meErY9UkcZDSjro0thN1wbv2v/I8loSglv29CbD4rB3EHcRF2FXSJUCkEmMbQjm80J9EUpGxqbU7oRywhOGM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783931651; c=relaxed/simple;
-	bh=M7NmYC/Iylm9myghHwqILim55SAUt9QrM+UZYk0eJlw=;
+	s=arc-20240116; t=1783932277; c=relaxed/simple;
+	bh=3U6h5RKT7QOT04j/88jssGr4Kio8LNLTIg2Zynxe97I=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=n1v0e3w2RTApCJ1PhirM3bJBbgqepx0IghXovQ94XNVnryu/04fWkgaaG99TFpgIAjv41ckYb0sAIfEgZ2rsLJ8odPyDH/xX+3+DxFO+jcKyx1GdiMhCzxAEVsXMZ1XZQAXjmZi+dPscOpeE/8A82ipZNsjiECCO4affxDzDQ7g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id A2DC768BFE; Mon, 13 Jul 2026 10:34:04 +0200 (CEST)
-Date: Mon, 13 Jul 2026 10:34:04 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-block@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
-	Chao Yu <chao@kernel.org>
-Subject: Re: [PATCH v3 06/17] Documentation: fscrypt: Update docs for
- inlinecrypt
-Message-ID: <20260713083404.GB4304@lst.de>
-References: <20260713023708.9245-1-ebiggers@kernel.org> <20260713023708.9245-7-ebiggers@kernel.org>
+	 Content-Type:Content-Disposition:In-Reply-To; b=rkDBOtRCRpPm8drm6aHcic8HJhF/PG6TdPH3WVevG6WTJy+GLO/ieJyWAtmDc+eT2ojqFdDVcL3HnSLgFfa3oARxfWbjanIk5SoVBk6y6WO6qXbAXV51vnYIFOQhMWd+45AFEvO3l1iDvGX9JnIyQaG6t3ERJio2126l6O0mWKw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=lxSGOa7n; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="lxSGOa7n"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=D2dgsAkEEMpIxPn+GH3TMME+xgRgEmfTzzl38skyOh4=; b=lxSGOa7nQahf413yBTW1MDMX0B
+	rO81oUMOpHnfrNv753RAt3GreMzWt2jXXrxolCT1hYGzpu6jYr4+WjBTfKVvKCyVuQZOtZHEbrRxL
+	WQzNyl78vdAwSC5/spe0Q02G7ci4jexs7N6fMUQw278k5M8s+A0TqlkP0vLrc0EATQUw3zh/c5cxo
+	ws0EkBZCM05PS6sL+Hx7zAx1mgJUt7gLyltrcu+iIReZQSGXnJv+d1qyuDML0Rjvzqov0bVhV1jse
+	qyzGfJF6cdcVh+gobzKddTTKdWBi7sPdRW512ZgkjCwreDk2PiTtGCnYMgF7T0unODQqDv0V6ILWB
+	zyiGagJw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wjCGu-00000008czw-3CHt;
+	Mon, 13 Jul 2026 08:44:16 +0000
+Date: Mon, 13 Jul 2026 01:44:16 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, brauner@kernel.org, djwong@kernel.org,
+	hch@infradead.org, joannelkoong@gmail.com, yi.zhang@huawei.com,
+	yizhang089@gmail.com, chengzhihao1@huawei.com, yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: Re: [PATCH] iomap: prevent ioend merge when io_private differs
+Message-ID: <alSlYAelKWwBhMWc@infradead.org>
+References: <20260713074206.1768006-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,10 +48,17 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260713023708.9245-7-ebiggers@kernel.org>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+In-Reply-To: <20260713074206.1768006-1-yi.zhang@huaweicloud.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Looks good:
+On Mon, Jul 13, 2026 at 03:42:06PM +0800, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> Different io_private values indicate distinct completion contexts that
+> must not be merged together, as this could leak or corrupt the private
+> data associated with each ioend.
+
+Looks sensible and fine to queue up now:
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 
