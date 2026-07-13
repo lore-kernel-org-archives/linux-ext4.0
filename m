@@ -1,149 +1,181 @@
-Received: from PH0PR06CU001.outbound.protection.outlook.com (mail-westus3azon11021103.outbound.protection.outlook.com [40.107.208.103])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 808C136A02F;
-	Sun, 12 Jul 2026 16:57:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.208.103
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783875459; cv=fail; b=ujMs0qx7wxEEP/k8/wK9saWt6F0RkSQFjt2beEpid5FnuHI3HE/XvCL8839VfjPSvvUGMVVgzhm/5gcAup85uS36YZxma7Y+PUsXFtalQN20RkWtztAQWPpIab7cmu+DZEjcE84TjU4EfKm1cCR5o55S+qIuZLnd+NBR2DN0+1U=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783875459; c=relaxed/simple;
-	bh=C77XNFfUnUGQ6o33GSWNXHmqUyBJgRzqrewnUR4Sn9M=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=i5E5/RmX2UrN2L1lTg+GSNS+QejL1ktCQm/0wUincN0AAW9mpUWI7Lf/px55By6e21piiHufUamVlgTH4WFrNjmvy2ZF/+HyiPr9Xp3VWHUQIrm1VN7RgVik90VFlYRT3KLuCYbN1lOu9xkx1FKifM7PMm0F24okV64gAQ64zSs=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=1wQVOzl9; arc=fail smtp.client-ip=40.107.208.103
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 928D64317D;
+	Mon, 13 Jul 2026 02:39:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1783910372; cv=none; b=npjvDqEs2FOVn3v9WxKgySmrCqiHl3/gBRMLuQpZYjL7tDH/8wG7HGXe8rqIfva1kfgLngTHGlcOc+DBt7waGXxiN//uPowoWinEhPvUfl7nE87yqKVucfQJuMj0GwIaf5PwCDr7XPHnobY7RjPbdGMasiIQGCvn1gtavGQbEP0=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1783910372; c=relaxed/simple;
+	bh=ERt0ccSiPlbeJ/A/7GfWCl/2hwReIl6adW8mCOgSq6A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=LzCIebYQvPPU4UzyMzYEX1YjMxZXo4hhxw2A5jHFgXTTjsjpW6B5+cPkoQAIJtY2HZR/pd4OdMn3iwXroajjCP1oqE1xtXlGEzT79Sd0p/A5Ry1mCRMcoUZcGdPjQX4dg40Q8ClsUpMuy6ipJgxeOCr2IUDNmfrrwmsoojU88d4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OfToqvAw; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="1wQVOzl9"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=LYjrzEo2gdH575JSyB9mdO+Im/bIk+73dAgVpdIApSwAkHJ/FK47yEBOd1fJrxtFqfoSqzxRAJvRbkcpKy9hY8UagxjFpNb4+sfYWfhqt/3gjg3j7YAJWWIyAJB5TDfLEzpox/1q/NmrRMLnHI9atcZKi2Tw+mRE7xmwwFxQlaTiUcAqwaNV1ZuT8Uk3iK9u4RroxWO5xVIFG4w4Z4ZzYD2Kvs4HC5diwslbFd+Ke1gVz69eygi1kbEIS0FfGLVTnUzYhORAPA5X2bVeojnob+25Np07O1jJhPqCVrSLtY/yrT1jgDXSIYDbpNzJIN4c2/+gFPqE9Ts1j0Js7txo4A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=TmvyXashSI8+0X3tFAibzw8cLjTlIaHc9bJgC0f92GI=;
- b=xsv7TQavS2Zz+QRaQUFxvccZmWkOgQXfJzsLtD6bEFKBA2lQyLqry35ZbR/LXsH4XdjVmk6QByl2JEoZp8BixY1G9asESed3zxQrc4W1f3vs4fup7EtpCO55PrcZ3f1hZGWHiG6o4yAGE3U0Up5jP96AP7ml1nQ1wMrizHOO50PbbhROmAQu5252abfqZJPxVUGKfwDb1I8nt4lKbbBUjgOCp5pAbNMoYnKn+3NYaPAdo23IB1LdbEWgOjhNejYK9Ld8nii2vqA4gab6NtadyEN9xlu0z6VWW1pve63MKX46IGJ5r2EznYN9E50WbHRjh7h9rGuH3GgpwYImcWqQCA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
- header.from=thelustrecollective.com; dkim=pass
- header.d=thelustrecollective.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=thelustrecollective.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=TmvyXashSI8+0X3tFAibzw8cLjTlIaHc9bJgC0f92GI=;
- b=1wQVOzl9rkBLXUIPdF+GMpKUjnISEv1QbydMScUyi761AUVFAurtwttuBah4eOg/Yna3gp1pDom8pWVpBV0UHqHieWx2lmdQZOfygbdyq4I6OSCqBmIvotkNiXA0weHWWOr/nGPW/DZ3PLew3hiKQs4OQgJCdWnCzR9Lj5C2/RX/g/XydQyThA8H9e+MmqAh/GkJ4lqk9OYM9QKwoHVI8ARceaREb19ACAs3nzonyeYt/Ci3V9FcnX+DDOQXnXgEPxmGLGFRDbHn2Kr0O6icb5OuvDI2H/YpBVDEpAnDSptY/v6MZbkonCMPq7MKrrQpGuhh2SG0yHcpEEqtAumAqw==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
-Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
- SJ0PR04MB7488.namprd04.prod.outlook.com (2603:10b6:a03:329::10) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.181.23; Sun, 12 Jul
- 2026 16:57:25 +0000
-Received: from DM6PR04MB4682.namprd04.prod.outlook.com
- ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
- ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0181.019; Sun, 12 Jul 2026
- 16:57:25 +0000
-From: Timothy Day <timday@thelustrecollective.com>
-To: linux-ext4@vger.kernel.org
-Cc: Jan Kara <jack@suse.com>,
-	Marco Elver <elver@google.com>,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Timothy Day <timday@thelustrecollective.com>
-Subject: [PATCH v1 9/9] ext2: enabled context analysis support for ext2 filesystem
-Date: Sun, 12 Jul 2026 12:56:10 -0400
-Message-Id: <20260712165610.366474-10-timday@thelustrecollective.com>
-X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20260712165610.366474-1-timday@thelustrecollective.com>
-References: <20260712165610.366474-1-timday@thelustrecollective.com>
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: MN2PR15CA0062.namprd15.prod.outlook.com
- (2603:10b6:208:237::31) To DM6PR04MB4682.namprd04.prod.outlook.com
- (2603:10b6:5:24::20)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OfToqvAw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E9F21F000E9;
+	Mon, 13 Jul 2026 02:39:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1783910371;
+	bh=Anvrc5QyuwQ48kzKoweg2kNJHM923i1rPiWcvi+taB4=;
+	h=From:To:Cc:Subject:Date;
+	b=OfToqvAwxJnFISd+Iw7yOl5WvJFvukBFM+f2oqQndEK7Wxo5/Iy/E/p7TtFHnafU4
+	 gtmwxliwVifw6idYU8l0qQuSycJGd4UWIqO9y/5eNi/Z9kG/JOfF0jyp8MWHi/z2Bf
+	 Xfr15V8xlZNHScHaGqrU8JfJtDoEVMOqVLol2kZRiM+66f7YdIKfC1CjH8bIgDPLYA
+	 VUGKCp95jKux0j7WEDnzXHa3yJSeJTEw4N6T1S0Da81oADP8oX4Il0uj1q8MGhW9kP
+	 bMTmrbX4r5PJ/OWdywUJTX3JNwyefNO55kR7oVlNECzQxrT4Glw8x7sHLuKRNVbQid
+	 sZjvad5Un2vQQ==
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-fscrypt@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-block@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Chao Yu <chao@kernel.org>,
+	Eric Biggers <ebiggers@kernel.org>
+Subject: [PATCH v3 00/17] fscrypt: Standardize on blk-crypto
+Date: Sun, 12 Jul 2026 22:36:51 -0400
+Message-ID: <20260713023708.9245-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|SJ0PR04MB7488:EE_
-X-MS-Office365-Filtering-Correlation-Id: 37d372d5-94d9-4604-2a5f-08dee036a63a
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|23010399003|376014|1800799024|366016|6133799003|56012099006|18002099003|22082099003;
-X-Microsoft-Antispam-Message-Info:
-	MIp1lguHqkJA75zlTKgdfYSFwdPF41GU237AKpFnHRDvE3jyM8I1jJH4J/ZYyItYHjeCGpoGk/KdPnviC4bjhYf8U3ptvM3Xh0vsL78x4ZKi0qDhp3xLHoMUCtYleVS8Az2r8ZR4nr4YeivFEVqbfKrEDgUi0EN0V97nFdm9T+bsSMRJGxYY6uB41rFuoK8GPHb33aTBm6uDgvkofSrFJeG2ciHyTMW/ZNq8YElA+RZeOq0wYaXnQHKF5yhpUg3uwWsfGkM81rINLcutHpOVtyFcS1PJHuJIYaED5Z2HRzrZ8+7yrCUVuN4vMXsp50rr/7HROd0sOFBGUyn3u7raSRdHGZkrA90P2/aDkUdHAEqFqRwYsXhjA+6Rts3prAHKxWu/CUaaZj8DbpS2050Q2YXLf50/1HHznfeSHX2Dotd1w4F36rF7UzlqQGi5jK16PmQ6mTWAQ0oPfVKzIX5hZCQIbWfRJnu+2f4NdoO9CW4/qbPTuFpOvHufUMs8PKXUyd6oddgfHS0ed7/IhN9C0T932eedyEUqkTG+PeC4XhQzZkLC/Jg3k+T6+KBVkrlpihDogEe73HQbCpsiBn84OKJlW/c5SL8b76WI7KCmeellkI76Ikhjy69NAlvK3I0Z8yg/qgP94FHIjVbMgcXzGNKL5gJwLS3jHyZATkRqiEg=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(23010399003)(376014)(1800799024)(366016)(6133799003)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?1U0494GT93BFv9mvUUnqm2RzVueKCr7m5v06MfMg1WBAJYIK1BbE6/DCOmdV?=
- =?us-ascii?Q?80M734Hr+1cMeqXruRwzkEMpWkcBt9PpvzMBPJaHgJbAOZHWf5XVopQVcSBp?=
- =?us-ascii?Q?+dL3nnMqTYZAnr/coqo2oaEOVoJK9/7VvXrgG+GUOe4wGf/aTzkWfegkbave?=
- =?us-ascii?Q?QTtk52uvkgFK1BwmLF9RcG4Ee0CflX/3dmvdAqtvoXJuoMQVbq9t6TMOeI/j?=
- =?us-ascii?Q?juXc3KZBgHOGLArjjTuIfdmIgq5FOHt2erzRHCARamP7l9nSMfHN7NNLI203?=
- =?us-ascii?Q?hIRmRCG/4eN5Lvav29zKUzblkv607EjviAn/lXcaQokR3YcRQlXwNZCwJGcL?=
- =?us-ascii?Q?1OrO8QBokuYHY4iHKUVZXdKtrMjc4o6Ng5ehJz2mbnJ3DnMCDolBW0gOrU3V?=
- =?us-ascii?Q?V0drfcyheyUfVFv2MKK7WV/dzQrs4YLd55dBgOJnizvUoYcVLA8CyaZ+FDZC?=
- =?us-ascii?Q?uz/ayfwIQoC1DQo064gnX46KauigR0sXf5kMN7630EACET6NAsYkBFRwuKEq?=
- =?us-ascii?Q?AktNY3M+JXpkiZpkk1hq5Q1LGaxDwJGFKigsrs/vtgbU7G4CKsEPZnz154BD?=
- =?us-ascii?Q?W7qXjV6nCFmOlbAfLUTmPwXBpP4m3zt1FNjnwhD0upRdNA0MFWrF0H/96icC?=
- =?us-ascii?Q?1z7Wlkvj2JpmBBjdr+HG4vC/7ErvM7PwXW6HYkIqbW/gvUh22RjHzs7wHjpG?=
- =?us-ascii?Q?X2d9QN3D3jT2EI6oynAx0IIGxKgEYpeg7tvaXLpn061z2xgREpSrnEe3/r6c?=
- =?us-ascii?Q?aZ4t5kXsYUnRpYQQmiLoprDSe92DkfXMa2Rb3BvvuaJh9dVOuzRIB3/2V/du?=
- =?us-ascii?Q?ptQAFDSQxZachYQxJzIKFli12rByhIpaP1zi1C4a5WlGlVQzdISFIx57P+WJ?=
- =?us-ascii?Q?NJs2mLqknBkwa5VswOAoqJ3Bsf14nGmVPfRmkNv51TcmCJDxINL6t7aAVUcc?=
- =?us-ascii?Q?vnF3P40MIMn09n0cwLnOlZLQEIrh8T0T3CPio5x9kcgp6byU2vK4OsCoLrb8?=
- =?us-ascii?Q?jHBzNtfBCPdTF4fKJyWI6hxvD03FohIHKqOc2eaZ7NARlFGxUoCdcD0DbdUJ?=
- =?us-ascii?Q?FgSvBvWF5XHSVPvCI/j+6Ri8DQOy6P/ejvUunkOsQbwGdZaRccgs2bbEXoG7?=
- =?us-ascii?Q?/qYIYTRUJvKvv78p6yiUzI9LAU+F3y6ld6Csk/k6bZ7IPWsow/UNGCZ1dE1n?=
- =?us-ascii?Q?3p5++qT+jk5/tYjH29Tb9uzQH6nXDuyLztycB6ptF+RCO+IvA2AiinMBuebk?=
- =?us-ascii?Q?QadT3b0xiNbwl4Z7r+lDH3trZhPaHT/pFbxamPu73dETPpvFtIY2AS4IB7jT?=
- =?us-ascii?Q?s198rCVM747a5xVf778SCI9r3Q/nl/GJIYORKocw3rClRydFk0Sy9Cw7fXxt?=
- =?us-ascii?Q?oXTkij3IFjB3IW2A0djaCfeJYk+1UhA8CtMIq57dXs3C32diE9QHP8CWUaq7?=
- =?us-ascii?Q?loi0ZI9BN0bzaB41XxBuUToMpa2mIfPPCv3xI0ielBUp4pBZQ6MciIPtuGmQ?=
- =?us-ascii?Q?5bclP9Dv3h9K192IXofxSf1Fh6v4txeGZcthuTExGoCVxgpNIMSBf912V0N4?=
- =?us-ascii?Q?Wf0JZBHjDk0pThwB+UUq7oaRbOIBfxvCCjzPAuyhumBWYbjrS+AHAwQIbVWg?=
- =?us-ascii?Q?gtLr0PynpIOpB5K+0FdWQ9IiKPdIsMfa0AveQFg4p32UXsMh5G96OYFbLtwm?=
- =?us-ascii?Q?GvWOI/DC08SinuX3RFnuHShmdcNRg2FtrTX8Lb14QomRAzLVnZ1bQEjooYOO?=
- =?us-ascii?Q?zu6Zb+fr0CqAuHRTq972qlxtt3A4wqE=3D?=
-X-OriginatorOrg: thelustrecollective.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 37d372d5-94d9-4604-2a5f-08dee036a63a
-X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Jul 2026 16:57:25.6327
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: HvF9DYLp5xd1anjAteePzR+nddi8wP7vT+m1eIODNQ/ruj044iaGKdFksVhlJl77aLfTn6+7ZOH37lbZV2QJtInfPqSONou7OAo6HJKTMSc=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR04MB7488
+Content-Transfer-Encoding: 8bit
 
-Update ext2 Makefile to support context analysis [1].
+This series applies to commit 2d0afaac9137e9 of
+https://git.kernel.org/pub/scm/fs/fscrypt/linux.git/log/?h=for-next
+It can also be retrieved from:
 
-[1] https://docs.kernel.org/dev-tools/context-analysis.html
+    git fetch https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/ fscrypt-blk-crypto-v3
 
-Signed-off-by: Timothy Day <timday@thelustrecollective.com>
----
- fs/ext2/Makefile | 2 ++
- 1 file changed, 2 insertions(+)
+Currently, ext4 and f2fs (i.e., the block-based filesystems with fscrypt
+support) have two file contents encryption implementations:
 
-diff --git a/fs/ext2/Makefile b/fs/ext2/Makefile
-index 8860948ef9ca4..33db2e9dc9082 100644
---- a/fs/ext2/Makefile
-+++ b/fs/ext2/Makefile
-@@ -3,6 +3,8 @@
- # Makefile for the linux ext2-filesystem routines.
- #
+ - Filesystem-layer, where code in fs/crypto/ directly invokes
+   crypto_skcipher to en/decrypt data using the CPU.  This
+   implementation requires the management of bounce pages at the
+   filesystem level.  It doesn't support direct I/O or large folios.
+
+ - blk-crypto (also known as inline encryption), where the filesystem
+   assigns bio_crypt_ctxs to bios, which are then processed either by
+   the CPU using blk-crypto-fallback.c or by inline encryption hardware.
+   This supports direct I/O and is compatible with large folios.
+
+Currently, the latter implementation is enabled only when the
+"inlinecrypt" mount option is given.
+
+The persistence of the fs-layer implementation is mainly for historical
+reasons, as it came first.  It's becoming increasingly hard to maintain,
+especially as the filesystems get refactored to use iomap, large folios,
+etc.  It's time to remove it and just rely on the similar code in
+blk-crypto-fallback.  This series does that.
+
+Some fs-layer encryption support remains in fs/crypto/ for non-block
+based filesystems (UBIFS and CephFS), as well as directories and
+symlinks.  So it's not entirely gone, but it's reduced.
+
+To be clear, this just changes an internal implementation detail.  ext4
+and f2fs continue to fully support encryption (fscrypt), regardless of
+the presence of inline encryption hardware on the system.
+
+Changed in v3:
+
+  - Fixed bug in mpage_prepare_extent_to_map().
+
+  - Updated a couple other places in fscrypt.rst.
+
+  - Cleaned up outdated comments in {ext4,f2fs}_getattr().
+
+  - Removed an orphaned function prototype.
+
+  - Fixed accidental removal of @key_type kerneldoc.
+
+Changed in v2:
+
+  - Replaced the allow_hw bool with a flags argument.
+
+  - Added patch "Documentation: fscrypt: Update docs for inlinecrypt"
+    which updates the documentation more completely by updating not just
+    fscrypt.rst (which was previously part of another patch), but also
+    the documentation for inlinecrypt in ext4.rst and f2fs.rst.  
+
+  - Removed extern from declarations of ext4_init_verity_caches() and
+    ext4_exit_verity_caches()
  
-+CONTEXT_ANALYSIS := y
-+
- obj-$(CONFIG_EXT2_FS) += ext2.o
- 
- ext2-y := balloc.o dir.o file.o ialloc.o inode.o \
+  - Remove unused 'inode' argument from ext4_set_verity_work()
+
+  - Added Reviewed-by tags
+
+Eric Biggers (17):
+  blk-crypto: Simplify check for fallback support
+  blk-crypto: Fold __blk_crypto_cfg_supported() into its caller
+  blk-crypto: Allow control over whether hardware is used
+  fscrypt: Fully disallow IV_INO_LBLK_32 with s_blocksize != PAGE_SIZE
+  fscrypt: Always use blk-crypto for contents on block-based filesystems
+  Documentation: fscrypt: Update docs for inlinecrypt
+  ext4: Remove fs-layer file contents en/decryption code
+  ext4: Make ext4_bio_write_folio() return void
+  ext4: Further de-generalize the bio postprocessing code
+  f2fs: Remove fs-layer file contents en/decryption code
+  fs/buffer: Remove fs-layer decryption code
+  fscrypt: Replace calls to fscrypt_inode_uses_inline_crypto()
+  fscrypt: Remove fscrypt_dio_supported()
+  fscrypt: Remove fs-layer zeroout code
+  fscrypt: Remove unused functions and workqueue
+  fscrypt: Merge bio.c and inline_crypt.c into block.c
+  fscrypt: Add safety checks to non-block-based en/decryption
+
+ Documentation/admin-guide/ext4.rst          |   8 +-
+ Documentation/filesystems/f2fs.rst          |  10 +-
+ Documentation/filesystems/fscrypt.rst       |  58 ++--
+ arch/loongarch/configs/loongson32_defconfig |   1 -
+ arch/loongarch/configs/loongson64_defconfig |   1 -
+ block/blk-crypto-fallback.c                 |   3 +-
+ block/blk-crypto-internal.h                 |   3 -
+ block/blk-crypto-profile.c                  |  22 --
+ block/blk-crypto.c                          |  34 ++-
+ drivers/md/dm-inlinecrypt.c                 |   3 +-
+ fs/buffer.c                                 |  45 +---
+ fs/crypto/Kconfig                           |   8 +-
+ fs/crypto/Makefile                          |   3 +-
+ fs/crypto/bio.c                             | 216 ---------------
+ fs/crypto/{inline_crypt.c => block.c}       | 284 ++++++++++----------
+ fs/crypto/crypto.c                          | 140 ++++------
+ fs/crypto/fscrypt_private.h                 |  28 +-
+ fs/crypto/keysetup.c                        |  31 +--
+ fs/crypto/policy.c                          |  17 ++
+ fs/ext4/crypto.c                            |   2 +-
+ fs/ext4/ext4.h                              |   6 +-
+ fs/ext4/inode.c                             |  71 +----
+ fs/ext4/page-io.c                           |  74 +----
+ fs/ext4/readpage.c                          | 139 +++-------
+ fs/ext4/super.c                             |   6 +-
+ fs/f2fs/compress.c                          |  31 +--
+ fs/f2fs/data.c                              |  93 +------
+ fs/f2fs/f2fs.h                              |   2 -
+ fs/f2fs/file.c                              |   6 +-
+ fs/f2fs/segment.c                           |   2 -
+ fs/f2fs/super.c                             |   2 +-
+ include/linux/blk-crypto.h                  |  13 +-
+ include/linux/fscrypt.h                     |  96 ++-----
+ 33 files changed, 387 insertions(+), 1071 deletions(-)
+ delete mode 100644 fs/crypto/bio.c
+ rename fs/crypto/{inline_crypt.c => block.c} (61%)
+
+
+base-commit: 2d0afaac9137e95e504bd3ad3512a9044745536b
 -- 
-2.39.5
+2.55.0
 
