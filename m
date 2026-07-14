@@ -1,162 +1,196 @@
-Received: from out30-131.freemail.mail.aliyun.com (out30-131.freemail.mail.aliyun.com [115.124.30.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BBE9134B1B0
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 06:31:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E24B93DBD5E
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 06:53:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784010722; cv=none; b=Xe1bgoTn2Gv35G90UfHMf9SXK9V0f5NpYq0mq9UDE14frxQXfuJoqJtMx/PBsAFDDvxqssaoP+lDzcx/ynwtiXqhaFNCyf8FZCG9zKcX5fi+5ZZZpIcU07h3V/Lmcd2eQmlv2wKBoW7++TAuuqUfC0mvqiluIrB9iN6Kr4gN238=
+	t=1784012032; cv=none; b=jCM+ptN1Hs3OlbvpO7CxNo2y/8wqSJlMDbospB1HnBeLkeoLCMToSHZCcYUXgJ3OSPceMixn5IWOHZdHq/Ow2b+6Z4HZQkTOZXbZ/2ICBTCExJmyN8yygIN6ZCX4HQH22vT3g9kmd8+ZJcIWFtOOmCBv4lP1qzi/7Coj7q4exWQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784010722; c=relaxed/simple;
-	bh=vbQ//l0g/WfhUwKHaLzuzF1bBurov1gfViM6w25EZmY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qaTeX7Uk0Q64HyZs/Aj6DjYipx1+YZZOvv5r6+CTcQWWd+74O4kiJTFGSQJSXHA8DwF2T5khOCfTEcExCzpzWK57n+OMWqrDGKhFurCkY75pWYPEosIIBNbnaP80Ahb0FwfamkTKGCwphDF0tpbB++6eiQ0ueZeFq5X2D6CtZWg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=WOcK2TQJ; arc=none smtp.client-ip=115.124.30.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1784012032; c=relaxed/simple;
+	bh=AO2GKLxoJTgpQfU1vWe3+H8/TP6Z5a4pNwhackVaAA4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=B51TP7vmwxTLnyFJ9P9D1XTXF6d7umELPi+6gZo00LEn1FjcXhu/Zt4NWvBXa72g6tE9lllrpxL6rJkXCULd5ZTlaSv+RB0kcYHWYE8tQcYarSo2gI6NB+lbTiyh397aHkaTY5cwgIrXESEdaw1sjE+e69G1hzuuuvadmYwvXCs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HIi5d5nD; arc=none smtp.client-ip=209.85.216.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="WOcK2TQJ"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1784010710; h=From:To:Subject:Date:Message-ID:MIME-Version;
-	bh=jRAe0MPvtW/v8AbpVoVMWlf9vvW8L7VRFFfYBW7Khig=;
-	b=WOcK2TQJZBEQajeCoKIaTlrJXKSjIvcjqXvZR1Pi9376rUqlTvAvr69A8vtGdDbCh/5N3kqHi2pi4uWNE9cAJU51SIVJ9LWXSB5q8uEtqtnuXtWcfVGDfSfROfgSKrxgdAaFWGjl+OBe3Gwj1KK2gXI8fqLkogYi+aw/BmIWwak=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R171e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037009110;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0X73IA1y_1784010708;
-Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0X73IA1y_1784010708 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Tue, 14 Jul 2026 14:31:49 +0800
-From: Baokun Li <libaokun@linux.alibaba.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	jack@suse.cz,
-	yi.zhang@huawei.com,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com
-Subject: [PATCH e2fsprogs 5/5] tests: add orphan-cleanup flush regression test
-Date: Tue, 14 Jul 2026 14:31:36 +0800
-Message-ID: <20260714063136.1284287-6-libaokun@linux.alibaba.com>
-X-Mailer: git-send-email 2.43.7
-In-Reply-To: <20260714063136.1284287-1-libaokun@linux.alibaba.com>
-References: <20260714063136.1284287-1-libaokun@linux.alibaba.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HIi5d5nD"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-381216921aaso4289068a91.1
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 23:53:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1784012030; x=1784616830; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=VBDDx+WXyO2HmFvYUM/Py6bFxHFJnp362DYMS0SOtOA=;
+        b=HIi5d5nDz+h9OTayqRDg7KZ7UFmnDftn3PChHwV/CmBqEjHif6EvJrzsrTIStHL1m9
+         UYO+4LJupU+qXAeAU3/eyltLxUBEbrs2NpCC3a84djXXtfIgZQYtW+a8yarQFY5dZ90B
+         5caNKyLOD+KoM7OFVunsOUQtO6pGGKiLWdc7vU6L54vXQY+OLQtSQLWv7TKNgkOydBY0
+         z3oRJwTxX5R0Q4HkVESCe5qlS/KibFrv3hOIW8ZqRkShm2CVJg2gYjn3CKKJzelktuTe
+         gUiu1bfkM3oM6SPN6NDwRTfDOaiyWoagkHqPS1RHOoE9/CDL9PGkzrKV8zVKlF1BO3fX
+         pbkQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784012030; x=1784616830;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=VBDDx+WXyO2HmFvYUM/Py6bFxHFJnp362DYMS0SOtOA=;
+        b=haUQ0ylm/ypeLtAkMH14pkxoVL1v48IEHw9T/+3aIGruBKjhO2JLuyBp7cwyRQ3f+y
+         HC3Fcovz1g82RLO4IkokJt7MlaiZKTERmUbDTP6taleZpcTM8+lOo+qRZPz/8O6tkXCB
+         Plm8I8hzFAip3ZZw8igfzNMdzmUFsAU+WJw6p27izNDBzSZbwBZBshhxOdU4nLaZLpEL
+         3xQehrVcOwGhlxifEoz5zIXT22tdXkXyt5pepT1P0sOzPUqFl+xlB97SbVDtlTDoZTnP
+         0oKErGsQvINNmUyTjfc70PL0sEZ9tK/XZ+3csZxWNySkjUsD+msCExpKCtVRsj82vGPd
+         9iZw==
+X-Gm-Message-State: AOJu0YxEZeYzcfNchFviBD5aHQLVTqkmm+6IhDFDk0J4ub4c0A8EfGZ0
+	nPrdRKXNBeGvO2hiNapMRP7UfwPUiiMygEj/86STROm5fLWyDSs3kRaQ
+X-Gm-Gg: AfdE7cmOFvjlzQTQW/+O/txMCqqkDL3BuPuMXqjBRiEzgBVT4ANIK+GcG29V8fu0nKk
+	7Ar35q5qPppTzDfPR6wCAV7NdbI+y4IEUrfBOFjE2UCLjlG6pNE5VbIt6BiNm054qRJ9UXy32fb
+	v6jtG5v2vQXXivlAQ/Jj++s8pgFW7//RldozMzERY/QEUX1MO4fQ1M70ovaJtH6nlVcMiT0SJ0H
+	W7WqjKA5WhA682X7i8bjzX/1cqivluybGwEjZUqjk/1KuLgD5YIloYlhZfyZF8H9ah3I6gGHGZA
+	fi5Gvki0MoLAcDpoFf9i7YaXACiqHMufEpfEZDifAOUaD3FUEQPirV4EnU+JPK4DmaXux+j9qRN
+	Tpt/1hW/IhYV/EOu6QU1K2G78tTEIFx/fmsJaU3xCA4UrgFh/L2d0V/WOl7Z/lYPg3VqFzdwcON
+	O211qzoQg6U4W63edcuK1LrifpqtiEaqm9
+X-Received: by 2002:a17:90b:4a:b0:388:cf45:d72c with SMTP id 98e67ed59e1d1-38e1aedd604mr1302508a91.15.1784012030007;
+        Mon, 13 Jul 2026 23:53:50 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38d352b0f37sm2616758a91.1.2026.07.13.23.53.45
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 13 Jul 2026 23:53:49 -0700 (PDT)
+Message-ID: <7bb69013-c6f1-4dee-bb9c-c576c7b765d7@gmail.com>
+Date: Tue, 14 Jul 2026 14:53:41 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 2/2] jbd2: bound shrinker scans by examined checkpoint
+ buffers
+To: Max Kellermann <max.kellermann@ionos.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, jack@suse.com,
+ tytso@mit.edu, stable@vger.kernel.org
+References: <20260713102229.1598812-1-max.kellermann@ionos.com>
+ <20260713102229.1598812-3-max.kellermann@ionos.com>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <20260713102229.1598812-3-max.kellermann@ionos.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Add f_orphan_flush_abort, which drives e2fsck directly:
+On 7/13/2026 6:22 PM, Max Kellermann wrote:
+> The jbd2 shrinker currently accounts only checkpoint buffers that it
+> successfully releases against nr_to_scan.  Busy buffers therefore do not
+> consume the scan budget.
+> 
+> If a checkpoint transaction contains mostly busy buffers, the shrinker
+> can scan its entire checkpoint list while holding journal->j_list_lock.
+> Large checkpoint lists can result in excessive lock hold times and leave
+> other CPUs spinning on j_list_lock, causing soft lockups or RCU stalls.
+> 
+> Pass nr_to_scan into journal_shrink_one_cp_list() and decrement it for
+> every buffer examined, including busy buffers.  Pass NULL from checkpoint
+> cleanup paths so their existing full-list behavior is preserved.
+> 
+> This restores the scan-budget semantics that existed before
+> journal_shrink_one_cp_list() was changed to always scan a complete
+> checkpoint list.
+> 
+> Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
 
-1. Build an ext4 image whose inode 12 is an orphan (links_count 0,
-   s_last_orphan = 12).
-2. Run e2fsck with a nonexistent bad-blocks file so that orphan
-   cleanup runs first and then read_bad_blocks_file aborts the run
-   via exit() before the normal superblock write-back.
-3. Check that s_last_orphan is 0 on disk afterwards.
+This makes the semantic of nr_to_scan more clear.
 
-Without the flush after orphan cleanup, s_last_orphan stays stale on
-disk (still 12) while the orphan inode has already been written back,
-which the kernel rejects as a "bad orphan inode" on next mount.
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 
-Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
----
- tests/f_orphan_flush_abort/expect.1 |  7 ++++
- tests/f_orphan_flush_abort/name     |  1 +
- tests/f_orphan_flush_abort/script   | 61 +++++++++++++++++++++++++++++
- 3 files changed, 69 insertions(+)
- create mode 100644 tests/f_orphan_flush_abort/expect.1
- create mode 100644 tests/f_orphan_flush_abort/name
- create mode 100644 tests/f_orphan_flush_abort/script
-
-diff --git a/tests/f_orphan_flush_abort/expect.1 b/tests/f_orphan_flush_abort/expect.1
-new file mode 100644
-index 000000000000..0a6d09f16e36
---- /dev/null
-+++ b/tests/f_orphan_flush_abort/expect.1
-@@ -0,0 +1,7 @@
-+Clearing orphaned inode 12 (uid=0, gid=0, mode=0100644, size=8192)
-+read_bad_blocks_file: No such file or directory while trying to open test.img
-+
-+test.img: ***** FILE SYSTEM WAS MODIFIED *****
-+Exit status is 9
-+Orphan before e2fsck: 12
-+Orphan after e2fsck: 0 (cleared)
-diff --git a/tests/f_orphan_flush_abort/name b/tests/f_orphan_flush_abort/name
-new file mode 100644
-index 000000000000..c9292546c6dd
---- /dev/null
-+++ b/tests/f_orphan_flush_abort/name
-@@ -0,0 +1 @@
-+orphan cleanup superblock flush survives a later abort
-diff --git a/tests/f_orphan_flush_abort/script b/tests/f_orphan_flush_abort/script
-new file mode 100644
-index 000000000000..9c18011b40db
---- /dev/null
-+++ b/tests/f_orphan_flush_abort/script
-@@ -0,0 +1,61 @@
-+if ! test -x $DEBUGFS_EXE; then
-+	echo "$test_name: $test_description: skipped (no debugfs)"
-+	return 0
-+fi
-+
-+TEST_DATA="$test_name.tmp"
-+OUT=$test_name.log
-+
-+dd if=/dev/zero of=$TEST_DATA bs=8k count=1 > /dev/null 2>&1
-+
-+$MKE2FS -Fq -t ext4 -o Linux $TMPFILE 4M > /dev/null 2>&1
-+
-+# Create an orphan inode: testfile becomes inode 12 (the first regular inode
-+# on a fresh fs), drop its link count to 0 and point s_last_orphan at it so
-+# e2fsck will run orphan cleanup.
-+$DEBUGFS -w $TMPFILE << EOF > /dev/null 2>&1
-+write $TEST_DATA testfile
-+set_inode_field testfile links_count 0
-+set_super_value last_orphan 12
-+unlink testfile
-+quit
-+EOF
-+
-+ORPHAN_BEFORE=$($DUMPE2FS $TMPFILE 2>&1 | grep -E "First orphan inode" | awk '{print $NF}')
-+
-+cp /dev/null $OUT
-+
-+# Run e2fsck with a nonexistent bad blocks file.  Orphan cleanup runs first
-+# and clears s_last_orphan, then read_bad_blocks_file fails and e2fsck aborts
-+# via exit() before the normal superblock write-back.  The fix flushes the
-+# superblock right after orphan cleanup, so s_last_orphan is 0 on disk even
-+# though the run aborted; without it the disk keeps a stale s_last_orphan
-+# while the orphan inode has already been written back, which the kernel
-+# rejects as a "bad orphan inode" on next mount.
-+$FSCK -yf -l /nonexistent/bad_blocks_file $TMPFILE > $OUT.new 2>&1
-+status=$?
-+echo "Exit status is $status" >> $OUT.new
-+sed -f $cmd_dir/filter.sed -e "s|$TMPFILE|test.img|g" $OUT.new > $OUT
-+rm -f $OUT.new
-+
-+ORPHAN_AFTER=$($DUMPE2FS $TMPFILE 2>&1 | grep -E "First orphan inode" | awk '{print $NF}')
-+
-+echo "Orphan before e2fsck: $ORPHAN_BEFORE" >> $OUT
-+if [ -z "$ORPHAN_AFTER" ]; then
-+	echo "Orphan after e2fsck: 0 (cleared)" >> $OUT
-+else
-+	echo "Orphan after e2fsck: $ORPHAN_AFTER (BUG: should be 0!)" >> $OUT
-+fi
-+
-+cmp -s $OUT $test_dir/expect.1
-+status=$?
-+if [ "$status" -eq 0 ]; then
-+	echo "$test_name: $test_description: ok"
-+	touch $test_name.ok
-+else
-+	echo "$test_name: $test_description: failed"
-+	diff $DIFF_OPTS $test_dir/expect.1 $OUT > $test_name.failed
-+fi
-+
-+rm -f $TEST_DATA
-+unset OUT TEST_DATA
--- 
-2.43.7
+> ---
+>   fs/jbd2/checkpoint.c | 25 +++++++++++++------------
+>   1 file changed, 13 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 5266017565ac..513273712010 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -358,15 +358,16 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+>   /*
+>    * journal_shrink_one_cp_list
+>    *
+> - * Find all the written-back checkpoint buffers in the given list
+> - * and try to release them. If the whole transaction is released, set
+> - * the 'released' parameter. Return the number of released checkpointed
+> - * buffers.
+> + * Find written-back checkpoint buffers in the given list and try to release
+> + * them. If 'nr_to_scan' is set, scan at most that many buffers. If the whole
+> + * transaction is released, set the 'released' parameter. Return the number of
+> + * released checkpointed buffers.
+>    *
+>    * Called with j_list_lock held.
+>    */
+>   static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
+>   						enum jbd2_shrink_type type,
+> +						unsigned long *nr_to_scan,
+>   						bool *released)
+>   {
+>   	struct journal_head *last_jh;
+> @@ -375,13 +376,15 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
+>   	int ret;
+>   
+>   	*released = false;
+> -	if (!jh)
+> +	if (!jh || (nr_to_scan && !*nr_to_scan))
+>   		return 0;
+>   
+>   	last_jh = jh->b_cpprev;
+>   	do {
+>   		jh = next_jh;
+>   		next_jh = jh->b_cpnext;
+> +		if (nr_to_scan)
+> +			(*nr_to_scan)--;
+>   
+>   		if (type == JBD2_SHRINK_DESTROY) {
+>   			ret = __jbd2_journal_remove_checkpoint(jh);
+> @@ -403,7 +406,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
+>   next:
+>   		if (need_resched())
+>   			break;
+> -	} while (jh != last_jh);
+> +	} while (jh != last_jh && (!nr_to_scan || *nr_to_scan));
+>   
+>   	return nr_freed;
+>   }
+> @@ -425,7 +428,6 @@ unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
+>   	tid_t first_tid = 0, last_tid = 0, next_tid = 0;
+>   	tid_t tid = 0;
+>   	unsigned long nr_freed = 0;
+> -	unsigned long freed;
+>   	bool first_set = false;
+>   
+>   again:
+> @@ -458,10 +460,9 @@ unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
+>   		next_transaction = transaction->t_cpnext;
+>   		tid = transaction->t_tid;
+>   
+> -		freed = journal_shrink_one_cp_list(transaction->t_checkpoint_list,
+> -						   JBD2_SHRINK_BUSY_SKIP, &released);
+> -		nr_freed += freed;
+> -		(*nr_to_scan) -= min(*nr_to_scan, freed);
+> +		nr_freed += journal_shrink_one_cp_list(transaction->t_checkpoint_list,
+> +						       JBD2_SHRINK_BUSY_SKIP,
+> +						       nr_to_scan, &released);
+>   		if (*nr_to_scan == 0)
+>   			break;
+>   		if (need_resched() || spin_needbreak(&journal->j_list_lock))
+> @@ -517,7 +518,7 @@ void __jbd2_journal_clean_checkpoint_list(journal_t *journal,
+>   		transaction = next_transaction;
+>   		next_transaction = transaction->t_cpnext;
+>   		journal_shrink_one_cp_list(transaction->t_checkpoint_list,
+> -					   type, &released);
+> +					   type, NULL, &released);
+>   		/*
+>   		 * This function only frees up some memory if possible so we
+>   		 * dont have an obligation to finish processing. Bail out if
 
