@@ -1,218 +1,181 @@
-Received: from CH5PR02CU005.outbound.protection.outlook.com (mail-northcentralusazon11022122.outbound.protection.outlook.com [40.107.200.122])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f171.google.com (mail-pl1-f171.google.com [209.85.214.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69C8A3CBE6D;
-	Tue, 14 Jul 2026 18:11:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.200.122
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11E7441A906
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 18:44:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.214.171
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784052694; cv=fail; b=gP3zuL325m+0uQty7oKF6Efy2mt66vA1e08fw99OVRv4NZVuafWm+BAbaJ42ZLZ/9E5+Q6a9ai90gVoafg8O5tEV4f1vXuOxr2utxnvobieLcSMUHTmdE0ckduO0Fsao0DFn+B6JIS4pnjsAROtw2HIble59UGmv/8fBSw6W1dE=
+	t=1784054687; cv=pass; b=p6jbFSrB7KfKdMl1YWNDi81KC0f+yBx5f8m0pXM26igfiI0lJ5tIcEgjWN/hmHXPwfrIVzG5HoERskyekWq29VRw8VDuyevcYJ/E9CXFQmtXRWSuq6V2vFQxAAzg8saNrWChMPAk3jZEQ+0AP12pmxLr4u2xNppLRvqIwuvEUkw=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784052694; c=relaxed/simple;
-	bh=XYprGXvIOhbMVFDRlebfqTIWVcyRsScsW8ZbTWODFIQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=uezTUEZh+QjDvqmpU3ayzaX02TTNj200nl98TZ9KF/myZ8JVCfxF1nEGVX6xGC2ll4bH+45c7nC74zKb8u+djo9Am0sfD73Fw26dIF7zLmoeOBbKntZeLN2rP3ng73VDR+e7Rqi8OvYqB2LqNzRb1GeWZpUcKwMpWw0jpQE0IK8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=5Z4M3YkX; arc=fail smtp.client-ip=40.107.200.122
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
+	s=arc-20240116; t=1784054687; c=relaxed/simple;
+	bh=wDtX0uTAETOs4RFh7pBYn/YS5v7ZLpBOXkdBgR2TXnw=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=MPR1qAVyNKMsESM3mJJLaZ/BB7TiUmIzbJEVc90unWdUM5aCEYI1otrPcNaJwd34uUzMOOCoks6O06RkkmuuxYEFOnx+vNsLEaZ96ctSdGYX/lke46KvBY5PUNJ0WQp8fXGL8tUFr4eoP+PMl/5njNZmJujeMMkKGIgILDVlyUM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=AKyuYbdE; arc=pass smtp.client-ip=209.85.214.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=asu.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="5Z4M3YkX"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=duTwAdSQn/LkXCfIo9eYQFBFT205CFNA9rSuYZLGuOaLrn7oZ2lbOLuIBdksuvrXK9g8wl0GrpXJWHzLFS8LP2CGTfK8Apjv4FDQNpkzWxGx/F7/dwEdXioDxM+yP7ewssYwDBEgoJ+NyWAzRFbzk1x8EzMB61kjcKItfraTyPfa0EGRL0H6QnMlzknv6qYY94hPmg8HrlhPer3ZNfT/vONYbZKEKNhI7SmPwCfEYcGh0zZVaws/cCCVm0uJRQ0pqmtRUel4BSB4YTf73dVCaorSasHyivHRo9Z8xfUpMR34ElRXVsmjbgQq5MGxkPdG1cgfL8wnYB1W8rmO4swdQw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=A/VeR1Xm5aQ+Hlol/ONWtVL6Zwnar3sT0hdK4zKyFn8=;
- b=i9KwE5hPdzKo/glNpsNhucpNwFXoTDwg9lw6o2GvQpSYPrGtEi7EFtuW49IG3rs86QHK0uIy+wHHiMczkDKv6p+Aff53NVrskmhHp6aNtYfZuzGuWh0ejqCemMZ6A27rigk3iFGVuMuF7wPV4OrJXCslHfqvtbkkJemPcXtMqf8TFrAz6IDIPJ8QQKAcORWsToh4tY3Ba2Rl57Zwh/u5LbdfLOhag2vmOp5ye+fK3vTslyMVkVd6syA8hxQvVskAOG/5O9JW1S7PA3wZoi8TN4gOt2BIto16iAb3TwDkXW+gNMQJ66kNOSBQOucpfJ8A/P1umbB1jUey+21fRhD3Ig==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
- header.from=thelustrecollective.com; dkim=pass
- header.d=thelustrecollective.com; arc=none
+	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="AKyuYbdE"
+Received: by mail-pl1-f171.google.com with SMTP id d9443c01a7336-2cc7e86e7aeso13420375ad.2
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 11:44:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1784054685; cv=none;
+        d=google.com; s=arc-20260327;
+        b=r8NzwcG55CGb5AC7rLytOETikQdrNcYTkNuxTKxL6tVVeTTSYdza0HnxE9f/iBXOxo
+         Ygu2ma7PBZXNgNeJ7oOwJauTVXQ0VuIahCSIoHPTGdbXBDQXHwVwMkzPKdnCUDCwknZv
+         FKEj9rfpfhJ1ajowOLIZvwYU/sfnQmdBGeqV7cxei9EbDqyL2OELOKoMbSvf6mbujJDX
+         8sNDRalm1mdNWT0aZXqP+yop8TDfoBr9vZAu0u/oETskyGVZgroR33zhQ/x43e8TBLqn
+         PH1XovycJksc6hHG8lK4ShGBjl89Vx7P+E9jnx+xLPZ+0me9a5Z5+q/udo8+Huc2rRLF
+         GpDg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
+        fh=hdMDBuHOoUKBd+VAsvCnEagngz2/ku3gynzq0ga5o+U=;
+        b=gV2/PwXOzqrmLaZ6BK/ndFldJXIAv/tOdAiU02hRLiygleUeEslAnvFM7DuKZCU2Yn
+         7KWHOK/wsBKXp3CKcTtgIOETcS683g71MoBK/zRr6umADIiyO0EylwLqCLlAHUVLsEKw
+         TiQ2kikWnKmP2k5bRmsCLgM8ACUJOoMNScr/chuLgPDxXuoZmJFVTTYW2Xp9xKzQeHMP
+         Lrjih8eHIHfrLWgcVHg9HXd+rRDjpge4WPZkJzglA3KASNFpkThTZhlvaxCmvn/gi1D0
+         s/wASjZurUBnewzNlszAsJw0hwD8cuD8CILzGfps6pXCan/umfcJALlDSA3mz8KwASq4
+         +YTQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=thelustrecollective.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=A/VeR1Xm5aQ+Hlol/ONWtVL6Zwnar3sT0hdK4zKyFn8=;
- b=5Z4M3YkX8By4PDKOrFFYOc8uw1+OyQelXjBqc47NLy0h09Jywc4ppcn4Otp6nmTWHK1B+/3TJ1mrGT55WheGpHruk+jpVfGTdaAzQXp6CKqTULcAL+4fWYlcyLrpl2NPGK/Y/1+Wxm9/gMXufsSMM9OLPtR146/PqA0A7A5v3HBao9JyRZb6RVSNWKU67/fjWZYSbHhJgbDLq3tXMl5qg8IrcnwhYIrP7nEhVFpXUIMCJNrWVnti7iTrQ0mcRagdkw5aCS5gh01PgsSZ9R6iTb6bFWncpEaZQrvVFskzDWPJ/VFf7EkoZ/YP5OMbMULSuNc6FDBuQ+9c0rYvm0q65A==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
-Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
- CH2PR04MB6523.namprd04.prod.outlook.com (2603:10b6:610:6b::10) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.21.223.10; Tue, 14 Jul 2026 18:11:28 +0000
-Received: from DM6PR04MB4682.namprd04.prod.outlook.com
- ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
- ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0223.008; Tue, 14 Jul 2026
- 18:11:27 +0000
-From: Timothy Day <timday@thelustrecollective.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Timothy Day <timday@thelustrecollective.com>,
-	linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.com>,
-	Marco Elver <elver@google.com>,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v1 0/9] Support Clang context analysis for ext2
-Date: Tue, 14 Jul 2026 14:10:57 -0400
-Message-Id: <20260714181057.667977-1-timday@thelustrecollective.com>
-X-Mailer: git-send-email 2.39.5
-In-Reply-To: <2mnivydbfh5h44gf7h2it4wmn6pbhbjyb23w24l7zh4tw6ytsu@wyvwrz4yxapu>
-References: <20260712165610.366474-1-timday@thelustrecollective.com> <2mnivydbfh5h44gf7h2it4wmn6pbhbjyb23w24l7zh4tw6ytsu@wyvwrz4yxapu>
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: BLAPR05CA0043.namprd05.prod.outlook.com
- (2603:10b6:208:335::23) To DM6PR04MB4682.namprd04.prod.outlook.com
- (2603:10b6:5:24::20)
+        d=asu.edu; s=google; t=1784054685; x=1784659485; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
+        b=AKyuYbdEYaY0gosppp65p9Hs8H0oWcLMf5u6k6YuMIWrZlNLLyjPKZoshmz1O8potG
+         cvDkOz131t2ieIyrKnXfCjYBhn0QVuXItmHH8tp0WkyYDzTRFZ3FoAyonrUaUrhhbss4
+         CuimKeeHjs/AS8T/N81czZvjCvXE7jG1sxPCdfgMk/kq99QlRTqpDTj3O75PD7UVIpuE
+         /ezbK4H9SfHFW8na9seX2i8FXlwU6mx6a3t8TfDHCWC7wxsCBvOGNpSAjuBqJy4/GWJO
+         DuFtlzcMqh2jjxnvo0tCQVRtPz8GxbeN4CVBCdAnnHojwkye9RwAdgHb1gDP7IQhYVyq
+         S+uQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784054685; x=1784659485;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
+        b=BTbgZ1Z+E8D7M+0y2n8FQ0CvR0THyV5Otigul7J7f7EqHfKEbLnHMM2kC2a5mDVSO0
+         iX3crML+SHbdVkpxljMcTSTWfxM0TY/3ELDacm6vcwV6m1xrKU5oZhKwXIu0wzHr5E7K
+         TTCkMYpgagUHcEIxnBmYa8ndkUlgAvpfeIcTLNu/V785JBs27UBUcuy4AJfzFsfCOTAy
+         9bA4DAKhx6L0otd0g1HUWN92bxKOb9dlxqQ0ct4KHZ/iyGA3PFXtQOus7O+6rUm6HAt9
+         3lHNTlb9e/GBgh2QQTFTsI4L63t0dkztB8QsltgdRkN2G11G8tVID+CIkuAEifUuNJDU
+         /rpQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrAUE/cCLH4dDFL+i+T491yVRSGJzagQEW1uXD8ciQ4HpBxTHWbmI+ikxn37TSR2dAy54/I1M7FnTVh@vger.kernel.org
+X-Gm-Message-State: AOJu0Yym53fyfkCWawN01lRZ6qakxDyLBpUYwnDpePaKHgwZls9cTyA2
+	kbsxTBKyQY6aWOKJU2ey6+l519iAsOplMIKipMa3tnjdpSE7m9YIsYOxxTh5fUoEVg2zmzHL2hZ
+	Yf5lsLrOAkccGO3TJivgSgB7MR2yz1bOu2FkOSBv3
+X-Gm-Gg: AfdE7ckNhThagokOdgSc6NAXXkjl6yyphBtc9WHggiVjvKwR+UGXjIFdMvE23x4jIqE
+	4Zq2ZcQgXVZZMjqj5J6P4jxDEGGS0IPHMICSPeLPCOYf4WXKAZEYBMG3L41Tk9UeMNBV+pJHUFd
+	xBvSPcaRQUMFLfsj/il2pNK/XvESOrZKwEpBzUP1yFOTms35AlcGEe6QawU3BUGsrcRiIIppX4F
+	TzRC5bGIqfXCzM7OHqkBVp+AUQyhXkL7tgriu5+wzqCMc7P4PAqTQ8x692guN8uvF6K88b4p3B0
+	9bhBRzAFeJOWcQDVw470uwfv
+X-Received: by 2002:a17:902:c405:b0:2c9:bd64:8c8b with SMTP id
+ d9443c01a7336-2ce9ee1143amr149082385ad.31.1784054685280; Tue, 14 Jul 2026
+ 11:44:45 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|CH2PR04MB6523:EE_
-X-MS-Office365-Filtering-Correlation-Id: 1619baee-efcf-424c-ea53-08dee1d352df
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|1800799024|376014|366016|23010399003|6133799003|4143699003|56012099006|18002099003|22082099003;
-X-Microsoft-Antispam-Message-Info:
-	9FuMHSdZuJl8buMyizH+X182ywtMHSKgRkL+qfd7e+79tcMFbDtwi6JLPyVWiv1MB2lA0eiaiiye0ALM29D5nBLHWwd3BXbJrExzmZomsZYz5YsJ73B7v2Bws5NVq0f6J37/zE1sxPHulIO+vfU4ntM+73Yk7g+YZoMVjixEPPRA7h7x3rIQTScAcCpfo3JwBcoXYtxbEf2L6YNS5vm3qaZbqVnwJ387gDibCeZ/BWFiB25BxEf4BpJTlrNd4sIGOT0OEcDQ2kIwq0QvgRDZ7pZjbOiqgkqJ4lsUXHC6wx/15je7d9Z1W2I1z6Mjz6xBw6aFmvGcrhH1Rk33+8vcpz6Z2gpLY9eOhlX3JFg1DwtL8iXyDCY9vDZRQ0XbtvDBR4obFjAh86JH0mmHf0b16sZbZQu6rZor6WdDFjUy6G2Ozv3sGgKxmH2Nepnfh4KbJzSUdRVMNTJw2SRqldBLPGpulHJQuG8aaY1TApINx7R2Q9/Me9lgtzq3myOx0qQqHwqfAtLOE1T+5Z7ZJLPEklW79/S/sfBG+wpBU40TpvggtAx0ApeoRX5R0z7oy8PvdQLOi9V0FAqP432tRnt9VEOaqH4CrtkLP/nwQFw+NwcvJ3YDWxDC0cmswAekphN40w59AcrFWVxfDjZD4HXgVpwG1b22apFsVAurkUDLHmw=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(376014)(366016)(23010399003)(6133799003)(4143699003)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?reqgyEee3OCCj3VQRvM4tcU68iZEEh75ovxJ6TDQA8T8fg858jKLJ0xD90LV?=
- =?us-ascii?Q?yu9WZ8xTX6M/iKoSTeB13GV2U++Jp9FHrkzTWxDIJePqgb+lAbpLBb8hRH3y?=
- =?us-ascii?Q?VqqZRwPbuIO8OVcY+Ckpq1bchhGTuS5xFD6y6dpM9KMJXtneyFfVuHMtKirk?=
- =?us-ascii?Q?s1Nn7HEyS4Ttl4osS0mU7PLRf1FHzKkg0ObPGYeuh8QZ3tDW7HBVAKwKEepF?=
- =?us-ascii?Q?uN7in6kQWWE/Oh31w0ymVPLtms8gu8xpkrgxZt4ItX9jqc+u1MGPhDwyCZrH?=
- =?us-ascii?Q?zqss3Mku8xZaWI/K6DqSz+nBR3AQgggr5QklPo9zlNjE19iNkgrP7L2InOwO?=
- =?us-ascii?Q?rAZTFBr+IDd92JRAdW9sAolOmlo/HqDOPw6rMs4vIVL1mvY87+ngrQxZCVEo?=
- =?us-ascii?Q?P2aSfiMC437Yctz/n9urE6aTt92dpnT2SwzurIiUypmfCdWNZTeTHEDkuz28?=
- =?us-ascii?Q?bgR7/PW2j3U7or5gmPzDeyqXUcbOUEy+S1TOgR/UgXNe2ITCIZIztOJFoEDy?=
- =?us-ascii?Q?XSqDvXsgLHueo2YbNwVOxA6hZg3grRbO/pF0raz6X7pCyn0UXwOYA9V7AL5+?=
- =?us-ascii?Q?7ansCGizDw4LDPvwmh4MqW5hr9FwCEcdaJGws7nwHwyDDroGAkYapsyc3CsW?=
- =?us-ascii?Q?jA2jP8J8e0JQKsY9v9Hn0f4fvyCNj0820s4z8B6Ruc6pMrFXoSv9fge79EJ4?=
- =?us-ascii?Q?QqlNYaKDmPULgI2jiUeymRsN4m4rHcg0tRaJXqHj17f6wywshrcCNZo5gj48?=
- =?us-ascii?Q?kLR51TpQVF1/I0jt7lhokaQwHcxrRCmojMYSH2++OXqF+rlCoXTRxxVX8xfS?=
- =?us-ascii?Q?fG7qcRG4iJzEYfsUL/qrqvA2n/yTC+L+4Bz8gbyST75hXLJKE8kozsP2GeQE?=
- =?us-ascii?Q?DERxfAOOT/kNK1iinkpRA34BI9Ymji9DIDYG1Kmwq9gHcOaawoIa2+KxmiZJ?=
- =?us-ascii?Q?TfCPWExL9c+1ebA8W77FYFlFLZqHjJak+4uWMyeMN2HWKcUwaxWOtYv2vFCx?=
- =?us-ascii?Q?RkISQispi2opXsZoTT6TgD0zBPVPmXgbn7agMTsmnTav8MiEhub1PGU7yYq8?=
- =?us-ascii?Q?lTATiNPvLI8ZjpYguPanR+ahGaDoAmir9caHGDi4oUJHOkgVDgE81jA8lfQ4?=
- =?us-ascii?Q?LmvLkcN0KTuisV5voYZcZkFUgbG6HPI38qLOfM55/2a0dV2MoWwicSZpV3A+?=
- =?us-ascii?Q?7IjSQrqcKYGBhJPduZXlV0Pjj45cfjWrcfY8Chl++mOWT0eJANThUkwbyQx7?=
- =?us-ascii?Q?yo4eYMtIh8jMO/tCkI0xvoDJ8XfSgaVATgmazHeqOXvflaeEdtgluAfaLgE4?=
- =?us-ascii?Q?x8BbvuFbMZEa5KAY3jEO6J4IkQcZ+J4zmjhuCu2KowB35CwxyEpEgsv++HDl?=
- =?us-ascii?Q?QZaHKpJWo6pD3plYqxECwo4uXJAuhimjr9i47FT8lE1j/QvTuGZkryYzDfy0?=
- =?us-ascii?Q?F7Ad3w8kbyjZ1WpRoajyYKWKVPq/353CsfkfQl1F0Oi1rUfyi24mPKy+n92V?=
- =?us-ascii?Q?UMeunXQLrBV9/uMU1d6TA0opZZLqyEE8Gakgg673Ve4LzgWfZLsy3DkJnhfW?=
- =?us-ascii?Q?TRMhPX1OZ6KdYQNX3u8U2BsRid06qfDBqHWKRU7qp16bBxBhZYRAyMaEQN2k?=
- =?us-ascii?Q?SOjohLZ/a7zSVY5vBOalCMt8rgWoI4WpTGXklPIqDAXiYaLKryWa7DVDxn3E?=
- =?us-ascii?Q?YsLPvF/ldiaw1siU3fPbxDcL82gb/V0mcfXqZoZKydktxAxdKVm3VzqWm1FY?=
- =?us-ascii?Q?n8buzZAelWN6qKUPMAI0ahTGhW+EAQ8=3D?=
-X-OriginatorOrg: thelustrecollective.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 1619baee-efcf-424c-ea53-08dee1d352df
-X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Jul 2026 18:11:27.9513
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: yyS2SoJyMFqI0ECiMqo8vCeU0Imoj+1RbdeIAYfFos9Hu16Ij7zUDEO/8ix4VJncO2H0MRcJxMRWjNTRNmxX8HdN9W7pgEqL3rWykNzRMmA=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR04MB6523
+References: <20260709184101.441348-1-xmei5@asu.edu> <kokbbtjua37msovatv4ahnauqqof53ndzqooayk4l7qyamys6w@srqaissjlt3f>
+In-Reply-To: <kokbbtjua37msovatv4ahnauqqof53ndzqooayk4l7qyamys6w@srqaissjlt3f>
+From: Xiang Mei <xmei5@asu.edu>
+Date: Tue, 14 Jul 2026 11:44:33 -0700
+X-Gm-Features: AUfX_myjUPSjeQlJvFJBE21b89RuG4PRXuRl37fYiGpwuktvz-2Q_82OhrS55BI
+Message-ID: <CAPpSM+TgX8MATQZeR=LqWpJp52KuQ1Nox1qHDQESbNZipORP5Q@mail.gmail.com>
+Subject: Re: [PATCH] ext4: check dir entry fits before reading the hash
+ trailer in ext4_search_dir()
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, Daniel Rosenberg <drosen@google.com>, 
+	Weiming Shi <bestswngs@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Tue, 14 Jul 2026 19:27:38 +0200, Jan Kara wrote:
-> On Sun 12-07-26 12:56:01, Timothy Day wrote:
-> > This series adds annotations for Clang's context analysis to ext2.
-> > Clang context analysis was recently added in a series by Marco
-> > Elver [1]. This allows the compiler to validate different
-> > locking patterns at compile time.
-> >
-> > This series enables context analysis, fixes pre-existing warnings,
-> > and adds new annotations. It is inspired by similar series in the
-> > block layer (NVMe host driver, for example [2]).
-> >
-> > I'm starting with ext2 since it's smaller and simpler compared to
-> > ext4/btrfs/etc. After ext2, I'd be interested in converting the
-> > other filesystems and infrastructure code in fs/. I think the ultimate
-> > goal would be to enable this by default across all of fs/.
-> >
-> > The series was built and tested with Clang 23 with
-> > CONFIG_WARN_CONTEXT_ANALYSIS enabled. I based on 7.2-rc2 (since the
-> > minimum Clang version was recently bumped to 23 in 7.2+ [3]).
-> >
-> > I'd appreciate reviews and suggestions. I'm especially interested in
-> > suggestions on how we can make this easier to enable for other
-> > filesystems.
-> >
-> > Thanks!
+On Mon, Jul 13, 2026 at 6:09=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
 >
-> Overall this looks sane to me and I kind of like the documentation value of
-> __guarded_by and __must_hold annotations. The context_unsafe annotations
-> are a bit annoying but I can live with that for now. Just one question: do
-> I understand right that the compiler verifies whether the lock is held when
-> entering the function marked with __must_hold? So if we get the annotation
-> wrong, the compiler will tell us?
+> On Thu 09-07-26 11:41:01, Xiang Mei wrote:
+> > For casefolded encrypted directories ext4 stores an 8-byte hash trailer
+> > after the name (EXT4_DIRENT_HASHES()), at an offset derived from
+> > de->name_len.  On the sb_no_casefold_compat_fallback() path ext4_match(=
+)
+> > reads that trailer, but ext4_search_dir()'s by-hand pre-check only test=
+s
+> > de->name + de->name_len <=3D dlimit, which proves the name fits, not th=
+e
+> > rounded trailer.  A crafted entry whose name ends at the block boundary
+> > passes the check while EXT4_DIRENT_HASHES(de) lands past the block end,
+> > so ext4_match() reads out of bounds on an ordinary lookup.  KASAN repor=
+ts
+> > it as a use-after-free when the page after the directory block holds a
+> > freed object:
+> >
+> >   BUG: KASAN: use-after-free in ext4_match (fs/ext4/namei.c:1435)
+> >   Read of size 4 at addr ffff888010458000 by task exploit
+> >   Call Trace:
+> >    ext4_match (fs/ext4/namei.c:1435)
+> >    ext4_search_dir (fs/ext4/namei.c:1470)
+> >    __ext4_find_entry (fs/ext4/namei.c:1268 fs/ext4/namei.c:1632)
+> >    ext4_lookup (fs/ext4/namei.c:1703 fs/ext4/namei.c:1769)
+> >    ...
+> >    filename_lookup (fs/namei.c:2842)
+> >    vfs_statx (fs/stat.c:353)
+> >    __do_sys_newfstatat (fs/stat.c:538)
+> >    do_syscall_64 (arch/x86/entry/syscall_64.c:94)
+> >    entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:121)
+> >
+> > Require, for hash-in-dirent directories, that the whole entry including
+> > the rounded trailer fits before calling ext4_match().  This is the same
+> > bound ext4_check_dir_entry() already enforces via ext4_dir_rec_len(), s=
+o
+> > no well-formed entry is rejected.  The other caller, ext4_find_dest_de(=
+),
+> > runs ext4_check_dir_entry() first and is unaffected.
+> >
+> > Fixes: 471fbbea7ff7 ("ext4: handle casefolding with encryption")
+> > Reported-by: Weiming Shi <bestswngs@gmail.com>
+> > Assisted-by: Claude:claude-opus-4-8
+> > Signed-off-by: Xiang Mei <xmei5@asu.edu>
+>
+> Looks good. Feel free to add:
+>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+>
+>                                                                         H=
+onza
+>
+Thanks for your review!
 
-Yeah, the compiler will tell us if we got it wrong (so long as you have
-CONFIG_WARN_CONTEXT_ANALYSIS=y and Clang 23+). Here's some examples of fake
-or wrong mutexes:
-
-PATCH:
-
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index f0be5236d04e0..66bcb0c63887f 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -329,7 +329,7 @@ static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
- 
- static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
-                                          Indirect *partial)
--       __must_hold(&EXT2_I(inode)->truncate_mutex)
-+       __must_hold(&EXT2_I(inode)->veryrealmutex)
- {
-        struct ext2_block_alloc_info *block_i;
-
-ERROR:
-
-linux/fs/ext2/inode.c:332:30: error: no member named 'veryrealmutex' in 'struct ext2_inode_info'
-  332 |         __must_hold(&EXT2_I(inode)->veryrealmutex)
-      |                      ~~~~~~~~~~~~~  ^
-
-PATCH:
-
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 404f4223a6bdc..dc1f17709aaf6 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -667,6 +667,7 @@ struct ext2_inode_info {
-         * ext2_reserve_window_node.
-         */
-        struct mutex truncate_mutex;
-+       struct mutex real_truncate_mutex;
-        struct inode    vfs_inode;
-        struct list_head i_orphan;      /* unlinked but open inodes */
- #ifdef CONFIG_QUOTA
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index f0be5236d04e0..d530fbe50d274 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -329,7 +329,7 @@ static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
- 
- static inline ext2_fsblk_t ext2_find_goal(struct inode *inode, long block,
-                                          Indirect *partial)
--       __must_hold(&EXT2_I(inode)->truncate_mutex)
-+       __must_hold(&EXT2_I(inode)->real_truncate_mutex)
- {
-        struct ext2_block_alloc_info *block_i;
-
-ERROR:
-
-linux/fs/ext2/inode.c:726:9: error: calling function 'ext2_find_goal' requires holding \
-  mutex 'EXT2_I(inode).real_truncate_mutex' exclusively [-Werror,-Wthread-safety-analysis]
-  726 |         goal = ext2_find_goal(inode, iblock, partial);
-      |                ^
-
-
-Tim Day
+Xiang
+> > ---
+> >  fs/ext4/namei.c | 2 ++
+> >  1 file changed, 2 insertions(+)
+> >
+> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> > index cc49ae04a6f6..3b9740c1c16d 100644
+> > --- a/fs/ext4/namei.c
+> > +++ b/fs/ext4/namei.c
+> > @@ -1467,6 +1467,8 @@ int ext4_search_dir(struct buffer_head *bh, char =
+*search_buf, int buf_size,
+> >               /* this code is executed quadratically often */
+> >               /* do minimal checking `by hand' */
+> >               if (de->name + de->name_len <=3D dlimit &&
+> > +                 (!ext4_hash_in_dirent(dir) ||
+> > +                  (char *)de + ext4_dir_rec_len(de->name_len, dir) <=
+=3D dlimit) &&
+> >                   ext4_match(dir, fname, de)) {
+> >                       /* found a match - just to be sure, do
+> >                        * a full check */
+> > --
+> > 2.43.0
+> >
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
