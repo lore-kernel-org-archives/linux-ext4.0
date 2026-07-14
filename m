@@ -1,27 +1,27 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 534A33F5BDB;
-	Tue, 14 Jul 2026 08:09:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC35C3F482B;
+	Tue, 14 Jul 2026 08:09:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784016556; cv=none; b=gnONS+RN746yMiCb7bhls/VFkV25sRY3pqPQ2LOuRFiTHX+G8I8sJDS08k+2Cq+5BxVSXAcTfjJCKqtDZFpDmE0bI73m5PFWCBE2y73Vpaw+IU+iQ7y0WFWv0yiUJMl45AGSRNbOWS+3JVcsk9pjvKah2jwlsSfkZTRPWI8BiT8=
+	t=1784016556; cv=none; b=tfZ5DzpTl2KK/S9wjgEjVkr1PGATemM/j1pMMIwdPgMjC4zxnWjaUIAcfP9VsEfV8OHlLo2Q4xsWp4cwrdI94wwxnY4hbajLWy+m0TQBQObsqG21pYT5HqbUeM9PYvFgYzB6xemBxwVmVoC0WPfGhDbz58P6/oC8+NI1fK8/4hs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1784016556; c=relaxed/simple;
-	bh=IsYsRytYkqZ3+jxKCe+k71IS8frjxQzpaBZCnCPGvME=;
+	bh=6/HSFyRBJWLh+B4KbOQib665p5+oSGwCYKmZUqcwbP0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QxGipwILXG87lY4OBvmjCkrkIb7ka0rSifm00mo5P3VkI2yFH3h64lweJQlgNrnu3gDvwUPe4zWVYjjOsoukI+VBb1CbaJz2f1QNtIUzcWz9Od8MuD9bCMEvQmu5uUMbNBEQBYAr4uhlvBNAzjSBKh6e3QXjGgeeXTcX2Mzpyb4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=c/tuzVd6ig1HHxpAfgtiB2Jng1OLz6jUlVTE3DFOwJJ7/KOn6+/av7LmzoLb1YcFuecnLDgLx+Yvc6/ICJAwB6Vg2pafeNVwnp6hJ3LBwt5huKQDeeQdGwS4+Pza2faLrlppXG/vfRd6TzBhMEkHePfiId3P3QqHZN6GNlGfcf8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4gzsQ95J2szYQtl1;
-	Tue, 14 Jul 2026 16:08:49 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gzsPs6BPYzKHMNl;
+	Tue, 14 Jul 2026 16:08:33 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id AF1294058F;
+	by mail.maildlp.com (Postfix) with ESMTP id 446134076E;
 	Tue, 14 Jul 2026 16:09:04 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgD3B3ST7lVqDS26BA--.56424S11;
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgD3B3ST7lVqDS26BA--.56424S7;
 	Tue, 14 Jul 2026 16:09:04 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org
@@ -39,9 +39,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v4 7/9] ext4: zero out whole block for clean edges in WRITE_ZEROES
-Date: Tue, 14 Jul 2026 16:00:42 +0800
-Message-ID: <20260714080044.4038124-8-yi.zhang@huaweicloud.com>
+Subject: [PATCH v4 3/9] ext4: check return value of ext4_get_block() in ext4_load_tail_bh()
+Date: Tue, 14 Jul 2026 16:00:38 +0800
+Message-ID: <20260714080044.4038124-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
 References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
@@ -52,77 +52,58 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgD3B3ST7lVqDS26BA--.56424S11
-X-Coremail-Antispam: 1UD129KBjvJXoW7ur4kury7tr43Ar4rZrykAFb_yoW8tryUpa
-	y7Jrn8KFW5W347ua4S93W8u3W0kwn5GF43Ar42gr4jvay3JF1fGFyqgF1UWFWY9FWfCa98
-	ZFsxtr1jgw1Yka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmv14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl
-	6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6x
-	IIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_
-	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
-	xan2IY04v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
-	c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
-	CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1I6r4U
-	MIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJV
-	WUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUv
-	cSsGvfC2KfnxnUUI43ZEXa7VUbPC7UUUUUU==
+X-CM-TRANSID:cCh0CgD3B3ST7lVqDS26BA--.56424S7
+X-Coremail-Antispam: 1UD129KBjvJXoWrury8JF48Xr4xAr4rtr43Wrg_yoW8JF17p3
+	sIg34kWr93W34q9F4Ik3W7X3W7t3Z8Gr4UGF4akr12vrW5Wrs2gF1jy3WFgF4UtrZxG390
+	qF1UWry7A3WUCa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UM2
+	8EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1l
+	e2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI
+	8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
+	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
+	kIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
+	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
+	AY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
+	cVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIx
+	AIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2
+	KfnxnUUI43ZEXa7VUbpwZ7UUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-FALLOC_FL_WRITE_ZEROES requires that all blocks in the requested range
-end up as written extents with zeroed content. For unaligned edges that
-were already allocated, ext4_zero_partial_blocks() zeros them directly.
-However, for unaligned edges whose underlying extent is a clean
-unwritten extent or a hole, the extent type remains unwritten after
-partial zeroing, which does not align with the semantics of
-WRITE_ZEROES.
+ext4_load_tail_bh() ignores the return value of ext4_get_block(), so an
+I/O or allocation failure is silently discarded. buffer_mapped(bh) stays
+false and the function returns NULL, which callers such as
+ext4_block_do_zero_range() treat as "nothing to do" and return success.
+This can mask real failures during zero-range, truncate, or punch-hole
+operations, potentially exposing stale data if the block was not
+actually a hole and needed zeroing. So propagate the error to the
+callers.
 
-Therefore, when ext4_zero_partial_blocks() skips partial zeroing, it
-indicates that the corresponding edges are clean unwritten extents or
-holes. In this case, we need to expand the aligned allocation range
-outward to cover such edges, so that ext4_alloc_file_blocks() can
-correctly allocate blocks for the unaligned range. Edges that were
-partial-zeroed (i.e., written or dirty) are left untouched.
-
-Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
-Cc: stable@vger.kernel.org
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/extents.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ fs/ext4/inode.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 7a8f9f188a29..c34505765521 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4760,6 +4760,21 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	/* Zero range excluding the unaligned edges */
- 	align_start = round_up(offset, blocksize);
- 	align_end = round_down(end, blocksize);
-+
-+	/*
-+	 * In WRITE_ZEROES mode, edges that were not partial-zeroed (clean
-+	 * unwritten or hole) must be allocated and zeroed as whole blocks.
-+	 * Expand the aligned range outward to cover them.
-+	 */
-+	if (mode & FALLOC_FL_WRITE_ZEROES) {
-+		if (!IS_ALIGNED(offset, blocksize) &&
-+		    !(partial_zeroed & EXT4_PARTIAL_ZERO_START))
-+			align_start = round_down(offset, blocksize);
-+		if (!IS_ALIGNED(end, blocksize) &&
-+		    !(partial_zeroed & EXT4_PARTIAL_ZERO_END))
-+			align_end = round_up(end, blocksize);
-+	}
-+
- 	if (align_end > align_start) {
- 		if (mode & FALLOC_FL_WRITE_ZEROES)
- 			flags = EXT4_GET_BLOCKS_CREATE_ZERO | EXT4_EX_NOCACHE;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3ce925ca0769..77ec82fbda89 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4064,7 +4064,9 @@ static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
+ 	}
+ 	if (!buffer_mapped(bh)) {
+ 		BUFFER_TRACE(bh, "unmapped");
+-		ext4_get_block(inode, iblock, bh, 0);
++		err = ext4_get_block(inode, iblock, bh, 0);
++		if (err < 0)
++			goto unlock;
+ 		/* unmapped? It's a hole - nothing to do */
+ 		if (!buffer_mapped(bh)) {
+ 			BUFFER_TRACE(bh, "still unmapped");
 -- 
 2.52.0
 
