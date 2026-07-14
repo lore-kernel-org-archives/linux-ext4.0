@@ -1,123 +1,108 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-1-111.ptr.blmpb.com (va-1-111.ptr.blmpb.com [209.127.230.111])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3B1A3FBB7E;
-	Tue, 14 Jul 2026 08:31:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00C3635BDC7
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 11:44:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.111
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784017919; cv=none; b=tFZQVGUFVSFdnNLWkT6ZoAD45jBzj3ZH8Y8A5lXnl4CeS6aV66yz/omsOdYIx6fTcwIZj3BGfETER2rWOZImw4MjLcSLZAueus4GiLQ2FvfLFp1+JCDrgD8psNu0ayLqDC5M3mGpuZzat46YJkwRUW03+qJCycXxDQ/9oqlNzCA=
+	t=1784029492; cv=none; b=HllGBl1xzqCWE2Tk8ruW0v2Kb5DGIS/TIaze6cmTuGCVAMNsk0FJukNnor01zYZRWryvMGgGS2Rox6DFBbIdPkQORPEGTl4d0aqE7RMESq0+NjEERntOzflTRBvfj5HKHKCo5P+SFp7nw/t+K0YHS1F86hNkXVd72n94ZBeNpbs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784017919; c=relaxed/simple;
-	bh=mIpMt/nd0CbxXQB1BqNm7V/SHfXY7VyxtInjVCbXVMk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=C7hcjLZYxe+hbhXQJuyMSvbihFft6aRagK59SjwrTKlur2i9VNRFLYQAAOuZ368hQamDw+m7vHCEPHWFenxPS5qM9yv3XrxQwsw+wOzkb3t0wDtt0YQJKQnKG3MR1/YlFuykNNIQ1E891KruwF2G4KY+Sz6V3b6YbDKMjsd6QJo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gzsvz5G1gzKHMNr;
-	Tue, 14 Jul 2026 16:31:11 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 2588B408C6;
-	Tue, 14 Jul 2026 16:31:42 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgDH1nLl81VqTRS8BA--.57256S9;
-	Tue, 14 Jul 2026 16:31:42 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-fsdevel@vger.kernel.org,
-	linux-xfs@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org,
-	brauner@kernel.org,
-	djwong@kernel.org,
-	hch@infradead.org,
-	joannelkoong@gmail.com,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	yizhang089@gmail.com,
-	chengzhihao1@huawei.com,
-	yangerkun@huawei.com,
-	yukuai@fnnas.com
-Subject: [PATCH v4 5/5] iomap: add comments for ifs_clear/set_range_dirty()
-Date: Tue, 14 Jul 2026 16:23:25 +0800
-Message-ID: <20260714082325.325163-6-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
-References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1784029492; c=relaxed/simple;
+	bh=6Mz3a0Iu5kJvm1dNf+Gg+LchH+4sIqwxFxDv0JXHc2A=;
+	h=Date:To:Message-Id:Cc:Content-Type:From:Subject:Mime-Version; b=YA6vO/9pBP2HAKZq/CG58S0WdxrBgNk+qhbiCFmHZKNguPIOSYgtGbaAgcu52+8Q51gS5bUYx7AsYIi3r+L+/qio5SQhqmjRL/A52zSSm9Rmvv6056ZSr2HITgEQe7qne3FbEq16uMtYtA1tT9sLBGoInXiPn1fDh15GfTOqStE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=RxPv2dGT; arc=none smtp.client-ip=209.127.230.111
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="RxPv2dGT"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1784029472; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=OeSOJ5ANe/eMM5QzqfYkPsf3URy1CIks25LM33ykpCQ=;
+ b=RxPv2dGTTFeeZwS42WVw8EIxkPR8Us0eM6m+xPDl5I3crfZ1+GZvv1xv4lYG6UzmbmfinI
+ 5AHmXm9LbUsak9AC2veEwFvMJO3zdkNbxegh0O7OVIhHFrDuo6DDPtWRUqw66Z0CMJtBxC
+ jaUWoz8T5nSMIfKaFlow5LrJkqniP9qdASv2I3v/vCtn7UIWjT8hg1IHggiuBMycjtXpYf
+ zlGdnXu3jfWR/wjhsmiEs8Mnfi+25/rCcJviMTxxH7CRXPqadLe49qtiLFgEZUTMMyLqZF
+ JP5xEy5eMMdCvCIc8+WOLJ/Mqf1mVQtaLm99JjYiMVZQFIwduTEC9m3tkxQCOg==
+Date: Tue, 14 Jul 2026 19:43:56 +0800
+X-Original-From: Fengnan Chang <changfengnan@bytedance.com>
+X-Lms-Return-Path: <lba+26a56211e+e2f844+vger.kernel.org+changfengnan@bytedance.com>
+To: <tytso@mit.edu>
+Message-Id: <20260714114358.93335-1-changfengnan@bytedance.com>
+Cc: <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>, <jack@suse.cz>, 
+	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
+	<linux-ext4@vger.kernel.org>, 
+	"Fengnan Chang" <changfengnan@bytedance.com>
+Content-Type: text/plain; charset=UTF-8
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+From: "Fengnan Chang" <changfengnan@bytedance.com>
+Subject: [RFC PATCH 0/2] ext4: fix DIO read slowdown after extent status reclaim
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgDH1nLl81VqTRS8BA--.57256S9
-X-Coremail-Antispam: 1UD129KBjvJXoW7CFyUZF4fZryDJFWDCF1xKrg_yoW8Zw48pF
-	43K3yDKr4DWrs7u3W3WFW5A34Fqws3XFWfGFWxGwnIga15Ar9rKF1DKa109Fy8KryxJFnY
-	kr1j9a4FgF1UAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr
-	1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
-	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
-	x0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
-	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
-	ka0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
-	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_JFI_Gr1l
-	IxAIcVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
-	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
-	daVFxhVjvjDU0xZFpf9x0JUQFxUUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 
-From: Zhang Yi <yi.zhang@huawei.com>
+Hi,
 
-The range alignment strategy differs between ifs_clear_range_dirty() and
-ifs_set_range_dirty(). The former rounds inwards to clear only
-fully-covered blocks, while the latter rounds outwards to mark any
-partially-touched block as dirty. Add comments to document this
-asymmetry in block range calculation.
+This series fixes a slowdown in ext4 random direct reads that appears after
+extent status entries are reclaimed.
 
-Suggested-by: "Darrick J. Wong" <djwong@kernel.org>
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/iomap/buffered-io.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Problem:
 
-diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
-index a356efbae6b0..c12237ed7cde 100644
---- a/fs/iomap/buffered-io.c
-+++ b/fs/iomap/buffered-io.c
-@@ -173,6 +173,13 @@ static unsigned iomap_find_dirty_range(struct folio *folio, u64 *range_start,
- 	return range_end - *range_start;
- }
- 
-+/*
-+ * Clear the per-block dirty bits for the range [@off, @off + @len) within a
-+ * folio.  The range is rounded inwards so that only blocks fully covered by
-+ * the range are cleared.  This is required for operations like folio
-+ * invalidation, where we must ensure a block is fully clean before discarding
-+ * it.
-+ */
- static void ifs_clear_range_dirty(struct folio *folio,
- 		struct iomap_folio_state *ifs, size_t off, size_t len)
- {
-@@ -200,6 +207,13 @@ static void iomap_clear_range_dirty(struct folio *folio, size_t off, size_t len)
- 		ifs_clear_range_dirty(folio, ifs, off, len);
- }
- 
-+/*
-+ * Set the per-block dirty bits for the range [@off, @off + @len) within a
-+ * folio.  The range is rounded outwards so that any block partially touched
-+ * by the range is marked dirty.  This ensures blocks containing even a
-+ * single dirty byte will be included in subsequent writeback, preventing
-+ * data loss when partial blocks are written.
-+ */
- static void ifs_set_range_dirty(struct folio *folio,
- 		struct iomap_folio_state *ifs, size_t off, size_t len)
- {
+The extent status tree and the extent-tree leaf buffers do not have the same
+lifetime.  Memory pressure can reclaim an extent status entry while the
+corresponding metadata buffer_head stays in the buffer cache with its
+"verified" flag set.  The next lookup then takes this path:
+
+  1. ext4_es_lookup_extent() misses--the entry was reclaimed.
+  2. ext4_find_extent() reads the leaf, but __read_extent_tree_block()
+     returns the already verified buffer without calling
+     ext4_cache_extents().
+  3. ext4_ext_map_blocks() returns the part of the extent starting at
+     m_lblk, and ext4_map_query_blocks() caches only that suffix.
+
+Reads to earlier blocks in the same extent miss the extent status tree again
+and walk the extent tree on every I/O.
+
+Testing with fio 4K random direct reads (io_uring, iodepth=128) on a
+128 GiB file (75 on-disk extents) after triggering extent status reclamation:
+
+  Baseline (full extent status cache): 525k IOPS, clat avg 241.96 us
+  After extent status reclaim (no patch): 296k IOPS, clat avg 428.69 us
+  Degradation:                      -43.6% IOPS, +77.2% latency
+
+Fix:
+
+Patch 1 makes ext4_es_cache_extent() report whether the requested range is
+cached when it returns.  The result is passed through ext4_find_extent() and
+the internal map flags, so ext4_map_query_blocks() can skip the second cache
+update when the leaf was fully cached.  If population was skipped or an
+insertion failed, the existing query cache remains as a fallback.  This avoids
+taking i_es_lock for writing a second time after a leaf read has already
+populated the extent status tree.
+
+Patch 2 handles the extent status lookup miss described above.
+ext4_iomap_begin() opts into a new EXT4_GET_BLOCKS_CACHE_READ_EXTENT flag for
+DIO reads.  If the leaf lookup did not populate the extent status tree,
+ext4_ext_map_blocks() caches the full matching written extent (ee_block,
+ee_len) before cropping the mapping to the requested block.  Later reads
+within that extent can then use the extent status tree directly.
+
+Fengnan Chang (2):
+  ext4: avoid caching an extent twice after a leaf read
+  ext4: cache the full extent after a DIO extent status miss
+
+ fs/ext4/ext4.h           |  9 ++++++++-
+ fs/ext4/ext4_extents.h   |  4 +++-
+ fs/ext4/extents.c        | 43 ++++++++++++++++++++++++++++++++--------
+ fs/ext4/extents_status.c | 20 +++++++++++++------
+ fs/ext4/extents_status.h |  6 +++---
+ fs/ext4/inode.c          | 40 ++++++++++++++++++++++++++-----------
+ 6 files changed, 91 insertions(+), 31 deletions(-)
+
 -- 
-2.52.0
-
+2.39.5 (Apple Git-154)
