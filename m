@@ -1,124 +1,150 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from CY3PR05CU001.outbound.protection.outlook.com (mail-westcentralusazon11023099.outbound.protection.outlook.com [40.93.201.99])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFF70376A01;
-	Tue, 14 Jul 2026 03:42:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784000525; cv=none; b=I1/YxOQ7i2hJwc8oDbdWjQlQRoJsG1D2pMGvKHISad91s0W6IT8C4h2AcQ8LGuIcx9jC4yPzDhVq/jATsmUDh7aiziZK4M1MFYUDlcdP+P7Ba5FwPoQ66PCHavBpTka+QFx9xAEXHW96RqLyhkD8OOo09WdI7dplSkhwSV4M0FU=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784000525; c=relaxed/simple;
-	bh=rtAjduBj/IGK2rXhqV6SrOiabUBRldyRjKNh8jbB2dQ=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=dXq3IIqObROvG31s+e5mnx+36PZLWCxIgi6R4XYFUYeNgHltS21p2ogO8nBLLC0LOBLnJgvtGy7xVdOlqLoiyBhIXvBcDZaA3wHiXr2frZrhjp6HrLahWls2h4Gykab1yZG9lNz99CLS9DiOxYic7RYxZtP9O3vs38LcqllLjoc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gzlTh6SqmzKHLvF;
-	Tue, 14 Jul 2026 11:41:28 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 038234056D;
-	Tue, 14 Jul 2026 11:41:59 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgCntnIFsFVqeW2jBA--.54087S3;
-	Tue, 14 Jul 2026 11:41:58 +0800 (CST)
-Message-ID: <ed43e93c-5938-4e02-b2c2-1550e98f7f20@huaweicloud.com>
-Date: Tue, 14 Jul 2026 11:41:57 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E7601F5EA;
+	Tue, 14 Jul 2026 04:17:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.93.201.99
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784002659; cv=fail; b=BPaU9IjwblFU+y1iItL2tuaswgN42/9o+mlOsa6nelxRdzN/Z9M/QDOV8nlo/+YmeWIzfbeCoQalREBvrr/VBVo132Fjjhq8Qq0f7HTSCzDVQzlD8+qeqyxmmb3ccP6lvsMu473XRp+3jH8VPqlaBCzenYpedbFjrrPFTffAtrI=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784002659; c=relaxed/simple;
+	bh=KhJRnXHcdUXNBnhpaXJ6GtGMcM9zHo/xCFzmlqVzTts=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=lHC/VrucJTEjsljn1oxSz2Q+Ke5dFor0yeOKVgYWPrq3Ps1uK63SUSaAYWOiWfQqJPvu8B5xQ/JefekP6DvqjSBgJaar8isgbBqyroPNrJL46L4SF7G11Wx60/zma6pImLFXln7APd53rqqEbyGOQQmbWpJMUtmfwpsSDcosF2g=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=pICX6pi5; arc=fail smtp.client-ip=40.93.201.99
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="pICX6pi5"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=hcidwdjOd+qkNhHtp1Prwz7tzFYgsxQ+hvclue3j6Lc6LqIjWR0QDJ0n674xzQgTp6lKM0ww/Se+gi+nHtH3tVVM0xfHasDM59gBV7JZr3QxEAIjRmqBNTyTNgIgZEyIWicSZipPbL4L5czUbP1bSFVUpmOpGkkxhCZ74I5CaxsO5mHihG/0MGQNNwpRNo9MONjZrFTr8NpYrTtxwgaX+zXbJL1Gl2JBNl/PGpzItxk72bnTwvKusitJ2wVahHsqCqMmlp06MG/RTWVg0t2f/hM7T2GtzXB7vQzJ2tGrIcyxzWkBGSB/N1k8jtnlkTRjp+UVCTkQ4zpSq3CzAo6IHQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=uonq5BUAXpqBtrlun4W7JhykXTPRQcP/4aScKrbI/Eo=;
+ b=djmh0lgNpU1iJGRRvhCbLai5O766mDPvQPHq16RHT0FMcSwzBEJ94tZ8agt+/cdp/z88Mkn0CeaKU0HD0QeVums+C6rTi4VLW1XT2pqHmvoC26k+IhXtFiZHZKHS09kp4EPFWIemmuNWcX3hNbyb7gd7cRkMjNVJjBTWcFHH1LwBTQWYNmoTBjMUojfvf528DkmzSPCaa6O7uk3gI/pgRy1nKSuXDScaFO0VEQBNhEloHv99D8bD+c+ehQNdu1kZGtA5dSM5w+T4xgnFvogeFIbmYrsTLkhpJDn0XE2fxnOcIqWajRhuOFMiaNsAsPZENBPj/K8FmxYzoyvc1VKi1w==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
+ header.from=thelustrecollective.com; dkim=pass
+ header.d=thelustrecollective.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=thelustrecollective.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=uonq5BUAXpqBtrlun4W7JhykXTPRQcP/4aScKrbI/Eo=;
+ b=pICX6pi5FqBA5PrthsBhnxZAMb2PegQKx76MHFYASS+Tv4FZxINMF6G8KlpgrTXTA982rxtcunryStJNvkWvRShhvVGhstUbZvl7vL28IKvQPOFw/x6tERQiKMP7CrD2+bUoY28yMV6mfub2JhVqOGc3uzzvdDSiTDqcRhh4apVa+be8ojgJmkbuvQgokzIO0GHMWhjj+cDmDuZqBtHN5zyZIKyFCnSk4V67hfKrln+uF4hZm5w2KXQ62DEYvpya0iIn4DDcLJ3tksmrfaiJMCD/Lj8734nAxhHzX95mc+hTRJq8W2x2UV3M2vfBTW3JROSxUKXSA86Qm7TQFtwRvw==
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
+Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
+ PH0PR04MB7333.namprd04.prod.outlook.com (2603:10b6:510:19::24) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.21.181.14; Tue, 14 Jul 2026 04:17:35 +0000
+Received: from DM6PR04MB4682.namprd04.prod.outlook.com
+ ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
+ ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0181.019; Tue, 14 Jul 2026
+ 04:17:34 +0000
+From: Timothy Day <timday@thelustrecollective.com>
+To: Theodore Tso <tytso@mit.edu>
+Cc: Timothy Day <timday@thelustrecollective.com>,
+	linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.com>,
+	Marco Elver <elver@google.com>,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v1 1/9] ext2: fix ext2_xattr_delete_inode() context analysis warning
+Date: Tue, 14 Jul 2026 00:17:24 -0400
+Message-Id: <20260714041724.3186239-1-timday@thelustrecollective.com>
+X-Mailer: git-send-email 2.39.5
+In-Reply-To: <alWJFP2k7bR8REK2@mit.edu>
+References: <20260712165610.366474-1-timday@thelustrecollective.com> <20260712165610.366474-2-timday@thelustrecollective.com> <alT2yHlfzhTZ9n4T@mit.edu> <20260713164417.350710-1-timday@thelustrecollective.com> <alWJFP2k7bR8REK2@mit.edu>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: MN2PR06CA0028.namprd06.prod.outlook.com
+ (2603:10b6:208:23d::33) To DM6PR04MB4682.namprd04.prod.outlook.com
+ (2603:10b6:5:24::20)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 0/2] jbd2: bound j_list_lock hold time in the checkpoint
- shrinker
-To: Max Kellermann <max.kellermann@ionos.com>
-Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20260713102229.1598812-1-max.kellermann@ionos.com>
- <80184b10-f5b5-4b95-9c35-9a5d4208d579@huaweicloud.com>
- <CAKPOu+_6afuEHv3EcLMe1fiQ9R_nvwOhBfXNCZeyxEe-wfkZuA@mail.gmail.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <CAKPOu+_6afuEHv3EcLMe1fiQ9R_nvwOhBfXNCZeyxEe-wfkZuA@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgCntnIFsFVqeW2jBA--.54087S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxZF1UtFyrJFy3JF1UXFyDtrb_yoW5Xr18pF
-	WfG393tw4kt3W8Cws7Ww1xuFWrXan5Gry5GrnxGrWkAws8Gr92yr4xKrWYga4UCr10k3yF
-	qFZF93s3Wa48ZrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r126r1DMxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxU7IJmUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|PH0PR04MB7333:EE_
+X-MS-Office365-Filtering-Correlation-Id: d7ea66da-9186-4524-33e2-08dee15ed498
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|366016|1800799024|23010399003|376014|5023799004|4143699003|56012099006|18002099003|22082099003;
+X-Microsoft-Antispam-Message-Info:
+	H/xkMInzXflECf6npMCtllS+Y40eZW8Vi0FdD1C95hZxOegKYzcXUgy7JvX1ONYIX/P9fsna9U8T+HdRFJ+8uCtj9n5mHa1L+A6CXlA7qszIXi3k1n9SDpIRAACbmZjXp82nVtkeRh4gNaraGh/zOJtTdq4myDJ/2hZBL9x/3y1zbjj6OBvy4ZJA8lbf/7LmDMX+quQSHvWeRKlPDM/hovFJl6nugvMIk7AIH+K7H5gPyFrjn1sLtnfaiDCZr1k2lbrffTWZRlDtiPxoRpVNkNb8RVzH2/VureSUnnJSrSQyuU+0nbw83jvV3xVXOaYjD8SKf088V9migHGuET5dVLFV4Y0Q5Fpmjg9QLNS/oM8Eq4EjW0QLuEeEaBFSaNkVTIsN2Qygc/SDAksYKWSpFWg6EX8ZTpV6tfND4dhw/2eqsIrSQJgHK+LbyFEq5UB4rkenp/uHvRbcRfv/685Ja2t+LZ7xns1hUcbnVeTINuBKxNC+0VgfqEoFNnwwpuEt7IcXtclhtL4occpKzMe0cCBcyfgtCL9BFfPySfHcBUhQ8WL1vRJwrj15Zfa1ZUlLYkvX5E3Q2g5oLnLOZoqehekEfRaYfDlUL6SRK+WXO3Ff+r1uZFN5JaChXfBpRrEgkEMCSEhKAFwFNOfqVJdxsaDa4JvJCPxsL6gU2ARuZ7s=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(23010399003)(376014)(5023799004)(4143699003)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?u/c0Eh7sjyiKgXX098uEYYQjgqlE4u+9IFruu1CWZYGxG9K5Dzxc+zdjMiia?=
+ =?us-ascii?Q?zV19j0wZFdIWQzs2z5FRbpsxepKEd6PpYRXkz1hKMSVb72h0E3CD1PAavmte?=
+ =?us-ascii?Q?1P3uQM+BEJe4Wbh4FP0J7Dlnfbbls0WkTzfdS1YYL7vI+S/E6HiekGaTyl7F?=
+ =?us-ascii?Q?B2/MiIRKiIZQctdapNUdfyp+FyzgPsOX+C1mCwBmDGa855H36BOdILnvopmO?=
+ =?us-ascii?Q?nKM0cOTG7XqNoHn8FQnrXSSHs8iwtVmb6nKsYFkhqSFWlx8cYS6BdjtMkV3G?=
+ =?us-ascii?Q?7+DMiYBdUAKBR9B/SCAlm44cCbKA13NXYHeoRij2cowHuBGetMgIDFjgrNbD?=
+ =?us-ascii?Q?o3jz8RA7Xe2nNLMCzJtuE7dyvaqJcWcxeUN5CipzlfUV6FcmzmMGU4CQHFPn?=
+ =?us-ascii?Q?haqmIGArvH0yKh2RplM/CYD8W2s4RBPzdfAYZBGRzFrE/HaE6kBc0oNnPzgy?=
+ =?us-ascii?Q?67y2q8mgPkBQQyYwSMczkiVdpDLROifPOmhWhj6ok3Cnv1siqrp0l6A1YKi4?=
+ =?us-ascii?Q?jNel7hVowWps72ORaGpOquaEEKiUdBNDxWBXjslVaaev/VLLlUDN2pVk3zZ1?=
+ =?us-ascii?Q?PxyUmL+m+8LAdS/SL+R0nzmqN0cuEB56KUNX+/DL8UIBlhQhIYbKtumbSMCf?=
+ =?us-ascii?Q?YJfXzCk1hY/mRrEmr+5wsUZiu+Kqh/Qe8fHSXHRJGEs503SzCQTdq40MtZyf?=
+ =?us-ascii?Q?M6qaITjG5zmdC50WkmeI12cDL7shf//9ScGQAwSkEhpyDLgGWmUH/8F9pXw0?=
+ =?us-ascii?Q?yXNxHRhwsPn/1XG3n/7USap0iueMJQL9ADEogkx9KbFteN6ZL6LRCQSv3FzZ?=
+ =?us-ascii?Q?aQINeYbkSJP6pNyUd1h6hW6zwZHd9Wk/TYPFbT4t9dWN0GV1ZOi/Oc1ySGmO?=
+ =?us-ascii?Q?ueBmEhw4GMXWFlK2l6nMj0+tMIOc3COdqv1rI2l2RJnJ7EBC9fEtswE8qGhD?=
+ =?us-ascii?Q?CpSHsRemaeD6ZkGrJljPkj00Kd7CdazhMo+ONVF7d5+zL7qLwjG+VuGmO1Wd?=
+ =?us-ascii?Q?9u+1bWgGclFMWyYIleMAyhfmCTQGHS4tCifp04pfybuPYhA9wXyOcnGotLnL?=
+ =?us-ascii?Q?CsfKcjoYhkilPOb0g8y5AGw9T7ZiYceCXM+I/7ExRmqqeLfSp+NEWltuklH4?=
+ =?us-ascii?Q?YND30+tsKtpvIM68Oavpr6cjaOyyQqNXqFjUZQCXz8TnOzFvh1D2c+SWmX6C?=
+ =?us-ascii?Q?hcaQBt0d3adSQLhcxOv6d3FvNsQV+8wV/8l3lYn1l2/8JB/gqiN8PW6tNMyf?=
+ =?us-ascii?Q?/bCr3hIRQJBM594Y5iuh0xQtNEqf+UoEnE67UmSr+MFLj0rg4WRd9LhKlVQR?=
+ =?us-ascii?Q?Sa9XPuYp/w/fjJKlENR7BDbnv210L8IfTJDEDbKshXyPC/VvFndNItaPQN6r?=
+ =?us-ascii?Q?pmDm0tXysoi09xhQjbIxHW/H8WJDaoXEYLJtScM0OKv03yV7AEgD73ubc1Qb?=
+ =?us-ascii?Q?y5zQDQarrtkgdhOILsgskhq9bRQt/mTo67bOJFxIILUwxRmRycb2R4XXrjup?=
+ =?us-ascii?Q?UOBnY9jKlpn/dDwOnGJOQaZ9TGHNnI1cyukZX6RdEOhfOlRC9zkSJwUTFDlv?=
+ =?us-ascii?Q?lB+1MTt3Q05HVq7FReo0vpmA7hK8/Sie+2A8E/QgERBn2XvRny3A8Bz6fcdR?=
+ =?us-ascii?Q?iRZS4N2ecNAib3RCMMHR8fp5c6G1mNh9uUJFrKb9+z+Cz1OjcSmDaZIPTag0?=
+ =?us-ascii?Q?4pm3ogeevg+lQ8Nos4b70mtnCZsgF9oHGYyRsIrkbuHAorZkV73mxOjvFG2h?=
+ =?us-ascii?Q?HQzk2H0YdPLs9lgxeeKxEGP/88E+DWI=3D?=
+X-OriginatorOrg: thelustrecollective.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: d7ea66da-9186-4524-33e2-08dee15ed498
+X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Jul 2026 04:17:34.4992
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: ED7eiirLLtPnIFnycdmrv5FXDPt41LIYlpFAiW3PyMjC3x6rAULcKi4XrQVoAOY4sxtGYTx4OMyGrvL64VLVcCFImQMUi9mV8isE9JfE3DE=
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH0PR04MB7333
 
-On 7/13/2026 11:03 PM, Max Kellermann wrote:
-> On Mon, Jul 13, 2026 at 2:53 PM Zhang Yi <yi.zhang@huaweicloud.com> wrote:
->> I'm a bit curious about which kernel version and CONFIG you
->> encountered this issue on. IIRC, after commits [1] and [2], the
->> spin_needbreak() in jbd2_journal_shrink_checkpoint_list() should
->> always be effective (unless the hardware does not support it, i.e.,
->> ARCH_NO_PREEMPT).
-> 
-> We run 6.18.38, and preemption is disabled. Therefore,
-> spin_needbreak() is a no-op.
-> (We used to always run the latest stable, but got burned by way too
-> many critical Ceph/netfs regressions and settled on the LTS.)
-> 
-> But even with preemption enabled, this would likely be a problem,
-> though a much smaller one.
-> 
->> Moreover, the number of buffer_heads in the
->> checkpoint list of a single transaction should not be large enough
->> to trigger such soft lockups. So I suspect this issue should be
->> unlikely to occur on the latest kernel releases.
-> 
-> Unfortunately, I don't have any numbers for you, because this problem
-> occurs only every other week, but we have been haunted by this for a
-> long time.
-> 
-> The setup is a 7 TB ext4 partition dedicated to fscache/Ceph. It's
-> always full, and culling is running quite often.
-> 
-> For culling, we don't use cachefilesd but our own reimplementation
-> (https://github.com/CM4all/cash) because cachefilesd scales
-> quadratically and never makes any progress while burning CPU cycles
-> and I/O forever; ours is massively parallel thanks to io_uring. That
-> puts a lot of pressure on the ext4 filesystem, and a cgroup
-> memory.high setting means it's always under memory pressure (or else
-> the kernel will accumulate many gigabytes of RAM usage very quickly
-> during the filesystem scan that is necessary for culling). Which means
-> the shrinker is running all the time. Plus the usual kernel-initiated
-> I/O on that partition.
-> Every time this problem occurred, fscache culling was active.
-> 
+On Mon, 13 Jul 2026 22:26:02 -0400, Theodore Tso wrote:
+> On Mon, Jul 13, 2026 at 12:44:17PM -0500, Timothy Day wrote:
+> > I don't think we'd want to disable unlikely() globally when context
+> > analysis is enabled. Only for cases where it'd conflict with the
+> > context analysis annotation. Long term, I think we'd want context
+> > analysis enabled by default for Clang builds.
+>
+> I see that Marco has a potential change to make LLVM/Clang to handle
+> this better, which is great, but I'm not sure why disabling unlikely()
+> globally when context analysis is enabled would be that terrible.
+> Context analysis wouldn't be changed with or without unlikely(), and
+> if we use context analysis as a debugging build pass, we wouldn't care
+> about performance, right?  What am I missing?
 
-Thank you for the details!
+It's mostly convenience, I think. If the context analysis could be
+made to work without any runtime penalty, then you don't need a
+separate debug build. If you're doing a bunch of kernel builds
+anyway, that's not very compelling. But if it were automatically
+enabled whenever Clang is being used, developers might catch these
+issues faster. They might not think to enable these warnings
+otherwise. And if distros ever used Clang for kernel builds more
+widely, they could enable this feature by default. Then
+out-of-tree modules could benefit from the feature without having
+to make a custom kernel.
 
-We recently encountered the same issue on older kernels (up to v6.6)
-during extreme memory pressure stress testing. Interestingly, we were
-unable to reproduce it on the latest v7.1 kernel.
-
-After investigation, we identified that commit 7dadeaa6e851 ("sched:
-Further restrict the preemption modes") effectively prevents disabling
-preemption entirely, which makes spin_needbreak() always work in
-practice. So I was previously curious whether you discovered this issue
-in the latest kernel.
-
-However, let's come back to the point. I agree this is a real issue
-that deserves a proper fix, independent of the preemption model changes.
-
-Thanks,
-Yi.
-
+Tim Day
