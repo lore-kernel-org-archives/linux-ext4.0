@@ -1,181 +1,186 @@
-Received: from mail-pl1-f171.google.com (mail-pl1-f171.google.com [209.85.214.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11E7441A906
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 18:44:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.214.171
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784054687; cv=pass; b=p6jbFSrB7KfKdMl1YWNDi81KC0f+yBx5f8m0pXM26igfiI0lJ5tIcEgjWN/hmHXPwfrIVzG5HoERskyekWq29VRw8VDuyevcYJ/E9CXFQmtXRWSuq6V2vFQxAAzg8saNrWChMPAk3jZEQ+0AP12pmxLr4u2xNppLRvqIwuvEUkw=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784054687; c=relaxed/simple;
-	bh=wDtX0uTAETOs4RFh7pBYn/YS5v7ZLpBOXkdBgR2TXnw=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=MPR1qAVyNKMsESM3mJJLaZ/BB7TiUmIzbJEVc90unWdUM5aCEYI1otrPcNaJwd34uUzMOOCoks6O06RkkmuuxYEFOnx+vNsLEaZ96ctSdGYX/lke46KvBY5PUNJ0WQp8fXGL8tUFr4eoP+PMl/5njNZmJujeMMkKGIgILDVlyUM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu; spf=pass smtp.mailfrom=asu.edu; dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b=AKyuYbdE; arc=pass smtp.client-ip=209.85.214.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=asu.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=asu.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1712942BC3C;
+	Tue, 14 Jul 2026 21:09:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784063401; cv=none; b=UIoGkmL1juUKWFdmnWz3MpzAPI1Jq9sQeWsKoQLwUrEqIdq6oU0yB5dZErf0d3+7p55od+0/k9rNF6bogFLwzdng0H4e8NhjzNPnmMhY0Qw4T9/GDbbOE2z30HLujXdXtK2y371rnxHzBqhT8vV7NCVRxMevAY4nxS6uIADvAeI=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784063401; c=relaxed/simple;
+	bh=/PKCeTzBGwJ/fX/RPVvV2t7fJeEV6MwvJOtgIgoCvVE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=LwDZGIIo7sLkSMIAX5+2rT82CeBOxCelVntevXsBwr434BCKxlxaSTExChGikB+WFTlQLZO6UyL8PmSMVUPJ5Xxyjdv5MU9vsGk8+Y3zpvWAeSUvJhrkc67BZbxewilPyaERslGnpL/AmOHopyn+pm+7j9CE1Hk+Cg48T1rLcDs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZtihMZIc; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=asu.edu header.i=@asu.edu header.b="AKyuYbdE"
-Received: by mail-pl1-f171.google.com with SMTP id d9443c01a7336-2cc7e86e7aeso13420375ad.2
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 11:44:45 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1784054685; cv=none;
-        d=google.com; s=arc-20260327;
-        b=r8NzwcG55CGb5AC7rLytOETikQdrNcYTkNuxTKxL6tVVeTTSYdza0HnxE9f/iBXOxo
-         Ygu2ma7PBZXNgNeJ7oOwJauTVXQ0VuIahCSIoHPTGdbXBDQXHwVwMkzPKdnCUDCwknZv
-         FKEj9rfpfhJ1ajowOLIZvwYU/sfnQmdBGeqV7cxei9EbDqyL2OELOKoMbSvf6mbujJDX
-         8sNDRalm1mdNWT0aZXqP+yop8TDfoBr9vZAu0u/oETskyGVZgroR33zhQ/x43e8TBLqn
-         PH1XovycJksc6hHG8lK4ShGBjl89Vx7P+E9jnx+xLPZ+0me9a5Z5+q/udo8+Huc2rRLF
-         GpDg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
-        fh=hdMDBuHOoUKBd+VAsvCnEagngz2/ku3gynzq0ga5o+U=;
-        b=gV2/PwXOzqrmLaZ6BK/ndFldJXIAv/tOdAiU02hRLiygleUeEslAnvFM7DuKZCU2Yn
-         7KWHOK/wsBKXp3CKcTtgIOETcS683g71MoBK/zRr6umADIiyO0EylwLqCLlAHUVLsEKw
-         TiQ2kikWnKmP2k5bRmsCLgM8ACUJOoMNScr/chuLgPDxXuoZmJFVTTYW2Xp9xKzQeHMP
-         Lrjih8eHIHfrLWgcVHg9HXd+rRDjpge4WPZkJzglA3KASNFpkThTZhlvaxCmvn/gi1D0
-         s/wASjZurUBnewzNlszAsJw0hwD8cuD8CILzGfps6pXCan/umfcJALlDSA3mz8KwASq4
-         +YTQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=asu.edu; s=google; t=1784054685; x=1784659485; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
-        b=AKyuYbdEYaY0gosppp65p9Hs8H0oWcLMf5u6k6YuMIWrZlNLLyjPKZoshmz1O8potG
-         cvDkOz131t2ieIyrKnXfCjYBhn0QVuXItmHH8tp0WkyYDzTRFZ3FoAyonrUaUrhhbss4
-         CuimKeeHjs/AS8T/N81czZvjCvXE7jG1sxPCdfgMk/kq99QlRTqpDTj3O75PD7UVIpuE
-         /ezbK4H9SfHFW8na9seX2i8FXlwU6mx6a3t8TfDHCWC7wxsCBvOGNpSAjuBqJy4/GWJO
-         DuFtlzcMqh2jjxnvo0tCQVRtPz8GxbeN4CVBCdAnnHojwkye9RwAdgHb1gDP7IQhYVyq
-         S+uQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784054685; x=1784659485;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=eZVk8r2PkAVSJSjoSoX6628ugmlB5h3hiz2HXRn06QY=;
-        b=BTbgZ1Z+E8D7M+0y2n8FQ0CvR0THyV5Otigul7J7f7EqHfKEbLnHMM2kC2a5mDVSO0
-         iX3crML+SHbdVkpxljMcTSTWfxM0TY/3ELDacm6vcwV6m1xrKU5oZhKwXIu0wzHr5E7K
-         TTCkMYpgagUHcEIxnBmYa8ndkUlgAvpfeIcTLNu/V785JBs27UBUcuy4AJfzFsfCOTAy
-         9bA4DAKhx6L0otd0g1HUWN92bxKOb9dlxqQ0ct4KHZ/iyGA3PFXtQOus7O+6rUm6HAt9
-         3lHNTlb9e/GBgh2QQTFTsI4L63t0dkztB8QsltgdRkN2G11G8tVID+CIkuAEifUuNJDU
-         /rpQ==
-X-Forwarded-Encrypted: i=1; AHgh+RrAUE/cCLH4dDFL+i+T491yVRSGJzagQEW1uXD8ciQ4HpBxTHWbmI+ikxn37TSR2dAy54/I1M7FnTVh@vger.kernel.org
-X-Gm-Message-State: AOJu0Yym53fyfkCWawN01lRZ6qakxDyLBpUYwnDpePaKHgwZls9cTyA2
-	kbsxTBKyQY6aWOKJU2ey6+l519iAsOplMIKipMa3tnjdpSE7m9YIsYOxxTh5fUoEVg2zmzHL2hZ
-	Yf5lsLrOAkccGO3TJivgSgB7MR2yz1bOu2FkOSBv3
-X-Gm-Gg: AfdE7ckNhThagokOdgSc6NAXXkjl6yyphBtc9WHggiVjvKwR+UGXjIFdMvE23x4jIqE
-	4Zq2ZcQgXVZZMjqj5J6P4jxDEGGS0IPHMICSPeLPCOYf4WXKAZEYBMG3L41Tk9UeMNBV+pJHUFd
-	xBvSPcaRQUMFLfsj/il2pNK/XvESOrZKwEpBzUP1yFOTms35AlcGEe6QawU3BUGsrcRiIIppX4F
-	TzRC5bGIqfXCzM7OHqkBVp+AUQyhXkL7tgriu5+wzqCMc7P4PAqTQ8x692guN8uvF6K88b4p3B0
-	9bhBRzAFeJOWcQDVw470uwfv
-X-Received: by 2002:a17:902:c405:b0:2c9:bd64:8c8b with SMTP id
- d9443c01a7336-2ce9ee1143amr149082385ad.31.1784054685280; Tue, 14 Jul 2026
- 11:44:45 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZtihMZIc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1A3A1F000E9;
+	Tue, 14 Jul 2026 21:09:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1784063399;
+	bh=be6DrEWvPa6kK/0Bi2TniGp6w6cr2kXmMjxcnQdvtQI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=ZtihMZIcpfKz1Lwu6hNVxt52R9gEJsvFCje+8P9ba1jEfmxJJBG2sxKQF2oEA7fsG
+	 pGc/Wf3v9z2avwKy0DQ+TFwIIJQBEEh6mvxu6m+wEk+76ngw2bCcKbCBR1cS94rA2h
+	 YLO8QIEzBi7rl6m0Chu7VUtiAjf+dtFgcUSGyCVyhZAK7H+zO2uOCRKBIHV1Q9jwbM
+	 +L6Hctr12fMFVSS0pDSL04cPVqWIetfdwYgar8qD1FsUgo2WUhgvNHF4uUCU62K8xQ
+	 2fXsnPpP1HdkROUKHyoFD+ed2FbGrbjeMdAx3hzoo2RDo8l9oJvAZSxB3n+Lhc2GnS
+	 VzkzzylqNBuxg==
+Date: Tue, 14 Jul 2026 15:09:57 -0600
+From: Keith Busch <kbusch@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Keith Busch <kbusch@meta.com>, linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	axboe@kernel.dk, jack@suse.cz, brauner@kernel.org, cem@kernel.org,
+	jaegeuk@kernel.org, aalbersh@kernel.org, tytso@mit.edu
+Subject: Re: [PATCHv2 3/5] xfs: report direct io attributes through
+ file_getattr
+Message-ID: <alalpRYxjqtdJhVR@kbusch-mbp>
+References: <20260710210646.3576365-1-kbusch@meta.com>
+ <20260710210646.3576365-4-kbusch@meta.com>
+ <alTTRoOEglwuf4vg@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260709184101.441348-1-xmei5@asu.edu> <kokbbtjua37msovatv4ahnauqqof53ndzqooayk4l7qyamys6w@srqaissjlt3f>
-In-Reply-To: <kokbbtjua37msovatv4ahnauqqof53ndzqooayk4l7qyamys6w@srqaissjlt3f>
-From: Xiang Mei <xmei5@asu.edu>
-Date: Tue, 14 Jul 2026 11:44:33 -0700
-X-Gm-Features: AUfX_myjUPSjeQlJvFJBE21b89RuG4PRXuRl37fYiGpwuktvz-2Q_82OhrS55BI
-Message-ID: <CAPpSM+TgX8MATQZeR=LqWpJp52KuQ1Nox1qHDQESbNZipORP5Q@mail.gmail.com>
-Subject: Re: [PATCH] ext4: check dir entry fits before reading the hash
- trailer in ext4_search_dir()
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, Daniel Rosenberg <drosen@google.com>, 
-	Weiming Shi <bestswngs@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <alTTRoOEglwuf4vg@infradead.org>
 
-On Mon, Jul 13, 2026 at 6:09=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
->
-> On Thu 09-07-26 11:41:01, Xiang Mei wrote:
-> > For casefolded encrypted directories ext4 stores an 8-byte hash trailer
-> > after the name (EXT4_DIRENT_HASHES()), at an offset derived from
-> > de->name_len.  On the sb_no_casefold_compat_fallback() path ext4_match(=
-)
-> > reads that trailer, but ext4_search_dir()'s by-hand pre-check only test=
-s
-> > de->name + de->name_len <=3D dlimit, which proves the name fits, not th=
-e
-> > rounded trailer.  A crafted entry whose name ends at the block boundary
-> > passes the check while EXT4_DIRENT_HASHES(de) lands past the block end,
-> > so ext4_match() reads out of bounds on an ordinary lookup.  KASAN repor=
-ts
-> > it as a use-after-free when the page after the directory block holds a
-> > freed object:
-> >
-> >   BUG: KASAN: use-after-free in ext4_match (fs/ext4/namei.c:1435)
-> >   Read of size 4 at addr ffff888010458000 by task exploit
-> >   Call Trace:
-> >    ext4_match (fs/ext4/namei.c:1435)
-> >    ext4_search_dir (fs/ext4/namei.c:1470)
-> >    __ext4_find_entry (fs/ext4/namei.c:1268 fs/ext4/namei.c:1632)
-> >    ext4_lookup (fs/ext4/namei.c:1703 fs/ext4/namei.c:1769)
-> >    ...
-> >    filename_lookup (fs/namei.c:2842)
-> >    vfs_statx (fs/stat.c:353)
-> >    __do_sys_newfstatat (fs/stat.c:538)
-> >    do_syscall_64 (arch/x86/entry/syscall_64.c:94)
-> >    entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:121)
-> >
-> > Require, for hash-in-dirent directories, that the whole entry including
-> > the rounded trailer fits before calling ext4_match().  This is the same
-> > bound ext4_check_dir_entry() already enforces via ext4_dir_rec_len(), s=
-o
-> > no well-formed entry is rejected.  The other caller, ext4_find_dest_de(=
-),
-> > runs ext4_check_dir_entry() first and is unaffected.
-> >
-> > Fixes: 471fbbea7ff7 ("ext4: handle casefolding with encryption")
-> > Reported-by: Weiming Shi <bestswngs@gmail.com>
-> > Assisted-by: Claude:claude-opus-4-8
-> > Signed-off-by: Xiang Mei <xmei5@asu.edu>
->
-> Looks good. Feel free to add:
->
-> Reviewed-by: Jan Kara <jack@suse.cz>
->
->                                                                         H=
-onza
->
-Thanks for your review!
+On Mon, Jul 13, 2026 at 05:00:06AM -0700, Christoph Hellwig wrote:
+> Or maybe using the file attr for this isn't actually a good idea,
+> and we should do an ioctl instead which automatically gets routed to
+> the block device fops?
 
-Xiang
-> > ---
-> >  fs/ext4/namei.c | 2 ++
-> >  1 file changed, 2 insertions(+)
-> >
-> > diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> > index cc49ae04a6f6..3b9740c1c16d 100644
-> > --- a/fs/ext4/namei.c
-> > +++ b/fs/ext4/namei.c
-> > @@ -1467,6 +1467,8 @@ int ext4_search_dir(struct buffer_head *bh, char =
-*search_buf, int buf_size,
-> >               /* this code is executed quadratically often */
-> >               /* do minimal checking `by hand' */
-> >               if (de->name + de->name_len <=3D dlimit &&
-> > +                 (!ext4_hash_in_dirent(dir) ||
-> > +                  (char *)de + ext4_dir_rec_len(de->name_len, dir) <=
-=3D dlimit) &&
-> >                   ext4_match(dir, fname, de)) {
-> >                       /* found a match - just to be sure, do
-> >                        * a full check */
-> > --
-> > 2.43.0
-> >
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+Something like this instead?
+
+---
+diff --git a/block/ioctl.c b/block/ioctl.c
+index 3d4ea1537457d..6de2f87bcb8bd 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -642,6 +642,21 @@ static int blkdev_bszset(struct file *file, blk_mode_t mode,
+ 	return ret;
+ }
+ 
++void bdev_dio_align(struct block_device *bdev, struct fs_dio_align *align)
++{
++	align->dio_mem_align = bdev_dma_alignment(bdev) + 1;
++	align->dio_offset_align = bdev_logical_block_size(bdev);
++	align->dio_read_offset_align = bdev_logical_block_size(bdev);
++	align->dio_virt_boundary_align = bdev_virt_boundary_alignment(bdev);
++	align->dio_offset_align_max_vecs = bdev_max_segments(bdev);
++}
++EXPORT_SYMBOL_GPL(bdev_dio_align);
++
+ /*
+  * Common commands that are handled the same way on native and compat
+  * user space. Note the separate arg/argp parameters that are needed
+@@ -690,6 +705,12 @@ static int blkdev_common_ioctl(struct block_device *bdev, blk_mode_t mode,
+ 		return put_uint(argp, bdev_io_opt(bdev));
+ 	case BLKALIGNOFF:
+ 		return put_int(argp, bdev_alignment_offset(bdev));
++	case FS_IOC_GETDIOALIGN: {
++		struct fs_dio_align align = {};
++
++		bdev_dio_align(bdev, &align);
++		return copy_to_user(argp, &align, sizeof(align)) ? -EFAULT : 0;
++	}
+ 	case BLKDISCARDZEROES:
+ 		return put_uint(argp, 0);
+ 	case BLKSECTGET:
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index 1b53701bebea1..e980522fa7539 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -49,6 +49,7 @@
+ 
+ #include <linux/mount.h>
+ #include <linux/fileattr.h>
++#include <linux/blkdev.h>
+ 
+ /* Return 0 on success or positive error */
+ int
+@@ -1244,6 +1245,23 @@ xfs_file_ioctl(
+ 	"%s should use fallocate; XFS_IOC_{ALLOC,FREE}SP ioctl unsupported",
+ 				current->comm);
+ 		return -ENOTTY;
++	case FS_IOC_GETDIOALIGN: {
++		struct fs_dio_align	align = {};
++
++		if (!S_ISREG(inode->i_mode))
++			return -ENOTTY;
++		bdev_dio_align(xfs_inode_buftarg(ip)->bt_bdev, &align);
++		if (xfs_is_cow_inode(ip))
++			align.dio_offset_align = xfs_inode_alloc_unitsize(ip);
++		if (copy_to_user(arg, &align, sizeof(align)))
++			return -EFAULT;
++		return 0;
++	}
+ 	case XFS_IOC_DIOINFO: {
+ 		struct kstat		st;
+ 		struct dioattr		da;
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 9213a5716f95a..dc32acf696e40 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1607,6 +1607,17 @@ static inline unsigned int bdev_dma_alignment(struct block_device *bdev)
+ 	return queue_dma_alignment(bdev_get_queue(bdev));
+ }
+ 
++static inline unsigned long bdev_virt_boundary_mask(struct block_device *bdev)
++{
++	return bdev_get_queue(bdev)->limits.virt_boundary_mask;
++}
++
++static inline unsigned int
++bdev_virt_boundary_alignment(struct block_device *bdev)
++{
++	return bdev_virt_boundary_mask(bdev) + 1;
++}
++
+ static inline unsigned int
+ blk_lim_dma_alignment_and_pad(struct queue_limits *lim)
+ {
+@@ -1805,6 +1816,8 @@ int sync_blockdev_range(struct block_device *bdev, loff_t lstart, loff_t lend);
+ int sync_blockdev_nowait(struct block_device *bdev);
+ void sync_bdevs(bool wait);
+ void bdev_statx(const struct path *path, struct kstat *stat, u32 request_mask);
++struct fs_dio_align;
++void bdev_dio_align(struct block_device *bdev, struct fs_dio_align *align);
+ void printk_all_partitions(void);
+ int __init early_lookup_bdev(const char *pathname, dev_t *dev);
+ #else
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index bd87262f2e349..81b0c81e17282 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -234,6 +234,21 @@ struct file_attr {
+ #define FILE_ATTR_SIZE_VER0 24
+ #define FILE_ATTR_SIZE_LATEST FILE_ATTR_SIZE_VER0
+ 
++struct fs_dio_align {
++	__u32 dio_mem_align;		/* buffer alignment */
++	__u32 dio_offset_align;		/* write offset alignment */
++	__u32 dio_read_offset_align;	/* read offset alignment */
++	__u32 dio_virt_boundary_align;	/* segment boundary */
++	__u32 dio_offset_align_max_vecs;	/* max vecs per unit */
++	__u32 dio_reserved[3];		/* must be zero */
++};
++
+ /*
+  * Flags for the fsx_xflags field
+  */
+@@ -344,6 +359,8 @@ struct file_attr {
+ #define FS_IOC_GETFSSYSFSPATH		_IOR(0x15, 1, struct fs_sysfs_path)
+ /* Get logical block metadata capability details */
+ #define FS_IOC_GETLBMD_CAP		_IOWR(0x15, 2, struct logical_block_metadata_cap)
++/* Get direct I/O alignment and layout constraints */
++#define FS_IOC_GETDIOALIGN		_IOR(0x15, 3, struct fs_dio_align)
+ 
+ /*
+  * Inode flags (FS_IOC_GETFLAGS / FS_IOC_SETFLAGS)
+--
