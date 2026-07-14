@@ -1,196 +1,104 @@
-Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E24B93DBD5E
-	for <linux-ext4@vger.kernel.org>; Tue, 14 Jul 2026 06:53:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC4053F5BC5;
+	Tue, 14 Jul 2026 08:09:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784012032; cv=none; b=jCM+ptN1Hs3OlbvpO7CxNo2y/8wqSJlMDbospB1HnBeLkeoLCMToSHZCcYUXgJ3OSPceMixn5IWOHZdHq/Ow2b+6Z4HZQkTOZXbZ/2ICBTCExJmyN8yygIN6ZCX4HQH22vT3g9kmd8+ZJcIWFtOOmCBv4lP1qzi/7Coj7q4exWQ=
+	t=1784016554; cv=none; b=DyA44mNzSUgRxr0jDesTtJ38Q/WPK1xCVd424hca+7FqO7vyVOjQ+ycyxSjtCp8BGuB8py0Cd/DF9SVbvkc6YSPY9cc8d1sWHfnJocE6TXmq6lEB9KQiljgcCseP3qW7J/F0wEsz1Kw6xjrH2ttOf07QPXaaK/BcTrcxQ/BuGh8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784012032; c=relaxed/simple;
-	bh=AO2GKLxoJTgpQfU1vWe3+H8/TP6Z5a4pNwhackVaAA4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=B51TP7vmwxTLnyFJ9P9D1XTXF6d7umELPi+6gZo00LEn1FjcXhu/Zt4NWvBXa72g6tE9lllrpxL6rJkXCULd5ZTlaSv+RB0kcYHWYE8tQcYarSo2gI6NB+lbTiyh397aHkaTY5cwgIrXESEdaw1sjE+e69G1hzuuuvadmYwvXCs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HIi5d5nD; arc=none smtp.client-ip=209.85.216.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HIi5d5nD"
-Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-381216921aaso4289068a91.1
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Jul 2026 23:53:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1784012030; x=1784616830; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=VBDDx+WXyO2HmFvYUM/Py6bFxHFJnp362DYMS0SOtOA=;
-        b=HIi5d5nDz+h9OTayqRDg7KZ7UFmnDftn3PChHwV/CmBqEjHif6EvJrzsrTIStHL1m9
-         UYO+4LJupU+qXAeAU3/eyltLxUBEbrs2NpCC3a84djXXtfIgZQYtW+a8yarQFY5dZ90B
-         5caNKyLOD+KoM7OFVunsOUQtO6pGGKiLWdc7vU6L54vXQY+OLQtSQLWv7TKNgkOydBY0
-         z3oRJwTxX5R0Q4HkVESCe5qlS/KibFrv3hOIW8ZqRkShm2CVJg2gYjn3CKKJzelktuTe
-         gUiu1bfkM3oM6SPN6NDwRTfDOaiyWoagkHqPS1RHOoE9/CDL9PGkzrKV8zVKlF1BO3fX
-         pbkQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784012030; x=1784616830;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=VBDDx+WXyO2HmFvYUM/Py6bFxHFJnp362DYMS0SOtOA=;
-        b=haUQ0ylm/ypeLtAkMH14pkxoVL1v48IEHw9T/+3aIGruBKjhO2JLuyBp7cwyRQ3f+y
-         HC3Fcovz1g82RLO4IkokJt7MlaiZKTERmUbDTP6taleZpcTM8+lOo+qRZPz/8O6tkXCB
-         Plm8I8hzFAip3ZZw8igfzNMdzmUFsAU+WJw6p27izNDBzSZbwBZBshhxOdU4nLaZLpEL
-         3xQehrVcOwGhlxifEoz5zIXT22tdXkXyt5pepT1P0sOzPUqFl+xlB97SbVDtlTDoZTnP
-         0oKErGsQvINNmUyTjfc70PL0sEZ9tK/XZ+3csZxWNySkjUsD+msCExpKCtVRsj82vGPd
-         9iZw==
-X-Gm-Message-State: AOJu0YxEZeYzcfNchFviBD5aHQLVTqkmm+6IhDFDk0J4ub4c0A8EfGZ0
-	nPrdRKXNBeGvO2hiNapMRP7UfwPUiiMygEj/86STROm5fLWyDSs3kRaQ
-X-Gm-Gg: AfdE7cmOFvjlzQTQW/+O/txMCqqkDL3BuPuMXqjBRiEzgBVT4ANIK+GcG29V8fu0nKk
-	7Ar35q5qPppTzDfPR6wCAV7NdbI+y4IEUrfBOFjE2UCLjlG6pNE5VbIt6BiNm054qRJ9UXy32fb
-	v6jtG5v2vQXXivlAQ/Jj++s8pgFW7//RldozMzERY/QEUX1MO4fQ1M70ovaJtH6nlVcMiT0SJ0H
-	W7WqjKA5WhA682X7i8bjzX/1cqivluybGwEjZUqjk/1KuLgD5YIloYlhZfyZF8H9ah3I6gGHGZA
-	fi5Gvki0MoLAcDpoFf9i7YaXACiqHMufEpfEZDifAOUaD3FUEQPirV4EnU+JPK4DmaXux+j9qRN
-	Tpt/1hW/IhYV/EOu6QU1K2G78tTEIFx/fmsJaU3xCA4UrgFh/L2d0V/WOl7Z/lYPg3VqFzdwcON
-	O211qzoQg6U4W63edcuK1LrifpqtiEaqm9
-X-Received: by 2002:a17:90b:4a:b0:388:cf45:d72c with SMTP id 98e67ed59e1d1-38e1aedd604mr1302508a91.15.1784012030007;
-        Mon, 13 Jul 2026 23:53:50 -0700 (PDT)
-Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38d352b0f37sm2616758a91.1.2026.07.13.23.53.45
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 13 Jul 2026 23:53:49 -0700 (PDT)
-Message-ID: <7bb69013-c6f1-4dee-bb9c-c576c7b765d7@gmail.com>
-Date: Tue, 14 Jul 2026 14:53:41 +0800
+	s=arc-20240116; t=1784016554; c=relaxed/simple;
+	bh=rTqNLMkj5qVxE9AC6BeTJP5Ra6PABzocZjpFwn8p8kA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=BhuCEzXDxZpgOXTrQkcWHYZ+YlzoGaN9QEGXZ9GZUMvUzYs90SMaxned8NGxW+YcRL8DcFPpLrB6slO6qIvXeOtmCaZyJZsXT0mTu9Jym43pXwCLF3Y7mEOc+FH2191RvF99G1mm7eEcULaNPZGqumOQQ67LyJG9mt55yzFE/5c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4gzsPs5jdhzKHMNd;
+	Tue, 14 Jul 2026 16:08:33 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 2860540766;
+	Tue, 14 Jul 2026 16:09:04 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgD3B3ST7lVqDS26BA--.56424S5;
+	Tue, 14 Jul 2026 16:09:03 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	chengzhihao1@huawei.com,
+	yangerkun@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v4 1/9] ext4: use FGP_WRITEBEGIN for tail block zeroing
+Date: Tue, 14 Jul 2026 16:00:36 +0800
+Message-ID: <20260714080044.4038124-2-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
+References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] jbd2: bound shrinker scans by examined checkpoint
- buffers
-To: Max Kellermann <max.kellermann@ionos.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, jack@suse.com,
- tytso@mit.edu, stable@vger.kernel.org
-References: <20260713102229.1598812-1-max.kellermann@ionos.com>
- <20260713102229.1598812-3-max.kellermann@ionos.com>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260713102229.1598812-3-max.kellermann@ionos.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgD3B3ST7lVqDS26BA--.56424S5
+X-Coremail-Antispam: 1UD129KBjvdXoWrur4DWw4fAryUKrW3ZF4xWFg_yoWDurb_Ja
+	4vqw48Ww45Xwn3uFsYya9Iqr1vvFyrKr4fCF48JFn3WryFvan5GrnYyFyrtFW7Wr4jgrZ8
+	ur1xXrWftF17WjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbkxFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUGwA2048vs2IY02
+	0Ec7CjxVAFwI0_Gr0_Xr1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xv
+	wVC0I7IYx2IY67AKxVWUCVW8JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwA2z4
+	x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s0DM2AI
+	xVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xIIjxv20x
+	vE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xv
+	r2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04
+	v7MxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j
+	6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7
+	AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE
+	2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcV
+	C2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2Kfnx
+	nUUI43ZEXa7VUjrHUDUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 7/13/2026 6:22 PM, Max Kellermann wrote:
-> The jbd2 shrinker currently accounts only checkpoint buffers that it
-> successfully releases against nr_to_scan.  Busy buffers therefore do not
-> consume the scan budget.
-> 
-> If a checkpoint transaction contains mostly busy buffers, the shrinker
-> can scan its entire checkpoint list while holding journal->j_list_lock.
-> Large checkpoint lists can result in excessive lock hold times and leave
-> other CPUs spinning on j_list_lock, causing soft lockups or RCU stalls.
-> 
-> Pass nr_to_scan into journal_shrink_one_cp_list() and decrement it for
-> every buffer examined, including busy buffers.  Pass NULL from checkpoint
-> cleanup paths so their existing full-list behavior is preserved.
-> 
-> This restores the scan-budget semantics that existed before
-> journal_shrink_one_cp_list() was changed to always scan a complete
-> checkpoint list.
-> 
-> Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
+From: Zhang Yi <yi.zhang@huawei.com>
 
-This makes the semantic of nr_to_scan more clear.
+ext4_load_tail_bh() returns a locked folio that callers immediately
+mutate through folio_zero_range() and mark_buffer_dirty().  Use
+FGP_WRITEBEGIN so that, on backing devices that require stable writes,
+__filemap_get_folio() waits for writeback to finish before returning
+the folio; on regular devices the wait is a no-op.
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> ---
->   fs/jbd2/checkpoint.c | 25 +++++++++++++------------
->   1 file changed, 13 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index 5266017565ac..513273712010 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -358,15 +358,16 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
->   /*
->    * journal_shrink_one_cp_list
->    *
-> - * Find all the written-back checkpoint buffers in the given list
-> - * and try to release them. If the whole transaction is released, set
-> - * the 'released' parameter. Return the number of released checkpointed
-> - * buffers.
-> + * Find written-back checkpoint buffers in the given list and try to release
-> + * them. If 'nr_to_scan' is set, scan at most that many buffers. If the whole
-> + * transaction is released, set the 'released' parameter. Return the number of
-> + * released checkpointed buffers.
->    *
->    * Called with j_list_lock held.
->    */
->   static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
->   						enum jbd2_shrink_type type,
-> +						unsigned long *nr_to_scan,
->   						bool *released)
->   {
->   	struct journal_head *last_jh;
-> @@ -375,13 +376,15 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
->   	int ret;
->   
->   	*released = false;
-> -	if (!jh)
-> +	if (!jh || (nr_to_scan && !*nr_to_scan))
->   		return 0;
->   
->   	last_jh = jh->b_cpprev;
->   	do {
->   		jh = next_jh;
->   		next_jh = jh->b_cpnext;
-> +		if (nr_to_scan)
-> +			(*nr_to_scan)--;
->   
->   		if (type == JBD2_SHRINK_DESTROY) {
->   			ret = __jbd2_journal_remove_checkpoint(jh);
-> @@ -403,7 +406,7 @@ static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
->   next:
->   		if (need_resched())
->   			break;
-> -	} while (jh != last_jh);
-> +	} while (jh != last_jh && (!nr_to_scan || *nr_to_scan));
->   
->   	return nr_freed;
->   }
-> @@ -425,7 +428,6 @@ unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
->   	tid_t first_tid = 0, last_tid = 0, next_tid = 0;
->   	tid_t tid = 0;
->   	unsigned long nr_freed = 0;
-> -	unsigned long freed;
->   	bool first_set = false;
->   
->   again:
-> @@ -458,10 +460,9 @@ unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
->   		next_transaction = transaction->t_cpnext;
->   		tid = transaction->t_tid;
->   
-> -		freed = journal_shrink_one_cp_list(transaction->t_checkpoint_list,
-> -						   JBD2_SHRINK_BUSY_SKIP, &released);
-> -		nr_freed += freed;
-> -		(*nr_to_scan) -= min(*nr_to_scan, freed);
-> +		nr_freed += journal_shrink_one_cp_list(transaction->t_checkpoint_list,
-> +						       JBD2_SHRINK_BUSY_SKIP,
-> +						       nr_to_scan, &released);
->   		if (*nr_to_scan == 0)
->   			break;
->   		if (need_resched() || spin_needbreak(&journal->j_list_lock))
-> @@ -517,7 +518,7 @@ void __jbd2_journal_clean_checkpoint_list(journal_t *journal,
->   		transaction = next_transaction;
->   		next_transaction = transaction->t_cpnext;
->   		journal_shrink_one_cp_list(transaction->t_checkpoint_list,
-> -					   type, &released);
-> +					   type, NULL, &released);
->   		/*
->   		 * This function only frees up some memory if possible so we
->   		 * dont have an obligation to finish processing. Bail out if
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c2c2d6ac7f3d..7b2face041ef 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4037,7 +4037,7 @@ static struct buffer_head *ext4_load_tail_bh(struct inode *inode, loff_t from)
+ 	int err = 0;
+ 
+ 	folio = __filemap_get_folio(mapping, from >> PAGE_SHIFT,
+-				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				    FGP_WRITEBEGIN | FGP_ACCESSED,
+ 				    mapping_gfp_constraint(mapping, ~__GFP_FS));
+ 	if (IS_ERR(folio))
+ 		return ERR_CAST(folio);
+-- 
+2.52.0
 
