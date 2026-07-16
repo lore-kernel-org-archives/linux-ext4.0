@@ -1,208 +1,147 @@
-Received: from va-1-113.ptr.blmpb.com (va-1-113.ptr.blmpb.com [209.127.230.113])
+Received: from mail-oo1-f80.google.com (mail-oo1-f80.google.com [209.85.161.80])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 459733BADA2
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 07:30:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.113
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F2ED34F27F
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 07:50:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.80
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784187060; cv=none; b=urlLsTlLaJ/Hj8ki3oipN5nX8maSB38Fbkmi36OqrVo0O3HD1ZX7yeup9QZua+adQ0GWEYLybkaAWewiSZsfEglf2TMK7zDHbliflLflvnXo5AY8Ubme8+/IEiW5VObkxOtHDrWdd1q+XBbRhOhyoKRjWmmrTzG6vEidhG9PxcM=
+	t=1784188230; cv=none; b=OV9XwsaDTLOsBTsAixf9BcUYnSOHy6Z/x3Yec2QA3f8ydvvgaGgeLILc/3qUOsqxtzB4d/rK3UNLA6ouoNL0Ev8yutBWtVMJOQyf8PuLxme0JmasAg5Uz+6DJW9AyqI2OJrWqMN+2FA0NKkL1YYxh8uvyP/F4Z1ShOlH0lW1r4Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784187060; c=relaxed/simple;
-	bh=9iI7i4hSDg4kNzMD30XboCuuZXvE3yzIV8pIXmtLihY=;
-	h=In-Reply-To:References:Content-Type:Date:Message-Id:Cc:From:
-	 Mime-Version:To:Subject; b=BDFwuQPzRAy27sSbutg+nDmMhJiPEDplfAT6hpz02vEuhqcmHpjjn+bfLF8WOoX97DUd2l9Te189OuAhCnuofnhHc3H2bGUo3llff2xmOFmygHJ9TFrX2Z9MqezYEhEqx1uyedxE2CgIQZikppT9RNICeN8x66G9xY7mKPcV10c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=YOCIWUCB; arc=none smtp.client-ip=209.127.230.113
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="YOCIWUCB"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1784187044; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=9iI7i4hSDg4kNzMD30XboCuuZXvE3yzIV8pIXmtLihY=;
- b=YOCIWUCBBYLw1XrVgD7P6xEvFxAjUSuzQ/32d1RJztxkGE3vh+G6Bsb0Yj/goc9pepER2T
- G6c2TPag92e/WdIQBGZNmV+KgjMXGtJtapz6L9TZafFeIQsfHkfVnFQvvl2ITNEpvT17Rg
- t2Uw70QkBo5A3gWV1iB7O+aVy4Z0xC1N7iVURO2FVwTt0ZrtTbazcyn3A8rWVGKcpobC8F
- hiYhRLIyZrCEWkOn/lDWBGtZziq+CbDVnBee82Y/3QKe2fQ7nLFFe0b+XBtzt+Lht2t3oD
- sp0RmZWAitMH7u3cwH+TN6a3t1zriUKPnyD7DtgXMksBSjyly1vPFUJCViHsRg==
-In-Reply-To: <283ee8d1-4bd6-4956-a83c-ac3033ac6c9d@gmail.com>
-References: <20260714114358.93335-1-changfengnan@bytedance.com> <osv5omv7siwplyisblmyxttwx7f52ptqsxfi72jmqujogfs4uv@fyhemkm6uwbe>
-	<283ee8d1-4bd6-4956-a83c-ac3033ac6c9d@gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Date: Thu, 16 Jul 2026 15:30:39 +0800
-Message-Id: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.55873583.692f.47e4.966f.1e571a817904@bytedance.com>
-Cc: "Jan Kara" <jack@suse.cz>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
-	<libaokun@linux.alibaba.com>, <ojaswin@linux.ibm.com>, 
-	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
-	<linux-ext4@vger.kernel.org>
-From: "changfengnan" <changfengnan@bytedance.com>
+	s=arc-20240116; t=1784188230; c=relaxed/simple;
+	bh=vDuRJp5BjNTLdA+wz/Ma7U64C66pGtDGfvXZm5iSjT4=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=EoTnSJwsiHk3q8/H+AFsTUaxS99VVGoaoy4NFLMXpGDfA5RR4hSfPR2lnCJv9dYB/4C85VM/1z/dbVoy/9MgIZJEjaQPiZ0xRgGCtmtnekX+RfupXJHV0OoBA0rkM1JiPjZ0C8hx4Iq8fFAdLXmbv7PSRpbGJUIAiksuwKzKHr8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.80
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oo1-f80.google.com with SMTP id 006d021491bc7-6a1240143d0so7787243eaf.0
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 00:50:29 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784188228; x=1784793028;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=HFluiFjByJbHTrsxFOo+leQd0OWf5APLNwABxoG1YJ0=;
+        b=CLqPV6FSBilwGAd6HMqRDVgTlumvBl8xvVHtER3oUztFGumCO5U55hx28Przz5GUIf
+         LKyO2iuPnNLbtVjyV7xKeEIqvYgok9B7rwwi60W12V5x3H1crCfsnbTvX542pHzlh+y0
+         Wk8hZc3cQRgWpnArxmqgD48p40HVZukYvkybnv9Z9p1nzZiMkCSCzHt2KK4PvuU9zJws
+         8L0T4LspxouuUlEBFJWBu8ZkOsJPUqZoMvM4Zs864RdsZmq1v8gJcm5R3QemW//uF8U5
+         zimcM1MVtVG1IEE3XwZS01JToQbfBejIdOpZDJ5m7Y2/0zwUjN0c5oKoQRwRqtnqFydo
+         1rZQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrkiRgEIYzhaflgnQr4071ahD1RNLlTlj9Kwvn9HCqDnJE9/AuuxnqpSNoQjqYSz9pCKRLQUdK6f6eQ@vger.kernel.org
+X-Gm-Message-State: AOJu0YzwZKs3YLWjOw0Bbns9LYw8lD1LPIBOvF2M7ubiIh7eK+x+te7D
+	0nLtACkafA40QGvPU0MenhvPTrEh8MMEhJCcuRioXcFmK7z0zQl35xzA8/Dg0NRSK++ilT5vPHi
+	7WZbyBUY6fUcZA9lvUA7WolTjNdTDMgphT7JjcM7ux7TI0hLkivzh7k58Bhg=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-To: "Zhang Yi" <yizhang089@gmail.com>
-Subject: Re: [RFC PATCH 0/2] ext4: fix DIO read slowdown after extent status reclaim
-X-Lms-Return-Path: <lba+16a5888a2+df3508+vger.kernel.org+changfengnan@bytedance.com>
+MIME-Version: 1.0
+X-Received: by 2002:a05:6820:2d0c:b0:6a2:739a:cea6 with SMTP id
+ 006d021491bc7-6a3da04fc6dmr4038713eaf.54.1784188228350; Thu, 16 Jul 2026
+ 00:50:28 -0700 (PDT)
+Date: Thu, 16 Jul 2026 00:50:28 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a588d44.c96faac9.59e0.0012.GAE@google.com>
+Subject: [syzbot] [ext4?] kernel BUG in ext4_write_inline_data_end (3)
+From: syzbot <syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
+	tytso@mit.edu, yi.zhang@huawei.com
+Content-Type: text/plain; charset="UTF-8"
+
+Hello,
+
+syzbot found the following issue on:
+
+HEAD commit:    a13c140cc289 Linux 7.2-rc3
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=11d48789580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=ecdef466b08b9772
+dashboard link: https://syzkaller.appspot.com/bug?extid=293a57918b36cfae3d48
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+userspace arch: arm64
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=16e444b9580000
+
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/b40dd0e99ac8/disk-a13c140c.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/7ef230d7959b/vmlinux-a13c140c.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/a593476d5c20/Image-a13c140c.gz.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/172c5a39071b/mount_0.gz
+  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=12e444b9580000)
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+kernel BUG at fs/ext4/inline.c:815!
+Internal error: Oops - BUG: 00000000f2000800 [#1]  SMP
+Modules linked in:
+CPU: 1 UID: 0 PID: 20668 Comm: syz.0.3283 Not tainted syzkaller #0 PREEMPT 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 06/02/2026
+pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
+pc : ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/ext4.h:3790
+lr : ext4_has_inline_data fs/ext4/ext4.h:3790 [inline]
+lr : ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/inline.c:815
+sp : ffff800090e575c0
+x29: ffff800090e57670 x28: dfff800000000000 x27: ffff7000121caebc
+x26: 0000000000000000 x25: ffff0000e01554b0 x24: fffffdffc3c2a340
+x23: ffff800090e575e0 x22: 0000000000000023 x21: 0000000600080000
+x20: ffff0000e01556a0 x19: 0000000000000023 x18: 0000000000000000
+x17: 0000000000000000 x16: 0000000000000000 x15: 00000000200000c0
+x14: 0000000000000000 x13: 0000000000000001 x12: 0000000000000000
+x11: 0000000000000000 x10: ffff60001c02aa97 x9 : 0000000000000000
+x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000000000
+x5 : 0000000000000000 x4 : 0000000000000000 x3 : ffff8000810066e8
+x2 : 0000000000000000 x1 : ffff0000c4c28000 x0 : 0000000000000000
+Call trace:
+ ext4_has_inline_data fs/ext4/ext4.h:3790 [inline] (P)
+ ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/inline.c:815 (P)
+ ext4_write_end+0x320/0x9e0 fs/ext4/inode.c:1455
+ ext4_da_write_end+0x90/0xba0 fs/ext4/inode.c:3297
+ generic_perform_write+0x504/0x7a4 mm/filemap.c:4379
+ ext4_buffered_write_iter+0xd0/0x2ec fs/ext4/file.c:316
+ ext4_file_write_iter+0x1dc/0x134c fs/ext4/file.c:-1
+ new_sync_write fs/read_write.c:595 [inline]
+ vfs_write+0x51c/0xa0c fs/read_write.c:687
+ ksys_write+0x12c/0x228 fs/read_write.c:739
+ __do_sys_write fs/read_write.c:750 [inline]
+ __se_sys_write fs/read_write.c:747 [inline]
+ __arm64_sys_write+0x7c/0x90 fs/read_write.c:747
+ __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
+ invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
+ el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
+ do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
+ el0_svc+0x64/0x260 arch/arm64/kernel/entry-common.c:736
+ el0t_64_sync_handler+0x48/0x148 arch/arm64/kernel/entry-common.c:755
+ el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:594
+Code: c8097f28 35ffffa9 17fffe38 97d939e6 (d4210000) 
+---[ end trace 0000000000000000 ]---
 
 
-> From: "Zhang Yi"<yizhang089@gmail.com>
-> Date:=C2=A0 Thu, Jul 16, 2026, 14:08
-> Subject:=C2=A0 Re: [RFC PATCH 0/2] ext4: fix DIO read slowdown after exte=
-nt status reclaim
-> To: "Jan Kara"<jack@suse.cz>, "Fengnan Chang"<changfengnan@bytedance.com>
-> Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.=
-com>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.co=
-m>, <linux-ext4@vger.kernel.org>
-> Hi!
->=C2=A0
-> On 7/16/2026 12:19 AM, Jan Kara wrote:
-> > Hello!
-> >=C2=A0
-> > On Tue 14-07-26 19:43:56, Fengnan Chang wrote:
-> >> This series fixes a slowdown in ext4 random direct reads that appears =
-after
-> >> extent status entries are reclaimed.
-> >>
-> >> Problem:
-> >>
-> >> The extent status tree and the extent-tree leaf buffers do not have th=
-e same
-> >> lifetime. =C2=A0Memory pressure can reclaim an extent status entry whi=
-le the
-> >> corresponding metadata buffer_head stays in the buffer cache with its
-> >> "verified" flag set. =C2=A0The next lookup then takes this path:
-> >>
-> >> =C2=A0 =C2=A01. ext4_es_lookup_extent() misses--the entry was reclaime=
-d.
-> >> =C2=A0 =C2=A02. ext4_find_extent() reads the leaf, but __read_extent_t=
-ree_block()
-> >> =C2=A0 =C2=A0 =C2=A0 returns the already verified buffer without calli=
-ng
-> >> =C2=A0 =C2=A0 =C2=A0 ext4_cache_extents().
-> >> =C2=A0 =C2=A03. ext4_ext_map_blocks() returns the part of the extent s=
-tarting at
-> >> =C2=A0 =C2=A0 =C2=A0 m_lblk, and ext4_map_query_blocks() caches only t=
-hat suffix.
-> >>
-> >> Reads to earlier blocks in the same extent miss the extent status tree=
- again
-> >> and walk the extent tree on every I/O.
-> >>
-> >> Testing with fio 4K random direct reads (io_uring, iodepth=3D128) on a
-> >> 128 GiB file (75 on-disk extents) after triggering extent status recla=
-mation:
-> >>
-> >> =C2=A0 =C2=A0Baseline (full extent status cache): 525k IOPS, clat avg =
-241.96 us
-> >> =C2=A0 =C2=A0After extent status reclaim (no patch): 296k IOPS, clat a=
-vg 428.69 us
-> >> =C2=A0 =C2=A0Degradation: =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0-43.6% IOPS, +77.2% latency
-> >=C2=A0
-> > Good spotting!
-> >=C2=A0
-> >> Fix:
-> >>
-> >> Patch 1 makes ext4_es_cache_extent() report whether the requested rang=
-e is
-> >> cached when it returns. =C2=A0The result is passed through ext4_find_e=
-xtent() and
-> >> the internal map flags, so ext4_map_query_blocks() can skip the second=
- cache
-> >> update when the leaf was fully cached. =C2=A0If population was skipped=
- or an
-> >> insertion failed, the existing query cache remains as a fallback. =C2=
-=A0This avoids
-> >> taking i_es_lock for writing a second time after a leaf read has alrea=
-dy
-> >> populated the extent status tree.
-> >=C2=A0
-> > Did you observe a measurable performance increase after this change or =
-is
-> > this mostly a theoretical improvement?
->=C2=A0
-> I share the same concern. It would be great to see some test data to
-> back this up.
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-Only a theoretical improvement, no improvement in real test.
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
->=C2=A0
-> >=C2=A0
-> >> Patch 2 handles the extent status lookup miss described above.
-> >> ext4_iomap_begin() opts into a new EXT4_GET_BLOCKS_CACHE_READ_EXTENT f=
-lag for
-> >> DIO reads. =C2=A0If the leaf lookup did not populate the extent status=
- tree,
-> >> ext4_ext_map_blocks() caches the full matching written extent (ee_bloc=
-k,
-> >> ee_len) before cropping the mapping to the requested block. =C2=A0Late=
-r reads
-> >> within that extent can then use the extent status tree directly.
-> >=C2=A0
-> > I kind of dislike the additional complexity these two patches add to th=
-e
-> > extent mapping path only for this corner case. As far as I have checked=
-,
-> > maybe we would be better off to update the extent status tree with the
-> > found extent in ext4_ext_map_blocks() / ext4_ind_map_blocks() where we
-> > still have the full extent information available. And for start we coul=
-d
-> > just check whether the extent is already there under read lock (as in t=
-he
-> > common case we expect it was already cached when reading extent tree bl=
-ock)
-> > and only if we don't find it, we grab the write lock and insert it. If =
-this
-> > proves to be too slow, only then I'd bother with figuring out how to
-> > propagate the information from caching of the leaf block to the place
-> > adding extent to the extent status tree in the least painful manner...
-> >=C2=A0
-> > Also it would be good to hear Yi's opinion as he was the last doing lar=
-ger
-> > cleanups to the extent status tree handling.
-> >=C2=A0
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 Honza
->=C2=A0
-> I tend to agree with Jan here. The current approach adds quite a bit of
-> complexity that I think would hurt maintainability going forward, so I'm
-> more inclined to take Jan's idea.
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
 
-To be honest, I also think this approach is a bit complicated, but I hadn't
-thought of a better way before; I'll give it a try as Jan suggested.
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
 
->=C2=A0
-> In addition, one thing we do need to watch out for, though, is the
-> EXT4_EX_NOCACHE case. We should avoid adding unrelated extent range into
-> the cache, as that could lead to stale extent cache issues during
-> writeback.
->=C2=A0
-> Thanks,
-> Yi.
->=C2=A0
-> >=C2=A0
-> >> Fengnan Chang (2):
-> >> =C2=A0 =C2=A0ext4: avoid caching an extent twice after a leaf read
-> >> =C2=A0 =C2=A0ext4: cache the full extent after a DIO extent status mis=
-s
-> >>
-> >> =C2=A0 fs/ext4/ext4.h =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 | =C2=A09 +++=
-+++++-
-> >> =C2=A0 fs/ext4/ext4_extents.h =C2=A0 | =C2=A04 +++-
-> >> =C2=A0 fs/ext4/extents.c =C2=A0 =C2=A0 =C2=A0 =C2=A0| 43 +++++++++++++=
-+++++++++++++++++++--------
-> >> =C2=A0 fs/ext4/extents_status.c | 20 +++++++++++++------
-> >> =C2=A0 fs/ext4/extents_status.h | =C2=A06 +++---
-> >> =C2=A0 fs/ext4/inode.c =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0| 40 ++++++++=
-++++++++++++++++++-----------
-> >> =C2=A0 6 files changed, 91 insertions(+), 31 deletions(-)
-> >>
-> >> --=C2=A0
-> >> 2.39.5 (Apple Git-154)
->=C2=A0
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
