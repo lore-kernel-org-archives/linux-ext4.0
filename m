@@ -1,64 +1,64 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B939D3375D5
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 20:04:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3F1543F092
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 20:06:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784232297; cv=none; b=LZpjHBr94PCBOEgzCvnKHWNVPsTs+Cgog5uK/Xz4m1Z4lrbK9kGA6DUet6UgaAA9uM56o1bJEQRzysUwJl/6ZfcKWe9WMbc44F0lKuTBxlu+FVAm/nNUkZ8BLclsFtjqFmaGlcAqHTXWA650+vcIV4TwLzk5HzXjGRnKcOs4Y5k=
+	t=1784232400; cv=none; b=S3PNVXoyk8037VwsKlXkuXUvrBCJWgkPLbVdtT8LPQ6WpBSfWI++JeJvyDoLZBPD0fK05xoreKhUA5KD90/04c9a2plM97QtFk8RkgzfAyJvSiOpnDI0u+bnT32XSNtbfed6+sBImeTA4ox9rOaq62ldB6LypVCg4YAY0l3edcs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784232297; c=relaxed/simple;
-	bh=vth1im0y/El/KO/94DkG/bZsruCeVRbozso0j2xIFvg=;
+	s=arc-20240116; t=1784232400; c=relaxed/simple;
+	bh=fNHHGp0EJ1x8ScHNM/7lzcXfwm8VZZI1x1y+I4XbQI0=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=s6p7PkOR1BwGThZlKe6t0DezKvdTnfNCnpEoUcfYd5Mf7Vt9QoXQC6cFvyb5UoOK8D0B/SsXbGywV/Yb09EyBbGvcn1yJMSLWVX6XfBOIpW00AfK12vEDca28T7+B4Ko8eIjH6nFpNSBM0A2rNjwK3UW8b5Yql/VkD2+1EH8eZs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=O1ppTyss; arc=none smtp.client-ip=209.85.214.169
+	 Message-Id:References:To; b=XdB2/aJElXQdk9WnxfXkk/vyjLkQZG4UwEQDLr9iYBtRcowunfA3BWv7TmTIGS1gMDcUbJsqsJJ+nn+EZPuE8QbdRMwQpRL15UaBP+xXS4cnXIu5F+m4i7aCeaWaY98fit59eNX1Zo7S/iD7XP70S9dXesvrTZWLwlBxOvVwFGc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=NpctwYBB; arc=none smtp.client-ip=209.85.210.171
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="O1ppTyss"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2cc7e86e7aeso41181215ad.2
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 13:04:55 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="NpctwYBB"
+Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-8484a0b998fso5774815b3a.2
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 13:06:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784232295; x=1784837095; darn=vger.kernel.org;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784232397; x=1784837197; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:content-type:from:to:cc
          :subject:date:message-id:reply-to:content-type;
-        bh=Md2qxdgf63rHDP6+RS9ok1HHPB/hbV6ffca/STkhYXQ=;
-        b=O1ppTysszucIwVtt6kmDu5DN2d4zQI0frgob5et+9S7dzK3MSBBtcrC32qj0KvWJVl
-         0goVrPVRX8oH/Foly+jIE8/tJFO76Rt08PPRNshqZcEFMfnNLtawSCi9Cc/D44Y0P7CC
-         dSksqaASiHCceFXTCrL37mA3ypdkZIwTwWBSl1WFi5ZsANzELfLByn0flJuqfNCDgXyV
-         lLf/cXQxshpExgJa0iHCxS8loXe47Ot3j9MXkw2T+vpDkEHtC9GukoGqq3dh/SxJIML3
-         kERdwffpm+x2WsBZgmos+RBsWVJX91Q5RbSRTV2ljNE52dXpc3AMpZ5NkFnGM2kEPiV/
-         MF0Q==
+        bh=IhOk14OQie19o7dvSDhMtIyzpvh/v4dYOVAo+3UUl9o=;
+        b=NpctwYBBG9G4G12nvNeuVsnPWU45M90UHAkn3lWcNiSkdUx1quXxYL5Bjrbq4/kNss
+         YpHs8pEz22XvQstuPlocU4i/XmJEo2yj9/FeFwpyywMrFDQOyVpx6pXgZyeX/RwQj+at
+         htylrTzkxLNMouJu8zAqUkH5tvMpEdhWFUKM2qaxt4d5upl1n4uaGMcuJDmKMZjWddrk
+         sKNUimyRWvXdHVWEutvmV+ex5rN1nyes2g9rCzwoMzc/DoMbVt6/3lMWVqOLwEIg5Si8
+         pQ8tZA2NgWesh/e0WUlFaZ51+PTopa0BvW/4IqndzqigkHbuPFdw9rR4ydsnBS3Vfxof
+         U6ug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784232295; x=1784837095;
+        d=1e100.net; s=20251104; t=1784232397; x=1784837197;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=Md2qxdgf63rHDP6+RS9ok1HHPB/hbV6ffca/STkhYXQ=;
-        b=d7dGQM0+raqXbOQto4JokrG8+T2LTn4iomL2k8TAqkOUyi6ksw+jfydKsTKa9+igle
-         Us6sTDjprmZi6fls1xY6lvKhLsF+Ael0rr+WaShAlJqsh2Utao8ypUxxVIKdxsE4X18D
-         +c7hRPEfJXQ68NW3fLDQWNKDpFtO/s1BzcsQtgpixPgiWS482+efnkR+zFiEkiX0HumN
-         XHkkhYBPM8xJWlDZzu0WpfqqFgrV4UNXgxsynTAoRGjpvgLsjhqptnbhGZKyUwTPzHiq
-         s19gXR9xLqOb03zeEupthKAJwuL3PKSzvNXN8nUk3N32t6iaCGzUC/2hDlUzgx0AkOEX
-         OYrQ==
-X-Forwarded-Encrypted: i=1; AHgh+RoysUnaRemdIM1Iveq9QxB5BeGOK4MBRIqXZ5FXFQ3rSuBgwK+MhVFUc62JGKvDwIXWHZ3I7hLsaKC7@vger.kernel.org
-X-Gm-Message-State: AOJu0YwdAz1WRIv7lV/F+r76L+mzcTJv0khPGyr1Wk4N6MFYs/NTpWAN
-	g+eLjRySUS7rMWdXjritbnc/tXrZY2VxvdmQLPzj78K2FgbhlDDFDsD9/ycKNfRx6CA=
-X-Gm-Gg: AfdE7claumFJtTwMyx6hiW/qOSuNI6Qwq48cOd+Wr9pIIOiVPd+l82iwirmCuhthr2R
-	Ya32+k80S9RMzeC7mQQq49MpSHbtAXBnHpVUjaiPR+0KEq5EJlHjMbZtJxV2CfEnZZaMFKhWlnG
-	doOGfCl54GgUBg2x8UeU+7Fhgecfn9pFDSbKXZy3qHm+r2dOBWhUZOK0qYHRY38m5jYFYqrPIaq
-	O8arnCqkFYSFbFj6AXQs4bsoc7DTF8m0MGqEkVxY5DDN+2ebcKmBLlmpcZrQwOFnfwWQMv1ygJG
-	Rn15FhZ/1oCjGLzFb2sv09ZLy+iaiKX4LYglz3bX/g8T+E0+eM9ISLdw5rFTNyoHOHX5SKSNgL9
-	sjjOcRbXRHI/IF+JEpBpanzzUKd8QvMr80kMDaI5gfAwCbySOA/oPWLkk9wrL9otSRubYMYu6j2
-	KJopf1ZRQwAWcDCIOqqRLzEZEZvEt/nIU=
-X-Received: by 2002:a17:903:3c28:b0:2ca:4cfd:a6df with SMTP id d9443c01a7336-2cf2ec96549mr8299005ad.43.1784232295051;
-        Thu, 16 Jul 2026 13:04:55 -0700 (PDT)
+        bh=IhOk14OQie19o7dvSDhMtIyzpvh/v4dYOVAo+3UUl9o=;
+        b=QgM/bodSOLiPm1v8Jo7mv7iyoml/NBAU4paVKJnHYw/WAHgf0EXrn7lyawaBPNxXf/
+         3ue1npEfvDfeHqUUJ/y6NYSjxDMrVFUFtT2Irh/Q5zb+DUkrynkCxpUi8XiOjm+mWhJt
+         bADbg0XyVOBgjMu7ALPfzcdhtTWb6SJQo/xv93rU/BpgEcii4t/Ug6uRYrRFQpCGZUsu
+         IWAVquz+HevzJqvOteR+gShDLJwoI6W2YHgs2SK73wbZSp1B0pwkwLp7dHSJ4uB5Ce2D
+         UMMLryWUtsQMeuEmWBDX/GyqvhhaerzA2t1ZUcNCekD9lMYsZyTHKHjok2HGECFjNPaJ
+         WU5A==
+X-Forwarded-Encrypted: i=1; AHgh+RrDJ20tQWJQt7LT4L+rI2QuNaYZJq4v4D1DQOYgQIbBCHEG9cGG1+5O5m4I5i5v4TRUK7fg6/kAtorl@vger.kernel.org
+X-Gm-Message-State: AOJu0YysMP6LYHQTXoAoNK/gznlvT2WEkheNZJt0LfZd8V11Fy157QHu
+	wXq5zMWtv0EPFXoDjPmbSYJ+3fx9wYl6UwK7xdtPePPHSJ3vyMpmuynVQ74TrgEDS7E=
+X-Gm-Gg: AfdE7cl4WLtsQI3KSnlIAyl4kg94jkHwTL47Ci0sg+y81ocqKN7dD7XUWoJLRKdnsfX
+	WbKdHTw/H3Pn/k7FW7lT6ZuG8MLvQCE1AdSjInpxbBO7Cocyh6itJ7dlN0MEdJuEyPTcrEj7DTM
+	dO/OPt/ctZ5SRYVpikOcg11KTlN6E/Fx542rzZLfJORjKb/iCVnQvLMpwZmhLwUqJ4yBtIY7DpE
+	g44f6wyWALs3Ckt4QSctlV0SilKJi+hiIDtrYeEeeBhJZVhdEiG+lwkfoWqoPvhP7MfuFrpK/85
+	DToFgwxtQG/RNCW/r+yJDUqfqHge2VpN4C8Mc/HNIGO+zEGmjlcnf4ErENuQQ41fNTfLvKKRm4e
+	zQgC9N4pYTDpW32ZIV2AN8MmHvFFa2eMhoL0YTYXXsd6QBRN7thwE0pQk8/8Irr0WyT8RiOKUzn
+	pO1VNeAerA3WVqSN/TNIwRF3dpY0hWz8w=
+X-Received: by 2002:a05:6a00:b93:b0:848:4faa:480b with SMTP id d2e1a72fcca58-84c234f9f15mr773017b3a.12.1784232396934;
+        Thu, 16 Jul 2026 13:06:36 -0700 (PDT)
 Received: from smtpclient.apple ([2604:3d09:3a84:1700:3854:7eec:417a:89dd])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2cf100e395csm25319995ad.17.2026.07.16.13.04.53
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-84a4f7dade0sm5343740b3a.46.2026.07.16.13.06.35
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Jul 2026 13:04:54 -0700 (PDT)
+        Thu, 16 Jul 2026 13:06:36 -0700 (PDT)
 Content-Type: text/plain;
 	charset=us-ascii
 Precedence: bulk
@@ -67,89 +67,100 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH 1/2] jbd2: check need_resched() when skipping busy
- checkpoint buffers
+Subject: Re: [PATCH] ext4: check dir entry fits before reading the hash
+ trailer in ext4_search_dir()
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260713102229.1598812-2-max.kellermann@ionos.com>
-Date: Thu, 16 Jul 2026 14:04:42 -0600
-Cc: tytso@mit.edu,
- jack@suse.com,
+In-Reply-To: <20260709184101.441348-1-xmei5@asu.edu>
+Date: Thu, 16 Jul 2026 14:06:24 -0600
+Cc: Theodore Ts'o <tytso@mit.edu>,
+ Baokun Li <libaokun@linux.alibaba.com>,
+ Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huawei.com>,
  linux-ext4@vger.kernel.org,
  linux-kernel@vger.kernel.org,
- stable@vger.kernel.org
+ Daniel Rosenberg <drosen@google.com>,
+ Weiming Shi <bestswngs@gmail.com>
 Content-Transfer-Encoding: quoted-printable
-Message-Id: <E3B8944B-6045-49CD-A72B-0B8F6C42C713@dilger.ca>
-References: <20260713102229.1598812-1-max.kellermann@ionos.com>
- <20260713102229.1598812-2-max.kellermann@ionos.com>
-To: Max Kellermann <max.kellermann@ionos.com>
+Message-Id: <8767153C-ED7C-473A-A8FF-3A7F431979DB@dilger.ca>
+References: <20260709184101.441348-1-xmei5@asu.edu>
+To: Xiang Mei <xmei5@asu.edu>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Jul 13, 2026, at 04:22, Max Kellermann <max.kellermann@ionos.com> =
-wrote:
+On Jul 9, 2026, at 12:41, Xiang Mei <xmei5@asu.edu> wrote:
 >=20
-> journal_shrink_one_cp_list() skips busy checkpoint buffers when called
-> with JBD2_SHRINK_BUSY_SKIP.  The continue statement on this path also
-> skips the need_resched() check at the end of the loop body.
->=20
-> Consequently, when a checkpoint list contains mostly busy buffers, the
-> shrinker can walk the entire list while holding journal->j_list_lock,
-> even when a reschedule has been requested.  Large checkpoint lists =
-under
-> memory pressure can therefore cause long lock hold times and leave =
-other
-> CPUs spinning on j_list_lock, resulting in soft lockups or RCU stalls.
->=20
-> Route the busy-buffer path through the need_resched() check so that =
+> For casefolded encrypted directories ext4 stores an 8-byte hash =
+trailer
+> after the name (EXT4_DIRENT_HASHES()), at an offset derived from
+> de->name_len.  On the sb_no_casefold_compat_fallback() path =
+ext4_match()
+> reads that trailer, but ext4_search_dir()'s by-hand pre-check only =
+tests
+> de->name + de->name_len <=3D dlimit, which proves the name fits, not =
 the
-> shrinker can release j_list_lock and reschedule promptly, restoring
-> parity with the clean-buffer path, which already checks =
-need_resched().
-> This does not change which checkpoint buffers are eligible for =
-removal.
+> rounded trailer.  A crafted entry whose name ends at the block =
+boundary
+> passes the check while EXT4_DIRENT_HASHES(de) lands past the block =
+end,
+> so ext4_match() reads out of bounds on an ordinary lookup.  KASAN =
+reports
+> it as a use-after-free when the page after the directory block holds a
+> freed object:
+>=20
+>  BUG: KASAN: use-after-free in ext4_match (fs/ext4/namei.c:1435)
+>  Read of size 4 at addr ffff888010458000 by task exploit
+>  Call Trace:
+>   ext4_match (fs/ext4/namei.c:1435)
+>   ext4_search_dir (fs/ext4/namei.c:1470)
+>   __ext4_find_entry (fs/ext4/namei.c:1268 fs/ext4/namei.c:1632)
+>   ext4_lookup (fs/ext4/namei.c:1703 fs/ext4/namei.c:1769)
+>   ...
+>   filename_lookup (fs/namei.c:2842)
+>   vfs_statx (fs/stat.c:353)
+>   __do_sys_newfstatat (fs/stat.c:538)
+>   do_syscall_64 (arch/x86/entry/syscall_64.c:94)
+>   entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:121)
+>=20
+> Require, for hash-in-dirent directories, that the whole entry =
+including
+> the rounded trailer fits before calling ext4_match().  This is the =
+same
+> bound ext4_check_dir_entry() already enforces via ext4_dir_rec_len(), =
+so
+> no well-formed entry is rejected.  The other caller, =
+ext4_find_dest_de(),
+> runs ext4_check_dir_entry() first and is unaffected.
+>=20
+> Fixes: 471fbbea7ff7 ("ext4: handle casefolding with encryption")
+> Reported-by: Weiming Shi <bestswngs@gmail.com>
+> Assisted-by: Claude:claude-opus-4-8
+> Signed-off-by: Xiang Mei <xmei5@asu.edu>
 
-One question I had about this patch is whether the list cleanup could =
-get
-into a livelock if it becomes too large?  If the iterator is processing
-a large number of jh that cannot be freed, then `need_resched()` is hit,
-if it restarts from the beginning of the list each time without =
-processing
-at least one jh it will not make forward progress.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca =
+<mailto:adilger@dilger.ca>>
 
-Cheers, Andreas
-
-> Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
 > ---
-> fs/jbd2/checkpoint.c | 3 ++-
-> 1 file changed, 2 insertions(+), 1 deletion(-)
+> fs/ext4/namei.c | 2 ++
+> 1 file changed, 2 insertions(+)
 >=20
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index 1508e2f54462..5266017565ac 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -389,7 +389,7 @@ static unsigned long =
-journal_shrink_one_cp_list(struct journal_head *jh,
->  			ret =3D jbd2_journal_try_remove_checkpoint(jh);
->  			if (ret < 0) {
->  				if (type =3D=3D JBD2_SHRINK_BUSY_SKIP)
-> -					continue;
-> +					goto next;
->  				break;
->  			}
->  		}
-> @@ -400,6 +400,7 @@ static unsigned long =
-journal_shrink_one_cp_list(struct journal_head *jh,
->  			break;
->  		}
-> =20
-> +next:
->  		if (need_resched())
->  			break;
->  	} while (jh !=3D last_jh);
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index cc49ae04a6f6..3b9740c1c16d 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1467,6 +1467,8 @@ int ext4_search_dir(struct buffer_head *bh, char =
+*search_buf, int buf_size,
+>  		/* this code is executed quadratically often */
+>  		/* do minimal checking `by hand' */
+>  		if (de->name + de->name_len <=3D dlimit &&
+> +		    (!ext4_hash_in_dirent(dir) ||
+> +		     (char *)de + ext4_dir_rec_len(de->name_len, dir) <=3D=
+ dlimit) &&
+>  		    ext4_match(dir, fname, de)) {
+>  			/* found a match - just to be sure, do
+>  			 * a full check */
 > --=20
-> 2.47.3
->=20
+> 2.43.0
 >=20
 
 
