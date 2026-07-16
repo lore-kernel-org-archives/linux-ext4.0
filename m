@@ -1,143 +1,155 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AC9034B1A7
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 19:59:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B939D3375D5
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 20:04:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784231983; cv=none; b=h7y7hQaZe0Ix0UaeR3bX+gRktvtakRt2ERZXcs5HpWmC6n88kScQzoOyO/ojDYpKLbHdk3EVWtV8ITR0g3ay69Pa9yU+YAv7qQHXMMRTLMH1Am4j8CMnfP6999cu8nLsOnr3h/Fk7HhAShN8Q8xFsiCcfeOxSn3kVhiQPt1WgDE=
+	t=1784232297; cv=none; b=LZpjHBr94PCBOEgzCvnKHWNVPsTs+Cgog5uK/Xz4m1Z4lrbK9kGA6DUet6UgaAA9uM56o1bJEQRzysUwJl/6ZfcKWe9WMbc44F0lKuTBxlu+FVAm/nNUkZ8BLclsFtjqFmaGlcAqHTXWA650+vcIV4TwLzk5HzXjGRnKcOs4Y5k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784231983; c=relaxed/simple;
-	bh=e+m1SwYMH/CdvTCpbrEWXnH91RGXc1Ver7a0Glf3zXU=;
+	s=arc-20240116; t=1784232297; c=relaxed/simple;
+	bh=vth1im0y/El/KO/94DkG/bZsruCeVRbozso0j2xIFvg=;
 	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=Lx40H/0w3BqCxy+6IA6trt8DryRGXMrjtkpC6Hkzf4Bl3LwsAai8DDeEsJKnU3ggnXEmO6pqrcH/ZTo8djlP9Ex6yBh4/T804xxSbc6DQZwVl44owhblETcn0exogRy0byO7SKCtg8P27U+E5evF2pSHU0ojfj7jN2tOu90Zh4A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=AzfgWFiz; arc=none smtp.client-ip=209.85.216.41
+	 Message-Id:References:To; b=s6p7PkOR1BwGThZlKe6t0DezKvdTnfNCnpEoUcfYd5Mf7Vt9QoXQC6cFvyb5UoOK8D0B/SsXbGywV/Yb09EyBbGvcn1yJMSLWVX6XfBOIpW00AfK12vEDca28T7+B4Ko8eIjH6nFpNSBM0A2rNjwK3UW8b5Yql/VkD2+1EH8eZs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=O1ppTyss; arc=none smtp.client-ip=209.85.214.169
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="AzfgWFiz"
-Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-38dd55ad76cso763026a91.1
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 12:59:41 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="O1ppTyss"
+Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2cc7e86e7aeso41181215ad.2
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 13:04:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784231980; x=1784836780; darn=vger.kernel.org;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784232295; x=1784837095; darn=vger.kernel.org;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:content-type:from:to:cc
          :subject:date:message-id:reply-to:content-type;
-        bh=oPU/ClEXdqKFs7z+OnL26xahawNai6l8KBwMmW0aWyc=;
-        b=AzfgWFizXAS52hoIHf7i5QQb5+LZp0UiDBQjm/MYFs2wJymzxwFG0Z6MAed9hf3g/5
-         dU8QAwphVt2VTJZ00RDE3rn4AED/2lliZD/PsPanVMeyEVHswyrsCyOncWZmlDcG5QFa
-         yGNmVlENw1jkgVf7SiajF9NYRDAJlfc+pdKaFCWkoLq//ivt/E/0/Px0Q9qdA90lY7NQ
-         m3Thxb8uMFqFs7VBPQnUrVXWjtZdyyO/hhyuL3QqHDNft99CYeSGiRBAxix+XRU5U/1C
-         tLPBffVbkIogPqKz85ej/yQnGr+T9QNW+A34LNipECLpfOKlA8SRWsg8whdfU10WIAeY
-         GVvg==
+        bh=Md2qxdgf63rHDP6+RS9ok1HHPB/hbV6ffca/STkhYXQ=;
+        b=O1ppTysszucIwVtt6kmDu5DN2d4zQI0frgob5et+9S7dzK3MSBBtcrC32qj0KvWJVl
+         0goVrPVRX8oH/Foly+jIE8/tJFO76Rt08PPRNshqZcEFMfnNLtawSCi9Cc/D44Y0P7CC
+         dSksqaASiHCceFXTCrL37mA3ypdkZIwTwWBSl1WFi5ZsANzELfLByn0flJuqfNCDgXyV
+         lLf/cXQxshpExgJa0iHCxS8loXe47Ot3j9MXkw2T+vpDkEHtC9GukoGqq3dh/SxJIML3
+         kERdwffpm+x2WsBZgmos+RBsWVJX91Q5RbSRTV2ljNE52dXpc3AMpZ5NkFnGM2kEPiV/
+         MF0Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784231980; x=1784836780;
+        d=1e100.net; s=20251104; t=1784232295; x=1784837095;
         h=to:references:message-id:content-transfer-encoding:cc:date
          :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=oPU/ClEXdqKFs7z+OnL26xahawNai6l8KBwMmW0aWyc=;
-        b=b8qwbbycWHL48MtltCt7AV69vr7zsEqevqO28Ol+LPtD9u58B3F3Y9OYXsZWJLnyhI
-         d6dDhE/2dUmEWlaABYjqmPhdAxCJs3MrqEmzeAHuFABs3W9Bs3LSX9yFXgEjwsCdYJXR
-         Keziaw6FBWSGTs4I9P8LbnE6q4w6F8ZVviPsYEqTLnakLeO/GNawVXkmC8tU5NeUd2ux
-         Duqx+v6Uew85QfG5I4OLY6MmKMgRMDg2mO9kMjlHWofZM2SnVZ1/HE9mWAx+dJ6o8TYr
-         jJMGOnue23DpsFFY5ZAc2xqTByJJ2lTolO6FbuAdRjs1gSKUDgob1tufmNn3bP4lJ/Mh
-         Sbcw==
-X-Forwarded-Encrypted: i=1; AHgh+Rq1rXa/2uAdmxitUx2Kw555tPD+8H1luKFSNBBFaX7Sh0jxoJHormTV3ESP4JM2FZhQ4xdEq66ySvK5@vger.kernel.org
-X-Gm-Message-State: AOJu0Ywgc9RVNI2ay6YXfqU84Rv+PTU6H3bAJoASREpK9OEwtvpTV8Yq
-	t23TYD952pIeKfRNoNyZfiorNtP5dVduNBn3COaBzWJbaqqXEM/Ok/hEBNwPs6atV4naRYEP0Mw
-	9xFa3
-X-Gm-Gg: AfdE7cmpGZre8RGlCTU0mMO20UEBg31XQMEun3KNyYjD7lU9CjkMMs3HlxKBLuTw038
-	wMou7/NFRo+N6DkHVQLJGteEK8TQ59xlnAnYMeHvycT5Gz/4b+UUd9ij47K5vhvLv5br17C8UlF
-	gyZ+jASb37AQ2uEGaPEjHtPbFsBu3vHeMLFObFBgDNf76eErVDViTUS/QZKTT0/kIqGZsXQJZPz
-	REau6e8dNvVUM8E/B0y+HP/2v2gxMdLO36I7HctA/Ac71Wcr+xfMVg2Dj8aF4t2tb6qnI3a7VLK
-	i0F+2HDboljqBUwnAXnsB1c03Q16C9bb5PlPz6SQxUlzP41S9+JvBMx7W7dySp5extERa0eTXyW
-	v5TfQBTGc+CPw5neHXm2/+GbiiY/9itUboPUHrA3f2Hq8D56krBA8r5ZhnGO//jUBwTDYdaie8f
-	rTmeus0wyo/rTlygGr00OkcgVOEa3MogQ=
-X-Received: by 2002:a17:90b:39af:b0:37f:9e21:91d6 with SMTP id 98e67ed59e1d1-38e3d1d1815mr3010571a91.13.1784231980511;
-        Thu, 16 Jul 2026 12:59:40 -0700 (PDT)
+        bh=Md2qxdgf63rHDP6+RS9ok1HHPB/hbV6ffca/STkhYXQ=;
+        b=d7dGQM0+raqXbOQto4JokrG8+T2LTn4iomL2k8TAqkOUyi6ksw+jfydKsTKa9+igle
+         Us6sTDjprmZi6fls1xY6lvKhLsF+Ael0rr+WaShAlJqsh2Utao8ypUxxVIKdxsE4X18D
+         +c7hRPEfJXQ68NW3fLDQWNKDpFtO/s1BzcsQtgpixPgiWS482+efnkR+zFiEkiX0HumN
+         XHkkhYBPM8xJWlDZzu0WpfqqFgrV4UNXgxsynTAoRGjpvgLsjhqptnbhGZKyUwTPzHiq
+         s19gXR9xLqOb03zeEupthKAJwuL3PKSzvNXN8nUk3N32t6iaCGzUC/2hDlUzgx0AkOEX
+         OYrQ==
+X-Forwarded-Encrypted: i=1; AHgh+RoysUnaRemdIM1Iveq9QxB5BeGOK4MBRIqXZ5FXFQ3rSuBgwK+MhVFUc62JGKvDwIXWHZ3I7hLsaKC7@vger.kernel.org
+X-Gm-Message-State: AOJu0YwdAz1WRIv7lV/F+r76L+mzcTJv0khPGyr1Wk4N6MFYs/NTpWAN
+	g+eLjRySUS7rMWdXjritbnc/tXrZY2VxvdmQLPzj78K2FgbhlDDFDsD9/ycKNfRx6CA=
+X-Gm-Gg: AfdE7claumFJtTwMyx6hiW/qOSuNI6Qwq48cOd+Wr9pIIOiVPd+l82iwirmCuhthr2R
+	Ya32+k80S9RMzeC7mQQq49MpSHbtAXBnHpVUjaiPR+0KEq5EJlHjMbZtJxV2CfEnZZaMFKhWlnG
+	doOGfCl54GgUBg2x8UeU+7Fhgecfn9pFDSbKXZy3qHm+r2dOBWhUZOK0qYHRY38m5jYFYqrPIaq
+	O8arnCqkFYSFbFj6AXQs4bsoc7DTF8m0MGqEkVxY5DDN+2ebcKmBLlmpcZrQwOFnfwWQMv1ygJG
+	Rn15FhZ/1oCjGLzFb2sv09ZLy+iaiKX4LYglz3bX/g8T+E0+eM9ISLdw5rFTNyoHOHX5SKSNgL9
+	sjjOcRbXRHI/IF+JEpBpanzzUKd8QvMr80kMDaI5gfAwCbySOA/oPWLkk9wrL9otSRubYMYu6j2
+	KJopf1ZRQwAWcDCIOqqRLzEZEZvEt/nIU=
+X-Received: by 2002:a17:903:3c28:b0:2ca:4cfd:a6df with SMTP id d9443c01a7336-2cf2ec96549mr8299005ad.43.1784232295051;
+        Thu, 16 Jul 2026 13:04:55 -0700 (PDT)
 Received: from smtpclient.apple ([2604:3d09:3a84:1700:3854:7eec:417a:89dd])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38e3cf246c0sm1579706a91.3.2026.07.16.12.59.39
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2cf100e395csm25319995ad.17.2026.07.16.13.04.53
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Jul 2026 12:59:40 -0700 (PDT)
+        Thu, 16 Jul 2026 13:04:54 -0700 (PDT)
 Content-Type: text/plain;
-	charset=utf-8
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH] ext4: skip i_extra_isize expansion during inode eviction
+Subject: Re: [PATCH 1/2] jbd2: check need_resched() when skipping busy
+ checkpoint buffers
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260715175253.2171303-1-koike@igalia.com>
-Date: Thu, 16 Jul 2026 13:59:28 -0600
+In-Reply-To: <20260713102229.1598812-2-max.kellermann@ionos.com>
+Date: Thu, 16 Jul 2026 14:04:42 -0600
 Cc: tytso@mit.edu,
+ jack@suse.com,
  linux-ext4@vger.kernel.org,
- linux-fsdevel@vger.kernel.org,
  linux-kernel@vger.kernel.org,
- kernel-dev@igalia.com
+ stable@vger.kernel.org
 Content-Transfer-Encoding: quoted-printable
-Message-Id: <BDA9BA20-2727-4FCF-99E3-AAB52431CDBE@dilger.ca>
-References: <20260715175253.2171303-1-koike@igalia.com>
-To: Helen Koike <koike@igalia.com>
+Message-Id: <E3B8944B-6045-49CD-A72B-0B8F6C42C713@dilger.ca>
+References: <20260713102229.1598812-1-max.kellermann@ionos.com>
+ <20260713102229.1598812-2-max.kellermann@ionos.com>
+To: Max Kellermann <max.kellermann@ionos.com>
 X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-On Jul 15, 2026, at 11:52, Helen Koike <koike@igalia.com> wrote:
+On Jul 13, 2026, at 04:22, Max Kellermann <max.kellermann@ionos.com> =
+wrote:
 >=20
-> __ext4_mark_inode_dirty may be called from the eviction/free path (via
-> ext4_truncate =E2=86=92 ext4_ext_truncate =E2=86=92 mark_inode_dirty), =
-which may call
-> ext4_try_to_expand_extra_isize() that could create a new EA inode,
-> wasting work that will be immediately discarded.
+> journal_shrink_one_cp_list() skips busy checkpoint buffers when called
+> with JBD2_SHRINK_BUSY_SKIP.  The continue statement on this path also
+> skips the need_resched() check at the end of the loop body.
 >=20
-> Skip the expansion when the inode is transitioning to freed.
+> Consequently, when a checkpoint list contains mostly busy buffers, the
+> shrinker can walk the entire list while holding journal->j_list_lock,
+> even when a reschedule has been requested.  Large checkpoint lists =
+under
+> memory pressure can therefore cause long lock hold times and leave =
+other
+> CPUs spinning on j_list_lock, resulting in soft lockups or RCU stalls.
 >=20
-> Signed-off-by: Helen Koike <koike@igalia.com>
+> Route the busy-buffer path through the need_resched() check so that =
+the
+> shrinker can release j_list_lock and reschedule promptly, restoring
+> parity with the clean-buffer path, which already checks =
+need_resched().
+> This does not change which checkpoint buffers are eligible for =
+removal.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca =
-<mailto:adilger@dilger.ca>>
+One question I had about this patch is whether the list cleanup could =
+get
+into a livelock if it becomes too large?  If the iterator is processing
+a large number of jh that cannot be freed, then `need_resched()` is hit,
+if it restarts from the beginning of the list each time without =
+processing
+at least one jh it will not make forward progress.
 
+Cheers, Andreas
+
+> Fixes: b98dba273a0e ("jbd2: remove journal_clean_one_cp_list()")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Max Kellermann <max.kellermann@ionos.com>
 > ---
->=20
-> Hello,
->=20
-> I saw this while investigating the syzbot issue (see the stack trace =
-of
-> unlink "-> #0"):
->   https://syzkaller.appspot.com/bug?extid=3Dd91a6e2efb07bd3354e9
->=20
-> While the reported issue is fixed by:
->  7f473f971382 ("ext4: lockdep: handle i_data_sem subclassing for =
-special inodes")
-> I believe the call to ext4_try_to_expand_extra_isize() in the eviction
-> path doesn't make sense in the first place.
->=20
-> I understand this is not a major optimization, so not a high priority,
-> but sending it anyway in case anyone finds it useful.
-> ---
-> fs/ext4/inode.c | 3 ++-
+> fs/jbd2/checkpoint.c | 3 ++-
 > 1 file changed, 2 insertions(+), 1 deletion(-)
 >=20
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index ce99807c5f5b..cea3405cd841 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6603,7 +6603,8 @@ int __ext4_mark_inode_dirty(handle_t *handle, =
-struct inode *inode,
-> if (err)
-> goto out;
->=20
-> -	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize)
-> +	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize &&
-> +	     !(inode_state_read_once(inode) & (I_FREEING | =
-I_WILL_FREE)))
->  		ext4_try_to_expand_extra_isize(inode, =
-sbi->s_want_extra_isize,
->  					       iloc, handle);
->=20
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 1508e2f54462..5266017565ac 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -389,7 +389,7 @@ static unsigned long =
+journal_shrink_one_cp_list(struct journal_head *jh,
+>  			ret =3D jbd2_journal_try_remove_checkpoint(jh);
+>  			if (ret < 0) {
+>  				if (type =3D=3D JBD2_SHRINK_BUSY_SKIP)
+> -					continue;
+> +					goto next;
+>  				break;
+>  			}
+>  		}
+> @@ -400,6 +400,7 @@ static unsigned long =
+journal_shrink_one_cp_list(struct journal_head *jh,
+>  			break;
+>  		}
+> =20
+> +next:
+>  		if (need_resched())
+>  			break;
+>  	} while (jh !=3D last_jh);
 > --=20
-> 2.54.0
+> 2.47.3
+>=20
 >=20
 
 
