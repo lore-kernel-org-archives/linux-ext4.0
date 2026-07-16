@@ -1,147 +1,157 @@
-Received: from mail-oo1-f80.google.com (mail-oo1-f80.google.com [209.85.161.80])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F2ED34F27F
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 07:50:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.80
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71621424D40
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 14:48:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784188230; cv=none; b=OV9XwsaDTLOsBTsAixf9BcUYnSOHy6Z/x3Yec2QA3f8ydvvgaGgeLILc/3qUOsqxtzB4d/rK3UNLA6ouoNL0Ev8yutBWtVMJOQyf8PuLxme0JmasAg5Uz+6DJW9AyqI2OJrWqMN+2FA0NKkL1YYxh8uvyP/F4Z1ShOlH0lW1r4Q=
+	t=1784213320; cv=none; b=qGLeUavvYUHobYWWn1PCxHEbTptVrpVnvpcjNMALoYsxZ0W9I6c7ylLP/LvI7v9BjFPPJGdwiTknxdAyi2ccQTQeJMRssYWt2O0j0N47pEXt9m6oWSk0vLunByadHysS7X2cTi5DFqVv/JgbOFF/SjOg7eYPOYE2EHQXQEHV5T4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784188230; c=relaxed/simple;
-	bh=vDuRJp5BjNTLdA+wz/Ma7U64C66pGtDGfvXZm5iSjT4=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=EoTnSJwsiHk3q8/H+AFsTUaxS99VVGoaoy4NFLMXpGDfA5RR4hSfPR2lnCJv9dYB/4C85VM/1z/dbVoy/9MgIZJEjaQPiZ0xRgGCtmtnekX+RfupXJHV0OoBA0rkM1JiPjZ0C8hx4Iq8fFAdLXmbv7PSRpbGJUIAiksuwKzKHr8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.80
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f80.google.com with SMTP id 006d021491bc7-6a1240143d0so7787243eaf.0
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 00:50:29 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784188228; x=1784793028;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=HFluiFjByJbHTrsxFOo+leQd0OWf5APLNwABxoG1YJ0=;
-        b=CLqPV6FSBilwGAd6HMqRDVgTlumvBl8xvVHtER3oUztFGumCO5U55hx28Przz5GUIf
-         LKyO2iuPnNLbtVjyV7xKeEIqvYgok9B7rwwi60W12V5x3H1crCfsnbTvX542pHzlh+y0
-         Wk8hZc3cQRgWpnArxmqgD48p40HVZukYvkybnv9Z9p1nzZiMkCSCzHt2KK4PvuU9zJws
-         8L0T4LspxouuUlEBFJWBu8ZkOsJPUqZoMvM4Zs864RdsZmq1v8gJcm5R3QemW//uF8U5
-         zimcM1MVtVG1IEE3XwZS01JToQbfBejIdOpZDJ5m7Y2/0zwUjN0c5oKoQRwRqtnqFydo
-         1rZQ==
-X-Forwarded-Encrypted: i=1; AHgh+RrkiRgEIYzhaflgnQr4071ahD1RNLlTlj9Kwvn9HCqDnJE9/AuuxnqpSNoQjqYSz9pCKRLQUdK6f6eQ@vger.kernel.org
-X-Gm-Message-State: AOJu0YzwZKs3YLWjOw0Bbns9LYw8lD1LPIBOvF2M7ubiIh7eK+x+te7D
-	0nLtACkafA40QGvPU0MenhvPTrEh8MMEhJCcuRioXcFmK7z0zQl35xzA8/Dg0NRSK++ilT5vPHi
-	7WZbyBUY6fUcZA9lvUA7WolTjNdTDMgphT7JjcM7ux7TI0hLkivzh7k58Bhg=
+	s=arc-20240116; t=1784213320; c=relaxed/simple;
+	bh=RZr5amneMOq+2ySPO1hG78msBo2YU3mPgiQhM/MGE4Y=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=uWZgDg6WhAnOOWjX0KItv1Yg3Drj/WHTc9c6Tel43G8kl0WsKmJQv2vA3twq7mzyyik0a5EsSXtqSfL7CDkaqCuw1H6ajAMFTo9L6z4NwT0giRE5AKimBWjNagfI1ohuqhDJ6ANnSyNu3wPyryx+Kny6pfhI8CiiOV7shSXwCL4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=KhiR3xnl; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="KhiR3xnl"
+Received: from trampoline.thunk.org (pool-70-22-250-221.bstnma.fios.verizon.net [70.22.250.221] (may be forged))
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66GEmYIN015788
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 16 Jul 2026 10:48:35 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1784213315; bh=XWGaOY8568DXWHkF1eD/XDkBahXQ0eOXM4TLZd49RLM=;
+	h=From:Subject:Date:Message-ID:MIME-Version;
+	b=KhiR3xnldQiKI3BaeV8wIerICWCPpdWBQSySlsFUDhnDNhf8Ju4bZ2/0Ns1PIqQ4f
+	 TD5W5qfI1JWAIFhaizzT8568Ih++v+Xc84HUEIiMi1gfQ3+MTfr6rPFyw1u8PzPCVR
+	 tv2i8M2O08CxOJ6MAxAnkgzc54Ujh88zZxCPTdeBHtHvk8MOZ6M2liTRDcDJzxklJm
+	 C6L7A4Ixd08UMPdtVPfO2Ytm6nK+TR3V9448vVd1HFTqDCXOUZ/gquP14vs4Sbi5aG
+	 7oVGIKaAnmhSS+PknC3aFCaDuXIxEopsUUEKF9wz5BuhZdbLRRBGZ45AU2xvMT+p4h
+	 79B1YSUmy85kA==
+Received: by trampoline.thunk.org (Postfix, from userid 15806)
+	id 693512E3F04; Thu, 16 Jul 2026 10:48:34 -0400 (EDT)
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: enable scoped NOFS when starting a handle in nojournal mode
+Date: Thu, 16 Jul 2026 10:48:31 -0400
+Message-ID: <20260716144831.41290-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:2d0c:b0:6a2:739a:cea6 with SMTP id
- 006d021491bc7-6a3da04fc6dmr4038713eaf.54.1784188228350; Thu, 16 Jul 2026
- 00:50:28 -0700 (PDT)
-Date: Thu, 16 Jul 2026 00:50:28 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a588d44.c96faac9.59e0.0012.GAE@google.com>
-Subject: [syzbot] [ext4?] kernel BUG in ext4_write_inline_data_end (3)
-From: syzbot <syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller-bugs@googlegroups.com, 
-	tytso@mit.edu, yi.zhang@huawei.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Hello,
+The jbd2 layer enables NOFS mode using memalloc_nofs_{save,restore}()
+while a handle is active.  We need to do the same in nojournal mode so
+that it is safe to remove GFP_NOFS flags while a jbd2 handle is
+active.
 
-syzbot found the following issue on:
+This will require that we actually allocate a real handle, but with an
+h_invalid flag set, so there is a place to put the saved memalloc
+context.
 
-HEAD commit:    a13c140cc289 Linux 7.2-rc3
-git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
-console output: https://syzkaller.appspot.com/x/log.txt?x=11d48789580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=ecdef466b08b9772
-dashboard link: https://syzkaller.appspot.com/bug?extid=293a57918b36cfae3d48
-compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
-userspace arch: arm64
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=16e444b9580000
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/b40dd0e99ac8/disk-a13c140c.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/7ef230d7959b/vmlinux-a13c140c.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/a593476d5c20/Image-a13c140c.gz.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/172c5a39071b/mount_0.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=12e444b9580000)
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inline.c:815!
-Internal error: Oops - BUG: 00000000f2000800 [#1]  SMP
-Modules linked in:
-CPU: 1 UID: 0 PID: 20668 Comm: syz.0.3283 Not tainted syzkaller #0 PREEMPT 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 06/02/2026
-pstate: 83400005 (Nzcv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)
-pc : ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/ext4.h:3790
-lr : ext4_has_inline_data fs/ext4/ext4.h:3790 [inline]
-lr : ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/inline.c:815
-sp : ffff800090e575c0
-x29: ffff800090e57670 x28: dfff800000000000 x27: ffff7000121caebc
-x26: 0000000000000000 x25: ffff0000e01554b0 x24: fffffdffc3c2a340
-x23: ffff800090e575e0 x22: 0000000000000023 x21: 0000000600080000
-x20: ffff0000e01556a0 x19: 0000000000000023 x18: 0000000000000000
-x17: 0000000000000000 x16: 0000000000000000 x15: 00000000200000c0
-x14: 0000000000000000 x13: 0000000000000001 x12: 0000000000000000
-x11: 0000000000000000 x10: ffff60001c02aa97 x9 : 0000000000000000
-x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000000000
-x5 : 0000000000000000 x4 : 0000000000000000 x3 : ffff8000810066e8
-x2 : 0000000000000000 x1 : ffff0000c4c28000 x0 : 0000000000000000
-Call trace:
- ext4_has_inline_data fs/ext4/ext4.h:3790 [inline] (P)
- ext4_write_inline_data_end+0x8fc/0x9d8 fs/ext4/inline.c:815 (P)
- ext4_write_end+0x320/0x9e0 fs/ext4/inode.c:1455
- ext4_da_write_end+0x90/0xba0 fs/ext4/inode.c:3297
- generic_perform_write+0x504/0x7a4 mm/filemap.c:4379
- ext4_buffered_write_iter+0xd0/0x2ec fs/ext4/file.c:316
- ext4_file_write_iter+0x1dc/0x134c fs/ext4/file.c:-1
- new_sync_write fs/read_write.c:595 [inline]
- vfs_write+0x51c/0xa0c fs/read_write.c:687
- ksys_write+0x12c/0x228 fs/read_write.c:739
- __do_sys_write fs/read_write.c:750 [inline]
- __se_sys_write fs/read_write.c:747 [inline]
- __arm64_sys_write+0x7c/0x90 fs/read_write.c:747
- __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
- invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
- el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
- do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
- el0_svc+0x64/0x260 arch/arm64/kernel/entry-common.c:736
- el0t_64_sync_handler+0x48/0x148 arch/arm64/kernel/entry-common.c:755
- el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:594
-Code: c8097f28 35ffffa9 17fffe38 97d939e6 (d4210000) 
----[ end trace 0000000000000000 ]---
-
-
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/ext4_jbd2.c  | 36 ++++++++++++++++++++++--------------
+ fs/ext4/ext4_jbd2.h  |  6 +-----
+ include/linux/jbd2.h |  1 +
+ 3 files changed, 24 insertions(+), 19 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 9a8c225f2753..b4dacd1a89e7 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -33,14 +33,22 @@ int ext4_inode_journal_mode(struct inode *inode)
+ static handle_t *ext4_get_nojournal(void)
+ {
+ 	handle_t *handle = current->journal_info;
+-	unsigned long ref_cnt = (unsigned long)handle;
+ 
+-	BUG_ON(ref_cnt >= EXT4_NOJOURNAL_MAX_REF_COUNT);
+-
+-	ref_cnt++;
+-	handle = (handle_t *)ref_cnt;
+-
+-	current->journal_info = handle;
++	BUG_ON(handle && !handle->h_invalid);
++
++	if (!handle) {
++		handle = jbd2_alloc_handle(GFP_NOFS);
++		if (!handle)
++			return ERR_PTR(-ENOMEM);
++		handle->h_invalid = 1;
++		/*
++		 * This is done by start_this_handle() if journalling
++		 * is enabled.
++		 */
++		handle->saved_alloc_context = memalloc_nofs_save();
++		current->journal_info = handle;
++	}
++	handle->h_ref++;
+ 	return handle;
+ }
+ 
+@@ -48,14 +56,14 @@ static handle_t *ext4_get_nojournal(void)
+ /* Decrement the non-pointer handle value */
+ static void ext4_put_nojournal(handle_t *handle)
+ {
+-	unsigned long ref_cnt = (unsigned long)handle;
++	BUG_ON(handle->h_ref == 0);
+ 
+-	BUG_ON(ref_cnt == 0);
+-
+-	ref_cnt--;
+-	handle = (handle_t *)ref_cnt;
+-
+-	current->journal_info = handle;
++	handle->h_ref--;
++	if (handle->h_ref == 0) {
++		memalloc_nofs_restore(handle->saved_alloc_context);
++		jbd2_free_handle(handle);
++		current->journal_info = NULL;
++	}
+ }
+ 
+ /*
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 63d17c5201b5..2fbf48b3dfe2 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -182,15 +182,11 @@ handle_t *__ext4_journal_start_sb(struct inode *inode, struct super_block *sb,
+ 				  int rsv_blocks, int revoke_creds);
+ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
+ 
+-#define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
+-
+ /* Note:  Do not use this for NULL handles.  This is only to determine if
+  * a properly allocated handle is using a journal or not. */
+ static inline int ext4_handle_valid(handle_t *handle)
+ {
+-	if ((unsigned long)handle < EXT4_NOJOURNAL_MAX_REF_COUNT)
+-		return 0;
+-	return 1;
++	return (handle && !handle->h_invalid);
+ }
+ 
+ static inline void ext4_handle_sync(handle_t *handle)
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b68561187e90..7348fdadc810 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -513,6 +513,7 @@ struct jbd2_journal_handle
+ 	unsigned int	h_sync:		1;
+ 	unsigned int	h_reserved:	1;
+ 	unsigned int	h_aborted:	1;
++	unsigned int	h_invalid:	1;
+ 	unsigned int	h_type:		8;
+ 	unsigned int	h_line_no:	16;
+ 
+-- 
+2.53.0
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
