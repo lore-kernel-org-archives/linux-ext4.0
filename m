@@ -1,373 +1,152 @@
-Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from BN8PR05CU002.outbound.protection.outlook.com (mail-eastus2azon11021089.outbound.protection.outlook.com [52.101.57.89])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5563339B978
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 20:41:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784234523; cv=none; b=kdNz8mzx1GiT0COuoSQKxZ+BTjluT+cOYt4I8j+D5PxWf7doRPDCIQjtZuUZfZ21QnLaGpr6Mz+zKsOiqOmFG/elsH6Ya8V9HmRazYBnDOO/glXblacEsiCbaMy8EHLljXdloOmHQNztAdWqkvUCjKTL5kf9+eJyzD6D8amL8zA=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784234523; c=relaxed/simple;
-	bh=C+cizh8R2PtRngSywaJYbleS7FfD9JYiIPAiMtyR2ZU=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=bujGCPjjRl0nOhWehhRm0wGaq9fVZ/m0489rhlB/XvkCId2jFAxicnsGGLHo0F9CUKbu88CMMucjdIz73OwIOxoS+jIKG7q10/E8E3WG2dha7JAlEvgbjdrsnO8xD30cNrI+NCWf/2fR1RJoi5+4i6SWDdlbRTlgCFxTckegScA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=c1gowSzI; arc=none smtp.client-ip=209.85.216.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BFEB7081F;
+	Fri, 17 Jul 2026 02:04:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.57.89
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784253871; cv=fail; b=lMbT6sBoLlxa/dw8GQvwFEzXHKqgWJhJzsN+KUKYebS/MIZnM1PseAkM7ywwzKdHUCu+25QcgAAfz+mHFDHRD2hXD1OLhz9hssRSkxswRTsV/MT1afZr6mmhqXnQbrRdyi6Vd1fCIkNf9fqEmcbFGt/odQ9bVaCwUUi9I+dZW64=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784253871; c=relaxed/simple;
+	bh=WIB4O3hyZSe6YrCmey8aATDCbsV5Ohcn1wf0RvU1WrU=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=qgXr8H1LxYGQeCZ5WJbPHbHbVHEgtq18qcUnJOj3+TeqWqWa9lpTK166sDekPu9QGft+ZBzwRFHF9V9gt0mAeyjefc1UlqSnwMYLus+ulZs10Saa9FFzbC3AToMkbt3qOzHC5H7ca2VfcEe6H5+FtCYX7pJ9Y3a2ucmMy1oSDas=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com; spf=pass smtp.mailfrom=thelustrecollective.com; dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b=IkqEXbVV; arc=fail smtp.client-ip=52.101.57.89
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=thelustrecollective.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=thelustrecollective.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="c1gowSzI"
-Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-381ed661712so7390758a91.2
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2026 13:41:58 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=thelustrecollective.com header.i=@thelustrecollective.com header.b="IkqEXbVV"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=mblaTtXHFeWMnEFxV1qW4JuTAOVnNBIi4auwRkGinnmNo/yuDWpKZvW18/EygrtvZLVdMQ7sgIrtMxLHimjKI2jpfdnO4tPpwzXN5mGE4I2C0pCynruSX9sR90dnp7+1dCqRNjCAA/ESlZ9KESOAYqGPJPtgB77AF+NwFW2znViA8s6gintBYqinuTtjEAFMVaU/b5fTTDuzKUHv4YkewUVsUes1EpK7PXFNKR7mek1Z6CDJKsKOhobtd+1rJ4WRqY6bllGpYTtBDR5OYv/wG8COWe9Xs/7I5q+GoqnoR9wx4WVsqGbCGVypLVfxOyN8nIKUXnXiUjdrrks2Fe0sPA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=VzBGB9WT5BVVH/3rRi3p6u/i4kbeRzgaAR3o2f568ys=;
+ b=b/6r06WY3T3SuLWeTajKwAotuk77gzTsg8tVqCLKaypDkFWthMYZ6mlFBIfrfjMPtcgXLalxFYaq7FAj1o5LXbWv/V5qfFkIjQIZowgPV1cVESB+dbBxqfx1VhHgRhQGTCQJY8k0awzSnPOSXRHY8UE4MDz0/azn3Gvt11fnbI8eCPB8YxhwK5670QgDHAg5wBZ1TwwzBhaW1olE0CpWSOWkPLeQZ1DDcblDIfOHAhhg7CavU0B5oegN+ORn75kByKMIh/zk5JtfFgEGjihQ2tySGG8ZK4U2Jsn/2UDTp0DzWzh+vcaZjp8fH5psND8N3oXI/2mpxDAr0k2CMBVBkg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=thelustrecollective.com; dmarc=pass action=none
+ header.from=thelustrecollective.com; dkim=pass
+ header.d=thelustrecollective.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784234518; x=1784839318; darn=vger.kernel.org;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=XthHO6D3HBL+PvzieSSh/CkFb38oW/LuqZ8SezNU3Hg=;
-        b=c1gowSzITzT63YLUookDGOfdgVn/SHaCBb96WqC5pb6GXGaDGpiINrQgo52AbkgLJ2
-         oSJeZ0uB+GqjvKrDB0Iom5Lmy2ccsGrK9Spu/5J/XF0WXN4oz4tOLTjj0Wg6JpG5Wwfx
-         yLHlCMTh9TrrD3TsFu4usdOGTh8Mboi3go4x7E4kBUIRDak6chHInUmaBA8fHMkrbTof
-         ZkJetrEBdcBFrjOx37npjoHVk6p2AOTCVUXcWnNxmHqyjd/u+lX/LEuF1TiUXN/MDIID
-         JZ8wM7gUeD5FfZnGlYdijQ97CVoKk0P5/PAlhYlnx2yxNQIwg+qenRhxJCGwZvbd/5N9
-         A2PA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784234518; x=1784839318;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=XthHO6D3HBL+PvzieSSh/CkFb38oW/LuqZ8SezNU3Hg=;
-        b=nkctO38EOzxhGltVY70e81gMjkmVVxwt4RhslOrzR1vJViNPAVucM9O4ptv0BHxI+0
-         gKLEO1n0RzEfQURqytormPzltRFWC7hN1gj8+9My//79wBpFkc2OQxFpapkRNYNG4Iia
-         JfsCuysJYrycVHnBTRlKtZlkACv20HgsyQHOtgYkSmCnhpFU/cPiSgJAmnREfRGErz4g
-         /HDqjFoKTrKE8m2pGuYxJ4NMHckFbZQkyzyvuqCf9rOaCveYdYWI2lBVlLCi2alZHrFS
-         r0xcW9gwT8T8ZFYMWMYtFA5aNhuL0CTB5BL47I9xf4sXzgwcMGIBJ1UgxE0q2nhDJoGI
-         uEyg==
-X-Gm-Message-State: AOJu0YyuExf2XQ4vEAbce6kdRhK9A0cZHwS+mtoEu14UnRol4BSiK1z+
-	w/7nWF8QcHr8ZiRX3njgSaWT+z2IkBkgBW7dn/M4YM6lCl8tCu+svDROq329cB1Av/U=
-X-Gm-Gg: AfdE7cm4WYOHjogoylVh6Ni5RdpYYOqsfXohGtL0aipLFGwTLWpwVu4wNaK4JaNLCxX
-	itbPOyGfpOLJAr8vl5FlCuFIT9FyWcVsHNcRRPAgfyFi5HjuvG7u/gjgCne7X4hV4yzMRZhet6Y
-	6CUkWmqLcKop+JkNOczxfQa7kuciVq+1Oh9UAYUddB0lJZrelDNXer+99o7tmmCS/1tae4a8cah
-	ld6qG8y+DqtuX0Aj9YfoNIZmTo+SYPEeWqE95rZzGCiBJfvX/zHzryA/hg/JYPEn6Rly7tCS1qZ
-	xsiG74Yru4XlAgLI9n/WZv9C/WzmWrft53+qhUgtWw7u+FeR3ZpxdjaFTsmpErwWVKggQeBrsqv
-	otQ2rTb6MqDtuCXtbY4PPOooTUd4ShQSDz6luK0++CIdg9DB1i3hWyuaIViQ0USB7XeZBr5DOdd
-	WtqzK3C9K6JYurCsh2DiEq1lbp4gLQQ3w3zi7hv/8utA==
-X-Received: by 2002:a17:90b:3b8b:b0:38d:dbc7:5179 with SMTP id 98e67ed59e1d1-38e1af35e87mr11363705a91.30.1784234517623;
-        Thu, 16 Jul 2026 13:41:57 -0700 (PDT)
-Received: from smtpclient.apple ([2604:3d09:3a84:1700:3854:7eec:417a:89dd])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38e46b18ce9sm170328a91.0.2026.07.16.13.41.56
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Jul 2026 13:41:56 -0700 (PDT)
-Content-Type: text/plain;
-	charset=utf-8
+ d=thelustrecollective.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=VzBGB9WT5BVVH/3rRi3p6u/i4kbeRzgaAR3o2f568ys=;
+ b=IkqEXbVV1TO61ZxBK7is+6bGPAeNchBwX6YlcpJYZNA7KOeFbNc+wg4mNVI7yqfRuFFJb+RKDzyn4vrfIuTBJpwv7UWN/a3IIABMy4VNsyqngFqOm63XNUypqVah+Cx3D24VKsgAwqf+uoByeMo2iEO23fhhFYFbc8eoHzMOlUPIgy06xIJ2TtuJl2V1Hbx0yWq0WlKLy4RbdUCEY1SQtU/9EMZzZxz0b2ohvicRAtjJFE053Hnkj2U9kODR/F21q0TiIwtSslvJ1qr9GI3q1Fu4n1LKp8ZYy4q2pBu1ZFCga/NdnHmqnEMsms4B4P/bEvsR6PVlO82pblZunMXwlQ==
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=thelustrecollective.com;
+Received: from DM6PR04MB4682.namprd04.prod.outlook.com (2603:10b6:5:24::20) by
+ SJ0PR04MB7535.namprd04.prod.outlook.com (2603:10b6:a03:32c::24) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.223.12; Fri, 17 Jul
+ 2026 02:04:26 +0000
+Received: from DM6PR04MB4682.namprd04.prod.outlook.com
+ ([fe80::fa5e:6e7f:2655:bfee]) by DM6PR04MB4682.namprd04.prod.outlook.com
+ ([fe80::fa5e:6e7f:2655:bfee%3]) with mapi id 15.21.0223.008; Fri, 17 Jul 2026
+ 02:04:26 +0000
+From: Timothy Day <timday@thelustrecollective.com>
+To: Timothy Day <timday@thelustrecollective.com>
+Cc: linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.com>,
+	Marco Elver <elver@google.com>,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v1 2/9] ext2: mark s_next_generation as guarded by s_next_gen_lock
+Date: Thu, 16 Jul 2026 22:03:02 -0400
+Message-Id: <20260717020302.180974-1-timday@thelustrecollective.com>
+X-Mailer: git-send-email 2.39.5
+In-Reply-To: <20260712165610.366474-3-timday@thelustrecollective.com>
+References: <20260712165610.366474-1-timday@thelustrecollective.com> <20260712165610.366474-3-timday@thelustrecollective.com>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: MN0P221CA0023.NAMP221.PROD.OUTLOOK.COM
+ (2603:10b6:208:52a::9) To DM6PR04MB4682.namprd04.prod.outlook.com
+ (2603:10b6:5:24::20)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH v5 09/11] ext4: add dirdata LUFID support for directory
- entry rename
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260714125111.14699-10-ablagodarenko@thelustrecollective.com>
-Date: Thu, 16 Jul 2026 14:41:45 -0600
-Cc: linux-ext4@vger.kernel.org,
- Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <A189E97C-CB25-4C44-8143-C110C8B40707@dilger.ca>
-References: <20260714125111.14699-1-ablagodarenko@thelustrecollective.com>
- <20260714125111.14699-10-ablagodarenko@thelustrecollective.com>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-X-Mailer: Apple Mail (2.3864.100.1.1.5)
+MIME-Version: 1.0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: DM6PR04MB4682:EE_|SJ0PR04MB7535:EE_
+X-MS-Office365-Filtering-Correlation-Id: c7ef6d80-a1f7-4ab0-2629-08dee3a7ba5b
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|1800799024|376014|366016|23010399003|56012099006|4143699003|10067099003|18002099003|22082099003;
+X-Microsoft-Antispam-Message-Info:
+	eWueuQmAwohcJC01dEANVkH7i576H8ApFaOuRIia6BFjRlCg238yo7cGmdmGXn8zZCGI0axgZssSlbA4bgFMktfoGSWwwE19SPlcVxMypCuH2dDsWdtbVy0gMPsnmLjfCGWZxnJA59eKyseFSJQarzfcnKcW4jvlffe29Y/YdPj6OJXwmE/oC78aep3NpRPLsVhFGaSY295DNVe2pN5EhUbh5pPgQ2POnW3Igav79UzT6GC3Ll58SS7pqcUzSFGk02q2rctDq1fnyYUhMVsbdbu5eQmsDZ780tA6J6Bie58tOJI2ujk0Bkpgx0PUAJJZVKCqbzKYI5FwQWs3s/MZJiIqYQJXFA5FQmp2XylnJO86CY4o3cxcfRT1Bae/rBXCc6pcFwJoaNXPkztl7SgK3A62PcmCg6QaB9RbTDQt9jOg267fe1hwsxxwgVqW7SD0AVELkCJouPN7x5C/jgaHYcD3MpyLXl1T68Kw5tcMI/gE0v5pnbYz9sY0z3Byuonby0JlCF9of1q/n5o0i2paDtQ7BNU2LE+kTrprrYLNqmhsp1RhhR9t8o/2FnFSSiMU0penM7aFM82KzsfyTjy8LTZiDbmH5RUljjhqxwZhlRhwM9OUzHuJhZVc/sH7P8gOF2Zdug63pxhzDJbe+PQbd6+osefiHgD+PKQIQ6DY/M0=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR04MB4682.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(376014)(366016)(23010399003)(56012099006)(4143699003)(10067099003)(18002099003)(22082099003);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?38vFiK6i4sMdkfqkgaM0jMPY9vxpfcLDaBPlgJAVOA7D8MtHHANQW0g4A85J?=
+ =?us-ascii?Q?utpOnfx5MVRiyQjQndWGalp6gMr8jrh+iH3yvB5dP7VzIYO244qLgdj4CxoA?=
+ =?us-ascii?Q?qFxH4W8LHnZlpi1SvHwQDc/poJO539k7Wm3ZXVXKzEGYLDRfnqveeQ+OQCB2?=
+ =?us-ascii?Q?p3G1/SSoiPLVODH88K7o5doRfTgfdMcf/AKZKmyu6j1I14eknFhiLX1klZPY?=
+ =?us-ascii?Q?O15+SKmi8vaaXNyqAciKCMi+k1ueKnp4cxUVaPoxnSvn0RQyMoqt24c5MgOf?=
+ =?us-ascii?Q?p0eBeEV58Qfd4tkYOXnUYSX05IXKXX5mV8Y+kgTWDqlVzSuH7wlD0TYv8qJr?=
+ =?us-ascii?Q?+rjd2cLJO4TrNLiwXyBttJMr3aUlimRroGzbj0dtn51fcb0ZiFhKcxeFBlYS?=
+ =?us-ascii?Q?D1fo395RBwFLdqPiBNomeQ7GT2lGRf60k3x7KwQSppjDbF9Sy69vaGA4jOz3?=
+ =?us-ascii?Q?XgfLDvQutgwNxnFsQwjncD8EcjLi+SwN6do5Q19jHnTzyDLoZ2pcUale6+w0?=
+ =?us-ascii?Q?SYkQI8sbBq4GvDhM02xJHAViB1tYxF76j2Lt5tcpiDYmpSzf0ALZQRk9kWth?=
+ =?us-ascii?Q?lJ3j+9mSNp4EM0A6yDzPr+0BzGQK2CYAew1rwAyVwjHd1xAB2RZqvyYFsM3Z?=
+ =?us-ascii?Q?fAXbQD06wY9HW3GWOMdUz05rAE+wnmuYkleWE9GdtQNElmcPDm4MisEG3wQt?=
+ =?us-ascii?Q?ks+dlMXLq309XOrRLizC4e5ngQNSaTnQQ3Qd44USaDEWa5RnXp9ftBeYGNIZ?=
+ =?us-ascii?Q?XfAUy2xMJQESxhBu+mMSmzCF7JiqTg69068VRS829h3IQCseSltLzdBBgEEJ?=
+ =?us-ascii?Q?EyZ3Y+VO15OFHFr8C+a86zfv14d267xoX2Vz8neSrBeMuVbVq/hDE7huhG0I?=
+ =?us-ascii?Q?xKee9F0pIdrZ/FsEOkTqJ/+zrotoGY6KYfIaAhB3/mBDvLeBQoBFnEPudUQX?=
+ =?us-ascii?Q?nLDsNEVay3daIi2cDcT1+Hnibcx18q9DLeU3xY6Rbye2TSgYCvfibhVypf2u?=
+ =?us-ascii?Q?d7nSVjyUl+NgUMT8jJsXM/GxK81OB9nQMLG+aXDkKEQK6EWjCg8dgccLIu8c?=
+ =?us-ascii?Q?MWgBuA5B36f3Z6lIDPYSQshHEd8eWfI9t/+4TQH2GyzQrOGa/ou0VNLhSSJJ?=
+ =?us-ascii?Q?VeCGEZdW0RaYzF/eYLT+uuy6EM19z92kIzMaYmHWLAJaq74vRQlZ9ytghGYt?=
+ =?us-ascii?Q?Foxvlj2xHXM47GOfeptiJLrhbe1m6ifmeaCC6ddKJjt4eMX2CskODvQeuieT?=
+ =?us-ascii?Q?FnyG8eJiBRoFjYFLdzxd3p2vH6RhMArBYPoStX43tH4zyezM8vfESfxJ0xiX?=
+ =?us-ascii?Q?q5qkEc3MhIj6e/9kiyXICIJAm/qTOU1eOidqoyHYz4sgVtcVmXQJv8/kDHOa?=
+ =?us-ascii?Q?Wmh5bCM51XXip5gHRu+WGt8qo6A19UmH6qjSEkU92nrp+GKaSBJwNb4pXGt8?=
+ =?us-ascii?Q?ij9ezPo+dViC2iQu5HM71E/6jcjbgsVuEyX/k7iI3MqXIcJS9wviTno+5zLa?=
+ =?us-ascii?Q?CvBje8YAksOWOD4NhF/Bhv7pWRK3JW61DB316P1HSqOaKvMATDlkxeg7Sapf?=
+ =?us-ascii?Q?gzN9d1kN3uRY+6gTyNkm7TkySRtfZPiWWoXCDt5SypSPiGRvTiCp1JQ6Dwzu?=
+ =?us-ascii?Q?AupsVIPPbeXIRcUhU8NFdh1d9EPpcHBOzB916OZWOD4qsO/HRvx0gkzGKtXJ?=
+ =?us-ascii?Q?1lPyCcqFEWDIdMy2z2jc7MBNvSzCz2InX3DakKHWl7Jm8UDkCnna41lihe9c?=
+ =?us-ascii?Q?RVMC5dYRLkWcwQD08XGGrneCRh42EVQ=3D?=
+X-OriginatorOrg: thelustrecollective.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: c7ef6d80-a1f7-4ab0-2629-08dee3a7ba5b
+X-MS-Exchange-CrossTenant-AuthSource: DM6PR04MB4682.namprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 17 Jul 2026 02:04:26.2259
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4c9dec06-8f2c-4233-98d5-ca3cb36218fc
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: bTsu0AlWIh938N1HUVEC7My2GYBHbzg5KmPtLG7YqMTfJf6gBv6BnnoHvSX2biHHLDrdJiZj83Vepf10doo0GlPZsaMqG3urX/5m8A7MWYE=
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR04MB7535
 
+On Sun, 12 Jul 2026 12:56:03 -0400, Timothy Day wrote:
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 3999f8f3b156e..8c7f3772917bb 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -1125,9 +1125,11 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+>  		goto failed_mount2;
+>  	}
+>  	sbi->s_gdb_count = db_count;
+> -	sbi->s_next_generation = get_random_u32();
+>  	spin_lock_init(&sbi->s_next_gen_lock);
 
-On Jul 14, 2026, at 06:51, Artem Blagodarenko =
-<artem.blagodarenko@gmail.com> wrote:
->=20
-> ext4_setent() updates the inode number and file_type in an existing
-> directory entry but did not handle the dirdata extension payload.
-> Extend it with a src_fid parameter so that the source LUFID travels
-> with the inode through rename.
->=20
-> When src_fid is non-NULL and the destination slot carries a LUFID of
-> the same on-disk size, the source payload is copied into the =
-destination
-> before the file_type merge.  When src_fid is NULL (source has no =
-LUFID),
-> EXT4_DIRENT_LUFID is cleared from the destination entry.
->=20
-> CFHASH bytes are left in place: CFHASH is a property of the =
-destination
-> filename, not the inode, and it always precedes CFHASH in the =
-extension
-> layout so its offset is unaffected by the LUFID copy.
->=20
-> Both ext4_rename() and ext4_cross_rename() snapshot the source LUFID
-> into a stack buffer before any setent() call, so that a =
-cross-directory
-> swap reads both sides before either is overwritten.
->=20
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+If I change this to guard(spinlock_init)(&sbi->s_next_gen_lock), I should
+be able to avoid the context_unsafe() line right after this. I'll fix
+that in the next revision. There may be some other places in the series
+where I can make the same fix.
 
-Rather than allocating one or two separate buffers for the lufid =
-information,
-it would seem more robust and efficient to just store them on the stack?
-Perhaps a fixed buffer (e.g. 65 bytes is enough for 4x 16-byte FIDs + =
-size)
-would cover virtually all possible uses, and only in the very rare case =
-that
-the lufid field is larger would it need to allocate a buffer.
-
-The maximum possible size would be 256 bytes, but that may be too large =
-to
-put the stack, especially two of them.
-
-Cheers, Andreas
-
-> ---
-> fs/ext4/namei.c | 124 ++++++++++++++++++++++++++++++++++++++++++++----
-> 1 file changed, 115 insertions(+), 9 deletions(-)
->=20
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 4a6f7ffa656f..168ffd3751cb 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -3731,7 +3731,8 @@ static int ext4_rename_dir_finish(handle_t =
-*handle, struct ext4_renament *ent,
-> }
->=20
-> static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
-> -       unsigned ino, unsigned file_type)
-> +       unsigned ino, unsigned file_type,
-> +       const struct ext4_dirent_fid *src_fid)
-> {
-> int retval, retval2;
->=20
-> @@ -3741,8 +3742,57 @@ static int ext4_setent(handle_t *handle, struct =
-ext4_renament *ent,
-> if (retval)
-> return retval;
-> ent->de->inode =3D cpu_to_le32(ino);
-> - if (ext4_has_feature_filetype(ent->dir->i_sb))
-> - ent->de->file_type =3D file_type;
-> + if (ext4_has_feature_filetype(ent->dir->i_sb)) {
-> + /* Copy the source LUFID payload into the destination slot when
-> + * both carry a LUFID of the same on-disk size.  LUFID is
-> + * inode-specific and must travel with the inode through rename.
-> + * CFHASH bytes are left in-place: CFHASH is a function of the
-> + * destination filename, and its bytes sit at the correct offset
-> + * because LUFID always precedes CFHASH in the extension layout.
-> + * When src_fid is NULL, the LUFID flag is synced to the LUFID
-> + * bit already present in file_type: callers that clear LUFID
-> + * (rename of a non-LUFID inode, whiteout) pass file_type with
-> + * LUFID=3D0; ext4_resetent passes the original file_type so the
-> + * flag is restored for error recovery without overwriting the
-> + * LUFID bytes that are still intact on disk. */
-> + if (ext4_has_feature_dirdata(ent->dir->i_sb)) {
-> + if (src_fid && (ent->de->file_type & EXT4_DIRENT_LUFID)) {
-> + unsigned int rec_len =3D
-> + ext4_rec_len_from_disk(ent->de->rec_len,
-> + ent->dir->i_sb->s_blocksize);
-> + unsigned int ddh_off =3D
-> + EXT4_BASE_DIR_LEN + ent->de->name_len + 1;
-> + struct ext4_dirent_data_header *ddh =3D
-> + (struct ext4_dirent_data_header *)
-> + ((char *)ent->de + ddh_off);
-> + unsigned int copy_len =3D src_fid->df_header.ddh_length;
+>
+> +	/* concurrent access is not possible before the mount completes */
+> +	context_unsafe(sbi->s_next_generation = get_random_u32());
 > +
-> + if (ddh_off + sizeof(*ddh) > rec_len ||
-> +    ddh->ddh_length !=3D copy_len ||
-> +    ddh_off + copy_len > rec_len) {
-> + /* Cannot copy: clear the flag so the
-> + * slot does not advertise a stale LUFID
-> + * from the old inode. */
-> + ent->de->file_type &=3D ~EXT4_DIRENT_LUFID;
-> + } else {
-> + memcpy(ddh, src_fid, copy_len);
-> + }
-> + } else if (!src_fid) {
-> + /* Sync the LUFID flag with what file_type requests.
-> + * For normal rename (source has no LUFID) and for
-> + * the whiteout setent, file_type carries LUFID=3D0,
-> + * so we clear the stale flag.  For ext4_resetent
-> + * (error recovery), file_type is the original
-> + * file_type with LUFID=3D1, so we restore the flag =E2=80=94
-> + * the LUFID bytes are still on disk untouched. */
-> + ent->de->file_type =3D
-> + (ent->de->file_type & ~EXT4_DIRENT_LUFID) |
-> + (file_type & EXT4_DIRENT_LUFID);
-> + }
-> + }
-> + ent->de->file_type =3D (file_type & EXT4_FT_MASK) |
-> +     (ent->de->file_type & ~EXT4_FT_MASK);
-> + }
-> inode_inc_iversion(ent->dir);
-> inode_set_mtime_to_ts(ent->dir, inode_set_ctime_current(ent->dir));
-> retval =3D ext4_mark_inode_dirty(handle, ent->dir);
-> @@ -3779,7 +3829,7 @@ static void ext4_resetent(handle_t *handle, =
-struct ext4_renament *ent,
-> return;
-> }
->=20
-> - ext4_setent(handle, &old, ino, file_type);
-> + ext4_setent(handle, &old, ino, file_type, NULL);
-> brelse(old.bh);
-> }
->=20
-> @@ -3878,6 +3928,32 @@ static struct inode =
-*ext4_whiteout_for_rename(struct mnt_idmap *idmap,
-> return wh;
-> }
->=20
-> +/*
-> + * ext4_lufid_snapshot - copy the LUFID record from a directory entry
-> + *
-> + * Allocates and returns a kmemdup'd copy of the full on-disk LUFID =
-record
-> + * (header + FID payload of arbitrary length).  Returns NULL if no =
-LUFID is
-> + * present, the record is malformed, or allocation fails.  Caller =
-must kfree().
-> + */
-> +static struct ext4_dirent_fid *
-> +ext4_lufid_snapshot(struct ext4_dir_entry_2 *de, unsigned int =
-blocksize)
-> +{
-> + unsigned int ddh_off =3D EXT4_BASE_DIR_LEN + de->name_len + 1;
-> + unsigned int rec_len =3D ext4_rec_len_from_disk(de->rec_len, =
-blocksize);
-> + struct ext4_dirent_fid *disk_fid;
-> + unsigned int dlen;
-> +
-> + if (!(de->file_type & EXT4_DIRENT_LUFID))
-> + return NULL;
-> + if (ddh_off + sizeof(disk_fid->df_header) > rec_len)
-> + return NULL;
-> + disk_fid =3D (struct ext4_dirent_fid *)((char *)de + ddh_off);
-> + dlen =3D disk_fid->df_header.ddh_length;
-> + if (dlen < sizeof(disk_fid->df_header) || ddh_off + dlen > rec_len)
-> + return NULL;
-> + return kmemdup(disk_fid, dlen, GFP_NOFS);
-> +}
-> +
-> /*
->  * Anybody can rename anything with this: the permission checks are =
-left to the
->  * higher-level routines.
-> @@ -3906,6 +3982,7 @@ static int ext4_rename(struct mnt_idmap *idmap, =
-struct inode *old_dir,
-> struct inode *whiteout =3D NULL;
-> int credits;
-> u8 old_file_type;
-> + struct ext4_dirent_fid *old_fid =3D NULL;
->=20
-> if (new.inode && new.inode->i_nlink =3D=3D 0) {
-> EXT4_ERROR_INODE(new.inode,
-> @@ -4017,7 +4094,7 @@ static int ext4_rename(struct mnt_idmap *idmap, =
-struct inode *old_dir,
-> * to be still pointing to the valid old entry.
-> */
-> retval =3D ext4_setent(handle, &old, whiteout->i_ino,
-> -     EXT4_FT_CHRDEV);
-> +     EXT4_FT_CHRDEV, NULL);
-> if (retval)
-> goto end_rename;
-> retval =3D ext4_mark_inode_dirty(handle, whiteout);
-> @@ -4030,8 +4107,18 @@ static int ext4_rename(struct mnt_idmap *idmap, =
-struct inode *old_dir,
-> if (retval)
-> goto end_rename;
-> } else {
-> + if (ext4_has_feature_dirdata(old.dir->i_sb)) {
-> + old_fid =3D ext4_lufid_snapshot(old.de,
-> +      old.dir->i_sb->s_blocksize);
-> + if (old_fid)
-> + ext4_fc_mark_ineligible(old.dir->i_sb,
-> + EXT4_FC_REASON_DIRDATA,
-> + handle);
-> + else
-> + old_file_type &=3D ~EXT4_DIRENT_LUFID;
-> + }
-> retval =3D ext4_setent(handle, &new,
-> -     old.inode->i_ino, old_file_type);
-> +     old.inode->i_ino, old_file_type, old_fid);
-> if (retval)
-> goto end_rename;
-> }
-> @@ -4118,6 +4205,7 @@ static int ext4_rename(struct mnt_idmap *idmap, =
-struct inode *old_dir,
-> retval =3D 0;
->=20
-> end_rename:
-> + kfree(old_fid);
-> if (whiteout) {
-> if (retval) {
-> ext4_resetent(handle, &old,
-> @@ -4154,8 +4242,9 @@ static int ext4_cross_rename(struct inode =
-*old_dir, struct dentry *old_dentry,
-> .dentry =3D new_dentry,
-> .inode =3D d_inode(new_dentry),
-> };
-> - u8 new_file_type;
-> + u8 new_file_type, old_de_file_type;
-> int retval;
-> + struct ext4_dirent_fid *old_fid =3D NULL, *new_fid =3D NULL;
->=20
-> if ((ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT) &&
->     !projid_eq(EXT4_I(new_dir)->i_projid,
-> @@ -4234,12 +4323,27 @@ static int ext4_cross_rename(struct inode =
-*old_dir, struct dentry *old_dentry,
-> goto end_rename;
-> }
->=20
-> + if (ext4_has_feature_dirdata(old.dir->i_sb)) {
-> + old_fid =3D ext4_lufid_snapshot(old.de, old.dir->i_sb->s_blocksize);
-> + new_fid =3D ext4_lufid_snapshot(new.de, new.dir->i_sb->s_blocksize);
-> + if (old_fid || new_fid)
-> + ext4_fc_mark_ineligible(old.dir->i_sb,
-> + EXT4_FC_REASON_DIRDATA, handle);
-> + }
-> +
-> + old_de_file_type =3D old.de->file_type;
-> + if (!old_fid)
-> + old_de_file_type &=3D ~EXT4_DIRENT_LUFID;
-> new_file_type =3D new.de->file_type;
-> - retval =3D ext4_setent(handle, &new, old.inode->i_ino, =
-old.de->file_type);
-> + if (!new_fid)
-> + new_file_type &=3D ~EXT4_DIRENT_LUFID;
-> + retval =3D ext4_setent(handle, &new, old.inode->i_ino, =
-old_de_file_type,
-> +     old_fid);
-> if (retval)
-> goto end_rename;
->=20
-> - retval =3D ext4_setent(handle, &old, new.inode->i_ino, =
-new_file_type);
-> + retval =3D ext4_setent(handle, &old, new.inode->i_ino, =
-new_file_type,
-> +     new_fid);
-> if (retval)
-> goto end_rename;
->=20
-> @@ -4272,6 +4376,8 @@ static int ext4_cross_rename(struct inode =
-*old_dir, struct dentry *old_dentry,
-> retval =3D 0;
->=20
-> end_rename:
-> + kfree(old_fid);
-> + kfree(new_fid);
-> brelse(old.dir_bh);
-> brelse(new.dir_bh);
-> brelse(old.bh);
-> --=20
-> 2.43.7
->=20
+>  	/* per filesystem reservation list head & lock */
+>  	spin_lock_init(&sbi->s_rsv_window_lock);
+>  	sbi->s_rsv_window_root = RB_ROOT;
+> --
+> 2.39.5
 
-
-Cheers, Andreas
-
-
-
-
-
+Tim Day
