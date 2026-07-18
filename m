@@ -1,63 +1,120 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f182.google.com (mail-pg1-f182.google.com [209.85.215.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFE242165EA;
-	Fri, 17 Jul 2026 16:10:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66C891B86C7
+	for <linux-ext4@vger.kernel.org>; Sat, 18 Jul 2026 06:12:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784304614; cv=none; b=pcDiPl6nddiB1tycQ0FVtQXZ+T5VnF0yVw69PdNosYwQ1aiH3gDA+bfqISKwKKDA2BabiLUV2l7LlwEvuVfQiSj6Z/mDawF+n3hOOPgK723tyS+o3Da8a/F6czGH64hhrRykI79wNClk+bdbx1v9hiKF/PbG0SYN2PrkPGD+aNs=
+	t=1784355169; cv=none; b=RH5WCKxBXrnFwcYfDeZdN3QHT3FNOuGVSaF+6F5G01hnNZsW1Cn2D+ymMI6hhwclkH/nMqAjVPGRnj8cakV3T71hZtTncXRIJfKrI773RTSzFFozEPL1k0UsIYQMj4uqcegG3bOGJipUb7I4bUCJIZr4L4XRp9FKkB4szmTtYYQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784304614; c=relaxed/simple;
-	bh=vq7SG+PrPQSq0mknfwuqqISPBJDjMYOuUhBn8XGP1ng=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rUAlIZrnbfqI+R345mu2FIVBnxAUQm2kOEg9aSV/yqPyE4NkVdeDCCnfXglLUFWAgkM1n87ZCH7LNg6FWsLWdEFBmlDn7DVe4pfz9fLh4lMUCEHvSy/yOhN7v+C3VBL1/EHutV85KZWgHKIpPeVIkhx9r58v6PbAw/86Wj6COgM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Nks8VVps; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784355169; c=relaxed/simple;
+	bh=NLo3I+oZZyEewRNeK63+aIuUyjiWKnnyHm42+GXFVdU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=mQBETf2FGPzgqbenjg79K3R0G/I6kFrX42JCS9Y2pVlQ4c6jC8gRtSa0Fr8xTgrYLoNnO+gYT6N6NIFZZ4HwrgmjLCHIqt1ot6+yYnYvrsE3IzyM0ddzg7eZWVXBTOpJg+1nbo76QNI40wt/cAZ9OiGXpvB0c5oSoE0iBBfwmi8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=SiPplVAR; arc=none smtp.client-ip=209.85.215.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Nks8VVps"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FD361F000E9;
-	Fri, 17 Jul 2026 16:10:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784304613;
-	bh=pIUW+eqslxS6fL0da7s3Tey79O3lS7y8FN9jNAzbHUI=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Nks8VVps0U/b3zaewmXKNfqgQOMbquU7Es70xmRcf4GzWPzxGe1iL+bHpug9ag8ix
-	 q+36dKdX5LFmaH1p6qvDLg2kYEM3yf7LtV5gapPaLs/YLAOQitXDGVs6HK9Bk3WBpg
-	 GSBnHPzP1+V6ILFJmoFlQx3nUiocuphYiTrJoupT02pYvYmWLzjs2cPIOgFFtr6BYN
-	 hAyJv3gVq0QBxFJukK7aV9wFLxDb9MLOEphgLzE4oASCSUPxNoDVcaiIIOWFlYh+hN
-	 q4s8sPfDZAjR3XJfWCewHkbdoMfuBkfuYVg/qbPKI83XQDUcJshIuU8jpXDYoxMiqy
-	 t16QO366QOEbQ==
-Date: Fri, 17 Jul 2026 09:10:08 -0700
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-fscrypt@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-block@vger.kernel.org,
-	Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
-	Chao Yu <chao@kernel.org>
-Subject: Re: [PATCH v3 00/17] fscrypt: Standardize on blk-crypto
-Message-ID: <20260717161008.GB2046@quark>
-References: <20260713023708.9245-1-ebiggers@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SiPplVAR"
+Received: by mail-pg1-f182.google.com with SMTP id 41be03b00d2f7-caf707e3a70so1379305a12.1
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Jul 2026 23:12:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1784355168; x=1784959968; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=y2Z2iNsbJ6ytU6rjVo3MfoAErunYwfv2u8/ZImRbAoY=;
+        b=SiPplVARWTl48IjBv5oxh21kFnTrP8fDjQXUigBWfh5rmX+7Fv1AV9P1VFdcYdB1rC
+         RNTWlTxheAdWcuyYmgP89tsiP3hwoGpjShHmBY7yIAgVG9nJbHZoKlN9SpQN3g38t+NM
+         E4jIVj/BA2z/d1wpL6Bj/SDWRphabmysXPmEQLIUGz4qS73w93lOExtiritwSC7ITo9S
+         PfLds+Q13qGoZdhmmf0XEDicPFd2B8xuI6EZI9isl3IR9B/66nkscttMYWXdRr6v264K
+         w/BO4vF/dVat7f2quhGbq1i9f4mHvhyW4+6KiDzY2wmFLFix9uYzOSzbhLspcdQQnuc8
+         Ck0w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784355168; x=1784959968;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=y2Z2iNsbJ6ytU6rjVo3MfoAErunYwfv2u8/ZImRbAoY=;
+        b=i4L3Ox/NslBPjTGAUrP+o0xEyVF+8CY6cr7imtYrQvwTZF3u/Rbh8MujRWq3K9ZBn7
+         uw76u/r+VhGKNYZb03UevUMgEDJxpXzPS/yDgtgaCDLlrjQ1zN6NVzEa0RX/7jrGWoiR
+         neWfcrqAxvRfM0iKzCanNFNF3unphdMnwLjMSAHNvcctTDxmkEK3dGymuZoJKYLFmfIX
+         jeVUNjcxNA9srstqHMqohkELilZr/1xenC+5j9hRYEW0iFCIJQVQKpgWXXlAg8PKgIC8
+         GQaHsSc+Fvy73D0FW/K7T5MzjWtPtIsuAr2nXMvHwC/020DiIx3MhbtB+WdaVYOx4EQI
+         9NVw==
+X-Gm-Message-State: AOJu0Yy68dPOKxiHmepFnga59h5fACti2k+fUMOgLgKb7OOwXIkjLjUt
+	5ccB0nfn42T96ydHnjZTIcQKiP+n7pY7jcJdXQx5oR9rXd1AqSQWhe2I
+X-Gm-Gg: AfdE7cn7KEFPtOFRNaB6f7XSNm+BMp1JdV95gSWSsm6PjRIqS2UW9d4KSzOpPBBDG6d
+	2NXduIJvP90vPvdFO/zDbukWmn4YAM27+was7omU8OWgFY83H3pOkJXen9C9gy2BZZxTN/WX1Um
+	xHqRnyL1AqzTKiYvjnwiQw3iwp5Nxj40Tdv7Ci1pjfmQg5KS7EVCXxBrSrdfz1N3RQRXQZv+dns
+	oGSmndBGKZbIpd4dtbNdYxIXGUMLxEbK35IvHmNVM77N0/4R/ULhQqjhwu1ITVSfcjaUk9ILlah
+	MGPY1chBIo2849rUZHsS2tdCq8hHbw/oqFn3RZ+RlIEx9BI4pvfFBax46hrytBQSHGTRVYJY4wT
+	5zLGPObVG+zS3gazQrDg/jvEHtm1xvpZ42cs8Mid9GSsZ7ezhMNkrKQKqlFdlArfkxKxyQDPGYV
+	Ief51rw7prh8wR5GRlp2OfeQHi4shVYlLJGQ5abPYakmJJKWPv5orD+08I8A==
+X-Received: by 2002:a05:6a20:d492:b0:3c3:750f:3cf9 with SMTP id adf61e73a8af0-3c38d90c927mr11987195637.11.1784355167620;
+        Fri, 17 Jul 2026 23:12:47 -0700 (PDT)
+Received: from deepanshu-kernel-hacker.. ([2405:201:682f:383f:ac40:5d70:cf7c:d0ce])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3142a1dd90fsm13604277eec.22.2026.07.17.23.12.43
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 17 Jul 2026 23:12:46 -0700 (PDT)
+From: Deepanshu Kartikey <kartikey406@gmail.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Deepanshu Kartikey <kartikey406@gmail.com>,
+	syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: defend against inline-to-block conversion race in write completion
+Date: Sat, 18 Jul 2026 11:42:38 +0530
+Message-ID: <20260718061238.50827-1-kartikey406@gmail.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260713023708.9245-1-ebiggers@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Sun, Jul 12, 2026 at 10:36:51PM -0400, Eric Biggers wrote:
->   ext4: Remove fs-layer file contents en/decryption code
->   ext4: Make ext4_bio_write_folio() return void
->   ext4: Further de-generalize the bio postprocessing code
->   f2fs: Remove fs-layer file contents en/decryption code
->   fs/buffer: Remove fs-layer decryption code
+Replace BUG_ON(!ext4_has_inline_data(inode)) with defensive error handling
+in ext4_write_inline_data_end(). A file can be converted from inline to block
+storage by concurrent paths while a write completion is in flight.
 
-Could we get acks from the ext4 and f2fs maintainers on these?
+Lock-based synchronization is impractical here since multiple conversion paths
+use different locks. Defensive check with proper cleanup
+handles all races uniformly and safely.
 
-- Eric
+Reported-by: syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=293a57918b36cfae3d48
+Tested-by: syzbot+293a57918b36cfae3d48@syzkaller.appspotmail.com
+Signed-off-by: Deepanshu Kartikey <kartikey406@gmail.com>
+---
+ fs/ext4/inline.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..53d783235da9 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -812,7 +812,14 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 			goto out;
+ 		}
+ 		ext4_write_lock_xattr(inode, &no_expand);
+-		BUG_ON(!ext4_has_inline_data(inode));
++		/* File may have been converted to block storage by concurrent path */
++		if (!ext4_has_inline_data(inode)) {
++			ext4_write_unlock_xattr(inode, &no_expand);
++			brelse(iloc.bh);
++			folio_unlock(folio);
++			folio_put(folio);
++			return -EIO;
++		}
+ 
+ 		/*
+ 		 * ei->i_inline_off may have changed since
+-- 
+2.43.0
+
