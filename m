@@ -1,129 +1,135 @@
-Received: from mail-pl1-f181.google.com (mail-pl1-f181.google.com [209.85.214.181])
+Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D6613B3C1F
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 06:55:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C53F73C07A
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 07:25:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.199
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784530524; cv=none; b=o0Pa0ucNtTMsZkZZAe2d7NQ6Ar3Zgsh8Joippy2GZEaCfCleExmODg4SCokmd61HUcbVGk8PXCvca3Dh6DYb9YmSsYbm8Ws4Ydo6ALdnu1/iHmFfb/e399UXijJ5EqK+2FAx9y0mffaqlCMaE6WC2of5/F/Q0WcysKjDs9JLpqo=
+	t=1784532328; cv=none; b=YNEfmp8bhZwegHOK5elgNJAsU7pXna0yId7RZAAws7KA0pPS1fY9falVeQyyrIJOwB+zOwFH+9ZbWf8A3earQesXjRNBp8VDPMrbPBzHsDoTFTUauK84VVBO4fy3RwNKPkoENBSikOacoM3Se+WN2kT7p1zFI+GD/ZPcbHDXjKc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784530524; c=relaxed/simple;
-	bh=W7ZYjjP/Jvn9R55ZRQhyN+Oi0wv97eiYtUx5k3Wlk00=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=YqKIvZeUNc2VjaIXhqkHfXDFCDqsyUMblOEVMQXGPPxbp0siPzrw4Hc5NdS5FytRmN8PuV2cSH+VqEr3i6aX43+f3B3EeQlYdr8BFyiCwpKMZV6bd7Wl+hVS4vKkeTgIxVz1hTMgJJ9/9Kc5Jx6MVDhYn5j4JyPqP68N0gIfBK4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=S3+QFL7m; arc=none smtp.client-ip=209.85.214.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="S3+QFL7m"
-Received: by mail-pl1-f181.google.com with SMTP id d9443c01a7336-2caced6038eso46930015ad.0
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Jul 2026 23:55:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1784530522; x=1785135322; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=0p7pbJ0cZ8Uv0TYgYDuze87535aan42INqj1pm0xIVw=;
-        b=S3+QFL7mZvZQhifKwWinssEyPKCFZm/7lBrV3cX8fPwsD4UV4tNfodsPeu5f4OReNW
-         bRCQXPtQiy1wRIBgmYYugy753eTE3eyA2TwbZMhQ7r32c3hQsdURbdpMIDbCLtcKWp3F
-         sX5ylfYzNks5MtxSRQwMOTzyWyKaKwfGNMAC4f636EG37ha1D6DDLy6kIyDrFJ9mp0Jh
-         li9caawzXBZhV2EdG9nlXrRIzb/iminmiVVHDLriibb/+Ar8K5NkJQloGukUQExlHvxH
-         b52i1ntfPVtmDruxix+yov9nSX30RNazaPQwth3+lIhI9PTVMf3oexx+RqBxvrECks2W
-         10fA==
+	s=arc-20240116; t=1784532328; c=relaxed/simple;
+	bh=KY0FFu5vOlbLH6ZZNLQ2IW9hmq8jtWlgBVrZrS07mCY=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
+	 Content-Type; b=oDM7ekI9nKmqz9fng1v4Qi6EZjFCAm04npZ3/uCWHalVA9QdUAdoUmzHaLkYL8i2Wwm4cMVZvbDoqFljF9TskwdWyf5BS2oslIyZl2hbv5hBZwhSSENAKokdJ5r8cv9kUBgjceE9Bu2vcabGD87wPfPvGsMACk1RbhtfVQcegbU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.199
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4a43d32fa9fso11729158b6e.2
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 00:25:26 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784530522; x=1785135322;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=0p7pbJ0cZ8Uv0TYgYDuze87535aan42INqj1pm0xIVw=;
-        b=jj7HZ5Zv2/sHqVWe1LXIuF2YO0yw+kjlLSVtg/wRiwXJH4QoJyoCvgoztE0fN2bqop
-         FGxZZUyRsm/icVU8m/yVYIuOHq/4IWPidoQYOww5LKAawc1ZUAzh5Zb3WFwlfgFqLEzp
-         DZH+QG8qx0CAIiWEFabVavlR6MY79ZViGt1hxxwDP971bMhl07brFGN3iJhPKOvZKYK+
-         UChc7JErejxotRkjMUUmzDuYd2RG8Nhkrqd/p8zleC5q+DWbCZWZM4d8Ez+Y8aWxluPv
-         HkKklsPA/qJRjJgckm9GKCjdWfSrIdxslecuVz//5iBvhlTwm7j4LqGKIlfya8/lOtRZ
-         z2Cw==
-X-Gm-Message-State: AOJu0YyDl1PIc8ew5lKpDHHIfdGQC4TkbmXKqGRAwrHCAOHLrlxiAWzp
-	upMGIZaKYzoUH40bnjNbSfPczLas+Q6ENsQb0oujGNVh6o3PMA3ZjnH2
-X-Gm-Gg: AfdE7cmSH+mQ6DYRgi3QAFpO0QMIqhLmi5riZm5BFHlIr1DOToz8dg8eAPSEZD4orwh
-	IESCMUFQY97km86tlXM5c0GxDWm+ZgXt4UpjgZiFJTLORRIZwwP8P/vq4fyLgysz9KK2zJ4CtY9
-	RJP4reQp1LnfNAufaJVt0AmLPhg3EiJnL8HR9XfRJSs/Unf1cTNKwfjX3eJIy4wiN/DuXoA47EV
-	ljQbJD4EtQ3mnYoBKzE0WuMAOM5HN4KxFefLsXlrGAtdlxEQpa2t6ohof6A9IrvGF7pwuYHX+LA
-	5HGJqLe09aqabz6kJoDVQ2N0Uoo2/8ZxBxhEWcmSZgt3aCYvHL0VyxqtHwwu/4o2FxMidR3U1gc
-	sum5hLEkNRmIbTD5R/uEWBH1Bk7a1wey2Co0jPySmW4QUIjnAQz8UYFPbPoovNe+pBhGkMTDzLc
-	Plmg==
-X-Received: by 2002:a17:903:2990:b0:2cc:bdb9:3c04 with SMTP id d9443c01a7336-2cf1f4b9bf1mr173789445ad.17.1784530522497;
-        Sun, 19 Jul 2026 23:55:22 -0700 (PDT)
-Received: from tradnomic.. ([2601:646:8300:7570:f139:f861:e318:4f58])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2cf347119dfsm51034595ad.56.2026.07.19.23.55.21
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 19 Jul 2026 23:55:22 -0700 (PDT)
-From: rafad900 <rafad900@gmail.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	rafad900 <rafad900@gmail.com>
-Subject: [PATCH v2] ext4: fix race in ext4_mb_check_group_pa
-Date: Sun, 19 Jul 2026 23:54:59 -0700
-Message-ID: <20260720065505.4019225-1-rafad900@gmail.com>
-X-Mailer: git-send-email 2.43.0
+        d=1e100.net; s=20251104; t=1784532325; x=1785137125;
+        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=xifO8HGQTu9S/8zGEtXXxsudku3lnEmH4DFbHAdHcbQ=;
+        b=VWc+xbK3oVnpO6rQQXztnMZR5OjE3mwbkSslwVj/Hx8FicHXX74yxOSFXIxFklLH/z
+         PClarqiTHMVYepk8Jhd3T/MNgY8YyZxd/7HKQGpKvtZzRSrza95QuVJiEBgzhS0H/8ZB
+         10/q3d0DHQzdOqYgV/u69BONk/XHcp/5ny21TN/VSLbUDVzJX/Hxuq6uyXbjzT5u37AL
+         1uzAKN4IPTUcGGM6wB4AdWYmf2p4fS4rLKAHSQTaWrqTMGT0Qc0hcroWZQR8ZjoA615+
+         wN2RtVgMCjpV+JptPdnmgmGCyXYgEgmvyeMxWqq/zhN1rndfJPQB+BhmXHb+ycvI+6eo
+         ezCQ==
+X-Forwarded-Encrypted: i=1; AHgh+RoygoB4auEWZ8zKU9QNr/WJHLbs/FQXOfQNPwhNcBkSlo1rYnyYXvD565sFjn4GQQpU0xC4dJeGRxWa@vger.kernel.org
+X-Gm-Message-State: AOJu0Yyt999lJRCKO7y+DhkqTiJYAabqsjhkJkYgl1iqh2StggjYujZp
+	b7bt7PkOU+mMwmb4DS1NiQsYiJI8PRYFvlYfDpaAKowfLkOFG4kXQn9V5fTpPia7OTgSt5T4sy1
+	QFv1lg6+8Tod2XdNsg1Rc4igMgK3CfWlxdd/bk23/6PhkPBVjRHeh2coxc/k=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6808:30a9:b0:491:6271:b24e with SMTP id
+ 5614622812f47-4a4d03fd622mr8737906b6e.32.1784532325672; Mon, 20 Jul 2026
+ 00:25:25 -0700 (PDT)
+Date: Mon, 20 Jul 2026 00:25:25 -0700
+In-Reply-To: <20260720034441.3900050-1-rafad900@gmail.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a5dcd65.5028b7d0.1f0bb.02e3.GAE@google.com>
+Subject: [syzbot ci] Re: ext4: convert pa_count from atomic_t to refcount_t
+From: syzbot ci <syzbot+ci021c8fe727674a70@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, rafad900@gmail.com, 
+	tytso@mit.edu
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-ext4_mb_check_group_pa drops the reference count on the previous
-best PA using atomic_dec(&cpa->pa_count) without holding the
-cpa->pa_lock.
+syzbot ci has tested the following series
 
-This causes race with ext4_discard_preallocations() which checks
-pa_count to decide whether a PA is still in use. If the pa_count
-is dec between the check and the discard, the PA can be freed
-while ext4_mb_check_group_pa() still holds a reference to
-it.
+[v1] ext4: convert pa_count from atomic_t to refcount_t
+https://lore.kernel.org/all/20260720034441.3900050-1-rafad900@gmail.com
+* [PATCH] ext4: convert pa_count from atomic_t to refcount_t
 
-Fix this by taking the cpa->pa_lock around the atomic_dec.
-Similar to pa->pa_lock which is taken outside of the
-ext4_mb_check_group_pa() function.
+and found the following issue:
+WARNING: refcount bug in ext4_mb_use_preallocated
 
-The race was found while testing a change related to a
-Coccinelle warning from atomic_as_refcounter.cocci. The refcount
-conversion was found to be incorrect but the change had revealed
-the pre-exiting race condition.
+Full report is available here:
+https://ci.syzbot.org/series/34fda797-e979-409c-bc2d-7af3e163df14
 
-Signed-off-by: rafad900 <rafad900@gmail.com>
+***
+
+WARNING: refcount bug in ext4_mb_use_preallocated
+
+tree:      torvalds
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
+base:      1590cf0329716306e948a8fc29f1d3ee87d3989f
+arch:      amd64
+compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
+config:    https://ci.syzbot.org/builds/05fa6c1d-a594-4691-ace3-ded3fc2ca4dc/config
+
+------------[ cut here ]------------
+refcount_t: addition on 0; use-after-free.
+WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x9f/0x110, CPU#0: kworker/u9:2/51
+Modules linked in:
+CPU: 0 UID: 0 PID: 51 Comm: kworker/u9:2 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+Workqueue: writeback wb_workfn (flush-8:0)
+RIP: 0010:refcount_warn_saturate+0x9f/0x110
+Code: eb 66 85 db 74 3e 83 fb 01 75 4c e8 8b 73 0c fd 48 8d 3d 34 58 84 0b 67 48 0f b9 3a eb 4a e8 78 73 0c fd 48 8d 3d 31 58 84 0b <67> 48 0f b9 3a eb 37 e8 65 73 0c fd 48 8d 3d 2e 58 84 0b 67 48 0f
+RSP: 0018:ffffc90000bb6590 EFLAGS: 00010293
+RAX: ffffffff84b9ee08 RBX: 0000000000000002 RCX: ffff8881072a8000
+RDX: 0000000000000000 RSI: ffffffff8f126800 RDI: ffffffff903e4640
+RBP: ffff888112257dd0 R08: ffff8881072a8000 R09: 0000000000000005
+R10: 0000000000000004 R11: 0000000000000000 R12: dffffc0000000000
+R13: ffff888112257d98 R14: ffff888112257e10 R15: 0000000000000008
+FS:  0000000000000000(0000) GS:ffff88818dc15000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007fc831b2c080 CR3: 0000000112724000 CR4: 00000000000006f0
+Call Trace:
+ <TASK>
+ ext4_mb_use_preallocated+0xaa0/0x14e0
+ ext4_mb_new_blocks+0x5a0/0x4560
+ ext4_ext_map_blocks+0x1534/0x5850
+ ext4_map_create_blocks+0x116/0x530
+ ext4_map_blocks+0x7e4/0x1240
+ ext4_do_writepages+0x23d3/0x47a0
+ ext4_writepages+0x241/0x3b0
+ do_writepages+0x338/0x560
+ __writeback_single_inode+0x12e/0xf90
+ writeback_sb_inodes+0x9de/0x1b00
+ __writeback_inodes_wb+0x114/0x240
+ wb_writeback+0x42f/0xad0
+ wb_workfn+0x980/0x10f0
+ process_scheduled_works+0xa8e/0x14e0
+ worker_thread+0xa47/0xfb0
+ kthread+0x388/0x470
+ ret_from_fork+0x514/0xb70
+ ret_from_fork_asm+0x1a/0x30
+ </TASK>
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
 ---
-Changes in v2:
-- Identified correct race location: ext4_mb_check_group_pa rather
-  than ext4_mb_use_preallocated (the inode PA path already holds
-  pa_lock correctly)
-- Dropped refcount_t conversion — incompatible with PA lifecycle
-  where count=0 represents an idle but reusable PA
-- Added spin_lock(&cpa->pa_lock) around atomic_dec in
-  ext4_mb_check_group_pa
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
 
- fs/ext4/mballoc.c | 2 ++
- 1 file changed, 2 insertions(+)
+To test a patch for this bug, please reply with `#syz test`
+(should be on a separate line).
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ed1bd00e11cd..c9a118ae4658 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4833,7 +4833,9 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
- 		return cpa;
- 
- 	/* drop the previous reference */
-+	spin_lock(&cpa->pa_lock);
- 	atomic_dec(&cpa->pa_count);
-+	spin_unlock(&cpa->pa_lock);
- 	atomic_inc(&pa->pa_count);
- 	return pa;
- }
--- 
-2.43.0
-
+The patch should be attached to the email.
+Note: arguments like custom git repos and branches are not supported.
