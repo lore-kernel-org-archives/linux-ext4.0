@@ -1,135 +1,185 @@
-Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+Received: from va-1-114.ptr.blmpb.com (va-1-114.ptr.blmpb.com [209.127.230.114])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C53F73C07A
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 07:25:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.199
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 118D0330D29
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 07:52:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.114
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784532328; cv=none; b=YNEfmp8bhZwegHOK5elgNJAsU7pXna0yId7RZAAws7KA0pPS1fY9falVeQyyrIJOwB+zOwFH+9ZbWf8A3earQesXjRNBp8VDPMrbPBzHsDoTFTUauK84VVBO4fy3RwNKPkoENBSikOacoM3Se+WN2kT7p1zFI+GD/ZPcbHDXjKc=
+	t=1784533935; cv=none; b=kTUBjlIIpD2d267P2b+xWDSuax//uZdvjIi4mLT4uNmk60DJOiNusizfUkWGXtg0a+BhpbU4/pbTwp8/qTglGRtvtEmmTApLfpJw6Mt9P2dXgN48A6l8xi0NFSpXXMBv5+FK67q3dNgQqxOZdgjKvs2uobLtDTGIiyNjfiaOYBk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784532328; c=relaxed/simple;
-	bh=KY0FFu5vOlbLH6ZZNLQ2IW9hmq8jtWlgBVrZrS07mCY=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
-	 Content-Type; b=oDM7ekI9nKmqz9fng1v4Qi6EZjFCAm04npZ3/uCWHalVA9QdUAdoUmzHaLkYL8i2Wwm4cMVZvbDoqFljF9TskwdWyf5BS2oslIyZl2hbv5hBZwhSSENAKokdJ5r8cv9kUBgjceE9Bu2vcabGD87wPfPvGsMACk1RbhtfVQcegbU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.199
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4a43d32fa9fso11729158b6e.2
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2026 00:25:26 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784532325; x=1785137125;
-        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=xifO8HGQTu9S/8zGEtXXxsudku3lnEmH4DFbHAdHcbQ=;
-        b=VWc+xbK3oVnpO6rQQXztnMZR5OjE3mwbkSslwVj/Hx8FicHXX74yxOSFXIxFklLH/z
-         PClarqiTHMVYepk8Jhd3T/MNgY8YyZxd/7HKQGpKvtZzRSrza95QuVJiEBgzhS0H/8ZB
-         10/q3d0DHQzdOqYgV/u69BONk/XHcp/5ny21TN/VSLbUDVzJX/Hxuq6uyXbjzT5u37AL
-         1uzAKN4IPTUcGGM6wB4AdWYmf2p4fS4rLKAHSQTaWrqTMGT0Qc0hcroWZQR8ZjoA615+
-         wN2RtVgMCjpV+JptPdnmgmGCyXYgEgmvyeMxWqq/zhN1rndfJPQB+BhmXHb+ycvI+6eo
-         ezCQ==
-X-Forwarded-Encrypted: i=1; AHgh+RoygoB4auEWZ8zKU9QNr/WJHLbs/FQXOfQNPwhNcBkSlo1rYnyYXvD565sFjn4GQQpU0xC4dJeGRxWa@vger.kernel.org
-X-Gm-Message-State: AOJu0Yyt999lJRCKO7y+DhkqTiJYAabqsjhkJkYgl1iqh2StggjYujZp
-	b7bt7PkOU+mMwmb4DS1NiQsYiJI8PRYFvlYfDpaAKowfLkOFG4kXQn9V5fTpPia7OTgSt5T4sy1
-	QFv1lg6+8Tod2XdNsg1Rc4igMgK3CfWlxdd/bk23/6PhkPBVjRHeh2coxc/k=
+	s=arc-20240116; t=1784533935; c=relaxed/simple;
+	bh=unau06xTVOcllIdkRrYIQEr4+jA05DYTizbcJFmX0Q0=;
+	h=Subject:Mime-Version:From:Cc:Date:Content-Type:To:Message-Id; b=bxEJrJSCw6sF8kEURyX4pTgBvcPMMWJLkAWHXmo6nWqdS8ftndWuZ98cE5NKV1iqTEQZilGfjt7vEqaaUlEiFWp/0XbjmNBV3kirzSw8+4ykj2CoFYBdIAXs1cC9xzA3Z1nmihkVBDt0iWmK6vfV1DdvECPJGMJYWVBNTXdsud0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=gzWuQlmQ; arc=none smtp.client-ip=209.127.230.114
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="gzWuQlmQ"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1784533920; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=ENA2euA0vVV2xzsQQELdY7B1UOMp1ZonL4350rvTwAI=;
+ b=gzWuQlmQ3HesYIZYDwDGpPoIPf1AeFmEZG6pFr91fA6EYxLGdCpQaCwYRHv0D/HcGLMitE
+ CeW1pxbvNq2Snpmo7TMxBWlgplfRg73c8ZyuHXiY8do+3cKqNM53zviiKRmsxBkyc28xj5
+ /BUEWyzbsX8Esx96En0j0rlmreujnnKAcRFqQl2JNRZPLDXrKRPtpwYQgjLzcrGUZ4JlYa
+ RZpeK/m9RxUmd8UM6iKEWgspmwdNWNNSpmWR7cbiXhnIbM1ltSdlourh6j8bihimCqlxbP
+ JFmsVMY3sanuC198O2yCFMoEoZ/emaONatPb99GHluDtLOa6arKV8EG8T3zdtw==
+Subject: [PATCH] ext4: cache full extents during mapping lookup
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-X-Received: by 2002:a05:6808:30a9:b0:491:6271:b24e with SMTP id
- 5614622812f47-4a4d03fd622mr8737906b6e.32.1784532325672; Mon, 20 Jul 2026
- 00:25:25 -0700 (PDT)
-Date: Mon, 20 Jul 2026 00:25:25 -0700
-In-Reply-To: <20260720034441.3900050-1-rafad900@gmail.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a5dcd65.5028b7d0.1f0bb.02e3.GAE@google.com>
-Subject: [syzbot ci] Re: ext4: convert pa_count from atomic_t to refcount_t
-From: syzbot ci <syzbot+ci021c8fe727674a70@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, rafad900@gmail.com, 
-	tytso@mit.edu
-Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+From: "Fengnan Chang" <changfengnan@bytedance.com>
+Cc: "Fengnan Chang" <changfengnan@bytedance.com>
+Date: Mon, 20 Jul 2026 15:51:33 +0800
+X-Original-From: Fengnan Chang <changfengnan@bytedance.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Content-Type: text/plain; charset=UTF-8
+To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
+	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
+	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, 
+	<linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Message-Id: <20260720075133.50539-1-changfengnan@bytedance.com>
+X-Lms-Return-Path: <lba+26a5dd39e+e448de+vger.kernel.org+changfengnan@bytedance.com>
 
-syzbot ci has tested the following series
+The extent status (ES) tree and extent tree leaf buffers are reclaimed
+independently.  An ES entry can be reclaimed while the leaf buffer remains
+cached with BH_Verified set.
 
-[v1] ext4: convert pa_count from atomic_t to refcount_t
-https://lore.kernel.org/all/20260720034441.3900050-1-rafad900@gmail.com
-* [PATCH] ext4: convert pa_count from atomic_t to refcount_t
+When this happens, ext4_es_lookup_extent() misses.  Since the leaf buffer
+is already verified, __read_extent_tree_block() returns it without calling
+ext4_cache_extents().  ext4_ext_map_blocks() returns the part of the extent
+covered by the request, and ext4_map_query_blocks() caches only that range.
+Reads to other blocks in the same extent then keep missing the ES tree and
+walking the extent tree.
 
-and found the following issue:
-WARNING: refcount bug in ext4_mb_use_preallocated
+Cache the full extent in ext4_ext_map_blocks() before the returned mapping
+is limited to the requested range.  Check the ES tree under the read lock
+first.  If the full extent is not there, ext4_es_cache_extent() checks
+again under the write lock before inserting it.
 
-Full report is available here:
-https://ci.syzbot.org/series/34fda797-e979-409c-bc2d-7af3e163df14
+Do not do this when ext4_ext_map_blocks() is called with
+EXT4_GET_BLOCKS_CREATE or EXT4_EX_NOCACHE.  NOCACHE paths can change extent
+mappings, so caching ranges outside the request can leave stale ES entries.
+Cache both written and unwritten extents, as ext4_cache_extents() does.
 
-***
+Tested with fio 4K random direct reads using libaio at iodepth 128 on a
+128 GiB file with 208 on-disk extents.  The results are averages of three
+10-second runs:
 
-WARNING: refcount bug in ext4_mb_use_preallocated
+                 before reclaim    after reclaim
+  unpatched        419.6k IOPS       274.6k IOPS
+  patched          426.1k IOPS       423.7k IOPS
 
-tree:      torvalds
-URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux
-base:      1590cf0329716306e948a8fc29f1d3ee87d3989f
-arch:      amd64
-compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
-config:    https://ci.syzbot.org/builds/05fa6c1d-a594-4691-ace3-ded3fc2ca4dc/config
+Average completion latency went from 303.02 to 462.78 us without the patch,
+and from 298.36 to 300.07 us with the patch.
 
-------------[ cut here ]------------
-refcount_t: addition on 0; use-after-free.
-WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x9f/0x110, CPU#0: kworker/u9:2/51
-Modules linked in:
-CPU: 0 UID: 0 PID: 51 Comm: kworker/u9:2 Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
-Workqueue: writeback wb_workfn (flush-8:0)
-RIP: 0010:refcount_warn_saturate+0x9f/0x110
-Code: eb 66 85 db 74 3e 83 fb 01 75 4c e8 8b 73 0c fd 48 8d 3d 34 58 84 0b 67 48 0f b9 3a eb 4a e8 78 73 0c fd 48 8d 3d 31 58 84 0b <67> 48 0f b9 3a eb 37 e8 65 73 0c fd 48 8d 3d 2e 58 84 0b 67 48 0f
-RSP: 0018:ffffc90000bb6590 EFLAGS: 00010293
-RAX: ffffffff84b9ee08 RBX: 0000000000000002 RCX: ffff8881072a8000
-RDX: 0000000000000000 RSI: ffffffff8f126800 RDI: ffffffff903e4640
-RBP: ffff888112257dd0 R08: ffff8881072a8000 R09: 0000000000000005
-R10: 0000000000000004 R11: 0000000000000000 R12: dffffc0000000000
-R13: ffff888112257d98 R14: ffff888112257e10 R15: 0000000000000008
-FS:  0000000000000000(0000) GS:ffff88818dc15000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fc831b2c080 CR3: 0000000112724000 CR4: 00000000000006f0
-Call Trace:
- <TASK>
- ext4_mb_use_preallocated+0xaa0/0x14e0
- ext4_mb_new_blocks+0x5a0/0x4560
- ext4_ext_map_blocks+0x1534/0x5850
- ext4_map_create_blocks+0x116/0x530
- ext4_map_blocks+0x7e4/0x1240
- ext4_do_writepages+0x23d3/0x47a0
- ext4_writepages+0x241/0x3b0
- do_writepages+0x338/0x560
- __writeback_single_inode+0x12e/0xf90
- writeback_sb_inodes+0x9de/0x1b00
- __writeback_inodes_wb+0x114/0x240
- wb_writeback+0x42f/0xad0
- wb_workfn+0x980/0x10f0
- process_scheduled_works+0xa8e/0x14e0
- worker_thread+0xa47/0xfb0
- kthread+0x388/0x470
- ret_from_fork+0x514/0xb70
- ret_from_fork_asm+0x1a/0x30
- </TASK>
+No latency regression was seen in A/B test.
 
-
-***
-
-If these findings have caused you to resend the series or submit a
-separate fix, please add the following tag to your commit message:
-  Tested-by: syzbot@syzkaller.appspotmail.com
-
+Suggested-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20260714114358.93335-1-changfengnan@bytedance.com
+Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
 ---
-This report is generated by a bot. It may contain errors.
-syzbot ci engineers can be reached at syzkaller@googlegroups.com.
+ fs/ext4/extents.c        |  9 +++++++++
+ fs/ext4/extents_status.c | 33 +++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.h |  3 +++
+ 3 files changed, 45 insertions(+)
 
-To test a patch for this bug, please reply with `#syz test`
-(should be on a separate line).
-
-The patch should be attached to the email.
-Note: arguments like custom git repos and branches are not supported.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91c97af64b317..f43dd9c3bc44e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4310,6 +4310,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_lblk_t ee_block = le32_to_cpu(ex->ee_block);
+ 		ext4_fsblk_t ee_start = ext4_ext_pblock(ex);
+ 		unsigned short ee_len;
++		unsigned int status;
+ 
+ 
+ 		/*
+@@ -4317,6 +4318,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * we split out initialized portions during a write.
+ 		 */
+ 		ee_len = ext4_ext_get_actual_len(ex);
++		status = ext4_ext_is_unwritten(ex) ?
++			 EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
+ 
+ 		trace_ext4_ext_show_extent(inode, ee_block, ee_start, ee_len);
+ 
+@@ -4328,6 +4331,12 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+ 			ext_debug(inode, "%u fit into %u:%d -> %llu\n",
+ 				  map->m_lblk, ee_block, ee_len, newblock);
+ 
++			if (!(flags & (EXT4_GET_BLOCKS_CREATE |
++				       EXT4_EX_NOCACHE)))
++				ext4_es_cache_extent_if_missing(inode, ee_block,
++								ee_len, ee_start,
++								status);
++
+ 			/*
+ 			 * If the extent is initialized check whether the
+ 			 * caller wants to convert it to unwritten.
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 6e4a191e82191..83fe2068ab656 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1082,6 +1082,39 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			   ext4_es_pblock(&chkes), ext4_es_status(&chkes));
+ }
+ 
++/*
++ * Avoid taking i_es_lock for writing if the entire extent is already cached.
++ * ext4_es_cache_extent() rechecks under the write lock if the cache changes
++ * after this read-side check.
++ */
++void ext4_es_cache_extent_if_missing(struct inode *inode, ext4_lblk_t lblk,
++				     ext4_lblk_t len, ext4_fsblk_t pblk,
++				     unsigned int status)
++{
++	struct extent_status *es;
++	ext4_lblk_t end;
++	bool cached;
++
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return;
++
++	if (!len)
++		return;
++
++	end = lblk + len - 1;
++	if (WARN_ON_ONCE(end < lblk))
++		return;
++
++	read_lock(&EXT4_I(inode)->i_es_lock);
++	es = __es_tree_search(&EXT4_I(inode)->i_es_tree.root, lblk);
++	cached = es && es->es_lblk <= lblk && ext4_es_end(es) >= end &&
++		 !__es_check_extent_status(es, status, NULL);
++	read_unlock(&EXT4_I(inode)->i_es_lock);
++
++	if (!cached)
++		ext4_es_cache_extent(inode, lblk, len, pblk, status);
++}
++
+ /*
+  * ext4_es_lookup_extent() looks up an extent in extent status tree.
+  *
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index f3396cf32b446..d8fab84911352 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -140,6 +140,9 @@ extern void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				 ext4_lblk_t len, ext4_fsblk_t pblk,
+ 				 unsigned int status);
++void ext4_es_cache_extent_if_missing(struct inode *inode, ext4_lblk_t lblk,
++				     ext4_lblk_t len, ext4_fsblk_t pblk,
++				     unsigned int status);
+ extern void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 				  ext4_lblk_t len);
+ extern void ext4_es_find_extent_range(struct inode *inode,
+-- 
+2.39.5 (Apple Git-154)
