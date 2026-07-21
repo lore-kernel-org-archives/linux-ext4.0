@@ -1,84 +1,94 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DA24476CD4;
-	Tue, 21 Jul 2026 18:45:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AE1F34DCE4;
+	Tue, 21 Jul 2026 22:36:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784659504; cv=none; b=qlHUKxn9AL/XJUjrsLVFG8Dmot/oBSfiStkRjCi5rdlOi+WeO7OzJZL5V8kMFuvpgs+mHFuNY1PtqLqocLKp/n5uOrtN3KKL/IBRrmkKgRFiQ4hr/bakAkCybvCeuZeh66mbk6UhcHfUj05aAboywtlOZRS5BMXU8emiZ6x6mNY=
+	t=1784673378; cv=none; b=cP2rdKEE7N0078xFGtSXsp4vUPocxshOZyyVj/teyYmIFKGVjVP7z8G4DNi3wR9VvQp852wFwNXzTkjtgBjmlbquqxZBbM5SAkqiaovRbj4xhMBvEtVMXtXi6FnsHMq5hmw37tLD7tUtiGu/qxoyvMdY5Z74MVhXaF2/+Ddq1T8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784659504; c=relaxed/simple;
-	bh=zD3fqdriNeyS4psrX9dNSbGJrsTYYoWrAlK7wvQAbGQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=h70OlI3mk98Sazb/VXBBLVJhij7dFZMp4XKWNT7ZzlbQyQGCWAEDVVQmhPJBQ5kgsCfMV2emfsZnQjAzYfeca3EqvSZwKGd/cYbMbJ1Pdyvo/Bt+7WIaFmaCa0aQyGxW+2KbFzU04EV/vkVWq+OYUvx2dpiLaiUSUj0WZnxqVh4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J99upiPo; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784673378; c=relaxed/simple;
+	bh=T7pfiRcgw1Q6inrjKcz+jYww0y++Dltfy7TTqDUuW0Y=;
+	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:References:
+	 In-Reply-To:Content-Type; b=gteaInwk0orH0w4G0b0luEwXOXhT8ht360bdbCXX7eHAHE/sfNlvQ3b6/6whKpE/ZeVNiSVfh4RXy/oZq1lICsi9NFFS21X5WpP+fNOkYyKTFgPAGnKzmCcPuyySbWBjHKj4qw2+NxbCo/Fx+Izrawi2L5b0YncwWu0nsA9tPqE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FeUEUmhb; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J99upiPo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E51F11F000E9;
-	Tue, 21 Jul 2026 18:45:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FeUEUmhb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A87681F00A3A;
+	Tue, 21 Jul 2026 22:36:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784659503;
-	bh=9UsWTPXNPtGAnC/NXDW+DJPQrI7L9qVnDZTXWpl6xCI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=J99upiPoYemerGRRA2ossFhQjtipwYUmal6fwOqfGPX6dFVvazISVO3e7I+YHgWOb
-	 cv6pt3nAwmIs1qOaU5bSo5XEkTtSYFUSzm6kFFPjhUTgC9Tvl//+yF4r/fkkCYKeY5
-	 d/FKZEMC7RvaSTUAcoLnJ42kCg2pdopoBgN+6dkGVnuycsstQoIT5n6N8CxUO5Ffuj
-	 EZZHD/tsyriqA07xOByBg9UnWaU1p3CmsXudQa5uVVPxOfo/1RaaoUwcbKqJISKbjB
-	 b7ACjPCrD3SPNspNs9p0WSJ8HDDipHxkVfc8jPeMw1dOz0BVTyPck1ce9uqW/ogVXc
-	 K+XclUKjXHkXA==
-From: Andrey Albershteyn <aalbersh@kernel.org>
-To: linux-xfs@vger.kernel.org,
-	fsverity@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org,
-	ebiggers@kernel.org
-Cc: Andrey Albershteyn <aalbersh@kernel.org>,
-	hch@lst.de,
-	linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-btrfs@vger.kernel.org,
-	djwong@kernel.org
-Subject: [PATCH v13 23/23] xfs: enable ro-compat fs-verity flag
-Date: Tue, 21 Jul 2026 20:41:00 +0200
-Message-ID: <20260721184346.416657-24-aalbersh@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260721184346.416657-1-aalbersh@kernel.org>
-References: <20260721184346.416657-1-aalbersh@kernel.org>
+	s=k20260515; t=1784673377;
+	bh=9xR7aJnjzbB0cYi+HaNX5c/+Q8nLrvfNR2N4MpRwZ98=;
+	h=Date:From:Subject:To:Cc:References:In-Reply-To;
+	b=FeUEUmhbdNSPNuGvEeQbCU3d9I3vpKGzmnK+ikTxAY4qi/sTc+8fe97jlDEgL26fD
+	 Msl1Jsk0SufN02KXKiDCFkzYbxAy1TMhwangB6K7CKYi6oFnumjIrclNOix7AZREmW
+	 qxKT48odeELUJ6vlc7Z7Hh2TQWQVYT5PSyBHzghrYpE3qvjeQtt8pkbxkl916sFs6X
+	 vpcLMTLhnKfsY0DMdVfm8DiBIZqHvmnrdDBoGO+KdD6P0F5NG/mAZhD185LYJIDvxe
+	 uoLaPb741UAkxpblp3pqQgza9D0SJE6wdXB99GVsXeJ73hFtHbHWtWQ++Re+kmPvbj
+	 xt/YxciBvWE/w==
+Message-ID: <328de723-6f9c-4f09-a68a-da24d49300d5@kernel.org>
+Date: Wed, 22 Jul 2026 06:36:13 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+From: Anand Suveer Jain <asj@kernel.org>
+Subject: Re: [PATCH v7 06/11] fstests: verify f_fsid for cloned filesystems
+To: "Darrick J. Wong" <djwong@kernel.org>, Anand Jain <asj@kernel.org>
+Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-f2fs-devel@lists.sourceforge.net, zlang@redhat.com, hch@infradead.org
+References: <cover.1781694879.git.asj@kernel.org>
+ <2ac5fb22fd6b51973d11082a1ee8fe354926c63c.1781694879.git.asj@kernel.org>
+ <20260701173314.GH6517@frogsfrogsfrogs>
+Content-Language: en-US
+In-Reply-To: <20260701173314.GH6517@frogsfrogsfrogs>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Finalize fs-verity integration in XFS by making kernel fs-verity
-aware with ro-compat flag.
 
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-[djwong: add spaces]
-Signed-off-by: Darrick J. Wong <djwong@kernel.org>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
----
- fs/xfs/libxfs/xfs_format.h | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/xfs/libxfs/xfs_format.h b/fs/xfs/libxfs/xfs_format.h
-index fc196d9e12dd..8be1b101b196 100644
---- a/fs/xfs/libxfs/xfs_format.h
-+++ b/fs/xfs/libxfs/xfs_format.h
-@@ -378,8 +378,9 @@ xfs_sb_has_compat_feature(
- #define XFS_SB_FEAT_RO_COMPAT_ALL \
- 		(XFS_SB_FEAT_RO_COMPAT_FINOBT | \
- 		 XFS_SB_FEAT_RO_COMPAT_RMAPBT | \
--		 XFS_SB_FEAT_RO_COMPAT_REFLINK| \
--		 XFS_SB_FEAT_RO_COMPAT_INOBTCNT)
-+		 XFS_SB_FEAT_RO_COMPAT_REFLINK | \
-+		 XFS_SB_FEAT_RO_COMPAT_INOBTCNT | \
-+		 XFS_SB_FEAT_RO_COMPAT_VERITY)
- #define XFS_SB_FEAT_RO_COMPAT_UNKNOWN	~XFS_SB_FEAT_RO_COMPAT_ALL
- static inline bool
- xfs_sb_has_ro_compat_feature(
--- 
-2.54.0
+> This is where I continue getting stuck on this patchset -- fsid is so
+> poorly defined that I don't think the rest of these fsid tests make
+> sense at all.  Nobody mandates that fsid is persistent or stable across
+> remounts.  Nobody even mandates that two cloned filesystems don't have
+> the same fsid value.
+> 
+> The statfs manpage says:
+> 
+> "Nobody knows what f_fsid is supposed to contain (but see below)"
+> 
+> and then:
+> 
+> "The general idea is that f_fsid contains some random stuff such that
+> the pair (f_fsid,ino) uniquely determines a file."
+
+Which is exactly why we need fstests guardrails.
+Keeps filesystem's implementation consistent across kernel versions.
+Embarrassingly, I introduced a bug around this that is now fixed.
+The commit IDs are in the test cases.
+Thus motivation for this fstests patch.
+
+> Based on that very weak statement, at most it might make sense to check
+> that two separate and simultaneously mounted filesystems don't end up
+> with the same fsid 
+
+Yes, for xfs, btrfs and f2fs. However for ext4 cloned filesystems can
+share the same fsid and ino because the images are identical.
+It is then up to the usecase to change the UUID for either filesystem if
+it gets modified.
+Commit ("fstests: add _require_unique_f_fsid() helper") captures this,
+and the link in that commit includes the discussion.
+
+> just in case there *are* programs foolish enough to
+> use (fsid,ino) as a uniqueness check.
+
+On the other hand, if a program needs a unique ID, do we currently have
+any way to get one?
+
+Thanks, Anand
+
 
