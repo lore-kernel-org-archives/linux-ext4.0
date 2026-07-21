@@ -1,47 +1,49 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D450E3A6F19
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2026 14:30:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FB95466B5D
+	for <linux-ext4@vger.kernel.org>; Tue, 21 Jul 2026 14:45:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784644207; cv=none; b=Z5Zh8QudxevSLkvyx4rwa8Y+vJsjSUGVaMcG90n76t4ZVxfnaMX82ABBLz9w/NCJh3vskrVcIKoDkg+cO0zswFucSzb9r9cAIa+ubX67D69uJN+2Oe368SmQ//tGoceKW9ISN4nQiJzf2FxnIvlWtuBOMG17Lm3zKEdcjehfaUU=
+	t=1784645160; cv=none; b=nmPymiqhQYLUHO8OuwvVVkrf5XiXDqkNTnA68KjpUdMc1Z7GA2+31lIY40sM5yih2WKSmWHb6CuHbKOEVbHJg1eoqn3xhfzGIgtcEz8Cw4QAZkBHyEtGVzVngZJRwNbggfszDkNJ2psHA2AxKup9WLddei87m9u0wmI/Y7K+25U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784644207; c=relaxed/simple;
-	bh=bFFk8zgkySDPWs21DeUVG7O0wL5elAJGSodVRejPgwc=;
+	s=arc-20240116; t=1784645160; c=relaxed/simple;
+	bh=HZHCKy6vJ3oAJXn4mf08AKv5q3htWNjL7HRmJJSMxM4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hvkqeMiqs500FE4TooZfr/H7F6Pj80AhS6xo3B46m9/3/6OWaKiWJJGKbNjkcq6hzUpl0O+0opzi4IsrQzeqZVm8HGRy7eBkm/RmdE7L+TtrhCNyFR3zYOi3yFSaJpONe/BGyuphaBnB6JOBpHDWLhvpSb0Sxxvm1roMZUFrn6Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=RF4Jl5Og; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=CAN4urPbAwsmnUseAq3OpQzCtgRCsbITu4wLy9oIRS3mvFSl3PNdiZB1gm3WYXEqQd2H9EQwUNb/gUJBT6ZnbAJ20vUb4r1NoXEmV7RaaSvFx6J8kz0ZKoY0eI21uwfvx+bx38fBXKUwdSvU24PmtnfQOymuZh3AStLVCkiXK14=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=DWF8gydL; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="RF4Jl5Og"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="DWF8gydL"
 Received: from macsyma.thunk.org (pool-108-49-65-18.bstnma.fios.verizon.net [108.49.65.18])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66LETtwl023742
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66LEjoqm031242
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 21 Jul 2026 10:29:56 -0400
+	Tue, 21 Jul 2026 10:45:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784644198; bh=ouFWh6IaU+DPbLrIKJfznZDajsuzKSi5rlJeA5mT0so=;
+	t=1784645152; bh=fp2HWtmMG1271pjns1ZUNWCUHlIk09MzSxVhhMZXoS4=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=RF4Jl5OgbM59C7taleWFMJPJr5ZCFNnBhVEhAkh6Zux/OiNWlTxYgW4h3JewA4m3t
-	 VIGcP4yJEOEbfUHnCh6M0VCz9s4JcfCtUS3zOhmVupd2vZXU69wvmVeJlxmSETIiaU
-	 Q1IarBHOQihh2nomAl2at8agiEOFM0ZdlL2558EBo0m55Z6Ily/pDlJvhKZ+A8Y7Fr
-	 a5sKHTJzWLsFr2jW3+WVGwQNS9aNX+XESIW5e+35ydhK3zHMMcDtcvYdxguR7cZlYc
-	 7UlantayhN3SCjTVX8QY4S5694sxQHusV/4AyvSEhKMAHnX35pv3GRmLnX/MnXM81v
-	 9ut+LWTdKoXlg==
+	b=DWF8gydLqAE96HaI6Nm/I7u+HJabQmwTgUxG2UKDf2y2DK/unbvrOBZJQ9st4jQAc
+	 kVMfcQWGSz+HRdxiyH2YJXhSC5toSUbRX/vV1/6IK7AEn/DnedyMw+GWfO+8hmKeAG
+	 69mR42G1wXXeWmFqBTqGAyEjUabNUbk1/I7r+rrfax5prZKcopMpS3jdBxPBFeAX9p
+	 9UUJlg7zo9+duxNcmeUZMT1OkTkyo8hzREYeapSR+JcHUwuK3/KRZIuGUWH1iyi2oP
+	 6QgFTgd9lFdi1KQEmQLeN8nq72EnCWUkmNFda9W2vTOqsqrhpupKHCxWuaQD/oBDXd
+	 2G5em/wnn4tYw==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 0522FB8543B; Tue, 21 Jul 2026 10:28:54 -0400 (EDT)
-Date: Tue, 21 Jul 2026 10:28:54 -0400
+	id A727BB86C4D; Tue, 21 Jul 2026 10:44:49 -0400 (EDT)
+Date: Tue, 21 Jul 2026 10:44:49 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: Helen Koike <koike@igalia.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-dev@igalia.com
-Subject: Re: [PATCH] ext4: skip i_extra_isize expansion during inode eviction
-Message-ID: <al-B7eVSy_jtDBgD@mit.edu>
-References: <20260715175253.2171303-1-koike@igalia.com>
+To: Daejun Park <daejun7.park@samsung.com>
+Cc: "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 0/2] ext4: reduce fast-commit write amplification for
+ scattered writes
+Message-ID: <al-FU9wu4bZ5Euqa@mit.edu>
+References: <CGME20260611044733epcms2p38013ae683a283555526f70e4eab6d2a9@epcms2p3>
+ <20260611044733epcms2p38013ae683a283555526f70e4eab6d2a9@epcms2p3>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -50,23 +52,31 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260715175253.2171303-1-koike@igalia.com>
+In-Reply-To: <20260611044733epcms2p38013ae683a283555526f70e4eab6d2a9@epcms2p3>
 
-On Wed, Jul 15, 2026 at 02:52:25PM -0500, Helen Koike wrote:
-> __ext4_mark_inode_dirty may be called from the eviction/free path (via
-> ext4_truncate ??? ext4_ext_truncate ??? mark_inode_dirty), which may call
-> ext4_try_to_expand_extra_isize() that could create a new EA inode,
-> wasting work that will be immediately discarded.
+On Thu, Jun 11, 2026 at 01:47:33PM -0500, Daejun Park wrote:
+> ext4 fast commit tracks a single coalesced logical range per inode.  When
+> an inode is dirtied at several disjoint offsets between two commits (e.g.
+> sparse/scattered random writes), that range is widened to span [min, max]
+> of all the touched offsets, and ext4_fc_write_inode_data() then re-logs
+> every extent inside that span -- including the unmodified ones.  On sparse
+> allocation this inflates fast-commit traffic and frequently overflows the
+> fast-commit area, forcing a fallback to a full jbd2 commit.
 > 
-> Skip the expansion when the inode is transitioning to freed.
+> This series replaces the single range with a small, bounded set of disjoint
+> ranges so that only the actually-modified regions are logged, while keeping
+> the per-inode memory cost negligible:
 > 
-> Signed-off-by: Helen Koike <koike@igalia.com>
+> Based on v6.17-rc3.
 
-This issue has been addressed via the patch[1] "ext4: set
-EXT4_STATE_NO_EXPAND in ext4_evict_inode".
+Hi Daejun,
 
-[1] https://patch.msgid.link/20260623061903.2148767-2-yun.zhou@windriver.com
+Unfortunately, this patch series doesn't apply on top of the latest
+development branch of ext4.  Li Chen has also been submitting changes
+to the fast commit code and your changes are conflicting with his
+work.  Could you look at rebasing your patches against the mainline
+development of the Linux kernel?
 
-Thanks,
+Many thanks,
 
 						- Ted
