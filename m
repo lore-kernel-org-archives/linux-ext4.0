@@ -1,50 +1,48 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BC1238D3FE
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 15:35:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D95242123B
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 17:07:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784734528; cv=none; b=jpXPAqzZFoi/AMehxuhTIhdHneuhWdUwf6B46Nz9Ymk/9yvPC3u2XmWZYGfzgfP0Akk5jaS0CmFD+D09hy1KPx9gFp9o5i/PP74clJIu0RWF/UiIod0c8SE8eVPqHwAcrooL3kbbfdGQKcW7WMk2INhKvVCCJyaEciNZb7U68z4=
+	t=1784740056; cv=none; b=Omlk9mSqldz/FTfyaLKY0oCJ8w5bsxznrDbZuRNShN4+FiBDgMGLsEdHYDWUz0BWBmucyZ1+PetYrL5hxlNjRMQCG0gzd/2edx4nXCHF0nc69Y/aZGnWcXsSL8wKW3YEdVkyAy0uA9yMVpCs8eK778HjLwugiws8X+67K7Mo0Fk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784734528; c=relaxed/simple;
-	bh=6HHnuM6fG/lhvHHDzxaWxU16oVEOtCL+iVgib0KAtJU=;
+	s=arc-20240116; t=1784740056; c=relaxed/simple;
+	bh=kUZbXwnpjPnZZdsjfaKmF9reZqXqBunFYt4xSWwGcYs=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=NaY5IqwGJIKqyluaNL7Hz42SVONfVev8b6WIM/n0XtrKQpeeubRnj1IX2UTfisOzYAMHDeckSJkPRaJ4Q0LBOJp9PW1TpcoumDI7ZK/I7rmUzZu4qeuQq9TK2xPPyUBZqRIJ7wLG4OjPQsZAEYQMnXo2P9SDGWq/9e0NSxjCUNo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=K7A1suCT; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=oX+cneBk4j8ugbhriSb1/uGKIm4DXAc5Bf0i9oQFr88GQyXtNe7dO/UL6Ykdy4cVWcwRFQuOog2EqfVZ7FX7bWz7HISrmfKZrYe6mtmaHGgdqlQbfSJnS8x12ivRSG+2KyGX0t7vVAnVOHBppxGaUHbEfj3sjXtF7/tV0J/tmK0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Y0TTXM4v; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="K7A1suCT"
-Received: from macsyma.thunk.org ([104.135.218.88])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Y0TTXM4v"
+Received: from macsyma.thunk.org ([104.135.218.223])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66MFYH17032533
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66MH7DES013826
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 22 Jul 2026 11:34:19 -0400
+	Wed, 22 Jul 2026 13:07:14 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784734463; bh=/XVAf9v4NJTOhwslkTBHwx0MifNIHYg+F6jgSYaisLE=;
+	t=1784740035; bh=kgbA8A3pc+ck1OKMHCgGDO3bWA5fNAN7z3mksbHMBqc=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=K7A1suCT0FQMfJGAljUD/0TLPbcAbvPUnohCBMVp1jWGj3dn8gNBy+eNslIZ1gw2B
-	 HznDOujpIR7USvbRBKYkjRCRC5UhzAnzT6sPBhVjX9Fu5W5eXf/oGKTd5jpvn9CE3R
-	 g557xFayM1vIs3S7TLoAmcjRCBAeBeN7I50cQWOdxKB+tYiSIyV1r2mSy0KQmdsxqh
-	 Lf0RhghBE56wg7RNPDeu7RUNNA7gTk7iC9S1motbxT9QRsdidmquZXuiaPy/E657dX
-	 d5QQWAB8kwDWR7E6KHmGnZfVdaMOJ9R1hk+9MrggBMD1dsK+1/jYJuBvjBEILAwWB5
-	 Vxp49Vbbm/cnA==
+	b=Y0TTXM4vYJh0V0747j6CKEhP7W1LwaL1zjdU00ktqofUmKrcdud6tQnRdocPQpdg4
+	 wMSJyKsw1hUnBizxqTf8dLhxv+RXgcXsSEi/l4oaVhVgBKY8YEEx5UT74zfSrHeQLV
+	 xSgt/086Hr4tn1V7K6XeIKMDDhgKKJwD0iUFAqJwPN14L0t6meSHggQhVGsxgnWHgG
+	 lbrfe6R6u4vtJw8sWPo8JnGrgbeshVFzXssdL9fUm+gzlsTG+swwPsZt/sSRyL8BET
+	 a6LkMqJgy74cKoRt5FzhekoeJYurrhXmnvoq5W3YkerRWZr5fBRAUp5enDK4GtYwAc
+	 B9wavlmcueVFg==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 1FC21BA65EF; Wed, 22 Jul 2026 11:34:17 -0400 (EDT)
-Date: Wed, 22 Jul 2026 11:34:17 -0400
+	id CE81DBAA19E; Wed, 22 Jul 2026 13:07:12 -0400 (EDT)
+Date: Wed, 22 Jul 2026 13:07:12 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: brauner@kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, djwong@kernel.org, hch@infradead.org,
-        joannelkoong@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
-        chengzhihao1@huawei.com, yangerkun@huawei.com,
-        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com,
-        Zhang Yi <yi.zhang@huaweicloud.com>
-Subject: Re: [PATCH v4 0/5] iomap: trivial fixes for ext4 conversion
-Message-ID: <amDiuuX56ChS6LO0@mit.edu>
-References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+To: sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org
+Cc: Zhang Yi <yi.zhang@huaweicloud.com>
+Subject: Re: [PATCH v4 9/9] ext4: protect WRITE_ZEROES written extents with
+ orphan list
+Message-ID: <amD3fZPiCKwUqhGd@mit.edu>
+References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
+ <20260714080044.4038124-10-yi.zhang@huaweicloud.com>
+ <20260714084203.971381F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,73 +51,50 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+In-Reply-To: <20260714084203.971381F000E9@smtp.kernel.org>
 
-Hi Christian,
+On Tue, Jul 14, 2026 at 08:42:03AM -0500, sashiko-bot@kernel.org wrote:
+> > @@ -4701,6 +4729,11 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+> >  		pagecache_isize_extended(inode, old_size, epos);
+> >  
+> >  	return ret ? ret : ret2;
+> > +
+> > +out:
+> > +	if (orphan && inode->i_nlink)
+> > +		ext4_orphan_del(NULL, inode);
+> 
+> [Severity: Critical]
+> Does passing a NULL handle to ext4_orphan_del() here corrupt the on-disk
+> orphan list?
+> 
+> If ext4_convert_unwritten_extents() fails on the first iteration, epos is 0.
+> The code skips starting a new journal handle, jumps to out: and calls
+> ext4_orphan_del(NULL, inode).
+> 
+> A NULL handle removes the inode from the in-memory list but leaves it
+> permanently linked in the on-disk list.  If this inode is later unlinked and
+> freed, could this sever the rest of the on-disk orphan list and lead to severe
+> filesystem corruption during recovery if the inode is reallocated?
 
-These fixes are needed for landing support for buffered writes using
-iomap in ext4.  That won't be ready to land this development cycle,
-but could we land these fixes now?
+This looks like a valid problem; it's possible to get to this point in
+the code:
 
-Thanks,
+        if (!epos || !new_size)
+                goto out;
+
+where we've already added the inode to the orphan list, and we will
+then leave the inode on the orphan list.
+
+I think we need to fix this by checking to see if orphan == true, and
+if so, we need to start a handle, and then call ext4_orphan_del() with
+that handle, and stop it afterwards.
+
+Do you agree?
+
+If so, are you OK if I just drop this last patch in the series, and
+you can resubmit with the fix?
+
+Thaks,
 
 						- Ted
-
-On Tue, Jul 14, 2026 at 04:23:20PM -0500, Zhang Yi wrote:
-> Hi,
-> 
-> This is v4 of the trivial iomap fixes for the ext4 conversion. There are
-> no code changes relative to v3, the only update is the addition of a
-> Fixes tag in patch 03.
-> 
-> Changes since v3:
->  - Collect RVB tags from Christoph.
->  - Add fix tag in patch patch 03 ("iomap: fix incorrect did_zero setting
->    in iomap_zero_iter()").
-> Changes since v2:
->  - Collect RVB tags from Darrick and Joanne.
->  - Remove CC stable tag in patch 01 as Joanne suggested.
-> Changes since v1:
->  - Add fix tags to patch 01 and 04.
->  - In patch 04, change ifs_set_range_uptodate() to always fall through
->    to ifs_is_fully_uptodate(), preventing a false-positive uptodate
->    mask.
->  - Add patch 05, add comments for ifs_clear/set_range_dirty().
-> 
-> v3: https://lore.kernel.org/linux-fsdevel/20260713072906.1726059-1-yi.zhang@huaweicloud.com/
-> v2: https://lore.kernel.org/linux-fsdevel/20260520030357.679687-1-yi.zhang@huaweicloud.com/
-> v1: https://lore.kernel.org/linux-fsdevel/20260514062955.1183976-1-yi.zhang@huaweicloud.com/
-> 
-> 
-> Original Cover-letter:
-> 
-> This patch series contains a few trivial iomap-related fixes in
-> preparation for converting ext4 buffered I/O to use iomap. 
-> 
-> The first three patches are taken from my ext4 conversion series [1], as
-> suggested by Christoph. The fourth patch fixes a bug originally reported
-> by Sashiko during review of my series; although unrelated to the ext4
-> conversion, it is worth fixing on its own. Please see the following
-> patches for detail. The fifth patch add comments for
-> ifs_clear/set_range_dirty(), and the last patch avoids merging ioends
-> that have different private data.
-> 
-> Thanks,
-> Yi.
-> 
-> [1] https://lore.kernel.org/linux-ext4/20260511072344.191271-1-yi.zhang@huaweicloud.com/
-> 
-> Zhang Yi (5):
->   iomap: correct the range of a partial dirty clear
->   iomap: support invalidating partial folios
->   iomap: fix incorrect did_zero setting in iomap_zero_iter()
->   iomap: fix out-of-bounds bitmap_set() with zero-length range
->   iomap: add comments for ifs_clear/set_range_dirty()
-> 
->  fs/iomap/buffered-io.c | 58 ++++++++++++++++++++++++++++++++----------
->  1 file changed, 44 insertions(+), 14 deletions(-)
-> 
-> -- 
-> 2.52.0
-> 
-> 
+						
