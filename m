@@ -1,567 +1,288 @@
-Received: from va-1-112.ptr.blmpb.com (va-1-112.ptr.blmpb.com [209.127.230.112])
+Received: from mail-pf1-f173.google.com (mail-pf1-f173.google.com [209.85.210.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0E5F139D3FC
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 03:01:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.112
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E2D3353A75
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 07:27:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784689269; cv=none; b=MD4H1KQ2S/QlAJmMbfz+1AfC2UclJCCBXghuYeKqkH9kbKtPQRp0rSbSOB65kNfnLDDJDnodBSQl7Ud9JiXJ1mRSdr7zbWPA+1p5FzzVLROX5KQF3A9HDOUSKvALNW3AtA/IHXob3BRxUqVHytWpmN7Jce77wwiO0bB1JLI5yvc=
+	t=1784705251; cv=none; b=JbD/OBkgd1V8PCRxVRoVhLBOT3ciXAj1YrwQ/yLVTekY1bW+1zMRlwXp0zao7SCnATILNFV3xkdmRRWjvh8VKlkfQK1x7wHIk6EoAwqESS+2Sa1fci6YQvXae4T8OF91DEWuUavtSCAYoqE6/ggAf7WRerv2A6340EECHvt/a2I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784689269; c=relaxed/simple;
-	bh=LOQbljvZmkE3kHtILlUSyJeNtumRU1e5oImj6NtAbLQ=;
-	h=Message-Id:To:Cc:From:References:Content-Type:Date:Subject:
-	 Mime-Version:In-Reply-To; b=Y9ITX/zSZRTGfeSR9jjYxsEdMtHtal/dAfM6MmlWAdqXuthFa94tFa7FrJICU6YTGdrXBTkW4gmYUjR+jiOF4pn+WaY7Dmjp7rHR8Yi6spRaz3QDIEp4pJON0oiK95KYPqxW+sF0eDwIFGbV9GOU/r0rK4s1VQWcLSABCQC1c6M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=pApwXW3G; arc=none smtp.client-ip=209.127.230.112
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1784705251; c=relaxed/simple;
+	bh=FAsqZMf1R9jNyv1V3obc5umTlKjfXl+Kjk7RA5IUXww=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=PBKvBUs8lQmTpkIPbqwWeMPd8sEEkMmO3Rm6KIkviqqWjo/9ZOG8LE3BkvOxUGWG7iv7O9YZvJ19PQP23d+pZfFKLnYqS8jZm+d/q9MIr/J+WFBpgqUvR71UWg4R7coirMG1vVQgrEsYzDOwiai8kd/5RxqVPQo27rnY7V+TY/4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=zay5bY9M; arc=none smtp.client-ip=209.85.210.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="pApwXW3G"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1784689259; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=LOQbljvZmkE3kHtILlUSyJeNtumRU1e5oImj6NtAbLQ=;
- b=pApwXW3G5IneJVxpvq9UyIJPoUk8tZV3FcbV2GbyGczOy7KUfWoOuqWJ3weQWELrnd8gt/
- l9o2AzaA4QB0CvSxTIiooM5mkm3cR1OtIAv3n4cC37gJk/u0Riz8TrSYDarr4Ox4r3++kj
- VwWdLPZSGCW+L/ouwFbVDMwpEGe6A11QqHqsVxWh1QXc9A3gStcwiIOqTDbYx/RFaPuE9i
- N+3LVxvH6bOQrqMev+BuCcV1flKKJkxMslEQqEkSOSQLNU/kS9x1J/pH8Eh5h2gyH89xGD
- me+6AmeeHrRf06OXkdhiSu8AttgBi8gilq0ZOEJRgQrudejtxI5MFwE6VJL4LA==
-Message-Id: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.61b2aa58.70d3.491a.bf4d.2ab068c26e69@bytedance.com>
-To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>, 
-	<tytso@mit.edu>, <adilger.kernel@dilger.ca>, 
-	<libaokun@linux.alibaba.com>, <jack@suse.cz>, <ojaswin@linux.ibm.com>, 
-	<ritesh.list@gmail.com>
-From: "changfengnan" <changfengnan@bytedance.com>
-References: <20260720075133.50539-1-changfengnan@bytedance.com>
-	<8c443e8f-178f-4411-9027-320a14a40c80@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 22 Jul 2026 11:00:53 +0800
-Subject: Re: [PATCH] ext4: cache full extents during mapping lookup
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="zay5bY9M"
+Received: by mail-pf1-f173.google.com with SMTP id d2e1a72fcca58-848479c9bd5so5674512b3a.3
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 00:27:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1784705248; x=1785310048; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=zx0c4Q2o2V2Z0rytnWK5U8vEtkTZ9q0DCPxis64jpzU=;
+        b=zay5bY9MY7EnbtUBQ9Ea8q+QIgLoayuEpZ3sUXynqWA9DLH5nJkB8mzA4NYW1y83tj
+         tCl1Stg8Wp6GDRg0gIK97NsKq6nJmc1JKRWFFQN1XbUsde1TGQj8hdQ+pmcEKqWoeDB0
+         d+w7khlOKbZlxS1eJVRT69oGOU9zBGLv8QVLd01Hr+FXQv8YlB85grpF6YA8++G+gxWh
+         IDgcomp3umyYNRu+2PkKxDuw9BK6axTinEyUHguRM68DHdLktzohJratsjalnOJC4gQP
+         7eum3PQTLipm/kzUVVjhRbvtGE+VW3Jj8nPb0t4rC4w08qd9Aff73VUnL7Dm6FZrSkXX
+         Q/Nw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784705248; x=1785310048;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=zx0c4Q2o2V2Z0rytnWK5U8vEtkTZ9q0DCPxis64jpzU=;
+        b=LCqGBoMEkKu2TCE/Lg4kyoDJWJsRBWJRN10tT4d04EGVPV7HICey8EgyOFZ3gHG46n
+         mlWHAOerRdfWZsQDFoGnmgtzCcAw9VBdsahxQdHdaEvC0Y34JJ/vINjLI5EKcW1qew7K
+         GsJU93F0YLNSk4M7t/Fxt5gPAcZeOuRgy5HXd+7H86iLqZOA3G7P2GfgR1BCA7QUHwad
+         ux0LxbWumXu/41yuR7AuTt2wmmm8rSlVvLP6Q3fqZFJFqy9Jh6bLeS4B1UVELhu0fM6y
+         2CimDZp6m9Y/SBXdHged4KWkhg395sY+S+sLKaQ+tRUjn6Zgq8ceZfys5DhjE1akTb9g
+         P0QQ==
+X-Forwarded-Encrypted: i=1; AHgh+RoPPBvAmoP+vpSyjhU86CFn33skSWHYZpA6ZsyLjLWY547dfmuAl25rrTmrlAgLGV/1x+/XU/qfk9S8@vger.kernel.org
+X-Gm-Message-State: AOJu0YyBxtbAiSVyk/tukmZ7IXoNdPmPMHgqV1xhNzqj0HzNF4cX6wai
+	UN8qhUh8YGDU/Lb/HxHQwZNM0jakNasQElz3/B6unDjNz2bUDQuNs2E8MzFtZbvXfl4=
+X-Gm-Gg: AR+sD10YO5TpQktncART/Uy1rfcutrGisz/0TVwcdMn2xKoQHMbxEALq7O0EujYzOjF
+	ai/ghg514FtwUVa+/ofroXJNpKDZztic1QPeJypwPix4DbG4belolaBfvlM+fG2++zJzqluoI+1
+	r8o7txDA1V4j+ADRkwVtzhGkxOAgGs7wr9IyUVd436wDxmHk41YDi0LCb2fJGbs586NB6ldbjJO
+	7oyRacoPS+wQuJi383ooY/VE+g3XhIdH/6GgywyQphuC9bjmQHIpWqJSEyvonF0IM4QeTrsvAtQ
+	8VxTVDTGXnN5Uc/4tzow3B/85txBN6TzzCdeRDHWxAi5iHn7y3IH1YACeavYAwY/lg5R90YrPYm
+	5JHqQWtesfVE5jykhHano0v3xHbnZ82fmylXOEq2pt4s/VLH/4rGEe0Y4/zc+2HSFqmTamcxFtG
+	jJpi2d5u0WTvGQsbOE8kcNtQHgID7oYhQ=
+X-Received: by 2002:a05:6a00:4092:b0:845:e9e8:6458 with SMTP id d2e1a72fcca58-84c29272e79mr20800874b3a.20.1784705248459;
+        Wed, 22 Jul 2026 00:27:28 -0700 (PDT)
+Received: from smtpclient.apple ([2604:3d09:3a84:1700:5433:70f8:26df:52b6])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-84e1728566dsm883520b3a.18.2026.07.22.00.27.25
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 22 Jul 2026 00:27:27 -0700 (PDT)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-In-Reply-To: <8c443e8f-178f-4411-9027-320a14a40c80@huaweicloud.com>
-X-Lms-Return-Path: <lba+16a603269+d6ff76+vger.kernel.org+changfengnan@bytedance.com>
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: Re: [RFC PATCH v3 0/2] ext4: speed up fast commit on random writes
+From: Andreas Dilger <adilger@dilger.ca>
+X-Priority: 3
+In-Reply-To: <20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
+Date: Wed, 22 Jul 2026 01:27:15 -0600
+Cc: "tytso@mit.edu" <tytso@mit.edu>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+ "me@linux.beauty" <me@linux.beauty>,
+ "libaokun@linux.alibaba.com" <libaokun@linux.alibaba.com>,
+ "harshadshirwadkar@gmail.com" <harshadshirwadkar@gmail.com>,
+ "yi.zhang@huaweicloud.com" <yi.zhang@huaweicloud.com>,
+ "ojaswin@linux.ibm.com" <ojaswin@linux.ibm.com>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <0A044AA9-8457-4DF8-902E-72208C1C6CC6@dilger.ca>
+References: <CGME20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
+ <20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
+To: daejun7.park@samsung.com
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
+
+On Jul 21, 2026, at 18:59, Daejun Park <daejun7.park@samsung.com> wrote:
+>=20
+> Fast commit is meant to make fsync cheap, but on random-write =
+workloads it
+> defeats itself.  ext4 still tracks a single coalesced [min,max] =
+logical range
+> per inode (i_fc_lblk_start/len).  When an inode is dirtied at several =
+disjoint
+> offsets between two commits, that span widens to cover them all, and =
+at commit
+> time ext4_fc_snapshot_inode_data() walks the whole span through the =
+extent
+> status tree -- emitting an ADD_RANGE per mapped segment and a =
+DEL_RANGE per
+> hole inside it.  For scattered writes that is hundreds to thousands of =
+ranges
+> even though only a handful of regions were actually modified.
+>=20
+> The recently merged fast-commit snapshot work did not change this: it =
+caps a
+> snapshot at EXT4_FC_SNAPSHOT_MAX_RANGES (2048) and fails over to a =
+full commit
+> when the span exceeds it.  Measured on dev (7.1.0-rc4) with a sparse
+> random-write workload (1 GiB span, R disjoint 4 KiB writes per fsync, =
+300
+> fsyncs):
+>=20
+>  R=3D16 regions/fsync:  ranges/commit 1095,  full-commit fallback 76%
+>                       (snap_fail_ranges_cap on 226 of 300 fsyncs)
+>=20
+> Fast commit barely functions on this workload.
+>=20
+> This series tracks the actually-modified disjoint ranges instead of =
+one span,
+> and snapshots only those:
+>=20
+>  1/2 replaces the single [min,max] range with a small, bounded set of =
+sorted,
+>      disjoint ranges (up to EXT4_FC_MAX_RANGES =3D 16; the two closest =
+are
+>      merged on overflow, so the worst case degrades to the old =
+single-span
+>      behaviour).  ext4_fc_snapshot_inode_data() then walks only the =
+tracked
+>      ranges.  The on-disk TLV format is unchanged.
+>=20
+>  2/2 allocates the range array lazily: the first range stays inline, =
+the
+>      array is allocated only when a second disjoint range appears, and =
+on an
+>      allocation failure we fall back to the inline single range.  =
+Per-inode
+>      fast-commit footprint stays ~20 bytes.
+>=20
+> Result on the same workload (dev, patched):
+>=20
+>  R=3D16:  ranges/commit 1095 -> 16,  fallback 76% -> 0.7%,
+>         snap_fail_ranges_cap 226 -> 0
+>=20
+> i.e. the over-logging and the fallback storm are gone when the number =
+of dirty
+> regions is within the bound.
+>=20
+> Honest limitation: when the number of disjoint regions per fsync =
+exceeds
+> EXT4_FC_MAX_RANGES (e.g. R=3D64 with the bound at 16), the overflow =
+merge
+> re-coalesces and the win largely disappears (fallback 95% -> 87%).  A =
+larger or
+> tunable bound recovers it -- see the open question below.
+>=20
+> Testing (on dev, patched):
+>  - crash recovery: deterministic writes + fsync, kill -9 QEMU (power =
+loss),
+>    reboot -> fast-commit replay -> verify every fsync'd block, e2fsck =
+-fn.
+>    9600/9600 blocks verified, 0 mismatch, e2fsck clean.  Run with =
+R=3D64, so the
+>    overflow-merge path is exercised.
+>  - ext4/generic fast-commit xfstests (ext4/044 ext4/045 generic/455 =
+456 457
+>    470 482): ext4/044, ext4/045, generic/456 pass; generic/457, 470 =
+skip
+>    (reflink/dax unsupported on ext4); generic/455 fails identically on
+>    unpatched dev (pre-existing, patch-unrelated); generic/482's single =
+failure
+>    in a combined run did not reproduce (3/3 pass in isolation on the =
+patched
+>    kernel).
+>  - on-disk format unchanged, so e2fsprogs needs no update.
+>  - both patches are checkpatch --strict clean.
+>=20
+> Posted as RFC -- this sits right on top of the new snapshot code and I =
+would
+> like direction before a non-RFC submission:
+>=20
+>  - Is tracking disjoint ranges in-core (this series) the right shape, =
+or would
+>    you rather the snapshot side skip holes/unmodified extents some =
+other way?
+>  - EXT4_FC_MAX_RANGES is fixed at 16.  The R>bound case above wants it =
+larger
+>    or tunable (sysfs/mount).  Preference?
+>  - The array is allocated under i_fc_lock with GFP_ATOMIC, falling =
+back to the
+>    inline range on failure.  Acceptable, or move the allocation =
+outside the
+>    lock?
+>  - Overflow merges the two ranges with the smallest gap -- acceptable
+>    heuristic?
+
+Have you looked at implementing a more dynamic structure like another
+extent status tree, rbtree, xarray or or similar instead of having a
+fixed-size array?  At *some* point the number of random blocks in the
+fast commit will be so large that there is no value to tracking them
+separately anymore, but the fixed 16-range limit is clearly too small
+based on your testing.  It would be useful to do some testing of how
+many separate ranges gets worse than the fallback.
+
+Getting this tuning right is always difficult, and will depend on the
+application workload, IO size, the storage bandwidth/latency, etc.
+Having a dynamic limit is much better than a compile-time constant.
+
+A runtime tunable is the minimum, possibly storing one range directly
+in the inode, and using that as a union with the pointer to an allocated
+array of ranges.  Something like the following that allows a range, with
+an inode flag whether the union holds a single range or allocated array:
+
+	union {
+		struct ext4_fc_lblk_range i_fc_range;
+		struct {
+			unsigned int		   r_count;
+			struct ext4_fc_lblk_range *r_ranges;
+		} i_fc_range_array;
+	};
 
 
-> From: "Zhang Yi"<yi.zhang@huaweicloud.com>
-> Date:=C2=A0 Tue, Jul 21, 2026, 15:43
-> Subject:=C2=A0 Re: [PATCH] ext4: cache full extents during mapping lookup
-> To: "Fengnan Chang"<changfengnan@bytedance.com>
-> Cc: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>, <tytso@=
-mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>, <jack@s=
-use.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>
-> On 7/20/2026 3:51 PM, Fengnan Chang wrote:
-> > The extent status (ES) tree and extent tree leaf buffers are reclaimed
-> > independently. =C2=A0An ES entry can be reclaimed while the leaf buffer=
- remains
-> > cached with BH_Verified set.
-> >=C2=A0
-> > When this happens, ext4_es_lookup_extent() misses. =C2=A0Since the leaf=
- buffer
-> > is already verified, __read_extent_tree_block() returns it without call=
-ing
-> > ext4_cache_extents(). =C2=A0ext4_ext_map_blocks() returns the part of t=
-he extent
-> > covered by the request, and ext4_map_query_blocks() caches only that ra=
-nge.
-> > Reads to other blocks in the same extent then keep missing the ES tree =
-and
-> > walking the extent tree.
-> >=C2=A0
-> > Cache the full extent in ext4_ext_map_blocks() before the returned mapp=
-ing
-> > is limited to the requested range. =C2=A0Check the ES tree under the re=
-ad lock
-> > first. =C2=A0If the full extent is not there, ext4_es_cache_extent() ch=
-ecks
-> > again under the write lock before inserting it.
-> >=C2=A0
-> > Do not do this when ext4_ext_map_blocks() is called with
-> > EXT4_GET_BLOCKS_CREATE or EXT4_EX_NOCACHE. =C2=A0NOCACHE paths can chan=
-ge extent
-> > mappings, so caching ranges outside the request can leave stale ES entr=
-ies.
-> > Cache both written and unwritten extents, as ext4_cache_extents() does.
-> >=C2=A0
-> > Tested with fio 4K random direct reads using libaio at iodepth 128 on a
-> > 128 GiB file with 208 on-disk extents. =C2=A0The results are averages o=
-f three
-> > 10-second runs:
-> >=C2=A0
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0before re=
-claim =C2=A0 =C2=A0after reclaim
-> > =C2=A0 unpatched =C2=A0 =C2=A0 =C2=A0 =C2=A0419.6k IOPS =C2=A0 =C2=A0 =
-=C2=A0 274.6k IOPS
-> > =C2=A0 patched =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0426.1k IOPS =C2=A0 =C2=
-=A0 =C2=A0 423.7k IOPS
-> >=C2=A0
-> > Average completion latency went from 303.02 to 462.78 us without the pa=
-tch,
-> > and from 298.36 to 300.07 us with the patch.
-> >=C2=A0
-> > No latency regression was seen in A/B test.
-> >=C2=A0
-> > Suggested-by: Jan Kara <jack@suse.cz>
-> > Link: https://lore.kernel.org/r/20260714114358.93335-1-changfengnan@byt=
-edance.com
-> > Signed-off-by: Fengnan Chang <changfengnan@bytedance.com>
->=C2=A0
-> Thank you for the patch! This overall looks good to me, just some minor
-> suggestions below.
->=C2=A0
-> > ---
-> > =C2=A0fs/ext4/extents.c =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A09 +++++++++
-> > =C2=A0fs/ext4/extents_status.c | 33 +++++++++++++++++++++++++++++++++
-> > =C2=A0fs/ext4/extents_status.h | =C2=A03 +++
-> > =C2=A03 files changed, 45 insertions(+)
-> >=C2=A0
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 91c97af64b317..f43dd9c3bc44e 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -4310,6 +4310,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct =
-inode *inode,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_lblk=
-_t ee_block =3D le32_to_cpu(ex->ee_block);
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_fsbl=
-k_t ee_start =3D ext4_ext_pblock(ex);
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned =
-short ee_len;
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned int s=
-tatus;
-> > =C2=A0
-> > =C2=A0
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
-> > @@ -4317,6 +4318,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct =
-inode *inode,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 * we spl=
-it out initialized portions during a write.
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ee_len =
-=3D ext4_ext_get_actual_len(ex);
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0status =3D ext=
-4_ext_is_unwritten(ex) ?
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-> > =C2=A0
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_ext=
-4_ext_show_extent(inode, ee_block, ee_start, ee_len);
-> > =C2=A0
-> > @@ -4328,6 +4331,12 @@ int ext4_ext_map_blocks(handle_t *handle, struct=
- inode *inode,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0ext_debug(inode, "%u fit into %u:%d -> %llu\n",
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0map->m_lblk, ee_bloc=
-k, ee_len, newblock);
-> > =C2=A0
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0if (!(flags & (EXT4_GET_BLOCKS_CREATE |
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 EXT4_EX_NOC=
-ACHE)))
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_es_cache_extent_if_missing(i=
-node, ee_block,
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0ee_len, ee_start,
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0status);
->=C2=A0
-> After this patch, I think the calls to ext4_es_cache_extent() in
-> ext4_map_query_blocks_next_in_leaf() and ext4_map_query_blocks() can
-> also be replaced with this helper.
->=C2=A0
-> > +
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0/*
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 * If the extent is initialized check whether the
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 * caller wants to convert it to unwritten.
-> > diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> > index 6e4a191e82191..83fe2068ab656 100644
-> > --- a/fs/ext4/extents_status.c
-> > +++ b/fs/ext4/extents_status.c
-> > @@ -1082,6 +1082,39 @@ void ext4_es_cache_extent(struct inode *inode, e=
-xt4_lblk_t lblk,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_pblock(&chkes), ext4_es_status(&chkes))=
-;
-> > =C2=A0}
-> > =C2=A0
-> > +/*
-> > + * Avoid taking i_es_lock for writing if the entire extent is already =
-cached.
-> > + * ext4_es_cache_extent() rechecks under the write lock if the cache c=
-hanges
-> > + * after this read-side check.
-> > + */
-> > +void ext4_es_cache_extent_if_missing(struct inode *inode, ext4_lblk_t =
-lblk,
->=C2=A0
-> I'd prefer to move this logic into ext4_es_cache_extent() and add a
-> parameter(e.g., read_search) to control whether to do pre-search unbder
-> the read lock. If the extent is likely to already exist on the status
-> tree, we can pass 1. Sounds good?
+Better would be a union with the root of a dynamic range tree.  It is
+better to re-use some existing kernel functionality for this instead
+of creating yet another tree implementation.
 
-ext4_es_cache_extent add a parameter=C2=A0 to control whether to do pre-sea=
-rch
-sounds good. =C2=A0
-I have some questions about when to perform a pre-search.
-Are you meaning that a pre-search should also be performed when
-ext4_map_query_blocks_next_in_leaf and ext4_map_query_blocks call=C2=A0
-ext4_es_cache_extent ?
-ext4_map_query_blocks_next_in_leaf is ok , but I think it only makes sense
-to perform a pre-search for ext4_es_cache_extent in ext4_map_query_blocks
-when in extent mode, because in extent mode, the entire leaf is cached, so
-it=E2=80=99s likely that the extent already exists=E2=80=94but this isn=E2=
-=80=99t the case in indirect mode.
-Right ?
+Cheers, Andreas
 
-I=E2=80=99d like to make the following change:
+> Changes since v2 [1]:
+>  - Evaluate the range adjacency bounds in 64 bits to remove a latent
+>    ext4_lblk_t (u32) overflow.  The largest valid lblk is
+>    EXT_MAX_BLOCKS - 1 (the shrink path in ext4_setattr() passes it; =
+the data
+>    path is bounded by the m_lblk >=3D EXT_MAX_BLOCKS check), so "end + =
+1" and a
+>    range's "start + len" can reach EXT_MAX_BLOCKS.  These were =
+computed in u32
+>    in ext4_fc_range_add() (1/2) and __track_range() (2/2).  On =
+reachable inputs
+>    they stop one short of wrapping, so there is no behavioural change, =
+but the
+>    arithmetic is now done in u64 so it cannot wrap regardless of =
+caller --
+>    matching ext4_fc_snapshot_lblk_range(), which already used 64-bit =
+bounds.
+>    No other site in the series shares this pattern (audited).
+>=20
+> Changes since v1 [2]:
+>  - Rebased from v6.17-rc3 onto ext4.git dev; re-implemented on top of =
+the
+>    merged fast-commit snapshot model (v1 targeted the old
+>    ext4_fc_write_inode_data(), which no longer exists).
+>  - Motivation now uses the in-tree snap_fail_ranges_cap counter.
+>  - =46rom and Signed-off-by use the same identity.
+>  - Reposted as RFC.
+>=20
+> [1] v2: =
+https://lore.kernel.org/linux-ext4/20260623082331epcms2p4798e9d26b06f9a005=
+bcca7b2edf395d3@epcms2p4/
+> [2] v1: =
+https://lore.kernel.org/linux-ext4/20260611044733epcms2p38013ae683a2835555=
+26f70e4eab6d2a9@epcms2p3/
+>=20
+> Daejun Park (2):
+>  ext4: fast commit: track disjoint modified ranges per inode
+>  ext4: fast commit: allocate the range array lazily
+>=20
+> fs/ext4/ext4.h        |  42 ++++++--
+> fs/ext4/fast_commit.c | 231 ++++++++++++++++++++++++++++++++++++------
+> fs/ext4/super.c       |   1 +
+> 3 files changed, 234 insertions(+), 40 deletions(-)
+>=20
+>=20
+> base-commit: c143957520c6c9b5cd72e0de8b52b814f0c576fe
+> --=20
+> 2.43.0
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 91c97af64b317..2ffb5027aa1ee 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -537,12 +537,12 @@ static void ext4_cache_extents(struct inode *inode,
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (prev && (=
-prev !=3D lblk))
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 ext4_es_cache_extent(inode, prev, lblk - prev, ~0,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 EXTENT_STATUS_HOLE);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 EXTENT_STATUS_HOLE, false);
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (ext4_ext_=
-is_unwritten(ex))
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 status =3D EXTENT_STATUS_UNWRITTEN;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_cache=
-_extent(inode, lblk, len,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_ext_pblock(ex), s=
-tatus);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_ext_pblock(ex), s=
-tatus, false);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 prev =3D lblk=
- + len;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 }
-=C2=A0}
-@@ -4239,7 +4239,8 @@ static ext4_lblk_t ext4_ext_determine_insert_hole(str=
-uct inode *inode,
-=C2=A0insert_hole:
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 /* Put just found gap into cache to speed=
- up subsequent requests */
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 ext_debug(inode, " -> %u:%u\n", hole_star=
-t, len);
-- =C2=A0 =C2=A0 =C2=A0=C2=A0 ext4_es_cache_extent(inode, hole_start, len, ~=
-0, EXTENT_STATUS_HOLE);
-+ =C2=A0 =C2=A0 =C2=A0=C2=A0 ext4_es_cache_extent(inode, hole_start, len, ~=
-0, EXTENT_STATUS_HOLE,
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 false);
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 /* Update hole_len to reflect hole size a=
-fter lblk */
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 if (hole_start !=3D lblk)
-@@ -4310,6 +4311,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inod=
-e *inode,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t e=
-e_block =3D le32_to_cpu(ex->ee_block);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_fsblk_t =
-ee_start =3D ext4_ext_pblock(ex);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned shor=
-t ee_len;
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 unsigned int statu=
-s;
-=C2=A0
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 /*
-@@ -4317,6 +4319,8 @@ int ext4_ext_map_blocks(handle_t *handle, struct inod=
-e *inode,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 * we sp=
-lit out initialized portions during a write.
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 */
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ee_len =3D ex=
-t4_ext_get_actual_len(ex);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 status =3D ext4_ex=
-t_is_unwritten(ex) ?
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 EXTENT_STATUS_UNWRITTEN : EXTENT_STATUS_WRITTEN;
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 trace_ext4_ex=
-t_show_extent(inode, ee_block, ee_start, ee_len);
-=C2=A0
-@@ -4328,6 +4332,12 @@ int ext4_ext_map_blocks(handle_t *handle, struct ino=
-de *inode,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 ext_debug(inode, "%u fit into %u:%d -> %llu\n",
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_lblk, ee_block, ee=
-_len, newblock);
-=C2=A0
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0=C2=A0 if (!(flags & (EXT4_GET_BLOCKS_CREATE |
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 EXT4_EX_NOCACHE=
-)))
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 ext4_es_cache_extent(inode, ee_block,=
- ee_len,
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ee_start, status,
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 true);
-+
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 /*
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0=C2=A0 * If the extent is initialized check whether the
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0=C2=A0 * caller wants to convert it to unwritten.
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 6e4a191e82191..5a03878b06160 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1023,7 +1023,7 @@ void ext4_es_insert_extent(struct inode *inode, ext4_=
-lblk_t lblk,
-=C2=A0 */
-=C2=A0void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t len, ext4_fsblk_t pblk,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0=C2=A0 unsigned int status)
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0=C2=A0 unsigned int status, bool pre_search)
-=C2=A0{
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 struct extent_status *es;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 struct extent_status chkes, newes;
-@@ -1043,6 +1043,21 @@ void ext4_es_cache_extent(struct inode *inode, ext4_=
-lblk_t lblk,
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 BUG_ON(end < lblk);
-=C2=A0
-+ =C2=A0 =C2=A0 =C2=A0=C2=A0 /*
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 * Avoid taking i_es_lock for writing if the e=
-ntire extent is already
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 * cached. The write-locked search below reche=
-cks after a miss.
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
-+ =C2=A0 =C2=A0 =C2=A0=C2=A0 if (pre_search) {
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 read_lock(&EXT4_I(=
-inode)->i_es_lock);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 es =3D __es_tree_s=
-earch(&EXT4_I(inode)->i_es_tree.root, lblk);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 if (es && es->es_l=
-blk <=3D lblk && ext4_es_end(es) >=3D end &&
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 !__e=
-s_check_extent_status(es, status, NULL)) {
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0=C2=A0 read_unlock(&EXT4_I(inode)->i_es_lock);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0=C2=A0 return;
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 }
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 read_unlock(&EXT4_=
-I(inode)->i_es_lock);
-+ =C2=A0 =C2=A0 =C2=A0=C2=A0 }
-+
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 write_lock(&EXT4_I(inode)->i_es_lock);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 es =3D __es_tree_search(&EXT4_I(inode)->i=
-_es_tree.root, lblk);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 if (es && es->es_lblk <=3D end) {
-diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-index f3396cf32b446..c2da72e3c82ba 100644
---- a/fs/ext4/extents_status.h
-+++ b/fs/ext4/extents_status.h
-@@ -139,7 +139,7 @@ extern void ext4_es_insert_extent(struct inode *inode, =
-ext4_lblk_t lblk,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 bool delalloc_reserve_use=
-d);
-=C2=A0extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lbl=
-k,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 ext4_lblk_t len, ext4_fsbl=
-k_t pblk,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int status);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int status, bool pre_search=
-);
-=C2=A0extern void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lb=
-lk,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t len);
-=C2=A0extern void ext4_es_find_extent_range(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ce99807c5f5b2..341b7c649e133 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -523,7 +523,7 @@ static int ext4_map_query_blocks_next_in_leaf(handle_t =
-*handle,
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 if (retval <=3D 0) {
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_cache=
-_extent(inode, map->m_lblk, map->m_len,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status, t=
-rue);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 return map->m=
-_len;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 }
-=C2=A0
-@@ -546,11 +546,11 @@ static int ext4_map_query_blocks_next_in_leaf(handle_=
-t *handle,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 status =3D=3D status2) {
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_cache=
-_extent(inode, map->m_lblk,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=C2=A0 map->m_len +=
- map2.m_len, map->m_pblk,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 status);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 status, true);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_len +=
-=3D map2.m_len;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 } else {
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_cache=
-_extent(inode, map->m_lblk, map->m_len,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status, t=
-rue);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 }
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 return map->m_len;
-@@ -562,6 +562,8 @@ int ext4_map_query_blocks(handle_t *handle, struct inod=
-e *inode,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int status;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 int retval;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int orig_mlen =3D map->m_len;
-+ =C2=A0 =C2=A0 =C2=A0=C2=A0 bool pre_search =3D ext4_test_inode_flag(inode=
-,
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0=C2=A0 EXT4_INODE_EXTENTS);
-=C2=A0
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 flags &=3D EXT4_EX_QUERY_FILTER;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 if (ext4_test_inode_flag(inode, EXT4_INOD=
-E_EXTENTS))
-@@ -593,7 +595,7 @@ int ext4_map_query_blocks(handle_t *handle, struct inod=
-e *inode,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 status =3D ma=
-p->m_flags & EXT4_MAP_UNWRITTEN ?
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 EXTENT_STATUS_UNWRITTEN : EXTENT=
-_STATUS_WRITTEN;
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_es_cache=
-_extent(inode, map->m_lblk, map->m_len,
-- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status);
-+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 map->m_pblk, status, p=
-re_search);
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 } else {
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 retval =3D ex=
-t4_map_query_blocks_next_in_leaf(handle, inode, map,
-=C2=A0=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 orig_mle=
-n);
---=C2=A0
 
->=C2=A0
-> Thanks,
-> Yi.
->=C2=A0
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t len, e=
-xt4_fsblk_t pblk,
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int statu=
-s)
-> > +{
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0struct extent_status *es;
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_lblk_t end;
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0bool cached;
-> > +
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (EXT4_SB(inode->i_sb)->s_mount_state & =
-EXT4_FC_REPLAY)
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return;
-> > +
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!len)
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return;
-> > +
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0end =3D lblk + len - 1;
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (WARN_ON_ONCE(end < lblk))
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return;
-> > +
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0read_lock(&EXT4_I(inode)->i_es_lock);
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0es =3D __es_tree_search(&EXT4_I(inode)->i_=
-es_tree.root, lblk);
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0cached =3D es && es->es_lblk <=3D lblk && =
-ext4_es_end(es) >=3D end &&
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 !__es_check_e=
-xtent_status(es, status, NULL);
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0read_unlock(&EXT4_I(inode)->i_es_lock);
-> > +
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!cached)
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_es_cache_=
-extent(inode, lblk, len, pblk, status);
-> > +}
-> > +
-> > =C2=A0/*
-> > =C2=A0 * ext4_es_lookup_extent() looks up an extent in extent status tr=
-ee.
-> > =C2=A0 *
-> > diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
-> > index f3396cf32b446..d8fab84911352 100644
-> > --- a/fs/ext4/extents_status.h
-> > +++ b/fs/ext4/extents_status.h
-> > @@ -140,6 +140,9 @@ extern void ext4_es_insert_extent(struct inode *ino=
-de, ext4_lblk_t lblk,
-> > =C2=A0extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t=
- lblk,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t len, ext4_fsbl=
-k_t pblk,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int status);
-> > +void ext4_es_cache_extent_if_missing(struct inode *inode, ext4_lblk_t =
-lblk,
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 ext4_lblk_t len, e=
-xt4_fsblk_t pblk,
-> > + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int statu=
-s);
-> > =C2=A0extern void ext4_es_remove_extent(struct inode *inode, ext4_lblk_=
-t lblk,
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ext4_lblk_t len);
-> > =C2=A0extern void ext4_es_find_extent_range(struct inode *inode,
->=C2=A0
+Cheers, Andreas
+
+
+
+
+
