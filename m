@@ -1,45 +1,50 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5238D378813
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 15:14:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BC1238D3FE
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 15:35:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784733246; cv=none; b=c5CdCcYkkPVvKz1Hi0zxli2fHGTaB4jmk25orJ3PNC2y2DclJ9TXTGEMARvrVJPCqJhneJBSuM9FH3DQugcpwzIBDdMv48228H4HPhuF8UlVc7KpqpYnQnJoKaXW5B6DZxDZ5YmEMJ+ky5RqaZmjwHywk6rRPH7CJYq/gBjozLk=
+	t=1784734528; cv=none; b=jpXPAqzZFoi/AMehxuhTIhdHneuhWdUwf6B46Nz9Ymk/9yvPC3u2XmWZYGfzgfP0Akk5jaS0CmFD+D09hy1KPx9gFp9o5i/PP74clJIu0RWF/UiIod0c8SE8eVPqHwAcrooL3kbbfdGQKcW7WMk2INhKvVCCJyaEciNZb7U68z4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784733246; c=relaxed/simple;
-	bh=oneXgL8ugv1IfWdNEXtlbTimW7vlfwONR37hKlF46Mw=;
+	s=arc-20240116; t=1784734528; c=relaxed/simple;
+	bh=6HHnuM6fG/lhvHHDzxaWxU16oVEOtCL+iVgib0KAtJU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=a4fX8y1g3KCUBnnzTaR95z7eJTsKc9GkCnXkIIlEm5vDQinb2dxbK+BIB9SPrRT7bg6Jun81+4cp+VhC589m77bsTlg9HhS2qfotHkazMch10eEUOWghCb4mTIE+z8xPXhRn6DCDJgPSZ6dTSB+wXEEGE50SceXtVA7T9QvJ11M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=i0Ye/tBX; arc=none smtp.client-ip=18.9.28.11
+	 Content-Type:Content-Disposition:In-Reply-To; b=NaY5IqwGJIKqyluaNL7Hz42SVONfVev8b6WIM/n0XtrKQpeeubRnj1IX2UTfisOzYAMHDeckSJkPRaJ4Q0LBOJp9PW1TpcoumDI7ZK/I7rmUzZu4qeuQq9TK2xPPyUBZqRIJ7wLG4OjPQsZAEYQMnXo2P9SDGWq/9e0NSxjCUNo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=K7A1suCT; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="i0Ye/tBX"
-Received: from macsyma.thunk.org ([104.135.218.89])
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="K7A1suCT"
+Received: from macsyma.thunk.org ([104.135.218.88])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66MFDm3J022270
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66MFYH17032533
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Wed, 22 Jul 2026 11:13:49 -0400
+	Wed, 22 Jul 2026 11:34:19 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784733230; bh=s/ndAhIOTHAZxNI7oRFMCpd2mBjLKp6AgT9NPabHcoA=;
+	t=1784734463; bh=/XVAf9v4NJTOhwslkTBHwx0MifNIHYg+F6jgSYaisLE=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=i0Ye/tBXI4yMnzKS7D5tQojvneaxcgFJk8GJJEDAKG8RqgXC0m94odL6cY509XKS+
-	 LTOmj6xjHxFMJEK6oOqQWhu5J1FitKWvOVsh5g6X2DXpNIl3iLYVpugOTSUqxxNRrG
-	 qArbc1KY+5Vkg11lhRHzG9rS/02wi3gkz9ksTgIcJE+q1hXUptDVrNtXz3EEoELzln
-	 NyFE8Xii0A+oWI8751v0ZYWGhDsgQY3gE2STifHgtpxNLxIX8q/BD1rtPTMGInR+jc
-	 pPs6j1SnBWCh1ZImqXLDOVdKVwc9eJML4TNbNWJb44rJvpwTVBCvYqIgiVcOmWNFSU
-	 SqLNgWGT2TSSw==
+	b=K7A1suCT0FQMfJGAljUD/0TLPbcAbvPUnohCBMVp1jWGj3dn8gNBy+eNslIZ1gw2B
+	 HznDOujpIR7USvbRBKYkjRCRC5UhzAnzT6sPBhVjX9Fu5W5eXf/oGKTd5jpvn9CE3R
+	 g557xFayM1vIs3S7TLoAmcjRCBAeBeN7I50cQWOdxKB+tYiSIyV1r2mSy0KQmdsxqh
+	 Lf0RhghBE56wg7RNPDeu7RUNNA7gTk7iC9S1motbxT9QRsdidmquZXuiaPy/E657dX
+	 d5QQWAB8kwDWR7E6KHmGnZfVdaMOJ9R1hk+9MrggBMD1dsK+1/jYJuBvjBEILAwWB5
+	 Vxp49Vbbm/cnA==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 63028BA5DD0; Wed, 22 Jul 2026 11:13:48 -0400 (EDT)
-Date: Wed, 22 Jul 2026 11:13:48 -0400
+	id 1FC21BA65EF; Wed, 22 Jul 2026 11:34:17 -0400 (EDT)
+Date: Wed, 22 Jul 2026 11:34:17 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: dardaoe <dardaoe@proton.me>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: linux-doc@vger.kernel.org
-Message-ID: <amDdRu-RE46utVe5@mit.edu>
-References: <F6-Nv2DhZIxD7g0KzZFf36UXOLn6D8qTlOQQFjIuQb_GyiQtoEQCvvRzDKnpYeSrd_E9H_DQYygw1zBDzlR2KxqqGsmYjODQr2qmRdjuixw=@proton.me>
+To: brauner@kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, djwong@kernel.org, hch@infradead.org,
+        joannelkoong@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
+        chengzhihao1@huawei.com, yangerkun@huawei.com,
+        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com,
+        Zhang Yi <yi.zhang@huaweicloud.com>
+Subject: Re: [PATCH v4 0/5] iomap: trivial fixes for ext4 conversion
+Message-ID: <amDiuuX56ChS6LO0@mit.edu>
+References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,21 +53,73 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <F6-Nv2DhZIxD7g0KzZFf36UXOLn6D8qTlOQQFjIuQb_GyiQtoEQCvvRzDKnpYeSrd_E9H_DQYygw1zBDzlR2KxqqGsmYjODQr2qmRdjuixw=@proton.me>
+In-Reply-To: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
 
-Thank you for the documentation corruption.  I've fixed up the patch,
-but in the future please look at the Kernel documentation about how to
-submit patches[1]
+Hi Christian,
 
-[1] https://www.kernel.org/doc/Documentation/process/submitting-patches.rst
+These fixes are needed for landing support for buffered writes using
+iomap in ext4.  That won't be ready to land this development cycle,
+but could we land these fixes now?
 
-In particular:
+Thanks,
 
-*) The one-line commit description was not correct
-*) The signed-off-by line should be at the end of the commit description,
-   not at the end of the patch
-*) The diff was corrupted because of how you sent it.
+						- Ted
 
-Best regards,
-
-					- Ted
+On Tue, Jul 14, 2026 at 04:23:20PM -0500, Zhang Yi wrote:
+> Hi,
+> 
+> This is v4 of the trivial iomap fixes for the ext4 conversion. There are
+> no code changes relative to v3, the only update is the addition of a
+> Fixes tag in patch 03.
+> 
+> Changes since v3:
+>  - Collect RVB tags from Christoph.
+>  - Add fix tag in patch patch 03 ("iomap: fix incorrect did_zero setting
+>    in iomap_zero_iter()").
+> Changes since v2:
+>  - Collect RVB tags from Darrick and Joanne.
+>  - Remove CC stable tag in patch 01 as Joanne suggested.
+> Changes since v1:
+>  - Add fix tags to patch 01 and 04.
+>  - In patch 04, change ifs_set_range_uptodate() to always fall through
+>    to ifs_is_fully_uptodate(), preventing a false-positive uptodate
+>    mask.
+>  - Add patch 05, add comments for ifs_clear/set_range_dirty().
+> 
+> v3: https://lore.kernel.org/linux-fsdevel/20260713072906.1726059-1-yi.zhang@huaweicloud.com/
+> v2: https://lore.kernel.org/linux-fsdevel/20260520030357.679687-1-yi.zhang@huaweicloud.com/
+> v1: https://lore.kernel.org/linux-fsdevel/20260514062955.1183976-1-yi.zhang@huaweicloud.com/
+> 
+> 
+> Original Cover-letter:
+> 
+> This patch series contains a few trivial iomap-related fixes in
+> preparation for converting ext4 buffered I/O to use iomap. 
+> 
+> The first three patches are taken from my ext4 conversion series [1], as
+> suggested by Christoph. The fourth patch fixes a bug originally reported
+> by Sashiko during review of my series; although unrelated to the ext4
+> conversion, it is worth fixing on its own. Please see the following
+> patches for detail. The fifth patch add comments for
+> ifs_clear/set_range_dirty(), and the last patch avoids merging ioends
+> that have different private data.
+> 
+> Thanks,
+> Yi.
+> 
+> [1] https://lore.kernel.org/linux-ext4/20260511072344.191271-1-yi.zhang@huaweicloud.com/
+> 
+> Zhang Yi (5):
+>   iomap: correct the range of a partial dirty clear
+>   iomap: support invalidating partial folios
+>   iomap: fix incorrect did_zero setting in iomap_zero_iter()
+>   iomap: fix out-of-bounds bitmap_set() with zero-length range
+>   iomap: add comments for ifs_clear/set_range_dirty()
+> 
+>  fs/iomap/buffered-io.c | 58 ++++++++++++++++++++++++++++++++----------
+>  1 file changed, 44 insertions(+), 14 deletions(-)
+> 
+> -- 
+> 2.52.0
+> 
+> 
