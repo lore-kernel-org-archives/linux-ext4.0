@@ -1,46 +1,47 @@
-Received: from mailout3.samsung.com (mailout3.samsung.com [203.254.224.33])
+Received: from mailout4.samsung.com (mailout4.samsung.com [203.254.224.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D572725B08A
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 00:59:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.33
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A63F73469FC
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 01:01:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784681973; cv=none; b=BM4OcJBYWSp0lhWXDq9gfhJNdU0QCwsKDbX0H6pM5qP5eO+cAhQJl8FNJ94jF89xzaYGqR2s0+It19kMVKMBUZDGGS3h37rMTtBNjxMRxgLiv+jW8/4quceJei0fYbpYBjsAaFFXKDsP38e+uG6viIDgSbqLiHWam8V2YvwufJo=
+	t=1784682084; cv=none; b=fzOmwBrpW/kkYnHGyGDkoNXyUhAsvNGn3ZCPyrrq4/muzccHJGH2e5uJPq4yGh0SxaWD/3rjnFGQUG2IEdwEuuotG5ZeuOXOMdWxIi/b7qSuw4AXwr5SalXiFPz/55xtdaxnRTRthopkz1A0hGx7byEla1kujj9rfoERDzeXxaQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784681973; c=relaxed/simple;
-	bh=6y9d8GNTbJp4KIYiseS2/aSswu1KQDChGyRB1G9TrlY=;
-	h=Mime-Version:Subject:From:To:CC:Message-ID:Date:Content-Type:
-	 References; b=X0huzW6S0APiv6DKfk0Yq70z6oIbFlNA19bWYiCilCQ6JLSnfyV+KWDMqTJlPjAUuPzcEGekP9MMa1vfI0oI6Jlfx04WGRIeTw+pGS2BzqgcmCK643yfVFmdBPdQJJowTY7O1WsoOHLmNKryddTI1q3FOQh07UX6KN6zLzpf/dA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=LlcEVrGy; arc=none smtp.client-ip=203.254.224.33
+	s=arc-20240116; t=1784682084; c=relaxed/simple;
+	bh=rJbovAXZEOH/9fW3NXndqg5nozPh23YAGKV2Gxvstds=;
+	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
+	 Content-Type:References; b=MWxgr9fWg97cOFI0Tq4OHFOMkiiwbh0Xjkm/kN5ZHBDc9Pmzt2YmxXtKXv73fxC92mOj+CsaM9EMDOyxEXx4pCBgQVIEU40PhlMiQugKXJxRjNRrV2MFCgh6xYyVg+coTLphOk/vRonhtawQWxh+3rI2Rzs5Qpqf6POFC1AHhiA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=hC6DMD4C; arc=none smtp.client-ip=203.254.224.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="LlcEVrGy"
-Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
-	by mailout3.samsung.com (KnoxPortal) with ESMTP id 20260722005923epoutp0394598c0b27adf3478d064d4d5c824236~Edso-xpbb1928019280epoutp03d
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 00:59:23 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout3.samsung.com 20260722005923epoutp0394598c0b27adf3478d064d4d5c824236~Edso-xpbb1928019280epoutp03d
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="hC6DMD4C"
+Received: from epcas2p4.samsung.com (unknown [182.195.41.56])
+	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20260722010118epoutp0410bc9a854798442f5bc99d171d548dab~EduUCuyaw0867508675epoutp04d
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Jul 2026 01:01:18 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20260722010118epoutp0410bc9a854798442f5bc99d171d548dab~EduUCuyaw0867508675epoutp04d
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1784681963;
-	bh=XlFYd4s5Qi92k7vYTrRnbticxfFrohAO34uKSsFnjCg=;
-	h=Subject:Reply-To:From:To:CC:Date:References:From;
-	b=LlcEVrGyBfmqL9Nae/POghzR7zux+o3BcAthrXneIvQg7jaT+rft4TLYUfz4e/fbn
-	 SpWJ/CTvLBa+F5j+pY6O1I5RHcIdvRNvIoOQdJw+NjiGVv7+wKq/JcR+YeCi5GngIk
-	 veSPeUWNYQhg0+kCc5w5RssMZ4eJSROIxk0RJj1Q=
-Received: from epsnrtp04.localdomain (unknown [182.195.42.156]) by
-	epcas2p2.samsung.com (KnoxPortal) with ESMTPS id
-	20260722005922epcas2p290b60c7dcbd7250848f2b3a6961e0316~Edsoeh9ee0776707767epcas2p2E;
-	Wed, 22 Jul 2026 00:59:22 +0000 (GMT)
-Received: from epcas2p2.samsung.com (unknown [182.195.38.202]) by
-	epsnrtp04.localdomain (Postfix) with ESMTP id 4h4bVy3TLrz6B9mG; Wed, 22 Jul
-	2026 00:59:22 +0000 (GMT)
+	s=mail20170921; t=1784682078;
+	bh=pJkmZPW+L8gLbxBItzsbK/p/gI/H4BcVG9ldZO0Cm9A=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=hC6DMD4CAOD3XZY54lVYESohrf81LoHqOAn2AhSJ3qgZF/Rcndkf2PFejEF6HbxaU
+	 WuczhSU4xtBPnmo2H6bHwBKeUoHbemJJUsUHaHfrowkrgP3EY1iShB9iloCfm5ld5z
+	 IAAsdd2gtfXFozLxbtktLfKMtEpA6aXXsGFjW0Eo=
+Received: from epsnrtp01.localdomain (unknown [182.195.42.153]) by
+	epcas2p1.samsung.com (KnoxPortal) with ESMTPS id
+	20260722010117epcas2p1862f46a0e94679a22ebc880adcd3ab4a~EduThaWqr3069830698epcas2p1G;
+	Wed, 22 Jul 2026 01:01:17 +0000 (GMT)
+Received: from epcas2p3.samsung.com (unknown [182.195.38.208]) by
+	epsnrtp01.localdomain (Postfix) with ESMTP id 4h4bY931dYz6B9mL; Wed, 22 Jul
+	2026 01:01:17 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
-Subject: [RFC PATCH v3 0/2] ext4: speed up fast commit on random writes
+Subject: [RFC PATCH v3 2/2] ext4: fast commit: allocate the range array
+ lazily
 Reply-To: daejun7.park@samsung.com
 Sender: Daejun Park <daejun7.park@samsung.com>
 From: Daejun Park <daejun7.park@samsung.com>
@@ -55,14 +56,15 @@ CC: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	Daejun Park <daejun7.park@samsung.com>
 X-Priority: 3
 X-Content-Kind-Code: NORMAL
+In-Reply-To: <20260722010029epcms2p26ccbe5aa30e217a2dbec3de0f909f487@epcms2p2>
 X-CPGS-Detection: blocking_info_exchange
 X-Drm-Type: N,general
 X-Msg-Generator: Mail
 X-Msg-Type: PERSONAL
 X-Reply-Demand: N
-Message-ID: <20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
-Date: Wed, 22 Jul 2026 09:59:22 +0900
-X-CMS-MailID: 20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0
+Message-ID: <20260722010116epcms2p78e51d428899883446ab365b57cad2edb@epcms2p7>
+Date: Wed, 22 Jul 2026 10:01:16 +0900
+X-CMS-MailID: 20260722010116epcms2p78e51d428899883446ab365b57cad2edb
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain; charset="utf-8"
 X-Sendblock-Type: AUTO_CONFIDENTIAL
@@ -72,115 +74,189 @@ X-CPGSPASS: Y
 cpgsPolicy: CPGSC10-223,Y
 X-CFilter-Loop: Reflected
 X-CMS-RootMailID: 20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0
-References: <CGME20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
+References: <20260722010029epcms2p26ccbe5aa30e217a2dbec3de0f909f487@epcms2p2>
+	<20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p5>
+	<CGME20260722005922epcms2p566d8027c8d1dbb8d9c46e3d3b35b6fd0@epcms2p7>
 
-Fast commit is meant to make fsync cheap, but on random-write workloads it
-defeats itself.  ext4 still tracks a single coalesced [min,max] logical range
-per inode (i_fc_lblk_start/len).  When an inode is dirtied at several disjoint
-offsets between two commits, that span widens to cover them all, and at commit
-time ext4_fc_snapshot_inode_data() walks the whole span through the extent
-status tree -- emitting an ADD_RANGE per mapped segment and a DEL_RANGE per
-hole inside it.  For scattered writes that is hundreds to thousands of ranges
-even though only a handful of regions were actually modified.
+Patch 1 keeps the disjoint-range set in a fixed EXT4_FC_MAX_RANGES+1
+array.  Embedding that in every ext4_inode_info costs ~140 bytes on
+inodes that never use fast commit or only ever touch a single
+contiguous range.
 
-The recently merged fast-commit snapshot work did not change this: it caps a
-snapshot at EXT4_FC_SNAPSHOT_MAX_RANGES (2048) and fails over to a full commit
-when the span exceeds it.  Measured on dev (7.1.0-rc4) with a sparse
-random-write workload (1 GiB span, R disjoint 4 KiB writes per fsync, 300
-fsyncs):
+Keep the first range inline in i_fc_range and allocate the array only
+when a second disjoint range appears; free it when the inode is
+evicted.  The tracking path runs under i_fc_lock, so the array is
+allocated with GFP_ATOMIC; on allocation failure we coalesce into the
+inline range -- i.e. the original single-range behaviour -- so memory
+pressure never forces a full commit.  The per-inode fast-commit
+footprint drops to 20 bytes.
 
-  R=16 regions/fsync:  ranges/commit 1095,  full-commit fallback 76%
-                       (snap_fail_ranges_cap on 226 of 300 fsyncs)
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+ fs/ext4/ext4.h        | 23 ++++++++++-----
+ fs/ext4/fast_commit.c | 69 ++++++++++++++++++++++++++++++++++++++++---
+ fs/ext4/super.c       |  1 +
+ 3 files changed, 82 insertions(+), 11 deletions(-)
 
-Fast commit barely functions on this workload.
-
-This series tracks the actually-modified disjoint ranges instead of one span,
-and snapshots only those:
-
-  1/2 replaces the single [min,max] range with a small, bounded set of sorted,
-      disjoint ranges (up to EXT4_FC_MAX_RANGES = 16; the two closest are
-      merged on overflow, so the worst case degrades to the old single-span
-      behaviour).  ext4_fc_snapshot_inode_data() then walks only the tracked
-      ranges.  The on-disk TLV format is unchanged.
-
-  2/2 allocates the range array lazily: the first range stays inline, the
-      array is allocated only when a second disjoint range appears, and on an
-      allocation failure we fall back to the inline single range.  Per-inode
-      fast-commit footprint stays ~20 bytes.
-
-Result on the same workload (dev, patched):
-
-  R=16:  ranges/commit 1095 -> 16,  fallback 76% -> 0.7%,
-         snap_fail_ranges_cap 226 -> 0
-
-i.e. the over-logging and the fallback storm are gone when the number of dirty
-regions is within the bound.
-
-Honest limitation: when the number of disjoint regions per fsync exceeds
-EXT4_FC_MAX_RANGES (e.g. R=64 with the bound at 16), the overflow merge
-re-coalesces and the win largely disappears (fallback 95% -> 87%).  A larger or
-tunable bound recovers it -- see the open question below.
-
-Testing (on dev, patched):
-  - crash recovery: deterministic writes + fsync, kill -9 QEMU (power loss),
-    reboot -> fast-commit replay -> verify every fsync'd block, e2fsck -fn.
-    9600/9600 blocks verified, 0 mismatch, e2fsck clean.  Run with R=64, so the
-    overflow-merge path is exercised.
-  - ext4/generic fast-commit xfstests (ext4/044 ext4/045 generic/455 456 457
-    470 482): ext4/044, ext4/045, generic/456 pass; generic/457, 470 skip
-    (reflink/dax unsupported on ext4); generic/455 fails identically on
-    unpatched dev (pre-existing, patch-unrelated); generic/482's single failure
-    in a combined run did not reproduce (3/3 pass in isolation on the patched
-    kernel).
-  - on-disk format unchanged, so e2fsprogs needs no update.
-  - both patches are checkpatch --strict clean.
-
-Posted as RFC -- this sits right on top of the new snapshot code and I would
-like direction before a non-RFC submission:
-
-  - Is tracking disjoint ranges in-core (this series) the right shape, or would
-    you rather the snapshot side skip holes/unmodified extents some other way?
-  - EXT4_FC_MAX_RANGES is fixed at 16.  The R>bound case above wants it larger
-    or tunable (sysfs/mount).  Preference?
-  - The array is allocated under i_fc_lock with GFP_ATOMIC, falling back to the
-    inline range on failure.  Acceptable, or move the allocation outside the
-    lock?
-  - Overflow merges the two ranges with the smallest gap -- acceptable
-    heuristic?
-
-Changes since v2 [1]:
-  - Evaluate the range adjacency bounds in 64 bits to remove a latent
-    ext4_lblk_t (u32) overflow.  The largest valid lblk is
-    EXT_MAX_BLOCKS - 1 (the shrink path in ext4_setattr() passes it; the data
-    path is bounded by the m_lblk >= EXT_MAX_BLOCKS check), so "end + 1" and a
-    range's "start + len" can reach EXT_MAX_BLOCKS.  These were computed in u32
-    in ext4_fc_range_add() (1/2) and __track_range() (2/2).  On reachable inputs
-    they stop one short of wrapping, so there is no behavioural change, but the
-    arithmetic is now done in u64 so it cannot wrap regardless of caller --
-    matching ext4_fc_snapshot_lblk_range(), which already used 64-bit bounds.
-    No other site in the series shares this pattern (audited).
-
-Changes since v1 [2]:
-  - Rebased from v6.17-rc3 onto ext4.git dev; re-implemented on top of the
-    merged fast-commit snapshot model (v1 targeted the old
-    ext4_fc_write_inode_data(), which no longer exists).
-  - Motivation now uses the in-tree snap_fail_ranges_cap counter.
-  - From and Signed-off-by use the same identity.
-  - Reposted as RFC.
-
-[1] v2: https://lore.kernel.org/linux-ext4/20260623082331epcms2p4798e9d26b06f9a005bcca7b2edf395d3@epcms2p4/
-[2] v1: https://lore.kernel.org/linux-ext4/20260611044733epcms2p38013ae683a283555526f70e4eab6d2a9@epcms2p3/
-
-Daejun Park (2):
-  ext4: fast commit: track disjoint modified ranges per inode
-  ext4: fast commit: allocate the range array lazily
-
- fs/ext4/ext4.h        |  42 ++++++--
- fs/ext4/fast_commit.c | 231 ++++++++++++++++++++++++++++++++++++------
- fs/ext4/super.c       |   1 +
- 3 files changed, 234 insertions(+), 40 deletions(-)
-
-
-base-commit: c143957520c6c9b5cd72e0de8b52b814f0c576fe
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8e93d30766fd..d93cc52cd01e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1106,14 +1106,23 @@ struct ext4_inode_info {
+ 					 */
+ 
+ 	/*
+-	 * Disjoint lblk ranges modified in this fast commit.  Tracking the
++	 * Logical block ranges modified in this fast commit.  Tracking the
+ 	 * actual modified ranges (instead of one coalesced [min,max]) avoids
+ 	 * snapshotting the whole spanned extent map for scattered allocations.
+-	 * Sorted by start, mutually disjoint.  Bounded by EXT4_FC_MAX_RANGES;
+-	 * the extra slot is transient room used while inserting before an
+-	 * overflow merge.  Protected by i_fc_lock.
++	 *
++	 * The first range is kept inline in i_fc_range, so the common case of a
++	 * single contiguous dirty region needs no allocation.  When a second
++	 * disjoint range appears the inode is upgraded to the i_fc_ranges array
++	 * (EXT4_FC_MAX_RANGES + 1 entries, sorted and mutually disjoint; the
++	 * extra slot is transient room used while inserting before an overflow
++	 * merge), allocated then and freed when the inode is evicted.  If that
++	 * allocation fails we fall back to coalescing into i_fc_range, i.e. the
++	 * original single coalesced-range behaviour.  i_fc_nr_ranges counts the
++	 * valid ranges; while i_fc_ranges is NULL it is 0 or 1.  Protected by
++	 * i_fc_lock.
+ 	 */
+-	struct ext4_fc_lblk_range i_fc_ranges[EXT4_FC_MAX_RANGES + 1];
++	struct ext4_fc_lblk_range i_fc_range;
++	struct ext4_fc_lblk_range *i_fc_ranges;
+ 	unsigned int i_fc_nr_ranges;
+ 
+ 	/*
+@@ -1135,8 +1144,8 @@ struct ext4_inode_info {
+ 	spinlock_t i_raw_lock;	/* protects updates to the raw inode */
+ 
+ 	/*
+-	 * Protect concurrent accesses on i_fc_ranges, i_fc_nr_ranges
+-	 * and inode's EXT4_FC_STATE_COMMITTING state bit.
++	 * Protect concurrent accesses on i_fc_range, i_fc_ranges,
++	 * i_fc_nr_ranges and inode's EXT4_FC_STATE_COMMITTING state bit.
+ 	 */
+ 	spinlock_t i_fc_lock;
+ 
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 28560d776862..3d100905d19a 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -230,6 +230,7 @@ void ext4_fc_init_inode(struct inode *inode)
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 
+ 	ext4_fc_reset_inode(inode);
++	ei->i_fc_ranges = NULL;
+ 	ext4_clear_inode_state(inode, EXT4_STATE_FC_COMMITTING);
+ 	ext4_clear_inode_state(inode, EXT4_STATE_FC_REQUEUE);
+ 	INIT_LIST_HEAD(&ei->i_fc_list);
+@@ -698,6 +699,8 @@ static int __track_range(handle_t *handle, struct inode *inode, void *arg,
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct __track_range_args *__arg =
+ 		(struct __track_range_args *)arg;
++	ext4_lblk_t start = __arg->start, end = __arg->end;
++	ext4_lblk_t s0, e0;
+ 
+ 	if (inode->i_ino < EXT4_FIRST_INO(inode->i_sb)) {
+ 		ext4_debug("Special inode %llu being modified\n", inode->i_ino);
+@@ -708,12 +711,66 @@ static int __track_range(handle_t *handle, struct inode *inode, void *arg,
+ 	 * A sub-block punch hole rounds up the start and down the end, passing
+ 	 * end == start - 1: no whole block changed, so there is nothing to
+ 	 * track.  (ext4_fc_track_template has already reset the range set for a
+-	 * new transaction.)
++	 * new transaction, so we need not do it here.)
+ 	 */
+-	if (__arg->end < __arg->start)
++	if (end < start)
+ 		return 0;
+ 
+-	ext4_fc_range_add(ei, __arg->start, __arg->end);
++	/* Already upgraded to the heap array: full multi-interval tracking. */
++	if (ei->i_fc_ranges) {
++		ext4_fc_range_add(ei, start, end);
++		return 0;
++	}
++
++	/* First range of this commit stays inline, no allocation needed. */
++	if (ei->i_fc_nr_ranges == 0) {
++		ei->i_fc_range.start = start;
++		ei->i_fc_range.len = end - start + 1;
++		ei->i_fc_nr_ranges = 1;
++		return 0;
++	}
++
++	/* One inline range so far. */
++	s0 = ei->i_fc_range.start;
++	e0 = s0 + ei->i_fc_range.len - 1;
++
++	/*
++	 * Disjoint from it: try to upgrade to the array for exact tracking.
++	 * Evaluate the adjacency bounds in 64 bits: the largest valid lblk is
++	 * EXT_MAX_BLOCKS - 1, so e0 + 1 and end + 1 can reach EXT_MAX_BLOCKS and
++	 * must not wrap the ext4_lblk_t (u32) type.
++	 */
++	if (start > (u64)e0 + 1 || (u64)end + 1 < s0) {
++		struct ext4_fc_lblk_range *heap;
++
++		/*
++		 * GFP_ATOMIC: we hold i_fc_lock.  __GFP_NOWARN: failure is not
++		 * fatal -- we fall back to the single coalesced range below --
++		 * so it must not splat under memory pressure.
++		 */
++		heap = kmalloc_array(EXT4_FC_MAX_RANGES + 1, sizeof(*heap),
++				     GFP_ATOMIC | __GFP_NOWARN);
++		if (heap) {
++			heap[0] = ei->i_fc_range;
++			ei->i_fc_ranges = heap;
++			ext4_fc_range_add(ei, start, end);
++			return 0;
++		}
++		/*
++		 * Out of memory: fall back to the original single coalesced
++		 * range by absorbing the gap below.  This over-logs the spanned
++		 * extents but stays a valid fast commit (no full-commit
++		 * fallback), so there is nothing to mark ineligible.
++		 */
++	}
++
++	/* Overlapping/adjacent, or array allocation failed: coalesce inline. */
++	if (start < s0)
++		s0 = start;
++	if (end > e0)
++		e0 = end;
++	ei->i_fc_range.start = s0;
++	ei->i_fc_range.len = e0 - s0 + 1;
+ 
+ 	return 0;
+ }
+@@ -1185,7 +1242,11 @@ static int ext4_fc_snapshot_inode_data(struct inode *inode,
+ 			*nr_rangesp = 0;
+ 		return 0;
+ 	}
+-	memcpy(tracked, ei->i_fc_ranges, nr_tracked * sizeof(tracked[0]));
++	if (ei->i_fc_ranges)
++		memcpy(tracked, ei->i_fc_ranges,
++		       nr_tracked * sizeof(tracked[0]));
++	else
++		tracked[0] = ei->i_fc_range;	/* inline single-range mode */
+ 	ei->i_fc_nr_ranges = 0;
+ 	spin_unlock(&ei->i_fc_lock);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f2c52cc74676..cfa7e6bec385 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1455,6 +1455,7 @@ static void ext4_free_in_core_inode(struct inode *inode)
+ 		pr_warn("%s: inode %llu still in fc list",
+ 			__func__, inode->i_ino);
+ 	}
++	kfree(EXT4_I(inode)->i_fc_ranges);
+ 	kmem_cache_free(ext4_inode_cachep, EXT4_I(inode));
+ }
+ 
 -- 
 2.43.0
