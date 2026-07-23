@@ -1,54 +1,52 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08913471CFC
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 879AD4F7982
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784812183; cv=none; b=Gxc4467eHOobsMGgEZS+WVNqs1bRJ8Q4JyO/Pk8YNvw4P4cY4FDYoazBm/3j6bHkHfMtjU1rRa6tlKtkWOv67GOCrXeT/Kq5i8siSTC3J+Nf3c/VmFzkq0mfiW2K7rMR42pDZUG1cD+OaYVP0gzAc0oV9tf+9NcOshb1W9ig9dM=
+	t=1784812183; cv=none; b=lNrKNsjYZuBft0S0xb3g6uG2plooM78/ktCGANFtwleuDEblRNf1JrsmiOHao8T0vReEPl7in1jKWhSxxZv569TjoMnywWLEXn/8Hw+UUdISsf7dm3hl+91WRxzGN17Tria6HcYK9wCyt3mbnCaqW9vW0yyZXX86/wQ1GYF5U9g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1784812183; c=relaxed/simple;
-	bh=O1UmXZiL/ScmTp3WpiZYoLcHctMPIbJPASzpVLsOKwg=;
+	bh=WZ6yLtZ8mERpnymfIA6knHpGr9SZy4I+obzVoM1OEKg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=uoUmt9ykUqUxQtVMbXE/AgcBzc/7zhCeyBFy9RpY7Gxz7m+w7FKHbaNZ0UQlIh36zKsqR9arpIMJPJ5IYn50Oudl1cgZgnSQx+0pP7yOACctOX4V3Udf8+DQSK/Ynk+iqpNmlKMK9PVNFkQF3LlkJk2zlOPBHrFiqdbUi84w3+I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=mqRgpxfh; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=M2nCY9ruOCFQQVcd/tLIEw7rmcN+ylAeLdbL3ijbmuve9IcH+MSC2/dCrrfjtwy2PiGcItjAxsY/NwAah2N86WMyOJEMez84+sZPkSGSmPm0EbehgM+dTuaxoe/UkNWzlSTBBsmxWCFyyZsjl0crqFQN9uVILGyICICh1PmqieI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=XOXAV72d; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="mqRgpxfh"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="XOXAV72d"
 Received: from trampoline.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND92Dt017887
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND94s4017955
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 23 Jul 2026 09:09:03 -0400
+	Thu, 23 Jul 2026 09:09:05 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784812146; bh=xDJjENyp2qOkdLCeyq3BY6U+bl43kFOoqEZkVsMTGsE=;
+	t=1784812147; bh=lJSj8968yQOjhhZx3ly3NjQefq1l4/afijeumypJmmQ=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=mqRgpxfh1ZUaQKtxtR9R/1XP5e5UWJ0a6U6Zbas6npXr9sATz3Oc2egG44krym80V
-	 P/Ut9g44biB6bfFXZurChfELIXW87EVseaMwGr9XKVk7FsPIo6/qGiu5Z/r4Y2svn/
-	 0P1Nh4YNiQzbryalJCBFfyY7woQEgrX2r/j9iYizfstR6kkk9OduJ+fEg9vHJukRBS
-	 ff8xfy4aoB+aVvJSCo4inlMbUzym0HAddIx8eg8YGbKsxc50cqnvi5iemZ5bnY8R+/
-	 cvJgbfNQzVnSWY1u+l4+MidO+76tOG6Y87lQ58uHxKUVtHePhPn4yFX+laTwxww1nx
-	 i0VHzWPUnKatQ==
+	b=XOXAV72dT/WzCf4+cmR/KCsVVM8fk1CbzYP0v2R7NLaE5po7zskFLUPTthKRZz/zG
+	 /L3XlV7+0HOx7P0jGWDNfmZESu493CWg+7eHx5Ibu3rGc8Nopq0+ZQLLzEMsyObus8
+	 Rt979UotrZys7CVLX+6ISdB7J6mxxhjmyMIOKmMrOtFzspsP6fEcNfXujiWzYdG4SB
+	 clj5zT2L1E+Zl23zlG3cTMfqcuT0jYpbm80HFGmSTHrKpaJ/5vkLELn2PfKIRsCBGv
+	 7fP8TT0ktxS+//SI6ME22ti8XSpQaOMktkUOjBQb2A8WNgEKNW1NnxaFs+3VRgTbol
+	 u7nZ/rNV8z1Xw==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id B4A9E2E3F18; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
+	id DAA482E3F23; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>,
-        Bohdan Trach <bohdan.trach@huaweicloud.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, mchehab+huawei@kernel.org,
-        bohdan.trach@huawei.com, lilith.oberhauser@huawei.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 0/2] ext4: optimize ext4_mb_prefetch
-Date: Thu, 23 Jul 2026 09:08:40 -0400
-Message-ID: <178481171726.796182.13440367167961292450.b4-ty@b4>
+To: linux-ext4@vger.kernel.org, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
+        chengzhihao1@huawei.com, yangerkun@huawei.com,
+        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com
+Subject: Re: [PATCH v4 0/9] ext4: fix unaligned edge handling in FALLOC_FL_WRITE_ZEROES
+Date: Thu, 23 Jul 2026 09:08:51 -0400
+Message-ID: <178481171753.796182.4122998257762869128.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260615100331.163997-1-bohdan.trach@huaweicloud.com>
-References: <20260615100331.163997-1-bohdan.trach@huaweicloud.com>
+In-Reply-To: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
+References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -59,25 +57,37 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 15 Jun 2026 12:03:27 +0200, Bohdan Trach wrote:
-> v3:
->   Rebase to latest ext4/dev.
->   Added R-b by Jan Kara for patch 1/2.
-> v2:
->   Fix issues found by Jan Kara, added R-b for patch 2/2.
->   Extend commit message of patch 1/2 a bit.
-> v1:
-> https://lore.kernel.org/linux-ext4/20260521125931.16474-1-bohdan.trach@huaweicloud.com/
+On Tue, 14 Jul 2026 16:00:35 +0800, Zhang Yi wrote:
+> This is v4 of the series to fix unaligned edge handling in
+> FALLOC_FL_WRITE_ZEROES. No code changes have been made relative to v3.
+> This iteration solely adds a comment to document the race condition in
+> ext4_block_zero_eof() that prevents zeroing of inline inode's tail
+> block.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] ext4: avoid RWM atomic in EXT4_MB_GRP_TEST_AND_SET_READ
-      commit: 0e364a030229b3b06b858dbe4b7412d87d9d86ce
-[2/2] ext4: get ext4_group_desc in ext4_mb_prefetch only when necessary
-      commit: a6a1e7e569dcbf3269b731c05189dbc64532e137
+[1/9] ext4: use FGP_WRITEBEGIN for tail block zeroing
+      commit: e1cf7b5f5c8ad1e00d00c50c61c3e8fdc79cd422
+[2/9] ext4: skip tail block zeroing for inline data files
+      commit: 2fff82f081401a61a47e8171f6392d2b0cde5a30
+[3/9] ext4: check return value of ext4_get_block() in ext4_load_tail_bh()
+      commit: 705a3fd3bac167f1dabe3d3bba46cd484c5528dd
+[4/9] ext4: move partial block zeroing earlier in ext4_zero_range()
+      commit: b16e9d27a643a3cf8907c994d25ed52717f36418
+[5/9] ext4: clarify return semantics of ext4_load_tail_bh()
+      commit: 012e6a2c9ff4d28abd4f32e4d68decff47297d06
+[6/9] ext4: track partial-zero outcome per edge in ext4_zero_partial_blocks()
+      commit: 4c1f6931395ad026415cbdb924ffc240f86eb557
+[7/9] ext4: zero out whole block for clean edges in WRITE_ZEROES
+      commit: a5179156ac1d9a6646da42254e4c461e1fc20096
+[8/9] ext4: write back partial-zeroed edges in WRITE_ZEROES
+      commit: d19d239ada9b7c92d086a1f051b7566538ee0089
+[9/9] ext4: protect WRITE_ZEROES written extents with orphan list
+      (dropped due error handling concerns; will be submitted separately)
 
 Best regards,
+
 -- 
 Theodore Ts'o <tytso@mit.edu>
