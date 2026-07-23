@@ -1,55 +1,52 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B840947D94F
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:10:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98FCA413788
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:11:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784812210; cv=none; b=foG+kbytqHJJM/+rl9Lt51sdCDIKBA9FCI9vDJQ3o9CaRfmUpBJrG8/X293GCKVPJM1MOz2duTQlvUmGMXT+kdgvYCsDUt0AIZpwmibVN2sRl6ZOMfhDKPNISSjAB0V0nSMoYv/t2C3i6wDnPucqPpZfVwmZYSEpjrPTbgSyqRs=
+	t=1784812295; cv=none; b=nFtQp2OdOGV1lg8wOsWU0X2XBO3/Ct5wB42UgKKF6Cc+xFVhe3wfTcIqmDvlfWIsvuJz2fcg+07TuHLDaHJ65cFJQaNM6kks5EazjYYb8TBo+VGe0b19PXKSt0o7GZZT+t1ByrXJz1DHcYS+Bw4h4VzXk5gihJYYJhb0EXSBTEw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784812210; c=relaxed/simple;
-	bh=BwucinpU7mBh/wRbSAQ6vmio6eMNcZ0tNfSOUDLBbAY=;
+	s=arc-20240116; t=1784812295; c=relaxed/simple;
+	bh=BSnZw3+VJKwqs2mtRl/vHjCm9IjvAMnTDuZ+y0gxTrs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ng0CELFzEAniOBCor4E+uhNwLqOzEOPf8/YZm7icszeylLPekKGSNEmejCf/FWk6qVmM2/bVPL+6F+NBKnBc7DgC3SgylSGvatv07c+V32x9OK9rd4uZi2TXPi28mKH91Ty9lGb4euXng+llKLmCWttFEJmgHf646AdtnqssWjc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=MWTGC1Rr; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=NY0UDwETigZFwXd3GAwW2knYXMjle+bNbODJA6pLPvp8IpXqPmjJo7IfhsDZVuK8sw1+IJylzNePhibJIKUcjQpmDRQyhosP5hPsC8550Zd5h54Sv1xxfp9iQp4RuGsNtBLGNy7Sd/mVa/9KvLdIsrjN3DFklY5qQuV2lbnh8Gs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=VouYAWs7; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="MWTGC1Rr"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="VouYAWs7"
 Received: from trampoline.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND94V3017987
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND8xdB017848
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 23 Jul 2026 09:09:06 -0400
+	Thu, 23 Jul 2026 09:09:00 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784812148; bh=ofnCWmvqyceT3elKksKFNwOwXSgYaOmRUabOuLHdoLk=;
+	t=1784812142; bh=n5zSJ0yEYVg0hiVCN/XwbWR1BEEwVACtcZ9JFWlf9X4=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=MWTGC1RrCV4p/bozpVRJrTU9gMtmYhyumrQPt4v1B37bqMJFd0j5I56LrnrmZoMWC
-	 ICa6NJlZBE0frCbeitZxqBnJfVCKW7vqaj1fvfP3K/yqlM9Kx+g7LnP7s+xb5pHvDY
-	 JQU4FIvq0JvQzrQ9KG17S5p2natDlUl4QIAUjLdHSQ3ssksu+sCQsM5uWmXkGET1Rg
-	 9sM8+Cj7f6rP+u0JLRA66r7qTO5VdWgf5N/HiKqGyt+zr/pvmvw3iQehpQuuIC8Njm
-	 8OIS8l1pKp8LUGgDHJR4GvPV5NTKs3blHlsN18Bytz0hoi2k9dM12UWZ29TEQSWHYc
-	 Rg3rbx9dTirWA==
+	b=VouYAWs7NNYoFgjRW/9L/zpus9dlm6eRdyNhRG0wv/LIHlEYw5BxnKQ8WrSLcIKbZ
+	 PY5MwadDfI/1mr24cVQ71EVVbv5V8HSvCDiWhbuHpMTFKMHbBoCtn1VhVSCLb77gPO
+	 lZJ7Ir8pNRH0DCGDnRKUnJgv8W7xTIK2N8E/kL0YeFsACE3KSVzQmLmbNbuwEFqx8M
+	 IRYLyvOceghdWLByd+CkdgxiWLTGsocJ4n0rB2HnDNtuN8Qafar8Wt82rXEPuS9l2j
+	 qJcPBgPngobuCRyBxC1vsjhpLLtJYSDcb8vBHwB/ZNhD1E6P9mhZICyhOGRbCdBn99
+	 ZNLhAlj14+g0g==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id E88A22E3F27; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
+	id A400D2E3F0F; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jia Zhu <zhujia.zj@bytedance.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-        Baokun Li <libaokun@linux.alibaba.com>,
+To: Guanghui Yang <3497809730@qq.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
         Ojaswin Mujoo <ojaswin@linux.ibm.com>,
         Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 0/2] ext4: avoid tail walks for cached large-folio writes
-Date: Thu, 23 Jul 2026 09:08:55 -0400
-Message-ID: <178481171724.796182.1013390309077521614.b4-ty@b4>
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: clear error before retrying inode xattr space fallback
+Date: Thu, 23 Jul 2026 09:08:35 -0400
+Message-ID: <178481171747.796182.11985644104721391723.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260609035202.90669-1-zhujia.zj@bytedance.com>
-References: <20260609035202.90669-1-zhujia.zj@bytedance.com>
+In-Reply-To: <tencent_192F8A699EFD21126E02101131C9546F3C08@qq.com>
+References: <tencent_192F8A699EFD21126E02101131C9546F3C08@qq.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -60,25 +57,23 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Tue, 09 Jun 2026 11:52:00 +0800, Jia Zhu wrote:
-> This series addresses a buffered-write regression we found during our
-> v6.12 -> v6.18 LTS upgrade testing on ext4.
+On Wed, 08 Jul 2026 12:57:19 +0000, Guanghui Yang wrote:
+> When ext4_xattr_make_inode_space() returns -ENOSPC,
+> ext4_expand_extra_isize_ea() can retry the expansion with
+> s_min_extra_isize.  If that retry succeeds by finding enough ibody free
+> space, control jumps directly to the shift label.
 > 
-> The regression is in the remaining buffer_head path.  A small overwrite
-> of an already cached, uptodate large folio still walks every buffer_head
-> attached to the folio in both write_begin and write_end.  With order-0
-> folios this was bounded by the page size.  After ext4 enabled large
-> folios for regular files, the same loops became proportional to the
-> folio size.
+> The previous -ENOSPC is still stored in error in that path, so the
+> function can update i_extra_isize but still return -ENOSPC to the
+> caller.  Clear error before retrying so a successful fallback expansion
+> returns success.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] fs/buffer: avoid tail commit walk for uptodate folios
-      commit: f10b9cc1eb20637351f4e33372bfb464f89de59b
-[2/2] ext4: avoid tail write_begin walk for uptodate folios
-      commit: d09811183db2891776dbf0c0f1094540e29938f6
+[1/1] ext4: clear error before retrying inode xattr space fallback
+      commit: 409a7f12a0933ff2c617fa814c76cef0bd1d457a
 
 Best regards,
 -- 
