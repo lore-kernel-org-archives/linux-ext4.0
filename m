@@ -1,49 +1,53 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3CB14DD6DA
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E99494E3764
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784812176; cv=none; b=OCYoX447Yp6pm5+napStQ0e5uS1CHxiEZQSLHU2yPQ73x8Cz53JkXFPvOpOXnxbClXKOi5fy0R17xJeLxfxSgF8wbQ6TiMFuwjsliVwNjc8QYDROj7SUCIVR2muk+3Zj12dw34BUJji2NVDT0+AEkZD1xdF5I3/828jJCnXkpdc=
+	t=1784812177; cv=none; b=J0JL/vqVdykTM/gRpmpVEedICXYLu5Ltih5tApvfTcnuojq1xjgXOwJ6KKz0XOIfFmdpQseL5u+5BYx0hIyRKvZx0QPNQAdL4K2iENchMZPFhDUsm7Gvx/+8sTXsCBhc8KiqIS3Td4TcjwuNmI0fIaTm6mBRgim7J3vunrSrkQM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784812176; c=relaxed/simple;
-	bh=KnsXRr0+DH4egSouVKAH0TjMQh+oRBQ5/LiyQRMWKDE=;
+	s=arc-20240116; t=1784812177; c=relaxed/simple;
+	bh=QjfKpdPTWo1fNeVP6eAMy/XntjlsQM0nHZQDcqrjKfE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ms3PGfmA+zugRHUupseh5///4e3zEv0wM1qyIuruuqTHLgIfotib5jix4MMvgSiLbXSUaYZkkehFvlF96MxvpxwS0rXIjRP7dHZX/yiY3yanRRbmqtlfwCxqxq8z3HF3RQTQksAKNs3z5hU67p07NtqBAQYcDFpWb2rUwNwrsAY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=FClMtTq9; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=tCaaGX211BtJuYuAqRlKNXYBFXLrz7Rn3/ULMTEjxrB4maWoy8gkdxcn52JCFIaDxiL/a3looPNPL/58FLLAZQ07XSyqulyA6ZNUOhQgGDDHKbS95Qx9EiqAHDHNwdaoeg1XMeu0ouCeaVXZvbkIwK3bnSdQn6/7FhIU92KbHbk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Kcd/zm6A; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="FClMtTq9"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Kcd/zm6A"
 Received: from trampoline.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND92fS017914
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND936u017924
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 23 Jul 2026 09:09:03 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784812145; bh=jdWuApn1xQm7zxrcQwPWBOgZB7hCiX4Wb6jaGSn4Xb8=;
+	t=1784812145; bh=hp0I6uxCzgN1cOwl1fjxjqOfPOm+bVEDaYGvhvKkUcc=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=FClMtTq9pSTleuXEGAdxXGKQYDPrxWvlpfBQhT+L/Y91KXmK7b9v4akWqPISL5824
-	 +W2mJCwoFe3R0r9uFvT1VHfjmHUOgunTn/gCr+88WTrMMOW1blrDVKRzzJKvOvA8gQ
-	 noLcfLjY1EV79O+6eiEaBGoWoQWytU2iqjucvh54MSIdY2I8Kpnkq3NM9VRGp+rR3j
-	 vIve9McRTwG9nuBRYVT/fsJvaOoO2KevL5mHQL1frn8UuAS0JeDJmDVLpDqh4IBO7C
-	 AFrpUJTPg42+9y2q5s7xEa08/7c6vf2PtpzsF4v4T3jQJsmwQY0NF9EqHk+UmiC0Tv
-	 UeGgdJTecIcCw==
+	b=Kcd/zm6AWqT+dAWHGc+Hn4XLcw+qhzwiqHtOvBddTyStyMbtsK2+zF/X+0r0SSvvT
+	 VCMbRE4E9hPhQwc4tHD4AOcsdizXoY4FACuZMuKjQq/udVNHeL8DrB/so+/HFnYviO
+	 uJAx8dHX4AU/Z90fL4POaZCVMjmBuXJVmrAY7uk1gDN6hjsWi/CaK964UJzXGJ+eMx
+	 8casSL/Ylkz9sXKwcvwjVCkS9jlioiepF1kXJ1oaamadtHj5smpFm2ydVPdv00VP+I
+	 OAxflMFbNHYpKwmZRYcW8pI/srZ+jMhuAXtPiwedT+4Bvd3geZh/+Lc7Tg1BsPQqhx
+	 UhgP+a+Qc1GTQ==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id C55262E3F1D; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
+	id CC4102E3F1F; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org, Baokun Li <libaokun@linux.alibaba.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca, jack@suse.cz,
-        yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
-        peng_wang@linux.alibaba.com
-Subject: Re: [PATCH v4 0/6] ext4: allow more DIO writes under shared i_rwsem
-Date: Thu, 23 Jul 2026 09:08:45 -0400
-Message-ID: <178481171741.796182.4956323917321468146.b4-ty@b4>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Remove ext4_end_buffer_io_sync()
+Date: Thu, 23 Jul 2026 09:08:47 -0400
+Message-ID: <178481171727.796182.12833678958266118249.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260629113827.4074335-1-libaokun@linux.alibaba.com>
-References: <20260629113827.4074335-1-libaokun@linux.alibaba.com>
+In-Reply-To: <20260615182527.2208479-1-willy@infradead.org>
+References: <20260615182527.2208479-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,33 +58,15 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 29 Jun 2026 19:38:21 +0800, Baokun Li wrote:
-> Changes since v3:
->   * Collect RVB from Honza. (Thank you for your review!)
->   * Dropped Patches 6-8 (EXT4_GET_BLOCKS_CACHED_NOWAIT handling,
->     cache-only lookup in ext4_iomap_begin, and cache-only lookup in
->     ext4_dio_needs_zeroing). The NOWAIT support in ext4_map_blocks()
->     and the i_size anomaly reported by Sashiko are pre-existing
->     issues, not introduced by the lock relaxation in this series.
->     They will be addressed in a separate patchset.
->   * Patches 1-5 and 9 from v3 are unchanged (renumbered to 1-6).
-> 
-> [...]
+On Mon, 15 Jun 2026 19:25:25 +0100, Matthew Wilcox (Oracle) wrote:
+> There's no need for a custom end_io routine here.  We lose some
+> tracing of I/O completions, but we gain better error handling.
+> Well, consistent error handling anyway.
 
 Applied, thanks!
 
-[1/6] ext4: prevent sleeping allocation in NOWAIT write path
-      commit: 07d62890ef19e41a87735b8fe1ec65922b5ecd8c
-[2/6] ext4: drain in-flight DIO before buffered write fallback
-      commit: 15cdefd0c0522f9d5e12d947fa04f4c11649b699
-[3/6] ext4: skip overwrite check for aligned non-extending DIO writes
-      commit: 63b314a7795e026424e5b3a4443f854c51c839f7
-[4/6] ext4: base unaligned DIO lock decision on partial block zeroing
-      commit: 07961ebb09c9c9fd7fd95fe9fa6d1455df41a7dd
-[5/6] ext4: use kiocb_modified instead of file_modified in DIO/DAX write path
-      commit: 59a9d0814d9f2566ea127a993f5b602da913a61a
-[6/6] ext4: fix NOWAIT semantic violation in DAX extending writes
-      commit: 802b8aa8ff6b5877610a62b99b54d84980dcb8b0
+[1/1] ext4: Remove ext4_end_buffer_io_sync()
+      commit: 7f0485dd30175d7934d101ce73efa999ad2d107d
 
 Best regards,
 -- 
