@@ -1,51 +1,52 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 928F24EA380
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D6F44C77BB
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784812178; cv=none; b=l+ifj9O5SHu82XFbko8JCM2Rp6Q5A/33Uom2P++1+29eLr7vgP4AD7rWmtSJJLAtZ1AmsLj+IjuQcasYyCM82nQAq64SckvqwiQlbXQMG2CbJi4RQijf65zlpr6Mw0P0owx//asYdoEmicUyHySEZKc70QYtC4GXf5yHC4W9Ue0=
+	t=1784812180; cv=none; b=c29kBAsZfzImqT1KfQSA9t/ZLUmCu0r0tgL2aQ7pHnxapqxBVgjWKFQSxHOkoXSqUukx/oiGOZnPolI3vFKaXSYST2Jtp/07Hkv9rc23AAz+vdOibnMeb4B+kx8+OFUjQ7tAMJmTcf4hPY3ZwxK8zZM35WKKfGfWlHS184bFVtE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784812178; c=relaxed/simple;
-	bh=Ffp+82a+kPVANVSfE4UoPLzS57UGE/MJDj2zzx+4H4k=;
+	s=arc-20240116; t=1784812180; c=relaxed/simple;
+	bh=KVFcNkS7dD9oB98/R+4BDHzFQtxV9A6hLTgMquZJDlo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=mbtDdn9CoexynsIiFBYCUl5F/N6NMozgPiZMac4oJKnb0+W0mnwB5sAQO5mq+aWilveHlOYez9XKlZbylUmra7cCqlUjqITU6UBvyh+8TQZg3r+IDW9/Ud5nwpD19Emzw+T5IbfSv2OLAz97b/mXIxT3UtBEYQrX8QeigJdDKvk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=Co0ksC24; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=gHbOJdXudltz3PAyi3od4NdRmKdjPc53Bg8qFoD3qZaGwLD7hGgOAI09zEQz9G0jq+0OsBU2cWJBE0QV7Sr9kfMr8sUU1yvgd6LrqGOTCCHYTiSiH2o26dbYPBPgOyamRM/E/ElsEEztwWOYiBBLkMZZFkWwFBFNxlni0DkKwO0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=INvxhTCZ; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="Co0ksC24"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="INvxhTCZ"
 Received: from trampoline.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND948H017973
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND946C017954
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 23 Jul 2026 09:09:05 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784812147; bh=SoxFe76Q5Ck7OJ+6Zars+9LwhXxMDX97oGV3QnGVKQs=;
+	t=1784812146; bh=QDmCrS8xsLj+0BbmDDGGrNDa5h8hcCLDiFKcrIAWncU=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=Co0ksC24/RAK+zSQpV6N74dQw+ZNqVj625eugryiaz+EeYYSY0f5/vlX3MGqyIJZs
-	 tNH5MOKL0wNtmqxjCsnjqXWqXBEJ+SpJxnG/6Tmw8+r9LZSQhXBepPqT7gRTdJBU6R
-	 Co2nIVIhJyJOnxt+WQno1/+sOgvbge8XcEdqv0dsFILaIr5qLxumKebfbGeZq3pcwk
-	 H95KSEGkgXh//uu0zuSNTKVzLVp5vzpbQ7zy7OV1DTQddZRitmHAozk3p54v0BYjdL
-	 E3eXnITEvyqse9af82Np//r5FCImeA/Ulq90kWx89Y3EUjdPKczIs2/1nj7afK00kw
-	 xvIapS+vKo0MQ==
+	b=INvxhTCZI9MdLKTa1Hb4OgMNyokEjhb5ZfidJgeKgc9fFuyyjtJShCxWsapfTSZVm
+	 guXELerplWESKoKX+Zsg5NtkBpCU9EfZiO40XZTpEXOQ1+1WSqgP802HgaQg2iDsbc
+	 WPb3l+1pR5x7l9x4OoNI9Jh4FGGzbesKmRj/+KHgXmCasr+6We5YK7UrTs7GoVMwj2
+	 kmjynYlIO3wrcCmnd5Vt2fJ6Bd9tdDuMibp8Z0j3jbzieIKvkQYDYfbe1HnOHvs5h6
+	 bo1ayhj8M/UR8Rttn2a2GWI7CofeXMDJAHHc89OEsqSn6c6sGftXmo3G00ldg2sTgl
+	 TU5VkiNdpuqvA==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id E14D42E3F25; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
+	id D6E3D2E3F22; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        viro@zeniv.linux.org.uk, brauner@kernel.org,
-        Yun Zhou <yun.zhou@windriver.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v14 0/4] ext4: deferred iput framework for EA inodes
-Date: Thu, 23 Jul 2026 09:08:53 -0400
-Message-ID: <178481171721.796182.16168303721890374305.b4-ty@b4>
+To: linux-ext4@vger.kernel.org, Yao Kai <yaokai34@huawei.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, chengzhihao1@huawei.com,
+        liuyongqiang13@huawei.com,
+        syzbot+5322c5c260eb44d209ed@syzkaller.appspotmail.com
+Subject: Re: [PATCH v2] ext4: validate readdir offset before accessing dirent
+Date: Thu, 23 Jul 2026 09:08:50 -0400
+Message-ID: <178481171743.796182.460536597002637440.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260710030851.2791589-1-yun.zhou@windriver.com>
-References: <20260710030851.2791589-1-yun.zhou@windriver.com>
+In-Reply-To: <20260706041313.708346-1-yaokai34@huawei.com>
+References: <20260706041313.708346-1-yaokai34@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -56,28 +57,32 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 10 Jul 2026 11:08:47 +0800, Yun Zhou wrote:
-> This series introduces a deferred-iput framework for EA inodes to
-> eliminate a class of lock ordering issues in ext4 xattr code.
+On Mon, 06 Jul 2026 12:13:13 +0800, Yao Kai wrote:
+> A corrupted directory can trigger the following KASAN report when
+> ext4_readdir() resumes from an invalid position:
 > 
-> The problem: iput() on EA inodes while holding xattr_sem or a jbd2
-> handle can trigger eviction, which may acquire those same locks or
-> s_writepages_rwsem, creating circular dependencies.  The immediate
-> deadlock (during mount-time orphan cleanup) is fixed by two separate
-> patches already reviewed and posted:
+>   BUG: KASAN: use-after-free in __ext4_check_dir_entry+0x5ef/0x820
+>   Read of size 2 at addr ffff88810a646000 by task repro_linear/509
+> 
+>   Call Trace:
+>    <TASK>
+>    dump_stack_lvl+0x53/0x70
+>    print_report+0xd0/0x630
+>    kasan_report+0xce/0x100
+>    __ext4_check_dir_entry+0x5ef/0x820
+>    ext4_readdir+0xcde/0x2b70
+>    iterate_dir+0x1a1/0x520
+>    __x64_sys_getdents64+0x12b/0x220
+>    do_syscall_64+0xf9/0x540
+>    entry_SYSCALL_64_after_hwframe+0x77/0x7f
+>    </TASK>
 > 
 > [...]
 
 Applied, thanks!
 
-[1/4] fs: add iput_if_not_last() helper
-      commit: 2a4c637d6fab83b689aea834d8e725189a2ef370
-[2/4] ext4: introduce ext4_put_ea_inode() for safe deferred iput
-      commit: 4f48af3dc75545f6c874e7d195aeff009c7453ba
-[3/4] ext4: convert all EA inode iput() calls to ext4_put_ea_inode()
-      commit: a54778243e88f2a941e145e5afa43bd1619c0a66
-[4/4] ext4: remove ea_inode_array mechanism in favor of ext4_put_ea_inode()
-      commit: 3a00c9bc8ea5b816eac165550a4676a3bcde7f2d
+[1/1] ext4: validate readdir offset before accessing dirent
+      commit: bc4b7b0414c33b2c8898eb04386df0d21a13dad8
 
 Best regards,
 -- 
