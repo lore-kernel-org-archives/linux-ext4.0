@@ -1,50 +1,53 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF522439F90
-	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FF464C901B
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Jul 2026 13:09:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784812168; cv=none; b=tWCIwOeCyMbQSZ2BdIw+sf9D1lZ/uVAybHtlDRK/VcX3ssvRfQrC2f+CtNSv+EVZOH0h7ouxPZkvLldbjuTYcQ3mYMcy2TpooLsG3cqKVTXkZz1kxT+8co9ccM12Ub7cKUiMMp+nz2blP+uVpS6k2t4k4YyH99SZ6K1aa7I12Js=
+	t=1784812169; cv=none; b=IcTt9ur8sc94SUvkiS7XXtDh8oTTj9y2AqWdgvThZwN14FXn3/1fzwzj7+iVbBKZaMjQf9b6pPDwEERtjioNn1vgi4R0kvAmoSFI9Z6dpXKCAqUnl4z794tLtJBG6CUt86PTEfrWSCJez/JP4zq9BWs7WVpRPFC2toNcCqKci2E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784812168; c=relaxed/simple;
-	bh=2WW+2y2v1ZVhu+elD4tK82Feo+erZF/GwRx8FBzPmPg=;
+	s=arc-20240116; t=1784812169; c=relaxed/simple;
+	bh=yluS32GH5xPPow2zwp3HcN52s074iyknLbDBJa5Gh1w=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=I2sGmUZ97giPDp/noAnStz+xT+uelfdKm+DsPOkW1h3ip0KOFEWkHo2ueP+E8QJykp0W5gPCfCpJSdy7CdUZLSOdWSjqdG9Ktj1225Ga62iPPVZWYNi7i5VhrHdSQ24GvP8xibG5cx/0cvVgxbDe/OP1KqV7onPdQxdIaNMJWb8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=EXno2DNm; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=LF57KSZWf2/wOdhhQgCfzhuiGV+YKzR3TGop993tWR9KsQXpGh1y/YkgDgGQvB1AytjglMmkT4LqJMlCLQc2PxJi+yJ6cBlQS1opK8D+AUL5JbBQbSJAoWJ2Y2caNrhH0j0TbQiLtKbLgj4yQMYmRU/+zRPi/Ut6l5iORGN/Usw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=V5ubLKfz; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="EXno2DNm"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="V5ubLKfz"
 Received: from trampoline.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND94pY017992
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ND93wg017941
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 23 Jul 2026 09:09:05 -0400
+	Thu, 23 Jul 2026 09:09:04 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784812147; bh=LKVxr0xTQzKjaXQU8ZiYg2fjficBWHYOpDWMAGTS8FI=;
+	t=1784812145; bh=WsVK5vaGW0yC/q1BBuZ0kCNtv72BMn9B7uUgw8psi2M=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=EXno2DNmXd9lQ7e9IQkghun5zV2gGHEfPJ99POBqeCjBaqM5NAW24uTem8UAmnXZr
-	 qcnHEvAIAOE/mOoAN1UsVpzj1Vbb/45W4EqCgGkfb8AYBFjdbHWFgO1r/ymLXQCIwW
-	 +iZBYdVcjFRJXoVqa4Oo2CxA8dFwrfAZLcZJHWbTq6xug6AhHSqO8cXrFpnziSgMSx
-	 Ru7DRS+Pn3TIKQdOSmMo7LVhRRVVE6LFfYVaQxALZ8/SeN6moLGtbW2afgPeboP7sY
-	 3D4RQoGNoSbyPQHMBgih7BWkMaesEhW4wtIa7n/UHgsWdArHenW2YGHFJ5LrPlHGOj
-	 C/7Vqg+i9Nbjg==
+	b=V5ubLKfzm/Qlf/1b9yRcrBfP5eQZ8KXIpvSPpG7Hpso9M3wPKhQujINNE9TUrQYd7
+	 8pJUUr8DMjX8CDyjvISbXWnunYDULSF5Yt87Qturdf9qF3TE/38aQb3n/vu28m6WwL
+	 etRCnU0JzAHLW+qm0v/wrQEDi+M0SJhLco87I1mkC43X1j07LGn2pzJ92TSUuT/Eyq
+	 qyw3p8/nuYarkfFa8hXMBizYB+8l6fGjcsNTthat/Q9Xh9rmWXRspU+VCwuIkkesg8
+	 p8r5+pno3hII6tEvMDOv8YymIe/1uKnQx7Qg8Iq7R73OUjNk3BSaQkkqHiAlsZaJMa
+	 qmfhOy0Tx+Wzg==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id E4D772E3F26; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
+	id CFC482E3F20; Thu, 23 Jul 2026 09:08:59 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        ebiggers@google.com, Yun Zhou <yun.zhou@windriver.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>, Xiang Mei <xmei5@asu.edu>
 Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3] ext4: fix circular lock dependency in ext4_ext_migrate
-Date: Thu, 23 Jul 2026 09:08:54 -0400
-Message-ID: <178481171723.796182.8994536002589226058.b4-ty@b4>
+        linux-kernel@vger.kernel.org, Daniel Rosenberg <drosen@google.com>,
+        Weiming Shi <bestswngs@gmail.com>
+Subject: Re: [PATCH] ext4: check dir entry fits before reading the hash trailer in ext4_search_dir()
+Date: Thu, 23 Jul 2026 09:08:48 -0400
+Message-ID: <178481171749.796182.4958325647124265197.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260612005330.1930804-1-yun.zhou@windriver.com>
-References: <20260612005330.1930804-1-yun.zhou@windriver.com>
+In-Reply-To: <20260709184101.441348-1-xmei5@asu.edu>
+References: <20260709184101.441348-1-xmei5@asu.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -55,33 +58,24 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Fri, 12 Jun 2026 08:53:30 +0800, Yun Zhou wrote:
-> Move iput(tmp_inode) after ext4_writepages_up_write() to avoid a
-> circular lock dependency between s_writepages_rwsem and sb_internal
-> (freeze protection).
-> 
-> The deadlock scenario:
-> 
->   CPU0 (EXT4_IOC_MIGRATE)        CPU1 (orphan cleanup during mount)
->   ----                           ----
->   ext4_ext_migrate()
->     ext4_writepages_down_write()
->       s_writepages_rwsem (write)
->                                  ext4_evict_inode()
->                                    sb_start_intwrite()   [sb_internal]
->                                    ...
->                                      ext4_writepages()
->                                        s_writepages_rwsem (read) [BLOCKED]
->     iput(tmp_inode)
->       ext4_evict_inode()
->         sb_start_intwrite()         [BLOCKED]
+On Thu, 09 Jul 2026 11:41:01 -0700, Xiang Mei wrote:
+> For casefolded encrypted directories ext4 stores an 8-byte hash trailer
+> after the name (EXT4_DIRENT_HASHES()), at an offset derived from
+> de->name_len.  On the sb_no_casefold_compat_fallback() path ext4_match()
+> reads that trailer, but ext4_search_dir()'s by-hand pre-check only tests
+> de->name + de->name_len <= dlimit, which proves the name fits, not the
+> rounded trailer.  A crafted entry whose name ends at the block boundary
+> passes the check while EXT4_DIRENT_HASHES(de) lands past the block end,
+> so ext4_match() reads out of bounds on an ordinary lookup.  KASAN reports
+> it as a use-after-free when the page after the directory block holds a
+> freed object:
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix circular lock dependency in ext4_ext_migrate
-      commit: a897682793eba5de51ee6f3152760374afa629cf
+[1/1] ext4: check dir entry fits before reading the hash trailer in ext4_search_dir()
+      commit: c7e6b863d298f56522d0d08554bbea7f142e6588
 
 Best regards,
 -- 
