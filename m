@@ -1,93 +1,163 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E1742D97AA
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2026 13:33:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47ED2380FD1
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2026 13:33:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784899988; cv=none; b=BeMn0a5W9LZlbpYlRXxUqnTzqAjGgplrgWukz0xIXADrsPoWOs3pLQCADtBY+8U/30f5KsqphFZySzp15VddLi+GP8873BJlvCn0ylQJNwrh/ACoeNGaM6p5AKZwbDBjtfudFit9t+WTmfmehUQwIKYBL2j+05jkFS9l/cvWhrU=
+	t=1784900024; cv=none; b=gjFh8otzr0f41lqMzlqn8208S2LvzYujVGrnGfNxPpXwWAC/GyHk4TMbitMnAHjLKlrs5xer9rxGl5qKCBu5aTwZBhAS4b5av28d6IG2uyr4JOsT4cuik3WImKMFlSDl3A9eaL3lzaOK8FRGOQ04tPYFaWkMYbtg0fVpmmE6BQ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784899988; c=relaxed/simple;
-	bh=HGSifeCFkPOFM5364fIRHH6ybA2lLzYLiQfk6BfCT9w=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Nh6eLqCvbP/+eA+9vxuK7WVzJGrYgfFXRrs/i8/i1nOa+4sNC4zXlZJmRDIIx68e1MnT0ebgo3FLz5XsYUpt2m8nylarCM1FmRGI91bZieUphpayLdVjX6TEVetLDXF2Vrpks2pFz8Q7Vd8N9XZtRQ3JAPH4Iw7ji1B0l99/xkc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HyI+ynTK; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1784900024; c=relaxed/simple;
+	bh=Oho22ogpd79FN59/VMKoDYgBS/cSrYQqb3jikjHjFcI=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Dph5A2eSX5haFLCIHM7bDRuYRhYmewmdfu2jsv6pZgBQsqFBoPMIAmy5QoiR8DyNc4h6Fm3l03EkcTt2DGxyghH7yclodROllR2goAJBnFJ9/4VGzcSJkDdh9k9lN+HT+tBOUIRA5r43ekv2MZPts3JFAwzKTOelnb539w2m65g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (1024-bit key) header.d=suse.com header.i=@suse.com header.b=hMHi3EVW; dkim=pass (1024-bit key) header.d=suse.com header.i=@suse.com header.b=hMHi3EVW; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HyI+ynTK"
-Received: from macsyma.thunk.org (pool-108-49-209-71.bstnma.fios.verizon.net [108.49.209.71])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66ODWKxJ028769
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 24 Jul 2026 09:32:21 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1784899945; bh=s8aCIQGBFXj0mN9QYuNYXh3RRlWtO91NRA7l9cPcCw0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=HyI+ynTKQVXmQSzNPNj26asPenORVzDGCWp8N3Z7k7bwF7XWPxPMbqfdZanF0NNul
-	 gA89UfUp0pJX2jz1OoYIOIFoXd/6d2UXwtiKc2p1MqQpIKx94IHxrJ2CmWu+lbNOtl
-	 bMSRwi1+UWaJ7Do5ClEWNIbJ8XBuQoQ7YjtwnqFocSv7veRJ4E0SqO8AYWbLiQ/HPh
-	 3hA9OYHKANqF7700+kDKkn2XRwZfN4lxRNFMdTp1z5Vt28+nQZsLidrJDWHiRCUy9o
-	 FCRnJznjRLhHs1y25NqlMyZw+v371wn1rEMhwmqktKQVVVrkDBElQyTGz3lmFoxXbc
-	 dUZbAlNr+ZMpA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 055C2BE8094; Fri, 24 Jul 2026 09:31:20 -0400 (EDT)
-Date: Fri, 24 Jul 2026 09:31:19 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Luyao Bai <bailuyao1997@gmail.com>, linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
-        Baokun Li <libaokun@linux.alibaba.com>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
-        "Darrick J . Wong" <djwong@kernel.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: do not WARN when starting a journal on a frozen
- filesystem
-Message-ID: <amNnKl4V7DPrBHX_@mit.edu>
-References: <20260723205036.661832-1-bailuyao1997@gmail.com>
- <20260724-gaben-sachverhalt-medizin-312848359765@brauner>
+	dkim=pass (1024-bit key) header.d=suse.com header.i=@suse.com header.b="hMHi3EVW";
+	dkim=pass (1024-bit key) header.d=suse.com header.i=@suse.com header.b="hMHi3EVW"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 59EDB7B88B;
+	Fri, 24 Jul 2026 13:33:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.com; s=susede1;
+	t=1784900021; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=87KJldLVO12YI6/aqcMypvZbGEc4Q23o2OfJPWjlafE=;
+	b=hMHi3EVWgudVW3Rtpsa9f6sJYDStIiDsU507vjY2B72mqcuP4Ckx6E3eLT1b9Gf/Ng1Fyw
+	Cr7k0Oz79bSZpwo0QMCO3Arc+4IUNQv1SdkQANJl14+v+otVdWWDxNWuWR55+Idz478ODU
+	D5WWY893wSPTtMERn8fnFt0W4Lz12SM=
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.com header.s=susede1 header.b=hMHi3EVW
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.com; s=susede1;
+	t=1784900021; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=87KJldLVO12YI6/aqcMypvZbGEc4Q23o2OfJPWjlafE=;
+	b=hMHi3EVWgudVW3Rtpsa9f6sJYDStIiDsU507vjY2B72mqcuP4Ckx6E3eLT1b9Gf/Ng1Fyw
+	Cr7k0Oz79bSZpwo0QMCO3Arc+4IUNQv1SdkQANJl14+v+otVdWWDxNWuWR55+Idz478ODU
+	D5WWY893wSPTtMERn8fnFt0W4Lz12SM=
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 12998779C3;
+	Fri, 24 Jul 2026 13:33:38 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id redGM7JpY2pIJgAAD6G6ig
+	(envelope-from <neelx@suse.com>); Fri, 24 Jul 2026 13:33:38 +0000
+From: Daniel Vacek <neelx@suse.com>
+To: fstests@vger.kernel.org
+Cc: linux-btrfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	zlang@redhat.com,
+	hch@infradead.org,
+	djwong@kernel.org,
+	David Sterba <dsterba@suse.com>,
+	Daniel Vacek <neelx@suse.com>,
+	linux-fscrypt@vger.kernel.org
+Subject: [PATCH 00/12] fstests: introduce fscrypt support for btrfs
+Date: Fri, 24 Jul 2026 15:33:16 +0200
+Message-ID: <20260724133328.1837318-1-neelx@suse.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260724-gaben-sachverhalt-medizin-312848359765@brauner>
+Content-Transfer-Encoding: 8bit
+X-Spamd-Result: default: False [-3.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_MISSING_CHARSET(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.com:s=susede1];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DKIM_SIGNED(0.00)[suse.com:s=susede1];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_ALL(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	DKIM_TRACE(0.00)[suse.com:+]
+X-Spam-Flag: NO
+X-Spam-Score: -3.01
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 59EDB7B88B
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
-On Fri, Jul 24, 2026 at 10:11:01AM -0500, Christian Brauner wrote:
-> I can't say whether this is the right fix but it feels hacky and racy
-> unless this code holds s_umount - which it may well do.
+This is a rebase and cleanup of older patches [0] from Sweet Tea and Josef
+fixed to work with the recent kernel and btrfs-progs changes.
 
-Oh, it's worse than that.  From the Sashiko review[1]:
+[0] https://github.com/btrfs/fstests/tree/fscrypt (227ac42)
 
-> [Severity: High]
-> Does returning -EROFS here cause fsync() to spuriously fail? If userspace
-> calls fsync() on a file with dirty pages while the filesystem is in
-> SB_FREEZE_COMPLETE, since fsync() bypasses VFS freeze locks, it seems it
-> would hit this new path and fail with -EROFS instead of safely blocking
-> until the freeze is lifted.
+Daniel Vacek (1):
+  fscrypt-crypt-util: add support for per extent KDF
 
-And it's not just fsync().  Any caller of ext4_journal_start() will
-end falling into this codepath, which means most ext4 operations
-happening during a freeze could very well fail with an EROFS error.
+Josef Bacik (4):
+  fstests: properly test for v1 encryption policies in encrypt tests
+  fstests: split generic/580 into two tests
+  fstests: split generic/581 into two tests
+  fstests: split generic/613 into two tests
 
-> Also, is there a TOCTOU race with SB_FREEZE_FS here? If a background
-> writeback thread evaluates this lockless check while VFS is in the
-> SB_FREEZE_FS phase, it will evaluate to false and proceed to
-> jbd2__journal_start() where it blocks on the journal barrier. When
-> ext4_freeze() finishes, it drops the barrier and VFS sets
-> SB_FREEZE_COMPLETE. The blocked thread then wakes up and starts a
-> transaction on the now-frozen filesystem.
+Sweet Tea Dorminy (7):
+  common/encrypt: separate data and inode nonces
+  common/encrypt: add btrfs to get_encryption_*nonce
+  common/encrypt: add btrfs to get_ciphertext_filename
+  common/encrypt: enable making a encrypted btrfs filesystem
+  common/verity: explicitly don't allow btrfs encryption
+  btrfs: add simple test of reflink of encrypted data
+  btrfs: test snapshotting encrypted subvol
 
-Luyao, I'm curious what (if any) testing you performed before
-submitting this patch?  And I'm curious if some AI / LLM was used in
-the preparation of this patch?
+ common/encrypt           |  94 ++++++++++++++++++++++++----
+ common/verity            |   4 ++
+ src/fscrypt-crypt-util.c |  12 +++-
+ tests/btrfs/613          |  54 ++++++++++++++++
+ tests/btrfs/613.out      |  13 ++++
+ tests/btrfs/614          |  73 ++++++++++++++++++++++
+ tests/btrfs/614.out      | 111 ++++++++++++++++++++++++++++++++
+ tests/f2fs/002           |   2 +-
+ tests/generic/580        | 118 +++++++++++++++-------------------
+ tests/generic/580.out    |  40 ------------
+ tests/generic/581        |  89 +-------------------------
+ tests/generic/581.out    |  50 ---------------
+ tests/generic/593        |   1 +
+ tests/generic/613        |  24 +++----
+ tests/generic/613.out    |   5 +-
+ tests/generic/798        |  77 +++++++++++++++++++++++
+ tests/generic/798.out    |  44 +++++++++++++
+ tests/generic/799        | 132 +++++++++++++++++++++++++++++++++++++++
+ tests/generic/799.out    |  51 +++++++++++++++
+ tests/generic/800        | 115 ++++++++++++++++++++++++++++++++++
+ tests/generic/800.out    |  14 +++++
+ 21 files changed, 845 insertions(+), 278 deletions(-)
+ create mode 100755 tests/btrfs/613
+ create mode 100644 tests/btrfs/613.out
+ create mode 100755 tests/btrfs/614
+ create mode 100644 tests/btrfs/614.out
+ create mode 100755 tests/generic/798
+ create mode 100644 tests/generic/798.out
+ create mode 100755 tests/generic/799
+ create mode 100644 tests/generic/799.out
+ create mode 100755 tests/generic/800
+ create mode 100644 tests/generic/800.out
 
-Thanks,
+-- 
+2.53.0
 
-						- Ted
-
-[1] https://sashiko.dev/#/patchset/20260723205036.661832-1-bailuyao1997@gmail.com?part=1
