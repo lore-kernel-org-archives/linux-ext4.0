@@ -1,158 +1,145 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.17])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3764A2931C4;
-	Sat, 25 Jul 2026 07:40:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C0212F747A
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Jul 2026 11:31:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.17
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784965223; cv=none; b=HUcTyni/SZSqLAs3KGIRwyqfvbuoLMk1+7eePo+9w5MW2+aqFaTu6A255pp9TR+y0V/Sh5w4nVhDXPfJATl1Tnj5MWkntJ4oKbHwDJPSmLVDlJmywKvV2Vn+NYeyQpgNrqYSgQFMEx2P/NTqeM99FDOdvBfn3KqklRImjiJ3Qds=
+	t=1784979104; cv=none; b=Uj6su8H7Pc0eZBtG+tF6JHTo58Oa/DtlcFS9LIYgnnSMeG6z8elwshERZhshDXpCgI5UPw+VPmXB51rg6nXLN6RSh/dox9i9f2YLQU7KdbtIdrcE844HXT8++3pflaB2GHCmOrMdg2n1OASufgxTO0kdpsxXX0Pcou51a33WIaw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784965223; c=relaxed/simple;
-	bh=tP+rzeiwVmUa4nR6xHtbZjF3mtJAU9ICVrvCdW3HQX8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=qyi5Gz6sqxUNGcbTPbywBwZM08RK6xPu+MLRA1Z/WccrODrWsYjpuVnlt71KQP4POnjWOssqR929EX/yPGt7wXzU6p6O264rlXPrBBIp990sAkN9kkhLkdwBaE3QwinU/4ul6esm4QkNCLP9b1Sqat/DgHgKPh6AfhvEH+ToNMM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=almUkf+i; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784979104; c=relaxed/simple;
+	bh=hKqakJ/Elrhz84uDN7ngGcNoo1hqem3nnBFpN1BUScQ=;
+	h=Date:From:To:Cc:Subject:Message-ID; b=XKxr62mw2oL7XoCbMTjHCpg8LGRj9QJwLUlEP+qfaRD/j9ABrDESHqnlGTCil2pklBJBbZBRK6/mdGekkocZn+XkPYLApmdoRnqVBjinYI1fWudnhKP6aV4QmLjR/989vUi8kICIRUh5m6MvzNpsDMcqXkPuGyMqj9bGznIHi1c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=hZN43QkT; arc=none smtp.client-ip=198.175.65.17
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="almUkf+i"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C36B1F000E9;
-	Sat, 25 Jul 2026 07:40:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784965221;
-	bh=qcH4sN23EYZsX+hkptHPBiYMtvNCnMjEtuTUDDaOdLg=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=almUkf+iQVK3XYMIc2kTxamUlbqr+NsfVj7RhpotbB4faZozskIyQO3/IHe+HLVaQ
-	 LwYC4/tYSnPEQWp2K8PsMn764/lPZJc1j7/64nAaGV5bW6bBVf/KWEuPkhcnThHTh9
-	 G84vI4HOC/d/OcdYC0TjjWDaF0y59pwYDqZduYG0Z2rUzGDj7k/KYAphQWAQQu/07/
-	 VA7vf5qx6C9wGYvZjAirlGcuI9iIaDPmIO9u8O24VvzgTM7EN2HfFyKrVjbwzsaBIz
-	 F6rJjzwzhMGBjVZiPSCxyF9vJbOXoMOKoIQPHWpxdrk/WipoevFZmZyYTrvehsZ0nE
-	 sy06HekvfB6eQ==
-From: Anand Jain <asj@kernel.org>
-To: fstests@vger.kernel.org
-Cc: linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net,
-	zlang@kernel.org,
-	djwong@kernel.org
-Subject: [PATCH v8 13/13] fstests: test UUID consistency for clones with metadata_uuid
-Date: Sat, 25 Jul 2026 15:39:10 +0800
-Message-ID: <905a961a3bb2ec345285f056053e3016ad3bef6e.1784949155.git.asj@kernel.org>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1784949154.git.asj@kernel.org>
-References: <cover.1784949154.git.asj@kernel.org>
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="hZN43QkT"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1784979102; x=1816515102;
+  h=date:from:to:cc:subject:message-id;
+  bh=hKqakJ/Elrhz84uDN7ngGcNoo1hqem3nnBFpN1BUScQ=;
+  b=hZN43QkTe/z7j5wWMvOSphRgd5uvy7ep/WdZ42LS1UPcLMrb0jhTkH+1
+   o1JtgvOY3JhYLxenBj4txzAfA97CVHEEEyfaMnBkPwQ75m/vXzIdJLGA/
+   1Bof79H2H3JAWxkHDpShNc+O29+EMe6wEDiv6vh3vcHcrkOWMPRczJOn/
+   DNgiYJQoFTl1p7GbChDEz+RlMN44cLPR428KklIEAd3+L/J4lptY+i0f0
+   RHb29jsYETGWWcA/U0K+94if7uVw2gTf8zDQGvdesD/JoGyMOGbOejYaC
+   pmcDACCsV05MCKyhuHbD+5ROfo0xFYIqbkbf280cM6KyMkA8wOnWn+3KE
+   g==;
+X-CSE-ConnectionGUID: IysO7xQ9Sf+pGa5reXZbmA==
+X-CSE-MsgGUID: Jvuu2/r4QRWtEpo6kGrd2A==
+X-IronPort-AV: E=McAfee;i="6800,10657,11855"; a="85638024"
+X-IronPort-AV: E=Sophos;i="6.25,184,1779174000"; 
+   d="scan'208";a="85638024"
+Received: from fmviesa008.fm.intel.com ([10.60.135.148])
+  by orvoesa109.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Jul 2026 04:31:42 -0700
+X-CSE-ConnectionGUID: k8brVa7xQbivhbMkt0rD2Q==
+X-CSE-MsgGUID: 8XWUACjsR/KzA1LpsaDEug==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.25,184,1779174000"; 
+   d="scan'208";a="256294368"
+Received: from lkp-server02.sh.intel.com (HELO ea128546eb3d) ([10.239.97.151])
+  by fmviesa008.fm.intel.com with ESMTP; 25 Jul 2026 04:31:40 -0700
+Received: from kbuild by ea128546eb3d with local (Exim 4.98.2)
+	(envelope-from <lkp@intel.com>)
+	id 1wnabO-00000000beC-2eNC;
+	Sat, 25 Jul 2026 11:31:35 +0000
+Date: Sat, 25 Jul 2026 19:30:38 +0800
+From: kernel test robot <lkp@intel.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Subject: [tytso-ext4:dev] BUILD SUCCESS
+ 97e211ad1a34a5a979558a037619b9e633ca8620
+Message-ID: <202607251927.joRS6fR1-lkp@intel.com>
+User-Agent: s-nail v14.9.25
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-Btrfs and xfs uses the metadata_uuid superblock feature to change the
-on-disk UUID without rewriting every block header. This patch adds a
-sanity check to ensure UUID consistency when a filesystem with
-metadata_uuid enabled is cloned.
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+branch HEAD: 97e211ad1a34a5a979558a037619b9e633ca8620  jbd2: align h_type and h_line_no in the handle structure on byte boundaries
 
-Signed-off-by: Anand Jain <asj@kernel.org>
----
- tests/generic/806     | 74 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/806.out |  6 ++++
- 2 files changed, 80 insertions(+)
- create mode 100644 tests/generic/806
- create mode 100644 tests/generic/806.out
+elapsed time: 1271m
 
-diff --git a/tests/generic/806 b/tests/generic/806
-new file mode 100644
-index 000000000000..6d3166491006
---- /dev/null
-+++ b/tests/generic/806
-@@ -0,0 +1,74 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
-+#
-+# FS QA Test 806
-+#
-+# Verify that the cloned filesystem UUID remains consistent, even when the
-+# `metadata_uuid` feature is enabled.
-+#
-+
-+. ./common/preamble
-+. ./common/filter
-+
-+_begin_fstest auto quick mount clone
-+
-+_require_test
-+_require_block_device $TEST_DEV
-+_require_loop
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -r -f $tmp.*
-+	umount $mnt1 $mnt2 2>/dev/null
-+	_loop_image_destroy "${devs[@]}" 2> /dev/null
-+}
-+
-+filter_pool()
-+{
-+	sed -e "s|${devs[0]}|DEV1|g" -e "s|${mnt1}|MNT1|g" \
-+	    -e "s|${devs[1]}|DEV2|g" -e "s|${mnt2}|MNT2|g" | _filter_spaces
-+}
-+
-+# Create base loop device and its clone, applying the metadata_uuid tuning
-+# callback to the base filesystem before the copy occurs.
-+devs=()
-+_loop_image_create_clone devs _change_metadata_uuid
-+mkdir -p $TEST_DIR/$seq
-+mnt1=$TEST_DIR/$seq/mnt1
-+mnt2=$TEST_DIR/$seq/mnt2
-+mkdir -p $mnt1
-+mkdir -p $mnt2
-+
-+# Get the uuid from the source device
-+fsuuid=$(blkid -s UUID -o value ${devs[0]})
-+
-+# Mount both clone and baseline
-+_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
-+						_fail "Failed to mount dev1"
-+_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
-+						_fail "Failed to mount dev2"
-+
-+findmnt -o SOURCE,TARGET,UUID "${devs[0]}" | tail -n +2 | \
-+				sed -e "s/${fsuuid}/FSUUID/g" | filter_pool
-+findmnt -o SOURCE,TARGET,UUID "${devs[1]}" | tail -n +2 | \
-+				sed -e "s/${fsuuid}/FSUUID/g" | filter_pool
-+
-+# Cycle mounts and reverse the initialization order to ensure UUID tracking
-+# doesn't mismatch or flip when metadata_uuid optimization is active.
-+echo "**** mount cycle ****"
-+_unmount $mnt1
-+_unmount $mnt2
-+_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
-+						_fail "Failed to mount dev2"
-+_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
-+						_fail "Failed to mount dev1"
-+
-+findmnt -o SOURCE,TARGET,UUID "${devs[0]}" | tail -n +2 | \
-+				sed -e "s/${fsuuid}/FSUUID/g" | filter_pool
-+findmnt -o SOURCE,TARGET,UUID "${devs[1]}" | tail -n +2 | \
-+				sed -e "s/${fsuuid}/FSUUID/g" | filter_pool
-+
-+status=0
-+exit
-diff --git a/tests/generic/806.out b/tests/generic/806.out
-new file mode 100644
-index 000000000000..918f422ecddf
---- /dev/null
-+++ b/tests/generic/806.out
-@@ -0,0 +1,6 @@
-+QA output created by 806
-+DEV1 MNT1 FSUUID
-+DEV2 MNT2 FSUUID
-+**** mount cycle ****
-+DEV1 MNT1 FSUUID
-+DEV2 MNT2 FSUUID
--- 
-2.43.0
+configs tested: 68
+configs skipped: 1
 
+The following configs have been built successfully.
+More configs may be tested in the coming days.
+
+tested configs:
+alpha                            allnoconfig    gcc-16.1.0
+alpha                           allyesconfig    gcc-16.1.0
+alpha                              defconfig    gcc-16.1.0
+arc                             allmodconfig    gcc-16.1.0
+arc                             allyesconfig    gcc-16.1.0
+arc                  randconfig-001-20260725    gcc-11.5.0
+arc                  randconfig-002-20260725    gcc-8.5.0
+arm                  randconfig-001-20260725    gcc-8.5.0
+arm                  randconfig-002-20260725    clang-21
+arm                  randconfig-003-20260725    gcc-10.5.0
+arm                  randconfig-004-20260725    gcc-15.2.0
+csky                            allmodconfig    gcc-16.1.0
+csky                 randconfig-001-20260725    gcc-9.5.0
+csky                 randconfig-002-20260725    gcc-16.1.0
+hexagon              randconfig-001-20260725    clang-17
+hexagon              randconfig-002-20260725    clang-24
+i386                            allmodconfig    gcc-14
+i386                buildonly-randconfig-001    gcc-14
+i386       buildonly-randconfig-001-20260725    clang-22
+i386       buildonly-randconfig-002-20260725    gcc-14
+i386       buildonly-randconfig-003-20260725    clang-22
+i386       buildonly-randconfig-004-20260725    clang-22
+i386       buildonly-randconfig-005-20260725    gcc-14
+i386       buildonly-randconfig-006-20260725    gcc-14
+i386                 randconfig-001-20260725    clang-22
+i386                 randconfig-002-20260725    gcc-14
+i386                 randconfig-003-20260725    gcc-14
+i386                 randconfig-004-20260725    gcc-12
+i386                 randconfig-005-20260725    clang-22
+i386                 randconfig-006-20260725    gcc-14
+i386                 randconfig-007-20260725    gcc-14
+loongarch                          defconfig    clang-24
+loongarch            randconfig-001-20260725    gcc-16.1.0
+loongarch            randconfig-002-20260725    gcc-13.4.0
+nios2                           allmodconfig    gcc-11.5.0
+nios2                            allnoconfig    gcc-11.5.0
+nios2                randconfig-001-20260725    gcc-11.5.0
+nios2                randconfig-002-20260725    gcc-9.5.0
+parisc                          allmodconfig    gcc-16.1.0
+parisc                          allyesconfig    gcc-16.1.0
+parisc                             defconfig    gcc-16.1.0
+parisc                        randconfig-001    gcc-8.5.0
+parisc               randconfig-001-20260725    gcc-10.5.0
+parisc               randconfig-002-20260725    gcc-12.5.0
+powerpc                    mpc5200_defconfig    clang-24
+powerpc              randconfig-001-20260725    gcc-9.5.0
+powerpc              randconfig-002-20260725    gcc-15.2.0
+powerpc64            randconfig-001-20260725    clang-17
+powerpc64            randconfig-002-20260725    clang-24
+riscv                         randconfig-001    gcc-13.4.0
+riscv                randconfig-001-20260725    gcc-8.5.0
+riscv                randconfig-002-20260725    gcc-8.5.0
+s390                 randconfig-001-20260725    gcc-10.5.0
+s390                 randconfig-002-20260725    gcc-16.1.0
+sh                                 defconfig    gcc-16.1.0
+sh                   randconfig-001-20260725    gcc-16.1.0
+sh                   randconfig-002-20260725    gcc-11.5.0
+sparc                randconfig-001-20260725    gcc-16.1.0
+sparc                randconfig-002-20260725    gcc-8.5.0
+sparc64              randconfig-001-20260725    gcc-8.5.0
+sparc64              randconfig-002-20260725    gcc-10.5.0
+um                   randconfig-001-20260725    gcc-14
+x86_64               randconfig-071-20260725    gcc-14
+x86_64               randconfig-072-20260725    gcc-14
+x86_64               randconfig-073-20260725    gcc-14
+x86_64               randconfig-074-20260725    gcc-14
+x86_64               randconfig-075-20260725    gcc-14
+x86_64               randconfig-076-20260725    clang-22
+
+--
+0-DAY CI Kernel Test Service
+https://github.com/intel/lkp-tests/wiki
