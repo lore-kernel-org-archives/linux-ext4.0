@@ -1,155 +1,70 @@
-Received: from relay.hostedemail.com (smtprelay0015.hostedemail.com [216.40.44.15])
+Received: from canpmsgout06.his.huawei.com (canpmsgout06.his.huawei.com [113.46.200.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B90BE332628;
-	Sat, 25 Jul 2026 01:23:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=216.40.44.15
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F43A1E1C11
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Jul 2026 04:31:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784942623; cv=none; b=aQfr6ffWbKYS38S2hvf/KFUZD4S6MCaIK6yy7t70bvU/+NKInOPKel6Xfu0TvBjXGPSbAlGYrT8bMl+ZL+f1X4PJE4sQj8bw9UxAnvZDZEoMC4MRWSXFZ+9RNOo7VzKh5BQ2ii3NFkAZRa/PqUjYCw3fR247pMBKh7+Q2WXJ2Q0=
+	t=1784953899; cv=none; b=gXqAIeaaXajKV6NPKIq0EqFI5wy2UXrtl0XjDw19alst+9kmT7IhPMmHmLnTjNDWJPEBdY6xnvPRgtFfQUgl2CJPQas5ZvTztIk/gPum+kTq2hG5G3V898SqW8VYthB3nPN0i1aMAqiTWFzr/KdTbWRb+bLe8BW9l3IlTirbLNo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784942623; c=relaxed/simple;
-	bh=+y1gH3kClNnzE4lJnRoIGrqEZcKHpynirpgff3NtIyQ=;
-	h=Message-ID:Subject:From:To:Cc:Date:Content-Type:MIME-Version; b=qNPih9yaPL7zeY7b/sZm5d11TkKNGWlj/iV0L4GSe3E19khbsGfIaBY2whehaE/VarbtBGg30JiyWZFtkjgCyDVuU1eK2ibeuxcNxGwC1Q2cG/fs/dCT4Yy5z/rtZdc9PXi4Eo+bsdDcDy9JGcJ/4onXIP5feczy/1r1orR3i/s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=perches.com; spf=pass smtp.mailfrom=perches.com; arc=none smtp.client-ip=216.40.44.15
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=perches.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=perches.com
-Received: from omf10.hostedemail.com (lb01a-stub [10.200.18.249])
-	by unirelay04.hostedemail.com (Postfix) with ESMTP id 1BD0E1A0167;
-	Sat, 25 Jul 2026 01:23:40 +0000 (UTC)
-Received: from [HIDDEN] (Authenticated sender: joe@perches.com) by omf10.hostedemail.com (Postfix) with ESMTPA id 5C42730;
-	Sat, 25 Jul 2026 01:23:37 +0000 (UTC)
-Message-ID: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
-Subject: [PATCH] ext4: Reduce object size of ext4_msg uses
-From: Joe Perches <joe@perches.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li	
- <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, Ojaswin Mujoo	
- <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, LKML
- <linux-kernel@vger.kernel.org>
-Date: Fri, 24 Jul 2026 18:23:36 -0700
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.58.3 (3.58.3-1.fc43) 
+	s=arc-20240116; t=1784953899; c=relaxed/simple;
+	bh=Fzc8SW25R2RhB10CmllkJ7pj7t+iDtaS5mHUO+DEEJQ=;
+	h=Message-ID:Date:MIME-Version:To:From:Subject:Content-Type; b=i4WbX7+DeJ3oSPi7uM0RxKXA0zNWC1Em2tMHHDVDcyztXt+xgXDEAr4JWpRrLFUTEblreweCNH2Z6eoWt0K9WaYyOoRH36TPDiLMhZGqyFIrGpzp7QZECd4f9AxBZ2nthQdfYC7HUBCWiwpmeeZ/PrgxgltymhHT+SYBAATQM4M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=0zwiWxWl; arc=none smtp.client-ip=113.46.200.221
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="0zwiWxWl"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=B3IrAEzsg+NV9dxyTUdKDNuvOt1rBFSZVXw8rckA9KI=;
+	b=0zwiWxWlZSECMSBp3CfpBZ4bkXBBJ959UuQTU1IOI5lovTTbKMrkOni07bI7dzTlLAKekQb4/
+	rVMlWcPSbQTJF7iRslMdZ7VVwTXRZ6Eezs0w0S1/URStU3uVTOLX2cqwCDQc9xYfuQ8kYcCBkIE
+	zesDVLqBOYudebhALbAmFhY=
+Received: from mail.maildlp.com (unknown [172.19.162.140])
+	by canpmsgout06.his.huawei.com (SkyGuard) with ESMTPS id 4h6WsR0YvvzRhSs
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Jul 2026 12:22:03 +0800 (CST)
+Received: from kwepemf200016.china.huawei.com (unknown [7.202.181.9])
+	by mail.maildlp.com (Postfix) with ESMTPS id 4466A2011D
+	for <linux-ext4@vger.kernel.org>; Sat, 25 Jul 2026 12:31:26 +0800 (CST)
+Received: from [10.108.234.194] (10.108.234.194) by
+ kwepemf200016.china.huawei.com (7.202.181.9) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Sat, 25 Jul 2026 12:31:25 +0800
+Message-ID: <37ded662-3f66-471f-bf72-f4b33a50a2a0@huawei.com>
+Date: Sat, 25 Jul 2026 12:31:23 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Rspamd-Server: rspamout01
-X-Rspamd-Queue-Id: 5C42730
-X-Stat-Signature: pefdp6fs95jpmbntfqy31rhscxywne78
-X-Session-Marker: 6A6F6540706572636865732E636F6D
-X-Session-ID: U2FsdGVkX19u+HKVXOdS7IJ05XJhMw3kwRUznZ3EK2U=
-X-HE-Tag: 1784942617-13501
-X-HE-Meta: U2FsdGVkX19x+9g/NY/c7sILWT9aNZhOHX+BZt4wEDFYJSoH2K6LIQgIgJ8/jcGUI6/0goaq/0nn6OEr8+AMdYZudhCGJlbgu4kEn1b4sUYk8hQ0Zy+Mhb10A/nyiPngfmr6bAmirEgeMVJAfLX1tilurp4VskEt5wXPkj8jB5YuutT94GYvahdm80rep53ND1pWRXKgX1lcPYhOtC/wK+nQWU4WUjUarclsMPhZSc1O/VMBWB4taNInm2F6zx6uZnNMl3vXsKj1GIz4sWnoG3aDgp+gYWuznGHtBNlp2G48SIxT7uCubyxGUflKIIvL3CK3wdKR3n7z0Iva6/qHv/wnBg7mFGUV7xb+iiVA/M0W1AziElG36VqYjQ6VbEqT
+User-Agent: Mozilla Thunderbird
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+From: "wangjianjian (C)" <wangjianjian3@huawei.com>
+Subject: incomapt inline xattr between ext2 and ext4 used for ext2
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ kwepemf200016.china.huawei.com (7.202.181.9)
 
-Reduce the object size of ext4 ~2KB (~.5%) by combining the KERN_<LEVEL>
-and format uses of ext4_msg.
+Hi there,
 
-Separate them in __ext4_msg using printk_get_level and printk_skip_level
-and emitting the appropriate level.
+For a ext2 disk with 256B inode size, if mount it with ext4 driver(ext4 
+used for ext2), file xattr will be stored in inode if it fits. And then 
+if we mount this disk on a system only with old ext2 filesystem driver, 
+the xattr will be lost since old ext2 driver doesn't support xattr in inode.
 
-x86 object sizes before and after:
+This seems an incompat issue, is this a problem or by design? Or maybe 
+we should set sbi->s_want_extra_isize to 0 if EXTRA_ISIZE feature is not 
+enabled.
 
-defconfig size before:
-$ size -t fs/ext4/built-in.a | tail -1
- 579013	 121634	    316	 700963	  ab223	(TOTALS)
+I know ext2 driver has already been deprecated however this use case 
+seems still exist in some old setup's upgrade/downgrade scenarios.
 
-defconfig size after:
-$ size -t fs/ext4/built-in.a | tail -1
- 577196	 121650	    316	 699162	  aab1a	(TOTALS)
+Thanks.
 
-defconfig size before with CONFIG_EXPERT=3Dy and CONFIG_PRINTK=3Dn:
-$ size -t fs/ext4/built-in.a | tail -1
- 537999	 121432	    316	 659747	  a1123	(TOTALS)
+-- 
+Regards
 
-defconfig size after with CONFIG_EXPERT=3Dy and CONFIG_PRINTK=3Dn:
-$ size -t fs/ext4/built-in.a | tail -1
- 536837	 121424	    316	 658577	  a0c91	(TOTALS)
-
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/ext4/ext4.h  | 12 ++++++------
- fs/ext4/super.c | 14 +++++++++-----
- 2 files changed, 15 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b37c136ea3ab..981918f32067 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3309,8 +3309,8 @@ void __ext4_warning(struct super_block *, const char =
-*, unsigned int,
- extern __printf(4, 5)
- void __ext4_warning_inode(const struct inode *inode, const char *function,
- 			  unsigned int line, const char *fmt, ...);
--extern __printf(3, 4)
--void __ext4_msg(struct super_block *, const char *, const char *, ...);
-+extern __printf(2, 3)
-+void __ext4_msg(struct super_block *, const char *fmt, ...);
- extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
- 			   const char *, unsigned int, const char *);
- extern __printf(7, 8)
-@@ -3354,8 +3354,8 @@ void __ext4_grp_locked_error(const char *, unsigned i=
-nt,
- 	__ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
- #define ext4_warning_inode(inode, fmt, ...)				\
- 	__ext4_warning_inode(inode, __func__, __LINE__, fmt, ##__VA_ARGS__)
--#define ext4_msg(sb, level, fmt, ...)				\
--	__ext4_msg(sb, level, fmt, ##__VA_ARGS__)
-+#define ext4_msg(sb, level, fmt, ...)					\
-+	__ext4_msg(sb, level fmt, ##__VA_ARGS__)
- #define dump_mmp_msg(sb, mmp, msg)					\
- 	__dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
- #define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
-@@ -3401,8 +3401,8 @@ do {									\
- } while (0)
- #define ext4_msg(sb, level, fmt, ...)					\
- do {									\
--	no_printk(fmt, ##__VA_ARGS__);					\
--	__ext4_msg(sb, "", " ");					\
-+	no_printk(level fmt, ##__VA_ARGS__);				\
-+	__ext4_msg(sb, "" " ");						\
- } while (0)
- #define dump_mmp_msg(sb, mmp, msg)					\
- 	__dump_mmp_msg(sb, mmp, "", 0, "")
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 245f67d10ded..72d6f6353a27 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -981,11 +981,11 @@ void __ext4_std_error(struct super_block *sb, const c=
-har *function,
- 	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
- }
-=20
--void __ext4_msg(struct super_block *sb,
--		const char *prefix, const char *fmt, ...)
-+void __ext4_msg(struct super_block *sb, const char *fmt, ...)
- {
- 	struct va_format vaf;
- 	va_list args;
-+	int level;
-=20
- 	if (sb) {
- 		atomic_inc(&EXT4_SB(sb)->s_msg_count);
-@@ -995,12 +995,16 @@ void __ext4_msg(struct super_block *sb,
- 	}
-=20
- 	va_start(args, fmt);
--	vaf.fmt =3D fmt;
-+
-+	level =3D printk_get_level(fmt);
-+	vaf.fmt =3D printk_skip_level(fmt);
- 	vaf.va =3D &args;
- 	if (sb)
--		printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-+		printk("%c%cEXT4-fs (%s): %pV\n",
-+		       KERN_SOH_ASCII, level, sb->s_id, &vaf);
- 	else
--		printk("%sEXT4-fs: %pV\n", prefix, &vaf);
-+		printk("%c%cEXT4-fs: %pV\n",
-+		       KERN_SOH_ASCII, level, &vaf);
- 	va_end(args);
- }
-=20
