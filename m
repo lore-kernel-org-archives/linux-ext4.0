@@ -1,74 +1,69 @@
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F2903E51FF
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:13:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97FE63E5ED8
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:13:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785186793; cv=none; b=YagKv5yY24UoDdLtDxABVHfcvZSKQVJi2whnY0m+lpMfwplTYciTsbx5oaaWZW46oR7iAtNPnm+ELTpr0xdkADUIHtOGUO2Z4+4XKeQUJC4Egu5Ap56SnfoQ0kJQngCRp1S8Gg9o+6DHZwVApb5q+3FjXG/nn+OGBTkf0LUh9CU=
+	t=1785186813; cv=none; b=PGuVvKkeA+L5a2ICJWHFuPkrK9kIcHv3pssPc1jHOQcidWBrew6PY7j+rOUJRQRE9coGgcyGJVCx76kQq3v2cp6BvmHxarT/1b0vJypL6ubFb/ID1G9OyE8vGNosDCTGRb2ZYLhXW+TBUQTo8wXwIXiyO6yGIsBPqvz6IgUCzHo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785186793; c=relaxed/simple;
-	bh=szMaVsRC7va/SCXpXtbPiE7rrcoS+pgAq5teSdejfcg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Z+OViJ8FlWCTWSdDBZOFHJS8cW66gjEvKmzA8MG5rofeyx/7xgcwSz7B1XpOv+ybtEcuZdCsSJ0LH+pQPA0QGzeqBxBQxX+vv54m++0/MPBdYYD6LQGw+UmJhJfMRdduor6MidI12Ei/BIBInCS+Scq4s8QQTfPDlvDs3nE4i/M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=szruf0V7; arc=none smtp.client-ip=209.85.128.46
+	s=arc-20240116; t=1785186813; c=relaxed/simple;
+	bh=y4orxXOw55z5BNsaPUlowMfOryJzbLhUfRWU2oa78jA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=WimrHOs7r63XvmjN9MyoVRqpT9JFO8JGoprdi40bim/Pq8NqFp0Fyat4ryv/BUFg3CVu3g4SvSzPfa9MS5Vax1+M6FB4SSFzlIOBOCEomZVnFowSnstPArstORRxS7lZzgI7pSN5A/ufEQistHkkbIc+MBsQ4pFhXxmbWtt7YRs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=SCo1OJVh; arc=none smtp.client-ip=209.85.128.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="szruf0V7"
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-4921eed3fa2so21934405e9.0
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:13:11 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SCo1OJVh"
+Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-495437bb891so2789995e9.1
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:13:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785186790; x=1785791590; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=LWiZvKDIjB7Bg1tltxSOdkT9KAZ42nHcHCK2dZG8pck=;
-        b=szruf0V7sEa9IgnyA6bgGF5xB1ke3HPVN0KB6xzm7stxn0i5UoTjzs1qk04s9GXZTg
-         CjmlvjeGSX/3Ww3pvkqVZOTaKK7c716rHMeqiLTniNxt4zCwwH754n5N2DUo6HZi3NFA
-         wA+uVcVRlG6/ydrzg4EweoSa1r8mpDz44W57gqhimJCAL3pvogLyi+KX9/AF2XiGY3db
-         WOP5eqhGFQ5RzpeGCxSU2khpry+mLOnrtOIh4OulQOVxvuMGTPaR4TGq64q1N/B37mqX
-         j5tdtW4x9/dPu/GxCHmMcAHyjeYBr2THR5qOgoxVhArblVjp6mr8XUhGvXFz3eEfYQMp
-         /uXg==
+        d=gmail.com; s=20251104; t=1785186810; x=1785791610; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=IuuiL83izvKfBJnCecdXUwi5pVl5ykAPf6JFGwW6waU=;
+        b=SCo1OJVheH02Bwh3PiycmDVs+J/T7AoAwD50C8KoOEzhv3/O1cHJqg7j2sXWocHGv/
+         6vX92TWF4VqLEaaS418XmsroGvdImh+0CvTRyyH/uvSlQAAUM37yCDSNv5CCAovBdlCE
+         XyXQeF0PcPWYhmvqptVDMRHJLpazbSVqLmppgTCoQrbdu343Z0F5gSywOvKcF0+w1nTb
+         degQvl2Qcc56ilC8Po4nzQws9ydNvLI+/W+BjHCzs8Z27qugyAYvNeaj6EGabd3/pYoS
+         KrTpEtthVq/osfzTT8ZcwItoDkAoTKWg3Aazqbifabaa5klwgmHiL6E7Qbs6J8LsvmCf
+         jciw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785186790; x=1785791590;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=LWiZvKDIjB7Bg1tltxSOdkT9KAZ42nHcHCK2dZG8pck=;
-        b=DCLi8P5icJnwSFQVPNhn6/gsSfOQ9hzywU84UDJ/upiKGWjqGHINKfrDtLLN4rEhWU
-         p3uLtxUBnjGiIiXaGyFsXx21OuYEdkQhYGpZM7quXMOYZ/W+iNYSapArJTwR0/S2UDj0
-         UaaTpO6V1YpjkLRFTzR+LJEEIOv4QLmuqtDE/C6VOgMU8iXoedvJp2KwV1UTK2Z5tIS1
-         EGFtC8E/wLisI6EMSzyJmaPblVP7lTOJVeOdzpw/W6wuBKN0l2CUK2Y80WihLkKD5pLR
-         r+CF5/WREQ7Ii4hkZuDTmAwJbsfW+gHiuNFdl/0LM90GydXgwr1c+BbvGWb083ioXT3l
-         akcQ==
-X-Gm-Message-State: AOJu0YzASLA3rDL4xZ7mYfwKbhikjxhgwcz1y5yt3qZx6/sl2qRr0mJx
-	cwxEE08AUrHLw0akUlNf7i4l57KfV5y+0x80JRJf001q0yLvwfFjAewS1skR+yk5
-X-Gm-Gg: AR+sD13qE4hxWQAhfTXWodjHBtp6OwI22AIojwbi8mqFMqoUVe5H/Dpes0nzo9DBhkr
-	iFuCCmKoktn5K/ek1lFcL5L7ByI3iRexwVUgklVfvzMLn5xqvYd54l45J9AtIYfxFQ1tGqbaXwP
-	0eoWDpYqRWtJFBvom4GOg7uBLClFjz9KRz2a/4vbnh6RI2RLsBZX3D7mHFCzssX01xBmC4+ZT2A
-	jI1XFbD1+X3ZFZR4ADdTy5pNiSvV0/ehCOY3KrBOASIrS3pinPx69dNZ96oGWxJYgcIvvEiGFEH
-	2uz9OEOMEweVhhr5tYJNKr1IM+scFq00yc9lTvyp4dHGDyvJ3olQaqa4IrMhGDKkVbSh9Gly21D
-	Ccp+WOqUC/Lx9U991Niz0bS81onPWoiegKHrUvSajRiGyZDHJ+eAfYlNJlULFUIWvdV4uYX/BVK
-	k46b+ohaYw0sSWhZNc1BLw1GpInYeU7Zg8xyScpr8lmYFm
-X-Received: by 2002:a05:600d:4441:10b0:495:5845:fb2 with SMTP id 5b1f17b1804b1-496c4fe2762mr4965955e9.38.1785186789792;
-        Mon, 27 Jul 2026 14:13:09 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1785186810; x=1785791610;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=IuuiL83izvKfBJnCecdXUwi5pVl5ykAPf6JFGwW6waU=;
+        b=Cr+ucm4fbfk3kUaBneas//t3W/lCHar5nvjVf06+00dcL2lBQDhC/Yt/qm9aLXSmO0
+         w3hES1EmH96KShXt4zMYlUNCte81ljVfY+YavtA8Dn0nggo5gjQi3hLwAKlCfmOmBDop
+         ZQad771RBxJtRHavTTOw7E4vDfDCVCPdAFK1lTzslbdDXkLy0YQad/jkrTNwtXcZVeCr
+         XL3nOTHG+r8CDx1Y9f19fAgV2ZS5M38JOmK26fW8BQ3qsRZOrgcKr6o3Hw9USitZF+qP
+         DvPdv4cjXqs4Y1V6RlVEnZx6UxHSP0ZUnJIgFRI+HIl8CyM0J5xsYiX5QkctoUTcLkKC
+         nA4Q==
+X-Gm-Message-State: AOJu0YxjyweJGudIvlxzwczVQaJhPPQhXxgZovlKMzzzbamqEAUyljmJ
+	xLwCetRz9JbfihYZT7xZGbe3Hd/NrdYS7iNXIasmnzC9d+6oMhCofTqpoBxmfg==
+X-Gm-Gg: AR+sD12/zLLiVHVbuJW2dgpUxRtzYOwSrijB28bUNpsuMGX5bytw6ewgvIS4Y2XK8H5
+	x2XpJ2b7xHgh1+cZRCiJhMLhBw1moW0eeW/xVBxObF7/185M71NcN+1KASv7bISRcuCkF2cKTHs
+	mJFsH9zW1KB5S6sHh6mZPOxYrJdP44ie7G2zOCad0OiHYJKc6ec9w2X1vgNg73x1fh+72OPH57z
+	4eBTkcTAItwMGy2R6U8NDR+hngY+TCCRbc+Sfk99b3DNBQPchcahKRmH/pzjS7D+Bn9fjaiOh3j
+	aM2PZiijTe5fAOo5nJBxx4y2HrC/+QlGHZyX6pZSephJZzZ8fFFfq93jisG9STNlijI4ck07cTW
+	2OflWxvg/R9TlKrFijbMi9xvFqjnbXh0uMWQ8ADbcWRdKSeVg0wwnenNz8aZ8NRXyFXYzNc/bWk
+	ng0jKcO3OhDkw950PeSFdFe8lJlgVdlslBVrx5n/EOIDkQ
+X-Received: by 2002:a05:600c:4585:b0:495:6934:4146 with SMTP id 5b1f17b1804b1-496c567ab59mr3117245e9.11.1785186809761;
+        Mon, 27 Jul 2026 14:13:29 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-496c44afaecsm24910245e9.2.2026.07.27.14.13.08
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4957b842691sm270073775e9.1.2026.07.27.14.13.29
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 27 Jul 2026 14:13:09 -0700 (PDT)
+        Mon, 27 Jul 2026 14:13:29 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v6 11/11] ext4: Add EXT4_IOC_SET_LUFID ioctl for setting LUFID on directory entries
-Date: Mon, 27 Jul 2026 17:11:23 -0400
-Message-ID: <20260727211125.19632-12-ablagodarenko@thelustrecollective.com>
+	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v2 00/13] e2fsprogs: Add support for dirdata feature
+Date: Mon, 27 Jul 2026 17:13:09 -0400
+Message-ID: <20260727211322.19686-1-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
-In-Reply-To: <20260727211125.19632-1-ablagodarenko@thelustrecollective.com>
-References: <20260727211125.19632-1-ablagodarenko@thelustrecollective.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -77,344 +72,147 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Add support for the INCOMPAT_DIRDATA feature, which allows
+storing extra metadata in directory entries beyond the file
+name. This provides a unified mechanism for extending directory
+entries with additional information, including:
 
-Add a new ioctl command that allows setting LUFID (Locally Unique File ID)
-data on existing directory entries. This includes:
+- hashes for encryption + casefold support
+- unique 128-bit file identifiers (LUFID)
+- high bits of 64-bit inode numbers
+- future directory entry extensions
 
-- ext4_ioctl_set_lufid(): ioctl handler that validates parameters and
-  calls the underlying implementation
-- ext4_set_direntry_lufid(): Core function that performs the operation by:
-  * Looking up the target directory entry
-  * Retrieving the associated inode
-  * Deleting the old entry and re-creating it with LUFID data attached
+If directory hashes were stored before the dirdata feature was
+introduced, the legacy hash format continues to be supported for
+backward compatibility.
 
-This implementation requires the dirdata feature to be enabled on the
-filesystem and properly handles transactions and inode locking to ensure
-consistency.
+This series adds e2fsprogs support for DIRDATA, including:
 
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/ext4.h            |   2 +
- fs/ext4/ioctl.c           |  84 ++++++++++++++++++++++
- fs/ext4/namei.c           | 148 ++++++++++++++++++++++++++++++++++++++
- include/uapi/linux/ext4.h |  14 ++++
- 4 files changed, 248 insertions(+)
+- libext2fs: dirdata infrastructure and helper functions
+- e2fsck: validation, repair, and reporting support for
+  dirdata fields
+- debugfs: display of dirdata fields in directory listings
+  with the -lD option for testing and debugging
+- mke2fs/tune2fs: user-visible support for enabling the
+  dirdata filesystem feature
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 099303c1f672..265744d6a32e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3322,6 +3322,8 @@ static inline int ext4_init_new_dir(handle_t *handle, struct inode *dir,
- }
- extern int ext4_dirblock_csum_verify(struct inode *inode,
- 				     struct buffer_head *bh);
-+extern int ext4_dirdata_set_lufid(struct inode *dir, const char *filename,
-+			   int namelen, struct ext4_dentry_param *edp);
- extern int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 				__u32 start_minor_hash, __u32 *next_hash);
- extern int ext4_search_dir(struct buffer_head *bh,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index c8387e6a2c6e..b5421d59f7a0 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1535,6 +1535,87 @@ static int ext4_ioctl_set_tune_sb(struct file *filp,
- 	return ret;
- }
- 
-+/*
-+ * ext4_ioctl_set_lufid() - Set LUFID on a directory entry
-+ * @filp:	file pointer (parent directory)
-+ * @arg:	pointer to ext4_set_lufid structure with filename and LUFID data
-+ *
-+ * This ioctl allows setting LUFID data on an existing
-+ * directory entry. It is called on the parent directory with a filename and
-+ * LUFID data.
-+ */
-+static long ext4_ioctl_set_lufid(struct file *filp, unsigned long arg)
-+{
-+	struct inode *dir = file_inode(filp);
-+	struct mnt_idmap *idmap = file_mnt_idmap(filp);
-+	struct ext4_set_lufid lufid_args;
-+	struct {
-+		__u32 edp_magic;
-+		struct ext4_dirent_data_header df_header;
-+		char df_fid[255];
-+	} edp;
-+	int err;
-+
-+	/* Check if parent is a directory */
-+	if (!S_ISDIR(dir->i_mode))
-+		return -ENOTDIR;
-+
-+	/* This ioctl mutates directory entries; merely having the directory
-+	 * open (which only ever requires read access) is not enough */
-+	err = inode_permission(idmap, dir, MAY_WRITE);
-+	if (err)
-+		return err;
-+
-+	/* Copy arguments from user space */
-+	if (copy_from_user(&lufid_args, (struct ext4_set_lufid __user *)arg,
-+			   sizeof(lufid_args)))
-+		return -EFAULT;
-+
-+	/* Validate parameters.  esl_name_len is NUL-excluded length (1-255). */
-+	if (lufid_args.esl_name_len == 0 || lufid_args.esl_name_len > EXT4_NAME_LEN)
-+		return -EINVAL;
-+
-+	/* ddh_length (esl_data_len + the header byte below) must itself fit
-+	 * in the __u8 ddh_length field without wrapping */
-+	if (lufid_args.esl_data_len == 0 ||
-+	    lufid_args.esl_data_len > 255 - sizeof(edp.df_header))
-+		return -EINVAL;
-+
-+	/* Ensure filename is NUL-terminated at exactly esl_name_len */
-+	if (lufid_args.esl_name[lufid_args.esl_name_len] != '\0')
-+		return -EINVAL;
-+
-+	/* '.' and '..' are not ordinary entries -- they must stay the first
-+	 * two entries in the directory's first block, so they can't go
-+	 * through the general delete+re-add path this ioctl uses */
-+	if (!strcmp(lufid_args.esl_name, ".") || !strcmp(lufid_args.esl_name, ".."))
-+		return -EINVAL;
-+
-+	/* Prepare the dentry param struct with LUFID data. ddh_length is
-+	 * documented (see struct ext4_dirent_data_header) as the length of
-+	 * the header plus the whole data blob -- include the header here so
-+	 * every dirdata reader/writer that takes ddh_length at face value
-+	 * (e.g. ext4_dirdata_set()'s memcpy) copies the full LUFID payload
-+	 * instead of silently dropping its last byte. */
-+	edp.edp_magic = EXT4_LUFID_MAGIC;
-+	edp.df_header.ddh_length = lufid_args.esl_data_len +
-+				    sizeof(edp.df_header);
-+	memcpy(edp.df_fid, lufid_args.esl_data, lufid_args.esl_data_len);
-+
-+	/* Want write access */
-+	err = mnt_want_write_file(filp);
-+	if (err)
-+		return err;
-+
-+	/* Call the helper function to do the actual work */
-+	err = ext4_dirdata_set_lufid(dir, lufid_args.esl_name,
-+				    lufid_args.esl_name_len,
-+				    (struct ext4_dentry_param *)&edp);
-+
-+	mnt_drop_write_file(filp);
-+	return err;
-+}
-+
- static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -1921,6 +2002,8 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 					      (void __user *)arg);
- 	case EXT4_IOC_SET_TUNE_SB_PARAM:
- 		return ext4_ioctl_set_tune_sb(filp, (void __user *)arg);
-+	case EXT4_IOC_SET_LUFID:
-+		return ext4_ioctl_set_lufid(filp, arg);
- 	default:
- 		return -ENOTTY;
- 	}
-@@ -2000,6 +2083,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case FS_IOC_SETFSLABEL:
- 	case EXT4_IOC_GETFSUUID:
- 	case EXT4_IOC_SETFSUUID:
-+	case EXT4_IOC_SET_LUFID:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f1985f1d9b60..e9f78bf1412d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -4676,6 +4676,154 @@ static int ext4_rename2(struct mnt_idmap *idmap,
- 	return ext4_rename(idmap, old_dir, old_dentry, new_dir, new_dentry, flags);
- }
- 
-+/*
-+ * ext4_dirdata_set_lufid() - Set LUFID data on an existing directory entry
-+ * @dir:        parent directory inode
-+ * @filename:   name of the file in the directory
-+ * @namelen:    length of filename
-+ * @edp:        pointer to initialized dentry param with LUFID data
-+ *
-+ * This function finds an existing directory entry, deletes it, and re-creates it
-+ * with LUFID data attached. Used by the EXT4_IOC_SET_LUFID ioctl.
-+ *
-+ * Returns 0 on success, negative error code on failure.
-+ */
-+int ext4_dirdata_set_lufid(struct inode *dir, const char *filename,
-+			    int namelen, struct ext4_dentry_param *edp)
-+{
-+	struct super_block *sb = dir->i_sb;
-+	 /* zero-init: safe to free on any path */
-+	struct ext4_filename fname = {};
-+	struct ext4_dir_entry_2 *de = NULL;
-+	struct buffer_head *bh = NULL;
-+	struct inode *inode = NULL;
-+	handle_t *handle = NULL;
-+	struct qstr d_name;
-+	int err = 0;
-+
-+	if (!ext4_has_feature_dirdata(sb))
-+		return -EOPNOTSUPP;
-+
-+	if (namelen > EXT4_NAME_LEN)
-+		return -ENAMETOOLONG;
-+	if (namelen != strnlen(filename, namelen + 1))
-+		return -EINVAL;
-+
-+	d_name.name = filename;
-+	d_name.len = namelen;
-+
-+	err = ext4_fname_setup_filename(dir, &d_name, 0, &fname);
-+	if (err)
-+		goto out_free;
-+
-+	/* Lock dir with the VFS parent-mutation subclass before starting the
-+	 * journal.  Holding i_rwsem while calling ext4_journal_start() is safe
-+	 * (ext4_setattr, ext4_fallocate etc. do the same).  The lookup must be
-+	 * inside the lock to prevent TOCTOU: the bh/de pointers must be stable
-+	 * from find_entry through delete_entry. */
-+	inode_lock_nested(dir, I_MUTEX_PARENT);
-+
-+	handle = ext4_journal_start(dir, EXT4_HT_DIR,
-+				    3 * EXT4_DATA_TRANS_BLOCKS(sb) +
-+				    2 * EXT4_INDEX_EXTRA_TRANS_BLOCKS);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		handle = NULL;
-+		goto out_unlock_dir;
-+	}
-+
-+	bh = ext4_find_entry(dir, &d_name, &de, NULL);
-+	if (IS_ERR(bh)) {
-+		err = PTR_ERR(bh);
-+		bh = NULL;
-+		goto out_journal;
-+	}
-+	if (!bh) {
-+		err = -ENOENT;
-+		goto out_journal;
-+	}
-+
-+	inode = ext4_iget(sb, le32_to_cpu(de->inode), EXT4_IGET_NORMAL);
-+	if (IS_ERR(inode)) {
-+		err = PTR_ERR(inode);
-+		inode = NULL;
-+		goto out_brelse;
-+	}
-+
-+	/* Lock the target inode after the directory (dir-then-child ordering)
-+	 * to serialize concurrent EXT4_IOC_SET_LUFID calls on different
-+	 * hardlinks of the same inode.  Use I_MUTEX_CHILD for directory inodes
-+	 * (consistent with VFS rename/rmdir) and I_MUTEX_NONDIR2 for all
-+	 * others; mixing subclasses on the same inode triggers lockdep cycles
-+	 * with concurrent rename. */
-+	if (inode != dir) {
-+		if (S_ISDIR(inode->i_mode))
-+			inode_lock_nested(inode, I_MUTEX_CHILD);
-+		else
-+			inode_lock_nested(inode, I_MUTEX_NONDIR2);
-+	}
-+
-+	err = ext4_delete_entry(handle, dir, de, bh);
-+	if (err)
-+		goto out_unlock;
-+
-+	brelse(bh);
-+	bh = NULL;
-+
-+	/* Re-add with LUFID via dentry->d_fsdata.  ext4_add_entry() resolves
-+	 * dfid from d_fsdata into fname.dfid and passes it through to
-+	 * add_dirent_to_buf() without touching the shared i_dirdata field,
-+	 * eliminating the race with concurrent link() calls. */
-+	{
-+		struct dentry parent_dentry = { .d_inode = dir };
-+		struct dentry new_dentry = {
-+			.d_name = d_name,
-+			.d_parent = &parent_dentry,
-+			.d_inode = inode,
-+			.d_fsdata = edp,
-+		};
-+		err = ext4_add_entry(handle, &new_dentry, inode);
-+	}
-+
-+	if (err) {
-+		/* Delete succeeded but re-add failed; try to restore so the
-+		 * inode is not left without a directory entry. */
-+		struct dentry parent_dentry = { .d_inode = dir };
-+		struct dentry orig_dentry = {
-+			.d_name = d_name,
-+			.d_parent = &parent_dentry,
-+			.d_inode = inode,
-+		};
-+		int rollback_err = ext4_add_entry(handle, &orig_dentry, inode);
-+
-+		if (rollback_err)
-+			EXT4_ERROR_INODE(dir,
-+				"Failed to set LUFID on '%.*s' (err=%d) and failed to restore the original directory entry (err=%d); inode %llu may be orphaned",
-+				namelen, filename, err, rollback_err,
-+				inode->i_ino);
-+		goto out_unlock;
-+	}
-+
-+	inode_set_ctime_current(dir);
-+	inode_inc_iversion(dir);
-+	ext4_mark_inode_dirty(handle, dir);
-+
-+out_unlock:
-+	if (inode != dir)
-+		inode_unlock(inode);
-+out_brelse:
-+	brelse(bh);
-+out_journal:
-+	ext4_journal_stop(handle);
-+out_unlock_dir:
-+	inode_unlock(dir);
-+	iput(inode);
-+out_free:
-+	ext4_fname_free_filename(&fname);
-+
-+	return err;
-+}
-+
- /*
-  * directories can handle most operations...
-  */
-diff --git a/include/uapi/linux/ext4.h b/include/uapi/linux/ext4.h
-index 9c683991c32f..9134fe64947a 100644
---- a/include/uapi/linux/ext4.h
-+++ b/include/uapi/linux/ext4.h
-@@ -35,6 +35,7 @@
- #define EXT4_IOC_SETFSUUID		_IOW('f', 44, struct fsuuid)
- #define EXT4_IOC_GET_TUNE_SB_PARAM	_IOR('f', 45, struct ext4_tune_sb_params)
- #define EXT4_IOC_SET_TUNE_SB_PARAM	_IOW('f', 46, struct ext4_tune_sb_params)
-+#define EXT4_IOC_SET_LUFID		_IOW('f', 47, struct ext4_set_lufid)
- 
- #define EXT4_IOC_SHUTDOWN _IOR('X', 125, __u32)
- 
-@@ -92,6 +93,19 @@ struct move_extent {
- 	__u64 moved_len;	/* moved block length */
- };
- 
-+/*
-+ * Structure for EXT4_IOC_SET_LUFID
-+ * Sets LUFID on a directory entry
-+ * Called on parent directory with filename and LUFID data as arguments
-+ */
-+struct ext4_set_lufid {
-+	__u8 esl_name_len;	/* length of filename, NOT including NUL terminator
-+				 * (valid range: 1-255, matching EXT4_NAME_LEN) */
-+	char  esl_name[255 + 1]; /* filename (NUL-terminated) */
-+	__u8 esl_data_len;	/* length of LUFID data */
-+	char  esl_data[255]; /* LUFID data (raw bytes) */
-+};
-+
- /*
-  * Flags used by EXT4_IOC_SHUTDOWN
-  */
+The series also adds regression tests covering directory
+optimization, duplicate directory entries, and dirdata field
+preservation to ensure metadata integrity and prevent directory
+corruption.
+
+The companion kernel series is:
+  [PATCH v6 00/11] Data in direntry (dirdata) feature
+
+Changes in v2:
+- debugfs ls -lD: fixed LUFID printing to copy the dirdata bytes into
+  a local struct lu_fid via memcpy before byte-swapping and printing,
+  instead of casting a potentially unaligned pointer in-place
+  (adilger review).
+- debugfs ls -lD: added a loop to print all LUFIDs stored in a single
+  dirdata entry as a comma-separated list, not only the first one
+  (adilger review).
+- debugfs ls -lD: added labeled formatting for EXT4_DIRENT_CFHASH
+  ("hash: 0x%08x, minor_hash: 0x%08x") and a generic hex dump
+  fallback for unknown dirdata types (adilger review).
+- debugfs ls: fixed the -D option position in the usage string to
+  follow -d alphabetically (adilger review).
+- mke2fs/tune2fs: removed restrictions that blocked dirdata from being
+  combined with casefold, fscrypt, or inline_data. These were
+  Lustre-specific osd-ldiskfs limitations, not upstream ext4
+  constraints (adilger review).
+- mke2fs/tune2fs: switched from raw s_feature_incompat flag tests to
+  the ext2fs_has_feature_dirdata() accessor throughout (adilger review).
+- ext2_get_dirdata_field_size(): removed the spurious +1 (NUL
+  terminator) from individual field sizes; the NUL separator byte is
+  accounted for only in ext2_get_dirdata_size() (adilger review; this
+  was causing off-by-one errors in pass2 dirdata validation).
+- get_dirent_fid() in message.c: changed the signature to return the
+  FID array as an out-parameter and the byte count as the return value,
+  allowing the caller to print all FIDs comma-separated (adilger review).
+- pass3 fix_dotdot_proc(): preserve the dirdata bits in name_len when
+  adjusting the dotdot entry's inode number.
+- ext2fs_get_dx_root_info(): use EXT2_DIRENT_REC_LEN(de) instead of
+  EXT2_NEXT_DIRENT(de) to step past the dotdot entry, so dirdata
+  appended to the dotdot dirent is correctly skipped (adilger review).
+
+Artem Blagodarenko (13):
+  ext2fs: Consolidate duplicate min/max macros
+  ext2fs: Clean up directory entry handling APIs
+  ext2fs: dirdata infrastructure and core functions
+  libext2fs: add helper for dx_root_info lookup
+  e2fsck: pass2 dirdata validation and repair
+  e2fsck: dirdata message formatting and pass3 support
+  e2fsck: directory rehashing with dirdata support
+  debugfs: add dirdata display support
+  mke2fs/tune2fs: add dirdata feature support
+  e2fsck: add test suite for directory optimization
+  e2fsck: add test suite for duplicate directory entries
+  e2fsck: add test suite for dirdata-specific optimization
+  ext2fs: share list_dirdata code
+
+ debugfs/debugfs.8.in              |   7 +-
+ debugfs/htree.c                   |   2 +-
+ debugfs/ls.c                      |  14 +-
+ debugfs/ncheck.c                  |   3 +
+ e2fsck/message.c                  |   2 +
+ e2fsck/pass1.c                    |   4 +-
+ e2fsck/pass2.c                    | 151 +++++++--
+ e2fsck/pass3.c                    |   7 +
+ e2fsck/problem.c                  |   5 +
+ e2fsck/problem.h                  |   3 +
+ e2fsck/rehash.c                   | 235 +++++++++-----
+ lib/ext2fs/alloc.c                |   2 -
+ lib/ext2fs/dirblock.c             |  89 ++++++
+ lib/ext2fs/ext2_fs.h              |  47 ++-
+ lib/ext2fs/ext2fs.h               |  32 +-
+ lib/ext2fs/fallocate.c            |   1 -
+ lib/ext2fs/inline_data.c          |  14 +-
+ lib/ext2fs/lfsck.h                |  47 +++
+ lib/ext2fs/link.c                 |  11 +-
+ lib/ext2fs/newdir.c               |   4 +-
+ misc/e4defrag.c                   |   1 -
+ misc/mke2fs.c                     |   1 +
+ misc/tune2fs.c                    |   2 +
+ tests/f_dir_optimize/expect.1     | 511 ++++++++++++++++++++++++++++++
+ tests/f_dir_optimize/expect.2     | 511 ++++++++++++++++++++++++++++++
+ tests/f_dir_optimize/image.gz     | Bin 0 -> 102520 bytes
+ tests/f_dir_optimize/name         |   1 +
+ tests/f_dir_optimize/script       |  36 +++
+ tests/f_dirdata_dup_de/expect.1   |  37 +++
+ tests/f_dirdata_dup_de/expect.2   |   7 +
+ tests/f_dirdata_dup_de/image.gz   | Bin 0 -> 79307 bytes
+ tests/f_dirdata_dup_de/name       |   1 +
+ tests/f_dirdata_mfid/expect.1     |  35 ++
+ tests/f_dirdata_mfid/expect.2     |   7 +
+ tests/f_dirdata_mfid/image.gz     | Bin 0 -> 116296 bytes
+ tests/f_dirdata_mfid/name         |   1 +
+ tests/f_dirdata_optimize/expect.1 |  10 +
+ tests/f_dirdata_optimize/expect.2 |   7 +
+ tests/f_dirdata_optimize/image.gz | Bin 0 -> 32121 bytes
+ tests/f_dirdata_optimize/name     |   1 +
+ tests/f_dirdata_optimize/script   |   3 +
+ 41 files changed, 1719 insertions(+), 133 deletions(-)
+ create mode 100644 lib/ext2fs/lfsck.h
+ create mode 100644 tests/f_dir_optimize/expect.1
+ create mode 100644 tests/f_dir_optimize/expect.2
+ create mode 100644 tests/f_dir_optimize/image.gz
+ create mode 100644 tests/f_dir_optimize/name
+ create mode 100644 tests/f_dir_optimize/script
+ create mode 100644 tests/f_dirdata_dup_de/expect.1
+ create mode 100644 tests/f_dirdata_dup_de/expect.2
+ create mode 100644 tests/f_dirdata_dup_de/image.gz
+ create mode 100644 tests/f_dirdata_dup_de/name
+ create mode 100644 tests/f_dirdata_mfid/expect.1
+ create mode 100644 tests/f_dirdata_mfid/expect.2
+ create mode 100644 tests/f_dirdata_mfid/image.gz
+ create mode 100644 tests/f_dirdata_mfid/name
+ create mode 100644 tests/f_dirdata_optimize/expect.1
+ create mode 100644 tests/f_dirdata_optimize/expect.2
+ create mode 100644 tests/f_dirdata_optimize/image.gz
+ create mode 100644 tests/f_dirdata_optimize/name
+ create mode 100644 tests/f_dirdata_optimize/script
+
 -- 
 2.43.7
 
