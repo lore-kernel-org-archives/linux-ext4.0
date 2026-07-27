@@ -1,63 +1,63 @@
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
+Received: from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7B5542BC35
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:24:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72E2E42E8C4
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:24:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.175
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785187485; cv=none; b=alOE6BVOPw62A3W1S+g7LGnmRPqeASim2TMmnPnkkACxpJ3eBHMvinhNUNI/9a4GskAUMjT4YOZ52IGNQsFEvg/QR8R2VTlLDROjYuBUk/OOIXCZ6X5OSFIP5kHaYjpfxZKwyPRXbwEmj2QKY/DCKnSU/9S8HM90TMuX71P7NfY=
+	t=1785187487; cv=none; b=lcjq/HoztAoAtQ1Tn9z8SeBtWSszc17UziTnoTC8W40VK77OrvYiBDteo1y+W0mnw+2yCWh/wyTV+b1KjWSowuV6iwGpR5503RisaGoI5TWmMR6O+KDhSMgEI5zGeVslb7ua/MauFhgvfb6DsqwXWg2xWr1o4XXVfJJAcHw93LI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785187485; c=relaxed/simple;
-	bh=opq3fTnsrXEXUis6orE/E1kvybn4ouWYX+/mNx4cXic=;
+	s=arc-20240116; t=1785187487; c=relaxed/simple;
+	bh=1LODBsXTJz074zPmHlKPolHt/XzrgN7p/Zc0cYoesy0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ey2h134ur+lsnynEVX6Jhcprnkk3YSz8WK3sATMcYPcX1OLUUml41m6W9H+3oOU0H+24nuVSKuZfX0mmg0cbZu9zqUyUuRuQUPULaKj9ICL/qBmxN/Q7ojH6DAtvvZVfwPyFxDY5X0A6zxfIjoHxkDboowqC+vdFzyz9cUy3HZg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LRPBA9YB; arc=none smtp.client-ip=209.85.214.174
+	 MIME-Version; b=oreMA0CGvCcUznvq29IKCkQTGyy+OWaOplYBKBnqbO4sIpWE0mDKeJmgsmnLE7LN/x8v9N0qk3y0LPjCYBfVuVbfhoByVbee9R5X2hHpZNdAvOeYDcjTq3qsQKg8jDI+iGunTc70IgNtAR7wHRKAQ5DavHGwoOh/e+UtbSwlsL0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=eAbLykFf; arc=none smtp.client-ip=209.85.210.175
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LRPBA9YB"
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2ce7d2adef4so38536695ad.3
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:24:43 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eAbLykFf"
+Received: by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-845c92bc464so2642663b3a.2
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:24:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785187483; x=1785792283; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785187486; x=1785792286; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=hBriYrscy2lsMSBh5lhjAC8bZyEaS+6CxeuOVAvAWO8=;
-        b=LRPBA9YBbftSDfU7JQOkIbjNgi+qzmebnTsJiSQt7PuJsQvmQ/chuCLVVbP2Gpyia5
-         79bHhOGluM/kD/MUL+l9I2S9EejNja5RJ2EdO2SmY4TS61yvjLLtmjtGrw7KrG0AnYeQ
-         QhnQx9CUG5N0yx5rzIJdpyxSBgj2IlwPI0W+MygvYHRedNHX48MpHLbjCjbjzfeQrCwg
-         CTLMP/Aco3bmLnoKZSzDYx/Us2hDmAMjSC1WX5F+wSys5nkVB/sH2s2bNUi9UMp4VlGG
-         U8DtXEFA8yJ/0Ir98KCl/YXeCmDUEHZ3f1wQpAIh/NSmI8OZtORm2/xz2fEGj7KM/4R1
-         K3qw==
+        bh=+Cj5pCwh9UiKuAyGTCN2ecA2rWhLN61eKI8rtelBEo0=;
+        b=eAbLykFf/DczSvuITBALQTFGTaG9iu6EdNWGPfmziuDcvY2Vx814nnsKLXupim4pm+
+         irlsgwtVUUsWoom7k/FNyTT7d5lZ0cKFr6amwnUBryAZ0eWV9V7KNGNDry7Y7P1cqdzg
+         Fz1KSyf40Jfa1zKFLCwzNR5WfuM4k7eDCt8MzOx34pJyAtlkn4pAKNe0VdAnYBMKu6n2
+         cU9On7awWeoqYQBWPWQfRS+bxy6Qkh1pbnM7Bc9qIYuisxF4E2RYeMa1+P5VCMje6t/o
+         SaDK+QsUqi9y4vCsE/hSEhl2A6aTCNwSvZUEA1X8eMFi7xb+36YxDy9QqXAhJsu3tQui
+         qamQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785187483; x=1785792283;
+        d=1e100.net; s=20251104; t=1785187486; x=1785792286;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=hBriYrscy2lsMSBh5lhjAC8bZyEaS+6CxeuOVAvAWO8=;
-        b=Q/ImSIVrhIpmeLnA0qPDzLXkEON5TZ3yRSPGEoYLdZ4x347w2e+FBvxIC7/kb2iZ/3
-         d5sjBIH5lqNrgo+12jzcXI6jRZV0bJroeyg9L8l+opGAH8psewL0dn1Y8v7O015AultC
-         /G656oAAidDtnQGV2ohicZsineZQGx++mbSKkQuY8I1hdPyaGup6nM/K3caFwFWoAtzd
-         91ulNPX39ci4hwJiZKQ30n9e2fDqFsaDIp1OmJ/olXEQFgdVxmwiJkzrKz+dJu1eQ9QL
-         WSWBkMtSl/Nrxdx8T5LNDWdDrr4U/EO6ya+Y6adJwPRx9jhDaGbBTYH4bad8P6SK/qnB
-         zZDA==
-X-Forwarded-Encrypted: i=1; AHgh+RoeK2/73cOZuxHhmQ/xLdRTFDUvdpjodrX8wBCBEN/WoFatbApJcy2PmYlh1/zakEK4b3mnbDSQ2FD0@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz4LjiMhkISLpxy5RM3BIEKJxX+8GNRYatmsBtV3H1Yw8ySftos
-	epMr/Q9PdWs0st6XmF5GUFCuw4Wf5z8TYpiXezc/cxCgLrSN+dMn6QtG
-X-Gm-Gg: AR+sD12ZhzmcC9N8DMC3KS6bMjlBaR9EIeiJpEbEBnLT1YLQ/KomtFCkuI+XHGTh4VT
-	Y4KorDtWA+Qpe3wXizvUQN2YByYJN/Qy7U0XNHavSLWXqBEmz8Z11uKwSNaP7l3XZBo1c0McGhQ
-	CdrZbIeSdyibhO+pUsGV5FLRW/R+HJ9+sWY6J4zVhRM9SqqCMbgBB+yPBTEV5MOa5tjFHqJojk3
-	4IAMjDmniLeNwsum9xGJKS6Bpzu7YPShualoEPi6Memjeo+0BUyFAYitIxf7Co7UcFntfbBHo8P
-	HrXWRptYnb3l6F/amOPTSREOp1AIPBElDDa2guJjhrw22xOMnGdW1m4l1Dl1A7AfGxqUKH2rYYS
-	t48OoopxL8Xpc5O3cF54kQVO7KMdMNv+zp5aEg+7lKpz1pY7T/xGkxSWID6Ty2EfbZj4Jy2BcbR
-	7G9bBFlOkD2V9JzGcXWJ6GoB2U5X7NKKwdsmtUrwa8zCwjl6Q0mncDKg==
-X-Received: by 2002:a17:903:1aa7:b0:2ca:ca48:c380 with SMTP id d9443c01a7336-2cfde8a5229mr95192185ad.47.1785187483211;
-        Mon, 27 Jul 2026 14:24:43 -0700 (PDT)
-Received: from localhost ([2a03:2880:ff:4f::])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2cfde4650a5sm41237635ad.0.2026.07.27.14.24.42
+        bh=+Cj5pCwh9UiKuAyGTCN2ecA2rWhLN61eKI8rtelBEo0=;
+        b=KkMnajeWs+27fqBLQgJR2IY8Z4AHd2waPw6oldjFSZaOmE8odOor2mV0WZuL3GIF2G
+         B1fTQ7se91XipN1YgUf6FWomLIWyZLG3PCwZqQ1ku8jTWpSAK0ZM5p7hvJnBUmmrzKc4
+         c0RA67yQVECkwcBkSytXLkSD9SYk7zXtO7jg9SbUhIU6mqCWsH1T8JgcW+OSssMKwV+s
+         0Kvd2UWTQb0fgctLNFV+lTfZGaurCnyMlLHlmL0f6GGaeR+niFPaTX5mUjug/p67sRkU
+         yTaVB8jX+TbPz1JVHVP5ORz4GTlFvODwnourfNJorrxTPYvl7nW06qYF4ed3JarMFX7l
+         xRGA==
+X-Forwarded-Encrypted: i=1; AHgh+Ro5ZS6CQHxBAvL8eZOhfQJ+f4uOMiqDpot9JHxsor8VgogfItgM7jkzcDO87PhuS6B3wLXuzb16pixM@vger.kernel.org
+X-Gm-Message-State: AOJu0YwyxGbHRaUmUBnB3j891jBVojou6PcVw5pgvvdHbkD2b2FfcQOJ
+	qgyjDMQcPNQH4U2QyIrGbh4nP+jh1jYw1vTyHjzZxAEDoc0TDp62dKeo
+X-Gm-Gg: AR+sD13DEorDYKq20BKa87F1Ypm9fy7NvSfZUUQA6p71m872VAIoalnxQVTIBJZc/jQ
+	Z53n8dlSYPSaUN7+MXjium16a/a/D//UTEVbslhntpgE0WnS+K2QVCaPfT0yDHzO/vNAbWtjx2x
+	PiY5YtqQb5R+rjto4ymKx7nxgTsh9nk25cmb7E9LGhp/t/Id+k+hTxx/Fu5fqykB/Q0Ftb0MYXt
+	dwkgl19nE6vnbcheeU9ZIKoJnz172YexrcW8N852I+Ho6y+YumnatCZorc9qs15+i0XG54ubm70
+	fvnOdRuUHmHKK7rbGxcklBjEU2xW1sZ3aot4HVlEpx8oKNmQvgREcVF49QVsSCjGWfE4srLR9Cn
+	57ZHPPuVMW+njNnCamQZUEZ+gBHj6upV+XnxPEEISRF3/WD9C0h4DfwjolhR8JS4ZvcLhQH2ORg
+	l1gcj9R3EE4Rj0S5+C02eZ/T87x44i1ldJU+3/f1x3E1RtcMCChYALfw==
+X-Received: by 2002:a05:6a00:1790:b0:84e:831:9a1a with SMTP id d2e1a72fcca58-84e594683e4mr8243554b3a.21.1785187485740;
+        Mon, 27 Jul 2026 14:24:45 -0700 (PDT)
+Received: from localhost ([2a03:2880:ff:50::])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-84e53425989sm3543194b3a.48.2026.07.27.14.24.44
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 27 Jul 2026 14:24:42 -0700 (PDT)
+        Mon, 27 Jul 2026 14:24:44 -0700 (PDT)
 From: Joanne Koong <joannelkoong@gmail.com>
 To: Christian Brauner <brauner@kernel.org>,
 	hch@lst.de,
@@ -83,9 +83,9 @@ Cc: changfengnan@bytedance.com,
 	libaokun@linux.alibaba.com,
 	linux-ext4@vger.kernel.org,
 	linux-xfs@vger.kernel.org
-Subject: [PATCH v4 08/21] ntfs: convert iomap ops to ->iomap_next()
-Date: Mon, 27 Jul 2026 14:17:45 -0700
-Message-ID: <20260727211758.1116539-9-joannelkoong@gmail.com>
+Subject: [PATCH v4 09/21] ext4: convert iomap ops to ->iomap_next()
+Date: Mon, 27 Jul 2026 14:17:46 -0700
+Message-ID: <20260727211758.1116539-10-joannelkoong@gmail.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260727211758.1116539-1-joannelkoong@gmail.com>
 References: <20260727211758.1116539-1-joannelkoong@gmail.com>
@@ -97,97 +97,63 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Convert ntfs iomap_ops to the new ->iomap_next() callback. Each callback is
-generated with the DEFINE_IOMAP_ITER_NEXT()/DEFINE_IOMAP_ITER_NEXT_END()
-macros, which wrap the iomap_iter_next() helper to finish the previous
-mapping if needed and produce the next one. No functional changes are
-intended.
+Convert ext4 iomap_ops to the new ->iomap_next() callback. Each callback is
+generated with the DEFINE_IOMAP_ITER_NEXT() macro, which wraps the
+iomap_iter_next() helper to finish the previous mapping if needed and
+produce the next one. No functional changes are intended.
 
-Acked-by: Namjae Jeon <linkinjeon@kernel.org>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 Signed-off-by: Joanne Koong <joannelkoong@gmail.com>
 ---
- fs/ntfs/iomap.c | 32 ++++++++++++++++++++++----------
- 1 file changed, 22 insertions(+), 10 deletions(-)
+ fs/ext4/extents.c | 4 +++-
+ fs/ext4/inode.c   | 8 ++++++--
+ 2 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ntfs/iomap.c b/fs/ntfs/iomap.c
-index 52eecf5cb256..d0964ac840d9 100644
---- a/fs/ntfs/iomap.c
-+++ b/fs/ntfs/iomap.c
-@@ -277,8 +277,10 @@ static int ntfs_read_iomap_begin(struct inode *inode, loff_t offset, loff_t leng
- 			srcmap, true);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 91c97af64b31..15972410d460 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5171,8 +5171,10 @@ static int ext4_iomap_xattr_begin(struct inode *inode, loff_t offset,
+ 	return error;
  }
  
-+static DEFINE_IOMAP_ITER_NEXT(ntfs_read_iomap_next, ntfs_read_iomap_begin);
++static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_xattr_next, ext4_iomap_xattr_begin);
 +
- const struct iomap_ops ntfs_read_iomap_ops = {
--	.iomap_begin = ntfs_read_iomap_begin,
-+	.iomap_next = ntfs_read_iomap_next,
+ static const struct iomap_ops ext4_iomap_xattr_ops = {
+-	.iomap_begin		= ext4_iomap_xattr_begin,
++	.iomap_next		= ext4_iomap_xattr_next,
+ };
+ 
+ static int ext4_fiemap_check_ranges(struct inode *inode, u64 start, u64 *len)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b48c54f3312b..bf9755b541be 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3850,8 +3850,10 @@ int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	return 0;
+ }
+ 
++static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_next, ext4_iomap_begin);
++
+ const struct iomap_ops ext4_iomap_ops = {
+-	.iomap_begin		= ext4_iomap_begin,
++	.iomap_next		= ext4_iomap_next,
+ };
+ 
+ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+@@ -3905,8 +3907,10 @@ static int ext4_iomap_begin_report(struct inode *inode, loff_t offset,
+ 	return 0;
+ }
+ 
++static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_next_report, ext4_iomap_begin_report);
++
+ const struct iomap_ops ext4_iomap_report_ops = {
+-	.iomap_begin = ext4_iomap_begin_report,
++	.iomap_next = ext4_iomap_next_report,
  };
  
  /*
-@@ -329,13 +331,17 @@ static int ntfs_zero_read_iomap_end(struct inode *inode, loff_t pos, loff_t leng
- 	return written;
- }
- 
-+static DEFINE_IOMAP_ITER_NEXT_END(ntfs_zero_read_iomap_next,
-+		ntfs_seek_iomap_begin, ntfs_zero_read_iomap_end);
-+
- static const struct iomap_ops ntfs_zero_read_iomap_ops = {
--	.iomap_begin = ntfs_seek_iomap_begin,
--	.iomap_end = ntfs_zero_read_iomap_end,
-+	.iomap_next = ntfs_zero_read_iomap_next,
- };
- 
-+static DEFINE_IOMAP_ITER_NEXT(ntfs_seek_iomap_next, ntfs_seek_iomap_begin);
-+
- const struct iomap_ops ntfs_seek_iomap_ops = {
--	.iomap_begin = ntfs_seek_iomap_begin,
-+	.iomap_next = ntfs_seek_iomap_next,
- };
- 
- int ntfs_dio_zero_range(struct inode *inode, loff_t offset, loff_t length)
-@@ -764,9 +770,11 @@ static int ntfs_write_iomap_end(struct inode *inode, loff_t pos, loff_t length,
- 	return written;
- }
- 
-+static DEFINE_IOMAP_ITER_NEXT_END(ntfs_write_iomap_next,
-+		ntfs_write_iomap_begin, ntfs_write_iomap_end);
-+
- const struct iomap_ops ntfs_write_iomap_ops = {
--	.iomap_begin		= ntfs_write_iomap_begin,
--	.iomap_end		= ntfs_write_iomap_end,
-+	.iomap_next		= ntfs_write_iomap_next,
- };
- 
- static int ntfs_page_mkwrite_iomap_begin(struct inode *inode, loff_t offset,
-@@ -777,9 +785,11 @@ static int ntfs_page_mkwrite_iomap_begin(struct inode *inode, loff_t offset,
- 			NTFS_IOMAP_FLAGS_MKWRITE);
- }
- 
-+static DEFINE_IOMAP_ITER_NEXT_END(ntfs_page_mkwrite_iomap_next,
-+		ntfs_page_mkwrite_iomap_begin, ntfs_write_iomap_end);
-+
- const struct iomap_ops ntfs_page_mkwrite_iomap_ops = {
--	.iomap_begin		= ntfs_page_mkwrite_iomap_begin,
--	.iomap_end		= ntfs_write_iomap_end,
-+	.iomap_next		= ntfs_page_mkwrite_iomap_next,
- };
- 
- static int ntfs_dio_iomap_begin(struct inode *inode, loff_t offset,
-@@ -790,9 +800,11 @@ static int ntfs_dio_iomap_begin(struct inode *inode, loff_t offset,
- 			NTFS_IOMAP_FLAGS_DIO);
- }
- 
-+static DEFINE_IOMAP_ITER_NEXT_END(ntfs_dio_iomap_next,
-+		ntfs_dio_iomap_begin, ntfs_write_iomap_end);
-+
- const struct iomap_ops ntfs_dio_iomap_ops = {
--	.iomap_begin		= ntfs_dio_iomap_begin,
--	.iomap_end		= ntfs_write_iomap_end,
-+	.iomap_next		= ntfs_dio_iomap_next,
- };
- 
- static ssize_t ntfs_writeback_range(struct iomap_writepage_ctx *wpc,
 -- 
 2.52.0
 
