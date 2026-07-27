@@ -1,214 +1,134 @@
-Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
+Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED46C43BDA7
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 20:41:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE9E236B905
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:13:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785184904; cv=none; b=Ucx6QRjNF2L8ihdxrkSFqGRBXjDp/pT05leT8NH/RTkCg458eBh97fC9ezRaQkZZm2yFVR/Bnnq2t0KcvsK6em6VLS28WpwILgG0sNoR3uJMHjHtknKxnwh8Upk8M1+dWsRXHGEltWchbVz5oXdqDSHgxEvB+PpXy8uhdlbERMk=
+	t=1785186783; cv=none; b=eaz5s+ClnC0qOOaZw6j/V4N9GdnTyGR5K0wCM2dSvATchRmxmYu9HD0qDLCNTmt63a19j4LvAQaVOUJaeITbv0B2zX9oe8ozY68bL+Z1jOeL9TGCd/YE79FLcbMVUOUALutH51kO6H0KIW6mxTuzLaOEwVSvnFG9lMCaLARoE/s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785184904; c=relaxed/simple;
-	bh=0wsQTXzJ9wOrPq/FzM/EhipAwlT/mWRB9wbcUZ2z4Sg=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=Oe3LLNgrlRU5XmVIm1gcjJ+NsbLBKZTZEA1vc3a9ZS1PmNQSH5WMFRoJBALRDx/kcksUmG2B5hXMAJKZGtJ24dIlK316tGhLCzRoEeYcnz3HkZkcMkLJh7m5TPk5+RIc5sVoj4hgHn2pxy3kB6yRbjXQA70L5N7stsE1L3Sb70M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=evP0F8/o; arc=none smtp.client-ip=209.85.210.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
+	s=arc-20240116; t=1785186783; c=relaxed/simple;
+	bh=90rjgUd1LXHKjPgWSMh7PtrzND5nxkvCg44/1PJd/SQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=aOGbOMO3jFbj70NyK5KSji+Ku0YZPmfwNgJYfcPMKy8kjQp+AARdaqy4FcYLYKLN4PsGrOC5Y3iHq/Il11qjucKF7z/pm7JXBUkKa8ci5FAlPrQz3uFeN0V7jejZRSphPV2up8NYId8zHkS+SNLWhrjMBOIrIweBMr7dmljtPrk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EJRQWN7U; arc=none smtp.client-ip=209.85.128.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="evP0F8/o"
-Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-848595b338cso3452957b3a.0
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 13:41:41 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EJRQWN7U"
+Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-4955aa106b1so31008465e9.0
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:13:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1785184901; x=1785789701; darn=vger.kernel.org;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=3Kj0f/ue6IlEBdfJ/t1JIlp3LjIQ0RDxm6jJeDiIBkA=;
-        b=evP0F8/oqcLwucMoiRIJ90QmV91XRxXgrcyqgXtaEZvBeYbc8u1fxWFgAovMcokSKx
-         e42wqVMsH79wZILTu1sjjPvVkFVji6qzYf2XJK1Pml6CC0Bev/O8ZOgd3GTPXWc/ghQp
-         U0e+y3TbLv/rjvLHa2aEGNGGbT7jP/nNwzFW0TQK10wdtkWDlTGQvXjG8Xvm3oaRUBhL
-         hNydJ7Zw5oN4xGTpYNEgf3TnH+JHLdfcM72I7EnUrLqzBU2cbSb9E0RPDYEt2mQF8Sw3
-         bM1JK6fKiDsehA1vM0AqiQBd7S9zWTOnkRWZku+rmT1Leicjzpjv5ZPYT2wq5MFggmWH
-         4TZQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785184901; x=1785789701;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+        d=gmail.com; s=20251104; t=1785186780; x=1785791580; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=3Kj0f/ue6IlEBdfJ/t1JIlp3LjIQ0RDxm6jJeDiIBkA=;
-        b=PXtJto+hV1XfS9/mdjzh7gPYC6P8CtuGM3mcoKqTFQqNIqFmKKNsZlr4XByIVQM0ba
-         cNsa1upLA0SuiyzpFPV5SA994DshQWFKlgNpzFdAokA0djMXuht8LZhBW0KcaYQthVU0
-         3O85VY8ithciL/Nyfe1XEoLAvQWmfCBtfVEu9ZQUomWcxrlxrrG7hlZK50yaJJzQ7PsK
-         9TXC3OPrmTLBw3WhyHhVd/HSUHzC6vuHDWq9WzbT77etHQp5ZouG1PZAqIzgPZxeWq+5
-         a3+8jKhhHQGiebytXS8vqVNpaEBq9lsLBX5pht9mgNKpjnKz+Pf4QSeJ72PR5vtdDZfS
-         kQzQ==
-X-Forwarded-Encrypted: i=1; AHgh+Rrgvnt0CUDjXkK64Ra+RyksUq+iqxcWy9acJ6oo3Fp6gT/gN3qWi9VhRAmXhq0/QXM8g7FK+QaDzb5X@vger.kernel.org
-X-Gm-Message-State: AOJu0Yzjbz4MBNP2MRKGTWWfvPGi4OMYwZt0S3OzrZD81Th9pP/flQCB
-	V2CNLOXDIsQ6Qv2Umq02ZnPXGTyl2qOwnx9ChEPekJlA8MFBI5epNudp3Za3viHnjTQ=
-X-Gm-Gg: AR+sD100r22zlDQVjAS+zTto8c2tLrE3efP7gqxkI3Gj2nY00V4/HaAshfi5vySyoZq
-	NGtNXs6lQXWnnI++blppIVQpw9MkRvWHaLTdCfOL+azu2zPHbAPw8a7K+8xyL67F7AI4fpuBVH/
-	4oP3pmSZ7B4DI1zeVyrfWWgU/gQy20cl4m2VcUpPdIFvia9gBG0t3HFSJ8kOxJ+0Tu3QFxkVuWw
-	Aefi/Ksrip434UWKRNX8xd3wx+f5JBx8bIo0mVCa25TIkj3LHwRzW/SJq06kIxPSR3BqbNd2zUf
-	H7XVBRwQ717w8RJjK65/dxCtES25iS+qhQ43oFn6kgE81+2FhbWEufMOXDC6N3HtI6eT7vHfpBp
-	VgoGrUHXbDZVZHTE4lGSnjx1o/eg/oonyIxtho48Fkgj0Qvz7ozOlnP8fqsX8YQqjA3nhQrHa5u
-	dNbrvw9PqOnVqBt27ABRVJ5aDN5u/zT70=
-X-Received: by 2002:a05:6a00:8c2:b0:842:5a8d:3035 with SMTP id d2e1a72fcca58-84e8cf8fe32mr843389b3a.22.1785184901141;
-        Mon, 27 Jul 2026 13:41:41 -0700 (PDT)
-Received: from smtpclient.apple ([2604:3d09:3a84:1700:8dd9:aaf6:ec3f:4188])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-84e53426628sm3541619b3a.49.2026.07.27.13.41.39
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 27 Jul 2026 13:41:40 -0700 (PDT)
-Content-Type: text/plain;
-	charset=us-ascii
+        bh=Djix6mFi++SL+iKtbaXi7TL6UT5ybIJWzXHMFHrkZ0s=;
+        b=EJRQWN7UBrXmxK0BSHikqeQa72nu18EZ2Nbg1h3oF79xR8ajMHiHL+Y1jmBwrsBSlQ
+         wVzUXf2MZQXzDYRCR1/LJn2kLXLSg6Yhms2qhX4NN2pCEGyPMkGFaX1o4JFkX1ypy61x
+         1SeQ/t1owsoLLjAP3vquTk5puP+AR7/ZHYn4gYAL8PbLwFpPWG+1KdSIPY3F+S+w38QY
+         lx33Gf5vk0DNmVk8sU8c/O6FFYEU7Qdc98p3GKJkNDnCVTqR/t0FcZT6WsodLZRX8fSK
+         epTAhq3JNI0Hmy4VRFiM+Q1JTZex5i8oGiyzQPRokc1sjCP/jHExaVNBTukjGQjFZ55s
+         f5cg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785186780; x=1785791580;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=Djix6mFi++SL+iKtbaXi7TL6UT5ybIJWzXHMFHrkZ0s=;
+        b=ISK5hFfcnz79m7tFNHZ2heAop/72/uSIJ05Ct/TMeEQlMFrqjfUuV6nvnZU1eJPDvg
+         HHB7Fg5CO53eyQ02kwDPc8VPGd5voeaS84T0j4eSBWMacD4foa2A5J/cBHZgYxV/dhXN
+         8FV2uAajpURNYGvrQfMiMNnYrYC24oAe/fQopfMC9dlsLNhR5150L7wRKK3yHVxo1js6
+         S+0gYUtMZt06YPXTdit5jJF0d8phxVS++cTZM36PaLkFpZOpVqEMv3r32nI54d0xgXYw
+         xrmWUpNkUuFLwGtpiqxaPZJUiHDRcylYGCNu1kiLe1JTedmVZNIZcGJaHkYAEfQojSKi
+         2Vyw==
+X-Gm-Message-State: AOJu0YzlzQpHGB58z80XUu9zvjHEt8WUx6/Dxdx26CbKqJx92zLh8P6N
+	+66bzSVBhY7hCc/A4pIxtys5N46PmJTs5Cqu/jf+4ERPmEiq9q4nvFZG4PnTLQ==
+X-Gm-Gg: AR+sD13ykbi0XCrR3U2noMAjnBwTOd4vrI18goPsB3uBHIzW3ubNJh3RxCTSU9hYYoU
+	/ax0PDe60Z0SmxWffkL+KLEvczbjPxkWAfYdxfLEFBRMchCMi12oG3XFpIm6r9qbFCyuM5UN6Qe
+	cpEtlkamJlVwR6BqLLF/iZbF7aXHaWcaQ8oOGFHJoBc0i3SDT0Mlo3ROexFJa1Q9MnleMFVIVJE
+	y5e3ijjHJ6MG2JsvBRUtVBxgVuU/1kAJcqBG0FIpGrUPxZy1ILmSCnX2clmPBjdlOd7b0NmmujH
+	8DQsAiAo6OkUH5GThVhN5FxZSLnRSjN/w9OF40ImH6i5DvAR9JoPB2CljQSt5q8pAA/VMUyWzdu
+	JRb6MS8v8BfbBPnJsaj9ZdalRnmKk/1ub4Y/gG28bPDr3HVJV+Cm9qF+RgDfyZDst8CKXbvATK1
+	ITRUKNhI40V8P82javjqhBHSPJ3JlSWKKf/A==
+X-Received: by 2002:a05:600c:4f16:b0:495:4fd4:f7b6 with SMTP id 5b1f17b1804b1-496b6a31f2amr136535475e9.37.1785186779876;
+        Mon, 27 Jul 2026 14:12:59 -0700 (PDT)
+Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-496c44afaecsm24910245e9.2.2026.07.27.14.12.59
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 27 Jul 2026 14:12:59 -0700 (PDT)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger.kernel@dilger.ca,
+	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v6 00/11] Data in direntry (dirdata) feature
+Date: Mon, 27 Jul 2026 17:11:12 -0400
+Message-ID: <20260727211125.19632-1-ablagodarenko@thelustrecollective.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
-Subject: Re: [PATCH] ext4: Reduce object size of ext4_msg uses
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
-Date: Mon, 27 Jul 2026 14:41:29 -0600
-Cc: Theodore Ts'o <tytso@mit.edu>,
- Baokun Li <libaokun@linux.alibaba.com>,
- Jan Kara <jack@suse.cz>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>,
- linux-ext4@vger.kernel.org,
- LKML <linux-kernel@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <FD404D5A-AF59-4960-8CEF-D150198DCDB9@dilger.ca>
-References: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
-To: Joe Perches <joe@perches.com>
-X-Mailer: Apple Mail (2.3864.100.1.1.5)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Jul 24, 2026, at 19:23, Joe Perches <joe@perches.com> wrote:
->=20
-> Reduce the object size of ext4 ~2KB (~.5%) by combining the =
-KERN_<LEVEL>
-> and format uses of ext4_msg.
->=20
-> Separate them in __ext4_msg using printk_get_level and =
-printk_skip_level
-> and emitting the appropriate level.
->=20
-> x86 object sizes before and after:
->=20
-> defconfig size before:
-> $ size -t fs/ext4/built-in.a | tail -1
-> 579013 121634    316 700963  ab223 (TOTALS)
->=20
-> defconfig size after:
-> $ size -t fs/ext4/built-in.a | tail -1
-> 577196 121650    316 699162  aab1a (TOTALS)
->=20
-> defconfig size before with CONFIG_EXPERT=3Dy and CONFIG_PRINTK=3Dn:
-> $ size -t fs/ext4/built-in.a | tail -1
-> 537999 121432    316 659747  a1123 (TOTALS)
->=20
-> defconfig size after with CONFIG_EXPERT=3Dy and CONFIG_PRINTK=3Dn:
-> $ size -t fs/ext4/built-in.a | tail -1
-> 536837 121424    316 658577  a0c91 (TOTALS)
->=20
-> Signed-off-by: Joe Perches <joe@perches.com>
+EXT4 currently stores an 8-byte hash in the directory entry immediately
+after the file name to support simultaneous fscrypt and casefold
+functionality.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca =
-<mailto:adilger@dilger.ca>>
+The dirdata feature provides a general mechanism to store multiple
+metadata records in each directory entry after the NUL filename
+terminator. The unused high 4 bits of 'file_type' indicate which
+records are present; each record starts with a 1-byte length field,
+providing forward compatibility.
 
-> ---
-> fs/ext4/ext4.h  | 12 ++++++------
-> fs/ext4/super.c | 14 +++++++++-----
-> 2 files changed, 15 insertions(+), 11 deletions(-)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index b37c136ea3ab..981918f32067 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3309,8 +3309,8 @@ void __ext4_warning(struct super_block *, const =
-char *, unsigned int,
-> extern __printf(4, 5)
-> void __ext4_warning_inode(const struct inode *inode, const char =
-*function,
->  unsigned int line, const char *fmt, ...);
-> -extern __printf(3, 4)
-> -void __ext4_msg(struct super_block *, const char *, const char *, =
-...);
-> +extern __printf(2, 3)
-> +void __ext4_msg(struct super_block *, const char *fmt, ...);
-> extern void __dump_mmp_msg(struct super_block *, struct mmp_struct =
-*mmp,
->   const char *, unsigned int, const char *);
-> extern __printf(7, 8)
-> @@ -3354,8 +3354,8 @@ void __ext4_grp_locked_error(const char *, =
-unsigned int,
-> __ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
-> #define ext4_warning_inode(inode, fmt, ...) \
-> __ext4_warning_inode(inode, __func__, __LINE__, fmt, ##__VA_ARGS__)
-> -#define ext4_msg(sb, level, fmt, ...) \
-> - __ext4_msg(sb, level, fmt, ##__VA_ARGS__)
-> +#define ext4_msg(sb, level, fmt, ...) \
-> + __ext4_msg(sb, level fmt, ##__VA_ARGS__)
-> #define dump_mmp_msg(sb, mmp, msg) \
-> __dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
-> #define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...) \
-> @@ -3401,8 +3401,8 @@ do { \
-> } while (0)
-> #define ext4_msg(sb, level, fmt, ...) \
-> do { \
-> - no_printk(fmt, ##__VA_ARGS__); \
-> - __ext4_msg(sb, "", " "); \
-> + no_printk(level fmt, ##__VA_ARGS__); \
-> + __ext4_msg(sb, "" " "); \
-> } while (0)
-> #define dump_mmp_msg(sb, mmp, msg) \
-> __dump_mmp_msg(sb, mmp, "", 0, "")
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 245f67d10ded..72d6f6353a27 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -981,11 +981,11 @@ void __ext4_std_error(struct super_block *sb, =
-const char *function,
-> ext4_handle_error(sb, false, -errno, 0, 0, function, line);
-> }
->=20
-> -void __ext4_msg(struct super_block *sb,
-> - const char *prefix, const char *fmt, ...)
-> +void __ext4_msg(struct super_block *sb, const char *fmt, ...)
-> {
-> struct va_format vaf;
-> va_list args;
-> + int level;
->=20
-> if (sb) {
-> atomic_inc(&EXT4_SB(sb)->s_msg_count);
-> @@ -995,12 +995,16 @@ void __ext4_msg(struct super_block *sb,
-> }
->=20
-> va_start(args, fmt);
-> - vaf.fmt =3D fmt;
-> +
-> + level =3D printk_get_level(fmt);
-> + vaf.fmt =3D printk_skip_level(fmt);
-> vaf.va =3D &args;
-> if (sb)
-> - printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-> + printk("%c%cEXT4-fs (%s): %pV\n",
-> +       KERN_SOH_ASCII, level, sb->s_id, &vaf);
-> else
-> - printk("%sEXT4-fs: %pV\n", prefix, &vaf);
-> + printk("%c%cEXT4-fs: %pV\n",
-> +       KERN_SOH_ASCII, level, &vaf);
-> va_end(args);
-> }
->=20
+The first user of this feature is LUFID (Locally Unique File ID), an
+identifier that must survive rename and be accessible from directory
+readdir without an inode lookup.
 
+e2fsprogs support is provided in a separate patch series.
 
-Cheers, Andreas
+Thanks to Sashiko AI review for identifying several correctness and
+safety issues in earlier versions of this series.
 
+Changes in v6:
 
+Patch 09 (LUFID rename support): replace the unconditional kmemdup()
+in ext4_lufid_snapshot() with a small inline buffer
+(EXT4_LUFID_INLINE_SIZE = 65 bytes: 1-byte header + 4 × 16-byte FIDs),
+falling back to heap allocation only when the LUFID payload exceeds that
+limit (ddh_length is u8 so the maximum is 255 bytes). Introduce struct
+ext4_lufid_snap and ext4_lufid_snap_release() so callers are
+storage-agnostic; the two-snapshot case in ext4_cross_rename() now
+avoids both heap allocations in the common case.
 
+Artem Blagodarenko (11):
+  ext4: validate count against limit in ext4_dx_csum_verify/_set
+  ext4: replace ext4_dir_entry with ext4_dir_entry_2
+  ext4: add ext4_dir_entry_is_tail()
+  ext4: refactor dx_root to support variable dirent sizes
+  ext4: add dirdata format definitions and access helpers
+  ext4: add ext4_dir_entry_len()
+  ext4: rename ext4_dir_rec_len() and clarify dirdata usage
+  ext4: dirdata feature
+  ext4: add dirdata LUFID support for directory entry rename
+  ext4: add dirdata set/get helpers
+  ext4: Add EXT4_IOC_SET_LUFID ioctl for setting LUFID on directory
+    entries
 
+ fs/ext4/dir.c             |  33 +-
+ fs/ext4/ext4.h            | 235 ++++++++-
+ fs/ext4/fast_commit.c     |   1 +
+ fs/ext4/fast_commit.h     |   1 +
+ fs/ext4/inline.c          |  49 +-
+ fs/ext4/ioctl.c           |  84 ++++
+ fs/ext4/namei.c           | 974 +++++++++++++++++++++++++++++++-------
+ fs/ext4/sysfs.c           |   2 +
+ include/uapi/linux/ext4.h |  14 +
+ 9 files changed, 1168 insertions(+), 225 deletions(-)
+
+-- 
+2.43.7
 
