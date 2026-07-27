@@ -1,71 +1,73 @@
-Received: from mail-wr1-f42.google.com (mail-wr1-f42.google.com [209.85.221.42])
+Received: from mail-wr1-f43.google.com (mail-wr1-f43.google.com [209.85.221.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C6E340A93F
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:14:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 207FA414A01
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:14:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785186845; cv=none; b=L3XmoIpDdOKRpQOUg27Mj4nIa4w/GDjVrBHg2LIbqgfSMX9iUZRUt66qF4Na2evFbB9UwVBqVLzjsX3kX0pSY//4EUmO8Y+NwWvd4/J+HmEcDxndVSWtShRjTCW/EIw5o4om9TVpYqQlkiWQ4zhI7hnbWm3AGYPwlZtQYwsXzpk=
+	t=1785186846; cv=none; b=jHojOf3qNI4ij2MEF8lijC/q4NahIO+BR0ElQbpnjc2EuLXEGcdLJWetoTibnb/9eXNxfOjMF5Tco3q7Hai8W/kPTsDcartUUMTM0NEuBLryOdZGlHKDwXwoJptvgUIjXkrJKT8IQMLIju15FqlSzYIEndxs/BHf304WK335l/A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785186845; c=relaxed/simple;
-	bh=om686Qd4SVJ4uxRlElYPEoO1pg0LcfH3+rY/L0XnpQY=;
+	s=arc-20240116; t=1785186846; c=relaxed/simple;
+	bh=lh7MRD1UV5yEqV0jXLYfz/fai7rSL6aSn8lxGZ/csZE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UkZZCM2wT1t6N1BOa6UZ78c+7dq1s8nqHptlYhc1LavA+sbrUD8nEXCniJeHozHQ+jjUp+kRW0G0DHsOkj5lT+AXe6baDVjEm1ouvLvVhb5pQU8yLPRXhQqOde1xlh8MhcjGupZ62K9ZvVnxJ7Rsbs+cnjDFfIox5d+OPWGrgSk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kssThlM+; arc=none smtp.client-ip=209.85.221.42
+	 MIME-Version; b=aPIVg00WPYOTJ17GLoOS5uIewDJZ5rjIOCu1HO3faQ/xZGCYS51bmvbzwji1ZEO0+0hc6tVzteYZWqvAIZdqUOGhgir6rDrmtBHxKVmWwZS+wiYtze0OsmDpgoCnI2CjrbimrTnE0BriVjOOClqIPlHQB2idfMbnJaexulqprOI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MXCP+3Va; arc=none smtp.client-ip=209.85.221.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kssThlM+"
-Received: by mail-wr1-f42.google.com with SMTP id ffacd0b85a97d-47c2b362ee2so2643794f8f.1
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:14:03 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MXCP+3Va"
+Received: by mail-wr1-f43.google.com with SMTP id ffacd0b85a97d-47df43bfb07so616574f8f.1
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:14:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785186842; x=1785791642; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785186843; x=1785791643; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=Qtc08OGsKKfkIfJvIYhjbrRfCYsN81Fo4TbUiHaNBRY=;
-        b=kssThlM+ttnt1hylFYIIjNakJR+YKigFZF7ShQTZodnQdiG/FY/3Yt52xr6xP8FJu2
-         aW/xftr6xf3NWdDvR+VouW78IP25UfsOuVZqIWOta0rnERMDaJQznqks/l0alngWPrPB
-         NAzI2V6hcH+4fkPgkNchwxTVXDXNfGe3tJNvc/0pnLvBkfz17gC1Znkrl9z4pZL1LwdC
-         l08E2DZ08SpJPUrJAaIq5BNhe0qgqjyRXfuar3SB8wTW1Wee4/1ddoyDCFg8wxbgJv8H
-         Wm5+vuMua3n6FTRRohHv0IhfVdPPlmLuxI15F6pm6YIwnb9WKSa1ooSJUeUioBp8S63w
-         NdlA==
+        bh=lH8v1499fvdeochppTxPEeisAMVBGkn9LmnoU945IP8=;
+        b=MXCP+3Va756UxsfsTTaCIp8EuxyvcCl8rxSAYDeEVe2Z2HD5hLdQhDlRwAF7mlvaM7
+         eT9yORgL6efNwo3rbJ7O62azs4LOzWEY8/SaVXYYJl2g5ghe8TTlq7ww+vZ8f8f7eHou
+         0bt/T3fnSe0kXmEkv+0PL+lIt84hZx+w1BouHpo0Y0kPqYu0WDRGjE3TeYu4KK3IL+sG
+         jwXzQHWk+ZW1J8bCRVQSYQfOIy0TTp7sEpBxe65vEKUyl3BbSpx0SH88Vc5WpnRMdmZj
+         DE7oBaUkcr2bau+RdqggGIcVqYGyLnUg7BX2KZynOxguPX+Sl7tGXjmzqd0nBkj6oTZd
+         jqNg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785186842; x=1785791642;
+        d=1e100.net; s=20251104; t=1785186843; x=1785791643;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Qtc08OGsKKfkIfJvIYhjbrRfCYsN81Fo4TbUiHaNBRY=;
-        b=Cmk0+NqIgscubkX3EP9PIAa+QfewoBIVIU3Q8VM/GzjbcnFPvlecXYeMQzh0oA+4nS
-         LCJulGXkJsez7ep+8z1C7KQXusJ/BbToj1CVCvzhYt1pDg1e1NudCGervx2zCgm9wKmG
-         vQwiJInvTVmfmUDT3vzp+uXFZQGZXeyNu8UG961qdhXHsWtAugVzurlAji4xO6dot6gi
-         AUJExJkcKSsBALjvXqei9oDg9kpHA2Q5yWS31C8mE62t5W5H9m7TeMTZMYZpC32suWe8
-         gDTP/xzCUjzSYaTX5+0McykCZ/ZIegiCBrDaQ61gqgViO3Q23ltpeTI5lxY6AbXuxJZP
-         KthA==
-X-Gm-Message-State: AOJu0YzZmuRG81mHppAjCxHYWQfXIWWNM9V7yG2kp1F8o0grsocwMD85
-	LEnUxEm7/JaG1WCKkNQH0NDvaD6CyI2VoeLQ0RurZ9/7OJBj1RvHBcrf4QeN4AXZ
-X-Gm-Gg: AR+sD13VJ6xcGpNTsUWDKuJIZl6aQJoU6inm/hbGUCzmwuCEmRDPIRhfXljtGnBHRN0
-	lCug1wUQLnI5ttBUkvDrsKT0bhk+M4KpHnpOctMq+Wq9GUvGHge303MYNycWNFNwG2Uys3xtNLE
-	NSD4i5rg0Qc+chkvvR2O7WdInYiIzJXz0WEVRt2ZgKuHtNgzik7iaZ9UBOrMLb6Kgtim9xke6DM
-	g+duuyZGcZ452ZVyFQxJqbbkqV9sbSe/pCNCAZ1kVHUUoT0N7XlBgUAzu/H4YXhpG8clJm5WGq+
-	Ee8oxi0nh0PVGJPQzOVWPfAS3gINhrXmNRA6yLhoGwhkwBm4Y22h70F067u6l1x1v1s1E7fqe9w
-	YCm5jOw6dr0750rB7Zg+rCRlq7pmp+LNg0ObeM5D0N6XffOaAPHTuKW9Hu/Ecfg3y+zUaU/TzBM
-	lw6I5gJEXVkhAv6UVeq2do1T+tTFAzk1/sUiPZMVyUAlh4
-X-Received: by 2002:a05:6000:2410:b0:47f:6d57:5a93 with SMTP id ffacd0b85a97d-47f9fe9b292mr13086027f8f.38.1785186842302;
-        Mon, 27 Jul 2026 14:14:02 -0700 (PDT)
+        bh=lH8v1499fvdeochppTxPEeisAMVBGkn9LmnoU945IP8=;
+        b=ghmFrpYyCASJcseUntLzy7ox0iWxPFZPdpxvs8Vz/TZezKgH8UI9Mxcd51mKkXEQAz
+         h0s/e1fqHDjzJh0+hV5IV6FiFafxzMuQJWB+z60jC5wsWGihWD+ZZm2FIQ5Q5fqhDk5F
+         /e++OOdvhqxYnHK0glll5pHonwk+BgYxUZ397IrfClTObkrVcVDbee1jZyX1RPis1Fns
+         oyT6iwvwDB0gFPG0Ytw+Kk5X9GUE7Crx6lMa2+vkDP1ZV5QtV0K3IU5QP9ClMSS8Mde7
+         Sg/Zc6Ax1yXnPadeD9HaXX3keXFJHsHRcQ5owSmllEk9qVPHks+l+ZaX/RMT2xf2tugd
+         xisg==
+X-Gm-Message-State: AOJu0YyVQwCbFP0nRLHdZYfwW0QxqZzEcvy2t79KGxpEYWcDY/56MfQb
+	I0rK0f0C4ojNlhCdVh2EMWQeB01lEJf4upTUPvovtPCMmqSA3f0aSgB71c84SVg1
+X-Gm-Gg: AR+sD12iOoKMmEfKi8P2yNbI5lR2ec+T+2GD/IznWJpHDDQOZNc5m1W/h4WwdZlp4mX
+	bS7EFXdZR5lvlChsIZJ6sBenhN0Vfg4kZILf8LjThWtyq9rKE1xtLYW+B9NUUnmH0kUA3b6gAyy
+	nejhOkE/Uu9r7+VAarre+Q0ktK6kxpVBZ7EM7hZwmdQOYkVNewM4YR4aVl19xQ9OFQijIlPq/4A
+	YdUfqagt8TCeLnYmXW2ZluyWCOggEXDDeXKKfgmnmEbtt2C819nKjx2XUnUiAjgue8rpr/3EAK7
+	L+dpaKATJ6379Ulx6571/4SvQ7JDhb1O6QgZwMxRHUS0M+JUlx2lnWSvykpfNyHJFbHbg4aGQOP
+	rIZL2QmAt7oMQ+vFfiO/rLsMES1VExB/jwbTn17S4kyXHRvFUqTAUA+aJHjJQH4iK9j2CXFxI+S
+	g/3qLKNZThBH2nJ/LKPNgVrLwPBI6luCBb+Q==
+X-Received: by 2002:a05:6000:26c4:b0:474:3b3b:5e5f with SMTP id ffacd0b85a97d-47fafa65dfcmr830760f8f.16.1785186843371;
+        Mon, 27 Jul 2026 14:14:03 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47f85c67339sm54987049f8f.31.2026.07.27.14.14.01
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47f85c67339sm54987049f8f.31.2026.07.27.14.14.02
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 27 Jul 2026 14:14:01 -0700 (PDT)
+        Mon, 27 Jul 2026 14:14:02 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Joanne Chang <joannechien@google.com>,
+	Disha Goel <disgoel@linux.ibm.com>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
 	Zorro Lang <zlang@kernel.org>
-Subject: [RFC PATCH v4 02/11] generic/63{4,5}: Modify criteria for passing test
-Date: Mon, 27 Jul 2026 17:13:36 -0400
-Message-ID: <20260727211353.19736-5-ablagodarenko@thelustrecollective.com>
+Subject: [RFC PATCH v4 03/11] common/defrag: skip defrag tests on DAX-enabled filesystems
+Date: Mon, 27 Jul 2026 17:13:37 -0400
+Message-ID: <20260727211353.19736-6-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260727211353.19736-1-ablagodarenko@thelustrecollective.com>
 References: <20260727211353.19736-1-ablagodarenko@thelustrecollective.com>
@@ -77,68 +79,40 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Joanne Chang <joannechien@google.com>
+From: Disha Goel <disgoel@linux.ibm.com>
 
-The two tests pass when a timestamp is not preserved after the remount,
-because "cmp -s" does not print to the output file, and status is set to
-0 regardless of the return value of cmp. So, use "diff" instead to
-correctly fail the test and flag the error case in the output file.
+Online defragmentation is not supported on ext4 DAX-enabled filesystems.
+The ext4 defrag ioctl (EXT4_IOC_MOVE_EXT) returns EOPNOTSUPP when used
+on DAX files.
 
-Also, as the tests are focused on timestamps, don't print file contents
-so the tests can still pass if only the file contents differ.
+Add an ext4-specific check in _require_defrag() to skip tests when DAX
+is enabled, avoiding false failures on ext4/301-304, ext4/308, and
+generic/018.
 
-Signed-off-by: Joanne Chang <joannechien@google.com>
+XFS defrag works with DAX, so this check is ext4-specific.
+
+Suggested-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Disha Goel <disgoel@linux.ibm.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 Reviewed-by: Zorro Lang <zlang@kernel.org>
 Signed-off-by: Zorro Lang <zlang@kernel.org>
 ---
- tests/generic/634 | 4 ++--
- tests/generic/635 | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ common/defrag | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/tests/generic/634 b/tests/generic/634
-index 8a4210a3..d7dd9dd8 100755
---- a/tests/generic/634
-+++ b/tests/generic/634
-@@ -52,7 +52,7 @@ touchme() {
- report() {
- 	local files=($SCRATCH_MNT/t_*)
- 	for file in "${files[@]}"; do
--		echo "${file}: $(cat "${file}")"
-+		echo "${file}:"
- 		TZ=UTC stat -c '%y %Y %n' "${file}"
- 		test $test_statx -gt 0 && \
- 			$XFS_IO_PROG -c 'statx -r' "${file}" | grep 'stat.mtime'
-@@ -98,7 +98,7 @@ report > $tmp.after_remount
- cat $tmp.after_remount >> $seqres.full
- 
- # Did they match?
--cmp -s $tmp.before_remount $tmp.after_remount
-+diff $tmp.before_remount $tmp.after_remount
- 
- # success, all done
- echo Silence is golden.
-diff --git a/tests/generic/635 b/tests/generic/635
-index 018b868c..f74d0cd7 100755
---- a/tests/generic/635
-+++ b/tests/generic/635
-@@ -55,7 +55,7 @@ touchme() {
- report() {
- 	local files=($SCRATCH_MNT/t_*)
- 	for file in "${files[@]}"; do
--		echo "${file}: $(cat "${file}")"
-+		echo "${file}:"
- 		TZ=UTC stat -c '%y %Y %n' "${file}"
- 		test $test_statx -gt 0 && \
- 			$XFS_IO_PROG -c 'statx -r' "${file}" | grep 'stat.mtime'
-@@ -102,7 +102,7 @@ report > $tmp.after_crash
- cat $tmp.after_crash >> $seqres.full
- 
- # Did they match?
--cmp -s $tmp.before_crash $tmp.after_crash
-+diff $tmp.before_crash $tmp.after_crash
- 
- # success, all done
- status=0
+diff --git a/common/defrag b/common/defrag
+index 055d0d0e..baf05d94 100644
+--- a/common/defrag
++++ b/common/defrag
+@@ -13,6 +13,8 @@ _require_defrag()
+         DEFRAG_PROG="$XFS_FSR_PROG"
+ 	;;
+     ext4)
++        __scratch_uses_fsdax && _notrun "ext4 online defrag not supported with DAX"
++
+ 	testfile="$TEST_DIR/$$-test.defrag"
+ 	donorfile="$TEST_DIR/$$-donor.defrag"
+ 	bsize=`_get_block_size $TEST_DIR`
 -- 
 2.43.7
 
