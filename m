@@ -1,94 +1,84 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08A633ABD83
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 11:40:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CED7E3DB31E
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 11:57:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785152408; cv=none; b=K37uo1PLpluGkhNvj7WWuX76DUEBDwDQPGej1kxtQ2oHC1eOk6jdynpKOx+CWiSxapdiKghOmlp+MBIA4PNGWKl2YiKXs+lzNdVogAiJBOzBnhH6dsmqD4eF4A2T8wlRLeedL68vEiSsZ+gy5lKzmU4whSCnBkZaLvl7snUhAQY=
+	t=1785153447; cv=none; b=OglA4FIS5VmKK9Xi5tROYVM8buX9kcLAqQAPdFBPzdYoz7WPPQo9jfnhvyT6jeC8Fvby0UyTRaK8KjdNkcLE9PmG5/NXekaO/1KAYItCDOk6z9J9HveYrQZGb2S9r/H4sOAFCK22LT+IUaMTf67mbdzpZUIwuyj+wEpl7l1y2J0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785152408; c=relaxed/simple;
-	bh=bi8BA5oS5R3RGDXFaAMjH9VjI7t5/jzE6E9xn3TWcOI=;
+	s=arc-20240116; t=1785153447; c=relaxed/simple;
+	bh=gGxwNEesPpgyOjyT2lyqErSAoX9R3LxZzD5pocHbNYg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=iawMaitU3EhETIkNTb3hwihgX8wFdEJChtDSxDybJHvf36e426yp/XhW4ORhZCXiJENKJAYM1MNfP0NOs1F+QO3m03Cc0uQredFta0D+5f4Pm5JwCWbThYWDc9ZbRJjQNLnYPerPQIsQibfoFdLi3NFF6MjYl4JjU1N1Ch4QpuY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Fl/eAaJb; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=sCH0xysY; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=tSRMwtnLGtwOG0N0x0QvW8B5g2lxrZ9T6X54zBCMh1JN83m+osJ6DpgxmflSskHKuUErCzrcQ2jXXWiXaaBsTBQ7dxwFsq2rl1L4iDbK/kZLLLhr/1jOZcr11vY5RyLYYCZCP0I4a6CjPR9lD7XdrHou2r31n7HqpnZOM4pX4xQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=KSq9UUgm; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=/PlYbtuC; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JAb1PMPk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EQ58l7tS; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Fl/eAaJb";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="sCH0xysY"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1785152405;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="KSq9UUgm";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="/PlYbtuC";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JAb1PMPk";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EQ58l7tS"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id B58B67DB1D;
+	Mon, 27 Jul 2026 11:57:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785153439; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
-	b=Fl/eAaJbLNmn6K3f9B5SxPuJAICi/lgV+d7k+IV9asTpWoFDWA2LPJXvH3LE4CunB22ssP
-	mDQerjG6OfvMipxfa1L1hh9jtKo+z+pg+38ynG7x6x00OvyWS+D7AQZlpgPETU5zOIpDZg
-	trA+/S9jP9rh6ik7YrCngBdz2D3vR6o=
-Received: from mail-wm1-f70.google.com (mail-wm1-f70.google.com
- [209.85.128.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-357-kcJASdT9MCSeZLggwN7hMA-1; Mon, 27 Jul 2026 07:40:04 -0400
-X-MC-Unique: kcJASdT9MCSeZLggwN7hMA-1
-X-Mimecast-MFC-AGG-ID: kcJASdT9MCSeZLggwN7hMA_1785152403
-Received: by mail-wm1-f70.google.com with SMTP id 5b1f17b1804b1-49544a639e9so13991115e9.1
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 04:40:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1785152403; x=1785757203; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
-        b=sCH0xysYgEIstUl7aHJV13gWXGcHqK3vteCbmXo+v/y8na5SUTj32Ol4E7VRzya6wD
-         6L5WAmI4EVYmHDJFp39XC5FEDKqbLdGtaS1VDaBpGkmSS7O9F4eHITqr4umPc/0ZsH3k
-         H7ng5WvdoFhw4U4MEznbW8TzKVCwHKXhH2zjlAC3atFWv9vW4xUA3onvXzckYE7T6kEq
-         qSBbvz7GEyCbvm0Mxi9Ut6KNIPQh/l55QvuQlc/rVw2uhg6prR/OIdr9tM9LPlrYOfkW
-         a7IH9P5KqayRyS4iw2b0kX6T5a6c3+SmQbtsjvy+KmjzBu377fHj+2GP185CWbJZq56u
-         zY8A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785152403; x=1785757203;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
-        b=AnBvLa/CWdL0nzDTXSrbSy4hS54V0iI04yZNWXeyn5miKRBfvYt2RYZpIzwkXa+pC8
-         Xym2NW9d1uM21UxEt3qos5UEzvQ+wvgYvRaaSZxFMk6Leu5XMvk4boQb1wt+/kZdnZK9
-         5kimet64qeZjIBP6bi7sd3feoulpU+8Ti+CiPsqSdGvTk6mA2/FA+Tn+cNRiAF+aPPXq
-         kLeREoALkRHQhfaxTuMpwK7EDSfHYjcNDBnnBffoFCiMTMHvi8oqxyGAd6URlgP44hSg
-         HUMlmP3GJojCotaRDJPjrKAsSLs0HdSGhHP4gyLkVjh/frdnDHM2mCwJmZiZd0GEM/1s
-         jacA==
-X-Forwarded-Encrypted: i=1; AHgh+RraZAsuBF09PtA5xzoiOrFm3fJ2+2r76X/hNF5szV7cnQtfCLz9rxRwBedeN6/7Rz50dFB9VeENlyeV@vger.kernel.org
-X-Gm-Message-State: AOJu0YzVO8I7IwjHsHfQ2BXGJcwV9DB9J4K2sxPdGnhGg453F2kDiSQZ
-	Zwib1fKxq9YGGrM5Z7SYP33Z3Q5rzEX97UUfWajygV8WgN2VkycKE0nmnWnbRmBzzpLW35Jyq5l
-	Fnvk6iCmtQEppN6uWhQeLGciRgyx6XaNmCepNwV24hOfssqTjnZgnc8Cs99VYaQ==
-X-Gm-Gg: AR+sD11gfOWZXVL52u+FmICW65dcK3QhYT//u1qvrG2Losu/tju0EQAbEFGAnI7C9Ea
-	G+1tXc2vW5DLka+KdtmA8yuP89YYtUaJdfcq4nWG6YhG2nBqXldCKQCHkZE92W7u0j8sm9sj8TJ
-	eka1TCKzYupHlG3bs5cdPTb3FtJHh2qY1XZkezakWu7kmNLCNekQJM4nmcAmVT2PE+tKD/ftPns
-	IZ/uxCeCGmy4Vg1ks4EFzDBrOQsG0ePfsvYx/I2zqaJ3FihsY5DozKUih6J+uBhMliUJ9Ks+Atv
-	l+zAiIooGIHb9u/b/scrx4sxy0UwCgRvFjzq3r34IvL4IBoj/Mqjsrd45H9oWiw+3zcjsUgswE+
-	T0DxtUW+TYrzo2/QE9gQqwwguHBEXnwXdeyY=
-X-Received: by 2002:a05:600c:c87:b0:493:fa66:4861 with SMTP id 5b1f17b1804b1-496b5747df9mr103190385e9.25.1785152402897;
-        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
-X-Received: by 2002:a05:600c:c87:b0:493:fa66:4861 with SMTP id 5b1f17b1804b1-496b5747df9mr103189935e9.25.1785152402345;
-        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
-Received: from aalbersh-thinkpadx1carbongen13.rmtcz.csb ([217.30.74.39])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-496b499ccb4sm225617015e9.10.2026.07.27.04.40.01
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
-Date: Mon, 27 Jul 2026 13:40:01 +0200
-From: Andrey Albershteyn <aalbersh@redhat.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, hch@lst.de, 
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
-	linux-btrfs@vger.kernel.org, djwong@kernel.org
-Subject: Re: [PATCH v13 02/23] fsverity: expose ensure_fsverity_info()
-Message-ID: <amcy2KC3veaniXof@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
-References: <20260721184346.416657-1-aalbersh@kernel.org>
- <20260721184346.416657-3-aalbersh@kernel.org>
- <20260724233744.GB1901@sol>
+	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
+	b=KSq9UUgmgTSLtT6hmDuvFDaimby9M7lkch+P3Nq+gSwFVw+H+uRSzgXL6qSeZzThNiS5hs
+	Xhthi9l2qDrz2jxJlHTJOLNijhKiKHwQngw8sWYLC9r2kAHJ+ACxqpK051JhB/gcbbywDW
+	b4vBCeV6MVjzTEezgCTav7o+dT2Ce94=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785153439;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
+	b=/PlYbtuCmDom3CQqYVZ4Zkkmrn2AhjW7SxPpkHceDPr/Jgs+fQVBElNgBBgicdPHWe5M20
+	ejehjJ5kikrY/FDg==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785153435; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
+	b=JAb1PMPklp4nQ7iyvPZONHMqmPmPuRyz293R4BEHGvOklc1d0FYd/ImjhIK5nUz/OEsJYe
+	62MbzLOC9lHkvm+6/CsboZnFAHyPAoDX7EgFkCgttbEIhtL0BZj+jtos+2YfCTs+Tpgqpt
+	MgWLNtZ45uEMGeI1NJzi6yCsFG5JX8s=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785153435;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
+	b=EQ58l7tSrfKSx9NqMHSpyAhTzOYryGbKDHPAJlsosxQS5fSF7fLcKzV8kLWQY1W2FqUiUW
+	UGTI0W07FdRR/bDg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AADA2779C1;
+	Mon, 27 Jul 2026 11:57:15 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id WSO0KZtHZ2r8MAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 27 Jul 2026 11:57:15 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 567FEA0BA1; Mon, 27 Jul 2026 13:57:11 +0200 (CEST)
+Date: Mon, 27 Jul 2026 13:57:11 +0200
+From: Jan Kara <jack@suse.cz>
+To: rafad900 <rafad900@gmail.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
+	jack@suse.cz, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: convert pa_count from atomic_t to refcount_t
+Message-ID: <2joyziupzemt5vjdvmnic3kcdckt6z5dht6vgusxsxrfbtthhn@uuiexxvvcclv>
+References: <20260720034441.3900050-1-rafad900@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -97,51 +87,170 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260724233744.GB1901@sol>
+In-Reply-To: <20260720034441.3900050-1-rafad900@gmail.com>
+X-Spam-Score: -3.80
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.989];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
 
-On 2026-07-24 16:37:44, Eric Biggers wrote:
-> On Tue, Jul 21, 2026 at 08:40:39PM +0200, Andrey Albershteyn wrote:
-> > +/**
-> > + * fsverity_ensure_verity_info() - cache verity info if it's not already cached
-> > + * @inode: the inode for which verity info should be cached
-> > + *
-> > + * Ensure this inode has verity info attached to it, it's assumed the inode
-> > + * already has fsverity enabled. Read fsverity descriptor and creates verity
-> > + * based on that.
-> > + *
-> > + * This needs to be called at least once before any of the inode's data
-> > + * can be verified (and thus read at all) or the inode's fsverity digest
-> > + * retrieved.  fsverity_file_open() calls this already, which handles
-> > + * normal file accesses.  If a filesystem does any internal (i.e. not
-> > + * associated with a file descriptor) reads of the file's data or
-> > + * fsverity digest, it must call this explicitly before doing so.
-> > + *
-> > + * Return: 0 on success, -errno on failure
-> > + */
-> > +int fsverity_ensure_verity_info(struct inode *inode)
+On Sun 19-07-26 20:44:41, rafad900 wrote:
+> The pa_count field in struct ext4_prealloc_space is
+> reference counter for preallocation descriptors.
+> Converting it from atomic_t to refcount_t provides
+> underflow and overflow protection.
 > 
-> There really should be a note here that if the file is also encrypted,
-> then the encryption key has to have been set up first.  This was already
-> gotten wrong when it was proposed for overlayfs to call this.
+> This was found using Coccinelle script
+> atomic_as_refcounter.cocci
+> 
+> Testing was done on a QEMU x86 VM revealing a
+> pre-existing race condition leading to a
+> use-after-free.
+> 
+> Signed-off-by: rafad900 <rafad900@gmail.com>
 
-Sure I will add a note.
+This is a bit problematic as for pa_count 0->1 transition is fine (as long
+as pa_deleted isn't set) so this conversion will trigger false warnings as
+the 0-day report shows.
 
-> Do we also need a more specific contract than "-errno on failure"?  The
-> caller in xchk_inode_setup_verity() tries to distinguish between
-> "metadata validation errors" and "runtime errors" by checking for a
-> bunch of different error codes, and I'm not sure what that means
-> exactly.
+								Honza
 
-The scrub checks that if incore fsverity flag is set on the inode
-we should be able to read verity info. If metadata is invalid,
-"metadata validation error" happens, then scrub will clear fsverity
-flag on incore and on-disk inode.
-
-Not sure if this can be improved much, any new error codes won't
-trigger scrub. Passing int *corrupted everywhere also doesn't seem
-to help and changing everything to EFSCORRUPTED will change
-file_open return code.
-
+> ---
+>  fs/ext4/mballoc.c | 22 +++++++++++-----------
+>  fs/ext4/mballoc.h |  2 +-
+>  2 files changed, 12 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index ed1bd00e11cd..59b3d4abaab0 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4823,7 +4823,7 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
+>  	ext4_fsblk_t cur_distance, new_distance;
+>  
+>  	if (cpa == NULL) {
+> -		atomic_inc(&pa->pa_count);
+> +		refcount_inc(&pa->pa_count);
+>  		return pa;
+>  	}
+>  	cur_distance = abs(goal_block - cpa->pa_pstart);
+> @@ -4833,8 +4833,8 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
+>  		return cpa;
+>  
+>  	/* drop the previous reference */
+> -	atomic_dec(&cpa->pa_count);
+> -	atomic_inc(&pa->pa_count);
+> +	refcount_dec(&cpa->pa_count);
+> +	refcount_inc(&pa->pa_count);
+>  	return pa;
+>  }
+>  
+> @@ -4993,7 +4993,7 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+>  	}
+>  
+>  	if (tmp_pa->pa_free && likely(ext4_mb_pa_goal_check(ac, tmp_pa))) {
+> -		atomic_inc(&tmp_pa->pa_count);
+> +		refcount_inc(&tmp_pa->pa_count);
+>  		ext4_mb_use_inode_pa(ac, tmp_pa);
+>  		spin_unlock(&tmp_pa->pa_lock);
+>  		read_unlock(&ei->i_prealloc_lock);
+> @@ -5139,7 +5139,7 @@ static void ext4_mb_mark_pa_deleted(struct super_block *sb,
+>  static inline void ext4_mb_pa_free(struct ext4_prealloc_space *pa)
+>  {
+>  	BUG_ON(!pa);
+> -	BUG_ON(atomic_read(&pa->pa_count));
+> +	BUG_ON(refcount_read(&pa->pa_count));
+>  	BUG_ON(pa->pa_deleted == 0);
+>  	kmem_cache_free(ext4_pspace_cachep, pa);
+>  }
+> @@ -5165,7 +5165,7 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
+>  
+>  	/* in this short window concurrent discard can set pa_deleted */
+>  	spin_lock(&pa->pa_lock);
+> -	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0) {
+> +	if (!refcount_dec_and_test(&pa->pa_count) || pa->pa_free != 0) {
+>  		spin_unlock(&pa->pa_lock);
+>  		return;
+>  	}
+> @@ -5535,7 +5535,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+>  	list_for_each_entry_safe(pa, tmp,
+>  				&grp->bb_prealloc_list, pa_group_list) {
+>  		spin_lock(&pa->pa_lock);
+> -		if (atomic_read(&pa->pa_count)) {
+> +		if (refcount_read(&pa->pa_count)) {
+>  			spin_unlock(&pa->pa_lock);
+>  			*busy = 1;
+>  			continue;
+> @@ -5637,7 +5637,7 @@ void ext4_discard_preallocations(struct inode *inode)
+>  		BUG_ON(pa->pa_node_lock.inode_lock != &ei->i_prealloc_lock);
+>  
+>  		spin_lock(&pa->pa_lock);
+> -		if (atomic_read(&pa->pa_count)) {
+> +		if (refcount_read(&pa->pa_count)) {
+>  			/* this shouldn't happen often - nobody should
+>  			 * use preallocation while we're discarding it */
+>  			spin_unlock(&pa->pa_lock);
+> @@ -5720,7 +5720,7 @@ static int ext4_mb_pa_alloc(struct ext4_allocation_context *ac)
+>  	pa = kmem_cache_zalloc(ext4_pspace_cachep, GFP_NOFS);
+>  	if (!pa)
+>  		return -ENOMEM;
+> -	atomic_set(&pa->pa_count, 1);
+> +	refcount_set(&pa->pa_count, 1);
+>  	ac->ac_pa = pa;
+>  	return 0;
+>  }
+> @@ -5731,7 +5731,7 @@ static void ext4_mb_pa_put_free(struct ext4_allocation_context *ac)
+>  
+>  	BUG_ON(!pa);
+>  	ac->ac_pa = NULL;
+> -	WARN_ON(!atomic_dec_and_test(&pa->pa_count));
+> +	WARN_ON(!refcount_dec_and_test(&pa->pa_count));
+>  	/*
+>  	 * current function is only called due to an error or due to
+>  	 * len of found blocks < len of requested blocks hence the PA has not
+> @@ -5948,7 +5948,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+>  				pa_node.lg_list,
+>  				lockdep_is_held(&lg->lg_prealloc_lock)) {
+>  		spin_lock(&pa->pa_lock);
+> -		if (atomic_read(&pa->pa_count)) {
+> +		if (refcount_read(&pa->pa_count)) {
+>  			/*
+>  			 * This is the pa that we just used
+>  			 * for block allocation. So don't
+> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+> index 39333ce72cbd..f708d303228e 100644
+> --- a/fs/ext4/mballoc.h
+> +++ b/fs/ext4/mballoc.h
+> @@ -126,7 +126,7 @@ struct ext4_prealloc_space {
+>  		struct rcu_head	pa_rcu;
+>  	} u;
+>  	spinlock_t		pa_lock;
+> -	atomic_t		pa_count;
+> +	refcount_t		pa_count;
+>  	unsigned		pa_deleted;
+>  	ext4_fsblk_t		pa_pstart;	/* phys. block */
+>  	ext4_lblk_t		pa_lstart;	/* log. block */
+> -- 
+> 2.43.0
+> 
 -- 
-- Andrey
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
