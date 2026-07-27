@@ -1,120 +1,147 @@
-Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A083365A14;
-	Mon, 27 Jul 2026 11:00:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08A633ABD83
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 11:40:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785150037; cv=none; b=ti+37kT6xiqg2tLXh5iH/U3zXes02skjVOVc8A5Bf6wUzbLzEaJobyRvkneBW+BJv3MPKm2GtSmGMmOCveYi5aF4nbhW0q31vppsSQ/euSaMsGQ9QmYzIvXr+J5DqKtZ/2RutiB+vLQ40FCUn8sGvZqMesfcnPZYe8LpC/4gJiI=
+	t=1785152408; cv=none; b=K37uo1PLpluGkhNvj7WWuX76DUEBDwDQPGej1kxtQ2oHC1eOk6jdynpKOx+CWiSxapdiKghOmlp+MBIA4PNGWKl2YiKXs+lzNdVogAiJBOzBnhH6dsmqD4eF4A2T8wlRLeedL68vEiSsZ+gy5lKzmU4whSCnBkZaLvl7snUhAQY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785150037; c=relaxed/simple;
-	bh=bkzUILaf/GfT3fmWiePhHMw/EkyDFKEM9tN67C8jH5I=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=KMwn/zg2jSXjLfVz03P1pM2KFcVhGJNxOgh/HT35BerYoDDOhbudNQPI1XiEGSOP+5yxtgMd7fN6mx3/a23+VPaLJFVLhFk0xvkUsC6oI/MK5rhyyylBwqtY6MqEDZvIgdred9BYmjE40HDhIndsbKCuegLPo2qFD7Vm7MAt/tE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b=GxB9Oc/5; arc=none smtp.client-ip=205.220.166.238
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
+	s=arc-20240116; t=1785152408; c=relaxed/simple;
+	bh=bi8BA5oS5R3RGDXFaAMjH9VjI7t5/jzE6E9xn3TWcOI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=iawMaitU3EhETIkNTb3hwihgX8wFdEJChtDSxDybJHvf36e426yp/XhW4ORhZCXiJENKJAYM1MNfP0NOs1F+QO3m03Cc0uQredFta0D+5f4Pm5JwCWbThYWDc9ZbRJjQNLnYPerPQIsQibfoFdLi3NFF6MjYl4JjU1N1Ch4QpuY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Fl/eAaJb; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=sCH0xysY; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=windriver.com header.i=@windriver.com header.b="GxB9Oc/5"
-Received: from pps.filterd (m0250810.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66RAOA3Q512943;
-	Mon, 27 Jul 2026 03:54:51 -0700
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=windriver.com;
-	 h=cc:content-transfer-encoding:content-type:date:from
-	:in-reply-to:message-id:mime-version:references:subject:to; s=
-	PPS06212021; bh=wbVL8wR2p5kAcsRz0BJc4YQSzZhsPH+Cge/LCwi5Zj4=; b=
-	GxB9Oc/5MqNG64EH44eEvymCtEX7CJCf0b/0zjFQOwXP48URO2SlSUG1NIROWnWB
-	jW5h3WkgMw91wrQNoiNpJO/qmhE6I1KpVtHFStrBEnU6fzdgXBNvN2v+/A8tAx1Y
-	NEYInoRgruDOHI1wD4ROPQ+3HvGOs0FjAiFytz5j37ZvKYMIcELc1b37Rlhyqhzy
-	6AKyhouf8WmTIMwnbXVJktKZ94EqovQWFfUFKacjVqJFxNK4AHQwVpyEULKUZ2cW
-	NVGB6OzsvfvMA89ZCB43/INSPz6oogW6Ry/Byuzc3O5Vtw0PaPl/n+wt0mCumMMP
-	9yQduCZUuRJocrmw1d4KOw==
-Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [128.224.246.36])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 4fmre01vyx-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-	Mon, 27 Jul 2026 03:54:51 -0700 (PDT)
-Received: from ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) by
- ala-exchng01.corp.ad.wrs.com (10.11.224.121) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.61; Mon, 27 Jul 2026 03:54:50 -0700
-Received: from pek-yzhou-d3.wrs.com (10.11.232.110) by
- ALA-EXCHNG02.corp.ad.wrs.com (10.11.224.122) with Microsoft SMTP Server id
- 15.1.2507.61 via Frontend Transport; Mon, 27 Jul 2026 03:54:48 -0700
-From: Yun Zhou <yun.zhou@windriver.com>
-To: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-        <jack@suse.cz>, <ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>,
-        <yi.zhang@huawei.com>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <yun.zhou@windriver.com>
-Subject: [RFC PATCH 2/9] ext4: stop creating inline data for new regular files
-Date: Mon, 27 Jul 2026 18:54:34 +0800
-Message-ID: <20260727105441.3213095-3-yun.zhou@windriver.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20260727105441.3213095-1-yun.zhou@windriver.com>
-References: <20260727105441.3213095-1-yun.zhou@windriver.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Fl/eAaJb";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="sCH0xysY"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1785152405;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
+	b=Fl/eAaJbLNmn6K3f9B5SxPuJAICi/lgV+d7k+IV9asTpWoFDWA2LPJXvH3LE4CunB22ssP
+	mDQerjG6OfvMipxfa1L1hh9jtKo+z+pg+38ynG7x6x00OvyWS+D7AQZlpgPETU5zOIpDZg
+	trA+/S9jP9rh6ik7YrCngBdz2D3vR6o=
+Received: from mail-wm1-f70.google.com (mail-wm1-f70.google.com
+ [209.85.128.70]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-357-kcJASdT9MCSeZLggwN7hMA-1; Mon, 27 Jul 2026 07:40:04 -0400
+X-MC-Unique: kcJASdT9MCSeZLggwN7hMA-1
+X-Mimecast-MFC-AGG-ID: kcJASdT9MCSeZLggwN7hMA_1785152403
+Received: by mail-wm1-f70.google.com with SMTP id 5b1f17b1804b1-49544a639e9so13991115e9.1
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 04:40:04 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1785152403; x=1785757203; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
+        b=sCH0xysYgEIstUl7aHJV13gWXGcHqK3vteCbmXo+v/y8na5SUTj32Ol4E7VRzya6wD
+         6L5WAmI4EVYmHDJFp39XC5FEDKqbLdGtaS1VDaBpGkmSS7O9F4eHITqr4umPc/0ZsH3k
+         H7ng5WvdoFhw4U4MEznbW8TzKVCwHKXhH2zjlAC3atFWv9vW4xUA3onvXzckYE7T6kEq
+         qSBbvz7GEyCbvm0Mxi9Ut6KNIPQh/l55QvuQlc/rVw2uhg6prR/OIdr9tM9LPlrYOfkW
+         a7IH9P5KqayRyS4iw2b0kX6T5a6c3+SmQbtsjvy+KmjzBu377fHj+2GP185CWbJZq56u
+         zY8A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785152403; x=1785757203;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=XjT/PIWbG/51hlsr95HE/1iGTwI0BlJqCQFAOLtkIYs=;
+        b=AnBvLa/CWdL0nzDTXSrbSy4hS54V0iI04yZNWXeyn5miKRBfvYt2RYZpIzwkXa+pC8
+         Xym2NW9d1uM21UxEt3qos5UEzvQ+wvgYvRaaSZxFMk6Leu5XMvk4boQb1wt+/kZdnZK9
+         5kimet64qeZjIBP6bi7sd3feoulpU+8Ti+CiPsqSdGvTk6mA2/FA+Tn+cNRiAF+aPPXq
+         kLeREoALkRHQhfaxTuMpwK7EDSfHYjcNDBnnBffoFCiMTMHvi8oqxyGAd6URlgP44hSg
+         HUMlmP3GJojCotaRDJPjrKAsSLs0HdSGhHP4gyLkVjh/frdnDHM2mCwJmZiZd0GEM/1s
+         jacA==
+X-Forwarded-Encrypted: i=1; AHgh+RraZAsuBF09PtA5xzoiOrFm3fJ2+2r76X/hNF5szV7cnQtfCLz9rxRwBedeN6/7Rz50dFB9VeENlyeV@vger.kernel.org
+X-Gm-Message-State: AOJu0YzVO8I7IwjHsHfQ2BXGJcwV9DB9J4K2sxPdGnhGg453F2kDiSQZ
+	Zwib1fKxq9YGGrM5Z7SYP33Z3Q5rzEX97UUfWajygV8WgN2VkycKE0nmnWnbRmBzzpLW35Jyq5l
+	Fnvk6iCmtQEppN6uWhQeLGciRgyx6XaNmCepNwV24hOfssqTjnZgnc8Cs99VYaQ==
+X-Gm-Gg: AR+sD11gfOWZXVL52u+FmICW65dcK3QhYT//u1qvrG2Losu/tju0EQAbEFGAnI7C9Ea
+	G+1tXc2vW5DLka+KdtmA8yuP89YYtUaJdfcq4nWG6YhG2nBqXldCKQCHkZE92W7u0j8sm9sj8TJ
+	eka1TCKzYupHlG3bs5cdPTb3FtJHh2qY1XZkezakWu7kmNLCNekQJM4nmcAmVT2PE+tKD/ftPns
+	IZ/uxCeCGmy4Vg1ks4EFzDBrOQsG0ePfsvYx/I2zqaJ3FihsY5DozKUih6J+uBhMliUJ9Ks+Atv
+	l+zAiIooGIHb9u/b/scrx4sxy0UwCgRvFjzq3r34IvL4IBoj/Mqjsrd45H9oWiw+3zcjsUgswE+
+	T0DxtUW+TYrzo2/QE9gQqwwguHBEXnwXdeyY=
+X-Received: by 2002:a05:600c:c87:b0:493:fa66:4861 with SMTP id 5b1f17b1804b1-496b5747df9mr103190385e9.25.1785152402897;
+        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
+X-Received: by 2002:a05:600c:c87:b0:493:fa66:4861 with SMTP id 5b1f17b1804b1-496b5747df9mr103189935e9.25.1785152402345;
+        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
+Received: from aalbersh-thinkpadx1carbongen13.rmtcz.csb ([217.30.74.39])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-496b499ccb4sm225617015e9.10.2026.07.27.04.40.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 27 Jul 2026 04:40:02 -0700 (PDT)
+Date: Mon, 27 Jul 2026 13:40:01 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, djwong@kernel.org
+Subject: Re: [PATCH v13 02/23] fsverity: expose ensure_fsverity_info()
+Message-ID: <amcy2KC3veaniXof@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260721184346.416657-1-aalbersh@kernel.org>
+ <20260721184346.416657-3-aalbersh@kernel.org>
+ <20260724233744.GB1901@sol>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Proofpoint-GUID: 3HYrCyW178-DcsN8rTEacd2_LqAoHJEm
-X-Authority-Analysis: v=2.4 cv=E6z9Y6dl c=1 sm=1 tr=0 ts=6a6738fb cx=c_pps
- a=AbJuCvi4Y3V6hpbCNWx0WA==:117 a=AbJuCvi4Y3V6hpbCNWx0WA==:17
- a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22 a=bi6dqmuHe4P4UrxVR6um:22
- a=HK-ge7EqtdluswH-FwHe:22 a=t7CeM3EgAAAA:8 a=q8Co8EDd4P4rKw-q85oA:9
- a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNzI3MDEwNiBTYWx0ZWRfX2g6XC2S+746N
- tY40c3E0Ku4Q16bL/vrqXlt6/TdcyoWTp1TPrQF/d2g3UHsMzY5xSjsceq43zssOT5Zscr/qE/K
- n535CtIogu+ABRo48IP1Nqds5oFmYqzL9otNJq25xfoH7h/zAccv
-X-Proofpoint-ORIG-GUID: 3HYrCyW178-DcsN8rTEacd2_LqAoHJEm
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzI3MDEwNiBTYWx0ZWRfX6FAUMamdSiLL
- arQZ+UmGh/48pcF2UB/jrBf/JhU+6bapdXc1EqH8URjLalAXph9X7JjdrK04iGnOd9wlN2+XjCu
- geasIa+rEBdPACUL03U0FKesnnTE293fj4GgxEuPguItpVTKhq+LLCoRJiZEiXAMVPaoP4wQcNz
- oe7Fx/t7qhZ59G93gH2aJUHSzsUqSIPLoG0TBgdt0ExGE+63XR9qLAsICanDWDtEI42fZWXvBe1
- 2EXgIgNSrIBL7OKIryFLtUZU0UPIt89f2Bke+gYw/t4Hl92+0o4aWY5DUvXlSyCR4KVeC+fw0gQ
- J000f6iw+RDpitncMKBRcNmEnm21TSzEUek/6fEtEFYUswSUmBMoiHrkXhlto+KppzSM0TmmuQK
- eLaBLLi+CSunPUE5P9af+TWbGPHNhXV5mY3sKVDmb7HcTmA+EDL2EnvBpTn4+hJzYjKHmsQbwse
- 6DD4S/SJl63WZJKjt4Q==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-07-27_03,2026-07-24_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- suspectscore=0 lowpriorityscore=0 bulkscore=0 adultscore=0 clxscore=1015
- priorityscore=1501 malwarescore=0 impostorscore=0 spamscore=0 phishscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607270106
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260724233744.GB1901@sol>
 
-Stop setting EXT4_STATE_MAY_INLINE_DATA for newly allocated regular
-file inodes.  New files always use block-based storage.  Directories
-retain inline data capability as it still provides value for small
-directories without the write path complexity.
+On 2026-07-24 16:37:44, Eric Biggers wrote:
+> On Tue, Jul 21, 2026 at 08:40:39PM +0200, Andrey Albershteyn wrote:
+> > +/**
+> > + * fsverity_ensure_verity_info() - cache verity info if it's not already cached
+> > + * @inode: the inode for which verity info should be cached
+> > + *
+> > + * Ensure this inode has verity info attached to it, it's assumed the inode
+> > + * already has fsverity enabled. Read fsverity descriptor and creates verity
+> > + * based on that.
+> > + *
+> > + * This needs to be called at least once before any of the inode's data
+> > + * can be verified (and thus read at all) or the inode's fsverity digest
+> > + * retrieved.  fsverity_file_open() calls this already, which handles
+> > + * normal file accesses.  If a filesystem does any internal (i.e. not
+> > + * associated with a file descriptor) reads of the file's data or
+> > + * fsverity digest, it must call this explicitly before doing so.
+> > + *
+> > + * Return: 0 on success, -errno on failure
+> > + */
+> > +int fsverity_ensure_verity_info(struct inode *inode)
+> 
+> There really should be a note here that if the file is also encrypted,
+> then the encryption key has to have been set up first.  This was already
+> gotten wrong when it was proposed for overlayfs to call this.
 
-Existing file inodes with inline data are not affected -- MAY_INLINE_DATA
-is still set for them during iget via ext4_find_inline_data_nolock().
+Sure I will add a note.
 
-Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
----
- fs/ext4/ialloc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+> Do we also need a more specific contract than "-errno on failure"?  The
+> caller in xchk_inode_setup_verity() tries to distinguish between
+> "metadata validation errors" and "runtime errors" by checking for a
+> bunch of different error codes, and I'm not sure what that means
+> exactly.
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index a40cb27f8116..278f0ab8c996 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1305,8 +1305,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
- 
- 	ei->i_extra_isize = sbi->s_want_extra_isize;
- 	ei->i_inline_off = 0;
--	if (ext4_has_feature_inline_data(sb) &&
--	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
-+	if (ext4_has_feature_inline_data(sb) && S_ISDIR(mode) &&
-+	    !(ei->i_flags & EXT4_DAX_FL))
- 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
- 	ret = inode;
- 	err = dquot_alloc_inode(inode);
+The scrub checks that if incore fsverity flag is set on the inode
+we should be able to read verity info. If metadata is invalid,
+"metadata validation error" happens, then scrub will clear fsverity
+flag on incore and on-disk inode.
+
+Not sure if this can be improved much, any new error codes won't
+trigger scrub. Passing int *corrupted everywhere also doesn't seem
+to help and changing everything to EFSCORRUPTED will change
+file_open return code.
+
 -- 
-2.43.0
+- Andrey
 
