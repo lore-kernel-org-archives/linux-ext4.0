@@ -1,97 +1,146 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C193935DA75
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 06:10:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2095C3F8229
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 10:21:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785132610; cv=none; b=K45IVSEzCjZWneOPrt7zx/qT7TnixRQGnOwk+YGBXfwZZqG7RmbKHyiUVvZb2LB4uQyL8a+e3KiuSHa4AWTRqmiPjC2xFwhrwunrCRHzTV8FbQ/H5p7TfMZt2CRYQ3lW8Yf9cWVLbYDX37T9+1vcQkJfcsvsw0KX7ykjRQHQXfw=
+	t=1785147692; cv=none; b=LlBIvJyIZipuHF9pmduEefxca4oWWVGbnAfUIrPngGIo6crLfvEVFCnAajrbekAkr7TtQ+4KdAyCjb3zOFsipkQqBJkXWpCp7rCK2ueCs0RaF83sGChiJXW7SjJpFEb80lcZDR+xy421gumZDvsEoYHIrtGRsxl228YN6T5YGo8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785132610; c=relaxed/simple;
-	bh=PpUktY2NKWWxihik00aO4fnJENz3hIRZ0QSD3aWKrLA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=SZsUYY0Jo8pHx+fg0BX3cGSG7qy+jCQczrSlE3+7jlgr3v5azEJhvxlZ72dzNCGLQJ2qlvVT6VuRk0GhHiga4Eo9SwNc4U9xEB5sZ9+Z6Ga8m0qRfKRpRhqs/QqiHhKQyP7OUEplln7WE369x0+nwTljP3HB51O6uhSnCmdI9kc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4h7p894Jp4zKHMVs
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:09:13 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id EA6364058C
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:10:04 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgAXBUQ79mZqDUdsAA--.18868S3;
-	Mon, 27 Jul 2026 14:10:04 +0800 (CST)
-Message-ID: <1d1ea032-8725-4abb-8b25-cf3e631d3879@huaweicloud.com>
-Date: Mon, 27 Jul 2026 14:10:03 +0800
+	s=arc-20240116; t=1785147692; c=relaxed/simple;
+	bh=bBp7i8xP7OvikDAToIsUuOG8cX6RijFyVUnqlateJys=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Hnv5ZiRlqI115OjZsBeiTtJKmqbrHWgoSaeElN04m21yn5xcg7LMtmXQaSeIUdEOkcPqGknYZ14BEcIkaUHcXSF5RqaDNdSqAio70bYf8un7W0uykmBdaCYvdDDyK9gQStCZFnUdZicz9JLablCYPjFJmcKuCVTYCeqFMDqnGPo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=yKK/Lnhe; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0IQN/3Yy; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zs3r1Z5Y; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CT+eNBmw; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="yKK/Lnhe";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0IQN/3Yy";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zs3r1Z5Y";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CT+eNBmw"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id EFC797D93E;
+	Mon, 27 Jul 2026 10:21:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785147685; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fN2GkKFOxahiB6syrKkve9WsyO0+/0IDPTMAboFn3gs=;
+	b=yKK/Lnhek+58pQ7wb2pgwKn1l2aJbCdzliGb5wgK0X+qLth2fKKYtPhMJU7rCgd1fc4b9+
+	J2oN6LwCoHjg9+TthC/B7jcru9JrEeo6+u9oSa7gVdbhaYuX8dSVVxXAkfC3EcDW3BGkvb
+	Oq8NODg/1C8jgWz4pxrHPqxoh3BaCyA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785147685;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fN2GkKFOxahiB6syrKkve9WsyO0+/0IDPTMAboFn3gs=;
+	b=0IQN/3YylqxJhzfCjtHCX9C3s6H/NG1cnIvjOqDDPicFgh+DRvQf0nmgFK+ds9B4Ng7bFm
+	A9TaK0r6/EWKj5Dg==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785147680; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fN2GkKFOxahiB6syrKkve9WsyO0+/0IDPTMAboFn3gs=;
+	b=zs3r1Z5Y4sscikTjE8Noo9kKDdLz1BEkOKEzQXQYNSANe7MSjkieOhS699cRUUjALE5XU3
+	Gg9tTNGONfdRhfqRALf/khSmthP3U4TxojUQILaf7ehJyb6bNeVVvkybup1Xr/Zi6y7AGr
+	uGPKJmw58M712cNvFZjFZnziV1L2mtM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785147680;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fN2GkKFOxahiB6syrKkve9WsyO0+/0IDPTMAboFn3gs=;
+	b=CT+eNBmw2vceQQqYxdKz2BT33ka0GbyM71uK1xgrJ1bi4AeR0JH7RGkNW5oB4lJHIzkUE5
+	5Mj7qEkTUi/uaUBw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E7718779B9;
+	Mon, 27 Jul 2026 10:21:20 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id jex4OCAxZ2r6TgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 27 Jul 2026 10:21:20 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 83195A0BA1; Mon, 27 Jul 2026 12:21:20 +0200 (CEST)
+Date: Mon, 27 Jul 2026 12:21:20 +0200
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>, 
+	aivazian.tigran@gmail.com, Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Subject: Re: [PATCH v4 0/21] fs: Fix missed inode write during fsync
+Message-ID: <pvgt7vemge5pwcs4bvlzg32fz3tzdnctni7zsai6uchtmtyx3y@sv7zv4ipg4ci>
+References: <20260716145359.28639-1-jack@suse.cz>
+ <20260724-einmieten-beatmen-glossar-63c4b3962e07@brauner>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 9/9] ext4: protect WRITE_ZEROES written extents with
- orphan list
-To: Theodore Tso <tytso@mit.edu>
-Cc: sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org
-References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
- <20260714080044.4038124-10-yi.zhang@huaweicloud.com>
- <20260714084203.971381F000E9@smtp.kernel.org> <amD3fZPiCKwUqhGd@mit.edu>
- <6213263f-27e4-4d2a-b6ef-f63093f89e69@huaweicloud.com>
- <amJAxFjWXiSzjNd7@mit.edu>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <amJAxFjWXiSzjNd7@mit.edu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:_Ch0CgAXBUQ79mZqDUdsAA--.18868S3
-X-Coremail-Antispam: 1UD129KBjvdXoW7Wr13XFyDWF4kXF48Kry7Awb_yoWkJrg_WF
-	n0qa1vyw1kXFn3Ja1vkr9rAFZ2va15GryUGrn5Jw17J34rtrZ8ur1qyrZ3u3y8KF48Arn8
-	WFZ7ZFyxu34aqjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbOxYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
-	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWUCVW8JwA2z4x0Y4vE2Ix0cI8IcVCY1x02
-	67AKxVW8JVWxJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
-	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
-	AY17CE14v26r1Y6r17MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
-	cVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVj
-	vjDU0xZFpf9x07UE-erUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260724-einmieten-beatmen-glossar-63c4b3962e07@brauner>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,suse.cz,gmail.com,mit.edu,mail.parknet.co.jp];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email]
 
-On 7/24/2026 12:31 AM, Theodore Tso wrote:
-> On Thu, Jul 23, 2026 at 11:29:44AM -0500, Zhang Yi wrote:
->> Therefore, I think the correct approach is to modify
->> ext4_convert_unwritten_extents() so that it returns the actual
->> conversion length, and only returns an error code when no conversion has
->> taken place at all. This way, ext4_alloc_file_blocks() can use the
->> returned conversion length to decide whether to add the orphan list
->> (within the same handle as the conversion operation).
->>
->> What do you think?
+On Fri 24-07-26 11:52:31, Christian Brauner wrote:
+> On Thu, 16 Jul 2026 16:55:22 +0200, Jan Kara wrote:
+> > fs: Fix missed inode write during fsync
+> > 
+> > Hello,
+> > 
+> > here is v4 of the patch series which fixes the possibly missing inode write
+> > during fsync(2) for filesystems using generic metadata bh tracking. This
+> > revision contains mostly small fixes and improvements since v3, neither
+> > Sashiko nor Christian found fundamental issues with this approach.
+> > 
+> > [...]
 > 
-> Yes, that makes sense.
-> 
-> I've checked the challers of ext4_alloc_file_blocks(), and at the
-> moment, in the case where there is a partial allocation, we return the
-> error, not the number of partially allocated files.  But given that
-> the callers are doing fallocate() that seems to be fine.
-> 
-> I'd suggest we should explicit about documenting how
-> ext4_alloc_file_blocks() will handle partial allocations before it
-> runs into an problem, so it's helpful for future people who are making
-> changes here.
-> 
+> I think there's some outstanding sashiko reviews for this one. Feel free
+> to just send follow-up fixes if the changes are small enough! Thanks,
+> Jan!
 
-Sure, I'll add this document as well.
+Thanks! Yes, there were still three bugs Sashiko rightfully pointed out. I
+already did some fixups before I went for vacation last week. Testing has
+finished while I was on vacation so I'll post a new revision of the series
+today (sorry, I didn't keep the fixes as separate patches and bfs
+compilation failure would be annoying in git history anyway).
 
-Thanks,
-Yi.
-
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
