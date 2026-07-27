@@ -1,145 +1,97 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.17])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C0212F747A
-	for <linux-ext4@vger.kernel.org>; Sat, 25 Jul 2026 11:31:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.17
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C193935DA75
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 06:10:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784979104; cv=none; b=Uj6su8H7Pc0eZBtG+tF6JHTo58Oa/DtlcFS9LIYgnnSMeG6z8elwshERZhshDXpCgI5UPw+VPmXB51rg6nXLN6RSh/dox9i9f2YLQU7KdbtIdrcE844HXT8++3pflaB2GHCmOrMdg2n1OASufgxTO0kdpsxXX0Pcou51a33WIaw=
+	t=1785132610; cv=none; b=K45IVSEzCjZWneOPrt7zx/qT7TnixRQGnOwk+YGBXfwZZqG7RmbKHyiUVvZb2LB4uQyL8a+e3KiuSHa4AWTRqmiPjC2xFwhrwunrCRHzTV8FbQ/H5p7TfMZt2CRYQ3lW8Yf9cWVLbYDX37T9+1vcQkJfcsvsw0KX7ykjRQHQXfw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784979104; c=relaxed/simple;
-	bh=hKqakJ/Elrhz84uDN7ngGcNoo1hqem3nnBFpN1BUScQ=;
-	h=Date:From:To:Cc:Subject:Message-ID; b=XKxr62mw2oL7XoCbMTjHCpg8LGRj9QJwLUlEP+qfaRD/j9ABrDESHqnlGTCil2pklBJBbZBRK6/mdGekkocZn+XkPYLApmdoRnqVBjinYI1fWudnhKP6aV4QmLjR/989vUi8kICIRUh5m6MvzNpsDMcqXkPuGyMqj9bGznIHi1c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=hZN43QkT; arc=none smtp.client-ip=198.175.65.17
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="hZN43QkT"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1784979102; x=1816515102;
-  h=date:from:to:cc:subject:message-id;
-  bh=hKqakJ/Elrhz84uDN7ngGcNoo1hqem3nnBFpN1BUScQ=;
-  b=hZN43QkTe/z7j5wWMvOSphRgd5uvy7ep/WdZ42LS1UPcLMrb0jhTkH+1
-   o1JtgvOY3JhYLxenBj4txzAfA97CVHEEEyfaMnBkPwQ75m/vXzIdJLGA/
-   1Bof79H2H3JAWxkHDpShNc+O29+EMe6wEDiv6vh3vcHcrkOWMPRczJOn/
-   DNgiYJQoFTl1p7GbChDEz+RlMN44cLPR428KklIEAd3+L/J4lptY+i0f0
-   RHb29jsYETGWWcA/U0K+94if7uVw2gTf8zDQGvdesD/JoGyMOGbOejYaC
-   pmcDACCsV05MCKyhuHbD+5ROfo0xFYIqbkbf280cM6KyMkA8wOnWn+3KE
-   g==;
-X-CSE-ConnectionGUID: IysO7xQ9Sf+pGa5reXZbmA==
-X-CSE-MsgGUID: Jvuu2/r4QRWtEpo6kGrd2A==
-X-IronPort-AV: E=McAfee;i="6800,10657,11855"; a="85638024"
-X-IronPort-AV: E=Sophos;i="6.25,184,1779174000"; 
-   d="scan'208";a="85638024"
-Received: from fmviesa008.fm.intel.com ([10.60.135.148])
-  by orvoesa109.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Jul 2026 04:31:42 -0700
-X-CSE-ConnectionGUID: k8brVa7xQbivhbMkt0rD2Q==
-X-CSE-MsgGUID: 8XWUACjsR/KzA1LpsaDEug==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.25,184,1779174000"; 
-   d="scan'208";a="256294368"
-Received: from lkp-server02.sh.intel.com (HELO ea128546eb3d) ([10.239.97.151])
-  by fmviesa008.fm.intel.com with ESMTP; 25 Jul 2026 04:31:40 -0700
-Received: from kbuild by ea128546eb3d with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1wnabO-00000000beC-2eNC;
-	Sat, 25 Jul 2026 11:31:35 +0000
-Date: Sat, 25 Jul 2026 19:30:38 +0800
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- 97e211ad1a34a5a979558a037619b9e633ca8620
-Message-ID: <202607251927.joRS6fR1-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	s=arc-20240116; t=1785132610; c=relaxed/simple;
+	bh=PpUktY2NKWWxihik00aO4fnJENz3hIRZ0QSD3aWKrLA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=SZsUYY0Jo8pHx+fg0BX3cGSG7qy+jCQczrSlE3+7jlgr3v5azEJhvxlZ72dzNCGLQJ2qlvVT6VuRk0GhHiga4Eo9SwNc4U9xEB5sZ9+Z6Ga8m0qRfKRpRhqs/QqiHhKQyP7OUEplln7WE369x0+nwTljP3HB51O6uhSnCmdI9kc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4h7p894Jp4zKHMVs
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:09:13 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id EA6364058C
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:10:04 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgAXBUQ79mZqDUdsAA--.18868S3;
+	Mon, 27 Jul 2026 14:10:04 +0800 (CST)
+Message-ID: <1d1ea032-8725-4abb-8b25-cf3e631d3879@huaweicloud.com>
+Date: Mon, 27 Jul 2026 14:10:03 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 9/9] ext4: protect WRITE_ZEROES written extents with
+ orphan list
+To: Theodore Tso <tytso@mit.edu>
+Cc: sashiko-reviews@lists.linux.dev, linux-ext4@vger.kernel.org
+References: <20260714080044.4038124-1-yi.zhang@huaweicloud.com>
+ <20260714080044.4038124-10-yi.zhang@huaweicloud.com>
+ <20260714084203.971381F000E9@smtp.kernel.org> <amD3fZPiCKwUqhGd@mit.edu>
+ <6213263f-27e4-4d2a-b6ef-f63093f89e69@huaweicloud.com>
+ <amJAxFjWXiSzjNd7@mit.edu>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <amJAxFjWXiSzjNd7@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:_Ch0CgAXBUQ79mZqDUdsAA--.18868S3
+X-Coremail-Antispam: 1UD129KBjvdXoW7Wr13XFyDWF4kXF48Kry7Awb_yoWkJrg_WF
+	n0qa1vyw1kXFn3Ja1vkr9rAFZ2va15GryUGrn5Jw17J34rtrZ8ur1qyrZ3u3y8KF48Arn8
+	WFZ7ZFyxu34aqjkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUbOxYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I6I8E6xAIw20E
+	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwV
+	A0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWUCVW8JwA2z4x0Y4vE2Ix0cI8IcVCY1x02
+	67AKxVW8JVWxJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41l42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
+	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
+	AY17CE14v26r1Y6r17MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
+	cVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
+	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r1j6r4UYxBIdaVFxhVj
+	vjDU0xZFpf9x07UE-erUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 97e211ad1a34a5a979558a037619b9e633ca8620  jbd2: align h_type and h_line_no in the handle structure on byte boundaries
+On 7/24/2026 12:31 AM, Theodore Tso wrote:
+> On Thu, Jul 23, 2026 at 11:29:44AM -0500, Zhang Yi wrote:
+>> Therefore, I think the correct approach is to modify
+>> ext4_convert_unwritten_extents() so that it returns the actual
+>> conversion length, and only returns an error code when no conversion has
+>> taken place at all. This way, ext4_alloc_file_blocks() can use the
+>> returned conversion length to decide whether to add the orphan list
+>> (within the same handle as the conversion operation).
+>>
+>> What do you think?
+> 
+> Yes, that makes sense.
+> 
+> I've checked the challers of ext4_alloc_file_blocks(), and at the
+> moment, in the case where there is a partial allocation, we return the
+> error, not the number of partially allocated files.  But given that
+> the callers are doing fallocate() that seems to be fine.
+> 
+> I'd suggest we should explicit about documenting how
+> ext4_alloc_file_blocks() will handle partial allocations before it
+> runs into an problem, so it's helpful for future people who are making
+> changes here.
+> 
 
-elapsed time: 1271m
+Sure, I'll add this document as well.
 
-configs tested: 68
-configs skipped: 1
+Thanks,
+Yi.
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
 
-tested configs:
-alpha                            allnoconfig    gcc-16.1.0
-alpha                           allyesconfig    gcc-16.1.0
-alpha                              defconfig    gcc-16.1.0
-arc                             allmodconfig    gcc-16.1.0
-arc                             allyesconfig    gcc-16.1.0
-arc                  randconfig-001-20260725    gcc-11.5.0
-arc                  randconfig-002-20260725    gcc-8.5.0
-arm                  randconfig-001-20260725    gcc-8.5.0
-arm                  randconfig-002-20260725    clang-21
-arm                  randconfig-003-20260725    gcc-10.5.0
-arm                  randconfig-004-20260725    gcc-15.2.0
-csky                            allmodconfig    gcc-16.1.0
-csky                 randconfig-001-20260725    gcc-9.5.0
-csky                 randconfig-002-20260725    gcc-16.1.0
-hexagon              randconfig-001-20260725    clang-17
-hexagon              randconfig-002-20260725    clang-24
-i386                            allmodconfig    gcc-14
-i386                buildonly-randconfig-001    gcc-14
-i386       buildonly-randconfig-001-20260725    clang-22
-i386       buildonly-randconfig-002-20260725    gcc-14
-i386       buildonly-randconfig-003-20260725    clang-22
-i386       buildonly-randconfig-004-20260725    clang-22
-i386       buildonly-randconfig-005-20260725    gcc-14
-i386       buildonly-randconfig-006-20260725    gcc-14
-i386                 randconfig-001-20260725    clang-22
-i386                 randconfig-002-20260725    gcc-14
-i386                 randconfig-003-20260725    gcc-14
-i386                 randconfig-004-20260725    gcc-12
-i386                 randconfig-005-20260725    clang-22
-i386                 randconfig-006-20260725    gcc-14
-i386                 randconfig-007-20260725    gcc-14
-loongarch                          defconfig    clang-24
-loongarch            randconfig-001-20260725    gcc-16.1.0
-loongarch            randconfig-002-20260725    gcc-13.4.0
-nios2                           allmodconfig    gcc-11.5.0
-nios2                            allnoconfig    gcc-11.5.0
-nios2                randconfig-001-20260725    gcc-11.5.0
-nios2                randconfig-002-20260725    gcc-9.5.0
-parisc                          allmodconfig    gcc-16.1.0
-parisc                          allyesconfig    gcc-16.1.0
-parisc                             defconfig    gcc-16.1.0
-parisc                        randconfig-001    gcc-8.5.0
-parisc               randconfig-001-20260725    gcc-10.5.0
-parisc               randconfig-002-20260725    gcc-12.5.0
-powerpc                    mpc5200_defconfig    clang-24
-powerpc              randconfig-001-20260725    gcc-9.5.0
-powerpc              randconfig-002-20260725    gcc-15.2.0
-powerpc64            randconfig-001-20260725    clang-17
-powerpc64            randconfig-002-20260725    clang-24
-riscv                         randconfig-001    gcc-13.4.0
-riscv                randconfig-001-20260725    gcc-8.5.0
-riscv                randconfig-002-20260725    gcc-8.5.0
-s390                 randconfig-001-20260725    gcc-10.5.0
-s390                 randconfig-002-20260725    gcc-16.1.0
-sh                                 defconfig    gcc-16.1.0
-sh                   randconfig-001-20260725    gcc-16.1.0
-sh                   randconfig-002-20260725    gcc-11.5.0
-sparc                randconfig-001-20260725    gcc-16.1.0
-sparc                randconfig-002-20260725    gcc-8.5.0
-sparc64              randconfig-001-20260725    gcc-8.5.0
-sparc64              randconfig-002-20260725    gcc-10.5.0
-um                   randconfig-001-20260725    gcc-14
-x86_64               randconfig-071-20260725    gcc-14
-x86_64               randconfig-072-20260725    gcc-14
-x86_64               randconfig-073-20260725    gcc-14
-x86_64               randconfig-074-20260725    gcc-14
-x86_64               randconfig-075-20260725    gcc-14
-x86_64               randconfig-076-20260725    clang-22
 
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
