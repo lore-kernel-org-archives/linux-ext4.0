@@ -1,256 +1,225 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CED7E3DB31E
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 11:57:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C538E3FDC1A;
+	Mon, 27 Jul 2026 12:00:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785153447; cv=none; b=OglA4FIS5VmKK9Xi5tROYVM8buX9kcLAqQAPdFBPzdYoz7WPPQo9jfnhvyT6jeC8Fvby0UyTRaK8KjdNkcLE9PmG5/NXekaO/1KAYItCDOk6z9J9HveYrQZGb2S9r/H4sOAFCK22LT+IUaMTf67mbdzpZUIwuyj+wEpl7l1y2J0=
+	t=1785153611; cv=none; b=RVZwfizFtRTJtJTqNJAaGKNHOBmV+NH1WB3SXn3JPIrwysJJTpEG+VhydTFiyCiK76r72krQQh+guC8O8BUSMPkXR9EoeIUAkfgpLmxrQjKOvZUHxcARNxq6w+cfEq3prZy9iDfNiYQmMBivqqYqwWYymk33Hkga2jT0HN28d1c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785153447; c=relaxed/simple;
-	bh=gGxwNEesPpgyOjyT2lyqErSAoX9R3LxZzD5pocHbNYg=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tSRMwtnLGtwOG0N0x0QvW8B5g2lxrZ9T6X54zBCMh1JN83m+osJ6DpgxmflSskHKuUErCzrcQ2jXXWiXaaBsTBQ7dxwFsq2rl1L4iDbK/kZLLLhr/1jOZcr11vY5RyLYYCZCP0I4a6CjPR9lD7XdrHou2r31n7HqpnZOM4pX4xQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=KSq9UUgm; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=/PlYbtuC; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JAb1PMPk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=EQ58l7tS; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1785153611; c=relaxed/simple;
+	bh=j6vKu4CIxdZ0LpGFoGTdIPj5UU6mrIWyjJhIVmDxFns=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=fxY4kCSyKNrYSrDjSfatptfihRHMX4SK/unVgL37X2cqMgPT3QkMhWfX7akCr+/Hdam0uBw8WP5Q6CJDcRQmEcg0+808Sa22kmzRz+iLYFvlP/YrEG8ueEre93HaaoC2ektRgfPdyyUCpBRrX5RvyZgoCijCEv8p4rHzhE9YnSI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=EstICuHz; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="KSq9UUgm";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="/PlYbtuC";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JAb1PMPk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="EQ58l7tS"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id B58B67DB1D;
-	Mon, 27 Jul 2026 11:57:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785153439; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
-	b=KSq9UUgmgTSLtT6hmDuvFDaimby9M7lkch+P3Nq+gSwFVw+H+uRSzgXL6qSeZzThNiS5hs
-	Xhthi9l2qDrz2jxJlHTJOLNijhKiKHwQngw8sWYLC9r2kAHJ+ACxqpK051JhB/gcbbywDW
-	b4vBCeV6MVjzTEezgCTav7o+dT2Ce94=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785153439;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
-	b=/PlYbtuCmDom3CQqYVZ4Zkkmrn2AhjW7SxPpkHceDPr/Jgs+fQVBElNgBBgicdPHWe5M20
-	ejehjJ5kikrY/FDg==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785153435; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
-	b=JAb1PMPklp4nQ7iyvPZONHMqmPmPuRyz293R4BEHGvOklc1d0FYd/ImjhIK5nUz/OEsJYe
-	62MbzLOC9lHkvm+6/CsboZnFAHyPAoDX7EgFkCgttbEIhtL0BZj+jtos+2YfCTs+Tpgqpt
-	MgWLNtZ45uEMGeI1NJzi6yCsFG5JX8s=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785153435;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=y7fvpN9900rKwCxhIAjQqejvSnqGcss7ZhaVKVeysXA=;
-	b=EQ58l7tSrfKSx9NqMHSpyAhTzOYryGbKDHPAJlsosxQS5fSF7fLcKzV8kLWQY1W2FqUiUW
-	UGTI0W07FdRR/bDg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AADA2779C1;
-	Mon, 27 Jul 2026 11:57:15 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id WSO0KZtHZ2r8MAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 27 Jul 2026 11:57:15 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 567FEA0BA1; Mon, 27 Jul 2026 13:57:11 +0200 (CEST)
-Date: Mon, 27 Jul 2026 13:57:11 +0200
-From: Jan Kara <jack@suse.cz>
-To: rafad900 <rafad900@gmail.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: convert pa_count from atomic_t to refcount_t
-Message-ID: <2joyziupzemt5vjdvmnic3kcdckt6z5dht6vgusxsxrfbtthhn@uuiexxvvcclv>
-References: <20260720034441.3900050-1-rafad900@gmail.com>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="EstICuHz"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66RAITWV061267;
+	Mon, 27 Jul 2026 11:59:54 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=xcfrmT
+	YorGgkkroibKOXlS091zqrRlz1MCMqTnhEFJ8=; b=EstICuHzGlucFjmTGs4Drs
+	xRXpKw72Rf2TnJjgTeha4TH7jxJ/b0F2nGUTssfJyxLw0tlglIvswlbgBWFFJbUG
+	2naZnSI5ZWKDSKdsZVzr+tj7RvEB4h59ziQO7gvcqiA3cB4ImaQoIppsNZrnva46
+	06JZfBL19ckBlHZkTOwvib6bFyt4/rrsdMvJ/5QVpwLmzE0AbDKKXYHcr4H9Y6w0
+	a09UvKGEIfSBfrt/Q/p8b+zz/928EhcpTngkwkN3CjmzAekNqQ5RLUsWolB72gLK
+	s5TQ1leeLQGjfRA1j1YnXf15S8VbDRarZvGeEOAqEnk87zGrXVY1RN/VOtMfGKtw
+	==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fmuyc7thd-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 27 Jul 2026 11:59:53 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66RBuJGV024486;
+	Mon, 27 Jul 2026 11:59:52 GMT
+Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fna5xvygb-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 27 Jul 2026 11:59:52 +0000 (GMT)
+Received: from smtpav01.fra02v.mail.ibm.com (smtpav01.fra02v.mail.ibm.com [10.20.54.100])
+	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66RBxosg50659732
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 27 Jul 2026 11:59:51 GMT
+Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id D9D6F200E8;
+	Mon, 27 Jul 2026 11:59:50 +0000 (GMT)
+Received: from smtpav01.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 12B2E200E3;
+	Mon, 27 Jul 2026 11:59:48 +0000 (GMT)
+Received: from [9.124.222.41] (unknown [9.124.222.41])
+	by smtpav01.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Mon, 27 Jul 2026 11:59:47 +0000 (GMT)
+Message-ID: <77364e40-f193-4a35-b26f-5c4252315650@linux.ibm.com>
+Date: Mon, 27 Jul 2026 17:29:45 +0530
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260720034441.3900050-1-rafad900@gmail.com>
-X-Spam-Score: -3.80
-X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-0.989];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCPT_COUNT_SEVEN(0.00)[7];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: turn off DAX on new files when encryption is set
+Content-Language: en-GB
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>
+Cc: Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+        linux-kernel@vger.kernel.org, Baokun Li <libaokun@linux.alibaba.com>,
+        Jan Kara <jack@suse.cz>
+References: <20260723085648.1500357-1-ojaswin@linux.ibm.com>
+From: Disha Goel <disgoel@linux.ibm.com>
+In-Reply-To: <20260723085648.1500357-1-ojaswin@linux.ibm.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-ORIG-GUID: sW6kU5n69u8QtGJtTW0YMmX3GYyn4cAr
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzI3MDExNiBTYWx0ZWRfX7sl8nWPqBFaP
+ yCa4BM4MevWgez3MMPGu57TayYX65xtW139xKTFl7sVTdLgMV59YnYpJLfq3MK/6uvenrkodZd4
+ NMf8faU+Cio8fuhAOL54FMYDXKGvSk93yRAmF9kWzlrYQf7SEIPlNhyOQfDko3LSkRfL183R2H4
+ BK4suFTHL3PZYNI6cPGRiHA/SvvWPQEdN3zwEJAKH36GbZxhvDZGgrp/rPqO+0XrZyirVBkllf9
+ 46t1MU584MdnwxboJ02LcTZZvLrwWddvEpis78tKk+krGsof6DSRhtrT6//XkMY26WRzL3I/GR3
+ yDVx45Umy7dkuhJprYsnXKpoIneDb5vlikVltLtCiXfwP8M1Ul6+h7/riq+pLT5yuSCa7+bGO2g
+ C5WHw4hGs6ESxZ8Cu+N/fuaFXJmvjqMqmsYHf6KixYvLi6xfb1FSgyOFHl+tohuKNZ++Uyz25rX
+ UUr2aboMv11qJYg9l1w==
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzI3MDExNiBTYWx0ZWRfX/NIoIbyFhtPm
+ gilr2iXXjmq7CRlyy3DsgyT6mimyuO/lTLQL/AY3cj851O1u4I93TKUCRhTu+eDvL1v3vu4oIFO
+ iG9VOzMZs5OInM76uxQbjcsBNt72Acc=
+X-Authority-Analysis: v=2.4 cv=AZeB2XXG c=1 sm=1 tr=0 ts=6a67483a cx=c_pps
+ a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+ a=IkcTkHD0fZMA:10 a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=VnNF1IyMAAAA:8
+ a=H1dnbxNIaJ1ru_3gy30A:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-GUID: PlefV3gRwdckOe6cEd7BtPWdVpDYE7kt
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-07-27_03,2026-07-24_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ spamscore=0 priorityscore=1501 phishscore=0 adultscore=0 impostorscore=0
+ clxscore=1011 malwarescore=0 suspectscore=0 lowpriorityscore=0 bulkscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607270116
 
-On Sun 19-07-26 20:44:41, rafad900 wrote:
-> The pa_count field in struct ext4_prealloc_space is
-> reference counter for preallocation descriptors.
-> Converting it from atomic_t to refcount_t provides
-> underflow and overflow protection.
+On 23/07/26 2:26 pm, Ojaswin Mujoo wrote:
+> Currently, when setting the S_ENCRYPTED flag on a new regular inode in
+> a -o dax=always mounted FS, we seem to be erroneously retaining the S_DAX
+> flag. This is because the newly created inode ends up with the following:
 > 
-> This was found using Coccinelle script
-> atomic_as_refcounter.cocci
+>    __ext4_new_inode()
+>      ext4_set_inode_flags(init=true) // sets S_DAX
+>        fscrypt_set_context()
+>          ext4_set_context()
+>            ext4_set_inode_flags(init=false) // sets S_ENCRYPTED but
+>                                                doesn't clears S_DAX
+>        ext4_set_aops
+>          inode->i_mapping->a_ops = &ext4_dax_aops;
 > 
-> Testing was done on a QEMU x86 VM revealing a
-> pre-existing race condition leading to a
-> use-after-free.
+> Due to the S_DAX flag, the excrypted inode gets ext4_dax_aops and it
+> silently ends up bypassing encryption completely. This is reflected in
+> multiple xfstests failures like generic/548. To fix this, ensure we disable
+> S_DAX correctly when S_ENCRYPTED is being set on a newly created inode. It
+> is safe to change DAX state there because ext4_set_aops() later can
+> correctly detect S_DAX unset and assign the correct aops.
 > 
-> Signed-off-by: rafad900 <rafad900@gmail.com>
-
-This is a bit problematic as for pa_count 0->1 transition is fine (as long
-as pa_deleted isn't set) so this conversion will trigger false warnings as
-the 0-day report shows.
-
-								Honza
-
+> The fix was actually the intended behavior however it seemed to have
+> silently changed in 043546e46dc7.
+> 
+> Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
+> Reported-by: Disha Goel <disgoel@linux.ibm.com>
+> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 > ---
->  fs/ext4/mballoc.c | 22 +++++++++++-----------
->  fs/ext4/mballoc.h |  2 +-
->  2 files changed, 12 insertions(+), 12 deletions(-)
+
+Thanks for the fix patch Ojaswin. This fixes the issue I reported.
+
+Tested on a -o dax=always ext4 filesystem on ppc64le with the following
+xfstests configuration:
+
+FSTYP=ext4
+MOUNT_OPTIONS="-o block_validity,dax"
+MKFS_OPTIONS="-b 65536"
+
+All failing encryption tests in the generic group now pass.
+
+Tested-by: Disha Goel <disgoel@linux.ibm.com>
+
+>   fs/ext4/crypto.c | 15 +++++++++++----
+>   fs/ext4/inode.c  | 10 ++++++----
+>   2 files changed, 17 insertions(+), 8 deletions(-)
 > 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index ed1bd00e11cd..59b3d4abaab0 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4823,7 +4823,7 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
->  	ext4_fsblk_t cur_distance, new_distance;
->  
->  	if (cpa == NULL) {
-> -		atomic_inc(&pa->pa_count);
-> +		refcount_inc(&pa->pa_count);
->  		return pa;
->  	}
->  	cur_distance = abs(goal_block - cpa->pa_pstart);
-> @@ -4833,8 +4833,8 @@ ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
->  		return cpa;
->  
->  	/* drop the previous reference */
-> -	atomic_dec(&cpa->pa_count);
-> -	atomic_inc(&pa->pa_count);
-> +	refcount_dec(&cpa->pa_count);
-> +	refcount_inc(&pa->pa_count);
->  	return pa;
->  }
->  
-> @@ -4993,7 +4993,7 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
->  	}
->  
->  	if (tmp_pa->pa_free && likely(ext4_mb_pa_goal_check(ac, tmp_pa))) {
-> -		atomic_inc(&tmp_pa->pa_count);
-> +		refcount_inc(&tmp_pa->pa_count);
->  		ext4_mb_use_inode_pa(ac, tmp_pa);
->  		spin_unlock(&tmp_pa->pa_lock);
->  		read_unlock(&ei->i_prealloc_lock);
-> @@ -5139,7 +5139,7 @@ static void ext4_mb_mark_pa_deleted(struct super_block *sb,
->  static inline void ext4_mb_pa_free(struct ext4_prealloc_space *pa)
->  {
->  	BUG_ON(!pa);
-> -	BUG_ON(atomic_read(&pa->pa_count));
-> +	BUG_ON(refcount_read(&pa->pa_count));
->  	BUG_ON(pa->pa_deleted == 0);
->  	kmem_cache_free(ext4_pspace_cachep, pa);
->  }
-> @@ -5165,7 +5165,7 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
->  
->  	/* in this short window concurrent discard can set pa_deleted */
->  	spin_lock(&pa->pa_lock);
-> -	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0) {
-> +	if (!refcount_dec_and_test(&pa->pa_count) || pa->pa_free != 0) {
->  		spin_unlock(&pa->pa_lock);
->  		return;
->  	}
-> @@ -5535,7 +5535,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
->  	list_for_each_entry_safe(pa, tmp,
->  				&grp->bb_prealloc_list, pa_group_list) {
->  		spin_lock(&pa->pa_lock);
-> -		if (atomic_read(&pa->pa_count)) {
-> +		if (refcount_read(&pa->pa_count)) {
->  			spin_unlock(&pa->pa_lock);
->  			*busy = 1;
->  			continue;
-> @@ -5637,7 +5637,7 @@ void ext4_discard_preallocations(struct inode *inode)
->  		BUG_ON(pa->pa_node_lock.inode_lock != &ei->i_prealloc_lock);
->  
->  		spin_lock(&pa->pa_lock);
-> -		if (atomic_read(&pa->pa_count)) {
-> +		if (refcount_read(&pa->pa_count)) {
->  			/* this shouldn't happen often - nobody should
->  			 * use preallocation while we're discarding it */
->  			spin_unlock(&pa->pa_lock);
-> @@ -5720,7 +5720,7 @@ static int ext4_mb_pa_alloc(struct ext4_allocation_context *ac)
->  	pa = kmem_cache_zalloc(ext4_pspace_cachep, GFP_NOFS);
->  	if (!pa)
->  		return -ENOMEM;
-> -	atomic_set(&pa->pa_count, 1);
-> +	refcount_set(&pa->pa_count, 1);
->  	ac->ac_pa = pa;
->  	return 0;
->  }
-> @@ -5731,7 +5731,7 @@ static void ext4_mb_pa_put_free(struct ext4_allocation_context *ac)
->  
->  	BUG_ON(!pa);
->  	ac->ac_pa = NULL;
-> -	WARN_ON(!atomic_dec_and_test(&pa->pa_count));
-> +	WARN_ON(!refcount_dec_and_test(&pa->pa_count));
->  	/*
->  	 * current function is only called due to an error or due to
->  	 * len of found blocks < len of requested blocks hence the PA has not
-> @@ -5948,7 +5948,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
->  				pa_node.lg_list,
->  				lockdep_is_held(&lg->lg_prealloc_lock)) {
->  		spin_lock(&pa->pa_lock);
-> -		if (atomic_read(&pa->pa_count)) {
-> +		if (refcount_read(&pa->pa_count)) {
->  			/*
->  			 * This is the pa that we just used
->  			 * for block allocation. So don't
-> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-> index 39333ce72cbd..f708d303228e 100644
-> --- a/fs/ext4/mballoc.h
-> +++ b/fs/ext4/mballoc.h
-> @@ -126,7 +126,7 @@ struct ext4_prealloc_space {
->  		struct rcu_head	pa_rcu;
->  	} u;
->  	spinlock_t		pa_lock;
-> -	atomic_t		pa_count;
-> +	refcount_t		pa_count;
->  	unsigned		pa_deleted;
->  	ext4_fsblk_t		pa_pstart;	/* phys. block */
->  	ext4_lblk_t		pa_lstart;	/* log. block */
-> -- 
-> 2.43.0
-> 
+> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+> index f41f320f4437..2d409114e02e 100644
+> --- a/fs/ext4/crypto.c
+> +++ b/fs/ext4/crypto.c
+> @@ -134,6 +134,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   {
+>   	handle_t *handle = fs_data;
+>   	int res, res2, credits, retries = 0;
+> +	bool init = S_ISREG(inode->i_mode);
+>   
+>   	/*
+>   	 * Encrypting the root directory is not allowed because e2fsck expects
+> @@ -179,10 +180,16 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   			ext4_clear_inode_state(inode,
+>   					EXT4_STATE_MAY_INLINE_DATA);
+>   			/*
+> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+> -			 * S_DAX may be disabled
+> +			 * Update inode->i_flags, S_ENCRYPTED will be enabled.
+> +			 * If this is a regular inode, then we must be coming
+> +			 * via __ext4_new_inode() as only new inodes can be
+> +			 * encrypted, so we must set the init flag so
+> +			 * S_DAX can be disabled. This is a bit fragile but
+> +			 * seems like the easiest way to make sure we don't let
+> +			 * the DAX flag linger when encryption is enabled as
+> +			 * that result in writes silently bypassing encryption.
+>   			 */
+> -			ext4_set_inode_flags(inode, false);
+> +			ext4_set_inode_flags(inode, init);
+>   		}
+>   		return res;
+>   	}
+> @@ -209,7 +216,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+>   		 * S_DAX may be disabled
+>   		 */
+> -		ext4_set_inode_flags(inode, false);
+> +		ext4_set_inode_flags(inode, init);
+>   		res = ext4_mark_inode_dirty(handle, inode);
+>   		if (res)
+>   			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ce99807c5f5b..a57179655353 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5113,8 +5113,6 @@ void ext4_set_inode_flags(struct inode *inode, bool init)
+>   	unsigned int flags = EXT4_I(inode)->i_flags;
+>   	unsigned int new_fl = 0;
+>   
+> -	WARN_ON_ONCE(IS_DAX(inode) && init);
+> -
+>   	if (flags & EXT4_SYNC_FL)
+>   		new_fl |= S_SYNC;
+>   	if (flags & EXT4_APPEND_FL)
+> @@ -5129,8 +5127,12 @@ void ext4_set_inode_flags(struct inode *inode, bool init)
+>   	/* Because of the way inode_set_flags() works we must preserve S_DAX
+>   	 * here if already set. */
+>   	new_fl |= (inode->i_flags & S_DAX);
+> -	if (init && ext4_should_enable_dax(inode))
+> -		new_fl |= S_DAX;
+> +	if (init) {
+> +		if (ext4_should_enable_dax(inode))
+> +			new_fl |= S_DAX;
+> +		else
+> +			new_fl &= ~S_DAX;
+> +	}
+>   
+>   	if (flags & EXT4_ENCRYPT_FL)
+>   		new_fl |= S_ENCRYPTED;
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Regards,
+Disha
+
