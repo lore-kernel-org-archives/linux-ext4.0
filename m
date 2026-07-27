@@ -1,71 +1,70 @@
-Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com [209.85.128.42])
+Received: from mail-wr1-f42.google.com (mail-wr1-f42.google.com [209.85.221.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66A733EDAA8
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:14:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28F983E639E
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 21:14:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785186858; cv=none; b=cg8GPOwa3RxY43gHcE534yvTYE7QnvsJcGIYpslAyDysFWvMfMBHPTE9puGPr5ANDX/gYuokXuUbvkysyuGBBJGv86oWXn7sstcyCip6ZcIP8pjfZsSaU72XvemsX8pmh1si8EBzDEvzQfguN+FQx9eKf2VDczvY4DWdEaYbSfE=
+	t=1785186858; cv=none; b=Xy8zGFoUEIzRuwyYF9rgeHyNDhwh2IatdViOEJmYsJ23HcuIkgr8tAUSPM6nwZyCxT9heN/Rt7mvudeD1tExEMKpXqeWam7IH7C1L4gRZF6r54QWRoK52nJ8dWmUKld2PFnWV9LyUizWW8+V4QCbEMCKuABbrSCAC2JHxVbN7mU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785186858; c=relaxed/simple;
-	bh=d7IKJg5bDTw5ywp6MRjnvF6s7F9SRAcZ+UD0l6AhUBo=;
+	bh=e+ohwOSN6LbpmLGd/izSBp6CeixeLtMlkFS2LHQyMIs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=VxekTguuKNJixlrI6M8Uhcho8vCiMfTJnPD0LEoRhCtZ3q1rkdxzDffNzDBjtC19jt96h8Yxxo3bNWLRURt6vVpbwPBpx3KJJXj49yr7t9UFJPBxmJS4uEg80oCK8xZZRPbY3X6pWyHukLMv0OZpGz9CwVvtwSyWRYG6SQwkkD4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=rdKBe4G9; arc=none smtp.client-ip=209.85.128.42
+	 MIME-Version; b=BtZRpRzZ5bDhjaVaz5zdPu5gcl/B8JFuXlGVcEPuAbDBR1Wnyn9ZXLw0HiBnk6w6C0d/AWiUCUn3FXXLzG7mRR51pnQ8dw96kRVrTq/r8oqhDYo25lg5ism7+tjXC2mtvA3XvwsvQiQw8zOi2XfMun5MOs6GGijKxyjMmKXjwpU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=oUgjtt2e; arc=none smtp.client-ip=209.85.221.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rdKBe4G9"
-Received: by mail-wm1-f42.google.com with SMTP id 5b1f17b1804b1-493f75f7172so26649815e9.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oUgjtt2e"
+Received: by mail-wr1-f42.google.com with SMTP id ffacd0b85a97d-4798bea72f9so2042617f8f.1
         for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 14:14:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20251104; t=1785186855; x=1785791655; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=NznIVXcDU9ZuTVJ0oiSS7u9W5ZLavyy9yA8CeyZb6V8=;
-        b=rdKBe4G9rzt2pXTXMGmxfW5D1tOrpnXfl+DPfuxnZ+iBNiK7kjBzODfSKnrqZqiuRk
-         8z9jW8eRRrR/xhO6ZjIra+ZDtsGIqTayOnCVX+wS5pik2/0vpf6MAL5vrX7cLNWtflnd
-         tMZkKqGGNcXVbQn7CsjRKfrAQqZvfbXkxAig9/edRBNeWP+dycQhsc6XEQL/WAtQB4qp
-         lHUr6SnVGS54B7g1XqGOSmK11ZmMKi2XEXfKnhm97M79s9xW1U0KbyBQIu6gS21/PB9c
-         ThvSrWqktDcHiCPnhR452tdgM1NGRnD8ZZvGp/R624MN/Ong4O6PDL1GkMIlKnq1yDH2
-         uM5w==
+        bh=WJzUOqF8t8KNC63eLRFBx4UYUm1u+tRaMVpSKwDOOqQ=;
+        b=oUgjtt2e+wP3mh8uWj7pEDAwAp38eEK3MqbBxanw0E7yVDdabrZevoaHOD58ABwiqY
+         oEr9CTUlOa95mHAJ2hkhIhjQDHo+O6JcJQlZ1wtxu+bmjRozxT/5ozvW9ps1KQxuUfnM
+         0Gs/xe/bRx74WRVgfiVCnZLigVVWtK2k4MabTdsGiigWelUzaQAv0L198VSFgNLFPy3f
+         Tryc9UIZBEOCFxGgwtVFHH4VnHpBSTu0kTLYQJAzRIiLcXj1QAm/AcjOGY66IhfdOcIR
+         ZkM3XWHVldfvpWmz1V6m6os5TFdDzQ0v3gKelQ28aq3J/8/1cCJ3IdJp0jwmII5cq7H+
+         BCgw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20251104; t=1785186855; x=1785791655;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=NznIVXcDU9ZuTVJ0oiSS7u9W5ZLavyy9yA8CeyZb6V8=;
-        b=LVkDpa2axEIIjfUGIQyKQgi/s0JZMGu4lEUik6RhYO4bwoYDh7hllZCYxhWoJWxmkJ
-         HOdL1ASPtYZkhODriuaRkwOXC9gJrSSW/9pP7b/do46RdX7u9JFBmWvQXHzUNT19JYI0
-         cIr7SFZCIKrK/uhp2yj/wim5UJ5LGLNqPKKNlG9bYFOEL/31cRmXpR7yZefGgSlYYJhg
-         UADvwEnePLtzPMzbhcvntrmUGBAGGNzry9sHbrskbo9In/PXYrzFUB+3NaqM2FSgTPDc
-         jJVobo3uHyQ+RVeQYFFiamHI9Vsyl2zO5hYgR5De8S/zGjaCLM75v6gJfbfXqnYIc6py
-         Bzpg==
-X-Gm-Message-State: AOJu0Yx3fmWp6MCtHUJ/yqi4e6bpoeKRZ4IyW3S126s23GZVrKgz5JkJ
-	wbsOqChKkVZ/kINE0jZ55TgXTxVb/Xt5aLTGxH7tKcaKsDQX2RQp0dbyt4akqoMK
-X-Gm-Gg: AR+sD13zNjjm7T4AZLIg7Vk3G5hfMNo6VTf6T5QFbfD0MFg+Wz0aC5GKkFtQoHwMtwl
-	0ANdQh4tDdVTGS0VFZPhFOr6I8KNwASp84DNbgtbqT64PdGT/k2OPxfh8sWDGri4YpAVmhpwdaB
-	6r3dFB0Mg0FxNupSLJgX3X8xrLgZx8aQaes4n+RsAJSJCv3KsWVTT4+NQMD/S1GTCKWwUcLvWS3
-	KskhbPzhUSyN/lxCV64VmNBbEhitdLfmzo7sC8x58fwH7209Mcdqbey00s6sEuRLkiL3W0ZY79j
-	EDYSd09wHeyGHDt8irlCW6G6ysvgSRMNgOBwwOh3JOdzP8Sz84DRXHqPrSaeyF/XAQOC+f+tE8G
-	BKfTyQKUpIFpBhi5omYmNLfi9FkSyS8wD+opSAExDQIzLUQEqBjTDXGYrUr207eQlLw3tbx1xXa
-	SXT9hWPCFuO705kFSbVqavHy6+yRiL/nv9Gw5L4Dyb9P//
-X-Received: by 2002:a05:600c:4f81:b0:493:f528:58ac with SMTP id 5b1f17b1804b1-496b56f9d75mr141775465e9.21.1785186854556;
-        Mon, 27 Jul 2026 14:14:14 -0700 (PDT)
+        bh=WJzUOqF8t8KNC63eLRFBx4UYUm1u+tRaMVpSKwDOOqQ=;
+        b=YNqV/HVz/iFXV7a7pZdPyOKmowoZ4jvdXDNn5/danimNE8lN73ZfU63fiFLZIubIdm
+         85W1vq7gCnB31ZjW6mu4q8o1arf9+IU9i7/qQDQhQ2wJVHfvItJ972qtu/R2u3Ec083F
+         A0NuD6T5QQ+k+Ppnp4Hr+T2714QRGWwwmuA5ZaaQCB/nng44BbD1bkKyoAk/+2PHTgzf
+         rt/BU/jTJuM2KE1zV/jolNJuJa+T2tjKHm4ESJGS/O7ztKPT7yZRbxBh+/ngW3O3VoK/
+         GHPxCnwvtqOK6ar4vKGVFrn8mWqkPNtgFPjRkB0wRTjQVwEaZn6iSrNN0by3PC3I4d9k
+         8qmQ==
+X-Gm-Message-State: AOJu0Yz9FjOhKt9tNvFEwc34HZdNxRUwhTOErQV/98AZdFpEhi67yw6l
+	qWFqlBn9sAXAwpNoIWVvLBW/XXn2eiAT2IinfYShZ1s91/Yg5zcXNTpaKJcnQTy4
+X-Gm-Gg: AR+sD11PwhIvisc+r8zur3wouBJz89bn4BX9mDm7bMGPMPb01TqdQcwK4cdNasTtnlq
+	idYeEjcpiOUvlH/GOWMZozvL8+DHsG2B8LmwW0NpbxoxMa1aT7es4jvEEODryWxRnfz8zxSWqhC
+	E1dT3EmPyD1xPgzfuYqVMF22DNqNR2bIot6O5MxPUJh03VltE+cD5fWq2rrRYeG1OLFhg1TZ9TE
+	7XSJELjd8jjiRcw6rR2y3DXNKShuVrIivnbTFcfh3BjT+q/NYsRgMwJYTKjKCL6ncR/t7mDKdr+
+	+xkmvT/hi8D4yBLC9z6qCNAfy1pjBd3Bma0r0NkXHA/8QHldMgXAAxNhJkeDurpkhmLmJzkuJWJ
+	JBgr9q7BG0xdEAeUtCbeCDYg0v3iYwpmaGGy66QKANAbiJMgPKJyFtctUCqFLwa4N9j8DLMwX5A
+	+cGZJ+TWp3bwuBn6a5qZ8DyCkT1qPOxt0Iy3hlf7zt/fdr
+X-Received: by 2002:a05:6000:4006:b0:47f:77dc:b066 with SMTP id ffacd0b85a97d-47fafa56f52mr855316f8f.5.1785186855361;
+        Mon, 27 Jul 2026 14:14:15 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47f85c67339sm54987049f8f.31.2026.07.27.14.14.13
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47f85c67339sm54987049f8f.31.2026.07.27.14.14.14
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Mon, 27 Jul 2026 14:14:14 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Lustre Development <lustre-dev@example.com>,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [RFC PATCH v4 8/8] ext4/069: test LUFID in inline_data directory entries
-Date: Mon, 27 Jul 2026 17:13:48 -0400
-Message-ID: <20260727211353.19736-17-ablagodarenko@thelustrecollective.com>
+Subject: [RFC PATCH v4 09/11] ext4/067: LUFID and encryption+casefold+dirdata
+Date: Mon, 27 Jul 2026 17:13:49 -0400
+Message-ID: <20260727211353.19736-18-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260727211353.19736-1-ablagodarenko@thelustrecollective.com>
 References: <20260727211353.19736-1-ablagodarenko@thelustrecollective.com>
@@ -77,209 +76,178 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Lustre Development <lustre-dev@example.com>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Verify that a LUFID set via EXT4_IOC_SET_LUFID on an entry in an
-inline_data directory is correctly stored on disk.
+Test ext4 LUFID  functionality in the complex combination of
+encryption, casefold (case-insensitive), and dirdata features.
 
-The test formats a filesystem with -O dirdata,inline_data, creates a
-directory with two entries (small enough to remain inline), sets a LUFID
-on one entry, and confirms the fid= field is present in the raw
-directory data via debugfs.
+Verification uses 'debugfs ls -lD' to check for 'fid: or hash:' markers.
+Tests also verify that case-insensitive lookups work correctly and that
+encrypted file content is preserved after setting LUFID.
 
-The require guard probes the combined dirdata+inline_data mount so that
-a kernel that accepts each feature individually but rejects the
-combination emits [not run] rather than FAIL.
+This test validates that LUFID works correctly when encryption and
+casefold features are enabled, ensuring feature interactions don't
+break the LUFID functionality.
 
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 ---
- tests/ext4/069     | 164 +++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/069.out |   7 ++
- 2 files changed, 171 insertions(+)
+ tests/ext4/067     | 137 +++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/067.out |   4 ++
+ 2 files changed, 141 insertions(+)
 
-diff --git a/tests/ext4/069 b/tests/ext4/069
+diff --git a/tests/ext4/067 b/tests/ext4/067
 new file mode 100755
-index 00000000..b8b3e459
+index 00000000..acb49c40
 --- /dev/null
-+++ b/tests/ext4/069
-@@ -0,0 +1,164 @@
++++ b/tests/ext4/067
+@@ -0,0 +1,137 @@
 +#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
 +# Copyright (c) 2026 The Lustre Collective. All Rights Reserved.
 +# Author: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 +#
-+# FS QA Test ext4/069
++# FS QA Test ext4/067
 +#
-+# Regression test for inline directory + dirdata LUFID loss.
-+#
-+# ext4_add_dirent_to_inline() was passing NULL instead of dfid to
-+# ext4_insert_dentry_data(), silently dropping the LUFID for every entry
-+# created while the directory fits in the inode's inline-data area.
-+#
-+# The test creates a directory small enough to stay inline, sets a LUFID
-+# on one of its entries, and verifies the LUFID is present on disk via
-+# debugfs.  Without the fix, debugfs reports no fid= field and the test
-+# fails.
++# Test ext4 LUFID  with encryption and casefold.
++# EXT4_IOC_SET_LUFID is an ioctl that allows LUFID data to be set on a directory entry.
++# directory name hash is stored by EXT4 when casefold and encryption features are enabled.
 +
 +. ./common/preamble
-+_begin_fstest auto quick
++_begin_fstest auto quick encrypt casefold
 +
++# Import common functions
 +. ./common/filter
++. ./common/encrypt
++. ./common/casefold
++. ./common/attr
 +. ./common/ext4
 +
 +_exclude_fs ext2
 +_exclude_fs ext3
 +
 +_require_scratch_nocheck
++_require_scratch_encryption
++_require_scratch_casefold
 +_require_command "$SET_LUFID_PROG"
 +
++# Check if dirdata feature is supported (required for LUFID IOCTL)
 +_require_scratch_dirdata()
 +{
 +	if test ! -f /sys/fs/ext4/features/dirdata ; then
-+		_notrun "dirdata feature not supported by kernel"
++		_notrun "dirdata feature not supported by kernel (required for LUFID)"
 +	fi
++
++	# Verify that mkfs supports dirdata
 +	if ! $MKFS_EXT4_PROG -O dirdata -n $SCRATCH_DEV &>>$seqres.full ; then
 +		_notrun "mkfs.ext4 does not support dirdata feature"
 +	fi
-+	if ! _scratch_mkfs -O dirdata,inline_data &>>$seqres.full ; then
-+		_notrun "failed to create filesystem with dirdata+inline_data"
++
++	# Verify kernel can mount filesystem with encrypt+casefold+dirdata
++	if ! _scratch_mkfs -O encrypt,casefold,dirdata &>>$seqres.full ; then
++		_notrun "failed to create filesystem with encrypt+casefold+dirdata"
 +	fi
 +	if ! _try_scratch_mount &>>$seqres.full ; then
-+		_notrun "kernel cannot mount filesystem with dirdata+inline_data"
++		_notrun "kernel cannot mount filesystem with encrypt+casefold+dirdata"
 +	fi
 +	_scratch_unmount
 +}
 +
-+_require_scratch_ext4_feature "inline_data"
 +_require_scratch_dirdata
 +
-+# ---- helpers ----------------------------------------------------------------
-+
-+_u32_to_le_hex()
-+{
-+	local v=$1
-+	local h
-+	h=$(printf '%08x' "$((v & 0xffffffff))")
-+	printf '%s%s%s%s' "${h:6:2}" "${h:4:2}" "${h:2:2}" "${h:0:2}"
-+}
-+
-+_build_default_expected_fid()
-+{
-+	local path=$1
-+	local inode version ino_lo ver_lo ver_hi seq_hex oid_hex ver_hex
-+
-+	inode=$(stat -c '%i' "$path") || return 1
-+	version=$(debugfs -R "stat <${inode}>" $SCRATCH_DEV 2>/dev/null | \
-+		sed -n 's/.*Generation:[[:space:]]*\([0-9xa-fA-F]\+\).*/\1/p' | head -1)
-+	[ -z "$version" ] && return 1
-+
-+	ino_lo=$((inode & 0xffffffff))
-+	ver_lo=$((version & 0xffffffff))
-+	ver_hi=$(((version >> 32) & 0xffffffff))
-+
-+	# ext4 inode numbers are 32-bit so f_seq fits in 8 hex chars; avoid a
-+	# 16-char $((16#...)) that would overflow for values >= 0x8000000000.
-+	seq_hex="$(_u32_to_le_hex "$ino_lo")"
-+	oid_hex="$(_u32_to_le_hex "$ver_lo")"
-+	ver_hex="$(_u32_to_le_hex "$ver_hi")"
-+
-+	printf '[0x%x:0x%x:0x%x]' "$((16#$seq_hex))" "$((16#$oid_hex))" \
-+		"$((16#$ver_hex))"
-+}
-+
-+# Confirm the directory inode carries the Inline_Data flag.
-+_check_inline()
++# Helper to add a v2 encryption key and set policy on a directory
++_setup_encrypted_dir()
 +{
 +	local dir=$1
-+	local inode flags
-+
-+	inode=$(stat -c '%i' "$dir")
-+	flags=$(debugfs -R "stat <${inode}>" $SCRATCH_DEV 2>/dev/null | \
-+		sed -n 's/^.*Flags: \([0-9a-fx]*\).*$/\1/p')
-+	# EXT4_INLINE_DATA_FL = 0x10000000
-+	if (( (16#${flags#0x}) & 0x10000000 )); then
-+		return 0
-+	fi
-+	return 1
++	local raw_key=$(_generate_raw_encryption_key)
++	local keyspec=$(_add_enckey $SCRATCH_MNT "$raw_key" | awk '{print $NF}')
++	_set_encpolicy $dir $keyspec
++	_casefold_set_attr $dir
++	echo $keyspec
 +}
 +
-+# ---- test -------------------------------------------------------------------
-+
-+echo "== Create dirdata + inline_data filesystem =="
-+_scratch_mkfs -O dirdata,inline_data &>>$seqres.full
++# Create a filesystem with encryption, casefold, and dirdata features
++_scratch_mkfs -O encrypt,casefold,dirdata &>>$seqres.full
 +_scratch_mount
 +
-+TESTDIR=$SCRATCH_MNT/inline_dir
-+mkdir "$TESTDIR"
++# Test: Create file in encrypted+casefolded directory and set three 16-byte LUFIDs
++echo "Test: Set three 16-byte LUFIDs on file in encrypted+casefolded directory"
++mkdir $SCRATCH_MNT/encrypted_dir
++_setup_encrypted_dir $SCRATCH_MNT/encrypted_dir > /dev/null
 +
-+# Two entries keep the directory comfortably within the inline-data area
-+# (~160 bytes available in a 256-byte inode) so ext4 does not convert it
-+# to an on-disk block before we set the LUFID.
-+echo "content" > "$TESTDIR/file_a"
-+echo "content" > "$TESTDIR/file_b"
++echo "encrypted content" > $SCRATCH_MNT/encrypted_dir/testfile.txt
 +
-+sync
++lufid_payload=$'\xde\xad\xbe\xef\x01\x02\x03\x04\x11\x12\x13\x14\x21\x22\x23\x24\xca\xfe\xba\xbe\x05\x06\x07\x08\x31\x32\x33\x34\x41\x42\x43\x44\xfe\xed\xfa\xce\x09\x0a\x0b\x0c\x51\x52\x53\x54\x61\x62\x63\x64'
++expected_fid='[0xdeadbeef01020304:0x11121314:0x21222324],[0xcafebabe05060708:0x31323334:0x41424344],[0xfeedface090a0b0c:0x51525354:0x61626364]'
 +
-+echo "== Verify directory is inline =="
-+if ! _check_inline "$TESTDIR"; then
-+	echo "SKIP: directory was not kept inline (inode too small or inline_data inactive)"
-+	_scratch_unmount
-+	status=0
-+	exit
-+fi
-+echo "  inline_dir: inline data confirmed"
-+
-+echo "== Set LUFID on file_a (inline directory entry) =="
-+$SET_LUFID_PROG "$SCRATCH_MNT/inline_dir" file_a >>$seqres.full
++# Set three LUFIDs on the file at the same time (48 bytes total: three 16-byte FIDs)
++# First FID:  [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
++# Second FID: [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
++# Third FID:  [part1 (8 bytes):part2 (4 bytes):part3 (4 bytes)]
++set_lufid $SCRATCH_MNT/encrypted_dir testfile.txt "$lufid_payload" >>$seqres.full 2>&1
 +if [ $? -ne 0 ]; then
-+	echo "FAIL: set_lufid returned error"
++	echo "FAIL: Could not set three LUFIDs on encrypted+casefolded file"
 +	_scratch_unmount
 +	_check_scratch_fs
 +	status=1
 +	exit
 +fi
 +
-+expected=$(_build_default_expected_fid "$TESTDIR/file_a")
-+if [ -z "$expected" ]; then
-+	echo "FAIL: could not compute expected LUFID"
++# Verify file is still accessible
++if [ ! -f $SCRATCH_MNT/encrypted_dir/testfile.txt ]; then
++	echo "FAIL: Encrypted file not accessible after setting LUFID"
 +	_scratch_unmount
 +	_check_scratch_fs
 +	status=1
 +	exit
 +fi
 +
-+sync
-+
-+echo "== Verify LUFID stored in inline directory entry =="
-+# _dump_dir_structure reads from the raw block device via debugfs and
-+# reports the fid= field written by ext4_dirdata_set().  Before the fix,
-+# ext4_add_dirent_to_inline() passed NULL instead of dfid, so no fid=
-+# field was written and this check would fail.
-+if ! _dump_dir_structure "$TESTDIR" file_a "$expected"; then
++# Verify file content is preserved
++enc_content=$(cat $SCRATCH_MNT/encrypted_dir/testfile.txt 2>/dev/null)
++if [ "$enc_content" != "encrypted content" ]; then
++	echo "FAIL: Encrypted file content not preserved after setting LUFID"
 +	_scratch_unmount
 +	_check_scratch_fs
 +	status=1
 +	exit
 +fi
 +
++# Test case-insensitive lookup still works with LUFID
++if [ ! -f "$SCRATCH_MNT/encrypted_dir/TESTFILE.TXT" ]; then
++	echo "FAIL: Case-insensitive lookup doesn't work with LUFID"
++	_scratch_unmount
++	_check_scratch_fs
++	status=1
++	exit
++fi
++
++echo "Successfully set and verified three 16-byte LUFIDs on encrypted+casefolded file"
++
++# Dump directory structure to verify dirdata
++if ! _dump_dir_structure $SCRATCH_MNT/encrypted_dir testfile.txt "$expected_fid"; then
++	echo "FAIL: Stored LUFID does not match expected value"
++	_scratch_unmount
++	_check_scratch_fs
++	status=1
++	exit
++fi
++
++# Cleanup and verify filesystem
 +_scratch_unmount
 +_check_scratch_fs
 +
++# success, all done
 +status=0
 +exit
-diff --git a/tests/ext4/069.out b/tests/ext4/069.out
+diff --git a/tests/ext4/067.out b/tests/ext4/067.out
 new file mode 100644
-index 00000000..2c8c4d9f
+index 00000000..1c9a8126
 --- /dev/null
-+++ b/tests/ext4/069.out
-@@ -0,0 +1,7 @@
-+QA output created by 069
-+== Create dirdata + inline_data filesystem ==
-+== Verify directory is inline ==
-+  inline_dir: inline data confirmed
-+== Set LUFID on file_a (inline directory entry) ==
-+== Verify LUFID stored in inline directory entry ==
-+  Directory structure of inline_dir: OK (dirdata verified)
++++ b/tests/ext4/067.out
+@@ -0,0 +1,4 @@
++QA output created by 067
++Test: Set three 16-byte LUFIDs on file in encrypted+casefolded directory
++Successfully set and verified three 16-byte LUFIDs on encrypted+casefolded file
++  Directory structure of encrypted_dir: OK (dirdata verified)
 -- 
 2.43.7
 
