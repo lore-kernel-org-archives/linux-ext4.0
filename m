@@ -1,80 +1,80 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8ECC83F8ED6
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 10:50:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03FEC3F9F35
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 10:50:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785149426; cv=none; b=WvQU3jC5ycqx6+jRRLIwOfZTJQy0bleskPkWKZCqMuFnmHjXUQcgx2w8RSZ36QSXaOZ0fbMvY3gOCLWLbYO+Ksmy25R/rlMgmxuB1eZOh+CQS1H2snbdoeSpXuEhkFQpcXt8pyPbl5/FRsYCpUVJV3lslozVnL641u1XVfcS2QY=
+	t=1785149432; cv=none; b=eMBuIKy4/3BaAl/5t+czAUBORy5OEphBhk/8MGT9UJxGLHMRxsi4zWBENpbBUwxWZMIcCOTsWzKZ1l/0+/Ud3TTsEzibK8uGCwvhJcCa0ZRSaUZGzcTPry/QGOBYSdL5KxGrW8BDuctVYlUTuls0823gXI+R4s0Wb7O5CyNV2lE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785149426; c=relaxed/simple;
-	bh=pc7NSyXUa2dRxQ+Ye8ddqTw3582ro7LVRcHjsWqLW88=;
+	s=arc-20240116; t=1785149432; c=relaxed/simple;
+	bh=Qf++9qSSLCC+56CHUQkJQPTBeLBA818Dpw5k2OgttuY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=brvqKxWbHbB9qBAyslu/8fy/6MA65sV6+CNzF8G1MPFo4Do4KCUNcdLibwT6gspvQjGPtUZZbFJC+cIkFTfIfprZJyogXfKJ8BBjvQhDVt5GZeD4XLKKdWRYE4NFtgyoQ/8zJQaNvw04osDslMLU/pE7dyS63KHOrWzFAdJ5oIE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1AOL8tnl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=rl68Y1tK; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=QsPfgPhE; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ChTes6Y/; arc=none smtp.client-ip=195.135.223.131
+	 MIME-Version; b=dgkX4z678QzgwghmbWqjkd1t48XeDkF0Ybhm5k+HECAlPvl9LE9DQSFyMlYt3V+cQ2MtQeLf+SIdt7X7Dggz4UBD7JhK5kruGxfkYQGVn56JqzQs7h0V1eXnQkSTd5+nPaviGTnqZuS94qWYxgdHLZucoU/2ohWGpOgi37oPfhg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2y5L4uPy; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=73Ny01Em; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=kPwEtV+w; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7DNUwdBk; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1AOL8tnl";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="rl68Y1tK";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="QsPfgPhE";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ChTes6Y/"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2y5L4uPy";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="73Ny01Em";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="kPwEtV+w";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7DNUwdBk"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 0F18B5214;
-	Mon, 27 Jul 2026 10:49:56 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 714BA7DADF;
+	Mon, 27 Jul 2026 10:50:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785149400; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785149408; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=BKGDtzKcdxLGKPX5+LwcaPd3eUF/+3It9Z9vsd8GGlA=;
-	b=1AOL8tnl7k+gyQvKfTG+COPEXFu436sGhFMFBVPBFf35sWYk+wcVhR8Gc1tkJNgowgQjNn
-	8+CVT7G/bj2C7/BY5ANrUjTKdpKa6AVCAQ0hXnL9hd48dst2lkmO9qY01LQCgNuTpFsXeG
-	PCHZ09Nq/o4TOZ43c3gi0Mm6zSFK7BE=
+	bh=PuQGq05ldMEjAs+Ex3l61YsLHZUtknsICMU/G7w0Ox4=;
+	b=2y5L4uPygUYY73VjCY/3QcgX+hi7RpCmAOi4M8C+N1aN5P/XfJsABT8a/rDGf4ohb+P9mm
+	pkWeFZGjKFxZN3+GpaBwtMmiswHFGK1aL0cMny3YzZgyXnkNBZt+Uk8kiFBZ9sYG81MAaM
+	010cRERW6n8MjND0N1tdxeAWoaCN0Jo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785149400;
+	s=susede2_ed25519; t=1785149408;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=BKGDtzKcdxLGKPX5+LwcaPd3eUF/+3It9Z9vsd8GGlA=;
-	b=rl68Y1tKBJdVdiDqsRm8sCepB8eViX1BHHUeUriLSDswRb2kMZt2cgYTO5P5u3ygowvSbY
-	gZYMNqinlHfMu6DQ==
-Authentication-Results: smtp-out2.suse.de;
+	bh=PuQGq05ldMEjAs+Ex3l61YsLHZUtknsICMU/G7w0Ox4=;
+	b=73Ny01Em+ML+6kznYPTCiIEsYjrxKPCOiQw8wUi3NK5ade/bN3jXD8x56U3ZPEm0oKvl9o
+	XMFJllwByMu4IGDg==
+Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785149396; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785149404; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=BKGDtzKcdxLGKPX5+LwcaPd3eUF/+3It9Z9vsd8GGlA=;
-	b=QsPfgPhEekfoCmrKv3bjcL3TbXs3M4FQZFot9ON+pScTokMoQslP3X+UW0isL6jFg1EewT
-	zFeWrojcaX6p9hAhm3kyYUNdh/QYgdkloFs1uHFlZlbraS02eHjshovX8B/gOcuK50v6DV
-	iPELkpwZWHEAjmymOs5ecEAM5JAm0ec=
+	bh=PuQGq05ldMEjAs+Ex3l61YsLHZUtknsICMU/G7w0Ox4=;
+	b=kPwEtV+wJsLrUqE7ifmyx8LGS85NJUtSxyi/tN0a04puiqP4EDec2+a6eHcVI1WQU3I188
+	oW7j+hiNktngfuE49+ZsbdkZHZ3rJcDpbzUmM3HkUxfc5DrmlMj/kfKSewY8gq/e4EbHCw
+	/gTS8wvqdjcA2q3HGNBw/IMNizAPFn8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785149396;
+	s=susede2_ed25519; t=1785149404;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=BKGDtzKcdxLGKPX5+LwcaPd3eUF/+3It9Z9vsd8GGlA=;
-	b=ChTes6Y/LhE+neKQl7dLFbTvJpAluUmkr58QTKHM3ea7Vx2cjtmZ8/pbtUmOVD743T3tWL
-	R8bUwILUboTjNODQ==
+	bh=PuQGq05ldMEjAs+Ex3l61YsLHZUtknsICMU/G7w0Ox4=;
+	b=7DNUwdBkA+6s5OXt8RmtyY7xESVvvvnCoCM/8DUdwKnwS+A004LJWJlkvyDwnR1XdjZZwc
+	PQf0HKjtVx3rcfCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 054F5779CF;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 64876779D8;
 	Mon, 27 Jul 2026 10:49:48 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id FABLAcw3Z2oUawAAD6G6ig
+	id BUqMGMw3Z2omawAAD6G6ig
 	(envelope-from <jack@suse.cz>); Mon, 27 Jul 2026 10:49:48 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 46277A1326; Mon, 27 Jul 2026 12:49:47 +0200 (CEST)
+	id 508DCA132B; Mon, 27 Jul 2026 12:49:47 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -82,11 +82,10 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	Ted Tso <tytso@mit.edu>,
 	<linux-ext4@vger.kernel.org>,
 	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Jan Kara <jack@suse.cz>,
-	stable@vger.kernel.org
-Subject: [PATCH v5 06/20] ext2: Fix lost inode updates for IS_SYNC inodes
-Date: Mon, 27 Jul 2026 12:49:24 +0200
-Message-ID: <20260727104923.3828017-26-jack@suse.cz>
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH v5 08/20] ext2: Avoid unnecessary inode buffer writeback for sync(2)
+Date: Mon, 27 Jul 2026 12:49:26 +0200
+Message-ID: <20260727104923.3828017-28-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260727101509.21667-1-jack@suse.cz>
 References: <20260727101509.21667-1-jack@suse.cz>
@@ -96,98 +95,63 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1941; i=jack@suse.cz; h=from:subject; bh=pc7NSyXUa2dRxQ+Ye8ddqTw3582ro7LVRcHjsWqLW88=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqZze3+stpQtY37/eaHutcWJHpabz5KYFr/6V2Y fcUiRSRn7OJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamc3twAKCRCcnaoHP2RA 2VJKCADnOsDoUmJhfDwREplXpB9FDKkcjJ8E2gcM/eLUV55ax1LZWNWH+BWzomve8qQMEo5mjhF 7n0rF8bKAvR1mE13V7hNJf3Epyz5I7HQrGjChUL0w2AoZ1vWtMhU8I8BQY7y3YnFPG1ILZ62Nqs iHSOagj7nhmJ20JyPUQ0pCSOTIdOWosSpqsD+Byta5pVLWluVFbTwfGS+AD3pNybyCEOCShBmw9 bTzIs5tbRv38F8TQSWzyZD/f9VUOH1B2A/v4y8rOpoHNICsrqz6MVXvjNDeRHeqCacpcYyeuNWa eKzImd9u4pS3ODcYNnJUix09//5rtwyw4ei8aGdKiBldZH0U
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1049; i=jack@suse.cz; h=from:subject; bh=Qf++9qSSLCC+56CHUQkJQPTBeLBA818Dpw5k2OgttuY=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqZze5aNmujZfa5LKEk2KZ9A6uDQkGWBUoCaFTF m9f87EI7lGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamc3uQAKCRCcnaoHP2RA 2bfHCAC7F1co9F5tXaC6n26+FhIk9tjYlay0OxbKSMar+aVdW9vvvlxF2kt6ORrjzR7FVeMsBej DV9ddLqrqNvn8ifb6IXM+nt3uzn4/HBpKy7N2z72weMeH1U12GJwL7yr8PVlLATTE8simcxvwGE y1tuosf7feS4EdP89hW62c76q54sUsZDw0OKDEgjBaQKL2iZOeVKLw8Gfq9RUI0nLidlmLobZOk eARAW896tHjc9lwmedcqIo25E5jNItKQyqz+3b4kGdmy+gAsY+i0zEwMT4hvJTEKd+4E6MdZ85x 33TRZotfheqcaCEAfmJcdvT+V92Pq4tLIjlAZgUqbvGVWFoG
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 X-Spamd-Result: default: False [-1.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
-	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_CONTAINS_FROM(1.00)[];
 	R_MISSING_CHARSET(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	ARC_NA(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FREEMAIL_CC(0.00)[kernel.org,gmail.com,mit.edu,vger.kernel.org,mail.parknet.co.jp,suse.cz];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:mid,suse.cz:email];
 	TAGGED_RCPT(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[8];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[kernel.org,gmail.com,mit.edu,vger.kernel.org,mail.parknet.co.jp,suse.cz];
+	R_RATELIMIT(0.00)[to_ip_from(RLck8brw5hxmszoarioc7838it)];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:mid,suse.cz:email];
+	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com]
 X-Spam-Flag: NO
 X-Spam-Score: -1.30
 X-Spam-Level: 
 
-ext2_setsize() and ext2_xattr_set2() had a construct like:
+For sync(2) the generic code calls sync_blockdev_nowait() and later
+sync_blockdev() to persist all metadata buffers. Thus there's no need
+for ext2_write_inode() to do that which speeds up sync(2) writeback.
 
-	if (IS_SYNC(inode)) {
-		sync_inode_metadata(inode, 1);
-	} else {
-		mark_inode_dirty(inode);
-	}
-
-which leads to lost inode updates for IS_SYNC inodes because
-sync_inode_metadata() does anything only if the inode is already dirty
-and hence inode updates may be simply lost. Fix the problem by
-unconditionally marking the inode dirty and *then* call
-sync_inode_metadata().
-
-CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/inode.c | 7 ++-----
- fs/ext2/xattr.c | 4 ++--
- 2 files changed, 4 insertions(+), 7 deletions(-)
+ fs/ext2/inode.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 29808629cce5..269b1c9fba5f 100644
+index 4dbe52e42d82..904e70f3140e 100644
 --- a/fs/ext2/inode.c
 +++ b/fs/ext2/inode.c
-@@ -1258,12 +1258,9 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
- 	filemap_invalidate_unlock(inode->i_mapping);
- 
- 	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
--	if (inode_needs_sync(inode)) {
--		mmb_sync(&EXT2_I(inode)->i_metadata_bhs);
-+	mark_inode_dirty(inode);
-+	if (inode_needs_sync(inode))
- 		sync_inode_metadata(inode, 1);
--	} else {
--		mark_inode_dirty(inode);
--	}
- 
- 	return 0;
- }
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index e55d16abf422..be63f89402a3 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -777,6 +777,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 	/* Update the inode. */
- 	EXT2_I(inode)->i_file_acl = new_bh ? new_bh->b_blocknr : 0;
- 	inode_set_ctime_current(inode);
-+	mark_inode_dirty(inode);
- 	if (IS_SYNC(inode)) {
- 		error = sync_inode_metadata(inode, 1);
- 		/* In case sync failed due to ENOSPC the inode was actually
-@@ -789,8 +790,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			}
- 			goto cleanup;
- 		}
--	} else
--		mark_inode_dirty(inode);
-+	}
- 
- 	error = 0;
- 	if (old_bh && old_bh != new_bh) {
+@@ -1560,7 +1560,11 @@ int ext2_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	} else for (n = 0; n < EXT2_N_BLOCKS; n++)
+ 		raw_inode->i_block[n] = ei->i_data[n];
+ 	mark_buffer_dirty(bh);
+-	if (wbc->sync_mode == WB_SYNC_ALL) {
++	/*
++	 * For sync(2) the generic code will call sync_blockdev() to write
++	 * all metadata more efficiently.
++	 */
++	if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync) {
+ 		sync_dirty_buffer(bh);
+ 		if (buffer_req(bh) && !buffer_uptodate(bh)) {
+ 			printk ("IO error syncing ext2 inode [%s:%08lx]\n",
 -- 
 2.51.0
 
