@@ -1,80 +1,81 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 739CF3F9A0D
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 10:50:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9AA103FB7C1
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Jul 2026 10:50:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785149439; cv=none; b=hLqLzNUqRAGybUc+5l22un4ezyeKY1MDGG5lWNiYuHCBLMEFUILXMqM/QPjIVAH60LqHjuqF0DPv92V6uRKUgdybTpli8gRPoudEH/xoiOlXfdcgdoAG+DganlskGWnejHQBKhbRCj7ww/6RIq0q5ZT2RO8RXcE2u36WtqAojN8=
+	t=1785149445; cv=none; b=JdjkRi2IDKIwGPI4j1bBsXHIX1cFxVVKgxjddDpJ/TRD9NVgiGTEcC09GXRqoaL7ZlxuQgH1R0YxaV8jVgAF6jjQ6LaCRuF3CNgpdPcXTkFg6DCyBMyYWv9DzubVd4x35ZbYox4a7OMXr0wVvuDEaV3MQSsvVjcmABBwFjS1cVQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785149439; c=relaxed/simple;
-	bh=JoZ/xG2l3rVPxCaE4BHjJTfvnkkiuUvmhvDs+cTmZsE=;
+	s=arc-20240116; t=1785149445; c=relaxed/simple;
+	bh=ejspJvANjWvDzVMA0IxwP41Wi4JESDm5nzXIomuqDyU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=E9pNCQlXe78buG7B0srwWl/9W0wLBHx1AEEfJKZZrb76VG7uRIJy98z++fbrWM8142odnXrUyShmIQgNJ8IjxrAtMSDLRAHPp3Q/9GBlIwAHnDP0NVa6Q8LSE1HNOCAMipovNx1SJjgKxusba1lTd890vKocF37Q83yrm1s/+vk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=a/VtOBPU; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=+1I48hxo; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=NtIy7fcR; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=A68yo9ye; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=FJEHrByRRzBuhn4xR0ILH7qBCUwvxIL1fqZeQ8nTeY2+OR63C16/+waJCr65ZGsObbYj0fb42wEYECSKiuWFhi0iUBHUxLld98HoDDgbeIjtrQP0AOm0nMX45ORMvlcf0WI3rQ/cya4hUATBzF1g0vKHu6XQbaa2NyLvNIeJ5fU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=f39Xhfy1; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ybyRwL+y; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=uP9bFCTZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=BQWtAjsR; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="a/VtOBPU";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="+1I48hxo";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="NtIy7fcR";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="A68yo9ye"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="f39Xhfy1";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ybyRwL+y";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="uP9bFCTZ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="BQWtAjsR"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 6F39A7DACE;
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 72DE87DAF6;
 	Mon, 27 Jul 2026 10:50:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1785149408; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FJ9qFK1APQdrYT4LrC3apmEgzwa3Vnuqq2qRjFJEcgY=;
-	b=a/VtOBPUwALiZ0+A8il+/7DKmJ0uDHRb5sFn/h6GC6q/uwG2W44qT7VG10x2oorZjBniOZ
-	HYqSlHPX9H/457lzhf3581iuyXSmkTlXi4uBfkm2p09JsIeO9f7FUdYJX+7ByN568DUywZ
-	4i/gKTWTP/qX8hiWDIQnivsPUvGdrKQ=
+	bh=+6i9Nian6Uk6NKmMGXZ/it4vlUCAM7P8C9nVOJJnALs=;
+	b=f39Xhfy12FIkpgpchOs/G0RKgwML9PC9KLXE7r5ErjE+6iXUz9cFdB9FWMy+4pcqn6A70G
+	ril7oFgVLO/fRvqD/jSR9iEz8gqAagD6ZBVLzurHBA41SfID7d2zN4mIryzBnYFW70dMnQ
+	M36R4BjCPX003EIZFa26XuiNphC4Yyc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1785149408;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FJ9qFK1APQdrYT4LrC3apmEgzwa3Vnuqq2qRjFJEcgY=;
-	b=+1I48hxos3XDlRARrLErXx9yImr7zfGvmp/wrIgn0CL0aB/atYrzzsjhqonG2/ncK2lWe9
-	vvSwEpOpfkRVeLDw==
+	bh=+6i9Nian6Uk6NKmMGXZ/it4vlUCAM7P8C9nVOJJnALs=;
+	b=ybyRwL+yMuXvH2wITDjFfuUWv834tj8wqYjDRmb4ob1Uv7ISBeagEiyFC8d+96k3f4LaLB
+	HvKi3NkVsQzhWICQ==
 Authentication-Results: smtp-out1.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=uP9bFCTZ;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=BQWtAjsR
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1785149404; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FJ9qFK1APQdrYT4LrC3apmEgzwa3Vnuqq2qRjFJEcgY=;
-	b=NtIy7fcRlA76FoQdu6kLOYaPO7zKF44hxrDvYu9gE616BDBrdvThqBjxgqLz3Pou/HVmT3
-	IHlYijWhEt+IxbT1Atrxw+G41BE40WNCJGFI0q8g8PEZCYUZoaJ3tgdAsDWms9ZvfXuWez
-	e63ERddNZZm1pWqgaitkAJQNsH6Xb0Y=
+	bh=+6i9Nian6Uk6NKmMGXZ/it4vlUCAM7P8C9nVOJJnALs=;
+	b=uP9bFCTZDXUsVu39h/tzTpwNuEygukgfpgzGbW8E2r+wY7IDlvHZZAxvLqszbXbfbJvSRQ
+	Y9g5ztxi52ueE4KfuzkCPestomZ1PhYf3F5RtR4wH5Yx26wLAFvxAUaEx56QP1nUwn0WIs
+	OCxA+ah33GCUEz6FE02pGlCwqiUKcjo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1785149404;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FJ9qFK1APQdrYT4LrC3apmEgzwa3Vnuqq2qRjFJEcgY=;
-	b=A68yo9yeCVH7ymtK2GeViMppvLR/wv7BsDh0Qu9dcBjgTYUcE+JzjNFSO+sHhrCBNE/VCT
-	4rWXHH1hTSnkDLBg==
+	bh=+6i9Nian6Uk6NKmMGXZ/it4vlUCAM7P8C9nVOJJnALs=;
+	b=BQWtAjsRBowdgyN2zYvYMKdx00/xH3cnbTfIcAMAVLQQsF6bQ/rNtZYC9Y5BkL0QVrwSLR
+	ishyt+okI3DpzwDA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 83CC1779E7;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8095A779D9;
 	Mon, 27 Jul 2026 10:49:48 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id GJwWIMw3Z2osawAAD6G6ig
+	id Z75iH8w3Z2orawAAD6G6ig
 	(envelope-from <jack@suse.cz>); Mon, 27 Jul 2026 10:49:48 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 7E66CA133D; Mon, 27 Jul 2026 12:49:47 +0200 (CEST)
+	id 796D3A133C; Mon, 27 Jul 2026 12:49:47 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>,
@@ -83,9 +84,9 @@ Cc: Christian Brauner <brauner@kernel.org>,
 	<linux-ext4@vger.kernel.org>,
 	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH v5 17/20] ext4: Fix data integrity writeout issues in nojournal mode
-Date: Mon, 27 Jul 2026 12:49:35 +0200
-Message-ID: <20260727104923.3828017-37-jack@suse.cz>
+Subject: [PATCH v5 16/20] minix: Fix data integrity writeout issues
+Date: Mon, 27 Jul 2026 12:49:34 +0200
+Message-ID: <20260727104923.3828017-36-jack@suse.cz>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20260727101509.21667-1-jack@suse.cz>
 References: <20260727101509.21667-1-jack@suse.cz>
@@ -95,288 +96,236 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8203; i=jack@suse.cz; h=from:subject; bh=JoZ/xG2l3rVPxCaE4BHjJTfvnkkiuUvmhvDs+cTmZsE=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqZzfBc/8XJGgFZ63rgizdFNmFXmhU1O9qICJDa T4glp2BUgOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamc3wQAKCRCcnaoHP2RA 2fzHB/4vLuKM2GYyiQfWqH5BDARZ3zNfL3nj+Jqz2J3VhvbEiNUsRQQm7xWcRdzfUuEhBYtNl5+ NnhrOo2OodptwWv3i6O6a4zy+vKQ9IuWeMnXMjGJKmvwweFF/xwpxZm4Sd6tk+mnMrsheHYRqpM RJdDhUlQDTHQM8iFSo2rN8M5xDO8XgLudbUFGXGRg+imoVNQ4WVovBzKuvyBGqznaIfg47sKgnI kISeM8SAHnQcCeO4I68gCrZcWoJK73mFoXq+b+uykKco6UgWpG2uOVXzRDygONhpBHwizupwKpe D2+tu358ZOUd0fgT4XK9JUXK/Zo3ieokVONoeDoUwHahD9WO
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6549; i=jack@suse.cz; h=from:subject; bh=ejspJvANjWvDzVMA0IxwP41Wi4JESDm5nzXIomuqDyU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqZzfAfrkJJihwFQcnULvC0obKUS8/gIXK2RMB1 4DRTdjKlVSJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamc3wAAKCRCcnaoHP2RA 2TO0B/4pLDdlVcgAmi+TEjcv79gGca4xFLMuesVf0yD41nCz7pL0bGOIg9ezOS3XjLxnCvphG+j hzVxHwnq/jmxlKPrDtAl3WDnMWW+XYYXvzjO2pKFiEbsgounDFG8Wb7AQBllBvki8ytw+yeyH3q SJG1+b2M9f2RkauTEgHoDbvQE0Y1szeAt10tBF09lftJ5XOVvJT06qvL7rULSC7XnD3+EzdRsqH vQ3KTx2/MjfVFxvNLitesDRKQK7pCjRdsbPSD71hUTVLSJERRQHpJKg11KAYW8ylU4r+duMpu55 2zcJY7JhinDv2QVW2PWflgT88A7kbDaCnq9W/1uqMOHFNqQD
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
-X-Spam-Score: -1.30
-X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-1.30 / 50.00];
+X-Spamd-Result: default: False [-1.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	R_MISSING_CHARSET(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,iloc.bh:url,suse.cz:email,suse.cz:mid];
+	MX_GOOD(-0.01)[];
 	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	ARC_NA(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	FREEMAIL_CC(0.00)[kernel.org,gmail.com,mit.edu,vger.kernel.org,mail.parknet.co.jp,suse.cz];
-	R_RATELIMIT(0.00)[to_ip_from(RLck8brw5hxmszoarioc7838it)];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:mid,suse.cz:dkim];
 	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:mid,imap1.dmz-prg2.suse.org:helo,iloc.bh:url];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
 	TAGGED_RCPT(0.00)[];
 	RCPT_COUNT_SEVEN(0.00)[7];
+	R_RATELIMIT(0.00)[to_ip_from(RLhafujjw6m7bafrsz8p45s31g)];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com]
+X-Spam-Flag: NO
+X-Spam-Score: -1.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 72DE87DAF6
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
-Several racing fsyncs on ext4 in nojournal mode could result in some
-fsync returning earlier than all metadata buffers were properly
-persisted. Also ext4_fsync() in nojournal mode was somewhat inefficient
-because it was always writing out the inode regardless whether it was
-dirty or not.
+Minix could fail to properly write out inode on fsync(2) due to races
+with WB_SYNC_NONE writeback. Several racing fsyncs could also result in
+some fsync returning earlier than all metadata buffers were properly
+persisted. Furthermore DIRSYNC handling missed writing inode related
+metadata.
 
-Fix these issues by using new .sync_inode_metadata method which makes
-sure all inode related metadata is written to disk during any
-WB_SYNC_ALL writeback in nojournal mode. This also somewhat simplifies
-the nojournal mode fsync handling.
+Fix all these issues by using new .sync_inode_metadata method which
+makes sure all inode related metadata is written to disk during any
+WB_SYNC_ALL writeback.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/fsync.c | 28 +++------------
- fs/ext4/inode.c | 90 ++++++++++++++++++++++++++++++++-----------------
- fs/ext4/super.c |  7 +++-
- 4 files changed, 72 insertions(+), 54 deletions(-)
+ fs/minix/dir.c   |  2 +-
+ fs/minix/file.c  |  9 +--------
+ fs/minix/inode.c | 52 ++++++++++++++++++++++++++++++++----------------
+ fs/minix/minix.h |  1 -
+ 4 files changed, 37 insertions(+), 27 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 64f8f63f4415..0f06155a35a6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3166,6 +3166,7 @@ extern struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	__ext4_iget((sb), (ino), (flags), __func__, __LINE__)
+diff --git a/fs/minix/dir.c b/fs/minix/dir.c
+index 361d26d87d2e..2ca16f849d5a 100644
+--- a/fs/minix/dir.c
++++ b/fs/minix/dir.c
+@@ -23,7 +23,7 @@ const struct file_operations minix_dir_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+ 	.iterate_shared	= minix_readdir,
+-	.fsync		= minix_fsync,
++	.fsync		= simple_fsync,
+ };
  
- extern int  ext4_write_inode(struct inode *, struct writeback_control *);
-+extern int  ext4_sync_inode_metadata(struct inode *, struct writeback_control *);
- extern int  ext4_setattr(struct mnt_idmap *, struct dentry *,
- 			 struct iattr *);
- extern u32  ext4_dio_alignment(struct inode *inode);
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index b7ea4433f4be..2999c2cc8fcf 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -46,7 +46,6 @@
- static int ext4_sync_parent(struct inode *inode)
+ /*
+diff --git a/fs/minix/file.c b/fs/minix/file.c
+index 86e5943cd2ff..02aabbdb5dea 100644
+--- a/fs/minix/file.c
++++ b/fs/minix/file.c
+@@ -10,13 +10,6 @@
+ #include <linux/buffer_head.h>
+ #include "minix.h"
+ 
+-int minix_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+-{
+-	return mmb_fsync(file,
+-			&minix_i(file->f_mapping->host)->i_metadata_bhs,
+-			start, end, datasync);
+-}
+-
+ /*
+  * We have mostly NULLs here: the current defaults are OK for
+  * the minix filesystem.
+@@ -26,7 +19,7 @@ const struct file_operations minix_file_operations = {
+ 	.read_iter	= generic_file_read_iter,
+ 	.write_iter	= generic_file_write_iter,
+ 	.mmap_prepare	= generic_file_mmap_prepare,
+-	.fsync		= minix_fsync,
++	.fsync		= simple_fsync,
+ 	.splice_read	= filemap_splice_read,
+ };
+ 
+diff --git a/fs/minix/inode.c b/fs/minix/inode.c
+index c30cc590698d..daf83e4ff25c 100644
+--- a/fs/minix/inode.c
++++ b/fs/minix/inode.c
+@@ -24,6 +24,8 @@
+ 
+ static int minix_write_inode(struct inode *inode,
+ 		struct writeback_control *wbc);
++static int minix_sync_inode_metadata(struct inode *inode,
++				     struct writeback_control *wbc);
+ static int minix_statfs(struct dentry *dentry, struct kstatfs *buf);
+ 
+ void __minix_error_inode(struct inode *inode, const char *function,
+@@ -128,6 +130,7 @@ static const struct super_operations minix_sops = {
+ 	.alloc_inode	= minix_alloc_inode,
+ 	.free_inode	= minix_free_in_core_inode,
+ 	.write_inode	= minix_write_inode,
++	.sync_inode_metadata = minix_sync_inode_metadata,
+ 	.evict_inode	= minix_evict_inode,
+ 	.put_super	= minix_put_super,
+ 	.statfs		= minix_statfs,
+@@ -630,7 +633,7 @@ struct inode *minix_iget(struct super_block *sb, unsigned long ino)
+ /*
+  * The minix V1 function to synchronize an inode.
+  */
+-static struct buffer_head * V1_minix_update_inode(struct inode * inode)
++static int V1_minix_update_inode(struct inode * inode)
  {
- 	struct dentry *dentry, *next;
--	struct mapping_metadata_bhs *mmb;
- 	int ret = 0;
+ 	struct buffer_head * bh;
+ 	struct minix_inode * raw_inode;
+@@ -639,7 +642,7 @@ static struct buffer_head * V1_minix_update_inode(struct inode * inode)
  
- 	if (!ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY))
-@@ -69,12 +68,6 @@ static int ext4_sync_parent(struct inode *inode)
- 		 * through ext4_evict_inode()) and so we are safe to flush
- 		 * metadata blocks and the inode.
- 		 */
--		mmb = ext4_i_metadata_bhs(inode);
--		if (mmb) {
--			ret = mmb_sync(mmb);
--			if (ret)
--				break;
--		}
- 		ret = sync_inode_metadata(inode, 1);
- 		if (ret)
- 			break;
-@@ -87,22 +80,11 @@ static int ext4_fsync_nojournal(struct file *file, loff_t start, loff_t end,
- 				int datasync, bool *needs_barrier)
- {
- 	struct inode *inode = file->f_inode;
--	struct writeback_control wbc = {
--		.sync_mode = WB_SYNC_ALL,
--		.nr_to_write = 0,
--	};
- 	int ret;
- 
--	ret = mmb_fsync_noflush(file, ext4_i_metadata_bhs(inode),
--				start, end, datasync);
-+	ret = sync_inode_metadata(inode, 1);
- 	if (ret)
- 		return ret;
--
--	/* Force writeout of inode table buffer to disk */
--	ret = ext4_write_inode(inode, &wbc);
--	if (ret)
--		return ret;
--
- 	ret = ext4_sync_parent(inode);
- 
- 	if (test_opt(inode->i_sb, BARRIER))
-@@ -160,6 +142,10 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	if (sb_rdonly(inode->i_sb))
- 		goto out;
- 
-+	ret = file_write_and_wait_range(file, start, end);
-+	if (ret)
-+		goto out;
-+
- 	if (!EXT4_SB(inode->i_sb)->s_journal) {
- 		ret = ext4_fsync_nojournal(file, start, end, datasync,
- 					   &needs_barrier);
-@@ -168,10 +154,6 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 		goto out;
- 	}
- 
--	ret = file_write_and_wait_range(file, start, end);
--	if (ret)
--		goto out;
--
- 	/*
- 	 *  The caller's filemap_fdatawrite()/wait will sync the data.
- 	 *  Metadata is in the journal, we wait for proper transaction to
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e6acef486ee1..7a1f961cd11c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5799,6 +5799,10 @@ static int ext4_do_update_inode(handle_t *handle,
-  * ext4_mark_inode_dirty().  This is a correctness thing for WB_SYNC_ALL
-  * writeback.
-  *
-+ * For nojournal mode all the work is done in ext4_sync_inode_metadata()
-+ * because inode content is already copied into raw inode buffer and inode
-+ * is marked with I_METADATA_WRITEBACK.
-+ *
-  * Note that we are absolutely dependent upon all inode dirtiers doing the
-  * right thing: they *must* call mark_inode_dirty() after dirtying info in
-  * which we are interested.
-@@ -5824,42 +5828,54 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	if (unlikely(err))
- 		return err;
- 
--	if (EXT4_SB(inode->i_sb)->s_journal) {
--		if (ext4_journal_current_handle()) {
--			ext4_debug("called recursively, non-PF_MEMALLOC!\n");
--			dump_stack();
--			return -EIO;
--		}
-+	if (!EXT4_SB(inode->i_sb)->s_journal)
-+		return 0;
- 
--		/*
--		 * No need to force transaction in WB_SYNC_NONE mode. Also
--		 * ext4_sync_fs() will force the commit after everything is
--		 * written.
--		 */
--		if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
--			return 0;
-+	if (ext4_journal_current_handle()) {
-+		ext4_debug("called recursively, non-PF_MEMALLOC!\n");
-+		dump_stack();
+ 	raw_inode = minix_V1_raw_inode(inode->i_sb, inode->i_ino, &bh);
+ 	if (!raw_inode)
+-		return NULL;
 +		return -EIO;
-+	}
-+
-+	/*
-+	 * No need to force transaction in WB_SYNC_NONE mode. Also
-+	 * ext4_sync_fs() will force the commit after everything is
-+	 * written.
-+	 */
-+	if (wbc->sync_mode != WB_SYNC_ALL || wbc->for_sync)
-+		return 0;
+ 	raw_inode->i_mode = inode->i_mode;
+ 	raw_inode->i_uid = fs_high2lowuid(i_uid_read(inode));
+ 	raw_inode->i_gid = fs_high2lowgid(i_gid_read(inode));
+@@ -651,13 +654,15 @@ static struct buffer_head * V1_minix_update_inode(struct inode * inode)
+ 	else for (i = 0; i < 9; i++)
+ 		raw_inode->i_zone[i] = minix_inode->u.i1_data[i];
+ 	mark_buffer_dirty(bh);
+-	return bh;
++	brelse(bh);
++	set_inode_metadata_writeback(inode);
++	return 0;
+ }
  
--		err = ext4_fc_commit(EXT4_SB(inode->i_sb)->s_journal,
-+	return ext4_fc_commit(EXT4_SB(inode->i_sb)->s_journal,
- 						EXT4_I(inode)->i_sync_tid);
--	} else {
--		struct ext4_iloc iloc;
+ /*
+  * The minix V2 function to synchronize an inode.
+  */
+-static struct buffer_head * V2_minix_update_inode(struct inode * inode)
++static int V2_minix_update_inode(struct inode * inode)
+ {
+ 	struct buffer_head * bh;
+ 	struct minix2_inode * raw_inode;
+@@ -666,7 +671,7 @@ static struct buffer_head * V2_minix_update_inode(struct inode * inode)
+ 
+ 	raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
+ 	if (!raw_inode)
+-		return NULL;
++		return -EIO;
+ 	raw_inode->i_mode = inode->i_mode;
+ 	raw_inode->i_uid = fs_high2lowuid(i_uid_read(inode));
+ 	raw_inode->i_gid = fs_high2lowgid(i_gid_read(inode));
+@@ -680,29 +685,42 @@ static struct buffer_head * V2_minix_update_inode(struct inode * inode)
+ 	else for (i = 0; i < 10; i++)
+ 		raw_inode->i_zone[i] = minix_inode->u.i2_data[i];
+ 	mark_buffer_dirty(bh);
+-	return bh;
++	brelse(bh);
++	set_inode_metadata_writeback(inode);
++	return 0;
+ }
+ 
+ static int minix_write_inode(struct inode *inode, struct writeback_control *wbc)
++{
++	if (INODE_VERSION(inode) == MINIX_V1)
++		return V1_minix_update_inode(inode);
++	return V2_minix_update_inode(inode);
 +}
 +
-+int ext4_sync_inode_metadata(struct inode *inode, struct writeback_control *wbc)
-+{
-+	struct ext4_iloc iloc;
-+	struct mapping_metadata_bhs *mmb;
-+	int err;
++static int minix_sync_inode_metadata(struct inode *inode,
++				     struct writeback_control *wbc)
+ {
+ 	int err = 0;
+ 	struct buffer_head *bh;
++	void *raw_inode;
  
--		err = __ext4_get_inode_loc_noinmem(inode, &iloc);
-+	/* We should only get here in nojournal mode */
-+	if (WARN_ON_ONCE(EXT4_SB(inode->i_sb)->s_journal))
-+		return -EFSCORRUPTED;
-+
-+	err = __ext4_get_inode_loc_noinmem(inode, &iloc);
-+	if (err)
-+		return err;
-+	mmb = READ_ONCE(EXT4_I(inode)->i_metadata_bhs);
-+	if (mmb) {
-+		err = mmb_sync(mmb);
- 		if (err)
--			return err;
--		/*
--		 * sync(2) will flush the whole buffer cache. No need to do
--		 * it here separately for each inode.
--		 */
--		if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync)
--			sync_dirty_buffer(iloc.bh);
--		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
--			ext4_error_inode_block(inode, iloc.bh->b_blocknr, EIO,
--					       "IO error syncing inode");
+ 	if (INODE_VERSION(inode) == MINIX_V1)
+-		bh = V1_minix_update_inode(inode);
++		raw_inode = minix_V1_raw_inode(inode->i_sb, inode->i_ino, &bh);
+ 	else
+-		bh = V2_minix_update_inode(inode);
+-	if (!bh)
++		raw_inode = minix_V2_raw_inode(inode->i_sb, inode->i_ino, &bh);
++	if (!raw_inode)
+ 		return -EIO;
+-	if (wbc->sync_mode == WB_SYNC_ALL && buffer_dirty(bh)) {
+-		sync_dirty_buffer(bh);
+-		if (buffer_req(bh) && !buffer_uptodate(bh)) {
+-			printk("IO error syncing minix inode [%s:%08llx]\n",
+-				inode->i_sb->s_id, inode->i_ino);
 -			err = -EIO;
 -		}
--		brelse(iloc.bh);
-+			goto out;
- 	}
-+	sync_dirty_buffer(iloc.bh);
-+	if (buffer_write_io_error(iloc.bh)) {
-+		ext4_error_inode_block(inode, iloc.bh->b_blocknr, EIO,
-+				       "IO error syncing inode");
++	err = mmb_sync(&minix_i(inode)->i_metadata_bhs);
++	if (err)
++		goto out;
++	sync_dirty_buffer(bh);
++	if (buffer_write_io_error(bh)) {
++		printk("IO error syncing minix inode [%s:%08llx]\n",
++			inode->i_sb->s_id, inode->i_ino);
 +		err = -EIO;
-+	}
+ 	}
+-	brelse (bh);
 +out:
-+	brelse(iloc.bh);
++	brelse(bh);
  	return err;
  }
  
-@@ -6407,6 +6423,20 @@ int ext4_mark_iloc_dirty(handle_t *handle,
- 	/* ext4_do_update_inode() does jbd2_journal_dirty_metadata */
- 	err = ext4_do_update_inode(handle, inode, iloc);
- 	put_bh(iloc->bh);
-+	/*
-+	 * Mark that there's metadata writeout pending for the inode so that it
-+	 * gets properly flushed on fsync(2) and similar.
-+	 */
-+	if (!EXT4_SB(inode->i_sb)->s_journal) {
-+		/*
-+		 * Inode didn't need to go through dirtying, make sure it is
-+		 * attached to wb so that writeback can handle it.
-+		 */
-+		spin_lock(&inode->i_lock);
-+		inode_attach_wb(inode, NULL);
-+		spin_unlock(&inode->i_lock);
-+		set_inode_metadata_writeback(inode);
-+	}
- 	return err;
- }
+diff --git a/fs/minix/minix.h b/fs/minix/minix.h
+index 9e52d4302f0d..78722ce22e1e 100644
+--- a/fs/minix/minix.h
++++ b/fs/minix/minix.h
+@@ -59,7 +59,6 @@ int minix_getattr(struct mnt_idmap *, const struct path *,
+ 		struct kstat *, u32, unsigned int);
+ int minix_prepare_chunk(struct folio *folio, loff_t pos, unsigned len);
+ struct mapping_metadata_bhs *minix_get_metadata_bhs(struct inode *inode);
+-int minix_fsync(struct file *file, loff_t start, loff_t end, int datasync);
  
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8671fa1209dd..ae33f5bcb133 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1608,9 +1608,13 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_ALL
- 	};
-+	int ret;
- 
- 	trace_ext4_nfs_commit_metadata(inode);
--	return ext4_write_inode(inode, &wbc);
-+	ret = ext4_write_inode(inode, &wbc);
-+	if (!ret && inode_state_read_once(inode) & I_METADATA_WRITEBACK)
-+		ret = ext4_sync_inode_metadata(inode, &wbc);
-+	return ret;
- }
- 
- #ifdef CONFIG_QUOTA
-@@ -1667,6 +1671,7 @@ static const struct super_operations ext4_sops = {
- 	.free_inode	= ext4_free_in_core_inode,
- 	.destroy_inode	= ext4_destroy_inode,
- 	.write_inode	= ext4_write_inode,
-+	.sync_inode_metadata = ext4_sync_inode_metadata,
- 	.dirty_inode	= ext4_dirty_inode,
- 	.drop_inode	= ext4_drop_inode,
- 	.evict_inode	= ext4_evict_inode,
+ extern void V1_minix_truncate(struct inode *);
+ extern void V2_minix_truncate(struct inode *);
 -- 
 2.51.0
 
