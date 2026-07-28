@@ -1,606 +1,748 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-1-111.ptr.blmpb.com (va-1-111.ptr.blmpb.com [209.127.230.111])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48BBE388881;
-	Mon, 27 Jul 2026 22:39:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5298E3033CB
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 03:04:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.230.111
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785191980; cv=none; b=YwAqG42ZkbPbEUxIURoJIgD5z+gJCbEAhn1he4EReoToU3R6TcgD43KOBBv0+zX/+KcmT8BPH4Z9/yQsgGI0EExESrYJvu30k6MVnODtJjtlqH3mTCAKHJHsKM0zjVsOFG+8vXlkdD95zFU1yZTPZMcObgzIxcAII0O3rrm4wEo=
+	t=1785207848; cv=none; b=N3MGKmxRBq9gTA/5bET1V28REg2U9QZ99Xj1oKR6AGhnDmw1Ygzkc+01OvyPrHkvuihnut9ucdPiM6xGLIRvUcwv1lQuDxFTfcCNUrt7XTLCrND/Ku3DlsNC9g7Noxe5AafxlYB65wTq3tsP/b4CkH4X90HbI6RSpMDak2URGqM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785191980; c=relaxed/simple;
-	bh=QD8IRFA2FDj0ymzHCWdAk6GDICOEPcWf+mJiRCeut6Q=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lkVyjQOk+XQXLXxwhtqJi5mw5jsHWXv44PJ6YFaqF8BGO1y5RkyDzClTrDAF+xGe4HnqR6LP9sjA83a4R8k+y7L+59xt5y7CKomZKft/IhfaImEptvtSrX4quZoSghj6HXskWeCxyR0IJZ2jq7bdUGwxJe64yz3l6a1Wp4j9OLo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FxKhcd3w; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785207848; c=relaxed/simple;
+	bh=0TWAjvoKseQ9JpSOHQgU+XQMJ/+3E2hNh/IjKkVftj4=;
+	h=Message-Id:Cc:Subject:Mime-Version:In-Reply-To:Content-Type:Date:
+	 From:References:To; b=mdGezf01sCkPMpAdYyoNmV6TPRAuEzq14CZ8E8s3ZS6Hv/q1ppmG7WJ8QEeJjzQFketmlvh6P7VJLyOBHi7I++0ZczRyKuQusrr/RMzue4jbbD75Q/v0L7O3eWJjFq+pd6EDs324jBuQgoC0ovTz+DygCn2iQaxBmO8xKBTr6aY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=dxBrUyjx; arc=none smtp.client-ip=209.127.230.111
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FxKhcd3w"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id C3A171F000E9;
-	Mon, 27 Jul 2026 22:39:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785191977;
-	bh=lKFGCscNnOuexB0zV1R7PVP7DoDo2hXjs5XnLF8lBMU=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=FxKhcd3whFPB2OjKr/78hUUI61BrwLsH4bHjffo+VAHn0tuhEuOwtr69f4bhlW9rM
-	 ZCToTjJo40K0ZJoAVmoMqo8lF4uZSwLVqlBre2ZTGm0wrk00N02kRLZs1navp5hcB4
-	 JAurohQVEa71tkUANWzJy9if1wAqwLecxyjVN+hydAK8/VwFXV9ls9P5nZyA6UmiPe
-	 GoDhOr3q14JohFsGxbTGKBS3wMsmFHXdXuvWy0NDEZP3tIF5mSbQgsZRXdzlwuqyYc
-	 4NWPEkhisx04my4C3441QyWd+D3QTnLlFcD6fdciyOzMEk8QYOWp+KP+raz6ks4Oj4
-	 GsND2lYI6pocA==
-Date: Mon, 27 Jul 2026 15:39:37 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Joanne Koong <joannelkoong@gmail.com>
-Cc: Christian Brauner <brauner@kernel.org>, hch@lst.de,
-	linux-fsdevel@vger.kernel.org, changfengnan@bytedance.com,
-	kbusch@kernel.org, Matthew Wilcox <willy@infradead.org>,
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
-	David Sterba <dsterba@suse.com>, Gao Xiang <xiang@kernel.org>,
-	Namjae Jeon <linkinjeon@kernel.org>, tytso@mit.edu,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Gruenbacher <agruenba@redhat.com>,
-	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-	Hyunchul Lee <hyc.lee@gmail.com>,
-	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-	Carlos Maiolino <cem@kernel.org>,
-	Damien Le Moal <dlemoal@kernel.org>, libaokun@linux.alibaba.com,
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH v4 21/21] Documentation: iomap: update docs to reflect
- iomap_iter_next model
-Message-ID: <20260727223937.GJ2901224@frogsfrogsfrogs>
-References: <20260727211758.1116539-1-joannelkoong@gmail.com>
- <20260727211758.1116539-22-joannelkoong@gmail.com>
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="dxBrUyjx"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1785207839; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=0TWAjvoKseQ9JpSOHQgU+XQMJ/+3E2hNh/IjKkVftj4=;
+ b=dxBrUyjxyw4NPca3wKJgVZAyuL3m8Kl71mykvcE3MxZxeGuIK5G+GE6v5e3H7JlDNdVEjb
+ dZoujfrxyzPwCtZlXDxDHZt8bYr6gpqVGF8KfAYq1Ts3REQ2iX5H/0yTlDW3BwmQ4SmZBW
+ 5rd7XZNlF524cBpufUAZ54tHzHpy/GYYTIyFTpOFbQJdi2oKWAqCzD1tksnHjlhu+LN1jg
+ I5KScqjSNUn7wlIdE7glaXBTgFsevQ/cQCtH/quUBn4W1G3R8XkGampyobsEGF2xPd7bCW
+ b1/sk093hpK48H0WpzgHsUNgzSdwtJqEtKgybQ++eDYe5oiPAHuAe3ZQv3zX9w==
+Message-Id: <d9210bcdf73fbe1ac8b6ec132865609a3ed68688.18304f34.4a67.44d1.b331.9f18f1c35bb7@bytedance.com>
+Cc: "Christian Brauner" <brauner@kernel.org>, <hch@lst.de>, 
+	"Darrick J . Wong" <djwong@kernel.org>, <linux-fsdevel@vger.kernel.org>, 
+	<kbusch@kernel.org>, "Matthew Wilcox" <willy@infradead.org>, 
+	"Jan Kara" <jack@suse.cz>, "Jonathan Corbet" <corbet@lwn.net>, 
+	"David Sterba" <dsterba@suse.com>, "Gao Xiang" <xiang@kernel.org>, 
+	"Namjae Jeon" <linkinjeon@kernel.org>, <tytso@mit.edu>, 
+	"Jaegeuk Kim" <jaegeuk@kernel.org>, "Miklos Szeredi" <miklos@szeredi.hu>, 
+	"Andreas Gruenbacher" <agruenba@redhat.com>, 
+	"Mikulas Patocka" <mikulas@artax.karlin.mff.cuni.cz>, 
+	"Hyunchul Lee" <hyc.lee@gmail.com>, 
+	"Konstantin Komarov" <almaz.alexandrovich@paragon-software.com>, 
+	"Carlos Maiolino" <cem@kernel.org>, 
+	"Damien Le Moal" <dlemoal@kernel.org>, <libaokun@linux.alibaba.com>, 
+	<linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>
+Subject: Re: [PATCH v4 02/21] iomap: decouple simple direct I/O reads from iomap_dio_rw
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260727211758.1116539-22-joannelkoong@gmail.com>
+Mime-Version: 1.0
+X-Lms-Return-Path: <lba+16a681c1d+b7f4c2+vger.kernel.org+changfengnan@bytedance.com>
+In-Reply-To: <20260727211758.1116539-3-joannelkoong@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Date: Tue, 28 Jul 2026 11:03:54 +0800
+Content-Transfer-Encoding: quoted-printable
+From: "changfengnan" <changfengnan@bytedance.com>
+References: <20260727211758.1116539-1-joannelkoong@gmail.com>
+	<20260727211758.1116539-3-joannelkoong@gmail.com>
+To: "Joanne Koong" <joannelkoong@gmail.com>
 
-On Mon, Jul 27, 2026 at 02:17:58PM -0700, Joanne Koong wrote:
-> Filesystems no longer pass a struct iomap_ops with separate
-> ->iomap_begin() and ->iomap_end() callbacks. Instead, every iomap
-> operation takes a single iomap_iter_next() callback directly.
-> iomap_iter_next() finishes the previous mapping (if any) and produces
-> the next one. Most filesystems build it from begin and end helpers via
-> the iomap_iter_next() helper.
-> 
-> Update the iomap documentation to match this change.
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+> From: "Joanne Koong"<joannelkoong@gmail.com>
+> Date:=C2=A0 Tue, Jul 28, 2026, 05:24
+> Subject:=C2=A0 [PATCH v4 02/21] iomap: decouple simple direct I/O reads f=
+rom iomap_dio_rw
+> To: "Christian Brauner"<brauner@kernel.org>, <hch@lst.de>, "Darrick J . W=
+ong"<djwong@kernel.org>, <linux-fsdevel@vger.kernel.org>
+> Cc: <changfengnan@bytedance.com>, <kbusch@kernel.org>, "Matthew Wilcox"<w=
+illy@infradead.org>, "Jan Kara"<jack@suse.cz>, "Jonathan Corbet"<corbet@lwn=
+.net>, "David Sterba"<dsterba@suse.com>, "Gao Xiang"<xiang@kernel.org>, "Na=
+mjae Jeon"<linkinjeon@kernel.org>, <tytso@mit.edu>, "Jaegeuk Kim"<jaegeuk@k=
+ernel.org>, "Miklos Szeredi"<miklos@szeredi.hu>, "Andreas Gruenbacher"<agru=
+enba@redhat.com>, "Mikulas Patocka"<mikulas@artax.karlin.mff.cuni.cz>, "Hyu=
+nchul Lee"<hyc.lee@gmail.com>, "Konstantin Komarov"<almaz.alexandrovich@par=
+agon-software.com>, "Carlos Maiolino"<cem@kernel.org>, "Damien Le Moal"<dle=
+moal@kernel.org>, <libaokun@linux.alibaba.com>, <linux-ext4@vger.kernel.org=
+>, <linux-xfs@vger.kernel.org>
+> From: Christoph Hellwig <hch@lst.de>
+>=C2=A0
+> The pending iomap_iter_next conversion creates performance issues for the
+> new simple direct I/O read fast path, because it assumes a model where
+> the iterator must be advanced at the end, which the direct I/O read fast
+> path tries to avoid.
+>=C2=A0
+> Side step this by splitting the simple path from iomap_dio_rw, and
+> require the file systems to call into it explicitly, and pass only a
+> ->begin callback. =C2=A0This allows to drop various checks for incompatib=
+le
+> features while creating a requirement for the file system to only call
+> the simple path for cases that it can handle.
+>=C2=A0
+> As a side-benefit we can now inline the initial part of the simple
+> direct I/O read fast path and let the compiler convert the indirect call
+> to ->begin into a direct call.
+>=C2=A0
+> Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
 > Signed-off-by: Joanne Koong <joannelkoong@gmail.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Looks good to me,
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
-
---D
-
+Looks good.
+Reviewed-by: Fengnan Chang <changfengnan@bytedance.com>
 > ---
->  Documentation/filesystems/iomap/design.rst    | 140 +++++++++++++-----
->  .../filesystems/iomap/operations.rst          |  68 ++++-----
->  Documentation/filesystems/iomap/porting.rst   |  16 +-
->  3 files changed, 151 insertions(+), 73 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/iomap/design.rst b/Documentation/filesystems/iomap/design.rst
-> index 0f7672676c0b..bed8a5beac81 100644
-> --- a/Documentation/filesystems/iomap/design.rst
-> +++ b/Documentation/filesystems/iomap/design.rst
-> @@ -75,7 +75,10 @@ At a high level, an iomap operation `looks like this
->  
->  1. For each byte in the operation range...
->  
-> -   1. Obtain a space mapping via ``->iomap_begin``
-> +   1. Obtain the next space mapping via the ``iomap_iter_next_fn`` callback.
-> +      From the second iteration onwards this same callback first finishes
-> +      the previous mapping (committing or unreserving space as needed)
-> +      and then produces the next one.
->  
->     2. For each sub-unit of work...
->  
-> @@ -86,7 +89,13 @@ At a high level, an iomap operation `looks like this
->  
->     3. Increment operation cursor
->  
-> -   4. Release the mapping via ``->iomap_end``, if necessary
-> +iomap repeats this until the range is fully consumed.  The ``iomap_iter_next_fn``
-> +callback returns ``1`` while there is more of the range left to process,
-> +``0`` once it is fully consumed, or a negative errno on error.
-> +Filesystems rarely implement this callback by hand. The ``iomap_iter_next``
-> +helper implements the finish-then-produce sequence in terms of two smaller
-> +callbacks, ``begin`` and ``end``. See `The Mapping Callback`_ below for more
-> +info.
->  
->  Each iomap operation will be covered in more detail below.
->  This library was covered previously by an `LWN article
-> @@ -189,7 +198,7 @@ The fields are as follows:
->     * **IOMAP_DELALLOC**: A promise to allocate space at a later time
->       ("delayed allocation").
->       If the filesystem returns IOMAP_F_NEW here and the write fails, the
-> -     ``->iomap_end`` function must delete the reservation.
-> +     ``end`` function must delete the reservation.
->       The ``addr`` field must be set to ``IOMAP_NULL_ADDR``.
->  
->     * **IOMAP_MAPPED**: The file range maps to specific space on the
-> @@ -208,12 +217,11 @@ The fields are as follows:
->  
->     * **IOMAP_INLINE**: The file range maps to the memory buffer
->       specified by ``inline_data``.
-> -     For write operation, the ``->iomap_end`` function presumably
-> -     handles persisting the data.
-> +     For write operation, the ``end`` function must persist the data.
->       The ``addr`` field must be set to ``IOMAP_NULL_ADDR``.
->  
->   * ``flags`` describe the status of the space mapping.
-> -   These flags should be set by the filesystem in ``->iomap_begin``:
-> +   These flags should be set by the filesystem in ``begin``:
->  
->     * **IOMAP_F_NEW**: The space under the mapping is newly allocated.
->       Areas that will not be written to must be zeroed.
-> @@ -262,15 +270,15 @@ The fields are as follows:
->       update.
->  
->     These flags can be set by iomap itself during file operations.
-> -   The filesystem should supply an ``->iomap_end`` function if it needs
-> +   The filesystem should supply an ``end`` function if it needs
->     to observe these flags:
->  
->     * **IOMAP_F_SIZE_CHANGED**: The file size has changed as a result of
->       using this mapping.
->  
->     * **IOMAP_F_STALE**: The mapping was found to be stale.
-> -     iomap will call ``->iomap_end`` on this mapping and then
-> -     ``->iomap_begin`` to obtain a new mapping.
-> +     iomap will call ``end`` on this mapping and then ``begin`` to obtain a
-> +     new mapping.
->  
->     Currently, these flags are only set by pagecache operations.
->  
-> @@ -289,41 +297,103 @@ The fields are as follows:
->  
->   * ``private`` is a pointer to `filesystem-private information
->     <https://lore.kernel.org/all/20180619164137.13720-7-hch@lst.de/>`_.
-> -   This value will be passed unchanged to ``->iomap_end``.
-> +   This value will be passed unchanged to ``end``.
->  
->   * ``validity_cookie`` is a magic freshness value set by the filesystem
->     that should be used to detect stale mappings.
->     For pagecache operations this is critical for correct operation
->     because page faults can occur, which implies that filesystem locks
-> -   should not be held between ``->iomap_begin`` and ``->iomap_end``.
-> +   should not be held between ``begin`` and ``end``.
->     Filesystems with completely static mappings need not set this value.
->     Only pagecache operations revalidate mappings; see the section about
->     ``iomap_valid`` for details.
->  
-> -``struct iomap_ops``
-> +The Mapping Callback
->  --------------------
->  
-> -Every iomap function requires the filesystem to pass an operations
-> -structure to obtain a mapping and (optionally) to release the mapping:
-> +Every iomap operation takes an ``iomap_iter_next_fn`` callback from the
-> +filesystem. iomap calls it once per iteration of the file range:
->  
->  .. code-block:: c
->  
-> - struct iomap_ops {
-> -     int (*iomap_begin)(struct inode *inode, loff_t pos, loff_t length,
-> -                        unsigned flags, struct iomap *iomap,
-> -                        struct iomap *srcmap);
-> + typedef int (*iomap_iter_next_fn)(const struct iomap_iter *iter,
-> +                              struct iomap *iomap, struct iomap *srcmap);
->  
-> -     int (*iomap_end)(struct inode *inode, loff_t pos, loff_t length,
-> -                      ssize_t written, unsigned flags,
-> -                      struct iomap *iomap);
-> - };
-> +``iomap_iter_next_fn``
-> +~~~~~~~~~~~~~~~~~~~~~~
+> =C2=A0fs/ext4/ext4.h =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A0 3 +
+> =C2=A0fs/ext4/file.c =C2=A0 =C2=A0 =C2=A0 =C2=A0| =C2=A0 4 +-
+> =C2=A0fs/ext4/inode.c =C2=A0 =C2=A0 =C2=A0 | =C2=A0 2 +-
+> =C2=A0fs/iomap/direct-io.c =C2=A0| 208 ++++++++++------------------------=
+--------
+> =C2=A0fs/xfs/xfs_file.c =C2=A0 =C2=A0 | =C2=A014 +--
+> =C2=A0fs/xfs/xfs_iomap.c =C2=A0 =C2=A0| =C2=A0 2 +-
+> =C2=A0fs/xfs/xfs_iomap.h =C2=A0 =C2=A0| =C2=A0 4 +
+> =C2=A0include/linux/iomap.h | =C2=A066 ++++++++++++++
+> =C2=A08 files changed, 136 insertions(+), 167 deletions(-)
+>=C2=A0
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b37c136ea3ab..e134c0193e2b 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -4007,6 +4007,9 @@ static inline void ext4_clear_io_unwritten_flag(ext=
+4_io_end_t *io_end)
+> =C2=A0extern const struct iomap_ops ext4_iomap_ops;
+> =C2=A0extern const struct iomap_ops ext4_iomap_report_ops;
+> =C2=A0
+> +int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned flags, =
+struct iomap *iomap, struct iomap *srcmap);
 > +
-> +This must finish the previous mapping, if any, and then produce the next
-> +mapping for the current iteration position described by ``iter``.
-> +The mapping is returned through ``iomap`` (and through ``srcmap`` for
-> +operations that read from one mapping while writing to another; see
-> +``begin`` below).
+> =C2=A0static inline int ext4_buffer_uptodate(struct buffer_head *bh)
+> =C2=A0{
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index eb1a323962b1..f20d92255546 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -91,7 +91,9 @@ static ssize_t ext4_dio_read_iter(struct kiocb *iocb, s=
+truct iov_iter *to)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return gene=
+ric_file_read_iter(iocb, to);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_dio_rw(iocb, to, &ext4_iomap_o=
+ps, NULL, 0, NULL, 0);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_dio_read_simple(iocb, to, ext4=
+_iomap_begin);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret =3D=3D -ENOTBLK)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_di=
+o_rw(iocb, to, &ext4_iomap_ops, NULL, 0, NULL, 0);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_unlock_shared(inode);
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0file_accessed(iocb->ki_filp);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ce99807c5f5b..b48c54f3312b 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3771,7 +3771,7 @@ static int ext4_iomap_alloc(struct inode *inode, st=
+ruct ext4_map_blocks *map,
+> =C2=A0}
+> =C2=A0
+> =C2=A0
+> -static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t l=
+ength,
+> +int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned fl=
+ags, struct iomap *iomap, struct iomap *srcmap)
+> =C2=A0{
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0int ret;
+> diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+> index ca790239e5eb..36c976cf0848 100644
+> --- a/fs/iomap/direct-io.c
+> +++ b/fs/iomap/direct-io.c
+> @@ -894,6 +894,21 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *=
+iter,
+> =C2=A0}
+> =C2=A0EXPORT_SYMBOL_GPL(__iomap_dio_rw);
+> =C2=A0
+> +ssize_t
+> +iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0const struct iom=
+ap_ops *ops, const struct iomap_dio_ops *dops,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned int dio=
+_flags, void *private, size_t done_before)
+> +{
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_dio *dio;
 > +
-> +The callback returns ``1`` to continue iterating, ``0`` once the file
-> +range has been fully consumed, or a negative errno on error.
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0dio =3D __iomap_dio_rw(iocb, iter, ops, dops=
+, dio_flags, private,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 done_before);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (IS_ERR_OR_NULL(dio))
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return PTR_ERR_O=
+R_ZERO(dio);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0return iomap_dio_complete(dio);
+> +}
+> +EXPORT_SYMBOL_GPL(iomap_dio_rw);
 > +
-> +Most filesystems are not expected to implement all of these behaviors
-> +in this callback themselves.  They should instead call ``iomap_iter_next`` as
-> +described below.
+> =C2=A0struct iomap_dio_simple {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct kiocb =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*iocb;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0size_t =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0size;
+> @@ -968,211 +983,88 @@ static void iomap_dio_simple_end_io(struct bio *bi=
+o)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iocb->ki_complete(iocb, iomap_dio_simpl=
+e_complete(sr));
+> =C2=A0}
+> =C2=A0
+> -static inline bool
+> -iomap_dio_simple_supported(struct kiocb *iocb, struct iov_iter *iter,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 const struct iomap_dio_ops *dops,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 unsigned int dio_flags, size_t done_before)
+> -{
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0struct inode *inode =3D file_inode(iocb->ki_=
+filp);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0size_t count =3D iov_iter_count(iter);
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (dops || done_before)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iov_iter_rw(iter) !=3D READ)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!count)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 * Simple dio is an optimization for small I=
+O. Filter out large IO
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 * early as it's the most common case to fai=
+l for typical direct IO
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 * workloads.
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (count > inode->i_sb->s_blocksize)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (dio_flags & (IOMAP_DIO_FORCE_WAIT | IOMA=
+P_DIO_PARTIAL |
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 IOMAP_DIO_BOUNCE))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iocb->ki_pos + count > i_size_read(inode=
+))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (IS_ENCRYPTED(inode))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return false;
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0return true;
+> -}
+> -
+> -/*
+> - * Fast path for small, block-aligned direct I/Os that map to a single
+> - * contiguous on-disk extent.
+> - *
+> - * iomap_dio_simple_supported() enforces the cheap up-front constraints =
+before
+> - * entering this path.
+> - *
+> - * @dops must be NULL: a non-NULL @dops means the caller wants its
+> - * ->end_io / ->submit_io hooks invoked, and in particular wants its bio=
+s to be
+> - * allocated from the filesystem-private @dops->bio_set (whose front_pad=
+ sizes a
+> - * filesystem-private wrapper around the bio). =C2=A0The fast path inste=
+ad allocates
+> - * from the shared iomap_dio_simple_pool, whose front_pad matches struct
+> - * iomap_dio_simple; the two wrappers are not interchangeable, so we mus=
+t fall
+> - * back to __iomap_dio_rw() in that case.
+> - *
+> - * @done_before must be zero: a non-zero caller-accumulated residual can=
+not be
+> - * carried through a single-bio inline completion.
+> - *
+> - * @iter must describe a non-empty READ no larger than the inode block s=
+ize:
+> - * writes, zero-length I/O, and larger requests need the generic iomap d=
+irect
+> - * I/O path.
+> - *
+> - * @dio_flags must not request IOMAP_DIO_FORCE_WAIT, IOMAP_DIO_PARTIAL, =
+or
+> - * IOMAP_DIO_BOUNCE: this path does not support forced waiting, partial =
+direct
+> - * I/O, or bouncing. =C2=A0The range must also stay within i_size and en=
+crypted
+> - * inodes must use the generic iomap direct I/O path.
+> - *
+> - * -ENOTBLK is the private sentinel returned by iomap_dio_simple() when =
+it
+> - * decides the request does not fit the fast path. =C2=A0In that case we=
+ proceed to
+> - * the generic __iomap_dio_rw() slow path. =C2=A0Any other errno is a re=
+al result and
+> - * is propagated as-is, in particular -EAGAIN for IOCB_NOWAIT must reach=
+ the
+> - * caller.
+> - */
+> -static ssize_t
+> -iomap_dio_simple(struct kiocb *iocb, struct iov_iter *iter,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 const struct io=
+map_ops *ops, void *private,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 unsigned int di=
+o_flags)
+> +ssize_t __iomap_dio_read_simple(struct kiocb *iocb, struct iov_iter *ite=
+r,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_ite=
+r *iomi)
+> =C2=A0{
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0struct inode *inode =3D file_inode(iocb->ki_=
+filp);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0size_t count =3D iov_iter_count(iter);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0bool wait_for_completion =3D is_sync_kiocb(i=
+ocb);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_iter iomi =3D {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.inode =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D inode,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.pos =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D iocb->ki_pos,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.len =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D count,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.flags =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D IOMAP_DIRECT,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.private =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0=3D private,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0};
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_dio_simple *sr;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned int alignment;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct bio *bio;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ssize_t ret;
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iocb->ki_flags & IOCB_NOWAIT)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iomi.flags |=3D =
+IOMAP_NOWAIT;
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D kiocb_write_and_wait(iocb, count);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_begin(inode);
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D ops->iomap_begin(inode, iomi.pos, co=
+unt, iomi.flags,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 &iomi.iomap, &iomi.srcmap);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_end(in=
+ode);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iomi.iomap.type !=3D IOMAP_MAPPED ||
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iomi.iomap.offset + iomi.iomap=
+.length < iomi.pos + count ||
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0(iomi.iomap.flags & IOMAP_F_IN=
+TEGRITY)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iomi->iomap.type !=3D IOMAP_MAPPED ||
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iomi->iomap.offset + iomi->iom=
+ap.length < iomi->pos + iomi->len ||
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0(iomi->iomap.flags & IOMAP_F_I=
+NTEGRITY)) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D -EN=
+OTBLK;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_iomap_e=
+nd;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_dio_end=
+;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0alignment =3D iomap_dio_alignment(inode, iom=
+i.iomap.bdev, dio_flags);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if ((iomi.pos | count) & (alignment - 1)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0alignment =3D iomap_dio_alignment(iomi->inod=
+e, iomi->iomap.bdev, 0);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if ((iomi->pos | iomi->len) & (alignment - 1=
+)) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D -EI=
+NVAL;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_iomap_e=
+nd;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_dio_end=
+;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!wait_for_completion && unlikely(!inode-=
+>i_sb->s_dio_done_wq)) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D sb_init_=
+dio_done_wq(inode->i_sb);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (unlikely(!iomi->inode->i_sb->s_dio_done_=
+wq &&
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0!is_sync_kiocb(iocb))) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D sb_init_=
+dio_done_wq(iomi->inode->i_sb);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret < 0=
+)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0goto out_iomap_end;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0goto out_dio_end;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_iomap_dio_rw_begin(iocb, iter, dio_fla=
+gs, 0);
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (user_backed_iter(iter))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0dio_flags |=3D I=
+OMAP_DIO_USER_BACKED;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_iomap_dio_rw_begin(iocb, iter, 0, 0);
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0bio =3D bio_alloc_bioset(iomi.iomap.bdev,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0bio =3D bio_alloc_bioset(iomi->iomap.bdev,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 bio_iov_vecs_to_alloc(iter, BIO_MAX_=
+VECS),
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 REQ_OP_READ, GFP_KERNEL, &iomap_dio_=
+simple_pool);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sr =3D container_of(bio, struct iomap_d=
+io_simple, bio);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sr->iocb =3D iocb;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0sr->dio_flags =3D dio_flags;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0sr->dio_flags =3D 0;
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_iter.bi_sector =3D iomap_sector(&iom=
+i.iomap, iomi.pos);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_iter.bi_sector =3D iomap_sector(&iom=
+i->iomap, iomi->pos);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_ioprio =3D iocb->ki_ioprio;
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D bio_iov_iter_get_pages(bio, ite=
+r, alignment - 1);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (unlikely(ret))
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_bi=
+o_put;
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (bio->bi_iter.bi_size !=3D count) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (bio->bi_iter.bi_size !=3D iomi->len) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iov_iter_re=
+vert(iter, bio->bi_iter.bi_size);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D -EN=
+OTBLK;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0goto out_bi=
+o_release_pages;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sr->size =3D bio->bi_iter.bi_size;
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (dio_flags & IOMAP_DIO_USER_BACKED)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (user_backed_iter(iter)) {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio_set_pag=
+es_dirty(bio);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0sr->dio_flags |=
+=3D IOMAP_DIO_USER_BACKED;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iocb->ki_flags & IOCB_NOWAIT)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_opf=
+ |=3D REQ_NOWAIT;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if ((iocb->ki_flags & IOCB_HIPRI) && !wait_f=
+or_completion) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_opf |=3D=
+ REQ_POLLED;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0WRITE_ONCE(iocb-=
+>private, bio);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ops->iomap_end)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ops->iomap_end(i=
+node, iomi.pos, count, count, iomi.flags,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 &iomi.iomap);
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!wait_for_completion) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_end_io =
+=3D iomap_dio_simple_end_io;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0submit_bio(bio);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_iomap_dio_=
+rw_queued(inode, iomi.pos, count);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return -EIOCBQUE=
+UED;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (is_sync_kiocb(iocb)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0submit_bio_wait(=
+bio);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return iomap_dio=
+_simple_complete(sr);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> =C2=A0
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0submit_bio_wait(bio);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0return iomap_dio_simple_complete(sr);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if ((iocb->ki_flags & IOCB_HIPRI)) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_opf |=3D=
+ REQ_POLLED;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0WRITE_ONCE(iocb-=
+>private, bio);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0bio->bi_end_io =3D iomap_dio_simple_end_io;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0submit_bio(bio);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_iomap_dio_rw_queued(iomi->inode, iocb-=
+>ki_pos, iomi->len);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0return -EIOCBQUEUED;
+> =C2=A0
+> =C2=A0out_bio_release_pages:
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio_release_pages(bio, false);
+> =C2=A0out_bio_put:
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0bio_put(bio);
+> -out_iomap_end:
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ops->iomap_end)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ops->iomap_end(i=
+node, iomi.pos, count, 0, iomi.flags,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 &iomi.iomap);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_end(inode);
+> +out_dio_end:
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_end(iomi->inode);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> =C2=A0}
+> -
+> -ssize_t
+> -iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0const struct iom=
+ap_ops *ops, const struct iomap_dio_ops *dops,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned int dio=
+_flags, void *private, size_t done_before)
+> -{
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_dio *dio;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0ssize_t ret;
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iomap_dio_simple_supported(iocb, iter, d=
+ops, dio_flags,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 done_before)=
+) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_di=
+o_simple(iocb, iter, ops, private, dio_flags);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret !=3D -EN=
+OTBLK)
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0return ret;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> -
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0dio =3D __iomap_dio_rw(iocb, iter, ops, dops=
+, dio_flags, private,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 done_before);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0if (IS_ERR_OR_NULL(dio))
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return PTR_ERR_O=
+R_ZERO(dio);
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0return iomap_dio_complete(dio);
+> -}
+> -EXPORT_SYMBOL_GPL(iomap_dio_rw);
+> +EXPORT_SYMBOL_GPL(__iomap_dio_read_simple);
+> =C2=A0
+> =C2=A0static int __init iomap_dio_init(void)
+> =C2=A0{
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 845a97c9b063..b733225d2864 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -251,8 +251,6 @@ xfs_file_dio_read(
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iov_iter =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*to)
+> =C2=A0{
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct xfs_inode =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0*ip =3D XFS_I(file_inode(iocb->ki_filp));
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0unsigned int =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0dio_flags =3D 0;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0const struct iomap_dio_ops *dio_ops =3D NULL=
+;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ssize_t =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret;
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0trace_xfs_file_direct_read(iocb, to);
+> @@ -266,11 +264,15 @@ xfs_file_dio_read(
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret)
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (mapping_stable_writes(iocb->ki_filp=
+->f_mapping)) {
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0dio_ops =3D &xfs=
+_dio_read_bounce_ops;
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0dio_flags |=3D I=
+OMAP_DIO_BOUNCE;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_di=
+o_rw(iocb, to, &xfs_read_iomap_ops,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0&xfs_dio_read_bounce_ops, IOMAP_DI=
+O_BOUNCE,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0NULL, 0);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0} else {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_di=
+o_read_simple(iocb, to, xfs_read_iomap_begin);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret =3D=3D -=
+ENOTBLK)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0ret =3D iomap_dio_rw(iocb, to, &xfs_read_iomap_ops, NULL,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A00, NUL=
+L, 0);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0}
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D iomap_dio_rw(iocb, to, &xfs_read_iom=
+ap_ops, dio_ops, dio_flags,
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0NULL, 0);
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0xfs_iunlock(ip, XFS_IOLOCK_SHARED);
+> =C2=A0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> index 225c3de88d03..0536e2aeddcc 100644
+> --- a/fs/xfs/xfs_iomap.c
+> +++ b/fs/xfs/xfs_iomap.c
+> @@ -2173,7 +2173,7 @@ const struct iomap_ops xfs_buffered_write_iomap_ops=
+ =3D {
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.iomap_end =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0=3D xfs_buffered_write_iomap_end,
+> =C2=A0};
+> =C2=A0
+> -static int
+> +int
+> =C2=A0xfs_read_iomap_begin(
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct inode =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*inode,
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0loff_t =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0offset,
+> diff --git a/fs/xfs/xfs_iomap.h b/fs/xfs/xfs_iomap.h
+> index ebcce7d49446..cffcec532ea6 100644
+> --- a/fs/xfs/xfs_iomap.h
+> +++ b/fs/xfs/xfs_iomap.h
+> @@ -49,6 +49,10 @@ xfs_aligned_fsb_count(
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return count_fsb;
+> =C2=A0}
+> =C2=A0
+> +int xfs_read_iomap_begin(struct inode *inode, loff_t offset,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0loff_t length, u=
+nsigned flags, struct iomap *iomap,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap *sr=
+cmap);
 > +
-> +``iomap_iter_next``
-> +~~~~~~~~~~~~~~~~~~~
+> =C2=A0extern const struct iomap_ops xfs_buffered_write_iomap_ops;
+> =C2=A0extern const struct iomap_ops xfs_direct_write_iomap_ops;
+> =C2=A0extern const struct iomap_ops xfs_zoned_direct_write_iomap_ops;
+> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+> index 36490c08d6e9..80832edc7ec2 100644
+> --- a/include/linux/iomap.h
+> +++ b/include/linux/iomap.h
+> @@ -10,6 +10,7 @@
+> =C2=A0#include <linux/mm_types.h>
+> =C2=A0#include <linux/blkdev.h>
+> =C2=A0#include <linux/folio_batch.h>
+> +#include <linux/pagemap.h>
+> =C2=A0
+> =C2=A0struct address_space;
+> =C2=A0struct fiemap_extent_info;
+> @@ -675,6 +676,71 @@ struct iomap_dio *__iomap_dio_rw(struct kiocb *iocb,=
+ struct iov_iter *iter,
+> =C2=A0ssize_t iomap_dio_complete(struct iomap_dio *dio);
+> =C2=A0void iomap_dio_bio_end_io(struct bio *bio);
+> =C2=A0
+> +/*
+> + * Fast path for small, block-aligned direct I/Os that map to a single
+> + * contiguous on-disk extent.
+> + *
+> + * @iter must describe a non-empty READ no larger than the inode block s=
+ize:
+> + * writes, zero-length I/O, and larger requests need the generic iomap d=
+irect
+> + * I/O path.
+> + *
+> + * Does not support iomap_dio_ops, dio_flags, done_before or private dat=
+a.
+> + * The range must also stay within i_size and encrypted inodes must use =
+the
+> + * generic iomap direct I/O path.
+> + *
+> + * -ENOTBLK indicates the generic path must be used by the caller instea=
+d.
+> + * Any other errno is a real result and is propagated as-is, in particul=
+ar
+> + * -EAGAIN for IOCB_NOWAIT must reach the caller.
+> + *
+> + * The caller can only provide an iomap begin handler, and the iterator
+> + * is never advanced.
+> + */
+> +ssize_t __iomap_dio_read_simple(struct kiocb *iocb, struct iov_iter *ite=
+r,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_ite=
+r *iomi);
+> +static __always_inline ssize_t iomap_dio_read_simple(struct kiocb *iocb,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iov_iter =
+*iter, iomap_iter_begin_fn begin)
+> +{
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0struct iomap_iter iomi =3D {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.inode =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D file_inode(iocb->ki_fil=
+p),
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.pos =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D iocb->ki_pos,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.len =C2=A0 =C2=
+=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D iov_iter_count(iter),
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0.flags =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=3D IOMAP_DIRECT,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0};
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0ssize_t ret;
 > +
-> +Filesystems rarely need a hand-written ``iomap_iter_next_fn`` callback.  The
-> +``iomap_iter_next`` helper implements the finish-then-produce sequence in
-> +terms of two smaller callbacks, ``begin`` and ``end``, so most
-> +``iomap_iter_next_fn`` implementations are simply:
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (!iomi.len)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return 0;
 > +
-> +.. code-block:: c
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0/*
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 * Simple dio is an optimization for small I=
+O. Filter out large IO
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 * early as it's the most common case to fai=
+l for typical direct IO
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 * workloads.
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 */
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iomi.len > iomi.inode->i_sb->s_blocksize=
+)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return -ENOTBLK;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iocb->ki_pos + iomi.len > i_size_read(io=
+mi.inode))
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return -ENOTBLK;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (IS_ENCRYPTED(iomi.inode))
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return -ENOTBLK;
 > +
-> + static int my_iomap_next(const struct iomap_iter *iter,
-> +                          struct iomap *iomap, struct iomap *srcmap)
-> + {
-> +         return iomap_iter_next(iter, iomap, srcmap,
-> +                                my_iomap_begin, my_iomap_end);
-> + }
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D kiocb_write_and_wait(iocb, iomi.len)=
+;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
 > +
-> +This boilerplate is normally generated with the ``DEFINE_IOMAP_ITER_NEXT()``
-> +and ``DEFINE_IOMAP_ITER_NEXT_END()`` macros rather than written by hand.  Use
-> +``DEFINE_IOMAP_ITER_NEXT()`` for the common case with no ``end`` callback, and
-> +``DEFINE_IOMAP_ITER_NEXT_END()`` when an ``end`` callback is needed:
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (iocb->ki_flags & IOCB_NOWAIT)
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0iomi.flags |=3D =
+IOMAP_NOWAIT;
 > +
-> +.. code-block:: c
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_begin(iomi.inode);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0ret =3D begin(iomi.inode, iomi.pos, iomi.len=
+, iomi.flags, &iomi.iomap,
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0&iomi.srcmap);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0if (ret) {
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0inode_dio_end(io=
+mi.inode);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0return ret;
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0}
 > +
-> + /* no end() callback */
-> + static DEFINE_IOMAP_ITER_NEXT(my_iomap_next, my_iomap_begin);
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0return __iomap_dio_read_simple(iocb, iter, &=
+iomi);
+> +}
 > +
-> + /* with an end() callback */
-> + static DEFINE_IOMAP_ITER_NEXT_END(my_iomap_next, my_iomap_begin,
-> +                                   my_iomap_end);
-> +
-> +The macro generates a function with external linkage.  Prefix the invocation
-> +with ``static`` for a file-local callback, or leave it non-``static`` and add
-> +a matching declaration to a header when the callback is referenced from
-> +another file.
-> +
-> +``end`` may be ``NULL`` when the filesystem has nothing to finish.
-> +The two callbacks have these prototypes:
-> +
-> +.. code-block:: c
-> +
-> + typedef int (*iomap_begin_fn)(struct inode *inode, loff_t pos,
-> +                               loff_t length, unsigned flags,
-> +                               struct iomap *iomap, struct iomap *srcmap);
-> +
-> + typedef int (*iomap_end_fn)(struct inode *inode, loff_t pos,
-> +                             loff_t length, ssize_t written,
-> +                             unsigned flags, struct iomap *iomap);
-> +
-> +``iomap_iter_next`` is an inline helper, so when it is called with fixed
-> +``begin`` and ``end`` functions the compiler can inline both into the
-> +filesystem's ``iomap_iter_next_fn`` callback, keeping indirect calls out of the
-> +iteration hot path.  The two callbacks are described next.
->  
-> -``->iomap_begin``
-> -~~~~~~~~~~~~~~~~~
-> +``begin``
-> +~~~~~~~~~
->  
-> -iomap operations call ``->iomap_begin`` to obtain one file mapping for
-> -the range of bytes specified by ``pos`` and ``length`` for the file
-> -``inode``.
-> +The ``begin`` callback obtains one file mapping for the range of bytes
-> +specified by ``pos`` and ``length`` for the file ``inode``.
->  This mapping should be returned through the ``iomap`` pointer.
->  The mapping must cover at least the first byte of the supplied file
->  range, but it does not need to cover the entire requested range.
-> @@ -377,18 +447,18 @@ information via ``srcmap``.
->  Only pagecache and fsdax operations support reading from one mapping and
->  writing to another.
->  
-> -``->iomap_end``
-> -~~~~~~~~~~~~~~~
-> +``end``
-> +~~~~~~~
->  
-> -After the operation completes, the ``->iomap_end`` function, if present,
-> -is called to signal that iomap is finished with a mapping.
-> +After the operation completes, the ``end`` callback, if present, is called to
-> +signal that iomap is finished with a mapping.
->  Typically, implementations will use this function to tear down any
-> -context that were set up in ``->iomap_begin``.
-> +context that was set up in ``begin``.
->  For example, a write might wish to commit the reservations for the bytes
->  that were operated upon and unreserve any space that was not operated
->  upon.
->  ``written`` might be zero if no bytes were touched.
-> -``flags`` will contain the same value passed to ``->iomap_begin``.
-> +``flags`` will contain the same value passed to ``begin``.
->  iomap ops for reads are not likely to need to supply this function.
->  
->  Both functions should return a negative errno code on error, or zero on
-> @@ -421,8 +491,8 @@ iomap is concerned:
->     accessing the folio until writeback is underway.
->  
->     * The **lower** level primitive is taken by the filesystem in the
-> -     ``->iomap_begin`` and ``->iomap_end`` functions to coordinate
-> -     access to the file space mapping information.
-> +     ``begin`` and ``end`` functions to coordinate access to the file space
-> +     mapping information.
->       The fields of the iomap object should be filled out while holding
->       this primitive.
->       The upper level synchronization primitive, if any, remains held
-> diff --git a/Documentation/filesystems/iomap/operations.rst b/Documentation/filesystems/iomap/operations.rst
-> index da982ca7e413..a5784dee0850 100644
-> --- a/Documentation/filesystems/iomap/operations.rst
-> +++ b/Documentation/filesystems/iomap/operations.rst
-> @@ -17,6 +17,12 @@ Supported File Operations
->  Below are a discussion of the high level file operations that iomap
->  implements.
->  
-> +Each operation takes an ``iomap_iter_next_fn`` callback that supplies the file
-> +mappings, as described in the iomap design document.  The per-operation
-> +``flags`` documented below are passed to that callback; references to
-> +``begin`` and ``end`` name the two steps a typical callback is built from
-> +via ``iomap_iter_next``.
-> +
->  Buffered I/O
->  ============
->  
-> @@ -90,10 +96,10 @@ iomap calls these functions:
->      <https://lore.kernel.org/all/20180619164137.13720-6-hch@lst.de/>`_
->      that was set up by ``->get_folio``.
->  
-> -  - ``iomap_valid``: The filesystem may not hold locks between
-> -    ``->iomap_begin`` and ``->iomap_end`` because pagecache operations
-> -    can take folio locks, fault on userspace pages, initiate writeback
-> -    for memory reclamation, or engage in other time-consuming actions.
-> +  - ``iomap_valid``: The filesystem may not hold locks between ``begin`` and
-> +    ``end`` because pagecache operations can take folio locks, fault on
-> +    userspace pages, initiate writeback for memory reclamation, or engage in
-> +    other time-consuming actions.
->      If a file's space mapping data are mutable, it is possible that the
->      mapping for a particular pagecache folio can `change in the time it
->      takes
-> @@ -114,12 +120,12 @@ iomap calls these functions:
->      If the mapping is not valid, the mapping will be sampled again.
->  
->      To support making the validity decision, the filesystem's
-> -    ``->iomap_begin`` function may set ``struct iomap::validity_cookie``
-> +    ``begin`` function may set ``struct iomap::validity_cookie``
->      at the same time that it populates the other iomap fields.
->      A simple validation cookie implementation is a sequence counter.
->      If the filesystem bumps the sequence counter every time it modifies
->      the inode's extent map, it can be placed in the ``struct
-> -    iomap::validity_cookie`` during ``->iomap_begin``.
-> +    iomap::validity_cookie`` during ``begin``.
->      If the value in the cookie is found to be different to the value
->      the filesystem holds when the mapping is passed back to
->      ``->iomap_valid``, then the iomap should considered stale and the
-> @@ -199,7 +205,7 @@ Buffered Readahead and Reads
->  The ``iomap_readahead`` function initiates readahead to the pagecache.
->  The ``iomap_read_folio`` function reads one folio's worth of data into
->  the pagecache.
-> -The ``flags`` argument to ``->iomap_begin`` will be set to zero.
-> +The ``flags`` argument to ``begin`` will be set to zero.
->  The pagecache takes whatever locks it needs before calling the
->  filesystem.
->  
-> @@ -231,7 +237,7 @@ Buffered Writes
->  The ``iomap_file_buffered_write`` function writes an ``iocb`` to the
->  pagecache.
->  ``IOMAP_WRITE`` or ``IOMAP_WRITE`` | ``IOMAP_NOWAIT`` will be passed as
-> -the ``flags`` argument to ``->iomap_begin``.
-> +the ``flags`` argument to ``begin``.
->  Callers commonly take ``i_rwsem`` in either shared or exclusive mode
->  before calling this function.
->  
-> @@ -241,7 +247,7 @@ mmap Write Faults
->  The ``iomap_page_mkwrite`` function handles a write fault to a folio in
->  the pagecache.
->  ``IOMAP_WRITE | IOMAP_FAULT`` will be passed as the ``flags`` argument
-> -to ``->iomap_begin``.
-> +to ``begin``.
->  Callers commonly take the mmap ``invalidate_lock`` in shared or
->  exclusive mode before calling this function.
->  
-> @@ -256,7 +262,7 @@ such `reservations
->  <https://lore.kernel.org/linux-xfs/20220817093627.GZ3600936@dread.disaster.area/>`_
->  because writeback will not consume the reservation.
->  The ``iomap_write_delalloc_release`` can be called from a
-> -``->iomap_end`` function to find all the clean areas of the folios
-> +``end`` function to find all the clean areas of the folios
->  caching a fresh (``IOMAP_F_NEW``) delalloc mapping.
->  It takes the ``invalidate_lock``.
->  
-> @@ -274,7 +280,7 @@ Filesystems can call ``iomap_zero_range`` to perform zeroing of the
->  pagecache for non-truncation file operations that are not aligned to
->  the fsblock size.
->  ``IOMAP_ZERO`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``begin``.
->  Callers typically hold ``i_rwsem`` and ``invalidate_lock`` in exclusive
->  mode before calling this function.
->  
-> @@ -285,7 +291,7 @@ Filesystems can call ``iomap_file_unshare`` to force a file sharing
->  storage with another file to preemptively copy the shared data to newly
->  allocate storage.
->  ``IOMAP_WRITE | IOMAP_UNSHARE`` will be passed as the ``flags`` argument
-> -to ``->iomap_begin``.
-> +to ``begin``.
->  Callers typically hold ``i_rwsem`` and ``invalidate_lock`` in exclusive
->  mode before calling this function.
->  
-> @@ -298,7 +304,7 @@ operation.
->  ``truncate_setsize`` or ``truncate_pagecache`` will take care of
->  everything after the EOF block.
->  ``IOMAP_ZERO`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``begin``.
->  Callers typically hold ``i_rwsem`` and ``invalidate_lock`` in exclusive
->  mode before calling this function.
->  
-> @@ -341,8 +347,8 @@ The fields are as follows:
->      though it will `reuse mappings
->      <https://lore.kernel.org/all/20231207072710.176093-15-hch@lst.de/>`_
->      for runs of contiguous dirty fsblocks within a folio.
-> -    Do not return ``IOMAP_INLINE`` mappings here; the ``->iomap_end``
-> -    function must deal with persisting written data.
-> +    Do not return ``IOMAP_INLINE`` mappings here; the ``end`` function must
-> +    deal with persisting written data.
->      Do not return ``IOMAP_DELALLOC`` mappings here; iomap currently
->      requires mapping to allocated space.
->      Filesystems can skip a potentially expensive mapping lookup if the
-> @@ -428,7 +434,7 @@ writes for files.
->  .. code-block:: c
->  
->   ssize_t iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
-> -                      const struct iomap_ops *ops,
-> +                      iomap_iter_next_fn iomap_next,
->                        const struct iomap_dio_ops *dops,
->                        unsigned int dio_flags, void *private,
->                        size_t done_before);
-> @@ -511,7 +517,7 @@ Return Values
->   * ``-ENOTBLK``: Fall back to buffered I/O.
->     iomap itself will return this value if it cannot invalidate the page
->     cache before issuing the I/O to storage.
-> -   The ``->iomap_begin`` or ``->iomap_end`` functions may also return
-> +   The ``begin`` or ``end`` functions may also return
->     this value.
->  
->   * ``-EIOCBQUEUED``: The asynchronous direct I/O request has been
-> @@ -526,7 +532,7 @@ A direct I/O read initiates a read I/O from the storage device to the
->  caller's buffer.
->  Dirty parts of the pagecache are flushed to storage before initiating
->  the read io.
-> -The ``flags`` value for ``->iomap_begin`` will be ``IOMAP_DIRECT`` with
-> +The ``flags`` value for ``begin`` will be ``IOMAP_DIRECT`` with
->  any combination of the following enhancements:
->  
->   * ``IOMAP_NOWAIT``, as defined previously.
-> @@ -542,7 +548,7 @@ caller's buffer.
->  Dirty parts of the pagecache are flushed to storage before initiating
->  the write io.
->  The pagecache is invalidated both before and after the write io.
-> -The ``flags`` value for ``->iomap_begin`` will be ``IOMAP_DIRECT |
-> +The ``flags`` value for ``begin`` will be ``IOMAP_DIRECT |
->  IOMAP_WRITE`` with any combination of the following enhancements:
->  
->   * ``IOMAP_NOWAIT``, as defined previously.
-> @@ -644,7 +650,7 @@ fsdax Reads
->  
->  A fsdax read performs a memcpy from storage device to the caller's
->  buffer.
-> -The ``flags`` value for ``->iomap_begin`` will be ``IOMAP_DAX`` with any
-> +The ``flags`` value for ``begin`` will be ``IOMAP_DAX`` with any
->  combination of the following enhancements:
->  
->   * ``IOMAP_NOWAIT``, as defined previously.
-> @@ -657,7 +663,7 @@ fsdax Writes
->  
->  A fsdax write initiates a memcpy to the storage device from the caller's
->  buffer.
-> -The ``flags`` value for ``->iomap_begin`` will be ``IOMAP_DAX |
-> +The ``flags`` value for ``begin`` will be ``IOMAP_DAX |
->  IOMAP_WRITE`` with any combination of the following enhancements:
->  
->   * ``IOMAP_NOWAIT``, as defined previously.
-> @@ -680,9 +686,9 @@ fsdax mmap Faults
->  The ``dax_iomap_fault`` function handles read and write faults to fsdax
->  storage.
->  For a read fault, ``IOMAP_DAX | IOMAP_FAULT`` will be passed as the
-> -``flags`` argument to ``->iomap_begin``.
-> +``flags`` argument to ``begin``.
->  For a write fault, ``IOMAP_DAX | IOMAP_FAULT | IOMAP_WRITE`` will be
-> -passed as the ``flags`` argument to ``->iomap_begin``.
-> +passed as the ``flags`` argument to ``begin``.
->  
->  Callers commonly hold the same locks as they do to call their iomap
->  pagecache counterparts.
-> @@ -692,8 +698,8 @@ fsdax Truncation, fallocate, and Unsharing
->  
->  For fsdax files, the following functions are provided to replace their
->  iomap pagecache I/O counterparts.
-> -The ``flags`` argument to ``->iomap_begin`` are the same as the
-> -pagecache counterparts, with ``IOMAP_DAX`` added.
-> +The ``flags`` argument to ``begin`` are the same as the pagecache counterparts,
-> +with ``IOMAP_DAX`` added.
->  
->   * ``dax_file_unshare``
->   * ``dax_zero_range``
-> @@ -719,8 +725,7 @@ SEEK_DATA
->  
->  The ``iomap_seek_data`` function implements the SEEK_DATA "whence" value
->  for llseek.
-> -``IOMAP_REPORT`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``IOMAP_REPORT`` will be passed as the ``flags`` argument to ``begin``.
->  
->  For unwritten mappings, the pagecache will be searched.
->  Regions of the pagecache with a folio mapped and uptodate fsblocks
-> @@ -734,8 +739,7 @@ SEEK_HOLE
->  
->  The ``iomap_seek_hole`` function implements the SEEK_HOLE "whence" value
->  for llseek.
-> -``IOMAP_REPORT`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``IOMAP_REPORT`` will be passed as the ``flags`` argument to ``begin``.
->  
->  For unwritten mappings, the pagecache will be searched.
->  Regions of the pagecache with no folio mapped, or a !uptodate fsblock
-> @@ -750,8 +754,7 @@ Swap File Activation
->  The ``iomap_swapfile_activate`` function finds all the base-page aligned
->  regions in a file and sets them up as swap space.
->  The file will be ``fsync()``'d before activation.
-> -``IOMAP_REPORT`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``IOMAP_REPORT`` will be passed as the ``flags`` argument to ``begin``.
->  All mappings must be mapped or unwritten; cannot be dirty or shared, and
->  cannot span multiple block devices.
->  Callers must hold ``i_rwsem`` in exclusive mode; this is already
-> @@ -767,8 +770,7 @@ FS_IOC_FIEMAP
->  
->  The ``iomap_fiemap`` function exports file extent mappings to userspace
->  in the format specified by the ``FS_IOC_FIEMAP`` ioctl.
-> -``IOMAP_REPORT`` will be passed as the ``flags`` argument to
-> -``->iomap_begin``.
-> +``IOMAP_REPORT`` will be passed as the ``flags`` argument to ``begin``.
->  Callers commonly hold ``i_rwsem`` in shared mode before calling this
->  function.
->  
-> diff --git a/Documentation/filesystems/iomap/porting.rst b/Documentation/filesystems/iomap/porting.rst
-> index 3d49a32c0fff..b995f426808a 100644
-> --- a/Documentation/filesystems/iomap/porting.rst
-> +++ b/Documentation/filesystems/iomap/porting.rst
-> @@ -50,8 +50,14 @@ Build the kernel, run fstests with the ``-g all`` option across a wide
->  variety of your filesystem's supported configurations to build a
->  baseline of which tests pass and which ones fail.
->  
-> -The recommended approach is first to implement ``->iomap_begin`` (and
-> -``->iomap_end`` if necessary) to allow iomap to obtain a read-only
-> +Every iomap operation is driven by an ``iomap_iter_next_fn`` callback.
-> +Filesystems normally do not write one by hand: implement ``begin``
-> +(and ``end`` if necessary) and generate the callback with the
-> +``DEFINE_IOMAP_ITER_NEXT()`` macro, or ``DEFINE_IOMAP_ITER_NEXT_END()`` if an
-> +``end`` callback is needed.
-> +
-> +The recommended approach is first to implement ``begin`` (and
-> +``end`` if necessary) to allow iomap to obtain a read-only
->  mapping of a file range.
->  In most cases, this is a relatively trivial conversion of the existing
->  ``get_block()`` function for read-only mappings.
-> @@ -62,7 +68,7 @@ If FIEMAP is returning the correct information, it's a good sign that
->  other read-only mapping operations will do the right thing.
->  
->  Next, modify the filesystem's ``get_block(create = false)``
-> -implementation to use the new ``->iomap_begin`` implementation to map
-> +implementation to use the new ``begin`` implementation to map
->  file space for selected read operations.
->  Hide behind a debugging knob the ability to switch on the iomap mapping
->  functions for selected call paths.
-> @@ -82,14 +88,14 @@ I/O path because of bufferheads.
->  The buffered read I/O paths doesn't need to be converted yet, though the
->  direct I/O read path should be converted in this phase.
->  
-> -At this point, you should look over your ``->iomap_begin`` function.
-> +At this point, you should look over your ``begin`` function.
->  If it switches between large blocks of code based on dispatching of the
->  ``flags`` argument, you should consider breaking it up into
->  per-operation iomap ops with smaller, more cohesive functions.
->  XFS is a good example of this.
->  
->  The next thing to do is implement ``get_blocks(create == true)``
-> -functionality in the ``->iomap_begin``/``->iomap_end`` methods.
-> +functionality in the ``begin``/``end`` methods.
->  It is strongly recommended to create separate mapping functions and
->  iomap ops for write operations.
->  Then convert the direct I/O write path to iomap, and start running fsx
-> -- 
+> =C2=A0#ifdef CONFIG_SWAP
+> =C2=A0struct file;
+> =C2=A0struct swap_info_struct;
+> --=C2=A0
 > 2.52.0
-> 
-> 
+>=C2=A0
