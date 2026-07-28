@@ -1,90 +1,88 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2567D3B6BFD
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 13:29:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3A3E3D6CC6
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 13:45:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785245384; cv=none; b=rYEUg7FCue/22ZCz5VY2KpA2wd3TrhRJ9GfM8gloeC5VcCl3AnUZG9wjqEX7cpZZMYNlsPTrzcu2w05trNOJ0gouMgIeO//o7Kb8cS+WU6a/B48SKW5Mm+EYRLR4yPw3dIfK+JbH6O/PSBQurQiqLwq6Y0tPm/aotR3DqeEhvfs=
+	t=1785246339; cv=none; b=ZbV6uPfTrOwF4ptoPXDw0NQdfEgLoeHf6AKU0e75ENUrS2vctD2gDIJ+m2AN1jx1Vq4Ax+sp1u92AGyJwxzH5SDkLbKBrpTNR4l5vkeTVgwGd8ZMFeo3DrtRGzrSJJ2St92ngXuWuL05GhJjww+yeQUnWEa/dUaPttHFjyPf9/M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785245384; c=relaxed/simple;
-	bh=4vzyU2IvDg5/4oe5+Zn0lePsxUbv1TI2goMkATFJPEE=;
+	s=arc-20240116; t=1785246339; c=relaxed/simple;
+	bh=y2GWOmjjcRyLUkaNlXkPVU84+DEHJyH0LedydsHyDP0=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=dWpF+2Na1Hq9+6C9cwlIsF17p7CYvJ9MQbJzMRmk3iJi0uw9P2XmZPeFsIxB7s2k3a/dD5xRjeZ3HNM9E6gwufq9RlzliXiz1YiiDVYq+zs7VE46hhVK49WydPf7FScTX6WR9y+zdKkfLT/e0Y6obJviXMfyQBs/iDjncENHtrk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hawPO5Ms; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=x8K0omKz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GNDU2kS1; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aXniKVIN; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=LX5COM4nWaGd5Eco+e4v2WZH3uAFVWCait46Cm0bJ43Dl6LREOcJFQjRjMk6XUWOTjgYVmrRfQDDNzaCcmaYImAELy/CpSS4aUCYLYGfjL8fQe1Xzp2ZwxGRSPBn73BEw0gkGS+WzgokGwI+sWxNsmnrbczGDo/wf1H8yXVny4k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=n2v2+66c; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=P8wmBOYf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=iVxNkf0N; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8SIW/H2k; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hawPO5Ms";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="x8K0omKz";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GNDU2kS1";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aXniKVIN"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="n2v2+66c";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="P8wmBOYf";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="iVxNkf0N";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8SIW/H2k"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 0A2C07C3D3;
-	Tue, 28 Jul 2026 13:29:33 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 91E273E94;
+	Tue, 28 Jul 2026 13:45:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785245377; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785246330; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
-	b=hawPO5MsPDI/JrViZjFoT3WxYLOxRQSFDB9B7HBZ7TOdyDh1tdXzCb85d/NVAd778R6Yob
-	NkZppxGTsyAa0aFlU7TUNX8kSkaca5tdMLBrRbWPXTi360uuSyokya2FLSsiSspBTMUMI6
-	36phYGHDlVeuSVjNsQmYZ7nKbvHjuQc=
+	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
+	b=n2v2+66cPuGyGXzuHyCSONhs/qZHh4dDy+W0XPjdTaTdiRRgQrx2RpNUZdV8wXedpR5UTa
+	IDm4MnvAsaqMjsA+hoW4ri5XTTBcXGbKxRUhurhJ0942b0JDkfzpo0c+pYziY61RnBfT1S
+	3nSfQaDd4UNuMlQyuTuHhi2lPZ7DM4c=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785245377;
+	s=susede2_ed25519; t=1785246330;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
-	b=x8K0omKz2rBvXVDnCun54fqTAp+sM/rldYB3F/YbAs53VYmsCgHAuOJTHQGUMAChBvL/fd
-	DNTuTZ9dUWi2p3Bg==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=GNDU2kS1;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=aXniKVIN
+	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
+	b=P8wmBOYfItxomBgA6F316BsAgGyFonj1ltJ3rhdOQvpvJsrGPtO/YbTZch/tjUVBpzxw9P
+	dSwLOKpgnz3lqRDg==
+Authentication-Results: smtp-out2.suse.de;
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785245373; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785246326; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
-	b=GNDU2kS1MTw211rRxXA6WKf5ox8mUdMcKIcVjeX+qimwgDKX+vQezXRJNYaI7ZYnrMhhMA
-	+gxn+51qtZ1K28j43KEjxmCQTW+rwFg2rhQDd5Q8pO4XXymZucgR9J69bfol6mhevyeAc6
-	lksP+3m3I91Gmb+C9A+XMAn9puQQK0c=
+	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
+	b=iVxNkf0Ns7z4IIcXwZg1YjUYgSs/8NVX2r87w4qFnR5WNiqAf0aP5ofWQYl59F6moTOmAu
+	MJEiRn8ZCUGOK58fwxdFtT1qECnHq7a1BkBjJUvuUZtZhGrmXbiu6xjXTieXnRKrc/BIKx
+	Gges7qB8HTT4mkisnV7PVCQYQaP6MSY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785245373;
+	s=susede2_ed25519; t=1785246326;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
-	b=aXniKVINm7gsyIqfkH9whY+thaiCATWU25may4adHHu9QIihKdZLdmJBzapAINbC0vy4CH
-	H/vTscOqQUaDwCAQ==
+	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
+	b=8SIW/H2k2E9Dd/3Abmpz21J1dy2MOghpD6w5ednUTSlz+fR98i4ssOuclT6oXy1l+1QSma
+	VkWmt95p9Vy/9XCg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F1748779B1;
-	Tue, 28 Jul 2026 13:29:32 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 86118779B9;
+	Tue, 28 Jul 2026 13:45:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id zWfrOryuaGpsWgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 13:29:32 +0000
+	id Z2q2IHayaGrWaQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 13:45:26 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A123EA10B6; Tue, 28 Jul 2026 15:29:32 +0200 (CEST)
-Date: Tue, 28 Jul 2026 15:29:32 +0200
+	id 2965AA10B6; Tue, 28 Jul 2026 15:45:18 +0200 (CEST)
+Date: Tue, 28 Jul 2026 15:45:18 +0200
 From: Jan Kara <jack@suse.cz>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
-	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org, 
-	Baokun Li <libaokun@linux.alibaba.com>, Disha Goel <disgoel@linux.ibm.com>
-Subject: Re: [PATCH] ext4: turn off DAX on new files when encryption is set
-Message-ID: <647oon5c5duh2eo7trkxxrs5czlmjxsavjokrzyngozemcaxza@j5rfa5wsyu27>
-References: <20260723085648.1500357-1-ojaswin@linux.ibm.com>
- <kekum3d7vakufwz75guyr5mzn6w4rujmssyom5qynpbxucbqpf@f4va7cswqspx>
- <20260727194350.GC1021387@google.com>
- <20260727201339.GD1021387@google.com>
+To: Luyao Bai <bailuyao1997@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, "Darrick J . Wong" <djwong@kernel.org>, 
+	Christian Brauner <brauner@kernel.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: do not WARN when starting a journal on a frozen
+ filesystem
+Message-ID: <sriy2l6shuzesc364p5pg3ixlziimtlduag2fm63q7ajxcietf@pttahezzea3g>
+References: <20260723205036.661832-1-bailuyao1997@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -93,200 +91,125 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260727201339.GD1021387@google.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
+In-Reply-To: <20260723205036.661832-1-bailuyao1997@gmail.com>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[suse.cz,linux.ibm.com,vger.kernel.org,mit.edu,gmail.com,huawei.com,linux.alibaba.com];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 0A2C07C3D3
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
+	MIME_TRACE(0.00)[0:+];
+	TAGGED_RCPT(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[12];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,syzkaller.appspot.com:url,appspotmail.com:email]
 
-On Mon 27-07-26 20:13:39, Eric Biggers wrote:
-> On Mon, Jul 27, 2026 at 07:43:50PM +0000, Eric Biggers wrote:
-> > On Mon, Jul 27, 2026 at 09:06:23PM +0200, Jan Kara wrote:
-> > > On Thu 23-07-26 14:26:48, Ojaswin Mujoo wrote:
-> > > > Currently, when setting the S_ENCRYPTED flag on a new regular inode in
-> > > > a -o dax=always mounted FS, we seem to be erroneously retaining the S_DAX
-> > > > flag. This is because the newly created inode ends up with the following:
-> > > > 
-> > > >   __ext4_new_inode()
-> > > >     ext4_set_inode_flags(init=true) // sets S_DAX
-> > > >       fscrypt_set_context()
-> > > >         ext4_set_context()
-> > > >           ext4_set_inode_flags(init=false) // sets S_ENCRYPTED but
-> > > >                                               doesn't clears S_DAX
-> > > >       ext4_set_aops
-> > > >         inode->i_mapping->a_ops = &ext4_dax_aops;
-> > > > 
-> > > > Due to the S_DAX flag, the excrypted inode gets ext4_dax_aops and it
-> > > > silently ends up bypassing encryption completely. This is reflected in
-> > > > multiple xfstests failures like generic/548. To fix this, ensure we disable
-> > > > S_DAX correctly when S_ENCRYPTED is being set on a newly created inode. It
-> > > > is safe to change DAX state there because ext4_set_aops() later can
-> > > > correctly detect S_DAX unset and assign the correct aops.
-> > > > 
-> > > > The fix was actually the intended behavior however it seemed to have
-> > > > silently changed in 043546e46dc7.
-> > > > 
-> > > > Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
-> > > > Reported-by: Disha Goel <disgoel@linux.ibm.com>
-> > > > Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> > > > ---
-> > > >  fs/ext4/crypto.c | 15 +++++++++++----
-> > > >  fs/ext4/inode.c  | 10 ++++++----
-> > > >  2 files changed, 17 insertions(+), 8 deletions(-)
-> > > > 
-> > > > diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-> > > > index f41f320f4437..2d409114e02e 100644
-> > > > --- a/fs/ext4/crypto.c
-> > > > +++ b/fs/ext4/crypto.c
-> > > > @@ -134,6 +134,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
-> > > >  {
-> > > >  	handle_t *handle = fs_data;
-> > > >  	int res, res2, credits, retries = 0;
-> > > > +	bool init = S_ISREG(inode->i_mode);
-> > > 
-> > > Hum, I have some comments: IMHO the change is confusing because the meaning
-> > > of 'init' argument of ext4_set_inode_flags() doesn't mean the first setting
-> > > of flags any longer. And the reliance on ext4_set_context() getting called
-> > > in a safe place exactly for regular files is rather subtle as well.
-> > > 
-> > > Also does the change to ext4_set_inode_flags() really work? As far as I'm
-> > > reading the ext4 crypto implementation, I don't see where we'd be setting
-> > > EXT4_INODE_ENCRYPT for inodes with already enabled encryption (where we
-> > > load the context from xattrs through ext4_get_context()) and thus DAX would
-> > > still get enabled for such inodes? What am I missing?
-> > 
-> > Maybe __ext4_new_inode() should set the encryption flag on the inode
-> > earlier?  Currently it decides whether the inode will be encrypted, then
-> > calls ext4_set_inode_flags(), then calls fscrypt_set_context() (and thus
-> > ext4_set_context()).  That last step sets the flag and calls
-> > ext4_set_inode_flags() *again*.
-> > 
-> > I don't remember if there's a reason for that redundancy, but it might
-> > just be for historical reasons.  ext4_set_context() is called in two
-> > different cases: when a new inode is created and it's encrypted from the
-> > beginning, and when FS_IOC_SET_ENCRYPTION_POLICY is executed on an empty
-> > directory.  The latter does have to set the encrypt flag there.
-> >  
-> > - Eric
+On Thu 23-07-26 20:50:36, Luyao Bai wrote:
+> A WARNING is triggered in ext4_journal_check_start() when a background
+> writeback thread attempts to start a journal transaction while the
+> filesystem is in the SB_FREEZE_COMPLETE state:
 > 
-> Here's an idea.  I haven't tested it though.
-> 
-> Note that this would align ext4 closer with f2fs, which already sets the
-> encrypt flag before it calls fscrypt_set_context().
+>   WARNING: CPU: 1 PID: 2903 at fs/ext4/ext4_jbd2.c:76
+>            ext4_journal_check_start+0x1f8/0x250
+>   Call Trace:
+>    __ext4_journal_start_sb+0x181/0x600 fs/ext4/ext4_jbd2.c:105
+>    __ext4_journal_start fs/ext4/ext4_jbd2.h:326 [inline]
+>    ext4_do_writepages+0x112c/0x3d20 fs/ext4/inode.c:2707
+>    ext4_writepages+0x213/0x3c0 fs/ext4/inode.c:2813
+>    do_writepages+0x35f/0x870 mm/page-writeback.c:2683
+>    __writeback_single_inode+0x14f/0x10d0 fs/fs-writeback.c:1658
+>    writeback_sb_inodes+0x80c/0x1370 fs/fs-writeback.c:1954
+>    wb_writeback+0x41b/0xbd0 fs/fs-writeback.c:2134
+>    wb_workfn+0x410/0x1090 fs/fs-writeback.c:2321
 
-Thanks! This definitely looks much more obvious than Ojaswin's fix.
-Ojaswin, does this fix work for you?
+How this patch is broken has been already explained by others. Let me just
+add that usually bugs like these are caused by stale PAGECACHE_TAG_DIRTY
+tags in the xarray (so tags are still there but folios aren't really dirty
+anymore so writeback wouldn't do anything in the end). We had several fixes
+for those lately. So that's the direction you might want to explore and I
+also suggest verifying whether the problem still reproduces with current
+Ted's tree because it might well be it got already fixed.
 
 								Honza
 
+
 > 
-> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-> index f41f320f4437..c4bfe18fd527 100644
-> --- a/fs/ext4/crypto.c
-> +++ b/fs/ext4/crypto.c
-> @@ -144,7 +144,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	if (inode->i_ino == EXT4_ROOT_INO)
->  		return -EPERM;
->  
-> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
-> +	if (WARN_ON_ONCE(IS_DAX(inode)))
->  		return -EINVAL;
->  
->  	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
-> @@ -163,6 +163,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	 */
->  
->  	if (handle) {
-> +		/*
-> +		 * ext4 should have set the encrypt flag on the inode already,
-> +		 * and it should not have enabled inline data.
-> +		 */
-> +		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
-> +			return -EINVAL;
-> +		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
-> +			return -EINVAL;
->  		/*
->  		 * Since the inode is new it is ok to pass the
->  		 * XATTR_CREATE flag. This is necessary to match the
-> @@ -170,21 +178,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  		 * function with the credits allocated for the new
->  		 * inode.
->  		 */
-> -		res = ext4_xattr_set_handle(handle, inode,
-> -					    EXT4_XATTR_INDEX_ENCRYPTION,
-> -					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> -					    ctx, len, XATTR_CREATE);
-> -		if (!res) {
-> -			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -			ext4_clear_inode_state(inode,
-> -					EXT4_STATE_MAY_INLINE_DATA);
-> -			/*
-> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -			 * S_DAX may be disabled
-> -			 */
-> -			ext4_set_inode_flags(inode, false);
-> -		}
-> -		return res;
-> +		return ext4_xattr_set_handle(handle, inode,
-> +					     EXT4_XATTR_INDEX_ENCRYPTION,
-> +					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> +					     ctx, len, XATTR_CREATE);
->  	}
->  
->  	res = dquot_initialize(inode);
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index a40cb27f8116..3848244af77a 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->  		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
->  		if (err)
->  			goto out;
-> +		if (encrypt)
-> +			i_flags |= EXT4_ENCRYPT_FL;
->  	}
->  
->  	err = dquot_initialize(inode);
-> @@ -1306,6 +1308,7 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->  	ei->i_extra_isize = sbi->s_want_extra_isize;
->  	ei->i_inline_off = 0;
->  	if (ext4_has_feature_inline_data(sb) &&
-> +	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
->  	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
->  		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->  	ret = inode;
+> The background writeback flusher does not take freeze protection, so it
+> can legitimately reach ext4_do_writepages() and try to start a journal
+> handle while the filesystem is frozen. This happens, for example, when
+> ext4_writepages() failed earlier (e.g. -ENOSPC or -EDQUOT) during the
+> sync_filesystem() phase of the freeze: sync_filesystem() can still
+> return 0, the freeze completes, but dirty pages are left behind. A later
+> writeback pass then tries to write them out on the now-frozen
+> filesystem.
+> 
+> The same state is reachable through the EXT4_IOC_SHUTDOWN path: if
+> fs_bdev_freeze() succeeds in freezing the superblock but the subsequent
+> sync_blockdev() fails, the filesystem is left in SB_FREEZE_COMPLETE and
+> dirty pages remain, so writeback eventually retries and trips the WARN.
+> 
+> Because this state can be reached without any kernel bug, WARN_ON() is
+> the wrong tool here: WARN_ON() must only fire on conditions that should
+> never happen. Replace it with an ext4_msg() error message and return
+> -EROFS, rejecting the transaction cleanly. All callers of
+> __ext4_journal_start_sb() already handle an error return (it is the same
+> path used for the existing is_journal_aborted() -EROFS case), so the
+> dirty pages are simply kept and written back once the filesystem is
+> thawed.
+> 
+> This patch is intentionally limited to the ext4 journal-start check,
+> which is the direct cause of the reported warning. Any improvements to
+> the generic VFS freeze/thaw error handling in fs/super.c are a separate
+> concern and are deliberately left out of this fix.
+> 
+> Reported-by: syzbot+b75d75f957975f3d40e3@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=b75d75f957975f3d40e3
+> Fixes: 49ef8832fb1a ("bdev: implement freeze and thaw holder operations")
+> Signed-off-by: Luyao Bai <bailuyao1997@gmail.com>
+> ---
+> Tested with the syzbot reproducer under QEMU: the WARNING at
+> fs/ext4/ext4_jbd2.c fires on a clean mainline build and no longer fires
+> with this patch applied.
+> 
+>  fs/ext4/ext4_jbd2.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+> index 9a8c225f2..1756039b1 100644
+> --- a/fs/ext4/ext4_jbd2.c
+> +++ b/fs/ext4/ext4_jbd2.c
+> @@ -75,7 +75,12 @@ static int ext4_journal_check_start(struct super_block *sb)
+>  	if (WARN_ON_ONCE(sb_rdonly(sb)))
+>  		return -EROFS;
+> 
+> -	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+> +	if (unlikely(sb->s_writers.frozen == SB_FREEZE_COMPLETE)) {
+> +		ext4_msg(sb, KERN_ERR,
+> +			 "Attempt to start a journal transaction on a frozen filesystem");
+> +		return -EROFS;
+> +	}
+> +
+>  	journal = EXT4_SB(sb)->s_journal;
+>  	/*
+>  	 * Special case here: if the journal has aborted behind our
+> --
+> 2.43.0
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
