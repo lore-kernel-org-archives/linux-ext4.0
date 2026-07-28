@@ -1,88 +1,70 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3A3E3D6CC6
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 13:45:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A292C442FD6
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 13:50:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785246339; cv=none; b=ZbV6uPfTrOwF4ptoPXDw0NQdfEgLoeHf6AKU0e75ENUrS2vctD2gDIJ+m2AN1jx1Vq4Ax+sp1u92AGyJwxzH5SDkLbKBrpTNR4l5vkeTVgwGd8ZMFeo3DrtRGzrSJJ2St92ngXuWuL05GhJjww+yeQUnWEa/dUaPttHFjyPf9/M=
+	t=1785246602; cv=none; b=q1cnKErLmSnWOQrrETpenZIRJmhDrrbScgl7t+ETbSfhGkgLpYP98cXq+4IflGGd8pBL55cKALL/RM2PccIRUGj4euuAgY3XsI0nt/Cp2nOPpNimDD8rPJENQl1ldWt6faqqBdNSmGnaXm4I6/vvsQlGxsrIYYDX1BdVCWXBf6c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785246339; c=relaxed/simple;
-	bh=y2GWOmjjcRyLUkaNlXkPVU84+DEHJyH0LedydsHyDP0=;
+	s=arc-20240116; t=1785246602; c=relaxed/simple;
+	bh=Zt7l5myQ2WXobQN8tGRWBSvTO+sRbD1pPUAXv4U4maU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=LX5COM4nWaGd5Eco+e4v2WZH3uAFVWCait46Cm0bJ43Dl6LREOcJFQjRjMk6XUWOTjgYVmrRfQDDNzaCcmaYImAELy/CpSS4aUCYLYGfjL8fQe1Xzp2ZwxGRSPBn73BEw0gkGS+WzgokGwI+sWxNsmnrbczGDo/wf1H8yXVny4k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=n2v2+66c; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=P8wmBOYf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=iVxNkf0N; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8SIW/H2k; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=rrkPtpwV5owIRAuLqehKeCPhyKeoL1TxVLhaix28GQFLMGhhOdhCyuF42KykCu6Rjz1QJ/OUQ8AqfqHlKGTIRve+Z2NDSjL0+LkXX6xgf5TV0DBLuo8cvb3Ad5o/pyaVzmmiXrtwTw+L6UtX5+pqH9DwB1ckTnvMMgSkIfRyWAk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=T4FjaK6o; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="n2v2+66c";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="P8wmBOYf";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="iVxNkf0N";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8SIW/H2k"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="T4FjaK6o"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1785246599;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xq5CTHITws8PjVCNXvkWRBi305FHJPXL2e4BqYPiiCQ=;
+	b=T4FjaK6oaG/ImRBCk4pHrU/LYQckRiOZHtDSyUQT6T5gSKDDEvhDmKCj+HI4xPDB5WDdVn
+	3hg8dvXdWO2HzCcz6FqdtHmieNtKUylgESBEM0BATy0qWdk5MXUYJES7Z+goH55J66MG8m
+	JnAhN0sB7cR5hu1NnQnsgeFcSbKLaM0=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-511-WEhzMV-CNJSzMZOhlwpung-1; Tue,
+ 28 Jul 2026 09:49:52 -0400
+X-MC-Unique: WEhzMV-CNJSzMZOhlwpung-1
+X-Mimecast-MFC-AGG-ID: WEhzMV-CNJSzMZOhlwpung_1785246589
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 91E273E94;
-	Tue, 28 Jul 2026 13:45:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785246330; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
-	b=n2v2+66cPuGyGXzuHyCSONhs/qZHh4dDy+W0XPjdTaTdiRRgQrx2RpNUZdV8wXedpR5UTa
-	IDm4MnvAsaqMjsA+hoW4ri5XTTBcXGbKxRUhurhJ0942b0JDkfzpo0c+pYziY61RnBfT1S
-	3nSfQaDd4UNuMlQyuTuHhi2lPZ7DM4c=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785246330;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
-	b=P8wmBOYfItxomBgA6F316BsAgGyFonj1ltJ3rhdOQvpvJsrGPtO/YbTZch/tjUVBpzxw9P
-	dSwLOKpgnz3lqRDg==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785246326; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
-	b=iVxNkf0Ns7z4IIcXwZg1YjUYgSs/8NVX2r87w4qFnR5WNiqAf0aP5ofWQYl59F6moTOmAu
-	MJEiRn8ZCUGOK58fwxdFtT1qECnHq7a1BkBjJUvuUZtZhGrmXbiu6xjXTieXnRKrc/BIKx
-	Gges7qB8HTT4mkisnV7PVCQYQaP6MSY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785246326;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=AOKGR9Pwfp1q/yUfZvSH7BPWoDgznn7E79eZ29H99Hs=;
-	b=8SIW/H2k2E9Dd/3Abmpz21J1dy2MOghpD6w5ednUTSlz+fR98i4ssOuclT6oXy1l+1QSma
-	VkWmt95p9Vy/9XCg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 86118779B9;
-	Tue, 28 Jul 2026 13:45:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id Z2q2IHayaGrWaQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 13:45:26 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 2965AA10B6; Tue, 28 Jul 2026 15:45:18 +0200 (CEST)
-Date: Tue, 28 Jul 2026 15:45:18 +0200
-From: Jan Kara <jack@suse.cz>
-To: Luyao Bai <bailuyao1997@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, "Darrick J . Wong" <djwong@kernel.org>, 
-	Christian Brauner <brauner@kernel.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: do not WARN when starting a journal on a frozen
- filesystem
-Message-ID: <sriy2l6shuzesc364p5pg3ixlziimtlduag2fm63q7ajxcietf@pttahezzea3g>
-References: <20260723205036.661832-1-bailuyao1997@gmail.com>
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C949C19560A2;
+	Tue, 28 Jul 2026 13:49:47 +0000 (UTC)
+Received: from bfoster (unknown [10.22.88.46])
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8B491404;
+	Tue, 28 Jul 2026 13:49:42 +0000 (UTC)
+Date: Tue, 28 Jul 2026 09:49:40 -0400
+From: Brian Foster <bfoster@redhat.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: Christian Brauner <brauner@kernel.org>, hch@lst.de,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	linux-fsdevel@vger.kernel.org, changfengnan@bytedance.com,
+	kbusch@kernel.org, Matthew Wilcox <willy@infradead.org>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	David Sterba <dsterba@suse.com>, Gao Xiang <xiang@kernel.org>,
+	Namjae Jeon <linkinjeon@kernel.org>, tytso@mit.edu,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Carlos Maiolino <cem@kernel.org>,
+	Damien Le Moal <dlemoal@kernel.org>, libaokun@linux.alibaba.com,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [PATCH v4 01/21] iomap: split iomap_iter() logic into
+ iomap_iter_next()
+Message-ID: <amizdHj6ICgP2xFv@bfoster>
+References: <20260727211758.1116539-1-joannelkoong@gmail.com>
+ <20260727211758.1116539-2-joannelkoong@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,125 +73,137 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260723205036.661832-1-bailuyao1997@gmail.com>
-X-Spam-Score: -2.30
-X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	TAGGED_RCPT(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[12];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,syzkaller.appspot.com:url,appspotmail.com:email]
+In-Reply-To: <20260727211758.1116539-2-joannelkoong@gmail.com>
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-On Thu 23-07-26 20:50:36, Luyao Bai wrote:
-> A WARNING is triggered in ext4_journal_check_start() when a background
-> writeback thread attempts to start a journal transaction while the
-> filesystem is in the SB_FREEZE_COMPLETE state:
+On Mon, Jul 27, 2026 at 02:17:38PM -0700, Joanne Koong wrote:
+> In preparation for changing iomap to use an in-iter (->iomap_next())
+> model, move the iomap_iter() logic out into the new iomap_iter_next()
+> helper function.
 > 
->   WARNING: CPU: 1 PID: 2903 at fs/ext4/ext4_jbd2.c:76
->            ext4_journal_check_start+0x1f8/0x250
->   Call Trace:
->    __ext4_journal_start_sb+0x181/0x600 fs/ext4/ext4_jbd2.c:105
->    __ext4_journal_start fs/ext4/ext4_jbd2.h:326 [inline]
->    ext4_do_writepages+0x112c/0x3d20 fs/ext4/inode.c:2707
->    ext4_writepages+0x213/0x3c0 fs/ext4/inode.c:2813
->    do_writepages+0x35f/0x870 mm/page-writeback.c:2683
->    __writeback_single_inode+0x14f/0x10d0 fs/fs-writeback.c:1658
->    writeback_sb_inodes+0x80c/0x1370 fs/fs-writeback.c:1954
->    wb_writeback+0x41b/0xbd0 fs/fs-writeback.c:2134
->    wb_workfn+0x410/0x1090 fs/fs-writeback.c:2321
-
-How this patch is broken has been already explained by others. Let me just
-add that usually bugs like these are caused by stale PAGECACHE_TAG_DIRTY
-tags in the xarray (so tags are still there but folios aren't really dirty
-anymore so writeback wouldn't do anything in the end). We had several fixes
-for those lately. So that's the direction you might want to explore and I
-also suggest verifying whether the problem still reproduces with current
-Ted's tree because it might well be it got already fixed.
-
-								Honza
-
-
+> iomap_iter_next() is added as an inlined helper so it can be called
+> directly by ->iomap_next() implementations where the begin()/end()
+> callbacks can be direct calls.
 > 
-> The background writeback flusher does not take freeze protection, so it
-> can legitimately reach ext4_do_writepages() and try to start a journal
-> handle while the filesystem is frozen. This happens, for example, when
-> ext4_writepages() failed earlier (e.g. -ENOSPC or -EDQUOT) during the
-> sync_filesystem() phase of the freeze: sync_filesystem() can still
-> return 0, the freeze completes, but dirty pages are left behind. A later
-> writeback pass then tries to write them out on the now-frozen
-> filesystem.
+> The DEFINE_IOMAP_ITER_NEXT() and DEFINE_IOMAP_ITER_NEXT_END() macros are
+> also provided to generate the boilerplate ->iomap_next() wrapper
+> functions that simply forward to iomap_iter_next() with the appropriate
+> begin/end callbacks. DEFINE_IOMAP_ITER_NEXT() is for the common case
+> where there is no end() callback. DEFINE_IOMAP_ITER_NEXT_END() is for
+> the case where there is an explicit end() callback.
 > 
-> The same state is reachable through the EXT4_IOC_SHUTDOWN path: if
-> fs_bdev_freeze() succeeds in freezing the superblock but the subsequent
-> sync_blockdev() fails, the filesystem is left in SB_FREEZE_COMPLETE and
-> dirty pages remain, so writeback eventually retries and trips the WARN.
+> No functional change intended. The only code-level difference is that on
+> the iomap_end() error path (ret < 0 && !advanced), the old code returned
+> with iter.status left as the caller's last value whereas the new code
+> zeroes it, but this is not observable in practice as there are no in-tree
+> callers that read iter.status after the iteration loop.
 > 
-> Because this state can be reached without any kernel bug, WARN_ON() is
-> the wrong tool here: WARN_ON() must only fire on conditions that should
-> never happen. Replace it with an ext4_msg() error message and return
-> -EROFS, rejecting the transaction cleanly. All callers of
-> __ext4_journal_start_sb() already handle an error return (it is the same
-> path used for the existing is_journal_aborted() -EROFS case), so the
-> dirty pages are simply kept and written back once the filesystem is
-> thawed.
-> 
-> This patch is intentionally limited to the ext4 journal-start check,
-> which is the direct cause of the reported warning. Any improvements to
-> the generic VFS freeze/thaw error handling in fs/super.c are a separate
-> concern and are deliberately left out of this fix.
-> 
-> Reported-by: syzbot+b75d75f957975f3d40e3@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=b75d75f957975f3d40e3
-> Fixes: 49ef8832fb1a ("bdev: implement freeze and thaw holder operations")
-> Signed-off-by: Luyao Bai <bailuyao1997@gmail.com>
+> Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+> Reviewed-by: Fengnan Chang <changfengnan@bytedance.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Signed-off-by: Joanne Koong <joannelkoong@gmail.com>
 > ---
-> Tested with the syzbot reproducer under QEMU: the WARNING at
-> fs/ext4/ext4_jbd2.c fires on a clean mainline build and no longer fires
-> with this patch applied.
+>  fs/iomap/iter.c       | 123 +++++++++++++++++++++---------------------
+>  include/linux/iomap.h | 102 +++++++++++++++++++++++++++++------
+>  2 files changed, 147 insertions(+), 78 deletions(-)
 > 
->  fs/ext4/ext4_jbd2.c | 7 ++++++-
->  1 file changed, 6 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-> index 9a8c225f2..1756039b1 100644
-> --- a/fs/ext4/ext4_jbd2.c
-> +++ b/fs/ext4/ext4_jbd2.c
-> @@ -75,7 +75,12 @@ static int ext4_journal_check_start(struct super_block *sb)
->  	if (WARN_ON_ONCE(sb_rdonly(sb)))
->  		return -EROFS;
-> 
-> -	WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> +	if (unlikely(sb->s_writers.frozen == SB_FREEZE_COMPLETE)) {
-> +		ext4_msg(sb, KERN_ERR,
-> +			 "Attempt to start a journal transaction on a frozen filesystem");
-> +		return -EROFS;
-> +	}
-> +
->  	journal = EXT4_SB(sb)->s_journal;
->  	/*
->  	 * Special case here: if the journal has aborted behind our
-> --
-> 2.43.0
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c
+> index e4a29829591a..66ccb87441ab 100644
+> --- a/fs/iomap/iter.c
+> +++ b/fs/iomap/iter.c
+> @@ -6,15 +6,6 @@
+>  #include <linux/iomap.h>
+>  #include "trace.h"
+>  
+> -static inline void iomap_iter_clean_fbatch(struct iomap_iter *iter)
+> -{
+> -	if (iter->iomap.flags & IOMAP_F_FOLIO_BATCH) {
+> -		folio_batch_release(iter->fbatch);
+> -		folio_batch_reinit(iter->fbatch);
+> -		iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
+> -	}
+> -}
+> -
+
+So hch forwarded me a bit of Sashiko review feedback that called out a
+potential folio batch leak on error returns from iomap_begin() or
+iomap_end(). Note that I think the ->iomap_end() variant is currently
+not an issue because nothing returns error there, but it should be fixed
+regardless.
+
+As such, I have the patch below as a fix based on current master. The
+idea here is to account for failures from either callback and also the
+fact that XFS may not necessarily transfer the iomap_flags on failure. I
+considered a couple other options here, like changing that behavior or
+using an iter flag, but I think this is the cleanest option.
+
+However this obviously conflicts with this rework series. This isn't a
+major conflict IMO.. I'd probably just do the same thing and include the
+batch cleanup in the error/exit path of iomap_iter() (or maybe start
+passing ret into iomap_iter_done()), but I would need to reintroduce the
+helper above. Also after this series I think this could mean a duplicate
+call in the termination case where iomap_iter_continue() would have
+cleaned things up, but that is relatively harmless. Maybe there is
+something incrementally cleaner, but I'm still wrapping my head around
+the factoring here..
+
+But anyways, the main thing I wanted to ask is how folks want to handle
+this particular bug..? This rework is invasive and looks mostly reviewed
+so I don't want to unnecessarily hold it up. I can rebase on top of this
+and leave the patch below for -stable, or avoid the helper churn and
+post the patch below on its own and rework it into this, or maybe just
+tweak this to leave the helper around and avoid some churn that way..
+thoughts?
+
+Brian
+
+--- 8< ---
+
+diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c
+index e4a29829591a..63617ec48250 100644
+--- a/fs/iomap/iter.c
++++ b/fs/iomap/iter.c
+@@ -6,12 +6,18 @@
+ #include <linux/iomap.h>
+ #include "trace.h"
+ 
++/*
++ * Release the iter folio batch. Note that the iomap flag is meant to control
++ * the I/O path for the mapping and may not be set in error situations.
++ */
+ static inline void iomap_iter_clean_fbatch(struct iomap_iter *iter)
+ {
+-	if (iter->iomap.flags & IOMAP_F_FOLIO_BATCH) {
++	if (!iter->fbatch)
++		return;
++	iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
++	if (folio_batch_count(iter->fbatch)) {
+ 		folio_batch_release(iter->fbatch);
+ 		folio_batch_reinit(iter->fbatch);
+-		iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
+ 	}
+ }
+ 
+@@ -79,7 +85,7 @@ int iomap_iter(struct iomap_iter *iter, const struct iomap_ops *ops)
+ 						  olen),
+ 				advanced, iter->flags, &iter->iomap);
+ 		if (ret < 0 && !advanced)
+-			return ret;
++			goto error;
+ 	}
+ 
+ 	/* detect old return semantics where this would advance */
+@@ -110,7 +116,11 @@ int iomap_iter(struct iomap_iter *iter, const struct iomap_ops *ops)
+ 	ret = ops->iomap_begin(iter->inode, iter->pos, iter->len, iter->flags,
+ 			       &iter->iomap, &iter->srcmap);
+ 	if (ret < 0)
+-		return ret;
++		goto error;
+ 	iomap_iter_done(iter);
+ 	return 1;
++
++error:
++	iomap_iter_clean_fbatch(iter);
++	return ret;
+ }
+
