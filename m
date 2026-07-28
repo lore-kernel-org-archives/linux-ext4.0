@@ -1,198 +1,292 @@
-Received: from mail-pj1-f41.google.com (mail-pj1-f41.google.com [209.85.216.41])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BBF452D8378
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 07:16:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.41
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785223016; cv=pass; b=hrVi5FOx5bXZQVrTSkiOeDXAh2eCaYHO6drjBf4qVzWBWvG65dDDWNNgoxKaLZ35//5Cv40rgaubMlxlFTrXUfYWJGp57q53lSYqtqIAez4qpCsUL1ezFI4BxO70cCOjRUUfEO+SUodPqALLL4C1suTB4m3AZrdZJsQ/xOchIVQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785223016; c=relaxed/simple;
-	bh=CIzeAHTKjYSjdth23Y6KsuYapPuualACZPUlNo2PKpA=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=sS8Dh77ctCmbLw+Mt3w4GInrEJbfyTVYbMCG0k4Yi679UnI2LFeI8uC39lNzgKPUHmcNdHYiw9ShcfsoBLzsenqcyfXD1eB21L8jS5BRkbo9EWN677qFTBAkMURkUie93X233mfFm5kC7YTUxxuU4OHYQBD49vZk7adxszT05Zw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ngK/g9WD; arc=pass smtp.client-ip=209.85.216.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2567D3B6BFD
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 13:29:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785245384; cv=none; b=rYEUg7FCue/22ZCz5VY2KpA2wd3TrhRJ9GfM8gloeC5VcCl3AnUZG9wjqEX7cpZZMYNlsPTrzcu2w05trNOJ0gouMgIeO//o7Kb8cS+WU6a/B48SKW5Mm+EYRLR4yPw3dIfK+JbH6O/PSBQurQiqLwq6Y0tPm/aotR3DqeEhvfs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785245384; c=relaxed/simple;
+	bh=4vzyU2IvDg5/4oe5+Zn0lePsxUbv1TI2goMkATFJPEE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dWpF+2Na1Hq9+6C9cwlIsF17p7CYvJ9MQbJzMRmk3iJi0uw9P2XmZPeFsIxB7s2k3a/dD5xRjeZ3HNM9E6gwufq9RlzliXiz1YiiDVYq+zs7VE46hhVK49WydPf7FScTX6WR9y+zdKkfLT/e0Y6obJviXMfyQBs/iDjncENHtrk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hawPO5Ms; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=x8K0omKz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GNDU2kS1; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aXniKVIN; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ngK/g9WD"
-Received: by mail-pj1-f41.google.com with SMTP id 98e67ed59e1d1-38e3617ba36so3653731a91.3
-        for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 00:16:54 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785223014; cv=none;
-        d=google.com; s=arc-20260327;
-        b=m7SYby24JK2pM0vBZheYMA1ocno4guRhSg8C606bQh+sY5/nsuyqn8GtwuYwmb+pdZ
-         LfXBW3qF32CaYjva2ZeY4SkaNtUNgYQzt1OxSIM9eLkWdyD6FW3bXqTxPp4ihL1FWOvS
-         Oio10KhyDziMVumsgilII8Rcecr73F+D1dGJFoQB0Hef85J//94eQ2t3PyUM2/24E73O
-         67YjsVAl9G0kmp8NvnMOa6YnMGLXOnO+PvAZkGsO0noaWsfJRmFeZZcoLPGcy7bwBMfs
-         ZcPkvNyMQFHuyL2NEeJprrLvhiOkRPpvzFQ0hSIG0DwniOsHcDhU6m3CxwV8q7FrvQta
-         IjIQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=pzZLHeBaEx6oA7oTfCIBucMK1T2IZ6zRhZSKR/t/pQY=;
-        fh=v6t/WFc2+EYNUKeVV3xBwIjc+DuscSAH3YSHrMDrTp8=;
-        b=W9e2ocX37abIc8f4JMmXpjg/QNBKY2n9TCe3NXmV5NUXS5OA4wYhs4XwkZpDC7ulY6
-         sBSYOp8yr3UX78wvSUtwIbDkoNQ5j/Fx+ic//2w949xbswn7RoPRZLYvsfZOvi+cb6+a
-         c1j8umDeid5b3Ytp/qlv3Z6VFU6AH/jGB3fsiOIoLms9dSXy6GSGLpKSwZzAba1mdCD2
-         NWSzbh1DWM3svk8q5npENglZ1VM4C9qawCuXmE+MufiuJa+i2v5IO+gT3dLDi+lrQ90J
-         d5A3gZ3RNsz4gGFHsmBWPtrH5Tl8vamqSnaKUcRsGYr6mXJcoXjWN8sKaT21oSBkB643
-         1Hhw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785223014; x=1785827814; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=pzZLHeBaEx6oA7oTfCIBucMK1T2IZ6zRhZSKR/t/pQY=;
-        b=ngK/g9WDajCqb+EEUKnWpqUgW5HliGbJvxTdGc1EmSxX0IMo0zb/8dVsEcqBa4fXdP
-         UzqKYIeZblaXddfDn14UPTadGIroCGaWj49P0j8dOdfQeZ23oyqc6l1ivF6DNnA3ZqJP
-         qgAttNms05uKOLnGqtCShhJjGTvGkFUpsPC6pX2BPnyyVR4GiXlv2S4SrfomKmCVv7W8
-         +wlJjIm79ZJghwVT71cPlldEECVIw3Lb8TtGNJGwx2M8/wFGiFrMHJtBIAk0bxDJhrcS
-         6oEwgruPcX9M1bZjelxUR8sYGL/FnSFIU6R9jOyNOFwwmGNAXLETcLxtc6HN8OUixLiP
-         SOoQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785223014; x=1785827814;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=pzZLHeBaEx6oA7oTfCIBucMK1T2IZ6zRhZSKR/t/pQY=;
-        b=aL90ohh37FzntPVod0lr29Vk7oj18gQUr0ZQjqNHFPfRgA63QlGabKwDvU3BZ/y6s/
-         nb08NzFmlPNiFRkE7yErJhsvVWGHudSG0H3oIVCBKaPJgnBoXPtd9m/Nn2ZFSYDlzj0s
-         TLrzpl7tkyjJDVlorxoqfHdEHG0Irm2ZLJ35RWm/TZVQ3ilLi2jWLYUIgz6eV4T1Kd/v
-         oVwa/66lboJFhbOckPCMLxfyz7xj6bJZ6jTfThWU84J1RVLrEVo+oUdVIajz4q7oF7s6
-         HIj13KTkHM4nzZa+8mRzsgKY8t7yy+HQahcwJaelDhn9Ls9QMYlye7wU2rqG5YjETBtO
-         svYQ==
-X-Forwarded-Encrypted: i=1; AHgh+RqJHYJ6wIFfzjTbdgvFzHgnlDF2s6D6Yep8dXv/IGis2sxKfcML6hebKGNd/X2DEIPJrSMC+N75la1X@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz2AzLvWnXuk2Kd/dUg4Op8LlnI5YRW6aIVYzU9722/1ZD3iVVs
-	nmzvZOEHHptQdILU5PbhfTh1duX/2Cy6+xTGEMpFF8ydRcqVc0dOsIYhKQx4hd8tE1u2qw8cW62
-	lNIz7HFQ08HDWuXbSp4GG8qUHUcyjg2GxNec3T0+buw==
-X-Gm-Gg: AR+sD13gmw9r6sElH9ewcSU6FlkaOjuFEhMQV3s6y1aONDv2qL/vKEBT1dPxiBW+XDN
-	fvmdq/bDN0bui/0KGJ1XALNyb0A6U2Ad+ZYnx1UYK9FthiW75MQveF63e3Y8urPRZP/ro241LFo
-	LgdPicmlFpnOLRcHAbYzISd47OAjapgnNmizRMhbf80SZ65ser9mlCs5ERQktq8rnZqp81KVowB
-	jHAJW3BTj9TjUBNCqrAUQWAJr0hQpz0/LuBLx8/4jk/t9BnyJk/IG1+JlXgjx9ytKOS6phyiLRk
-	FbMzHi+qCqRz8GJ1EF0=
-X-Received: by 2002:a17:90a:e70c:b0:37d:f206:a2ac with SMTP id
- 98e67ed59e1d1-38f6a33dcd2mr1158623a91.7.1785223013842; Tue, 28 Jul 2026
- 00:16:53 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hawPO5Ms";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="x8K0omKz";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GNDU2kS1";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aXniKVIN"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 0A2C07C3D3;
+	Tue, 28 Jul 2026 13:29:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785245377; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
+	b=hawPO5MsPDI/JrViZjFoT3WxYLOxRQSFDB9B7HBZ7TOdyDh1tdXzCb85d/NVAd778R6Yob
+	NkZppxGTsyAa0aFlU7TUNX8kSkaca5tdMLBrRbWPXTi360uuSyokya2FLSsiSspBTMUMI6
+	36phYGHDlVeuSVjNsQmYZ7nKbvHjuQc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785245377;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
+	b=x8K0omKz2rBvXVDnCun54fqTAp+sM/rldYB3F/YbAs53VYmsCgHAuOJTHQGUMAChBvL/fd
+	DNTuTZ9dUWi2p3Bg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=GNDU2kS1;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=aXniKVIN
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785245373; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
+	b=GNDU2kS1MTw211rRxXA6WKf5ox8mUdMcKIcVjeX+qimwgDKX+vQezXRJNYaI7ZYnrMhhMA
+	+gxn+51qtZ1K28j43KEjxmCQTW+rwFg2rhQDd5Q8pO4XXymZucgR9J69bfol6mhevyeAc6
+	lksP+3m3I91Gmb+C9A+XMAn9puQQK0c=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785245373;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=d9PzCVM5nRoGRo1iWon1jCmwSAzSXvE/xicOEAH7o4o=;
+	b=aXniKVINm7gsyIqfkH9whY+thaiCATWU25may4adHHu9QIihKdZLdmJBzapAINbC0vy4CH
+	H/vTscOqQUaDwCAQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F1748779B1;
+	Tue, 28 Jul 2026 13:29:32 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id zWfrOryuaGpsWgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 13:29:32 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id A123EA10B6; Tue, 28 Jul 2026 15:29:32 +0200 (CEST)
+Date: Tue, 28 Jul 2026 15:29:32 +0200
+From: Jan Kara <jack@suse.cz>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org, 
+	Baokun Li <libaokun@linux.alibaba.com>, Disha Goel <disgoel@linux.ibm.com>
+Subject: Re: [PATCH] ext4: turn off DAX on new files when encryption is set
+Message-ID: <647oon5c5duh2eo7trkxxrs5czlmjxsavjokrzyngozemcaxza@j5rfa5wsyu27>
+References: <20260723085648.1500357-1-ojaswin@linux.ibm.com>
+ <kekum3d7vakufwz75guyr5mzn6w4rujmssyom5qynpbxucbqpf@f4va7cswqspx>
+ <20260727194350.GC1021387@google.com>
+ <20260727201339.GD1021387@google.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260720034441.3900050-1-rafad900@gmail.com> <2joyziupzemt5vjdvmnic3kcdckt6z5dht6vgusxsxrfbtthhn@uuiexxvvcclv>
- <amePTzFUaAEZ0cgl@mit.edu>
-In-Reply-To: <amePTzFUaAEZ0cgl@mit.edu>
-From: =?UTF-8?Q?Rafael_Alejandro_D=C3=ADaz_Cruz?= <rafad900@gmail.com>
-Date: Tue, 28 Jul 2026 00:16:42 -0700
-X-Gm-Features: AUfX_mz_ZOBSFNfm6kgPmduich1pdozSjv8QJzt_0vasyCU44WmISkfO0596Hqs
-Message-ID: <CALp66yFWvPuj+y10FZowt_3ai1uzwT1F1tLQKeatNVuPX6Up0A@mail.gmail.com>
-Subject: Re: [PATCH] ext4: convert pa_count from atomic_t to refcount_t
-To: Theodore Tso <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260727201339.GD1021387@google.com>
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TO_DN_SOME(0.00)[];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[suse.cz,linux.ibm.com,vger.kernel.org,mit.edu,gmail.com,huawei.com,linux.alibaba.com];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 0A2C07C3D3
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
-Hello everyone,
+On Mon 27-07-26 20:13:39, Eric Biggers wrote:
+> On Mon, Jul 27, 2026 at 07:43:50PM +0000, Eric Biggers wrote:
+> > On Mon, Jul 27, 2026 at 09:06:23PM +0200, Jan Kara wrote:
+> > > On Thu 23-07-26 14:26:48, Ojaswin Mujoo wrote:
+> > > > Currently, when setting the S_ENCRYPTED flag on a new regular inode in
+> > > > a -o dax=always mounted FS, we seem to be erroneously retaining the S_DAX
+> > > > flag. This is because the newly created inode ends up with the following:
+> > > > 
+> > > >   __ext4_new_inode()
+> > > >     ext4_set_inode_flags(init=true) // sets S_DAX
+> > > >       fscrypt_set_context()
+> > > >         ext4_set_context()
+> > > >           ext4_set_inode_flags(init=false) // sets S_ENCRYPTED but
+> > > >                                               doesn't clears S_DAX
+> > > >       ext4_set_aops
+> > > >         inode->i_mapping->a_ops = &ext4_dax_aops;
+> > > > 
+> > > > Due to the S_DAX flag, the excrypted inode gets ext4_dax_aops and it
+> > > > silently ends up bypassing encryption completely. This is reflected in
+> > > > multiple xfstests failures like generic/548. To fix this, ensure we disable
+> > > > S_DAX correctly when S_ENCRYPTED is being set on a newly created inode. It
+> > > > is safe to change DAX state there because ext4_set_aops() later can
+> > > > correctly detect S_DAX unset and assign the correct aops.
+> > > > 
+> > > > The fix was actually the intended behavior however it seemed to have
+> > > > silently changed in 043546e46dc7.
+> > > > 
+> > > > Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
+> > > > Reported-by: Disha Goel <disgoel@linux.ibm.com>
+> > > > Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> > > > ---
+> > > >  fs/ext4/crypto.c | 15 +++++++++++----
+> > > >  fs/ext4/inode.c  | 10 ++++++----
+> > > >  2 files changed, 17 insertions(+), 8 deletions(-)
+> > > > 
+> > > > diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+> > > > index f41f320f4437..2d409114e02e 100644
+> > > > --- a/fs/ext4/crypto.c
+> > > > +++ b/fs/ext4/crypto.c
+> > > > @@ -134,6 +134,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+> > > >  {
+> > > >  	handle_t *handle = fs_data;
+> > > >  	int res, res2, credits, retries = 0;
+> > > > +	bool init = S_ISREG(inode->i_mode);
+> > > 
+> > > Hum, I have some comments: IMHO the change is confusing because the meaning
+> > > of 'init' argument of ext4_set_inode_flags() doesn't mean the first setting
+> > > of flags any longer. And the reliance on ext4_set_context() getting called
+> > > in a safe place exactly for regular files is rather subtle as well.
+> > > 
+> > > Also does the change to ext4_set_inode_flags() really work? As far as I'm
+> > > reading the ext4 crypto implementation, I don't see where we'd be setting
+> > > EXT4_INODE_ENCRYPT for inodes with already enabled encryption (where we
+> > > load the context from xattrs through ext4_get_context()) and thus DAX would
+> > > still get enabled for such inodes? What am I missing?
+> > 
+> > Maybe __ext4_new_inode() should set the encryption flag on the inode
+> > earlier?  Currently it decides whether the inode will be encrypted, then
+> > calls ext4_set_inode_flags(), then calls fscrypt_set_context() (and thus
+> > ext4_set_context()).  That last step sets the flag and calls
+> > ext4_set_inode_flags() *again*.
+> > 
+> > I don't remember if there's a reason for that redundancy, but it might
+> > just be for historical reasons.  ext4_set_context() is called in two
+> > different cases: when a new inode is created and it's encrypted from the
+> > beginning, and when FS_IOC_SET_ENCRYPTION_POLICY is executed on an empty
+> > directory.  The latter does have to set the encrypt flag there.
+> >  
+> > - Eric
+> 
+> Here's an idea.  I haven't tested it though.
+> 
+> Note that this would align ext4 closer with f2fs, which already sets the
+> encrypt flag before it calls fscrypt_set_context().
 
-Thanks for the helpful responses! My name is Rafael A. Diaz Cruz and I'm ho=
-ping
-to join the Linux community. I have a background in CS with a Masters from =
-UC
-Davis and am currently working as a Software Dev at AMEX.
+Thanks! This definitely looks much more obvious than Ojaswin's fix.
+Ojaswin, does this fix work for you?
 
-I read the kernel in my spare time and joined the LFX mentorship starting i=
-n
-April of this year but due to personal reasons I wasn't able to dedicate
-much time until recently. I do hope to contribute more to ext4 and the kern=
-el
-as a whole, however, given that the kernel is over 40 million lines of
-code I think it
-might take me some time to catch up :) I do greatly appreciate your
-tolerance for
-my lack of expertise!
+								Honza
 
-I did continue looking at what the overall ext4_prealloc_space struct
-was used for and realized that the pa_count was being set to 0 on purpose. =
-I did
-not understand it at first given that other subsystems in the kernel
-treat 0 references
-as the object being completely dead. But I think I see now how it's being u=
-sed.
-
-I did try to build my mental model of how ext4 was treating the
-preallocation blocks
-from the comments alone, yet, it's taking me some time due to the sheer siz=
-e of
-mballoc.c and its complexity. I was wondering if there are some diagrams th=
-at
-show the flow of the overall system? I get lost in particular when
-thinking of multiple
-threads reaching the same function.
-
-Also, I have the unit tests for both the kernel and the ext4 fs but I
-would like to know
-if there are other methods by which I should check my work besides QEMU.
-
-https://www.linkedin.com/in/rafaelalejandrodiazcruz/
-
-
-On Mon, Jul 27, 2026 at 1:17=E2=80=AFPM Theodore Tso <tytso@mit.edu> wrote:
->
-> On Mon, Jul 27, 2026 at 01:57:11PM -0500, Jan Kara wrote:
-> >
-> > This is a bit problematic as for pa_count 0->1 transition is fine (as l=
-ong
-> > as pa_deleted isn't set) so this conversion will trigger false warnings=
- as
-> > the 0-day report shows.
->
-> For better or for worse, the lifetime rules of the ext4_prealloc_space
-> structure don't match those assumed by refcount.h.  Which is to say,
-> it's not a reference count the same way that say, struct inode's
-> i_links_count.
->
-> The whole *point* of the preallocation space is that we are holding
-> some blocks for use by an inode or by block group, because it's too
-> expensive to figure out that this set of blocks is available for
-> allocation.  So even though pa_count is zero, meaning that there isn't
-> an *active* allocation in process, under normal circumstances we want
-> to keep ext4_prealloc_space around and linked into its relevant linked
-> list.  This is why the pa_count 0->1 transition is OK, and it is _not_
-> an existing "use after free".
->
-> There's actually quite a lot of documentation in fs/ext4/mballoc.c,
-> but the comments don't really make this point clearly enough.  I think
-> that's because the assumption is that this high-level description of
-> what the goals of ext4_prealloc_space is assumed to be known by
-> everyone trying to modify that part of the block allocator.
->
-> But given that we are having more people trying to submit changes to
-> ext4 (in some cases, assisted by LLM's), it might be a good idea to
-> improve the documentation, both for the sake of the humans and the
-> LLM's that are trying to understand how things work.
->
-> Just for yucks, I asked an LLM to explain what a human might want to
-> need to know about how the ext4_prealloc_space sutrcture was used, and
-> it came up with this.  (See attached.)
->
-> I don't propose adding this directly to the beginning of
-> fs/ext4/mballoc.c, but we might want to see if there is some parts of
-> this that we do want to add.  (And to seeif what we currently have as
-> comments at the beginning of mballoc.c is accurate, since I don't
-> think anyone has reviewed it in a while.)
->
-> Cheers,
->
->                                                 - Ted
->
-> P.S.  Hi Rafa/Rafad, it appears that you are a relatively new Kernel
-> contributor; I see that the only other patch contribution from your
-> gmail account is was to attempt to address a jfs syzkaller issue.  If
-> you intend to contribute more ext4 changes, welcome!  It would be
-> great if you introduced yourself so we know a bit more about who you
-> are, and what name you would prefer to be known by.
->
+> 
+> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+> index f41f320f4437..c4bfe18fd527 100644
+> --- a/fs/ext4/crypto.c
+> +++ b/fs/ext4/crypto.c
+> @@ -144,7 +144,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>  	if (inode->i_ino == EXT4_ROOT_INO)
+>  		return -EPERM;
+>  
+> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
+> +	if (WARN_ON_ONCE(IS_DAX(inode)))
+>  		return -EINVAL;
+>  
+>  	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
+> @@ -163,6 +163,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>  	 */
+>  
+>  	if (handle) {
+> +		/*
+> +		 * ext4 should have set the encrypt flag on the inode already,
+> +		 * and it should not have enabled inline data.
+> +		 */
+> +		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
+> +			return -EINVAL;
+> +		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
+> +			return -EINVAL;
+>  		/*
+>  		 * Since the inode is new it is ok to pass the
+>  		 * XATTR_CREATE flag. This is necessary to match the
+> @@ -170,21 +178,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>  		 * function with the credits allocated for the new
+>  		 * inode.
+>  		 */
+> -		res = ext4_xattr_set_handle(handle, inode,
+> -					    EXT4_XATTR_INDEX_ENCRYPTION,
+> -					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+> -					    ctx, len, XATTR_CREATE);
+> -		if (!res) {
+> -			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> -			ext4_clear_inode_state(inode,
+> -					EXT4_STATE_MAY_INLINE_DATA);
+> -			/*
+> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+> -			 * S_DAX may be disabled
+> -			 */
+> -			ext4_set_inode_flags(inode, false);
+> -		}
+> -		return res;
+> +		return ext4_xattr_set_handle(handle, inode,
+> +					     EXT4_XATTR_INDEX_ENCRYPTION,
+> +					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+> +					     ctx, len, XATTR_CREATE);
+>  	}
+>  
+>  	res = dquot_initialize(inode);
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index a40cb27f8116..3848244af77a 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+>  		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
+>  		if (err)
+>  			goto out;
+> +		if (encrypt)
+> +			i_flags |= EXT4_ENCRYPT_FL;
+>  	}
+>  
+>  	err = dquot_initialize(inode);
+> @@ -1306,6 +1308,7 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+>  	ei->i_extra_isize = sbi->s_want_extra_isize;
+>  	ei->i_inline_off = 0;
+>  	if (ext4_has_feature_inline_data(sb) &&
+> +	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
+>  	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
+>  		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+>  	ret = inode;
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
