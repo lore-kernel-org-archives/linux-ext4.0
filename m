@@ -1,200 +1,70 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2C92427A1A
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 14:01:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13C91435535;
+	Tue, 28 Jul 2026 14:27:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785247308; cv=none; b=mle85JOj5vG5MpP/jAQQcAO7z8GHrk2DSmaZw822fIU87UBP+VPauJDeZQLG3R9mPIteGjZWURqU2PJTPJ0B363rTuHa3hUQLBemJDm5BSGOdbNnNnoMwOJ2L0EXesEp+FhNzscDqqmmVTF0Kc2EzjqTQ4nwIPJnd1yGY2e1znk=
+	t=1785248879; cv=none; b=axFl5JwiKOgpHuWemn6kMpuHOhUXAky+t3peQ/PBQ/RO1+75Zqnjbk3wZVSFdPsLopc7pq9oU+naunl1UbrVpKUVvajgavoJ0rBsoKRIxKScHfpGB372EeaDVg4fDARij08pcl2Qu6MShabRhMDRMJpjt2xtkSp7kK/lAQ+GNng=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785247308; c=relaxed/simple;
-	bh=vEd8ol3gjnKr+VE6P3KVRcLVCTtwt11ZjbDmoB3XYmE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ge3UiVpOoFlFc3iyqzQwxanO7nET0TTsbNMg3eXgYjMGK71yq0hwhFbMUsPu7Pl9tJyTl2NXoE5HJbhqEMOH3D7sPQWhBzWPmhGSX+K7avzx2c19KNIAbwySTT3FjyQlcYSuHdV7IayL8Tot5ei8rXlRd5yJo0wLbTtxREClv6c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=VDPRcSCK; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ao1jlDkQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=aUbhqyPo; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=y8gJd070; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1785248879; c=relaxed/simple;
+	bh=rBvNqNavzbrrcbT2nZJt/thsxq3mPh0j+0mjEtTQk2I=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Oj1LvOgoqlKglPiwmXa4XJEpmhDcY4ZV7VQiiYz41iIwFk5zHvfCXhihfsOQdV2hLrjoskbzZ6B0OD+XzGhRJjkxuRxiDDyuncynDDjauQeThAfbs3Di3hI4oWE97p7I7SZ/FI4UpIzJfamV2VLj7vzSVUv3WgEYcJVnMVIIwRQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jl21fUpQ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="VDPRcSCK";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ao1jlDkQ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="aUbhqyPo";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="y8gJd070"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 122EB7C361;
-	Tue, 28 Jul 2026 14:01:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785247301; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3c0f2qQ3T/PsTyr9tny+1wqgMNXBLa+8jylPMH6gVnI=;
-	b=VDPRcSCKZENHCn+TTrN8n1UDd1lO7v0cK1ZduV8NvsXp8vej6r+TKkREUhmXO4RVPM9dDB
-	XcIdW3TE9W/8IeKOBVF76Pzp4uf7Uj3C2CEP4ioMpPdDjoUG6JenuWFzduNzfc12F6Ubwb
-	n6omIVZTih6FArjxUo/512UnHovOFV0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785247301;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3c0f2qQ3T/PsTyr9tny+1wqgMNXBLa+8jylPMH6gVnI=;
-	b=ao1jlDkQq+XO0aUIcUKwZr53QjpXM4YGp5jTNw3WbDqtTd+vk8TworBRHGMB2eeoUBtQ1J
-	1wSuPdr3gT5PzYCw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785247297; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3c0f2qQ3T/PsTyr9tny+1wqgMNXBLa+8jylPMH6gVnI=;
-	b=aUbhqyPoKGQsygwls+MdwseBjVRoyjKAeWVcFBUEJ5dpqcj24cq+EfSWUomGafyOPd6ovX
-	arvAHgP4xkQWBFdqL6FWp34iKL5/z7DqOrInkMoyEa4Y23qm1K2Wf2TbBizee4nACPLqII
-	OLHN36GdLUov9WRvCALoLvRw7XSlk/s=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785247297;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=3c0f2qQ3T/PsTyr9tny+1wqgMNXBLa+8jylPMH6gVnI=;
-	b=y8gJd0708XK5J8E9RygUsH+8Y/1DQCNjMnJBOw4YWfMbyHvx5VIw+fI1IOBbfndvVSg1DT
-	ql2ia9s0XX4SelBQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 08607779B1;
-	Tue, 28 Jul 2026 14:01:37 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id M6MJAkG2aGrmeQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 14:01:37 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id A3881A10B6; Tue, 28 Jul 2026 16:01:28 +0200 (CEST)
-Date: Tue, 28 Jul 2026 16:01:28 +0200
-From: Jan Kara <jack@suse.cz>
-To: Yun Zhou <yun.zhou@windriver.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v5] ext4: validate EA inode i_nlink in
- ext4_xattr_inode_iget
-Message-ID: <vcplbpvf4tpxg5khdu7wwmxyqlo4tb7wji43yhbvfzjsdblumn@hooso27hekio>
-References: <20260724100255.144768-1-yun.zhou@windriver.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jl21fUpQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 404761F000E9;
+	Tue, 28 Jul 2026 14:27:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1785248877;
+	bh=ipPVpKqDsUNPrwwl0/LqgIlIDX4NZ+f3Dn1SHjvbxLU=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References;
+	b=jl21fUpQ9TLOIa90lgXJhTcM9ZnGL6RLSJFDOOnggmhSieefvX4ru1EerT+kIcsfW
+	 Jg8xIie9e8BA9f72djNqWrkWjrtU/futoXGB7lurzYiHySGoplgN4kV4c7EDoAHzTa
+	 RLRlyCGgcjFlkaqFG7mv8iFqAIR9+m2XxaINcT3TPONLCNLXK2yTqLOijLx7A8OXhx
+	 Mv2UhFkaJdHdCMgnJOKt6YM24HtkwlZjzxdyFWw62as3Llm3vAwFPTYdXFgl3xtbKZ
+	 fJ3fT/pvfIqh3Dz9+SaR9ZfcNtpUA/ARTatxh4zCtFrr+5x0ADDOmS31Y8my1tzGwE
+	 QdG3dBgIT6JsQ==
+Date: Tue, 28 Jul 2026 07:27:56 -0700
+From: Jakub Kicinski <kuba@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Carlos Maiolino <cem@kernel.org>, Theodore Tso <tytso@mit.edu>, "Darrick
+ J. Wong" <djwong@kernel.org>, Joanne Koong <joannelkoong@gmail.com>,
+ changfengnan@bytedance.com, Christian Brauner <brauner@kernel.org>,
+ linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, workflows@vger.kernel.org
+Subject: Re: selective Sashiko replies, was: Re: [PATCH 2/3] iomap: decouple
+ simple direct I/O reads from iomap_dio_rw
+Message-ID: <20260728072756.7ddc9fdd@kernel.org>
+In-Reply-To: <20260728040120.GA19400@lst.de>
+References: <20260722124931.3159664-1-hch@lst.de>
+	<20260722124931.3159664-3-hch@lst.de>
+	<CAJnrk1a_cc55HcpRAi+H-mqOn7XUt_BxKJTre=Mw=xaE-5A5Rg@mail.gmail.com>
+	<20260723045347.GA6641@lst.de>
+	<20260723151021.GC7380@frogsfrogsfrogs>
+	<amI3Kf3lFz4FMqXh@mit.edu>
+	<amNerp4LwjSkHS5t@andromeda.toxiclabs.cc>
+	<20260728040120.GA19400@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260724100255.144768-1-yun.zhou@windriver.com>
-X-Spam-Score: -2.30
-X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,syzkaller.appspot.com:url,appspotmail.com:email]
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-On Fri 24-07-26 18:02:55, Yun Zhou wrote:
-> Validate EA inode state in ext4_xattr_inode_iget() to reject corrupted
-> EA inodes early, before they trigger WARN_ONCE in
-> ext4_xattr_inode_update_ref().
+On Tue, 28 Jul 2026 06:01:20 +0200 Christoph Hellwig wrote:
+> > IIRC the discussion we had a while back was to keep the reviews emailed
+> > to authors only...
+> > 
+> > Now I wonder how feasible would be to have a "linux-xfs-review" list to
+> > send sashiko reviews to, then people opt-in to it? Would it be overkill?  
 > 
-> When a corrupted ext4 image has an EA inode with inconsistent i_nlink
-> and ref_count values (e.g. i_nlink=65535), the code currently allows it
-> through and later hits WARN_ONCE when ref_count transitions cross the
-> 0/1 boundary.  This is better handled as an early sanity check that
-> returns -EFSCORRUPTED, consistent with how ext4 treats other on-disk
-> corruption.
-> 
-> Since ext4_xattr_inode_iget() resolves references from active xattr
-> entries, the target EA inode must be in active state (i_nlink=1,
-> ref_count>0).  Reject any inode that does not satisfy this.
-> 
-> Reported-by: syzbot+76916a45d2294b551fd9@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=76916a45d2294b551fd9
-> Fixes: dec214d00e0d ("ext4: xattr inode deduplication")
-> Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+> The main problem is that reducing the recipient list for replies is
+> incredibly stupid.
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
-> v5:
->  - Use ext4_put_ea_inode() instead of make_bad_inode() + iput() to
->    safely release the rejected inode regardless of jbd2 handle or
->    SB_ACTIVE state.
-> 
-> v4:
->  - Take I_MUTEX_XATTR before checking orphan state to safely decide
->    whether to call make_bad_inode(), avoiding orphan list corruption
->    if another thread is concurrently freeing the EA inode
-> 
-> v3:
->  - Move check after Lustre branch to avoid false positives on Lustre EA inodes
->  - Merge into single condition: i_nlink != 1 || !ref_count
->  - Add make_bad_inode() before iput() to avoid truncation in active txn
-> 
-> v2:
->  - Add ref_count validation to also catch i_nlink=1, ref_count=0 case
-> 
->  fs/ext4/xattr.c | 15 +++++++++++++++
->  1 file changed, 15 insertions(+)
-> 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 4ae6ce111566..1eee25955107 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -460,6 +460,21 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
->  		inode_unlock(inode);
->  	}
->  
-> +	/*
-> +	 * Since this function resolves references from active xattr entries,
-> +	 * the EA inode must be in active state (i_nlink=1, ref_count>0).
-> +	 * i_nlink > 1, i_nlink == 0 (dangling reference), or ref_count == 0
-> +	 * (inconsistent with an active entry) all indicate on-disk corruption.
-> +	 */
-> +	if (inode->i_nlink != 1 || !ext4_xattr_inode_get_ref(inode)) {
-> +		ext4_error(parent->i_sb,
-> +			   "EA inode %lu has unexpected i_nlink=%u ref_count=%llu",
-> +			   ea_ino, inode->i_nlink,
-> +			   ext4_xattr_inode_get_ref(inode));
-> +		ext4_put_ea_inode(inode);
-> +		return -EFSCORRUPTED;
-> +	}
-> +
->  	*ea_inode = inode;
->  	return 0;
->  }
-> -- 
-> 2.43.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
++1, maybe perhaps someone wants the off-list option, dunno. 
+But trimming the CC list of the on-list reply is a really weird idea.
+Submissions often CC multiple vger lists, and the bot only replies to one.
