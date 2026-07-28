@@ -1,59 +1,86 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 870F345348A
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 14:44:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A12B9459ACE
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 14:51:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785249849; cv=none; b=JXj8dQ/YY5Ba+bZ49sUfsmAZICl/bC9tUazxK96y3rsoSC+9sTcBh+Gq8PqqPztzoPxwGXPhLfYMaODeZDLrYKVaBQ6tGkNiyeOCbhSH9ESb1hOzB+cZIa+wHJXQjMWk9pJ6U/EHgezU54lBGWx5Y7bEv3mvjuOTeg6TWQTseeU=
+	t=1785250275; cv=none; b=r83JzrKr4sMIBkdbqVSY9ZFeG46gZfRcndCDVFTEUQpPq2bRK3wj2zwlAU11Qg1l8Ov/s0RhMr8YiUBkr+8b+nwW7VtB5Xl65VDyjwL6rPE0XSN5yRzSVreEXPkJshN03fVPwQ3Wne2e82irUBN6jcRZTlOs9LWXBeT92jUX60c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785249849; c=relaxed/simple;
-	bh=ru2wMwxdrtiChBLKMJ+O9R/ZEREGN2zzSs7sfjFpgls=;
+	s=arc-20240116; t=1785250275; c=relaxed/simple;
+	bh=lpYsBobLhKs8aRa+jvR4DcXdiZ5F52oSK1sV/hu2S1A=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=PGMeBW+7DbzRjDq5KGq6yDAR9qGMbLA45NEOy+E3oDc/erBS3HvPUjMLJ2Kr5QkBxXZMHpAw+FjoGu/2qI2Mq1OQDriXZV9FIsQR6TWkVP2OrToTgPds3CKBlXmsiG9D5gdJbNjfXkyp96ejuC4imA7ogYei7wwQ0dYsCZ553EQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=fail smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=a9H+i8t8; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=GthPZOCcE4sMAURJt0KECxi6j56QWStaMuCGXvN2giUWIZEfQ8gP+frfu/9Eav0sXlXwWlThruoMvGM1mCB6ndCGGmIBQwjwcCWOav/bwExbfGE5jtxtKbSIIwvqB/Gfx+Y31xi0fFMxMdt5RbOvG0DFokMfQNH1oyp4Q532CBI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zRfQ2VXL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=orgDVNBj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=psQlPEHg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7Y5/V5Uh; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="a9H+i8t8"
-Received: from macsyma.thunk.org (pool-108-20-43-42.bstnma.fios.verizon.net [108.20.43.42])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 66SEhWMv003318
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 28 Jul 2026 10:43:33 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1785249815; bh=hF8jTJ2Y6RKeXf+Xo1YCrExaUVI4ZVsSpHkXg62O3IY=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=a9H+i8t809nmwk51y99ma52DOO+NQpDGEtA6TC3zZxO2gyhw8sYtU75dQGSo8uoEd
-	 8BO4uHCOKSAMSPFqKK1Zjwmcunvy/Mge8vqAC1bzhOALhZCXALqRIGE0+UiXDObSDH
-	 VSLqKQi2766tV68ZUv/wCuXYneAfKcSbeEv+JV6dr5p8IDSwiC9NulBg8P5nolNQT7
-	 6znIzWJ3NwEXe+VB+JSA8ib78MXL0uOlyabJH9j5Av8BDv1b+PY58mjdwTg+9pRdYP
-	 nC8EHdXghSPvdpZ8GuCafp0vIwaBcG4wwLLKCyhew4ML+kmZYHDWqh5/6aOuIWkfAO
-	 AmzyYBc6EzGEw==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 4F648C7423D; Tue, 28 Jul 2026 10:42:32 -0400 (EDT)
-Date: Tue, 28 Jul 2026 10:42:32 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Joanne Koong <joannelkoong@gmail.com>, changfengnan@bytedance.com,
-        Christian Brauner <brauner@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        workflows@vger.kernel.org
-Subject: Re: selective Sashiko replies, was: Re: [PATCH 2/3] iomap: decouple
- simple direct I/O reads from iomap_dio_rw
-Message-ID: <ami9NUgcJvr0zHuk@mit.edu>
-References: <20260722124931.3159664-1-hch@lst.de>
- <20260722124931.3159664-3-hch@lst.de>
- <CAJnrk1a_cc55HcpRAi+H-mqOn7XUt_BxKJTre=Mw=xaE-5A5Rg@mail.gmail.com>
- <20260723045347.GA6641@lst.de>
- <20260723151021.GC7380@frogsfrogsfrogs>
- <amI3Kf3lFz4FMqXh@mit.edu>
- <amNerp4LwjSkHS5t@andromeda.toxiclabs.cc>
- <20260728040120.GA19400@lst.de>
- <20260728072756.7ddc9fdd@kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zRfQ2VXL";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="orgDVNBj";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="psQlPEHg";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7Y5/V5Uh"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 67B967C33E;
+	Tue, 28 Jul 2026 14:51:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785250267; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
+	b=zRfQ2VXLEiQWz2DUxLGyJ0hH58GHnphLFlKmRDtAkyFm4Eup7gTYp6w6E3b+gCrdGprFKn
+	pMIGehxE39TI920Loesdq6tsFaONWQp5oFonRqrMdSZ8honLH56zO3ka4p0gShONBbzUC+
+	fTFEstfExK4p9oKqsl05qDZM9G+d7XM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785250267;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
+	b=orgDVNBje1mVQDaxVVdS1+j4kdRGV+97HIoQ3gHM3DLVr86yBv3VdNPq3b6HJujIU/yVIY
+	fiRrhceojrLQ5sAw==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785250263; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
+	b=psQlPEHgwEDS2F1TWEbGHL0IyJHTh54TA0rs6ee5sxvkVuCPb+xBLu0pqJ9JqgNscjnqcn
+	+ytomCJTEP1tiEeWCM8q5ee5ALlKsPmbCVVopYOGfg83yueRvG1B5ILFVJZPtqkQixO4RO
+	8juLd2PHBGOgZdWrySFgFHoP/GGmxbQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785250263;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
+	b=7Y5/V5Uh8HvW3+0ZSY9gfeq5MSBug847ugbBYIJ5ETM+r64XaCeawBPBP16u7iJKZmgMxC
+	pfSF+rJabRqMwUDA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5CBF4779B1;
+	Tue, 28 Jul 2026 14:51:03 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id MDyfFtfBaGqrKwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 14:51:03 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id F37DCA10B6; Tue, 28 Jul 2026 16:50:54 +0200 (CEST)
+Date: Tue, 28 Jul 2026 16:50:54 +0200
+From: Jan Kara <jack@suse.cz>
+To: Joe Perches <joe@perches.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: Reduce object size of ext4_msg uses
+Message-ID: <j6bufcgvsvzjhyebsac5szej6akdjkbsedelqdb4bm7uebl26c@b64qs7zp4uhp>
+References: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -62,40 +89,147 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260728072756.7ddc9fdd@kernel.org>
+In-Reply-To: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	TAGGED_RCPT(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
 
-On Tue, Jul 28, 2026 at 07:27:56AM -0500, Jakub Kicinski wrote:
+On Fri 24-07-26 18:23:36, Joe Perches wrote:
+> Reduce the object size of ext4 ~2KB (~.5%) by combining the KERN_<LEVEL>
+> and format uses of ext4_msg.
 > 
-> +1, maybe perhaps someone wants the off-list option, dunno. 
-> But trimming the CC list of the on-list reply is a really weird idea.
-> Submissions often CC multiple vger lists, and the bot only replies to one.
+> Separate them in __ext4_msg using printk_get_level and printk_skip_level
+> and emitting the appropriate level.
+> 
+> x86 object sizes before and after:
+> 
+> defconfig size before:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  579013	 121634	    316	 700963	  ab223	(TOTALS)
+> 
+> defconfig size after:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  577196	 121650	    316	 699162	  aab1a	(TOTALS)
+> 
+> defconfig size before with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  537999	 121432	    316	 659747	  a1123	(TOTALS)
+> 
+> defconfig size after with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  536837	 121424	    316	 658577	  a0c91	(TOTALS)
+> 
+> Signed-off-by: Joe Perches <joe@perches.com>
 
-It's not (necessarily) "just one" mailing list.
+Looks good. Feel free to add:
 
-For better or for worse, there are people who have claimed that being
-exposed to LLM reviews would "deman their humanity".  So the Sashiko
-maintainers have made it completely up to each subsystem whether (a)
-Sashiko should review the patch aat all or (b) whether the review
-should be sent via e-mail, or just left on sashiko.dev web site.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-If it is sent via e-mail, then who it should be sent to can be
-configured to send it to the patch author (or not), or what e-mail
-addresses should be sent if the patch is qualified as relevant for a
-particular subsystem.  This could just be the maintainer(s), or to the
-subsystem mailing list, etc.  If a patch is relevant to (say) both the
-SCSI subsystem and the s390 subsystem, then it will be sent to both
-subsystem mailing lists.  So it's not that the bot only replies to one
-list, but only to those lists that the subsystem maintainers have
-authorized.
+								Honza
 
-At some level, the Sashiko developers effectively have tossed the hot
-potato policy decision to the subsystem maintainers.  Given the
-megathead on the ksummit mailing lsit, I can't really blame Roman for
-choosing to do this ---- although I'll note the Intel zero-day bot
-folks chose differently; I guess automated benchmarks aren't perceived
-to demean the humanity of developers as much as LLM reviews, and so
-aren't as controversial.
-
-Cheers,
-
-						- Ted
+> ---
+>  fs/ext4/ext4.h  | 12 ++++++------
+>  fs/ext4/super.c | 14 +++++++++-----
+>  2 files changed, 15 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b37c136ea3ab..981918f32067 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3309,8 +3309,8 @@ void __ext4_warning(struct super_block *, const char *, unsigned int,
+>  extern __printf(4, 5)
+>  void __ext4_warning_inode(const struct inode *inode, const char *function,
+>  			  unsigned int line, const char *fmt, ...);
+> -extern __printf(3, 4)
+> -void __ext4_msg(struct super_block *, const char *, const char *, ...);
+> +extern __printf(2, 3)
+> +void __ext4_msg(struct super_block *, const char *fmt, ...);
+>  extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
+>  			   const char *, unsigned int, const char *);
+>  extern __printf(7, 8)
+> @@ -3354,8 +3354,8 @@ void __ext4_grp_locked_error(const char *, unsigned int,
+>  	__ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
+>  #define ext4_warning_inode(inode, fmt, ...)				\
+>  	__ext4_warning_inode(inode, __func__, __LINE__, fmt, ##__VA_ARGS__)
+> -#define ext4_msg(sb, level, fmt, ...)				\
+> -	__ext4_msg(sb, level, fmt, ##__VA_ARGS__)
+> +#define ext4_msg(sb, level, fmt, ...)					\
+> +	__ext4_msg(sb, level fmt, ##__VA_ARGS__)
+>  #define dump_mmp_msg(sb, mmp, msg)					\
+>  	__dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
+>  #define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
+> @@ -3401,8 +3401,8 @@ do {									\
+>  } while (0)
+>  #define ext4_msg(sb, level, fmt, ...)					\
+>  do {									\
+> -	no_printk(fmt, ##__VA_ARGS__);					\
+> -	__ext4_msg(sb, "", " ");					\
+> +	no_printk(level fmt, ##__VA_ARGS__);				\
+> +	__ext4_msg(sb, "" " ");						\
+>  } while (0)
+>  #define dump_mmp_msg(sb, mmp, msg)					\
+>  	__dump_mmp_msg(sb, mmp, "", 0, "")
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 245f67d10ded..72d6f6353a27 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -981,11 +981,11 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+>  	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
+>  }
+>  
+> -void __ext4_msg(struct super_block *sb,
+> -		const char *prefix, const char *fmt, ...)
+> +void __ext4_msg(struct super_block *sb, const char *fmt, ...)
+>  {
+>  	struct va_format vaf;
+>  	va_list args;
+> +	int level;
+>  
+>  	if (sb) {
+>  		atomic_inc(&EXT4_SB(sb)->s_msg_count);
+> @@ -995,12 +995,16 @@ void __ext4_msg(struct super_block *sb,
+>  	}
+>  
+>  	va_start(args, fmt);
+> -	vaf.fmt = fmt;
+> +
+> +	level = printk_get_level(fmt);
+> +	vaf.fmt = printk_skip_level(fmt);
+>  	vaf.va = &args;
+>  	if (sb)
+> -		printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+> +		printk("%c%cEXT4-fs (%s): %pV\n",
+> +		       KERN_SOH_ASCII, level, sb->s_id, &vaf);
+>  	else
+> -		printk("%sEXT4-fs: %pV\n", prefix, &vaf);
+> +		printk("%c%cEXT4-fs: %pV\n",
+> +		       KERN_SOH_ASCII, level, &vaf);
+>  	va_end(args);
+>  }
+>  
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
