@@ -1,235 +1,161 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A12B9459ACE
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 14:51:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1E9D1FC110
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 15:47:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785250275; cv=none; b=r83JzrKr4sMIBkdbqVSY9ZFeG46gZfRcndCDVFTEUQpPq2bRK3wj2zwlAU11Qg1l8Ov/s0RhMr8YiUBkr+8b+nwW7VtB5Xl65VDyjwL6rPE0XSN5yRzSVreEXPkJshN03fVPwQ3Wne2e82irUBN6jcRZTlOs9LWXBeT92jUX60c=
+	t=1785253673; cv=none; b=QpBclGTF69lEe5jsOXKukq0I9DWty+uXfS3yCMITgcOAiONGxCCY3lLYB3THGMQgVQjMT2ps2t/W1H0Wd6pYp4t+NU8bjRXP/REZ27PqCLB2GXhaKvifJRxcxgKc6OsBQmyrm0EktigPl4muJaNCUeWPRURY2JIjTErQmi2afF4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785250275; c=relaxed/simple;
-	bh=lpYsBobLhKs8aRa+jvR4DcXdiZ5F52oSK1sV/hu2S1A=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=GthPZOCcE4sMAURJt0KECxi6j56QWStaMuCGXvN2giUWIZEfQ8gP+frfu/9Eav0sXlXwWlThruoMvGM1mCB6ndCGGmIBQwjwcCWOav/bwExbfGE5jtxtKbSIIwvqB/Gfx+Y31xi0fFMxMdt5RbOvG0DFokMfQNH1oyp4Q532CBI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zRfQ2VXL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=orgDVNBj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=psQlPEHg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7Y5/V5Uh; arc=none smtp.client-ip=195.135.223.130
+	s=arc-20240116; t=1785253673; c=relaxed/simple;
+	bh=9MighwDBmVEkz+BSrzNZ3686YhC2cCGhQcTG4OcT/ws=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=s6udswtoFA8lX9EhrZx3ByVqqhMEgNGX79f3eLU0+1Q506FryEa5MK8ByBAsYWoVLVWREck8fWqpatVDc0Df0Mx14/wZh6ElD07u+7YFVSjbynzFSslAC7dUCY86DEQQrDxPvWI3/U5/TcADiMRrmvRFgm+iYmk/aTfU+qtTPxc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=g9/mnICD; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0HwmPXol; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hQU00c4n; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=cwAN38Fk; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zRfQ2VXL";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="orgDVNBj";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="psQlPEHg";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7Y5/V5Uh"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="g9/mnICD";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0HwmPXol";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hQU00c4n";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="cwAN38Fk"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 67B967C33E;
-	Tue, 28 Jul 2026 14:51:03 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id A65BC3E3A;
+	Tue, 28 Jul 2026 15:47:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785250267; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
-	b=zRfQ2VXLEiQWz2DUxLGyJ0hH58GHnphLFlKmRDtAkyFm4Eup7gTYp6w6E3b+gCrdGprFKn
-	pMIGehxE39TI920Loesdq6tsFaONWQp5oFonRqrMdSZ8honLH56zO3ka4p0gShONBbzUC+
-	fTFEstfExK4p9oKqsl05qDZM9G+d7XM=
+	t=1785253665; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
+	b=g9/mnICDTL5kolfnNAGP1CqQCSrU8H2FM4AyuIoxq6yqeqK4gx+/7bCGST8HpaWqk7vOCp
+	HxuzMhv0Jko/u8uvML8ORsV0rWEFpwTIZC5ypN/+f4mgkrCZsJUU1/0c5UGaCsjqRSe9z9
+	3H+qI/L3aoOOAsOnLPNJUo+36QwKeGU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785250267;
+	s=susede2_ed25519; t=1785253665;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
-	b=orgDVNBje1mVQDaxVVdS1+j4kdRGV+97HIoQ3gHM3DLVr86yBv3VdNPq3b6HJujIU/yVIY
-	fiRrhceojrLQ5sAw==
-Authentication-Results: smtp-out1.suse.de;
-	none
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
+	b=0HwmPXolu4i5LRir2xeBS2KXi4Ni634ZZ0PuDOVPqVrJXv3pP8kTP185r1MidbdjPxds/W
+	m4ra4tPS4op9+QDQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=hQU00c4n;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=cwAN38Fk
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785250263; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
-	b=psQlPEHgwEDS2F1TWEbGHL0IyJHTh54TA0rs6ee5sxvkVuCPb+xBLu0pqJ9JqgNscjnqcn
-	+ytomCJTEP1tiEeWCM8q5ee5ALlKsPmbCVVopYOGfg83yueRvG1B5ILFVJZPtqkQixO4RO
-	8juLd2PHBGOgZdWrySFgFHoP/GGmxbQ=
+	t=1785253661; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
+	b=hQU00c4n4wjPDDHBk7seziGbTO1OFoPzGEpU7m0kVMWTu8X+GQguqQuT8tBfqtx3kBDTuB
+	K+Z+JahFI094PamcVztbKEWMerhcUBNeQO7kw313VjOyfw3dr32eTTIO0KmRSqg5F8Pbrf
+	uGmqE3kUPSKFz8WoDtirf1GwrruG8ig=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785250263;
+	s=susede2_ed25519; t=1785253661;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=TDcwm0OTg7/qttntEh2xFKLH/4JGhB5nFbDSQNf4k78=;
-	b=7Y5/V5Uh8HvW3+0ZSY9gfeq5MSBug847ugbBYIJ5ETM+r64XaCeawBPBP16u7iJKZmgMxC
-	pfSF+rJabRqMwUDA==
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
+	b=cwAN38FkOt69EGQ4ZszAcPBKVIlaSJLoz10NR88ST+ah+zmwstIGdpm6VswX3+4hc8aIBp
+	ZxaqTVq2druljhBg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5CBF4779B1;
-	Tue, 28 Jul 2026 14:51:03 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 967AC779B1;
+	Tue, 28 Jul 2026 15:47:41 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id MDyfFtfBaGqrKwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 14:51:03 +0000
+	id 1V5GJB3PaGpIYgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 15:47:41 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id F37DCA10B6; Tue, 28 Jul 2026 16:50:54 +0200 (CEST)
-Date: Tue, 28 Jul 2026 16:50:54 +0200
+	id 3FD90A10B6; Tue, 28 Jul 2026 17:47:33 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
-To: Joe Perches <joe@perches.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: Reduce object size of ext4_msg uses
-Message-ID: <j6bufcgvsvzjhyebsac5szej6akdjkbsedelqdb4bm7uebl26c@b64qs7zp4uhp>
-References: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
+To: <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext2: Simplify error handling of IO error when adding xattr
+Date: Tue, 28 Jul 2026 17:47:25 +0200
+Message-ID: <20260728154724.3934977-2-jack@suse.cz>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
-X-Spam-Score: -2.30
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1571; i=jack@suse.cz; h=from:subject; bh=9MighwDBmVEkz+BSrzNZ3686YhC2cCGhQcTG4OcT/ws=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqaM8M+buluxh9pzTJUe2HzMYD0Ul9wZWGtP7io 0yovbVXzdOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamjPDAAKCRCcnaoHP2RA 2TSGB/44BxyWR0vOuh/xOj+fyXEpAu8Vv0T9IaVlW6rcLwhCZOebCvSeD7dbjzJtY4KBK2ottyf LTPHG0MLxUZi5MbKuetpYGuo7UQ/ipC5EaSehvQhYZ/mLx/5WI1OaMEx55xihqNbMWGV3NuJ9XK lXP/3stu7nuLVYgSenMKQ0VoxWC79Zc/IvtNCxUPa86hj5hxgbKxSFvOKwviyqpMyNMSlyBzVxD 0vTWDg2RpectA/3+ndPogz5+PlBt+CD4i7GpPDgh7d9WkhVU6/456ciYViDSDmcXfF72CQlSP1o uhGjc73FBYcba1y2aXkjI/zuOVwOwVrwehN3sGwOlZfbEX4U
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Spam-Score: -3.01
 X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: A65BC3E3A
+X-Spamd-Result: default: False [-3.01 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
+	R_MISSING_CHARSET(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
-	RCVD_COUNT_THREE(0.00)[3];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWO(0.00)[2];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:mid,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-On Fri 24-07-26 18:23:36, Joe Perches wrote:
-> Reduce the object size of ext4 ~2KB (~.5%) by combining the KERN_<LEVEL>
-> and format uses of ext4_msg.
-> 
-> Separate them in __ext4_msg using printk_get_level and printk_skip_level
-> and emitting the appropriate level.
-> 
-> x86 object sizes before and after:
-> 
-> defconfig size before:
-> $ size -t fs/ext4/built-in.a | tail -1
->  579013	 121634	    316	 700963	  ab223	(TOTALS)
-> 
-> defconfig size after:
-> $ size -t fs/ext4/built-in.a | tail -1
->  577196	 121650	    316	 699162	  aab1a	(TOTALS)
-> 
-> defconfig size before with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
-> $ size -t fs/ext4/built-in.a | tail -1
->  537999	 121432	    316	 659747	  a1123	(TOTALS)
-> 
-> defconfig size after with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
-> $ size -t fs/ext4/built-in.a | tail -1
->  536837	 121424	    316	 658577	  a0c91	(TOTALS)
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
+When we fail to write out inode when adding new xattr block, we backed
+out some changes (like quota modifications) but left others (like block
+allocation or inode xattr block modification). Just leave the inode
+intact in this case because we can hardly reach a consistent state and
+defer fixing to e2fsck. Also remove outdated comment and special data
+handling since sync_inode_metadata() does not write out any data.
 
-Looks good. Feel free to add:
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/xattr.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+The inconsistency was notice by unrelated Sashiko review. I plan to merge this
+through my tree.
 
-								Honza
-
-> ---
->  fs/ext4/ext4.h  | 12 ++++++------
->  fs/ext4/super.c | 14 +++++++++-----
->  2 files changed, 15 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index b37c136ea3ab..981918f32067 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3309,8 +3309,8 @@ void __ext4_warning(struct super_block *, const char *, unsigned int,
->  extern __printf(4, 5)
->  void __ext4_warning_inode(const struct inode *inode, const char *function,
->  			  unsigned int line, const char *fmt, ...);
-> -extern __printf(3, 4)
-> -void __ext4_msg(struct super_block *, const char *, const char *, ...);
-> +extern __printf(2, 3)
-> +void __ext4_msg(struct super_block *, const char *fmt, ...);
->  extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
->  			   const char *, unsigned int, const char *);
->  extern __printf(7, 8)
-> @@ -3354,8 +3354,8 @@ void __ext4_grp_locked_error(const char *, unsigned int,
->  	__ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
->  #define ext4_warning_inode(inode, fmt, ...)				\
->  	__ext4_warning_inode(inode, __func__, __LINE__, fmt, ##__VA_ARGS__)
-> -#define ext4_msg(sb, level, fmt, ...)				\
-> -	__ext4_msg(sb, level, fmt, ##__VA_ARGS__)
-> +#define ext4_msg(sb, level, fmt, ...)					\
-> +	__ext4_msg(sb, level fmt, ##__VA_ARGS__)
->  #define dump_mmp_msg(sb, mmp, msg)					\
->  	__dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
->  #define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
-> @@ -3401,8 +3401,8 @@ do {									\
->  } while (0)
->  #define ext4_msg(sb, level, fmt, ...)					\
->  do {									\
-> -	no_printk(fmt, ##__VA_ARGS__);					\
-> -	__ext4_msg(sb, "", " ");					\
-> +	no_printk(level fmt, ##__VA_ARGS__);				\
-> +	__ext4_msg(sb, "" " ");						\
->  } while (0)
->  #define dump_mmp_msg(sb, mmp, msg)					\
->  	__dump_mmp_msg(sb, mmp, "", 0, "")
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 245f67d10ded..72d6f6353a27 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -981,11 +981,11 @@ void __ext4_std_error(struct super_block *sb, const char *function,
->  	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
->  }
->  
-> -void __ext4_msg(struct super_block *sb,
-> -		const char *prefix, const char *fmt, ...)
-> +void __ext4_msg(struct super_block *sb, const char *fmt, ...)
->  {
->  	struct va_format vaf;
->  	va_list args;
-> +	int level;
->  
->  	if (sb) {
->  		atomic_inc(&EXT4_SB(sb)->s_msg_count);
-> @@ -995,12 +995,16 @@ void __ext4_msg(struct super_block *sb,
->  	}
->  
->  	va_start(args, fmt);
-> -	vaf.fmt = fmt;
-> +
-> +	level = printk_get_level(fmt);
-> +	vaf.fmt = printk_skip_level(fmt);
->  	vaf.va = &args;
->  	if (sb)
-> -		printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-> +		printk("%c%cEXT4-fs (%s): %pV\n",
-> +		       KERN_SOH_ASCII, level, sb->s_id, &vaf);
->  	else
-> -		printk("%sEXT4-fs: %pV\n", prefix, &vaf);
-> +		printk("%c%cEXT4-fs: %pV\n",
-> +		       KERN_SOH_ASCII, level, &vaf);
->  	va_end(args);
->  }
->  
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index e55d16abf422..5f49ec4afc36 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -779,16 +779,12 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 	inode_set_ctime_current(inode);
+ 	if (IS_SYNC(inode)) {
+ 		error = sync_inode_metadata(inode, 1);
+-		/* In case sync failed due to ENOSPC the inode was actually
+-		 * written (only some dirty data were not) so we just proceed
+-		 * as if nothing happened and cleanup the unused block */
+-		if (error && error != -ENOSPC) {
+-			if (new_bh && new_bh != old_bh) {
+-				dquot_free_block_nodirty(inode, 1);
+-				mark_inode_dirty(inode);
+-			}
++		/*
++		 * Inode writeout failed. Backing everything out is complex so
++		 * let's just leave it for e2fsck to cleanup the mess.
++		 */
++		if (error)
+ 			goto cleanup;
+-		}
+ 	} else
+ 		mark_inode_dirty(inode);
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.51.0
+
