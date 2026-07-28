@@ -1,161 +1,204 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1E9D1FC110
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Jul 2026 15:47:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B75033F394;
+	Tue, 28 Jul 2026 15:55:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785253673; cv=none; b=QpBclGTF69lEe5jsOXKukq0I9DWty+uXfS3yCMITgcOAiONGxCCY3lLYB3THGMQgVQjMT2ps2t/W1H0Wd6pYp4t+NU8bjRXP/REZ27PqCLB2GXhaKvifJRxcxgKc6OsBQmyrm0EktigPl4muJaNCUeWPRURY2JIjTErQmi2afF4=
+	t=1785254110; cv=none; b=eMwQcBhnGYvyJVwrLJn0H044+wXkjwe0XnLfY11KoRp+yAa1kN9r/3Ei90kzi0qkOuqIlJebeckuBsO32hpPP+3dRjdmHvttNcnkpP6G2Aa9m1AOl4i7LyJRc5AeuXRED2fpz2PkzcllcShfNNUs+WKaDyjzRPwdl/QjH2zm7tA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785253673; c=relaxed/simple;
-	bh=9MighwDBmVEkz+BSrzNZ3686YhC2cCGhQcTG4OcT/ws=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=s6udswtoFA8lX9EhrZx3ByVqqhMEgNGX79f3eLU0+1Q506FryEa5MK8ByBAsYWoVLVWREck8fWqpatVDc0Df0Mx14/wZh6ElD07u+7YFVSjbynzFSslAC7dUCY86DEQQrDxPvWI3/U5/TcADiMRrmvRFgm+iYmk/aTfU+qtTPxc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=g9/mnICD; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=0HwmPXol; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hQU00c4n; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=cwAN38Fk; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1785254110; c=relaxed/simple;
+	bh=OsZ7vR2p5IyGbHIc0NICtQJaP3mpcxbdBnFosUxmPow=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QHJY07HraD0GtCF7hy485O+gjO9pHqj3iXZFPW8ks2UeH26pPPtZuyYGLQ10Vpa08yQhrNbFq999UgILAdamN7v+MGqq9y2pEe1cFhz3hXQTAfh+84U7VHwpq+m51OXzVKsEjCQO4TRF+FSpGeAEFKgDxMSsAeh9ptl+7qpyMrs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NXA3b1Cj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="g9/mnICD";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="0HwmPXol";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hQU00c4n";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="cwAN38Fk"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id A65BC3E3A;
-	Tue, 28 Jul 2026 15:47:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785253665; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
-	b=g9/mnICDTL5kolfnNAGP1CqQCSrU8H2FM4AyuIoxq6yqeqK4gx+/7bCGST8HpaWqk7vOCp
-	HxuzMhv0Jko/u8uvML8ORsV0rWEFpwTIZC5ypN/+f4mgkrCZsJUU1/0c5UGaCsjqRSe9z9
-	3H+qI/L3aoOOAsOnLPNJUo+36QwKeGU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785253665;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
-	b=0HwmPXolu4i5LRir2xeBS2KXi4Ni634ZZ0PuDOVPqVrJXv3pP8kTP185r1MidbdjPxds/W
-	m4ra4tPS4op9+QDQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=hQU00c4n;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=cwAN38Fk
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785253661; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
-	b=hQU00c4n4wjPDDHBk7seziGbTO1OFoPzGEpU7m0kVMWTu8X+GQguqQuT8tBfqtx3kBDTuB
-	K+Z+JahFI094PamcVztbKEWMerhcUBNeQO7kw313VjOyfw3dr32eTTIO0KmRSqg5F8Pbrf
-	uGmqE3kUPSKFz8WoDtirf1GwrruG8ig=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785253661;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=mzkse0k6ovFlmDfhr/Ci86Atq3wWcLnoIuyO0AKKiPU=;
-	b=cwAN38FkOt69EGQ4ZszAcPBKVIlaSJLoz10NR88ST+ah+zmwstIGdpm6VswX3+4hc8aIBp
-	ZxaqTVq2druljhBg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 967AC779B1;
-	Tue, 28 Jul 2026 15:47:41 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 1V5GJB3PaGpIYgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 28 Jul 2026 15:47:41 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3FD90A10B6; Tue, 28 Jul 2026 17:47:33 +0200 (CEST)
-From: Jan Kara <jack@suse.cz>
-To: <linux-ext4@vger.kernel.org>
-Cc: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext2: Simplify error handling of IO error when adding xattr
-Date: Tue, 28 Jul 2026 17:47:25 +0200
-Message-ID: <20260728154724.3934977-2-jack@suse.cz>
-X-Mailer: git-send-email 2.51.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NXA3b1Cj"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id CB13C1F000E9;
+	Tue, 28 Jul 2026 15:55:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1785254108;
+	bh=bpqrn3faBB0R55swf7Cx6MHmLKn63qiJCaP3NGPKoZI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=NXA3b1CjN+WrwDO3fKZY6+27cki7zefXDcgqw6Lw5RaeXPY/4XZg/nqe51jlH9IcY
+	 Do6ykzTQKtKcof6omTQACqZIBZdeOvogOMqeMZ01C5jwj2C3SH655vGkW6gSx0hYth
+	 MWmOmZLPifOyjCY4bPWBBYMx4ORorMJEeFrwKQscTgfFWjRZij1qyVpIqVOSgzz5ZU
+	 ujvu4cXACmPBHpL46qsBCyGpxALdRIMuGNUsI6HTukGOx2k04KL4ZpRBv9Tls/11io
+	 xct4ChExyr+VHiY15rvu53RG1O4d3B25GUk4ed0uf5LLFXGLHBxPZNJ9OkAvBw7Lex
+	 eDYrmKaS7eIUw==
+Date: Tue, 28 Jul 2026 08:55:08 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Brian Foster <bfoster@redhat.com>
+Cc: Joanne Koong <joannelkoong@gmail.com>,
+	Christian Brauner <brauner@kernel.org>, hch@lst.de,
+	linux-fsdevel@vger.kernel.org, changfengnan@bytedance.com,
+	kbusch@kernel.org, Matthew Wilcox <willy@infradead.org>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	David Sterba <dsterba@suse.com>, Gao Xiang <xiang@kernel.org>,
+	Namjae Jeon <linkinjeon@kernel.org>, tytso@mit.edu,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Carlos Maiolino <cem@kernel.org>,
+	Damien Le Moal <dlemoal@kernel.org>, libaokun@linux.alibaba.com,
+	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [PATCH v4 01/21] iomap: split iomap_iter() logic into
+ iomap_iter_next()
+Message-ID: <20260728155508.GT2901224@frogsfrogsfrogs>
+References: <20260727211758.1116539-1-joannelkoong@gmail.com>
+ <20260727211758.1116539-2-joannelkoong@gmail.com>
+ <amizdHj6ICgP2xFv@bfoster>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1571; i=jack@suse.cz; h=from:subject; bh=9MighwDBmVEkz+BSrzNZ3686YhC2cCGhQcTG4OcT/ws=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqaM8M+buluxh9pzTJUe2HzMYD0Ul9wZWGtP7io 0yovbVXzdOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCamjPDAAKCRCcnaoHP2RA 2TSGB/44BxyWR0vOuh/xOj+fyXEpAu8Vv0T9IaVlW6rcLwhCZOebCvSeD7dbjzJtY4KBK2ottyf LTPHG0MLxUZi5MbKuetpYGuo7UQ/ipC5EaSehvQhYZ/mLx/5WI1OaMEx55xihqNbMWGV3NuJ9XK lXP/3stu7nuLVYgSenMKQ0VoxWC79Zc/IvtNCxUPa86hj5hxgbKxSFvOKwviyqpMyNMSlyBzVxD 0vTWDg2RpectA/3+ndPogz5+PlBt+CD4i7GpPDgh7d9WkhVU6/456ciYViDSDmcXfF72CQlSP1o uhGjc73FBYcba1y2aXkjI/zuOVwOwVrwehN3sGwOlZfbEX4U
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
-Content-Transfer-Encoding: 8bit
-X-Spam-Score: -3.01
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: A65BC3E3A
-X-Spamd-Result: default: False [-3.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	MID_CONTAINS_FROM(1.00)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	R_MISSING_CHARSET(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_DN_SOME(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWO(0.00)[2];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:mid,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <amizdHj6ICgP2xFv@bfoster>
 
-When we fail to write out inode when adding new xattr block, we backed
-out some changes (like quota modifications) but left others (like block
-allocation or inode xattr block modification). Just leave the inode
-intact in this case because we can hardly reach a consistent state and
-defer fixing to e2fsck. Also remove outdated comment and special data
-handling since sync_inode_metadata() does not write out any data.
+On Tue, Jul 28, 2026 at 09:49:40AM -0400, Brian Foster wrote:
+> On Mon, Jul 27, 2026 at 02:17:38PM -0700, Joanne Koong wrote:
+> > In preparation for changing iomap to use an in-iter (->iomap_next())
+> > model, move the iomap_iter() logic out into the new iomap_iter_next()
+> > helper function.
+> > 
+> > iomap_iter_next() is added as an inlined helper so it can be called
+> > directly by ->iomap_next() implementations where the begin()/end()
+> > callbacks can be direct calls.
+> > 
+> > The DEFINE_IOMAP_ITER_NEXT() and DEFINE_IOMAP_ITER_NEXT_END() macros are
+> > also provided to generate the boilerplate ->iomap_next() wrapper
+> > functions that simply forward to iomap_iter_next() with the appropriate
+> > begin/end callbacks. DEFINE_IOMAP_ITER_NEXT() is for the common case
+> > where there is no end() callback. DEFINE_IOMAP_ITER_NEXT_END() is for
+> > the case where there is an explicit end() callback.
+> > 
+> > No functional change intended. The only code-level difference is that on
+> > the iomap_end() error path (ret < 0 && !advanced), the old code returned
+> > with iter.status left as the caller's last value whereas the new code
+> > zeroes it, but this is not observable in practice as there are no in-tree
+> > callers that read iter.status after the iteration loop.
+> > 
+> > Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+> > Reviewed-by: Fengnan Chang <changfengnan@bytedance.com>
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > Signed-off-by: Joanne Koong <joannelkoong@gmail.com>
+> > ---
+> >  fs/iomap/iter.c       | 123 +++++++++++++++++++++---------------------
+> >  include/linux/iomap.h | 102 +++++++++++++++++++++++++++++------
+> >  2 files changed, 147 insertions(+), 78 deletions(-)
+> > 
+> > diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c
+> > index e4a29829591a..66ccb87441ab 100644
+> > --- a/fs/iomap/iter.c
+> > +++ b/fs/iomap/iter.c
+> > @@ -6,15 +6,6 @@
+> >  #include <linux/iomap.h>
+> >  #include "trace.h"
+> >  
+> > -static inline void iomap_iter_clean_fbatch(struct iomap_iter *iter)
+> > -{
+> > -	if (iter->iomap.flags & IOMAP_F_FOLIO_BATCH) {
+> > -		folio_batch_release(iter->fbatch);
+> > -		folio_batch_reinit(iter->fbatch);
+> > -		iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
+> > -	}
+> > -}
+> > -
+> 
+> So hch forwarded me a bit of Sashiko review feedback that called out a
+> potential folio batch leak on error returns from iomap_begin() or
+> iomap_end(). Note that I think the ->iomap_end() variant is currently
+> not an issue because nothing returns error there, but it should be fixed
+> regardless.
+> 
+> As such, I have the patch below as a fix based on current master. The
+> idea here is to account for failures from either callback and also the
+> fact that XFS may not necessarily transfer the iomap_flags on failure. I
+> considered a couple other options here, like changing that behavior or
+> using an iter flag, but I think this is the cleanest option.
+> 
+> However this obviously conflicts with this rework series. This isn't a
+> major conflict IMO.. I'd probably just do the same thing and include the
+> batch cleanup in the error/exit path of iomap_iter() (or maybe start
+> passing ret into iomap_iter_done()), but I would need to reintroduce the
+> helper above. Also after this series I think this could mean a duplicate
+> call in the termination case where iomap_iter_continue() would have
+> cleaned things up, but that is relatively harmless. Maybe there is
+> something incrementally cleaner, but I'm still wrapping my head around
+> the factoring here..
+> 
+> But anyways, the main thing I wanted to ask is how folks want to handle
+> this particular bug..? This rework is invasive and looks mostly reviewed
+> so I don't want to unnecessarily hold it up. I can rebase on top of this
+> and leave the patch below for -stable, or avoid the helper churn and
+> post the patch below on its own and rework it into this, or maybe just
+> tweak this to leave the helper around and avoid some churn that way..
+> thoughts?
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/xattr.c | 14 +++++---------
- 1 file changed, 5 insertions(+), 9 deletions(-)
+From my 30000ft view I'd say push the folio leak fix to linus ASAP for
+7.2 and work out the merge conflict resolution in for-next and send that
+to broonie/linus for 7.3.  But I'm not sure if people are actually
+hitting this and not realizing it; or if this is a fix for a theoretical
+problem.
 
-The inconsistency was notice by unrelated Sashiko review. I plan to merge this
-through my tree.
+--D
 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index e55d16abf422..5f49ec4afc36 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -779,16 +779,12 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 	inode_set_ctime_current(inode);
- 	if (IS_SYNC(inode)) {
- 		error = sync_inode_metadata(inode, 1);
--		/* In case sync failed due to ENOSPC the inode was actually
--		 * written (only some dirty data were not) so we just proceed
--		 * as if nothing happened and cleanup the unused block */
--		if (error && error != -ENOSPC) {
--			if (new_bh && new_bh != old_bh) {
--				dquot_free_block_nodirty(inode, 1);
--				mark_inode_dirty(inode);
--			}
-+		/*
-+		 * Inode writeout failed. Backing everything out is complex so
-+		 * let's just leave it for e2fsck to cleanup the mess.
-+		 */
-+		if (error)
- 			goto cleanup;
--		}
- 	} else
- 		mark_inode_dirty(inode);
- 
--- 
-2.51.0
-
+> Brian
+> 
+> --- 8< ---
+> 
+> diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c
+> index e4a29829591a..63617ec48250 100644
+> --- a/fs/iomap/iter.c
+> +++ b/fs/iomap/iter.c
+> @@ -6,12 +6,18 @@
+>  #include <linux/iomap.h>
+>  #include "trace.h"
+>  
+> +/*
+> + * Release the iter folio batch. Note that the iomap flag is meant to control
+> + * the I/O path for the mapping and may not be set in error situations.
+> + */
+>  static inline void iomap_iter_clean_fbatch(struct iomap_iter *iter)
+>  {
+> -	if (iter->iomap.flags & IOMAP_F_FOLIO_BATCH) {
+> +	if (!iter->fbatch)
+> +		return;
+> +	iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
+> +	if (folio_batch_count(iter->fbatch)) {
+>  		folio_batch_release(iter->fbatch);
+>  		folio_batch_reinit(iter->fbatch);
+> -		iter->iomap.flags &= ~IOMAP_F_FOLIO_BATCH;
+>  	}
+>  }
+>  
+> @@ -79,7 +85,7 @@ int iomap_iter(struct iomap_iter *iter, const struct iomap_ops *ops)
+>  						  olen),
+>  				advanced, iter->flags, &iter->iomap);
+>  		if (ret < 0 && !advanced)
+> -			return ret;
+> +			goto error;
+>  	}
+>  
+>  	/* detect old return semantics where this would advance */
+> @@ -110,7 +116,11 @@ int iomap_iter(struct iomap_iter *iter, const struct iomap_ops *ops)
+>  	ret = ops->iomap_begin(iter->inode, iter->pos, iter->len, iter->flags,
+>  			       &iter->iomap, &iter->srcmap);
+>  	if (ret < 0)
+> -		return ret;
+> +		goto error;
+>  	iomap_iter_done(iter);
+>  	return 1;
+> +
+> +error:
+> +	iomap_iter_clean_fbatch(iter);
+> +	return ret;
+>  }
+> 
+> 
