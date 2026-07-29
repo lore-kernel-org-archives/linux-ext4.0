@@ -1,300 +1,150 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B347441037
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Jul 2026 09:48:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785318523; cv=none; b=d6fQ0Jz9pfdymLMayIwimfmPV4Ls0NQ5A8ZUNj6s++6P9Hz7O2LXopXMJk98gG6hnHy2IgwwZtmm4quWb/mdl9HkhqDMKyImTb7FogkEg1YsRVPm06beO90DSvYQ2MuaisN3geZirCmJtR/Oc4bKVGdMbBfKMOlEyidHF+C7ZhU=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785318523; c=relaxed/simple;
-	bh=yD3yySsc4TQ+754sigy4IQc4ggiN9nIS1dMMY6Jq+ZU=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tEEZV2cgoEKzCwsz1YDYqR5REJeJxqbOsQI6cHXqrflSolLq13OOfm5tn+19575ChX7qjZjaYgLDxI7arLIIBA59jRW9bt8HN+jt9rXqa46RGz/RacB2CcMhfYmhwvYCFmR3FdjKN+/P3LjOIxm8ILtEzK9qJHe+w6ktpCIjtyM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=IIuwTanK; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ripg4rwf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=2ZDZUULQ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=GikFsuth; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCEC948BD34
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Jul 2026 18:57:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.47
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785351467; cv=pass; b=c8GYKeQgyFfTHOTiVPndo9a9QsaLnLoR1d+7poj3r0UtsjoK4rfaKM/1nXcHRrRijQpLwUZOZMwyb8MK9GJ6yGh9wOo8XP6XgVvXzyzykuw9UUvdvWQQeCuarfzoD5s/qIbJwNyDQequ1H1vnAZMD4NezjM4GIBRri7JzM9yVIU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785351467; c=relaxed/simple;
+	bh=KPTM8WsrM+BqDuldSkxfB5b9uV+pWlsBXXIQBR+/rKI=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=hLY9YxlyJVTBzve74YE8dBtxF5K/FLg0QwEiCopDdeFgptY7tEy+UgCsL9t121dDBaznaCj4gRVACRM5ZzFbOLSoLrln8IMFIMzace+ou2iQsDHUUuTpm8C0BC3NhLqnniLOqBxmfxEvtRp146pnHHUBqyvaI8XeHIqAp+XzuSQ=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HG0tt/YA; arc=pass smtp.client-ip=209.85.221.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="IIuwTanK";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ripg4rwf";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="2ZDZUULQ";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="GikFsuth"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 31A997C9A3;
-	Wed, 29 Jul 2026 09:48:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785318515; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eQLXBGwgOE9t4DKJc71sZxwP7eGp4V4VckQVkcKcAZE=;
-	b=IIuwTanKi0ZiN0P5lkk44D3fBm3zDPp/JyAMcebf78woxTmWP8bgOUREnEML9UtoTpRceh
-	P0Z7AlwWR6YBbNY+JI8zSEExCgbsZm35e768rS/wqQGdGNahVGvFUO545plvAsdGVfecgF
-	pRVkQhycTn7B0CcM3+SZsck1fxpmJOU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785318515;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eQLXBGwgOE9t4DKJc71sZxwP7eGp4V4VckQVkcKcAZE=;
-	b=ripg4rwfR/BjDbHlL7xQDfuv/EWXb9RYX5plGYUjUQ8kok5mZWKWWAklWC5EeQdSXHT9oU
-	DhlrvoreZGVVYPBA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=2ZDZUULQ;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=GikFsuth
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785318511; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eQLXBGwgOE9t4DKJc71sZxwP7eGp4V4VckQVkcKcAZE=;
-	b=2ZDZUULQqsy5OFQg8AeB74fbU8WPPGR5QHGp5cPf4ogC6s6F4s/1X/BldB7GLSmMBnSMDK
-	frr/Ff33hfxoUfxchEtHkCkDpA8V7A8SCx1sr5/4M3e3ojsVGmHStcMbpzzdBHGTln4bg2
-	lVc3OQGAArlfJfdHJ2DNd6+l/1BkQRU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785318511;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=eQLXBGwgOE9t4DKJc71sZxwP7eGp4V4VckQVkcKcAZE=;
-	b=GikFsuth7bYbc4EeD2Wtk3YmoxHNhXS4xFcNzK6Lh6dnHkzGYwZJ73nFI4bIU8AD4CCKct
-	YfrA3niAZNxrsxCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 183E8779A1;
-	Wed, 29 Jul 2026 09:48:31 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id gK3mBW/MaWo8HgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 29 Jul 2026 09:48:31 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id B6CF8A131F; Wed, 29 Jul 2026 11:48:26 +0200 (CEST)
-Date: Wed, 29 Jul 2026 11:48:26 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com, 
-	yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH 2/2] ext4: protect WRITE_ZEROES written extents with
- orphan list
-Message-ID: <blzsrpt5timtlpjbfebng2kblwdq6hoffbplsm7q2yawiruey3@trijncfftpkg>
-References: <20260729085918.3336221-1-yi.zhang@huaweicloud.com>
- <20260729085918.3336221-3-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HG0tt/YA"
+Received: by mail-wr1-f47.google.com with SMTP id ffacd0b85a97d-4728c12ba97so894824f8f.0
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Jul 2026 11:57:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785351464; cv=none;
+        d=google.com; s=arc-20260327;
+        b=kOlQPY90cjEBPFdtq+plpbH+cnoSNSAUFogvFi7hTULSJar3dGVPM9qmaM5xgquroi
+         Eqp0Q/1MeM2OqhIkDMgPYlxl7b5QdTHeZ/v6ClXG2/vTpIeiMeTxP+IHaKxN1LCKAmct
+         H8tqyoZcZrHvGKOgO8bgL8bN2bidrlrpgxs0jWZ9QgNuzyJr6H48xyXVlp+J7R/WAYTf
+         JsBKDsB0q948D9f+lX7k1ZZDO4i7FchVIBsYx4/nhEmP4V6J8Xo+9p0prPsH58No3JHk
+         dd9JL8gFmbMJsKVzmohQvzPbGkCiuPM9a8ZxcaaTfy4wTWgFD1g5OHS1w2U8fXCMTlJg
+         oTqw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=hrYoz+dHSHJ6SiWtUtRhVIViWrdquT77cC2xckRZ/s4=;
+        fh=mWffUfqfDGbITeouBcPrqXe29TMDgfgl9pkLrzU0GDY=;
+        b=WYIUZyV2wlGn8d4DZP49pUHEilN06SyCmrVPt3AUeVZuGqDJ7pLR7ZZofF4M4dsvjb
+         ytBD7G332s7CkdPhUBTUslUAPgrsYHUAPVD2qFSnHkYf46HuaBnNgVoTT9POY5jUp9zm
+         UwkHx71pRZyroVAP33LS6aOkMfnwPy/fRny8bAZNRgAo7ujX4F+qvx//ByEb86CAKhKT
+         a95deipHuODXZy3g0rz260JimjJo3kL3eI1BNaGDNybr4uzS6krHYVVNbbqS1WTDI/Yd
+         PfU9W7cuDWdiCiVOUafv/tnBtnrlOEqMAIiDiPEqsDmdA6jI1xXg/O+TOsvMooTblNZ6
+         mscw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785351464; x=1785956264; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=hrYoz+dHSHJ6SiWtUtRhVIViWrdquT77cC2xckRZ/s4=;
+        b=HG0tt/YA/SSLfwLylBcNQhEwFyWO1drr3eRQ2k8B23pLjX/HI/2cb2evXopALFvuuk
+         MAFC6cRYVjBdqMBoSW2+zuwN84/HqCRN3O40w/7tZWCeNwv0TUt3vAD+BiGVToHDx+g0
+         1/1vFeXQ2C3WQFDDua64DpArALa8XLd6ttONE70FinI5kKaDBY6Hdwmtp92A6XKzD4CQ
+         S+/6R412oyLDPlk13gILEfPil8d/9Ca6o0sb2L0ETV1/MSAC8sLudxzOpLpVP4Ys8gVS
+         sUjqUqBnjydvSZW21v4EyZOx+/hTh3+245DMaYmGIIEveluYyb1EcsfN6VIQ6/qQOOHD
+         Qreg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785351464; x=1785956264;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=hrYoz+dHSHJ6SiWtUtRhVIViWrdquT77cC2xckRZ/s4=;
+        b=CYMbxqmk4JcnlKPF48c3M/K3ZeABGUL3CbMsCG8PQZB2TLQ/fyRhKLpuPpkmAHXaCX
+         2eL8cHeauNUmLkyaBlDVGBGXHGMC1S9wh94h6TSmmSMp/LY3mG70nCIfJly6wOoDYo2B
+         Fk0kTZyvxVeFsbI4ZOtai8xULaK8WQfEpesrx9ZHfzTQDliO0XmZUihZNC8CKqCEI9ps
+         CmaCwxslqgiMLpFMg+qDMFFhKMbi0H8AxVyu5AquJl4oBB+h2GQGpsh0Zspi+ITqd/q1
+         9bnn9IriozbRAh/lVt+9B1cwzYSpxurEMuENWSjzrZw8DTySL0X/ova9iYC7sQFTJTUW
+         YHIQ==
+X-Forwarded-Encrypted: i=1; AHgh+RoQLLjiOwkkI94SFs8F6l9B/0WDeXx51xWM3VNlepFTSBRJzWddDxtidkR8AsutH+pZKvpy+lciBkVO@vger.kernel.org
+X-Gm-Message-State: AOJu0YwF/La+YIEKz9/9AMoX8FUmB+XCwcp+Ne2eMl8RBw/4XNTK1wwL
+	8iQ5KXxIOLO1hkMx6oXKHmz2rVXLhjTUMJhQtQIO1VTRHigN/dshFVPCXUxc+pCifUiWIab4nJy
+	+dAmxCcDGTR6EjTNVxEXLRDztAi2TJAM=
+X-Gm-Gg: AR+sD134MPFRPfEsQbkXPEgC7VJQjDz14EhpfyVSL93LvH0CleWIiapIeUdF821TOOy
+	BgA0bfaLYnUX3ZJ1CJgwrKL4hHQoJKujcyCfNoNBnC78wf3ih7v2JAgYOmPEt3fBjU003SknXKO
+	kp1ap9W+udqwwNqKpSivx76FpZfbJych1EjPffQdwSi1Z1kk8VuTJ4kS7toGLtcPjK+jmXzymm1
+	RDCf13ZYt65G6OJRAYqxLEzttosg0joDFiZd/HIc366eH0SD8M0vLVRIqAjyS6xpGRvAA86Y/61
+	u60gdEkjYOGxINrdsFRjty3e8vt8pDVzVnIUsEH19j9Fjm6UxI6k9efFu3h3K/l2Yaf1izvDrPE
+	+c+t2T/+KtpTvDzEgJxr+Srps
+X-Received: by 2002:a05:6000:288a:b0:47f:8e78:4d0c with SMTP id
+ ffacd0b85a97d-47fc66738eamr85810f8f.48.1785351463693; Wed, 29 Jul 2026
+ 11:57:43 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260729085918.3336221-3-yi.zhang@huaweicloud.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[15];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,fnnas.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,huawei.com:email,suse.cz:email,suse.cz:dkim]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 31A997C9A3
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
+References: <20260727211758.1116539-1-joannelkoong@gmail.com>
+ <20260727211758.1116539-21-joannelkoong@gmail.com> <20260727223345.GI2901224@frogsfrogsfrogs>
+In-Reply-To: <20260727223345.GI2901224@frogsfrogsfrogs>
+From: Joanne Koong <joannelkoong@gmail.com>
+Date: Wed, 29 Jul 2026 11:57:32 -0700
+X-Gm-Features: AUfX_mw2AKZ6T_CPZERPb2AZJh9r8QLmI1mksg1KCuOzXLA3WT8egaBLm2tNcG4
+Message-ID: <CAJnrk1Z7Z3F3_Gee0Ej0n_0-2LPxJq=4rxmw=xg+e2ryoa6MNQ@mail.gmail.com>
+Subject: Re: [PATCH v4 20/21] iomap: pass iomap_iter_next_fn directly instead
+ of struct iomap_ops
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Christian Brauner <brauner@kernel.org>, hch@lst.de, linux-fsdevel@vger.kernel.org, 
+	changfengnan@bytedance.com, kbusch@kernel.org, 
+	Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>, 
+	David Sterba <dsterba@suse.com>, Gao Xiang <xiang@kernel.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+	tytso@mit.edu, Jaegeuk Kim <jaegeuk@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>, 
+	Andreas Gruenbacher <agruenba@redhat.com>, Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>, 
+	Hyunchul Lee <hyc.lee@gmail.com>, 
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, Carlos Maiolino <cem@kernel.org>, 
+	Damien Le Moal <dlemoal@kernel.org>, libaokun@linux.alibaba.com, linux-ext4@vger.kernel.org, 
+	linux-xfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Wed 29-07-26 16:59:18, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> In ext4_alloc_file_blocks(), the WRITE_ZEROES path converts unwritten
-> extents to written in one transaction, while i_disksize is updated to
-> cover them only in a later transaction. A crash in between leaves
-> written extents beyond i_disksize on disk, which fsck will complain
-> about.
-> 
-> To fix this, add the inode to the orphan list in the same handle that
-> does the conversion, and remove it once i_disksize has caught up.
-> Also add a sanity check to ensure conversion does not extend beyond EOF.
-> 
-> Since ext4_alloc_file_blocks() is called from the fallocate() path,
-> partial allocation is safe. On partial conversion failure, advance
-> i_disksize only up to the boundary of successfully converted blocks, so
-> that orphan cleanup sees a consistent state. Document this behavior in
-> the function comment.
-> 
-> Reported-by: Jan Kara <jack@suse.cz>
-> Closes: https://lore.kernel.org/linux-ext4/3f6ao5amv7glbgigndtegcucgo3n34ij3lau6l3da3hgdxgn3v@ev66wv3r5umt/
-> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+On Mon, Jul 27, 2026 at 3:33=E2=80=AFPM Darrick J. Wong <djwong@kernel.org>=
+ wrote:
+>
+> > diff --git a/fs/xfs/xfs_iomap.h b/fs/xfs/xfs_iomap.h
+> > index cffcec532ea6..d2d3c84d93f9 100644
+> > --- a/fs/xfs/xfs_iomap.h
+> > +++ b/fs/xfs/xfs_iomap.h
+> > @@ -53,14 +53,22 @@ int xfs_read_iomap_begin(struct inode *inode, loff_=
+t offset,
+> >               loff_t length, unsigned flags, struct iomap *iomap,
+> >               struct iomap *srcmap);
+> >
+> > -extern const struct iomap_ops xfs_buffered_write_iomap_ops;
+> > -extern const struct iomap_ops xfs_direct_write_iomap_ops;
+> > -extern const struct iomap_ops xfs_zoned_direct_write_iomap_ops;
+> > -extern const struct iomap_ops xfs_read_iomap_ops;
+> > -extern const struct iomap_ops xfs_seek_iomap_ops;
+> > -extern const struct iomap_ops xfs_xattr_iomap_ops;
+> > -extern const struct iomap_ops xfs_dax_write_iomap_ops;
+> > -extern const struct iomap_ops xfs_atomic_write_cow_iomap_ops;
+> > +int xfs_buffered_write_iomap_next(const struct iomap_iter *iter,
+> > +             struct iomap *iomap, struct iomap *srcmap);
+>
+> I wonder, would it make more sense to have a macro to define the forward
+> declaration?  e.g.
+>
+> #define DECLARE_IOMAP_NEXT(name) \
+>         int name(...)
+>
+> DECLARE_IOMAP_NEXT(xfs_buffered_write_iomap_next);
+>
+> Hm?
+>
+> Though feel free to say "declaration macros suck!" because they do.
+> Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+>
 
-Looks good. Feel free to add:
+I think this makes sense given that the definitions are generated with
+macros. I'll include this change in v5.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/extents.c | 78 ++++++++++++++++++++++++++++++++++++++++++-----
->  1 file changed, 70 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 1ab1a6e2ed83..a3dde7ba0d23 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4571,6 +4571,22 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
->  	return err;
->  }
->  
-> +/*
-> + * Pre-allocate blocks for the range [@offset, @offset + @len). Allocated
-> + * blocks are marked as unwritten by default. If EXT4_GET_BLOCKS_ZERO is
-> + * set, the allocated blocks are zeroed on disk and their extents are
-> + * converted to written state.
-> + *
-> + * When @new_size is nonzero, the caller intends to extend the file, and
-> + * the file size should be updated to the end of the allocated blocks.
-> + *
-> + * Allocation may partially succeed due to some non-fatal issues. In that
-> + * case, i_disksize (and i_size) is advanced up to the successfully
-> + * processed portion of the range.
-> + *
-> + * Return 0 on success, or a negative error code on failure or partial
-> + * failure.
-> + */
->  static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  				  loff_t new_size, int flags)
->  {
-> @@ -4585,6 +4601,7 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  	loff_t epos = 0, old_size = i_size_read(inode);
->  	unsigned int blkbits = inode->i_blkbits;
->  	bool alloc_zero = false;
-> +	bool orphan = false;
->  
->  	BUG_ON(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
->  	map.m_lblk = offset >> blkbits;
-> @@ -4659,19 +4676,49 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  
->  		if (alloc_zero &&
->  		    (map.m_flags & (EXT4_MAP_MAPPED | EXT4_MAP_UNWRITTEN))) {
-> +			ext4_lblk_t converted;
-> +
-> +			WARN_ON_ONCE(map.m_lblk + map.m_len >
-> +				EXT4_B_TO_LBLK(inode, new_size ?: old_size));
-> +
->  			ret = ext4_issue_zeroout(inode, map.m_lblk, map.m_pblk,
->  						 map.m_len);
-> -			if (likely(!ret))
-> -				ret = ext4_convert_unwritten_extents(NULL,
-> -					inode, (loff_t)map.m_lblk << blkbits,
-> -					(loff_t)map.m_len << blkbits, NULL);
-> -			if (ret)
-> +			if (unlikely(ret))
->  				break;
-> +
-> +			handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
-> +						    credits);
-> +			if (IS_ERR(handle)) {
-> +				ret = PTR_ERR(handle);
-> +				break;
-> +			}
-> +
-> +			ret = ext4_convert_unwritten_extents(handle,
-> +					inode, (loff_t)map.m_lblk << blkbits,
-> +					(loff_t)map.m_len << blkbits,
-> +					&converted);
-> +			if (ret)
-> +				map.m_len = converted;
-> +
-> +			/*
-> +			 * If blocks beyond i_disksize are converted, add
-> +			 * the inode to the orphan list and advance the epos.
-> +			 */
-> +			if (new_size && converted) {
-> +				ret2 = ext4_orphan_add(handle, inode);
-> +				ret = ret ? ret : ret2;
-> +				orphan = true;
-> +			}
-> +
-> +			ret3 = ext4_journal_stop(handle);
-> +			ret = ret ? ret : ret3;
->  		}
->  
->  		map.m_lblk += map.m_len;
->  		map.m_len = len_lblk = len_lblk - map.m_len;
->  		epos = EXT4_LBLK_TO_B(inode, map.m_lblk);
-> +		if (ret)
-> +			break;
->  	}
->  
->  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> @@ -4687,11 +4734,23 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  	if (epos > new_size)
->  		epos = new_size;
->  
-> -	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
-> -	if (IS_ERR(handle))
-> -		return ret ? ret : PTR_ERR(handle);
-> +	handle = ext4_journal_start(inode, EXT4_HT_MISC, 2);
-> +	if (IS_ERR(handle)) {
-> +		/*
-> +		 * The conversion has successfully completed. Not much to
-> +		 * do with the error here so just cleanup the orphan list
-> +		 * and hope for the best.
-> +		 */
-> +		if (orphan && inode->i_nlink)
-> +			ext4_orphan_del(NULL, inode);
-> +		ret2 = PTR_ERR(handle);
-> +		goto out;
-> +	}
->  
->  	ext4_update_inode_size(inode, epos);
-> +	if (orphan && inode->i_nlink)
-> +		ext4_orphan_del(handle, inode);
-> +
->  	ret2 = ext4_mark_inode_dirty(handle, inode);
->  	ext4_update_inode_fsync_trans(handle, inode, 1);
->  	ret3 = ext4_journal_stop(handle);
-> @@ -4699,6 +4758,9 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  
->  	if (epos > old_size)
->  		pagecache_isize_extended(inode, old_size, epos);
-> +out:
-> +	if (ret2)
-> +		ext4_std_error(inode->i_sb, ret2);
->  
->  	return ret ? ret : ret2;
->  }
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks,
+Joanne
