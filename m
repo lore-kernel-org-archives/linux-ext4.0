@@ -1,138 +1,189 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9742D3FFAC6;
-	Thu, 30 Jul 2026 10:34:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E7213B0581;
+	Thu, 30 Jul 2026 17:57:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785407641; cv=none; b=WI652CfLy9j4q3KXKGNDy7blTTU1ZnVlX5P8KErA090H+lw1Y2066w6gCSCDfH0cdVBDVv1XG8WUFtQii/y3J/3xnyMjWn7iilM7vXuKjm8SVCZvemnfDm+iRhoJjJWmeD8ENGeIc4PohWo9FtcclSCsRyuRNaXtJ3urFqvf1pQ=
+	t=1785434226; cv=none; b=J9CpBUQM8gzJGyP3AHvE5RAEOPNit5nS+e/vyg6q+9MRQbBps6FGeCHXjo6RPrX1gJ+Uetoo4HjCcrEXTnWpXdbhwwMb9pFIsnAoUHBPljkb2VgocuWnp3A/RB8H5VzxQC0UC7V+nsx5Xd2rn3dMj/RFcHdgL0pfD4aq9GrFNxU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785407641; c=relaxed/simple;
-	bh=/qEWh4oCOA7I23pBmnC5fLImPusmY15jC8pzm6AA3XM=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Message-Id:Date:
-	 MIME-Version:Content-Type; b=ff0Tikck3LYwPt7MHH3BbkJMkL9of3uA6DkR+iUvAwkvHVUD1wbglrss5DZP1Lsi0S64H0krdFHb6BFFiJCCXhPXgC7TzF0WFRIZT66gbw6HNLB2ECosNsk819Ir3zUe2SD1ZGLYQ320xsSck0LlDe9pJ7GeAfwUZzjVS2gztK0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kiMJt017; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785434226; c=relaxed/simple;
+	bh=r7O8QD+ivm+bvq9bs6znr99IcSljYbBNKpR59/rpEPU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QZKwdntr4ev9VLpLd2kEyeGUNr1zhkdW94ld19XOZKS7uRcD1LFK82T/W52U2gIPqRw1OFCVK7qxwuLYMz7tJvbRL6HQkGtfHhIlrRkH8oL/nKJjXTQpgNCgfLNvw4KOggenHt5R/+8ZgVXtF0vbbleAZDgR9y6sAYSYZ6nE+jQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Cy1H54IO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kiMJt017"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5E3541F000E9;
-	Thu, 30 Jul 2026 10:33:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Cy1H54IO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67A4F1F00A3A;
+	Thu, 30 Jul 2026 17:57:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785407640;
-	bh=ad4iIDWV6Q5imgNVqOlCRj0zi5i1zdNcu7P9bmUsQiI=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=kiMJt017TkTCkIw518vQbRUXqwkLkxsUzmVOWaYDvQdu4DT4OcPIEHBSHQCFdMOP/
-	 woC2huEqfs6OWzZnC0XfSJx9zdPds5SEfvIA/C0xNyMd+4Kha/q2d2FOXypw0J8sKz
-	 2pdqWgEuyTw5YDFsRWWNqPU/JlDSlTgw7/3izkNqzZzr1xAPZEWP8y+ypzeZ+/CFXP
-	 ncpW/lAHH+41cGTohVmj2/8gU24JHK45SsoXVX34kII3ZTWbbdXMVGf4pvnv+2bsgq
-	 CZgsG9QwgsgQyqC7y6+FFB9rRwVMj2iqE+73Yw+5C6Sy+RaJhizH+a8QAoR1oPjrJM
-	 F/70qBESnGH0g==
-From: Christian Brauner <brauner@kernel.org>
-To: hch@lst.de, "Darrick J . Wong" <djwong@kernel.org>, 
- linux-fsdevel@vger.kernel.org, Joanne Koong <joannelkoong@gmail.com>
-Cc: changfengnan@bytedance.com, kbusch@kernel.org, 
- Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>, 
- Jonathan Corbet <corbet@lwn.net>, David Sterba <dsterba@suse.com>, 
- Gao Xiang <xiang@kernel.org>, Namjae Jeon <linkinjeon@kernel.org>, 
- Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>, 
- Miklos Szeredi <miklos@szeredi.hu>, 
- Andreas Gruenbacher <agruenba@redhat.com>, 
- Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>, 
- Hyunchul Lee <hyc.lee@gmail.com>, 
- Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
- Carlos Maiolino <cem@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
- libaokun@linux.alibaba.com, bfoster@redhat.com, linux-ext4@vger.kernel.org, 
- linux-xfs@vger.kernel.org
-In-Reply-To: <20260729192737.3190206-1-joannelkoong@gmail.com>
-References: <20260729192737.3190206-1-joannelkoong@gmail.com>
-Subject: Re: (subset) [PATCH v5 00/22] iomap: convert to in-iter
- iomap_next() model
-Message-Id: <20260730-habseligkeiten-adrett-axthieb-e619a48325ad@brauner>
-Date: Thu, 30 Jul 2026 12:33:44 +0200
+	s=k20260515; t=1785434224;
+	bh=abhw088q6gYCQxNch23PgT1atsdpk0ME6d8Iyr32PiE=;
+	h=From:To:Cc:Subject:Date;
+	b=Cy1H54IOysiPRS76pS1Dp4whlY0kfSARu3n70I6mCwuid4tXNO/J2QUzQGw10enMm
+	 SbDBdkavAnVq00Jny93DwveIi5K9cRILVmqxAvPr7wYzFrtUjK/PV953TBeQtuoXAb
+	 LYFNmQKXQqrlbNGpf+xN/OyTPKp9xR3vBBxREo55Iej3GI6cmRSn9PEsMP87kc0Dqv
+	 tfG0tTEIFGBNTA77VhJ+CAHnyn0YCTV8eafhgSbBekvFM7QQK6cdNfeKcJ2ojvapVI
+	 bXd5pbFGLsZzZrgKkt0V2Vb0j3fBopS6evdnD9yI59mgu2237lcVLH3ksaLOS7ZNfI
+	 bVh7WIfmxo0vg==
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-ext4@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Ira Weiny <iweiny@kernel.org>,
+	linux-fscrypt@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Eric Biggers <ebiggers@kernel.org>,
+	Disha Goel <disgoel@linux.ibm.com>,
+	stable@vger.kernel.org
+Subject: [PATCH] ext4: don't enable DAX on new encrypted files
+Date: Thu, 30 Jul 2026 10:52:12 -0700
+Message-ID: <20260730175212.36923-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.16-dev-3e0c3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3471; i=brauner@kernel.org;
- h=from:subject:message-id; bh=/qEWh4oCOA7I23pBmnC5fLImPusmY15jC8pzm6AA3XM=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRla0xebzu9f67JQ+3D5u+Xcxk/EcpS7tp/aEWd3Zm6x
- umV/hYSHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABO58J3hf47f0j8RFqKWR+Yu
- evJ689Ja9czSvzeWHTfbdfJTstGuoO8MfwVOeCziWN+8gJunk+vDvkOzK++lSK4/K3D0lq1A2pW
- TSgwA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Transfer-Encoding: 8bit
 
-On Wed, 29 Jul 2026 12:27:15 -0700, Joanne Koong wrote:
-> iomap: convert to in-iter iomap_next() model
-> 
-> This series implements a suggestion by Christoph for finishing the conversion
-> of iomap to an iterator model. This revives Matthew's previous RFC [1], which
-> had the same intention.
-> 
-> Every iomap operation currently drives its iteration through a struct
-> iomap_ops, which contains two callbacks, ->iomap_begin() and ->iomap_end().
-> iomap_iter() only ever sees these as pointers, so every step of every
-> iteration is an indirect call, including on the hottest paths.
-> 
-> [...]
+Currently, when a new encrypted regular file is created, the call to
+ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
+before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
+filesystem is mounted with "-o dax=always".
 
-Applied to the vfs-7.3.iomap branch of the vfs/vfs.git tree.
-Patches in the vfs-7.3.iomap branch should appear in linux-next soon.
+EXT4_INODE_ENCRYPT then actually gets set a bit later in
+__ext4_new_inode(), when it calls fscrypt_set_context() which calls
+ext4_set_context().  ext4_set_context() sets EXT4_INODE_ENCRYPT and
+calls ext4_set_inode_flags(inode, init=false) to set S_ENCRYPTED too.
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+This was intended to clear S_DAX as well.  However, this was broken by
+commit 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load").  This
+causes data written to the file to bypass encryption, also causing
+xfstests failures such as generic/548 (when "-o dax=always" is used).
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
+Fix this by simplifying the flow by making __ext4_new_inode() set
+EXT4_INODE_ENCRYPT earlier.  This makes it take effect in
+ext4_set_inode_flags(inode, init=true), making S_DAX never be set.
 
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
+Similarly, make EXT4_STATE_MAY_INLINE_DATA never be set in the first
+place on new encrypted inodes.  Then it doesn't need to be cleared.
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.3.iomap
+As a result of these simplifications, ext4_set_context() no longer needs
+to change inode flags or state when 'handle != NULL'.  Remove that too.
 
-[01/22] iomap: release the folio batch on iomap callback failures
-        https://git.kernel.org/vfs/vfs/c/c02d8298c979
-[02/22] iomap: split iomap_iter() logic into iomap_iter_next()
-        https://git.kernel.org/vfs/vfs/c/78c9e6b07ffe
-[03/22] iomap: decouple simple direct I/O reads from iomap_dio_rw
-        https://git.kernel.org/vfs/vfs/c/59389c7d3068
-[04/22] iomap: use GFP_NOWAIT when application for iomap_dio_simple allocations
-        https://git.kernel.org/vfs/vfs/c/98aa16d184b7
-[05/22] iomap: add ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/e93eeed8ce74
-[06/22] xfs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/c807f6c9de95
-[07/22] btrfs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/8a5cf58dc6c6
-[08/22] ntfs3: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/2d53882bcb18
-[09/22] ntfs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/4d9ea94adc0d
-[10/22] ext4: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/e85fe93027cf
-[11/22] erofs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/9b0cef67d4e0
-[12/22] zonefs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/4b9de085c9a2
-[13/22] ext2: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/cfcfc6724b0a
-[14/22] block: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/cb372ea04331
-[15/22] f2fs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/c034d0d0bcd0
-[16/22] gfs2: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/1096941fd797
-[17/22] hpfs: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/7e8aad7196b1
-[18/22] fuse: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/a9032fd59a40
-[19/22] exfat: convert iomap ops to ->iomap_next()
-        https://git.kernel.org/vfs/vfs/c/332f88127cfa
-[20/22] iomap: remove ->iomap_begin()/->iomap_end() legacy path
-        https://git.kernel.org/vfs/vfs/c/0210c4ba2547
+Reported-by: Disha Goel <disgoel@linux.ibm.com>
+Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Closes: https://lore.kernel.org/r/20260723085648.1500357-1-ojaswin@linux.ibm.com
+Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
+Cc: stable@vger.kernel.org
+Signed-off-by: Eric Biggers <ebiggers@kernel.org>
+---
+ fs/ext4/crypto.c | 40 ++++++++++++++++++++--------------------
+ fs/ext4/ialloc.c |  4 ++++
+ 2 files changed, 24 insertions(+), 20 deletions(-)
+
+diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+index f41f320f4437..3971986de028 100644
+--- a/fs/ext4/crypto.c
++++ b/fs/ext4/crypto.c
+@@ -144,7 +144,13 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 	if (inode->i_ino == EXT4_ROOT_INO)
+ 		return -EPERM;
+ 
+-	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
++	/*
++	 * For new encrypted inodes, S_DAX is never set in the first place.
++	 *
++	 * For existing inodes, this is called only on empty directories.  ext4
++	 * never sets S_DAX on directories.
++	 */
++	if (WARN_ON_ONCE(IS_DAX(inode)))
+ 		return -EINVAL;
+ 
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
+@@ -163,6 +169,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 	 */
+ 
+ 	if (handle) {
++		/*
++		 * __ext4_new_inode() should have already set the encrypt flag
++		 * on the inode and avoided enabling inline data.
++		 */
++		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
++			return -EINVAL;
++		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
++			return -EINVAL;
+ 		/*
+ 		 * Since the inode is new it is ok to pass the
+ 		 * XATTR_CREATE flag. This is necessary to match the
+@@ -170,21 +184,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 		 * function with the credits allocated for the new
+ 		 * inode.
+ 		 */
+-		res = ext4_xattr_set_handle(handle, inode,
+-					    EXT4_XATTR_INDEX_ENCRYPTION,
+-					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+-					    ctx, len, XATTR_CREATE);
+-		if (!res) {
+-			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+-			ext4_clear_inode_state(inode,
+-					EXT4_STATE_MAY_INLINE_DATA);
+-			/*
+-			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+-			 * S_DAX may be disabled
+-			 */
+-			ext4_set_inode_flags(inode, false);
+-		}
+-		return res;
++		return ext4_xattr_set_handle(handle, inode,
++					     EXT4_XATTR_INDEX_ENCRYPTION,
++					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
++					     ctx, len, XATTR_CREATE);
+ 	}
+ 
+ 	res = dquot_initialize(inode);
+@@ -205,10 +208,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 				    ctx, len, 0);
+ 	if (!res) {
+ 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+-		/*
+-		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+-		 * S_DAX may be disabled
+-		 */
++		/* Update inode->i_flags to set S_ENCRYPTED. */
+ 		ext4_set_inode_flags(inode, false);
+ 		res = ext4_mark_inode_dirty(handle, inode);
+ 		if (res)
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index a40cb27f8116..a5831fc536db 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
+ 		if (err)
+ 			goto out;
++		if (encrypt)
++			i_flags |= EXT4_ENCRYPT_FL;
+ 	}
+ 
+ 	err = dquot_initialize(inode);
+@@ -1306,6 +1308,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+ 	ei->i_extra_isize = sbi->s_want_extra_isize;
+ 	ei->i_inline_off = 0;
+ 	if (ext4_has_feature_inline_data(sb) &&
++	    /* Encrypted inodes cannot have inline data */
++	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
+ 	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
+ 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+ 	ret = inode;
+
+base-commit: f5098b6bae761e346ebcd9da7f95622c04733cff
+-- 
+2.55.0
 
