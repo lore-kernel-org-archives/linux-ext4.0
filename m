@@ -1,72 +1,73 @@
-Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
+Received: from mail-wr1-f42.google.com (mail-wr1-f42.google.com [209.85.221.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62CB2443E24
-	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 15:38:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F4DD442B3D
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 15:38:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785512339; cv=none; b=mqoAS83vXBrGGNp3tddiDjOKGKUX/vc+OPzjhGX/L19I8jZ6/z+jKu6Zr82EzHwFdrv395KuGWC3v/r7TkQsRSWZuZsUz9CL11qyNJiKMAEnlwKHHNitms79nBGbN+OS+3bmtu93epai1BgLY5b1HRgnCqm8+6/X2bE4+bIJZwo=
+	t=1785512340; cv=none; b=f/kpr5Nuxe9lVqvS9Nut/Ibl0Z4MXBKgGN6fYnD/HDN5/kMRHqpCjmUeSj8x4THYFYzpm11XHTPSHCVK2MD17usIUd1BFGL8PHc+r1N+kDQznuwqdjLVQ41DSnEEwJuhwcYJNSsnBUaQE72nwwO2xdmIJ+CMKm8UUTzdvPhiDEE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785512339; c=relaxed/simple;
-	bh=uSRMJbn72HtVkPZ2BWIkQiwHJkeQTbmaooEApfZY1h8=;
+	s=arc-20240116; t=1785512340; c=relaxed/simple;
+	bh=u6beKG7EtG+5kayDkaO3cB99szTCvY4Sr5JIW9Y2i+4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jxSBML5XcQxfqMbHPPfhVvJguHS2f0yFmQShoj82jtnfzfmKG6Cs1xK6zLPllhxj5F4QuZFNE9DM1j2FyPuIu77Cns0GMi20Ie08noQGoI1H3jp9uNdD1dXxSgAow48m/igurUAHF+CXcO6W5BzwDVD4IH2YZgCM6/FmeClVqLE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=h1vDvHjS; arc=none smtp.client-ip=209.85.218.48
+	 MIME-Version:Content-Type; b=fxUJY9cwnVsXi8S2tgvzXeR7q8MU9K+ZsGEITWbUuhdw1sexcRFW/0OkU/qjNKnpQf7j784oMvDMa0KY45G8r2/TXWZAP8DMyZ/woq9WDdqPpzNGpAj4HbjwB7bFi85VnHjklT900xcF3LqSgRWnxxE1HP/1x3VhbqCNo25vWfs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TCM83xxj; arc=none smtp.client-ip=209.85.221.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h1vDvHjS"
-Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-c15e592da74so132507866b.1
-        for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 08:38:57 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TCM83xxj"
+Received: by mail-wr1-f42.google.com with SMTP id ffacd0b85a97d-47fd4ee0b01so439775f8f.2
+        for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 08:38:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785512335; x=1786117135; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=vMeLH8vGX8Q9NIwlrqva4rVfDkwiNY4GJe+J8e9HkhQ=;
-        b=h1vDvHjS8Y4/hXgGrQcIuTe+NkeUr1e3ZI6BtySwsPuuwE50Ef0JRAYL8onkLtsxmm
-         rM6e0Lsa2rCIuhjbsK3W47Qv3djaEB7qpc1SszJUMhRxtM4xgSlpSm3AGOmm3bnYYhzo
-         krhj0NJeFQbFtJI0iufjwTpzXF99ExfWtUQu3pT5ri93C7ukfYvBUQpQfKCRoyKnVkXc
-         ne1hbXxELwnbtQ2rELpl4bO6B2wMngld8agyd9g2Z5zEVE2D6n90hT++MG0SU1K++urb
-         yH4wAfx5CV6Fbr4ucY5BMDb3k2RxUXJYWAbRBJkIzDBGT8JQDedMqEhgKapuqjemabdO
-         PHWA==
+        d=gmail.com; s=20251104; t=1785512337; x=1786117137; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=GmKq4jCxCauX8H3GWsFvvhHp3+g+Jn8SjIowmGjl4BQ=;
+        b=TCM83xxj0CbGPWqmBTn4gWAevEDy5XT+P5N7T6CDisnbWWSVnWfXJiglmuoNAPocK+
+         jaNGpsOJZXMxlxMZt0Wp28TWdUpnzfy61XkT2gLi+r7yFgpcl/hIV2gvFq1tWDV8ojya
+         xez2qKuKdCLT7f5TEmH/6Zq5tR9WxgqSEhCyL9+XOthQ6Z/er1CGLxJ6dxavWAGD7de9
+         tyLmz5huC4+c29HxAD66AOvlCcv2tWUe0IH4uDVMxujLEr7soBKWY/sX8CQ3aNiQzrm9
+         1J3pruBwemRBDYrQeoK8i+HB7LEsF3NyPBMl6GnIlL5aHv72WaKJn1C4tCpPy4iUmFrf
+         9ceQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785512335; x=1786117135;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=vMeLH8vGX8Q9NIwlrqva4rVfDkwiNY4GJe+J8e9HkhQ=;
-        b=GnKOS5wM4JkI4n7j64t6XHSwbVHRc/y5GDyQ6qka2P1Kjfcc808RXerD30QXbUZTh8
-         QTYd/WP2HTFMVGilxQDNIugIQxzQzEaNZvYVIjdqVQcfPhV1DIBhTPEPnWMs4cGnyxvZ
-         cl9EDclOe4TGTTHM9tt2H3APQx9fW9UdOr30g/eIuK12gFM5AnZUePgW14tO//ok8fy7
-         QAH9rElA+tZWQDJrcustt6Gtsvi5hkxg/teNP7pruuhrHJ0rmYIVOKK+yA5rrqvHDOuS
-         88U+Y7DWdd7NxHI21zoFtjH1X4Ftvtw33ToQ3fwerG4ucAYxg0z6Z8fF1vjkjJ84A5Je
-         MPTg==
-X-Gm-Message-State: AOJu0YwW15p6DhOnGnoosG/qMBS+HWOp7KBKJmEy7ipu6XC85VhoDMoE
-	9WlvchE3DR2a1gFpLcgdekWCFiD+3dwcmxXCTmXlWx7jFVVOph6JgM3tUXbdOTsq
-X-Gm-Gg: AR+sD13LFN4YKr6Xs91QspQbGyE/DD8dNfJJCDmrNRNaE3OaLq1C9RC4cKzXSW+IYiU
-	JLukP5EHkQjqIXbY8uZtsibEbDBtqtp6CT2uDklpwLKkPmjhCsFHafO0Mnox8/kYgLfH7VVMJUg
-	3TNtMpjabHdMLO5z6XywwwPNgsikAu1VPhAlJWPM9QeKsVfhxsNrTyLdgiKCWIGX+gzuuLwKIW0
-	BC0LbugL+37lsn3BdCB+lzVWh65AsAT9Bjn6tDipgcnysUuv7tPlMv/b7z6Lda/WadSY7ASI24b
-	KvI/Vq16KyMc8PuLB7Kl4MBTp6F2bPfVYf+owuYBreyJHnI4EWe1YalBX31mEIHWv+l5OALHqXg
-	LQ+YGH5rMePxk0VB6KPVrWX2TTIPiy7voT+9z2g6hQuv3GMYBem26Pd9pTZr6vXRJNPT6T4YOVo
-	SqBWYpCSCm5tY9KN2HwTaNiS/09NNi7wJR8/SMQfT9JVbKaze5GxdoHTNcThzVR7dei/8UVGkbt
-	LJhcScVS+/c6hKQPAGm
-X-Received: by 2002:a17:907:7283:b0:c1c:4a80:30c4 with SMTP id a640c23a62f3a-c1fe7ea3bf0mr10599666b.11.1785512335219;
-        Fri, 31 Jul 2026 08:38:55 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1785512337; x=1786117137;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=GmKq4jCxCauX8H3GWsFvvhHp3+g+Jn8SjIowmGjl4BQ=;
+        b=MXpucjnv+u8JAMApQoB21cdztlcdjP8qh66CZra8ZQ/PsCBeguMdJlY2P5ulVEYiqZ
+         9Npa/UOCI+BJUqHOaGlkQ3U/wNaV+/RTcPd/pHULEAQxxvA3V3hS9XG6lYRt7dhaM22H
+         mM/yidyOrVbB7eVlwfZU/C3ThcSQR2AHvv5UW0dZuQvPb57HcVm9bVUvzrQxzs2PhifG
+         gbszUlFRDL5G+eJEKzq1mQvvu4tFgt+HRxnwgGnDzN8hCCQN8pUMf3qe7Teagt7s8eP0
+         l80O/jCchQagOlerDxZMkBSFOxWrmBybe5apuLNt6bLWDtwosE9PB8a33jqkain4FSLp
+         /Lgg==
+X-Gm-Message-State: AOJu0YyYJA7in8LjQGKgvXjjnzJ6EUzARcxzB12s4NxYpL9rnvRLSpQ8
+	gknUe+cBkA1BT7MvQodvT7o0JQYxwXC9fgmpWzUqEOCLAfJf6qqY7UVAUprXfAKr
+X-Gm-Gg: AR+sD125e94Dpy3cf++F3QWHqRXIIY5ilCHV4hQsSnvy6vJqWOLNFi4ZKPr3vx+Zpoa
+	j4KawqLO4bA/55ASnTlD+ILYDadHOifgTq699KNg0YPYsJXfzyOKYhgovaDuDoRrG1b65PimplF
+	AELkRRp/e7v61iSOsbH6r+vWU3rRorb/ss2SIti1sEfjnXLDzDbyR3My+Co5Hu9pqm5lfDa+u7g
+	csiUMExDLLlfz6eZW28DDqAIa13NP+No3eF3alHAa7fK28t+I9qQrTnWdsCUZ2ONx/cEiS41GCp
+	T1qgWBfQ4lwOfltHmeM4rWR9OyMQWl+Vi3Jqlp+YhrpOtg2T/u6tZeIfZepkxjjsUaTyPo1Gox1
+	jk1GAN4POHqfSERbyXCNWI3QlDsK54Dhnv0LdEx2L8S8zdHaytuV3slRC8fUZhB5jkncVmAN5kF
+	IsApGwk8NRoEWfXOpohiOUsV33SlTwB3pT+wCdpVGU3r7BLIxc2H9+rwmsVyrBZf9lDwgmcLTid
+	zD0dmIXPuuPuLbV2bHGNqa2tWbZ+dI=
+X-Received: by 2002:a5d:525c:0:b0:47f:8b9e:f44e with SMTP id ffacd0b85a97d-47fd72ab56cmr242355f8f.12.1785512336609;
+        Fri, 31 Jul 2026 08:38:56 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fd41cfde0sm5098345f8f.3.2026.07.31.08.38.53
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fd41cfde0sm5098345f8f.3.2026.07.31.08.38.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 31 Jul 2026 08:38:54 -0700 (PDT)
+        Fri, 31 Jul 2026 08:38:56 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v10 07/11] ext4: rename ext4_dir_rec_len() and clarify dirdata usage
-Date: Fri, 31 Jul 2026 11:37:41 -0400
-Message-ID: <20260731153753.28309-8-ablagodarenko@thelustrecollective.com>
+	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>,
+	Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v10 09/11] ext4: add dirdata LUFID support for directory entry rename
+Date: Fri, 31 Jul 2026 11:37:43 -0400
+Message-ID: <20260731153753.28309-10-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260731153753.28309-1-ablagodarenko@thelustrecollective.com>
 References: <20260731153753.28309-1-ablagodarenko@thelustrecollective.com>
@@ -76,270 +77,336 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+ext4_setent() updates the inode number and file_type in an existing
+directory entry but did not handle the dirdata extension payload.
+Extend it with a src_fid parameter so that the source LUFID travels
+with the inode through rename.
 
-Rename ext4_dir_rec_len() to ext4_dirent_rec_len() to better
-reflect that it computes the record length for a directory
-entry based on the provided name length.
+When src_fid is non-NULL and the destination slot carries a LUFID of
+the same on-disk size, the source payload is copied into the destination
+before the file_type merge.  When src_fid is NULL (source has no LUFID),
+EXT4_DIRENT_LUFID is cleared from the destination entry.
 
-Update the comment to clarify handling of dirdata-enabled
-directories and document the use of ext4_dir_entry_len()
-when dirdata is present.
+CFHASH bytes are left in place: CFHASH is a property of the destination
+filename, not the inode, and it always precedes CFHASH in the extension
+layout so its offset is unaffected by the LUFID copy.
 
-No functional changes.
+Both ext4_rename() and ext4_cross_rename() snapshot the source LUFID
+into a stack buffer before any setent() call, so that a cross-directory
+swap reads both sides before either is overwritten.
 
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/dir.c    | 11 +++++------
- fs/ext4/ext4.h   | 14 ++++++++++----
- fs/ext4/inline.c | 17 ++++++++++-------
- fs/ext4/namei.c  | 25 +++++++++++++------------
- 4 files changed, 38 insertions(+), 29 deletions(-)
+ fs/ext4/namei.c | 198 ++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 183 insertions(+), 15 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 17edd678fa87..3294947f8555 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -89,16 +89,15 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
- 	bool fake = is_fake_dir_entry(de);
- 	bool has_csum = ext4_has_feature_metadata_csum(dir->i_sb);
- 
--	if (unlikely(rlen < ext4_dir_rec_len(1, fake ? NULL : dir)))
-+	if (unlikely(rlen < ext4_dirent_rec_len(1, fake ? NULL : dir)))
- 		error_msg = "rec_len is smaller than minimal";
- 	else if (unlikely(rlen % 4 != 0))
- 		error_msg = "rec_len % 4 != 0";
--	else if (unlikely(rlen < ext4_dir_rec_len(de->name_len,
--							fake ? NULL : dir)))
--		error_msg = "rec_len is too small for name_len";
- 	else if (unlikely(next_offset > size))
- 		error_msg = "directory entry overrun";
--	else if (unlikely(next_offset > size - ext4_dir_rec_len(1,
-+	else if (unlikely(rlen < ext4_dir_entry_len(de, size, fake ? NULL : dir)))
-+		error_msg = "rec_len is too small for name_len";
-+	else if (unlikely(next_offset > size - ext4_dirent_rec_len(1,
- 						  has_csum ? NULL : dir) &&
- 			  next_offset != size))
- 		error_msg = "directory entry too close to block end";
-@@ -245,7 +244,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
- 				 * failure will be detected in the
- 				 * dirent test below. */
- 				if (ext4_rec_len_from_disk(de->rec_len,
--					sb->s_blocksize) < ext4_dir_rec_len(1,
-+					sb->s_blocksize) < ext4_dirent_rec_len(1,
- 									inode))
- 					break;
- 				i += ext4_rec_len_from_disk(de->rec_len,
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4cc4a1fd290b..325ab81bdd66 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2614,11 +2614,16 @@ struct ext4_dirent_hash {
-  * casefolded and encrypted need to store the hash as well, so we add room for
-  * ext4_extended_dir_entry_2. For all entries related to '.' or '..' you should
-  * pass NULL for dir, as those entries do not use the extra fields.
-+ *
-+ * For directories with the dirdata feature, extra data may follow the filename.
-+ * Use ext4_dir_entry_len() to compute the length of a directory entry
-+ * including any dirdata, or ext4_dirent_rec_len() directly when the total
-+ * name_len (including dirdata length) is already known.
-  */
--static inline unsigned int ext4_dir_rec_len(__u8 name_len,
-+static inline unsigned int ext4_dirent_rec_len(unsigned int name_len,
- 						const struct inode *dir)
- {
--	int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
-+	unsigned int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
- 
- 	/*
- 	 * Without dirdata, the casefold+fscrypt hash lives at a fixed position
-@@ -3034,7 +3039,8 @@ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
- extern int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
- 			     void *buf, int buf_size,
- 			     struct ext4_filename *fname,
--			     struct ext4_dir_entry_2 **dest_de);
-+			     struct ext4_dir_entry_2 **dest_de,
-+			     int dlen);
- void ext4_insert_dentry(struct inode *dir, struct inode *inode,
- 			struct ext4_dir_entry_2 *de,
- 			int buf_size,
-@@ -4159,7 +4165,7 @@ static inline unsigned int ext4_dir_entry_len(struct ext4_dir_entry_2 *de,
- 	unsigned int rec_len = ext4_rec_len_from_disk(de->rec_len, blocksize);
- 	unsigned int dirdata = ext4_dirent_get_data_len(de, rec_len);
- 
--	return ext4_dir_rec_len(de->name_len + dirdata, dir);
-+	return ext4_dirent_rec_len(de->name_len + dirdata, dir);
- }
- 
- 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 8045e4ff270c..90ac8314b21d 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -976,8 +976,11 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
- 	int		err;
- 	struct ext4_dir_entry_2 *de;
- 
-+	/* 'dlen' reserves space for dirdata extensions (LUFID, CFHASH) in the
-+	 * slot.  The dirdata types are defined in the next patch; until then
-+	 * dlen stays 0 and ext4_find_dest_de() ignores dirdata overhead. */
- 	err = ext4_find_dest_de(dir, iloc->bh, inline_start,
--				inline_size, fname, &de);
-+				inline_size, fname, &de, 0);
- 	if (err)
- 		return err;
- 
-@@ -1055,7 +1058,7 @@ static int ext4_update_inline_dir(handle_t *handle, struct inode *dir,
- 	int old_size = EXT4_I(dir)->i_inline_size - EXT4_MIN_INLINE_DATA_SIZE;
- 	int new_size = get_max_inline_xattr_value_size(dir, iloc);
- 
--	if (new_size - old_size <= ext4_dir_rec_len(1, NULL))
-+	if (new_size - old_size <= ext4_dirent_rec_len(1, NULL))
- 		return -ENOSPC;
- 
- 	ret = ext4_update_inline_data(handle, dir,
-@@ -1309,7 +1312,7 @@ int ext4_inlinedir_to_tree(struct file *dir_file,
- 			fake.name_len = 1;
- 			memcpy(fake.name, ".", 2);
- 			fake.rec_len = ext4_rec_len_to_disk(
--					  ext4_dir_rec_len(fake.name_len, NULL),
-+					  ext4_dirent_rec_len(fake.name_len, NULL),
- 					  inline_size);
- 			ext4_set_de_type(inode->i_sb, &fake, S_IFDIR);
- 			de = &fake;
-@@ -1319,7 +1322,7 @@ int ext4_inlinedir_to_tree(struct file *dir_file,
- 			fake.name_len = 2;
- 			memcpy(fake.name, "..", 3);
- 			fake.rec_len = ext4_rec_len_to_disk(
--					  ext4_dir_rec_len(fake.name_len, NULL),
-+					  ext4_dirent_rec_len(fake.name_len, NULL),
- 					  inline_size);
- 			ext4_set_de_type(inode->i_sb, &fake, S_IFDIR);
- 			de = &fake;
-@@ -1427,8 +1430,8 @@ int ext4_read_inline_dir(struct file *file,
- 	 * So we will use extra_offset and extra_size to indicate them
- 	 * during the inline dir iteration.
- 	 */
--	dotdot_offset = ext4_dir_rec_len(1, NULL);
--	dotdot_size = dotdot_offset + ext4_dir_rec_len(2, NULL);
-+	dotdot_offset = ext4_dirent_rec_len(1, NULL);
-+	dotdot_size = dotdot_offset + ext4_dirent_rec_len(2, NULL);
- 	extra_offset = dotdot_size - EXT4_INLINE_DOTDOT_SIZE;
- 	extra_size = extra_offset + inline_size;
- 
-@@ -1463,7 +1466,7 @@ int ext4_read_inline_dir(struct file *file,
- 			 * failure will be detected in the
- 			 * dirent test below. */
- 			if (ext4_rec_len_from_disk(de->rec_len, extra_size)
--				< ext4_dir_rec_len(1, NULL))
-+				< ext4_dirent_rec_len(1, NULL))
- 				break;
- 			i += ext4_rec_len_from_disk(de->rec_len,
- 						    extra_size);
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index f98e05f9dcf9..7854f6558218 100644
+index 5c8204df26f8..a83342fc81c4 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1106,7 +1106,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	/* csum entries are not larger in the casefolded encrypted case */
- 	top = (struct ext4_dir_entry_2 *) ((char *) de +
- 					   dir->i_sb->s_blocksize -
--					   ext4_dir_rec_len(0,
-+					   ext4_dirent_rec_len(0,
- 							   csum ? NULL : dir));
- 	/* Check if the directory is encrypted */
- 	if (IS_ENCRYPTED(dir)) {
-@@ -1900,7 +1900,7 @@ dx_move_dirents(struct inode *dir, char *from, char *to,
- 	while (count--) {
- 		struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)
- 						(from + (map->offs<<2));
--		rec_len = ext4_dir_rec_len(de->name_len, dir);
-+		rec_len = ext4_dir_entry_len(de, blocksize, dir);
+@@ -3571,11 +3571,6 @@ int __ext4_link(struct inode *dir, struct inode *inode,
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
  
- 		memcpy (to, de, rec_len);
- 		((struct ext4_dir_entry_2 *) to)->rec_len =
-@@ -1933,7 +1933,7 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(struct inode *dir, char *base,
- 	while ((char*)de < base + blocksize) {
- 		next = ext4_next_entry(de, blocksize);
- 		if (de->inode && de->name_len) {
--			rec_len = ext4_dir_rec_len(de->name_len, dir);
-+			rec_len = ext4_dir_entry_len(de, blocksize, dir);
- 			if (de > to)
- 				memmove(to, de, rec_len);
- 			to->rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
-@@ -2085,10 +2085,11 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
- 		      void *buf, int buf_size,
- 		      struct ext4_filename *fname,
--		      struct ext4_dir_entry_2 **dest_de)
-+		      struct ext4_dir_entry_2 **dest_de,
-+		      int dlen)
+-	/* Fast-commit does not record dirdata in its journal format; force a
+-	 * full journal commit so the LUFID survives crash+replay. */
+-	if (ext4_dentry_get_fid(dir->i_sb, dentry ? dentry->d_fsdata : NULL))
+-		ext4_fc_mark_ineligible(dir->i_sb, EXT4_FC_REASON_DIRDATA, handle);
+-
+ 	inode_set_ctime_current(inode);
+ 	ext4_inc_count(inode);
+ 
+@@ -3749,7 +3744,8 @@ static int ext4_rename_dir_finish(handle_t *handle, struct ext4_renament *ent,
+ }
+ 
+ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
+-		       unsigned ino, unsigned file_type)
++		       unsigned ino, unsigned file_type,
++		       const struct ext4_dirent_fid *src_fid)
  {
- 	struct ext4_dir_entry_2 *de;
--	unsigned short reclen = ext4_dir_rec_len(fname_len(fname), dir);
-+	unsigned short reclen = ext4_dirent_rec_len(fname_len(fname) + dlen, dir);
- 	int nlen, rlen;
- 	unsigned int offset = 0;
- 	char *top;
-@@ -2101,7 +2102,7 @@ int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
- 			return -EFSCORRUPTED;
- 		if (ext4_match(dir, fname, de))
- 			return -EEXIST;
--		nlen = ext4_dir_rec_len(de->name_len, dir);
-+		nlen = ext4_dir_entry_len(de, buf_size, dir);
- 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
- 		if ((de->inode ? rlen - nlen : rlen) >= reclen)
- 			break;
-@@ -2124,7 +2125,7 @@ void ext4_insert_dentry(struct inode *dir,
+ 	int retval, retval2;
  
- 	int nlen, rlen;
+@@ -3759,8 +3755,57 @@ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
+ 	if (retval)
+ 		return retval;
+ 	ent->de->inode = cpu_to_le32(ino);
+-	if (ext4_has_feature_filetype(ent->dir->i_sb))
+-		ent->de->file_type = file_type;
++	if (ext4_has_feature_filetype(ent->dir->i_sb)) {
++		/* Copy the source LUFID payload into the destination slot when
++		 * both carry a LUFID of the same on-disk size.  LUFID is
++		 * inode-specific and must travel with the inode through rename.
++		 * CFHASH bytes are left in-place: CFHASH is a function of the
++		 * destination filename, and its bytes sit at the correct offset
++		 * because LUFID always precedes CFHASH in the extension layout.
++		 * When src_fid is NULL, the LUFID flag is synced to the LUFID
++		 * bit already present in file_type: callers that clear LUFID
++		 * (rename of a non-LUFID inode, whiteout) pass file_type with
++		 * LUFID=0; ext4_resetent passes the original file_type so the
++		 * flag is restored for error recovery without overwriting the
++		 * LUFID bytes that are still intact on disk. */
++		if (ext4_has_feature_dirdata(ent->dir->i_sb)) {
++			if (src_fid && (ent->de->file_type & EXT4_DIRENT_LUFID)) {
++				unsigned int rec_len =
++					ext4_rec_len_from_disk(ent->de->rec_len,
++						ent->dir->i_sb->s_blocksize);
++				unsigned int ddh_off =
++					EXT4_BASE_DIR_LEN + ent->de->name_len + 1;
++				struct ext4_dirent_data_header *ddh =
++					(struct ext4_dirent_data_header *)
++					((char *)ent->de + ddh_off);
++				unsigned int copy_len = src_fid->df_header.ddh_length;
++
++				if (ddh_off + sizeof(*ddh) > rec_len ||
++				    ddh->ddh_length != copy_len ||
++				    ddh_off + copy_len > rec_len) {
++					/* Cannot copy: clear the flag so the
++					 * slot does not advertise a stale LUFID
++					 * from the old inode. */
++					ent->de->file_type &= ~EXT4_DIRENT_LUFID;
++				} else {
++					memcpy(ddh, src_fid, copy_len);
++				}
++			} else if (!src_fid) {
++				/* Sync the LUFID flag with what file_type requests.
++				 * For normal rename (source has no LUFID) and for
++				 * the whiteout setent, file_type carries LUFID=0,
++				 * so we clear the stale flag.  For ext4_resetent
++				 * (error recovery), file_type is the original
++				 * file_type with LUFID=1, so we restore the flag —
++				 * the LUFID bytes are still on disk untouched. */
++				ent->de->file_type =
++					(ent->de->file_type & ~EXT4_DIRENT_LUFID) |
++					(file_type & EXT4_DIRENT_LUFID);
++			}
++		}
++		ent->de->file_type = (file_type & EXT4_FT_MASK) |
++				     (ent->de->file_type & ~EXT4_FT_MASK);
++	}
+ 	inode_inc_iversion(ent->dir);
+ 	inode_set_mtime_to_ts(ent->dir, inode_set_ctime_current(ent->dir));
+ 	retval = ext4_mark_inode_dirty(handle, ent->dir);
+@@ -3797,7 +3842,7 @@ static void ext4_resetent(handle_t *handle, struct ext4_renament *ent,
+ 		return;
+ 	}
  
--	nlen = ext4_dir_rec_len(de->name_len, dir);
-+	nlen = ext4_dir_entry_len(de, buf_size, dir);
- 	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
- 	if (de->inode) {
- 		struct ext4_dir_entry_2 *de1 =
-@@ -2993,7 +2994,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
+-	ext4_setent(handle, &old, ino, file_type);
++	ext4_setent(handle, &old, ino, file_type, NULL);
+ 	brelse(old.bh);
+ }
  
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
--	de->rec_len = ext4_rec_len_to_disk(ext4_dir_rec_len(de->name_len, NULL),
-+	de->rec_len = ext4_rec_len_to_disk(ext4_dirent_rec_len(de->name_len, NULL),
- 					   blocksize);
- 	memcpy(de->name, ".", 2);
- 	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
-@@ -3005,7 +3006,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
- 	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
- 	if (inline_buf) {
- 		de->rec_len = ext4_rec_len_to_disk(
--					ext4_dir_rec_len(de->name_len, NULL),
-+					ext4_dirent_rec_len(de->name_len, NULL),
- 					blocksize);
- 		de = ext4_next_entry(de, blocksize);
- 		header_size = (char *)de - bh->b_data;
-@@ -3014,7 +3015,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
- 			blocksize - csum_size);
+@@ -3896,6 +3941,67 @@ static struct inode *ext4_whiteout_for_rename(struct mnt_idmap *idmap,
+ 	return wh;
+ }
+ 
++/*
++ * Stack buffer sized for 1-byte header + 4 × 16-byte FIDs, covering virtually
++ * all real-world LUFID payloads without a heap allocation.  ddh_length is u8
++ * so the absolute maximum is 255 bytes; larger payloads fall back to kmalloc.
++ */
++#define EXT4_LUFID_INLINE_SIZE  65
++
++struct ext4_lufid_snap {
++	struct ext4_dirent_fid *fid;	/* NULL or valid; never ERR_PTR */
++	bool on_heap;
++	u8 buf[EXT4_LUFID_INLINE_SIZE];
++};
++
++/*
++ * ext4_lufid_snapshot - copy the LUFID record from a directory entry
++ *
++ * Fills @snap with a copy of the on-disk LUFID record.  For payloads up to
++ * EXT4_LUFID_INLINE_SIZE bytes the inline buffer is used; larger payloads
++ * fall back to a heap allocation.  Returns 0 on success (snap->fid is NULL
++ * when no LUFID is present), or -ENOMEM when a heap allocation fails.
++ * Call ext4_lufid_snap_release() when done.
++ */
++static int ext4_lufid_snapshot(struct ext4_dir_entry_2 *de,
++			       unsigned int blocksize,
++			       struct ext4_lufid_snap *snap)
++{
++	unsigned int ddh_off = EXT4_BASE_DIR_LEN + de->name_len + 1;
++	unsigned int rec_len = ext4_rec_len_from_disk(de->rec_len, blocksize);
++	struct ext4_dirent_fid *disk_fid;
++	unsigned int dlen;
++
++	snap->fid = NULL;
++	snap->on_heap = false;
++
++	if (!(de->file_type & EXT4_DIRENT_LUFID))
++		return 0;
++	if (ddh_off + sizeof(disk_fid->df_header) > rec_len)
++		return 0;
++	disk_fid = (struct ext4_dirent_fid *)((char *)de + ddh_off);
++	dlen = disk_fid->df_header.ddh_length;
++	if (dlen < sizeof(disk_fid->df_header) || ddh_off + dlen > rec_len)
++		return 0;
++
++	if (dlen <= sizeof(snap->buf)) {
++		memcpy(snap->buf, disk_fid, dlen);
++		snap->fid = (struct ext4_dirent_fid *)snap->buf;
++	} else {
++		snap->fid = kmemdup(disk_fid, dlen, GFP_NOFS);
++		if (!snap->fid)
++			return -ENOMEM;
++		snap->on_heap = true;
++	}
++	return 0;
++}
++
++static void ext4_lufid_snap_release(struct ext4_lufid_snap *snap)
++{
++	if (snap->on_heap)
++		kfree(snap->fid);
++}
++
+ /*
+  * Anybody can rename anything with this: the permission checks are left to the
+  * higher-level routines.
+@@ -3924,6 +4030,7 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 	struct inode *whiteout = NULL;
+ 	int credits;
+ 	u8 old_file_type;
++	struct ext4_lufid_snap old_snap = {};
+ 
+ 	if (new.inode && new.inode->i_nlink == 0) {
+ 		EXT4_ERROR_INODE(new.inode,
+@@ -4029,29 +4136,65 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 	force_reread = (new.dir->i_ino == old.dir->i_ino &&
+ 			ext4_test_inode_flag(new.dir, EXT4_INODE_INLINE_DATA));
+ 
++	if (ext4_has_feature_dirdata(old.dir->i_sb)) {
++		/* Snapshot before whiteout's ext4_setent() clears the LUFID
++		 * flag in old.de; the snapshot is also needed for the !new.bh
++		 * path below where we must carry the LUFID to the new entry. */
++		retval = ext4_lufid_snapshot(old.de,
++					     old.dir->i_sb->s_blocksize,
++					     &old_snap);
++		if (retval)
++			goto end_rename;
++		if (!old_snap.fid)
++			old_file_type &= ~EXT4_DIRENT_LUFID;
++	}
++
+ 	if (whiteout) {
+ 		/*
+ 		 * Do this before adding a new entry, so the old entry is sure
+ 		 * to be still pointing to the valid old entry.
+ 		 */
+ 		retval = ext4_setent(handle, &old, whiteout->i_ino,
+-				     EXT4_FT_CHRDEV);
++				     EXT4_FT_CHRDEV, NULL);
+ 		if (retval)
+ 			goto end_rename;
+ 		retval = ext4_mark_inode_dirty(handle, whiteout);
+ 		if (unlikely(retval))
+ 			goto end_rename;
+-
+ 	}
+ 	if (!new.bh) {
++		struct ext4_dentry_param *edp = NULL;
++		if (old_snap.fid) {
++			/* Wrap the snapshotted LUFID in an ext4_dentry_param so
++			 * ext4_add_entry() picks it up via d_fsdata; it will call
++			 * ext4_fc_mark_ineligible() inside __ext4_add_entry(). */
++			unsigned fid_size = old_snap.fid->df_header.ddh_length;
++
++			edp = kmalloc(offsetof(struct ext4_dentry_param,
++					       edp_dfid) + fid_size, GFP_NOFS);
++			if (!edp) {
++				retval = -ENOMEM;
++				goto end_rename;
++			}
++			edp->edp_magic = EXT4_LUFID_MAGIC;
++			memcpy(&edp->edp_dfid, old_snap.fid, fid_size);
++		}
++		new.dentry->d_fsdata = edp;
+ 		retval = ext4_add_entry(handle, new.dentry, old.inode);
++		new.dentry->d_fsdata = NULL;
++		kfree(edp);
+ 		if (retval)
+ 			goto end_rename;
  	} else {
- 		de->rec_len = ext4_rec_len_to_disk(blocksize -
--					(csum_size + ext4_dir_rec_len(1, NULL)),
-+					(csum_size + ext4_dirent_rec_len(1, NULL)),
- 					blocksize);
+ 		retval = ext4_setent(handle, &new,
+-				     old.inode->i_ino, old_file_type);
++				     old.inode->i_ino, old_file_type, old_snap.fid);
+ 		if (retval)
+ 			goto end_rename;
++		/* ext4_setent() writes the LUFID in-place without going through
++		 * __ext4_add_entry(), so mark ineligible here if needed. */
++		if (old_snap.fid)
++			ext4_fc_mark_ineligible(old.dir->i_sb,
++						EXT4_FC_REASON_DIRDATA, handle);
+ 	}
+ 	if (force_reread)
+ 		force_reread = !ext4_test_inode_flag(new.dir,
+@@ -4136,6 +4279,7 @@ static int ext4_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 	retval = 0;
+ 
+ end_rename:
++	ext4_lufid_snap_release(&old_snap);
+ 	if (whiteout) {
+ 		if (retval) {
+ 			ext4_resetent(handle, &old,
+@@ -4172,8 +4316,9 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		.dentry = new_dentry,
+ 		.inode = d_inode(new_dentry),
+ 	};
+-	u8 new_file_type;
++	u8 new_file_type, old_de_file_type;
+ 	int retval;
++	struct ext4_lufid_snap old_snap = {}, new_snap = {};
+ 
+ 	if ((ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT) &&
+ 	     !projid_eq(EXT4_I(new_dir)->i_projid,
+@@ -4252,12 +4397,33 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			goto end_rename;
  	}
  
-@@ -3137,8 +3138,8 @@ bool ext4_empty_dir(struct inode *inode)
- 	}
++	if (ext4_has_feature_dirdata(old.dir->i_sb)) {
++		retval = ext4_lufid_snapshot(old.de, old.dir->i_sb->s_blocksize,
++					     &old_snap);
++		if (retval)
++			goto end_rename;
++		retval = ext4_lufid_snapshot(new.de, new.dir->i_sb->s_blocksize,
++					     &new_snap);
++		if (retval)
++			goto end_rename;
++		if (old_snap.fid || new_snap.fid)
++			ext4_fc_mark_ineligible(old.dir->i_sb,
++						EXT4_FC_REASON_DIRDATA, handle);
++	}
++
++	old_de_file_type = old.de->file_type;
++	if (!old_snap.fid)
++		old_de_file_type &= ~EXT4_DIRENT_LUFID;
+ 	new_file_type = new.de->file_type;
+-	retval = ext4_setent(handle, &new, old.inode->i_ino, old.de->file_type);
++	if (!new_snap.fid)
++		new_file_type &= ~EXT4_DIRENT_LUFID;
++	retval = ext4_setent(handle, &new, old.inode->i_ino, old_de_file_type,
++			     old_snap.fid);
+ 	if (retval)
+ 		goto end_rename;
  
- 	sb = inode->i_sb;
--	if (inode->i_size < ext4_dir_rec_len(1, NULL) +
--					ext4_dir_rec_len(2, NULL)) {
-+	if (inode->i_size < ext4_dirent_rec_len(1, NULL) +
-+					ext4_dirent_rec_len(2, NULL)) {
- 		EXT4_ERROR_INODE(inode, "invalid size");
- 		return false;
- 	}
+-	retval = ext4_setent(handle, &old, new.inode->i_ino, new_file_type);
++	retval = ext4_setent(handle, &old, new.inode->i_ino, new_file_type,
++			     new_snap.fid);
+ 	if (retval)
+ 		goto end_rename;
+ 
+@@ -4290,6 +4456,8 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	retval = 0;
+ 
+ end_rename:
++	ext4_lufid_snap_release(&old_snap);
++	ext4_lufid_snap_release(&new_snap);
+ 	brelse(old.dir_bh);
+ 	brelse(new.dir_bh);
+ 	brelse(old.bh);
 -- 
 2.43.7
 
