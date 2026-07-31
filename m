@@ -1,72 +1,72 @@
-Received: from mail-wr1-f50.google.com (mail-wr1-f50.google.com [209.85.221.50])
+Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14F40443E2F
-	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 15:38:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62CB2443E24
+	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 15:38:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785512338; cv=none; b=DRYqnoP4s9KpKSy//YiGoVKCw5PrA5wQqQ81HntSzQTLYaGd6fzkU7Qz8O/qB07GZZUoJf5ByxXfnuqVOm6PxaHDADbzAOiWWOIRnP6qyX9f3HtXzzzrRu8fbCRrZ7eThL+Laqk6Z4p8NBbf1M90D3Clebu30jNST0Ae6p4WVLs=
+	t=1785512339; cv=none; b=mqoAS83vXBrGGNp3tddiDjOKGKUX/vc+OPzjhGX/L19I8jZ6/z+jKu6Zr82EzHwFdrv395KuGWC3v/r7TkQsRSWZuZsUz9CL11qyNJiKMAEnlwKHHNitms79nBGbN+OS+3bmtu93epai1BgLY5b1HRgnCqm8+6/X2bE4+bIJZwo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785512338; c=relaxed/simple;
-	bh=d+Jtg1YbQptZhWFIe2NnhyYf/KqYu2YubQhE6+k7GaM=;
+	s=arc-20240116; t=1785512339; c=relaxed/simple;
+	bh=uSRMJbn72HtVkPZ2BWIkQiwHJkeQTbmaooEApfZY1h8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fxpEfYA8s/Ixl/im7hWEv3dJaiWCak5exZYKqy+VV/jmGpBY8mMxLwkmYAmJNz7L4S7xuDC8Z0cToTIvuin2EQha6adJs87jEpnZCeUVhZxT3tnIaf6gSxbjodPK5mlg9LZ05FG+RVENs8AcpaiU8oWcnse2Ts05DTnRY43C6cc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dXs5HuHi; arc=none smtp.client-ip=209.85.221.50
+	 MIME-Version; b=jxSBML5XcQxfqMbHPPfhVvJguHS2f0yFmQShoj82jtnfzfmKG6Cs1xK6zLPllhxj5F4QuZFNE9DM1j2FyPuIu77Cns0GMi20Ie08noQGoI1H3jp9uNdD1dXxSgAow48m/igurUAHF+CXcO6W5BzwDVD4IH2YZgCM6/FmeClVqLE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=h1vDvHjS; arc=none smtp.client-ip=209.85.218.48
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dXs5HuHi"
-Received: by mail-wr1-f50.google.com with SMTP id ffacd0b85a97d-47f904e80eeso1025520f8f.1
-        for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 08:38:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h1vDvHjS"
+Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-c15e592da74so132507866b.1
+        for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 08:38:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785512333; x=1786117133; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785512335; x=1786117135; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=frczxh3TC+j+knUK2h4mK0aCICBb3Zr3cfBq3pV8Kgc=;
-        b=dXs5HuHiv0gf5i/qMnWXI6/3mv//MbsnEd0uyk3eSeO1RJIW/EuKxR5TWpqUP/4m+G
-         oonh67OMeyaFkEfzqTVFJuUYIfLTFn4MEVwUwlg0XlmSIJziOK1oCXe8U5KN2JBBTFfy
-         tEPCf1RLJV2nnn8HvNx4e55Vae45YlVmEwJqhKaTduzIaIW978+1gOixm/jou28t2UWS
-         JCXOTmJF3jeC/p6wUebMuddD18t92krntyeht8ZxUH7ll+2r4Vbyg5rohQO8YPABuSmd
-         +9aHJQsD4Bh+FsazXTETBbmO38QquUvIFEDo23dnVwtVsbXMqZx0HDiYRP7kymn/IaY8
-         o/Bg==
+        bh=vMeLH8vGX8Q9NIwlrqva4rVfDkwiNY4GJe+J8e9HkhQ=;
+        b=h1vDvHjS8Y4/hXgGrQcIuTe+NkeUr1e3ZI6BtySwsPuuwE50Ef0JRAYL8onkLtsxmm
+         rM6e0Lsa2rCIuhjbsK3W47Qv3djaEB7qpc1SszJUMhRxtM4xgSlpSm3AGOmm3bnYYhzo
+         krhj0NJeFQbFtJI0iufjwTpzXF99ExfWtUQu3pT5ri93C7ukfYvBUQpQfKCRoyKnVkXc
+         ne1hbXxELwnbtQ2rELpl4bO6B2wMngld8agyd9g2Z5zEVE2D6n90hT++MG0SU1K++urb
+         yH4wAfx5CV6Fbr4ucY5BMDb3k2RxUXJYWAbRBJkIzDBGT8JQDedMqEhgKapuqjemabdO
+         PHWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785512333; x=1786117133;
+        d=1e100.net; s=20251104; t=1785512335; x=1786117135;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=frczxh3TC+j+knUK2h4mK0aCICBb3Zr3cfBq3pV8Kgc=;
-        b=Y+Bq0KqeO38tmFPlblB+ZPtnIdqHfXQvUXNjx3TI5ksp6GOiQ6TmxZFxROEyoD8FQ9
-         iEocBRMC0uKsC/tQecmV/oClt3wHq5fiZA2EIK00FSEF6Eyg0FEDygu7bXlzPmjudpH0
-         CS+hCpxSBdM2oCFg/BNx3wG1UJShNvluVINUp9IRES2kX4egBmyp2+gXMFCWMCy5TWiL
-         oa4nJ73vgrS1JdFdasqpxcGgf54v2KTsvtu67U3d5qCrR8V6trmxXPAXymnNbMRM4fJh
-         gGfbK7GAJ/1ehWvo4OIu7G8yvBdStOA0lOuG1VQk1lOPL6/kBzgPpEBRjmvUyH3Js8s4
-         4kzw==
-X-Gm-Message-State: AOJu0Yy+mlxlJn2aXyVKGL5UB8YuBVQdHN9osMQio72zh0EGxda7LQSS
-	nQ1mTrwyHhouUvr+2H6HDXANWg5iTAOqs5dqxilVdYWg1Bbp3i0lStdJmK0rAlzf
-X-Gm-Gg: AR+sD12N91hNdVZiIralXFhIdIURcoC/F/+fXSXHLJqkHd8/fwzk8L/gjIkw1NEHSrD
-	yrHuLgMPVJDKh51U+scPbj1ROD8e1hPOSAHzn89DBAUEIhbw0ftnyIREZvkF5It7ju1qgaPIvs8
-	J80uuvob3bSV7YljmfvEE2b2+ZHk2xTtvk7cnxNrMvE7Wwt6EFLidU3EAuoo8JlkDFHserI6jZE
-	Nvac9iD/Yapr/xvyNZemgeCBlNdysKkmnFcTkNEKr2p5W5NFTU1eBgh8kyM0olxvyuYEg347nDu
-	Qn2gICXloVRHcwiIUcVmrxybZ9ZFgReZTJa3eHROP0zHoOTls6rPCs24Kquje0LX/j5EMRSiuUG
-	8bFMwfezsm6Dn34THTTnOQMhPijHHvqhdc41a8Syy/Dp0T5cQ2RqpiLS/c/mFoNZDdhzxhciESR
-	SF7DNeT+o1n77f6CObtKxoVQ9UKA1xeIvNX1iixE6t2vmIfZ4Tr0swcpUM9qQkkEzRaKe2qKjsG
-	y9XUxinABwXNDujJKthiw==
-X-Received: by 2002:a05:6000:2408:b0:47f:7261:3a58 with SMTP id ffacd0b85a97d-47fd72bbbe3mr268399f8f.1.1785512333104;
-        Fri, 31 Jul 2026 08:38:53 -0700 (PDT)
+        bh=vMeLH8vGX8Q9NIwlrqva4rVfDkwiNY4GJe+J8e9HkhQ=;
+        b=GnKOS5wM4JkI4n7j64t6XHSwbVHRc/y5GDyQ6qka2P1Kjfcc808RXerD30QXbUZTh8
+         QTYd/WP2HTFMVGilxQDNIugIQxzQzEaNZvYVIjdqVQcfPhV1DIBhTPEPnWMs4cGnyxvZ
+         cl9EDclOe4TGTTHM9tt2H3APQx9fW9UdOr30g/eIuK12gFM5AnZUePgW14tO//ok8fy7
+         QAH9rElA+tZWQDJrcustt6Gtsvi5hkxg/teNP7pruuhrHJ0rmYIVOKK+yA5rrqvHDOuS
+         88U+Y7DWdd7NxHI21zoFtjH1X4Ftvtw33ToQ3fwerG4ucAYxg0z6Z8fF1vjkjJ84A5Je
+         MPTg==
+X-Gm-Message-State: AOJu0YwW15p6DhOnGnoosG/qMBS+HWOp7KBKJmEy7ipu6XC85VhoDMoE
+	9WlvchE3DR2a1gFpLcgdekWCFiD+3dwcmxXCTmXlWx7jFVVOph6JgM3tUXbdOTsq
+X-Gm-Gg: AR+sD13LFN4YKr6Xs91QspQbGyE/DD8dNfJJCDmrNRNaE3OaLq1C9RC4cKzXSW+IYiU
+	JLukP5EHkQjqIXbY8uZtsibEbDBtqtp6CT2uDklpwLKkPmjhCsFHafO0Mnox8/kYgLfH7VVMJUg
+	3TNtMpjabHdMLO5z6XywwwPNgsikAu1VPhAlJWPM9QeKsVfhxsNrTyLdgiKCWIGX+gzuuLwKIW0
+	BC0LbugL+37lsn3BdCB+lzVWh65AsAT9Bjn6tDipgcnysUuv7tPlMv/b7z6Lda/WadSY7ASI24b
+	KvI/Vq16KyMc8PuLB7Kl4MBTp6F2bPfVYf+owuYBreyJHnI4EWe1YalBX31mEIHWv+l5OALHqXg
+	LQ+YGH5rMePxk0VB6KPVrWX2TTIPiy7voT+9z2g6hQuv3GMYBem26Pd9pTZr6vXRJNPT6T4YOVo
+	SqBWYpCSCm5tY9KN2HwTaNiS/09NNi7wJR8/SMQfT9JVbKaze5GxdoHTNcThzVR7dei/8UVGkbt
+	LJhcScVS+/c6hKQPAGm
+X-Received: by 2002:a17:907:7283:b0:c1c:4a80:30c4 with SMTP id a640c23a62f3a-c1fe7ea3bf0mr10599666b.11.1785512335219;
+        Fri, 31 Jul 2026 08:38:55 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fd41cfde0sm5098345f8f.3.2026.07.31.08.38.52
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fd41cfde0sm5098345f8f.3.2026.07.31.08.38.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 31 Jul 2026 08:38:52 -0700 (PDT)
+        Fri, 31 Jul 2026 08:38:54 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v10 06/11] ext4: add ext4_dir_entry_len()
-Date: Fri, 31 Jul 2026 11:37:40 -0400
-Message-ID: <20260731153753.28309-7-ablagodarenko@thelustrecollective.com>
+Subject: [PATCH v10 07/11] ext4: rename ext4_dir_rec_len() and clarify dirdata usage
+Date: Fri, 31 Jul 2026 11:37:41 -0400
+Message-ID: <20260731153753.28309-8-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260731153753.28309-1-ablagodarenko@thelustrecollective.com>
 References: <20260731153753.28309-1-ablagodarenko@thelustrecollective.com>
@@ -80,147 +80,266 @@ Content-Transfer-Encoding: 8bit
 
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 
-Introduce ext4_dir_entry_len() helper to compute the required
-rec_len for a directory entry, taking into account dirdata and
-casefold+fscrypt hash space.
+Rename ext4_dir_rec_len() to ext4_dirent_rec_len() to better
+reflect that it computes the record length for a directory
+entry based on the provided name length.
 
-Update dx_root_limit() to use ext4_dir_entry_len() instead of
-open-coded ext4_dir_rec_len() for '.' and '..' entries.
+Update the comment to clarify handling of dirdata-enabled
+directories and document the use of ext4_dir_entry_len()
+when dirdata is present.
+
+No functional changes.
 
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/ext4.h  | 44 ++++++++++++++++++++++++++++++++++++++++----
- fs/ext4/namei.c | 20 ++++++++++++--------
- 2 files changed, 52 insertions(+), 12 deletions(-)
+ fs/ext4/dir.c    | 11 +++++------
+ fs/ext4/ext4.h   | 14 ++++++++++----
+ fs/ext4/inline.c | 17 ++++++++++-------
+ fs/ext4/namei.c  | 25 +++++++++++++------------
+ 4 files changed, 38 insertions(+), 29 deletions(-)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 17edd678fa87..3294947f8555 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -89,16 +89,15 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 	bool fake = is_fake_dir_entry(de);
+ 	bool has_csum = ext4_has_feature_metadata_csum(dir->i_sb);
+ 
+-	if (unlikely(rlen < ext4_dir_rec_len(1, fake ? NULL : dir)))
++	if (unlikely(rlen < ext4_dirent_rec_len(1, fake ? NULL : dir)))
+ 		error_msg = "rec_len is smaller than minimal";
+ 	else if (unlikely(rlen % 4 != 0))
+ 		error_msg = "rec_len % 4 != 0";
+-	else if (unlikely(rlen < ext4_dir_rec_len(de->name_len,
+-							fake ? NULL : dir)))
+-		error_msg = "rec_len is too small for name_len";
+ 	else if (unlikely(next_offset > size))
+ 		error_msg = "directory entry overrun";
+-	else if (unlikely(next_offset > size - ext4_dir_rec_len(1,
++	else if (unlikely(rlen < ext4_dir_entry_len(de, size, fake ? NULL : dir)))
++		error_msg = "rec_len is too small for name_len";
++	else if (unlikely(next_offset > size - ext4_dirent_rec_len(1,
+ 						  has_csum ? NULL : dir) &&
+ 			  next_offset != size))
+ 		error_msg = "directory entry too close to block end";
+@@ -245,7 +244,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 				 * failure will be detected in the
+ 				 * dirent test below. */
+ 				if (ext4_rec_len_from_disk(de->rec_len,
+-					sb->s_blocksize) < ext4_dir_rec_len(1,
++					sb->s_blocksize) < ext4_dirent_rec_len(1,
+ 									inode))
+ 					break;
+ 				i += ext4_rec_len_from_disk(de->rec_len,
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ff43ae8e7d5e..4cc4a1fd290b 100644
+index 4cc4a1fd290b..325ab81bdd66 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -2620,7 +2620,15 @@ static inline unsigned int ext4_dir_rec_len(__u8 name_len,
- {
- 	int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
- 
--	if (dir && ext4_hash_in_dirent(dir))
-+	/*
-+	 * Without dirdata, the casefold+fscrypt hash lives at a fixed position
-+	 * after the filename and must be reserved explicitly.  With dirdata the
-+	 * hash is stored as a CFHASH extension and is already counted in the
-+	 * name_len argument (via ext4_dirent_get_data_len), so adding it again
-+	 * would double-count.
-+	 */
-+	if (dir && ext4_hash_in_dirent(dir) &&
-+	    !ext4_has_feature_dirdata(dir->i_sb))
- 		rec_len += sizeof(struct ext4_dir_entry_hash);
- 	return (rec_len & ~EXT4_DIR_ROUND);
- }
-@@ -3044,12 +3052,14 @@ static const unsigned char ext4_filetype_table[] = {
- 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
- };
- 
--static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
-+static inline unsigned char get_dtype(struct super_block *sb, int filetype)
- {
--	if (!ext4_has_feature_filetype(sb) || filetype >= EXT4_FT_MAX)
-+	unsigned char fl_index = filetype & EXT4_FT_MASK;
-+
-+	if (!ext4_has_feature_filetype(sb) || fl_index >= EXT4_FT_MAX)
- 		return DT_UNKNOWN;
- 
--	return ext4_filetype_table[filetype];
-+	return ext4_filetype_table[fl_index];
- }
- extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
- 			     void *buf, int buf_size);
-@@ -4127,6 +4137,32 @@ static inline int ext4_dirent_get_data_len(struct ext4_dir_entry_2 *de,
- 	return dlen;
- }
- 
-+/*
-+ * ext4_dir_entry_len() - Compute the required rec_len for a directory entry.
-+ * @de:        directory entry (used to read name_len and any dirdata length)
-+ * @blocksize: size of the buffer @de lives in (the real directory block
-+ *             size, or the smaller inline-data buffer size for inline
-+ *             directories) -- used only to decode @de->rec_len's "0/65535
-+ *             means rest of buffer" sentinel correctly.
-+ * @dir:       directory inode (may be NULL for '.' and '..' entries, which
-+ *             never carry the casefold+fscrypt hash regardless of the
-+ *             directory's feature flags)
+@@ -2614,11 +2614,16 @@ struct ext4_dirent_hash {
+  * casefolded and encrypted need to store the hash as well, so we add room for
+  * ext4_extended_dir_entry_2. For all entries related to '.' or '..' you should
+  * pass NULL for dir, as those entries do not use the extra fields.
 + *
-+ * Returns the minimum record length needed to hold @de, rounded up to the
-+ * directory alignment and including room for the casefold+fscrypt hash if
-+ * the directory requires it.
-+ */
-+static inline unsigned int ext4_dir_entry_len(struct ext4_dir_entry_2 *de,
-+					      unsigned int blocksize,
-+					      const struct inode *dir)
-+{
-+	unsigned int rec_len = ext4_rec_len_from_disk(de->rec_len, blocksize);
-+	unsigned int dirdata = ext4_dirent_get_data_len(de, rec_len);
-+
-+	return ext4_dir_rec_len(de->name_len + dirdata, dir);
-+}
-+
-+
- extern const struct iomap_ops ext4_iomap_ops;
- extern const struct iomap_ops ext4_iomap_report_ops;
++ * For directories with the dirdata feature, extra data may follow the filename.
++ * Use ext4_dir_entry_len() to compute the length of a directory entry
++ * including any dirdata, or ext4_dirent_rec_len() directly when the total
++ * name_len (including dirdata length) is already known.
+  */
+-static inline unsigned int ext4_dir_rec_len(__u8 name_len,
++static inline unsigned int ext4_dirent_rec_len(unsigned int name_len,
+ 						const struct inode *dir)
+ {
+-	int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
++	unsigned int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
  
+ 	/*
+ 	 * Without dirdata, the casefold+fscrypt hash lives at a fixed position
+@@ -3034,7 +3039,8 @@ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
+ extern int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
+ 			     void *buf, int buf_size,
+ 			     struct ext4_filename *fname,
+-			     struct ext4_dir_entry_2 **dest_de);
++			     struct ext4_dir_entry_2 **dest_de,
++			     int dlen);
+ void ext4_insert_dentry(struct inode *dir, struct inode *inode,
+ 			struct ext4_dir_entry_2 *de,
+ 			int buf_size,
+@@ -4159,7 +4165,7 @@ static inline unsigned int ext4_dir_entry_len(struct ext4_dir_entry_2 *de,
+ 	unsigned int rec_len = ext4_rec_len_from_disk(de->rec_len, blocksize);
+ 	unsigned int dirdata = ext4_dirent_get_data_len(de, rec_len);
+ 
+-	return ext4_dir_rec_len(de->name_len + dirdata, dir);
++	return ext4_dirent_rec_len(de->name_len + dirdata, dir);
+ }
+ 
+ 
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..90ac8314b21d 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -976,8 +976,11 @@ static int ext4_add_dirent_to_inline(handle_t *handle,
+ 	int		err;
+ 	struct ext4_dir_entry_2 *de;
+ 
++	/* 'dlen' reserves space for dirdata extensions (LUFID, CFHASH) in the
++	 * slot.  The dirdata types are defined in the next patch; until then
++	 * dlen stays 0 and ext4_find_dest_de() ignores dirdata overhead. */
+ 	err = ext4_find_dest_de(dir, iloc->bh, inline_start,
+-				inline_size, fname, &de);
++				inline_size, fname, &de, 0);
+ 	if (err)
+ 		return err;
+ 
+@@ -1055,7 +1058,7 @@ static int ext4_update_inline_dir(handle_t *handle, struct inode *dir,
+ 	int old_size = EXT4_I(dir)->i_inline_size - EXT4_MIN_INLINE_DATA_SIZE;
+ 	int new_size = get_max_inline_xattr_value_size(dir, iloc);
+ 
+-	if (new_size - old_size <= ext4_dir_rec_len(1, NULL))
++	if (new_size - old_size <= ext4_dirent_rec_len(1, NULL))
+ 		return -ENOSPC;
+ 
+ 	ret = ext4_update_inline_data(handle, dir,
+@@ -1309,7 +1312,7 @@ int ext4_inlinedir_to_tree(struct file *dir_file,
+ 			fake.name_len = 1;
+ 			memcpy(fake.name, ".", 2);
+ 			fake.rec_len = ext4_rec_len_to_disk(
+-					  ext4_dir_rec_len(fake.name_len, NULL),
++					  ext4_dirent_rec_len(fake.name_len, NULL),
+ 					  inline_size);
+ 			ext4_set_de_type(inode->i_sb, &fake, S_IFDIR);
+ 			de = &fake;
+@@ -1319,7 +1322,7 @@ int ext4_inlinedir_to_tree(struct file *dir_file,
+ 			fake.name_len = 2;
+ 			memcpy(fake.name, "..", 3);
+ 			fake.rec_len = ext4_rec_len_to_disk(
+-					  ext4_dir_rec_len(fake.name_len, NULL),
++					  ext4_dirent_rec_len(fake.name_len, NULL),
+ 					  inline_size);
+ 			ext4_set_de_type(inode->i_sb, &fake, S_IFDIR);
+ 			de = &fake;
+@@ -1427,8 +1430,8 @@ int ext4_read_inline_dir(struct file *file,
+ 	 * So we will use extra_offset and extra_size to indicate them
+ 	 * during the inline dir iteration.
+ 	 */
+-	dotdot_offset = ext4_dir_rec_len(1, NULL);
+-	dotdot_size = dotdot_offset + ext4_dir_rec_len(2, NULL);
++	dotdot_offset = ext4_dirent_rec_len(1, NULL);
++	dotdot_size = dotdot_offset + ext4_dirent_rec_len(2, NULL);
+ 	extra_offset = dotdot_size - EXT4_INLINE_DOTDOT_SIZE;
+ 	extra_size = extra_offset + inline_size;
+ 
+@@ -1463,7 +1466,7 @@ int ext4_read_inline_dir(struct file *file,
+ 			 * failure will be detected in the
+ 			 * dirent test below. */
+ 			if (ext4_rec_len_from_disk(de->rec_len, extra_size)
+-				< ext4_dir_rec_len(1, NULL))
++				< ext4_dirent_rec_len(1, NULL))
+ 				break;
+ 			i += ext4_rec_len_from_disk(de->rec_len,
+ 						    extra_size);
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3eefd10133d7..f98e05f9dcf9 100644
+index f98e05f9dcf9..7854f6558218 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -596,16 +596,17 @@ static inline void dx_set_limit(struct dx_entry *entries, unsigned value)
- 	((struct dx_countlimit *) entries)->limit = cpu_to_le16(value);
- }
+@@ -1106,7 +1106,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	/* csum entries are not larger in the casefolded encrypted case */
+ 	top = (struct ext4_dir_entry_2 *) ((char *) de +
+ 					   dir->i_sb->s_blocksize -
+-					   ext4_dir_rec_len(0,
++					   ext4_dirent_rec_len(0,
+ 							   csum ? NULL : dir));
+ 	/* Check if the directory is encrypted */
+ 	if (IS_ENCRYPTED(dir)) {
+@@ -1900,7 +1900,7 @@ dx_move_dirents(struct inode *dir, char *from, char *to,
+ 	while (count--) {
+ 		struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)
+ 						(from + (map->offs<<2));
+-		rec_len = ext4_dir_rec_len(de->name_len, dir);
++		rec_len = ext4_dir_entry_len(de, blocksize, dir);
  
--static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
-+static inline unsigned dx_root_limit(struct inode *dir,
-+	struct ext4_dir_entry_2 *dot_de)
+ 		memcpy (to, de, rec_len);
+ 		((struct ext4_dir_entry_2 *) to)->rec_len =
+@@ -1933,7 +1933,7 @@ static struct ext4_dir_entry_2 *dx_pack_dirents(struct inode *dir, char *base,
+ 	while ((char*)de < base + blocksize) {
+ 		next = ext4_next_entry(de, blocksize);
+ 		if (de->inode && de->name_len) {
+-			rec_len = ext4_dir_rec_len(de->name_len, dir);
++			rec_len = ext4_dir_entry_len(de, blocksize, dir);
+ 			if (de > to)
+ 				memmove(to, de, rec_len);
+ 			to->rec_len = ext4_rec_len_to_disk(rec_len, blocksize);
+@@ -2085,10 +2085,11 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
+ 		      void *buf, int buf_size,
+ 		      struct ext4_filename *fname,
+-		      struct ext4_dir_entry_2 **dest_de)
++		      struct ext4_dir_entry_2 **dest_de,
++		      int dlen)
  {
--	unsigned int entry_space = dir->i_sb->s_blocksize -
--			ext4_dir_rec_len(1, NULL) -
--			ext4_dir_rec_len(2, NULL) - infosize;
- 	struct dx_root_info *info;
-+	unsigned int entry_space;
+ 	struct ext4_dir_entry_2 *de;
+-	unsigned short reclen = ext4_dir_rec_len(fname_len(fname), dir);
++	unsigned short reclen = ext4_dirent_rec_len(fname_len(fname) + dlen, dir);
+ 	int nlen, rlen;
+ 	unsigned int offset = 0;
+ 	char *top;
+@@ -2101,7 +2102,7 @@ int ext4_find_dest_de(struct inode *dir, struct buffer_head *bh,
+ 			return -EFSCORRUPTED;
+ 		if (ext4_match(dir, fname, de))
+ 			return -EEXIST;
+-		nlen = ext4_dir_rec_len(de->name_len, dir);
++		nlen = ext4_dir_entry_len(de, buf_size, dir);
+ 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
+ 		if ((de->inode ? rlen - nlen : rlen) >= reclen)
+ 			break;
+@@ -2124,7 +2125,7 @@ void ext4_insert_dentry(struct inode *dir,
  
- 	info = dx_get_dx_info(dir, dot_de);
- 	if (IS_ERR(info))
- 		return 0;
-+	entry_space = dir->i_sb->s_blocksize - ((char *)info - (char *)dot_de) -
-+		info->info_length;
+ 	int nlen, rlen;
  
- 	if (ext4_has_feature_metadata_csum(dir->i_sb))
- 		entry_space -= sizeof(struct dx_tail);
-@@ -890,10 +891,13 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
+-	nlen = ext4_dir_rec_len(de->name_len, dir);
++	nlen = ext4_dir_entry_len(de, buf_size, dir);
+ 	rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
+ 	if (de->inode) {
+ 		struct ext4_dir_entry_2 *de1 =
+@@ -2993,7 +2994,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
  
- 	entries = (struct dx_entry *)(((char *)info) + info->info_length);
- 
--	if (dx_get_limit(entries) != dx_root_limit(dir, info->info_length)) {
-+	if (dx_get_limit(entries) !=
-+	    dx_root_limit(dir, (struct ext4_dir_entry_2 *)frame->bh->b_data)) {
- 		ext4_warning_inode(dir, "dx entry: limit %u != root limit %u",
- 				   dx_get_limit(entries),
--				   dx_root_limit(dir, info->info_length));
-+				   dx_root_limit(dir,
-+				   (struct ext4_dir_entry_2 *)frame->bh->b_data
-+				   ));
- 		goto fail;
+ 	de->inode = cpu_to_le32(inode->i_ino);
+ 	de->name_len = 1;
+-	de->rec_len = ext4_rec_len_to_disk(ext4_dir_rec_len(de->name_len, NULL),
++	de->rec_len = ext4_rec_len_to_disk(ext4_dirent_rec_len(de->name_len, NULL),
+ 					   blocksize);
+ 	memcpy(de->name, ".", 2);
+ 	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
+@@ -3005,7 +3006,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
+ 	ext4_set_de_type(inode->i_sb, de, S_IFDIR);
+ 	if (inline_buf) {
+ 		de->rec_len = ext4_rec_len_to_disk(
+-					ext4_dir_rec_len(de->name_len, NULL),
++					ext4_dirent_rec_len(de->name_len, NULL),
+ 					blocksize);
+ 		de = ext4_next_entry(de, blocksize);
+ 		header_size = (char *)de - bh->b_data;
+@@ -3014,7 +3015,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
+ 			blocksize - csum_size);
+ 	} else {
+ 		de->rec_len = ext4_rec_len_to_disk(blocksize -
+-					(csum_size + ext4_dir_rec_len(1, NULL)),
++					(csum_size + ext4_dirent_rec_len(1, NULL)),
+ 					blocksize);
  	}
  
-@@ -2339,10 +2343,10 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
- 		dx_info->hash_version =
- 				EXT4_SB(dir->i_sb)->s_def_hash_version;
+@@ -3137,8 +3138,8 @@ bool ext4_empty_dir(struct inode *inode)
+ 	}
  
--	entries = (void *)dx_info + sizeof(*dx_info);
-+	entries = (void *)dx_info + dx_info->info_length;
- 	dx_set_block(entries, 1);
- 	dx_set_count(entries, 1);
--	dx_set_limit(entries, dx_root_limit(dir, sizeof(*dx_info)));
-+	dx_set_limit(entries, dx_root_limit(dir, dot_de));
- 
- 	/* Initialize as for dx_probe */
- 	fname->hinfo.hash_version = dx_info->hash_version;
+ 	sb = inode->i_sb;
+-	if (inode->i_size < ext4_dir_rec_len(1, NULL) +
+-					ext4_dir_rec_len(2, NULL)) {
++	if (inode->i_size < ext4_dirent_rec_len(1, NULL) +
++					ext4_dirent_rec_len(2, NULL)) {
+ 		EXT4_ERROR_INODE(inode, "invalid size");
+ 		return false;
+ 	}
 -- 
 2.43.7
 
