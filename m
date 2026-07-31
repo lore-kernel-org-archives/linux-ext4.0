@@ -1,173 +1,124 @@
-Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com [209.85.221.46])
+Received: from mail-wr1-f44.google.com (mail-wr1-f44.google.com [209.85.221.44])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7746478F2B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B287025333F
 	for <linux-ext4@vger.kernel.org>; Fri, 31 Jul 2026 00:55:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.46
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785459335; cv=none; b=GHoCXyucULnIxPLcOjXP3IRTwRro2a8Ovr8QYH8/jKN8P3J2PQR5oyWaiFpB+tei2Y1riABCbt2s7vtX7jmVmNSqNwmsA/E2u2b1L64MB/59lQcO6H+QhjVt0+oaf+Au01tTlZmQXVleGgR2C/WJIpRFOKVJuikRpj9wmFL2wzQ=
+	t=1785459335; cv=none; b=EZ0oa4+sOixA8iJfRoZAnv88qJ9hS1pd3n9lRlUemAZKUImehi0Yv3b4RcnpwQcEiq4FyUvh4FzT4ECXt+OQYdLbVgm5ZP3Vxd8mAbvl7sEYyGsrxOoFQPhngyyVOD2PiHEW9VMR+GX1ugMOEItNAIvC6PfbRX3gkdO1vW525y0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785459335; c=relaxed/simple;
-	bh=2vCLg7vlSkFcVTt8svQc2STxgHJOQpU1COE8nq0Zgk0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=YpNsPtNgqG1hXdjSxwHtkzdbEBFBGzU1XpJ6T4V9dMv2ha2tOOrxItsXA+WwG6/EjUIbocD41bDT01zT2dF8QeyWcci9tyd0FzzJWnxb/RiwWGoPiy09zXYtaQXTl+sNx0VB0Tsc6nNmdeA9UXYQfH49be+Gk5CPQ58HVHXqsUg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=FKLNG+dw; arc=none smtp.client-ip=209.85.221.46
+	bh=mMwmh8CunMxX79/11+cozJ4+J2RN0zZKe8Q4zjY9iCw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=hCkBrPSwnAGECtmrqixydwM8JogHcbQkAT/br5meTVc7r/nZuwXzWbjCvCcC/Yfu5Uc7Ti6gZ1RCOZOsNtkYMAaBLJMx4dWFFWi3aPZB6KYO/VSDuQO4otwXo2yZdNF2NdXX4H0KIO24yjDzyIaJSAhoshFBq1O1bzsvwQ9WIzA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=n6jOr3+l; arc=none smtp.client-ip=209.85.221.44
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FKLNG+dw"
-Received: by mail-wr1-f46.google.com with SMTP id ffacd0b85a97d-47f92e3c14bso275647f8f.0
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n6jOr3+l"
+Received: by mail-wr1-f44.google.com with SMTP id ffacd0b85a97d-476a130c138so315018f8f.0
         for <linux-ext4@vger.kernel.org>; Thu, 30 Jul 2026 17:55:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20251104; t=1785459332; x=1786064132; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=k+qwI01sjx4/0mGGehUG4DO+x7sR+uSFewjorP/zy5s=;
-        b=FKLNG+dwhObsmMXnrSTP3g27wyACuvCgVD1sy9tqMcDeWFetn+ZfXwrss901n/cyEs
-         tiksesYsLBFlzhLWF6bNpVJ9OOSMor+gCyKuvGqwJWISfbeXv5v3/gAHZcLyeKOHuKDq
-         ErQ2WvGYDMoK5G5sxrIbzgkDC0jAYzqfRpOVSpw8EeUCp64+syeeA7E9uPq8PQoDWisg
-         DrswYF1+AUCPviliUodNhO1+U6J01MUIgFZylqyh5lK+iliN73PhAYVt45EHNJIvbY0f
-         Rz+rbA4CaPJk7KD6YlO+1ygX8NjbCj7Eg1NsSzAuU+p1picExKFGqzw92PZrt3ZQuPRm
-         IkiA==
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=wFueboZLPWAkgNDj6HQNTjnIe1s16kAVfyJgzcPKDFk=;
+        b=n6jOr3+lQBNQFnS/fHOlFm4L1P5T7EEUWPICydAh/Ruktit145fhW87edk24fNY629
+         BSr1Rx8luXfVCxaPLXHRqq0E560X7E9lP/6kkq972BQQ050nqeBOfhMCyf+n+OVkgqr9
+         0bTM+ovPYWeA5VTYPwaocViSd4GspC0HaETlaoU0BD+ixHuJT/0+gIwysvDHy3dHwyAS
+         Y58FffdcDoHN0ieCfrgWvFKgDTSJCfzhXVBY/EsQ9Byrw7wrjkAMzZf9JQN+BMCEjGEd
+         7CZv9BVT+wYw3aKyxPwScLg6qJmrmEg2BaAAodA9ZenDh/9MviWD3lGoZ2JtOuNUh5Jr
+         jWEQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20251104; t=1785459332; x=1786064132;
-        h=content-transfer-encoding:content-type:mime-version:message-id:date
-         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=k+qwI01sjx4/0mGGehUG4DO+x7sR+uSFewjorP/zy5s=;
-        b=rZd+ADPbYyH91tDnSiw2tPjdBgq/g57NlxtvWxS/sdlzNtNbKECxTrD08SWmtNpQyV
-         Js4oi5/eSxJEe9+ruO6o1/YDmdNgczStIdiv5Ku0FZN1IOkDmbITIzfiEUQedDlhxHnD
-         c+qA+Scvrwq2U87tvw7hlV4Tt9bfbMX2QH0JOCo6N8JJGBCmQoPSSlrTNvp5G/44YYEy
-         yYx9cpTCRx/WxPardO3mvLk6fEcMz3sulhg0WPCpT7sXFKK6M3Ox+R1Kz31HGAyXGXaV
-         Wh+zn8pAQCqI6v/FD9FiSTkKrtgE0cBhg3lU1XAAN/g8OJDsonOdMY2kN1lHtTg6Iqso
-         GOSg==
-X-Gm-Message-State: AOJu0Yyv3Zvp+mNiHkediKHAqovJKwswR7Igllq5PauFf5df9YGJqcbf
-	EcTapzkOrMIbNDXajPS7y8rs+3r4n0bmsdOeEZE8NCzwQC2Bz6A9Phq8/upRXQ==
-X-Gm-Gg: AR+sD129l3/+04bo4LgkzKDo5CG5qoY33M6V8x7zhz5PLq82qlqVAEnpEf5uOQdXZ7I
-	ClU/3qCOVPZD+u9vF5wCl17bZNHXxMvi1JJvon5NVxZrhJyTKDRXZrOUW9iHLSaoV+11AcXZRlY
-	cucz8O+NeNxfp1CuKXUu5rUpRK8Juii/AU3GtdtZ+HqCCGhfNxqTUQhtBbwRBbxmzvc+TkpP6aU
-	N5in+vqgFW/TPx8l6r5EVNTRQfJ6G/ptGljCLi42QX0e4MNuyXH1IIsqOYOsVaHtpnGP3ovIF3N
-	oEXwAJ5JPkeEDel6KeKz34v4hF6ya8E8k0FErIipNnZBIXOXWtQfPhwtspM5FUHW719S29BxOsu
-	EQhSSgDTJ+BvoqCqfwtVRcNa5JOQZ23nhlT2JmGWOXx6UdGtVW/zhru9uNg054aJLNyPPDSSOKs
-	pwKlkZeGkbhsLlyzVK150GfJu1G5mmRNO843DOgOs5Q+VWcIvHY9qccyBJVqSVW0b/oSUH+SFQP
-	XGD4VQGz/bIJweTGM7b
-X-Received: by 2002:a05:6000:4021:b0:47f:838c:4256 with SMTP id ffacd0b85a97d-47fd2adbd4fmr376235f8f.16.1785459331417;
-        Thu, 30 Jul 2026 17:55:31 -0700 (PDT)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=wFueboZLPWAkgNDj6HQNTjnIe1s16kAVfyJgzcPKDFk=;
+        b=MvDFXx3yfiSwq9Fg4GnH6JFr1gWA2f2sGdQeeJhpuAZPAr3BRgH72FTlAFazqxGMD2
+         8FJw2Z2bssPcrZYVwArrDwh07EWTpo63z1oaKxg5pwiTV9MtzMSKnyQFL7zH/zi33FNq
+         ZEx4/CLNzS5HouJVFh+VMvkGVi4cK/2fFkHtCtv0kxXaiZiipQ2X+GLvCpkARiZ42XZf
+         sc8xqC13IRq8hoH+C2neqtj3rYs4wAJURt++jRBodabpKLiqHqoEFTjWvEzbuFkNEDlB
+         IQBztnvAG+b3P3KRDGCFa+6+UrBFWgyRRgCFZEktuS7fKfDkCXvpNcW2KBsuIguz+05C
+         df/w==
+X-Gm-Message-State: AOJu0YzCV3w+R5M+HdWgql9Ul4usx6O0CLk05BP10sogKacBOcIqUCsb
+	LX/jjnvVzGemazzMMe70mdDe9p8UGKCmwKmcqOaUBPasYJan18QfOyNJBF0xVQ==
+X-Gm-Gg: AR+sD11uX4swNCjbSD8IxzMVO2R01DS1TOyfd7LG0X3QtVKAc3eM+ZbKfkED/xVEbMh
+	UahQPxmwXS1aUMuSrdrCSgxyBHa9liVpjOyBBwAowMThAnh7a3dRJwalNvk/VwLqV7Ez2rquW7o
+	TQdVbipXBntX9fiuc+zaeKwqJ9Y0EPJnJEwgv0JJddrWrpdBUyXGOUjiifR0Fzc8vD93OgMU5g9
+	Gzr8H2lMBYR15EoREaKU60Brzp8A8PgSjjaGHGYBnB5vEK2e7fgeqTdUFMqbyOTav5wDASdoVAF
+	Sn/P2vCHKNOx8VQ4HQsrcSHauWUY6RP6jFwY/g6p3VAUYSGl7Cc123BwajI5V64ZARUnsHGrplZ
+	iYAbVthLHHu7Q+7g7M+SFOSCoBIFMRgHfTVpuSOj0ZeXTirD7nGBKAvrcoC3fkti3sdZeKTWFiI
+	T0uUJwO4F5mP6Nv6P/9qBJZfSC3NTmY80W9Bw+Wi7dOHCMnLk01xFnzeJOH2no/rikQPyiFNeDw
+	briH75PC/TL6JprwYek
+X-Received: by 2002:a05:6000:18a6:b0:47f:773f:2d68 with SMTP id ffacd0b85a97d-47fd2ac9f8dmr396981f8f.16.1785459332054;
+        Thu, 30 Jul 2026 17:55:32 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fc88d6f4csm11975801f8f.2.2026.07.30.17.55.30
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-47fc88d6f4csm11975801f8f.2.2026.07.30.17.55.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Thu, 30 Jul 2026 17:55:31 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
-	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
-Subject: [PATCH v9 00/11] Data in direntry (dirdata) feature
-Date: Thu, 30 Jul 2026 20:54:17 -0400
-Message-ID: <20260731005430.36801-1-ablagodarenko@thelustrecollective.com>
+	Artem Blagodarenko <ablagodarenko@thelustrecollective.com>,
+	xiaowu.417@qq.com,
+	Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v9 01/11] ext4: validate count against limit in ext4_dx_csum_verify/_set
+Date: Thu, 30 Jul 2026 20:54:18 -0400
+Message-ID: <20260731005430.36801-2-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
+In-Reply-To: <20260731005430.36801-1-ablagodarenko@thelustrecollective.com>
+References: <20260731005430.36801-1-ablagodarenko@thelustrecollective.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-EXT4 currently stores an 8-byte hash in the directory entry immediately
-after the file name to support simultaneous fscrypt and casefold
-functionality.
+dx_countlimit's count field was read from disk and used directly to
+compute the checksummed range (count_offset + count * sizeof(dx_entry))
+without ever being checked against limit -- only limit itself was
+bounds-checked against the block size. A corrupted or maliciously
+crafted filesystem image that sets count to a large value (e.g. 65535)
+makes ext4_chksum() read far past the end of the directory block
+buffer, hitting adjacent slab objects.
 
-The dirdata feature provides a general mechanism to store multiple
-metadata records in each directory entry after the NUL filename
-terminator. The unused high 4 bits of 'file_type' indicate which
-records are present; each record starts with a 1-byte length field,
-providing forward compatibility.
+Reported-by: xiaowu.417@qq.com
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ fs/ext4/namei.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-The first user of this feature is LUFID (Locally Unique File ID), an
-identifier that must survive rename and be accessible from directory
-readdir without an inode lookup.
-
-e2fsprogs support is provided in a separate patch series.
-
-Thanks to Sashiko AI review for identifying several correctness and
-safety issues in earlier versions of this series.
-
-Changes in v9:
-
-Patch 05 (dirdata format definitions): remove unused ext4_dirdata_next()
-helper. It was added alongside ext4_dirent_get_data_len() but never
-called; the loop in ext4_dirent_get_data_len() advances the pointer
-directly. Dead code that reads a disk field without READ_ONCE() is a
-latent TOCTOU hazard.
-
-Patch 08 (dirdata feature): fix ext4_readdir() to use ext4_dirdata_get()
-instead of the fixed-offset EXT4_DIRENT_HASH() macro when reading the
-casefold hash on a dirdata-enabled filesystem. The fixed-offset macro
-reads LUFID bytes as hash data on entries that carry a LUFID extension
-before CFHASH.
-
-Patch 08 (dirdata feature): fix get_dx_countlimit() to decode rec_len
-via ext4_rec_len_from_disk() before comparing it against the blocksize.
-The v8 code compared the encoded on-disk value directly, which can
-differ from the actual byte length on filesystems with large block sizes.
-
-Patch 09 (LUFID rename support): revise the size-mismatch handling in
-ext4_setent(). The v8 approach — leaving LUFID bytes and flags in place
-— preserved the CFHASH offset but kept the entry advertising a stale
-LUFID from the old inode, and also left the CFHASH unreachable when
-there was no subsequent SET_LUFID call. The v9 approach introduces
-ext4_setent_compact_exts(), which slides the CFHASH bytes into the slot
-vacated by LUFID and then clears the LUFID flag. If extension headers
-are malformed, CFHASH is cleared instead of risking a corrupt read.
-Apply the same fix to the no-src-fid clearing path, which had the same
-CFHASH-stranding bug when renaming a non-LUFID file over a LUFID+CFHASH
-entry.
-
-Patch 10 (dirdata set/get helpers): fix ext4_match() to pass buf_size
-(the inline directory buffer size) to ext4_dirdata_get() instead of
-sizeof(struct ext4_dir_entry_2). The old value was too small for any
-entry with a non-empty name, causing ext4_dirent_get_data_len() to
-reject every extension as out-of-bounds and always fall through to the
-legacy fixed-offset hash path, silently missing LUFID entries.
-
-Patch 11 (SET_LUFID ioctl): fix dx_get_dx_info() bounds check for the
-'..' entry. Replace the absolute rlen > blocksize check with a
-position-relative check, (de_buf - base) + rlen > blocksize. The
-absolute check failed to catch a '..' entry whose rec_len would extend
-past the end of the block given its actual position within the block.
-
-Patch 11 (SET_LUFID ioctl): add IS_IMMUTABLE / IS_APPEND checks on the
-target inode in ext4_ioctl_set_lufid(). The v8 code relied on
-inode_permission() alone, which does not cover those VFS flags.
-
-
-Artem Blagodarenko (11):
-  ext4: validate count against limit in ext4_dx_csum_verify/_set
-  ext4: replace ext4_dir_entry with ext4_dir_entry_2
-  ext4: add ext4_dir_entry_is_tail()
-  ext4: refactor dx_root to support variable dirent sizes
-  ext4: add dirdata format definitions and access helpers
-  ext4: add ext4_dir_entry_len()
-  ext4: rename ext4_dir_rec_len() and clarify dirdata usage
-  ext4: dirdata feature
-  ext4: add dirdata LUFID support for directory entry rename
-  ext4: add dirdata set/get helpers
-  ext4: Add EXT4_IOC_SET_LUFID ioctl for setting LUFID on directory
-    entries
-
- fs/ext4/dir.c             |   49 +-
- fs/ext4/ext4.h            |  230 ++++++-
- fs/ext4/fast_commit.c     |    1 +
- fs/ext4/fast_commit.h     |    1 +
- fs/ext4/inline.c          |   67 ++-
- fs/ext4/ioctl.c           |   85 +++
- fs/ext4/namei.c           | 1187 +++++++++++++++++++++++++++++++------
- fs/ext4/sysfs.c           |    2 +
- include/uapi/linux/ext4.h |   14 +
- 9 files changed, 1392 insertions(+), 244 deletions(-)
-
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index cc49ae04a6f6..a283e285937a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -477,6 +477,10 @@ static int ext4_dx_csum_verify(struct inode *inode,
+ 		warn_no_space_for_csum(inode);
+ 		return 0;
+ 	}
++	if (count > limit) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return 0;
++	}
+ 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+ 
+ 	if (t->dt_checksum != ext4_dx_csum(inode, dirent, count_offset,
+@@ -506,6 +510,10 @@ static void ext4_dx_csum_set(struct inode *inode, struct ext4_dir_entry *dirent)
+ 		warn_no_space_for_csum(inode);
+ 		return;
+ 	}
++	if (count > limit) {
++		EXT4_ERROR_INODE(inode, "dir seems corrupt?  Run e2fsck -D.");
++		return;
++	}
+ 	t = (struct dx_tail *)(((struct dx_entry *)c) + limit);
+ 
+ 	t->dt_checksum = ext4_dx_csum(inode, dirent, count_offset, count, t);
 -- 
 2.43.7
 
