@@ -1,70 +1,68 @@
 Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9235F3EB10F;
-	Fri, 31 Jul 2026 12:16:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0228138AC83;
+	Fri, 31 Jul 2026 13:08:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785500167; cv=none; b=Co/PpmIwLduwXIr+h2BcFV4h62QzfYRMv1joVpvI9X1ED7POncPvxCcf01BtKUmTK3XlrrrnQRXNbnetySvAlpBpQEBFOrYUhOWUOP1Cy927qED5j8L+l5wpBToBYeJbmwH8JBfPhktGOVWNhAVdMN7FbNfRzvVFfM4vjWLQkJI=
+	t=1785503284; cv=none; b=jRUQry/u+o+vbCT4osGNW2CeAMjAxHdB/XQkBz6nRiJtOZJcVn+TtJlG29igr5Rb9H0qufOPdXI9tek7K9z2RjxSMfYFLV4Z76iPWmYg0gPve8Hsx7EovX2lGo+AIyqzT6BaIjST1hG9klimbP/wTSwuJFOWTVPqTq4fhxHUYh4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785500167; c=relaxed/simple;
-	bh=UZ/Sln7YYeVyoGMNPMtP4Lomz1r5uacMZnllJTsyPsI=;
+	s=arc-20240116; t=1785503284; c=relaxed/simple;
+	bh=DzAzVdxf3fhwunMx8MquiIZhkaMYX1shMj5NUh2jnHg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lb7ctk/rSOTjo2bh+Sv1gycTmjctgu6e3Hw4+ezcaSsBMoFRofXjQwrIUE/IIBLsT1Gn3ejSdp10CD0R7LZ2WMadmxmZ3qBsJ7p5wTPCykJEBXfeBRRsAXYWE5IAeeNz0QL8mIT+/LrYPdXPunKHUQ7IP0Y7rugpo89onJMk9Oo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=Gn/bsPY0; arc=none smtp.client-ip=148.163.156.1
+	 Content-Type:Content-Disposition:In-Reply-To; b=FlDzZS+IUiOViPJAKZHd2eNCXi0G/zd/1CISYAHV4DXXSaiRvsNssvyN3GCwx/igfSaZR5eXQsxwF8yq69ImsHZ/7Xaocw7+5YOJmRlXX2y2VPBC5/OacLnNP6S7Z7JpEONelcKVp6ATJ0egvkdxG+5jscE57HOWZuZoNGATjZs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=B8F/ME6+; arc=none smtp.client-ip=148.163.156.1
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="Gn/bsPY0"
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="B8F/ME6+"
 Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66VBm3PW1766156;
-	Fri, 31 Jul 2026 12:15:45 GMT
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66VBlqWd1765837;
+	Fri, 31 Jul 2026 13:07:42 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
 	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=/87/IHsO3lCniDuKp/DLkggwQfj3jV
-	AVmfXdYpPtzFc=; b=Gn/bsPY0ovYFMUw3VVaoZqRCa0EQTjyuEIVSwcj4L58/tg
-	XesYGSK6SiqNLEnEcCIo4e/mF2FeqbWgqYtpqZWfAApNXRImFosOU1myM5y+jwV4
-	JRk3A67OPPUy9AFrzyIKR2h4zLSGHGIGKHl3lfKV+TgQymV6AUiyBtLUydIqYU1m
-	Wx1KpXW3TI1s65+H3NK5h1KlpKb7BbZ97gozhp7lUF0YYaToZAtTflaTyW7Gw+m+
-	fD0NppEdH1HAFaTUI+JpJCFsrpogQYV6W373D7Hz5Q0OKeYGBzuwB3JqgGjJoz0z
-	mKKLkxDs5WYcE5SlBrQ61+c5SXtBYQdrNei9h+6g==
-Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fmv0y4xyn-1
+	:references:subject:to; s=pp1; bh=e/llAvWoxRkcp9yr8XX8OTAt+j0CoD
+	qjLuH9fhk6XSo=; b=B8F/ME6+25HZ1EU9w+Al9h4+vwD0aWX5VyhHaPaAe46Epi
+	o/tZIx77mPNQRjL+xiqd9/yjC4YtF531zWs8sBsHW9YhGhqTy7s529fvWaWd+C2Z
+	+S2A6L8HbQnO+Mdd3ZyjcKe45+vzNNVfnHmUc3w9Q9YUc+ox/dlOsd5banzI8xWO
+	QyXivkrUIdUizKWTjGscgErndIk0wsK0IkS/gIytQtkxhWYABbv+HlfBgJDpWfRM
+	+zPHwIuPgn9dO5HdiZhqtLPeWPtrk06fpofyrTu5bBAXCw9lAInuX+7TYIeqqGT+
+	2V0xUaA/s6UITzO7+GX4LXIhjcfBENjKGis6RJVg==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fmv0y55yf-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 31 Jul 2026 12:15:44 +0000 (GMT)
-Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66VCBIGM004182;
-	Fri, 31 Jul 2026 12:15:43 GMT
-Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
-	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fna5yfhqc-1
+	Fri, 31 Jul 2026 13:07:42 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66VCuGGp021726;
+	Fri, 31 Jul 2026 13:07:41 GMT
+Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fn7uwg3xu-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 31 Jul 2026 12:15:43 +0000 (GMT)
+	Fri, 31 Jul 2026 13:07:40 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66VCFfDZ50659690
+	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66VD7cQt50790842
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 31 Jul 2026 12:15:42 GMT
+	Fri, 31 Jul 2026 13:07:38 GMT
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id D422520040;
-	Fri, 31 Jul 2026 12:15:41 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id BA66A2004B;
+	Fri, 31 Jul 2026 13:07:38 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id AD0B220043;
-	Fri, 31 Jul 2026 12:15:38 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 63E4E2004E;
+	Fri, 31 Jul 2026 13:07:36 +0000 (GMT)
 Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.209.143])
 	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Fri, 31 Jul 2026 12:15:38 +0000 (GMT)
-Date: Fri, 31 Jul 2026 17:45:36 +0530
+	Fri, 31 Jul 2026 13:07:36 +0000 (GMT)
+Date: Fri, 31 Jul 2026 18:37:33 +0530
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
+To: Joe Perches <joe@perches.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
         Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
-        Ira Weiny <iweiny@kernel.org>, linux-fscrypt@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Disha Goel <disgoel@linux.ibm.com>,
-        stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: don't enable DAX on new encrypted files
-Message-ID: <amyR6P_-WWTTEaup@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260730175212.36923-1-ebiggers@kernel.org>
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: Reduce object size of ext4_msg uses
+Message-ID: <amyeFUiajzssyOs_@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -73,27 +71,28 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260730175212.36923-1-ebiggers@kernel.org>
+In-Reply-To: <7fbad87ae7e108571cafffa8fa0715ce4d2c5261.camel@perches.com>
 X-TM-AS-GCONF: 00
 X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: bccxDvmbbCb-mKgYT23BOSSyFOxDXzJB
-X-Proofpoint-ORIG-GUID: Ot_mZbCNqSbCXoOm5AaZzsZw9FrqX67p
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNzMxMDA5MCBTYWx0ZWRfX3N6ybJvhltjk
- ZI2wdTtDI5uQHN2auZKUC8d9M+/uvrLn735JTo+7KXdPfZYF5mArslIHKI+4Rw6XNAXFcaa4F1F
- 7aLdajaIhgJbpO/5OmWzBRXsEge1eDQ=
-X-Authority-Analysis: v=2.4 cv=dYuwG3Xe c=1 sm=1 tr=0 ts=6a6c91f1 cx=c_pps
- a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+X-Proofpoint-GUID: KhWaUOzY-9VIeMPMEUo54E9GRYpcUy8o
+X-Proofpoint-ORIG-GUID: uYv4N274_yScIEHwnIYp1vH9BA0vMyTG
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzMxMDA5NiBTYWx0ZWRfXytr451++Ycc2
+ ox774wzmyWR/vID3WCxvxR0knvVOowvrq+X9y1A6EIibPmIrw0KP4kW0gDI3XJHchMurASUfRiE
+ DJFEbg6BPFWfWHoUC3G/2PyUJvd1CYM=
+X-Authority-Analysis: v=2.4 cv=dYuwG3Xe c=1 sm=1 tr=0 ts=6a6c9e1e cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
  a=kj9zAlcOel0A:10 a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=VwQbUJbxAAAA:8
- a=VnNF1IyMAAAA:8 a=YVDjClEEQ8ZDZGE1TyEA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzMxMDA5MCBTYWx0ZWRfXyUqgvVFRdKYA
- d343G5j8wQ83dtQ14sShNsDtdVayxmWF9lRwBFG83OPG2mLEmyOLChdy0GECMATBClmm5lPEy2A
- SXACKUkXdYcI3ODhMKefFB1jPO6okYqEvgGBz9YtKTFeXhsNbV5mInWv9tA3w+59B5ggeGOJrMX
- 3b5U7BG3dl6sMtIB/re9tLJvE10DPVqo+QQW/rfXT1XyrCyiweIfKb8M76S15k6Th48Dxa/rPKN
- bxShmq7U2Me1pHbH1A552Mxsk54lW5S17biCtZquj52BDyje8R536eiucl2xK6e2Cv3JIXy6y4y
- b7eOEECwjbviMklGOfyRdlGa/q9ibGstQ7DJjNG2xtnYeFdOokdCkBnN3KMtbxBc9X+AM227YXW
- IOqpzpEHDqi4/qFFc+ScMv5S1IXdmBy6SXnd7q3qoWPX/t/JlID90GVPjezQvZQICYl+yhJgFNq
- z2Tc/1ROnJFWNdSvaRg==
+ a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=IJv9LcIfAAAA:8
+ a=VnNF1IyMAAAA:8 a=sFNIgBltbu1xmj6tgGIA:9 a=CjuIK1q_8ugA:10
+ a=cmr4hm9N53k6aw-X_--Q:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzMxMDA5NiBTYWx0ZWRfX6Xj5kn5X2NrI
+ dK9Xdtfid/K1G99+kHhTW+lRngYs0+bgiyllQDfaI1/LPRWlF3loOQ9ZY0Lna8F1h+Qh8T+4xk3
+ HAOZtKxkansjk25wPjFWTn95jknvcDi4bF7CXCSCJna8GgZwtl225fAgSn4hOJxd3vaVJTo/nX0
+ KYdbpe/djX3gD752Xu/kw/AyBHf5ir3RueF0lE87+wPPvI5bJU/f1FPMfs7hMNCoVkeIfbdhjmA
+ QyYNoVl/yk6fqVcb2wMn7G4VKNgZuqNiFmWbCdWZB1Cc23YNU/O0b4qZwiwkIFM1Eix7+3IqJj+
+ YmSYaT/yTRVguWQbVA5ZUxSiH8x88EOEZ2tC95Hpov2YbZMdYU8Tw69tUil/1PC2ENAO1EYlzdf
+ zgjj4SJPcutOso+s31M1YfHBKnuRw4CcuW8f9udgw1nG4CrtXTkFm3Jz65JSigvESnRE2uJASj9
+ ReumvU3wATiXXUH8HkQ==
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
  definitions=2026-07-31_04,2026-07-30_01,2025-10-01_01
@@ -101,45 +100,37 @@ X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
  priorityscore=1501 impostorscore=0 clxscore=1011 phishscore=0 malwarescore=0
  spamscore=0 lowpriorityscore=0 bulkscore=0 suspectscore=0 adultscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607310090
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607310096
 
-On Thu, Jul 30, 2026 at 10:52:12AM -0700, Eric Biggers wrote:
-> Currently, when a new encrypted regular file is created, the call to
-> ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
-> before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
-> filesystem is mounted with "-o dax=always".
+On Fri, Jul 24, 2026 at 06:23:36PM -0700, Joe Perches wrote:
+> Reduce the object size of ext4 ~2KB (~.5%) by combining the KERN_<LEVEL>
+> and format uses of ext4_msg.
 > 
-> EXT4_INODE_ENCRYPT then actually gets set a bit later in
-> __ext4_new_inode(), when it calls fscrypt_set_context() which calls
-> ext4_set_context().  ext4_set_context() sets EXT4_INODE_ENCRYPT and
-> calls ext4_set_inode_flags(inode, init=false) to set S_ENCRYPTED too.
+> Separate them in __ext4_msg using printk_get_level and printk_skip_level
+> and emitting the appropriate level.
 > 
-> This was intended to clear S_DAX as well.  However, this was broken by
-> commit 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load").  This
-> causes data written to the file to bypass encryption, also causing
-> xfstests failures such as generic/548 (when "-o dax=always" is used).
+> x86 object sizes before and after:
 > 
-> Fix this by simplifying the flow by making __ext4_new_inode() set
-> EXT4_INODE_ENCRYPT earlier.  This makes it take effect in
-> ext4_set_inode_flags(inode, init=true), making S_DAX never be set.
+> defconfig size before:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  579013	 121634	    316	 700963	  ab223	(TOTALS)
 > 
-> Similarly, make EXT4_STATE_MAY_INLINE_DATA never be set in the first
-> place on new encrypted inodes.  Then it doesn't need to be cleared.
+> defconfig size after:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  577196	 121650	    316	 699162	  aab1a	(TOTALS)
 > 
-> As a result of these simplifications, ext4_set_context() no longer needs
-> to change inode flags or state when 'handle != NULL'.  Remove that too.
+> defconfig size before with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  537999	 121432	    316	 659747	  a1123	(TOTALS)
 > 
-> Reported-by: Disha Goel <disgoel@linux.ibm.com>
-> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Closes: https://lore.kernel.org/r/20260723085648.1500357-1-ojaswin@linux.ibm.com
-> Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Eric Biggers <ebiggers@kernel.org>
+> defconfig size after with CONFIG_EXPERT=y and CONFIG_PRINTK=n:
+> $ size -t fs/ext4/built-in.a | tail -1
+>  536837	 121424	    316	 658577	  a0c91	(TOTALS)
+> 
+> Signed-off-by: Joe Perches <joe@perches.com>
 
-Hey Eric, looks good and it passes all the failing tests in my dax
-setup.
-
-Feel free to add:
+Interesting, on powerpc64, we save around 1 - 2K. Its not much but sure,
+maybe some embedded or chip bringup scenarios might find it useful.
 
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
@@ -147,106 +138,82 @@ Regards,
 ojaswin
 
 > ---
->  fs/ext4/crypto.c | 40 ++++++++++++++++++++--------------------
->  fs/ext4/ialloc.c |  4 ++++
->  2 files changed, 24 insertions(+), 20 deletions(-)
+>  fs/ext4/ext4.h  | 12 ++++++------
+>  fs/ext4/super.c | 14 +++++++++-----
+>  2 files changed, 15 insertions(+), 11 deletions(-)
 > 
-> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-> index f41f320f4437..3971986de028 100644
-> --- a/fs/ext4/crypto.c
-> +++ b/fs/ext4/crypto.c
-> @@ -144,7 +144,13 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	if (inode->i_ino == EXT4_ROOT_INO)
->  		return -EPERM;
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b37c136ea3ab..981918f32067 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3309,8 +3309,8 @@ void __ext4_warning(struct super_block *, const char *, unsigned int,
+>  extern __printf(4, 5)
+>  void __ext4_warning_inode(const struct inode *inode, const char *function,
+>  			  unsigned int line, const char *fmt, ...);
+> -extern __printf(3, 4)
+> -void __ext4_msg(struct super_block *, const char *, const char *, ...);
+> +extern __printf(2, 3)
+> +void __ext4_msg(struct super_block *, const char *fmt, ...);
+>  extern void __dump_mmp_msg(struct super_block *, struct mmp_struct *mmp,
+>  			   const char *, unsigned int, const char *);
+>  extern __printf(7, 8)
+> @@ -3354,8 +3354,8 @@ void __ext4_grp_locked_error(const char *, unsigned int,
+>  	__ext4_warning(sb, __func__, __LINE__, fmt, ##__VA_ARGS__)
+>  #define ext4_warning_inode(inode, fmt, ...)				\
+>  	__ext4_warning_inode(inode, __func__, __LINE__, fmt, ##__VA_ARGS__)
+> -#define ext4_msg(sb, level, fmt, ...)				\
+> -	__ext4_msg(sb, level, fmt, ##__VA_ARGS__)
+> +#define ext4_msg(sb, level, fmt, ...)					\
+> +	__ext4_msg(sb, level fmt, ##__VA_ARGS__)
+>  #define dump_mmp_msg(sb, mmp, msg)					\
+>  	__dump_mmp_msg(sb, mmp, __func__, __LINE__, msg)
+>  #define ext4_grp_locked_error(sb, grp, ino, block, fmt, ...)		\
+> @@ -3401,8 +3401,8 @@ do {									\
+>  } while (0)
+>  #define ext4_msg(sb, level, fmt, ...)					\
+>  do {									\
+> -	no_printk(fmt, ##__VA_ARGS__);					\
+> -	__ext4_msg(sb, "", " ");					\
+> +	no_printk(level fmt, ##__VA_ARGS__);				\
+> +	__ext4_msg(sb, "" " ");						\
+>  } while (0)
+>  #define dump_mmp_msg(sb, mmp, msg)					\
+>  	__dump_mmp_msg(sb, mmp, "", 0, "")
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 245f67d10ded..72d6f6353a27 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -981,11 +981,11 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+>  	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
+>  }
 >  
-> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
-> +	/*
-> +	 * For new encrypted inodes, S_DAX is never set in the first place.
-> +	 *
-> +	 * For existing inodes, this is called only on empty directories.  ext4
-> +	 * never sets S_DAX on directories.
-> +	 */
-> +	if (WARN_ON_ONCE(IS_DAX(inode)))
->  		return -EINVAL;
+> -void __ext4_msg(struct super_block *sb,
+> -		const char *prefix, const char *fmt, ...)
+> +void __ext4_msg(struct super_block *sb, const char *fmt, ...)
+>  {
+>  	struct va_format vaf;
+>  	va_list args;
+> +	int level;
 >  
->  	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
-> @@ -163,6 +169,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	 */
->  
->  	if (handle) {
-> +		/*
-> +		 * __ext4_new_inode() should have already set the encrypt flag
-> +		 * on the inode and avoided enabling inline data.
-> +		 */
-> +		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
-> +			return -EINVAL;
-> +		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
-> +			return -EINVAL;
->  		/*
->  		 * Since the inode is new it is ok to pass the
->  		 * XATTR_CREATE flag. This is necessary to match the
-> @@ -170,21 +184,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  		 * function with the credits allocated for the new
->  		 * inode.
->  		 */
-> -		res = ext4_xattr_set_handle(handle, inode,
-> -					    EXT4_XATTR_INDEX_ENCRYPTION,
-> -					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> -					    ctx, len, XATTR_CREATE);
-> -		if (!res) {
-> -			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -			ext4_clear_inode_state(inode,
-> -					EXT4_STATE_MAY_INLINE_DATA);
-> -			/*
-> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -			 * S_DAX may be disabled
-> -			 */
-> -			ext4_set_inode_flags(inode, false);
-> -		}
-> -		return res;
-> +		return ext4_xattr_set_handle(handle, inode,
-> +					     EXT4_XATTR_INDEX_ENCRYPTION,
-> +					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> +					     ctx, len, XATTR_CREATE);
+>  	if (sb) {
+>  		atomic_inc(&EXT4_SB(sb)->s_msg_count);
+> @@ -995,12 +995,16 @@ void __ext4_msg(struct super_block *sb,
 >  	}
 >  
->  	res = dquot_initialize(inode);
-> @@ -205,10 +208,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  				    ctx, len, 0);
->  	if (!res) {
->  		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -		/*
-> -		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -		 * S_DAX may be disabled
-> -		 */
-> +		/* Update inode->i_flags to set S_ENCRYPTED. */
->  		ext4_set_inode_flags(inode, false);
->  		res = ext4_mark_inode_dirty(handle, inode);
->  		if (res)
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index a40cb27f8116..a5831fc536db 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->  		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
->  		if (err)
->  			goto out;
-> +		if (encrypt)
-> +			i_flags |= EXT4_ENCRYPT_FL;
->  	}
+>  	va_start(args, fmt);
+> -	vaf.fmt = fmt;
+> +
+> +	level = printk_get_level(fmt);
+> +	vaf.fmt = printk_skip_level(fmt);
+>  	vaf.va = &args;
+>  	if (sb)
+> -		printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+> +		printk("%c%cEXT4-fs (%s): %pV\n",
+> +		       KERN_SOH_ASCII, level, sb->s_id, &vaf);
+>  	else
+> -		printk("%sEXT4-fs: %pV\n", prefix, &vaf);
+> +		printk("%c%cEXT4-fs: %pV\n",
+> +		       KERN_SOH_ASCII, level, &vaf);
+>  	va_end(args);
+>  }
 >  
->  	err = dquot_initialize(inode);
-> @@ -1306,6 +1308,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->  	ei->i_extra_isize = sbi->s_want_extra_isize;
->  	ei->i_inline_off = 0;
->  	if (ext4_has_feature_inline_data(sb) &&
-> +	    /* Encrypted inodes cannot have inline data */
-> +	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
->  	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
->  		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->  	ret = inode;
-> 
-> base-commit: f5098b6bae761e346ebcd9da7f95622c04733cff
-> -- 
-> 2.55.0
-> 
