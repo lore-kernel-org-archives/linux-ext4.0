@@ -1,64 +1,64 @@
-Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
+Received: from mail-yw1-f176.google.com (mail-yw1-f176.google.com [209.85.128.176])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B05D03AE713
-	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C80063C2BB0
+	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.176
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785621693; cv=none; b=GspXaGO/8AcU0HJfvGvWkTC1tqNvv9xxQNeq5IZEDx2OUDnDNgv1XfmJmD++9o4PGghOvL10XxjGjdGFkO2D6Kmh7mXE4N4ztYFDUVQXxA9603IdXfQacnDK74LQ/VnStO/ktwmM/RH/8GV79iVDo7Xf7pA9nLcdIrsG3wd8fI8=
+	t=1785621694; cv=none; b=XQkhySsj3Mm1i8ybT/DoxqM8iIUCPZlcA+aMzGEgA316C3kLcKEERmHG7oIEFsNWF/DL9BK3QpcyQ/7aJUkkypOlm+oVuQ97QDto3NSk/IcA72th0O3MuvsTWp4uA4wtr7hzz5wNCySdo+T/MTBaO6LXo0d2NeExB/kpk6m506g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785621693; c=relaxed/simple;
-	bh=njsuMFgQW9XgoUDzJC8DUF4aImr/QOgd49oen3uWUEs=;
+	s=arc-20240116; t=1785621694; c=relaxed/simple;
+	bh=tojfuYvzfAMfs0bsJ/hEKkMgCSJ1prAxAJ+lK0XKzIo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=t5esuYH39gy1wwap4DJSosoMe/GdvAirjOCcCbjMOnxMwhPKjMv5gytoFS/B4n5TTu1x7xispkzLhaMULIkXElESVAVWVvPJPBZ5ZD20g4r3vQj+T+aLkB5ipsLe8lu5/WAViURBfuGOUS/b1isWPRCBb/CaDOzMhi9/I0ABRoQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GMURzrMd; arc=none smtp.client-ip=209.85.128.172
+	 MIME-Version; b=BRWhqwZda9KJkA0RUB7r2RK7sqtlIkWRVGWqIaNeUBxI6e3HzaqhP4NC4THqJXOu/SN7Va1M2ZOyEL4Nj+b1gorSqHpWUE2DWgBIOoVThV3nbLeZ+ZeITqind6nh9+KsNPeNKsabOg+Cj+qyExywwJHIQHz+OI8u+yXQ0tqDpls=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TYuH/kaP; arc=none smtp.client-ip=209.85.128.176
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GMURzrMd"
-Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-81e6f2ee60bso42983437b3.1
-        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:30 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TYuH/kaP"
+Received: by mail-yw1-f176.google.com with SMTP id 00721157ae682-80dc4a68e4aso24229567b3.0
+        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:29 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785621689; x=1786226489; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785621687; x=1786226487; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=nQgNx97XjQWdnRUlGoDKYUMjSoMBL5tDz0tOo1NQ/rc=;
-        b=GMURzrMdQ+0fCw3lI2AlYxm2541TapXakDa4FRTLpuF9BBkzpyEeoJXFKdW6YwWTIX
-         yFl2b5Ai4tPDsQWM1420067C7pIVz/ho5qyqdpyNZMHQMNhGUb+VGPIcjfLJgtGuW6i6
-         wFlKnOlTMQY1AX6TOHxlJWAPONXvwFfSMzL+Brx2S22U9Zdng1JIjq6wwkGuGiovpcC1
-         L1dCTBpUiSloYeMTRMPc236X34icQBnowXCsHv846XBzdnXCROvUnjoaJqsUwoklM3ym
-         7/AK1Ub/6dJ01t7/EqyswYFx1Ce3Q73CvXd38rVyZNmOOxnkZ3QHIox2onpR+o1GoEfA
-         7suQ==
+        bh=S5d9GJjjHaj8KTJ0WAU1dmfHtrReZ7Fn8M10/pEoUFY=;
+        b=TYuH/kaPqP7d3Q7Zz/nxr5ocNgCXUXsytaGpbw8XVlGTRRue8C5+ds4Pe7Tpr3sHIh
+         Ezdxkj+G20pbV5xDuU60LWV7zhMUGZn3z0EnZhoVoLXXtQT7qj/b308VvG++6RsjEb2U
+         whA8yDVvrOZzxlCZUQDDCV/rbn6w+clpklfhyn+XrjEVWJqu1xkps+7ncse+c+NjQC7s
+         cU1iFfbfnVMW4EzHN562s7P0lFKwYphttpFHXtUywAzwB4hT3OnXwtWPrl4MwZnEPSyO
+         QL9g51u6/yhB5U7T/7nJT2m+HMXX22Tzb6G1/Nh2GPn1yTtXlyTtUYas9n+bmaX9hq05
+         6Fow==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785621689; x=1786226489;
+        d=1e100.net; s=20251104; t=1785621687; x=1786226487;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=nQgNx97XjQWdnRUlGoDKYUMjSoMBL5tDz0tOo1NQ/rc=;
-        b=HwfdPJfgt9bslsYxp8usxMrmzGo+h+LwMfll7oXBk/wllRSrtAMPIc59wEzoRWTUad
-         M3DziPn4ZV2GIuv7L2oreeXMjjtKbbdCQxb3CLmAf3NicoVyq3f2p5+xMXucYuAdMlyU
-         JdNsNKBJZjeWFY7al6UjmSszAYW0qkRsL10lKxvfZs51RQJFzMvqCwV8q3tIPKST9vg9
-         tHcF9QZLWp5ZUOvqRScidIXeRxrrgNTParLXSMf9omLTcvUA/apzRev0KNAl/O/FyyYH
-         nRxu3RsiNfn2Nqa7UClwtGHDVoXzYbYAkkOgpILjL6yoaEumz7TOdUWCU4ZGEj1i3MqW
-         I2lg==
-X-Forwarded-Encrypted: i=1; AHgh+RrSweZs5NgimBy4gDxgxI/k5wNJDfC48Sna8mJLMQX5zqMIu0UwgfsYMDlNafxQYgJOY0T7MsbEVx+d@vger.kernel.org
-X-Gm-Message-State: AOJu0YyWpG4lSqG28QCGa6QKeD2GWtpjJgNW8qsdug0m8bWC2XrausxY
-	PH2WX5W5mXtHHCD8UCF9AQGkZS2lhCujDiCV/Y4ifIf61/vY56euvVmD
-X-Gm-Gg: AR+sD12P9jDM0R0tuPZpq2cvlS1e/Gbs3E8GtT0UBOLInZTAZnJhTy79WobW/NvQHnt
-	oWT31+rWFFf4Qi7wyYYAZQw/8AxrAQypFd+nB4ufbDCMmlgfabGAPLQvHDikYD1oydjI9PZd7C6
-	kfrBn72+X5pexKeT2ii9IdAUu20v6XdByZM0JpiN/c0/nl8zEIbpje4i0IMLSOwpBRPRM4iSuOz
-	hj+x9oMS30rNItl+QSpnmYBZFEjjf0LT65npdy4ch/O1W0wyS3jAOaDi+7ds74NHzZH5rtqpdSI
-	YsNO6f4nJCtZ9szv4CXwnAUyXJlRg0/ovui7FfL01Hm9YIytOEN4ltHRdj1LVKmPQW/TJ/4DZ2g
-	ddPhpjv8qsJWrUHvE8Akmg6dVl7UuSiVuKFfeyqPWV9NBZRr1+Gv5VLXBaJ+bE3f+O8GBQswmes
-	D+/KHggXcsfYP7TXTFuRvhguSUMBJ2nLcDI11zDj+7tgFDdMiYyZC8w2JHn0X/uIck5QVp2PmCX
-	bLK/iefPcqwy8ckvQ==
-X-Received: by 2002:a05:690c:e3c6:b0:81f:69a:3739 with SMTP id 00721157ae682-81fcbd4e504mr95002497b3.18.1785621689541;
-        Sat, 01 Aug 2026 15:01:29 -0700 (PDT)
+        bh=S5d9GJjjHaj8KTJ0WAU1dmfHtrReZ7Fn8M10/pEoUFY=;
+        b=ipAlYLV6+sTbN78pGQYNvA/hBAi33Axyq5gexwS89bN05JeojMMeAcWUy7fONbPgUb
+         yRFcKqt+L5Ktb2Toxn49mbyqzJKuCMfc96GioSsDGJbvuTBjtVcQxPsbspRDcaoyMSPd
+         ATW+52Mt8qwgEMaqYMagu58OYFASITr3ApOQvREdNWaF+b5FIPk0KwmXv+dljy6F1CuI
+         I80bN2Kb8P0rngJehDG5hnNP+Ie1dMjjya9bpT69X2c2ru8gYRX5cKQLeaR+Zn4QWFHK
+         Fa17rGx1cFR/tYjRtk3AaHwpqOn+ZaLHxwmzDrwWrUni4iSta92taEEgaGIldmHmNhv/
+         91hw==
+X-Forwarded-Encrypted: i=1; AHgh+RpamaCPyeEBMyqB8QBMAF2/0fjtA636YePY98tBt1dKFAefMeOFTdia+zZ4nv0R0bwoSy1pE/XsuCot@vger.kernel.org
+X-Gm-Message-State: AOJu0YyG/eNfJwDzCrS0R/K92Vq3Pa4At8xrSKQmfjDbxNk/0gMfC6t5
+	0x2542RRrDFjNUjfNjND0THebkNaprg52ZR6CBR3MJs0osutJb7y6HU0
+X-Gm-Gg: AR+sD11V9XzQAGdL7JttsSZ2i8Pdeq9coprPRjTNAWQkm5bRlf4YLdzit/dgixwcMl3
+	XrRJlIbwyL+qMehtnLlLqcjmcv9Z8YO4mDEsKqXgw9Os096TbgFejG0ghwytl2cPO3miOyviHFG
+	e9bQCGQP3xeQLyx2p79OFCHA7gF03K1cwN6PSpgMtwDl5q+gVvTnX8No1RektdGmo+yecaHefp0
+	0IW0kQBQzvBR8fDMjyIRUGTgqMRTYABy0ag0yiMeiieIResIVx2lma5t8vFOfYud90ICdxqb2L9
+	eX3z/4OlHr5Bk/l5EnveRY08m5QmJhJW8tJGzjAAfiRjrqZ/8CbMa4CV4uA9l+NBtwKmj9DKV3a
+	JS0wgiy4MujI9jznp/M5rk7jqdyGm9NuLsBApyKXOyZXMwtQPamW7nydLYBSF4EBapSCbrxbt2Q
+	KYm7rGvwu5BjgA9XDNs95dPxwjse9K/drC+Xmdqic4/yXmwVYGV7sYRM4wKVHxfV/Zp0GKrjAfu
+	dbkfVI=
+X-Received: by 2002:a05:690c:48c3:b0:81e:d792:a019 with SMTP id 00721157ae682-81fd4a64bcbmr74354127b3.6.1785621686736;
+        Sat, 01 Aug 2026 15:01:26 -0700 (PDT)
 Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.28
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 01 Aug 2026 15:01:29 -0700 (PDT)
+        Sat, 01 Aug 2026 15:01:26 -0700 (PDT)
 From: Chao Shi <coshi036@gmail.com>
 To: Jan Kara <jack@suse.cz>,
 	Christian Brauner <brauner@kernel.org>,
@@ -86,9 +86,9 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	linux-karma-devel@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org,
 	Chao Shi <coshi036@gmail.com>
-Subject: [PATCH 14/19] ocfs2: check for a stale write error before reusing a metadata buffer
-Date: Sat,  1 Aug 2026 18:00:58 -0400
-Message-ID: <e63c15e7001fea3f83e0a0aed1512224832b8b1e.1785621505.git.coshi036@gmail.com>
+Subject: [PATCH 12/19] ext4: check for a metadata write error with buffer_write_io_error()
+Date: Sat,  1 Aug 2026 18:00:56 -0400
+Message-ID: <844d01d43111830a299346d0f3c6fddd62f22cc4.1785621505.git.coshi036@gmail.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1785621505.git.coshi036@gmail.com>
 References: <cover.1785621505.git.coshi036@gmail.com>
@@ -100,74 +100,65 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-__ocfs2_journal_access() refuses to journal a buffer whose previous write
-failed, and turns the filesystem read-only rather than risk metadata
-inconsistency.  That check sits inside an if (!buffer_uptodate(bh)) block,
-because until now a failed write also cleared BH_Uptodate.
+Two places detect a failed metadata write by testing !buffer_uptodate()
+after waiting for it.  That relies on the write completion handler clearing
+BH_Uptodate on error, which this series removes: a buffer whose write
+failed still holds the data the filesystem asked to be written, so
+declaring it not up to date is wrong and makes callers re-read it.
 
-This series stops clearing BH_Uptodate on write error, so that outer test
-would never fire again and ocfs2 would silently start reusing buffers whose
-last write failed.  Hoist the check out of the debug block, where it does
-not depend on BH_Uptodate any more, and drop the now dead second half of
-its condition.
+ext4 already does this correctly for the superblock - see
+ext4_commit_super(), which tests buffer_write_io_error() - so this brings
+the other two into line.
 
-The mlog() pair keeps its own !buffer_uptodate() guard: it is a separate
-"we can safely remove this assertion after testing" debug aid about being
-handed a buffer with no valid contents, which is a different question from
-whether the last write of that buffer failed.
+In __ext4_handle_dirty_metadata() the old test also required BH_Req.
+BH_Write_EIO implies it, so the pair collapses into one test.  The new test
+is also strictly stronger than consuming sync_dirty_buffer()'s return
+value, because it still fires when the buffer was written by background
+writeback and that write hit an error, which sync_dirty_buffer() does not
+report.
 
-The unlocked test followed by a locked retest is deliberate.  BH_Write_EIO
-is cleared under the buffer lock when the buffer is submitted for write
-again, so taking the lock and looking a second time avoids turning the
-filesystem read-only over an error that a concurrent rewrite has already
-cleared, while keeping the common case lock-free.
+Note that BH_Write_EIO stays set until the buffer is written again,
+forgotten or invalidated, so an unrepaired itable block now reports on
+every subsequent sync of that inode rather than only on the write that
+failed.  That is the intended behaviour and matches what ocfs2 has always
+done with this flag.
 
-The code in this patch is Jan's, from the review discussion linked in the
-cover letter.
+No behaviour change today - a failed write sets BH_Write_EIO and clears
+BH_Uptodate together.  It stops being a no-op at the end of the series,
+where the new test is the one that still works.
 
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Chao Shi <coshi036@gmail.com>
 ---
- fs/ocfs2/journal.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+ fs/ext4/ext4_jbd2.c | 2 +-
+ fs/ext4/mmp.c       | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index d8afbc1a76bb..ea6802d894c2 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -676,19 +676,20 @@ static int __ocfs2_journal_access(handle_t *handle,
- 		mlog(ML_ERROR, "giving me a buffer that's not uptodate!\n");
- 		mlog(ML_ERROR, "b_blocknr=%llu, b_state=0x%lx\n",
- 		     (unsigned long long)bh->b_blocknr, bh->b_state);
--
-+	}
-+	/*
-+	 * A previous transaction with a couple of buffer heads fail
-+	 * to checkpoint, so all the bhs are marked as BH_Write_EIO.
-+	 * For current transaction, the bh is just among those error
-+	 * bhs which previous transaction handle. We can't just clear
-+	 * its BH_Write_EIO and reuse directly, since other bhs are
-+	 * not written to disk yet and that will cause metadata
-+	 * inconsistency. So we should set fs read-only to avoid
-+	 * further damage.
-+	 */
-+	if (buffer_write_io_error(bh)) {
- 		lock_buffer(bh);
--		/*
--		 * A previous transaction with a couple of buffer heads fail
--		 * to checkpoint, so all the bhs are marked as BH_Write_EIO.
--		 * For current transaction, the bh is just among those error
--		 * bhs which previous transaction handle. We can't just clear
--		 * its BH_Write_EIO and reuse directly, since other bhs are
--		 * not written to disk yet and that will cause metadata
--		 * inconsistency. So we should set fs read-only to avoid
--		 * further damage.
--		 */
--		if (buffer_write_io_error(bh) && !buffer_uptodate(bh)) {
-+		if (buffer_write_io_error(bh)) {
- 			unlock_buffer(bh);
- 			return ocfs2_error(osb->sb, "A previous attempt to "
- 					"write this buffer head failed\n");
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 02b066299164..f338d6e3c29f 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -413,7 +413,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 		}
+ 		if (inode && inode_needs_sync(inode)) {
+ 			sync_dirty_buffer(bh);
+-			if (buffer_req(bh) && !buffer_uptodate(bh)) {
++			if (buffer_write_io_error(bh)) {
+ 				ext4_error_inode_err(inode, where, line,
+ 						     bh->b_blocknr, EIO,
+ 					"IO error syncing itable block");
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 7ce361484b38..4b18ddef468d 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -49,7 +49,7 @@ static int write_mmp_block_thawed(struct super_block *sb,
+ 	bh_submit(bh, REQ_OP_WRITE | REQ_SYNC | REQ_META | REQ_PRIO,
+ 			bh_end_write);
+ 	wait_on_buffer(bh);
+-	if (unlikely(!buffer_uptodate(bh)))
++	if (unlikely(buffer_write_io_error(bh)))
+ 		return -EIO;
+ 	return 0;
+ }
 -- 
 2.43.0
 
