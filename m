@@ -1,64 +1,64 @@
-Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
+Received: from mail-yw1-f170.google.com (mail-yw1-f170.google.com [209.85.128.170])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 947373D093E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DF0F3CFF6B
 	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.172
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785621696; cv=none; b=XEzo5r4NaSBGYDxfEdiixyM+HxJAj6aJhNE3MBWZQoprB/o55CE2G7QEq/kVrKzvVZqTVSaY9LztAicvW2oEFIOakv69pvaqNIXwK764bh4ogpp3/A0rQRX5tqQOCa4ulX7glae4v7cpN/jbxy13iH86bdiONcRLvifSYn04SwQ=
+	t=1785621696; cv=none; b=BCqugla4gw21JxQroPhirhQCWtRrLR/R37w3uDWCVPGucEbX7HfcfgBG0PenlH6xGGZ7VAeYVXLqTwJSVsoFeFGye/FHsr+kBW7bJrabkMxoxqplWxbtfIcFMwRY+OT/lAC2QA9MFcTjFxruHxMRy49qACYOtL1+WeJpMFm0cJA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785621696; c=relaxed/simple;
-	bh=luLrRtkts7duEn4/GPgzY7ldWmmHGqiqpJhG8wUqy44=;
+	bh=3dsw1Zg8M5wNaCMh6F9jO6eXBuRivbQ5EiuJWZtmA2I=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=p2qtX+jthIlC2M/EPHeZIgJuJi5xKuUJFo6FJtfkKoKQlZqM7mW1iNsDoTBAYhiemXDPJUZw8eVHQLgRPcYOU4nOEu6HmvQI1e77IFcuogSGQJuKrzyAKO5tCT6s2kaPvSC69p6Vq1bD0Qtb8mPs+R76efUt4JrIui3s4H4LpUE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Oc+AGHnl; arc=none smtp.client-ip=209.85.128.172
+	 MIME-Version; b=NOajd0oYfV8cZnaagcyiH/T6pJg3p7o4TiFNU8Y4lum69yD5yaXbzTzEX5X3CENtpvlkh7WxIYT1AIaKXJK/UzA12lVh1zg2/tZHxq+/7micpx0HkHUOugkVQOs9alOPFWMXwvvSY1L1Q7XGZ4raNYzB1aJVXloACpeMrELymBQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jIdtbZ4O; arc=none smtp.client-ip=209.85.128.170
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Oc+AGHnl"
-Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-81ec29f1d07so28557007b3.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jIdtbZ4O"
+Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-81ecf499af9so30700727b3.1
         for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785621691; x=1786226491; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785621688; x=1786226488; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=0pFv0xCjYx7PImBsEcBITOWzdrDyUn6BmUrT79FEDLI=;
-        b=Oc+AGHnl/V4vhp3rCBi8fFodk8742TYrmmsC+wKxDEE7AZLUIztaL/at/s7IkeKD4G
-         8M+waOopAK/TkbwXsoGidwiD8mhzej1mci1V4LuGwPIc/owXOaGk2HsLuut2N6ftXivG
-         rd4jOCwHV/UHWIKneJisBK0bBKexvtlwuU4ilLrjbUCv7BL+TZz82G9odDL8SjNuRbZI
-         np0cge2Sx9OhyZXDYxLV9QkfljWgU74K8MEjUVWyacHiTnQzKs4xm2dgFowg1SstuXvR
-         8yK0TN4xwnEVS6FNZhuOGeT1lvLRlJHheNPYHMBcHmI4Fwce4wjl+Ki2D+9W5QX49AHl
-         fdNA==
+        bh=/DniCfidRbKUpj3g8JSrdbI5dITb8OPbOoquygm/08o=;
+        b=jIdtbZ4OTSOT9OPvleuuFCF4Pc38X/ywxPMR3t6kTu5fvOjwuri3CWPIDleEi+yfTd
+         jNjRjG1uU4gjKFa4m0dUa1vBYSNz1jrwx9qJTMdLMx1EQ3UYJ51GPPdgyzjVvOtevzmt
+         6UJhx2S1iWnz8BdBXkdKGdi1lb50HfS7boV7941Auh/IIbrBTOMNuSWbz5dE+aJOW+oG
+         oKyznNI4+kb4B9WfmRt889vBo+GzDT5Ek5Zir6iOX8xJagkbiHQXlNFQdfgLJasR8FYK
+         rTJsM/7wbLfAdvPU48ELbaRQt4tD+UVBk+43/CEbnMJyjdHZVFOh8PsqlwzZWdXFXgph
+         F0Ug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785621691; x=1786226491;
+        d=1e100.net; s=20251104; t=1785621688; x=1786226488;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=0pFv0xCjYx7PImBsEcBITOWzdrDyUn6BmUrT79FEDLI=;
-        b=jdvSsFJ3mQ6+AvyUSS6OoemmzH0Gk4W8rnlDJxO8Ip1Xx9KfrdwUFXKIeHwKurdDyr
-         tcRzd4Yk7qVdWq0q0NR/zMuUOyrk/h9jFPFW/1UE7R4Kh1yZnVRP+D2u15i5yVokl3sC
-         cCd13/OsjGZp4sZxdoFfUcBVsjn+5vqrfHZ1+PZiPBM7WjmQ8rXDr0t+s+FvZWdvEPxR
-         0Hq5+t7hhOnpTdkIU/rV7d0+nVwCfTpfjLNR+uEaNEYDP9u1dQ0jyPNVBxrlsXZDjQJE
-         iSzCBhykUrK3tLyMY/QChsOVDcaRuXiVz0DNUX3+bYC5Z0/BoiRdDNf+ohHftZNlZgZV
-         BBWQ==
-X-Forwarded-Encrypted: i=1; AHgh+Rq5jWTCohSV1XH/5QVBF9BRtR6PXjUXdG8ahHtpTZtzT4AzTFZd+0Xiz6aBeUBe2udf12JUSpaeR6Y9@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz8BuBG0TDy5aTPAtMCMjqyQQl3wzZHRADzCOijKVPtT7S7Qk2m
-	s3amGP5ynDFNbQjZPlvsnjjafJsZB6tG6SLm8Kqz2rTGaiGvIDb4/7gH
-X-Gm-Gg: AR+sD106ZJiQvhVhXuWMTUmDesVrlGUrop6bRQxFJfK4qGXWWJfDFfNue9SVJ5v7rzn
-	OSBP0uSDsL3HRjCa7+fIHnKW8t5h/hrz++hB/LdcZW/IjdxhINaIgIPdUU3XufNkxWvrqy8VeKc
-	6qheeOu3luoRNagzQ8i0XNa7MT/Kz+MirDaV0KZG0hhqiMpM/suhO5qyg02xR8STn2f/pevw7Po
-	jaBKnKJ13KYMXjiR1dfwGQyR9VOi5sBWf6QcKK1KWYHlzNL4/Z2LmSut1z8xqwXKvla28xo7pbA
-	Ttd0P6NSy4FAdrav9E43jniAxRgzbdaktE8namvCa/sWPXW36vYxzworB9RdExJZxLdBBw0DBYa
-	XVEu8jCVMbVHxVtfeeHuLKIwLjeY3bG0iECUQW6MxLR+2C63+8VvAb1lLKGuKyRtUGDfk52JoGU
-	TZywX3xc2ZweUHAsN84mF8nUSqLGa4fS+QF5O/wZ+ngewyE9wTNHejxHy0XUJ/EndkkGFo1Fkwg
-	0orBVc=
-X-Received: by 2002:a05:690c:368a:b0:81f:64e8:cac5 with SMTP id 00721157ae682-81fd49cbf8dmr71805897b3.7.1785621690658;
-        Sat, 01 Aug 2026 15:01:30 -0700 (PDT)
+        bh=/DniCfidRbKUpj3g8JSrdbI5dITb8OPbOoquygm/08o=;
+        b=caala0NO5v6HgTP71j1A6S1fScquC8iNGA9PvUJQPIwCK+DYIGrrKBA8uNO30dmBsc
+         70+yVLL76i4oua7yt04sF367c8UA71lwoFI9sWCMHdex3InyhxqxZQ9aI1Ij+J/44IlM
+         4vMh8oILGwJ9VedXTPWvRjUIfjkqic7jjCJhzYIUoL/o4TTsq9Kp/eDAigUnKGlp/HHu
+         ASVoifQhUN6LkoMhtPU2gcLKnsqlmgXPQG6+3OEba/mdVgcIQEGaTN/v3/Kbtcz5JW0J
+         /M3KkXy1jQh7+InC2yAKp3Ygw4Flmi5swXWEEfSrIVEpOI8fn6DzACXvHSrCr1Gw0PHk
+         yBtQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rqv+DcrQif6whG54j+JUEbLRzqoiN3p5u0w+VLD7Vin2RBg8uDahxScRd78JzNLS8/NnlFHq+uDRfMi@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz7bG2oAGiraDmdoJkCbB/ca9yUp3hOi8MMh7g1VMoTxL2eyoKS
+	mPcwkz9NjRPxZvKYiAmc/xPq5HzFvaXjBq4YsNqauy4EQWKO4wvsmM9o
+X-Gm-Gg: AR+sD12q5Gg0mLiSTyWZfrzK6FhTSpk0BauFhGDix2GydbTnKfUX4YpE8yYtXg967lz
+	MZwdG6Umcmm6Qd4mbtTnoSXdzh2JcIhGCXS3crS7QAmjISwfHnFzu4wjNwJRy0D3190X1U7So2m
+	9yR2WcdXhcF7Gnpx5wPD20X7mxuqPMu6IeBfdR7XZsOE1Pl7K9wFgdehhswmMVlopbzgnlOLU6b
+	BMZ0P5T3pDNimRHN/oJI3jlv4uk7/kWaazkgKgeaUlpN33/td3aARMDrd2eZ1Ch6wz807JvlUyU
+	WCBMooqODSusnQ/wyyJ/b2rvO9bEsD6s5on+ohB/Q8Nd+lUJAJOWtCk9wBvKMKJWbjqElPGACBm
+	JaFowCKslDHY/QMf3+gk72YhZeu+adxuGaQXTera0GDFAksJmf8EQQuLZjQZxvcJQkcj3JrIryS
+	aSVMNTrAqaFYccyWwCpi3s3ulRiUrP6U7CJ4+y/BRAPLYYwHfTyHQP1wDt5qojTZctx5oc+5o1x
+	YEHCTI=
+X-Received: by 2002:a05:690c:c15:b0:809:6b62:2f7a with SMTP id 00721157ae682-81fd4b72864mr76660857b3.21.1785621688522;
+        Sat, 01 Aug 2026 15:01:28 -0700 (PDT)
 Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.29
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.26
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 01 Aug 2026 15:01:30 -0700 (PDT)
+        Sat, 01 Aug 2026 15:01:28 -0700 (PDT)
 From: Chao Shi <coshi036@gmail.com>
 To: Jan Kara <jack@suse.cz>,
 	Christian Brauner <brauner@kernel.org>,
@@ -86,9 +86,9 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	linux-karma-devel@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org,
 	Chao Shi <coshi036@gmail.com>
-Subject: [PATCH 15/19] gfs2: check for a metadata write error with buffer_write_io_error()
-Date: Sat,  1 Aug 2026 18:00:59 -0400
-Message-ID: <2a0450b24c7e6c8d7a2648196f51852c45bfae33.1785621505.git.coshi036@gmail.com>
+Subject: [PATCH 13/19] ocfs2: check for a metadata write error with buffer_write_io_error()
+Date: Sat,  1 Aug 2026 18:00:57 -0400
+Message-ID: <bd2c982e7c91fcfdb8a326ae8166853351398aa2.1785621505.git.coshi036@gmail.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1785621505.git.coshi036@gmail.com>
 References: <cover.1785621505.git.coshi036@gmail.com>
@@ -100,75 +100,64 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-gfs2_ail1_start_one() and gfs2_ail1_empty_one() decide whether a buffer on
-the ail reached the disk by looking at BH_Uptodate once it is no longer
-busy.  That relies on the write completion handler clearing BH_Uptodate on
-error, which this series removes: a buffer whose write failed still holds
-the data the filesystem asked to be written, so declaring it not up to date
-is wrong and makes callers re-read it.  Test BH_Write_EIO instead.  In
-gfs2_ail1_start_one() the test is the positive one, so the sense has to be
-inverted rather than the flag simply swapped.
+ocfs2_write_block() and ocfs2_write_super_or_backup() detect a failed write
+by looking at BH_Uptodate afterwards.  That relies on the write completion
+handler clearing BH_Uptodate on error, which this series removes: a buffer
+whose write failed still holds the data the filesystem asked to be written,
+so declaring it not up to date is wrong and makes callers re-read it.
 
-This is not a pure conversion for gfs2, because gfs2 already has a private
-write completion handler that behaves the way this series is heading:
-gfs2_end_log_write_bh() calls mark_buffer_write_io_error() and leaves
-BH_Uptodate alone.  Buffers completed through it are therefore invisible to
-both tests today, and start being caught once they look at BH_Write_EIO.
-That is a real behaviour change, and it is the one gfs2 wanted: a failed
-log write now withdraws the filesystem instead of passing silently.
+Test BH_Write_EIO instead.  Note that ocfs2_write_block()'s test is the
+positive one, so the sense has to be inverted rather than the flag simply
+swapped.
 
-gfs2_pin() is a different case and gets a different treatment.  Its
-!buffer_uptodate() test is not only a proxy for a failed write - a buffer
-with no valid contents at all is equally a reason to withdraw before
-pinning it into a transaction - so the write error test is added to it
-rather than replacing it.
+The comment in ocfs2_write_block()'s error arm needs updating for the same
+reason.  It said the clustered uptodate information did not have to be
+removed because the buffer was not marked locally uptodate; after this
+series it is, so the reason no longer holds.  Not advertising the block to
+the cluster is still the right thing to do - the data is in memory but not
+on disk - so only the justification changes, not the behaviour.
 
-Left alone deliberately: the BUG_ON(!buffer_uptodate(bh)) in gfs2_unpin()
-and the two WARN_ON()s in fs/gfs2/rgrp.c.  After this series they simply
-stop firing for write errors, which is correct; turning them into
-BUG_ON(buffer_write_io_error(bh)) would newly panic on an I/O error.
+No behaviour change today - a failed write sets BH_Write_EIO and clears
+BH_Uptodate together.  It stops being a no-op at the end of the series,
+where the new test is the one that still works.
 
 Signed-off-by: Chao Shi <coshi036@gmail.com>
 ---
- fs/gfs2/log.c  | 4 ++--
- fs/gfs2/lops.c | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ fs/ocfs2/buffer_head_io.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/gfs2/log.c b/fs/gfs2/log.c
-index 78bba8cc10b8..e3e0dcb1f567 100644
---- a/fs/gfs2/log.c
-+++ b/fs/gfs2/log.c
-@@ -107,7 +107,7 @@ __acquires(&sdp->sd_ail_lock)
- 		gfs2_assert(sdp, bd->bd_tr == tr);
+diff --git a/fs/ocfs2/buffer_head_io.c b/fs/ocfs2/buffer_head_io.c
+index 7bfe377af2df..733ceda79ca1 100644
+--- a/fs/ocfs2/buffer_head_io.c
++++ b/fs/ocfs2/buffer_head_io.c
+@@ -66,12 +66,14 @@ int ocfs2_write_block(struct ocfs2_super *osb, struct buffer_head *bh,
  
- 		if (!buffer_busy(bh)) {
--			if (buffer_uptodate(bh)) {
-+			if (!buffer_write_io_error(bh)) {
- 				list_move(&bd->bd_ail_st_list,
- 					  &tr->tr_ail2_list);
- 				continue;
-@@ -321,7 +321,7 @@ static int gfs2_ail1_empty_one(struct gfs2_sbd *sdp, struct gfs2_trans *tr,
- 			active_count++;
- 			continue;
- 		}
--		if (!buffer_uptodate(bh) &&
-+		if (buffer_write_io_error(bh) &&
- 		    !cmpxchg(&sdp->sd_log_error, 0, -EIO))
- 			gfs2_io_error_bh(sdp, bh);
- 		/*
-diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
-index 6dabe73ad790..3df6e4b7e8b9 100644
---- a/fs/gfs2/lops.c
-+++ b/fs/gfs2/lops.c
-@@ -48,7 +48,7 @@ void gfs2_pin(struct gfs2_sbd *sdp, struct buffer_head *bh)
- 	clear_buffer_dirty(bh);
- 	if (test_set_buffer_pinned(bh))
- 		gfs2_assert_withdraw(sdp, 0);
--	if (!buffer_uptodate(bh))
-+	if (!buffer_uptodate(bh) || buffer_write_io_error(bh))
- 		gfs2_io_error_bh(sdp, bh);
- 	bd = bh->b_private;
- 	/* If this buffer is in the AIL and it has already been written
+ 	wait_on_buffer(bh);
+ 
+-	if (buffer_uptodate(bh)) {
++	if (!buffer_write_io_error(bh)) {
+ 		ocfs2_set_buffer_uptodate(ci, bh);
+ 	} else {
+-		/* We don't need to remove the clustered uptodate
+-		 * information for this bh as it's not marked locally
+-		 * uptodate. */
++		/*
++		 * The buffer still holds what we tried to write, but it did
++		 * not reach the disk, so don't advertise it to the cluster
++		 * as up to date.
++		 */
+ 		ret = -EIO;
+ 		mlog_errno(ret);
+ 	}
+@@ -446,7 +448,7 @@ int ocfs2_write_super_or_backup(struct ocfs2_super *osb,
+ 
+ 	wait_on_buffer(bh);
+ 
+-	if (!buffer_uptodate(bh)) {
++	if (buffer_write_io_error(bh)) {
+ 		ret = -EIO;
+ 		mlog_errno(ret);
+ 	}
 -- 
 2.43.0
 
