@@ -1,64 +1,64 @@
-Received: from mail-yw1-f176.google.com (mail-yw1-f176.google.com [209.85.128.176])
+Received: from mail-yw1-f170.google.com (mail-yw1-f170.google.com [209.85.128.170])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF8403D1709
-	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8493384CF6
+	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785621691; cv=none; b=GVOgTO0lL4iaj9hLhBgJ/x7+hVZiYui26UqYijEHWNKcDQ6nnzvnUdgOadzrsXw/k9nUyXs1geZPUuoHCSE3ZkZfrRvTn7SkwO20Eb9+4kPb1dUbxxRfQFWyQOfAL5bV2mTPHzSoVbFDYvBdSzppvTQuq259iuSogIxychk7+kQ=
+	t=1785621691; cv=none; b=ery6dH5ERYd+b2jpCpGlWqNnADrmjElUVQjmQ3uS06S49Ll50tn4R/Dt7SPxU4snfeCiM2PmOrBGt437jtT8hnH+BvyTycy3W1l8KfjCPqkXtagLGA5O9Y+wykEU7K8UV3cBkFukFnO2kUDztFlxNa3TEjOvG3pbfkYgQfhFmXk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785621691; c=relaxed/simple;
-	bh=B1aGoafSodbJHnZvQa4U88gzZAbdOk4anLe8al4k4+M=;
+	bh=8eaNHjlxdd2m/7vaM8HHzpWZ1ndxEHRbTTCO2KCwplQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=s3C37cEMKSM9o9x/ur+S52iM4Tpva4xQ7EuWb6EGn2/fbpLarZbizx9hALD3jlTS8nxRd3zFJNx4DSsNSUAl4hDQkrYzkCvlVukzQ+rGxK5PqI7NxKSNYrIhGwg6qvjRR2Xg+prZwXF2yQxva/GJFOHER1a+RCqQ3I9HKlVWCIQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PNVHRsXU; arc=none smtp.client-ip=209.85.128.176
+	 MIME-Version; b=esaNEs4RhpFn5l7gRjDIUazTygpGGebYBcfemCjV1znInrEHHU+B6XSmGHZex1jR8vIy126qQbfOzhvn+zcJrfUucGvfqD80oNB+62wWwi/T8nDjBJ1m5d2iq1EFLShlLFRS4zpgD3U565JJknD7aX8FlYM7cRHCU92DSG+ZkGs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Yun8d6rU; arc=none smtp.client-ip=209.85.128.170
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PNVHRsXU"
-Received: by mail-yw1-f176.google.com with SMTP id 00721157ae682-8114a4542b2so33656777b3.1
-        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:24 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Yun8d6rU"
+Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-80cebd41372so32695797b3.3
+        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785621684; x=1786226484; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785621686; x=1786226486; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=fFKjhKiLwW7000gY04FDp9HuhYK5pnv34+ERWpP83n8=;
-        b=PNVHRsXUp0XCXnD8Q+OJb7MgdABLPwXgxvpcqQWg4VuxEPmBLymrH5x1rcy08o+/9t
-         ZGNL91aWrTxK+/zmIESs8niMIAbrmnsJ8IdweXdnxfTINbPcwllz9HQzaDWZUf/lpUyG
-         CG76ga41gnn4KB8Fp5Qfbb4MrLbyOft7dCNVuLy/jKpiqPKmywoBG3iJSi4pn0Ndk+MW
-         Z9jHubiQBK9UUscfGZ5iX9eEoUMaASP7WwczxwGJyUQdAIZ7yErDlmdI7JpkNaFHzj0r
-         gqJESLFvRnPXoH3zZPAy8K9Ue2PTHvhTBwBPpHDYQpMsDszYEefsqIvEQRkDBVRFKnVs
-         Imdw==
+        bh=3pK8MlUvCqFzPv9m7RxaKBOJ8dELfs23G8cRNXDTowI=;
+        b=Yun8d6rU0GoHZQcKyHCKysFS1cmF1+vOzb36IhO1iprimsJcB5E5iDw8v63y5vqL9b
+         etNPkdTEm2nZfFCgJ9AIc+/vVJxP8roJGK9j2AXQilPM/2Cw2gDL2XdmBQtOUaV0sftj
+         +rM0JHXCUz0P8wP2syNvzwrhjLipikksShz8Fo1f1Il703+AjjJAlQE8Dceo91k6cxbO
+         QwKMnPaHb6dyxYmHOQVBOp2pwUEhHARdJroXbUAQ8UWKSSnj6IJihONCyXuBWozTaAxg
+         bNWrQZjA+C+eEaOxdxtb8D8Aj+zV+DseLbs8obh7rIc6EsdLqJjFjnVQP8t583vhk8OZ
+         Yx2w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785621684; x=1786226484;
+        d=1e100.net; s=20251104; t=1785621686; x=1786226486;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=fFKjhKiLwW7000gY04FDp9HuhYK5pnv34+ERWpP83n8=;
-        b=UIOjbhWEKoqT2nKtQPrg8GTGkD7hwxefu+BncqYT0oQpWgCjuf4UgYbgc+7pHKXvaR
-         tjWSKbjZOnDZPRkLqfFrxZslqTiZzMnBGyvDkj5tODhJo7vE7HR21E8wgoJKuPJquf1s
-         t/whLFhDyM2JJMGXX87klFytVwg8MESRKZotjHxP37fbEHcjkyKPfZDk9Hy1i6Sn9Bsc
-         N97aVOhgIs9blx493ZCkmm6OxY9QJiscQ/lKS8/65n2B719tAbc2Yoeh4HU9u2zPd+hx
-         i4bFcmgjhxfoq/xyEAwASCHm4cwXZxuywQcpG0+bDLp79C4/R/cBfoJewQEoBl199a8A
-         I7cg==
-X-Forwarded-Encrypted: i=1; AHgh+RqpYVdIRTWPST2T2arCXGaGOvBbN51AXYSsdFTQstSQdkSniSuJEjdfEJyRQpmPX4e2HaO9VBGQ5yht@vger.kernel.org
-X-Gm-Message-State: AOJu0YzJNnqJ92I5uSDkstjyGwVn8oJNDSSm7ISG+/S+6Jh8sgeN8kBl
-	0yMYWhTJa9IOLlbOwaawmgpehmkFuy0w5+d0QtrMwP+QpEOzbl8lGVyy
-X-Gm-Gg: AR+sD10cSqX24ESmWjnX2jes7Fu2Qdsdi+Gxw1rhxtN4lBRSS4L3l+R7mwPB20DhLZ9
-	M7pBbwMByzeWyY3T2F/fkGBzx2moTo/zannpkGji0kJk8nBJKjByaOSK4IU6JuFUaNX+iBpqB2l
-	nWS/IM0xcVIzlWUMHJrjWfM7gaURzH488msdb7QftmCHIlcTXhPYlVYewUp3+8FJ0l62yh+rCud
-	omQrWd4vDfszrHIYElEgqQh6VkpTfqneaBFkiI7dSUrY2lwbbuYm5EJoLdXdRFv/XrOU5VvSJ3e
-	rqVZ0LftfN8knkq491yiyzXJdX1Qm42iZPBwodWVyYo2mdj1cCfjcaqz9kav4ANpybrMqP3k0D1
-	/MjKWnz9kGB1iJKq7JRABs+G5ocmtOd9CFUJrcaeU6que7p42VsbnYc2JBo1dP2iEQbKnzGkbB8
-	5UsbTfLszOdkhU/qybNvNgUutlKTUF/CwK0NCdNlhn5U2JMCEcT22liQWUYc/5DKqZfRbJY4p7Y
-	snHzr0=
-X-Received: by 2002:a05:690c:d8f:b0:80d:a249:4854 with SMTP id 00721157ae682-81fd4b59a06mr68933057b3.17.1785621683893;
-        Sat, 01 Aug 2026 15:01:23 -0700 (PDT)
+        bh=3pK8MlUvCqFzPv9m7RxaKBOJ8dELfs23G8cRNXDTowI=;
+        b=sgX8mqOtVo9XxxZxnjMFY4UnBllTBOKJQ+8cjavc1V84YezC0AycmkT3ZnpDFhh2Ql
+         LQqRWgjY3CreDAKnL8f4NqZf85w6LJkxxjVUBNl82htq41KWe5MqPzqVUWvWVNEOw3ZZ
+         y7kgMmDyiCLwjf2nUlDcnW9OHrfvTbSa1eWoRDUtwp8BWmefHNJnK49vsD3phPo8WT8q
+         DtyI2ZgCc8uTKRCVqFfk+R7/199kf2X+hR6fxIs5Sw+ApyAQW/idcIN8x8Yg8+V4VYcj
+         mi/mdIYh7xxV+o7/8HTu6WFp+XC4qNtRslsOz7ednn2C1QWeCbLZkwLHXbJ9CVsT6RXb
+         HCUQ==
+X-Forwarded-Encrypted: i=1; AHgh+RpCc829s81Vn//hnD0Hwblz8ElEQBiS0SMU6DzLNTUF3rSLk6IDrFnG5UafV3xu6oxMXL5oEjVC+wFx@vger.kernel.org
+X-Gm-Message-State: AOJu0YyoWv3jBTedD8Nyy95/NXqIg+BYoeukj4aUAvC63dctDmFDdpu9
+	L7t7PVPxam+fFX88Cv4okqO5uSAN7HN++4jzZJImqi64zNyNVWDB5PFD
+X-Gm-Gg: AR+sD13o15cHxIvYeY8H+OaGz2IeqkgLHdO/5enLt8gYDeyrOEcPQUU6Tn7CBVG/PFN
+	dPueWKclbcSfEqqfrDlHT4kdlqXYNeMOuio/E3sG8tYzOUTHVcqQ0BvPpBjzQ+Wrq7fS/kjYeWp
+	LUJ17PC1xU/9/c1ml9RRjKiR3eqVYP8S7KrEH2uWn4YiuvYRXON3PrE+HgpBuDprWzSSviunIwe
+	sG+yG8dcbPpv9zwmLV+aDKmoNI1EsqRGWyA6O/Bv5muHvfXTeO8gYmRG4srJMNNWdMSNHG18ZfN
+	PFeYxEn5FNc49uzKEcV/dPDgVKo5m8TgTJbhwnd2XdSro0A3MSsuSwuIfYHEbRH159VMuYl3hO7
+	OZf+TL0x3T0st5nkr/RIdxiWOSA3+z+AZzjDOnC3GPT8kHEafwRA77oVGKmA+YrVJukNTKbq5Py
+	ffjw+1FSarYgRtcGQ6bEspNiu4aEiZQAfVVTGvayLoFwkq+47gg3REhCDvnuQHRqUMkfQK6nZ1f
+	/8QLlo=
+X-Received: by 2002:a05:690c:6f10:b0:80e:5236:b930 with SMTP id 00721157ae682-81fd4c9064cmr74857937b3.36.1785621685651;
+        Sat, 01 Aug 2026 15:01:25 -0700 (PDT)
 Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.21
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 01 Aug 2026 15:01:23 -0700 (PDT)
+        Sat, 01 Aug 2026 15:01:24 -0700 (PDT)
 From: Chao Shi <coshi036@gmail.com>
 To: Jan Kara <jack@suse.cz>,
 	Christian Brauner <brauner@kernel.org>,
@@ -86,9 +86,9 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	linux-karma-devel@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org,
 	Chao Shi <coshi036@gmail.com>
-Subject: [PATCH 10/19] exfat: check for a directory write error with buffer_write_io_error()
-Date: Sat,  1 Aug 2026 18:00:54 -0400
-Message-ID: <debeabce46c73ff63152dbdb67eba64d60c45c98.1785621505.git.coshi036@gmail.com>
+Subject: [PATCH 11/19] fat: check for a metadata write error with buffer_write_io_error()
+Date: Sat,  1 Aug 2026 18:00:55 -0400
+Message-ID: <202c109fe73ff6899235aab9dc19ba15eeda0d5d.1785621505.git.coshi036@gmail.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1785621505.git.coshi036@gmail.com>
 References: <cover.1785621505.git.coshi036@gmail.com>
@@ -100,7 +100,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-exfat_update_bhs() waits for the writes it issued and then tests
+fat_sync_bhs() waits for the writes it issued and then tests
 !buffer_uptodate() to find the ones that failed.  That relies on the write
 completion handler clearing BH_Uptodate on error, which this series
 removes: a buffer whose write failed still holds the data the filesystem
@@ -116,16 +116,16 @@ where the new test is the one that still works.
 
 Signed-off-by: Chao Shi <coshi036@gmail.com>
 ---
- fs/exfat/misc.c | 2 +-
+ fs/fat/misc.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/exfat/misc.c b/fs/exfat/misc.c
-index 6f11a96a4ffa..dfd0bbf31c94 100644
---- a/fs/exfat/misc.c
-+++ b/fs/exfat/misc.c
-@@ -187,7 +187,7 @@ int exfat_update_bhs(struct buffer_head **bhs, int nr_bhs, int sync)
+diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+index be18f6b5819b..4a4cd0111e47 100644
+--- a/fs/fat/misc.c
++++ b/fs/fat/misc.c
+@@ -356,7 +356,7 @@ int fat_sync_bhs(struct buffer_head **bhs, int nr_bhs)
  
- 	for (i = 0; i < nr_bhs && sync; i++) {
+ 	for (i = 0; i < nr_bhs; i++) {
  		wait_on_buffer(bhs[i]);
 -		if (!err && !buffer_uptodate(bhs[i]))
 +		if (!err && buffer_write_io_error(bhs[i]))
