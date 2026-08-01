@@ -1,64 +1,64 @@
 Received: from mail-yw1-f182.google.com (mail-yw1-f182.google.com [209.85.128.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2537139FCDC
-	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21C453B27EC
+	for <linux-ext4@vger.kernel.org>; Sat,  1 Aug 2026 22:01:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785621685; cv=none; b=fg2UQvRV3SvidvnUE4h9sG06sAtr2Uygh4dYqi9bVfJ5QsSGQblDczAk1XG2CgcWdG3AncqtQqDVq3votsBH6e0Asl/97R5sN7ucDYA/vooUN/qV+2U+mc+3ggCS0oI+dTI4eJsRSaKmH6y5m256ZLaPLefJDB4YH2ON7Z6AWLk=
+	t=1785621685; cv=none; b=fKf5LAKKclDYLr/mat0oBdqVaLEzfj0eS95hlG1y9EhLiJFeVHnLREUpEzTsT1qlTbrw/YuNUAZs+O0aW9eTV0q42SdPPxUpmH28ZAP9ECuS4DGJLQtHSCpI0E5NQvJFqmIj6m/VL+/AMrsGsPk6tuNqq2D5PVbZ6cF4icMKZdE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785621685; c=relaxed/simple;
-	bh=k+XwpsvdR4lXnK8J7akvyHhiQeX6iOLIGH6lriW/zZA=;
+	bh=0GZwqUy172rmUBMrDMV2vQcxlGBw18Y+h2pa3/xDLGE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UuvpHRJZOkwAHWVYv6d7N/Ufuq/IAVcBcmlF4hRl8vRDnjrMl6jYeeeAnWy2fgYhX99Hh8cBAUwn5AhKZhMvxMbaQ+JIb3rjVFx4h76QBRjWH/FWV8vB4qwslrMqTdsQIcDgUiYKchhiNxSrEJ6ZUM66ZybpFLPBgI0rxfoog7w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LjF6511M; arc=none smtp.client-ip=209.85.128.182
+	 MIME-Version; b=rgNG01n2r0UEAIRYoAzl4zp+yU0Fg8iVZsOpbd03zWrLOPl36uMYURx1e3Az4e/rwcum04JOx3BhxbzvXJdINYWD6V9aN97ocH6Th4q+5Fwd8jzxuJtFJBw9wuBGafgJmrOXKRxBdHkMl7KRGHH4fUb2HRCXwGzZ4cAVBx/SaCQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=BSZ8BYZc; arc=none smtp.client-ip=209.85.128.182
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LjF6511M"
-Received: by mail-yw1-f182.google.com with SMTP id 00721157ae682-81e9f7491ffso34126587b3.0
-        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:23 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BSZ8BYZc"
+Received: by mail-yw1-f182.google.com with SMTP id 00721157ae682-81ed2a06b9eso19525127b3.3
+        for <linux-ext4@vger.kernel.org>; Sat, 01 Aug 2026 15:01:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785621682; x=1786226482; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785621681; x=1786226481; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=qR4j1ND7sU3DHEeB5SkE24JFiOq+gxamuNrGyu3FS3k=;
-        b=LjF6511MD8nyx8OgsBaCVjrtAId5xfEyV9Mla+K1MgBFkCXjSOtDDh4FrzzGiIgCYG
-         rg6ez4+UbzKcMgRNqTBV/vSr4vBOxenfTN7yvq377FOV49TEgxtoWpoyyCg6Nf9yWtOq
-         yxhLAAE12uLnCLsNx6OFA9wIczk1fHp9PmTSOL8655l3xvJLKk9dqQO5YL9yeUGiI5r4
-         vFigq4zGJeymgJTrqEPeR6GUNaT8iTHSE5d7p3hBn1FCH8Fn821F4fD511QmILnQZfaR
-         VEsI+Hjmibx7q+C6zbLrWdlm0gmRBoiz6r+K9Y8cA03955hqcrDcJJXROOFxlWZ5tpAi
-         aNHg==
+        bh=ZTD9K6oObS45hnhRjtGbn2SpngZimROJJDwLscvqzbo=;
+        b=BSZ8BYZcRcxM3awTw2IR7SZiL43EtkPRP/HJP4UPaqugzYvhfLH137ZE2fnZ/yXFQo
+         Bj6/x4uvRE2rZOtNaBO730T8RAOfYjuV6Dk5k3ywMABH++Kyeg6iAx701bEzkaxAijCd
+         vklhSZJe346aVtPeUcqtK6v1X3c+q4a97+cCSwSYcQxHEL99Z6N+bHK0QmnAFcQjU0bA
+         m1qWp4jkg0aC52mVVoCDl47RDlm8EfFS13z6UIoWvyopX9vJ9lF8GqmSQL8KWCktQnFK
+         xRteSSXvUrUGEZWpk4iY5sXR0zGBZhnJjmgwG9TZcxuRYcxXHIgbaWWD7SgUkh/5tZ6W
+         OIKA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785621682; x=1786226482;
+        d=1e100.net; s=20251104; t=1785621681; x=1786226481;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=qR4j1ND7sU3DHEeB5SkE24JFiOq+gxamuNrGyu3FS3k=;
-        b=ig3YrZTjuPbkcK9ELTjnGRm7TgMtjyFVTqrb/T7kXDfUSQjftrJW1pmJ0Zge1mChZG
-         c3PgJhR9JMsH/Io/TFak0ENwj85X+c40rJSD0iM9z2L1+UvWQnApBGDUHBvF2tABrUYN
-         ETE3TzoxnfaDoLgIDVXNoOEibdf3S+YrXT+bKld3ge5ZcYMLC53FQkebci7UE0NASw5O
-         3aDnTi1U0pdUaeILOhy79eADz6njoxmzjNWaRW8kDPt/wcSNZk+4JQD9/n/6XHIGyrgO
-         SvGLLtUQTkekStOR3CYTURoCFNFZB7TS8D+lXvPB4KU9DiIU5JLtp7Kzo/nyIWVrqqC1
-         vL5Q==
-X-Forwarded-Encrypted: i=1; AHgh+Rp4OBmMkxhhZTr8qM40cJCioimU47n4JCUVGZO1+4mbOD/21RTD+N7E02SLnqbEUyU1wYhvbOrAa80V@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy4CCwsmi2QA7kRUL/YmYkfZbqfxIxkQ1zVzK/llVDhbo03Lw9S
-	ZUOfjgGxaeWxdwowtmprDRUCgdxtOE6cokkD6OcCHBtX/8WogTkkA7pS
-X-Gm-Gg: AR+sD13YSOmT9nOw5P/Kmf7aV3EW+z6jZ/zdXsGpvFXMtD11G3VDzNRAZnVi5KU3bUV
-	+M49D/y/dUfuyYLpI9KR0kFjpJ4YfWcW/xE71dw8+5qqaG9fkf/eakUBIlLVzldT6PXu64IbhNm
-	Vm17pkroN0sOfWAbP8w8Phum0nUJvz9MufdFNNlOBN4jqRK6s+keA+CVcm/aTiS/zkP86A01vHO
-	MSwrlk80eE7ZTe4nJnF/kQCkSjXQeJUVL7S2B/621QoKYd7RQGhLFQW+pvxCV1FnJ4rzzdkTEX0
-	MX3c8Q2GC+nO7FbpOV8jomdmJtKa4gjRblY69M4/SNwWkEAAstCUdNDKRluBGSSK0X4X4nNbxCC
-	RhuXLTPOlkanPrjzi0BBqUSfFXZdYEJlYDC9SW2pdJSGLHgp+FYzEvIjX0oyo0hgSXRy2NQD2Mt
-	i3R2+PW97Zp/03A72wSIEsveKuKQVTd5a9zFqlTDk/YzovqxXA6B/GA066rWVdUirk4p01YjhMj
-	7ssIFV0
-X-Received: by 2002:a05:690c:6d07:b0:81f:27f8:2de4 with SMTP id 00721157ae682-81fd4a04799mr74061547b3.8.1785621681823;
-        Sat, 01 Aug 2026 15:01:21 -0700 (PDT)
+        bh=ZTD9K6oObS45hnhRjtGbn2SpngZimROJJDwLscvqzbo=;
+        b=THyKRLXin9SfegufwK8BVSNePfBC3BWYM+6gKDw5yemjxMvEaGKnXhuc1+ZAPrzMSy
+         Zvtvut06imi6qiAl4E7PTDa4CVjTYUIDn46RCpKP8KZJJYt1o50pe678hNmk2cygiVVR
+         ZrhHwzmcTY02oGWeyFTGsTrtdtO29avdDm2KnrUN9vNJKXDMmEDPwzK2MP39eaw+Sit8
+         0YLmAUqzhB15LVxS7ddN9tj411jJ/NpS32uCKRYPabm5BWYzwYIU33wb4r3GXDbX1JPW
+         +muZw9cxOV5fIKqisuoeim0jGhe+6MMpkPqxvJu/wJnkkv67Q+XlDwPiu1NWheB+7yeD
+         pHTQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrEdqlgxCotSPIzHleHWYnYWnbMvcjj2qjuOIWiYySkcSgAHvKdFEIHDLekwLO3tGDlQTB47MSa1oM8@vger.kernel.org
+X-Gm-Message-State: AOJu0YzC8x453Kqsm7dt0DzpW835vTiNINTUdkr/9Cc60sytx2YG1q0T
+	I1vcjTLMh3Adt9hPVczFOcsG1tkloG4QbMLLiJmHqdpUQ8x9k/wC7+2C
+X-Gm-Gg: AR+sD1346BZp1rTmr4nixr8ZW6PKTPmtm32RzwFzel5uJXLjbx/rUB/ESuOWhM3kzBm
+	BzX36Tc9ahv/X7/VQlfjuTMBl3blx8Y1tZpT085pWCnzy4bubtsDzI5Kg2OCLjlBEYq0RWXBUOH
+	bp7Cp22vEb5bsr2LUsr4BJPpHv7/rn2JP7K+SKEwHSvi36tnTyGRnR8lQFX6B5syUlOJ+moYHuG
+	HVarDvw1XdpbwQAwuoxFonUsXEzLamKRrxZMrLd2FUDTgx5yayjvwCnUBTQtJonHdip6eb/J9MM
+	G56CTvb5hNhsJeINAMUfzNNtqNqwR+ryhmjrhzh+LYcCQ0DLaipRuimMZd/ocFjPziu1tBfpF2p
+	opvj9Y0O5jpX/G0Dblk34Hd5T4JecV1mlEozJfQVQUwzavTw3RCaVXJOrdZn20sSGQboPHddRoO
+	o4ejT9WBD4RTCeVFJB2zXTrRi3ZI8N3A2RXd2C5gtP9tZcQiOHPt02cNtuPBvHId2YtYt0+30zq
+	86Y/xE=
+X-Received: by 2002:a05:690c:6ac9:b0:81e:ae6d:caed with SMTP id 00721157ae682-81fd4bf66c7mr72228817b3.34.1785621680760;
+        Sat, 01 Aug 2026 15:01:20 -0700 (PDT)
 Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.20
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-81fcd0d6fbbsm29903767b3.25.2026.08.01.15.01.19
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 01 Aug 2026 15:01:21 -0700 (PDT)
+        Sat, 01 Aug 2026 15:01:20 -0700 (PDT)
 From: Chao Shi <coshi036@gmail.com>
 To: Jan Kara <jack@suse.cz>,
 	Christian Brauner <brauner@kernel.org>,
@@ -86,9 +86,9 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	linux-karma-devel@lists.sourceforge.net,
 	linux-kernel@vger.kernel.org,
 	Chao Shi <coshi036@gmail.com>
-Subject: [PATCH 09/19] omfs: check for an inode write error with buffer_write_io_error()
-Date: Sat,  1 Aug 2026 18:00:53 -0400
-Message-ID: <e7e644120766bc3e7ea9598754f7b56000da42c6.1785621505.git.coshi036@gmail.com>
+Subject: [PATCH 08/19] ext2: check for an xattr block write error with buffer_write_io_error()
+Date: Sat,  1 Aug 2026 18:00:52 -0400
+Message-ID: <f4c58a745b508ba79c114a3467eceaeb08647385.1785621505.git.coshi036@gmail.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1785621505.git.coshi036@gmail.com>
 References: <cover.1785621505.git.coshi036@gmail.com>
@@ -100,15 +100,14 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-__omfs_write_inode() spots a failed synchronous write, on both the primary
-block and each mirror, by testing BH_Req together with !BH_Uptodate.  That
-relies on the write completion handler clearing BH_Uptodate on error, which
-this series removes: a buffer whose write failed still holds the data the
-filesystem asked to be written, so declaring it not up to date is wrong and
-makes callers re-read it.
+ext2_xattr_set2() spots a failed synchronous write by testing BH_Req
+together with !BH_Uptodate.  That relies on the write completion handler
+clearing BH_Uptodate on error, which this series removes: a buffer whose
+write failed still holds the data the filesystem asked to be written, so
+declaring it not up to date is wrong and makes callers re-read it.
 
 BH_Write_EIO says exactly what this code wants to know, and it implies
-BH_Req, so each pair collapses into one test.
+BH_Req, so the pair collapses into one test.
 
 No behaviour change today - a failed write sets BH_Write_EIO and clears
 BH_Uptodate together.  It stops being a no-op at the end of the series,
@@ -116,31 +115,22 @@ where the new test is the one that still works.
 
 Signed-off-by: Chao Shi <coshi036@gmail.com>
 ---
- fs/omfs/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext2/xattr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/omfs/inode.c b/fs/omfs/inode.c
-index 1d915ef72119..bc37029a4afb 100644
---- a/fs/omfs/inode.c
-+++ b/fs/omfs/inode.c
-@@ -145,7 +145,7 @@ static int __omfs_write_inode(struct inode *inode, int wait)
- 	mark_buffer_dirty(bh);
- 	if (wait) {
- 		sync_dirty_buffer(bh);
--		if (buffer_req(bh) && !buffer_uptodate(bh))
-+		if (buffer_write_io_error(bh))
- 			sync_failed = 1;
- 	}
- 
-@@ -159,7 +159,7 @@ static int __omfs_write_inode(struct inode *inode, int wait)
- 		mark_buffer_dirty(bh2);
- 		if (wait) {
- 			sync_dirty_buffer(bh2);
--			if (buffer_req(bh2) && !buffer_uptodate(bh2))
-+			if (buffer_write_io_error(bh2))
- 				sync_failed = 1;
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index be63f89402a3..39005ec23fe5 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -769,7 +769,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 		if (IS_SYNC(inode)) {
+ 			sync_dirty_buffer(new_bh);
+ 			error = -EIO;
+-			if (buffer_req(new_bh) && !buffer_uptodate(new_bh))
++			if (buffer_write_io_error(new_bh))
+ 				goto cleanup;
  		}
- 		brelse(bh2);
+ 	}
 -- 
 2.43.0
 
