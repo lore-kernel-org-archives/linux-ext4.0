@@ -1,94 +1,119 @@
-Received: from out203-205-221-239.mail.qq.com (out203-205-221-239.mail.qq.com [203.205.221.239])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f170.google.com (mail-yw1-f170.google.com [209.85.128.170])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B857403AF5
-	for <linux-ext4@vger.kernel.org>; Mon,  3 Aug 2026 12:35:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.239
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785760556; cv=none; b=N+jKK/P//8faFDhovmYCI/hLIQgswC0d5nr0RJMonud35Wi3VdoPabEi8K77umIR9wTZKbQSxI5BVlL3RdEDWVyZjGLnv7/9UnRKB6atIkkYSSjE2IPoX7+cs+3gJzrLw/Emc9rNDLimloZ+h2jUfUwhA1qMoBQUY4i+k4kiGPo=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785760556; c=relaxed/simple;
-	bh=f584setxpECfnm7BPaDDv+uJUDD8kynlWOGfVBnHxps=;
-	h=Message-ID:Date:From:To:Cc:Subject:MIME-Version:Content-Type:
-	 Content-Disposition; b=hluGJwIJXztgnRp6ww2lC1WEwhnwJgBVR28U25PVTwTnyVxX2IPMIJ1RLLn9gY0IfC4RfwnBrWhcNPEMsWuRixwjerxhIliIfOLFt6GIo441dZDKUQR8j3Hcrr7VDzV2hoPlyd6MEWA7JM1Mzq6xKR/B8auL9H9QEDucHQ3Xdv8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=syHy+By9; arc=none smtp.client-ip=203.205.221.239
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E171B40963F
+	for <linux-ext4@vger.kernel.org>; Mon,  3 Aug 2026 12:58:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.170
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785761891; cv=pass; b=rYH29xJefXi+IhWGUWuwo49fapJcbX+8x++zxhKDExOUhYbpcPnEm66PQAEpTqokY+nccd7Wl+/m6GXPAf2eKwwl/93Y/30c8vFYz+Vao5P/nQ/rzlvUEMKGpT6/YMiP1+rxHFPOkvGj7AwbZo+4IG1EsUHcwUM6rOMTEV1Z4gA=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785761891; c=relaxed/simple;
+	bh=FNY7Ce3oJGc1geg0IrHDEAX/u5vtJaHKFgdO1MGS8RU=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=K1khRnfuDr1g4brBkuGWgMvMeH+8RI0kPyB6ScNe+x88VRwZeUVRhcQ0a5RAFGCb3rjvwtEAgrXo9vtprG3cPCH41TFrY5dYRrox/02BJTwpDPl3JEhIe8VMCUq6unTevuXQ8ysRxuOIDG8Da5RdgqBlKbCQH5BKPybkHefOk6k=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EXOOTXz5; arc=pass smtp.client-ip=209.85.128.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="syHy+By9"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1785760544; bh=LxZWIoQtgsbZZGLSKs+vVZvEI3iXtgx5akvMC98+KCI=;
-	h=Date:From:To:Cc:Subject;
-	b=syHy+By9Ek5v6Elo1LL1ooTebzMC/llOZ0jvAIBLyKPgUxynTvJcsOL7us8p39/dk
-	 m/bVeDLt1iWzAPsZBJvoHk0h/gLVn82hCNNvuRH9Qm6zj/iwg31fW9V4n/3e7K1zSe
-	 qmj/jh5FJiaMBQwkK0WOXOCHsRvypwlV1DsNiMs8=
-Received: from DESKTOP-AT5F202.localdomain ([183.242.244.64])
-	by newxmesmtplogicsvrszc56-0.qq.com (NewEsmtp) with SMTP
-	id 8E8B7628; Mon, 03 Aug 2026 20:35:40 +0800
-X-QQ-mid: xmsmtpt1785760540tjpm3i145
-Message-ID: <tencent_AA7E2FDA8D68E1E3430F219A8C3DAB442508@qq.com>
-X-QQ-XMAILINFO: NPa98HB0c72No9BvqbN27YUNQiLtTYejGpEOrX+eRYIaJsMAcOFblbXgPvw5in
-	 ngWfWpnqrdIyaCNcjMPBuihvpp1KBhQmqHTSLdqjRmaD6uDblKLW9h+PjKtMY7wav2wbClSu1FuL
-	 SoiRYzk0uaVAxV/8TVYONW6EB7QeBT+qYS4JDrBoiUu+0C+X8gXYcNEPHC+pTs2VZSoqsj8vFqzO
-	 JU+mXJwZ0ICpffMYuyAhjPUstUtcH1vBm9PNvoYmqvRvbiK5aMrppdNKM+KUl/G4pDygAQubYUVs
-	 PRseucb+SEv52C0BEJGk3ZR0GXCGU80aYjZOACd7SMxX/c2LFfYN1Tl8Xkrk2RxT1c074J/e+Cri
-	 jfTcn3UNNeVS6G1zjJ78T0ZU3YNx42loLU7bvj8kTTjSuxifcAmwRHpw9oCcYSPjyTHjA3VJDWSh
-	 cG0+2UyXy2mTzrYMbeg63H1H2cyqvUQqfm4/E7bOD3eA5GpW+iyu141EvvbRZ5GRw9bxnL/njJ22
-	 5opTsTvfIgSstJctpxFsFCLAQs9kWfWEZ8fkp9zIDI+AYvqHGNog9Px+EHLrnkE/PircVdM9TvBS
-	 INPFYeXzgZouCPmmStf0uxZKWL/DFqqwv/KgLti0IISYrJ9ZzT5x2pFrvS4RqA+VFcTshRO9vflS
-	 63bcCDGeYfF29yqNNuaxfo/KRojtTrtdkz/sngaa+cyuHy1R/7Cih8Ism8cFMHf2xbdx3pQ/uilp
-	 leBrmgLE5fCmrDTu1C8CPK8obnHQemZaDCWfeX6OS5iTICbwUWBhY9EPQjhIAvyLCx9V2ExnHa60
-	 sBKZoTasz3M69kAPeMGn2Qaut3nIS3ew6hTCKBBuG9Gx6kQfFRHEJvstYC4klIPKQ2I38T7DC6t9
-	 26yAsI12WTLoCa28B9YR3nMxouMi+OZsOG60g1cfAO4io8uZFs+cD1m8UO5uprdzS2k8DZpXiJgA
-	 OJtM3jupAOP+MXkiTNEcYruhqyA59MrpYlUQD0T3nyHILiU5tXzbFb1pwRXyMbZaTWBFk/nG+Pwq
-	 7ftUMdIiyR3/EgHedux5hTPusDjMC2Cgi9SJo9l9fnhnKXcEEiYiNmIYinFsy4mbHot00mww==
-X-QQ-XMRINFO: Mp0Kj//9VHAxzExpfF+O8yhSrljjwrznVg==
-Date: Mon, 3 Aug 2026 20:35:39 +0800
-From: shuo chen <1289151713@qq.com>
-To: tytso@mit.edu, jack@suse.com
-Cc: linux-ext4@vger.kernel.org
-Subject: [RESEND PATCH] jbd2:remove unnecessary finish_wait call in
- jbd2_journal_wait_updates
-X-OQ-MSGID: <anCLG_j02EFYoV3U@DESKTOP-AT5F202.localdomain>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EXOOTXz5"
+Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-81ecf499af9so44837827b3.1
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Aug 2026 05:58:08 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785761886; cv=none;
+        d=google.com; s=arc-20260327;
+        b=N672C1yQ3Ao7vBrynwk54ETBKq8D1TAQDX9cCh0zGFPRAIZ8fsDg6C7p3h19HMMoDR
+         A9BI8uh51+j0P36zaMSnTcCilH8WMA8PZoNQp5wStuqUzH8ciDnaTm6pngX7FeI/3d4Y
+         1DleI0bWtHkOt04kFx7/2AaIy5kDLDqH0feYoby37FGAmDX2QQNHwYaCCK+JAhkPEcgr
+         GGyuRBM//8YPxgZ+HkiJaqK29LK21fYqgSDpn/xOi+36pe4NaYGzKGqPT1WFPutboLAf
+         GokCPXLMPMAlapcAaHZfMHBfnmEesVdR9XwtuIjj+8IFNqS9pKIID08yRkPzWUETlnxu
+         NbYA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=FNY7Ce3oJGc1geg0IrHDEAX/u5vtJaHKFgdO1MGS8RU=;
+        fh=YpZ2nAlUl2dZtQ+KNt870LyZGABbwWnKNHkDNi6a9IY=;
+        b=dvzGFbjFoEAxN53xF3S8kVBWOSoMggh5dCW/MlcSK+FveF0mjFOsHbQ0koT3XBYNPW
+         Yy+K7XwZeK6OWh14k92Ias+OFdQREkxE0qDIJBXmTRoN/YzQLft4aCkmClt6a3CYoJIC
+         /DBUbD325ICEoAuWPvdOZvHMSigvYY9cDzcxeyqFgpcFEtwdbxd+a1A7lBAimoZZKhnm
+         +Brv4oHlwz2nq/jJZjpLzMVseSoUF0YivrBFKKPyJx/8sGOWKwktcgnDSiG0TCk/xgH4
+         T0ewKH1I+6ngfWiEAt06JD1wPfc7vRCCs3xVHRaa2nsADS41KUeJIpf1if0iFH0Bxqn8
+         ZG7A==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785761886; x=1786366686; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=FNY7Ce3oJGc1geg0IrHDEAX/u5vtJaHKFgdO1MGS8RU=;
+        b=EXOOTXz5aBXGcIubIyc/we2MjqtgiWPoP/zgRtLlF44IHAFebAZXNsJ3R3yyPHxP2l
+         /KeO4jcCkBj69Xor2c8f6XtGCcH+TWif5jgNhYh5tSpl9rAQv7stiZVt3J7qOeg50I7H
+         zyZ2gbeuULWzocdsOodKmUvqAFbqvqEd3mXeKMWAwHR8AppN0Fyli01vLYIoG7qNbPtQ
+         7FOuq3owL+e6NvCsGt6yymiSifRBslrXctyRRVeOB+33+2RC88KACgco9jOWpFmK4JYz
+         ty4bSQwRymxK71QbZBXzzw0xoykgYkaBFKgvlMAaIFKqtbbrBAILYoUD2k6QfMeKj3oq
+         nRnQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785761886; x=1786366686;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=FNY7Ce3oJGc1geg0IrHDEAX/u5vtJaHKFgdO1MGS8RU=;
+        b=sOs5v3hEF0bf6+QEbxTZJtEPSw9I5QTh1PINY7RiQgbukOYy2rojz7H1X4r1h731pC
+         7MNDDA6QBCKGKpJVGYVhgk6UVPnOSO6juZuD684u3YF4RFJ0kMDwgrgLeblM8lhD3d3p
+         8BgJ14lICqqZQY//uWtIWgWmvwV/3G+vmqrNAlLA56DEzWU63opSADXJM+EeiOu4fvXr
+         Pij/LgG3YRwflHieb5+YXO3NATywdmgpf4MwbysL74Xw3YT6uShg9Nmr3jo6pSiaTiQi
+         ZGcgrED3RZJV9Kvf9YaZJsQcUlJxZEJHD7ircD1TELzHtD3F+ucNsHUXOfeo8nCQw75I
+         IPFw==
+X-Forwarded-Encrypted: i=1; AHgh+RrO/RnyDhb8URXoKdUZJ2nbE0ZOiaUhhRSIgedSQAPfZw0T1fa0kQFc2dFiXR9KiLRhpyXKHrzo19gC@vger.kernel.org
+X-Gm-Message-State: AOJu0YxH/Dqtuuc3NYyLnQNb4C9R7cxdRIBMqK4NVnUgFDyrv/Bhmbmk
+	5C2EDZVNz7LhY2xrG3LEEBwmB9DjwiryXzefqYptvpHNO93g0GLvEZo0NtrlIU6NHb7WrzDKoG8
+	SeFwovgVb1DIleSuPpwbZAAAbOKKFgO5YYA+e8Mg=
+X-Gm-Gg: AR+sD10jQBN8tfv+s+D17P6boSH2ghB0SyN0RHzxJ1wuJz9iDfWNr0opR+YBB0YoC+E
+	nAIC+tf7w2SiLvJkiHuYPsrYUVsRwPPqkNMxZbYFJILSp5XN1i1JpRtAwnWzfvU+0k6CQDRJFBO
+	Mje4PRJnEwJ33mqh6aoAjrfw0ukKRag+qo+SA9Smqx7Y9hiLEXCFOh+qmn8tSyqM/gzXfUCz4ZM
+	wT6lUzLXKoEdC4l6GJ53+ssXIx1C9HmBqyIiUuSKNvg2XCuSWyIdH6rJVc/aLKOO1BETZBLHdA/
+	LYlakGm/BWRt0rxzPHkTO/5lKBvEj68WksO4+zCP/q8WU9EpPBkxT/swlHjxVbGavhRvOymOGwC
+	f
+X-Received: by 2002:a05:690c:368f:b0:81e:7dfa:b799 with SMTP id
+ 00721157ae682-81fd4bab2b6mr127193657b3.24.1785761886420; Mon, 03 Aug 2026
+ 05:58:06 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+References: <CAK+_RLmWU-GjYu9Z+AWnoKd__AiaWZUt=zOkx3jr2-a4Hv3KHg@mail.gmail.com>
+ <am_gplyBEyvbuHM_@archie.me> <fmdp3k4efrv44yqjmukk47ifa3rxrjvj2ndfin5lu6c3x5b5lh@5vv2yblzxy7b>
+In-Reply-To: <fmdp3k4efrv44yqjmukk47ifa3rxrjvj2ndfin5lu6c3x5b5lh@5vv2yblzxy7b>
+From: Tigran Aivazian <aivazian.tigran@gmail.com>
+Date: Mon, 3 Aug 2026 13:57:55 +0100
+X-Gm-Features: AUfX_mzj7188YY1Ej-krLaz5Tumhl2nXjtPLXZK8jysM9R3mbh5fOF21zeZkgPY
+Message-ID: <CAK+_RLkvc3b0vC7SHygRv+4xdk_mC-362T60NbtQT4Zmpp6fxg@mail.gmail.com>
+Subject: Re: ext4: spurious "orphan cleanup on readonly fs" due to remount,ro
+ failing to reset orphan_file structures
+To: Jan Kara <jack@suse.cz>
+Cc: Bagas Sanjaya <bagasdotme@gmail.com>, LKML <linux-kernel@vger.kernel.org>, 
+	Linux Filesystems Development <linux-fsdevel@vger.kernel.org>, Linux ext4 <linux-ext4@vger.kernel.org>, 
+	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>
+Content-Type: text/plain; charset="UTF-8"
 
-merge transaction and atomic_read(&transaction->t_updates) check.
-remove redundant finish_wait call.
+Hi,
 
-Signed-off-by: shuo chen <1289151713@qq.com>
----
- fs/jbd2/transaction.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+On Mon, 3 Aug 2026 at 13:36, Jan Kara <jack@suse.cz> wrote:
+> No need to, the behavior didn't change for a long time. In fact, any
+> read-only mount with orphan_file feature enabled will result in the
+> spurious "orphan cleanup on readonly fs" message. I've just checked that.
+> It is only a cosmetic problem but nobody noticed so far.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 5cc7d097b2ac..0f193d02a054 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -831,15 +831,12 @@ void jbd2_journal_wait_updates(journal_t *journal)
- 		 */
- 		transaction_t *transaction = journal->j_running_transaction;
- 
--		if (!transaction)
-+		if (!transaction || !atomic_read(&transaction->t_updates))
- 			break;
- 
- 		prepare_to_wait(&journal->j_wait_updates, &wait,
- 				TASK_UNINTERRUPTIBLE);
--		if (!atomic_read(&transaction->t_updates)) {
--			finish_wait(&journal->j_wait_updates, &wait);
--			break;
--		}
-+
- 		write_unlock(&journal->j_state_lock);
- 		schedule();
- 		finish_wait(&journal->j_wait_updates, &wait);
--- 
-2.47.3
+You say it is a cosmetic problem, but here I somewhat disagree.
+Logically, seeing "orphan cleanup on readonly fs" implies an unclean
+shutdown that caused those orphans. Consequently, I spent time
+debugging it by instrumenting scripts in
+/usr/lib/systemd/system-shutdown/ and even suspecting the NVMe
+controller caches, etc. Any sysadmin who doesn't like leaving
+"mysteries" on their Linux host would have done the same.
 
+Kind regards,
+Tigran
