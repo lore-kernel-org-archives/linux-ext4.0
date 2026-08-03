@@ -1,260 +1,209 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 452B0390C85;
-	Mon,  3 Aug 2026 08:01:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 080D8374E5C
+	for <linux-ext4@vger.kernel.org>; Mon,  3 Aug 2026 09:46:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785744085; cv=none; b=dFVPUbZGh+EoFG8iweAd9tqI7+SKL++Zntu/sBVjEy3kZX3KelWOfk3CU9NHWYrvxjTxIIjEFE5/DBiA07rFxB0q2cbCQPTqAzAG4WsBT/VNuIfSyVoiL6k4JkuFwn4FmiU5Xg4QhkHLDBmJOSxD8EueaIqDtMzVyFVNxQMKXrA=
+	t=1785750392; cv=none; b=TizAqt3CiQIOBhJukxcrtfUtSAOaEo52GbNRD2VkPdDGEWHVa7p/dL3UAOKSQ6FwCyRXndQZtOkaRlA45xaXw2/U41kzvZfGFf/GN4nuW8teQAUgtgcpdVSpWGpiewL6uD+LqZA6XG/CGDcVPcGS5rqcX9KgOeW0QVeIIi438ek=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785744085; c=relaxed/simple;
-	bh=oX0ZyXAkCAcvQ22lCDHo+CwdEB9Y13OwMAkfuo895Ds=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=bxYzUmDgYaW5ObUXV8alyx+KA7kv/JnO9sBh8mdT8xjU9a+CPwlMPkbGTx2l12OaIYL1eOd9QKFK1XOT3QB/NfHFQR2l78UQUa0KpgzA6zFAyHPqyq0vK64PZcMuwbODo1a8nLdUW+uiVqOsMcjt2EWQ4NrTyOPP8uqqgBBd42w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=ntxNSd3s; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1785750392; c=relaxed/simple;
+	bh=nds9fvhGt4uH4rN2FIEPyFOG2l8WjDjt5mhWIVGWLf0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=WorgZnUR/vVhNrWxKM8FfVi3jIRJiz0KZRnJD6OMbgzg3CoaiwGsFI646jX6LilV2CkZ3c2v+EULivE+uFsJ5E07f8pK27u7jq+TxAb1X7heHh7lcbznZOmMHVrzzoE7+9a4Uhc9enazt6rCyZqS8Cy8BYmoBI/wVGumy9NxPpI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=MAXFWv45; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=YSO0viBb; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=v0KreYqg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=AqiP9g+6; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="ntxNSd3s"
-Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 672LlobN223138;
-	Mon, 3 Aug 2026 08:00:59 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pp1; bh=42GWTB
-	3NcWvfnxOcbHiWBnLyZbnmaKmM6GdZWBW/MQQ=; b=ntxNSd3srOGc1zVxxBbWO8
-	7mn4FSrXiO3OSMowQOqK778MVXYYSyhRQYeBPpglCDX5RDWrHCxlVpdfeI07rjvx
-	xCoPAj5Ql1H0LhhOFOYb8ffPPSdVXVzvDHIPO6tOGwKv4gGd4ApwAQmsXwzSYLsA
-	91CYLEZVV5/NejjSQIQd/lFy4l2L7ua1++9MZHb9L5peyIW+AUidJByy6toFR+Ec
-	dpE4VOPvqE+1Owmp76Z5P77CnFCywuGYVpJCi8EPyV/QRbTC+kxtOCd5UhmijGpF
-	rrE11E9KaXRDPPRKvFrDFN9zvtRuUCwG96z9VJye4COpv+RXl63H+V33mpCGD1BQ
-	==
-Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs8a3qk58-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 08:00:58 +0000 (GMT)
-Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6737uOg8001363;
-	Mon, 3 Aug 2026 08:00:57 GMT
-Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
-	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsugvvet9-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 08:00:56 +0000 (GMT)
-Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
-	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 67380s2C35193334
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 3 Aug 2026 08:00:54 GMT
-Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id B091D20040;
-	Mon,  3 Aug 2026 08:00:54 +0000 (GMT)
-Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id A8F0E2004D;
-	Mon,  3 Aug 2026 08:00:50 +0000 (GMT)
-Received: from [9.39.27.127] (unknown [9.39.27.127])
-	by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Mon,  3 Aug 2026 08:00:50 +0000 (GMT)
-Message-ID: <17e787ea-7e0b-4887-b736-4e2f3dbeb245@linux.ibm.com>
-Date: Mon, 3 Aug 2026 13:30:48 +0530
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="MAXFWv45";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="YSO0viBb";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="v0KreYqg";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="AqiP9g+6"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 044AD41EE;
+	Mon,  3 Aug 2026 09:46:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785750385; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UJKeJF1jb6lLdiF+6ljbdL9Jye3GABZBUXKqkAYvdFc=;
+	b=MAXFWv45vqqvfOHNsxgccea5cIhSrdqIs6ONOPL+AQE7NfAoKtqWPTaHufD5f5DLZYquQU
+	lCtPYBEw51Z9TVI/dVF5mcwc0ZUFdqFIjsEnu5NjoHHVDX3n12UYhprtviGOU6vkAt9C8x
+	sx8K37FzzQzRQwisgAxt+Vf4ORXvEdE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785750385;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UJKeJF1jb6lLdiF+6ljbdL9Jye3GABZBUXKqkAYvdFc=;
+	b=YSO0viBbeMAhXM9hOTn5qEg6I2iePk6xhDtOBlClEBfMsnp5Re+VQArD09q//FUW1rQ/nt
+	AkUV0IyOLf6j4oAg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=v0KreYqg;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=AqiP9g+6
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785750381; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UJKeJF1jb6lLdiF+6ljbdL9Jye3GABZBUXKqkAYvdFc=;
+	b=v0KreYqgJdv2FtxRXLfKqq7bzb23ORqAdvjMtRgodQpNvlzfGtdH47Vh5duls83nCseY6f
+	hx+NL9X3Lr4Z3qYDjuwRFwrdDCIAwL7B8Eg5kRW+qwXfFeN2NIpKrvvSrkzbrYWJg7Lp38
+	CCSjyC875X3hN0qWYDQvbqxM88Ep2tc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785750381;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=UJKeJF1jb6lLdiF+6ljbdL9Jye3GABZBUXKqkAYvdFc=;
+	b=AqiP9g+6LZUGpgKTgvnPutrCsDSTe6fCjfvXNLKQb92YDPrV6s8mcZT7FsS4zBcKj0+Ltg
+	++Zg5Xqh+mddwBBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id ED43A779C1;
+	Mon,  3 Aug 2026 09:46:20 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id NqrnOWxjcGonLAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 03 Aug 2026 09:46:20 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 69ABBA13A8; Mon, 03 Aug 2026 11:08:54 +0200 (CEST)
+Date: Mon, 3 Aug 2026 11:08:54 +0200
+From: Jan Kara <jack@suse.cz>
+To: Matthias Goergens <matthias.goergens@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz, 
+	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, ojaswin@linux.ibm.com, 
+	syzbot+e68dbebd9617a9250e8d@syzkaller.appspotmail.com, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: stop retrying saturated xattr cache entries
+Message-ID: <qrkmgvn7wszo75li5a46zpbsi7hw6evw36zx6es2vllapovuxy@vukdtamq3t7k>
+References: <20260802065941.1726052-1-matthias.goergens@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: don't enable DAX on new encrypted files
-Content-Language: en-GB
-To: Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Ritesh Harjani
- <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>, Ira Weiny <iweiny@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-kernel@vger.kernel.org,
-        stable@vger.kernel.org
-References: <20260730175212.36923-1-ebiggers@kernel.org>
-From: Disha Goel <disgoel@linux.ibm.com>
-In-Reply-To: <20260730175212.36923-1-ebiggers@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Authority-Analysis: v=2.4 cv=E6P9Y6dl c=1 sm=1 tr=0 ts=6a704aba cx=c_pps
- a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
- a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=VwQbUJbxAAAA:8
- a=VnNF1IyMAAAA:8 a=ovQU41l7dhj9IMd-MlgA:9 a=QEXdDO2ut3YA:10
-X-Proofpoint-ORIG-GUID: b79nUqRkScouH3xfu6JhLmjGCmnklbvZ
-X-Proofpoint-GUID: 2z1O-lX0C4CUH2UlfhrSL0VakxhqMogu
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDA2OCBTYWx0ZWRfXw8ABikuV8BfK
- XcS1/+zYfb6uAovv5Gnb1404YgLMKDzde8Z32ZevKrf1U62vCAyYqtGRfRZgpxsoyP2XsCUm6cp
- u/fIMno0CQFf/iACaphhSCfd6eMYBa4=
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDA2OCBTYWx0ZWRfX/F1Yo/aj7dgw
- i0p6jkjgIMCtPlgxwtqcTrOZODsGZT3rS4LQ15Wk94jN/k84vL9B5vL7i1EYqcbiR4+PuD8TFhB
- wKJYkDkCC3sVi5OK0nNqINSJt3a8OsXI8Kagjo7KMbEJ6SXACYNRUPaH88tESWbLOQqnL6u6eCo
- cYIdE4ZhZnlJaduJo/Ao6XrqSDVgwQXpkTCQnh3fGFeHK5wK/H2B0xedA3h6q2HW2QvBjoSSm32
- 1EDoGR9Nmju+BI56FGlS44UV35x5+w0ipFtDXqs+Ymh8s0kv2b1la9nkKElCOEquJMHARh3LMTl
- zEM+6oKKK1cEHF6Lq0nIDF5XabLMUW4mJLjucb9eOJSAMpaqgxFtPL+lJYqNnlP9o1uiO69rU+3
- zw+uYuAdSNBLcg4PkIwlpvxn3GIcb2dVxel0KUGS6pSH1nORxxrwHfMisoCLgiKxA1MARE6/r72
- Xwl2RN83Q4yzhNwf7eA==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-02_06,2026-07-30_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- bulkscore=0 clxscore=1011 lowpriorityscore=0 priorityscore=1501
- suspectscore=0 adultscore=0 spamscore=0 malwarescore=0 impostorscore=0
- phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
- definitions=main-2608030068
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260802065941.1726052-1-matthias.goergens@gmail.com>
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	URIBL_BLOCKED(0.00)[suse.cz:email,suse.cz:dkim,appspotmail.com:email,syzkaller.appspot.com:url,suse.com:email];
+	ARC_NA(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[e68dbebd9617a9250e8d];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,suse.cz,dilger.ca,linux.alibaba.com,gmail.com,huawei.com,linux.ibm.com,syzkaller.appspotmail.com];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[appspotmail.com:email,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:dkim,syzkaller.appspot.com:url]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Rspamd-Queue-Id: 044AD41EE
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
-On 30/07/26 11:22 pm, Eric Biggers wrote:
-> Currently, when a new encrypted regular file is created, the call to
-> ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
-> before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
-> filesystem is mounted with "-o dax=always".
+On Sun 02-08-26 14:59:41, Matthias Goergens wrote:
+> ext4_xattr_block_set() retries when a cache entry selected for reuse
+> has a saturated reference count after taking the buffer lock. The retry
+> returns to the mbcache lookup without making that entry ineligible, so
+> it can select the same unusable entry indefinitely. A task spinning
+> there can hold the parent directory's i_rwsem and leave concurrent
+> rmdir callers blocked.
 > 
-> EXT4_INODE_ENCRYPT then actually gets set a bit later in
-> __ext4_new_inode(), when it calls fscrypt_set_context() which calls
-> ext4_set_context().  ext4_set_context() sets EXT4_INODE_ENCRYPT and
-> calls ext4_set_inode_flags(inode, init=false) to set S_ENCRYPTED too.
+> Normally a reusable entry has a reference count below
+> EXT4_XATTR_REFCOUNT_MAX because the count and MBE_REUSABLE_B are
+> updated under the same buffer lock. A corrupted filesystem can violate
+> that invariant. The syzbot reproducer reports allocator and xattr
+> corruption before triggering this retry loop.
 > 
-> This was intended to clear S_DAX as well.  However, this was broken by
-> commit 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load").  This
-> causes data written to the file to bypass encryption, also causing
-> xfstests failures such as generic/548 (when "-o dax=always" is used).
+> Check the untrusted on-disk count before incrementing it, avoiding
+> overflow, and clear MBE_REUSABLE_B when it is already saturated. The
+> next lookup then skips the entry that was just proven unusable. This
+> mirrors the normal transition at EXT4_XATTR_REFCOUNT_MAX; the release
+> path marks the entry reusable again on the exact 1024-to-1023
+> transition.
 > 
-> Fix this by simplifying the flow by making __ext4_new_inode() set
-> EXT4_INODE_ENCRYPT earlier.  This makes it take effect in
-> ext4_set_inode_flags(inode, init=true), making S_DAX never be set.
+> Using the same QEMU harness and guest parameters, current unpatched
+> Linux hung in 6 of 8 420-second trials with the do_rmdir signature;
+> representative NMI backtraces caught the owner spinning in
+> ext4_xattr_block_set(). The patched kernel completed 28 of 28 trials
+> without a hung-task report; the final twelve trials exercised the
+> reviewed overflow-safe form of the change. syzbot's patch testing also
+> completed without reproducing the hang.
 > 
-> Similarly, make EXT4_STATE_MAY_INLINE_DATA never be set in the first
-> place on new encrypted inodes.  Then it doesn't need to be cleared.
-> 
-> As a result of these simplifications, ext4_set_context() no longer needs
-> to change inode flags or state when 'handle != NULL'.  Remove that too.
-> 
-> Reported-by: Disha Goel <disgoel@linux.ibm.com>
-> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Closes: https://lore.kernel.org/r/20260723085648.1500357-1-ojaswin@linux.ibm.com
-> Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
+> Reported-and-tested-by: syzbot+e68dbebd9617a9250e8d@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=e68dbebd9617a9250e8d
+> Fixes: 65f8b80053a1 ("ext4: fix race when reusing xattr blocks")
 > Cc: stable@vger.kernel.org
-> Signed-off-by: Eric Biggers <ebiggers@kernel.org>
+> Signed-off-by: Matthias Goergens <matthias.goergens@gmail.com>
 
-I have tested on a -o dax=always ext4 filesystem on ppc64le with the 
-following xfstests configuration. All failing encryption tests in the
-generic group now pass.
+Looks good. Feel free to add:
 
-MOUNT_OPTIONS="-o block_validity,dax"
-MKFS_OPTIONS="-b 65536"
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Feel free to add
-Tested-by: Disha Goel <disgoel@linux.ibm.com>
+								Honza
 
 > ---
->   fs/ext4/crypto.c | 40 ++++++++++++++++++++--------------------
->   fs/ext4/ialloc.c |  4 ++++
->   2 files changed, 24 insertions(+), 20 deletions(-)
+>  fs/ext4/xattr.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
-> index f41f320f4437..3971986de028 100644
-> --- a/fs/ext4/crypto.c
-> +++ b/fs/ext4/crypto.c
-> @@ -144,7 +144,13 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->   	if (inode->i_ino == EXT4_ROOT_INO)
->   		return -EPERM;
->   
-> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
-> +	/*
-> +	 * For new encrypted inodes, S_DAX is never set in the first place.
-> +	 *
-> +	 * For existing inodes, this is called only on empty directories.  ext4
-> +	 * never sets S_DAX on directories.
-> +	 */
-> +	if (WARN_ON_ONCE(IS_DAX(inode)))
->   		return -EINVAL;
->   
->   	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
-> @@ -163,6 +169,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->   	 */
->   
->   	if (handle) {
-> +		/*
-> +		 * __ext4_new_inode() should have already set the encrypt flag
-> +		 * on the inode and avoided enabling inline data.
-> +		 */
-> +		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
-> +			return -EINVAL;
-> +		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
-> +			return -EINVAL;
->   		/*
->   		 * Since the inode is new it is ok to pass the
->   		 * XATTR_CREATE flag. This is necessary to match the
-> @@ -170,21 +184,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->   		 * function with the credits allocated for the new
->   		 * inode.
->   		 */
-> -		res = ext4_xattr_set_handle(handle, inode,
-> -					    EXT4_XATTR_INDEX_ENCRYPTION,
-> -					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> -					    ctx, len, XATTR_CREATE);
-> -		if (!res) {
-> -			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -			ext4_clear_inode_state(inode,
-> -					EXT4_STATE_MAY_INLINE_DATA);
-> -			/*
-> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -			 * S_DAX may be disabled
-> -			 */
-> -			ext4_set_inode_flags(inode, false);
-> -		}
-> -		return res;
-> +		return ext4_xattr_set_handle(handle, inode,
-> +					     EXT4_XATTR_INDEX_ENCRYPTION,
-> +					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
-> +					     ctx, len, XATTR_CREATE);
->   	}
->   
->   	res = dquot_initialize(inode);
-> @@ -205,10 +208,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->   				    ctx, len, 0);
->   	if (!res) {
->   		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -		/*
-> -		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -		 * S_DAX may be disabled
-> -		 */
-> +		/* Update inode->i_flags to set S_ENCRYPTED. */
->   		ext4_set_inode_flags(inode, false);
->   		res = ext4_mark_inode_dirty(handle, inode);
->   		if (res)
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index a40cb27f8116..a5831fc536db 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->   		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
->   		if (err)
->   			goto out;
-> +		if (encrypt)
-> +			i_flags |= EXT4_ENCRYPT_FL;
->   	}
->   
->   	err = dquot_initialize(inode);
-> @@ -1306,6 +1308,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
->   	ei->i_extra_isize = sbi->s_want_extra_isize;
->   	ei->i_inline_off = 0;
->   	if (ext4_has_feature_inline_data(sb) &&
-> +	    /* Encrypted inodes cannot have inline data */
-> +	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
->   	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
->   		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->   	ret = inode;
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 982a1f831e228..3c1bb547b2f54 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2075,12 +2075,13 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  				 * stable so we can check the additional
+>  				 * reference fits.
+>  				 */
+> -				ref = le32_to_cpu(BHDR(new_bh)->h_refcount) + 1;
+> -				if (ref > EXT4_XATTR_REFCOUNT_MAX) {
+> +				ref = le32_to_cpu(BHDR(new_bh)->h_refcount);
+> +				if (ref >= EXT4_XATTR_REFCOUNT_MAX) {
+>  					/*
+>  					 * Undo everything and check mbcache
+>  					 * again.
+>  					 */
+> +					clear_bit(MBE_REUSABLE_B, &ce->e_flags);
+>  					unlock_buffer(new_bh);
+>  					dquot_free_block(inode,
+>  							 EXT4_C2B(EXT4_SB(sb),
+> @@ -2091,6 +2092,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  					new_bh = NULL;
+>  					goto inserted;
+>  				}
+> +				ref++;
+>  				BHDR(new_bh)->h_refcount = cpu_to_le32(ref);
+>  				if (ref == EXT4_XATTR_REFCOUNT_MAX)
+>  					clear_bit(MBE_REUSABLE_B, &ce->e_flags);
+> -- 
+> 2.55.0
 > 
-> base-commit: f5098b6bae761e346ebcd9da7f95622c04733cff
-
 -- 
-Regards,
-Disha
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
