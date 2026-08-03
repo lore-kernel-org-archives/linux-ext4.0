@@ -1,283 +1,236 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E40439A05D;
-	Mon,  3 Aug 2026 06:35:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEA3E29B781;
+	Mon,  3 Aug 2026 06:52:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785738952; cv=none; b=LnBVM5BoK06L5V10km4cXY9uIDy5lDKhfYwmYpLFGTUoBbSDWGztZ9DCWtPCEoFnEJeizz1kC847jfu2tV3njBcsbdSk9WoAvsdP59XPO7MMy3+C3x6xV8WT4Xdd9yhP6DQEnEoLTrjq3Ke2hXlMLcw+ii8KBVQdzTPtdID6mP8=
+	t=1785739971; cv=none; b=frLtAuh/kz+S8PCBHDeWdspHlieARyY6MjhIsUKzUR3jlqVIw2VM441kAYTSMsTGk2kiS0frnIsNBNZIscOnGxAllt/Ah6+pTX2Hg6Y+GDlQX71PoS6juoc1TjAyvT8c9aB+QU10WDTAuDYYFzLhyKcyjjI07+XJhhMa0H7cW2k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785738952; c=relaxed/simple;
-	bh=b7GhfLIgunin+XrKbAWb3E/EVQU56E1j2UsGr2I2hQU=;
+	s=arc-20240116; t=1785739971; c=relaxed/simple;
+	bh=+6D6FvHLiZBtcUSVDACatK8sLZE+1X/0ffZ3NACDjGc=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=uhDgf7tYpP6pmLsgpElILRN3pMxamvZKFryfPDBClOajpif2KhssnNTuQWuBwhicKq9/TRUNFgW7QvwPvT0TBYiS2JIKQqK2L/64t8izENWlAX3IAGMZZFJOMj+uUqpY2sIKNd9+f1tkkFuRbUkQ7ta6UlPtd1OYH3gf7jAZmJQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=WSlt4dv7; arc=none smtp.client-ip=148.163.156.1
+	 Content-Type:Content-Disposition:In-Reply-To; b=i3xsO1kE9lXflt3Hy1fLFRQdDray7JvbBS1y1ezcjqkDVHEX9i5kLhBSg6XVysWBWrrsKne48RI3SEiYOZWcf2qm4lbwDMvJrYeLuisbPfFhk0/+69B7MAyYR9cCJR0QVF6WRKpDy1NjzBjZnEXEWzNMHG372OLp2U2Y+MhA2u4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=m0BEuVIx; arc=none smtp.client-ip=148.163.158.5
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="WSlt4dv7"
-Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 672LlTRA2563836;
-	Mon, 3 Aug 2026 06:30:07 GMT
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="m0BEuVIx"
+Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 672Lmise169710;
+	Mon, 3 Aug 2026 06:52:45 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=PVf4BiR/GDsrpYxxKaTjnyJAceg/Jv
-	Eb8yHgw3/K0wY=; b=WSlt4dv7uTtwlQSVIA+6Ohoi9r0MLxiEnM5dBeulVORfiJ
-	4RSzttDSXJ9fml5JUayGwASmS2QTC9zwKJSIWgpgQHBLvbPbkHg3MRA3MQIpXUr+
-	gmGMAighuxeGeBKK1t96iwhvDnun+uNm3kAEUGOWHxS4CPo8jMr5FTTveRc8Yh8v
-	dhYpa49m5zSdjbGE9tUjETQmuYYCqM5pw8BW8nc4D6D09KGxByfBBP4cYbNDgNie
-	RYCZoeCeAvrSlvq8v4mK9hKkQWZVVDbak2KZFl5akmSjlE5xis+XyDigXMwQddzI
-	JwrjgvZ7ahlCG2KTcpIMoh1QJMVBOvs25PZwJ6ug==
-Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs8fqf5mh-1
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=v2PE9o
+	Ykh7wWWZl9+/fsfOS9nSNvWIR2toJskkEkllU=; b=m0BEuVIxA5MgePnblBEb7X
+	nbjLWF2tEHblawLfn8HbadOmu7AuruQOJ5xvF/jdsIQ4DQFzELXtVpfcmMBgKFBP
+	ScdaFI/GvsWZmaHWVkl0H+n7fxFOmBjmNtxQPptsxTm3ZAeVgFeu5LpBLXGHmQzi
+	d/+lxkAPJcLXpR12xW5d+Jnfn2EBsie1o3aeVwsb19p9s/vtcGQS2O8ZYJ4L4F/d
+	cEHTrYY7+xGftD8j1oollMFB3ftbZhVEANLG4CJKs+qUb2CoGJI12W2gVTq1tVCI
+	kyQ2jJ32ZnFJlEbobYBxcBcdm4srokpkHP3B+CeoPv4wR/YQB2+Nb3GRBl7AI2Iw
+	==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs77fy517-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 06:30:06 +0000 (GMT)
-Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6736QL5f024714;
-	Mon, 3 Aug 2026 06:30:05 GMT
-Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
-	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsugvv4wa-1
+	Mon, 03 Aug 2026 06:52:44 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6736fGwF002085;
+	Mon, 3 Aug 2026 06:52:43 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fswtybved-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 06:30:05 +0000 (GMT)
+	Mon, 03 Aug 2026 06:52:43 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6736U3eJ34996572
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6736qe5B30278018
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 3 Aug 2026 06:30:03 GMT
+	Mon, 3 Aug 2026 06:52:40 GMT
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id EE3912004E;
-	Mon,  3 Aug 2026 06:30:02 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 382F02004B;
+	Mon,  3 Aug 2026 06:52:40 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 4C0EB20040;
-	Mon,  3 Aug 2026 06:30:00 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 3979B20040;
+	Mon,  3 Aug 2026 06:52:38 +0000 (GMT)
 Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.123.13.2])
 	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Mon,  3 Aug 2026 06:30:00 +0000 (GMT)
-Date: Mon, 3 Aug 2026 11:59:57 +0530
+	Mon,  3 Aug 2026 06:52:38 +0000 (GMT)
+Date: Mon, 3 Aug 2026 12:22:35 +0530
 From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
-        yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
-        yangerkun@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH 2/2] ext4: protect WRITE_ZEROES written extents with
- orphan list
-Message-ID: <anA1Zbwr4yXcK12E@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260729085918.3336221-1-yi.zhang@huaweicloud.com>
- <20260729085918.3336221-3-yi.zhang@huaweicloud.com>
- <amyP2KXXgLUC0_aC@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
- <c02696f0-308f-4bee-b7b3-95d702fa441a@huaweicloud.com>
+To: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Christophe Leroy <christophe.leroy@csgroup.eu>,
+        Madhavan Srinivasan <maddy@linux.ibm.com>
+Subject: Re: [BUG] ext4: NULL/invalid pointer dereference in
+ ext4_writepages() during generic/039
+Message-ID: <anA6s9L-cpsifqgU@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <9ac0524e-0644-4fba-a256-c5b7fe333a3e@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <c02696f0-308f-4bee-b7b3-95d702fa441a@huaweicloud.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <9ac0524e-0644-4fba-a256-c5b7fe333a3e@linux.ibm.com>
 X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: fg75q4ZaU6HtfC4zWmxXWRPiC2rOwAlH
-X-Proofpoint-ORIG-GUID: 3zMWp_CH48Jj8z5v51Pm-37RYaIH_yiO
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDA1NCBTYWx0ZWRfX2dNcKFzvI9Il
- 0wLjYWrx8mv/2Ji60ZpGE9/iDDcJbSOLOwDgVeBD3vEEqF/ljE0rRtO6JyHkXwRP3Ro1M5LZvfJ
- mwLbmYMs5FYXQRogNU3ML1UKgcmIr44=
-X-Authority-Analysis: v=2.4 cv=K8cS2SWI c=1 sm=1 tr=0 ts=6a70356e cx=c_pps
- a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
- a=kj9zAlcOel0A:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=VwQbUJbxAAAA:8
- a=i0EeH86SAAAA:8 a=VnNF1IyMAAAA:8 a=iFGIIU8KwMnqUIUZtnYA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDA1NCBTYWx0ZWRfX6PBLvQr6v3wN
- 6jzEItAi7J6XzwX4W60OuFHFt8/GjS5tiwBIfI5Q0EJa5x3ErtJFesRE3C16090pnWpgTJyfvzg
- /X0B2hhUQn3y/Fgx8iI8oIpFq1pUJ4vp/wyQN9GjL8aCbsSADOcbkmxZ87968xKJoW/p0AX2Is2
- 98nDuEqlCA3tv5J1xUguvdn7lv6/v5IdJYn4jijsLb7Nhc36XYuRFe0rliuFGb+mA5fkoY6fG0c
- XTvKOEPnJXiPM0m1DK/WNO8GvNy0TLmUtR3AgpTK38gBmzUL1Xs5xWX5jleNPtLi0u66JbAw4EI
- W1AhIp/81A4/nnOZeKGmQz+XWsx5U640k+SWPXVZMHXfWHq4oeawl13JbxF1S2wCYGqsZs6LO/J
- KGC6HwWLB5DE+7oZOWasWr1Vo/BQDL9W3mcVVvy9BOrdQNzLUuPDpxTeG+916tU/d4WzoDJsNa+
- Is3PC7qKHCGMrPvYRMA==
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDA1OCBTYWx0ZWRfX0zcTT6GzEmED
+ x+4ehuZDyo3URtoOQapzfvDLFPRnswy4Y4hIzwk+7MlonbzSBdXP5N0dA9SsD2SVfo5639EGhEj
+ BSiCRKoKnLPDKp4wT4cGvL5oQOvIm326sUAOmfuclRdbtn4UHDDq5umUNFzuHMaX0HUoJctlbXG
+ YfAupSdiyM4R+dq8Q6RbSzTceXKXHLuUAXC0z4V8kD1OVjaUuK49EGmYMojyUwPcRdHVwal1eXy
+ LcMbuhNrnZ9ISfSvwyZ62ZjxW8LYYjONEOJ1hv3/XnMOe7R76MaSioE4/4TgPbNawnehfhMou11
+ 39NfsPmklFa5UPPw7dCJe8M7ECbkygXWAHdelyQtPJTBX66+Z5/hmRlEm6RE0z0Ah2Q+NiIx/vv
+ hXmanIblPSUkfz5I5EAHVlcL5RcIR3yjS9jquF4rTsjKz0GDcOFsaatOPI0Fbpu/MJzCyHspjpy
+ CuveL8ZEiCW2dcYPbJw==
+X-Authority-Analysis: v=2.4 cv=WIFPmHsR c=1 sm=1 tr=0 ts=6a703abc cx=c_pps
+ a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+ a=8nJEP1OIZ-IA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=VnNF1IyMAAAA:8
+ a=D3AbGSsO8w2ewviXKQsA:9 a=3ZKOabzyN94A:10 a=wPNLvfGTeEIA:10
+X-Proofpoint-GUID: DIfjSsP4mmjP9bwY5pVfQ66oDcSAe5UF
+X-Proofpoint-ORIG-GUID: DIfjSsP4mmjP9bwY5pVfQ66oDcSAe5UF
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDA1OCBTYWx0ZWRfX9oGqbucMKILz
+ uaf06g0esp6jE+LHfvK9JZrkb9d/7FVILgCv+TYl6+7SyRZ3wuwDfoXq8l5CUHX73ut6VmtbLK4
+ kyEAX8AXzUYtW8ju7MAEEQgaeTzLTM8=
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
  definitions=2026-08-02_06,2026-07-30_01,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1015 spamscore=0 impostorscore=0 bulkscore=0 priorityscore=1501
- lowpriorityscore=0 malwarescore=0 phishscore=0 suspectscore=0 adultscore=0
+ spamscore=0 lowpriorityscore=0 priorityscore=1501 phishscore=0 malwarescore=0
+ suspectscore=0 clxscore=1011 impostorscore=0 bulkscore=0 adultscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608030054
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608030058
 
-On Mon, Aug 03, 2026 at 09:31:53AM +0800, Zhang Yi wrote:
-> On 7/31/2026 8:06 PM, Ojaswin Mujoo wrote:
-> > On Wed, Jul 29, 2026 at 04:59:18PM +0800, Zhang Yi wrote:
-> >> From: Zhang Yi <yi.zhang@huawei.com>
-> >>
-> >> In ext4_alloc_file_blocks(), the WRITE_ZEROES path converts unwritten
-> >> extents to written in one transaction, while i_disksize is updated to
-> >> cover them only in a later transaction. A crash in between leaves
-> >> written extents beyond i_disksize on disk, which fsck will complain
-> >> about.
-> >>
-> >> To fix this, add the inode to the orphan list in the same handle that
-> >> does the conversion, and remove it once i_disksize has caught up.
-> >> Also add a sanity check to ensure conversion does not extend beyond EOF.
-> >>
-> >> Since ext4_alloc_file_blocks() is called from the fallocate() path,
-> >> partial allocation is safe. On partial conversion failure, advance
-> >> i_disksize only up to the boundary of successfully converted blocks, so
-> >> that orphan cleanup sees a consistent state. Document this behavior in
-> >> the function comment.
-> > 
-> > Hi Yi,
-> > 
-> > Look good,
-> > 
-> > Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+On Mon, Aug 03, 2026 at 10:17:35AM +0530, Venkat Rao Bagalkote wrote:
+> Hi,
 > 
-> Hi, Ojaswin,
+> I am  seeing a reproducible kernel crash while running xfstests generic/039
+> on powerpc.
 > 
-> Thank you for the review!
+> The crash happens during ext4 journal recovery while mounting the
+> filesystem. The fault occurs inside ext4_writepages() and appears to
+> dereference a userspace-looking address.
 > 
-> > 
-> > Just a small question below:
-> >>
-> >> Reported-by: Jan Kara <jack@suse.cz>
-> >> Closes: https://lore.kernel.org/linux-ext4/3f6ao5amv7glbgigndtegcucgo3n34ij3lau6l3da3hgdxgn3v@ev66wv3r5umt/
-> >> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
-> >> Cc: stable@vger.kernel.org
-> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> >> ---
-> >>  fs/ext4/extents.c | 78 ++++++++++++++++++++++++++++++++++++++++++-----
-> >>  1 file changed, 70 insertions(+), 8 deletions(-)
-> >>
-> >> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> >> index 1ab1a6e2ed83..a3dde7ba0d23 100644
-> >> --- a/fs/ext4/extents.c
-> >> +++ b/fs/ext4/extents.c
-> >> @@ -4571,6 +4571,22 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
-> >>  	return err;
-> >>  }
-> >>  
-> >> +/*
-> >> + * Pre-allocate blocks for the range [@offset, @offset + @len). Allocated
-> >> + * blocks are marked as unwritten by default. If EXT4_GET_BLOCKS_ZERO is
-> >> + * set, the allocated blocks are zeroed on disk and their extents are
-> >> + * converted to written state.
-> >> + *
-> >> + * When @new_size is nonzero, the caller intends to extend the file, and
-> >> + * the file size should be updated to the end of the allocated blocks.
-> >> + *
-> >> + * Allocation may partially succeed due to some non-fatal issues. In that
-> >> + * case, i_disksize (and i_size) is advanced up to the successfully
-> >> + * processed portion of the range.
-> >> + *
-> >> + * Return 0 on success, or a negative error code on failure or partial
-> >> + * failure.
-> >> + */
-> >>  static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
-> >>  				  loff_t new_size, int flags)
-> >>  {
-> >> @@ -4585,6 +4601,7 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
-> >>  	loff_t epos = 0, old_size = i_size_read(inode);
-> >>  	unsigned int blkbits = inode->i_blkbits;
-> >>  	bool alloc_zero = false;
-> >> +	bool orphan = false;
-> >>  
-> >>  	BUG_ON(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS));
-> >>  	map.m_lblk = offset >> blkbits;
-> >> @@ -4659,19 +4676,49 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
-> >>  
-> >>  		if (alloc_zero &&
-> >>  		    (map.m_flags & (EXT4_MAP_MAPPED | EXT4_MAP_UNWRITTEN))) {
-> >> +			ext4_lblk_t converted;
-> >> +
-> >> +			WARN_ON_ONCE(map.m_lblk + map.m_len >
-> >> +				EXT4_B_TO_LBLK(inode, new_size ?: old_size));
-> >> +
-> >>  			ret = ext4_issue_zeroout(inode, map.m_lblk, map.m_pblk,
-> >>  						 map.m_len);
-> >> -			if (likely(!ret))
-> >> -				ret = ext4_convert_unwritten_extents(NULL,
-> >> -					inode, (loff_t)map.m_lblk << blkbits,
-> >> -					(loff_t)map.m_len << blkbits, NULL);
-> >> -			if (ret)
-> >> +			if (unlikely(ret))
-> >>  				break;
-> >> +
-> >> +			handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
-> >> +						    credits);
-> >> +			if (IS_ERR(handle)) {
-> >> +				ret = PTR_ERR(handle);
-> >> +				break;
-> >> +			}
-> >> +
-> >> +			ret = ext4_convert_unwritten_extents(handle,
-> >> +					inode, (loff_t)map.m_lblk << blkbits,
-> >> +					(loff_t)map.m_len << blkbits,
-> >> +					&converted);
-> >> +			if (ret)
-> >> +				map.m_len = converted;
-> >> +
-> >> +			/*
-> >> +			 * If blocks beyond i_disksize are converted, add
-> >> +			 * the inode to the orphan list and advance the epos.
-> >> +			 */
-> >> +			if (new_size && converted) {
-> >> +				ret2 = ext4_orphan_add(handle, inode);
-> >> +				ret = ret ? ret : ret2;
-> >> +				orphan = true;
-> >> +			}
-> >> +
-> >> +			ret3 = ext4_journal_stop(handle);
-> >> +			ret = ret ? ret : ret3;
-> >>  		}
-> >>  
-> >>  		map.m_lblk += map.m_len;
-> >>  		map.m_len = len_lblk = len_lblk - map.m_len;
-> >>  		epos = EXT4_LBLK_TO_B(inode, map.m_lblk);
-> >> +		if (ret)
-> >> +			break;
-> >>  	}
-> >>  
-> >>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> >> @@ -4687,11 +4734,23 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
-> >>  	if (epos > new_size)
-> >>  		epos = new_size;
-> >>  
-> >> -	handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
-> >> -	if (IS_ERR(handle))
-> >> -		return ret ? ret : PTR_ERR(handle);
-> >> +	handle = ext4_journal_start(inode, EXT4_HT_MISC, 2);
-> >> +	if (IS_ERR(handle)) {
-> >> +		/*
-> >> +		 * The conversion has successfully completed. Not much to
-> >> +		 * do with the error here so just cleanup the orphan list
-> >> +		 * and hope for the best.
-> >> +		 */
-> >> +		if (orphan && inode->i_nlink)
-> >> +			ext4_orphan_del(NULL, inode);
-> >> +		ret2 = PTR_ERR(handle);
-> >> +		goto out;
-> >> +	}
-> >>  
-> >>  	ext4_update_inode_size(inode, epos);
-> >> +	if (orphan && inode->i_nlink)
-> >> +		ext4_orphan_del(handle, inode);
-> >> +
-> > 
-> > So I believe the i_nlink check is incase the inode is already at i_nlink
-> > = 0 before the fallocate() was called and hence mostly already on the
-> > orphan list. We need to skip deletion from the list as inode eviction
-> > will handle cleaning it up, right?
+> Test environment
+> ----------------
+> Kernel:
+>   7.2.0-rc5-next-20260731
 > 
-> Yes, after ext4_evict_inode() has reclaimed all the file blocks, the
-> inode will be cleared from the orphan list.
+> Architecture:
+>   powerpc64le
+> 
+> Platform:
+>   IBM Power9 (pSeries)
+> 
+> Machine:
+>   IBM,8375-42A
+>   FW950.80 (VL950_131)
+> 
+> Config highlights:
+>   PAGE_SIZE=64K
+>   MMU=Hash
+>   PREEMPTLAZY=y
+> 
+> Workload
+> --------
+> xfstests generic/039
+> 
+> Log excerpt:
+>   run fstests generic/039 at 2026-08-03 00:22:44
+> 
+> Crash
+> -----
+> [  615.063689] Kernel attempted to read user page (fe73f0000) - exploit
+> attempt? (uid: 0)
+> [  615.063714] BUG: Unable to handle kernel data access on read at
+> 0xfe73f0000
+> [  615.063723] Faulting instruction address: 0xc008000015b0ed24
+> [  615.063731] Oops: Kernel access of bad area, sig: 11 [#1]
+> 
+> The faulting instruction is:
+> 
+>   ext4_writepages+0x12c/0x3a0
+> 
+> Relevant call trace:
+> 
+>   ext4_writepages
+>   do_writepages
+>   __writeback_single_inode
+>   writeback_single_inode
+>   write_inode_now
+>   iput_final
+>   ext4_fc_replay
+>   do_one_pass
+>   jbd2_journal_recover
+>   jbd2_journal_load
+>   ext4_load_journal
+>   ext4_load_and_init_journal
+>   __ext4_fill_super
+>   ext4_fill_super
+>   get_tree_bdev_flags
+>   ext4_get_tree
+>   vfs_get_tree
+>   vfs_cmd_create
+>   __do_sys_fsconfig
+> 
+> Full trace:
+> 
+> [  615.064100] NIP [c008000015b0ed24] ext4_writepages+0x12c/0x3a0 [ext4]
+> [  615.064360] Call Trace:
+> [  615.064383] do_writepages+0x190/0x330
+> [  615.064395] __writeback_single_inode+0x9c/0x9e0
+> [  615.064411] writeback_single_inode+0x18c/0x2b0
+> [  615.064425] write_inode_now+0xc0/0x100
+> [  615.064439] iput_final+0x10c/0x300
+> [  615.064451] ext4_fc_replay+0x374/0xdd0 [ext4]
+> [  615.064583] do_one_pass+0x9bc/0x1370 [jbd2]
+> [  615.064627] jbd2_journal_recover[0x358/0x400 [jbd2]
+> [  [jbd2615.064670] jbd2_journal_load/0x110 [jbd2]
+> [  615.064712] ext4_load_journal+0x2a0/0xb00 [ext4]
+> [  615.064844] ext4_load_and_init_journal+0x6c/0x660 [ext4]
+> [  615.064976] __ext4_fill_super+0x20b0/0x23a0 [ext4]
+> 
+> Registers:
+> 
+>   DAR:   0x0000000fe73f0000
+>   DSISR: 0x40000000
+> 
+> The address being dereferenced (0xfe73f0000) looks like a userspace
+> address and triggers:
+> 
+>   "Kernel attempted to read user page - exploit attempt?"
+> 
+> 
+> Filesystem messages immediately prior to the crash:
+> 
+> [  614.718310] EXT4-fs (loop0): mounted filesystem
+> ee09878a-da42-4d97-81ed-1b9616af2fb4 r/w with ordered data mode. Quota mode:
+> journalled.
+> [  614.984409] EXT4-fs (dm-0): mounted filesystem
+> b60397dc-c40f-4c75-bba9-bfc21f3a905a r/w with ordered data mode. Quota mode:
+> journalled.
+> [  615.029979] EXT4-fs (dm-0): unmounting filesystem
+> b60397dc-c40f-4c75-bba9-bfc21f3a905a.
+> 
+> 
+> Meanwhile, I will attempt bisection.
+> 
+> If you happen to fix this issue, please add below tag.
+> 
+> Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+> 
 
-Cool, thanks for confirming :)
+Hey thanks for reporting this Venkat, I'll try to replicate this at my
+end.
 
-Regards,
+In the meantime, can you please share the complete Oops message and also
+your local.config. 
+
+Thanks,
 ojaswin
-
+> 
 > 
 > Thanks,
-> Yi.
-> 
+> Venkat.
 > 
