@@ -1,30 +1,60 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD0F539EF33;
-	Mon,  3 Aug 2026 07:13:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 452B0390C85;
+	Mon,  3 Aug 2026 08:01:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785741219; cv=none; b=kc4KpSk7otldWXxfQoBjbPO+Re0K2nNGF9t48yMzB4vKpMxP65uptLqTItgVU4W8g4A0HTdQlFUD0AZBCkthZ6Ep28bLRRdIye8MTIsk0m6LOwfZmPo+ABbDmK4xxzDon8fHKme3z3VdNK0V9WU3o+lJ8PA2mitMQtN22qhWqPk=
+	t=1785744085; cv=none; b=dFVPUbZGh+EoFG8iweAd9tqI7+SKL++Zntu/sBVjEy3kZX3KelWOfk3CU9NHWYrvxjTxIIjEFE5/DBiA07rFxB0q2cbCQPTqAzAG4WsBT/VNuIfSyVoiL6k4JkuFwn4FmiU5Xg4QhkHLDBmJOSxD8EueaIqDtMzVyFVNxQMKXrA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785741219; c=relaxed/simple;
-	bh=+A6zm7zbh+f47FNuk+f/+aM0sf8xDBNFHvyAhI488lE=;
+	s=arc-20240116; t=1785744085; c=relaxed/simple;
+	bh=oX0ZyXAkCAcvQ22lCDHo+CwdEB9Y13OwMAkfuo895Ds=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=otjpgSMXoDgFBCv4PyS3OJ/UTMGeTACU70JpV9gYpgZw4W/FbAXzYmTgptODDdKJQSen8PO6g322hDq0FfG+9eEsN3ahSVRrXfU2yjQpqeh0eSaK+OxtcSiDvDGPM73mzZkVYzNMOQneNo6QdLSoKI0qDqEuMhU7CfqhP1ZVE0E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hD7F42WDgzKHMX1;
-	Mon,  3 Aug 2026 15:13:28 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id EE9C84077E;
-	Mon,  3 Aug 2026 15:13:30 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgC3pkWYP3BqSMnFAw--.33588S3;
-	Mon, 03 Aug 2026 15:13:30 +0800 (CST)
-Message-ID: <a638a8fb-c184-4069-ae33-379ec12cd514@huaweicloud.com>
-Date: Mon, 3 Aug 2026 15:13:28 +0800
+	 In-Reply-To:Content-Type; b=bxYzUmDgYaW5ObUXV8alyx+KA7kv/JnO9sBh8mdT8xjU9a+CPwlMPkbGTx2l12OaIYL1eOd9QKFK1XOT3QB/NfHFQR2l78UQUa0KpgzA6zFAyHPqyq0vK64PZcMuwbODo1a8nLdUW+uiVqOsMcjt2EWQ4NrTyOPP8uqqgBBd42w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=ntxNSd3s; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="ntxNSd3s"
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 672LlobN223138;
+	Mon, 3 Aug 2026 08:00:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=42GWTB
+	3NcWvfnxOcbHiWBnLyZbnmaKmM6GdZWBW/MQQ=; b=ntxNSd3srOGc1zVxxBbWO8
+	7mn4FSrXiO3OSMowQOqK778MVXYYSyhRQYeBPpglCDX5RDWrHCxlVpdfeI07rjvx
+	xCoPAj5Ql1H0LhhOFOYb8ffPPSdVXVzvDHIPO6tOGwKv4gGd4ApwAQmsXwzSYLsA
+	91CYLEZVV5/NejjSQIQd/lFy4l2L7ua1++9MZHb9L5peyIW+AUidJByy6toFR+Ec
+	dpE4VOPvqE+1Owmp76Z5P77CnFCywuGYVpJCi8EPyV/QRbTC+kxtOCd5UhmijGpF
+	rrE11E9KaXRDPPRKvFrDFN9zvtRuUCwG96z9VJye4COpv+RXl63H+V33mpCGD1BQ
+	==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs8a3qk58-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 03 Aug 2026 08:00:58 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6737uOg8001363;
+	Mon, 3 Aug 2026 08:00:57 GMT
+Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsugvvet9-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 03 Aug 2026 08:00:56 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (smtpav04.fra02v.mail.ibm.com [10.20.54.103])
+	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 67380s2C35193334
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Mon, 3 Aug 2026 08:00:54 GMT
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id B091D20040;
+	Mon,  3 Aug 2026 08:00:54 +0000 (GMT)
+Received: from smtpav04.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id A8F0E2004D;
+	Mon,  3 Aug 2026 08:00:50 +0000 (GMT)
+Received: from [9.39.27.127] (unknown [9.39.27.127])
+	by smtpav04.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Mon,  3 Aug 2026 08:00:50 +0000 (GMT)
+Message-ID: <17e787ea-7e0b-4887-b736-4e2f3dbeb245@linux.ibm.com>
+Date: Mon, 3 Aug 2026 13:30:48 +0530
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,145 +62,199 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 2/5] iomap: support invalidating partial folios
-To: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
- linux-ext4@vger.kernel.org
-Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
- joannelkoong@gmail.com, "Theodore Y. Ts'o" <tytso@mit.edu>,
- Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
- yangerkun@huawei.com, yukuai@fnnas.com
-References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
- <20260714082325.325163-3-yi.zhang@huaweicloud.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260714082325.325163-3-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH] ext4: don't enable DAX on new encrypted files
+Content-Language: en-GB
+To: Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Ritesh Harjani
+ <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>, Ira Weiny <iweiny@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org
+References: <20260730175212.36923-1-ebiggers@kernel.org>
+From: Disha Goel <disgoel@linux.ibm.com>
+In-Reply-To: <20260730175212.36923-1-ebiggers@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:_Ch0CgC3pkWYP3BqSMnFAw--.33588S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3Wr4DJr1rGFyrKrW3Cr4kZwb_yoW7ZryUpF
-	W7Krs8GrWDGa18Cwn7ua18Xr1Fya4fWFW5CFyfK343AFs8J3Z2kF17t3WY9ay7Jr18Gw40
-	qr42vrWkWF1DAaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
-	e7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_
-	GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	UAwIDUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Authority-Analysis: v=2.4 cv=E6P9Y6dl c=1 sm=1 tr=0 ts=6a704aba cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
+ a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=VwQbUJbxAAAA:8
+ a=VnNF1IyMAAAA:8 a=ovQU41l7dhj9IMd-MlgA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-ORIG-GUID: b79nUqRkScouH3xfu6JhLmjGCmnklbvZ
+X-Proofpoint-GUID: 2z1O-lX0C4CUH2UlfhrSL0VakxhqMogu
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDA2OCBTYWx0ZWRfXw8ABikuV8BfK
+ XcS1/+zYfb6uAovv5Gnb1404YgLMKDzde8Z32ZevKrf1U62vCAyYqtGRfRZgpxsoyP2XsCUm6cp
+ u/fIMno0CQFf/iACaphhSCfd6eMYBa4=
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDA2OCBTYWx0ZWRfX/F1Yo/aj7dgw
+ i0p6jkjgIMCtPlgxwtqcTrOZODsGZT3rS4LQ15Wk94jN/k84vL9B5vL7i1EYqcbiR4+PuD8TFhB
+ wKJYkDkCC3sVi5OK0nNqINSJt3a8OsXI8Kagjo7KMbEJ6SXACYNRUPaH88tESWbLOQqnL6u6eCo
+ cYIdE4ZhZnlJaduJo/Ao6XrqSDVgwQXpkTCQnh3fGFeHK5wK/H2B0xedA3h6q2HW2QvBjoSSm32
+ 1EDoGR9Nmju+BI56FGlS44UV35x5+w0ipFtDXqs+Ymh8s0kv2b1la9nkKElCOEquJMHARh3LMTl
+ zEM+6oKKK1cEHF6Lq0nIDF5XabLMUW4mJLjucb9eOJSAMpaqgxFtPL+lJYqNnlP9o1uiO69rU+3
+ zw+uYuAdSNBLcg4PkIwlpvxn3GIcb2dVxel0KUGS6pSH1nORxxrwHfMisoCLgiKxA1MARE6/r72
+ Xwl2RN83Q4yzhNwf7eA==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-02_06,2026-07-30_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ bulkscore=0 clxscore=1011 lowpriorityscore=0 priorityscore=1501
+ suspectscore=0 adultscore=0 spamscore=0 malwarescore=0 impostorscore=0
+ phishscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608030068
 
-On 7/14/2026 4:23 PM, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On 30/07/26 11:22 pm, Eric Biggers wrote:
+> Currently, when a new encrypted regular file is created, the call to
+> ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
+> before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
+> filesystem is mounted with "-o dax=always".
 > 
-> Current iomap_invalidate_folio() can only invalidate an entire folio. If
-> we truncate a partial folio on a filesystem where the block size is
-> smaller than the folio size, it will leave behind dirty bits for the
-> truncated or punched blocks. During the write-back process, it will
-> attempt to map the invalid hole range. Fortunately, this has not caused
-> any real problems so far because the ->writeback_range() function
-> corrects the length.
+> EXT4_INODE_ENCRYPT then actually gets set a bit later in
+> __ext4_new_inode(), when it calls fscrypt_set_context() which calls
+> ext4_set_context().  ext4_set_context() sets EXT4_INODE_ENCRYPT and
+> calls ext4_set_inode_flags(inode, init=false) to set S_ENCRYPTED too.
 > 
-> However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
-> the support for invalidating partial folios. When ext4 partially zeroes
-> out a dirty and unwritten folio, it does not perform a flush first like
-> XFS. Therefore, if the dirty bits of the corresponding area cannot be
-> cleared, the zeroed area after writeback remains in the written state
-> rather than reverting to the unwritten state. Fix this by supporting
-> invalidation of partial folios.
+> This was intended to clear S_DAX as well.  However, this was broken by
+> commit 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load").  This
+> causes data written to the file to bypass encryption, also causing
+> xfstests failures such as generic/548 (when "-o dax=always" is used).
+> 
+> Fix this by simplifying the flow by making __ext4_new_inode() set
+> EXT4_INODE_ENCRYPT earlier.  This makes it take effect in
+> ext4_set_inode_flags(inode, init=true), making S_DAX never be set.
+> 
+> Similarly, make EXT4_STATE_MAY_INLINE_DATA never be set in the first
+> place on new encrypted inodes.  Then it doesn't need to be cleared.
+> 
+> As a result of these simplifications, ext4_set_context() no longer needs
+> to change inode flags or state when 'handle != NULL'.  Remove that too.
+> 
+> Reported-by: Disha Goel <disgoel@linux.ibm.com>
+> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> Closes: https://lore.kernel.org/r/20260723085648.1500357-1-ojaswin@linux.ibm.com
+> Fixes: 043546e46dc7 ("fs/ext4: Only change S_DAX on inode load")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Eric Biggers <ebiggers@kernel.org>
 
-Hi all,
+I have tested on a -o dax=always ext4 filesystem on ppc64le with the 
+following xfstests configuration. All failing encryption tests in the
+generic group now pass.
 
-While working on the v5 of the ext4 iomap conversion series[1], I've
-observed a rare data inconsistency issue in xfstests generic/127. After
-debugging, I found that the root cause lies in the fact that the current
-patch does not cover all scenarios when handling partial folio
-invalidation during punch hole operations in cases where
-block size < folio size. Specifically, the sub-folio dirty state is not
-properly cleaned up in all cases. I think we need to discuss the fix,
-and I'd like to hear your suggestions.
+MOUNT_OPTIONS="-o block_validity,dax"
+MKFS_OPTIONS="-b 65536"
 
-Root cause:
+Feel free to add
+Tested-by: Disha Goel <disgoel@linux.ibm.com>
 
-In both iomap buffered write and mmap write paths, if the write range
-covers an entire folio (regardless of whether the folio size is larger
-than block size), an ifs (iomap_folio_state) is not allocated
-immediately. Instead, it is deferred until writeback time, where it gets
-created in iomap_writeback_folio(). This creates a problem: when ext4
-performs a punch or zero_range operation on a partial range within such
-a dirty folio, there is no way to clear the dirty state for the
-corresponding blocks.
+> ---
+>   fs/ext4/crypto.c | 40 ++++++++++++++++++++--------------------
+>   fs/ext4/ialloc.c |  4 ++++
+>   2 files changed, 24 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/ext4/crypto.c b/fs/ext4/crypto.c
+> index f41f320f4437..3971986de028 100644
+> --- a/fs/ext4/crypto.c
+> +++ b/fs/ext4/crypto.c
+> @@ -144,7 +144,13 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   	if (inode->i_ino == EXT4_ROOT_INO)
+>   		return -EPERM;
+>   
+> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
+> +	/*
+> +	 * For new encrypted inodes, S_DAX is never set in the first place.
+> +	 *
+> +	 * For existing inodes, this is called only on empty directories.  ext4
+> +	 * never sets S_DAX on directories.
+> +	 */
+> +	if (WARN_ON_ONCE(IS_DAX(inode)))
+>   		return -EINVAL;
+>   
+>   	if (ext4_test_inode_flag(inode, EXT4_INODE_DAX))
+> @@ -163,6 +169,14 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   	 */
+>   
+>   	if (handle) {
+> +		/*
+> +		 * __ext4_new_inode() should have already set the encrypt flag
+> +		 * on the inode and avoided enabling inline data.
+> +		 */
+> +		if (WARN_ON_ONCE(!IS_ENCRYPTED(inode)))
+> +			return -EINVAL;
+> +		if (WARN_ON_ONCE(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)))
+> +			return -EINVAL;
+>   		/*
+>   		 * Since the inode is new it is ok to pass the
+>   		 * XATTR_CREATE flag. This is necessary to match the
+> @@ -170,21 +184,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   		 * function with the credits allocated for the new
+>   		 * inode.
+>   		 */
+> -		res = ext4_xattr_set_handle(handle, inode,
+> -					    EXT4_XATTR_INDEX_ENCRYPTION,
+> -					    EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+> -					    ctx, len, XATTR_CREATE);
+> -		if (!res) {
+> -			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> -			ext4_clear_inode_state(inode,
+> -					EXT4_STATE_MAY_INLINE_DATA);
+> -			/*
+> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+> -			 * S_DAX may be disabled
+> -			 */
+> -			ext4_set_inode_flags(inode, false);
+> -		}
+> -		return res;
+> +		return ext4_xattr_set_handle(handle, inode,
+> +					     EXT4_XATTR_INDEX_ENCRYPTION,
+> +					     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
+> +					     ctx, len, XATTR_CREATE);
+>   	}
+>   
+>   	res = dquot_initialize(inode);
+> @@ -205,10 +208,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+>   				    ctx, len, 0);
+>   	if (!res) {
+>   		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> -		/*
+> -		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+> -		 * S_DAX may be disabled
+> -		 */
+> +		/* Update inode->i_flags to set S_ENCRYPTED. */
+>   		ext4_set_inode_flags(inode, false);
+>   		res = ext4_mark_inode_dirty(handle, inode);
+>   		if (res)
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index a40cb27f8116..a5831fc536db 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -997,6 +997,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+>   		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
+>   		if (err)
+>   			goto out;
+> +		if (encrypt)
+> +			i_flags |= EXT4_ENCRYPT_FL;
+>   	}
+>   
+>   	err = dquot_initialize(inode);
+> @@ -1306,6 +1308,8 @@ struct inode *__ext4_new_inode(struct mnt_idmap *idmap,
+>   	ei->i_extra_isize = sbi->s_want_extra_isize;
+>   	ei->i_inline_off = 0;
+>   	if (ext4_has_feature_inline_data(sb) &&
+> +	    /* Encrypted inodes cannot have inline data */
+> +	    !(ei->i_flags & EXT4_ENCRYPT_FL) &&
+>   	    (!(ei->i_flags & (EXT4_DAX_FL|EXT4_EA_INODE_FL)) || S_ISDIR(mode)))
+>   		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+>   	ret = inode;
+> 
+> base-commit: f5098b6bae761e346ebcd9da7f95622c04733cff
 
-This leads to two specific issues:
-
-1. After issuing FALLOC_FL_ZERO_RANGE on a range covering
-   dirty+unwritten blocks within a large folio, the dirty state cannot
-   be cleared. During subsequent writeback, zeroed data is still
-   written back, and the final extent state for those blocks becomes
-   written. As a result, the fix from this patch becomes ineffective in
-   this case.
-
-2. The aforementioned rare data inconsistency in xfstests generic/127.
-   When performing a partial folio punch hole on a dirty large folio,
-   truncate_inode_pages_range() zeros the partial folio and then splits
-   the folio. This causes an incorrect 'end' offset calculation in
-   truncate_inode_pages_range(), which then results in all split folios
-   being truncated via truncate_inode_folio(), turning partial valid
-   data into zeroes.  For example:
-
-   Suppose we have a large folio of 4 pages, and we punch a range
-   starting from the beginning to the middle of the last page.
-   truncate_inode_pages_range() will go through two rounds of splitting.
-   Normally, if an ifs is present, the split path would hit
-   folio_split() -> filemap_release_folio() -> iomap_release_folio(),
-   which would intercept the operation and refuse splitting because the
-   folio is dirty.
-
-   However, without an ifs, filemap_release_folio() returns early via
-   folio_needs_release(), causing the interception to fail. In the first
-   round, the folio is split into 3 folios (1, 1, 2). In the second
-   round, we expect to split into 4 folios (1, 1, 1, 1). If the second
-   split succeeds, everything is fine, because
-   truncate_inode_pages_range() calculates end = 3, and only the first 3
-   folios are truncated. However, the second split is allowed to fail.
-   If it does fail, truncate_inode_pages_range() still uses end = 3 and
-   ends up truncating all 3 folios, resulting in data loss.
-
-Now I remember I previously submitted two patches [2] that always
-allocated an ifs in the iomap buffered write path and the mmap fault
-path for the block size < folio size case. However, Christoph pointed
-out that the iomap design intentionally defers ifs allocation to avoid
-unnecessary overhead and improve performance, and suggested creating the
-ifs in iomap_invalidate_folio() instead [3]. There is a hurdle, though:
-iomap_invalidate_folio() is only called when the folio has private data
-(in truncate_inode_partial_folio(), folio_needs_release() is called
-first to check the private flag). So if we go with this approach, we
-need to ensure that folio_invalidate() can be called even when the folio
-does not have an ifs.
-
-One relatively simple approach is to always set the AS_RELEASE_ALWAYS
-flag on ext4 inodes that go through the iomap path. I don't think this
-would introduce significant overhead, but it doesn't feel very generic.
-
-Another approach is to modify truncate_inode_partial_folio(). Regarding
-this, I don't want to introduce other magics to achieve this, so perhaps
-modify truncate_inode_partial_folio() to check whether
-i_blocks_per_folio > 1 before calling folio_invalidate(), and call it if
-so.
-
-So, what do people think? Any better idea?
-
-Thanks,
-Yi.
-
-[1] https://github.com/zhangyi089/linux/commits/ext4_buffered_iomap_v5-devel13/
-[2] https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-4-yi.zhang@huaweicloud.com/
-    https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-5-yi.zhang@huaweicloud.com/
-[3] https://lore.kernel.org/linux-fsdevel/ZrxBfKi_DpThYo94@infradead.org/
+-- 
+Regards,
+Disha
 
