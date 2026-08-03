@@ -1,323 +1,596 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2D813A75A8;
-	Mon,  3 Aug 2026 19:49:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 348193AD51E;
+	Mon,  3 Aug 2026 20:09:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785786561; cv=none; b=bRi4TZ61MpO8VqNtY6RwfUPRozvKDzD4h34SQ202ssDCpT6jxz7CvohbqXZVQFQ0JcLhHGdDpREtrr844zojQt7qIifQT7OziO7Qw8mZxbmdaExhRg6pi0HZDzuKNzi+FwkNrjqNpJF8ImPsQ0sc2OEBznPvyhpV0kuBZBj900M=
+	t=1785787746; cv=none; b=uR/oIoTwtTk8QFi1jL+7h48Gj1Np2VMNspN0mlJE+LlbU9wkaOUys6v7Asu+Tsi6ZhNG6dJMk4L+/PRfPhScBIFX6jHOoTU9p50RthZoySU5cOCx/cc9vfM16/9+vxgKfjZ/adBbdWlREcDBGpnNC6t0JEnhjbto/gfNAA4l8XA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785786561; c=relaxed/simple;
-	bh=g4vNJ2wZSkVyjJP8TMxAGxz4toJ5n2P8twvobtwTZgo=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=bDmniXWu1+CgVA6HpbOew7wRa34NMJKHGtqyDKISkCOVylrU6URHztL5ydxIjpX4HewfjHKLyB+8D7gmYhE910UdGcqdGiV/EpsMlCGIduGUsmAMNlhDMH4LOOxJDxw5VfvN5Z7yITSDwjiZq6L/JxpAUEpYq5Q1k0BfaXgbiYs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=p5/baSqx; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1785787746; c=relaxed/simple;
+	bh=B0ctkoWXhc/orSmb/8WuZamtIFN/AXUXMseeaqsYilU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=rzUTAk7AIyMrFiwQgpBRquH2U1TnFfVh6u8nHpcj2KNhKB9ICxWhdiBcZouQ1BkJXe7o51K2qVsVMU7TNB0/vR2zHkMm+1RswzFvC9Q5cAOLR4/BSfCEvekz1y+6Ob/xmhSeOAXqaPltSz70iqDGX88DfR4iTOLmUzPuT/cccxY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LfL9Qtt0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="p5/baSqx"
-Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 673JlhsP1125402;
-	Mon, 3 Aug 2026 19:49:02 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pp1; bh=pTN2Ea
-	jAAJZyHuvcSLGVh+dparz03GcVK7ScN6NkYQk=; b=p5/baSqxyMbJiL/fyMiaKa
-	D3/TyFOiDeaxv1qI56WJix7Fm4GozzZQN54Fni1gKktGb6RYmtOZZ9884MrPoLeG
-	rHALSOmGD5T6Gnj+N2NHGY5+lmET0jnnyhmQFS4yrHhrQCfpuvrVhE2VcdTpTmmO
-	kVB6khbNq093DN6JYJOv6aqjDHq6DMnNNSGA/1UAndhFj4QF6Vrce+/tc2lfUIGu
-	spEqcCkId+Ad+l/CHYrNNfx052HP4Yc0IzpZXZoqgEjdT/A0a+kCdxZg785J/a+e
-	+wUVNb8/91VkC1ad0I5FsCcNJ/DoUdn7DeDQLqMopHGsHTEj2mgKJeZZ88Nf2bXw
-	==
-Received: from ppma23.wdc07v.mail.ibm.com (5d.69.3da9.ip4.static.sl-reverse.com [169.61.105.93])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs8fqjh8m-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 19:49:02 +0000 (GMT)
-Received: from pps.filterd (ppma23.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma23.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 673JfI4h017714;
-	Mon, 3 Aug 2026 19:49:00 GMT
-Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
-	by ppma23.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsvmh6vcm-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 19:49:00 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 673Jmuhg49545548
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 3 Aug 2026 19:48:56 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 1584620043;
-	Mon,  3 Aug 2026 19:48:56 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id AC4E220040;
-	Mon,  3 Aug 2026 19:48:52 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.213.195])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Mon,  3 Aug 2026 19:48:52 +0000 (GMT)
-Date: Tue, 4 Aug 2026 01:18:49 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Christophe Leroy <christophe.leroy@csgroup.eu>,
-        Madhavan Srinivasan <maddy@linux.ibm.com>,
-        Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Subject: Re: [BUG] ext4: NULL/invalid pointer dereference in
- ext4_writepages() during generic/039
-Message-ID: <anDwoVwYf8EBCm6-@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <9ac0524e-0644-4fba-a256-c5b7fe333a3e@linux.ibm.com>
- <anA6s9L-cpsifqgU@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LfL9Qtt0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C12581F000E9;
+	Mon,  3 Aug 2026 20:09:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1785787743;
+	bh=fd+6k9iIiFFVaXPBWZu/XtyYg4TgyHFSZ6BL26pu6jo=;
+	h=From:To:Cc:Subject:Date;
+	b=LfL9Qtt0D5fqbysvxdz8bY4HdkYSP0+9oCvkq/++sfJdz58D0a1HbKVa6zUPq3FmZ
+	 P9WhosbrSmTzV0M8h9HBam/fJlP15h9nn0j3tCywl9SSUq30ghNTvViRLznMMfpVN/
+	 LrL0TlG8WyosI0C00XfPztwa2PX0wEMLjj3z+JZ8+GWdnyRUqyJe0phMTiLCb9xKLi
+	 GP5xvjJVrznGjUdgO1ft2daaZjYhrhSdUKz920m+puYdSJH6VuPa3oRIyMnqtqjl2O
+	 qKdYaUCArn+NN/8j5GAzUTClOsTY/XMZ00Fv4HvGnl+czRZmb60iyyPHUIgz6CmEws
+	 fwYBLWtIRhF3Q==
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: linux-xfs@vger.kernel.org,
+	fsverity@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	ebiggers@kernel.org
+Cc: Andrey Albershteyn <aalbersh@kernel.org>,
+	hch@lst.de,
+	linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-btrfs@vger.kernel.org,
+	djwong@kernel.org,
+	linux-unionfs@vger.kernel.org,
+	david@fromorbit.com
+Subject: [PATCH v14 00/21] fs-verity support for XFS with post EOF merkle tree
+Date: Mon,  3 Aug 2026 22:07:50 +0200
+Message-ID: <20260803200820.393203-1-aalbersh@kernel.org>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <anA6s9L-cpsifqgU@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: YNkyaLVHA1ra8K_sXEI2R0PUBqj0mge1
-X-Proofpoint-ORIG-GUID: YNkyaLVHA1ra8K_sXEI2R0PUBqj0mge1
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDE3NSBTYWx0ZWRfX/nAmQdkbELTL
- Z0e75kr/tXclUs/91RbGWL8b0Q6Had8dDPmz4GAXSJQ3oB3n26Qfm5yHJMYcZSfU12BecZaxD7+
- OY0kuhWQIPgmxHRNP4p4A99xUxsW7Ts=
-X-Authority-Analysis: v=2.4 cv=K8cS2SWI c=1 sm=1 tr=0 ts=6a70f0ae cx=c_pps
- a=3Bg1Hr4SwmMryq2xdFQyZA==:117 a=3Bg1Hr4SwmMryq2xdFQyZA==:17
- a=8nJEP1OIZ-IA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=VwQbUJbxAAAA:8
- a=VnNF1IyMAAAA:8 a=PuqN6qLYsbgiXAgkHtkA:9 a=3ZKOabzyN94A:10 a=wPNLvfGTeEIA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDE3NSBTYWx0ZWRfX9zs+p/A4GEFd
- lm/QFEY4vdkj7ixUNCfZybhH7cot1E+3Cga/8YHR2t4VlLvKFs4PnZMlgb9o5J5NAVhq6HLeA+4
- CDSpQstpihVXqEUw0A19Kqmp8L/vVSz/GmurVzQxsQ3feH4r+5Yv8KGD5ry2XzqZqOIViuUGEIq
- HeJoIA1lUSySDg0sWzZJTSiLlCNw59ymUjdGzj2KFXCMc+1dUUjEniyYjCaQb9spIdXXuwYxZIw
- D3qp1eC+B5HgMAQItPi6HMQMv/PzXR2HKaWACPpLS5eo5ZTdO9gvP0VJC6cC5GdB1k8QmvWR6l5
- AeKqmVXp1Gj+VWumVZ62dqn3sVN+yeIq4juUDy7aW8FHJxUgD6WfcCTgWNis0Qs5cSkrY9oerrn
- XqbX7GzpOVTk3N8pXvDtYVmsuUszgEmTnAurBFCcroiKw07jcz0GFiKS1+OVLY9s/dpetWu78YI
- pfyU1WSkJdtFikCe60Q==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-03_05,2026-08-03_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1015 spamscore=0 impostorscore=0 bulkscore=0 priorityscore=1501
- lowpriorityscore=0 malwarescore=0 phishscore=0 suspectscore=0 adultscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608030175
 
-On Mon, Aug 03, 2026 at 12:22:35PM +0530, Ojaswin Mujoo wrote:
-> On Mon, Aug 03, 2026 at 10:17:35AM +0530, Venkat Rao Bagalkote wrote:
-> > Hi,
-> > 
-> > I am  seeing a reproducible kernel crash while running xfstests generic/039
-> > on powerpc.
-> > 
-> > The crash happens during ext4 journal recovery while mounting the
-> > filesystem. The fault occurs inside ext4_writepages() and appears to
-> > dereference a userspace-looking address.
-> > 
-> > Test environment
-> > ----------------
-> > Kernel:
-> >   7.2.0-rc5-next-20260731
-> > 
-> > Architecture:
-> >   powerpc64le
-> > 
-> > Platform:
-> >   IBM Power9 (pSeries)
-> > 
-> > Machine:
-> >   IBM,8375-42A
-> >   FW950.80 (VL950_131)
-> > 
-> > Config highlights:
-> >   PAGE_SIZE=64K
-> >   MMU=Hash
-> >   PREEMPTLAZY=y
-> > 
-> > Workload
-> > --------
-> > xfstests generic/039
-> > 
-> > Log excerpt:
-> >   run fstests generic/039 at 2026-08-03 00:22:44
-> > 
-> > Crash
-> > -----
-> > [  615.063689] Kernel attempted to read user page (fe73f0000) - exploit
-> > attempt? (uid: 0)
-> > [  615.063714] BUG: Unable to handle kernel data access on read at
-> > 0xfe73f0000
-> > [  615.063723] Faulting instruction address: 0xc008000015b0ed24
-> > [  615.063731] Oops: Kernel access of bad area, sig: 11 [#1]
-> > 
-> > The faulting instruction is:
-> > 
-> >   ext4_writepages+0x12c/0x3a0
-> > 
-> > Relevant call trace:
-> > 
-> >   ext4_writepages
-> >   do_writepages
-> >   __writeback_single_inode
-> >   writeback_single_inode
-> >   write_inode_now
-> >   iput_final
-> >   ext4_fc_replay
-> >   do_one_pass
-> >   jbd2_journal_recover
-> >   jbd2_journal_load
-> >   ext4_load_journal
-> >   ext4_load_and_init_journal
-> >   __ext4_fill_super
-> >   ext4_fill_super
-> >   get_tree_bdev_flags
-> >   ext4_get_tree
-> >   vfs_get_tree
-> >   vfs_cmd_create
-> >   __do_sys_fsconfig
-> > 
-> > Full trace:
-> > 
-> > [  615.064100] NIP [c008000015b0ed24] ext4_writepages+0x12c/0x3a0 [ext4]
-> > [  615.064360] Call Trace:
-> > [  615.064383] do_writepages+0x190/0x330
-> > [  615.064395] __writeback_single_inode+0x9c/0x9e0
-> > [  615.064411] writeback_single_inode+0x18c/0x2b0
-> > [  615.064425] write_inode_now+0xc0/0x100
-> > [  615.064439] iput_final+0x10c/0x300
-> > [  615.064451] ext4_fc_replay+0x374/0xdd0 [ext4]
-> > [  615.064583] do_one_pass+0x9bc/0x1370 [jbd2]
-> > [  615.064627] jbd2_journal_recover[0x358/0x400 [jbd2]
-> > [  [jbd2615.064670] jbd2_journal_load/0x110 [jbd2]
-> > [  615.064712] ext4_load_journal+0x2a0/0xb00 [ext4]
-> > [  615.064844] ext4_load_and_init_journal+0x6c/0x660 [ext4]
-> > [  615.064976] __ext4_fill_super+0x20b0/0x23a0 [ext4]
-> > 
-> > Registers:
-> > 
-> >   DAR:   0x0000000fe73f0000
-> >   DSISR: 0x40000000
-> > 
-> > The address being dereferenced (0xfe73f0000) looks like a userspace
-> > address and triggers:
-> > 
-> >   "Kernel attempted to read user page - exploit attempt?"
-> > 
-> > 
-> > Filesystem messages immediately prior to the crash:
-> > 
-> > [  614.718310] EXT4-fs (loop0): mounted filesystem
-> > ee09878a-da42-4d97-81ed-1b9616af2fb4 r/w with ordered data mode. Quota mode:
-> > journalled.
-> > [  614.984409] EXT4-fs (dm-0): mounted filesystem
-> > b60397dc-c40f-4c75-bba9-bfc21f3a905a r/w with ordered data mode. Quota mode:
-> > journalled.
-> > [  615.029979] EXT4-fs (dm-0): unmounting filesystem
-> > b60397dc-c40f-4c75-bba9-bfc21f3a905a.
-> > 
-> > 
-> > Meanwhile, I will attempt bisection.
-> > 
-> > If you happen to fix this issue, please add below tag.
-> > 
-> > Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
-> > 
-> 
-> Hey thanks for reporting this Venkat, I'll try to replicate this at my
-> end.
-> 
-> In the meantime, can you please share the complete Oops message and also
-> your local.config. 
-> 
-> Thanks,
-> ojaswin
+Hi all,
 
-(+cc Jan, Christian)
+This is next revision of fsverity for XFS. This revision includes fixes
+for issues found by sashiko.dev (and claude-code scan).
 
-Okay so I'm able to replicate this in an x86 machine as well with 4kb
-block size. The issue is replicable in vfs/vfs.all and is occurring
-after Jan's change to nojournal mode writeout [1], with fast_commit.
+Below are my responses to the sashiko points.
 
-The issue is as follows:
+Range-diff with v13 also below.
 
-  __ext4_fill_super
-    ext4_load_and_init_journal
-      ...
-      jbd2_journal_recover
-        do_one_pass
-          fc_do_one_pass
-            ...
-            ext4_fc_replay_unlink
-              __ext4_unlink
-                __ext4_mark_iloc_dirty
-                  if (sbi->s_journal == NULL)  // s_journal is not set yet
-                    set_inode_metadata_writeback(inode); // sets I_METADATA_WRITEBACK
-              iput(inode)
-                iput_final(inode)
-                  ...
-                  writeback_single_inode
-                    __writeback_single_inode  // since I_METADATA_WRITEBACK is set
-                      ...
-                      ext4_writepages
-                        ext4_writepages_down_read
-                          percpu_down_read(sbi->s_writepages_rwsem)
-                             <--- OOPS because this is initialized
-                                  later in ext4_percpu_param_init()
+Patch 14 is new.
 
-A simple fix seems to be to move ext4_percpu_param_init() call before
-ext4_load_journal() so that we can safely call ext4_writepages(). The
-below diff seems to be fixing the issue for me, does this look okay to
-you Jan?
+Patches without review:
+[PATCH v14 05/21] fsverity: improve flushing performance of
+[PATCH v14 07/21] fsverity: hoist statx reporting of fs-verity flag
+[PATCH v14 11/21] xfs: don't report dio_mem_align and
+[PATCH v14 12/21] xfs: handle fsverity I/O in write/read path
+[PATCH v14 13/21] xfs: use read ioend for fsverity data verification
+[PATCH v14 14/21] xfs: add flags to xfs_free_eofblocks() to pass down
 
-Also, venkat can you please help test this in your system:
+This series based on v7.2-rc4 + lazy-bounce@hch-misc
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2877a6cf6d09..6e05f191542c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5511,6 +5511,10 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
-                        goto failed_mount3a;
-        }
+lazy-bounce:
+git://git.infradead.org/users/hch/misc.git lazy-bounce
 
-+       err = ext4_percpu_param_init(sbi);
-+       if (err)
-+               goto failed_mount3a;
-+
-        err = -EINVAL;
-        /*
-         * The first inode we look at is the journal inode.  Don't try
-@@ -5659,10 +5663,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
-                        clear_opt2(sb, MB_OPTIMIZE_SCAN);
-        }
+kernel:
+https://git.kernel.org/pub/scm/linux/kernel/git/aalbersh/xfs-linux.git/log/?h=fsverity
 
--       err = ext4_percpu_param_init(sbi);
--       if (err)
--               goto failed_mount5;
--
-        err = ext4_mb_init(sb);
-        if (err) {
-                ext4_msg(sb, KERN_ERR, "failed to initialize mballoc (%d)",
-@@ -5764,7 +5764,6 @@ failed_mount8: __maybe_unused
-        ext4_mb_release(sb);
-        ext4_flex_groups_free(sbi);
- failed_mount5:
--       ext4_percpu_param_destroy(sbi);
-        ext4_ext_release(sb);
-        ext4_release_system_zone(sb);
- failed_mount4a:
-@@ -5785,6 +5784,7 @@ failed_mount8: __maybe_unused
-                ext4_journal_destroy(sbi, sbi->s_journal);
-        }
- failed_mount3a:
-+       ext4_percpu_param_destroy(sbi);
-        ext4_es_unregister_shrinker(sbi);
- failed_mount3:
-        /* flush s_sb_upd_work before sbi destroy */
+xfsprogs:
+https://git.kernel.org/pub/scm/linux/kernel/git/aalbersh/xfsprogs-dev.git/log/?h=fsverity
 
-[1] https://lore.kernel.org/linux-ext4/20260727104923.3828017-37-jack@suse.cz/
-> > 
-> > 
-> > Thanks,
-> > Venkat.
-> > 
+xfstests:
+https://git.kernel.org/pub/scm/linux/kernel/git/aalbersh/xfstests-dev.git/log/?h=fsverity
+
+sashiko review:
+https://sashiko.dev/#/patchset/20260721184346.416657-1-aalbersh%40kernel.org
+
+v13:
+https://lore.kernel.org/fsverity/20260721184346.416657-1-aalbersh@kernel.org/T/#t
+
+v12:
+https://lore.kernel.org/fsverity/al8xgOwueDOzGakK@aalbersh-thinkpadx1carbongen13.rmtcz.csb/T/#t
+
+v11:
+https://lore.kernel.org/all/20260710085256.3464201-1-aalbersh@kernel.org/
+
+v10:
+https://lore.kernel.org/fsverity/20260520123722.405752-1-aalbersh@kernel.org/#r
+
+v9:
+https://lore.kernel.org/fsverity/20260428083332.768693-1-aalbersh@kernel.org/#r
+
+Cc: fsverity@lists.linux.dev
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-xfs@vger.kernel.org
+Cc: linux-unionfs@vger.kernel.org
+
+Cc: david@fromorbit.com
+Cc: djwong@kernel.org
+Cc: ebiggers@kernel.org
+Cc: hch@lst.de
+
+
+---
+Changes in v14:
+- Rebase to lazy-bounce@hch-misc
+- Adjust read ioends to BIO in task context flow
+- MMAPLOCK/sb_internal deadlock fix reported by sashiko
+- Add missing delalloc clean up in verity_end_enable
+- Use xfs_free_eofblocks() instead of writing own clean up routine
+- Modify xfs_free_eofblocks() to be able to clean unwritten only
+- Dropped fix patch for truncate/set_size check
+- Various minor code and #include rearrangements for bisecting
+Changes in v13:
+- Hoisted statx reporting to common code
+- Added read ioend sorted for worker self-deadlock fix
+- Adjusted fsverity flags in zoned write path
+Changes in v12:
+- Refactored xfs_fsverity_cancel_unwritten()
+- Switched to using inode_set_flags()
+- Add a lock for COW fork reading
+- Add pagecache truncation in cleanup path
+- Added ERANGE and EBADMSG to fsverity scrub handling
+- Add missing XFS_FSVERITY_CONSTRUCTION in various xfs_iomap
+- Rebase to -rc3
+Changes in v11:
+- Drop wrong overlayfs patch
+- Drop already merged iomap and fsverity patches
+- Update to I_INO() use instead of ip->i_ino
+- Sashiko.dev fixes. See list of issues below.
+Changes in v10:
+- Rebase to v7.1-rc3 with relevant adjustments
+- Initialize ioend->io_vi to NULL to not get write work onto verity wq
+- Range diff below
+Changes in v9:
+- Fix fsverity_fill_zerohash() parameter names
+- A few fixes found by sashiko.dev:
+	- Replace ip->i_mount->m_attr_geo->blksize with m_sb.sb_blocksize
+	- Don't call xfs_trans_cancel() after xfs_trans_commit() in
+	  xfs_fsverity_end_enable()
+	- Call xfs_fsverity_delete_metadata() if verity enable failed
+	- Change start/end type from xfs_fileoff_t to loff_t
+	- Return xfs_trans_commit() error from
+	  xfs_fsverity_cancel_unwritten()
+Changes in v8:
+- Return fsverity_ensure_verity_info() errors from
+  ovl_ensure_verity_loaded()
+Changes in v7:
+- Move kerneldoc to fsverity_ensure_verity_info() definition
+- Drop patch adding XFS traces
+- Fix overly long line in the comment
+- Make order of fserror and fsverity_error consistent
+- Add overlay patch converting to fsverity_ensure_verity_info()
+Changes in v6:
+- Removed stub for fsverity_ensure_verity_info() as it's optimized out
+- Rename fsverity_folio_zero_hash() to fsverify_fill_zerohash()
+- Merge patches 8 to 10 into one
+- Merge patch gerating zero_hash and fsverity_fill_zerohash() into one
+- Add kerneldoc to fsverity_ensure_verity_info()
+- Add comments to iomap_block_needs_zeroing()
+Changes in v5:
+- Add fserror_report_data_lost() for data blocks in page spanning EOF
+- Issue fsverity metadata readahead in data readahead
+- iomap_fsverity_write() return type fix
+- Use of S_ISREG(mode)
+- Make 65536 #define instead of open-coded
+- Use transaction per unwritten extent removal
+- Fetch fsverity_info for all fsverity metadata
+- Revert fsverity_folio_zero_hash() stub as used in iomap
+- Extend cancel_unwritten to whole file range to remove cow leftovers
+- Drop delayed allocation on the COW fork on fsverity completion
+Changes in v4:
+- Use fserror interface in fsverity instead of fs callback
+- Hoist pagecache_read from f2fs/ext4 to fsverity
+- Refactor iomap code
+- Fetch fsverity_info only for file data and merkle tree holes
+- Do not disable preallocation, remove unwritten extents instead
+- Offload fsverity hash I/O to fsverity workqueue in read path
+- Store merkle tree at round_up(i_size, 64k)
+- Add a spacing between merkle tree and fsverity descriptor as next 64k
+  aligned block
+- Squash helpers into first user commits
+- Squash on-disk format changes into single commit
+- Drop different offset for pagecache/on-disk
+- Don't zero out pages in higher order folios in write path
+- Link to v3: https://lore.kernel.org/fsverity/20260217231937.1183679-1-aalbersh@kernel.org/T/#t
+Changes in v3:
+- Different on-disk and pagecache offset
+- Use read path ioends
+- Switch to hashtable fsverity info
+- Synthesize merkle tree blocks full of zeroes
+- Other minor refactors
+- Link to v2: https://lore.kernel.org/fsverity/20260114164210.GO15583@frogsfrogsfrogs/T/#t
+Changes in v2:
+- Move to VFS interface for merkle tree block reading
+- Drop patchset for per filesystem workqueues
+- Change how offsets of the descriptor and tree metadata is calculated
+- Store fs-verity descriptor in data fork side by side with merkle tree
+- Simplify iomap changes, remove interface for post eof read/write
+- Get rid of extended attribute implementation
+- Link to v1: https://lore.kernel.org/r/20250728-fsverity-v1-0-9e5443af0e34@kernel.org
+
+-- >8 --
+
+ 1:  3126eb1df402 <  -:  ------------ fs-verity support for XFS with post EOF merkle tree
+ 2:  c43552872333 =  1:  804fe14bc667 fsverity: report validation errors through fserror to fsnotify
+ 3:  3fa9148aa645 !  2:  c42a21b4fce9 fsverity: expose ensure_fsverity_info()
+    @@ fs/verity/open.c: int fsverity_get_descriptor(struct inode *inode,
+     + * associated with a file descriptor) reads of the file's data or
+     + * fsverity digest, it must call this explicitly before doing so.
+     + *
+    ++ * In case filesystem supports both fscrypt and fsverity, this should be called
+    ++ * after fscrypt's encryption key is set up. Otherwise, the fsverity metadata is
+    ++ * still encrypted. See fscrypt_file_open().
+    ++ *
+     + * Return: 0 on success, -errno on failure
+     + */
+     +int fsverity_ensure_verity_info(struct inode *inode)
+ 4:  d71c8e69e03c =  3:  86d9ed19b872 fsverity: pass digest size and hash of the all-zeroes block to ->write
+ 5:  3bc3f9d0ee91 =  4:  d82c11aab3a1 fsverity: hoist pagecache_read from f2fs/ext4 to fsverity
+ 6:  d0930e705a9a <  -:  ------------ fsverity: improve flushing performance of fsverity_fill_zerohash
+ 7:  e62bb284d7fd <  -:  ------------ fsverity: don't allow setting DAX file attribute on fsverity files
+ 8:  b7933f19da9c <  -:  ------------ fs,fsverity: remove check for fsverity being enabled in setattr_prepare()
+ -:  ------------ >  5:  2ec3e6f07ce1 fsverity: improve flushing performance of fsverity_fill_zerohash
+ -:  ------------ >  6:  25f07514f00f fsverity: don't allow setting DAX file attribute on fsverity files
+ 9:  967430abed85 !  7:  ce9dfa64ec13 fsverity: hoist statx reporting of fs-verity flag
+    @@ Metadata
+      ## Commit message ##
+         fsverity: hoist statx reporting of fs-verity flag
+
+    -    All filesystems supporting fsverity report this status by checking inode
+    -    flag. Also, BTRFS was missing stat->attributes_mask, which is fixed now.
+    +    All filesystems, supporting fsverity, report this status by checking
+    +    inode flag. Also, BTRFS was missing stat->attributes_mask, which is
+    +    fixed now.
+
+         Fixes: 146054090b08 ("btrfs: initial fsverity support")
+    +    Cc: stable@vger.kernel.org
+         Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+    +    Acked-by: Eric Biggers <ebiggers@kernel.org>
+
+      ## fs/btrfs/inode.c ##
+     @@ fs/btrfs/inode.c: static int btrfs_getattr(struct mnt_idmap *idmap,
+10:  905556ca6e2b =  8:  7116fb1bc082 xfs: introduce fsverity on-disk changes
+11:  7a1023f3faf3 =  9:  6e988a0ebea7 xfs: don't allow to enable DAX on fs-verity sealed inode
+12:  af8a059bd635 ! 10:  190cc5cf57d0 xfs: disable direct read path for fs-verity files
+    @@ Commit message
+
+         Signed-off-by: Darrick J. Wong <djwong@kernel.org>
+         Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+    +    Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+      ## fs/xfs/xfs_file.c ##
+    +@@
+    + #include <linux/fadvise.h>
+    + #include <linux/mount.h>
+    + #include <linux/filelock.h>
+    ++#include <linux/fsverity.h>
+    +
+    + static const struct vm_operations_struct xfs_file_vm_ops;
+    +
+     @@ fs/xfs/xfs_file.c: static const struct iomap_dio_ops xfs_dio_read_bounce_ops = {
+      	.bio_set	= &iomap_ioend_bioset,
+      };
+    @@ fs/xfs/xfs_file.c: xfs_file_dio_read(
+      	ret = xfs_ilock_iocb(iocb, XFS_IOLOCK_SHARED);
+      	if (ret)
+      		return ret;
+    ++
+     +	/*
+     +	 * Re-check verity status after acquiring lock. This prevents TOCTOU in
+     +	 * xfs_file_read_iter() while falling back from DIO to buffered I/O as
+    @@ fs/xfs/xfs_file.c: xfs_file_dio_read(
+     +		iocb->ki_flags &= ~IOCB_DIRECT;
+     +		return xfs_file_buffered_read(iocb, to);
+     +	}
+    - 	if (mapping_stable_writes(iocb->ki_filp->f_mapping)) {
+    + 	if (mapping_stable_writes(iocb->ki_filp->f_mapping))
+      		dio_ops = &xfs_dio_read_bounce_ops;
+    - 		dio_flags |= IOMAP_DIO_BOUNCE;
+    + 	ret = iomap_dio_rw(iocb, to, &xfs_read_iomap_ops, dio_ops, dio_flags,
+     @@ fs/xfs/xfs_file.c: xfs_file_dax_read(
+      	struct kiocb		*iocb,
+      	struct iov_iter		*to)
+13:  30cced457045 = 11:  30ec4b4681a8 xfs: don't report dio_mem_align and dio_offset_align for fsverity files
+14:  806856fa16fd ! 12:  639b547a84cc xfs: handle fsverity I/O in write/read path
+    @@ fs/xfs/libxfs/xfs_bmap.c: xfs_bmapi_convert_one_delalloc(
+
+      ## fs/xfs/xfs_aops.c ##
+     @@
+    - #include "xfs_icache.h"
+    + #include "xfs_ioend.h"
+      #include "xfs_zone_alloc.h"
+      #include "xfs_rtgroup.h"
+     +#include "xfs_fsverity.h"
+    - #include <linux/bio-integrity.h>
+
+      struct xfs_writepage_ctx {
+    + 	struct iomap_writepage_ctx ctx;
+     @@ fs/xfs/xfs_aops.c: xfs_map_blocks(
+      	int			retries = 0;
+      	int			error = 0;
+    @@ fs/xfs/xfs_fsverity.c (new)
+     + * Copyright (C) 2026 Red Hat, Inc.
+     + */
+     +#include "xfs_platform.h"
+    -+#include "xfs_format.h"
+    -+#include "xfs_inode.h"
+    ++#include "xfs_fs.h"
+     +#include "xfs_shared.h"
+    ++#include "xfs_format.h"
+    ++#include "xfs_log_format.h"
+     +#include "xfs_trans_resv.h"
+     +#include "xfs_mount.h"
+    ++#include "xfs_inode.h"
+     +#include "xfs_fsverity.h"
+     +#include <linux/fsverity.h>
+     +#include <linux/iomap.h>
+15:  9dbb76001391 <  -:  ------------ xfs: always prioritize fsverity metadata ioends in ioend completion
+16:  3778dd4dd18e <  -:  ------------ xfs: use read ioend for fsverity data verification
+ -:  ------------ > 13:  d0ed142a8e48 xfs: use read ioend for fsverity data verification
+ -:  ------------ > 14:  2091792f0ba7 xfs: add flags to xfs_free_eofblocks() to pass down to block processing
+17:  44fdb9249f8a ! 15:  f54a273b2897 xfs: add fs-verity support
+    @@ Commit message
+         Merkle tree block. The size of the descriptor is stored at the end of
+         the last descriptor block (descriptor can be multiple blocks).
+
+    +    XFS preallocates spaces during writes. In normal I/O this space, if
+    +    unused, is removed by truncate. For files with fsverity, XFS does not use
+    +    truncate as fsverity metadata is stored past EOF. We call
+    +    xfs_free_eofblocks() explicitly to clean up any unused space as these
+    +    files will not change anymore.
+    +
+         Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+    +    Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+      ## fs/xfs/xfs_bmap_util.c ##
+     @@
+    @@ fs/xfs/xfs_bmap_util.c: xfs_can_free_eofblocks(
+      		return false;
+
+     +	/*
+    -+	 * Nothing to clean on fsverity inodes as they don't use prealloc and
+    -+	 * there no delalloc as only written data is fsverity metadata
+    ++	 * Don't clean fsverity inodes as they have metadata store beyond EOF
+     +	 */
+    -+	if (IS_VERITY(VFS_I(ip)) ||
+    ++	if (fsverity_active(VFS_I(ip)) ||
+     +	    xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
+     +		return false;
+     +
+    @@ fs/xfs/xfs_bmap_util.c: xfs_can_free_eofblocks(
+
+      ## fs/xfs/xfs_fsverity.c ##
+     @@
+    -  */
+    - #include "xfs_platform.h"
+    - #include "xfs_format.h"
+    --#include "xfs_inode.h"
+    + #include "xfs_fs.h"
+      #include "xfs_shared.h"
+    + #include "xfs_format.h"
+    +-#include "xfs_log_format.h"
+    ++#include "xfs_shared.h"
+      #include "xfs_trans_resv.h"
+      #include "xfs_mount.h"
+    -+#include "xfs_da_format.h"
+    -+#include "xfs_da_btree.h"
+    -+#include "xfs_inode.h"
+    + #include "xfs_inode.h"
+     +#include "xfs_log_format.h"
+     +#include "xfs_trans.h"
+     +#include "xfs_trace.h"
+    @@ fs/xfs/xfs_fsverity.c
+     +#include "xfs_iomap.h"
+     +#include "xfs_error.h"
+     +#include "xfs_health.h"
+    ++#include "xfs_bmap_util.h"
+    ++#include "xfs_icache.h"
+      #include <linux/fsverity.h>
+      #include <linux/iomap.h>
+     +#include <linux/pagemap.h>
+    @@ fs/xfs/xfs_fsverity.c: xfs_fsverity_is_file_data(
+     +		return -ERANGE;
+     +
+     +	desc_pos = round_down(desc_size_pos - desc_size, blocksize);
+    -+	if (desc_pos < xfs_fsverity_metadata_offset(ip)) {
+    -+		xfs_inode_mark_sick(XFS_I(inode), XFS_SICK_INO_FSVERITY);
+    ++	if (desc_pos < xfs_fsverity_metadata_offset(ip))
+     +		return -ERANGE;
+    -+	}
+     +
+     +	error = fsverity_pagecache_read(inode, buf, desc_size, desc_pos);
+     +	if (error)
+    @@ fs/xfs/xfs_fsverity.c: xfs_fsverity_is_file_data(
+     +	struct xfs_mount	*mp = ip->i_mount;
+     +	int			error;
+     +
+    ++	xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
+     +	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
+    -+	if (error)
+    ++	if (error) {
+    ++		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
+     +		return error;
+    ++	}
+     +
+    -+	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_ILOCK_EXCL);
+    -+	truncate_inode_pages(VFS_I(ip)->i_mapping, XFS_ISIZE(ip));
+    ++	xfs_ilock(ip, XFS_ILOCK_EXCL);
+     +	xfs_trans_ijoin(tp, ip, 0);
+     +
+    ++	truncate_inode_pages(VFS_I(ip)->i_mapping, XFS_ISIZE(ip));
+    ++
+     +	/*
+     +	 * We remove post EOF data, no need to update i_size as fsverity
+     +	 * didn't move i_size in the first place
+    @@ fs/xfs/xfs_fsverity.c: xfs_fsverity_is_file_data(
+     +		goto out;
+     +
+     +	/*
+    -+	 * Proactively drop any delayed allocations in COW fork, the fsverity
+    -+	 * files are read-only
+    ++	 * Remove unwritten extents left by COW preallocations and write
+    ++	 * preallocation in the merkle tree holes and past descriptor, and any
+    ++	 * delayed preallocations
+     +	 */
+    -+	if (xfs_is_cow_inode(ip)) {
+    -+		xfs_ilock(ip, XFS_ILOCK_EXCL);
+    -+		xfs_ifork_init_cow(ip);
+    -+		xfs_iunlock(ip, XFS_ILOCK_EXCL);
+    -+		xfs_bmap_punch_delalloc_range(ip, XFS_COW_FORK, 0, LLONG_MAX,
+    -+				NULL);
+    -+	}
+    ++	error = xfs_free_eofblocks(ip, XFS_FREE_FSVERITY);
+    ++	if (error)
+    ++		goto out;
+     +
+     +	/*
+     +	 * Set fsverity inode flag
+18:  1d4570c5a493 <  -:  ------------ xfs: remove unwritten extents after preallocations in fsverity metadata
+19:  2d0c31956e6d ! 16:  839d1cccfaba xfs: initialize fs-verity on file open
+    @@ Commit message
+         Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+
+      ## fs/xfs/xfs_file.c ##
+    -@@
+    - #include <linux/fadvise.h>
+    - #include <linux/mount.h>
+    - #include <linux/filelock.h>
+    -+#include <linux/fsverity.h>
+    -
+    - static const struct vm_operations_struct xfs_file_vm_ops;
+    -
+     @@ fs/xfs/xfs_file.c: xfs_file_open(
+      	struct inode	*inode,
+      	struct file	*file)
+20:  7a544cc4f5c8 = 17:  f8b1f2e6710f xfs: add fs-verity ioctls
+21:  cd4708d77609 = 18:  9de1c4536ce7 xfs: advertise fs-verity being available on filesystem
+22:  82a18ac70347 = 19:  011b71fb8764 xfs: check and repair the verity inode flag state
+23:  4e34e173abcb ! 20:  13c8938dd8aa xfs: introduce health state for corrupted fsverity metadata
+    @@ fs/xfs/libxfs/xfs_health.h: struct xfs_rtgroup;
+      				 XFS_SICK_INO_BMBTA_ZAPPED | \
+
+      ## fs/xfs/xfs_fsverity.c ##
+    +@@ fs/xfs/xfs_fsverity.c: xfs_fsverity_get_descriptor(
+    + 	if (error)
+    + 		return error;
+    +
+    +-	if (is_empty)
+    ++	if (is_empty) {
+    ++		xfs_inode_mark_sick(XFS_I(inode), XFS_SICK_INO_FSVERITY);
+    + 		return -ENODATA;
+    ++	}
+    +
+    + 	last_block_offset =
+    + 		XFS_FSB_TO_B(mp, rec.br_startoff + rec.br_blockcount);
+    +-	if (last_block_offset <= xfs_fsverity_metadata_offset(ip))
+    ++	if (last_block_offset <= xfs_fsverity_metadata_offset(ip)) {
+    ++		xfs_inode_mark_sick(XFS_I(inode), XFS_SICK_INO_FSVERITY);
+    + 		return -ENODATA;
+    ++	}
+    +
+    + 	desc_size_pos = last_block_offset - sizeof(__be32);
+    + 	error = fsverity_pagecache_read(inode, (char *)&d_desc_size,
+     @@ fs/xfs/xfs_fsverity.c: xfs_fsverity_get_descriptor(
+      		return error;
+
+    @@ fs/xfs/xfs_fsverity.c: xfs_fsverity_get_descriptor(
+     +	}
+
+      	desc_pos = round_down(desc_size_pos - desc_size, blocksize);
+    - 	if (desc_pos < xfs_fsverity_metadata_offset(ip)) {
+    +-	if (desc_pos < xfs_fsverity_metadata_offset(ip))
+    ++	if (desc_pos < xfs_fsverity_metadata_offset(ip)) {
+    ++		xfs_inode_mark_sick(XFS_I(inode), XFS_SICK_INO_FSVERITY);
+    + 		return -ERANGE;
+    ++	}
+    +
+    + 	error = fsverity_pagecache_read(inode, buf, desc_size, desc_pos);
+    + 	if (error)
+
+      ## fs/xfs/xfs_health.c ##
+     @@ fs/xfs/xfs_health.c: static const struct ioctl_sick_map ino_map[] = {
+24:  fcfe485fd924 = 21:  b4f9880f839b xfs: enable ro-compat fs-verity flag
+
+Andrey Albershteyn (19):
+  fsverity: report validation errors through fserror to fsnotify
+  fsverity: expose ensure_fsverity_info()
+  fsverity: pass digest size and hash of the all-zeroes block to ->write
+  fsverity: hoist pagecache_read from f2fs/ext4 to fsverity
+  fsverity: improve flushing performance of fsverity_fill_zerohash
+  fsverity: don't allow setting DAX file attribute on fsverity files
+  fsverity: hoist statx reporting of fs-verity flag
+  xfs: introduce fsverity on-disk changes
+  xfs: don't allow to enable DAX on fs-verity sealed inode
+  xfs: disable direct read path for fs-verity files
+  xfs: don't report dio_mem_align and dio_offset_align for fsverity
+    files
+  xfs: handle fsverity I/O in write/read path
+  xfs: use read ioend for fsverity data verification
+  xfs: add flags to xfs_free_eofblocks() to pass down to block
+    processing
+  xfs: add fs-verity support
+  xfs: initialize fs-verity on file open
+  xfs: add fs-verity ioctls
+  xfs: introduce health state for corrupted fsverity metadata
+  xfs: enable ro-compat fs-verity flag
+
+Darrick J. Wong (2):
+  xfs: advertise fs-verity being available on filesystem
+  xfs: check and repair the verity inode flag state
+
+ fs/btrfs/inode.c               |   3 -
+ fs/btrfs/verity.c              |   6 +-
+ fs/ext4/inode.c                |   5 +-
+ fs/ext4/verity.c               |  36 +--
+ fs/f2fs/file.c                 |   5 +-
+ fs/f2fs/verity.c               |  34 +--
+ fs/file_attr.c                 |  12 +-
+ fs/stat.c                      |   6 +-
+ fs/verity/enable.c             |   4 +-
+ fs/verity/open.c               |  26 ++-
+ fs/verity/pagecache.c          |  61 ++++-
+ fs/verity/verify.c             |   4 +
+ fs/xfs/Makefile                |   1 +
+ fs/xfs/libxfs/xfs_bmap.c       |  67 ++++--
+ fs/xfs/libxfs/xfs_bmap.h       |   6 +-
+ fs/xfs/libxfs/xfs_format.h     |  35 ++-
+ fs/xfs/libxfs/xfs_fs.h         |   2 +
+ fs/xfs/libxfs/xfs_health.h     |   4 +-
+ fs/xfs/libxfs/xfs_inode_buf.c  |   8 +
+ fs/xfs/libxfs/xfs_inode_util.c |   5 +-
+ fs/xfs/libxfs/xfs_sb.c         |   4 +
+ fs/xfs/scrub/common.c          |  55 +++++
+ fs/xfs/scrub/common.h          |   2 +
+ fs/xfs/scrub/inode.c           |   7 +
+ fs/xfs/scrub/inode_repair.c    |  36 +++
+ fs/xfs/xfs_aops.c              |  50 +++-
+ fs/xfs/xfs_bmap_util.c         |  28 ++-
+ fs/xfs/xfs_bmap_util.h         |  13 +-
+ fs/xfs/xfs_file.c              |  73 ++++--
+ fs/xfs/xfs_fsverity.c          | 408 +++++++++++++++++++++++++++++++++
+ fs/xfs/xfs_fsverity.h          |  28 +++
+ fs/xfs/xfs_health.c            |   1 +
+ fs/xfs/xfs_icache.c            |   2 +-
+ fs/xfs/xfs_inode.c             |   2 +-
+ fs/xfs/xfs_inode.h             |   6 +
+ fs/xfs/xfs_ioctl.c             |  14 ++
+ fs/xfs/xfs_ioend.c             |  42 +++-
+ fs/xfs/xfs_ioend.h             |   4 +-
+ fs/xfs/xfs_iomap.c             |  29 ++-
+ fs/xfs/xfs_iops.c              |  12 +-
+ fs/xfs/xfs_message.c           |   4 +
+ fs/xfs/xfs_message.h           |   1 +
+ fs/xfs/xfs_mount.h             |   4 +
+ fs/xfs/xfs_super.c             |   7 +
+ include/linux/fsverity.h       |  10 +-
+ include/linux/iomap.h          |   1 +
+ 46 files changed, 1020 insertions(+), 153 deletions(-)
+ create mode 100644 fs/xfs/xfs_fsverity.c
+ create mode 100644 fs/xfs/xfs_fsverity.h
+
+-- 
+2.54.0
+
