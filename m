@@ -1,152 +1,154 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0314411FA5
-	for <linux-ext4@vger.kernel.org>; Mon,  3 Aug 2026 15:14:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8F962EA75E
+	for <linux-ext4@vger.kernel.org>; Mon,  3 Aug 2026 16:01:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785770081; cv=none; b=GxMmjfQf6/gmpL5abMf+NdOXV2eltg51YuHkKodpa1SWgbmzLg/2/7xicIawoXODj9/VhIFCsUocPxTsdN0XhYHviWOfSjVOT3rd9JyNxR5mwMQOOwSLP4UBtE9Ja9Vmbx5kceGdeTbzBPl3eLm13+1r2OnmgPWzF3WX1BSE8YU=
+	t=1785772871; cv=none; b=kJGRocfsqg4li57Q4WizVQyJ7Mm8Ysg5Z9KZuFLLp0L+orjFmfM5jV7WqmqYipWT+4sWtabl4mKueFDhBQYAhXA6RBg9Lw0t5VhvJ0Fz6B8NCnXnMHZoc/noUUTMg1M5F/PfHsIV5Kwqfh0B8UfnEglA5CXWcFdaQem1hLi9PdA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785770081; c=relaxed/simple;
-	bh=YHKWdFXEZgiNsrjLh74otqn42EYVlAFnvBCfXPOZl74=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pFxzOnsgl6OW5lN9qQvthTGShOvN+Q548vVyD0OnNtKpJ1DU2Bvg8wJSM1rQ05I0iF2P/XndHJGLDUQALQ6cbFuUUz2favXjs1wTUxRsV98vveDM4SdJLRhmVL9xsCORRlruilb9nlsTjjy5hYzibMa3zhLQGplD8scXMnS4A8c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GFk3stLl; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ycld4mOy; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=o9YNPEsE; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=AAr/ORL5; arc=none smtp.client-ip=195.135.223.130
+	s=arc-20240116; t=1785772871; c=relaxed/simple;
+	bh=sekHJHB9BLsvILv81Z+FgnAW7bUWb7meHSSn3BVjeEw=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ftlVb4wqFRNIB+HMgNMQMDdW/A7Mm+ffiiycGHVK1DgBr5rRuwN1u1Z2PvHcDupWyZDlrL0Bf7WY8SMATBHXImRchknf1VLLAnttYfIgM7tX9aqIxQI37913YzA6IDXZq30zdQOudTzwfgzfr/3uQQ5CBBWLwCbwH1sA20tyG64=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=bRrSYNmt; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=dsW/1JOU; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Pxt7rDmu; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=MnugpAP4; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GFk3stLl";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ycld4mOy";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="o9YNPEsE";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="AAr/ORL5"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="bRrSYNmt";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="dsW/1JOU";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Pxt7rDmu";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="MnugpAP4"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id B51897F168;
-	Mon,  3 Aug 2026 15:14:29 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 9BDD03F22;
+	Mon,  3 Aug 2026 16:00:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785770073; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=9+LIq3DttxS8J5n/t1BC58ym4Oa9PoEAA58OYuz4dlw=;
-	b=GFk3stLlKdvtDKmPnm67ZVv4tnps2OtRuMMEGedqSI85iGXmuSfeBfxXfFJf/0Pavr0qSs
-	aVUMLMdiH+J5t3uHLQowTXy4dHmqxyu7+3WTJYSshlNIeP7Rkm1b+jtiWau/QnAJEcMM62
-	walEl8mLvn3fK20cUCyj073TG8hX+GE=
+	t=1785772863; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=XwE4Qby+Tuk9c2iqJ86lM13ujyNjaqSXiVznp+Kt8/U=;
+	b=bRrSYNmtA1wKFFfhK9YSfXtisER10qxQ2V0Tmgbgx6ouoomaGCyl6CxuTDAMNXj+RXczJ9
+	QM7unSqa7dQo8qPCZnRrNS8zkBvBehJ76edBfJviD5eE5/nmCGQSP5sUqkzHO1jGMDd0Ux
+	a5YuBV/Kqczb47dotYR3bo1RPDoZrjA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785770073;
+	s=susede2_ed25519; t=1785772863;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=9+LIq3DttxS8J5n/t1BC58ym4Oa9PoEAA58OYuz4dlw=;
-	b=ycld4mOydU/WKpgpC+W74IuVPfyZClhHtj0uCeX+Tboo63tGP9t6ODDbUZORvrarQ1axlW
-	F21BeuLzchYVEGDQ==
-Authentication-Results: smtp-out1.suse.de;
-	none
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=XwE4Qby+Tuk9c2iqJ86lM13ujyNjaqSXiVznp+Kt8/U=;
+	b=dsW/1JOUnwHVx1geEqBM2czfFpXKLPiGFQ5WlCvmFE9HnWUIxQ86HxZG9AwoLsXzkiHxOA
+	lT+srQimuCPL4cCw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Pxt7rDmu;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=MnugpAP4
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785770069; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=9+LIq3DttxS8J5n/t1BC58ym4Oa9PoEAA58OYuz4dlw=;
-	b=o9YNPEsEugFxFhC+nrdHG7UGWcMKYtDrj8BAK4FqjxS4IMFMf731/oXj8zM5FFaYZoAL5V
-	PdW2lGSytl6qgq5MMnkn4YTap+WqDfMP0Y6HgUtyAZmPpieYNtiGV9NhLas/fxxxySJHPJ
-	7Ohr2AwLH294tw4rQGcqob+tUJprU+M=
+	t=1785772859; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=XwE4Qby+Tuk9c2iqJ86lM13ujyNjaqSXiVznp+Kt8/U=;
+	b=Pxt7rDmuHsj+WYYejPs2ASzzZ58oUCbr4owmezQKz9pQKd9GCqfWFW2BKUgRj/Hp/0edkJ
+	v1hF91/qUb4+OaOtZlxP17dzW695g3G37kAt58ecZSZ9veS1EmDATQCVL9VSnEu5xBGfFG
+	zBZDrHtI9hAj4xq1hflDeIj6YULgtpc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785770069;
+	s=susede2_ed25519; t=1785772859;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=9+LIq3DttxS8J5n/t1BC58ym4Oa9PoEAA58OYuz4dlw=;
-	b=AAr/ORL5p/sQTadbPzskGZpiUENhXXl1oBIefgPl3KX/YQ66gBhGnxcFYwUHtIoaBne/an
-	4oifa+2YLjLOTUCQ==
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=XwE4Qby+Tuk9c2iqJ86lM13ujyNjaqSXiVznp+Kt8/U=;
+	b=MnugpAP4ZOCwn/rrN8fMszsJkr2bIBXBEnAbLYKayvnHTVC2q8CpKGiTXbsjjskWloibGM
+	v5n41LFebdOHo9Bw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9FEF3779D3;
-	Mon,  3 Aug 2026 15:14:29 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8FB51779A1;
+	Mon,  3 Aug 2026 16:00:59 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id VTUFJ1WwcGqtbwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 03 Aug 2026 15:14:29 +0000
+	id TVYRIzu7cGrCHgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 03 Aug 2026 16:00:59 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3F397A13A4; Mon, 03 Aug 2026 17:14:29 +0200 (CEST)
-Date: Mon, 3 Aug 2026 17:14:29 +0200
+	id 2600DA13A4; Mon, 03 Aug 2026 18:00:59 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
-To: Tigran Aivazian <aivazian.tigran@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, Bagas Sanjaya <bagasdotme@gmail.com>, 
-	LKML <linux-kernel@vger.kernel.org>, Linux Filesystems Development <linux-fsdevel@vger.kernel.org>, 
-	Linux ext4 <linux-ext4@vger.kernel.org>, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>
-Subject: Re: ext4: spurious "orphan cleanup on readonly fs" due to remount,ro
- failing to reset orphan_file structures
-Message-ID: <g7fk4a4rsokzzficx63yqcjwbyneq7ipfhshvi5xhylihetjrd@d6sv5y6kwnzs>
-References: <CAK+_RLmWU-GjYu9Z+AWnoKd__AiaWZUt=zOkx3jr2-a4Hv3KHg@mail.gmail.com>
- <am_gplyBEyvbuHM_@archie.me>
- <fmdp3k4efrv44yqjmukk47ifa3rxrjvj2ndfin5lu6c3x5b5lh@5vv2yblzxy7b>
- <CAK+_RLkvc3b0vC7SHygRv+4xdk_mC-362T60NbtQT4Zmpp6fxg@mail.gmail.com>
+To: Ted Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>,
+	Tigran Aivazian <aivazian.tigran@gmail.com>,
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix spurious message about orphan cleanup on RO fs
+Date: Mon,  3 Aug 2026 18:00:38 +0200
+Message-ID: <20260803160037.64285-2-jack@suse.cz>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAK+_RLkvc3b0vC7SHygRv+4xdk_mC-362T60NbtQT4Zmpp6fxg@mail.gmail.com>
-X-Spam-Score: -2.30
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1203; i=jack@suse.cz; h=from:subject; bh=sekHJHB9BLsvILv81Z+FgnAW7bUWb7meHSSn3BVjeEw=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqcLslhRo8X56bKbmU15JCqAXQJr2b3nOsRkCEx RDyNF0k7auJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCanC7JQAKCRCcnaoHP2RA 2YELCAC2W9+zayBM6MWF49szF1AXg96L890XfJH+mH0y11Qvc1UO9yrCtqBzfv6whxvlMRf4ptX cp0Jo4VNy7wVMJRLbWgyr4JFR3VXxyqoO9q9w3cHycIOYB25U+I6Np8ai/xpHTFTlI4Vqxk/aQk dp+CRuRjjkjySR6MiaKtFtMG8P0bXo2U7mM8HJxB49LwahDE2Fb1B8L3tMqlamhpfqexHyhqk9/ RcrRVTfdPVsLpI7dZ38esM6D0PgJwZfYorkWqIhS3CiWIn2nKIks1iBwQkoWFzVyvwOvSN/m+gC R+jNbssp6JyjK5LSA6LvwFG5CGaTmPlB/YF48HQznQH3uBH1
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Spam-Score: -1.51
 X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: 9BDD03F22
+X-Spamd-Result: default: False [-1.51 / 50.00];
 	BAYES_HAM(-3.00)[99.99%];
 	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
+	R_MISSING_CHARSET(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	URIBL_BLOCKED(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[12];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	MX_GOOD(-0.01)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,gmail.com,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,huawei.com];
+	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:mid,suse.cz:email,suse.cz:dkim];
 	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_DN_ALL(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:mid,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	RCPT_COUNT_THREE(0.00)[4];
+	FREEMAIL_CC(0.00)[vger.kernel.org,gmail.com,suse.cz];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	TO_DN_SOME(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-On Mon 03-08-26 13:57:55, Tigran Aivazian wrote:
-> Hi,
-> 
-> On Mon, 3 Aug 2026 at 13:36, Jan Kara <jack@suse.cz> wrote:
-> > No need to, the behavior didn't change for a long time. In fact, any
-> > read-only mount with orphan_file feature enabled will result in the
-> > spurious "orphan cleanup on readonly fs" message. I've just checked that.
-> > It is only a cosmetic problem but nobody noticed so far.
-> 
-> You say it is a cosmetic problem, but here I somewhat disagree.
-> Logically, seeing "orphan cleanup on readonly fs" implies an unclean
-> shutdown that caused those orphans. Consequently, I spent time
-> debugging it by instrumenting scripts in
-> /usr/lib/systemd/system-shutdown/ and even suspecting the NVMe
-> controller caches, etc. Any sysadmin who doesn't like leaving
-> "mysteries" on their Linux host would have done the same.
+When orphan_file feature is enabled, ext4_orphan_cleanup() was always
+walking through the orphan file looking for orphan inodes. This is
+mostly harmless but for read-only filesystem it results in spurious
+"orphan cleanup on readonly fs" message and in other cornercases it
+could result in similar somewhat misleading messages. Skip orphan
+cleanup if the orphan file is empty to avoid confusing messages.
 
-Fair point and to be clear I think this needs to fixed. I can see how this
-"cosmetic problem" misled you and you have wasted time debugging that. I'm
-sorry for that.
+Fixes: 02f310fcf47f ("ext4: Speedup ext4 orphan inode handling")
+Reported-by: Tigran Aivazian <aivazian.tigran@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/orphan.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-								Honza
+diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+index 64ea47624233..2a44998a6c2e 100644
+--- a/fs/ext4/orphan.c
++++ b/fs/ext4/orphan.c
+@@ -388,7 +388,7 @@ void ext4_orphan_cleanup(struct super_block *sb, struct ext4_super_block *es)
+ 	struct ext4_orphan_info *oi = &EXT4_SB(sb)->s_orphan_info;
+ 	int inodes_per_ob = ext4_inodes_per_orphan_block(sb);
+ 
+-	if (!es->s_last_orphan && !oi->of_blocks) {
++	if (!es->s_last_orphan && ext4_orphan_file_empty(sb)) {
+ 		ext4_debug("no orphan inodes to clean up\n");
+ 		return;
+ 	}
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.51.0
+
