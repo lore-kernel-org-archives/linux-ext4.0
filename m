@@ -1,236 +1,176 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEA3E29B781;
-	Mon,  3 Aug 2026 06:52:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD0F539EF33;
+	Mon,  3 Aug 2026 07:13:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785739971; cv=none; b=frLtAuh/kz+S8PCBHDeWdspHlieARyY6MjhIsUKzUR3jlqVIw2VM441kAYTSMsTGk2kiS0frnIsNBNZIscOnGxAllt/Ah6+pTX2Hg6Y+GDlQX71PoS6juoc1TjAyvT8c9aB+QU10WDTAuDYYFzLhyKcyjjI07+XJhhMa0H7cW2k=
+	t=1785741219; cv=none; b=kc4KpSk7otldWXxfQoBjbPO+Re0K2nNGF9t48yMzB4vKpMxP65uptLqTItgVU4W8g4A0HTdQlFUD0AZBCkthZ6Ep28bLRRdIye8MTIsk0m6LOwfZmPo+ABbDmK4xxzDon8fHKme3z3VdNK0V9WU3o+lJ8PA2mitMQtN22qhWqPk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785739971; c=relaxed/simple;
-	bh=+6D6FvHLiZBtcUSVDACatK8sLZE+1X/0ffZ3NACDjGc=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=i3xsO1kE9lXflt3Hy1fLFRQdDray7JvbBS1y1ezcjqkDVHEX9i5kLhBSg6XVysWBWrrsKne48RI3SEiYOZWcf2qm4lbwDMvJrYeLuisbPfFhk0/+69B7MAyYR9cCJR0QVF6WRKpDy1NjzBjZnEXEWzNMHG372OLp2U2Y+MhA2u4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=m0BEuVIx; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="m0BEuVIx"
-Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 672Lmise169710;
-	Mon, 3 Aug 2026 06:52:45 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pp1; bh=v2PE9o
-	Ykh7wWWZl9+/fsfOS9nSNvWIR2toJskkEkllU=; b=m0BEuVIxA5MgePnblBEb7X
-	nbjLWF2tEHblawLfn8HbadOmu7AuruQOJ5xvF/jdsIQ4DQFzELXtVpfcmMBgKFBP
-	ScdaFI/GvsWZmaHWVkl0H+n7fxFOmBjmNtxQPptsxTm3ZAeVgFeu5LpBLXGHmQzi
-	d/+lxkAPJcLXpR12xW5d+Jnfn2EBsie1o3aeVwsb19p9s/vtcGQS2O8ZYJ4L4F/d
-	cEHTrYY7+xGftD8j1oollMFB3ftbZhVEANLG4CJKs+qUb2CoGJI12W2gVTq1tVCI
-	kyQ2jJ32ZnFJlEbobYBxcBcdm4srokpkHP3B+CeoPv4wR/YQB2+Nb3GRBl7AI2Iw
-	==
-Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fs77fy517-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 06:52:44 +0000 (GMT)
-Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6736fGwF002085;
-	Mon, 3 Aug 2026 06:52:43 GMT
-Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
-	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fswtybved-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 03 Aug 2026 06:52:43 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6736qe5B30278018
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 3 Aug 2026 06:52:40 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 382F02004B;
-	Mon,  3 Aug 2026 06:52:40 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 3979B20040;
-	Mon,  3 Aug 2026 06:52:38 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.123.13.2])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Mon,  3 Aug 2026 06:52:38 +0000 (GMT)
-Date: Mon, 3 Aug 2026 12:22:35 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Christophe Leroy <christophe.leroy@csgroup.eu>,
-        Madhavan Srinivasan <maddy@linux.ibm.com>
-Subject: Re: [BUG] ext4: NULL/invalid pointer dereference in
- ext4_writepages() during generic/039
-Message-ID: <anA6s9L-cpsifqgU@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <9ac0524e-0644-4fba-a256-c5b7fe333a3e@linux.ibm.com>
+	s=arc-20240116; t=1785741219; c=relaxed/simple;
+	bh=+A6zm7zbh+f47FNuk+f/+aM0sf8xDBNFHvyAhI488lE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=otjpgSMXoDgFBCv4PyS3OJ/UTMGeTACU70JpV9gYpgZw4W/FbAXzYmTgptODDdKJQSen8PO6g322hDq0FfG+9eEsN3ahSVRrXfU2yjQpqeh0eSaK+OxtcSiDvDGPM73mzZkVYzNMOQneNo6QdLSoKI0qDqEuMhU7CfqhP1ZVE0E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hD7F42WDgzKHMX1;
+	Mon,  3 Aug 2026 15:13:28 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id EE9C84077E;
+	Mon,  3 Aug 2026 15:13:30 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgC3pkWYP3BqSMnFAw--.33588S3;
+	Mon, 03 Aug 2026 15:13:30 +0800 (CST)
+Message-ID: <a638a8fb-c184-4069-ae33-379ec12cd514@huaweicloud.com>
+Date: Mon, 3 Aug 2026 15:13:28 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <9ac0524e-0644-4fba-a256-c5b7fe333a3e@linux.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODAzMDA1OCBTYWx0ZWRfX0zcTT6GzEmED
- x+4ehuZDyo3URtoOQapzfvDLFPRnswy4Y4hIzwk+7MlonbzSBdXP5N0dA9SsD2SVfo5639EGhEj
- BSiCRKoKnLPDKp4wT4cGvL5oQOvIm326sUAOmfuclRdbtn4UHDDq5umUNFzuHMaX0HUoJctlbXG
- YfAupSdiyM4R+dq8Q6RbSzTceXKXHLuUAXC0z4V8kD1OVjaUuK49EGmYMojyUwPcRdHVwal1eXy
- LcMbuhNrnZ9ISfSvwyZ62ZjxW8LYYjONEOJ1hv3/XnMOe7R76MaSioE4/4TgPbNawnehfhMou11
- 39NfsPmklFa5UPPw7dCJe8M7ECbkygXWAHdelyQtPJTBX66+Z5/hmRlEm6RE0z0Ah2Q+NiIx/vv
- hXmanIblPSUkfz5I5EAHVlcL5RcIR3yjS9jquF4rTsjKz0GDcOFsaatOPI0Fbpu/MJzCyHspjpy
- CuveL8ZEiCW2dcYPbJw==
-X-Authority-Analysis: v=2.4 cv=WIFPmHsR c=1 sm=1 tr=0 ts=6a703abc cx=c_pps
- a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
- a=8nJEP1OIZ-IA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=VnNF1IyMAAAA:8
- a=D3AbGSsO8w2ewviXKQsA:9 a=3ZKOabzyN94A:10 a=wPNLvfGTeEIA:10
-X-Proofpoint-GUID: DIfjSsP4mmjP9bwY5pVfQ66oDcSAe5UF
-X-Proofpoint-ORIG-GUID: DIfjSsP4mmjP9bwY5pVfQ66oDcSAe5UF
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODAzMDA1OCBTYWx0ZWRfX9oGqbucMKILz
- uaf06g0esp6jE+LHfvK9JZrkb9d/7FVILgCv+TYl6+7SyRZ3wuwDfoXq8l5CUHX73ut6VmtbLK4
- kyEAX8AXzUYtW8ju7MAEEQgaeTzLTM8=
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-02_06,2026-07-30_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- spamscore=0 lowpriorityscore=0 priorityscore=1501 phishscore=0 malwarescore=0
- suspectscore=0 clxscore=1011 impostorscore=0 bulkscore=0 adultscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608030058
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 2/5] iomap: support invalidating partial folios
+To: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-ext4@vger.kernel.org
+Cc: brauner@kernel.org, djwong@kernel.org, hch@infradead.org,
+ joannelkoong@gmail.com, "Theodore Y. Ts'o" <tytso@mit.edu>,
+ Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
+ yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+ <20260714082325.325163-3-yi.zhang@huaweicloud.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260714082325.325163-3-yi.zhang@huaweicloud.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:_Ch0CgC3pkWYP3BqSMnFAw--.33588S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3Wr4DJr1rGFyrKrW3Cr4kZwb_yoW7ZryUpF
+	W7Krs8GrWDGa18Cwn7ua18Xr1Fya4fWFW5CFyfK343AFs8J3Z2kF17t3WY9ay7Jr18Gw40
+	qr42vrWkWF1DAaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
+	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
+	e7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
+	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_
+	GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
+	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
+	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
+	UAwIDUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, Aug 03, 2026 at 10:17:35AM +0530, Venkat Rao Bagalkote wrote:
-> Hi,
+On 7/14/2026 4:23 PM, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> I am  seeing a reproducible kernel crash while running xfstests generic/039
-> on powerpc.
+> Current iomap_invalidate_folio() can only invalidate an entire folio. If
+> we truncate a partial folio on a filesystem where the block size is
+> smaller than the folio size, it will leave behind dirty bits for the
+> truncated or punched blocks. During the write-back process, it will
+> attempt to map the invalid hole range. Fortunately, this has not caused
+> any real problems so far because the ->writeback_range() function
+> corrects the length.
 > 
-> The crash happens during ext4 journal recovery while mounting the
-> filesystem. The fault occurs inside ext4_writepages() and appears to
-> dereference a userspace-looking address.
-> 
-> Test environment
-> ----------------
-> Kernel:
->   7.2.0-rc5-next-20260731
-> 
-> Architecture:
->   powerpc64le
-> 
-> Platform:
->   IBM Power9 (pSeries)
-> 
-> Machine:
->   IBM,8375-42A
->   FW950.80 (VL950_131)
-> 
-> Config highlights:
->   PAGE_SIZE=64K
->   MMU=Hash
->   PREEMPTLAZY=y
-> 
-> Workload
-> --------
-> xfstests generic/039
-> 
-> Log excerpt:
->   run fstests generic/039 at 2026-08-03 00:22:44
-> 
-> Crash
-> -----
-> [  615.063689] Kernel attempted to read user page (fe73f0000) - exploit
-> attempt? (uid: 0)
-> [  615.063714] BUG: Unable to handle kernel data access on read at
-> 0xfe73f0000
-> [  615.063723] Faulting instruction address: 0xc008000015b0ed24
-> [  615.063731] Oops: Kernel access of bad area, sig: 11 [#1]
-> 
-> The faulting instruction is:
-> 
->   ext4_writepages+0x12c/0x3a0
-> 
-> Relevant call trace:
-> 
->   ext4_writepages
->   do_writepages
->   __writeback_single_inode
->   writeback_single_inode
->   write_inode_now
->   iput_final
->   ext4_fc_replay
->   do_one_pass
->   jbd2_journal_recover
->   jbd2_journal_load
->   ext4_load_journal
->   ext4_load_and_init_journal
->   __ext4_fill_super
->   ext4_fill_super
->   get_tree_bdev_flags
->   ext4_get_tree
->   vfs_get_tree
->   vfs_cmd_create
->   __do_sys_fsconfig
-> 
-> Full trace:
-> 
-> [  615.064100] NIP [c008000015b0ed24] ext4_writepages+0x12c/0x3a0 [ext4]
-> [  615.064360] Call Trace:
-> [  615.064383] do_writepages+0x190/0x330
-> [  615.064395] __writeback_single_inode+0x9c/0x9e0
-> [  615.064411] writeback_single_inode+0x18c/0x2b0
-> [  615.064425] write_inode_now+0xc0/0x100
-> [  615.064439] iput_final+0x10c/0x300
-> [  615.064451] ext4_fc_replay+0x374/0xdd0 [ext4]
-> [  615.064583] do_one_pass+0x9bc/0x1370 [jbd2]
-> [  615.064627] jbd2_journal_recover[0x358/0x400 [jbd2]
-> [  [jbd2615.064670] jbd2_journal_load/0x110 [jbd2]
-> [  615.064712] ext4_load_journal+0x2a0/0xb00 [ext4]
-> [  615.064844] ext4_load_and_init_journal+0x6c/0x660 [ext4]
-> [  615.064976] __ext4_fill_super+0x20b0/0x23a0 [ext4]
-> 
-> Registers:
-> 
->   DAR:   0x0000000fe73f0000
->   DSISR: 0x40000000
-> 
-> The address being dereferenced (0xfe73f0000) looks like a userspace
-> address and triggers:
-> 
->   "Kernel attempted to read user page - exploit attempt?"
-> 
-> 
-> Filesystem messages immediately prior to the crash:
-> 
-> [  614.718310] EXT4-fs (loop0): mounted filesystem
-> ee09878a-da42-4d97-81ed-1b9616af2fb4 r/w with ordered data mode. Quota mode:
-> journalled.
-> [  614.984409] EXT4-fs (dm-0): mounted filesystem
-> b60397dc-c40f-4c75-bba9-bfc21f3a905a r/w with ordered data mode. Quota mode:
-> journalled.
-> [  615.029979] EXT4-fs (dm-0): unmounting filesystem
-> b60397dc-c40f-4c75-bba9-bfc21f3a905a.
-> 
-> 
-> Meanwhile, I will attempt bisection.
-> 
-> If you happen to fix this issue, please add below tag.
-> 
-> Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
-> 
+> However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
+> the support for invalidating partial folios. When ext4 partially zeroes
+> out a dirty and unwritten folio, it does not perform a flush first like
+> XFS. Therefore, if the dirty bits of the corresponding area cannot be
+> cleared, the zeroed area after writeback remains in the written state
+> rather than reverting to the unwritten state. Fix this by supporting
+> invalidation of partial folios.
 
-Hey thanks for reporting this Venkat, I'll try to replicate this at my
-end.
+Hi all,
 
-In the meantime, can you please share the complete Oops message and also
-your local.config. 
+While working on the v5 of the ext4 iomap conversion series[1], I've
+observed a rare data inconsistency issue in xfstests generic/127. After
+debugging, I found that the root cause lies in the fact that the current
+patch does not cover all scenarios when handling partial folio
+invalidation during punch hole operations in cases where
+block size < folio size. Specifically, the sub-folio dirty state is not
+properly cleaned up in all cases. I think we need to discuss the fix,
+and I'd like to hear your suggestions.
+
+Root cause:
+
+In both iomap buffered write and mmap write paths, if the write range
+covers an entire folio (regardless of whether the folio size is larger
+than block size), an ifs (iomap_folio_state) is not allocated
+immediately. Instead, it is deferred until writeback time, where it gets
+created in iomap_writeback_folio(). This creates a problem: when ext4
+performs a punch or zero_range operation on a partial range within such
+a dirty folio, there is no way to clear the dirty state for the
+corresponding blocks.
+
+This leads to two specific issues:
+
+1. After issuing FALLOC_FL_ZERO_RANGE on a range covering
+   dirty+unwritten blocks within a large folio, the dirty state cannot
+   be cleared. During subsequent writeback, zeroed data is still
+   written back, and the final extent state for those blocks becomes
+   written. As a result, the fix from this patch becomes ineffective in
+   this case.
+
+2. The aforementioned rare data inconsistency in xfstests generic/127.
+   When performing a partial folio punch hole on a dirty large folio,
+   truncate_inode_pages_range() zeros the partial folio and then splits
+   the folio. This causes an incorrect 'end' offset calculation in
+   truncate_inode_pages_range(), which then results in all split folios
+   being truncated via truncate_inode_folio(), turning partial valid
+   data into zeroes.  For example:
+
+   Suppose we have a large folio of 4 pages, and we punch a range
+   starting from the beginning to the middle of the last page.
+   truncate_inode_pages_range() will go through two rounds of splitting.
+   Normally, if an ifs is present, the split path would hit
+   folio_split() -> filemap_release_folio() -> iomap_release_folio(),
+   which would intercept the operation and refuse splitting because the
+   folio is dirty.
+
+   However, without an ifs, filemap_release_folio() returns early via
+   folio_needs_release(), causing the interception to fail. In the first
+   round, the folio is split into 3 folios (1, 1, 2). In the second
+   round, we expect to split into 4 folios (1, 1, 1, 1). If the second
+   split succeeds, everything is fine, because
+   truncate_inode_pages_range() calculates end = 3, and only the first 3
+   folios are truncated. However, the second split is allowed to fail.
+   If it does fail, truncate_inode_pages_range() still uses end = 3 and
+   ends up truncating all 3 folios, resulting in data loss.
+
+Now I remember I previously submitted two patches [2] that always
+allocated an ifs in the iomap buffered write path and the mmap fault
+path for the block size < folio size case. However, Christoph pointed
+out that the iomap design intentionally defers ifs allocation to avoid
+unnecessary overhead and improve performance, and suggested creating the
+ifs in iomap_invalidate_folio() instead [3]. There is a hurdle, though:
+iomap_invalidate_folio() is only called when the folio has private data
+(in truncate_inode_partial_folio(), folio_needs_release() is called
+first to check the private flag). So if we go with this approach, we
+need to ensure that folio_invalidate() can be called even when the folio
+does not have an ifs.
+
+One relatively simple approach is to always set the AS_RELEASE_ALWAYS
+flag on ext4 inodes that go through the iomap path. I don't think this
+would introduce significant overhead, but it doesn't feel very generic.
+
+Another approach is to modify truncate_inode_partial_folio(). Regarding
+this, I don't want to introduce other magics to achieve this, so perhaps
+modify truncate_inode_partial_folio() to check whether
+i_blocks_per_folio > 1 before calling folio_invalidate(), and call it if
+so.
+
+So, what do people think? Any better idea?
 
 Thanks,
-ojaswin
-> 
-> 
-> Thanks,
-> Venkat.
-> 
+Yi.
+
+[1] https://github.com/zhangyi089/linux/commits/ext4_buffered_iomap_v5-devel13/
+[2] https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-4-yi.zhang@huaweicloud.com/
+    https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-5-yi.zhang@huaweicloud.com/
+[3] https://lore.kernel.org/linux-fsdevel/ZrxBfKi_DpThYo94@infradead.org/
+
