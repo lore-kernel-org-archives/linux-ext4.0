@@ -1,78 +1,78 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DE96429CF2
-	for <linux-ext4@vger.kernel.org>; Tue,  4 Aug 2026 08:49:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8461942AF88
+	for <linux-ext4@vger.kernel.org>; Tue,  4 Aug 2026 08:50:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785833369; cv=none; b=SwtolF6NLlb120kD3hLF9P5SBQ3H2zDRqd0HFo1jqoL4dK0fuu6Q11W+6FGjGhgHw5LJ7Gq4cXOc4nQW1H9M4gFWx9aNZlaTUJvUQ0wEEnO2M/TmE+KD6K6vfR8upOngcw00A1KenzUY0TTsgWbVCJUCcQ8fzIObI0SnPOzKmqU=
+	t=1785833434; cv=none; b=nu+NG8BCxD6i3iU+bs9Rp24oPFfqBpcgAiOAWsW3WmzGq3/lQILIpZPfIiX0kQznoB2pkBq9R+eT34LhSK4fnCwDM7xoqhISSy9JUpcbXZ4UAlxta+SmfIEd1AT4jnkqTfHTOnfhVyuiBukCqMgA88JKt/s6LJ14+V0IV2ibbvI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785833369; c=relaxed/simple;
-	bh=dF4scuXWvD23kCwingMzXWqFuk6IVoLwQM6KKFUJcTQ=;
+	s=arc-20240116; t=1785833434; c=relaxed/simple;
+	bh=XoggicR4slZC7b+kv9oaWRxIUx4Lv1wZsgRpcLCJiDY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=TVQfAU/jAIc8WZWZtL7PENc+/+UHLIkx1Y3Pmq9TfVUIijWgqaE3PJ2frDlFQpAzc6i2uZmMrOKUcBAp150cinZmdIciIkNGtFYIqsjsQENRA6z4ymdi8VsJa9/HuKsm9iiXshdM6vYD+rCiMYqQUmsXx7Pu3E1XV5BEuVCzKdY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Kx9nJWft; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CSxOdfYm; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=GJw8f3Q8; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=zP7pt2Bs; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=I9vXdVN9mojmQnx6uMePUw5OumCl2r/AWAIw+m7++0TSxEL3sdS0nNhnCOzD3VF4Q8+rSNEqWz5uObUBVxgtZdr8ZcgcC5/8FgVe7Mr9V+2U2DPnt6lf4W3IXFetCMRBSwl1OYOhySvGGS2ul6eqh7CNf2ekrY6xcIUrAhglKpA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=r80ulHCY; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=OL5mEjrx; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=c+BhEBJS; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=NFSEBPcs; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Kx9nJWft";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CSxOdfYm";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="GJw8f3Q8";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="zP7pt2Bs"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="r80ulHCY";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="OL5mEjrx";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="c+BhEBJS";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="NFSEBPcs"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 283867F72E;
-	Tue,  4 Aug 2026 08:49:17 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 71F777F7B5;
+	Tue,  4 Aug 2026 08:50:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785833361; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785833426; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4tTMLkJ1Zy3XOygz4WgrC6rjuZ02/P3Jll4UXDnuLtQ=;
-	b=Kx9nJWfth1ZxY2vI+m9O7fylsHvWEPLY+PkQso0TS6YgSrgnPYf1wHOBx7KdyKoobMGmrQ
-	Qnv0O4VkSquh/udfvv3D0yDP6dNkIQ1296bNZ8o6SWBtAuXuj5N/w70q2X+6lKLWI6OTME
-	SP0Gx1nVAtcdDM3GZJL2FfO2qxk9G40=
+	bh=4xWWCH7WFnfMXbXP1iIQ1mgIZQTBIAzwX0KsfW7GzP8=;
+	b=r80ulHCYvCJ3lSbHtx9VfEdocDBSglUHLwdBOloidEyEfSo6KGJbx4KGrH1u2HdZZ8d9QK
+	9M50kAogruRs3hOyjAGqkslimLzsuqRC+zSmHJbAruU+rorw90EQ9JOMF9m0R6FBpdPdDX
+	twtoCDTiCU39OJLGfqTwpnouZDKvQUU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785833361;
+	s=susede2_ed25519; t=1785833426;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4tTMLkJ1Zy3XOygz4WgrC6rjuZ02/P3Jll4UXDnuLtQ=;
-	b=CSxOdfYmLgOFwUY+nZP8FyXmgeMsnxLK6Km1juoeyEYSFv0GUNPD8bbwS1iDVG1yC1cU85
-	6SjEYvUf3iJUDzDQ==
+	bh=4xWWCH7WFnfMXbXP1iIQ1mgIZQTBIAzwX0KsfW7GzP8=;
+	b=OL5mEjrxxdw+Hq4/NFK5ogxhq3WHhOUP3SZ6N+aF9T7ERECz1+VjGqqhfZkjE4AXsbrGun
+	KQZD6PHhVy0qdiBg==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=GJw8f3Q8;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=zP7pt2Bs
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=c+BhEBJS;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=NFSEBPcs
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1785833357; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1785833422; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4tTMLkJ1Zy3XOygz4WgrC6rjuZ02/P3Jll4UXDnuLtQ=;
-	b=GJw8f3Q8ulnJEKFcPxoldUmFUswAPLCSDa1Y0UPouS+yReIitCNjrKVWBtCbN6dmOKWoHt
-	eTJo1mnL/jt3JQMH5Jh+14o12Xku/2X2FD3I/rzrFNZspiSkxkFgmqSl8H3I0tzsiIklEU
-	Pctyrp1sYFEnWzjMM9ZEZEALfRxWfYA=
+	bh=4xWWCH7WFnfMXbXP1iIQ1mgIZQTBIAzwX0KsfW7GzP8=;
+	b=c+BhEBJSIdzhaCcho7CFBhWITumu+nMCdSRO+1ZsdD+otoUYdV9NJn+ugB42HO/ybhrcCf
+	FE9u2VE4FS5aFSWarylUavfu3KxV5y0PlCuMssMQ7uBDbh6wjPEu068MMO/x3YTcPNV8mG
+	4SpCgKTOrc06oEWFnhGdhNu4GKsk+L8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1785833357;
+	s=susede2_ed25519; t=1785833422;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=4tTMLkJ1Zy3XOygz4WgrC6rjuZ02/P3Jll4UXDnuLtQ=;
-	b=zP7pt2BsR9Y8B6kLP/RToKglCPck/vdWKm3J5pFPpqnChOIOvnQFHWIOFhAM1DJv6AJcMU
-	4SWbwqqRjIn3wXAA==
+	bh=4xWWCH7WFnfMXbXP1iIQ1mgIZQTBIAzwX0KsfW7GzP8=;
+	b=NFSEBPcsa6Yw+96SBZ9Q1ACVP8jBnDgo6YkAPa2k8dGVo2CnFf6B4W+Om6joxITc84zvv2
+	Rtvm32Co3SSF8KDA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1BA5F779BB;
-	Tue,  4 Aug 2026 08:49:17 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6947C779BE;
+	Tue,  4 Aug 2026 08:50:22 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id Yem9Bo2ncWo/bwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 04 Aug 2026 08:49:17 +0000
+	id qD69Gc6ncWo2cAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 04 Aug 2026 08:50:22 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id BB2B5A13A6; Tue, 04 Aug 2026 10:49:12 +0200 (CEST)
-Date: Tue, 4 Aug 2026 10:49:12 +0200
+	id 2A2FDA13A6; Tue, 04 Aug 2026 10:50:18 +0200 (CEST)
+Date: Tue, 4 Aug 2026 10:50:18 +0200
 From: Jan Kara <jack@suse.cz>
 To: Chao Shi <coshi036@gmail.com>
 Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
@@ -87,11 +87,11 @@ Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>,
 	Joseph Qi <joseph.qi@linux.alibaba.com>, Andreas Gruenbacher <agruenba@redhat.com>, 
 	linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev, 
 	linux-karma-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 13/19] ocfs2: check for a metadata write error with
- buffer_write_io_error()
-Message-ID: <zr3we2xntqhn7ieev2khdkqvoi44vrkyd5hhgxjol2bggcllhr@g4wpvgfolwni>
+Subject: Re: [PATCH 14/19] ocfs2: check for a stale write error before
+ reusing a metadata buffer
+Message-ID: <zkfpbzavypza6z427zvsjohfrtrowlktdv7nstt3pciph2m2hi@6fhq6rpyguoa>
 References: <cover.1785621505.git.coshi036@gmail.com>
- <bd2c982e7c91fcfdb8a326ae8166853351398aa2.1785621505.git.coshi036@gmail.com>
+ <e63c15e7001fea3f83e0a0aed1512224832b8b1e.1785621505.git.coshi036@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -100,7 +100,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <bd2c982e7c91fcfdb8a326ae8166853351398aa2.1785621505.git.coshi036@gmail.com>
+In-Reply-To: <e63c15e7001fea3f83e0a0aed1512224832b8b1e.1785621505.git.coshi036@gmail.com>
 X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -115,7 +115,7 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCPT_COUNT_TWELVE(0.00)[26];
 	MIME_TRACE(0.00)[0:+];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.cz:dkim,suse.com:email];
+	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,suse.cz:dkim];
 	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	FREEMAIL_TO(0.00)[gmail.com];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
@@ -133,81 +133,86 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 X-Spam-Flag: NO
 X-Spam-Score: -2.51
 X-Spam-Level: 
-X-Rspamd-Queue-Id: 283867F72E
+X-Rspamd-Queue-Id: 71F777F7B5
 X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
 X-Rspamd-Action: no action
 
-On Sat 01-08-26 18:00:57, Chao Shi wrote:
-> ocfs2_write_block() and ocfs2_write_super_or_backup() detect a failed write
-> by looking at BH_Uptodate afterwards.  That relies on the write completion
-> handler clearing BH_Uptodate on error, which this series removes: a buffer
-> whose write failed still holds the data the filesystem asked to be written,
-> so declaring it not up to date is wrong and makes callers re-read it.
+On Sat 01-08-26 18:00:58, Chao Shi wrote:
+> __ocfs2_journal_access() refuses to journal a buffer whose previous write
+> failed, and turns the filesystem read-only rather than risk metadata
+> inconsistency.  That check sits inside an if (!buffer_uptodate(bh)) block,
+> because until now a failed write also cleared BH_Uptodate.
 > 
-> Test BH_Write_EIO instead.  Note that ocfs2_write_block()'s test is the
-> positive one, so the sense has to be inverted rather than the flag simply
-> swapped.
+> This series stops clearing BH_Uptodate on write error, so that outer test
+> would never fire again and ocfs2 would silently start reusing buffers whose
+> last write failed.  Hoist the check out of the debug block, where it does
+> not depend on BH_Uptodate any more, and drop the now dead second half of
+> its condition.
 > 
-> The comment in ocfs2_write_block()'s error arm needs updating for the same
-> reason.  It said the clustered uptodate information did not have to be
-> removed because the buffer was not marked locally uptodate; after this
-> series it is, so the reason no longer holds.  Not advertising the block to
-> the cluster is still the right thing to do - the data is in memory but not
-> on disk - so only the justification changes, not the behaviour.
+> The mlog() pair keeps its own !buffer_uptodate() guard: it is a separate
+> "we can safely remove this assertion after testing" debug aid about being
+> handed a buffer with no valid contents, which is a different question from
+> whether the last write of that buffer failed.
 > 
-> No behaviour change today - a failed write sets BH_Write_EIO and clears
-> BH_Uptodate together.  It stops being a no-op at the end of the series,
-> where the new test is the one that still works.
+> The unlocked test followed by a locked retest is deliberate.  BH_Write_EIO
+> is cleared under the buffer lock when the buffer is submitted for write
+> again, so taking the lock and looking a second time avoids turning the
+> filesystem read-only over an error that a concurrent rewrite has already
+> cleared, while keeping the common case lock-free.
 > 
+> The code in this patch is Jan's, from the review discussion linked in the
+> cover letter.
+> 
+> Suggested-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Chao Shi <coshi036@gmail.com>
 
-This looks ok to me so feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
-
-but it would be good to get a feedback from ocfs2 maintainers whether the
-logic change in ocfs2_write_block() where we now keep the cluster cache
-block uptodate after write IO error doesn't break some expectations of
-ocfs2.
 
 								Honza
 
 > ---
->  fs/ocfs2/buffer_head_io.c | 12 +++++++-----
->  1 file changed, 7 insertions(+), 5 deletions(-)
+>  fs/ocfs2/journal.c | 25 +++++++++++++------------
+>  1 file changed, 13 insertions(+), 12 deletions(-)
 > 
-> diff --git a/fs/ocfs2/buffer_head_io.c b/fs/ocfs2/buffer_head_io.c
-> index 7bfe377af2df..733ceda79ca1 100644
-> --- a/fs/ocfs2/buffer_head_io.c
-> +++ b/fs/ocfs2/buffer_head_io.c
-> @@ -66,12 +66,14 @@ int ocfs2_write_block(struct ocfs2_super *osb, struct buffer_head *bh,
->  
->  	wait_on_buffer(bh);
->  
-> -	if (buffer_uptodate(bh)) {
-> +	if (!buffer_write_io_error(bh)) {
->  		ocfs2_set_buffer_uptodate(ci, bh);
->  	} else {
-> -		/* We don't need to remove the clustered uptodate
-> -		 * information for this bh as it's not marked locally
-> -		 * uptodate. */
-> +		/*
-> +		 * The buffer still holds what we tried to write, but it did
-> +		 * not reach the disk, so don't advertise it to the cluster
-> +		 * as up to date.
-> +		 */
->  		ret = -EIO;
->  		mlog_errno(ret);
->  	}
-> @@ -446,7 +448,7 @@ int ocfs2_write_super_or_backup(struct ocfs2_super *osb,
->  
->  	wait_on_buffer(bh);
->  
-> -	if (!buffer_uptodate(bh)) {
+> diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+> index d8afbc1a76bb..ea6802d894c2 100644
+> --- a/fs/ocfs2/journal.c
+> +++ b/fs/ocfs2/journal.c
+> @@ -676,19 +676,20 @@ static int __ocfs2_journal_access(handle_t *handle,
+>  		mlog(ML_ERROR, "giving me a buffer that's not uptodate!\n");
+>  		mlog(ML_ERROR, "b_blocknr=%llu, b_state=0x%lx\n",
+>  		     (unsigned long long)bh->b_blocknr, bh->b_state);
+> -
+> +	}
+> +	/*
+> +	 * A previous transaction with a couple of buffer heads fail
+> +	 * to checkpoint, so all the bhs are marked as BH_Write_EIO.
+> +	 * For current transaction, the bh is just among those error
+> +	 * bhs which previous transaction handle. We can't just clear
+> +	 * its BH_Write_EIO and reuse directly, since other bhs are
+> +	 * not written to disk yet and that will cause metadata
+> +	 * inconsistency. So we should set fs read-only to avoid
+> +	 * further damage.
+> +	 */
 > +	if (buffer_write_io_error(bh)) {
->  		ret = -EIO;
->  		mlog_errno(ret);
->  	}
+>  		lock_buffer(bh);
+> -		/*
+> -		 * A previous transaction with a couple of buffer heads fail
+> -		 * to checkpoint, so all the bhs are marked as BH_Write_EIO.
+> -		 * For current transaction, the bh is just among those error
+> -		 * bhs which previous transaction handle. We can't just clear
+> -		 * its BH_Write_EIO and reuse directly, since other bhs are
+> -		 * not written to disk yet and that will cause metadata
+> -		 * inconsistency. So we should set fs read-only to avoid
+> -		 * further damage.
+> -		 */
+> -		if (buffer_write_io_error(bh) && !buffer_uptodate(bh)) {
+> +		if (buffer_write_io_error(bh)) {
+>  			unlock_buffer(bh);
+>  			return ocfs2_error(osb->sb, "A previous attempt to "
+>  					"write this buffer head failed\n");
 > -- 
 > 2.43.0
 > 
