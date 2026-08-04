@@ -1,136 +1,122 @@
-Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+Received: from mail-yw1-f171.google.com (mail-yw1-f171.google.com [209.85.128.171])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 665AB175A99
-	for <linux-ext4@vger.kernel.org>; Tue,  4 Aug 2026 04:55:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785819338; cv=none; b=T/W9OKhjinWlF1UyhRspgyhf6RsbZ9P/sbDe3+Jj6rO9Owa3r3WBwmbptxDiS0X2eJiatko5zKP8APYB8MaKpDfXd26o8sCsrpLVB5d+jXbNhI2xd+OaQxoCbOiApCT2y+UxXx+qakF6lbEKuvRa4oAfQjeYNJ2738EWFcQQb4E=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785819338; c=relaxed/simple;
-	bh=iV2nAHfGhDwkMGCRqBFtmMrC9pjdP1du9lckNNaqVYk=;
-	h=Message-ID:Date:MIME-Version:To:Cc:From:Subject:Content-Type; b=MhwHHL4mDIbTPFu0PWcGQHsXj53jV5LJEGUgNBFj6xoHKd5lGTTSZwpk3F4/lbub1Rb+avENI7+ARE+nHpDqR6tNFlmCuzQ8qYu4z45iOl+GBHO3kIeJzFCd8vXgOBaTP18sUgOiNI+A1tAaoq1IRNToDH0kdWaDL3Oe7MBehHM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=lDz/9Vk7; arc=none smtp.client-ip=209.85.214.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9ACAA23EAB0
+	for <linux-ext4@vger.kernel.org>; Tue,  4 Aug 2026 07:07:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.128.171
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785827230; cv=pass; b=hHdjB0+t2sSQLCMcdrd3ngyXCXSP7IeqkOByqRA9TBnDRrN5cQdR2grvA/WQ6H8meeqKD63T0+bQGs5SfJf7QoBGBhj9GZGl+mkmELO6iNcn/X+hzCOhG83KsHpLqxk+E9CzE9KVe5k2P/1DT6bs7QQMwVPYGux9dB+7fjbWbPA=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785827230; c=relaxed/simple;
+	bh=K7fp4RIDjGpoeFh745LyFbaeONTzPRj8J/2g0MPGJOQ=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=mnSul76d3jsadGDHsz/Hp5CjK9lyQAntXigE6cWOUYniMHaNQ6yIa5Q3h5nFUp4quPhneAD2lALCwBlOqHwLJJ0xA9OPEgz/fFsKZZBHxkKu6B6TUo1+LX5xmrH0sZr8QOpDEAB3D+dlT24CBnkHrktC9LTaN+RzZNTdsqR9mD4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EfqPhWDa; arc=pass smtp.client-ip=209.85.128.171
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lDz/9Vk7"
-Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2cf420670bbso3680685ad.1
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Aug 2026 21:55:37 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EfqPhWDa"
+Received: by mail-yw1-f171.google.com with SMTP id 00721157ae682-81f64e8dfbcso58700127b3.2
+        for <linux-ext4@vger.kernel.org>; Tue, 04 Aug 2026 00:07:09 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785827228; cv=none;
+        d=google.com; s=arc-20260327;
+        b=heBrxeD9WFr+XXWxAjxIQVY4+r0iWwyR4r5qG/sSqVecKw/uNObd3TZ36ObloiRqZ2
+         ENeErXWFO2brEG0FBIKPDnNqdkukdAPmoAOKgRvgGPhjgyxjJzCTebIasJ6rA6GD0rhZ
+         cnq526BEgB7UC1qTNKBdpk7u+aoonBi+F0xCSiqVYpNtqMCiZSVHiYe2pYeXkif7v74g
+         n+1/2yiPc3V3kK9qJt+RKpKoAiXawYAzxIiiH5+sGyEGjOMGhUGir4hj2zl0xMAS8YtK
+         sBk5nb7VO7+lWsoNkhLfne6PP0Kd01Jf0JE0HBhzGRHUGgGpxu0a16V2SCwX5czUO53z
+         0etg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=SVdx2hNQFC7tZLuV+Q983vTFnBvIFpFaJOmwifl7Kf0=;
+        fh=/JYt4pnvqzt2m1e89TpU65CrmFoMK0SFEHz9LxzDXaU=;
+        b=s/CMwMQhYgFonABelQivfXrsY/aad0q5mnDQiOFFjh7c9HX45tSIPl1jCJIjWbnc+f
+         wit+2Vxn0j36LMv2vYNxIAcFpC6hdPLdzkp5XsrpVYroIHicEW4n1DocwNZLTZT8+2X/
+         ZGlin9vobSeHGFhpqGJ2v29g8RRFpzOztOfiTHpFrF6C4pU8jxAz6mmDs10u/uzCvFqo
+         bN9vob3gQFHfqsc/6axPumMvg0KKDikNQ9TnwzNvkP+GBIrui4uz802e1CsRsbCWGrXI
+         LCNmP7LvWIOC3QO7a1E7ahhxXVWgf3jLXj0JRcP38jX/YRxxFYWfs2gQpqVGzo2uwlIz
+         p0Tg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785819337; x=1786424137; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:subject:from:cc:to
-         :content-language:user-agent:mime-version:date:message-id:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=LjdXQJGz+lwElkC0697Bamhm02fodNd9qx878yCNFEw=;
-        b=lDz/9Vk7B02QQ/3qzDtk5wA+6SdRLexqNKSDu8o/SEmqwbi/xZQX/yfMKBtPFbclYc
-         sisXmVNEBL+2QBhBtxf0tOa9B8RGfHdBdGBilMiVcAKHF0te9p65M+XL7R8L/CJNq+Ij
-         SjAYAi5rXidj3s0nRdhMrUi0tU3uhVJd/T9Yd4od2A8V17O+g4jZ7qgr2kwRkyBUPanN
-         vGqS+IlvMEyxUJP1h6Gm+6bHxUURLKev8Q5mpPp5MQw9o2GZ3DsGSvUaQJl/3IwBZKoW
-         Gtfv8EQcNMfPFr2wgbf90dG2r8PKdt9K3oe040gQz8mfG0t3QmSafMzeY/I2V/0ntzZp
-         ykmQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785819337; x=1786424137;
-        h=content-transfer-encoding:content-type:subject:from:cc:to
-         :content-language:user-agent:mime-version:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+        d=gmail.com; s=20251104; t=1785827228; x=1786432028; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=LjdXQJGz+lwElkC0697Bamhm02fodNd9qx878yCNFEw=;
-        b=Jx5Rb7r54t+o9RzFyoEjh0Vib7gxxBKJL+AmAQBiVnjDFtG3dckbTl9Tybu2l7XWfC
-         S8prDZRefFpGAqrjpNj+pE4sK3JEyoH9HSbZX9hDYntvF8LqUw2Kb7fH5IFAeJXcodsx
-         Kmo5c0Z3Lm/9fxL4MjQ3fzOxO/Pn6mnG5oAO2krPNIp+Zy6YIlfDcX+DJiI13JpTxvgg
-         f8CA/ZNM7zYSrblcXRbXaSkvfpQOij6j5MZTLs5qFm9NQfyo6azDpkfJe4qdbxm//v5O
-         XMMhjpLZlNQ9pCz46JWP+jAO+UDhPk0FwK1nHX0JWqs/ABONm7H7Kub1vMr7mVOzU3xS
-         nEaQ==
-X-Gm-Message-State: AOJu0Yx5MCLrC77T9HDcGhBsqTfw4tdQDlKXvlYdOKicqC797TZtOWFK
-	qD9Ul891nd0m9DCiJ+6+0uYZgu1UIK4Hj2LFG1VEAfmQt3/xzpMGZWrj
-X-Gm-Gg: AR+sD10+mhT0EC41fN/WIJ8pBTqLI5FmQLB4i37LIaFRJo3KH4JFNQ+Kxnt3Pii7nCv
-	aHmC+tJAJzrrASjGqzsgwfXc+spRrG9XJiZzMBI26g4SPDqwmIfcdC15kroQbqq3qd+nQFG793/
-	jIkSXGERUbA78FbF72Sqbaf2mehu1LjV21ets6kpUrRGKJH1SP3iLcJAljV8APZle2FFDjx4f8K
-	B2kuUvW4HhPdpB35EnCe9yP/brRPr8cvLeq7K9wIR1fYNSYEkY5TdesEsJVbl/XMVevYGCr+zBv
-	7GAewMGy0I7Lb3zmXam8FnpxdhY/tQxi4k+icac/1H64Gi9dkczWwU70rH/tgvTEngh3twh0FjU
-	ln4Fg8ZkgOYvQObSnV+8CSgKhQcCUFB3WZ8ZZ50SD+CRu//TBA59BnnncSdLiQP2swiR57NsLpm
-	Visn3I1EmsQWD9N6gB+77QkzRrj/aQ73twzEqMe2ApEXfla9USk0tYqaPHM1OBwPzge9gltGGGF
-	g4BrTNVY6clQw==
-X-Received: by 2002:a17:90b:3a10:b0:38e:91a8:fb85 with SMTP id 98e67ed59e1d1-38fbc507730mr15816320a91.3.1785819336654;
-        Mon, 03 Aug 2026 21:55:36 -0700 (PDT)
-Received: from [10.70.111.138] ([202.189.104.49])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38feda512f3sm645617a91.11.2026.08.03.21.55.34
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 03 Aug 2026 21:55:35 -0700 (PDT)
-Message-ID: <65c955b0-716b-4599-b925-59c2782e38b4@gmail.com>
-Date: Tue, 4 Aug 2026 12:55:33 +0800
+        bh=SVdx2hNQFC7tZLuV+Q983vTFnBvIFpFaJOmwifl7Kf0=;
+        b=EfqPhWDa+90i8TLbX09oYlic0BvV+yoRoUJ6rpsKFw35E1IRj2cKMePqVSpDBFHw3Y
+         Jdst4YghZkTAeYfTIFljneQb5cpOxo56r/KzAeVxF11/ZtO4PYF2NZFcM9ZvSaWP9mQH
+         PT6M5e3jjJWCfaLlD7Op9e29qcSxsegGjl1+yjmdHFt1+8pZSgL7fsNVyeRI2y7fNEwU
+         hQBL8NFEGs5qBktv2jvyGKhIMCnGIpXCLovY1o3nfxzAeyGHeMpWZ8oRc28UnG5sv1Hp
+         tPO+u8JAovEze3R3UrAheGHjd97Vuhl3sKFw3Ol92BulGc7wiN2RS7E1OUrMhpibz9Mm
+         AWEg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785827228; x=1786432028;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=SVdx2hNQFC7tZLuV+Q983vTFnBvIFpFaJOmwifl7Kf0=;
+        b=VkfMnt4RiqxXTZq/07r6YG1VXsbymUJ+Ah5TDK4DAbq0H5JYPIPOW1tMwoeVfmLflL
+         QFuNDHp9+Kbf/SFGS9CPsFya3pTvShp7bsZVV9HJwU6Rc+omrPJHgP8njsjKzyquxTjh
+         2Xa3bAHPgiWJnsHZqeNDmM+E10BjOKFtoqWJNhunA/SJ4SIWG4NxNdbdiVewo+RJ4034
+         y9RZx/xM46v48Q1zobf9qUP9uCs2t2pPMzTbIv1TkEUAMUIueseG/i6GzLB5u2ICb74w
+         2nf+lbTOKkzT8b3pvP8CCpr46L1P2GBTG7BJcYDszfxAyijiflriv3GC2PEjnGEoTa/M
+         bhoQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrebmnyyqcCTxUGWMrKFEoedR+SsBwYivEagCMYTFlCUMb3CDwUF438x6aRxap+oX91jfakOmIbf4Tw@vger.kernel.org
+X-Gm-Message-State: AOJu0Yw1b9QTDGV0syKUklh6Mgu1f6mK2JE1o6SDvGjtiOhd0v8BV6Aa
+	RnR7Cs5HPyQ+iANKGGT/oyY6nDQ4k/VSR2olw++mN9/vDDmcNm20b6E+qbentYRyAx0hMAJayXb
+	tdeYfz1AjZ7/AThyNHb+qCnSEjhxRfCp6fE9ysHI=
+X-Gm-Gg: AR+sD12lOCakYBMRKp8spU1rWdGnIKeyj+xWGP7XpMpbaFZ1KJda/+CC1ouy4cCjxdW
+	6+8CP8A28PClNGCQzA+q38cugp/ONgKveOVlP+M7+/mtiIEuR2BHR6rlu4T/0wKjZyTSIaSTGCz
+	te2MDB4lTBICJYZ4xVZKLjmZ2mtu9cdy/YUgNbgOdwy06Y03L7TwE7Ebtrh5sXetBLTHIFuFp3a
+	JWRTSgt6tgczzGU2UpaSl04L7VFAknRmGQSG768ztjdpDGmYITN5Q3mBx25mfHXoQY0rHeKEuqD
+	6Xgcim5uU9mSXCI+LpPxAwumDXOYu00bwhNTPUMOALGt95FoZcmOlhNdLr4Y74LK/Bjf8xTAGZg
+	rfyVDQfthJG4=
+X-Received: by 2002:a05:690c:61c2:b0:80c:d342:955c with SMTP id
+ 00721157ae682-81fd49b8358mr169688987b3.3.1785827228478; Tue, 04 Aug 2026
+ 00:07:08 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Content-Language: en-US
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-From: Junzhe Yu <junzheyu1@gmail.com>
-Subject: [PATCH] ext4: guard against NULL s_group_info in ext4_get_group_info
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+References: <20260803160037.64285-2-jack@suse.cz>
+In-Reply-To: <20260803160037.64285-2-jack@suse.cz>
+From: Tigran Aivazian <aivazian.tigran@gmail.com>
+Date: Tue, 4 Aug 2026 08:06:57 +0100
+X-Gm-Features: AUfX_myWnE_hSdQWORQ2nBl9ckBdocm1yg0MOaERStJW0QEcVWT5L2S8T9HFoVA
+Message-ID: <CAK+_RL=VnbYo9LV+exxP4R2UsCjmmn6G3qK5CXiB7e1at+UxqA@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Fix spurious message about orphan cleanup on RO fs
+To: Jan Kara <jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Resend: previous attempt was rejected by vger for containing HTML.
+On Mon, 3 Aug 2026 at 17:01, Jan Kara <jack@suse.cz> wrote:
+> diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c
+> index 64ea47624233..2a44998a6c2e 100644
+> --- a/fs/ext4/orphan.c
+> +++ b/fs/ext4/orphan.c
+> @@ -388,7 +388,7 @@ void ext4_orphan_cleanup(struct super_block *sb, struct ext4_super_block *es)
+>         struct ext4_orphan_info *oi = &EXT4_SB(sb)->s_orphan_info;
+>         int inodes_per_ob = ext4_inodes_per_orphan_block(sb);
+>
+> -       if (!es->s_last_orphan && !oi->of_blocks) {
+> +       if (!es->s_last_orphan && ext4_orphan_file_empty(sb)) {
+>                 ext4_debug("no orphan inodes to clean up\n");
+>                 return;
+>         }
 
-==================================================================
+I have just re-tested my original scenario and confirm what you
+asserted in the second half of your earlier email: the "remount,ro"
+step in my testing was indeed irrelevant. We would get the spurious
+"orphan cleanup on readonly fs" message even with just a normal
+"umount /mnt" intervening between the rw and ro mounts of the
+filesystem in question. Therefore, your patch above appears to be the
+most sensible thing to do in this situation, especially as that code
+path uses ext4_debug() but the spurious message is using a stronger
+ext4_msg(sb, KERN_INFO,...).
 
-ext4_mark_group_bitmap_corrupted() already treats a NULL return from
-ext4_get_group_info() as "nothing to do", but ext4_get_group_info()
-indexes s_group_info without checking whether the array exists.
-
-During mount, fast-commit replay runs inside jbd2_journal_load() from
-ext4_load_and_init_journal(), which is before ext4_mb_init() allocates
-s_group_info. Replaying an FC UNLINK for an inode whose bitmap bit is
-already clear takes:
-
-   ext4_fc_replay_unlink -> iput -> ext4_evict_inode -> ext4_free_inode
-     -> ext4_mark_group_bitmap_corrupted -> ext4_get_group_info
-
-and faults on the NULL s_group_info base. Userspace only mounts a dirty
-ext4 image; this is a supported recovery path.
-
-Return NULL when s_group_info (or the per-block grp_info row) is unset
-so the existing caller check is effective during early mount.
-
-Tested on Linux v6.6.145 KASAN: crafted FC-unlink image previously
-triggered KASAN null-ptr-deref / panic in ext4_get_group_info; with this
-patch, mount succeeds (EXT4 "bit already cleared" may still log). Also
-observed on v6.6.144; still present on torvalds/linux as of
-f5098b6bae76 (2026-07-26).
-
-A self-contained Docker/QEMU reproducer (craft + mount + patch verify) is
-available on request.
-
-Signed-off-by: Yu Junzhe <junzheyu1@gmail.com>
----
-  fs/ext4/balloc.c | 4 ++++
-  1 file changed, 4 insertions(+)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 3a2dfc5..80c81bc 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -329,9 +329,13 @@ struct ext4_group_info *ext4_get_group_info(struct 
-super_block *sb,
-
-      if (unlikely(group >= EXT4_SB(sb)->s_groups_count))
-          return NULL;
-+    if (unlikely(!EXT4_SB(sb)->s_group_info))
-+        return NULL;
-      indexv = group >> (EXT4_DESC_PER_BLOCK_BITS(sb));
-      indexh = group & ((EXT4_DESC_PER_BLOCK(sb)) - 1);
-      grp_info = sbi_array_rcu_deref(EXT4_SB(sb), s_group_info, indexv);
-+    if (unlikely(!grp_info))
-+        return NULL;
-      return grp_info[indexh];
-  }
-
--- 
-2.53.0
-
-
+Kind regards,
+Tigran
