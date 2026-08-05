@@ -1,159 +1,125 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8E1938E8A7;
-	Wed,  5 Aug 2026 10:55:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF32947B403
+	for <linux-ext4@vger.kernel.org>; Wed,  5 Aug 2026 15:36:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785927336; cv=none; b=dlHWhn5vJUwMyX+lSvX0syDCM6V4Ithk8tifa4R39cz52aZMEUs83HTlXBnoS2gz0jQD9EUP+5xGR47XWWCDF0BulFIE5YAGu1O5a98lypapyoQsmUCRx9OwfiKZ1JeRy/eeNPhbBCQebZkxX3YK9C+GzLlBoiPQN5uckOgUrlg=
+	t=1785944194; cv=none; b=E0RL6xOL9lX3EFrXazgVJWfhuXpfZfNHecDrs5Y6vDSZwpr/ONz9l0263/3lf9EUAIeZIqAvOTSZXmTRnPkih9duR/hRqBMd3k70+edBp3hevqqEuJ6JuMs3Ho0S2vs4yloDDw9dFDR/pntSNAiuKxGOkkldCFXLCjW34LGA2vo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785927336; c=relaxed/simple;
-	bh=JUdBqFjm9fK/OlqJ2kX4GpW/Llh2cJlNW/cxLiJoMC4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=KQvtPZRdDN9rKgtUowH5IuA6KyL524Ll8HlVffOvZiPkK/7mFXLwy7rYJZ9d8X4HTJOWw8gHYcwq5Vkph0+uSw3z4yYQjfHRMb7QD99j3t590QJ77mAYiicNqf7T2epE+zcEkfQ1mm3n3VTZGFiZ8M4JDJ9KUywgzwxCKQzTi10=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hFS3B5Jc1zYQx8y;
-	Wed,  5 Aug 2026 18:54:30 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id A3B5C4058C;
-	Wed,  5 Aug 2026 18:55:23 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgDn1kWZFnNqZM3NBA--.7867S3;
-	Wed, 05 Aug 2026 18:55:23 +0800 (CST)
-Message-ID: <a7312401-3bed-4d5d-847e-a0c96be503d3@huaweicloud.com>
-Date: Wed, 5 Aug 2026 18:55:20 +0800
+	s=arc-20240116; t=1785944194; c=relaxed/simple;
+	bh=YvDikl1HW4httYH1bCJ3V1lTzvjC3o/yQOfJ/ld/DGg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bo0Lyqo+s30d1mAQmLAWYxo5g6Jnnzq67OHIYhl7FF9eKjILqDHbZ0ueC532nZrZ6MOTrqr6rG3QuT6BUoWDbB2PTU6PHRZqom/8b24p7buzhDXt6v4V3AQUreAVLNvXe6B1pI1nf5VpagC2zO1k2KIfseTW9RccXKBMDFg8Rxk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=g0c/WQqX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=iwAskJ3U; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=b+vYJb4J; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=+DHqWiqy; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="g0c/WQqX";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="iwAskJ3U";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="b+vYJb4J";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="+DHqWiqy"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id E40707F251;
+	Wed,  5 Aug 2026 15:36:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785944181; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=9lCEypuTyvaLbhLHYWPDCap6Ip2GqSuw7yIMneX0VrQ=;
+	b=g0c/WQqXzuCmbLaxnXQFYSD4J+GypCzNvNQZCEAY5SGDFM1k3sYnasVoxGxdt8POrPBW77
+	snnZdQJ19+WqWB4nTzAkx4WpqDFeXlD5c2qlpaklt6MDiclaLgpa4r+n1WnbOxQM3UaF05
+	QU+2x/MterwuRVWUSlE1OkAcEOIabDo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785944181;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=9lCEypuTyvaLbhLHYWPDCap6Ip2GqSuw7yIMneX0VrQ=;
+	b=iwAskJ3UDsxCsmjMlN6HcAA+OlLyq6KwNfPs5w58n1BQs0q8wjCnTqik4xZ/IHvGHO9E5K
+	V2SS7c0Qh4qMZwDA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1785944176; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=9lCEypuTyvaLbhLHYWPDCap6Ip2GqSuw7yIMneX0VrQ=;
+	b=b+vYJb4JlwMHmXbbApHcsarUct2oJwIgNLFxqd3+W4ZxdMVkpQWkALM2wJtfbvgpePLzUm
+	d//06OnI+AGf9A9pTMnMgjfChWcN/UlQnzo6CdEDDdc9cWKULuL2/XWLSw7Ij40fxTSYNz
+	mBoybWQVhYXh3louciU0cywPGfCJqBQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1785944176;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=9lCEypuTyvaLbhLHYWPDCap6Ip2GqSuw7yIMneX0VrQ=;
+	b=+DHqWiqyJ3OP7GuUo6duab/lfZFPyoTz5MCe6eMaPmwgIZoTq0/BJA4XcJRNQtMRsBmhS8
+	PtxWzlNytlGXkWBw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D6ACC779C2;
+	Wed,  5 Aug 2026 15:36:16 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id sM77M3BYc2rwLwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 05 Aug 2026 15:36:16 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 7A2A6A13B1; Wed, 05 Aug 2026 17:36:12 +0200 (CEST)
+From: Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/3] ext4: Fix credit estimates for extent tree modifications
+Date: Wed,  5 Aug 2026 17:35:46 +0200
+Message-ID: <20260805153202.29814-1-jack@suse.cz>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 19/19] buffer: stop clearing BH_Uptodate when a write
- fails
-To: Jan Kara <jack@suse.cz>
-Cc: Chao Shi <coshi036@gmail.com>, linux-fsdevel@vger.kernel.org,
- Christian Brauner <brauner@kernel.org>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Matthew Wilcox <willy@infradead.org>, Theodore Ts'o <tytso@mit.edu>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
- <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>, Bob Copeland <me@bobcopeland.com>,
- Namjae Jeon <linkinjeon@kernel.org>, Sungjong Seo <sj1557.seo@samsung.com>,
- Yuezhang Mo <yuezhang.mo@sony.com>,
- OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Mark Fasheh <mark@fasheh.com>,
- Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>,
- Andreas Gruenbacher <agruenba@redhat.com>, linux-ext4@vger.kernel.org,
- ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev,
- linux-karma-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
-References: <cover.1785621505.git.coshi036@gmail.com>
- <3aa278c3b75de2bca8a94ec0c0e40922b1170881.1785621505.git.coshi036@gmail.com>
- <ff2f92ab-6c98-42f2-be0b-0c807bc9438e@huaweicloud.com>
- <t5vasainmrq7zlo2ptmjn5qfyiy26l4vvuqfkoldtx3naf5tir@4v6bktopybsk>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <t5vasainmrq7zlo2ptmjn5qfyiy26l4vvuqfkoldtx3naf5tir@4v6bktopybsk>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:_Ch0CgDn1kWZFnNqZM3NBA--.7867S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxAFWDuw45AF1Uuw4fWFWrAFb_yoW5Ar1Upr
-	Z5Ka1DKw4qqFyjyrnFkF1Fqa40yFyvvF47urWrG3WxZr90vr93WFy7Xw4Y9FW8Arnaga1j
-	vr4Fgr93CF1UXrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AF
-	wI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4
-	xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5
-	MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I
-	0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWU
-	JVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUIF
-	4iUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-Developer-Signature: v=1; a=openpgp-sha256; l=313; i=jack@suse.cz; h=from:subject:message-id; bh=YvDikl1HW4httYH1bCJ3V1lTzvjC3o/yQOfJ/ld/DGg=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBqc1hRawewkchh8/WkgqMRZu6R5RKHektF3mxd6 x8M72WBE8iJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCanNYUQAKCRCcnaoHP2RA 2T2WB/9i+t9ETrMP/fcdwLulYcnxrd8Y/UqxLVFT0Joliig6LjGbDejBD6irQO1njEJbkudW1Ag /7EUdNB/q/G0jl4hLSwNKWYciWvH8Hn3219N9qgVH4RyFXqz5McTv/1DEtOUIL7A7MBPWbLIG1k iOLigW6Lh7lFhbfE9S4D/BfFKtchQjrL56UGw+eotg3pX/HJZM3MQrn9JcXlxPq9ADS1QCrtsAp hB9UpPueNQsdaK+5Z/ff2zB18ZTamTlYrfgYUV0ihAhmmnBTYOZjWImPktUngqndaFB2BrJhuzJ T5nGxbnA1ztGdELbXk4sZU5beUx/+UaiWGhyBYlbSw6Fq4pY
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Spam-Score: -1.30
+X-Spam-Level: 
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-1.30 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_MISSING_CHARSET(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_TLS_LAST(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_CC(0.00)[vger.kernel.org,linux.alibaba.com,huawei.com,linux.ibm.com,gmail.com,suse.cz];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	URIBL_BLOCKED(0.00)[suse.cz:mid,imap1.dmz-prg2.suse.org:helo];
+	RCPT_COUNT_SEVEN(0.00)[7];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:mid];
+	TO_DN_SOME(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com]
 
+Hello!
 
+This patch set fixes credit estimates for extent tree modification during
+convertion of unwritten extents on writeback completion. Otherwise we are
+occasionally seeing assertion failures during extent conversion in end io
+completion callback due to insufficient transation credits.
 
-On 8/5/2026 5:00 PM, Jan Kara wrote:
-> On Wed 05-08-26 12:52:11, Zhang Yi wrote:
->> On 8/2/2026 6:01 AM, Chao Shi wrote:
->>> A buffer whose write failed still holds exactly the data the filesystem
->>> asked to be written.  It is the disk that is out of date, not the buffer.
->>> Clearing BH_Uptodate says the opposite, and callers act on it:
->>>
->>>  - mark_buffer_dirty() has a WARN_ON_ONCE(!buffer_uptodate(bh)).  A
->>>    filesystem that dirties the buffer again after a failed write - which is
->>>    the normal way to retry - trips it.  That is the warning this series
->>>    started from.
->>>
->>>  - a buffer that is not up to date gets re-read from disk, which replaces
->>>    the data the filesystem was trying to write with the stale on-disk copy,
->>>    silently.
->>>
->>>  - the window between the write completing and the buffer being marked not
->>>    up to date is visible to anyone holding the folio lock, so the state is
->>>    not even self consistent while it lasts.
->>>
->>> BH_Write_EIO already records the failure, and by now every place in the
->>> tree that needs to know about it tests that flag instead: the two core
->>> helpers in this file, adfs, exfat, ext2, ext4, fat, gfs2, jbd2, ocfs2 and
->>> omfs, converted one filesystem at a time in the preceding patches.  The
->>> private completion handlers in jbd2 and ext4 fast commit were converted
->>> along with their waiters.  Nothing is left that reads BH_Uptodate to find
->>> out whether a write failed, so the clears can go.
->>>
->>> Found by FuzzNvme.
->>>
->>> Signed-off-by: Chao Shi <coshi036@gmail.com>
->>
->> It looks like after this series, we may need to revisit the necessity of
->> ext4_buffer_uptodate() in the ext4 filesystem. IIRC, it was originally
->> introduced as a compromise to address this issue. Now that we no longer
->> clear the buffer uptodate flag after a failed IO write, this flag will
->> still remain valid when getting/reading bh. Therefore, the necessity of
->> ext4_buffer_uptodate() is worth reconsidering.
-> 
-> Deninitely :) There are several hacks in ext4 (and other filesystems as
-> well) that could be removed after this patch set. But let's settle on the
-> generic changes first.
-> 
-> 								Honza
-
-Yeah, that would be great!
-
-Best Regards,
-Yi.
-
-> 
->>> ---
->>>  fs/buffer.c | 2 --
->>>  1 file changed, 2 deletions(-)
->>>
->>> diff --git a/fs/buffer.c b/fs/buffer.c
->>> index ac978d9090c2..0002f0736398 100644
->>> --- a/fs/buffer.c
->>> +++ b/fs/buffer.c
->>> @@ -207,7 +207,6 @@ void bh_end_write(struct bio *bio)
->>>  	} else {
->>>  		buffer_io_error(bh, ", lost sync page write");
->>>  		mark_buffer_write_io_error(bh);
->>> -		clear_buffer_uptodate(bh);
->>>  	}
->>>  	unlock_buffer(bh);
->>>  }
->>> @@ -441,7 +440,6 @@ void bh_end_async_write(struct bio *bio)
->>>  	} else {
->>>  		buffer_io_error(bh, ", lost async page write");
->>>  		mark_buffer_write_io_error(bh);
->>> -		clear_buffer_uptodate(bh);
->>>  	}
->>>  
->>>  	first = folio_buffers(folio);
->>
-
+								Honza
