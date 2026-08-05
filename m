@@ -1,81 +1,81 @@
-Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
+Received: from mail-ed1-f45.google.com (mail-ed1-f45.google.com [209.85.208.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 472D63C3F58
-	for <linux-ext4@vger.kernel.org>; Wed,  5 Aug 2026 19:02:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.44
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 595DE3DC850
+	for <linux-ext4@vger.kernel.org>; Wed,  5 Aug 2026 19:02:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.45
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785956551; cv=pass; b=sJPbU3QL2BXXPDVXdqGtuLAgkJFF4Th3OBcZJcjzicW1RlQXYG05c2k+jqMHzk9MpsUnYWDuJfjHZOyn8AVlKEv8ZsEcq3S3y5WHUjPQIQ3q1Hh9sdkZHeBYAedzobnCaCVMrEg5e1lg90pZ9WlMuSg3+Nsi0FOgwypTSMDbQXI=
+	t=1785956571; cv=pass; b=VdR0Q3Lxx6zvFBPl4KXu1LB8Tc1RA+27G07HJRnxfCa1AU5oU17wsBp6b0cbIesKRK/sWO9Rm6V/Vk63rLubSV3yQI824ALGA4l7Lrtg9PTztXMr4FCOUXDIIr/aar84GGdH4HPf8ZR0KKgr9j56o6PNijt7Go/ktd76UWFmWw4=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785956551; c=relaxed/simple;
-	bh=ALS4z1Gntn76BUGW7fczi1PamcwbMhAJ+HBZQNl5qW0=;
+	s=arc-20240116; t=1785956571; c=relaxed/simple;
+	bh=ZkwANXvB/ZU9t3LgTT3w1mAN0VeV9gy04VEToUnWNWY=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=JDGE19Dqthsd1beqtYEo2nB3ede2nZ5KOZbABJBXOR1HJhyQHFVx/jXO1JLSwHDfpkmlYnReSkEFAOW3vMfTi/EjTzFnK7fO2VdcTXM0w/VcaEdTx7BqQO+7nLwj0kaVs4+9+atSwTJN/APBTY4GleK4r0/oxfWNdalCTQx8YhQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cgZzS1Hr; arc=pass smtp.client-ip=209.85.208.44
+	 To:Cc:Content-Type; b=UuDpBCybpEFkMUTRzReQS1Rh3U9SgoLXWQL6MPWeW5MtsdeufXdlw8kA858Et8mGb2EjR3tQ0WyTf2Thx4TmjMg2HjrdH0Ah9Z5vf4d7d3NxyMDAVwJ0okN8DXNo3yfvc/SqhXV5RHE1OGs3E0EHKiu227fEoX+kfc+mV2vNdAY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cy4Ag8wv; arc=pass smtp.client-ip=209.85.208.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cgZzS1Hr"
-Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-69fab5a852cso1956662a12.0
-        for <linux-ext4@vger.kernel.org>; Wed, 05 Aug 2026 12:02:21 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785956537; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cy4Ag8wv"
+Received: by mail-ed1-f45.google.com with SMTP id 4fb4d7f45d1cf-6a17cb94b26so1453197a12.3
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Aug 2026 12:02:42 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785956559; cv=none;
         d=google.com; s=arc-20260327;
-        b=fRjYSxW5eOOYwECqVo47yyzdnP1xKOJquoNXRBHfLRVlq0K7kEFHiv/lkN1dUDYZIM
-         MqVKUG5mGmGhG+TFoT2rR6+dbxi574+Mn9vJ+FXWq2nd5dUxrNGXVrqurHN84vvJ/0qP
-         1O/ZanRFVvkYFC80nOKZJ2ku1to1KFeXOteYUTuBjedzJPeIAcy3QkjCBRisZCNsy4/I
-         nugxZ222Yrj/6+FFCs2nFTNObW3YFgH3/QK5SArjSfiKjWqH3WzEAD8QfSfXV1xpjG6x
-         +OSge+3+4lpvtL4ayz5CpRI0uDAfIpJcs/OlSFgTetCw5c+3nFjQGt/FjG0C/PPywnrj
-         Nhlg==
+        b=dAxzNe90AIy2K485ttUg3nhj7CFIGYR7auseM1D3gJxFCUYDzsaTTdhGelq5uTwG+U
+         pWtywX4txdQ+JDV4A6HcpKNG4nQsGsDholQWp25QVlWgXdDQ9lB2xheYz0zekztOac4m
+         Z6W4wQtthztz8vuGKoZHuTt+e6jDHX2LOQujPaWXqIRmFci+5qlTEw7eZzmnztjSkstj
+         SKPkDR00EAp+x3uVGBKy3FcBHDcWOiWwZESefn/IKpoyYdbOffiV8c0lbKVSGx3h3rTx
+         YxNJgobllJzN0pvilAkGol1XfAFyw0horioqDbW85uwaqiI9m8ys2ySh+9a+D/i//vd2
+         GvwA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=bXL8fOwPfzW8cmIw726T8X174t2PQj7sWrk7UD/8Cqs=;
-        fh=TzYzjnfq5/R8RurSpOYwQSY8VIIxdbltgF9cCJd345I=;
-        b=oRRNaSdcBcZEkFrOdde6/PK3Sfhhldyd4+L8HQ+b2JTX/yxiA7MIXe+N448hhzKLs0
-         G2Te2P2azaMYofQXUG6ypwqzc0mnZUAW1MA1fGP4jh+64A70+Ce1Py4a6tFKMLE4QvVV
-         z91DGXrlYOfoQNUnLbzqWOcaSCAKqbcqlLEUMVVd11VQpezDRXPgsruGu9SzdEOzdDwA
-         PqKE7mI8yPSpVznh6O0rrkGGI7yxDjP/cgg9cBZr+6RM0+cCvefc0popJ1jHGEgOiIRG
-         MbmlXBAbU/kEd6kJJd1z57NYobtbcRUg/25MZACkQkf5h4lNqed5P8Yhgg1AMWoXblkP
-         K3Gg==;
+        bh=yjE4xnT39vpf/cIgIYUv/kq7g7oy4MnCKn9bbbuZ18Q=;
+        fh=BwjQH9h/PWECWUPpZstwF589gXCa2+uumNXw/WiirSU=;
+        b=fA0KohDUnRqyR0PnPT2ehgzL3crTC3XjzMRsft9y2Uva7GCpL6vwiHNgx/AcP5gzid
+         zhu5KpefllMI0k7KBvBJ0h8bVwSDXklPec279pNjE+3BCUuv9ASSEhM8IxEAldsHP1dZ
+         p6n5VCZlylvDMgnhm4bIIGmo5MCEqFM6pq26/FReyZvQhIKuGung4ZXSnAEveZI5Bcpa
+         8TdTBGDNh6BG1Q58MPmGZIw7TswT1AAzm4i9vBmF8LhE7pygTcDBSCWcBOnsHAa0sjZo
+         G1Co8Pik/SFaXcBvV3Jwx9Gf5NmlZztgDN+Oow6UhGXMGUDKa8IZqO/DJpSPV7qnOS71
+         A1PQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785956537; x=1786561337; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785956559; x=1786561359; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=bXL8fOwPfzW8cmIw726T8X174t2PQj7sWrk7UD/8Cqs=;
-        b=cgZzS1HrcybBAQzDLzBWmiQJ4n29RGThXWOxPiuU4xthiqwHH1PrJQuOiTQUn2m5id
-         XPNi0w1SbVX3809FKXUwnsj/joR6GfQ4mlLN0kYS/7PiLZ4LWX0RUEmyPv3XuzsVxUtS
-         xiXE1NsFQJx1gjgst5G1SxVJd9elgafqbzSCoc1+4Mz6I/fnwRbS3vpNRa9va5WKUoUV
-         hQ+TM6U1e9OHmwrnwb2AVLAJG413G5yfjTpbj4UXST5B2iqG6hD8nWpRodgsBsfe34Og
-         32IOALEzq4+DhovfABfJeTic+FoTBLtCE4xgac9Uz03I1/8xer0JZkKaeTlPcYEovR6S
-         wIcg==
+        bh=yjE4xnT39vpf/cIgIYUv/kq7g7oy4MnCKn9bbbuZ18Q=;
+        b=cy4Ag8wvBKQRm+j5xKMyQfTrzjH48rFaMIGaIzz51yzz0O4p1TthGImHlGyDVOM4kB
+         Hv616jq2qKqSp7yV0nncp7dKDUasSam95v1/1v4S+zBbWFJp26DFbnU4dQGzBiZX8y3O
+         dtkorSi42lxmDG6BEok+PTdz3C6VH4vCc0XeGe4FGghiLRo/9QbBeUIpa8dIPLyhh8+R
+         Faa8rcyQxL/tMwCEd1zoBCPf7R3twoJ6oQJsQ3q/gkHAK4dsWpKba9KG9jT7LKFucJhl
+         q4nOS1YWJOz676wa72AAzKz3jZwLXAgg/wA951lkfIkgo1qDDe7MLgjD7+cTWIgCkV4+
+         Xedw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785956537; x=1786561337;
+        d=1e100.net; s=20251104; t=1785956559; x=1786561359;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=bXL8fOwPfzW8cmIw726T8X174t2PQj7sWrk7UD/8Cqs=;
-        b=rlfdIEPs4Ny7qwgwWY5Xn3jZ1mHzWopfXI8ZQIDd7VyKsiOemRHzWNccoXSK4dysbq
-         oVlNhdfFIV+kPYhWtqodKwXeGGiG2gts/njxnoa+87Z3q/vhovpWLGIaklpvhyfGt1Hm
-         TkgZumavqEt9bYDo4BgQ2uPdjpj8tT9K8vlZgIdfru/i07ERAk5Ggq0g4ij/aQyCsbgu
-         mkLbN7bzR/xILaXYmWZW0yAtVzL2zcKjYyiiwTctXb6JssI1kDWhxV7VBsqBg8A0CHbz
-         nMWPGSbG8L71IWr3KIxPzkjKRN69xXL78TDhA3/j5TepPBrMI2SASoKE4NRaBJz4xwzg
-         HXbw==
-X-Forwarded-Encrypted: i=1; AHgh+RopjDXFhXvCH7+VZmEsMvA6ARvxWm0waXtq76kDD37fk/tA1OTHPWGzDz/+bwo0tKGBMMgF/qTUdfAY@vger.kernel.org
-X-Gm-Message-State: AOJu0Yzn+/wMy5YP/00hPwa8YjbBBsVzaLGjzbTaS1z0Y6l/cE3V/tyi
-	h9bgsaM22iG6L4+qeQqbh+IMJB4VlzXJ6wePB7rVLwk/oqUCvUcaLr74xr6DyMZj2oMY6L2Jvd8
-	wqzPnEz6lNF3Q2zZIq9CiFGJyICqjrzQ=
-X-Gm-Gg: AR+sD12UNVAIkyPsU0fWoBucBCMwCKm3GSoQr/oTuGKGJyy4kpZpvVa3cTHBDLJkiCA
-	V4xaSF63Tv0QaF+/OLpkLz53AEHbxW2BdChrQ9WAvllP9wjSHjUAEFB7GoC7/sEeHZvF4/PdIrK
-	hAh1szJaokfaDN/spuBAmI3Pm3dNJSf+busPOM6CKcVHLS9xARNGPcLHSRkptmsJk6Mj/CUyplH
-	qcQKa18g+XyRPkbn8Y9fq+xcpcitfSyqDrxEznIO6cXzFlAt0IbGu/9natN6DbiCF0/Wn/5e1N2
-	4EL6sbqYnsvzx6OXkg0MA6nTy/52BG3xKuZyJVt4KSA+
-X-Received: by 2002:a05:6402:e87:b0:6a1:28d8:2306 with SMTP id
- 4fb4d7f45d1cf-6a14f07bc72mr5050205a12.1.1785956536576; Wed, 05 Aug 2026
- 12:02:16 -0700 (PDT)
+        bh=yjE4xnT39vpf/cIgIYUv/kq7g7oy4MnCKn9bbbuZ18Q=;
+        b=S5lsJtI+6JnFImelVtudpvQADlAkdHoabidJmsldYNIYKwJ4jl4NHBbE4FD0nr70bZ
+         XLir0mIcN//02KeZeHpxIqZTn7eV9ao+gESlaWugGKIwHYu12/cMyGxy1dR9NPBdtduy
+         +RAqxN3bZECLn+2M2JYbECdO/UP81PPAbsFTISGZ3EBRcXlEtek0ghyeAA5Dr90n5864
+         4MR576TXjbamvfcybI6n4Am6q16UPDhPRAxw6DOOdXkrdS0CiiW2k/ew1Z0y1jZPOs/g
+         H11Pfx9Zz7l748F7fdTYe5Wfvs8afzQY8USy7TDQdCNuN4RJOnj9kiBuFLnBAZoZ6QJI
+         ZFww==
+X-Forwarded-Encrypted: i=1; AHgh+RoWONNlE0ZoGFHv4oN2+RPPM59uUnrYheswLnF5fCCyNkoFJ67EIRfo4eAK45/dmE+ioeQiEU8gQERD@vger.kernel.org
+X-Gm-Message-State: AOJu0YyjOLxcf8/DIw+eVJhII77LcSnzLty0AXToyjGtVLtqsaCQxLQB
+	kdJg59PGNAqOZpDvn8Ko3ydb9KEY1OSisWgR1gNbXIJ5iYkmWWYaywOZBmfIuz3bUeUevxEec6v
+	MYcqvmdkaLKM5JcLhphGn4bi2tF9ByA4=
+X-Gm-Gg: AR+sD11AShSJSphrQwVm9rnJuXuNW4MbW0V0QGe4FBymLOJ2fPjbNKAemE3jFHHjFIQ
+	O9YqiFbuI3tshqRCjkn9BaUNbhnTdRtu1t+LhTdHQgT9vH+xReW4bOs58QOgbmlV/hPy09/wqfz
+	xTQMWyhlZmLNA6549SBrV3d3ccj2zAmJQCki6IIB3904meXLTFYfnkBMsLLzpEoHdtVkmJbMXDp
+	3fiAYOnQv4lkRVoEbFnf4W1KO/H4T01Wy4gbdz/9zQ+ApYmWw0zhAX2d5c6bYlyN8mGJHqocrOy
+	n9qdkwXhMY5xKriogk5BLiZsCzCpYGZHFhKN3pdcMH/m
+X-Received: by 2002:a05:6402:324d:b0:6a0:ecc9:79ad with SMTP id
+ 4fb4d7f45d1cf-6a14f27eb8cmr4200909a12.20.1785956559020; Wed, 05 Aug 2026
+ 12:02:39 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -83,16 +83,16 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 References: <cover.1785621505.git.coshi036@gmail.com> <2824f30bbc43e6a0b318564fa641228e9a096e37.1785621505.git.coshi036@gmail.com>
- <anDZ5YG-Ljflv7Vm@casper.infradead.org> <anFYf1iKrNLAjJMw@casper.infradead.org>
-In-Reply-To: <anFYf1iKrNLAjJMw@casper.infradead.org>
+ <aqyhnzlgxo4x2v6bfpi43ueoob2drnpcxkmy7fpx3i7bcrvkzj@rm2bn66enfc3>
+In-Reply-To: <aqyhnzlgxo4x2v6bfpi43ueoob2drnpcxkmy7fpx3i7bcrvkzj@rm2bn66enfc3>
 From: Chris S <coshi036@gmail.com>
-Date: Wed, 5 Aug 2026 15:02:05 -0400
-X-Gm-Features: AUfX_myV5AVdy2Vk3b4_r8TJRgGAg0iuSL9FFYfHvWZSH4sclQZJlO_bQY1K40Y
-Message-ID: <CACd_6n2GY2RRQPeKtJEuVkHcSBN-Ne2gJdHRfwxg2i=OT06MFg@mail.gmail.com>
+Date: Wed, 5 Aug 2026 15:02:27 -0400
+X-Gm-Features: AUfX_mw6M87toR509y6pAXXK646xUVHCYetXkG3wp8ZS--BnNZ1uTuGmAkGSoO8
+Message-ID: <CACd_6n1YDk=S1MWd=7TH29mTcyiijLQn8jZOyjGo=p9yduZ06Q@mail.gmail.com>
 Subject: Re: [PATCH 03/19] jbd2: point the shadow buffer at the frozen data directly
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org, 
+To: Jan Kara <jack@suse.cz>
+Cc: Christian Brauner <brauner@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Matthew Wilcox <willy@infradead.org>, linux-fsdevel@vger.kernel.org, 
 	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
 	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
 	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
@@ -106,87 +106,125 @@ Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>,
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-Thank you so much.
-Taken, with a change: the helper needs a matching unmap, and must not map
-the folio-less case at all.
+Hi Jan,
 
-static inline void *kmap_local_bh(const struct buffer_head *bh)
-{
-if (!bh->b_folio)
-return bh->b_data;
-return kmap_local_folio(bh->b_folio, bh_offset(bh));
-}
-
-static inline void kunmap_local_bh(const struct buffer_head *bh, void *addr=
-)
-{
-if (bh->b_folio)
-kunmap_local(addr);
-}
-
-Two reasons.  kmap_local_page(virt_to_page(bh->b_data)) loses the offset
-within the page, and b_frozen_data is kmalloc(b_size), which is only
-guaranteed page aligned when the block size is at least PAGE_SIZE.
-
-The second one is your other point.  With CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP=
-,
-__kmap_local_page_prot() maps even a lowmem page, one page at a time.  So
-mapping memory that is already permanently mapped would walk this path
-straight into the bs>PS problem you just described, which it is otherwise
-immune to - b_data covers the whole block whatever its size.  Returning
-b_data and calling kunmap_local() on it anyway is not an option either:
-kunmap_local_indexed() WARNs on an address outside the fixmap range under
-that config.  Hence the pair.
-
-On the bs>PS folio path itself: agreed it is real and predates this series.
-I would rather not fold a fix into this one, but I will take it - I'll look
-at it separately once this has settled.
+Thanks for the suggestion - done in v2.  new_folio, new_offset and the
+frozen flag are all gone; folio_set_bh() moved into the one path that
+still needs it, and the two copy-out paths just set new_bh->b_data.
+b_folio is already NULL out of alloc_buffer_head(), so nothing has to
+clear it either.
 
 Chao
 
-On Mon, Aug 3, 2026 at 11:12=E2=80=AFPM Matthew Wilcox <willy@infradead.org=
-> wrote:
+On Tue, Aug 4, 2026 at 4:28=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
 >
-> On Mon, Aug 03, 2026 at 07:11:49PM +0100, Matthew Wilcox wrote:
-> > On Sat, Aug 01, 2026 at 06:00:47PM -0400, Chao Shi wrote:
-> > > @@ -330,6 +330,8 @@ static __u32 jbd2_checksum_data(__u32 crc32_sum, =
-struct buffer_head *bh)
-> > >     char *addr;
-> > >     __u32 checksum;
-> > >
-> > > +   if (!bh->b_folio)
-> > > +           return crc32_be(crc32_sum, bh->b_data, bh->b_size);
-> > >     addr =3D kmap_local_folio(bh->b_folio, bh_offset(bh));
-> > >     checksum =3D crc32_be(crc32_sum, addr, bh->b_size);
-> > >     kunmap_local(addr);
+> On Sat 01-08-26 18:00:47, Chao Shi wrote:
+> > When a metadata buffer has to be copied out before it can be journalled=
+,
+> > jbd2_journal_write_metadata_buffer() writes jh->b_frozen_data rather th=
+an
+> > the page cache copy.  b_frozen_data is kmalloc()ed, so folio_set_bh() m=
+akes
+> > the shadow buffer point at a slab folio.
 > >
-> > This is awkward.  How about ...
+> > That is not something the buffer_head layer can reason about.  A slab f=
+olio
+> > overloads ->mapping, so a shadow buffer looks like it belongs to an
+> > address_space when it does not.  buffer_set_crypto_ctx() already has to=
+ use
+> > folio_mapping() to avoid tripping over this, and it is the reason
+> > mark_buffer_write_io_error() cannot be called on a shadow buffer today.
+> >
+> > Point the shadow buffer at the frozen data itself instead: leave b_foli=
+o
+> > NULL and set b_data.  The previous patch taught fs/buffer.c to submit s=
+uch
+> > a buffer.  The two commit-path checksum helpers are the only other user=
+s of
+> > the shadow buffer's contents, and they take the data directly rather th=
+an
+> > kmapping a folio that is already mapped.
+> >
+> > Note that the shadow buffer must not be passed to bh_offset() while
+> > b_folio is NULL.  All four callers that can see one are handled here an=
+d in
+> > the previous patch.
+> >
+> > Tested with ext4 mounted data=3Djournal,journal_checksum on a metadata_=
+csum
+> > filesystem, writing files whose every block begins with the JBD2 magic =
+so
+> > that escaping forces the copy-out, then crashing with sysrq-b without
+> > unmounting and replaying the journal on the next mount.  Recovery
+> > completed, the file contents matched, e2fsck -fn was clean, and an
+> > instrumented build confirmed the b_folio =3D=3D NULL path was taken.
+> >
+> > Suggested-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+> > Signed-off-by: Chao Shi <coshi036@gmail.com>
 >
-> ... Oh.  It's not just awkward.  The current code is actually wrong.
-> If one uses ext4 on a bs>PS device and one has
-> CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP enabled, it'll only map one
-> page of the buffer and we should get a crash when trying to checksum
-> the entire block.
+> ...
 >
-> Supporting mapping multiple pages from a folio simultaneously is
-> something we haven't figured out how to support.  Since HIGHMEM is
-> dying (see Arnd's recent work), I'm not inclined to spend effort
-> on it.
+> > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> > index 09efa337649e..9e4cb04587b4 100644
+> > --- a/fs/jbd2/journal.c
+> > +++ b/fs/jbd2/journal.c
+> > @@ -329,6 +329,7 @@ int jbd2_journal_write_metadata_buffer(transaction_=
+t *transaction,
+> >       struct buffer_head *new_bh;
+> >       struct folio *new_folio;
+> >       unsigned int new_offset;
+> > +     bool frozen =3D false;
+> >       struct buffer_head *bh_in =3D jh2bh(jh_in);
+> >       journal_t *journal =3D transaction->t_journal;
+> >
+> > @@ -354,8 +355,7 @@ int jbd2_journal_write_metadata_buffer(transaction_=
+t *transaction,
+> >        * we use that version of the data for the commit.
+> >        */
+> >       if (jh_in->b_frozen_data) {
+> > -             new_folio =3D virt_to_folio(jh_in->b_frozen_data);
+> > -             new_offset =3D offset_in_folio(new_folio, jh_in->b_frozen=
+_data);
+> > +             frozen =3D true;
+> >               do_escape =3D jbd2_data_needs_escaping(jh_in->b_frozen_da=
+ta);
+> >               if (do_escape)
+> >                       jbd2_data_do_escape(jh_in->b_frozen_data);
+> > @@ -400,13 +400,22 @@ int jbd2_journal_write_metadata_buffer(transactio=
+n_t *transaction,
+> >               jh_in->b_frozen_triggers =3D jh_in->b_triggers;
+> >
+> >  copy_done:
+> > -             new_folio =3D virt_to_folio(jh_in->b_frozen_data);
+> > -             new_offset =3D offset_in_folio(new_folio, jh_in->b_frozen=
+_data);
+> > +             frozen =3D true;
+> >               jbd2_data_do_escape(jh_in->b_frozen_data);
+> >       }
+> >
+> >  escape_done:
+> > -     folio_set_bh(new_bh, new_folio, new_offset);
+> > +     if (frozen) {
+> > +             /*
+> > +              * b_frozen_data is slab memory, not page cache.  Point t=
+he
+> > +              * buffer at it directly rather than at a slab folio, who=
+se
+> > +              * ->mapping is not an address_space.
+> > +              */
+> > +             new_bh->b_folio =3D NULL;
+> > +             new_bh->b_data =3D jh_in->b_frozen_data;
+> > +     } else {
+> > +             folio_set_bh(new_bh, new_folio, new_offset);
+> > +     }
 >
-> We probably just need to make ext4 depend on !DEBUG_KMAP_LOCAL_FORCE_MAP
-> or something?
+> Can we please simplify the flow in this function? folio_set_bh() is now
+> done only for a single branch in this function. You can move it there and
+> completely avoid new_folio, new_offset, and frozen variables (you just ne=
+ed
+> to set new_bh->b_data in the two branches where frozen data is used).
 >
-> > static inline void *kmap_local_bh(const struct buffer_head *bh)
-> > {
-> >       if (bh->b_folio)
-> >               return kmap_local_folio(bh->b_folio, bh_offset(bh));
-> >       return kmap_local_page(virt_to_page(bh->b_data);
-> > }
-> >
-> > (this is also somewhat awkward because it feels like we could just
-> > return bh->b_data, but kunmap_local_indexed() does some ... stuff)
-> >
-> > Anyway, it all gets optimised away on non-HIGHMEM.  Or if it doesn't,
-> > you can force it to ;-)
-> >
-> >
+>                                                                 Honza
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
