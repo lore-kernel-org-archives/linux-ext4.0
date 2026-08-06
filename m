@@ -1,114 +1,129 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4D773D7D6A;
-	Wed,  5 Aug 2026 20:41:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17DADDF76
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 02:20:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785962485; cv=none; b=XdHljvbF7zqJoVGNHgEMwg2zpUkh3SlzSQ7v6kKQs9QoeGb6pqfgo7W1dsY8Sj2QBDvQMoUqyonJ48GF4JSUQIfABctdlFG+HL0Pi2u7EYM//3G2pq3Pxmgcj8FOqJyTbc1sS0zKUCQEGq6QpSU07hgV38NWCi9kGwcwIStaG+M=
+	t=1785982856; cv=none; b=M/KsrpkvwOm1lY/dU0ZJCEI8KK/v1AjOMaOh83GZbSQOXuEHPJKsfcPlTGzPBhlVKybkSg9DZXnPXtZiRjobUpymsRUSmvxqBEqs2TGhUVmng5i7XR+tAYzmSo9BlfQIFd+iGzczfqfBjbTw8riuoOkcMTRbPqhB6xHmRwJUkVA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785962485; c=relaxed/simple;
-	bh=bKHF6u0QFrLiKhwziRU9z0gIPX0/5d2MZCi2+Cv5dZY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=meNB8YsLxN9yudiqDc0gH1kzH00IYhgk2VjwQCrVMB53CzFGOJOmbmeR9wpQgAhE8PcvtHKo5oKhefWk7A+sk6nXFPZbok4gywpfYk8M+MnanMqb6Ib7YILMslDsTLNL0tASlVXIqtvnY8rz/KMvDvv5UvQWuhSOsDI0TcXrKGM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=p3I43qte; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1785982856; c=relaxed/simple;
+	bh=w19NtSrhDkavmkUlqXA4R+/hToYaKJSwinog3Ti6Hjo=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=CDlDHTQ32RJhOCKc4IPF93wIJn80WjXMvnqRnC1GzoyU07Z7v/WQA8flElr5oJZisiD9rjVFp5avZjql7g3xrxA1nPs1yPley+mNqLLF6lNFONmcVuIMugqxVR3+V3Jk/54YEkvUms3hVeDImw7LF4armmIe3cUdd+sBZ+4OSZ8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=pwQBK64i; arc=none smtp.client-ip=209.85.210.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="p3I43qte"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=Y2VOXKtf863PLMWvVnlp8n68uju+vZ0BqWAtRD1HEeM=; b=p3I43qte4ysCVWGyt6CdofRNq1
-	vv9J3pOYzyDaT51j14fwuFr4gCccuTNlMpPpx2IfCm+zOGeVC93SyWLXyLR2NTBjPOSgXa+b0K6uW
-	t5BzNaZ3Wsh9QGkN3WbPeHTpw4IwgiJUk8K6RD607y8NcRfUggsKFf2wkdPICysg2GM4La9N/NPVh
-	4UE0bK1Z0DVVTXUSRBn5EX13PH7kwnY6Tx2noRzIielIMrTerse8l47vM/qhGXo060Zcf6Zp92CUL
-	BLY/AGr30pKYgmbyENfuGKSnH2u7Zs7iGySkibAh/Fy+QwYvWdojec3bLQMAQIDcNZSZzDuo/vv5M
-	QPu8q+dg==;
-Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wriQE-00000004fGu-3BHb;
-	Wed, 05 Aug 2026 20:41:06 +0000
-Date: Wed, 5 Aug 2026 21:41:06 +0100
-From: Matthew Wilcox <willy@infradead.org>
-To: Chris S <coshi036@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pwQBK64i"
+Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-848743155bcso855801b3a.0
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Aug 2026 19:20:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785982854; x=1786587654; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=rDAOxwq3ttzmOFNmqT41qJrWI/l0YQGgUcGKO+iJ9p8=;
+        b=pwQBK64ihHou8hnoP8PrZQ9GcXXgSI3ff4u0QX412SlLZCH6Y/U3qMvU3tcoEGUTCg
+         UnvLTxjWHYT37hfm7T7o1F4rbNC9LJhKYO5sTizWhMqP5ZlwSSqhDGDTADnogVpRSu2S
+         3JJSYd/aFt/Y5LJn6LdQGlux8VDU7Gky36yDQf8shu5k6bxkySNqDJj0zO+wVsXmoE3a
+         bVhd0/aA5OubB0IJEeSDuCZXTpZfTleJAUqbh3khxCBhaA5dTQZ7bYdUceI/fueiM0NN
+         EYqsVbG9OWkOFmG/Z7R8ZpYLTd7V9T20fF0vuRVd/qxb/JOxKZqrIzxdB3/0BvvMgd6D
+         tQxw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785982854; x=1786587654;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=rDAOxwq3ttzmOFNmqT41qJrWI/l0YQGgUcGKO+iJ9p8=;
+        b=InTBkEpg1tEcGB3vI8wpsW9mVjTPQg6Zqq0yIZVtI1O10BJ62HA/bOkCreEAlBS1t+
+         pmK0hY5BwlV0seeqkPit8U5ws0j9Fcr2mFx9+pXtQUb5mii84eEEVFxSwgZm4sUL3k82
+         1CS7jexpPwVK2gIr5pcxrRGfyg8q2Onshs8XBy5Kmqs9y2v/66+QYIWKFkhHW50hJ09J
+         duhaXA2Qll+qyVjiFhG4VOCJWuX228E+M0kjvd+pOrkeB2RvIMrgWt209e0syyKqTiqB
+         qhituc0+489I+kLOl5nphcwYJqgsYyr2+MJhn3M1Nm+XG+OvHFiJiyCGmB1ry7+AfWcF
+         kAuA==
+X-Forwarded-Encrypted: i=1; AHgh+RpQLvFbTk82EtYC/a78GrbSw0Oqv6z+W7Cdv3NO7hMAK5tyQnrZPm3lpVhf7Z67ET6BfGz502QrwHWk@vger.kernel.org
+X-Gm-Message-State: AOJu0Yw0fp1TxnfF9nOhQFD7ZMNcJYkR1LzRExLYOurpVH0Nqgty6ggr
+	l6xWdXTK+ks2s1MzIknj0kNuaziHuMA0OJ2+nImHSWRF+T31Ftnp0G+F
+X-Gm-Gg: AR+sD11B4s+f0i67xT/EG1TZksJRyUIWqpg4rw3mLXGF06arZoDDw9alYh6MHYs6MIq
+	+eIhBwhy5692MzYtvjxJVMYhoepR9EHnzEcKaf3GWlzPqh+Lt/qFd5xfzCqU1wErW6ptFVLXl+m
+	xdqYKOFsbD//HwgBwCaBdYLww/ZCP36/c6HWkUMcfwOPDrtykHHse8cPocyq9QDnlBDXj/wket+
+	K2gs3EmVeoegBn7YL4LeZElHeMly0PNeRjUf8tJetrSrWgAc0IGzn3WOhhfXQvjgz5gusDq1FOQ
+	CR2AqUdmtNsFJjhRkv3PxUnShJgiIyXjv6WfCGgoEBQLNwt+zSN5tb6Gtl5rlFy62WLGTZHZAUW
+	NFEomCk8Cb4TK2LEVN9Kar6Zp5nv5JBdMLg8WuChBXpb9JlDPDAwtDo+n2Lsat+39H0r6Dh8z1N
+	1xRPsTSlos0Hy+wKcHspAxIcydUxZxcYoGGqJtRBEIz6+/nzk3CVY5elmtE9kNgxzdggLeFYGK
+X-Received: by 2002:a05:6a00:4489:b0:84e:24df:3873 with SMTP id d2e1a72fcca58-84f2e0c9cbdmr12720996b3a.32.1785982854383;
+        Wed, 05 Aug 2026 19:20:54 -0700 (PDT)
+Received: from osman.mioffice.cn ([43.224.245.178])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-84f4538ba99sm323012b3a.9.2026.08.05.19.20.49
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 05 Aug 2026 19:20:53 -0700 (PDT)
+From: Zhan Xusheng <zhanxusheng1024@gmail.com>
+X-Google-Original-From: Zhan Xusheng <zhanxusheng@xiaomi.com>
+To: Theodore Ts'o <tytso@mit.edu>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>
+Cc: Jan Kara <jack@suse.cz>,
 	Baokun Li <libaokun@linux.alibaba.com>,
 	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
 	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>, Bob Copeland <me@bobcopeland.com>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Sungjong Seo <sj1557.seo@samsung.com>,
-	Yuezhang Mo <yuezhang.mo@sony.com>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Andreas Gruenbacher <agruenba@redhat.com>,
-	linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev,
-	gfs2@lists.linux.dev, linux-karma-devel@lists.sourceforge.net,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 03/19] jbd2: point the shadow buffer at the frozen data
- directly
-Message-ID: <anOf4vNU_XPvyhb0@casper.infradead.org>
-References: <cover.1785621505.git.coshi036@gmail.com>
- <2824f30bbc43e6a0b318564fa641228e9a096e37.1785621505.git.coshi036@gmail.com>
- <anDZ5YG-Ljflv7Vm@casper.infradead.org>
- <anFYf1iKrNLAjJMw@casper.infradead.org>
- <CACd_6n2GY2RRQPeKtJEuVkHcSBN-Ne2gJdHRfwxg2i=OT06MFg@mail.gmail.com>
+	Zhang Yi <yi.zhang@huawei.com>,
+	Mark Fasheh <mark@fasheh.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev,
+	linux-kernel@vger.kernel.org,
+	zhanxusheng@xiaomi.com
+Subject: [PATCH 0/2] fs: fix readdir position truncation on 32-bit kernels
+Date: Thu,  6 Aug 2026 10:20:42 +0800
+Message-ID: <20260806022044.167962-1-zhanxusheng@xiaomi.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CACd_6n2GY2RRQPeKtJEuVkHcSBN-Ne2gJdHRfwxg2i=OT06MFg@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
 
-On Wed, Aug 05, 2026 at 03:02:05PM -0400, Chris S wrote:
-> Thank you so much.
-> Taken, with a change: the helper needs a matching unmap, and must not map
-> the folio-less case at all.
-> 
-> static inline void *kmap_local_bh(const struct buffer_head *bh)
-> {
-> if (!bh->b_folio)
-> return bh->b_data;
-> return kmap_local_folio(bh->b_folio, bh_offset(bh));
-> }
-> 
-> static inline void kunmap_local_bh(const struct buffer_head *bh, void *addr)
-> {
-> if (bh->b_folio)
-> kunmap_local(addr);
-> }
+Both ext4 and ocfs2 rebuild the directory cookie in ->iterate with
 
-Ah, I hadn't considered that option.  Yes, I think this is the right
-approach.  Thanks!
+	ctx->pos = (ctx->pos & ~(sb->s_blocksize - 1)) | offset;
 
-> Two reasons.  kmap_local_page(virt_to_page(bh->b_data)) loses the offset
-> within the page, and b_frozen_data is kmalloc(b_size), which is only
-> guaranteed page aligned when the block size is at least PAGE_SIZE.
+ctx->pos is loff_t (64-bit) but sb->s_blocksize is unsigned long. On
+32-bit kernels unsigned long is 32-bit, so ~(sb->s_blocksize - 1) is a
+32-bit value (e.g. 0xfffff000 for 4 KiB) and, under the usual arithmetic
+conversions, is zero-extended to 0x00000000fffff000 in the AND with the
+64-bit ctx->pos. The high 32 bits of ctx->pos are silently cleared even
+though a directory may exceed 4 GiB.
 
-Yeah; my bad.  I should have added in PAGE_MASK(bh->b_data) to that,
-but what you have is better.
+When readdir() crosses the 4 GiB boundary on a 32-bit kernel the position
+is reset back into the first 4 GiB, and the re-validation path then
+re-enumerates already-returned dirents indefinitely.
 
-> The second one is your other point.  With CONFIG_DEBUG_KMAP_LOCAL_FORCE_MAP,
-> __kmap_local_page_prot() maps even a lowmem page, one page at a time.  So
-> mapping memory that is already permanently mapped would walk this path
-> straight into the bs>PS problem you just described, which it is otherwise
-> immune to - b_data covers the whole block whatever its size.  Returning
-> b_data and calling kunmap_local() on it anyway is not an option either:
-> kunmap_local_indexed() WARNs on an address outside the fixmap range under
-> that config.  Hence the pair.
-> 
-> On the bs>PS folio path itself: agreed it is real and predates this series.
-> I would rather not fold a fix into this one, but I will take it - I'll look
-> at it separately once this has settled.
+These are the block-offset (non-hashed) readdir paths: ocfs2's
+extent-list path (ocfs2_dir_foreach_blk_el(), used for all non-inline
+directories) and ext4's linear path (non-indexed directories, or the
+ext4_dx_readdir() ERR_BAD_DX_DIR fallback).
 
-I've been considering adding a folio_vmap() which would be a nop for
-!highmem, kmap_local() for order-0 highmem folios and vmap() for
-large highmem folios.  It's not reached the top of my todo list yet.
+This is the same class of bug that commit 3dce5bb82c97 ("exfat: Fix
+bitwise operation having different size") fixed in exfat. Cast the mask
+operand to loff_t so the AND is performed in 64-bit. 64-bit kernels are
+unaffected.
+
+The two filesystems are independent; they are sent together only because
+the bug and the fix are identical, so each maintainer can pick the
+relevant patch. The truncation was verified with a freestanding 32-bit
+test mirroring the expression; not reproduced on a live 32-bit >4 GiB
+directory.
+
+Zhan Xusheng (2):
+  ext4: fix readdir position truncation on 32-bit kernels
+  ocfs2: fix readdir position truncation on 32-bit kernels
+
+ fs/ext4/dir.c  | 2 +-
+ fs/ocfs2/dir.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+-- 
+2.43.0
+
