@@ -1,111 +1,247 @@
-Received: from out30-119.freemail.mail.aliyun.com (out30-119.freemail.mail.aliyun.com [115.124.30.119])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E7E2443E4E;
-	Thu,  6 Aug 2026 10:23:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.119
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3711D4734E4
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 12:17:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786011830; cv=none; b=QYn1MHo1XDinYoSkW94erL3zmrEpVj0CZ88vjUMSsIS1ynyV/4G9x9U3YgrYrsCi4iaz7ev+6IgPQkxJNtWnGVQwuCcEQvmdXt3hms3pmZaNpUn32r3Z6kHLUQU+KoktDHvexTPvSy/veYg+mzU87ZB5K23NZsFRkziqJOz9+jk=
+	t=1786018654; cv=none; b=QEvxgbRUh26DxGe7a1oE0ezFD5QV/vCe5zWwMC4Yr3FzBZEyi1JEDFN3xAZ2FvP1/KQt1L/2uGArPhNwyG/MFtQCDs3HHU6ii77WTlTa11XeXzhRqBQ1vE0qW9IkrMCJsKa2pPiWwR0h+TN5QMop7r2oMcPHeaFjWyNaWqEAVUU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786011830; c=relaxed/simple;
-	bh=C5I84RxSp8Qlh8ciQKGh+oj6KPnpAtnfSJGidFpFAWg=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=MekghklLOGjUwHS0MvqTHTGjRHgRhrxhat+y78632I0WJlr3advIfxYx8F2GFPcsltx0M7EnN5oqyFUQi5DFSyzhJ8xfI1f88oBjIU+KTuh9wlwqoCB5LynHszzSPB3ZzQO3Kjgh+LN7CntrjUCiple3ZgwS7yXhg9d23/QKi90=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=AmP2HTM8; arc=none smtp.client-ip=115.124.30.119
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1786018654; c=relaxed/simple;
+	bh=ZornPc/koc3wxlELISyuzx6GwpoLiuldFnainjDtlNU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=PFtms0W+SLLHx9vHVWXqgjwxNkDn+50P96IT3lP4JxEC1Da80yCnHPjq1VpR07aJzYUB9eIc8M5zzUlzNAMJWhxQ7OOrwcCsn8iTMf+r7pnufuUt+lSJXyN5/gmSIwfzdhMWbjBEmL4jnWqAKd163QVrN+y0jyc1NERXcuGzhqY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=JjcobHHH; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="AmP2HTM8"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1786011823; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=KxCQEIJTEpu2HLskEO3anQPPaiXW2MuwM7tILXssSfM=;
-	b=AmP2HTM8D4P7lgWEs2a/HsCmTjwVS8a/ak38VnSxN7nWciSuHLBZOgZ6YZviJQy5Gz4JsavgnCG0cREdUMmVDAYl0H7uCHJizoHSFczNv6BfhyXHeeWqHK+YQ2L07IMEpa6+meKV705wcV7bu6/vo9rJjUODED5d7xxYSi5VIcI=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R101e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=16;SR=0;TI=SMTPD_---0X8TmP1U_1786011820;
-Received: from 30.221.129.97(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0X8TmP1U_1786011820 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 06 Aug 2026 18:23:41 +0800
-Message-ID: <5849a28b-ffaa-420f-b173-d8a085d9c61f@linux.alibaba.com>
-Date: Thu, 6 Aug 2026 18:23:40 +0800
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="JjcobHHH"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1786018652;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=RQjBykewZfWXz2grV9e7dWJzfGraFYwSjcQnItsqQa8=;
+	b=JjcobHHHlI5l3F+tcM8/Tp6YAbJcCRwIjP91bIgGCOYaSDFe1nA1incFyB0LY79qIJOU94
+	iSxo7naV+0yf65A7yejEt6+QLN7DhtxQGs5HISmQZ5xBZQkx98uMPOh//0CVoBs1FEcZha
+	raxiJu9TrfhCvBZ4XzxsjWXovIwu9L4=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-557-Noc6BWE0MbeLA1AZaORIlA-1; Thu,
+ 06 Aug 2026 08:17:28 -0400
+X-MC-Unique: Noc6BWE0MbeLA1AZaORIlA-1
+X-Mimecast-MFC-AGG-ID: Noc6BWE0MbeLA1AZaORIlA_1786018646
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 6B5B41955F7A;
+	Thu,  6 Aug 2026 12:17:24 +0000 (UTC)
+Received: from bfoster (unknown [10.22.80.193])
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 0AC6D422;
+	Thu,  6 Aug 2026 12:17:19 +0000 (UTC)
+Date: Thu, 6 Aug 2026 08:17:17 -0400
+From: Brian Foster <bfoster@redhat.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org, brauner@kernel.org, djwong@kernel.org,
+	hch@infradead.org, joannelkoong@gmail.com,
+	"Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Matthew Wilcox <willy@infradead.org>, ziy@nvidia.com,
+	yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
+	yangerkun@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 2/5] iomap: support invalidating partial folios
+Message-ID: <anR7Td1iZnQgu6h_@bfoster>
+References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+ <20260714082325.325163-3-yi.zhang@huaweicloud.com>
+ <a638a8fb-c184-4069-ae33-379ec12cd514@huaweicloud.com>
+ <anH-WKA1coW6wtfG@bfoster>
+ <ba0c9502-c9f8-40f7-bfd6-47942eb88dec@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] ocfs2: fix readdir position truncation on 32-bit
- kernels
-To: Andrew Morton <akpm@linux-foundation.org>,
- Zhan Xusheng <zhanxusheng1024@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani
- <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
- Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
- linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev,
- linux-kernel@vger.kernel.org, zhanxusheng@xiaomi.com, stable@vger.kernel.org
-References: <20260806022044.167962-1-zhanxusheng@xiaomi.com>
- <20260806022044.167962-3-zhanxusheng@xiaomi.com>
- <20260805214202.a644393ef2f28ffb30090ff4@linux-foundation.org>
-From: Joseph Qi <joseph.qi@linux.alibaba.com>
-In-Reply-To: <20260805214202.a644393ef2f28ffb30090ff4@linux-foundation.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ba0c9502-c9f8-40f7-bfd6-47942eb88dec@huaweicloud.com>
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-
-
-On 8/6/26 12:42 PM, Andrew Morton wrote:
-> On Thu,  6 Aug 2026 10:20:44 +0800 Zhan Xusheng <zhanxusheng1024@gmail.com> wrote:
+On Wed, Aug 05, 2026 at 10:42:50AM +0800, Zhang Yi wrote:
+> On 8/4/2026 10:59 PM, Brian Foster wrote:
+> > On Mon, Aug 03, 2026 at 03:13:28PM +0800, Zhang Yi wrote:
+> >> On 7/14/2026 4:23 PM, Zhang Yi wrote:
+> >>> From: Zhang Yi <yi.zhang@huawei.com>
+> >>>
+> >>> Current iomap_invalidate_folio() can only invalidate an entire folio. If
+> >>> we truncate a partial folio on a filesystem where the block size is
+> >>> smaller than the folio size, it will leave behind dirty bits for the
+> >>> truncated or punched blocks. During the write-back process, it will
+> >>> attempt to map the invalid hole range. Fortunately, this has not caused
+> >>> any real problems so far because the ->writeback_range() function
+> >>> corrects the length.
+> >>>
+> >>> However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
+> >>> the support for invalidating partial folios. When ext4 partially zeroes
+> >>> out a dirty and unwritten folio, it does not perform a flush first like
+> >>> XFS. Therefore, if the dirty bits of the corresponding area cannot be
+> >>> cleared, the zeroed area after writeback remains in the written state
+> >>> rather than reverting to the unwritten state. Fix this by supporting
+> >>> invalidation of partial folios.
+> >>
+> >> Hi all,
+> >>
+> >> While working on the v5 of the ext4 iomap conversion series[1], I've
+> >> observed a rare data inconsistency issue in xfstests generic/127. After
+> >> debugging, I found that the root cause lies in the fact that the current
+> >> patch does not cover all scenarios when handling partial folio
+> >> invalidation during punch hole operations in cases where
+> >> block size < folio size. Specifically, the sub-folio dirty state is not
+> >> properly cleaned up in all cases. I think we need to discuss the fix,
+> >> and I'd like to hear your suggestions.
+> >>
+> >> Root cause:
+> >>
+> >> In both iomap buffered write and mmap write paths, if the write range
+> >> covers an entire folio (regardless of whether the folio size is larger
+> >> than block size), an ifs (iomap_folio_state) is not allocated
+> >> immediately. Instead, it is deferred until writeback time, where it gets
+> >> created in iomap_writeback_folio(). This creates a problem: when ext4
+> >> performs a punch or zero_range operation on a partial range within such
+> >> a dirty folio, there is no way to clear the dirty state for the
+> >> corresponding blocks.
+> >>
+> >> This leads to two specific issues:
+> >>
+> >> 1. After issuing FALLOC_FL_ZERO_RANGE on a range covering
+> >>    dirty+unwritten blocks within a large folio, the dirty state cannot
+> >>    be cleared. During subsequent writeback, zeroed data is still
+> >>    written back, and the final extent state for those blocks becomes
+> >>    written. As a result, the fix from this patch becomes ineffective in
+> >>    this case.
+> >>
+> > 
+> > I suspect this may be (occasionally) the case even with an ifs. IIRC the
+> > folio batch stuff made a tradeoff for just zeroing any folio passed in
+> > from the fs that was determined to be dirty, regardless of whether
+> > underlying block aligned ranges may be unwritten and still clean.
+> > 
+> > I think this is relatively harmless so long as the underlying range
+> > returns zeroes from subsequent reads. The caveat may be if there are any
+> > cases where we have a really large folio and some small portion of it is
+> > dirtied and that causes some huge amount of unnecessary zeroing. I'm not
+> > sure if we've hit something like that in practice though..
 > 
->> In ocfs2_dir_foreach_blk_el(), the directory cookie position is
->> rebuilt with
->>
->> 	ctx->pos = (ctx->pos & ~(sb->s_blocksize - 1)) | offset;
->>
->> `ctx->pos` is loff_t (signed 64-bit), while `sb->s_blocksize` is
->> unsigned long.  On 32-bit kernels unsigned long is 32-bit, so the mask
->>
->> 	~(sb->s_blocksize - 1)
->>
->> is computed as a 32-bit unsigned value (e.g. 0xfffff000 for a 4 KiB
->> block size).  In the AND expression with the 64-bit `ctx->pos`, that
->> unsigned operand is zero-extended to 64 bits per the usual arithmetic
->> conversions, yielding 0x00000000fffff000.  The high 32 bits of
->> `ctx->pos` are silently cleared, even though directory size is
->> allowed to exceed 4 GiB.
->>
->> When readdir() crosses the 4 GiB boundary on a 32-bit kernel the
->> position is reset back into the first 4 GiB block, making the
->> re-validation path re-enumerate already-returned dirents indefinitely.
->>
->> This is ocfs2_dir_foreach_blk_el(), the extent-list readdir path taken
->> for all non-inline directories, so a directory large enough to cross
->> 4 GiB reaches it.
->>
->> This is the same class of bug that commit 3dce5bb82c97 ("exfat: Fix
->> bitwise operation having different size") fixed in exfat, and the
->> fix mirrors the equivalent ext4 fix in this series.  Cast the operand
->> to loff_t so the mask is 64-bit before the AND:
->>
->> 	ctx->pos = (ctx->pos & ~((loff_t)sb->s_blocksize - 1)) | offset;
->>
->> 64-bit kernels are unaffected.
+> This does seem likely harmless, since at least the user data is as
+> expected. Moreover, the ext4 filesystem itself may retain a small
+> portion of a written extent due to reasons such as the inability to
+> split extents. So I understand that the result should be acceptable.
 > 
-> AI review had no comment on your change, but it might have found a
-> bunch of unrelated ocfs2 issues:
+> However, from the iomap perspective, it seems that we support sub-folio
+> handling, but not fully - and the traditional buffer_head path does not
+> exhibit this phenomenon, which is somewhat puzzling to me. So I was
+> wandering whether it's necessary to fill this case?
 > 
-> 	https://sashiko.dev/#/patchset/20260806022044.167962-1-zhanxusheng@xiaomi.com
 
-It looks fine.
-Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+I don't think there is any inherent requirement to match exact behavior
+between iomap and buffer heads, if that's what you mean?
 
-For the issues founded by sashiko, I'd rather track them in a separate
-thread.
-So Xusheng, could you please send a new fix for that? It seems enough
-to do the same check like ocfs2_check_dir_entry(). e.g.
+Brian
 
-i + OCFS2_DIR_REC_LEN(1) <= sb->s_blocksize
+> > 
+> >> 2. The aforementioned rare data inconsistency in xfstests generic/127.
+> >>    When performing a partial folio punch hole on a dirty large folio,
+> >>    truncate_inode_pages_range() zeros the partial folio and then splits
+> >>    the folio. This causes an incorrect 'end' offset calculation in
+> >>    truncate_inode_pages_range(), which then results in all split folios
+> >>    being truncated via truncate_inode_folio(), turning partial valid
+> >>    data into zeroes.  For example:
+> >>
+> >>    Suppose we have a large folio of 4 pages, and we punch a range
+> >>    starting from the beginning to the middle of the last page.
+> >>    truncate_inode_pages_range() will go through two rounds of splitting.
+> >>    Normally, if an ifs is present, the split path would hit
+> >>    folio_split() -> filemap_release_folio() -> iomap_release_folio(),
+> >>    which would intercept the operation and refuse splitting because the
+> >>    folio is dirty.
+> >>
+> >>    However, without an ifs, filemap_release_folio() returns early via
+> >>    folio_needs_release(), causing the interception to fail. In the first
+> >>    round, the folio is split into 3 folios (1, 1, 2). In the second
+> >>    round, we expect to split into 4 folios (1, 1, 1, 1). If the second
+> >>    split succeeds, everything is fine, because
+> >>    truncate_inode_pages_range() calculates end = 3, and only the first 3
+> >>    folios are truncated. However, the second split is allowed to fail.
+> >>    If it does fail, truncate_inode_pages_range() still uses end = 3 and
+> >>    ends up truncating all 3 folios, resulting in data loss.
+> >>
+> > 
+> > I was never really a huge fan of the ifs optimization thing, but I don't
+> > recall what the performance benefits really were.
+> > 
+> > That aside, doesn't this seem like more of a bug within the
+> > truncate_inode_pages_range() path? It's not clear to me if that's the
+> > only problem wrt iomap, but I'd think if the end offset split down in
+> > truncate_inode_partial_folio() fails, we should be able to return
+> > partial progress or something instead of a true/false for the whole
+> > thing. Would that allow this path to properly update the end index for
+> > the full truncate loop and at least prevent throwing away a folio with
+> > partial data like this?
+> > 
+> 
+> + Matthew and Zi Yan to CC
+> 
+> I suspect this is because most filesystems these days, when splitting
+> large folios, generally carry fs-specific private metadata for sub-folio
+> management, and when a sub-folio is dirty, ->release_folio() will
+> directly return EBUSY. As a result, dirty folios cannot be split because
+> their private data cannot be released, which is why this issue has
+> remained undetected until now. I also do think this does appear to be a
+> bug in truncate_inode_partial_folio(). Matthew and Zi Yan, what do you
+> think of this?
+> 
+> Thanks,
+> Yi.
+> 
+> > Brian
+> > 
+> >> Now I remember I previously submitted two patches [2] that always
+> >> allocated an ifs in the iomap buffered write path and the mmap fault
+> >> path for the block size < folio size case. However, Christoph pointed
+> >> out that the iomap design intentionally defers ifs allocation to avoid
+> >> unnecessary overhead and improve performance, and suggested creating the
+> >> ifs in iomap_invalidate_folio() instead [3]. There is a hurdle, though:
+> >> iomap_invalidate_folio() is only called when the folio has private data
+> >> (in truncate_inode_partial_folio(), folio_needs_release() is called
+> >> first to check the private flag). So if we go with this approach, we
+> >> need to ensure that folio_invalidate() can be called even when the folio
+> >> does not have an ifs.
+> >>
+> >> One relatively simple approach is to always set the AS_RELEASE_ALWAYS
+> >> flag on ext4 inodes that go through the iomap path. I don't think this
+> >> would introduce significant overhead, but it doesn't feel very generic.
+> >>
+> >> Another approach is to modify truncate_inode_partial_folio(). Regarding
+> >> this, I don't want to introduce other magics to achieve this, so perhaps
+> >> modify truncate_inode_partial_folio() to check whether
+> >> i_blocks_per_folio > 1 before calling folio_invalidate(), and call it if
+> >> so.
+> >>
+> >> So, what do people think? Any better idea?
+> >>
+> >> Thanks,
+> >> Yi.
+> >>
+> >> [1] https://github.com/zhangyi089/linux/commits/ext4_buffered_iomap_v5-devel13/
+> >> [2] https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-4-yi.zhang@huaweicloud.com/
+> >>     https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-5-yi.zhang@huaweicloud.com/
+> >> [3] https://lore.kernel.org/linux-fsdevel/ZrxBfKi_DpThYo94@infradead.org/
+> >>
+> >>
+> > 
+> > 
+> 
 
-Thanks,
-Joseph
