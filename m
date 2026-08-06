@@ -1,64 +1,64 @@
-Received: from mail-vk1-f179.google.com (mail-vk1-f179.google.com [209.85.221.179])
+Received: from mail-vk1-f173.google.com (mail-vk1-f173.google.com [209.85.221.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 425983A7F46
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 16:59:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 473CD3B52E9
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 16:59:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786035541; cv=none; b=LUg2nmzeAyF8ICAsj8eOxlIbXgIr8OvBpIIxIJ9jNtQ+izu/cNJg8qkuGTmZfbmhahLnzPbK2AYU/D9EXsVbGQLEaJvKEyjRVKRGV13SJChgD048GZLVk8qQeU3WxjeOO9FqZAW2XZ8wR8x7Fu08NyP0GFJaxvCeg4ilri5cK8I=
+	t=1786035546; cv=none; b=Ee2WG3luFwhdgJXtwNAkU32/HOn18Q9fwRFCShc20tkwZkuvaCswMPxfkpdSXThmZP4sSW7G0Cn/RDiu4O23aYH0ERRyGN1prKp2WMrbNK0+z78Q9lX4EBHFOJ+m75HUIttV0f0NvtLmQZSItmwOFvO9mvBwDSIhPcYACERrzmU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786035541; c=relaxed/simple;
-	bh=lzP4aegwZTPCQw0cJ3VVWrrvdN+pa1Cx+PvabTKZT/0=;
+	s=arc-20240116; t=1786035546; c=relaxed/simple;
+	bh=hjREzgpzo5QzVUOXcfPLZusIOE1tYvynFiHWCGrfyGs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=BlIefpwoimzVpwkf+/xUaSeo9fIbUJ7f171ReNlACMo6GA1+VxUSXY1fHCKWNRfqdMyT6+2aT4SzUFV6dO5qB47VRfkNgXtsAwTnAiihokVGGpDk7FyEt3d35fHoeWgxVHeBhLdT944nF0DLS8cVNTkl48kLr8jZIktgXn+Z8AM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=pfdXrfjU; arc=none smtp.client-ip=209.85.221.179
+	 MIME-Version; b=FuzrohzSIT4q9rMD4uX2ph0ao6GTiz22NE6ZH2gSPz7bLdTzIE9KBBA38NWYJ3pWBu55dTwfkhjOZD0WHVf9F2yLf5NcYkfq0I4UnCiu/lnfTkVlyB4a3lEXlVnY6NvMv8vYkEck2DMmFPr5U+I3upLD/cJ2kyftzGkbNF4r16Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=imPXJnGD; arc=none smtp.client-ip=209.85.221.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pfdXrfjU"
-Received: by mail-vk1-f179.google.com with SMTP id 71dfb90a1353d-5bf5370d38fso785400e0c.2
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Aug 2026 09:59:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="imPXJnGD"
+Received: by mail-vk1-f173.google.com with SMTP id 71dfb90a1353d-5bfb5e20a90so1678770e0c.2
+        for <linux-ext4@vger.kernel.org>; Thu, 06 Aug 2026 09:59:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786035539; x=1786640339; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1786035543; x=1786640343; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=l4wawGSh1ayASvpYyyNUW0xG9j87AeVkrycNAPRNAqw=;
-        b=pfdXrfjUkNr+YpIAxW3VGw7zEHPJpnM4qqP0VGAcK90I0ESgxg6n2lugFNQwdGQr6T
-         BPonjuqzbAnVfl63svf4eLuxkOM8AjZFstSyYR77ttZFSv6fdkdle3O99IOdmH1CElSB
-         iKV6emEWyJSIvk63ESopkxAU+GhZZs9+7dHy3ihJB+2VMnH59Zn2+0J9UMJr/Fm56qny
-         b0mH2jjV+v0dSEcOWQsfrix5fOvbg7uZcQR03od6zRbrMdxhcHZm8KtGuiMhCTo5QTB1
-         cWCVsKV7mOMDB1J1EEj3u5X4aqrbThx0DNb+RyWieF+QBN1OnnNKmKWImgzw+YX75oDp
-         rhiw==
+        bh=k3JV3rYlfmcwigTL3Ipqk1+R5zcTkEoUEmgylrQxXIQ=;
+        b=imPXJnGDOfb4roQ+X6WBd7zySacKBqMeFhpwQsWWzyRlY0bzQvWA5tzGbHSSfRTP+O
+         JEPd82BDDRpW7jzNhiWTWvwNPmPOSQavFmTGp9CE1aeHqcHY4m9LcxpVCJLJlUNdtUI2
+         nqV2DwVMYn9IFLnoNM+UOysnnQNyIigX195mENSEbmcK327WAX2TTMEqZUD30CbrKhwj
+         eJuxvk3MiOmT+reXUY7NlTlF0Goatu5YycGuQieG8stdK2CKx2vf5OEgvqxSMNlRv4+7
+         DfH/Pan8MtIoDaOpJZTeubjV4mijXnDPKo+NPk9HOoozb3EOGHarp959NPyHPNO+95d5
+         h90Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786035539; x=1786640339;
+        d=1e100.net; s=20251104; t=1786035543; x=1786640343;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=l4wawGSh1ayASvpYyyNUW0xG9j87AeVkrycNAPRNAqw=;
-        b=eZ5sxF+o4eRfR+b1jxvcgeyVNnGgbfuyXnPvre1jIJAEiHVtBfMCxkNWzigrNeLyAl
-         d566scCWTvdLdy4tQq6oLnweCImXfyoP6KXknjSAQJFhl5U+DPPO2MzwN5hWpv+PMySO
-         cBNb9JyvIvYVDKoi7l/Dldqfzmhk5U2UQuFLuW5bsw3wqYtJ70zvjR8gfOFUq+EU66UR
-         GW8YuQCTXY3kqtoEBuVK0nfM90VRYOdaebP+GMLBmTwzkeSeeV0ZZegrJhNoNM5+LpAC
-         VCn001pVOocG/UfIHY2g0sn/x85bR7rUMAYMEQpdMnxzdDWnUpM2PsqhK1Ksm7MpKUZb
-         Fizg==
-X-Forwarded-Encrypted: i=1; AHgh+Rqr/uzvIFq2UhecriHD2FmaTF372HoWhswW5BXFF4V+qNcQ1/uuaPt9LG/8Fm5Vy1zNP2EntrVjfV9Y@vger.kernel.org
-X-Gm-Message-State: AOJu0YyHfaHb3oZ5x02kbZN3hc0grVZJeeiy4A2t6aUY5bo/CsqQozCY
-	HJXwdBcu9MmmJwanG3xO0eH8OiMGWZShyfhB0TIB+Ju7w4D3tySdzwhh
-X-Gm-Gg: AR+sD10QaSxqgWQWewcKiuwZoEkPQZzCZdcKyRx1gLh+o4cHxNwYzCSp6XErSl4jBc+
-	8mB5Wv1v2Vcua6qh7dd5xc0PEqVdtZPASSZ/QXo8mVnJ+ipBaSNK9o4jvZ9mZf9eoaP3BPMP0PI
-	REmXPRlVwfCDa+X6358bJoJrKDT2zAKNQkBpmtbNM/mGorOAta9vcbjkuYRd1ws6Q+dCH8iU/zh
-	I1qgDUt01UysG3+xIf5AjFMLFGNB1q36Z4Mshyg2juAznItmrrvf0LRmk+fB2DeX537DqpnJKcF
-	NBG7j1FD+dLe1fBDnH0RuxgxV7GC9++Q74qMW7gshUr7mFc0hh1JQ3nuVsQrDUcNCy6VaQWoO/9
-	VlnMFSJKKZXxs52pjAAMB0czd7VJiJk++I1cSB/nU8bvihFsOnmCYhEcZT+Mpey+UYy7RMQX/97
-	ESnsQDbnxXuQFN4v12OjaMUPdXu+WbCirfm2wX++YUPzbb46ySkZnY7PktPhv8wGlKR8yEa0QtS
-	reUcPw=
-X-Received: by 2002:a05:6123:2c7:b0:5bd:faa8:74e1 with SMTP id 71dfb90a1353d-5c3d92900f0mr2224979e0c.13.1786035539083;
-        Thu, 06 Aug 2026 09:58:59 -0700 (PDT)
+        bh=k3JV3rYlfmcwigTL3Ipqk1+R5zcTkEoUEmgylrQxXIQ=;
+        b=d2XZZAdat7leZuL7WwyvBF05gA5LFAepw1YZ4dWKX6LRU/1vuTp7VL9eHVGhDanl8c
+         CbBw9fdHTLme5MpyvIPQzeW8JrXg+iKOcdQTgRGeGAPn6xIuQtzyz+URPpwKmyrXBsA9
+         9/XXAWfvAt9TPpXP9+ksQYoN/JDieyqS9M71EPB/zDth/D089l0Coe4MoFP82pB0Fga0
+         MB0+gWoHCfyXGvhFm8Ood4HuNSUOOWeRzIvedbP/JMyD9b3iH0zBsLbeM4Cl/liCJhyx
+         1tJuEfENX3UAM4inhR1XXuAjNjnhUPYM/91VQPclUY29RLnUMlZDADJdLKzCltZrC6Ap
+         eVPA==
+X-Forwarded-Encrypted: i=1; AHgh+RrZ04EzpC/y/AOUPy5FSdx5CDvSGcS2QbbM6fFD1s4y1HSustRrhhe/jjSkj2v56dGyJ3bpZmFP6unc@vger.kernel.org
+X-Gm-Message-State: AOJu0YwGD+FxpKSITaREqbQYiH5LvT6TsSCAV3tx1lSpAP/+W6/SE4B4
+	Cr6vByEKi5tEwEqwnQSx11J8jBMfKJvVcMKWfEw603Vpd+2MYDvV67PH
+X-Gm-Gg: AR+sD13VslzyLXYQ7WM3zxCYuwBDG4l4QgLiff9I+oQOdl45GaipbZI2xFACl1pRrDN
+	QFxMHOjCuVYXOt12pCv3FDnG/ltXu4Zjp/lfWGNP4VlyEWMrtcS04x13fmgUVizeNNi7wBCcGhs
+	ivdUykuY60uxuPT14PkWTngc7YdCD0aKFZGpADVOAPRcQZ+sQUlFr5ZC3pU5iO7F60MKzf3qSV7
+	jCjr0iTuQY69Y10MiFWf9yU0IsuzlorhinHq48XaM/qYoRuwVWwQ+7PHYTC3DoB8/2BKTfmQmDm
+	VB82LrA/0bArVPhj4jWEHpNEySTctmLS3aCK3M2/83SXgT7z8s9ngVoMemJHsBS2aPh7kxloWjm
+	Pmzi3QvIFGlfYXIMNOR3bOv9wmg9Sk2jdnE3FiFz3t1CgZebWzH/6lCVU32QVu2ou3qpWKT6zlh
+	bCi//e0qVKzgRm1helV1mqZ1i5k+nhD9Ij1+8Ty0OUdztZTXeW7FNgwpo3ul/ZcPS7aJEkJbArs
+	PXEBNk=
+X-Received: by 2002:a05:6122:8b8d:b0:5bd:ecad:8f80 with SMTP id 71dfb90a1353d-5c3f9e68046mr593111e0c.2.1786035543192;
+        Thu, 06 Aug 2026 09:59:03 -0700 (PDT)
 Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5c3d05c594fsm3706321e0c.8.2026.08.06.09.58.57
+        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5c3d05c594fsm3706321e0c.8.2026.08.06.09.59.01
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 06 Aug 2026 09:58:58 -0700 (PDT)
+        Thu, 06 Aug 2026 09:59:02 -0700 (PDT)
 From: Chao Shi <coshi036@gmail.com>
 To: Jan Kara <jack@suse.cz>,
 	Christian Brauner <brauner@kernel.org>,
@@ -87,9 +87,9 @@ Cc: Theodore Ts'o <tytso@mit.edu>,
 	linux-kernel@vger.kernel.org,
 	Chao Shi <coshi036@gmail.com>,
 	Weidong Zhu <weizhu@fiu.edu>
-Subject: [PATCH v2 01/21] buffer_head: Remove b_page
-Date: Thu,  6 Aug 2026 12:58:24 -0400
-Message-ID: <e9d168901578902bffe78ac8b5dfaf1210ee7fb3.1785951556.git.coshi036@gmail.com>
+Subject: [PATCH v2 02/21] buffer: allow a buffer_head to point at memory outside the page cache
+Date: Thu,  6 Aug 2026 12:58:25 -0400
+Message-ID: <bb6fab2111a48d7ba61887fc1372362576fce6e6.1785951556.git.coshi036@gmail.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1785951556.git.coshi036@gmail.com>
 References: <cover.1785951556.git.coshi036@gmail.com>
@@ -101,44 +101,91 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+jbd2 builds a temporary buffer_head to write out the frozen copy of a
+metadata block, and that copy lives in slab memory.  Today jbd2 points the
+temporary buffer at the slab folio backing it.  A slab folio's ->mapping is
+not an address_space, so anything that follows bh->b_folio->mapping there
+gets garbage rather than NULL; mark_buffer_write_io_error() does exactly
+that, and we are about to start calling it on this buffer.
 
-All users except bh_offset() have been converted to use b_folio instead.
-Convert bh_offset() and remove b_page.
+Rather than teach every such helper about slab folios, allow bh->b_folio to
+be NULL and let b_data point straight at the memory.  Code that needs the
+folio has to check.  There are two places in this file:
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Signed-off-by: Chao Shi <coshi036@gmail.com>
+ - __bh_submit() adds the data by virtual address using
+   bio_add_virt_nofail(), and skips the cgroup accounting: a buffer that is
+   not in the page cache has no owning folio to attribute writeback to.
+
+ - buffer_set_crypto_ctx() returns early.  fscrypt has no interest in a
+   buffer that is not part of a file mapping, which is why it already
+   returns when the folio has no mapping.
+
+Nothing sets b_folio to NULL yet, so this patch is a no-op on its own.
+
+A buffer_head without a folio is a narrow thing, not a new general
+capability.  Most of the buffer_head API assumes a folio and will fault or
+corrupt state without one - touch_buffer(), bh_offset(), the async read
+completion path, and plenty more - so it is up to whoever builds such a
+buffer to keep it away from all of that.  What NULL buys us is that getting
+it wrong fails loudly instead of quietly following a slab folio's
+overloaded ->mapping.  It is also only valid over memory that is always
+mapped: buffers over highmem have no permanent kernel virtual address,
+which is why folio_set_bh() records a folio and an offset instead.
+
+Suggested-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 Acked-by: Weidong Zhu <weizhu@fiu.edu>
+Signed-off-by: Chao Shi <coshi036@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/buffer_head.h | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/buffer.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index fd2c7115c054..699970b4bbf2 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -59,10 +59,7 @@ struct address_space;
- struct buffer_head {
- 	unsigned long b_state;		/* buffer state bitmap (see above) */
- 	struct buffer_head *b_this_page;/* circular list of page's buffers */
--	union {
--		struct page *b_page;	/* the page this bh is mapped to */
--		struct folio *b_folio;	/* the folio this bh is mapped to */
--	};
-+	struct folio *b_folio;		/* the folio this bh is mapped to */
- 
- 	sector_t b_blocknr;		/* start block number */
- 	size_t b_size;			/* size of mapping */
-@@ -172,7 +169,7 @@ static __always_inline int buffer_uptodate(const struct buffer_head *bh)
- 
- static inline unsigned long bh_offset(const struct buffer_head *bh)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index be8b57a635cd..04fcc34e4fa6 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1099,12 +1099,16 @@ EXPORT_SYMBOL(__bforget);
+ static void buffer_set_crypto_ctx(struct bio *bio, const struct buffer_head *bh,
+ 				  gfp_t gfp_mask)
  {
--	return (unsigned long)(bh)->b_data & (page_size(bh->b_page) - 1);
-+	return (unsigned long)(bh)->b_data & (folio_size(bh->b_folio) - 1);
- }
+-	const struct address_space *mapping = folio_mapping(bh->b_folio);
++	const struct address_space *mapping;
  
- /* If we *know* page->private refers to buffer_heads */
+ 	/*
+ 	 * The ext4 journal (jbd2) can submit a buffer_head it directly created
+-	 * for a non-pagecache page.  fscrypt doesn't care about these.
++	 * for memory that is not in the page cache at all.  fscrypt doesn't
++	 * care about these.
+ 	 */
++	if (!bh->b_folio)
++		return;
++	mapping = folio_mapping(bh->b_folio);
+ 	if (!mapping)
+ 		return;
+ 	fscrypt_set_bio_crypt_ctx(bio, mapping->host,
+@@ -1142,7 +1146,11 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
+ 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
+ 	bio->bi_write_hint = write_hint;
+ 
+-	bio_add_folio_nofail(bio, bh->b_folio, bh->b_size, bh_offset(bh));
++	if (bh->b_folio)
++		bio_add_folio_nofail(bio, bh->b_folio, bh->b_size,
++				     bh_offset(bh));
++	else
++		bio_add_virt_nofail(bio, bh->b_data, bh->b_size);
+ 
+ 	bio->bi_end_io = end_bio;
+ 	bio->bi_private = bh;
+@@ -1152,7 +1160,8 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
+ 
+ 	if (wbc) {
+ 		wbc_init_bio(wbc, bio);
+-		wbc_account_cgroup_owner(wbc, bh->b_folio, bh->b_size);
++		if (bh->b_folio)
++			wbc_account_cgroup_owner(wbc, bh->b_folio, bh->b_size);
+ 	}
+ 
+ 	blk_crypto_submit_bio(bio);
 -- 
 2.43.0
 
