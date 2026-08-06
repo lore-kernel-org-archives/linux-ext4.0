@@ -1,223 +1,262 @@
-Received: from mail-vk1-f170.google.com (mail-vk1-f170.google.com [209.85.221.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D376D48CD6E
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 17:00:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 57EBB379C27
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 18:15:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786035615; cv=none; b=ldqrJ7zNs/pKER2fydyoSONT2FKJQXR3Y/VcJ7IyZyPSBKE1V1XtICY5lWyqm3j0rgbUtRCwQsLL6vp2ocycnESEi/wDKZu3XXCYCQA/VRgVe1io9smkTtiy+q5d9btf92Jkj+VbYXR54jd4S4CPvoIvzjhrX/yP+stVxYuRt4M=
+	t=1786040149; cv=none; b=GygosdNkH4OfZHQUnqnuBcdwECbtnBL0V4PurjsNnvx2VEHsd88afEvIKsvhkWtdJBnWC9DCFktc0dMQ4HxerMaLjx2SSilX32/rwjQSRGc47/Pm6AovHfFa+HaSeaAg3BK/bnwg+jFfzEepmr98ez6dQ+k5bEVYm30+V8JXzWc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786035615; c=relaxed/simple;
-	bh=K9/W1FO8N8xTnhyFws4RenGjtbgDOPBPnEUZbmmiB0U=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=O3Lj9wHno91c1+DkN6tkd6WoUTW7uBNYFrT9Gv50Z5sFqsmumX8nIdgTcxZ0/jtL1iuakDYE4rR1bHP95wsjPeZiUCyuYJDhO7SEmFKB4EZCtgdu07369R39I7wV7PrGkL9iENN2C3s0RU5EpNY4BMAUTyHkNkDLJY7dUV0rnw0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DYMymKr9; arc=none smtp.client-ip=209.85.221.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1786040149; c=relaxed/simple;
+	bh=Fflp/qg3EPPRw5J+OLnnyiT6m2lZYhpNeqKuoa6CS7o=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=u6Fwz2PbJYCwNaK60SlnUFplPNFPhk+LpcWAKBUiVol0Z6YCleL8bsijPxGC8yro/UJgvmRTiaftP87vAjzvb6X2SXoUc7cZbBqkZWyj/NOHHPim9avowMSW38Vvp1HKwxwZFY6EkArXHiZjldChn+ebJet3s25CWcFB8bfrKuA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=EVMS8Pwj; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DYMymKr9"
-Received: by mail-vk1-f170.google.com with SMTP id 71dfb90a1353d-5c27e38ee18so1234342e0c.1
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Aug 2026 10:00:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786035613; x=1786640413; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=dBfFE9yENSRT1Ltqp2iNdGevVOH72zBv0XCWLRoCCcc=;
-        b=DYMymKr9iJ0MfWNFmHTMcDp+vfbmJcVQ4S81aC4XPOGI5fJYig+5tGL9yuQ7IjHb4J
-         5fjgTj8DJ/MP2ApXWr5CxtfH/jEotJgLkxPkTflbko7TdRb/yUmI1lZlVCGtpN3mG86k
-         GsKAHGU84ajwLE1ch2hnLPfL66yAj44ebPDrkLC3IBGK+BEzh9HiS8kuotGS58UNR6Ff
-         8f/3fcEDC9jjcRSwGDq3fqLEVNyjKQNdllgRt5DjatQ6RDeoLfb+VS3S0TVmD74Ye+OZ
-         vUW/74/GKVa/mnu6Gv8OV7cbDAWDVC03WSNg98YruRvqahYi/g3Lg6Pbj52sND835+Tp
-         u6MA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786035613; x=1786640413;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=dBfFE9yENSRT1Ltqp2iNdGevVOH72zBv0XCWLRoCCcc=;
-        b=COIg/nCvglIRe8/dY1h9cXKJaQ+TBkGutxl7BXpxVuyx+dwODdXitO7qckpb4fIwqu
-         338pCalYWbqzLUEUe/hBfEFvsnCitiU9zIzbjCEnWE2xwV1VHKTxkz1Ur5PlP7rRyHEa
-         iZis5HhKSEOwmvHV3I8Ix0tEFPgRSfWYhxKJFvqv/CnO3Wi+dQ5C4FbcpTojjiN2G0UQ
-         Gd7yGLetolMAYmUdqZC3fjdo+DJqwPP6N59moymLrYhuwGEyX3XjIACsTghdQtoOXiLq
-         I5Hkjf5tGFqxqs6BVOHvti023kVtIgb1yTd9qH0vic+wH21dYzLUbAmQT2EpgV7sDkw6
-         i24A==
-X-Forwarded-Encrypted: i=1; AHgh+RoVU2licm/7raXkcFbGiyKyQBfkbJnnDVbRW0ru/A6kdArdbxLfLg4HZHL4HfrksPEoqCXXs28Yx3EA@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz09zDzRXl8BE6zicKSvLe+3119R8kbRFxnOHJub8/Qr1zXjQFN
-	k78ljsi2WsT5frPNufNP6Fev1FO48s+4h42eBNnmhu3z8K/drurHw8D4
-X-Gm-Gg: AR+sD1087mHdFIIZqw2uqSjjYQ/yeC+ab12jvr1ieXxPQVQfFAwX3pooscI1/TlItBo
-	UOFKU/jspG8kfrHzDzvOxLENCMAKGGh4ePUxUmBfD1JajSViD1tveW4GZy+18l55MuXLpL+BYdc
-	LW7hInMDST9J6E4bLDq9hAu54DsEbPlkkicrx3lmB5bKxuPoGAXLa99VlgoHX/Py+L/Uu7++P/r
-	c3pQTUugOZPN4VirI5Xo206tx+lQifrysY2dobgj/+2YQ+PDPg2Y5kMHQw6GAJ2ZVioLJROa8Ua
-	jAT51dkoLkxI81a2DR5q9hVx7K3YmEGb1IQ5hzVRKuejAG8P4ltOC768stVnaMggWp/aImIkKKm
-	fQW/YzBBfuHjrVHhhRPlwpdT8AL2PQJq331cy7lnkI6LOUxnvvm/BXYhg+Tg1/5kjRO9e5D0MRF
-	cWidLgoUq/oHXGOGbSyrK0Q+3LLtP/rbxzKhzjh8R07EmDs8LyHBBcAh28hc833qcgI4WsYGit5
-	jqg+44=
-X-Received: by 2002:a05:6122:d96:b0:5a4:7e8b:3171 with SMTP id 71dfb90a1353d-5c3d91e6c7amr2524108e0c.11.1786035612662;
-        Thu, 06 Aug 2026 10:00:12 -0700 (PDT)
-Received: from syssplab.cs.fiu.edu (nat1.cs.fiu.edu. [131.94.134.89])
-        by smtp.gmail.com with ESMTPSA id 71dfb90a1353d-5c3d05c594fsm3706321e0c.8.2026.08.06.10.00.11
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 06 Aug 2026 10:00:12 -0700 (PDT)
-From: Chao Shi <coshi036@gmail.com>
-To: Jan Kara <jack@suse.cz>,
-	Christian Brauner <brauner@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Matthew Wilcox <willy@infradead.org>,
-	linux-fsdevel@vger.kernel.org
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	Zhang Yi <yi.zhang@huaweicloud.com>,
-	Bob Copeland <me@bobcopeland.com>,
-	Namjae Jeon <linkinjeon@kernel.org>,
-	Sungjong Seo <sj1557.seo@samsung.com>,
-	Yuezhang Mo <yuezhang.mo@sony.com>,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	Mark Fasheh <mark@fasheh.com>,
-	Joel Becker <jlbec@evilplan.org>,
-	Joseph Qi <joseph.qi@linux.alibaba.com>,
-	Andreas Gruenbacher <agruenba@redhat.com>,
-	linux-ext4@vger.kernel.org,
-	ocfs2-devel@lists.linux.dev,
-	gfs2@lists.linux.dev,
-	linux-kernel@vger.kernel.org,
-	Chao Shi <coshi036@gmail.com>,
-	Weidong Zhu <weizhu@fiu.edu>
-Subject: [PATCH v2 21/21] buffer: clear BH_Write_EIO when a write succeeds, not when one starts
-Date: Thu,  6 Aug 2026 12:58:44 -0400
-Message-ID: <1c976fd191aa6e99dbe65d6a1ec63f8706cc0dfa.1785951556.git.coshi036@gmail.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <cover.1785951556.git.coshi036@gmail.com>
-References: <cover.1785951556.git.coshi036@gmail.com>
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="EVMS8Pwj"
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 676HlrI81470711;
+	Thu, 6 Aug 2026 18:09:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=DAthnIT8cMa0uiUaLo+PwxHtkdQhIa
+	8vQYwXgcW/J/Y=; b=EVMS8PwjfzTOoMGCEdDZ+2GY1UQO/qEsppsPMCZQ6W/i3f
+	bxqrtl2rLjX6LZIBkdkyDPOkm59dAm6Hp9JOGlBL1qm2gvF7ra+rHIPFdXtq9GzC
+	USnI0V0q2Zkww6Dm4pavWbyH+cjoLxtUYbxb9+FmTrYfZchaf3dE1xOR/eG/mMjA
+	AWj7qgWUUsrK0a3E/m4du0vmNVM5M7blnCxD4qHBDdnovZRfQb/F7GKSsGGIC9zE
+	zhqGmMB50h/t1heCinvWeqpY5MEcoi1jFfxI7fkycvFEgpwhqIyrI4WXsLIyKc6u
+	4t3kvnQS1O6XkYDjQefgjoVzfyPHT8NjsDAwa1WQ==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fvy01g3d2-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 06 Aug 2026 18:09:58 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 676HuHIV011362;
+	Thu, 6 Aug 2026 18:09:57 GMT
+Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsv4kccf2-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 06 Aug 2026 18:09:57 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 676I9tgj52101592
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 6 Aug 2026 18:09:55 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 62ED620043;
+	Thu,  6 Aug 2026 18:09:55 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 5566D20040;
+	Thu,  6 Aug 2026 18:09:53 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.29.44])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Thu,  6 Aug 2026 18:09:53 +0000 (GMT)
+Date: Thu, 6 Aug 2026 23:39:46 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: Re: [PATCH 1/3] ext4: Teach ext4_meta_trans_blocks() about number of
+ allocated extents
+Message-ID: <anTNqZe3fY4Vblfn@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260805153202.29814-1-jack@suse.cz>
+ <20260805153605.166545-4-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260805153605.166545-4-jack@suse.cz>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-GUID: EMCeJua5e-x6l_hP602x08k5u14a7Be-
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODA2MDEzOSBTYWx0ZWRfX6UOQm/XRMPam
+ Jme0bpaGDtbWfCiPWNFRwFj5WHPJnqlmeQg8fc1pm6WLy4f7hDQWRwEdIPVzfxaTE5ixab0QSju
+ f/h/KjKnqI7aQWWyrpWalOLdi57pMW0=
+X-Proofpoint-ORIG-GUID: AtBFoUwsybnxM59_LxAZ2SXNkgOy7TMS
+X-Authority-Analysis: v=2.4 cv=afNRWxot c=1 sm=1 tr=0 ts=6a74cdf7 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
+ a=kj9zAlcOel0A:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=VnNF1IyMAAAA:8
+ a=3DTBKyg9X2n2mJOQheMA:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODA2MDEzOSBTYWx0ZWRfX76RgCr5c8PTl
+ HGGElPi5cgVCXZCCVD3A5k1LkHeBmAPBfx2DZCaAKuEpWvxelWSs8Tp4+JGbREmyCd2OzTTQYwb
+ 8fNCh4UumdlnUuJv6Nf8FEBdbi599ZL3VHvB2OEfgS7z/vvGmkqJPVr+Xf5d52glSplNuqQ8QD7
+ 3BKGspPjuKJ/TrqTVTotvEPmf52EKoUCn08ZPYE1GuohBgzC/A3i/84u3e49iVsXYp2hAQzrxI2
+ OZN7iE2oCij956B5hCf0ALY6c7bInhKa7JZ9KAd7dLmgh9PrEbNFyDm3cZ2J0Yt/M6xummyfQh+
+ UyqO3xl8CNK5CEyonfAD7y966cAyZDp/worLdyLF9J9Wk3oec46M7vl5LZMulJ7mEMNXgtE51vH
+ Ql9nhbYgC53DiMFT74yorueBzDZrHOHK8ZMWv/Ow1pSzwYSQcOTNbshoUpg/hBttB+FwvInkhC8
+ kcZnnGfExAvrjtkCY/A==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-06_01,2026-08-06_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 spamscore=0 phishscore=0 impostorscore=0 adultscore=0
+ suspectscore=0 bulkscore=0 clxscore=1015 priorityscore=1501
+ lowpriorityscore=0 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
+ definitions=main-2608060139
 
-BH_Write_EIO is cleared in __bh_submit(), when a buffer that has been
-written before is submitted for write again.  That is early: it says the
-error is gone at the moment we start trying to fix it, rather than when we
-have.
+On Wed, Aug 05, 2026 at 05:35:47PM +0200, Jan Kara wrote:
+> So far ext4_meta_trans_blocks() expects that each extent counted in
+> @pextents will be allocated in the transaction we estimate credits for.
+> This is correct for the use in ext4_chunk_trans_blocks() and
+> ext4_chunk_trans_extent() however the use in atomic write path
+> (ext4_convert_unwritten_extents_atomic() and ext4_iomap_alloc() for
+> IOMAP_ATOMIC) unnecessarily overestimates the number of necessary
+> credits as neither of them allocates any data. Add argument to
+> ext4_meta_trans_blocks() for number of extents that are going to be
+> allocated in the transaction.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-It also loses errors.  A task whose write fails sets the flag and then goes
-to look at it; if another task redirties the buffer and resubmits it in
-between, the submission clears the flag and the first task sees no error at
-all.  Neither of them is doing anything wrong.
+Hi Jan,
 
-Clear it on successful write completion instead, in the end io handlers -
-the same four the rest of this series has been converting, plus gfs2's,
-which already marked errors this way.  Then the flag means what it says:
-the last write of this buffer that finished, failed.  A resubmission no
-longer hides an error that has not been fixed yet, and one that has been
-fixed clears the flag when the data reaches the disk.
+Looks mostly okay, feel free to add:
 
-__bh_submit() keeps setting BH_Req, which is what the rest of the tree
-reads it for.
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Acked-by: Weidong Zhu <weizhu@fiu.edu>
-Signed-off-by: Chao Shi <coshi036@gmail.com>
----
- fs/buffer.c           | 15 +++++++--------
- fs/ext4/fast_commit.c |  1 +
- fs/gfs2/lops.c        |  2 ++
- fs/jbd2/commit.c      |  4 +++-
- 4 files changed, 13 insertions(+), 9 deletions(-)
+just a couple comments below:
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 425fbfe72ad1..68ea0ef8470e 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -202,7 +202,9 @@ void bh_end_write(struct bio *bio)
- 	struct buffer_head *bh;
- 	bool success = bio_endio_bh(bio, &bh);
- 
--	if (!success) {
-+	if (success) {
-+		clear_buffer_write_io_error(bh);
-+	} else {
- 		buffer_io_error(bh, ", lost sync page write");
- 		mark_buffer_write_io_error(bh);
- 	}
-@@ -433,7 +435,9 @@ void bh_end_async_write(struct bio *bio)
- 	BUG_ON(!buffer_async_write(bh));
- 
- 	folio = bh->b_folio;
--	if (!success) {
-+	if (success) {
-+		clear_buffer_write_io_error(bh);
-+	} else {
- 		buffer_io_error(bh, ", lost async page write");
- 		mark_buffer_write_io_error(bh);
- 	}
-@@ -1114,7 +1118,6 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
- 		enum rw_hint write_hint, struct writeback_control *wbc,
- 		bio_end_io_t end_bio)
- {
--	const enum req_op op = opf & REQ_OP_MASK;
- 	struct bio *bio;
- 
- 	BUG_ON(!buffer_locked(bh));
-@@ -1122,11 +1125,7 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
- 	BUG_ON(buffer_delay(bh));
- 	BUG_ON(buffer_unwritten(bh));
- 
--	/*
--	 * Only clear out a write error when rewriting
--	 */
--	if (test_set_buffer_req(bh) && (op == REQ_OP_WRITE))
--		clear_buffer_write_io_error(bh);
-+	set_buffer_req(bh);
- 
- 	if (buffer_meta(bh))
- 		opf |= REQ_META;
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index a2028fbd4540..95998827ff01 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -209,6 +209,7 @@ static void ext4_end_buffer_io_sync(struct bio *bio)
- 	if (success) {
- 		ext4_debug("%s: Block %lld written",
- 			   __func__, bh->b_blocknr);
-+		clear_buffer_write_io_error(bh);
- 	} else {
- 		ext4_debug("%s: Block %lld write failed",
- 			   __func__, bh->b_blocknr);
-diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
-index 3df6e4b7e8b9..7440e5b72f8a 100644
---- a/fs/gfs2/lops.c
-+++ b/fs/gfs2/lops.c
-@@ -179,6 +179,8 @@ static void gfs2_end_log_write_bh(struct gfs2_sbd *sdp, struct folio *folio,
- 	do {
- 		if (error)
- 			mark_buffer_write_io_error(bh);
-+		else
-+			clear_buffer_write_io_error(bh);
- 		unlock_buffer(bh);
- 		next = bh->b_this_page;
- 		size -= bh->b_size;
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index cd7ef783bd36..ebf6ba58ff4d 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -36,7 +36,9 @@ static void journal_end_buffer_io_sync(struct bio *bio)
- 	struct buffer_head *orig_bh = bh->b_private;
- 
- 	BUFFER_TRACE(bh, "");
--	if (!success)
-+	if (success)
-+		clear_buffer_write_io_error(bh);
-+	else
- 		mark_buffer_write_io_error(bh);
- 	if (orig_bh) {
- 		clear_and_wake_up_bit(BH_Shadow, &orig_bh->b_state);
--- 
-2.43.0
+> ---
+>  fs/ext4/ext4.h    |  2 +-
+>  fs/ext4/extents.c |  2 +-
+>  fs/ext4/inode.c   | 32 +++++++++++++++++---------------
+>  3 files changed, 19 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index b37c136ea3ab..6e0cc9b845ae 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -3184,7 +3184,7 @@ extern int ext4_normal_submit_inode_data_buffers(struct jbd2_inode *jinode);
+>  extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+>  extern int ext4_chunk_trans_extent(struct inode *inode, int nrblocks);
+>  extern int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
+> -				  int pextents);
+> +				  int pextents, int alloc_extents);
+>  extern int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end);
+>  extern int ext4_zero_partial_blocks(struct inode *inode, loff_t lstart,
+>  				    loff_t length, bool *did_zero);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 91c97af64b31..44ab246a3176 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4976,7 +4976,7 @@ int ext4_convert_unwritten_extents_atomic(handle_t *handle, struct inode *inode,
+>  		 * it can tell if the extent in the cache is a split extent.
+>  		 * But for now let's assume pextents as 2 always.
+>  		 */
+> -		credits = ext4_meta_trans_blocks(inode, max_blocks, 2);
+> +		credits = ext4_meta_trans_blocks(inode, max_blocks, 2, 0);
 
+Right, because we are not going to allocate anything but we might be
+modifying upto 2 extent entries. By that logic shall we also change the
+following:
+
+  @@ -5046,7 +5046,7 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+   		/*
+   		 * credits to insert 1 extent into extent tree
+   		 */
+  -		credits = ext4_chunk_trans_blocks(inode, max_blocks);
+  +		credits = ext4_meta_trans_blocks(inode, max_blocks, max_blocks, 0);
+   	}
+   	while (ret >= 0 && ret < max_blocks) {
+   		map.m_lblk += ret;
+
+since we are not going to allocate anything.
+
+>  	}
+>  
+>  	if (credits) {
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index ce99807c5f5b..f324a54f1dae 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3693,9 +3693,11 @@ static int ext4_iomap_alloc(struct inode *inode, struct ext4_map_blocks *map,
+>  		if (ret < 0)
+>  			return ret;
+>  		if (map->m_len < orig_mlen) {
+> +			int bpg = EXT4_BLOCKS_PER_GROUP(inode->i_sb);
+> +
+>  			map->m_len = orig_mlen;
+> -			dio_credits = ext4_meta_trans_blocks(inode, orig_mlen,
+> -							     map->m_len);
+> +			dio_credits = ext4_meta_trans_blocks(inode, map->m_len,
+> +							     map->m_len, 0);
+
+This makes sense because we always come here in the bigalloc case when
+the cluster is already allocated. If we ever support atomic writes
+without bigalloc, we'll have to remember to take care of this. Maybe we
+can add a small one line comment here?
+
+/* 
+ * we have an encountered mixed mapping in an already allocated bigalloc
+ * cluster hence credits for allocation are not needed
+ */
+
+
+>  		} else {
+>  			dio_credits = ext4_chunk_trans_blocks(inode,
+>  							      map->m_len);
+> @@ -6307,17 +6309,17 @@ static int ext4_index_trans_blocks(struct inode *inode, int lblocks,
+>  }
+>  
+>  /*
+> - * Account for index blocks, block groups bitmaps and block group
+> - * descriptor blocks if modify datablocks and index blocks
+> - * worse case, the indexs blocks spread over different block groups
+> - *
+> - * If datablocks are discontiguous, they are possible to spread over
+> - * different block groups too. If they are contiguous, with flexbg,
+> - * they could still across block group boundary.
+> - *
+> - * Also account for superblock, inode, quota and xattr blocks
+> + * Calculate number of credits needed in a transaction to:
+> + *   * Allocate data blocks from @alloc_extents different groups - note that
+> + *     with flexbg a single physical extent can span multiple groups but
+> + *     single mballoc request only returns extent within one group.
+> + *   * Allocate metatadata (extent tree blocks, indirect blocks) to store
+> + *     pointers to @pextents data extents having @lblocks in total.
+> + *   * Modify extent tree / indirect block tree, inode, superblock, quota
+> + *     tracking, xattr blocks
+>   */
+> -int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents)
+> +int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents,
+> +			   int alloc_extents)
+>  {
+>  	ext4_group_t groups, ngroups = ext4_get_groups_count(inode->i_sb);
+>  	int gdpblocks;
+> @@ -6334,7 +6336,7 @@ int ext4_meta_trans_blocks(struct inode *inode, int lblocks, int pextents)
+>  	 * Now let's see how many group bitmaps and group descriptors need
+>  	 * to account
+>  	 */
+> -	groups = idxblocks + pextents;
+> +	groups = idxblocks + alloc_extents;
+>  	gdpblocks = groups;
+>  	if (groups > ngroups)
+>  		groups = ngroups;
+> @@ -6360,7 +6362,7 @@ int ext4_chunk_trans_extent(struct inode *inode, int nrblocks)
+>  {
+>  	int ret;
+>  
+> -	ret = ext4_meta_trans_blocks(inode, nrblocks, 1);
+> +	ret = ext4_meta_trans_blocks(inode, nrblocks, 1, 1);
+>  	/* Account for data blocks for journalled mode */
+>  	if (ext4_should_journal_data(inode))
+>  		ret += nrblocks;
+> @@ -6378,7 +6380,7 @@ int ext4_chunk_trans_extent(struct inode *inode, int nrblocks)
+>   */
+>  int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
+>  {
+> -	return ext4_meta_trans_blocks(inode, nrblocks, 1);
+> +	return ext4_meta_trans_blocks(inode, nrblocks, 1, 1);
+>  }
+>  
+>  /*
+> -- 
+> 2.51.0
+> 
