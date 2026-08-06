@@ -1,48 +1,53 @@
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7BA1376463
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 15:01:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A16A044CF4A
+	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 15:01:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786028486; cv=none; b=Z+gap/4cqxjPLFkPkN4w+mgOUjzmKe41QYTa6DuidEW3/HCohTA/qybONszbi05vlOB53eHDnJS+SLLfaUY90cK5Q5FnVMrZQGUGNz9ff+HAYI6s1OEEBPVjTtGWWzAlOcjFsFKFdPX+Ft4QJ4XfvYpbdP/WciKZ34qM4UL8Rac=
+	t=1786028507; cv=none; b=qBd7+bodq4zBjJuErTOrWrp8NJwanaeXeza59srrw7/rTKVMerogJ8pXQUobvo28N2RDjZQT645i9GazDYUVvpzxkz1ZwtWmMHojoplATnJNk4g3yNsFqIkIB1LFlh+y7HGLSBvXzpcv66nkllM9zNOp1lhwF9VUaZ0RXkYUHGk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786028486; c=relaxed/simple;
-	bh=UjEmRG7guv/+vR2cp5PdnnwOKecYToBGyU0GtJLFbGI=;
+	s=arc-20240116; t=1786028507; c=relaxed/simple;
+	bh=1F+s8SEdiA99bvxPBcBimiaP4vyZM9KKTDcXYWCH1zg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=HMp/V06UMnXSiT8/jfF6NWUG0dvLJ/32ElodZnXMScZSdKWwtg+o1zQm7O5ZDVnDcbyLT0H5ke5JINnouBuvGgskPg2K3RtP/nghwe3QYerecsrpYem0kaDiNIRAN+PXypex47tOnUAwtceWkNTJGqVKVJKYJVKup9uYRhrXJV0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=QFBuk+S2; arc=none smtp.client-ip=18.9.28.11
+	 MIME-Version:Content-Type; b=onfUpHAIaaQAbd6XFPHh8g2p+lo+yP7czi4llxQSRVRbe/SXyXKeunHeM4QNGwkrXxzL7Ul6nCWRZ09SFc5nQttAo1El++9qU7mhxQSauMdzjrrujXLYG8J/uM3rpGd4kuDB3LHe0eHCyo05UdZjtyPoM+aDXZpyTQJ3ID0cpaI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=DbzyeMAR; arc=none smtp.client-ip=18.9.28.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="QFBuk+S2"
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="DbzyeMAR"
 Received: from trampoline.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 676F16H0011299
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 676F16A7011300
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
 	Thu, 6 Aug 2026 11:01:07 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1786028467; bh=aNS7uXu2/z2euSDzIvTlHAF5Bwcy9438i0NkKz9+SSo=;
+	t=1786028469; bh=IzPBUvQIuZi3PLpQyvgw2WNIxHKSrXJSrYlozVvzxvI=;
 	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=QFBuk+S2e5cADnwDsDmTsJGKykTFNEX94Sk9qTZnmOdqogNVu1pRoaVw73FcXnStc
-	 Y0c1rLGBKO5iGWglSr0aMUUAWr3d4P4lohT0MNFxxAVv1zEeH24tA+kP/B3EV4Im1p
-	 CokxR+tpFa0P9aWp+5kebagBOZL/k+G9rSCv+/SxmgvKzYoOQiBOIqKNFwfDxosqk6
-	 0zFz1GcWzb1kS7T+UpA7J8qMGYPBIA2ZhxpFzos33vt+LlZ7qwQr/I+FNgGBELTQO5
-	 YS3vW6+BTM4z6ujLwC2Yf5ZLWKhe/ADZEe5L0yMParyu9ImyPi5uWdBvzt84y1Zmde
-	 8M9wQyLLEMNOQ==
+	b=DbzyeMARH5bX2e6PdjhAX7U5fO7JfJ0/pA/He4uxAErLsztANEgbZPd1ZV0X9+Kgo
+	 8QCIoIDN/P00haWth7bMBue71T2CTkhU13KWiWm//dfohFSYvh6PT5areig5mZZgpZ
+	 2PyTQopBBV8k51HMP8mcgWmUxx/zdkd7Mghz6+B5U9KhHgP5/yfD5lAhdJomA1ZBQK
+	 O33tQz1hRPt3GxhuPiDNfjc5PxY/3Pm3yrha/UUfJzBrKYQouQzabC3VjHaUHwfIiK
+	 3in+w/j8nMHT9s9sD9oxJZ3Ln7Ro2rmAeiYEUBKyKbQnfGs7b0wnvn+B2RtRAGa7Ud
+	 2R/DGli40PI3w==
 Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 0B0DD2E00CD; Thu, 06 Aug 2026 11:01:06 -0400 (EDT)
+	id 08A952E3F0F; Thu, 06 Aug 2026 11:01:06 -0400 (EDT)
 From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Tigran Aivazian <aivazian.tigran@gmail.com>
-Subject: Re: [PATCH] ext4: Fix spurious message about orphan cleanup on RO fs
-Date: Thu,  6 Aug 2026 11:00:57 -0400
-Message-ID: <178602814514.965683.9220868344730400750.b4-ty@b4>
+To: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
+        Ira Weiny <iweiny@kernel.org>, linux-fscrypt@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Disha Goel <disgoel@linux.ibm.com>,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: don't enable DAX on new encrypted files
+Date: Thu,  6 Aug 2026 11:00:56 -0400
+Message-ID: <178602814512.965683.11993377254644330464.b4-ty@b4>
 X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260803160037.64285-2-jack@suse.cz>
-References: <20260803160037.64285-2-jack@suse.cz>
+In-Reply-To: <20260730175212.36923-1-ebiggers@kernel.org>
+References: <20260730175212.36923-1-ebiggers@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,20 +58,23 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
 
-On Mon, 03 Aug 2026 18:00:38 +0200, Jan Kara wrote:
-> When orphan_file feature is enabled, ext4_orphan_cleanup() was always
-> walking through the orphan file looking for orphan inodes. This is
-> mostly harmless but for read-only filesystem it results in spurious
-> "orphan cleanup on readonly fs" message and in other cornercases it
-> could result in similar somewhat misleading messages. Skip orphan
-> cleanup if the orphan file is empty to avoid confusing messages.
+On Thu, 30 Jul 2026 10:52:12 -0700, Eric Biggers wrote:
+> Currently, when a new encrypted regular file is created, the call to
+> ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
+> before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
+> filesystem is mounted with "-o dax=always".
+> 
+> EXT4_INODE_ENCRYPT then actually gets set a bit later in
+> __ext4_new_inode(), when it calls fscrypt_set_context() which calls
+> ext4_set_context().  ext4_set_context() sets EXT4_INODE_ENCRYPT and
+> calls ext4_set_inode_flags(inode, init=false) to set S_ENCRYPTED too.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Fix spurious message about orphan cleanup on RO fs
-      commit: 5aa98f874c013bcce9bb84ffded2f0ef886e4e33
+[1/1] ext4: don't enable DAX on new encrypted files
+      commit: da32af420d6d466e247c43ac0b829edeac7ae0ad
 
 Best regards,
 -- 
