@@ -1,187 +1,268 @@
-Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9DB5374E42
-	for <linux-ext4@vger.kernel.org>; Thu,  6 Aug 2026 19:46:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.44
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786045592; cv=pass; b=Hi9tzXrmVvsP/UD8h3zMzApjwH6O53VoY5Qo3wqGpNS5XyZ6u/VifPFacTqUizz4JNvUfbLIboMQ0RjewjyGyZnGEJvu0n1ZO8k2bpzeZuCJrkyI4DOcllNw9ThH/XrqeF5D/4rCCqlpUsdgmUYHl5qhadokzeF3NDSae54qPLs=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786045592; c=relaxed/simple;
-	bh=/grpQlkFIsjOtZJ9kjTYgO1M00ZnDq0iZMthC0cITsY=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=ZS2YOHB1WdZ9rxXA58a/Z1rzulF0D/FQuoZVX522vZA60TIstLGAPL+z5XYObSnRAP8l7yWYONX/U066LXuydod53n9RElwxHjRsmqft0Vnu5W/CiYiPlbpJW9na03zjUHCkBQLaW6ONHj9leK8Fv8Erb7CBZOSMG0SA7VVmoNY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qmwWWMN5; arc=pass smtp.client-ip=209.85.208.44
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qmwWWMN5"
-Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-6a0c8283146so4281107a12.0
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Aug 2026 12:46:30 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786045589; cv=none;
-        d=google.com; s=arc-20260327;
-        b=JtWejGgt3k0GuHTs+28BcLGRexCjDZhLwtq3hSas1HzCGWhFRk/NDl7y3qltKn7KuA
-         k93asmO7TQOqLEyUu1lq6HKqY7IhuW1FZn+mNZU3LskOQKgEA3jR2yx5I5/UG7UnjzEm
-         OtxJF6xUI4X3B2bW94r5H35InMhqBBKazzYiJWa7J2L1YgkOrQbMXyFgHrjYIrZ9naNz
-         m09sq1XbUHTFCGVYWskZa8nI21eQePKFpdL5NkJrAQ1rKxP8ibl9s2+anNLFEGpIYc6f
-         J06WuqNxrJY2/mUwP62rFpNgq4Tkvxs/kBNkdQbd+GahYd4Jr5KDkLLoo8RJX+JgGLb0
-         c+6Q==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=nLbIcjJWlLYm7ckgJdCevI6JSBS4OVTbw09CC4o45Ao=;
-        fh=Naln32v/dWvGe3jK6xcCLMpaq3uOJiGQircLZQReP58=;
-        b=Kv9a3ICfnFzwgkgPkqzNeLVLhe0wIXDV3hRF6FuF1ltRyNNdCTtUByoy6hXyFDp5Or
-         qpFqI8BcmOkfxaDLhhdHEE3hQAUTPNMfwDYjF3KyEeyo8Gi/ujNhx42uHkselO76y9XI
-         6W1HNxL2yvs/Uqi9q0FNYGCkltdvqeATF6/HA0HVhQ14REPw6OjuJPYViAnA5uZtD+BY
-         GkXAJjLGcnLhDzI1XCurdsuOe6xEsOhbAnxv2zXNwD6OSSzCu2j32aDmTsehaqk3HFj8
-         oGF9qq8vA2OXXgrsZZIKmBDjb9R9YX3AeM7Rugjr4nE0yjlLyWPlxw3HIMZFpoQHHL10
-         XAMA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786045589; x=1786650389; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=nLbIcjJWlLYm7ckgJdCevI6JSBS4OVTbw09CC4o45Ao=;
-        b=qmwWWMN5UedFBcu8ghP0xP81Cqqlz8IBTKm0z0u5zwffu5IhxFmXlj5j6djRPWHKae
-         j9RbjS0COMq3U42wl4IcOVBusoeq0QeFcWy7Y+LCrp2933BQMC/T688pzu+xqAL2Zy4d
-         fXd5KFzrM8aPeRr+oRWlsLv9IjZ/qPv08YN7+LhQygPzqyyZQ4bG4ewtlFt3pXyb/oWW
-         bX1d94daQ//wpufa4uCGIs/3AgWQOxmbazGT0l+QVli2Q7J2AlB8LRFhumVjCk2Ccf9b
-         9P0hHgtstIgPojaE1PoW7nlPMqF+S8NZr8UUM6BhqY7HqYEtUWooOx28dUKiSxC/M4sG
-         BoFg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786045589; x=1786650389;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=nLbIcjJWlLYm7ckgJdCevI6JSBS4OVTbw09CC4o45Ao=;
-        b=X1ZWL36MtdTIRSBX5WLL7GLGVWNFYa/eTFSUICHmqPqoBpp03kHuBSGbFw5bn48JHa
-         0uscxEecOnJWBSZ2pH0zaB2fhDgkq8BHJnnYReRX4WOT9nSaEeG0dacXyLJc/0duO6Sr
-         /uQzmTHrug9tZos9ykpucJl+0T7/Dk4QMLPP6PsOGLr4QC+FUjGwKd6p7XRFxvywEaBB
-         uc29cMBnX2Eb6Su4uG+IAnW+eEdFNVGzYrUeRJyZVcBuE88upo88F0rloPfiGWdpsX2l
-         5pGiamQ+b2wYp4JLrUGJhsWXxiFxM4RnpqH6pzHWt1ZRUwAHnbKUhYVnADt6svwIxZ6c
-         oYXA==
-X-Forwarded-Encrypted: i=1; AHgh+RpMIlOzAreui6mWcEBwtTvlqPwZ5cvWIOXRbkUIuhTbwWHzWps0/ETbQxhLSPK27/TkDKEMNZISN1GO@vger.kernel.org
-X-Gm-Message-State: AOJu0YzhKfnC+jxkHS4Gt7/j+OmvqyVzaUk3KjkE5QmLklwcghQq8aOu
-	BqN5z+E05QOT8HYcbuEwJJKrEilVUB1eKsYZEuVtMmAtLFW9gy1Hw8WpvJw5+X2MW8FPRAcw7Nx
-	x2n7yf52KlH+r4Q6ah/+bfQWwT+T8QmY=
-X-Gm-Gg: AR+sD11dhzrDmmdyMBZ7WJeXzn45oaZ9EA9VHNxdweKB04SrJ3RvEliqcFelPrhxXca
-	AF/CmZU4g8DD/tLZeAalaJ74a1k83VRZEIo8HqmuiMHkHIHtkNvkCdDN1OrNuzh4gI1YalLBTN7
-	T2OmCs41nhr0So/bC+2rajLGpR0Po1QQHUZcKpVna8BpS3LCjRwOK4PMSMBMmDSQDkaCBAn/6Aq
-	o9y/41N9MCeZ+Dn9nimqm8qSRCV6JmONlKIwxElrsByerNFYAhfDF3wJpLPEh1PyTm/wMdeVFBs
-	jjqZZDW0Wv97bGxdI+ghHZuvEQc4y1b4A5QoNCWabG9P
-X-Received: by 2002:a05:6402:a5ca:20b0:6a1:8ec3:764b with SMTP id
- 4fb4d7f45d1cf-6a18ec37760mr3594879a12.17.1786045589025; Thu, 06 Aug 2026
- 12:46:29 -0700 (PDT)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC3FE2E764D;
+	Fri,  7 Aug 2026 01:27:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786066076; cv=none; b=VkIVXO1qGmmFgVv7aHkrGX8EobWBNt3Hm1pH4Iv2cLrPeZyAIA2Q9VUVOBW5yq2HfYdCkNtCCaxmLKDyMhajJ7p50sB3ZG2EWYd8IzcJyBvsXQViNqQ4T4In+RxvUceTLHOtP95F6/1Nnog24qY1YdEAPsKqtei8+mumj+fyMCk=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786066076; c=relaxed/simple;
+	bh=lpJTDr3pb/KNQZ/CIQGrWUo8y1y/bM9Y95IqYH9B6dg=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=HrGdisOc84RHEGEaly9pcuCxxRfXaFjfHHabp+A5b+geSoeCWQz+A1ZAhPuUEVhs9DzAa0TLp0vIp51FKVE2cEZ5y3Yuytqnulf6y5NiYnIIcduzWLNjn/yWF8Dj8AF5kETla7YCz7wB9u4chJngDg3qkVqmWxanXyySkA3OHo0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hGRN053BszKHMWl;
+	Fri,  7 Aug 2026 09:27:28 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id 68B454058D;
+	Fri,  7 Aug 2026 09:27:37 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgA3J0aGNHVqNE6SBQ--.39735S3;
+	Fri, 07 Aug 2026 09:27:37 +0800 (CST)
+Message-ID: <e2179651-0e18-4e9a-81c0-9b9dc639acfd@huaweicloud.com>
+Date: Fri, 7 Aug 2026 09:27:34 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <cover.1785621505.git.coshi036@gmail.com> <2824f30bbc43e6a0b318564fa641228e9a096e37.1785621505.git.coshi036@gmail.com>
- <anDZ5YG-Ljflv7Vm@casper.infradead.org> <anFYf1iKrNLAjJMw@casper.infradead.org>
- <CACd_6n2GY2RRQPeKtJEuVkHcSBN-Ne2gJdHRfwxg2i=OT06MFg@mail.gmail.com> <anOf4vNU_XPvyhb0@casper.infradead.org>
-In-Reply-To: <anOf4vNU_XPvyhb0@casper.infradead.org>
-From: Chris S <coshi036@gmail.com>
-Date: Thu, 6 Aug 2026 15:46:17 -0400
-X-Gm-Features: AUfX_my3MOnB94S3irinQYPvJ_IWdDZWDeP-gGrdJ_Rtf7S3jrdVnkhoJS9GiKE
-Message-ID: <CACd_6n2pHtu3aKWc0TbQ04BEwa7Loqcug_=5i5KGo9w_-tZBGw@mail.gmail.com>
-Subject: Re: [PATCH 03/19] jbd2: point the shadow buffer at the frozen data directly
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org, 
-	"Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-	Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
-	Bob Copeland <me@bobcopeland.com>, Namjae Jeon <linkinjeon@kernel.org>, 
-	Sungjong Seo <sj1557.seo@samsung.com>, Yuezhang Mo <yuezhang.mo@sony.com>, 
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Mark Fasheh <mark@fasheh.com>, 
-	Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>, 
-	Andreas Gruenbacher <agruenba@redhat.com>, linux-ext4@vger.kernel.org, 
-	ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev, 
-	linux-karma-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 2/5] iomap: support invalidating partial folios
+To: Brian Foster <bfoster@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-ext4@vger.kernel.org, brauner@kernel.org, djwong@kernel.org,
+ hch@infradead.org, joannelkoong@gmail.com, "Theodore Y. Ts'o"
+ <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Matthew Wilcox <willy@infradead.org>,
+ ziy@nvidia.com, yi.zhang@huawei.com, yizhang089@gmail.com,
+ chengzhihao1@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
+References: <20260714082325.325163-1-yi.zhang@huaweicloud.com>
+ <20260714082325.325163-3-yi.zhang@huaweicloud.com>
+ <a638a8fb-c184-4069-ae33-379ec12cd514@huaweicloud.com>
+ <anH-WKA1coW6wtfG@bfoster>
+ <ba0c9502-c9f8-40f7-bfd6-47942eb88dec@huaweicloud.com>
+ <anR7Td1iZnQgu6h_@bfoster>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <anR7Td1iZnQgu6h_@bfoster>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:_Ch0CgA3J0aGNHVqNE6SBQ--.39735S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3GFy8tr47CF17Jr1DKF1kuFg_yoWfKw4DpF
+	WUKFn8Kr4DGa18Ar1Iva18Xr1FyrWxJFW5uFyfK3y3CFn09r17KF47Ka4j9a9rZr18Gw40
+	qr40vry7WFn8AaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVCY1x
+	0267AKxVWxJr0_GcWle2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
+	e7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
+	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_
+	WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
+	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
+	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
+	jIksgUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-folio_vmap() sounds like the right shape, and nothing in this series is
-waiting on it, so there is no hurry from my side.
+On 8/6/2026 8:17 PM, Brian Foster wrote:
+> On Wed, Aug 05, 2026 at 10:42:50AM +0800, Zhang Yi wrote:
+>> On 8/4/2026 10:59 PM, Brian Foster wrote:
+>>> On Mon, Aug 03, 2026 at 03:13:28PM +0800, Zhang Yi wrote:
+>>>> On 7/14/2026 4:23 PM, Zhang Yi wrote:
+>>>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>>>
+>>>>> Current iomap_invalidate_folio() can only invalidate an entire folio. If
+>>>>> we truncate a partial folio on a filesystem where the block size is
+>>>>> smaller than the folio size, it will leave behind dirty bits for the
+>>>>> truncated or punched blocks. During the write-back process, it will
+>>>>> attempt to map the invalid hole range. Fortunately, this has not caused
+>>>>> any real problems so far because the ->writeback_range() function
+>>>>> corrects the length.
+>>>>>
+>>>>> However, the implementation of FALLOC_FL_ZERO_RANGE in ext4 depends on
+>>>>> the support for invalidating partial folios. When ext4 partially zeroes
+>>>>> out a dirty and unwritten folio, it does not perform a flush first like
+>>>>> XFS. Therefore, if the dirty bits of the corresponding area cannot be
+>>>>> cleared, the zeroed area after writeback remains in the written state
+>>>>> rather than reverting to the unwritten state. Fix this by supporting
+>>>>> invalidation of partial folios.
+>>>>
+>>>> Hi all,
+>>>>
+>>>> While working on the v5 of the ext4 iomap conversion series[1], I've
+>>>> observed a rare data inconsistency issue in xfstests generic/127. After
+>>>> debugging, I found that the root cause lies in the fact that the current
+>>>> patch does not cover all scenarios when handling partial folio
+>>>> invalidation during punch hole operations in cases where
+>>>> block size < folio size. Specifically, the sub-folio dirty state is not
+>>>> properly cleaned up in all cases. I think we need to discuss the fix,
+>>>> and I'd like to hear your suggestions.
+>>>>
+>>>> Root cause:
+>>>>
+>>>> In both iomap buffered write and mmap write paths, if the write range
+>>>> covers an entire folio (regardless of whether the folio size is larger
+>>>> than block size), an ifs (iomap_folio_state) is not allocated
+>>>> immediately. Instead, it is deferred until writeback time, where it gets
+>>>> created in iomap_writeback_folio(). This creates a problem: when ext4
+>>>> performs a punch or zero_range operation on a partial range within such
+>>>> a dirty folio, there is no way to clear the dirty state for the
+>>>> corresponding blocks.
+>>>>
+>>>> This leads to two specific issues:
+>>>>
+>>>> 1. After issuing FALLOC_FL_ZERO_RANGE on a range covering
+>>>>    dirty+unwritten blocks within a large folio, the dirty state cannot
+>>>>    be cleared. During subsequent writeback, zeroed data is still
+>>>>    written back, and the final extent state for those blocks becomes
+>>>>    written. As a result, the fix from this patch becomes ineffective in
+>>>>    this case.
+>>>>
+>>>
+>>> I suspect this may be (occasionally) the case even with an ifs. IIRC the
+>>> folio batch stuff made a tradeoff for just zeroing any folio passed in
+>>> from the fs that was determined to be dirty, regardless of whether
+>>> underlying block aligned ranges may be unwritten and still clean.
+>>>
+>>> I think this is relatively harmless so long as the underlying range
+>>> returns zeroes from subsequent reads. The caveat may be if there are any
+>>> cases where we have a really large folio and some small portion of it is
+>>> dirtied and that causes some huge amount of unnecessary zeroing. I'm not
+>>> sure if we've hit something like that in practice though..
+>>
+>> This does seem likely harmless, since at least the user data is as
+>> expected. Moreover, the ext4 filesystem itself may retain a small
+>> portion of a written extent due to reasons such as the inability to
+>> split extents. So I understand that the result should be acceptable.
+>>
+>> However, from the iomap perspective, it seems that we support sub-folio
+>> handling, but not fully - and the traditional buffer_head path does not
+>> exhibit this phenomenon, which is somewhat puzzling to me. So I was
+>> wandering whether it's necessary to fill this case?
+>>
+> 
+> I don't think there is any inherent requirement to match exact behavior
+> between iomap and buffer heads, if that's what you mean?
+> 
+> Brian
 
-One thing worth settling before anyone writes it, because it decides what
-the callers have to look like: kmap_local_folio() documents "Context: Can
-be invoked from any context" and has no failure return, while vmap() does
-might_sleep() and returns NULL on failure.  So folio_vmap() would inherit
-the weaker contract from the one case that needs it, and every caller would
-have to be written for may-sleep and may-fail even though on !HIGHMEM
-neither can ever happen.  That costs the jbd2 commit path nothing - both
-checksum callers run under jbd2_journal_commit_transaction() in kjournald2,
-which sleeps freely - but it is not free everywhere, so this may want to be
-two entry points rather than one.
+I was just curious about why iomap doesn't always allocate ifs when the
+block size is smaller than the folio size. I think Darrick's reply has
+answered my question. :)
 
-Glad to talk it through, and happy to write it if that would help.  I
-already owe you a look at the bs>PAGE_SIZE callers once this series
-settles, and this is the same errand, so it would be no extra work for me
-to start there.  Entirely your call.
+Now I understand that unless we are indeed facing a severe write
+amplification problem, the current situation is acceptable. It's just
+that when I add support for ext4, I need to be especially careful about
+the side effects it brings, such as concurrent scenarios during punch
+hole and writeback, because it could turn blocks that were just punched
+into allocated ones again. Apart from the mm bug mentioned below, Apart
+from the mm bug mentioned below, I haven't encountered any other issues
+outside of ext4 so far.
 
-Best,
-Chao
+Thanks,
+Yi.
 
-On Wed, Aug 5, 2026 at 4:41=E2=80=AFPM Matthew Wilcox <willy@infradead.org>=
- wrote:
->
-> On Wed, Aug 05, 2026 at 03:02:05PM -0400, Chris S wrote:
-> > Thank you so much.
-> > Taken, with a change: the helper needs a matching unmap, and must not m=
-ap
-> > the folio-less case at all.
-> >
-> > static inline void *kmap_local_bh(const struct buffer_head *bh)
-> > {
-> > if (!bh->b_folio)
-> > return bh->b_data;
-> > return kmap_local_folio(bh->b_folio, bh_offset(bh));
-> > }
-> >
-> > static inline void kunmap_local_bh(const struct buffer_head *bh, void *=
-addr)
-> > {
-> > if (bh->b_folio)
-> > kunmap_local(addr);
-> > }
->
-> Ah, I hadn't considered that option.  Yes, I think this is the right
-> approach.  Thanks!
->
-> > Two reasons.  kmap_local_page(virt_to_page(bh->b_data)) loses the offse=
-t
-> > within the page, and b_frozen_data is kmalloc(b_size), which is only
-> > guaranteed page aligned when the block size is at least PAGE_SIZE.
->
-> Yeah; my bad.  I should have added in PAGE_MASK(bh->b_data) to that,
-> but what you have is better.
->
-> > The second one is your other point.  With CONFIG_DEBUG_KMAP_LOCAL_FORCE=
-_MAP,
-> > __kmap_local_page_prot() maps even a lowmem page, one page at a time.  =
-So
-> > mapping memory that is already permanently mapped would walk this path
-> > straight into the bs>PS problem you just described, which it is otherwi=
-se
-> > immune to - b_data covers the whole block whatever its size.  Returning
-> > b_data and calling kunmap_local() on it anyway is not an option either:
-> > kunmap_local_indexed() WARNs on an address outside the fixmap range und=
-er
-> > that config.  Hence the pair.
-> >
-> > On the bs>PS folio path itself: agreed it is real and predates this ser=
-ies.
-> > I would rather not fold a fix into this one, but I will take it - I'll =
-look
-> > at it separately once this has settled.
->
-> I've been considering adding a folio_vmap() which would be a nop for
-> !highmem, kmap_local() for order-0 highmem folios and vmap() for
-> large highmem folios.  It's not reached the top of my todo list yet.
+> 
+>>>
+>>>> 2. The aforementioned rare data inconsistency in xfstests generic/127.
+>>>>    When performing a partial folio punch hole on a dirty large folio,
+>>>>    truncate_inode_pages_range() zeros the partial folio and then splits
+>>>>    the folio. This causes an incorrect 'end' offset calculation in
+>>>>    truncate_inode_pages_range(), which then results in all split folios
+>>>>    being truncated via truncate_inode_folio(), turning partial valid
+>>>>    data into zeroes.  For example:
+>>>>
+>>>>    Suppose we have a large folio of 4 pages, and we punch a range
+>>>>    starting from the beginning to the middle of the last page.
+>>>>    truncate_inode_pages_range() will go through two rounds of splitting.
+>>>>    Normally, if an ifs is present, the split path would hit
+>>>>    folio_split() -> filemap_release_folio() -> iomap_release_folio(),
+>>>>    which would intercept the operation and refuse splitting because the
+>>>>    folio is dirty.
+>>>>
+>>>>    However, without an ifs, filemap_release_folio() returns early via
+>>>>    folio_needs_release(), causing the interception to fail. In the first
+>>>>    round, the folio is split into 3 folios (1, 1, 2). In the second
+>>>>    round, we expect to split into 4 folios (1, 1, 1, 1). If the second
+>>>>    split succeeds, everything is fine, because
+>>>>    truncate_inode_pages_range() calculates end = 3, and only the first 3
+>>>>    folios are truncated. However, the second split is allowed to fail.
+>>>>    If it does fail, truncate_inode_pages_range() still uses end = 3 and
+>>>>    ends up truncating all 3 folios, resulting in data loss.
+>>>>
+>>>
+>>> I was never really a huge fan of the ifs optimization thing, but I don't
+>>> recall what the performance benefits really were.
+>>>
+>>> That aside, doesn't this seem like more of a bug within the
+>>> truncate_inode_pages_range() path? It's not clear to me if that's the
+>>> only problem wrt iomap, but I'd think if the end offset split down in
+>>> truncate_inode_partial_folio() fails, we should be able to return
+>>> partial progress or something instead of a true/false for the whole
+>>> thing. Would that allow this path to properly update the end index for
+>>> the full truncate loop and at least prevent throwing away a folio with
+>>> partial data like this?
+>>>
+>>
+>> + Matthew and Zi Yan to CC
+>>
+>> I suspect this is because most filesystems these days, when splitting
+>> large folios, generally carry fs-specific private metadata for sub-folio
+>> management, and when a sub-folio is dirty, ->release_folio() will
+>> directly return EBUSY. As a result, dirty folios cannot be split because
+>> their private data cannot be released, which is why this issue has
+>> remained undetected until now. I also do think this does appear to be a
+>> bug in truncate_inode_partial_folio(). Matthew and Zi Yan, what do you
+>> think of this?
+>>
+>> Thanks,
+>> Yi.
+>>
+>>> Brian
+>>>
+>>>> Now I remember I previously submitted two patches [2] that always
+>>>> allocated an ifs in the iomap buffered write path and the mmap fault
+>>>> path for the block size < folio size case. However, Christoph pointed
+>>>> out that the iomap design intentionally defers ifs allocation to avoid
+>>>> unnecessary overhead and improve performance, and suggested creating the
+>>>> ifs in iomap_invalidate_folio() instead [3]. There is a hurdle, though:
+>>>> iomap_invalidate_folio() is only called when the folio has private data
+>>>> (in truncate_inode_partial_folio(), folio_needs_release() is called
+>>>> first to check the private flag). So if we go with this approach, we
+>>>> need to ensure that folio_invalidate() can be called even when the folio
+>>>> does not have an ifs.
+>>>>
+>>>> One relatively simple approach is to always set the AS_RELEASE_ALWAYS
+>>>> flag on ext4 inodes that go through the iomap path. I don't think this
+>>>> would introduce significant overhead, but it doesn't feel very generic.
+>>>>
+>>>> Another approach is to modify truncate_inode_partial_folio(). Regarding
+>>>> this, I don't want to introduce other magics to achieve this, so perhaps
+>>>> modify truncate_inode_partial_folio() to check whether
+>>>> i_blocks_per_folio > 1 before calling folio_invalidate(), and call it if
+>>>> so.
+>>>>
+>>>> So, what do people think? Any better idea?
+>>>>
+>>>> Thanks,
+>>>> Yi.
+>>>>
+>>>> [1] https://github.com/zhangyi089/linux/commits/ext4_buffered_iomap_v5-devel13/
+>>>> [2] https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-4-yi.zhang@huaweicloud.com/
+>>>>     https://lore.kernel.org/linux-fsdevel/20240812121159.3775074-5-yi.zhang@huaweicloud.com/
+>>>> [3] https://lore.kernel.org/linux-fsdevel/ZrxBfKi_DpThYo94@infradead.org/
+>>>>
+>>>>
+>>>
+>>>
+>>
+> 
+> 
+
