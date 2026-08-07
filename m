@@ -1,151 +1,173 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oi1-f198.google.com (mail-oi1-f198.google.com [209.85.167.198])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1236938DC4A
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 08:41:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D36BA3ED5C9
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 09:21:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786092066; cv=none; b=KkNllJwwEYUPcjrtswn7QIHb8DsKHAV+QDzrZgeAP/esyaDmvDzLfG09ZJAIeETlEyoRmwS1TI1a1osUsH7bmLVacPxFoLppS52o63qo5ZKwK6/Hfu0yUiKnbXlQOa3WN20puAFh5itzPDOLP3hnnwyh7nX0Mgic5w0DCj52eLA=
+	t=1786094497; cv=none; b=dMIX0QmawiIrYs6xNNJny380Dh6N5reJEc3aX+BUOwYQ3mnUMs3iiF9OhKl3GzeXWu552xvnnIjpYpVlL+2jji/fcfDIrLxNNuzpWsvgpf45WjG5WZ2KaF5ioygqMy1WI4HuBhKr6rIQS49482xOYT3NYumWL+r61OdPLYM798k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786092066; c=relaxed/simple;
-	bh=bUjgqdqxDvNxXL3sAbiVQ7GYMgjbXsjjeBlg+0mCmxM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=fP0IdGiEcA+cCNLXrhoQ4r6hy3ha3giMCWcK00qrUG3NMRfYU/YJShdtBOpZLfjQyIMuRAjMrXgfHIpaQCBLYvHavzIWDY95w6Hj7bZoF8/t9mWJk0Kr8/Ws+CbNdGfuK1BFL9x8a7UuRXUXfwtvfOU/OJc+gxMUEyZSTB+F6rA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=enlvdEvP; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="enlvdEvP"
-Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6770JQgM2279525;
-	Fri, 7 Aug 2026 08:40:48 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=Ckdj++hE8Y8UQl5FGTRNZ3mKT4BD2M
-	ylofP2VYjlmcY=; b=enlvdEvPzXVhZCdxg+uvQZsuezguw+w22Hr0OYap+qsPPC
-	AnNpc0qe1ooRhG3L5cjD7WsEyAPZiAf1EH5azBp2E7umgiTi3bBeA/d2viopQWmN
-	j0RTYRykLt7r58F/vVJPCVByqKCzte8SF2jX20bI8fLXuRXNsoYL9V31a5hVrULc
-	5TGXT0/6HtLFgoTcb9q2wIzyqrf2/SlfQv3cGkjC2ygYlz7b2sUh9m3nDjiZFK05
-	vxSpc9RopDRtqE40nUMgzJ0Vbf90S8Ahan4XjoBwjt+W3PDBDSI6/Y6hdyyjjFaR
-	Jd5BeqKJY6jH6RhT4hO/m1PhFonQA6gegdEx/yXQ==
-Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fvy01k200-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 07 Aug 2026 08:40:47 +0000 (GMT)
-Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma12.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6778QG95008838;
-	Fri, 7 Aug 2026 08:40:46 GMT
-Received: from smtprelay03.fra02v.mail.ibm.com ([9.218.2.224])
-	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fsu4qy3af-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 07 Aug 2026 08:40:46 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay03.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6778eiZa35127720
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 7 Aug 2026 08:40:45 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id DD5FE20043;
-	Fri,  7 Aug 2026 08:40:44 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id D0F0A20040;
-	Fri,  7 Aug 2026 08:40:42 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.216.183])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Fri,  7 Aug 2026 08:40:42 +0000 (GMT)
-Date: Fri, 7 Aug 2026 14:10:39 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: Re: [PATCH 2/3] ext4: Fix transaction overflow during writeback
-Message-ID: <anWaBzfPUle-MNBR@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260805153202.29814-1-jack@suse.cz>
- <20260805153605.166545-5-jack@suse.cz>
+	s=arc-20240116; t=1786094497; c=relaxed/simple;
+	bh=X0t/MAcZpTNODHUjtSRgs7rJrIqj7xNlQX5YtnbWaWo=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
+	 Content-Type; b=ZZwgybQqrenzewbrZHUJc25JGnQlfNuH4EdfHfk7Ig5jDP5sTHku7vXiIiNd04jmr7dPTS97g//eIRXLGCd1CnPzEwkJJHDmDlmo2mUxvpb9wKwn3te/RQUXzz0yODKXxrGQ04cBrQbT/fCkPjurUwRMD2DquRkQV0D7YivW9nY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.198
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f198.google.com with SMTP id 5614622812f47-4ab4ca7ce3fso2825833b6e.0
+        for <linux-ext4@vger.kernel.org>; Fri, 07 Aug 2026 02:21:35 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786094494; x=1786699294;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=1w1bzy8ztEMz76rKTp6YTKy70X4mXB83RhI3ZGRktQI=;
+        b=X2gxQixAXut4v7FeNcGHZuytw1AIZRo8r1cgBZh3xB+vo2IpdviGkzwndmSeRtA4mA
+         PcwkMMwKItlH2iiYzrwgZL5TIZT4s5JIDRzUM0TVGexgmDrFOMc69xzx4gyb9qsYW0uI
+         ixcTK2dW1EjelDG8YfFGAsGK7YwmPv/e2P7bC6HwWJNAhdv9qAWV620zSYIaZnncy+gC
+         Wy6ONA3WhbjoCZscKHiPQDMJTBLk55+LIcb6oZIQe8rB6rw4Ykn16KAEI5aMzB0aRd0K
+         KFoMz9vf6NkGPpgTBdIEEX4LoYwB65MEG7ZwVzrpJYwrOmvCi2lZ6gwPrL9A8+H0vgav
+         AZTA==
+X-Forwarded-Encrypted: i=1; AHgh+RqQRthgrA8MhRU+l0TnZN0cYEmb7PkeK2AeG9Dp8HoD0C0cABV/neXmy+0Me7E8Drc0y60OpbgIBrMa@vger.kernel.org
+X-Gm-Message-State: AOJu0YzgcJlM1TWm3XrIxbwFsfqbV7AdTj8dzk6vSTEWmhmnM8MrwRKu
+	+X/Z1DQDISosjiy+A1WA8Pq1m3oqkeFQlyxHN34BvltPoO9QEQz2PSymtfz22UfQI6l70ssOD7d
+	D1ulrOilUGFUL+52XoF25+gstmJ++P7r0ubhzc4Eyuvs+CxNOERMMGHw1OU8=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260805153605.166545-5-jack@suse.cz>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: qSvznJXORckhCrWRxM2-v2YWJ-nOs7kX
-X-Proofpoint-Spam-Info: AW1haW4tMjYwODA3MDA2MSBTYWx0ZWRfX11FRlKkLAqaR
- 04x+ZUbbdcTpL7/VmPqr0R97nDnIah2nGv1Ahd0fbdQUjg2BtJW+nvuFqJIudc+kTQbY03BSNvP
- ftAIvYaQklXm77uhhqQ78xoTzttkcuE=
-X-Proofpoint-ORIG-GUID: bIARjkVVKlF5L2QQJC3C_gyyLk6uSUqR
-X-Authority-Analysis: v=2.4 cv=afNRWxot c=1 sm=1 tr=0 ts=6a759a10 cx=c_pps
- a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
- a=kj9zAlcOel0A:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=VnNF1IyMAAAA:8
- a=zhYh9aUPHKH8fjOMFsoA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODA3MDA2MSBTYWx0ZWRfX7eyRbbOJ3Mo6
- iCgLl/Oj3YX/tHNNn1qG5rkVAaJ4agc6tixDrAEyUSQ6FQ2SiaiwsdtFKUsznNq4TnKj2+mzPdM
- 1kTBAx2XivR17yZbicfF1iJgErOKtU8bG5IjloizTmkMDM2iwFkYxtS7V9VlSUKg5RvCn9qEyAh
- lBmolHESkjsSsmRQ0TiU5HvIyNEeiJ70Y4Qlkcb+KKmXVTcrL60jL72ntbSodIUZqq1iSA4wC2k
- 1ZFSiRE40wIKKmXnp+HDCio2TYbyreGUO3y//ThxA4dHkiG058v9TdTNGBgCylRURLrpfVMIpqC
- uCTKL2843mS250/m90e1KHs2CX43DAQOko59EdWpraCjXWHtL+t+yQlubxeyrSf3Wo/sU+iR5Va
- vY1C0zngu3Nb6QPQP87nOBDJrR2WMlijWIdjTmuOxdlOpqZQ3Cftiul4teSx/fnt/O9vN5ss51q
- O5673IF5OxDVX6o6usw==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-08-07_01,2026-08-06_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- malwarescore=0 spamscore=0 phishscore=0 impostorscore=0 adultscore=0
- suspectscore=0 bulkscore=0 clxscore=1015 priorityscore=1501
- lowpriorityscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2606150000
- definitions=main-2608070061
+X-Received: by 2002:a05:6808:c1f3:b0:496:10e6:f76e with SMTP id
+ 5614622812f47-4afadf21ab6mr12718158b6e.4.1786094494766; Fri, 07 Aug 2026
+ 02:21:34 -0700 (PDT)
+Date: Fri, 07 Aug 2026 02:21:34 -0700
+In-Reply-To: <682ffdaa.a70a0220.253bc2.0061.GAE@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a75a39e.01d0871a.3a0d52.0042.GAE@google.com>
+Subject: Re: [syzbot] [kernfs?] [ext4?] INFO: task hung in sb_start_write (2)
+From: syzbot <syzbot+b3fba2e269970207b61d@syzkaller.appspotmail.com>
+To: brauner@kernel.org, cem@kernel.org, gregkh@linuxfoundation.org, 
+	jack@suse.cz, jfs-discussion@lists.sourceforge.net, kent.overstreet@linux.dev, 
+	linux-bcachefs@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, shaggy@kernel.org, syzkaller-bugs@googlegroups.com, 
+	tj@kernel.org, viro@zeniv.linux.org.uk
+Content-Type: text/plain; charset="UTF-8"
 
-On Wed, Aug 05, 2026 at 05:35:48PM +0200, Jan Kara wrote:
-> Commit 95ad8ee45cdb ("ext4: correct the reserved credits for extent
-> conversion") was correct to note that we need to reserve enough credits
-> for all extents possibly underlying a large folio. However it was too
-> eager to reduce the number of reserved credits. Extent conversion may
-> not only need to touch several leaf extent blocks, it may also need to
-> split extents - for example a single large unwritten extent may need to
-> be split into many small written ones in case of sparse folio dirtying.
-> This can thus result not only in extent leaf modifications but also in a
-> need to allocate new extent tree nodes. As a result the reserved
-> transaction credits were not sufficient in some corner cases. Use
-> ext4_meta_trans_blocks() for correct upper bound credit estimate.
-> 
-> Fixes: 95ad8ee45cdb ("ext4: correct the reserved credits for extent conversion")
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/inode.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f324a54f1dae..ddce319e53c5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2852,10 +2852,10 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
->  	if (ext4_should_dioread_nolock(inode)) {
->  		int bpf = ext4_journal_blocks_per_folio(inode);
->  		/*
-> -		 * We may need to convert up to one extent per block in
-> -		 * the folio and we may dirty the inode.
-> +		 * We may need to convert up to one extent per block in the
-> +		 * folio.
->  		 */
-> -		rsv_blocks = 1 + ext4_ext_index_trans_blocks(inode, bpf);
-> +		rsv_blocks = ext4_meta_trans_blocks(inode, bpf, bpf, 0);
+syzbot has found a reproducer for the following issue on:
 
-Looks good Jan, feel free to add:
+HEAD commit:    f9a2394a2348 Merge tag 'mm-hotfixes-stable-2026-08-06-18-4..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=1379cfb9580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=98da55a882774dfe
+dashboard link: https://syzkaller.appspot.com/bug?extid=b3fba2e269970207b61d
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14b9d7b9580000
 
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+b3fba2e269970207b61d@syzkaller.appspotmail.com
 
-Regards,
-ojaswin
+INFO: task syz-executor328:5959 blocked for more than 15 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor328 state:D stack:28328 pid:5959  tgid:5959  ppid:5947   task_flags:0x400040 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x16dc/0x5500 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ percpu_rwsem_wait+0x32d/0x4a0 kernel/locking/percpu-rwsem.c:164
+ __percpu_down_read+0xf8/0x140 kernel/locking/percpu-rwsem.c:180
+ percpu_down_read_internal include/linux/percpu-rwsem.h:67 [inline]
+ percpu_down_read_freezable include/linux/percpu-rwsem.h:83 [inline]
+ __sb_start_write include/linux/fs/super.h:19 [inline]
+ sb_start_write+0x18e/0x1c0 include/linux/fs/super.h:125
+ mnt_want_write+0x41/0x90 fs/namespace.c:494
+ do_tmpfile+0x6c/0x240 fs/namei.c:4817
+ path_openat+0x3095/0x3850 fs/namei.c:4854
+ do_file_open+0x23e/0x4a0 fs/namei.c:4892
+ do_sys_openat2+0x115/0x200 fs/open.c:1368
+ do_sys_open fs/open.c:1374 [inline]
+ __do_sys_openat fs/open.c:1390 [inline]
+ __se_sys_openat fs/open.c:1385 [inline]
+ __x64_sys_openat+0x138/0x170 fs/open.c:1385
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f3fb490aaf7
+RSP: 002b:00007fff7f2f6f10 EFLAGS: 00000202 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 0000555578a51400 RCX: 00007f3fb490aaf7
+RDX: 0000000000410001 RSI: 00007f3fb494a764 RDI: ffffffffffffff9c
+RBP: 00007f3fb494a764 R08: 0000000000000000 R09: 0000000000000000
+R10: 00000000000001b6 R11: 0000000000000202 R12: 00007fff7f2f70d8
+R13: 0000000000000002 R14: 00007f3fb4970c80 R15: 0000000000000002
+ </TASK>
 
->  	}
->  
->  	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
-> -- 
-> 2.51.0
-> 
+Showing all locks held in the system:
+1 lock held by khungtaskd/38:
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:840 [inline]
+ #0: ffffffff8e1c3000 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x2e/0x180 kernel/locking/lockdep.c:6775
+2 locks held by getty/5356:
+ #0: ffff88803688d0a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x25/0x70 drivers/tty/tty_ldisc.c:243
+ #1: ffffc90003cc62e0 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x460/0x1360 drivers/tty/n_tty.c:2211
+1 lock held by syz-executor328/5959:
+ #0: ffff888035a88500 (sb_writers#4){++++}-{0:0}, at: mnt_want_write+0x41/0x90 fs/namespace.c:494
+
+=============================================
+
+NMI backtrace for cpu 1
+CPU: 1 UID: 0 PID: 38 Comm: khungtaskd Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ nmi_cpu_backtrace+0x274/0x2d0 lib/nmi_backtrace.c:122
+ nmi_trigger_cpumask_backtrace+0x17a/0x380 lib/nmi_backtrace.c:65
+ trigger_all_cpu_backtrace include/linux/nmi.h:162 [inline]
+ __sys_info lib/sys_info.c:157 [inline]
+ sys_info+0x135/0x170 lib/sys_info.c:165
+ check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+ watchdog+0xfd7/0x1030 kernel/hung_task.c:561
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+RIP: 0010:pv_native_safe_halt+0xf/0x20 arch/x86/kernel/paravirt.c:64
+Code: cb 6e 02 e9 13 cf 03 00 cc cc cc 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 66 90 0f 00 2d 33 44 24 00 fb f4 <c3> cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc 90 90 90 90 90
+RSP: 0018:ffffffff8de07de0 EFLAGS: 00000242
+RAX: 000000000009a1e9 RBX: ffffffff81998590 RCX: 0000000080000001
+RDX: 0000000000000001 RSI: ffffffff8d887e30 RDI: ffffffff8bca6d80
+RBP: ffffffff8de07eb8 R08: ffff8880b8633d5b R09: 1ffff110170c67ab
+R10: dffffc0000000000 R11: ffffed10170c67ac R12: 0000000000000000
+R13: 1ffffffff1bdede8 R14: 1ffffffff1bc0fc4 R15: dffffc0000000000
+FS:  0000000000000000(0000) GS:ffff888125c36000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000563216b981d0 CR3: 000000000dfb0000 CR4: 00000000003526f0
+Call Trace:
+ <TASK>
+ arch_safe_halt arch/x86/kernel/process.c:767 [inline]
+ default_idle+0x9/0x20 arch/x86/kernel/process.c:768
+ default_idle_call+0x72/0xb0 kernel/sched/idle.c:122
+ cpuidle_idle_call kernel/sched/idle.c:199 [inline]
+ do_idle+0x2e0/0x540 kernel/sched/idle.c:355
+ cpu_startup_entry+0x43/0x60 kernel/sched/idle.c:454
+ rest_init+0x2de/0x300 init/main.c:717
+ start_kernel+0x392/0x3e0 init/main.c:1175
+ x86_64_start_reservations+0x24/0x30 arch/x86/kernel/head64.c:310
+ x86_64_start_kernel+0x137/0x1b0 arch/x86/kernel/head64.c:291
+ common_startup_64+0x13e/0x157
+ </TASK>
+
+
+---
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
