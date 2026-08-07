@@ -1,30 +1,60 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C95D254781
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 03:54:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BBB6326927
+	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 04:14:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786074855; cv=none; b=fEy9D7U5hQp6YyPDScmdQ761SsFBWT7RDjrA/GyscwvLCOgwJJzjKuo6S1z/iSWbCOp8stZotyvFBKO/512vqGTf7I1icsXQlIf6scENCqEhNx+umAgKZM5Rlo2hSbxnwhnaerMNukg65y1kBPkWWvZZyZ1RbXAhz+ZW1xmL0vQ=
+	t=1786076066; cv=none; b=cEM4VtEn/IvcEuS90niPAkjX41X9nzeYuN9dgwWTMh12KraS6dWkumLsC6XOjcls1CFf9l7QTnIrykF3LWLdept/yhISB2P0jZ1fbRDyIpgtPMC0l9nq0t6uftq6dCdyVaOZ1BwomqtqxSB4jL/1D1KMN/dNsyF1MJGe8RmOuSk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786074855; c=relaxed/simple;
-	bh=HmiH2bYVagJvaJOsdGdJ7EixR6R4c9AC7qe2mZFHgvo=;
+	s=arc-20240116; t=1786076066; c=relaxed/simple;
+	bh=2ZlH8LMcQR5K4M5Xyjbcqx1Nis5doqI6qntSPsb3ZSg=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=sylVTd+fm6MKUKbBKowGe9ohhMtkDvcZolDdv/RJfakSgPcu+Chj9MBucaIZNXrf36nsuDvBSTttMbep/S97cR0QHpgEss0C95YJKbXo3Lhxq3Z9nsBYtykFoGhpfyqVzeEmQGE8/m2iYCY71wFk7nlAwGZd1oVEvqIyohXYks8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hGVCz2csJzYQtns
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 11:35:43 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 3356F40579
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2026 11:36:39 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgCX0kHFUnVqfEqdBQ--.7255S3;
-	Fri, 07 Aug 2026 11:36:39 +0800 (CST)
-Message-ID: <b9567837-045d-4236-8b70-1590018b1c63@huaweicloud.com>
-Date: Fri, 7 Aug 2026 11:36:37 +0800
+	 In-Reply-To:Content-Type; b=oqRS0JB9rs0dv7IX/k03/T63ej77owYUXsjrm2VaFzYkeyI6RoDy99pPrz5jZykhTta4YB5OgkR1/X53UJXTISie4sI1IdG287XKHW9Q8E1z+/VMFxk54FLHBPdbcvD0iFo729q4OnWq4bRt82CDyO9MvGmgdgQoD7IEhViJJZM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=GxjzD2oa; arc=none smtp.client-ip=148.163.158.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="GxjzD2oa"
+Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6770IXRf017225;
+	Fri, 7 Aug 2026 04:14:12 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=5d+1V6
+	wxtY09ot/4fT2Pe3DgbX/M/EZk+CKHZADKccA=; b=GxjzD2oavtwH8RdlnPmkDl
+	PgJnDTIZ4H1tLHPqPr4HRIeJFwUbtm4HyS7Gy/BDUxhoG8P3QrErrYmndkaOjqLg
+	UMusq8Sma2md8iH3p0ecOu97roZN+9b5nTfYzTM+rwcTFyRbGdJSaUz9juUhfeBz
+	dSRjZTlbDYE7GDjV/30BQeBDUlvVprVRICKf3PuiuOnB+/6XQNcJLIIOMa9ZETN1
+	rELlKGLEVK5xgEtxwjqEv/iC3lh4rx9OT7UciZYrrsT59r5EQaLRaDOpQCsojwKc
+	G0J2n2Fj4H48lccBTxHlYUNUS2kTfyu/opb7uDq3z0XNPf7zlUTu4yU11iPiOx/w
+	==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fvy00a34y-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 07 Aug 2026 04:14:12 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 6774BLht015327;
+	Fri, 7 Aug 2026 04:14:11 GMT
+Received: from smtprelay07.dal12v.mail.ibm.com ([172.16.1.9])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fsv4ke7xu-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 07 Aug 2026 04:14:11 +0000 (GMT)
+Received: from smtpav02.wdc07v.mail.ibm.com (smtpav02.wdc07v.mail.ibm.com [10.39.53.229])
+	by smtprelay07.dal12v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6774EA2Q20578968
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 7 Aug 2026 04:14:11 GMT
+Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id D4C6758059;
+	Fri,  7 Aug 2026 04:14:10 +0000 (GMT)
+Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 3B01358058;
+	Fri,  7 Aug 2026 04:14:09 +0000 (GMT)
+Received: from [9.61.246.200] (unknown [9.61.246.200])
+	by smtpav02.wdc07v.mail.ibm.com (Postfix) with ESMTP;
+	Fri,  7 Aug 2026 04:14:08 +0000 (GMT)
+Message-ID: <025d6299-08a2-42db-b317-b2152f14ff1d@linux.ibm.com>
+Date: Fri, 7 Aug 2026 09:44:07 +0530
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,79 +62,108 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/3] ext4: Fix transaction overflow during writeback
-To: Jan Kara <jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
- Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
- <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>
-References: <20260805153202.29814-1-jack@suse.cz>
- <20260805153605.166545-5-jack@suse.cz>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260805153605.166545-5-jack@suse.cz>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH] ext4: Avoid entering writeback paths during fastcommit
+ replay
+Content-Language: en-GB
+To: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>
+Cc: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+References: <20260804104112.93202-2-jack@suse.cz>
+From: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+In-Reply-To: <20260804104112.93202-2-jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:_Ch0CgCX0kHFUnVqfEqdBQ--.7255S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7urWrGrWxKw1kJFy7XFy3XFb_yoW8ur4xpa
-	n3CF18Wr15u34DuayIk3WUtF1xWayxGr4UWF18Kw45WFZxWrn2gr1DKw1FkFy8Kr4xXrWY
-	vF4UArykGwnrAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_JF0_Jw1l42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r126r1DMIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUwxhLUUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+X-TM-AS-GCONF: 00
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODA3MDAyNCBTYWx0ZWRfX2DHbX5Xyoc8s
+ KtDieF7gzn8YUDasm2e5UqPngf/d3wTzrFgmfjLgoAXlxwvmOGmYUPyvRNI0Ia1Nafdz3uYDFYA
+ DHwk+TrFW5j7koLts9zFOoadOVWwaTo=
+X-Authority-Analysis: v=2.4 cv=VPTtWdPX c=1 sm=1 tr=0 ts=6a755b94 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
+ a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=VnNF1IyMAAAA:8
+ a=T2R7FQVLJHf8dZfcdzUA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-ORIG-GUID: UqvNVkYLCuT1cusTwNiadiFauyeFrK6h
+X-Proofpoint-GUID: UqvNVkYLCuT1cusTwNiadiFauyeFrK6h
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODA3MDAyNCBTYWx0ZWRfXyXduKbunRNFl
+ KHyv1b5AC9QfKTXarSNeSJ/S2G/vLVA4yDxRptn5qQmGK59YKDkabrOJ1dzgFS/qPpOyKJNHM41
+ I/BacZZBJ965lg9x6HMJ+473k3rANG72erHBRz5J0Qq61ERvMeOKvZtgFPRh3rah7wGf5o+1QhS
+ sy+loyTOYwbSYNoDhhsQiuxmd9spwhTJn2gRnqGaILpWAIkXlExfq8MtZ+Z0nbR8WkuAXZ6vXSy
+ CRE111WfR89ioiqXkyIrdyd4YPVNJvCr3lyiBJTToPGqd8KqrC7kezxUJKo50D+P7Qdut11yWvO
+ mfGnfLFsCGjS11fdR8/wzo3JjgqN15jB8X8UesQh3/AWcUBpoO/YXnLzkb8QZqycFtla7rpAS81
+ fhQ0nReXteWY52pHAIlZY3Lf+AlUHyHQ9s7xmXT8TiPPnFQjsqhZ34o3wYPpbfvPX5TxlKuv9Al
+ IQsKBg9g37AJ/QJWjPg==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-07_01,2026-08-06_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ lowpriorityscore=0 malwarescore=0 bulkscore=0 spamscore=0 clxscore=1015
+ priorityscore=1501 phishscore=0 impostorscore=0 adultscore=0 suspectscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608070024
 
-On 8/5/2026 11:35 PM, Jan Kara wrote:
-> Commit 95ad8ee45cdb ("ext4: correct the reserved credits for extent
-> conversion") was correct to note that we need to reserve enough credits
-> for all extents possibly underlying a large folio. However it was too
-> eager to reduce the number of reserved credits. Extent conversion may
-> not only need to touch several leaf extent blocks, it may also need to
-> split extents - for example a single large unwritten extent may need to
-> be split into many small written ones in case of sparse folio dirtying.
-> This can thus result not only in extent leaf modifications but also in a
-> need to allocate new extent tree nodes. As a result the reserved
-> transaction credits were not sufficient in some corner cases. Use
-> ext4_meta_trans_blocks() for correct upper bound credit estimate.
-> 
-> Fixes: 95ad8ee45cdb ("ext4: correct the reserved credits for extent conversion")
+
+On 04/08/26 4:11 pm, Jan Kara wrote:
+> Fastcommit replay effectively happens in nojournal mode. This results in
+> ext4_mark_iloc_dirty() setting I_METADATA_WRITEBACK flag and as a result
+> we end up entering filesystem writeback functions. However during
+> fastcommit replay s_writepages_rwsem isn't initialized yet and hence we
+> crash.
+>
+> Fix the problem by avoiding setting I_METADATA_WRITEBACK during
+> fastcommit replay. Journal replay flushes the whole block device after
+> replay anyway so all metadata is properly persisted and replay is faster
+> this way as a bonus.
+>
+> Fixes: c26339e1df33 ("ext4: Fix data integrity writeout issues in nojournal mode")
+> Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 > Signed-off-by: Jan Kara <jack@suse.cz>
-
-Indeed, I overlooked that the newly allocated index blocks will modify
-bitmaps and group descriptor blocks. Given that the folio length is
-capped at 2048 filesystem blocks, calling ext4_meta_trans_blocks(bpf, 0)
-shouldn't result in an overly large credits calculation. So,
-
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-
 > ---
->  fs/ext4/inode.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
+
+
+Tested this patch and its fixes the reported issue. Hence,
+
+Tested-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+
+
+Regards,
+
+Venkat.
+
+
+>   fs/ext4/inode.c | 11 ++++++++---
+>   1 file changed, 8 insertions(+), 3 deletions(-)
+>
+> Christian, please add this fixup to my sync fixing series. Thanks!
+>
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f324a54f1dae..ddce319e53c5 100644
+> index 7a1f961cd11c..12ff84ab5741 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2852,10 +2852,10 @@ static int ext4_do_writepages(struct mpage_da_data *mpd)
->  	if (ext4_should_dioread_nolock(inode)) {
->  		int bpf = ext4_journal_blocks_per_folio(inode);
->  		/*
-> -		 * We may need to convert up to one extent per block in
-> -		 * the folio and we may dirty the inode.
-> +		 * We may need to convert up to one extent per block in the
-> +		 * folio.
->  		 */
-> -		rsv_blocks = 1 + ext4_ext_index_trans_blocks(inode, bpf);
-> +		rsv_blocks = ext4_meta_trans_blocks(inode, bpf, bpf, 0);
->  	}
->  
->  	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
-
+> @@ -6408,9 +6408,10 @@ int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
+>   int ext4_mark_iloc_dirty(handle_t *handle,
+>   			 struct inode *inode, struct ext4_iloc *iloc)
+>   {
+> +	struct super_block *sb = inode->i_sb;
+>   	int err = 0;
+>   
+> -	err = ext4_emergency_state(inode->i_sb);
+> +	err = ext4_emergency_state(sb);
+>   	if (unlikely(err)) {
+>   		put_bh(iloc->bh);
+>   		return err;
+> @@ -6425,9 +6426,13 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+>   	put_bh(iloc->bh);
+>   	/*
+>   	 * Mark that there's metadata writeout pending for the inode so that it
+> -	 * gets properly flushed on fsync(2) and similar.
+> +	 * gets properly flushed on fsync(2) and similar. We don't bother for
+> +	 * fastcommit replay as that flushes the whole bdev afterwards anyway.
+> +	 * It is faster this way and we avoid entering fs writeback paths which
+> +	 * aren't fully initialized yet.
+>   	 */
+> -	if (!EXT4_SB(inode->i_sb)->s_journal) {
+> +	if (!ext4_handle_valid(handle) &&
+> +	    !(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)) {
+>   		/*
+>   		 * Inode didn't need to go through dirtying, make sure it is
+>   		 * attached to wb so that writeback can handle it.
