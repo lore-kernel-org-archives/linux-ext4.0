@@ -1,92 +1,108 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.17])
+Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0950E18DB1F
-	for <linux-ext4@vger.kernel.org>; Sat,  8 Aug 2026 05:01:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.17
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 778EC345CAA;
+	Sun,  9 Aug 2026 05:45:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.210
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786165278; cv=none; b=uD6prdowD3VKWbHjoFSu9cEARwHWi0dhEQl0oqXdGzt8Kdy7DsleN3gzlfCnLZQRfamJcx+z5oCiR9AWreSBdC+//wCPn7pdtyB8AYZ4+68wuNnqGmOiqCuhB1B69k0PlPulvCkpYlBll96E6LGuRMT7HNQg3qvvpvM+UGhe+Xk=
+	t=1786254339; cv=none; b=uU5io3WfK3959ekJ1Lp56nP8AUILT2e4z9D1olQ+dGVlYo+dGU6I3pCaC4DI0xKit1aILgIXVpp9tn/DVKv1nvMQMI/n4PM1ZhCxFXh5RoIrtS2yUijbpGrQ3H3wabrWcwSQ/ue3dHK3A7g0FjXJ/GVvx8xs04fz6WYpHmEqpcA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786165278; c=relaxed/simple;
-	bh=A+M0XfIatVvUxQwQt+Mf9uz8c2DVyguZF0LtvqOlFaU=;
-	h=Date:From:To:Cc:Subject:Message-ID; b=tBVoGkU9/K2AhaNIA3Bf6dkLaxovuJ/3sRsgtWzXO15b/Xn/4w6I0uSFpeV40DkvJ58yDpg52NwooH5gQx0KTmyim/3Ic7xEGlZPai+WKm6a+P85/DUF6qapuOH/DdgnaeUZEHJ+CIpYCMsvycI/6c7q2lBZGnnEj+IfXi/PamU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=IAhOgEXT; arc=none smtp.client-ip=192.198.163.17
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1786254339; c=relaxed/simple;
+	bh=7RMFFNYT4Qt8JhSON2vW8u1uNwhLqTIWLy3cXedCmLU=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=rAPvFL+rvzpYpnSvvNKR6G7JSxGwm0gAPGIQ/SAO9XLPf32rYtPPOt6mbFLRUNdDmKcyOBc+2kiADePw2UP85746qIMmHQ6jiFonFJ1wRJw0UlQjanTkGdTb3ci5wNFbscBbutZvrLHHXCDQNz2XJMrp9ut9jCWAw0EpCY0HwjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=YDp0dvf+; arc=none smtp.client-ip=162.62.57.210
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="IAhOgEXT"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1786165276; x=1817701276;
-  h=date:from:to:cc:subject:message-id;
-  bh=A+M0XfIatVvUxQwQt+Mf9uz8c2DVyguZF0LtvqOlFaU=;
-  b=IAhOgEXThPRAn+CAd9/K3XSWGVWHQJn0OI9ZKAEgzdUVjgRcUqcJZH3I
-   19ewtAVybKKtXhYNIVE3+R/hGbQoHLQm51gVTa7u1baL6uFCNxB6x97a+
-   UCR1il8xVMYZVoosDzWLyoXJTuWTV7cuCTJYjNIcOtZTDRfYikR8K7fLS
-   zSgy320WMIaThvQsESGYgRrTmt/3w/C3OtOEPbilc5ZkpHhYbgcgbtT7Q
-   ySxhb7X1H4RM3OoYB+SHHmpLdNDBSx3P4pCcVf7eHaz1WI/9BeInotQn2
-   VlyHgn4+bbzCnNy3kHsi+eQ+kbkpO+6+bT/avCY+P78Sx4BY5FhU8gh3N
-   g==;
-X-CSE-ConnectionGUID: v3FC723eS220PDO58aU0ZA==
-X-CSE-MsgGUID: LiCaAVg4Tb2/HqVeePjQGw==
-X-IronPort-AV: E=McAfee;i="6800,10657,11868"; a="86648430"
-X-IronPort-AV: E=Sophos;i="6.25,211,1779174000"; 
-   d="scan'208";a="86648430"
-Received: from fmviesa007.fm.intel.com ([10.60.135.147])
-  by fmvoesa111.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Aug 2026 22:01:15 -0700
-X-CSE-ConnectionGUID: Iv3gb6yURr2YMyfEoVqqOQ==
-X-CSE-MsgGUID: gqjr7JrUQ86okzrcjzi2Yw==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.25,211,1779174000"; 
-   d="scan'208";a="259256621"
-Received: from lkp-server01.sh.intel.com (HELO 6eda058d650d) ([10.239.97.150])
-  by fmviesa007.fm.intel.com with ESMTP; 07 Aug 2026 22:01:14 -0700
-Received: from kbuild by 6eda058d650d with local (Exim 4.98.2)
-	(envelope-from <lkp@intel.com>)
-	id 1wsZBH-00000000JlB-3Wnt;
-	Sat, 08 Aug 2026 05:01:11 +0000
-Date: Sat, 08 Aug 2026 13:00:52 +0800
-From: kernel test robot <lkp@intel.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- 9091c97be34083587a75db174aab51551d8e8543
-Message-ID: <202608081338.WVFuPqxb-lkp@intel.com>
-User-Agent: s-nail v14.9.25
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="YDp0dvf+"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1786254325; bh=eI63H6+vyv/AYPMEyjQuuho9STUT5+sLSdIlKSsoDOk=;
+	h=From:To:Cc:Subject:Date;
+	b=YDp0dvf+IIkzBke/uqxh6RxDme04W7DRbbEsp/Ex/GHogGcKTJmdz0pMLhylSdJDx
+	 WcLM/nupLTj2E8+mxctWoxZzhL9rBLQ7BNXjXXhYiZH/7DINItXHABPQz3ilzS9mY4
+	 9YUXi2DDRx/q9sFnZnfh+RfL+okGfFhjY3oyl75E=
+Received: from ikun-VMware-Virtual-Platform.localdomain ([2409:8a20:b30:4824:bd7c:c5a2:f149:1f65])
+	by newxmesmtplogicsvrszb51-0.qq.com (NewEsmtp) with SMTP
+	id B4F87A15; Sun, 09 Aug 2026 13:45:15 +0800
+X-QQ-mid: xmsmtpt1786254315tfg67yd44
+Message-ID: <tencent_3E210B6E71105F311354D53C158A3A9E1E08@qq.com>
+X-QQ-XMAILINFO: M4IaOLvRTdegXe1aim0mGDwJwB5pFgJ2tZLZsznm6JrjkKSuMw0mOgQJVDh5za
+	 yzfLBavgZrcbyeJ6Nk0cQPdbadJxEv7Lj6nqmN3DD1aXlv2A/v6y0e6lwNGP5GyU9bFvG76LxSFE
+	 6Xn4v5JDa4NRe06JiT4XbOrRZsJsJdisSBAvxq7JG/wLzvjUecabcC6S7AMW6/pasder8YYfqY7E
+	 eIHrHgGdwqMUj38q1cyD7dEwinGjOu8wz2UyvbqfsdHRvidsSuMqww/56jHuwuQfQMi8lhX/r1k9
+	 pkgW92ESps6yfsD1z+EhJ+c4Z5ijIez9ShaGf/0Pl8hmS3xN3htWt341vQj9gE4zPtr7h0cJkoPy
+	 kNHSHcOlqAm/nLpJzhvQwNRvKISru9M65ikr6E/0YTM12RXccbUJ3G7YcVeDk1dBwCV27lOc/Fzx
+	 XSHR23bEdXIr9ThQMb6nABesRLbhweLpeZNa14aAeVL1juQUw1tU2atJM6iY56LuUvVnszgEIDm8
+	 PuwIXe9T0BdpxAozGCNvIRV0kEWDencIIvksyNTY7pIvL+r/EGwSFHTf+4Kwjim0TKyvADEXkljf
+	 4GmyCkVmQ4dwrTu4A998ch4W909ZuXO5pbCRq96AgPgFKlg82b+QZ7EWWNCRkzIi1DWEE6L1nmxh
+	 Mo0oPslzutWNoeQHpsu1+UuLHRIUYb+SfGsobU3swkmFlSRIQEdFtqTlglbnBmMgGsK7C6Muw/Tf
+	 dJAm9v2h+0nw2qNP+l3onqCYB4/ToOtD57SxxB4eiV/SlQidH2ILrMovgwN4TtXjEhuEPWt/UCow
+	 Cw9UDvVkBa/USSb0XN973ViysehlCGt7F1exb3NslHgfQJUnJw0mtmUC0qSHnAiJxP9FS7gmkot7
+	 LYL5rJaC/eIY9ukKJ1PyJWJvV9UKN9zl4y2T/8EwfWuvmlyOtA4bmlRtVWtpRGbt0UnzrD3SKZxv
+	 lZ/TUKrkiidg/vfNWhNnoeDNLWym1oIa3/lOQTkuBRGwKIBWU3z8P6VAV/yVgblo5ZyRgsn7sG/v
+	 M+YhZguJqTAcvLhrLRvi1pik4/NxMSaKoGTPoAcIARso1oDLWhf2g6vuHaBUGTC/3s46DdAi/FZZ
+	 hXY0b9
+X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
+From: Guanghui Yang <3497809730@qq.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Guanghui Yang <3497809730@qq.com>
+Subject: [RFC] ext4: orphan tracking after a failed truncate
+Date: Sun,  9 Aug 2026 13:45:09 +0800
+X-OQ-MSGID: <20260809054509.67718-1-3497809730@qq.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 9091c97be34083587a75db174aab51551d8e8543  ext4: fix estimate extent index blocks in ext4_ext_index_trans_blocks()
+Hi,
 
-elapsed time: 813m
+I am looking for clarification about the intended orphan handling when a
+truncate fails after its journal transaction has been restarted.
 
-configs tested: 15
-configs skipped: 0
+I reproduced the following using the official kernel.org Linux v6.14
+source:
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
+- a large truncate naturally triggers jbd2_handle_restart()
+- after the restart, a block-layer fault makes ext4_read_bh() return -EIO
+- ext4_ext_truncate() and the truncate syscall return -EIO
+- the restarted transaction is committed on disk
+- before journal replay, e2fsck -fn reports that the orphan file contains
+  no orphan entries
+- the inode has i_size 0 but still has allocated blocks beyond EOF
+- mount-time journal recovery completes, but the inconsistency remains
 
-tested configs:
-alpha         allnoconfig    gcc-16.1.0
-alpha        allyesconfig    gcc-16.1.0
-alpha           defconfig    gcc-16.1.0
-arc          allmodconfig    gcc-16.1.0
-arc          allyesconfig    gcc-16.1.0
-csky         allmodconfig    gcc-16.1.0
-i386         allmodconfig    gcc-14
-loongarch       defconfig    clang-24
-nios2        allmodconfig    gcc-11.5.0
-nios2         allnoconfig    gcc-11.5.0
-openrisc   virt_defconfig    gcc-16.1.0
-parisc       allmodconfig    gcc-16.1.0
-parisc       allyesconfig    gcc-16.1.0
-parisc          defconfig    gcc-16.1.0
-sh              defconfig    gcc-16.1.0
+In ext4_truncate(), an error from ext4_ext_truncate() jumps to out_stop.
+For an inode with a nonzero link count, that path calls
+ext4_orphan_del(handle, inode) regardless of the error.  In this run, the
+committed post-restart transaction contains the orphan-file block, and the
+pre-recovery check reports that the orphan file is clean.
 
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+The comment above ext4_truncate() says that an incomplete truncate can be
+restarted from ext4_orphan_cleanup() after a crash.  Should the on-disk
+orphan entry therefore be retained when block removal fails after the
+entry has been added?
+
+There is a second part to the recovery contract that I am unsure about.
+The EIO marks the filesystem with EXT4_ERROR_FS, and
+ext4_orphan_cleanup() skips orphan recovery in that state.  Is an e2fsck
+repair the intended outcome for this class of error, or should ext4 keep
+enough orphan state for mount-time recovery to finish the truncate?
+
+ OpenAI Codex (GPT-5)
+assisted with reviewing the failure path, preparing the test procedure,
+and drafting this RFC.  I reviewed the analysis and ran the reproduction.
+
+Assisted-by: Codex:gpt-5
+
