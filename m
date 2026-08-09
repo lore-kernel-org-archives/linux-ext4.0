@@ -1,96 +1,156 @@
-Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+Received: from mail-ot1-f77.google.com (mail-ot1-f77.google.com [209.85.210.77])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94AAB2475CB
-	for <linux-ext4@vger.kernel.org>; Sun,  9 Aug 2026 15:37:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E90A03911D5
+	for <linux-ext4@vger.kernel.org>; Sun,  9 Aug 2026 19:12:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.77
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786289877; cv=none; b=pi274YzBTl6ekJzmQ2Y65ln0IFw81BTO7dm3YWaX1cMzuDSUzlrEBxzXeNOxy+D7akkk0dRHbv9ZyI81xoXkK1MD0DSMgdptEoW86jn/kfV5q5v2ft9MPWIu1WDtsJtd2Pe+IReSmR2AZC3bbwxI8IXMHyY3vE1vlzmC0gnfi8M=
+	t=1786302770; cv=none; b=SJFBz17xujC9AnGrbDYUbZT+knifGso6L/+qFt/RTum7y+RtzbRdwoqMxrfG68HFdiE/zE0S7mAbZ/P8c5GGUoHKy8tOrOHUzXptbo7SWAi2wLBU1PoQuGoD9U1AeM7gnKNw3cSPQf78yyzohlXAILGYaEaSbNqHYmlXSrOCm9Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786289877; c=relaxed/simple;
-	bh=QiHspMmrWYR6JR0lI/2orn0XnTH1GeGpZkIk4IxJEEg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=rOCrZVdYLUkMI3OD/vkwHPYYAFJSc72gPLjlvWZQGo1iG7+te3RFDXMN80wau+x86wgokjdiqUC+CAXwLsQTf4A4gD8IfuZZdFWdA21pBQBhMJQwqV3TD1uw/oJ5q31geVC1Qg7/o1ekdm90ZxX2fDMgyNrlnCtCjYmPKz7U04I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VkwVQ42v; arc=none smtp.client-ip=209.85.128.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VkwVQ42v"
-Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-49558ce01afso8044035e9.1
-        for <linux-ext4@vger.kernel.org>; Sun, 09 Aug 2026 08:37:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786289875; x=1786894675; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=HnCiaDhSZ4E0IEu3bcXK+4RsdFqJOB7eO6e26VetAM0=;
-        b=VkwVQ42vOY85JVWSgzSTtm/6P+n/bID+roGRqi3Iz+UVtPitl4wAAAauC2m6S1yMS0
-         DIE2BTYbNrAk/gE8ugEql1K95W/DQHV4rgEWZyKKBiD40svg0h9BcgMFoPilGIkhWALp
-         prJM6rwwFWsE8IxtqnyR07RSeY/GWSAWAjgksIytdrn9ELpbETt3RUS/0SBEnQwXwRvu
-         iWsibDod01KUjR9uMTqWjEEoWAXs8EJR6B21bpLfekPIi8IPZHLxUwXuE2iLKReaIxj4
-         pZwAzf7ko9qcH8Uhww+tVq8OH4TaPYVU9G4JBCkQTfpwIo+GYdfzWbyi2M1CQHBcC3jP
-         R3dA==
+	s=arc-20240116; t=1786302770; c=relaxed/simple;
+	bh=fPvinxA54imzdT3QU+qBV6bpd1Gy3ctxiCJZDtS+/yM=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=V5js2xBUuj/HThRS+xG79vbtAZPAE/yMFpflTV/J5nprx2z9DkHeZo9spiVOAOLSe8GPaRPJjwyO0UhWUS6rU6sNANFGSi/Pavg+a77uIhoS0/MvlWjdjae1rmfQZqOnmbeZArCvRuB/W0gPJ9bZ1rUZFUf1JtF7jlV6jMKVzts=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.210.77
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-ot1-f77.google.com with SMTP id 46e09a7af769-7eb6a8c61deso1025616a34.3
+        for <linux-ext4@vger.kernel.org>; Sun, 09 Aug 2026 12:12:46 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786289875; x=1786894675;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=HnCiaDhSZ4E0IEu3bcXK+4RsdFqJOB7eO6e26VetAM0=;
-        b=B53fTiuXUnqxvOAUO6aQTy9Ij15OgRqs0uU3PBAi9pYEn95TNZtRw447l4gGhAdoNl
-         5IuViFKHtxf5lakgncfrOfTxrokOiyAlfzIR891ycXbrAQ7jVdO8EOjIvl3mZKsYZnDB
-         PAnsepUfbuAllkmN+9C9SPWNVHRRhEL2WL6RzDLPB6zuRFquMCUXyZdJ74XkK+/TIbJ/
-         0LWBeOXxeqsBPr8YW/JanpLY7x4BUtTqWyckQme4002GTqgP3zE9qNppXpLvHL8SrHlq
-         7JcgeGIUYGl2KPkjkK9Yaz4bYE27UB9D4oI7XyBwN9i88oYwGK0V3E8aXmCDJ/zbUtmI
-         7e8A==
-X-Forwarded-Encrypted: i=1; AHgh+RoMNC+YjNEXOVYnwSy3JSBZVdIu2apyuk3ASHkOg6L+AwCFD6HImu+f6wtf/xN4g5daQKCXJPfSgbDj@vger.kernel.org
-X-Gm-Message-State: AOJu0YwQ2HfImoUf7Xbivxxiof7YuSHX7lnGhtMKlo9NT0+D2IktAblp
-	MqC1Gsu0Hc6fHJmA3imiKKGhgUntc0hIxr1U6E2ru7c485ORCff6G46tBTdI4A==
-X-Gm-Gg: AR+sD13425au6COS+yhcvewrGEMfmyNGTslTX/kDUAvCpfcPXBsJk7jYLChCqd4L11a
-	VMAnGaTAk2iFnRKNAjTdIiKCCInssbQi49fLVdb4DSaMtd8khj5fHW1qLL6qDVDNhWih/uJ5+HF
-	LayEIZH5z/+II91GHEVkNJ9Y2/7p1zYsrYeAj33HVXOFnfRzOkiKkDnqPsqJtMKfnCiDk4ZkRPo
-	9oKYy6e9LsOJvPepe6f/dpdgfgXh2Xhe8zZ5ODu5npTlnjs+V9Nf0s1XX9NAeACUjr+NsDfvNxR
-	r4YmMxN41dZuFZJlYE65snRauXISZuibiBGhAX1Nnxb8OV7jJ91vutx0/pcSSFg/b56rQZPU8s3
-	ocNwTAVEmzQtjCLzzDard31Jaf/SirdnxpWzae+Zs20uAFvetpRt6TM080N9ifl7KNuCTf/mEmT
-	BZ8/SztwWGaIG0/ShFKwpIvbGN2mfoaur7jLK0VCybY2/cNyszjovHXgX7
-X-Received: by 2002:a05:600c:1d20:b0:499:6123:ac11 with SMTP id 5b1f17b1804b1-4996123ac36mr146379375e9.11.1786289874734;
-        Sun, 09 Aug 2026 08:37:54 -0700 (PDT)
-Received: from localhost ([212.73.77.104])
-        by smtp.gmail.com with UTF8SMTPSA id ffacd0b85a97d-4800220727bsm26316077f8f.33.2026.08.09.08.37.53
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 09 Aug 2026 08:37:54 -0700 (PDT)
-From: Askar Safin <safinaskar@gmail.com>
-To: jack@suse.cz
-Cc: aivazian.tigran@gmail.com,
-	brauner@kernel.org,
-	hirofumi@mail.parknet.co.jp,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	tytso@mit.edu
-Subject: Re: [PATCH v5 0/20] fs: Fix missed inode write during fsync
-Date: Sun,  9 Aug 2026 18:36:19 +0300
-Message-ID: <20260809153619.1888764-1-safinaskar@gmail.com>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20260727101509.21667-1-jack@suse.cz>
-References: <20260727101509.21667-1-jack@suse.cz>
+        d=1e100.net; s=20251104; t=1786302764; x=1786907564;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=PkZkDYRMiXb223Ypl5INSPCUQWRoz7cIQd6t9TboElo=;
+        b=FRgl4laB7xjMt/u8hERmjIJwh4z6Lnflsiqv4L7TJ3kGQz2jAbbiP+OVFzs6GzvaPf
+         hQWvyyZ9sSQb0V9EgXgNNcOYMv1WFKGMhZFvNsib2NHOIGRkiN6HD30nnucN2a4EaY62
+         yU9TUnutbUt+Nm/PL0qSmJIZVwpL7GPaAwwI3CPqIn08m3nvz1T/TeFLBxbpc1mzwkBz
+         mIVd1PAN9BwPrK2wr7Y6HaYOQqtWMT0i7tPR/vA1DB9wgpi5DycAaiuNmOUY2tscfxqb
+         bKYS4engj2ohdVQe+SRwSE8zw8NkCr3hLeCl6WQlEyXQMb5+rH9/oeAVvJZquAfTTbIj
+         lS0w==
+X-Forwarded-Encrypted: i=1; AHgh+RpTChYoWxpOftzYhAlB3ELNQnHVs/FP+8FOARyXburt6peEQZfH2iuG5UeISVW6y+DI/6QxbXZPashq@vger.kernel.org
+X-Gm-Message-State: AOJu0YzSODrEWSN8PjwHVU92TOzxMTGofEORVh0sj4n55YUX2s2NhbIi
+	atiIC/v5/cGzK0DZHLknvQLugLSpi0ijBaWldpDEcb4nIm+9QcNVjKCCKJbW5oss+r09EppC4km
+	xnDTq+bKBAVyY93JWU+jJKF/z+0ocg/sOqjL37LqsQFgZ72KEADX11Lbtm+s=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6820:308b:b0:6ae:4131:98c6 with SMTP id
+ 006d021491bc7-6b041ee0bb8mr6842764eaf.2.1786302764212; Sun, 09 Aug 2026
+ 12:12:44 -0700 (PDT)
+Date: Sun, 09 Aug 2026 12:12:44 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a78d12c.01d0871a.3a0d52.008f.GAE@google.com>
+Subject: [syzbot] [bcache?] [ext4?] KASAN: use-after-free Read in register_bcache
+From: syzbot <syzbot+cb5b32abe226710cdd8a@syzkaller.appspotmail.com>
+To: colyli@fnnas.com, colyli@fygo.io, kent.overstreet@linux.dev, 
+	linux-bcache@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-Jan Kara <jack@suse.cz>:
-> The series strives to make sure sync_inode_metadata() ->
-> writeback_single_inode() will end up to properly persisting not only the inode
-> but also all metadata associated with the inode.  This is beneficial for
-> several reasons:
+Hello,
 
-It is well known that if one just created a file and wants to properly
-persist it, they should not only call fsync on it, but also on its
-parent directory.
+syzbot found the following issue on:
 
-Is it true that after your patchset this will not be needed anymore?
+HEAD commit:    ba5cc80fd326 Merge branch 'for-next/core' into for-kernelci
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
+console output: https://syzkaller.appspot.com/x/log.txt?x=17767fb9580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=ccf4bea59f67007
+dashboard link: https://syzkaller.appspot.com/bug?extid=cb5b32abe226710cdd8a
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+userspace arch: arm64
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=10f67fb9580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14cd8149580000
 
--- 
-Askar Safin
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/959ad5f4e730/disk-ba5cc80f.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/0787d25f251e/vmlinux-ba5cc80f.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/2e85c36fabac/Image-ba5cc80f.gz.xz
+mounted in repro: https://storage.googleapis.com/syzbot-assets/130fa1cc1a68/mount_0.gz
+  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=111f8079580000)
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+cb5b32abe226710cdd8a@syzkaller.appspotmail.com
+
+==================================================================
+BUG: KASAN: use-after-free in crc64_be_generic lib/crc/crc64-main.c:47 [inline]
+BUG: KASAN: use-after-free in crc64_be+0xb8/0xe8 lib/crc/crc64-main.c:68
+Read of size 1 at addr ffff0000dd543000 by task syz.0.33/4986
+
+CPU: 1 UID: 0 PID: 4986 Comm: syz.0.33 Not tainted syzkaller #0 PREEMPT 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/02/2026
+Call trace:
+ show_stack+0x2c/0x3c arch/arm64/kernel/stacktrace.c:499 (C)
+ __dump_stack+0x30/0x40 lib/dump_stack.c:94
+ dump_stack_lvl+0xd8/0x12c lib/dump_stack.c:120
+ print_address_description+0xb0/0x238 mm/kasan/report.c:378
+ print_report+0x68/0x84 mm/kasan/report.c:482
+ kasan_report+0x8c/0xc4 mm/kasan/report.c:595
+ __asan_report_load1_noabort+0x20/0x2c mm/kasan/report_generic.c:378
+ crc64_be_generic lib/crc/crc64-main.c:47 [inline]
+ crc64_be+0xb8/0xe8 lib/crc/crc64-main.c:68
+ bch_crc64 drivers/md/bcache/util.h:529 [inline]
+ read_super drivers/md/bcache/super.c:208 [inline]
+ register_bcache+0x9a4/0x13d8 drivers/md/bcache/super.c:2601
+ kobj_attr_store+0x6c/0x90 lib/kobject.c:840
+ sysfs_kf_write+0xe0/0x108 fs/sysfs/file.c:145
+ kernfs_fop_write_iter+0x260/0x3b8 fs/kernfs/file.c:345
+ new_sync_write fs/read_write.c:595 [inline]
+ vfs_write+0x51c/0xa0c fs/read_write.c:687
+ ksys_write+0x12c/0x228 fs/read_write.c:739
+ __do_sys_write fs/read_write.c:750 [inline]
+ __se_sys_write fs/read_write.c:747 [inline]
+ __arm64_sys_write+0x84/0x98 fs/read_write.c:747
+ __invoke_syscall arch/arm64/kernel/syscall.c:35 [inline]
+ invoke_syscall+0x98/0x244 arch/arm64/kernel/syscall.c:49
+ el0_svc_common+0xec/0x23c arch/arm64/kernel/syscall.c:121
+ do_el0_svc+0x4c/0x5c arch/arm64/kernel/syscall.c:140
+ el0_svc+0x64/0x260 arch/arm64/kernel/entry-common.c:738
+ el0t_64_sync_handler+0x48/0x148 arch/arm64/kernel/entry-common.c:757
+ el0t_64_sync+0x198/0x19c arch/arm64/kernel/entry.S:590
+
+The buggy address belongs to the physical page:
+page: refcount:0 mapcount:0 mapping:0000000000000000 index:0xffff0000dd543af0 pfn:0x11d543
+flags: 0x5ffc00000000000(node=0|zone=2|lastcpupid=0x7ff)
+raw: 05ffc00000000000 fffffdffc3754688 fffffdffc3755348 0000000000000000
+raw: ffff0000dd543af0 0000000000000000 00000000ffffffff 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+ ffff0000dd542f00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ ffff0000dd542f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+>ffff0000dd543000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+                   ^
+ ffff0000dd543080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+ ffff0000dd543100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+==================================================================
+bcache: register_bcache() error : Bad checksum
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
