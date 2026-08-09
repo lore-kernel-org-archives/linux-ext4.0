@@ -1,63 +1,77 @@
-Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 778EC345CAA;
-	Sun,  9 Aug 2026 05:45:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.210
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94AAB2475CB
+	for <linux-ext4@vger.kernel.org>; Sun,  9 Aug 2026 15:37:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786254339; cv=none; b=uU5io3WfK3959ekJ1Lp56nP8AUILT2e4z9D1olQ+dGVlYo+dGU6I3pCaC4DI0xKit1aILgIXVpp9tn/DVKv1nvMQMI/n4PM1ZhCxFXh5RoIrtS2yUijbpGrQ3H3wabrWcwSQ/ue3dHK3A7g0FjXJ/GVvx8xs04fz6WYpHmEqpcA=
+	t=1786289877; cv=none; b=pi274YzBTl6ekJzmQ2Y65ln0IFw81BTO7dm3YWaX1cMzuDSUzlrEBxzXeNOxy+D7akkk0dRHbv9ZyI81xoXkK1MD0DSMgdptEoW86jn/kfV5q5v2ft9MPWIu1WDtsJtd2Pe+IReSmR2AZC3bbwxI8IXMHyY3vE1vlzmC0gnfi8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786254339; c=relaxed/simple;
-	bh=7RMFFNYT4Qt8JhSON2vW8u1uNwhLqTIWLy3cXedCmLU=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=rAPvFL+rvzpYpnSvvNKR6G7JSxGwm0gAPGIQ/SAO9XLPf32rYtPPOt6mbFLRUNdDmKcyOBc+2kiADePw2UP85746qIMmHQ6jiFonFJ1wRJw0UlQjanTkGdTb3ci5wNFbscBbutZvrLHHXCDQNz2XJMrp9ut9jCWAw0EpCY0HwjU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=YDp0dvf+; arc=none smtp.client-ip=162.62.57.210
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1786289877; c=relaxed/simple;
+	bh=QiHspMmrWYR6JR0lI/2orn0XnTH1GeGpZkIk4IxJEEg=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=rOCrZVdYLUkMI3OD/vkwHPYYAFJSc72gPLjlvWZQGo1iG7+te3RFDXMN80wau+x86wgokjdiqUC+CAXwLsQTf4A4gD8IfuZZdFWdA21pBQBhMJQwqV3TD1uw/oJ5q31geVC1Qg7/o1ekdm90ZxX2fDMgyNrlnCtCjYmPKz7U04I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VkwVQ42v; arc=none smtp.client-ip=209.85.128.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="YDp0dvf+"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1786254325; bh=eI63H6+vyv/AYPMEyjQuuho9STUT5+sLSdIlKSsoDOk=;
-	h=From:To:Cc:Subject:Date;
-	b=YDp0dvf+IIkzBke/uqxh6RxDme04W7DRbbEsp/Ex/GHogGcKTJmdz0pMLhylSdJDx
-	 WcLM/nupLTj2E8+mxctWoxZzhL9rBLQ7BNXjXXhYiZH/7DINItXHABPQz3ilzS9mY4
-	 9YUXi2DDRx/q9sFnZnfh+RfL+okGfFhjY3oyl75E=
-Received: from ikun-VMware-Virtual-Platform.localdomain ([2409:8a20:b30:4824:bd7c:c5a2:f149:1f65])
-	by newxmesmtplogicsvrszb51-0.qq.com (NewEsmtp) with SMTP
-	id B4F87A15; Sun, 09 Aug 2026 13:45:15 +0800
-X-QQ-mid: xmsmtpt1786254315tfg67yd44
-Message-ID: <tencent_3E210B6E71105F311354D53C158A3A9E1E08@qq.com>
-X-QQ-XMAILINFO: M4IaOLvRTdegXe1aim0mGDwJwB5pFgJ2tZLZsznm6JrjkKSuMw0mOgQJVDh5za
-	 yzfLBavgZrcbyeJ6Nk0cQPdbadJxEv7Lj6nqmN3DD1aXlv2A/v6y0e6lwNGP5GyU9bFvG76LxSFE
-	 6Xn4v5JDa4NRe06JiT4XbOrRZsJsJdisSBAvxq7JG/wLzvjUecabcC6S7AMW6/pasder8YYfqY7E
-	 eIHrHgGdwqMUj38q1cyD7dEwinGjOu8wz2UyvbqfsdHRvidsSuMqww/56jHuwuQfQMi8lhX/r1k9
-	 pkgW92ESps6yfsD1z+EhJ+c4Z5ijIez9ShaGf/0Pl8hmS3xN3htWt341vQj9gE4zPtr7h0cJkoPy
-	 kNHSHcOlqAm/nLpJzhvQwNRvKISru9M65ikr6E/0YTM12RXccbUJ3G7YcVeDk1dBwCV27lOc/Fzx
-	 XSHR23bEdXIr9ThQMb6nABesRLbhweLpeZNa14aAeVL1juQUw1tU2atJM6iY56LuUvVnszgEIDm8
-	 PuwIXe9T0BdpxAozGCNvIRV0kEWDencIIvksyNTY7pIvL+r/EGwSFHTf+4Kwjim0TKyvADEXkljf
-	 4GmyCkVmQ4dwrTu4A998ch4W909ZuXO5pbCRq96AgPgFKlg82b+QZ7EWWNCRkzIi1DWEE6L1nmxh
-	 Mo0oPslzutWNoeQHpsu1+UuLHRIUYb+SfGsobU3swkmFlSRIQEdFtqTlglbnBmMgGsK7C6Muw/Tf
-	 dJAm9v2h+0nw2qNP+l3onqCYB4/ToOtD57SxxB4eiV/SlQidH2ILrMovgwN4TtXjEhuEPWt/UCow
-	 Cw9UDvVkBa/USSb0XN973ViysehlCGt7F1exb3NslHgfQJUnJw0mtmUC0qSHnAiJxP9FS7gmkot7
-	 LYL5rJaC/eIY9ukKJ1PyJWJvV9UKN9zl4y2T/8EwfWuvmlyOtA4bmlRtVWtpRGbt0UnzrD3SKZxv
-	 lZ/TUKrkiidg/vfNWhNnoeDNLWym1oIa3/lOQTkuBRGwKIBWU3z8P6VAV/yVgblo5ZyRgsn7sG/v
-	 M+YhZguJqTAcvLhrLRvi1pik4/NxMSaKoGTPoAcIARso1oDLWhf2g6vuHaBUGTC/3s46DdAi/FZZ
-	 hXY0b9
-X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
-From: Guanghui Yang <3497809730@qq.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VkwVQ42v"
+Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-49558ce01afso8044035e9.1
+        for <linux-ext4@vger.kernel.org>; Sun, 09 Aug 2026 08:37:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786289875; x=1786894675; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=HnCiaDhSZ4E0IEu3bcXK+4RsdFqJOB7eO6e26VetAM0=;
+        b=VkwVQ42vOY85JVWSgzSTtm/6P+n/bID+roGRqi3Iz+UVtPitl4wAAAauC2m6S1yMS0
+         DIE2BTYbNrAk/gE8ugEql1K95W/DQHV4rgEWZyKKBiD40svg0h9BcgMFoPilGIkhWALp
+         prJM6rwwFWsE8IxtqnyR07RSeY/GWSAWAjgksIytdrn9ELpbETt3RUS/0SBEnQwXwRvu
+         iWsibDod01KUjR9uMTqWjEEoWAXs8EJR6B21bpLfekPIi8IPZHLxUwXuE2iLKReaIxj4
+         pZwAzf7ko9qcH8Uhww+tVq8OH4TaPYVU9G4JBCkQTfpwIo+GYdfzWbyi2M1CQHBcC3jP
+         R3dA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786289875; x=1786894675;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=HnCiaDhSZ4E0IEu3bcXK+4RsdFqJOB7eO6e26VetAM0=;
+        b=B53fTiuXUnqxvOAUO6aQTy9Ij15OgRqs0uU3PBAi9pYEn95TNZtRw447l4gGhAdoNl
+         5IuViFKHtxf5lakgncfrOfTxrokOiyAlfzIR891ycXbrAQ7jVdO8EOjIvl3mZKsYZnDB
+         PAnsepUfbuAllkmN+9C9SPWNVHRRhEL2WL6RzDLPB6zuRFquMCUXyZdJ74XkK+/TIbJ/
+         0LWBeOXxeqsBPr8YW/JanpLY7x4BUtTqWyckQme4002GTqgP3zE9qNppXpLvHL8SrHlq
+         7JcgeGIUYGl2KPkjkK9Yaz4bYE27UB9D4oI7XyBwN9i88oYwGK0V3E8aXmCDJ/zbUtmI
+         7e8A==
+X-Forwarded-Encrypted: i=1; AHgh+RoMNC+YjNEXOVYnwSy3JSBZVdIu2apyuk3ASHkOg6L+AwCFD6HImu+f6wtf/xN4g5daQKCXJPfSgbDj@vger.kernel.org
+X-Gm-Message-State: AOJu0YwQ2HfImoUf7Xbivxxiof7YuSHX7lnGhtMKlo9NT0+D2IktAblp
+	MqC1Gsu0Hc6fHJmA3imiKKGhgUntc0hIxr1U6E2ru7c485ORCff6G46tBTdI4A==
+X-Gm-Gg: AR+sD13425au6COS+yhcvewrGEMfmyNGTslTX/kDUAvCpfcPXBsJk7jYLChCqd4L11a
+	VMAnGaTAk2iFnRKNAjTdIiKCCInssbQi49fLVdb4DSaMtd8khj5fHW1qLL6qDVDNhWih/uJ5+HF
+	LayEIZH5z/+II91GHEVkNJ9Y2/7p1zYsrYeAj33HVXOFnfRzOkiKkDnqPsqJtMKfnCiDk4ZkRPo
+	9oKYy6e9LsOJvPepe6f/dpdgfgXh2Xhe8zZ5ODu5npTlnjs+V9Nf0s1XX9NAeACUjr+NsDfvNxR
+	r4YmMxN41dZuFZJlYE65snRauXISZuibiBGhAX1Nnxb8OV7jJ91vutx0/pcSSFg/b56rQZPU8s3
+	ocNwTAVEmzQtjCLzzDard31Jaf/SirdnxpWzae+Zs20uAFvetpRt6TM080N9ifl7KNuCTf/mEmT
+	BZ8/SztwWGaIG0/ShFKwpIvbGN2mfoaur7jLK0VCybY2/cNyszjovHXgX7
+X-Received: by 2002:a05:600c:1d20:b0:499:6123:ac11 with SMTP id 5b1f17b1804b1-4996123ac36mr146379375e9.11.1786289874734;
+        Sun, 09 Aug 2026 08:37:54 -0700 (PDT)
+Received: from localhost ([212.73.77.104])
+        by smtp.gmail.com with UTF8SMTPSA id ffacd0b85a97d-4800220727bsm26316077f8f.33.2026.08.09.08.37.53
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 09 Aug 2026 08:37:54 -0700 (PDT)
+From: Askar Safin <safinaskar@gmail.com>
+To: jack@suse.cz
+Cc: aivazian.tigran@gmail.com,
+	brauner@kernel.org,
+	hirofumi@mail.parknet.co.jp,
 	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Guanghui Yang <3497809730@qq.com>
-Subject: [RFC] ext4: orphan tracking after a failed truncate
-Date: Sun,  9 Aug 2026 13:45:09 +0800
-X-OQ-MSGID: <20260809054509.67718-1-3497809730@qq.com>
-X-Mailer: git-send-email 2.53.0
+	linux-fsdevel@vger.kernel.org,
+	tytso@mit.edu
+Subject: Re: [PATCH v5 0/20] fs: Fix missed inode write during fsync
+Date: Sun,  9 Aug 2026 18:36:19 +0300
+Message-ID: <20260809153619.1888764-1-safinaskar@gmail.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260727101509.21667-1-jack@suse.cz>
+References: <20260727101509.21667-1-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -66,43 +80,17 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+Jan Kara <jack@suse.cz>:
+> The series strives to make sure sync_inode_metadata() ->
+> writeback_single_inode() will end up to properly persisting not only the inode
+> but also all metadata associated with the inode.  This is beneficial for
+> several reasons:
 
-I am looking for clarification about the intended orphan handling when a
-truncate fails after its journal transaction has been restarted.
+It is well known that if one just created a file and wants to properly
+persist it, they should not only call fsync on it, but also on its
+parent directory.
 
-I reproduced the following using the official kernel.org Linux v6.14
-source:
+Is it true that after your patchset this will not be needed anymore?
 
-- a large truncate naturally triggers jbd2_handle_restart()
-- after the restart, a block-layer fault makes ext4_read_bh() return -EIO
-- ext4_ext_truncate() and the truncate syscall return -EIO
-- the restarted transaction is committed on disk
-- before journal replay, e2fsck -fn reports that the orphan file contains
-  no orphan entries
-- the inode has i_size 0 but still has allocated blocks beyond EOF
-- mount-time journal recovery completes, but the inconsistency remains
-
-In ext4_truncate(), an error from ext4_ext_truncate() jumps to out_stop.
-For an inode with a nonzero link count, that path calls
-ext4_orphan_del(handle, inode) regardless of the error.  In this run, the
-committed post-restart transaction contains the orphan-file block, and the
-pre-recovery check reports that the orphan file is clean.
-
-The comment above ext4_truncate() says that an incomplete truncate can be
-restarted from ext4_orphan_cleanup() after a crash.  Should the on-disk
-orphan entry therefore be retained when block removal fails after the
-entry has been added?
-
-There is a second part to the recovery contract that I am unsure about.
-The EIO marks the filesystem with EXT4_ERROR_FS, and
-ext4_orphan_cleanup() skips orphan recovery in that state.  Is an e2fsck
-repair the intended outcome for this class of error, or should ext4 keep
-enough orphan state for mount-time recovery to finish the truncate?
-
- OpenAI Codex (GPT-5)
-assisted with reviewing the failure path, preparing the test procedure,
-and drafting this RFC.  I reviewed the analysis and ran the reproduction.
-
-Assisted-by: Codex:gpt-5
-
+-- 
+Askar Safin
