@@ -1,79 +1,81 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55DAE2FBE
-	for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2026 01:34:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C073E3939C1;
+	Mon, 10 Aug 2026 08:28:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786325660; cv=none; b=rbByYHm6yDfI98nfzqlrc+/YklmtYvTCc6fBpS8e4kv3Ln9DnpCH8ef3FrqcIvpYiBtRmmbdzDdptvA57GYmi2lfDBwG/5Wvrj4ZbtykBzppsy/nmjq7JvmyhHsqqVKdCEC7XTNfQqm+NhXdUKTcKyVoGKAHVzlNk2OLv5S9pFg=
+	t=1786350503; cv=none; b=n4Fkn7E3f9IKxco1J2glM+6Dg3Mna8Qj4gF2J86zJTqibSE463eg9apbq/GPdg2FDLdtf4c8mitS6mpLA0TDP5BRh5075gFxyfIwA8zYMLSXT2NY14snYKiSOWXxoqeAauAp3+kDKAAMfsrGfwHWvePvO0QHmOAHlCF6ntdoIbk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786325660; c=relaxed/simple;
-	bh=ZUhVr9Tm/LS8hKznKSBqbOw0t8rC4OGjfMpoUuumaQU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=o/Wpr77uoM/b/Id3DhtSad28TV67ORRuBHd8753xDcqEanoFCZ+hqNZxfmR6R7YEczPKO1ccZBOIrBfoOL0CUYbd4fycARc6FspXxhl/khl7TFPBfOvWK/r5mM0r+C6y3WiURstN5v8EofhyJIP9UL7qmlqbvmUYVta9TVi4zJc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=cF1FywIJ; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1786350503; c=relaxed/simple;
+	bh=GVYPoYW2Q/7elNyAaitc/i/CVhPy1XmGszpQs4/phD4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=d2SZrksFuaHqdilTeig0GD0dAXOLkFYTrTLFBOAQNC0pWPjibxUTQBgXMS6TwylxN6XcyG+3WC2DNqtHeIiwNqXOgSrACKuKDOekq94kLvxTlMliwGelgM97tYygMgcOipV1nwUBjhjvit9JflbONZ05JguFiFoZbl/hi7xUIU4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OHSjCgb0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="cF1FywIJ"
-Received: from trampoline.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67A1XqdC015878
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sun, 9 Aug 2026 21:33:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1786325634; bh=HBuLGVCM46l4TZis51i5ElYp02T/mQ62GWtqU/BH0nc=;
-	h=From:Subject:Date:Message-ID:MIME-Version:Content-Type;
-	b=cF1FywIJl4AlN4rGptGiBB9e2jT5xJZrdNdA5m+Uhc4vS2eEPbfr3h1zQ/G1Ffp0r
-	 CTyJM7lQMTmI3SjyfrEIC+BiOfGOLWwTrW9ED398OIh8Hmm33dEMiRijmJkR1YCftk
-	 +o9jhGEGhPyFkVla6SI6eixJ8tUZinnGZJtupCjXURKasH88HFi+tLe1hG2MNOLIwI
-	 J6NB9Gv0K8ktuT7cBxtyNkHv3s32j0LXR3IxUsvSdbAy1X40+aJzUQ82/NeRkKzcVk
-	 yr1pJkFahNZQIK6czNeivGUXRWppy2XlDS67bclaqYsSc+XCqAqdarDE92UPh00QP0
-	 NZD37UOeMJ4bg==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 0DF672E3D2E; Sun, 09 Aug 2026 21:33:52 -0400 (EDT)
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>
-Subject: Re: [PATCH 0/3] ext4: Fix credit estimates for extent tree modifications
-Date: Sun,  9 Aug 2026 21:33:48 -0400
-Message-ID: <178632560650.1021605.3694902133748235095.b4-ty@b4>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260805153202.29814-1-jack@suse.cz>
-References: <20260805153202.29814-1-jack@suse.cz>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OHSjCgb0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C1461F000E9;
+	Mon, 10 Aug 2026 08:28:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786350502;
+	bh=8ooJ1K9gJPbRSmciql3NBWA3FYXEMtRNBkMvQDxZ9OM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=OHSjCgb0zyYYJnpVXHkENn+EQu/H697chYZZJkFhESi6/NP7iVQcFRaPRbj2caJgl
+	 xocFGq5ItG0BNFugzGkJIih4QVQSt7Efs/VOhLmVcuJR+9fbHTMYyG63BqdHzg7wer
+	 eYwX0A7sLiPpI3xJIkx6lk3HPbFW2Y1JpD6FFecaYLISsqFnMQ+Pb2l/c6MapY/Oea
+	 kCnWp6UIWyn4IbDssy5z3mc9UXSKmUjC5Ar+Eyl5doYemGydfLVLqu6eqO0EY4G+vN
+	 al6C0EkcLaKaMi8tV7xa0eWlgFSffXjgc3g0LHInhLZgf5gFVRaiOzhazHcgOfdEqP
+	 ZYFQN2F9gv/UA==
+Date: Mon, 10 Aug 2026 10:28:17 +0200
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, linux-unionfs@vger.kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v14 00/21] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <anmFWhPNOqe4uyht@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260803200820.393203-1-aalbersh@kernel.org>
+ <20260804173548.GA13900@lst.de>
+ <20260804175203.GI3556460@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260804175203.GI3556460@frogsfrogsfrogs>
 
+On 2026-08-04 10:52:03, Darrick J. Wong wrote:
+> On Tue, Aug 04, 2026 at 07:35:48PM +0200, Christoph Hellwig wrote:
+> > On Mon, Aug 03, 2026 at 10:07:50PM +0200, Andrey Albershteyn wrote:
+> > > This series based on v7.2-rc4 + lazy-bounce@hch-misc
+> > 
+> > Oh, I gave up my hopes to get this into 7.3 and was waiting for
+> > your series to land first.  Right now there is one outstanding issue
+> > I know of with the series, which is that we need to clear REQ_POLL
+> > for bounce buffer I/O, and of course the somewhat complex cross-tree
+> > depenencies.
+> > 
+> > I can try to get it rposted, although this week I'm travelling for
+> > two conferences, which doesn't help.
+> > 
+> > If you only need a few patches from that series and they are kinda
+> > localized to xfs, maybe you should just cherry pick those from
+> > my series and include them?
 
-On Wed, 05 Aug 2026 17:35:46 +0200, Jan Kara wrote:
-> This patch set fixes credit estimates for extent tree modification during
-> convertion of unwritten extents on writeback completion. Otherwise we are
-> occasionally seeing assertion failures during extent conversion in end io
-> completion callback due to insufficient transation credits.
+I'm basically interested in the BIO in task context patches + read
+ioend use of this
+
 > 
-> Honza
-> 
-> [...]
+> I hadn't noticed that this patchset had added even more patches and were
+> waiting for review, but cem told me this morning that he thinks it's too
+> late to put this into for-next for 7.3. :(
 
-Applied, thanks!
+Yeah, it's probably a bit late.
 
-[1/3] ext4: Teach ext4_meta_trans_blocks() about number of allocated extents
-      commit: 25b2a7e8d420c49fc46f25b6f953603e4dae1dbf
-[2/3] ext4: Fix transaction overflow during writeback
-      commit: 46e8e31771f4f1c5e1cdec37a889a6730e42e9f1
-[3/3] ext4: Fix estimate extent index blocks in ext4_ext_index_trans_blocks()
-      commit: 9091c97be34083587a75db174aab51551d8e8543
-
-Best regards,
 -- 
-Theodore Ts'o <tytso@mit.edu>
+- Andrey
