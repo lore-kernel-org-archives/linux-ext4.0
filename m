@@ -1,94 +1,157 @@
-Received: from mail-pg1-f169.google.com (mail-pg1-f169.google.com [209.85.215.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3AD94400990
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 08:09:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7DE3A415F04
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 08:18:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786435792; cv=none; b=TZzKkPQm/gXGvepMe4dkvFhiv2LbTS4nulIjVzuBnzrE60mtfIO8g9fFkadJTfUFaOaGQlBXFrFPHwADjxXGEq7gwSfT+jj/k6kyWTMReLOTpLOit5Ri0zLNeMi+feN0v8x7IB7SY+medPmR8lapRgVICiChE/kC9JhjvfD6iZY=
+	t=1786436292; cv=none; b=pHX5QE1QTJELWD25xOAUe9UzdsOW4rF+BFADL6h2+D5kymmHjflCpgaAN+FpKoJJaxXt51GJVF7fODVvv0SNi+40326seI0/0/clLqyBnC8jzcRCAdzAHyIDgnuUzlOTjRadMC+UPeWmGw2s+jlQ/LA0Up4UI7kniSf0YWWaquk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786435792; c=relaxed/simple;
-	bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=mvK96v87M5EV3nlhyTgIXBYk8qtEm+W9liupxY3tGgIpiFrO43nT5281CLm5cZ38IDdL/d3n1VLh3GWh66L/kwZvh2Et67BRRpcpy4FQx0UvtOZyxlhs1qSpp4TFIjiICqQRJ57Nm01j/K41WyZkpb1+Aeo3W0J7md1T0fmu/tM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=naFdHkE9; arc=none smtp.client-ip=209.85.215.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1786436292; c=relaxed/simple;
+	bh=0m0VCrVFS50IL0+ZPUc8eV8aQ+yXJjlZWMeXsIJ1aBM=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Cf/poKEh+fyNoqzVdG1kaEgwpW/2jt2/VBrkH2BD/ERCwzFwb9tYARSZxCsf+3OmuysvcEnKPZkxt9wxRRKy5zfERa79JxCNTsG77fJDJ4wZHZo4A37FsFfyiZYPwXgxc6SupJH0sJLwGVqCZxxcpfOgcN5dcf7v2iqn8TSvDj8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=jGk31qTM; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=QmpED+JA; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="naFdHkE9"
-Received: by mail-pg1-f169.google.com with SMTP id 41be03b00d2f7-c998fd549a8so2087460a12.2
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 01:09:51 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="jGk31qTM";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="QmpED+JA"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1786436290;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rQoYgawLl/uFdgKGximNInLlgWg1ECp2Ql+MmIdl1KM=;
+	b=jGk31qTMZe89vYcLuMtG1w29oh5Txnm9VLlzyTkNm3Pa+A6Hs3LmIVqpzk6aCJKSCVSHOF
+	ZX08u9Tdo/pGoR9S45MDsa+weOr+Wf0SpIQrTFJPGqoru8QyDmOmNOR17nz7K4ThLaYpYe
+	Lk1eI6MtKN+3gHV+Q9eWuJAvhVPG1x4=
+Received: from mail-wm1-f72.google.com (mail-wm1-f72.google.com
+ [209.85.128.72]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-113-gIB3XdjhNjCiVLW0__xx9A-1; Tue, 11 Aug 2026 04:18:09 -0400
+X-MC-Unique: gIB3XdjhNjCiVLW0__xx9A-1
+X-Mimecast-MFC-AGG-ID: gIB3XdjhNjCiVLW0__xx9A_1786436288
+Received: by mail-wm1-f72.google.com with SMTP id 5b1f17b1804b1-495529a93f9so29700955e9.3
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 01:18:08 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786435790; x=1787040590; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
-        b=naFdHkE99xSKdcj62yFnEMPJ0Yl3PtTQaGXEVhgXebmopKs6fuLqeNvv36YHK/LGhG
-         tk9Ldllc6SGG4aVXhMuYrq8I41jxYzr8r3Rb7QxdKPsJVgswacO33sQb50zxFShVc467
-         QhI4UtGq0OHTlpqUZtCvvw4WLi5EyKu0rYPyw1mNHN5NWLbC+vDDW4JucceAhyacHEed
-         RqTdaPH5iJ+GJWMV4yz4vp3RpXHr2YmgafDDyw9fLhiQ6tgum8/IHq3vSoBalwMTKVpE
-         wAirKa04FwBZOYnCMekx2wFaqzfoHB8cIcVvSPm3ljPHqkWtJ7eYizMCvUBtFbt/vdCL
-         ov6Q==
+        d=redhat.com; s=google; t=1786436288; x=1787041088; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=rQoYgawLl/uFdgKGximNInLlgWg1ECp2Ql+MmIdl1KM=;
+        b=QmpED+JAJESU5FyhCyTatmFHkwiMWEcr86kck2O1E19QIoD8iACqFSniC+z71Bpfq4
+         lHB1cC5988ZWcEpXS2jBbpl+8bXcTaLF8Ptn6iuAQctnkw0EAWlxJH5T4lbUGq24RFMp
+         GJqAElN8kpyPqFyZbfxEMzC7fY4Adwq29Anc1K6TT3RoJ8W6Cepb59LpBtoTldmd57sv
+         +RK+pY23KXHX7vOSXvBWA/75gbtexXvCU7XavuoLarCi2r+Po0wiHkarYvRaQnDOgE96
+         T/kbvYnmh4mQ1APbZLZmE5zJErEFlCpDXIta8RUNNQp2k8wDRzLHurpwSIdNXVBl5PSW
+         UJ4w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786435790; x=1787040590;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
+        d=1e100.net; s=20251104; t=1786436288; x=1787041088;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
-        b=AcytVcgPbztYbUa24wwsMN2GrcfclnFGrJXoA3lcULiPKMSpCnzh5imQjLmq+BsHl3
-         U0SI0UZz2C0fxQQss2Ce8Yp3pPlAWVADJ0+mjt+CHKWN8x8mWDrEO+ekdF6A2Y3cB301
-         HXyC3IN+Is5QuahMZLldOVm28gTVxn2+8aBtJMZjX8/E3XsxnKBznBoQiTUPHQdJweBY
-         RsXIwiXp4Z8gOLkV8OouznfqxxsZoaANRCtBh41AfsOmhVPTz4z4XJZ1suXhb2qxEFFM
-         +jIz3GBn47C6ptEtxYzZLsWZaRyqv7lJfUAElTgZAZSIfH+MlVqe7hMSXRTI+X5fhFRo
-         LH0w==
-X-Forwarded-Encrypted: i=1; AHgh+RrYYJukcnJWjiue9o9mzywJ68JLtM81ErNzTMQPAsBxe3PwfKrNTacNHhub0CdlUWHE7F70XEIQqtOZ@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz0Wieme5o8pjxYbdLaTsVzyhF5Mw/Sk2muU3f8Mvq/mzoknCwf
-	KtWfoSPhsrU3AOwb4AZ3jfKMLitihYky5lxYc/MTWDtESvmHhOy9gLEZ
-X-Gm-Gg: AR+sD11gd8f7faeiAVdkGdv95a/NmtEpiKdycAf4QcKLTD64EXd0HrsWnLxbwX8PXcp
-	P9fvg4FTozLlEDi0bgAZRWJpPxiv3uI8uV3kT/rMX5g7OoHbm8E7uDOCjSjOIXsRpITS19W4GPI
-	0cIIdFmefdxdNXszAxWCGBhhMQSr1ICPDkBNGyNslMozr/wlSATKnd2bpu85fTKLsH5CCz+C6sP
-	GoSR67cV/XUYRENJz+N/MdiFk5zDo/NR5ojBLqEPmD1JSdQHC86PiukjqEgbw4JqF1WCQIgsgKJ
-	xYi+SNXvnTlhlPFsTOs9FHQs8UGniRlBmNzv7wLB3JFh7HRkh0v/enQbBziVLawPR020QbQmFC6
-	3C8yV3Bs4KEBOqR7kS0mOpbj+SCV3snHXF0IRqvsTYZdGByEs/pYR4yA0/DW9MmtGzqPbekCRBD
-	m4unc90nEPWvnaAPQtD7QUSIWl9hmS4pQK3t4I/bxUWrrkKOmCznbZ5K2OxFDASiq0FWUsJGMbt
-	haqdCmY76FmsWoTw2QwTw==
-X-Received: by 2002:a05:6a20:9630:b0:3b2:a809:1000 with SMTP id adf61e73a8af0-3cc2b77c1c6mr2331442637.3.1786435790379;
-        Tue, 11 Aug 2026 01:09:50 -0700 (PDT)
-Received: from [10.0.103.114] ([61.213.176.11])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cbed8ea050asm476291a12.29.2026.08.11.01.09.47
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 11 Aug 2026 01:09:50 -0700 (PDT)
-Message-ID: <a4c4618e-d4d5-4cde-b8b0-eb56fe5583fb@gmail.com>
-Date: Tue, 11 Aug 2026 16:09:46 +0800
+        bh=rQoYgawLl/uFdgKGximNInLlgWg1ECp2Ql+MmIdl1KM=;
+        b=S/SHMWkFZg/8XjEML77kxd7Ny9eq/1KGNy99Ix38UM4nElgUiYo9Icvs7C3wWbd6Xa
+         2Gs88SUUXhcMSBydH+EMsdiSwWaqkPha+bL9sEpp24o2ELRfHkUBbm4fwQji0+CJdpDW
+         sItW6QhR2SrOyW2ctNrMxrvgVNNy7wACjKM9jwKQAlXwXa3A9Zk2GDJ2HPurRKJhMAZz
+         cWh5/WaTio2ySQSn90VmZjW7X6HV+VuGwtSzCkJSCxYOFp05cY19CPpSuIBMGXkHdOex
+         Z81YhI510l/P1nRAqlbWqZ+YxwnoOnDU9W9sEqe9p7wpIQ4JMJmocAejFQaEHlIFp329
+         FzfQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rr1rJQqw1QejQiOT+cIdNPV8iGFpbxAaHjHJyzqnzhJFeoVbHITu9u5pSLmfB1BNxtGA88b8dPeT0Q7@vger.kernel.org
+X-Gm-Message-State: AOJu0Yyyl/X9CTP+NonUrSxBrbYL+jF2PGGDz3P5cYe/Dy72vLdo2DfD
+	2xv+1Gn+uy17p91whFX/95uQeUqc7S3JAhfsBAJ6QDM/YPJJRYexseLLMGK6nuivfzJL4POiL7W
+	lpu0ehY/uvfnR3aFog6vX4IGLCiSkSWsynxYqB5z2wQ9IiQZd1OnAt9LKxyGoz3YyDRXSHQ==
+X-Gm-Gg: AR+sD10umwPeWEpcnCl/tAeMIokdfXwB+q2aoDtWJ+G1ybxcsKmyyaw5zFkPB4/BVZu
+	Vzq1iokG6cYto6AvV/aBpksUnKA2WoR/JvHVno2J1brTvFzLSDHais2o9lGK8auP6HGKmZ7lfMr
+	Xu0bRfg7iOCt/fKVum5ljDhvrCovgTfuoVtREHtmzgQki6hkXYOjrQ6P+6TOCnfYl0IFnZyaem+
+	SeWPOkUtvJHLZCuHlb9LUT9zt0Io9IUm+4NibJhiYcOkbzQpFacqxgMmBMBuOfKRoSVaJcwWLqF
+	BYykgjQRkRC/Cu7YctF15gheIcBb8tLh+wDdcxmZV/w7QQr+oqx45Dmd+wqweV3+buX0IgtO0+q
+	XdcsoF4nGvMv1UPTpttPKLoqX3dKalD2jB4SV1w==
+X-Received: by 2002:a05:600c:4683:b0:499:5210:c537 with SMTP id 5b1f17b1804b1-4997842c1efmr23686045e9.1.1786436287878;
+        Tue, 11 Aug 2026 01:18:07 -0700 (PDT)
+X-Received: by 2002:a05:600c:4683:b0:499:5210:c537 with SMTP id 5b1f17b1804b1-4997842c1efmr23685055e9.1.1786436287342;
+        Tue, 11 Aug 2026 01:18:07 -0700 (PDT)
+Received: from aalbersh-thinkpadx1carbongen13.rmtcz.csb ([91.245.205.131])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-499788f11b8sm26013505e9.10.2026.08.11.01.18.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 11 Aug 2026 01:18:07 -0700 (PDT)
+Date: Tue, 11 Aug 2026 10:18:05 +0200
+From: Andrey Albershteyn <aalbersh@redhat.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Andrey Albershteyn <aalbersh@kernel.org>, linux-xfs@vger.kernel.org, 
+	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, ebiggers@kernel.org, hch@lst.de, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH v14 13/21] xfs: use read ioend for fsverity data
+ verification
+Message-ID: <anrZR9SarXJMBLgI@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260803200820.393203-1-aalbersh@kernel.org>
+ <20260803200820.393203-14-aalbersh@kernel.org>
+ <20260804183632.GO3556460@frogsfrogsfrogs>
+ <anmNNNNy4YsV_KLB@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+ <20260810183102.GY3556460@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix reserved group initialization
-To: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, tytso@mit.edu
-Cc: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
- ojaswin@linux.ibm.com, yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20260811021848.1821435-1-guzebing1612@gmail.com>
- <tsp1jrpj.ritesh.list@gmail.com>
-From: guzebing <guzebing1612@gmail.com>
-In-Reply-To: <tsp1jrpj.ritesh.list@gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260810183102.GY3556460@frogsfrogsfrogs>
+
+> > > "If we have fsverity and block device integrity attached to this bio,
+> > > we need to run both validations from the separate fsverity workqueue
+> > > to avoid deadlocking due to fsverity issuing its own reads."
+> > > 
+> > > (Assuming I understand the fsverity && pi case correctly.)
+> > > 
+> > > One thing I'm not clear about -- why is it safe to do the fsverity
+> > > validation here if PI isn't enabled?  Can't that also issue IO to pull
+> > > in merkle tree blocks?
+> > 
+> > Without PI, fsverity metadata is read without XFS bio completion
+> > path, we don't get here for the descriptor/metadata reads
+> > (see xfs_get_iomap_read_ops()). So, we won't block the queue, as
+> > data ioends won't be mixed with metadata ioends.
+> > 
+> > With PI, all fsverity reads goes through this path. We could get a
+> > case that data ioend is waiting for metadata IO to be completed which
+> > in turn is pending for data ioend to be finished (due to batch
+> > processing of multiple BIOs in the bio_complete wq).
+> > 
+> > So, this will issue more IO, but this IO will not get onto this
+> > queue (it will go through iomap_bio_submit_read()).
+> 
+> Ah, ok.  Maybe add to that comment:
+> 
+> "If we have fsverity enabled but block device integrity is not enabled,
+> completion of the fsverity metadata reads does not require a workqueue
+> so there is no deadlock potential."
+> 
+> then?
+> 
+> (Just echoing you to make sure I understand completely.)
+> 
+
+yes,
+
+I've changed it to:
+
++       /*
++        * If we have fsverity and block device integrity attached to this bio,
++        * we need to run fsverity verification of data folios from a separate
++        * fsverity workqueue. This is necessary to avoid deadlocking due to
++        * fsverity issuing more reads of fsverity metadata which would be
++        * processed by the same worker in the BIO completion workqueue.
++        *
++        * Without device integrity, fsverity metadata IO will not use ioends for
++        * completion.
++        */
 
 
+-- 
+- Andrey
 
-On 8/11/26 10:50 AM, Ritesh Harjani (IBM) wrote:
-> This was posted before [1] and looks it already landed in ext4's dev
-> branch [2].
-
-Thanks for pointing this out. I missed the earlier submission and did
-not notice that the fix had already been applied to the ext4 dev branch.
-Please disregard this patch.
-
-Sorry for the noise.
