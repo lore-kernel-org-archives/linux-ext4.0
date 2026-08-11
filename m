@@ -1,97 +1,94 @@
-Received: from mail-oo1-f70.google.com (mail-oo1-f70.google.com [209.85.161.70])
+Received: from mail-pg1-f169.google.com (mail-pg1-f169.google.com [209.85.215.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9A032472B8
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 04:32:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.70
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3AD94400990
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 08:09:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786422749; cv=none; b=r0J0z+UrRLlElWcLo4X7Awke6KxbBpnIO3RrjYqH4LE2mXARNfjEZ8F2IWfqH1wS9/5aL9cz7od5M78G0UiE2KB3OVYyKp5hM7Z93/KBgrYnXNN1oLo1Jclis9ZuIUBznyYW7JK9nWRPTkEMD3GnniKh7qN0VAGgXGZIMfSZhMo=
+	t=1786435792; cv=none; b=TZzKkPQm/gXGvepMe4dkvFhiv2LbTS4nulIjVzuBnzrE60mtfIO8g9fFkadJTfUFaOaGQlBXFrFPHwADjxXGEq7gwSfT+jj/k6kyWTMReLOTpLOit5Ri0zLNeMi+feN0v8x7IB7SY+medPmR8lapRgVICiChE/kC9JhjvfD6iZY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786422749; c=relaxed/simple;
-	bh=YmTU0cuMrz6q1nj4v3rJi+xBLsvhVgrxATKUYqY4x1A=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=c8o9d8Zwxof5FIbRFLrWwoq61wZ1wprdm0yjebC+0+GUEzQ2M2Rmjyi1Dg5gTLxOkxkk17dnC7q+3KBHZDkdQvg4f2R/xWQdiwC+MHXt6STDi1UaHEH6qi90ERaGpLrFaMSCprqiICIsguVF2aNhBlnVqfP39/21oN1ToqkstGg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.70
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f70.google.com with SMTP id 006d021491bc7-6a0f261aeb6so2855262eaf.3
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Aug 2026 21:32:27 -0700 (PDT)
+	s=arc-20240116; t=1786435792; c=relaxed/simple;
+	bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=mvK96v87M5EV3nlhyTgIXBYk8qtEm+W9liupxY3tGgIpiFrO43nT5281CLm5cZ38IDdL/d3n1VLh3GWh66L/kwZvh2Et67BRRpcpy4FQx0UvtOZyxlhs1qSpp4TFIjiICqQRJ57Nm01j/K41WyZkpb1+Aeo3W0J7md1T0fmu/tM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=naFdHkE9; arc=none smtp.client-ip=209.85.215.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="naFdHkE9"
+Received: by mail-pg1-f169.google.com with SMTP id 41be03b00d2f7-c998fd549a8so2087460a12.2
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Aug 2026 01:09:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786435790; x=1787040590; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
+        b=naFdHkE99xSKdcj62yFnEMPJ0Yl3PtTQaGXEVhgXebmopKs6fuLqeNvv36YHK/LGhG
+         tk9Ldllc6SGG4aVXhMuYrq8I41jxYzr8r3Rb7QxdKPsJVgswacO33sQb50zxFShVc467
+         QhI4UtGq0OHTlpqUZtCvvw4WLi5EyKu0rYPyw1mNHN5NWLbC+vDDW4JucceAhyacHEed
+         RqTdaPH5iJ+GJWMV4yz4vp3RpXHr2YmgafDDyw9fLhiQ6tgum8/IHq3vSoBalwMTKVpE
+         wAirKa04FwBZOYnCMekx2wFaqzfoHB8cIcVvSPm3ljPHqkWtJ7eYizMCvUBtFbt/vdCL
+         ov6Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786422746; x=1787027546;
-        h=content-type:to:from:subject:message-id:date:mime-version
+        d=1e100.net; s=20251104; t=1786435790; x=1787040590;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=GDtETnbSqyF0P4E2VpKMycx6tqmfKVV7fNJad8d02Fo=;
-        b=Oi8BsrWsfAuvLLp+eFN32DuaZn7weMmsDTfMmq7z8VGMYvoQAWP/UnxHMsKJepCEdm
-         Drc01c6WBhGLG9MPDucnANbyfgPekH4h9Nc3HdLgeRlj5o1cMvCUJY/vDYkoY/7wyFU+
-         lGM11zb/si37xWvXqYENMEJ2PKVNcCy4AArulfMd8DIkNH2u6Y0M8YkGbNMtB/l5nN0f
-         z7aGScw+iuQim20d5LzehuwwztCRDfnFWi4T1lZ/8qZy349RP6EQr9g3vNWg+xJFdutg
-         Jx/2ui/jIxIIDApabgvE7DDzJ9N48oj/uCpVwADTuzXy1Zkq5hn0nzyG8wYjqJf6m2fY
-         rMig==
-X-Gm-Message-State: AOJu0YyUBhJV3tLwjMUmABMEKOltA9KdstAbwtHmCZ4ZxBWnjvVz476z
-	gDswaLBCuEQrK38mlBONYDgdxpkQssMT4+QQkv3jiv+/GJcPmMAMCS4vM5bM2f32VO6ImejTsOs
-	r1kfmxtCiAi7xL1CJvq/0lkWXCyc451WnXl512qO5SMBj1x3h/CfLqUktnko=
+        bh=yh28wnOYtBhyHwBSkkm3wZY/Vkiz10BNYcYlU/BmhLI=;
+        b=AcytVcgPbztYbUa24wwsMN2GrcfclnFGrJXoA3lcULiPKMSpCnzh5imQjLmq+BsHl3
+         U0SI0UZz2C0fxQQss2Ce8Yp3pPlAWVADJ0+mjt+CHKWN8x8mWDrEO+ekdF6A2Y3cB301
+         HXyC3IN+Is5QuahMZLldOVm28gTVxn2+8aBtJMZjX8/E3XsxnKBznBoQiTUPHQdJweBY
+         RsXIwiXp4Z8gOLkV8OouznfqxxsZoaANRCtBh41AfsOmhVPTz4z4XJZ1suXhb2qxEFFM
+         +jIz3GBn47C6ptEtxYzZLsWZaRyqv7lJfUAElTgZAZSIfH+MlVqe7hMSXRTI+X5fhFRo
+         LH0w==
+X-Forwarded-Encrypted: i=1; AHgh+RrYYJukcnJWjiue9o9mzywJ68JLtM81ErNzTMQPAsBxe3PwfKrNTacNHhub0CdlUWHE7F70XEIQqtOZ@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz0Wieme5o8pjxYbdLaTsVzyhF5Mw/Sk2muU3f8Mvq/mzoknCwf
+	KtWfoSPhsrU3AOwb4AZ3jfKMLitihYky5lxYc/MTWDtESvmHhOy9gLEZ
+X-Gm-Gg: AR+sD11gd8f7faeiAVdkGdv95a/NmtEpiKdycAf4QcKLTD64EXd0HrsWnLxbwX8PXcp
+	P9fvg4FTozLlEDi0bgAZRWJpPxiv3uI8uV3kT/rMX5g7OoHbm8E7uDOCjSjOIXsRpITS19W4GPI
+	0cIIdFmefdxdNXszAxWCGBhhMQSr1ICPDkBNGyNslMozr/wlSATKnd2bpu85fTKLsH5CCz+C6sP
+	GoSR67cV/XUYRENJz+N/MdiFk5zDo/NR5ojBLqEPmD1JSdQHC86PiukjqEgbw4JqF1WCQIgsgKJ
+	xYi+SNXvnTlhlPFsTOs9FHQs8UGniRlBmNzv7wLB3JFh7HRkh0v/enQbBziVLawPR020QbQmFC6
+	3C8yV3Bs4KEBOqR7kS0mOpbj+SCV3snHXF0IRqvsTYZdGByEs/pYR4yA0/DW9MmtGzqPbekCRBD
+	m4unc90nEPWvnaAPQtD7QUSIWl9hmS4pQK3t4I/bxUWrrkKOmCznbZ5K2OxFDASiq0FWUsJGMbt
+	haqdCmY76FmsWoTw2QwTw==
+X-Received: by 2002:a05:6a20:9630:b0:3b2:a809:1000 with SMTP id adf61e73a8af0-3cc2b77c1c6mr2331442637.3.1786435790379;
+        Tue, 11 Aug 2026 01:09:50 -0700 (PDT)
+Received: from [10.0.103.114] ([61.213.176.11])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cbed8ea050asm476291a12.29.2026.08.11.01.09.47
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 11 Aug 2026 01:09:50 -0700 (PDT)
+Message-ID: <a4c4618e-d4d5-4cde-b8b0-eb56fe5583fb@gmail.com>
+Date: Tue, 11 Aug 2026 16:09:46 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:308a:b0:6b0:4e2b:17d0 with SMTP id
- 006d021491bc7-6b0a3244865mr142728eaf.30.1786422746681; Mon, 10 Aug 2026
- 21:32:26 -0700 (PDT)
-Date: Mon, 10 Aug 2026 21:32:26 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a7aa5da.9c11d2ce.289b96.00fb.GAE@google.com>
-Subject: [syzbot] Monthly ext4 report (Aug 2026)
-From: syzbot <syzbot+list0ea3bdd8794fd95d58a4@syzkaller.appspotmail.com>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix reserved group initialization
+To: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+ ojaswin@linux.ibm.com, yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+References: <20260811021848.1821435-1-guzebing1612@gmail.com>
+ <tsp1jrpj.ritesh.list@gmail.com>
+From: guzebing <guzebing1612@gmail.com>
+In-Reply-To: <tsp1jrpj.ritesh.list@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Hello ext4 maintainers/developers,
 
-This is a 31-day syzbot report for the ext4 subsystem.
-All related reports/information can be found at:
-https://syzkaller.appspot.com/upstream/s/ext4
 
-During the period, 2 new issues were detected and 0 were fixed.
-In total, 41 issues are still open and 179 have already been fixed.
-There are also 8 low-priority issues.
+On 8/11/26 10:50 AM, Ritesh Harjani (IBM) wrote:
+> This was posted before [1] and looks it already landed in ext4's dev
+> branch [2].
 
-Some of the still happening issues:
+Thanks for pointing this out. I missed the earlier submission and did
+not notice that the fix had already been applied to the ext4 dev branch.
+Please disregard this patch.
 
-Ref  Crashes Repro Title
-<1>  19578   Yes   possible deadlock in ext4_writepages (2)
-                   https://syzkaller.appspot.com/bug?extid=eb5b4ef634a018917f3c
-<2>  7874    Yes   KASAN: out-of-bounds Read in ext4_xattr_set_entry
-                   https://syzkaller.appspot.com/bug?extid=f792df426ff0f5ceb8d1
-<3>  3863    Yes   kernel BUG in ext4_do_writepages
-                   https://syzkaller.appspot.com/bug?extid=d1da16f03614058fdc48
-<4>  2206    Yes   possible deadlock in ext4_xattr_set_handle (7)
-                   https://syzkaller.appspot.com/bug?extid=f0b58a1f5075a90dd9a5
-<5>  147     Yes   WARNING in ext4_iomap_begin (3)
-                   https://syzkaller.appspot.com/bug?extid=626aa13bf52efc3aa86e
-<6>  132     Yes   INFO: task hung in sb_start_write (2)
-                   https://syzkaller.appspot.com/bug?extid=b3fba2e269970207b61d
-<7>  43      No    possible deadlock in evict (4)
-                   https://syzkaller.appspot.com/bug?extid=a30a00d3e694e4fa1315
-<8>  21      No    WARNING in jbd2_journal_dirty_metadata (3)
-                   https://syzkaller.appspot.com/bug?extid=a5f824f1c49dd97fcff0
-<9>  21      Yes   kernel BUG in ext4_write_inline_data (5)
-                   https://syzkaller.appspot.com/bug?extid=53c8bd6136cfbe85197e
-<10> 11      Yes   INFO: task hung in block_read_full_folio (3)
-                   https://syzkaller.appspot.com/bug?extid=03afbb29537f0336b7ad
-
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-To disable reminders for individual bugs, reply with the following command:
-#syz set <Ref> no-reminders
-
-To change bug's subsystems, reply with:
-#syz set <Ref> subsystems: new-subsystem
-
-You may send multiple commands in a single email message.
+Sorry for the noise.
