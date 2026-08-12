@@ -1,159 +1,175 @@
-Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out203-205-221-202.mail.qq.com (out203-205-221-202.mail.qq.com [203.205.221.202])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A244B41D104
-	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2026 11:15:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.214.178
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786533310; cv=pass; b=Yd/ZmrtjSRCXZq8i2o1ngG84TWMKGAxb4dMhG3HOUl330B8OxBH8DkkXf7iHliwMzWCBidiQpjMVghdJ9ilc/Eq54V+PxWyo+OtH+wEi3vLxRgacjL/LoeTgFyuLVffP2gBk61eZb8UY+sVtF1bUmnZu4jkAbCh09xmHTsSHd0k=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786533310; c=relaxed/simple;
-	bh=KwUEegJBmzEyHRWT8RaGNXlv+ltBtx+LzUysKofndao=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=Nn6SOZzOZHovhOvdN6Y1+r4Cc+1guYrVzb8lEO3WOUpGlPfWJiiTA5FlU1SnN8c8CYHnrgyKMxp8ogZh+veB7oHA5ey/NCnGG74tB3pcMuIqNZYheu2OoFfskpTbiNaHMT1sHniayd/DRS/OD5MhVucs67huuXiSH0pmTFWflPo=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=IpnpEZNR; arc=pass smtp.client-ip=209.85.214.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 980D0430CE1
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2026 11:18:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.202
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786533514; cv=none; b=DlN0Cq3rkcDkW/HIDvtpvGO8ivVhFOqwTTGE1g90bEZ0kTlbLCXpPtogQKvG23VFgSJCJoR6wYLIFKTvPFNpMd8HKSpxU56iARig3AH4ALxOsflZaeGZZuVLfwj2kGakcOBIxZHA+ez4uWYNtbSk74a67AubVRycdyx6C8EiTas=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786533514; c=relaxed/simple;
+	bh=Cr4ejiH4ji1x8hHhFjyfk0+Hr5mIBgFoIg7S15lZ8sk=;
+	h=Message-ID:Date:From:To:Subject:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=IllGZX98LGIUm9adLucyLVrIO4AmRyzEyVH0E8VkbS8Ltiak8bvm99n3Vh68Yj2sRDXYTBHhzf787/LavRoAokP6yojKHlH0llkowv4+IMt9aYYB2UQKJRt0KV1qikI1ZCBiFo6t2WO4TjcQyuE+r/I1zJSx3RtbWOV3CWP3U0c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=wmvuTFGT; arc=none smtp.client-ip=203.205.221.202
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="IpnpEZNR"
-Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-2d02b4c3601so5540415ad.3
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Aug 2026 04:15:08 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786533308; cv=none;
-        d=google.com; s=arc-20260327;
-        b=IWwpfrTt6rI3astMeNTzWVybVyayyAp7HJxQ1Wj5dv57YKotj3hC8dSMvTVzRS1S09
-         HYuuBczVoac5RwL8DgZKTFT5LNkwnxOtlyZzZWdZByD/6kMRF3o1QKYw+GLGUDVK76dh
-         k6yNwQ9nYqTcHe6hZbCzwtCxjp78L5eA10HzBv00R+Ers3kvQnQSqHgj0eW1aD1qqP8p
-         GIlCNGuc9Y37uZalWD1g/5vp2CjDJUUC3xkj/hFHp5TLONuoh5oK9VXZ1WeoJ++VJbhH
-         sTJ2BjOkVZVu8UWgvgIkpkeqPZhVeVHWYzeqTLQO1T2AGtgaLT6ZyITYueJy54Limvdg
-         bdow==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=ZdOT1GptfK2kRtjaBvQzbkIIUWBOb5UFCdwV/7cWWjk=;
-        fh=whtvW5oaHZhJPk1oWM7fOIRo4BmSuFaVStqwS5uioZU=;
-        b=ixbmFRXj3GqlQv4BbU7AJLKiMPuoEJ1f+HGUThH82yzRNmzO/r9fbFuLQKr7iQvQuV
-         WD6eqtDnt3/wppO8E05Kp2Ji7kxvUdaozwER7Lhg2H4BvJgkgEzHfjk3fx5LzFGbFDDx
-         lhvflZNZ4cRpbwCH5Ql0R1P2sxYfKh5rTWscesjsXIzIecbVGtOoZi/to+svLr99yTj9
-         cag01jTOAGfRnVvxNL+rTzcVhDNkCo5gj6rdMFh++fPZlyXYE5JKloyNrTZ2vntK8nnB
-         qT1+cglxyUbn7K/6Xbz3Ruw8NFciFNbSK/Exo5T7yWOaDvrQOPlYV+jfGEJV1PzCLXdo
-         VOIA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1786533308; x=1787138108; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ZdOT1GptfK2kRtjaBvQzbkIIUWBOb5UFCdwV/7cWWjk=;
-        b=IpnpEZNRLftamW8W6RxTnCvvEDTecGPzIBm01AI4x8PPla9/gV2TclFqjTYKgEZehC
-         sy84aZnNOBRZbxt1HaOqvy1k10eGOZVhwmbG47PjgTFI/UQJYz+rlJbnZIjPBIuv8mrY
-         4xkh4/PwPzhbJPl/87F5BZlvSpFhwm88tlni2Eqhb+iVPILwXkO6icVTl0MpbJyAwESy
-         nQ+ZPhVrDMqq6TMH3M/9DlEU1Lt1NSrzBxK4Vbty7ez+dKxodvhxITkJzMOE0v2WEvOI
-         ejGQ5QjbVnbIvGx9se0OVcAMnC5iP1PMw4Jr5XeLeuLC7CvUPmY0VXKiY5YBofV5kS4Y
-         76UQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786533308; x=1787138108;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=ZdOT1GptfK2kRtjaBvQzbkIIUWBOb5UFCdwV/7cWWjk=;
-        b=Jy9lCdn2srUFlDL1n1m/zTr/Hw3gP/BKxc2t2DNlqSwFqQhMqaD2puy0qpnQSJeKZN
-         mZHj/y/sncJCfX9diBwSwtoXGnIle5q27j2hZC8ht/wxlJgCnIFlvLFmbd/7N8utwpTp
-         iu/FdUN2zLLjysmjBhGAV88yO19nDUymVFJZt6Z6E2ZhRY+ihgC+G9ojSlXYGyjeNHM+
-         kn4jDROHAjC4cfyHTWtcXpBqMWL7d+aJSbsLhbKGOvpoNQffZveCB8H7vRE5BUxG/404
-         gAGmHOSbZGrhr42rG2zRZkNe8AGYLZM10pus1DyvpMSoo3ujA7Op24GDb8twIiV2uYRU
-         nJHw==
-X-Gm-Message-State: AOJu0YzI3CjLCopwNQb+kTdQpjpY4HlaDXyG3KE8qYK4eFyGPUaoF7nZ
-	JXI9eU9Pw6NxRi73AjMJCkmJAio+mYR9j6iGNJemTJdh/JY1JMEIULfOK1h/SPPJf1ySfa0tOWp
-	NCyBlixaJkxb9GR1KmG5zx2TJpiZhGCZ4ZmTnGyJA
-X-Gm-Gg: AR+sD13y27/bzrAT0pwrPMgpNA98o2UsudtfekJuN5OWNS1O8zGsAPq19yC7PrmfgYv
-	XZ3wKBc9jP7wJotYBnKst8/wz8H9VhdfrS62f6yaGRy85F4RNiYyVQme7Fd4sUj2gzHjPxYXW4y
-	/Uc4olb2C2UsV5Q3al1qrsil6q7wQRQuxP4LrakU2AUOG9WG6ots4Hg5LW1BbBKUVzIr3qdk/DZ
-	3hb5UpXyg+JHmXKw+ies4zKkA9NvGudl8lrhMmpii6Mb6ZtrWE5cpUwtnFGujrdSq5sp+2xB0RS
-	4HacMS4YjhPwaKxk5z52s3rNmglfIzc8bAFdAM11TWca7JwsgnbR+c+4WLMY+ruS+i7OF2XIIWM
-	=
-X-Received: by 2002:a17:90a:d647:b0:37f:e326:6557 with SMTP id
- 98e67ed59e1d1-393013d66dcmr5008436a91.4.1786533307285; Wed, 12 Aug 2026
- 04:15:07 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="wmvuTFGT"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1786533502; bh=RW3rsbRg/EvlYrmJPaJEkOeufQlAZT00FBVPuMaeJmo=;
+	h=Date:From:To:Subject:References:In-Reply-To;
+	b=wmvuTFGTvAkbcCRh0wgdpm9Fd0ARf88aGKirxCaBjZu29n1Oc9UzHFQj/H+xp4Cz5
+	 YcPWHI33btxRuEl6BjomjRBPmIU/SQzNqLPzAKFtexi7NcFJ35H+PE2iDkhOzC+2yJ
+	 OozKjsviJIXU9Dj/C57iaHF41hkcmL8UQI3C0Yes=
+Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
+	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
+	id 44A9B647; Wed, 12 Aug 2026 19:17:10 +0800
+X-QQ-mid: xmsmtpt1786533430t36xh5zqe
+Message-ID: <tencent_5E70D721FD1077C689D59A12B297AB46B207@qq.com>
+X-QQ-XMAILINFO: Ncyz9M6n7cjdnHEG8WS9WEJ46z+SgiE2Tx4WuqWpkhNpTK4eOJChMQd4xTz5vg
+	 lRw7DjnI4h7BfJlmo2X4IVBFYIMuIN63Zakg2VV4MdBb19KJa7vw8MPWvP2WwJNkG3UNiJ1oqq66
+	 nn6eekIVofSQDDON0U3EosumZFh1gxmRrjUZC6qkJiKAuKpbZFKcvWP7ZGXSXc/AyAqNfIN7FRat
+	 damQJUrJ43QI4Wp01P5g7sECcvfwS+4EG0uwItHDTo4m4ciFhHvtMjFbxZr5NRYkPxBFNgiPFQhL
+	 aPeaYzVql/z8PW9dT7GIWotzJAVqP9le/2nkgNjctB0jOrQl5nA5jbgeWw8xpxb/VKzWvddi/tBR
+	 DI8JXA2WYgNE5/Dlh6dDJW4b7ScoLVNCt+GHm2CJ3hWgzugdDjEkJXhXq6YYXxZXS/sQi20TcD0f
+	 gc6OrIZ3mUB+WvNlW9AFQ/2T8kgGyRGHY5hFVs+Z5zLxs+JXqvzjwRJsoJYR3jMxdkqWUEnjcIJY
+	 YK7esdVcL4WaaLeqaO3N1boNb13XC3ZyCZikj6c78EICONCOP5DbhdQNEWGeYWIk6pMyZ6LAv3Jz
+	 jWVSv58xZb1Y4jkZYzVbh7phT71KQTdZwfyTGhN2kNHmWANlRlIRjyRDgCNX949jGs/CezhZit3H
+	 bJH+uTwVNORUfSw9yO+BjitPNlmVAEVJx05znvcCZx00VFEubWr3KgSSOkwzZGKcWlnwf/kQNeW2
+	 cRLnDMIq3DAeojjlrgUzJ0REs+lQLrEU+vcWzGDT/hJlfw8lXaAD/J5/76DTDnm/qN3Auv+r7KRr
+	 5dp6YjIC8B/LVy4XNG4P7EC/8hqVb3aZhjwBotBEccDpixT+0ys12US6oFUNXIH3W7SjVBP5NPlw
+	 O3JUVHMztkRsXd7wwsdM7V/X8ejZc4l0ZplXvtTF/gs/6+INzu1gp/E01YBQ3yOsMgDlM79CBLhE
+	 OtIrnToka2CL2vAQfzB8gmIB5WcfCiP0qCWEkU8t4O1n2zprmIKvZg4mjoksUCEMTwjy+aZAn58l
+	 YM+13Qz2UnwgOE+nLQhwiqls32apY1LLwKYxTPSRR9KtZJ+U9myKAi8lw0eQguVWNvwDOO4gq4Ip
+	 k5DtuyItpYSCqthbM9Tot6CXwCGSRR4/30cLBU1mqo2N6vE3U=
+X-QQ-XMRINFO: NyFYKkN4Ny6FuXrnB5Ye7Aabb3ujjtK+gg==
+Date: Wed, 12 Aug 2026 19:17:11 +0800
+From: shuo chen <1289151713@qq.com>
+To: ZW Tang <tangzw515@gmail.com>, linux-ext4@vger.kernel.org
+Subject: Re: [BUG] ext4: possible circular locking dependency between
+ xattr_sem and s_writepages_rwsem
+X-OQ-MSGID: <anxWN8QMyEO-r5Y9@DESKTOP-AT5F202.localdomain>
+References: <CAA2SOT5a_Lo4E7nWNoWk9Re5dx-vYDmQpCi_8cJjVps7DDL-rQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260811160336.782342-1-timday@thelustrecollective.com>
-In-Reply-To: <20260811160336.782342-1-timday@thelustrecollective.com>
-From: Marco Elver <elver@google.com>
-Date: Wed, 12 Aug 2026 13:14:30 +0200
-X-Gm-Features: AUfX_myPZ42mV2g_1d6jQzHOsWPbwlDbw_iNRf_zK9PQxPqWoyuCWI6anHmlcgQ
-Message-ID: <CANpmjNPOY5D9rdGVCwPhS5XqQuJvnP+0zG6=XNL2QLqOE6iJag@mail.gmail.com>
-Subject: Re: [PATCH v2 0/8] Support Clang context analysis for ext2
-To: Timothy Day <timday@thelustrecollective.com>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>, Theodore Tso <tytso@mit.edu>, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAA2SOT5a_Lo4E7nWNoWk9Re5dx-vYDmQpCi_8cJjVps7DDL-rQ@mail.gmail.com>
 
-On Tue, 11 Aug 2026 at 18:04, Timothy Day
-<timday@thelustrecollective.com> wrote:
->
-> This description is mostly copied from v1:
->
-> This series adds annotations for Clang's context analysis to ext2.
-> Clang context analysis was recently added in a series by Marco
-> Elver [1]. This allows the compiler to validate different
-> locking patterns at compile time.
->
-> This series enables context analysis, fixes pre-existing warnings,
-> and adds new annotations. It is inspired by similar series in the
-> block layer (NVMe host driver, for example [2]).
->
-> I'm starting with ext2 since it's smaller and simpler compared to
-> ext4/btrfs/etc. After ext2, I'd be interested in converting the
-> other filesystems and infrastructure code in fs/. I think the ultimate
-> goal would be to enable this by default across all of fs/.
->
-> The series was built and tested with Clang 23 with
-> CONFIG_WARN_CONTEXT_ANALYSIS enabled. I based on 7.2-rc7.
->
-> Thanks!
->
-> Changes from v1:
->
-> * A false positive has been fixed in Clang [3] and ported to Clang 23.
->   Hence, the first patch (silencing that false positive) has been dropped.
-> * Use guard() and scoped_guard() instead of context_unsafe(), when
->   possible, to express that certain fields are being protected by a newly
->   initialized lock during init.
+On Tue, Aug 11, 2026 at 11:55:35AM +0800, ZW Tang wrote:
+> Hi,
+> 
+> I am reporting a possible circular locking dependency triggered by a
+> syzkaller reproducer on Linux 7.2-rc3.
+> 
+> The warning is reported by lockdep in the ext4 writeback / xattr path.
+> The task is mounting a crafted ext4 image and enters orphan cleanup
+> during ext4_fill_super(). During inode eviction, ext4_evict_inode()
+> calls __ext4_mark_inode_dirty(), which holds &ei->xattr_sem. The same
+> path then reaches ext4_xattr_block_set(), iput(), write_inode_now(),
+> writeback_single_inode(), do_writepages(), and finally
+> ext4_writepages(), where it tries to acquire &sbi->s_writepages_rwsem.
+> 
+> Lockdep reports that this creates a circular dependency, because
+> another dependency chain already exists in the reverse order:
+> ext4_writepages() / ext4_do_writepages() can acquire
+> &sbi->s_writepages_rwsem first and later acquire &ei->xattr_sem
+> through ext4_destroy_inline_data().
+> 
+> This looks like a potential ext4 lock-ordering issue between inode
+> xattr expansion / inline-data handling and writeback during mount-time
+> orphan cleanup, rather than a generic VFS or lockdep issue.
+> 
+> Reproducer:
+> syz reproducer: https://pastebin.com/raw/FspxvagG
+I can't open the reproducer URL. It returns a 404 error.
+> console output: https://pastebin.com/raw/kQeWyFgs
+> kernel config: https://pastebin.com/raw/XUJkfYA0
+> 
+> Kernel:
+> kernel version: 7.2.0-rc3 #1 PREEMPT(full)
+> HEAD commit: 1137d8b5df06137fb49513cc923b3b24d94cb809
+> environment: QEMU Ubuntu 24.10
+> taint: Not tainted
+> 
+> Relevant warning:
+> 
+> WARNING: possible circular locking dependency detected
+> 7.2.0-rc3 #1 Not tainted
+> 
+> syz.4.27/12346 is trying to acquire lock:
+> &sbi->s_writepages_rwsem, at: do_writepages+0x241/0x5b0
+> 
+> but task is already holding lock:
+> &ei->xattr_sem, at: __ext4_mark_inode_dirty+0x5c6/0x860
+> 
+> Existing dependency chain:
+> 
+> -> #1 (&ei->xattr_sem):
+> down_write
+> ext4_destroy_inline_data
+> ext4_do_writepages
+> ext4_writepages
+> do_writepages
+> filemap_writeback
+> file_write_and_wait_range
+> mmb_fsync_noflush
+> ext4_fsync_nojournal
+> ext4_sync_file
+> vfs_fsync_range
+> ext4_buffered_write_iter
+> ext4_file_write_iter
+> vfs_write
+> ksys_pwrite64
+Why is there a task writing to a file before the mount is complete?
+> 
+> -> #0 (&sbi->s_writepages_rwsem):
+> ext4_writepages
+> do_writepages
+> __writeback_single_inode
+> writeback_single_inode
+> write_inode_now
+> iput
+> ext4_xattr_block_set
+> ext4_expand_extra_isize_ea
+> __ext4_expand_extra_isize
+> __ext4_mark_inode_dirty
+> ext4_evict_inode
+> evict
+> iput
+> ext4_orphan_cleanup
+> ext4_fill_super
+> get_tree_bdev_flags
+> vfs_get_tree
+> fc_mount
+> path_mount
+> do_mount
+> __x64_sys_mount
+> 
+> Lockdep also reports the following possible unsafe locking scenario:
+> 
+> CPU0 CPU1
+> 
+> lock(&ei->xattr_sem);
+> lock(&sbi->s_writepages_rwsem);
+> lock(&ei->xattr_sem);
+> rlock(&sbi->s_writepages_rwsem);
+> 
+> *** DEADLOCK ***
+> 
+> The reproducer mounts crafted ext4 images with options including
+> grpid, auto_da_alloc, lazytime, dioread_nolock, init_itable,
+> debug_want_extra_isize, bsdgroups, and min_batch_time, and then
+> performs a pwrite64() before mounting another crafted ext4 image. The
+> log also shows ext4 metadata errors before the warning, including
+> invalid indirect mapped block, invalid block bitmap, delayed block
+> allocation failures, and bad extra_isize, which appear to drive the
+> mount/orphan-cleanup and xattr expansion paths.
+> 
+> Thanks
 
-Acked-by: Marco Elver <elver@google.com>
-
-But ultimately up to maintainers. Also, thanks for helping improve the
-Clang side (FWIW, Clang 23 will release August 23)!
-
-> Link to v1: https://lore.kernel.org/linux-fsdevel/20260712165610.366474-1-timday@thelustrecollective.com/
->
-> [1] https://lore.kernel.org/lkml/20251219154418.3592607-1-elver@google.com/
-> [2] https://lore.kernel.org/all/20260706141452.3008233-1-nilay@linux.ibm.com/
-> [3] https://github.com/llvm/llvm-project/pull/209796
->
-> Timothy Day (8):
->   ext2: mark s_next_generation as guarded by s_next_gen_lock
->   ext2: annotate ext2_update_dynamic_rev() as requiring s_lock
->   ext2: mark statfs overhead cache as guarded by s_lock
->   ext2: mark s_mount_state as guarded by s_lock
->   ext2: annotate ext2_init_block_alloc_info() as requiring
->     truncate_mutex
->   ext2: annotate block-mapping helpers as requiring truncate_mutex
->   ext2: annotate s_rsv_window_root as requiring s_rsv_window_lock
->   ext2: enable context analysis support for ext2 filesystem
->
->  fs/ext2/Makefile |  2 ++
->  fs/ext2/balloc.c |  4 ++++
->  fs/ext2/ext2.h   | 19 +++++++++++--------
->  fs/ext2/inode.c  |  7 +++++++
->  fs/ext2/super.c  | 35 +++++++++++++++++++----------------
->  5 files changed, 43 insertions(+), 24 deletions(-)
->
-> --
-> 2.43.0
->
