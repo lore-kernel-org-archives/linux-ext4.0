@@ -1,41 +1,46 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39082395243;
-	Wed, 12 Aug 2026 18:41:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55B8020ADF8
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Aug 2026 02:44:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786560105; cv=none; b=TRRDJGeoaUTDK2ZuyjUzBTIv1NqTm5r57WlTmPOQ/5LCcxL5f9/OfQrE9roHPitjKqETf4kROxumG1AeYK/M2t35aaEY+KK/ri6MD87dZj9olGFnLvNMHceJF1wmwoE09K2v349WYkuC31tleWiefI9aXCffP8/V5WIFVHk36+k=
+	t=1786589056; cv=none; b=tnP8gqi/FUZrphGa6ytvvhynUrNlCMOHHbJ8W0Dy4wa4LXA118O+KnQ4J7JVgVGoND/uFHjmRpuqEpw71rzxRwnrUBuKrL5uL9Po06fRBPUJgKHkJ4e8RTGK6BgX6zIO9l5LdratHb+xbhSsH/viBljHC7moP2MleAdFIw9CuqE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786560105; c=relaxed/simple;
-	bh=Jk/x95qG6nywLCMhUbiYVyaNBZ3M3sPPWVMn4DIbWqw=;
+	s=arc-20240116; t=1786589056; c=relaxed/simple;
+	bh=YCWMMlcMQICpyCCYNjli394oTSld+6lVPh5MmFumLHk=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=rkrlzKKHwo5IhUiooM52WNcl2Aqba8K7amCtd+18Q2Kxbjvgb/5nb9waEPt0VrOSuj1IaRLsm2AN3+N3m6J+y3l8YBs3eP38mppM2sCx9eEPAwLVCBk+C10AUcBFgLw20ngcj5zal1MDNuB6DmY0dR3gpDPaw1OlWsg672PaOmk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Lrjmv2ym; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=sncoeoTKgmxfaSGSPwTFGjgbjgRdgUpZSQMdAhU1qma1RUI3x6n3AX+Opkyerq8F4+KmnKG8u6m7x/Z0fe3hz7wjPMb6C3yGxSF8iRZ5f5kFiSz7J5hmA8RBs7e7MrjFQE1bbWHKQsWqjehfhaPXMpg2Uzsl7vLG/LDUSofJ6js=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=LJRr02sO; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Lrjmv2ym"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id CCB641F00A3A;
-	Wed, 12 Aug 2026 18:41:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786560103;
-	bh=xx7MGN+qPswecuAUIESO3n3xmlzUhspZGHNZ3/a3824=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Lrjmv2ymIRGGzTwHPSAnxKG/HP5x3y4djYc0TXLKcYtTiYvb83VH8imt9VjFQ5W5P
-	 qEZDLY7DF2wntte31ow94+V5hOd5Yho2fPuEXlXyilzOLaXII9Pv2o8RFhQ0EDzPyG
-	 g2MREexrypvsuHRrEevXn8ArZowL+s4+jMMaVQtVMxD62iWm8vjvEK1mB8Zl2ARYaQ
-	 ltmA+UjSIsnN7ZU9ef18lfMQ7FiYNMHJc25ph0a53K+OSU/3PpeBYIK6gumBZ5lKJm
-	 fICIOZ7T6b3Xbh0IOiqi5n87e+ceDTlvsy2b0nDJeyCuK7YjvEWS+OTxmn8UeDObpK
-	 3SJzUEdoYeNTQ==
-Date: Wed, 12 Aug 2026 11:41:43 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: guzebing <guzebing1612@gmail.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
-	yi.zhang@huawei.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: only update tune mount options when requested
-Message-ID: <20260812184143.GW7398@frogsfrogsfrogs>
-References: <20260810151200.1405562-1-guzebing1612@gmail.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="LJRr02sO"
+Received: from macsyma.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67D2i2Q7018469
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 12 Aug 2026 22:44:05 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1786589046; bh=ZvUeyu23fXAtsk0F2VCZ6Q60hFbloYUCma7F1GPFOyU=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=LJRr02sOdJr9rgslpx2XoGBl6K7QNUgriqvryu3nvFCUHbPLW/Qx7pzKeikl6s80o
+	 s2kaVSZ66ns5eTCrcHCF2xY4xkhIupPI5Kf7uUuPQ8lMBsQB329y8Y8HBo5obA1XjQ
+	 OPbCg/K/fxCsYQN42PWbHTH2ilFPDDaCTP9Pz0/+QU9dW8iHoEW/7c+PNfDt/CwfBP
+	 /KIk5tEon4G+lvexRzPmUaeX0cJ31LyCvvhTvl4MuQLel7BigTSZaQP0p9UL6ZbDPy
+	 dykZBkejqLgc7RX9P1Yj18hsmPSFfoVf65EUSU0nvtsN+iGFNApXvw0kVLefscL81U
+	 WVkFqTP2uDxfA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 35C48EB26E0; Wed, 12 Aug 2026 22:43:02 -0400 (EDT)
+Date: Wed, 12 Aug 2026 22:43:02 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: eaujames@ddn.com
+Cc: linux-ext4@vger.kernel.org, adilger@thelustrecollective.com,
+        dongyangli@ddn.com
+Subject: Re: [PATCH 2/4] libext2fs: add quota to libext2fs
+Message-ID: <anyHu4U8pf5iMW96@mit.edu>
+References: <ahl_GhW8EhYTEun7@eaujamesFR0130>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -44,54 +49,38 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260810151200.1405562-1-guzebing1612@gmail.com>
+In-Reply-To: <ahl_GhW8EhYTEun7@eaujamesFR0130>
 
-On Mon, Aug 10, 2026 at 11:12:00PM +0800, guzebing wrote:
-> EXT4_IOC_SET_TUNE_SB_PARAM uses set_flags to indicate which superblock
-> fields the caller wants to update. ext4_sb_setparams() checks set_flags
-> before updating the other supported fields, but always copied mount_opts
-> into the on-disk s_mount_opts field.
-> 
-> As a result, callers that do not set EXT4_TUNE_FL_MOUNT_OPTS can still
-> clear or alter the on-disk default mount options through their unused
-> mount_opts buffer. This can affect subsequent mounts by changing the
-> filesystem's stored default mount options.
-> 
-> Only copy mount_opts into s_mount_opts when EXT4_TUNE_FL_MOUNT_OPTS is set,
-> matching the set_flags semantics used by the other tuneable superblock
-> fields.
-> 
-> Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock parameters")
-> Signed-off-by: guzebing <guzebing1612@gmail.com>
+On Fri, May 29, 2026 at 01:57:14PM -0500, eaujames@ddn.com wrote:
+> add quota related interface to libext2fs and install the
+> relevant headers.
 
-Cc: <stable@vger.kernel.org> # v6.18
+The reason why the quota functions are in the libsupport library as
+opposed to the libext2fs directory is that the quota functions weren't
+ready to be moved into libext2fs.  The libext2fs library is published
+as a shared library, so the function ABI's must be stable.  This
+requirement does not exist for libsupport.a (which is only statically
+linked, so function stability is not a requirement).  The functions in
+libsupport also in some cases try to write to the standard out, which
+is not allowed for libext2fs.
 
-> ---
->  fs/ext4/ioctl.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index c8387e6a2c6e9..1f6d7afb62ec7 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -1362,7 +1362,8 @@ static void ext4_sb_setparams(struct ext4_sb_info *sbi,
->  		es->s_encoding = cpu_to_le16(params->encoding);
->  	if (params->set_flags & EXT4_TUNE_FL_ENCODING_FLAGS)
->  		es->s_encoding_flags = cpu_to_le16(params->encoding_flags);
-> -	strscpy_pad(es->s_mount_opts, params->mount_opts);
-> +	if (params->set_flags & EXT4_TUNE_FL_MOUNT_OPTS)
+As a result of this, the quota and ea_inode feature is not directly
+supported by libext2fs, and hence, not by programs like fuse2fs.
 
-Ordinarily I'd say that this is a UABI break, however, Ted never merged
-the userspace code into e2fsprogs so there's no userspace to break.
+So to address the problem you are trying to solve in this patch series
+--- which is to allow e2fsck to correctly handle processing processing
+an orphaned file which has an extended attribute value stored in an
+inode and quota tracking enabled --- we have two choices
 
-Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+* Clean up the quota handling functions so we can move safely move
+  them from lib/support to lib/ext2fs.  This is the long-term plan /
+  goal, since it would also allow us to add support for ea_inode and
+  quota into programs like fuse2fs.
 
---D
+* Don't add the functionality to lib/ext2fs, but just arrange to have
+  release_orphan_inode() in e2fsck/super.c call the functions in
+  lib/support as necessary.  (This is how we handle quota support in
+  e2fsck today.  We just didn't deal with the combination of ea_inode
+  | quota correctly.)
 
-> +		strscpy_pad(es->s_mount_opts, params->mount_opts);
->  	if (params->set_flags & EXT4_TUNE_FL_EDIT_FEATURES) {
->  		es->s_feature_compat |=
->  			cpu_to_le32(params->set_feature_compat_mask);
-> -- 
-> 2.20.1
-> 
+						- Ted
