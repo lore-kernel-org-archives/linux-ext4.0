@@ -1,62 +1,70 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 432753C2B95
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 11:56:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58CF52836F
+	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 12:01:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786708577; cv=none; b=SlH8FUslpstdTtqcC94c2myc67wDPiOp/dafdrlTgzwd6ucrAMrYYM4ETGEMUrCgp/+BAPV/fILnVxbu/sDRb0gs2FbYysmSvj84/SXdJSdS83VDEqIDCw/3w62euY4rvB+OP6PN5JWan4rETbiL/2Ge6bF1VWl62ePY+9WpPLM=
+	t=1786708895; cv=none; b=bGbR/TnLFLzkGIJarUUerewbvOGG+vaOF5vE+fI0BQkwdhZNZJ7z/YxpGbdRpfvYVRtyMb9B+4aD579vOkIBnQIP3sn9PD8/7m+ZdIC/EULJTR/R40D4yDl8RpgR/fFP8grpYqjUKk8qTFNJ0Cy6vzd4hTqejDQjlL793fznK0E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786708577; c=relaxed/simple;
-	bh=Y3PhEMyW0cdfEjGpi9m4q6IenmY3PKsiVkBDZ5+EC6I=;
+	s=arc-20240116; t=1786708895; c=relaxed/simple;
+	bh=eACHucyY1ioRFNMUcRgotPYcq9BToSGF2jM0j5Jh+lk=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=RKhdvG2opw4911usH8x/f4NVKD5yfufCV/UHRb6tqZoclJf3sYZJRjwzLQaerMp3/I3kDS7d4++gPee6+TP3RZSrwxD25z4gTc0ydPUFYaxpDjH4P7gjC5oW+tWBvjaN2A9LANcTmhNeNOf5dqZ6cqcPJU1osm93YyCyU1Rajpw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WV6fDsHB; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=u/A4ALFLarjZblRFKhtmn1bUCGhuJ7b2vQMolGphhLwWlhryahsyERpqzHlDFuJZ7X4YXAasWKO6W2qZliQ/TNY8jM4G3TjFFZ+McSuKZ0AXnK3vhWY16rfvGERgkPpIL234PjvvDo+Rjiqr/5cCduo7bQiDI7smfi6qupzCR9M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ot8/iv27; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WV6fDsHB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECED01F000E9;
-	Fri, 14 Aug 2026 11:56:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ot8/iv27"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC00A1F000E9;
+	Fri, 14 Aug 2026 12:01:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786708575;
-	bh=Y3PhEMyW0cdfEjGpi9m4q6IenmY3PKsiVkBDZ5+EC6I=;
+	s=k20260515; t=1786708893;
+	bh=eACHucyY1ioRFNMUcRgotPYcq9BToSGF2jM0j5Jh+lk=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=WV6fDsHB2uUk0fpYO43lXraeH57zxmJFJC5McmYlp8N5w4NgsH0EtGpR+WKYL9KyP
-	 h5aDgYz/6M59NrifH8YfrXkpJiOhOR4PQviW0K6WbDTu/jFpiP+MIvLg3kHYXlDx3C
-	 KH1/19V67sKqqrzCensVgbxN61Psh/hOCorNuOluBQmWca3k8zakiabFd1dRhDeXY7
-	 8uXKcEUlvWdDO6CrTKfZUpeGp7VDjcO+R+tJIhS6nQEfO47zeZl997RjrsrvJ+RcXv
-	 929+k0akOq0cmKmyMe+w5a1rdj0dII4AiQfDkARqob7VlX2K/xM/1z7UKViiho1JLa
-	 RqSTzA+KtBIww==
+	b=ot8/iv27EoYTh/QLY4GfTBEqQZ2raYbfUNB2g+LsOTMHGCeF782rViv4Vn+znwZ4I
+	 pB2c0YV75Iimyx3l7N4XU4ehz6a22is+kKFhNOmXIVIzWhHdP1FWDWCW0cufyUaOk3
+	 B5jSPWQqX6ggIgEaJwOPE5bZPaKXNXBCtle66TXosSnwXnM9TaDlywpJ3PXrBrkqxp
+	 9EQk8Bxiezv85zBrrdjHHVz/TmbFCC0PA41diomVIo/IHhQjAN35jq9T33F3za9Sn3
+	 yk7bPhAjzgJtsRxSLCMf+YnVyLEwNkro0LneMoCsaNZzQ7EKZ+csPIeRNW4nMWLz/L
+	 BAcUJLBjRaVwg==
 From: sashiko-bot@kernel.org
-Subject: Re: [RFC PATCH 2/2] quota_v2: persist DQF_ROOT_SQUASH
+Subject: Re: [RFC PATCH 1/2] quota: allow DQF_ROOT_SQUASH on all quota
+ formats
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Kitae Yoo" <kitaeyoo777@gmail.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260814114649.51253-3-kitaeyoo777@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260814114649.51253-2-kitaeyoo777@gmail.com>
 References: <20260814114649.51253-1-kitaeyoo777@gmail.com>
- <20260814114649.51253-3-kitaeyoo777@gmail.com>
+ <20260814114649.51253-2-kitaeyoo777@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 14 Aug 2026 11:56:11 +0000
-Message-Id: <20260814115612.ECED01F000E9@smtp.kernel.org>
+Date: Fri, 14 Aug 2026 12:01:33 +0000
+Message-Id: <20260814120133.BC00A1F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> Commit c119c5b9749e ("quota: Don't store flags for v2 quota format")
-> stopped persisting dqi_flags because no v2 flag was supported and
-> on-disk flags could contain unvalidated garbage. Now that
-> DQF_ROOT_SQUASH is settable on v2, losing it across quotaoff/quotaon or
-> remount would silently re-enable the CAP_SYS_RESOURCE exemption - a poor
-> property for an enforcement policy.
+> ignore_hardlimit() exempts CAP_SYS_RESOURCE holders from enforcement of
+> hard limits and of soft limits whose grace time expired.
+> DQF_ROOT_SQUASH disables that exemption, but it has been confined to the
+> old v1 quota format since the quota format abstraction was introduced,
+> and commit ca6cb0918e87 ("quota: Verify flags passed to Q_SETINFO")
+> later made Q_SETINFO reject it explicitly on other formats.
 >=20
-> Store the flag in the existing on-disk dqi_flags field and mask on read
-> so only the supported flag is ever accepted from disk, which also keeps
-> pre-existing garbage bits out of the in-memory flags.
+> That confinement predates generic project quota support. Project limits
+> bound the size of a directory tree rather than restrict a user, and are
+> commonly used for capacity isolation of container volumes and NFS
+> exports. There the exemption defeats the purpose: knfsd raises
+> CAP_SYS_RESOURCE for requests mapped to root on no_root_squash exports
+> (CAP_NFSD_SET), so any remote root write silently exceeds project hard
+> limits. XFS enforces project limits regardless of capabilities.
 >=20
-> An older kernel rewriting quota info still clears the stored flag;
-> strict enforcement then needs to be set up again after booting back.
+> Lift the format restriction so the flag can be set per quota type
+> through Q_SETINFO on journaled quota as well. Existing setups keep their
+> behaviour: the flag stays clear unless explicitly set, and setting it
+> was previously rejected with -EINVAL on anything but QFMT_VFS_OLD -
+> accepting it there is the user-visible ABI change this patch makes.
 >=20
 > Signed-off-by: Kitae Yoo <kitaeyoo777@gmail.com>
 
@@ -64,5 +72,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260814114649.5125=
-3-1-kitaeyoo777@gmail.com?part=3D2
+3-1-kitaeyoo777@gmail.com?part=3D1
 
