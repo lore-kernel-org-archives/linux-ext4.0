@@ -1,44 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E7EFA43B6CE
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 10:09:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7222643F4C2
+	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 10:12:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786702184; cv=none; b=taCQ2Prs4MAAlaZ3Ojr/etavcq6+mypmvAEcHmeeu1X+nRkxm1S5AseVqzUQDSBzxp2Q1SrI/m5/LLlaxKTPIEDO7hkrpJNgEtXoneZ8vLttGjJT7QkIJ/0BpQamq5G/mTNMJbcPhLbx/vNsxjpJJQtkmmLZ8C3Bw2+2MAaen3s=
+	t=1786702363; cv=none; b=dM+LpAm8sEpPlkKlvJjM0Kb+npvWtuTP2dvdbegCEMR5Lmx9opjhVKxgc58x6UnM/JmThvVn33EH5CZz0Y+YwKm7YoPw/KXaMMY7ubbTCI1zv8vWMTjV1wbrPx+HJ1tGDDjHSre8JnNVtyGExmbFw4JJCT+9LvMFzkxDIN97rkA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786702184; c=relaxed/simple;
-	bh=athEHOpnAc+yrTq/B/KhOEghkx8jGZMVoBvENNBxCKQ=;
+	s=arc-20240116; t=1786702363; c=relaxed/simple;
+	bh=sSWQUNmauZlh0OZ+NJHGRD9yDtnYO4M+Xhl+BELtErs=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=luARRJQS+Pjcou6zfKkruXjgiioPsKGnGd8sNEd8ou9L30KG7TJhzPX1Dbda4BvXKX8Kun8PzTtdsDpfaspZSqroGB0hbK8mFt13UEsXkiu2PocvZXfHQVAi+HiEE+EEaEL0Y/nOLwe+T+12qZ3WZN0E5y+DwH6JdIXPFqhTwKI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Yl5AdiBa; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=AQI+LHhPnUeCl55aXjJUgSjnKcUFak1iI7FguEwKVP2PSY1MKYopEJvnmlIPGpWXhD4HpmRtvS7GN9A1ZniZE+nBpOQ4f1aMjhJzb7LjiJfUFiC4Cqx8vuDAZtmO2Sj/d4h3aR/ziOjzHW9Hv3F5Iofjkoj5bf7ZYx+X86zaNIw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cMh/S+tP; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Yl5AdiBa"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D9951F000E9;
-	Fri, 14 Aug 2026 10:09:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cMh/S+tP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 605951F00A3A;
+	Fri, 14 Aug 2026 10:12:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786702173;
-	bh=athEHOpnAc+yrTq/B/KhOEghkx8jGZMVoBvENNBxCKQ=;
+	s=k20260515; t=1786702350;
+	bh=sSWQUNmauZlh0OZ+NJHGRD9yDtnYO4M+Xhl+BELtErs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Yl5AdiBad5oRFiAyPELRuLO9OnRE+qDRHDTqp7GfEbqBju3zaA/6URI5iEmc8iG46
-	 WwmKOceI2Lm5FWwHx87NmX59Gyb6cD7EtKZvCvOchmjNNW/tiQ7DlGSMZ/6SaEHEBD
-	 tHWrpT7VL+GoDovkmq1ovMCnZ5/30GPTjqPeZekKikBAIYaAbtDWnXk9kF801noDHa
-	 EyRlyzh22u8WU/9FHA0xDg5NS2CmAHtJBuekFak5DL6jgu1Z7FhOcxfPH+UOgr18a9
-	 CT7xV+LEodIZ9r4Ggi11XI6zyUWF37MnY44UisysLqvjG85L5pyV3mQeW57CDNQ2ja
-	 L78gFz1O2ZLrA==
+	b=cMh/S+tPwtvWl67qvisrBLmruCPL8aQabFB8ENNyE9kPCqIEl4BiQjnCpa6Lyo43J
+	 hjIMcDI4Z1gWOCD1X+5hPG/mtqZiCUDQM0k3DJ1MxhLMqrW7w2AM3jacq78eRpEAjC
+	 iy/6G0ybzd0SvwI25Y+ib5GWZ99CuLumurvVLLMmP7Xlg65DL3nZQkjIp/uU4egt9B
+	 6BEmuL29ybT+zU5foyuKaf13xNguagmWLQK3wCAd8TuQSBHttB9/oy+EbcWygLHTwV
+	 8FDw1pfdcpz++4JoIsgRHb6xonYWxtk/MCTjFMncl2c7Lv9ljjfydxU1EljEy5fzvC
+	 j68DanYgwdRQg==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -next v5 22/32] ext4: add
- EXT4_STATE_DISKSIZE_GROW_PENDING state bit and helpers
+Subject: Re: [PATCH -next v5 13/32] ext4: pass out extent seq counter when
+ mapping da blocks
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260814093331.1703882-23-yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260814093331.1703882-14-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-23-yi.zhang@huaweicloud.com>
+ <20260814093331.1703882-14-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 14 Aug 2026 10:09:33 +0000
-Message-Id: <20260814100933.9D9951F000E9@smtp.kernel.org>
+Date: Fri, 14 Aug 2026 10:12:30 +0000
+Message-Id: <20260814101230.605951F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,25 +47,26 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> Inodes using the iomap buffered I/O path do not use data=3Dordered
-> mode, so the zeroed EOF block that straddles i_disksize needs explicit
-> tracking to ensure it is written back before i_disksize is advanced.
+> The iomap buffered write path does not hold the folio lock between
+> mapping the inode extent and copying data. Therefore, it can race
+> with writeback that modifies the extent type (e.g., from unwritten to
+> written). This can lead to data corruption on partial writes, as
+> iomap_block_needs_zeroing() may return a false positive based on a
+> stale extent. The iomap infrastructure uses the sequence counter
+> stored in the inode to detect such stale mappings.
 >=20
-> Add the EXT4_STATE_DISKSIZE_GROW_PENDING inode state bit and three
-> helpers: ext4_iomap_clear_disksize_pending() to atomically clear the
-> bit and wake waiters, ext4_iomap_wait_disksize_pending() to block until
-> the bit is cleared, and ext4_iomap_get_disksize_pending_range() to
-> compute the pending range from i_disksize.
+> Commit 07c440e8da8f ("ext4: pass out extent seq counter when mapping
+> blocks") added the m_seq field to ext4_map_blocks to pass out extent
+> sequence numbers, but it missed two callsites within
+> ext4_da_map_blocks(). These callsites are on the delayed allocation
+> path, which is needed in the iomap buffered write path. Pass out the
+> sequence counter to ensure stale mappings can be detected.
 >=20
-> These will be used by subsequent patches to serialize i_disksize
-> updates with the writeback of the zeroed EOF block.
->=20
-> Suggested-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
 Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260814093331.1703=
-882-1-yi.zhang@huaweicloud.com?part=3D22
+882-1-yi.zhang@huaweicloud.com?part=3D13
 
