@@ -1,49 +1,46 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3AF5E33343C
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 13:59:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C29CE3C9EEF;
+	Fri, 14 Aug 2026 15:13:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786715959; cv=none; b=GyWu+QLpQBRskJ7Oq2pVCrjhZ6Wm6i4adCC4TVPhV5o4ikD9PsD0eA9A9loccyYbsQ1m0YUkqhBnsvo+hxexuEqm4rW30NlHlnO7w8btFjcV7cCzGR4cFfeLG7Z3CSAkemM/dsMEWGyhkgXFEOciWhzs7VrdOvD30pZnwx6CWEQ=
+	t=1786720427; cv=none; b=mH6c2OeoI5CaRouGJNqnMuxdseIHQ/iwwLqhSQUq0TTyOL8jS+AjH25zUxgNug+P06JXuVMnwzAAQH8ShhivLhdA2n3orACPVuZzIhaDZTg5Pc+IdGGRIX5gfQDyaa5w2Pm+mtyBYns1inCZnkyR9w0UhH6wdWTTmTrvazPobrI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786715959; c=relaxed/simple;
-	bh=wST78Ly7/LkpzOQRxTy+uIbiDS71NCh7O9c2wHZlgMc=;
+	s=arc-20240116; t=1786720427; c=relaxed/simple;
+	bh=qSYxeWnvIPw1FX9I9xs3aYxdKA3PzrvMo2ghmEhfBDg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=g7XeHFkOVgrdBq1K9wj4RjMlnLPnjl34hKEiBDuO92haYT59XN+EbDR9bY1G6g9XoZ8lLKtoy5CYoEmO9rVpNHCZ7M5u566ypk8nZK0VgwneYvr93MzxzeLF9bEa0CLRaBLIn/vxoBG8OskJN5igVh4jzy1jrof9Tuen6vPjbaI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=f17o5pXy; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=LyYaVsnLXrm7cA50w9teHc7mvg7t1OVOk+N1td9qOnob8geBWgu4pTPsQ4LFVqi2PWpnrqDxQ5P84ANFTtMKmwHbX40nJTfWOIhZh9xcjfOAk8fdSRO+drSRY/NzgInNtmFpSLyi9nafmnm5ZxdJkMkSjCOThwHjMXGoygWdu2s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HUMYZfCl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="f17o5pXy"
-Received: from macsyma.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67EDwXMP008307
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 14 Aug 2026 09:58:35 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1786715917; bh=K31BguCwD33Oh1Lu5x0xSenQtORdIAfuCIkKeeU60tc=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=f17o5pXyvWvJ0WEZeUClGSc2QdJgoy8mHpEmtbkHGTGKI8VsfaaIHCZeQITZhujfo
-	 sO9VnzJKfgtnemxoiMNn+i9EAtue+Pa4N2yCMJ2QQ/ecRuZenZdTCT02hvevDN4nh0
-	 0iOSzlzEXs/e0ideB3Mi9x0IjrhyBn/A1HNotpPR319D0gwX/3JLIa6CSUZj8Lomux
-	 ZGVtd/aNaWZPVLh2ZenctPABnJi/lhJQfotlo7HySMmzJCHP8QUQ+hkWrnbfP/eRpR
-	 b8QBFP2QzTpmzzBE6HUiiifWgHltnHIcHwx1LXu7Hxtt8erypmPlBMUGAN5A+v/voJ
-	 tLuTzVDE1jnRA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 2D93DEF3FB6; Fri, 14 Aug 2026 09:57:33 -0400 (EDT)
-Date: Fri, 14 Aug 2026 09:57:33 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: shuo chen <1289151713@qq.com>
-Cc: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
-        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
-Message-ID: <an8ejrZ4Q-xLShzo@mit.edu>
-References: <tencent_321031C6B9D5D092C8978B46D9F0BBA18607@qq.com>
- <an5_shcksPF6uIaW@mit.edu>
- <tencent_9121249A3171F5A424EC25B7912A3C794805@qq.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HUMYZfCl"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 5A5701F00A3D;
+	Fri, 14 Aug 2026 15:13:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786720426;
+	bh=/KgPiqew/xPu1U7F+Angxp7pjTC09MZg7T4BSyNrCSI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=HUMYZfClAIgTKe5Kt88p0xj6wI82y+f7yTwwOfpIWVsa+jQ8KPZZtwWbnBwjPYfQh
+	 EmoIC5bhNxmpvsSuK7M5ZhbnfnT8xRLXe7Wn32dtpOoNGMi7aKHYmHImNc1/RCvaxU
+	 mw9bNEAHIYjlmCesaLrXSAdY4oWlgfMTk/Kh31/G/Jcj2e8KLW1DYOz8aI0ryId/Ny
+	 1Dk7dT9cw/d1E01tBWqRxTTsKDruu3wXbzu/Al0tpGQ0uRWdC6z4lEg+z45dTTSHj2
+	 0YbNgBDrxF8pzhd5QpFNJrfv+8Nd8x48SGZaMN3OMUNNEG6DIa8jqHa5EWFtHHxZx+
+	 U87rPOuPqinxQ==
+Date: Fri, 14 Aug 2026 08:13:45 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Andrey Albershteyn <aalbersh@kernel.org>
+Cc: ebiggers@kernel.org, hch@lst.de, Jens Axboe <axboe@kernel.dk>,
+	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-unionfs@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-btrfs@vger.kernel.org, david@fromorbit.com,
+	Tal Zussman <tz2294@columbia.edu>
+Subject: Re: [PATCH v15 15/25] xfs: don't report dio_mem_align and
+ dio_offset_align for fsverity files
+Message-ID: <20260814151345.GF3556460@frogsfrogsfrogs>
+References: <20260814092448.1818082-1-aalbersh@kernel.org>
+ <20260814092448.1818082-16-aalbersh@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -52,15 +49,54 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <tencent_9121249A3171F5A424EC25B7912A3C794805@qq.com>
+In-Reply-To: <20260814092448.1818082-16-aalbersh@kernel.org>
 
-On Fri, Aug 14, 2026 at 04:40:02PM -0500, shuo chen wrote:
-> Because ext4_convert_inline_data_nolock() has already called
-> ext4_destroy_inline_data_nolock(), the inode is no longer in the inline
-> state. So we need ext4_create_inline_data() to rebuild the inline state.
+On Fri, Aug 14, 2026 at 11:24:32AM +0200, Andrey Albershteyn wrote:
+> Sashiko.dev reported that while fsverity files falls back to the
+> buffered IO for Direct I/O, they should not report non-zero values in
+> dio_mem_align and dio_offset_align, meaning it's not supported.
+> 
+> The STATX_DIOALIGN | STATX_DIO_READ_ALIGN flags are used to explicitly
+> report if DIO is supported or not. They can not indicate that fallback
+> to the buffered IO is used in this case. The zero alignment values also
+> mean that DIO is not supported on this file, see statx(2).
+> 
+> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> Acked-by: Eric Biggers <ebiggers@kernel.org>
 
-There are other ways to restore the inline state than calling ext4_create_inline_data().
+This is consistent with what I saw in the manpage, so
+Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 
-Cheers,
+--D
 
-					- Ted
+> ---
+>  fs/xfs/xfs_iops.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+> index 55667cc762f8..70637cdcc299 100644
+> --- a/fs/xfs/xfs_iops.c
+> +++ b/fs/xfs/xfs_iops.c
+> @@ -35,6 +35,7 @@
+>  #include <linux/security.h>
+>  #include <linux/iversion.h>
+>  #include <linux/fiemap.h>
+> +#include <linux/fsverity.h>
+>  
+>  /*
+>   * Directories have different lock order w.r.t. mmap_lock compared to regular
+> @@ -580,6 +581,10 @@ xfs_report_dioalign(
+>  	struct block_device	*bdev = target->bt_bdev;
+>  
+>  	stat->result_mask |= STATX_DIOALIGN | STATX_DIO_READ_ALIGN;
+> +
+> +	if (fsverity_active(VFS_I(ip)))
+> +		return;
+> +
+>  	stat->dio_mem_align = bdev_dma_alignment(bdev) + 1;
+>  
+>  	/*
+> -- 
+> 2.54.0
+> 
+> 
