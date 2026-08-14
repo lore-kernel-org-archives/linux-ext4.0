@@ -1,27 +1,27 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B5BC37A83F;
-	Fri, 14 Aug 2026 09:39:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EBD6D3CD8A9;
+	Fri, 14 Aug 2026 09:39:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786700396; cv=none; b=LBPvk3ZIIHWCCuBsZRLclN1oN9qSgwfR4y0ypnypPtiUzP+kiNyRYJkyPsR2Wh+2ke8TZd9pWGPuk35PziHOSCWMRrpWdLE6Ydv+6I+LMRphgrNTikVOrB4Fuse7GcV49SYeAMcZny7onrAajIpj1vgeq8RlK+3bzqJGaeWJHTg=
+	t=1786700399; cv=none; b=GRxY6BEVNj08cmCfrO4sQVhOw520plodpV2r9jQs9rAptzTfRu2ozDKqv+QEd9vTDPB3qlOQiT8NVqP2tYMwsmHmkSdsocn5dqGA+c3yDz68i+KXm095XjJ7fVdjLrsntE/v4Owvxspir0R3Y6PWrpKXgH5M0t37SjkDAQ3K8Rg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786700396; c=relaxed/simple;
-	bh=H1oWZGvtPgJom00NhUthqXLncw8xGcA4wK1lsyNMcgg=;
+	s=arc-20240116; t=1786700399; c=relaxed/simple;
+	bh=APr+NYktTjIAEK7m2DM/Vmzfna01JCkrnCltT5AwyGo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GOOqWoXStJsT53bgqVquUeUJT8jtUZQZoaUje0+9ef04yyWGT6QXVbi/6YZAzZJ4RgU575O73xZNwoGhoRMwXDwG9ei4J57hQ0C4PBBEP/HK219/u79/vj0kLX/mvqYRhSx5IJsPoz+FrmpZzMzOGpnKyhQpyzID7mxUyRwbu/A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=pTkF3937CoSl8lFZuG89IrklCsrqdRuAqACQExTZiaXilwmoqQZhhBS2gZVmvA6Dp9+if2SPwgPwnbrq7xJtNtvdeR7ESd2ouRkLbzvwKTgqe5cTKyhvCoOU/LCK51kl7U5784xlOv5HY6bk9zA0bYWOQBu5FtFCn9qpBg4tRmA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyg64TKzYQvPN;
-	Fri, 14 Aug 2026 17:39:39 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyR1D0szKHNMp;
+	Fri, 14 Aug 2026 17:39:27 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 17A7C40571;
-	Fri, 14 Aug 2026 17:39:48 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id DCE5740ADD;
+	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S13;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S11;
 	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-kernel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v5 09/32] ext4: avoid unnecessary transaction in ext4_map_blocks() for unwritten extents
-Date: Fri, 14 Aug 2026 17:33:08 +0800
-Message-ID: <20260814093331.1703882-10-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v5 07/32] ext4: fix orig_mlen initialization in ext4_map_blocks()
+Date: Fri, 14 Aug 2026 17:33:06 +0800
+Message-ID: <20260814093331.1703882-8-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
@@ -54,77 +54,58 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S13
-X-Coremail-Antispam: 1UD129KBjvJXoW7CFW8Jw1fuFWkJFyUJFWUArb_yoW8Cw1fpa
-	sIkr1rCF40g343WaySyF4jgFWakw1xKFWDuF48KryUZa43Kr1SgF10qF1rGFWUKrWfAay5
-	XFWjkw18C3Z5CrDanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
-	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
-	x0cI8IcVAFwI0_Jw0_WrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
-	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
-	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
-	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Ar0_tr1l
-	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
-	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
-	CTnIWIevJa73UjIFyTuYvjTRNF4EDUUUU
+X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S11
+X-Coremail-Antispam: 1UD129KBjvdXoWrZF4xur1UAF1fAF1rtr13urg_yoWkGFcEqa
+	y2vr48Gw4rArnakr4kZr4fJFyvkFy8Wr18CrW7Xry8XFn5ta95Ww1vyF9rAr4DW3yYvrZ8
+	ZFy8J34xKFW7ZjkaLaAFLSUrUUUUbb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+	9fnUUIcSsGvfJTRUUUb98FF20E14v26rWj6s0DM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+	6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAVCq3wA2048vs2
+	IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28E
+	F7xvwVC0I7IYx2IY67AKxVW7JVWDJwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr
+	1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUtVWrXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW7JVWDJwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0pRPCzZUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-When ext4_map_blocks() finds an unwritten extent in the extent cache and
-the caller is willing to accept unwritten extents without conversion,
-there is no need to start a journal transaction since no metadata update
-is required. This avoids unnecessary transaction overhead in the
-upcoming iomap writeback path when overwriting already-allocated
-unwritten extents.
+Save orig_mlen after clamping map->m_len to INT_MAX. Otherwise, the
+unclamped value may be passed below, bypassing its overflow protection.
 
-One thing to be careful about, as the comment in ext4_map_blocks()
-states, if the flags contain EXT4_GET_BLOCKS_CREATE, the function will
-mark @map as mapped.
-
+Fixes: 5bb12b1837c0 ("ext4: Add support for EXT4_GET_BLOCKS_QUERY_LEAF_BLOCKS")
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c9904c274347..5dcc3f7b2ffd 100644
+index 548a3968c5a7..bb4f1079d989 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -807,14 +807,23 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 	 * Note that if blocks have been preallocated
- 	 * ext4_ext_map_blocks() returns with buffer head unmapped
- 	 */
--	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED)
-+	if (retval > 0) {
- 		/*
--		 * If we need to convert extent to unwritten
--		 * we continue and do the actual work in
--		 * ext4_ext_map_blocks()
-+		 * If we need to convert written extent to unwritten or
-+		 * convert unwritten extent to written, continue and do
-+		 * the actual work in ext4_ext_map_blocks().
- 		 */
--		if (!(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
-+		if (map->m_flags & EXT4_MAP_MAPPED &&
-+		    !(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
- 			goto out_handle;
-+		if (map->m_flags & EXT4_MAP_UNWRITTEN &&
-+		    (flags & EXT4_GET_BLOCKS_UNWRIT_EXT) &&
-+		    !(flags & EXT4_GET_BLOCKS_CONVERT)) {
-+			/* Contains EXT4_GET_BLOCKS_CREATE - mark mapped. */
-+			map->m_flags |= EXT4_MAP_MAPPED;
-+			goto out_handle;
-+		}
-+	}
+@@ -703,7 +703,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	struct extent_status es;
+ 	int retval;
+ 	int ret = 0;
+-	unsigned int orig_mlen = map->m_len;
++	unsigned int orig_mlen;
+ #ifdef ES_AGGRESSIVE_TEST
+ 	struct ext4_map_blocks orig_map;
  
- 	if (!handle) {
- 		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
+@@ -719,6 +719,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 */
+ 	if (unlikely(map->m_len > INT_MAX))
+ 		map->m_len = INT_MAX;
++	orig_mlen = map->m_len;
+ 
+ 	/* We can handle the block number less than EXT_MAX_BLOCKS */
+ 	if (unlikely(map->m_lblk >= EXT_MAX_BLOCKS))
 -- 
 2.52.0
 
