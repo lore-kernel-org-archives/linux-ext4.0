@@ -1,150 +1,150 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C892D39CD10
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 10:31:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98FA442C4E4
+	for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 10:31:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786703495; cv=none; b=kQFxyYXpmyRrlTUZfHCSSI8AKXc+zgj6F4rJw6GCn/CP63PnL/9Wq9ZOg9x5FEhP/iW4gF8736d9KMJ85vaXVgH1VFBGp6boXjFY6swCdkcp4s0CfMeTeKK3ATOAP8xw6lgcOzfKy281i2miEB8Lf0J7F7PdkD8C1OdBbjYFYoI=
+	t=1786703500; cv=none; b=q0KqXYtmaplPhu2Ov3GrDIFo6nhei59zqpIIni0PIRXNhtI0/E0T2MrLq8DZeyhG0XBrkiKaxawbcMO4w0Im1DdDLszvCK7PG8X8sBdIG/sdeWZbxU8CMyZ+W+KxvSGR5kYHZ3YNS2Z1jRVFlS5ryXSg6nvrkviIDopVi9J7I8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786703495; c=relaxed/simple;
-	bh=pUzZTPHqEq+Fi6PZ88Y2Rl1zrK1dcX0HB/4DxlemU6g=;
+	s=arc-20240116; t=1786703500; c=relaxed/simple;
+	bh=nuX19a79muKSzVdhukpLNxRB5kswXFiWvIztG2jFce0=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=Ps2HiFevrpxrmYGcgpFee0y68KCvze9bjXPvfe/IuLJb0xRi+QNHfqPkXLye9RIAtA61Hb4abaTT3pthBcM5xWcDcottmFq8HG+j2HlFyCjX4awrKwJYqx1UeCZ7qrmnrvsVebwt34HSaeatGTzMXzS2oDxuyXVOa5pff4o1Rhw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LCyV8ZpX; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=E1sJKV/w4rqAwUyvroyMAfM4VxUctgyQBOMcV1ZUr5pl+9PTs4CflXGNUFfPJaWu15MxBrysQHfUvYdP8BwzNagwcjwl7PLwElAA8FkkE678W6DG9k3jGQ1V5cr8oRBIw5GMgRXuMldWXIcoyF2d4Sb1UM90XzryOVeRTQGnlIk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JchWBBNF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LCyV8ZpX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1A601F000E9;
-	Fri, 14 Aug 2026 10:31:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JchWBBNF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98BD71F00A3A;
+	Fri, 14 Aug 2026 10:31:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786703484;
-	bh=OBgIOjnvxJXpmvJNT5l4cpNm/Gn22F0S15LEaCl+Bi0=;
+	s=k20260515; t=1786703489;
+	bh=mxGTKMQeUyzlhC3GEPhMbchHTnIhNZNoxXp18ot1Nrw=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=LCyV8ZpXAm6IKqEczUDljLGxvTpmi+WGpNAzx6zPqL6ab+Ubeh5/WeW8LaTiNl0fE
-	 UxqnkflmWbIFp9X7a1ODUQHO75mCH29B//4Sigs7S0Mgz4NyWGwTlw10xLopVeUmKy
-	 WNr1FHa02kAYQipw9QL2u6qDlwMUMg6enfCN+WKojlME3tKC6ILhfSIy1sQmxgjq+X
-	 2qDPaiuhfAKI+cshb5VZ66GRAyKFvQsL98by9cGDqGRxdCyA5ZidhcK7SXVExqaqVM
-	 DYNzo8jNZCI8FCOmuXa6U7psaFnNSpuUwcyUeY6W+HPjwp1JnmfRehbL+NVb+p9ino
-	 QAnFmV1D96Acw==
+	b=JchWBBNFaQl3jK2eU8xcJ6DEluEPrAg7u/4ssyCD5FJxzlv4O72OZoV5XYLfE29rM
+	 1VxsofuwbsQYaAwGxQXeuT9ZszuyIXOPdsSfPp3so8oTfIt+fQ4d15MDzJ4LVq+E8J
+	 S8YEvH4VYH746DJTYBj8UvVYVEpHnEhCdoh8zyKaDYsYdygkFP7ch8lVe4hv5SagsD
+	 AYXGcN8ggg0EUnG/9FnuVV/5TTFyobLBmxWr/tQ8bkwy8Iin/J9CYbU/JMBzTRPStw
+	 Ew6NmLZvzcKb4dYoaRKNWbcm6q7CKF5gK+LQucwcZj2Pgi5xO6xqyYJgQVI9lS3l9I
+	 CrrjUVWV4NyKA==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH -next v5 25/32] ext4: defer i_disksize update while
- DISKSIZE_GROW_PENDING is set
+Subject: Re: [PATCH -next v5 27/32] ext4: clear DISKSIZE_GROW_PENDING on
+ truncate or error
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260814093331.1703882-26-yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260814093331.1703882-28-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-26-yi.zhang@huaweicloud.com>
+ <20260814093331.1703882-28-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 14 Aug 2026 10:31:23 +0000
-Message-Id: <20260814103123.E1A601F000E9@smtp.kernel.org>
+Date: Fri, 14 Aug 2026 10:31:29 +0000
+Message-Id: <20260814103129.98BD71F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+Thank you for your contribution! Sashiko AI review found 2 potential issue(=
 s) to consider:
-- [High] Missing State Initialization / Dead Code: EXT4_STATE_DISKSIZE_GROW=
-_PENDING is never set.
-- [High] State Leak / Data Loss: Discarding the zeroed EOF folio without wr=
-iteback permanently leaks the pending bit.
-- [High] Durability Loss: O_SYNC extensions via fallocate/zero_range silent=
-ly persist a stale i_disksize.
+- [High] The EXT4_STATE_DISKSIZE_GROW_PENDING inode state bit is never set =
+anywhere in the codebase. As a result, the entire deferred disksize update =
+mechanism introduced in this patch series is non-functional.
+- [Medium] The DISKSIZE_GROW_PENDING state is not cleared for linked inodes=
+ (i_nlink > 0) during eviction, leading to a WARN_ON_ONCE in ext4_destroy_i=
+node() on forced shutdown.
 --
 
---- Patch [25]: [PATCH -next v5 25/32] ext4: defer i_disksize update while =
-DISKSIZE_GROW_PENDING is set ---
-commit 5fa612fe6ec599be935a3aa55b36845e34d3180e
+--- Patch [27]: [PATCH -next v5 27/32] ext4: clear DISKSIZE_GROW_PENDING on=
+ truncate or error ---
+commit a9d36fc1a5b406105120b9e8fd8d91b4a9fe12f0
 Author: Zhang Yi <yi.zhang@huawei.com>
 
-ext4: defer i_disksize update while DISKSIZE_GROW_PENDING is set
+ext4: clear DISKSIZE_GROW_PENDING on truncate or error
 
-Operations like append allocate, zero range, and truncate update
-i_disksize directly. If the new i_disksize exceeds the original value
-while the zeroed EOF block is still awaiting writeback, metadata may be
-persisted before the zeroed data, exposing stale data on crash.
+The disksize-grow-pending state is set when a zeroed EOF block is queued
+for writeback and cleared by the ioend completion path once writeback
+finishes. This patch clears the disksize-grow-pending state on discard,
+inode eviction, filesystem emergency state, or truncate to avoid blocking
+writebacks and preventing warnings in ext4_destroy_inode().
 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3605,30 +3605,67 @@ do {								\
-
-[ ... ]
-
-> +static inline void __ext4_set_i_disksize(struct inode *inode, loff_t new=
-size)
-> +{
-> +	WARN_ON_ONCE(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
-> +
-> +	if (newsize < EXT4_I(inode)->i_disksize ||
-> +	    !ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING))
-
-[Severity: High]
-Could O_SYNC extensions via ext4_do_fallocate() or ext4_zero_range() silent=
-ly
-persist a stale i_disksize here?
-
-If the size is extended with an unaligned old EOF, the i_disksize update is
-deferred. Since O_SYNC immediately commits the journal without waiting for
-the pending zeroing writeback to complete, it seems it will commit the old,
-deferred i_disksize to disk.
-
-Would this cause the file size to revert on crash despite a successful fsyn=
-c,
-discarding the size extension?
-
-> +		WRITE_ONCE(EXT4_I(inode)->i_disksize, newsize);
-> +}
-
-[ ... ]
-
->  static inline int ext4_update_inode_size(struct inode *inode, loff_t new=
-size)
->  {
->  	int changed =3D 0;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 056937e278594..a1dfb70127ca8 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -273,6 +273,8 @@ void ext4_evict_inode(struct inode *inode)
 > =20
-> +	if (newsize <=3D inode->i_size && newsize <=3D EXT4_I(inode)->i_disksiz=
-e)
-> +		return 0;
-> +
+>  	if (ext4_should_order_data(inode))
+>  		ext4_begin_ordered_truncate(inode, 0);
+> +	if (ext4_inode_buffered_iomap(inode))
+> +		ext4_iomap_clear_disksize_pending(inode);
+
+[Severity: Medium]
+If a filesystem is forcibly shut down (e.g., via EXT4_IOC_SHUTDOWN without
+logging an error that sets EXT4_ERROR_FS) and then unmounted, dirty linked
+inodes will be evicted.
+
+Looking earlier in ext4_evict_inode(), if inode->i_nlink is > 0, the code=20
+jumps to the no_delete label, completely bypassing this cleanup:
+
+	if (inode->i_nlink) {
+		...
+		goto no_delete;
+	}
+
+Will this cause the newly added WARN_ON_ONCE in ext4_destroy_inode() to
+trigger for linked inodes since they bypass this state clearing?
+
+>  	truncate_inode_pages_final(&inode->i_data);
+> =20
+>  	/*
+
+[ ... ]
+
+> @@ -6741,7 +6759,18 @@ static int ext4_truncate_down(struct inode *inode,=
+ loff_t oldsize,
+>  	start_lblk =3D newsize > 0 ? (newsize - 1) >> inode->i_blkbits : 0;
+>  	ext4_fc_track_range(handle, inode, start_lblk, EXT_MAX_BLOCKS - 1);
+> =20
+> -	ext4_set_inode_size(inode, newsize);
 > +	down_write(&EXT4_I(inode)->i_data_sem);
->  	if (newsize > inode->i_size) {
->  		i_size_write(inode, newsize);
->  		changed =3D 1;
->  	}
-> -	if (newsize > EXT4_I(inode)->i_disksize) {
-> -		ext4_update_i_disksize(inode, newsize);
-> +	if (newsize > EXT4_I(inode)->i_disksize &&
-> +	    !ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING)) {
+> +	/*
+> +	 * Truncate the zeroed EOF block invalidates the pending disksize
+> +	 * update, so clear the disksize-grow-pending state.
+> +	 */
+> +	if (ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING) &&
+> +	    (newsize <=3D EXT4_I(inode)->i_disksize))
+> +		ext4_iomap_clear_disksize_pending(inode);
 
 [Severity: High]
-Are we setting EXT4_STATE_DISKSIZE_GROW_PENDING anywhere in the codebase?
+Is the EXT4_STATE_DISKSIZE_GROW_PENDING bit ever set anywhere in the
+codebase?=20
 
-Looking at this patch series, it appears the bit is checked here but never
-actually initialized or set. Does this mean the deferral condition is always
-bypassed and i_disksize is always updated immediately?
+A search of the tree indicates the literal EXT4_STATE_DISKSIZE_GROW_PENDING
+is only ever read or cleared, never set via ext4_set_inode_state() or=20
+similar.=20
 
-[Severity: High]
-If the EXT4_STATE_DISKSIZE_GROW_PENDING bit is properly set, could it leak
-if the dirty folio is discarded before writeback?
+There is a TODO comment in ext4_block_zero_eof() indicating that this state
+should be set:
 
-For example, if a file is truncated down before writeback completes, it
-seems the bit might never be cleared since the writeback completion function
-wouldn't be called for that folio.
+	/*
+	 * TODO: In the iomap path, handle this by tracking the ordered
+	 * range and updating i_disksize to i_size after the zeroed data
+	 * has been written back.
+	 */
 
-Would this leak cause all subsequent appends to skip updating i_disksize,
-leading to silent data loss on crash for future writes to the file?
+If the bit is never actually set, won't this entire deferred disksize update
+mechanism be non-functional, leaving the filesystem vulnerable to the stale
+data exposure this patchset was intended to fix?
 
-> +		WRITE_ONCE(EXT4_I(inode)->i_disksize, newsize);
->  		changed |=3D 2;
->  	}
+> +
+> +	i_size_write(inode, newsize);
+> +	__ext4_set_i_disksize(inode, newsize);
 > +	up_write(&EXT4_I(inode)->i_data_sem);
->  	return changed;
->  }
+> =20
+>  	ret =3D ext4_mark_inode_dirty(handle, inode);
+>  	ext4_journal_stop(handle);
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260814093331.1703=
-882-1-yi.zhang@huaweicloud.com?part=3D25
+882-1-yi.zhang@huaweicloud.com?part=3D27
