@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 312D1372EF0;
-	Fri, 14 Aug 2026 09:39:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B5BC37A83F;
+	Fri, 14 Aug 2026 09:39:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786700395; cv=none; b=vFoDtOD1Wb0WT/h/YXzfAveUJXjncxdc9dGeNyy4sGwM9SmsC4ApUQapJys/QECMak4KMzUN3d+9SlurOYPSYyIpGSXDKYr9VF1Ze0/czjUiAmi+gIAOt7alH8TwU5+qBeQyL10qfM92PgaOfPk49D723zHB33cb7ONVrAWVB4U=
+	t=1786700396; cv=none; b=LBPvk3ZIIHWCCuBsZRLclN1oN9qSgwfR4y0ypnypPtiUzP+kiNyRYJkyPsR2Wh+2ke8TZd9pWGPuk35PziHOSCWMRrpWdLE6Ydv+6I+LMRphgrNTikVOrB4Fuse7GcV49SYeAMcZny7onrAajIpj1vgeq8RlK+3bzqJGaeWJHTg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786700395; c=relaxed/simple;
-	bh=+EKhVdqv3p8r1A06W61NHGrKxX2hg/mDn643J0UXrHA=;
+	s=arc-20240116; t=1786700396; c=relaxed/simple;
+	bh=H1oWZGvtPgJom00NhUthqXLncw8xGcA4wK1lsyNMcgg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LAQ37OfH+NZexnnqwszFWDQ0i/JOD36r0XFFBcnrlMEvAwoJw/apf9tNNa4ECdsJeeIM2T4Ok6Fttm4sieYQhherHlMJ6CbE7+M4FYI9n08hCfLeurBKn2bqV0hOkoSCXdKMUP4/v4BNBFdbn3YOn/GphE1jhFubQ3kDgPN0+cE=
+	 MIME-Version; b=GOOqWoXStJsT53bgqVquUeUJT8jtUZQZoaUje0+9ef04yyWGT6QXVbi/6YZAzZJ4RgU575O73xZNwoGhoRMwXDwG9ei4J57hQ0C4PBBEP/HK219/u79/vj0kLX/mvqYRhSx5IJsPoz+FrmpZzMzOGpnKyhQpyzID7mxUyRwbu/A=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyg1PGnzYQvPK;
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyg64TKzYQvPN;
 	Fri, 14 Aug 2026 17:39:39 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 688F84056D;
-	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 17A7C40571;
+	Fri, 14 Aug 2026 17:39:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S6;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S13;
 	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-kernel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v5 02/32] ext4: factor out ext4_truncate_[up|down]()
-Date: Fri, 14 Aug 2026 17:33:01 +0800
-Message-ID: <20260814093331.1703882-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v5 09/32] ext4: avoid unnecessary transaction in ext4_map_blocks() for unwritten extents
+Date: Fri, 14 Aug 2026 17:33:08 +0800
+Message-ID: <20260814093331.1703882-10-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
@@ -54,267 +54,77 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S6
-X-Coremail-Antispam: 1UD129KBjvJXoW3WF48ur1xWFykXrW7ZF4ktFb_yoWxZw4kpF
-	W2ka4Fkw18uFyDWF4Igr4UZF4fta18K3yUGFy2krs2v3Wqyw1ftF1xt3yFgFWUtrWDWw4Y
-	qF4Dtrs3Gw4kJ3DanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmF14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
-	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1l
-	e2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI
-	8IcVAFwI0_Jw0_WrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
-	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
-	kIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
-	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
-	AY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAI
-	cVC0I7IYx2IY6xkF7I0E14v26F4j6r4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIx
-	AIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2
-	KfnxnUUI43ZEXa7sRiBMKPUUUUU==
+X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S13
+X-Coremail-Antispam: 1UD129KBjvJXoW7CFW8Jw1fuFWkJFyUJFWUArb_yoW8Cw1fpa
+	sIkr1rCF40g343WaySyF4jgFWakw1xKFWDuF48KryUZa43Kr1SgF10qF1rGFWUKrWfAay5
+	XFWjkw18C3Z5CrDanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
+	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
+	4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
+	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
+	x0cI8IcVAFwI0_Jw0_WrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
+	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
+	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
+	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
+	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Ar0_tr1l
+	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
+	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
+	CTnIWIevJa73UjIFyTuYvjTRNF4EDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Refactor ext4_setattr() by introducing two helper functions,
-ext4_truncate_up() and ext4_truncate_down(), to handle size changes. The
-current ATTR_SIZE processing consolidates checks for both shrinking and
-non-shrinking cases, leading to cluttered code. Separating the
-truncation paths improves readability.
+When ext4_map_blocks() finds an unwritten extent in the extent cache and
+the caller is willing to accept unwritten extents without conversion,
+there is no need to start a journal transaction since no metadata update
+is required. This avoids unnecessary transaction overhead in the
+upcoming iomap writeback path when overwriting already-allocated
+unwritten extents.
+
+One thing to be careful about, as the comment in ext4_map_blocks()
+states, if the flags contain EXT4_GET_BLOCKS_CREATE, the function will
+mark @map as mapped.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 199 +++++++++++++++++++++++++++---------------------
- 1 file changed, 112 insertions(+), 87 deletions(-)
+ fs/ext4/inode.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 14eab46f4750..8654006a57ef 100644
+index c9904c274347..5dcc3f7b2ffd 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -5982,6 +5982,112 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
- 	}
- }
- 
-+/*
-+ * Set i_size and i_disksize to 'newsize'.
-+ *
-+ * Both i_rwsem and i_data_sem are required here to avoid races between
-+ * generic append writeback and concurrent truncate that also modify
-+ * i_size and i_disksize.
-+ */
-+static inline void ext4_set_inode_size(struct inode *inode, loff_t newsize)
-+{
-+	WARN_ON_ONCE(S_ISREG(inode->i_mode) && !inode_is_locked(inode));
-+
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	i_size_write(inode, newsize);
-+	EXT4_I(inode)->i_disksize = newsize;
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+}
-+
-+static int ext4_truncate_up(struct inode *inode, loff_t oldsize, loff_t newsize)
-+{
-+	ext4_lblk_t old_lblk, new_lblk;
-+	handle_t *handle;
-+	int ret;
-+
-+	if (!IS_ALIGNED(oldsize | newsize, i_blocksize(inode))) {
-+		ret = ext4_inode_attach_jinode(inode);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
-+	if (!IS_ALIGNED(oldsize, i_blocksize(inode))) {
-+		ret = ext4_block_zero_eof(inode, oldsize, LLONG_MAX);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	old_lblk = oldsize > 0 ? (oldsize - 1) >> inode->i_blkbits : 0;
-+	new_lblk = newsize > 0 ? (newsize - 1) >> inode->i_blkbits : 0;
-+	ext4_fc_track_range(handle, inode, old_lblk, new_lblk);
-+
-+	ext4_set_inode_size(inode, newsize);
-+
-+	ret = ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+	if (ret)
-+		return ret;
-+	/*
-+	 * isize extend must be called outside an active handle due to
-+	 * the lock ordering of transaction start and folio lock in the
-+	 * iomap buffered I/O path (folio lock -> transaction start).
-+	 */
-+	pagecache_isize_extended(inode, oldsize, newsize);
-+	return 0;
-+}
-+
-+static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
-+			      loff_t newsize, int *orphan)
-+{
-+	ext4_lblk_t start_lblk;
-+	handle_t *handle;
-+	int ret;
-+
-+	/* Do not change i_size. */
-+	if (newsize == oldsize)
-+		goto truncate;
-+
-+	/* Shrink. */
-+	handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	if (ext4_handle_valid(handle)) {
-+		ret = ext4_orphan_add(handle, inode);
-+		*orphan = 1;
-+		if (ret) {
-+			ext4_journal_stop(handle);
-+			return ret;
+@@ -807,14 +807,23 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	 * Note that if blocks have been preallocated
+ 	 * ext4_ext_map_blocks() returns with buffer head unmapped
+ 	 */
+-	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED)
++	if (retval > 0) {
+ 		/*
+-		 * If we need to convert extent to unwritten
+-		 * we continue and do the actual work in
+-		 * ext4_ext_map_blocks()
++		 * If we need to convert written extent to unwritten or
++		 * convert unwritten extent to written, continue and do
++		 * the actual work in ext4_ext_map_blocks().
+ 		 */
+-		if (!(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
++		if (map->m_flags & EXT4_MAP_MAPPED &&
++		    !(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
+ 			goto out_handle;
++		if (map->m_flags & EXT4_MAP_UNWRITTEN &&
++		    (flags & EXT4_GET_BLOCKS_UNWRIT_EXT) &&
++		    !(flags & EXT4_GET_BLOCKS_CONVERT)) {
++			/* Contains EXT4_GET_BLOCKS_CREATE - mark mapped. */
++			map->m_flags |= EXT4_MAP_MAPPED;
++			goto out_handle;
 +		}
 +	}
-+
-+	start_lblk = newsize > 0 ? (newsize - 1) >> inode->i_blkbits : 0;
-+	ext4_fc_track_range(handle, inode, start_lblk, EXT_MAX_BLOCKS - 1);
-+
-+	ext4_set_inode_size(inode, newsize);
-+
-+	ret = ext4_mark_inode_dirty(handle, inode);
-+	ext4_journal_stop(handle);
-+	if (ret)
-+		return ret;
-+
-+	if (ext4_should_journal_data(inode))
-+		ext4_wait_for_tail_page_commit(inode);
-+truncate:
-+	/*
-+	 * Truncate pagecache after we've waited for commit in data=journal
-+	 * mode to make pages freeable.  Call ext4_truncate() even if
-+	 * i_size didn't change to truncate possible preallocated blocks.
-+	 */
-+	truncate_pagecache(inode, newsize);
-+	return ext4_truncate(inode);
-+}
-+
- /*
-  * ext4_setattr()
-  *
-@@ -6078,7 +6184,6 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	}
  
- 	if (attr->ia_valid & ATTR_SIZE) {
--		handle_t *handle;
- 		loff_t oldsize = inode->i_size;
- 		int shrink = (attr->ia_size < inode->i_size);
- 
-@@ -6130,94 +6235,14 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 			goto err_out;
- 		}
- 
--		if (attr->ia_size != inode->i_size) {
--			/* attach jbd2 jinode for EOF folio tail zeroing */
--			if (attr->ia_size & (inode->i_sb->s_blocksize - 1) ||
--			    oldsize & (inode->i_sb->s_blocksize - 1)) {
--				error = ext4_inode_attach_jinode(inode);
--				if (error)
--					goto out_mmap_sem;
--			}
--
--			/*
--			 * Update c/mtime and tail zero the EOF folio on
--			 * truncate up. ext4_truncate() handles the shrink case
--			 * below.
--			 */
--			if (!shrink) {
--				inode_set_mtime_to_ts(inode,
--						      inode_set_ctime_current(inode));
--				if (oldsize & (inode->i_sb->s_blocksize - 1)) {
--					error = ext4_block_zero_eof(inode,
--							oldsize, LLONG_MAX);
--					if (error)
--						goto out_mmap_sem;
--				}
--			}
--
--			handle = ext4_journal_start(inode, EXT4_HT_INODE, 3);
--			if (IS_ERR(handle)) {
--				error = PTR_ERR(handle);
--				goto out_mmap_sem;
--			}
--			if (ext4_handle_valid(handle) && shrink) {
--				error = ext4_orphan_add(handle, inode);
--				orphan = 1;
--				if (error)
--					goto out_handle;
--			}
--
--			if (shrink)
--				ext4_fc_track_range(handle, inode,
--					(attr->ia_size > 0 ? attr->ia_size - 1 : 0) >>
--					inode->i_sb->s_blocksize_bits,
--					EXT_MAX_BLOCKS - 1);
--			else
--				ext4_fc_track_range(
--					handle, inode,
--					(oldsize > 0 ? oldsize - 1 : oldsize) >>
--					inode->i_sb->s_blocksize_bits,
--					(attr->ia_size > 0 ? attr->ia_size - 1 : 0) >>
--					inode->i_sb->s_blocksize_bits);
--
--			/*
--			 * We have to update i_size under i_data_sem together
--			 * with i_disksize to avoid races with writeback code
--			 * updating disksize in mpage_map_and_submit_extent().
--			 */
--			down_write(&EXT4_I(inode)->i_data_sem);
--			i_size_write(inode, attr->ia_size);
--			EXT4_I(inode)->i_disksize = attr->ia_size;
--			up_write(&EXT4_I(inode)->i_data_sem);
--
--			error = ext4_mark_inode_dirty(handle, inode);
--out_handle:
--			ext4_journal_stop(handle);
--			if (error)
--				goto out_mmap_sem;
--			if (!shrink) {
--				pagecache_isize_extended(inode, oldsize,
--							 inode->i_size);
--			} else if (ext4_should_journal_data(inode)) {
--				ext4_wait_for_tail_page_commit(inode);
--			}
-+		if (attr->ia_size > oldsize)
-+			error = ext4_truncate_up(inode, oldsize, attr->ia_size);
-+		else {
-+			/* Shrink or do not change i_size. */
-+			error = ext4_truncate_down(inode, oldsize,
-+						   attr->ia_size, &orphan);
- 		}
- 
--		/*
--		 * Truncate pagecache after we've waited for commit
--		 * in data=journal mode to make pages freeable.
--		 */
--		truncate_pagecache(inode, inode->i_size);
--		/*
--		 * Call ext4_truncate() even if i_size didn't change to
--		 * truncate possible preallocated blocks.
--		 */
--		if (attr->ia_size <= oldsize) {
--			rc = ext4_truncate(inode);
--			if (rc)
--				error = rc;
--		}
--out_mmap_sem:
- 		filemap_invalidate_unlock(inode->i_mapping);
- 	}
- 
+ 	if (!handle) {
+ 		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
 -- 
 2.52.0
 
