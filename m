@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 500EC436BCE;
-	Fri, 14 Aug 2026 09:40:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBA683749EE;
+	Fri, 14 Aug 2026 09:40:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786700407; cv=none; b=qp3g3KVftB5jFIB0/JoptuQi9hLLY0wzgRmGr/Db21DxtAL7bTyk1Gbs2/E06vqwZPIh9utR+ojJUa+u1qS8ACBFSlY0INt3GMVkdx6JL/9ioLGqeHXe+w31pnxcUnqWpC4RRxLGK7hMO4dnXqQt+MRRKdPv88NTEWYXvORuw1U=
+	t=1786700407; cv=none; b=jkGdb38gOsopi2CGmuUKX+9coNy9JD+f2VdtEtbQC3sAoG/Zx79eK8dS/wW8GBsbJgrEBCgKYEL/SByAIrg0UpBCTNPiRFuvT54cEOtHHkLvdWmkupXvivCfwZ5w6f+3+TdKJs1gX5NAS3OmofXP/aGeRSCM/ISpcY/ucTKRdtg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1786700407; c=relaxed/simple;
-	bh=ZUs5OSB0xwNvtzbSBvm0XwZqA//Lf5s0xp6XF97fK50=;
+	bh=6mte78s0bke1ru9B3/dIfd4NVCM2mtnGuNF6c83r3v4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pkTbYfojJVFUTuQ8AKWeUgTqV6JQ3/ZUjGXA/BFw1SpVO/Px6ZGhp1xyyoKOVBL60vfo+ZIzkfMSaPvHxH9/0F3KUa8F2eiV3eu2xjU09SKMxEa+DdeAoQHmFnF2KWjbaM6bkby/fjsKEi32tqtWW+sTw2mr3mqj8oi3TsGTDHw=
+	 MIME-Version; b=eIJcQNY+dlgHHuCFZsNddT08Nf/mBiK8de33vDIMwiZZ4z9Znk099d/IXhwsojbW+AG1srmrcp0mQK60nPoZgbjG0hs6XOMQhQeHcLQ/92mVa4/7qKQNbgwdhQIlLi8Jxax2Y1WfuE+0BqSh2ynbp5aDKac5OrFaZh2LUdnuxg4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyR35r3zKHNM0;
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyR25YKzKHNN0;
 	Fri, 14 Aug 2026 17:39:27 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 2B6964056B;
+	by mail.maildlp.com (Postfix) with ESMTP id 0921B40AE8;
 	Fri, 14 Aug 2026 17:39:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S14;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S12;
 	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-kernel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v5 10/32] ext4: skip block allocation for holes in the data submission path
-Date: Fri, 14 Aug 2026 17:33:09 +0800
-Message-ID: <20260814093331.1703882-11-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v5 08/32] ext4: allow ext4_map_blocks() to start its own transaction handle
+Date: Fri, 14 Aug 2026 17:33:07 +0800
+Message-ID: <20260814093331.1703882-9-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
@@ -54,10 +54,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S14
-X-Coremail-Antispam: 1UD129KBjvJXoWxAFyxXr18XF17GF1DJFW5KFg_yoW5Jw43pr
-	9IkryrGr4qgw1a9a97Ca1UXF1Yk3WxGF47CFWrJrWjgry3JF1SqFWUK3WYyFWrKrW8XFWS
-	qF4F934rAr9Yy3DanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S12
+X-Coremail-Antispam: 1UD129KBjvJXoWxGryUJFWfAryDJF43ur17Jrb_yoW5XrW5pr
+	WakryrCr1UWF9a9F4Ska1UZF1aka48KrWUuFWfGryrC34a9rnagF1UK3WYyFWrtrWfWa1j
+	qF45tryUCa1jk3DanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -76,71 +76,101 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-When ext4_map_blocks() is called from the data submission path and I/O
-end extent conversion path (EXT4_GET_BLOCKS_IO_SUBMIT), it should not
-allocate blocks if the lookup returns a hole.
+Make ext4_map_blocks() start its own transaction handle when the caller
+does not provide one. The handle is started after the lookup path
+confirms that allocation is actually needed, and is stopped at the
+unified out_handle exit path. This avoids unnecessarily starting a
+handle for pure mapping queries. This prepares for the buffered iomap
+writeback conversion, which improves performance for fragile overwrite
+cases.
 
-The writeback path can legitimately encounter dirty ranges that map to
-holes. For example, when a folio straddles i_size and the tail beyond
-i_size is dirtied via a mmap write. Allocating blocks for such ranges is
-wrong because there is no data to write back, the dirty bits should
-simply be discarded without submitting I/O. This mirrors the existing
-buffer_head writeback path, where mpage_add_bh_to_extent() skips
-unmapped buffers and ext4_bio_write_folio() clears their dirty bits.
-
-In the ioend extent conversion path, holes are also not expected because
-we should wait for folio writeback before punching hole. If one is
-encountered, it likely indicates a failure in the concurrency
-protection. In this case, to avoid losing data beyond the hole, do not
-stop conversion, continue on the remaining ranges. This prepares for the
-buffered iomap writeback conversion.
-
+Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 8 ++++++--
- fs/ext4/inode.c   | 7 +++++++
- 2 files changed, 13 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 34 ++++++++++++++++++++++++++--------
+ 1 file changed, 26 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 76038b6c3655..0d62d9312284 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5167,11 +5167,15 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 				      EXT4_GET_BLOCKS_IO_CONVERT_EXT |
- 				      EXT4_EX_NOCACHE);
- 		if (ret <= 0) {
-+			/*
-+			 * If the ret is zero, an unexpected hole may cause
-+			 * conversion to fail.  To avoid data loss during I/O
-+			 * end conversion, skip the hole and continue
-+			 * converting subsequent blocks.
-+			 */
- 			ext4_warning(inode->i_sb,
- 				     "inode #%llu: block %u: len %u: ext4_map_blocks returned %d",
- 				     inode->i_ino, map.m_lblk, map.m_len, ret);
--			if (unlikely(ret == 0))
--				ret = -EINVAL;
- 		} else {
- 			conv_blocks += map.m_len;
- 		}
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5dcc3f7b2ffd..d8c3e5e13b8a 100644
+index bb4f1079d989..c9904c274347 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -823,6 +823,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			map->m_flags |= EXT4_MAP_MAPPED;
- 			goto out_handle;
- 		}
-+	} else if (retval == 0) {
-+		/*
-+		 * Do not allocate blocks for holes in the context of
-+		 * data submission path.
-+		 */
-+		if (!map->m_flags && (flags & EXT4_GET_BLOCKS_IO_SUBMIT))
+@@ -703,6 +703,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	struct extent_status es;
+ 	int retval;
+ 	int ret = 0;
++	bool internal_handle = false;
+ 	unsigned int orig_mlen;
+ #ifdef ES_AGGRESSIVE_TEST
+ 	struct ext4_map_blocks orig_map;
+@@ -790,8 +791,10 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ found:
+ 	if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+ 		ret = check_block_validity(inode, map);
+-		if (ret != 0)
+-			return ret;
++		if (ret != 0) {
++			retval = ret;
 +			goto out_handle;
++		}
  	}
  
- 	if (!handle) {
+ 	/* If it is only a block(s) look up */
+@@ -811,8 +814,15 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		 * ext4_ext_map_blocks()
+ 		 */
+ 		if (!(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN))
+-			return retval;
++			goto out_handle;
+ 
++	if (!handle) {
++		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
++				ext4_chunk_trans_blocks(inode, orig_mlen));
++		if (IS_ERR(handle))
++			return PTR_ERR(handle);
++		internal_handle = true;
++	}
+ 
+ 	ext4_fc_track_inode(handle, inode);
+ 	/*
+@@ -841,12 +851,14 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 	if (retval < 0)
+ 		ext_debug(inode, "failed with err %d\n", retval);
+ 	if (retval <= 0)
+-		return retval;
++		goto out_handle;
+ 
+ 	if (map->m_flags & EXT4_MAP_MAPPED) {
+ 		ret = check_block_validity(inode, map);
+-		if (ret != 0)
+-			return ret;
++		if (ret != 0) {
++			retval = ret;
++			goto out_handle;
++		}
+ 
+ 		/*
+ 		 * Inodes with freshly allocated blocks where contents will be
+@@ -867,12 +879,18 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			else
+ 				ret = ext4_jbd2_inode_add_write(handle, inode,
+ 						start_byte, length);
+-			if (ret)
+-				return ret;
++			if (ret) {
++				retval = ret;
++				goto out_handle;
++			}
+ 		}
+ 	}
+ 	ext4_fc_track_range(handle, inode, map->m_lblk, map->m_lblk +
+ 			    map->m_len - 1);
++
++out_handle:
++	if (internal_handle)
++		ext4_journal_stop(handle);
+ 	return retval;
+ }
+ 
 -- 
 2.52.0
 
