@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31435377EC6;
-	Fri, 14 Aug 2026 09:39:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3125836F914;
+	Fri, 14 Aug 2026 09:39:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786700394; cv=none; b=G+NB5XVFVUjDQ5NdC6H8xK5dIWJ9wQUH/FhZrZE8C47PfhU2hUhhH/5C1TkZR7lR06sH9/9PXboWBIO4EhEmp9Ysowk+KcM4/FtD/SqGFvkl2jLtB94Z2AJOUcglbvE9Vp/fSDWchxopBUrpwhm/EMvU+JNxG7UDYt7C0ZtT1WU=
+	t=1786700395; cv=none; b=g/qDqeqKTAwxZiijoRv8/+8lRe6jRX1kG4qBnww9ZyEM76bU+1WP0A238njnrJHH3YN9gZVKy2YyXka5fF7CAHcL3knlVmOXelP+B1v5sntQrMZBiS1irlZlGMYzmUUowEfAxNQ+4tnq1kfBvCXzoPwIH4b9iHAPtnorsSs+J3w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786700394; c=relaxed/simple;
-	bh=fHnvvL2PcXYW2npa1XrNItDS5pTvHwExN8HGy/aZcDo=;
+	s=arc-20240116; t=1786700395; c=relaxed/simple;
+	bh=eJmCEzvJstTWcaZTQCEIjieC/4K6tro5SKJzL2Mf1Xk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UWrgURJy2v+zpkpqugx2keecXEAZsukxwkhTtTXY1p6N7m8chSD72NSlBrnsMynZnXXG/IPSd2O+oGFP1Fcz25TvqhEw61gj3U6fB48dF5fAwwvOcus47ggA/wzGC9TuZCq/lQSbs0jdAWhFofUENXL4DrZk0BNykTQqX0johnM=
+	 MIME-Version; b=fPYCfSlsDZtmFFDhCl7PX5mrhffjR/C2JgDMxOCZvC6jOo4NoA9zpaUboU/s0tEW5aYmrDb6PbjrKGw91WupLHG7VCMITEJo+YzDoVGqZkZ05HCKJzdyFr80APtnWgQNONzpGzxJVHN3iGzN2Khq6via1pnDgx3AVC7t1L0+EeI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyg2whMzYQvQl;
-	Fri, 14 Aug 2026 17:39:39 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyh0XPNzYQvT9;
+	Fri, 14 Aug 2026 17:39:40 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 9770240590;
-	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4BEED40BFC;
+	Fri, 14 Aug 2026 17:39:48 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S8;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S15;
 	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -41,9 +41,9 @@ Cc: linux-kernel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v5 04/32] ext4: skip ordered I/O wait when zeroing beyond i_disksize block
-Date: Fri, 14 Aug 2026 17:33:03 +0800
-Message-ID: <20260814093331.1703882-5-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v5 11/32] ext4: add iomap address space operations for buffered I/O
+Date: Fri, 14 Aug 2026 17:33:10 +0800
+Message-ID: <20260814093331.1703882-12-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
@@ -54,10 +54,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S8
-X-Coremail-Antispam: 1UD129KBjvJXoW7CFy5Jr4fCw1fWw47uw1xXwb_yoW8Cr1xpa
-	y3Gr18Cr4kG3s09w1vq3WIg34Ykan5Ga1rGFZrJr4q9FW3uw1v9F4xt34jvFW2yrs3Ga10
-	qF45GrW3Z34DA3DanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S15
+X-Coremail-Antispam: 1UD129KBjvJXoWxXF1DuryDWryrtF4rGryfZwb_yoWrJw1fpF
+	98Kas8GF18XF9F9a1Sqa9rZrWYya4fGw4jgFW3W3ZI9F15GrW2gFW0k3WYyFy5t3ykJr12
+	qF4j9ry7WF17ArDanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -68,7 +68,7 @@ X-Coremail-Antispam: 1UD129KBjvJXoW7CFy5Jr4fCw1fWw47uw1xXwb_yoW8Cr1xpa
 	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
 	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
 	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1l
+	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Ar0_tr1l
 	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
 	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
 	CTnIWIevJa73UjIFyTuYvjTRNF4EDUUUU
@@ -76,45 +76,109 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-ext4_block_zero_eof() zeros the tail of a partial block beyond EOF.
-After zeroing, it waits for ordered I/O completion to prevent stale
-data exposure from concurrent post-EOF mmap writes during folio
-writeback.
+Introduce initial support for iomap in the buffered I/O path for regular
+files on ext4.
 
-However, if the zeroed range lies entirely beyond the block containing
-i_disksize, no stale data can be exposed because the zeroed region is
-beyond existing on-disk data. The zeroed pages will be written out
-before i_disksize is later extended past i_size, so the ordered I/O
-wait is unnecessary. Add a condition to skip it.
+  - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
+    inode uses iomap instead of buffer_head for buffered I/O
+  - Add helper ext4_inode_buffered_iomap() to check the flag
+  - Add new address space operations ext4_iomap_aops with callbacks that
+    will use generic iomap implementations
+  - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
 
-Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+The following callbacks(read_folio(), readahead(), writepages()) are
+provided as placeholders and will be implemented in later patches.
+
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/inode.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/ext4/ext4.h  |  7 +++++++
+ fs/ext4/inode.c | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 39 insertions(+)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 724a27e8be61..24ec205da2d7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2049,6 +2049,7 @@ enum {
+ 	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+ 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+ 	EXT4_STATE_FC_REQUEUE,		/* Inode modified during fast commit */
++	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
+ };
+ 
+ #define EXT4_INODE_BIT_FNS(name, field, offset)				\
+@@ -2148,6 +2149,12 @@ static inline struct mapping_metadata_bhs *ext4_i_metadata_bhs(
+ 	return READ_ONCE(EXT4_I(inode)->i_metadata_bhs);
+ }
+ 
++/* Whether the inode pass through the iomap infrastructure for buffered I/O */
++static inline bool ext4_inode_buffered_iomap(struct inode *inode)
++{
++	return ext4_test_inode_state(inode, EXT4_STATE_BUFFERED_IOMAP);
++}
++
+ /*
+  * Codes for operating systems
+  */
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 76bf0e944ebe..7601fe3618b1 100644
+index d8c3e5e13b8a..dda78cf1f68d 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4241,9 +4241,16 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
- 	 * truncating up or performing an append write, because there might be
- 	 * exposing stale on-disk data which may caused by concurrent post-EOF
- 	 * mmap write during folio writeback.
-+	 *
-+	 * Ordered I/O is required only when zeroing the tail of a block that
-+	 * overlaps with i_disksize. If the zeroed range falls outside that
-+	 * block, the zeroed data lies beyond the existing on-disk data. It
-+	 * will be written out before i_disksize is later extended past
-+	 * i_size, so no stale data can be exposed.
- 	 */
- 	if (ext4_should_order_data(inode) &&
--	    did_zero && zero_written && !IS_DAX(inode)) {
-+	    did_zero && zero_written && !IS_DAX(inode) &&
-+	    from < round_up(READ_ONCE(EXT4_I(inode)->i_disksize), blocksize)) {
- 		handle_t *handle;
+@@ -3956,6 +3956,22 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_next = ext4_iomap_next_report,
+ };
  
- 		handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
++static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
++{
++	return 0;
++}
++
++static void ext4_iomap_readahead(struct readahead_control *rac)
++{
++
++}
++
++static int ext4_iomap_writepages(struct address_space *mapping,
++				 struct writeback_control *wbc)
++{
++	return 0;
++}
++
+ /*
+  * For data=journal mode, folio should be marked dirty only when it was
+  * writeably mapped. When that happens, it was already attached to the
+@@ -4042,6 +4058,20 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.swap_activate		= ext4_iomap_swap_activate,
+ };
+ 
++static const struct address_space_operations ext4_iomap_aops = {
++	.read_folio		= ext4_iomap_read_folio,
++	.readahead		= ext4_iomap_readahead,
++	.writepages		= ext4_iomap_writepages,
++	.dirty_folio		= iomap_dirty_folio,
++	.bmap			= ext4_bmap,
++	.invalidate_folio	= iomap_invalidate_folio,
++	.release_folio		= iomap_release_folio,
++	.migrate_folio		= filemap_migrate_folio,
++	.is_partially_uptodate  = iomap_is_partially_uptodate,
++	.error_remove_folio	= generic_error_remove_folio,
++	.swap_activate		= ext4_iomap_swap_activate,
++};
++
+ static const struct address_space_operations ext4_dax_aops = {
+ 	.writepages		= ext4_dax_writepages,
+ 	.dirty_folio		= noop_dirty_folio,
+@@ -4063,6 +4093,8 @@ void ext4_set_aops(struct inode *inode)
+ 	}
+ 	if (IS_DAX(inode))
+ 		inode->i_mapping->a_ops = &ext4_dax_aops;
++	else if (ext4_inode_buffered_iomap(inode))
++		inode->i_mapping->a_ops = &ext4_iomap_aops;
+ 	else if (test_opt(inode->i_sb, DELALLOC))
+ 		inode->i_mapping->a_ops = &ext4_da_aops;
+ 	else
 -- 
 2.52.0
 
