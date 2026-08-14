@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 89E3640B108;
-	Fri, 14 Aug 2026 09:39:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9236738D69D;
+	Fri, 14 Aug 2026 09:39:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786700401; cv=none; b=SDwoRG6j4f0XwlIeIsSoHnCjMGpq8zM6cfY0L3ZBKXqKz+4UqaX36cUzGZNsOba9upb2Mf0is0+QOhcrmbooeny0+s8lkMVipod2NpW2xBS2FJUplK2WAoba/EU9GMvOs9Eug6OVJoKuPPCJ6M1C5/mxT9IQw7Cx/hB1Q7sHeek=
+	t=1786700403; cv=none; b=slrYANhBiS5gTQGyUgxsrvpZ6v3H3riIs88VkhxaMwZdxZW1+YbOkuXmK89jQoQ+e4sCSOE/1LV4i4JzypNKwPRVRgA53CLz8LFRqnzMQFrI+lt9PMogIZ+JSLlyPNNlEz8UQHp2RLFHYw0ivMADQshwu8B2e5IUWTZtyebhXuE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786700401; c=relaxed/simple;
-	bh=kl0qMxkFE6pnnqyk3HrpVS4AVBkVnvacgrC7uNqsDxk=;
+	s=arc-20240116; t=1786700403; c=relaxed/simple;
+	bh=kAtOeW3AotyzWlGvjxc0dXev0Sckxwg/8ubM9GtQsa0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=e+lkNiLUgI4WjFW3GlR+pNqWOwKQniE80gAgwr8o9sWUliXTyI3pznrwmCjH2f5hjouoKXc6sz8rq1smnXy09OcZO+wpfiZtCrbkVc+xQDILBi+ZVQHLx21ek6JWFEP1h7wGFxJWxzmJvWcdfZkk4L3ZqxTkDeqcDIPNVDDeLC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=FBkH+Y3eRT5ChQ6Ne40VOGIN1JzjCIXdrFXb8g/Qoczsj4mmajYkXKgfzidbvv/9rwkOMbzhROjrq1wWakNO7zdLzDOIF8PfxXgiIpfr60ypoG8nczAeJ3/twUQY/3RshsWKFEiHCXSsub/AmLoX5aqijDB0Cm2fGWuvioGkeK4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyj4hYFzYQvYR;
-	Fri, 14 Aug 2026 17:39:41 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hLxyQ5kVPzKHNKH;
+	Fri, 14 Aug 2026 17:39:26 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id D98B34056F;
-	Fri, 14 Aug 2026 17:39:49 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 8630A40561;
+	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S31;
-	Fri, 14 Aug 2026 17:39:49 +0800 (CST)
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBHg0JO4n5qk4oXCQ--.21396S7;
+	Fri, 14 Aug 2026 17:39:47 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
@@ -41,9 +41,9 @@ Cc: linux-kernel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	yangerkun@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH -next v5 27/32] ext4: clear DISKSIZE_GROW_PENDING on truncate or error
-Date: Fri, 14 Aug 2026 17:33:26 +0800
-Message-ID: <20260814093331.1703882-28-yi.zhang@huaweicloud.com>
+Subject: [PATCH -next v5 03/32] ext4: simplify error handling in ext4_setattr()
+Date: Fri, 14 Aug 2026 17:33:02 +0800
+Message-ID: <20260814093331.1703882-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
@@ -53,155 +53,119 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S31
-X-Coremail-Antispam: 1UD129KBjvJXoWxZFyDur13ZFW8tF13Kw13XFb_yoW7Jw4kpr
-	98KFn8Ga48Wr9F9r4Sqr1UZr1Fga18ta1UJFZ7uF4kXF15A34IgF18ta43ZF4jkrZ3Jw4a
-	qFW0kr4DWw48GrJanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUma14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j6r
-	xdM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
-	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
-	IYx2IY67AKxVWUtVWrXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
-	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
-	kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
-	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
-	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW7JVWDJwCI
-	42IY6xIIjxv20xvEc7CjxVAFwI0_Cr1j6rxdMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCw
-	CI42IY6I8E87Iv67AKxVWxJVW8Jr1lIxAIcVC2z280aVCY1x0267AKxVWxJr0_GcJvcSsG
-	vfC2KfnxnUUI43ZEXa7sRiyxR3UUUUU==
+X-CM-TRANSID:_Ch0CgBHg0JO4n5qk4oXCQ--.21396S7
+X-Coremail-Antispam: 1UD129KBjvJXoWxZr13JF1kCFW3Zr1UCF1ftFb_yoW5Wr4UpF
+	13G3Wqkr48XF1UWF48tFy7Zw4Fga1Iq3yUXFyag3Z2kFn5Jr1qgFy2qayFgFy5GrWkGw1a
+	qF4UKry3CFyUA3DanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1l
+	e2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI
+	8IcVAFwI0_Jw0_WrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
+	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
+	kIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
+	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
+	AY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAI
+	cVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMI
+	IF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnI
+	WIevJa73UjIFyTuYvjTRMUDJDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The disksize-grow-pending state is set when a zeroed EOF block is queued
-for writeback and cleared by the ioend completion path once writeback
-finishes. However, the zeroed block may be discarded before writeback
-completes — through folio discard, truncate, or unlink and inode
-eviction. Additionally, if the filesystem enters an emergency state, the
-block will no longer be written back.
+Refactor the error handling in ext4_setattr() for better clarity:
 
-In any of these cases, leaving the bit set would block subsequent
-writeback indefinitely. Therefore, we must clear it on all paths that
-invalidate the pending block before writeback completes:
- - ext4_iomap_discard_folio() on folio discard.
- - ext4_evict_inode() when an unlinked inode is destroyed.
- - ext4_iomap_writepages() when the filesystem is in emergency state.
+ - Return directly on ext4_break_layouts() failure.
+ - Propagate ext4_truncate() errors using the existing error variable
+   and jump to the common 'err_out' label.
+ - Propagate posix_acl_chmod() errors also through the error variable,
+   as it theoretically does not return a non-fatal error.
 
-In ext4_truncate_down(), truncating past the pending zeroed EOF block
-also invalidates the pending disksize update, so the bit must be cleared
-there as well.
-
-Finally, add a WARN_ON in ext4_destroy_inode() to catch any inode
-destroyed with the bit still set.
+With these changes, every error path either returns immediately or jumps
+to err_out. Consequently, the "if (!error)" condition guarding
+setattr_copy() and mark_inode_dirty() becomes unreachable for error
+cases. Remove this redundant check and the unused rc variable can be
+removed as well.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 33 +++++++++++++++++++++++++++++++--
- fs/ext4/super.c | 19 +++++++++++++------
- 2 files changed, 44 insertions(+), 8 deletions(-)
+ fs/ext4/inode.c | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 056937e27859..a1dfb70127ca 100644
+index 8654006a57ef..76bf0e944ebe 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -273,6 +273,8 @@ void ext4_evict_inode(struct inode *inode)
- 
- 	if (ext4_should_order_data(inode))
- 		ext4_begin_ordered_truncate(inode, 0);
-+	if (ext4_inode_buffered_iomap(inode))
-+		ext4_iomap_clear_disksize_pending(inode);
- 	truncate_inode_pages_final(&inode->i_data);
- 
- 	/*
-@@ -4344,8 +4346,17 @@ static void ext4_iomap_discard_folio(struct folio *folio, loff_t pos)
+@@ -6116,7 +6116,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		 struct iattr *attr)
  {
- 	struct inode *inode = folio->mapping->host;
- 	loff_t length = folio_pos(folio) + folio_size(folio) - pos;
-+	loff_t pstart, plen;
+ 	struct inode *inode = d_inode(dentry);
+-	int error, rc = 0;
++	int error;
+ 	int orphan = 0;
+ 	const unsigned int ia_valid = attr->ia_valid;
+ 	bool inc_ivers = true;
+@@ -6229,10 +6229,10 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
  
- 	ext4_iomap_punch_delalloc(inode, pos, length, NULL);
-+
-+	/*
-+	 * Clear the disksize-grow-pending state if the zeroed EOF block
-+	 * fails to write back and is discarded.
-+	 */
-+	plen = ext4_iomap_get_disksize_pending_range(inode, &pstart);
-+	if (plen && pos <= pstart && folio_next_pos(folio) >= pstart + plen)
-+		ext4_iomap_clear_disksize_pending(inode);
- }
+ 		filemap_invalidate_lock(inode->i_mapping);
  
- static ssize_t ext4_iomap_writeback_range(struct iomap_writepage_ctx *wpc,
-@@ -4453,8 +4464,15 @@ static int ext4_iomap_writepages(struct address_space *mapping,
- 	};
+-		rc = ext4_break_layouts(inode);
+-		if (rc) {
++		error = ext4_break_layouts(inode);
++		if (error) {
+ 			filemap_invalidate_unlock(inode->i_mapping);
+-			goto err_out;
++			return error;
+ 		}
  
- 	ret = ext4_emergency_state(sb);
--	if (unlikely(ret))
-+	if (unlikely(ret)) {
-+		/*
-+		 * The filesystem is in an emergency state and no further
-+		 * writeback will occur.  Clear the disksize-grow-pending
-+		 * state to avoid complaints when the inode is destroyed.
-+		 */
-+		ext4_iomap_clear_disksize_pending(inode);
- 		return ret;
-+	}
+ 		if (attr->ia_size > oldsize)
+@@ -6244,15 +6244,19 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		}
  
- 	/*
- 	 * Submit the pending zeroed EOF block range if the entire
-@@ -6741,7 +6759,18 @@ static int ext4_truncate_down(struct inode *inode, loff_t oldsize,
- 	start_lblk = newsize > 0 ? (newsize - 1) >> inode->i_blkbits : 0;
- 	ext4_fc_track_range(handle, inode, start_lblk, EXT_MAX_BLOCKS - 1);
- 
--	ext4_set_inode_size(inode, newsize);
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	/*
-+	 * Truncate the zeroed EOF block invalidates the pending disksize
-+	 * update, so clear the disksize-grow-pending state.
-+	 */
-+	if (ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING) &&
-+	    (newsize <= EXT4_I(inode)->i_disksize))
-+		ext4_iomap_clear_disksize_pending(inode);
-+
-+	i_size_write(inode, newsize);
-+	__ext4_set_i_disksize(inode, newsize);
-+	up_write(&EXT4_I(inode)->i_data_sem);
- 
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1c2395aa1d53..86ed5228dbe9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1491,12 +1491,19 @@ static void ext4_destroy_inode(struct inode *inode)
- 		dump_stack();
+ 		filemap_invalidate_unlock(inode->i_mapping);
++		if (error)
++			goto err_out;
  	}
  
--	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ERROR_FS) &&
--	    WARN_ON_ONCE(EXT4_I(inode)->i_reserved_data_blocks))
--		ext4_msg(inode->i_sb, KERN_ERR,
--			 "Inode %llu (%p): i_reserved_data_blocks (%u) not cleared!",
--			 inode->i_ino, EXT4_I(inode),
--			 EXT4_I(inode)->i_reserved_data_blocks);
-+	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ERROR_FS)) {
-+		if (WARN_ON_ONCE(EXT4_I(inode)->i_reserved_data_blocks))
-+			ext4_msg(inode->i_sb, KERN_ERR,
-+				 "Inode %llu (%p): i_reserved_data_blocks (%u) not cleared!",
-+				 inode->i_ino, EXT4_I(inode),
-+				 EXT4_I(inode)->i_reserved_data_blocks);
+-	if (!error) {
+-		if (inc_ivers)
+-			inode_inc_iversion(inode);
+-		setattr_copy(idmap, inode, attr);
+-		mark_inode_dirty(inode);
+-	}
++	if (inc_ivers)
++		inode_inc_iversion(inode);
++	setattr_copy(idmap, inode, attr);
++	mark_inode_dirty(inode);
+ 
++	if (ia_valid & ATTR_MODE)
++		error = posix_acl_chmod(idmap, dentry, inode->i_mode);
 +
-+		if (WARN_ON_ONCE(ext4_test_inode_state(inode,
-+				EXT4_STATE_DISKSIZE_GROW_PENDING)))
-+			ext4_msg(inode->i_sb, KERN_ERR,
-+				 "Inode %llu (%p): EXT4_STATE_DISKSIZE_GROW_PENDING not cleared!",
-+				 inode->i_ino, EXT4_I(inode));
-+	}
++err_out:
+ 	/*
+ 	 * If the call to ext4_truncate failed to get a transaction handle at
+ 	 * all, we need to clean up the in-core orphan list manually.
+@@ -6260,14 +6264,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	if (orphan && inode->i_nlink)
+ 		ext4_orphan_del(NULL, inode);
+ 
+-	if (!error && (ia_valid & ATTR_MODE))
+-		rc = posix_acl_chmod(idmap, dentry, inode->i_mode);
+-
+-err_out:
+-	if  (error)
++	if (error)
+ 		ext4_std_error(inode->i_sb, error);
+-	if (!error)
+-		error = rc;
+ 	return error;
  }
  
- static void ext4_shutdown(struct super_block *sb)
 -- 
 2.52.0
 
