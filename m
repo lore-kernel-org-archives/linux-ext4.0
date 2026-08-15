@@ -1,68 +1,67 @@
-Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C8F13BED5C
-	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 06:57:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5AC00222590
+	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 07:58:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.178
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786777063; cv=none; b=GWnBALASb4ZVlVClHDJeUZk95JU6b7eLjytGWMg97Be2Lahy6YzAfgGu7Xx4HLmN3/M+hWPemxu0wzwAYqF/gKO74xIlmAsuS7O0Fv/V7RTkQF+IO8aapHh3GVi2Z1xQR01abZygbGhNPyEbJxeB+cMnl+N6SzHFZQD52OnHvbg=
+	t=1786780733; cv=none; b=l1y2hca9q0FWgPB2RbFjF1x3PFcQYlxANltdkPJYQ1af+eGfJw1hmrJ3NB3tChSF4+XcjWprTLG+OemvZcxL/u1IHyogeZYVH5dYGukgdPZVlgDyGQI7xiNYugHOqeCj5+x1Im0xtwBFBXNisUatM7aWYT+f79CUsPm9mYrryKQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786777063; c=relaxed/simple;
-	bh=FGfhaeq2xKFMjBFTHBJ/wj72N0xgrREq6zmCXL6Pm8Q=;
+	s=arc-20240116; t=1786780733; c=relaxed/simple;
+	bh=jIEZZJ7p4KcOZsCVAV4ykuQfceRc8cLyKpOlaq3v5uA=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=jECJUHgZdFN8d7uwsUhHQ2p1HZvib19XGfBpQvpa/2OYQWMapbhQ2CxvcFdU3AFXZS9ghnVqnXyMawcullqeARhc0faRbNvi80i96a82WATO7g6sS9sIXqB2EeSDgqZ4dQMiRgge7Qa/LLVc19Zwf28u9Sib1zhZl+zzFslgzQQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=EWes0d4s; arc=none smtp.client-ip=209.85.214.176
+	 In-Reply-To:Content-Type; b=NHI+oei6uEy4fHMteLjX1KhA0gVTPLrrxXM2fm9dc/P+NpDyhWon7RXYES+vFyzq3X5X1ZzUmB+beNHba0cvqMnnFXAss2jw1nP1/rZ+hsikAZL1De75f2IRLs2/z2KInjoFzebgGprJ9BVXyYnDv4+wVT4unEZbUu+hnDACFAY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=n6ZRi44o; arc=none smtp.client-ip=209.85.214.178
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EWes0d4s"
-Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2cc97653887so29930835ad.1
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 23:57:39 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n6ZRi44o"
+Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-2cacb8416a1so18054565ad.1
+        for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 00:58:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786777058; x=1787381858; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1786780732; x=1787385532; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=0+O+EXhLcJWT45f42scuWhe5FquZM52S8O6m5v2Jyxk=;
-        b=EWes0d4skpGbbe9iPNs4TQK0yKJ9oAyVbcyu1fSePkiBAs3dvPnnGnyAi+uNI4iIFU
-         rjIf181S5NCJHvxtPybYqERJZWmF++rwi0xl0mQXW6lgz5sVQV9jMO4Cvtbck62xtXxX
-         pKpFYET1Nq/CqPaqa4J+nrtDyZKGMezkQBwvPqUiTbrGGRxk+FBcypoctquMvNBj7cNI
-         KW3hKmD8khOOIDYDXpAPylmMd9C4xqNV64E9MEGlC1qo6iC3aTpm2b7T2L3gIuNL859o
-         wjHkIrp8qYdTkI6oUy193uHtAMXAenDwbISZM7rMpZjMuiW6Yx24qyOF59v9LWPLgm2t
-         b2PA==
+        bh=rW377O/wYtB+aBJivfgYjxQSppkLexqA6V8YiPqrC3o=;
+        b=n6ZRi44oUd3ses1g/ILdnmU9GRSf8oHK8Sw+0grqgid5tLPzqaxztwUIsaxM63MSLs
+         h6xve7+wUmXTzdOBNimKWKrHtoeHaQ49OEP4CeU9BtCK2W3xnrIAMWXYEBcBXaY9pLWg
+         6PGQvhfXvY50b9T0GoR2QYBEVteBWGQLqY0U5HVLG6ueg2ilmXuLxBZz7/JlGFWEWvO/
+         fA7P0eSD1YvHW1AVxVNJrKAHC9YV7kC/genqOd6cLJXRoz9JOCIdHTrXU5Qidi4i++iD
+         h5bjdUXcCI1i0Uh855J9TQsZPw7lJJYK6oSpuZ9NzIquk/nH7vH9yPH0X2HBxvMrmeFM
+         7Nyw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786777058; x=1787381858;
+        d=1e100.net; s=20251104; t=1786780732; x=1787385532;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=0+O+EXhLcJWT45f42scuWhe5FquZM52S8O6m5v2Jyxk=;
-        b=b/Y2WDZFdQZxfs3oR6mkLZd80hmjzcKsQ6lOanqdlNqTlq7HnfkwYfOuG1ow7WUtoh
-         r6zllto+Y5sP/0yzRxCAXjlwFGKBiEteuTQRRxRlfaZUmtuOZUnarHIajulkHXLo0emU
-         lwnbnRYSchwk3Zd9I9C0rTbV7RSR5wu1Gsuv1P0ujQvih75Apzj0MaIUhuSRMVBGJYKk
-         H5YBZv3mv7sdsuz8n0KLmneknyb1Xxgy7ulDN3JCyx4zuzPxGfGVby1AtsQAhByi/snK
-         GPcP1RTlKO4p8oudGZ1sduyy9FKAZGs8+x+RAPkW6q5KhlKQKsKcQo7UgkJHQCcw98C9
-         AKNg==
-X-Forwarded-Encrypted: i=1; AHgh+Rp0rUJXk/gCCBzfPwB3Zwciri+hWpdQnM3f5pcfJN+pvtdmbRcU6BqT+WnJG25RlrlMaqgfTdys9aXj@vger.kernel.org
-X-Gm-Message-State: AOJu0YwqMunMGQU9+n0VB2ugVM2H8WRZf0nFkt4QEJ05LHeMpDCTSp9e
-	M5G4D/KHqTWKnJk04ppm46FLK1OaLWLUuMVOzmaEaO1fhhhqSCgJCHvcMDKY0dt3OY8=
-X-Gm-Gg: AR+sD12/84Zatk9IdkcCVPJHLf+8JtysEteP3mZLKXFO/lbl4uRGDvo3fCijSLxo+mg
-	aGSFQCyiBGI9Lj6zwnVP3jpUseyzVl/Jmk0xZ7/dAGXVCVUTnXCCtLdpcR5olAmzt2ur8b/9LZg
-	dDIm///45Cbu4+26r0uO9gSZ37SIpopBzJtvchKsh4/kqUp0Sfe6AIdeAacTjXotK3Q+B9+qHSt
-	nS+JBXEpE9GacO16G/TSW3tpxdhb8aNiT7tXv55JWyNvs5JqWacCb8xUMlc7hB5x7e1z+dpKNJX
-	sx0zffLouqw2gbP2ECGSw+UXMVNe1NhQ02jgmfrh080b11Sr14njm894aJvYbxHBX75gLo/w4bT
-	eNRF8GgigeazM+9ENAYSRgJplydnMyxUMBGp6DsmE4nPtmf8k2jmW65t7l/tJqsltqRl+OXVUjP
-	QwmqbKP4PRaoPlFF0JZ6KFeM+WL1jatoIVtJx4AWx0Zaw4jFFk8bOFeuZP66/10A6JXJKVb273e
-	QIcIluR
-X-Received: by 2002:a17:902:f610:b0:2d3:2b8a:5007 with SMTP id d9443c01a7336-2d3b0e4378emr139170855ad.15.1786777058358;
-        Fri, 14 Aug 2026 23:57:38 -0700 (PDT)
+        bh=rW377O/wYtB+aBJivfgYjxQSppkLexqA6V8YiPqrC3o=;
+        b=CaHv6XCZp+Cgs0lHy9ov+BsWxOgW8VOYRJoRxIwK4+uWgkxufDbqYyqzcrKH5KtWZy
+         Xjm0HgfSo3ma5iNDS+gY1hbX5xB7wCrI+1Wh2GmMrELBJAcoP9sGTVwVSDxjJa5JNF/4
+         mv/VcyFdxkXrGHTQNCuy62Jh2M3BdbkO8X8Qw/AZGTfESrT2Ys4FFGwJwcWM9D/qAENJ
+         TAxpUCBvazyPK9FtsCDBA+EmDxXHEuBoSbd2pxo2Jd4l8yO+vnKotLwgGAf7Owus7ZcE
+         JDKwtgRu3PN0miwFllNtpvhyIAt0pNUZ8Ww1FiYlRJwO0EBSHjXodz3Eu8T7bUtOSroF
+         mWkw==
+X-Gm-Message-State: AOJu0YwDhfo0JwTerOXZcscMfds7EYOOBPjullfyRDoKGbWwipNfzm76
+	sPOaDNSX4WwRTzIGGqaqSidZo4iwbEZAEGnb2EIg5z0aJFCMtnwiGmjJoBnrstzqdfQ=
+X-Gm-Gg: AR+sD11APJd/fVP7sTVnJEi8oYzUkLZNkr6XTJKvavBXG9lre7XMJk9eBe0ZTMhgFbq
+	ztc17fZHsiuS67L3u9eaZZ1cuLbMJAwTqp1LQhiKFISLvixTOgMF+EqkLi4xbsAFnNV6skKcvao
+	r/e5KcqAcoFfWjgNqwdtb3G2h9m/K2+TQ+EcNVDqi/dtaTc5bpKL51H9lS8/xr/dgLm9y5WbXwc
+	8qpLzj96/5a3Y+CfKd4uAo3Xv8AZ9bxwOnli/CbCeKdmk6ODfuYBl0OgYvDP2QzxCt0JAuY+e88
+	MQ3zjtpEphX6eyX+AbLKZq0S7EOMINttiCCDd2ORj18V33lHnPZA/jbHmcvYmLcT2rF1ZlHNK2x
+	YLIPdJhTmS9CYPWPu2qMdSw40QdZSDyA2Sr2UC6IEfdSOzqHTgU3CG2MNEmoibw4ye/GUheUiab
+	9490lIZv/PfsvVHaVg/D9adr7wqDfPQzj7kYjWOLY2bU4SP11BTgUTlhE7x22/rCVWhq2xmr/Z/
+	VbDel0j
+X-Received: by 2002:a17:90a:da8f:b0:380:21b7:e727 with SMTP id 98e67ed59e1d1-3933b95e327mr12617846a91.14.1786780731581;
+        Sat, 15 Aug 2026 00:58:51 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d3aebf17absm17255635ad.80.2026.08.14.23.57.34
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-394ea99ab1dsm5385654a91.7.2026.08.15.00.58.47
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 14 Aug 2026 23:57:37 -0700 (PDT)
-Message-ID: <6cc8eaee-9855-4e97-8cdc-b30257a79d18@gmail.com>
-Date: Sat, 15 Aug 2026 14:57:31 +0800
+        Sat, 15 Aug 2026 00:58:51 -0700 (PDT)
+Message-ID: <4b36f0e1-7e76-4567-895d-d3ba525535ae@gmail.com>
+Date: Sat, 15 Aug 2026 15:58:23 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,101 +69,82 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH -next v5 04/32] ext4: skip ordered I/O wait when zeroing
- beyond i_disksize block
+Subject: Re: [PATCH -next v5 05/32] ext4: set EXT4_MAP_NEW flag for delayed
+ allocated blocks
 To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-5-yi.zhang@huaweicloud.com>
- <20260814101457.008C01F000E9@smtp.kernel.org>
+ <20260814093331.1703882-6-yi.zhang@huaweicloud.com>
+ <20260814100816.4BBB31F00A3A@smtp.kernel.org>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260814101457.008C01F000E9@smtp.kernel.org>
+In-Reply-To: <20260814100816.4BBB31F00A3A@smtp.kernel.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
 
-On 8/14/2026 6:14 PM, sashiko-bot@kernel.org wrote:
+On 8/14/2026 6:08 PM, sashiko-bot@kernel.org wrote:
 > Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [High] Torn read of the 64-bit `i_disksize` on 32-bit architectures can cause the kernel to skip ordered I/O, leading to stale data exposure.
+> - [High] The newly introduced EXT4_MAP_NEW flag is completely ignored by its only caller, rendering the patch ineffective (dead code) and failing to resolve the underlying bug.
 > --
 > 
-> --- Patch [4]: [PATCH -next v5 04/32] ext4: skip ordered I/O wait when zeroing beyond i_disksize block ---
-> commit bb84de10d990ded9aab4107d18dd1616342efccd
+> --- Patch [5]: [PATCH -next v5 05/32] ext4: set EXT4_MAP_NEW flag for delayed allocated blocks ---
+> commit f71e7357d8a5fa9c83f4d4fc004cfa3640d60291
 > Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> ext4: skip ordered I/O wait when zeroing beyond i_disksize block
+> ext4: set EXT4_MAP_NEW flag for delayed allocated blocks
 > 
-> This commit optimizes ext4_block_zero_eof() by skipping the ordered I/O
-> wait when the zeroed range is entirely beyond the block containing
-> i_disksize. Since data beyond i_disksize hasn't been written to disk yet,
-> the ordered I/O wait is unnecessary and can be bypassed.
+> This commit sets the EXT4_MAP_NEW flag in ext4_da_map_blocks() to indicate
+> when a new delayed allocation block has been inserted. This aims to allow
+> callers to distinguish newly created delayed extents from existing ones.
 > 
+> Link: https://lore.kernel.org/linux-ext4/cc05c17d-163e-4251-b2c9-aa3a6f9555d7@huaweicloud.com/
+> 
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 7601fe3618b1f..9dbece14ae569 100644
 >> --- a/fs/ext4/inode.c
 >> +++ b/fs/ext4/inode.c
-> [ ... ]
->> @@ -4241,9 +4241,16 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
->>   	 * truncating up or performing an append write, because there might be
->>   	 * exposing stale on-disk data which may caused by concurrent post-EOF
->>   	 * mmap write during folio writeback.
->> +	 *
->> +	 * Ordered I/O is required only when zeroing the tail of a block that
->> +	 * overlaps with i_disksize. If the zeroed range falls outside that
->> +	 * block, the zeroed data lies beyond the existing on-disk data. It
->> +	 * will be written out before i_disksize is later extended past
->> +	 * i_size, so no stale data can be exposed.
->>   	 */
->>   	if (ext4_should_order_data(inode) &&
->> -	    did_zero && zero_written && !IS_DAX(inode)) {
->> +	    did_zero && zero_written && !IS_DAX(inode) &&
->> +	    from < round_up(READ_ONCE(EXT4_I(inode)->i_disksize), blocksize)) {
+>> @@ -1990,7 +1990,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
+>>   		}
+>>   	}
+>>   
+>> -	map->m_flags |= EXT4_MAP_DELAYED;
+>> +	map->m_flags |= EXT4_MAP_DELAYED | EXT4_MAP_NEW;
 > 
 > [Severity: High]
-> Could this READ_ONCE() on the 64-bit i_disksize result in a torn read on
-> 32-bit architectures?
+> Does this code actually allow callers to use the newly added flag?
 > 
-> If a background writeback thread concurrently updates i_disksize under
-> i_data_sem but without holding i_rwsem, and the file size is extending
-> across a 4GB boundary (for example, transitioning from 0x00000000FFFFFFFF
-> to 0x0000000100000000), a torn read might fetch 0 if the lower 32 bits are
-> zeroed first.
+> Looking at ext4_da_get_block_prep(), which calls ext4_da_map_blocks(),
+> it unconditionally intercepts EXT4_MAP_DELAYED, sets BH_New, and returns
+> early without checking EXT4_MAP_NEW:
 > 
-> If 0 is returned here, round_up(0, blocksize) evaluates to 0, which makes
-> the condition 'from < 0' false. Would this incorrectly bypass the critical
-> ordered I/O guarantee and potentially expose stale data in the event of a
-> crash?
+> fs/ext4/inode.c:ext4_da_get_block_prep() {
+>      ...
+> 	if (map.m_flags & EXT4_MAP_DELAYED) {
+> 		map_bh(bh, inode->i_sb, invalid_block);
+> 		set_buffer_new(bh);
+> 		set_buffer_delay(bh);
+> 		return 0;
+> 	}
+>      ...
+> }
+> 
+> Because EXT4_MAP_DELAYED is always set alongside EXT4_MAP_NEW, this branch is
+> always taken, and set_buffer_new(bh) is unconditionally called. The code never
+> seems to evaluate map.m_flags & EXT4_MAP_NEW.
+> 
+> Is it possible this patch is incomplete and the underlying issue remains
+> unfixed because the new flag is ignored?
+> 
 
-I agree this concern is valid. The torn 64-bit read on 32-bit SMP is
-mechanically possible, and the proposed condition could skip the
-ordered I/O path when it shouldn't.
-
-However, this pattern is not introduced by this commit. The existing
-ext4 code already has multiple READ_ONCE(i_disksize) sites without
-holding i_data_sem, such as the fast-path check in
-mpage_map_and_submit_extent() and the size check in
-ext4_dio_write_end_io(). i_disksize has no seqcount, unlike
-inode->i_size which has i_size_seqcount.
-
-I'm not sure whether all the unlocked sites are harmless, at least
-the mpage_map_and_submit_extent() fast-path check looks a bit
-problematic to me. If a torn read returns a value larger than the
-writer's actual target (e.g. when another ioend worker is concurrently
-advancing i_disksize from 0x00000000FFFFFFFF to 0x0000000100000000 —
-high 4 bytes already updated to 0x00000001, low 4 bytes still
-0xFFFFFFFF, so the reader observes 0x00000001FFFFFFFF), the fast-path
-comparison skips the lock-protected recheck, and the i_disksize update
-for this writeback batch is missed.
-
-I think this deserves a separate patch series to properly fix it,
-perhaps by introducing an i_size_read()-style helper for i_disksize
-(seqcount or similar), and reviewing all access sites. What do people
-think?
+The 15th patch ("ext4: implement buffered write path using iomap")
+will use this flag, so it's fine. I'll add a note in the commit message
+as well, just to keep Sashiko from complaining again.
 
 Thanks,
 Yi.
 
-> 
->>   		handle_t *handle;
->>   
->>   		handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+>>   	retval = ext4_insert_delayed_blocks(inode, map->m_lblk, map->m_len);
+>>   	if (!retval)
+>>   		map->m_seq = READ_ONCE(EXT4_I(inode)->i_es_seq);
 > 
 
