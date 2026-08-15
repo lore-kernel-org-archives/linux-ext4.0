@@ -1,83 +1,176 @@
-Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.48])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f47.google.com (mail-pj1-f47.google.com [209.85.216.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEDD634B682
-	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 01:45:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=43.163.128.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 991C71E7660
+	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 02:33:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786758318; cv=none; b=OrLDIlQOUMObcKPDbdsRRmr/18OSahd7c1DG5SSM81tDIWvNCiePWwomYcamVpmPop3Zz3XlGWfvARyrs/ZxhD+NKr8KhFZdhy5Uvih2mwhoW6PxMUUKZJPSDbXMzUjBp39fW+Iv53dxL+coZZOFNH7VFcL60+MoMjVZ0bRVlmQ=
+	t=1786761227; cv=none; b=YDOTRagnP6lQ2PXsSaB+oEe0lqq66nAmuK9eKZNRWfOpl3kk4H61zTr4sTOroN3Lzm5zGjmQY54kreoDTU+EEf6Ty+fo5YeIRAMjcrDwAtRDneE/u64rf1vsfrkp8lpifGffLay6cWA2i5O4KdYTNTvb4GZK9jbpINHnNmo59jE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786758318; c=relaxed/simple;
-	bh=4RIoDeHBVOD+kLksU++uG1J5IlT4gTIBM1eF5JyadJs=;
-	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=MOYo3W1eb6Tj+nPLZZBq/wW2qfcNSrrzLqSUTG4m4DjZ7eOM2TYyunLC3VwkyQk/UQ8s+EJRCe8X0bA4D87LG9dMEX8xaLb7l3HBAIJqmpaJFiaHTKSihl/Q//kjudC4HrnLZnVfox/8v1mi8VYX5s4tXdjX1ppH7VTLCaQHd/E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=XbuAHLoW; arc=none smtp.client-ip=43.163.128.48
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1786761227; c=relaxed/simple;
+	bh=iV4XDfJX+CFZbdszmcTiGj00Tjyby5tA1Vo+celIx7w=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=H73/r4a02tOBH2pe0IK3wzvxllnX2HoYMyHg8z2dJYYhPcPWDpMM5KzVYOGddHU3ql9pGjYz/R5lh9rFMGkBmi/8rPr8r5lJ5Q8CyEL4RqDXEt8DdKW0Lv5A1p67CJgV7WbgLW9jpAlsw5d+m06XUYs4MOi7PEdno8xv0tfCrWg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=n9KEReoz; arc=none smtp.client-ip=209.85.216.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="XbuAHLoW"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1786758305; bh=i++KO7NMWMmnoixRRncNWNCa82uvXhZgEVMgd4sQtYQ=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=XbuAHLoWG428tPcXyGylMCHBnj0yBhzzqrH/bX/UsLux7yhV2fxDC5kwoTVkr7YC1
-	 Qm0GvHdaW03ftkgtzNCJYqT1wOXKi6WnK0hmHQnR1/b1h97geZYxWBk+NJYXeKUTQ8
-	 oGchqzqCsS4SntlIt5lVIHtbd+2FwcFpeDMWnvgE=
-Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
-	by newxmesmtplogicsvrszb51-0.qq.com (NewEsmtp) with SMTP
-	id AF08EEC7; Sat, 15 Aug 2026 09:43:48 +0800
-X-QQ-mid: xmsmtpt1786758228tya888lsm
-Message-ID: <tencent_7A0B62235E38C5907A080BE3D56A59C9FD06@qq.com>
-X-QQ-XMAILINFO: MllZffuBkEb5Gw6hKu0AUwmtEt98tRR/olwfps2Eo3ke9ev6KONhi4JF4ud8v5
-	 qHTLRbRPYQB8ePU8HUdWZ59hSMZNrA6mXnTkkGoP08bx6ZjLohDZ1ULJikmmiZKXmUB6W9xfheH+
-	 kp499jDvOwLpw2ZIWQFz0BGxW9hYiO7+knKIvI2Kne8AFm5xVdFt+985cK/bEcnDyCDgq45M9ncI
-	 PS79+dplz+VsP1XhXi7gtemqC4Fks5MKy30ZOpRgd5vj6LVFrizTe/w5yF3w+YuAUbUMezXMjcWD
-	 z/zrRne/G+7oeuqc0hR03g/7fINJdsWngdk1585mYP3sa+tk6Vb5TnhyhpKolN+8gYlUmBESY/hT
-	 AKPSVqqUwFYQSe2cq58uZppH63aEEeAwnjhi4KAfMQb3DYScg0KQi9fBq5pRb4wjbIIop6sQA9oX
-	 qmGWTONY3x0ehHTrZmXrUEw3xPlgj+EAdwRdu9JjDhwOVnPRBRj/y8GoWe3HFJ/ZNpMD36EV7xiX
-	 iRh9QX2i+2su6BwmqYleXMDSdgNgAm184L50ubOhpVIpjhOgpAYCe0Uc62vlNvM1vIcFmpiWk9ax
-	 JEB2zBgh4SrUoaGkZ/5gUiGa7LyAAMLR3JbusL+TCyKUiC09ZXokIY5tOZKBqaZ7rIJmJdcxCIJA
-	 MgmmsXRTzSi4cL2VDPD06AR9zjJ+YgIVRKZTReMCAhv/ZNAx/pVFYyVI1t2HZYLSL5nN/IlrWZ0z
-	 bl9Xftl+trmyfa8SHxy5dsFLw3hmdd2hBBgupW51klQzkUFTRoHd5LhwiUBbDXZT+UxeczYvCaee
-	 r8HKSoX5s79WG7I9WP8bC9/TYuVSvpCcryQdbTOE5OPfZ39mWQ47MnAcQlJ/2H7yamD9nvk21jVt
-	 0IUDPntwcZZYPhkqD4rfpwPhQ5D3Ci+84SgoVSsRYqn9F1ChnxU6Ziiwc2c5oTrLdyYS+AVgRU7/
-	 f1wtGo5XBYD3KpPW8pujDIJxy0HC/OUt0asJutJwrk4cHdb+dg/DpNSftKWUrruXvFVKKoTAveE9
-	 +4BkgMkyxtCdI9+e+bUUI/xpRjHts=
-X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
-Date: Sat, 15 Aug 2026 09:43:49 +0800
-From: shuo chen <1289151713@qq.com>
-To: Theodore Tso <tytso@mit.edu>
-Cc: adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
-X-OQ-MSGID: <an_EVRqm82PaTv1o@DESKTOP-AT5F202.localdomain>
-References: <tencent_321031C6B9D5D092C8978B46D9F0BBA18607@qq.com>
- <an5_shcksPF6uIaW@mit.edu>
- <tencent_9121249A3171F5A424EC25B7912A3C794805@qq.com>
- <an8ejrZ4Q-xLShzo@mit.edu>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n9KEReoz"
+Received: by mail-pj1-f47.google.com with SMTP id 98e67ed59e1d1-381c51fde6bso2027253a91.2
+        for <linux-ext4@vger.kernel.org>; Fri, 14 Aug 2026 19:33:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786761225; x=1787366025; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=x0Z8mCo+puk0a6hzRC+iz3VlA602gbMFooVLucdUKS8=;
+        b=n9KEReozDy4ZiHq9EjXvN2TvS3hZ0ZRHcX3ytr8A1pezW355rtK+nt5yJUiX8AGnfm
+         jguWhmuhABtURWqel55Rrpzzc96ImaHRs3RnRn4sCwIXwhu4Iz+wLAcJiZk89uVIwPLG
+         HIPanVcrdQQD5G3OSh4SVZzWnuBqJNR2PleFgF0EFXQ3XBKhKIjGa8+5VKGu9tu0CxqT
+         kBY6HRdMwnbKplf5jS3AumfGYvghgaX1ZECl/u7wMPjl9Dv84UKkIcDxhSRrNWoXQXKk
+         H3W/vfdRPffSusgA7OW8fWAwxDy1hNqFhyQ1CVPGY82lq0z5T4Dg3aKFUPHiDjUsjTeS
+         cMwQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786761225; x=1787366025;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=x0Z8mCo+puk0a6hzRC+iz3VlA602gbMFooVLucdUKS8=;
+        b=feUXM6BCPeMS4oaMTmJR4uONRENbLxsYNGfEeXz7awEgsZsh+MA9UkToe9VzoX4l44
+         lV1MquIaMTg6kWZZHG/dmOTgaNdsPIRwWdgqsYdPqK9z2y8wq+hLjRiT4kpdrz/fwAzw
+         ELql5/yaJ5PJqq1GAs243czAi2d6m9dd0JW2SecSTPZKIwUgBgfsTq7PSPDx5KxRC00n
+         wfHHIbgdVKPZA3/GD9gr4KtDASMVnkDn7MvTa07W5t434HuDtdpTWVAKsfmWdwqGA+v+
+         Ye5w959LCrbxVl5rbDGLArnEqMpoS0jeYNFC5f3FLpE1O7HowU24RQcFgRzLkHpwjjmX
+         L50A==
+X-Gm-Message-State: AOJu0YzjW4HcGy2hvXOu+mTjT6AmJMukoLlOr4vNmGTINWt6EN8yBE+m
+	zQNX5w8aeBmUwNp6ll57W6XyUZiEriUOtjrer5/6U74uqs/GUjboAaLxBnR2BQ==
+X-Gm-Gg: AR+sD13T9PGjL9leImsiTfoaPwTToeIFEp8GNfT1zgECrPIyI0QI3JQPBymjIznRx/3
+	iJ1XjWWNa05GP9TQSBcIul4+oKUY2/Qv2fojCTI6g73suIqQlElKIVB4NuXYnCBdQsUdGdLWpiv
+	qFfk7tje8BZzE2KRdeyCNsChjmIAhmXRVZHQOxnq1vouaxvp153L/Am7lF0KDrYgK8T2nbUMBd3
+	ptaotIOkTQMITKSWqOOu3xm0Bsn5+dM5xKHqQY7k/8kEbSlphJPggtEQojnCDDWD3iCQv/ogaGR
+	wJ2f9RHDjeQqfS66io1ZHIUAm7/1PXEyhH5J/xIjNqBlyd7qXUAB6z5VtgL2fpbG7STOIgsAr5a
+	6wVun+9e/wBGyY+WQKGXmfhaWBZh91//0ZU+nV89i/9d7M4Mf9LAmsLBcmUd5Wi+e2Z26IOs5l5
+	F+XIgXK9qDz0Kd/NkrWz/BsHpFgmqLZeFYsGhsT+9PfsShtIXbOmfyuCQqEaRHTy0u1fUFBP0qR
+	NSMPx8R
+X-Received: by 2002:a17:90a:e18d:b0:380:7688:fbe9 with SMTP id 98e67ed59e1d1-3933b764d23mr12272119a91.8.1786761224820;
+        Fri, 14 Aug 2026 19:33:44 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-394ea9723casm4714661a91.2.2026.08.14.19.33.41
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 14 Aug 2026 19:33:44 -0700 (PDT)
+Message-ID: <3ba86c4d-ddc2-4716-bb4c-feb4b68bb6bd@gmail.com>
+Date: Sat, 15 Aug 2026 10:33:17 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <an8ejrZ4Q-xLShzo@mit.edu>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH -next v5 03/32] ext4: simplify error handling in
+ ext4_setattr()
+To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
+ <20260814093331.1703882-4-yi.zhang@huaweicloud.com>
+ <20260814101229.9F5201F000E9@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <20260814101229.9F5201F000E9@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Fri, Aug 14, 2026 at 09:57:33AM -0400, Theodore Tso wrote:
-> On Fri, Aug 14, 2026 at 04:40:02PM -0500, shuo chen wrote:
-> > Because ext4_convert_inline_data_nolock() has already called
-> > ext4_destroy_inline_data_nolock(), the inode is no longer in the inline
-> > state. So we need ext4_create_inline_data() to rebuild the inline state.
+On 8/14/2026 6:12 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [Critical] The patch incorrectly routes non-fatal errors from `posix_acl_chmod()` (and `ext4_truncate()`) to `ext4_std_error()`, triggering a spurious filesystem corruption response (DoS).
+> --
 > 
-> There are other ways to restore the inline state than calling ext4_create_inline_data().
-I get it — keep a backup of the inode and restore on rollback.
-But I prefer your second (safer) approach — allocate first, then convert.
-I'll send a v2 following that.
+> --- Patch [3]: [PATCH -next v5 03/32] ext4: simplify error handling in ext4_setattr() ---
+> commit f94f03ca7ff7f314c8faf61276a2cc51f78e4ce7
+> Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Cheers,
+> ext4: simplify error handling in ext4_setattr()
 > 
-> 					- Ted
+> Refactor the error handling in ext4_setattr() to propagate errors using
+> the existing error variable and jump to the common 'err_out' label. This
+> removes the need for the redundant rc variable and unreachable checks.
+> 
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 8654006a57eff..76bf0e944ebee 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+> [ ... ]
+>> @@ -6244,15 +6244,19 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+>>   		}
+>>   
+>>   		filemap_invalidate_unlock(inode->i_mapping);
+>> +		if (error)
+>> +			goto err_out;
+>>   	}
+>>   
+>> -	if (!error) {
+>> -		if (inc_ivers)
+>> -			inode_inc_iversion(inode);
+>> -		setattr_copy(idmap, inode, attr);
+>> -		mark_inode_dirty(inode);
+>> -	}
+>> +	if (inc_ivers)
+>> +		inode_inc_iversion(inode);
+>> +	setattr_copy(idmap, inode, attr);
+>> +	mark_inode_dirty(inode);
+>>   
+>> +	if (ia_valid & ATTR_MODE)
+>> +		error = posix_acl_chmod(idmap, dentry, inode->i_mode);
+>> +
+>> +err_out:
+>>   	/*
+>>   	 * If the call to ext4_truncate failed to get a transaction handle at
+>>   	 * all, we need to clean up the in-core orphan list manually.
+>> @@ -6260,14 +6264,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+>>   	if (orphan && inode->i_nlink)
+>>   		ext4_orphan_del(NULL, inode);
+>>   
+>> -	if (!error && (ia_valid & ATTR_MODE))
+>> -		rc = posix_acl_chmod(idmap, dentry, inode->i_mode);
+>> -
+>> -err_out:
+>> -	if  (error)
+>> +	if (error)
+>>   		ext4_std_error(inode->i_sb, error);
+> 
+> [Severity: Critical]
+> Does this code now incorrectly route non-fatal errors from posix_acl_chmod()
+> (and ext4_truncate()) to ext4_std_error()?
+> 
+> Passing a non-fatal error code like -ENOSPC or -EDQUOT to ext4_std_error()
+> can cause it to treat the condition as a critical filesystem metadata
+> corruption, aborting the journal and remounting read-only (or panicking).
+> 
+> For example, if an unprivileged user exhausts their quota or filesystem
+> space, and then executes chmod on a file with a POSIX ACL,
+> posix_acl_chmod() attempts to update the ACL, calling ext4_set_acl(), which
+> may return -EDQUOT or -ENOSPC. This error is now assigned to the error
+> variable and falls through to the err_out label, triggering
+> ext4_std_error() and causing a potential local Denial of Service (DoS).
+
+Yeah, if an inode shares its xattrs with another one, updating ACLs
+will allocate new space and can return ENOSPC when we're low on space.
+I'll drop this patch in the next spin. For later, maybe we can add a
+helper similar to ext4_error_is_fatal() to filter ENOSPC, ENOMEM, and
+EDQUOT, and only call ext4_std_error() for the real fatal ones. We've
+got similar checks in extent.c, so we could probably generalize that
+and share the logic.
+
+Thanks,
+Yi.
+
+> 
+>> -	if (!error)
+>> -		error = rc;
+>>   	return error;
+>>   }
+>>
+> 
 
