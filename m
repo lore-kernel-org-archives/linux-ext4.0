@@ -1,169 +1,262 @@
-Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from xmbghk7.mail.qq.com (xmbghk7.mail.qq.com [43.163.128.52])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96754345EDF
-	for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 10:04:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6289D33B6E8
+	for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2026 15:05:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=43.163.128.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786788265; cv=none; b=Xq8ptFX5FgQgwYsgj+3aDLD6ShhTAO1da608UwQDD280JN/UpJlRi7aoBPIdjBT0ypO6X/yvhsLAS2NyQzyaepl1RjA1sQiWAVvUUu0N2c4gFT32azbUkQKUZ/Ld1aq1+Tb2DcLbiGGv3r9TVCDTPL3/fWrqYiLgGBMHfH+f+kg=
+	t=1786892759; cv=none; b=T/mIh/bTiNvV22nsdoSetiMlbzAprqIsDZtykqqPDTShPtRKuNDi974WBNdKPkaJ/10fD94S20WR/PLdZMXtFcEC08OW/xnwSQIc97V4NjrkjJYDWWmThyTMbqkFVAwovNWTF56ATF4RkHOteJjBArJtAWvgsOMe7+QzMf/P3KE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786788265; c=relaxed/simple;
-	bh=lm1cnI1mVhfNqcyNMCGp02rnluBKDwu6KOP7Lq68qp0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=kiAAVugopkHgP5+hEWc68HX79Ozfh2LZ7SACzoFAjRG07I2n80OytytnNF2AbZHFQl8pNHOLO3vY45vIAtYmyk+Na/mu1WOI04qv6GRHu97ZwhJNf7rqf/W6ta+AuxgOKParFr/DJQFckfIyd28KrMJ4GRevKwd/gydeRdbiQDw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KGks7cuH; arc=none smtp.client-ip=209.85.210.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1786892759; c=relaxed/simple;
+	bh=otshLG7FBlZZghbF2WpdXmTB2dMSUHQOm3AZTKzDva8=;
+	h=Message-ID:From:To:Cc:Subject:Date:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=uuwKHa73ziXzd2J25WzincMCsqBMkRkvHoBwUWdAw2l+J3dO/JZg/UcbIQJ88Pzb+4wK6CQiPjj9faBXR8ptD5xYS22Lgrq6i2EuTdrFJ0ZXrF7aelc+xWIS7bYQOu+1DW5CCRBPBS0RER5LeO8RZGOkJzLJfq13Nb5iWwZjckY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=Ha+0RNU/; arc=none smtp.client-ip=43.163.128.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KGks7cuH"
-Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-84830c774a0so1583614b3a.1
-        for <linux-ext4@vger.kernel.org>; Sat, 15 Aug 2026 03:04:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786788264; x=1787393064; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=vU+UAzKl+KW6dM65ADSCUzY3+zuzNPfx09r5Ls+5rio=;
-        b=KGks7cuHKy3Rm2pIp/y+5sypDyhemAzl54l8waT8+mKpazEJ/I5JqaGOT7/we9IvNh
-         EDFML3wz5qRkRqf1KGwWhnH20d76q4Z0sgASdobMEnWMBJ8l4i7MgQyI1G+QbB7vUaoN
-         yrWO8PKFgWygBQsWPqwSFXnc3nlgO6r5v8+ScPoPrg/G0PVyFh7P/La4fJ/Sgr65jiJx
-         IMsrSpbbH7sTzeT1pRFuaZW9s59kDXtNyhEKMNP26UqpeR7Rupq8JfAT0h1Aai/JlAEa
-         S9JaP8X4Cbt50cmfwteYGu790q5iJaRMr2gnwJtj8vucSwhDd5B4qWbgKM2YYiqwZNnt
-         ATdg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786788264; x=1787393064;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=vU+UAzKl+KW6dM65ADSCUzY3+zuzNPfx09r5Ls+5rio=;
-        b=HF1PJjjbSRrNKABra17/N20RUp0TsDe++ExBWGKsTVgmetSZyW85Lptgu032uKLP0G
-         PelTH5NVTYSn6srIshjH5AyHcisn2FcH8fLyCD6nmckqQEC+vpCwEd4g56MS2h1VsFyi
-         0g2iRBhFyJoC06Q45fnbYNX+VZOXL14jxYYBWUWZb7VEZtrYocPINrhc3fEhM2jRrpVn
-         r+XIGnoXpWotSyW1IUGa8Pnwe4uNwoivi0gdiaLpOhqKYdTTCNywANztA1k5WSN5pnbi
-         dKRWToeisWqtn7xKLtzuGuKcmXqdwUf2wvCVQDTTpXPFkPVs/Zy7++i/Hb3qxg21cG1H
-         dc8w==
-X-Forwarded-Encrypted: i=1; AHgh+RqNwALpUWuM3Kfzw7lM8JNdZIZjb943uBwJ/9giPIPe7xE19YSVIAUh4dLstS/1JV4ZtcAI4aVqUy88@vger.kernel.org
-X-Gm-Message-State: AOJu0YzuJCbSb4lZjsg2R9fIeXNY1WATs2lrdyBz8Kv4KNZmR2B0dlyJ
-	7yzWPYQgs24Ri23VHZGowbMcDXos56Z1JUduT86bEIy6VgxEMpLDVYMn
-X-Gm-Gg: AR+sD12CiuKE/3gK3eBlkATqVN3X8NTAp8hlMrFRwBeUp65xOJvzH7G/Oh+ScmfAE7w
-	U9wzU+U0v26u0D58ruRjL8PkD4GGc53u7r21VxFEjB+sLrmtPDhoGhTcGrYBqHaR8VlK64Zw1Mw
-	k4/JF+2Tj5wbWhQuCpLWDis1mRfGkMxG/zQNdt7Wl1zneHlvfBc8eahgFwbq/1JqagLAomjIhT4
-	WL51hA/HDFqxi+GUha7/nbdAJzbLdJmwxCU3UNGgmQ3RnthuaCbtS8waEbU+H5ZGtD8vyCaVQhw
-	/3aJsqQDCgjjx2wXqYMH2PXqKBKtIyF2b/xsKrwcmH8Mjp+TdeqljAxxjLCZn7A3Sk1ilZuJntz
-	GKA2r7bOQJjaNuq+y1Tw27L9afnVmFDPw5w4EDuTpukyjJAofsvszRl8Kl5TYo8yjrXDmZad8wq
-	07OVTiProRNNO6bwa53VIIt9DlYh7cXfzQYbPmeLq5aB6lP0VI68sXD5+VihUiMeQGkKzY6sftk
-	q0/f28+
-X-Received: by 2002:a05:6a00:4193:b0:847:9315:fb8b with SMTP id d2e1a72fcca58-84fde1500e7mr13333285b3a.6.1786788263768;
-        Sat, 15 Aug 2026 03:04:23 -0700 (PDT)
-Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc09fa8c128sm1637490a12.32.2026.08.15.03.04.20
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 15 Aug 2026 03:04:23 -0700 (PDT)
-Message-ID: <7aa2a7a6-02a3-44db-99f7-9b1a3a3cc313@gmail.com>
-Date: Sat, 15 Aug 2026 18:04:01 +0800
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="Ha+0RNU/"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1786892747; bh=lkysBOuNh7hJQKyoOxe1ETaxI38YoJ6jpCDmOfGYH+Q=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=Ha+0RNU/phTisx5UK7q+mvV9+8wtrEhN9tvefjQuozoGCb8PcOIfhHerKng7VRfj7
+	 WmpLl2R0FXISjcnfYleIu/UPw46bXLHvFVLLV7NhPk6xhXDrCmiDSQEXR875BZ+Vqc
+	 cqwxpi65y8SQEIZKqREs88sQA4V+szwhp1a8IH1I=
+Received: from PIPISHUO.localdomain ([2409:8a00:175:6f10:5e8:e1d0:5179:38f8])
+	by newxmesmtplogicsvrszc56-0.qq.com (NewEsmtp) with SMTP
+	id 9693AEA; Sun, 16 Aug 2026 23:02:22 +0800
+X-QQ-mid: xmsmtpt1786892542tdleucmo4
+Message-ID: <tencent_BDF7C28D876E422418FB57474B765F0C1A09@qq.com>
+X-QQ-XMAILINFO: MUM9tpkn9N/zuF5xJxTA7Q7+V1QKJ1d1UipKHjFzj0PXLNvUVqKVnMs4Ipwqqf
+	 hahPS9fn499+EOLJu7pBqrWLMLLpsp3MA9mt3ljFYo+ArRRqIpeZ/Yl0iERvZgvwafk+ESQQrwtO
+	 plRWof/6ml7/VTVPPCVNDu3F8tBZz5g7kgCtC7QOzf0jmqOqGBCaFgmTYgDId1ylFDALIGfWl50p
+	 WzyPQlnBIGQv22ktZ29oibb58Vp13a4tbQIXqyKbPCoDK39kdS+DH+m2HKTJiCQMgsA5KEkFXLTX
+	 ZCz62pgs9Y60Y9bv11hUq8xcPgEbSkzRsTFfwSMXeSQjJQrA03mbFimTK2R57kF3kh4lsICbhZjn
+	 JcBb0UqoXzuFX3HkOTjJ5+LUIRVNdimvbmlMuHCGgXQ75I0ku3FFfEVLj5T2g8Qr5ClP+CvD7uCc
+	 TojPdCAj8c11v3jFh6bacdcie3Et1V7cEs5tOAWuwnmz23YhnjNkP0aRCQ/mRoMmI28dxzZIkKUD
+	 hX5cyNE90f8AGf8nQ5/tPHsFSTffh8Q4Sa8C5Eoyb0C7kLP6gFwuMHI0gFDm0zpf98lsrYgD32CJ
+	 zLEElju7WO2txnZAn6ghN2UML7GZ1U7GgN1OrhPnKjkrB0C6QcTYohSU0OXgAAI0hOPsmn8nodis
+	 /6Lu7pPGzzCSdx2dHcJ8rVSMxLngg/3FOL5ZwR0LSiPmuG9nbyqCDwipOlACryYJdKtJavqhQ4Dc
+	 gziBOs2uFsmqdBP4PrKtQAjTpy5UVg2FudmHQxZqIIx6Y4X67cTtuC6lLGdaMNmWqlIvF3FGkJ/q
+	 U3OU5HAsfzLyeaXhV4V9BY0DAppcJLIL5U4NEHv/lyGgdW72RkO4uinrfUcBJY/+kdv85+/EHROK
+	 kCwb10ufEoLmw//UjkKWsoIcb8fVQrZupgQThh28nVYazwWxCfYuYVk/o9PL2tiHmEa0wpL9WZSZ
+	 een3nsalxdDkfvvIhHFXWc/i+JHGUAW0C3a2PMMbtSQVZ3yiBpWGbz6gMbL2ybYgNQ7BelEk8zEr
+	 GWF/pvkr8cBB1cEEadV1O5tCgLNs3ybYHJ79XrwSeNFboaUSTTc286YAkn0U6oVKVGnY6NGt4nh8
+	 UfLi3IQj6jLCy8Nl+pmcOFcko7qoYGDmfHlNSYZ5aJ4rdgRMU=
+X-QQ-XMRINFO: OD9hHCdaPRBwH5bRRRw8tsiH4UAatJqXfg==
+From: shuo chen <1289151713@qq.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	ack@suse.cz,
+	ojaswin@linux.ibm.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	shuo chen <1289151713@qq.com>
+Subject: [PATCH v2] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
+Date: Sun, 16 Aug 2026 23:02:02 +0800
+X-OQ-MSGID: <20260816150201.132685-2-1289151713@qq.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <an5_shcksPF6uIaW@mit.edu>
+References: <an5_shcksPF6uIaW@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH -next v5 07/32] ext4: fix orig_mlen initialization in
- ext4_map_blocks()
-To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-8-yi.zhang@huaweicloud.com>
- <20260814100852.164CF1F000E9@smtp.kernel.org>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260814100852.164CF1F000E9@smtp.kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On 8/14/2026 6:08 PM, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> 
-> Pre-existing issues:
-> - [High] If ext4_issue_zeroout() fails during block allocation with EXT4_GET_BLOCKS_ZERO (e.g. via DAX hole-filling), the newly allocated WRITTEN extent is not reverted, exposing uninitialized disk data.
-> --
-> 
-> --- Patch [7]: [PATCH -next v5 07/32] ext4: fix orig_mlen initialization in ext4_map_blocks() ---
-> commit 547294dd62d03f6ea5caef0d90e340b0af933eae
-> Author: Zhang Yi <yi.zhang@huawei.com>
-> 
-> ext4: fix orig_mlen initialization in ext4_map_blocks()
-> 
-> This commit fixes an overflow protection bypass by ensuring orig_mlen
-> is saved only after clamping map->m_len to INT_MAX.
-> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
-> 
-> [ ... ]
-> 
->> @@ -719,6 +719,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->>   	 */
->>   	if (unlikely(map->m_len > INT_MAX))
->>   		map->m_len = INT_MAX;
->> +	orig_mlen = map->m_len;
-> 
-> [Severity: High]
-> This is a pre-existing issue, but while reviewing the block mapping code in
-> fs/ext4/inode.c, I noticed a potential data exposure when DAX hole-filling
-> writes fail to zero blocks.
-> 
-> If ext4_issue_zeroout() fails in ext4_map_create_blocks(), the error is
-> returned immediately without reverting the extent tree modification:
-> 
-> fs/ext4/inode.c:ext4_map_create_blocks() {
->      ...
->      if (flags & EXT4_GET_BLOCKS_ZERO &&
->          map->m_flags & EXT4_MAP_MAPPED && map->m_flags & EXT4_MAP_NEW) {
->          err = ext4_issue_zeroout(inode, map->m_lblk, map->m_pblk, map->m_len);
->          if (err)
->              return err;
->      }
->      ...
-> }
-> 
-> This error propagates back to ext4_iomap_alloc(), which aborts the operation
-> but proceeds to commit the transaction anyway:
-> 
-> fs/ext4/inode.c:ext4_iomap_alloc() {
->      ...
->      if (ret < 0) {
->          ext4_journal_stop(handle);
->          return ret;
->      }
->      ...
-> }
-> 
-> For a DAX write to a hole within EOF, the extend flag evaluates to false in
-> ext4_dax_write_iter(). This completely bypasses the cleanup path that would
-> otherwise drop the failed extent:
-> 
-> fs/ext4/file.c:ext4_dax_write_iter() {
->      ...
->      if (extend) {
->          ret = ext4_handle_inode_extension(inode, offset, ret, count);
->          ext4_inode_extension_cleanup(inode, ret < (ssize_t)count);
->      }
->      ...
-> }
-> 
-> Because the newly allocated extent was already inserted into the extent tree
-> as WRITTEN by ext4_ext_map_blocks() earlier in the call chain, could this
-> sequence leave uninitialized disk data mapped and exposed to userspace?
-> 
+> We can also do the conversion in a much safer way, by allocating the
+> data block first, and writing a copy of the data to the data block,
+> and only if that is successful, do we update the extent tree or
+> indirect block mapping in the inode.  Of course, this would require a
+> rewrite of ext4_convert_inline_data_nolock(), but this would allow us
+> to fix up the other aspects of the error handling which is not quite
+> right.
+Rewrite ext4_convert_inline_data_nolock() as suggested.
 
-Yeah, this is an pre-existing issue. In DAX mode, if issue zero fails,
-we should clean up the allocated blocks on the error path.
+---
+v1 -> v2:
+- Rewrite ext4_convert_inline_data_nolock() to allocate blocks before
+  destroying inline data
+- Link to v1: https://lore.kernel.org/linux-ext4/tencent_7A0B62235E38C5907A080BE3D56A59C9FD06@qq.com/T/#t：
+---
+Signed-off-by: shuo chen <1289151713@qq.com>
+---
+ fs/ext4/inline.c | 113 +++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 80 insertions(+), 33 deletions(-)
 
-Thanks,
-Yi.
-
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 8045e4ff270c..2a9299ea4146 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -14,6 +14,7 @@
+ #include "ext4.h"
+ #include "xattr.h"
+ #include "truncate.h"
++#include "ext4_extents.h"
+ 
+ #define EXT4_XATTR_SYSTEM_DATA	"data"
+ #define EXT4_MIN_INLINE_DATA_SIZE	((sizeof(__le32) * EXT4_N_BLOCKS))
+@@ -1070,21 +1071,67 @@ static int ext4_update_inline_dir(handle_t *handle, struct inode *dir,
+ 	return 0;
+ }
+ 
+-static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
+-				     struct ext4_iloc *iloc,
+-				     void *buf, int inline_size)
++static int ext4_set_inline_data_block(handle_t *handle, struct inode *inode,
++				      ext4_fsblk_t block, unsigned int len)
+ {
+-	int ret;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_xattr_ibody_find is = {
++		.s = { .not_found = 0, },
++	};
++	struct ext4_xattr_info i = {
++		.name_index = EXT4_XATTR_INDEX_SYSTEM,
++		.name = EXT4_XATTR_SYSTEM_DATA,
++		.value = NULL,
++		.value_len = 0,
++	};
++	int error;
+ 
+-	ret = ext4_create_inline_data(handle, inode, inline_size);
+-	if (ret) {
+-		ext4_msg(inode->i_sb, KERN_EMERG,
+-			"error restoring inline_data for inode -- potential data loss! (inode %llu, error %d)",
+-			inode->i_ino, ret);
+-		return;
++	down_write(&ei->i_data_sem);
++	error = ext4_get_inode_loc(inode, &is.iloc);
++	if (error) {
++		up_write(&ei->i_data_sem);
++		return error;
+ 	}
+-	ext4_write_inline_data(inode, iloc, buf, 0, inline_size);
+-	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++	error = ext4_xattr_ibody_find(inode, &i, &is);
++	if (error)
++		goto out;
++	BUFFER_TRACE(is.iloc.bh, "get_write_access");
++	error = ext4_journal_get_write_access(handle, inode->i_sb, is.iloc.bh, EXT4_JTR_NONE);
++	if (error)
++		goto out;
++	error = ext4_xattr_ibody_set(handle, inode, &i, &is);
++	if (error)
++		goto out;
++	memset((void *)ext4_raw_inode(&is.iloc)->i_block,
++		0, EXT4_MIN_INLINE_DATA_SIZE);
++	memset(ei->i_data, 0, EXT4_MIN_INLINE_DATA_SIZE);
++
++	if (ext4_has_feature_extents(inode->i_sb) &&
++		(S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode) || S_ISLNK(inode->i_mode))) {
++		ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
++		ext4_ext_tree_init(handle, inode);
++		struct ext4_ext_path *path = ext4_find_extent(inode, 0, NULL, 0);
++		struct ext4_extent newex;
++
++		newex.ee_block = cpu_to_le32(0);
++		newex.ee_len = cpu_to_le16(len);
++		ext4_ext_store_pblock(&newex, block);
++		ext4_ext_insert_extent(handle, inode, path, &newex, 0);
++	} else {
++		EXT4_I(inode)->i_data[0] = cpu_to_le32(block);
++	}
++	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
++	get_bh(is.iloc.bh);
++	error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
++	EXT4_I(inode)->i_inline_off = 0;
++	EXT4_I(inode)->i_inline_size = 0;
++	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
++out:
++	brelse(is.iloc.bh);
++	if (error == -ENODATA)
++		error = 0;
++	up_write(&ei->i_data_sem);
++	return error;
+ }
+ 
+ static int ext4_convert_inline_data_nolock(handle_t *handle,
+@@ -1094,8 +1141,9 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 	int error;
+ 	void *buf = NULL;
+ 	struct buffer_head *data_bh = NULL;
+-	struct ext4_map_blocks map;
+ 	int inline_size;
++	ext4_fsblk_t newblock = 0;
++	struct ext4_allocation_request ar;
+ 
+ 	inline_size = ext4_get_inline_size(inode);
+ 	buf = kmalloc(inline_size, GFP_NOFS);
+@@ -1120,25 +1168,22 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 			goto out;
+ 	}
+ 
+-	error = ext4_destroy_inline_data_nolock(handle, inode);
+-	if (error)
+-		goto out;
+-
+-	map.m_lblk = 0;
+-	map.m_len = 1;
+-	map.m_flags = 0;
+-	error = ext4_map_blocks(handle, inode, &map, EXT4_GET_BLOCKS_CREATE);
++	memset(&ar, 0, sizeof(ar));
++	ar.inode = inode;
++	ar.logical = 0;
++	ar.len = 1;
++	if (S_ISREG(inode->i_mode))
++		ar.flags = EXT4_MB_HINT_DATA;
++	else
++		ar.flags = 0;
++	newblock = ext4_mb_new_blocks(handle, &ar, &error);
+ 	if (error < 0)
+-		goto out_restore;
+-	if (!(map.m_flags & EXT4_MAP_MAPPED)) {
+-		error = -EIO;
+-		goto out_restore;
+-	}
++		goto out;
+ 
+-	data_bh = sb_getblk(inode->i_sb, map.m_pblk);
++	data_bh = sb_getblk(inode->i_sb, newblock);
+ 	if (!data_bh) {
+ 		error = -ENOMEM;
+-		goto out_restore;
++		goto out_bh;
+ 	}
+ 
+ 	lock_buffer(data_bh);
+@@ -1147,7 +1192,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 	if (error) {
+ 		unlock_buffer(data_bh);
+ 		error = -EIO;
+-		goto out_restore;
++		goto out_bh;
+ 	}
+ 	memset(data_bh->b_data, 0, inode->i_sb->s_blocksize);
+ 
+@@ -1171,12 +1216,14 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+ 			error = ext4_mark_inode_dirty(handle, inode);
+ 	}
+ 
+-out_restore:
+ 	if (error)
+-		ext4_restore_inline_data(handle, inode, iloc, buf, inline_size);
+-
+-out:
++		goto out_bh;
++	error = ext4_set_inline_data_block(handle, inode, newblock, ar.len);
++out_bh:
++	if (error)
++		ext4_free_blocks(handle, inode, data_bh, newblock, ar.len, EXT4_FREE_BLOCKS_FORGET);
+ 	brelse(data_bh);
++out:
+ 	kfree(buf);
+ 	return error;
+ }
+-- 
+2.47.3
 
