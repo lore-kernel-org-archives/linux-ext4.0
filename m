@@ -1,199 +1,256 @@
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.14])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f173.google.com (mail-pf1-f173.google.com [209.85.210.173])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A77DB22D4E9
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 03:40:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.14
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C571318DB1F
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 06:36:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786938012; cv=none; b=c8j43j9UgKZjRWhWpOZH0HpebUbR8P4IpxNmHW2EDqHsCA3q59A5QryEbyneBhsPt5mt7nO5v79qUIA0KV6d7JdR31GKqnsXg6MFOekVDOrda+T5deufm57BCxxaxbAO+6MqyNx32IQHFDpC6oS7ISMupFYLKysUgaY1BKjbsF4=
+	t=1786948574; cv=none; b=gLbbvgUzPDCjDMIVRZMETwJcJh+5GFI2+v4s//VYPWyyOoRFdZ0SWWPCRjvoV2aoQITsH1dA3Gk3lt+/m7vqo9q01L3BxDG/MGewh2SJAOmTJgzo55OfI7VBk/+dbTY07IOPWnZFsVuzrobQeRlE3pcR2iaG3kYexGKYrQsy/fU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786938012; c=relaxed/simple;
-	bh=iS+z8tCpooQ3mZwqxYr7pICQ4pnhZLFrfaEuvSxXwXg=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To; b=QyOBBdbcFmEgi2SQjrBcdfb7gVXI8lmXOtEgXIKhLLENoxrVI4xXXHiVoaZNyQvNfDG+YKU5hPpt7zyx4CB52SewNdKmKdGMCEOOE35TfjJHa63rIE4VFAo868pkmo2TlPk5x1be2RZvGKWHPn/Lup3m76Taovq7S8RVj/IY1Q4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=PfbEsZNP; arc=none smtp.client-ip=192.198.163.14
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1786948574; c=relaxed/simple;
+	bh=9cIEDPksk2dYYfDrAzVGu/LozkxCt4A40/O84XU7qfw=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=JE4GRSrSsWMryV+txH/WuBEOqwsUT0MnvcywM1a9nHck9l8GKlUkzwOwt6hC9+BsSiqPfz58PiuA8EA6OPH14uR9Z9BcQYX1ola9MkBF6VrsNQ9LedIrK8/mnEUsefq3Mt29TLwyX/bqbobFuSDBwQNVn7PdI/UYKMtvl8p+npA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=mZ2Gp0Bn; arc=none smtp.client-ip=209.85.210.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="PfbEsZNP"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1786938010; x=1818474010;
-  h=date:from:to:cc:subject:message-id:mime-version:
-   in-reply-to;
-  bh=iS+z8tCpooQ3mZwqxYr7pICQ4pnhZLFrfaEuvSxXwXg=;
-  b=PfbEsZNPziq+rOsWUkM/R6vkZzM3+YAARb+xF9Rk+gC3KmSc43yJuwX/
-   u+ypnOv/gwPBa6vRLtP0loLLZ3TSG5YF45RZWJS5ea5kabJQe23I/JjNc
-   zAqA0dSXLWi+le5xF+Ntq9oeW1kvdItTNSUJ5P4UmOJ3tspBo6HjV9sTW
-   uLLE9OMeOrlWmsXcx4Nh1J1uT1bmP0VOUSNOPrbVJIV5gGyKOTMhWU46l
-   e5+MHuuviPejGuTZnkjoPBol37BPr35AIqkKrAS8JABEQ68Tbfc2aXQQn
-   nl4T5ejEEcX/MYrs9kSY24zDQfnNRZwPGrHBIb08R7sDWZS3gCL2GFR2/
-   w==;
-X-CSE-ConnectionGUID: WwRvpo6TQhycMGC5a4XCvg==
-X-CSE-MsgGUID: WFxooPj2Q2qKGY/Nu2/vAQ==
-X-IronPort-AV: E=McAfee;i="6800,10657,11877"; a="87425807"
-X-IronPort-AV: E=Sophos;i="6.25,228,1779174000"; 
-   d="scan'208";a="87425807"
-Received: from orviesa001.jf.intel.com ([10.64.159.141])
-  by fmvoesa108.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 Aug 2026 20:40:09 -0700
-X-CSE-ConnectionGUID: EV8Ik6P7RQKYyBkaO/YTeg==
-X-CSE-MsgGUID: a4lYM1uORWG/uWkiF3OD8Q==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.25,228,1779174000"; 
-   d="scan'208";a="303024196"
-Received: from ly-workstation.sh.intel.com (HELO ly-workstation) ([10.239.182.64])
-  by smtpauth.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 Aug 2026 20:40:08 -0700
-Date: Mon, 17 Aug 2026 11:40:04 +0800
-From: kernel test robot <yi1.lai@intel.com>
-To: shuo chen <1289151713@qq.com>
-Cc: oe-lkp@lists.linux.dev, lkp@intel.com, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, jack@suse.com, yi1.lai@intel.com
-Subject: Re: [RESEND PATCH] jbd2:remove unnecessary finish_wait call in
- jbd2_journal_wait_updates
-Message-ID: <202608170527.19fb56ff-lkp@intel.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mZ2Gp0Bn"
+Received: by mail-pf1-f173.google.com with SMTP id d2e1a72fcca58-8485ef63b68so2264436b3a.1
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2026 23:36:12 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786948572; x=1787553372; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=vBHG+Z6lBd9ZDVanNAt3LDpxCtVhyLDciOIlO1eiimU=;
+        b=mZ2Gp0Bnc4QAIXuttgk5gKqqOIXbswMhPOXlpTBNRb/9TxVTpgrwwI8vbEV5HiSP7/
+         y0bUh0bgQxkQm8cdWnOwkObNIQrf/dMccydwxCyigmlX7sUV2NUfnSWQOgVApiSw4x13
+         a6QBtMY2CPMvi4II97Eo7zKxC5Or/5dKCZ4qRzKH/P5cXGE41rkhGtb0b2pj0FoIJkQr
+         mE6auJzAB4o2jl5NXnekh7h3hu8z65V0Ae1fouANU6Bg6bXHjFYGUtZFfhmu+ly7KAHQ
+         hWsP03oR28RqOWXrW72t8vmL5rUEj6+mP0wifMC7FmN4heTk9EzDJy5cTBtMD/MFK7fM
+         tNsg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786948572; x=1787553372;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=vBHG+Z6lBd9ZDVanNAt3LDpxCtVhyLDciOIlO1eiimU=;
+        b=pHm/NtMmlNF4pIL2y0n2s+ZCzmtEHBGt56oD55EHlhfNAXsD5LZHH+Ohjr4VRP9irP
+         H48LIVCP65NzVtKrN+m4xloSXYxLqNKOwV2195pnygOHWixNl+kcBryLySca03csEel7
+         MtZLNBfm0dN3WLdKLwntWSzpzOeUeQjHFyL0weEq/lE9bu8kJlN4tdUk7uQP5pstj3Uh
+         kjryUhw69htcguuRBR6LpuVkUciOgPTcsN3UPcR9qlIGH50MTXvNw5ZUT4yivc5n0c02
+         IcSnbvQANE8FMwvo9q1NeWvsDvUzOzf6oK0tA2WSlWiSR17yQN4NZUYy3iQZCccvvxEx
+         CyyQ==
+X-Forwarded-Encrypted: i=1; AHgh+RqM+TIm6OKKyAXi1T4K3MsFY0tcfBcsCHUw+4KP0VVYPNBb0Xs4YikuLBKrWqAC7uO63IbpL64UakUz@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz15kKUncoUp7YEr21XU7NpmEDFV0ZqOxdh8NudI5u8CBd+SXt4
+	P75xEhIto2oBHF33kZwQfVZocW07NzyVyfQ/e9FZlmkC4LYevlPJrXne
+X-Gm-Gg: AR+sD13pvKqBw3GherPw7U1x6kvQwegmU3POEP6OskVVj7AsWaHtmz2/fjJGtfuKGa4
+	keohzjsRVfVGUAcNkGCj6iOkquAPM+1+u6xP9FeSPKWC4hmnZzB+Mf1RxI35icBP9ymKr5DKtBN
+	Fc6wgwxl0NWMnWgv80DVJI+SLel2QAjgYbX48aWOlXuDK2Wtj+Jx/e2+GXwz/8/5q7r7VTh6+jV
+	d5fa/bujS6JVEqhnXUakuswQ8p+PSWRqGAm6LQUISdF4fyzYBDk62Ugalp+D4GLWSG8DHZi0wbw
+	RL0zXJvII1M5OCva3L4oSw2rqhIxcbCtju7wkq1x+xwjaYdZvtzsTUZ806D3VCCGr13oKF0MK41
+	iUG0zGFwFMdkWFpfTE/htkNPamI+TehuWITTLYhRS9MuwPA+5p5k4qM/iZfuHVQUBYosfwovTmL
+	FbhdXZQ4zLnJHSZiJP8eQsGJFisMCWsvVsxR2Ra80truBLbmtcVECsVu3eiyff8fcIOqb22yb+B
+	ZAiYrmh91GBPPNnqaw=
+X-Received: by 2002:a05:6a00:a112:b0:84e:1a34:2470 with SMTP id d2e1a72fcca58-84fde298c72mr21936954b3a.30.1786948571834;
+        Sun, 16 Aug 2026 23:36:11 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc13c036c50sm211885a12.26.2026.08.16.23.36.05
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 16 Aug 2026 23:36:11 -0700 (PDT)
+Message-ID: <4d03cf94-144a-4389-a5cb-0f4fe5438e46@gmail.com>
+Date: Mon, 17 Aug 2026 14:35:39 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <tencent_AA7E2FDA8D68E1E3430F219A8C3DAB442508@qq.com>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH -next v5 16/32] ext4: implement writeback path using iomap
+To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
+ <20260814093331.1703882-17-yi.zhang@huaweicloud.com>
+ <20260814101948.9AE051F000E9@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <20260814101948.9AE051F000E9@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
+On 8/14/2026 6:19 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 5 potential issue(s) to consider:
+> - [Critical] The iomap writeback path queues `iomap_ioend` structures to the `i_rsv_conversion_list`, but the worker function is uninitialized and defaults to `ext4_end_io_rsv_work`, leading to type confusion and memory corruption.
+> - [Critical] Failure to update `ext4_page_mkwrite()` to use the iomap framework for iomap-enabled inodes causes AB-BA deadlocks and type confusion on `folio->private`.
+> - [High] The iomap writeback range mapping logic unconditionally expands the allocation length up to the end of the writeback range, incorrectly allocating up to 8MB of unwritten extents into sparse file holes.
+> - [Medium] Missing WRITE_ONCE() for 64-bit ei->i_disksize allows torn reads on 32-bit systems.
+> - [Medium] Improper use of min_t() truncates the 64-bit wbc->range_end before comparison, defeating the maximum block cap.
+> --
+> 
+> --- Patch [16]: [PATCH -next v5 16/32] ext4: implement writeback path using iomap ---
+> commit 5c1a016c9a25acdff3a66fb714afe96821e567b6
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> 
+> ext4: implement writeback path using iomap
+> 
+> This commit adds the iomap writeback path for ext4 buffered I/O, introducing
+> ext4_iomap_writepages() and the corresponding iomap_writeback_ops. It also
+> adds an end I/O work handler to convert unwritten extents and update file
+> size upon I/O completion.
+> 
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index d831d1911a6ff..0b3e54e12b78f 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+> [ ... ]
+>> @@ -4134,10 +4135,154 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+>> +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
+>> +					  loff_t offset, unsigned int dirty_len)
+>> +{
+> [ ... ]
+>> +	blk_len = dirty_len >> blkbits;
+>> +	blk_end = min_t(unsigned int, (wpc->wbc->range_end >> blkbits),
+>> +				      (UINT_MAX - 1));
+> 
+> [Severity: Medium]
+> Does this code truncate the 64-bit range_end before the comparison?
+> 
+> If wpc->wbc->range_end >> blkbits is evaluated as a 64-bit value but then
+> cast to unsigned int by min_t(unsigned int, ...), could this truncate the
+> value to 0 when the shifted value is a multiple of 2^32?
+> 
+> This might disable the writeback batching optimization for specific offsets
+> in very large files (e.g., syncing around 16TB boundaries).
+> 
+>> +	if (blk_end > index + blk_len)
+>> +		blk_len = blk_end - index + 1;
 
-Hello,
+It's true that this can indeed happen when wbc->end is manually
+specified. We use umin() instead.
 
-kernel test robot noticed "INFO:task_blocked_for_more_than#seconds" on:
+> 
+> [Severity: High]
+> Will this logic unconditionally expand the block allocation length to the
+> end of the writeback range?
+> 
+> It looks like blk_len is expanded up to blk_end (which typically represents
+> the end of the VFS writeback range) without querying the delalloc
+> reservation length.
+> 
+> If a dirty folio is followed by a hole, could this allocate up to 8MB of
+> unwritten extents into sparse file holes? This seems like it could
+> improperly consume disk space and quotas.
+> 
 
-commit: 2a8eec86fbe20e3599766fd1c3d97949e577dd83 ("[RESEND PATCH] jbd2:remove unnecessary finish_wait call in jbd2_journal_wait_updates")
-url: https://github.com/intel-lab-lkp/linux/commits/shuo-chen/jbd2-remove-unnecessary-finish_wait-call-in-jbd2_journal_wait_updates/20260806-124301
-base: https://git.kernel.org/cgit/linux/kernel/git/vfs/vfs.git vfs.all patch
-link: https://lore.kernel.org/all/tencent_AA7E2FDA8D68E1E3430F219A8C3DAB442508@qq.com/
-patch subject: [RESEND PATCH] jbd2:remove unnecessary finish_wait call in jbd2_journal_wait_updates
+This is a false positive. blk_len will be trimmed in
+ext4_map_blocks().
 
-in testcase: stress-ng
-version: stress-ng-x86_64-f179fd9c6-1_20260812
-with following parameters:
+>> +retry:
+>> +	map.m_lblk = index;
+>> +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
+> [ ... ]
+>> +static const struct iomap_writeback_ops ext4_writeback_ops = {
+>> +	.writeback_range = ext4_iomap_writeback_range,
+>> +	.writeback_submit = ext4_iomap_writeback_submit,
+>> +};
+>> +
+>>   static int ext4_iomap_writepages(struct address_space *mapping,
+>>   				 struct writeback_control *wbc)
+>>   {
+> 
+> [Severity: Critical]
+> Since this patch introduces the iomap writeback path, do we also need to
+> update the mmap fault handler?
+> 
+> The ext4_file_vm_ops.page_mkwrite handler remains hardcoded to
+> ext4_page_mkwrite(), which uses the legacy ext4_block_page_mkwrite()
+> logic.
+> 
+> That legacy path attaches a buffer_head to folio->private and starts a
+> transaction before taking the folio lock.
+> 
+> When ext4_iomap_writepages() later flushes the folio,
+> iomap_writeback_init() will cast folio->private to struct
+> iomap_folio_state.
+> 
+> Calling atomic_set() on this state could overwrite the b_this_page list
+> pointer in the buffer_head, potentially leading to memory corruption and
+> AB-BA deadlocks between page faulting and writeback.
+> 
 
-	nr_threads: 100%
-	disk: 1SSD
-	testtime: 60s
-	fs: ext4
-	test: chown
-	cpufreq_governor: performance
+This is a false positive. The mmap fault handler changes are in
+the next patch (patch 17).
 
+>> -	return 0;
+>> +	struct inode *inode = mapping->host;
+> [ ... ]
+>> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+>> index 0236b6b9785a2..2888e00575615 100644
+>> --- a/fs/ext4/page-io.c
+>> +++ b/fs/ext4/page-io.c
+> [ ... ]
+>> @@ -547,3 +548,124 @@ void ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
+>> +static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
+>> +					 loff_t end)
+>> +{
+> [ ... ]
+>> +	down_write(&ei->i_data_sem);
+>> +	new_disksize = min(new_disksize, i_size_read(inode));
+>> +	if (new_disksize > ei->i_disksize)
+>> +		ei->i_disksize = new_disksize;
+> 
+> [Severity: Medium]
+> Does this 64-bit assignment need a WRITE_ONCE() wrapper?
+> 
+> On 32-bit platforms, a plain 64-bit store to ei->i_disksize can be split
+> into two 32-bit stores.
+> 
+> A concurrent lockless reader calling READ_ONCE(ei->i_disksize) might
+> observe a torn value, resulting in wildly incorrect disk size values
+> during concurrent writeback and truncation.
+> 
+>> +	up_write(&ei->i_data_sem);
+>> +	ret = ext4_mark_inode_dirty(handle, inode);
+> [ ... ]
+>> +void ext4_iomap_end_bio(struct bio *bio)
+>> +{
+>> +	struct iomap_ioend *ioend = iomap_ioend_from_bio(bio);
+>> +	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
+>> +	unsigned long flags;
+>> +
+>> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
+>> +	if (list_empty(&ei->i_rsv_conversion_list))
+>> +		queue_work(EXT4_SB(ioend->io_inode->i_sb)->rsv_conversion_wq,
+>> +			   &ei->i_rsv_conversion_work);
+> 
+> [Severity: Critical]
+> Is the worker function for ei->i_rsv_conversion_work properly initialized
+> for iomap inodes?
+> 
+> It looks like ei->i_rsv_conversion_work is statically initialized to the
+> legacy ext4_end_io_rsv_work() function in ext4_alloc_inode().
+> 
+> This new iomap writeback path queues iomap_ioend structs to the list, but
+> it doesn't appear to call INIT_WORK() to reassign the worker function to
+> the newly introduced ext4_iomap_end_io().
+> 
+> When the work queue executes, wouldn't the legacy ext4_end_io_rsv_work()
+> iterate over this list and blindly cast iomap_ioend structs to
+> incompatible ext4_io_end_t structs, resulting in type confusion?
+> 
 
+This is a false positive. ei->i_rsv_conversion_work is initialized
+in patch 31, where the iomap path is formally enabled.
 
-config: x86_64-rhel-9.4
-compiler: gcc-14
-test machine: 224 threads 2 sockets Intel(R) Xeon(R) (Sapphire Rapids) with 128G memory
+Thanks,
+Yi.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <yi1.lai@intel.com>
-| Closes: https://lore.kernel.org/oe-lkp/202608170527.19fb56ff-lkp@intel.com
-
-
-kern  :err   : [  991.254044] [   T1509] INFO: task jbd2/sdb3-8:12832 blocked for more than 491 seconds.
-kern  :err   : [  991.262978] [   T1509]       Tainted: G S                  7.2.0-rc5+ #1
-kern  :err   : [  991.270278] [   T1509] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kern  :info  : [  991.279925] [   T1509] task:jbd2/sdb3-8     state:D stack:0     pid:12832 tgid:12832 ppid:2      task_flags:0x240040 flags:0x00080000
-kern  :info  : [  991.293161] [   T1509] Call Trace:
-kern  :info  : [  991.296770] [   T1509]  <TASK>
-kern  :info  : [  991.299998] [   T1509]  __schedule (sched/core.c:5510 sched/core.c:7234)
-kern  :info  : [  991.304788] [   T1509]  schedule (sched/core.c:7311 sched/core.c:7326)
-kern  :info  : [  991.309189] [   T1509] jbd2_journal_wait_updates (jbd2/transaction.c:841) jbd2
-kern  :info  : [  991.315913] [   T1509]  ? __pfx_autoremove_wake_function (sched/wait_bit.c:161)
-kern  :info  : [  991.322656] [   T1509] jbd2_journal_commit_transaction (jbd2/commit.c:482) jbd2
-kern  :info  : [  991.330273] [   T1509]  ? raw_spin_rq_lock_nested (sched/core.c:667)
-kern  :info  : [  991.336306] [   T1509]  ? finish_task_switch+0xc7/0x3f0
-kern  :info  : [  991.342642] [   T1509]  ? __try_to_del_timer_sync (time/timer.c:1467)
-kern  :info  : [  991.348674] [   T1509] kjournald2 (jbd2/journal.c:199) jbd2
-kern  :info  : [  991.354057] [   T1509]  ? __pfx_autoremove_wake_function (sched/wait_bit.c:161)
-kern  :info  : [  991.360786] [   T1509]  ? __pfx_kjournald2 (jbd2/journal.c:893) jbd2
-kern  :info  : [  991.366824] [   T1509]  kthread (kthread.c:436)
-kern  :info  : [  991.371220] [   T1509]  ? __pfx_kthread (kthread.c:948)
-kern  :info  : [  991.376297] [   T1509]  ret_from_fork (x86/kernel/process.c:158)
-kern  :info  : [  991.381361] [   T1509]  ? __pfx_kthread (kthread.c:948)
-kern  :info  : [  991.386433] [   T1509]  ret_from_fork_asm (x86/entry/entry_64.S:245)
-kern  :info  : [  991.391693] [   T1509]  </TASK>
-kern  :err   : [  991.395061] [   T1509] INFO: task stress-ng-chown:16436 blocked for more than 491 seconds.
-kern  :err   : [  991.404133] [   T1509]       Tainted: G S                  7.2.0-rc5+ #1
-kern  :err   : [  991.411439] [   T1509] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kern  :info  : [  991.421059] [   T1509] task:stress-ng-chown state:D stack:0     pid:16436 tgid:16436 ppid:16132  task_flags:0x400040 flags:0x00080002
-kern  :info  : [  991.434286] [   T1509] Call Trace:
-kern  :info  : [  991.437906] [   T1509]  <TASK>
-kern  :info  : [  991.441137] [   T1509]  __schedule (sched/core.c:5510 sched/core.c:7234)
-kern  :info  : [  991.445922] [   T1509]  schedule (sched/core.c:7311 sched/core.c:7326)
-kern  :info  : [  991.450307] [   T1509] wait_transaction_locked (jbd2.mod.c:?) jbd2
-kern  :info  : [  991.456838] [   T1509]  ? __pfx_autoremove_wake_function (sched/wait_bit.c:161)
-kern  :info  : [  991.463570] [   T1509] add_transaction_credits (jbd2.mod.c:?) jbd2
-kern  :info  : [  991.470288] [   T1509]  ? wake_up_q (sched/core.c:4547 sched/core.c:1173)
-kern  :info  : [  991.474954] [   T1509] start_this_handle (jbd2/transaction.c:403) jbd2
-kern  :info  : [  991.481011] [   T1509]  ? kmem_cache_alloc_noprof (slub.c:4594 (discriminator 3) slub.c:4917 (discriminator 3) slub.c:4931 (discriminator 3))
-kern  :info  : [  991.487246] [   T1509]  ? jbd2__journal_start (jbd2/transaction.c:457 (discriminator 2) jbd2/transaction.c:485 (discriminator 2)) jbd2
-kern  :info  : [  991.493688] [   T1509] jbd2__journal_start (jbd2/transaction.c:502) jbd2
-kern  :info  : [  991.499924] [   T1509] ext4_dirty_inode (ext4/ext4_jbd2.h:242 ext4/inode.c:6674) ext4
-kern  :info  : [  991.505839] [   T1509]  __mark_inode_dirty (fs-writeback.c:2729)
-kern  :info  : [  991.511289] [   T1509] ext4_setattr (linux/fs.h:2207 ext4/inode.c:6181) ext4
-kern  :info  : [  991.516964] [   T1509]  notify_change (attr.c:556)
-kern  :info  : [  991.522317] [   T1509]  ? chown_common (open.c:825)
-kern  :info  : [  991.527693] [   T1509]  chown_common (open.c:825)
-kern  :info  : [  991.532861] [   T1509]  ? up_write (locking/rwsem.c:1420 locking/rwsem.c:1688)
-kern  :info  : [  991.537610] [   T1509]  vfs_fchown (open.c:890 open.c:882)
-kern  :info  : [  991.542295] [   T1509]  __x64_sys_fchown (open.c:902 open.c:907 open.c:905 open.c:905)
-kern  :info  : [  991.547590] [   T1509]  do_syscall_64 (x86/entry/syscall_64.c:63 x86/entry/syscall_64.c:94)
-kern  :info  : [  991.552692] [   T1509]  ? __x64_sys_fchown (open.c:902 open.c:907 open.c:905 open.c:905)
-kern  :info  : [  991.558159] [   T1509]  ? do_syscall_64 (linux/irq-entry-common.h:210 linux/irq-entry-common.h:230 linux/entry-common.h:318 x86/entry/syscall_64.c:100)
-kern  :info  : [  991.563523] [   T1509]  ? __x64_sys_lchown (open.c:878 open.c:876 open.c:876)
-kern  :info  : [  991.568989] [   T1509]  ? do_syscall_64 (linux/irq-entry-common.h:210 linux/irq-entry-common.h:230 linux/entry-common.h:318 x86/entry/syscall_64.c:100)
-kern  :info  : [  991.574349] [   T1509]  ? do_syscall_64 (linux/irq-entry-common.h:210 linux/irq-entry-common.h:230 linux/entry-common.h:318 x86/entry/syscall_64.c:100)
-kern  :info  : [  991.579732] [   T1509]  ? do_syscall_64 (linux/randomize_kstack.h:57 x86/entry/syscall_64.c:92)
-kern  :info  : [  991.584966] [   T1509]  entry_SYSCALL_64_after_hwframe (x86/entry/entry_64.S:121)
-kern  :info  : [  991.591591] [   T1509] RIP: 0033:0x7f0b50646e17
-kern  :info  : [  991.596546] [   T1509] RSP: 002b:00007ffea1566b48 EFLAGS: 00000213 ORIG_RAX: 000000000000005d
-kern  :info  : [  991.605988] [   T1509] RAX: ffffffffffffffda RBX: 0000000000000005 RCX: 00007f0b50646e17
-kern  :info  : [  991.614943] [   T1509] RDX: 00000000ffffffff RSI: 00000000ffffffff RDI: 0000000000000005
-kern  :info  : [  991.623876] [   T1509] RBP: 00007f0b4fcb99c8 R08: 0000000000000000 R09: 0000000000000000
-kern  :info  : [  991.632818] [   T1509] R10: 0000000000000000 R11: 0000000000000213 R12: 00007ffea1566b70
-kern  :info  : [  991.641767] [   T1509] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000017
-kern  :info  : [  991.650731] [   T1509]  </TASK>
-kern  :err   : [  991.654143] [   T1509] INFO: task stress-ng-chown:16453 blocked for more than 491 seconds.
-kern  :err   : [  991.663280] [   T1509]       Tainted: G S                  7.2.0-rc5+ #1
-kern  :err   : [  991.670694] [   T1509] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-kern  :info  : [  991.680398] [   T1509] task:stress-ng-chown state:D stack:0     pid:16453 tgid:16453 ppid:16132  task_flags:0x400040 flags:0x00080002
-kern  :info  : [  991.693833] [   T1509] Call Trace:
-kern  :info  : [  991.697539] [   T1509]  <TASK>
-kern  :info  : [  991.700842] [   T1509]  __schedule (sched/core.c:5510 sched/core.c:7234)
-kern  :info  : [  991.705722] [   T1509]  schedule (sched/core.c:7311 sched/core.c:7326)
-kern  :info  : [  991.710195] [   T1509] jbd2_log_wait_commit (jbd2/journal.c:681 (discriminator 7)) jbd2
-kern  :info  : [  991.716623] [   T1509]  ? __pfx_autoremove_wake_function (sched/wait_bit.c:161)
-kern  :info  : [  991.723421] [   T1509] ext4_sync_file (ext4/fsync.c:114 ext4/fsync.c:162) ext4
-kern  :info  : [  991.729378] [   T1509]  do_fsync (sync.c:186 sync.c:200 sync.c:211)
-kern  :info  : [  991.733854] [   T1509]  __x64_sys_fsync (sync.c:216 sync.c:214 sync.c:214)
-kern  :info  : [  991.739008] [   T1509]  do_syscall_64 (x86/entry/syscall_64.c:63 x86/entry/syscall_64.c:94)
-kern  :info  : [  991.744074] [   T1509]  ? __x64_sys_lchown (open.c:878 open.c:876 open.c:876)
-kern  :info  : [  991.749490] [   T1509]  ? do_syscall_64 (linux/irq-entry-common.h:210 linux/irq-entry-common.h:230 linux/entry-common.h:318 x86/entry/syscall_64.c:100)
-kern  :info  : [  991.754832] [   T1509]  ? do_syscall_64 (linux/randomize_kstack.h:57 x86/entry/syscall_64.c:92)
-kern  :info  : [  991.760066] [   T1509]  entry_SYSCALL_64_after_hwframe (x86/entry/entry_64.S:121)
-kern  :info  : [  991.766655] [   T1509] RIP: 0033:0x7f0b505d6687
-kern  :info  : [  991.771614] [   T1509] RSP: 002b:00007ffea1566b00 EFLAGS: 00000202 ORIG_RAX: 000000000000004a
-kern  :info  : [  991.781039] [   T1509] RAX: ffffffffffffffda RBX: 00007f0b4fd31b00 RCX: 00007f0b505d6687
-kern  :info  : [  991.789965] [   T1509] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000005
-kern  :info  : [  991.798875] [   T1509] RBP: 00007f0b4fcc9268 R08: 0000000000000000 R09: 0000000000000000
-kern  :info  : [  991.807820] [   T1509] R10: 0000000000000000 R11: 0000000000000202 R12: 00007ffea1566b70
-kern  :info  : [  991.816762] [   T1509] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
-kern  :info  : [  991.825727] [   T1509]  </TASK>
-kern  :info  : [ 2465.958258] [   T1509] Future hung task reports are suppressed, see sysctl kernel.hung_task_warnings
-
-
-The kernel config and materials to reproduce are available at:
-https://download.01.org/0day-ci/archive/20260817/202608170527.19fb56ff-lkp@intel.com
-
-
-
---
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
-
+>> +	list_add_tail(&ioend->io_list, &ei->i_rsv_conversion_list);
+>> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
+>> +}
+> 
 
