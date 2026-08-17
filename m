@@ -1,70 +1,92 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F393743E07D
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 15:30:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C111542376F;
+	Mon, 17 Aug 2026 15:37:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786980639; cv=none; b=RfIRHX2ECjUyC5T4QVX+jDDGUKusmVgePKAAX8uD5wxkrnkzNfhCledgv6WXks8BK1dWijg54a160zGW/hZTYfici/eJK8/7qZEumbSrbklyopYuDgKvsEOcFb8XBv4AyCiYtu6DBzYTbHRI2yemq0SlawoiaSat3OYfSLJNsYA=
+	t=1786981040; cv=none; b=LKMj58gKScNP2xQ4nKI5Vcf2QTSMcBWFlbKwFZ6DBSUUMFjUFiSVHXdkdjBktK0NO34C80XlIz36nw+7jq3zHeDvAMzMZTwCMcR+h0VWcaBHfOD8xt7theiAkbXgZjT121zW8YQVum7o6k2w1jwmtqa4tZrAOd8dEfnc97dgAA8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786980639; c=relaxed/simple;
-	bh=Jtb7MBCUpRL3r8wUI5sHpryZ8uYbVER3YKn7EGTZ2Ws=;
+	s=arc-20240116; t=1786981040; c=relaxed/simple;
+	bh=FYWamzuJoFxSWCKL5fNKW+4hDr4mdtZK1qgkB3I75c8=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ZWA4PiJARCEKY2hZY3WQxLi/FUAIliRmqPT/JlvrRmtpWjYf4R7QMeo9Engs+wVtcHIER12t21DXy5EaJkuWgYHvywz3RciYBP2QdJUQTFfwllwK3gB8ItI+vbolPxa3X5fXW/75wyyOr+nHiivXZ5aCAlVtnrEYId+9cGStZEI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=SP0rJq+m; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=QWqjFgDv+0Yawn2u4rYN+Zw7t81RVQ3uIlmjEMpokcunBf2PccYr+JeZB/TEzgimXStGRvpVHmxI/o/VXJw8PS7pSUhvDU6nla0Gp6eZfYMCda3P5TfGGizCpQtRTyaMM+irFLB+Lnyk3KxgBmEMYv+EzpjXAWOHHzGccgcuMoA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YGUAcbzZ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="SP0rJq+m"
-Received: from macsyma.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67HFUIYc014817
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 17 Aug 2026 11:30:19 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1786980621; bh=5lP2TF3nDkDFNL6YrkIL6wAMOBQnkc2dy2i2C2gWJjM=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=SP0rJq+mYyHH6fjKG2UBuey2VfB6e+YfRi23qUvu9vZ1kkBovd8r+o+FZOS5ltuq7
-	 F1RBcmPKzauhvj+Drw9I8eSKkU7ofJvYxx5EPJH7Rex8DngOerVnuf/vbBX9pkBC9R
-	 vDkBNc1dyWGRsI6UqsgN910kHIPemOz5dKe386cMPtIAoNMLGqQc4J2vH5vG4GFIy9
-	 WRG1Vst7GSUqd291hKYAtNGYZ9JXFkxf3LTXDsqjaZySQhyWIEjOnLWwJqeOdpZtSv
-	 NQWRq5y/9Z0L9pQc5p9MYvl3EW6MkeS/wsb1uk6TM5GWLA8j2jK32iJHlXXWbRsbda
-	 32NCt0mBFgh3g==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 76848F595D6; Mon, 17 Aug 2026 11:29:18 -0400 (EDT)
-Date: Mon, 17 Aug 2026 11:29:18 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Matthias Goergens <matthias.goergens@gmail.com>
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, sashiko-reviews@lists.linux.dev
-Subject: Re: [PATCH] ext4: compensate ea_inode refs and free block on new
- xattr block write error\
-Message-ID: <aoMe0uuQnGovxMSH@mit.edu>
-References: <20260817100724.923291F000E9@smtp.kernel.org>
- <20260817114905.2708356-1-matthias.goergens@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YGUAcbzZ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C56531F000E9;
+	Mon, 17 Aug 2026 15:37:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786981039;
+	bh=SiFMhNBo85XeONQYI7xMysmswB/FDKlJ+i51HWi9xO0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=YGUAcbzZ5cNJGgU4kbM36LvX8HXYWptaedVRNfDWS7UgO1DwWF/UPjl03V1ss/rQj
+	 hUFeQX8CoOWt3AwUeaPDRSsM0CKLuOXtG5McpewY2MmN/xtH15oo2JytenZjFrUKzB
+	 ja8fV4RBqzEiERzmEZ3HasocYKuInrX8t346KnDsYft2AmUpzevAFurIxUsthbhjfA
+	 mq+I+pACO2iP41xjR27lbtgwcgo20gce2YbwGNpYAbc7NIo3YijQPTnWxfnaPc9y4L
+	 VdJ0DnhYiFn80BuTXB/SLOsb5AoQ1C8us5MgfDk7SSBsMvlo8rqq9zUNhEz5lQoLMC
+	 QOLHcx0Z5GUPw==
+Date: Mon, 17 Aug 2026 17:37:13 +0200
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: djwong@kernel.org, ebiggers@kernel.org, Jens Axboe <axboe@kernel.dk>, 
+	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org, linux-block@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, david@fromorbit.com, Tal Zussman <tz2294@columbia.edu>
+Subject: Re: [PATCH v15 00/25] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <aoMZaqbKxmp9lhKs@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260814092448.1818082-1-aalbersh@kernel.org>
+ <20260817070240.GA17371@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20260817114905.2708356-1-matthias.goergens@gmail.com>
+In-Reply-To: <20260817070240.GA17371@lst.de>
 
-On Mon, Aug 17, 2026 at 07:49:05PM -0500, Matthias Goergens wrote:
-> Sashiko's reviews on these threads have been genuinely useful — the
-> ea_inode refcount leak that this patch follows up on was its find.  This
-> one, though, is a false positive: mb_cache_entry_delete_or_get() and
-> mb_cache_entry_wait_unused() have been defined in fs/mbcache.c and
-> declared in include/linux/mbcache.h since commit 3dc96bba65f5 ("mbcache:
-> add functions to delete entry if unused", 2022)
+On 2026-08-17 09:02:40, Christoph Hellwig wrote:
+> On Fri, Aug 14, 2026 at 11:24:17AM +0200, Andrey Albershteyn wrote:
+> > Hi all,
+> > 
+> > This is next revision of fsverity for XFS.
+> > 
+> > Range-diff with v14 also below.
+> > 
+> > Patches without review:
+> > [PATCH v15 07/25] block: add task-context bio completion
+> > [PATCH v15 08/25] block: don't delay bio task completions
+> > [PATCH v15 16/25] xfs: handle fsverity I/O in write/read path
+> > [PATCH v15 18/25] xfs: make xfs_free_eofblocks() work with fsverity
+> > 
+> > The patchset include some patches from lazy-bounce@hch-misc series for
+> > BIO completion in task context
+> 
+> A different version of that landed in the block tree.  
 
-Yeah, I had noticed this and filed a bug against Sashiko.
+oh didn't know that
 
-https://github.com/sashiko-dev/sashiko/issues/439
+> So let's hash
+> out how we want to handle this for the 7.4-rc merge window after the
+> dust for the current merges settles.
 
-(Filed before github went down.)
+7.3-rc?
 
-					- Ted
+> I can have the lazy bounce series
+> ready early for the merge window, and should be able to send it out
+> once all depdendency trees hit mainline.  Does that sound good?
+> Or should we split the minimum requirements into a separate
+> branch?
+
+Then the only patches I will need is IOMAP_IOEND_INTEGRITY with the
+helper. This is probably a bit too small change for separate series,
+but this will also work.
+I'm fine with waiting for lazy bounce, as I still will have at least
+one more revision.
+
+-- 
+- Andrey
