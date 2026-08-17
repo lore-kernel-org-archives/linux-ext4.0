@@ -1,86 +1,45 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A9173EDE4D;
-	Mon, 17 Aug 2026 16:06:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B914425CEE;
+	Mon, 17 Aug 2026 16:11:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786982781; cv=none; b=MQBH7/jo4a6FuNVCtiblGNymwcIhL0v7Ucw0BcotcrM9NovkZP6EeNVkjq20RcN6bQWuIzGKvv/9eqouKRMl10PeorbO7iawH4cPRoD2XUyqrmBfLgj7ARf1JFjixXNxb6NnbQfR1/7/MCn8VEc/xwEuU65It1QmZ8XZJgOr+OU=
+	t=1786983094; cv=none; b=C4A//mugkFV2Wyd9TpvQO4kPUDyzuu86dX/jtP4rJX1DFGb9SZFGIusDVj65BDWrYMMOfrIheiJXdOPDp5FcPuiToLNPptKw68iKZuhBF7oMVCTWLrDj7qoVKaZR4y1VdKFm/h4gxteD3eQnq9srMiPha9FSyUTKw8ysRbc5gJo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786982781; c=relaxed/simple;
-	bh=47AAx90Y9DFp4Kta1KXb6pcXj+fSI1lJo1UIbg3QN00=;
+	s=arc-20240116; t=1786983094; c=relaxed/simple;
+	bh=fc4O8Prtm5XWK/2YQuD3TPTvW0idTy3oawokzt+0vUk=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=PNgzFtRdf1xqA43ONJoFJnLNp8QMktxCwq2cJUx9dYbm2aZzOOv0o7fWuag9jzMpws+sgbJfj9MC6smAxRor3NG6UaSuA80qmmcVJAdP+05JdaSxpqFr1Tybf9QqqRLTl278qVtvjDhZJ3ARSFNoLFo4c3Py83RiX0h+hM0Ngdw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=pfIwpZ/l; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=oYqCsY0f; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=LS+hq8ai; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2wcUIzNg; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=URp8dH2PSoZefCEK0iF7s7A2HkB0VC58qEeM1BqtuI9hUwkJqEl6ybH1GqZuG0NpE3WrJJcKoy7yrmLz/4aB4NJ0N2AGm9UdeZqv5nJDH4h3wmVE9dD6aaf7fqSiDpG2AyU1wbbJW0KNK4U6ydvB4FZbf5Ly9b1GcjxSaG/7oJk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hnqRopGy; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="pfIwpZ/l";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="oYqCsY0f";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="LS+hq8ai";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2wcUIzNg"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 501023E07;
-	Mon, 17 Aug 2026 16:05:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1786982752; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=IdHfgSBKSquB8V6IowtQrG36ItNZXmsNtihCQ+cIFVM=;
-	b=pfIwpZ/lOzNN25aQjyyb+4sNKfyLyXpVR5tuvjjXevDVv46HYdYayaxzeDeApjfGSMQAgt
-	Eq9ol6/EqdRIpIOrMACEqz6TLGBC1ZA+DDMQS++ECCokw8Z8A5P5CLZ0wkuyxuqcRZVimz
-	xGkyfCBM+7u+wLmNpqd68865EPQzmk4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1786982752;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=IdHfgSBKSquB8V6IowtQrG36ItNZXmsNtihCQ+cIFVM=;
-	b=oYqCsY0fxrAQiZUQq940MOBvgSs5DyCZd1VXyqW4yWiZZ4fJ3D+eLguuCqRbtQH3Ucss44
-	XYpiTe0xDwcEqkDA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1786982748; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=IdHfgSBKSquB8V6IowtQrG36ItNZXmsNtihCQ+cIFVM=;
-	b=LS+hq8aiqOz2ssG/ZFeEtA2SZtr4s9xjuSxY9yCR6lVLhJReTeYp2dc8/RNg4HdGYgVnru
-	i44Ld1OikzrAkiryXqUsmwO0asEvzHNnSoz9dL+/FT1CgLCX2L98+jFhMJv0x7sVLBeytj
-	L5n/a0MvQLJ7aNVMFortSL/8H3XwUAo=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1786982748;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=IdHfgSBKSquB8V6IowtQrG36ItNZXmsNtihCQ+cIFVM=;
-	b=2wcUIzNgD9L3dFK0weGMjnSC1XpUHjAmfl/IsDvYTRWcwCZU2LLWsahkCKZG2Fq2VPbEgV
-	lDf+XCqTxMocjZBA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 47E357954D;
-	Mon, 17 Aug 2026 16:05:48 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id bCOLEVwxg2r1YwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 17 Aug 2026 16:05:48 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id E7DA5A13B5; Mon, 17 Aug 2026 18:05:47 +0200 (CEST)
-Date: Mon, 17 Aug 2026 18:05:47 +0200
-From: Jan Kara <jack@suse.cz>
-To: Askar Safin <safinaskar@gmail.com>
-Cc: jack@suse.cz, aivazian.tigran@gmail.com, brauner@kernel.org, 
-	hirofumi@mail.parknet.co.jp, linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	tytso@mit.edu
-Subject: Re: [PATCH v5 0/20] fs: Fix missed inode write during fsync
-Message-ID: <jckkvo72sng2r33ryty4yuduky6vl2plvsqim3fyqflp4vepwy@shqhgmis5pjr>
-References: <20260727101509.21667-1-jack@suse.cz>
- <20260809153619.1888764-1-safinaskar@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hnqRopGy"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BD191F000E9;
+	Mon, 17 Aug 2026 16:11:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786983092;
+	bh=0nV0ITWCr+SwB/qQVV59nZ8a7Fv35HT3JcbHcjhrXNo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=hnqRopGyXK2yZB1YmPItzCn7//8PjNAn3JpS8iYUtl8uBYIEEHLtqCaKjGW4HTc8r
+	 /gTRYE+X6V0J90TARmPzfMLSjzzoldSayEaLf4deskBvRiRHBnuDB0OQHXTQ9Wztoh
+	 LgePo89MCNJF+5TbT2bQadem4bYTgKv6kv7grc8d2X8x/FQ5WHIeAYRgAUEjDNFC4O
+	 UnSOI0g4qB8M5CscknyTbyD95664Mb8ejFS5wx2gJFrzuQ7bTwePYLe6HmKuGiuG/1
+	 YT+g9+A/pF4YyV2q+kv4bmJuxIr3pe7mhQAMDP9BXMsFDB38V8sPMc4OuH8WJyZV6E
+	 8hi//uG+Ehr+w==
+Date: Mon, 17 Aug 2026 18:11:26 +0200
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: djwong@kernel.org, ebiggers@kernel.org, Jens Axboe <axboe@kernel.dk>, 
+	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org, linux-block@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-btrfs@vger.kernel.org, david@fromorbit.com, Tal Zussman <tz2294@columbia.edu>
+Subject: Re: [PATCH v15 00/25] fs-verity support for XFS with post EOF merkle
+ tree
+Message-ID: <aoMyh4b1qxa0k6eZ@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260814092448.1818082-1-aalbersh@kernel.org>
+ <20260817070240.GA17371@lst.de>
+ <aoMZaqbKxmp9lhKs@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -89,55 +48,54 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260809153619.1888764-1-safinaskar@gmail.com>
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[8];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,gmail.com,kernel.org,mail.parknet.co.jp,vger.kernel.org,mit.edu];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.30
-X-Spam-Level: 
+In-Reply-To: <aoMZaqbKxmp9lhKs@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
 
-On Sun 09-08-26 18:36:19, Askar Safin wrote:
-> Jan Kara <jack@suse.cz>:
-> > The series strives to make sure sync_inode_metadata() ->
-> > writeback_single_inode() will end up to properly persisting not only the inode
-> > but also all metadata associated with the inode.  This is beneficial for
-> > several reasons:
+On 2026-08-17 17:37:13, Andrey Albershteyn wrote:
+> On 2026-08-17 09:02:40, Christoph Hellwig wrote:
+> > On Fri, Aug 14, 2026 at 11:24:17AM +0200, Andrey Albershteyn wrote:
+> > > Hi all,
+> > > 
+> > > This is next revision of fsverity for XFS.
+> > > 
+> > > Range-diff with v14 also below.
+> > > 
+> > > Patches without review:
+> > > [PATCH v15 07/25] block: add task-context bio completion
+> > > [PATCH v15 08/25] block: don't delay bio task completions
+> > > [PATCH v15 16/25] xfs: handle fsverity I/O in write/read path
+> > > [PATCH v15 18/25] xfs: make xfs_free_eofblocks() work with fsverity
+> > > 
+> > > The patchset include some patches from lazy-bounce@hch-misc series for
+> > > BIO completion in task context
+> > 
+> > A different version of that landed in the block tree.  
 > 
-> It is well known that if one just created a file and wants to properly
-> persist it, they should not only call fsync on it, but also on its
-> parent directory.
+> oh didn't know that
+> 
+> > So let's hash
+> > out how we want to handle this for the 7.4-rc merge window after the
+> > dust for the current merges settles.
+> 
+> 7.3-rc?
+> 
+> > I can have the lazy bounce series
+> > ready early for the merge window, and should be able to send it out
+> > once all depdendency trees hit mainline.  Does that sound good?
+> > Or should we split the minimum requirements into a separate
+> > branch?
+> 
+> Then the only patches I will need is IOMAP_IOEND_INTEGRITY with the
+> helper. This is probably a bit too small change for separate series,
+> but this will also work.
 
-Yes.
+oh and the one which enables task context for read ioends on xfs
 
-> Is it true that after your patchset this will not be needed anymore?
+> I'm fine with waiting for lazy bounce, as I still will have at least
+> one more revision.
+> 
+> -- 
+> - Andrey
+> 
 
-No. This patch set only makes sure the inode itself and metadata such as
-indirect blocks etc. properly make it to the disk on fsync(2) and similar
-events which wasn't the case before for some filesystems.
-
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+- Andrey
