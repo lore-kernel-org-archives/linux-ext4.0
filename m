@@ -1,93 +1,195 @@
-Received: from mail-pg1-f178.google.com (mail-pg1-f178.google.com [209.85.215.178])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7874C3CAA41
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 11:49:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 208FA408617
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 13:55:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786967351; cv=none; b=iYE5YsEfLE4MzlZ0aTQrix3nAteoKtOwfC2/geIhg3kPS1GU2fBCXSVyCiGXh8z4jJrEbrT4P70IjJZyBqb4NVxexGfnyD4NIT4fi+D4THdejXeqmtm1ZtDD2YqFLRLipcekhXQxXgiEV5cNl9/Yt/PQj1z7H1WR/ahbWxXktDY=
+	t=1786974950; cv=none; b=K8KEZKarw4HQ2LsWndTkcWKGB281ven2+5wrPEuHpHKGoHeHLSozndlZuDUpNssBx3gmHviUy79TTPmGpLiyr0AKW/eNjxyHkxgGM6ZkBowigZFeT+gvAeZn3i4Oo1uOMlDEFHyih+F3dKegju5K8hjayWzwR4B+hbgdMNKVFhA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786967351; c=relaxed/simple;
-	bh=+oHH2oNEdYmqVCEcFHAyqbUQOs4dxsuZY2YxaGGg4zk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hiTP/7H9Xm2hX+X+W9L3DWtoIpTDXhjTF1lLVGDwVNs3Gp7aTDZYObOs7otl7dSGSbMSIc062upSIc7duXZ2Tt9ZrHcEhPESJ9F1fHGzp4H4nvSXTkEHsjjKEftlEJQBSKXTw+2BlorUsaJoH7QlvbTgi/kJKuTJSRVLmJqtqxk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HxIlG2Hm; arc=none smtp.client-ip=209.85.215.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1786974950; c=relaxed/simple;
+	bh=q2xFimZEHWth/JqYHGC/Wdb/XA9sRnGvKlfd4Nee3oU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=VriS+V9VyKRlMR2eofGRdWuzngDTqrr8V5G6A/NeWkCPThkQzZUW2PtNA48zZo9J0X+ZzngzvwDqZ2YzBRahp2z+majVttzsKDSOH2L1rM2fs83QKhTK90nrRBWVle+2wgtbmoI/ZVyokMQRIN0xj0xdd9Mm/eR/ecdW99gygsg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=qWqNkYMs; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=sPAvZZLU; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=WioCQXVM; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=L7fqHnIA; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HxIlG2Hm"
-Received: by mail-pg1-f178.google.com with SMTP id 41be03b00d2f7-ca766c1c9ccso1749748a12.0
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 04:49:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786967349; x=1787572149; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=F+jru68zFVDUG+9X9/jsXrRXwodS8/wdB98bVrjC8LY=;
-        b=HxIlG2HmX5UbsKZ/bdgR6Qm2k2nj2N0sO10tZqfyyKbgvPkBgABzb8e91FxGLqXVQg
-         iP/+qKuDG0XqjFEuu7NC54ID0rmZOczZQm8nKWdpEOadpTm6ojdwbnnElv40VBH+Zm/H
-         5AGzA583c+jTyB6/qrga2J2ErbSVx2lzsGfyJ9SPSpAsWLRY2aJ+AfpI/+mEphSd5h73
-         ckyLCGskkiLd6YCUqoWtQR8Yomk+Tj7ZyPaRhTrlt+/Me5OFpu5EdfSByCMS9PrnJnAk
-         p8aam4RfYmzMGaRtfms2Qt1C8J8ij4x1b7UWmwZ3gjADNLUFynKjVc6+qLeWOwuCgKGj
-         SfQQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786967349; x=1787572149;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=F+jru68zFVDUG+9X9/jsXrRXwodS8/wdB98bVrjC8LY=;
-        b=dMqDtHBviAVUxFNME4CTPaKrEnuSIpmIEaHwQdITDgzlHZor1dZnDOZRv2gxNXUMnJ
-         EL/2hR03ZKd3tC8soyZfLapM8jRQBbzukZu0afM3kbZBN2xyrHhZMXZLUfWiNPkhyr90
-         2vrnZBgmXFSeGIM6ZmjSjg+QTtKFtTuFlz+wDH+WY/TLssXmXZYrXoOyTgg5OPxiTIjl
-         koVXg/KBxBTsDD3HwWg7/kpQPFqaj7higq3HcdoGL+xUqPIeuXBfAQdWwEliXUW63MQk
-         Wq7zmTNb2qpVJhLqe7WJggO6JHEiksHa/vU/nl5h4Xl1jeO2l3616YlJaq/x76JY7WoS
-         IHJg==
-X-Gm-Message-State: AOJu0YyIXwBMTpNZaFfN41iEtCr0s8JCJJsJMdNtvyQ50tNWwuU6MfAx
-	YkWq6gyxqgWEFAyU9ebpVEP/ElHBnbUAeuSKNQEmiRM/HrASSJeKMFGc7QmrugpC
-X-Gm-Gg: AR+sD10yIRvUcsfasp5633ZStIhhEwApZJa8WdzBOZEelLF9kR2uMxWZLX5Rpw936fZ
-	iOGenWXXbgRtreoeJaBQtmszFiDn0DN2RTqT/4B42A7j9+P+9xFeXDvAEnsjudwN8pdUAGh4Yug
-	wnBvDVx3wLL+ePXJMzll9pzecra0fikQ5+eIm5GzSTR/cRyyA/oBRmS602Yv+J/k2YldA9XzfRb
-	CmM7zhGAZ8JOw9fFKDzKPSttVvkgLufuNLzXc0G3wmqTVQIgNHuq0Jlem35cpe0AhBsY9tJl5cJ
-	z1V1cjCqhtdFeU6ZxS9Qguw7dBHYCIPJZ2kEdVzQII9bw8Taw3I7/x8qOj1NCdkHCHg+aLPHpKH
-	CxHB0R22qM1+wjSXpRMJabH+gfbPfiwpO8LCu30/3DcCAoFJs52hOhftmVZUEsVJiibmxzMM2VW
-	wIBJikOf+NX7ZbvGAzcD3JNp/JJ1LRoZUc2E/VIo3X7mUWUbMvKmkTbz3934L8BBeaJezRCWzul
-	tesauG/+oacFO68kCg7N+0fqEaRVI/fPEba7RrKqeStdOB9ezfGDhB1uiODDlisSk/R03ypjWL2
-	t80V8FtqUJZ2nZAq0/CAaZ8ZUBeVGmhDqGH9Bwt7mYFgecZmpqqf
-X-Received: by 2002:a05:6a00:3926:b0:84c:2e2d:57b with SMTP id d2e1a72fcca58-84fde76bf46mr22504769b3a.27.1786967349111;
-        Mon, 17 Aug 2026 04:49:09 -0700 (PDT)
-Received: from spider.bream-herring.ts.net ([103.252.203.158])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-851b6ff0a13sm149453b3a.59.2026.08.17.04.49.07
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 17 Aug 2026 04:49:08 -0700 (PDT)
-From: Matthias Goergens <matthias.goergens@gmail.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	jack@suse.cz,
-	sashiko-reviews@lists.linux.dev
-Subject: Re: [PATCH] ext4: compensate ea_inode refs and free block on new xattr block write error
-Date: Mon, 17 Aug 2026 19:49:05 +0800
-Message-ID: <20260817114905.2708356-1-matthias.goergens@gmail.com>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260817100724.923291F000E9@smtp.kernel.org>
-References: <20260817100724.923291F000E9@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="qWqNkYMs";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="sPAvZZLU";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="WioCQXVM";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="L7fqHnIA"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id A28F53E26;
+	Mon, 17 Aug 2026 13:55:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1786974935; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=LgFNQ9EiQKOc/YQ4E/z2DvtHKT12MLZ58E+TRH4euSU=;
+	b=qWqNkYMsehAJ2Wm1UjNuMs8Hh8jXabwo3AJugcTbBTVwlaXq5fLQa+0/XVlHaV92sVPlBh
+	kPgn52Apf7u23PrvzxRTlV4F+KmsQTGFOW5BSz4zfF7wn9fpGVS9o3xK09fuhF0SIeCskT
+	RJb2F8KPJVzkZ7n5BgbI3YP3cu2OqK8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1786974935;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=LgFNQ9EiQKOc/YQ4E/z2DvtHKT12MLZ58E+TRH4euSU=;
+	b=sPAvZZLUgZNaSmkg6MUefwywO9Ox/dFtPgIAyVZGJSYF0p2A5JIPxFrztITeVCRnL7c/X9
+	6jINlfdS72tNP/DQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=WioCQXVM;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=L7fqHnIA
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1786974931; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=LgFNQ9EiQKOc/YQ4E/z2DvtHKT12MLZ58E+TRH4euSU=;
+	b=WioCQXVMv425vaaLA5OQnPVHhPVEYPIk9maMzxl4kqDg/O6moKqxUBOnEd5TyJtHD2sDz8
+	EzF+w2sNLbxenWcvXosOyHfyb73NZF2iVa271b/dy025hbXMtWWIRfLR9Ft581UZZT4rv4
+	nU7xlKwEYIawhRt0QQHShariR8VSFi4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1786974931;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=LgFNQ9EiQKOc/YQ4E/z2DvtHKT12MLZ58E+TRH4euSU=;
+	b=L7fqHnIAmA7sQJbj1G1LB4a6gzeOcOG6iMGcFnMvrPSuXyGpJ/HKYq7T5o1+nDDE3lv1ie
+	BRiZyLwPqY8/EBCA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 95555794CA;
+	Mon, 17 Aug 2026 13:55:31 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id yczUI9MSg2quXgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 17 Aug 2026 13:55:31 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 27DA9A13B5; Mon, 17 Aug 2026 15:55:31 +0200 (CEST)
+Date: Mon, 17 Aug 2026 15:55:31 +0200
+From: Jan Kara <jack@suse.cz>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	Venkat Rao Bagalkote <venkat88@linux.ibm.com>, Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Avoid entering writeback paths during fastcommit
+ replay
+Message-ID: <modcan55tuaiafsm7ki7zpvulvicck5aqt7msu26indxzyj2sk@dqcm62sh3y4n>
+References: <20260804104112.93202-2-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260804104112.93202-2-jack@suse.cz>
+X-Spam-Score: -4.01
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: A28F53E26
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	RCPT_COUNT_FIVE(0.00)[5];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-Sashiko's reviews on these threads have been genuinely useful — the
-ea_inode refcount leak that this patch follows up on was its find.  This
-one, though, is a false positive: mb_cache_entry_delete_or_get() and
-mb_cache_entry_wait_unused() have been defined in fs/mbcache.c and
-declared in include/linux/mbcache.h since commit 3dc96bba65f5 ("mbcache:
-add functions to delete entry if unused", 2022), CONFIG_FS_MBCACHE is
-selected by every EXT4 configuration, and fs/ext4/xattr.c already calls
-mb_cache_entry_delete_or_get() at three sites before this patch — a tree
-missing the symbols could not build ext4 at all.  The patch compiles,
-and the fault-injection measurements in the commit message ran on a
-built kernel.
+Hello Christian!
+
+With all the vacations going on this fixup to apply on top of vfs-7.3.sync
+branch seems to have fallen through the cracks (I guess the note below the
+changelog was too hidden, next time I'll try to indicate this is a fixup
+inside the subject - maybe like [PATCH FIXUP vfs-7.3.sync]). Anyway, can
+you please pick it up and push it to Linus later during the merge window?
+Thanks!
+
+								Honza
+
+On Tue 04-08-26 12:41:13, Jan Kara wrote:
+> Fastcommit replay effectively happens in nojournal mode. This results in
+> ext4_mark_iloc_dirty() setting I_METADATA_WRITEBACK flag and as a result
+> we end up entering filesystem writeback functions. However during
+> fastcommit replay s_writepages_rwsem isn't initialized yet and hence we
+> crash.
+> 
+> Fix the problem by avoiding setting I_METADATA_WRITEBACK during
+> fastcommit replay. Journal replay flushes the whole block device after
+> replay anyway so all metadata is properly persisted and replay is faster
+> this way as a bonus.
+> 
+> Fixes: c26339e1df33 ("ext4: Fix data integrity writeout issues in nojournal mode")
+> Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/inode.c | 11 ++++++++---
+>  1 file changed, 8 insertions(+), 3 deletions(-)
+> 
+> Christian, please add this fixup to my sync fixing series. Thanks!
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 7a1f961cd11c..12ff84ab5741 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -6408,9 +6408,10 @@ int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
+>  int ext4_mark_iloc_dirty(handle_t *handle,
+>  			 struct inode *inode, struct ext4_iloc *iloc)
+>  {
+> +	struct super_block *sb = inode->i_sb;
+>  	int err = 0;
+>  
+> -	err = ext4_emergency_state(inode->i_sb);
+> +	err = ext4_emergency_state(sb);
+>  	if (unlikely(err)) {
+>  		put_bh(iloc->bh);
+>  		return err;
+> @@ -6425,9 +6426,13 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+>  	put_bh(iloc->bh);
+>  	/*
+>  	 * Mark that there's metadata writeout pending for the inode so that it
+> -	 * gets properly flushed on fsync(2) and similar.
+> +	 * gets properly flushed on fsync(2) and similar. We don't bother for
+> +	 * fastcommit replay as that flushes the whole bdev afterwards anyway.
+> +	 * It is faster this way and we avoid entering fs writeback paths which
+> +	 * aren't fully initialized yet.
+>  	 */
+> -	if (!EXT4_SB(inode->i_sb)->s_journal) {
+> +	if (!ext4_handle_valid(handle) &&
+> +	    !(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)) {
+>  		/*
+>  		 * Inode didn't need to go through dirtying, make sure it is
+>  		 * attached to wb so that writeback can handle it.
+> -- 
+> 2.51.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
