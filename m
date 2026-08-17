@@ -1,127 +1,191 @@
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAF573B47C3;
-	Mon, 17 Aug 2026 07:20:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15AB336215F
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 08:19:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786951207; cv=none; b=MeyG5xmAgztU6+HdiTex34Ca+wcNEz4RYlYRzsfMROA8VFQHTDMCedj+myXz7HolwovcC3+8ys0i92Dx/PNixsFnHHM0a/VOxXEGsCniF7or9S7VQkTUKA4UHq73LR+qMkQEifKjx2IQFyI29wFa6oXu0SnFAO8iLIIDydKWzHo=
+	t=1786954796; cv=none; b=U48m1D3YfgZ7CahNoHzuADu81NulXAFgiZdbF/Hu2U6vFr3QhhjINCytQ/v24s51gCNUx5tZzyVPzFAO1PSQ1PI2RneLxbJ4JvnwNoeFY0oomnsg0IxEERrwlHH6osgxYZL56OQXeFjw+sisWSxwaE90nMN+GhS/bHdD/VHnccM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786951207; c=relaxed/simple;
-	bh=myeqPs/5HjoaiaENp6VOEIO9ZPDU1o1pXiX7ZccVRHI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=fktVRMoIlnXq4fem+p4zujSBZEfXhycyOvA0oVedTpWxIL02rvhxVa7FFlLg7TEsMQmFoIRcKIUL+GzzIboQFfSxF8C/bY3HpSmzcAHgI2etWqbKNhxYroliu4uVWkmnbdgCT3OIYufxNu2lzwm2r8DpiqBOrD42yosW5QNEtSQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id 65CDA68D07; Mon, 17 Aug 2026 09:20:00 +0200 (CEST)
-Date: Mon, 17 Aug 2026 09:20:00 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: djwong@kernel.org, ebiggers@kernel.org, hch@lst.de,
-	Jens Axboe <axboe@kernel.dk>, Carlos Maiolino <cem@kernel.org>,
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-	linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
-	david@fromorbit.com, Tal Zussman <tz2294@columbia.edu>
-Subject: Re: [PATCH v15 17/25] xfs: use read ioend for fsverity data
- verification
-Message-ID: <20260817072000.GD17371@lst.de>
-References: <20260814092448.1818082-1-aalbersh@kernel.org> <20260814092448.1818082-18-aalbersh@kernel.org>
+	s=arc-20240116; t=1786954796; c=relaxed/simple;
+	bh=JFYjF+DkAm3gYNXAdMMu5qOjcHaagFMmdqt+ajQe3Ts=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=J23k+pfJ6gwz1b9i5v2UmCAHWmCbbZI0/TjF0o2/5xukt44ct8DxVj1k5jlY7LR17LLikwVHh4tXTu+5rEH/vxOoIbXmkz6dUhR/um+m8egMuWA1EGQOxkIuXw7RykUE5TZKqhCScgGtptRP02Cd6bcWi36F5CYja0p8O/UqT/g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cCOE3N2w; arc=none smtp.client-ip=209.85.210.180
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cCOE3N2w"
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-84f3ab8750cso1959129b3a.0
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 01:19:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786954794; x=1787559594; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=7anIaDpbEisdhPG9Mmo3P2k8j+qj13jEqhUX32axBYw=;
+        b=cCOE3N2wkhZo1RC3RRoR3R8PrXo907jOEd8zdeRtoZoyJHpgsA3S4TColTUk24WhI2
+         UtuMyetn3t/TFaYWFZ9i3hzDxP5RuXlYYhPu/gFeAehpYEFuMLnOXdG6gzpvyXTkQRKf
+         K2vTT39oPN6dTmmVLuDV9YtXNf3pBMdtVco9ncgJ7svLGRjgaw2amFOBsUT3E8Xy82nK
+         ROkyI6joTWIXF8XLip9TfaIrAbMvJz+NNFWVAyjooOu7fDDjmCMJ53jSSr6KPn/h1qS5
+         VtIVG/fYYSAopSel4zlRL4Yztpl+CysP/8SLOTIhQLasvCRQlVV1QmaYEuuvERFVQv5B
+         zkkQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786954794; x=1787559594;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=7anIaDpbEisdhPG9Mmo3P2k8j+qj13jEqhUX32axBYw=;
+        b=jJbrNSNpX1uomvhNULhOIi6DnpKlJErBWLCS/GpmijD7uLiPhOitTkGqUciUDcrUDI
+         M99XZN/hT4CNNRze3J18aBa9fEB4WPwavCIdeW4bRObhs7orXkKfz+nFakpMhjyzLVon
+         hv8QlkmO5T6nQtYRABjNCwTwBHkx/mxWFRh/a3s9hpKWfQmmJGTNeAfusskE5grot2Ek
+         uWaiX/5yyj//5oXB2X2G5A0OH/eO0v29j229Xl0GNcWH5n0PPgXKVmL02iQ10SuSSAG9
+         p0N7Z68bFV45n0h0QRxsph2wga6UtPDH3wtsBiayUpZdq/hIA0Vg5OWGK9hffrtZVS9y
+         h7MA==
+X-Forwarded-Encrypted: i=1; AHgh+RraNGRqlULXlPIjLaBTWgGp7TnXzYSdjB2SAlfXIjrMeG33RepuAn1lzhhJIU5VS57Zw0gnw66ENA0R@vger.kernel.org
+X-Gm-Message-State: AOJu0YwQZDHI2wnJPHriFjjyMuJw8WNiJ+8ZDO8XzVhEzU8KiAyW9NJ9
+	TV4Wp07C1v5UMzat7lpo3Huuii9Bive1s5fD6uMEgDD0cebwp12yIZsBTKDTJjQ+v5c=
+X-Gm-Gg: AR+sD11sxrKljV6KwN5G1cawNP1QMYaoFzlycrnJxGzwMuiSJr46Ko6WW2rDkROTgq+
+	hj8igkPEvAaQI3MFWBI3k2lNSsmDPbqRVWDphZJ5R3iKMgCSyE2hQaE97sAEAH8Xv6bLiA/DD2y
+	Lgrcv1nYTuOzip3Yjv8XPu2EAnnEqiaxo2ugaoXG13RUQnmHX5eTIpOZhk/Xr9EGdAjJERYx0nv
+	KOABfO18cltCcccKbXK8F6GcUMgitiigDidO1eRZomNoNcFZ+eI7XVDKRreYeNV+hlILi7OAh5r
+	n1RNpWbQ85zJQbZ4Ie8IJJvo0CMbfn9z7gY3UgdFxb3/ULOKx7fYVV5oeDQht5bby3ZVMjikylj
+	eUaHH4fDzfRKG0olAeLNrgpDD8fSM1t3Qrl7cDrzYKJAv+K250KXCzAmdJcixqyJKGcJQqb8F+J
+	98n/XYA7SmoxfEkhqHqg5QPlKVZXVBdtwjFqrzZyV5Mfm5eJd67coA3GeJ3+qqmDsMq12Uq2KNT
+	v/nG89qHtKjVXBNaHw6
+X-Received: by 2002:a05:6a00:21c8:b0:847:973b:3cf6 with SMTP id d2e1a72fcca58-84fddde3c32mr21634131b3a.0.1786954794092;
+        Mon, 17 Aug 2026 01:19:54 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-851b401ec98sm203757b3a.6.2026.08.17.01.19.49
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 17 Aug 2026 01:19:53 -0700 (PDT)
+Message-ID: <e6ee7c12-c0bf-4940-95fb-af71127745c7@gmail.com>
+Date: Mon, 17 Aug 2026 16:19:43 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260814092448.1818082-18-aalbersh@kernel.org>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH -next v5 17/32] ext4: implement mmap path using iomap
+To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
+ <20260814093331.1703882-18-yi.zhang@huaweicloud.com>
+ <20260814103531.D9F861F000E9@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <20260814103531.D9F861F000E9@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Fri, Aug 14, 2026 at 11:24:34AM +0200, Andrey Albershteyn wrote:
-> Use read ioends for fsverity verification. Do not issue fsverity
-> metadata I/O through the same workqueue due to risk of a deadlock by a
-> filled workqueue.
+On 8/14/2026 6:35 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 2 potential issue(s) to consider:
+> - [Medium] File operations that zero partial blocks will crash on iomap-enabled files due to legacy buffer_head dereferencing.
+> - [Medium] Bypass of inline data conversion for iomap-enabled inodes causes failures and kernel warnings.
+> --
 > 
-> Pass fsverity_info from iomap context down to the ioend as hashtable
-> lookups are expensive.
+> --- Patch [17]: [PATCH -next v5 17/32] ext4: implement mmap path using iomap ---
+> commit 355e5d2bcead3197b1566acfa637f19866c3b52c
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> Subject: ext4: implement mmap path using iomap
 > 
-> Add a simple helper to check that this is not fsverity metadata but file
-> data that needs verification.
+> This commit introduces ext4_iomap_page_mkwrite() to implement the mmap
+> iomap path for ext4. It delegates the heavy lifting to iomap_page_mkwrite(),
+> using ext4_iomap_buffered_write_ops and ext4_iomap_buffered_da_write_ops.
+> The lock ordering documentation in super.c is also updated accordingly.
+> 
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 0b3e54e12b78f..a054456258953 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+> 
+> [ ... ]
+> 
+>> @@ -7318,6 +7343,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+>>   
+>>   	filemap_invalidate_lock_shared(mapping);
+>>   
+>> +	if (ext4_inode_buffered_iomap(inode)) {
+>> +		ret = ext4_iomap_page_mkwrite(vmf);
+>> +		goto out;
+>> +	}
+>> +
+> 
+> [Severity: Medium]
+> Will this bypass inline data conversion for iomap-enabled inodes?
+> 
+> If ext4_inode_buffered_iomap(inode) is true, we route to
+> ext4_iomap_page_mkwrite() and skip ext4_convert_inline_data(inode).
+> 
+> However, the iomap implementation explicitly forbids inline data, triggering
+> a warning and returning -ERANGE:
+> 
+> fs/ext4/inode.c:ext4_iomap_buffered_do_write_begin() {
+>      ...
+>      /* Inline data and non-extent are not supported. */
+>      if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+>          return -ERANGE;
+>      ...
+> }
+> 
+> Should the inline data conversion happen before checking for the iomap path?
 
-> -	const struct address_space	*mapping)
-> +	const struct address_space	*mapping,
-> +	loff_t				position)
->  {
 
-Hmm, "position" is new for these kinds of arguments.  We tend to call
-them "pos", "off", or "offset", but I guess this completes the matrix :)
+This is a false positive. The iomap path doesn't support inline
+data at the moment. But for future-proofing, I think we should
+move the inline data conversion before the iomap path check,
+even though it's harmless for now.
 
-But maybe stick to pos to match the naming of the helpers used by the
-callers.
+> 
+> [Severity: Medium]
+> Will file operations that zero partial blocks crash on iomap-enabled files?
+> 
+> When an application performs an extending write or truncate up on a file
+> with EXT4_STATE_BUFFERED_IOMAP enabled, ext4_write_checks() unconditionally
+> calls ext4_block_zero_eof() without checking if the inode uses iomap:
+> 
+> fs/ext4/file.c:ext4_write_checks() {
+>      ...
+>          ret = ext4_block_zero_eof(inode, old_size, iocb->ki_pos);
+>      ...
+> }
+> 
+> This proceeds to ext4_block_do_zero_range() and ext4_load_tail_bh(), which
+> calls folio_buffers(). For an iomap folio, folio->private points to an
+> iomap_folio_state, not a buffer_head:
+> 
+> fs/ext4/inode.c:ext4_load_tail_bh() {
+>      ...
+>      bh = folio_buffers(folio);
+>      if (!bh)
+>          bh = create_empty_buffers(folio, blocksize, 0);
+> 
+>      /* Find the buffer that contains "offset" */
+>      offset = offset_in_folio(folio, from);
+>      pos = blocksize;
+>      while (offset >= pos) {
+>          bh = bh->b_this_page;
+>      ...
+> }
+> 
+> Treating iomap_folio_state as a buffer_head leads to a crash when iterating
+> bh->b_this_page. Since there are no callers setting EXT4_STATE_BUFFERED_IOMAP
+> in the current codebase, this is a latent regression. How should partial block
+> zeroing be handled for iomap-enabled files?
+> 
 
+This is a false positive. Patch 18 adds a new function
+ext4_block_iomap_zero_range() for the iomap path.
 
->  	struct xfs_inode		*ip = XFS_I(mapping->host);
->  
-> -	if (bdev_has_integrity_csum(xfs_inode_buftarg(ip)->bt_bdev))
-> +	if (bdev_has_integrity_csum(xfs_inode_buftarg(ip)->bt_bdev) ||
-> +			xfs_fsverity_is_file_data(ip, position))
->  		return &xfs_iomap_read_ops;
->  	return &iomap_bio_read_ops;
+Thanks,
+Yi.
 
-Nit: While this is one of the standard Linux indent styles for long
-ifs, the other one would seem more readable here:
+>>   	err = ext4_convert_inline_data(inode);
+>>   	if (err)
+>>   		goto out_ret;
+> 
 
-	if (bdev_has_integrity_csum(xfs_inode_buftarg(ip)->bt_bdev) ||
-	    xfs_fsverity_is_file_data(ip, position))
-
-> +#include "xfs_errortag.h"
-> +#include "xfs_fsverity.h"
->  #include <linux/bio-integrity.h>
-> +#include <linux/fsverity.h>
-> +
-> +static void
-> +xfs_end_fsverity_io_read(
-> +	struct work_struct	*work)
-> +{
-> +	struct iomap_ioend	*ioend =
-> +		container_of(work, struct iomap_ioend, io_work);
-> +
-> +	if (!ioend->io_bio.bi_status)
-> +		fsverity_verify_bio(ioend->io_vi, &ioend->io_bio);
-> +
-> +	iomap_finish_ioends(
-> +		ioend, blk_status_to_errno(ioend->io_bio.bi_status));
-
-Indentation looks odd here, this should be:
-
-	iomap_finish_ioends(ioend,
-		blk_status_to_errno(ioend->io_bio.bi_status));
-
-or maybe add a local bio variable given that you use ioend->io_bio
-three times, and this would fit onto a single line.
-
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 0959b97e641b..f329a57d6ee9 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -454,6 +454,7 @@ struct iomap_ioend {
->  	sector_t		io_sector;	/* start sector of ioend */
->  	void			*io_private;	/* file system private data */
->  	struct fsverity_info	*io_vi;		/* fsverity info */
-> +	struct work_struct	io_work;	/* fsverity blocking I/O */
->  	struct bio		io_bio;		/* MUST BE LAST! */
->  };
-
-Please don't add new fields to iomap structures in xfs patches.
-
-And I really don't like adding it here given that struct work_struct is
-rather big and not useful in other ways here.  So maybe just do the
-alloc a struct for the workqueue and queue it up using
-fsverity_enqueue_verify_work approach the other file systems do.
-Or add something like the block complete in task thing to fsverity
-and simplify all these so that they only need a list entry
-(which we already have in the ioend).
