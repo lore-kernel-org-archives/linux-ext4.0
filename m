@@ -1,175 +1,112 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f170.google.com (mail-pl1-f170.google.com [209.85.214.170])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7DC8933ADB3
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 06:53:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DD9F37C93F
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 06:59:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.170
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787035985; cv=none; b=Df59PMRor0j33gFAA0Oht+LdQ/6M899qjsWgOVbjmP9QmZAmqivFCN2FpiggoGn5u+6ehkEF6BZEpim9EYKnHPCoisay80Qe6psVX8kwGBO8CYCsd4WzAekU56DGonx+lpRV7XHy5p0HNenml3VkAVeEOIR2wApgd7Pd3mR+N0M=
+	t=1787036360; cv=none; b=Bm1p/QPQA33xieKJ8KNkz6I9tjtEZbOHq2JN1vR3Oxc5EZSBj8ZGkYbp4WTFJrdfynxgtCiGzkVr26S9eWFL3aCHVC1mkceDDyjgC/t1ifFoffjNbCHkDXpfffyeMwmrjFQ86tyGVOn9lQJd9a+L2Gai7p7gx+9rnkVWFvTLTGg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787035985; c=relaxed/simple;
-	bh=XC4sWqZ9ODhQMGgKsvzyPz8PSgz9oPSEO9HadLjlyBk=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=KUvB5SOTaTcoNVGcop9weae/P2UqrvU+oemTWBzC0VkUtK9uBLZxWgBG/rA4IBubpN5WcGekVk3yx2Q2B8ZsY2jMaWecU6r4wa3MxIH4kJ3G3ryyfK3vyek4VhDiR21abwnxDjURDfNj+DaT8zYp0sqZMFuQ38mtu2bz+MjT/H8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jrR2p5Qg; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787036360; c=relaxed/simple;
+	bh=Lo9Dnt2y/TMGSSskmCCw/E68ISLvoXSSWMqfmsWr4W4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=uUKBQdSrp8mLF2c/gj/NGq9VStgSyfqbrz0DWH5REX4ZE1XMInO4z87PedccUJIkApEyUly+9rctNrSNHl2VKCZJ+lLzKw2Dku1d7xf9bI5evwmmMZVuSemvTzgJmYe8Mo/n1Jqnuatz4bEqozwIW6RZKe1BWTUQPS1ai3NkNk4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=K/qJj9Tb; arc=none smtp.client-ip=209.85.214.170
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jrR2p5Qg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 348F91F000E9;
-	Tue, 18 Aug 2026 06:53:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787035984;
-	bh=q0geMLCTBM+B9l7igyCKj+w+iItTVRFp3SK9R7gjqtQ=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=jrR2p5QgHiPE5K2LdLWG7c4x9fDun6O8ZbmPrEy3OrkVnztRzWxEqXg/0oEN+CZ2Y
-	 2p2x32R347YN8OORW2VCJkZ38jYOOagyP6W2WXpNDujLvOH/Fkrvmh+OQKMTFNXYBX
-	 2HhVsZQ/IkmdVSv8gZdzbgIqhJIMGAGqAe/C1TEa53P4Puc+tXx8evXFZSe/j2bKZt
-	 reuw9GWGLjJGaakhIQmWFNxlepQfwPDGoQPQpqcZ5faQqxHOMHEvcMnc6m48gvNTJX
-	 NXvQujzzNLqz1rBEI28RPLqnN7b4bOz4tDZREEiUYY+MsHSewx4d+JVvTFYJNjZtpb
-	 0GhMEa2LgovxA==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4/064: add regression test for delalloc remount leak
-Reply-To: sashiko-reviews@lists.linux.dev
-To: guzebing <guzebing1612@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260818064023.2309786-1-guzebing1612@gmail.com>
-References: <20260818064023.2309786-1-guzebing1612@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 18 Aug 2026 06:53:03 +0000
-Message-Id: <20260818065304.348F91F000E9@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="K/qJj9Tb"
+Received: by mail-pl1-f170.google.com with SMTP id d9443c01a7336-2caf228a910so32377985ad.2
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 23:59:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787036357; x=1787641157; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=EsgqEQAUqrVWXU1GldXAhQw/hCdlChW/NiKf+A/QTHM=;
+        b=K/qJj9TbqgJIQQyPUVfyJ91r2dc4GyrA13mhJYIyUJApa1JmjYsdYrZa5pKOHJmFl8
+         rXF7ub+jJVk8iCi6ZYonZZwPJKLffwSWwLXr3l2BC+QmKvUTFisz4BVFjHTO2qmxrASD
+         folm+hRObzREp7uz5hE1rdjvKA50Lyl+0Mq/O9UCUOd9Xa7/ZDv5iejp/Ibh0M4UPmDR
+         LhETIae7nLCGdivTyRT3A91lnA3dlHGbI1w2dBh+dgGzK3EajU8m6f7qnxIt7RzLGfVg
+         9xBpxaWI8K47ntdL3pzJnggjPNU7HDAKodWt4vZwjqvee1DMFdOtL94q8C5efFL8rTQX
+         ziLg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787036357; x=1787641157;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=EsgqEQAUqrVWXU1GldXAhQw/hCdlChW/NiKf+A/QTHM=;
+        b=iqyqpoqT33ci5vCUyyw2W2eFWjv2fQjDwI21DMCgUlPHVqlwP9JZHh8Cnp3pAJjB1a
+         +arN+c3VTbRiP5zwwseF1Se/vT4v2Itg0ywzO6Y0Vkcy2YBlyAOZbbyfNy79S0Rg71fQ
+         PB0S185iZ12LG5pyY2WZoEfvtUhV+9IHKRhCmcRXQ0gyNLn+FDbmtB+w+uzYGVboBMAc
+         ex+DFQThze8EJ2fvuWmlehguZ1/FB8c6Va2KFvpV+butavysYjtClmF+dWLzQ2O+AAVF
+         rk1pczbmTVcCe2tWTJKTVS+kgfWP38lKyjfUdV0cgm7H9HY67K4Nn6nmmuxqvktHjGZY
+         AOEA==
+X-Gm-Message-State: AOJu0Yx7EPmvNeULq6L5NCSJw7ptDuYpMvU0ZKQAk6gzK+h/MQEDH4PX
+	8jN+DvMkw7FlbzPoLqA/Kuy4iPG/acN247BQuGHkEDZeBbc8yeM7FLEr
+X-Gm-Gg: AR+sD12WM4HTNDrYqhLkzgkWQXytrKzYsaw0sQxDb+cmjCmP8Of3KN5J1pjPDEUVZV7
+	R2bZ/kPXlgbkuqKCy6umezbZXPioQ+FbBNlc6CJ4aGZX7Mjb6DqvaYTVjmKyZogdOxNUaEkR+1M
+	KzvvZ+IYIeY8F/g52Q8457ThS3rZsc9AJ+ygA7wB51rxm2r77H7AVZuMJ7NabVW0xKKbqfTJjbi
+	Qy+8eUrpzrhRzSu4v+OiV4OtSE8okEW8m4tM9SHoiyumd4M4whcrIn2h8Ff+Kl57xWqFLvbO+Z4
+	cVTD3+67BLO7OPn6+etjnkb0EPtrUZ+xTafXJuhNMp9lV3CDv1yhfIOZv2cXI74Oe8iAmc/bn7O
+	T2PswzyOPfU0acDQdfNonNiMeGdv/0zZFJf6Vdf2c3uoQjngc+2ovDnUdcpqooXNGm4nZnAh5+8
+	QbWQD6qiRBso9GxTdDBpQYhigje5+oLY+WZ71TlXh/zJaqJUmjNnv4VNCmVrct+CwHG4LI9ALJA
+	kf6Arusza+y1uk=
+X-Received: by 2002:a17:902:f548:b0:2ca:e565:7b15 with SMTP id d9443c01a7336-2d3b0874ce2mr279530695ad.10.1787036356990;
+        Mon, 17 Aug 2026 23:59:16 -0700 (PDT)
+Received: from [100.82.107.240] ([63.216.146.178])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d5c1e528b3sm10780415ad.46.2026.08.17.23.59.12
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 17 Aug 2026 23:59:16 -0700 (PDT)
+Message-ID: <badd3ede-02ca-4fa8-9a51-a2f973dd97a3@gmail.com>
+Date: Tue, 18 Aug 2026 14:59:09 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: reject delalloc to nodelalloc before applying
+ remount options
+To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
+ ritesh.list@gmail.com, yi.zhang@huawei.com, bretznic@gmail.com,
+ stable@vger.kernel.org
+References: <20260814034855.1573759-1-guzebing1612@gmail.com>
+ <an7Gj2vWVpbP584g@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+From: guzebing <guzebing1612@gmail.com>
+In-Reply-To: <an7Gj2vWVpbP584g@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 5 potential issue(=
-s) to consider:
-- [High] The test is misplaced in the Linux kernel repository instead of th=
-e standalone fstests repository.
-- [High] Incorrect sysfs and procfs device path resolution for Device-Mappe=
-r/LVM setups.
-- [High] Test calls an undefined function `_check_dmesg_for`, leading to si=
-lent false negatives.
-- [Medium] Unsafe wait in cleanup routine can cause the test harness to blo=
-ck indefinitely.
-- [Low] Overridden `_cleanup` function leaks fstests temporary framework fi=
-les.
---
 
---- Patch [1]: [PATCH] ext4/064: add regression test for delalloc remount l=
-eak ---
-commit dd8f7afb5b15cd0c26af3c7b7793de74e5f8db76
-Author: guzebing <guzebing1612@gmail.com>
-ext4/064: add regression test for delalloc remount leak
 
-This commit adds an ext4 regression test to exercise rejected delalloc to
-nodelalloc remounts while buffered writes and truncates are active. The
-workload checks for leaked delayed allocation reservations during unmount.
+On 8/14/26 3:41 PM, Ojaswin Mujoo wrote:
+> Can you please add an xfstests for this. The test can stress this path and
+> then use the _check_dmesg_for helper to detect if there were any
+> i_reserved_data_blocks related warnings.
+> 
+> Regards,
+> ojaswin
 
-Link: https://lore.kernel.org/linux-ext4/20260814034855.1573759-1-guzebing1=
-612@gmail.com/
+Hi Ojaswin,
 
-> diff --git a/tests/ext4/064 b/tests/ext4/064
-> new file mode 100755
-> index 0000000000000..5d43764c77687
-> --- /dev/null
-> +++ b/tests/ext4/064
-> @@ -0,0 +1,216 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2026 guzebing.  All Rights Reserved.
+Thanks for the review.
 
-[ ... ]
+I have posted the corresponding fstests regression test here:
 
-> +. ./common/preamble
-> +_begin_fstest auto stress mount
+https://lore.kernel.org/linux-ext4/20260818064023.2309786-1-guzebing1612@gmail.com/
 
-[Severity: High]
-Is this test file intended for the standalone fstests repository rather than
-the Linux kernel tree?
+The test stresses buffered write/truncate operations in parallel with
+the expected-failing remount,nodelalloc operation, and checks dmesg for
+leaked delayed allocation reservations during unmount.
 
-The test framework dependencies, such as common/preamble, are not present in
-the kernel repository. Tests submitted directly to the kernel tree usually
-use the kselftest framework under tools/testing/selftests/.
+Locally, the test fails on an affected kernel with
+i_reserved_data_blocks not cleared warnings, and passes with this patch
+applied.
 
-[ ... ]
-
-> +stop_workload()
-> +{
-> +	touch "$stop_file"
-> +	if [ -n "$remounter_pid" ]; then
-> +		wait "$remounter_pid" 2>/dev/null
-> +		remounter_pid=3D
-> +	fi
-> +	if [ "${#writer_pids[@]}" -gt 0 ]; then
-> +		wait "${writer_pids[@]}" 2>/dev/null
-
-[Severity: Medium]
-Will using wait without a timeout block the test runner indefinitely if a
-workload enters an unkillable state?
-
-Would it be safer to send a terminate signal to the background processes
-before waiting for their termination?
-
-> +		writer_pids=3D()
-> +	fi
-> +}
-> +
-> +# Override the default cleanup function.
-> +_cleanup()
-> +{
-> +	stop_workload
-> +	cd /
-> +	_is_dir_mountpoint "$SCRATCH_MNT" >/dev/null &&
-> +		_scratch_unmount >/dev/null 2>&1
-> +	rm -f "$stop_file" "$worker_error" "$worker_error".* \
-> +		"$tmp.xfs_io_error".* "$remounter_error" "$remounter_count"
-> +}
-
-[Severity: Low]
-Could overriding the default cleanup function without including the standard
-rm -r -f $tmp.* command leave fstests framework temporary files in the
-system temporary directory?
-
-[ ... ]
-
-> +sleep_msg_ratelimit_interval()
-> +{
-> +	local dev=3D$(_short_dev "$SCRATCH_DEV")
-> +	local interval_file=3D/sys/fs/ext4/$dev/msg_ratelimit_interval_ms
-
-[Severity: High]
-Does _short_dev reliably resolve the correct sysfs and procfs entries on
-setups using Device-Mapper or LVM?
-
-The kernel exports ext4 sysfs entries using the underlying block device name
-like dm-0, instead of the logical volume name that _short_dev returns. This
-will also affect the procfs options_file check later in the test.
-
-Would an fstests helper like _sysfs_dev be more appropriate here?
-
-[ ... ]
-
-> +_scratch_unmount || _fail "scratch filesystem unmount failed"
-> +
-> +warning=3D"i_reserved_data_blocks .* not cleared!"
-> +if _check_dmesg_for "$warning"; then
-
-[Severity: High]
-Does _check_dmesg_for exist in the standard fstests framework?
-
-If the shell evaluates an undefined function, it will return a command not
-found error, causing this conditional check to silently evaluate to false
-even when the delayed allocation reservation bug is triggered.
-
-Should this use a standard check like:
-if _dmesg_since_test_start | grep -qE "$warning"; then
-
-> +	_dmesg_since_test_start | grep -E "$warning" >> "$seqres.full"
-> +	_fail "delayed allocation reservations leaked during rejected remount"
-> +fi
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260818064023.2309=
-786-1-guzebing1612@gmail.com?part=3D1
+Thanks,
+Guzebing
