@@ -1,112 +1,126 @@
-Received: from mail-pl1-f170.google.com (mail-pl1-f170.google.com [209.85.214.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DD9F37C93F
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 06:59:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF14033F8A2
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 09:02:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787036360; cv=none; b=Bm1p/QPQA33xieKJ8KNkz6I9tjtEZbOHq2JN1vR3Oxc5EZSBj8ZGkYbp4WTFJrdfynxgtCiGzkVr26S9eWFL3aCHVC1mkceDDyjgC/t1ifFoffjNbCHkDXpfffyeMwmrjFQ86tyGVOn9lQJd9a+L2Gai7p7gx+9rnkVWFvTLTGg=
+	t=1787043728; cv=none; b=iWKdKd4NEunBNcnqpAReitNCefWrwF6TcIqLyHP6OO2pgQJPDnnGO6vUnpKo1TgurZx3dlmdyPTfi2Bh1KN5NzI4s0fNRnkkX+7zlIeKmIh9l59PGF1F6yjbw/ki7p7lIS22QkjxhQrXiq+KaZhyTb/SzEh0pXX1nXT7ST3dLn0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787036360; c=relaxed/simple;
-	bh=Lo9Dnt2y/TMGSSskmCCw/E68ISLvoXSSWMqfmsWr4W4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=uUKBQdSrp8mLF2c/gj/NGq9VStgSyfqbrz0DWH5REX4ZE1XMInO4z87PedccUJIkApEyUly+9rctNrSNHl2VKCZJ+lLzKw2Dku1d7xf9bI5evwmmMZVuSemvTzgJmYe8Mo/n1Jqnuatz4bEqozwIW6RZKe1BWTUQPS1ai3NkNk4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=K/qJj9Tb; arc=none smtp.client-ip=209.85.214.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1787043728; c=relaxed/simple;
+	bh=DR7Rw2o9mHCiOkvzX1QUQaQZCPVzoeEFnipzwH8zYEw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QmV8Soppn5CHcf5jI1xOn6i6fUpbngAlW3QdUHDueZH4JU3rPFfDu86e8HR2dsnNB7NG9eD27Xf1+0RiELqgSkZ/2mvN4nnyHECWV1tChOI2o8rugrazStYcDGtI6h4viDCgJmphPf9JNWEp0AkkcxnfzovIApMPEHDb47LhO5k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=dEGGQR60; arc=none smtp.client-ip=148.163.158.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="K/qJj9Tb"
-Received: by mail-pl1-f170.google.com with SMTP id d9443c01a7336-2caf228a910so32377985ad.2
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Aug 2026 23:59:17 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787036357; x=1787641157; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=EsgqEQAUqrVWXU1GldXAhQw/hCdlChW/NiKf+A/QTHM=;
-        b=K/qJj9TbqgJIQQyPUVfyJ91r2dc4GyrA13mhJYIyUJApa1JmjYsdYrZa5pKOHJmFl8
-         rXF7ub+jJVk8iCi6ZYonZZwPJKLffwSWwLXr3l2BC+QmKvUTFisz4BVFjHTO2qmxrASD
-         folm+hRObzREp7uz5hE1rdjvKA50Lyl+0Mq/O9UCUOd9Xa7/ZDv5iejp/Ibh0M4UPmDR
-         LhETIae7nLCGdivTyRT3A91lnA3dlHGbI1w2dBh+dgGzK3EajU8m6f7qnxIt7RzLGfVg
-         9xBpxaWI8K47ntdL3pzJnggjPNU7HDAKodWt4vZwjqvee1DMFdOtL94q8C5efFL8rTQX
-         ziLg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787036357; x=1787641157;
-        h=content-transfer-encoding:content-type:in-reply-to:from:references
-         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=EsgqEQAUqrVWXU1GldXAhQw/hCdlChW/NiKf+A/QTHM=;
-        b=iqyqpoqT33ci5vCUyyw2W2eFWjv2fQjDwI21DMCgUlPHVqlwP9JZHh8Cnp3pAJjB1a
-         +arN+c3VTbRiP5zwwseF1Se/vT4v2Itg0ywzO6Y0Vkcy2YBlyAOZbbyfNy79S0Rg71fQ
-         PB0S185iZ12LG5pyY2WZoEfvtUhV+9IHKRhCmcRXQ0gyNLn+FDbmtB+w+uzYGVboBMAc
-         ex+DFQThze8EJ2fvuWmlehguZ1/FB8c6Va2KFvpV+butavysYjtClmF+dWLzQ2O+AAVF
-         rk1pczbmTVcCe2tWTJKTVS+kgfWP38lKyjfUdV0cgm7H9HY67K4Nn6nmmuxqvktHjGZY
-         AOEA==
-X-Gm-Message-State: AOJu0Yx7EPmvNeULq6L5NCSJw7ptDuYpMvU0ZKQAk6gzK+h/MQEDH4PX
-	8jN+DvMkw7FlbzPoLqA/Kuy4iPG/acN247BQuGHkEDZeBbc8yeM7FLEr
-X-Gm-Gg: AR+sD12WM4HTNDrYqhLkzgkWQXytrKzYsaw0sQxDb+cmjCmP8Of3KN5J1pjPDEUVZV7
-	R2bZ/kPXlgbkuqKCy6umezbZXPioQ+FbBNlc6CJ4aGZX7Mjb6DqvaYTVjmKyZogdOxNUaEkR+1M
-	KzvvZ+IYIeY8F/g52Q8457ThS3rZsc9AJ+ygA7wB51rxm2r77H7AVZuMJ7NabVW0xKKbqfTJjbi
-	Qy+8eUrpzrhRzSu4v+OiV4OtSE8okEW8m4tM9SHoiyumd4M4whcrIn2h8Ff+Kl57xWqFLvbO+Z4
-	cVTD3+67BLO7OPn6+etjnkb0EPtrUZ+xTafXJuhNMp9lV3CDv1yhfIOZv2cXI74Oe8iAmc/bn7O
-	T2PswzyOPfU0acDQdfNonNiMeGdv/0zZFJf6Vdf2c3uoQjngc+2ovDnUdcpqooXNGm4nZnAh5+8
-	QbWQD6qiRBso9GxTdDBpQYhigje5+oLY+WZ71TlXh/zJaqJUmjNnv4VNCmVrct+CwHG4LI9ALJA
-	kf6Arusza+y1uk=
-X-Received: by 2002:a17:902:f548:b0:2ca:e565:7b15 with SMTP id d9443c01a7336-2d3b0874ce2mr279530695ad.10.1787036356990;
-        Mon, 17 Aug 2026 23:59:16 -0700 (PDT)
-Received: from [100.82.107.240] ([63.216.146.178])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d5c1e528b3sm10780415ad.46.2026.08.17.23.59.12
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 17 Aug 2026 23:59:16 -0700 (PDT)
-Message-ID: <badd3ede-02ca-4fa8-9a51-a2f973dd97a3@gmail.com>
-Date: Tue, 18 Aug 2026 14:59:09 +0800
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="dEGGQR60"
+Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67HM1ntI2669356;
+	Tue, 18 Aug 2026 09:01:48 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=UYWbkfD8YPMQep1UiFmxBC75qqg665
+	QuzGGRmusp/fM=; b=dEGGQR60hzSwJxttcVsRZdf9CqAwuhpUiu6aewnOdePLOY
+	/9Yqa3W98Qxjkn45gQ0CXLT7vb46ZogPsWUdNi4Dxi0QGwjwA7fJFNogXRk9UxC1
+	JJ0Wi3KbxAqvZGaDboekQg5fvZ9YXVt6W/pbqoX388c1c/yNzOMpfFtW+MrrBbpS
+	8rsb71QV5S9zwTP3TFVSbXoV6mPk/YJ3rWqkOarf1o26pv9BS0aGQ+L7KC+GwKcP
+	yhiOsGqyVlXe43jFaqVBLp6DbuERz5KhKVNgWs6OsCBYL9KZsEBuW6k3+C2xXqb9
+	ObXIMeDhzRJUJnjyEgBeu/uzXByDFjRd/gLVjhBQ==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4g2frt6nvk-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 18 Aug 2026 09:01:47 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 67I8uMGJ019188;
+	Tue, 18 Aug 2026 09:01:46 GMT
+Received: from smtprelay04.fra02v.mail.ibm.com ([9.218.2.228])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4g354ya3g1-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 18 Aug 2026 09:01:46 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay04.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 67I91ie115859976
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 18 Aug 2026 09:01:44 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id C1F3D2004B;
+	Tue, 18 Aug 2026 09:01:44 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 5794A20043;
+	Tue, 18 Aug 2026 09:01:43 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.123.13.2])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Tue, 18 Aug 2026 09:01:43 +0000 (GMT)
+Date: Tue, 18 Aug 2026 14:31:40 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>,
+        Ritesh Harjani <ritesh.list@gmail.com>
+Subject: Re: [PATCH 0/3] ext4: Fix credit estimates for extent tree
+ modifications
+Message-ID: <aoQfdB0TJRi6acy5@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20260805153202.29814-1-jack@suse.cz>
+ <178632560650.1021605.3694902133748235095.b4-ty@b4>
+ <an66zNiouBCgpS9M@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+ <aoOYvl2tsk1o6TR9@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: reject delalloc to nodelalloc before applying
- remount options
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, tytso@mit.edu,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
- ritesh.list@gmail.com, yi.zhang@huawei.com, bretznic@gmail.com,
- stable@vger.kernel.org
-References: <20260814034855.1573759-1-guzebing1612@gmail.com>
- <an7Gj2vWVpbP584g@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-From: guzebing <guzebing1612@gmail.com>
-In-Reply-To: <an7Gj2vWVpbP584g@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aoOYvl2tsk1o6TR9@mit.edu>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Authority-Analysis: v=2.4 cv=OfaoyBTY c=1 sm=1 tr=0 ts=6a841f7c cx=c_pps
+ a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+ a=kj9zAlcOel0A:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=VwQbUJbxAAAA:8
+ a=EWHbFpkc5AXs8ooYSwEA:9 a=CjuIK1q_8ugA:10
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODE4MDA2NiBTYWx0ZWRfX+dbuk5Krs597
+ TJxMlIw7Te1301w2OL1ZUuYnJt4dweFjM91NVBGok+ysRsLw3SfY2pBZxAK3FBVDcBGO/DpwRo3
+ EymMIC0dWLMUdtEMvMYtmkAJx+VtHpA=
+X-Proofpoint-GUID: HKSBqbt7YnzFAEeHk0T0GTyGPUk3mMzC
+X-Proofpoint-ORIG-GUID: 7fV3J7O8hg5X9wm1GMMq0ejWMHv_VqEv
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODE4MDA2NiBTYWx0ZWRfX+JluxiKs25Ic
+ usRwvI8VlQJCqujUDs6z8XghH0AlWQVfyOiFSO8TOuHloYbm7ZHlyRyl8L2xp/yE70JjgHbGV+H
+ zv/dvYkvv8PthJDjp3vbTC1Bea/omuU+Wyu2iC91Z9dk0yVCZsMcuHm2UuNthOP5vsJiWcio+df
+ DRrnbO8fjNfrK8HdajSVpPVHsKFxG64EmPJqrHrbRFoENfKMCe09qTWS9fVjWiippEJIKypb7/F
+ luXe3mCKH1EQa4UAO1yqy3Q2NdZakRjDY2yMpttTOwD3mP7rXs0riEQsRwpYg3532BqeH8mIKLx
+ pCtwVwryae4SOB6kelRufP2HRFo16BLryOkZDuvmrauhoGZ4CpE+DOl5ns1wWmyxovklffh4O3r
+ t4qKpjSeErG3qIppjRxAop1KxBd+2MY5p/YEi4v84OVFfe0c3ZqLSE98ejPoKGJwhNjEvVRcISA
+ XYEap+Mj8XTB6axbwtw==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-17_04,2026-08-12_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ suspectscore=0 adultscore=0 clxscore=1015 lowpriorityscore=0 impostorscore=0
+ malwarescore=0 bulkscore=0 phishscore=0 priorityscore=1501 spamscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608180066
 
-
-
-On 8/14/26 3:41 PM, Ojaswin Mujoo wrote:
-> Can you please add an xfstests for this. The test can stress this path and
-> then use the _check_dmesg_for helper to detect if there were any
-> i_reserved_data_blocks related warnings.
+On Mon, Aug 17, 2026 at 07:31:46PM -0400, Theodore Tso wrote:
+> On Fri, Aug 14, 2026 at 12:21:30PM -0500, Ojaswin Mujoo wrote:
+> > 
+> > I just noticed that the RVBs were not picked in your ext4/dev branch. I
+> > think they got missed somehow.
 > 
-> Regards,
-> ojaswin
+> Hmm, I see them on the dev branch:
+> 
+>    https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=dev
 
-Hi Ojaswin,
+Hi Ted, 
 
-Thanks for the review.
+I don't see the Reviewed-by tags here as well.
 
-I have posted the corresponding fstests regression test here:
+Regards,
+ojaswin
 
-https://lore.kernel.org/linux-ext4/20260818064023.2309786-1-guzebing1612@gmail.com/
-
-The test stresses buffered write/truncate operations in parallel with
-the expected-failing remount,nodelalloc operation, and checks dmesg for
-leaked delayed allocation reservations during unmount.
-
-Locally, the test fails on an affected kernel with
-i_reserved_data_blocks not cleared warnings, and passes with this patch
-applied.
-
-Thanks,
-Guzebing
+> 
+> and they are on today's linux-next branch.
+> 
+> 						- Ted
