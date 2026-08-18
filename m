@@ -1,68 +1,68 @@
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
+Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FD01459AF4
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 11:48:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C1C3352C35
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 12:08:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787053717; cv=none; b=n43thcymYJZFXGgdPFZktGZJX/lE/6lTsZYC3wFjCOlw5FRjWOgj+hFY8xkC+M0mVjxtp6jQlqp3Nr2UF/+dKUcNYN/xutwZoi/Nuw4P0KwRiSWZ+CW3reRjPuhvFVv4dDP2wr5uMnzXAxg4USthn2WNaQ9gzgqTZysWF3JsgGQ=
+	t=1787054911; cv=none; b=H5NuEToptNM+OSIUghjStGUIKYBtXUs6LHSeWSyhqEcdyXUIVce4bK5eDrUT58Lu1d30F4REUUn3R06TvF7yOfT48EyqryXV3LWNDfigGBY8sevWXLC5dgdbbE9ug6jUEnb4Q6/rIHUEmwnddxIyBBr6l0usMeOINK8NDnbXQIU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787053717; c=relaxed/simple;
-	bh=f4M03IgTGvJzs6Io2GQZAJIVHwGhSeIiCc9sVfHn/Mo=;
+	s=arc-20240116; t=1787054911; c=relaxed/simple;
+	bh=fAUDPvxqaw+6pr5mc39n3eur2Tcogs78ZHJo5w0bH/g=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=eJ9QorKK5aFZ1hWkpfu1bDYrrYIw/4Pb5v3ZDHvGpd9bazHtudWf5i6lD0eAJVc347SsPYl57W61pvPeeWESR0e42WB8tLZYHn/w6j0OSs+CQoQjmkXv65huKO30YJMC3Ls85SL/eFT+KwGYNftZ8r59brq1yBWSwJg2k741Cdo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UkCYjVlD; arc=none smtp.client-ip=209.85.214.174
+	 In-Reply-To:Content-Type; b=GUP0JX8bK5okedpRz2wz0TGZcVCTMbw6Q/vPZZ1Od+CEgAT0c43NKiLD/Fuy4I6qgAPk/b5xm4gK/9AN5rNE105yKqpwoubNh/bTzfLtK31lnUeUULi+hMHHNDSXqnOo7F/jsfb8b4pK7+SX7mMjBmFnTfza0HY0cV7yvO5WuYk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UW74K5fx; arc=none smtp.client-ip=209.85.216.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UkCYjVlD"
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2d5655cc850so31715975ad.3
-        for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 04:48:36 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UW74K5fx"
+Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-3856d6fbcb3so3899291a91.2
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 05:08:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787053716; x=1787658516; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1787054910; x=1787659710; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=MInesFRTHKDvaq1Aqhz6QHAocvKV6d1p+jvF87TFwgg=;
-        b=UkCYjVlDIo+1oE9mu6Rj5b5rpoHDDI8vCdmUQwgaRYUY8FDYBDUin3uUNqKdJMev3D
-         m0rD+ktQtOqneahQu/qGtTfyp94AI2fBAuS35UWXkfJyG2HJdhMzbIUR010YW3Xl+GX+
-         QX4sQmrlsq1RxIB9LzljeVOjyuJXbT7Z1OmQ65KjG+HGIYJXwPVqyiyhxseFxLxk5UWU
-         J4kvV1V2W9n5cw8r8+u63/jSWE4MdIlbJi9OQn1idZw0o8r7p5KvQ4+kjDhYw/WFgB8t
-         bdcaOGa5kUR7IQuHXvM5RoH1gSkGD9TzT54HtDgW/yhXPSqXThACTCy1pOTOaIlnDA28
-         Zxqw==
+        bh=SLWRR6bd/B1YfeV+dpf0DikAPd8jlRuMRPf5YKC5xI0=;
+        b=UW74K5fxJudZ3QIDRTinYz0/wFAB6etBOSZXOnhtYeTRu1lH1s6yj7fZQxKzVPHv1c
+         2lJiMrUKqFZ5K5LpxN8xaiQ1g4AsoPar8SxyHSUGxZIAvaHU0kFMDhoIKt4iecKqeQCW
+         Uv3Mh/uDt3bxPCqEyFT5ccz0Mx+XkDWb53zVie1iGKyOrortIGHNmObMmWhc2zAOgYsp
+         JTs/AlKOPxipO37Xzh09T4184vTrVbImRa3EI1CTurb8sLTeMJqW5ZDjctQ+XP7jHvhx
+         UorMLTaqgVm01chyB4PwotrtmzF4ErQLsIzFObz51UJ5/i3Ztkn96p6vIa+7eK852lH8
+         DN3w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787053716; x=1787658516;
+        d=1e100.net; s=20251104; t=1787054910; x=1787659710;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=MInesFRTHKDvaq1Aqhz6QHAocvKV6d1p+jvF87TFwgg=;
-        b=jqiVX4GTNuOSoFpVQKs1kVh68P31hIhJNg6ilNx32oVE2d2Oc7oXIi7bq2wPYroXI8
-         aOSxKfBE0m1vTv8yVJCnzXR6/ePoD/5y62Dx1Hi4bF+2IfuDlm1Y4KXSQAc5+dHa6ZHX
-         6jeRtkor5p3u8FFHxV/v5S5ysNFj7yuxhRfan+K8UbxxIZ2jRvhuJ8CvIynTrEE4Vrc7
-         aFnjtX4aOFeaB0AZcuaZramoDKRy6CQ+qBwvRuSEE5TLXpTkpR1wcTzubIl4wXS2LzRp
-         rDXqygpcx5wq3Hmil6A/vItRbZdffZgKeQ1u3txstcAWghNvZostsnKQVnPvWeFam9kf
-         tYsA==
-X-Forwarded-Encrypted: i=1; AHgh+Rp/ZeLkXPXxg/hxaauZ92hbpbuJpXsvGD0BdmDUOexfv/TLhu7g8wpWXsG03dKf9PuF9gpaHTRKd0Tr@vger.kernel.org
-X-Gm-Message-State: AOJu0YzPEdykKE5aqouTpCtnM7iZ6gocjhRQOE66DnzW7Od30VZow6os
-	QlAtj2cVb2XUNBS6Bm2L8/8vfAqp26cIydGIeLUN8HcHhgEU0+DE5QEO
-X-Gm-Gg: AR+sD10yuauBQ8vIUXpq7XdsSrkV8Jo06lc9K/781h4i9TX5MO7/oiidl6kzpiJCoQj
-	YfUvzJetnIyXzgyJgdwzoXTHiq7DbECRLS3p1Ccn2znJAFvd+HNnGew0zgqP2cHBTv9Qm8d2Cky
-	PU8PA8etsg/s/kRnZ7X/VyrEPOAwZSn2kwJQBI1erOImEGp048FojqwNecBLOD8Aeh/nTc0P4q5
-	1KZXUA9WofAqjEj4h3B5/jacaarI1UXv7CMxD/P9MXq6YX4JTFQ6qfSpAVkLMB0pT+3i8P1sQ2X
-	TuDdAcgf79AbC5bQvoa/HEFe/VKYEHRwjYb4AP84iYy1Mf8fyxDjT3X3Y5CK93nhSI82J+ts3AY
-	tDKbfBov70g66b44zoZpxXRShrBgNkxUQCNTDGGvvyePR29g0KPk70JQ9MWQT9x6GOHg7Nk6yMr
-	mU1sGwn6pTqPJVDlyFuWuciw6+Am3y3knfVVBYpWxVzczWLnzDo3jgLMbn1lALjWVwaz7lpVdEz
-	1dhW8pa
-X-Received: by 2002:a05:6a21:7d0c:b0:3c3:a3fd:db0a with SMTP id adf61e73a8af0-3ccdaa0da04mr11555031637.16.1787053715788;
-        Tue, 18 Aug 2026 04:48:35 -0700 (PDT)
+        bh=SLWRR6bd/B1YfeV+dpf0DikAPd8jlRuMRPf5YKC5xI0=;
+        b=PB7Id7yseg5smpV9DkXBiTJbvzr7d1oQq2YzC+4QP2ERxam3AjbDGepptsBRjuQlYt
+         nFPWNoULHuR0jyioN1Pcqt88jQJSawtCL/MynozX/NLe9WNlFrYQPqkLMXWcThblpB5h
+         c9oB8QPaAaxqhEpZvoICZD4rDW1YWHWpMwrKNkwDvOUJ+MqJmHcw3Z5jia6jYgHFoaav
+         wXgkOppaUXzRHWLpBXqiYyHpEsmiXQ4jZ/eRejUyrY5b4H+qZj6O2Lck3BWmY/55ecKh
+         qnwgb8+UR+yaRmKOBmBgLXlvlflF/sSAiXbKd4mL7dxf5t0w1dzHRU+R8eFZU2VWa+oT
+         kUJQ==
+X-Forwarded-Encrypted: i=1; AHgh+RqdXrDvvsaMokysAbWHRaWQajLLU1JsWR2g2LVvBKMc2dG7n1I30YnmfteQofO00iSxR8AqH7x8LZQk@vger.kernel.org
+X-Gm-Message-State: AOJu0Ywh8SxlqTwt6Vc4+6M4kY/Cnp7uKCQW8zx5vrWdL+0d+b70Jyli
+	rjmRy6sdJF1XPN9yeoaXC23GJzoDMeFKRL7y6kq9cReeGfd8T40xc7Xw
+X-Gm-Gg: AR+sD11Mg/N/7U5DeUAci6eVAytaiCL25SZxrzQGaFl41Bl3+ysdR0X1iF9IEUdQz64
+	pP5p9pxOPgQy/NVorxd9kodUVZ61BMX/JjD9m1WhpZbB/FM1athb9vyex8cAzrI6habq+JN8f15
+	gT9yM0b+RovKlQUPXH5L03Lc8ceVTyuYuULbvXkK7SmzkL7Yf0cm0E0AwCaffHCYAGASKqsX3K8
+	ku7/OCL7W6aDxmuQr9YYZx5hdrIpIe9tSWLTpPW3udveuOQIWtNITRRFxjarcP+C47PTFwt/Z/6
+	2CXY8pbViJEKKNmEYpMm2giQH2yPMVVuPdWWP4oACh2z0/YFyaxXk3ViGr/QgTyYgrZhKcMkH/O
+	vi8mdI9wQ6EQstRzo2x7vWGnf4VcND+7desJsQLBFDXBrZLn3hwpZ0TWNot82y1HaUCD9WlF/Sf
+	dY6UwGJ5Lbbu/9yLp634kr1IirwS2Tx0shnnfcWC84M33xcTkeD1woMqaujvFayTgHESuAceOMw
+	g5DBG9G
+X-Received: by 2002:a17:90b:3c8c:b0:38e:5c6:4db9 with SMTP id 98e67ed59e1d1-3933b91661emr37890092a91.11.1787054909608;
+        Tue, 18 Aug 2026 05:08:29 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc142c4af3csm1026035a12.0.2026.08.18.04.48.30
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-39531fbb3c5sm8561385a91.9.2026.08.18.05.08.23
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 18 Aug 2026 04:48:35 -0700 (PDT)
-Message-ID: <fa08be09-fa95-4b55-a13d-1ec5886b010d@gmail.com>
-Date: Tue, 18 Aug 2026 19:47:58 +0800
+        Tue, 18 Aug 2026 05:08:28 -0700 (PDT)
+Message-ID: <4706b63c-a74f-43ec-9b25-773192d7b55a@gmail.com>
+Date: Tue, 18 Aug 2026 20:07:58 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,92 +70,119 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH -next v5 24/32] ext4: advance i_disksize to i_size upon
- disksize-grow I/O completion
+Subject: Re: [PATCH -next v5 25/32] ext4: defer i_disksize update while
+ DISKSIZE_GROW_PENDING is set
 To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-25-yi.zhang@huaweicloud.com>
- <20260814102545.E85101F00A3A@smtp.kernel.org>
+ <20260814093331.1703882-26-yi.zhang@huaweicloud.com>
+ <20260814103123.E1A601F000E9@smtp.kernel.org>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260814102545.E85101F00A3A@smtp.kernel.org>
+In-Reply-To: <20260814103123.E1A601F000E9@smtp.kernel.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On 8/14/2026 6:25 PM, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [High] The EXT4_STATE_DISKSIZE_GROW_PENDING state bit is never set anywhere in the codebase, rendering the entire disksize-grow logic and safety mechanism inert.
-> --
-> 
+On 8/14/2026 6:31 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 3 potential issue(s) to consider:
+> - [High] Missing State Initialization / Dead Code: EXT4_STATE_DISKSIZE_GROW_PENDING is never set.
+> - [High] State Leak / Data Loss: Discarding the zeroed EOF folio without writeback permanently leaks the pending bit.
 
-This is a false positive. EXT4_STATE_DISKSIZE_GROW_PENDING is set
+These are false positive. EXT4_STATE_DISKSIZE_GROW_PENDING is set
 in patch 28. This patch is just preparing for that functionality.
+
+> - [High] Durability Loss: O_SYNC extensions via fallocate/zero_range silently persist a stale i_disksize.
+
+This is a false positive. O_SYNC in fallocate operations is handled
+in patch 26.
 
 Thanks,
 Yi.
 
-
-> --- Patch [24]: [PATCH -next v5 24/32] ext4: advance i_disksize to i_size upon disksize-grow I/O completion ---
-> commit d834c25602b493451d52cc75b3ae8fd40461bce9
+> --
+> 
+> --- Patch [25]: [PATCH -next v5 25/32] ext4: defer i_disksize update while DISKSIZE_GROW_PENDING is set ---
+> commit 5fa612fe6ec599be935a3aa55b36845e34d3180e
 > Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> ext4: advance i_disksize to i_size upon disksize-grow I/O completion
+> ext4: defer i_disksize update while DISKSIZE_GROW_PENDING is set
 > 
-> This commit updates the iomap writeback path to advance i_disksize to i_size
-> upon completion of a disksize-grow I/O. It introduces an is_disksize_grow flag
-> to ext4_iomap_wb_update_disksize() to trigger this update safely.
+> Operations like append allocate, zero range, and truncate update
+> i_disksize directly. If the new i_disksize exceeds the original value
+> while the zeroed EOF block is still awaiting writeback, metadata may be
+> persisted before the zeroed data, exposing stale data on crash.
 > 
->> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
->> index 955ff88045db6..4f1176b9332f2 100644
->> --- a/fs/ext4/page-io.c
->> +++ b/fs/ext4/page-io.c
+>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>> --- a/fs/ext4/ext4.h
+>> +++ b/fs/ext4/ext4.h
+>> @@ -3605,30 +3605,67 @@ do {								\
+> 
 > [ ... ]
->> @@ -589,9 +589,36 @@ static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
->>   	 * i_data_sem.
->>   	 */
->>   	down_write(&ei->i_data_sem);
->> -	new_disksize = min(new_disksize, i_size_read(inode));
->> +	i_size = i_size_read(inode);
+> 
+>> +static inline void __ext4_set_i_disksize(struct inode *inode, loff_t newsize)
+>> +{
+>> +	WARN_ON_ONCE(!rwsem_is_locked(&EXT4_I(inode)->i_data_sem));
 >> +
->> +	/*
->> +	 * EXT4_STATE_DISKSIZE_GROW_PENDING is cleared when the pending
->> +	 * I/O completes. However, another thread may have re-set the bit
->> +	 * between that point and here, meaning i_disksize has already
->> +	 * been advanced and a new EOF zeroing has been initiated. In that
->> +	 * case, do not advance i_disksize to i_size; leave it to the
->> +	 * next pending grow ioend.
->> +	 */
->> +	if (is_disksize_grow &&
->> +	    ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING))
->> +		is_disksize_grow = false;
+>> +	if (newsize < EXT4_I(inode)->i_disksize ||
+>> +	    !ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING))
 > 
 > [Severity: High]
-> Is EXT4_STATE_DISKSIZE_GROW_PENDING actually set anywhere in the codebase?
+> Could O_SYNC extensions via ext4_do_fallocate() or ext4_zero_range() silently
+> persist a stale i_disksize here?
 > 
-> It appears this state bit is never set, such as during EOF zeroing in
-> ext4_block_zero_eof() where there is a TODO comment about tracking the
-> ordered range.
+> If the size is extended with an unaligned old EOF, the i_disksize update is
+> deferred. Since O_SYNC immediately commits the journal without waiting for
+> the pending zeroing writeback to complete, it seems it will commit the old,
+> deferred i_disksize to disk.
 > 
-> If the bit is never set, ext4_test_inode_state() will always return false
-> and this safety check will be bypassed during concurrent fallocate and
-> truncate operations.
+> Would this cause the file size to revert on crash despite a successful fsync,
+> discarding the size extension?
+> 
+>> +		WRITE_ONCE(EXT4_I(inode)->i_disksize, newsize);
+>> +}
 > 
 > [ ... ]
->> @@ -607,6 +634,8 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
->>   	loff_t pos = ioend->io_offset;
->>   	size_t size = ioend->io_size;
->>   	loff_t end = pos + size;
->> +	unsigned long io_mode = (unsigned long)ioend->io_private;
->> +	bool is_disksize_grow = (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO);
+> 
+>>   static inline int ext4_update_inode_size(struct inode *inode, loff_t newsize)
+>>   {
+>>   	int changed = 0;
+>>   
+>> +	if (newsize <= inode->i_size && newsize <= EXT4_I(inode)->i_disksize)
+>> +		return 0;
+>> +
+>> +	down_write(&EXT4_I(inode)->i_data_sem);
+>>   	if (newsize > inode->i_size) {
+>>   		i_size_write(inode, newsize);
+>>   		changed = 1;
+>>   	}
+>> -	if (newsize > EXT4_I(inode)->i_disksize) {
+>> -		ext4_update_i_disksize(inode, newsize);
+>> +	if (newsize > EXT4_I(inode)->i_disksize &&
+>> +	    !ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING)) {
 > 
 > [Severity: High]
-> Is EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO ever assigned to ioend->io_private?
+> Are we setting EXT4_STATE_DISKSIZE_GROW_PENDING anywhere in the codebase?
 > 
-> Because the EXT4_STATE_DISKSIZE_GROW_PENDING bit is never set, it seems
-> ext4_iomap_get_disksize_pending_range() will always return 0, meaning this
-> io_mode flag is never assigned.
+> Looking at this patch series, it appears the bit is checked here but never
+> actually initialized or set. Does this mean the deferral condition is always
+> bypassed and i_disksize is always updated immediately?
 > 
-> Does this render the entire disksize-grow logic inert?
+> [Severity: High]
+> If the EXT4_STATE_DISKSIZE_GROW_PENDING bit is properly set, could it leak
+> if the dirty folio is discarded before writeback?
+> 
+> For example, if a file is truncated down before writeback completes, it
+> seems the bit might never be cleared since the writeback completion function
+> wouldn't be called for that folio.
+> 
+> Would this leak cause all subsequent appends to skip updating i_disksize,
+> leading to silent data loss on crash for future writes to the file?
+> 
+>> +		WRITE_ONCE(EXT4_I(inode)->i_disksize, newsize);
+>>   		changed |= 2;
+>>   	}
+>> +	up_write(&EXT4_I(inode)->i_data_sem);
+>>   	return changed;
+>>   }
 > 
 
