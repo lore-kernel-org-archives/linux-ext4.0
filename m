@@ -1,109 +1,63 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B975C3ABDA8
-	for <linux-ext4@vger.kernel.org>; Tue, 18 Aug 2026 03:06:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C7553D567E;
+	Tue, 18 Aug 2026 03:58:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787022391; cv=none; b=hFlY3kWamKjlCtMBRzB6tBqzCzR0UeTS15L/zVU/rg7Es6LqlE9mhLTggg1448TFX4HmXkMXgoCwxCy7EM/jiViWKzmxm8FmvIG6EWPS1kRZgLuVTvpt3JPD5Skzchqr+uYZJktwrH9KimfxMolWN18CaGdjDIvjoBG1IlXQ6TU=
+	t=1787025488; cv=none; b=RLZrt8OWCRdLsX5oyWxth1WKtRDhgsx3C2DWY2SUuGAmqd0DadvWQvNozQuKU/ZqpBm9Tu1EgEyFO2Eadp73Gf9kHJ7ItKRylDq19K4EO5JDFCv+COEmUQYxTRUMtOoHds8WuXM39CQivMPdSDb3edYRDTS337jVDuAkw5s72c8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787022391; c=relaxed/simple;
-	bh=J95tn8ArPFqvw+hX8ol7vqADsEqXYVIBk38xwwA/rtA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=mTe6BwREDvNi6SWqMK61c59awnyWZ/t3nPe5kU3Gm9x4pDK4AUmU9wpIXcjXcx/XIFBiIuhmsbt3u5DdSYzOLttubl3v8P+HZbs8iXN/D+HBFIMgy9eayYDTkSOXMwHjRtBDdu9/S0JFfsz/gXewlfOujOOioxb1V204P3bTI8s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ahWEq7rO; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1787025488; c=relaxed/simple;
+	bh=HlJJjeOiX8CH+43ws5Hu0UtmJvn55gBePPiu7D7Q/i4=;
+	h=Subject:From:In-Reply-To:References:Message-Id:Date:To:Cc; b=bLvU06EB/Sr+6/XKwo0oZz8hKLHB685C85sr65vDE9RqY+1iU/kE9vC0M+SMB7Grs0b35PA4A4XjikCMOxL5Pyqv3QJNgOvnHelw+0jIXTPUU3tTvlxSeXBMaai0hHxulcKjNmr1t6pjj5VYhm3ItzyiVww0IJvGfWtcTDBd/cw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Hs0z7ei/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ahWEq7rO"
-Received: from macsyma.thunk.org (pool-173-48-113-153.bstnma.fios.verizon.net [173.48.113.153])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67I35icI030207
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 17 Aug 2026 23:05:45 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1787022347; bh=wuBrA5KLkXsc0zKKVBww4QEECn7a2VCTcn2+mBjRbg0=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=ahWEq7rOLYCrAvyHmbaMoEHQHo5vj7NrssLLvk7Qo1U33bz1rGcoUqJvBzo0shmu7
-	 b+nO2YelL25QWpUYE5xJcIV6WbYip5WhrbiBTLkTJvgmg4Yy0juEtPZ2C0qJqBmWzT
-	 IzGJCNi8UyxX7vTSqeqR58Tu5/KwraErnuGwc8rVu2DYnwTzGJ82FgFr92oEdj426u
-	 Yjlk5WCZ+cALYjYQTaQuoWup/OZzNhIXLeBPFdxsc7y+UN7uONnUHVrw77Gy7MDFlr
-	 swqxjHp7PqGrZN3bNFIRkPl8CcdoN6tBDU8eGBn7GT/4Z/DNXZ183Q5yDwkbQ3xBu5
-	 rlvkbZrJ4PMTQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id CDC3EF6845D; Mon, 17 Aug 2026 23:04:43 -0400 (EDT)
-Date: Mon, 17 Aug 2026 23:04:43 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: Guanghui Yang <3497809730@qq.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>,
-        Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-        Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] ext4: orphan tracking after a failed truncate
-Message-ID: <aoO8e1eD5ZChWKdH@mit.edu>
-References: <tencent_3E210B6E71105F311354D53C158A3A9E1E08@qq.com>
- <66vcv4ircw5mqadt4eki52hujmykrrsqp2cux4qvn37v6kzvs7@d7ys45emz3dr>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Hs0z7ei/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 73D111F000E9;
+	Tue, 18 Aug 2026 03:58:07 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787025487;
+	bh=gklsedvwg/1RBEAFZOJaRdv25Q5XetfTjtahYKt3FGY=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc;
+	b=Hs0z7ei/yI5eRfjNBvWmtqktBzf6/Yt+m7WF/z66EHe/dV4TVgEIh99vkwyOSVEkm
+	 wL8CPLEUL+8pXlU7v8G9F+DLFt5wvRk7dS3u+mY9S6IWuyu755v+f1+xbZD7Phpuwf
+	 LoNMnQvpssVBrLMLx0hOYgBSwYtrOQYjsHgV5hA3ymy+ndwzEgkH6u9b8lPCNYwdIH
+	 U+fXGSBvKgl872L4FXmUBAPAfdcwTK/wLiVxuPBZ2AAmRSW3sbz+eCjfbpyGRUxCyI
+	 0LidkTntVEnUu1XcCyI9K7QaF0uemtr5rJawcgm5tLpYX6pIP+4YnwFPOYzcCD5MTS
+	 LmAnTSCx0lbVg==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 93B193926381;
+	Tue, 18 Aug 2026 03:57:20 +0000 (UTC)
+Subject: Re: [GIT PULL] fscrypt updates for 7.3
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <20260817173311.GB8327@quark>
+References: <20260817173311.GB8327@quark>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20260817173311.GB8327@quark>
+X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/fs/fscrypt/linux.git tags/fscrypt-for-linus
+X-PR-Tracked-Commit-Id: 7dd38d9dd7a05329825fe2324d4d8e27ad4b3cec
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 1d7443e4dca1e8637930f3baf64e2fe82033e669
+Message-Id: <178702543910.1862718.5095788167656687707.pr-tracker-bot@kernel.org>
+Date: Tue, 18 Aug 2026 03:57:19 +0000
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <66vcv4ircw5mqadt4eki52hujmykrrsqp2cux4qvn37v6kzvs7@d7ys45emz3dr>
 
-On Mon, Aug 17, 2026 at 05:56:24PM -0500, Jan Kara wrote:
-> This is expected. If you hit IO error on metadata, all bets are off wrt
-> filesystem consistency. Running e2fsck to fix the filesystem is the only
-> way to establish filesystem consistency again. So there's nothing to fix in
-> the kernel really as the fact that an inode with blocks beyond EOF is not
-> on orphan list is just a little nuissance...
+The pull request you sent on Mon, 17 Aug 2026 10:33:11 -0700:
 
-If we want to let the system administrator know that they should run
-fsck, then perhaps we should call ext4_error_inode() and return
-EFSCORRUPTED instead of EIO.  In general, if we are in the middle of
-modifying file system metadata, and we run into an error, we should
-either try to back out the change so the file system is consistent.
+> https://git.kernel.org/pub/scm/fs/fscrypt/linux.git tags/fscrypt-for-linus
 
-HOWEVER, in this case, blocks beyond EOF is not really a file system
-consistency issue, since you can get blocks beyond EOF by using the
-fallocate system call with FALLOC_FL_KEEP_SIZE flag.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/1d7443e4dca1e8637930f3baf64e2fe82033e669
 
-> Quick note for Ted: these kind of reports where LLM complains about
-> inconsistencies after IO errors or other catastrophic failures are rather
-> frequent. I think that would be a good candidate for an ext4 specific
-> prompt for LLMs to explain to it that after metadata IO failure filesystem
-> inconsistencies are expected and we should just strive to limit lost data.
+Thank you!
 
-Unfortunately, it's a bit tricky to do that.  The problem is that
-LLM's aren't consistent about how they handle AGENTS.md or CLAUDE.md
-file.  Despite AGENTS.md being a standard promulgated by the LF's
-Agentic AI Foundation, not all LLM harneses will read a AGENTS.md file
-located a directory outside of the repository root directory.
-
-So if we put LLM Harness directives in fs/ext4/AGENTS.md, some
-harnesses (including Github's Copilot or OpenAI Codex) won't read it
-unless there is an explicit request read it in the top-level AGENTS.md
-file.  We could have the top-level AGENTS.md say that for any
-file-system related code, please read fs/AGENTS.md, and then the
-fs/AGENTS.md file could say that in case of a btrfs-related issue,
-read fs/btrfs/AGENTS.md, and if it's an ext4-related, to please read
-fs/ext4/AGENTS.md, etc.  It very quickly becomes a mess.
-
-Worse, Claude has steadfastly refused to honor the AGENTS.md file
-(although at least it will read CLAUDE.md file in subdirectories).  So
-we'd have to have CLAUDE.md file be a symlink to AGENTS.md, or to have
-an instruction in CLAUDE.md to read AGENTS.md.
-
-Probably the best we can do is to put generic documentation in
-Documentation/filesystems/ext4, meant for both humans and LLM's,
-describing ext4's error handling philosophy, and hope the LLM
-harnesses bothers to read it.
-
-						- Ted
-
-
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
