@@ -1,163 +1,130 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 713A1477986
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2026 15:14:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [13.75.44.102])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id ABE19377AB5;
+	Thu, 20 Aug 2026 05:22:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.75.44.102
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787152480; cv=none; b=CwCvGu63ArOXEnCTayiunpXk5v/CFolRpu+8mhEOL9xY8FQRpAmnlzl7XyiXrIvHnsws+qn+pd2tyoIMNjzFBbzD6lXmgVuXrlNZBdBy9ieM37GyKSNe/eyXB7Cu9lvQqp4gMcHu7F1y6M58e5+iZQz0b3ZCpwhuGuA0RzmBE5U=
+	t=1787203349; cv=none; b=Fyd5sqYgn+vp8AnGc5ukMS5qJS9/O78WYgobm+WjNnEqQokrYf3q7+l0crIh9xmC4dXBTJ1NQ0kZyf7sykx9AyUkt8zqBQbrqj44UQdj0VOOeUhL08dSrn8lcda2bI01k9bLt41nv7yvP6GETbtX7Zpz3pX4ubhe3gsfh0AIheI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787152480; c=relaxed/simple;
-	bh=r0Pl6RNyijTPv5pmzcHaPNmiogDnrSWRllF+xGg0QWA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cmHBR9vHmoQ9h1ponIQTUwfFSp9qitOtX6JxOKRCZP9X2OC2feJwp39+6ehWpJzKejQgZ2XBz47kl8dF6w7otuLeYrdx+FduQZ1F5+/da6oqe3g7n+FmmPcVKOEZz0QwyOwmMNVdsDgbzRVMw2SXx+lMB75M/SCM36ZVecDQkQM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=BGnC8XKk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Yh2BjkSQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ro+SWULU; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=X90kW9eL; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="BGnC8XKk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Yh2BjkSQ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ro+SWULU";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="X90kW9eL"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2BD7F3EE1;
-	Wed, 19 Aug 2026 15:14:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787152473; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aH2ZpM6tXxIhCsB4MMr03LLMxOSIhVDYuej5aQ1XwV4=;
-	b=BGnC8XKkpcRJW76EN8wWR5N2994zt5pT4M5buVlf4/QmPp7jwRhQRUTWsUzPHpDEa4P7eV
-	rEJhlStqol0ZW0H7Us1NFnJD/40QuGneebHP3pd28M2TXwXeKwoURkt9C8DZ3pAMIj4Fy4
-	5EOETUhIXoyavTHO5bXOff/XBrxUw7s=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787152473;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aH2ZpM6tXxIhCsB4MMr03LLMxOSIhVDYuej5aQ1XwV4=;
-	b=Yh2BjkSQF6uq6zMtx/BDpoCmhw0mbeNZtwsE+QCZAazSrJ4sbdknz4LJ3B5kvhJLY7FGV6
-	4yJ8GczwT9LNi4Cw==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Ro+SWULU;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=X90kW9eL
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787152469; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aH2ZpM6tXxIhCsB4MMr03LLMxOSIhVDYuej5aQ1XwV4=;
-	b=Ro+SWULUWVjmUFvoBTdY21h5mhINCyBAoqUh/LmUwtV9N7Z7QT7dS6McmAHkc7WZEFz1Zo
-	63EdpcAYzjeUwnUUW8u6O76vdsVSYUeIHbR0GX2Do8DI4XLrsGw6AZ+JfWwYZoVDdL8Qdt
-	U7o5O8WRpdrK90oiDRwIak2uIdnTimQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787152469;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=aH2ZpM6tXxIhCsB4MMr03LLMxOSIhVDYuej5aQ1XwV4=;
-	b=X90kW9eLgEVZNes7bH8W7jRo1qHW+C+P//6o4IMrvt27CphRmoI8ww/eYr+X8yTyWjBwbJ
-	BOIxqGrd6kCempCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 23B25362E;
-	Wed, 19 Aug 2026 15:14:29 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 58+xCFXIhWoVNQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 19 Aug 2026 15:14:29 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id BF126A13B2; Wed, 19 Aug 2026 17:14:28 +0200 (CEST)
-Date: Wed, 19 Aug 2026 17:14:28 +0200
-From: Jan Kara <jack@suse.cz>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
-	linux-ext4@vger.kernel.org, Baokun Li <libaokun@linux.alibaba.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Ritesh Harjani <ritesh.list@gmail.com>
-Subject: Re: [PATCH 0/3] ext4: Fix credit estimates for extent tree
- modifications
-Message-ID: <kfrkfn7eadq4ulb3hop7cjndhmt3h4byprhprigrvhiruc7gn4@fg26uee6sxho>
-References: <20260805153202.29814-1-jack@suse.cz>
- <178632560650.1021605.3694902133748235095.b4-ty@b4>
- <an66zNiouBCgpS9M@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
- <aoOYvl2tsk1o6TR9@mit.edu>
+	s=arc-20240116; t=1787203349; c=relaxed/simple;
+	bh=scEtCK5RzqwngIkECjRt+68QwazEZeFXESS7h25f1i0=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=qdHz7/urqmnc0mMZcQ/v8h2+C1GPMaDGEjbzQ9ZUTs09zKW0iAeQd2EmelV1XgTmsuQ+HdaeLeR3qNZ9N6BvDpuWPathnxlrCRrWUMEBKZj1OfTGFltl+2V/P+zGRlwhIm/KHIc1dSW+/Ah/D66zf08xzqS69liZjP9Af2EDosM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn; spf=pass smtp.mailfrom=zju.edu.cn; arc=none smtp.client-ip=13.75.44.102
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zju.edu.cn
+Received: from zju.edu.cn (unknown [10.98.66.117])
+	by mtasvr (Coremail) with SMTP id _____wBHMS_1joZqhRisAA--.2074S3;
+	Thu, 20 Aug 2026 13:21:58 +0800 (CST)
+Received: from localhost.localdomain (unknown [10.98.66.117])
+	by mail-app3 (Coremail) with SMTP id zS_KCgAXLnD1joZqGbKGBA--.17350S2;
+	Thu, 20 Aug 2026 13:21:57 +0800 (CST)
+From: Fan Wu <fanwu01@zju.edu.cn>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Fan Wu <fanwu01@zju.edu.cn>,
+	stable@vger.kernel.org
+Subject: [PATCH] ext4: fix discard work use-after-free on failed mount
+Date: Thu, 20 Aug 2026 05:21:02 +0000
+Message-Id: <20260820052102.4616-1-fanwu01@zju.edu.cn>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aoOYvl2tsk1o6TR9@mit.edu>
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 2BD7F3EE1
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[linux.ibm.com,suse.cz,vger.kernel.org,linux.alibaba.com,huawei.com,gmail.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	DWL_DNSWL_BLOCKED(0.00)[suse.cz:dkim];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[7];
-	TAGGED_RCPT(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:email,suse.cz:dkim,msgid.link:url,suse.com:email]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:zS_KCgAXLnD1joZqGbKGBA--.17350S2
+X-CM-SenderInfo: qrstjiaswqq6lmxovvfxof0/
+X-CM-DELIVERINFO: =?B?w43tCwXKKxbFmtjJiESix3B1w3vZ3A9ovKVTomAyoQazvoRs/NHSP8GI2EvgeEEW7R
+	sfnZPoDCNGYdHSfuFmYJL54WNc57bz4AM2PfQ2r8oyBzVoKAhPTJ19GJW4x9ioKtcx3hRC
+	6aE3dbRR9nMWLg9i8QWp9E6mavGmQbzmcFsnzP86
+X-Coremail-Antispam: 1Uk129KBj93XoWxXF1DCw43Wry5Xry3trWfCrX_yoW5Ar15pr
+	sxAw4jkrykZ34vkw43Za1xXFy0ga1F9F4UGryI9rs3Z390qw1IvFsxtFyY9F4qvrW8G3Za
+	vF48G34jgFWvyrXCm3ZEXasCq-sJn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7KY7ZEXa
+	sCq-sGcSsGvfJ3Ic02F40EFcxC0VAKzVAqx4xG6I80ebIjqfuFe4nvWSU5nxnvy29KBjDU
+	0xBIdaVrnRJUUUP0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2
+	IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48v
+	e4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI
+	0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AK
+	xVW0oVCq3wAac4AC62xK8xCEY4vEwIxC4wAS0I0E0xvYzxvE52x082IY62kv0487Mc804V
+	CY07AIYIkI8VC2zVCFFI0UMc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AK
+	xVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48Icx
+	kI7VAKI48JM4x0Y48IcxkI7VAKI48G6xCjnVAKz4kxM4IIrI8v6xkF7I0E8cxan2IY04v7
+	MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr
+	0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0E
+	wIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJV
+	W8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAI
+	cVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU85l1PUUUUU==
 
-On Mon 17-08-26 19:31:46, Theodore Tso wrote:
-> On Fri, Aug 14, 2026 at 12:21:30PM -0500, Ojaswin Mujoo wrote:
-> > 
-> > I just noticed that the RVBs were not picked in your ext4/dev branch. I
-> > think they got missed somehow.
-> 
-> Hmm, I see them on the dev branch:
-> 
->    https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/log/?h=dev
+ext4_put_super() destroys the journal before it calls
+ext4_mb_release(), but the failure unwind of __ext4_fill_super() runs
+the two steps in the opposite order: failed_mount6 calls
+ext4_mb_release(), and the journal is destroyed only later, just above
+failed_mount3a.
 
-Hum, if I look at e.g. https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=25b2a7e8d420c49fc46f25b6f953603e4dae1dbf
-I can see:
+ext4_mb_release() flushes sbi->s_discard_work before releasing the
+mballoc structures, a drain made unconditional in commit 9ee29d20aab2
+("ext4: always drain queued discard work in ext4_mb_release()").  With
+-o discard, the journal destroy that runs afterwards re-arms that work
+after the flush: ext4_journal_destroy() calls ext4_force_commit(), and
+the commit callback, registered once mballoc is initialized, queues
+s_discard_work whenever the discard option is set, even with an empty
+freed-data list.  A quota-enabled mount reaches this with a live
+transaction (ext4_enable_quotas() failing into failed_mount8,
+ext4_quotas_off() on the failed_mount9 path), so the final force
+commit is not a no-op.
 
-ext4: teach ext4_meta_trans_blocks() about number of allocated extents
-...
-allocated in the transaction.
+Nothing drains s_discard_work after that point: failed_mount3 flushes
+only s_sb_upd_work and the s_err_report timer, and ext4_fill_super()
+then frees sbi with a plain kfree() through ext4_free_sbi().  If the
+system_dfl_wq worker is delayed across the rest of the unwind,
+ext4_discard_work() then accesses the freed sbi, first through
+sbi->s_sb and then while taking sbi->s_md_lock.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Link: https://patch.msgid.link/20260805153605.166545-4-jack@suse.cz
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+This is the pattern fixed for the s_err_report timer in commit
+0ce160c5bdb6 ("ext4: fix timer use-after-free on failed mount"):
+async state armed after the unwind's last drain point.
 
-So indeed as Ojaswin writes there are no Reviewed-by tags from Zhang and
-Ojaswin. And I think that's because you have picked the patches into your
-tree before Ojaswin and Zhang actually sent their RB tags. Anyway I think
-commits are on their way to Linus now so not much to do here...
+Destroy the journal at failed_mount6, before ext4_mb_release().  This
+restores the ext4_put_super() order, so the final commit re-arms
+s_discard_work before the flush_work() in ext4_mb_release() drains
+it.  The journal destroy further down the unwind still covers paths
+that enter below failed_mount6; on the failed_mount6..failed_mount9
+paths it does nothing, because ext4_journal_destroy() clears
+sbi->s_journal.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+This issue was found by an in-house static analysis tool.
+
+Fixes: 55cdd0af2bc5 ("ext4: get discard out of jbd2 commit kthread contex")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5.6
+Signed-off-by: Fan Wu <fanwu01@zju.edu.cn>
+---
+ fs/ext4/super.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4b6112e5d6c5..58b210637b57 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5761,6 +5761,12 @@ failed_mount8: __maybe_unused
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
++	/*
++	 * The last commit can re-arm s_discard_work, so destroy the
++	 * journal before ext4_mb_release() flushes it.
++	 */
++	if (sbi->s_journal)
++		ext4_journal_destroy(sbi, sbi->s_journal);
+ 	ext4_mb_release(sb);
+ 	ext4_flex_groups_free(sbi);
+ failed_mount5:
+
