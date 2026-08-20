@@ -1,211 +1,170 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CCB8415B90;
-	Thu, 20 Aug 2026 11:08:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DB9042AF8C
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 11:25:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787224136; cv=none; b=oFAFacSwCQ5CcndOj3MGAgX3xKGp3o6UtfBWTWqUcydlDbbEhQOxWfZQU2GFD8nKWqrNODxp7VkNqBR9qZ3vAChSoFTukjrzHP4/O8r06cOkZbHqJknL+y11QMDIirIheT0GtWBW1LzEPbsZPvMwfxPngaltJWvOFAEXfI8/cac=
+	t=1787225161; cv=none; b=R8VVmWrsbwafKB8Xoy0El2T7oyiQgj1ry7XiZfgboH2Lf98uw7/59Ls26wvPXYsSKSukr+0Bdz+kK/jbCnKoTc1jK03WMmFy32YRvSt8cCeuSGDkakB46Rv1l8qXWLKpvWvLxoJsDCtO+lhiAf9/aOxst5c4940fCeZoMDBTreU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787224136; c=relaxed/simple;
-	bh=bPRBdUpzIm2s1eAZpnihewwZArgWvnaE23s61UeiAKk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=X3SA/m6xHh+CduX/Vjt9N/YEwApyBcoYQg5eK+yWU3pvILgyh4T7UOXZUdMUwrXTlZzqfXU2wP3LTqEsMPRfrLlPJdgymwuEdYpPalmOjC6tptvJTh9voacnUPY766CDtmgzyLD8gNyQ1mrF7ilQeu9gVwelFqV8ZXCiIF304oY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=RwCMhpQc; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=JBB7nnB2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=TGSfZHWb; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=udR+D2Ql; arc=none smtp.client-ip=195.135.223.131
+	s=arc-20240116; t=1787225161; c=relaxed/simple;
+	bh=w1UiliAxmgXInJ7h1KXuptV80qojag0d4J3kJR0Ga64=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=eqr1qPTq74fksrqpvKshNKVbe4N+qivBxb85NwgYoed1qLowmj6lfKS/a+3v/QzuDaMXgOH+RH6oZhZsFR7IGMNI6UJfexu4qYjZmktYJwVI1WWkoChBpV95bULQwkn0SPjFITsMz0vN8PqiMUez1v9q9kVwcemuMY96Kd6HfK4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=qQekQNzg; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=UWoQvdfa; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JfsFf8+X; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=25ehRyb3; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="RwCMhpQc";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="JBB7nnB2";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="TGSfZHWb";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="udR+D2Ql"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="qQekQNzg";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="UWoQvdfa";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JfsFf8+X";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="25ehRyb3"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id A66113EB1;
-	Thu, 20 Aug 2026 11:08:42 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 671408508A;
+	Thu, 20 Aug 2026 11:25:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787224126; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yfQe8qCXafeY/v3YQtv2qR39nOFKrbAjyfJEMwLvSHk=;
-	b=RwCMhpQch0YgPVp+fkRqEXyfyXYlXPTo7fBi3KU87LWiDNEet9on4dwPVhyE8DqmyC/Nog
-	/AeJQbAU2QL3/SxzNuFRT7T5LR7BZxn4mfk+b+2nKcszHJARw72KP0hD6oes1R41yv3/Mt
-	ROq7rtcn1eT8jzY8K8HLuZeMggPvexg=
+	t=1787225152; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=QFN+4Roh2Cvcp5trAIuVuohmu0zZXE/gk3HVMUsSHII=;
+	b=qQekQNzgi0Ywk9ekfs3f+nQj8AmRmCtSQ/fclxoAcS2UjY+eJoosXuJ58s/L74M9bQRL8R
+	qEvBckCpliiExxyGB0pWDo9CNUSUGAgGc1YgvcXCzIDXrm2aX1Ou19pckNgdF65o0W/cJ3
+	PbHeY4CKPGGNM07QDseQSTYWsHPXo9M=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787224126;
+	s=susede2_ed25519; t=1787225152;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yfQe8qCXafeY/v3YQtv2qR39nOFKrbAjyfJEMwLvSHk=;
-	b=JBB7nnB2gmADZ4VQGLnJ48PwBjk8zljIBN4fUS2kWP/sGcWY9ZW+i0i0xzKKdhiqMEK/RD
-	MkooGfHRinbX2iBw==
-Authentication-Results: smtp-out2.suse.de;
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=QFN+4Roh2Cvcp5trAIuVuohmu0zZXE/gk3HVMUsSHII=;
+	b=UWoQvdfacGWaZ+DKriWO0R+xRMZr33HnOsIjt+zcA00EDMqrn3p6Z5iDhrWKZPfplHQA/o
+	8/iIu7VEIXWW+GAg==
+Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787224122; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yfQe8qCXafeY/v3YQtv2qR39nOFKrbAjyfJEMwLvSHk=;
-	b=TGSfZHWb6ZRWXR/ugBXOuWxbLo2bgMXWvcSZhadFTWB6E/lUvI6uQfp6+k7L9ANTqT3MtS
-	NGLF4tBKKD6JDtM1h/pI5dr2IvFVsEWuBQlWQns41j6ffDoHfIo4oNg2hIm+1KQzQ7oVxM
-	w06iLY/jeZb4kF8ALw8eQIy09NmsuZ8=
+	t=1787225148; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=QFN+4Roh2Cvcp5trAIuVuohmu0zZXE/gk3HVMUsSHII=;
+	b=JfsFf8+XR5y+15RRmjxI6yZoHzRt+935ISB60EboE0jkpXzqhhrx8FlHCJ5Qtevg9d4MUH
+	bZKujjWQ9c9nnPxzjBQqIUrj92tRaAcrRH4YnJKXosCdlhOk7XtGuVxtpV8GibZJwCjV9o
+	WpgUs82sbUQeW7ii6YQIDP7zkR7VLAU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787224122;
+	s=susede2_ed25519; t=1787225148;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yfQe8qCXafeY/v3YQtv2qR39nOFKrbAjyfJEMwLvSHk=;
-	b=udR+D2Ql+bvdaFqThhtHHnAqALxty00d0n5Oyxyod7br+0E98Ri/i/ueXe7E6hcC93DvPE
-	G81BTJhxvAtPGNDQ==
+	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+	bh=QFN+4Roh2Cvcp5trAIuVuohmu0zZXE/gk3HVMUsSHII=;
+	b=25ehRyb3w5KrxhAvgMGK19ttT+Lfc/dm4WT+QcxMtozwWkRd8u9anUQaufmoA6G3wdvsdp
+	zow6i5wqiZyQdNAA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9C8CB27A8;
-	Thu, 20 Aug 2026 11:08:42 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5A7C927A8;
+	Thu, 20 Aug 2026 11:25:48 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id TK8yJjrghmrBJwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 20 Aug 2026 11:08:42 +0000
+	id HoMSFjzkhmolOAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 20 Aug 2026 11:25:48 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3BC9AA13B9; Thu, 20 Aug 2026 13:08:42 +0200 (CEST)
-Date: Thu, 20 Aug 2026 13:08:42 +0200
+	id 97B72A13B9; Thu, 20 Aug 2026 13:25:47 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
-To: Fan Wu <fanwu01@zju.edu.cn>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix discard work use-after-free on failed mount
-Message-ID: <ao3hudzjy2ljujygifsf7bcbffnfhp4uhxln3qkzdbszih3mjf@cqcopsdlkpnw>
-References: <20260820052102.4616-1-fanwu01@zju.edu.cn>
+To: Ted Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Venkat Rao Bagalkote <venkat88@linux.ibm.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Subject: [PATCH RESEND] ext4: Avoid entering writeback paths during fastcommit replay
+Date: Thu, 20 Aug 2026 13:25:33 +0200
+Message-ID: <20260820112532.757055-2-jack@suse.cz>
+X-Mailer: git-send-email 2.51.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260820052102.4616-1-fanwu01@zju.edu.cn>
-X-Spam-Score: -2.30
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2350; i=jack@suse.cz; h=from:subject; bh=w1UiliAxmgXInJ7h1KXuptV80qojag0d4J3kJR0Ga64=; b=kA0DAAgBnJ2qBz9kQNkByyZiAGqG5CyiUIxbyukEMM5P+6V30zX+YEM+29aaqGfEHPfIm0KC0 IkBMwQAAQgAHRYhBKtZ0SvWnjKKtVUoHJydqgc/ZEDZBQJqhuQsAAoJEJydqgc/ZEDZnoAIAKuW ZW3zRKGr19gzinzE+ns0WX3bzw5iL0ZR0SPqXoKQ0e9EtK3TFfOCaIoH9BAHxopVGEcDeIBTz+J 2k6TVG2alQ7njuPDS3OTtmtVl0C+TQa+0mPcLI4I22Cq/U3/pMI43TiqYM1mTXYVjpqB6IQ4U/r d4RdVHR1/bz8j4wxrw6jAwc74pjHarvQthsogxWDW1ZNdZ9b/WkdfZ9AsDX7sw5jbtDmRXqHwiW 7QU3ZVkdo9qi1B+6QtmGfSuIjekoSNA8r/iSn74t1adsC6nIovdw9lPh9Rge8Dc1+PzviRRl6y3 7MNtF3w/uVOSEaSfa2FiC6XQn6n7qwU6iN4j3iM=
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Spam-Score: -2.80
 X-Spam-Level: 
 X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Spamd-Result: default: False [-2.80 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
+	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
+	R_MISSING_CHARSET(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
 	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_TLS_LAST(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCPT_COUNT_FIVE(0.00)[5];
+	FROM_EQ_ENVFROM(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:mid,imap1.dmz-prg2.suse.org:helo]
 
-Hello!
+Fastcommit replay effectively happens in nojournal mode. This results in
+ext4_mark_iloc_dirty() setting I_METADATA_WRITEBACK flag and as a result
+we end up entering filesystem writeback functions. However during
+fastcommit replay s_writepages_rwsem isn't initialized yet and hence we
+crash.
 
-On Thu 20-08-26 05:21:02, Fan Wu wrote:
-> ext4_put_super() destroys the journal before it calls
-> ext4_mb_release(), but the failure unwind of __ext4_fill_super() runs
-> the two steps in the opposite order: failed_mount6 calls
-> ext4_mb_release(), and the journal is destroyed only later, just above
-> failed_mount3a.
-> 
-> ext4_mb_release() flushes sbi->s_discard_work before releasing the
-> mballoc structures, a drain made unconditional in commit 9ee29d20aab2
-> ("ext4: always drain queued discard work in ext4_mb_release()").  With
-> -o discard, the journal destroy that runs afterwards re-arms that work
-> after the flush: ext4_journal_destroy() calls ext4_force_commit(), and
-> the commit callback, registered once mballoc is initialized, queues
-> s_discard_work whenever the discard option is set, even with an empty
-> freed-data list.  A quota-enabled mount reaches this with a live
-> transaction (ext4_enable_quotas() failing into failed_mount8,
-> ext4_quotas_off() on the failed_mount9 path), so the final force
-> commit is not a no-op.
+Fix the problem by avoiding setting I_METADATA_WRITEBACK during
+fastcommit replay. Journal replay flushes the whole block device after
+replay anyway so all metadata is properly persisted and replay is faster
+this way as a bonus.
 
-Yes, I think orphan replay is the easiest way how to have running
-transaction in the journal in this shutdown path.
+Fixes: c26339e1df33 ("ext4: Fix data integrity writeout issues in nojournal mode")
+Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-> Nothing drains s_discard_work after that point: failed_mount3 flushes
-> only s_sb_upd_work and the s_err_report timer, and ext4_fill_super()
-> then frees sbi with a plain kfree() through ext4_free_sbi().  If the
-> system_dfl_wq worker is delayed across the rest of the unwind,
-> ext4_discard_work() then accesses the freed sbi, first through
-> sbi->s_sb and then while taking sbi->s_md_lock.
-> 
-> This is the pattern fixed for the s_err_report timer in commit
-> 0ce160c5bdb6 ("ext4: fix timer use-after-free on failed mount"):
-> async state armed after the unwind's last drain point.
-> 
-> Destroy the journal at failed_mount6, before ext4_mb_release().  This
-> restores the ext4_put_super() order, so the final commit re-arms
-> s_discard_work before the flush_work() in ext4_mb_release() drains
-> it.  The journal destroy further down the unwind still covers paths
-> that enter below failed_mount6; on the failed_mount6..failed_mount9
-> paths it does nothing, because ext4_journal_destroy() clears
-> sbi->s_journal.
-> 
-> This issue was found by an in-house static analysis tool.
-> 
-> Fixes: 55cdd0af2bc5 ("ext4: get discard out of jbd2 commit kthread contex")
-> Cc: stable@vger.kernel.org
-> Assisted-by: Codex:gpt-5.6
-> Signed-off-by: Fan Wu <fanwu01@zju.edu.cn>
+Hi Ted,
 
-Thanks for the analysis and the patch. I agree the problem exists and your
-patch fixes it but I just don't like the solution. Firstly, it looks very
-suspicious both failed_mount6 and failed_mount4 labels would be shutting
-down the journal. It makes me even more nervous that only failed_mount4a
-does:
-        dput(sb->s_root);
-        sb->s_root = NULL;
+this has fallen through the cracks in VFS tree, now it applies cleanly to
+Linus' tree so can you perhaps pick it up and push to Linus during the second
+half of the merge window? Thanks!
 
-which drops the root directory inode reference and with your change you'd
-already have shutdown journal by that time which could cause problems in
-some corner cases. Normal fs unmount path drops sb->s_root reference even
-before calling ext4_put_super() BTW...
-
-So to summarize I don't think we should really shutdown the journal
-earlier. I think failed_mount6 should just force the commit to flush out
-the running transaction before mballoc will be shut down and
-ext4_mb_release() can also use disable_work() after flush_work() to make
-sure no new s_discard_work can be queued as a safety measure.
-
-								Honza
-
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 4b6112e5d6c5..58b210637b57 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5761,6 +5761,12 @@ failed_mount8: __maybe_unused
->  failed_mount7:
->  	ext4_unregister_li_request(sb);
->  failed_mount6:
-> +	/*
-> +	 * The last commit can re-arm s_discard_work, so destroy the
-> +	 * journal before ext4_mb_release() flushes it.
-> +	 */
-> +	if (sbi->s_journal)
-> +		ext4_journal_destroy(sbi, sbi->s_journal);
->  	ext4_mb_release(sb);
->  	ext4_flex_groups_free(sbi);
->  failed_mount5:
-> 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7a1f961cd11c..12ff84ab5741 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6408,9 +6408,10 @@ int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
+ int ext4_mark_iloc_dirty(handle_t *handle,
+ 			 struct inode *inode, struct ext4_iloc *iloc)
+ {
++	struct super_block *sb = inode->i_sb;
+ 	int err = 0;
+ 
+-	err = ext4_emergency_state(inode->i_sb);
++	err = ext4_emergency_state(sb);
+ 	if (unlikely(err)) {
+ 		put_bh(iloc->bh);
+ 		return err;
+@@ -6425,9 +6426,13 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+ 	put_bh(iloc->bh);
+ 	/*
+ 	 * Mark that there's metadata writeout pending for the inode so that it
+-	 * gets properly flushed on fsync(2) and similar.
++	 * gets properly flushed on fsync(2) and similar. We don't bother for
++	 * fastcommit replay as that flushes the whole bdev afterwards anyway.
++	 * It is faster this way and we avoid entering fs writeback paths which
++	 * aren't fully initialized yet.
+ 	 */
+-	if (!EXT4_SB(inode->i_sb)->s_journal) {
++	if (!ext4_handle_valid(handle) &&
++	    !(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)) {
+ 		/*
+ 		 * Inode didn't need to go through dirtying, make sure it is
+ 		 * attached to wb so that writeback can handle it.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.51.0
+
