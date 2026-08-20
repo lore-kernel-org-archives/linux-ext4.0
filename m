@@ -1,68 +1,60 @@
-Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CDCB380FE3
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 15:19:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.178
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC056379C34
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 16:12:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787239156; cv=none; b=u6F2rSqw53p9hPlIASnIff68z+38nsKOZSroOELdtLU1VM+pn+NOORx71IoB3sye567A1K6Mso9X6yHlmTBZxZUOT6AqXVjzcCvrm3MxwFcTM0Q2iqktO0LD7fq6hLV5QBc6DPYDUZYslj3AHxTi17iHUUcRTtYTQ/SBi4hib/c=
+	t=1787242367; cv=none; b=LbyTZZ+GNPnDTpJ9tPUmwNQeRrWFambTapY5S88c0jFYGJv+mKWNbuCTk2uQ2C6lbUfrS3Xck7F66qucqOjCouJclp1UqilMRn9lxgqoxJg67hZ3gvgLMdPrL/pS1wnRWmPn5ub3Fl5VInM8EzzXofCt1I4T97zIVSwVh3qnzmk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787239156; c=relaxed/simple;
-	bh=8RqABrvlJokOUj6jhqU8frU6nTSmn/toVzxIzcthQNI=;
+	s=arc-20240116; t=1787242367; c=relaxed/simple;
+	bh=vIzGJk+07GZdI25qHiEydly1c6EJDo3F9rRjxKmTW5o=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=aV7XxZLdFgTS+ZNHlvSehuN/qXP8CHA03qRrDD/PeYjxNHzHwC+a1e3xZyX8EvkXYSGCTcQcxdB+nDSx7vubiiT3OQFvMSJToPs/wlQQ2wpHoxRMwGjijl4hwSU1VnNGc2Sa6z3P80ZyxtSF9TTXzFG1Yins6sXp3gKu1URMRVE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Q0VVDb3+; arc=none smtp.client-ip=209.85.214.178
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	 In-Reply-To:Content-Type; b=cFysfCCr5L1Un9yxuxczMwVjVGOrkao5BoOvWxXOhqG90Z+04mOJOzPSKImiVLkvHmMqrrdgu6EiWY8fm93yZk3GJGSgQR6Vid75VFtxuHK8Sl4tAHKUAdaJ5HDXpjmpCtL4f9RvJEhBeBpdzTvVu5h/66THhYFcbW9QlfhK4EE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=PHsm6FEV; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Q0VVDb3+"
-Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-2ceab75934dso28715765ad.2
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 08:19:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787239154; x=1787843954; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=a7ZM3S7YxfSumzIgj8EPnrdkbPiZ22RqFoPFkb521tU=;
-        b=Q0VVDb3+nYFdrjd4ZdtVrY0Eafa4FUQbI1IfjTpOFAMKgbLvdQwK7le3X/1mffYx3s
-         8JgNWQULMjYeXGt/Ut6YsPcH/H+ERs+U46T53tEkri7+IbBm3ndUS+1jYyan0sqCzXAy
-         31b7Kf0RvMj/sQdV86sgxMe2jZzqtXGzRBr2T6tFk8WKY6bfiOZB4mhhF98dRi4x/ZHk
-         QxS+T7SCCb1iz2T8KTFWwzTbFE2XDRyGEVKFbSfYfvb3lLoskQukkJtC82zGuYTI97vX
-         FqJnfQZR89b0jnyq9vuitjATs+D+c9DtjC2zXonRktu198t01hiM7ZCnoHkpK2kUNLi2
-         k8Eg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787239154; x=1787843954;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=a7ZM3S7YxfSumzIgj8EPnrdkbPiZ22RqFoPFkb521tU=;
-        b=JC+SxHeszzje75JWuT1xYXDg2X6hfEhLHbUi6d7ZOIQMajURn6zKUFhk3e4j1GRYO6
-         B1gI06lBieVi8G0DWd0Pp5RjfpIiGD+airkrkEs//qoPRbIk26dMWnhlZXe9Ty44bI7a
-         iELs/Fd4UJUDpKsjXQO3VGJQ1YpDVJSAwDQC9XUMDn9i7PTSnTOnp25xtCm9aMv0HkFu
-         UNGuMMBpEhy3tQwfPI7crq1+A1MhxZQ654GFnNmZ5VMhRE1kPgKCXCuX0kiIVajLT3lM
-         lygbseLDIxGPvkMAe/WrY6qxTPbLWsZRwd2B5Wyropv+vsQjlRklAE4AKw/mf9N+WJAg
-         xAWA==
-X-Forwarded-Encrypted: i=1; AHgh+RpzM5tuo85EmnfKZAo5J/pjtOLPKiu747JhSM8i6Z9I5YJZ1eVRUT0KhXwJNQ28TAz7r9hHY5WWyy6s@vger.kernel.org
-X-Gm-Message-State: AFuF++mlNiMGsbgJM678wcw5YoHsaRf4MhG2zov2y0Xb8xHEvj40EL1n
-	jl3CYjbRBsnYVKlTb+D+CN4SmT18Pf+xJWXE5rQTt0bMBeC7lYanQz8mp9dlJBwUQtE=
-X-Gm-Gg: AR+sD10eFpebkGSJtchfhmk55sN2x2QzkEzbRz7Mi8+2/5eHMPQqVsLRa6Lp3t9aXay
-	VLI/DXJe3+b2l4cWVIcGEA/V9Y+XHaPTbDQb529QfvREyAPlAtpP9W6uf6RczbJulj3WcWr+ehD
-	VE1YJvZ6L/LNEq+CjQH2131wE4fJ4LnaF7WVBH7q6L4McmSNRJ0fo2ZCB3fFEv5oZOgjjhvuQkq
-	WWL4u5mlKY5ccXXo7UHy9UJ6cbZjRbISbXrF7/XDqVWoJmM/bURgA/5uY1Y/3tgIjWtoAF+VVc6
-	OzmgTZqRygPDWYAw5a2fCDEOaC6UJSjcUuVxUXYjtWNxM/G0kl26VskXcmLD9NrK58oMEveui8H
-	taMJ3mTmrV11MeAqFoqFbFqtvrWIq5/8tMyeHOIn7tSQYV8OcjXuDw7z4IlrS7fqherbKJK7fuQ
-	86GWiS10IgVq3thTYOHEuCV7QX6Ed4I0+iq7Z6u0BR6ArfZqKgTfCJML7HsFp1XdrWgXl8CftSe
-	kuFJm/I
-X-Received: by 2002:a17:903:b8c:b0:2cf:4c0f:5127 with SMTP id d9443c01a7336-2d5fd6a3fa5mr267331825ad.10.1787239154226;
-        Thu, 20 Aug 2026 08:19:14 -0700 (PDT)
-Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d62e3affeesm8394785ad.65.2026.08.20.08.19.05
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 20 Aug 2026 08:19:13 -0700 (PDT)
-Message-ID: <daa118a5-1efb-49dd-9038-49d0c0b351fc@gmail.com>
-Date: Thu, 20 Aug 2026 23:18:59 +0800
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="PHsm6FEV"
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 67KEVVRZ2691176;
+	Thu, 20 Aug 2026 16:12:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pp1; bh=67kn4e
+	N1KQ+g/uymFUN5Vg05PQWujI0jt8JCduPpGLQ=; b=PHsm6FEVntjY72/tZ/eO5l
+	1xiOHJtja8F4pNKOuNKTSbBWNknGO1srjnGPfLgYktui0yLX0YV86Ljka8fvpx0P
+	xavqxgomE9Y8hBJakmiti6+06vCqQelMs9YTPBTKX2fDJYos3xpAJT+fjmkyZITS
+	J8/mCM9V/SdeCqJym3+zXC81x6oFERo5kc37EMuPaaUBZQcB8/RK0cG1ildvnjQv
+	nlIcJg2OSGdYZAn8wDeJy4Jcx1455TtCaMReN8nzTTHSGZuRyCFZL/mSsOpQJ+4R
+	kZ94qdrUpdU5mqLvwXb9Olf+tZqwBGEcJxv9Mt0CpN8RcjtblfJwVgaJrwRrSMOQ
+	==
+Received: from ppma22.wdc07v.mail.ibm.com (5c.69.3da9.ip4.static.sl-reverse.com [169.61.105.92])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4g4yu1kfef-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 20 Aug 2026 16:12:37 +0000 (GMT)
+Received: from pps.filterd (ppma22.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma22.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 67KGBhpI012795;
+	Thu, 20 Aug 2026 16:12:36 GMT
+Received: from smtprelay05.wdc07v.mail.ibm.com ([172.16.1.72])
+	by ppma22.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4g32twfjus-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 20 Aug 2026 16:12:36 +0000 (GMT)
+Received: from smtpav01.dal12v.mail.ibm.com (smtpav01.dal12v.mail.ibm.com [10.241.53.100])
+	by smtprelay05.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 67KGCaAi6488624
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 20 Aug 2026 16:12:36 GMT
+Received: from smtpav01.dal12v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 2AA5C58059;
+	Thu, 20 Aug 2026 16:12:36 +0000 (GMT)
+Received: from smtpav01.dal12v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 94EF058057;
+	Thu, 20 Aug 2026 16:12:34 +0000 (GMT)
+Received: from [9.61.245.245] (unknown [9.61.245.245])
+	by smtpav01.dal12v.mail.ibm.com (Postfix) with ESMTP;
+	Thu, 20 Aug 2026 16:12:34 +0000 (GMT)
+Message-ID: <6dc4a129-7097-4711-a453-6d172ef5adca@linux.ibm.com>
+Date: Thu, 20 Aug 2026 21:42:33 +0530
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,69 +62,111 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [RFC] ext4: orphan tracking after a failed truncate
-To: Theodore Tso <tytso@mit.edu>, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: Jan Kara <jack@suse.cz>, Guanghui Yang <3497809730@qq.com>,
- Andreas Dilger <adilger.kernel@dilger.ca>,
- Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
- <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>,
- linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <tencent_3E210B6E71105F311354D53C158A3A9E1E08@qq.com>
- <66vcv4ircw5mqadt4eki52hujmykrrsqp2cux4qvn37v6kzvs7@d7ys45emz3dr>
- <1537a281-aa34-49f8-87f1-e5f4fab8eb10@huaweicloud.com>
- <aoRhIeFzNqHg34jg@mit.edu>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <aoRhIeFzNqHg34jg@mit.edu>
+Subject: Re: [PATCH RESEND] ext4: Avoid entering writeback paths during
+ fastcommit replay
+Content-Language: en-GB
+To: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+References: <20260820112532.757055-2-jack@suse.cz>
+From: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+In-Reply-To: <20260820112532.757055-2-jack@suse.cz>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+X-Authority-Analysis: v=2.4 cv=LsCiDHdc c=1 sm=1 tr=0 ts=6a872776 cx=c_pps
+ a=5BHTudwdYE3Te8bg5FgnPg==:117 a=5BHTudwdYE3Te8bg5FgnPg==:17
+ a=IkcTkHD0fZMA:10 a=Sv0fKeRqtYgA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=VnNF1IyMAAAA:8
+ a=T2R7FQVLJHf8dZfcdzUA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-GUID: D6c_qbvZ71MBF6RbtwWGDDIKvgquQv77
+X-Proofpoint-Spam-Info: AW1haW4tMjYwODIwMDEyMSBTYWx0ZWRfXwpzP+jC3UrLc
+ SEA7N/UWsWsk4lSxQH1l2OuDR5fqCoCQgKvEWgbSURJdCX1A+qqymGe5uGT6MdKeYbBtp8ers0a
+ cM31fKFU2mcZduCgXiNxO2H0+ywOcts=
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwODIwMDEyMSBTYWx0ZWRfX8gG4+y3kTn8w
+ 0OWc3SMQ1hEvZZFYqOtmj4fVx85WmwaT7nRqwPiX3f6KSFtJGyohOoYqsTqQ2rJlNgxw9+U+msy
+ tKuJcJ99EQ/1xnUjoPE79h1mPkHNSYRNsmFEib5sTRhxs9kpIgZa+Ndr5aBb8yBAFrq6gH4KdEY
+ WgfMRT6T3BAGr89tmM4hT/XAUpQic84HOZl9JbPQ+GcxdiRYRt1el5oabaucIt41/WR16dnZD6D
+ BQATABnBz7PQnguhCqbT2/oYAqGKEf33P45FLnLZNffHM674ptNn2fhoIhQNdbHoxoRaHcTDF1r
+ AOEugJ50j6TuZ5G3eaTHi8XFgmGrdkyJsaUiIO6fWOaCrCwzQIavY6dNgxbz5rEJWKJEKy7u5cU
+ is7dzOr1+LY01M9+tkKv/9Z2AcEez3DFzx+uvatfuNMpm2RX7y37OyyFNQ4QCtnOFZSWm7YQM10
+ TjENECEXrcE1EsOX95g==
+X-Proofpoint-ORIG-GUID: D6c_qbvZ71MBF6RbtwWGDDIKvgquQv77
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-08-19_06,2026-08-20_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 spamscore=0 priorityscore=1501 lowpriorityscore=0 bulkscore=0
+ adultscore=0 suspectscore=0 impostorscore=0 clxscore=1015 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2608200121
 
-On 8/18/2026 9:48 PM, Theodore Tso wrote:
-> On Tue, Aug 18, 2026 at 12:41:57PM -0500, Zhang Yi wrote:
->> I think we might want to add a small qualifier here: this is only expected
->> behavior under errors=continue. For the remount-ro case, we immediately
->> abort the journal to prevent writing out inconsistent metadata after an I/O
->> error, which helps contain the damage. So after journal replay, the file
->> system should still be able to maintain a consistent state.
-> 
-> Errors={continue,remount-ro,panic} only apply if the ext4_error()
-> family is called.  The problem is that ext4_ext_remove_space(), which
-> is called by ext4_ext_truncate() calls read_extent_tree_block() and if
-> it returns an error, it returns EIO without actually calling
-> ext4_error().  So the truncate system call will return EIO, with
-> i_size set to zero, but with blocks beyond EOF still left allocated.
-> 
 
-I checked the code. Apart from the verity path, all callers
-of ext4_truncate() already call ext4_handle_error() when it returns
-an error. So it doesn't look like there's any issue with truncate
-at the moment. So I suspect that Guanghui won't be able to reproduce
-this issue in remount-ro mode, and I'd suggest that similar consistency
-tests under fault injection scenarios should all be run in remount-ro
-mode.
+On 20/08/26 4:55 pm, Jan Kara wrote:
 
-> As I menstioned, that's not _fatal_ in that case, since blocks beyond
-> EOF can happen with fallocate(2) with FALLOC_FL_KEEP_SIZE.  But it
-> could be a bit surprising, since truncate return an error, but the
-> file was actually apparently truncated (or partially truncated, in any
-> case).
-> 
+> Fastcommit replay effectively happens in nojournal mode. This results in
+> ext4_mark_iloc_dirty() setting I_METADATA_WRITEBACK flag and as a result
+> we end up entering filesystem writeback functions. However during
+> fastcommit replay s_writepages_rwsem isn't initialized yet and hence we
+> crash.
+>
+> Fix the problem by avoiding setting I_METADATA_WRITEBACK during
+> fastcommit replay. Journal replay flushes the whole block device after
+> replay anyway so all metadata is properly persisted and replay is faster
+> this way as a bonus.
+>
+> Fixes: c26339e1df33 ("ext4: Fix data integrity writeout issues in nojournal mode")
+> Reported-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
+> Reported-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
 
-It seems we can't guarantee that the file being truncated is always
-preallocated. If the blocks were already in written state, then after
-we update i_disksize to 0 but there are still blocks left unreleased,
-fsck will still complain, Did I get this right?
+Please add below tag, while applying this patch.
 
-Best Regards
-Yi.
 
-> We could change it to call ext4_error() which would signal the system
-> administrator would get a clear signal that she should run fsck, but
-> in terms of bugs, it's not as serious as if the file system was left
-> actually corrupted.
-> 
-> Cheers,
-> 
-> 					- Ted
-> 
+Tested-by: Venkat Rao Bagalkote <venkat88@linux.ibm.com>
 
+Regards,
+
+Venkat.
+
+>   fs/ext4/inode.c | 11 ++++++++---
+>   1 file changed, 8 insertions(+), 3 deletions(-)
+>
+> Hi Ted,
+>
+> this has fallen through the cracks in VFS tree, now it applies cleanly to
+> Linus' tree so can you perhaps pick it up and push to Linus during the second
+> half of the merge window? Thanks!
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 7a1f961cd11c..12ff84ab5741 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -6408,9 +6408,10 @@ int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
+>   int ext4_mark_iloc_dirty(handle_t *handle,
+>   			 struct inode *inode, struct ext4_iloc *iloc)
+>   {
+> +	struct super_block *sb = inode->i_sb;
+>   	int err = 0;
+>   
+> -	err = ext4_emergency_state(inode->i_sb);
+> +	err = ext4_emergency_state(sb);
+>   	if (unlikely(err)) {
+>   		put_bh(iloc->bh);
+>   		return err;
+> @@ -6425,9 +6426,13 @@ int ext4_mark_iloc_dirty(handle_t *handle,
+>   	put_bh(iloc->bh);
+>   	/*
+>   	 * Mark that there's metadata writeout pending for the inode so that it
+> -	 * gets properly flushed on fsync(2) and similar.
+> +	 * gets properly flushed on fsync(2) and similar. We don't bother for
+> +	 * fastcommit replay as that flushes the whole bdev afterwards anyway.
+> +	 * It is faster this way and we avoid entering fs writeback paths which
+> +	 * aren't fully initialized yet.
+>   	 */
+> -	if (!EXT4_SB(inode->i_sb)->s_journal) {
+> +	if (!ext4_handle_valid(handle) &&
+> +	    !(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)) {
+>   		/*
+>   		 * Inode didn't need to go through dirtying, make sure it is
+>   		 * attached to wb so that writeback can handle it.
