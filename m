@@ -1,104 +1,138 @@
-Received: from zg8tmtyylji0my4xnjeumjiw.icoremail.net (zg8tmtyylji0my4xnjeumjiw.icoremail.net [162.243.161.220])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 612BA3D3332;
-	Thu, 20 Aug 2026 12:12:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.243.161.220
+Received: from mail-pl1-f178.google.com (mail-pl1-f178.google.com [209.85.214.178])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1CDCB380FE3
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 15:19:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.178
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787227980; cv=none; b=h7lPR3+/Cr0vzeuH8OKoo9+xmTAP92PKDzPaB6DshM6uKRmFk3CsuuGliLhKjbVdKPuevrLFu4fqXszFCpJvaNafsrgTBjXRuYMjPgB7LUlx0ARdPw8CMkPt2h8V0letl8z1bPlpQpLvj3lHUaeNL1jrgCYfTQ2XW/ClBGBRHTY=
+	t=1787239156; cv=none; b=u6F2rSqw53p9hPlIASnIff68z+38nsKOZSroOELdtLU1VM+pn+NOORx71IoB3sye567A1K6Mso9X6yHlmTBZxZUOT6AqXVjzcCvrm3MxwFcTM0Q2iqktO0LD7fq6hLV5QBc6DPYDUZYslj3AHxTi17iHUUcRTtYTQ/SBi4hib/c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787227980; c=relaxed/simple;
-	bh=5Qtba8SWNI25D2cw00ROmV2pdRUvLXmQ5rmzKJbhORs=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=u7j7JN2PeWOgmd6jeTIgYJVK+cPFzlolXai7z1yUaHF01I04DQ0Y+WiqBIS/qQhskMIXJrWKXguEAq8MWc2vKbX9nPvwuCNRjJIWdgfl68I7k2ma8NLyGEmosRKLDKRO+x3o1/J7rh3gZg4YWnbLgzDtFdk/ZuR87F9HhUYWjpI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn; spf=pass smtp.mailfrom=zju.edu.cn; arc=none smtp.client-ip=162.243.161.220
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zju.edu.cn
-Received: from zju.edu.cn (unknown [10.97.62.103])
-	by mtasvr (Coremail) with SMTP id _____wCHnnw674Zq_rmtAA--.5449S3;
-	Thu, 20 Aug 2026 20:12:43 +0800 (CST)
-Received: from smtpclient.apple (unknown [10.97.62.103])
-	by mail-app1 (Coremail) with SMTP id yy_KCgDno5s674ZqHEIEBA--.8347S2;
-	Thu, 20 Aug 2026 20:12:42 +0800 (CST)
-Content-Type: text/plain;
-	charset=utf-8
+	s=arc-20240116; t=1787239156; c=relaxed/simple;
+	bh=8RqABrvlJokOUj6jhqU8frU6nTSmn/toVzxIzcthQNI=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=aV7XxZLdFgTS+ZNHlvSehuN/qXP8CHA03qRrDD/PeYjxNHzHwC+a1e3xZyX8EvkXYSGCTcQcxdB+nDSx7vubiiT3OQFvMSJToPs/wlQQ2wpHoxRMwGjijl4hwSU1VnNGc2Sa6z3P80ZyxtSF9TTXzFG1Yins6sXp3gKu1URMRVE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Q0VVDb3+; arc=none smtp.client-ip=209.85.214.178
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Q0VVDb3+"
+Received: by mail-pl1-f178.google.com with SMTP id d9443c01a7336-2ceab75934dso28715765ad.2
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 08:19:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787239154; x=1787843954; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=a7ZM3S7YxfSumzIgj8EPnrdkbPiZ22RqFoPFkb521tU=;
+        b=Q0VVDb3+nYFdrjd4ZdtVrY0Eafa4FUQbI1IfjTpOFAMKgbLvdQwK7le3X/1mffYx3s
+         8JgNWQULMjYeXGt/Ut6YsPcH/H+ERs+U46T53tEkri7+IbBm3ndUS+1jYyan0sqCzXAy
+         31b7Kf0RvMj/sQdV86sgxMe2jZzqtXGzRBr2T6tFk8WKY6bfiOZB4mhhF98dRi4x/ZHk
+         QxS+T7SCCb1iz2T8KTFWwzTbFE2XDRyGEVKFbSfYfvb3lLoskQukkJtC82zGuYTI97vX
+         FqJnfQZR89b0jnyq9vuitjATs+D+c9DtjC2zXonRktu198t01hiM7ZCnoHkpK2kUNLi2
+         k8Eg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787239154; x=1787843954;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=a7ZM3S7YxfSumzIgj8EPnrdkbPiZ22RqFoPFkb521tU=;
+        b=JC+SxHeszzje75JWuT1xYXDg2X6hfEhLHbUi6d7ZOIQMajURn6zKUFhk3e4j1GRYO6
+         B1gI06lBieVi8G0DWd0Pp5RjfpIiGD+airkrkEs//qoPRbIk26dMWnhlZXe9Ty44bI7a
+         iELs/Fd4UJUDpKsjXQO3VGJQ1YpDVJSAwDQC9XUMDn9i7PTSnTOnp25xtCm9aMv0HkFu
+         UNGuMMBpEhy3tQwfPI7crq1+A1MhxZQ654GFnNmZ5VMhRE1kPgKCXCuX0kiIVajLT3lM
+         lygbseLDIxGPvkMAe/WrY6qxTPbLWsZRwd2B5Wyropv+vsQjlRklAE4AKw/mf9N+WJAg
+         xAWA==
+X-Forwarded-Encrypted: i=1; AHgh+RpzM5tuo85EmnfKZAo5J/pjtOLPKiu747JhSM8i6Z9I5YJZ1eVRUT0KhXwJNQ28TAz7r9hHY5WWyy6s@vger.kernel.org
+X-Gm-Message-State: AFuF++mlNiMGsbgJM678wcw5YoHsaRf4MhG2zov2y0Xb8xHEvj40EL1n
+	jl3CYjbRBsnYVKlTb+D+CN4SmT18Pf+xJWXE5rQTt0bMBeC7lYanQz8mp9dlJBwUQtE=
+X-Gm-Gg: AR+sD10eFpebkGSJtchfhmk55sN2x2QzkEzbRz7Mi8+2/5eHMPQqVsLRa6Lp3t9aXay
+	VLI/DXJe3+b2l4cWVIcGEA/V9Y+XHaPTbDQb529QfvREyAPlAtpP9W6uf6RczbJulj3WcWr+ehD
+	VE1YJvZ6L/LNEq+CjQH2131wE4fJ4LnaF7WVBH7q6L4McmSNRJ0fo2ZCB3fFEv5oZOgjjhvuQkq
+	WWL4u5mlKY5ccXXo7UHy9UJ6cbZjRbISbXrF7/XDqVWoJmM/bURgA/5uY1Y/3tgIjWtoAF+VVc6
+	OzmgTZqRygPDWYAw5a2fCDEOaC6UJSjcUuVxUXYjtWNxM/G0kl26VskXcmLD9NrK58oMEveui8H
+	taMJ3mTmrV11MeAqFoqFbFqtvrWIq5/8tMyeHOIn7tSQYV8OcjXuDw7z4IlrS7fqherbKJK7fuQ
+	86GWiS10IgVq3thTYOHEuCV7QX6Ed4I0+iq7Z6u0BR6ArfZqKgTfCJML7HsFp1XdrWgXl8CftSe
+	kuFJm/I
+X-Received: by 2002:a17:903:b8c:b0:2cf:4c0f:5127 with SMTP id d9443c01a7336-2d5fd6a3fa5mr267331825ad.10.1787239154226;
+        Thu, 20 Aug 2026 08:19:14 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d62e3affeesm8394785ad.65.2026.08.20.08.19.05
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 20 Aug 2026 08:19:13 -0700 (PDT)
+Message-ID: <daa118a5-1efb-49dd-9038-49d0c0b351fc@gmail.com>
+Date: Thu, 20 Aug 2026 23:18:59 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3774.600.62\))
-Subject: Re: [PATCH] ext4: fix discard work use-after-free on failed mount
-From: Fan Wu <12321260@zju.edu.cn>
-In-Reply-To: <ao3hudzjy2ljujygifsf7bcbffnfhp4uhxln3qkzdbszih3mjf@cqcopsdlkpnw>
-Date: Thu, 20 Aug 2026 20:12:32 +0800
-Cc: Fan Wu <fanwu01@zju.edu.cn>,
- tytso@mit.edu,
- adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com,
- ojaswin@linux.ibm.com,
- ritesh.list@gmail.com,
- yi.zhang@huawei.com,
- linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org,
- stable@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <07DD13A9-C435-4F85-936A-1F587AE386D7@zju.edu.cn>
-References: <20260820052102.4616-1-fanwu01@zju.edu.cn>
- <ao3hudzjy2ljujygifsf7bcbffnfhp4uhxln3qkzdbszih3mjf@cqcopsdlkpnw>
-To: Jan Kara <jack@suse.cz>
-X-Mailer: Apple Mail (2.3774.600.62)
-X-CM-TRANSID:yy_KCgDno5s674ZqHEIEBA--.8347S2
-X-CM-SenderInfo: qrstjiaswqq6lmxovvfxof0/
-X-CM-DELIVERINFO: =?B?5cHGgwXKKxbFmtjJiESix3B1w3vZ3A9ovKVTomAyoQazvoRs/NHSP8GI2EvgeEEW7R
-	sfnVCjTgEH9dVomQuWcozCBBHBveKz7IdZn/dIsL83LI4Y+NpLLomzr14EaNv0CGxYmGem
-	BE6pmMLWy8OsxaK3qP8=
-X-Coremail-Antispam: 1Uk129KBj93XoW7AF4rtF1fKFW8uF15uFykZwc_yoW8Jw4Dpr
-	4rCw47K3yDZFWvy3ZFqw47WryIvr45KayrJryIgr1DC3y5Jw18ArW7tayFgFsxGrsYyw4j
-	vw48Xw17GrWrZ3gCm3ZEXasCq-sJn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7KY7ZEXa
-	sCq-sGcSsGvfJ3Ic02F40EFcxC0VAKzVAqx4xG6I80ebIjqfuFe4nvWSU5nxnvy29KBjDU
-	0xBIdaVrnRJUUUP0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2
-	IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48v
-	e4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI
-	0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AK
-	xVW0oVCq3wAac4AC62xK8xCEY4vEwIxC4wAS0I0E0xvYzxvE52x082IY62kv0487Mc804V
-	CY07AIYIkI8VC2zVCFFI0UMc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AK
-	xVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48Icx
-	kI7VAKI48JM4x0Y48IcxkI7VAKI48G6xCjnVAKz4kxM4IIrI8v6xkF7I0E8cxan2IY04v7
-	MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr
-	0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0E
-	wIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJV
-	W8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAI
-	cVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU85l1PUUUUU==
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [RFC] ext4: orphan tracking after a failed truncate
+To: Theodore Tso <tytso@mit.edu>, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Jan Kara <jack@suse.cz>, Guanghui Yang <3497809730@qq.com>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <tencent_3E210B6E71105F311354D53C158A3A9E1E08@qq.com>
+ <66vcv4ircw5mqadt4eki52hujmykrrsqp2cux4qvn37v6kzvs7@d7ys45emz3dr>
+ <1537a281-aa34-49f8-87f1-e5f4fab8eb10@huaweicloud.com>
+ <aoRhIeFzNqHg34jg@mit.edu>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <aoRhIeFzNqHg34jg@mit.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hello, Jan
+On 8/18/2026 9:48 PM, Theodore Tso wrote:
+> On Tue, Aug 18, 2026 at 12:41:57PM -0500, Zhang Yi wrote:
+>> I think we might want to add a small qualifier here: this is only expected
+>> behavior under errors=continue. For the remount-ro case, we immediately
+>> abort the journal to prevent writing out inconsistent metadata after an I/O
+>> error, which helps contain the damage. So after journal replay, the file
+>> system should still be able to maintain a consistent state.
+> 
+> Errors={continue,remount-ro,panic} only apply if the ext4_error()
+> family is called.  The problem is that ext4_ext_remove_space(), which
+> is called by ext4_ext_truncate() calls read_extent_tree_block() and if
+> it returns an error, it returns EIO without actually calling
+> ext4_error().  So the truncate system call will return EIO, with
+> i_size set to zero, but with blocks beyond EOF still left allocated.
+> 
 
-On 26-08-20 19:08, Jan Kara wrote:
-> Yes, I think orphan replay is the easiest way how to have running
-> transaction in the journal in this shutdown path.
+I checked the code. Apart from the verity path, all callers
+of ext4_truncate() already call ext4_handle_error() when it returns
+an error. So it doesn't look like there's any issue with truncate
+at the moment. So I suspect that Guanghui won't be able to reproduce
+this issue in remount-ro mode, and I'd suggest that similar consistency
+tests under fault injection scenarios should all be run in remount-ro
+mode.
 
-Understood, thanks =E2=80=94 I'll describe the trigger in terms of =
-orphan
-replay in v2.
+> As I menstioned, that's not _fatal_ in that case, since blocks beyond
+> EOF can happen with fallocate(2) with FALLOC_FL_KEEP_SIZE.  But it
+> could be a bit surprising, since truncate return an error, but the
+> file was actually apparently truncated (or partially truncated, in any
+> case).
+> 
 
-> I think failed_mount6 should just force the commit to flush out the
-> running transaction before mballoc will be shut down and
-> ext4_mb_release() can also use disable_work() after flush_work() to
-> make sure no new s_discard_work can be queued as a safety measure.
+It seems we can't guarantee that the file being truncated is always
+preallocated. If the blocks were already in written state, then after
+we update i_disksize to 0 but there are still blocks left unreleased,
+fsck will still complain, Did I get this right?
 
-Agreed =E2=80=94 keeping the journal shutdown at its existing point is =
-safer.
-I'll send a v2 that calls ext4_force_commit() at failed_mount6 before
-ext4_mb_release(), and adds disable_work() after the existing
-flush_work() in ext4_mb_release().
+Best Regards
+Yi.
 
-One detail I noticed while checking the ordering: jbd2 publishes
-j_commit_sequence before invoking the commit callback, so
-ext4_force_commit() can return before that callback has finished.  The
-callback can therefore queue s_discard_work after flush_work() returns.
-disable_work() cancels such a queued instance, but does not wait if it
-has already started executing in that small window.  I have kept
-disable_work() as you suggested; please let me know if you would prefer
-disable_work_sync() for that case.
-
-Thanks for the review!
-Fan=
+> We could change it to call ext4_error() which would signal the system
+> administrator would get a clear signal that she should run fsck, but
+> in terms of bugs, it's not as serious as if the file system was left
+> actually corrupted.
+> 
+> Cheers,
+> 
+> 					- Ted
+> 
 
