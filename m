@@ -1,130 +1,114 @@
-Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [13.75.44.102])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id ABE19377AB5;
-	Thu, 20 Aug 2026 05:22:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.75.44.102
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6339539657A
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 05:44:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787203349; cv=none; b=Fyd5sqYgn+vp8AnGc5ukMS5qJS9/O78WYgobm+WjNnEqQokrYf3q7+l0crIh9xmC4dXBTJ1NQ0kZyf7sykx9AyUkt8zqBQbrqj44UQdj0VOOeUhL08dSrn8lcda2bI01k9bLt41nv7yvP6GETbtX7Zpz3pX4ubhe3gsfh0AIheI=
+	t=1787204674; cv=none; b=Lij6Fo+zIm+CYC9k3M96WG+xsfLVZBIYwJW+uMW57KoWjy9YkCCRqul5pavch0DhKgmoroRdDINYYVEomQMoTL8Yvj+8sBHGB/G9VKpaNkrqYXBRfNL0fYiTpbo5LIiuju2nrnzHJVWX3tnMbz0cZBBWQwwFb12DZO4+9ZexEQo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787203349; c=relaxed/simple;
-	bh=scEtCK5RzqwngIkECjRt+68QwazEZeFXESS7h25f1i0=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=qdHz7/urqmnc0mMZcQ/v8h2+C1GPMaDGEjbzQ9ZUTs09zKW0iAeQd2EmelV1XgTmsuQ+HdaeLeR3qNZ9N6BvDpuWPathnxlrCRrWUMEBKZj1OfTGFltl+2V/P+zGRlwhIm/KHIc1dSW+/Ah/D66zf08xzqS69liZjP9Af2EDosM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn; spf=pass smtp.mailfrom=zju.edu.cn; arc=none smtp.client-ip=13.75.44.102
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zju.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zju.edu.cn
-Received: from zju.edu.cn (unknown [10.98.66.117])
-	by mtasvr (Coremail) with SMTP id _____wBHMS_1joZqhRisAA--.2074S3;
-	Thu, 20 Aug 2026 13:21:58 +0800 (CST)
-Received: from localhost.localdomain (unknown [10.98.66.117])
-	by mail-app3 (Coremail) with SMTP id zS_KCgAXLnD1joZqGbKGBA--.17350S2;
-	Thu, 20 Aug 2026 13:21:57 +0800 (CST)
-From: Fan Wu <fanwu01@zju.edu.cn>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Fan Wu <fanwu01@zju.edu.cn>,
-	stable@vger.kernel.org
-Subject: [PATCH] ext4: fix discard work use-after-free on failed mount
-Date: Thu, 20 Aug 2026 05:21:02 +0000
-Message-Id: <20260820052102.4616-1-fanwu01@zju.edu.cn>
-X-Mailer: git-send-email 2.34.1
+	s=arc-20240116; t=1787204674; c=relaxed/simple;
+	bh=rYPLT94jZrEP0WnemjsztWwnvhKGHXXSrEuVkYy8fQg=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=WVsJKH9NHc3kinD0FHlSzvS9OwLKS5sOsqihElt605qCkSf2hmQTdaJFvC9Cg/bn+jImyg0EKyAn5PYx0KlCkof7K0+Ej98Sk4yvjMpZU0eil8TKr1tOqts628oS3erRCPxMn/2pBHwlDWC+0XT60AzQ5JyL7TQA/wb3MCzpLXg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HeNw0Cyd; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HeNw0Cyd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2156B1F000E9;
+	Thu, 20 Aug 2026 05:44:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787204671;
+	bh=vnA/iTLJCd/hdnqjn4qpl7HJ7Vs1ytT1zBPaVoIifzs=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=HeNw0CydLPx4seLB8/QCDItdqFnoNxHkSkkSfCSakiQB1sUpExvWNsLEgSWMI5pnD
+	 /nf9tZnS0ickhLZdiG/kPj/2PfhJfxmbz2+CMvqjqLmO4e649Y7mmGJKMIj6yHjQJw
+	 bB6tI2XkfGEWPQ4L7CLbeLJwpWU6++FVoHZqkt0cZACkP+ftLXG5R0Opax7SsgiDGL
+	 RBuasiKjvIOjkCL1KlmlFDt/ywln9DiV9deYPfTLA0C+wcN7Fxjz1JTw6i8Q/jq1EM
+	 KORTO3emg+1XoZRAt5A+PfILhJmcdjOIR26YlW7TZtyOWcPDdLOHBgHfPLn9x8KQ2R
+	 jsr3ATTcf4q9Q==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: fix discard work use-after-free on failed mount
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Fan Wu" <fanwu01@zju.edu.cn>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260820052102.4616-1-fanwu01@zju.edu.cn>
+References: <20260820052102.4616-1-fanwu01@zju.edu.cn>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 20 Aug 2026 05:44:30 +0000
+Message-Id: <20260820054431.2156B1F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:zS_KCgAXLnD1joZqGbKGBA--.17350S2
-X-CM-SenderInfo: qrstjiaswqq6lmxovvfxof0/
-X-CM-DELIVERINFO: =?B?w43tCwXKKxbFmtjJiESix3B1w3vZ3A9ovKVTomAyoQazvoRs/NHSP8GI2EvgeEEW7R
-	sfnZPoDCNGYdHSfuFmYJL54WNc57bz4AM2PfQ2r8oyBzVoKAhPTJ19GJW4x9ioKtcx3hRC
-	6aE3dbRR9nMWLg9i8QWp9E6mavGmQbzmcFsnzP86
-X-Coremail-Antispam: 1Uk129KBj93XoWxXF1DCw43Wry5Xry3trWfCrX_yoW5Ar15pr
-	sxAw4jkrykZ34vkw43Za1xXFy0ga1F9F4UGryI9rs3Z390qw1IvFsxtFyY9F4qvrW8G3Za
-	vF48G34jgFWvyrXCm3ZEXasCq-sJn29KB7ZKAUJUUUUU529EdanIXcx71UUUUU7KY7ZEXa
-	sCq-sGcSsGvfJ3Ic02F40EFcxC0VAKzVAqx4xG6I80ebIjqfuFe4nvWSU5nxnvy29KBjDU
-	0xBIdaVrnRJUUUP0b4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2
-	IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48v
-	e4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI
-	0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x0267AK
-	xVW0oVCq3wAac4AC62xK8xCEY4vEwIxC4wAS0I0E0xvYzxvE52x082IY62kv0487Mc804V
-	CY07AIYIkI8VC2zVCFFI0UMc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2IY67AK
-	xVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0Y48Icx
-	kI7VAKI48JM4x0Y48IcxkI7VAKI48G6xCjnVAKz4kxM4IIrI8v6xkF7I0E8cxan2IY04v7
-	MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr
-	0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0E
-	wIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJV
-	W8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAI
-	cVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU85l1PUUUUU==
 
-ext4_put_super() destroys the journal before it calls
-ext4_mb_release(), but the failure unwind of __ext4_fill_super() runs
-the two steps in the opposite order: failed_mount6 calls
-ext4_mb_release(), and the journal is destroyed only later, just above
-failed_mount3a.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
 
-ext4_mb_release() flushes sbi->s_discard_work before releasing the
-mballoc structures, a drain made unconditional in commit 9ee29d20aab2
-("ext4: always drain queued discard work in ext4_mb_release()").  With
--o discard, the journal destroy that runs afterwards re-arms that work
-after the flush: ext4_journal_destroy() calls ext4_force_commit(), and
-the commit callback, registered once mballoc is initialized, queues
-s_discard_work whenever the discard option is set, even with an empty
-freed-data list.  A quota-enabled mount reaches this with a live
-transaction (ext4_enable_quotas() failing into failed_mount8,
-ext4_quotas_off() on the failed_mount9 path), so the final force
-commit is not a no-op.
+Pre-existing issues:
+- [Critical] Incorrect teardown ordering causes Use-After-Free of s_group_i=
+nfo and unjournaled metadata modifications during mount failure.
+--
 
-Nothing drains s_discard_work after that point: failed_mount3 flushes
-only s_sb_upd_work and the s_err_report timer, and ext4_fill_super()
-then frees sbi with a plain kfree() through ext4_free_sbi().  If the
-system_dfl_wq worker is delayed across the rest of the unwind,
-ext4_discard_work() then accesses the freed sbi, first through
-sbi->s_sb and then while taking sbi->s_md_lock.
+--- Patch [1]: [PATCH] ext4: fix discard work use-after-free on failed moun=
+t ---
+commit 7b05e08bede19859144c19d2964e5f55dbc626c5
+Author: Fan Wu <fanwu01@zju.edu.cn>
 
-This is the pattern fixed for the s_err_report timer in commit
-0ce160c5bdb6 ("ext4: fix timer use-after-free on failed mount"):
-async state armed after the unwind's last drain point.
+ext4: fix discard work use-after-free on failed mount
 
-Destroy the journal at failed_mount6, before ext4_mb_release().  This
-restores the ext4_put_super() order, so the final commit re-arms
-s_discard_work before the flush_work() in ext4_mb_release() drains
-it.  The journal destroy further down the unwind still covers paths
-that enter below failed_mount6; on the failed_mount6..failed_mount9
-paths it does nothing, because ext4_journal_destroy() clears
-sbi->s_journal.
+This commit addresses a use-after-free during a failed mount by ensuring
+the journal is destroyed before ext4_mb_release() drains the discard work.
 
-This issue was found by an in-house static analysis tool.
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index bca0dc87d0b7c..5ec1d8f54e917 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -5776,6 +5776,12 @@ failed_mount8: __maybe_unused
+>  failed_mount7:
+>  	ext4_unregister_li_request(sb);
+>  failed_mount6:
+> +	/*
+> +	 * The last commit can re-arm s_discard_work, so destroy the
+> +	 * journal before ext4_mb_release() flushes it.
+> +	 */
+> +	if (sbi->s_journal)
+> +		ext4_journal_destroy(sbi, sbi->s_journal);
+>  	ext4_mb_release(sb);
+>  	ext4_flex_groups_free(sbi);
+>  failed_mount5:
 
-Fixes: 55cdd0af2bc5 ("ext4: get discard out of jbd2 commit kthread contex")
-Cc: stable@vger.kernel.org
-Assisted-by: Codex:gpt-5.6
-Signed-off-by: Fan Wu <fanwu01@zju.edu.cn>
----
- fs/ext4/super.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+[Severity: Critical]
+This is a pre-existing issue, but does this error unwind sequence leave
+sbi->s_group_info exposed to a use-after-free further down the failure path?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4b6112e5d6c5..58b210637b57 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5761,6 +5761,12 @@ failed_mount8: __maybe_unused
- failed_mount7:
- 	ext4_unregister_li_request(sb);
- failed_mount6:
-+	/*
-+	 * The last commit can re-arm s_discard_work, so destroy the
-+	 * journal before ext4_mb_release() flushes it.
-+	 */
-+	if (sbi->s_journal)
-+		ext4_journal_destroy(sbi, sbi->s_journal);
- 	ext4_mb_release(sb);
- 	ext4_flex_groups_free(sbi);
- failed_mount5:
+If a filesystem mount fails after journal replay (for example, if
+ext4_enable_quotas() fails), the error unwind reaches failed_mount6 and
+calls ext4_mb_release(), which frees sbi->s_group_info.
 
+The unwind then continues down to failed_mount_wq:
+
+failed_mount_wq:
+        flush_delayed_work(&sbi->s_ea_inode_work);
+
+If journal replay had queued EA inodes for eviction, the flush worker
+will process them:
+
+ext4_evict_inode()
+   ext4_truncate()
+      ext4_free_blocks()
+         ext4_mb_clear_bb()
+            ext4_get_group_info()
+
+Can this lead to ext4_mb_clear_bb() dereferencing the freed
+sbi->s_group_info array?
+
+Additionally, because this patch moves ext4_journal_destroy() to run before
+the flush, sbi->s_journal is now NULL when ext4_evict_inode() runs. Will
+this cause ext4_journal_start() to return a nojournal handle, resulting in
+unjournaled metadata modifications?
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260820052102.4616=
+-1-fanwu01@zju.edu.cn?part=3D1
