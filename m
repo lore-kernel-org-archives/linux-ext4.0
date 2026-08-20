@@ -1,213 +1,580 @@
-Received: from DM1PR04CU001.outbound.protection.outlook.com (mail-centralusazon11010014.outbound.protection.outlook.com [52.101.61.14])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CBD63D75DE;
-	Thu, 20 Aug 2026 16:12:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.61.14
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787242378; cv=fail; b=GtbH1apW0zsi9GlH41jBH4S86/SBMxlzVcv7J6XO5F13ZdQzNp6Ybi7dMM7/IGHYJemwGWctyD8CXDWZn8FL4+tUYjzVd8FBDbr+xCURGNAYTrCGGdbZ2ps7F737dQwUQY3wjrUfWB4zCOOeQUWIBIi4x981xwqfz2Go8wYRAiQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787242378; c=relaxed/simple;
-	bh=GQwNxZNRb7QfVL5uH97DO+3qCLdKNGVBBEl7WltKtn8=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=EqslJ6hOiO7p67sTjSus20JBlCy3VBYW9qzunPgwzYvSoSCgiavD+ODrhk0Ws92JQvVPPeWUbaPNmTFhcRyiUKVxqgpmvJEtKWF7Yyjo+dfWKMGNOMsBvPV9Z9PQwC39ACIe0nwyP2skVfwQlzfzyThX/nYuN/7U873opCStiLY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com; spf=fail smtp.mailfrom=nvidia.com; dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b=m+vO74j6; arc=fail smtp.client-ip=52.101.61.14
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nvidia.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3087237A858;
+	Thu, 20 Aug 2026 16:44:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787244253; cv=none; b=cj7NMGt+6xboly4+Dd3cwuDOxB+fmW6tL2N6+U7o1i1hQ0yVuJ4BpqwFKd9v1U42SX96ZzVDWwtqMwG/nPvJyvJ27Qp+AvNCYW1bIuaSVHu+qAlV5+E3jGlpokFgwqpvCjHuiJywRWr87kZuU3MLkylcwG+DlJXdLQV51GZqB8U=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787244253; c=relaxed/simple;
+	bh=nVX1RF+wfaaFVt6KBci9Vm9ArFJdgoUPcDAApYDvV4Y=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ig2v5K6A2P3efflspH4JwzzxwtlfKzOxkULrX1g+BPw7v4XpXyuqLTUOplOUq7RP4hp/I9yUkKCfBF33XPp9gDGDzrOTlhpPKWHmd462g2EeX9uoo1hYIuCx7F3Y7WUKgJf3oyimFNF/hNXl6BYHoV1OZIRl76Fnnv8W9UUKwqA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VR+uM9WA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b="m+vO74j6"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=f3Uc5FdNgXa/DWjk8UUj7JgJQBpAvUIhou3ndjHFD6ixU1lLrWEAFXE5BcI4LDZ+6tWa95B1/6tLHftEl1NzXSk9cjNJCGlJF4pY794+/SX8bpY07HoRMRyRIQxQFOEyVxMf4unobpLhOAsQ41JXw03eP8ULqwxEKkMSE9BwFaLA76zZeh4LLmlMfUOZHDCxtiTOu0r3/I7mTRjlBXPLifBjQ2vjIuXUTETq/nhyFCcKpO3LGEcp94DuWKyaWeBxbFfGG/+soKyxKhhwAL9CdFaZrZQdDjY6flcdE4u/xx7Nbqs1UcTthKY6LeCLiiREMS4nEBfim/LzkBpHKLYDtg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=dXQACOlMqYttdwf87+MdT+hgACB1lVKrO6r8CW4/KWU=;
- b=oi4foruBDTxzCm5vPGH2kNphFqYT/GM0953Ftl5dLyNgyB8lwXy3fTTb6rAmvKAPUG7ye8KQuQYENzFHWjRHLabgvpZz2P6nywUG6zsVJTCHNYGkbDD+0KCyjpysZbaqwhuSkP5PiFSIFzRSy7eIOaYnMSqlX37WH0DXeJhsjcHDmoWr9l63Du+gZKywMt4CWYn+6VgOTRY6NER7dD8XUzbQML8e16SdaCQYS/YKE6d4VkiykrNiMXs8e6PrUmzn6mBMaO3uF++vxqwNHs5rRVZ+xWkqYXWSNI8tcZ7GwdZ+5X5hE80IfXz2JsFNgoCXBBOwyRZfSt23WCfQN0RAng==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=dXQACOlMqYttdwf87+MdT+hgACB1lVKrO6r8CW4/KWU=;
- b=m+vO74j6BdUSjBj9JJqSTFitMc3/WKuIUYplZHoaHToDpuLZAFuspnhpDliJtg+krMFHpARp5V+JADFacIFFcMWnB4s39hT8QJ5NYiqptIukyWWdJ+YXBWuQijL9ZOQRbhJG0Xja/L9Jno5AavzKs2ylZqUpnSEc2RzZEGSPsThuf41eorCZugY0lTo0U0/56Ak5LwK86IcBxon3Uu7Hdq+bfDIK0a/PbkLc9lMgmV5nh+aK8lUUex0am0ui9fniHxo2ePBZQZjwbV4m/pmCKTA/y90pmuFnCKIrbGznsLrA997W1MfkaHpdsKHVTTRo0lZ/YUUCwuHNFyv5v4rcrQ==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=nvidia.com;
-Received: from SJ1PR12MB6051.namprd12.prod.outlook.com (2603:10b6:a03:48a::18)
- by DS7PR12MB5936.namprd12.prod.outlook.com (2603:10b6:8:7f::8) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.21.339.10; Thu, 20 Aug 2026 16:12:45 +0000
-Received: from SJ1PR12MB6051.namprd12.prod.outlook.com
- ([fe80::96e1:b300:7b78:d3a9]) by SJ1PR12MB6051.namprd12.prod.outlook.com
- ([fe80::96e1:b300:7b78:d3a9%6]) with mapi id 15.21.0339.007; Thu, 20 Aug 2026
- 16:12:45 +0000
-Message-ID: <c8a8ed26-973a-4fb3-a72a-f595cccaf1bb@nvidia.com>
-Date: Thu, 20 Aug 2026 17:12:30 +0100
-User-Agent: Mozilla Thunderbird
-Subject: Re: [patch 06/38] calibrate: Rework delay timer calibration
-To: Thomas Gleixner <tglx@kernel.org>, LKML <linux-kernel@vger.kernel.org>
-Cc: Arnd Bergmann <arnd@arndb.de>, x86@kernel.org,
- Lu Baolu <baolu.lu@linux.intel.com>, iommu@lists.linux.dev,
- Michael Grzeschik <m.grzeschik@pengutronix.de>, netdev@vger.kernel.org,
- linux-wireless@vger.kernel.org, Herbert Xu <herbert@gondor.apana.org.au>,
- linux-crypto@vger.kernel.org, Vlastimil Babka <vbabka@kernel.org>,
- linux-mm@kvack.org, David Woodhouse <dwmw2@infradead.org>,
- Bernie Thompson <bernie@plugable.com>, linux-fbdev@vger.kernel.org,
- Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
- Andrew Morton <akpm@linux-foundation.org>,
- Uladzislau Rezki <urezki@gmail.com>, Marco Elver <elver@google.com>,
- Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com,
- Andrey Ryabinin <ryabinin.a.a@gmail.com>,
- Thomas Sailer <t.sailer@alumni.ethz.ch>, linux-hams@vger.kernel.org,
- "Jason A. Donenfeld" <Jason@zx2c4.com>,
- Richard Henderson <richard.henderson@linaro.org>,
- linux-alpha@vger.kernel.org, Russell King <linux@armlinux.org.uk>,
- linux-arm-kernel@lists.infradead.org,
- Catalin Marinas <catalin.marinas@arm.com>,
- Huacai Chen <chenhuacai@kernel.org>, loongarch@lists.linux.dev,
- Geert Uytterhoeven <geert@linux-m68k.org>, linux-m68k@lists.linux-m68k.org,
- Dinh Nguyen <dinguyen@kernel.org>, Jonas Bonn <jonas@southpole.se>,
- linux-openrisc@vger.kernel.org, Helge Deller <deller@gmx.de>,
- linux-parisc@vger.kernel.org, Michael Ellerman <mpe@ellerman.id.au>,
- linuxppc-dev@lists.ozlabs.org, Paul Walmsley <pjw@kernel.org>,
- linux-riscv@lists.infradead.org, Heiko Carstens <hca@linux.ibm.com>,
- linux-s390@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
- sparclinux@vger.kernel.org,
- "linux-tegra@vger.kernel.org" <linux-tegra@vger.kernel.org>
-References: <20260410120044.031381086@kernel.org>
- <20260410120317.978403520@kernel.org>
-Content-Language: en-US
-From: Jon Hunter <jonathanh@nvidia.com>
-In-Reply-To: <20260410120317.978403520@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: FR0P281CA0205.DEUP281.PROD.OUTLOOK.COM
- (2603:10a6:d10:ad::19) To SJ1PR12MB6051.namprd12.prod.outlook.com
- (2603:10b6:a03:48a::18)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VR+uM9WA"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id BA5AA1F00A3D;
+	Thu, 20 Aug 2026 16:44:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787244251;
+	bh=MomSmGBn7JOFVKMpcz1xdXXtQjRUbWVZibRV0VyY9vQ=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=VR+uM9WArl5t/faP/ZsbqJbnAOHBfp8Da/cQzhv9W4Lvns9WcB5osEZ+dpZTJF4jo
+	 z1LswWxPzlrQaIvYS3D5OVR0ziup/iJaYVSeoJUFI03n9CxWRLmN8qyRYz5f+feVc9
+	 GPmutHkUozn53tCKDSCD4yF3MH6AkTuei/kn6PDXBbqAP/okxdElpBuzXXL8Waq0lQ
+	 7t/i2aGlS29HmN40JIs5MKq49+Ze98YU1LAWPecVSfDRVPvAynoWo3wb7YGvHeBIfX
+	 h6cpzJseOOcmgpzFFPKbgMQJo5pEU2KJIpcnT/aOjN8XGL0FXYinPW3k+1t3X6uWvt
+	 l2AHvYxr9dcOA==
+Date: Thu, 20 Aug 2026 09:44:11 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: Andrey Albershteyn <aalbersh@kernel.org>
+Cc: ebiggers@kernel.org, hch@lst.de, Jens Axboe <axboe@kernel.dk>,
+	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-unionfs@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+	linux-btrfs@vger.kernel.org, david@fromorbit.com,
+	Tal Zussman <tz2294@columbia.edu>
+Subject: Re: [PATCH v15 19/25] xfs: add fs-verity support
+Message-ID: <20260820164411.GI6072@frogsfrogsfrogs>
+References: <20260814092448.1818082-1-aalbersh@kernel.org>
+ <20260814092448.1818082-20-aalbersh@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: SJ1PR12MB6051:EE_|DS7PR12MB5936:EE_
-X-MS-Office365-Filtering-Correlation-Id: 403b744e-fd37-478d-d403-08defed5dea4
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|376014|7416014|1800799024|23010399003|366016|10067099003|11063799006|4143699003|56012099006|18002099003|22082099003;
-X-Microsoft-Antispam-Message-Info:
-	Hku/AQpoDLljpIsWMTOh6NT0b3M4gjVgbDMQtZDjU7lXVe14SpA6/bMJ/hEkj9LRXMDZc7FgK5B7dIFn/CHKklGKQjQcJ5HpNDzmN4TKY20Ud1Ntw/F/UJRIbfErCGYCpzKCbnsGv5Rsmspv/qDZZMPDLYteMPrfcm9qcqIou386zjVU0KOD6ACvP7kcbIDxFnr2GqtbdqL8bY8sUXWqGUlv4c6fhxY2xVpptb0nBK3djNHVjf/NAv2yl+67I7weZjtdPKG04+hEBivIYgrgCFoogdONpMrqUAfSOafaB3UDz20/5WomVhqmSpYtrB1RHBs95+qY0mcngiyx02QJ89MoeuMuCg8spER2kwX5y8JR5TLeEBUjo/dxShi7fZFNO8nZluTUWeJ5s+dPpfjqhCBfsgwXWTYeRxsOmvw7HoZh1XUWJawnikpP1z7aso0Uw4+C+NnaK7ooXLl41q4ivktSsWadUaPhPbbaflbgUFM6l7fVWJ0oNy0Ml4vnpgTHsf3EhEUAF4byfE3GlG8sVSkbqqV6/ALcKCAsibKQVvo8XE5OQzN+lSLP6tVIEqcx90W3eZbmKOd+fvU/1uqsXkhdsQ9hHhmqrP9vzYi/pz9OQgvoKKo7+mZyPERQMtInUTYJd1znCNef1XIVfITbXvd8OCnivO5+I4a/LRJsI7s=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ1PR12MB6051.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(7416014)(1800799024)(23010399003)(366016)(10067099003)(11063799006)(4143699003)(56012099006)(18002099003)(22082099003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?d2pNYVJsZ09NOVNLY0hqVlNKYTB6cmFCSHZ1dUdIcHRKVS9ldzlPZ1c1TjFk?=
- =?utf-8?B?b3RHYzZKSDk3Tm45d3Z3UGl6RENmYVpOcDhibUorY0dDa2s3NG4rRWZ1S0du?=
- =?utf-8?B?Mk4wNVBGb1Z5ajRsZFQyZmJGSGFCZnVhaUplOGwvNWxFVUVkdTNDNSt4Y0Vz?=
- =?utf-8?B?SE0zWGptVlBBTUlRdUIvTWdHeVVNelpmVjlKWHA1ZG0xdEpaOVd6dWdoTWEw?=
- =?utf-8?B?b0tOR0NFVlVoNllLMitzLzNhSk1UU2NoNWJ3NFhKSklRMXBKYlhqY2pDdE45?=
- =?utf-8?B?QzlJTnBXRzZQdFZIV3hKaENqTEs4Nkx1UzB5NmlBZUJUekY5dDAxQ0lJVllH?=
- =?utf-8?B?K1VaajRPUHlwUm0zbUdLSnVhU0RJUFJSL2JwdW9XNTBYVzJYRGNsNG8vSHgy?=
- =?utf-8?B?STc2TnE1TzBWRmIxMEpHNW1PbVZtWUxnQ0owa0FsbUhORnBlNjh6L1J5MnJF?=
- =?utf-8?B?OTBtOGsvMitsSVFoVHU2b1R3TEpBNW1TUXdGZXdqcmc0TzBobkJ0UFpibU1F?=
- =?utf-8?B?WUdFaFpzV1lvRVg4ZmRZRXRWdEY0bXV6c1Y0c1MyWktqSWNUVHNtditXaFdN?=
- =?utf-8?B?b0UvUEUzTUlndEhPSDhjSXVydkN4MktGcGZaUHlwbHRvQ3AwbWt0ZCtvQ3JT?=
- =?utf-8?B?b0R0WkYzT1ROZ1FBYU1rRkhpejJlcjRBekRRejBkK29pRUd2UXlqb2oybndV?=
- =?utf-8?B?WWV4Q1U3KzFobitJaW0vMHBDdk9hV3JHUVVBdWRzS3lURXFNNzdHN1B4eEYy?=
- =?utf-8?B?c3k0M1RNK0VUK1lLYi80YUhsQmhTMzVWeHkyZTQ4QVh5U1ZhRmJVcFZUa3ky?=
- =?utf-8?B?aDRmeHlSckRnUHFOZmZFRkJoNDl6eThaTkM3Ry83S1hnckhycU9JSzBQL2Mw?=
- =?utf-8?B?VjZvYW5ndGEya0Q0THhlQlZwNkNmOWdtZDEyVUoybDc5SSt4b0VPcnV3Ri93?=
- =?utf-8?B?bkc5Si82UW5vaWp6NDk1cy9KenQ4QWliRkQ3SHJRNkhVc1g4MmMyZjJXRHVz?=
- =?utf-8?B?RFJ4QXI0Vmx0SkRQTnVWZk5TelgxQmF4dHdMaFlvKzQvdXo2Nm5IcjNvby9O?=
- =?utf-8?B?NThMVVlIMHptZE9jK3dIeVhrLzJ4VFhWS0Y0cGpaZlMzb0JQT2JrdzN3eVI3?=
- =?utf-8?B?dDRnaW9ZNDFwVWlmKzYwL1hLekpYNEZET0RETGRDMlVqQ2ZlVXBTd2NOQWlx?=
- =?utf-8?B?MDdiZytFeSthWjh2V0FQSzV1aWUzNUtURDNyZTVKVWlUSkxjNTFiYWkxc05T?=
- =?utf-8?B?bUk3cnBjZXkzSEdPTDRCY0JkOXoyTGtxeXR5Mm9UOEFFMzhUSkg2QXBKSW84?=
- =?utf-8?B?aHdvR3pHcDNsRXppdEo4YU5tWDc3ZGxPY2tpeVhPS0ttNS9aeDkyUWppR0dG?=
- =?utf-8?B?VkxwWExqUlRRNWNMZ21IdXBCR3BSY0cxTjM0Z1J1eHoxcGdINFRvS1BhWjRx?=
- =?utf-8?B?aXJIK2pRUHJFNU1LUUpiTldwYWdFd2dDK1R5Z296R2w5N09IdTJNZXQ4N05t?=
- =?utf-8?B?SHJDS0JEMVZKMjdmNDY2Vzh0emtGRExTNVJkQlB2OEJoR3FXMVBGa0w3WE9C?=
- =?utf-8?B?cHdLYnZIbFFSc1JqVE1vNHkyakVMV3VMajVqaEcvSkdtYjdhUWErVlBoMW9W?=
- =?utf-8?B?TGNpR1YxSkdUc0s5bTFUejlESmVleXVwSnhNM0RLZEhueUFQckhLUW9oejJU?=
- =?utf-8?B?bUljV3M3eVJ0eVpjN3ZKWE9hWkduVk5FMndZU3BLdHRldUdPcHZtSmtRd296?=
- =?utf-8?B?KzloVzROdDQ3V08rR0pnU0kzTVFVcmJBeFRtM0pSL0dxcldkWmhvRUFHYThy?=
- =?utf-8?B?Um9DTlF6dE1JenhNUDZZcHRBelB1K1VrNHdTYXpwS3N1OXZVRnU1bHRGb1ZV?=
- =?utf-8?B?TW0venp3eHM2R2xpMDVadFRNOU43ZWhTbEIxVlFkV2pxNGQwdXd5MlJjcXVE?=
- =?utf-8?B?N3BHQUMzVHo4cUJGSnFBUzkrYWIzTEI5b1prUmtUZTJ5d0tjRmRwRS9oREhN?=
- =?utf-8?B?NkVlOWJoNjJUdTNOWmNNYXRzelZDc0s1cTVvalVQaW5pVEpCMm9tYjI2eDh5?=
- =?utf-8?B?SDl2Nzdibk9sNVR0LzVNUXFZSENKa0J0Q0l0Ym1UQXhWd2RYdFE3NU5aS0Ew?=
- =?utf-8?B?Ri9Ha0dvb0x4RlNBSExObEEwQjl5MXNKVEJpdGZtSkxGR2NzbFpqNGlWVlNZ?=
- =?utf-8?B?bitWS1NzRVFlbW51YUVRS0RWWDc1aTdleTdZQWxub2tIVDJ4b0w2eGJ3OXc3?=
- =?utf-8?B?R1ZCZmJrbWlYOGF5aUFvTVN5VDJ3SVRXQXRNQVFFVXFvTFNSOG5IdGRlZDE5?=
- =?utf-8?B?Z0xUOGxEOGRkVVJMVHgzUUNoTHJOQ0YySDNWbVJhcE5RNDVBWHBkUT09?=
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 403b744e-fd37-478d-d403-08defed5dea4
-X-MS-Exchange-CrossTenant-AuthSource: SJ1PR12MB6051.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 20 Aug 2026 16:12:45.1194
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: Ye8rvQlQdxke1Cm1o4X47OnoHKOhjeOLZqyz+t1/mQTrGPAo/TLtIte6ObxvJ5yITO80ujas5jc+bmfZJt3IoA==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DS7PR12MB5936
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260814092448.1818082-20-aalbersh@kernel.org>
 
-Hi Thomas,
+On Fri, Aug 14, 2026 at 11:24:36AM +0200, Andrey Albershteyn wrote:
+> Add integration with fs-verity. XFS stores fs-verity descriptor and
+> Merkle tree in the inode data fork at first block aligned to 64k past
+> EOF.
+> 
+> The Merkle tree reading/writing is done through iomap interface. The
+> data itself is read to the inode's page cache. When XFS reads from this
+> region iomap doesn't call into fsverity to verify it against Merkle
+> tree. For data, verification is done at ioend completion in a workqueue.
+> 
+> When fs-verity is enabled on an inode, the XFS_IVERITY_CONSTRUCTION
+> flag is set meaning that the Merkle tree is being build. The
+> initialization ends with storing of verity descriptor and setting
+> inode on-disk flag (XFS_DIFLAG2_VERITY). Lastly, the
+> XFS_IVERITY_CONSTRUCTION is dropped and I_VERITY is set on inode.
+> 
+> The descriptor is stored in a new block aligned to 64k after the last
+> Merkle tree block. The size of the descriptor is stored at the end of
+> the last descriptor block (descriptor can be multiple blocks).
+> 
+> Pro-actively remove any unwritten extents as we use last extent to
+> locate descriptor.
+> 
+> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-On 10/04/2026 13:18, Thomas Gleixner wrote:
-> The header define in asm/timex,h and the naming of the function to read the
-> delay timer are confusing at best.
-> 
-> Convert it to a config switch selected by the archictures, which provide
-> the functionality, and rename the function to delay_read_timer(), which
-> makes the purpose clear. Move the declaration to linux/delay.h where it
-> belongs.
-> 
-> Remove the resulting empty asm/timex.h files as well.
-> 
-> No functional change.
-> 
-> Signed-off-by: Thomas Gleixner <tglx@kernel.org>
-> Cc: Arnd Bergmann <arnd@arndb.de>
+LOL, I haven't looked at this at all since v6?!
 
-...
+Sorry about that delay.
 
-> --- a/arch/arm/include/asm/timex.h
-> +++ b/arch/arm/include/asm/timex.h
-> @@ -10,7 +10,10 @@
->   #define _ASMARM_TIMEX_H
->   
->   typedef unsigned long cycles_t;
-> -#define get_cycles()	({ cycles_t c; read_current_timer(&c) ? 0 : c; })
-> +// Temporary workaround
-> +bool delay_read_timer(unsigned long *t);
+> ---
+>  fs/xfs/xfs_fsverity.c | 363 +++++++++++++++++++++++++++++++++++++++++-
+>  fs/xfs/xfs_fsverity.h |   2 +
+>  fs/xfs/xfs_message.c  |   4 +
+>  fs/xfs/xfs_message.h  |   1 +
+>  fs/xfs/xfs_mount.h    |   2 +
+>  fs/xfs/xfs_super.c    |   7 +
+>  6 files changed, 378 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/xfs/xfs_fsverity.c b/fs/xfs/xfs_fsverity.c
+> index d1b3ccc65322..9d7c5611d9cd 100644
+> --- a/fs/xfs/xfs_fsverity.c
+> +++ b/fs/xfs/xfs_fsverity.c
+> @@ -6,13 +6,22 @@
+>  #include "xfs_fs.h"
+>  #include "xfs_shared.h"
+>  #include "xfs_format.h"
+> -#include "xfs_log_format.h"
+>  #include "xfs_trans_resv.h"
+>  #include "xfs_mount.h"
+>  #include "xfs_inode.h"
+> +#include "xfs_log_format.h"
+> +#include "xfs_trans.h"
+> +#include "xfs_trace.h"
+> +#include "xfs_quota.h"
+>  #include "xfs_fsverity.h"
+> +#include "xfs_iomap.h"
+> +#include "xfs_error.h"
+> +#include "xfs_health.h"
+> +#include "xfs_bmap_util.h"
+> +#include "xfs_icache.h"
+>  #include <linux/fsverity.h>
+>  #include <linux/iomap.h>
+> +#include <linux/pagemap.h>
+>  
+>  loff_t
+>  xfs_fsverity_metadata_offset(
+> @@ -29,3 +38,355 @@ xfs_fsverity_is_file_data(
+>  	return fsverity_active(VFS_IC(ip)) &&
+>  			offset < xfs_fsverity_metadata_offset(ip);
+>  }
 > +
-> +#define get_cycles()	({ cycles_t c; delay_read_timer(&c) ? 0 : c; })
->   #define random_get_entropy() (((unsigned long)get_cycles()) ?: random_get_entropy_fallback())
+> +/*
+> + * Retrieve the verity descriptor.
+> + */
+> +static int
+> +xfs_fsverity_get_descriptor(
+> +	struct inode		*inode,
+> +	void			*buf,
+> +	size_t			buf_size)
+> +{
+> +	struct xfs_inode	*ip = XFS_I(inode);
+> +	struct xfs_mount	*mp = ip->i_mount;
+> +	__be32			d_desc_size;
+> +	u32			desc_size;
+> +	u64			desc_size_pos;
+> +	int			error;
+> +	u64			desc_pos;
+> +	struct xfs_bmbt_irec	rec;
+> +	int			is_empty;
+> +	uint32_t		blocksize = i_blocksize(VFS_I(ip));
+> +	xfs_fileoff_t		last_block_offset;
+> +
+> +	ASSERT(inode->i_flags & S_VERITY);
+> +	xfs_ilock(ip, XFS_ILOCK_SHARED);
+> +	error = xfs_bmap_last_extent(NULL, ip, XFS_DATA_FORK, &rec, &is_empty);
+> +	xfs_iunlock(ip, XFS_ILOCK_SHARED);
+> +	if (error)
+> +		return error;
+> +
+> +	if (is_empty)
+> +		return -ENODATA;
+> +
+> +	last_block_offset =
+> +		XFS_FSB_TO_B(mp, rec.br_startoff + rec.br_blockcount);
+> +	if (last_block_offset <= xfs_fsverity_metadata_offset(ip))
+> +		return -ENODATA;
+> +
+> +	desc_size_pos = last_block_offset - sizeof(__be32);
+> +	error = fsverity_pagecache_read(inode, (char *)&d_desc_size,
+> +			sizeof(d_desc_size), desc_size_pos);
+> +	if (error)
+> +		return error;
+> +
+> +	desc_size = be32_to_cpu(d_desc_size);
+> +	if (XFS_IS_CORRUPT(mp, desc_size > FS_VERITY_MAX_DESCRIPTOR_SIZE))
+> +		return -ERANGE;
+> +	if (XFS_IS_CORRUPT(mp, desc_size > desc_size_pos))
+> +		return -ERANGE;
+> +
+> +	if (!buf_size)
+> +		return desc_size;
+> +
+> +	if (XFS_IS_CORRUPT(mp, desc_size > buf_size))
+> +		return -ERANGE;
+> +
+> +	desc_pos = round_down(desc_size_pos - desc_size, blocksize);
+> +	if (desc_pos < xfs_fsverity_metadata_offset(ip))
+> +		return -ERANGE;
+> +
+> +	error = fsverity_pagecache_read(inode, buf, desc_size, desc_pos);
+> +	if (error)
+> +		return error;
+> +
+> +	return desc_size;
+> +}
+> +
+> +static int
+> +xfs_fsverity_write_descriptor(
+> +	struct file		*file,
+> +	const void		*desc,
+> +	u32			desc_size,
+> +	u64			merkle_tree_size)
+> +{
+> +	int			error;
+> +	struct inode		*inode = file_inode(file);
+> +	struct xfs_inode	*ip = XFS_I(inode);
+> +	unsigned int		blksize = ip->i_mount->m_sb.sb_blocksize;
+> +	u64			tree_last_block =
+> +			xfs_fsverity_metadata_offset(ip) + merkle_tree_size;
+> +	u64			desc_pos =
+> +			round_up(tree_last_block, XFS_FSVERITY_START_ALIGN);
+> +	u64			desc_end = desc_pos + desc_size;
+> +	__be32			desc_size_disk = cpu_to_be32(desc_size);
+> +	u64			desc_size_pos =
+> +			round_up(desc_end + sizeof(desc_size_disk), blksize) -
+> +			sizeof(desc_size_disk);
+> +
+> +	error = iomap_fsverity_write(file, desc_size_pos, sizeof(__be32),
+> +			(const void *)&desc_size_disk,
+> +			&xfs_buffered_write_iomap_ops,
+> +			&xfs_iomap_write_ops);
+> +	if (error)
+> +		return error;
+> +
+> +	return iomap_fsverity_write(file, desc_pos, desc_size, desc,
+> +			&xfs_buffered_write_iomap_ops,
+> +			&xfs_iomap_write_ops);
+> +}
+> +
+> +/*
+> + * Try to remove all the fsverity metadata after a failed enablement.
+> + */
+> +static int
+> +xfs_fsverity_delete_metadata(
+> +	struct xfs_inode	*ip)
+> +{
+> +	struct xfs_trans	*tp;
+> +	struct xfs_mount	*mp = ip->i_mount;
+> +	int			error;
+> +
+> +	xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
+> +	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
+> +	if (error) {
+> +		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
+> +		return error;
+> +	}
+> +
+> +	xfs_ilock(ip, XFS_ILOCK_EXCL);
+> +	xfs_trans_ijoin(tp, ip, 0);
+> +
+> +	truncate_inode_pages(VFS_I(ip)->i_mapping, XFS_ISIZE(ip));
+> +
+> +	/*
+> +	 * We remove post EOF data, no need to update i_size as fsverity
+> +	 * didn't move i_size in the first place
+> +	 */
+> +	error = xfs_itruncate_extents(&tp, ip, XFS_DATA_FORK, XFS_ISIZE(ip));
+> +	if (error)
+> +		goto err_cancel;
+> +
+> +	error = xfs_trans_commit(tp);
+> +	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_ILOCK_EXCL);
+> +	return error;
+> +err_cancel:
+> +	xfs_trans_cancel(tp);
+> +	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_ILOCK_EXCL);
+> +	return error;
+> +}
+> +
+> +
+> +/*
+> + * Prepare to enable fsverity by clearing old metadata.
+> + */
+> +static int
+> +xfs_fsverity_begin_enable(
+> +	struct file		*filp)
+> +{
+> +	struct inode		*inode = file_inode(filp);
+> +	struct xfs_inode	*ip = XFS_I(inode);
+> +	int			error;
+> +
+> +	xfs_assert_ilocked(ip, XFS_IOLOCK_EXCL);
+> +
+> +	if (IS_DAX(inode) || ip->i_diflags2 & XFS_DIFLAG2_DAX)
+> +		return -EINVAL;
+> +
+> +	if (inode->i_size > XFS_FSVERITY_LARGEST_FILE)
+> +		return -EFBIG;
+> +
+> +	/*
+> +	 * Flush pagecache before building Merkle tree. Inode is locked and no
+> +	 * further writes will happen to the file except fsverity metadata
+> +	 */
+> +	error = filemap_write_and_wait(inode->i_mapping);
+> +	if (error)
+> +		return error;
+> +
+> +	if (xfs_iflags_test_and_set(ip, XFS_VERITY_CONSTRUCTION))
+> +		return -EBUSY;
+> +
+> +	error = xfs_qm_dqattach(ip);
+> +	if (error)
+> +		goto out_clear;
+> +
+> +	error = xfs_fsverity_delete_metadata(ip);
+> +	if (error)
+> +		goto out_clear;
+> +	return error;
+> +out_clear:
+> +	xfs_iflags_clear(ip, XFS_VERITY_CONSTRUCTION);
+> +	return error;
+> +}
+> +
+> +/*
+> + * Complete (or fail) the process of enabling fsverity.
+> + */
+> +static int
+> +xfs_fsverity_end_enable(
+> +	struct file		*file,
+> +	const void		*desc,
+> +	size_t			desc_size,
+> +	u64			merkle_tree_size)
+> +{
+> +	struct inode		*inode = file_inode(file);
+> +	struct xfs_inode	*ip = XFS_I(inode);
+> +	struct xfs_mount	*mp = ip->i_mount;
+> +	struct xfs_trans	*tp;
+> +	int			error = 0;
+> +	loff_t			range_start = xfs_fsverity_metadata_offset(ip);
+> +
+> +	xfs_assert_ilocked(ip, XFS_IOLOCK_EXCL);
+> +
+> +	/* fs-verity failed, just cleanup */
+> +	if (desc == NULL) {
+> +		error = xfs_fsverity_delete_metadata(ip);
+> +		goto out;
+> +	}
+> +
+> +	error = xfs_fsverity_write_descriptor(file, desc, desc_size,
+> +			merkle_tree_size);
+> +	if (error)
+> +		goto out;
+> +
+> +	/*
+> +	 * Wait for Merkle tree get written to disk before setting on-disk inode
+> +	 * flag and clearing XFS_VERITY_CONSTRUCTION
+> +	 */
+> +	error = filemap_write_and_wait_range(inode->i_mapping, range_start,
+> +			LLONG_MAX);
+> +	if (error)
+> +		goto out;
+> +
+> +	/*
+> +	 * Set fsverity inode flag
+> +	 */
+> +	error = xfs_trans_alloc_inode(ip, &M_RES(mp)->tr_ichange,
+> +			0, 0, false, &tp);
+> +	if (error)
+> +		goto out;
+> +
+> +	/*
+> +	 * Ensure that we've persisted the verity information before we enable
+> +	 * it on the inode and tell the caller we have sealed the inode.
+> +	 */
+> +	ip->i_diflags2 |= XFS_DIFLAG2_VERITY;
+> +
+> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+> +	xfs_trans_set_sync(tp);
+> +
+> +	error = xfs_trans_commit(tp);
+> +	xfs_iunlock(ip, XFS_ILOCK_EXCL);
+> +	if (error)
+> +		goto out;
+> +
+> +	inode_set_flags(inode, S_VERITY, S_VERITY);
+> +
+> +	/*
+> +	 * Proactively remove unwritten extents left by COW preallocations and
+> +	 * write preallocation in the merkle tree holes and past descriptor,
+> +	 * and any delayed preallocations
+> +	 */
+> +	error = xfs_free_eofblocks(ip);
+> +out:
+> +	if (error) {
+> +		int	error2;
+> +
 
+We just set S_VERITY on the VFS inoe, but then xfs_free_eofblocks fails.
+Should we clear S_VERITY?
 
-I have noticed a boot regression on some of our 32-bit Tegra platforms. 
-Bisect is pointing to this commit. Making the following change does fix 
-it, as delay_read_timer() now returns a valid value when true ...
+> +		error2 = xfs_fsverity_delete_metadata(ip);
 
-diff --git a/arch/arm/include/asm/timex.h b/arch/arm/include/asm/timex.h
-index 94e40c19cfc5..4d31eab9dba2 100644
---- a/arch/arm/include/asm/timex.h
-+++ b/arch/arm/include/asm/timex.h
-@@ -13,7 +13,7 @@ typedef unsigned long cycles_t;
-  // Temporary workaround until timex.h is cleaned up
-  bool delay_read_timer(unsigned long *t);
+Does xfs_fsverity_delete_metadata need to clear XFS_DIFLAG2_VERITY?
 
--#define get_cycles()   ({ cycles_t c; delay_read_timer(&c) ? 0 : c; })
-+#define get_cycles()   ({ cycles_t c; delay_read_timer(&c) ? c : 0; })
-  #define random_get_entropy() (((unsigned long)get_cycles()) ?: 
-random_get_entropy_fallback())
+> +		if (error2)
+> +			xfs_alert(ip->i_mount,
+> +"ino 0x%llx failed to clean up new fsverity metadata, err %d",
+> +					I_INO(ip), error2);
+> +	}
+> +
+> +	xfs_iflags_clear(ip, XFS_VERITY_CONSTRUCTION);
+> +	return error;
+> +}
+> +
+> +/*
+> + * Retrieve a merkle tree block.
+> + */
+> +static struct page *
+> +xfs_fsverity_read_merkle(
+> +	struct inode		*inode,
+> +	pgoff_t			index)
+> +{
+> +	index += xfs_fsverity_metadata_offset(XFS_I(inode)) >> PAGE_SHIFT;
+> +
+> +	return generic_read_merkle_tree_page(inode, index);
+> +}
+> +
+> +/*
+> + * Retrieve a merkle tree block.
+> + */
+> +static void
+> +xfs_fsverity_readahead_merkle_tree(
+> +	struct inode		*inode,
+> +	pgoff_t			index,
+> +	unsigned long		nr_pages)
+> +{
+> +	index += xfs_fsverity_metadata_offset(XFS_I(inode)) >> PAGE_SHIFT;
+> +
+> +	generic_readahead_merkle_tree(inode, index, nr_pages);
+> +}
+> +
+> +/*
+> + * Write a merkle tree block.
+> + */
+> +static int
+> +xfs_fsverity_write_merkle(
+> +	struct file		*file,
+> +	const void		*buf,
+> +	u64			pos,
+> +	unsigned int		size,
+> +	const u8		*zero_digest,
+> +	unsigned int		digest_size)
+> +{
+> +	struct inode		*inode = file_inode(file);
+> +	struct xfs_inode	*ip = XFS_I(inode);
+> +	loff_t			position = pos +
+> +		xfs_fsverity_metadata_offset(ip);
+> +
+> +	if (position + size > inode->i_sb->s_maxbytes)
+> +		return -EFBIG;
+> +
+> +	/*
+> +	 * If this is a block full of hashes of zeroed blocks, don't bother
+> +	 * storing the block. We can synthesize them later.
+> +	 *
+> +	 * However, do this only in case Merkle tree block == fs block size.
+> +	 * Iomap synthesizes these blocks based on holes in the merkle tree. We
+> +	 * won't be able to tell if something need to be synthesizes for the
 
-Cheers
-Jon
+s/synthesizes/synthesized/
 
--- 
-nvpublic
+Aside from those three things, the rest of the code looks good to me.
 
+--D
+
+> +	 * range in the fs block. For example, for 4k filesystem block
+> +	 *
+> +	 *	[ 1k | zero hashes | zero hashes | 1k ]
+> +	 *
+> +	 * Iomap won't know about these empty blocks.
+> +	 */
+> +	if (size == ip->i_mount->m_sb.sb_blocksize &&
+> +			/*
+> +			 * First digest is zero_digest
+> +			 */
+> +			memcmp(buf, zero_digest, digest_size) == 0 &&
+> +			/*
+> +			 * Every digest is same as previous, thus all are
+> +			 * zero_digest
+> +			 */
+> +			memcmp(buf + digest_size, buf, size - digest_size) == 0)
+> +		return 0;
+> +
+> +	return iomap_fsverity_write(file, position, size, buf,
+> +			&xfs_buffered_write_iomap_ops,
+> +			&xfs_iomap_write_ops);
+> +}
+> +
+> +const struct fsverity_operations xfs_fsverity_ops = {
+> +	.begin_enable_verity		= xfs_fsverity_begin_enable,
+> +	.end_enable_verity		= xfs_fsverity_end_enable,
+> +	.get_verity_descriptor		= xfs_fsverity_get_descriptor,
+> +	.read_merkle_tree_page		= xfs_fsverity_read_merkle,
+> +	.readahead_merkle_tree		= xfs_fsverity_readahead_merkle_tree,
+> +	.write_merkle_tree_block	= xfs_fsverity_write_merkle,
+> +};
+> diff --git a/fs/xfs/xfs_fsverity.h b/fs/xfs/xfs_fsverity.h
+> index ec77ba571106..6a981e20a75b 100644
+> --- a/fs/xfs/xfs_fsverity.h
+> +++ b/fs/xfs/xfs_fsverity.h
+> @@ -6,8 +6,10 @@
+>  #define __XFS_FSVERITY_H__
+>  
+>  #include "xfs_platform.h"
+> +#include <linux/fsverity.h>
+>  
+>  #ifdef CONFIG_FS_VERITY
+> +extern const struct fsverity_operations xfs_fsverity_ops;
+>  loff_t xfs_fsverity_metadata_offset(const struct xfs_inode *ip);
+>  bool xfs_fsverity_is_file_data(const struct xfs_inode *ip, loff_t offset);
+>  #else
+> diff --git a/fs/xfs/xfs_message.c b/fs/xfs/xfs_message.c
+> index 0243e509a468..44b13d46049c 100644
+> --- a/fs/xfs/xfs_message.c
+> +++ b/fs/xfs/xfs_message.c
+> @@ -149,6 +149,10 @@ xfs_warn_experimental(
+>  			.opstate	= XFS_OPSTATE_WARNED_LARP,
+>  			.name		= "logged extended attributes",
+>  		},
+> +		[XFS_EXPERIMENTAL_FSVERITY] = {
+> +			.opstate	= XFS_OPSTATE_WARNED_FSVERITY,
+> +			.name		= "fsverity",
+> +		},
+>  	};
+>  	ASSERT(feat >= 0 && feat < XFS_EXPERIMENTAL_MAX);
+>  	BUILD_BUG_ON(ARRAY_SIZE(features) != XFS_EXPERIMENTAL_MAX);
+> diff --git a/fs/xfs/xfs_message.h b/fs/xfs/xfs_message.h
+> index 811b885f41c3..364fcc7e42b0 100644
+> --- a/fs/xfs/xfs_message.h
+> +++ b/fs/xfs/xfs_message.h
+> @@ -93,6 +93,7 @@ void xfs_buf_alert_ratelimited(struct xfs_buf *bp, const char *rlmsg,
+>  enum xfs_experimental_feat {
+>  	XFS_EXPERIMENTAL_SHRINK,
+>  	XFS_EXPERIMENTAL_LARP,
+> +	XFS_EXPERIMENTAL_FSVERITY,
+>  
+>  	XFS_EXPERIMENTAL_MAX,
+>  };
+> diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
+> index 14fe768326a3..2ef9956ed185 100644
+> --- a/fs/xfs/xfs_mount.h
+> +++ b/fs/xfs/xfs_mount.h
+> @@ -591,6 +591,8 @@ __XFS_HAS_FEAT(nouuid, NOUUID)
+>  #define XFS_OPSTATE_RESUMING_QUOTAON	18
+>  /* (Zoned) GC is in progress */
+>  #define XFS_OPSTATE_ZONEGC_RUNNING	20
+> +/* Kernel has logged a warning about fsverity support */
+> +#define XFS_OPSTATE_WARNED_FSVERITY	21
+>  
+>  #define __XFS_IS_OPSTATE(name, NAME) \
+>  static inline bool xfs_is_ ## name (struct xfs_mount *mp) \
+> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+> index 63c4bcbe6c2b..faebd84c5c59 100644
+> --- a/fs/xfs/xfs_super.c
+> +++ b/fs/xfs/xfs_super.c
+> @@ -30,6 +30,7 @@
+>  #include "xfs_filestream.h"
+>  #include "xfs_quota.h"
+>  #include "xfs_sysfs.h"
+> +#include "xfs_fsverity.h"
+>  #include "xfs_ondisk.h"
+>  #include "xfs_rmap_item.h"
+>  #include "xfs_refcount_item.h"
+> @@ -1736,6 +1737,9 @@ xfs_fs_fill_super(
+>  	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
+>  #endif
+>  	sb->s_op = &xfs_super_operations;
+> +#ifdef CONFIG_FS_VERITY
+> +	sb->s_vop = &xfs_fsverity_ops;
+> +#endif
+>  
+>  	/*
+>  	 * Delay mount work if the debug hook is set. This is debug
+> @@ -1988,6 +1992,9 @@ xfs_fs_fill_super(
+>  	if (error)
+>  		goto out_filestream_unmount;
+>  
+> +	if (xfs_has_verity(mp))
+> +		xfs_warn_experimental(mp, XFS_EXPERIMENTAL_FSVERITY);
+> +
+>  	root = igrab(VFS_I(mp->m_rootip));
+>  	if (!root) {
+>  		error = -ENOENT;
+> -- 
+> 2.54.0
+> 
+> 
