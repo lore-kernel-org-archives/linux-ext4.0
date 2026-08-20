@@ -1,37 +1,37 @@
-Received: from mta0.migadu.com (out-146.mta0.migadu.com [91.218.175.146])
+Received: from mta0.migadu.com (out-169.mta0.migadu.com [91.218.175.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 89CBB3D6485
-	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 08:21:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.218.175.146
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C8443C4B72
+	for <linux-ext4@vger.kernel.org>; Thu, 20 Aug 2026 08:22:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.218.175.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787214081; cv=none; b=SlVnB7J0zqstKVnX4DQGzQfkC/XYAaWk9a6EXelrxopclmyEPsCfgDDHB2e6jkvErxC2Ln6P5J4JZB2xFC7CMBU5TABvb0E09ZqN1fEOskZ7NQZOYaXM0z8MQpKpaOdo1bxt42p8Q3g4q921/nQWZmluq5ZBG5A2evssseLnGlc=
+	t=1787214143; cv=none; b=aay/OTDuU3d5G2RZ9W5Y0EgZ9Vc42vZenbefRk+9Otabcw8KjoixVUcQkFErbdo3F5MkZWWWYEotXQkyXFAKjuNSg+4KEHgZrvRJnieQrO7k6WiyU21VtoBR05ewmULqiWylOBZYd24aRv/OlWrfyWiM7XuWQKzZtxt3R6mxI24=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787214081; c=relaxed/simple;
-	bh=d1jsNWuE7ULunmJ8bkSavDLs3vrprYcUarJdoXM2dpU=;
+	s=arc-20240116; t=1787214143; c=relaxed/simple;
+	bh=HeghC4utsOJKrKnOw/sh0BThME8tzf4W6F636QChyCw=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=UAv94HzBQM4EbK1LdoKxS27C1iFt09LK2UzzAxuDrDSAT6nEW4v+fT6L3nSFpIC2Ra2BvxHGCJrMQpvbWHerwbTrogu5svKEHEYZ3Xvd4ZS67wT/gf313dj6+SaNqZoMeafnGseiyKeVHh997thNWuMjeI/TZbwNn0jEvvJPRnY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=BY7EAL6W; arc=none smtp.client-ip=91.218.175.146
+	 In-Reply-To:Content-Type; b=YUJBpzAhZbPA0gjSIeIBBzwIG5V/vw0HRHlZkrJXaM5fl8IIGhqHZ3T+JFUS/NBerhGFBvR67ZpNcGvLR3Rp6nloNQgDqUXhkLLK8EtYbbBGc0RNvyWUImxgMjS0yiCVCJdIzhtzIshQ6lrgdshM59/nJ/P/RMrkeHTWYzaoLTc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=U5peSIWl; arc=none smtp.client-ip=91.218.175.169
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="BY7EAL6W"
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="U5peSIWl"
 X-Envelope-To: linux-ext4@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=d1jsNWuE7ULunmJ8bkSavDLs3vrprYcUarJdoXM2dpU=;
+DKIM-Signature: a=rsa-sha256; bh=HeghC4utsOJKrKnOw/sh0BThME8tzf4W6F636QChyCw=;
  c=simple/simple; d=linux.dev;
  h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1787214077; v=1; x=1787818877;
- b=BY7EAL6WGxfDbG4l6MPbp9U5kGh86tE/WaJIDRnuL81KXEd46OGZ4FtHPVJht9GxOw/wwnS3
- 93sSeyrEEfQLVSiEVvSH4/Mh4b8Ia5Dkwlw6b8+RnDITXYyWbqQwnT+4TcCbikUNewndTI4MOGp
- TITq7ksssbvPjYOEdQmCu/ZM=
+ t=1787214140; v=1; x=1787818940;
+ b=U5peSIWlA9AwRbSmF038xne8UR+NJPHwMw9NWzb8cNSe/XTA+VIXCpve1//zQ0/FZkwncTjs
+ KQS2TVm7NvYLZJK8bDzlcSY4rFH+qFqR0Ie+WlwZIDCr1fLppwrsQnIDqXNTU+sqNrcS1vgj38W
+ U/uBKRUPaF1//UL8wBc0oGv4=
 X-Envelope-To: linux-ext4@vger.kernel.org
 Received: from [192.168.8.135] (87.104.0.147)
-	by smtp.migadu.com with ESMTPS id e6c688cadc82bb73;
-	Thu, 20 Aug 2026 08:21:07 +0000
-X-Mizu-Trace-ID: e6c688cadc82bb73
+	by smtp.migadu.com with ESMTPS id 94853a58d3cdb46f;
+	Thu, 20 Aug 2026 08:22:20 +0000
+X-Mizu-Trace-ID: 94853a58d3cdb46f
 X-Migadu-Flow: FLOW_OUT
-Message-ID: <cb1857d0-f5ce-4fc2-81ac-06b39a1421f6@linux.dev>
-Date: Thu, 20 Aug 2026 10:21:06 +0200
+Message-ID: <bc206a4d-cbf8-4f8a-96b4-49ea0454fdd3@linux.dev>
+Date: Thu, 20 Aug 2026 10:22:15 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -40,60 +40,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH] man2/fallocate.2: add doc for FALLOC_FL_WRITE_ZEROES
-To: Zhang Yi <yi.zhang@huaweicloud.com>, Pankaj Raghav
- <p.raghav@samsung.com>, linux-man@vger.kernel.org,
- Alejandro Colomar <alx@kernel.org>
-Cc: linux-xfs@vger.kernel.org, "Darrick J . Wong" <djwong@kernel.org>,
- linux-ext4@vger.kernel.org, gost.dev@samsung.com, hch@lst.de
+To: Christoph Hellwig <hch@lst.de>, Pankaj Raghav <p.raghav@samsung.com>
+Cc: linux-man@vger.kernel.org, Alejandro Colomar <alx@kernel.org>,
+ linux-xfs@vger.kernel.org, "Darrick J . Wong" <djwong@kernel.org>,
+ linux-ext4@vger.kernel.org, gost.dev@samsung.com,
+ Zhang Yi <yi.zhang@huaweicloud.com>
 References: <20260819114022.818734-1-p.raghav@samsung.com>
- <a2939c81-a9c0-4b26-ac2c-17e3773125b5@huaweicloud.com>
+ <20260819143024.GA1010@lst.de>
 Content-Language: en-US
 From: Pankaj Raghav <pankaj.raghav@linux.dev>
-In-Reply-To: <a2939c81-a9c0-4b26-ac2c-17e3773125b5@huaweicloud.com>
+In-Reply-To: <20260819143024.GA1010@lst.de>
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
-> FALLOC_FL_WRITE_ZEROES itself is relatively flexible. It does not
-> mandate that the filesystem must implement zeroing via unmap write
-> zeroes. That depends on the specific implementation of each filesystem.
-> Currently, ext4, xfs, and block devices (bdev) support this operation
-> through that approach, since writing zeros directly on devices that do
-> not support unmap zeroes can be very slow and thus of little practical
-> value.
-> 
-> Therefore, I would suggest referring to the description in, for
-> example, fallocate(1):
-> 
-> https://man7.org/linux/man-pages/man1/fallocate.1.html
-> 
->   "Zeroing is done within the filesystem. The
->    filesystem may use a hardware-accelerated zeroing command or may
->    submit regular writes. The behavior depends on the filesystem design
->    and the available hardware."
-> 
-> What do you think?
-> 
 
-You are right. It is up to the FSs to implement however it wants.
-I will use this framing instead. Thanks.
 
->> +This approach means that the specified range will be physically zeroed out
->> +on the device (including partial blocks at the either end of the range).
->> +.P
->> +No other flags may be specified in
->> +.I mode
->> +in conjunction with
->> +.BR FALLOC_FL_WRITE_ZEROES .
->> +.P
->> +Not all filesystems support
->> +.BR FALLOC_FL_WRITE_ZEROES ;
->> +if a filesystem doesn't support the operation, an error is returned.
->> +The operation is supported only in ext4 (since Linux 6.17).
->                                       ^^^^
-> ext4 (only for extent-based files)
+On 8/19/26 16:30, Christoph Hellwig wrote:
+> On Wed, Aug 19, 2026 at 01:40:22PM +0200, Pankaj Raghav wrote:
+>> This flag was added to the kernel in v6.17. As of now, only ext4
+>> supports this flag.
 > 
+> block device nodes also support it.
 
-Sounds good.
+Yeah but I did not notice any mention of block device in this man page, so I didn't mention it.
+I will update my commit message in the next version.
 
 --
 Pankaj
