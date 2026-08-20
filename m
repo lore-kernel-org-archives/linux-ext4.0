@@ -1,580 +1,271 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3087237A858;
-	Thu, 20 Aug 2026 16:44:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFF063D75DE;
+	Thu, 20 Aug 2026 17:16:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787244253; cv=none; b=cj7NMGt+6xboly4+Dd3cwuDOxB+fmW6tL2N6+U7o1i1hQ0yVuJ4BpqwFKd9v1U42SX96ZzVDWwtqMwG/nPvJyvJ27Qp+AvNCYW1bIuaSVHu+qAlV5+E3jGlpokFgwqpvCjHuiJywRWr87kZuU3MLkylcwG+DlJXdLQV51GZqB8U=
+	t=1787246211; cv=none; b=CEPovBdOjbG8koAWF4ZY2uyJXMuM7FAbwyGV1LIGHPxawlQKD8CJIvrH55fX0bDGMCsq+GNWYSDW7JQ9jxUw5QDxVouH43CuYyoNogW/6fQaafrolJqInmwAGF+6G6HQ53WcUCTBVjLdRR1hAZDCuyFso4ovZwXzybTr7lgFDOA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787244253; c=relaxed/simple;
-	bh=nVX1RF+wfaaFVt6KBci9Vm9ArFJdgoUPcDAApYDvV4Y=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ig2v5K6A2P3efflspH4JwzzxwtlfKzOxkULrX1g+BPw7v4XpXyuqLTUOplOUq7RP4hp/I9yUkKCfBF33XPp9gDGDzrOTlhpPKWHmd462g2EeX9uoo1hYIuCx7F3Y7WUKgJf3oyimFNF/hNXl6BYHoV1OZIRl76Fnnv8W9UUKwqA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VR+uM9WA; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787246211; c=relaxed/simple;
+	bh=+1bmV0emnRfGbzkVZrr6Xn06idLHg9fjaOWVq9QhNXQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Ogd/B2gR4vdW6ah6SfTkhNRuawNGul2+8LnaqYsboRa10WZE9SU82iBd+L2G2rxMhVNijTswAe0KdGuTtdwqkcAC9zTm9vJftPrWjpgkLEAPdeiBukhmviUK+2fnaBjpA0vVNHljH2Vkui6fiazSzskMRoP+K8jYz6IUVmTTgbQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GwQUAEOK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VR+uM9WA"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id BA5AA1F00A3D;
-	Thu, 20 Aug 2026 16:44:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GwQUAEOK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 49B621F000E9;
+	Thu, 20 Aug 2026 17:16:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787244251;
-	bh=MomSmGBn7JOFVKMpcz1xdXXtQjRUbWVZibRV0VyY9vQ=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=VR+uM9WArl5t/faP/ZsbqJbnAOHBfp8Da/cQzhv9W4Lvns9WcB5osEZ+dpZTJF4jo
-	 z1LswWxPzlrQaIvYS3D5OVR0ziup/iJaYVSeoJUFI03n9CxWRLmN8qyRYz5f+feVc9
-	 GPmutHkUozn53tCKDSCD4yF3MH6AkTuei/kn6PDXBbqAP/okxdElpBuzXXL8Waq0lQ
-	 7t/i2aGlS29HmN40JIs5MKq49+Ze98YU1LAWPecVSfDRVPvAynoWo3wb7YGvHeBIfX
-	 h6cpzJseOOcmgpzFFPKbgMQJo5pEU2KJIpcnT/aOjN8XGL0FXYinPW3k+1t3X6uWvt
-	 l2AHvYxr9dcOA==
-Date: Thu, 20 Aug 2026 09:44:11 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: ebiggers@kernel.org, hch@lst.de, Jens Axboe <axboe@kernel.dk>,
-	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-unionfs@vger.kernel.org, linux-block@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-btrfs@vger.kernel.org, david@fromorbit.com,
-	Tal Zussman <tz2294@columbia.edu>
-Subject: Re: [PATCH v15 19/25] xfs: add fs-verity support
-Message-ID: <20260820164411.GI6072@frogsfrogsfrogs>
-References: <20260814092448.1818082-1-aalbersh@kernel.org>
- <20260814092448.1818082-20-aalbersh@kernel.org>
+	s=k20260515; t=1787246209;
+	bh=MV24uR/6Cop6a5mbcnfeD+N904Fg68fULCFuxI3hmvk=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=GwQUAEOK7DSZyJoaIvNGzb7eXUjL+lBRclXa6f9EKhUzThVZICr0l1lhMLlnlyDML
+	 DGJo2yCn2P0h4yuZXBCTbvh3s0XySxJ7tUIToVru4vMLT+U8yiXNaUVLSKH6kh1twx
+	 i4Ui/0D5qTKyEHIV/zWJdMsg1VkSI2JCgOlVxdwdROIV7kipuNr7yESf6rDQb3y5aF
+	 xeay2R7Vs0pTkaW9UlzQ+CTuNLuu1o5oxCJTXppmAizyRzgD8vTUbOVdhdmPtG9NLo
+	 c7JOdZnGN5lNnVYIVr/lgJbmqVc2OkwC5qEddnCpB365CZgp1Ys95WqI5uYaoY/UCZ
+	 vqJymbhwXeWAg==
+Message-ID: <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
+Date: Thu, 20 Aug 2026 19:16:05 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260814092448.1818082-20-aalbersh@kernel.org>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
+To: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org
+Cc: max.byungchul.park@gmail.com, kernel_team@skhynix.com,
+ torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+ linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+ linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
+ will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+ joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+ duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+ willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+ gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
+ akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
+ hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
+ jglisse@redhat.com, dennis@kernel.org, cl@linux.com, penberg@kernel.org,
+ rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
+ linux-block@vger.kernel.org, josef@toxicpanda.com,
+ linux-fsdevel@vger.kernel.org, jack@suse.cz, jlayton@kernel.org,
+ dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+ dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
+ melissa.srw@gmail.com, hamohammed.sa@gmail.com, harry.yoo@oracle.com,
+ chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com, boqun.feng@gmail.com,
+ longman@redhat.com, yunseong.kim@ericsson.com, ysk@kzalloc.com,
+ yeoreum.yun@arm.com, netdev@vger.kernel.org, matthew.brost@intel.com,
+ her0gyugyu@gmail.com, corbet@lwn.net, catalin.marinas@arm.com, bp@alien8.de,
+ x86@kernel.org, hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
+ gustavo@padovan.org, christian.koenig@amd.com, andi.shyti@kernel.org,
+ arnd@arndb.de, lorenzo.stoakes@oracle.com, Liam.Howlett@oracle.com,
+ rppt@kernel.org, surenb@google.com, mcgrof@kernel.org, petr.pavlu@suse.com,
+ da.gomez@kernel.org, samitolvanen@google.com, paulmck@kernel.org,
+ frederic@kernel.org, neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com,
+ josh@joshtriplett.org, urezki@gmail.com, mathieu.desnoyers@efficios.com,
+ jiangshanlai@gmail.com, qiang.zhang@linux.dev, juri.lelli@redhat.com,
+ vincent.guittot@linaro.org, dietmar.eggemann@arm.com, bsegall@google.com,
+ mgorman@suse.de, vschneid@redhat.com, chuck.lever@oracle.com,
+ neil@brown.name, okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
+ trondmy@kernel.org, anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
+ clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
+ kristina.martsenko@arm.com, wangkefeng.wang@huawei.com, broonie@kernel.org,
+ kevin.brodsky@arm.com, dwmw@amazon.co.uk, shakeel.butt@linux.dev,
+ ast@kernel.org, ziy@nvidia.com, yuzhao@google.com,
+ baolin.wang@linux.alibaba.com, usamaarif642@gmail.com,
+ joel.granados@kernel.org, richard.weiyang@gmail.com,
+ geert+renesas@glider.be, tim.c.chen@linux.intel.com, linux@treblig.org,
+ alexander.shishkin@linux.intel.com, lillian@star-ark.net,
+ chenhuacai@kernel.org, francesco@valla.it, guoweikang.kernel@gmail.com,
+ link@vivo.com, jpoimboe@kernel.org, masahiroy@kernel.org,
+ brauner@kernel.org, thomas.weissschuh@linutronix.de, oleg@redhat.com,
+ mjguzik@gmail.com, andrii@kernel.org, wangfushuai@baidu.com,
+ linux-doc@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-media@vger.kernel.org, linaro-mm-sig@lists.linaro.org,
+ linux-i2c@vger.kernel.org, linux-arch@vger.kernel.org,
+ linux-modules@vger.kernel.org, rcu@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-rt-devel@lists.linux.dev,
+ 2407018371@qq.com, dakr@kernel.org, miguel.ojeda.sandonis@gmail.com,
+ neilb@ownmail.net, bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
+ dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
+ alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
+ lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
+ tmgross@umich.edu, rust-for-linux@vger.kernel.org
+References: <20260706061928.66713-1-byungchul@sk.com>
+From: "David Hildenbrand (Arm)" <david@kernel.org>
+Content-Language: en-US
+Autocrypt: addr=david@kernel.org; keydata=
+ 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
+ qIws/H2t
+In-Reply-To: <20260706061928.66713-1-byungchul@sk.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Fri, Aug 14, 2026 at 11:24:36AM +0200, Andrey Albershteyn wrote:
-> Add integration with fs-verity. XFS stores fs-verity descriptor and
-> Merkle tree in the inode data fork at first block aligned to 64k past
-> EOF.
+On 7/6/26 08:18, Byungchul Park wrote:
+> Hi Linus and folks,
+
+Hi,
+
+I think there was plenty of feedback from locking maintainers in the past. One
+question and a comment below.
+
 > 
-> The Merkle tree reading/writing is done through iomap interface. The
-> data itself is read to the inode's page cache. When XFS reads from this
-> region iomap doesn't call into fsverity to verify it against Merkle
-> tree. For data, verification is done at ioend completion in a workqueue.
+> DEPT(DEPendency Tracker) is a runtime deadlock detection framework that
+> sees what lockdep cannot.
 > 
-> When fs-verity is enabled on an inode, the XFS_IVERITY_CONSTRUCTION
-> flag is set meaning that the Merkle tree is being build. The
-> initialization ends with storing of verity descriptor and setting
-> inode on-disk flag (XFS_DIFLAG2_VERITY). Lastly, the
-> XFS_IVERITY_CONSTRUCTION is dropped and I_VERITY is set on inode.
+> I'm thrilled to share that DEPT has moved beyond theory and is now
+> catching real deadlocks in the wild:
 > 
-> The descriptor is stored in a new block aligned to 64k after the last
-> Merkle tree block. The size of the descriptor is stored at the end of
-> the last descriptor block (descriptor can be multiple blocks).
+>    https://lore.kernel.org/lkml/6383cde5-cf4b-facf-6e07-1378a485657d@I-love.SAKURA.ne.jp/
+>    https://lore.kernel.org/lkml/1674268856-31807-1-git-send-email-byungchul.park@lge.com/
+>    https://lore.kernel.org/all/b6e00e77-4a8c-4e05-ab79-266bf05fcc2d@igalia.com/
 > 
-> Pro-actively remove any unwritten extents as we use last extent to
-> locate descriptor.
+> I've added comprehensive documentation explaining DEPT's design and usage.
+> Getting started is as simple as enabling CONFIG_DEPT and watching dmesg.
 > 
-> Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-LOL, I haven't looked at this at all since v6?!
-
-Sorry about that delay.
-
-> ---
->  fs/xfs/xfs_fsverity.c | 363 +++++++++++++++++++++++++++++++++++++++++-
->  fs/xfs/xfs_fsverity.h |   2 +
->  fs/xfs/xfs_message.c  |   4 +
->  fs/xfs/xfs_message.h  |   1 +
->  fs/xfs/xfs_mount.h    |   2 +
->  fs/xfs/xfs_super.c    |   7 +
->  6 files changed, 378 insertions(+), 1 deletion(-)
+> THE PROBLEM LOCKDEP CANNOT SOLVE
+> --------------------------------
 > 
-> diff --git a/fs/xfs/xfs_fsverity.c b/fs/xfs/xfs_fsverity.c
-> index d1b3ccc65322..9d7c5611d9cd 100644
-> --- a/fs/xfs/xfs_fsverity.c
-> +++ b/fs/xfs/xfs_fsverity.c
-> @@ -6,13 +6,22 @@
->  #include "xfs_fs.h"
->  #include "xfs_shared.h"
->  #include "xfs_format.h"
-> -#include "xfs_log_format.h"
->  #include "xfs_trans_resv.h"
->  #include "xfs_mount.h"
->  #include "xfs_inode.h"
-> +#include "xfs_log_format.h"
-> +#include "xfs_trans.h"
-> +#include "xfs_trace.h"
-> +#include "xfs_quota.h"
->  #include "xfs_fsverity.h"
-> +#include "xfs_iomap.h"
-> +#include "xfs_error.h"
-> +#include "xfs_health.h"
-> +#include "xfs_bmap_util.h"
-> +#include "xfs_icache.h"
->  #include <linux/fsverity.h>
->  #include <linux/iomap.h>
-> +#include <linux/pagemap.h>
->  
->  loff_t
->  xfs_fsverity_metadata_offset(
-> @@ -29,3 +38,355 @@ xfs_fsverity_is_file_data(
->  	return fsverity_active(VFS_IC(ip)) &&
->  			offset < xfs_fsverity_metadata_offset(ip);
->  }
-> +
-> +/*
-> + * Retrieve the verity descriptor.
-> + */
-> +static int
-> +xfs_fsverity_get_descriptor(
-> +	struct inode		*inode,
-> +	void			*buf,
-> +	size_t			buf_size)
-> +{
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	struct xfs_mount	*mp = ip->i_mount;
-> +	__be32			d_desc_size;
-> +	u32			desc_size;
-> +	u64			desc_size_pos;
-> +	int			error;
-> +	u64			desc_pos;
-> +	struct xfs_bmbt_irec	rec;
-> +	int			is_empty;
-> +	uint32_t		blocksize = i_blocksize(VFS_I(ip));
-> +	xfs_fileoff_t		last_block_offset;
-> +
-> +	ASSERT(inode->i_flags & S_VERITY);
-> +	xfs_ilock(ip, XFS_ILOCK_SHARED);
-> +	error = xfs_bmap_last_extent(NULL, ip, XFS_DATA_FORK, &rec, &is_empty);
-> +	xfs_iunlock(ip, XFS_ILOCK_SHARED);
-> +	if (error)
-> +		return error;
-> +
-> +	if (is_empty)
-> +		return -ENODATA;
-> +
-> +	last_block_offset =
-> +		XFS_FSB_TO_B(mp, rec.br_startoff + rec.br_blockcount);
-> +	if (last_block_offset <= xfs_fsverity_metadata_offset(ip))
-> +		return -ENODATA;
-> +
-> +	desc_size_pos = last_block_offset - sizeof(__be32);
-> +	error = fsverity_pagecache_read(inode, (char *)&d_desc_size,
-> +			sizeof(d_desc_size), desc_size_pos);
-> +	if (error)
-> +		return error;
-> +
-> +	desc_size = be32_to_cpu(d_desc_size);
-> +	if (XFS_IS_CORRUPT(mp, desc_size > FS_VERITY_MAX_DESCRIPTOR_SIZE))
-> +		return -ERANGE;
-> +	if (XFS_IS_CORRUPT(mp, desc_size > desc_size_pos))
-> +		return -ERANGE;
-> +
-> +	if (!buf_size)
-> +		return desc_size;
-> +
-> +	if (XFS_IS_CORRUPT(mp, desc_size > buf_size))
-> +		return -ERANGE;
-> +
-> +	desc_pos = round_down(desc_size_pos - desc_size, blocksize);
-> +	if (desc_pos < xfs_fsverity_metadata_offset(ip))
-> +		return -ERANGE;
-> +
-> +	error = fsverity_pagecache_read(inode, buf, desc_size, desc_pos);
-> +	if (error)
-> +		return error;
-> +
-> +	return desc_size;
-> +}
-> +
-> +static int
-> +xfs_fsverity_write_descriptor(
-> +	struct file		*file,
-> +	const void		*desc,
-> +	u32			desc_size,
-> +	u64			merkle_tree_size)
-> +{
-> +	int			error;
-> +	struct inode		*inode = file_inode(file);
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	unsigned int		blksize = ip->i_mount->m_sb.sb_blocksize;
-> +	u64			tree_last_block =
-> +			xfs_fsverity_metadata_offset(ip) + merkle_tree_size;
-> +	u64			desc_pos =
-> +			round_up(tree_last_block, XFS_FSVERITY_START_ALIGN);
-> +	u64			desc_end = desc_pos + desc_size;
-> +	__be32			desc_size_disk = cpu_to_be32(desc_size);
-> +	u64			desc_size_pos =
-> +			round_up(desc_end + sizeof(desc_size_disk), blksize) -
-> +			sizeof(desc_size_disk);
-> +
-> +	error = iomap_fsverity_write(file, desc_size_pos, sizeof(__be32),
-> +			(const void *)&desc_size_disk,
-> +			&xfs_buffered_write_iomap_ops,
-> +			&xfs_iomap_write_ops);
-> +	if (error)
-> +		return error;
-> +
-> +	return iomap_fsverity_write(file, desc_pos, desc_size, desc,
-> +			&xfs_buffered_write_iomap_ops,
-> +			&xfs_iomap_write_ops);
-> +}
-> +
-> +/*
-> + * Try to remove all the fsverity metadata after a failed enablement.
-> + */
-> +static int
-> +xfs_fsverity_delete_metadata(
-> +	struct xfs_inode	*ip)
-> +{
-> +	struct xfs_trans	*tp;
-> +	struct xfs_mount	*mp = ip->i_mount;
-> +	int			error;
-> +
-> +	xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
-> +	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
-> +	if (error) {
-> +		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
-> +		return error;
-> +	}
-> +
-> +	xfs_ilock(ip, XFS_ILOCK_EXCL);
-> +	xfs_trans_ijoin(tp, ip, 0);
-> +
-> +	truncate_inode_pages(VFS_I(ip)->i_mapping, XFS_ISIZE(ip));
-> +
-> +	/*
-> +	 * We remove post EOF data, no need to update i_size as fsverity
-> +	 * didn't move i_size in the first place
-> +	 */
-> +	error = xfs_itruncate_extents(&tp, ip, XFS_DATA_FORK, XFS_ISIZE(ip));
-> +	if (error)
-> +		goto err_cancel;
-> +
-> +	error = xfs_trans_commit(tp);
-> +	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_ILOCK_EXCL);
-> +	return error;
-> +err_cancel:
-> +	xfs_trans_cancel(tp);
-> +	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_ILOCK_EXCL);
-> +	return error;
-> +}
-> +
-> +
-> +/*
-> + * Prepare to enable fsverity by clearing old metadata.
-> + */
-> +static int
-> +xfs_fsverity_begin_enable(
-> +	struct file		*filp)
-> +{
-> +	struct inode		*inode = file_inode(filp);
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	int			error;
-> +
-> +	xfs_assert_ilocked(ip, XFS_IOLOCK_EXCL);
-> +
-> +	if (IS_DAX(inode) || ip->i_diflags2 & XFS_DIFLAG2_DAX)
-> +		return -EINVAL;
-> +
-> +	if (inode->i_size > XFS_FSVERITY_LARGEST_FILE)
-> +		return -EFBIG;
-> +
-> +	/*
-> +	 * Flush pagecache before building Merkle tree. Inode is locked and no
-> +	 * further writes will happen to the file except fsverity metadata
-> +	 */
-> +	error = filemap_write_and_wait(inode->i_mapping);
-> +	if (error)
-> +		return error;
-> +
-> +	if (xfs_iflags_test_and_set(ip, XFS_VERITY_CONSTRUCTION))
-> +		return -EBUSY;
-> +
-> +	error = xfs_qm_dqattach(ip);
-> +	if (error)
-> +		goto out_clear;
-> +
-> +	error = xfs_fsverity_delete_metadata(ip);
-> +	if (error)
-> +		goto out_clear;
-> +	return error;
-> +out_clear:
-> +	xfs_iflags_clear(ip, XFS_VERITY_CONSTRUCTION);
-> +	return error;
-> +}
-> +
-> +/*
-> + * Complete (or fail) the process of enabling fsverity.
-> + */
-> +static int
-> +xfs_fsverity_end_enable(
-> +	struct file		*file,
-> +	const void		*desc,
-> +	size_t			desc_size,
-> +	u64			merkle_tree_size)
-> +{
-> +	struct inode		*inode = file_inode(file);
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	struct xfs_mount	*mp = ip->i_mount;
-> +	struct xfs_trans	*tp;
-> +	int			error = 0;
-> +	loff_t			range_start = xfs_fsverity_metadata_offset(ip);
-> +
-> +	xfs_assert_ilocked(ip, XFS_IOLOCK_EXCL);
-> +
-> +	/* fs-verity failed, just cleanup */
-> +	if (desc == NULL) {
-> +		error = xfs_fsverity_delete_metadata(ip);
-> +		goto out;
-> +	}
-> +
-> +	error = xfs_fsverity_write_descriptor(file, desc, desc_size,
-> +			merkle_tree_size);
-> +	if (error)
-> +		goto out;
-> +
-> +	/*
-> +	 * Wait for Merkle tree get written to disk before setting on-disk inode
-> +	 * flag and clearing XFS_VERITY_CONSTRUCTION
-> +	 */
-> +	error = filemap_write_and_wait_range(inode->i_mapping, range_start,
-> +			LLONG_MAX);
-> +	if (error)
-> +		goto out;
-> +
-> +	/*
-> +	 * Set fsverity inode flag
-> +	 */
-> +	error = xfs_trans_alloc_inode(ip, &M_RES(mp)->tr_ichange,
-> +			0, 0, false, &tp);
-> +	if (error)
-> +		goto out;
-> +
-> +	/*
-> +	 * Ensure that we've persisted the verity information before we enable
-> +	 * it on the inode and tell the caller we have sealed the inode.
-> +	 */
-> +	ip->i_diflags2 |= XFS_DIFLAG2_VERITY;
-> +
-> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-> +	xfs_trans_set_sync(tp);
-> +
-> +	error = xfs_trans_commit(tp);
-> +	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-> +	if (error)
-> +		goto out;
-> +
-> +	inode_set_flags(inode, S_VERITY, S_VERITY);
-> +
-> +	/*
-> +	 * Proactively remove unwritten extents left by COW preallocations and
-> +	 * write preallocation in the merkle tree holes and past descriptor,
-> +	 * and any delayed preallocations
-> +	 */
-> +	error = xfs_free_eofblocks(ip);
-> +out:
-> +	if (error) {
-> +		int	error2;
-> +
-
-We just set S_VERITY on the VFS inoe, but then xfs_free_eofblocks fails.
-Should we clear S_VERITY?
-
-> +		error2 = xfs_fsverity_delete_metadata(ip);
-
-Does xfs_fsverity_delete_metadata need to clear XFS_DIFLAG2_VERITY?
-
-> +		if (error2)
-> +			xfs_alert(ip->i_mount,
-> +"ino 0x%llx failed to clean up new fsverity metadata, err %d",
-> +					I_INO(ip), error2);
-> +	}
-> +
-> +	xfs_iflags_clear(ip, XFS_VERITY_CONSTRUCTION);
-> +	return error;
-> +}
-> +
-> +/*
-> + * Retrieve a merkle tree block.
-> + */
-> +static struct page *
-> +xfs_fsverity_read_merkle(
-> +	struct inode		*inode,
-> +	pgoff_t			index)
-> +{
-> +	index += xfs_fsverity_metadata_offset(XFS_I(inode)) >> PAGE_SHIFT;
-> +
-> +	return generic_read_merkle_tree_page(inode, index);
-> +}
-> +
-> +/*
-> + * Retrieve a merkle tree block.
-> + */
-> +static void
-> +xfs_fsverity_readahead_merkle_tree(
-> +	struct inode		*inode,
-> +	pgoff_t			index,
-> +	unsigned long		nr_pages)
-> +{
-> +	index += xfs_fsverity_metadata_offset(XFS_I(inode)) >> PAGE_SHIFT;
-> +
-> +	generic_readahead_merkle_tree(inode, index, nr_pages);
-> +}
-> +
-> +/*
-> + * Write a merkle tree block.
-> + */
-> +static int
-> +xfs_fsverity_write_merkle(
-> +	struct file		*file,
-> +	const void		*buf,
-> +	u64			pos,
-> +	unsigned int		size,
-> +	const u8		*zero_digest,
-> +	unsigned int		digest_size)
-> +{
-> +	struct inode		*inode = file_inode(file);
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	loff_t			position = pos +
-> +		xfs_fsverity_metadata_offset(ip);
-> +
-> +	if (position + size > inode->i_sb->s_maxbytes)
-> +		return -EFBIG;
-> +
-> +	/*
-> +	 * If this is a block full of hashes of zeroed blocks, don't bother
-> +	 * storing the block. We can synthesize them later.
-> +	 *
-> +	 * However, do this only in case Merkle tree block == fs block size.
-> +	 * Iomap synthesizes these blocks based on holes in the merkle tree. We
-> +	 * won't be able to tell if something need to be synthesizes for the
-
-s/synthesizes/synthesized/
-
-Aside from those three things, the rest of the code looks good to me.
-
---D
-
-> +	 * range in the fs block. For example, for 4k filesystem block
-> +	 *
-> +	 *	[ 1k | zero hashes | zero hashes | 1k ]
-> +	 *
-> +	 * Iomap won't know about these empty blocks.
-> +	 */
-> +	if (size == ip->i_mount->m_sb.sb_blocksize &&
-> +			/*
-> +			 * First digest is zero_digest
-> +			 */
-> +			memcmp(buf, zero_digest, digest_size) == 0 &&
-> +			/*
-> +			 * Every digest is same as previous, thus all are
-> +			 * zero_digest
-> +			 */
-> +			memcmp(buf + digest_size, buf, size - digest_size) == 0)
-> +		return 0;
-> +
-> +	return iomap_fsverity_write(file, position, size, buf,
-> +			&xfs_buffered_write_iomap_ops,
-> +			&xfs_iomap_write_ops);
-> +}
-> +
-> +const struct fsverity_operations xfs_fsverity_ops = {
-> +	.begin_enable_verity		= xfs_fsverity_begin_enable,
-> +	.end_enable_verity		= xfs_fsverity_end_enable,
-> +	.get_verity_descriptor		= xfs_fsverity_get_descriptor,
-> +	.read_merkle_tree_page		= xfs_fsverity_read_merkle,
-> +	.readahead_merkle_tree		= xfs_fsverity_readahead_merkle_tree,
-> +	.write_merkle_tree_block	= xfs_fsverity_write_merkle,
-> +};
-> diff --git a/fs/xfs/xfs_fsverity.h b/fs/xfs/xfs_fsverity.h
-> index ec77ba571106..6a981e20a75b 100644
-> --- a/fs/xfs/xfs_fsverity.h
-> +++ b/fs/xfs/xfs_fsverity.h
-> @@ -6,8 +6,10 @@
->  #define __XFS_FSVERITY_H__
->  
->  #include "xfs_platform.h"
-> +#include <linux/fsverity.h>
->  
->  #ifdef CONFIG_FS_VERITY
-> +extern const struct fsverity_operations xfs_fsverity_ops;
->  loff_t xfs_fsverity_metadata_offset(const struct xfs_inode *ip);
->  bool xfs_fsverity_is_file_data(const struct xfs_inode *ip, loff_t offset);
->  #else
-> diff --git a/fs/xfs/xfs_message.c b/fs/xfs/xfs_message.c
-> index 0243e509a468..44b13d46049c 100644
-> --- a/fs/xfs/xfs_message.c
-> +++ b/fs/xfs/xfs_message.c
-> @@ -149,6 +149,10 @@ xfs_warn_experimental(
->  			.opstate	= XFS_OPSTATE_WARNED_LARP,
->  			.name		= "logged extended attributes",
->  		},
-> +		[XFS_EXPERIMENTAL_FSVERITY] = {
-> +			.opstate	= XFS_OPSTATE_WARNED_FSVERITY,
-> +			.name		= "fsverity",
-> +		},
->  	};
->  	ASSERT(feat >= 0 && feat < XFS_EXPERIMENTAL_MAX);
->  	BUILD_BUG_ON(ARRAY_SIZE(features) != XFS_EXPERIMENTAL_MAX);
-> diff --git a/fs/xfs/xfs_message.h b/fs/xfs/xfs_message.h
-> index 811b885f41c3..364fcc7e42b0 100644
-> --- a/fs/xfs/xfs_message.h
-> +++ b/fs/xfs/xfs_message.h
-> @@ -93,6 +93,7 @@ void xfs_buf_alert_ratelimited(struct xfs_buf *bp, const char *rlmsg,
->  enum xfs_experimental_feat {
->  	XFS_EXPERIMENTAL_SHRINK,
->  	XFS_EXPERIMENTAL_LARP,
-> +	XFS_EXPERIMENTAL_FSVERITY,
->  
->  	XFS_EXPERIMENTAL_MAX,
->  };
-> diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-> index 14fe768326a3..2ef9956ed185 100644
-> --- a/fs/xfs/xfs_mount.h
-> +++ b/fs/xfs/xfs_mount.h
-> @@ -591,6 +591,8 @@ __XFS_HAS_FEAT(nouuid, NOUUID)
->  #define XFS_OPSTATE_RESUMING_QUOTAON	18
->  /* (Zoned) GC is in progress */
->  #define XFS_OPSTATE_ZONEGC_RUNNING	20
-> +/* Kernel has logged a warning about fsverity support */
-> +#define XFS_OPSTATE_WARNED_FSVERITY	21
->  
->  #define __XFS_IS_OPSTATE(name, NAME) \
->  static inline bool xfs_is_ ## name (struct xfs_mount *mp) \
-> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> index 63c4bcbe6c2b..faebd84c5c59 100644
-> --- a/fs/xfs/xfs_super.c
-> +++ b/fs/xfs/xfs_super.c
-> @@ -30,6 +30,7 @@
->  #include "xfs_filestream.h"
->  #include "xfs_quota.h"
->  #include "xfs_sysfs.h"
-> +#include "xfs_fsverity.h"
->  #include "xfs_ondisk.h"
->  #include "xfs_rmap_item.h"
->  #include "xfs_refcount_item.h"
-> @@ -1736,6 +1737,9 @@ xfs_fs_fill_super(
->  	sb->s_quota_types = QTYPE_MASK_USR | QTYPE_MASK_GRP | QTYPE_MASK_PRJ;
->  #endif
->  	sb->s_op = &xfs_super_operations;
-> +#ifdef CONFIG_FS_VERITY
-> +	sb->s_vop = &xfs_fsverity_ops;
-> +#endif
->  
->  	/*
->  	 * Delay mount work if the debug hook is set. This is debug
-> @@ -1988,6 +1992,9 @@ xfs_fs_fill_super(
->  	if (error)
->  		goto out_filestream_unmount;
->  
-> +	if (xfs_has_verity(mp))
-> +		xfs_warn_experimental(mp, XFS_EXPERIMENTAL_FSVERITY);
-> +
->  	root = igrab(VFS_I(mp->m_rootip));
->  	if (!root) {
->  		error = -ENOENT;
-> -- 
-> 2.54.0
+> Lockdep has been our trusted deadlock detector for two decades, but it
+> has a fundamental blind spot: it tracks lock acquisition order, not the
+> actual waits and events that cause deadlocks. This means lockdep misses:
 > 
+>   * Deadlocks involving folio locks (not released within the context)
+>   * Cross-context synchronization like wait_for_completion()/complete()
+>   * DMA fence waits, RCU waits, and general waitqueue patterns
+>   * Any synchronization primitive outside the classic lock/unlock model
 > 
+> Consider this real deadlock pattern that lockdep cannot detect:
+> 
+>    context X              context Y              context Z
+> 
+>                           mutex_lock A
+>    folio_lock B
+>                           folio_lock B <- DEADLOCK
+>                                                  mutex_lock A <- DEADLOCK
+>                                                  folio_unlock B
+>                           folio_unlock B
+>                           mutex_unlock A
+>                                                  mutex_unlock A
+
+But that really just boils down to folio lock being implemented as a PG_lock +
+some advanced wait mechanism. And we must do that because of lack of bits in
+struct page.
+
+Willy mentioned in a previous version [1]: "I don't think it makes sense to
+track lock state in the page (nor folio).  Partly because there's just so many
+of them, but also because the locking rules don't really apply to individual
+folios so much as they do to the mappings (or anon_vmas) that contain folios."
+
+Given that lockdep is a debug feature, and we will at some point allocate struct
+folio separately, I assume we could just squeeze a "struct lockdep_map" in there
+in such debug configs and the world would not collapse.
+
+Doing that today (one "struct lockdep_map" in each "struct page") wouldn't work
+as mm_zero_struct_page() would not expect such large "struct page". But
+conceptually, for a debug kernel with a special CONFIG_LOCKDEP_PAGE_LOCK, maybe
+that would already be ok and we could just do that (and optimize it as we
+allocate folios separately).
+
+Not that it's ideal, but for a debug feature to at least check PG_lock, probably
+an easier way to achieve it than some completely new infrastructure.
+
+Now, Willy said "locking rules don't really apply to individual folios", I
+wonder if that could just help to also let lockdep check PG_lock with less
+metadata? (didn't fully wrap my head around the implications)
+
+[1]
+https://lore.kernel.org/all/aR3WHf9QZ_dizNun@casper.infradead.org/?utm_source=chatgpt.com
+
+
+It's your guiding example, that's why I mention it. You do mention other wait
+cases here, I don't know anything about them, but for folios it's really just
+"we used a single bit so far" AFAIKs.
+
+[...]
+
+> 
+> Q. Why not build DEPT into lockdep?
+> 
+> A. Lockdep is stable, battle-tested code. I chose separation because
+>    while DEPT borrows BFS and hashing ideas, the wait/event model
+>    requires rebuilding from scratch. Lockdep was designed for lock
+>    acquisition order — retrofitting it would risk its stability.
+
+Why can't this just be some configurable extension to lockdep
+(CONFIG_LOCKDEP_XYZ) until the feature is stable and can unconditionally be
+enabled along with it?
+
+I don't quite buy the "would risk its stability" argument. A lot of stuff we do
+"risks stability", every day :)
+
+Is there another good reason (incompatible with X, dangerous with Y, cinfusing
+Z) why this really must be a separate thing?
+
+> 
+> Q. Will DEPT replace lockdep?
+> 
+> A. No. Lockdep validates correct lock usage — that's not going away.
+>    DEPT supersedes only the dependency-checking logic when mature.
+
+It's quite unfortunate that we'd end up with another similar-but-different
+mechanism, that will just end up confusing people.
+
+
+But I am not a locking maintainer. I think there was plenty of discussion in the
+past, so I might just be raising points that were already discussed in the past,
+but I really just read some random pieces of earlier discussions. (ideally
+previous discussions would be summarized here)
+
+Long story short: we are now in v19 and I think there was pushback in the past.
+Did the opinion of locking maintainers change, or is there a way forward to
+integrate this in a way that would make locking maintainers accept this?
+
+-- 
+Cheers,
+
+David
