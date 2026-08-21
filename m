@@ -1,82 +1,61 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F34247D93B
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2026 11:58:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3692F44C4FF
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2026 11:58:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787313490; cv=none; b=OwTlqbHxvCmvyGVew6yj/7xNwKwYlH44HlqeOg0xFACB43KWCNvmfoFDZE6oB87ZJfQOL5b8XbH640TkUBKeum1HpUOgdQVo/BIKe29du7Sqvrfn8vkdEHhvQdO+b+L7/VaUuDjGlnE86pGd4zZBc85WMd4Zs8pwohj3hWhsvnU=
+	t=1787313523; cv=none; b=dRFQPx9KJp7tEwIcE7Zv0kX9OB1VwWF64Z75i16ZFMVXVnC5WOlgKOf9mj3a3Fwor793zRF9CHWQVHg2OxCC8PYPm1MOXEy1A2/oCye6I0y/pGdPZz9FOP/cltmkGMJzdZEb+uVA4N7dbId30W5z5+K5xY9eVldMujYniIeywlY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787313490; c=relaxed/simple;
-	bh=njlkASrkVwf4yI8yFn0JMifZFp6VM3n9Hjw+Iomjl0Q=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=AQsjHyGKlMXnir0zH+Hs9HsSWwRXHS370uK1QPaSgXqAaQRhqT1aIXXLqwUP3Oivtyxa3I/sl3O86kSdSKXcxntVxmajqFdwZWqDkITXcIPznGYM//DJAyi7tuFN0JXGO29tupQ0+RV2fXV4UA8mO6FQPvwKtS9WfpXII/dc5Ss=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oiihQej7; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787313523; c=relaxed/simple;
+	bh=UvM4eLVVy5ASZwvqCc6tFdRALsGCNC4SrLkU2BRuGl8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KTfwD4E6OcfWcQi25s/6mu3UVuODubKTcnis3hHOrCaSujMXcgcK5050Hk3ac1ygT1UDyPzd8BP28FM7L7KGk9XiXHGWnTQSp+hbsMzUVgtmUo9D/kIgtDwsLrSIc5zIYT5TJ4C7Nm1Pc9DFADxoYBgzpO5VEE9lUpAxwrAS7P8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Wu9q1mgI; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oiihQej7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF2151F000E9;
-	Fri, 21 Aug 2026 11:58:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Wu9q1mgI"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C385B1F00A3A;
+	Fri, 21 Aug 2026 11:58:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787313486;
-	bh=OaPcqh5YcPQoKaksVkeLnY2FD7GWOJX6KF58uQStaZE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=oiihQej7E+30/hH/3P9Kco3mKMa9AVRUx4jjQfym9EfBOiwXOEagsVDWD/L8dn5TN
-	 bIIAJxPHf0eI8WFmpxLkwMbTnrG38U1LW8gaGq0S/2M6eZULs/1yMGYAhTxE+VNiB+
-	 aN3Z0UkWLKe3+TCcyBsyCxUDTfbikvrF95A/tYUpPRBaE3dD4Cp8lvUu/lc9u6Z1ty
-	 cM5g6yYNxw8xiGPK0KCquJZUas2Raz3yB0Y1XFKB6Lg5VBrvaI1p/NTkvg4+ggSkqJ
-	 LJghsaKT+kqhmn9IHawkwqK4I7/4/qhIG3k0rVRvvxwZDr5QrtVvxc4uLeoepP3AtZ
-	 sh2O51YnvuYjw==
+	s=k20260515; t=1787313518;
+	bh=I9huejkXvNmDTCklCrN7CDyHZOFjtzYTFl6Aw9Zuc0A=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Wu9q1mgI8CnK0v/hVGHPxKq5BHBbFpeD23mD5IPhST+smWMOIf95WTlQ1iau/W6oN
+	 4oZQ9jXhGrTYwyIdki1CvhSYdEKmKC1g5z//rhmc0gFWpxRjM9tXr/cp69bU6HOpzL
+	 4uWeKxTigjj0VmbklQy6KeFPPft56YnLSGb1EskVpZcBO3hVbaPQBubtyJbBXFtBGI
+	 HNpi6fJDq9MBd8YLTLijy39BLZH8sTnEpc42dwdQ1N6zwSugTmDBOpYGtcdJ6iDG4M
+	 Q/1m4i/yT8TyTLs0WJVBGRMxRn5GUYQ6SuJGVg2eczJlX8xNch5xiiMBlGgk5/oB+L
+	 MWt/QfNq6i5cw==
+Date: Fri, 21 Aug 2026 13:58:34 +0200
 From: Christian Brauner <brauner@kernel.org>
 To: Jan Kara <jack@suse.cz>
-Cc: Christian Brauner <brauner@kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+Cc: linux-ext4@vger.kernel.org, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
 	Venkat Rao Bagalkote <venkat88@linux.ibm.com>
-Subject: Re: [PATCH] ext4: Avoid entering writeback paths during fastcommit replay
-Date: Fri, 21 Aug 2026 13:58:00 +0200
-Message-ID: <20260821-heterogen-exerzierplatz-tassen-9303c83deb16@brauner>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260804104112.93202-2-jack@suse.cz>
+Subject: Re: [PATCH] ext4: Avoid entering writeback paths during fastcommit
+ replay
+Message-ID: <20260821-habseligkeiten-rohrleitung-erloschen-032a83e4dcba@brauner>
 References: <20260804104112.93202-2-jack@suse.cz>
+ <modcan55tuaiafsm7ki7zpvulvicck5aqt7msu26indxzyj2sk@dqcm62sh3y4n>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1393; i=brauner@kernel.org; h=from:subject:message-id; bh=njlkASrkVwf4yI8yFn0JMifZFp6VM3n9Hjw+Iomjl0Q=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWR12HreebRym8Nq72vv53wLlKiZ0Rvkfl33Gt/nZP3F5 /I/5K+y7yhlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjI0ReMDPN9U50XXOxKCt3W z3hpm/HiJ3apd343cTraBJc6RB5u0WL4Z/HAaImc6S6f3GdmE47VT7eOn9h6Q+sKx+krC6V37jp tyAAA
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <modcan55tuaiafsm7ki7zpvulvicck5aqt7msu26indxzyj2sk@dqcm62sh3y4n>
 
-On Tue, 04 Aug 2026 12:41:13 +0200, Jan Kara wrote:
-> Fastcommit replay effectively happens in nojournal mode. This results in
-> ext4_mark_iloc_dirty() setting I_METADATA_WRITEBACK flag and as a result
-> we end up entering filesystem writeback functions. However during
-> fastcommit replay s_writepages_rwsem isn't initialized yet and hence we
-> crash.
+On Mon, Aug 17, 2026 at 03:55:31PM +0200, Jan Kara wrote:
+> Hello Christian!
 > 
-> Fix the problem by avoiding setting I_METADATA_WRITEBACK during
-> fastcommit replay. Journal replay flushes the whole block device after
-> replay anyway so all metadata is properly persisted and replay is faster
-> this way as a bonus.
-> 
-> [...]
+> With all the vacations going on this fixup to apply on top of vfs-7.3.sync
+> branch seems to have fallen through the cracks (I guess the note below the
+> changelog was too hidden, next time I'll try to indicate this is a fixup
+> inside the subject - maybe like [PATCH FIXUP vfs-7.3.sync]). Anyway, can
+> you please pick it up and push it to Linus later during the merge window?
+> Thanks!
 
-Applied to the vfs.fixes branch of the vfs/vfs.git tree.
-Patches in the vfs.fixes branch should appear in linux-next soon.
+Yes, sorrry I missed this! Picked it up now. Thanks for reminding me!
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
-
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs.fixes
-
-[1/1] ext4: Avoid entering writeback paths during fastcommit replay
-      https://git.kernel.org/vfs/vfs/c/0ecd56573c1f
+Christian
