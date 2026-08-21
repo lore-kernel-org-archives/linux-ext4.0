@@ -1,63 +1,145 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC7463D8908;
-	Thu, 20 Aug 2026 20:44:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 388C3365A0B;
+	Fri, 21 Aug 2026 03:39:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787258671; cv=none; b=Q9dQ8tv7XBHCjsnF8txy2ROoVCoj/IDOTNqNTMEGwv1y4wHD3t93H66mn/L3WS3p1cGEgCbkMPS+9HfBLJUVEiQmHOH3VESydvc0GP7V5LPlxaQz6zc5KsZKCX7JTG0FQyffHaSjIAq11XhnA6URSoNPO+62Yki6DXBiGgMTC2g=
+	t=1787283591; cv=none; b=lqA1/lnNOwR3GC5UX/yljFvf0OORQfVZ20+awMmUzB/z459QdLGgT5/H8ox1M9Ehj7vET678kBCdCsF3R7NWr9g265kGAsR0NENkdxzV9TxRV9SJiFFXLrDCrepF5ZAkhzu8+AUxaCGvG1DYsUUmSqj2vf2AkfJX1QVd8jyWlZs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787258671; c=relaxed/simple;
-	bh=rLRDuJk3iU2BnyxCZckb2IvoTgOb1/Dn9qp1p6eAC+k=;
-	h=Subject:From:In-Reply-To:References:Message-Id:Date:To:Cc; b=pB1S9SZPWEgHwDAZY0DuQE0xx8lT/Ee94EZUp7WHTLhLyl478WGif1ylQCPQL1BxTegULPUPuk78RQyJrGlKxEs5wVsKolbMlVOYUIT/taI7lbwRZbkUwIf90WGE5+Z+hxFb9DICk+dEvNnHDBIrU0KNWzi6+JrxlQl2T80lWsY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MbtH9ofj; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MbtH9ofj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9E771F000E9;
-	Thu, 20 Aug 2026 20:44:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787258662;
-	bh=RHReuo16ibhaXEXNwpe10QZvAxGI5jjQHYty1fnU+Nk=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc;
-	b=MbtH9ofjXLzrapk6P8B1dnhbu1yapSIIYBktO91YM0mycCR5IlFo0NX6Pg7DE/76O
-	 S2/OUNX+srMYMoFCe1t6rDW4YKEahZDoRjb8307L5nodqEEdUVPL2+yzkVAK6DXdIx
-	 LE60/cY1A+RYxvvvPiEvStdNcYh7h2NvBYZAG8smy3t0Nm8gE9khUY+X/pDrIFeqK8
-	 7HZHnbyxOL3aziaMfJlakzdlhi8F7B+OBvN+v83mzxJ54j9cd1hABRmgJU7MIk4CVS
-	 pzDIVpQRc5GWRYis1eo77Tsaf4vrKJNR1rIBgXj4YZALLs0gehUJ5JojbG5jXIDisX
-	 b+653dkoFCJ7Q==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 19AD2392445E;
-	Thu, 20 Aug 2026 20:43:34 +0000 (UTC)
-Subject: Re: [GIT PULL] ext4 changes for 7.3-rc1
-From: pr-tracker-bot@kernel.org
-In-Reply-To: <aoPivgtbvFQk6aYD@mit.edu>
-References: <aoPivgtbvFQk6aYD@mit.edu>
-X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <aoPivgtbvFQk6aYD@mit.edu>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.3-rc1
-X-PR-Tracked-Commit-Id: 9091c97be34083587a75db174aab51551d8e8543
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: c84d3e3130dfe1058cb27dc78e7ad8bd36f0545a
-Message-Id: <178725861268.477132.9277345525489366910.pr-tracker-bot@kernel.org>
-Date: Thu, 20 Aug 2026 20:43:32 +0000
-To: Theodore Tso <tytso@mit.edu>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Linux Kernel Developers List <linux-kernel@vger.kernel.org>, Ext4 Developers List <linux-ext4@vger.kernel.org>
+	s=arc-20240116; t=1787283591; c=relaxed/simple;
+	bh=IRkyxu0Ni6Trkwu70PVPHmDd+v34ZZtNEsRgxhAwfEA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=FAN0sO40cWrfemH984XJcXrhwxKxXP4nu0MCU6I6MYxR13X0wOZZRNkDfaw4oEKjA3B4zHk2PsgBkVbGI9NmYalBOKweE8sSuOk+OTYylLAGS05yCSGRSxFcqIXhY88T+ZTZnpDLn7Yi4AxSEx8yFYLcjlhh0TpxD7TZObNb5Co=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hR5df6wCfzYQtjy;
+	Fri, 21 Aug 2026 11:39:18 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id C40184056D;
+	Fri, 21 Aug 2026 11:39:38 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgD35kVsyIdqUkpYDA--.64918S3;
+	Fri, 21 Aug 2026 11:39:38 +0800 (CST)
+Message-ID: <721bf688-85c4-4eab-9876-43b22e607288@huaweicloud.com>
+Date: Fri, 21 Aug 2026 11:39:24 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] man2/fallocate.2: add doc for FALLOC_FL_WRITE_ZEROES
+To: Pankaj Raghav <p.raghav@samsung.com>, linux-man@vger.kernel.org,
+ Alejandro Colomar <alx@kernel.org>
+Cc: pankaj.raghav@linux.dev, hch@lst.de, linux-xfs@vger.kernel.org,
+ gost.dev@samsung.com, "Darrick J . Wong" <djwong@kernel.org>,
+ linux-ext4@vger.kernel.org
+References: <20260820090400.857720-1-p.raghav@samsung.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260820090400.857720-1-p.raghav@samsung.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:_Ch0CgD35kVsyIdqUkpYDA--.64918S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxCw13tw43tw1fCrWUAr13Arb_yoW5GryxpF
+	WrZF15t3yUXF13Kr93uw40krWrZ3ykGw43ur4Iv34kZrs8ZFn7KFs8GF15ZasrJryrAay0
+	qr10gFy2kwnrAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUymb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vI
+	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
+	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
+	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r1j6r4UYxBIdaVFxhVjvjDU0xZFpf9x07UAwIDUUUUU=
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-The pull request you sent on Tue, 18 Aug 2026 00:43:18 -0400:
+On 8/20/2026 5:04 PM, Pankaj Raghav wrote:
+> This flag was added to the kernel in v6.17. As of now, only ext4 and
+> block device nodes support this flag.
+> 
+> Signed-off-by: Pankaj Raghav <p.raghav@samsung.com>
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.3-rc1
+Looks good to me. Thanks!
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/c84d3e3130dfe1058cb27dc78e7ad8bd36f0545a
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 
-Thank you!
+> ---
+> Changes since v1:
+> - Change the phrasing around zeroing and its condition (Zhang Yi)
+> - Update ext4 support only for extent-based files (Zhang Yi)
+> 
+> Note:
+> This feature was recently added to XFS and it is expected to land in
+> v7.13. I will update this man page again once v7.13 is released.
+> 
+>  man/man2/fallocate.2 | 38 ++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 38 insertions(+)
+> 
+> diff --git a/man/man2/fallocate.2 b/man/man2/fallocate.2
+> index ef6586c77..48a8c3468 100644
+> --- a/man/man2/fallocate.2
+> +++ b/man/man2/fallocate.2
+> @@ -244,6 +244,43 @@ SMB3 (since Linux 3.17)
+>  .IP \[bu]
+>  Btrfs (since Linux 4.16)
+>  .\" commit f27451f229966874a8793995b8e6b74326d125df
+> +.SS Writing zeroes in file space
+> +Specifying the
+> +.B FALLOC_FL_WRITE_ZEROES
+> +flag (available since Linux 6.17)
+> +.\" commit 7bd43cc79cab3850f34da0a31d5b042b701590ef
+> +in
+> +.I mode
+> +physically zeros space in the byte range starting at
+> +.I offset
+> +and continuing for
+> +.I size
+> +bytes.
+> +Within the specified range,
+> +blocks are preallocated for the regions that span the holes
+> +in the file.
+> +After a successful call,
+> +subsequent reads from this range will return zeros and
+> +subsequent writes to that range do not require further
+> +changes to the file mapping metadata.
+> +.P
+> +Zeroing is done within the filesystem.
+> +The filesystem may use a hardware-accelerated zeroing command
+> +or may submit regular writes.
+> +The behavior depends on the filesystem design and the
+> +available hardware.
+> +.P
+> +No other flags may be specified in
+> +.I mode
+> +in conjunction with
+> +.BR FALLOC_FL_WRITE_ZEROES .
+> +.P
+> +Not all filesystems support
+> +.BR FALLOC_FL_WRITE_ZEROES ;
+> +if a filesystem doesn't support the operation, an error is returned.
+> +The operation is supported only in ext4 (only for extent-based files)
+> +since Linux 6.17.
+> +.\" commit f4265b8d32c49ff95711e6fef7d05245a2905b30
+>  .SS Increasing file space
+>  Specifying the
+>  .B FALLOC_FL_INSERT_RANGE
+> @@ -385,6 +422,7 @@ or
+>  is
+>  .BR FALLOC_FL_COLLAPSE_RANGE ,
+>  .BR FALLOC_FL_ZERO_RANGE ,
+> +.BR FALLOC_FL_WRITE_ZEROES ,
+>  or
+>  .BR FALLOC_FL_INSERT_RANGE ,
+>  but the file referred to by
+> 
+> base-commit: d926b42e0ea0406d5c2556e18205eced92d053f1
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
