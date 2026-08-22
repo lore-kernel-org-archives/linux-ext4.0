@@ -1,68 +1,67 @@
-Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
+Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0748D2D0292
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2026 03:27:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBB3430C158
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2026 03:37:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787369277; cv=none; b=kq5GRoqYRm/hSPY8+RzDzGGUI1Orw0QwPzAcZbhBJkteqKb8v6fX9G3qaGlsl3LX3PHxWGppA34BUfwy+i0VgJ9w61fHYd2YDPY5N46rHQ46Df3ASZThNul3WJUCxDoJRgCxFDwJU/QyjBYffmnYXotHSD0HgLvncHMwBeGj+wU=
+	t=1787369853; cv=none; b=EjQIbALhSLIUwT18KcKwdX63OO/O0ifdpBZO15i9k15xj/OPE8vSKB73+kBEWFDurhWAqJaDgpieY+FMfID+8UyaEfCwXcxFk5X1DmQyESf2bTZCj4XF9zjdnDzlJXa2cZPbPVeXFEveL1NFikNDlzQYtfBQY0L6oT+HoFGu8ak=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787369277; c=relaxed/simple;
-	bh=r0rZITQKtQ0m93bjcwa195ZSrLZUfdfW1/mQ7LAgKJc=;
+	s=arc-20240116; t=1787369853; c=relaxed/simple;
+	bh=tFVl/RBqtsH1Gr0iDifGVyxnBAgdYdwgdDbNQye+k0o=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=SiwuMsSEJ58PpFRBBIdxpI13vT+x6QyirJmsgLQnXYMPkzlyOjycAfCKoVBh7s4fyi3FifuyzPoAreGbxCQtGW14ymwCBpQ/u4lu19IybPCNkoc2S74RT83Cf8+C3nfKufwbKKcym3Y0ntow64o7K0nQUvHWp23nYfW7KRXg3gU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DtXZpump; arc=none smtp.client-ip=209.85.216.50
+	 In-Reply-To:Content-Type; b=rJGhlupMebGpmwQS8ADkhV7gFIVZLQ68qNZUBo209jV9FDHXxClcjup1oouXm50+2lDyoO0mNI+wsMUvXwdStof1/ApPm8wveonfJX/EC4QTTDKiy9ctEXEz5hNsWOCQoUTSRsKqPeW1oG+ZG78WBmFwMIWuk1kjcuQ/20h/MLo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=qaY2Ujws; arc=none smtp.client-ip=209.85.214.176
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DtXZpump"
-Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-38e08baf860so1779710a91.2
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2026 20:27:55 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qaY2Ujws"
+Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2cc61541f8cso30604525ad.0
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Aug 2026 20:37:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787369275; x=1787974075; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1787369851; x=1787974651; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=LOks5Q+WseXHaYrxJ0Gn8dlCqtIA9nboyxrTjV4SPVE=;
-        b=DtXZpumptNjUFJEcE55AFFDudCjZdeXxsAnkjT7VmJi+uycMOTy5k7ss3R3ElXtmuU
-         GihGsJkn4zQSEvTPUbuugoYt9JqMuGsWCpt19b9611Nafdtv5pxxGPM0jYXXWu9/s2A2
-         SW8b1Md7PhNJSScJwmdv2tdfOWEfeYS+yLmukTwHcvQwqHYK1ur/7MaViOUg2tz7h6Lh
-         8eZTgTl/+xxXt/l5YxKF8HVHnqz9QFFH3HysJKEYzOIy77VtFZ8PE/v4UAGKbWvd6JDm
-         D2HgRBbAIohldIHzbcvuMT0Itv5a+53/p3f22FM5JFZpcpLkMZ4hr0Vz2e4QNzyC3wAB
-         Fugg==
+        bh=ElFIS84/+pbNOt4I/LoEzZYQj4y1cn0LPu5DOnWoK34=;
+        b=qaY2Ujws2zAvavlLV+Pvp/p+HzegQXBpuQP5AauVLG3iAbECTHyO/sTdqlmfqgj+HF
+         k2lUZsx8+BYhnm+yIY5humerSom1wNZ5AapJ4nKY6svnpTS86E2UkpHAGeMeVUmWqaUM
+         DBSikzdxsv751afcN9LNa8W4WX0MY1xop6VAlgSPxVUNAAqoYN+TqxqMFq5OR8pNdsFI
+         5L0qlkW548tnlvqYhgiZBB8CRW+kk0cVNAnApn8EE147oa9Q+JeweKngZkRYfIKCWxQy
+         g0SfHqb6szGEILMq5UvosIO6pymhPal6CgecTK+TAM3fDbs0ni+606Dy0PLWuSwXXS10
+         7mIQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787369275; x=1787974075;
+        d=1e100.net; s=20251104; t=1787369851; x=1787974651;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=LOks5Q+WseXHaYrxJ0Gn8dlCqtIA9nboyxrTjV4SPVE=;
-        b=DImY6bof1UaoUTOwnVM8/VNsZM/KEeqK7k2iw6QE4FQ3vQptJuAQBWSw48ovwQJRjp
-         i4ujkDPxz9n6E9e4tNyb8YHqudgFvO/kVJuKNMSxNYpwQ8YwfsmLqDAynpovd1n/t3DM
-         OnvLw5de0v71BWFV9F/xF3v0G3/Ev0VP5jLtnS49PN90GBVoZQsUtW/81QLtJK0Gb15P
-         j54c6mmayR5N97U3eTQHg1IZWmloxHGzaK6YWn4dhTwf91fPCxCnKMlA5YoE7sgJPHVF
-         5lZyUJgPFZdateXU2lUB5NDmSlvHgGsKWrHcOu6h8/8mczmmy2qHFupecCPl4155GvIe
-         9pvQ==
-X-Forwarded-Encrypted: i=1; AHgh+Ro7+dbxGNl47ot210S37hbwydyvLcyR47voJCyhaHW0QjAVlPz/DTkdiLeKkZffcOfDRXhU3vfh79vv@vger.kernel.org
-X-Gm-Message-State: AFuF++mXuC/cTLqR8svjyJCmxMrrbHYLVXMNOLGhKTNvm7+arzgcM7K/
-	ly1p69f6+1RJtOqdc2fF8RdQmpM78iUO0K4ATVi13Gdm0toZ8Fud8nydPrSk3J2GTho=
-X-Gm-Gg: AR+sD12qJc+FjzrfgDIqtExyPtjZp3PEzaCH1awlHWFWqX8knmw6PP9EFBL77krERwW
-	wS4LrTcWxRI+7nZ8MgGl0hNcf3bCg4YZIDCyMemJbYfZZI7ac0M0y1X0/+QA629XJLldY8FBrCA
-	H4DdsO7vmbNCN7Kf0f1aY6orjfLCW2n/EkgGwaEuyR+rVC5IIAPrS0WIhHydmxTlPh2EgMVZ0ic
-	Hy7jWuLkcVYFNLezwEaIpLMNvYrp06nz+Jo780S4ke9fmEf8dmW0Iueq4qry06Ul8mzO5ewMLuN
-	oCPXJzYFg+FqKSiy9VuZaFLMJmDF7TiX2lZoCV4tqGXZX6ZLAA2+wMKws7cGCea9JRoZDSqQmIc
-	kSGV/7iDo9q0c//RZY0qjcRWLEPR2e5r08TSkQxTdylBBN/gKgdRKfP5B4o7DUbCBLj6dPwU+pb
-	a/I6hL4nDP91h4oonXceNY5bZNfcP766S07N6YVrkjQULXnUc4wjEX1XSlzg6jGgcJnuwEq78GH
-	20gWp8r
-X-Received: by 2002:a17:90b:3a8d:b0:395:4de0:b78f with SMTP id 98e67ed59e1d1-395dee528b7mr5092881a91.1.1787369275158;
-        Fri, 21 Aug 2026 20:27:55 -0700 (PDT)
+        bh=ElFIS84/+pbNOt4I/LoEzZYQj4y1cn0LPu5DOnWoK34=;
+        b=Y8xyfRwr6w6crbcP332PJ03kSn1WkovRxFOXMZmfkcACByUwAzHRUFqKzED4dCOHV0
+         Jp+NACyNJashqbp9p0+bgrhnwAxK4ccC2Z0GO6aUiW4miMOusGrutWckwQTdcnziZ46t
+         cObY9fsl/Kx5TAxV1z270LWDutU0+cYYTHdatt37IJrT/RCSGe0PxQzGYEIpiyXhQ5Vc
+         XsxftaZDtR7XYa7UbOm5sphByvg3EiPim0UwxHem3H0gaeo0ZF+zhZf15AMMeKtA0Eop
+         lKe4hoyObTsC0joAnQJqlUEsbmrH19Pxkc82h01bhWi3shwdX5gLk+3WQfwWYAdumH3V
+         /TuQ==
+X-Gm-Message-State: AFuF++lXhVMkRZHwX4LuJe5q3IDQwQSYGtF/jHbWL/fJr6TzpCamFydw
+	GgCJrX+1egqmUXT8RDZOMkuYGaMRh8m5wUkftfi1waYRAdDhfpRYnFNgwN/darBUyxU=
+X-Gm-Gg: AR+sD10CQ9vITKuCzGNL1KpwujdVzyFlMpVzZ6zhy6bzUm0Q7vAJ8DezM4hBE27fkYK
+	zr7NdihPrH4/rV3eUIBMTMmtMNOuhy9ZqWZBeSy3uemTSptRahSCUiVvzpueRu7SyE5exOIhvs1
+	zk5DRQYI4Qa8ATQLujmVwPA2QEIbGbHbhMS/I+tZ1MXL9gWt+fzjjcj+ZSJJdgKlT3N5eEbdtyD
+	pYvxBh+a3UyM2RU/6D2cNRnQGyogRJhZ3yHhQxGjHjTf4inUrI5qpHmakntPYekxNSLFjhipYMI
+	SQO+jsYb4Qi4L7jc8qM2fvmqIxlBCMt/6nTIXOh5N6h9+6ZWSM2dkMgRWEOx0OCo4u+TeTYli7s
+	uXUz8X/KriIwAlyi/XnpuBybFK4SHmw7Rd/efNVVMFYyNJBx6BaXpaHZvSd1gXc2qWp+e7be5kp
+	+OAYN8xUO1TjDyy9WfMjwPKTF+zrdkiPDWYL83c3oK91mnRSFJLbwuaaFcfhRIvQfQNbqAKe5X+
+	jb+36Gy
+X-Received: by 2002:a17:903:1a84:b0:2ca:12aa:a390 with SMTP id d9443c01a7336-2d64ce3544cmr120353965ad.0.1787369851163;
+        Fri, 21 Aug 2026 20:37:31 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-395e4999471sm1154921a91.8.2026.08.21.20.27.51
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d67678e1b5sm1187555ad.22.2026.08.21.20.37.22
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 21 Aug 2026 20:27:54 -0700 (PDT)
-Message-ID: <f99cb0f6-5a2d-4404-8799-6a67865e2965@gmail.com>
-Date: Sat, 22 Aug 2026 11:27:25 +0800
+        Fri, 21 Aug 2026 20:37:30 -0700 (PDT)
+Message-ID: <a3c68208-8faa-4902-b105-46bbbe322a0a@gmail.com>
+Date: Sat, 22 Aug 2026 11:37:11 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,86 +69,110 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH -next v5 29/32] ext4: add tracepoints for
- DISKSIZE_GROW_PENDING set, clear, and wait
+Subject: Re: [PATCH -next v5 30/32] ext4: add tracepoints for EOF block
+ zeroing and disksize-grow I/O
 To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 References: <20260814093331.1703882-1-yi.zhang@huaweicloud.com>
- <20260814093331.1703882-30-yi.zhang@huaweicloud.com>
- <20260814101826.865151F000E9@smtp.kernel.org>
+ <20260814093331.1703882-31-yi.zhang@huaweicloud.com>
+ <20260814101927.E94F51F000E9@smtp.kernel.org>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260814101826.865151F000E9@smtp.kernel.org>
+In-Reply-To: <20260814101927.E94F51F000E9@smtp.kernel.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On 8/14/2026 6:18 PM, sashiko-bot@kernel.org wrote:
+On 8/14/2026 6:19 PM, sashiko-bot@kernel.org wrote:
 > Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [High] Sequence counter deadlock in tracepoint when called from softirq context on 32-bit SMP.
+> - [High] Calling `i_size_read()` from the block I/O completion context (softirq) inside the `ext4_iomap_wb_disksize_pending` tracepoint class causes a hard lockup on 32-bit SMP systems.
 > --
 > 
-> --- Patch [29]: [PATCH -next v5 29/32] ext4: add tracepoints for DISKSIZE_GROW_PENDING set, clear, and wait ---
-> commit f14aeb9661220b55cf0eeb4ff49da9fa6a2a18ca
+> --- Patch [30]: [PATCH -next v5 30/32] ext4: add tracepoints for EOF block zeroing and disksize-grow I/O ---
+> commit 9f6116e7039af778ef1701a210ea9b800dcc543c
 > Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> ext4: add tracepoints for DISKSIZE_GROW_PENDING set, clear, and wait
->      
-> This commit adds trace events ext4_iomap_mark_disksize_pending(),
-> ext4_iomap_clear_disksize_pending(), and ext4_iomap_wait_disksize_pending().
-> These tracepoints track disksize-grow-pending state changes and waiting.
+> ext4: add tracepoints for EOF block zeroing and disksize-grow I/O
+> 
+> Add tracepoints to track the disksize-grow-pending lifecycle in the
+> writeback path and the block-zero-EOF entry point.
+> 
+>> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+>> index 4f1176b9332f2..4464eb03c9728 100644
+>> --- a/fs/ext4/page-io.c
+>> +++ b/fs/ext4/page-io.c
+> 
+> [ ... ]
+> 
+>> @@ -729,8 +735,11 @@ void ext4_iomap_end_bio(struct bio *bio)
+>>   	 * state set in ext4_block_zero_eof() and wake up all waiters
+>>   	 * that will update the inode i_disksize.
+>>   	 */
+>> -	if (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO)
+>> +	if (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO) {
+>> +		trace_ext4_iomap_wb_disksize_pending_complete(ioend->io_inode,
+>> +				ioend->io_offset, ioend->io_size);
+>>   		ext4_iomap_clear_disksize_pending(ioend->io_inode);
+>> +	}
 > 
 >> diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
->> index 69596a216dcb1..4539ef8e5f86c 100644
+>> index 4539ef8e5f86c..c9259c2a3e364 100644
 >> --- a/include/trace/events/ext4.h
 >> +++ b/include/trace/events/ext4.h
+> 
 > [ ... ]
->> +DECLARE_EVENT_CLASS(ext4_iomap_disksize_pending,
->> +	TP_PROTO(struct inode *inode),
->> +	TP_ARGS(inode),
+> 
+>> +/* disksize pending I/O tracepoints for iomap Buffered I/O path */
+>> +DECLARE_EVENT_CLASS(ext4_iomap_wb_disksize_pending,
+>> +	TP_PROTO(struct inode *inode, loff_t io_offset, size_t io_size),
+>> +	TP_ARGS(inode, io_offset, io_size),
 >> +	TP_STRUCT__entry(
 >> +		__field(dev_t, dev)
 >> +		__field(u64, ino)
+>> +		__field(loff_t, io_offset)
+>> +		__field(size_t, io_size)
 >> +		__field(loff_t, i_size)
 >> +		__field(loff_t, i_disksize)
 >> +	),
 >> +	TP_fast_assign(
 >> +		__entry->dev = inode->i_sb->s_dev;
 >> +		__entry->ino = inode->i_ino;
+>> +		__entry->io_offset = io_offset;
+>> +		__entry->io_size = io_size;
 >> +		__entry->i_size = i_size_read(inode);
 > 
 > [Severity: High]
-> Could this cause a sequence counter deadlock on 32-bit SMP architectures?
+> Does this code introduce a deadlock on 32-bit SMP systems?
 > 
-> If a process executing i_size_write() is preempted by a block I/O completion
-> hardware interrupt, and pending softirqs are executed on return from the
-> interrupt, the softirq could call ext4_iomap_end_bio() in fs/ext4/page-io.c:
+> The tracepoint ext4_iomap_wb_disksize_pending_complete is called from
+> ext4_iomap_end_bio(), which executes in softirq context. This happens
+> because ext4_iomap_writeback_submit() clears the BIO_COMPLETE_IN_TASK flag.
 > 
-> fs/ext4/page-io.c:ext4_iomap_end_bio() {
->          ...
->          if (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO)
->                  ext4_iomap_clear_disksize_pending(ioend->io_inode);
->          ...
-> }
+> When TP_fast_assign() evaluates i_size_read(inode), it uses a read sequence
+> lock on 32-bit SMP systems via read_seqcount_begin(&inode->i_size_seqcount).
 > 
-> This would trigger trace_ext4_iomap_clear_disksize_pending() which calls
-> i_size_read() here in TP_fast_assign.
+> If i_size_write() is executing concurrently in process context on the same
+> CPU, it holds the sequence lock without disabling softirqs. If the softirq
+> interrupts the i_size_write() section, i_size_read() will spin infinitely
+> waiting for the sequence count to become even.
 > 
-> Since i_size_write() disables preemption but not softirqs, the seqcount
-> would be odd. This would cause i_size_read() to spin indefinitely waiting
-> for the interrupted i_size_write() to complete on the same CPU.
+> Is there a way to avoid reading the inode size in this softirq context, or
+> a safer way to sample it here?
 > 
 
-Yeah, I'll remove the i_size check in the next version. It doesn't
-look like we really need it.
+Yeah, since we already have trace_ext4_iomap_clear_disksize_pending()
+in ext4_iomap_end_bio(), we can move
+trace_ext4_iomap_wb_disksize_pending_complete() into the process
+context of ext4_iomap_finish_ioend().
 
 Thanks,
 Yi.
 
 >> +		__entry->i_disksize = READ_ONCE(EXT4_I(inode)->i_disksize);
 >> +	),
->> +	TP_printk("dev %d:%d ino %llu i_size %lld i_disksize %lld",
+>> +	TP_printk("dev %d:%d ino %llu io_offset %lld io_size %zu i_size %lld i_disksize %lld",
 >> +		  MAJOR(__entry->dev), MINOR(__entry->dev),
->> +		  __entry->ino, __entry->i_size, __entry->i_disksize)
+>> +		  __entry->ino, __entry->io_offset, __entry->io_size,
+>> +		  __entry->i_size, __entry->i_disksize)
 >> +);
 > 
 
