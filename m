@@ -1,49 +1,50 @@
-Received: from out203-205-221-205.mail.qq.com (out203-205-221-205.mail.qq.com [203.205.221.205])
+Received: from out203-205-221-202.mail.qq.com (out203-205-221-202.mail.qq.com [203.205.221.202])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD1DF3ABDA4
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2026 16:26:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.205
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40EBB2E542C
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2026 16:30:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.202
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787415994; cv=none; b=s7QR48oADLdGsB3qqjHcNS1Cid7u+NkMnee8ZL2ke+SH7NInC8lLpZhBlnhOK5azoNao0HKXpr2zm37IyVTuyqw19DhOrTuePTpGzaxIjQaxt6tg8V8vfmOjiHTG+hOi/zAemGL09F/us/xx8FDmNWAmlUIqtW6dZEKUPGh1OS0=
+	t=1787416252; cv=none; b=ua6PxzWOsEXrDajozBJBXsjMBHzKaQC/riXi7h0wB/uucWVL7CVW7LQWD0pOh2mu1VsfUJkusffaxRMAimOM0B0CyXWxd4astabALsO2cAUjw75CMm7Tx+//T0PbBwIbjjXH948OY2DkozKHdJr6bSnk9bbNtrt3rT2TWqmcmGU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787415994; c=relaxed/simple;
-	bh=mBjTRf+F1/kezZHN4LL2i+IOUQBbNoXTJXVPvYLqFjA=;
+	s=arc-20240116; t=1787416252; c=relaxed/simple;
+	bh=By/18iJfPP4jp7imbZdYc6aILvd/yCqy88CtkShR+OM=;
 	h=Message-ID:From:To:Cc:Subject:Date:In-Reply-To:References:
-	 MIME-Version; b=a6YMcqUM01rErczuRo7G5IUPGdhT+zpC4LXBW3GSLARjkYWXgRrB/G9qSpX7v/dppuZZoE7oh4ObqutUKv/slzKlYFlvqkEdK19sZ/B9x4tTAb2fXi8k6X396ZTDBUviZc0nnpjkLPyo5rI8LTTKsMZV8XypCmAe+yD4RUHN/KY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=nD97Ngv0; arc=none smtp.client-ip=203.205.221.205
+	 MIME-Version; b=fcXgOdyoEfT4UjPP5xrKdZrmWhWaytovZ2vPmcaq/tymfxgD6TH7gwdja/4NEv/cuCixJ51A+qDuexE3uKWoBviZTEkPVWoZuFJZERU0cQqxtFeoDAqrnxvZbEkxWnTeb0oVcKGxvseQPOpJ7ZOz9QcwO5AoqmatJs2NxPhSRKU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=fb6mCAcm; arc=none smtp.client-ip=203.205.221.202
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="nD97Ngv0"
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="fb6mCAcm"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1787415988; bh=v8Ip1fk2d0+kfrrxP+fQqCzDoAFGtXeny4TOSAcUZKY=;
+	t=1787416244; bh=eOJaNfBKcn2RDfxvp8Uj2hGgpRivX0SW/vNutSbRXuQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=nD97Ngv0B4i39ZSF4pxdh9Gkq1S13c3tfv3IYTvGw7/3dVYso1cw+QUi5Zg3GZWLy
-	 +9BpPTUGyS7CFIR+L+uO4c2lWMgYaLONbAjJNINjYSPuZwuSCnz+HcI2EaJzwwLCdL
-	 iGnqzpM6t4eaRzASA+NZpK7Jmv++HJpWNHFwQotY=
+	b=fb6mCAcm3K5nUhwCn/e2J10b7D7FaYN3R2qkEmPrLWcicFUxc3Yk2IFkPgctdz+j4
+	 Xv8AgOito3HyBFbAZfOpUICxehQutARxzcxZKXO4TOEvQTf39AhxCnstDvnDTIW3Rn
+	 FUyRz0Id0i5EyYGPu3zKKyhVVLXfWRqlD2e5olJY=
 Received: from DESKTOP-AT5F202.lan ([183.242.132.32])
-	by newxmesmtplogicsvrsza53-0.qq.com (NewEsmtp) with SMTP
-	id 69829EC3; Sun, 23 Aug 2026 00:26:24 +0800
-X-QQ-mid: xmsmtpt1787415984t0fyrcu0m
-Message-ID: <tencent_7FDF0CFD84843032AE9A95DCBD443746860A@qq.com>
-X-QQ-XMAILINFO: NHgT31LhP5vDMzPRKEOrB/1rQ0TWNh8443n4rcxrSV4G/2mx7kgF5vAqaCzZAL
-	 KN91FQjqftFaIVKQhRsG+6KL+DHJSBPJjziw/rjAoieIfnSntVpCxQhit5uoPoAKC2E5CSjb4yXb
-	 2RTqiG2HQTpsNIV3rVRfQN+/xAjC6EvjdQW6DDBEuVpQv1wmTLkfn6eQMY9ZxOjIsi4yzeymsnGb
-	 qHhv7SiQg5Y41bTnWEIKdEu2Ke6dKyEw+hcbyHsBEbFJf1tHfux3H8mxCKbrP6WZEi/Zyhrtf70E
-	 f+Zai9Mr/GY0x4Kee59JDJEq0bXPPM2UUBG3JGxmrrk9nCRFkWAG5wlV33ylbtnX/Rw2WBDzmx56
-	 zSYXhUn+jTjlkafO5MxFFDHJVoGIvt5iJ/QhuIGoodgT8y3WoXVVlmmzg4tt+8h8Pf5jvBwC3w3o
-	 +NzAfX5jOe1u1Onm2yYsLTl+3XuzM5YVS5No4GPa2QL2qgCghD+9vK3tOBqXhG7lZy7cXmM5mNTs
-	 cNJNsqBArx4HHc6GEHnCRRSWhgDhab9NcYfHMpt5Ld5lgSrORlm0k+GsZPp4AMt/W972/3ieBRyg
-	 OgvG7PPP/UdoGOL66jTEVmkpeSlrbfI8PSzuz65mTAXzm7usf2JQw0Cj4HkY0B1t8QpsguCN24x2
-	 bLggwoa+lDkAsmrADAQQ40+KbvgPLZ2jqFeAML7DxQkfgNP7wmHjXlc7hilR3alAYfTkIvyd9CCE
-	 IZx9Xn/gziRGkNdR/Qvxs7x7sVa2WTgC4GA97ctHYkMltODKVsNyA16ey6LBnNLO3FbptNV8l6fa
-	 F0OPd0Lw7IfZEsHoNyKt4sLIGMw7aWTWbkaq6JfWWYndf4vti2M4LivxQJYTQvWev/SJQHFgWNfD
-	 J/p4iys/UvaiIfs1ue3Fxou66EAx7MXebcKRoXHko2euZ6osyyESowf5HQjyL8koZB50oiY6Wszi
-	 wZ3JPB1vAn7jPkx+MvYk/S2gxCDBneWtWB3DDTOolhx349kYvdBIeHKKbmmHyIDwJkvH59QEEpaz
-	 nkm7nSD+T9FytQqWhIP/UHg1F+Q5h37j4vfAP+2jf9bpAGxR3o7kMdQuOAuMew2uRPukLYNTlMmP
-	 ApNorcdgtkpXqS19I=
-X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
+	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
+	id 7A91F42E; Sun, 23 Aug 2026 00:30:41 +0800
+X-QQ-mid: xmsmtpt1787416241t4hglihyk
+Message-ID: <tencent_5FCFA1D9100C4691D5AA92A597B846A8F007@qq.com>
+X-QQ-XMAILINFO: N8J8gWVmzA1tnsy3ls9K7TS7SR9a+yTlwqwEcBipmqvD9NLNoj1re8qAbpIypv
+	 AATEwstCCyOKr++vhPKjQOwk6qRuN25/0xQTT250z20XnsyS+xsm8Zk0Dc8Zbz9unhGu9bAdDc6L
+	 KBRgzNlOhJN6ZRtq8BmCNmONxJTRjuhnw8cCEKkqGYyD/GER076Vtxs38pM8lk7NMP82NfMQcX4s
+	 g7+PQg2y8PIi6ABuzqM40q2mgrhzPeda+HkqYHxe+1PtKGi/BKaMikSBTmbLeSifykTb+NVK9U+M
+	 6+TqSS8mRQmOHu1HAhKJmlG4GYfCRkSFuyTSlhVhpynhsiy0eHieWtvQG1H+ps+Ndlm7ESceC7sS
+	 XZ/rf72zDCT5eLpbg4mZiDbK96RGdLEPClIF6j0mivE2XPsIQwcOFYlPBReLG1bdOttpXkMH0Cll
+	 bkbotbmXmmQmhl5S3PyePyH/7LkA4idpKL3H6mVjpnPNE2Mzp574FUr8HWF/Dj4i7GabfHMemM7o
+	 vO39b/6dAy2TY+HnZewKAYXQgfzsm9l/f3mgVUvjFNcxjvJwdU72pGIPEhgz4tLPWK3yru0vJHXQ
+	 XIBZblRbCW4SuBNea8dLEpjJfXJjlirojP2xxXnZxU1yUwATdz1cBWlsE3P6LjTj8i10vHROwoWa
+	 XIJ405ACl+CMlvNvPHvtaTQ4m7Z44RdSBicCQs2UbZsvtNIi7A9M9Ekx+1CB1pQZw04hNIMxGa08
+	 16mPD56Y8ObCjoMyP9KIm8b6CuAAT3ws8JFp//vM7LyLWHT1XmDg/cwiNfIqhMDRL/CGmysnvzVQ
+	 M6wlk3z1HtQ7aAYh9bGcxdly+yG1pHB/t+OgGd54GwvQHwgde7DpK1p3HY2cp616t0MJf6ZrZRlg
+	 mdX4HHn32ug5jO0Wgf0H+pj6G8iGsw7QxI4E12K2YLM9rk//+4K/AUJd4/j5NzseL7F4E7ZKq96B
+	 bDe4lnpobAnE6/9tBYtSju9bNmoY5oho8BMU7B0FiZijsRqXhUB1ALNNe3gkaTXpYchXXecHrmo4
+	 d0tDxJSNzu/b7V2iNJf+cQVblpZaAzcGbOWUBS67hJwXDVpTZEepWvuqnMzZM1j9Zl16HZTME3tr
+	 u7b8lN0jrcC4rTbYFhVRj8I2lXijO9IoxH+PAb46tvgX2NY3zUdnGw+C9QUFX3D8AKyzVmF9ijuY
+	 cDX4w=
+X-QQ-XMRINFO: OD9hHCdaPRBwH5bRRRw8tsiH4UAatJqXfg==
 From: shuo chen <1289151713@qq.com>
 To: tytso@mit.edu
 Cc: adilger.kernel@dilger.ca,
@@ -53,9 +54,9 @@ Cc: adilger.kernel@dilger.ca,
 	yi.zhang@huawei.com,
 	linux-ext4@vger.kernel.org,
 	pipishuo <1289151713@qq.com>
-Subject: [PATCH] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
-Date: Sun, 23 Aug 2026 00:26:06 +0800
-X-OQ-MSGID: <20260822162606.140588-1-1289151713@qq.com>
+Subject: [PATCH V3] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
+Date: Sun, 23 Aug 2026 00:28:03 +0800
+X-OQ-MSGID: <20260822162801.140602-3-1289151713@qq.com>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <aoJ4bJZNgNAt4pLD@mit.edu>
 References: <aoJ4bJZNgNAt4pLD@mit.edu>
@@ -69,6 +70,7 @@ Content-Transfer-Encoding: 8bit
 
 From: pipishuo <1289151713@qq.com>
 
+Resend as v3 because I forgot to add the version number
 ---
 v2 -> v3:
 -Add error recovery for ext4_find_extent() and ext4_ext_insert_extent()
