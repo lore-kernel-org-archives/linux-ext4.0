@@ -1,114 +1,172 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv1-f53.google.com (mail-qv1-f53.google.com [209.85.219.53])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B3B633BBCF
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 10:01:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787565703; cv=none; b=EJPbahYQW220s+CMcvqPhAk8j9z4EpNuch8iDsSy4CJzZOUxkr2amusffRTcBsey7AHvSBMJCMtE23aLnrfb2pp0+GY+W2UcirSzYHwL1JlWm6ptXzGxD6DRMjFdbSAbu89NZ5iOYxaWe1AOsGeaLbMHsJKbumHiKvxzk+jEP7A=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787565703; c=relaxed/simple;
-	bh=1Ww6f99ovnnaaaMlRSoZWofDYR8h/NE9j2ZDD/CF5DU=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=m8AyBIgTJGR7I5xoXiRKw1/MxLAYHuE30pP9IruL6PwUcGAeVRH6ftKXIy7J4cq0kcFhLf5XmINihLQKyTT25io4EWu3V3pyD6s65BUmaa24PSq8pXEAyuRbpF5PNzHp2hEoJvy+ZYret+7g2CSUncSmbabRlIdd7/aWCWbyQxE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KVgbPYow; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C022408018
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 11:53:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.219.53
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787572396; cv=pass; b=fdnSm8bX3aUPxNxB1AWf07PB3cfGUo0RB6r5kGMjusef6o+lLnUZYqYxqRjrhfGoH6KYNd32I9DRVEbMRA1eoOv7MCutKzg9Vv4LYb9z7vYKLhGaPUanIy7VDvp0MkEqlg1R/W8g9QZhuy3veazX3pO9wAimuBUGu7T2NhHpwLE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787572396; c=relaxed/simple;
+	bh=M2g4HIY98VkeNiskOU8NrgO0csw78dC2NkGbpY8M/rk=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=fc6N5dJAOB9wHRntNjraW+5/AVKU+ItxffvJMoUcholHLNd0VzuBoYMaA31MUIlqy4tf27cBpoXGz9KDM/M2pA9uUhbe0280/XEbpY9qUC+Xag4ejnmIAmEQTPXsANhAX1uh40jP3V9us+viRMQPCbpqw2hKf/b+6uim7lvgpfg=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hql9wTSX; arc=pass smtp.client-ip=209.85.219.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KVgbPYow"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 86E351F000E9;
-	Mon, 24 Aug 2026 10:01:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787565701;
-	bh=Sk9xc+sbYUCVPCpKkVtDKfhwHxvXJhwv+REc7TbUPLc=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=KVgbPYow4Du0ySzXohOkWiKM5yxucGKVzAEng7vSf8t+ixbOuvw5qlSrtnIWce8ry
-	 zADmDHE5HV9kDCtGzr9O0d3bLkmX1KFPwqt4nGO45Ujv1e2kRSEN+t7RcZ9LrhdB1F
-	 vtPDcsyNogpNSnYs4nmWqPOaPT7yUyb3V0mC2ZeZxn1OTFBp7O2DbehBQGaW/LXsTJ
-	 j8w6qPv5L4pArnV3ODbOe9KeJJ9gdF2szYKmvj/BwOG0fupDmhBPdPSyQ4UG9/GZLs
-	 hMNZOdgr+HMgdy11FmDLlpbxOCw4A1QBYbP/x230/n3BOUNn1WRvMngdijENPUOM4W
-	 kzSn6HsNthzHg==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: skip extra isize expansion while unmounting
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Hemanth Selam" <hemanth.selam@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260824094512.2436628-1-hemanth.selam@gmail.com>
-References: <20260824094512.2436628-1-hemanth.selam@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 24 Aug 2026 10:01:41 +0000
-Message-Id: <20260824100141.86E351F000E9@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hql9wTSX"
+Received: by mail-qv1-f53.google.com with SMTP id 6a1803df08f44-8f29ec73064so18085516d6.1
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 04:53:15 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787572394; cv=none;
+        d=google.com; s=arc-20260327;
+        b=AFVXZvLUHI39QJhu6Hor14EvmM2lAPqKA73YZgz9NkrjqiVP/tUubCGcGJVZ99QPw6
+         5Js1kKnf9DtUOfeg0d5+LkZMAn3zcwMSswqVI/T/CH2KM7OR6EUS8sLhru7MmdseyEZN
+         CnlPVV4llERI6+SkwpREiIFDtzqZCQscBtBGG9084eGK36KRobI/4+4lwPFGsoXXxj4b
+         EtiOGdrNHmIDSqtYlUX5k30l06BQw8WbniE78b7LYc3FX8ZyE0+FJahznI2BZVaBTfsH
+         6IRT2535rTqJk3nTKemDL7unSI4v9IxPsQlhl5mlhxfzC33D7YLPPq6qudhlqrjBPrIU
+         9atA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=8XHy3dd2bxETRxA2KG8RFG1nkfGg9gAvEyXFbhMNPi4=;
+        fh=3IlOq0qbsYBafph5307qRCN+2HHdgXuN6Eh+kZU30Zs=;
+        b=Wj6mf/ozOWIhOQRt1Ax2XLxt5nO5EyFJgwb9142iE/X9EWU0js1fYJ/NrynG1wWEe1
+         Vr5+YLH4hUAVExSJ2VwRdnuRKFcDkS3dYpwP2jTKbr+x08m+wywf9+q8WN02tGxBVBvO
+         QvuicvT6BZh51d7lKN6x9Jr+fLX+5oqc1FGtcpSp8n5SSaScwBnAJFGuauKanlv110Wc
+         bFvY7u+xer+yQJ5gZwgxnseoCdVObhUz5oRWDF6gwbEUPWGIyylxMItJyUizJlu97Zi7
+         qPl+dndQBTP6UJSNdCJacdCEnL5rcZeV9J446TFJBLfdxaHzRkwmjhBaX26NnAfi/5k8
+         y8CQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787572394; x=1788177194; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=8XHy3dd2bxETRxA2KG8RFG1nkfGg9gAvEyXFbhMNPi4=;
+        b=hql9wTSXHk9G4T4zfpWhkjF70OvLQ3H2sen7K2002cUH5ygDKmZtm6GVFDNkgpOg3P
+         U0cmJKex0c4fkozO4+QsA08PR4FWDjESczDFTJSbFAICI8Lo2vuE0fIK1WcoyToGSajs
+         Jin32jQTzb0iZQjghJ3Mu94cAsGo2D4pauywYPpbTm/cOIpMVjVdZJDrO6VUaMKSf/c+
+         a7xWU4EoUC4eqXK+pQcDjmF5PJuZm4OSbrfK9znotcZ1SJ4SFKzJy8YgZax1+A//9tY1
+         zJCHqrpk61kYVxOMR79SSWttRqXnP2LJ1YD8+X2ub6ry/NTn5gfhPzaSFHMqEssCp/09
+         JFLw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787572394; x=1788177194;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=8XHy3dd2bxETRxA2KG8RFG1nkfGg9gAvEyXFbhMNPi4=;
+        b=gEem7MVttroWRZ1dRWl9OS2Gv9CfPcvgtBqlTRsFvt7fPR+B13GUhj8aJhFTrgr4HD
+         ZChVWulo5QmPDdXtqWAHET1z6U4qNjdgOzuJDaNHnmaAlDKocYjBtqebv/S2rWPVWUpl
+         KTYEoICI3AKIx4xaKDEtfIzstalt2lc6yBC1cDt8Mjolcl6FiFt1pSV+hVIUhbJ2ST0z
+         CV7KdUA61HSIBwVh4erqGXBIJXtKkUfjPuf8k/ByQ/066Q+UBl4LDO/f34l8/Qj10y1E
+         5hOVFEvxbIeAY+B6ukgYJCkEo//n5SuRJar9M/2npxt2qAqSy9ayvyzK+fYA6WM9PJjl
+         7OKg==
+X-Gm-Message-State: AFuF++lHXeY3GMknZc0JiL7NeNGwQ29yI/WD1ugrZQedDQyX0huo7Ntc
+	LioXA5HEOa0lTFZ0u0P7dB1dRB6wZWCr9mRuSdFoev0UiWTBnTw8C/EJpsJKnxjrlLfRR57Kgz4
+	AiOZhruxScPwdE1AcRLeukpUayyzdTfw=
+X-Gm-Gg: AR+sD13GRQUSFOD7g8tWpY5cvJYaxnw6wkaohACjHkS2wbczxy5afd2zbg5IHf4VtlN
+	sRWXZDDW6M5mfGF0ceBcxsn0v1sFdIxByQ4sEOULzRGiKucCLaXpxP+yojdj+zLHvPusUssa3Tv
+	alvRJWPOUXF0GXVaemagKOVHP+fEFQSik8yxold1k6khD5dzLo4NI04ay2Vzxk5iRFwCrVQpiyo
+	TPyj5GZUesItDL0fVh2f2hoHat+td8CBn1bJXK+ATmYElpyk0544uaKkuuRMIPGV8HVHKT21DpH
+	GnsKzv1NwnoaYYovEu2fU1G3lGdkzNq1JB3JYWzLBzyS
+X-Received: by 2002:a05:6214:258f:b0:907:dd19:fcb3 with SMTP id
+ 6a1803df08f44-90c80f93275mr241274906d6.24.1787572394192; Mon, 24 Aug 2026
+ 04:53:14 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+From: Slava0135 <slava.kovalevskiy.2014@gmail.com>
+Date: Mon, 24 Aug 2026 14:53:03 +0300
+X-Gm-Features: AcwNN1X1Hsubl1ksV26rgEjXm3udO8ZnbCvpoMMNHCb7ONXmv8kGxz68y1t3Kfo
+Message-ID: <CAAJYhwzHRMipEy=mrH_FwELcSCCk9zK7ifzy0cuuWMzX3wmVtg@mail.gmail.com>
+Subject: Error loading journal when using ext4 with fast_commit and calling
+ fsync on unlinked file inside directory (if system crashes)
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
+Detailed description
+====================
 
-Pre-existing issues:
-- [High] Incomplete fix for a TOCTOU race condition that can lead to a NULL=
- pointer dereference during unmount.
---
+Hello, there seems to be an issue with ext4 (fast_commit) crash behavior:
 
---- Patch [1]: [PATCH] ext4: skip extra isize expansion while unmounting ---
-commit b6a44628f998028bf5040431bbd5fcff301de3c8
-Author: Hemanth Selam <hemanth.selam@gmail.com>
+1. Create a new directory and a new file inside the directory.
+2. Sync filesystem.
+3. Open file.
+4. Unlink file.
+5. Fsync file.
 
-ext4: skip extra isize expansion while unmounting
-   =20
-This patch attempts to fix a warning in ext4_xattr_inode_create reached
-during unmount. It declines to expand the extra isize when s_root is
-cleared during the dcache shrink but before SB_ACTIVE is cleared.
+After system crash (e.g. power failure) mounting file system results in
+error (`Structure needs cleaning` / `error loading journal`).
 
-Closes: https://syzkaller.appspot.com/bug?extid=3D4b03894b6ec5753ddf24
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index bd4b778df9eb2..6e523a5c8230e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6598,8 +6598,14 @@ static int ext4_try_to_expand_extra_isize(struct i=
-node *inode,
-[ ... ]
-> +	 * Skip it while unmounting as well.  shrink_dcache_for_umount()
-> +	 * clears s_root before generic_shutdown_super() clears SB_ACTIVE, and
-> +	 * the last iput() of a lazytime inode in that window redirties it and
-> +	 * lands here.  Moving xattrs out to a block then needs a new EA inode,
-> +	 * which ext4_xattr_inode_create() refuses without s_root.
->  	 */
-> -	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE)))
-> +	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE) || !inode->i_sb->s_roo=
-t))
->  		return -EBUSY;
-> =20
->  	/*
+System info
+===========
 
-[Severity: High]
-This isn't a bug introduced by this patch, but does checking s_root here
-without synchronization leave a race open during unmount?
+Linux version 7.2 & 6.17.0-29-generic (Ubuntu 25.10)
 
-Background workqueues like rsv_conversion_wq and s_ea_inode_work can
-process inodes concurrently with unmount. They are not flushed until
-sync_filesystem() and ext4_put_super(), which run after
-shrink_dcache_for_umount() clears s_root.
 
-If a background thread sees a non-NULL s_root here, could the unmount
-thread concurrently clear s_root right after? The background thread would
-then proceed into ext4_xattr_inode_create():
+How to reproduce
+================
 
-fs/ext4/xattr.c:ext4_xattr_inode_create() {
-    ...
-    ea_inode =3D ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
-                              S_IFREG | 0600, NULL, inode->i_ino + 1, owner,
-                              EXT4_EA_INODE_FL);
-    ...
+Test:
+
+```
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main() {
+  int status;
+  int fd;
+
+  status = mkdir("dir", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  printf("MKDIR: %d\n", status);
+
+  status = creat("dir/file", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+  printf("CREAT: %d\n", status);
+  close(status);
+
+  sync();
+
+  status = open("dir/file", O_WRONLY);
+  printf("OPEN: %d\n", status);
+  fd = status;
+
+  status = unlink("dir/file");
+  printf("UNLINK: %d\n", status);
+
+  status = fsync(fd);
+  printf("FSYNC: %d\n", status);
 }
+// system crashes!
+```
 
-If s_root is cleared by the unmount thread just before this dereference,
-could this result in a NULL pointer dereference on s_root->d_inode? Or if
-s_root is cleared right before the warning check inside
-ext4_xattr_inode_create(), wouldn't we still hit the original warning?
+mount:
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260824094512.2436=
-628-1-hemanth.selam@gmail.com?part=3D1
+```
+root@ubuntu:~# mount /dev/vdb /mnt/fstest/
+mount: /mnt/fstest: mount() failed: Structure needs cleaning.
+       dmesg(1) may have more information after failed mount system call.
+```
+
+dmesg:
+
+```
+[   27.437203] JBD2: journal recovery failed
+[   27.437206] EXT4-fs (vdb): error loading journal
+```
+
+Steps:
+
+1. Create and mount a new ext4 filesystem with `fast_commit` option.
+2. Change directory to root of the filesystem and run the compiled test.
+3. Cause hard system crash (e.g. QEMU `system_reset` command).
+4. Remount filesystem after crash.
+5. Observe that mount fails.
