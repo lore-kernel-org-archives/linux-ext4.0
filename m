@@ -1,237 +1,150 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f182.google.com (mail-pl1-f182.google.com [209.85.214.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87E2A3AFCE4
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2026 16:45:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 073A23F660B
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 09:45:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787417146; cv=none; b=P0DrQ2AKjtSVy6pV/ycv0TwJDGM2cmK3WEnIO0r6ZPXM8jvHnvf7Mhl8/2d1+px2oLdJjOHxnonUK6td6tYkL5D/Dyex0kIR/lVZPU2emp+5/OFyEG32g/8zDK9YGvhFaFgMJDI2TGLrAo/3sGFmgfDSLC6R4rkEmcM+J5WVGwQ=
+	t=1787564739; cv=none; b=G3l9c60aLkfV2s3H6h1TskmXH0pQv0BkIuOOBv6zt2R6rwqI8TZXRSawuiNXJZ4MXZiNiK6mZQXOStqbOApnNjC2Cu/K6aa8JN16jwuzTIck1E+fVqvY6Hq8cOre/vb9b1sze2N4XqelaQqJ754DZpZ6a0I4sNkrBwQpAXA5Oa8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787417146; c=relaxed/simple;
-	bh=evwk1fBqmgu86xl+oV9uTGsXjcj14Kk1EsVallX4l+A=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=RZRIat6K9uleqXttY35a6b+Ww8dlYA38JsVcoTrDMLv4QMOoRl8UTodsZ2729Xljd3W5PQJFr/W0YlUKijfIPt63+x21/1U0nZIKPKKhQ2TBaXJccZuXApwRBUeQjldLPhHVA3+8XLdeHJ49hjKGxyGaeecC/sLhXpkx8y0pHNQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=M22UWd4G; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787564739; c=relaxed/simple;
+	bh=KjZeTtGd/vUyWsmXWDnWQxybFZuWFNGL+aBkUps34UA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lDVYRKc4Jbo1sodv5AhTdBsNEYLGsMDU95r62z3LKWJ2/6C/SZEz+a0LkjhaxJsFTe1h+2yzuxD2NEonRgbV9oDOyjwpziaMPG95M11BeBiDzJemGvBfYK4rmn89W7qv8W0m1zdWYfCaliUkBB9SQF8TLUsXHsYEaGB54Hloo0g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=pOIKTMhu; arc=none smtp.client-ip=209.85.214.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="M22UWd4G"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96A9F1F00A3A;
-	Sat, 22 Aug 2026 16:45:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787417143;
-	bh=quyCEU7BufbnKP6mZaAVrjjWav6stLklzytUj534sU0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=M22UWd4Gdd3gRA0KJwY2sJDjvhiui47nCiPKWOFArMTrBW+VwP3LjWnyQfZcyiqD1
-	 40TvO3my/ujoWyxcvbMw0DDUsmZ6LS5H1nM7wgh9BrO9xfWZ33YS+vCgROQzB+0OLT
-	 4NI2kX5GRkScXheDZRxak+frSp0o6+p28o4RgqboSfekqLU0i44ABuHp5AY3uRAmmU
-	 sfc+5RDVki5CVKGCA30ouOkvhbn1+7Z97EejZ7jWHKAJHvsZiUOpw3vRneI264nZ3a
-	 28aVPgEhzxnf76+jGY7+T5fi4534AsMMJdf9WQHHgfoehoQ85GKy4hW05zfy3aylbq
-	 2DO6JGViorDTQ==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH V3] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "shuo chen" <1289151713@qq.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <tencent_5FCFA1D9100C4691D5AA92A597B846A8F007@qq.com>
-References: <aoJ4bJZNgNAt4pLD@mit.edu>
- <tencent_5FCFA1D9100C4691D5AA92A597B846A8F007@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Sat, 22 Aug 2026 16:45:43 +0000
-Message-Id: <20260822164543.96A9F1F00A3A@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pOIKTMhu"
+Received: by mail-pl1-f182.google.com with SMTP id d9443c01a7336-2ce98cb8165so31749785ad.1
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 02:45:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787564734; x=1788169534; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=FtkIhL1WBjtKilHpUZK8ryJa/U1seBmHeDPqnq1dXCo=;
+        b=pOIKTMhui+mTpXdw7bsdDDn0PcdR/VREduRETosgISPMW96p5/TnikznnwrhwT3aII
+         3NGziIykisM79k0FOfGBZ4Xd/14rzy07//HyhNKErv6QvQo5KElxdihFt1mhfI60NpwZ
+         XH9oHLx7ieNGZhLMBNRb5B4aUrgAawNbPvUmX4onfe6lmMDQwTC0AB4QUcXLxwD1o9uz
+         yJk8V0IHVP1f4mpE4Kto/oGVWz8LlhBzdf6tVJPsvrceBiAn564a0QBD++tq1vXVZHTU
+         f5XXr9hxF0Ij5c6Fjxw/Om46siTEUjV6DZUIy8/9thsdYBcONYv516a5edxSucioV+I2
+         ox+g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787564734; x=1788169534;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=FtkIhL1WBjtKilHpUZK8ryJa/U1seBmHeDPqnq1dXCo=;
+        b=nCuSenMiXJn8uSwxt175Yy0shHKj2r3ICvu7Q4i0y3P8ugbd0irNwDZU4IkPulCr4H
+         xOBDvDbYBk66aSSCZjbW0yUT+46ItmjvKKmNKV+9QI505SG+R8RzEot7+iWOZMhg4h8f
+         S8qakbPQm/E7iFg4PBX7HrNN+U/Llz2ZlfK1qry2582B3v3likRFsPLU96Ts36Y8MKlz
+         Ybc62HQJcfwMLXWouHv9fZzQmd05Nb3ak11vYyTQrsqL/WmEDfDpQao9W7NVL7FF9dw9
+         ws2Zz5Ep0EMk/lX44lMcDS6O+DL0lv1mI9iaZ6nkMzIL+Z5RdZwMQuhFqFgv38aS4LHL
+         VQ8A==
+X-Forwarded-Encrypted: i=1; AHgh+RoHbp+oB2eZut6jvCDYeoe8Qw6AEBV+Guq4X10wwQ9tdoA/t6ejAVpsnn+S1rV6Oxpkvas+3HolKAZc@vger.kernel.org
+X-Gm-Message-State: AFuF++mccuiPXPoLDcQzcOiolv8G7asTd5r3RWMBDMuPYvcr6WioETVa
+	XJd8s/h0vfzZsHWPzY8TVGFaNCwhJTtzC29vJ+dfG/Oo8oInky2rYBTa
+X-Gm-Gg: AR+sD11ZJ6cX5wbtLRtGD7qc5AkSwGXcml8CB/6ShZ7mySDDN2mwt4OMAR9gLGcqfiA
+	b6/VueR9lT/KCUnEEtQLknYJTfiFjhxqnMactyleNWcaHMMiRbv9bS8HP/5YJ5UET4x89YL/uaV
+	//CyHgYFPN8Yds1vS/z/NMTptxz4VNrb+mKB1roShESKkag7Kk7rjR/IA19G//pHaYpS2SdYfUZ
+	4OC41gu0xI0/sJwlIW/IE8mShcwoKIUmzAEq6mrQS9E6EYRAohapKE3iH/bivaL160QvyUM6C+T
+	e2UMj7lv9Xnpc/eT4EFaQS/QoPohYOubz7LeBrhJx7wZG/BtUecFMU8cREmUmMkm1BnoTfYXXh9
+	ETs4TCznOPh6E3IkQ8+GbouafXCIieRylMq68pHiOgDGg4ZpvG/uwaEtjf1vFujX24tFDZyLvd8
+	2+kHyxPGVn5/n1YKjra1rE0jNMBx1aBU5ojMDYkSc/knWtr7lob8aVyaSobOozaquRPuZ+rsnLs
+	qhmWzTvYH0=
+X-Received: by 2002:a17:902:f688:b0:2cf:6e5d:23e9 with SMTP id d9443c01a7336-2d61a1aabd6mr356086455ad.14.1787564734175;
+        Mon, 24 Aug 2026 02:45:34 -0700 (PDT)
+Received: from volcano9f8e-host.amd.com ([165.204.217.251])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-327f920e0ddsm23113290eec.24.2026.08.24.02.45.30
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 24 Aug 2026 02:45:33 -0700 (PDT)
+From: Hemanth Selam <hemanth.selam@gmail.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	jun.nie@linaro.org,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: skip extra isize expansion while unmounting
+Date: Mon, 24 Aug 2026 15:15:12 +0530
+Message-ID: <20260824094512.2436628-1-hemanth.selam@gmail.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 7 potential issue(=
-s) to consider:
-- [Critical] Misordered metadata update causes corrupt directory `i_size` o=
-n disk.
-- [Critical] Unconditional BUG_ON() crash in `ext4_free_blocks()` on error =
-paths for allocations > 1 block.
-- [High] Permanent block leak when `ext4_ext_insert_extent` fails with an e=
-rror other than EDQUOT or ENOSPC.
-- [High] Concurrent inode metadata changes are overwritten during error rec=
-overy.
-- [High] Permanent space leak due to hardcoded extent length of 1 block.
-- [High] Missing `i_blocks` accounting for newly allocated physical blocks.
-- [Medium] The commit message describes a completely different change.
---
+syzbot reports a WARN from ext4_xattr_inode_create() reached through the
+unmount path:
 
---- Patch [1]: [PATCH V3] Add EXT4_STATE_MAY_INLINE_DATA check in ext4_read=
-dir ---
-commit 1cb52ec17c1b86718dd26a2d224b02e260c85e40
-Author: pipishuo <1289151713@qq.com>
-Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
+  EXT4-fs warning (device loop0): ext4_xattr_inode_create:1485: refuse to
+  create EA inode when umounting
+  WARNING: fs/ext4/xattr.c:1486 at ext4_xattr_inode_lookup_create
+   ext4_xattr_block_set
+   ext4_expand_extra_isize_ea
+   __ext4_expand_extra_isize
+   __ext4_mark_inode_dirty
+   ext4_dirty_inode
+   __mark_inode_dirty
+   sync_lazytime
+   iput
+   dentry_kill
+   shrink_dentry_list
+   shrink_dcache_for_umount
+   generic_shutdown_super
+   kill_block_super
+   ext4_kill_sb
 
-The commit message describes adding a state check in ext4_readdir, but the
-patch refactors ext4_convert_inline_data_nolock and introduces a new block
-allocation mechanism for inline data conversion.
+shrink_dcache_for_umount() clears s_root before generic_shutdown_super()
+clears SB_ACTIVE, so during the dcache shrink the last iput() of a
+lazytime inode still redirties it and reaches the isize expansion.  The
+expansion can move xattrs out to a block, and creating the EA inode for
+them needs s_root, which ext4_xattr_inode_create() refuses without.
 
->     Add EXT4_STATE_MAY_INLINE_DATA check in ext4_readdir
->    =20
->     Resend as v3 because I forgot to add the version number
+ext4_try_to_expand_extra_isize() already declines to expand when the
+superblock is not active, but that test does not cover this window.
+Decline while s_root is gone as well.  The expansion is best effort and
+__ext4_mark_inode_dirty() ignores its return value, so nothing else
+changes; the inode can be expanded on a later mount.
 
-[Severity: Medium]
-Is the commit message mismatched with the actual code changes? The subject
-and message describe adding a state check in ext4_readdir, but the patch
-entirely refactors ext4_convert_inline_data_nolock and introduces a new
-block allocation mechanism for inline data conversion without mentioning it.
+Running the syzbot reproducer for 60 seconds produced 3583 splats before
+this change and none after it, with the same number of mount cycles.
 
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-[ ... ]
-> @@ -1079,21 +1080,115 @@ static int ext4_update_inline_dir(handle_t *hand=
-le, struct inode *dir,
->  	return 0;
->  }
-> =20
-> -static void ext4_restore_inline_data(handle_t *handle, struct inode *ino=
-de,
-> -				     struct ext4_iloc *iloc,
-> -				     void *buf, int inline_size)
-> +static int ext4_set_inline_data_block(handle_t *handle, struct inode *in=
-ode, ext4_fsblk_t block,
-> +					unsigned int len, struct buffer_head *bh)
->  {
-[ ... ]
-> +		struct ext4_extent newex;
-> +
-> +		newex.ee_block =3D cpu_to_le32(0);
-> +		newex.ee_len =3D cpu_to_le16(1);
+Reported-by: syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=4b03894b6ec5753ddf24
+Fixes: f31173c19901 ("ext4: refuse to create ea block when umounted")
+Signed-off-by: Hemanth Selam <hemanth.selam@gmail.com>
+---
+ fs/ext4/inode.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-[Severity: High]
-Does this permanently leak physical blocks if the allocator returns more
-than 1 block? When ext4_mb_new_blocks() returns a larger allocation
-(e.g., due to cluster normalization on bigalloc filesystems), hardcoding
-the extent length to 1 abandons the extra blocks. Should this use the
-allocated length (len parameter) instead?
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bd4b778df9eb..6e523a5c8230 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6598,8 +6598,14 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
+ 	 * When !SB_ACTIVE, iput triggers write_inode_now() which acquires
+ 	 * s_writepages_rwsem, causing a deadlock with the caller's active
+ 	 * jbd2 handle (lock order: s_writepages_rwsem -> jbd2_handle).
++	 *
++	 * Skip it while unmounting as well.  shrink_dcache_for_umount()
++	 * clears s_root before generic_shutdown_super() clears SB_ACTIVE, and
++	 * the last iput() of a lazytime inode in that window redirties it and
++	 * lands here.  Moving xattrs out to a block then needs a new EA inode,
++	 * which ext4_xattr_inode_create() refuses without s_root.
+ 	 */
+-	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE)))
++	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE) || !inode->i_sb->s_root))
+ 		return -EBUSY;
+ 
+ 	/*
+-- 
+2.43.7
 
-> +		ext4_ext_store_pblock(&newex, block);
-> +		path =3D ext4_ext_insert_extent(handle, inode, path, &newex, 0);
-
-[Severity: High]
-Does this miss accounting for the newly allocated physical blocks?
-Manually inserting the extent bypasses the normal ext4_map_blocks()
-pipeline, meaning ext4_inode_add_physical_space() is never called to
-increment inode->i_blocks. Could this lead to stat() inconsistencies and
-fsck failures?
-
-> +		if (IS_ERR(path)) {
-> +			error =3D PTR_ERR(path);
-> +			if (error =3D=3D -EDQUOT || error =3D=3D -ENOSPC) {
-> +				goto recovery;
-> +			} else {
-> +				ext4_forget(handle, 0, inode, bh, block);
-> +				goto nofree;
-> +			}
-> +		} else {
-> +			ext4_free_ext_path(path);
-> +		}
-> +	} else {
-> +		EXT4_I(inode)->i_data[0] =3D cpu_to_le32(block);
-> +	}
-> +	error =3D ext4_xattr_ibody_find(inode, &i, &is);
-> +	if (error)
-> +		goto recovery;
-> +	if (!is.s.not_found)
-> +		error =3D ext4_xattr_ibody_set(handle, inode, &i, &is);
-> +recovery:
-> +	if (error) {
-> +		ext4_discard_preallocations(inode);
-> +		ext4_free_blocks(handle, inode, bh, block, len, EXT4_FREE_BLOCKS_FORGE=
-T);
-
-[Severity: Critical]
-Can this trigger a BUG_ON() crash in ext4_free_blocks() on bigalloc
-filesystems? If the length (len) is greater than 1, calling
-ext4_free_blocks() with both a valid buffer_head (bh) and the
-EXT4_FREE_BLOCKS_FORGET flag will unconditionally hit the
-BUG_ON(count > 1) check inside ext4_free_blocks().
-
-> +nofree:
-
-[Severity: High]
-Does the jump to the nofree label earlier permanently leak the allocated
-blocks if the extent insertion fails with an error other than -EDQUOT or
--ENOSPC? Jumping here bypasses the ext4_free_blocks() call during error
-recovery. Because ext4_forget() only removes the buffer from the journal
-without freeing the physical blocks in the buddy bitmap, the blocks appear
-to be permanently leaked.
-
-> +		memcpy((void *)raw_inode, inode_buf, inode_size);
-
-[Severity: High]
-Could this non-atomic memcpy() overwrite concurrent metadata updates?
-The i_data_sem protects the block mapping, but background flushers or
-other operations might have updated the inode's timestamps or extended
-attributes in the raw_inode while we were allocating blocks. Blindly
-copying back the old inode_buf could silently discard those changes.
-
-> +		memcpy(ei->i_data, raw_inode->i_block, EXT4_MIN_INLINE_DATA_SIZE);
-> +		ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
-> +	} else {
-> +		ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
-> +		get_bh(is.iloc.bh);
-> +		error =3D ext4_mark_iloc_dirty(handle, inode, &is.iloc);
-> +		EXT4_I(inode)->i_inline_off =3D 0;
-> +		EXT4_I(inode)->i_inline_size =3D 0;
-> +		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-> +		if (S_ISDIR(inode->i_mode)) {
-> +			i_size_write(inode, inode->i_sb->s_blocksize);
-> +			EXT4_I(inode)->i_disksize =3D inode->i_sb->s_blocksize;
-> +		}
-
-[Severity: Critical]
-Does this permanently save a stale directory size to disk?
-The raw metadata buffer is marked dirty via ext4_mark_iloc_dirty()
-before the VFS inode size and i_disksize are updated. Since this patch
-removed the later ext4_mark_inode_dirty() call, is there a risk the
-updated size fields never make it to the on-disk raw_inode?
-
-> +		brelse(bh);
-> +	}
-[ ... ]
-> @@ -1168,24 +1263,28 @@ static int ext4_convert_inline_data_nolock(handle=
-_t *handle,
->  						   inode, data_bh);
->  	} else {
->  		unlock_buffer(data_bh);
-> -		inode->i_size =3D inode->i_sb->s_blocksize;
-> -		i_size_write(inode, inode->i_sb->s_blocksize);
-> -		EXT4_I(inode)->i_disksize =3D inode->i_sb->s_blocksize;
-> -
->  		error =3D ext4_init_dirblock(handle, inode, data_bh,
->  			  le32_to_cpu(((struct ext4_dir_entry_2 *)buf)->inode),
->  			  buf + EXT4_INLINE_DOTDOT_SIZE,
->  			  inline_size - EXT4_INLINE_DOTDOT_SIZE);
-> -		if (!error)
-> -			error =3D ext4_mark_inode_dirty(handle, inode);
->  	}
-> +out_bh:
-> +	if (error) {
-> +		int flags =3D 0;
-> =20
-> -out_restore:
-> -	if (error)
-> -		ext4_restore_inline_data(handle, inode, iloc, buf, inline_size);
-> +		if (data_bh)
-> +			flags |=3D EXT4_FREE_BLOCKS_FORGET;
-> +		struct ext4_inode_info *ei =3D EXT4_I(inode);
-> =20
-> +		down_write(&ei->i_data_sem);
-> +		ext4_discard_preallocations(inode);
-> +		ext4_free_blocks(handle, inode, data_bh, newblock, allocated_block, fl=
-ags);
-
-[Severity: Critical]
-Similarly, could this also trigger the BUG_ON(count > 1) in
-ext4_free_blocks() on failure? If allocated_block is greater than 1
-(e.g., bigalloc) and data_bh is valid, flags will include
-EXT4_FREE_BLOCKS_FORGET, which crashes when freeing multiple blocks
-with a provided buffer_head.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_5FCFA1D9100=
-C4691D5AA92A597B846A8F007@qq.com?part=3D1
