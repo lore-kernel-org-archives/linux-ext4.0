@@ -1,237 +1,156 @@
-Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 3F65A43FD11
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 16:15:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.77.154.182
+Received: from mail-pj1-f54.google.com (mail-pj1-f54.google.com [209.85.216.54])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53D50331EBB
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 22:20:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787588148; cv=none; b=nhRL4CJnsjltvaKfhhf2mFsqKzP+KKUqfa2LbL2BfJbrH410U9HGREAZyaSmksus3+xQoevndgAAXzI+WoeigUtttDG7dvv0Ar+4EzlmA7Gem+5cFlWNVx290Gm79BDc+1j42jgTRwStEvogOW1lVrfBxU6t3L0T5jiePzw70g8=
+	t=1787610031; cv=none; b=hURvO1MQtytiqSHKxO1BVui94quL2w+ZIFzCA8RrNlKgM/QpfEEUFbq1fNm7TqrT6foxLAWKg4gDQSDWnJqpQifb9sB3E/VI0REOVsUXl5xkPkgo8aIlb6rqyjXL7PIIsQhlYxdOAAhzK3R+1mCALIy+TTeNrhx6TD5OFrvivxc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787588148; c=relaxed/simple;
-	bh=ihXIoqA1Tt2gAt+bt0vDEOlPUVpaawNYC03zpemIii8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=kwZc4loNdWut99UHLLHHYqHk/8PNZHw0dddqeacWDoW6qZlnpwUy8qAmcw9g5qx/Cwa41avO92i6QAeEP/g4TgQ0plRBUpvsOTQoBCR6twLmq83iF2DFus897O0BjNgmYlt+9VOaN9txxsh4sR7ZsUbCNmEiE6gD8QkOO8jLDs8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com; spf=pass smtp.mailfrom=linux.microsoft.com; dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b=fp5rkbaE; arc=none smtp.client-ip=13.77.154.182
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
+	s=arc-20240116; t=1787610031; c=relaxed/simple;
+	bh=N0jBuRzZl2+emWBlhxXqz2g9yuS01vKSn9d/0jJqTvA=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=ZHbRt4JaTrkWAjqWKw1cx1OvymnpKohcjKpzP50EABstITD0MrHXIv6UOq1gOcwfRzT49nryw4zX2y8piJa1D4cZhvdSsPv0NGk5887X1pfHFL1QQguqgoRAH/Id75TnaUuVrwW3OsRmqsq474Kte0L4xIJCntIPfL7WvfJiDDs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=tx3OuOxO; arc=none smtp.client-ip=209.85.216.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b="fp5rkbaE"
-Received: by linux.microsoft.com (Postfix, from userid 1217)
-	id AFAE120B7166; Mon, 24 Aug 2026 09:15:15 -0700 (PDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com AFAE120B7166
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
-	s=default; t=1787588115;
-	bh=/UTVgHD5jB8AS0c0Lr1+llSsbtYQwfWrQbOD2Tc9JiI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=fp5rkbaEv4K6Ickt/RBBe3ArH3RUDLOfqTM+tQwEwWCEc9c+NxkgMbISUIYuon3Jt
-	 mzbSEPbUmg14N+NywYX3xHlzC++72Eetg4/YfRfhbsupQk1cEJGwtcT+4rZGfU9epc
-	 RcHl+lX2/zHs7aD5xKB8v7vD/BUVbCp+O7V3hCjM=
-From: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger@dilger.ca,
-	srivatsa@csail.mit.edu,
-	Nandakumar Raghavan <naraghavan@linux.microsoft.com>
-Subject: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device during filesystem check
-Date: Mon, 24 Aug 2026 09:15:11 -0700
-Message-ID: <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
-X-Mailer: git-send-email 2.43.7
-In-Reply-To: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
-References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="tx3OuOxO"
+Received: by mail-pj1-f54.google.com with SMTP id 98e67ed59e1d1-3900e39d935so4319624a91.0
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Aug 2026 15:20:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1787610028; x=1788214828; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=Cp2QPBkidtttrv3sl9K0M0pxvmtqwSjq5nwYEqJbxsU=;
+        b=tx3OuOxOQvFibOWpg1cfTAb6he4PmPRKKRFdXRE/r5Dv6wxOl/AdQMcjcZuM+0KuqJ
+         WKHs8cyHDZAMfMH+KoJS8TPTClD/4r0ukywEoiI0I1AlgWIOwBqnHSvo0T4G43BMyDUI
+         kbq2Ijd1C0aG9Bhez66VJ8+F/V/HDFHbx+vufNW6rxWjl+AOi0Ts13e4adKsg2q+OpTe
+         Km28VMuSylUETGn+Pif/A4MP3Bzkrh3dtoBSBf/9jKD5XAFeVpg+27bOi1sDY4SDLAii
+         80Y0sKe/f+QB3EODX9BLJ/U4P89acylH0bxWcgpFKhJ9YsID/gr4Vd7sf6U0oNr/iPBn
+         cQuw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787610028; x=1788214828;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Cp2QPBkidtttrv3sl9K0M0pxvmtqwSjq5nwYEqJbxsU=;
+        b=ZRaJNnIu2+owyL6AMS80ID5ri7fMgXXCkHzRo3mpSptaJOfJH5Jm8qxheZ6sgEALcl
+         mzYCErqgluw4GYOA1s6PIs9a3rv7lfTwyKmilsuYWMij2bsMFgTkMVI8v8oHESHLsjxO
+         a3qTgyUspcPoLp8ANgkQj5624glvnX7G+aON9lRdU9vCWNY2vrT9Mbzsof+v8p6HAo3f
+         8gq3Acxzz+2hMLrbAo4Q+wJkbyriqPDvaVBTzLYWRCNGY9ErwP6RuXxisZMC0uOFJMoQ
+         lh192/CHfWq1K95FapcqbTueT6VTE/yZUQyW8ay6nftL9p17VHB8HvVcEymHGe3buBzB
+         7dww==
+X-Gm-Message-State: AFuF++nbZ03+zcJKZAZ10bdgttImC7rr/+ZHl58F4V1PNyCjWvS8mz9U
+	2bDRd/TZd6thfQHl7RpIP3y0ZwgGmy/5Jm6O40xl4WjUOx3QlK3OzYXg4qJSnIYrI48=
+X-Gm-Gg: AR+sD128KI7SEwHMXjO625T7FIWH0Vxh3sIrihcCRsTXmh8B6S3XK/dcsBY8sV+DWkE
+	MLNzG5yJ6QWxusbSf5svbOnheKy49aNAOcnbJzbpjfHbbtyDcm9u9QL5xR45GCEj7u+c7u5yMBN
+	w96PN1x2TaWygV/ubA0I3Pty1UR7nX7KcK/Taqi0rL9AC71NFmWLBpu9wdhkPij24qeefiWDnYh
+	ciUOjx02enC6H8nUm67NeO00wCXWLeG/pSf9R6I/4KZx2+Dig7/98CsriF48vjo1SQs8dTnm3TI
+	UUccA790/jKjGw/IUFtSGZfhdqm4DBqt12Jj4l1TnDEPUoJ1HzQIVoYdVTpBLJmV8DF/eWBMQRD
+	J6sujvT6R+3y8KYJ/RIonPbqMmErSyM3Q4gmCmeybmTVM8WIy7l7m2OgWBlO7/kFwVhNqgqTn0k
+	iP6Wwq3PPRLtNqjeyi8cIhzcVUsREQ1YsJDVz6XQiRWTH7jEVCYfAF2jSdGAUYUDop7qFLpiT+i
+	H2s+7um601LRW8SxQ==
+X-Received: by 2002:a17:90a:c107:b0:37f:bfa2:1887 with SMTP id 98e67ed59e1d1-395deee4081mr43101945a91.8.1787610028449;
+        Mon, 24 Aug 2026 15:20:28 -0700 (PDT)
+Received: from smtpclient.apple ([2604:3d09:3a84:1700:d995:f2d8:d5c6:a713])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-39645d69f74sm1040711a91.14.2026.08.24.15.20.27
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 24 Aug 2026 15:20:28 -0700 (PDT)
+Content-Type: text/plain;
+	charset=utf-8
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.100.1.1.5\))
+Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
+ during filesystem check
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
+Date: Mon, 24 Aug 2026 16:20:17 -0600
+Cc: linux-ext4@vger.kernel.org,
+ tytso@mit.edu,
+ srivatsa@csail.mit.edu
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <2AD89F96-3B49-474C-A777-89B7557199B8@dilger.ca>
+References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+ <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
+To: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+X-Mailer: Apple Mail (2.3864.100.1.1.5)
 
-During journal replay, e2fsck writes the primary superblock back to disk
-in multiple I/O operations. The payload lands before the checksum, leaving
-a transient window where the on-disk superblock has a bad checksum.
 
-If udevd processes a change uevent during this window, libblkid probes the
-primary superblock, finds a checksum mismatch, and concludes the partition
-has no recognisable filesystem. udev then fires a remove event, wiping all
-symlinks in /dev/disk/by-label/ and /dev/disk/by-uuid/. Any mount unit
-that depends on those symlinks will fail.
+On Aug 24, 2026, at 10:15, Nandakumar Raghavan =
+<naraghavan@linux.microsoft.com> wrote:
+>=20
+> During journal replay, e2fsck writes the primary superblock back to =
+disk
+> in multiple I/O operations. The payload lands before the checksum, =
+leaving
+> a transient window where the on-disk superblock has a bad checksum.
+>=20
+> If udevd processes a change uevent during this window, libblkid probes =
+the
+> primary superblock, finds a checksum mismatch, and concludes the =
+partition
+> has no recognisable filesystem. udev then fires a remove event, wiping =
+all
+> symlinks in /dev/disk/by-label/ and /dev/disk/by-uuid/. Any mount unit
+> that depends on those symlinks will fail.
+>=20
+> udevd already serialises its own partition probes against whole-disk =
+device
+> access using flock(LOCK_SH|LOCK_NB); if EAGAIN is returned it requeues =
+the
+> event. Take advantage of this protocol by acquiring flock(LOCK_EX) on =
+the
+> whole-disk device before opening the filesystem. This forces udevd to =
+defer
+> all probes on that disk until e2fsck exits and the lock is released, =
+by
+> which point the filesystem is fully consistent.
+>=20
+> The whole-disk device is resolved via sysfs =
+(/sys/dev/block/MAJ:MIN/partition)
+> so that the lock covers the same device node that udevd locks. If =
+sysfs
+> resolution fails, a warning is emitted and the lock falls back to the
+> partition device itself.
+>=20
+> This mechanism relies on Linux-specific interfaces (sysfs, flock() =
+semantics
+> on block devices) and is compiled out entirely on non-Linux platforms.
+>=20
+> Signed-off-by: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
 
-udevd already serialises its own partition probes against whole-disk device
-access using flock(LOCK_SH|LOCK_NB); if EAGAIN is returned it requeues the
-event. Take advantage of this protocol by acquiring flock(LOCK_EX) on the
-whole-disk device before opening the filesystem. This forces udevd to defer
-all probes on that disk until e2fsck exits and the lock is released, by
-which point the filesystem is fully consistent.
+Looks much better, thanks.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca =
+<mailto:adilger@dilger.ca>>
 
-The whole-disk device is resolved via sysfs (/sys/dev/block/MAJ:MIN/partition)
-so that the lock covers the same device node that udevd locks. If sysfs
-resolution fails, a warning is emitted and the lock falls back to the
-partition device itself.
+Cheers, Andreas
+> ---
+>=20
+> Changes in v2:
+> - Guard the whole feature (function, call site, lock_fd, cleanup) with
+>  #ifdef __linux__ instead of just the function body, so it's fully
+>  absent from non-Linux builds=20
+> - Collapse HAVE_SYS_*_H header guards into a single #ifdef __linux__
+> - Reuse a single dev_path[] buffer instead of three separate stack
+>  buffers
+> - Keep translatable warning strings on one line each, even past 80
+>  columns=20
+> - Drop the blanket "could not lock" warning that fired even when the
+>  target wasn't a block device at all (e.g. a regular file), which was
+>  causing issues with tests; lock_whole_disk() now only warns/errors
+>  at the point of a genuine failure
+> - No change needed for the Ctrl-C/EINTR concern =E2=80=94 traced and =
+confirmed
+>  the existing signal handling already unwinds cleanly
 
-This mechanism relies on Linux-specific interfaces (sysfs, flock() semantics
-on block devices) and is compiled out entirely on non-Linux platforms.
 
-Signed-off-by: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
----
 
-Changes in v2:
-- Guard the whole feature (function, call site, lock_fd, cleanup) with
-  #ifdef __linux__ instead of just the function body, so it's fully
-  absent from non-Linux builds 
-- Collapse HAVE_SYS_*_H header guards into a single #ifdef __linux__
-- Reuse a single dev_path[] buffer instead of three separate stack
-  buffers
-- Keep translatable warning strings on one line each, even past 80
-  columns 
-- Drop the blanket "could not lock" warning that fired even when the
-  target wasn't a block device at all (e.g. a regular file), which was
-  causing issues with tests; lock_whole_disk() now only warns/errors
-  at the point of a genuine failure
-- No change needed for the Ctrl-C/EINTR concern — traced and confirmed
-  the existing signal handling already unwinds cleanly
 
- e2fsck/unix.c | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 101 insertions(+)
-
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 335ca377..cf21752a 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -36,6 +36,11 @@ extern int optind;
- #ifdef HAVE_SYS_IOCTL_H
- #include <sys/ioctl.h>
- #endif
-+#ifdef __linux__
-+#include <sys/file.h>
-+#include <sys/stat.h>
-+#include <sys/sysmacros.h>
-+#endif
- #ifdef HAVE_MALLOC_H
- #include <malloc.h>
- #endif
-@@ -1397,6 +1402,90 @@ err:
- 	return retval;
- }
- 
-+#ifdef __linux__
-+static int lock_whole_disk(e2fsck_t ctx, const char *dev_name)
-+{
-+	struct stat st;
-+	char dev_path[256]; /* reused for each sysfs/device path we build */
-+	char parent_devnum[32];
-+	FILE *f;
-+	unsigned int maj, min;
-+	int parent_resolved = 0;
-+	const char *opened_path;
-+	int fd;
-+
-+	if (stat(dev_name, &st) < 0)
-+		return -1;
-+
-+	if (!S_ISBLK(st.st_mode))
-+		return -1;
-+
-+	maj = major(st.st_rdev);
-+	min = minor(st.st_rdev);
-+
-+	/*
-+	 * If dev_name is a partition (sysfs 'partition' attribute exists),
-+	 * resolve the parent whole-disk device so the flock covers the same
-+	 * device node that udevd locks before probing any partition on it.
-+	 */
-+	snprintf(dev_path, sizeof(dev_path),
-+		 "/sys/dev/block/%u:%u/partition", maj, min);
-+
-+	if (access(dev_path, F_OK) == 0) {
-+		snprintf(dev_path, sizeof(dev_path),
-+			 "/sys/dev/block/%u:%u/../dev", maj, min);
-+
-+		f = fopen(dev_path, "r");
-+		if (f) {
-+			if (fscanf(f, "%31s", parent_devnum) == 1) {
-+				unsigned int pmaj, pmin;
-+				if (sscanf(parent_devnum, "%u:%u",
-+					   &pmaj, &pmin) == 2) {
-+					maj = pmaj;
-+					min = pmin;
-+					parent_resolved = 1;
-+				}
-+			}
-+			fclose(f);
-+		}
-+		if (!parent_resolved)
-+			log_err(ctx, _("Warning: could not resolve whole-disk device for %s; lock may not prevent udev races\n"), dev_name);
-+	}
-+
-+	snprintf(dev_path, sizeof(dev_path), "/dev/block/%u:%u", maj, min);
-+
-+	opened_path = dev_path;
-+	fd = open(dev_path, O_RDONLY | O_CLOEXEC, 0);
-+	if (fd < 0) {
-+		fd = open(dev_name, O_RDONLY | O_CLOEXEC, 0);
-+		if (fd < 0) {
-+			com_err(ctx->program_name, errno,
-+				_("while trying to open %s for locking"), dev_name);
-+			return -1;
-+		}
-+		opened_path = dev_name;
-+		if (parent_resolved)
-+			log_err(ctx, _("Warning: %s not found; locking %s instead, lock may not prevent udev races\n"), dev_path, dev_name);
-+	}
-+
-+	while (flock(fd, LOCK_EX) != 0) {
-+		if (errno == EINTR) {
-+			if (ctx->flags & E2F_FLAG_CANCEL) {
-+				close(fd);
-+				return -1;
-+			}
-+			continue;
-+		}
-+		com_err(ctx->program_name, errno,
-+			_("while trying to lock %s"), opened_path);
-+		close(fd);
-+		return -1;
-+	}
-+
-+	return fd;
-+}
-+#endif /* __linux__ */
-+
- int main (int argc, char *argv[])
- {
- 	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
-@@ -1413,6 +1502,9 @@ int main (int argc, char *argv[])
- 	int journal_size;
- 	int sysval, sys_page_size = 4096;
- 	int old_bitmaps;
-+#ifdef __linux__
-+	int lock_fd = -1;
-+#endif
- 	__u32 features[3];
- 	char *cp;
- 	enum quota_type qtype;
-@@ -1488,6 +1580,10 @@ int main (int argc, char *argv[])
- 
- 	check_mount(ctx);
- 
-+#ifdef __linux__
-+	lock_fd = lock_whole_disk(ctx, ctx->filesystem_name);
-+#endif
-+
- 	if (!(ctx->options & E2F_OPT_PREEN) &&
- 	    !(ctx->options & E2F_OPT_NO) &&
- 	    !(ctx->options & E2F_OPT_YES)) {
-@@ -2169,6 +2265,11 @@ skip_write:
- 	ext2fs_close_free(&ctx->fs);
- 	free(ctx->journal_name);
- 
-+#ifdef __linux__
-+	if (lock_fd >= 0)
-+		close(lock_fd);
-+#endif
-+
- 	if (ctx->logf)
- 		fprintf(ctx->logf, "Exit status: %d\n", exit_value);
- 	e2fsck_free_context(ctx);
--- 
-2.54.0
 
