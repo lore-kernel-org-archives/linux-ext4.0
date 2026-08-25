@@ -1,78 +1,78 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AFFF2346AC0;
-	Wed, 26 Aug 2026 07:51:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7266F3B637C;
+	Wed, 26 Aug 2026 07:51:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787730703; cv=none; b=o6GYj/f4keTbAvefIAlvOkD/Qydq3UleAQAi24c9MJjxvxhd6D9g9ui9V77mHSOCaQEd/7ad8JXeArMwcW4N+LiCdNrcznFcGcQpulQQSmAHe105VcTBLFgIbzKTsJV3xwMK7oNMo1zV3jYYFL5UBIIpD/1/0L1tBX4aZFJMScs=
+	t=1787730717; cv=none; b=ZI1uCf1nvZ5opcMWtAPW48uNvAfgj7kL9dBneCj7qL1N5Kf+mJKsgDCTsUajo6OkDMltkFcFmUMlRcaznGeykE9QraIxYIhZKpYlbXWwQdJO+erbDoG4YUD+iH7oGJu5GXNqQEC2AHSFSDgMhLM2+MZUCXa6TWBbRv7kZt6vB3U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787730703; c=relaxed/simple;
-	bh=cpb+YEljXsITP+tp286CsQZMHIFGdGE6IwaNzR7PgC0=;
+	s=arc-20240116; t=1787730717; c=relaxed/simple;
+	bh=XCbD+sx7CZGssODFXnuM6YS+QGWK9a/4/kkG+aXLeck=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=BXK9L/OafT4S53euUexQYg3NTFbyYrcKsYNgL5DGNSYLdItAE/WaJ8lrdEHtVsMxO2F1XjDZAj0n6cDUZa0uc5vfJLZLm8in0JLA2uortdBr9bsTK0GFZpuEO7XpsVNj2V5BK2b5Z4VbJ6KG96hvK5SyWFCUNUKhRecm7qQoGO4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=eH51a6gp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ol1Nxors; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=0vMJ3rNT; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qWhu+6fw; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=iJ/LZx0hAi1f0jZHRJt9KUOqrxhoulpnP7meYX/yvrHElA0JPe9f1VRQyodC7qj0uVPFX2vCruRPoIEtM7OQjww1+jG0FJFI2oJ1zGdPQk4QqgbmqoQYnRZXIPzmwqet7PqF4ms+ZPLL0zHTKpsNdfdb87eY9rohWUSz6GF1Zis=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rOh5pcFH; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=cozWz2Kt; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=y2EON6aq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Jaz6yMzp; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="eH51a6gp";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ol1Nxors";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="0vMJ3rNT";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qWhu+6fw"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rOh5pcFH";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="cozWz2Kt";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="y2EON6aq";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Jaz6yMzp"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 47534872AC;
-	Wed, 26 Aug 2026 07:50:01 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 25DF21F7F9;
+	Wed, 26 Aug 2026 07:49:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730605; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1787730599; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=rmnBKofXjBfdp35ulnKbUsM/cyufvjmu4/km6WCcN9k=;
-	b=eH51a6gpA2vfi1us1QGFpoP28cIad9JUhrkxAceOdfVisXRQeUJoZsn8W39vuMivHAX9/9
-	ZWUz6YWElje4INGQkYJpMDASM9T6WAS0zb11dwCaJk0KtnLDGEkWp9uzQVRaDkWJGMpjBV
-	pt36S0DAiDIAesq0nUhPRzpWnWWgZGQ=
+	bh=AHzPLxNfmFOzVgCOf0wN2NXtl5b3r3RzSHsdHwNMsB8=;
+	b=rOh5pcFHRnuIyRbW7GDMuJXMv0tY7FmkDrNxy+mVBjkB1/aqn1RwSAdwEQ51M77ex3Yn6S
+	O3E8UY51imRY+I8epheBKycOqdrqAJMLVf+0aLEwhu4ev+nbkoEoNRtpDP2M4YOMcyvQ7j
+	HpztyVIL1veDdRSiWKX4JnLKgWNlxk8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730605;
+	s=susede2_ed25519; t=1787730599;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=rmnBKofXjBfdp35ulnKbUsM/cyufvjmu4/km6WCcN9k=;
-	b=Ol1NxorsO8zpsNYZLscKIUFW+14p6mdKwYzGSlWMX8qIskvvZ/3MUP21uf8uA+QUsd82JE
-	6JJbQ40Tc0+xqJBA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=0vMJ3rNT;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=qWhu+6fw
+	bh=AHzPLxNfmFOzVgCOf0wN2NXtl5b3r3RzSHsdHwNMsB8=;
+	b=cozWz2Kt2QXq9/W6/hS8Xwooeo+OmaqbmREPM0z9xHMC5pyI42aJEPAJ6nFdhLjlbpordt
+	b2wRQPcInOKD+3AA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=y2EON6aq;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=Jaz6yMzp
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730601; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1787730595; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=rmnBKofXjBfdp35ulnKbUsM/cyufvjmu4/km6WCcN9k=;
-	b=0vMJ3rNTRJKo+71UqvhN4Uw+5REHe2T8A6wALcAXe19+j3kCBLZhZDRgMuXweMWsqBX82Z
-	TW8CH8d7pPShdxgMaHzcmizV9oW/ZK/kTMW0K710IYnI0N1Fx5LYvGnRvYmIEm/9hdG/jA
-	Ua8eTbKzhAbXQvF5Dy2m00Se/9DXcb8=
+	bh=AHzPLxNfmFOzVgCOf0wN2NXtl5b3r3RzSHsdHwNMsB8=;
+	b=y2EON6aq9XvK7mB48SyavznIMSwCf9kZ3Nls2VaMqrIbdwksDgdSs6R0OLxL5WOLn6cBKk
+	xc4uMKCYnoZCQafPa2mExUk3LJAE+su69iCdIya60hHDYZKcLvXFzS9HYMrlk8a87hUtza
+	8g1DljZi/01rOYMXb1ds/1nfRZsW26c=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730601;
+	s=susede2_ed25519; t=1787730595;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=rmnBKofXjBfdp35ulnKbUsM/cyufvjmu4/km6WCcN9k=;
-	b=qWhu+6fwx+zEoY0kx52leBuYx4ocMF9Tl5xEWbwjsQVYDGSdmqc9WaehllmD4GnaXGjnnj
-	YjC9psVLaPE2RvAA==
+	bh=AHzPLxNfmFOzVgCOf0wN2NXtl5b3r3RzSHsdHwNMsB8=;
+	b=Jaz6yMzpr5OXvxoliCt10Dwf/6viViuE0Ih4FNUy6/B+gzifOfaTlPE0ng9XvffOAz8aj/
+	23RsJ0IoiLtQnqCw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8BA9A13687;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 161801364F;
 	Wed, 26 Aug 2026 07:49:55 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id iP0WIqOajmoGDAAAD6G6ig
+	id l1x5BaOajmrrCwAAD6G6ig
 	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 07:49:55 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 4BCA2A13AE; Tue, 25 Aug 2026 18:19:10 +0200 (CEST)
-Date: Tue, 25 Aug 2026 18:19:10 +0200
+	id 57B5CA13AD; Tue, 25 Aug 2026 18:17:56 +0200 (CEST)
+Date: Tue, 25 Aug 2026 18:17:56 +0200
 From: Jan Kara <jack@suse.cz>
 To: Chao Shi <coshi036@gmail.com>
 Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
@@ -87,11 +87,11 @@ Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>,
 	Joseph Qi <joseph.qi@linux.alibaba.com>, Andreas Gruenbacher <agruenba@redhat.com>, 
 	linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev, 
 	linux-kernel@vger.kernel.org, Weidong Zhu <weizhu@fiu.edu>
-Subject: Re: [PATCH v2 12/21] fat: check for a metadata write error with
+Subject: Re: [PATCH v2 11/21] exfat: check for a directory write error with
  buffer_write_io_error()
-Message-ID: <2ts7q6mper74vkfxvrjhv2ewyldfj7opmrisobadjqvjfk6tq5@gl7vdum3fdys>
+Message-ID: <gges2wdstgy2ipca6hulvkprin3cir6z2x6nslg3iqa4jg2fmu@lpgf7vokma54>
 References: <cover.1785951556.git.coshi036@gmail.com>
- <4b6019b5a48b83c8235918b084248983a57692e1.1785951556.git.coshi036@gmail.com>
+ <0784ef63a525434e7c0aff730eca7b43e043095d.1785951556.git.coshi036@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -100,11 +100,11 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <4b6019b5a48b83c8235918b084248983a57692e1.1785951556.git.coshi036@gmail.com>
+In-Reply-To: <0784ef63a525434e7c0aff730eca7b43e043095d.1785951556.git.coshi036@gmail.com>
 X-Spam-Score: -2.51
 X-Spam-Level: 
 X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 47534872AC
+X-Rspamd-Queue-Id: 25DF21F7F9
 X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -114,9 +114,9 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	URIBL_BLOCKED(0.00)[fiu.edu:email,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email];
+	RCVD_COUNT_THREE(0.00)[3];
+	URIBL_BLOCKED(0.00)[fiu.edu:email,suse.com:email,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
 	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCPT_COUNT_TWELVE(0.00)[27];
 	FREEMAIL_TO(0.00)[gmail.com];
@@ -136,12 +136,12 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
 	DKIM_TRACE(0.00)[suse.cz:+];
 	R_RATELIMIT(0.00)[to_ip_from(RLr6u35b1fsnb818ss3au1oekd)];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Spam-Flag: NO
 
-On Thu 06-08-26 12:58:35, Chao Shi wrote:
-> fat_sync_bhs() waits for the writes it issued and then tests
+On Thu 06-08-26 12:58:34, Chao Shi wrote:
+> exfat_update_bhs() waits for the writes it issued and then tests
 > !buffer_uptodate() to find the ones that failed.  That relies on the write
 > completion handler clearing BH_Uptodate on error, which this series
 > removes: a buffer whose write failed still holds the data the filesystem
@@ -165,16 +165,16 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/fat/misc.c | 2 +-
+>  fs/exfat/misc.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/fs/fat/misc.c b/fs/fat/misc.c
-> index be18f6b5819b..4a4cd0111e47 100644
-> --- a/fs/fat/misc.c
-> +++ b/fs/fat/misc.c
-> @@ -356,7 +356,7 @@ int fat_sync_bhs(struct buffer_head **bhs, int nr_bhs)
+> diff --git a/fs/exfat/misc.c b/fs/exfat/misc.c
+> index 6f11a96a4ffa..dfd0bbf31c94 100644
+> --- a/fs/exfat/misc.c
+> +++ b/fs/exfat/misc.c
+> @@ -187,7 +187,7 @@ int exfat_update_bhs(struct buffer_head **bhs, int nr_bhs, int sync)
 >  
->  	for (i = 0; i < nr_bhs; i++) {
+>  	for (i = 0; i < nr_bhs && sync; i++) {
 >  		wait_on_buffer(bhs[i]);
 > -		if (!err && !buffer_uptodate(bhs[i]))
 > +		if (!err && buffer_write_io_error(bhs[i]))
