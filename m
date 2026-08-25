@@ -1,73 +1,61 @@
-Received: from mail-pj1-f53.google.com (mail-pj1-f53.google.com [209.85.216.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from canpmsgout02.his.huawei.com (canpmsgout02.his.huawei.com [113.46.200.217])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B529389E1A
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2026 07:58:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.53
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC3193F3284;
+	Tue, 25 Aug 2026 09:53:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.217
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787644739; cv=none; b=oQKFBA8s+O+J8+8WtC+wlyDHSgn52xqeDvACHWZg5IuP6Tj4UFFSt/hcfENDHGF+SracIIkW5ivP2bzAKzNBk0jRPFwGIejb9Q9fkknuAmkqiCivUxpTpq2WPyU1etZ2Mom4K/v/tjDxfWcTp8ufn3TTFB9zIOtekLKrryjCRCA=
+	t=1787651632; cv=none; b=Y3VncoQoLhRiJsjH+rp/hjOXrg/tUioo39ouL4RRp+YeFsrmi7sYREobU50eax4W+cTlzAhiZhD6ActO7UJKm9J8YXJNOhCP8aYbzmMiZy9YD3UBKqk2Sxwj3JO2m+IlhGJNqZC+aRfzZTgd5AZHp2OQ49XHJIbRtATMbbelQc8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787644739; c=relaxed/simple;
-	bh=s3x3RNU/eA7uy/SJ1qUVWhAw0EVi7d4DWm+cDdSIGDY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=WquqOoSbhM9iv8Y6M/M/OJYaMGwbaaKdme+DEGCAcZoQWAQx7hk7pfIobl01VBkvaIlyQkr+zrKEh13h2+LQRHWI2+AvL0A9vH6fDUE6oZpfS5tr9ObFeqkZ87/oiF0GCReKjwmdbj9bt2uoNfWFoxPhKixVroEGCoR/8WkeLgE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=psMhoKGn; arc=none smtp.client-ip=209.85.216.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1787651632; c=relaxed/simple;
+	bh=z0BxniLfOKINc495SO6dIMOCxgc3oRBRylFOj3iSnqw=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=gBnJs6GgP4ec7KyCS9Zjxi3X3IwVL5GTR5BmNsllpAzXOZV3dlnxDxZR9QH+9WFFQ3XhBSLq99nR/OHV9odlYDM6eqFKuWRhAQl6LDC7sK0Rq5s7My8KztRKy85OKcsqv8ikNBXN46dKGnOLpC2cpVWbTxsYg+/AoBuZhyDldwo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=DhkTcSxB; arc=none smtp.client-ip=113.46.200.217
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="psMhoKGn"
-Received: by mail-pj1-f53.google.com with SMTP id 98e67ed59e1d1-39266382df6so3737136a91.3
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Aug 2026 00:58:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787644738; x=1788249538; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=BCxIjrQYLQM8XDCQ4pvIySM2CoxYiO6JYpvvBpStof4=;
-        b=psMhoKGnys+zXVO2FsZdpn2fvizsTgJp7I6S4C//VJrA/m9GYPwkPQpUlXbACqwJjp
-         Zw6pg7HLel5O5jPy0/griwYL2L5ZMvwi8naMQJXZ4OLrDx3OReyW9JGKzorcC1OC1/Xw
-         DTd1Qk3ZyINicKzIVZQY89uGSY8eCfJ47CqKb9YnnLGLZ/AzUm5KWL6OjVe73CvhTP9J
-         G//3nbNfJ2MXNlbQedqbC/n/g4Fgy0kRRDvyVhF32O7BOC1OV+l5Y7W2vdp0xAmFsgv6
-         Y5wFyX+yJ6yIdPejXlUrQQbFKZVQ3qf8Xj59IoBdlOeA88m+QehMBbb0ceZbYzFPSFoW
-         XNkQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787644738; x=1788249538;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=BCxIjrQYLQM8XDCQ4pvIySM2CoxYiO6JYpvvBpStof4=;
-        b=NzBJQ2SCqHhtZjA+cc1VVdzcwKD5dVRDo2b67s0ILS7nf3NkRpXmCikpO707WI+FDF
-         cpKlxZ25Wzk8NI6ynDhJD/mfjT3pVkshwtca03vlsJBkRRwTzB4PwxYU2sAvgPafmeRk
-         YuzChN6xjhdUXZG4unQ6K9SgWdyGvSK7OdOqy3+1DYSZJocI5v2w/d3kps452nMrMZw8
-         t0Kso70HcxO0Mtjfplk6LOlgAlTMp0QV0//LFaf1WRZe96R9/uks5WeJ7Ud/AEyIV4AZ
-         ahjA32Qh0kcgcx7gom6hokE8ZI4thOwChPbazVKgSU0O5U4Krx2wFfdNQoNFop25OLLw
-         SpBg==
-X-Gm-Message-State: AFuF++nH77sRJmxODPh+hK0BUMzLa10vIm8Kke1LQElnLAVQErldMhfB
-	WWPXdFMHzBUPsR+Q76PwR4ilNU11kC/Y0NPi6RDlvuUiTLe25/qLwfGVoOl/T5AW
-X-Gm-Gg: AR+sD13gl9vmM1tETyXmf64NB8Sjth7ogdEI3IjVWucLrgp0uMB340OJnP57UhA/sJl
-	AKzFw80gYtalmTqF7z7s+P6h/qbKautCgJwJw23dvl7Qsb2MAXdoGWhfYvJZ2tDt9KqfILc4CS8
-	scqIzUOnhJUcLmFTjrzOAL96KQAjGEUkOdq5aIE8QciKJZmdxHgzPwAMehkbw9zs4Hu5TevFczF
-	5WDoEf+IUSLNYomt1vvQnRplLQBGGm3yu0fJDS+3Yh9c/Cu85K+pmVZh1av55BTYVhqNfMT1sG3
-	/3HF2cUUZ0VQu00M8gS1yI+8jr2zhDMS+F35WQn/UMz4UCyXe8IeyqGX73BnIckkl6BRYLqDuap
-	+yeyfq+w7qZ1VLevb5URf9b2JjMWwpEh5iO8jQRoMUTCI6J4gkKIfFR6SP2mnzx4W3D4tpBjGhj
-	npnmLPhRIVuewrmyFNysrVA73tam3VcVy3uq5LnYuhAnD2JQpPzmfTloknC5ox3FkpjexIFbieV
-	cL/X74prRw=
-X-Received: by 2002:a17:90b:4a81:b0:37d:f206:a2ac with SMTP id 98e67ed59e1d1-395c33ec558mr55513154a91.7.1787644737768;
-        Tue, 25 Aug 2026 00:58:57 -0700 (PDT)
-Received: from volcano9f8e-host.amd.com ([165.204.217.251])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3282525562dsm6041392eec.31.2026.08.25.00.58.56
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 25 Aug 2026 00:58:57 -0700 (PDT)
-From: Hemanth Selam <hemanth.selam@gmail.com>
-To: sashiko-reviews@lists.linux.dev
-Cc: linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-Subject: Re: [PATCH] ext4: skip extra isize expansion while unmounting
-Date: Tue, 25 Aug 2026 13:28:36 +0530
-Message-ID: <20260825075836.2693545-1-hemanth.selam@gmail.com>
-X-Mailer: git-send-email 2.43.7
-In-Reply-To: <20260824100141.86E351F000E9@smtp.kernel.org>
-References: <20260824094512.2436628-1-hemanth.selam@gmail.com> <20260824100141.86E351F000E9@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="DhkTcSxB"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=HgTAudJq8eHX15OWks05AWG/aS/PTGI/7ZST00bOn60=;
+	b=DhkTcSxBxG6+QuFui1fAbXzMpP7OAunc0olvkVUBNqDQ6v01S+pCZQp8+ee2Q3wY1ABG4SW1x
+	FGSDXE4D0XfgyxUvepAYHy5UmZZHnKo62+r7rU1wzucBTt6Y1Nw9GWce/qqKj4qMZTTCpbFWZ2i
+	E1GaE6D5I7SSj8wsc7h/iqQ=
+Received: from mail.maildlp.com (unknown [172.19.163.104])
+	by canpmsgout02.his.huawei.com (SkyGuard) with ESMTPS id 4hTjWj5vKxzcb0T;
+	Tue, 25 Aug 2026 17:43:13 +0800 (CST)
+Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
+	by mail.maildlp.com (Postfix) with ESMTPS id D8FB84058C;
+	Tue, 25 Aug 2026 17:53:44 +0800 (CST)
+Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
+ (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 25 Aug
+ 2026 17:53:42 +0800
+From: Jinjie Ruan <ruanjinjie@huawei.com>
+To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
+	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+	<libaokun@linux.alibaba.com>, <ojaswin@linux.ibm.com>,
+	<ritesh.list@gmail.com>, <yi.zhang@huawei.com>, <pmladek@suse.com>,
+	<rostedt@goodmis.org>, <andriy.shevchenko@linux.intel.com>,
+	<linux@rasmusvillemoes.dk>, <senozhatsky@chromium.org>,
+	<akpm@linux-foundation.org>, <davem@davemloft.net>, <edumazet@google.com>,
+	<kuba@kernel.org>, <pabeni@redhat.com>, <horms@kernel.org>,
+	<socketcan@hartkopp.net>, <mkl@pengutronix.de>, <kuniyu@google.com>,
+	<willemb@google.com>, <jhs@mojatatu.com>, <jiri@resnulli.us>,
+	<kees@kernel.org>, <cyphar@cyphar.com>, <tglx@kernel.org>,
+	<liuhangbin@gmail.com>, <sdf@fomichev.me>, <nb@tipi-net.de>,
+	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
+	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<netdev@vger.kernel.org>, <linux-can@vger.kernel.org>
+CC: <ruanjinjie@huawei.com>
+Subject: [PATCH 02/11] lib/vsprintf: Use acquire/release for ptr_key publication
+Date: Tue, 25 Aug 2026 17:54:13 +0800
+Message-ID: <20260825095422.3166067-3-ruanjinjie@huawei.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -75,40 +63,56 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
+ dggpemf500011.china.huawei.com (7.185.36.131)
 
-On Mon, Aug 24, 2026 at 10:01:41AM +0000, sashiko-bot@kernel.org wrote:
-> This isn't a bug introduced by this patch, but does checking s_root here
-> without synchronization leave a race open during unmount?
+Replace the smp_wmb() + WRITE_ONCE() and READ_ONCE() + smp_rmb() barrier
+pair with smp_store_release()/smp_load_acquire() on filled_random_ptr_key.
 
-The s_root test is advisory, like the SB_ACTIVE test next to it, and the
-patch does not change that.  The race you describe is the
-check-then-dereference inside ext4_xattr_inode_create() itself, between
-the s_root == NULL test and the inode->i_sb->s_root->d_inode dereference
-eleven lines below it.  That predates this patch and is untouched by it.
+This expresses the publish/subscribe pattern more clearly and allows
+architectures with native acquire/release instructions (e.g. arm64's
+STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
 
-What the patch changes is how often that code is reached.  Without it,
-anything that dirties an inode after shrink_dcache_for_umount() has
-cleared s_root and before SB_ACTIVE is cleared walks into
-ext4_xattr_block_set() and hits the warning.  That is the path syzbot
-reproduces, and there the caller is the unmounting task itself - iput() of
-a lazytime inode - so no second thread is involved.  With the patch those
-callers get -EBUSY first, so the window your scenario needs gets smaller
-rather than larger.
+No functional change intended.
 
-Of the two workers: ext4_ea_inode_work() only iput()s EA inodes, which
-carry no in-body xattrs, so it never reaches
-ext4_xattr_inode_lookup_create().  ext4_end_io_rsv_work() does reach
-ext4_mark_inode_dirty() via ext4_convert_unwritten_extents() and is only
-flushed in ext4_put_super(), so it can run in that window - and with this
-patch it gets -EBUSY there too.
+Assisted-by: DeepSeek:DeepSeek-V3
+Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
+---
+ lib/vsprintf.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-> Or if s_root is cleared right before the warning check inside
-> ext4_xattr_inode_create(), wouldn't we still hit the original warning?
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index e285e8bc4712..d6f235e143b7 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -762,9 +762,8 @@ static int fill_ptr_key(struct notifier_block *nb, unsigned long action, void *d
+ {
+ 	get_random_bytes(&ptr_key, sizeof(ptr_key));
+ 
+-	/* Pairs with smp_rmb() before reading ptr_key. */
+-	smp_wmb();
+-	WRITE_ONCE(filled_random_ptr_key, true);
++	/* Pairs with smp_load_acquire() before reading ptr_key. */
++	smp_store_release(&filled_random_ptr_key, true);
+ 	return NOTIFY_DONE;
+ }
+ 
+@@ -781,12 +780,10 @@ static inline int __ptr_to_hashval(const void *ptr, unsigned long *hashval_out)
+ {
+ 	unsigned long hashval;
+ 
+-	if (!READ_ONCE(filled_random_ptr_key))
++	/* Pairs with smp_store_release() after writing ptr_key. */
++	if (!smp_load_acquire(&filled_random_ptr_key))
+ 		return -EBUSY;
+ 
+-	/* Pairs with smp_wmb() after writing ptr_key. */
+-	smp_rmb();
+-
+ #ifdef CONFIG_64BIT
+ 	hashval = (unsigned long)siphash_1u64((u64)ptr, &ptr_key);
+ 	/*
+-- 
+2.34.1
 
-Yes, and it returns -EINVAL exactly as it does today.  The patch removes
-the deterministic path syzbot found, not that check.  Flushing
-rsv_conversion_wq and s_ea_inode_work before shrink_dcache_for_umount()
-would close the rest; I can send that separately if it is wanted.
-
-Thanks,
-Hemanth
