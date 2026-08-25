@@ -1,37 +1,38 @@
-Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
+Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FE663DA5C5;
-	Tue, 25 Aug 2026 09:53:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.218
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE7E73F44C0;
+	Tue, 25 Aug 2026 09:53:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787651633; cv=none; b=mO0t3Iub6BTnxBYenq7Q9l9iooVuK7U62iwR4/PGjZOV4MtxYrRdsJCYys5tPyC/S1Mm49wZe102SW/p8XpM4YUou+Rs9eA3mak/jCdgyzefjUmb6yLadfOeaE5B8IYNGy0FwLFB5PsesujHKnFdsMQl0LQ0G41MxS/9cBy23G4=
+	t=1787651640; cv=none; b=g0TYknEBJS/0alPsRsK+o6dzNaGheLuGhgbUW6g2pcJL7ztTwXkaXmPqEHp54GhQt0saJlqybfCfW11dEl0cXJnDQ8PG70cWqnFgrDMzhm8G++Gck1gOtOtIyZmI1bDlIKVivjXyJLlB+H+ss2UuGABHueQ57Io/CZdFqldawds=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787651633; c=relaxed/simple;
-	bh=A1QgcQOK6srmbz6VJYJ4ROmvVVp7rQjqpM6nwzRu6sM=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=GfpxhCYPX/xtMsy/L0CJeUnkLT7SG1DW8d0HR+cOvg9n27eMt2tPOwmybTuKrUCtR/QjYlohMsx00Yrh8SM4JSm4+06RRCZIqQxlzlN7SnOAZ0w0YYkrWbzNnljy8uq4FnZ8RyZg5EJlAsZ61q2RyvsFK8pc/zftG6bNPTAThpI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=JbYJFhYv; arc=none smtp.client-ip=113.46.200.218
+	s=arc-20240116; t=1787651640; c=relaxed/simple;
+	bh=5YbyYcBJOD+o+4r3qugqMuOW8sHn5K230slHvsrAoRg=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=SbykvUunHeZ9JcN5lIp9q3LHPCMQnxv2NZxYwReSBTI2dkfSaiK/TIHismDPrXSHnkyi2YtyGsW2uyvGe9UUxVJZXZiw1ogCbdeh9dZSaHPU0Y0Z/o22rYN8kV1wROMUAUP5AwTiF5ew0xAEnWdkvBj/rnPVuIhI1+v12Bbm4Vg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=XunyHVOT; arc=none smtp.client-ip=113.46.200.220
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="JbYJFhYv"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="XunyHVOT"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=9cnrMyuMuzLLO2g13jbiJZZPxO7ZNPXCnCYo4G8tQko=;
-	b=JbYJFhYvwARrJz3abp0ghClW9xkqaSd/kKVeBw+LSo9mDE+FxkmToOYj+ZehEYlsZyiDNo0E8
-	R5PFnqwYL9YUGQZ6phdGAvbztBHEhc+OXAwB8xifkD5DV2c+J/rBhUkMrCoHW8ZVcYLeY5eJ+dn
-	0ExJgS7CoXRg3WyEj1fYIgo=
-Received: from mail.maildlp.com (unknown [172.19.163.0])
-	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4hTjVy35yXzpT0s;
-	Tue, 25 Aug 2026 17:42:34 +0800 (CST)
+	bh=6FRYJUOLTA6hN+N2W6YiLEyzvp6yWqiZW20zffxB2X4=;
+	b=XunyHVOThjOrniLxP1oCSgBbF1UQukW4prmHS/b8pRwI+ADTsvqOU0SewIZGPU1nm8C/MoiHJ
+	9vTSJoZhEOVQZ5rt/bLMBgcs0NQ/ms0fpsGWTHcATUnXyteuoGR9YND8TvVJlkrptfmo5Wp8aoN
+	Pv4GufSYlnKt0dtXPG6U1K0=
+Received: from mail.maildlp.com (unknown [172.19.163.104])
+	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4hTjX115G0z12LDV;
+	Tue, 25 Aug 2026 17:43:29 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 13F9B40537;
-	Tue, 25 Aug 2026 17:53:41 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id CB1874058C;
+	Tue, 25 Aug 2026 17:53:46 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 25 Aug
- 2026 17:53:39 +0800
+ 2026 17:53:44 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -49,10 +50,12 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>, <linux-can@vger.kernel.org>
 CC: <ruanjinjie@huawei.com>
-Subject: [PATCH 00/11] Convert barrier pairs to acquire/release for better performance
-Date: Tue, 25 Aug 2026 17:54:11 +0800
-Message-ID: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+Subject: [PATCH 03/11] fs: aio: Use acquire/release for ring->tail publication
+Date: Tue, 25 Aug 2026 17:54:14 +0800
+Message-ID: <20260825095422.3166067-4-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -64,92 +67,63 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-Hi,
+Replace the smp_wmb() + WRITE_ONCE(ring->tail) and READ_ONCE(ring->tail)
++ smp_rmb() barrier pair with smp_store_release()/smp_load_acquire()
+on `ring->tail`.
 
-This series converts some existing smp_wmb()/smp_rmb() barrier pairs to
-smp_store_release()/smp_load_acquire() across various subsystems.
-
-Background
-==========
-
-Many architectures support load acquire and store release instructions
-which can replace explicit memory barriers and save cycles. As noted
-in the ARM architecture reference [1]:
-
-  "Weaker ordering requirements that are imposed by Load-Acquire and
-   Store-Release instructions allow for micro-architectural
-   optimizations, which could reduce some of the performance impacts
-   that are otherwise imposed by an explicit memory barrier.
-
-   If the ordering requirement is satisfied using either a Load-Acquire
-   or Store-Release, then it would be preferable to use these
-   instructions instead of a DMB."
-
-On arm64, a typical seqcount [2] read loop requires 13 cycles with DMB
-barriers. Replacing the read barrier with smp_load_acquire() reduces
-this to 8 cycles on an Ampere Altra.
-
-We also observed significant barrier overhead while profiling Unxibench
-syscall test on arm64: a single getuid() call is ~8ns slower than on
-a comparable x86 system, with the dominant cost in map_id_up()'s smp_rmb(),
-which is a DMB ISHLD on arm64. Converting it to smp_load_acquire() allows
-the use of LDAR, eliminating the measurable overhead.
-
-This motivated a broader search for existing barrier pairs that can
-be converted to the lighter acquire/release semantics.
-
-Changes
-=======
-
-Each patch in this series targets a specific barrier pair where the
-publish/subscribe pattern is already present:
-
-- Writers populate data, then publish a flag/count/pointer via
-  smp_store_release()
-
-- Readers load the flag/count/pointer via smp_load_acquire(), then
-  consume the data
-
-This preserves the existing memory ordering guarantees while allowing
+This expresses the publish/subscribe pattern more clearly and allows
 architectures with native acquire/release instructions (e.g. arm64's
 STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
-On architectures without native support, the generated code is
-generally no worse than the explicit barrier pair.
 
-The conversions are mechanical and no functional change is intended.
+The release ensures event data written before updating ring->tail is
+visible to readers that observe the new tail value via acquire, which
+is exactly the ordering the barrier pair provided.
 
-[1]: https://support.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
-[2]: https://github.com/torvalds/linux/commit/d0dd066a0fa26d55c19ace9e89dedd9504c5bcba
+No functional change intended.
 
-Jinjie Ruan (11):
-  user_namespace: Use acquire/release for nr_extents synchronization
-  lib/vsprintf: Use acquire/release for ptr_key publication
-  fs: aio: Use acquire/release for ring->tail publication
-  fs: Use acquire/release for fdtable resize synchronization
-  pidfs: Use test_bit_acquire() for attr flag tests
-  super: Use acquire for SB_BORN check in super_cache_count()
-  ext4: Convert group-count barrier protocol to acquire/release
-  soreuseport: publish num_socks with acquire/release
-  net: sched: act_gact: use acquire/release for tcfg_ptype
-  8021q: publish vlan_devices_arrays entries with acquire/release
-  can: isotp: publish tx.state with smp_store_release()
+Assisted-by: DeepSeek:DeepSeek-V3
+Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
+---
+ fs/aio.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
- fs/aio.c                  | 12 +++++-------
- fs/ext4/ext4.h            | 10 +++-------
- fs/ext4/mballoc.c         |  6 ++----
- fs/ext4/resize.c          | 19 +++++++++++--------
- fs/file.c                 | 10 ++++------
- fs/pidfs.c                |  6 ++----
- fs/super.c                |  7 +++----
- kernel/user_namespace.c   | 24 +++++++++++++-----------
- lib/vsprintf.c            | 11 ++++-------
- net/8021q/vlan.c          |  6 ++----
- net/8021q/vlan.h          |  8 +++-----
- net/can/isotp.c           |  4 ++--
- net/core/sock_reuseport.c | 20 ++++++++------------
- net/sched/act_gact.c      | 12 ++++--------
- 14 files changed, 66 insertions(+), 89 deletions(-)
-
+diff --git a/fs/aio.c b/fs/aio.c
+index d78acc69f487..4413c82688cc 100644
+--- a/fs/aio.c
++++ b/fs/aio.c
+@@ -1206,13 +1206,12 @@ static void aio_complete(struct aio_kiocb *iocb)
+ 	/* after flagging the request as done, we
+ 	 * must never even look at it again
+ 	 */
+-	smp_wmb();	/* make event visible before updating tail */
+-
+-	ctx->tail = tail;
++	WRITE_ONCE(ctx->tail, tail);
+ 
+ 	ring = folio_address(ctx->ring_folios[0]);
+ 	head = ring->head;
+-	ring->tail = tail;
++	/* Make event visible before updating tail */
++	smp_store_release(&ring->tail, tail);
+ 	flush_dcache_folio(ctx->ring_folios[0]);
+ 
+ 	ctx->completed_events++;
+@@ -1288,13 +1287,12 @@ static long aio_read_events_ring(struct kioctx *ctx,
+ 	/* Access to ->ring_folios here is protected by ctx->ring_lock. */
+ 	ring = folio_address(ctx->ring_folios[0]);
+ 	head = ring->head;
+-	tail = ring->tail;
+-
+ 	/*
+ 	 * Ensure that once we've read the current tail pointer, that
+ 	 * we also see the events that were stored up to the tail.
++	 * Pairs with smp_store_release() in aio_complete().
+ 	 */
+-	smp_rmb();
++	tail = smp_load_acquire(&ring->tail);
+ 
+ 	pr_debug("h%u t%u m%u\n", head, tail, ctx->nr_events);
+ 
 -- 
 2.34.1
 
