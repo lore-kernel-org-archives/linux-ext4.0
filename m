@@ -1,38 +1,38 @@
-Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
+Received: from canpmsgout07.his.huawei.com (canpmsgout07.his.huawei.com [113.46.200.222])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE7E73F44C0;
-	Tue, 25 Aug 2026 09:53:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D8603DA5A3;
+	Tue, 25 Aug 2026 09:53:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.222
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787651640; cv=none; b=g0TYknEBJS/0alPsRsK+o6dzNaGheLuGhgbUW6g2pcJL7ztTwXkaXmPqEHp54GhQt0saJlqybfCfW11dEl0cXJnDQ8PG70cWqnFgrDMzhm8G++Gck1gOtOtIyZmI1bDlIKVivjXyJLlB+H+ss2UuGABHueQ57Io/CZdFqldawds=
+	t=1787651641; cv=none; b=tRc7xd60uc8QmZVfmEVUH3K5gzAWCpSlsBp/WjiVQGO4Ap7fbg2dD6l5WbrDURZljvlqih/UXNd2S+0pCXEd9j3jgGyzqR0X27hYQH4I/ySEfsy0tdzc/TW1RaWsz+lpeYl+GvggYADkKOmZyuYX6GMy0xLbWGpj1TwSCiJosdg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787651640; c=relaxed/simple;
-	bh=5YbyYcBJOD+o+4r3qugqMuOW8sHn5K230slHvsrAoRg=;
+	s=arc-20240116; t=1787651641; c=relaxed/simple;
+	bh=sP8Qz8Eqp5r1urJJ+9qmt0cVBLf49maB2A9Zk+1mGhA=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=SbykvUunHeZ9JcN5lIp9q3LHPCMQnxv2NZxYwReSBTI2dkfSaiK/TIHismDPrXSHnkyi2YtyGsW2uyvGe9UUxVJZXZiw1ogCbdeh9dZSaHPU0Y0Z/o22rYN8kV1wROMUAUP5AwTiF5ew0xAEnWdkvBj/rnPVuIhI1+v12Bbm4Vg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=XunyHVOT; arc=none smtp.client-ip=113.46.200.220
+	 MIME-Version:Content-Type; b=KWD4qrwZyRhv1ZgYE9Adohs/TX/C3YkoS/c/ZhADeSB1/mCSkhqbN3rNYaY7dewzCXo/3EluP8vYaADg0D+/6fiZlo8LpK8qD6xg/nv1DLDRR0RfpGiO78/uLRlj7A9C3ZvEiBgl9HFIO06+xewzE3V2oXFUzKEA16+zrgLHy0M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=ieTm4NuA; arc=none smtp.client-ip=113.46.200.222
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="XunyHVOT"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="ieTm4NuA"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=6FRYJUOLTA6hN+N2W6YiLEyzvp6yWqiZW20zffxB2X4=;
-	b=XunyHVOThjOrniLxP1oCSgBbF1UQukW4prmHS/b8pRwI+ADTsvqOU0SewIZGPU1nm8C/MoiHJ
-	9vTSJoZhEOVQZ5rt/bLMBgcs0NQ/ms0fpsGWTHcATUnXyteuoGR9YND8TvVJlkrptfmo5Wp8aoN
-	Pv4GufSYlnKt0dtXPG6U1K0=
-Received: from mail.maildlp.com (unknown [172.19.163.104])
-	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4hTjX115G0z12LDV;
-	Tue, 25 Aug 2026 17:43:29 +0800 (CST)
+	bh=x49gazzv3KYmakJASIQB62Fhc5cLbTaH59g9EycQ3Ms=;
+	b=ieTm4NuAnaXbrs5/IKYe8vNVkx5UE9YTzZ+tKb6uw6TSTu6eN3WC4Wm1yav+Xitkcv32zIQbb
+	Q0dSnSXnWPi54+9uyCI5IGaQoIdddbqBnSNmSSvwyyjtVgeiBtjR3thAcaP7aR0wyrQVjn5uQeO
+	oUNV8fa9Hw/1pEhV1juMAlE=
+Received: from mail.maildlp.com (unknown [172.19.163.15])
+	by canpmsgout07.his.huawei.com (SkyGuard) with ESMTPS id 4hTjWW4vcmzLlTm;
+	Tue, 25 Aug 2026 17:43:03 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id CB1874058C;
-	Tue, 25 Aug 2026 17:53:46 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id A9B2A40578;
+	Tue, 25 Aug 2026 17:53:48 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 25 Aug
- 2026 17:53:44 +0800
+ 2026 17:53:46 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -50,9 +50,9 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>, <linux-can@vger.kernel.org>
 CC: <ruanjinjie@huawei.com>
-Subject: [PATCH 03/11] fs: aio: Use acquire/release for ring->tail publication
-Date: Tue, 25 Aug 2026 17:54:14 +0800
-Message-ID: <20260825095422.3166067-4-ruanjinjie@huawei.com>
+Subject: [PATCH 04/11] fs: Use acquire/release for fdtable resize synchronization
+Date: Tue, 25 Aug 2026 17:54:15 +0800
+Message-ID: <20260825095422.3166067-5-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260825095422.3166067-1-ruanjinjie@huawei.com>
 References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
@@ -67,63 +67,62 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-Replace the smp_wmb() + WRITE_ONCE(ring->tail) and READ_ONCE(ring->tail)
-+ smp_rmb() barrier pair with smp_store_release()/smp_load_acquire()
-on `ring->tail`.
+Replace the smp_wmb()/smp_rmb() barrier pair with
+smp_store_release()/smp_load_acquire() on `files->resize_in_progress`.
+The flag is the publish point for fdtable expansion: writers clear it
+via release after rcu_assign_pointer(), readers check it via acquire
+before rcu_dereference_sched(). Observing it clear guarantees the new
+fdt pointer is visible.
 
-This expresses the publish/subscribe pattern more clearly and allows
-architectures with native acquire/release instructions (e.g. arm64's
-STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
-
-The release ensures event data written before updating ring->tail is
-visible to readers that observe the new tail value via acquire, which
-is exactly the ordering the barrier pair provided.
-
-No functional change intended.
+This expresses the pattern more clearly and allows cheaper one-way
+barriers on weakly-ordered architectures (e.g. arm64 STLR/LDAR vs
+DMB ISHST/ISHLD).
 
 Assisted-by: DeepSeek:DeepSeek-V3
 Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 ---
- fs/aio.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ fs/file.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/fs/aio.c b/fs/aio.c
-index d78acc69f487..4413c82688cc 100644
---- a/fs/aio.c
-+++ b/fs/aio.c
-@@ -1206,13 +1206,12 @@ static void aio_complete(struct aio_kiocb *iocb)
- 	/* after flagging the request as done, we
- 	 * must never even look at it again
- 	 */
--	smp_wmb();	/* make event visible before updating tail */
--
--	ctx->tail = tail;
-+	WRITE_ONCE(ctx->tail, tail);
+diff --git a/fs/file.c b/fs/file.c
+index 628ca07dc4b1..86c035d459f2 100644
+--- a/fs/file.c
++++ b/fs/file.c
+@@ -273,8 +273,6 @@ static int expand_fdtable(struct files_struct *files, unsigned int nr)
+ 	rcu_assign_pointer(files->fdt, new_fdt);
+ 	if (cur_fdt != &files->fdtab)
+ 		call_rcu(&cur_fdt->rcu, free_fdtable_rcu);
+-	/* coupled with smp_rmb() in fd_install() */
+-	smp_wmb();
+ 	return 0;
+ }
  
- 	ring = folio_address(ctx->ring_folios[0]);
- 	head = ring->head;
--	ring->tail = tail;
-+	/* Make event visible before updating tail */
-+	smp_store_release(&ring->tail, tail);
- 	flush_dcache_folio(ctx->ring_folios[0]);
+@@ -313,7 +311,8 @@ static int expand_files(struct files_struct *files, unsigned int nr)
+ 	/* All good, so we try */
+ 	files->resize_in_progress = true;
+ 	error = expand_fdtable(files, nr);
+-	files->resize_in_progress = false;
++	/* coupled with smp_load_acquire() in fd_install() */
++	smp_store_release(&files->resize_in_progress, false);
  
- 	ctx->completed_events++;
-@@ -1288,13 +1287,12 @@ static long aio_read_events_ring(struct kioctx *ctx,
- 	/* Access to ->ring_folios here is protected by ctx->ring_lock. */
- 	ring = folio_address(ctx->ring_folios[0]);
- 	head = ring->head;
--	tail = ring->tail;
--
- 	/*
- 	 * Ensure that once we've read the current tail pointer, that
- 	 * we also see the events that were stored up to the tail.
-+	 * Pairs with smp_store_release() in aio_complete().
- 	 */
+ 	wake_up_all(&files->resize_wait);
+ 	return error;
+@@ -685,13 +684,12 @@ void fd_install(unsigned int fd, struct file *file)
+ 		return;
+ 
+ 	rcu_read_lock_sched();
+-	if (unlikely(files->resize_in_progress)) {
++	/* coupled with smp_store_release() in expand_files() */
++	if (unlikely(smp_load_acquire(&files->resize_in_progress))) {
+ 		rcu_read_unlock_sched();
+ 		fd_install_slowpath(fd, file);
+ 		return;
+ 	}
+-	/* coupled with smp_wmb() in expand_fdtable() */
 -	smp_rmb();
-+	tail = smp_load_acquire(&ring->tail);
- 
- 	pr_debug("h%u t%u m%u\n", head, tail, ctx->nr_events);
- 
+ 	fdt = rcu_dereference_sched(files->fdt);
+ 	VFS_BUG_ON(rcu_access_pointer(fdt->fd[fd]) != NULL);
+ 	rcu_assign_pointer(fdt->fd[fd], file);
 -- 
 2.34.1
 
