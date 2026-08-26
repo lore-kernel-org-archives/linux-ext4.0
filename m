@@ -1,271 +1,222 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mo4-p02-ob.smtp.rzone.de (mo4-p02-ob.smtp.rzone.de [85.215.255.84])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47101399CF0;
-	Wed, 26 Aug 2026 08:04:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787731454; cv=none; b=pQ10FwkW4bnR0PneSjCkJFKku5Qm7xbg7o2Uxk+lLZiSiFKKCM/fh5psO2mwNeL0RjyTr/5jI88LAYtjDtP0ZCop9DqS6AGLpPxEw/djJJU/X5iTlO97gcfEuEorTPMtjZPA6bVSA9Bu0G1ESVJ/VqXuw2Hnpjyq5CmKpDsu7ys=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787731454; c=relaxed/simple;
-	bh=7LF4q8CwrKhNlq26KmMg0JfO5NQyG28iY2elQAokL+M=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ImpO7yFhN234NtJI1JxP0YHuwHsnLoOzPvveOI+pRXG/dSQZclr2q2HaU0JlJeB9raCcLX/RoClfBTUPA+Tat8Jt/1tzGHy1PzKGP3kF3W+4HerjO6l9PvGQ5J2e3sNFm0blCAfjy47otTO2Lbf+YIsdEjATL0W3kOl4OfqY3ek=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=0prtf3vC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qCgkkrcq; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cdtBSAWY; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=13ibFp0I; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2B68399CF0;
+	Wed, 26 Aug 2026 08:04:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=85.215.255.84
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787731473; cv=pass; b=LESUOGzPPkHVJisJ03yiWw0z6xB7HKexBgoUznamQMeBk6kkhgU9r0Fke8SiV0FBtjrXJoZNMfeTF3PUPnLZ7+TMfkvw1Bl39EJ6xZxe4oTzwDOpQNAacWFMO98HixhY/I8k3jdbJDEWMQSCoB7LO6RT5EKnNFUuMR1/HLlokbk=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787731473; c=relaxed/simple;
+	bh=1K93Sxi+Nu8YpEXEss+ZLBJqNNXd5/5fYQ5WylzwLcU=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=oJzGdiMFx9uomXb9lMu3x9aej+YIllaeXXxPODIgx6YxrEEwpCAY9QQZMQq/U1F7Hzv32fFxPQG30Kao2RVJFQF0ua5TsHjrn0Ra36L6unQ81HIH/mQHjYvlkrjb5/7n7idq+k2R62K0dMkWKNT94lU1Ogc1z3QUN4mL4AE7rk0=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=hartkopp.net; spf=fail smtp.mailfrom=hartkopp.net; dkim=pass (2048-bit key) header.d=hartkopp.net header.i=@hartkopp.net header.b=qey9xxMF; dkim=permerror (0-bit key) header.d=hartkopp.net header.i=@hartkopp.net header.b=cKH0DRkc; arc=pass smtp.client-ip=85.215.255.84
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=hartkopp.net
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=hartkopp.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="0prtf3vC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qCgkkrcq";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cdtBSAWY";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="13ibFp0I"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id C99121F814;
-	Wed, 26 Aug 2026 07:50:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730615; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=isUrC9bXcIL3HeO7qQ0qisSBt8h7f1BtFkQM3qT4E78=;
-	b=0prtf3vCOp902PloqtIgt5WZuPOcm9IbSytQljqiKVfdw+yEHRyZujBnOwVHO5z/QV21vT
-	OkuYliKuBj7bNyJl1rH7mFmWzZYq/cdztYsfWt7Rn6nYF7NRIquRcBf88pvGgKBNcJ1opw
-	hzyQ44M+Z5+cW5VP9wDjVwHSwgUiUW8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730615;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=isUrC9bXcIL3HeO7qQ0qisSBt8h7f1BtFkQM3qT4E78=;
-	b=qCgkkrcqav1C0k60wy68ujiZOXtI8vVwCqi9vNyA5mqicT/RSFo8rmjh/e5h59TCMqD/+5
-	uoaGWHmVl4oHoQCw==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=cdtBSAWY;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=13ibFp0I
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787730611; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=isUrC9bXcIL3HeO7qQ0qisSBt8h7f1BtFkQM3qT4E78=;
-	b=cdtBSAWYUuoNvw8BURMZstwD2wKDrqRlpkHeD/JVy8tXsiXL9jMH/bJsmPjMcRN1tOfDwV
-	8/nMMNZBgXMTVETjJ452eD1kXykuL3mT02G4om49WYTpHBaXnY25onnh58diWwfdixBzcu
-	KVHNjHbIpbNna/OtNsTBCyx3rWuTsnw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787730611;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=isUrC9bXcIL3HeO7qQ0qisSBt8h7f1BtFkQM3qT4E78=;
-	b=13ibFp0IU8SX9ki3JSfnK3PIENIzeuXUl796gRQ6OybMStQ599B2I7qoAaMOm3KijwsjBv
-	USSsTF3zeArPsWDw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 18CC4136AE;
-	Wed, 26 Aug 2026 07:49:56 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id QusKBqSajmowDAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 07:49:56 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 8A882A13C2; Tue, 25 Aug 2026 19:24:38 +0200 (CEST)
-Date: Tue, 25 Aug 2026 19:24:38 +0200
-From: Jan Kara <jack@suse.cz>
-To: Chao Shi <coshi036@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, Christian Brauner <brauner@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Matthew Wilcox <willy@infradead.org>, 
-	linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>, 
-	Bob Copeland <me@bobcopeland.com>, Namjae Jeon <linkinjeon@kernel.org>, 
-	Sungjong Seo <sj1557.seo@samsung.com>, Yuezhang Mo <yuezhang.mo@sony.com>, 
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>, 
-	Joseph Qi <joseph.qi@linux.alibaba.com>, Andreas Gruenbacher <agruenba@redhat.com>, 
-	linux-ext4@vger.kernel.org, ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev, 
-	linux-kernel@vger.kernel.org, Weidong Zhu <weizhu@fiu.edu>
-Subject: Re: [PATCH v2 21/21] buffer: clear BH_Write_EIO when a write
- succeeds, not when one starts
-Message-ID: <hkxjcqnftdmyouekxz25lilaaurbcak4tdmufhy6rqtgnm6n76@hisoy47c7vc3>
-References: <cover.1785951556.git.coshi036@gmail.com>
- <1c976fd191aa6e99dbe65d6a1ec63f8706cc0dfa.1785951556.git.coshi036@gmail.com>
+	dkim=pass (2048-bit key) header.d=hartkopp.net header.i=@hartkopp.net header.b="qey9xxMF";
+	dkim=permerror (0-bit key) header.d=hartkopp.net header.i=@hartkopp.net header.b="cKH0DRkc"
+ARC-Seal: i=1; a=rsa-sha256; t=1787731461; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=fza5aW/LkTT+ZR4Yee/r1zq7z3v/8hnWyRf7Z2mvdxpfaw35UFCSc3aNlfQPWDmy6l
+    8eX+aJedFP7bPt0wsTpcMx0IGajUOBL9vNzJz6MArJbDvxRMM/5Q8FzDPb3khFTG9SBw
+    u399Nhe6uvt3wfrtxCxipkTEKk4aJo8Zt6PmTVdIP3TgPzUr54V27Y/1FR/O5xRectdy
+    RdohmERzUqZ3yT7DpI0uaDg6zmRlmkS+P5igdCONnXYhrcIQqtF1U//daUOcc2VQQ0SS
+    h5DyEQJRvM4Uy/X2c/gzopZvPPXUuMIEGLOD9C+p0aQZhDGBoJVSoPYNcqxRbUMS79ps
+    N6BQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1787731461;
+    s=strato-dkim-0002; d=strato.com;
+    h=In-Reply-To:From:References:To:Subject:Date:Message-ID:Cc:Date:From:
+    Subject:Sender;
+    bh=MoaHxjYunFWGgumpgqoG7Dx2f70N2p1lTEGDqO83liY=;
+    b=GjrF79ReFOat+GLc1v3FQk+r+zKwQUCsj7DyRi7eHxeCiG7mNerQ9TMycN5mQznUWC
+    oB70eq+waoTdftF3dbtQNn5ZI/njNSz+QFRKIp9WExu6QOaq6PbPycf7CKLCEwOqrkmt
+    chpbT6JvOxNEqfcwL8d0xOSnC5Xu0G6W5w85xptLA0SysquV4vINh7Bp4E+prwtEMHHo
+    l65TyU2PAnJJ5FvjFW2OmhrWbM1dZBTwXtPJgN6b1m/eWJRgX87eltltosSTc1RZXfRT
+    Eto3sLhu9RiAHRsPX5SGP9tpQRnE8F94TFXkfNs3h/oiBT2WAfWjjdY6N+MNKEitvfi+
+    B8xg==
+ARC-Authentication-Results: i=1; strato.com;
+    arc=none;
+    dkim=none
+X-RZG-CLASS-ID: mo02
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1787731461;
+    s=strato-dkim-0002; d=hartkopp.net;
+    h=In-Reply-To:From:References:To:Subject:Date:Message-ID:Cc:Date:From:
+    Subject:Sender;
+    bh=MoaHxjYunFWGgumpgqoG7Dx2f70N2p1lTEGDqO83liY=;
+    b=qey9xxMF6PS4QpkNRo9GAC+EZgCPkNfEq6f/0R41cdVE2QuRMpVDUfOxuXQ4vDO1tA
+    zPYyPyvgIHPOuvL6W9lWkfc94ecXk8UQPjGZwc5GEhEnodbO+mpaHOJBkDV/qRIi6U5A
+    OSfG/8PgPC0+umDZ8jlzwlN5d/ONj+BGLbwejiyjmxocnfsnoNEdEX0yQuBF+NDPr//M
+    ndiY1IlaF5DBc9yZPg6DGgA1mMNGs4XGfC+4nnp9r44Eh8GCam82MlqDf7pk/97qOHKB
+    tLtxadFWBEdGWbtHFAm80iRmYvG+ypgmpsLh9hdFmKarpLeHIcgryPlQW1ZyK8uFje0h
+    vNaA==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1787731461;
+    s=strato-dkim-0003; d=hartkopp.net;
+    h=In-Reply-To:From:References:To:Subject:Date:Message-ID:Cc:Date:From:
+    Subject:Sender;
+    bh=MoaHxjYunFWGgumpgqoG7Dx2f70N2p1lTEGDqO83liY=;
+    b=cKH0DRkcLkVr9gpkvfpXbhKDYWy93vb1/J3uFsLwDk4+z+YNTQRKJIDMRSuaQeCSsO
+    BUE1aF5Bb23HwrR9acCQ==
+X-RZG-AUTH: ":P2MHfkW8eP4Mre39l357AZT/I7AY/7nT2yrDxb8mjH4JKvMdQv2tTUsMrZpkO3Mw3lZ/t54cFxeEQ7s8bDup0Q=="
+Received: from [IPV6:2a00:6020:4a38:6810::989]
+    by smtp.strato.de (RZmta 55.6.2 AUTH)
+    with ESMTPSA id K171b727Q84Goo6
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+	(Client did not present a certificate);
+    Wed, 26 Aug 2026 10:04:16 +0200 (CEST)
+Message-ID: <871b0e00-1ca0-40b7-9dad-35b3b7943f4a@hartkopp.net>
+Date: Wed, 26 Aug 2026 10:04:05 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1c976fd191aa6e99dbe65d6a1ec63f8706cc0dfa.1785951556.git.coshi036@gmail.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FREEMAIL_TO(0.00)[gmail.com];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[27];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	TAGGED_RCPT(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RLr6u35b1fsnb818ss3au1oekd)];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,kernel.org,zeniv.linux.org.uk,infradead.org,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com,bobcopeland.com,samsung.com,sony.com,mail.parknet.co.jp,fasheh.com,evilplan.org,redhat.com,lists.linux.dev,fiu.edu];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,fiu.edu:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: C99121F814
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 11/11] can: isotp: publish tx.state with
+ smp_store_release()
+To: Jinjie Ruan <ruanjinjie@huawei.com>, viro@zeniv.linux.org.uk,
+ brauner@kernel.org, jack@suse.cz, bcrl@kvack.org, tytso@mit.edu,
+ adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, yi.zhang@huawei.com, pmladek@suse.com,
+ rostedt@goodmis.org, andriy.shevchenko@linux.intel.com,
+ linux@rasmusvillemoes.dk, senozhatsky@chromium.org,
+ akpm@linux-foundation.org, davem@davemloft.net, edumazet@google.com,
+ kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, mkl@pengutronix.de,
+ kuniyu@google.com, willemb@google.com, jhs@mojatatu.com, jiri@resnulli.us,
+ kees@kernel.org, cyphar@cyphar.com, tglx@kernel.org, liuhangbin@gmail.com,
+ sdf@fomichev.me, nb@tipi-net.de, linux-fsdevel@vger.kernel.org,
+ linux-aio@kvack.org, linux-kernel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, netdev@vger.kernel.org, linux-can@vger.kernel.org
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+ <20260825095422.3166067-12-ruanjinjie@huawei.com>
+ <d23aaeb2-1ed4-4b83-befb-996c569da27f@hartkopp.net>
+ <bc9a3081-a567-4e2a-8847-c60fd0e3dc89@huawei.com>
+Content-Language: en-US
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+In-Reply-To: <bc9a3081-a567-4e2a-8847-c60fd0e3dc89@huawei.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-On Thu 06-08-26 12:58:44, Chao Shi wrote:
-> BH_Write_EIO is cleared in __bh_submit(), when a buffer that has been
-> written before is submitted for write again.  That is early: it says the
-> error is gone at the moment we start trying to fix it, rather than when we
-> have.
-> 
-> It also loses errors.  A task whose write fails sets the flag and then goes
-> to look at it; if another task redirties the buffer and resubmits it in
-> between, the submission clears the flag and the first task sees no error at
-> all.  Neither of them is doing anything wrong.
-> 
-> Clear it on successful write completion instead, in the end io handlers -
-> the same four the rest of this series has been converting, plus gfs2's,
-> which already marked errors this way.  Then the flag means what it says:
-> the last write of this buffer that finished, failed.  A resubmission no
-> longer hides an error that has not been fixed yet, and one that has been
-> fixed clears the flag when the data reaches the disk.
-> 
-> __bh_submit() keeps setting BH_Req, which is what the rest of the tree
-> reads it for.
-> 
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Acked-by: Weidong Zhu <weizhu@fiu.edu>
-> Signed-off-by: Chao Shi <coshi036@gmail.com>
 
-Looks good to me. Feel free to add:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/buffer.c           | 15 +++++++--------
->  fs/ext4/fast_commit.c |  1 +
->  fs/gfs2/lops.c        |  2 ++
->  fs/jbd2/commit.c      |  4 +++-
->  4 files changed, 13 insertions(+), 9 deletions(-)
+On 26.08.26 05:33, Jinjie Ruan wrote:
 > 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 425fbfe72ad1..68ea0ef8470e 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -202,7 +202,9 @@ void bh_end_write(struct bio *bio)
->  	struct buffer_head *bh;
->  	bool success = bio_endio_bh(bio, &bh);
->  
-> -	if (!success) {
-> +	if (success) {
-> +		clear_buffer_write_io_error(bh);
-> +	} else {
->  		buffer_io_error(bh, ", lost sync page write");
->  		mark_buffer_write_io_error(bh);
->  	}
-> @@ -433,7 +435,9 @@ void bh_end_async_write(struct bio *bio)
->  	BUG_ON(!buffer_async_write(bh));
->  
->  	folio = bh->b_folio;
-> -	if (!success) {
-> +	if (success) {
-> +		clear_buffer_write_io_error(bh);
-> +	} else {
->  		buffer_io_error(bh, ", lost async page write");
->  		mark_buffer_write_io_error(bh);
->  	}
-> @@ -1114,7 +1118,6 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
->  		enum rw_hint write_hint, struct writeback_control *wbc,
->  		bio_end_io_t end_bio)
->  {
-> -	const enum req_op op = opf & REQ_OP_MASK;
->  	struct bio *bio;
->  
->  	BUG_ON(!buffer_locked(bh));
-> @@ -1122,11 +1125,7 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
->  	BUG_ON(buffer_delay(bh));
->  	BUG_ON(buffer_unwritten(bh));
->  
-> -	/*
-> -	 * Only clear out a write error when rewriting
-> -	 */
-> -	if (test_set_buffer_req(bh) && (op == REQ_OP_WRITE))
-> -		clear_buffer_write_io_error(bh);
-> +	set_buffer_req(bh);
->  
->  	if (buffer_meta(bh))
->  		opf |= REQ_META;
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index a2028fbd4540..95998827ff01 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -209,6 +209,7 @@ static void ext4_end_buffer_io_sync(struct bio *bio)
->  	if (success) {
->  		ext4_debug("%s: Block %lld written",
->  			   __func__, bh->b_blocknr);
-> +		clear_buffer_write_io_error(bh);
->  	} else {
->  		ext4_debug("%s: Block %lld write failed",
->  			   __func__, bh->b_blocknr);
-> diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
-> index 3df6e4b7e8b9..7440e5b72f8a 100644
-> --- a/fs/gfs2/lops.c
-> +++ b/fs/gfs2/lops.c
-> @@ -179,6 +179,8 @@ static void gfs2_end_log_write_bh(struct gfs2_sbd *sdp, struct folio *folio,
->  	do {
->  		if (error)
->  			mark_buffer_write_io_error(bh);
-> +		else
-> +			clear_buffer_write_io_error(bh);
->  		unlock_buffer(bh);
->  		next = bh->b_this_page;
->  		size -= bh->b_size;
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index cd7ef783bd36..ebf6ba58ff4d 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -36,7 +36,9 @@ static void journal_end_buffer_io_sync(struct bio *bio)
->  	struct buffer_head *orig_bh = bh->b_private;
->  
->  	BUFFER_TRACE(bh, "");
-> -	if (!success)
-> +	if (success)
-> +		clear_buffer_write_io_error(bh);
-> +	else
->  		mark_buffer_write_io_error(bh);
->  	if (orig_bh) {
->  		clear_and_wake_up_bit(BH_Shadow, &orig_bh->b_state);
-> -- 
-> 2.43.0
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> 在 2026/8/25 19:46, Oliver Hartkopp 写道:
+>>
+>>
+>> On 25.08.26 11:54, Jinjie Ruan wrote:
+>>> The writer already pairs with the smp_load_acquire() readers
+>>> in isotp_tx_timeout()/isotp_tx_gen_done(); convert
+>>> the smp_wmb() + WRITE_ONCE() into a release store.
+>>>
+>>> Assisted-by: DeepSeek:DeepSeek-V3
+>>> Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
+>>> ---
+>>>    net/can/isotp.c | 4 ++--
+>>>    1 file changed, 2 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/net/can/isotp.c b/net/can/isotp.c
+>>> index 155530aedce2..11b653ba7c10 100644
+>>> --- a/net/can/isotp.c
+>>> +++ b/net/can/isotp.c
+>>> @@ -1156,8 +1156,8 @@ static int isotp_sendmsg(struct socket *sock,
+>>> struct msghdr *msg, size_t size)
+>>>        my_gen = isotp_inc_tx_gen(READ_ONCE(so->tx_gen));
+>>>        isotp_set_tx_result(so, my_gen, ECOMM); /* prevent stale slot
+>>> matching */
+>>>        WRITE_ONCE(so->tx_gen, my_gen);
+>>> -    smp_wmb(); /* see smp_load_acquire() in isotp_tx_[timeout|
+>>> gen_done] */
+>>> -    WRITE_ONCE(so->tx.state, ISOTP_SENDING);
+>>> +    /* Pairs with smp_load_acquire() in isotp_tx_[timeout|gen_done] */
+>>> +    smp_store_release(&so->tx.state, ISOTP_SENDING);
+>>>        WRITE_ONCE(so->cfecho, 0);
+>>>        spin_unlock_bh(&so->rx_lock);
+>>>    
+>>
+>> Hi Jinjie,
+>>
+> 
+> Hi Oliver,
+> 
+>> thank you for the patch, but I think this breaks the barrier logic.
+>> The original smp_wmb() ensures that so->tx_gen is visible before both
+>> subsequent writes (so->tx.state and so->cfecho).
+> 
+> Right!
+> 
+>>
+>> By converting only the first write into smp_store_release(), the
+>> WRITE_ONCE(so->cfecho, 0) is no longer protected. The compiler or CPU
+>> could reorder and execute the cfecho write before the release store of
+> 
+> Indeed, that's true.
+> 
+>> so->tx.state, introducing a race condition with the concurrent readers.
+> 
+> My rough understanding is as follows:
+> 
+> All lock-free readers fall into two disjoint sets:
+> 
+> - `isotp_tx_timeout()` and `isotp_tx_gen_done()`: read only `tx.state`
+> (acquire) and `tx_gen`
+> 
+> - `isotp_txfr_timer_handler()` the timer path of `isotp_send_cframe()`,
+> and the post-claim path of `isotp_sendmsg()` touch `cfecho` but never
+> `tx_gen`.
+> 
+> So no lock-free reader observes both `tx_gen` and `cfecho`.
+> 
+> `isotp_rcv_echo()` is the only function reading both, and it runs under
+> `so->rx_lock`, which serializes it with the claim.
+> 
+> So the ordering the `smp_wmb()` provided on top of the new release store
+> `tx_gen` before `cfecho` — is unobservable to every reader.
+> 
+> Moreover, `tx.state` and `cfecho` were never ordered against each other
+> by the original barrier: both followed the `smp_wmb()`, so the `(state,
+> cfecho)` visibility seen by the lock-free timer readers is bit-for-bit
+> identical before and after this change.
+> 
+> So the release store preserves the one ordering that matters: a reader
+> observing `ISOTP_SENDING` sees the new `tx_gen`.
+> 
+> Best regards,
+> Jinjie
+
+Thanks for your explanation, but this assumption is too narrow and 
+misses how so->cfecho interacts with the rest of the ISO-TP state 
+machine, especially under concurrent TX and RX traffic.
+
+Even if isotp_tx_timeout() and isotp_tx_gen_done() don't read cfecho, 
+other functions do. For example, cfecho is heavily involved in the RX 
+path—such as in isotp_rcv_cf()—where incoming Consecutive Frames are 
+validated against the current transmission state.
+
+By converting the code to smp_store_release(), you only guarantee that 
+the write to so->tx_gen happens before so->tx.state. However, you 
+completely lose the ordering guarantee for WRITE_ONCE(so->cfecho, 0). 
+The compiler or CPU is now free to reorder and execute the cfecho clear 
+before the smp_store_release().
+
+If a concurrent CAN frame arrives and triggers the RX path exactly at 
+this microsecond, it could see an updated, cleared cfecho value while 
+tx.state is still in its old state, or vice versa. This breaks the 
+atomicity of the state transition in isotp_sendmsg().
+
+The original smp_wmb() acts as a clear fence: it ensures that both 
+subsequent writes (tx.state and cfecho) become visible to all concurrent 
+readers strictly after the new tx_gen generation is visible.
+We cannot weaken this guarantee. It makes the lockless design extremely 
+fragile and prone to hard-to-debug race conditions.
+
+Therefore:
+
+Nacked-by: Oliver Hartkopp socketcan@hartkopp.net
+
+Best regards,
+Oliver
+
