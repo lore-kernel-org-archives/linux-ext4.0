@@ -1,162 +1,173 @@
-Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 919A92F6577;
-	Wed, 26 Aug 2026 03:33:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.224
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD3B93438A8
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2026 05:24:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787715202; cv=none; b=OxNkYmtRKJnkcxrK/sf9HEChYB4f/VMTUs5nv+HbtIcsRAx/vK7ZoVKPBKV128NKFq6qA5CSHoUYO0Qe5jq7xJm2au31479YHUtTkvuE7yvo3iR+XiQvDWRIxBsccbqe4Ollu7y9t0vdnPtMwp1lhqme67pNZjpXTdfA8eD9ehE=
+	t=1787721899; cv=none; b=LPf+fZqO8xobuma06b3TeuJLkoixQrIg3Gi/g1cViiVgJKmqQ9iyDiO4FPaY1pKNIsx/evc7xI2gJSmavnPYSZg8tI7NoBCpP0LzMbNx5N6dVsgGraQMzEGQ6sPjqVW2dX+xnU/R/wT7fDRRXU5fKCxuQyggYTav52Qqm5W0eOk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787715202; c=relaxed/simple;
-	bh=k04VxeuqmKHRw01aSZ5Ko2c//yuRZs33EBX9KXGKLIk=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=h0eEdhdBIJJzlOQavX6h7qrs5G/KhGkivSpKOMGBtdXKxh8IH3cdxgAVW9FSdEbsXJrNNUkCTmm3l+Qr8MKUelaM+CDXEriJZubohuxudWnJy/leoGpS+3RxfuhrIpUPdDfD8oFWaqJQB7076tXelYFMkaSJ0SHQLhkaMC0OQes=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=6G+x+Kts; arc=none smtp.client-ip=113.46.200.224
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	s=arc-20240116; t=1787721899; c=relaxed/simple;
+	bh=78MnjTChEpgAxz4YJNBkMVUqxn4HSuMjpX/gDu+9VzI=;
+	h=Mime-Version:Subject:From:To:CC:Message-ID:Date:Content-Type:
+	 References; b=JcJM2tLikQSOqnU3Ns2hV5yjV9fj5S9B7IuK8+YVzLOpCHedq4dNW/dKsrFpoj22K6Fsv7qYuTSvLVaDO61+VQrkGhekzL/QRmjFhPh2h4CjXOfMC88p9sT8bYrUTceB0v+Fb/VrFB9ZO5kNhMowXc/FgTXRT9tqCOtJAQxYA4U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=NSNEblFV; arc=none smtp.client-ip=203.254.224.25
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="6G+x+Kts"
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=8aqZqDkznQ0wdG8yLp1nP/iwo/O0lbMvmv5Vz2oLzCQ=;
-	b=6G+x+Ktscb6tbQNtT73i+vwYSFFIno4cZBJLhuPDOw7hAezUV0n+Iq/sVgFjm9j4LBh048buZ
-	95poXpIgo7e/ybRpDL4rsCwIuqkIle6d3jkohcZ2p5+j3k2eio5Ei9lMKOyBms+aeySH212rdNR
-	cBN/suKfRGaylbzFmlefqYA=
-Received: from mail.maildlp.com (unknown [172.19.163.127])
-	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4hV91r3gY1z1cyPY;
-	Wed, 26 Aug 2026 11:22:24 +0800 (CST)
-Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 52BEA40572;
-	Wed, 26 Aug 2026 11:33:09 +0800 (CST)
-Received: from [10.67.109.254] (10.67.109.254) by
- dggpemf500011.china.huawei.com (7.185.36.131) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1544.11; Wed, 26 Aug 2026 11:33:06 +0800
-Message-ID: <bc9a3081-a567-4e2a-8847-c60fd0e3dc89@huawei.com>
-Date: Wed, 26 Aug 2026 11:33:05 +0800
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="NSNEblFV"
+Received: from epcas2p4.samsung.com (unknown [182.195.41.56])
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20260826052448epoutp02386c980474671536e8601d6e69ef30d3~PQ5XntI7e2358923589epoutp02P
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2026 05:24:48 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20260826052448epoutp02386c980474671536e8601d6e69ef30d3~PQ5XntI7e2358923589epoutp02P
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1787721888;
+	bh=COMQYQ3Lo5EWPtwlsUfLwHyXlHGoZNDAHc5nG+1dUYk=;
+	h=Subject:Reply-To:From:To:CC:Date:References:From;
+	b=NSNEblFVMQnW1RRm6i4Ql5OkOTVHXww/5tUfnMbiXNIj518K+q/Zuwn4B9NmyiAWb
+	 cGoeSCTUAOt9T1Q7OZcQEgMxjKVcGtbmPCRl3mHDHtp+PvT1xcfgDX+1Z/fp/+kmcg
+	 jd4rKvj7LOBrcQ2WXk9hsJvGiSxgaTD1LpP/gE8Y=
+Received: from epsnrtp01.localdomain (unknown [182.195.42.153]) by
+	epcas2p2.samsung.com (KnoxPortal) with ESMTPS id
+	20260826052447epcas2p2e6dc6704ab2dc57fa11bd06a80ad8b71~PQ5XOFdb-1767817678epcas2p2Q;
+	Wed, 26 Aug 2026 05:24:47 +0000 (GMT)
+Received: from epcas2p3.samsung.com (unknown [182.195.38.207]) by
+	epsnrtp01.localdomain (Postfix) with ESMTP id 4hVCl333Mjz6B9mG; Wed, 26 Aug
+	2026 05:24:47 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 11/11] can: isotp: publish tx.state with
- smp_store_release()
-To: Oliver Hartkopp <socketcan@hartkopp.net>, <viro@zeniv.linux.org.uk>,
-	<brauner@kernel.org>, <jack@suse.cz>, <bcrl@kvack.org>, <tytso@mit.edu>,
-	<adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
-	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.com>,
-	<pmladek@suse.com>, <rostedt@goodmis.org>,
-	<andriy.shevchenko@linux.intel.com>, <linux@rasmusvillemoes.dk>,
-	<senozhatsky@chromium.org>, <akpm@linux-foundation.org>,
-	<davem@davemloft.net>, <edumazet@google.com>, <kuba@kernel.org>,
-	<pabeni@redhat.com>, <horms@kernel.org>, <mkl@pengutronix.de>,
-	<kuniyu@google.com>, <willemb@google.com>, <jhs@mojatatu.com>,
-	<jiri@resnulli.us>, <kees@kernel.org>, <cyphar@cyphar.com>,
-	<tglx@kernel.org>, <liuhangbin@gmail.com>, <sdf@fomichev.me>,
-	<nb@tipi-net.de>, <linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
-	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-	<netdev@vger.kernel.org>, <linux-can@vger.kernel.org>
-References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
- <20260825095422.3166067-12-ruanjinjie@huawei.com>
- <d23aaeb2-1ed4-4b83-befb-996c569da27f@hartkopp.net>
-From: Jinjie Ruan <ruanjinjie@huawei.com>
-In-Reply-To: <d23aaeb2-1ed4-4b83-befb-996c569da27f@hartkopp.net>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
- dggpemf500011.china.huawei.com (7.185.36.131)
+Mime-Version: 1.0
+Subject: [PATCH] ext4: don't report delalloc data as a hole on
+ indirect-mapped inodes
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From: Daejun Park <daejun7.park@samsung.com>
+To: "tytso@mit.edu" <tytso@mit.edu>, "adilger.kernel@dilger.ca"
+	<adilger.kernel@dilger.ca>
+CC: "jack@suse.cz" <jack@suse.cz>, "yi.zhang@huawei.com"
+	<yi.zhang@huawei.com>, "ritesh.list@gmail.com" <ritesh.list@gmail.com>,
+	"libaokun@linux.alibaba.com" <libaokun@linux.alibaba.com>,
+	"ojaswin@linux.ibm.com" <ojaswin@linux.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"amonakov@ispras.ru" <amonakov@ispras.ru>, Daejun Park
+	<daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5>
+Date: Wed, 26 Aug 2026 14:24:46 +0900
+X-CMS-MailID: 20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea
+References: <CGME20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5>
 
+When a plain lookup finds no block, ext4_ind_map_blocks() sizes the hole
+it reports by counting the empty subtrees under 'partial' in the on-disk
+indirect tree.  That count knows nothing about delayed allocation, so a
+range holding delalloc data that has not been written back yet is
+reported as a plain hole.  The extent-mapped path does not have this
+problem: ext4_ext_determine_insert_hole() trims the hole it found at the
+first delayed extent before returning it.
 
+ext4_map_blocks() consults the extent status tree before it calls into
+the mapping layer, so a query that starts exactly on the delayed block
+still finds it.  A query that starts earlier does not, because the hole
+reported for the earlier block already spans the delayed one.  On a
+4k-block filesystem, lseek(SEEK_DATA) from offset 0 on a file whose only
+data block is at logical block N and is still dirty returns:
 
-在 2026/8/25 19:46, Oliver Hartkopp 写道:
-> 
-> 
-> On 25.08.26 11:54, Jinjie Ruan wrote:
->> The writer already pairs with the smp_load_acquire() readers
->> in isotp_tx_timeout()/isotp_tx_gen_done(); convert
->> the smp_wmb() + WRITE_ONCE() into a release store.
->>
->> Assisted-by: DeepSeek:DeepSeek-V3
->> Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
->> ---
->>   net/can/isotp.c | 4 ++--
->>   1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/can/isotp.c b/net/can/isotp.c
->> index 155530aedce2..11b653ba7c10 100644
->> --- a/net/can/isotp.c
->> +++ b/net/can/isotp.c
->> @@ -1156,8 +1156,8 @@ static int isotp_sendmsg(struct socket *sock,
->> struct msghdr *msg, size_t size)
->>       my_gen = isotp_inc_tx_gen(READ_ONCE(so->tx_gen));
->>       isotp_set_tx_result(so, my_gen, ECOMM); /* prevent stale slot
->> matching */
->>       WRITE_ONCE(so->tx_gen, my_gen);
->> -    smp_wmb(); /* see smp_load_acquire() in isotp_tx_[timeout|
->> gen_done] */
->> -    WRITE_ONCE(so->tx.state, ISOTP_SENDING);
->> +    /* Pairs with smp_load_acquire() in isotp_tx_[timeout|gen_done] */
->> +    smp_store_release(&so->tx.state, ISOTP_SENDING);
->>       WRITE_ONCE(so->cfecho, 0);
->>       spin_unlock_bh(&so->rx_lock);
->>   
-> 
-> Hi Jinjie,
-> 
+  N = 0..11      direct blocks                 N << 12
+  N = 12         first single-indirect block   N << 12
+  N = 13..1035   inside that indirect block    -1 ENXIO
+  N = 1036       first double-indirect block   N << 12
 
-Hi Oliver,
+Blocks 12 and 1036 survive because the query lands on the delayed block
+itself.  Blocks 13..1035 are swallowed by the 1024-block hole reported
+for block 12.  fiemap loses the same data for the same reason.
 
-> thank you for the patch, but I think this breaks the barrier logic.
-> The original smp_wmb() ensures that so->tx_gen is visible before both
-> subsequent writes (so->tx.state and so->cfecho).
+An ext3 filesystem mounted as ext4 hits this during ordinary use: ext3
+inodes stay indirect mapped, while mount -t ext4 turns on delayed
+allocation even though mounting ext3 with -o delalloc is explicitly
+rejected.  install(1) from coreutils uses SEEK_DATA to locate data in
+its source file, so installing a sparse file that has not been written
+back silently produces a destination of the right size holding none of
+the data:
 
-Right!
+  truncate -s 1G img && mkfs.ext3 -F img && mount -t ext4 img mnt
+  echo | dd of=mnt/src bs=1 count=1 seek=64K
+  install mnt/src mnt/dst
+  cmp mnt/src mnt/dst        # differ: char 65537
 
-> 
-> By converting only the first write into smp_store_release(), the
-> WRITE_ONCE(so->cfecho, 0) is no longer protected. The compiler or CPU
-> could reorder and execute the cfecho write before the release store of
+Trim the hole at the first delayed extent, the way the extent-mapped
+path does.  ext4_es_find_extent_range() does not clip the extent it
+returns to the queried range, so skip one that begins at or before
+m_lblk and clamp the result against the hole already found.
 
-Indeed, that's true.
+With this the sweep above returns N << 12 for every N, while the
+nodelalloc and extent-mapped controls are unchanged.  generic/225,
+generic/285, generic/286, generic/436, generic/448 and generic/490 pass
+on ext4 made both with and without the extent feature.
 
-> so->tx.state, introducing a race condition with the concurrent readers.
+Fixes: facab4d9711e ("ext4: return hole from ext4_map_blocks()")
+Reported-by: Alexander Monakov <amonakov@ispras.ru>
+Closes: https://lore.kernel.org/linux-ext4/594c17d9-c00f-e485-96fb-cedf27ce3aa3@ispras.ru/
+Cc: stable@vger.kernel.org
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+ fs/ext4/indirect.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-My rough understanding is as follows:
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 5aec759eed70..4a1ad86a42bd 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -574,6 +574,7 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 	/* Next simple case - plain lookup failed */
+ 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0) {
+ 		unsigned epb = inode->i_sb->s_blocksize / sizeof(u32);
++		struct extent_status es;
+ 		int i;
+ 
+ 		/*
+@@ -589,6 +590,21 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 		/* Fill in size of a hole we found */
+ 		map->m_pblk = 0;
+ 		map->m_len = umin(map->m_len, count);
++
++		/*
++		 * The hole was measured on the on-disk indirect tree, which
++		 * knows nothing about delayed allocation.  Trim it at the
++		 * first delayed extent, the way the extent-mapped path does
++		 * in ext4_ext_determine_insert_hole(), so that callers do not
++		 * mistake data that is not written back yet for a hole.  The
++		 * extent found is not clipped to the queried range, so it may
++		 * begin before m_lblk or past the end of the hole.
++		 */
++		ext4_es_find_extent_range(inode, &ext4_es_is_delayed,
++					  map->m_lblk,
++					  map->m_lblk + map->m_len - 1, &es);
++		if (es.es_len && es.es_lblk > map->m_lblk)
++			map->m_len = umin(map->m_len, es.es_lblk - map->m_lblk);
+ 		goto cleanup;
+ 	}
+ 
 
-All lock-free readers fall into two disjoint sets:
-
-- `isotp_tx_timeout()` and `isotp_tx_gen_done()`: read only `tx.state`
-(acquire) and `tx_gen`
-
-- `isotp_txfr_timer_handler()` the timer path of `isotp_send_cframe()`,
-and the post-claim path of `isotp_sendmsg()` touch `cfecho` but never
-`tx_gen`.
-
-So no lock-free reader observes both `tx_gen` and `cfecho`.
-
-`isotp_rcv_echo()` is the only function reading both, and it runs under
-`so->rx_lock`, which serializes it with the claim.
-
-So the ordering the `smp_wmb()` provided on top of the new release store
-`tx_gen` before `cfecho` — is unobservable to every reader.
-
-Moreover, `tx.state` and `cfecho` were never ordered against each other
-by the original barrier: both followed the `smp_wmb()`, so the `(state,
-cfecho)` visibility seen by the lock-free timer readers is bit-for-bit
-identical before and after this change.
-
-So the release store preserves the one ordering that matters: a reader
-observing `ISOTP_SENDING` sees the new `tx_gen`.
-
-Best regards,
-Jinjie
-
-> 
-> Best regards,
-> Oliver
-> 
-> 
+base-commit: 9091c97be34083587a75db174aab51551d8e8543
+-- 
+2.43.0
 
