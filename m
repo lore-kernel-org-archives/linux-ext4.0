@@ -1,160 +1,162 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2043542C514;
-	Tue, 25 Aug 2026 13:19:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
+Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 919A92F6577;
+	Wed, 26 Aug 2026 03:33:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.224
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787663953; cv=none; b=ksqEXK7Qj0ErkBaTzUkNBUyMzULFedBHiyoNpwgYvQzKaA2L0Sa/fx0BBcujGVczN57McazvOss79IlTGMW3aTdW2d2oTqGivIxywoNq86Pg4iLa6ChGiQRI7NQyssBwPZwkk4+xKMoRRyt52pzquMXv82+BX33o413O+Yua5NA=
+	t=1787715202; cv=none; b=OxNkYmtRKJnkcxrK/sf9HEChYB4f/VMTUs5nv+HbtIcsRAx/vK7ZoVKPBKV128NKFq6qA5CSHoUYO0Qe5jq7xJm2au31479YHUtTkvuE7yvo3iR+XiQvDWRIxBsccbqe4Ollu7y9t0vdnPtMwp1lhqme67pNZjpXTdfA8eD9ehE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787663953; c=relaxed/simple;
-	bh=5TVEsS2ZrICCGdu5fHn5ixwm1NzymOIz9G67H0t4KAU=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=exykkL/WSFxTMP2IPwGlEYh3s8OaRUCIKjAI1IeHOjEVkhAAQuqUgsITemzr47qxk8uecc3UXAdLFrtrmreV8zkYSAFYud0GXdhtxX5xmAIRi3RdQeD7K8QiOGsdcT1CMuc3FzVx/6I1mEzeJ22ejxs9mVd2O3PsA8gTOYHQIPM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=sk.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-0c-6a8d964b3a74
-Date: Tue, 25 Aug 2026 22:19:06 +0900
-From: Byungchul Park <byungchul@sk.com>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: linux-kernel@vger.kernel.org, max.byungchul.park@gmail.com,
-	kernel_team@skhynix.com, torvalds@linux-foundation.org,
-	damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-	adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-	mingo@redhat.com, peterz@infradead.org, will@kernel.org,
-	tglx@linutronix.de, rostedt@goodmis.org, joel@joelfernandes.org,
-	sashal@kernel.org, daniel.vetter@ffwll.ch, duyuyang@gmail.com,
-	johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-	willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-	gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
-	akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
-	hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
-	jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-	penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-	ngupta@vflare.org, linux-block@vger.kernel.org,
-	josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
-	djwong@kernel.org, dri-devel@lists.freedesktop.org,
-	rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-	hamohammed.sa@gmail.com, harry.yoo@oracle.com,
-	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com,
-	boqun.feng@gmail.com, longman@redhat.com, yunseong.kim@ericsson.com,
-	ysk@kzalloc.com, yeoreum.yun@arm.com, netdev@vger.kernel.org,
-	matthew.brost@intel.com, her0gyugyu@gmail.com, corbet@lwn.net,
-	catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
-	hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
-	gustavo@padovan.org, christian.koenig@amd.com,
-	andi.shyti@kernel.org, arnd@arndb.de, lorenzo.stoakes@oracle.com,
-	Liam.Howlett@oracle.com, rppt@kernel.org, surenb@google.com,
-	mcgrof@kernel.org, petr.pavlu@suse.com, da.gomez@kernel.org,
-	samitolvanen@google.com, paulmck@kernel.org, frederic@kernel.org,
-	neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com,
-	josh@joshtriplett.org, urezki@gmail.com,
-	mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
-	qiang.zhang@linux.dev, juri.lelli@redhat.com,
-	vincent.guittot@linaro.org, dietmar.eggemann@arm.com,
-	bsegall@google.com, mgorman@suse.de, vschneid@redhat.com,
-	chuck.lever@oracle.com, neil@brown.name, okorniev@redhat.com,
-	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org,
-	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
-	clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
-	kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
-	broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
-	shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
-	yuzhao@google.com, baolin.wang@linux.alibaba.com,
-	usamaarif642@gmail.com, joel.granados@kernel.org,
-	richard.weiyang@gmail.com, geert+renesas@glider.be,
-	tim.c.chen@linux.intel.com, linux@treblig.org,
-	alexander.shishkin@linux.intel.com, lillian@star-ark.net,
-	chenhuacai@kernel.org, francesco@valla.it,
-	guoweikang.kernel@gmail.com, link@vivo.com, jpoimboe@kernel.org,
-	masahiroy@kernel.org, brauner@kernel.org,
-	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com,
-	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org,
-	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org,
-	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org,
-	rcu@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org,
-	miguel.ojeda.sandonis@gmail.com, neilb@ownmail.net,
-	bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
-	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
-	alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
-	lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
-	tmgross@umich.edu, rust-for-linux@vger.kernel.org
-Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
-Message-ID: <20260825131906.GC23086@system.software.com>
-References: <20260706061928.66713-1-byungchul@sk.com>
- <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
- <20260821042143.GA40890@system.software.com>
- <825134a8-ceae-430c-b2fc-d1d0c7240f39@kernel.org>
- <20260825121322.GA23086@system.software.com>
- <e0c589d0-d17b-48c2-8e1b-d41b69ecaadc@kernel.org>
+	s=arc-20240116; t=1787715202; c=relaxed/simple;
+	bh=k04VxeuqmKHRw01aSZ5Ko2c//yuRZs33EBX9KXGKLIk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=h0eEdhdBIJJzlOQavX6h7qrs5G/KhGkivSpKOMGBtdXKxh8IH3cdxgAVW9FSdEbsXJrNNUkCTmm3l+Qr8MKUelaM+CDXEriJZubohuxudWnJy/leoGpS+3RxfuhrIpUPdDfD8oFWaqJQB7076tXelYFMkaSJ0SHQLhkaMC0OQes=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=6G+x+Kts; arc=none smtp.client-ip=113.46.200.224
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="6G+x+Kts"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=8aqZqDkznQ0wdG8yLp1nP/iwo/O0lbMvmv5Vz2oLzCQ=;
+	b=6G+x+Ktscb6tbQNtT73i+vwYSFFIno4cZBJLhuPDOw7hAezUV0n+Iq/sVgFjm9j4LBh048buZ
+	95poXpIgo7e/ybRpDL4rsCwIuqkIle6d3jkohcZ2p5+j3k2eio5Ei9lMKOyBms+aeySH212rdNR
+	cBN/suKfRGaylbzFmlefqYA=
+Received: from mail.maildlp.com (unknown [172.19.163.127])
+	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4hV91r3gY1z1cyPY;
+	Wed, 26 Aug 2026 11:22:24 +0800 (CST)
+Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
+	by mail.maildlp.com (Postfix) with ESMTPS id 52BEA40572;
+	Wed, 26 Aug 2026 11:33:09 +0800 (CST)
+Received: from [10.67.109.254] (10.67.109.254) by
+ dggpemf500011.china.huawei.com (7.185.36.131) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Wed, 26 Aug 2026 11:33:06 +0800
+Message-ID: <bc9a3081-a567-4e2a-8847-c60fd0e3dc89@huawei.com>
+Date: Wed, 26 Aug 2026 11:33:05 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <e0c589d0-d17b-48c2-8e1b-d41b69ecaadc@kernel.org>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Brightmail-Tracker: H4sIAAAAAAAAA01Sa0yTZxTe+37XdnZ7rSy+4rK4LssWkjkwZDvJnLjEZF8yF5fs1y6JNvJN
-	yrhZLooLDnRoh5fWZkAoOiuOezOwXASxMhC5aIh4qelGC6K1rDB0soKzlmLLYuafk+c85znP
-	c34ckVGf5GNFXUaOrM/Qpml4JaucWXbqnU/KjqTGdwTjwT3u5WAuYGDheJONh4XKswIY7BUc
-	jPzaiGB8zoAg8HhUgH+awzyU+4tYsPgqBfBf+hhmxrs4qPGGMUyX/c3Dk+GrDJSXjiA4NeFh
-	oLV/DMFkWxDBDe9LMFR6iIeZa8cxWPc5OOi8fU6Aa9MhDI32T+GKqQpHvHkoO7MSKsv340j5
-	E8OdOosAoYkEWLRmgsdYysLQ2C0OAjcnMNgO+xiw3420FT+7eTjvGGLBsBBA0N9xB8OYbZGD
-	pkkXhiv9g5E1Sz0Lo8NGAVymewim52sYqJl7IEBRz2kWfM4DGMy+WQHauosRuI9OsXDglzMY
-	bv7ehSDo6eAgWHsJweyJMAfND2t5uG8KcBs/kh4VH2WlhpZ2LBVfX+ClQPV+Rio22ZB08a8H
-	jPRDyy7JMW9lpctVVOq0eATJas+VWuripNPn/Vj6Y/pDyd7wIy/ZZ83CZ69/qVyfLKfp8mT9
-	uxu2KVM8xmouy8Htbr9tFArRMbYEKURKEqm52cU/w50OG1OCRJElb1LfvaQozZO3qMv1mIni
-	GBJPJwf34RKkFBnS+Br9aXxAiA5WkPdpq/sQH91VEaBXL78c1ahJE6ZmZ+uSRkWW06EK71Iu
-	Q+KoK+zHUT1DVtPasBilFWQDtV3wLmW9Qt6gv7UPLGVR4lPQqYPV+L87V9GeOhdrQsTynK3l
-	OVvL/7ZWxDQgtS4jL12rS0tcm5Kfodu9dntmuh1F3ramIPRVB5od+bwXERFplqlGjh1JVXPa
-	vOz89F5ERUYTo/quoCRVrUrW5u+R9Zlb9blpcnYvWi2ympWqdfO7ktVkhzZH/laWs2T9sykW
-	FbGFKHUzfZHLEU50b+G/tllL/91c+MIHX7y3M1QVHBAvLlY2bnQix9bQ+m/2rupLqTh5OFbd
-	tqdohWHQkBhucWdtSlD0JJj7zuVOuv13lzvr1zgK7m+bSvJefzKs6Vd2dQvDTsVZ/UBD/Tpv
-	3/fbR2MOTrz96GHWTNLiBSO6IexYs/fVLRo2O0WbEMfos7VPAWCHzluyAwAA
-X-Brightmail-Tracker: H4sIAAAAAAAAA02SfUxTZxTGfd/39vbS2O3aod6IWUxl0ZD4lWg8m4sf2RbvNDOaLEFnnHbj
-	RgqlaqsgW4xSaAZ1alttCa0ogq1M6mDlw3WujGAEUYitH6NRsJhciwQQo1QjUFhLYuY/J+c8
-	5/nlOX8chihiknmMWntQ0GlVGiUto2Rb1hQu2Ww/kbW82s5AsfEo9IRFCfxb0EJBdLSYgrO1
-	HhpizqtSKPaWSeBmt4GCwO81CMLRYgRvxp0EjL4pCmLWNimMvn0kBVsBgil/GwJ70EogFPiH
-	gKehAMOrukkaBq+/RGB7ItJQOlBAwYj7VwSOiFMKAzc2wnD4mgSmevsxdL8eQuAWJzGILb8g
-	iNmz4XxlfRy3v6BhvOsOgVJbAMGFJ70EXg70IWhoe4ygv3EMgb/aQMNTcyOBe+IHcD86QkOH
-	7TgNw8GzGJ7X0VBh8Esg2DmIoNxpRRB56MdQWFVLg73cS4Gv7y8pBAcnMPTYrRhqvN9A2B2h
-	4La5Esdvjrv+mAvO0kIcL88w2K5cw+vdiH9jPEnxl+ubMG+8G6N5zzkP4sfHrIgfdRUS3miO
-	j9eHRghfVJ/Hu24P0fxY9AHN+19XUPytSo6/WDKGeUvXEt7n6JVu3fCd7PMMQaPOFXTL1u6R
-	Zfaeckn2+yWHm/pOSY8hC2VCSQzHruR8fg8xIYah2E+4yNN1CZlmF3Gh0FuS6JPZ5Vz/TQM2
-	IRlD2JqPuTPhdmli8RG7mmvoOU4nWDkL3J1bHyY8CrYWc9YHDdMeOTuL6ygTp7MIm8aFJgdw
-	wk/YFO7SJJOQk9i1nKdZnM6azS7kWprasRnJHe/Rjvdox/90BSKXUbJam5ujUmtWLdVnZ+Zr
-	1YeX/rgvx4viT+k+MmH5E43e29iKWAYpZ8oDlhNZCokqV5+f04o4hiiT5T8fMWUp5Bmq/J8E
-	3b7dukMaQd+KUhhKOVe+KV3Yo2D3qg4K2YKwX9C922Imad4xZG4v2TX/i5IFXak7872z1Zlf
-	Pg6EijTN5KTPtmOoSL/z+23LtKldaYcaXdVKU2k0b05VimgNlnV7A2dM4WrX1XLVloX2Hzqp
-	zzIu8es76hbvdVZ9Onzh24ruPEPqb191bp+RHli3Rvza0pceOdCcc9r899SMzQvuh3J3Tww+
-	G+/A55WUPlO1Io3o9Kr/AKCz9huQAwAA
-X-CFilter-Loop: Reflected
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 11/11] can: isotp: publish tx.state with
+ smp_store_release()
+To: Oliver Hartkopp <socketcan@hartkopp.net>, <viro@zeniv.linux.org.uk>,
+	<brauner@kernel.org>, <jack@suse.cz>, <bcrl@kvack.org>, <tytso@mit.edu>,
+	<adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.com>,
+	<pmladek@suse.com>, <rostedt@goodmis.org>,
+	<andriy.shevchenko@linux.intel.com>, <linux@rasmusvillemoes.dk>,
+	<senozhatsky@chromium.org>, <akpm@linux-foundation.org>,
+	<davem@davemloft.net>, <edumazet@google.com>, <kuba@kernel.org>,
+	<pabeni@redhat.com>, <horms@kernel.org>, <mkl@pengutronix.de>,
+	<kuniyu@google.com>, <willemb@google.com>, <jhs@mojatatu.com>,
+	<jiri@resnulli.us>, <kees@kernel.org>, <cyphar@cyphar.com>,
+	<tglx@kernel.org>, <liuhangbin@gmail.com>, <sdf@fomichev.me>,
+	<nb@tipi-net.de>, <linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
+	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+	<netdev@vger.kernel.org>, <linux-can@vger.kernel.org>
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+ <20260825095422.3166067-12-ruanjinjie@huawei.com>
+ <d23aaeb2-1ed4-4b83-befb-996c569da27f@hartkopp.net>
+From: Jinjie Ruan <ruanjinjie@huawei.com>
+In-Reply-To: <d23aaeb2-1ed4-4b83-befb-996c569da27f@hartkopp.net>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ dggpemf500011.china.huawei.com (7.185.36.131)
 
-On Tue, Aug 25, 2026 at 03:10:28PM +0200, David Hildenbrand (Arm) wrote:
-> >> As the saying goes, it's hard to teach old dogs new tricks, but in the end
-> >> taking care of two dogs is likely harder than only a single dog? :)
-> >
-> > Or it's better to train a unmatured hunting dog than to teach a pet dog,
-> > how to hunt, for better hunting, even though the pet dog might
-> > eventually become able to.
+
+
+在 2026/8/25 19:46, Oliver Hartkopp 写道:
 > 
-> I'm not sure whether "pet dog" is the right analogy to lockdep in that scenario,
-> though ;)
+> 
+> On 25.08.26 11:54, Jinjie Ruan wrote:
+>> The writer already pairs with the smp_load_acquire() readers
+>> in isotp_tx_timeout()/isotp_tx_gen_done(); convert
+>> the smp_wmb() + WRITE_ONCE() into a release store.
+>>
+>> Assisted-by: DeepSeek:DeepSeek-V3
+>> Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
+>> ---
+>>   net/can/isotp.c | 4 ++--
+>>   1 file changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/can/isotp.c b/net/can/isotp.c
+>> index 155530aedce2..11b653ba7c10 100644
+>> --- a/net/can/isotp.c
+>> +++ b/net/can/isotp.c
+>> @@ -1156,8 +1156,8 @@ static int isotp_sendmsg(struct socket *sock,
+>> struct msghdr *msg, size_t size)
+>>       my_gen = isotp_inc_tx_gen(READ_ONCE(so->tx_gen));
+>>       isotp_set_tx_result(so, my_gen, ECOMM); /* prevent stale slot
+>> matching */
+>>       WRITE_ONCE(so->tx_gen, my_gen);
+>> -    smp_wmb(); /* see smp_load_acquire() in isotp_tx_[timeout|
+>> gen_done] */
+>> -    WRITE_ONCE(so->tx.state, ISOTP_SENDING);
+>> +    /* Pairs with smp_load_acquire() in isotp_tx_[timeout|gen_done] */
+>> +    smp_store_release(&so->tx.state, ISOTP_SENDING);
+>>       WRITE_ONCE(so->cfecho, 0);
+>>       spin_unlock_bh(&so->rx_lock);
+>>   
+> 
+> Hi Jinjie,
+> 
 
-Ah.  Okay.  I will be careful in using terms.
+Hi Oliver,
 
-I wanted to tell DEPT has its strength, lockdep has its own, and they
-are different.
+> thank you for the patch, but I think this breaks the barrier logic.
+> The original smp_wmb() ensures that so->tx_gen is visible before both
+> subsequent writes (so->tx.state and so->cfecho).
 
-	Byungchul
+Right!
 
 > 
-> --
-> Cheers,
+> By converting only the first write into smp_store_release(), the
+> WRITE_ONCE(so->cfecho, 0) is no longer protected. The compiler or CPU
+> could reorder and execute the cfecho write before the release store of
+
+Indeed, that's true.
+
+> so->tx.state, introducing a race condition with the concurrent readers.
+
+My rough understanding is as follows:
+
+All lock-free readers fall into two disjoint sets:
+
+- `isotp_tx_timeout()` and `isotp_tx_gen_done()`: read only `tx.state`
+(acquire) and `tx_gen`
+
+- `isotp_txfr_timer_handler()` the timer path of `isotp_send_cframe()`,
+and the post-claim path of `isotp_sendmsg()` touch `cfecho` but never
+`tx_gen`.
+
+So no lock-free reader observes both `tx_gen` and `cfecho`.
+
+`isotp_rcv_echo()` is the only function reading both, and it runs under
+`so->rx_lock`, which serializes it with the claim.
+
+So the ordering the `smp_wmb()` provided on top of the new release store
+`tx_gen` before `cfecho` — is unobservable to every reader.
+
+Moreover, `tx.state` and `cfecho` were never ordered against each other
+by the original barrier: both followed the `smp_wmb()`, so the `(state,
+cfecho)` visibility seen by the lock-free timer readers is bit-for-bit
+identical before and after this change.
+
+So the release store preserves the one ordering that matters: a reader
+observing `ISOTP_SENDING` sees the new `tx_gen`.
+
+Best regards,
+Jinjie
+
 > 
-> David
+> Best regards,
+> Oliver
+> 
+> 
+
