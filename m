@@ -1,207 +1,283 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4861122423A;
-	Wed, 26 Aug 2026 13:21:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 9546C3998A6
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Aug 2026 14:05:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.77.154.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787750494; cv=none; b=hgW0Mor0Ns2AllPZzNCKQziq7/Tkn10oTpACvY6eX2XdwfcA/2EJSI+PTeSNjFbamnn+QeSpdie8Y9cZJ+cdoXdkKY+RZLhfQ6ghlFyyj1S12G6hAVKhGXHP9D4vkHaAVT8xh4MaZ0xu4iHcmfsuhGdEZ9kvWhPB3E5NZSpWhxc=
+	t=1787753123; cv=none; b=LhHfzkeYPc3uOOhBbRP3YH/CqTt1QJHuo/VzBGRYTO3rgTaK3DzQyklwnCr1JqmDrAIwVgfKgLDFwBguA1ESQ4sRqD3/QTTbuWx39x4BneZD/WNj+DP4s2t2Y9Fs2ROnBxe2VccMzrDi46ouw1JIDl6Kk/CrlFf8SXdqD05Ak78=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787750494; c=relaxed/simple;
-	bh=w9gjMzfzXESoZDc+O5MLNBX7rWTXEetHFla3VTul7oA=;
+	s=arc-20240116; t=1787753123; c=relaxed/simple;
+	bh=GOgNlu19mHVyrCBex3zI/df0e0+0PkuN7AGfuh5oEwU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ocod95fCLZji/hxrtbUkLfhN7E40fcKe4BzdV33GhUsYr4q4lZ9oHPCRmhQ/up+o+1lHJDOanHT9rzue83BLSS9IxycolS2xZeiKe+WWGnMEm7mvE4P5EwhMEKHZ3sK7RU9DBejx+IRywguI956+5qjRm3ab2x+S4TfMEqDtGkM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=j5L5G/Dm; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=L/7hwvG4; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=J2QUpWCq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=yNOnDIGh; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=Rubvj5mPFXWYYX3gs6HmKZ7VLU+rsBVjg0GTUqKfjTghC033Tcf17EZ9C27nLWCFqKi7JHy1X1ix+zjNcpOrKOs9c18dhP1VLskc1dCF+HEpBzvQC+PvDOwM+9dSBopi3xjcxacNMCj9YqyAI/Jm2JMq/9iaPpaPCrxGDY2iV7I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com; spf=pass smtp.mailfrom=linux.microsoft.com; dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b=hzyMAOhl; arc=none smtp.client-ip=13.77.154.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="j5L5G/Dm";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="L/7hwvG4";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="J2QUpWCq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="yNOnDIGh"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 7153A1F824;
-	Wed, 26 Aug 2026 13:20:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787750444; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=NtOMcAkC/wFiCmb+t5R+SPLSf2pQDgdcS3a/21hM1rA=;
-	b=j5L5G/DmhARQar/MO5dwxZVNiUBZHATRSUupUk/9AjgzovCSIwN2TrblMEd9uEZdz3hXQO
-	K87geSXYoWwTfivlU9CO4ikRD3cf2pjPvpXIhIhHxajKyf4xmoeIwA658Ou5/4zDuqhgWD
-	ENu++hkohnlhEJuisnDnAKYDq89MGzM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787750444;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=NtOMcAkC/wFiCmb+t5R+SPLSf2pQDgdcS3a/21hM1rA=;
-	b=L/7hwvG4hA5KQZr0VhyyV3sDgomaWgPSaw8uXoF2v8g4VmaXq/gtPp4brIonaJFfDsq7xw
-	aL4RPvW1clO4ccBA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=J2QUpWCq;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=yNOnDIGh
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787750440; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=NtOMcAkC/wFiCmb+t5R+SPLSf2pQDgdcS3a/21hM1rA=;
-	b=J2QUpWCqmIasVjcoidhRXinY1NSAiX2qjHgRgK3VvJ+HsbYIYlrsmaufcXiDV80GllTejv
-	wTy5IGrX6wgVoFSPACaaKnuG1jiYDyQQStTuFm6EtfikrpMMs8DfOj8SkmObSemEmxag0x
-	/UhknyYYcWrH1E9z772fFPA1jRY3y3A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787750440;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=NtOMcAkC/wFiCmb+t5R+SPLSf2pQDgdcS3a/21hM1rA=;
-	b=yNOnDIGhEOBQTGoq0oHTFIEYxki18FDg8E31x6oiWJkeaLtj0kxxd3OKI3NvAj7MzWtWoy
-	hnpwfdZol/lI1cDg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 66B3613533;
-	Wed, 26 Aug 2026 13:20:40 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id itsNGSjojmqxXgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 13:20:40 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id F369EA13A7; Wed, 26 Aug 2026 15:20:31 +0200 (CEST)
-Date: Wed, 26 Aug 2026 15:20:31 +0200
-From: Jan Kara <jack@suse.cz>
-To: Hemanth Selam <hemanth.selam@gmail.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.cz, 
-	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, jun.nie@linaro.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com
-Subject: Re: [PATCH] ext4: skip extra isize expansion while unmounting
-Message-ID: <vwmniaakkojdwzcrk44itvpsipystvdbdgbolk63cmmh6qmjk4@fb3wrihl6y4l>
-References: <20260824094512.2436628-1-hemanth.selam@gmail.com>
+	dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b="hzyMAOhl"
+Received: by linux.microsoft.com (Postfix, from userid 1217)
+	id D051A20B7166; Wed, 26 Aug 2026 07:04:48 -0700 (PDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com D051A20B7166
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
+	s=default; t=1787753088;
+	bh=bOyFYRUACgCklPrdr9mUfT/QKiqPPJaNqmkDE3rGArw=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=hzyMAOhlARu1A2O/QhQYxjAO1KkBcTtc1H+6OxFz3MTJ8LNlYzFGx8TlngccOjqCL
+	 qGLEqXz7WmfIO1znN1VdvDsDo9DO2pzgt83XRQiQJFcjTLsu/eZIX4nLOvWSXncXOu
+	 it4v6SbmMqYibWegWnZWIUp5KTcTKCul6iRKpJZQ=
+Date: Wed, 26 Aug 2026 07:04:48 -0700
+From: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca,
+	srivatsa@csail.mit.edu
+Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
+ during filesystem check
+Message-ID: <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+ <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
+ <20260824224006.GB6038@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260824094512.2436628-1-hemanth.selam@gmail.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FREEMAIL_TO(0.00)[gmail.com];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[12];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[4b03894b6ec5753ddf24];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,linaro.org,vger.kernel.org,syzkaller.appspotmail.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,suse.cz:dkim]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Queue-Id: 7153A1F824
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20260824224006.GB6038@frogsfrogsfrogs>
 
-On Mon 24-08-26 15:15:12, Hemanth Selam wrote:
-> syzbot reports a WARN from ext4_xattr_inode_create() reached through the
-> unmount path:
+On Mon, Aug 24, 2026 at 03:40:06PM -0700, Darrick J. Wong wrote:
+> On Mon, Aug 24, 2026 at 09:15:11AM -0700, Nandakumar Raghavan wrote:
+> > During journal replay, e2fsck writes the primary superblock back to disk
+> > in multiple I/O operations. The payload lands before the checksum, leaving
+> > a transient window where the on-disk superblock has a bad checksum.
+> > 
+> > If udevd processes a change uevent during this window, libblkid probes the
+> > primary superblock, finds a checksum mismatch, and concludes the partition
+> > has no recognisable filesystem. udev then fires a remove event, wiping all
+> > symlinks in /dev/disk/by-label/ and /dev/disk/by-uuid/. Any mount unit
+> > that depends on those symlinks will fail.
+> > 
+> > udevd already serialises its own partition probes against whole-disk device
+> > access using flock(LOCK_SH|LOCK_NB); if EAGAIN is returned it requeues the
+> > event. Take advantage of this protocol by acquiring flock(LOCK_EX) on the
+> > whole-disk device before opening the filesystem. This forces udevd to defer
+> > all probes on that disk until e2fsck exits and the lock is released, by
+> > which point the filesystem is fully consistent.
+> > 
+> > The whole-disk device is resolved via sysfs (/sys/dev/block/MAJ:MIN/partition)
+> > so that the lock covers the same device node that udevd locks. If sysfs
+> > resolution fails, a warning is emitted and the lock falls back to the
+> > partition device itself.
+> > 
+> > This mechanism relies on Linux-specific interfaces (sysfs, flock() semantics
+> > on block devices) and is compiled out entirely on non-Linux platforms.
 > 
->   EXT4-fs warning (device loop0): ext4_xattr_inode_create:1485: refuse to
->   create EA inode when umounting
->   WARNING: fs/ext4/xattr.c:1486 at ext4_xattr_inode_lookup_create
->    ext4_xattr_block_set
->    ext4_expand_extra_isize_ea
->    __ext4_expand_extra_isize
->    __ext4_mark_inode_dirty
->    ext4_dirty_inode
->    __mark_inode_dirty
->    sync_lazytime
->    iput
->    dentry_kill
->    shrink_dentry_list
->    shrink_dcache_for_umount
->    generic_shutdown_super
->    kill_block_super
->    ext4_kill_sb
+> You're clearly implementing the "Locking Block Device Access" protocol
+> as documented by systemd:
+> https://systemd.io/BLOCK_DEVICE_LOCKING/
 > 
-> shrink_dcache_for_umount() clears s_root before generic_shutdown_super()
-> clears SB_ACTIVE, so during the dcache shrink the last iput() of a
-> lazytime inode still redirties it and reaches the isize expansion.  The
-> expansion can move xattrs out to a block, and creating the EA inode for
-> them needs s_root, which ext4_xattr_inode_create() refuses without.
+> So why not use libsystemd like the example in that posting provides?
+> sd_device_get_parent_with_subsystem_devtype is much less gross than
+> open-coding the same logic here.
+This was on purpose and not something I missed. The sd_device_get_parent_with_subsystem_devtype
+requires libsystemd v251+, and e2fsck needs to keep working in contexts where
+that dependency isn't available or isn't guaranteed to be new enough - non-systemd distros, older
+LTS systems doing root-fs repair before userspace is fully up, embedded/recovery images, etc.
+Taking a hard runtime dependency on a versioned libsystemd API for a tool this fundamental felt
+like a much bigger cost than by parsing (/sys/dev/block/MAJ:MIN/partition, .../dev), which only
+relies on a stable kernel ABI with no library and no version floor. Happy to reconsider if
+the project wants to take the dependency, but wanted to flag the tradeoff explicitly rather
+than silently pick one side.
 > 
-> ext4_try_to_expand_extra_isize() already declines to expand when the
-> superblock is not active, but that test does not cover this window.
-> Decline while s_root is gone as well.  The expansion is best effort and
-> __ext4_mark_inode_dirty() ignores its return value, so nothing else
-> changes; the inode can be expanded on a later mount.
+> > Signed-off-by: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+> > ---
+> > 
+> > Changes in v2:
+> > - Guard the whole feature (function, call site, lock_fd, cleanup) with
+> >   #ifdef __linux__ instead of just the function body, so it's fully
+> >   absent from non-Linux builds 
+> > - Collapse HAVE_SYS_*_H header guards into a single #ifdef __linux__
+> > - Reuse a single dev_path[] buffer instead of three separate stack
+> >   buffers
+> > - Keep translatable warning strings on one line each, even past 80
+> >   columns 
+> > - Drop the blanket "could not lock" warning that fired even when the
+> >   target wasn't a block device at all (e.g. a regular file), which was
+> >   causing issues with tests; lock_whole_disk() now only warns/errors
+> >   at the point of a genuine failure
+> > - No change needed for the Ctrl-C/EINTR concern — traced and confirmed
+> >   the existing signal handling already unwinds cleanly
+> > 
+> >  e2fsck/unix.c | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  1 file changed, 101 insertions(+)
+> > 
+> > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> > index 335ca377..cf21752a 100644
+> > --- a/e2fsck/unix.c
+> > +++ b/e2fsck/unix.c
+> > @@ -36,6 +36,11 @@ extern int optind;
+> >  #ifdef HAVE_SYS_IOCTL_H
+> >  #include <sys/ioctl.h>
+> >  #endif
+> > +#ifdef __linux__
+> > +#include <sys/file.h>
+> > +#include <sys/stat.h>
+> > +#include <sys/sysmacros.h>
+> > +#endif
+> >  #ifdef HAVE_MALLOC_H
+> >  #include <malloc.h>
+> >  #endif
+> > @@ -1397,6 +1402,90 @@ err:
+> >  	return retval;
+> >  }
+> >  
+> > +#ifdef __linux__
+> > +static int lock_whole_disk(e2fsck_t ctx, const char *dev_name)
+> > +{
+> > +	struct stat st;
+> > +	char dev_path[256]; /* reused for each sysfs/device path we build */
+> > +	char parent_devnum[32];
+> > +	FILE *f;
+> > +	unsigned int maj, min;
+> > +	int parent_resolved = 0;
+> > +	const char *opened_path;
+> > +	int fd;
+> > +
+> > +	if (stat(dev_name, &st) < 0)
+> > +		return -1;
+> > +
+> > +	if (!S_ISBLK(st.st_mode))
+> > +		return -1;
+> > +
+> > +	maj = major(st.st_rdev);
+> > +	min = minor(st.st_rdev);
+> > +
+> > +	/*
+> > +	 * If dev_name is a partition (sysfs 'partition' attribute exists),
+> > +	 * resolve the parent whole-disk device so the flock covers the same
+> > +	 * device node that udevd locks before probing any partition on it.
+> > +	 */
+> > +	snprintf(dev_path, sizeof(dev_path),
+> > +		 "/sys/dev/block/%u:%u/partition", maj, min);
+> > +
+> > +	if (access(dev_path, F_OK) == 0) {
+> > +		snprintf(dev_path, sizeof(dev_path),
+> > +			 "/sys/dev/block/%u:%u/../dev", maj, min);
+> > +
+> > +		f = fopen(dev_path, "r");
+> > +		if (f) {
+> > +			if (fscanf(f, "%31s", parent_devnum) == 1) {
+> > +				unsigned int pmaj, pmin;
+> > +				if (sscanf(parent_devnum, "%u:%u",
+> > +					   &pmaj, &pmin) == 2) {
+> > +					maj = pmaj;
+> > +					min = pmin;
+> > +					parent_resolved = 1;
+> > +				}
+> > +			}
+> > +			fclose(f);
+> > +		}
+> > +		if (!parent_resolved)
+> > +			log_err(ctx, _("Warning: could not resolve whole-disk device for %s; lock may not prevent udev races\n"), dev_name);
+> > +	}
+> > +
+> > +	snprintf(dev_path, sizeof(dev_path), "/dev/block/%u:%u", maj, min);
+> > +
+> > +	opened_path = dev_path;
+> > +	fd = open(dev_path, O_RDONLY | O_CLOEXEC, 0);
+> > +	if (fd < 0) {
+> > +		fd = open(dev_name, O_RDONLY | O_CLOEXEC, 0);
+> > +		if (fd < 0) {
+> > +			com_err(ctx->program_name, errno,
+> > +				_("while trying to open %s for locking"), dev_name);
+> > +			return -1;
+> > +		}
+> > +		opened_path = dev_name;
+> > +		if (parent_resolved)
+> > +			log_err(ctx, _("Warning: %s not found; locking %s instead, lock may not prevent udev races\n"), dev_path, dev_name);
+> > +	}
+> > +
+> > +	while (flock(fd, LOCK_EX) != 0) {
+> > +		if (errno == EINTR) {
+> > +			if (ctx->flags & E2F_FLAG_CANCEL) {
+> > +				close(fd);
+> > +				return -1;
+> > +			}
+> > +			continue;
+> > +		}
+> > +		com_err(ctx->program_name, errno,
+> > +			_("while trying to lock %s"), opened_path);
+> > +		close(fd);
+> > +		return -1;
+> > +	}
+> > +
+> > +	return fd;
+> > +}
+> > +#endif /* __linux__ */
+> > +
+> >  int main (int argc, char *argv[])
+> >  {
+> >  	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
+> > @@ -1413,6 +1502,9 @@ int main (int argc, char *argv[])
+> >  	int journal_size;
+> >  	int sysval, sys_page_size = 4096;
+> >  	int old_bitmaps;
+> > +#ifdef __linux__
+> > +	int lock_fd = -1;
+> > +#endif
+> >  	__u32 features[3];
+> >  	char *cp;
+> >  	enum quota_type qtype;
+> > @@ -1488,6 +1580,10 @@ int main (int argc, char *argv[])
+> >  
+> >  	check_mount(ctx);
+> >  
+> > +#ifdef __linux__
+> > +	lock_fd = lock_whole_disk(ctx, ctx->filesystem_name);
 > 
-> Running the syzbot reproducer for 60 seconds produced 3583 splats before
-> this change and none after it, with the same number of mount cycles.
+> If the filesystem has an external journal device, doesn't that also need
+> locking?
+Good point, and no, it doesn't currently - lock_whole_disk() is only called on
+ctx->filesystem_name. An external journal device (-O journal_dev) is a separate
+block device with its own by-uuid symlinks, and I don't have a strong argument
+that it's immune to the same class of race during replay. I'd like to treat
+this as a follow-up rather than block on it, since it needs a bit more digging
+into whether the external journal's own superblock write pattern actually
+creates the same transient-bad-checksum window - but I don't want to just wave
+it away either.
 > 
-> Reported-by: syzbot+4b03894b6ec5753ddf24@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=4b03894b6ec5753ddf24
-> Fixes: f31173c19901 ("ext4: refuse to create ea block when umounted")
-> Signed-off-by: Hemanth Selam <hemanth.selam@gmail.com>
+> Why isn't this implemented as part of the unixio manager?
+Agreed this is architecturally the more correct home for it - mke2fs, tune2fs,
+and resize2fs go through the same unix_io manager and do similar multi-step
+writes to live block devices, so they're exposed to the same race and get none
+of this protection today. I scoped this patch to e2fsck specifically because
+that's the most common/severe case in practice and wanted a narrow, reviewable
+first fix rather than a bigger refactor touching every tool at once.
+I can look at moving this into unix_io_open()/unix_io_close() as a follow-up
+so mke2fs/tune2fs/resize2fs pick it up automatically via ext2fs_open()/close() 
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/inode.c | 8 +++++++-
->  1 file changed, 7 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index bd4b778df9eb..6e523a5c8230 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6598,8 +6598,14 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
->  	 * When !SB_ACTIVE, iput triggers write_inode_now() which acquires
->  	 * s_writepages_rwsem, causing a deadlock with the caller's active
->  	 * jbd2 handle (lock order: s_writepages_rwsem -> jbd2_handle).
-> +	 *
-> +	 * Skip it while unmounting as well.  shrink_dcache_for_umount()
-> +	 * clears s_root before generic_shutdown_super() clears SB_ACTIVE, and
-> +	 * the last iput() of a lazytime inode in that window redirties it and
-> +	 * lands here.  Moving xattrs out to a block then needs a new EA inode,
-> +	 * which ext4_xattr_inode_create() refuses without s_root.
->  	 */
-> -	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE)))
-> +	if (unlikely(!(inode->i_sb->s_flags & SB_ACTIVE) || !inode->i_sb->s_root))
->  		return -EBUSY;
->  
->  	/*
-> -- 
-> 2.43.7
+> --D
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> > +#endif
+> > +
+> >  	if (!(ctx->options & E2F_OPT_PREEN) &&
+> >  	    !(ctx->options & E2F_OPT_NO) &&
+> >  	    !(ctx->options & E2F_OPT_YES)) {
+> > @@ -2169,6 +2265,11 @@ skip_write:
+> >  	ext2fs_close_free(&ctx->fs);
+> >  	free(ctx->journal_name);
+> >  
+> > +#ifdef __linux__
+> > +	if (lock_fd >= 0)
+> > +		close(lock_fd);
+> > +#endif
+> > +
+> >  	if (ctx->logf)
+> >  		fprintf(ctx->logf, "Exit status: %d\n", exit_value);
+> >  	e2fsck_free_context(ctx);
+> > -- 
+> > 2.54.0
+> > 
+> > 
