@@ -1,58 +1,62 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B742D4248D2;
-	Wed, 26 Aug 2026 09:54:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0F5142467E;
+	Wed, 26 Aug 2026 09:54:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787738066; cv=none; b=gBmAxHdv2b+bAoIkrnqpgxOTdkTz2dRvf3CDBV3WoEe+EjgmL19Y6Mg6AQP99QqqTdT/gv5EizQ1QIZOq7e1iziwMtf7Q0EFfscJjQX7XmEq45xt2Kl+xTkHN3S3kSf+suVnBtOfxc5o6VZhIxOERVT/l2CuVoL7asPrDCeBZGo=
+	t=1787738068; cv=none; b=jROQ5Jslnvu3H3lndbQ2Ve0gafje/+LPKpmX1dYMsuSN6eKgqqY/+9KZBp0SrAxBFPb7lPyXxYLUzMblY5ofv/RZuLRd2MNmGgfmKfqCBOzObD/i5zCZg3i+FnM+MogLB7BXt+mT3CpaVbCLhPXB52QzhgMykqGHYYnDrCnYf3U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787738066; c=relaxed/simple;
-	bh=zLhoRZhapgbXtlCmoMaHr/HSkRUO/EsjoT3slY3ARfo=;
+	s=arc-20240116; t=1787738068; c=relaxed/simple;
+	bh=bePLfeCOE2osAZj0RZrLVb/nV6UrobiJHjJV6vA8IIw=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=H+LwZk2pnGuK4Mw1hVyp8+iUWrITW/eCUNytW3Q6GVdVqdrfEJ+98WMosORO3k3SK8HgYlWqTsUDrvO+CYqDmkVwZ1vp9Vt39Jt2CfUVvstcfJi2j3mHngbZiKz2EheN7mPkL6gDcHmB+iVg70+Tj2PsSanw7qbZ9C8b5xvMu5s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UOmwMOuc; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=eUc0JawA7/UicBqQ6ttUduymPIkg47ckiXQBiHouS1q48Wfsdc+0hLkbFXCtVZU08fmdYG0Gd4UdBAqcdhomQgn9gT2JuX9yEAf195mSlBUVflRsKLmMz/q1btgU38vbfa51UID2IDbJIF08h1xRtU8+wosDsOI/vkNzq16uqds=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CpwZWNxa; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UOmwMOuc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DED91F000E9;
-	Wed, 26 Aug 2026 09:54:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CpwZWNxa"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 36EAA1F000E9;
+	Wed, 26 Aug 2026 09:54:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787738065;
-	bh=zLhoRZhapgbXtlCmoMaHr/HSkRUO/EsjoT3slY3ARfo=;
+	s=k20260515; t=1787738067;
+	bh=bePLfeCOE2osAZj0RZrLVb/nV6UrobiJHjJV6vA8IIw=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=UOmwMOucxQlA+ihqFEHTWes2U2FzDLCytxOkWM+2ZWdiZirlQ2oHRifWMOmV+MqHc
-	 T+BBvA+jvgorOoqUVNIAhTrRi1Ryfx7J5hoeV9O3FrlUATQigXEUTEhiE5WtqFaCno
-	 LGQc41WY4Ys9VSfwY4Kmm3FWPesySGYjvLIHFxyeadrXcgzs7jW/yuyx+rhXBMq8y4
-	 5g+NCOmo6CtM042JTA41unpkxiZ/RwgtKHggE/p6i5BZRY5fH22T7aj2mavMiC0pR5
-	 WKKC5xu0LmP86ae1RzkQjJqlDFVPSfL72ZgrsnFofFwvw+OC57s7b8LTMZ377fpcg8
-	 4hFwvBTTTthgA==
+	b=CpwZWNxaTvllcLub8chomc3YiEO7z4VzmgsMxhIRsaY/iPliVBvT/zadUAAFcuojf
+	 SUcGmpJ/YmT2UYGlSlmfvcVHKq4lgBNDCHsMF3624BcJgyLMWY7vXIUbfRPM8CMwGV
+	 fZzShaOMQyqnskIUkqEtlMhlK5NkXMuD8GbRr590tAoOUUZMSIcwimvoYDGlY6lw7O
+	 8OCYKKPRxr45vlNG9auBQoTV23VjygRzyPNvO63KHHTSKUoRsN6ea0EA8uqd+5oWKD
+	 LBuo5A6RyNhvMHisihFwuaUOGhkrTTw+nsPZ1K94e6GkQzZpvdEbWMUuN2fKKyxTru
+	 nfjMtgIM/l4Ng==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 09/11] net: sched: act_gact: use acquire/release for
- tcfg_ptype
+Subject: Re: [PATCH 03/11] fs: aio: Use acquire/release for ring->tail
+ publication
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jinjie Ruan" <ruanjinjie@huawei.com>
-Cc: "Vincent Mailhol" <mailhol@kernel.org>, tytso@mit.edu, linux-ext4@vger.kernel.org, "Oliver
- Hartkopp" <socketcan@hartkopp.net>, "Marc Kleine-Budde" <mkl@pengutronix.de>, linux-can@vger.kernel.org, "Oleksij
- Rempel" <o.rempel@pengutronix.de>
-In-Reply-To: <20260825095422.3166067-10-ruanjinjie@huawei.com>
+Cc: "Marc Kleine-Budde" <mkl@pengutronix.de>, "Oleksij Rempel" <o.rempel@pengutronix.de>, linux-can@vger.kernel.org, linux-ext4@vger.kernel.org, tytso@mit.edu, "Vincent
+ Mailhol" <mailhol@kernel.org>, "Oliver Hartkopp" <socketcan@hartkopp.net>
+In-Reply-To: <20260825095422.3166067-4-ruanjinjie@huawei.com>
 References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
- <20260825095422.3166067-10-ruanjinjie@huawei.com>
+ <20260825095422.3166067-4-ruanjinjie@huawei.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Wed, 26 Aug 2026 09:54:24 +0000
-Message-Id: <20260826095425.3DED91F000E9@smtp.kernel.org>
+Date: Wed, 26 Aug 2026 09:54:26 +0000
+Message-Id: <20260826095427.36EAA1F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> Replace the smp_wmb()/smp_rmb() barrier pair with
-> smp_store_release()/smp_load_acquire() on gact->tcfg_ptype.
-> tcf_gact_init() publishes tcfg_ptype via release after writing
-> tcfg_pval/tcfg_paction; tcf_gact_act() acquires it before
-> dispatching to gact_net_rand()/gact_determ(), ensuring the probability
-> parameters are visible.
+> Replace the smp_wmb() + WRITE_ONCE(ring->tail) and READ_ONCE(ring->tail)
+> + smp_rmb() barrier pair with smp_store_release()/smp_load_acquire()
+> on `ring->tail`.
+>=20
+> This expresses the publish/subscribe pattern more clearly and allows
+> architectures with native acquire/release instructions (e.g. arm64's
+> STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
+>=20
+> The release ensures event data written before updating ring->tail is
+> visible to readers that observe the new tail value via acquire, which
+> is exactly the ordering the barrier pair provided.
 >=20
 > No functional change intended.
 >=20
@@ -63,5 +67,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260825095422.3166=
-067-1-ruanjinjie@huawei.com?part=3D9
+067-1-ruanjinjie@huawei.com?part=3D3
 
