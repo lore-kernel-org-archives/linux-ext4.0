@@ -1,88 +1,50 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B5343783C3;
-	Thu, 27 Aug 2026 13:41:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 316B1241686
+	for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 21:07:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787838093; cv=none; b=EpJkaov489mP2S/u9z+HtemOltU+GFMuHXXs/UVF5Sj/K72yS/VkMyiEAEgWu2CL1CBo2PPKhWnbyrcQ8MXd7X/Ysavh55U4lmVc7GpcGNu/tfJ1G2EF1j6g6J5Ii5vPAyiT06NKhbaBiO7uY2e0IxzYugAUKKEkiUXtYixC4B4=
+	t=1787864860; cv=none; b=RrjbUrnNDPHMDxXCf32rT235QaF5W3m++ztXpAXFQ8QuqH8oc1hynbYGyLyHhMv+93PQ2GW3h3OAwKDyFXsfDmZAm5xPpn1OjByFn06DRXEySovThjmHrAxoauvSwsvFxqR5ec2LGVARdd7HKG4NVPy9oMqFksCdtJWwhGtlrHg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787838093; c=relaxed/simple;
-	bh=/ZFpUHtn9MNiEU8x+uXf7nZYu7gx2z63M+fGLsE1UdY=;
+	s=arc-20240116; t=1787864860; c=relaxed/simple;
+	bh=dDgbXlamxMrcMKbLL1wIkfulHYJQbiZgtzoV9+bZzNA=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=IA5VZS4tcwzppV4V9R7FwUlsdZSYWSRUGuGIKj4p7JgMC0Z7+YuetYx4LL3M3jxwMdJ8MEAqtyeTXIXhecS0ywDOkSVE7Ewz+JWuwkW6KeGeK95jKVePFaGFQAkrlCFHUlVMJpAt3CW3OvHI+X+3blpDjTPRaUTeLSFBKOWYwxQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=nU+MbbRG; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=DhYm44n2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=DcR9+AsK; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=f8Xm3vX6; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=QisnOV4z2USdiFdi3VlIRCn1l6ped0A3O8PfGqmhfv6Hb+wPg8IaOphrrmB+W9Ed7+5v8hJ8AGuAeSTc9kiauXxRYtHQ1KcP2WbMB6bVzq7MBUBjIXLOws3VEeNN1t+tMWpT1I3f1FX6UZkXbX1TcpNHI8JroeVvfSNHRb8JMck=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HbKYxiMb; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="nU+MbbRG";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="DhYm44n2";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="DcR9+AsK";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="f8Xm3vX6"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id C91DF21AFF;
-	Thu, 27 Aug 2026 13:41:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787838079; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=+wBdJGZDcWQy9r4ySz5XiZao02jjmFLlyC+OVm2nHaQ=;
-	b=nU+MbbRGpZd9x/uE403wcYLTQwMn6bZ0phxAxcgL2t76MhLujNqPSUeo2WtSGo0gBiZMeE
-	eLLW2uRJCBlHUAW8J2JESySk+C8I88FKxdqxWwcR6njfF7fooHb3uXt7bzkuxpuDF6X7cJ
-	lWljHvELLpp1K/Jdf/zGWeV8smt0WhY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787838079;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=+wBdJGZDcWQy9r4ySz5XiZao02jjmFLlyC+OVm2nHaQ=;
-	b=DhYm44n2eHyZJMoJrzfiZ2JwT0LPgzbZtP1K5FSnCAGPq7Ss754d992tAQl7SmClocagER
-	+/dB7iBkR5904YAg==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=DcR9+AsK;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=f8Xm3vX6
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787838074; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=+wBdJGZDcWQy9r4ySz5XiZao02jjmFLlyC+OVm2nHaQ=;
-	b=DcR9+AsKwjegfOwrtzYC/SHLtKaC4k1btWYc+E/PJM4gxhyv2DMkFS0YVKGE5Ip9C3v1Ow
-	FEFhJJ/ZsH2MEkoa80xW/QD2o80BopfipxY4vLz3WZmCSzJB0yFB9ZC5Ayjc7/EqT1896t
-	DCePfATUs37HeJ0ZfcwesUJjuk1W5dw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787838074;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=+wBdJGZDcWQy9r4ySz5XiZao02jjmFLlyC+OVm2nHaQ=;
-	b=f8Xm3vX6WDn1pDr/Tgb5+xVNjRS+Bu8QunO4Ly8ms3/1R4aVXdq0ghV8Mirjx8vOIf/wPQ
-	Mv8BfHyiJ81slNAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BE9CB1352C;
-	Thu, 27 Aug 2026 13:41:14 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DviALno+kGrTeQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 27 Aug 2026 13:41:14 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 61D80A1324; Thu, 27 Aug 2026 15:41:10 +0200 (CEST)
-Date: Thu, 27 Aug 2026 15:41:10 +0200
-From: Jan Kara <jack@suse.cz>
-To: Sergey Senozhatsky <senozhatsky@chromium.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	Sarthak Kukreti <sarthakkukreti@google.com>
-Subject: Re: [PATCH] fs/ext4: fix ABBA deadlock in ext4_rmdir()
-Message-ID: <a5zm7znmyelavclrssrhtxcksozgkgjadefvdojpeabck7hstr@tn7yhv2dey63>
-References: <20260827125158.4030598-1-senozhatsky@chromium.org>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HbKYxiMb"
+Received: from macsyma.thunk.org (pool-173-48-113-140.bstnma.fios.verizon.net [173.48.113.140])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67RL2Auk008885
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 27 Aug 2026 17:02:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1787864532; bh=NCkniQ2q1y2l3Mb87PIJtW31rZ0rkcocWHTWit1jWEc=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=HbKYxiMbYjvuky7m1RlWY0+KJc+Pd9/nHl+SqtkYMkby1iZX9oUkI0WVmlzQQCLq3
+	 9GbR9l5SY6/+i5ElyGW5SctmAR+kaeWClK+XVySL8mJ0Ni1bD69+9p1oeR9Z+/khN1
+	 9i3HqxhrtyzJSOtV8OzGSokqdxG3Wc24cn1MaLBF+uvfvKsXFbl+HSZvyUmrbbolPP
+	 YJ11TSG67UtKVUfYM2LOZurEiX8rtM2ozTZXLPpKs8ibdKiRlyrd84nrPkvmLEbShl
+	 BBFju3TiZ8HBU4/mfKmIxMSIUSg808vedaIVoIV+vBuL44eUSw0fZxzaRGQHh0IjgS
+	 LPK/PwLD3fSCQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id ECF57123286B; Thu, 27 Aug 2026 17:01:09 -0400 (EDT)
+Date: Thu, 27 Aug 2026 17:01:09 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
+        adilger@dilger.ca, srivatsa@csail.mit.edu
+Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
+ during filesystem check
+Message-ID: <apCRFu5vpNxRLO8Y@mit.edu>
+References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+ <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
+ <20260824224006.GB6038@frogsfrogsfrogs>
+ <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,152 +53,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260827125158.4030598-1-senozhatsky@chromium.org>
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: C91DF21AFF
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org,google.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	TAGGED_RCPT(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,chromium.org:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
+In-Reply-To: <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
 
-On Thu 27-08-26 21:50:20, Sergey Senozhatsky wrote:
-> We observe the following ABBA deadlock (casefolding enabled):
-> 
->  INFO: task jbd2/dm-13-8:447 blocked for more than 720 seconds.
->  task:jbd2/dm-13-8    state:D stack:0     pid:447   tgid:447   ppid:2
->  Call Trace:
->   <TASK>
->   __schedule+0xc2c/0xe60
->   schedule+0x40/0xe0
->   jbd2_journal_wait_updates+0x8f/0xf0
->   jbd2_journal_commit_transaction+0x321/0x1850
->   kjournald2+0xa9/0x230
->   kthread+0x226/0x2a0
->   ret_from_fork+0x101/0x1e0
->   ret_from_fork_asm+0x1a/0x30
-> 
->  INFO: task Thread-10:4161 blocked for more than 720 seconds.
->  task:Thread-10       state:D stack:0     pid:4161  tgid:3848  ppid:540
->  Call Trace:
->   <TASK>
->   __schedule+0xc2c/0xe60
->   schedule+0x40/0xe0
->   wait_transaction_locked+0x8c/0xd0
->   start_this_handle+0x252/0x870
->   jbd2__journal_start+0x120/0x280
->   __ext4_journal_start_sb+0x11a/0x250
->   ext4_evict_inode+0x208/0x760
->   iput+0x222/0x5c0
->   dput+0x293/0x690
->   ____fput+0x145/0x2b0
->   task_work_run+0x7a/0xb0
->   exit_to_user_mode_loop+0xc0/0xd0
->   do_syscall_64+0x14b/0xf10
->   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> 
->  NMI backtrace for cpu 0
->  CPU: 0 UID: 1010216 PID: 4160 Comm: Thread-7
->  RIP: 0010:d_walk+0x0/0x290
-> [..]
->  Call Trace:
->  <TASK>
->   shrink_dcache_parent+0xb2/0x100
->   d_invalidate+0x50/0x110
->   ext4_rmdir+0x3a2/0x3d0
->   vfs_rmdir+0x9d/0x1d0
->   do_rmdir+0xf0/0x330
->   __x64_sys_unlinkat+0x34/0x50
->   do_syscall_64+0x61/0xf10
-> 
-> The problem is that ext4_rmdir() calls d_invalidate() before stopping
-> the jbd2 transaction handle.  Because d_invalidate() traverses child
-> dentries it can encounter dying or in-use dentries.  If a concurrent
-> thread executing __dentry_kill() on a child dentry invokes ext4_evict_inode(),
-> it requests a new transaction handle via ext4_journal_start(), which
-> waits for all running handles to close.  However, the thread executing
-> ext4_rmdir() still holds its active transaction handle while looping
-> in shrink_dcache_parent() waiting for the dying child dentry to complete
-> eviction.
-> 
-> Stop transaction handle in ext4_rmdir() before calling d_invalidate().
-> 
-> Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
-> Co-developed-by: Sarthak Kukreti <sarthakkukreti@google.com>
-> Signed-off-by: Sarthak Kukreti <sarthakkukreti@google.com>
-> Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
+On Wed, Aug 26, 2026 at 07:04:48AM -0500, Nandakumar Raghavan wrote:
+> This was on purpose and not something I missed. The sd_device_get_parent_with_subsystem_devtype
+> requires libsystemd v251+, and e2fsck needs to keep working in contexts where
+> that dependency isn't available or isn't guaranteed to be new enough - non-systemd distros, older
+> LTS systems doing root-fs repair before userspace is fully up, embedded/recovery images, etc.
 
-Good catch! Feel free to add:
+Cqn you name any other OS that has implemented
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+	https://systemd.io/BLOCK_DEVICE_LOCKING/
 
-								Honza
+*other* than systemd?  So for non-systemd distros, who cares if we
+don't have the functionality?  So what we could do is to use autoconf
+with something like this:
 
-> ---
->  fs/ext4/namei.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index a6386c1d237f..231a274b814e 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -3209,19 +3209,20 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
->  	ext4_fc_track_unlink(handle, dentry);
->  	retval = ext4_mark_inode_dirty(handle, dir);
->  
-> +end_rmdir:
-> +	brelse(bh);
-> +	if (handle)
-> +		ext4_journal_stop(handle);
-> +
->  	/* VFS negative dentries are incompatible with Encoding and
->  	 * Case-insensitiveness. Eventually we'll want avoid
->  	 * invalidating the dentries here, alongside with returning the
->  	 * negative dentries at ext4_lookup(), when it is better
->  	 * supported by the VFS for the CI case.
->  	 */
-> -	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
-> +	if (!retval && IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
->  		d_invalidate(dentry);
->  
-> -end_rmdir:
-> -	brelse(bh);
-> -	if (handle)
-> -		ext4_journal_stop(handle);
->  	return retval;
->  }
->  
-> -- 
-> 2.55.0.897.gb25b4bd76c-goog
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+AC_CHECK_LIB(libsystemd, sd_device_get_parent_with_subsystem_devtype,
+	AC_DEFINE(HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE, 1,
+		[Define to 1 if libsystemd has sd_device_get_parent_with_subsystem_devtype]))
+
+We would only do the flock(LOCK_EX) if and only if the function is
+present.  If it isn't, say on MacOS, FreeBSD, or RHEL 7 we won't play
+the systemd locking game --- which is fine, because it doesn't matter
+on those platforms.
+
+If you care about running e2fsck built on RHEL 8 on RHEL 7, that's an
+easy problem to solve.  A executable linked using shared libraries
+won't work already since the shared libraries on RHEL 8 are too new.
+But we have a solution already, which is to use e2fsck.static, which
+is statically linked.
+
+> Taking a hard runtime dependency on a versioned libsystemd API for a tool this fundamental felt
+> like a much bigger cost than by parsing (/sys/dev/block/MAJ:MIN/partition, .../dev), which only
+> relies on a stable kernel ABI with no library and no version floor. Happy to reconsider if
+> the project wants to take the dependency, but wanted to flag the tradeoff explicitly rather
+> than silently pick one side.
+
+If we really cared about taking a binary built on a system with
+libsystemd. and running on a system without libsystemd, another
+solution that we've used is dlopen.
+
+For an example of that's done, see misc/create_inode_libarchve.c and
+the associated autoconf tests in configure.ac in the e2fsprogs
+sources.  This is how "mke2fs -d embed_rootfs.tar.gz -t ext4 embed.img
+1G" is handled without needing a hard dependency on libarchive being
+installed.  If it's not installed then you'll just get the error
+message "you need libarchive to be able to process tarballs".
+
+I don't think the dlopen() approach is needed here, though.
+
+Cheers,
+
+					- Ted
