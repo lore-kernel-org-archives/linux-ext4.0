@@ -1,204 +1,197 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C332C404BF9;
-	Wed, 26 Aug 2026 16:55:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8141C374A08;
+	Thu, 27 Aug 2026 01:29:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787763334; cv=none; b=h+ANiXnxZWZnq8Cn0EJKVOuGuk2Rlbw4nZWNPh23EPP8579goje3RHq/6vbGboknRpzdwm/y7tnTcVLCDnMBKbs0DN2XR3PLFsgaOJaibk1YjrihujNiHizxK8ny9ZxXTtaBWZ/qx70zgCPihYc3PbSSJcRIsNjX8Yeb81C26X4=
+	t=1787794152; cv=none; b=RrxchUS7rlKFTUNFHtF0dGyWrRArrJmXq/hGvoCWF/ZNDkIR90LDpnzraTVRi5y9PdJaz+K2k5wyr+vvw2YUHg0nVPllwcetA+BA2uO+RysV03mADBelFC+iG9OWKU+W52GSL7gSH3DeO3p7fc/AF+/w2+ey1HxcLriPNRy7Mls=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787763334; c=relaxed/simple;
-	bh=xH0bNrp+oSSR+3EXk15d7szlJ/i/lhji1zrMK5wo9Ko=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=PxUWagyyDtqkEi7m6HgGShRcBe9VMkWMa0up/XIqZMdseo6vbNf+UDuDsOSAfhj7g+maz9xxkspDVp66K8euiFPqfBHw7WUfRnK9Ems/mmWGVy5Ox6W0ubLzSfB8yHt0E0d721m/vB2zsSpAV1POPbaJcCjmYHZ+oEkJ2tWzxJo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fxux6CNU; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RoNmb1ei; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=gnsFsjID; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=XQnJpTVO; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fxux6CNU";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RoNmb1ei";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="gnsFsjID";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="XQnJpTVO"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2F8281F80E;
-	Wed, 26 Aug 2026 16:55:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787763313; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=WsrHi5T5oUS0tTADH/XkrMBgLtWoXpF2+ghPWlgvljQ=;
-	b=fxux6CNU0gIxLL3GuhzelqQXo/cYjfMaUVGtgup93NjfHIwgzKrntMUxsQ7Ir9NdEmALpA
-	2BOKGQ5LWuXjf+HHQxQgsxi3PK36u0diQ7NPZ7x9zoreYbGf7cfITdNasQ/unlj4IVEGZA
-	i0vrxPsI14h+uC6LohHzpMeeBfyzFCw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787763313;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=WsrHi5T5oUS0tTADH/XkrMBgLtWoXpF2+ghPWlgvljQ=;
-	b=RoNmb1ein/SQEIDWZYbqNkYxTWA+zGMHkTen9HRbRnpMD3ahEnUbDtDmmVbXrPIN0cwZ68
-	AFeW5LIktOmGvuBQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=gnsFsjID;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=XQnJpTVO
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787763309; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=WsrHi5T5oUS0tTADH/XkrMBgLtWoXpF2+ghPWlgvljQ=;
-	b=gnsFsjIDMxPevBY7kmmrcbWrtik+uH3IPqDXzPK4OjqUTDMQ+pfVgrURYkGLUfjXaulE5r
-	lva/cGm0z3w4qD3V6EDU8e0LlmcmLGzWfrq8xG0KXrYrmi/136xwuK1TpDcVYnsQxpQ0xK
-	cv/N9+cwCYEocqzgAfXRSFPlUCHpWt4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787763309;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=WsrHi5T5oUS0tTADH/XkrMBgLtWoXpF2+ghPWlgvljQ=;
-	b=XQnJpTVOI9PFq6WPaDGrKU+X+iEAM11qJIeN9n8Li21/ylSRa6b+RujrdSVNakVlydQUB6
-	s6R7j64HUI/g9ZDA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1BDCA13354;
-	Wed, 26 Aug 2026 16:55:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id CWxuBm0aj2onNgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 26 Aug 2026 16:55:09 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id B4939A13A7; Wed, 26 Aug 2026 18:55:04 +0200 (CEST)
-Date: Wed, 26 Aug 2026 18:55:04 +0200
-From: Jan Kara <jack@suse.cz>
-To: Daejun Park <daejun7.park@samsung.com>
-Cc: "tytso@mit.edu" <tytso@mit.edu>, 
-	"adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>, "jack@suse.cz" <jack@suse.cz>, 
-	"yi.zhang@huawei.com" <yi.zhang@huawei.com>, "ritesh.list@gmail.com" <ritesh.list@gmail.com>, 
-	"libaokun@linux.alibaba.com" <libaokun@linux.alibaba.com>, "ojaswin@linux.ibm.com" <ojaswin@linux.ibm.com>, 
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, 
-	"amonakov@ispras.ru" <amonakov@ispras.ru>
-Subject: Re: [PATCH] ext4: don't report delalloc data as a hole on
- indirect-mapped inodes
-Message-ID: <wffv3oy43ss7i3dd5td4he6bqwex2d56pbyie2spxludkr5vqe@d3lrjxx4a2gk>
-References: <CGME20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5>
- <20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5>
+	s=arc-20240116; t=1787794152; c=relaxed/simple;
+	bh=5Z9FjJzipq/5UIxPjJqzkX5gI/83dJFQm2jtms39OY4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=NBmntEphSn/ZXLXQHPLwZhLeLU/sLfv9wX7JVwQYwfyhBxjw63meNv5nuGadsm0XwCn7vLdilPWE2lnkfmjdzFT4DG8oJ0TvQCvwk/qbqEGsl4I7qhnFq6h3IeZxMM8yg0aJlThi1pEvJJdszNELffJNcjSo2mt2EdMwQ+une6o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hVkRr5vsfzYQvJj;
+	Thu, 27 Aug 2026 09:28:24 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id CED6F40986;
+	Thu, 27 Aug 2026 09:28:54 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgCX0kHKko9qyyQzDw--.25945S3;
+	Thu, 27 Aug 2026 09:28:52 +0800 (CST)
+Message-ID: <3f17d214-f69c-47b6-abf6-4437cc5840c0@huaweicloud.com>
+Date: Thu, 27 Aug 2026 09:28:41 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5>
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 2F8281F80E
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_DN_EQ_ADDR_SOME(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,huawei.com,gmail.com,linux.alibaba.com,linux.ibm.com,vger.kernel.org,ispras.ru];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,samsung.com:email]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] man2/fallocate.2: add doc for FALLOC_FL_WRITE_ZEROES
+To: Pankaj Raghav <pankaj.raghav@linux.dev>,
+ Alejandro Colomar <alx@kernel.org>, Pankaj Raghav <p.raghav@samsung.com>
+Cc: linux-man@vger.kernel.org, hch@lst.de, linux-xfs@vger.kernel.org,
+ gost.dev@samsung.com, "Darrick J . Wong" <djwong@kernel.org>,
+ linux-ext4@vger.kernel.org
+References: <20260820090400.857720-1-p.raghav@samsung.com>
+ <aomV6Jt7udtAwwcw@devuan> <f5510b49-2904-4962-a944-4a1fdb31b7d6@linux.dev>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <f5510b49-2904-4962-a944-4a1fdb31b7d6@linux.dev>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_Ch0CgCX0kHKko9qyyQzDw--.25945S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxZF4xAr45Jr4kAF1xXr45GFg_yoWrKr45pr
+	WYy3Z0kan8Wr13u3sa9w48Wr4Fv3ykJr45ur4SqryUZr9xZF1xKFsrJF1F9FZ7Jr1xAF1j
+	vryjqFy7WrnxAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVCY1x
+	0267AKxVWxJr0_GcWle2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwCY1x0262kKe7AKxVWUtVW8ZwCF04k20xvY0x0E
+	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
+	80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0
+	I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
+	k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
+	xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU17KsUUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Wed 26-08-26 14:24:46, Daejun Park wrote:
-> When a plain lookup finds no block, ext4_ind_map_blocks() sizes the hole
-> it reports by counting the empty subtrees under 'partial' in the on-disk
-> indirect tree.  That count knows nothing about delayed allocation, so a
-> range holding delalloc data that has not been written back yet is
-> reported as a plain hole.  The extent-mapped path does not have this
-> problem: ext4_ext_determine_insert_hole() trims the hole it found at the
-> first delayed extent before returning it.
+On 8/26/2026 10:19 PM, Pankaj Raghav wrote:
+> On 8/22/2026 2:41 PM, Alejandro Colomar wrote:
+>> Hi Pankaj, Christoph,
+>>
+>>> Date: 2026-08-20 11:04:00+0200
+>>> From: Pankaj Raghav <p.raghav@samsung.com>
+>>> Subject: Re: [PATCH v2] man2/fallocate.2: add doc for FALLOC_FL_WRITE_ZEROES
+>>
+>> We use the full path in the prefix.  That is, 'man/man2/...: ...'.
+>> Also, we use regular sentence conventions for the first letter after
+>> the ':', so s/add/Add/.
+>>
 > 
-> ext4_map_blocks() consults the extent status tree before it calls into
-> the mapping layer, so a query that starts exactly on the delayed block
-> still finds it.  A query that starts earlier does not, because the hole
-> reported for the earlier block already spans the delayed one.  On a
-> 4k-block filesystem, lseek(SEEK_DATA) from offset 0 on a file whose only
-> data block is at logical block N and is still dirty returns:
+> Got it.
 > 
->   N = 0..11      direct blocks                 N << 12
->   N = 12         first single-indirect block   N << 12
->   N = 13..1035   inside that indirect block    -1 ENXIO
->   N = 1036       first double-indirect block   N << 12
+>>> This flag was added to the kernel in v6.17. As of now, only ext4 and
+>>
+>> Please use two spaces after period.
+>> <https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/tree/CONTRIBUTING.d/patches/description#n44>
+>>
 > 
-> Blocks 12 and 1036 survive because the query lands on the delayed block
-> itself.  Blocks 13..1035 are swallowed by the 1024-block hole reported
-> for block 12.  fiemap loses the same data for the same reason.
+> Ok!
 > 
-> An ext3 filesystem mounted as ext4 hits this during ordinary use: ext3
-> inodes stay indirect mapped, while mount -t ext4 turns on delayed
-> allocation even though mounting ext3 with -o delalloc is explicitly
-> rejected.  install(1) from coreutils uses SEEK_DATA to locate data in
-> its source file, so installing a sparse file that has not been written
-> back silently produces a destination of the right size holding none of
-> the data:
+>>> block device nodes support this flag.
+>>>
+>>> Signed-off-by: Pankaj Raghav <p.raghav@samsung.com>
+>>
+>> Please include the CC list here too.
+>>
+>>> ---
+>>> Changes since v1:
+>>> - Change the phrasing around zeroing and its condition (Zhang Yi)
+>>> - Update ext4 support only for extent-based files (Zhang Yi)
+>>>
+>>> Note:
+>>> This feature was recently added to XFS and it is expected to land in
+>>> v7.13. I will update this man page again once v7.13 is released.
+>>>
+>>>   man/man2/fallocate.2 | 38 ++++++++++++++++++++++++++++++++++++++
+>>>   1 file changed, 38 insertions(+)
+>>>
+>>> diff --git a/man/man2/fallocate.2 b/man/man2/fallocate.2
+>>> index ef6586c77..48a8c3468 100644
+>>> --- a/man/man2/fallocate.2
+>>> +++ b/man/man2/fallocate.2
+>>> @@ -244,6 +244,43 @@ SMB3 (since Linux 3.17)
+>>>   .IP \[bu]
+>>>   Btrfs (since Linux 4.16)
+>>>   .\" commit f27451f229966874a8793995b8e6b74326d125df
+>>> +.SS Writing zeroes in file space
+>>> +Specifying the
+>>> +.B FALLOC_FL_WRITE_ZEROES
+>>> +flag (available since Linux 6.17)
+>>> +.\" commit 7bd43cc79cab3850f34da0a31d5b042b701590ef
+>>> +in
+>>> +.I mode
+>>> +physically zeros space in the byte range starting at
+>>> +.I offset
+>>> +and continuing for
+>>> +.I size
+>>> +bytes.
+>>> +Within the specified range,
+>>> +blocks are preallocated for the regions that span the holes
+>>
+>> What does it mean that "blocks are preallocated"?  That they must be
+>> allocated prior to this call?  I suspect not.  Otherwise, we'd be saying
+>> 'must be' instead of 'are'.
+>>
 > 
->   truncate -s 1G img && mkfs.ext3 -F img && mount -t ext4 img mnt
->   echo | dd of=mnt/src bs=1 count=1 seek=64K
->   install mnt/src mnt/dst
->   cmp mnt/src mnt/dst        # differ: char 65537
+> I guess preallocate in this context means unmapped blocks where we guarantee
+> space for an application.
 > 
-> Trim the hole at the first delayed extent, the way the extent-mapped
-> path does.  ext4_es_find_extent_range() does not clip the extent it
-> returns to the queried range, so skip one that begins at or before
-> m_lblk and clamp the result against the hole already found.
+>> I suspect it means that this call allocates blocks for those regions,
+>> but then I'm not sure we want 'pre' there.
+>>
 > 
-> With this the sweep above returns N << 12 for every N, while the
-> nodelalloc and extent-mapped controls are unchanged.  generic/225,
-> generic/285, generic/286, generic/436, generic/448 and generic/490 pass
-> on ext4 made both with and without the extent feature.
-> 
-> Fixes: facab4d9711e ("ext4: return hole from ext4_map_blocks()")
-> Reported-by: Alexander Monakov <amonakov@ispras.ru>
-> Closes: https://lore.kernel.org/linux-ext4/594c17d9-c00f-e485-96fb-cedf27ce3aa3@ispras.ru/
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+> You are right. The blocks are allocated when we use FL_WRITE_ZEROES (they should be marked as MAPPED). I will change it here. I guess the man pages for util linux also needs to be changed[1]. @Zhang Yi, thoughts?
 
-Thanks for report and the fix! So I think a better fix here is to lift most
-of the logic of ext4_ext_determine_insert_hole() into a helper function
-like:
+I personally understand the 'pre' in FL_WRITE_ZEROES to mean that
+users are calling this interface to pre-allocate filesystem blocks
+before they actually start writing data, rather than having blocks
+allocated on the fly during actual writes. That said, I don't think
+pre-allocated necessarily implies that the blocks must be UNMAPPED. In
+my view, UNMAPPED allocations can be considered a form of pre-allocation,
+but MAPPED ones could also be seen that way, since at the time the user
+calls this interface, they haven't yet written any real data and are
+just preparing the blocks in advance. From a user's perspective, both
+cases can be understood as pre-allocation.
 
-ext4_lblk_t ext4_determine_insert_hole(struct inode *inode,
-				ext4_lblk_t hole_start, ext4_lblk_t hole_len)
+That's just my take on it, though. It's fine by me to change it to
+allocated as well.
 
-and then use it from both ext4_ext_map_block() and ext4_ind_map_blocks().
-That avoids the duplication and also have all the comments regarding
-various special cases (like delalloc extent covering map->m_lblk) in one
-place.
+Thanks,
+Yi.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> 
+>>> +in the file.
+>>> +After a successful call,
+>>> +subsequent reads from this range will return zeros and
+>>> +subsequent writes to that range do not require further
+>>> +changes to the file mapping metadata.
+>>> +.P
+>>> +Zeroing is done within the filesystem.
+>>> +The filesystem may use a hardware-accelerated zeroing command
+>>> +or may submit regular writes.
+>>> +The behavior depends on the filesystem design and the
+>>> +available hardware.
+>>> +.P
+>>> +No other flags may be specified in
+>>> +.I mode
+>>> +in conjunction with
+>>> +.BR FALLOC_FL_WRITE_ZEROES .
+>>> +.P
+>>> +Not all filesystems support
+>>> +.BR FALLOC_FL_WRITE_ZEROES ;
+>>> +if a filesystem doesn't support the operation, an error is returned.
+>>> +The operation is supported only in ext4 (only for extent-based files)
+>>> +since Linux 6.17.
+>>
+>> Christoph, is this correct?  I remember you said something about block
+>> device nodes in v1.
+>>
+> 
+> Even though block devices support some of the FALLOC_FL_* flags, I don't see it mentioned here as explicitly supported. That is why I kept it out of the changes. Let me know your thoughts.
+> 
+> Thanks for the feedback.
+> 
+> -- 
+> Pankaj
+> 
+> [1] https://man7.org/linux/man-pages/man1/fallocate.1.html
+
