@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61E3A2FD69A
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 03:39:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E00FD38238D
+	for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 03:40:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787801955; cv=none; b=XsmjNjK7kGWiIFUluH//zTyShu0RauBT2r9j2xVpTDSkqRZcItsEtCy3Yww7JmUkMvpNWEFb6MdLiAkmlZTDQB/3Y2e2+Tl1DiCALnX5acNHTofoEAsJOftevF/PcZNxqN7FHaXpdoNlx1meGv8Ln4QcF6OIw/3V1z8ZJBcNZ68=
+	t=1787802005; cv=none; b=WzpzQk7ehzkNUhXVDQIAHJr2JDzo20Y0vEVgoaAy3uRGPg1vLo51oBNv2uWw+GDDu3+/Gvgxu2V8mUjYZA4I4ukpL3MWwhbbBZeHdRTrVmEK2evtBS1atfQDojGOnmVvEKVZIgkwOodhJw+c717ZVPKzS6VSLkY1RdC9q+RMCTQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787801955; c=relaxed/simple;
-	bh=0L5CPyLT9hMs/oVSntkO1toomx1KB0ad7SkRIm//j1Y=;
+	s=arc-20240116; t=1787802005; c=relaxed/simple;
+	bh=1iu8xZ+a5kl9Tv1R9WFnq2Fj2oGcXM8VtH2MeU2ndUc=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=C+bMvfInajzdiZPyQDg3p36ELP98WCgadmqNJ+oNxequIp2TTyDZVBJnv8AzjLTKA16ukx40tJenqWMMk8DEbPq4k2XzNJLBTqs7cM8fp6YAF+E4N65vkqlnbvFWqQuX/CYLt2MBDdeqyR/AunmXjQV/Wt+85OL6f6wrn11bEB8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WRbBt5HL; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=R7heLL9l32S4k56dH8jnBFZR1/Gb26bbeEAb+FxRqRK9nfKF3Xr/gn8jKGd32TpViIDActFE11oBxSODld3ZTPOHuFZTTN0U027VY0aNT0i4UsJhxenGgPoQSAK2CDlJjzV1lirFO9wKgIMzegBg2W1DF/lWAMvmRizJ9U5cy1Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UOZgspKV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WRbBt5HL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C06CB1F000E9;
-	Thu, 27 Aug 2026 03:39:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UOZgspKV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 82BB61F000E9;
+	Thu, 27 Aug 2026 03:40:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787801954;
-	bh=KFHQkCzHJAjFIIFXDTYJro3R4xIf6lBgMtU+KeRncLQ=;
+	s=k20260515; t=1787802004;
+	bh=HiRer6ppJctyPtvf0uGgAlPbJeTDJHhQFjolsz0Fwrk=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=WRbBt5HLRzGKr0QNq1GeejJDwaoDIrpT5qnme4vlhKBy22JuI/UVRcMBUGCXsRLsZ
-	 bz1Bz9vUn2DiOUJ0f77cD3k+FulTBxVLuWE4Hjdp15EAlClGRtXyExvwScK7rgsd6A
-	 qJcDUvvzE0P6nsT85j6b0c8yUL0wIHXi7OkJPhyNb49/y7q6SXrIQ8tBOCodbIl+TW
-	 +DJdSz+Ac8FzpVacf8v/IeHk+nn166XLpoywkl9YUn18oplLAmP6Ku+pTp0199ouAs
-	 VS3UYjbZKWdBdWPlZIcARCeVF5a01PSf3nRmog7Zvil5zGaX+PDqldt60SIS0aQ/kU
-	 4fXJOoyGtZJyA==
+	b=UOZgspKVTCNcrs4VDDODwS8FIWHqDKRdnZwe9x1nF7uteUVbD6tUMLt0m4BC3+eDr
+	 6q1DRhF1szzEd2DVHyC/yh+c2VI7+gpdNAkfi9/CxvegGvMThUpTTUneCXJwWVrMiS
+	 GQbrZBw7khM2uitSYHsYkZWaMj1+e2Md/FpgWiQquIkNgzWFPVdQpOqG4l7buIBS06
+	 fQfr+hR5WsyrrdGABfNK6m3nCjCeHw3qBXuPQlUelNGbHEuxl45vryknzm2PYB0GPZ
+	 gFIJy74DpP6W6l71v+LoBtsawM8LW65421HGYS2xemhxnKzFysVn0GE0sI3WNEZGHN
+	 8SY6b2LXWS4Ow==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 6.1] ext4: don't enable DAX on new encrypted files
+Subject: Re: [PATCH 6.6] ext4: don't enable DAX on new encrypted files
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Eric Biggers" <ebiggers@kernel.org>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260827032917.82878-1-ebiggers@kernel.org>
-References: <20260827032917.82878-1-ebiggers@kernel.org>
+In-Reply-To: <20260827032857.82762-1-ebiggers@kernel.org>
+References: <20260827032857.82762-1-ebiggers@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 27 Aug 2026 03:39:13 +0000
-Message-Id: <20260827033913.C06CB1F000E9@smtp.kernel.org>
+Date: Thu, 27 Aug 2026 03:40:04 +0000
+Message-Id: <20260827034004.82BB61F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -68,6 +68,6 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260827032917.8287=
-8-1-ebiggers@kernel.org?part=3D1
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260827032857.8276=
+2-1-ebiggers@kernel.org?part=3D1
 
