@@ -1,78 +1,78 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0F0243D50E;
-	Thu, 27 Aug 2026 11:20:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EA6640B11E;
+	Thu, 27 Aug 2026 11:48:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787829652; cv=none; b=ssqMBRKeAFiJ0uGylD3R5cC4wvIVrBRDdr3+Lo61UF/Ft+YM1/c0e6qcRxEK8keeCO+BYqOEe2Q6ruy2FKRyXUd3iDa1EfDv4KDyDEBYS7pOZ5CbnMX77tc4VaZkROKQFcLAqByiX9cxCKKd3STqBw9t6nA2zFsb2qDxGmnhG64=
+	t=1787831336; cv=none; b=O6r5aF5IF/UZSVsPYfUSm2I2+1akmzZukE6GdgRRzibTQY5A0CzyyNjZPmKp/d8rSx45fWRIvbqO+S5sDJbeseWBUlyUdRGFnJ3KhBvz8jNEAyVHj6VgkJromfN1BeXaR6nQe58awVN7Pfrzs3t/1gg0MTt6Epp0VWgsvCpKnyA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787829652; c=relaxed/simple;
-	bh=Wber3bnyeO/WLJGl+TnpDoSJlq5H/7CAjvIo4l6TYWs=;
+	s=arc-20240116; t=1787831336; c=relaxed/simple;
+	bh=AdQcGM3S+t5I4KU2qbCNFtCUsOreKBOPVxrJvmULGMY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Jf+5/uA6nzspaIQGzvLQWEdCV1lBiLRuuM2tq1QDY5O2yTMAyvnMXEDqPbIEk5cVmF1CK64SpE1W/lP4b3dKxk+KYassQLDtnShS/aJnJBM6kUi1mDKSnWpVi8KLtm5i/NHS8iYynDvw4hfSAhyZQMEPa0EkrxgyHabE3TYd2OE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ylr9FtV/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ffbAqJv4; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SoBff06W; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qUjkNteo; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=g+ul8HP7dWU7fIhJBdWoublySTXRDUhj2kj4MCvFU2tzhwY24QkrgbcmHZMOCMJQJGDxWNXm+SyuXcadtXrrabgtKx/HAHio3/9zwZNvou5ciW551VqRp00CMFewM/vQ+/TEti++ukWSr/8X60V9anGIvDzMiAnDOz8CkgcYGH0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=3VsRe/Kp; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=tmi7rDqO; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=W6eTn3Nu; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7eOIHCQG; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ylr9FtV/";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ffbAqJv4";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SoBff06W";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qUjkNteo"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="3VsRe/Kp";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="tmi7rDqO";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="W6eTn3Nu";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7eOIHCQG"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id DE37B211E6;
-	Thu, 27 Aug 2026 11:20:37 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id F1D5A1FB11;
+	Thu, 27 Aug 2026 11:48:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787829642; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1787831328; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=+yOYrpWqAIRgjj7E+XPSTVGEGrqkv9suRuJFfRYWOfI=;
-	b=ylr9FtV/bOEvLxL/tD/thznjAj16ZopkqQ1VLilFZHVmNJTOUHv+jwFnqcKJ8k04WuvfWj
-	6TSKIDOFxsY4jHlYZn+u1doDmogAjhyrcNAinHpK199/GD3Q1OKcjqK94RBMKhIWcRJgN3
-	kZ63kdeH9cJdi17jqrzPbpbhKoPKBMw=
+	bh=osrzkWZLu8AblRfIJr3LueP7uGMdbqfo6oBHEUTSQRk=;
+	b=3VsRe/KpL3s/ZZ8TDj/sHzWzXNloDAA3fvkeToJefCJNEeey3+SArjVxW/KjPqOEWSDm4S
+	XCkis8HEq0Mq6z+SBiVfW3GoL2OLGRSvyIm14NWXtM3bEqxHS3y/3zynK0cxvOLLx7pHmE
+	rSRyA1watbFfwVRuk+eh+DHBy23VGSQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787829642;
+	s=susede2_ed25519; t=1787831328;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=+yOYrpWqAIRgjj7E+XPSTVGEGrqkv9suRuJFfRYWOfI=;
-	b=ffbAqJv4fPIz0d5KpaefMoz46S3bvLBFB0vXXeFgdbwZ+07I0RqlYTDYqIiAnlU5dDmD4x
-	spS4RNOZ3fE8H9AQ==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=SoBff06W;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=qUjkNteo
+	bh=osrzkWZLu8AblRfIJr3LueP7uGMdbqfo6oBHEUTSQRk=;
+	b=tmi7rDqOOiPyRzmnF/wl+5Cguaa6WeyNAZ/yBwW805t8EsTKOAtzf9+SZAZuQD4elvMWh0
+	CkxurfgjhXdMo2AA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=W6eTn3Nu;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=7eOIHCQG
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1787829637; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1787831323; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=+yOYrpWqAIRgjj7E+XPSTVGEGrqkv9suRuJFfRYWOfI=;
-	b=SoBff06W/0aiz5tL95B5eITIP19RC/CXIyv7QDI1SXY/6GZRV3qQ7uILK45JFOQNsYFmFa
-	u0NrSO/wemosVX9yvM8kLKrOPYutk42F50l0LpLTYlKIXTd1Fkwndn79+nYNKxvq4hmA4x
-	+6I1YtsfjbgDnpzg9dw7Un7xo8MZErw=
+	bh=osrzkWZLu8AblRfIJr3LueP7uGMdbqfo6oBHEUTSQRk=;
+	b=W6eTn3Nuiu/QDUcxhrA3Q3L7jFmQmTQv83SEprVdpu0vocVXtZy4rOxgKU+r/Vf4MVWxg2
+	C3KOAXpFwCL4z78VjH7S5s2sOVSTwOLCxCgQimol06kyjjQlzgn4HhxqdyyTZx9hhaW7vD
+	zixPvwy7w8b+N5NS6g8jXYJSSciU4Ro=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1787829637;
+	s=susede2_ed25519; t=1787831323;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=+yOYrpWqAIRgjj7E+XPSTVGEGrqkv9suRuJFfRYWOfI=;
-	b=qUjkNteoI0D3Li/+7IL/1lYoGPBHRbdErB7FM6lj7wHRC/4QCL+aR5GiDIeBJ8alIDZOZi
-	iwSOnyBQOZv7djAQ==
+	bh=osrzkWZLu8AblRfIJr3LueP7uGMdbqfo6oBHEUTSQRk=;
+	b=7eOIHCQGCWSoTMQFa6d27fDQpyhGjqOTy/28h4LbxgM1OPzzxMMp83LakJO18wZi0hQsa7
+	07GRNR94vhkzAeAg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D341013354;
-	Thu, 27 Aug 2026 11:20:37 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E70711352C;
+	Thu, 27 Aug 2026 11:48:43 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id KMeVM4UdkGoiaQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 27 Aug 2026 11:20:37 +0000
+	id zR1oOBskkGrGBwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 27 Aug 2026 11:48:43 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 7F903A1324; Thu, 27 Aug 2026 13:20:37 +0200 (CEST)
-Date: Thu, 27 Aug 2026 13:20:37 +0200
+	id 95CB9A1324; Thu, 27 Aug 2026 13:48:43 +0200 (CEST)
+Date: Thu, 27 Aug 2026 13:48:43 +0200
 From: Jan Kara <jack@suse.cz>
 To: Daejun Park <daejun7.park@samsung.com>
 Cc: "tytso@mit.edu" <tytso@mit.edu>, 
@@ -81,11 +81,11 @@ Cc: "tytso@mit.edu" <tytso@mit.edu>,
 	"libaokun@linux.alibaba.com" <libaokun@linux.alibaba.com>, "ojaswin@linux.ibm.com" <ojaswin@linux.ibm.com>, 
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, 
 	"amonakov@ispras.ru" <amonakov@ispras.ru>
-Subject: Re: [PATCH v2] ext4: don't report delalloc data as a hole on
+Subject: Re: [PATCH v3] ext4: don't report delalloc data as a hole on
  indirect-mapped inodes
-Message-ID: <x4bn3jk2prxj2sxznqevnpke6rxvm3izbirkad4t4q4mg7blvn@t3dgv76gqrcu>
-References: <CGME20260827043928epcms2p54597035aadd1eca0556ae9b0585694f9@epcms2p5>
- <20260827043928epcms2p54597035aadd1eca0556ae9b0585694f9@epcms2p5>
+Message-ID: <2pj4ryzduevi6lgbudtgufss4meuvakk5honwu54zy565uzqsd@yrctjtemlbc3>
+References: <CGME20260827084829epcms2p6ecc0c39a71d0c3eebf9cb1ade77314f6@epcms2p6>
+ <20260827084829epcms2p6ecc0c39a71d0c3eebf9cb1ade77314f6@epcms2p6>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -94,9 +94,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260827043928epcms2p54597035aadd1eca0556ae9b0585694f9@epcms2p5>
+In-Reply-To: <20260827084829epcms2p6ecc0c39a71d0c3eebf9cb1ade77314f6@epcms2p6>
 X-Spam-Score: -2.51
-X-Rspamd-Queue-Id: DE37B211E6
+X-Rspamd-Queue-Id: F1D5A1FB11
 X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Spam-Level: 
 X-Rspamd-Action: no action
@@ -109,29 +109,29 @@ X-Spamd-Result: default: False [-2.51 / 50.00];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	URIBL_BLOCKED(0.00)[suse.cz:dkim,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,ispras.ru:email,samsung.com:email];
 	TO_DN_EQ_ADDR_SOME(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,huawei.com,gmail.com,linux.alibaba.com,linux.ibm.com,vger.kernel.org,ispras.ru];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
 	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCPT_COUNT_SEVEN(0.00)[11];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,huawei.com,gmail.com,linux.alibaba.com,linux.ibm.com,vger.kernel.org,ispras.ru];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,samsung.com:email,suse.com:email,ispras.ru:email]
 X-Spam-Flag: NO
 
-On Thu 27-08-26 13:39:28, Daejun Park wrote:
+On Thu 27-08-26 17:48:29, Daejun Park wrote:
 > When a plain lookup finds no block, ext4_ind_map_blocks() sizes the hole
 > it reports by counting the empty subtrees under 'partial' in the on-disk
 > indirect tree.  That count knows nothing about delayed allocation, so a
@@ -193,8 +193,10 @@ On Thu 27-08-26 13:39:28, Daejun Park wrote:
 > 
 > With this the sweep above returns N << 12 for every N, while the
 > nodelalloc and extent-mapped controls are unchanged.  generic/225,
-> generic/285, generic/286, generic/436, generic/448 and generic/490 pass
-> on ext4 made both with and without the extent feature.
+> generic/285, generic/448 and generic/490 pass on ext4 made both with and
+> without the extent feature.  generic/286 and generic/436 pass on
+> extent-mapped ext4 and are skipped without it, since they need
+> fallocate.
 > 
 > Fixes: facab4d9711e ("ext4: return hole from ext4_map_blocks()")
 > Reported-by: Alexander Monakov <amonakov@ispras.ru>
@@ -203,7 +205,8 @@ On Thu 27-08-26 13:39:28, Daejun Park wrote:
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 
-Looks good to me. Feel free to add:
+Ok, good catch (from Sashiko I assume) about the error handling. The fix
+still looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
@@ -211,19 +214,30 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 
 > ---
 > v1: https://lore.kernel.org/linux-ext4/20260826052446epcms2p5a415be5fbfe23b8a32786f0ae6d05aea@epcms2p5/
+> v2: https://lore.kernel.org/linux-ext4/20260827043928epcms2p54597035aadd1eca0556ae9b0585694f9@epcms2p5/
 > 
 > v2: rather than open coding the delalloc trim in ext4_ind_map_blocks(),
 >     split it out of ext4_ext_determine_insert_hole() into
 >     ext4_determine_insert_hole() and call that from both paths, as Jan
->     suggested.  Two things follow from sharing the whole function, both
->     noted in the commit message: indirect-mapped inodes now cache the
->     holes they report, and a delalloc extent covering the queried block
->     now shortens the reported hole instead of leaving it whole.
+>     suggested.
+> 
+> v3: only reconcile when the lookup really did find a hole.
+>     ext4_get_branch() returns a non-NULL partial when it failed as
+>     well, and ext4_ind_map_blocks() checks err only after this branch,
+>     so v2 cached a hole for a range it could not read.  The error was
+>     still returned, but every later read of that range was answered
+>     from the cache as zeros instead of retrying the disk.  Reproduced
+>     by pointing an inode's single-indirect block past the end of the
+>     filesystem: v2 caches a hole for the whole 1024-block subtree and
+>     reads succeed with zeros where they must return -EIO.
+>     Also corrected the xfstests sentence: generic/286 and generic/436
+>     need fallocate, so they are skipped rather than passing on a
+>     filesystem made without the extent feature.
 > 
 >  fs/ext4/ext4.h     |  3 +++
 >  fs/ext4/extents.c  | 26 +++++++++++++-------------
->  fs/ext4/indirect.c | 11 +++++++++++
->  3 files changed, 27 insertions(+), 13 deletions(-)
+>  fs/ext4/indirect.c | 17 +++++++++++++++++
+>  3 files changed, 33 insertions(+), 13 deletions(-)
 > 
 > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
 > index 7fd078de265d..f5eff74631a4 100644
@@ -289,10 +303,10 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 >  		map->m_pblk = 0;
 >  		map->m_len = min_t(unsigned int, map->m_len, len);
 > diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 5aec759eed70..9dc0759c88ef 100644
+> index 5aec759eed70..a495080df710 100644
 > --- a/fs/ext4/indirect.c
 > +++ b/fs/ext4/indirect.c
-> @@ -586,6 +586,17 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+> @@ -586,6 +586,23 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
 >  		for (i = partial - chain + 1; i < depth; i++)
 >  			count = count * epb + (epb - offsets[i] - 1);
 >  		count++;
@@ -300,12 +314,18 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 > +		/*
 > +		 * The count knows nothing about delayed allocation, so let
 > +		 * the common helper reconcile it with the extent status
-> +		 * tree.  Clamp it first: with a large block size a subtree
-> +		 * can be bigger than the logical block space.
+> +		 * tree.  Only when the lookup really did find a hole:
+> +		 * ext4_get_branch() also returns a non-NULL partial when it
+> +		 * failed, and caching a hole for a range it could not read
+> +		 * would answer every later read from that cache instead of
+> +		 * retrying.  Clamp the count first, a subtree can be bigger
+> +		 * than the logical block space when the block size is large.
 > +		 */
-> +		count = umin(count, EXT_MAX_BLOCKS - map->m_lblk);
-> +		count = ext4_determine_insert_hole(inode, map->m_lblk,
-> +						   map->m_lblk, count);
+> +		if (!err) {
+> +			count = umin(count, EXT_MAX_BLOCKS - map->m_lblk);
+> +			count = ext4_determine_insert_hole(inode, map->m_lblk,
+> +							   map->m_lblk, count);
+> +		}
 > +
 >  		/* Fill in size of a hole we found */
 >  		map->m_pblk = 0;
