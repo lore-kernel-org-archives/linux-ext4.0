@@ -1,108 +1,64 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 316B1241686
-	for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 21:07:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76722307AC7;
+	Fri, 28 Aug 2026 01:46:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787864860; cv=none; b=RrjbUrnNDPHMDxXCf32rT235QaF5W3m++ztXpAXFQ8QuqH8oc1hynbYGyLyHhMv+93PQ2GW3h3OAwKDyFXsfDmZAm5xPpn1OjByFn06DRXEySovThjmHrAxoauvSwsvFxqR5ec2LGVARdd7HKG4NVPy9oMqFksCdtJWwhGtlrHg=
+	t=1787881599; cv=none; b=OzyJW5cA4lssUTawKCGW3qQL8//ycNITLojdTOtN5GFIAiHAKJ3BsU+y/ADD5Mgy2pmfYr0e7qcBd0bvF3Q9YcbUIrWjOInZDaSNmYK2VpUa1Q6FQvaHb5lfqHiqVUC8f5ziID/adFNFdXDTNdNWcL8oOEG7dRKA1KVn6SJRS3E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787864860; c=relaxed/simple;
-	bh=dDgbXlamxMrcMKbLL1wIkfulHYJQbiZgtzoV9+bZzNA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=QisnOV4z2USdiFdi3VlIRCn1l6ped0A3O8PfGqmhfv6Hb+wPg8IaOphrrmB+W9Ed7+5v8hJ8AGuAeSTc9kiauXxRYtHQ1KcP2WbMB6bVzq7MBUBjIXLOws3VEeNN1t+tMWpT1I3f1FX6UZkXbX1TcpNHI8JroeVvfSNHRb8JMck=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HbKYxiMb; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1787881599; c=relaxed/simple;
+	bh=iEsZqn+XWqlhJ9rwbPm5N6paUN0B5ERQ9QKwXdZZzKY=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=nFuNagmnsSLZpTucDRAwXHRAXF9A2uqbXaaFrL7gNl5pF3tcxt7DefaSA5qBOHGGKvOWLOlI7moL4F0pvPhi5nJzkzGy4q9AMA6m/1cK8bzU9hacEQg8BWgs0MjLh2SGDvE176F7aR4hbuLMymPZQeYo7PYfnrB5tPz3OsL87iQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fwh1HqFa; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HbKYxiMb"
-Received: from macsyma.thunk.org (pool-173-48-113-140.bstnma.fios.verizon.net [173.48.113.140])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 67RL2Auk008885
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 27 Aug 2026 17:02:11 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1787864532; bh=NCkniQ2q1y2l3Mb87PIJtW31rZ0rkcocWHTWit1jWEc=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=HbKYxiMbYjvuky7m1RlWY0+KJc+Pd9/nHl+SqtkYMkby1iZX9oUkI0WVmlzQQCLq3
-	 9GbR9l5SY6/+i5ElyGW5SctmAR+kaeWClK+XVySL8mJ0Ni1bD69+9p1oeR9Z+/khN1
-	 9i3HqxhrtyzJSOtV8OzGSokqdxG3Wc24cn1MaLBF+uvfvKsXFbl+HSZvyUmrbbolPP
-	 YJ11TSG67UtKVUfYM2LOZurEiX8rtM2ozTZXLPpKs8ibdKiRlyrd84nrPkvmLEbShl
-	 BBFju3TiZ8HBU4/mfKmIxMSIUSg808vedaIVoIV+vBuL44eUSw0fZxzaRGQHh0IjgS
-	 LPK/PwLD3fSCQ==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id ECF57123286B; Thu, 27 Aug 2026 17:01:09 -0400 (EDT)
-Date: Thu, 27 Aug 2026 17:01:09 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
-        adilger@dilger.ca, srivatsa@csail.mit.edu
-Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
- during filesystem check
-Message-ID: <apCRFu5vpNxRLO8Y@mit.edu>
-References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
- <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
- <20260824224006.GB6038@frogsfrogsfrogs>
- <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fwh1HqFa"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA51F1F000E9;
+	Fri, 28 Aug 2026 01:46:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787881595;
+	bh=pNGJHhIXVxYxmgJCk+uDLn44MhxqSdn0CIlCukn3f7g=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=fwh1HqFavPSO5oO6qyJmo7thwNRGdYReUQaVwr/WibOz2F/xEHEQdizaWMUnZBELS
+	 1kUjdZIZERDWvqr9iWC/FqRoU8LsYvBsdZSDZbDGduCaTUAMD3aY3kZrRTXd1BVle/
+	 PTvKUqDo3o7kzmSgjT0NR66DBTYyxtXE8emFU1if2aF+Sg74B6uYSMKmczl5AGGSiP
+	 X291wECCgp2dsgEm9EPrHqwpQv5Vyt7rjuzm9ppIL11R/cAMxvfgQ77Wk0W2ziL06l
+	 bJ/es+nyRGYQL4Gtqu1z5/iTRbYOFDR3B7QSsZrObDm9+cciFVIiNN0nGCeWfob1BB
+	 9b5niuOCiFhfg==
+From: Sasha Levin <sashal@kernel.org>
+To: stable@vger.kernel.org
+Cc: Sasha Levin <sashal@kernel.org>,
+	linux-ext4@vger.kernel.org,
+	linux-fscrypt@vger.kernel.org,
+	Eric Biggers <ebiggers@kernel.org>,
+	Disha Goel <disgoel@linux.ibm.com>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Jan Kara <jack@suse.cz>,
+	Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 6.6] ext4: don't enable DAX on new encrypted files
+Date: Thu, 27 Aug 2026 21:46:20 -0400
+Message-ID: <20260827-stable-daily-0007-ext4-dax-6-6@kernel.org>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260827032857.82762-1-ebiggers@kernel.org>
+References: <20260827032857.82762-1-ebiggers@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+Content-Transfer-Encoding: 8bit
 
-On Wed, Aug 26, 2026 at 07:04:48AM -0500, Nandakumar Raghavan wrote:
-> This was on purpose and not something I missed. The sd_device_get_parent_with_subsystem_devtype
-> requires libsystemd v251+, and e2fsck needs to keep working in contexts where
-> that dependency isn't available or isn't guaranteed to be new enough - non-systemd distros, older
-> LTS systems doing root-fs repair before userspace is fully up, embedded/recovery images, etc.
+> commit da32af420d6d466e247c43ac0b829edeac7ae0ad upstream.
+>
+> Currently, when a new encrypted regular file is created, the call to
+> ext4_set_inode_flags(inode, init=true) in __ext4_new_inode() is made
+> before EXT4_INODE_ENCRYPT is set.  As a result, it can set S_DAX if the
+> filesystem is mounted with "-o dax=always".
 
-Cqn you name any other OS that has implemented
+Queued for 6.6, thanks.
 
-	https://systemd.io/BLOCK_DEVICE_LOCKING/
-
-*other* than systemd?  So for non-systemd distros, who cares if we
-don't have the functionality?  So what we could do is to use autoconf
-with something like this:
-
-AC_CHECK_LIB(libsystemd, sd_device_get_parent_with_subsystem_devtype,
-	AC_DEFINE(HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE, 1,
-		[Define to 1 if libsystemd has sd_device_get_parent_with_subsystem_devtype]))
-
-We would only do the flock(LOCK_EX) if and only if the function is
-present.  If it isn't, say on MacOS, FreeBSD, or RHEL 7 we won't play
-the systemd locking game --- which is fine, because it doesn't matter
-on those platforms.
-
-If you care about running e2fsck built on RHEL 8 on RHEL 7, that's an
-easy problem to solve.  A executable linked using shared libraries
-won't work already since the shared libraries on RHEL 8 are too new.
-But we have a solution already, which is to use e2fsck.static, which
-is statically linked.
-
-> Taking a hard runtime dependency on a versioned libsystemd API for a tool this fundamental felt
-> like a much bigger cost than by parsing (/sys/dev/block/MAJ:MIN/partition, .../dev), which only
-> relies on a stable kernel ABI with no library and no version floor. Happy to reconsider if
-> the project wants to take the dependency, but wanted to flag the tradeoff explicitly rather
-> than silently pick one side.
-
-If we really cared about taking a binary built on a system with
-libsystemd. and running on a system without libsystemd, another
-solution that we've used is dlopen.
-
-For an example of that's done, see misc/create_inode_libarchve.c and
-the associated autoconf tests in configure.ac in the e2fsprogs
-sources.  This is how "mke2fs -d embed_rootfs.tar.gz -t ext4 embed.img
-1G" is handled without needing a hard dependency on libarchive being
-installed.  If it's not installed then you'll just get the error
-message "you need libarchive to be able to process tarballs".
-
-I don't think the dlopen() approach is needed here, though.
-
-Cheers,
-
-					- Ted
+-- 
+Thanks,
+Sasha
