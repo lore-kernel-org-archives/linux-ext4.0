@@ -1,75 +1,74 @@
-Received: from mail-pl1-f173.google.com (mail-pl1-f173.google.com [209.85.214.173])
+Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 360AC21C173
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2026 04:03:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C277339368
+	for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2026 04:03:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787889809; cv=none; b=BpY+rUbHPPY0v8C/qLW+mgktUiaDyppqnzeWXGEHQPomDmnJ+N9Nj0jmQhbg6RHtxd4G5gEXRx5rHx/URgBA06xc5jzmcFonvKN6Y6m8amKilahOFILSjhX2nNjFGTXSDzO8K2WSpcPvkwLK0ojxE5thV8ZfVJ2atTpRuj8bNVM=
+	t=1787889837; cv=none; b=EX6DC8b3xe1SfYAhGcX+Zac2Vbu/xsdw5VIJPKWdteGK1YxazIE7LIdUvtzsgdkxvqvON0u7CRNoKtXzV90pgwWkG1Sjw7tJFAvjhE0Ut5fN2RpY7vz7X2FUyz5ZxxtmYa6PcfatzLAIQeUIml6u0rlgYlQ00mhFyMe/B7FdvJM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787889809; c=relaxed/simple;
-	bh=+c9TrG6qF/RXwVUQ4mNgi8tG1UO/SMVAweFNSnaCzXI=;
+	s=arc-20240116; t=1787889837; c=relaxed/simple;
+	bh=at4MzCRYdMWe5DyiKp+7K+WQ6IbelNnY0yPVNg0swdI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=FIqoo8CXUd+iLuJ67rsEt3aITfEkLH6g8lLbtkPYtauAFUlnwL55j18CKCxVCp4urK1rbGrhFyWURKIyhYuTBjon/lvL+8IJwqGfgW6tgSMTQ1iJ22N+SdfN6QkHSBpIoLN3uv610iOEBPrvNHLhH/yKJOp6lmWszLTbyxjcPUo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=chromium.org; spf=pass smtp.mailfrom=chromium.org; dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b=eMd6DlV/; arc=none smtp.client-ip=209.85.214.173
+	 Content-Type:Content-Disposition:In-Reply-To; b=nw/aX+ZYHvV0W/RWkZM2mCkhMPDirmmhChiOMTpei4/BB3BGFeUDqYbz3P2k/+5e6aWWSUVuSu8S4gYC+tS9Vp9Qq/SyYoZSi7bXFK5k8RFUoXZLBAnSln8x0s4a6FXjg7sfNkWZxjkA7qKOHbVO6avj/ez4wDmHX1XNjn8wy0M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=chromium.org; spf=pass smtp.mailfrom=chromium.org; dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b=Vm5P/11f; arc=none smtp.client-ip=209.85.210.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=chromium.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=chromium.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="eMd6DlV/"
-Received: by mail-pl1-f173.google.com with SMTP id d9443c01a7336-2caed617615so3810605ad.3
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 21:03:28 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="Vm5P/11f"
+Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-853c07a76adso497363b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Aug 2026 21:03:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=chromium.org; s=google; t=1787889807; x=1788494607; darn=vger.kernel.org;
+        d=chromium.org; s=google; t=1787889835; x=1788494635; darn=vger.kernel.org;
         h=in-reply-to:content-disposition:content-type:mime-version
          :references:message-id:subject:cc:to:from:date:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=7jq/31s+3lvVSdHJF5/gGzjaWQfMFo0wDOdnUMkxXYI=;
-        b=eMd6DlV/t59r/v7Tp0v96bynXZZ41Jn8bDsIhxtpDvZ6PPzM+poka9KaPHvhzWsNDC
-         Ogc8MOSHZbY1kwNYhj5UUvXOPRY+mqYahHZT0HupHycprdZW5l5vthso4AgylAssrHAs
-         btgcO0abEJbqf2eUAprQnkfac+Y4TErTUOpGQ=
+        bh=J88uleibP0ZQrKnpifT+h+3IiWnC2AfPyx6u85pD0DE=;
+        b=Vm5P/11fMldg/aGI2JEw/l5FhH/ABV9+pZC4mckUMc9lJTHp4DOGXJB7EeEm/f9Yyj
+         YhhmhYJSDfw/Mlw0Uy7HkmTPH+PLy1uApd/wiRRYxFQ3Ui+76ACqxgaBBtZkezCCGUqs
+         pOuWU0/dyf94Tz57F+2ry5AcxUDgd2PYAdTDA=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787889807; x=1788494607;
+        d=1e100.net; s=20251104; t=1787889835; x=1788494635;
         h=in-reply-to:content-disposition:content-type:mime-version
          :references:message-id:subject:cc:to:from:date:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=7jq/31s+3lvVSdHJF5/gGzjaWQfMFo0wDOdnUMkxXYI=;
-        b=TZ5JF+U0TilSgWUn7+hWt+rOmxb7U8ofLoo02pQ3wZZcRmkWGpofiV3cjm6d+JcUsq
-         tcXmqE1comYsrNGWbmw8V9uOTFWiKmk+IkfAMKJNHXjmesnapXYw/YuONFYMEUhFTOME
-         r6DsZRx1GyhIAUE4xGAb734zzvoUWreIps/Tiu26BMOjbXohhkU4SUvpBFVcxclmnmdx
-         /J8uohtuvnEFeYMANDsrWHIpt0ygYYFbjKetyTZDjFpp+yB8kU6u8kNRkw9/w89YO9lQ
-         T1i8E2N5c7zNTQRLHkt8E53QF4mkrihpkLFY8cKbj714L1BKjulItwAuP2WJH0aB97ik
-         NCdw==
-X-Forwarded-Encrypted: i=1; AHgh+RrjUPK6We473ovV7hIg2FHxE0EI1Brz6iBRtQFYbSnmX+N/acn71PeFhC128wtOuhBA6JWear233viI@vger.kernel.org
-X-Gm-Message-State: AFuF++kUf4R467IiD2J/l1bQ8hVsI6qR9q+zbsjQonjC6dh/e69VyJ7/
-	xftC+XP5TUVEmX5FBXOoBlOq3a147Q1txsf3J5/9YHB+eZWHmclCziMzn71JJ1WYS3bigvEpst5
-	an4s=
-X-Gm-Gg: AR+sD10UI1JL7nBL17QKtQzgkHMM5U1MUHevkO8+4nwl/aumHdURu83wP1YPhUL5JmW
-	VjupzSUq8GtUYJtqejVR28copOvd3EOeSWAmZnc0L8ZBmujLqxH388mWYb1qOCubXzT/zZD4sh0
-	a4cwaWQwNxgkMhVgXTq4eVeUo41Rcg0QHUSFxqLzGVBa3uknuBWDTEJ1vNp33zS/i3SeGnyKtHT
-	7kMcbXCb+242ExmJQ0/8dB6vZCqwQ6pcMqQDAUMwgHyGwVHHpJeNcv5h1FWHLPx034slD2jIR0c
-	83lxlEvmcrclqkMVNW7+WVD6brYhalRS3KDO5EXsHPkUE5Geh0QZYKaYrpWgtUL324PpGKUDCT6
-	9gwmY8iBHeyTO6PHZQNDpITxrXjL5r0cQHAyAwSBj4IhuV0hFH6SoOGkvO2uB83RoqLEOHb1CVT
-	B4OEDG/ZMoiv9Ny2WjOxHxNOprv3tYBzrYUrGKkII6a/U/E4V54DcMW64EXWyduSMsmk0sKUgo6
-	yrhf4z7WIHLhncbtZhv9NSvzAA=
-X-Received: by 2002:a17:90b:2f0f:b0:380:540:d499 with SMTP id 98e67ed59e1d1-396d0ed0023mr8803932a91.6.1787889807324;
-        Thu, 27 Aug 2026 21:03:27 -0700 (PDT)
+        bh=J88uleibP0ZQrKnpifT+h+3IiWnC2AfPyx6u85pD0DE=;
+        b=hOrgvl+A1lp7/c2OCHLJ3j3UsXvz2Qq541jCXyVRMrJU0F8ICPtqdaihG1y4wAIwNO
+         EGUlOotx/UPcQQUmeH/oEgcVrTwL+30eBS4GSTvE6yziAgWt2HE7Wtr88iqO1zRG5oz/
+         nIqrW5eI2YPdlpbOowjfxTXP6meqX+SPEeyRewTlDsvinm3biictCKOZ/joB4JRK5nIZ
+         /W2GRI0VsDBHyUtu82r3q0JachyPPCa3yPrb3qQ/a+EQdjw8mPfsJm6EtjV5cOj8J0cN
+         x6EVQUwqPrn333KdvD/8MwTa3zzIThdiO4fPTft68hWyWFtZcZm+3xBTvyjkw2Ickdsj
+         Z1OA==
+X-Forwarded-Encrypted: i=1; AHgh+RrqJAAzJ4Iua5uInwcb1i3QkDlRtSJqK/nbSBslrTC5wyxpgAqIvQyHJ6o0r6u/qEDId2dhSQU/C8IZ@vger.kernel.org
+X-Gm-Message-State: AFuF++knJwOQ2TPXdJLCNmi2c3AnGx2S0pxYwNNNDo071nZuuyeOvZRJ
+	0CCsAyjLU9tuDfsuE/Q2rdeBscQwTogE/Ozm8lbNS6b1k1PVubvHylbric815pI6dQ==
+X-Gm-Gg: AR+sD10xpaAvDilTxQewNDlc0kswbFyDjVpdPYQ8pdQbN63sxYu3l9S0Pt3kJAu5HNE
+	Y4EeOPSNGDjLkca9Evxpfaj5ah5zWLN0Q45ElW9z4Hc1lxaFirEDELPE6Allz+nJiLxfw+LBvh/
+	N297pSD0CbOQgfo6youEqk08OjS3/PcViHeThW4RurOwYOY0/uPxut17yFSMqKKphzxXGSnGzwd
+	lTQIpGesyqrn2uqxqgYWyjn4Lv+vWDlbuQOi9TuGxIjeHWu85rEMa/+cOvV2IN0LdI2TBX2wxnS
+	cZKUIX4N+4K4/rEqbqHVIOaNy3N40iTpAOYlM1YwSY40qeDblB/OcM6tBUA82/VZVgKj8DCyOTr
+	3He2u8+7qHoJX+HaooyN26JWvSMEMGTfREwgtfdS9sq2M5dyuRW4DC+PpShk8Goz4hE2I0FE8Rg
+	oTEoSZXYa/lhpS4mTTqcxxiM8ejkxCUU3ZhhjeAiyoCZI17I8S7wDr6oo7Q1/EiL0YN8Vkw6zP4
+	ojq/JeHc4gxAPIyw5CvtWOn8pxw
+X-Received: by 2002:a05:6a00:c8d:b0:846:4d4c:23f8 with SMTP id d2e1a72fcca58-85628988cb9mr8260004b3a.1.1787889835546;
+        Thu, 27 Aug 2026 21:03:55 -0700 (PDT)
 Received: from google.com ([2a00:79e0:2031:6:ff0:ad84:24b0:9e52])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-396db196903sm790271a91.0.2026.08.27.21.03.25
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8569fa79c1dsm179543b3a.16.2026.08.27.21.03.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Aug 2026 21:03:26 -0700 (PDT)
-Date: Fri, 28 Aug 2026 13:03:23 +0900
+        Thu, 27 Aug 2026 21:03:55 -0700 (PDT)
+Date: Fri, 28 Aug 2026 13:03:51 +0900
 From: Sergey Senozhatsky <senozhatsky@chromium.org>
-To: Jan Kara <jack@suse.cz>
+To: Baokun Li <libaokun@linux.alibaba.com>
 Cc: Sergey Senozhatsky <senozhatsky@chromium.org>, 
-	Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
 	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
 	linux-kernel@vger.kernel.org, Sarthak Kukreti <sarthakkukreti@google.com>
 Subject: Re: [PATCH] fs/ext4: fix ABBA deadlock in ext4_rmdir()
-Message-ID: <apEIfeA6sftEfv3l@google.com>
+Message-ID: <apEIlXQvvZ542SK3@google.com>
 References: <20260827125158.4030598-1-senozhatsky@chromium.org>
- <a5zm7znmyelavclrssrhtxcksozgkgjadefvdojpeabck7hstr@tn7yhv2dey63>
+ <3d3a1fdc-9d65-4524-9957-a872595e3621@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -78,12 +77,12 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <a5zm7znmyelavclrssrhtxcksozgkgjadefvdojpeabck7hstr@tn7yhv2dey63>
+In-Reply-To: <3d3a1fdc-9d65-4524-9957-a872595e3621@linux.alibaba.com>
 
-On (26/08/27 15:41), Jan Kara wrote:
-> On Thu 27-08-26 21:50:20, Sergey Senozhatsky wrote:
+On (26/08/28 10:48), Baokun Li wrote:
+> On 2026/8/27 20:50, Sergey Senozhatsky wrote:
 > > We observe the following ABBA deadlock (casefolding enabled):
-> > 
+> >
 > >  INFO: task jbd2/dm-13-8:447 blocked for more than 720 seconds.
 > >  task:jbd2/dm-13-8    state:D stack:0     pid:447   tgid:447   ppid:2
 > >  Call Trace:
@@ -96,7 +95,7 @@ On (26/08/27 15:41), Jan Kara wrote:
 > >   kthread+0x226/0x2a0
 > >   ret_from_fork+0x101/0x1e0
 > >   ret_from_fork_asm+0x1a/0x30
-> > 
+> >
 > >  INFO: task Thread-10:4161 blocked for more than 720 seconds.
 > >  task:Thread-10       state:D stack:0     pid:4161  tgid:3848  ppid:540
 > >  Call Trace:
@@ -115,7 +114,7 @@ On (26/08/27 15:41), Jan Kara wrote:
 > >   exit_to_user_mode_loop+0xc0/0xd0
 > >   do_syscall_64+0x14b/0xf10
 > >   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> > 
+> >
 > >  NMI backtrace for cpu 0
 > >  CPU: 0 UID: 1010216 PID: 4160 Comm: Thread-7
 > >  RIP: 0010:d_walk+0x0/0x290
@@ -129,7 +128,7 @@ On (26/08/27 15:41), Jan Kara wrote:
 > >   do_rmdir+0xf0/0x330
 > >   __x64_sys_unlinkat+0x34/0x50
 > >   do_syscall_64+0x61/0xf10
-> > 
+> >
 > > The problem is that ext4_rmdir() calls d_invalidate() before stopping
 > > the jbd2 transaction handle.  Because d_invalidate() traverses child
 > > dentries it can encounter dying or in-use dentries.  If a concurrent
@@ -139,16 +138,16 @@ On (26/08/27 15:41), Jan Kara wrote:
 > > ext4_rmdir() still holds its active transaction handle while looping
 > > in shrink_dcache_parent() waiting for the dying child dentry to complete
 > > eviction.
-> > 
+> >
 > > Stop transaction handle in ext4_rmdir() before calling d_invalidate().
-> > 
+> >
 > > Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
 > > Co-developed-by: Sarthak Kukreti <sarthakkukreti@google.com>
 > > Signed-off-by: Sarthak Kukreti <sarthakkukreti@google.com>
 > > Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
 > 
-> Good catch! Feel free to add:
+> Looks good!
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+> Reviewed-by: Baokun Li <libaokun@linux.alibaba.com>
 
 Thanks!
