@@ -1,97 +1,171 @@
-Received: from mail-yw1-f170.google.com (mail-yw1-f170.google.com [209.85.128.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DEB6B3F105E
-	for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2026 21:31:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB6721FC0;
+	Sat, 29 Aug 2026 09:53:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787952664; cv=none; b=VsW8nXl0tTpmAUX9wmcil3dOlM2+ONwowUpQvDvc8L0+/O6cXPfCneL09xMbDpsSEMTAktraNvb+ymMaQNQDRb7r0nLeiFRgBd9QAOCqO19QpJ3v6qk7GK7QWQz8M3DUS1haxrISLrYPDZVLG36pGuCrFIk4Z9/IMji5kU9cGzU=
+	t=1787997223; cv=none; b=dBzMybc3gQSJKfSdpwmiva+R60IT61SzILML47GXnvrFsnlqOdJCmxLT0BjUMR2UfkFdO5E4PhoNCaHvvpZvxplmNMakznL0YzjM7flRsVLjK+B5wDhKC57lmn+gjgin37xGrGxZ34/wioYgixpzAT1aAEonXQNw4t14KDRryQk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787952664; c=relaxed/simple;
-	bh=2sDGdbmEulnh8eSdR1+HxciiahqySlt3wjxZ5slsvTw=;
-	h=Date:From:To:cc:Subject:In-Reply-To:Message-ID:References:
-	 MIME-Version:Content-Type; b=Au3Cs27WpWmdpqaJmKg1a/mcLOc1TH1YbFt+q0INcHJQmTFH4Uph7Jc6ayQ2DsZXMfLZ/CSnoe83/citsbLnMoEKFGuwiNMoLjeRfznjObCDlgtT/fwRUnYGbUelk8G/cmX4n+xGTaJE1L3e0wUuxfLqoiSxqa72iy6i7XaCM68=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ieee.org; spf=pass smtp.mailfrom=ieee.org; dkim=pass (1024-bit key) header.d=ieee.org header.i=@ieee.org header.b=aAcO7IlY; arc=none smtp.client-ip=209.85.128.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=ieee.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ieee.org
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=ieee.org header.i=@ieee.org header.b="aAcO7IlY"
-Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-85dbc24d398so12964107b3.2
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Aug 2026 14:31:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ieee.org; s=google; t=1787952661; x=1788557461; darn=vger.kernel.org;
-        h=content-type:mime-version:user-agent:references:message-id
-         :in-reply-to:subject:cc:to:from:date:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=2sDGdbmEulnh8eSdR1+HxciiahqySlt3wjxZ5slsvTw=;
-        b=aAcO7IlYNfnXuneVJslYa35eUyqvNa5lfwhglBLzzsPDLxNc4RQ2k2CcxCCThGu1X1
-         kxoQJqPCLE1iRn/HwCuvg8pDowv96SJoTE+itdGvdgjWbVqhXfMVcpOtu8kPA7YEm+Jh
-         6hynt5wEtBqtLmT+PGSxNZX4E8aCEoU8NIv/Y=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787952661; x=1788557461;
-        h=content-type:mime-version:user-agent:references:message-id
-         :in-reply-to:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=2sDGdbmEulnh8eSdR1+HxciiahqySlt3wjxZ5slsvTw=;
-        b=MY5/RLybHrASB24BcrjKyU472RYA6HtLxUQiwE5KZ4XP/COuxbVaOffJ0wpsGrDdli
-         tgEo6h/eq5m824jHXIcG0O2BM59V+/IOwbA6WbL7gIzYgx8CkctKlr+uSSNqR/f07FMj
-         8eJk5CUdYkwe7ZAufs9TOqnv7fb+/PM7DFCerSznGo550zt8IKIprwDiRzhCdfbRDzJe
-         XM+URoOHt7IU9D2xGug/+NHihItak4Ft5wBdXrGNydfOhrM0io5LJiw/enr4jSIuR3mt
-         nX20WyfBH+nmIcymkVqvEX7CD+dGZeVnTqhEyBZJJFgvtEc3h4i5+y2D++vjJKh0e+KJ
-         fu9g==
-X-Gm-Message-State: AFuF++npUtRX1TsEXT/Lqcq4U2dc2LxThcpt1IAcy5z+yCqs79dPihFX
-	JqrUDQ0qxESE4SsTBgk+MN9+l/Z/AbjHRRB31dMk7FaieUyLImsYW65MahQMD/Z+Pg==
-X-Gm-Gg: AYBFou2U8bKFlzhC25uJ8o6vMQUAgRxVqMzGrdkh3dNvxkmsckUevFgHMgac8DV/q9M
-	Ts/aahvJs1Pc9UwDjZxrCjKXMRyMHxx8x4HmvDipGMbLC9jbFCxt4guPfwvjzpy4OixM4L3v9iC
-	pCjbDfMKucmJBSCm7UzMix4dypWCdATZ5zgxnZMdIOSwT0hFC+0/Ad9ELnLbOvWPI47TDUbF0cY
-	Z7AMi/dNmU37liVt+rU+uezegHUa13U5FVcM52gbjBxpyTA+MKTIflSews//xrxT8YUA/8Q2QZP
-	LxumoFJtkCua92hLDt67lOIV2ut23+z4fB24MA8WS1tEK8iVBie0dW7TIXdVHGlIWxW0nF5Xvvn
-	smtfqJAv4ZrJS5Msp5he4AQnwmo9C43KnbCAYnnF6dXP7ZYOEygoMt0Psw3+uPpAnLKyFPHGrW1
-	L/NuDCrM+rGk0t4nKksugPTUW3C9K5hb9qsSiZDXJ+OIWLyJut2TjYHQ==
-X-Received: by 2002:a05:690c:e0cf:20b0:856:8468:95e8 with SMTP id 00721157ae682-85d69641377mr34929477b3.6.1787952660694;
-        Fri, 28 Aug 2026 14:31:00 -0700 (PDT)
-Received: from thrain ([2600:1700:7c0:543f:98a7:54ff:fe4d:e97d])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-85e679512easm12451677b3.48.2026.08.28.14.31.00
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 28 Aug 2026 14:31:00 -0700 (PDT)
-Date: Fri, 28 Aug 2026 17:30:58 -0400 (EDT)
-From: ddstreet <ddstreet@ieee.org>
-To: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
-cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@dilger.ca, 
-    srivatsa@csail.mit.edu, ddstreet@ieee.org
-Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
- during filesystem check
-In-Reply-To: <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
-Message-ID: <2c2c9212-4989-a1e3-f81c-e3036010bf2b@ieee.org>
-References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net> <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
-User-Agent: Alpine 2.26 (DEB 649 2022-06-02)
+	s=arc-20240116; t=1787997223; c=relaxed/simple;
+	bh=y/3AJvrn8vqj5hYm56p+hFDhUFyt5DA7uMOcuShnznU=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=bF44cDRPrE6fmHsM0Dgs5OLNmgNjJdXSK/QoOQ2xV9H3kOqBI//7/AdE2IQlTAuC+z435oY+O7cNAr4U3x2lcRsuPdeiDSvWRgJ0B3zAgm6qn+yUBBQaEtqURt4gDmyg9fv22CzvVGbHYJwh13Q3uL63TEh6jSJB0ercWL88nFI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hX9YB6bdlzYQtwC;
+	Sat, 29 Aug 2026 17:53:02 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.252])
+	by mail.maildlp.com (Postfix) with ESMTP id EACF940577;
+	Sat, 29 Aug 2026 17:53:36 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXR0YerJJqEm1XEA--.46628S3;
+	Sat, 29 Aug 2026 17:53:36 +0800 (CST)
+Message-ID: <916789eb-394b-4e65-9a7c-51a1f8ac737b@huaweicloud.com>
+Date: Sat, 29 Aug 2026 17:53:33 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] fs/ext4: fix ABBA deadlock in ext4_rmdir()
+To: Sergey Senozhatsky <senozhatsky@chromium.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, Sarthak Kukreti <sarthakkukreti@google.com>
+References: <20260827125158.4030598-1-senozhatsky@chromium.org>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260827125158.4030598-1-senozhatsky@chromium.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:_Ch0CgBXR0YerJJqEm1XEA--.46628S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxZr47KF1fJF4kWryrXw17Awb_yoWrJr48pF
+	Z3KryjyrW8Zry8uF4xWr48XrW0vay0qryUJr93K340ya9aq3Z3tFnFqFyjqFy7ArW5u3Wr
+	XF4jkr9Iga1Yy3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r1q6r43MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8
+	ZwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUF1
+	v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
+On 8/27/2026 8:50 PM, Sergey Senozhatsky wrote:
+> We observe the following ABBA deadlock (casefolding enabled):
+> 
+>  INFO: task jbd2/dm-13-8:447 blocked for more than 720 seconds.
+>  task:jbd2/dm-13-8    state:D stack:0     pid:447   tgid:447   ppid:2
+>  Call Trace:
+>   <TASK>
+>   __schedule+0xc2c/0xe60
+>   schedule+0x40/0xe0
+>   jbd2_journal_wait_updates+0x8f/0xf0
+>   jbd2_journal_commit_transaction+0x321/0x1850
+>   kjournald2+0xa9/0x230
+>   kthread+0x226/0x2a0
+>   ret_from_fork+0x101/0x1e0
+>   ret_from_fork_asm+0x1a/0x30
+> 
+>  INFO: task Thread-10:4161 blocked for more than 720 seconds.
+>  task:Thread-10       state:D stack:0     pid:4161  tgid:3848  ppid:540
+>  Call Trace:
+>   <TASK>
+>   __schedule+0xc2c/0xe60
+>   schedule+0x40/0xe0
+>   wait_transaction_locked+0x8c/0xd0
+>   start_this_handle+0x252/0x870
+>   jbd2__journal_start+0x120/0x280
+>   __ext4_journal_start_sb+0x11a/0x250
+>   ext4_evict_inode+0x208/0x760
+>   iput+0x222/0x5c0
+>   dput+0x293/0x690
+>   ____fput+0x145/0x2b0
+>   task_work_run+0x7a/0xb0
+>   exit_to_user_mode_loop+0xc0/0xd0
+>   do_syscall_64+0x14b/0xf10
+>   entry_SYSCALL_64_after_hwframe+0x76/0x7e
+> 
+>  NMI backtrace for cpu 0
+>  CPU: 0 UID: 1010216 PID: 4160 Comm: Thread-7
+>  RIP: 0010:d_walk+0x0/0x290
+> [..]
+>  Call Trace:
+>  <TASK>
+>   shrink_dcache_parent+0xb2/0x100
+>   d_invalidate+0x50/0x110
+>   ext4_rmdir+0x3a2/0x3d0
+>   vfs_rmdir+0x9d/0x1d0
+>   do_rmdir+0xf0/0x330
+>   __x64_sys_unlinkat+0x34/0x50
+>   do_syscall_64+0x61/0xf10
+> 
+> The problem is that ext4_rmdir() calls d_invalidate() before stopping
+> the jbd2 transaction handle.  Because d_invalidate() traverses child
+> dentries it can encounter dying or in-use dentries.  If a concurrent
+> thread executing __dentry_kill() on a child dentry invokes ext4_evict_inode(),
+> it requests a new transaction handle via ext4_journal_start(), which
+> waits for all running handles to close.  However, the thread executing
+> ext4_rmdir() still holds its active transaction handle while looping
+> in shrink_dcache_parent() waiting for the dying child dentry to complete
+> eviction.
+> 
+> Stop transaction handle in ext4_rmdir() before calling d_invalidate().
+> 
+> Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
+> Co-developed-by: Sarthak Kukreti <sarthakkukreti@google.com>
+> Signed-off-by: Sarthak Kukreti <sarthakkukreti@google.com>
+> Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
 
-On Mon, 24 Aug 2026, Nandakumar Raghavan wrote:
+Thank you for the fix patch, this issue is quite subtle.
 
-> udevd already serialises its own partition probes against whole-disk device
-> access using flock(LOCK_SH|LOCK_NB); if EAGAIN is returned it requeues the
-> event. Take advantage of this protocol by acquiring flock(LOCK_EX) on the
-> whole-disk device before opening the filesystem. This forces udevd to defer
-> all probes on that disk until e2fsck exits and the lock is released, by
-> which point the filesystem is fully consistent.
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 
-I believe this was already part of fsck, and it conflicted with udevd and so was removed:
-https://bugs.freedesktop.org/show_bug.cgi?id=79576
-https://github.com/util-linux/util-linux/commit/3bbdae633f4a1dda5f95ee6c61f18a1c8ef12250
+> ---
+>  fs/ext4/namei.c | 11 ++++++-----
+>  1 file changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index a6386c1d237f..231a274b814e 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -3209,19 +3209,20 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+>  	ext4_fc_track_unlink(handle, dentry);
+>  	retval = ext4_mark_inode_dirty(handle, dir);
+>  
+> +end_rmdir:
+> +	brelse(bh);
+> +	if (handle)
+> +		ext4_journal_stop(handle);
+> +
+>  	/* VFS negative dentries are incompatible with Encoding and
+>  	 * Case-insensitiveness. Eventually we'll want avoid
+>  	 * invalidating the dentries here, alongside with returning the
+>  	 * negative dentries at ext4_lookup(), when it is better
+>  	 * supported by the VFS for the CI case.
+>  	 */
+> -	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
+> +	if (!retval && IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
+>  		d_invalidate(dentry);
+>  
+> -end_rmdir:
+> -	brelse(bh);
+> -	if (handle)
+> -		ext4_journal_stop(handle);
+>  	return retval;
+>  }
+>  
 
-That particular problem was already fixed in systemd-udevd:
-https://github.com/systemd/systemd/commit/5d354e525a5
-
-But in general, does it really make sense for _only_ e2fsck to lock
-the device? Wouldn't it make more sense to add the device flock back
-into fsck itself? Or if the problem is during boot between
-systemd-fsck and systemd-udevd, wouldn't it be better to fix the issue
-in systemd-fsck?
