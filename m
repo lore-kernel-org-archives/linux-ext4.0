@@ -1,184 +1,210 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2AA3346AF1;
-	Mon, 31 Aug 2026 12:18:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD31D3E6386;
+	Mon, 31 Aug 2026 12:22:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788178731; cv=none; b=Su2DdH+l0D4sZO51DG28xivm29mUk5Y6XUnJKxL7WF51t6zNzmmPAi6Dda5Pq/K1M9FbdwZ4OFCv7y4CqA6xZ2LWGylH3cQvHaW92kHRCYsiVa3OiljekdvkB6KNQmg4GzRKGIvPEkJpiJRysv7uhlcJNvXX0iv/lJWUIFLdxJk=
+	t=1788178959; cv=none; b=pojRzV0n7qXRJcX7pYQxbzbW5ACfCnQtoHvI5EAX258PAoybBvdOnAeDGHNUrIMTBBMWqYKZGCdMCk1ttz0g2My/HJXTZhy1ZWMwdMeYD7A5SL48nVpdqIEbxdECAJWUBkY+pN8ojJdbJpgTpoVGNo4gT4Vds0CwvAfrz/iJBGM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788178731; c=relaxed/simple;
-	bh=rMVKG7mQaBVoReB17i9I2MCnyV/Ej6kSAE2S0iKfHzI=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
-	 In-Reply-To:Content-Type; b=pzqBPaVxnB7tfsPmF9oGleNwv5qMZjbgBxZbd4lPsRy/U/nPJ0n7z7171z9I1TxVMrVdo48MdhIO85d1a7LkhmFU/vNzss6W2W4zINV5Gznw/h0+BFCWPR4AqfsedaYe26cO4uIuMFv5JeSDcdX2oc316ghGGMTEKdl9VAvphdA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hYSgd6vC7zYQtt0;
-	Mon, 31 Aug 2026 20:18:05 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 6518040A3B;
-	Mon, 31 Aug 2026 20:18:43 +0800 (CST)
-Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgAX_gggcZVq1qL1AA--.38183S3;
-	Mon, 31 Aug 2026 20:18:42 +0800 (CST)
-Message-ID: <49d6df68-dd74-417d-a313-69d15846c2b7@huaweicloud.com>
-Date: Mon, 31 Aug 2026 20:18:39 +0800
+	s=arc-20240116; t=1788178959; c=relaxed/simple;
+	bh=hQlF+RlBpsVwioFHHo5iBMWnnt4OLnHkD2guK0uNZVA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=pcSCSYauChQdh84MsmY+d7pqrtqfe/jEQyxX46GY1uVJvjkig5TIX4n/4ix/Fif1VHoIime0x0rzcGXRpD6sFsUYKTZdND/5QJQw9pkZ414eZKm0bs31CYGrZWem43lI6CQm8H23cIteXNLIWgPHXZdfw8Ej3AssmPw/CWOWgTU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=OC/7SLOo; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=j9D0w1XB; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=u3ligTMF; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=OsBoF80q; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="OC/7SLOo";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="j9D0w1XB";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="u3ligTMF";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="OsBoF80q"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id A0111220C7;
+	Mon, 31 Aug 2026 12:22:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788178951; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=n+VyCKdP0D99p70cQubnM0W79HqKh5lLhDcWO7y/gC4=;
+	b=OC/7SLOoljo25hDoEt8sIbyfuHt3DRURPO+P3SQ74DHXv5PYaE5JrQYWRG5idUX0KO9SjE
+	zcEWgjUebO9oAdBReCa1LBkV3QuZMNTvSp4dUEdYvhqdypa4tvBAf6ipB7YVU5lEfXPa2h
+	7wxSoUqX8lhcQbZGDYaQpnO+zlrAz98=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788178951;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=n+VyCKdP0D99p70cQubnM0W79HqKh5lLhDcWO7y/gC4=;
+	b=j9D0w1XBmH9s1twjFn6CY8tcrswaj2YdUnq2qjdfD8CyDIA6ahhzMNSvOLKAcjtk7u5ymL
+	gjNRAJmxshAgthDg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=u3ligTMF;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=OsBoF80q
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788178947; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=n+VyCKdP0D99p70cQubnM0W79HqKh5lLhDcWO7y/gC4=;
+	b=u3ligTMF8dv/vxkHJspOdKQKXYgtSnUNZfmdTT44jE+Kiq3XpDqdPX92gcTlm+R8Oi7iDc
+	0oyJoQZfkIv1Z4/XEXt5xunybT0W4bK9Xy/nMe45vmG2OJTM/f5M2IoiMB4tEfcdRtvXVi
+	hbAnWFHzzCy4Rsm12iEBV2WavpBbbqc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788178947;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=n+VyCKdP0D99p70cQubnM0W79HqKh5lLhDcWO7y/gC4=;
+	b=OsBoF80qxWF0mjLTlizAu7ytXW/sC1OHCf7QDPWrrDFjQQPA7vBzG5hfkdzSWshYMtXqWT
+	2kMkU7zOwwHM+PCQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7B4F213682;
+	Mon, 31 Aug 2026 12:22:27 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id /mQZHgNylWpAfwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 31 Aug 2026 12:22:27 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 10781A13B5; Mon, 31 Aug 2026 14:22:23 +0200 (CEST)
+Date: Mon, 31 Aug 2026 14:22:23 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jinjie Ruan <ruanjinjie@huawei.com>
+Cc: viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz, 
+	bcrl@kvack.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, pmladek@suse.com, rostedt@goodmis.org, 
+	andriy.shevchenko@linux.intel.com, linux@rasmusvillemoes.dk, senozhatsky@chromium.org, 
+	akpm@linux-foundation.org, davem@davemloft.net, edumazet@google.com, kuba@kernel.org, 
+	pabeni@redhat.com, horms@kernel.org, socketcan@hartkopp.net, mkl@pengutronix.de, 
+	kuniyu@google.com, willemb@google.com, jhs@mojatatu.com, jiri@resnulli.us, 
+	kees@kernel.org, cyphar@cyphar.com, tglx@kernel.org, liuhangbin@gmail.com, 
+	sdf@fomichev.me, nb@tipi-net.de, linux-fsdevel@vger.kernel.org, 
+	linux-aio@kvack.org, linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	netdev@vger.kernel.org, linux-can@vger.kernel.org
+Subject: Re: [PATCH 04/11] fs: Use acquire/release for fdtable resize
+ synchronization
+Message-ID: <cwsvkb2bqq5zvdgqyaz7qarprl6ca6sq54cjiqxtcvzmmm5vrk@bjeea4jm2jad>
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+ <20260825095422.3166067-5-ruanjinjie@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 07/11] ext4: Convert group-count barrier protocol to
- acquire/release
-To: Jinjie Ruan <ruanjinjie@huawei.com>
-References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
- <20260825095422.3166067-8-ruanjinjie@huawei.com>
-Content-Language: en-US
-Cc: viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz,
- bcrl@kvack.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- pmladek@suse.com, rostedt@goodmis.org, andriy.shevchenko@linux.intel.com,
- linux@rasmusvillemoes.dk, senozhatsky@chromium.org,
- akpm@linux-foundation.org, davem@davemloft.net, edumazet@google.com,
- kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- socketcan@hartkopp.net, mkl@pengutronix.de, kuniyu@google.com,
- willemb@google.com, jhs@mojatatu.com, jiri@resnulli.us, kees@kernel.org,
- cyphar@cyphar.com, tglx@kernel.org, liuhangbin@gmail.com, sdf@fomichev.me,
- nb@tipi-net.de, linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- netdev@vger.kernel.org, linux-can@vger.kernel.org
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260825095422.3166067-8-ruanjinjie@huawei.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgAX_gggcZVq1qL1AA--.38183S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxurW5Zr17Gw1fWFy5ur43GFg_yoWrAw4Up3
-	9rCF1UAF1kXw1UuF47G348uF1xW3WIka4Yq3s3Kr129Fy3t3W8AFyUtF18AFWvvFZ7Zr18
-	Xan093yDurnrCrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26rWY6Fy7MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWrXVW8
-	Jr1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	j6a0PUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260825095422.3166067-5-ruanjinjie@huawei.com>
+X-Spam-Score: -2.51
+X-Rspamd-Queue-Id: A0111220C7
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[40];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	TAGGED_RCPT(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	R_RATELIMIT(0.00)[to_ip_from(RLa77mm4gi8mw7uppieotozii3)];
+	MISSING_XM_UA(0.00)[];
+	FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,suse.cz,kvack.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,suse.com,goodmis.org,linux.intel.com,rasmusvillemoes.dk,chromium.org,linux-foundation.org,davemloft.net,google.com,redhat.com,hartkopp.net,pengutronix.de,mojatatu.com,resnulli.us,cyphar.com,fomichev.me,tipi-net.de,vger.kernel.org];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.cz:email]
+X-Spam-Flag: NO
 
-On 8/25/2026 5:54 PM, Jinjie Ruan wrote:
-> During an online resize, reading s_groups_count and s_blockfile_groups
-> requires strict ordering against subsequent initialized block group
-> metadata.
+On Tue 25-08-26 17:54:15, Jinjie Ruan wrote:
+> Replace the smp_wmb()/smp_rmb() barrier pair with
+> smp_store_release()/smp_load_acquire() on `files->resize_in_progress`.
+> The flag is the publish point for fdtable expansion: writers clear it
+> via release after rcu_assign_pointer(), readers check it via acquire
+> before rcu_dereference_sched(). Observing it clear guarantees the new
+> fdt pointer is visible.
 > 
-> Replace the historical smp_wmb()/smp_rmb() pairs with smp_store_release()
-> and smp_load_acquire(). This formalizes the publish-subscribe pattern
-> and allows weakly-ordered architectures (e.g., arm64) to utilize native
-> STLR/LDAR instructions instead of full DMB fences.
+> This expresses the pattern more clearly and allows cheaper one-way
+> barriers on weakly-ordered architectures (e.g. arm64 STLR/LDAR vs
+> DMB ISHST/ISHLD).
 > 
-> Update the documentation in resize.c and ext4.h accordingly.
-> 
-> Assisted-by: Gemini:Gemini-3.1
 > Assisted-by: DeepSeek:DeepSeek-V3
 > Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 
-Looks good to me.
+Looks good. Feel free to add:
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
 
 > ---
->  fs/ext4/ext4.h    | 10 +++-------
->  fs/ext4/mballoc.c |  6 ++----
->  fs/ext4/resize.c  | 19 +++++++++++--------
->  3 files changed, 16 insertions(+), 19 deletions(-)
+>  fs/file.c | 10 ++++------
+>  1 file changed, 4 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 724a27e8be61..d70b9cb09155 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3542,16 +3542,12 @@ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
->  }
->  
->  /*
-> - * Reading s_groups_count requires using smp_rmb() afterwards.  See
-> - * the locking protocol documented in the comments of ext4_group_add()
-> - * in resize.c
-> + * Reading s_groups_count uses acquire semantics.
->   */
->  static inline ext4_group_t ext4_get_groups_count(struct super_block *sb)
->  {
-> -	ext4_group_t	ngroups = EXT4_SB(sb)->s_groups_count;
-> -
-> -	smp_rmb();
-> -	return ngroups;
-> +	/* Pairs with smp_store_release() in ext4_update_super() */
-> +	return smp_load_acquire(&EXT4_SB(sb)->s_groups_count);
->  }
->  
->  static inline ext4_group_t ext4_flex_group(struct ext4_sb_info *sbi,
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 06171a11db12..a15285224cdf 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -899,10 +899,8 @@ static ext4_group_t ext4_get_allocation_groups_count(
->  
->  	/* non-extent files are limited to low blocks/groups */
->  	if (!(ext4_test_inode_flag(ac->ac_inode, EXT4_INODE_EXTENTS)))
-> -		ngroups = EXT4_SB(ac->ac_sb)->s_blockfile_groups;
-> -
-> -	/* Pairs with smp_wmb() in ext4_update_super() */
-> -	smp_rmb();
-> +		/* Pairs with smp_store_release() in ext4_update_super() */
-> +		ngroups = smp_load_acquire(&EXT4_SB(ac->ac_sb)->s_blockfile_groups);
->  
->  	return ngroups;
->  }
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 2c5b851c552a..5e3ad8393cf8 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -1462,11 +1462,11 @@ static void ext4_update_super(struct super_block *sb,
->  	 *
->  	 * The precise rules we use are:
->  	 *
-> -	 * * Writers must perform a smp_wmb() after updating all
-> -	 *   dependent data and before modifying the groups count
-> +	 * * Writers must use a release store when updating the groups count
-> +	 *   after all dependent data has been updated
->  	 *
-> -	 * * Readers must perform an smp_rmb() after reading the groups
-> -	 *   count and before reading any dependent data.
-> +	 * * Readers must use an acquire load when reading the groups
-> +	 *   count before reading any dependent data.
->  	 *
->  	 * NB. These rules can be relaxed when checking the group count
->  	 * while freeing data, as we can only allocate from a block
-> @@ -1474,12 +1474,15 @@ static void ext4_update_super(struct super_block *sb,
->  	 * only then free after serialising in turn against that
->  	 * allocation.
->  	 */
+> diff --git a/fs/file.c b/fs/file.c
+> index 628ca07dc4b1..86c035d459f2 100644
+> --- a/fs/file.c
+> +++ b/fs/file.c
+> @@ -273,8 +273,6 @@ static int expand_fdtable(struct files_struct *files, unsigned int nr)
+>  	rcu_assign_pointer(files->fdt, new_fdt);
+>  	if (cur_fdt != &files->fdtab)
+>  		call_rcu(&cur_fdt->rcu, free_fdtable_rcu);
+> -	/* coupled with smp_rmb() in fd_install() */
 > -	smp_wmb();
+>  	return 0;
+>  }
 >  
->  	/* Update the global fs size fields */
-> -	sbi->s_groups_count += flex_gd->count;
-> -	sbi->s_blockfile_groups = min(sbi->s_groups_count,
-> -			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
-> +	/* Pairs with smp_load_acquire() in ext4_get_groups_count() */
-> +	smp_store_release(&sbi->s_groups_count,
-> +			  sbi->s_groups_count + flex_gd->count);
-> +	/* Pairs with smp_load_acquire() in ext4_get_allocation_groups_count() */
-> +	smp_store_release(&sbi->s_blockfile_groups,
-> +			  min(sbi->s_groups_count,
-> +			      (EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb))));
+> @@ -313,7 +311,8 @@ static int expand_files(struct files_struct *files, unsigned int nr)
+>  	/* All good, so we try */
+>  	files->resize_in_progress = true;
+>  	error = expand_fdtable(files, nr);
+> -	files->resize_in_progress = false;
+> +	/* coupled with smp_load_acquire() in fd_install() */
+> +	smp_store_release(&files->resize_in_progress, false);
 >  
->  	/* Update the reserved block counts only once the new group is
->  	 * active. */
-
+>  	wake_up_all(&files->resize_wait);
+>  	return error;
+> @@ -685,13 +684,12 @@ void fd_install(unsigned int fd, struct file *file)
+>  		return;
+>  
+>  	rcu_read_lock_sched();
+> -	if (unlikely(files->resize_in_progress)) {
+> +	/* coupled with smp_store_release() in expand_files() */
+> +	if (unlikely(smp_load_acquire(&files->resize_in_progress))) {
+>  		rcu_read_unlock_sched();
+>  		fd_install_slowpath(fd, file);
+>  		return;
+>  	}
+> -	/* coupled with smp_wmb() in expand_fdtable() */
+> -	smp_rmb();
+>  	fdt = rcu_dereference_sched(files->fdt);
+>  	VFS_BUG_ON(rcu_access_pointer(fdt->fd[fd]) != NULL);
+>  	rcu_assign_pointer(fdt->fd[fd], file);
+> -- 
+> 2.34.1
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
