@@ -1,143 +1,232 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDBEE3E120C;
-	Mon, 31 Aug 2026 08:22:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FDDB400998;
+	Mon, 31 Aug 2026 09:59:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788164576; cv=none; b=LSGavYLK2Z0MmoUqNQ/qxVbntJVrObcaF6xvctL+KbnMWCjRXJqkf7KnSNPAC2iWSMCeOeFvkhO01DedRSzoIaRAF5LypM2HU+6goLHzOCvZEyWq6gLLPPMWn+LaoHRxA2R6YU51XkJGo+D3iDWctXo4Suxhe3hX7RlnOAp4wRI=
+	t=1788170392; cv=none; b=kkUq/ktcgKT1euIv10ei66XFUEe11wbBAwBl6OF5EoVip4XuH3shTv8px/BP3e4gbAZ2Wx/8Ei+Xkxcxip0z4wSh/pFFp5pabyahWnWggdt1ypgF8pR+3sszyYSQN7E9rei2ZcEbfGs+cxzzFKhj0m4Q2h124I+Q9dWG3ufhjW0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788164576; c=relaxed/simple;
-	bh=wnOb710GDzXvB78jABPqDFMRlLh8C3NnDR9JYFb6Gvo=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Message-Id:Date:
-	 MIME-Version:Content-Type; b=n1bjO5deoVe1SfpRYRo6jbMcGaqQkYjmOuKa20eWV4oNP+7CHTy0sTewAS4bNFAJGMAbFoioI/MKND3N74wLy8SkKep3kbKJg+wWCjSuhlq9GYnpmPu2rvPAYUeuviD7Gn/HhEQuR6NlBiP9f1GntFp3c7dFCVAqyBsveARP70Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kDuLGYij; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788170392; c=relaxed/simple;
+	bh=PqIa7f4joQ6Ewq8ZNwNRH9LrYTiWA+ynmpnFW7z1oPI=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=TCOd/wmiUtE5msfJyK9aUb3L5fv1FwgT2enw/D8U+YoW/8uB0K3KQnUIJPUBFxdLJieTQ2kQ1YGUq655PJrWGAlfZVOCuLgt/0WPziLeh25HpelWNgpZAYYx2gWSGPnzwfypcVi/NphEPMSCkXnIJg0fy2e+Qu2wbHtZj0cjYHY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dW2nKgD/; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=KmcOhO0z; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=r9+5dkfj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vayhPUMM; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kDuLGYij"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 734C01F000E9;
-	Mon, 31 Aug 2026 08:22:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788164574;
-	bh=lmGgmlxDbGLbhuLXzpdjg1bjgsmwZj4DcRmR+5yii2Q=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=kDuLGYijTZY4L/lJ/eKPEPZ79jZ7Xzmksn4BPj95fcn4/heyZX5sB2+cMA38oBDso
-	 6JiwxxbpqX3bnt+aDaYhdskRY0eL3Elp2ksONcUTyVNV1yDn40MOWzowF4/4iQkzpX
-	 FUSGofyobRO9WCZ7d7+xpLahTeq+0fu4OdkWhOsrufaSThIk5kbwJwdQ9YJ5Q1xDNA
-	 kR4jaXnYHcWCmBy+b7/VhvLvCK6Me5gvxHj/PJ1rGpI+P8epCwSyDdHQCO5RMKeTBV
-	 W52ImWhGYlJDU0FChhsUy6to3arDCcjLQYzjxxGO6D4zx/2cdFUAG4ATb69hZtdThq
-	 hgWE7GVrWnesQ==
-From: Christian Brauner <brauner@kernel.org>
-To: Jan Kara <jack@suse.cz>, Alexander Viro <viro@zeniv.linux.org.uk>, 
- Matthew Wilcox <willy@infradead.org>, linux-fsdevel@vger.kernel.org, 
- Chao Shi <coshi036@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
- Zhang Yi <yi.zhang@huaweicloud.com>, Bob Copeland <me@bobcopeland.com>, 
- Namjae Jeon <linkinjeon@kernel.org>, Sungjong Seo <sj1557.seo@samsung.com>, 
- Yuezhang Mo <yuezhang.mo@sony.com>, 
- OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Mark Fasheh <mark@fasheh.com>, 
- Joel Becker <jlbec@evilplan.org>, Joseph Qi <joseph.qi@linux.alibaba.com>, 
- Andreas Gruenbacher <agruenba@redhat.com>, linux-ext4@vger.kernel.org, 
- ocfs2-devel@lists.linux.dev, gfs2@lists.linux.dev, 
- linux-kernel@vger.kernel.org
-In-Reply-To: <cover.1785951556.git.coshi036@gmail.com>
-References: <cover.1785951556.git.coshi036@gmail.com>
-Subject: Re: [PATCH v2 00/21] buffer: stop clearing BH_Uptodate when a
- write fails
-Message-Id: <20260831-lauwarm-gedruckt-salzkartoffel-67b444e6977e@brauner>
-Date: Mon, 31 Aug 2026 10:20:39 +0200
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dW2nKgD/";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="KmcOhO0z";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="r9+5dkfj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vayhPUMM"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id BCE4E1FAAB;
+	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788170383; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=dW2nKgD/72GHfPDPSkIXHWa4TQlW9zo4m5ZJZt18et8r8SpFKwl3fSOhDCUde4WrGHhX1k
+	HthafQUnqSZwcZK8Hdcs9U36lkHKEFP7wcuFYQxjwio2w5aV+Vt72W3ZXcuri1mhWwTdMf
+	dP+uDJvuZa7oiZHnAx8jWbEbvlydq4E=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788170383;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=KmcOhO0zo72Y4OHAa8RvceB+zt8rPD1OtYKdTL75AERgXOIdssNGME6lJ09SSLwG+HwP6H
+	WPniXvtYYYJ7buDA==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788170379; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=r9+5dkfj5zv2zJtacQf2HZljTAw/25dZVX8yvLicsAhmPie/8z4lpxN7aqnWa4UN22X30z
+	VqtIUOoyqHhMMot3U+vyaxuyjejWrLJMumjOQ8E3Br8VcDxJXDazwa4lekbK2hbqemViUC
+	LVdcCgmonttzkdd8su0ehz6W1kl120w=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788170379;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=9NwnR8kMEaTJTYkoxBQW5G3izVgqGS7StBEwaJ2omhE=;
+	b=vayhPUMMZNg3rW2xgsNzuc/IUtzfsyNI4zFxAL3JrlK7XeBEytvIqcNyZdaxkU8YXY20/9
+	vR13eZLPIsgFyYDQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 98AE413694;
+	Mon, 31 Aug 2026 09:59:39 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 2pBAJYtQlWp8cAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 31 Aug 2026 09:59:39 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 29D40A13B5; Mon, 31 Aug 2026 11:59:35 +0200 (CEST)
+Date: Mon, 31 Aug 2026 11:59:35 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>, 
+	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, Theodore Tso <tytso@mit.edu>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
+	Phillip Lougher <phillip@squashfs.org.uk>, linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, ntfs@lists.linux.dev, 
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 1/9] mm: Improve memalloc_nofs_save() documentation
+Message-ID: <wriwrbwg3sx5kpl6s7yggam5x7ljml2sul5rz4dm7ftbyyoqyu@yqjepgxxtd3g>
+References: <20260830041901.2668-1-willy@infradead.org>
+ <20260830041901.2668-2-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.17-dev-362b8
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3922; i=brauner@kernel.org;
- h=from:subject:message-id; bh=wnOb710GDzXvB78jABPqDFMRlLh8C3NnDR9JYFb6Gvo=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRNtbzJ87J41a5rDh88SrxLj019wMf7ZdaNyWoRf36K7
- 5nGYlVR2VHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjAR0V8M/7PsK/maZ50rW/Aw
- se7TNPM5UrPXVnCy82ZtVAs3EXx0LZKRYYvaOo7NJmWzWpcEBVrvZ7rOsdFfq4dnq69PApPHBjt
- fbgA=
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260830041901.2668-2-willy@infradead.org>
+X-Spam-Level: 
+X-Spam-Score: -2.30
+X-Spam-Flag: NO
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[18];
+	TAGGED_RCPT(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[brauner.io,suse.cz,kernel.org,mit.edu,gmail.com,squashfs.org.uk,lists.ozlabs.org,vger.kernel.org,lists.linux.dev,kvack.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 
-On Thu, 06 Aug 2026 12:58:23 -0400, Chao Shi wrote:
-> buffer: stop clearing BH_Uptodate when a write fails
+On Sun 30-08-26 05:18:48, Matthew Wilcox (Oracle) wrote:
+> Talk about why someone should call this function instead of
+> what this function does.  This makes the long comment in mm/readahead.c
+> obsolete; replace it with a comment about which case we're protecting
+> against.
 > 
-> When a metadata write fails, the buffer_head completion handlers clear
-> BH_Uptodate.  The buffer still holds exactly the data the filesystem asked
-> to be written - it is the disk that is stale, not the buffer - and saying
-> otherwise has consequences:
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+
+Yeah, I think the documentation is better. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  include/linux/sched/mm.h | 31 +++++++++++++++++++++++--------
+>  mm/readahead.c           | 14 ++------------
+>  2 files changed, 25 insertions(+), 20 deletions(-)
 > 
-> [...]
-
-Tbh, the commit message reads a bit LLMy. It would be nice if people
-could take the time - provided they have sufficient language skills - to
-massage the artificial tone out of them.
-
----
-
-Applied to the vfs-7.4.bh branch of the vfs/vfs.git tree.
-Patches in the vfs-7.4.bh branch should appear in linux-next soon.
-
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
-
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.4.bh
-
-[01/21] buffer_head: Remove b_page
-        https://git.kernel.org/vfs/vfs/c/719ecb98ffe7
-[02/21] buffer: allow a buffer_head to point at memory outside the page cache
-        https://git.kernel.org/vfs/vfs/c/8deae2284976
-[03/21] jbd2: point the shadow buffer at the frozen data directly
-        https://git.kernel.org/vfs/vfs/c/5febcba29792
-[04/21] buffer: read the folio's mapping directly in buffer_set_crypto_ctx()
-        https://git.kernel.org/vfs/vfs/c/14cbade7d773
-[05/21] buffer: clear BH_Write_EIO when a buffer is forgotten
-        https://git.kernel.org/vfs/vfs/c/d59fe9111f4f
-[06/21] buffer: discard BH_Write_EIO along with the rest of the buffer state
-        https://git.kernel.org/vfs/vfs/c/bbcd6f7456b2
-[07/21] buffer: detect metadata write errors with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/7032ded0a1fa
-[08/21] adfs: check for a directory write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/613e12102111
-[09/21] ext2: check for an xattr block write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/583913a40f2e
-[10/21] omfs: check for an inode write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/a269f6fade99
-[11/21] exfat: check for a directory write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/4a53ece574b5
-[12/21] fat: check for a metadata write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/a93ff8e2e398
-[13/21] ext4: check for a metadata write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/0f44b420e6c7
-[14/21] ocfs2: check for a metadata write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/3f90f64f8187
-[15/21] ocfs2: check for a stale write error before reusing a metadata buffer
-        https://git.kernel.org/vfs/vfs/c/a87462d7b604
-[16/21] gfs2: check for a metadata write error with buffer_write_io_error()
-        https://git.kernel.org/vfs/vfs/c/47552ff5ebf9
-[17/21] jbd2: report journal write errors with BH_Write_EIO
-        https://git.kernel.org/vfs/vfs/c/0c6c46fbf4d8
-[18/21] jbd2: say what jbd2_freeze_jh_data()'s assertion is actually checking
-        https://git.kernel.org/vfs/vfs/c/50cf8c8e532c
-[19/21] ext4, jbd2: report fast commit write errors with BH_Write_EIO
-        https://git.kernel.org/vfs/vfs/c/a49d8a9d5d49
-[20/21] buffer: stop touching BH_Uptodate on write completion
-        https://git.kernel.org/vfs/vfs/c/1f2304e87b83
-[21/21] buffer: clear BH_Write_EIO when a write succeeds, not when one starts
-        https://git.kernel.org/vfs/vfs/c/e038f1016c6f
-
+> diff --git a/include/linux/sched/mm.h b/include/linux/sched/mm.h
+> index d7c6a942aa7e..f76be1141b06 100644
+> --- a/include/linux/sched/mm.h
+> +++ b/include/linux/sched/mm.h
+> @@ -372,13 +372,26 @@ static inline void memalloc_noio_restore(unsigned int flags)
+>  }
+>  
+>  /**
+> - * memalloc_nofs_save - Marks implicit GFP_NOFS allocation scope.
+> + * memalloc_nofs_save - Prevent recursion into the filesystem.
+>   *
+> - * This functions marks the beginning of the GFP_NOFS allocation scope.
+> - * All further allocations will implicitly drop __GFP_FS flag and so
+> - * they are safe for the FS critical section from the allocation recursion
+> - * point of view. Use memalloc_nofs_restore to end the scope with flags
+> - * returned by this function.
+> + * All memory allocations between calling this function and calling
+> + * memalloc_nofs_restore() will be prevented from calling into filesystems
+> + * to reclaim memory.  Clean page cache memory can still be reclaimed,
+> + * but (for example) inodes will not be.
+> + *
+> + * The primary reason to do this is that the caller has taken a lock
+> + * which would be needed by FS reclaim.  While we could theoretically
+> + * call into a different filesystem in this case, it can be a deep call
+> + * stack so it is better to avoid all filesystems.
+> + *
+> + * Filesystems often choose to incorporate a call to this function as part
+> + * of starting a journal transaction.  While not a lock in the normal
+> + * sense, it has much the same effect as nested journal transactions
+> + * are either prohibited or expensive.
+> + *
+> + * Also call this function if you need to allocate memory while holding
+> + * a file folio locked.  High order allocations (such as those requested
+> + * by slab) can trigger compaction which will attempt to lock the folio.
+>   *
+>   * Context: This function is safe to be used from any context.
+>   * Return: The saved flags to be passed to memalloc_nofs_restore.
+> @@ -389,10 +402,12 @@ static inline unsigned int memalloc_nofs_save(void)
+>  }
+>  
+>  /**
+> - * memalloc_nofs_restore - Ends the implicit GFP_NOFS scope.
+> + * memalloc_nofs_restore - End filesystem reclaim scope.
+>   * @flags: Flags to restore.
+>   *
+> - * Ends the implicit GFP_NOFS scope started by memalloc_nofs_save function.
+> + * Ends the implicit memory allocation scope started by
+> + * memalloc_nofs_save().  This may not enable access to filesystem reclaim
+> + * if it was already disabled at the time memalloc_nofs_save() was called.
+>   * Always make sure that the given flags is the return value from the
+>   * pairing memalloc_nofs_save call.
+>   */
+> diff --git a/mm/readahead.c b/mm/readahead.c
+> index 6e5563290287..9c116d4ba963 100644
+> --- a/mm/readahead.c
+> +++ b/mm/readahead.c
+> @@ -227,17 +227,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
+>  	gfp_t gfp_mask = readahead_gfp_mask(mapping);
+>  	unsigned long mark = ULONG_MAX, i = 0;
+>  	unsigned int min_nrpages = mapping_min_folio_nrpages(mapping);
+> -
+> -	/*
+> -	 * Partway through the readahead operation, we will have added
+> -	 * locked pages to the page cache, but will not yet have submitted
+> -	 * them for I/O.  Adding another page may need to allocate memory,
+> -	 * which can trigger memory reclaim.  Telling the VM we're in
+> -	 * the middle of a filesystem operation will cause it to not
+> -	 * touch file-backed pages, preventing a deadlock.  Most (all?)
+> -	 * filesystems already specify __GFP_NOFS in their mapping's
+> -	 * gfp_mask, but let's be explicit here.
+> -	 */
+> +	/* Allocating with locked folios */
+>  	unsigned int nofs = memalloc_nofs_save();
+>  
+>  	lockdep_assert_held(&mapping->invalidate_lock);
+> @@ -512,7 +502,7 @@ void page_cache_ra_order(struct readahead_control *ractl,
+>  
+>  	ra->order = new_order;
+>  
+> -	/* See comment in page_cache_ra_unbounded() */
+> +	/* Allocating with locked folios */
+>  	nofs = memalloc_nofs_save();
+>  	filemap_invalidate_lock_shared(mapping);
+>  	/*
+> -- 
+> 2.47.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
