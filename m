@@ -1,119 +1,154 @@
-Received: from out162-62-57-252.mail.qq.com (out162-62-57-252.mail.qq.com [162.62.57.252])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24D5C357A25
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2026 06:35:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.252
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 891D620E030;
+	Mon, 31 Aug 2026 07:17:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788158115; cv=none; b=KEbeVDnjR659DRvrbTvTTqiVRFwTnw52uQ2I/TK3wTZnLiHE89QU8CqMMN+JD97cXOGzy/U6in7+DFGJHaw/iyQYnfXa5H1aIYGS4JLOfhqSC2Axn8Mij2a/ikS5Ai06vi2OMh9Rd9UKyocvB4XBsK+IBm+hr8wyuUtjcoK6b/o=
+	t=1788160675; cv=none; b=rlAXbz04pFTAcmW/Ayu7lGiKE/8eLbWqJZ06+M3H3DOEDlH1NR7pDHdi8EAO5Q3XMThP1/5UNM7bwSpIfc1GuIEaECjhxl/7j4bJcdenNIsmO3f7uY0VWRG/EBCi3aNGHxzq31E04DzILueQ0DC6voTpib93moOhNt8yoOQoF1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788158115; c=relaxed/simple;
-	bh=IXx4Y7dXA3GvLFQrNKzZm2XFS1dlrXtZhK3rbsyotYU=;
-	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=b80scFcBpCMKWgSe4NVwA3sTVi9f1pmRP874RQplySmTBKJ4MUSgGTHcAHOaSMKLgebDWljpAqF33udYVt40GE5RFwB39nd+YvGspiRtPdhYK1md/4PQ3uUh+TliWnihsPZfjAzIrOw5NYsSjjNTfEABEPwTGeVe1hEbFYpDSWI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=EKP+0ISX; arc=none smtp.client-ip=162.62.57.252
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1788160675; c=relaxed/simple;
+	bh=b6BW45xFampavcwPUiir1lKA11mpU4NXoOGWzFpbaRw=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
+	 In-Reply-To:Content-Type; b=FuneHaOk/owsPKI3g+hyU/r7DAGXLzDHwH04sJzVb+kenUcR8vsBHfb9GT0Pk+Ln5IxAzgDh4sttGNSiiu9SryOdtdgzA55/FNT90ITWqYvaGf6gGCdwJZEZGekZqPY6IJ7fxjcBcUILwxhH7DJFcfY6ONJHku4JTqm7Iv9Ados=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MO1MtEvX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="EKP+0ISX"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1788158101; bh=Yw0CCCrbuCRVyeIgXOLbfQYWLNsk4nYhvK9+RSWx7p4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=EKP+0ISXgfDnPsPKRIHgRO238A0sPuJkQcjLurhiIX8uOzY5TwddF2RzjFwUosl+E
-	 0VRJzDsRdVYuFH67iiLzDyWTXgwAGwFYYJhKs4wYm7/UjGfubulTGN/EDjM7s1ZgBX
-	 tu1xc8vbbK130/O1aqLy+Onq/x542WvRQahbS5jI=
-Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
-	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
-	id 8BA9D466; Mon, 31 Aug 2026 14:34:58 +0800
-X-QQ-mid: xmsmtpt1788158098tp7jrshev
-Message-ID: <tencent_8756434A305EF41A89C387860E424A199709@qq.com>
-X-QQ-XMAILINFO: NuZcuqAyFajVpku28UFTELjRBqmKH83+VXiEgNq+fCffOHaeHYO85XTwq9Qfb/
-	 wSjcbpqbg6/mM3sboIAaGosf7s1smwUgmp9PAGLkwa70P9sWfoujVtHgMVTPnmTj2OaScTYI7kYF
-	 RdolfjhiX7hZh050d/jtml72XrATK1JdV4hVpTV9hqJOi0TD/Lg+uuPFBpZt6hCQzFhdsxWKr2xE
-	 TXCpO8uHxucEPhK9rjv/5gArykl5QCLFzEkN6UE+Wx9olCszbZxpSkyWBP91X2GqdUvXzJVwMqwO
-	 PY9G5guyq24BuqMm12uJhReMKjGsF+R91ROTxXSm1/v/W63zjSwJNgAWFbXmIdoRx+tItrm3xzeI
-	 ZOslz7Vwt09U7xFEj1RmNoIr06sfor09BcfBOSLvzSuxr35N+xFwSGms26WjM1x5dFmPVxuL+pDZ
-	 49LbXVZwnibEhccEGgHi/e1btGKnyrkc+li8l8coL2+yP77zlfAb0UZPCTrYTqZTMMAcOHXZhRDS
-	 Xwv3h21U1Uov6BNiEasImf7QuVC5Qru1Oq9Ge6b0O5Ww9Pt2Er6DbicG0f67XK6gVT0VS2GbMeAK
-	 cXMpde+DCIrDUAe2cHV7MBGc/SRY7jbQ1SfLRYxcLmQBk92RLHa6Fv7iLmsK+FZukK/bqX6OyyWC
-	 O4R+ffS7WVh+WZxoIAyAEPY7QyHPU0M++KuC7F0s25D/4IImniuRKA19w1kkILmZ+2VQy38si2cu
-	 ybN8kHE3lTk7CNbND5TBeTF3cIvxGFgeYswEpcEQQ5EQlPInfJU50IeAcEslVXrykHMnVOIkOa2m
-	 1DcJEewsF/ohX6o9A9JhCJ9HCIoOqEy0i19TXa3jree3dQD7mwDAWghQprQ3jc2fAkOiGYZW774v
-	 7kko0wxOhZhUBGEVqp7fnrTmkbSrdTBtgIxqZ9kth0nBeLdO7A5Ok0rcA2Zj1N1+ONFh9JW8+YS6
-	 sP59FtUU4qFuqLVScIM0IJLGPaas/xHOvnZLICkcrH+BKhVTe3XFcUca508p/S18sjQfw/inqhUu
-	 RlHPEbVUWPEbXSC6KASXSlhpuShcmR0SW/GDM/hizT5Qc3Z2G6xar44e1oQffEyHofAeH3NQ==
-X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
-Date: Mon, 31 Aug 2026 14:34:58 +0800
-From: shuo chen <1289151713@qq.com>
-To: sashiko-reviews@lists.linux.dev
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v4] ext4: rewrite ext4_convert_inline_data_nolock to make
- it safer
-X-OQ-MSGID: <apUgknX191x5FE-n@DESKTOP-AT5F202.localdomain>
-References: <tencent_DBADB12BBC6D88300488F16E75A384FAE505@qq.com>
- <tencent_54332AAC969648BF78341E85930FE984D80A@qq.com>
- <20260831023455.02F981F000E9@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MO1MtEvX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4CC81F000E9;
+	Mon, 31 Aug 2026 07:17:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788160674;
+	bh=5aHzT2rXprXtY91yiugmupVd9/BEmB45SOlkEfbWgHs=;
+	h=Date:Subject:From:To:Cc:References:In-Reply-To;
+	b=MO1MtEvXjZE/BmWHjzqEZcED9yOPugCwJQI5PZlK0OEtgYgFlIjEEkECtnnHDItHo
+	 CnhWUuge88clwdLhqd34troKyA7pt83JpOjCLk1Si5anlv8mArAnXXhnsqm8s/L6jW
+	 OVTpQFgq8tS9MTkdEA8TGxOW0aZxT8n9DqzEViGC1DHwQ8Ep2p3Er2jsg3icEPCwzF
+	 nnhxmZE/5dQjJ2fLjfX63cU5VC2JTTJOFvRW3thnkg+N89VG/Ipk5C7hosV9Y+TFRD
+	 QYBTS4ChJBv6HpDDPuXYMR2mwSetYBIcMa5xJYGeiDCbKfF4BTSbE+N3omPIdDXBhO
+	 mQZI0OZ4H3dqw==
+Message-ID: <ba6c3800-d89a-49dc-b6c3-bf51277b2107@kernel.org>
+Date: Mon, 31 Aug 2026 15:17:50 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260831023455.02F981F000E9@smtp.kernel.org>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v8 0/13] fstests: add test coverage for cloned filesystem
+ ids
+Content-Language: en-US
+From: Anand Suveer Jain <asj@kernel.org>
+To: zlang@kernel.org
+Cc: linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ fstests@vger.kernel.org
+References: <cover.1784949154.git.asj@kernel.org>
+In-Reply-To: <cover.1784949154.git.asj@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Mon, Aug 31, 2026 at 02:34:54AM +0000, sashiko-bot@kernel.org wrote:
-> [Severity: High]
-> Does this error path leak a reference to is.iloc.bh?
+
+Zorro, Ping?
+
+Cheers, Anand
+
+On 25/7/26 15:38, Anand Jain wrote:
+> v8:
+> - _require_fs_space: double the required space (x2) to account for both source and clone
+> - Use proper quoting/unquoting for _mkfs_dev (Thanks Darrick)
+> - Call _fail() if cp fails
+> - _require_fanotify_function: check for kernel fsnotify support
+> - _require_unique_f_fsid: reorganize comments and replace 'if' with 'case' statement (Thanks Darrick)
+> - Add SEMANAGE_PROG variable (Thanks Darrick)
+> - fanotify verification: add checks for SEMANAGE_PROG and _require_fanotify_function
+> - Verify that the monitoring process is actually created
 > 
-> If kmalloc() for xattr_buf fails, the code jumps to the error label which does
-> not call brelse(is.iloc.bh). Since ext4_get_inode_loc() pins a reference
-> on is.iloc.bh, could this result in a permanent buffer head reference leak?
-Got it.
+> v7:
+>   https://lore.kernel.org/fstests/cover.1781694879.git.asj@kernel.org
 > 
-> [Severity: High]
-> Does hardcoding the extent length to 1 leak extra allocated blocks?
+> v6:
+>   https://lore.kernel.org/fstests/cover.1779939330.git.asj@kernel.org
 > 
-> In ext4_convert_inline_data_nolock(), ext4_mb_new_blocks() may return a
-> larger extent due to bigalloc or normalization, passing the total allocated
-> blocks as len:
+> v5:
+>   https://lore.kernel.org/fstests/cover.1779367627.git.asj@kernel.org
 > 
-> fs/ext4/inline.c:ext4_convert_inline_data_nolock() {
-> 	...
-> 	newblock = ext4_mb_new_blocks(handle, &ar, &error);
-> 	if (error < 0)
-> 		goto out;
-> 	allocated_block = EXT4_C2B(sbi, ar.len);
-> 	...
-> 		error = ext4_set_inline_data_block(handle, inode,
-> 				newblock, allocated_block, bh);
-> 	...
-> }
+> v4:
+>   https://lore.kernel.org/fstests/cover.1777357320.git.asj@kernel.org
 > 
-> If multiple blocks were allocated, the remaining blocks might be permanently
-> leaked since they are marked as used but not mapped to the file.
-The remaining blocks are stored in i_prealloc_node.
+> v3:
+>   https://lore.kernel.org/fstests/cover.1777281778.git.asj@kernel.org
 > 
-> [Severity: Critical]
-> Is it possible this overwrites the error code from ext4_ext_insert_extent()?
+> v2:
+>   https://lore.kernel.org/fstests/cover.1774090817.git.asj@kernel.org
 > 
-> If ext4_ext_insert_extent() fails with an error other than -EDQUOT or
-> -ENOSPC, execution falls through to the ext4_xattr_ibody_find() call, which
-> could succeed (returning 0) and overwrite the failure. This would cause the
-> function to proceed to the success path, clearing EXT4_INODE_INLINE_DATA
-> without actually inserting the extent, potentially leading to data loss and
-> a block leak.
-Got it.
+> v1:
+>   https://lore.kernel.org/fstests/cover.1772095513.git.asj@kernel.org
 > 
-> [Severity: Critical]
-> Does this recovery path miss a call to ext4_mark_iloc_dirty()?
+> This series adds fstests infrastructure and test cases to verify correct
+> filesystem identity when a filesystem is cloned (block-level copy).
+> Test covers inotify, fanotify, f_fsid, libblkid, IMA, exportfs file handles
+> and libblkid tools verify with metadata_uuid.
+>   New helpers:
+>    _loop_image_create_clone() and _loop_image_destroy() to help create fs and clone
+>    _clone_mount_option() helper to apply per-filesystem clone mount options
+>    _require_fanotify_function check if kernel supports fs notification
+>    _require_unique_f_fsid() helper to handle fs difference in fsid implementation
 > 
-> The code restores the inline data into raw_inode->i_block and clears the
-> EXT4_INODE_EXTENTS flag, but doesn't mark the inode dirty. Since
-> ext4_ext_tree_init() previously dirtied the inode, it might be written to
-> disk with an invalid checksum and the EXT4_EXTENTS_FL flag still set in
-> raw_inode->i_flags, which could cause metadata corruption.
-Got it.
-I'll fix these issues and send v5.
+>   New tests:
+>   - fanotify events are isolated between cloned filesystems
+>   - f_fsid is unique across cloned filesystem instances
+>   - libblkid correctly resolves duplicate UUIDs to distinct devices
+>     with and without metadata_uuid
+>   - IMA distinct identity for each cloned filesystem
+>   - exportfs file handles resolve correctly on cloned filesystems
+> 
+> Kernel Patches:
+>   Requires Btrfs kernel patches for all tests to pass.
+>    [1] https://lore.kernel.org/linux-btrfs/cover.1777281686.git.asj@kernel.org
+> 
+> 
+> Anand Jain (13):
+>   fstests: add _loop_image_create_clone() helper
+>   fstests: add _clone_mount_option() helper
+>   fstests: add FSNOTIFYWAIT_PROG
+>   fstests: add _require_fanotify_function
+>   fstests: add _require_unique_f_fsid() helper
+>   fstests: add SEMANAGE_PROG
+>   fstests: verify fanotify isolation on cloned filesystems
+>   fstests: verify f_fsid for cloned filesystems
+>   fstests: verify libblkid resolution of duplicate UUIDs
+>   fstests: verify IMA isolation on cloned filesystems
+>   fstests: verify exportfs file handles on cloned filesystems
+>   fstests: add _change_metadata_uuid helper
+>   fstests: test UUID consistency for clones with metadata_uuid
+> 
+>  common/config         |   2 +
+>  common/rc             | 135 +++++++++++++++++++++++++++++++++++++++
+>  tests/generic/801     | 143 ++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/801.out |   7 +++
+>  tests/generic/802     |  64 +++++++++++++++++++
+>  tests/generic/802.out |   4 ++
+>  tests/generic/803     |  72 +++++++++++++++++++++
+>  tests/generic/803.out |   6 ++
+>  tests/generic/804     | 108 +++++++++++++++++++++++++++++++
+>  tests/generic/804.out |  10 +++
+>  tests/generic/805     |  80 +++++++++++++++++++++++
+>  tests/generic/805.out |   2 +
+>  tests/generic/806     |  74 ++++++++++++++++++++++
+>  tests/generic/806.out |   6 ++
+>  14 files changed, 713 insertions(+)
+>  create mode 100644 tests/generic/801
+>  create mode 100644 tests/generic/801.out
+>  create mode 100644 tests/generic/802
+>  create mode 100644 tests/generic/802.out
+>  create mode 100644 tests/generic/803
+>  create mode 100644 tests/generic/803.out
+>  create mode 100644 tests/generic/804
+>  create mode 100644 tests/generic/804.out
+>  create mode 100644 tests/generic/805
+>  create mode 100644 tests/generic/805.out
+>  create mode 100644 tests/generic/806
+>  create mode 100644 tests/generic/806.out
+> 
 
