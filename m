@@ -1,38 +1,37 @@
-Received: from canpmsgout04.his.huawei.com (canpmsgout04.his.huawei.com [113.46.200.219])
+Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39CDE42E40F;
-	Tue,  1 Sep 2026 02:42:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.219
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACA6725776;
+	Tue,  1 Sep 2026 02:42:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.218
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788230540; cv=none; b=fW8Eg1K9qDpN1m25x+8r6XpXa18Y75lhN1zcdhrLbUptfEX0oBE5y2I/5s4LqBzesDhErCUh4jkHnZJ5+lc9NlgmQf8A4QAcZolkEfbniaf29UNXegbsnFGcoKeu9t1eDc76m8yx8MX8cY2zkx7ULtSl62rCmHhzysfri21nBOQ=
+	t=1788230540; cv=none; b=ORtLPJsAwm17tx4Vz3CFZ+WAYELAjoSpSz7mx5H0mx7VQITn2xB0fiPX/3xcMLCMeMl9LHSCzVbZy5Ybhq3GYJlC9kRmaSCJunAe2madVyJ/LWcljEuKxN3hI5YY57hZEJTJx6RoygtQLl1MAkxEdlzOCZ25B263wqx2qeidQz8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788230540; c=relaxed/simple;
-	bh=mRu+8oI+8yejYmM5U0IYS4f9ZssaZfdqnhX1pgozqEk=;
-	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=sP0To4ba8Npd4jwAGO4QQbm+Y9wB3akgp5RZhTTovl23O+X8S7ad1f0g+9oxcUJq3R278EjhLzbUERuApfgAD/PqLXYfjvSrA5lyHzewsdh1WT0h1euPW84AAxRg6k/84HjKd6dQdCsXxa6+F3RJ9NVfgCCeU4bnknLmaqerF/E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=W5vBb9vC; arc=none smtp.client-ip=113.46.200.219
+	bh=nnqtrefCLnQIjHXZ6WX2Zy/wRagTfJvxDgIXvYFMGA4=;
+	h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type; b=GVJVKFK+vPY/HLzzvXtv0cYtoggqJbW2TwZTKirMjrhNAmPpcv81a8aAjDm7jvna6lE1Z8/AtSA3ee80MA1lLdLkG21n+TIyZcz/7RamWlwg0C+0vh40fIle9tPz4IhItWb/tngldmv2VPWl0sHahvPPxDtkIc60UznvL3XNVZw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=3dXXvUSU; arc=none smtp.client-ip=113.46.200.218
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="W5vBb9vC"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="3dXXvUSU"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=KKEbfOeCLbOOAhU6UgBfdVrcmR/XEEwU6rZUBbIzUo4=;
-	b=W5vBb9vC2vK/dr1W84GGMw8wT2SAhPGYXZBM7i3KKuiyeIFwMYrTND+SAvYviuEUw6E5on1IP
-	9raRX2qScminjENq+dSm4Xp5jJbaGAiJeXHxX2/ZySZkJSYl/5qepR/CtSL2YWYSdB2EvhzQycD
-	77jndysTvDI2xvAtaB0rTcc=
-Received: from mail.maildlp.com (unknown [172.19.162.140])
-	by canpmsgout04.his.huawei.com (SkyGuard) with ESMTPS id 4hYqc31LKfz1prl2;
-	Tue,  1 Sep 2026 10:31:15 +0800 (CST)
+	bh=O4RnVF9vYhiRJKCku6Atjjfmvj/PSgEsj6FGcTGmt18=;
+	b=3dXXvUSUSM+4R175Hpm0E2aXdfryUdMKTjU6M5bZqlQSIDVQ62HO9T9H5Eo6Omp74GwHu7xtU
+	uT9N++oxgH+fQHwU+BZMMN/BCaODeMPS0BAfms7DzYCuvx+PDCHqys4LQVQOWLrBd+niHq/Wl/n
+	CZfnEcVZubMWK5nC+WkpP7U=
+Received: from mail.maildlp.com (unknown [172.19.163.104])
+	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbK305MzpSvd;
+	Tue,  1 Sep 2026 10:30:37 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 2C76C202E6;
-	Tue,  1 Sep 2026 10:42:06 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id E74844057F;
+	Tue,  1 Sep 2026 10:41:55 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 1 Sep
- 2026 10:42:04 +0800
+ 2026 10:41:54 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -50,12 +49,10 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>
-Subject: [PATCH v2 07/12] ext4: Fix out-of-bounds read in ext4_get_group_info()
-Date: Tue, 1 Sep 2026 10:42:29 +0800
-Message-ID: <20260901024234.135119-8-ruanjinjie@huawei.com>
+Subject: [PATCH v2 00/12] Convert barrier pairs to acquire/release for better performance
+Date: Tue, 1 Sep 2026 10:42:22 +0800
+Message-ID: <20260901024234.135119-1-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260901024234.135119-1-ruanjinjie@huawei.com>
-References: <20260901024234.135119-1-ruanjinjie@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -67,70 +64,124 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-A plain read of s_groups_count in ext4_get_group_info() allows CPU
-load-load reordering. On weak memory models, speculative prefetch of
-s_group_info prior to the boundary check could lead to an out-of-bounds
-read if a concurrent online resize expands the array and increments
-s_groups_count.
+Hi,
 
-The data race occurs between the ioctl configuration path (holding the
-resize lock via ext4_resize_begin) and the lockless metadata lookup path:
+This series converts some existing smp_wmb()/smp_rmb() barrier pairs to
+smp_store_release()/smp_load_acquire() across various subsystems.
 
-   CPU 0 (Writer, Resize Lock)                CPU 1 (Reader, Lockless)
-   ---------------------------                ------------------------
-   ext4_ioctl()
-     [EXT4_IOC_GROUP_ADD]
-     ext4_ioctl_group_add()
-       ext4_resize_begin() // Takes lock
-       ext4_group_add()
-         ext4_mb_alloc_groupinfo()
-           // Publishes expanded array via RCU
-           rcu_assign_pointer(s_group_info, ...)
+Background
+==========
 
-         ext4_flex_group_add()
-           ext4_update_super()
-                                              ext4_get_group_info()
-                                                // Speculative / out-of-order read
-                                                [Loads old/smaller s_group_info pointer]
-             [Plain C store / smp_wmb()]
-             sbi->s_groups_count += ...;
-                                                // Reads new s_groups_count,
-                                                // boundary check passes
-                                                if (group >= s_groups_count)
+Many architectures support load acquire and store release instructions
+which can replace explicit memory barriers and save cycles. As noted
+in the ARM architecture reference [1]:
 
-                                                // Out-of-bounds array access!
-                                                sbi_array_rcu_deref(..., s_group_info)
+  "Weaker ordering requirements that are imposed by Load-Acquire and
+   Store-Release instructions allow for micro-architectural
+   optimizations, which could reduce some of the performance impacts
+   that are otherwise imposed by an explicit memory barrier.
 
-Fix this by using ext4_get_groups_count() to enforce acquire semantics.
+   If the ordering requirement is satisfied using either a Load-Acquire
+   or Store-Release, then it would be preferable to use these
+   instructions instead of a DMB."
 
-Cc: stable@vger.kernel.org
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Baokun Li <libaokun@linux.alibaba.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc: Zhang Yi <yi.zhang@huawei.com>
-Fixes: 5354b2af3406 ("ext4: allow ext4_get_group_info() to fail")
-Link: https://sashiko.dev/#/patchset/20260825095422.3166067-1-ruanjinjie%40huawei.com
-Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
----
- fs/ext4/balloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On arm64, a typical seqcount [2] read loop requires 13 cycles with DMB
+barriers. Replacing the read barrier with smp_load_acquire() reduces
+this to 8 cycles on an Ampere Altra.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 52f4c5169f91..778fe8788f06 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -329,7 +329,7 @@ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
- 	struct ext4_group_info **grp_info;
- 	long indexv, indexh;
- 
--	if (unlikely(group >= EXT4_SB(sb)->s_groups_count))
-+	if (unlikely(group >= ext4_get_groups_count(sb)))
- 		return NULL;
- 	if (unlikely(!EXT4_SB(sb)->s_group_info))
- 		return NULL;
+We also observed significant barrier overhead while profiling Unxibench
+syscall test on arm64: a single getuid() call is ~8ns slower than on
+a comparable x86 system, with the dominant cost in map_id_up()'s smp_rmb(),
+which is a DMB ISHLD on arm64. Converting it to smp_load_acquire() allows
+the use of LDAR, eliminating the measurable overhead.
+
+This motivated a broader search for existing barrier pairs that can
+be converted to the lighter acquire/release semantics.
+
+Changes
+=======
+
+Each patch in this series targets a specific barrier pair where the
+publish/subscribe pattern is already present:
+
+- Writers populate data, then publish a flag/count/pointer via
+  smp_store_release()
+
+- Readers load the flag/count/pointer via smp_load_acquire(), then
+  consume the data
+
+This preserves the existing memory ordering guarantees while allowing
+architectures with native acquire/release instructions (e.g. arm64's
+STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
+On architectures without native support, the generated code is
+generally no worse than the explicit barrier pair.
+
+The conversions are mechanical and no functional change is intended.
+
+Testing (arm64 Kunpeng HIP09 server)
+================
+
+1. UNIXBENCH syscall
+	Baseline: 715.27
+	Patched:  718.83
+	Improvement: +0.50%
+
+2. fs/aio (fio + null_blk, 4 jobs):
+	Baseline: 1441k IOPS, 86.46us
+	Patched:  1452k IOPS, 85.80us
+	Improvement: ~0.8%
+
+3. soreuseport (wrk, 8 servers):
+	Baseline: 162.6k req/s, 452.5us
+	Patched:  164.2k req/s, 449.4us
+	Improvement: ~1.0%
+
+Both improvements are consistent across runs and align with the
+expected savings from replacing DMB with LDAR/STLR on arm64.
+
+[1]: https://support.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+[2]: https://github.com/torvalds/linux/commit/d0dd066a0fa26d55c19ace9e89dedd9504c5bcba
+
+Changes in v2:
+- Fix pre-existing issue for ext4 and 8021q [3].
+- Fix missing copy_mnt_idmap() udapte [3].
+- Drop nacked isotp patch.
+- Add test data.
+- Add Reviewed-by and update fs patch as Jan suggested.
+
+[3]: https://sashiko.dev/#/patchset/20260825095422.3166067-1-ruanjinjie%40huawei.com
+
+Jinjie Ruan (12):
+  user_namespace: Use acquire/release for nr_extents synchronization
+  lib/vsprintf: Use acquire/release for ptr_key publication
+  fs: aio: Use acquire/release for ring->tail publication
+  fs: Use acquire/release for fdtable resize synchronization
+  pidfs: Use test_bit_acquire() for attr flag tests
+  super: Use acquire for SB_BORN check in super_cache_count()
+  ext4: Fix out-of-bounds read in ext4_get_group_info()
+  ext4: Convert group-count barrier protocol to acquire/release
+  soreuseport: publish num_socks with acquire/release
+  net: sched: act_gact: use acquire/release for tcfg_ptype
+  8021q: Fix data race when publishing vlan net_device pointers
+  8021q: publish vlan_devices_arrays entries with acquire/release
+
+ fs/aio.c                  | 10 ++++------
+ fs/ext4/balloc.c          |  2 +-
+ fs/ext4/ext4.h            | 10 +++-------
+ fs/ext4/mballoc.c         |  6 ++----
+ fs/ext4/resize.c          | 19 +++++++++++--------
+ fs/file.c                 | 10 ++++------
+ fs/mnt_idmapping.c        |  5 ++---
+ fs/pidfs.c                |  6 ++----
+ fs/super.c                |  6 ++----
+ kernel/user_namespace.c   | 24 +++++++++++++-----------
+ lib/vsprintf.c            | 11 ++++-------
+ net/8021q/vlan.c          |  6 ++----
+ net/8021q/vlan.h          | 12 +++++-------
+ net/core/sock_reuseport.c | 20 ++++++++------------
+ net/sched/act_gact.c      | 12 ++++--------
+ 15 files changed, 67 insertions(+), 92 deletions(-)
+
 -- 
 2.34.1
 
