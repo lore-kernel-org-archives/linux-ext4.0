@@ -1,38 +1,38 @@
-Received: from canpmsgout04.his.huawei.com (canpmsgout04.his.huawei.com [113.46.200.219])
+Received: from canpmsgout12.his.huawei.com (canpmsgout12.his.huawei.com [113.46.200.227])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B12E542F70E;
-	Tue,  1 Sep 2026 02:42:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.219
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47CB231B833;
+	Tue,  1 Sep 2026 02:42:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.227
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788230534; cv=none; b=mE7Mh7B6vwEhpaPazowYcW1gxY7z1pZFtq3OioXj5qJF9AuGLdnVD5TuntGN8onuND+yBI1AXNb/Koe8nMTYZruov4fCkHRInlXtyx6jPgGgu/6ZXCCu3ToSOm0a4fTRLfeQKoZbRk2WBEFRuDIM4z0trtQ5nREYS1CfZ7RysUI=
+	t=1788230537; cv=none; b=iF1Ts3wisRnmonKKHE6DX/jOcsBZVHqb7whYbyRQnlbrPTkANKpvHCjVkI6JwxCNXBpKhjQ9I7UYoJWLLWu9f8CMV61I4eE0gSoKOLCux7jICNQqHgzUyvA+xWdmNrbhxOGAvTVLmAWk7XRoLwMjMgdjLZc2Z4OZt9H6ImmFfK4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788230534; c=relaxed/simple;
-	bh=K7Gq5AUxlQXe5No7zoeHSsKZ3ssti34uiTOjY1Ps/no=;
+	s=arc-20240116; t=1788230537; c=relaxed/simple;
+	bh=6PIg64GDnvklPC0UJj5Fh9eYgMI0rQUBw8ZYe1++kd8=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=bWPwj2D8x1vcWHtrstVgaKzVunX/DtIgTDaUVPAxleXmdJem5pi8wZguFT3pwvo+9qN0EVRG3kwFOA8v909FlNSE00o2DJLVyDt/f4cY52Lo2+BRMn4wL45JMlW7VrRZkDRi6MYwT6IayP0dmaX0FfpGGzmGLMJwlFa/JvIXGGs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=SFCgOczG; arc=none smtp.client-ip=113.46.200.219
+	 MIME-Version:Content-Type; b=nDMVsJ+YApbeEJN7j4OiKw77ImKQIapl27Ul6w36KvZsoyVDMpDpQt/sjqvXjUYMPUn3f5ycuu4xkBp1IC3HI9clxkXEZ0ORxJmaa5Uf2rYaEMj3p5QqMUSEFiWwnJHVOFSRsJTJdyIDhmVA339xz/Bj+/wUIgYJwjs3R5/p6lY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=c9mLb8sr; arc=none smtp.client-ip=113.46.200.227
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="SFCgOczG"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="c9mLb8sr"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=4SvDeO5hIzQzXgGr/cxbQ0Jb8d2NsgcdDWNHmf6UJlg=;
-	b=SFCgOczGkgW7ko/Y6AyBOmgW04Do1Yczgae9MVa2hBLlI//yx0q8SiRjeMI/zITTc1wQzJfyz
-	Vr5GUCNXmb9RGJMAhn5/pBaxOBcUTwNFSsW7mBjeakFp9WQLLKIevVOcv4C56V+IqI5wZ3JjmZN
-	6QoPmCaiCKQ0LvFErUobgGM=
-Received: from mail.maildlp.com (unknown [172.19.162.140])
-	by canpmsgout04.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbv6KdNz1prmR;
-	Tue,  1 Sep 2026 10:31:07 +0800 (CST)
+	bh=J4yJnyqxeHRcmq2Fv8EZ0jwzeTlaVGzNrqh5hfCP6Nw=;
+	b=c9mLb8srEPPPQLn8yQD0c0BDviwcWNS55C5KXhKc4Lr6mNPUZ/QWJP9W/S2+92FK4d3gHgR/6
+	obYTqC6R8LtPGNDKBwX3FscPqdzkyNC5H6hczFGuWxwrAZrZMKArEzgEpCM04d+2arVNeGGvtZ7
+	9YQTydYIvXdK+e7T86kwZ34=
+Received: from mail.maildlp.com (unknown [172.19.163.200])
+	by canpmsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbY22jCznTVx;
+	Tue,  1 Sep 2026 10:30:49 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id D4544203C8;
-	Tue,  1 Sep 2026 10:41:58 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 3CFF64055B;
+	Tue,  1 Sep 2026 10:42:03 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 1 Sep
- 2026 10:41:57 +0800
+ 2026 10:42:01 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -50,9 +50,9 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>
-Subject: [PATCH v2 02/12] lib/vsprintf: Use acquire/release for ptr_key publication
-Date: Tue, 1 Sep 2026 10:42:24 +0800
-Message-ID: <20260901024234.135119-3-ruanjinjie@huawei.com>
+Subject: [PATCH v2 05/12] pidfs: Use test_bit_acquire() for attr flag tests
+Date: Tue, 1 Sep 2026 10:42:27 +0800
+Message-ID: <20260901024234.135119-6-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260901024234.135119-1-ruanjinjie@huawei.com>
 References: <20260901024234.135119-1-ruanjinjie@huawei.com>
@@ -67,58 +67,48 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-Replace the smp_wmb() + WRITE_ONCE() and READ_ONCE() + smp_rmb() barrier
-pair with smp_store_release()/smp_load_acquire() on filled_random_ptr_key.
+Replace test_bit() + smp_rmb() with test_bit_acquire() for
+PIDFS_ATTR_BIT_EXIT and PIDFS_ATTR_BIT_COREDUMP tests in pidfd_info().
 
-This expresses the publish/subscribe pattern more clearly and allows
-architectures with native acquire/release instructions (e.g. arm64's
-STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
+The acquire semantics ensure that if the flag is observed set, the
+associated attr fields written before smp_wmb() + set_bit() are
+also visible.
 
-No functional change intended.
+Writers keep smp_wmb() + set_bit() since no release bitop exists.
 
-Cc: Petr Mladek <pmladek@suse.com>
-Cc: Steven Rostedt <rostedt@goodmis.org>
-Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: Sergey Senozhatsky <senozhatsky@chromium.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.cz>
 Assisted-by: DeepSeek:DeepSeek-V3
 Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 ---
- lib/vsprintf.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ fs/pidfs.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/lib/vsprintf.c b/lib/vsprintf.c
-index 1d95ab9314bf..90d0a724eadd 100644
---- a/lib/vsprintf.c
-+++ b/lib/vsprintf.c
-@@ -762,9 +762,8 @@ static int fill_ptr_key(struct notifier_block *nb, unsigned long action, void *d
- {
- 	get_random_bytes(&ptr_key, sizeof(ptr_key));
+diff --git a/fs/pidfs.c b/fs/pidfs.c
+index a6a643f15d08..2cd0fab73180 100644
+--- a/fs/pidfs.c
++++ b/fs/pidfs.c
+@@ -393,8 +393,7 @@ static long pidfd_info(struct file *file, unsigned int cmd, unsigned long arg)
  
--	/* Pairs with smp_rmb() before reading ptr_key. */
--	smp_wmb();
--	WRITE_ONCE(filled_random_ptr_key, true);
-+	/* Pairs with smp_load_acquire() before reading ptr_key. */
-+	smp_store_release(&filled_random_ptr_key, true);
- 	return NOTIFY_DONE;
- }
+ 	attr = READ_ONCE(pid->attr);
+ 	if (mask & PIDFD_INFO_EXIT) {
+-		if (test_bit(PIDFS_ATTR_BIT_EXIT, &attr->attr_mask)) {
+-			smp_rmb();
++		if (test_bit_acquire(PIDFS_ATTR_BIT_EXIT, &attr->attr_mask)) {
+ 			kinfo.mask |= PIDFD_INFO_EXIT;
+ #ifdef CONFIG_CGROUPS
+ 			kinfo.cgroupid = attr->cgroupid;
+@@ -405,8 +404,7 @@ static long pidfd_info(struct file *file, unsigned int cmd, unsigned long arg)
+ 	}
  
-@@ -781,12 +780,10 @@ static inline int __ptr_to_hashval(const void *ptr, unsigned long *hashval_out)
- {
- 	unsigned long hashval;
- 
--	if (!READ_ONCE(filled_random_ptr_key))
-+	/* Pairs with smp_store_release() after writing ptr_key. */
-+	if (!smp_load_acquire(&filled_random_ptr_key))
- 		return -EBUSY;
- 
--	/* Pairs with smp_wmb() after writing ptr_key. */
--	smp_rmb();
--
- #ifdef CONFIG_64BIT
- 	hashval = (unsigned long)siphash_1u64((u64)ptr, &ptr_key);
- 	/*
+ 	if (mask & PIDFD_INFO_COREDUMP) {
+-		if (test_bit(PIDFS_ATTR_BIT_COREDUMP, &attr->attr_mask)) {
+-			smp_rmb();
++		if (test_bit_acquire(PIDFS_ATTR_BIT_COREDUMP, &attr->attr_mask)) {
+ 			kinfo.mask |= PIDFD_INFO_COREDUMP | PIDFD_INFO_COREDUMP_SIGNAL | PIDFD_INFO_COREDUMP_CODE;
+ 			kinfo.coredump_mask = attr->coredump_mask;
+ 			kinfo.coredump_signal = attr->coredump_signal;
 -- 
 2.34.1
 
