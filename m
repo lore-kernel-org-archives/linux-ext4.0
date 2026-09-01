@@ -1,76 +1,119 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from canpmsgout07.his.huawei.com (canpmsgout07.his.huawei.com [113.46.200.222])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A1E53815E3
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2026 23:34:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4206127EC7C;
+	Tue,  1 Sep 2026 01:42:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.222
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788219270; cv=none; b=ttlRYeVlWDG/Gffkgmx0bbzEq5HbEv6NWDKbHg46Ob9HTFD6kYbk1qatKz7oEYG3ninLXTvNZy5fDsZa43E+nQaS6H0h1Fqsuj8UY+VgydM8tZJdD2VY36IorP/N0jWI3gz81pEM/lK3pfmUitNM1ZCi59sXnXfqNCgEFvJ5JuI=
+	t=1788226951; cv=none; b=KMw5QatS9viDCrZqM4kNzmzT0RTec6j0uLt1xSjLOb4SkAMnnO/kOq2bDNawrAbQF2SUxU0ELOS7Lew/M/6akoPRVAFnKnpn5w4N43nEojwP+fA1efBWyf2QEdQ42mrq2Ra51+H2XyAfhcNiQjhhAtwlfM0nN3zaxfNEECEa9ng=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788219270; c=relaxed/simple;
-	bh=ma4zCwL1MJKOlGUTSok9zDIiwoRxL065nQAXZ6pA1bA=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=ek1jxm2sHyXuvWfwcrEW/7+0EtnM1AOHF6gfSto4pBUqLWAf0G7XaOsR0hTfgLD3jvIYS4ucMIHnptFoqxgs3+uA7wFDAeD7ars2Dt1Tg+tzzWvFGQwHNOYDa3/PCw1HPVTXwy70LOeNpSVvmL9GGCnXl+Wc/98qhKFQIufKbZI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=R2mLKBaJ; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788226951; c=relaxed/simple;
+	bh=ivKmB6QoDiiQSjmuz0wRnzNXAllAQSwupIkNeKB337c=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=iN2By/8zvi/kQ9mvdNpANJOTHhEP2lzn3/Yvn20hVYdptNuYbBJvELE2eCexCdB9faE6/x/RDFBkPwYMOaIYVDb9ahBog8kmjX/JB208IN9Sd547lJgmlb2/xsgkzi4UaWbqHIOoGvx0EkxDOfIMbdA8wT2ee7DR1eIi7oEDW2g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=kztRRxSE; arc=none smtp.client-ip=113.46.200.222
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="R2mLKBaJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F06161F01560
-	for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2026 23:34:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788219269;
-	bh=tAVWsBwACx+IpWMY6PFdTt/YVw93rBRGG3Ku2i4nYdQ=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc;
-	b=R2mLKBaJIt1LzWR0V0TjNUPUtImXik5BxuQM5K7ehXNP1UMZMf7jQOR5oBFVUpHVg
-	 ErfrhJa96d3agy06drbJ8deA1ZThRetlAS6lJsgf8N9xX/VgCel/c9nX2RPsIbk+Vl
-	 mZQ4MLUXXNiD5buS5hI4Maw+XeiXbFz5FhA18C/coXBRl/n+bLpfKd06U+vNCQu8h1
-	 nY7TFJZADOwRT9YklDkbOoEb/kaSD3kKZP5MeSySq8npkFBuKXxRFIMi1/moKTPHsy
-	 qZiLY8SW2Ixim8bMwIMGsf80Y9ayQVg3pFcCp3LyrRCqDGlycLx4ftJnvzACzVWxu5
-	 oOzf74WtBZbmA==
-Received: by mail-ed1-f47.google.com with SMTP id 4fb4d7f45d1cf-6a374bea882so6559289a12.1
-        for <linux-ext4@vger.kernel.org>; Mon, 31 Aug 2026 16:34:28 -0700 (PDT)
-X-Forwarded-Encrypted: i=1; AKwUvBwy7/XDIy5QZpy1q8iRDY2JQfKrltt11WaCDGl5x5h6hDxZS0ZCV0KahQG+FI7RgXGHRbYEv6UUcab2@vger.kernel.org
-X-Gm-Message-State: AFuF++lowZDqr1lZMT1FI7s/F+lCRlmQil7viBtcUrPRilSmxgjAyncC
-	BufI/jvOgmm61OAyIMJjISaMXiNmg60+2IXHdy/6jyGM56dJ5dMVddKHKu37nRx1aEVzL3y3Qc6
-	nKeVwiYRZtzwSGTpSHiZpURjGZCAEZ6Q=
-X-Received: by 2002:a05:6402:3245:b0:6a5:f44e:a009 with SMTP id
- 4fb4d7f45d1cf-6a663a4a9dfmr2170192a12.7.1788219267560; Mon, 31 Aug 2026
- 16:34:27 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="kztRRxSE"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=FmUs38s23l+JbXkfrYJCAspVpkyYV3TPYuQ5Y22fLOw=;
+	b=kztRRxSEBv52FoofIixwylbPRXSaUQNU0bYGR53Rha80RxDk/wjjaWjzm3mIbGHcJRY8TKfbE
+	yWiadQ6hpgC/5MfSOMlSVHpLNoqsZsFMP8XoHnwTtr2Boz47HzOkupD9HeEji4WuPxiWVmXyToI
+	LmO4glr2/D9W0+EcJYtE6Os=
+Received: from mail.maildlp.com (unknown [172.19.163.200])
+	by canpmsgout07.his.huawei.com (SkyGuard) with ESMTPS id 4hYpH76Rn8zLlX5;
+	Tue,  1 Sep 2026 09:31:31 +0800 (CST)
+Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
+	by mail.maildlp.com (Postfix) with ESMTPS id 17D9E40563;
+	Tue,  1 Sep 2026 09:42:21 +0800 (CST)
+Received: from [10.67.109.254] (10.67.109.254) by
+ dggpemf500011.china.huawei.com (7.185.36.131) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Tue, 1 Sep 2026 09:42:20 +0800
+Message-ID: <a2984749-be88-4e69-9a9b-050225d71e4b@huawei.com>
+Date: Tue, 1 Sep 2026 09:42:19 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260830041901.2668-1-willy@infradead.org> <20260830041901.2668-6-willy@infradead.org>
-In-Reply-To: <20260830041901.2668-6-willy@infradead.org>
-From: Namjae Jeon <linkinjeon@kernel.org>
-Date: Tue, 1 Sep 2026 08:34:14 +0900
-X-Gmail-Original-Message-ID: <CAKYAXd8qgCe0Kt_Pmpd+228LP+hCtF2shmVqftazX1+xrSCkFQ@mail.gmail.com>
-X-Gm-Features: AcwNN1WHItk-3z0F1xUEgtAcqL_7gSvlVk8E7QxJwHtI0RZzvTtB9qGbIwZCYNg
-Message-ID: <CAKYAXd8qgCe0Kt_Pmpd+228LP+hCtF2shmVqftazX1+xrSCkFQ@mail.gmail.com>
-Subject: Re: [PATCH 5/9] ntfs: Remove FGP_NOFS from __ntfs_inode_resident_attr_pwrite()
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>, Gao Xiang <xiang@kernel.org>, 
-	Chao Yu <chao@kernel.org>, Theodore Tso <tytso@mit.edu>, Trond Myklebust <trondmy@kernel.org>, 
-	Anna Schumaker <anna@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
-	Phillip Lougher <phillip@squashfs.org.uk>, linux-erofs@lists.ozlabs.org, 
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, ntfs@lists.linux.dev, 
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 01/11] user_namespace: Use acquire/release for nr_extents
+ synchronization
+To: <sashiko-reviews@lists.linux.dev>
+CC: Marc Kleine-Budde <mkl@pengutronix.de>, <linux-can@vger.kernel.org>,
+	<tytso@mit.edu>, <linux-ext4@vger.kernel.org>, Oliver Hartkopp
+	<socketcan@hartkopp.net>, Vincent Mailhol <mailhol@kernel.org>, Oleksij
+ Rempel <o.rempel@pengutronix.de>
+References: <20260825095422.3166067-1-ruanjinjie@huawei.com>
+ <20260825095422.3166067-2-ruanjinjie@huawei.com>
+ <20260826095421.73E0A1F00A3E@smtp.kernel.org>
+From: Jinjie Ruan <ruanjinjie@huawei.com>
+In-Reply-To: <20260826095421.73E0A1F00A3E@smtp.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems500001.china.huawei.com (7.221.188.70) To
+ dggpemf500011.china.huawei.com (7.185.36.131)
 
-On Sun, Aug 30, 2026 at 1:19=E2=80=AFPM Matthew Wilcox (Oracle)
-<willy@infradead.org> wrote:
->
-> I do not believe that FGP_NOFS is needed here.  This function is called
-> from one place (ntfs_inode_attr_pwrite) which calls either this function
-> or __ntfs_inode_non_resident_attr_pwrite().  The latter function does not
-> use FGP_NOFS in its calls to allocate pagecaache memory, so it should not
-> be needed here either.  If it turns out to be needed by both functions,
-> then we should use memalloc_nofs_save at a higher level to protect both
-> of them.
->
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Namjae Jeon <linkinjeon@kernel.org>
-Thanks!
+
+
+在 2026/8/26 17:54, sashiko-bot@kernel.org 写道:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [Medium] The patch missed replacing `READ_ONCE()` and `smp_rmb()` with `smp_load_acquire()` in `copy_mnt_idmap()` within `fs/mnt_idmapping.c`.
+> --
+> 
+> --- Patch [1]: [PATCH 01/11] user_namespace: Use acquire/release for nr_extents synchronization ---
+> commit 1bcd6fdf3ca65990e2c5f3f0896df9c586813872
+> Author: Jinjie Ruan <ruanjinjie@huawei.com>
+> 
+> user_namespace: Use acquire/release for nr_extents synchronization
+> 
+> This commit replaces smp_wmb() and smp_rmb() with smp_store_release() and
+> smp_load_acquire() for nr_extents in user namespaces. This aims to improve
+> performance on architectures with native acquire/release instructions.
+> 
+>> diff --git a/kernel/user_namespace.c b/kernel/user_namespace.c
+>> index 0bed462e9b2a2..576b667a88136 100644
+>> --- a/kernel/user_namespace.c
+>> +++ b/kernel/user_namespace.c
+> 
+> [ ... ]
+> 
+>> @@ -1098,8 +1100,8 @@ static ssize_t map_write(struct file *file, const char __user *buf,
+>>  		map->forward = new_map.forward;
+>>  		map->reverse = new_map.reverse;
+>>  	}
+>> -	smp_wmb();
+>> -	map->nr_extents = new_map.nr_extents;
+>> +	/* Pairs with smp_load_acquire() in map_id_range_{up,down}() and m_start(). */
+>> +	smp_store_release(&map->nr_extents, new_map.nr_extents);
+> 
+> [Severity: Medium]
+> Does this code miss updating copy_mnt_idmap() in fs/mnt_idmapping.c?
+> 
+> Since map_write() now uses smp_store_release() to update nr_extents, should
+> the reader in copy_mnt_idmap() also be migrated to use smp_load_acquire()?
+> 
+> Currently it still uses the old barrier pattern and contains a stale comment:
+> 
+> fs/mnt_idmapping.c:copy_mnt_idmap() {
+>     ...
+> 	u32 nr_extents = READ_ONCE(map_from->nr_extents);
+> 	/* Pairs with smp_wmb() when writing the idmapping. */
+> 	smp_rmb();
+>     ...
+> }
+
+Will fix it in v2.
+
+> 
+> While the release-store correctly pairs with the existing smp_rmb() under the
+> Linux Kernel Memory Model, leaving the old barrier in place defeats the stated
+> goal of avoiding the cost of full one-way barriers on architectures like arm64
+> for this specific code path.
+> 
+
