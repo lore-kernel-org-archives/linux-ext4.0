@@ -1,38 +1,38 @@
-Received: from canpmsgout10.his.huawei.com (canpmsgout10.his.huawei.com [113.46.200.225])
+Received: from canpmsgout04.his.huawei.com (canpmsgout04.his.huawei.com [113.46.200.219])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B004330D419;
-	Tue,  1 Sep 2026 02:42:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.225
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39CDE42E40F;
+	Tue,  1 Sep 2026 02:42:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.219
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788230539; cv=none; b=IKPKRuB6fcrt/LecJLMnCpWNRv0Jh7FfbOnnHJ93p5saHLUPN0RlrU6iQkwCEV/SZq76fiFbkJPjCY24kzLgXTlWiI40AlfEq957do44tH7B9CryL7s0RGT8UHtRnMmGblqPmgl0VgVf/vsyAHX0ZhQCJ1jgdFKOV/M3IDHwNEI=
+	t=1788230540; cv=none; b=fW8Eg1K9qDpN1m25x+8r6XpXa18Y75lhN1zcdhrLbUptfEX0oBE5y2I/5s4LqBzesDhErCUh4jkHnZJ5+lc9NlgmQf8A4QAcZolkEfbniaf29UNXegbsnFGcoKeu9t1eDc76m8yx8MX8cY2zkx7ULtSl62rCmHhzysfri21nBOQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788230539; c=relaxed/simple;
-	bh=2ExYMYQOFQQPwIyWmmjRnsN6d7J+Qq6kfNRhJ1FSOCA=;
+	s=arc-20240116; t=1788230540; c=relaxed/simple;
+	bh=mRu+8oI+8yejYmM5U0IYS4f9ZssaZfdqnhX1pgozqEk=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ZI2MkZdSfszEEw19x2P/aBUbePhYYRkZSkBp2IQS323YeB8c7DdiXZOk/Yxa0ItESEkT/58on3rjyNE1Ml98CwDF4/lVViWDPQl8F6CQ5IHJd+2gm4plRmEdDVoUdSm5lPLj/l/I5gpoxwN0eOGj4Vfwx7ljeVUn47vccb5zcSI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=QudGLxf2; arc=none smtp.client-ip=113.46.200.225
+	 MIME-Version:Content-Type; b=sP0To4ba8Npd4jwAGO4QQbm+Y9wB3akgp5RZhTTovl23O+X8S7ad1f0g+9oxcUJq3R278EjhLzbUERuApfgAD/PqLXYfjvSrA5lyHzewsdh1WT0h1euPW84AAxRg6k/84HjKd6dQdCsXxa6+F3RJ9NVfgCCeU4bnknLmaqerF/E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=W5vBb9vC; arc=none smtp.client-ip=113.46.200.219
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="QudGLxf2"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="W5vBb9vC"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=qoAjlya8M+d7R8ZbBFu376QlGU7wsKKm9VDsrz6PzLY=;
-	b=QudGLxf2IG1POpNF4FFFGKzpzwPRL7qNIYEKL0+9CPKFxIxW33aq8Jn68fLZYj7bL/Md8ZiDc
-	W5Xl4K1EEhYjoYTS9KPDYrZlYJWVFH6FO5HA2eWCMlIm6pD9G0keSgwEjFnxcb9Kjz6enEvDbDq
-	8hEA3ehvZox4Ef8AKLOz1pc=
-Received: from mail.maildlp.com (unknown [172.19.163.200])
-	by canpmsgout10.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbw09KZz1K9D2;
-	Tue,  1 Sep 2026 10:31:08 +0800 (CST)
+	bh=KKEbfOeCLbOOAhU6UgBfdVrcmR/XEEwU6rZUBbIzUo4=;
+	b=W5vBb9vC2vK/dr1W84GGMw8wT2SAhPGYXZBM7i3KKuiyeIFwMYrTND+SAvYviuEUw6E5on1IP
+	9raRX2qScminjENq+dSm4Xp5jJbaGAiJeXHxX2/ZySZkJSYl/5qepR/CtSL2YWYSdB2EvhzQycD
+	77jndysTvDI2xvAtaB0rTcc=
+Received: from mail.maildlp.com (unknown [172.19.162.140])
+	by canpmsgout04.his.huawei.com (SkyGuard) with ESMTPS id 4hYqc31LKfz1prl2;
+	Tue,  1 Sep 2026 10:31:15 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 6268E4055B;
-	Tue,  1 Sep 2026 10:41:57 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 2C76C202E6;
+	Tue,  1 Sep 2026 10:42:06 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 1 Sep
- 2026 10:41:55 +0800
+ 2026 10:42:04 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -50,9 +50,9 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>
-Subject: [PATCH v2 01/12] user_namespace: Use acquire/release for nr_extents synchronization
-Date: Tue, 1 Sep 2026 10:42:23 +0800
-Message-ID: <20260901024234.135119-2-ruanjinjie@huawei.com>
+Subject: [PATCH v2 07/12] ext4: Fix out-of-bounds read in ext4_get_group_info()
+Date: Tue, 1 Sep 2026 10:42:29 +0800
+Message-ID: <20260901024234.135119-8-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260901024234.135119-1-ruanjinjie@huawei.com>
 References: <20260901024234.135119-1-ruanjinjie@huawei.com>
@@ -67,113 +67,70 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-Replace smp_wmb()/smp_rmb() with smp_store_release()/smp_load_acquire()
-when publishing and consuming `nr_extents`. This expresses the
-publish/subscribe pattern more clearly and allows architectures with
-native acquire/release instructions (e.g. arm64's STLR/LDAR) to avoid
-the cost of full one-way barriers (DMB ISHST/ISHLD).
+A plain read of s_groups_count in ext4_get_group_info() allows CPU
+load-load reordering. On weak memory models, speculative prefetch of
+s_group_info prior to the boundary check could lead to an out-of-bounds
+read if a concurrent online resize expands the array and increments
+s_groups_count.
 
-No functional change intended.
+The data race occurs between the ioctl configuration path (holding the
+resize lock via ext4_resize_begin) and the lockless metadata lookup path:
 
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Christian Brauner <brauner@kernel.org>
+   CPU 0 (Writer, Resize Lock)                CPU 1 (Reader, Lockless)
+   ---------------------------                ------------------------
+   ext4_ioctl()
+     [EXT4_IOC_GROUP_ADD]
+     ext4_ioctl_group_add()
+       ext4_resize_begin() // Takes lock
+       ext4_group_add()
+         ext4_mb_alloc_groupinfo()
+           // Publishes expanded array via RCU
+           rcu_assign_pointer(s_group_info, ...)
+
+         ext4_flex_group_add()
+           ext4_update_super()
+                                              ext4_get_group_info()
+                                                // Speculative / out-of-order read
+                                                [Loads old/smaller s_group_info pointer]
+             [Plain C store / smp_wmb()]
+             sbi->s_groups_count += ...;
+                                                // Reads new s_groups_count,
+                                                // boundary check passes
+                                                if (group >= s_groups_count)
+
+                                                // Out-of-bounds array access!
+                                                sbi_array_rcu_deref(..., s_group_info)
+
+Fix this by using ext4_get_groups_count() to enforce acquire semantics.
+
+Cc: stable@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Baokun Li <libaokun@linux.alibaba.com>
 Cc: Jan Kara <jack@suse.cz>
-Cc: Seth Forshee <sforshee@kernel.org>
-Cc: Kees Cook <kees@kernel.org>
-Cc: Aleksa Sarai <cyphar@cyphar.com>
-Assisted-by: DeepSeek:DeepSeek-V3
+Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+Cc: Zhang Yi <yi.zhang@huawei.com>
+Fixes: 5354b2af3406 ("ext4: allow ext4_get_group_info() to fail")
+Link: https://sashiko.dev/#/patchset/20260825095422.3166067-1-ruanjinjie%40huawei.com
 Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 ---
-v2:
-- Add missing load replace in copy_mnt_idmap()
----
- fs/mnt_idmapping.c      |  5 ++---
- kernel/user_namespace.c | 24 +++++++++++++-----------
- 2 files changed, 15 insertions(+), 14 deletions(-)
+ fs/ext4/balloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/mnt_idmapping.c b/fs/mnt_idmapping.c
-index cb61fbdb52e9..612b266ab3da 100644
---- a/fs/mnt_idmapping.c
-+++ b/fs/mnt_idmapping.c
-@@ -219,10 +219,9 @@ EXPORT_SYMBOL_GPL(vfsgid_in_group_p);
- static int copy_mnt_idmap(struct uid_gid_map *map_from,
- 			  struct uid_gid_map *map_to)
- {
-+	/* Pairs with smp_store_release() in map_write(). */
-+	u32 nr_extents = smp_load_acquire(&map_from->nr_extents);
- 	struct uid_gid_extent *forward, *reverse;
--	u32 nr_extents = READ_ONCE(map_from->nr_extents);
--	/* Pairs with smp_wmb() when writing the idmapping. */
--	smp_rmb();
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 52f4c5169f91..778fe8788f06 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -329,7 +329,7 @@ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
+ 	struct ext4_group_info **grp_info;
+ 	long indexv, indexh;
  
- 	/*
- 	 * Don't blindly copy @map_to into @map_from if nr_extents is
-diff --git a/kernel/user_namespace.c b/kernel/user_namespace.c
-index 0bed462e9b2a..576b667a8813 100644
---- a/kernel/user_namespace.c
-+++ b/kernel/user_namespace.c
-@@ -317,9 +317,9 @@ map_id_range_down_base(unsigned extents, struct uid_gid_map *map, u32 id, u32 co
- 
- static u32 map_id_range_down(struct uid_gid_map *map, u32 id, u32 count)
- {
-+	/* Pairs with smp_store_release() in map_write(). */
-+	unsigned int extents = smp_load_acquire(&map->nr_extents);
- 	struct uid_gid_extent *extent;
--	unsigned extents = map->nr_extents;
--	smp_rmb();
- 
- 	if (extents <= UID_GID_MAP_MAX_BASE_EXTENTS)
- 		extent = map_id_range_down_base(extents, map, id, count);
-@@ -383,9 +383,9 @@ map_id_range_up_max(unsigned extents, struct uid_gid_map *map, u32 id, u32 count
- 
- u32 map_id_range_up(struct uid_gid_map *map, u32 id, u32 count)
- {
-+	/* Pairs with smp_store_release() in map_write(). */
-+	unsigned int extents = smp_load_acquire(&map->nr_extents);
- 	struct uid_gid_extent *extent;
--	unsigned extents = map->nr_extents;
--	smp_rmb();
- 
- 	if (extents <= UID_GID_MAP_MAX_BASE_EXTENTS)
- 		extent = map_id_range_up_base(extents, map, id, count);
-@@ -676,9 +676,9 @@ static int projid_m_show(struct seq_file *seq, void *v)
- static void *m_start(struct seq_file *seq, loff_t *ppos,
- 		     struct uid_gid_map *map)
- {
-+	/* Pairs with smp_store_release() in map_write(). */
-+	unsigned int extents = smp_load_acquire(&map->nr_extents);
- 	loff_t pos = *ppos;
--	unsigned extents = map->nr_extents;
--	smp_rmb();
- 
- 	if (pos >= extents)
+-	if (unlikely(group >= EXT4_SB(sb)->s_groups_count))
++	if (unlikely(group >= ext4_get_groups_count(sb)))
  		return NULL;
-@@ -967,9 +967,11 @@ static ssize_t map_write(struct file *file, const char __user *buf,
- 	 * desired behavior is to see the values of the extents that
- 	 * were written before the count of the extents.
- 	 *
--	 * To achieve this smp_wmb() is used on guarantee the write
--	 * order and smp_rmb() is guaranteed that we don't have crazy
--	 * architectures returning stale data.
-+	 * The nr_extents field is the publish point for the extent
-+	 * data.  Writers use smp_store_release() to ensure all extent
-+	 * data is visible before nr_extents is updated.  Readers use
-+	 * smp_load_acquire() to ensure they see a consistent view of
-+	 * the extent data when reading nr_extents.
- 	 */
- 	mutex_lock(&userns_state_mutex);
- 
-@@ -1098,8 +1100,8 @@ static ssize_t map_write(struct file *file, const char __user *buf,
- 		map->forward = new_map.forward;
- 		map->reverse = new_map.reverse;
- 	}
--	smp_wmb();
--	map->nr_extents = new_map.nr_extents;
-+	/* Pairs with smp_load_acquire() in map_id_range_{up,down}() and m_start(). */
-+	smp_store_release(&map->nr_extents, new_map.nr_extents);
- 
- 	*ppos = count;
- 	ret = count;
+ 	if (unlikely(!EXT4_SB(sb)->s_group_info))
+ 		return NULL;
 -- 
 2.34.1
 
