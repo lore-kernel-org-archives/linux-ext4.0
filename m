@@ -1,38 +1,38 @@
-Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
+Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C98AB41D23D;
-	Tue,  1 Sep 2026 02:42:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.218
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36ECC426EB7;
+	Tue,  1 Sep 2026 02:42:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788230546; cv=none; b=h/+Bjmc8x/pL+a7POx3UNeUapt4a7vahNNegn4n9T1nWRN/bUrBtIlWyBvTOdvycn1r8o5QGdXo0YhUkFlb30r4Zn83i8Ls70RyF7TuSjHx8GYiSIozfBwNpfz3l+7KWo9F80U/ySvIxTUN0vUC3zPkvUEfjZ4XhQyugtD3NxtI=
+	t=1788230551; cv=none; b=YcXLtDvX1ngRWhSJXoh3FQrzgWYPjXaK0q8ecZ+pMQvlSvPE+hmyiO1uf0vd0q0/2AM20Wjg0ypBrQBh+d1QkWQkkhMFwKfJed0x8jH+yKnynrVexU6PCE7F9AWGHpeO+kADa52ifFWOVukDGBgDxu8k/+J6RgAAyzJbWlu0i+c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788230546; c=relaxed/simple;
-	bh=pADLIDDDAa+lhGsyTlXoetDrztywb5yDxiTzspAGBzY=;
+	s=arc-20240116; t=1788230551; c=relaxed/simple;
+	bh=Q4IHSqNTta6ZY/efVhCtaRjHjKcMWUomiKRMpYUCKlw=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=f04zqKVIYMWAS1fflPnl1QltXYyGEj3hvqDuCyQ/zqPOzpIbjVHVJjNrz0gG0INlj9JHYd/h3RZAlhH/loupaJNCRwaEQbIS1+WG/005mJcF8BmtOlJM28hPZlSmVSfkwN8xBGFKX7zXTkVC9oXXo8Yz2V6r6mc4cN1P3GhGbwA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=53B12CPQ; arc=none smtp.client-ip=113.46.200.218
+	 MIME-Version:Content-Type; b=JByEnaDUReboLHNdNXca9QxVoIb0ribKpHjZcjtfhE+xQ7Q2YgmkmbyVN9SIBNCHHngkof0gdwbWdGs7nMdWjjtZoc1JpwhqIO/uzy3C8cxOtURvbhavT7jDb1Fi6QHgGAGkKi4kjfxl2K2F7rzpOuDAjGMfB1RfsHhIoaeasgo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=3MN1y82A; arc=none smtp.client-ip=113.46.200.220
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="53B12CPQ"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="3MN1y82A"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=iH00vTqUXFP44+YZhDZSDGKnnR3KFEyl0IM9Pe/tVLE=;
-	b=53B12CPQYRWRKa5gqDtuoUGWsm1oHSiifC4JGWdfAVl4rFPT2lC1C0tVRMzhXLCkAVhJH2+wL
-	01JI5nBn1I2mufrWDunC94QgP8Zwwx1EfEbULJWhS5IHjrKwyDrZmfXytMBUaRH5oFHElaByvZn
-	DfK1Pf8R89hd2mIFe1ETWuQ=
-Received: from mail.maildlp.com (unknown [172.19.162.140])
-	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbY0tdczpSvd;
-	Tue,  1 Sep 2026 10:30:49 +0800 (CST)
+	bh=HpnC7rLdz/iDoVhcUnqYIGvEK4UiEp8j2qFTrzFFI14=;
+	b=3MN1y82AyUB+uSVGkpsEtn46gwJl3yuhLHq+APy7OksLo3azZvR0HlLyg/DfR5RZ8YBYprGfD
+	IfPDFzpbKdgaKYr4CjKFT7GcHHN6kXtOvwv+26okjTS7wgzucRQEAXul44jF7TxYxkACO6gDi6m
+	2HM8XEE4+uMal1dtnRg0FhE=
+Received: from mail.maildlp.com (unknown [172.19.162.223])
+	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4hYqbd3nwvz12LHt;
+	Tue,  1 Sep 2026 10:30:53 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 9E0E3202E6;
-	Tue,  1 Sep 2026 10:42:07 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 8DF7B40561;
+	Tue,  1 Sep 2026 10:42:10 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Tue, 1 Sep
- 2026 10:42:06 +0800
+ 2026 10:42:09 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<bcrl@kvack.org>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -50,9 +50,9 @@ To: <viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
 	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
 	<netdev@vger.kernel.org>
-Subject: [PATCH v2 08/12] ext4: Convert group-count barrier protocol to acquire/release
-Date: Tue, 1 Sep 2026 10:42:30 +0800
-Message-ID: <20260901024234.135119-9-ruanjinjie@huawei.com>
+Subject: [PATCH v2 10/12] net: sched: act_gact: use acquire/release for tcfg_ptype
+Date: Tue, 1 Sep 2026 10:42:32 +0800
+Message-ID: <20260901024234.135119-11-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260901024234.135119-1-ruanjinjie@huawei.com>
 References: <20260901024234.135119-1-ruanjinjie@huawei.com>
@@ -67,116 +67,72 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-During an online resize, reading s_groups_count and s_blockfile_groups
-requires strict ordering against subsequent initialized block group
-metadata.
+Replace the smp_wmb()/smp_rmb() barrier pair with
+smp_store_release()/smp_load_acquire() on gact->tcfg_ptype.
+tcf_gact_init() publishes tcfg_ptype via release after writing
+tcfg_pval/tcfg_paction; tcf_gact_act() acquires it before
+dispatching to gact_net_rand()/gact_determ(), ensuring the probability
+parameters are visible.
 
-Replace the historical smp_wmb()/smp_rmb() pairs with smp_store_release()
-and smp_load_acquire(). This formalizes the publish-subscribe pattern
-and allows weakly-ordered architectures (e.g., arm64) to utilize native
-STLR/LDAR instructions instead of full DMB fences.
+No functional change intended.
 
-Update the documentation in resize.c and ext4.h accordingly.
-
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: Baokun Li <libaokun@linux.alibaba.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-Cc: Zhang Yi <yi.zhang@huawei.com>
-Assisted-by: Gemini:Gemini-3.1
+Cc: Jamal Hadi Salim <jhs@mojatatu.com>
+Cc: Jiri Pirko <jiri@resnulli.us>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Eric Dumazet <edumazet@google.com>
+Cc: Jakub Kicinski <kuba@kernel.org>
+Cc: Paolo Abeni <pabeni@redhat.com>
+Cc: Simon Horman <horms@kernel.org>
 Assisted-by: DeepSeek:DeepSeek-V3
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 ---
- fs/ext4/ext4.h    | 10 +++-------
- fs/ext4/mballoc.c |  6 ++----
- fs/ext4/resize.c  | 19 +++++++++++--------
- 3 files changed, 16 insertions(+), 19 deletions(-)
+ net/sched/act_gact.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 724a27e8be61..d70b9cb09155 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3542,16 +3542,12 @@ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
- }
- 
- /*
-- * Reading s_groups_count requires using smp_rmb() afterwards.  See
-- * the locking protocol documented in the comments of ext4_group_add()
-- * in resize.c
-+ * Reading s_groups_count uses acquire semantics.
-  */
- static inline ext4_group_t ext4_get_groups_count(struct super_block *sb)
+diff --git a/net/sched/act_gact.c b/net/sched/act_gact.c
+index 565860cccba6..d4f39f98e2cf 100644
+--- a/net/sched/act_gact.c
++++ b/net/sched/act_gact.c
+@@ -25,7 +25,6 @@ static struct tc_action_ops act_gact_ops;
+ #ifdef CONFIG_GACT_PROB
+ static int gact_net_rand(struct tcf_gact *gact)
  {
--	ext4_group_t	ngroups = EXT4_SB(sb)->s_groups_count;
--
--	smp_rmb();
--	return ngroups;
-+	/* Pairs with smp_store_release() in ext4_update_super() */
-+	return smp_load_acquire(&EXT4_SB(sb)->s_groups_count);
- }
+-	smp_rmb(); /* coupled with smp_wmb() in tcf_gact_init() */
+ 	if (get_random_u32_below(gact->tcfg_pval))
+ 		return gact->tcf_action;
+ 	return gact->tcfg_paction;
+@@ -35,7 +34,6 @@ static int gact_determ(struct tcf_gact *gact)
+ {
+ 	u32 pack = atomic_inc_return(&gact->packets);
  
- static inline ext4_group_t ext4_flex_group(struct ext4_sb_info *sbi,
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 06171a11db12..a15285224cdf 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -899,10 +899,8 @@ static ext4_group_t ext4_get_allocation_groups_count(
+-	smp_rmb(); /* coupled with smp_wmb() in tcf_gact_init() */
+ 	if (pack % gact->tcfg_pval)
+ 		return gact->tcf_action;
+ 	return gact->tcfg_paction;
+@@ -133,11 +131,8 @@ static int tcf_gact_init(struct net *net, struct nlattr *nla,
+ 	if (p_parm) {
+ 		gact->tcfg_paction = p_parm->paction;
+ 		gact->tcfg_pval    = max_t(u16, 1, p_parm->pval);
+-		/* Make sure tcfg_pval is written before tcfg_ptype
+-		 * coupled with smp_rmb() in gact_net_rand() & gact_determ()
+-		 */
+-		smp_wmb();
+-		gact->tcfg_ptype   = p_parm->ptype;
++		/* Pairs with smp_load_acquire() in tcf_gact_act(). */
++		smp_store_release(&gact->tcfg_ptype, p_parm->ptype);
+ 	}
+ #endif
+ 	spin_unlock_bh(&gact->tcf_lock);
+@@ -160,7 +155,8 @@ TC_INDIRECT_SCOPE int tcf_gact_act(struct sk_buff *skb,
  
- 	/* non-extent files are limited to low blocks/groups */
- 	if (!(ext4_test_inode_flag(ac->ac_inode, EXT4_INODE_EXTENTS)))
--		ngroups = EXT4_SB(ac->ac_sb)->s_blockfile_groups;
--
--	/* Pairs with smp_wmb() in ext4_update_super() */
--	smp_rmb();
-+		/* Pairs with smp_store_release() in ext4_update_super() */
-+		ngroups = smp_load_acquire(&EXT4_SB(ac->ac_sb)->s_blockfile_groups);
+ #ifdef CONFIG_GACT_PROB
+ 	{
+-	u32 ptype = READ_ONCE(gact->tcfg_ptype);
++	/* Pairs with smp_store_release() in tcf_gact_init() */
++	u32 ptype = smp_load_acquire(&gact->tcfg_ptype);
  
- 	return ngroups;
- }
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 2c5b851c552a..5e3ad8393cf8 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1462,11 +1462,11 @@ static void ext4_update_super(struct super_block *sb,
- 	 *
- 	 * The precise rules we use are:
- 	 *
--	 * * Writers must perform a smp_wmb() after updating all
--	 *   dependent data and before modifying the groups count
-+	 * * Writers must use a release store when updating the groups count
-+	 *   after all dependent data has been updated
- 	 *
--	 * * Readers must perform an smp_rmb() after reading the groups
--	 *   count and before reading any dependent data.
-+	 * * Readers must use an acquire load when reading the groups
-+	 *   count before reading any dependent data.
- 	 *
- 	 * NB. These rules can be relaxed when checking the group count
- 	 * while freeing data, as we can only allocate from a block
-@@ -1474,12 +1474,15 @@ static void ext4_update_super(struct super_block *sb,
- 	 * only then free after serialising in turn against that
- 	 * allocation.
- 	 */
--	smp_wmb();
- 
- 	/* Update the global fs size fields */
--	sbi->s_groups_count += flex_gd->count;
--	sbi->s_blockfile_groups = min(sbi->s_groups_count,
--			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
-+	/* Pairs with smp_load_acquire() in ext4_get_groups_count() */
-+	smp_store_release(&sbi->s_groups_count,
-+			  sbi->s_groups_count + flex_gd->count);
-+	/* Pairs with smp_load_acquire() in ext4_get_allocation_groups_count() */
-+	smp_store_release(&sbi->s_blockfile_groups,
-+			  min(sbi->s_groups_count,
-+			      (EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb))));
- 
- 	/* Update the reserved block counts only once the new group is
- 	 * active. */
+ 	if (ptype)
+ 		action = gact_rand[ptype](gact);
 -- 
 2.34.1
 
