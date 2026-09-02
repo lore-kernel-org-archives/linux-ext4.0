@@ -1,38 +1,38 @@
-Received: from canpmsgout11.his.huawei.com (canpmsgout11.his.huawei.com [113.46.200.226])
+Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF6B039DBC0;
-	Wed,  2 Sep 2026 07:47:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.226
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F1553E1201;
+	Wed,  2 Sep 2026 07:47:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.218
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788335246; cv=none; b=Ug+JZHFHstFvKXyp3dQxVuLys19z0EI5Q/B1Xgup10qYL00Nr2Fkl76mBYYzW5+8gj5RIEp83buNqwNy2WWyGsE866QTFA1+8V+0/qHaOcf504JZbih1PnITg1jZ3CbjDE578HbUgNBaXcGubJ4nucYsbqIGLtTuUdRxTKbfMy8=
+	t=1788335247; cv=none; b=HPOxFoX6+mOUSUHBtCZxRCphCDGL+hmDbRQj8xECEKUS3xVied8mUxFlSoHxOV53aS9LMQja/T88bTS7srPOF9Z4cbRTI29s9mWzG5ssmTF6Stm7K8IJBPpPc2gzbXSr4Ij8Jbsq69u+y9Z+S0mJ65alo96hGb6H4jPJsGkaBHo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788335246; c=relaxed/simple;
-	bh=5ktFPYfcS354H0E7w1/ipjmsCACpMiKd8AYObWDY1jA=;
+	s=arc-20240116; t=1788335247; c=relaxed/simple;
+	bh=K7Gq5AUxlQXe5No7zoeHSsKZ3ssti34uiTOjY1Ps/no=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=IP0JeluwnGXInDddOjYLToQlECIQ6uUbdZWBGozlgROb9KsekTS1qa8HML0pOfx2AcbJTKhx92nC0ugh8EhZ3xkVpVoK60HuvQT1nSpW6PEuQj662xS8qbx1sBZoiEkQiTxumWRyJemXRQHCr9aecx1Td6NgG5yWB3P9vtf0CoA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=rd6Hz3E3; arc=none smtp.client-ip=113.46.200.226
+	 MIME-Version:Content-Type; b=jX2SF/GBaZ4bt1Tia1KNZrFfZcPNrqy+ecMWAV+HCbTLCH7DBgyQFoOa6LLTOxmhY0PrdF1NYdjGJ0momQjGgBXupfumKSUiO1hUMAsQ0raZLz6NKzy3uZ42nW9Ysa1jmoWNpKXjq+4p5ezY7JvBYzJ1XJh/lzX2QmavDq14Kms=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=SFCgOczG; arc=none smtp.client-ip=113.46.200.218
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="rd6Hz3E3"
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="SFCgOczG"
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=ao1UDWuDYQRsk9bPKBFmaIKKn4znhhepOdHzIjS7dcs=;
-	b=rd6Hz3E3kFFODcc4/kGIU6WQ3O/MF2UNzG8fGv3DfTk1xxbkr5JYxWMHti/CESfAv3QlowOiF
-	KpxM7VUaBOOrPoiBFse4b4RNYjhXKbaL61GTXDs/kAXRoMmBSTF1OOw+4B8ofiUSWzJ9cBthC5e
-	jq57PsmyzIUaJsuBshV91U0=
-Received: from mail.maildlp.com (unknown [172.19.163.214])
-	by canpmsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hZZKh5zbvzKmB5;
-	Wed,  2 Sep 2026 15:36:24 +0800 (CST)
+	bh=4SvDeO5hIzQzXgGr/cxbQ0Jb8d2NsgcdDWNHmf6UJlg=;
+	b=SFCgOczGkgW7ko/Y6AyBOmgW04Do1Yczgae9MVa2hBLlI//yx0q8SiRjeMI/zITTc1wQzJfyz
+	Vr5GUCNXmb9RGJMAhn5/pBaxOBcUTwNFSsW7mBjeakFp9WQLLKIevVOcv4C56V+IqI5wZ3JjmZN
+	6QoPmCaiCKQ0LvFErUobgGM=
+Received: from mail.maildlp.com (unknown [172.19.163.104])
+	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4hZZK834f5zpSvQ;
+	Wed,  2 Sep 2026 15:35:56 +0800 (CST)
 Received: from dggpemf500011.china.huawei.com (unknown [7.185.36.131])
-	by mail.maildlp.com (Postfix) with ESMTPS id 789C64056C;
-	Wed,  2 Sep 2026 15:47:18 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 1B88C4056E;
+	Wed,  2 Sep 2026 15:47:17 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by dggpemf500011.china.huawei.com
  (7.185.36.131) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Wed, 2 Sep
- 2026 15:47:17 +0800
+ 2026 15:47:15 +0800
 From: Jinjie Ruan <ruanjinjie@huawei.com>
 To: <bcrl@kvack.org>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>,
 	<jack@suse.cz>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
@@ -44,9 +44,9 @@ To: <bcrl@kvack.org>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>,
 	<linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
 	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
 CC: <ruanjinjie@huawei.com>
-Subject: [PATCH v3 3/8] fs: aio: Use acquire/release for ring->tail publication
-Date: Wed, 2 Sep 2026 15:48:00 +0800
-Message-ID: <20260902074805.398540-4-ruanjinjie@huawei.com>
+Subject: [PATCH v3 2/8] lib/vsprintf: Use acquire/release for ptr_key publication
+Date: Wed, 2 Sep 2026 15:47:59 +0800
+Message-ID: <20260902074805.398540-3-ruanjinjie@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20260902074805.398540-1-ruanjinjie@huawei.com>
 References: <20260902074805.398540-1-ruanjinjie@huawei.com>
@@ -61,67 +61,58 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
  dggpemf500011.china.huawei.com (7.185.36.131)
 
-Replace the smp_wmb() + WRITE_ONCE(ring->tail) and READ_ONCE(ring->tail)
-+ smp_rmb() barrier pair with smp_store_release()/smp_load_acquire()
-on `ring->tail`.
+Replace the smp_wmb() + WRITE_ONCE() and READ_ONCE() + smp_rmb() barrier
+pair with smp_store_release()/smp_load_acquire() on filled_random_ptr_key.
 
 This expresses the publish/subscribe pattern more clearly and allows
 architectures with native acquire/release instructions (e.g. arm64's
 STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
 
-The release ensures event data written before updating ring->tail is
-visible to readers that observe the new tail value via acquire, which
-is exactly the ordering the barrier pair provided.
-
 No functional change intended.
 
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Benjamin LaHaise <bcrl@kvack.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Cc: Petr Mladek <pmladek@suse.com>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Cc: Sergey Senozhatsky <senozhatsky@chromium.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
 Assisted-by: DeepSeek:DeepSeek-V3
 Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 ---
- fs/aio.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ lib/vsprintf.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-diff --git a/fs/aio.c b/fs/aio.c
-index d78acc69f487..a0279e059e97 100644
---- a/fs/aio.c
-+++ b/fs/aio.c
-@@ -1206,13 +1206,12 @@ static void aio_complete(struct aio_kiocb *iocb)
- 	/* after flagging the request as done, we
- 	 * must never even look at it again
- 	 */
--	smp_wmb();	/* make event visible before updating tail */
--
- 	ctx->tail = tail;
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index 1d95ab9314bf..90d0a724eadd 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -762,9 +762,8 @@ static int fill_ptr_key(struct notifier_block *nb, unsigned long action, void *d
+ {
+ 	get_random_bytes(&ptr_key, sizeof(ptr_key));
  
- 	ring = folio_address(ctx->ring_folios[0]);
- 	head = ring->head;
--	ring->tail = tail;
-+	/* Make event visible before updating tail */
-+	smp_store_release(&ring->tail, tail);
- 	flush_dcache_folio(ctx->ring_folios[0]);
+-	/* Pairs with smp_rmb() before reading ptr_key. */
+-	smp_wmb();
+-	WRITE_ONCE(filled_random_ptr_key, true);
++	/* Pairs with smp_load_acquire() before reading ptr_key. */
++	smp_store_release(&filled_random_ptr_key, true);
+ 	return NOTIFY_DONE;
+ }
  
- 	ctx->completed_events++;
-@@ -1288,13 +1287,12 @@ static long aio_read_events_ring(struct kioctx *ctx,
- 	/* Access to ->ring_folios here is protected by ctx->ring_lock. */
- 	ring = folio_address(ctx->ring_folios[0]);
- 	head = ring->head;
--	tail = ring->tail;
--
- 	/*
- 	 * Ensure that once we've read the current tail pointer, that
- 	 * we also see the events that were stored up to the tail.
-+	 * Pairs with smp_store_release() in aio_complete().
- 	 */
+@@ -781,12 +780,10 @@ static inline int __ptr_to_hashval(const void *ptr, unsigned long *hashval_out)
+ {
+ 	unsigned long hashval;
+ 
+-	if (!READ_ONCE(filled_random_ptr_key))
++	/* Pairs with smp_store_release() after writing ptr_key. */
++	if (!smp_load_acquire(&filled_random_ptr_key))
+ 		return -EBUSY;
+ 
+-	/* Pairs with smp_wmb() after writing ptr_key. */
 -	smp_rmb();
-+	tail = smp_load_acquire(&ring->tail);
- 
- 	pr_debug("h%u t%u m%u\n", head, tail, ctx->nr_events);
- 
+-
+ #ifdef CONFIG_64BIT
+ 	hashval = (unsigned long)siphash_1u64((u64)ptr, &ptr_key);
+ 	/*
 -- 
 2.34.1
 
