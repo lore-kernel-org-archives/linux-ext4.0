@@ -1,72 +1,77 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D7F33242BA
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0AC12BB17
 	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 02:42:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788316962; cv=none; b=iLnuGN+6RT+oC/vy/jRp/HJDDGJZbGvEC0bHT7gqpLEwBhKUN4WiFsnMHAtZV8FAa6YntVh+8TmEcNA+u9ulCS/HKax15IMcJWBaol8O3WyE4Kl40mW9j5QN32qnkjrDa/8XxuyConkjmpODk+ugWBxf4LGwJP1hSaS+FUkgcoU=
+	t=1788316962; cv=none; b=egE/shs8pW/bKE13ten857i+vqFv/SdHSgnsRd7eoAVagzn46YbRJmuDVI3DI7/9xVWAYm+d9itpBWOcMBseloYYe/dMcU3zFR5vMT4f/O/MH/fPWrNxTuqMENdjNOHsFEKFNiMElaELSw73SKwNM1Cg7R2eVDxUNsgMkGAEniQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1788316962; c=relaxed/simple;
-	bh=CMovuOv1OzcnF9hiARNp3J5VmafDnE8uYbc6rKJ//Lo=;
+	bh=MtcEOZdbdRxuODCWD5/2FvCUj04swZpFXfjNs4HYq78=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=BHF1+Bon3Xj0RaFmesePnFi8NFVBY+H5lKiYuyA3EYccZp6dHpjCOkxkHeBZa6FV3Xoxep4OvvCkADrqWEyO0yP2aQnSVDx3Ha7JzeD7GIFTbvlDHg0hRzpkM3RSImhsyhPxhZZVJFNuZubKfJPmGpvWYGDHMRJpxjirRxaaeDY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hVwWk5Ug; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=pnIXpceMpyOTv47dGyO/R0ya7cdNXVxULCJTubhnyhAFRhJEUiCTPiruBwD7xFUZATPOKG4ovFBFXsLCkEuL7gCxHmedwmtyoSH3ttYd5doqsxhymaG6LzzpyQJVGaGUTGRuPB3ytFLSIZOzjyaswOF08dvudsiDlhCOpR5XX1s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nXzymjhY; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hVwWk5Ug"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B61B91F00A3E;
-	Wed,  2 Sep 2026 02:42:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nXzymjhY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 877B21F00A3A;
+	Wed,  2 Sep 2026 02:42:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788316959;
-	bh=CMovuOv1OzcnF9hiARNp3J5VmafDnE8uYbc6rKJ//Lo=;
+	s=k20260515; t=1788316960;
+	bh=MtcEOZdbdRxuODCWD5/2FvCUj04swZpFXfjNs4HYq78=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=hVwWk5UglEKnAFEbWwombT7iOFZuxZWqZ9q6Q00crDzB1voqYy24ndV6qsq5GOqDX
-	 6JXiTIH3xk7gpiwHcYCa/DwMQxxD1lDRbDj2Ee1R1a+ASDRaQQAtAXJjW+qlqo9h81
-	 RkHvESxJPJMCC2M41vLKx/b+PUUAQ60s+b02W7i/pLhq3Ai2fqUB8SDk4qY3pVOSQh
-	 /HWYcVoLgF5oEC756Ly0sy73lZYlCskUCRDluR90l1weWAUdIFtYiWTxLnmZzv7jdg
-	 HTDk7RzXkxPEIl/UsRrzFtQZKJTEL31wi5UnDwI1C8LYlq1ItrXmTAnYDedfUetFx3
-	 wXJgn6iKrhsrQ==
+	b=nXzymjhYDjpPwjIHw6GmoiJg+E862c2lu97tZoRm3484dSCfJqnOHqkrrqAcck1c1
+	 ffe+ZiAsZm6G7ExReR8+s5HHixG88E3tI9Rnj12sVeMlKWK0F6ALpnC08ImrRrtWjm
+	 Jl4mU4l/eCvzesiPZT3V/1aJXuKHzENrqLWwGA/AXNIddxKSNTkwQlszYpkzzijHPU
+	 m63cmag9S+cfOfy5Q9v4B2KVytRr45PokkFahXxuK9gr1Z9y3F9GWufm/HFZUep77m
+	 OlldccPidlj66Qf384TBZEIKCxK1FTynPrQrtIk9EEo3W7I850neMY6Ra5leWBnvnn
+	 WwMSRzczWTjJQ==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 10/12] net: sched: act_gact: use acquire/release for
- tcfg_ptype
+Subject: Re: [PATCH v2 08/12] ext4: Convert group-count barrier protocol to
+ acquire/release
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jinjie Ruan" <ruanjinjie@huawei.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260901024234.135119-11-ruanjinjie@huawei.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260901024234.135119-9-ruanjinjie@huawei.com>
 References: <20260901024234.135119-1-ruanjinjie@huawei.com>
- <20260901024234.135119-11-ruanjinjie@huawei.com>
+ <20260901024234.135119-9-ruanjinjie@huawei.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Wed, 02 Sep 2026 02:42:39 +0000
-Message-Id: <20260902024239.B61B91F00A3E@smtp.kernel.org>
+Date: Wed, 02 Sep 2026 02:42:40 +0000
+Message-Id: <20260902024240.877B21F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> Replace the smp_wmb()/smp_rmb() barrier pair with
-> smp_store_release()/smp_load_acquire() on gact->tcfg_ptype.
-> tcf_gact_init() publishes tcfg_ptype via release after writing
-> tcfg_pval/tcfg_paction; tcf_gact_act() acquires it before
-> dispatching to gact_net_rand()/gact_determ(), ensuring the probability
-> parameters are visible.
+> During an online resize, reading s_groups_count and s_blockfile_groups
+> requires strict ordering against subsequent initialized block group
+> metadata.
 >=20
-> No functional change intended.
+> Replace the historical smp_wmb()/smp_rmb() pairs with smp_store_release()
+> and smp_load_acquire(). This formalizes the publish-subscribe pattern
+> and allows weakly-ordered architectures (e.g., arm64) to utilize native
+> STLR/LDAR instructions instead of full DMB fences.
 >=20
-> Cc: Jamal Hadi Salim <jhs@mojatatu.com>
-> Cc: Jiri Pirko <jiri@resnulli.us>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: Eric Dumazet <edumazet@google.com>
-> Cc: Jakub Kicinski <kuba@kernel.org>
-> Cc: Paolo Abeni <pabeni@redhat.com>
-> Cc: Simon Horman <horms@kernel.org>
+> Update the documentation in resize.c and ext4.h accordingly.
+>=20
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: Baokun Li <libaokun@linux.alibaba.com>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
+> Cc: Zhang Yi <yi.zhang@huawei.com>
+> Assisted-by: Gemini:Gemini-3.1
 > Assisted-by: DeepSeek:DeepSeek-V3
+> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 
 Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260901024234.1351=
-19-1-ruanjinjie@huawei.com?part=3D10
+19-1-ruanjinjie@huawei.com?part=3D8
 
