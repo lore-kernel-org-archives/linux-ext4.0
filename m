@@ -1,145 +1,93 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8176247D95E;
-	Tue,  1 Sep 2026 23:32:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B548D353A69;
+	Wed,  2 Sep 2026 01:34:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.98
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788305550; cv=none; b=ddH1l6WJkMB86ZLEqnGCcmLq19RRvjc9mU8aQTCUCX6xTmxtRwztzID41v+XtUqd0g7Y7LzXI5y/0jUOM5iLXeWGKFFypwha0YCKrjDBwz5vD61bldWfDIT7jYHF3W83OVmw0pogsmBgYMdrwuwAK1tqvh4v0ZIdPwi5SMRf6ms=
+	t=1788312870; cv=none; b=CTJpQ7hf7CbUpbm21rtB350npODru7KKBcpKJXrtuDTPx2QJ18jjQoodFc4gnJv//0voBDLGKX9kSMVyrImK3pc1/QsImzw4K2+jbIP3pAcj+CWQ/0uNh0MEsdwxqBYV3RSQNYQNOEzj6Ut84SDuTEDjH+tihK0SNmgq5ezXTcM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788305550; c=relaxed/simple;
-	bh=LjmVvqDf6srXlfpo5QzsQs336GnWASUPZVD6tiEk+Io=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
-	 In-Reply-To:Content-Type; b=JyiM/NwQhj7f4uLJpPIyzkhy+Zmt3ZNEa/dH7mi5n2NJrbqup3OmThIFGXSdomkluqDo2uQVMvaWq4aK+QICe4O06PZlKdIc0pmmL/OvFrc8fIQtV6cWxkEuLnQr1cToD2KxVXysukxUWQ3045C02SsjVeVBXrMJFTi/QCgo/BU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FXGk34vk; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788312870; c=relaxed/simple;
+	bh=RoAnNi1LaWFXzkf5ttVSCCM5YF3rejo06VWhnYO9l30=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=YC2ncmeKnCQjNdtk8g/34iIWh3iCjdXOuS11+I1VhqcArqxpQStvyC/jVNzofzaKCepXzUkJaosLV3BTX020UpJNAhLn55rbREkTjH7FZ4Wn1Ab3QBVx9+2TamSnHy/BaMCNBTCGT4eMiBhDLb4RDpCEuqWyl0wDge4Qi+Wsz24=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=Lyrs7mXh; arc=none smtp.client-ip=115.124.30.98
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FXGk34vk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A14F31F000E9;
-	Tue,  1 Sep 2026 23:32:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788305545;
-	bh=03+cdQH6OSkJOrqr1DanmXDylDD6Vi1Wng3BzGHUVu4=;
-	h=Date:Subject:To:References:Cc:From:In-Reply-To;
-	b=FXGk34vkpiY0LoHcsYDs7HMl0oV93yvwYDiuF2nT/9etACREQSwVhUxOl0cN2bVMd
-	 w1iXNl1Yv599cQuFeWjal/+9Bx6NMi8iv0tkQGVe5wVylk/nYVUtldcb0nZWdkE6xp
-	 pLuEo/hN7UizSLQ7bX8hhTlZfBoTV7HvROpWOYPAoLGM5YCWYHIpseZYlS+MKLgaC7
-	 BHa4bmYha8Esgvfs5PPyOkM/Q6pm4FmijTJomkuWjVH8s8lUPevKbEevHUbIffU3Aq
-	 kPKpP9cG8sEQGyVBw78CwRGpDVAw6W0G95TNUzaHOsFM6VJqjrh0sAYYcKG2Ie0FeB
-	 e4y8zATwuKRmQ==
-Message-ID: <9832242f-cc39-46f7-847b-70871e52a373@kernel.org>
-Date: Wed, 2 Sep 2026 07:32:21 +0800
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="Lyrs7mXh"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1788312856; h=From:To:Subject:Date:Message-Id:MIME-Version;
+	bh=BgLxNhyI91gbmnPap7rNB2Wq15wMhEpgxMeRIeIytd0=;
+	b=Lyrs7mXhJIO5v665TkMuBU57qMlvnUwi9+cDjn3oZZsfva8rtU8p2zKdetGu6Y4gFLtkZW4MFWwd5Md2BJoUTCLszHAwmQrlabM0YghRTMHMi52CMA+Kqvi24kR44GukxYO7PfKjYUPisUPJeqbHJ02FnbzFkDoFM6C7wXkKvM8=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R181e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0XAAdAJF_1788312855;
+Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0XAAdAJF_1788312855 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Wed, 02 Sep 2026 09:34:16 +0800
+From: Joseph Qi <joseph.qi@linux.alibaba.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev,
+	linux-kernel@vger.kernel.org,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Srikanth Aithal <Srikanth.Aithal@amd.com>,
+	Luca Weiss <luca.weiss@fairphone.com>,
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH] buffer: fix NULL dereference of bh->b_folio in __bh_submit()
+Date: Wed,  2 Sep 2026 09:33:57 +0800
+Message-Id: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
+X-Mailer: git-send-email 2.39.3
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v8 05/13] fstests: add _require_unique_f_fsid() helper
-To: Zorro Lang <zlang@kernel.org>
-References: <cover.1784949154.git.asj@kernel.org>
- <878a21ea507cb955ed414072c82ab5e5493b8ae0.1784949155.git.asj@kernel.org>
- <apb19-FLJv9dRFDS@zlang-mailbox>
-Content-Language: en-US
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org,
- linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, djwong@kernel.org
-From: Anand Suveer Jain <asj@kernel.org>
-In-Reply-To: <apb19-FLJv9dRFDS@zlang-mailbox>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
+Commit a2c924c240e7 ("buffer: set BIO_COMPLETE_IN_TASK for dropbehind
+writeback") added an unconditional folio_test_dropbehind(bh->b_folio) in
+__bh_submit().  But jbd2 shadow buffers have a NULL b_folio since commit
+5febcba29792 ("jbd2: point the shadow buffer at the frozen data
+directly") made them point b_data at the kmalloced frozen data rather
+than a folio.  Submitting such a buffer during journal commit oopses:
 
+  BUG: kernel NULL pointer dereference, address: 0000000000000000
+  RIP: 0010:__bh_submit.constprop.0+0x87/0x120
+  Call Trace:
+   jbd2_journal_commit_transaction+0x932/0x1b10
+   kjournald2+0xb2/0x250
 
-On 2/9/26 00:09, Zorro Lang wrote:
-> On Sat, Jul 25, 2026 at 03:39:02PM +0800, Anand Jain wrote:
->> Add a helper to check if the target filesystem supports unique f_fsid
->> tracking across cloned or snapshot instances.
->>
->> Certain filesystems like XFS, Btrfs, and F2FS ensure unique f_fsid
->> identifiers per filesystem instance. However, Ext4 derives its f_fsid
->> directly from its superblock UUID, which leads to identical f_fsid
->> values on cloned images until the UUID is manually modified by userspace.
->>
->> Introduce _require_unique_f_fsid() to allow test cases requiring strict
->> f_fsid uniqueness to skip gracefully on unsupported filesystems.
->>
->> Signed-off-by: Anand Jain <asj@kernel.org>
->> ---
->>  common/rc | 27 +++++++++++++++++++++++++++
->>  1 file changed, 27 insertions(+)
->>
->> diff --git a/common/rc b/common/rc
->> index 21b516accdf7..f73251365a60 100644
->> --- a/common/rc
->> +++ b/common/rc
->> @@ -6356,6 +6356,33 @@ _require_fanotify_ioerrors()
->>  	_notrun "$FSTYP does not support fanotify ioerrors"
->>  }
->>  
->> +# Skip the test if the filesystem does not enforce unique f_fsids
->> +# natively. Checking this dynamically requires recreating a clone
->> +# layout, so we use a static lookup based on FSTYP.
->> +#
->> +# Across all filesystems, a UUID collision causes libblkid tools to return
->> +# non-deterministic device mappings. It is ultimately the responsibility
->> +# of the userspace utility or use-case to enforce uniqueness when a clone
->> +# diverges. For details, see mailing list thread discussions:
->> +#   Link: https://lore.kernel.org/linux-ext4/20260409131238.GC18443@macsyma-wired.lan/
->> +_require_unique_f_fsid()
->> +{
->> +	case "$FSTYP" in
->> +	ext*)
->> +		# Ext4 derives f_fsid from the superblock UUID, meaning
->> +		# clones share the same f_fsid until their UUIDs
->> +		# diverge.
->> +		_notrun "Target filesystem ($FSTYP) does not guarantee unique f_fsid on clones."
->> +		;;
->> +	*)
->> +		# Conversely, XFS, Btrfs, and F2FS ensure f_fsid remains
->> +		# unique per filesystem instance (often by deriving it
->> +		# from the UUID and underlying block device.)
->> +		;;
->> +	esac
-> 
+Hit by the ocfs2-testsuite fill_verify_holes test running with
+data=writeback.
 
-> I would prefer to let the experts of each filesystem confirm whether their
-> fs guarantees a unique f_fsid.
+Dropbehind only applies to buffers backed by a folio, so skip the check
+when b_folio is NULL.
 
-Theoretically, whether f_fsid is unique per clone depends on
-how it is derived. If it includes the device major:minor,
-it provides a unique ID per clone.
+Fixes: 5febcba29792 ("jbd2: point the shadow buffer at the frozen data directly")
+Tested-by: Srikanth Aithal <Srikanth.Aithal@amd.com>
+Tested-by: Luca Weiss <luca.weiss@fairphone.com> # sm7225-fairphone-fp4
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+---
+ fs/buffer.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Btrfs does it since commit
- c2a74ed0494c btrfs: derive f_fsid from on-disk fsid and dev_t
-
-> How about switching this logic to an *allowlist*
-> *(whitelist)* approach, where we _notrun by default and only allow filesystems
-> that explicitly guarantee unique f_fsid support?
-> 
->   case "$FSTYP" in
->   btrfs|xfs|f2fs)
->         ;;
->   *)
->         _notrun "Target filesystem ($FSTYP) does not guarantee unique f_fsid on clones."
->         ;;
->   esac
-
-So _notrun() unless confirmed to have unique f_fsid for the cloned
-filesystem. Works for me.
-
-Thanks, Anand
-
-> Thanks,
-> Zorro
-> 
->> +}
->> +
->> +
->>  # Computes a percentage of the available space in a filesystem and
->>  # returns that quantity in MB. The percentage must not contain a percent
->>  # sign ("%").
->> -- 
->> 2.43.0
->>
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 427d8a817cd5..f46fa6413032 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1106,7 +1106,8 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
+ 
+ 	bio = bio_alloc(bh->b_bdev, 1, opf, GFP_NOIO);
+ 
+-	if (folio_test_dropbehind(bh->b_folio) && op_is_write(opf))
++	if (bh->b_folio && folio_test_dropbehind(bh->b_folio) &&
++	    op_is_write(opf))
+ 		bio_set_flag(bio, BIO_COMPLETE_IN_TASK);
+ 
+ 	if (IS_ENABLED(CONFIG_FS_ENCRYPTION))
+-- 
+2.39.3
 
