@@ -1,65 +1,53 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.18])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47F3748663D;
-	Wed,  2 Sep 2026 13:05:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C80BC4A260C
+	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 14:21:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788354308; cv=none; b=pwk76g/Wwi/CVKHrhBpbGvOSrtyZyFxgku7XImbSATJf2jeV+eKCQpjKvKzW15/2/jlpLSf9ZLZG/elIuxsBA4MPzZfBIf27/fvDMbFcXIMcFLeu7HHIqZGV/7NMQ08DwENzKqNd4jHaLmU1wxPOqQtWyXARg47QUDn4PU7euuw=
+	t=1788358868; cv=none; b=tp5eEghecc4Nwrbn+qVyRRZWu23zI29WUPAsiN8WyKK6M4OrzPPpsSWLl0ogKM1gryGS7wUv9tYuldphfvJIp78y5K/8YUXxtxZ1wGk3GhxMVr9dyE6/N96QxK6oUEnhIVQ4EcdAo09sgd363+IouaJjrTPw0cENBAagFtiQ+x8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788354308; c=relaxed/simple;
-	bh=nuGiQpVdQXM62iqN7zRrQ1PDjyq0FozVNQtWBQVuEoU=;
+	s=arc-20240116; t=1788358868; c=relaxed/simple;
+	bh=3MOYxwMzlHt/wAS98xOaW93eYgl1ZjXCZls3cxrkxKE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ttz7meYz2IvxLFO5+S1odwvgwKkoeR5g9dRpMeJyeF2ca6xJBa95zWpqhIcoNhoTP6LiYQRpxBWWfdolhkMX8UIqKDa37DlNvwMdO0UOCaNvlbMiJMIEx0enx9uXP3599JjRnN4qchOhk+PKo/04ODlrI+1t3ONVebS/+JLwGkk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=RI9XTGbG; arc=none smtp.client-ip=198.175.65.18
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.intel.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=XXBvr/BxxK50+Mz/VieIRbRvkOBekNQJ0hc04y/GqFq6s6i/disnB0vACMPpbdAcy5N/cuAsnluiJQTrs+YVT+nDtAfIo+f5wlNNOjQEa0D1Gxsgs8OXuUqKkDCQT/pBwMJoNJTB77NFcjx0svt2GB9GjW89YqJd+sd7OOkg+FI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=qQpMgolg; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="RI9XTGbG"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1788354307; x=1819890307;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=nuGiQpVdQXM62iqN7zRrQ1PDjyq0FozVNQtWBQVuEoU=;
-  b=RI9XTGbGl2UhS1hUpqpVE744r12j/2PdT9uClFlGseOKiqwa2YG1ACvO
-   qpkWq8mBohZ3IZwbUzxy+/85KaiP61xVfotKeNx8606BnfL0KiBswR8gS
-   zwatYLfV4AOFVd8A480zIG44PgAfaijeBReS2PxhAk+VyfdnVVZQkM0y1
-   mkLoVAzsIMxyqcKk70KximoKQEdcpmJcdAqpeCljXrrPVtca2JCjVIegM
-   XnojAqxq1jZWi+O25ghJAurUd36fpHLTgUOFUrP95Mq5kS3O8Mb81tkPy
-   5CSUwoNe7moOZuacz8Az3RRabfm/tdAX3Ca09Az68hQx8FBDpKYdznCJo
-   w==;
-X-CSE-ConnectionGUID: +JdhoEllTw6myc8hRQIsNQ==
-X-CSE-MsgGUID: fq51iaPMTpuvye66tJL9LA==
-X-IronPort-AV: E=McAfee;i="6800,10657,11893"; a="88858096"
-X-IronPort-AV: E=Sophos;i="6.25,257,1779174000"; 
-   d="scan'208";a="88858096"
-Received: from orviesa001.jf.intel.com ([10.64.159.141])
-  by orvoesa110.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 02 Sep 2026 06:05:06 -0700
-X-CSE-ConnectionGUID: f4YbeFikTwSzmAXirWXbjg==
-X-CSE-MsgGUID: yRpphcw+T5yDxdF2uEC8wg==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.25,257,1779174000"; 
-   d="scan'208";a="307617041"
-Received: from pgcooper-mobl3.ger.corp.intel.com (HELO localhost) ([10.245.245.118])
-  by smtpauth.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 02 Sep 2026 06:05:01 -0700
-Date: Wed, 2 Sep 2026 16:04:58 +0300
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="qQpMgolg"
+Received: from macsyma.thunk.org ([104.135.218.91])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 682EJkAM024468
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Wed, 2 Sep 2026 10:19:47 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1788358793; bh=3QZBcT9wMwB3DyyvNgzIH17ppYtiwXKFjAiGoY+z9LE=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=qQpMgolgCUEX8Vy7dpklGPyP3D7ZH4XJxWG+IVL6GmAncA+fMUvlm8YnwWtmQT4dV
+	 TV9xNSQLEiw2NsioLZWQNqIRjUaFdx4FkN96CtCFgnv1VI2miScdfKdhGDj/XYPEJa
+	 89kDgAOAhkPR50vdBA5jvYy42oI9bqI0DpnbVD8H1fyL8TmyJa1Lcu4iwVSA3mIivh
+	 05bfOjBwXogJdQq/4XtnxHmehk09J7a4x3UQ2GVQZPGwBTgNCq2+S5Xxc/80jok7PR
+	 QBPPjskGdk0Yhhhk3LmC7+fTAL6Y10SPcrHFxdTtzrS6pxi4SBqrd568e9HWlNIE81
+	 mUto6Jn7D+bpw==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 5A6F212FC3EA; Wed,  2 Sep 2026 10:19:46 -0400 (EDT)
+Date: Wed, 2 Sep 2026 10:19:46 -0400
+From: "Theodore Tso" <tytso@mit.edu>
 To: Jinjie Ruan <ruanjinjie@huawei.com>
-Cc: bcrl@kvack.org, viro@zeniv.linux.org.uk, brauner@kernel.org,
-	jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com, yi.zhang@huawei.com, sforshee@kernel.org,
-	akpm@linux-foundation.org, pmladek@suse.com, rostedt@goodmis.org,
-	linux@rasmusvillemoes.dk, senozhatsky@chromium.org, kees@kernel.org,
-	tglx@kernel.org, linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v3 1/8] user_namespace: Use acquire/release for
- nr_extents synchronization
-Message-ID: <apge-t-tp00Tl9TL@ashevche-desk.local>
+Cc: bcrl@kvack.org, viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz,
+        adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
+        ojaswin@linux.ibm.com, ritesh.list@gmail.com, yi.zhang@huawei.com,
+        sforshee@kernel.org, akpm@linux-foundation.org, pmladek@suse.com,
+        rostedt@goodmis.org, andriy.shevchenko@linux.intel.com,
+        linux@rasmusvillemoes.dk, senozhatsky@chromium.org, kees@kernel.org,
+        tglx@kernel.org, linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v3 0/8] Convert barrier pairs to acquire/release for
+ better performance
+Message-ID: <apgv5w116frzutwH@mit.edu>
 References: <20260902074805.398540-1-ruanjinjie@huawei.com>
- <20260902074805.398540-2-ruanjinjie@huawei.com>
- <apgek5EhgjxpDCkh@ashevche-desk.local>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -68,61 +56,25 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <apgek5EhgjxpDCkh@ashevche-desk.local>
-Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
- krs, Bertel Jungin Aukio 5, 02600 Espoo
+In-Reply-To: <20260902074805.398540-1-ruanjinjie@huawei.com>
 
-On Wed, Sep 02, 2026 at 04:03:23PM +0300, Andy Shevchenko wrote:
-> On Wed, Sep 02, 2026 at 03:47:58PM +0800, Jinjie Ruan wrote:
-> > Replace smp_wmb()/smp_rmb() with smp_store_release()/smp_load_acquire()
-> > when publishing and consuming `nr_extents`. This expresses the
-> > publish/subscribe pattern more clearly and allows architectures with
-> > native acquire/release instructions (e.g. arm64's STLR/LDAR) to avoid
-> > the cost of full one-way barriers (DMB ISHST/ISHLD).
-> > 
-> > No functional change intended.
+On Wed, Sep 02, 2026 at 03:47:57PM -0500, Jinjie Ruan wrote:
 > 
-> Please, locate Cc list...
-> 
-> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> > Cc: Christian Brauner <brauner@kernel.org>
-> > Cc: Jan Kara <jack@suse.cz>
-> > Cc: Seth Forshee <sforshee@kernel.org>
-> > Cc: Kees Cook <kees@kernel.org>
-> > Cc: Aleksa Sarai <cyphar@cyphar.com>o
-> 
-> ...(all the above)...
+> This series converts some existing smp_wmb()/smp_rmb() barrier pairs to
+> smp_store_release()/smp_load_acquire() across various subsystems.
 
-Important remark: this is only about Cc, the regular tags have to be
-in the commit message trailers (such as Reviewed-by).
+I would like to land the ext4 related patches through the ext4 tree,
+so please detach them from this patch series.  That's because I want
+to be able to monitor the regression testing before sending a pull
+request to Linus.
 
-> > Assisted-by: DeepSeek:DeepSeek-V3
-> > Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
-> > ---
-> 
-> ...somewhere here. It will have the same effect on the email thread and it will
-> unload the commit message from the unneeded noise.
-> 
-> > v2:
-> > - Add missing load replace in copy_mnt_idmap()
-> > ---
-> >  fs/mnt_idmapping.c      |  5 ++---
-> >  kernel/user_namespace.c | 24 +++++++++++++-----------
-> >  2 files changed, 15 insertions(+), 14 deletions(-)
-> 
-> ...
-> 
-> This comment applies to the whole series.
-> Also note, `b4 trailers` can handle that, you can keep the
-> 
->   ---
->   Cc: ...
-> 
-> in the local Git. You can find some details in the subthread here
-> https://lore.kernel.org/lkml/20260123113708.416727-19-bigeasy@linutronix.de/
+More generally, I think we should be looking at this kind of barrier
+conversion on a per site basis.  If there is a bug that isn't notice,
+it can result in a very hard to debug problem.  And if the benefit of
+speeding up a particular code path isn't particularly that great,
+maybe the cost vs benefit vs risk calculation might cause us to decide
+to take a pass on the change.
 
--- 
-With Best Regards,
-Andy Shevchenko
+Cheers,
 
-
+					- Ted
