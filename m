@@ -1,70 +1,69 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 90A0136B92C
-	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 07:58:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF0044CCDD5
+	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 08:01:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788335919; cv=none; b=ei2NwYWI29QiKQCHVLtth+DmZz9+FnDavnXUpUkG9i+lgYLX1ssH8OGMmps2uIjFGAjx4U9nW0uHlGsTxeSypuSsZLRUb/eQq5y6/POHuFe7YIQEVmrFKADBmMHosB2WxyCxiyLBPLrkFJD+yQE6svf9MevWYcnTVJ4FZk/dNMM=
+	t=1788336072; cv=none; b=f6sZXfX5bBe/b4alaGyLc56azTisvcWB88Klumtt6FKOihjPQm6/ScEKc3uJYucoOXLWUh7MiLRQBBufmWNpr1U9kzdgrMox08c1dwXZYWawrGZLxSlqs3gXJQyPqJJcSBIz67Ydj/ZW/S78uJm/bF0mqOzhcPlKozNnIWcPZ1M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788335919; c=relaxed/simple;
-	bh=TtvT0CokNSTJlEF4R/58yd6HdMpyE61eFqSWvxWI3yI=;
+	s=arc-20240116; t=1788336072; c=relaxed/simple;
+	bh=oIwt+sZH7Qrk9T2zM1Mnnu+ve6A3/gB/hoKa1gMraSY=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=sP7xDp7Xp//9zpJrGEhPcaf1T0bLKLu9mAkZXJvhzNAvc81AvAVTD9V6IGZEUSu3UvGPkJX9auPki7LRqWJJH1a8ds/YnzEUoe/Jd8iM2kOKIxzM6KWxcQcW/FJhOVAaF36c2EUlJX9P9lDh0HS91dp/VzrGcQSMndt6FAM+AIY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UhueeYzw; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=HPs6d6r2NgmtLVo2uWurz40fO0b8AbeltVd8DO+eioS8Dvb5lfPzTYR/lhS7QuKIAPA+VesZb1L40ek+YwxOXCvmhK1ljb2GBc8yJxGvwELVIkR92T41DOCiD1nbk3hOhHe9t6VueyLiSwJ/Wpb1eXzPdrfj2d6/WqeU1nr43NY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WNabSR6F; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UhueeYzw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 92C111F00A3A;
-	Wed,  2 Sep 2026 07:58:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WNabSR6F"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4C8191F000E9;
+	Wed,  2 Sep 2026 08:01:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788335918;
-	bh=TtvT0CokNSTJlEF4R/58yd6HdMpyE61eFqSWvxWI3yI=;
+	s=k20260515; t=1788336071;
+	bh=efnU98UKogw30u/pfhEi3t9PjABkjqgzl89tDFcxKaE=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=UhueeYzwfQylCtxv17LFbDQulZ09OXcyL35hmT2n/VYYKgP6F9A2VaX95RXHE5xHs
-	 41rzt6FDhv1qXfTvKn/g8/ggqa+XfjsWU0LlCBSIcBGHlJs7c18P+0vaIzfK8EmhFc
-	 Z3R8iIyU4GLxVmbr0j2Qa/fxtg6zZNbbIrJfQhfFsRrvg91zbA7IMCtIqIhc3Ti9Tv
-	 t3G96ZoxmGyt+xY7LmqsPzMpWvY2wRMPHav59E+XBVkBq91ynJaZ5YmUAtdAgshLLJ
-	 RqiOBBCQ0ZgeWLDvFP5HQOORGTWIjvwEw52X/eOn+1Zw91SbB1WTczcQRwDYPqZhuG
-	 Qe3VLBiklhrhg==
+	b=WNabSR6F5TnGxBj0ikJSkWsLx1PN4ui+3AzWDaXrpCZrTQpgf8UBLof5bbKPnNPLx
+	 xHCz9G3QZVsQo4o838ec7Acvv4GGP8ueAoSJ/DEEDzfHy6sfQVad4H8dqIrm1t1tcY
+	 lfp80Yvp4c6bhWLdvuHZ8BF3rIvmeory/ZsurMHv1t0vXcZoS4ijy7ldqacnptJivg
+	 l8RuQm6OrG1kXmnjf+kyUYOL+PiW1j+U36waEmNlA9rwXYJJtsW8gbA2xObDYHQ9X7
+	 4+F0nNYMR9foh80BqtvqtN3Ts5D4u4CzLaAZ1606dIUYRCPkD1U4HflZZaoQ455R1n
+	 F3aloFHZ1HceQ==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3 8/8] ext4: Convert group-count barrier protocol to
- acquire/release
+Subject: Re: [PATCH v3 7/8] ext4: Fix out-of-bounds read in
+ ext4_get_group_info()
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jinjie Ruan" <ruanjinjie@huawei.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260902074805.398540-9-ruanjinjie@huawei.com>
+In-Reply-To: <20260902074805.398540-8-ruanjinjie@huawei.com>
 References: <20260902074805.398540-1-ruanjinjie@huawei.com>
- <20260902074805.398540-9-ruanjinjie@huawei.com>
+ <20260902074805.398540-8-ruanjinjie@huawei.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Wed, 02 Sep 2026 07:58:36 +0000
-Message-Id: <20260902075837.92C111F00A3A@smtp.kernel.org>
+Date: Wed, 02 Sep 2026 08:01:10 +0000
+Message-Id: <20260902080111.4C8191F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> During an online resize, reading s_groups_count and s_blockfile_groups
-> requires strict ordering against subsequent initialized block group
-> metadata.
+> A plain read of s_groups_count in ext4_get_group_info() allows CPU
+> load-load reordering. On weak memory models, speculative prefetch of
+> s_group_info prior to the boundary check could lead to an out-of-bounds
+> read if a concurrent online resize expands the array and increments
+> s_groups_count.
 >=20
-> Replace the historical smp_wmb()/smp_rmb() pairs with smp_store_release()
-> and smp_load_acquire(). This formalizes the publish-subscribe pattern
-> and allows weakly-ordered architectures (e.g., arm64) to utilize native
-> STLR/LDAR instructions instead of full DMB fences.
+> The data race occurs between the ioctl configuration path (holding the
+> resize lock via ext4_resize_begin) and the lockless metadata lookup path:
 >=20
-> Update the documentation in resize.c and ext4.h accordingly.
->=20
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Baokun Li <libaokun@linux.alibaba.com>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-> Cc: "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>
-> Cc: Zhang Yi <yi.zhang@huawei.com>
-> Assisted-by: Gemini:Gemini-3.1
-> Assisted-by: DeepSeek:DeepSeek-V3
+>    CPU 0 (Writer, Resize Lock)                CPU 1 (Reader, Lockless)
+>    ---------------------------                ------------------------
+>    ext4_ioctl()
+>      [EXT4_IOC_GROUP_ADD]
+>      ext4_ioctl_group_add()
+>        ext4_resize_begin() // Takes lock
+> [ ... ]
+> Fixes: 5354b2af3406 ("ext4: allow ext4_get_group_info() to fail")
+> Link: https://sashiko.dev/#/patchset/20260825095422.3166067-1-ruanjinjie%=
+40huawei.com
 > Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 > Reviewed-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
@@ -73,5 +72,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260902074805.3985=
-40-1-ruanjinjie@huawei.com?part=3D8
+40-1-ruanjinjie@huawei.com?part=3D7
 
