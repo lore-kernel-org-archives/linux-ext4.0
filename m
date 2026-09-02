@@ -1,105 +1,131 @@
-Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 589D748095E
-	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 12:18:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.77.154.182
+Received: from out203-205-221-221.mail.qq.com (out203-205-221-221.mail.qq.com [203.205.221.221])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD16C47F2F6
+	for <linux-ext4@vger.kernel.org>; Wed,  2 Sep 2026 12:24:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788351483; cv=none; b=m19QYDg8jKNxxn2w2oPRFVXM13Ffg5AXk5eZHeJbBhQPnVlsD9g+/Wrrvc2jdLQvWDW6y/OHMCWmMHWApSkT37NqYQ2a9tiymIx5lOoSIf8YYZAmOlsm0GVO+fzBjO2rTdOwebQpY7sVaRLqK5TQ9SdURnvSq9MIx9QSnBDPHWo=
+	t=1788351863; cv=none; b=tZSAPsmNuTFm4FS+YisFaMOM1Z8o6l1zSD2eQL1Dlujho8CbG/ppbZWY3x8ts9DNnkUW8AyumBnavjhL1ujMAjkMCZDOoVf9ZCBQ+WlpqCR3Vu7eRqhvOLt9PFpraQSvPHVnGdfvjb4KEzLlKdb81XWvHJZEGU7cOScsYSE0bhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788351483; c=relaxed/simple;
-	bh=G/wGXdxARiKPGWOyHmlw30tmCGTrLvSdKQ9wLPDVTqI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=l8y6VHiJkWHuV7n/xO8gFMfYRRKcgSsQvW9j74b3IuCF7OXYHvXLUu0vn3lUg8z7/1j7VIyGlqir1rSonGgGmdyKvH/4ako457DZ8op57PG8OFEMqiiXKmgGIlxEPOkWGplWA6XVVfsH9kRz04xzQJhdA60juydMvoGdbY5cOr0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com; spf=pass smtp.mailfrom=linux.microsoft.com; dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b=rzwYOOrq; arc=none smtp.client-ip=13.77.154.182
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
+	s=arc-20240116; t=1788351863; c=relaxed/simple;
+	bh=+D4ZnZz93GRWzPOKqT/L1qWle797X9rbuFtqH2+tal8=;
+	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=gYjudmvDM6Z1WaVAO8F0jVtJV+7V5/6Yhb+/tIZ/F9IvHta9Bh8NM2jcbvNYMrhWP+ReBvszQNh14m9sn3MK8XBu3UzniAfTIw7HhD2j961bKSqdddPiBEfq3m4aKjwN9/6icWHLv80kgysHoYF6i0AiY4b3fSqtnzy30YdhFiI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=qxYVZytw; arc=none smtp.client-ip=203.205.221.221
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b="rzwYOOrq"
-Received: by linux.microsoft.com (Postfix, from userid 1217)
-	id BA73420B7129; Wed,  2 Sep 2026 05:17:24 -0700 (PDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com BA73420B7129
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
-	s=default; t=1788351444;
-	bh=3yuaEQ7kcPQDCxHltohGtYN2SW0Yvj/QivdmyZvRGA4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=rzwYOOrqrMknI4nHCQ19+aU3DvSoUi5qd+PeN9KApSKiLqffatpS5OTjUBxV5H0zT
-	 rtjPBQalsOpzJTNcWW81lBwaeMoJcZNLcBxwhJjanXI12YeLGFoLLj1lfW6Lgg2byP
-	 JuS5LYTSwJUehx0NrQEmWAQ0XSFHYYqU8drurP4I=
-Date: Wed, 2 Sep 2026 05:17:24 -0700
-From: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
-To: Theodore Tso <tytso@mit.edu>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, linux-ext4@vger.kernel.org,
-	adilger@dilger.ca, srivatsa@csail.mit.edu
-Subject: Re: [PATCH v2] e2fsck: take flock(LOCK_EX) on whole-disk device
- during filesystem check
-Message-ID: <apgT1ECUXEF7FtPW@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
-References: <aoxF8FvVffocUSyI@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
- <20260824161512.1332649-1-naraghavan@linux.microsoft.com>
- <20260824224006.GB6038@frogsfrogsfrogs>
- <ao7ygPaBH1AVudFR@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
- <apCRFu5vpNxRLO8Y@mit.edu>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="qxYVZytw"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1788351851; bh=oeGrkJR2LSXUl4C5e/Md9Vtxpmk92D1xpVjUamNgopI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=qxYVZytwXSsqjG/92w+vPp9aduaJe3t0/8+zvgCuVnPpOqPrgXI2rPXTPRA3GUs17
+	 NpBz/R9FDegqrYWpe79W2Oz3Vv2YuwovnYIEvEyTP9vnfL/Z5KJOb68yspR5RgpaLB
+	 s3SoDRls5AYZT+R0qX69m0yVyk64al0IyxBIYmMg=
+Received: from DESKTOP-AT5F202.localdomain ([183.242.244.64])
+	by newxmesmtplogicsvrszc50-0.qq.com (NewEsmtp) with SMTP
+	id 6081624C; Wed, 02 Sep 2026 20:24:08 +0800
+X-QQ-mid: xmsmtpt1788351848tzmyo217w
+Message-ID: <tencent_93CC3232AC6A9418BCE4372286770F91850A@qq.com>
+X-QQ-XMAILINFO: N3M5peIGJjWzMxDt5MokuLIQ1zBP/tMNx0YBamqxXhtx+Qh32IkzPoS3/8r0On
+	 1rDWuFFOX3D72dHB/pbmn/pmeD5khSbFgCVmArv+xKZSD3Wly9u03N8jow3CSkxPY+JjYcgvuxI1
+	 +nCQ4PcCfAXUO7p/cTDT9JNBggr1/TEDVo4WtSyEdDKOVbCKWI5e/IgEhuJhFdC53JuJIxI3DGnX
+	 FUmC8Tv1zWGOY1cCoSBmpgMnoSMx/Fchn0WRlN9s2m9Zh9edlmiMn4gvOvLvpS/udyGx6kURVQTz
+	 9l30+wDnyGZ5dAwx0wpyi+D7gX2qnodlAsxA1G/hX0EIsxgnvySHUKIg/8H+WPE/6czUZOGHcsxR
+	 sjeSe3u41XsvAvlSAv94iclK7966x1WMUqtn5WyahXuuBV7V+csOibq959OrVZfX/M1ti3coOJ48
+	 JaqwWh/kWtwhJutm1qfEklO4kDmBhulKmOUnjMC2ULISQ15TyjrCIF3mrJ27UCsNxhcBmF+uA1w2
+	 oqkIDjnNr70hQianJxgVLRLkPm72VF9uMkxInBMl/ZyUPHuML2Ztym6x9DD04fyRMJSJKxAQwjjq
+	 jzsRB6xnYsr44ErAW9CaXgSMsyNygPKFF+upb/I+IKRQNaeGEbNHNV3tBvGQDx/5X0H82p2MV9/Z
+	 o9YdIjMu9uDpAuMnBMmNhPxlcH+G8+8s44rmHwU3J8MIhkhRqxkRcSSJ7Wzdu42ziTIuSRFs7hH2
+	 I2mUL4y1N3agBecFz23XBOmeF9zExPxYbuYcpNZ8xTlj8uKO7nLVDFdgzIV8k1HACjvkYCSgHhVz
+	 Oy+Jj3WeB1GvBrAiM8ZEfICDaepQpZHdJ8MJQMJpxRgAKm5F6cuxgIOcnuZAB6H2zQyi++xPbI94
+	 UP2IPPJiMo87n/wPzRxRl6YWt5sCmqcOibhPRyyXdW50eiKrHcZTFr8q6qNVjnsK/D6Bg2xb6dY8
+	 qCANk+ogBXVxZsLEXo9DABo/YAKIJeukBwXs+aDItFj7h9+XcHj3YGA5+xlE24O/Rl9LLZ5A2tk5
+	 lDPe7VtnVfk0OCl136GeDg07+hmAt0t0sH4dnrLX7BnntAdFnpVU9LeMz1QXTkUIr3Hl3qnMb2wG
+	 PGqqt9
+X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
+Date: Wed, 2 Sep 2026 20:24:06 +0800
+From: shuo chen <1289151713@qq.com>
+To: sashiko-reviews@lists.linux.dev
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v5] ext4: rewrite ext4_convert_inline_data_nolock to make
+ it safer
+X-OQ-MSGID: <apgVZm_atVxWr7tY@DESKTOP-AT5F202.localdomain>
+References: <tencent_8756434A305EF41A89C387860E424A199709@qq.com>
+ <tencent_FBF9C69AF090A1BF9003C68555A8928D1707@qq.com>
+ <20260902102416.6FDE61F00A3D@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <apCRFu5vpNxRLO8Y@mit.edu>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20260902102416.6FDE61F00A3D@smtp.kernel.org>
 
-On Thu, Aug 27, 2026 at 05:01:09PM -0400, Theodore Tso wrote:
-> On Wed, Aug 26, 2026 at 07:04:48AM -0500, Nandakumar Raghavan wrote:
-> > This was on purpose and not something I missed. The sd_device_get_parent_with_subsystem_devtype
-> > requires libsystemd v251+, and e2fsck needs to keep working in contexts where
-> > that dependency isn't available or isn't guaranteed to be new enough - non-systemd distros, older
-> > LTS systems doing root-fs repair before userspace is fully up, embedded/recovery images, etc.
+On Wed, Sep 02, 2026 at 10:24:16AM +0000, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 2 potential issue(s) to consider:
 > 
-> Cqn you name any other OS that has implemented
+> [Severity: High]
+> Does initializing .not_found to 0 set up a false positive match instead of
+> the expected -ENODATA?
 > 
-> 	https://systemd.io/BLOCK_DEVICE_LOCKING/
+> If a filesystem image is mounted where a file has EXT4_INODE_INLINE_DATA
+> set but lacks the EXT4_STATE_XATTR flag, ext4_xattr_ibody_find() will exit
+> early without modifying is.s.not_found.
 > 
-> *other* than systemd?  So for non-systemd distros, who cares if we
-> don't have the functionality?  So what we could do is to use autoconf
-> with something like this:
+> Because it was initialized to 0 (meaning 'found'), later in this function:
 > 
-> AC_CHECK_LIB(libsystemd, sd_device_get_parent_with_subsystem_devtype,
-> 	AC_DEFINE(HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE, 1,
-> 		[Define to 1 if libsystemd has sd_device_get_parent_with_subsystem_devtype]))
+>     error = ext4_xattr_ibody_find(inode, &i, &is);
+>     if (error)
+>         goto recovery;
+>     if (!is.s.not_found)
+>         error = ext4_xattr_ibody_set(handle, inode, &i, &is);
 > 
-> We would only do the flock(LOCK_EX) if and only if the function is
-> present.  If it isn't, say on MacOS, FreeBSD, or RHEL 7 we won't play
-> the systemd locking game --- which is fine, because it doesn't matter
-> on those platforms.
+> The code believes a valid xattr entry exists at is.s.here (which points to
+> uninitialized space). This causes ext4_xattr_ibody_set() to attempt to
+> delete a bogus entry, potentially leading to out-of-bounds memory
+> operations and a kernel panic.
+Got it.
 > 
-> If you care about running e2fsck built on RHEL 8 on RHEL 7, that's an
-> easy problem to solve.  A executable linked using shared libraries
-> won't work already since the shared libraries on RHEL 8 are too new.
-> But we have a solution already, which is to use e2fsck.static, which
-> is statically linked.
+> [ ... ]
+> > +		struct ext4_extent newex;
+> > +
+> > +		newex.ee_block = cpu_to_le32(0);
+> > +		newex.ee_len = cpu_to_le16(1);
+> > +		ext4_ext_store_pblock(&newex, block);
+> > +		path = ext4_ext_insert_extent(handle, inode, path, &newex, 0);
+> > +		if (IS_ERR(path)) {
+> > +			error = PTR_ERR(path);
+> > +			if (error == -EDQUOT || error == -ENOSPC)
+> > +				goto recovery;
+> > +		} else {
+> > +			ext4_free_ext_path(path);
+> > +		}
 > 
-> > Taking a hard runtime dependency on a versioned libsystemd API for a tool this fundamental felt
-> > like a much bigger cost than by parsing (/sys/dev/block/MAJ:MIN/partition, .../dev), which only
-> > relies on a stable kernel ABI with no library and no version floor. Happy to reconsider if
-> > the project wants to take the dependency, but wanted to flag the tradeoff explicitly rather
-> > than silently pick one side.
+> [Severity: Critical]
+> Does this restricted error check silently swallow fatal failure codes
+> (like -ENOMEM or -EIO) from ext4_ext_insert_extent()?
 > 
-> If we really cared about taking a binary built on a system with
-> libsystemd. and running on a system without libsystemd, another
-> solution that we've used is dlopen.
+> If ext4_ext_insert_extent() fails due to memory pressure or I/O error, the
+> restricted check allows the failure to fall through.
 > 
-> For an example of that's done, see misc/create_inode_libarchve.c and
-> the associated autoconf tests in configure.ac in the e2fsprogs
-> sources.  This is how "mke2fs -d embed_rootfs.tar.gz -t ext4 embed.img
-> 1G" is handled without needing a hard dependency on libarchive being
-> installed.  If it's not installed then you'll just get the error
-> message "you need libarchive to be able to process tarballs".
+> The unhandled error code is then overwritten shortly after:
 > 
-> I don't think the dlopen() approach is needed here, though.
+>     error = ext4_xattr_ibody_find(inode, &i, &is);
 > 
-> Cheers,
+> This completely masks the prior failure, causing the function to complete
+> successfully. The inline data flag is cleared, but the newly allocated
+> block is never added to the file's extent tree, permanently losing the
+> file's data and leaking the block.
+Got it.I will make the inode revert to inline data when the error is 
+neither EDQUOT nor ENOSPC,but it will not free the blocks.
+If the error is neither EDQUOT nor ENOSPC,freeing blocks here could 
+lead to a more severe error.See the patch 
+"avoid infinite loops caused by residual data"
 > 
-> 					- Ted
-Thank you, Ted for the comments. I agree on all points. I will rework this to use AC_CHECK_LIB as
-you described, switch to the sd-device API when libsystemd is present, and
-drop the whole locking feature cleanly when it isn't. 
-Patch v3 to follow.
+> -- 
+> Sashiko AI review · https://sashiko.dev/#/patchset/tencent_FBF9C69AF090A1BF9003C68555A8928D1707@qq.com?part=1
+
