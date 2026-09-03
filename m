@@ -1,74 +1,72 @@
-Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
+Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9583513578
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 22:02:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B05E74F798F
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 22:02:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788472971; cv=none; b=i9wHbrSfR+CEvH/ZkvRvqISfOfvm0z4ooWNApoBqRH9HegYpEU7pG7Q0jwxExxO/TLzixO/HMGQPOxnXH8AunMkXRhTVdDk5tKtEfJ35Fo0+ooJCIPhK4xU/j4hXt0vulsb4Jnrj/j+QWwgqIw2NCNzZXkkdmz5vf/Gxbf72pU4=
+	t=1788472972; cv=none; b=jNz33k9pF2GxqjHK3zJpA+QXag0mIxCxFsr3+Rf+YAKbJFxE2hUcIgjUwSNGKEYh1h7lRizkZ/MXYpMnJnbJqy1kT2yYHCKcgUiPIAC328l25POtBKEfWTg5b7781dVaDm7btcfrsyzVtnqGMghr20QdnEAEPCKw9zppGFZa+Gk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788472971; c=relaxed/simple;
-	bh=SFS4KTaNjP43GEo84W3dmgT5BD9WMreBx2ZNSNMJclo=;
+	s=arc-20240116; t=1788472972; c=relaxed/simple;
+	bh=LAIn6EpYb58ICtK3Is7806tx1nzVEXcSheTY6eo2PZI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=EN3JZMYDrQeXgJSNvMVFPAouXhEBt8o8pcQeaezr0IuPtxNTZuRxJsyBGAVuNbK+fmIxbveDLegkWmlie9iay8UC07GmLQKVbXHfzLiS/JYi7aFbuejIkcgbhhJfY/R45CcBtQObzMapp6fBHE2Hj9UpNStylcG7t0hOxgRqHRI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=BH9WVztG; arc=none smtp.client-ip=209.85.128.51
+	 MIME-Version; b=O3KvlPjUkeTdgsMqysMq0WxjoTnTv37imRoDvbyFuz/wF9ArrFtmYCKiJOYQW+CdX5Db3FCkxsbYaVQ8jgRKN5QB/VK9+unlcXDg4V22NAxn+t7C1sU33FigVCj4rm0aY0Lnzjr8vKVyZ2lFXA0MyqoTc6PmtUatRDb6+Yed5WQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MhwQqFok; arc=none smtp.client-ip=209.85.128.49
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BH9WVztG"
-Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-49b8ce9b733so3346965e9.1
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 15:02:49 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MhwQqFok"
+Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-49b8e527d63so4867425e9.2
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 15:02:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788472968; x=1789077768; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1788472969; x=1789077769; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=F7FM4fCWcFADqh/QMTWVQ2aYK/6QpQQvnSwtEe/df5s=;
-        b=BH9WVztGlRQOVryjQFauUMdkJEHeovsEJo+jyJn7s+w4qvQt8VzHgZpYhNYO+LZo+9
-         fWwgjiXblxNHiv6+mvWfY5jwFavpG4sgZwlesqEudC2JE98o6J2F/RirRNlXzOxDbO1R
-         h7gsShx2BNoK4kwPYM1Ub4rzLeOjHgFF3DKxdLeUswiZpETxWFjPD0J+HRT2q96O2dQq
-         8AReM/lMBCPZ8IrQphABnpV6Pf3VxRgie7H4gg5uPeNFK/nheBqsTrm6oqh4IUKnJJIy
-         PYmsd2dUtaJbtIblP1KdpmbDEgHOIzt/dj4lG5kMNvr/nq4TzTSVetG2RPuj/f0zp+th
-         Bxew==
+        bh=7zTuK9XZMtc9+1AXSlELi2r8768KOpZcGY7rAXOOeIk=;
+        b=MhwQqFok8jS0KaPGcf/FkqAElv/syRLYNAsNs+Na3hO8aTYcNmPetug4KO9vB2+2Mg
+         HMD8RF0Uo7FwitczAmm9sbcjNT9bUtYu7Coi/KqIyUpiMGIg1jeu+iAjHEoaSwUSVDna
+         lFA8WUpaPY2XNSPuYMNBMFWjcjNQdz72CXZVLfCvydMiXp0YVJ0b6jaCAiaJXgzZhKjN
+         LkSScfaRrlad/6b/hLDYFeoJLEWcUz6oC4rNASyOnfxboE9SoxGITcUMwBmUKOrprNvm
+         ZdHc6FHJfxwX1+9j2ZNKCoUzOtIaEwnSb6hiZ1pvcDNB6HUxImPe/Bf5fuU2yMQl6BPZ
+         GZog==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788472968; x=1789077768;
+        d=1e100.net; s=20251104; t=1788472969; x=1789077769;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=F7FM4fCWcFADqh/QMTWVQ2aYK/6QpQQvnSwtEe/df5s=;
-        b=Qhk02MAPoCeVgbLnpkOyABeoiN0LxbuvD92YFQ2TYycDFKNpgt8WpCbyVXK2WUgxPi
-         16xJovjkv7X7pB+ForJjE3X2vQ9LiqvYLQnGVN/2cjDp4/b6TjeDBA2Q6qQNELmd9r35
-         DwMEHz5wYyrTtmfB0sdIEY0YIyx8wxxDWEZ84RaTjk4iGoqSJJAaoGVxlFhqpnD4oMRa
-         THTRNpnMca+IIYyOlWu+UJj3Bc1btEBazzu5bxr9w/IDo0e/gwP5at5h/y74zVix4zDY
-         cIgMe1dY6gC7d5bonx+mDWiWHXceVZfvHYfp5KMWlTKW3AeZh1jvTHH44nb+/udMuC73
-         P1DA==
-X-Gm-Message-State: AFuF++n1A8aqi9Si645bd14qJsHSRCq1kwNOQTtHmbsE+4/2DgqnCI3U
-	I33CtV+g5D6CPIYA8dr/24GAdrRPpnvY4kh2TtIhWEjjJy1d/vKUFmDxEnXuJWQQ
-X-Gm-Gg: AYBFou3skoYvba7sYfc4dFuMGUufumTSAn6ctLVPnCTxmQEVp100S73E38qDxn042cM
-	o0GOJ1xJK54Ke5IOpq/DGYRd36QEAfBnBnZDORu3XUozFsorM5IHEtf6fIaEsYJj14MUjmAkpZe
-	cFr6p5IWgOlLKTp8rezV5Bq8opRrZ3glBdnekOR6V4votJwx/9gIWe6URx95IEsa17KOUuB6JmA
-	+yJuOtHEdRwpXJMVlPQRP+KDrd2ctUdu2HuFwKMxdfK3ocsE057EuHgH5aZ30mJg7wsUBl9KdjF
-	xl6Ka3ti0MLUkEUV4xnTb/rrT6KQoj8yNtpdeQUmxSdekMT3lZwdYpJ/kWeFnZysFj3HnAX6/Um
-	skpdaF6icFgicLKuOXTMQ8NysD5Aii7doBmrHPYEKCQMRG7D1y28mCUewWadaSTaMQJjXNz+0qy
-	hDcUu+wc0uhHEL6ST05AKiDU4CVwio5TfkidUN0XsCun/H3i2Doxt1AcSwhUsfU5l2iNj8xaaj2
-	qnmfMhHZQ18S+WnsG5I
-X-Received: by 2002:a05:600c:8b32:b0:49b:d03:8d3a with SMTP id 5b1f17b1804b1-49cf8244878mr17889895e9.11.1788472968179;
+        bh=7zTuK9XZMtc9+1AXSlELi2r8768KOpZcGY7rAXOOeIk=;
+        b=aCbLyIOsnUVAak+OJcqFUgroF4n5HCbLZQwsHE/5tApRU12QH7wjgihBdLD+6D1TGx
+         AsPg5mRPO7j7DMlKzr6t7wFZZFTC/ZoHUy3u2mC8MqFh4K3Vk16CFhNkJ+y5SeLyPZYB
+         DbZ3YCR8xP/zdGZQwNWuQJl+zhsqmB1IdZ+tgq0mFJ3iPvD6Yzhkcv9HIWmTuZVXRZjA
+         HVCFYPf6mEbp0GrYyTOIYhIOlVub1Z+vSX5ocTHgFYczYljN/QNnQqHYzx3UGl4HvsW/
+         YIEAOQ/KhDBznT1+INNMTlxF87YV8RHqvLbOVVdrwcsk5LdDH09a7ZkuueEjsjiV4hGP
+         zzwQ==
+X-Gm-Message-State: AFuF++n2/Hr/SsOQtGG8c/Lk4mBM7K17Q3ThUKGznUhQXDZsIalECbua
+	WdqWo0q8To5NPtouUdcup96fBCFAgumQXN7qvX8KdMxo7VpnyWE+9IU2NcPQ1w==
+X-Gm-Gg: AYBFou3u0G1eVEW97K2jftAcMJ3xI2fl6m/T4Rzervwca9t0OJ0glzWaldRkJBbKssg
+	JFiLqlo8Wa+juWnQl/jKCKR7Ddv9DcgXJ9d9HIdieMgQtJopxD2QSKJz9b1IEo8z5Qf2XQO/33f
+	ksdP+R+Kj120tyb1Uh6S4+5i2kswI1p2XIybDnQhMISKG57rppe/44KH8wJSKlcRc3X0V3HX6w2
+	JU4jd7kqb815Pm8QYqlzP1zOL/2P07hOrkzoR7//3OOUx9BJzmJd0BAmoU/7Q+91vWFV2lkN7Bq
+	moUToC3jxXQoUmu4AicCyOJnypuuPgyg4nj3Y2X+QMzM5B0uJ/s2iZrMAcytJIsHZZ3PH+84+UT
+	sjJphGjoKZh+0WYKsjALzxbphurlwAawTl9/Ho3tRpxUGa6mAfymZSi3e4edlCnlSigNIxQn7Hk
+	7Dc9B6IfT5GSjE2se2ANnT0ymcTqnPf7aGOz12crdXA2sX7xAQaBbHZBXMtlXiVi+RMqm0qCdqI
+	Zf9IbwyJc6lxZ2w6XY3
+X-Received: by 2002:a05:600c:4ecd:b0:49b:c8e:8e6 with SMTP id 5b1f17b1804b1-49cf7f4a5efmr15704095e9.0.1788472968766;
         Thu, 03 Sep 2026 15:02:48 -0700 (PDT)
 Received: from Cluster1.powerhub ([2a0a:ef40:18b5:9e01:f5de:1ef8:371:ee89])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49cee3b0af8sm104346975e9.0.2026.09.03.15.02.46
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49cee3b0af8sm104346975e9.0.2026.09.03.15.02.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 03 Sep 2026 15:02:47 -0700 (PDT)
+        Thu, 03 Sep 2026 15:02:48 -0700 (PDT)
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <ablagodarenko@thelustrecollective.com>
 To: linux-ext4@vger.kernel.org
 Cc: adilger.kernel@dilger.ca,
 	Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-	Andreas Dilger <adilger@whamcloud.com>,
-	Pravin Shelar <pravin@clusterfs.com>,
 	Andreas Dilger <adilger@dilger.ca>
-Subject: [RESEND v2 03/13] ext2fs: dirdata infrastructure and core functions
-Date: Thu,  3 Sep 2026 18:01:36 -0400
-Message-ID: <20260903220146.19752-4-ablagodarenko@thelustrecollective.com>
+Subject: [RESEND v2 04/13] libext2fs: add helper for dx_root_info lookup
+Date: Thu,  3 Sep 2026 18:01:37 -0400
+Message-ID: <20260903220146.19752-5-ablagodarenko@thelustrecollective.com>
 X-Mailer: git-send-email 2.43.7
 In-Reply-To: <20260903220146.19752-1-ablagodarenko@thelustrecollective.com>
 References: <20260903220146.19752-1-ablagodarenko@thelustrecollective.com>
@@ -86,140 +84,105 @@ Add dirdata support infrastructure in the new lfsck.h header, with
 data structures (lu_fid, ext4_dirent_data_header, ext4_dirent_hash)
 related to dirdata fields.
 
-Define dirdata feature add some other helper functions.
+Also changes to ext2_fs.h and ext2fs.h to support INCOMPAT_DIRDATA.
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Pravin Shelar <pravin@clusterfs.com>
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- lib/ext2fs/ext2_fs.h | 30 +++++++++++++++++++++++++++-
- lib/ext2fs/ext2fs.h  |  3 ++-
- lib/ext2fs/lfsck.h   | 47 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 78 insertions(+), 2 deletions(-)
+ debugfs/htree.c     |  2 +-
+ e2fsck/pass1.c      |  2 +-
+ e2fsck/pass2.c      |  7 +++----
+ lib/ext2fs/ext2fs.h | 19 +++++++++++++++++++
+ 4 files changed, 24 insertions(+), 6 deletions(-)
 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index a4141eb71..73e93f9b9 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -977,7 +977,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(casefold,		4, CASEFOLD)
- #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
- 				       EXT4_FEATURE_INCOMPAT_MMP| \
- 				       EXT4_FEATURE_INCOMPAT_LARGEDIR| \
--				       EXT4_FEATURE_INCOMPAT_EA_INODE)
-+				       EXT4_FEATURE_INCOMPAT_EA_INODE| \
-+				       EXT4_FEATURE_INCOMPAT_DIRDATA)
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-@@ -1135,6 +1136,33 @@ static inline unsigned int ext2fs_dir_rec_len(__u8 name_len,
- 	return rec_len;
- }
+diff --git a/debugfs/htree.c b/debugfs/htree.c
+index 4ea8f30b3..efb858271 100644
+--- a/debugfs/htree.c
++++ b/debugfs/htree.c
+@@ -298,7 +298,7 @@ void do_htree_dump(int argc, ss_argv_t argv, int sci_idx EXT2FS_ATTR((unused)),
+ 		goto errout;
+ 	}
  
-+static inline unsigned int ext2fs_dirdata_rec_len(struct ext2_dir_entry *de,
-+						   int extended)
-+{
-+	int rec_len = EXT2_DIRENT_REC_LEN(de);
-+
-+	if (extended)
-+		rec_len += EXT2_DIR_ENTRY_HASH_LEN;
-+	return rec_len;
-+}
-+
-+static inline unsigned int ext2fs_dir_rec_padding(struct ext2_dir_entry *de)
-+{
-+	unsigned int len = (de->name_len & EXT2_NAME_LEN) +
-+		ext2_get_dirdata_size(de);
-+
-+	len &= EXT2_DIR_ROUND;
-+	if (len)
-+		len = EXT2_DIR_PAD - len;
-+	return len;
-+}
-+
-+/* lu_fid size and NUL char */
-+#define EXT2_DIRENT_LUFID_SIZE		16
-+#define EXT2_DIRENT_LUFID		0x10
-+#define EXT2_DIRENT_INO64		0x20
-+#define EXT2_DIRENT_CFHASH		0x40
-+
- #define EXT4_ORPHAN_BLOCK_MAGIC 0x0b10ca04
+-	rootnode = (struct ext2_dx_root_info *) (buf + 24);
++	rootnode = ext2fs_get_dx_root_info(current_fs, buf);
  
- /* Structure at the tail of orphan block */
+ 	fprintf(pager, "Root node dump:\n");
+ 	fprintf(pager, "\t Reserved zero: %u\n", rootnode->reserved_zero);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 39d1255f9..12925ce2f 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2801,7 +2801,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
+ 		return 1;
+ 
+ 	/* XXX should check that beginning matches a directory */
+-	root = (struct ext2_dx_root_info *) (block_buf + 24);
++	root = ext2fs_get_dx_root_info(fs, block_buf);
+ 
+ 	if ((root->reserved_zero || root->info_length < 8) &&
+ 	    fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 319e7e0e3..cf1678c85 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -650,7 +650,7 @@ static void parse_int_node(ext2_filsys fs,
+ 	int		csum_size = 0;
+ 
+ 	if (db->blockcnt == 0) {
+-		root = (struct ext2_dx_root_info *) (block_buf + 24);
++		root = ext2fs_get_dx_root_info(fs, block_buf);
+ 
+ #ifdef DX_DEBUG
+ 		printf("Root node dump:\n");
+@@ -677,8 +677,7 @@ static void parse_int_node(ext2_filsys fs,
+ 				&cd->pctx)))
+ 			goto clear_and_exit;
+ 	}
+-
+-	limit = (struct ext2_dx_countlimit *) ent;
++	limit = (struct ext2_dx_countlimit *)ent;
+ 
+ #ifdef DX_DEBUG
+ 	printf("Number of entries (count): %d\n",
+@@ -1236,7 +1235,7 @@ inline_read_fail:
+ 		(void) ext2fs_get_rec_len(fs, dirent, &rec_len);
+ 		limit = (struct ext2_dx_countlimit *) (buf+8);
+ 		if (db->blockcnt == 0) {
+-			root = (struct ext2_dx_root_info *) (buf + 24);
++			root = ext2fs_get_dx_root_info(fs, buf);
+ 			dx_db->type = DX_DIRBLOCK_ROOT;
+ 			dx_db->flags |= DX_FLAG_FIRST | DX_FLAG_LAST;
+ 
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 374b8289e..91d269865 100644
+index 91d269865..cf12716e3 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -735,6 +735,7 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
- 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
- 					 EXT4_FEATURE_INCOMPAT_EA_INODE|\
-+					 EXT4_FEATURE_INCOMPAT_DIRDATA|\
- 					 EXT4_LIB_INCOMPAT_MMP|\
- 					 EXT4_FEATURE_INCOMPAT_64BIT|\
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
-@@ -2340,7 +2341,7 @@ _INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
- 
- _INLINE_ int ext2fs_dirent_name_len(const struct ext2_dir_entry *entry)
- {
--	return entry->name_len & 0xff;
-+	return entry->name_len & EXT2_NAME_LEN;
+@@ -2262,6 +2262,25 @@ _INLINE_ int ext2fs_htree_intnode_maxrecs(ext2_filsys fs, int blocks)
+ 						sizeof(struct ext2_dx_entry));
  }
  
- _INLINE_ void ext2fs_dirent_set_name_len(struct ext2_dir_entry *entry, int len)
-diff --git a/lib/ext2fs/lfsck.h b/lib/ext2fs/lfsck.h
-new file mode 100644
-index 000000000..ec763f720
---- /dev/null
-+++ b/lib/ext2fs/lfsck.h
-@@ -0,0 +1,47 @@
-+#ifndef LFSCK_H
-+#define LFSCK_H
-+
-+struct ext4_dirent_data_header {
-+	/* length of this header + the whole data blob */
-+	__u8    ddh_length;
-+} __attribute__((packed));
-+
-+#ifndef DFID
-+#define DFID "[%#llx:0x%x:0x%x]"
-+#define PFID(fid) (unsigned long long)(fid)->f_seq, (fid)->f_oid, (fid)->f_ver
-+struct lu_fid {
-+	__u64   f_seq;
-+	__u32   f_oid;
-+	__u32   f_ver;
-+};
-+#endif /* !DFID */
-+
-+static inline void fid_be_to_cpu(struct lu_fid *dst, struct lu_fid *src)
++_INLINE_ struct ext2_dx_root_info *ext2fs_get_dx_root_info(ext2_filsys fs,
++							 char *buf)
 +{
-+	dst->f_seq = ext2fs_be64_to_cpu(src->f_seq);
-+	dst->f_oid = ext2fs_be32_to_cpu(src->f_oid);
-+	dst->f_ver = ext2fs_be32_to_cpu(src->f_ver);
++	struct ext2_dir_entry *de = (struct ext2_dir_entry *)buf;
++
++	if (!(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_DIRDATA))
++		return (struct ext2_dx_root_info *)(buf +
++						    EXT2_DIR_NAME_LEN(1) +
++						    EXT2_DIR_NAME_LEN(2));
++
++	/* get dotdot first */
++	de = (struct ext2_dir_entry *)((char *)de + de->rec_len);
++
++	/* dx root info is after dotdot entry */
++	de = EXT2_NEXT_DIRENT(de);
++
++	return (struct ext2_dx_root_info *)de;
 +}
 +
-+struct ext4_dirent_lufid {
-+	struct ext4_dirent_data_header df_header;
-+	struct lu_fid                df_fid[];
-+};
-+
-+struct ext4_dir_entry_hash {
-+        __le32 hash;
-+        __le32 minor_hash;
-+};
-+
-+struct ext4_dirent_hash {
-+	struct ext4_dirent_data_header  dh_header;
-+	struct ext4_dir_entry_hash      dh_hash;
-+} __attribute__((packed));
-+
-+static inline void hash_le_to_cpu(struct ext4_dirent_hash *dst,
-+				  struct ext4_dirent_hash *src)
-+{
-+	dst->dh_hash.hash = ext2fs_le32_to_cpu(src->dh_hash.hash);
-+	dst->dh_hash.minor_hash = ext2fs_le32_to_cpu(src->dh_hash.minor_hash);
-+}
-+#endif /* LFSCK_H */
+ /*
+  * log base 2, rounded down
+  */
 -- 
 2.43.7
 
