@@ -1,28 +1,28 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11E674AC16A;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2136A4AC16C;
 	Thu,  3 Sep 2026 12:43:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788439391; cv=none; b=rnbZVyOSC10pi9t7H/5xAFPLI+8x0p3+uhlFwzNKvB5vp525fb56TWofkH/fvPR5Qzv8BAihm/hiImsfpbRSEKiRqhI2TLSbCxrT/iHxq9dCpBBj95KQrCqI1xRqImLTij6VShS5P9LDU8+sCpiSA6auvZyCCB4auipJvUuiv/w=
+	t=1788439392; cv=none; b=l7ePzepvPu8i8Mn2+Fu8Il1p7SoCySQ+gzOj7sAzUY9cdrvqEgy4IZIBv/hjQYXBItCG+/btJfxrBJimMAwh++SK+WUpGbHq2c48YF4APeedOfL1foga4NW57fVI+flfYzcyaurTq1XIX7ecSG5tyqF70Am1SC4sLfEjJknC5U4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788439391; c=relaxed/simple;
-	bh=Hnyb+Mk3PQ/CK1YQ78W7MYKu2oFgAWq30hDLD9h41ZM=;
+	s=arc-20240116; t=1788439392; c=relaxed/simple;
+	bh=MP4vXNnpGuSKq9YK76LeVTZRMi/NAxzPVWUWKUdLnME=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fXCH1ZbDYabz8ILnr/Bab23Lc4TQEgJVrmL44foZsglOGWY/hMJhKFoP5pFA5BHs7qnQ/qYf9i+6/5wlVnB8O78SoEKJ+LMgJTmABWhTZYh/yn3y4wQ3KVdEH3WvMk7RlCH92QqbViKsQ9FbDSOSPt7UJvaBKzTiJOUaroS4nFQ=
+	 MIME-Version; b=WTAeIMkSxIxjtXoPVXVqYswLhApwuM/LKPltxyZM6WkzFgm9uJWkyCT0eLLUiqROqLlIYrKTYzYICUq8s3wHM5ji+LVHaZcdwPOuI149GsFBdqm5uSdZ8ZvlEcJjCcYxeFNG1Gihnc74CjGYd0H+RH4+ycVeX2Ctqf+SjSMZYiU=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hbK415QV3zYQv5L;
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hbK4126z8zYQv4j;
 	Thu,  3 Sep 2026 20:42:09 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 99B6B40F11;
+	by mail.maildlp.com (Postfix) with ESMTP id 1D47040EE1;
 	Thu,  3 Sep 2026 20:42:52 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgA3HglDa5lqAJVrAg--.30843S25;
-	Thu, 03 Sep 2026 20:42:52 +0800 (CST)
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgA3HglDa5lqAJVrAg--.30843S20;
+	Thu, 03 Sep 2026 20:42:51 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yangerkun@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v6 21/31] ext4: add EXT4_STATE_DISKSIZE_GROW_PENDING state bit and helpers
-Date: Thu,  3 Sep 2026 20:35:33 +0800
-Message-ID: <20260903123543.2302999-22-yi.zhang@huaweicloud.com>
+Subject: [PATCH v6 16/31] ext4: implement mmap path using iomap
+Date: Thu,  3 Sep 2026 20:35:28 +0800
+Message-ID: <20260903123543.2302999-17-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
 References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
@@ -55,10 +55,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3HglDa5lqAJVrAg--.30843S25
-X-Coremail-Antispam: 1UD129KBjvJXoWxJF4kCr4fJr48ur1Uuw4fAFb_yoWrKr4Dpr
-	srKry5Gr15Xr9F9w4SqFy7Zr1Yka1rJw48GFy3Gr4qqFW5WrWxKFn2yFy3ua40yrZ5Aw42
-	qFs8KrZrCw18CrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgA3HglDa5lqAJVrAg--.30843S20
+X-Coremail-Antispam: 1UD129KBjvJXoWxWFWfJr17JryxtF43Kw1DGFg_yoWrGrWUp3
+	sYk3yrGrsIqwnF9rs7WFs8Zr1FkayxtFW7WrW3Wr13Za42y340qF48KF1YvF45J3yfur42
+	qF4Ykr18Wa47ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -69,7 +69,7 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxJF4kCr4fJr48ur1Uuw4fAFb_yoWrKr4Dpr
 	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
 	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
 	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1l
+	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Gr0_Xr1l
 	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
 	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
 	CTnIWIevJa73UjIFyTuYvjTR_nYFDUUUU
@@ -77,126 +77,106 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Inodes using the iomap buffered I/O path do not use data=ordered
-mode, so the zeroed EOF block that straddles i_disksize needs explicit
-tracking to ensure it is written back before i_disksize is advanced.
+Introduce ext4_iomap_page_mkwrite() to implement the mmap iomap path
+for ext4. The heavy lifting is delegated to iomap_page_mkwrite(), which
+only requires ext4_iomap_buffered_write_ops and
+ext4_iomap_buffered_da_write_ops to allocate and map blocks.
 
-Add the EXT4_STATE_DISKSIZE_GROW_PENDING inode state bit and three
-helpers: ext4_iomap_clear_disksize_pending() to atomically clear the
-bit and wake waiters, ext4_iomap_wait_disksize_pending() to block until
-the bit is cleared, and ext4_iomap_get_disksize_pending_range() to
-compute the pending range from i_disksize.
+Note that the lock ordering between folio lock and transaction start in
+this path is reversed compared to the buffer_head buffered write path.
+The lock ordering documentation in super.c has been updated accordingly.
 
-These will be used by subsequent patches to serialize i_disksize
-updates with the writeback of the zeroed EOF block.
-
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |  7 ++++++
- fs/ext4/inode.c | 64 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 71 insertions(+)
+ fs/ext4/inode.c | 32 +++++++++++++++++++++++++++++++-
+ fs/ext4/super.c |  8 ++++++--
+ 2 files changed, 37 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 03fa90d2986f..1c3d736fb700 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2052,6 +2052,9 @@ enum {
- 	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
- 	EXT4_STATE_FC_REQUEUE,		/* Inode modified during fast commit */
- 	EXT4_STATE_BUFFERED_IOMAP,	/* Inode use iomap for buffered IO */
-+	EXT4_STATE_DISKSIZE_GROW_PENDING,
-+					/* Has zeroed EOF block straddles
-+					 * i_disksize awaiting writeback */
- };
- 
- #define EXT4_INODE_BIT_FNS(name, field, offset)				\
-@@ -3219,6 +3222,10 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_chunk_trans_extent(struct inode *inode, int nrblocks);
- extern int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
- 				  int pextents, int alloc_extents);
-+void ext4_iomap_clear_disksize_pending(struct inode *inode);
-+void ext4_iomap_wait_disksize_pending(struct inode *inode);
-+unsigned int ext4_iomap_get_disksize_pending_range(struct inode *inode,
-+						   loff_t *start);
- extern int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end);
- 
- #define EXT4_PARTIAL_ZERO_START	0x1
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c1315f09c39d..05dd4ee805fb 100644
+index 88dbbe14d2d7..88d9b48ee828 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -126,6 +126,70 @@ void ext4_inode_csum_set(struct inode *inode, struct ext4_inode *raw,
- 		raw->i_checksum_hi = cpu_to_le16(csum >> 16);
+@@ -4029,7 +4029,7 @@ static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
+ 		return -ERANGE;
+ 	if (WARN_ON_ONCE(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+ 		return -EINVAL;
+-	if (WARN_ON_ONCE(!(flags & IOMAP_WRITE)))
++	if (WARN_ON_ONCE(!(flags & (IOMAP_WRITE | IOMAP_FAULT))))
+ 		return -EINVAL;
+ 
+ 	map_flags = delalloc ? EXT4_GET_BLOCKS_DELALLOC_RESERVE :
+@@ -4087,6 +4087,14 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+ 	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
+ 		return 0;
+ 
++	/*
++	 * iomap_page_mkwrite() will never fail in a way that requires delalloc
++	 * extents that it allocated to be revoked.  Hence never try to release
++	 * them here.
++	 */
++	if (flags & IOMAP_FAULT)
++		return 0;
++
+ 	/* Nothing to do if we've written the entire delalloc extent */
+ 	start_byte = iomap_last_written_block(inode, offset, written);
+ 	end_byte = round_up(offset + length, i_blocksize(inode));
+@@ -7304,6 +7312,23 @@ static int ext4_block_page_mkwrite(struct inode *inode, struct folio *folio,
+ 	return ret;
  }
  
-+/*
-+ * Clear the disksize-grow-pending state and wake up all waiters.
-+ * Called when the pending zeroed EOF block which straddles i_disksize
-+ * has completed writeback or its folio is discarded.
-+ */
-+void ext4_iomap_clear_disksize_pending(struct inode *inode)
++static vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf)
 +{
-+	ext4_clear_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING);
-+	/*
-+	 * Make sure clearing of EXT4_STATE_DISKSIZE_GROW_PENDING is
-+	 * visible before we send the wakeup. Pairs with the implicit
-+	 * barrier in prepare_to_wait() inside wait_on_bit() in
-+	 * ext4_iomap_wait_disksize_pending().
-+	 */
-+	smp_mb();
-+	wake_up_bit(ext4_inode_state_wait_word(inode),
-+		    ext4_inode_state_wait_bit(EXT4_STATE_DISKSIZE_GROW_PENDING));
-+}
-+
-+/*
-+ * Wait for the disksize-grow-pending zeroed EOF block which straddles
-+ * i_disksize to be written back or cleared.
-+ */
-+void ext4_iomap_wait_disksize_pending(struct inode *inode)
-+{
-+	wait_on_bit(ext4_inode_state_wait_word(inode),
-+		    ext4_inode_state_wait_bit(EXT4_STATE_DISKSIZE_GROW_PENDING),
-+		    TASK_UNINTERRUPTIBLE);
-+}
-+
-+/*
-+ * Get the range of the disksize-grow-pending zeroed EOF block range
-+ * which straddles i_disksize if the EXT4_STATE_DISKSIZE_GROW_PENDING
-+ * bit is set.
-+ *
-+ * Return the pending range, or zero if the BIT has already been cleared.
-+ */
-+unsigned int ext4_iomap_get_disksize_pending_range(struct inode *inode,
-+						   loff_t *start)
-+{
-+	unsigned int blocksize = i_blocksize(inode);
-+	loff_t disksize;
-+
-+	if (!ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING))
-+		return 0;
++	struct inode *inode = file_inode(vmf->vma->vm_file);
++	const struct iomap_ops *iomap_ops;
 +
 +	/*
-+	 * The pending bit should be set only when i_disksize is not
-+	 * block-size aligned. While set, i_disksize must not be advanced,
-+	 * and the bit must be cleared when i_disksize is shrunk.
++	 * ext4_nonda_switch() could writeback this folio, so have to
++	 * call it before lock folio.
 +	 */
-+	down_read(&EXT4_I(inode)->i_data_sem);
-+	disksize = READ_ONCE(EXT4_I(inode)->i_disksize);
-+	if (!ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING) ||
-+	    WARN_ON_ONCE(IS_ALIGNED(disksize, blocksize))) {
-+		up_read(&EXT4_I(inode)->i_data_sem);
-+		return 0;
++	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
++		iomap_ops = &ext4_iomap_buffered_da_write_ops;
++	else
++		iomap_ops = &ext4_iomap_buffered_write_ops;
++
++	return iomap_page_mkwrite(vmf, iomap_ops, NULL);
++}
++
+ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -7330,6 +7355,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	if (err)
+ 		goto out_ret;
+ 
++	if (ext4_inode_buffered_iomap(inode)) {
++		ret = ext4_iomap_page_mkwrite(vmf);
++		goto out;
 +	}
 +
-+	up_read(&EXT4_I(inode)->i_data_sem);
-+	*start = disksize;
-+	return blocksize - (disksize & (blocksize - 1));
-+}
-+
- static inline int ext4_begin_ordered_truncate(struct inode *inode,
- 					      loff_t new_size)
- {
+ 	/*
+ 	 * On data journalling we skip straight to the transaction handle:
+ 	 * there's no delalloc; page truncated will be checked later; the
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6d2d323604f9..1c2395aa1d53 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -100,8 +100,12 @@ static const struct fs_parameter_spec ext4_param_specs[];
+  * Lock ordering
+  *
+  * page fault path:
+- * mmap_lock -> sb_start_pagefault -> invalidate_lock (r) -> transaction start
+- *   -> page lock -> i_data_sem (rw)
++ * - buffer_head path:
++ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
++ *     transaction start -> folio lock -> i_data_sem (rw)
++ * - iomap path:
++ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
++ *     folio lock -> transaction start -> i_data_sem (rw)
+  *
+  * buffered write path:
+  * sb_start_write -> i_rwsem (w) -> mmap_lock
 -- 
 2.52.0
 
