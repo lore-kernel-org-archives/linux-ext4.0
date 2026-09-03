@@ -1,88 +1,70 @@
-Received: from mx1.zhaoxin.com (MX1.ZHAOXIN.COM [210.0.225.12])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id B84612417D1;
-	Thu,  3 Sep 2026 02:18:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=210.0.225.12
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D6FBB344DA0
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 02:23:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788401939; cv=none; b=XUSW6IWIC+FHfw7EVvxmpxlC3cSRcyf+Q3y4+QPnu5dNY8PEsGMME/y4+UhimLG6HuLUixj010i3acnHWEk9QW+/fKZfUj8q/n4x2hvtHS6fSAjoghKN7oWVL7IqpWW/yyyu0OZBDMXPeIlLfXiKEXFcOXoESP0FGYb6He3sT6g=
+	t=1788402215; cv=none; b=IFtG5sBqxHh9HpoZs8FxV7CSfIoC13XSCaAViRcBBdVCSN0hnKZxUEO6YIUrLG+u8kkPM7dJsC6Ycq+9+qm6FF7ZubKaZ/JnhvzbRr2xfJJX+4Hlb65ZsnL3qTz7FYzNQdYCDovbScngp8C8p4wg4jAjmKYSi1Nj2QtrmXyj2QI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788401939; c=relaxed/simple;
-	bh=eEOoUvUVndZuacKGAmUUg9p/ojZXQ0ExLjhIXV/pIps=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=FIh13BsIeYngvBTxqphDXdye2IjMe3tokqmccZ18sMe+bzIH+zraBpOtCggNkieiiQ7Wy+krq/XC864lkbSuxZkjVvaL+cEzfo5YpDHiRiJZoaJEPmWg8Da6lY/i8preR8BgHkIq4yp+BU6u22+z4dUDvzXCChVm6tBNYbAmvYc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zhaoxin.com; spf=pass smtp.mailfrom=zhaoxin.com; arc=none smtp.client-ip=210.0.225.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zhaoxin.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zhaoxin.com
-Received: from zhaoxin.com (unknown [127.0.0.1])
-	by mx1.zhaoxin.com (MTA) with ESMTP id 4hb3Dj2X3Fzb0tjx;
-	Thu,  3 Sep 2026 10:18:45 +0800 (CST)
-Received: from zhaoxin.com (unknown [10.28.208.166])
-	by mx1.zhaoxin.com (MTA) with ESMTP id 4hb3Dh4svczb0tjx;
-	Thu,  3 Sep 2026 10:18:44 +0800 (CST)
-Received: from zjh-os.zhaoxin.com (zjh-os.zhaoxin.com [10.28.24.13])
-	by zhaoxin.com (8.30) with ESMTP87fa4cd775cc3305984f7158c71e50db
-	Thu, 03 Sep 2026 10:18:44 +0800
-X-Eyou-Smtpauth: jonaszhou-oc@zhaoxin.com
-X-Eyou-EnvelopeSender: jonaszhou-oc@zhaoxin.com
-X-Eyou-From: JonasZhou <jonaszhou-oc@zhaoxin.com>
-From: "=?UTF-8?B?Sm9uYXNaaG91LW9j?=" <jonaszhou-oc@zhaoxin.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-kernel@vger.kernel.org,
-	jonaszhou@zhaoxin.com,
-	louisqi@zhaoxin.com,
-	jianhuizzzzz@gmail.com
-Subject: [PATCH] ext4: isolate s_orphan_lock from read-mostly fields
-Date: Thu,  3 Sep 2026 10:18:35 +0800
-Message-ID: <20260903021836.962624-1-jonaszhou-oc@zhaoxin.com>
-X-Mailer: git-send-email 2.43.0
+	s=arc-20240116; t=1788402215; c=relaxed/simple;
+	bh=kQwD1zOrDnHSVKYV2ychBaOKVb2gfKy15sYwkGwGc2c=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=ILx29P2KOko5q6uQU0Mn9dw7+4kNd5JLpJK+UPenweA3KzrjixwAG4TiLSxYimClMfZ8YqgNSgCPzb1s0MUHj4uUlNRIKszW7Rv5y9jAlu9Ld3nWMKGaRt9GuPt32P/zIJHe2BhASVlMx4JNSuXlLr9lRRsQq184VC/71Nu6tY4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QcppnAB8; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QcppnAB8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 335811F000E9;
+	Thu,  3 Sep 2026 02:23:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788402211;
+	bh=ge3KriVRvJ/H/37yU2E9wS1Y0lqq5KOxqVSDXcFkKCw=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=QcppnAB8xLSvbbNEaRaw0/d61UxNWMPTI5kf1w8ONC1pNARpCYL5BYxVPk3a6XO6+
+	 H5IdEqjtQ5EiSYPpZaQBvKAKbheOCsaXev+flGEQv3e/45NXEj9PawTYuUDya56oiP
+	 DvgSeyj+QFa6mWbL7laPN+gX7PHNL3RF+B+qtkutv7WUws+88ZirF/rpf5FS1DJvvw
+	 uqxsgKcsfd331cOM1AxGK9vKtOtrc+MNxyNPv87DgCnZptjMlY0X8zAi7iI5v+FHGM
+	 VvIg8oEqdLpgS7XXmji90JmOG611vPRfQcChNY6f3mt06wqawEWG19KpAj9AJpJ3x7
+	 ZtIi5O38jan2Q==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: isolate s_orphan_lock from read-mostly fields
+Reply-To: sashiko-reviews@lists.linux.dev
+To: JonasZhou-oc <jonaszhou-oc@zhaoxin.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260903021836.962624-1-jonaszhou-oc@zhaoxin.com>
+References: <20260903021836.962624-1-jonaszhou-oc@zhaoxin.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 03 Sep 2026 02:23:30 +0000
+Message-Id: <20260903022331.335811F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Eyou-Sender: <jonaszhou-oc@zhaoxin.com>
 
-From: Jonas Zhou <jonaszhou@zhaoxin.com>
+> From: Jonas Zhou <jonaszhou@zhaoxin.com>
+>=20
+> s_orphan_lock is modified by orphan-list operations, but currently shares
+> a cache line with s_journal and s_ext4_flags.  The latter fields are read
+> from common ext4 paths, so unrelated accesses can cause the line containi=
+ng
+> the lock to bounce between CPUs.
+>=20
+> On a two-socket Intel Xeon Silver 4208 system with 16 workers, throughput
+> improved by 4.6% for stress-ng.dnotify and 1.7% for stress-ng.unlink.  Pe=
+rf
+> c2c showed that HITM events on the affected fields decreased from 3,699 to
+> 3,125 (-15.5%) for stress-ng.dnotify and from 1,368 to 571 (-58.3%) for
+> stress-ng.unlink.  Remote HITM events decreased by 45.1% and 65.5%,
+> respectively.  The journal/flags line had no remote HITM events after the
+> change; the remaining remote HITM events were on the orphan-lock line.
+>=20
+> Signed-off-by: Jonas Zhou <jonaszhou@zhaoxin.com>
 
-s_orphan_lock is modified by orphan-list operations, but currently shares
-a cache line with s_journal and s_ext4_flags.  The latter fields are read
-from common ext4 paths, so unrelated accesses can cause the line containing
-the lock to bounce between CPUs.
+Sashiko has reviewed this patch and found no issues. It looks great!
 
-On a two-socket Intel Xeon Silver 4208 system with 16 workers, throughput
-improved by 4.6% for stress-ng.dnotify and 1.7% for stress-ng.unlink.  Perf
-c2c showed that HITM events on the affected fields decreased from 3,699 to
-3,125 (-15.5%) for stress-ng.dnotify and from 1,368 to 571 (-58.3%) for
-stress-ng.unlink.  Remote HITM events decreased by 45.1% and 65.5%,
-respectively.  The journal/flags line had no remote HITM events after the
-change; the remaining remote HITM events were on the orphan-lock line.
-
-Signed-off-by: Jonas Zhou <jonaszhou@zhaoxin.com>
----
- fs/ext4/ext4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 724a27e8be61..a3f16a981664 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1644,7 +1644,7 @@ struct ext4_sb_info {
- 	/* Journaling */
- 	struct journal_s *s_journal;
- 	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
--	struct mutex s_orphan_lock;	/* Protects on disk list changes */
-+	struct mutex s_orphan_lock ____cacheline_aligned_in_smp;
- 	struct list_head s_orphan;	/* List of orphaned inodes in on disk
- 					   list */
- 	struct ext4_orphan_info s_orphan_info;
--- 
-2.25.1
-
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260903021836.9626=
+24-1-jonaszhou-oc@zhaoxin.com?part=3D1
 
