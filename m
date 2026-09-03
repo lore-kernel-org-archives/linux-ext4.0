@@ -1,120 +1,66 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A80134A5C27
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 13:02:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B26B14A6CF0
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 13:02:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788440546; cv=none; b=TxHjgzywJ8RJmldYN5em6N1ieVo5n0/vD+i4PFFwcL2SrnRjxlmB3slBK6pB9aijo2zfvkjeKbNtJnWWT7pwZyS65GwgSYTD17RZiGMkrnHv9dtJi6z9N2eeDE/jHAWhEYjVR9kp2G/eqCBVmJ4vx5QL9SyxiDNJiF16ioIAo9o=
+	t=1788440556; cv=none; b=YAQx1vEU3OITWH3vW0lWx4gzYzB+M1wyfkNYWWmfp2/oFQuq87prH8Efhxj2KPbFjgY0ra0vbuEntsjaoBY4gRlyL0rcD7SzYk/0fzSJ5VEduNy6nYgqGq/OXaVN7fLesYNcoVTEx34SGSlOXYnWUnIB4zoPJCB44zzS+BDq/cg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788440546; c=relaxed/simple;
-	bh=BjW74CL/GRp94pbf5bF010+sofDvHgtwKgG7IdQzb6w=;
+	s=arc-20240116; t=1788440556; c=relaxed/simple;
+	bh=1YC/ilksJg4wyJJZ701Z5qWOqr/ISb6YJ+zc/trmJZ8=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=Y1xDO8MoSuGOhVZqdqH2Qc1dYrQq35Brmolzh7vVkzQIlzS2vqqGy0FnQ1LMaEqGAzuq1CHoQvUv1XLTbr3V6AQbljqQShp689xQy6oO7QIC2An4Xmrg6X6UuXeZtzLlzWOl2Tvq/hqRn+fgVkgkOfSCq4HLfo1cqclvUWDrzHQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CM8r8mi/; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=tp7PoYjp5oiwUd3tcqkewNC0GCara+6w777zi/JDanvpgtkLVe3H3nMi8ONvPlb0+tYSL17JAKk1hgd8ffBB6P1u3DAZNhcrCoCM9KXnwBnk314BYXOG+pYoeeB6233IwahbYCr5b1IFhH0iVTtz//9YKDM0R+5lJ9NmBAQ9Z/k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mzkDrmn0; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CM8r8mi/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA3BC1F000E9;
-	Thu,  3 Sep 2026 13:02:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mzkDrmn0"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F0E21F00A3A;
+	Thu,  3 Sep 2026 13:02:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788440539;
-	bh=i1XHrNsX3bOtEp40XbGi9tHDqNgym700AtDIyoXwhq0=;
+	s=k20260515; t=1788440544;
+	bh=1YC/ilksJg4wyJJZ701Z5qWOqr/ISb6YJ+zc/trmJZ8=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=CM8r8mi/NTozAsWqLOb2lzyXJr4lbJLrMZPu6iFMVf2bSjc2hvNq/GmlSuSclAsQt
-	 l+ReB0Gi/6XNB3oTJTiM/4LDDI88oTG0AwkKN2GDeATfD/haEjnVNBLmNDJv9oIbMI
-	 VGAH77ReLgJYQ0R2fMBXXM/Un3VbMz1YZk65xXDrZ2rXJmWb22xSz4JzgHneBgAWYI
-	 gJsdSLOs7/CShHAnZVpI69q2Bp/VPZ7c7Mey/pEMFHzL4OFLDKC28OaspKr5+3d3Ln
-	 esWmf22ugag0PAtmMRAgMXYB/rmu4xGC3i2/f8+5OJCF3TkGZ/h3MYSx3DCIoKwfOQ
-	 RH77LHjtco6tQ==
+	b=mzkDrmn03upuI5KHGFPNFqFm6s0wv01EKEuqQonPyTsYIfpVfRGktr4bw57uUvygZ
+	 Q38JUl56kcqF4z4KrItgFT7mPsQT6qvpDQAFEWy4yV2Tym2180GvewNRl/PofVsb+s
+	 b70o6Qh6N+2dk2s0v4x/M9I5LT0yoeu6/CYv7d0xmZFgLETKaodeJtav3x4SICMyuK
+	 7zd0TcaolI2ARKMMe05NXpDPzxNWwZ4V1HVXwFfpL0fysxnaAK97bTrhRqU9VPVU8u
+	 GvpUJXKIC2AE0IPoAJ/OLtx/6ciivuOhcG7ALs+l7mhLxFyORFnm+TchPUc6eNP2ah
+	 QdH6765PyqHVg==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v6 05/31] ext4: recheck extent status tree before block
- allocation
+Subject: Re: [PATCH v6 07/31] ext4: allow ext4_map_blocks() to start its own
+ transaction handle
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260903123543.2302999-6-yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260903123543.2302999-8-yi.zhang@huaweicloud.com>
 References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903123543.2302999-6-yi.zhang@huaweicloud.com>
+ <20260903123543.2302999-8-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 03 Sep 2026 13:02:18 +0000
-Message-Id: <20260903130218.DA3BC1F000E9@smtp.kernel.org>
+Date: Thu, 03 Sep 2026 13:02:24 +0000
+Message-Id: <20260903130224.9F0E21F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] Unbounded retry loop in `ext4_map_blocks` can lead to livelock.
---
+> From: Zhang Yi <yi.zhang@huawei.com>
+>=20
+> Make ext4_map_blocks() start its own transaction handle when the caller
+> does not provide one. The handle is started after the lookup path
+> confirms that allocation is actually needed, and is stopped at the
+> unified out_handle exit path. This avoids unnecessarily starting a
+> handle for pure mapping queries. This prepares for the buffered iomap
+> writeback conversion, which improves performance for fragile overwrite
+> cases.
+>=20
+> Suggested-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-commit 084efaf4a2100728f08798dc518e2664e9b89954
-Author: Zhang Yi <yi.zhang@huawei.com>
-
-ext4: recheck extent status tree before block allocation
-
-This commit adds a sequence number recheck of the extent status tree
-before block allocation in ext4_map_blocks(). The goal is to ensure a
-racing truncate does not trim the extent between lookup and write lock
-acquisition, which could lead to quota leaks. If the sequence number
-has changed, the lookup is retried.
-
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d703e95a6f62d..fb4834608fd89 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -734,6 +734,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *i=
-node,
->  	else
->  		ext4_check_map_extents_env(inode);
-> =20
-> +create_retry:
->  	/* Lookup extent status tree firstly */
->  	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
->  		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
-
-[ ... ]
-
-> @@ -820,6 +823,19 @@ int ext4_map_blocks(handle_t *handle, struct inode *=
-inode,
->  	 * with create =3D=3D 1 flag.
->  	 */
->  	down_write(&EXT4_I(inode)->i_data_sem);
-> +
-> +	/*
-> +	 * Check the validity of the mapping found via the extent status
-> +	 * tree or the disk query. A racing truncate may have changed the
-> +	 * extent, since writeback does not hold i_rwsem or the folio locks
-> +	 * covering the full extent.
-> +	 */
-> +	if (map->m_seq !=3D READ_ONCE(EXT4_I(inode)->i_es_seq)) {
-> +		up_write(&EXT4_I(inode)->i_data_sem);
-> +		map->m_flags =3D 0;
-> +		map->m_len =3D orig_mlen;
-> +		goto create_retry;
-
-[Severity: High]
-Could this goto statement in ext4_map_blocks() lead to an unbounded retry
-loop causing a livelock?
-
-If an unprivileged user triggers a file writeback concurrently with a
-tight loop of operations modifying the extent tree (such as truncate
-or fallocate), the i_es_seq sequence number will continuously update.
-
-Since there is no retry counter or a pessimistic locking fallback
-(like performing the lookup entirely under the write lock after some
-attempts), it appears the writeback thread could be starved indefinitely
-here in fs/ext4/inode.c, spinning at 100% CPU.
-
-Does this need an upper bound on retries or a fallback mechanism to
-prevent system stalls?
-
-> +	}
->  	retval =3D ext4_map_create_blocks(handle, inode, map, flags);
->  	up_write((&EXT4_I(inode)->i_data_sem));
+Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260903123543.2302=
-999-1-yi.zhang@huaweicloud.com?part=3D5
+999-1-yi.zhang@huaweicloud.com?part=3D7
+
