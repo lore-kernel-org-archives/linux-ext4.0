@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 198EC4A484E;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86A604AA405;
 	Thu,  3 Sep 2026 12:43:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788439388; cv=none; b=ABuSOHxqJP/ft2QGc+sKvp45dOil2mm/QFG+53+x1QeU5RgLqF99a2bxMiVwb3014H5hUJ10jCuH+/XrZ7daYcEItx8qnjIVUzhSo6iZPFZkl9TPHS7VAAiRup+Jf9pPZRdkVB2hPcS3LCxKSAcMcIBvNtCdg36Jsk4ox4xV524=
+	t=1788439390; cv=none; b=WAC9pIOd4Wn/AMkTRUZQyxjUjoXYaw3shmiWIMRj6bBmQdvhMV8XHjpLQ3vjljJ224Mg/mKTgwkJusad1uk5HyQlF2UAu6T3a5R6XlrGNqNyZxVnNFtHx31a9EdEs/FvUtX5HnELXFnR3x8MgrePBUNH8jMMjElAlA2wIkfEV+I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788439388; c=relaxed/simple;
-	bh=55LWSlA+cZf0IUuWbriHoL+GYdRb5GJn2PHH18Wrrfk=;
+	s=arc-20240116; t=1788439390; c=relaxed/simple;
+	bh=PB3PXXhoKp/H0WKcMGZgcSfjQte96En4jDns2IowPig=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gb8itYyrXM5OTq6qHh5eDTZe0nwtWmMR+7e6jw8m2aK/7XnZAc9Qgod9GvkKDG2kdeY0/XUwS+d207b5MMhuj9N9t2jQ2D1ijQHysza21UPNl4o+HpwxAbTlTps7amwQjHwVn+Ey8Zw0DLf/M8Rdy0hdlPzL7nwYNYTmvn7GYRc=
+	 MIME-Version; b=pRYSvlj5q21vI/WTV5EyUcuCsLiQx9/Ct1FQtXNcl+KzlzDbVdv9SE6ZSsYOEXCm63gRuO30MFultHdukS9BuK+WkJKRrBxgqhJSdX+SnpdKNfTcY59WcJuHDBWB0WqM+8SV7iy9cHBfmnbJR+8XGXMlZfKFoMgQXoFuRnmF5b4=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hbK405YfBzYQv3w;
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hbK404l06zYQv4L;
 	Thu,  3 Sep 2026 20:42:08 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 9F90740B82;
+	by mail.maildlp.com (Postfix) with ESMTP id 82C3B40B82;
 	Thu,  3 Sep 2026 20:42:51 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgA3HglDa5lqAJVrAg--.30843S16;
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgA3HglDa5lqAJVrAg--.30843S15;
 	Thu, 03 Sep 2026 20:42:51 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -42,9 +42,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yangerkun@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v6 12/31] ext4: pass out extent seq counter when mapping da blocks
-Date: Thu,  3 Sep 2026 20:35:24 +0800
-Message-ID: <20260903123543.2302999-13-yi.zhang@huaweicloud.com>
+Subject: [PATCH v6 11/31] ext4: implement buffered read path using iomap
+Date: Thu,  3 Sep 2026 20:35:23 +0800
+Message-ID: <20260903123543.2302999-12-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
 References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
@@ -55,10 +55,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3HglDa5lqAJVrAg--.30843S16
-X-Coremail-Antispam: 1UD129KBjvJXoW7Zw4UKFy7uF1xXFyUZr15twb_yoW8uFWDp3
-	9Ykr15Gw1xZw1v9ayxX3WxZFyrKay3J3y7KFWfXw1Fkas8WFySgF1j9F12yFykKr4xXF4F
-	vF40kry8Ca4ayFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:cCh0CgA3HglDa5lqAJVrAg--.30843S15
+X-Coremail-Antispam: 1UD129KBjvJXoWxGrW3tr4DXry8JFWkKryUZFb_yoW5Ww1DpF
+	90kFy5Gr4UWrnF9F4SqFZrAr1Yka1xJa1UWrWfGwnxuF90krW2gayUWF1Yva15t3y7Ar48
+	XF4Ykry8Ww4UArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -77,50 +77,91 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The iomap buffered write path does not hold the folio lock between
-mapping the inode extent and copying data. Therefore, it can race
-with writeback that modifies the extent type (e.g., from unwritten to
-written). This can lead to data corruption on partial writes, as
-iomap_block_needs_zeroing() may return a false positive based on a
-stale extent. The iomap infrastructure uses the sequence counter
-stored in the inode to detect such stale mappings.
+Implement the iomap read path for ext4 by introducing a new
+ext4_iomap_buffered_read_ops instance. This provides the read_folio()
+and readahead() callbacks for ext4_iomap_aops. The implementation
+introduces:
 
-Commit 07c440e8da8f ("ext4: pass out extent seq counter when mapping
-blocks") added the m_seq field to ext4_map_blocks to pass out extent
-sequence numbers, but it missed two callsites within
-ext4_da_map_blocks(). These callsites are on the delayed allocation
-path, which is needed in the iomap buffered write path. Pass out the
-sequence counter to ensure stale mappings can be detected.
+ - ext4_iomap_map_blocks(): Helper function to query extent mappings for
+   a given read range using ext4_map_blocks() and convert the mapping
+   information to iomap type
+ - ext4_iomap_buffered_read_begin(): The iomap_begin callbacks that maps
+   blocks, validates filesystem state, and populates the iomap. It
+   returns -ERANGE for inline data which is not yet supported.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/inode.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 48 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 47 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d2398cf275ae..4c63fdc36626 100644
+index 7619633506c4..d2398cf275ae 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1972,7 +1972,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	ext4_check_map_extents_env(inode);
+@@ -3958,14 +3958,60 @@ const struct iomap_ops ext4_iomap_report_ops = {
+ 	.iomap_next = ext4_iomap_next_report,
+ };
  
- 	/* Lookup extent status tree firstly */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
++static int ext4_iomap_map_blocks(struct inode *inode, loff_t offset,
++		loff_t length, struct ext4_map_blocks *map)
++{
++	u8 blkbits = inode->i_blkbits;
++
++	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
++		return -EINVAL;
++
++	/* Calculate the first and last logical blocks respectively. */
++	map->m_lblk = offset >> blkbits;
++	map->m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
++			   EXT4_MAX_LOGICAL_BLOCK) - map->m_lblk + 1;
++
++	return ext4_map_blocks(NULL, inode, map, 0);
++}
++
++static int ext4_iomap_buffered_read_begin(struct inode *inode, loff_t offset,
++		loff_t length, unsigned int flags, struct iomap *iomap,
++		struct iomap *srcmap)
++{
++	struct ext4_map_blocks map;
++	int ret;
++
++	if (unlikely(ext4_forced_shutdown(inode->i_sb)))
++		return -EIO;
++
++	/* Inline data support is not yet available. */
++	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
++		return -ERANGE;
++
++	ret = ext4_iomap_map_blocks(inode, offset, length, &map);
++	if (ret < 0)
++		return ret;
++
++	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
++	return 0;
++}
++
++static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_buffered_read_next,
++			      ext4_iomap_buffered_read_begin);
++
++const struct iomap_ops ext4_iomap_buffered_read_ops = {
++	.iomap_next = ext4_iomap_buffered_read_next,
++};
++
+ static int ext4_iomap_read_folio(struct file *file, struct folio *folio)
+ {
++	iomap_bio_read_folio(folio, &ext4_iomap_buffered_read_ops);
+ 	return 0;
+ }
  
-@@ -2025,7 +2025,7 @@ static int ext4_da_map_blocks(struct inode *inode, struct ext4_map_blocks *map)
- 	 * is held in write mode, before inserting a new da entry in
- 	 * the extent status tree.
- 	 */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, NULL)) {
-+	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es, &map->m_seq)) {
- 		map->m_len = min_t(unsigned int, map->m_len,
- 				   es.es_len - (map->m_lblk - es.es_lblk));
+ static void ext4_iomap_readahead(struct readahead_control *rac)
+ {
+-
++	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+ }
  
+ static int ext4_iomap_writepages(struct address_space *mapping,
 -- 
 2.52.0
 
