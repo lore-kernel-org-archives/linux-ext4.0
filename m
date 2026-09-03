@@ -1,135 +1,126 @@
-Received: from mail-pf1-f171.google.com (mail-pf1-f171.google.com [209.85.210.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD7BE488227
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 12:07:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.171
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788437223; cv=pass; b=GlH22S7Ou687eF4WV9uiuWv55uWa9GQcci6XNAG2P+TzjRXq0/4H3qAV1bgu5d6z55k3DxYFTO+g40nw1hUZ9VrlI4NZe/gRVyBt9faofiILXUNEbMKo8o8ESAfCexnG8f3mtdRB1Ck65CUCAxJTy/YDjd8aiVrOCsCTojA6CUE=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788437223; c=relaxed/simple;
-	bh=N9hcHMJS/8lnE6uQtyDcuSOjyISuIsi+YVlWMBbwn9U=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=uKsdd2LKUWzTOebbZnzTXI4Bv6fwXctcvTiTTn+5j9HxF+BZgWf+9guzGRA66cEB24aFaj66rmohfoiYuLhmC+luQUGcNYd2OX+5i+Uja6ZrRPAPH7AGr6NkxvlI1CdBPlUqV/49ZqLnbv6z+z6odifHQZTxJcY9iaRt/bV70PE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=l5nR44zl; arc=pass smtp.client-ip=209.85.210.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF5C64A0EEE
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 12:09:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788437343; cv=none; b=TnYqpftLs4p2Z/K6khM3OKRgiSxrEb800FXwV/5YxnqLavbAWZWgSAZ0TsBy5XhtSaQXD3IEpuQKhhKgOgLeG+OFp2ZaFFCAQf+4u4YuYpa0m1FOQqIi0LFWbadVsRU4Atc2WTCOB7vFt/KXiyYqSRpt2CwCI7SD8WbbghlCQFY=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788437343; c=relaxed/simple;
+	bh=KgwL73l0vUC2/3WvQT/lKV+5/BLJD5plNPjXPtEsNRI=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=eYS7aN9GzcfNY8LhEEa3CWn9vjuPgUHx2+8MS62ShQpquG0U4COpDwJaNcuTjhR/tVNNuiJnh3MaNWRC5Rf4emYt+0MwsUPCr3xk9d7TfbgVIEokyqRr1ynn1VtsFvTR/xHaeamPy0Fr/qZ3z4icUPX7d5Qk5oMfUJJ+5I8cLvY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GW5tDjUh; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="l5nR44zl"
-Received: by mail-pf1-f171.google.com with SMTP id d2e1a72fcca58-8568e3ed034so1911580b3a.0
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 05:07:01 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788437221; cv=none;
-        d=google.com; s=arc-20260327;
-        b=VL+RtwYLPhcYKhGLx54+56c0VZEebbNHvfMBrHgdCoF/u712SiXejeYZQK5fAcD8qD
-         8PCNG0FiV0X+YVpPMZuet8oJzgEWF9TNBxQ0QYyW7kjnoBMtyDYW6hADm58MdsQL72dD
-         1TIUPBTyNo21abWJA3k/ABvpO+FPaXcH0BrN1ccxZ8ns+pA0j5w/XeK2hHSU5IzltY3S
-         eVG1CPTkM4oCx1V0XgboLe+OWj1j/Ygaz/NgvWLFU4cUhx7hYxpBGxdO6PgqpoBaumZE
-         YOe4n/VRmkJtUW1ZrcuIobjdKdNJg2H8Coq2XfVy6JxDVSzduuuaMFuZtB3mHI/2MBsU
-         935A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=T7mRs8f62kLAbWPgFDhouIuEptLLIIkw44oKaw49xlg=;
-        fh=nCXZNUEJvhC5/myFn8dQkanVsv+A48s5BonG1oly1Og=;
-        b=EDa1qZ0ImuSjr6k/W2JcWBwFBwrSy+WsljJFB1jTOKiWpG4BIsib0oCpr6LGsFigLD
-         v+EBnv1q9OiuoYjSN0l9mFM3Zx4dixCabTK+M5ry/CgHSYZzgXVUccMTgOPVuXM/qZ3j
-         XtrZdnWWR+x1Nnsw/gc+Ct0YfWJ+KkzvCk+ryLIz0oupdhPz8IcQCEp/3UOpPWazevnH
-         E0ROSUPEH2jxylyQWvCcVuRYMR4EqqeJpcrZ4kHjQ4MjjPFHjxNZyGYupo+0U9do0Npe
-         74Xd5VFgWN7sBg/l8dqa5C84gn5WtRoS43+6gZ7wiyci8SSpSkLlsWktU64rRUJR9BCj
-         DoBA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1788437221; x=1789042021; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=T7mRs8f62kLAbWPgFDhouIuEptLLIIkw44oKaw49xlg=;
-        b=l5nR44zl3xNW0KOvLvjUE8EY1mXbPtRD/yYqBlmVsGcr6n25HyQADIdD3tdCORtHgY
-         P75Lwdzg3MI4MQyWBHggbiynQ6VxDBuFfft6N6tAEGlLePLoq++xZHFcTVs5HdgNg2jc
-         tfAHIao66uK+n73EyyUw6jy3J9bL/G6uAmFaUXO7nmXm9O3eNKhlB4LJo2Ko3zOYu9FT
-         UPGyexTbuUFP1hyGYYnZjMbz09jTwsm61Ry5HZkCLKK5egzpO8FNq5Vv/npodJ8P3Rc9
-         /S8MuvabAa6g9UfS7Hy4/KAl4iku4NQkjRDEp+Ojb4LqeXoedJq07S7PSeb1VkV6IrDw
-         06/w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788437221; x=1789042021;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=T7mRs8f62kLAbWPgFDhouIuEptLLIIkw44oKaw49xlg=;
-        b=pLRt1BDlzhgKDbQq0/VRMuKddfxXe8ccmxe1vND9wqlZzDkJyeTY0SJkeygtKKktLX
-         swPKEJ4wkh5laRH2yhY8f8qa9o5dg2CSfI8V0Uir0IftDLEWk5FEZJBAQgZ2p4QdCk3E
-         pXg0oswW1XQO0LZ/jAyGWG3+OygiD7Ezc7vmdh2wN+27VpepzB3CeF8hVvcK2H+IbMbf
-         2GEMC121mVAuzNDNk2ugmX2qIG3+Yn0eGE4SW95iQSUCmqF7QMQN16qp7msSLoeZAwVk
-         jueXzeyaB8ooscxveIqJzIlWQxT74AlxnS3yDqkpVp0hPZrhwzUm9LVL3RGwWrcsABSw
-         XRfQ==
-X-Forwarded-Encrypted: i=1; AKwUvBxqgcSHOYrXCxWUOR34TdVyC5UQjsR3wgUaG1ulaYwRpoiwCKtt7W0ZG+HzfhLH/8GLYgeAbJTmCsXc@vger.kernel.org
-X-Gm-Message-State: AFuF++k21t8wL3RKBj0toDnHVqu/TwNSGduqtmjZmou2N0aSoYrlCZ6e
-	xQAhmQHhZWajlQ7b6SwD/IVOUHjsHIQMNmt15HQn4qj/lLbn4Ynzhs1BIa2FmkWzawlG1C43YZA
-	2DFgdAotmFR/70zXjvoHdOTbBrQfTN44p6OoYSVW/
-X-Gm-Gg: AYBFou39YTwVgnfWIUKgook935JtjSiXlAtXzDJKjU/pj/09dijDJzfyaIPk8b5iYz4
-	U0TNPgzYYm+B3RCx0IbbyGtx7sE1+QNyv+S3rvfMbY0zAZYN+c7Kts5ir/+1kPitoJyVET5Tao3
-	JRDlBkX9t4/X/vNG3kus6D+0AiW23E0xjrZ+qgP8rSphrARIh/EP0LyWLE4tJO+ItdGPGV8Zsik
-	FdoJiQFOarfthe8NU/vLIQ/jBHth3nxiSqqvC7H8PfAq+Ah3ezX6SrwICRCjSg5ygxSX73p217l
-	5kl26+3CfjrghSiUlRUuBUBY/MmVbJpDwDiBpDB3dOgOVwfR2BTM32HBZlNEtnN7yiroMaRZcOY
-	q
-X-Received: by 2002:a17:90b:2b8b:b0:398:ba9e:75ff with SMTP id
- 98e67ed59e1d1-39aee12c707mr18887440a91.21.1788437220106; Thu, 03 Sep 2026
- 05:07:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GW5tDjUh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 386491F000E9;
+	Thu,  3 Sep 2026 12:09:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788437341;
+	bh=r4GS666UUJ2niaV0rXjNa+P9QDlBWvQCKD20AQPmKn4=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=GW5tDjUhNdpSnwv26wGuKonPUCHXTafn+WPFq+w2tXSKHYHTlfRP6HTqwT7VXJjIL
+	 FKc+AiKWqssMCc+fE7bTZmg1onsSFY9fn5iPcmjUSV6Mk6GVGATfyA96ROwe1z1jrE
+	 MYblFCfFGhQDugshB+ZM+zmgukzkx7jzfzi5lueZH8IWMgEx8Bx7xdU3hl7rKNx7vg
+	 fVDu3IetoDvBzkL4TN4OAHIzJeHktmtq3B/EowfQ22arlUSe/kTXs9zrDURRwDJvwD
+	 7nCQF329+Ph+cFQ5zGaBphrYa/ERCN6U/7sllJTFnT9Mbge2e0jENl+Ty/tG8ULlGT
+	 TFjktameDRruQ==
+From: sashiko-bot@kernel.org
+Subject: Re: [RFC PATCH] mm/truncate: fix data loss when splitting fails in
+ truncate_inode_partial_folio()
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Zhang Yi" <yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260903115018.2034541-1-yi.zhang@huaweicloud.com>
+References: <20260903115018.2034541-1-yi.zhang@huaweicloud.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 03 Sep 2026 12:08:59 +0000
+Message-Id: <20260903120901.386491F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-References: <20260811160336.782342-1-timday@thelustrecollective.com>
- <xiymqvu5la6h63umrp6upnzbl3xjjcacuyxg76xp4labnrioyj@xowfpjlhfrzh>
- <20260903072759.GA1750084@ax162> <CANpmjNNWiX51UU064+P823sDX42=O6ChSHrUux1aNqLj60mfUg@mail.gmail.com>
- <hnmqtyjazturtmhrw5xh445q4vrwv2mldhhspl6sf4hj6yzvqn@vzje2tuhtzdq>
-In-Reply-To: <hnmqtyjazturtmhrw5xh445q4vrwv2mldhhspl6sf4hj6yzvqn@vzje2tuhtzdq>
-From: Marco Elver <elver@google.com>
-Date: Thu, 3 Sep 2026 14:06:22 +0200
-X-Gm-Features: AcwNN1Xhd1oZ_SfzBigtwT3XXDzSDHD70cYPowTnNLJ8nboEDZfHt_OFrhqa3Vs
-Message-ID: <CANpmjNPBxfgbuyK1VWsCukurEzhR5nFg1ydwEP9Gt0sGm9p5GQ@mail.gmail.com>
-Subject: Re: [PATCH v2 0/8] Support Clang context analysis for ext2
-To: Jan Kara <jack@suse.cz>
-Cc: Nathan Chancellor <nathan@kernel.org>, Timothy Day <timday@thelustrecollective.com>, 
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>, Theodore Tso <tytso@mit.edu>, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
 
-On Thu, 3 Sept 2026 at 13:06, Jan Kara <jack@suse.cz> wrote:
->
-> On Thu 03-09-26 12:34:34, Marco Elver wrote:
-> > On Thu, 3 Sept 2026 at 09:28, Nathan Chancellor <nathan@kernel.org> wrote:
-> > >   fs/ext2/super.c:1149:3: error: calling function 'ext2_rsv_window_add' requires holding spinlock 'EXT2_SB(sb).s_rsv_window_lock' exclusively [-Werror,-Wthread-safety-precise]
-> > >    1149 |                 ext2_rsv_window_add(sb, &sbi->s_rsv_window_head);
-> > >         |                 ^
-> > >   fs/ext2/super.c:1149:3: note: found near match '_res->s_rsv_window_lock'
-> >
-> > sbi was just allocated, and EXT2_SB(sb) and sbi are pointing to the
-> > same object (unless I misread the code), but the compiler can't tell
-> > since aliases can't be tracked through non-local objects. So that
-> > scoped_guard could just become:
-> >
-> >   scoped_guard(spinlock, &EXT2_SB(sb)->s_rsv_window_lock) {
-> >   ...
-> >
-> > But I'll leave that to Jan and Tim.
->
-> Yes, at the beginning of ext4_fill_super() we do:
->
->         sbi = kzalloc_obj(*sbi);
->         ...
->         sb->s_fs_info = sbi;
->
-> and EXT2_SB(sb) is just sb->s_fs_info. Are you saying that clang is not
-> able to infer that sb->s_fs_info and sbi are still pointing to the same
-> memory later in the function where we do scoped_guard()?
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [High] Missing re-validation of `page_folio()` result after `folio_try_ge=
+t()` enables TOCTOU race, leading to out-of-bounds page splits and kernel p=
+anics.
+--
 
-Yes - alias tracking is only done through local aliases. sb is
-non-local, along with additional member indirection; unfortunately,
-the C language doesn't give us the guarantees that it wasn't modified
-somewhere in between, say after a function call (this rule is applied
-also for local aliases if clang sees that they "escape" their local
-scope via non-const pointer to pointer).
+commit 34ec9be8b97f90a8067df5949df00d3bb219ade3
+Author: Zhang Yi <yi.zhang@huawei.com>
+
+mm/truncate: fix data loss when splitting fails in truncate_inode_partial_f=
+olio()
+
+truncate_inode_partial_folio() splits a large folio so that the caller's
+truncate loop can drop the in-range sub-folios while keeping the
+out-of-range tail.
+
+Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
+
+> diff --git a/mm/truncate.c b/mm/truncate.c
+> index b58ba940be474..2ebb00f6c3793 100644
+> --- a/mm/truncate.c
+> +++ b/mm/truncate.c
+> @@ -273,24 +283,28 @@ bool truncate_inode_partial_folio(struct folio *fol=
+io, loff_t start, loff_t end)
+>  		if (!folio_test_large(folio2))
+>  			goto out;
+> =20
+> -		if (!folio_trylock(folio2))
+> +		if (!folio_trylock(folio2)) {
+> +			tail_isolated =3D false;
+>  			goto out;
+> +		}
+> =20
+>  		/* make sure folio2 is large and does not change its mapping */
+>  		if (folio_test_large(folio2) &&
+> -		    folio2->mapping =3D=3D folio->mapping)
+> -			folio_split_or_unmap(folio2, split_at2, min_order);
+> +		    folio2->mapping =3D=3D folio->mapping &&
+> +		    folio_split_or_unmap(folio2, split_at2, min_order))
+> +			tail_isolated =3D false;
+
+[Severity: High]
+Does this code have a TOCTOU race that could lead to an out-of-bounds page
+split?
+
+In truncate_inode_partial_folio() in mm/truncate.c, a speculative folio
+lookup occurs just prior to this block:
+
+	split_at2 =3D folio_page(folio,
+			PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+	folio2 =3D page_folio(split_at2);
+
+	if (!folio_try_get(folio2))
+		goto no_split;
+
+Without a re-validation check after folio_try_get(), couldn't a concurrent
+operation (like memory reclaim or shmem readahead reallocation) change the
+compound structure of folio2?
+
+If the compound structure changes, a thread could successfully take a
+reference on the new, smaller folio2. However, split_at2 would now be
+outside the bounds of this new folio2.
+
+When folio2 is later passed into folio_split_or_unmap() in the modified
+code above, would this out-of-bounds split_at2 cause a kernel panic via
+VM_BUG_ON_FOLIO() inside folio_split(), or corrupt adjacent page structures
+if debug is disabled?
+
+Should there be a check like if (unlikely(page_folio(split_at2) !=3D folio2=
+))
+added after folio_try_get() to stabilize the reference?
+
+> =20
+>  		folio_unlock(folio2);
+>  out:
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260903115018.2034=
+541-1-yi.zhang@huaweicloud.com?part=3D1
