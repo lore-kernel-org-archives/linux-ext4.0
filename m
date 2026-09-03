@@ -1,172 +1,165 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE1414AF9C3;
-	Thu,  3 Sep 2026 12:43:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 520234AA596;
+	Thu,  3 Sep 2026 12:47:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788439396; cv=none; b=gx6WzkkIXxLtLTfBqZnm1yUtASqIffisIZlj9CwIpZcGSoNg3EQBpsPABbY7TZDeJSNJe8tlAy7Vdid2olNNu61quufW59XpPxcZ8yvKBcYreNm56lj8URYQK+hcfNsOqkV3MVD7LlslEkC9LpBd3CZdd5Lus4dDewRFjUJW+LQ=
+	t=1788439650; cv=none; b=eBirztBjqPJu1b1LEHXS9o70K10dmUe3mk4qy5EynfYG2ipfdTMynVUMrogsCa3EGTlKqppfZzNfgtMYiJhn75ghRatR45/vs0UGDGggoccsMB4Y7IsWZ/4MryoUYY2//rXwJL6ldbP9CwO4xLDXr3OaKPXKdx4LXkLqyE+kLu8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788439396; c=relaxed/simple;
-	bh=mvZDiqO+Pe9snFYTUHuXSvVFKF94r+PNuGOALRzK8Mk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Ufz5cUL1sIAuuNxTdfGnLqGz3TYF8d1bSHAP1aE0JTn+d6Rovvk2ZSbG9VOxkenVSKp2Yu6lvjeHC0nR3RP9BDC/d7Qmky/byXIe8QrDj+hU2RH9nWAY2836dpKhNFRNHw/crHg9gU79qFGPkhuPFOFT5YO0B1obXSgqA723Wf0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=f4vu8uoO; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=tGt5cqa0; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Abt9suoA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o45cVcE1; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="f4vu8uoO";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="tGt5cqa0";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Abt9suoA";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o45cVcE1"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 9C48221EB4;
-	Thu,  3 Sep 2026 12:43:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788439388; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
-	b=f4vu8uoO/sLVcs2p3NxLjhXuHuhJyCp8BTxg5p2YAQPR0t335NlN4vUnI3MVnAMTOlgljF
-	8xrg3oQ4ccpwZcz6jwo90GYngQZCLroV00ytEgPoUZ1Idsty6u8fuhsceWOTZ+NebZaItE
-	4tl/Huu7brJNawUAcHzMDe53Kqet19s=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788439388;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
-	b=tGt5cqa00Txv3//tHRuri9g1nxKEiIGQ58NKpSK9PDK9YWXmuDSNqGP++/oq6hxoowUvCR
-	MQwNHgYi0ZVXkQCA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Abt9suoA;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=o45cVcE1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788439384; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
-	b=Abt9suoA9MilwLa33Rzrk5KuNS9pMC19ha6fTrGFnG6XQqFDTcouq2XFVuN42yYeMHjBmn
-	8DcI16Tezj2hUuoWY5rMMJixK72cQu+YIYuKNsnAM6yHMVoq/6IHXmaem1Z6pm657la30j
-	JPmeySxyOJM8fCQmmZ7xybYavPzUy2k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788439384;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
-	b=o45cVcE1R134LzF7W83GVeyszfPbc1OnNAm9QuMTmsveJXgxAkinEDdPQ7XfwN24RYGmvg
-	8x7077nxn3KVdbDg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7B51D136E6;
-	Thu,  3 Sep 2026 12:43:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id jz8ZHlhrmWqMKQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 03 Sep 2026 12:43:04 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id F077AA13AC; Thu, 03 Sep 2026 14:43:03 +0200 (CEST)
-Date: Thu, 3 Sep 2026 14:43:03 +0200
-From: Jan Kara <jack@suse.cz>
-To: Marco Elver <elver@google.com>
-Cc: Jan Kara <jack@suse.cz>, Nathan Chancellor <nathan@kernel.org>, 
-	Timothy Day <timday@thelustrecollective.com>, linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>, 
-	Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 0/8] Support Clang context analysis for ext2
-Message-ID: <46mgpyanbjl7eiln3nodqtpbubrwsc5blcjqd6r5pfokmssrce@k5qgaws7b2l7>
-References: <20260811160336.782342-1-timday@thelustrecollective.com>
- <xiymqvu5la6h63umrp6upnzbl3xjjcacuyxg76xp4labnrioyj@xowfpjlhfrzh>
- <20260903072759.GA1750084@ax162>
- <CANpmjNNWiX51UU064+P823sDX42=O6ChSHrUux1aNqLj60mfUg@mail.gmail.com>
- <hnmqtyjazturtmhrw5xh445q4vrwv2mldhhspl6sf4hj6yzvqn@vzje2tuhtzdq>
- <CANpmjNPBxfgbuyK1VWsCukurEzhR5nFg1ydwEP9Gt0sGm9p5GQ@mail.gmail.com>
+	s=arc-20240116; t=1788439650; c=relaxed/simple;
+	bh=i0SMlCJYTjlbA13Cu4HRUD83Ic60VoD+gJj3EtNTv2c=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=a/G/v3c3kJCLf+tPkgd57INUzYXUeSXUkehc58LEU/kGP9IyGykneF9lhfvihXJ94fUVZ3TpuPYas43Z1FSF9qPvXdP+tf5u0HXgmp38In1IDu9bCuoDIv81fHH4rZAGtpONVHHzycUu7UbtNejHXA2fkEoRIxCibe3HTIM7SjA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hbK934yXRzKHMRr;
+	Thu,  3 Sep 2026 20:46:31 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 200114056F;
+	Thu,  3 Sep 2026 20:47:25 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgBnUAtUbJlqlPhrAg--.37288S6;
+	Thu, 03 Sep 2026 20:47:24 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	djwong@kernel.org,
+	hch@infradead.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	chengzhihao1@huawei.com,
+	yangerkun@huawei.com,
+	wangkefeng.wang@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v6 31/31] ext4: introduce a mount option for iomap buffered I/O path
+Date: Thu,  3 Sep 2026 20:40:17 +0800
+Message-ID: <20260903124017.2325538-3-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
+References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANpmjNPBxfgbuyK1VWsCukurEzhR5nFg1ydwEP9Gt0sGm9p5GQ@mail.gmail.com>
-X-Spam-Score: -4.01
-X-Rspamd-Queue-Id: 9C48221EB4
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	ARC_NA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	DWL_DNSWL_BLOCKED(0.00)[suse.cz:dkim];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Spam-Flag: NO
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgBnUAtUbJlqlPhrAg--.37288S6
+X-Coremail-Antispam: 1UD129KBjvJXoWxWr47Kr15Gr1xZry3ZFy7KFg_yoWrGr1xpr
+	W5KFyrGr1kXr9Y9w4xuF4kXr1Fy3ZIka1UCrZYgr47Ga9rAryIqFyfKF15AF4agrW8X340
+	qF1Fgw17Wa17CrDanT9S1TB71UUUUUDqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
+	Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j6rxdM2
+	8EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
+	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
+	IY67AKxVWUAVWUtwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
+	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
+	xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW5JVW7JwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Cr1j6rxdMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
+	IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26F4UJVW0obIYCTnIWIev
+	Ja73UjIFyTuYvjTRMWlyDUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Thu 03-09-26 14:06:22, Marco Elver wrote:
-> On Thu, 3 Sept 2026 at 13:06, Jan Kara <jack@suse.cz> wrote:
-> >
-> > On Thu 03-09-26 12:34:34, Marco Elver wrote:
-> > > On Thu, 3 Sept 2026 at 09:28, Nathan Chancellor <nathan@kernel.org> wrote:
-> > > >   fs/ext2/super.c:1149:3: error: calling function 'ext2_rsv_window_add' requires holding spinlock 'EXT2_SB(sb).s_rsv_window_lock' exclusively [-Werror,-Wthread-safety-precise]
-> > > >    1149 |                 ext2_rsv_window_add(sb, &sbi->s_rsv_window_head);
-> > > >         |                 ^
-> > > >   fs/ext2/super.c:1149:3: note: found near match '_res->s_rsv_window_lock'
-> > >
-> > > sbi was just allocated, and EXT2_SB(sb) and sbi are pointing to the
-> > > same object (unless I misread the code), but the compiler can't tell
-> > > since aliases can't be tracked through non-local objects. So that
-> > > scoped_guard could just become:
-> > >
-> > >   scoped_guard(spinlock, &EXT2_SB(sb)->s_rsv_window_lock) {
-> > >   ...
-> > >
-> > > But I'll leave that to Jan and Tim.
-> >
-> > Yes, at the beginning of ext4_fill_super() we do:
-> >
-> >         sbi = kzalloc_obj(*sbi);
-> >         ...
-> >         sb->s_fs_info = sbi;
-> >
-> > and EXT2_SB(sb) is just sb->s_fs_info. Are you saying that clang is not
-> > able to infer that sb->s_fs_info and sbi are still pointing to the same
-> > memory later in the function where we do scoped_guard()?
-> 
-> Yes - alias tracking is only done through local aliases. sb is
-> non-local, along with additional member indirection; unfortunately,
-> the C language doesn't give us the guarantees that it wasn't modified
-> somewhere in between, say after a function call (this rule is applied
-> also for local aliases if clang sees that they "escape" their local
-> scope via non-const pointer to pointer).
+From: Zhang Yi <yi.zhang@huawei.com>
 
-Hrm, ok, understood (but still it's annoying ;)). I've pushed out the patch
-with the suggested fixup.
+Since the iomap buffered I/O path does not yet support all existing ext4
+features, it cannot be enabled by default. Introduce the
+'buffered_iomap' and 'nobuffered_iomap' mount options to explicitly
+enable or disable the iomap buffered I/O path for regular files.
 
-								Honza
+Toggling this option via remount is allowed. The change of I/O path will
+not take effect immediately. It will be deferred. The new setting will
+only take effect after the inode is re-initialized (i.e., after the last
+reference is dropped and the inode is re-read from disk).
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/ext4.h  | 1 +
+ fs/ext4/inode.c | 6 ++++++
+ fs/ext4/super.c | 7 +++++++
+ 3 files changed, 14 insertions(+)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 405e256a1802..8cfe77b45e21 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1321,6 +1321,7 @@ struct ext4_inode_info {
+ 						    * scanning in mballoc
+ 						    */
+ #define EXT4_MOUNT2_ABORT		0x00000100 /* Abort filesystem */
++#define EXT4_MOUNT2_BUFFERED_IOMAP	0x00000200 /* Use iomap for buffered I/O */
+ 
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e7849c25c110..6e6c32b8a556 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6101,11 +6101,17 @@ static int check_igot_inode(struct inode *inode, ext4_iget_flags flags,
+  * For extent-to-indirect block migration (via EXT4_IOC_SETFLAGS
+  * clearing EXT4_EXTENTS_FL), this operation is directly rejected for
+  * inodes using the iomap path.
++ *
++ * When remounting to toggle the buffered_iomap mount option, the change
++ * of I/O path is deferred as well, it will be available after the inode
++ * is re-initialized.
+  */
+ void ext4_enable_buffered_iomap(struct inode *inode)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 
++	if (!test_opt2(sb, BUFFERED_IOMAP))
++		return;
+ 	if (!S_ISREG(inode->i_mode))
+ 		return;
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 73735fd336b9..7db34ba0ea59 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1747,6 +1747,7 @@ enum {
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+ 	Opt_no_prefetch_block_bitmaps, Opt_mb_optimize_scan,
++	Opt_buffered_iomap, Opt_nobuffered_iomap,
+ 	Opt_errors, Opt_data, Opt_data_err, Opt_jqfmt, Opt_dax_type,
+ #ifdef CONFIG_EXT4_DEBUG
+ 	Opt_fc_debug_max_replay, Opt_fc_debug_force
+@@ -1885,6 +1886,8 @@ static const struct fs_parameter_spec ext4_param_specs[] = {
+ 	fsparam_flag	("no_prefetch_block_bitmaps",
+ 						Opt_no_prefetch_block_bitmaps),
+ 	fsparam_s32	("mb_optimize_scan",	Opt_mb_optimize_scan),
++	fsparam_flag	("buffered_iomap",	Opt_buffered_iomap),
++	fsparam_flag	("nobuffered_iomap",	Opt_nobuffered_iomap),
+ 	fsparam_string	("check",		Opt_removed),	/* mount option from ext2/3 */
+ 	fsparam_flag	("nocheck",		Opt_removed),	/* mount option from ext2/3 */
+ 	fsparam_flag	("reservation",		Opt_removed),	/* mount option from ext2/3 */
+@@ -1978,6 +1981,10 @@ static const struct mount_opts {
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
+ 	{Opt_no_prefetch_block_bitmaps, EXT4_MOUNT_NO_PREFETCH_BLOCK_BITMAPS,
+ 	 MOPT_SET},
++	{Opt_buffered_iomap, EXT4_MOUNT2_BUFFERED_IOMAP,
++	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
++	{Opt_nobuffered_iomap, EXT4_MOUNT2_BUFFERED_IOMAP,
++	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
+ #ifdef CONFIG_EXT4_DEBUG
+ 	{Opt_fc_debug_force, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
+ 	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.52.0
+
