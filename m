@@ -1,285 +1,172 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76F984AE13B;
-	Thu,  3 Sep 2026 12:43:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE1414AF9C3;
+	Thu,  3 Sep 2026 12:43:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788439395; cv=none; b=cP5e1At0YiMOOf1aPpXCpB4X+N8T7Bp9/7YNhaw5nM4eQXTmJC5T8cyuxQlfm81yfCajWgQnG/jdjTiIETg25FMhL5SyHYkLR6XLSwAovaDVz3/7HMUevk1ZGJoxjQOjOSzFyC6XRFtEXcF0cV9GtBSXYDV/UqKt/zduwS1sVDI=
+	t=1788439396; cv=none; b=gx6WzkkIXxLtLTfBqZnm1yUtASqIffisIZlj9CwIpZcGSoNg3EQBpsPABbY7TZDeJSNJe8tlAy7Vdid2olNNu61quufW59XpPxcZ8yvKBcYreNm56lj8URYQK+hcfNsOqkV3MVD7LlslEkC9LpBd3CZdd5Lus4dDewRFjUJW+LQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788439395; c=relaxed/simple;
-	bh=Vb/+Gs3pGrFLHd4G2KPX/wwhF/bwrgheqWULc/Cy8V0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=HUxSp5qqBT+ozmY4KUrViuTi8dpY02E5mcREPXbRRTYd/QaSY1teOVNfusyAXhz+DWxWncecBSdGdKLDF2b3MyenQj6553c6qWyOIFBsdRiDKuSKDtYzJGwm9FqLDhdWu+fBD6mh51qJrgdbup1+w7wSVDTRQGPnu9Xg70LU46o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hbK41640MzYQv5V;
-	Thu,  3 Sep 2026 20:42:09 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id B04D940F2C;
-	Thu,  3 Sep 2026 20:42:52 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgA3HglDa5lqAJVrAg--.30843S26;
-	Thu, 03 Sep 2026 20:42:52 +0800 (CST)
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-To: linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	djwong@kernel.org,
-	hch@infradead.org,
-	yi.zhang@huawei.com,
-	yi.zhang@huaweicloud.com,
-	yizhang089@gmail.com,
-	chengzhihao1@huawei.com,
-	yangerkun@huawei.com,
-	wangkefeng.wang@huawei.com,
-	yukuai@fnnas.com
-Subject: [PATCH v6 22/31] ext4: submit and wait for pending disksize-grow I/O on writeback
-Date: Thu,  3 Sep 2026 20:35:34 +0800
-Message-ID: <20260903123543.2302999-23-yi.zhang@huaweicloud.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
-References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
+	s=arc-20240116; t=1788439396; c=relaxed/simple;
+	bh=mvZDiqO+Pe9snFYTUHuXSvVFKF94r+PNuGOALRzK8Mk=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=Ufz5cUL1sIAuuNxTdfGnLqGz3TYF8d1bSHAP1aE0JTn+d6Rovvk2ZSbG9VOxkenVSKp2Yu6lvjeHC0nR3RP9BDC/d7Qmky/byXIe8QrDj+hU2RH9nWAY2836dpKhNFRNHw/crHg9gU79qFGPkhuPFOFT5YO0B1obXSgqA723Wf0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=f4vu8uoO; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=tGt5cqa0; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Abt9suoA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=o45cVcE1; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="f4vu8uoO";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="tGt5cqa0";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Abt9suoA";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="o45cVcE1"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 9C48221EB4;
+	Thu,  3 Sep 2026 12:43:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788439388; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
+	b=f4vu8uoO/sLVcs2p3NxLjhXuHuhJyCp8BTxg5p2YAQPR0t335NlN4vUnI3MVnAMTOlgljF
+	8xrg3oQ4ccpwZcz6jwo90GYngQZCLroV00ytEgPoUZ1Idsty6u8fuhsceWOTZ+NebZaItE
+	4tl/Huu7brJNawUAcHzMDe53Kqet19s=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788439388;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
+	b=tGt5cqa00Txv3//tHRuri9g1nxKEiIGQ58NKpSK9PDK9YWXmuDSNqGP++/oq6hxoowUvCR
+	MQwNHgYi0ZVXkQCA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Abt9suoA;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=o45cVcE1
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1788439384; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
+	b=Abt9suoA9MilwLa33Rzrk5KuNS9pMC19ha6fTrGFnG6XQqFDTcouq2XFVuN42yYeMHjBmn
+	8DcI16Tezj2hUuoWY5rMMJixK72cQu+YIYuKNsnAM6yHMVoq/6IHXmaem1Z6pm657la30j
+	JPmeySxyOJM8fCQmmZ7xybYavPzUy2k=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1788439384;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=apdOHiDarq0hKZLmSE6vMKU0nR+Lcau0dcF5C3LN+R8=;
+	b=o45cVcE1R134LzF7W83GVeyszfPbc1OnNAm9QuMTmsveJXgxAkinEDdPQ7XfwN24RYGmvg
+	8x7077nxn3KVdbDg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7B51D136E6;
+	Thu,  3 Sep 2026 12:43:04 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id jz8ZHlhrmWqMKQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 03 Sep 2026 12:43:04 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id F077AA13AC; Thu, 03 Sep 2026 14:43:03 +0200 (CEST)
+Date: Thu, 3 Sep 2026 14:43:03 +0200
+From: Jan Kara <jack@suse.cz>
+To: Marco Elver <elver@google.com>
+Cc: Jan Kara <jack@suse.cz>, Nathan Chancellor <nathan@kernel.org>, 
+	Timothy Day <timday@thelustrecollective.com>, linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>, 
+	Theodore Tso <tytso@mit.edu>, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 0/8] Support Clang context analysis for ext2
+Message-ID: <46mgpyanbjl7eiln3nodqtpbubrwsc5blcjqd6r5pfokmssrce@k5qgaws7b2l7>
+References: <20260811160336.782342-1-timday@thelustrecollective.com>
+ <xiymqvu5la6h63umrp6upnzbl3xjjcacuyxg76xp4labnrioyj@xowfpjlhfrzh>
+ <20260903072759.GA1750084@ax162>
+ <CANpmjNNWiX51UU064+P823sDX42=O6ChSHrUux1aNqLj60mfUg@mail.gmail.com>
+ <hnmqtyjazturtmhrw5xh445q4vrwv2mldhhspl6sf4hj6yzvqn@vzje2tuhtzdq>
+ <CANpmjNPBxfgbuyK1VWsCukurEzhR5nFg1ydwEP9Gt0sGm9p5GQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:cCh0CgA3HglDa5lqAJVrAg--.30843S26
-X-Coremail-Antispam: 1UD129KBjvJXoWxKryUZFy8KF48WF15Kr4kZwb_yoW3CrWxpr
-	Z8Kry5Gr4DXr9F9rsaqFW7Zr1Yya1rtr4UJry3Wa98Zry5ury7KFW8KFya9F1vk393A3y2
-	qF4v9rW8Cw17ArJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
-	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
-	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
-	x0cI8IcVAFwI0_Jrv_JF1lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
-	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
-	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
-	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1l
-	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
-	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
-	CTnIWIevJa73UjIFyTuYvjTR_nYFDUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CANpmjNPBxfgbuyK1VWsCukurEzhR5nFg1ydwEP9Gt0sGm9p5GQ@mail.gmail.com>
+X-Spam-Score: -4.01
+X-Rspamd-Queue-Id: 9C48221EB4
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	DWL_DNSWL_BLOCKED(0.00)[suse.cz:dkim];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	RCVD_TLS_LAST(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Spam-Flag: NO
 
-From: Zhang Yi <yi.zhang@huawei.com>
+On Thu 03-09-26 14:06:22, Marco Elver wrote:
+> On Thu, 3 Sept 2026 at 13:06, Jan Kara <jack@suse.cz> wrote:
+> >
+> > On Thu 03-09-26 12:34:34, Marco Elver wrote:
+> > > On Thu, 3 Sept 2026 at 09:28, Nathan Chancellor <nathan@kernel.org> wrote:
+> > > >   fs/ext2/super.c:1149:3: error: calling function 'ext2_rsv_window_add' requires holding spinlock 'EXT2_SB(sb).s_rsv_window_lock' exclusively [-Werror,-Wthread-safety-precise]
+> > > >    1149 |                 ext2_rsv_window_add(sb, &sbi->s_rsv_window_head);
+> > > >         |                 ^
+> > > >   fs/ext2/super.c:1149:3: note: found near match '_res->s_rsv_window_lock'
+> > >
+> > > sbi was just allocated, and EXT2_SB(sb) and sbi are pointing to the
+> > > same object (unless I misread the code), but the compiler can't tell
+> > > since aliases can't be tracked through non-local objects. So that
+> > > scoped_guard could just become:
+> > >
+> > >   scoped_guard(spinlock, &EXT2_SB(sb)->s_rsv_window_lock) {
+> > >   ...
+> > >
+> > > But I'll leave that to Jan and Tim.
+> >
+> > Yes, at the beginning of ext4_fill_super() we do:
+> >
+> >         sbi = kzalloc_obj(*sbi);
+> >         ...
+> >         sb->s_fs_info = sbi;
+> >
+> > and EXT2_SB(sb) is just sb->s_fs_info. Are you saying that clang is not
+> > able to infer that sb->s_fs_info and sbi are still pointing to the same
+> > memory later in the function where we do scoped_guard()?
+> 
+> Yes - alias tracking is only done through local aliases. sb is
+> non-local, along with additional member indirection; unfortunately,
+> the C language doesn't give us the guarantees that it wasn't modified
+> somewhere in between, say after a function call (this rule is applied
+> also for local aliases if clang sees that they "escape" their local
+> scope via non-const pointer to pointer).
 
-When the current writeback pass begins beyond the disksize-grow-pending
-zeroed EOF block, the ioend worker would otherwise have to wait for the
-pending EOF block to complete before it can advance i_disksize.
-Otherwise the old EOF block could be exposed as stale data once
-i_disksize advances past it.
+Hrm, ok, understood (but still it's annoying ;)). I've pushed out the patch
+with the suggested fixup.
 
-Therefore, introduce the ioend mechanism for the pending range, tag
-ioends that cover the pending zeroed EOF block which straddles
-i_disksize with EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO in
-ext4_iomap_writeback_submit(), and clear the bit and wake up all waiters
-in ext4_iomap_end_bio() when such an ioend completes.
-
-Clearing EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO does not depend on whether
-the disksize grow I/O succeeds. That is, even if the I/O fails, we still
-allow subsequent writes in the range to update i_disksize. This is
-consistent with the previous behavior, and we rely on data_err=abort to
-prevent metadata updates when data write failures occur.
-
-In order to avoid the ioend that passes the pending range waiting for a
-long time, proactively submit the pending range first in
-ext4_iomap_writepages() so it completes in parallel with the rest of the
-writeback.
-
-Note that the handling of discarding the zeroed EOF folio will be
-processed later, otherwise the bit will be set forever.
-EXT4_STATE_DISKSIZE_GROW_PENDING will be set after everthing is done.
-
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/ext4.h    |  6 ++++++
- fs/ext4/inode.c   | 53 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/page-io.c | 40 +++++++++++++++++++++++++++++++++++
- 3 files changed, 98 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1c3d736fb700..089dbd39c5c2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3986,6 +3986,12 @@ extern int ext4_move_extents(struct file *o_filp, struct file *d_filp,
- 			     __u64 len, __u64 *moved_len);
- 
- /* page-io.c */
-+/*
-+ * The I/O range covers the zeroed EOF block that straddles i_disksize
-+ * and will advance it upon completion.
-+ */
-+#define EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO	1UL
-+
- extern int __init ext4_init_pageio(void);
- extern void ext4_exit_pageio(void);
- extern ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 05dd4ee805fb..4239be5a769f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4366,7 +4366,10 @@ static int ext4_iomap_writeback_submit(struct iomap_writepage_ctx *wpc,
- 				       int error)
- {
- 	struct iomap_ioend *ioend = wpc->wb_ctx;
--	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
-+	struct inode *inode = ioend->io_inode;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	unsigned int blocksize = i_blocksize(inode);
-+	loff_t pstart, plen;
- 
- 	/*
- 	 * After I/O completion, a worker needs to be scheduled when:
-@@ -4379,6 +4382,21 @@ static int ext4_iomap_writeback_submit(struct iomap_writepage_ctx *wpc,
- 	    test_opt(ioend->io_inode->i_sb, DATA_ERR_ABORT))
- 		ioend->io_bio.bi_end_io = ext4_iomap_end_bio;
- 
-+	/*
-+	 * Mark the I/O as DISKSIZE_GROW_IO by setting io_private to
-+	 * EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO if it covers the pending range.
-+	 * Such I/O will allow or trigger i_disksize advancement in the
-+	 * ioend worker.
-+	 */
-+	plen = ext4_iomap_get_disksize_pending_range(inode, &pstart);
-+	if (plen &&
-+	    round_down(ioend->io_offset, blocksize) <= pstart &&
-+	    round_up(ioend->io_offset + ioend->io_size, blocksize) >=
-+			pstart + plen) {
-+		ioend->io_bio.bi_end_io = ext4_iomap_end_bio;
-+		ioend->io_private = (void *)EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO;
-+	}
-+
- 	/*
- 	 * ext4_iomap_end_bio() always defers endio processing, disable
- 	 * generic BIO in task to avoid double deferral since we will use
-@@ -4398,6 +4416,33 @@ static const struct iomap_writeback_ops ext4_writeback_ops = {
- 	.writeback_submit = ext4_iomap_writeback_submit,
- };
- 
-+/*
-+ * If the current writeback range begins after the pending zeroed EOF
-+ * block range which straddles i_disksize, issue a separate writeback to
-+ * flush it first, so as to avoid prolonged waiting.
-+ */
-+static void ext4_iomap_wb_submit_zeroed_eof(struct inode *inode,
-+					    struct writeback_control *wbc)
-+{
-+	struct address_space *mapping = inode->i_mapping;
-+	loff_t pstart, plen, range_start;
-+
-+	if (wbc->range_cyclic)
-+		range_start = (loff_t)mapping->writeback_index << PAGE_SHIFT;
-+	else
-+		range_start = wbc->range_start;
-+
-+	plen = ext4_iomap_get_disksize_pending_range(inode, &pstart);
-+	if (!plen || range_start < pstart + plen)
-+		return;
-+
-+	/* Keep the caller's sync mode to avoid stalling the background flusher. */
-+	if (wbc->sync_mode == WB_SYNC_ALL)
-+		filemap_fdatawrite_range(mapping, pstart, pstart + plen - 1);
-+	else
-+		filemap_flush_range(mapping, pstart, pstart + plen - 1);
-+}
-+
- static int ext4_iomap_writepages(struct address_space *mapping,
- 				 struct writeback_control *wbc)
- {
-@@ -4415,6 +4460,12 @@ static int ext4_iomap_writepages(struct address_space *mapping,
- 	if (unlikely(ret))
- 		return ret;
- 
-+	/*
-+	 * Submit the pending zeroed EOF block range if the entire
-+	 * writeback range lies beyond it.
-+	 */
-+	ext4_iomap_wb_submit_zeroed_eof(inode, wbc);
-+
- 	alloc_ctx = ext4_writepages_down_read(sb);
- 	trace_ext4_writepages(inode, wbc);
- 	ret = iomap_writepages(&wpc);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 9b0e12b5463c..697e12a54a49 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -549,6 +549,34 @@ void ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
- 	} while ((bh = bh->b_this_page) != head);
- }
- 
-+/*
-+ * If the current writeback range starts beyond the zeroed EOF pending
-+ * range that straddles i_disksize, wait for the zeroed data from
-+ * ext4_block_zero_eof() to be written out first. Otherwise, extending
-+ * i_disksize may expose stale data in the old EOF block.
-+ */
-+static void ext4_iomap_wb_disksize_pending_wait(struct inode *inode,
-+						loff_t pos, size_t size)
-+{
-+	loff_t disksize = READ_ONCE(EXT4_I(inode)->i_disksize);
-+	loff_t pstart, plen;
-+
-+	/*
-+	 * Overwrite I/Os and I/Os covering the EOF block do not need to
-+	 * wait: the former do not advance i_disksize past the pending
-+	 * boundary, and the latter are the pending I/O itself (cleared in
-+	 * the bio completion path).
-+	 */
-+	if (pos < round_up(disksize, i_blocksize(inode)))
-+		return;
-+
-+	plen = ext4_iomap_get_disksize_pending_range(inode, &pstart);
-+	if (!plen || pos < pstart + plen)
-+		return;
-+
-+	ext4_iomap_wait_disksize_pending(inode);
-+}
-+
- static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
- 					 loff_t end)
- {
-@@ -594,6 +622,9 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
- 	    end <= READ_ONCE(EXT4_I(inode)->i_disksize))
- 		goto out;
- 
-+	/* Wait for disksize-pending zeroed data to be written out. */
-+	ext4_iomap_wb_disksize_pending_wait(inode, pos, size);
-+
- 	/*
- 	 * We may need to convert one extent, update the i_disksize and
- 	 * dirty the inode.
-@@ -660,8 +691,17 @@ void ext4_iomap_end_bio(struct bio *bio)
- {
- 	struct iomap_ioend *ioend = iomap_ioend_from_bio(bio);
- 	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
-+	unsigned long io_mode = (unsigned long)ioend->io_private;
- 	unsigned long flags;
- 
-+	/*
-+	 * This is a disksize-pending I/O: clear the disksize-pending
-+	 * state set in ext4_block_zero_eof() and wake up all waiters
-+	 * that will update the inode i_disksize.
-+	 */
-+	if (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO)
-+		ext4_iomap_clear_disksize_pending(ioend->io_inode);
-+
- 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
- 	if (list_empty(&ei->i_rsv_conversion_list))
- 		queue_work(EXT4_SB(ioend->io_inode->i_sb)->rsv_conversion_wq,
+								Honza
 -- 
-2.52.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
