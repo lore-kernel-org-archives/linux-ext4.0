@@ -1,188 +1,171 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7C2B3932E9;
-	Thu,  3 Sep 2026 10:25:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788431156; cv=none; b=VHZN15L4CHlNtgzWTcrgVYw06gs3CjR0BqiadENCBUDcDcxhbIwawhGrPAgxFwGdRsA/ezRWQbtPgZEHHRUSEMOnyhjTviAjPAPKDHimee5ogio/p8KLDytdfwqjToNPeSrEEFAGmPINVTV1iwHa2xQ5VwcL7EcEoI1UZ1EGRl4=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788431156; c=relaxed/simple;
-	bh=dn4Sgwmpr5+4wxAlMytNjbzCVUelUT+8zMth4S90I08=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Q9Idvq/oT7hmTgjrqvk1j+NeV7Pd63CMYWA1UwLA6sJrAoe1clwcaStr1zOTxkbvOa95YKcQ3+99XsH+JPdRPCBfURIoRJ2ccBn3YuGxZXhGzfb0nOUplQ79bDNiGVIlmWEJIngBWCKcARM9/ow0aLa4YLf4nqj5eTaX/aWGRO8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=lOumFYOA; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aWSieyxQ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=l1pbuWT4; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=DV1G6IDL; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E9B948A8C7
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 10:35:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.215.179
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788431727; cv=pass; b=FH9fcrF0XG5iBMmCrCwiDFhKSty0Gzmq7wcS3BkUamnUmOZc0Begt7zAzJeE+3bBn/jGAY+8hehaEuCBhOTJCraaF4lkseIicmPZhuXutej/CZ9VJL2QuaCEjPpgMnDFHqT4N0ThDk6Ia0I7JBYs4Cc56rCZQ+z47+Fw7o9fVo0=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788431727; c=relaxed/simple;
+	bh=/zyYtEZmFhhQgOsgXNLJ+e0A/ltm9fi9IENg+VYRnRo=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Tu3zkP4jvgzR7PAjjt+Vk7e3ggeRxJsaRph2WdBA/rNQpNN6wGVQbKLGANjmAna/HBmGf1OdiqounaGu17qYNgAdQQAAN3huVPXSuZWikL32BzRQ3iCzAUjyPxopFaY9D0wYewFia3x/j1SMLYDEGF3bDYH6c6rkiOdbjqGPISg=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=lE/ZWT5v; arc=pass smtp.client-ip=209.85.215.179
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="lOumFYOA";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aWSieyxQ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="l1pbuWT4";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="DV1G6IDL"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id ECFA721E69;
-	Thu,  3 Sep 2026 10:25:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788431142; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qg9vXYILjfDtWeW2JNNNrWDGqb+uYP4KptRYOsrAsp4=;
-	b=lOumFYOAIOTc7PemuAZzMQv3/DOgjtwn9NgsJG64GTY3B+gprNonxumjitoV691WmKE9eO
-	Tuhd3IhzuAQPPhFFabYNcygof9wTLxvOMXkT+DL7RP1EQ046WGfSGs+OLgLkJsedmMaJi6
-	4hAvlnSRV1EMIlvrEcm4lEMXeqqXAps=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788431142;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qg9vXYILjfDtWeW2JNNNrWDGqb+uYP4KptRYOsrAsp4=;
-	b=aWSieyxQ1Wtc6k1NU3QszEUMZGxvpNnKbSJzomXr7iBNPvT3G33i6IWmiNYwxOtz/xVxRz
-	45ooSdpqvU7T0pCQ==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=l1pbuWT4;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=DV1G6IDL
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788431138; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qg9vXYILjfDtWeW2JNNNrWDGqb+uYP4KptRYOsrAsp4=;
-	b=l1pbuWT4fC7CrqP9gMNkXSJErlUgR+wj6d3J6EOQTG2xELs7FNpsgEVxJX8gZXHth3bghA
-	z3pHMyzlBFfcG6/++N5jHSMNmi02rfppblTW2N6B/QmgMW0culyqKHj4kSyhWOiA5kr5qs
-	YPSZDMQT+uo9zG9d/N62jd41+c7aI9A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788431138;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=qg9vXYILjfDtWeW2JNNNrWDGqb+uYP4KptRYOsrAsp4=;
-	b=DV1G6IDLS1mt2FaPheON/ljeeYAiJ5hG1+9B07ApRgypYQXImIDgLXorM54VC0J1PdeTup
-	4iO7DinFUC8zdtCg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id CBEF1136D9;
-	Thu,  3 Sep 2026 10:25:37 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id rX/DMSFLmWqwHgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 03 Sep 2026 10:25:37 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 6A8C4A13AC; Thu, 03 Sep 2026 12:25:37 +0200 (CEST)
-Date: Thu, 3 Sep 2026 12:25:37 +0200
-From: Jan Kara <jack@suse.cz>
-To: JonasZhou-oc <jonaszhou-oc@zhaoxin.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-kernel@vger.kernel.org, jonaszhou@zhaoxin.com, 
-	louisqi@zhaoxin.com, jianhuizzzzz@gmail.com
-Subject: Re: [PATCH] ext4: isolate s_orphan_lock from read-mostly fields
-Message-ID: <tf24u75hmpjhb2iqabyx6n3qur2kyda7vwz2eo5zcc2ek7utwp@m5sepatzqx2x>
-References: <20260903021836.962624-1-jonaszhou-oc@zhaoxin.com>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="lE/ZWT5v"
+Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-cbee846deecso2850225a12.1
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 03:35:16 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1788431712; cv=none;
+        d=google.com; s=arc-20260327;
+        b=Ho+b73fthRmYoRYJjc8InvOlGDHnVlGAt6PZONL6oP2B434f66DK4UFgaYHzhrtCvG
+         5G8bImWHsnL1Ok51eFvOsDUjyWQ2s8Z0FD7RobglxqOwA/mDF2WDGAgUCuXw/eGVCS+P
+         S+K4TPrR5JHXRRXVsB4sl6ai6FeCwf5XrWuVEHjuGJtjEz+8Jg7HFDm2PQy6sLA14d5g
+         08x+CYdUQ2LXCyHqhVycs83aUk6Lrelc+gUPhsfeOkNJUNPMBZe021gnsA1b0P/NQ5xi
+         /OCIuqz5gDvyMcbCbGpZ4xcGtHYY+DUOkyENUNMGyUTQE6APae/d+72plElYVnFOc3hB
+         I4nQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=A1wiUzfIxqJZYxMHbVMwIllXO/kuz3RAjcv5fqZ/QkY=;
+        fh=6oTJpSDq5Ao2SnYom5Mlyr1eidMIFbg/Ot5BuiyA28Y=;
+        b=N3Xzfaeya3UcTKxB+FbOosZYdaT0lUE0M1E+B/OfeIeGjKb4ImsBCaLcPazCKFK3/l
+         BpMk/MJT2ROnDProqE6hNeUyexsXG3FGDxntlKRBM0WgCMEVUDRS4dI3ATaqvRFYS8TL
+         QEepKgJHEHpCjIXEmQjeQiMG3WjFuyjBXTtEbBygJsrDOH2K8caxh528G1TkAzEfG6Kl
+         d/aBkooqvfesh6LJVeJWGQGSc7r5r9WQbYj2PaCXasFTrmnCotheCsF77FDxEGmPFMvG
+         +sy30Y1AQv03L6YyjwSeaBkZovbRQcDEwFpSs+VaD3i0k+FFJac5JfiPvmheqqpZXJcU
+         Xn7g==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1788431712; x=1789036512; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=A1wiUzfIxqJZYxMHbVMwIllXO/kuz3RAjcv5fqZ/QkY=;
+        b=lE/ZWT5vVhGhIftgyHocZbvleVWCk6i8HMIpDwRkqRHYL2WYH4ywyqPSkj8CCVZrEo
+         qM6ZAjznBnVQsfHyIKm9r4maGVGzZLcXsKUX7Fhmoh2HSXJIc24PLWQRsJxXcknuPrT+
+         krvl/QQQuFF+mA+BnnRgMA9OR/HbpkR6WIWHOPcFs4Mq9PPOQLNsbWL1snwKuuiNLDpw
+         PO4W/Phcd/vuevy3m7l/mRhQwBGXrZeHrK+P9fcOr2eRMjFHm7rODhcBoeTaiKG6D2g1
+         o/CBPQuJcaxhNMCi+JSyj/2RTqTam9akqVkwRUBUxu3dh7QHimyL4fSpwo1Xl6fBfc15
+         Noyg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788431712; x=1789036512;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=A1wiUzfIxqJZYxMHbVMwIllXO/kuz3RAjcv5fqZ/QkY=;
+        b=XwGZqbRlS1+20VVcqXxHCrNFZ3lofYLA+TGxh5E9hKQFtmhZesxbcKF9z7vfQm6JGT
+         DFJ4YrjvWuaOK+mvWr4YBT8qY7s/wML06dcJBR3+BSdak7ecC3rZpOvOSy6DdZ4kR1nT
+         KBpkYLXPIlEgx0TajaNc5nq1zpwAx9qkCds4iqs3bLUQ7QQZItH9KT2mavcD34NzyHpe
+         6gOQ5zN6O5xkdTcCM4mp1uHtPO8yq9kSEDcSE7GE3AasAi/3O8A73TIBa0RLsuN1c+Eu
+         qtKLRuSzPEEdN+RBnKSKrcWdrnOVDhzcpPOd0Mzdw9MxW+PXfN86P/qHKK8D1ltQ4TyY
+         avdA==
+X-Forwarded-Encrypted: i=1; AKwUvBwe8LuhlJbm2vIZhBGgCi22/NRfC4GRQmV60s+NW+/lNKTm3+DE+OK74+xJKOYaHo8XEakkWyl3e6Kk@vger.kernel.org
+X-Gm-Message-State: AFuF++mtwUa6+pYcz0ZkjzLWrBoM67kFzX5g0cOAoN/4ThzaWKUczcLW
+	gtUqddU6/2zM7nGnNZf1Oa/PivQX01EezZ2BhweBoEnpDjYWOP2AM4cxhjirHU+coxSP/SOq604
+	YO4yo98Ux4FENTBMNxaL2pvWzfMz+D5xOh2+CzFjP
+X-Gm-Gg: AYBFou3Iq/pfHxIEUd+X9igTtN729S6J0mg2GDDraxEtM603w7PixuJP+YZJfgpOlVn
+	tVkAqOnMCehJl6zDoKCjd5nqBftLYMYSbOLFsVAYFqDXR8XVcTl/3SnaDZuXjRVXC55IsL+a6iv
+	T0bIMUzMbZajj7niAXmzHmCeSZF6k09+E/kpvTC31ahpSrp6TLzZdQxe/jJyhwARnHOxrrtxQjn
+	LheJMx/HHGld4+KgtDHrRVOgK9MUyV0PAyG/3gAVUnelzBbygtIfIyFCe/Ye9hJWM6421afCSpV
+	gTyrVC983o+G7EgKoSm9sljOxXohyvksg4EW3NgSMqm+8QUMB0UJKys+YFk/otkcrEj+gPF4Imy
+	/
+X-Received: by 2002:a17:90b:2785:b0:398:9be5:b41e with SMTP id
+ 98e67ed59e1d1-39aee285570mr19268361a91.25.1788431711616; Thu, 03 Sep 2026
+ 03:35:11 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260903021836.962624-1-jonaszhou-oc@zhaoxin.com>
-X-Spam-Score: -2.51
-X-Rspamd-Queue-Id: ECFA721E69
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	RCVD_TLS_LAST(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,zhaoxin.com];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.com:email];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from]
-X-Spam-Flag: NO
+References: <20260811160336.782342-1-timday@thelustrecollective.com>
+ <xiymqvu5la6h63umrp6upnzbl3xjjcacuyxg76xp4labnrioyj@xowfpjlhfrzh> <20260903072759.GA1750084@ax162>
+In-Reply-To: <20260903072759.GA1750084@ax162>
+From: Marco Elver <elver@google.com>
+Date: Thu, 3 Sep 2026 12:34:34 +0200
+X-Gm-Features: AcwNN1UBcaXn6RBIaclwnjVOGuTZ1dRp4jV_o2Hi5QwVrPsWTxTE-agnX7TT9dM
+Message-ID: <CANpmjNNWiX51UU064+P823sDX42=O6ChSHrUux1aNqLj60mfUg@mail.gmail.com>
+Subject: Re: [PATCH v2 0/8] Support Clang context analysis for ext2
+To: Nathan Chancellor <nathan@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Timothy Day <timday@thelustrecollective.com>, 
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>, Theodore Tso <tytso@mit.edu>, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Thu 03-09-26 10:18:35, JonasZhou-oc wrote:
-> From: Jonas Zhou <jonaszhou@zhaoxin.com>
-> 
-> s_orphan_lock is modified by orphan-list operations, but currently shares
-> a cache line with s_journal and s_ext4_flags.  The latter fields are read
-> from common ext4 paths, so unrelated accesses can cause the line containing
-> the lock to bounce between CPUs.
-> 
-> On a two-socket Intel Xeon Silver 4208 system with 16 workers, throughput
-> improved by 4.6% for stress-ng.dnotify and 1.7% for stress-ng.unlink.  Perf
-> c2c showed that HITM events on the affected fields decreased from 3,699 to
-> 3,125 (-15.5%) for stress-ng.dnotify and from 1,368 to 571 (-58.3%) for
-> stress-ng.unlink.  Remote HITM events decreased by 45.1% and 65.5%,
-> respectively.  The journal/flags line had no remote HITM events after the
-> change; the remaining remote HITM events were on the orphan-lock line.
-> 
-> Signed-off-by: Jonas Zhou <jonaszhou@zhaoxin.com>
+On Thu, 3 Sept 2026 at 09:28, Nathan Chancellor <nathan@kernel.org> wrote:
+> On Tue, Aug 18, 2026 at 11:58:20AM +0200, Jan Kara wrote:
+> > On Tue 11-08-26 12:03:28, Timothy Day wrote:
+> > > This description is mostly copied from v1:
+> > >
+> > > This series adds annotations for Clang's context analysis to ext2.
+> > > Clang context analysis was recently added in a series by Marco
+> > > Elver [1]. This allows the compiler to validate different
+> > > locking patterns at compile time.
+> > >
+> > > This series enables context analysis, fixes pre-existing warnings,
+> > > and adds new annotations. It is inspired by similar series in the
+> > > block layer (NVMe host driver, for example [2]).
+> > >
+> > > I'm starting with ext2 since it's smaller and simpler compared to
+> > > ext4/btrfs/etc. After ext2, I'd be interested in converting the
+> > > other filesystems and infrastructure code in fs/. I think the ultimate
+> > > goal would be to enable this by default across all of fs/.
+> > >
+> > > The series was built and tested with Clang 23 with
+> > > CONFIG_WARN_CONTEXT_ANALYSIS enabled. I based on 7.2-rc7.
+> >
+> > Thanks for the patches! They look good to me. Once the merge window is over
+> > I'll queue them to my tree. The only thing I'm not fully sure is how much I
+> > like the spinlock_init scoped guards - they looked quite confusing to me at
+> > the first sight (as much as I understand the convenience, conceptually how
+> > can initialization of a global lock be scoped?). I'll sleep over it, maybe
+> > I'll change them to just spinlock_init() + scoped_guard for the lock itself
+> > or maybe I'll get used to them. Anyway, no action on your side needed :).
+>
+> This series is now in -next, where I see the following warnings (or errors with
+> CONFIG_WERROR=y / W=e) with various configurations, such as ARCH=arm
+> allmodconfig, when building with LLVM 23.1.0
+>
+>   fs/ext2/xattr.c:825:6: error: rw_semaphore 'EXT2_I().xattr_sem' is not held on every path through here [-Werror,-Wthread-safety-analysis]
+>     825 |         if (WARN_ON_ONCE(!down_write_trylock(&EXT2_I(inode)->xattr_sem)))
+>         |             ^
+>   include/asm-generic/bug.h:180:2: note: expanded from macro 'WARN_ON_ONCE'
+>     180 |         DO_ONCE_LITE_IF(condition, WARN_ON, 1)
+>         |         ^
+>   include/linux/once_lite.h:30:7: note: expanded from macro 'DO_ONCE_LITE_IF'
+>      30 |                 if (__ONCE_LITE_IF(__ret_do_once))                      \
+>         |                     ^
+>   include/linux/once_lite.h:23:3: note: expanded from macro '__ONCE_LITE_IF'
+>      23 |                 unlikely(__ret_once);                                   \
+>         |                 ^
+>   include/linux/compiler.h:77:22: note: expanded from macro 'unlikely'
+>      77 | # define unlikely(x)    __builtin_expect(!!(x), 0)
+>         |                         ^
+>   fs/ext2/xattr.c:825:20: note: rw_semaphore acquired here
+>     825 |         if (WARN_ON_ONCE(!down_write_trylock(&EXT2_I(inode)->xattr_sem)))
+>         |                           ^
 
-Ok, that makes some sense. But I have some comments:
+This one can be fixed with (should also be a bit more efficient):
+https://lore.kernel.org/all/20260903101843.3462767-1-elver@google.com/
 
-1) If you used orphan_file filesystem feature, you'd see much larger wins
-(as the orphan lock would get completely out of the picture).
+>   fs/ext2/super.c:1149:3: error: calling function 'ext2_rsv_window_add' requires holding spinlock 'EXT2_SB(sb).s_rsv_window_lock' exclusively [-Werror,-Wthread-safety-precise]
+>    1149 |                 ext2_rsv_window_add(sb, &sbi->s_rsv_window_head);
+>         |                 ^
+>   fs/ext2/super.c:1149:3: note: found near match '_res->s_rsv_window_lock'
 
-2) You could just place orphan handling related entries to some other place
-in the sb which is not so frequently read. That would reduce the contention
-as well without wasting space for padding in struct ext4_sb_info.
+sbi was just allocated, and EXT2_SB(sb) and sbi are pointing to the
+same object (unless I misread the code), but the compiler can't tell
+since aliases can't be tracked through non-local objects. So that
+scoped_guard could just become:
 
-3) Your patch drops a comment at s_orphan_lock.
+  scoped_guard(spinlock, &EXT2_SB(sb)->s_rsv_window_lock) {
+  ...
 
-In particular given point 1) above, I'm not sure this is really worth it -
-if you care about orphan handling scalability, you should just enable
-orphan_file feature.
+But I'll leave that to Jan and Tim.
 
-								Honza
-
-> ---
->  fs/ext4/ext4.h | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 724a27e8be61..a3f16a981664 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1644,7 +1644,7 @@ struct ext4_sb_info {
->  	/* Journaling */
->  	struct journal_s *s_journal;
->  	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
-> -	struct mutex s_orphan_lock;	/* Protects on disk list changes */
-> +	struct mutex s_orphan_lock ____cacheline_aligned_in_smp;
->  	struct list_head s_orphan;	/* List of orphaned inodes in on disk
->  					   list */
->  	struct ext4_orphan_info s_orphan_info;
-> -- 
-> 2.25.1
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks,
+-- Marco
