@@ -1,117 +1,70 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 935C94ADD83
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 14:05:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B2514BC01A
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 14:47:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788444311; cv=none; b=fDTim/xjSr2hdZl83dIxbINtPjE044kDppRY8+aLNIFaEZxeBI1GROei3qIuteB+KPX0kFq2FGA8osCpBKW2rm7XWv/0dNPONtgq4gIHP60X6dZH1WK9AdnfwBhRKlcMOf521InM4MEfaCVq8/6EDWGv9joB8fWV4J6XfWOkgFM=
+	t=1788446834; cv=none; b=uO207vF1mOyTLGJmtC/dfCk1bscoSTdm/54fXdO5x7I18WNapOUru97UGRnVeb7erOHoCI85NqIZjyxCKLAaDUHNQNnAP1cVKasUUby4A8a5xgFppNiOlhZ0f6Xd3jba8eqzTjGZXqD4yShwKCFxkB+vuPwbbYJNQx58xAMHl6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788444311; c=relaxed/simple;
-	bh=hsJtwhwSdGSHKFm6o8Dl2gskzQfM3rupgGuZYeSZO2E=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=WG6qHOGjBXL+tZMp3NBYu/E71mnJ3eFD3M3Gcbk3zUijf7QtbPxGZIJF0oNaDUcRf5gV/MuUy9qmTsZtSUa0HxHycrsl2TgSMQ6Jf6VzKl+5CZYaJgUW9P1soXwcTkhlnPIu7BZbBuIn1KsJFJbaBk+88ovh1anCqEthRntm6/A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jvDKPbRO; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788446834; c=relaxed/simple;
+	bh=/T7YqONCo5eBXsKvF/epQygH07trT6370ALQnDdAp40=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QSoUtvX4RMCOUS/QNOsL+zQpaGyjjG4QFNw1Y4n4Pyzi89KYZDJGCSfjF70Vc/lSijGOZESmOrnCDkUDqSINq8F/unSKcNnOm4OJJ6EQsz4BS6eoJGjeC5RsOvZ8X8CG1vwebyKRgc9XuPuVQLfh3Hz99CoXa+7koEate5nc8Yk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=QJesqE4T; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jvDKPbRO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A92D1F00A3A;
-	Thu,  3 Sep 2026 14:04:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788444297;
-	bh=mZeu6Z1vkbLX0/7T5aUkfLWRs9DfbTq9zv134BBeaC4=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=jvDKPbROrswwHIIdMNxg0eN1uAG1ZE7AeL2qIHoRlt1VvTAucDXwJVNzv2xjDLi2X
-	 JlINZl8piu6QAsRnbTJ3FrvYx7/B47duwWfXAlY+xFq7fG4/lJN+8Po20AFzTt6O4N
-	 MMUzF3lvtxizfsWsXMlLGj5+8d3NKt7tc7LVjS7lO2jh6bZnZExlYofIeUiOO20NSl
-	 r13fEJtlV6eDK8OiScR/0xp0sUo7qz/yliU+JLalDxNZwijXpcpcOu9FDB8GPGbQfB
-	 kNtllZB7n9oRRdTQjCS0LiuVBd1raB6LHDkzH2/kRlUPqXrpmDsVMiXYd3CCJxgSUF
-	 YZqt/wJ4BQs5Q==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v6 30/31] ext4: partially enable iomap for the buffered
- I/O path of regular files
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260903124017.2325538-2-yi.zhang@huaweicloud.com>
-References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903124017.2325538-2-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 03 Sep 2026 14:04:57 +0000
-Message-Id: <20260903140457.8A92D1F00A3A@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="QJesqE4T"
+Received: from macsyma.thunk.org (pool-108-26-156-67.bstnma.fios.verizon.net [108.26.156.67])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 683EjLMF011651
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 3 Sep 2026 10:45:22 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1788446726; bh=qHs/hYcfdCQ1ysGE+hmGWWr3Mk+We3imbSb6wYOC52U=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=QJesqE4TZVDMmqCP0gYnKzQVE38G5Sj1uHY8Px+6ZarWBBRuhH1Fwb1CRJ5tJPRFV
+	 tmOiLD28kscOP8nUwRZQsNO/wuT4KMKK12aCBaWLHnxjUqbgUTwmyQBvTJ2mBkZ+88
+	 /QN2pl7raeA9OfyGDIqrh4LXvngd7aOvgPf+U75IMT4tmP+CjfZpnKL3Ym4RgOG14t
+	 k28ord6f1XO1MU81Az2eIi9VgraAJBU9HpcZgM1M3J0UIfdl859jwgeG0NbUVpFB/V
+	 7p2L8VgjrjdYi/84CLpjr044H60KgLgzIYRVIAI7c/vwX2bDYIxq9mAEVxUhO4HVWN
+	 LYHu+Y27eWAuA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id BA709132623E; Thu,  3 Sep 2026 10:44:20 -0400 (EDT)
+Date: Thu, 3 Sep 2026 10:44:20 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+Cc: Christian Brauner <christian@brauner.io>, Jan Kara <jack@suse.cz>,
+        Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
+        Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+        Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        ntfs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH 2/9] ext4: Remove uses of FGP_NOFS
+Message-ID: <apmHuRN-r4gfWnTX@mit.edu>
+References: <20260830041901.2668-1-willy@infradead.org>
+ <20260830041901.2668-3-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260830041901.2668-3-willy@infradead.org>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] Concurrent buffered reads during dynamic transition of the journal=
- data flag cause type confusion on folio->private, leading to memory corrup=
-tion.
---
+On Sun, Aug 30, 2026 at 05:18:49AM -0500, Matthew Wilcox (Oracle) wrote:
+> Both of these locations are called while a transaction is in progress.
+> Starting a transaction uses memalloc_nofs_save(), so we are already
+> prevented from recursing into the filesystem and using GFP_NOFS was
+> unnecessary.
+> 
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-commit a5650f621dac34bfe427e11f706ab1c16d533afc
-Author: Zhang Yi <yi.zhang@huawei.com>
-
-ext4: partially enable iomap for the buffered I/O path of regular files
-
-This commit introduces ext4_enable_buffered_iomap() to determine whether a
-regular file inode should use the iomap buffered I/O path. It also modifies
-ext4_change_inode_journal_flag() to dynamically toggle the buffered I/O
-path and address_space operations on an active inode when the per-inode
-data journal flag is changed.
-
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-[ ... ]
-> @@ -7598,9 +7695,10 @@ int ext4_change_inode_journal_flag(struct inode *i=
-node, int val)
->  	 * the inode's in-core data-journaling state flag now.
->  	 */
-> =20
-> -	if (val)
-> +	if (val) {
->  		ext4_set_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
-> -	else {
-> +		ext4_disable_buffered_iomap(inode);
-> +	} else {
->  		err =3D jbd2_journal_flush(journal, 0);
->  		if (err < 0) {
->  			jbd2_journal_unlock_updates(journal);
-> @@ -7609,6 +7707,7 @@ int ext4_change_inode_journal_flag(struct inode *in=
-ode, int val)
->  			return err;
->  		}
->  		ext4_clear_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
-> +		ext4_enable_buffered_iomap(inode);
->  	}
->  	ext4_set_aops(inode);
-
-[Severity: High]
-Can this lead to memory corruption due to a type confusion on folio->privat=
-e?
-
-When toggling the journal data flag on an active file,
-ext4_change_inode_journal_flag() truncates the page cache, but then blocks
-on jbd2_journal_lock_updates(journal).
-
-During this blocking window, a concurrent thread could perform a buffered
-read on the same file. Because ext4_file_read_iter() calls
-generic_file_read_iter(), which handles buffered reads without acquiring
-the inode lock or invalidate_lock, the concurrent read can instantiate new
-folios into the page cache using the old address space operations (for
-example, attaching a buffer_head structure to folio->private).
-
-When jbd2_journal_lock_updates() returns, this thread will proceed to
-switch the operations via ext4_set_aops(inode).
-
-Will subsequent operations on those concurrently populated folios invoke the
-new iomap operations, misinterpreting the buffer_head pointer in
-folio->private as an iomap_folio_state pointer?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260903123543.2302=
-999-1-yi.zhang@huaweicloud.com?part=3D30
+Acked-by: Theodore Ts'o <tytso@mit.edu>
