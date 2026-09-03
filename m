@@ -1,43 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EEC04A840C
-	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 12:56:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 119F14A4991
+	for <linux-ext4@vger.kernel.org>; Thu,  3 Sep 2026 12:57:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788440178; cv=none; b=Yf3sT3B8MfkfxkYzLBZ2k8p17JcIURLfDM8w5NSVAlCqZl3MhbqiZHyYHQRRxDH9iLqIXWeCbh8y8FYBBFz2anko3jlze7UcB8zQYiWzxizgT7NfGvtT1DeaZqMXAd+oG6b3ZLBTCMI37V5EHxFkyiUqPU0XRKr1IFgTPxZab0o=
+	t=1788440228; cv=none; b=G19m8pImxFlXas3QZ5JInWo30V6OUoua7dJcQNHtn1dcAqjHh2yPkvVq73JCIyN691AeEzs6c2l0yriLcws1g8YUJ6mw0Y1wpjCiJ6gcYJt1nmjB4e43BxImJMORM+eEkF7IEfltUkxvVfMIhnZ3Z4ZHoKxicuaCLs4FwTyWVU8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788440178; c=relaxed/simple;
-	bh=XqXBxvh7EmqQcwdZuJMY58CmYpN9YnTojZJL032hQ3g=;
+	s=arc-20240116; t=1788440228; c=relaxed/simple;
+	bh=39EbkpJYowkwsPKw5mDci/snYpA7iiJtN7ls6USbVDs=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=Z0yBG7qHNQFe4mT9t9KWoAUlJI4jfiivCXqQ2bHcuKu2OSELkLr/k5j0sGxI7hiaicZajkCTbjh/VT+tGxmZYx4VKR/UHnfVoI6VuKfT4owNo5dG4IHeopF7O7jg1NzJ3rbnoijQjEnJwUhLEDjUCuL0qQuGiNIdhMcxf0jzObg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=etTJ5IRh; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=jiP+Fzwo0YqT+SjlUqeSeTB+zSMfF6DA2lw0IKIOVWvHQY6iMiIXAVRv7IPSjpuGEXvMzNjiQRq7TvSN363LdmoGUwSXDg3DXgjTMM07qS2PGjkIghhDneLIdjYe1ybjgE/BEXxpJeNQOdhAn95ZyQia1ab4Rdf/ZigVcNo686E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JhFLDGSY; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="etTJ5IRh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D4FBE1F00A3A;
-	Thu,  3 Sep 2026 12:56:15 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JhFLDGSY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B622B1F00A3A;
+	Thu,  3 Sep 2026 12:57:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788440176;
-	bh=XqXBxvh7EmqQcwdZuJMY58CmYpN9YnTojZJL032hQ3g=;
+	s=k20260515; t=1788440226;
+	bh=CVA5d5955oZ5AnSKD6HB4ytWiBY48590sd8j8ioyi84=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=etTJ5IRhW8YWlLXqC5a5mmhzmav5OFUwnkVjzrG/RH1QV6ELzWbKndk3o3VG2J3pb
-	 512JMKn4+9JF7E+ZAfqWBaKo8gzGhle1SNy66NFQKFTKRsGMxwrieiHysPx/R0rGY1
-	 K6FYnCAA7nxOZ5wO2ibZPw6EncF416VfElx5CWdXOI+Xi2e/HINRPA52io/bYQWiFS
-	 SEydQqvoljA/PKkBoz5lsV+8aq8V0DzLDFycupryHs1cg6My2upbbiihMG6f09VSaI
-	 wyIhvFlXueyh2odqc3tPqAlWZYMlvu8j+5pixlbwvpeMABgrnB6QATKdE8zmGaPP7I
-	 388F30SZ5XX0A==
+	b=JhFLDGSYvZPZEmbGvE6xpKF5uYy34sYux0wfe39S+U1YFuLznQyRyXDPQeNUGduWO
+	 LfAavSKalksCD65sGSTIlMPP4FFEKG3Ro5FJ2M0U4Huxol5cT00ABRcolHazpvNx1R
+	 kHyTRjd97KqFyQ+qn4nXUflcL0O3l4os5p/jKphEXTH1Fd2k7gpoMhm5Lc9ZsldkNT
+	 ESonb03aeRbHbpJqH10bQhZPnpOs1Naty5zoPpOCgW3RfoJIm7yr/jzlO1aU7FQXog
+	 SAi+5woFjyIlNysYW12B2ZNXaVAAIbK5LuCvQy8HXOgAurHfQHP60NVOaOcb0MV5Bq
+	 4lA1zjnOLWupA==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v6 01/31] ext4: simplify size updating in ext4_setattr()
+Subject: Re: [PATCH v6 10/31] ext4: add iomap address space operations for
+ buffered I/O
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260903123543.2302999-2-yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260903123543.2302999-11-yi.zhang@huaweicloud.com>
 References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903123543.2302999-2-yi.zhang@huaweicloud.com>
+ <20260903123543.2302999-11-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 03 Sep 2026 12:56:15 +0000
-Message-Id: <20260903125615.D4FBE1F00A3A@smtp.kernel.org>
+Date: Thu, 03 Sep 2026 12:57:06 +0000
+Message-Id: <20260903125706.B622B1F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,10 +47,18 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> The logic for updating the file size in ext4_setattr() is currently
-> somewhat messy. By directly entering the error-handling path after
-> failing to add an orphan inode, the unnecessary recovery process
-> involving old_disksize and the file size can be avoided.
+> Introduce initial support for iomap in the buffered I/O path for regular
+> files on ext4.
+>=20
+>   - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
+>     inode uses iomap instead of buffer_head for buffered I/O
+>   - Add helper ext4_inode_buffered_iomap() to check the flag
+>   - Add new address space operations ext4_iomap_aops with callbacks that
+>     will use generic iomap implementations
+>   - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
+>=20
+> The following callbacks(read_folio(), readahead(), writepages()) are
+> provided as placeholders and will be implemented in later patches.
 >=20
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
@@ -57,5 +66,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260903123543.2302=
-999-1-yi.zhang@huaweicloud.com?part=3D1
+999-1-yi.zhang@huaweicloud.com?part=3D10
 
