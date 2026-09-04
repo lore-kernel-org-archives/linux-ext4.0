@@ -1,91 +1,110 @@
-Received: from out162-62-58-216.mail.qq.com (out162-62-58-216.mail.qq.com [162.62.58.216])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f43.google.com (mail-ed1-f43.google.com [209.85.208.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DBAA385D9E
-	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 02:07:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.58.216
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 316963E7631
+	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 05:30:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788487646; cv=none; b=uU66doGx8dLlWJnxP0jvWbY1ZnqRGLoId/vmxEGdWox8OE9VI3A32rHmh8M5bv2t/bZpYkk04+XynUhlSoUYTdlUnaj70C9dOPcfo6kdrNzQKsIbWWRW5t4cJH5Fh9JY9btgCFkQPakIGYj2mJVmQY9vKphWfHlPungwv7CMsxE=
+	t=1788499823; cv=none; b=H043VLLypfk9bjY7l1aTBRwbv8SeprclXggCAzjartrfzDnwtjUL0dL0ztcYBxtsbPk0i2HRDUkrah+FXrwKh4VZLM1STwO9+OUYge0j9Uj4XCCJUevFC5i/TmIWr1Tb5oELD4Mq1TNPwfuDF1Y3ICDbyYweSgI8OePfMp+nIds=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788487646; c=relaxed/simple;
-	bh=/usv0M9ON4gEcbPXu04wspLUvbZ9ED7JzEdRTpfgqMY=;
-	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=O/mGlwYrGmGYAhdKX1aoLcZe4roSllyC9ZRbd78sKIDWpnRNhDfiRCP8Ng9LpDezqVaRbljMyQoVaMHTt/uk7kt6usSjKv1OVRmfmtME58vTPQwhK4u3CgQwUoMwr7gDtmEiRdIos0T/BafWM9LCAPWe7gVwSCCYdyr7Y5QNDH0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=qsL9SInf; arc=none smtp.client-ip=162.62.58.216
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1788499823; c=relaxed/simple;
+	bh=DDsae5PYRHBzB8MMbUqjMxYCjTAfs5Wrghb8LnCGy4c=;
+	h=Date:Message-ID:From:To:Cc:Subject:In-Reply-To:References; b=k6vTzM/6EEo2XZabVeoe0jcBrChcxww/HO146m8n5pTRr4OzejQ+iBVPf+388+Iu0F83XSWZCSYdL6Turu3mL0GeO2nu9sYi/de0LTZfyVJ0TdXfP/Y6jf4wjUp684hipNMNfLA7DdCi5Dx4+hX1S64DagVL4wSrdqxlf6DwBLk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ferrisoft.com; spf=pass smtp.mailfrom=ferrisoft.com; dkim=pass (2048-bit key) header.d=ferrisoft-com.20251104.gappssmtp.com header.i=@ferrisoft-com.20251104.gappssmtp.com header.b=KfRyhIyo; arc=none smtp.client-ip=209.85.208.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ferrisoft.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ferrisoft.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="qsL9SInf"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1788487633; bh=C8ycuz886UciVQ1/7YL6A1EfAASJCUtMC9jmmAELh5c=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=qsL9SInfTxazViFXnyOwMyvXLFwnud1q2Yy25WFV3cz/kG4/cPFEVqYg9lEwdYP3/
-	 pYVyOAzSDQEj9FZPMPTD1fCPM3uk2DPbJzME6llTRIdMDMomJZi/GYa7Cxtw6UrfRP
-	 u0y6kE/7KJdLgVS20bQxqiIUWzkv32PNaDPuk9EQ=
-Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
-	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
-	id 1821DA6F; Fri, 04 Sep 2026 10:06:02 +0800
-X-QQ-mid: xmsmtpt1788487562ta5e8irxs
-Message-ID: <tencent_C4778C64AB2025042F0F8DACE17843752108@qq.com>
-X-QQ-XMAILINFO: NCkMfDbncK88D5FX62okEeIHIvOEXCqeMP4mg7GUuiX6gtWZyKQxhpP22St5z9
-	 qjG0CgWaWVyjvj67DJnZSyzDBM8Y6Xd52+yW8ZZMxCPiA3nnDM3bHk7p+fi8uog+L5Ir+9oTyCPU
-	 +n2zDLnJiPauVE3YrbJ9iLWmmNwC1MZPgNMRjMKYAXqqvZpsPovpIa256/+yEfs9uG6Rvdnc9RNA
-	 7srPSRv3hN42Tntw8mGtWogDH4J79+zwW6aK/tPVEaLPmaVcgFEr6rzb2n6dl7dFElTQUA/336xf
-	 pkVrXJglMVHvRTOfN1ItGFF6QExi4QW6fYYe2gWQgBWxP7pkSRHtBffhMnJNEySrVX+giJ7LZtDy
-	 E+dUr51JdGUMZVayvP3o7SzHbfrHRNtDCao4e+8PS6Kpe5j+RkUuGUGQhi0OV6nU6r41zsCYVdGw
-	 eWQz3l07xaQRtXva/u8YayS9wmyPpY+dcRKMbkEB2ogk65mZfyEPJi+gVwM1m3ZycWkcaoHIPUdg
-	 B8LrPJzenDd+n7cU84OhvCVsxwkdSM3fkAyzFdBdu41uqMDyN9AzaPy0j8XDetnhp3ixWyYWXBdF
-	 mJB+0oSM8GUqHMR9j0CXAYQf+v6uizqSJ+GlHjUAQku6o0/J5UAEUJNBizhgKftWrG8sryt2W/Zt
-	 QG0HEgLc/9/U3kDS/yh6hK/9GxFMUnVcWrnEoR/h8qCR3zfXTrC6Q+GM9xhTKj9eEbnYX3kXhy56
-	 FMMW7CRNtjQqoEmi1JEj4xttkrh+RISDMQSFirSbKYoJ3mJpzY2KzduaQATZD9LNQ+3XFS8NC3+F
-	 l5///qT+maXXglJ/3Tv/anFyeyz9fhDf0rWwI88AMUv84qZCMOnB6lWg4TWsX/1O6tc2v+wN2qhK
-	 UTyDD8jDc1bkIkxTu6uhvsI8ExhDMOium5jz0UQvqVE30+GZQXaVzRe4SWvV507L72velxbQERld
-	 FbXNKBlwp48cCWvU3m0jCC/UGCTt//78KtXLTykaCfz9vgFrKmqnmWmfMOt28lrp+pTYGaYkHEDf
-	 ywOCY99m1EjolBggn5kCl3feA6c/CuYpd9Psm3TkRhRhcAXiZE
-X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
-Date: Fri, 4 Sep 2026 10:06:01 +0800
-From: shuo chen <1289151713@qq.com>
-To: sashiko-reviews@lists.linux.dev
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v6] ext4: rewrite ext4_convert_inline_data_nolock to make
- it safer
-X-OQ-MSGID: <aponieVkWaPYQ8GZ@DESKTOP-AT5F202.localdomain>
-References: <tencent_93CC3232AC6A9418BCE4372286770F91850A@qq.com>
- <tencent_3656CB4AA45EA01A8DC2B9865242BA18A709@qq.com>
- <20260904014637.BBEE01F000E9@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=ferrisoft-com.20251104.gappssmtp.com header.i=@ferrisoft-com.20251104.gappssmtp.com header.b="KfRyhIyo"
+Received: by mail-ed1-f43.google.com with SMTP id 4fb4d7f45d1cf-6a642495d81so795027a12.2
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 22:30:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=ferrisoft-com.20251104.gappssmtp.com; s=20251104; t=1788499819; x=1789104619; darn=vger.kernel.org;
+        h=references:in-reply-to:subject:cc:to:from:message-id:date:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=g4XHZarYyGiNGF21Yvcw0I+AYGTcuONz0i7wXp0V4/g=;
+        b=KfRyhIyoYKgUVLg3FinxS6CDKv9PnKJXWAG/DKURb5chJ45YRhNnYQG2ahGMZw1gM8
+         mg/o/Eey8a0NNqX33DT0cfgqNJVbZtEagxlYu8yvn4E4inaDGHPD0Cd35eBNuAQ/sGjA
+         6p/tk+qbhAwABL5ebhMynMjeGw7RWHWn24ixPJ7ujIl/SuhINgD2+OkbdmxQF4c/xcBd
+         B/+BhzhdkNiWaErQNZ7aoKgIq0hcIDDF0/mg/TjEyemLsaf2qRo72WO43mHP1odDas/E
+         lOLrK94h9sxg2hNTxacWzgX69vUoDe/lcB2noG89Z7ZaYHaLUviZIsiWzNV/w5p+xaDC
+         xwIQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788499819; x=1789104619;
+        h=references:in-reply-to:subject:cc:to:from:message-id:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=g4XHZarYyGiNGF21Yvcw0I+AYGTcuONz0i7wXp0V4/g=;
+        b=BK/7JPGBGTSPyUfnqWMDnCAPADuhEMNg33WVoeuveXSo8SeDwid8UhmNzSIt2BKEPd
+         UPU9UOomkW6yCtvuUkEo/Q0IZoBCvkNhObAmY6KmxXmQvC/PPzagAsiCHodM9tfMnxou
+         2XXL6b/yxHnRxRGKrcRW+1tceZFAyfeXpbgY1d9i80z3e3M0OChvoFqq791JG65L16BG
+         bEX4czXf/QFDSsEfCt+5eHmZeOST0qskjPo5CRqQwHzzZnh6MYCa/+ul/J1a64dzSfqC
+         A45FF5h+ZscicJIgGLwKLbeeMxVgdbZdSPxipMCnrK96A9UDpUiC9xFel5P2IifdiGGW
+         oU9A==
+X-Forwarded-Encrypted: i=1; AKwUvBymCQYziwGi6swn0ucBI5sbrCdbiEJbXudhzK1OMFpjkWU45NmubppXWzB0hklEkqqUmzxg1Q9K7KMt@vger.kernel.org
+X-Gm-Message-State: AFuF++kPlFGgB/rKBgxsYJ+HP3nCSPiMPgznGzr8pU1xZ9iK93fFLnLZ
+	p2ZYes3sCKwuehwJgNHE7AqCQWdRNfErO1llwQodsxmC/OMWLnJAz58KRQcaZeJB6AZhpim648q
+	jc2klEJ1o
+X-Gm-Gg: AYBFou0WKnF87SLeHtXSp71Ds/HOm4Emc6R2uCtlTOGmkPhLAytQ9KxlhaIz1/1DZi+
+	DG37d0zRbXeEGUqxMWtvUZO2PS3OXo6Lo96ZVInkyuhZ6fbyf5axo31zweIsqhlb8LFL0f7MwqQ
+	6ZI4OlW7zFU+o/m7TjE2FYRXuj1EB5quuJqZsaAEqRNasZOV7zpDclflzCQuh5gN6df5+GMmNYo
+	5pYIoK8b/alAGsAcc9YSQ6au2J/KQlikPTLzIoh9w/qEMqdtSwwpiH+y/YaNxxay3SJXkeXDcu8
+	+5Nmzw8S76vVHzjZXX/c5MnSzXKqAwOQ1KILdXztaW4ZAEp2qsX2UqKYknITnzDBvwde89vjnji
+	defBaBeDCEHpbjn/QqCbIETgwdOVY4kBtQRbNFs58EMjz3EANmCivzuW6R7PTGpL4DcW/dk3FTZ
+	Gx8hADdcn3YnYntyjhTrSzKDm0GUWK6lcLxqcADdrlMDKcp0LKBFq0eNYP8NH6UpBek03kuB/Nd
+	81T+RJsN3pom9g/pg/Y+/RU9UGS/S7FaI7u
+X-Received: by 2002:a05:6402:3215:b0:6a7:ea53:f618 with SMTP id 4fb4d7f45d1cf-6a7ea541009mr554153a12.23.1788499819053;
+        Thu, 03 Sep 2026 22:30:19 -0700 (PDT)
+Received: from outbox-0007-reply-tested-by.eml (45-11-61-69.ip4.greenlan.pl. [45.11.61.69])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6a7e68e8f2fsm714179a12.19.2026.09.03.22.30.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 03 Sep 2026 22:30:17 -0700 (PDT)
+Date: Fri, 04 Sep 2026 07:28:43 +0200
+Message-ID: <20260904072843.tested-by-bh-submit@ferrisoft.com>
+From: Greg Ociepka <greg@ferrisoft.com>
+To: Joseph Qi <joseph.qi@linux.alibaba.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+    Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>,
+    Matthew Wilcox <willy@infradead.org>,
+    linux-fsdevel@vger.kernel.org,
+    linux-ext4@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] buffer: fix NULL dereference of bh->b_folio in __bh_submit()
+In-Reply-To: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
+References: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260904014637.BBEE01F000E9@smtp.kernel.org>
 
-> [Severity: High]
-> Does this hardcode the extent length to 1 block, potentially leaking blocks if 
-> ext4_mb_new_blocks() allocates a larger contiguous extent?
-> 
-> In ext4_convert_inline_data_nolock(), the actual allocation size is captured
-> as allocated_block = EXT4_C2B(sbi, ar.len). If the allocation request returns
-> multiple blocks (for example, on a bigalloc filesystem), only the first block
-> is added to the extent tree here. The remaining blocks appear to be neither
-> mapped nor freed, which would leave them orphaned in the block bitmap.
-This is a false positive. The remaining blocks are stored in i_prealloc_node, 
-so they will not be leaked.
-> 
-> [Severity: High]
-> Can this error path result in a permanent data block leak?
-> 
-> If ext4_ext_insert_extent() fails with an error like -ENOMEM or -EIO, the
-> code jumps directly to the no_free label. This deliberately bypasses the
-> ext4_free_blocks() call just above it. Because the calling function relies
-> on ext4_set_inline_data_block() to free the newly allocated block on error,
-> bypassing the free operation here appears to leave the blocks permanently
-> marked as used in the filesystem.
-If the error is neither EDQUOT nor ENOSPC,freeing blocks here could 
-lead to a more severe error.See the patch 
-"avoid infinite loops caused by residual data"
+On Wed, 2 Sep 2026 09:33:57 +0800, Joseph Qi wrote:
+> Since commit 8deae2284976 ("buffer: allow a buffer_head to point at
+> memory outside the page cache"), bh->b_folio may be NULL.
 
+We hit the same NULL dereference independently on real hardware, and
+it is nastier than a fuzzer-only finding: on an ext4 root filesystem
+every boot of next-20260831 (and every later tag up to next-20260903)
+dies about two minutes in. jbd2's shadow buffers have no b_folio by
+design, so the first journal commit after mount oopses in
+__bh_submit(), kjournald2 is killed by make_task_dead() and every
+subsequent metadata write blocks forever - journald, the flush workers
+and eventually all of userspace wedge in uninterruptible sleep with no
+block-layer errors reported. After an unclean shutdown the crash moves
+into early boot (journal recovery commits immediately), which makes
+the machine effectively unbootable until a different kernel is chosen.
+
+  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+  CPU: 0 UID: 0 PID: 357 Comm: jbd2/nvme0n1p18 Tainted: G        W  7.3.0-rc1-next-20260831
+  pc : __bh_submit+0xa8/0x210
+  Call trace:
+   __bh_submit+0xa8/0x210 (P)
+   bh_submit+0x24/0x38
+   jbd2_journal_commit_transaction+0xb80/0x1ce8
+   kjournald2+0xb8/0x238
+
+With this exact change applied on top of next-20260831 the same
+machine (ASUS Zenbook A16 UX3607OA, Snapdragon X2 Elite, arm64) boots
+reliably and has been running normally for 11+ hours.
+
+Tested-by: Greg Ociepka <greg@ferrisoft.com>
 
