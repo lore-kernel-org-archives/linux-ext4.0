@@ -1,72 +1,96 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from canpmsgout01.his.huawei.com (canpmsgout01.his.huawei.com [113.46.200.216])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 75E6B330B0E
-	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 07:10:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DBB7412C08;
+	Fri,  4 Sep 2026 07:20:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788505816; cv=none; b=dpAdZKkcZIn4HUomXyQtEiqyjAnfeTdP7wQKUKVzhDFgZATKQ4NWJ0rfyXl6Vg+KJjfd5A/H7V/frcwCX9oMRE735CJCSQBkXB+40nvfVpXUR2Uw4AHPv2ZvrB7ahKM4tXBKCJB+ev5uoAU32fZEOfUvvHjp4Kd0tSrAqH284xA=
+	t=1788506422; cv=none; b=QhdM/tW2mRHpwYoGRF9dHY8eXCkAWGX3d+Pb9hzw8/WZkWkPch9l+xEMU2dzhDrz1x8bga8wLfwS3CGYzMNEFggumegLHrLYMvUAXhC3RnBgKWrvYQQgvBRzeSXWReAq0y/jvSdEMOkWmUnGdOe6S6zlvUOc5UnCVCoiyHjdexI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788505816; c=relaxed/simple;
-	bh=Ts6qJf4JXQV08YaQ2QMGPNP/uPS48eajEBNIkx24AWg=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=RZj0bL375bmp0z7vW6a/6k+5ZK1PfGxCSC0Yerc5EEnRMNHoBF/Tzyujodzm5Vye7b7mi7O+GjlL5RvllNU2hZRsePaTpaPdoSfJwsr+SvT2r3XlvYE9bCt79w03frs7INZKfCCJTxXBHu0FPYaAthFo/gdUScnJbCLcwk6IzDk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZQai/QHU; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788506422; c=relaxed/simple;
+	bh=p4d0dYw56yYEgiROOScQizDjwMIRsCID6kb8JN+Oio4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=ayuYERuLfyZmOej2EblbzikKniRR4uiinyW6wWhntzZvTE3lNk0ZjhK0wxlLTIwCKl4qMc0mjAYp9Gh7IfZUAp/GZktDeo0vOv+g09WFzHzhbKbJZXDKME9r/2PxrVZEPvKBM2uNZRjoZ9HeGBE6KLrzCRJ8H1mBar3AmZImYJ4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=G+S+mkvn; arc=none smtp.client-ip=113.46.200.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZQai/QHU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA4AF1F00A3D;
-	Fri,  4 Sep 2026 07:10:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788505815;
-	bh=Ts6qJf4JXQV08YaQ2QMGPNP/uPS48eajEBNIkx24AWg=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=ZQai/QHU9AKF5dWSyzViw7HaGUykMxu/t/jQwozvjCwkSWyW/wwE7tTAiWISvfPJ7
-	 AiZB2ZWOqNsJxuE+xrHxmhRFRZGNFvJtEf8/rm4qJn8xCs/fxsTjceyk4hDmZR+xcA
-	 g8r7/jx0PpwKa+WVMRvvujOQgjBz6kCB7tfK1xUGOqSdGioCuYopZlS8uGP/9ukx+L
-	 3KlxGLZBAdKtdBCfQdXYYhtLX6uylv6RV3SS7Zj1FTG7spkunusFLzUcrv7CqVFFTS
-	 uI4sjWG9LZkRLko+j4XOrCr3m3fmZoLOz+dUQG+HDxSW/C7NGOp71bSmjIxPnD5Za5
-	 rCx1mPQmi+6rw==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: shut down error report timer on failed mount
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Runyu Xiao" <runyu.xiao@seu.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260904065648.4048108-1-runyu.xiao@seu.edu.cn>
-References: <20260904065648.4048108-1-runyu.xiao@seu.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 04 Sep 2026 07:10:14 +0000
-Message-Id: <20260904071014.CA4AF1F00A3D@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="G+S+mkvn"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=elhCMLlv6addeVJhTAMH4AZztV6+lN1fBi4N6jg/Hes=;
+	b=G+S+mkvnwheaAgmEpR99K5hl6iebTT6Y4BZ63v6JQrUq5qNLUHxmmMJyHjqtDQYfVMjAGX8nJ
+	Eq479iD+3yCWhX8U7DOxA/F4VG2yueoH/4gkb3b6opMoQ7zK9RWP3vctK7tpBU07JeV2Zv0V8Ro
+	lihMDRcTyslMBGgCHvHBnrI=
+Received: from mail.maildlp.com (unknown [172.19.162.197])
+	by canpmsgout01.his.huawei.com (SkyGuard) with ESMTPS id 4hbncr4ykZz1T4MQ;
+	Fri,  4 Sep 2026 15:08:44 +0800 (CST)
+Received: from kwepemk200008.china.huawei.com (unknown [7.202.194.74])
+	by mail.maildlp.com (Postfix) with ESMTPS id EDB5640579;
+	Fri,  4 Sep 2026 15:20:08 +0800 (CST)
+Received: from [10.67.109.254] (10.67.109.254) by
+ kwepemk200008.china.huawei.com (7.202.194.74) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.2562.45; Fri, 4 Sep 2026 15:20:07 +0800
+Message-ID: <c2400971-42bc-463c-a644-d2e307bd88ac@huawei.com>
+Date: Fri, 4 Sep 2026 15:20:07 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 0/8] Convert barrier pairs to acquire/release for
+ better performance
+To: Theodore Tso <tytso@mit.edu>
+CC: <bcrl@kvack.org>, <viro@zeniv.linux.org.uk>, <brauner@kernel.org>,
+	<jack@suse.cz>, <adilger.kernel@dilger.ca>, <libaokun@linux.alibaba.com>,
+	<ojaswin@linux.ibm.com>, <ritesh.list@gmail.com>, <yi.zhang@huawei.com>,
+	<sforshee@kernel.org>, <akpm@linux-foundation.org>, <pmladek@suse.com>,
+	<rostedt@goodmis.org>, <andriy.shevchenko@linux.intel.com>,
+	<linux@rasmusvillemoes.dk>, <senozhatsky@chromium.org>, <kees@kernel.org>,
+	<tglx@kernel.org>, <linux-fsdevel@vger.kernel.org>, <linux-aio@kvack.org>,
+	<linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
+References: <20260902074805.398540-1-ruanjinjie@huawei.com>
+ <apgv5w116frzutwH@mit.edu>
+From: Jinjie Ruan <ruanjinjie@huawei.com>
+In-Reply-To: <apgv5w116frzutwH@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
+ kwepemk200008.china.huawei.com (7.202.194.74)
 
-> __ext4_fill_super() arms s_err_report when the on-disk error count is
-> nonzero. If a later mount step fails, the failed-mount cleanup path uses
-> timer_delete_sync() before freeing sbi.
->=20
-> print_daily_error_info() rearms the timer when s_err_report_sec is nonzer=
-o,
-> so timer_delete_sync() does not prevent the timer from being queued again.
-> The rearmed callback can then access sbi after the failed mount has freed
-> it.
->=20
-> Use timer_shutdown_sync() for failed-mount cleanup. This matches the norm=
-al
-> unmount path and prevents the timer from being rearmed before sbi is free=
-d.
->=20
-> Fixes: 66e61a9e9504 ("ext4: Once a day, printk file system error informat=
-ion to dmesg")
-> Cc: stable@vger.kernel.org
-> Assisted-by: Codex:GPT-5
-> Signed-off-by: Runyu Xiao <runyu.xiao@seu.edu.cn>
 
-Sashiko has reviewed this patch and found no issues. It looks great!
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260904065648.4048=
-108-1-runyu.xiao@seu.edu.cn?part=3D1
+在 2026/9/2 22:19, Theodore Tso 写道:
+> On Wed, Sep 02, 2026 at 03:47:57PM -0500, Jinjie Ruan wrote:
+>>
+>> This series converts some existing smp_wmb()/smp_rmb() barrier pairs to
+>> smp_store_release()/smp_load_acquire() across various subsystems.
+> 
+> I would like to land the ext4 related patches through the ext4 tree,
+> so please detach them from this patch series.  That's because I want
+> to be able to monitor the regression testing before sending a pull
+> request to Linus.
+
+Hi Ted,
+
+Thanks for your feedback. I will split out the ext4-related patches.
+
+Thanks,
+Jinjie
+
+> 
+> More generally, I think we should be looking at this kind of barrier
+> conversion on a per site basis.  If there is a bug that isn't notice,
+> it can result in a very hard to debug problem.  And if the benefit of
+> speeding up a particular code path isn't particularly that great,
+> maybe the cost vs benefit vs risk calculation might cause us to decide
+> to take a pass on the change.
+> 
+> Cheers,
+> 
+> 					- Ted
 
