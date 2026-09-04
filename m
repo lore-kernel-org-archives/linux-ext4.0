@@ -1,110 +1,310 @@
-Received: from mail-ed1-f43.google.com (mail-ed1-f43.google.com [209.85.208.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 316963E7631
-	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 05:30:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A227841D21E;
+	Fri,  4 Sep 2026 06:14:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788499823; cv=none; b=H043VLLypfk9bjY7l1aTBRwbv8SeprclXggCAzjartrfzDnwtjUL0dL0ztcYBxtsbPk0i2HRDUkrah+FXrwKh4VZLM1STwO9+OUYge0j9Uj4XCCJUevFC5i/TmIWr1Tb5oELD4Mq1TNPwfuDF1Y3ICDbyYweSgI8OePfMp+nIds=
+	t=1788502494; cv=none; b=ZnnqMnMCDPxWsK32lZddR1sCVWdE1wox+TvJVl7wKMhEsheI3HO6skSYxPdDLuch+EzRGgu2wtKup/QnArjgPetTf8dHDNfu4QuQGKcmPla7jT0N3Vpl9yWIwmdWNP1pqmn8hMzKRv9YgAwPb8c62UUW02IU+5tJ9wIAzU5Y6rA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788499823; c=relaxed/simple;
-	bh=DDsae5PYRHBzB8MMbUqjMxYCjTAfs5Wrghb8LnCGy4c=;
-	h=Date:Message-ID:From:To:Cc:Subject:In-Reply-To:References; b=k6vTzM/6EEo2XZabVeoe0jcBrChcxww/HO146m8n5pTRr4OzejQ+iBVPf+388+Iu0F83XSWZCSYdL6Turu3mL0GeO2nu9sYi/de0LTZfyVJ0TdXfP/Y6jf4wjUp684hipNMNfLA7DdCi5Dx4+hX1S64DagVL4wSrdqxlf6DwBLk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ferrisoft.com; spf=pass smtp.mailfrom=ferrisoft.com; dkim=pass (2048-bit key) header.d=ferrisoft-com.20251104.gappssmtp.com header.i=@ferrisoft-com.20251104.gappssmtp.com header.b=KfRyhIyo; arc=none smtp.client-ip=209.85.208.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ferrisoft.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ferrisoft.com
+	s=arc-20240116; t=1788502494; c=relaxed/simple;
+	bh=+Vuva2x07kkQ3twdLMiAjuSVbM9K9HtOCZRS9vP9vak=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
+	 In-Reply-To:Content-Type; b=Tby9VycMoLJP4/Tg/7XzqReTETGLVC534lsa1Kv7qzdhZCb6P3rDrm7dUJCQIOlsLKiA91ptm+Dh6pxphmZEINf3LhpcHjhzoN4lIg/FRLuy2azj8j65ph+gZk6jmGJ+MqPboqLcCTVK4v9piR7Q/n2GjtIwJ6Pfzh06dD0sxYY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iHRJ79Ty; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ferrisoft-com.20251104.gappssmtp.com header.i=@ferrisoft-com.20251104.gappssmtp.com header.b="KfRyhIyo"
-Received: by mail-ed1-f43.google.com with SMTP id 4fb4d7f45d1cf-6a642495d81so795027a12.2
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Sep 2026 22:30:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ferrisoft-com.20251104.gappssmtp.com; s=20251104; t=1788499819; x=1789104619; darn=vger.kernel.org;
-        h=references:in-reply-to:subject:cc:to:from:message-id:date:from:to
-         :cc:subject:date:message-id:reply-to:content-type;
-        bh=g4XHZarYyGiNGF21Yvcw0I+AYGTcuONz0i7wXp0V4/g=;
-        b=KfRyhIyoYKgUVLg3FinxS6CDKv9PnKJXWAG/DKURb5chJ45YRhNnYQG2ahGMZw1gM8
-         mg/o/Eey8a0NNqX33DT0cfgqNJVbZtEagxlYu8yvn4E4inaDGHPD0Cd35eBNuAQ/sGjA
-         6p/tk+qbhAwABL5ebhMynMjeGw7RWHWn24ixPJ7ujIl/SuhINgD2+OkbdmxQF4c/xcBd
-         B/+BhzhdkNiWaErQNZ7aoKgIq0hcIDDF0/mg/TjEyemLsaf2qRo72WO43mHP1odDas/E
-         lOLrK94h9sxg2hNTxacWzgX69vUoDe/lcB2noG89Z7ZaYHaLUviZIsiWzNV/w5p+xaDC
-         xwIQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788499819; x=1789104619;
-        h=references:in-reply-to:subject:cc:to:from:message-id:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=g4XHZarYyGiNGF21Yvcw0I+AYGTcuONz0i7wXp0V4/g=;
-        b=BK/7JPGBGTSPyUfnqWMDnCAPADuhEMNg33WVoeuveXSo8SeDwid8UhmNzSIt2BKEPd
-         UPU9UOomkW6yCtvuUkEo/Q0IZoBCvkNhObAmY6KmxXmQvC/PPzagAsiCHodM9tfMnxou
-         2XXL6b/yxHnRxRGKrcRW+1tceZFAyfeXpbgY1d9i80z3e3M0OChvoFqq791JG65L16BG
-         bEX4czXf/QFDSsEfCt+5eHmZeOST0qskjPo5CRqQwHzzZnh6MYCa/+ul/J1a64dzSfqC
-         A45FF5h+ZscicJIgGLwKLbeeMxVgdbZdSPxipMCnrK96A9UDpUiC9xFel5P2IifdiGGW
-         oU9A==
-X-Forwarded-Encrypted: i=1; AKwUvBymCQYziwGi6swn0ucBI5sbrCdbiEJbXudhzK1OMFpjkWU45NmubppXWzB0hklEkqqUmzxg1Q9K7KMt@vger.kernel.org
-X-Gm-Message-State: AFuF++kPlFGgB/rKBgxsYJ+HP3nCSPiMPgznGzr8pU1xZ9iK93fFLnLZ
-	p2ZYes3sCKwuehwJgNHE7AqCQWdRNfErO1llwQodsxmC/OMWLnJAz58KRQcaZeJB6AZhpim648q
-	jc2klEJ1o
-X-Gm-Gg: AYBFou0WKnF87SLeHtXSp71Ds/HOm4Emc6R2uCtlTOGmkPhLAytQ9KxlhaIz1/1DZi+
-	DG37d0zRbXeEGUqxMWtvUZO2PS3OXo6Lo96ZVInkyuhZ6fbyf5axo31zweIsqhlb8LFL0f7MwqQ
-	6ZI4OlW7zFU+o/m7TjE2FYRXuj1EB5quuJqZsaAEqRNasZOV7zpDclflzCQuh5gN6df5+GMmNYo
-	5pYIoK8b/alAGsAcc9YSQ6au2J/KQlikPTLzIoh9w/qEMqdtSwwpiH+y/YaNxxay3SJXkeXDcu8
-	+5Nmzw8S76vVHzjZXX/c5MnSzXKqAwOQ1KILdXztaW4ZAEp2qsX2UqKYknITnzDBvwde89vjnji
-	defBaBeDCEHpbjn/QqCbIETgwdOVY4kBtQRbNFs58EMjz3EANmCivzuW6R7PTGpL4DcW/dk3FTZ
-	Gx8hADdcn3YnYntyjhTrSzKDm0GUWK6lcLxqcADdrlMDKcp0LKBFq0eNYP8NH6UpBek03kuB/Nd
-	81T+RJsN3pom9g/pg/Y+/RU9UGS/S7FaI7u
-X-Received: by 2002:a05:6402:3215:b0:6a7:ea53:f618 with SMTP id 4fb4d7f45d1cf-6a7ea541009mr554153a12.23.1788499819053;
-        Thu, 03 Sep 2026 22:30:19 -0700 (PDT)
-Received: from outbox-0007-reply-tested-by.eml (45-11-61-69.ip4.greenlan.pl. [45.11.61.69])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6a7e68e8f2fsm714179a12.19.2026.09.03.22.30.15
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 03 Sep 2026 22:30:17 -0700 (PDT)
-Date: Fri, 04 Sep 2026 07:28:43 +0200
-Message-ID: <20260904072843.tested-by-bh-submit@ferrisoft.com>
-From: Greg Ociepka <greg@ferrisoft.com>
-To: Joseph Qi <joseph.qi@linux.alibaba.com>
-Cc: Christian Brauner <brauner@kernel.org>,
-    Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>,
-    Matthew Wilcox <willy@infradead.org>,
-    linux-fsdevel@vger.kernel.org,
-    linux-ext4@vger.kernel.org,
-    linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] buffer: fix NULL dereference of bh->b_folio in __bh_submit()
-In-Reply-To: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
-References: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iHRJ79Ty"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3A001F00A3E;
+	Fri,  4 Sep 2026 06:14:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788502492;
+	bh=bTsu2G89SJRy90MXm2vb5283BxfcwUlExbIyEQ3jmSY=;
+	h=Date:Subject:To:References:Cc:From:In-Reply-To;
+	b=iHRJ79TyoZxlkp7nwSUOLxwhbS90hnxS0b5CeEe1PqEX/vuIH/bXcZi5qBX5B6Uw1
+	 yMoKiIMSuLBtRcvkY9F8W4vwGGqgsKa9Y53EmGTQ7io4tiB4ZiRCBdhjwtq63a55OE
+	 h14hJbXsZ8SstPXhv5IkSy4aTpIBzdDptLREJJYg6spnarjqHd1u0KpLy+U9EocpQp
+	 APbFMPo4vVbvZPj01MhRlN6Yp0KMzRWf7mKdWuaMI1ID+QPsRq77fEjmUXgejS8U+6
+	 dBuRjMPUVe0kYilq1jQchst3KFjn5qz/IKeWtJtpXokHFDTfghmH4LEeMgWZd9TQKX
+	 qx8coXyOyz1HQ==
+Message-ID: <d6efde18-0e87-4db0-8560-cbb2acc7b5a5@kernel.org>
+Date: Fri, 4 Sep 2026 14:14:48 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v8 07/13] fstests: verify fanotify isolation on cloned
+ filesystems
+To: Zorro Lang <zlang@kernel.org>
+References: <cover.1784949154.git.asj@kernel.org>
+ <96599abcd6e3264a088ea2f34947de6496f33359.1784949155.git.asj@kernel.org>
+ <apb8S8g3Zqf1XpZ9@zlang-mailbox>
+Content-Language: en-US
+Cc: linux-xfs@vger.kernel.org, fstests@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, djwong@kernel.org,
+ linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
+From: Anand Suveer Jain <asj@kernel.org>
+In-Reply-To: <apb8S8g3Zqf1XpZ9@zlang-mailbox>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Wed, 2 Sep 2026 09:33:57 +0800, Joseph Qi wrote:
-> Since commit 8deae2284976 ("buffer: allow a buffer_head to point at
-> memory outside the page cache"), bh->b_folio may be NULL.
 
-We hit the same NULL dereference independently on real hardware, and
-it is nastier than a fuzzer-only finding: on an ext4 root filesystem
-every boot of next-20260831 (and every later tag up to next-20260903)
-dies about two minutes in. jbd2's shadow buffers have no b_folio by
-design, so the first journal commit after mount oopses in
-__bh_submit(), kjournald2 is killed by make_task_dead() and every
-subsequent metadata write blocks forever - journald, the flush workers
-and eventually all of userspace wedge in uninterruptible sleep with no
-block-layer errors reported. After an unclean shutdown the crash moves
-into early boot (journal recovery commits immediately), which makes
-the machine effectively unbootable until a different kernel is chosen.
 
-  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
-  CPU: 0 UID: 0 PID: 357 Comm: jbd2/nvme0n1p18 Tainted: G        W  7.3.0-rc1-next-20260831
-  pc : __bh_submit+0xa8/0x210
-  Call trace:
-   __bh_submit+0xa8/0x210 (P)
-   bh_submit+0x24/0x38
-   jbd2_journal_commit_transaction+0xb80/0x1ce8
-   kjournald2+0xb8/0x238
+On 2/9/26 02:23, Zorro Lang wrote:
+> On Sat, Jul 25, 2026 at 03:39:04PM +0800, Anand Jain wrote:
+>> Verify that fanotify events are correctly routed to the appropriate
+>> watcher when cloned filesystems are mounted.
+>> Helps verify kernel's event notification distinguishes between devices
+>> sharing the same FSID/UUID.
+>>
+>> Signed-off-by: Anand Jain <asj@kernel.org>
+>> ---
+>>  tests/generic/801     | 143 ++++++++++++++++++++++++++++++++++++++++++
+> 
+> `g/801` is already taken. To avoid merge conflicts, you can use a higher
+> temporary number, and I'll assign the proper number when merging.
+> 
 
-With this exact change applied on top of next-20260831 the same
-machine (ASUS Zenbook A16 UX3607OA, Snapdragon X2 Elite, arm64) boots
-reliably and has been running normally for 11+ hours.
+Let me bump-it up to 90x.
 
-Tested-by: Greg Ociepka <greg@ferrisoft.com>
+>>  tests/generic/801.out |   7 +++
+>>  2 files changed, 150 insertions(+)
+>>  create mode 100644 tests/generic/801
+>>  create mode 100644 tests/generic/801.out
+>>
+>> diff --git a/tests/generic/801 b/tests/generic/801
+>> new file mode 100644
+>> index 000000000000..904ba9440b3d
+>> --- /dev/null
+>> +++ b/tests/generic/801
+>> @@ -0,0 +1,143 @@
+>> +#! /bin/bash
+>> +# SPDX-License-Identifier: GPL-2.0
+>> +# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
+>> +#
+>> +# FS QA Test 801
+>> +# Verify fanotify FID functionality on cloned filesystems by setting up
+>> +# watchers and making sure notifications are in the correct logs files.
+>> +
+>> +. ./common/preamble
+>> +
+>> +_begin_fstest auto quick mount clone
+>> +
+>> +_require_test
+>> +_require_block_device $TEST_DEV
+> 
+> Which test condition requires `TEST_DEV` to be a block device?
+
+You're right, I think this is a leftover from earlier prototyping
+with scsi_device. The test only needs loop devices backed by
+$TEST_DIR. I'll remove it in the following ver.
+
+> 
+>> +_require_loop
+>> +_require_command "$SEMANAGE_PROG" semanage
+>> +_require_command "$FSNOTIFYWAIT_PROG" fsnotifywait
+>> +_require_fanotify_function
+>> +_require_unique_f_fsid
+>> +
+>> +_cleanup()
+>> +{
+>> +	cd /
+>> +	[[ -n $pid1 ]] && { kill -TERM "$pid1" 2> /dev/null; wait $pid1; }
+>> +	[[ -n $pid2 ]] && { kill -TERM "$pid2" 2> /dev/null; wait $pid2; }
+>> +
+>> +	if [ "$semanage_added" = "yes" ]; then
+>> +		semanage permissive -d unconfined_t >/dev/null 2>&1 || true
+>> +	fi
+>> +
+>> +	umount $mnt1 $mnt2 >/dev/null 2>&1
+>> +	_loop_image_destroy "${devs[@]}" 2> /dev/null
+>> +	rm -r -f $tmp.*
+>> +}
+>> +
+>> +# Run fsnotifywait in unbuffered mode to watch filesystem-wide create events
+>> +monitor_fanotify()
+>> +{
+>> +	local mmnt=$1
+>> +	exec stdbuf -oL $FSNOTIFYWAIT_PROG -m -F -S -e create "$mmnt" 2>&1
+>> +}
+>> +
+>> +# Transform f_fsid into the hi.lo format used in fanotify FID logs
+>> +fsid_to_fid_parts()
+>> +{
+>> +	local fsid=$1
+>> +	# Pad to 16 hex chars (64-bit), then split into two 32-bit halves
+>> +	local padded=$(printf '%016x' "0x${fsid}")
+>> +	local hi=$(printf '%x' "0x${padded:0:8}")   # strips leading zeros
+>> +	local lo=$(printf '%x' "0x${padded:8:8}")   # strips leading zeros
+>> +	echo "${hi}.${lo}"
+>> +}
+>> +
+>> +# Create base loop device and its clone
+>> +devs=()
+>> +_loop_image_create_clone devs
+>> +mkdir -p $TEST_DIR/$seq
+>> +mnt1=$TEST_DIR/$seq/mnt1
+>> +mnt2=$TEST_DIR/$seq/mnt2
+>> +mkdir -p $mnt1
+>> +mkdir -p $mnt2
+>> +
+>> +# Mount both base and clone filesystems using required clone mount options
+>> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
+>> +						_fail "Failed to mount dev1"
+>> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
+>> +						_fail "Failed to mount dev2"
+>> +
+>> +# Fetch filesystem IDs to verify the kernel can differentiate between them
+>> +fsid1=$(stat -f -c "%i" $mnt1)
+>> +fsid2=$(stat -f -c "%i" $mnt2)
+>> +
+>> +log1=$tmp.fanotify1
+>> +log2=$tmp.fanotify2
+>> +
+>> +pid1=""
+>> +pid2=""
+>> +echo "Setup FID fanotify watchers on both mnt1 and mnt2"
+>> +
+>> +# Permit unconfined_t domains when SELinux is enforcing to prevent fanotify
+>> +# blockages
+>> +semanage_added="no"
+>> +if [ "$(getenforce 2>/dev/null)" = "Enforcing" ]; then
+>> +    if ! semanage permissive -l | grep -q "unconfined_t"; then
+>> +        semanage permissive -a unconfined_t >/dev/null 2>&1 && semanage_added="yes"
+>> +    fi
+>> +fi
+> 
+> Looks like semanage/SELinux isn't a necessary requirement of this test case,
+> if so that `_require_command "$SEMANAGE_PROG" semanage` also can be:
+> 
+>   if [ "$(getenforce 2>/dev/null)" = "Enforcing" ]; then
+>       _require_command "$SEMANAGE_PROG" semanage
+>   fi
+> 
+> right? And please replace semanage with $SEMANAGE_PROG.
+> 
+
+Absolutely, that is the right way. I'll update it. Thanks!. More below.
+
+>> +
+>> +# Start asynchronous fanotify monitors
+>> +( monitor_fanotify "$mnt1" > "$log1" ) &
+>> +pid1=$!
+>> +( monitor_fanotify "$mnt2" > "$log2" ) &
+>> +pid2=$!
+>> +sleep 2
+> 
+> Are you using `sleep 2` to ensure `fsnotifywait` is fully set up?
+> I'm not sure if `sleep 2` is 100% reliable here. Since the subsequent tests
+> strictly depend on `fsnotifywait` starting up properly, is there a more
+> robust approach than `sleep 2`? For example, could we check the output
+> in `$log1` and `$log2` to make sure that? Or any other better idea?
+> 
+>> +
+>> +if ! kill -0 "$pid1" 2>/dev/null || ! kill -0 "$pid2" 2>/dev/null; then
+> 
+> `kill 0` only can make sure the process is running, can't make sure it's
+> fully set up, right?
+> 
+
+I rely on checking whether the userspace process is still
+running after a 2 second delay.
+
+Matching specific stdout strings a common pattern in fstests
+tends to be fragile across different versions of userspace
+utilities. For instance, the "Watches established" string
+in fsnotifywait isn't guaranteed across versions:
+
+$ fsnotifywait -m -F -S -e create /btrfs
+Setting up filesystem watches.
+Watches established.
+^C
+
+
+>> +	cat "$log1"
+>> +	cat "$log2"
+>> +	_fail "$FSNOTIFYWAIT_PROG setup failed"
+>> +fi
+>> +
+>> +echo "Trigger file creation on mnt1"
+>> +touch $mnt1/file_on_mnt1
+>> +sync
+>> +sleep 1
+>> +
+>> +echo "Trigger file creation on mnt2"
+>> +touch $mnt2/file_on_mnt2
+>> +sync
+>> +sleep 1
+>> +
+>> +echo "Verify fsid in the fanotify"
+>> +kill $pid1 $pid2
+>> +wait $pid1 $pid2 2>/dev/null
+>> +pid1=""
+> 
+> unset pid1
+> 
+>> +pid2=""
+> 
+> unset pid2
+> 
+
+Added.
+
+>> +
+>> +e_fsid1=$(fsid_to_fid_parts "$fsid1")
+>> +e_fsid2=$(fsid_to_fid_parts "$fsid2")
+>> +
+>> +# Dump debug details to the full log
+>> +echo $fsid1 $e_fsid1 $fsid2 $e_fsid2 >> $seqres.full
+>> +cat $log1 >> $seqres.full
+>> +cat $log2 >> $seqres.full
+>> +
+>> +# Ensure monitor 1 only captured events belonging to mnt 1 and fsid 1
+>> +if grep -qF "$e_fsid1" "$log1" && ! grep -qF "$e_fsid2" "$log1"; then
+>> +	echo "SUCCESS: mnt1 events found"
+>> +else
+>> +	[ ! -s "$log1" ] && echo "  - mnt1 received no events."
+>> +	grep -qF "$e_fsid2" "$log1" && echo "  - mnt1 received event from mnt2."
+>> +fi
+>> +
+>> +# Ensure monitor 2 only captured events belonging to mnt 2 and fsid 2
+>> +if grep -qF "$e_fsid2" "$log2" && ! grep -qF "$e_fsid1" "$log2"; then
+>> +	echo "SUCCESS: mnt2 events found"
+>> +else
+>> +	[ ! -s "$log2" ] && echo "  - mnt2 received no events."
+>> +	grep -qF "$e_fsid1" "$log2" && echo "  - mnt2 received event from mnt1."
+>> +fi
+>> +
+>> +status=0
+>> +exit
+> 
+> _exit 0
+> 
+
+Added.
+
+Thanks.
+Anand
+
+> Thanks,
+> Zorro
+> 
+>> diff --git a/tests/generic/801.out b/tests/generic/801.out
+>> new file mode 100644
+>> index 000000000000..d7b318d9f27c
+>> --- /dev/null
+>> +++ b/tests/generic/801.out
+>> @@ -0,0 +1,7 @@
+>> +QA output created by 801
+>> +Setup FID fanotify watchers on both mnt1 and mnt2
+>> +Trigger file creation on mnt1
+>> +Trigger file creation on mnt2
+>> +Verify fsid in the fanotify
+>> +SUCCESS: mnt1 events found
+>> +SUCCESS: mnt2 events found
+>> -- 
+>> 2.43.0
+>>
 
