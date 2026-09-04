@@ -1,33 +1,30 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A227841D21E;
-	Fri,  4 Sep 2026 06:14:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35DA9419FD2;
+	Fri,  4 Sep 2026 06:27:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788502494; cv=none; b=ZnnqMnMCDPxWsK32lZddR1sCVWdE1wox+TvJVl7wKMhEsheI3HO6skSYxPdDLuch+EzRGgu2wtKup/QnArjgPetTf8dHDNfu4QuQGKcmPla7jT0N3Vpl9yWIwmdWNP1pqmn8hMzKRv9YgAwPb8c62UUW02IU+5tJ9wIAzU5Y6rA=
+	t=1788503265; cv=none; b=XTOrFGSMQAPtB02X82ocaD82HXn3NTvXV5xmZ95HR0ilvGpWwlztbAa52NCQK23Iv8Azs+S8g/DphVMaWbwmWeVK1vmTldt4l+/rPr8QXmTAhPW9LXqci6cQAP7+XniYwe49cb4n3yzYcZDk6FewDQ6q/x8fNB8I1d2FFNSi6K0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788502494; c=relaxed/simple;
-	bh=+Vuva2x07kkQ3twdLMiAjuSVbM9K9HtOCZRS9vP9vak=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:Cc:From:
-	 In-Reply-To:Content-Type; b=Tby9VycMoLJP4/Tg/7XzqReTETGLVC534lsa1Kv7qzdhZCb6P3rDrm7dUJCQIOlsLKiA91ptm+Dh6pxphmZEINf3LhpcHjhzoN4lIg/FRLuy2azj8j65ph+gZk6jmGJ+MqPboqLcCTVK4v9piR7Q/n2GjtIwJ6Pfzh06dD0sxYY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iHRJ79Ty; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iHRJ79Ty"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3A001F00A3E;
-	Fri,  4 Sep 2026 06:14:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788502492;
-	bh=bTsu2G89SJRy90MXm2vb5283BxfcwUlExbIyEQ3jmSY=;
-	h=Date:Subject:To:References:Cc:From:In-Reply-To;
-	b=iHRJ79TyoZxlkp7nwSUOLxwhbS90hnxS0b5CeEe1PqEX/vuIH/bXcZi5qBX5B6Uw1
-	 yMoKiIMSuLBtRcvkY9F8W4vwGGqgsKa9Y53EmGTQ7io4tiB4ZiRCBdhjwtq63a55OE
-	 h14hJbXsZ8SstPXhv5IkSy4aTpIBzdDptLREJJYg6spnarjqHd1u0KpLy+U9EocpQp
-	 APbFMPo4vVbvZPj01MhRlN6Yp0KMzRWf7mKdWuaMI1ID+QPsRq77fEjmUXgejS8U+6
-	 dBuRjMPUVe0kYilq1jQchst3KFjn5qz/IKeWtJtpXokHFDTfghmH4LEeMgWZd9TQKX
-	 qx8coXyOyz1HQ==
-Message-ID: <d6efde18-0e87-4db0-8560-cbb2acc7b5a5@kernel.org>
-Date: Fri, 4 Sep 2026 14:14:48 +0800
+	s=arc-20240116; t=1788503265; c=relaxed/simple;
+	bh=6gioUt+B5CAQgBnBviclbaI3D/JX/pcUgW62TiOM1B8=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=d+Qh+rYdaVHXXMeK5zdJ+Jbx+OIUoqT9yTPwUATuPXlxqvFHXBP6N27mlrPYLHbqFtl9SqufCtSoxzdAovg6JwPFU/tsaSCJ5dFbp+3oPa2KiqYwN29xamzgVL0dbLAVLI1WqbRrZNCnuNyQ8HpZdLuxAl/siVDDWRP5tZQneHw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hbmhH38tszKHMZK;
+	Fri,  4 Sep 2026 14:26:39 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 4DB474056D;
+	Fri,  4 Sep 2026 14:27:34 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgDH_AfTZJpqP+rGAg--.7342S3;
+	Fri, 04 Sep 2026 14:27:33 +0800 (CST)
+Message-ID: <4e498938-f21b-4d75-b789-8a615aba877a@huaweicloud.com>
+Date: Fri, 4 Sep 2026 14:27:31 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -35,276 +32,249 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v8 07/13] fstests: verify fanotify isolation on cloned
- filesystems
-To: Zorro Lang <zlang@kernel.org>
-References: <cover.1784949154.git.asj@kernel.org>
- <96599abcd6e3264a088ea2f34947de6496f33359.1784949155.git.asj@kernel.org>
- <apb8S8g3Zqf1XpZ9@zlang-mailbox>
+Subject: Re: [RFC PATCH] mm/truncate: fix data loss when splitting fails in
+ truncate_inode_partial_folio()
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
+ liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
+ mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
+ willy@infradead.org, jack@suse.cz, ziy@nvidia.com, bfoster@redhat.com,
+ djwong@kernel.org, yi.zhang@huawei.com, yizhang089@gmail.com,
+ yangerkun@huawei.com, chengzhihao1@huawei.com, wangkefeng.wang@huawei.com,
+ yukuai@fnnas.com
+References: <20260903115018.2034541-1-yi.zhang@huaweicloud.com>
+ <CAJnrk1ZLzNQxrSLQx7TsLK89QC_=9cDfoDcyKNBNde0CiDGoNg@mail.gmail.com>
 Content-Language: en-US
-Cc: linux-xfs@vger.kernel.org, fstests@vger.kernel.org,
- linux-btrfs@vger.kernel.org, djwong@kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
-From: Anand Suveer Jain <asj@kernel.org>
-In-Reply-To: <apb8S8g3Zqf1XpZ9@zlang-mailbox>
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <CAJnrk1ZLzNQxrSLQx7TsLK89QC_=9cDfoDcyKNBNde0CiDGoNg@mail.gmail.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgDH_AfTZJpqP+rGAg--.7342S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3XFy8tF1DXF47KF18AFWUurg_yoWfWw1kpr
+	W3Ka9Iyr4DG3y2krsrZan8Xw1Yy3s3XrWUJFyfGFy3CFs09r1xKF1UK3WF93y7Grn7AFy0
+	qF1UZa9xW3WDAFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
+	14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
+	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWr
+	XwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
+	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
+	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0
+	4xRDUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-
-
-On 2/9/26 02:23, Zorro Lang wrote:
-> On Sat, Jul 25, 2026 at 03:39:04PM +0800, Anand Jain wrote:
->> Verify that fanotify events are correctly routed to the appropriate
->> watcher when cloned filesystems are mounted.
->> Helps verify kernel's event notification distinguishes between devices
->> sharing the same FSID/UUID.
+On 9/4/2026 3:01 AM, Joanne Koong wrote:
+> On Thu, Sep 3, 2026 at 5:01 AM Zhang Yi <yi.zhang@huaweicloud.com> wrote:
 >>
->> Signed-off-by: Anand Jain <asj@kernel.org>
+>> From: Zhang Yi <yi.zhang@huawei.com>
+>>
+>> truncate_inode_partial_folio() splits a large folio so that the caller's
+>> truncate loop can drop the in-range sub-folios while keeping the
+>> out-of-range tail. The first split at the punch start edge is
+>> non-uniform, which leaves the sub-folio at the truncation end edge as
+>> large as possible, this means it may still straddle the range, holding
+>> both zeroed in-range and valid out-of-range data. The function then
+>> attempts a second split at offset + length to isolate that tail.
+>>
+>> If the second split fails the straddling sub-folio stays merged. The
+>> function returned true unconditionally on all exit paths of the success
+>> block, telling the caller it was fully handled. The caller kept its
+>> default end and the truncate loop truncated every sub-folio below it,
+>> including the merged straddler, discarding the valid out-of-range tail.
+>>
+>> For example, a 4-page order-2 folio punched from offset 0 to the middle
+>> of the last page:
+>>
+>>   truncate_inode_pages_range()
+>>     truncate_inode_partial_folio()      # same_folio == true
+>>       1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
+>>       folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
+>>       2nd split of folio2 fails / cannot lock
+>>       return true                       # BUG: caller keeps default end
+>>     end = 3
+>>     loop truncates p0, p1, p2-3        # p3's valid tail is lost
+>>
+>> This became reachable after commit 7460b470a131 ("mm/truncate: use
+>> folio_split() in truncate operation") replaced the atomic split_folio()
+>> with folio_split(), whose non-uniform split can partially split a folio
+>> and leave the end edge merged.
+>>
+>> It has gone unnoticed because a dirty large folio normally carries the
+>> filesystem's private data, for example buffer_head, so
+>> filemap_release_folio() -> iomap_release_folio() returns false on a
+>> dirty folio and folio_split() aborts with -EBUSY before any split,
+>> leaving the straddler safely unsplit. The bug is only reachable on paths
+>> that produce dirty large folios without filesystem private data, and it
+>> was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
+>> attached.
+>>
+>> Rework the contract so the caller is told where to stop instead of
+>> silently truncating the straddler:
+>>
+>>   - Return true only when a split occurred, false otherwise. This
+>>     clarifies the existing confusing return value semantics.
+>>
+>>   - Add an optional out-parameter pgoff_t *end, set to the index of the
+>>     folio that contains @lend and must be kept by the caller's loop. It
+>>     is only written when the folio actually straddles @lend. On the
+>>     success path it defaults to the page index of the end edge and is
+>>     refined to folio2->index when the second split fails to isolate the
+>>     tail.
+>>
+>>   - Rename the byte-range parameters start/end to lstart/lend to avoid
+>>     clashing with the new @end output and to separate byte offsets from
+>>     folio indices.
+>>
+>> Callers in truncate_inode_pages_range() and shmem_undo_range() pass &end
+>> only when the folio straddles lend. After all, no caller discards a
+>> straddling folio anymore, the in-range cleanly-split sub-folios below it
+>> are still dropped.
+>>
+>> Suggested-by: Brian Foster <bfoster@redhat.com>
+>> Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
+>> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
+>> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 >> ---
->>  tests/generic/801     | 143 ++++++++++++++++++++++++++++++++++++++++++
-> 
-> `g/801` is already taken. To avoid merge conflicts, you can use a higher
-> temporary number, and I'll assign the proper number when merging.
-> 
-
-Let me bump-it up to 90x.
-
->>  tests/generic/801.out |   7 +++
->>  2 files changed, 150 insertions(+)
->>  create mode 100644 tests/generic/801
->>  create mode 100644 tests/generic/801.out
+>>  mm/internal.h |  4 ++--
+>>  mm/shmem.c    | 12 +++++------
+>>  mm/truncate.c | 57 ++++++++++++++++++++++++++++++---------------------
+>>  3 files changed, 41 insertions(+), 32 deletions(-)
 >>
->> diff --git a/tests/generic/801 b/tests/generic/801
->> new file mode 100644
->> index 000000000000..904ba9440b3d
->> --- /dev/null
->> +++ b/tests/generic/801
->> @@ -0,0 +1,143 @@
->> +#! /bin/bash
->> +# SPDX-License-Identifier: GPL-2.0
->> +# Copyright (c) 2026 Anand Jain <asj@kernel.org>.  All Rights Reserved.
->> +#
->> +# FS QA Test 801
->> +# Verify fanotify FID functionality on cloned filesystems by setting up
->> +# watchers and making sure notifications are in the correct logs files.
->> +
->> +. ./common/preamble
->> +
->> +_begin_fstest auto quick mount clone
->> +
->> +_require_test
->> +_require_block_device $TEST_DEV
-> 
-> Which test condition requires `TEST_DEV` to be a block device?
-
-You're right, I think this is a leftover from earlier prototyping
-with scsi_device. The test only needs loop devices backed by
-$TEST_DIR. I'll remove it in the following ver.
-
-> 
->> +_require_loop
->> +_require_command "$SEMANAGE_PROG" semanage
->> +_require_command "$FSNOTIFYWAIT_PROG" fsnotifywait
->> +_require_fanotify_function
->> +_require_unique_f_fsid
->> +
->> +_cleanup()
->> +{
->> +	cd /
->> +	[[ -n $pid1 ]] && { kill -TERM "$pid1" 2> /dev/null; wait $pid1; }
->> +	[[ -n $pid2 ]] && { kill -TERM "$pid2" 2> /dev/null; wait $pid2; }
->> +
->> +	if [ "$semanage_added" = "yes" ]; then
->> +		semanage permissive -d unconfined_t >/dev/null 2>&1 || true
->> +	fi
->> +
->> +	umount $mnt1 $mnt2 >/dev/null 2>&1
->> +	_loop_image_destroy "${devs[@]}" 2> /dev/null
->> +	rm -r -f $tmp.*
->> +}
->> +
->> +# Run fsnotifywait in unbuffered mode to watch filesystem-wide create events
->> +monitor_fanotify()
->> +{
->> +	local mmnt=$1
->> +	exec stdbuf -oL $FSNOTIFYWAIT_PROG -m -F -S -e create "$mmnt" 2>&1
->> +}
->> +
->> +# Transform f_fsid into the hi.lo format used in fanotify FID logs
->> +fsid_to_fid_parts()
->> +{
->> +	local fsid=$1
->> +	# Pad to 16 hex chars (64-bit), then split into two 32-bit halves
->> +	local padded=$(printf '%016x' "0x${fsid}")
->> +	local hi=$(printf '%x' "0x${padded:0:8}")   # strips leading zeros
->> +	local lo=$(printf '%x' "0x${padded:8:8}")   # strips leading zeros
->> +	echo "${hi}.${lo}"
->> +}
->> +
->> +# Create base loop device and its clone
->> +devs=()
->> +_loop_image_create_clone devs
->> +mkdir -p $TEST_DIR/$seq
->> +mnt1=$TEST_DIR/$seq/mnt1
->> +mnt2=$TEST_DIR/$seq/mnt2
->> +mkdir -p $mnt1
->> +mkdir -p $mnt2
->> +
->> +# Mount both base and clone filesystems using required clone mount options
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[0]} $mnt1 || \
->> +						_fail "Failed to mount dev1"
->> +_mount $(_common_dev_mount_options) $(_clone_mount_option) ${devs[1]} $mnt2 || \
->> +						_fail "Failed to mount dev2"
->> +
->> +# Fetch filesystem IDs to verify the kernel can differentiate between them
->> +fsid1=$(stat -f -c "%i" $mnt1)
->> +fsid2=$(stat -f -c "%i" $mnt2)
->> +
->> +log1=$tmp.fanotify1
->> +log2=$tmp.fanotify2
->> +
->> +pid1=""
->> +pid2=""
->> +echo "Setup FID fanotify watchers on both mnt1 and mnt2"
->> +
->> +# Permit unconfined_t domains when SELinux is enforcing to prevent fanotify
->> +# blockages
->> +semanage_added="no"
->> +if [ "$(getenforce 2>/dev/null)" = "Enforcing" ]; then
->> +    if ! semanage permissive -l | grep -q "unconfined_t"; then
->> +        semanage permissive -a unconfined_t >/dev/null 2>&1 && semanage_added="yes"
->> +    fi
->> +fi
-> 
-> Looks like semanage/SELinux isn't a necessary requirement of this test case,
-> if so that `_require_command "$SEMANAGE_PROG" semanage` also can be:
-> 
->   if [ "$(getenforce 2>/dev/null)" = "Enforcing" ]; then
->       _require_command "$SEMANAGE_PROG" semanage
->   fi
-> 
-> right? And please replace semanage with $SEMANAGE_PROG.
-> 
-
-Absolutely, that is the right way. I'll update it. Thanks!. More below.
-
->> +
->> +# Start asynchronous fanotify monitors
->> +( monitor_fanotify "$mnt1" > "$log1" ) &
->> +pid1=$!
->> +( monitor_fanotify "$mnt2" > "$log2" ) &
->> +pid2=$!
->> +sleep 2
-> 
-> Are you using `sleep 2` to ensure `fsnotifywait` is fully set up?
-> I'm not sure if `sleep 2` is 100% reliable here. Since the subsequent tests
-> strictly depend on `fsnotifywait` starting up properly, is there a more
-> robust approach than `sleep 2`? For example, could we check the output
-> in `$log1` and `$log2` to make sure that? Or any other better idea?
-> 
->> +
->> +if ! kill -0 "$pid1" 2>/dev/null || ! kill -0 "$pid2" 2>/dev/null; then
-> 
-> `kill 0` only can make sure the process is running, can't make sure it's
-> fully set up, right?
-> 
-
-I rely on checking whether the userspace process is still
-running after a 2 second delay.
-
-Matching specific stdout strings a common pattern in fstests
-tends to be fragile across different versions of userspace
-utilities. For instance, the "Watches established" string
-in fsnotifywait isn't guaranteed across versions:
-
-$ fsnotifywait -m -F -S -e create /btrfs
-Setting up filesystem watches.
-Watches established.
-^C
-
-
->> +	cat "$log1"
->> +	cat "$log2"
->> +	_fail "$FSNOTIFYWAIT_PROG setup failed"
->> +fi
->> +
->> +echo "Trigger file creation on mnt1"
->> +touch $mnt1/file_on_mnt1
->> +sync
->> +sleep 1
->> +
->> +echo "Trigger file creation on mnt2"
->> +touch $mnt2/file_on_mnt2
->> +sync
->> +sleep 1
->> +
->> +echo "Verify fsid in the fanotify"
->> +kill $pid1 $pid2
->> +wait $pid1 $pid2 2>/dev/null
->> +pid1=""
-> 
-> unset pid1
-> 
->> +pid2=""
-> 
-> unset pid2
-> 
-
-Added.
-
->> +
->> +e_fsid1=$(fsid_to_fid_parts "$fsid1")
->> +e_fsid2=$(fsid_to_fid_parts "$fsid2")
->> +
->> +# Dump debug details to the full log
->> +echo $fsid1 $e_fsid1 $fsid2 $e_fsid2 >> $seqres.full
->> +cat $log1 >> $seqres.full
->> +cat $log2 >> $seqres.full
->> +
->> +# Ensure monitor 1 only captured events belonging to mnt 1 and fsid 1
->> +if grep -qF "$e_fsid1" "$log1" && ! grep -qF "$e_fsid2" "$log1"; then
->> +	echo "SUCCESS: mnt1 events found"
->> +else
->> +	[ ! -s "$log1" ] && echo "  - mnt1 received no events."
->> +	grep -qF "$e_fsid2" "$log1" && echo "  - mnt1 received event from mnt2."
->> +fi
->> +
->> +# Ensure monitor 2 only captured events belonging to mnt 2 and fsid 2
->> +if grep -qF "$e_fsid2" "$log2" && ! grep -qF "$e_fsid1" "$log2"; then
->> +	echo "SUCCESS: mnt2 events found"
->> +else
->> +	[ ! -s "$log2" ] && echo "  - mnt2 received no events."
->> +	grep -qF "$e_fsid1" "$log2" && echo "  - mnt2 received event from mnt1."
->> +fi
->> +
->> +status=0
->> +exit
-> 
-> _exit 0
-> 
-
-Added.
-
-Thanks.
-Anand
-
-> Thanks,
-> Zorro
-> 
->> diff --git a/tests/generic/801.out b/tests/generic/801.out
->> new file mode 100644
->> index 000000000000..d7b318d9f27c
->> --- /dev/null
->> +++ b/tests/generic/801.out
->> @@ -0,0 +1,7 @@
->> +QA output created by 801
->> +Setup FID fanotify watchers on both mnt1 and mnt2
->> +Trigger file creation on mnt1
->> +Trigger file creation on mnt2
->> +Verify fsid in the fanotify
->> +SUCCESS: mnt1 events found
->> +SUCCESS: mnt2 events found
->> -- 
->> 2.43.0
+>> diff --git a/mm/truncate.c b/mm/truncate.c
+>> index b58ba940be47..2ebb00f6c379 100644
+>> --- a/mm/truncate.c
+>> +++ b/mm/truncate.c
+>> @@ -206,15 +206,18 @@ static int folio_split_or_unmap(struct folio *folio, struct page *split_at,
+>>  /*
+>>   * Handle partial folios.  The folio may be entirely within the
+>>   * range if a split has raced with us.  If not, we zero the part of the
+>> - * folio that's within the [start, end] range, and then split the folio if
+>> + * folio that's within the [lstart, lend] range, and then split the folio if
+>>   * it's large.  split_page_range() will discard pages which now lie beyond
+>>   * i_size, and we rely on the caller to discard pages which lie within a
+>>   * newly created hole.
+>>   *
+>> - * Returns false if splitting failed so the caller can avoid
+>> - * discarding the entire folio which is stubbornly unsplit.
+>> + * When @end non-NULL, set to the index of the folio that contains @lend
+>> + * and must be kept by the caller's truncate loop.  Return %true if the
+>> + * folio was split, %false otherwise, in which case the folio is dropped or
+>> + * may still straddle the range, so the caller must not discard it.
+>>   */
+>> -bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>> +bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>> +                                 loff_t lend, pgoff_t *end)
+>>  {
+>>         loff_t pos = folio_pos(folio);
+>>         size_t size = folio_size(folio);
+>> @@ -222,19 +225,22 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>>         struct page *split_at, *split_at2;
+>>         unsigned int min_order;
 >>
+>> -       if (pos < start)
+>> -               offset = start - pos;
+>> +       if (end && pos + size > (u64)lend)
+>> +               *end = folio->index;
+>> +
+>> +       if (pos < lstart)
+>> +               offset = lstart - pos;
+>>         else
+>>                 offset = 0;
+>> -       if (pos + size <= (u64)end)
+>> +       if (pos + size <= (u64)lend)
+>>                 length = size - offset;
+>>         else
+>> -               length = end + 1 - pos - offset;
+>> +               length = lend + 1 - pos - offset;
+>>
+>>         folio_wait_writeback(folio);
+>>         if (length == size) {
+>>                 truncate_inode_folio(folio->mapping, folio);
+>> -               return true;
+>> +               return false;
+>>         }
+>>
+>>         /*
+>> @@ -248,7 +254,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>>         if (folio_needs_release(folio))
+>>                 folio_invalidate(folio, offset, length);
+>>         if (!folio_test_large(folio))
+>> -               return true;
+>> +               return false;
+>>
+>>         min_order = mapping_min_folio_order(folio->mapping);
+>>         split_at = folio_page(folio, PAGE_ALIGN_DOWN(offset) / PAGE_SIZE);
+>> @@ -259,6 +265,10 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>>                  * for shmem truncate
+>>                  */
+>>                 struct folio *folio2;
+>> +               bool tail_isolated = true;
+>> +
+>> +               if (end)
+>> +                       *end = (pos + offset + length) >> PAGE_SHIFT;
+> 
+> If I'm understanding it correctly, based on how
+> truncate_inode_pages_range() uses the end value (eg the "while (index
+> < end)" loop condition and the find_get_entries(..., end - 1, ...)),
+> end needs to point to the start of the folio if the tail folio from
+> the split is a large folio, in order to exclude that folio from then
+> being truncated. But with the (pos + offset + length) >> PAGE_SHIFT
+> calculation here, does that result in some cases in it pointing to the
+> middle of a large folio? Maybe some logic is needed to make sure that
+> it points to the start?
+> 
+
+Hi Joanne,
+
+Thanks for your careful review! I don't think that case can actually
+occur. Let me walk through the scenarios where the
+(pos + offset + length) >> PAGE_SHIFT calculation is kept as the final
+end value:
+
+1) offset + length == size:
+   The truncate range aligns exactly with the folio boundary, so
+   (pos + offset + length) >> PAGE_SHIFT points to the start of the next
+   folio, not the middle of one.
+
+2) !folio_try_get(folio2):
+   The folio at that position has already been freed or is being freed,
+   so there is no folio in the page cache at that location. The
+   subsequent find_get_entries() won't find anything there.
+
+3) !folio_test_large(folio2):
+   folio2 is no longer large, likely split to order-0 by a concurrent
+   operation. For an order-0 folio, the page index and folio index are
+   the same, so the calculation is correct.
+
+4) folio2 becomes stale:
+   The same to case 2), folio2 is removed from the address space, so
+   there is no large folio straddling the boundary that needs
+   protection. The caller won't get folio from here through
+   find_get_entries(). Using the page index is safe here.
+
+If a large folio straddles the boundary at (offset + length), we will
+successfully get a reference via folio_try_get(folio2) and
+folio_test_large(folio2) will be true. In that case, if the split fails
+(cannot lock or split operation fails), we set tail_isolated to false
+and set *end = folio2->index to point to the start of that large folio
+since tail_isolated.
+
+The page index from this setting is only kept when no large folio exists
+at the boundary, which makes it safe to use. What is particularly
+noteworthy is that for cases 2 and 4 above, aside from setting it to
+(pos + offset + length) >> PAGE_SHIFT, there does not seem to be any
+better alternative.
+
+Does this make sense or am I missing something?
+
+Thanks,
+Yi.
+
 
