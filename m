@@ -1,138 +1,91 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out162-62-58-216.mail.qq.com (out162-62-58-216.mail.qq.com [162.62.58.216])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7220C13AF2
-	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 01:46:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DBAA385D9E
+	for <linux-ext4@vger.kernel.org>; Fri,  4 Sep 2026 02:07:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.58.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788486399; cv=none; b=tzKfUoRp5dCg1KqV7x52rqPjMoD9BdAYfJ2p+9zj40Kewg97hWzI/lVLT9tIGOseuKtWeBn7C1DNYToO6Znp4wvsBfwKYM7X2YJDKqijXHdZmL5PM3APGihlP2XX8FliBrHmE7vhe8XFrQ81XNa99TyxAqx0iGY0tGsm1f4QDkY=
+	t=1788487646; cv=none; b=uU66doGx8dLlWJnxP0jvWbY1ZnqRGLoId/vmxEGdWox8OE9VI3A32rHmh8M5bv2t/bZpYkk04+XynUhlSoUYTdlUnaj70C9dOPcfo6kdrNzQKsIbWWRW5t4cJH5Fh9JY9btgCFkQPakIGYj2mJVmQY9vKphWfHlPungwv7CMsxE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788486399; c=relaxed/simple;
-	bh=FjB4AQAZhRMTnL/TROJMnWswmFd3hvnCG+BgQLwbwvg=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=ZoqRsyPL21tBua9L9yCX2CYbw5CktX/19fjlOsx/8rDrYLXIZhHhuCdVHHvl+0gw6pSAis/gj4BV1/96fRdzLJeAr1hlc4iTvfLqp3yPrxMhaz0nbIfmjOpJ1rJvJo0caX7jT1PigeAw8ngavbGTt2ncWeK7bCTGSdzY93tYmaI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TSNr7Oim; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788487646; c=relaxed/simple;
+	bh=/usv0M9ON4gEcbPXu04wspLUvbZ9ED7JzEdRTpfgqMY=;
+	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=O/mGlwYrGmGYAhdKX1aoLcZe4roSllyC9ZRbd78sKIDWpnRNhDfiRCP8Ng9LpDezqVaRbljMyQoVaMHTt/uk7kt6usSjKv1OVRmfmtME58vTPQwhK4u3CgQwUoMwr7gDtmEiRdIos0T/BafWM9LCAPWe7gVwSCCYdyr7Y5QNDH0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=qsL9SInf; arc=none smtp.client-ip=162.62.58.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TSNr7Oim"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BBEE01F000E9;
-	Fri,  4 Sep 2026 01:46:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788486398;
-	bh=z3dFDO7y5I+75wPSvtd+Aru6+NvjSOhz37j0ryzU7wE=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=TSNr7Oim9ctJmsv9t/nkwsYAK3i60YUP4eD0WMaWHJazAThFKuwUr6q6Fiq+5dN13
-	 l4jX27xrH8nE4kfdeNFIauT+eUlrIz2Di6pu55+B38R2M/kb4MbxYuXsDi0DXyhO1Y
-	 LqSYjfYpRdr7WVUhKyCJi+k1uAFFOBV/mFxdl0SAS4RH2AxVJOubouzQ1cLe64WqzF
-	 NfZtqwV+jnfezgI8efiAg4XPsnoxMSnNSel1UaheO4z4qR9WcIlJHfesajLItIZsT3
-	 Og3NokEqZSaiYeOD6WanEF1VYasTzb9haZa4wNpdHG73luQFt596MMPXbjZXKNq2BD
-	 oKZWZSoo4JUGQ==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v6] ext4: rewrite ext4_convert_inline_data_nolock to
- make it safer
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "shuo chen" <1289151713@qq.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <tencent_3656CB4AA45EA01A8DC2B9865242BA18A709@qq.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="qsL9SInf"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1788487633; bh=C8ycuz886UciVQ1/7YL6A1EfAASJCUtMC9jmmAELh5c=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=qsL9SInfTxazViFXnyOwMyvXLFwnud1q2Yy25WFV3cz/kG4/cPFEVqYg9lEwdYP3/
+	 pYVyOAzSDQEj9FZPMPTD1fCPM3uk2DPbJzME6llTRIdMDMomJZi/GYa7Cxtw6UrfRP
+	 u0y6kE/7KJdLgVS20bQxqiIUWzkv32PNaDPuk9EQ=
+Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
+	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
+	id 1821DA6F; Fri, 04 Sep 2026 10:06:02 +0800
+X-QQ-mid: xmsmtpt1788487562ta5e8irxs
+Message-ID: <tencent_C4778C64AB2025042F0F8DACE17843752108@qq.com>
+X-QQ-XMAILINFO: NCkMfDbncK88D5FX62okEeIHIvOEXCqeMP4mg7GUuiX6gtWZyKQxhpP22St5z9
+	 qjG0CgWaWVyjvj67DJnZSyzDBM8Y6Xd52+yW8ZZMxCPiA3nnDM3bHk7p+fi8uog+L5Ir+9oTyCPU
+	 +n2zDLnJiPauVE3YrbJ9iLWmmNwC1MZPgNMRjMKYAXqqvZpsPovpIa256/+yEfs9uG6Rvdnc9RNA
+	 7srPSRv3hN42Tntw8mGtWogDH4J79+zwW6aK/tPVEaLPmaVcgFEr6rzb2n6dl7dFElTQUA/336xf
+	 pkVrXJglMVHvRTOfN1ItGFF6QExi4QW6fYYe2gWQgBWxP7pkSRHtBffhMnJNEySrVX+giJ7LZtDy
+	 E+dUr51JdGUMZVayvP3o7SzHbfrHRNtDCao4e+8PS6Kpe5j+RkUuGUGQhi0OV6nU6r41zsCYVdGw
+	 eWQz3l07xaQRtXva/u8YayS9wmyPpY+dcRKMbkEB2ogk65mZfyEPJi+gVwM1m3ZycWkcaoHIPUdg
+	 B8LrPJzenDd+n7cU84OhvCVsxwkdSM3fkAyzFdBdu41uqMDyN9AzaPy0j8XDetnhp3ixWyYWXBdF
+	 mJB+0oSM8GUqHMR9j0CXAYQf+v6uizqSJ+GlHjUAQku6o0/J5UAEUJNBizhgKftWrG8sryt2W/Zt
+	 QG0HEgLc/9/U3kDS/yh6hK/9GxFMUnVcWrnEoR/h8qCR3zfXTrC6Q+GM9xhTKj9eEbnYX3kXhy56
+	 FMMW7CRNtjQqoEmi1JEj4xttkrh+RISDMQSFirSbKYoJ3mJpzY2KzduaQATZD9LNQ+3XFS8NC3+F
+	 l5///qT+maXXglJ/3Tv/anFyeyz9fhDf0rWwI88AMUv84qZCMOnB6lWg4TWsX/1O6tc2v+wN2qhK
+	 UTyDD8jDc1bkIkxTu6uhvsI8ExhDMOium5jz0UQvqVE30+GZQXaVzRe4SWvV507L72velxbQERld
+	 FbXNKBlwp48cCWvU3m0jCC/UGCTt//78KtXLTykaCfz9vgFrKmqnmWmfMOt28lrp+pTYGaYkHEDf
+	 ywOCY99m1EjolBggn5kCl3feA6c/CuYpd9Psm3TkRhRhcAXiZE
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+Date: Fri, 4 Sep 2026 10:06:01 +0800
+From: shuo chen <1289151713@qq.com>
+To: sashiko-reviews@lists.linux.dev
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v6] ext4: rewrite ext4_convert_inline_data_nolock to make
+ it safer
+X-OQ-MSGID: <aponieVkWaPYQ8GZ@DESKTOP-AT5F202.localdomain>
 References: <tencent_93CC3232AC6A9418BCE4372286770F91850A@qq.com>
  <tencent_3656CB4AA45EA01A8DC2B9865242BA18A709@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 04 Sep 2026 01:46:37 +0000
-Message-Id: <20260904014637.BBEE01F000E9@smtp.kernel.org>
+ <20260904014637.BBEE01F000E9@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260904014637.BBEE01F000E9@smtp.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
-s) to consider:
-- [High] Silent data block leak when ext4_ext_insert_extent fails with non-=
-space errors.
-- [High] Block leak of over-allocated blocks from ext4_mb_new_blocks() due =
-to hardcoded extent length.
---
+> [Severity: High]
+> Does this hardcode the extent length to 1 block, potentially leaking blocks if 
+> ext4_mb_new_blocks() allocates a larger contiguous extent?
+> 
+> In ext4_convert_inline_data_nolock(), the actual allocation size is captured
+> as allocated_block = EXT4_C2B(sbi, ar.len). If the allocation request returns
+> multiple blocks (for example, on a bigalloc filesystem), only the first block
+> is added to the extent tree here. The remaining blocks appear to be neither
+> mapped nor freed, which would leave them orphaned in the block bitmap.
+This is a false positive. The remaining blocks are stored in i_prealloc_node, 
+so they will not be leaked.
+> 
+> [Severity: High]
+> Can this error path result in a permanent data block leak?
+> 
+> If ext4_ext_insert_extent() fails with an error like -ENOMEM or -EIO, the
+> code jumps directly to the no_free label. This deliberately bypasses the
+> ext4_free_blocks() call just above it. Because the calling function relies
+> on ext4_set_inline_data_block() to free the newly allocated block on error,
+> bypassing the free operation here appears to leave the blocks permanently
+> marked as used in the filesystem.
+If the error is neither EDQUOT nor ENOSPC,freeing blocks here could 
+lead to a more severe error.See the patch 
+"avoid infinite loops caused by residual data"
 
-commit 4f5429b131a64abd614d1b0e2bd7535d3f83a7c0
-Author: shuo chen <1289151713@qq.com>
 
-ext4: rewrite ext4_convert_inline_data_nolock to make it safer
-
-This commit refactors the inline data conversion logic to address issues wi=
-th
-uninitialized xattr space and data loss on extent insertion failures. It ai=
-ms
-to revert the inode back to inline data if extent insertion fails for reaso=
-ns
-other than quota or space limitations.
-
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index ceee69a66482b..5a3763d3b51a5 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-[ ... ]
-> @@ -1079,21 +1080,123 @@ static int ext4_update_inline_dir(handle_t *hand=
-le, struct inode *dir,
-[ ... ]
-> +	if (ext4_has_feature_extents(inode->i_sb) &&
-> +		(S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode) || S_ISLNK(inode->i_=
-mode))) {
-> +		ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-> +		ext4_ext_tree_init(handle, inode);
-> +		struct ext4_ext_path *path =3D ext4_find_extent(inode, 0, NULL, 0);
-> +
-> +		if (IS_ERR(path)) {
-> +			error =3D PTR_ERR(path);
-> +			goto recovery;
-> +		}
-> +		struct ext4_extent newex;
-> +
-> +		newex.ee_block =3D cpu_to_le32(0);
-> +		newex.ee_len =3D cpu_to_le16(1);
-> +		ext4_ext_store_pblock(&newex, block);
-
-[Severity: High]
-Does this hardcode the extent length to 1 block, potentially leaking blocks=
- if=20
-ext4_mb_new_blocks() allocates a larger contiguous extent?
-
-In ext4_convert_inline_data_nolock(), the actual allocation size is captured
-as allocated_block =3D EXT4_C2B(sbi, ar.len). If the allocation request ret=
-urns
-multiple blocks (for example, on a bigalloc filesystem), only the first blo=
-ck
-is added to the extent tree here. The remaining blocks appear to be neither
-mapped nor freed, which would leave them orphaned in the block bitmap.
-
-> +		path =3D ext4_ext_insert_extent(handle, inode, path, &newex, 0);
-> +		if (IS_ERR(path)) {
-> +			error =3D PTR_ERR(path);
-> +			if (error =3D=3D -EDQUOT || error =3D=3D -ENOSPC)
-> +				goto recovery;
-> +			else
-> +				goto no_free;
-> +		} else {
-> +			ext4_free_ext_path(path);
-> +		}
-[ ... ]
-> +recovery:
-> +	if (error) {
-> +		ext4_discard_preallocations(inode);
-> +		ext4_free_blocks(handle, inode, NULL, block, len, 0);
-> +		memcpy(header, xattr_buf, xattr_size);
-> +no_free:
-> +		ext4_forget(handle, 0, inode, bh, block);
-
-[Severity: High]
-Can this error path result in a permanent data block leak?
-
-If ext4_ext_insert_extent() fails with an error like -ENOMEM or -EIO, the
-code jumps directly to the no_free label. This deliberately bypasses the
-ext4_free_blocks() call just above it. Because the calling function relies
-on ext4_set_inline_data_block() to free the newly allocated block on error,
-bypassing the free operation here appears to leave the blocks permanently
-marked as used in the filesystem.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_3656CB4AA45=
-EA01A8DC2B9865242BA18A709@qq.com?part=3D1
