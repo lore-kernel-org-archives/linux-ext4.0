@@ -1,364 +1,154 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa2-f9.google.com (mail-oa2-f9.google.com [74.125.231.73])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0E2841DB95E;
-	Sat,  5 Sep 2026 15:27:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87AAD446073
+	for <linux-ext4@vger.kernel.org>; Sat,  5 Sep 2026 16:35:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.73
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788622071; cv=none; b=F2G8Ouq8iIVLvbO5qtEujZU8cWx6/nMirxkkycxPIw/0pGFCJc2foUPQxuE0o07szXpbaNbFI+GDmv6fW/YOGf/xjERqEXnldmL1OA6Y4Pw0F4WXq7LGI58lvcX+OraUwCYJ8iWwLMOpMT2KTEcn39EglxfbvR8EW/hwLRWF3D8=
+	t=1788626130; cv=none; b=ofa6GfcVh3kA/uwM0QR0sG0EJI4KpURDLQOdTygPSxllbxPiCsnNgxZ8E8i8dQqUPS1DY3p06NfKTbiw57TJfEq7rZFwnQBS1YMwMFoGSFcYjd9T1QMof8HN9qgDbhPgkmcOxDjsgJcx/tlnB68hj/ExQyq48POFyuMj/SYLf44=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788622071; c=relaxed/simple;
-	bh=vexV5TrXBWoM+LeN6AQYn7G4o2gJcaFgRMjaxOsaVLY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CoYHJ/DYJkwcmMtyU0Rq4/kZ7dZpUHNKCdCWiDyG/im9GT5lZQCaUgwwCFn+0j3dOpPvHxRA0ZenYh5nf5r96ApWczudPoXUnzoGDqLyQuS4leeksYPEKiw1wjTlSgnssA10C03nbXxU6ZiMeN2zMZSnIyPwpe9YgF69d4k95PM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Kbd1P03C; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Kbd1P03C"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 533C61F00A3A;
-	Sat,  5 Sep 2026 15:27:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788622069;
-	bh=oXPG3E443mg49yOdoHTq867QOSJXqVGeFOpEPuUsAkU=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Kbd1P03CNB03Z9DGT6VZTB+RRKrZE9rZHIobK1IeerC858ziwtqnln5ErtW8dFJvA
-	 nlobbnSgk4tPLFckYoI28KYsHdnQ+CkLslJUerRyme+a+yiIw/bgk/FYEcyofnUUN9
-	 l6J32ReYkRm8MjbhUuKi7SaRJn05o8xw4qzqbbh0IIgM7HuY8y1G51ryZpkvf1wIZ1
-	 3HdHRBPGzDWVM+jmq9tVt6inHwplECuxWcsnxhNoVb+qFVBPqaK2uEXeHFpxjCVQLd
-	 CtKXsrgoxUbI6/Z696L6LJx54RZYQlB17RT+hk0wBRfcNmPgcDBZCYI00EXsErVwMv
-	 JvND2sS/MxkkQ==
-Date: Sat, 5 Sep 2026 23:27:43 +0800
-From: Zorro Lang <zlang@kernel.org>
-To: guzebing <guzebing1612@gmail.com>
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4/064: add regression test for delalloc remount leak
-Message-ID: <apvzcUIAmWlBgJht@zlang-mailbox>
-Mail-Followup-To: guzebing <guzebing1612@gmail.com>, 
-	fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-References: <20260818064023.2309786-1-guzebing1612@gmail.com>
+	s=arc-20240116; t=1788626130; c=relaxed/simple;
+	bh=7ldFdUpdXshti50OTKWR6g3cXzXRtTzv126MEz8f9VU=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=LljalfHfd7O63Iu6JOwe1C5VxRxhAESVZzwLr2KvuIJTzNOzdHNWh0gs/3Ycd4wYGu4r7YouwhAG9q4Ig2lvMxLpbPyfccJ1qW0k0HtaAAkrypg9oWkI+/u8rNOz2p+o92lG0+iRLaxL0TEraC7h6psl/wUc17909rUN11th2CY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.73
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oa2-f9.google.com with SMTP id 586e51a60fabf-4667f43a4ccso926154fac.0
+        for <linux-ext4@vger.kernel.org>; Sat, 05 Sep 2026 09:35:26 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788626124; x=1789230924;
+        h=content-type:to:from:subject:message-id:date:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=QUIY8LF1P32AExNv+e/dvPQWZ9n0Hc0mLlb7GId3vG4=;
+        b=hDwpwOIZ9GrOuXUGG98jncnFM7CK3C9WEqX2lzQA2Gl5CVm/laoL1SnrRwNJY+0NtO
+         DVEx5/JSTiArX9WoILY0o7LM/Mliq7v7iQN4DGXSf8ickJ/6DW8PFzWZdb1Lau7gvuRk
+         1XEuV33t1dmkieXVCfwxQcLLqwHTB+954zBu7tOdcp6jOzQ3s9SByvW/pavdf0/H8M4z
+         +cT2rkGbtthhS+gfXimprbeQjjrIj2wRexdX0/dqHiAAb/LYgIwSAi4c0hI1NI8hPgrT
+         jMEj3tQpfBF4cXrmnLTFReI2YpZKP81dRfnf1Cr3iJ9aEId7px+E52yCXyMiOcAOPNeM
+         qd8w==
+X-Forwarded-Encrypted: i=1; AKwUvBxOOqtD2az2swEX7n5xpkPYaxmtgwIPqWpdM0F3cdrQm1dYBc9JcwSO9urLiZdtNnUnH9vLuVAZaY9z@vger.kernel.org
+X-Gm-Message-State: AFuF++m9BNhE6XF+d+6QQpTzBVWOzS+M5LuognPRxdFuGJtblMOWbEK4
+	L7Pby8GbRvi5SaTBOR8BJKCol/mjOnTSBgc8kO72t8wL5QipX+8f8UfjKDnT1C0Q/SSXg0VCBo9
+	jiUpPOFOnTDTaOTBFPbGYEM60RaP2GU0XowyBUs5SV5aQ96XZwemllEDZEkE=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260818064023.2309786-1-guzebing1612@gmail.com>
+X-Received: by 2002:a05:6820:4d04:b0:6a0:f44b:1265 with SMTP id
+ 006d021491bc7-6b6fa8e0837mr8742483eaf.4.1788626124360; Sat, 05 Sep 2026
+ 09:35:24 -0700 (PDT)
+Date: Sat, 05 Sep 2026 09:35:24 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a9c44cc.0a3344eb.391530.000c.GAE@google.com>
+Subject: [syzbot] [ext4?] linux-next test error: general protection fault in __bh_submit
+From: syzbot <syzbot+5a7a23af225c215902e7@syzkaller.appspotmail.com>
+To: jack@suse.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-next@vger.kernel.org, sfr@canb.auug.org.au, 
+	syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, Aug 18, 2026 at 02:40:23PM +0800, guzebing wrote:
-> A delalloc filesystem rejects a remount with nodelalloc, but ext4 used to
-> apply the option change before rejecting the remount.  Concurrent buffered
-> writes and truncates can observe the transient nodelalloc state and fail to
-> release delayed allocation reservations.  The leaked reservations are then
-> reported when the inodes are evicted during unmount.
-> 
-> Add an ext4 regression test that starts concurrent write/truncate workers and
-> an expected-failing remount,nodelalloc worker, stops them after a short stress
-> window, and checks dmesg for leaked delayed allocation reservations.
-> 
-> The proposed kernel fix is still under review:
-> https://lore.kernel.org/linux-ext4/20260814034855.1573759-1-guzebing1612@gmail.com/
-> 
-> Local validation showed that the test fails without the proposed kernel fix,
-> with i_reserved_data_blocks not cleared warnings during unmount, and passes
-> with the proposed fix applied.
-> 
-> Signed-off-by: guzebing <guzebing1612@gmail.com>
-> ---
->  tests/ext4/064     | 216 +++++++++++++++++++++++++++++++++++++++++++++
->  tests/ext4/064.out |   2 +
->  2 files changed, 218 insertions(+)
->  create mode 100755 tests/ext4/064
->  create mode 100644 tests/ext4/064.out
-> 
-> diff --git a/tests/ext4/064 b/tests/ext4/064
-> new file mode 100755
-> index 00000000..5d43764c
-> --- /dev/null
-> +++ b/tests/ext4/064
-> @@ -0,0 +1,216 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2026 guzebing.  All Rights Reserved.
-> +#
-> +# FS QA Test No. ext4/064
+Hello,
 
-Did you write this line manually? Please remove "ext4/" part, or the tools/mvtest
-can't match this line.
+syzbot found the following issue on:
 
-> +#
-> +# Exercise rejected delalloc to nodelalloc remounts while buffered writes and
-> +# truncates are active.  A remount used to clear EXT4_MOUNT_DELALLOC before
-> +# rejecting the transition, so a concurrent truncate could fail to release
-> +# delayed allocation reservations.  The leaked inode reservation is reported
-> +# when the inode is evicted during unmount.
-> +#
-> +# This is a regression test for the issue fixed by the proposed patch:
-> +# "ext4: reject delalloc to nodelalloc remount before applying options"
-> +# https://lore.kernel.org/linux-ext4/20260814034855.1573759-1-guzebing1612@gmail.com/
+HEAD commit:    32b6ef9a5d0e Add linux-next specific files for 20260902
+git tree:       linux-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=14b44125580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=32ceed1c94c11059
+dashboard link: https://syzkaller.appspot.com/bug?extid=5a7a23af225c215902e7
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
 
-_fixed_by_fs_commit ext4 xxxxxxxxxxxx \
-    "ext4: reject delalloc to nodelalloc remount before applying options"
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/9a1f38fb6f24/disk-32b6ef9a.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/f3152eed43a4/vmlinux-32b6ef9a.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/e7fbd36e1b12/bzImage-32b6ef9a.xz
 
-> +#
-> +. ./common/preamble
-> +_begin_fstest auto stress mount
-> +
-> +writer_pids=()
-> +remounter_pid=
-> +stop_file=$tmp.stop
-> +worker_error=$tmp.worker_error
-> +remounter_error=$tmp.remounter_error
-> +remounter_count=$tmp.remounter_count
-> +
-> +stop_workload()
-> +{
-> +	touch "$stop_file"
-> +	if [ -n "$remounter_pid" ]; then
-> +		wait "$remounter_pid" 2>/dev/null
-> +		remounter_pid=
-> +	fi
-> +	if [ "${#writer_pids[@]}" -gt 0 ]; then
-> +		wait "${writer_pids[@]}" 2>/dev/null
-> +		writer_pids=()
-> +	fi
-> +}
-> +
-> +# Override the default cleanup function.
-> +_cleanup()
-> +{
-> +	stop_workload
-> +	cd /
-> +	_is_dir_mountpoint "$SCRATCH_MNT" >/dev/null &&
-> +		_scratch_unmount >/dev/null 2>&1
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+5a7a23af225c215902e7@syzkaller.appspotmail.com
 
-fstests/check automatically unmounts scratch and runs fsck at the end of each
-test. You don't need to invoke _scratch_unmount in _cleanup unless an extra
-unmount is explicitly required.
+Oops: general protection fault, probably for non-canonical address 0xdffffc0000000001: 0000 [#1] SMP KASAN PTI
+KASAN: null-ptr-deref in range [0x0000000000000008-0x000000000000000f]
+CPU: 0 UID: 0 PID: 4945 Comm: jbd2/sda1-8 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+RIP: 0010:const_folio_flags include/linux/page-flags.h:345 [inline]
+RIP: 0010:folio_test_dropbehind include/linux/page-flags.h:600 [inline]
+RIP: 0010:__bh_submit+0x22d/0x8d0 fs/buffer.c:1109
+Code: c1 e8 03 48 89 44 24 18 42 80 3c 20 00 74 08 48 89 df e8 26 f6 d7 ff 48 89 5c 24 28 48 8b 1b 4c 8d 7b 08 4c 89 f8 48 c1 e8 03 <42> 80 3c 20 00 74 08 4c 89 ff e8 04 f6 d7 ff 4d 8b 3f 4c 89 fe 48
+RSP: 0018:ffffc9001016f868 EFLAGS: 00010202
+RAX: 0000000000000001 RBX: 0000000000000000 RCX: ffffffff84b96ff9
+RDX: 0000000000000001 RSI: 0000000000000004 RDI: ffff888075a7a660
+RBP: 0000000000009801 R08: ffff888075a7a6bf R09: 1ffff1100eb4f4d7
+R10: dffffc0000000000 R11: ffffed100eb4f4d8 R12: dffffc0000000000
+R13: ffff888075a7a640 R14: ffff8880123a17e0 R15: 0000000000000008
+FS:  0000000000000000(0000) GS:ffff888124ccb000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007fe1ee627da0 CR3: 0000000074fa8000 CR4: 00000000003526f0
+Call Trace:
+ <TASK>
+ jbd2_journal_commit_transaction+0x22a9/0x5cd0 fs/jbd2/commit.c:751
+ kjournald2+0x3bc/0x750 fs/jbd2/journal.c:200
+ kthread+0x38b/0x480 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Modules linked in:
+---[ end trace 0000000000000000 ]---
+RIP: 0010:const_folio_flags include/linux/page-flags.h:345 [inline]
+RIP: 0010:folio_test_dropbehind include/linux/page-flags.h:600 [inline]
+RIP: 0010:__bh_submit+0x22d/0x8d0 fs/buffer.c:1109
+Code: c1 e8 03 48 89 44 24 18 42 80 3c 20 00 74 08 48 89 df e8 26 f6 d7 ff 48 89 5c 24 28 48 8b 1b 4c 8d 7b 08 4c 89 f8 48 c1 e8 03 <42> 80 3c 20 00 74 08 4c 89 ff e8 04 f6 d7 ff 4d 8b 3f 4c 89 fe 48
+RSP: 0018:ffffc9001016f868 EFLAGS: 00010202
+RAX: 0000000000000001 RBX: 0000000000000000 RCX: ffffffff84b96ff9
+RDX: 0000000000000001 RSI: 0000000000000004 RDI: ffff888075a7a660
+RBP: 0000000000009801 R08: ffff888075a7a6bf R09: 1ffff1100eb4f4d7
+R10: dffffc0000000000 R11: ffffed100eb4f4d8 R12: dffffc0000000000
+R13: ffff888075a7a640 R14: ffff8880123a17e0 R15: 0000000000000008
+FS:  0000000000000000(0000) GS:ffff888124dcb000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f87c696cf80 CR3: 000000000eb48000 CR4: 00000000003526f0
+----------------
+Code disassembly (best guess):
+   0:	c1 e8 03             	shr    $0x3,%eax
+   3:	48 89 44 24 18       	mov    %rax,0x18(%rsp)
+   8:	42 80 3c 20 00       	cmpb   $0x0,(%rax,%r12,1)
+   d:	74 08                	je     0x17
+   f:	48 89 df             	mov    %rbx,%rdi
+  12:	e8 26 f6 d7 ff       	call   0xffd7f63d
+  17:	48 89 5c 24 28       	mov    %rbx,0x28(%rsp)
+  1c:	48 8b 1b             	mov    (%rbx),%rbx
+  1f:	4c 8d 7b 08          	lea    0x8(%rbx),%r15
+  23:	4c 89 f8             	mov    %r15,%rax
+  26:	48 c1 e8 03          	shr    $0x3,%rax
+* 2a:	42 80 3c 20 00       	cmpb   $0x0,(%rax,%r12,1) <-- trapping instruction
+  2f:	74 08                	je     0x39
+  31:	4c 89 ff             	mov    %r15,%rdi
+  34:	e8 04 f6 d7 ff       	call   0xffd7f63d
+  39:	4d 8b 3f             	mov    (%r15),%r15
+  3c:	4c 89 fe             	mov    %r15,%rsi
+  3f:	48                   	rex.W
 
-> +	rm -f "$stop_file" "$worker_error" "$worker_error".* \
-> +		"$tmp.xfs_io_error".* "$remounter_error" "$remounter_count"
 
-The original `rm -r -f $tmp.*` can remove all these files.
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-> +}
-> +
-> +# Import common functions.
-> +. ./common/filter
-> +
-> +_exclude_fs ext2
-> +_exclude_fs ext3
-> +_exclude_scratch_mount_option "data=journal" "dax" "nodelalloc"
-> +_require_check_dmesg
-> +_require_scratch_size $((2 * 1024 * 1024))
-> +_require_xfs_io_command "pwrite"
-> +_require_xfs_io_command "truncate"
-> +
-> +record_worker_error()
-> +{
-> +	local command=$1
-> +	local file=$2
-> +	local err=$3
-> +	local log=$worker_error.$BASHPID
-> +
-> +	{
-> +		echo "worker failed:"
-> +		echo "  command: $command"
-> +		echo "  file: $file"
-> +		echo "  stderr:"
-> +		if [ -s "$err" ]; then
-> +			sed 's/^/    /' "$err"
-> +		else
-> +			echo "    <empty>"
-> +		fi
-> +	} > "$log"
-> +	touch "$worker_error"
-> +}
-> +
-> +write_truncate_loop()
-> +{
-> +	local file=$1
-> +	local err=$tmp.xfs_io_error.$BASHPID
-> +
-> +	while [ ! -e "$stop_file" ]; do
-> +		$XFS_IO_PROG -f -c "pwrite -q 0 32m" "$file" \
-> +			>/dev/null 2>"$err" || {
-> +			record_worker_error \
-> +				'xfs_io -f -c "pwrite -q 0 32m"' "$file" "$err"
-> +			break
-> +		}
-> +		$XFS_IO_PROG -c "truncate 256k" "$file" \
-> +			>/dev/null 2>"$err" || {
-> +			record_worker_error \
-> +				'xfs_io -c "truncate 256k"' "$file" "$err"
-> +			break
-> +		}
-> +	done
-> +	rm -f "$err"
-> +}
-> +
-> +log_worker_errors()
-> +{
-> +	local log
-> +
-> +	test -e "$worker_error" || return 0
-> +
-> +	echo "write/truncate worker failure details:" >> "$seqres.full"
-> +	for log in "$worker_error".*; do
-> +		test -f "$log" || continue
-> +		cat "$log" >> "$seqres.full"
-> +	done
-> +}
-> +
-> +remount_loop()
-> +{
-> +	local count=0
-> +
-> +	while [ ! -e "$stop_file" ]; do
-> +		# This remount is expected to fail.  The bug is that ext4 used
-> +		# to expose the transient nodelalloc state before failing it.
-> +		if $MOUNT_PROG -o remount,nodelalloc "$SCRATCH_DEV" "$SCRATCH_MNT" \
-> +			>/dev/null 2>&1; then
-> +			echo "delalloc to nodelalloc remount unexpectedly succeeded" \
-> +				> "$remounter_error"
-> +			touch "$stop_file"
-> +			break
-> +		fi
-> +		count=$((count + 1))
-> +	done
-> +	echo "$count" > "$remounter_count"
-> +}
-> +
-> +log_remount_result()
-> +{
-> +	local remounts=0
-> +
-> +	if [ -s "$remounter_count" ]; then
-> +		read -r remounts < "$remounter_count"
-> +	fi
-> +	echo "rejected remounts: $remounts" >> "$seqres.full"
-> +
-> +	if [ -s "$remounter_error" ]; then
-> +		echo "remount worker failure details:" >> "$seqres.full"
-> +		sed 's/^/  /' "$remounter_error" >> "$seqres.full"
-> +	fi
-> +}
-> +
-> +sleep_msg_ratelimit_interval()
-> +{
-> +	local dev=$(_short_dev "$SCRATCH_DEV")
-> +	local interval_file=/sys/fs/ext4/$dev/msg_ratelimit_interval_ms
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
-_require_fs_sysfs msg_ratelimit_interval_ms ?
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
 
-> +	local interval_ms=0
-> +	local sleep_secs
-> +
-> +	if [ -r "$interval_file" ]; then
-> +		read -r interval_ms < "$interval_file"
-> +	fi
-> +	case "$interval_ms" in
-> +	''|*[!0-9]*)
-> +		interval_ms=0
-> +		;;
-> +	esac
-> +
-> +	sleep_secs=$(((interval_ms + 999) / 1000 + 1))
-> +	# Repeated expected remount failures can consume ext4's message
-> +	# ratelimit budget.  Wait one interval plus one second before
-> +	# unmount so "i_reserved_data_blocks .* not cleared!" is not
-> +	# filtered out by the ratelimit.
-> +	echo "sleeping ${sleep_secs}s for ext4 msg ratelimit interval" \
-> +		"(${interval_ms}ms)" >> "$seqres.full"
-> +	sleep "$sleep_secs"
-> +}
-> +
-> +echo "Silence is golden"
-> +
-> +_scratch_mkfs >> "$seqres.full" 2>&1
-> +_scratch_mount -o delalloc
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
 
-If this test needs specific mount options, I recommend either unsetting
-MOUNT_OPTIONS or setting it to the options you need, then removing above
-`_exclude_scratch_mount_option ...`.
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
 
-> +
-> +options_file=/proc/fs/ext4/$(_short_dev "$SCRATCH_DEV")/options
-
-_require_fs_sysfs options ?
-
-> +grep -qw delalloc "$options_file" ||
-> +	_fail "scratch filesystem is not mounted with delalloc"
-> +
-> +for ((i = 0; i < 16; i++)); do
-> +	write_truncate_loop "$SCRATCH_MNT/file-$i" &
-> +	writer_pids+=("$!")
-> +done
-> +
-> +remount_loop &
-> +remounter_pid=$!
-> +
-> +runtime=$((30 * TIME_FACTOR))
-> +sleep "$runtime"
-> +
-> +stop_workload
-> +log_worker_errors
-> +log_remount_result
-> +
-> +sleep_msg_ratelimit_interval
-> +_scratch_unmount || _fail "scratch filesystem unmount failed"
-
-In general, we don't need to call _scratch_unmount explicitly unless it's part
-of the test steps. Could an unmount failure be one of the issues caused by
-this bug?
-
-> +
-> +warning="i_reserved_data_blocks .* not cleared!"
-> +if _check_dmesg_for "$warning"; then
-> +	_dmesg_since_test_start | grep -E "$warning" >> "$seqres.full"
-> +	_fail "delayed allocation reservations leaked during rejected remount"
-> +fi
-
-fstests/check calls _check_dmesg at the end of each test case. What is the full
-dmesg line you want to check? Is it already covered by the default check
-patterns below:
-
-        grep -E -q -e "kernel BUG at" \
-             -e "WARNING:" \
-             -e "\bBUG:" \
-             -e "Oops:" \
-             -e "possible recursive locking detected" \
-             -e "(INFO|ERR): suspicious RCU usage" \
-             -e "INFO: possible circular locking dependency detected" \
-             -e "general protection fault:" \
-             -e "BUG .* remaining" \
-             -e "oom-kill" \
-             -e "UBSAN:" \
-             $seqres.dmesg
-
-> +test ! -e "$remounter_error" ||
-> +	_fail "delalloc to nodelalloc remount unexpectedly succeeded"
-> +test ! -e "$worker_error" || _fail "write/truncate worker failed"
-> +
-> +# success, all done
-> +status=0
-> +exit
-
-_exit 0
-
-Thanks,
-Zorro
-
-> diff --git a/tests/ext4/064.out b/tests/ext4/064.out
-> new file mode 100644
-> index 00000000..d9076546
-> --- /dev/null
-> +++ b/tests/ext4/064.out
-> @@ -0,0 +1,2 @@
-> +QA output created by 064
-> +Silence is golden
-> 
-> base-commit: acb6d4cb84205a8e3f19ca470cfcf7bf6d93a509
-> -- 
-> 2.20.1
-> 
+If you want to undo deduplication, reply with:
+#syz undup
