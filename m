@@ -1,267 +1,294 @@
-Received: from mail-oo2-f6.google.com (mail-oo2-f6.google.com [74.125.231.134])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from SN4PR0501CU005.outbound.protection.outlook.com (mail-southcentralusazon11011049.outbound.protection.outlook.com [40.93.194.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AE943C0630
-	for <linux-ext4@vger.kernel.org>; Sat,  5 Sep 2026 10:30:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.134
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788604235; cv=none; b=F1FFOXITh0+wmBIEJg4n6EVlwDF9DZH/j5QPnukmoc6ADG32hj+q5XW8THj2fimnhj1TXtDYqHFyAVu6G0rb6e4jnGNfI0DTmODdwPrzgj5G/WH95cmjcuFN7FYaOYGX5WGol38V3BAgGp53Rx/6SyuSRGfues4vWQueBlgtWE8=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788604235; c=relaxed/simple;
-	bh=KnT7J76VOs0JF4MkaqyU7PKqA4YcPl9vPwF1cPE55wM=;
-	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=bqd36QT/x1ESBL5oXs+EIA6vs9ho0O5k9BkEE0R+JV/A642Hmi0iBmtkE45KNSLmPpcXTanxK4yFKkLpcuQs6U1sLW42vM1qhnQhGlZlxTLNXgpWZ7EvI+eUPSJuYARV9hE1hxF8DeG2pf0JjHdHhjBOZcC5yqciEbm+n+SH9Ps=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.134
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo2-f6.google.com with SMTP id 006d021491bc7-6aafac56856so596399eaf.1
-        for <linux-ext4@vger.kernel.org>; Sat, 05 Sep 2026 03:30:32 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788604232; x=1789209032;
-        h=content-type:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=2ikTUDMvgbs6Pvx2tv73p+QKcEhBgflCF3gftTATyaI=;
-        b=ZAE/AI8BcJF5OPj1wqMIka5GpjUDyV8YgvREa36MZ9qzrGrTXJpHPEraXhO5xBXUZ0
-         QG2sinyo/ZtHbg2Q9nhbaXu0ol3Fnfud784Wg0acGcbN/xCMjx/tKtdeGYH1FjgoyLMv
-         Erx2DhAk2Md2Jv8tgos+AhC7SCRlTS6cgKb/SSVxX+f/IolmE4vHcZJNoEr2y83KZnLd
-         NZfdtO9RdaZZ4y1em2os2O1AXYVC5k4H3SXEdcMSRODqRamae0fPtSee78wDY+lTm8Tr
-         rto/XndQJDcAiIBR6uC2tiQNO1tIs5kBqBj5YmW9rwFS4yHJQdHTzhMO8VPT31qRt8x4
-         v1Yw==
-X-Forwarded-Encrypted: i=1; AKwUvBxIhqumSBtC5tR51+todZKm0oTjMbud09fe+xWXLhnVgIetx5A2qSD0lLmyyTYKkgHxjf6in/qn891g@vger.kernel.org
-X-Gm-Message-State: AFuF++mMtiKceqM+Qh4FsgpuxBrncFt9KKBzUvMgTRwdkrGlL+GAhIRp
-	2QFV/I0h6oibJVH6ia3MJpSAUDUn5yvp/cVIKJA7UlkYgnXquy1fE4ye/3qs5miMHRBqWo7/bl5
-	JJYb6Jf0VuEni2EvPjzTLIXoqOuVNMXc4CZ7ExxwuMGDl1/2QMDOuIIT7bzk=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01B982E7BD6;
+	Sat,  5 Sep 2026 12:41:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.93.194.49
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788612073; cv=fail; b=s56vi+TIIcX669GwfH7+QY2qTE9boYzV1k80pk2sGMxDFvEQ99vOWUUxIyaFCqbKaladwvWeZo4XBepaku3mQWhCAFBDIYqou5N9ptYRLhJVVjDqVYKTNLMDYF18ZS4erQZYL989JV9QpW5TGkGx9K0xJeLpIcIrdsKdPtML8FY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788612073; c=relaxed/simple;
+	bh=KYJK6AezENxwwHL/zv9N1SypMIcLmfAKIFK/oDl3px8=;
+	h=Content-Type:Date:Message-Id:Subject:Cc:To:From:References:
+	 In-Reply-To:MIME-Version; b=fwe/Ao9pUs/UAhHM1HPCR8GuYwegsgFpVQTU0NqtFuKtPcWPnxTauIdWEVmWmY13g39MzXhCALGALTK/xj2shHudbzLDons4hyM3Kg7SDLo5hujiHACXHMJQ4ak9c1jU+WxAfyvaPfiuMlNU0SGFkuMjJDz6Yb2ARRIPIyH5BaU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com; spf=fail smtp.mailfrom=nvidia.com; dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b=CtDiyrHx; arc=fail smtp.client-ip=40.93.194.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nvidia.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=Nvidia.com header.i=@Nvidia.com header.b="CtDiyrHx"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=hETSmD9god6qG2MkaPxvGId7sM6aDXqolOKINSxj5AOqhzlsKwB/FzzF8fUtMxZiZsavX11iqRr4gShO7u1Z+o+wpSGheS63XS+Vg3x1eV4MTuoAp10JeyMy8nD2ysmS0MUsC/tzuFGPA1auls5Sxr7PdVsXNyO5VVXgW4N6fBNM1ZjuEqAtGet5PrbKUREbHwvmL7LgJMqB5jDuYugQWeZmh0uxFDwULPM3OXMCak/cciJ0uNXdjd3Y8T6o/tbbHO0TQodZpDoWXrVdfe3FfDHsKuEtdLZcd1NmrWzmgfB2Z8V3UaD03Ai9+uVDOx8DfTfk0OkR2rAdNWO1zK7oaA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=Eyjv7Xcj+ejbUzwiRc4IteNaILcozc6HMVGzPtPrMas=;
+ b=i2cQQvA20YP9XtR03NQd6gEQnAxHtRenrAEwfb1jN2VqQkAIHy060h2mqERm8iqbYNl1m0FAW1EfDLvOZIP0F4veONiDnh2RYaLFFWxL6FB6rerhLACsJ6FEuanxFr+8UqNaf1T9WX1SVSTH6JYUNeuX6HgcKEbh+kDJFtB//IYHdaH5DK4w+KfYzVXWbWYawmyfkbF+pAX7j+Movk+9mTvjVqDf16Oc8y1gxouy+owtdnNsHKCmwWGfo+12SMljGlIgkvJU5bZVliybPvNfWYRDNndHhvK40iTIJ2C00bkSUHqLBYWJtrXYK9AMgfsT/dANKRMJFeqxX+psUufp+Q==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
+ dkim=pass header.d=nvidia.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=Eyjv7Xcj+ejbUzwiRc4IteNaILcozc6HMVGzPtPrMas=;
+ b=CtDiyrHxh6VA7wtTwhYd53PR+PksUwf2clS2ZMxQwe7KCL/Mge32Mw2iwOxWpZ+IB9Y4jR5C8QhtRwNJJMuTox9+RNAeRMSmBj3rNdPBbMcxbgC+iSdNsHEz1pHgCxEErx6K7FdrKVgdktHg8I+nyLMalG3QkGGE4wrAJwTqmXm7Ut4QTya/a7lojjAakSrmeEgZi6h4ymN8iHcFbV22wFHR8gu6+/nrPUqLXO/h9XkfsyU0Y8AhKOJaWZ8BBNzWAN4aqrQECRPmIpVcznAbDtxuB8ha7ylhMBF0NUy1Pz+5JQDGoapU9bHiYHOL9XvNrWiPpqh2O4wkMcOjlW78zQ==
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=nvidia.com;
+Received: from IA0PR12MB8374.namprd12.prod.outlook.com (2603:10b6:208:40e::7)
+ by MW4PR12MB6849.namprd12.prod.outlook.com (2603:10b6:303:20d::8) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.382.10; Sat, 5 Sep
+ 2026 12:41:07 +0000
+Received: from IA0PR12MB8374.namprd12.prod.outlook.com
+ ([fe80::d85f:4c87:ae84:3f16]) by IA0PR12MB8374.namprd12.prod.outlook.com
+ ([fe80::d85f:4c87:ae84:3f16%5]) with mapi id 15.21.0382.012; Sat, 5 Sep 2026
+ 12:41:06 +0000
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+Date: Sat, 05 Sep 2026 08:41:05 -0400
+Message-Id: <DL7E27LHUEXZ.3B86XR1QN6PP5@nvidia.com>
+Subject: Re: [RFC PATCH] mm/truncate: fix data loss when splitting fails in
+ truncate_inode_partial_folio()
+Cc: <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+ <linux-ext4@vger.kernel.org>, <akpm@linux-foundation.org>,
+ <david@kernel.org>, <ljs@kernel.org>, <liam@infradead.org>,
+ <vbabka@kernel.org>, <rppt@kernel.org>, <surenb@google.com>,
+ <mhocko@suse.com>, <hughd@google.com>, <baolin.wang@linux.alibaba.com>,
+ <willy@infradead.org>, <jack@suse.cz>, <bfoster@redhat.com>,
+ <djwong@kernel.org>, <yi.zhang@huawei.com>, <yangerkun@huawei.com>,
+ <chengzhihao1@huawei.com>, <wangkefeng.wang@huawei.com>,
+ <yukuai@fnnas.com>, "Joanne Koong" <joannelkoong@gmail.com>, "Zhang Yi"
+ <yi.zhang@huaweicloud.com>
+To: "Zhang Yi" <yizhang089@gmail.com>, <linux-mm@kvack.org>
+From: "Zi Yan" <ziy@nvidia.com>
+X-Mailer: aerc 0.22.0
+References: <20260903115018.2034541-1-yi.zhang@huaweicloud.com>
+ <DL6S5JLBHSAB.1RL17ESZ1EK10@nvidia.com>
+ <4e166a3d-9012-45ab-a011-0e0ad54143d5@gmail.com>
+In-Reply-To: <4e166a3d-9012-45ab-a011-0e0ad54143d5@gmail.com>
+X-ClientProxiedBy: BLAPR05CA0001.namprd05.prod.outlook.com
+ (2603:10b6:208:36e::6) To IA0PR12MB8374.namprd12.prod.outlook.com
+ (2603:10b6:208:40e::7)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:2019:b0:6b1:7251:41d5 with SMTP id
- 006d021491bc7-6b6fabe1b66mr11573347eaf.3.1788604231940; Sat, 05 Sep 2026
- 03:30:31 -0700 (PDT)
-Date: Sat, 05 Sep 2026 03:30:31 -0700
-In-Reply-To: <6a6a9895.7eebbf3c.214d51.000d.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a9bef47.37659fcc.e790.0002.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] possible deadlock in process_measurement (6)
-From: syzbot <syzbot+c0bfa7a9a227036e8454@syzkaller.appspotmail.com>
-To: dmitry.kasatkin@gmail.com, eric.snowberg@oracle.com, 
-	gregkh@linuxfoundation.org, jmorris@namei.org, linux-ext4@vger.kernel.org, 
-	linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, linux-usb@vger.kernel.org, 
-	paul@paul-moore.com, roberto.sassu@huawei.com, serge@hallyn.com, 
-	syzkaller-bugs@googlegroups.com, zohar@linux.ibm.com
-Content-Type: text/plain; charset="UTF-8"
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: IA0PR12MB8374:EE_|MW4PR12MB6849:EE_
+X-MS-Office365-Filtering-Correlation-Id: 4056405a-a541-4f65-76dc-08df0b4af472
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|366016|1800799024|376014|23010399003|7416014|4143699003|10067099003|5023799004|56012099006|11063799006|18002099003|22082099003|6133799003;
+X-Microsoft-Antispam-Message-Info:
+	MjnHYHC04PZboxdIe5UjvpZoxXTnpoSENQ5RDkCGE1og1EdUL6ulhL7af/piBxhU2IwVkO267xHTeLc7oEq/56NZjJHcDSfOHIQCPe5nmsgAqqCvKlr9EBEsbfnnXuN2irHzTVAN/TzMuPB1hFI72vRKfcYS0UjyfWkGuro41z+2Nf6ARYxq1TviDFLWXdLCmpoT9E0lOurNv1Q4xHiMNtq6efq+xZU+4GyF/yjyRL2m4XzjuA7r9yLQUqa7+4TtTXJ5KG3Xa12lDqFs71FbnT2rzJ+jSrpHkYOT0EaLG1Duj1EeJGBn37fimngmS7DRyIMltzpYIM+reiMRfCGWt+iwNUpxX2PUynJ3+G8s1pGKAwI/9Sqn7nbOIciI3hRT0a+QmgF/3v9laSbxyPX75cs2/Pk5rJGAIsuWUdHJlYgmjSsxR2LzwlcKQRLsolfna/v1nqazusLg66pmofG5WwUgMieTWBvDEosQQmOUlWaZ5dVcEYalxkjqRMvkVO98n2DYB1fa7LgXIVMTqtvK/wOl456HLVdwBSmbht/reYiiAQ7uEK1cpWtdCWZ1fwQEQBISI4vYRLwunWF0+PdwyLR3Kx0mtu7WsdwKLzh2lSSLCIaYKYjT0BkECb+EbYqyJ8mGn5rIVDdhnE5kaZdHIhCM5ZmQkcxgwy/czbVokRc=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:IA0PR12MB8374.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(1800799024)(376014)(23010399003)(7416014)(4143699003)(10067099003)(5023799004)(56012099006)(11063799006)(18002099003)(22082099003)(6133799003);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?utf-8?B?VERsZ2pJSW5YWFdNL1FsSWt5NkZEZ3UrTTVZVE9mb2RwSFZsQk9kbVhNNXBV?=
+ =?utf-8?B?b0ZjSGM1cU9XbFVlVS9hZW9WamFoL2F4aXNlZkZaT2JKYVd3TG8ra1gwamZD?=
+ =?utf-8?B?V005OEN2MmpPcDludjBpcDhYQzJhQkhYS1BnaTVoaDNUZ051ZEhneTE2NVNj?=
+ =?utf-8?B?SmE3R3dRUUFLbHUvcTAvTnc5NFdSN252NWRSdGNBRUFMWktCY1l4TjZValVu?=
+ =?utf-8?B?S0tGM1I5cTdnYmRlazI4N21FdDlHOFUyd2twemF2MzdFdFB3bGpvRVNBak5Y?=
+ =?utf-8?B?dXJiTXdiM0prT2Rid1hMcEtKQlhhak1BM000VU9LcnVSMWgvWmtXMEgza1JU?=
+ =?utf-8?B?eUYrWEJZVlYybzVrMVpJN1RHMmZpODExcjY5SXRNbFdwdUZMY29kMmF3Y3pL?=
+ =?utf-8?B?dktWTjRwM0hSMFRjVnpVb0RZWi82ZWlEVkpjRzFVVnJ1cDlnUmtpaFhtN0V4?=
+ =?utf-8?B?UVd1c3Y3MzRoZ0p2bGVuNGYzL0ZDMTVVU3JCUzFoMExmSDBtSHd6aGxoeVZX?=
+ =?utf-8?B?aVp1aURJRklGYk9VZTExd1NCZDEwTHYyWVU5cThnaGJhdHZXVmdLd2VCUXpC?=
+ =?utf-8?B?V24xVGJnOFM2VldOWkdBTzkrRWJxVkszbW9KZnlMQWpHbVBlcjk4WnFZNWIr?=
+ =?utf-8?B?K3FLOEF4dXlpMDRIZXZ0WkZkVVI0UzJ5TUthUTQ5Q0NGLzVwYWt2TXNSdWhK?=
+ =?utf-8?B?bXExTGlSemlkbVJUdkNZSVJnQk83dUZpc0JnWlZmSjlyNXI3NzN2MllZMlNR?=
+ =?utf-8?B?RVp3YTJvdEF1QkNKcG1WMG0zYmo1OVU2dGZaUzlWWE5DaDNBek5xWkN2akp2?=
+ =?utf-8?B?Sk52bEo3cFAzNTFBcnJXUHlFc3BRRnN1UlI3c1J6Z0xWOHl0Umd2QmRvVytk?=
+ =?utf-8?B?R25ZQ1lKWUorZzlmQWFZcVVlaXVuK29JNTBSMlV6NWJVRG9UWkZUWHZ6blJD?=
+ =?utf-8?B?WTNHRVl3MkFSd1pLMEwxMG45VDUyQ1RtOVJqQkhxKzNVVzRVSEdzMHp1VkxY?=
+ =?utf-8?B?VnF4NytWMmxEVkxNRlErbnVlYmtJRWZVaWdycjlVNHFGQVBDNWFtVURnS3RV?=
+ =?utf-8?B?RkREVGg3cTVSejFlOWFFM2pZamo2NVF5YjEwQTRTRUtBSFkwUjVvL004TWpP?=
+ =?utf-8?B?NkVVM0owZUpQV0IxZTY3KzdKREFIbmtweFNNa2UrbnlncVI3clBQalZiaThZ?=
+ =?utf-8?B?SHZBbUF6UHJMMENtZzNxczNacS9KbzVIQ2tFbjMxVlk3Z2VtWjRwREVSZUVj?=
+ =?utf-8?B?dVJ6MVJaNGEySDYrOUNEKy9zdlk4M0NBQndMTTJkYVRvR2JIVTlBVDJaTGE5?=
+ =?utf-8?B?cHVnei8yYkdsRHpCY1FQeXU5UCtuTzg5WkVsQUZ6OUFNSDdyam1Zd0JmQks5?=
+ =?utf-8?B?ME9Wb3J5bzFtbk9uMzZ0SHZITk5sZGhvMUh1SURJZVM3V0V3Uy9MditlUUIw?=
+ =?utf-8?B?YVYwUjVKQ3QzbmFhOGhLbDZDNE1hVVVvNS9qbW5RMnROSmhQY0VaZFhyR3NY?=
+ =?utf-8?B?QkdONHYyeTZXeFJveWpNVkJ5eFRJQmpEL2MzNE96ekZDZWszWFNsS3VmTU1a?=
+ =?utf-8?B?Y3RDdlRoY1hOOE5UL0pHYnlFRCtMdUd1bUcxcVN0YUdyV1R5U0d1eGRVVUdI?=
+ =?utf-8?B?Ym5NLzI0VUV1U3RRd2pDR1dxOGMzVlg1QUEzZlVRZUN3MU4rWmdOZjMwN1cw?=
+ =?utf-8?B?VWxvUWViemhzVVp4ZWNOMTU3eUw5bFl6OUlPOXp2K1BXcFdsL0UzMFNES3Jl?=
+ =?utf-8?B?T1prNGxkT0NxS1htUWQvY2x6bE1EK0N1RWRZZVdERnN5WEkwUlBXUEZrMmly?=
+ =?utf-8?B?YisrcTMwUytOb01NK2hZQ21BMmVhc3Y2bENra0FncjQ2eW95WXdGeFFVODRs?=
+ =?utf-8?B?ZmdnWUFYOHBRem5Kc1c3S2dVWVAvOGg5K0JEa2E5SDZFbVBSeGVldkd3NGFu?=
+ =?utf-8?B?Tk1sdXBhbUdnS2l1SGhldFBJcXJ2WitVZTl0QkEyQzFCUXFySSt1dW1OQk16?=
+ =?utf-8?B?K0hmajlNazBSWXZpTW1KanMzV0IzdStvY2lHaERZUndaTWFlY1RWakZGZVht?=
+ =?utf-8?B?UUN3d2lFUDFyUXkzcGhBOU5oWk5BM3d5MStYVnRYRStUTnRSK2ZKU0pOenha?=
+ =?utf-8?B?REFxM2lIcW9wOVR1M3pVWTVSN0lkRVA1SUUzbUdkV1ZpNGhwWEJFY2w5NGxJ?=
+ =?utf-8?B?QnJqYzg2aUV4cGZXMGt6bUhKTDkzVXZVakNja0oxQ2dGWG1WTFBaMDFlZS85?=
+ =?utf-8?B?WjJENW1FVldQR2xXa0F4dFFvVUNZTDZQQWdlUHFLam5pMTRRcGtRVXJ1OEY3?=
+ =?utf-8?Q?rKdeXSa1motcBJFAlw?=
+X-OriginatorOrg: Nvidia.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 4056405a-a541-4f65-76dc-08df0b4af472
+X-MS-Exchange-CrossTenant-AuthSource: IA0PR12MB8374.namprd12.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 05 Sep 2026 12:41:06.8438
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: pl+wmEmssfJb7CpHQ7MxQMLY3GuHW5WIEs3EKFewEXxFtu8G+4358K78HUHX8s9a
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MW4PR12MB6849
 
-syzbot has found a reproducer for the following issue on:
+On Sat Sep 5, 2026 at 5:15 AM EDT, Zhang Yi wrote:
+> On 9/5/2026 3:31 AM, Zi Yan wrote:
+>> On Thu Sep 3, 2026 at 7:50 AM EDT, Zhang Yi wrote:
+>>> From: Zhang Yi <yi.zhang@huawei.com>
+>>>
+>>> truncate_inode_partial_folio() splits a large folio so that the caller'=
+s
+>>> truncate loop can drop the in-range sub-folios while keeping the
+>>> out-of-range tail. The first split at the punch start edge is
+>>> non-uniform, which leaves the sub-folio at the truncation end edge as
+>>> large as possible, this means it may still straddle the range, holding
+>>> both zeroed in-range and valid out-of-range data. The function then
+>>> attempts a second split at offset + length to isolate that tail.
+>>>
+>>> If the second split fails the straddling sub-folio stays merged. The
+>>> function returned true unconditionally on all exit paths of the success
+>>> block, telling the caller it was fully handled. The caller kept its
+>>> default end and the truncate loop truncated every sub-folio below it,
+>>> including the merged straddler, discarding the valid out-of-range tail.
+>>>
+>>> For example, a 4-page order-2 folio punched from offset 0 to the middle
+>>> of the last page:
+>>>
+>>>    truncate_inode_pages_range()
+>>>      truncate_inode_partial_folio()      # same_folio =3D=3D true
+>>>        1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
+>>>        folio2 =3D p2-3 # straddles: p2 zeroed, p3 tail valid
+>>>        2nd split of folio2 fails / cannot lock
+>>>        return true                       # BUG: caller keeps default en=
+d
+>>>      end =3D 3
+>>>      loop truncates p0, p1, p2-3        # p3's valid tail is lost
+>>>
+>>> This became reachable after commit 7460b470a131 ("mm/truncate: use
+>>> folio_split() in truncate operation") replaced the atomic split_folio()
+>>> with folio_split(), whose non-uniform split can partially split a folio
+>>> and leave the end edge merged.
+>>>
+>>> It has gone unnoticed because a dirty large folio normally carries the
+>>> filesystem's private data, for example buffer_head, so
+>>> filemap_release_folio() -> iomap_release_folio() returns false on a
+>>> dirty folio and folio_split() aborts with -EBUSY before any split,
+>>> leaving the straddler safely unsplit. The bug is only reachable on path=
+s
+>>> that produce dirty large folios without filesystem private data, and it
+>>> was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
+>>> attached.
+>>=20
+>> Thank you for the analysis.
+>>=20
+>>>
+>>> Rework the contract so the caller is told where to stop instead of
+>>> silently truncating the straddler:
+>>>
+>>>    - Return true only when a split occurred, false otherwise. This
+>>>      clarifies the existing confusing return value semantics.
+>>=20
+>> Should we do "return false" for not split case as a minmal fix first?
+>>=20
+>> Something like below. A second patch can optimize on top of it. Let me
+>> know if I miss anything.
+>>=20
+>> BTW, Claude also mentioned that if min_order > 0 and end is not aligned
+>> to 1UL << min_order, there could be some issue. So
+>>=20
+>> ret =3D !folio_split_or_unmap(folio2, split_at2, min_order);
+>>=20
+>> should be
+>>=20
+>> unsigned long idx2 =3D PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE;
+>>=20
+>> ret =3D !folio_split_or_unmap(folio2, split_at2, min_order) &&
+>> IS_ALIGNED(idx2, 1UL << min_order);
+>>=20
+>> ?
+>>=20
+>
+> Hi Zi Yan,
+>
+> Thanks for the minimal fix. I agree with the core observation =E2=80=94 t=
+he
+> tail is only really isolated when the second split and the boundary
+> alignment both cooperate.  However, I'd like to point out a trade-off:
+> the "return false to make the caller skip the folio" mechanism leads
+> to an incorrect 'start' in truncate_inode_pages_range() and over-keeps
+> the in-range sub-folios.
+>
+> The problem is that the false return value was designed for the case
+> where the folio is unsplit.  Look at the caller:
+>
+>          if (!truncate_inode_partial_folio(folio, lstart, lend)) {
+>                  start =3D folio_next_index(folio);
+>                  if (same_folio)
+>                          end =3D folio->index;
+>          }
+>
+> start =3D folio_next_index(folio); end =3D folio->index only makes sense
+> when folio is still the whole folio.  But after the first split
+> succeeds, the caller's folio reference has already been transferred to
+> the sub-folio containing split_at, so folio is no longer the whole
+> folio.
+>
+> Concretely, take the commit's example: a 4-page order-2 folio
+> [p0 p1 p2 p3], punched from offset 0 into the middle of p3,
+> min_order =3D=3D 0:
+>
+>          [p0 p1 p2 p3]  --1st split @p0-->  [p0] [p1] [p2-p3]
+>          folio now points to [p0]
+>          folio2 =3D [p2-p3]              # p2 zeroed, p3 tail valid
+>          2nd split of [p2-p3] fails    # e.g. -EBUSY, or can't lock
+> 	=09
+> With your fix, ret becomes false, so the caller runs:
+>
+>          start =3D folio_next_index([p0]) =3D 1;
+>          end   =3D folio->index          =3D 0;
+>
+> The truncate loop then does while (index < end) -> 1 < 0 -> nothing,
+> and [p0] and [p1] are left in the page cache, even though they are
+> fully inside the punched range and should have been dropped.
+>
+> To be fair, this will not lead to any data-corruption problem because
+> p0 and p1 are already zeroed.  So as a minimal fix to stop the data
+> loss, it is acceptable.  But it still leaves the in-range sub-folios
+> behind and wastes memory, which somewhat reduces the benefit of
+> splitting the folio. So I don't think change the return value alone can
+> solve this problem.
+>
+> What do you think?
+>
 
-HEAD commit:    654ae5d73c05 Merge tag 'drm-fixes-2026-09-05' of https://g..
-git tree:       upstream
-console+strace: https://syzkaller.appspot.com/x/log.txt?x=14c568f9580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=b454dc6b1b7acd30
-dashboard link: https://syzkaller.appspot.com/bug?extid=c0bfa7a9a227036e8454
-compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12c568f9580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17cc6b49580000
+Understood.
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/49c1a99f815b/disk-654ae5d7.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/6fcecf1b8c8d/vmlinux-654ae5d7.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/fa54b23691ca/bzImage-654ae5d7.xz
-mounted in repro: https://storage.googleapis.com/syzbot-assets/7be96c47c44b/mount_0.gz
-  fsck result: OK (log: https://syzkaller.appspot.com/x/fsck.log?x=12041125580000)
+Alternatives are changing folio_split() to make sure folio2 is split.
+From weakest guarantee to strongest guarantee:
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+c0bfa7a9a227036e8454@syzkaller.appspotmail.com
+1. make folio_split() return with folio2 locked: but others can still
+put a ref on folio2 to fail the subsequent folio2 split.
 
-======================================================
-WARNING: possible circular locking dependency detected
-syzkaller #0 Not tainted
-------------------------------------------------------
-syz-executor428/5602 is trying to acquire lock:
-ffff88803f38b458 (&ima_iint_mutex_key[depth]){+.+.}-{4:4}, at: process_measurement+0x7e0/0x1c20 security/integrity/ima/ima_main.c:319
+2. make folio_split() accept two split_at, folio_split() does both folio
+and folio2 split internally: but if folio2 split require an xa_node and
+the allocation fails, folio2 split can still fail.
 
-but task is already holding lock:
-ffff888038eee198 (&common->filesem){++++}-{4:4}, at: fsg_store_file+0x163/0x400 drivers/usb/gadget/function/storage_common.c:452
+3. make folio_split() accept two split_at and preallocate two xa_node
+upfront: this should guarantee folio_split() to either split both folio
+and folio2 or split nothing, but it specializes folio_split() for
+truncate.
 
-which lock already depends on the new lock.
+I guess for now it might be better to make truncate to handle the
+folio2-not-split situation.
 
+--=20
+Best Regards,
+Yan, Zi
 
-the existing dependency chain (in reverse order) is:
-
--> #3 (&common->filesem){++++}-{4:4}:
-       down_read+0x97/0x200 kernel/locking/rwsem.c:1574
-       fsg_show_file+0x2d/0x140 drivers/usb/gadget/function/storage_common.c:339
-       fill_read_buffer fs/configfs/file.c:68 [inline]
-       configfs_read_iter+0x2ba/0x620 fs/configfs/file.c:88
-       __kernel_read+0x4d3/0x970 fs/read_write.c:532
-       integrity_kernel_read+0x89/0xd0 security/integrity/iint.c:28
-       ima_calc_file_hash_tfm security/integrity/ima/ima_crypto.c:222 [inline]
-       ima_calc_file_hash+0x45d/0x8a0 security/integrity/ima/ima_crypto.c:280
-       ima_collect_measurement+0x521/0xa10 security/integrity/ima/ima_api.c:300
-       process_measurement+0x1282/0x1c20 security/integrity/ima/ima_main.c:425
-       ima_file_check+0xe1/0x130 security/integrity/ima/ima_main.c:685
-       security_file_post_open+0xb3/0x260 security/security.c:2755
-       do_open fs/namei.c:4839 [inline]
-       path_openat+0x148a/0x1d60 fs/namei.c:5000
-       do_file_open+0x23e/0x4a0 fs/namei.c:5029
-       do_sys_openat2+0x115/0x200 fs/open.c:1417
-       do_sys_open fs/open.c:1423 [inline]
-       __do_sys_openat fs/open.c:1439 [inline]
-       __se_sys_openat fs/open.c:1434 [inline]
-       __x64_sys_openat+0x138/0x170 fs/open.c:1434
-       do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-       do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
--> #2 (&p->frag_sem){.+.+}-{4:4}:
-       down_read+0x97/0x200 kernel/locking/rwsem.c:1574
-       fill_read_buffer fs/configfs/file.c:66 [inline]
-       configfs_read_iter+0x1cf/0x620 fs/configfs/file.c:88
-       __kernel_read+0x4d3/0x970 fs/read_write.c:532
-       integrity_kernel_read+0x89/0xd0 security/integrity/iint.c:28
-       ima_calc_file_hash_tfm security/integrity/ima/ima_crypto.c:222 [inline]
-       ima_calc_file_hash+0x45d/0x8a0 security/integrity/ima/ima_crypto.c:280
-       ima_collect_measurement+0x521/0xa10 security/integrity/ima/ima_api.c:300
-       process_measurement+0x1282/0x1c20 security/integrity/ima/ima_main.c:425
-       ima_file_check+0xe1/0x130 security/integrity/ima/ima_main.c:685
-       security_file_post_open+0xb3/0x260 security/security.c:2755
-       do_open fs/namei.c:4839 [inline]
-       path_openat+0x148a/0x1d60 fs/namei.c:5000
-       do_file_open+0x23e/0x4a0 fs/namei.c:5029
-       do_sys_openat2+0x115/0x200 fs/open.c:1417
-       do_sys_open fs/open.c:1423 [inline]
-       __do_sys_openat fs/open.c:1439 [inline]
-       __se_sys_openat fs/open.c:1434 [inline]
-       __x64_sys_openat+0x138/0x170 fs/open.c:1434
-       do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-       do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
--> #1 (&buffer->mutex){+.+.}-{4:4}:
-       __mutex_lock_common kernel/locking/rtmutex_api.c:559 [inline]
-       mutex_lock_nested+0x5a/0x1d0 kernel/locking/rtmutex_api.c:578
-       configfs_read_iter+0x73/0x620 fs/configfs/file.c:86
-       __kernel_read+0x4d3/0x970 fs/read_write.c:532
-       integrity_kernel_read+0x89/0xd0 security/integrity/iint.c:28
-       ima_calc_file_hash_tfm security/integrity/ima/ima_crypto.c:222 [inline]
-       ima_calc_file_hash+0x45d/0x8a0 security/integrity/ima/ima_crypto.c:280
-       ima_collect_measurement+0x521/0xa10 security/integrity/ima/ima_api.c:300
-       process_measurement+0x1282/0x1c20 security/integrity/ima/ima_main.c:425
-       ima_file_check+0xe1/0x130 security/integrity/ima/ima_main.c:685
-       security_file_post_open+0xb3/0x260 security/security.c:2755
-       do_open fs/namei.c:4839 [inline]
-       path_openat+0x148a/0x1d60 fs/namei.c:5000
-       do_file_open+0x23e/0x4a0 fs/namei.c:5029
-       do_sys_openat2+0x115/0x200 fs/open.c:1417
-       do_sys_open fs/open.c:1423 [inline]
-       __do_sys_openat fs/open.c:1439 [inline]
-       __se_sys_openat fs/open.c:1434 [inline]
-       __x64_sys_openat+0x138/0x170 fs/open.c:1434
-       do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-       do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
--> #0 (&ima_iint_mutex_key[depth]){+.+.}-{4:4}:
-       check_prev_add kernel/locking/lockdep.c:3181 [inline]
-       check_prevs_add kernel/locking/lockdep.c:3300 [inline]
-       validate_chain kernel/locking/lockdep.c:3924 [inline]
-       __lock_acquire+0x15ff/0x2e40 kernel/locking/lockdep.c:5254
-       lock_acquire+0x115/0x350 kernel/locking/lockdep.c:5908
-       __mutex_lock_common kernel/locking/rtmutex_api.c:559 [inline]
-       mutex_lock_nested+0x5a/0x1d0 kernel/locking/rtmutex_api.c:578
-       process_measurement+0x7e0/0x1c20 security/integrity/ima/ima_main.c:319
-       ima_file_check+0xe1/0x130 security/integrity/ima/ima_main.c:685
-       security_file_post_open+0xb3/0x260 security/security.c:2755
-       do_open fs/namei.c:4839 [inline]
-       path_openat+0x148a/0x1d60 fs/namei.c:5000
-       do_file_open+0x23e/0x4a0 fs/namei.c:5029
-       file_open_name fs/open.c:1375 [inline]
-       filp_open+0x16d/0x1d0 fs/open.c:1392
-       fsg_lun_open+0x6c/0xe00 drivers/usb/gadget/function/storage_common.c:194
-       fsg_store_file+0x19e/0x400 drivers/usb/gadget/function/storage_common.c:455
-       flush_write_buffer fs/configfs/file.c:207 [inline]
-       configfs_write_iter+0x33a/0x430 fs/configfs/file.c:229
-       new_sync_write fs/read_write.c:595 [inline]
-       vfs_write+0x61e/0xbb0 fs/read_write.c:687
-       ksys_write+0x156/0x270 fs/read_write.c:739
-       do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
-       do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
-       entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-other info that might help us debug this:
-
-Chain exists of:
-  &ima_iint_mutex_key[depth] --> &p->frag_sem --> &common->filesem
-
- Possible unsafe locking scenario:
-
-       CPU0                    CPU1
-       ----                    ----
-  lock(&common->filesem);
-                               lock(&p->frag_sem);
-                               lock(&common->filesem);
-  lock(&ima_iint_mutex_key[depth]);
-
- *** DEADLOCK ***
-
-locks held by syz-executor428/5602: 4, last CPU#0:
- #0: ffff88801d734510 (sb_writers#8){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2753 [inline]
- #0: ffff88801d734510 (sb_writers#8){.+.+}-{0:0}, at: vfs_write+0x231/0xbb0 fs/read_write.c:683
- #1: ffff888028b16678 (&buffer->mutex){+.+.}-{4:4}, at: configfs_write_iter+0x81/0x430 fs/configfs/file.c:226
- #2: ffff888025f30b68 (&p->frag_sem){.+.+}-{4:4}, at: flush_write_buffer fs/configfs/file.c:205 [inline]
- #2: ffff888025f30b68 (&p->frag_sem){.+.+}-{4:4}, at: configfs_write_iter+0x23b/0x430 fs/configfs/file.c:229
- #3: ffff888038eee198 (&common->filesem){++++}-{4:4}, at: fsg_store_file+0x163/0x400 drivers/usb/gadget/function/storage_common.c:452
-
-stack backtrace:
-CPU: 0 UID: 0 PID: 5602 Comm: syz-executor428 Not tainted syzkaller #0 PREEMPT_{RT,(full)} 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
-Call Trace:
- <TASK>
- dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
- print_circular_bug+0x2e2/0x300 kernel/locking/lockdep.c:2059
- check_noncircular+0x12f/0x150 kernel/locking/lockdep.c:2191
- check_prev_add kernel/locking/lockdep.c:3181 [inline]
- check_prevs_add kernel/locking/lockdep.c:3300 [inline]
- validate_chain kernel/locking/lockdep.c:3924 [inline]
- __lock_acquire+0x15ff/0x2e40 kernel/locking/lockdep.c:5254
- lock_acquire+0x115/0x350 kernel/locking/lockdep.c:5908
- __mutex_lock_common kernel/locking/rtmutex_api.c:559 [inline]
- mutex_lock_nested+0x5a/0x1d0 kernel/locking/rtmutex_api.c:578
- process_measurement+0x7e0/0x1c20 security/integrity/ima/ima_main.c:319
- ima_file_check+0xe1/0x130 security/integrity/ima/ima_main.c:685
- security_file_post_open+0xb3/0x260 security/security.c:2755
- do_open fs/namei.c:4839 [inline]
- path_openat+0x148a/0x1d60 fs/namei.c:5000
- do_file_open+0x23e/0x4a0 fs/namei.c:5029
- file_open_name fs/open.c:1375 [inline]
- filp_open+0x16d/0x1d0 fs/open.c:1392
- fsg_lun_open+0x6c/0xe00 drivers/usb/gadget/function/storage_common.c:194
- fsg_store_file+0x19e/0x400 drivers/usb/gadget/function/storage_common.c:455
- flush_write_buffer fs/configfs/file.c:207 [inline]
- configfs_write_iter+0x33a/0x430 fs/configfs/file.c:229
- new_sync_write fs/read_write.c:595 [inline]
- vfs_write+0x61e/0xbb0 fs/read_write.c:687
- ksys_write+0x156/0x270 fs/read_write.c:739
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f29897e19a9
-Code: c0 79 93 eb d5 48 8d 7c 1d 00 eb 99 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 d8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007ffe566936c8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 00002000000002c0 RCX: 00007f29897e19a9
-RDX: 0000000000000005 RSI: 00002000000003c0 RDI: 0000000000000005
-RBP: 0000200000000200 R08: 00005555573c7560 R09: 00005555573c7560
-R10: 00005555573c7560 R11: 0000000000000246 R12: 6769666e6f632f2e
-R13: 0000000000000002 R14: 431bde82d7b634db R15: 00007f298984104b
- </TASK>
-mass_storage.0/lun.0: file too small: file0
-
-
----
-If you want syzbot to run the reproducer, reply with:
-#syz test: git://repo/address.git branch-or-commit-hash
-If you attach or paste a git patch, syzbot will apply it before testing.
