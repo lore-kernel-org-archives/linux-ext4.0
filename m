@@ -1,149 +1,195 @@
-Received: from mail-pj1-f51.google.com (mail-pj1-f51.google.com [209.85.216.51])
+Received: from mail-pj1-f52.google.com (mail-pj1-f52.google.com [209.85.216.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E647635A397
-	for <linux-ext4@vger.kernel.org>; Sun,  6 Sep 2026 14:15:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D43D23A99F
+	for <linux-ext4@vger.kernel.org>; Sun,  6 Sep 2026 14:40:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788704127; cv=none; b=fKeLr2Y1IDFqdiu5JDPq6hjpz8KMP2/kNCxWJxZP//G2tGggs2yB6K/b5n03UaIOhZgrAqX5k5sg1E4SvqzkvCeBlVHRzW4s0O0UTrqJINbKMWoDpSpPMWc28QnRolnYxYQprEGPmDy22RPFmbzVFPNI66mZ1tg+Fbjqt38U1GI=
+	t=1788705636; cv=none; b=GefWq6REIStlmTCzLe3cDietvjpwoz0xJ9hL5//g7bwAoPaLXdk/35VflsIC7++C0a1xZLYlEA+qzjvcLVxc4BIV6j26vFs7ECMqYQShN/lACS/sKo3KINbY8nTOYdenwjVtx5QPhxMUuz9XeS4CjZCVFCBzmqVicHLmx95Zqxw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788704127; c=relaxed/simple;
-	bh=JV9rR6PbCXCY0nVK5UFr8KLbHnkplhTSCpGJoiucHIM=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=Fd/BXgoxJq4shS8trgVDdyw12SrTC5kb649vHNZlVMtEkp5gSmQNAslbfQNETI94QSxgPzYkXNLd/vuZVIKaVTOCWTF4p0lkbOxW1YZaQ60UWRCF++FGGFlEDzHm6X96S7t7xNmjycMex8mooc5Aqj3YJz4KFtYccUn/qwfUtsY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=oJQkpzhk; arc=none smtp.client-ip=209.85.216.51
+	s=arc-20240116; t=1788705636; c=relaxed/simple;
+	bh=s1q8WzzGuo8hVRRm/KWVtatN8Kh6Mlwms8kGOAbFfn8=;
+	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=YJsPvhqUmLUFWntBvAeTIGtMjizkqXQ6ArPa8NuslpSI0msi886txYmCWpTuUtI691FtBg3e1wSZ5QUrt6MEM4oyNC758jVAqIQOK9L55d4eDKByMy9A++Bvub3mvFv9pX61IzX/WsR7rm+gtxskFGOyuAKQu3OoDY2yaGTXokY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=oD6ta1yM; arc=none smtp.client-ip=209.85.216.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oJQkpzhk"
-Received: by mail-pj1-f51.google.com with SMTP id 98e67ed59e1d1-3966791a6eeso3176407a91.3
-        for <linux-ext4@vger.kernel.org>; Sun, 06 Sep 2026 07:15:25 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oD6ta1yM"
+Received: by mail-pj1-f52.google.com with SMTP id 98e67ed59e1d1-38e58034d05so2113535a91.2
+        for <linux-ext4@vger.kernel.org>; Sun, 06 Sep 2026 07:40:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788704125; x=1789308925; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1788705633; x=1789310433; darn=vger.kernel.org;
         h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
          :cc:subject:date:message-id:reply-to:content-type;
-        bh=NIjbz58RkaN9CyXskmjKtWIhRZijYN8x8rvjeIyidGw=;
-        b=oJQkpzhkr0rxWlwVLCwKtfjoNpmzDwdYu+W19sTSY/Y1MXJnAaqJ4syx6vd+EI+Mri
-         TrF3ndl2y5b+n968LWaiYdXhjCFRobt5MqT7fpIKz5PgecT9E2M4kZ85YyZ3n+SDz9Y7
-         3DP1Ng8lZ3hYPc+Wb04hw0SxWaKVDeqnkM1IlJfRq42oEQx+nsFhvKHQWgt0dhG5N4CT
-         OYLwVTVnbIRw/SwVC4i8OZwIWvjnDR8gQFec6+uAywkVU1R0sOIzjxoeeQXbdFpr2MgT
-         XMZI+itnjJlgSd1FbD4xfhTUMZgM/kDgejrVUmd2MJQc3eD6cD8jIUqljGWNXu0/iRsr
-         BiPQ==
+        bh=9VYFtOUs9e8rShoNMIR91vWddUTxEe+7XBSxba8ZkAM=;
+        b=oD6ta1yMpeH4kXGEm15K9LL8FhKwXKk3NtbwpofrYfyTSVLw2rIrCcOUFlY3vJQRGb
+         JNZGtwGQXEQ6EqDPXxbN+KK8MtAYKlKXcZ9S+fnRmgpw0TWA6E6aPDmXjGe6m9MRmiQA
+         rFIQz5/WLpzO5xFp5xfvTMpKBL15gcQm9IW5UTjvRmMLoCNj3cI+JKC6jlGVvhjbMBPi
+         fbKyXu1Ktds+T5MyaDQjY3bPOc8UxQO613VvOD5PpFS5KOL5FRIuqbG3BsyzUbI7lgdG
+         F4kx5DprDOTKClA/egozbL/NnrlQqusUTdZAmGqZD9zvPU2ayV3csxgOT9FurehALWSr
+         qp9g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788704125; x=1789308925;
+        d=1e100.net; s=20251104; t=1788705633; x=1789310433;
         h=references:message-id:date:in-reply-to:subject:cc:to:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=NIjbz58RkaN9CyXskmjKtWIhRZijYN8x8rvjeIyidGw=;
-        b=ACEEEgznIcghiiaOtKSMgEl0uQqOpy3c1mdOXeu6js3hkiH29XKTAyEA6lC4oPKK5i
-         O6LYc1Gb757sPQ8L1eWDVV/68CVd+AYoaANw9K50PG+0oazXTUfQUI9pzp3GHjUt5Nns
-         I5zVtXaquOHnJHaO3Bftr0eFBYnH5TBeDqrPHcXDSm6YleE9tyQC+9RYLvLnTciUZGny
-         kyccWRoCLu/nyUqU0EjEQmRBRQe4z94DMRGXeU8m7nEpElOrsknEgFrhDloWl97P3AbQ
-         Zsg8S5v6dT+4ThkRLPCmr3ksEECZc5cfK4aeS7yY/ibd58xOXwLBb/hKQP5QvkF0FiD7
-         AKAw==
-X-Gm-Message-State: AFuF++kS+PpnLyzlykeKnO5AWixluKEx+LGfD1QhpB0TWsCODs3lOM3N
-	G0mNydHfaVgfFcoYSYUeAOlFgftOVvmZ31rpnbyfibU2y96FwMGicEty
-X-Gm-Gg: AYBFou2pe8ksb9kmiAQ2STY7mNf9FDru+XOzlzuUthWi4jLAQ8L5n/jS0eKgwXQ31PV
-	nepRIWUmaolb517VD6cpElbHOiGLJaKWxKsfLQdQ0u6fVY19e8fMD71o84dJlJEOC4l9r2briWH
-	kOxaxj45E98lFsW2i5+aO7VsrPlMq40eNyCOBhuHuUJEYI1nCVuEb9qM4uiHKwbHzTGDcN0EXm3
-	xmRS/4421nAHahYglMv2lEJ2dbVnP3K9eq1oJacEglMRFxvfzqZLhDsgC3QDnEaRUx6rhubxNdz
-	E1qWds4VGfwNQJMxjs+gdbS+eZulJRfZkyv1b0Njwc6zh4ja70ktWZO4u8rfyr0tPuE5How3jE1
-	grCZ8/dClO9zel+JImO6uDkqUUQkSEzL3MD2qsJWsLFBe/m5WUkS2oV0LHH/Y3V7xdwhALi3Buz
-	qdj2ahuWVkRrt2ZFiuJd7TShDdcKE6DsI4gI3EXZwt389eZ/UkUAkWwrXUYeiqCR29JlBE+z7y6
-	83sfhnhRCXPhxCWSN7Xc2zOtfCCb1dPnateUfsKuKg6
-X-Received: by 2002:a17:90b:17d0:b0:398:9bd4:d18 with SMTP id 98e67ed59e1d1-39b26298ba1mr25491217a91.23.1788704125253;
-        Sun, 06 Sep 2026 07:15:25 -0700 (PDT)
+        bh=9VYFtOUs9e8rShoNMIR91vWddUTxEe+7XBSxba8ZkAM=;
+        b=OCHg6AhB/9PzeO7+TvoJDk/DJBQVYq0V045+AF2Sie3ezXJRqS6vcoHrs69k6uOWod
+         Cxvcx0IbqA8dAGF3iyisegLVgZDKa7zjV17PjGP92MHredk+gkZ9E73gnYMq43lhQlZF
+         CPK5YgOuWUXUoR6fQGNcr24/CaYK7Vrbp3gZCWyWjonCdhnKnyY0lP4TjST7rJfkWhHL
+         8s8KsXZooKnU/hElULVwLwbk0VbCP0tyomO+H2Y7lUpXrht7/bp6c656faNo/kIMxbC5
+         5hzNoVIVeDpZjAkKAzFWI4PooOFQoM2Xe3wrcTAaa6HoHhn11Kk3y7e/IIHYBqPhH+xD
+         sEWw==
+X-Forwarded-Encrypted: i=1; AKwUvBwCvm7mT3Qd/f4vvcw6P3FeoNkWUOXKl39XQxuW1i1XGKbXhA97u0toEhien1CrlXuTmktEGKxGQM2W@vger.kernel.org
+X-Gm-Message-State: AFuF++m+La1Aq3xi6KbyKpdYIANrzFvU/pmmX2Z3HpEWStYfcrftWFtT
+	ymXOadzeV2UEgYJg8pHksBprRv9mSSRwf5hOUEMgRVV+BbjfS8DAf0Y/
+X-Gm-Gg: AYBFou362M1mgYFBCTFNvmMDwQPb0wfoFZhFVSOev8mSDzm21TgGNO8SuIRj75gyjpY
+	a4jXYiLsDoc9YU6NIXK/7dBsyI553LO6VvsJNaddD/8lNa0KDCwP6vHqwOm+FJtNuBzV5I8RzrG
+	8LuJcrXc0UxbfO6kkKTVeW4+WiNoE45y6rwdoDGHSNgNWj+4qlNHMOnIjPWc4ERQiV+c9+fOw3P
+	3ouT4iFM0b2maeBr45x3MaqMouLxXoL/8HAKAk6p6y4jOqgqpKEydLKzAhMWCLi3rV+RyGQDaZB
+	zTHzKOC25cAAWstKEaq44JUGlGKS/xhghMd3a0pG69wlTFBH8ZF1xNhK+4P6JN334+caOJmORvd
+	+aDFpUOrogVOHJpqVusauHzcI9UPWZIt1kwBVt0aWN8xgSlFmZn0/ioc3yLkpZxLe7ad8OXFnRK
+	s/RNGW+y3Zf2tyPN98tNT30hRENHfLAEyNkcJ3B3+xsexeYZKAz6zQxPJfnIVMFa7KPKGokYjXk
+	/JToWQXNJl2QMxOf9dnQzRKLZnkZOuxevoT8AQntTG1
+X-Received: by 2002:a17:90b:57cb:b0:398:9be6:f998 with SMTP id 98e67ed59e1d1-39b262e2139mr28656965a91.23.1788705632700;
+        Sun, 06 Sep 2026 07:40:32 -0700 (PDT)
 Received: from pve-server ([49.205.216.49])
-        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1433f4e845dsm2309013c88.10.2026.09.06.07.15.21
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3339ac24d7esm32567878eec.15.2026.09.06.07.40.28
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 06 Sep 2026 07:15:24 -0700 (PDT)
+        Sun, 06 Sep 2026 07:40:31 -0700 (PDT)
 From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Runyu Xiao <runyu.xiao@seu.edu.cn>, Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, Runyu Xiao <runyu.xiao@seu.edu.cn>, Jianhao Xu <jianhao.xu@seu.edu.cn>
-Subject: Re: [PATCH] ext4: shut down error report timer on failed mount
-In-Reply-To: <20260904065648.4048108-1-runyu.xiao@seu.edu.cn>
-Date: Sun, 06 Sep 2026 17:55:36 +0530
-Message-ID: <o6eay3b3.ritesh.list@gmail.com>
-References: <20260904065648.4048108-1-runyu.xiao@seu.edu.cn>
+To: syzbot <syzbot+5a7a23af225c215902e7@syzkaller.appspotmail.com>
+Cc: jack@suse.com, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, linux-next@vger.kernel.org, sfr@canb.auug.org.au, syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Subject: Re: [syzbot] [ext4?] linux-next test error: general protection fault in __bh_submit
+In-Reply-To: <6a9c44cc.0a3344eb.391530.000c.GAE@google.com>
+Date: Sun, 06 Sep 2026 19:58:26 +0530
+Message-ID: <mrtuxxmd.ritesh.list@gmail.com>
+References: <6a9c44cc.0a3344eb.391530.000c.GAE@google.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Runyu Xiao <runyu.xiao@seu.edu.cn> writes:
+syzbot <syzbot+5a7a23af225c215902e7@syzkaller.appspotmail.com> writes:
 
-> __ext4_fill_super() arms s_err_report when the on-disk error count is
-> nonzero. If a later mount step fails, the failed-mount cleanup path uses
-> timer_delete_sync() before freeing sbi.
+> Hello,
 >
-> print_daily_error_info() rearms the timer when s_err_report_sec is nonzero,
-> so timer_delete_sync() does not prevent the timer from being queued again.
-> The rearmed callback can then access sbi after the failed mount has freed
-> it.
+> syzbot found the following issue on:
 >
-> Use timer_shutdown_sync() for failed-mount cleanup. This matches the normal
-> unmount path and prevents the timer from being rearmed before sbi is freed.
+> HEAD commit:    32b6ef9a5d0e Add linux-next specific files for G20260902
+> git tree:       linux-next
+> console output: https://syzkaller.appspot.com/x/log.txt?x=14b44125580000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=32ceed1c94c11059
+> dashboard link: https://syzkaller.appspot.com/bug?extid=5a7a23af225c215902e7
+> compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
 >
-
-Did you hit any issue here? Sure timer_shutdown_sync() is safer variant
-against a mod_timer() call by someone later, but I don't see what is the
-issue here (maybe I am missing something).
-I don't see why timer_delete_sync() on a failed unmount is not safe? The
-mount itself has failed so there are not a lot of things which can cause
-anything to trigger mod_timer() later? Do you have any example call
-stack where we can hit this issue?
-
-
-OTOH, I think we might have a problem in function err_report_sec_store()
-though. It seems disabling the timer has a bug, since we are only
-calling timer_delete_sync() there but we never make
-sbi->s_err_report_sec = 0.
-The comment says, 0 should disable the timer but seems it is not really
-disabling it. Reading s_err_report_sec back is returning non-zero and if
-we try to set the same value again - the timer is not re-started either.
-
-	/* timeout in seconds for s_err_report; 0 disables the timer. */
-	unsigned long s_err_report_sec;
-
-Also, looking into ext4_update_super(), I think even the first error
-doesn't re-arm the timer because of the wrong check.
-
-		/*
-		 * Start the daily error reporting function if it hasn't been
-		 * started already and sbi->s_err_report_sec is not zero
-		 */
-		if (!es->s_error_count && !sbi->s_err_report_sec)
-			mod_timer(&sbi->s_err_report,
-					  jiffies + secs_to_jiffies(sbi->s_err_report_sec));
-		le32_add_cpu(&es->s_error_count, sbi->s_add_error_count);
-
-I guess that problem could be due to commit [1]
-[1]:  d518215c2719 ("ext4: add sysfs attribute err_report_sec to control s_err_report timer")
-
-Seems like multiple issues in there. Care to look at that path too?
-
--ritesh
-
-> Fixes: 66e61a9e9504 ("ext4: Once a day, printk file system error information to dmesg")
-> Cc: stable@vger.kernel.org
-> Assisted-by: Codex:GPT-5
-> Signed-off-by: Runyu Xiao <runyu.xiao@seu.edu.cn>
+> Downloadable assets:
+> disk image: https://storage.googleapis.com/syzbot-assets/9a1f38fb6f24/disk-32b6ef9a.raw.xz
+> vmlinux: https://storage.googleapis.com/syzbot-assets/f3152eed43a4/vmlinux-32b6ef9a.xz
+> kernel image: https://storage.googleapis.com/syzbot-assets/e7fbd36e1b12/bzImage-32b6ef9a.xz
+>
+> IMPORTANT: if you fix the issue, please add the following tag to the commit:
+> Reported-by: syzbot+5a7a23af225c215902e7@syzkaller.appspotmail.com
+>
+> Oops: general protection fault, probably for non-canonical address 0xdffffc0000000001: 0000 [#1] SMP KASAN PTI
+> KASAN: null-ptr-deref in range [0x0000000000000008-0x000000000000000f]
+> CPU: 0 UID: 0 PID: 4945 Comm: jbd2/sda1-8 Not tainted syzkaller #0 PREEMPT(full) 
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+> RIP: 0010:const_folio_flags include/linux/page-flags.h:345 [inline]
+> RIP: 0010:folio_test_dropbehind include/linux/page-flags.h:600 [inline]
+> RIP: 0010:__bh_submit+0x22d/0x8d0 fs/buffer.c:1109
+> Code: c1 e8 03 48 89 44 24 18 42 80 3c 20 00 74 08 48 89 df e8 26 f6 d7 ff 48 89 5c 24 28 48 8b 1b 4c 8d 7b 08 4c 89 f8 48 c1 e8 03 <42> 80 3c 20 00 74 08 4c 89 ff e8 04 f6 d7 ff 4d 8b 3f 4c 89 fe 48
+> RSP: 0018:ffffc9001016f868 EFLAGS: 00010202
+> RAX: 0000000000000001 RBX: 0000000000000000 RCX: ffffffff84b96ff9
+> RDX: 0000000000000001 RSI: 0000000000000004 RDI: ffff888075a7a660
+> RBP: 0000000000009801 R08: ffff888075a7a6bf R09: 1ffff1100eb4f4d7
+> R10: dffffc0000000000 R11: ffffed100eb4f4d8 R12: dffffc0000000000
+> R13: ffff888075a7a640 R14: ffff8880123a17e0 R15: 0000000000000008
+> FS:  0000000000000000(0000) GS:ffff888124ccb000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007fe1ee627da0 CR3: 0000000074fa8000 CR4: 00000000003526f0
+> Call Trace:
+>  <TASK>
+>  jbd2_journal_commit_transaction+0x22a9/0x5cd0 fs/jbd2/commit.c:751
+>  kjournald2+0x3bc/0x750 fs/jbd2/journal.c:200
+>  kthread+0x38b/0x480 kernel/kthread.c:436
+>  ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+>  ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+>  </TASK>
+> Modules linked in:
+> ---[ end trace 0000000000000000 ]---
+> RIP: 0010:const_folio_flags include/linux/page-flags.h:345 [inline]
+> RIP: 0010:folio_test_dropbehind include/linux/page-flags.h:600 [inline]
+> RIP: 0010:__bh_submit+0x22d/0x8d0 fs/buffer.c:1109
+> Code: c1 e8 03 48 89 44 24 18 42 80 3c 20 00 74 08 48 89 df e8 26 f6 d7 ff 48 89 5c 24 28 48 8b 1b 4c 8d 7b 08 4c 89 f8 48 c1 e8 03 <42> 80 3c 20 00 74 08 4c 89 ff e8 04 f6 d7 ff 4d 8b 3f 4c 89 fe 48
+> RSP: 0018:ffffc9001016f868 EFLAGS: 00010202
+> RAX: 0000000000000001 RBX: 0000000000000000 RCX: ffffffff84b96ff9
+> RDX: 0000000000000001 RSI: 0000000000000004 RDI: ffff888075a7a660
+> RBP: 0000000000009801 R08: ffff888075a7a6bf R09: 1ffff1100eb4f4d7
+> R10: dffffc0000000000 R11: ffffed100eb4f4d8 R12: dffffc0000000000
+> R13: ffff888075a7a640 R14: ffff8880123a17e0 R15: 0000000000000008
+> FS:  0000000000000000(0000) GS:ffff888124dcb000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f87c696cf80 CR3: 000000000eb48000 CR4: 00000000003526f0
+> ----------------
+> Code disassembly (best guess):
+>    0:	c1 e8 03             	shr    $0x3,%eax
+>    3:	48 89 44 24 18       	mov    %rax,0x18(%rsp)
+>    8:	42 80 3c 20 00       	cmpb   $0x0,(%rax,%r12,1)
+>    d:	74 08                	je     0x17
+>    f:	48 89 df             	mov    %rbx,%rdi
+>   12:	e8 26 f6 d7 ff       	call   0xffd7f63d
+>   17:	48 89 5c 24 28       	mov    %rbx,0x28(%rsp)
+>   1c:	48 8b 1b             	mov    (%rbx),%rbx
+>   1f:	4c 8d 7b 08          	lea    0x8(%rbx),%r15
+>   23:	4c 89 f8             	mov    %r15,%rax
+>   26:	48 c1 e8 03          	shr    $0x3,%rax
+> * 2a:	42 80 3c 20 00       	cmpb   $0x0,(%rax,%r12,1) <-- trapping instruction
+>   2f:	74 08                	je     0x39
+>   31:	4c 89 ff             	mov    %r15,%rdi
+>   34:	e8 04 f6 d7 ff       	call   0xffd7f63d
+>   39:	4d 8b 3f             	mov    (%r15),%r15
+>   3c:	4c 89 fe             	mov    %r15,%rsi
+>   3f:	48                   	rex.W
+>
+>
 > ---
->  fs/ext4/super.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> This report is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
 >
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bca0dc87d..154e00901 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5809,7 +5809,7 @@ failed_mount8: __maybe_unused
->  	/* flush s_sb_upd_work before sbi destroy */
->  	flush_work(&sbi->s_sb_upd_work);
->  	ext4_stop_mmpd(sbi);
-> -	timer_delete_sync(&sbi->s_err_report);
-> +	timer_shutdown_sync(&sbi->s_err_report);
->  	ext4_group_desc_free(sbi);
->  failed_mount:
->  #if IS_ENABLED(CONFIG_UNICODE)
-> -- 
-> 2.34.1
+> syzbot will keep track of this issue. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+>
+> If the report is already addressed, let syzbot know by replying with:
+> #syz fix: exact-commit-title
+>
+> If you want to overwrite report's subsystems, reply with:
+> #syz set subsystems: new-subsystem
+> (See the list of subsystem names on the web dashboard)
+>
+> If the report is a duplicate of another one, reply with:
+> #syz dup: exact-subject-of-another-report
+>
+> If you want to undo deduplication, reply with:
+> #syz undup
+
+
+#syz test
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 427d8a817cd5..f46fa6413032 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1106,7 +1106,8 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
+ 
+ 	bio = bio_alloc(bh->b_bdev, 1, opf, GFP_NOIO);
+ 
+-	if (folio_test_dropbehind(bh->b_folio) && op_is_write(opf))
++	if (bh->b_folio && folio_test_dropbehind(bh->b_folio) &&
++	    op_is_write(opf))
+ 		bio_set_flag(bio, BIO_COMPLETE_IN_TASK);
+ 
+ 	if (IS_ENABLED(CONFIG_FS_ENCRYPTION))
+
