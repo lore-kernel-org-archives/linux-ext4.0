@@ -1,125 +1,155 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f8.google.com (mail-pj2-f8.google.com [74.125.227.136])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F1DF15746F
-	for <linux-ext4@vger.kernel.org>; Sun,  6 Sep 2026 00:11:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEF6035C181
+	for <linux-ext4@vger.kernel.org>; Sun,  6 Sep 2026 05:50:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.136
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788653475; cv=none; b=qQaJG1AfF6xOlmg5lcoA+BRSoFDCy/fhf8Nh1Hto6KA3hP7NiAmVPg41ktzK2PTHq0QRTydaAwjWl3dbAPGXH7V0Lal2PFNvO6J7l/nNpXLGNXjr4jdUzaTvlr8q+RWzbtW7uoWQzYmWVSsFOS6ca3p2NgzHBNMW03NFWZ/I3gA=
+	t=1788673861; cv=none; b=Eyrob3dsBLys+RBAmY6YFu/m9HWdGikJWh5yIt2n/YSea9jsoHwhd2+JmvApU1J5twEsxg0ci9FFpzElnrgBWQY4R9BudU+x4x56XBzgQ4Pe1/uwMKW3kH8dCTJ/JTu77wHzkoxnq7mAH4PxNWxqTF3BMqpRxXK8WkClBh6KWg8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788653475; c=relaxed/simple;
-	bh=CoyuDNLwmpFMKF1+Wt8gxo9l5cm9ULe/tNqHGW28qzM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=u1aHfGKyhl9Dc4MIrREvrDJgtM4gLChPgm0N1IbnrE5QQs6JklRR90VT291SBKnRfmlps86oM/4osedAM8KjTNEdA0sKf5+KKgd2WHOtBPa0dKHk6HZygbYDvn41fP7lJVpZG4qUdG3RvsKS3OqYsByMksNxxnVIdRvW6zKqXgI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=ZiJbAV1K; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	s=arc-20240116; t=1788673861; c=relaxed/simple;
+	bh=viWJnjrbhyky0K4g63DpQdEAEtLqeMnC3TLX78qmwLA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Yl7H4Ub3Q7Wjfyp7gi/GoVYplx94l28zE8bovE0pQK0cT1V0PBbfQWV8Lu/NkqrQA0IvVV/eIdql0ZpBPz90f9oHv/sJyMCCwuorDaidW3FmKZ9C/et8+ZlzG0dm0FVgnWpltlcSId5YqX9wKN401Sg6ANdS0SrWC6AGGDDKpb4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LdCSwfLb; arc=none smtp.client-ip=74.125.227.136
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="ZiJbAV1K"
-Received: from macsyma.thunk.org (pool-108-26-156-127.bstnma.fios.verizon.net [108.26.156.127])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6860AxeJ026422
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Sat, 5 Sep 2026 20:11:00 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1788653461; bh=vz5suWPEf5q350+o0Dp97BPwHaSsfhjD7DXfpMO7GSw=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=ZiJbAV1K4jJFKVm2mrehh6doYRLcLvgNIGQqxenZv81U0zV995HDME4iwaupgFVVe
-	 oq5k/Zeva+VXMaJKOpAQsbEjyDrnDkbnDHcwxdTCQwfjainNoYBzfyqzlYQg5sYHK8
-	 PBsOUaN7DwBKYGGd5pMyxgSuUDjQMikrP8FXOX3wMDNWe8HBiRfEzWPDnnaqE2FvuN
-	 BDkOSVdGIeWD+NArjYV81fg3YK1IxhXtFB+91ZMcYCCuf+IaYzSIQqi9+3r+FmgjMw
-	 sH5MsSJrzuxCFhvRp21onjbjGVL4DDVf4QwGGNRhHKgDqw2rS2m6Op+xjP3JPc0Aec
-	 lTLsdb9oyY7Zg==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 1AB031380346; Sat,  5 Sep 2026 20:09:59 -0400 (EDT)
-Date: Sat, 5 Sep 2026 20:09:59 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Levi Shafter <levi.shafter@elder-tomes.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [BUG] e2fsck: ignores SOURCE_DATE_EPOCH / E2FSPROGS_FAKE_TIME
- for s_lastcheck
-Message-ID: <apyvC8WI70m2D7he@mit.edu>
-References: <4c130a23-7283-45a9-852a-b24ed78eb0d1@elder-tomes.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LdCSwfLb"
+Received: by mail-pj2-f8.google.com with SMTP id d9443c01a7336-2db33361b2fso4793985ad.1
+        for <linux-ext4@vger.kernel.org>; Sat, 05 Sep 2026 22:50:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788673859; x=1789278659; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=uFG6XNGVyqJ8z6Dlrx8ujL8nDyq9SaEpffEn7E3UykE=;
+        b=LdCSwfLba9JKVGcSBkmiXnSngjzqAwDp031bVN/XJvK6Mi6oAk2BGbw0ZFynSOU27I
+         5bHaj9A5ecq6myaVdx9W/PCQtamhjV9tp+9AZlHfi2pLVQo5N07F4ouO/jgazB9rP7gm
+         j5++faPym8//sLqlytPm2u9R8bErb4aG5/KEdxYFFjNiMSYm8nMpyYylpHDG+8FgIDlp
+         cMAkOrvYZ6vluCxO2hIlvEAj8ktpY0hhnMzayKcRoV/Ph8+PnwVF91Oq+mkXOqJYouPF
+         9vUPpjgOkZMeZvnwyh1B51Tn5iwqzEXm7S35lTNNAm4EvuqCx4tkOwnRSqSb+plcYQM2
+         HyTA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788673859; x=1789278659;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=uFG6XNGVyqJ8z6Dlrx8ujL8nDyq9SaEpffEn7E3UykE=;
+        b=hcjTTf/IZk5KapWhjphLpgJXNTH6L5grc7PaLvx4GbKiyy9XWKTXwRcVNyMLcYgy+X
+         ZaVMy3ADr+H9+Z1uWXR1+xuAL6S91U+6zZky6EsZSLC/29kMy7wwYfDLu1dbJCTwAsPB
+         s1v/voiTAsKIlLL9pKr7/z1izNLppsdpAL+QdJVt6GrLonJJlWWx6jslyqoZk78MPveH
+         IS2tBfUB8z0FCzdAfSPBloWw8KK+20pubPyIaMMY4LYjuMrAsxEEm20rbBL51M/87VDg
+         nM6OXuDKhRDHqELoZgZbxsLqiF4XIQXH3I0isMgQd4mJ0XcYLfwfcAzqCyL5Imi0q5yT
+         1aIA==
+X-Forwarded-Encrypted: i=1; AKwUvByApgWrCpEOKNSLEdlRD2FH1DzyyPHHdq/bd9i1Se/liklaICF2mvOWAftms8cSA2fivaC3aA2wtGDj@vger.kernel.org
+X-Gm-Message-State: AFuF++kCl1MDfWqzGtYGSIW5q4F8o8hx3qjMjFa3mM5H49lSTDOeB03G
+	mckNqdGu0IoeC3tssxvn0hy2P3A5dhXE7rZF71RUQmnqbzuKEE42fWwT
+X-Gm-Gg: AYBFou2ikNuegQeOwPbyXFqBopBghH0LVYpLlU/rEEDlakmUayWOf04pJW+2WSrtMls
+	4M3llYA2WlUeWvTVf5Ns4LrKZtcSf8IhMs56s1M4Hf56R04CHI0BbImTBgDfryeGe2RWO9FnrN2
+	q4Nji9A4jlzzQcBtctdsAgxn7cSoBqFDmLikAwWIHf9twjtLxIkwM5vZd0zmkZLtTIqk0if4uQp
+	UH9MyRLPxXZH7+mL2KZKJTV/NYeGsxwiOmGZDBDti9aWI+HBn0ozyoQaEZTpXzL6XP1M71fQeZR
+	9U+FQ79n037grrADtNpOql3nFIvtZ16lFV+GKw0kwmZbd8W9kcxbHt35qV7ssiREjSj9jaOTH3W
+	1G3DgbKguMYay9nBkbWRMBk2tY8qOtoDh2gSg1lXj3sDHMzhUpSW49vl39aYn5ss9wHX8ymACz3
+	sGbDkmE9B/ololyiQQ2k6TRbLBky2kKxsMpA9oLKUYd0Y3scTCd1/o4ENf7mEOfrFHa6G0V9q7
+X-Received: by 2002:a05:6a20:914f:b0:3b4:7e2d:a3c2 with SMTP id adf61e73a8af0-3da3a03e965mr23968702637.18.1788673858878;
+        Sat, 05 Sep 2026 22:50:58 -0700 (PDT)
+Received: from localhost.localdomain ([111.199.57.231])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc45e15604fsm2225263a12.0.2026.09.05.22.50.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 05 Sep 2026 22:50:58 -0700 (PDT)
+From: Gong Shuai <gsh517025@gmail.com>
+To: joseph.qi@linux.alibaba.com
+Cc: Srikanth.Aithal@amd.com,
+	brauner@kernel.org,
+	jack@suse.cz,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	luca.weiss@fairphone.com,
+	ocfs2-devel@lists.linux.dev,
+	Gong Shuai <gsh517025@gmail.com>
+Subject: Re: [PATCH] buffer: fix NULL dereference of bh->b_folio in __bh_submit()
+Date: Sun,  6 Sep 2026 13:50:32 +0800
+Message-ID: <20260906055032.3005936-1-gsh517025@gmail.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
+References: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <4c130a23-7283-45a9-852a-b24ed78eb0d1@elder-tomes.com>
+Content-Transfer-Encoding: 8bit
 
-On Mon, Aug 10, 2026 at 11:56:11AM -0500, Levi Shafter wrote:
-> Sponsor: 21SoftWare LLC
-> 
-> Version: e2fsprogs 1.47.1 (also 1.47.0)
-> 
-> Summary
-> 
-> mke2fs and the ext2fs library honor SOURCE_DATE_EPOCH (and
-> E2FSPROGS_FAKE_TIME) for filesystem timestamps, but e2fsck does not. A
-> check pass therefore writes the current wall-clock time into the
-> superblock's last-check time (s_lastcheck) and last-write time
-> (s_wtime), so running e2fsck as part of a reproducible image build
-> produces a different filesystem on every run.
+> Commit a2c924c240e7 ("buffer: set BIO_COMPLETE_IN_TASK for dropbehind
+> writeback") added an unconditional folio_test_dropbehind(bh->b_folio) in
+> __bh_submit().  But jbd2 shadow buffers have a NULL b_folio since commit
+> 5febcba29792 ("jbd2: point the shadow buffer at the frozen data
+> directly") made them point b_data at the kmalloced frozen data rather
+> than a folio.  Submitting such a buffer during journal commit oopses:
+>
+>   BUG: kernel NULL pointer dereference, address: 0000000000000000
+>   RIP: 0010:__bh_submit.constprop.0+0x87/0x120
+>   Call Trace:
+>    jbd2_journal_commit_transaction+0x932/0x1b10
+>    kjournald2+0xb2/0x250
+>
+> Hit by the ocfs2-testsuite fill_verify_holes test running with
+> data=writeback.
+>
+> Dropbehind only applies to buffers backed by a folio, so skip the check
+> when b_folio is NULL.
+>
+> Fixes: 5febcba29792 ("jbd2: point the shadow buffer at the frozen data directly")
+> Tested-by: Srikanth Aithal <Srikanth.Aithal@amd.com>
+> Tested-by: Luca Weiss <luca.weiss@fairphone.com> # sm7225-fairphone-fp4
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+> ---
 
-Thanks for the report.  This patch should address your concerns.
 
-       	       		     	   	  - Ted
+Hi Joseph,
 
-commit fa70a99daf14a98b2b67d85010942de4f6a937b6
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Sep 5 17:50:32 2026 -0400
+Thanks for the fix.
 
-    e2fsck: support SOURCE_DATE_EPOCH and E2FSPROGS_FAKE_TIME env variables
-    
-    Some projects use SOURCE_DATE_EPOCH the environment variable per the
-    recommendations in [1] to create reproducible artifacts.  If those
-    projects use e2fsck to check a generated file system before running
-    tune2fs or resize2fs, the current time will get used in some
-    superblock fields, thus making it no longer be reproducible.
-    
-    [1] https://reproducible-builds.org/specs/source-date-epoch
-    
-    Setting the E2FSCK_TIME environment variable will address this issue,
-    but it's confusing that e2fsck requires that both environment
-    variables needs to be set.
-    
-    Fix this by teaching e2fsck to support SOURCE_DATE_EPOCH and
-    E2FSPROGS_FAKE_TIME environment variables to work alongside
-    E2FSCK_TIME, and setting any one of these three environment variables
-    should be sufficient to address all changes made by e2fsck.
-    
-    Reported-by: Levi Shafter <levi.shafter@elder-tomes.com>
-    Link: https://lore.kernel.org/r/4c130a23-7283-45a9-852a-b24ed78eb0d1@elder-tomes.com
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+On the OrangePi RV2 single-board (SpacemiT K1, riscv64) I hit the NULL
+pointer dereference while testing other patches on top of linux-next
+(next-20260904).
 
-diff --git a/e2fsck/e2fsck.c b/e2fsck/e2fsck.c
-index 1e295e3ef..18dd2569e 100644
---- a/e2fsck/e2fsck.c
-+++ b/e2fsck/e2fsck.c
-@@ -36,6 +36,10 @@ errcode_t e2fsck_allocate_context(e2fsck_t *ret)
- 	context->htree_slack_percentage = 255;
- 
- 	time_env = getenv("E2FSCK_TIME");
-+	if (!time_env)
-+		time_env = getenv("SOURCE_DATE_EPOCH");
-+	if (!time_env)
-+		time_env = getenv("E2FSPROGS_FAKE_TIME");
- 	if (time_env)
- 		context->now = (time_t) strtoull(time_env, NULL, 0);
- 	else {
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 7768f0ed7..4de7bf78d 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1211,6 +1211,7 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
- 
- 	if (retval == 0) {
- 		(*ret_fs)->priv_data = ctx;
-+		(*ret_fs)->now = ctx->now;
- 		e2fsck_set_bitmap_type(*ret_fs, EXT2FS_BMAP64_RBTREE,
- 				       "default", NULL);
- 	}
+The jbd2/mmcblk1p3-N commit thread crashed in __bh_submit() when
+submitting a journal shadow buffer whose b_folio is NULL. On this
+board the crash reproduced reliably, roughly 3 minutes after boot,
+under normal filesystem activity on the ext4 rootfs (buildroot-based
+minimal userspace).
+
+After applying this fix, the same kernel/board combination has been
+running stably for several hours with no errors.
+
+Tested-by: Gong Shuai <gsh517025@gmail.com> # OrangePi-RV2
+
+Best regards,
+Shuai
+
+
+>  fs/buffer.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/buffer.c b/fs/buffer.c
+> index 427d8a817cd5..f46fa6413032 100644
+> --- a/fs/buffer.c
+> +++ b/fs/buffer.c
+> @@ -1106,7 +1106,8 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
+>  
+>  	bio = bio_alloc(bh->b_bdev, 1, opf, GFP_NOIO);
+>  
+> -	if (folio_test_dropbehind(bh->b_folio) && op_is_write(opf))
+> +	if (bh->b_folio && folio_test_dropbehind(bh->b_folio) &&
+> +	    op_is_write(opf))
+>  		bio_set_flag(bio, BIO_COMPLETE_IN_TASK);
+>  
+>  	if (IS_ENABLED(CONFIG_FS_ENCRYPTION))
+> -- 
+> 2.39.3
+>
