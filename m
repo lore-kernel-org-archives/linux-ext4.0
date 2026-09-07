@@ -1,75 +1,88 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65605509F18
-	for <linux-ext4@vger.kernel.org>; Mon,  7 Sep 2026 15:55:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31DD319B5A3;
+	Mon,  7 Sep 2026 22:13:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788796530; cv=none; b=IR5IM+mk9t2AfpX9PxDgs5tTbzgaixa2Lk3VTz+iBZWk09oPEIW24xa9SebbawbyRZND4qZPP4oX3b1w+0o8FyqxKtmzWJgmOJBLdL6DFI0kBRHOxEowad8PGOBFVBKFwtl4wbrNEgC7jONREq/pz3gJEObjKvuLZjM7/+TXCWY=
+	t=1788819220; cv=none; b=q7gis3eGqylwA5grdjAKjsbvbZ/1GJzSeQvRa32FZwM07wz5CLp7VuKah6QAjqGRnIRRldPhyJOMpcpvQ9mSmqvCKkdBYqu+kq0D+Mkl3jKOrb9KKZPSL0OkIi3f5ole3M+/+wz10uHEahiMmDRffxx0WTE91FPe7y07eyGhy9I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788796530; c=relaxed/simple;
-	bh=PqZBFuAuEhMuRQJWtL+VRj3CL51UJ8kO4D+GTBhYRls=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=CAIC0YnO+SuPwtMm/CbCINbUooRErC+TgPRJeck8tCp6U+cEfbUMYlfSvWHyABjQsIUUI8L5yT2aEBIH0roDd1u4SGszJTJajHu84bNRr/6h5We8f0zph3PQ7EYxC7fIiw4McYcVoJhHElksQwClgTJjfYBVD4mcvX8njrW6Ais=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iiQQG8Pm; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788819220; c=relaxed/simple;
+	bh=+qe6ytbyTQ4oj4VE0v+4RxMRunN6UnQmesYUuA3wVqc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=AKCMxJl91h9huI/MEardvOxoSo7bmVWLtpPjrcgSZdS7Nz25ZtWw3YuBE+TOmUENabUSENipCybvKXeNleOeeq7RYGFgwRqrzwJ1FTURN6SaAJZ9gDTqKGzh+A9nTgRr4tLxI1zR3c4HkiZmGQQdNiNfKYWaxn61p2OjLuSE//s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QEB6pn6R; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iiQQG8Pm"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DBF7F1F00A3A;
-	Mon,  7 Sep 2026 15:55:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QEB6pn6R"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33EA31F00A3A;
+	Mon,  7 Sep 2026 22:13:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788796529;
-	bh=QHyft5VhwVcRbnncAggxvLynus7GgxG7yGf72ddUyAA=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=iiQQG8PmHfwq+3mdxYq+O4UKylQdrxq3aR1oLTeThS7N0gChOdoatBc1337qDevys
-	 qnU72oRVymHTKPQpjIlK1UBTh5bkPXsnqdKS1svRkDA/myfCHOyQXFrRml83H+bei0
-	 +gcCC4InS9uygb9V2I0i+nvx5gjQscaxz6RVfEPvt7bW4xyih1jZkoccjuv+Bd58CR
-	 xIbH4Qkk+oBdAVRHi57XV4KaTSu68rmTiwmdUhuD7HpZCARfdtayWaoW4B9/yP1263
-	 rvEYAWXMF57NJ1akctOLPaDWaYUPW4WeC5DC05KAptt2z0I51O3wRRbHw6+cGngm8a
-	 y0fE7s7WBeuFA==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 v2] ext4: avoid buffer/folio lock inversion in
- __ext4_get_inode_loc()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: ThangNN99 <ngocthang2710.1999@gmail.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260907155017.75543-1-ngocthang2710.1999@gmail.com>
-References: <20260906104841.56075-1-ngocthang2710.1999@gmail.com>
- <20260907155017.75543-1-ngocthang2710.1999@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 07 Sep 2026 15:55:28 +0000
-Message-Id: <20260907155528.DBF7F1F00A3A@smtp.kernel.org>
+	s=k20260515; t=1788819218;
+	bh=ZgKjfsHtYgTqWKaNbFLCtnc8X3K6sKxBe2W0c8nQIqg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=QEB6pn6R+9hLn9X+eMFooE3mUeIcWRiOKERE1noHKZ8Otcb5UVOcEx91RLYcetOJ4
+	 Ar4FWFZ+9YEDLqsNCJ6CXj4eUT29uongnPVU6Muw8DxABAGSclbXCiWroDT1tw8krS
+	 +NTSRBna/XbEc2pXEc0Ul+DR2umQYSypy8iOgYC6J/wNsvqk/K086/w8aK5pgOftg0
+	 sIgeYOUFBg4beFgQ7l8yj+BLn5c34jTxRh45CdlThPYPBMqrtg6Sma7jXMnY4UaGub
+	 1moMJUJ9bGpaanDtIFKwuimyJDtzAhb5VjhERampXIDK6Rsr0YYLEnWweTh8JKqjnD
+	 KRj7cGW4O89pw==
+Date: Mon, 7 Sep 2026 15:13:34 -0700
+From: Nathan Chancellor <nathan@kernel.org>
+To: Marco Elver <elver@google.com>
+Cc: linux-kernel@vger.kernel.org, kasan-dev@googlegroups.com,
+	Jan Kara <jack@suse.cz>,
+	Timothy Day <timday@thelustrecollective.com>,
+	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] once_lite: Simplify condition handling and fix context
+ analysis
+Message-ID: <20260907221334.GA1619741@ax162>
+References: <20260903101843.3462767-1-elver@google.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260903101843.3462767-1-elver@google.com>
 
-> __ext4_get_inode_loc() looks up the inode bitmap bh while holding the
-> lock on the inode table bh:
->=20
->   __ext4_get_inode_loc()
->     lock_buffer(itable block)
->     sb_getblk(inode bitmap block)
->       __find_get_block_nonatomic()
->         folio_lock(bdev folio for bitmap block)
->=20
-> whereas block_read_full_folio() (e.g. userspace reading the bdev inode
-> directly) takes the same two locks in the opposite order:
->=20
->   block_read_full_folio()
->     folio_lock(some folio)
->       lock_buffer(bh in folio)
-> [ ... ]
->=20
-> Reported-by: syzbot+03afbb29537f0336b7ad@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=3D03afbb29537f0336b7ad
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: ThangNN99 <ngocthang2710.1999@gmail.com>
+On Thu, Sep 03, 2026 at 10:16:38AM +0000, Marco Elver wrote:
+> When WARN_ON_ONCE() wraps a conditional lock acquisition (such as
+> down_write_trylock()) on architectures relying on DO_ONCE_LITE_IF()
+> (e.g. arm), Clang's context analysis (Thread Safety Analysis) failed
+> with a false positive:
+> 
+>   fs/ext2/xattr.c:825:6: error: rw_semaphore 'EXT2_I().xattr_sem' is not held on every path through here [-Werror,-Wthread-safety-analysis]
+>     825 |         if (WARN_ON_ONCE(!down_write_trylock(&EXT2_I(inode)->xattr_sem)))
+>         |             ^
+> 
+> This happens because DO_ONCE_LITE_IF() branches on __ONCE_LITE_IF()'s
+> return value (__ret_once), creating an intermediate branch merge point
+> where the lock may or may not be held depending on whether the once-flag
+> (__already_done) was already set. Because the merge branch condition is
+> __ret_once rather than the trylock predicate (__ret_do_once), Clang
+> cannot reconcile the lockset at the branch merge points.
+> 
+> Fix it by refactoring __ONCE_LITE_IF() into an unconditional
+> __ONCE_LITE() primitive and redefining __ONCE_LITE_IF(condition) as:
+> 
+>   (unlikely(condition) && __ONCE_LITE())
+> 
+> This simplifies the implementation, short-circuits evaluation so that
+> __ONCE_LITE() is not called when the condition is false, and ensures
+> that DO_ONCE_LITE_IF() only enters __ONCE_LITE() when __ret_do_once is
+> true.
+> 
+> Reported-by: Nathan Chancellor <nathan@kernel.org>
+> Link: https://lore.kernel.org/all/20260903072759.GA1750084@ax162/
+> Signed-off-by: Marco Elver <elver@google.com>
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+Thanks, this fixes that warning for me across all my builds.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260907155017.7554=
-3-1-ngocthang2710.1999@gmail.com?part=3D1
+Tested-by: Nathan Chancellor <nathan@kernel.org> # build
 
+-- 
+Cheers,
+Nathan
