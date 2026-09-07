@@ -1,160 +1,115 @@
-Received: from mx1.zhaoxin.com (MX1.ZHAOXIN.COM [210.0.225.12])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 9E05C466B1B;
-	Mon,  7 Sep 2026 11:13:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=210.0.225.12
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7ACC468C15
+	for <linux-ext4@vger.kernel.org>; Mon,  7 Sep 2026 11:23:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788779590; cv=none; b=D+mjQtCHzbcr4u8anLUjXrdQDc3fiA+SJh/LdAo0OPPvzhbG0cEdk+ykR2tIFoqTtsz4Hgs+yr7VugqMLOx/fCRhDCNzTqFpuNLM0Od5OaQVJKPTcSdzCopbl7VoaKABVrjhhmyHaoOw9F5IUxzEmKDpwXoEgKEQbdP9MN2nta0=
+	t=1788780227; cv=none; b=qwvPeT7bF+rZaXWLmewzlY3c09dZfaTjhmxdHInM9SRhnomhO7NF7JLzlJeyMQBKz14uZw5ySXJS1yRqfhyPUfpxku0yvVBXWMGAx13mqyhdUYNA9spXf8fYnaDVMppiZFlyPNGNaIKHUh0Gpr8HI6YItAhXnor+A2K5Bq4bOBU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788779590; c=relaxed/simple;
-	bh=Ekzk3MqDiT7uliB8bjQOXmBal1Huaf90hFgwbgS48ZI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DW3hlI+5OHu7BH81N3TgzaBIcc34YVMNv82JOuJ//3Yctvvc+dhnoJQA60t9WZooH6AXqrLKEZhUGbuV0NZtUgWA6KgRTTY8yQhOz6Hw1jHdnm8+7J1c8elfu6xFiVquPTB843NCmu3Zro2GNUgLOVtdpgKasuFvYvCoUzzDBiI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zhaoxin.com; spf=pass smtp.mailfrom=zhaoxin.com; arc=none smtp.client-ip=210.0.225.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=zhaoxin.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=zhaoxin.com
-Received: from zhaoxin.com (unknown [127.0.0.1])
-	by mx1.zhaoxin.com (MTA) with ESMTP id 4hdkvL4R6Fzcq5yD;
-	Mon,  7 Sep 2026 19:13:02 +0800 (CST)
-Received: from zhaoxin.com (unknown [10.28.208.166])
-	by mx1.zhaoxin.com (MTA) with ESMTP id 4hdkvJ0mpczcq5yD;
-	Mon,  7 Sep 2026 19:13:00 +0800 (CST)
-Received: from zjh-os.zhaoxin.com (zjh-os.zhaoxin.com [10.28.24.13])
-	by zhaoxin.com (8.30) with ESMTP7a67373d60166b075aa5b476ce5b50df
-	Mon, 07 Sep 2026 19:12:59 +0800
-X-Eyou-Smtpauth: jonaszhou-oc@zhaoxin.com
-X-Eyou-EnvelopeSender: jonaszhou-oc@zhaoxin.com
-X-Eyou-From: JonasZhou-oc <jonaszhou-oc@zhaoxin.com>
-From: "=?UTF-8?B?Sm9uYXNaaG91LW9j?=" <jonaszhou-oc@zhaoxin.com>
-To: linux-ext4@vger.kernel.org
-Cc: Jonas Zhou <jonaszhou@zhaoxin.com>,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-kernel@vger.kernel.org,
-	louisqi@zhaoxin.com,
-	jianhuizzzzz@gmail.com
-Subject: [PATCH v2] ext4: move journal state away from orphan list updates
-Date: Mon,  7 Sep 2026 19:12:42 +0800
-Message-ID: <a33183c1c24ea47a98afdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <tf24u75hmpjhb2iqabyx6n3qur2kyda7vwz2eo5zcc2ek7utwp@m5sepatzqx2x>
+	s=arc-20240116; t=1788780227; c=relaxed/simple;
+	bh=tVe/V26RzsuNjlKJMy714hPyuVGIrjhD6enUGFbRWig=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=K9vescl1whJRhe+8ezFbdnAyDB+WUAqrrR9Wo+cIaIiUo0vmXdWBoXcTGPJs1ZKYfSqRIiG1zTYweZN0f0HV4zba97KREx0Csei5joy4+7IpNlyz2f76rqnF4PKPWI89FwKz3aPJvUhP2jNHNSToEP+Qje8XiCY25X1ratbuXRs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ws9rSB8T; arc=none smtp.client-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ws9rSB8T"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 464F11F00A3A;
+	Mon,  7 Sep 2026 11:23:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788780223;
+	bh=Atcifj7T8s78OUWQTPkJUdK9cCYfNDCyKJzT+Ri2OXo=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=Ws9rSB8TBlza2RH1GLgaiCWDqO//0BK7Iy0KAJWqFkmSdqgWnTUQdTKu0z/j9qsKt
+	 BDhp3tKJpJaAxSCT11FlH0CvSRVkMXCRUZn816GEUzBX7lJVwkA0Vf7xLlL06FmtUm
+	 A1Kg4d/r/K61O0Q16dZ8fcu4KD9HXmRsJQClkbRoB+6BSJMeckdv8KqSetB/+0Yuet
+	 Lpa0kL/U6Fdm+TzzpWAs5rCee9DTzuMToVlOjMdw2eHV2GS+EN82bQTeFr8YNcgpPN
+	 fcFHWulI4akcb0mtGZevb+SGA8halKpMqMNyyRE6ah5AWqx2PP82vPteVnaaUSO2Ty
+	 fA3ZXc8vedKcQ==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v2] ext4: move journal state away from orphan list
+ updates
+Reply-To: sashiko-reviews@lists.linux.dev
+To: JonasZhou-oc <jonaszhou-oc@zhaoxin.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <a33183c1c24ea47a98afdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com>
 References: <tf24u75hmpjhb2iqabyx6n3qur2kyda7vwz2eo5zcc2ek7utwp@m5sepatzqx2x>
+ <a33183c1c24ea47a98afdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 07 Sep 2026 11:23:42 +0000
+Message-Id: <20260907112343.464F11F00A3A@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Eyou-Sender: <jonaszhou-oc@zhaoxin.com>
 
-From: Jonas Zhou <jonaszhou@zhaoxin.com>
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
 
-In the tested x86-64 layout, s_journal and s_ext4_flags share a cache
-line with s_orphan_lock and s_orphan. Legacy orphan-list updates
-invalidate the same line used by unrelated journal and inode paths.
+Pre-existing issues:
+- [High] Concurrent sysfs writes to err_report_sec corrupt the timer list d=
+ue to unnecessary timer_setup()
+--
 
-Exchange s_journal and s_ext4_flags with s_err_report_sec and
-s_li_request, which are used for error reporting and lazy-init
-management. This separates the common journal and flag readers from
-orphan-list writes without adding padding or shifting the intervening
-allocator fields. Preserve the comment describing s_orphan_lock.
+commit 5546001d405559aa5c5103006d23b436861ae874
+Author: Jonas Zhou <jonaszhou@zhaoxin.com>
+Subject: ext4: move journal state away from orphan list updates
 
-Only these four member offsets change, and sizeof(struct ext4_sb_info)
-remains 2496 bytes with the tested x86-64 configuration. Compiled layout
-checks with quota disabled, lockdep, PREEMPT_RT and i386 also preserve
-the respective structure sizes and all other member offsets.
+This patch exchanges s_journal and s_ext4_flags with s_err_report_sec
+and s_li_request in struct ext4_sb_info. This separates common journal
+and flag readers from orphan-list writes to improve cache line usage
+and avoid false sharing.
 
-On a system with two Xeon Silver 4208 processors and a filesystem
-without orphan_file enabled, mean throughput improved by 13.52% for
-stress-ng dnotify and 31.70% for unlink.
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 724a27e8be613..16ef010782331 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1641,9 +1641,13 @@ struct ext4_sb_info {
+>  	struct super_block *s_sb;
+>  	struct buffer_head *s_mmp_bh;
+> =20
+> +	/* timeout in seconds for s_err_report; 0 disables the timer. */
+> +	unsigned long s_err_report_sec;
+> +
 
-This targets users of the legacy orphan list. The orphan_file feature
-avoids this lock in normal operation and remains the main scalability
-improvement. Tests with orphan_file enabled show no clear throughput
-change within the observed boot-to-boot variation.
+[Severity: High]
+This isn't a bug introduced by this patch, but while looking at the movement
+of s_err_report_sec, I noticed a pre-existing issue in its sysfs store
+handler.
 
-Results from repeated tests comparing v7.3-rc1 and v2:
+Can concurrent writes to the err_report_sec sysfs file corrupt the timer li=
+st?
 
-                       Mean throughput       Mean change
-Feature      Test          base         v2           (%)
-legacy       dnotify    19562.38   22206.66        +13.52
-legacy       unlink        38.82      51.13        +31.70
-legacy       fallocate    233.55     234.14         +0.25
-orphan_file  dnotify    27702.16   27582.55         -0.43
-orphan_file  unlink       116.93     116.52         -0.34
-orphan_file  fallocate    235.20     235.89         +0.29
+Looking at err_report_sec_store() in fs/ext4/sysfs.c, it does not hold any
+locks. If two threads concurrently write non-zero values when the current
+value is 0:
 
-Descriptive 95% t intervals from the four paired log ratios (df=3),
-expressed as percentage changes:
-  legacy:      dnotify [+4.83, +22.92], unlink [+22.53, +41.48],
-               fallocate [-1.40, +1.94]
-  orphan_file: dnotify [-5.44, +4.96], unlink [-2.76, +2.13],
-               fallocate [-0.82, +1.42]
-These are intervals for the paired geometric ratio, not the arithmetic
-mean ratio above. Four pairs do not establish performance equivalence.
+Thread A
+  if (!sbi->s_err_report_sec && t)
+      timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
+  ...
+  mod_timer(&sbi->s_err_report, ...);
 
-For legacy dnotify, perf c2c shows remote HITM samples on the original
-journal/flags offsets, but none on their new cache line after the
-change. Local HITM samples and orphan-lock contention remain. The
-combined HITM sample density of the orphan and journal lines is lower
-than that of the original shared line.
+Thread B
+  if (!sbi->s_err_report_sec && t)
+      timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
+  ...
+  mod_timer(&sbi->s_err_report, ...);
 
-Signed-off-by: Jonas Zhou <jonaszhou@zhaoxin.com>
----
-Changes since v1:
-- Replace explicit cache-line alignment with a four-member exchange.
-- Keep the mutex comment and all other member offsets unchanged.
-- Retest this layout against v7.3-rc1, including orphan_file controls.
+Thread A arms the timer and puts it in the active timer wheel. Thread B then
+calls timer_setup() which zeroes timer->entry.pprev. This makes Thread B's
+subsequent mod_timer() re-insert the timer without detaching it, corrupting
+the timer wheel's doubly-linked hlist.
 
-v1:
-https://lore.kernel.org/all/20260903021836.962624-1-jonaszhou-oc@zhaoxin.com/
+Since the timer is already unconditionally initialized during filesystem
+mount, and timer_delete_sync() doesn't deinitialize it, is this timer_setup=
+()
+call in the sysfs handler unnecessary?
 
- fs/ext4/ext4.h | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+[ ... ]
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 724a27e8be61..16ef01078233 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1641,9 +1641,13 @@ struct ext4_sb_info {
- 	struct super_block *s_sb;
- 	struct buffer_head *s_mmp_bh;
- 
-+	/* timeout in seconds for s_err_report; 0 disables the timer. */
-+	unsigned long s_err_report_sec;
-+
-+	/* Lazy inode table initialization info */
-+	struct ext4_li_request *s_li_request;
-+
- 	/* Journaling */
--	struct journal_s *s_journal;
--	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
- 	struct mutex s_orphan_lock;	/* Protects on disk list changes */
- 	struct list_head s_orphan;	/* List of orphaned inodes in on disk
- 					   list */
-@@ -1747,11 +1751,10 @@ struct ext4_sb_info {
- 
- 	/* timer for periodic error stats printing */
- 	struct timer_list s_err_report;
--	/* timeout in seconds for s_err_report; 0 disables the timer. */
--	unsigned long s_err_report_sec;
-+	/* Keep journal state away from orphan list updates. */
-+	struct journal_s *s_journal;
-+	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
- 
--	/* Lazy inode table initialization info */
--	struct ext4_li_request *s_li_request;
- 	/* Wait multiplier for lazy initialization thread */
- 	unsigned int s_li_wait_mult;
- 
-
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
--- 
-2.43.0
-
-
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/a33183c1c24ea47a98a=
+fdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com?part=3D1
