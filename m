@@ -1,250 +1,148 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00259499F17;
-	Tue,  8 Sep 2026 11:15:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 727904A8FC7
+	for <linux-ext4@vger.kernel.org>; Tue,  8 Sep 2026 11:32:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788866110; cv=none; b=POvU/ODgkGiq0MC7h+kTQwjhfTylsyVRmvv3AHzcxV+X5GoMHwJITzyzkJ/iypUi8TbznAe8gKxnHYj6xwJoRJRUvGOF8kdS4yy/8r1p2LmnSN/9WZDB0Jk7Pgkb7ZzOxYmLWzm7H0N+79MPNkX0bS/NX7Vj61j+qufb8YUa4NQ=
+	t=1788867132; cv=none; b=lRdQ5mKRjtpNMVVoGVqp6EaxNO7Z2xEpuyzuTjFzWjztBSWSIXfNyWjOEKperstvzY9xVDKhTqMDsMxfWVW60jQi+f0eNIK/1VLCVs9q6oQ462I6Rxvxk3vH/XlOjz4zSOYiQDU4e8X3uWxhJt/oPUhOy+DPnQ2d69GvVIAWQrM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788866110; c=relaxed/simple;
-	bh=IGTpl6Bj7hI2+KdbjSXSVadIVYQqUNPOlJC/RZIJmn0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cCZ4FaE3RS8qKBkHzDDI/kr5S1smd37HkyKLpZtUOXpSGSjOHp/p8Jaj7B5+3wPLyvRO98f48RCjkHomAWWUu5I97zQGGD9UOvu88kboSduBgH8qFLR5cykZo5jy64j6S+iEG/IEm1HBMGoWv1LodkNQ8dy1COtuSPngRmgpqRw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=cePWa2co; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=6kmsrmj4; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Y8nFEExK; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=2E+GpvCo; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="cePWa2co";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="6kmsrmj4";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Y8nFEExK";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="2E+GpvCo"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 50F4E1F789;
-	Tue,  8 Sep 2026 11:14:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788866098; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FlqvEth0Tiy4IX91fO/GBtvGwogbF8NDYd+W3vqHoCc=;
-	b=cePWa2coW2O2BM0R3PGhN95P9pM9XC7G6RPTZ93mk8mENP/qeFIsUjWebNbv7tQO19DT4I
-	oBkv/usWgLGePXWI9xemOTEH7YgBcXXbXuic3lDNAtwhSez2Ez/R1p0Uw0EWvV/3X4qCLN
-	e5AIi35GG7nEDLmmO72zv9/XvNocl38=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788866098;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FlqvEth0Tiy4IX91fO/GBtvGwogbF8NDYd+W3vqHoCc=;
-	b=6kmsrmj4DXOhsFuXYFWNqidtTFG1oQUFVd6IrWhwTdLGr0QtXSXMOCU3Jv43/Mm4Vh96rJ
-	V92SDnyO93oSgDDA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Y8nFEExK;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=2E+GpvCo
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1788866094; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FlqvEth0Tiy4IX91fO/GBtvGwogbF8NDYd+W3vqHoCc=;
-	b=Y8nFEExK/UsTcaBxuJ9nsE1CCTTrmaljrbpbL1bNVE3iTC5+Ldt6Ni4wiSBkLBNzTt5x51
-	ZAMnRefnwwm9EtQHBrKlvSm1JsPyvWCfVemPho+yZqmphDl0ScjfZ9Wx9xUpAUvrDLQrdF
-	lqs6MFg4JJeixr0zYyjRo/IjPU+aklI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1788866094;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FlqvEth0Tiy4IX91fO/GBtvGwogbF8NDYd+W3vqHoCc=;
-	b=2E+GpvCo6wefuhy/t/uzTiDZJkPfIQh2nyMVltFMy6+zul2RtQm9i38fUPCLYOT6OklGf4
-	JbnelrwPlPRR0gDQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 25D5A1364A;
-	Tue,  8 Sep 2026 11:14:54 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id LrE1CS7un2qqRQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 08 Sep 2026 11:14:54 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id AEB5FA12E2; Tue, 08 Sep 2026 13:14:49 +0200 (CEST)
-Date: Tue, 8 Sep 2026 13:14:49 +0200
-From: Jan Kara <jack@suse.cz>
-To: JonasZhou-oc <jonaszhou-oc@zhaoxin.com>
-Cc: linux-ext4@vger.kernel.org, Jonas Zhou <jonaszhou@zhaoxin.com>, 
-	tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-kernel@vger.kernel.org, louisqi@zhaoxin.com, 
-	jianhuizzzzz@gmail.com
-Subject: Re: [PATCH v2] ext4: move journal state away from orphan list updates
-Message-ID: <575wyoks3ldokhrg6v43rxwsegaecod4bgrpbii6jeczy7czbi@a3yq26u52orp>
-References: <tf24u75hmpjhb2iqabyx6n3qur2kyda7vwz2eo5zcc2ek7utwp@m5sepatzqx2x>
- <a33183c1c24ea47a98afdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com>
+	s=arc-20240116; t=1788867132; c=relaxed/simple;
+	bh=BXh1jfGOwSSYqVSb/qoSkujtFkL+BLzfJuZyEeMqsnY=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=ePJxLHYjGKhEwwwu2x3JyRXlMfP3SF4idt3So5AZoi3q6+HlLKR4FEluZpxaxb0H7zxrjIiK77qegVmVHtQx6wpsQp27TXJu3FujjBa3vXIu2w24PzhOysT6ORBn9wIHXYXzAAP3qYlNm6HvyMZAolKbPmRvQkLVgemTEE7K7mI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hfMFb4qpFzYQwC4
+	for <linux-ext4@vger.kernel.org>; Tue,  8 Sep 2026 19:30:59 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id 167C140576
+	for <linux-ext4@vger.kernel.org>; Tue,  8 Sep 2026 19:31:51 +0800 (CST)
+Received: from [10.174.178.253] (unknown [10.174.178.253])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgDnzwol8p9qcvfQBA--.59919S3;
+	Tue, 08 Sep 2026 19:31:50 +0800 (CST)
+Message-ID: <0ba6970a-6203-45db-8837-17bb54b2fb8b@huaweicloud.com>
+Date: Tue, 8 Sep 2026 19:31:49 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <a33183c1c24ea47a98afdd4756b49365593a2762.1788779199.git.jonaszhou@zhaoxin.com>
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 50F4E1F789
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,zhaoxin.com,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v6 03/31] ext4: skip ordered I/O wait when zeroing beyond
+ i_disksize block
+To: sashiko-reviews@lists.linux.dev
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>
+References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
+ <20260903123543.2302999-4-yi.zhang@huaweicloud.com>
+ <20260903131452.4F8131F00ACA@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260903131452.4F8131F00ACA@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:cCh0CgDnzwol8p9qcvfQBA--.59919S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxurykuFy8ZFW7tw45Kr45ZFb_yoWrJFW7p3
+	yUGFyDAF4kJ34F9rn2g340qF1j9ws5Ga13Ga4qgr4qvrW5u3W0kFn7tFyavFWjkrs5J3Wj
+	qF4qvrZ7Aa4qk3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUgSb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxV
+	AFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2
+	j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7x
+	kEbVWUJVW8JwACjcxG0xvEwIxGrwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
+	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
+	kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
+	6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0x
+	vEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Jr0_GrUvcSsGvfC2Kfnx
+	nUUI43ZEXa7IU1CPfJUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon 07-09-26 19:12:42, JonasZhou-oc wrote:
-> From: Jonas Zhou <jonaszhou@zhaoxin.com>
+On 9/3/2026 9:14 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [High] Skipping ordered I/O wait based on an unstabilized `i_disksize` allows stale data exposure due to a race with concurrent writeback and mmap.
+> --
 > 
-> In the tested x86-64 layout, s_journal and s_ext4_flags share a cache
-> line with s_orphan_lock and s_orphan. Legacy orphan-list updates
-> invalidate the same line used by unrelated journal and inode paths.
+> commit 9f1f97ff9aa74fccfe7305cebcde6a641f847ab5
+> Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Exchange s_journal and s_ext4_flags with s_err_report_sec and
-> s_li_request, which are used for error reporting and lazy-init
-> management. This separates the common journal and flag readers from
-> orphan-list writes without adding padding or shifting the intervening
-> allocator fields. Preserve the comment describing s_orphan_lock.
+> ext4: skip ordered I/O wait when zeroing beyond i_disksize block
 > 
-> Only these four member offsets change, and sizeof(struct ext4_sb_info)
-> remains 2496 bytes with the tested x86-64 configuration. Compiled layout
-> checks with quota disabled, lockdep, PREEMPT_RT and i386 also preserve
-> the respective structure sizes and all other member offsets.
+> ext4_block_zero_eof() zeros the tail of a partial block beyond EOF.
+> After zeroing, it waits for ordered I/O completion to prevent stale
+> data exposure from concurrent post-EOF mmap writes during folio
+> writeback.
 > 
-> On a system with two Xeon Silver 4208 processors and a filesystem
-> without orphan_file enabled, mean throughput improved by 13.52% for
-> stress-ng dnotify and 31.70% for unlink.
+> However, if the zeroed range lies entirely beyond the block containing
+> i_disksize, no stale data can be exposed because the zeroed region is
+> beyond existing on-disk data. The zeroed pages will be written out
+> before i_disksize is later extended past i_size, so the ordered I/O
+> wait is unnecessary. Add a condition to skip it.
 > 
-> This targets users of the legacy orphan list. The orphan_file feature
-> avoids this lock in normal operation and remains the main scalability
-> improvement. Tests with orphan_file enabled show no clear throughput
-> change within the observed boot-to-boot variation.
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index d0ccafa554f8d..339ebd553959b 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -4241,9 +4241,22 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
 > 
-> Results from repeated tests comparing v7.3-rc1 and v2:
+> [ ... ]
 > 
->                        Mean throughput       Mean change
-> Feature      Test          base         v2           (%)
-> legacy       dnotify    19562.38   22206.66        +13.52
-> legacy       unlink        38.82      51.13        +31.70
-> legacy       fallocate    233.55     234.14         +0.25
-> orphan_file  dnotify    27702.16   27582.55         -0.43
-> orphan_file  unlink       116.93     116.52         -0.34
-> orphan_file  fallocate    235.20     235.89         +0.29
+>> +	 * Note that it's safe to read i_disksize without holding i_data_sem
+>> +	 * here. Since we already hold i_rwsem, the only possible race is with
+>> +	 * concurrent writeback that updates i_disksize. And if such a race
+>> +	 * occurs, it means the previous unaligned EOF block has already been
+>> +	 * zeroed (if needed) and persisted to disk.
+>>  	 */
+>>  	if (ext4_should_order_data(inode) &&
+>> -	    did_zero && zero_written && !IS_DAX(inode)) {
+>> +	    did_zero && zero_written && !IS_DAX(inode) &&
+>> +	    from < round_up(READ_ONCE(EXT4_I(inode)->i_disksize), blocksize)) {
 > 
-> Descriptive 95% t intervals from the four paired log ratios (df=3),
-> expressed as percentage changes:
->   legacy:      dnotify [+4.83, +22.92], unlink [+22.53, +41.48],
->                fallocate [-1.40, +1.94]
->   orphan_file: dnotify [-5.44, +4.96], unlink [-2.76, +2.13],
->                fallocate [-0.82, +1.42]
-> These are intervals for the paired geometric ratio, not the arithmetic
-> mean ratio above. Four pairs do not establish performance equivalence.
+> [Severity: High]
+> Does this condition rely on an unstabilized i_disksize to skip the ordered
+> I/O wait, creating a window where in-flight writeback IO can leak stale data
+> upon a crash?
 > 
-> For legacy dnotify, perf c2c shows remote HITM samples on the original
-> journal/flags offsets, but none on their new cache line after the
-> change. Local HITM samples and orphan-lock contention remain. The
-> combined HITM sample density of the orphan and journal lines is lower
-> than that of the original shared line.
+> If a file has a delayed allocated block at the end, its on-disk size
+> (i_disksize) could be lagging (e.g., 0). If the user mmaps the file and
+> writes data past EOF into the page cache, delayed allocation writeback can
+> begin, allocating the block and formatting a BIO with the user's stale
+> post-EOF data.
 > 
-> Signed-off-by: Jonas Zhou <jonaszhou@zhaoxin.com>
+> Concurrently, if a truncate operation extends the file (truncate up), it
+> calls ext4_block_zero_eof(), which zeroes the page cache tail and marks it
+> dirty. However, because READ_ONCE(EXT4_I(inode)->i_disksize) is 0, the
+> check evaluates to false.
+> 
+> This incorrectly skips ext4_jbd2_inode_add_write(), failing to add the
+> newly zeroed data to the ordered data list. The truncate operation then
+> sets i_disksize to the new size and commits the transaction, waiting only
+> for the first BIO (containing the stale data), not the zeroes.
+> 
+> If a crash occurs, upon recovery, the on-disk block would contain the stale
+> data because the transaction committed the new i_disksize without waiting
+> for the zeroed page cache to be written.
+> 
+> Note that this issue does not appear to be resolved by follow-up patches in
+> the series. While commit "ext4: set DISKSIZE_GROW_PENDING after zeroing
+> unaligned EOF block" introduces ext4_iomap_mark_disksize_pending() which
+> safely waits for writeback, it is placed inside the exact same flawed
+> condition branch, meaning the wait is still bypassed.
 
-Sorry, but we should keep things logically belonging together close. I'd
-keep s_journal & s_ext4_flags in the read-mostly part of the sb and perhaps
-move orphan-related things (s_orphan_lock, s_orphan, s_orphan_info) later.
-Perhaps below s_journal_triggers definition. And add a comment there like:
+I think the concurrency scenario that Sashiko mentioned does exist, so it
+looks like we'll have to abandon this optimization.
 
-	/* Orphan inode tracking */
+Thanks,
+Yi.
 
-								Honza
+> 
+>>  		handle_t *handle;
+>>  
+>>  		handle = ext4_journal_start(inode, EXT4_HT_MISC, 1);
+> 
 
-> ---
-> Changes since v1:
-> - Replace explicit cache-line alignment with a four-member exchange.
-> - Keep the mutex comment and all other member offsets unchanged.
-> - Retest this layout against v7.3-rc1, including orphan_file controls.
-> 
-> v1:
-> https://lore.kernel.org/all/20260903021836.962624-1-jonaszhou-oc@zhaoxin.com/
-> 
->  fs/ext4/ext4.h | 15 +++++++++------
->  1 file changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 724a27e8be61..16ef01078233 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1641,9 +1641,13 @@ struct ext4_sb_info {
->  	struct super_block *s_sb;
->  	struct buffer_head *s_mmp_bh;
->  
-> +	/* timeout in seconds for s_err_report; 0 disables the timer. */
-> +	unsigned long s_err_report_sec;
-> +
-> +	/* Lazy inode table initialization info */
-> +	struct ext4_li_request *s_li_request;
-> +
->  	/* Journaling */
-> -	struct journal_s *s_journal;
-> -	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
->  	struct mutex s_orphan_lock;	/* Protects on disk list changes */
->  	struct list_head s_orphan;	/* List of orphaned inodes in on disk
->  					   list */
-> @@ -1747,11 +1751,10 @@ struct ext4_sb_info {
->  
->  	/* timer for periodic error stats printing */
->  	struct timer_list s_err_report;
-> -	/* timeout in seconds for s_err_report; 0 disables the timer. */
-> -	unsigned long s_err_report_sec;
-> +	/* Keep journal state away from orphan list updates. */
-> +	struct journal_s *s_journal;
-> +	unsigned long s_ext4_flags;		/* Ext4 superblock flags */
->  
-> -	/* Lazy inode table initialization info */
-> -	struct ext4_li_request *s_li_request;
->  	/* Wait multiplier for lazy initialization thread */
->  	unsigned int s_li_wait_mult;
->  
-> 
-> base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-> -- 
-> 2.43.0
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
