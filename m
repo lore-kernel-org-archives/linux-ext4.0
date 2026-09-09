@@ -1,110 +1,121 @@
-Received: from smtpbgau1.qq.com (smtpbgau1.qq.com [54.206.16.166])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12CDF3563E1;
-	Wed,  9 Sep 2026 03:36:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.206.16.166
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7BD6023C4F3
+	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 03:49:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788925027; cv=none; b=Vq/lejfvcqYuVVH/sxBSBpNBEXga3dc26bU0RYq2uNH8FDmyYz7dkZlwTcKAcE76C/ikSdQOD9MaA2O4WuUI3Qv+5VljrVRjUDLnsoDT+5wBlHbitYHIeGNfiQIdwAOrKXynXSqjqe4493Ro4O3Bp4FRxnkjD0XOiuwLulOivtk=
+	t=1788925751; cv=none; b=kGDuMhB8zKZSBSkukvww3b71NLEZbACJYEcaeFuDIQBAJA+uUS/llC0OBMht8XtCzi90+5pSmcQq5qI3QWGsOH+97QrixQwwmr1Jjaf7AdN6AvYGzZdvYYyok68/3IMMw+VvKD8JzPcvNcB4xry67qCNvPWRftYoif0NzV5lwCY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788925027; c=relaxed/simple;
-	bh=Qd1XgArg2q+m7K/L/jpwsQwWH0hMl/cvrWWrUCs0GzY=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=j6TDzcIGZPWXPb7SqQfoFQM4OTkefn9FaB3JaMJK7P0/DZNrRpJKpPRfh5Ppd0uxtYjRMK1pj8uZWKs+n2Ve7yvZmcXAycJvNHG57wY0s7jB78+f2M+jLgu62303kXk5DZf1JnvNz7/ftAj56LEgl3txWC/t3jp1Ixz6/Wy9Ekk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=ETNc5U+Q; arc=none smtp.client-ip=54.206.16.166
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+	s=arc-20240116; t=1788925751; c=relaxed/simple;
+	bh=ybGXfFNJRU56K7Lgx4Zhy3ZdvUEUypUYV/sRjJQ9Dd8=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=IlXedZPPEZ5KHqdpBtQb7wMY9RTtWtvCbD3fluBWG8dbY8z5P+5nwNO7xcSEtGPOKtKbWbx38GH85SRXhP3h+q7wTN+3kUJgsoopWtMbPIR5J3xeauayADQAZLW+lE4EqJE4++HldcVpo9G44+6OD/3wn23pAUD0JpwR/yRDjIE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IIxxjxfw; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="ETNc5U+Q"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1788924965;
-	bh=xXRf0SUBV3suWoM0NzxTLIfVE6eSGflDShrfnAnxvT4=;
-	h=From:To:Subject:Date:Message-Id:MIME-Version;
-	b=ETNc5U+QCXv9fcNzyRhUVKnWlKohowejNyViGdLn40TD+c4kITK/XgxmDEK4cc3D5
-	 fuNLvXcN05ihc4Lkg32uy7jK5lOrOtBssn2OEz6cptVzvRcmFZHxBmFZ2qwWu/ojYY
-	 heVNS2B4Cbe7Yef5INZegAMhvJjZjtTduvp3GphQ=
-X-QQ-mid: esmtpsz17t1788924947t863e0c09
-X-QQ-Originating-IP: gMXocejGpJ2GJABfXFf8kOt/4JEgASBRhiAgAOtWxxU=
-Received: from uniontech.com ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Wed, 09 Sep 2026 11:35:44 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 16255912553971824354
-EX-QQ-RecipientCnt: 10
-From: Yichong Chen <chenyichong@uniontech.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Yichong Chen <chenyichong@uniontech.com>
-Subject: [PATCH] ext4: clear journal restart indication after inserting extent
-Date: Wed,  9 Sep 2026 11:35:42 +0800
-Message-Id: <20260909033542.3087876-1-chenyichong@uniontech.com>
-X-Mailer: git-send-email 2.20.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IIxxjxfw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9AFF1F00A3D;
+	Wed,  9 Sep 2026 03:49:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788925750;
+	bh=I+RoKGDpHPZwVochM/LNWGpEPJ0DyDorLQgsvQzBuPs=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=IIxxjxfwRSALlWhHGFAgCd1NWFCl+su9CGhFwDpluGqbNtr9Z2PdmBs1S04oS25yE
+	 jh705fE2KprrPwV3EJd/VHxxWbRr7m+NznVEc7hVjx0Wuvn4dpQHzRAmhXFG6bqYdM
+	 0bQmS5svWHbfnOBuSwGkxxs3/7zoqJm4rUNihQP8yiypDGS+N3akXFrbMSHKRwc2Q8
+	 H1RaHoYbnXG3QWnlE38UCAK1aP4OedFkVJg4E5LtPg0SJVKJvHCzjs1uKPIKe5PJb2
+	 w16oDBaXFaUtoVrRlHdTV2H2z25Z1mWxGg/I8Q2LLuJCn+1bMwVJQdFemNA/ZX2AEx
+	 BVKp5CUBDp1jA==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: clear journal restart indication after inserting
+ extent
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Yichong Chen" <chenyichong@uniontech.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20260909033542.3087876-1-chenyichong@uniontech.com>
+References: <20260909033542.3087876-1-chenyichong@uniontech.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Wed, 09 Sep 2026 03:49:09 +0000
+Message-Id: <20260909034909.E9AFF1F00A3D@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: esmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
-X-QQ-XMAILINFO: Nb1VDHjJrCDX4GR0sMoYT5NnIG5Z3SY+kHzCKAmZt39Pcxlu5Ducstrr
-	kzsLHa4rhqscPxkMz9XIr8tSaK4XpBrGeYOa8m0+aTRFnkIEJVptOlWs45Hj1fxVNz6VbUt
-	Zhb20QBdYzrGJatMnBw9Wqrzw2ino4TrRNGmMCS/L6yF0J5bObxGh7oxQ6vutuNnO+9IrfS
-	B9CKsmkMlL/t4jLofdC5vUOFf/BfAed//I/oUFpxYPKMnGqLBZA7IIeTxOICO0MokNF+arV
-	eZ8kmx3kjLqX9Q646vUW12TnryVaHGl5hAeABGm+viSY84pGeqoDFYCOKm0pxy2E/BRGboF
-	GggTHZzgfCfp4Rcerxh0v2N3Rx5P0gKaEz68ny29rXOrTu3FwUd9MV2y4hVjU1J0eTuXgTf
-	JTkzhmgyFngzdQVkwBWNUuUnzOdjecehXwU3yPbXtMC5k0LimSnP9SvIdcG3ufz8UczXj2n
-	Dd+Kc+zJnctZYUzv/nOTHgPLsh+WEkbtLjY5JeYXmwpZQ+mwjre/PvOOkWYwKelo4lf7nhJ
-	TQsr0yAgnLEXwtM0NTLFYxdSE0DSpZo1vqPL9yzy7h7sY9oqK6xpVwAIqzo42SWhQsPKQoa
-	YMA+ulDtDkBp1TA2JBSOobhAmwLx8POLKju/0puIR3M8IeBLXgzQq3H1ibqj3MDc6Jc0mjP
-	QsyKt7tTFncsQShllZU3WOdZWyf2kZo4qSN1d4dCZnEuv6OYv2rSZfR1bk/0g5ODOyUtwY2
-	nMBUUd/+6t0pj3n0t6gVY2JCAhbTHngFAIe+zwvdVAhlN8ruitMgz96x8OpV80DuK/IKirw
-	SfvmdiKG8opFh7Q0lTpDOUaji2kwyA4PpzolHxtEyqfFaMP1M+8OzFvgMWB3mugMQ7WGqdH
-	uD+qNRp7rrr/3TUFizbP19fq6ar8PLguFGncW6QvZf6y2NMW99rjVW5/PcxneQE5rl3qO/1
-	K12snMrd1z/J1xJI4VaoGvfBQnQZNEPjSQ6Oki9uUBKwAzPeIJlLjt9Qy2H29AfAESbM7bO
-	QOWknAjHRu4zPUOmEg
-X-QQ-XMRINFO: NS+P29fieYNwqS3WCnRCOn9D1NpZuCnCRA==
-X-QQ-RECHKSPAM: 0
 
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+
+Pre-existing issues:
+- [Critical] Preexisting bug: `update_extent_range` does not cap contiguous=
+ block accumulation at `EXT_INIT_MAX_LEN`, leading to silent data corruptio=
+n during migration.
+--
+
+commit 7520d7fb83f021805cdf612c9f4b9753118b3505
+Author: Yichong Chen <chenyichong@uniontech.com>
+
+ext4: clear journal restart indication after inserting extent
+   =20
 ext4_datasem_ensure_credits() returns 1 when it successfully restarts
 the transaction. finish_range() leaves that value in retval when the
-subsequent ext4_ext_insert_extent() succeeds. Its callers interpret any
-nonzero return as a migration failure, so they stop building the extent
-tree and take the cleanup path instead of completing the migration.
+subsequent ext4_ext_insert_extent() succeeds.
 
-Before ext4_ext_insert_extent() was changed to return a path, its integer
-return value overwrote the restart indication. Restore that behavior with
-PTR_ERR_OR_ZERO(), preserving insertion errors and returning zero on
-success.
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 5d60ef10fe110..d467b5a13c62e 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -53,8 +53,7 @@ static int finish_range(handle_t *handle, struct inode =
+*inode,
+>  	if (retval < 0)
+>  		goto err_out;
+>  	path =3D ext4_ext_insert_extent(handle, inode, path, &newext, 0);
 
-Fixes: f7d1331f16a8 ("ext4: get rid of ppath in ext4_ext_insert_extent()")
-Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
----
- fs/ext4/migrate.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+[Severity: Critical]
+This is a pre-existing issue, but does update_extent_range() fail to cap
+contiguous block accumulation at EXT_INIT_MAX_LEN?
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 5d60ef10fe11..d467b5a13c62 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -53,8 +53,7 @@ static int finish_range(handle_t *handle, struct inode *inode,
- 	if (retval < 0)
- 		goto err_out;
- 	path = ext4_ext_insert_extent(handle, inode, path, &newext, 0);
--	if (IS_ERR(path))
--		retval = PTR_ERR(path);
-+	retval = PTR_ERR_OR_ZERO(path);
- err_out:
- 	up_write((&EXT4_I(inode)->i_data_sem));
- 	ext4_free_ext_path(path);
--- 
-2.51.0
+If a local user executes chattr +e on a file they own that contains a
+contiguous block allocation exceeding 128MB, update_extent_range() appears =
+to
+aggressively merge blocks that are physically and logically contiguous with=
+out
+bounds checking:
 
+fs/ext4/migrate.c:update_extent_range() {
+	if (lb->first_pblock &&
+		(lb->last_pblock+1 =3D=3D pblock) &&
+		(lb->last_block+1 =3D=3D lb->curr_block)) {
+		lb->last_pblock =3D pblock;
+		lb->last_block =3D lb->curr_block;
+		lb->curr_block++;
+		return 0;
+	}
+    ...
+}
+
+Could this create an extent larger than 32768 blocks? When finish_range()
+creates the extent:
+
+fs/ext4/migrate.c:finish_range() {
+    ...
+	newext.ee_len   =3D cpu_to_le16(lb->last_block - lb->first_block + 1);
+    ...
+}
+
+Will this unbounded length assignment to a 16-bit field cause truncation or
+set the unwritten flag for values > 32768, potentially leading to silent da=
+ta
+loss during migration?
+
+> -	if (IS_ERR(path))
+> -		retval =3D PTR_ERR(path);
+> +	retval =3D PTR_ERR_OR_ZERO(path);
+>  err_out:
+>  	up_write((&EXT4_I(inode)->i_data_sem));
+>  	ext4_free_ext_path(path);
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260909033542.3087=
+876-1-chenyichong@uniontech.com?part=3D1
