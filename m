@@ -1,149 +1,114 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3749A3BB9ED
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 21:09:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60E854F6463;
+	Wed,  9 Sep 2026 23:14:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788988179; cv=none; b=caXXU8ZlJnu+3JkGYBAbqOSdhLl2HgKEReGH4rOaUgXvbR95Pc0qYOh7CAB0u2JWgnn6pMgclIs5aUaeTgRYr0bdRXdRd7aJOwx/9Xz2YE5rNJDXtjwafGJflicG8p3B3zEGFt+ks9lk47a/LCf+7IPz7+CLFmOiqCrjwOzQt54=
+	t=1788995679; cv=none; b=cmPBECRS+jpkQflCXiJMR5gZScyIDj9D2kc1Nl46diMc2qihabBnNrt78ikHyztWyWb1lYD7/M7DvQtMMV1egg5B/van1ZjzR1xkm+el4jzrEo49aceHd7TtPnejUidpaayo5/PkaFOm0g14oF3YKkh6aUP3UM59SKVwd0wywnQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788988179; c=relaxed/simple;
-	bh=eh4rXyy10O0081J3ePa39SrPjpLL0bz5k/h76lEgFfQ=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=ZMXrCQp1SQgjFFm/kNhWg4bPXuwHvdxNgObWQxa0rMHxbqO8MuR3/g5w7ORpVh9L2QKgZOvEaPnKyHLJK/Pyu1CAps2PBYzQ1Wg9meCPQ8cXQg8j1UMbwyuLgBSelviQGOYlIjOjTc7FGYlQI8yCdNPJxrGqEkfNKEBtu9iRllE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RGYgbkl+; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1788995679; c=relaxed/simple;
+	bh=k/p4fw0coVyzoSxQl9afWV1RZ922Qu9ejokKOfUonjQ=;
+	h=Date:From:To:Cc:Subject:Message-Id:In-Reply-To:References:
+	 Mime-Version:Content-Type; b=PbCflQEEvCTNqrE53OggQd+XS8LilK7n6LcS7UtSg+oQ347SwpEkjWlj0AcwC3kxT99WA3yzE8Fv454bgKVSzgkXAnLnwlangafXk4QSVyJLku1TEK+EukcmfYuy6qOxlClsotq+TJmgM1mDtMRw7TaQboMae4BM+cuG91bZoIE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b=v+a2ECut; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RGYgbkl+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A031A1F000FF;
-	Wed,  9 Sep 2026 21:09:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788988177;
-	bh=jPxSfhNwwpXpRGpHkXqLhGxHVhmQ2C89sfq+usrZ9Js=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=RGYgbkl+BQGLozfp0e9KXnWhMKQ87j42s4OyftNoQGV09EcwWMAfCD9zOixieQfdk
-	 1lm/UtC2x06k9KjzswppFqBmsGbDhgMRyS2J9nJJ2R8W6mOXG7ewfLHtkzRkrm8Anu
-	 9jdIk1dx1KgLFYJGIVLDn2pudfAJqvrK7yA5CDpuWQJr7PsGQMX5dDO6V3QgW/aCgV
-	 RvTP0Y1RrzaSm1gCl42W9hSr40Icbv1PqGKzjcAawd1lE3mtJudZkBaxwyeH5v+kD2
-	 lSKJdT7tUcdOSH/zxggeuUoEJosAkkHjjYUsLg4wc4xTiRDVlq0Dk4AdyM479PWpCI
-	 /ddGyKP9aKtZg==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC] ext4: never fall back to buffered I/O for atomic
- direct writes
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Tal Zussman" <tz2294@columbia.edu>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260909-ext4-atomic-no-fallback-v1-1-5a6b9539c002@columbia.edu>
-References: <20260909-ext4-atomic-no-fallback-v1-1-5a6b9539c002@columbia.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 09 Sep 2026 21:09:37 +0000
-Message-Id: <20260909210937.A031A1F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="v+a2ECut"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 779FD1F000FF;
+	Wed,  9 Sep 2026 23:14:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux-foundation.org; s=korg; t=1788995674;
+	bh=dkruSTAugRIXgigmDvmANzyJdRXpZQBA7ft2oJiqxSA=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References;
+	b=v+a2ECutAdelnbekynA/hQfWWeSGE/n4kGildm2vZBVtWBHjXrP9wFmxcyPvBwb90
+	 y5ouZrgcb2X3mFepZwjXCeV0rhIUsZwQ39vQ7hqRnm4UcpNwS9hFx24JjTcDZ/I+7F
+	 N4GtF6583H4YaDenL369MuTyoefuSjs7xHVvYB8k=
+Date: Wed, 9 Sep 2026 16:14:33 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, david@kernel.org,
+ ljs@kernel.org, liam@infradead.org, vbabka@kernel.org, rppt@kernel.org,
+ surenb@google.com, mhocko@suse.com, hughd@google.com,
+ baolin.wang@linux.alibaba.com, willy@infradead.org, jack@suse.cz,
+ ziy@nvidia.com, bfoster@redhat.com, joannelkoong@gmail.com,
+ djwong@kernel.org, yi.zhang@huawei.com, yizhang089@gmail.com,
+ yangerkun@huawei.com, chengzhihao1@huawei.com, wangkefeng.wang@huawei.com,
+ yukuai@fnnas.com
+Subject: Re: [PATCH v2] mm/truncate: fix data loss when truncating
+ straddling large folios
+Message-Id: <20260909161433.d96c67399ccac8de27499925@linux-foundation.org>
+In-Reply-To: <20260909062339.473816-1-yi.zhang@huaweicloud.com>
+References: <20260909062339.473816-1-yi.zhang@huaweicloud.com>
+X-Mailer: Sylpheed 3.8.0beta1 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
-s) to consider:
+On Wed,  9 Sep 2026 14:23:39 +0800 Zhang Yi <yi.zhang@huaweicloud.com> wrote:
 
-New issues:
-- [High] The patch fails to return an error for short atomic writes, silent=
-ly returning a torn write instead.
+> From: Zhang Yi <yi.zhang@huawei.com>
+> 
+> truncate_inode_partial_folio() splits a large folio so that the caller's
+> truncate loop can drop the in-range sub-folios while keeping the
+> out-of-range tail. The first split at the punch start edge is
+> non-uniform, which leaves the sub-folio at the truncation end edge as
+> large as possible, this means it may still straddle the range, holding
+> both zeroed in-range and valid out-of-range data. The function then
+> attempts a second split at offset + length to isolate that tail.
+> 
+> If the second split fails the straddling sub-folio stays merged. The
+> function returned true unconditionally on all exit paths of the success
+> block, telling the caller it was fully handled. The caller kept its
+> default end and the truncate loop truncated every sub-folio below it,
+> including the merged straddler, discarding the valid out-of-range tail.
+> 
+> For example, a 4-page order-2 folio punched from offset 0 to the middle
+> of the last page:
+> 
+>   truncate_inode_pages_range()
+>     truncate_inode_partial_folio()      # same_folio == true
+>       1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
+>       folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
+>       2nd split of folio2 fails / cannot lock
+>       return true                       # BUG: caller keeps default end
+>     end = 3
+>     loop truncates p0, p1, p2-3        # p3's valid tail is lost
+> 
+> This became reachable after commit 7460b470a131 ("mm/truncate: use
+> folio_split() in truncate operation") replaced the atomic split_folio()
+> with folio_split(), whose non-uniform split can partially split a folio
+> and leave the end edge merged.
+> 
+> It has gone unnoticed because a dirty large folio normally carries the
+> filesystem's private data, for example buffer_head, so
+> filemap_release_folio() -> iomap_release_folio() returns false on a
+> dirty folio and folio_split() aborts with -EBUSY before any split,
+> leaving the straddler safely unsplit. The bug is only reachable on paths
+> that produce dirty large folios without filesystem private data, and it
+> was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
+> attached.
 
-Pre-existing issues:
-- [High] Silent fallback to non-atomic buffered I/O early in the function w=
-hen `ext4_should_use_dio()` returns false.
---
+So is there any way of being hit by these issues in 7.2 and earlier?
 
-commit 4f1077482a95547df7986c873d9a1c2cff493fea
-Author: Tal Zussman <tz2294@columbia.edu>
-ext4: never fall back to buffered I/O for atomic direct writes
+>  mm/internal.h |  4 +--
+>  mm/shmem.c    | 13 +++-----
+>  mm/truncate.c | 88 +++++++++++++++++++++++++++++++++++----------------
+>  3 files changed, 67 insertions(+), 38 deletions(-)
 
-This commit modifies the direct I/O path in ext4 to explicitly prevent fall=
-ing
-back to buffered I/O for atomic writes. It intends to return an error for s=
-hort
-atomic writes instead of completing them through the page cache and issuing
-a warning.
+I hope not, because that's quite a lump of code to be backporting.
 
-Link: https://lore.kernel.org/linux-block/20260828-blkdev-fixes-v2-0-32f3f4=
-0cebed@columbia.edu/ [1]
-Link: https://lore.kernel.org/linux-block/20260907071217.GD934@lst.de/ [2]
-Link: https://lore.kernel.org/linux-block/a7752d1e-8ec1-44d1-a266-c287c315e=
-8ab@oracle.com/ [3]
+Thanks.  I'll queue it for testing and shall await your response to Zi
+Yan's questions.
 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 374b4bc25bd5d..fb561c701d291 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -666,17 +666,16 @@ static ssize_t ext4_dio_write_iter(struct kiocb *io=
-cb, struct iov_iter *from)
->  	else
->  		inode_unlock(inode);
-> =20
-> -	if (ret >=3D 0 && iov_iter_count(from)) {
-> +	/*
-> +	 * Buffered I/O provides no torn-write protection, so never finish an
-> +	 * atomic write through the page cache. iomap should not return a short
-> +	 * atomic write anyway.
-> +	 */
-> +	if (ret >=3D 0 && iov_iter_count(from) &&
-> +	    !(iocb->ki_flags & IOCB_ATOMIC)) {
+I see you've received Sashiko's feedback.  Please let us know if
+there's any validity to it.
 
-[Severity: High]
-Does this unintentionally return a short torn write instead of an error?
+	https://sashiko.dev/#/patchset/20260909062339.473816-1-yi.zhang@huaweicloud.com
 
-The commit message states the patch "yields an error rather than a torn
-write with a WARN()". However, if iomap_dio_rw() completes a short atomic
-write, where ret is greater than 0 but less than the requested count, we
-skip this fallback block entirely because !(iocb->ki_flags & IOCB_ATOMIC)
-evaluates to false.
 
-Since we skip the block, the function proceeds to the end and returns the
-positive short byte count in ret to the VFS. This exposes a torn write to
-userspace without returning an error. Should we explicitly return an error
-like -EIO or -EFAULT when a short atomic write occurs?
-
->  		ssize_t err;
->  		loff_t endbyte;
-> =20
-> -		/*
-> -		 * There is no support for atomic writes on buffered-io yet,
-> -		 * we should never fallback to buffered-io for DIO atomic
-> -		 * writes.
-> -		 */
-> -		WARN_ON_ONCE(iocb->ki_flags & IOCB_ATOMIC);
-> -
->  		offset =3D iocb->ki_pos;
->  		err =3D ext4_buffered_write_iter(iocb, from);
->  		if (err < 0)
-
-[Severity: High]
-This is a pre-existing issue, but it looks like we might silently downgrade
-atomic writes to non-atomic buffered writes if the file doesn't support DIO.
-
-Earlier in ext4_dio_write_iter(), there is an initial fallback:
-
-    /* Fallback to buffered I/O if the inode does not support direct I/O. */
-    if (!ext4_should_use_dio(iocb, from)) {
-        if (ilock_shared)
-            inode_unlock_shared(inode);
-        else
-            inode_unlock(inode);
-        return ext4_buffered_write_iter(iocb, from);
-    }
-
-If a user requests an atomic write on an ext4 file that does not support
-DIO (such as a file with data journaling enabled), ext4_should_use_dio()
-will return false. This causes an early fallback to
-ext4_buffered_write_iter().
-
-Because ext4_buffered_write_iter() does not check for IOCB_ATOMIC, it
-proceeds with a standard buffered write via generic_perform_write().
-Does this silently break the atomicity guarantees expected by userspace
-for such files?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260909-ext4-atomi=
-c-no-fallback-v1-1-5a6b9539c002@columbia.edu?part=3D1
