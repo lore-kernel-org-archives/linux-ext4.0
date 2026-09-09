@@ -1,121 +1,72 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f70.google.com (mail-oo1-f70.google.com [209.85.161.70])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7413C5437E0
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 11:52:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B49985505D4
+	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 12:13:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.70
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788954765; cv=none; b=Wjh8KvloO0FJMVapTCxNOlEZWO+JU7CPxHUQ/WBaJhiJFBYZ1Uj7pXmBE2VCUirjtt0f8IhiQOICZLGQrcxUEF7jhvVviPEuvCu4ZSfmazsGDSqHoPrR7R3C2XC8qCi6yh7hLW2l+qOsxE9CYbhMeqaHvDrYkuZWP54beWCf3Dk=
+	t=1788955990; cv=none; b=bG+GALESXI4bWDcoCYwqRbdDjgY3EOTAfaFSqfbFlRJfjx9GyKcn4eox1m2jTHVfaEHyC407L4koFF9oGqbtxca4J/iILQ2bgSbuzXc+aSI0nwHhPeQ+r69OhVo7l7BSD3qP5HIev4vMaFfKVriyq2g44kuiHwgQ/ORRLwWmqvk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788954765; c=relaxed/simple;
-	bh=1PrE1GT5kNJmrgFiE0APXPuIk9ZDx/8pxPLVgP1Cays=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=Pn+6knmjbwxIoOE/wlvPQaU9JukvCQnxrTDRCACfUAlRb956kc3hxKvR8YhEZpDAsm2CeWWpLj0uWp7KB5ovgfn66LsY2w2+AbNKHO6DHRyUsx0N1T73sYs+LIZfsV1NcBqC/+qwXx9itXuVo8Y/xKEVm99IlRDD+3+VfYtkSMw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=L4fJYeqh; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="L4fJYeqh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BE8D1F00A3D;
-	Wed,  9 Sep 2026 11:52:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788954763;
-	bh=CnsTrILbUlApZpqNFYysGW77qH5bUB/LNijG4sYRa/4=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=L4fJYeqhaxhEPM8BgXeNM/3F/STXn85mb6QKhGMh4hTn0gRdRmbbIYKOQy7RNGOME
-	 f4FJU4ka+tqQeyaodf01tlxdL3JsfPCQvgWb+ifwCBsUqXOe/SmMOdGXi6teb5E8c6
-	 jmk0hAecizrnqvuVfieNyJ/7bUgsOuuEviPVfY6qGkMnEoP8+Ko6jP2aPoVOq85me3
-	 kYefa+JtZpNrgV784xM71/PnPf2urFNlDVtCf0H78lYu0f5qKiEfroJ/EQTlaUXnic
-	 ReVjTWXCnHT1V3PFVyM4pAX5LkgV8cGJO2rGt0LmotLmqVddwBBGnoDvhugi9bdsKY
-	 o3qhRuMZ8M1YQ==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v3] ext4: fix discard work use-after-free on failed
- mount
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Fan Wu" <fanwu01@zju.edu.cn>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260909113703.698544-1-fanwu01@zju.edu.cn>
-References: <20260909113703.698544-1-fanwu01@zju.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 09 Sep 2026 11:52:42 +0000
-Message-Id: <20260909115243.0BE8D1F00A3D@smtp.kernel.org>
+	s=arc-20240116; t=1788955990; c=relaxed/simple;
+	bh=YgpBxgo5YofLBw4A7X3QhxHUmNkjqC1fwunjTx+7hIY=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
+	 Content-Type; b=idpe7zYmk4nlhBnr3qiO1cQ0t/Mrg8bd0TqQT6Bcz9G532LKdhmDuUkT5OXyU4mrYPAxu2ff/O+NG9IOVy/qY25MfhM+KBRCQAr0N76uO89zWFgTGDVGxoonje1C5TvGe8goP1NByPh6rx/n/i1igAvlQsO8jbtB5AQySQTRVkE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.70
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oo1-f70.google.com with SMTP id 006d021491bc7-6be260da3fdso651590eaf.1
+        for <linux-ext4@vger.kernel.org>; Wed, 09 Sep 2026 05:13:06 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788955982; x=1789560782;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=UvYP6Qzj931TtA4FMiDKHWlI/21Br1rJ1AJggB3Ijk0=;
+        b=ZtTwSyZWtqU+mmUdTlClaoWt2qsd9bFinFJwvDji/mNWFYhj4Bv7PKXFua6E1WH+Jn
+         xRWNNvx/DIo3u97OdZ5MhwkjG9icIloT7fw5jDN/prIIcXgvNoT7NUe8oivDVoZ134hK
+         wd9klU/mqCrm/Jtt6xB22q+3P66tIEV7m72pNuffZx0YhNSkpVZbhHmx7mGQRwCdnMrs
+         v6UtZ0kL5PngcK5HJ19cse8bNj9l9Mxg9uWdqoZkWsILTdZB9eJ3EYqHKbqpBc5hJ1Gz
+         VmiBxouRkUGrpQQHKaDVI91fyDo6K3dtRiWbcgXBip/ksDtT21SoAwj8S7CpMxGL9Mgf
+         Eu9Q==
+X-Forwarded-Encrypted: i=1; AKwUvByX5Z9Qj58K5V7vHLmqzmuqLPIR+e1pJOBvp9kphlf07rtWqVWR38ioo4TVRkKi3mShX7pxvukAsUT7@vger.kernel.org
+X-Gm-Message-State: AFuF++mBOcd4S8EhEGTeJeblCz/II3zKXk6p9D7bsStEkuq291moq2Hz
+	DSdOsoCJLDXu6ePSK9vVyHkoqMS07aM1F6jqL5RBFW2i/uYzStk+OL3KR2Tm6FtL6V7W6iEGCnc
+	JdOKM9laaCe0w+SRTeXWybe7/pPiK3eQQHsBc7w8JCG0OFxyAlDV/XKI8Wo0=
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+X-Received: by 2002:a05:6820:3106:b0:6b1:39b1:80ee with SMTP id
+ 006d021491bc7-6bee53998d1mr631749eaf.24.1788955982411; Wed, 09 Sep 2026
+ 05:13:02 -0700 (PDT)
+Date: Wed, 09 Sep 2026 05:13:02 -0700
+In-Reply-To: <05177a9e-111c-4595-a7ef-d3de398f0a85@kernel.dk>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6aa14d4e.f2639fcc.29487d.0003.GAE@google.com>
+Subject: Re: [syzbot] [io-uring?] [ext4?] INFO: task hung in io_write
+From: syzbot <syzbot+2eb3d983669d3e49d4fa@syzkaller.appspotmail.com>
+To: axboe@kernel.dk, io-uring@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
+Hello,
 
-Pre-existing issues:
-- [High] Use-after-free of mballoc s_group_info during mount failure unwind=
-ing via deferred EA inode eviction.
---
+syzbot has tested the proposed patch and the reproducer did not trigger any issue:
 
-commit 08ee0a465324ade857a129840a9cb84d583a4d78
-Author: Fan Wu <fanwu01@zju.edu.cn>
+Reported-by: syzbot+2eb3d983669d3e49d4fa@syzkaller.appspotmail.com
+Tested-by: syzbot+2eb3d983669d3e49d4fa@syzkaller.appspotmail.com
 
-ext4: fix discard work use-after-free on failed mount
+Tested on:
 
-ext4_put_super() shuts the journal down before it releases the mballoc
-structures, but the failure unwind of __ext4_fill_super() runs the two
-steps in the opposite order: failed_mount6 calls ext4_mb_release(),
-which flushes sbi->s_discard_work, and the journal is destroyed only
-later, just above failed_mount3a.
+commit:         57ab5080 io_uring/io-wq: don't trigger hung task for s..
+git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/axboe/linux.git syztest
+console output: https://syzkaller.appspot.com/x/log.txt?x=127b7af9580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=679ea3cb74b430f3
+dashboard link: https://syzkaller.appspot.com/bug?extid=2eb3d983669d3e49d4fa
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bca0dc87d0b7c..459f69bf1c3a3 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5776,6 +5776,12 @@ failed_mount8: __maybe_unused
->  failed_mount7:
->  	ext4_unregister_li_request(sb);
->  failed_mount6:
-> +	/*
-> +	 * We can have a running transaction from orphan replay or quota
-> +	 * setup. Commit it so that discard work after commit runs before
-> +	 * we shutdown mballoc.
-> +	 */
-> +	ext4_force_commit(sb);
->  	ext4_mb_release(sb);
-
-[Severity: High]
-This is a pre-existing issue, but does this lead to a use-after-free
-of mballoc's s_group_info during deferred EA inode eviction?
-
-If journal replay queues a deferred EA inode put (e.g., dropping the last
-reference to an EA inode), it is placed on sbi->s_ea_inode_work. If a
-subsequent initialization step fails before failed_mount9, the error
-unwinding path calls ext4_mb_release() here, which frees sbi->s_group_info.
-
-Later in the unwinding process at failed_mount_wq:
-
-fs/ext4/super.c:__ext4_fill_super() {
-	...
-failed_mount_wq:
-	/* Drain deferred EA inode iputs before freeing structures */
-	flush_delayed_work(&sbi->s_ea_inode_work);
-	...
-}
-
-This executes the deferred iput, resulting in:
-ext4_evict_inode() -> ext4_free_blocks() -> ext4_mb_free_blocks()
-
-Which dereferences the dangling s_group_info pointer:
-
-fs/ext4/balloc.c:ext4_get_group_info() {
-	...
-	grp_info =3D sbi_array_rcu_deref(EXT4_SB(sb), s_group_info, indexv);
-	...
-}
-
-Can this sequence occur with a crafted or corrupted filesystem image that
-triggers both an EA inode eviction during journal replay and a subsequent
-initialization failure?
-
->  	ext4_flex_groups_free(sbi);
->  failed_mount5:
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260909113703.6985=
-44-1-fanwu01@zju.edu.cn?part=3D1
+Note: no patches were applied.
+Note: testing is done by a robot and is best-effort only.
