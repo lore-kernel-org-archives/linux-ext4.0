@@ -1,136 +1,110 @@
-Received: from out162-62-57-49.mail.qq.com (out162-62-57-49.mail.qq.com [162.62.57.49])
+Received: from smtpbgau1.qq.com (smtpbgau1.qq.com [54.206.16.166])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8935821CC71
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 02:57:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12CDF3563E1;
+	Wed,  9 Sep 2026 03:36:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.206.16.166
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788922641; cv=none; b=lafIUWbcuiDjCopAiZVuk4snyv24p+oTXA7xtf4mQO6ndwZ+wwLHJEHWf01yXu6Siz69msf0OdeJRya/Nq3J9wuRuLVSqm/hXmZ2xPqtlwc1QV1IqobDcBBWdwp4DSnCZ4heKAeAAxQWUwryLQMfmJH0S1b7O/ITyYLWtIkHx5U=
+	t=1788925027; cv=none; b=Vq/lejfvcqYuVVH/sxBSBpNBEXga3dc26bU0RYq2uNH8FDmyYz7dkZlwTcKAcE76C/ikSdQOD9MaA2O4WuUI3Qv+5VljrVRjUDLnsoDT+5wBlHbitYHIeGNfiQIdwAOrKXynXSqjqe4493Ro4O3Bp4FRxnkjD0XOiuwLulOivtk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788922641; c=relaxed/simple;
-	bh=SDIsZtWXAlpFzILuh4rrvFEddSS0AaxR+df4jaCKOdk=;
-	h=Message-ID:Date:From:To:Cc:Subject:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=icI88+T0cPxaOwF+EpN7y0K9mEdM1MqZWuPRL/a0S8lvyjFmudbzjyMdMEHzWmHlOLA7T7gb8w70YA/X8AcoQiTwl+PBS0pQc7dC1rzkHBUFiskgu3bMJFf+Og62jYGI+aQj8rlgm+AO728YX1UIVk0IpsHcQ/C7DkUP5Iasfpc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=vvTWOtbG; arc=none smtp.client-ip=162.62.57.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1788925027; c=relaxed/simple;
+	bh=Qd1XgArg2q+m7K/L/jpwsQwWH0hMl/cvrWWrUCs0GzY=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=j6TDzcIGZPWXPb7SqQfoFQM4OTkefn9FaB3JaMJK7P0/DZNrRpJKpPRfh5Ppd0uxtYjRMK1pj8uZWKs+n2Ve7yvZmcXAycJvNHG57wY0s7jB78+f2M+jLgu62303kXk5DZf1JnvNz7/ftAj56LEgl3txWC/t3jp1Ixz6/Wy9Ekk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=ETNc5U+Q; arc=none smtp.client-ip=54.206.16.166
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="vvTWOtbG"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1788922621; bh=SK7Zy5Qw4XjZBwFeGJmEvTkajeIHlycVZ7XHhHgKjkc=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=vvTWOtbGW/fW+KLXmE0LjWqvD9ayDJXQmt8kbvM2o8O7CE6sIlIDbj80VGtHDExln
-	 qp1/bfLRlgNj3sbemBRDyf0XM8h/IiL28q6wlj1c9OCJ9pGwQhXWv0JVxyBpmiW2s0
-	 Ivg7gVsjh9P6DwGtN87Z5WCIlPLrZ1id9KwqYrH0=
-Received: from DESKTOP-AT5F202.localdomain ([183.242.132.32])
-	by newxmesmtplogicsvrsza73-0.qq.com (NewEsmtp) with SMTP
-	id E3A2C828; Wed, 09 Sep 2026 10:56:58 +0800
-X-QQ-mid: xmsmtpt1788922618teyvk177w
-Message-ID: <tencent_6DA35D78D35066882AE3C8AA6949D04B5606@qq.com>
-X-QQ-XMAILINFO: Mp62enUr7azuBx5JDR3/T7eP5y2rnbrQUHhVzvBJGKvkeaILWzRGgBwVPWaDiB
-	 ClAwTcKI1QJvtuZRag91Seo73QWsdQ2ejFg2zpvrq5msrVUwlEimoMdtMlyc3B3+5kitsvb5VBMF
-	 efgJ7PSq5M4+693Qz4g6n/Tl/udj5m0aM8atVtm6xqHS/necDq4uiAeTgDiK0GZgPXBTpAr0RsNg
-	 0pUBDxRh91ee/TMUzRQhtiNfM54WN/nx78excxik3WT/qdu3djIvkvvyKxAhsQBBjgazRK7/Rrcl
-	 5CESox7C79yprGpql7IBhz3GWj1/M9wKWH571/8xk+L7KYJFlBmFujV4L3mOS8WQJ1yoNbbCQGOi
-	 JWZ0bsUcELIs4Csn7huxHojcyx9WWoGF4J3A/8PPYMPydtknSlxpBEQpj0+2ced6rL9R16JT1Jl/
-	 UmA5/1utb4hfcBq/lJmIuGlF8cch0kbTTLJjNcjmBPHhNlSLgIJzkTnXHEcraLZr6O772udemyfc
-	 gC8ICqQZAgfI3B7VmMhdPb80ofSJOajkfGjZAnez4kENqbR8RfjzgN7sTqN0a/BylvAxnxAYNt4F
-	 3VetPalwNgm6eNt63XF+24HpH2NFuDJ1F+79x+gXiux1Njc5Bjc2z8xiJz19D8oX9ZUQiG2HQVMk
-	 2EAMW8ISQByJYFlvBvKmH42IfzdAIImLGUMQ5Vj6epVc/VM7raK/PQnPvrezLuKMJybqvBL9OTR1
-	 KfWEoJ0fHriOfCqfa1Uo4TQQl3oj2CYp3mjyW6ir+CoGEK2Q4hsCYO2N0uGZC/Kusr5zr0W8UsVj
-	 kNJEUzok1Md8cNiC89eVAFCfOv9Vb3dWQUUAuLaY3EhF3yIhIugdGPFKjSIroNt0A5CnOIXY4bqj
-	 5uj7jY/7VUMNaMpwXw22AVhKcr5VaEccQr6rGzljxjz4eR6FNxwRsIwGWJG8luousQcEOCrf512M
-	 xv/wUT5IfuR8YOKCGKGMDlcwivZDKUGKQvb31ti6BRxhpctlyrY7GAKBIr/MLstnN+VApF+RxAdm
-	 OkXR/34kbvFBypCZdc05DceyCOvJvSh2Gi//bRiWFTTp/f98V7OfzX3bm1Pw3Q11lnmoDPwA==
-X-QQ-XMRINFO: Mp0Kj//9VHAxzExpfF+O8yhSrljjwrznVg==
-Date: Wed, 9 Sep 2026 10:56:57 +0800
-From: shuo chen <1289151713@qq.com>
-To: sashiko-reviews@lists.linux.dev
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4:Fix the initial value of not_found in
- ext4_destroy_inline_data_nolock
-X-OQ-MSGID: <aqDK-T5tyQOQ77kL@DESKTOP-AT5F202.localdomain>
-References: <tencent_CD1AF9C3A7875C42F2187B57D74A1C5EE609@qq.com>
- <20260909012443.0E7A01F00A3A@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="ETNc5U+Q"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1788924965;
+	bh=xXRf0SUBV3suWoM0NzxTLIfVE6eSGflDShrfnAnxvT4=;
+	h=From:To:Subject:Date:Message-Id:MIME-Version;
+	b=ETNc5U+QCXv9fcNzyRhUVKnWlKohowejNyViGdLn40TD+c4kITK/XgxmDEK4cc3D5
+	 fuNLvXcN05ihc4Lkg32uy7jK5lOrOtBssn2OEz6cptVzvRcmFZHxBmFZ2qwWu/ojYY
+	 heVNS2B4Cbe7Yef5INZegAMhvJjZjtTduvp3GphQ=
+X-QQ-mid: esmtpsz17t1788924947t863e0c09
+X-QQ-Originating-IP: gMXocejGpJ2GJABfXFf8kOt/4JEgASBRhiAgAOtWxxU=
+Received: from uniontech.com ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Wed, 09 Sep 2026 11:35:44 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 16255912553971824354
+EX-QQ-RecipientCnt: 10
+From: Yichong Chen <chenyichong@uniontech.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yichong Chen <chenyichong@uniontech.com>
+Subject: [PATCH] ext4: clear journal restart indication after inserting extent
+Date: Wed,  9 Sep 2026 11:35:42 +0800
+Message-Id: <20260909033542.3087876-1-chenyichong@uniontech.com>
+X-Mailer: git-send-email 2.20.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <20260909012443.0E7A01F00A3A@smtp.kernel.org>
+X-QQ-SENDSIZE: 520
+Feedback-ID: esmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
+X-QQ-XMAILINFO: Nb1VDHjJrCDX4GR0sMoYT5NnIG5Z3SY+kHzCKAmZt39Pcxlu5Ducstrr
+	kzsLHa4rhqscPxkMz9XIr8tSaK4XpBrGeYOa8m0+aTRFnkIEJVptOlWs45Hj1fxVNz6VbUt
+	Zhb20QBdYzrGJatMnBw9Wqrzw2ino4TrRNGmMCS/L6yF0J5bObxGh7oxQ6vutuNnO+9IrfS
+	B9CKsmkMlL/t4jLofdC5vUOFf/BfAed//I/oUFpxYPKMnGqLBZA7IIeTxOICO0MokNF+arV
+	eZ8kmx3kjLqX9Q646vUW12TnryVaHGl5hAeABGm+viSY84pGeqoDFYCOKm0pxy2E/BRGboF
+	GggTHZzgfCfp4Rcerxh0v2N3Rx5P0gKaEz68ny29rXOrTu3FwUd9MV2y4hVjU1J0eTuXgTf
+	JTkzhmgyFngzdQVkwBWNUuUnzOdjecehXwU3yPbXtMC5k0LimSnP9SvIdcG3ufz8UczXj2n
+	Dd+Kc+zJnctZYUzv/nOTHgPLsh+WEkbtLjY5JeYXmwpZQ+mwjre/PvOOkWYwKelo4lf7nhJ
+	TQsr0yAgnLEXwtM0NTLFYxdSE0DSpZo1vqPL9yzy7h7sY9oqK6xpVwAIqzo42SWhQsPKQoa
+	YMA+ulDtDkBp1TA2JBSOobhAmwLx8POLKju/0puIR3M8IeBLXgzQq3H1ibqj3MDc6Jc0mjP
+	QsyKt7tTFncsQShllZU3WOdZWyf2kZo4qSN1d4dCZnEuv6OYv2rSZfR1bk/0g5ODOyUtwY2
+	nMBUUd/+6t0pj3n0t6gVY2JCAhbTHngFAIe+zwvdVAhlN8ruitMgz96x8OpV80DuK/IKirw
+	SfvmdiKG8opFh7Q0lTpDOUaji2kwyA4PpzolHxtEyqfFaMP1M+8OzFvgMWB3mugMQ7WGqdH
+	uD+qNRp7rrr/3TUFizbP19fq6ar8PLguFGncW6QvZf6y2NMW99rjVW5/PcxneQE5rl3qO/1
+	K12snMrd1z/J1xJI4VaoGvfBQnQZNEPjSQ6Oki9uUBKwAzPeIJlLjt9Qy2H29AfAESbM7bO
+	QOWknAjHRu4zPUOmEg
+X-QQ-XMRINFO: NS+P29fieYNwqS3WCnRCOn9D1NpZuCnCRA==
+X-QQ-RECHKSPAM: 0
 
-On Wed, Sep 09, 2026 at 01:24:42AM +0000, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> 
-> Pre-existing issues:
-> - [Critical] The patch initializes `is.s.not_found` to `-ENODATA` but fails to check this value before unconditionally deleting the inline data xattr, leading to a catastrophic size_t underflow and KASAN out-of-bounds write (kernel panic).
-> --
-> 
-> commit af434a75deba4ee29e45b41767340323974fc530
-> Author: shuo chen <1289151713@qq.com>
-> 
-> ext4:Fix the initial value of not_found in ext4_destroy_inline_data_nolock
-> 
-> If a file has EXT4_INODE_INLINE_DATA set but lacks the EXT4_STATE_XATTR
-> flag, ext4_xattr_ibody_find() will exit early without modifying
-> is.s.not_found. This may cause ext4_xattr_ibody_set() to behave
-> incorrectly.
-> 
-> > diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> > index caa51473207d7..4f02e7e9f5a30 100644
-> > --- a/fs/ext4/inline.c
-> > +++ b/fs/ext4/inline.c
-> > @@ -405,7 +405,7 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
-> >  {
-> >  	struct ext4_inode_info *ei = EXT4_I(inode);
-> >  	struct ext4_xattr_ibody_find is = {
-> > -		.s = { .not_found = 0, },
-> > +		.s = { .not_found = -ENODATA, },
-> 
-> [Severity: Critical]
-> This is a pre-existing issue, but does this patch fully resolve the problem?
-> 
-> While is.s.not_found is now correctly initialized to -ENODATA,
-> ext4_destroy_inline_data_nolock() still unconditionally calls
-> ext4_xattr_ibody_inline_set() without checking if is.s.not_found indicates
-> the attribute is missing.
-> 
-> When ext4_xattr_ibody_find() returns 0 and leaves not_found as -ENODATA,
-> this leads to a deletion operation (i.value == NULL) in
-> ext4_xattr_set_entry() on a non-existent entry.
-> 
-> Because the deletion path in ext4_xattr_set_entry() ignores s->not_found:
-> 
-> fs/ext4/xattr.c:ext4_xattr_set_entry() {
-> 	...
-> 	if (!i->value) {
-> 		/* Remove old name. */
-> 		size_t size = EXT4_XATTR_LEN(name_len);
-> 
-> 		last = ENTRY((void *)last - size);
-> 		memmove(here, (void *)here + size,
-> 			(void *)last - (void *)here + sizeof(__u32));
-> 		memset(last, 0, size);
-> 	}
-> 	...
-> }
-> 
-> Executing this when the entry doesn't exist causes an integer underflow in the
-> memmove() length parameter, which leads to an out-of-bounds write and kernel
-> panic.
-> 
-> Should ext4_destroy_inline_data_nolock() explicitly check is.s.not_found
-> and skip ext4_xattr_ibody_inline_set() when it is -ENODATA?
-Got it. I will add checks and  send v2.
-> 
-> >  	};
-> >  	struct ext4_xattr_info i = {
-> >  		.name_index = EXT4_XATTR_INDEX_SYSTEM,
-> 
-> -- 
-> Sashiko AI review · https://sashiko.dev/#/patchset/tencent_CD1AF9C3A7875C42F2187B57D74A1C5EE609@qq.com?part=1
+ext4_datasem_ensure_credits() returns 1 when it successfully restarts
+the transaction. finish_range() leaves that value in retval when the
+subsequent ext4_ext_insert_extent() succeeds. Its callers interpret any
+nonzero return as a migration failure, so they stop building the extent
+tree and take the cleanup path instead of completing the migration.
+
+Before ext4_ext_insert_extent() was changed to return a path, its integer
+return value overwrote the restart indication. Restore that behavior with
+PTR_ERR_OR_ZERO(), preserving insertion errors and returning zero on
+success.
+
+Fixes: f7d1331f16a8 ("ext4: get rid of ppath in ext4_ext_insert_extent()")
+Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
+---
+ fs/ext4/migrate.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 5d60ef10fe11..d467b5a13c62 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -53,8 +53,7 @@ static int finish_range(handle_t *handle, struct inode *inode,
+ 	if (retval < 0)
+ 		goto err_out;
+ 	path = ext4_ext_insert_extent(handle, inode, path, &newext, 0);
+-	if (IS_ERR(path))
+-		retval = PTR_ERR(path);
++	retval = PTR_ERR_OR_ZERO(path);
+ err_out:
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+ 	ext4_free_ext_path(path);
+-- 
+2.51.0
 
