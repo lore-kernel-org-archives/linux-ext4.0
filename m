@@ -1,128 +1,413 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5442C377023
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 05:59:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FC5E36195A;
+	Wed,  9 Sep 2026 06:31:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788933582; cv=none; b=kTTdbtAxVzWVzTapl6/4AbVudKZYNio3wLUJ0OEzmrSCWozRs8mCA8THYabhjVDFYgY+gSFmsRIWSWYjNprbh/j4fZNEl4b6t6m9ZK8WtvYYDmmUxNciF5pxyWC/F3bvOo9AAB6me9iVzqTwj86AMaL+TpRAMTLpSqjvLdmaJeE=
+	t=1788935476; cv=none; b=BGADst9DHjXOsuGc4slIO3HyaiKIwePU7lCDTtMiFAjuT9jHYj4q9gkoPvjGdFbLCEanadMeL4L2wLQUrZ8sScLwtdYA+8EiIhMOvw0WvJOky+CNMl2KWCHeqYGLJnbqJmamcc0rKpzUAkNcI/cUDEPUKgJgv1OovY+pzdeqgEk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788933582; c=relaxed/simple;
-	bh=hjj7KKDHZVh6EV6XqeMFkGI/4x7lZFSejbbRoctBndo=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=Wc2sr8BboI1Ae8P1TuofbwdynzohvePuiODPyF5sUqRVebnjJIqKhQtIBUzdquvahA9YRyD1cgOW1tmCPGAyKz7gbvl3OXYqLVeY60w/fH/eWZUA8SHIHqGrHQmmKrYWegY98ghlK0kLnwuMom5FIeX/WeudZmUiQ3JB2Blc1YY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LBNKErFf; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LBNKErFf"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFB311F00A3D;
-	Wed,  9 Sep 2026 05:59:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1788933579;
-	bh=/biw0FRIMzCgQrvY+k6pXldsfnv7PDkHKceX4NVN2MM=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=LBNKErFf7c2dlGIamO7Wsp8sTVaKcCaQjWXRP+XnFDq3BWVfEQxs2TkdIn5IFzquq
-	 LarorFEQRduFlPCDoMx8IEnaO7WjxKKBiwDBXHaB77RMuXMQnbotmPNwnNi77XrDoB
-	 trlKcQzbQOV+xHfpdOhY/xrOTv8ugYhvU1FcW/2L6NjnCBOmsTUUCskku8TzO5hplu
-	 f+4w4SJ+O8JQqNp3TTUDu+1FyuQhhf4Uo9xrEW03YKziyOhPCvOU62JWFxNb88Q9bw
-	 HA17iL6oDmSfTemfBm8O1oiZm08Ad2uNEgjflW1ksrj8Zcx1aFGpUvpZIiS1i/puPi
-	 frgPp+9MdJgPA==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2] ext4: fix discard work use-after-free on failed
- mount
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Fan Wu" <fanwu01@zju.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260909054124.657782-1-fanwu01@zju.edu.cn>
-References: <20260909054124.657782-1-fanwu01@zju.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 09 Sep 2026 05:59:39 +0000
-Message-Id: <20260909055939.AFB311F00A3D@smtp.kernel.org>
+	s=arc-20240116; t=1788935476; c=relaxed/simple;
+	bh=ewjMp4b5pYES1b4fAdpV9ur6lPGOz2d2fYRDls5UXAE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=eE9soZW5+H4U3sb1RwlHXyFqaf9OgnsKowoqN0mN2sUy/1TifET2pUlqmsaxhHg1uW/8AUMwrrlDHGRzQsT0zX6JTpf/dXqaLrCR9TLnU9tJZrTCRzjsddcyZOJvCirCrQmaFLBhBbjmQUKts+e+7hzbPO5vexZYLwhJshDX+ms=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hfrX66T2bzYQv0x;
+	Wed,  9 Sep 2026 14:30:14 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.112])
+	by mail.maildlp.com (Postfix) with ESMTP id A33D140573;
+	Wed,  9 Sep 2026 14:31:07 +0800 (CST)
+Received: from huaweicloud.com (unknown [10.50.85.155])
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgBnUAsh_aBqxXYzBQ--.8536S4;
+	Wed, 09 Sep 2026 14:31:07 +0800 (CST)
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+To: linux-mm@kvack.org
+Cc: linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	akpm@linux-foundation.org,
+	david@kernel.org,
+	ljs@kernel.org,
+	liam@infradead.org,
+	vbabka@kernel.org,
+	rppt@kernel.org,
+	surenb@google.com,
+	mhocko@suse.com,
+	hughd@google.com,
+	baolin.wang@linux.alibaba.com,
+	willy@infradead.org,
+	jack@suse.cz,
+	ziy@nvidia.com,
+	bfoster@redhat.com,
+	joannelkoong@gmail.com,
+	djwong@kernel.org,
+	yi.zhang@huawei.com,
+	yi.zhang@huaweicloud.com,
+	yizhang089@gmail.com,
+	yangerkun@huawei.com,
+	chengzhihao1@huawei.com,
+	wangkefeng.wang@huawei.com,
+	yukuai@fnnas.com
+Subject: [PATCH v2] mm/truncate: fix data loss when truncating straddling large folios
+Date: Wed,  9 Sep 2026 14:23:39 +0800
+Message-ID: <20260909062339.473816-1-yi.zhang@huaweicloud.com>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgBnUAsh_aBqxXYzBQ--.8536S4
+X-Coremail-Antispam: 1UD129KBjvAXoW3ur4UWw1xWr4kJFy7Zr43KFg_yoW8JF18to
+	WfJws0vr1FqrWkKa1jkFyxJrykX3ZI9ryfJF13Cr4qvF12q34DAw47JwnrGa1fZr1YkF9x
+	W347J3WfArW7Jr1fn29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
+	AaLaJ3UjIYCTnIWjp_UUUYg7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20EY4v20xva
+	j40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxSw2
+	x7M28EF7xvwVC0I7IYx2IY67AKxVWUCVW8JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxVWx
+	JVW8Jr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I0E14v26r
+	xl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj
+	6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr
+	0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E
+	8cxan2IY04v7MxkF7I0En4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFV
+	Cjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWl
+	x4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r
+	1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_
+	JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcS
+	sGvfC2KfnxnUUI43ZEXa7sRiuWl3UUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Medium] disable_work_sync() on s_discard_work leaks ext4_free_data entri=
-es due to a race with the JBD2 commit callback
---
+From: Zhang Yi <yi.zhang@huawei.com>
 
-commit ed64edc319791fc718daf68ae4f355888a8e7de0
-Author: Fan Wu <fanwu01@zju.edu.cn>
+truncate_inode_partial_folio() splits a large folio so that the caller's
+truncate loop can drop the in-range sub-folios while keeping the
+out-of-range tail. The first split at the punch start edge is
+non-uniform, which leaves the sub-folio at the truncation end edge as
+large as possible, this means it may still straddle the range, holding
+both zeroed in-range and valid out-of-range data. The function then
+attempts a second split at offset + length to isolate that tail.
 
-ext4: fix discard work use-after-free on failed mount
+If the second split fails the straddling sub-folio stays merged. The
+function returned true unconditionally on all exit paths of the success
+block, telling the caller it was fully handled. The caller kept its
+default end and the truncate loop truncated every sub-folio below it,
+including the merged straddler, discarding the valid out-of-range tail.
 
-This commit fixes a use-after-free of sbi->s_discard_work on failed mounts.
-It forces a journal commit before ext4_mb_release() and uses
-disable_work_sync() to prevent the journal teardown from requeueing the
-discard work.
+For example, a 4-page order-2 folio punched from offset 0 to the middle
+of the last page:
 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bca0dc87d0b7c..672aec4c3616f 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5776,6 +5776,15 @@ failed_mount8: __maybe_unused
->  failed_mount7:
->  	ext4_unregister_li_request(sb);
->  failed_mount6:
-> +	/*
-> +	 * Flush any running transaction: its commit callback may queue
-> +	 * s_discard_work, which the flush_work() in ext4_mb_release()
-> +	 * below drains; disable_work_sync() there also drains an
-> +	 * instance queued after that, and keeps the journal destroy
-> +	 * further down the unwind from requeueing the work.
-> +	 */
-> +	if (sbi->s_journal)
-> +		ext4_force_commit(sb);
->  	ext4_mb_release(sb);
->  	ext4_flex_groups_free(sbi);
->  failed_mount5:
+  truncate_inode_pages_range()
+    truncate_inode_partial_folio()      # same_folio == true
+      1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
+      folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
+      2nd split of folio2 fails / cannot lock
+      return true                       # BUG: caller keeps default end
+    end = 3
+    loop truncates p0, p1, p2-3        # p3's valid tail is lost
 
-[Severity: Medium]
-Can ext4_force_commit() return before the JBD2 commit callback fully
-completes?
+This became reachable after commit 7460b470a131 ("mm/truncate: use
+folio_split() in truncate operation") replaced the atomic split_folio()
+with folio_split(), whose non-uniform split can partially split a folio
+and leave the end edge merged.
 
-If JBD2 updates j_commit_sequence before executing the callback, it appears
-ext4_force_commit() can return early. This would allow the mount thread to
-proceed to ext4_mb_release() while the JBD2 thread is concurrently running
-the commit callback.
+It has gone unnoticed because a dirty large folio normally carries the
+filesystem's private data, for example buffer_head, so
+filemap_release_folio() -> iomap_release_folio() returns false on a
+dirty folio and folio_split() aborts with -EBUSY before any split,
+leaving the straddler safely unsplit. The bug is only reachable on paths
+that produce dirty large folios without filesystem private data, and it
+was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
+attached.
 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 06171a11db125..3f99efe5e2d5c 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -3898,6 +3898,8 @@ void ext4_mb_release(struct super_block *sb)
->  	 * wait the discard work to drain all of ext4_free_data
->  	 */
->  	flush_work(&sbi->s_discard_work);
-> +	/* Prevent the later journal teardown from requeueing discard work. */
-> +	disable_work_sync(&sbi->s_discard_work);
->  	WARN_ON_ONCE(!list_empty(&sbi->s_discard_list));
+In addition, even when both splits succeed, data can still be lost when
+the mapping's minimum folio order (min_order) is non-zero. folio_split()
+stops at min_order instead of order 0, so the sub-folio containing a
+split point stays aligned to 1 << min_order rather than to a page. The
+original success path left start at the page-aligned head of the range
+and set end to the exact page index of the end edge, neither of which is
+a folio boundary in general. Either one could land inside the large
+folio at its edge, and the truncate loop would drop that straddling
+folio together with its valid out-of-range tail.
 
-[Severity: Medium]
-Does this sequence leak ext4_free_data structures if it races with the
-JBD2 commit callback?
+For example, a 64K (order-4) folio with min_order = 2 punched from
+offset 0 to 36K:
 
-If flush_work() returns immediately (because the work isn't queued yet),
-and disable_work_sync() is called while the JBD2 thread is executing
-ext4_process_freed_data():
+  truncate_inode_pages_range()
+    truncate_inode_partial_folio()        # same_folio == true
+      1st split at p0 -> [p0-p3, p4-p7, p8-p15]  # non-uniform, min_order
+      folio2 = p8-p15 # straddles: p8 in range, p9-p15 tail valid
+      2nd split of folio2 -> [p8-p11, p12-p15]   # success
+      end = p9                           # BUG: p9 inside [p8-p11]
+    loop truncates ... p8-p11           # p9-p11's valid tail is lost
 
-fs/ext4/mballoc.c:ext4_process_freed_data() {
-	...
-		list_splice_tail(&freed_data_list, &sbi->s_discard_list);
-		spin_unlock(&sbi->s_md_lock);
-		if (wake)
-			queue_work(system_dfl_wq, &sbi->s_discard_work);
-	...
-}
+Rework the contract so the caller is told the page range to discard:
 
-Since the work is now disabled, queue_work() fails. Are the ext4_free_data
-items spliced onto sbi->s_discard_list permanently stranded, leaking memory
-and triggering the WARN_ON_ONCE() immediately following disable_work_sync()?
+  - Return true only when a split occurred, false otherwise. This
+    clarifies the existing confusing return value semantics.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260909054124.6577=
-82-1-fanwu01@zju.edu.cn?part=3D1
+  - Add pgoff_t *pstart and *pend out-parameters that receive the page
+    range fully covered by [lstart, lend] after any split (or none),
+    i.e. the pages wholly within the range and safe to discard. They are
+    aligned up (pstart) and down (pend) to the mapping's minimum folio
+    order so they always fall on a folio boundary.
+
+  - Rename the byte-range parameters start/end to lstart/lend to avoid
+    clashing with the new outputs and to separate byte offsets from
+    folio indices.
+
+Callers in truncate_inode_pages_range() and shmem_undo_range() pass
+&pstart for the folio at the start edge and &pend for the folio at the
+end edge, so the truncate loop drops exactly the fully covered pages and
+never touches a straddling folio that still holds valid out-of-range
+data.
+
+Suggested-by: Brian Foster <bfoster@redhat.com>
+Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
+Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+v1->v2:
+ - Export pstart as a new parameter so that the generic and shmem
+   truncate paths don't need to recompute the start value from the
+   return value. (Brian)
+ - When min_order is nonzero, align [pstart, pend] to the inner
+   boundaries of the folio to ensure they do not point into the middle
+   of a large folio, which could otherwise cause valid data within the
+   folio to be incorrectly cleared. (Joanne)
+
+v1: https://lore.kernel.org/linux-mm/20260903115018.2034541-1-yi.zhang@huaweicloud.com/
+
+ mm/internal.h |  4 +--
+ mm/shmem.c    | 13 +++-----
+ mm/truncate.c | 88 +++++++++++++++++++++++++++++++++++----------------
+ 3 files changed, 67 insertions(+), 38 deletions(-)
+
+diff --git a/mm/internal.h b/mm/internal.h
+index 68db5abd0a4c..6e6ad3187378 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -627,8 +627,8 @@ unsigned find_lock_entries(struct address_space *mapping, pgoff_t *start,
+ unsigned find_get_entries(struct address_space *mapping, pgoff_t *start,
+ 		pgoff_t end, struct folio_batch *fbatch, pgoff_t *indices);
+ int truncate_inode_folio(struct address_space *mapping, struct folio *folio);
+-bool truncate_inode_partial_folio(struct folio *folio, loff_t start,
+-		loff_t end);
++bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
++		loff_t lend, pgoff_t *pstart, pgoff_t *pend);
+ long mapping_evict_folio(struct address_space *mapping, struct folio *folio);
+ unsigned long mapping_try_invalidate(struct address_space *mapping,
+ 		pgoff_t start, pgoff_t end, unsigned long *nr_failed);
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 89a1495e55f7..4efbbbba5da5 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -1175,11 +1175,8 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, uoff_t lend,
+ 	if (folio) {
+ 		same_folio = lend < folio_next_pos(folio);
+ 		folio_mark_dirty(folio);
+-		if (!truncate_inode_partial_folio(folio, lstart, lend)) {
+-			start = folio_next_index(folio);
+-			if (same_folio)
+-				end = folio->index;
+-		}
++		truncate_inode_partial_folio(folio, lstart, lend, &start,
++					     same_folio ? &end : NULL);
+ 		folio_unlock(folio);
+ 		folio_put(folio);
+ 		folio = NULL;
+@@ -1189,8 +1186,7 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, uoff_t lend,
+ 		folio = shmem_get_partial_folio(inode, lend >> PAGE_SHIFT);
+ 	if (folio) {
+ 		folio_mark_dirty(folio);
+-		if (!truncate_inode_partial_folio(folio, lstart, lend))
+-			end = folio->index;
++		truncate_inode_partial_folio(folio, lstart, lend, NULL, &end);
+ 		folio_unlock(folio);
+ 		folio_put(folio);
+ 	}
+@@ -1258,7 +1254,8 @@ static void shmem_undo_range(struct inode *inode, loff_t lstart, uoff_t lend,
+ 
+ 				if (!folio_test_large(folio)) {
+ 					truncate_inode_folio(mapping, folio);
+-				} else if (truncate_inode_partial_folio(folio, lstart, lend)) {
++				} else if (truncate_inode_partial_folio(folio,
++							lstart, lend, NULL, NULL)) {
+ 					/*
+ 					 * If we split a page, reset the loop so
+ 					 * that we pick up the new sub pages.
+diff --git a/mm/truncate.c b/mm/truncate.c
+index b58ba940be47..d88a1b159084 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -206,35 +206,41 @@ static int folio_split_or_unmap(struct folio *folio, struct page *split_at,
+ /*
+  * Handle partial folios.  The folio may be entirely within the
+  * range if a split has raced with us.  If not, we zero the part of the
+- * folio that's within the [start, end] range, and then split the folio if
++ * folio that's within the [lstart, lend] range, and then split the folio if
+  * it's large.  split_page_range() will discard pages which now lie beyond
+  * i_size, and we rely on the caller to discard pages which lie within a
+  * newly created hole.
+  *
+- * Returns false if splitting failed so the caller can avoid
+- * discarding the entire folio which is stubbornly unsplit.
++ * When @pstart and/or @pend are non-NULL they receive the indexes of the
++ * page range fully covered by [lstart, lend] after any split (or none),
++ * i.e. the range of pages that are wholly within [lstart, lend] and so safe
++ * to discard.
++ *
++ * Return %true if the folio was split, %false otherwise.
+  */
+-bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
++bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
++				  loff_t lend, pgoff_t *pstart, pgoff_t *pend)
+ {
+ 	loff_t pos = folio_pos(folio);
+ 	size_t size = folio_size(folio);
+ 	unsigned int offset, length;
+ 	struct page *split_at, *split_at2;
++	unsigned long min_nrbytes;
+ 	unsigned int min_order;
+ 
+-	if (pos < start)
+-		offset = start - pos;
++	if (pos < lstart)
++		offset = lstart - pos;
+ 	else
+ 		offset = 0;
+-	if (pos + size <= (u64)end)
++	if (pos + size <= (u64)lend)
+ 		length = size - offset;
+ 	else
+-		length = end + 1 - pos - offset;
++		length = lend + 1 - pos - offset;
+ 
+ 	folio_wait_writeback(folio);
+ 	if (length == size) {
+ 		truncate_inode_folio(folio->mapping, folio);
+-		return true;
++		goto no_split;
+ 	}
+ 
+ 	/*
+@@ -248,9 +254,10 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+ 	if (folio_needs_release(folio))
+ 		folio_invalidate(folio, offset, length);
+ 	if (!folio_test_large(folio))
+-		return true;
++		goto no_split;
+ 
+ 	min_order = mapping_min_folio_order(folio->mapping);
++	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
+ 	split_at = folio_page(folio, PAGE_ALIGN_DOWN(offset) / PAGE_SIZE);
+ 	if (!folio_split_or_unmap(folio, split_at, min_order)) {
+ 		/*
+@@ -259,38 +266,67 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+ 		 * for shmem truncate
+ 		 */
+ 		struct folio *folio2;
++		bool tail_isolated = true;
++
++		if (pend)
++			*pend = round_down(pos + offset + length,
++					   min_nrbytes) >> PAGE_SHIFT;
+ 
+ 		if (offset + length == size)
+-			goto no_split;
+-
++			goto split;
++retry:
+ 		split_at2 = folio_page(folio,
+ 				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+ 		folio2 = page_folio(split_at2);
+ 
+ 		if (!folio_try_get(folio2))
+-			goto no_split;
++			goto split;
+ 
+ 		if (!folio_test_large(folio2))
+ 			goto out;
+ 
+-		if (!folio_trylock(folio2))
++		if (!folio_trylock(folio2)) {
++			tail_isolated = false;
+ 			goto out;
++		}
++
++		/*
++		 * split_at2 may no longer belong to folio2 due to concurrent
++		 * split. Retry to find the correct folio in case it's still
++		 * large.
++		 */
++		if (page_folio(split_at2) != folio2) {
++			folio_unlock(folio2);
++			folio_put(folio2);
++			goto retry;
++		}
+ 
+ 		/* make sure folio2 is large and does not change its mapping */
+ 		if (folio_test_large(folio2) &&
+-		    folio2->mapping == folio->mapping)
+-			folio_split_or_unmap(folio2, split_at2, min_order);
++		    folio2->mapping == folio->mapping &&
++		    folio_split_or_unmap(folio2, split_at2, min_order))
++			tail_isolated = false;
+ 
+ 		folio_unlock(folio2);
+ out:
++		if (!tail_isolated && pend)
++			*pend = folio2->index;
+ 		folio_put(folio2);
+-no_split:
++split:
++		if (pstart)
++			*pstart = round_up(pos + offset,
++					   min_nrbytes) >> PAGE_SHIFT;
+ 		return true;
+ 	}
+-	if (folio_test_dirty(folio))
+-		return false;
+-	truncate_inode_folio(folio->mapping, folio);
+-	return true;
++	if (!folio_test_dirty(folio))
++		truncate_inode_folio(folio->mapping, folio);
++no_split:
++	if (pstart)
++		*pstart = offset ? folio_next_index(folio) : folio->index;
++	if (pend)
++		*pend = (pos + size > (u64)lend) ? folio->index :
++						   folio_next_index(folio);
++	return false;
+ }
+ 
+ /*
+@@ -413,11 +449,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 	folio = __filemap_get_folio(mapping, lstart >> PAGE_SHIFT, FGP_LOCK, 0);
+ 	if (!IS_ERR(folio)) {
+ 		same_folio = lend < folio_next_pos(folio);
+-		if (!truncate_inode_partial_folio(folio, lstart, lend)) {
+-			start = folio_next_index(folio);
+-			if (same_folio)
+-				end = folio->index;
+-		}
++		truncate_inode_partial_folio(folio, lstart, lend, &start,
++					     same_folio ? &end : NULL);
+ 		folio_unlock(folio);
+ 		folio_put(folio);
+ 		folio = NULL;
+@@ -427,8 +460,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
+ 		folio = __filemap_get_folio(mapping, lend >> PAGE_SHIFT,
+ 						FGP_LOCK, 0);
+ 		if (!IS_ERR(folio)) {
+-			if (!truncate_inode_partial_folio(folio, lstart, lend))
+-				end = folio->index;
++			truncate_inode_partial_folio(folio, lstart, lend, NULL, &end);
+ 			folio_unlock(folio);
+ 			folio_put(folio);
+ 		}
+-- 
+2.52.0
+
