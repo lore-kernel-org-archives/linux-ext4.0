@@ -1,91 +1,91 @@
-Received: from out203-205-221-235.mail.qq.com (out203-205-221-235.mail.qq.com [203.205.221.235])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo2-f43.google.com (mail-oo2-f43.google.com [74.125.231.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BDCE2931C0
-	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 01:13:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.235
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD00228505E
+	for <linux-ext4@vger.kernel.org>; Wed,  9 Sep 2026 01:15:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788916393; cv=none; b=nG876fjF5dES4xKz8xi95TB84RqNzamQ2Ftq/UM6AC13AIlQ/cy/WWkpqHPv2ATa1sq0b24qfjkX2FaDOb4d4RQ+WoWBGzEJC6NyGnRYhs1Vn/h2dN5RovtHyoQWNDSbGiFkuIeK29m5LA9py03gbyjh4eSEFLEGhQuUDcaACro=
+	t=1788916519; cv=none; b=l2ihqbWw56nXGR9+EpRVKJvvGA/xy3kqb1UQvgfD6ZJbRd71SfAyX8tUhpmfF0r7dsgAJN9x82q3o2/+TTuvy6ldldZppHxUpzYGDoH4Y8fJQmRXrS6+0ZP6PiX7NmkfRndi23ErkoJe3qbchXgN6fIw71H0/KZ2JvjzhTwG930=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788916393; c=relaxed/simple;
-	bh=O1UXyOkDZpAj+uBP0pUkWNe6jM/Ex8dAmZJZZ+v1ZZE=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=tOQyEKpVjzv9LWSdM4dnFeNxHTipdFa7EeWXXSsSyY2sV1VMZdfTxwQZK7hOEE2juwFTLoJUreQlAAM38zuQe/zNMNH+UHafZ4WDkTCzuEJ/sH/dx2R/gUOYdZ0JL1tMhqJW/6lJ0dKz7736JLzMqHUAPbHLTK7HNNaPl2EsTNQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=vlP8IeGN; arc=none smtp.client-ip=203.205.221.235
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1788916519; c=relaxed/simple;
+	bh=z88fBECguwFUQ3oqHlOVu8JMuEaPOtdR+gKmUFDZRQA=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:References:
+	 In-Reply-To:Content-Type; b=TtY2QwWZ+Gq2EK+1qjQ2aslC36rPeXhY5zCNe99OR7lBNo+gVQ9Ns08EOUn8puER0/lB+3Tz8OrWb2o82dn8XZ7q/iGiCh1f2FwBwwoD/aClptXG2xZ3QYPq5F/7yBzvioLwIbUCB/VzF0AGFLqo+J3RQ3vl55umrZH29mERmNY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kernel.dk; spf=pass smtp.mailfrom=kernel.dk; dkim=pass (2048-bit key) header.d=kernel-dk.20251104.gappssmtp.com header.i=@kernel-dk.20251104.gappssmtp.com header.b=zCJZb78p; arc=none smtp.client-ip=74.125.231.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kernel.dk
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kernel.dk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="vlP8IeGN"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1788916386; bh=7OdN3Y5+lolTtz8GmisWMH/KuSZVdJ3XdVKF+q1aKi0=;
-	h=From:To:Cc:Subject:Date;
-	b=vlP8IeGNmWeJI8cPSOpj4FUnOIdTCn0TwuB8j2UIbwwSFBZNefEbaLr8MjAgPy94C
-	 ThMd4FpHyZMazJHcgHK42GvpggO3tRC3eu1kUik0rE3PMzx90AHScl2nyvsbRCr9l8
-	 /1xykGby1OPoia0TFzrEpAjOXWZVy/SLkjGfdN7Y=
-Received: from DESKTOP-AT5F202.lan ([183.242.244.64])
-	by newxmesmtplogicsvrszc56-0.qq.com (NewEsmtp) with SMTP
-	id 3430604D; Wed, 09 Sep 2026 09:13:03 +0800
-X-QQ-mid: xmsmtpt1788916383tsjgccahb
-Message-ID: <tencent_CD1AF9C3A7875C42F2187B57D74A1C5EE609@qq.com>
-X-QQ-XMAILINFO: M1SmS9is3/+CbD2cBjN/AKP5rq+Ww07kN4S6oZf0HQCkSDk51S1MMlFJoptph3
-	 0LIbMNdtkVfp7gZWYNcUDHghNG26T9tnEATgYBcTyqi8k/cKu5KqZsO4XXiDNG/tphph6xSXw8Hy
-	 39Hk+gVI2aKpVcUuK+MVK4tOTJENTVJmrn1A+uP7o0L3XlFqnfK0+zt6L6AMih/ttV1CPACXlzhl
-	 EKaKl1zCeNmtw+7p74pQ7epQLFfGhCaLq29QaPOl6apV2uoXKL/nTz8x8VseB45cmpkT4zvOm3XK
-	 MHCXD8rLQUC1rySzXnA0DegwWGj6hJsJ0lWvJFNJDWqpV9hH7HndcABKhqCMC5I26SrlQbEpDKzS
-	 y6hKev3QHTtEUMNYcaKTBsddAtcHIRXmyc+x+3Q8LppTqreNvbDs9J+bgfyV6BpDes/Jqsx+F6sI
-	 aYAvFyh8d+bu1LTYKJXxszN4BZBaFCtsuhcYCWkOM83dPXWIVY9BsGCkE8DNwoMaS5k84LiAiAEC
-	 zpyypx/6Ly9x17Sc834ihNdK8IsHUVZIrXhcZ+IydciitQ+iQUK/dodRrHdPy38f7BqlV0D68ViL
-	 zrD5i9siyacbg3GWkoDzm073zapeI7RyDKephACXv2T79BBGH/PhG0qL+ktFMjkSfjyvqCdJJsYl
-	 /vQMZU+pbXy9Gtb3/177nYWxLFpuCGPny1rb1FOz8zS5GAaBx/+eKazrDNx5HzQ+Z/Ys8XSjE54a
-	 YAIOIV07W/I4LyNjAqbVNNeRiUPvxK5etnfUfCzZJ7EhNaRSBlTp0DysZ+5MKJAPtCC0aLH3oMPm
-	 YbNJcMNjsPscRKIXi1V4o1dkG/Guv9EdkrvrV09H0UDqosF9ckmTTMmfYXjTubXKnZ2nA7+BuRft
-	 t0PIGuDKpK+sYDHhfNjGFfMhzI8jdo5nh/uiRxadzchAjvrsEBi8auQZ3BE2QPkFTTC2CTywLN2K
-	 mzE8h3ndOomhk9NVvr12g/0C6FmFv1WoNk3sfebWMrq0TG7FwT7J72BybgPLAgCWb2WZv7J7zUsW
-	 wBzyluBjLL/o2nDAf5BViJo308U2RBynTPcxqce2JCK9Q6cPXjxwflnW/lWYtwJVdyg/YQRg==
-X-QQ-XMRINFO: OWPUhxQsoeAVwkVaQIEGSKwwgKCxK/fD5g==
-From: shuo chen <1289151713@qq.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	shuo chen <1289151713@qq.com>
-Subject: [PATCH] ext4:Fix the initial value of not_found in ext4_destroy_inline_data_nolock
-Date: Wed,  9 Sep 2026 09:12:35 +0800
-X-OQ-MSGID: <20260909011234.373390-2-1289151713@qq.com>
-X-Mailer: git-send-email 2.55.0
+	dkim=pass (2048-bit key) header.d=kernel-dk.20251104.gappssmtp.com header.i=@kernel-dk.20251104.gappssmtp.com header.b="zCJZb78p"
+Received: by mail-oo2-f43.google.com with SMTP id 006d021491bc7-6b1ae739df5so402874eaf.1
+        for <linux-ext4@vger.kernel.org>; Tue, 08 Sep 2026 18:15:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20251104.gappssmtp.com; s=20251104; t=1788916516; x=1789521316; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:content-language
+         :references:to:from:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=C0F+BhJXWav79HJUvCDEB8apDuPRzW6Sy5FYxm9DXY8=;
+        b=zCJZb78pZbogNRl6478FadGCvHkH3DSVPHCVkwxsJeIWNmnsuHjejJEDQRV0tXcq5W
+         J1LvDH9Fa7OyX/+I+Y2fzPgapAOdOCkYGJtfHNRUEHPGMFYJiNsjIz6MWN8Heyj0Gh+1
+         g/SfhEXdZ+ysdKncLzXYgUXoM6o0buD1agMO04ECfN5J23MvZb8TFDUMZ6qhll38/R6f
+         ov5ZFUPpVEtp2BIWVZfQDwRFSvdNx9izQwvShQWvUb13KQD+orZvzeEdc2SnJ9U9uaCf
+         x2OWi0akDWHh2OfD8gkGkXLsBkVh7eUAiM6QZ868QsHowevjig3nEi3i3JTYwmUd+rrj
+         Judw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1788916516; x=1789521316;
+        h=content-transfer-encoding:content-type:in-reply-to:content-language
+         :references:to:from:subject:user-agent:mime-version:date:message-id
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=C0F+BhJXWav79HJUvCDEB8apDuPRzW6Sy5FYxm9DXY8=;
+        b=d+1XCTA0pSvyflkG7O5kAYxdJE/1GFpi8U7s18ftLbeph+tR33cALNXptb2enj7u5P
+         3kp0FeWncx0CrFDdOnUUvf5axmlVx59LGVx98q5B1Yg46DBegSBUGyv35xTWeAz7E+E/
+         aoT6QlrrFNyQzh9w5XuD7aoQJbwcRnmrYfoz2PtqPF4T3IbWiVAAX9Z9+GQyLPCLfKlK
+         q8F9FiWdb3J201hkeUdG9Xeoz2z5u0rkVmsoaGthljmJXsSlDAcGs/tbPFvxU0B/Rali
+         AppnupTZPJubT8kvaiD95kHnjBMKiVfgwry4+uQ3nN9Hpt5yFy8IPkiTa21O3/LEPXfd
+         DOBQ==
+X-Forwarded-Encrypted: i=1; AKwUvBw1c6Bq7m6emfhiPnuw/nGchwc5q0b++L5AQPnvcqf4FjKH1qXd0jt3v5B8KN9Kf6L4Y6ekoiXcr8nQ@vger.kernel.org
+X-Gm-Message-State: AFuF++l8AvocCmYvxq2WOJLdB3z0WfHgt+D6k9qnlHSQ9xRZflbj/WYj
+	kA814Qo4UaVU41UVQZfbIrK9dwmFhX7Z2edFbU/JIDIVwqykwfvR7EKsfa7mfuW289cTPjYie2r
+	7OQMd1Lc=
+X-Gm-Gg: AYBFou09M79a8HTtbZ4cwXjmkJniWyzwgLPc5HDQtfgN2iKx5YId4gXYuyzNqc7DQgq
+	waDDXQR3ahT1eClwvA9j+L9cJA2phE9vrIHeFkOgtuJHfNJ9VMZQ7PVr/YGILq+Czp05DS8Xd1J
+	EBS5SLMXN4uYC/A8Nm78NNnexWUuaUT39814W/NL4yLgXliA1THLBimnZLfUNh9xyoQ6w1ytoJn
+	Z0mzSsvXyK3zsWlu/X4GhLqwPZr4lhfhFU4moaF+MG8uYVeZzxQdCCJZLU4VsYI7JFFBsqtoOXW
+	s8GA+Plztd4eZc29RvZ9pHWrMjjtL5LYriFLBQU/MLG/r8eNrdvgppWvytK93oxq5A8cHmAjzs2
+	fi0ZHMbxX2dIJpd2W7czS6BoAGT9iHi1w0nQSW5LqHLH7CcGfZVcS8iY6KYiTaIqFZfyIHLr0Ag
+	KaY8ANYB8JXWkD7z2aFr0M1b445IAu7aWgCGCpq3ExV2tqcff7kMRS70GqOjK3+BGZq/7eW2c4O
+	N7zzCtE6atLV2Sfm+IhZfk2xQ2fJMCOWI92879F8xfqeZrXUqChnRvdZg==
+X-Received: by 2002:a05:6820:8595:10b0:6bd:fd44:9045 with SMTP id 006d021491bc7-6bdfd4498c6mr636514eaf.3.1788916515696;
+        Tue, 08 Sep 2026 18:15:15 -0700 (PDT)
+Received: from [192.168.1.150] ([198.8.77.157])
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-6b6dbedc6a0sm18374727eaf.5.2026.09.08.18.15.13
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 08 Sep 2026 18:15:14 -0700 (PDT)
+Message-ID: <b191cba9-d863-4bfc-8729-be60cf66f1d7@kernel.dk>
+Date: Tue, 8 Sep 2026 19:15:13 -0600
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [syzbot] [io-uring?] [ext4?] INFO: task hung in io_write
+From: Jens Axboe <axboe@kernel.dk>
+To: syzbot <syzbot+2eb3d983669d3e49d4fa@syzkaller.appspotmail.com>,
+ io-uring@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+References: <6aa0876e.f81106d8.285f0a.0005.GAE@google.com>
+ <31ab7ab6-2cf5-4fcb-a6cb-05fab461e742@kernel.dk>
+Content-Language: en-US
+In-Reply-To: <31ab7ab6-2cf5-4fcb-a6cb-05fab461e742@kernel.dk>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-If a file has EXT4_INODE_INLINE_DATA set but lacks the
-EXT4_STATE_XATTR flag, ext4_xattr_ibody_find() will exit early without
-modifying is.s.not_found. This may cause ext4_xattr_ibody_set()
-to behave incorrectly.
+#syz test: git://git.kernel.org/pub/scm/linux/kernel/git/axboe/linux.git io_uring-7.3
 
-Signed-off-by: shuo chen <1289151713@qq.com>
----
- fs/ext4/inline.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Forgot to push it out... Let's kick it again.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ceee69a66482..3398208f3e66 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -437,7 +437,7 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_xattr_ibody_find is = {
--		.s = { .not_found = 0, },
-+		.s = { .not_found = -ENODATA, },
- 	};
- 	struct ext4_xattr_info i = {
- 		.name_index = EXT4_XATTR_INDEX_SYSTEM,
 -- 
-2.55.0
+Jens Axboe
 
