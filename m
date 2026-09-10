@@ -1,90 +1,92 @@
-Received: from out203-205-221-233.mail.qq.com (out203-205-221-233.mail.qq.com [203.205.221.233])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D69C1377553
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2026 03:26:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.233
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFD9530E0D5
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2026 03:36:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789010811; cv=none; b=Wc5eDYUZ/vW6UfEq/ogYAYSHdryrrtRUT0eoAlPpTklsENIWM6DTd1QO1pJsdVDEFFooTfy5YXce8XdzvHOjpxIamDqzRkYKg5eykcgU/i2s5qfcpxKygyljajZGFH67ap2SnN+qjvde0n0XORrAbXGLvkGN3hR0JLfMXaiFKT0=
+	t=1789011396; cv=none; b=AJ6EHeeLnFfVkfeQr4RgRXQeS7TD4e8wu7jGy7j0R8v3QO+R+o5wmEgtZQvg71mKxjWp2ESYZu1oIFN9/hShJIwNieYUIrXwtzpznq/OlsqLD5QMkwqouJBXmag6fj4jaGMDHWBELuEEUBVn80Fq/C8nVFNJGxIpWauDQ21LcOQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789010811; c=relaxed/simple;
-	bh=5AboohLiXieYcXp2rF9pp0zytjmpcHLrJvUZJI0XhtE=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=ijPwiAkccdsCnOcHL21uUSrzJ46d4bpJ+O5D+siish6jIlMtF7kCbBUqS/ZL6FubA2GjpRFesujVcX7mAIJaALCdPfswFcb/aAwG/OWf4DiT6E0uHqr9uJ0MCXOfGHti4PDwdMevrdpzN5oIyusLJw5+zVyhF51ZO9s4152BFKc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=rTzaomuq; arc=none smtp.client-ip=203.205.221.233
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1789011396; c=relaxed/simple;
+	bh=6eI2wBShtvPrzkYk15YYNmWJoZipWwELWOh8+cjWZzU=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=UNxYP2wuJlzDEEYcPbGSjMKDI3Bc5R/pVJSAlOpzanr2mT/hLCnmo1Gi27xfAzo8AbbkzMinezxZwSRjoLaVmm0lksUzBnVarPjBydAMEp/7UzFW65/fR2Mpv6C8Y4zvymNhBefb9JCkGoWuBOobgs7TMnVu3AgRt+M0yvM1cBo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cCQ/WxiD; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="rTzaomuq"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1789010800; bh=b1/fdYpvVIN08u2xuNqvurWos97yyjIiONFSrW/8bH4=;
-	h=From:To:Cc:Subject:Date;
-	b=rTzaomuqdG0bkB4krS3Y71z1xs0rX13Iw8LQtJ8B9i4d5ErQ2jezEcH0D4Wtb+09u
-	 9K/1WrI5cm9IlEBWa0b4i6+XVSNzjsMwWv/3ljfYX8jyKoJybbA+87kzUODllermkH
-	 cw1NeMTDjwYZXxJiH43WgTZTJ7ANF9Ee78C/+XTc=
-Received: from DESKTOP-AT5F202.lan ([183.242.101.176])
-	by newxmesmtplogicsvrszc43-0.qq.com (NewEsmtp) with SMTP
-	id 6A49EAAD; Thu, 10 Sep 2026 11:26:36 +0800
-X-QQ-mid: xmsmtpt1789010796tqmexerrj
-Message-ID: <tencent_0EDE840F0C8186D030DEAF5A95B8BE54350A@qq.com>
-X-QQ-XMAILINFO: MTEKjEyAppcsNoRNQaSPkIDm8GrrLl9mT+HR0Ay2p5UidjSGG6B6WMAzmwmnkb
-	 r1G0bMB4H3UB9wpu6gHsSC5IFvSeuxA7JaKRxqosD+k/dKlbSYl3bSOI2oLKDJg3C/auzCAaHHpu
-	 ifkfCcktY+eTvlunJ8GpORfxdQ2+v0GRi4nNvp7n2Pf0/Pc5x+SW1xFGmGZTBeFgzpWEO0QhDyWg
-	 w3HQCqAXoI3F/LfLlYhxiPMOb1XJSRi9fjrNTuNAgeBMI+V5oQWZqzf5syRzYvpABhepbtNzlyjM
-	 pl0sajvMsgeoKEI72w2UGb3hWAIEIBEkixZkOUNm1oninwoJYPzghBRFLaKVimGcUlaFteNns47M
-	 VZYXlu6zmAu7bDBjxSXgDmJ4zSA4Hjg8aJSg1hrXpaY+6DBjeB7MVuvvH/QS6wWq64kbySYmDNuR
-	 Hxe3cLplFsbCmz6R3IUoEpR9y8H1atFT01lI404N4XkhLd7iD0LMczCYFjFi0iEk2gv4T+YPLRAv
-	 Q5CtOWzT44z/gllSkOzZKS6VBi7gUcUeX2il9GKC79Bu4f9ROxhHscxdYhvd7b4DGFZ8nsS1bXOZ
-	 L3gUejasD7ky83i0fm5GNtcC3aUDUm/oG3lgzxak9YTdyAnu3Ttft7CdAShDgVDppUpkXZqh2fA/
-	 7WbwNynvLpCnq4TfFem1erKgxS85VHTh/yAGdtH8SFZLjs89KbwJzjaPGVf6oC6WjVUPA1rttamB
-	 PvwOF1e5uKv95+5FBG97bja2EJzx1oQt5DAKm+xR+NMtX1B1Bc1v5B/8Nq3Yn3EFmxD6RjRX9GVW
-	 SXPghe+vdOmM+i9QuHbDOidg7qbma/RM5zRODsJOrSQzux5ZDTRPn7DRcx2FuGNlH/pB5pjChwKY
-	 ERCd3w4Pbboz/23Qo9650eDF7UFZFVqnk8SLRx00J5vrn4Av7RfHv2MdeGPKKcbOwKbhk0f1yRBe
-	 JV1X5DZmgIPxWiXbdqit7s4unTO2e3bEgobcJ0SRk2o9YHHrvDyLXdjs8WS33S/hTsvnpjV2ySeE
-	 6HRjBdLVd5fXqVZfiMJXUZNX4tJF2cw/8MR+uRYWT3YRl67cZ6
-X-QQ-XMRINFO: NyFYKkN4Ny6FuXrnB5Ye7Aabb3ujjtK+gg==
-From: shuo chen <1289151713@qq.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	shuo chen <1289151713@qq.com>
-Subject: [PATCH] ext4:Update the pre-check in ext4_find_inline_data_nolock
-Date: Thu, 10 Sep 2026 11:26:14 +0800
-X-OQ-MSGID: <20260910032613.96175-2-1289151713@qq.com>
-X-Mailer: git-send-email 2.55.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cCQ/WxiD"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6688B1F000FF;
+	Thu, 10 Sep 2026 03:36:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789011394;
+	bh=0MR34yxHJECqvzCoAJG17vi2ZtWsi49Rg0/cmc8awhU=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=cCQ/WxiDnW19Au1/KBtZpNP7KoT1VeDiTVlCMdsY1NyepfKPrqbf4ca2SW6Wb5gus
+	 pReYeRwwfhiS21dnUSTT9kHoBiJphyJxmNyGu1znHf9BsX9LqwaJafA8bETcaTy2+6
+	 lVQpFvGVz9Fuq9Uc4kSWCNQcPmYPm0k/mQCADPnw1TmO++UimZx1NdGIvq/AbwG1E2
+	 QzgbCBYkYgwyWfRzFJNASc2j3OSqefbRA1Dxr5h/9SS7smFbLLQW/3KphWIIvEpl7U
+	 EAS/E5CJsAVXi5yIB8kUGt363WAW5ugpxvAgq6iJvk7lVzer6J6zMNqkmb1gCpF6CB
+	 eSvTtH+qn8rGg==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4:Update the pre-check in
+ ext4_find_inline_data_nolock
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "shuo chen" <1289151713@qq.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <tencent_0EDE840F0C8186D030DEAF5A95B8BE54350A@qq.com>
+References: <tencent_0EDE840F0C8186D030DEAF5A95B8BE54350A@qq.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 10 Sep 2026 03:36:33 +0000
+Message-Id: <20260910033634.6688B1F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-The pre-check in ext4_find_inline_data_nolock should be kept
-consistent with that in ext4_xattr_ibody_find,so as to avoid
-unnecessary operations.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Low] The patch introduces a build failure by using an undeclared macro `=
+EXT4_INODE_HAS_XATTR_SPACE`, and contradicts its own commit message.
+--
 
-Signed-off-by: shuo chen <1289151713@qq.com>
----
- fs/ext4/inline.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+commit 32deefc7c2acb463248871b4f82791288c8d233b
+Author: shuo chen <1289151713@qq.com>
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ceee69a66482..9f6a4d13b9ab 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -151,7 +151,7 @@ int ext4_find_inline_data_nolock(struct inode *inode)
- 	};
- 	int error;
- 
--	if (EXT4_I(inode)->i_extra_isize == 0)
-+	if (!EXT4_INODE_HAS_XATTR_SPACE(inode))
- 		return 0;
- 
- 	error = ext4_get_inode_loc(inode, &is.iloc);
--- 
-2.55.0
+ext4:Update the pre-check in ext4_find_inline_data_nolock
 
+This commit attempts to update the pre-check in ext4_find_inline_data_nolock
+to be consistent with ext4_xattr_ibody_find to avoid unnecessary operations.
+
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index caa51473207d7..19ce2a59c46a3 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -132,7 +132,7 @@ int ext4_find_inline_data_nolock(struct inode *inode)
+>  	};
+>  	int error;
+> =20
+> -	if (EXT4_I(inode)->i_extra_isize =3D=3D 0)
+> +	if (!EXT4_INODE_HAS_XATTR_SPACE(inode))
+
+[Severity: Low]
+Does this fail to compile because EXT4_INODE_HAS_XATTR_SPACE is not defined
+anywhere in the kernel tree?
+
+The commit message mentions keeping this check consistent with
+ext4_xattr_ibody_find. However, looking at ext4_xattr_ibody_find, it appears
+to still use the original check:
+
+    if (EXT4_I(inode)->i_extra_isize =3D=3D 0)
+            return 0;
+
+Was a prerequisite patch defining EXT4_INODE_HAS_XATTR_SPACE missed, or
+should this remain as the original check?
+
+>  		return 0;
+> =20
+>  	error =3D ext4_get_inode_loc(inode, &is.iloc);
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_0EDE840F0C8=
+186D030DEAF5A95B8BE54350A@qq.com?part=3D1
