@@ -1,88 +1,87 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7C244582D8;
-	Thu, 10 Sep 2026 11:14:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4542147013F
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2026 11:17:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789038866; cv=none; b=VyslO4kmQZXRNlWrOktUGujMimKlApGWCmQeGXfiu3M/J6kGP47IsLjxv8C9WWVdVG3c9PQ6NB62FlYRbho7QR0n8CIjPunBcQdk/DhBRO1Zkk5dg3lGCS8lfzXQ1+TnF/OVgxrLG0dm+nVqforLebjBcKsf+V8suVdXkdMLWf8=
+	t=1789039038; cv=none; b=EHV0nNqk9uy4kUo9wxglHftp3p6VPiGqtuhtE4e/nk5srSXl8zKypUheeorbamvhmNHzzcdwEYq+iJspO9m+lYomb0IcqnPrb5rPyqEcPmSIZru1Afrdvo5jtZbe+vdQURhfDcKFwjWshSBL5oU/uycQ28QhEAXtUxnlZQ+nf0s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789038866; c=relaxed/simple;
-	bh=mIWqYvvr4wmShWpjh9vtn/kFNDBpC0yk77hOpP+ZaO8=;
+	s=arc-20240116; t=1789039038; c=relaxed/simple;
+	bh=uqrZqtSJgfJfGhlNUVpkoUF/cVpaWagq4NIxeT3m0hE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Pb337VdRZNulO9dZS9m7M+WJLuc8cR8Q6Xh/w3ZlkRFAc6votolhQPHWtG3E1vlZPuFoiIbLSVJXhqIs5PQeY/WRZyWb3Tv70K+SGQT1dNlD/icHM7RDxKnRta/4OG+TYzoA9Dho7tNw1WZb7wlZTUHWLE4mByDN1p0wZygZiv0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=1mIPhr4b; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=kIV9XFzZ; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=oy4kXq5U; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Q99hAu+1; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=FNA3XycArJClzyYFfZV1O2ld2GJkgsIwvYrfEw1bxCC/kFgVhMzND1b2iMiLUNQVF5REklnIjAxhpqLYjUUjUK017i8+tI+rkNzX30NwQ8VnOPAr9u5dbp6w7N3/tqC/3rpddTnlhh3jLlXN04ZmLHONSuiE9+6t1jHJzFPRb1Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SBfWh5WC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=tcxUVX/R; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=PZVs7tjH; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=sJZuN7gq; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="1mIPhr4b";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="kIV9XFzZ";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="oy4kXq5U";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Q99hAu+1"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SBfWh5WC";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="tcxUVX/R";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="PZVs7tjH";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="sJZuN7gq"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id AFB9021B84;
-	Thu, 10 Sep 2026 11:14:14 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 1CABB1FD91;
+	Thu, 10 Sep 2026 11:17:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789038858; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1789039031; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FYgxcG2rQp/o3X/Px8ZDzwFq7W+7hX2lzAINnC3CS50=;
-	b=1mIPhr4bF5IFje0BLZAbT0jPKiZXOmwhmKAxKn2crlYZQdrq7SQ9JWs5sGj9QiJBPhG31w
-	Tkq7ZoF6jnfb16IDtvdbyMBXG2bENx4JNtgZot6uB8tZSNr68xwhtxvzuzU626MECpsHu3
-	AP4rcG0Tv3J756sJy975gJjYTw443gE=
+	bh=cFRTMEjrc4D+747oC5JSw6/PzQXc6teRQQGLMU8oPi8=;
+	b=SBfWh5WC0Gg0JqSBqy87+iMeASn//z1v47UuMc+ttTG2gitY+aifh02ed4jJlDJLR9t5i/
+	vxrsYpZ+9/PVDfzVBd1VOBFpp+qjHb3ABzBMniczxE+pNzg1sKq2W9FVAddAFfm57+lV9M
+	rz8z8cRXirvj1QRwCVmv2ptSs/4L6SU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789038858;
+	s=susede2_ed25519; t=1789039031;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FYgxcG2rQp/o3X/Px8ZDzwFq7W+7hX2lzAINnC3CS50=;
-	b=kIV9XFzZYCxTftgycIWh1YDD2CQMuAPeP8YRe+Lh6NoTCMbci3u5mFm6MPn6tSZXadAhyx
-	QWWWIhNTHP8IYiAg==
-Authentication-Results: smtp-out1.suse.de;
-	none
+	bh=cFRTMEjrc4D+747oC5JSw6/PzQXc6teRQQGLMU8oPi8=;
+	b=tcxUVX/RmgjCgxvLRyfUic4iTM+Ds3WIljZLoomUxcV3EuAA6yLl8+K5fQxwzdscEbSWeN
+	zqgJfNhBuRaQJNDw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=PZVs7tjH;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=sJZuN7gq
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789038854; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1789039027; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FYgxcG2rQp/o3X/Px8ZDzwFq7W+7hX2lzAINnC3CS50=;
-	b=oy4kXq5UdeEhgV6bMWk9l6ShlROTZURqwpb63oXjA0OQ+/YzEXZgN2mauIFgO+JUAl9qQc
-	XySj2IVmfwPGsSAwlb4aOngR6CcrPb67tMERpXasbXO8JO8Fk0UnhSHTuBTF8gq/OJAu1n
-	77sM0A+7ITQl/PvpnQqjq5t3D6UkdJs=
+	bh=cFRTMEjrc4D+747oC5JSw6/PzQXc6teRQQGLMU8oPi8=;
+	b=PZVs7tjH1N49KmY75SKGh99oVaiTJRmMw++PYp8gz3P7mxIooGGxPhwqqmYQ7lvpVPMZU6
+	3rxdlY68CY+aZ1vLQszM3J2c8k7xgyGbndxRYEhZ9hcokPxdz59cmOMjkV8AmzBC6ZNsR+
+	9oK3f/Y0mVbin9HhoVTPodMkvYLu5Ps=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789038854;
+	s=susede2_ed25519; t=1789039027;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=FYgxcG2rQp/o3X/Px8ZDzwFq7W+7hX2lzAINnC3CS50=;
-	b=Q99hAu+19l0DVAddjHe1V3IL9QiN7baixrVbzRmCsK6Juzuprgl53ur2xYJqljUx4brjWE
-	VlLaN6PUrk9UYSDQ==
+	bh=cFRTMEjrc4D+747oC5JSw6/PzQXc6teRQQGLMU8oPi8=;
+	b=sJZuN7gqqfuAlY+LHSFzYGrGk/FA2AL6gM9UCae9wqQEQzpMZf4Q+UoeRx7Zlnz1DnX9ks
+	dE2bHs+U6AUMfBDQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 87F601321C;
-	Thu, 10 Sep 2026 11:14:14 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E713E13180;
+	Thu, 10 Sep 2026 11:17:06 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DUQoIQaRompFfQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 10 Sep 2026 11:14:14 +0000
+	id Izd1OLKRompvAQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 10 Sep 2026 11:17:06 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 13C79A12EA; Thu, 10 Sep 2026 13:14:06 +0200 (CEST)
-Date: Thu, 10 Sep 2026 13:14:06 +0200
+	id 6F520A12EA; Thu, 10 Sep 2026 13:17:02 +0200 (CEST)
+Date: Thu, 10 Sep 2026 13:17:02 +0200
 From: Jan Kara <jack@suse.cz>
-To: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: Joseph Qi <joseph.qi@linux.alibaba.com>, 
-	Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	ocfs2-devel@lists.linux.dev, linux-kernel@vger.kernel.org, 
-	Srikanth Aithal <Srikanth.Aithal@amd.com>, Luca Weiss <luca.weiss@fairphone.com>, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] buffer: fix NULL dereference of bh->b_folio in
- __bh_submit()
-Message-ID: <m5dja33j5pa7ynhk5bmbsildujkcfjwyy3yvnhinmhlvcnsk7s@rcpnnnzhhteq>
-References: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
- <e77d4410-e7fa-4885-9d9f-6dd09fb7cebb@oss.qualcomm.com>
+To: Pankaj Raghav <p.raghav@samsung.com>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: set awu_max_opt to awu_max
+Message-ID: <zvwz4gq6a66oak2zeokvkeduiueeglymmsrnrq5m6gwydsxnif@mamkpcbtfzsr>
+References: <20260910100829.2532894-1-p.raghav@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -91,80 +90,81 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <e77d4410-e7fa-4885-9d9f-6dd09fb7cebb@oss.qualcomm.com>
+In-Reply-To: <20260910100829.2532894-1-p.raghav@samsung.com>
+X-Spam-Score: -2.51
+X-Rspamd-Queue-Id: 1CABB1FD91
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Spam-Level: 
-X-Spam-Score: -3.80
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-3.80 / 50.00];
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_TLS_LAST(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	ARC_NA(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,linux.ibm.com,gmail.com,linux.alibaba.com,huawei.com,dilger.ca,suse.cz];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TAGGED_RCPT(0.00)[];
 	MISSING_XM_UA(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[amd.com:email,suse.com:email,alibaba.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.cz:email,suse.com:email]
+X-Spam-Flag: NO
 
-On Thu 10-09-26 10:08:55, Konrad Dybcio wrote:
-> On 9/2/26 3:33 AM, Joseph Qi wrote:
-> > Commit a2c924c240e7 ("buffer: set BIO_COMPLETE_IN_TASK for dropbehind
-> > writeback") added an unconditional folio_test_dropbehind(bh->b_folio) in
-> > __bh_submit().  But jbd2 shadow buffers have a NULL b_folio since commit
-> > 5febcba29792 ("jbd2: point the shadow buffer at the frozen data
-> > directly") made them point b_data at the kmalloced frozen data rather
-> > than a folio.  Submitting such a buffer during journal commit oopses:
-> > 
-> >   BUG: kernel NULL pointer dereference, address: 0000000000000000
-> >   RIP: 0010:__bh_submit.constprop.0+0x87/0x120
-> >   Call Trace:
-> >    jbd2_journal_commit_transaction+0x932/0x1b10
-> >    kjournald2+0xb2/0x250
-> > 
-> > Hit by the ocfs2-testsuite fill_verify_holes test running with
-> > data=writeback.
-> > 
-> > Dropbehind only applies to buffers backed by a folio, so skip the check
-> > when b_folio is NULL.
-> > 
-> > Fixes: 5febcba29792 ("jbd2: point the shadow buffer at the frozen data directly")
-> > Tested-by: Srikanth Aithal <Srikanth.Aithal@amd.com>
-> > Tested-by: Luca Weiss <luca.weiss@fairphone.com> # sm7225-fairphone-fp4
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-> > ---
-> >  fs/buffer.c | 3 ++-
-> >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/buffer.c b/fs/buffer.c
-> > index 427d8a817cd5..f46fa6413032 100644
-> > --- a/fs/buffer.c
-> > +++ b/fs/buffer.c
-> > @@ -1106,7 +1106,8 @@ static void __bh_submit(struct buffer_head *bh, blk_opf_t opf,
-> >  
-> >  	bio = bio_alloc(bh->b_bdev, 1, opf, GFP_NOIO);
-> >  
-> > -	if (folio_test_dropbehind(bh->b_folio) && op_is_write(opf))
-> > +	if (bh->b_folio && folio_test_dropbehind(bh->b_folio) &&
-> > +	    op_is_write(opf))
-> >  		bio_set_flag(bio, BIO_COMPLETE_IN_TASK);
+On Thu 10-09-26 12:08:29, Pankaj Raghav wrote:
+> commit 5d894321c49e ("fs: add atomic write unit max opt to statx")
+> added atomic write max optimal to statx. As XFS can support large atomic
+> writes through SW, max_opt exposes the value that will be HW accelerated
+> atomics.
 > 
+> As ext4 does not support SW atomics, set awu_max_opt to awu_max.
 > 
-> -next has been broken for a week+ already, please pick this up..
+> Signed-off-by: Pankaj Raghav <p.raghav@samsung.com>
 
-Christian has pushed out a branch with the fixed version of the code today
-so hopefully it should get fixed in linux-next soon.
+Yes, I guess it's better to report it than not and let userspace guess. Feel
+free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/ext4/inode.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 26f0f9714f03..93056c971e74 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -6304,7 +6304,8 @@ int ext4_getattr(struct mnt_idmap *idmap, const struct path *path,
+>  			awu_max = sbi->s_awu_max;
+>  		}
+>  
+> -		generic_fill_statx_atomic_writes(stat, awu_min, awu_max, 0);
+> +		generic_fill_statx_atomic_writes(stat, awu_min, awu_max,
+> +						 awu_max);
+>  	}
+>  
+>  	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
+> 
+> base-commit: d5ba62a0b130441bcabca59c2fd2d59e65360234
+> -- 
+> 2.51.2
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
