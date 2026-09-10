@@ -1,120 +1,171 @@
-Received: from smtpbguseast2.qq.com (smtpbguseast2.qq.com [54.204.34.130])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6EB033C536;
-	Thu, 10 Sep 2026 05:30:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.204.34.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DCF636196C
+	for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2026 05:43:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789018264; cv=none; b=W/GTPjfSjakwfaasbINkib7dAFYwr+4e1muGccLx/TK9wx4IFibYuZifHTnz2sWBFo+Mao8LyT4qo9+PSZBkgDFedQudH9IiN7VRVNjoLPWY831ZvhOdvlJV2uCsNOhLdc465nqyYkQfuzp8J9+npliEL9hZXLRRnIomeaWynRU=
+	t=1789019003; cv=none; b=LVIXr8ESbugS5gSmsDtM2RzOWeESRHSDIfYQAWTIQIEmlGhEczu88tLvEcq6UwuRK2WyXnnwVSQMZdD9KuigAapG4ug03GcF6MAs34RcI5xAEzjpL4U2hhMRMP+PFW8hGZllQrGhtoBCeTm3xUlOxeF4rdHn3m81qagkMZbcrAo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789018264; c=relaxed/simple;
-	bh=75mvSAFdsdN2VwGCfUVY35/23tifmMlYF25CdhbxYfA=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=ftGMWLiX4uHLy86VNXQHc3CPIVXYx3Gp7mjYTaKGkSfn71DOSyrpQeyWEwfEIeIsvpafhRBFDsiO0O4e24AmIPgT/2N1Auxw1guA5RjLX6yGi9scUAzAd1Eo57KtEqre4zlhqSderRDVotynlbj7qo9qa3fzc7nDHtaNTZICxv0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=kxeK9VkK; arc=none smtp.client-ip=54.204.34.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+	s=arc-20240116; t=1789019003; c=relaxed/simple;
+	bh=wacXTWbKnXKczUsRVIdFw4NlJrFAQmCh+J0x1GJOXZU=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=MwGBVlhc3iZffzTSVfel/6yBKtjELvRAnea4ZWwlEKSCb1RWAkwQw9na/fhO09ygmiAxhbTNlVRcEOWgH5cCw8H/t+2n5pjSDlgokMxlDECrZZ71vTC+YFsXmNXo3noIq1I7+Nk9PFOHFGIJSsKvtKRwLtJ0xlyjc/r2iM5wwag=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Lc3Vzdmk; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="kxeK9VkK"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1789018194;
-	bh=svEBC4EG5k4KB2FCFKcCYTwFYotu1s3CZ0kjOWtCXpU=;
-	h=From:To:Subject:Date:Message-Id:MIME-Version;
-	b=kxeK9VkKEI1uLz1Zh/oTZX3GvtoDnM2iA1BB992DEmCd4O6GlEXKhq6wbTt21kh5Q
-	 T08M+f2zwxhxq2Ljvx+rZS0INjXiym3A60dp5ATOXtQxFN3ga/7q9vd981ZqH1L26G
-	 n3Z/RfomKL6BlpYPPV3GRaXCzSohpNwsuRILjqAc=
-X-QQ-mid: esmtpgz14t1789018177ta955758f
-X-QQ-Originating-IP: MMkSWADVeY04QfnHvuz00WxiF7H71qwD3cHlVqdW1TQ=
-Received: from uniontech.com ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Thu, 10 Sep 2026 13:29:35 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 6232899006786362079
-EX-QQ-RecipientCnt: 10
-From: Yichong Chen <chenyichong@uniontech.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	Yichong Chen <chenyichong@uniontech.com>
-Subject: [PATCH] ext4: don't clobber the migration error in ext4_ext_migrate()
-Date: Thu, 10 Sep 2026 13:29:27 +0800
-Message-Id: <20260910052927.3161092-1-chenyichong@uniontech.com>
-X-Mailer: git-send-email 2.20.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Lc3Vzdmk"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ACF851F000FF;
+	Thu, 10 Sep 2026 05:43:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789019002;
+	bh=GRGDYtwUt/83wwmY3PP5kWh3YAjbVRuqI8iLSlrURYM=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=Lc3VzdmkPW6lJ+pGicZJB8iHzON5IhJD013GOCdxgMi7cUAdHWp4rNJVTfPYLgCIj
+	 gU32mChfzlxBipl9sSvO82KynnAztQg+165HiyvZIfmzKUrgZP1KNARjewUK7CJrNG
+	 DIBwYRrPYZKUuMRh3aE4fBHRHnxXvGXjK1rJEXBLROBWTZPC8WQLtcut4YXvAOfzjI
+	 fVLvmrTwdKnaaCuUkMcXn6ht+Mt6hut6VJqKl2YWyS92UVjaHHv1+2WIwpX9Q7Wdlx
+	 TDGkEyftwkwtK+BXrthP28TMQqWBsqGsY5EEkpcDZoS86V4/lv591AKnGpmlcN/b1A
+	 ID+Q4lPTvufeA==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: don't clobber the migration error in
+ ext4_ext_migrate()
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Yichong Chen" <chenyichong@uniontech.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260910052927.3161092-1-chenyichong@uniontech.com>
+References: <20260910052927.3161092-1-chenyichong@uniontech.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 10 Sep 2026 05:43:20 +0000
+Message-Id: <20260910054321.ACF851F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: esmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
-X-QQ-XMAILINFO: MAN6sKHDZ5xShbcORIDeiCLYjcWJvjrLDoPUAAyTdTuEBi/8nYgwq1qB
-	zqIHkljtXn8a7PakYmvRyhw6nAaJfLcvCBk+2VHxfEK+FTtuSOiuKY401GhqVbZUgX5oFHE
-	gJC0frp5AjfZVWRTI7zepw6Kabgy/geGALheaul+Vtg/n3Wk9kCTgl/BllKsbK6n/kQQSYW
-	4ewm1ZBdi2Sd4DPQBgZm9hW0fxuDm/k/TM3xJbBZDHk4YY5GpyNEoNkS1DcolooqyUgwHKx
-	anKz0BYJ3cOsQOx+r39F4OMq5pfChZc+flGFV9mZ/Krirg2b/sXRhtUzqJ4xkwibURZjk0x
-	2a4vI+94I4R59jTqjD8XvbFF88kSEFicW8u5s7kyhS75ev9lYTQ3em9DHemNpEsrn2WOmG0
-	4Y4VNSqrEeIYM1JaY7oGAOrSdOierQLs/0INoY+39T6/+wETvMaLiHm6YvfExZU8W05jQpR
-	OPF+1AdC2hij5ahcVbS51nPUMyT3xjt/byde5XuzSuoJTeDBf25ORu0aRqb9/1ijuBC7l22
-	5MU/Xo8hMEzZ2eTQStd79Z/j7paQj05RdMD6WGhE1ZYEARY8rseb1Bpw9I7JsKXK8UvIles
-	M14AYQ81QGYyRGR9fqOORqMlTZePgzEwGNDI8CForODCIXWUeATJymvCBOZTOxA3tC97SKh
-	Hm2Ix7Szl/HBqEecYHymrf0WEUEan2o2JrMqkhVlUl3zPuLB80PHPIvNlOtuu6neyzjLMzS
-	Sg8Jo6z9ITah5JnA34rzH0035o61mAdqX3mp1e7mhK8EpY38Xj6nYuUZa89/5ixPJuVbWFO
-	xw5XkJtZOqm0E5SdyudXkd7KG8yLQ0kNHS8/aIfjLZO4RkK5I1tEVJQgbqpvp3wWiA6vuOr
-	PiuO7bvxNcrn7qwRP6eC6fOMqnYFLJVhieyC9KWOh1e9obqjDDeyQXgy8c/wWCYHOaICFVk
-	QOTxG4e05hl1oHz4nnKaQPe7zsSaolpHwln+XUO5JkIPG2BzSD+BNkIkPYhKKbed4r0E/iX
-	7PL4YMV6O5VBdQZEygTmsVFleqp2T11Dw7JOoBLfA183f+nEWI
-X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
-X-QQ-RECHKSPAM: 0
 
-ext4_ext_migrate() records the failure of the migration in retval, but
-ext4_journal_ensure_credits() overwrites it: it returns 0 when the handle
-has enough credits or the transaction could be extended, and 1 when the
-transaction had to be restarted.  A failed migration is therefore
-reported as success, and a restart leaks the internal value 1 to
-userspace through EXT4_IOC_MIGRATE and FS_IOC_SETFLAGS.
+Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+s) to consider:
 
-Fixes: a413036791d0 ("ext4: Provide function to handle transaction restarts")
-Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
----
- fs/ext4/migrate.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+Pre-existing issues:
+- [Critical] This problem wasn't introduced by this patch, but skipping tmp=
+_inode cleanup on journal credit failure leads to severe data loss via ext4=
+_evict_inode().
+- [High] This problem wasn't introduced by this patch, but finish_range() a=
+nd ext4_ext_migrate() misinterpret the positive return value (1) from trans=
+action restarts as an error, causing valid migrations to incorrectly abort.
+- [High] This problem wasn't introduced by this patch, but restarting the j=
+ournal transaction after ext4_ext_swap_inode_data() splits the migration, r=
+isking catastrophic filesystem corruption on crash.
+--
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 2aa6572088cf..e06d847033a1 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -410,7 +410,7 @@ static int free_ext_block(handle_t *handle, struct inode *inode)
- int ext4_ext_migrate(struct inode *inode)
- {
- 	handle_t *handle;
--	int retval = 0, i;
-+	int retval = 0, err, i;
- 	__le32 *i_data;
- 	struct ext4_inode_info *ei;
- 	struct inode *tmp_inode = NULL;
-@@ -567,9 +567,12 @@ int ext4_ext_migrate(struct inode *inode)
- 	}
- 
- 	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
--	retval = ext4_journal_ensure_credits(handle, 1, 0);
--	if (retval < 0)
-+	err = ext4_journal_ensure_credits(handle, 1, 0);
-+	if (err < 0) {
-+		if (!retval)
-+			retval = err;
- 		goto out_stop;
-+	}
- 	/*
- 	 * Mark the tmp_inode as of size zero
- 	 */
--- 
-2.51.0
+commit 1e2365dd0dc0240e7c7b7887168a101dc865de11
+Author: Yichong Chen <chenyichong@uniontech.com>
 
+ext4: don't clobber the migration error in ext4_ext_migrate()
+
+This commit ensures that ext4_ext_migrate() does not overwrite the
+migration error code when ext4_journal_ensure_credits() returns a
+positive value indicating a transaction restart. It introduces a
+separate err variable to hold the credit check result.
+
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 5d60ef10fe110..02bb7c20a008a 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -410,7 +410,7 @@ static int free_ext_block(handle_t *handle, struct in=
+ode *inode)
+>  int ext4_ext_migrate(struct inode *inode)
+>  {
+>  	handle_t *handle;
+> -	int retval =3D 0, i;
+> +	int retval =3D 0, err, i;
+
+[Severity: High]
+This isn't a bug introduced by this patch, but finish_range() and
+ext4_ext_migrate() misinterpret the positive return value (1) from
+transaction restarts as an error, causing valid migrations to
+incorrectly abort.
+
+During migration, if ext4_datasem_ensure_credits() successfully
+restarts the journal, it returns 1. This 1 is propagated through
+finish_range() and update_extent_range() back here to
+ext4_ext_migrate().=20
+
+When ext4_ext_migrate() subsequently checks the return value:
+
+	retval =3D update_extent_range(handle, tmp_inode,
+			le32_to_cpu(i_data[i]), &lb);
+	if (retval)
+		goto err_out;
+
+Could this incorrectly treat the 1 as a fatal error, aborting the
+migration? This would cause the migration of any file large enough
+to require a transaction restart to fail and return 1 to userspace,
+breaking the migration feature for large files.
+
+[ ... ]
+
+> @@ -567,9 +567,12 @@ int ext4_ext_migrate(struct inode *inode)
+>  	}
+> =20
+>  	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
+> -	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
+> -	if (retval < 0)
+> +	err =3D ext4_journal_ensure_credits(handle, 1, 0);
+
+[Severity: High]
+This is a pre-existing issue, but restarting the journal transaction
+after ext4_ext_swap_inode_data() splits the migration, risking
+catastrophic filesystem corruption on crash.
+
+ext4_ext_swap_inode_data() commits the extent tree to the actual
+inode and dirties it. If this subsequent call to
+ext4_journal_ensure_credits() requires restarting the transaction
+(returning 1), the current state is committed to disk.=20
+
+If a crash occurs before the next transaction completes the cleanup
+of tmp_inode, wouldn't the disk contain both the migrated inode and
+the unlinked tmp_inode pointing to the same data blocks?
+
+Because tmp_inode is unlinked via clear_nlink(tmp_inode) but was never
+added to the on-disk orphan list via ext4_orphan_add(), kernel orphan
+recovery ignores it, potentially leaving e2fsck to encounter
+multiply-claimed blocks.
+
+> +	if (err < 0) {
+> +		if (!retval)
+> +			retval =3D err;
+>  		goto out_stop;
+> +	}
+
+[Severity: Critical]
+This problem wasn't introduced by this patch, but skipping tmp_inode
+cleanup on journal credit failure leads to severe data loss via
+ext4_evict_inode().
+
+If this final credit check fails (e.g., due to ENOMEM or journal
+abort), the code jumps to out_stop, bypassing the essential
+tmp_inode cleanup:
+
+	if (err < 0) {
+		goto out_stop;
+	}
+	...
+	tmp_inode->i_blocks =3D 0;
+	EXT4_I(tmp_inode)->i_csum_seed =3D tmp_csum_seed;
+	ext4_ext_tree_init(handle, tmp_inode);
+out_stop:
+
+When tmp_inode is then dropped via iput(), its i_nlink is 0, so
+ext4_evict_inode() truncates it. Does bypassing the i_blocks =3D 0
+and ext4_ext_tree_init() reset result in freeing all the extent data
+blocks that now belong to the user's migrated file?
+
+>  	/*
+>  	 * Mark the tmp_inode as of size zero
+>  	 */
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260910052927.3161=
+092-1-chenyichong@uniontech.com?part=3D1
