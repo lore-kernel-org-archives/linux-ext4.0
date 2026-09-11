@@ -1,30 +1,30 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B899D4334C9;
-	Fri, 11 Sep 2026 07:34:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB326411FA7;
+	Fri, 11 Sep 2026 08:25:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789112099; cv=none; b=dSVXI+oRVnL1bSzsfZF7W4njR/4a/4dm0ThL7pmMjw+byTGFYc2WgV8eaC/jOUYX9C6YeKYyJiG1hv5mg0YL6Gu9YfxUTbvkHNAhAOht2UJbq6yqzRjNutj6j52ESbFCaaWucJnQV7+ngJ6X9fLYX9motBDNOLeVh2wDIfcyYy8=
+	t=1789115135; cv=none; b=FC0NRai6LzaJyF6MpZPKr6TPYxd7OUgOLbkS6U7og13cBv/xzeRl8eRv9T7on86Q6I9PmCcHmGbZfpG6GMrn+p7GhfpzciRYYXcPn2SZPPjh7McTlhqzqGZhGHwt689HPeTDVsQuj/Hurjd8Fo/Bfb0XDOXHxB396XzACorvf0c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789112099; c=relaxed/simple;
-	bh=coPsXuKmtF487IufcVpCcYEMGSNreq9HmUgcQLT34ZA=;
+	s=arc-20240116; t=1789115135; c=relaxed/simple;
+	bh=kvwK/D6Ch0u9q2sGlCGhyPjlqEOZvaGo0yb6o9YB3NQ=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=fE+I667f98x3glzWax9OYZCUYGgOeEJCDTdk6gUfUr4ui7yHDASYB3y8ca6YiANazpnmSJ+s3WQjKO79b2pN2gEJAqRhHmNaMGT95xubMPOFu16dICbK/zqdaBi+QMV3HGM59tXcT1NAg47RhgVpO0Ut4DLOd9y+DLXIGwBQ4s4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 In-Reply-To:Content-Type; b=QsRN7+UoRqpFENxk/5GPZSubVE37JkJ2j73hhawtzOVZUZpnxNRBu/fHYLSz11+OeTkNt0DY4eC8eqqjYP8CAynqdAl0imYWYhQ/S/ytNN0ppot8XZl2FzLJTjeP9qg/Um/kTjsC6/w8LzkA1hCJktzbezlKvljr4bWzqRY72CE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
 Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hh5sd22BWzKHMP2;
-	Fri, 11 Sep 2026 15:34:45 +0800 (CST)
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hh6zv2RhmzKHMQQ;
+	Fri, 11 Sep 2026 16:25:15 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.112])
-	by mail.maildlp.com (Postfix) with ESMTP id 1732B4058D;
-	Fri, 11 Sep 2026 15:34:51 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 363D240590;
+	Fri, 11 Sep 2026 16:25:21 +0800 (CST)
 Received: from [10.174.178.253] (unknown [10.174.178.253])
-	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgAH7ggYr6Nq45QyBg--.39022S3;
-	Fri, 11 Sep 2026 15:34:50 +0800 (CST)
-Message-ID: <5796c4ea-fd8f-48aa-8c9b-f1cc8ec1dde1@huaweicloud.com>
-Date: Fri, 11 Sep 2026 15:34:48 +0800
+	by APP1 (Coremail) with UTF8SMTPSA id cCh0CgDH_AfuuqNqJOk2Bg--.2181S3;
+	Fri, 11 Sep 2026 16:25:20 +0800 (CST)
+Message-ID: <aa0f94c8-b959-4aec-b8f5-69365d1a02fa@huaweicloud.com>
+Date: Fri, 11 Sep 2026 16:25:18 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -34,44 +34,45 @@ MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH v2] mm/truncate: fix data loss when truncating straddling
  large folios
-To: Brian Foster <bfoster@redhat.com>
+To: Joanne Koong <joannelkoong@gmail.com>
 Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
  akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
  liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
  mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
- willy@infradead.org, jack@suse.cz, ziy@nvidia.com, joannelkoong@gmail.com,
+ willy@infradead.org, jack@suse.cz, ziy@nvidia.com, bfoster@redhat.com,
  djwong@kernel.org, yi.zhang@huawei.com, yizhang089@gmail.com,
  yangerkun@huawei.com, chengzhihao1@huawei.com, wangkefeng.wang@huawei.com,
  yukuai@fnnas.com
 References: <20260909062339.473816-1-yi.zhang@huaweicloud.com>
- <aqLaQcZvaFIrAz0e@bfoster>
+ <CAJnrk1b8fWpp-yBRxFaBbFzA8852N53SB6j3Zi9Qnp+JBFuNbA@mail.gmail.com>
 Content-Language: en-US
 From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <aqLaQcZvaFIrAz0e@bfoster>
+In-Reply-To: <CAJnrk1b8fWpp-yBRxFaBbFzA8852N53SB6j3Zi9Qnp+JBFuNbA@mail.gmail.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:cCh0CgAH7ggYr6Nq45QyBg--.39022S3
-X-Coremail-Antispam: 1UD129KBjvAXoWfJF1DGF4xXw45WFy8ZrWrXwb_yoW8GrWDWo
-	WrJ3yYv3WF9r1kAa10kas7JryDW3Z8ZryxJF13urs0vFnFq34qyw4fJ39rGFZ7Aw1jkF15
-	Ga47Ja4SyrZrtF1fn29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
-	AaLaJ3UjIYCTnIWjp_UUUYc7kC6x804xWl14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK
-	8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4
-	AK67xGY2AK021l84ACjcxK6xIIjxv20xvE14v26r4j6ryUM28EF7xvwVC0I7IYx2IY6xkF
-	7I0E14v26F4j6r4UJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6x
-	kF7I0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02
-	F40Ex7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4I
-	kC6x0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAa
-	w2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxV
-	Aqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a
-	6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6x
-	kF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AK
-	xVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvj
-	xUIF4iUUUUU
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:cCh0CgDH_AfuuqNqJOk2Bg--.2181S3
+X-Coremail-Antispam: 1UD129KBjvJXoW3XFy8tF1DXF47KF18AFWUurg_yoWxKr4fpr
+	W2ga9Iyrs7G392krn2va1DXw1rJ3yfXr4UAF93J3s2kan0vr12kF1Utw1rCFWUGr97G3W0
+	v3WjvanrW3WDAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
+	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
+	e7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
+	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_
+	WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
+	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
+	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
+	jxCztUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 9/11/2026 12:26 AM, Brian Foster wrote:
-> On Wed, Sep 09, 2026 at 02:23:39PM +0800, Zhang Yi wrote:
+On 9/10/2026 2:29 AM, Joanne Koong wrote:
+> On Tue, Sep 8, 2026 at 11:31 PM Zhang Yi <yi.zhang@huaweicloud.com> wrote:
+>>
 >> From: Zhang Yi <yi.zhang@huawei.com>
 >>
 >> truncate_inode_partial_folio() splits a large folio so that the caller's
@@ -160,6 +161,9 @@ On 9/11/2026 12:26 AM, Brian Foster wrote:
 >> Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
 >> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
 >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+> Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
+> 
 >> ---
 >> v1->v2:
 >>  - Export pstart as a new parameter so that the generic and shmem
@@ -172,286 +176,54 @@ On 9/11/2026 12:26 AM, Brian Foster wrote:
 >>
 >> v1: https://lore.kernel.org/linux-mm/20260903115018.2034541-1-yi.zhang@huaweicloud.com/
 >>
-> 
-> Hi Zhang,
-> 
-> Thanks for the tweaks. I still found some of the logic circuitous as I
-> read through it so I spent some time playing with this just to
-> experiment with cleaning it up a bit. I ended up removing a couple of
-> the labels, lifting the pstart/pend assignment to a default init/case,
-> and reshuffling the split case pstart/pend assignments in a way that I
-> think also elides the need for the boolean or using folio2. (I'm curious
-> if this happens to address the Sashiko feedback as well..?)
-> 
-> Note that this is completely untested and needs further review. Since
-> the current patch looked mostly Ok to me functionally (though I do agree
-> with the comment about possibly splitting up into smaller changes) and
-> has other reviews, I'm just posting this as an FYI. Here's a diff of the
-> changes I made on top of this patch (Assisted-by: LLM, fwiw). Feel free
-> to use some, all or none of it. Thanks!
-> 
-> Brian
-
-Hi Brian,
-
-Thanks a lot for spending time on this, and for posting the diff. I
-agree with most of it.
-
-Lifting the default pstart/pend assignment to the top and turning the
-early exits into plain returns removed the need for the no_split: /
-split: labels and the tail_isolated boolean, which does make the
-function easier to follow.
-
-One thing I was wondering about: in your diff, when setting pend while
-trying to split folio2, you completely dropped the use of folio2->index.
-With folio2->index gone, an unaligned end means any failed split falls
-back to folio->index. I assume that is mainly because its value is not
-reliable under concurrency, which is exactly what sashiko pointed out.
-However, it does mean we lose a bit of precision though, I mean the
-sub-folios that were successfully split off at the pstart edge end up
-left behind in the page cache. Please see a small example below.
-
-> 
-> --- 8< ---
-> 
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index d88a1b159084..8da16d7e6763 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -237,10 +237,16 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->  	else
->  		length = lend + 1 - pos - offset;
->  
-> +	if (pstart)
-> +		*pstart = offset ? folio_next_index(folio) : folio->index;
-> +	if (pend)
-> +		*pend = (pos + size > (u64)lend) ? folio->index :
-> +						   folio_next_index(folio);
-> +
->  	folio_wait_writeback(folio);
->  	if (length == size) {
->  		truncate_inode_folio(folio->mapping, folio);
-> -		goto no_split;
-> +		return false;
->  	}
->  
->  	/*
-> @@ -254,7 +260,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->  	if (folio_needs_release(folio))
->  		folio_invalidate(folio, offset, length);
->  	if (!folio_test_large(folio))
-> -		goto no_split;
-> +		return false;
->  
->  	min_order = mapping_min_folio_order(folio->mapping);
->  	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
-> @@ -266,29 +272,30 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->  		 * for shmem truncate
->  		 */
->  		struct folio *folio2;
-> -		bool tail_isolated = true;
->  
-> -		if (pend)
-> -			*pend = round_down(pos + offset + length,
-> +		if (pstart)
-> +			*pstart = round_up(pos + offset,
->  					   min_nrbytes) >> PAGE_SHIFT;
->  
-> -		if (offset + length == size)
-> -			goto split;
-> +		if (offset + length == size) {
-> +			if (pend)
-> +				*pend = round_down(pos + offset + length,
-> +						   min_nrbytes) >> PAGE_SHIFT;
-> +			return true;
-> +		}
->  retry:
->  		split_at2 = folio_page(folio,
->  				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
->  		folio2 = page_folio(split_at2);
->  
->  		if (!folio_try_get(folio2))
-> -			goto split;
-> +			return true;
->  
->  		if (!folio_test_large(folio2))
->  			goto out;
->  
-> -		if (!folio_trylock(folio2)) {
-> -			tail_isolated = false;
-> +		if (!folio_trylock(folio2))
->  			goto out;
-> -		}
->  
->  		/*
->  		 * split_at2 may no longer belong to folio2 due to concurrent
-> @@ -304,28 +311,18 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->  		/* make sure folio2 is large and does not change its mapping */
->  		if (folio_test_large(folio2) &&
->  		    folio2->mapping == folio->mapping &&
-> -		    folio_split_or_unmap(folio2, split_at2, min_order))
-> -			tail_isolated = false;
-> +		    !folio_split_or_unmap(folio2, split_at2, min_order) &&
-> +		    pend)
-> +			*pend = round_down(pos + offset + length,
-> +					   min_nrbytes) >> PAGE_SHIFT;
+>>  mm/internal.h |  4 +--
+>>  mm/shmem.c    | 13 +++-----
+>>  mm/truncate.c | 88 +++++++++++++++++++++++++++++++++++----------------
+>>  3 files changed, 67 insertions(+), 38 deletions(-)
+>>
 
 [...]
 
-Assume a 4-page order-2 folio [p0 p1 p2 p3], punched from offset 0 into
-the middle of p3, with min_order == 0.:
+>> diff --git a/mm/truncate.c b/mm/truncate.c
+>> index b58ba940be47..d88a1b159084 100644
+>> --- a/mm/truncate.c
+>> +++ b/mm/truncate.c
+>> @@ -206,35 +206,41 @@ static int folio_split_or_unmap(struct folio *folio, struct page *split_at,
+>>  /*
+>>   * Handle partial folios.  The folio may be entirely within the
+>>   * range if a split has raced with us.  If not, we zero the part of the
+>> - * folio that's within the [start, end] range, and then split the folio if
+>> + * folio that's within the [lstart, lend] range, and then split the folio if
+>>   * it's large.  split_page_range() will discard pages which now lie beyond
+>>   * i_size, and we rely on the caller to discard pages which lie within a
+>>   * newly created hole.
+>>   *
+>> - * Returns false if splitting failed so the caller can avoid
+>> - * discarding the entire folio which is stubbornly unsplit.
+>> + * When @pstart and/or @pend are non-NULL they receive the indexes of the
+>> + * page range fully covered by [lstart, lend] after any split (or none),
+>> + * i.e. the range of pages that are wholly within [lstart, lend] and so safe
+>> + * to discard.
+> 
+> I think with themin_order > 0 case, pages wholly within [lstart, lend]
+> can still be excluded, so maybe worth editing this to reflect that.
+> 
+> Thanks,
+> Joanne
 
-   [p0 p1 p2 p3]  --1st split @p0-->  [p0] [p1] [p2-p3]
-   folio now points to [p0]
-   folio2 = [p2-p3]            # p2 zeroed, p3 tail valid
-   2nd split of [p2-p3] fails  # folio_split_or_unmap() returns failure.
-		
-As a result, both pstart and pend are p0, so the sub-folios p0 and p1
-are left behind.
+Good point, I will fix this in next iteration.
 
-I agree that under concurrency we really can't get a valid end position
-since folio2 is not trustworthy(e,g., failed to get the folio2 or failed
-to lock the folio2...). But once we have successfully got a reference to
-and locked folio2, its index should be valid. So I've ended up with
-something like the below (This hasn't been tested yet, just wanted to see
-everyone's opinions), let me know what you and the other reviewers think.
+Thanks,
+Yi.
 
-
-diff --git a/mm/truncate.c b/mm/truncate.c
-index d88a1b159084..b551e8253de7 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -237,10 +237,16 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 	else
- 		length = lend + 1 - pos - offset;
-
-+	if (pstart)
-+		*pstart = offset ? folio_next_index(folio) : folio->index;
-+	if (pend)
-+		*pend = (pos + size > (u64)lend) ? folio->index :
-+						   folio_next_index(folio);
-+
- 	folio_wait_writeback(folio);
- 	if (length == size) {
- 		truncate_inode_folio(folio->mapping, folio);
--		goto no_split;
-+		return false;
- 	}
-
- 	/*
-@@ -254,7 +260,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 	if (folio_needs_release(folio))
- 		folio_invalidate(folio, offset, length);
- 	if (!folio_test_large(folio))
--		goto no_split;
-+		return false;
-
- 	min_order = mapping_min_folio_order(folio->mapping);
- 	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
-@@ -266,66 +272,65 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 		 * for shmem truncate
- 		 */
- 		struct folio *folio2;
--		bool tail_isolated = true;
-+		pgoff_t end, aligned_end = round_down(pos + offset + length,
-+						min_nrbytes) >> PAGE_SHIFT;
-
--		if (pend)
--			*pend = round_down(pos + offset + length,
-+		if (pstart)
-+			*pstart = round_up(pos + offset,
- 					   min_nrbytes) >> PAGE_SHIFT;
-
--		if (offset + length == size)
--			goto split;
--retry:
-+		if (offset + length == size) {
-+			end = aligned_end;
-+			goto out;
-+		}
-+
- 		split_at2 = folio_page(folio,
- 				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
- 		folio2 = page_folio(split_at2);
-
--		if (!folio_try_get(folio2))
--			goto split;
--
--		if (!folio_test_large(folio2))
--			goto out;
--
--		if (!folio_trylock(folio2)) {
--			tail_isolated = false;
--			goto out;
--		}
--
- 		/*
--		 * split_at2 may no longer belong to folio2 due to concurrent
--		 * split. Retry to find the correct folio in case it's still
--		 * large.
-+		 * folio2 may become stale due to a concurrent split or
-+		 * freeing, so validate it before and after taking its lock.
-+		 * If it fails, we can't get an accurate end position and fall
-+		 * back to folio->index, which may leave sub-folios split off
-+		 * at the offset edge in the page cache this round.
- 		 */
-+		end = folio->index;
-+		if (!folio_try_get(folio2))
-+			goto out;
-+		if (folio2->mapping != folio->mapping ||
-+		    !folio_test_large(folio2))
-+			goto out_put;
-+
-+		if (!folio_trylock(folio2))
-+			goto out_put;
-+
- 		if (page_folio(split_at2) != folio2) {
- 			folio_unlock(folio2);
--			folio_put(folio2);
--			goto retry;
-+			goto out_put;
-+		}
-+		if (!folio_test_large(folio2)) {
-+			end = aligned_end;
-+			folio_unlock(folio2);
-+			goto out_put;
- 		}
-
--		/* make sure folio2 is large and does not change its mapping */
--		if (folio_test_large(folio2) &&
--		    folio2->mapping == folio->mapping &&
--		    folio_split_or_unmap(folio2, split_at2, min_order))
--			tail_isolated = false;
-+		/* Split failed: back off to the head of the straddler */
-+		if (folio_split_or_unmap(folio2, split_at2, min_order))
-+			end = folio2->index;
-+		else
-+			end = aligned_end;
-
- 		folio_unlock(folio2);
--out:
--		if (!tail_isolated && pend)
--			*pend = folio2->index;
-+out_put:
- 		folio_put(folio2);
--split:
--		if (pstart)
--			*pstart = round_up(pos + offset,
--					   min_nrbytes) >> PAGE_SHIFT;
-+out:
-+		if (pend)
-+			*pend = end;
- 		return true;
- 	}
- 	if (!folio_test_dirty(folio))
- 		truncate_inode_folio(folio->mapping, folio);
--no_split:
--	if (pstart)
--		*pstart = offset ? folio_next_index(folio) : folio->index;
--	if (pend)
--		*pend = (pos + size > (u64)lend) ? folio->index :
--						   folio_next_index(folio);
- 	return false;
- }
-
+> 
+>> + *
+>> + * Return %true if the folio was split, %false otherwise.
+>>   */
+>> -bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>> +bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>> +                                 loff_t lend, pgoff_t *pstart, pgoff_t *pend)
+>>  {
+>>         loff_t pos = folio_pos(folio);
+>>         size_t size = folio_size(folio);
 
