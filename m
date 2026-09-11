@@ -1,67 +1,65 @@
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 147EC231839
-	for <linux-ext4@vger.kernel.org>; Fri, 11 Sep 2026 14:15:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98F06330D25
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Sep 2026 14:57:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789136139; cv=none; b=SCRZxmXRwkkS5JN8GnEQxoYdDNRtgdQcl3PUt7ZygeqQ632z5Ebk4lBEA2/TT86n7i4jZDCtSK76I1P4nNCSx5aXKLGmP4r7WQlgIk8VsPnKSgJedBtHrB7mC0x5JLKOZ+RfuytS3mmVo2bwBPiU5F1IvCK+YIwXrAQuNZvS8BU=
+	t=1789138668; cv=none; b=cH57c3qkjtmrky1HtMcWbg6FnMohcRofL5/uMIYKB+mGaKsDBS/y432RMtXtd4ijwda0shXyAkxHPWQGXRNbGiH+gz4V6NatZj8rO6jT7hLWJ+O+1xKKVLjArjSFxFUQvaV49O04p08gmlAxwupkuRfLHuu8cNSU8qBL7NkHL6E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789136139; c=relaxed/simple;
-	bh=xTWrTtUkvF8Xwp+8XpIWHVKYzi6C3y8bcY3HPU01jDY=;
+	s=arc-20240116; t=1789138668; c=relaxed/simple;
+	bh=8w0/XgbsZHCJEAgoMotxRhuUHXmVwjWByI9b9pscAls=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pB+T0icmcFIXv9C/JuuGu6qb/nDfVasJWtUxv9rIsyoagstnT3X8e2+IjnViqiv6peG1NUiHXMUSrOLL7244ODs98oQEuqlauGW3BPQ8tyg72LiuY5BkONUV0tF0u+sJpkltOG8QvRAAA8V2cu/6j2dl0ezKln9zy8chEDG+CqE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=omparzCk; arc=none smtp.client-ip=148.163.156.1
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZhT6epftwzV8YEWkLIgVcFJ3UTotT1VIfB0TU8cq8OZh4MPDGJ7yoEwk5yYnwUok64pRO2/mAAaFUkmFb3lftJtH9/fmF66oockZMKU0C1DcCVQEvRwxHZtv6fUt3CeQZmqjh5xW/9VIjUkDnMJWsqeqHoHL6Gi6JuFiKELGWFw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=fL0QSfZ6; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="omparzCk"
-Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 68BD1O0h1849393;
-	Fri, 11 Sep 2026 14:15:15 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=KRVNbRCGmNeySvSvVFutquUbtGvO3d
-	asNw8n68WO4ew=; b=omparzCkc2s3qblOcnW/QYUbwBCDZIJjVbHvb+cDN77AAp
-	RiOwLD2/VDugxcfZCiC0+MYdne0UO1g79HXMhbFie57zeSG5P1fQUHqFAe/x/XyA
-	P0iTzAnnU14GAu1OFdwQfMNcZ1e0JsrIKMVDNdvMR4ZhfeVTi5As6K3sdGYYpQJz
-	ohLGH74Ki9lb9kpXaTYvvmyEiNeqFLyNBjaczy65Pora0vELuop0+xZ2XMgkcBY0
-	0qKY6gD+4y936m253YFMeWvT8gAYI6Ag17ZTSR8PQ6SQvVD2ArQCpd2Q7Kz+6vgm
-	uBh9NpzmGrzu6DH9MDpFnWSOgKRZfZnnloDDC1eg==
-Received: from ppma23.wdc07v.mail.ibm.com (5d.69.3da9.ip4.static.sl-reverse.com [169.61.105.93])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4gkd8pv0tu-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Fri, 11 Sep 2026 14:15:14 +0000 (GMT)
-Received: from pps.filterd (ppma23.wdc07v.mail.ibm.com [127.0.0.1])
-	by ppma23.wdc07v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 68BCo7PE1647095;
-	Fri, 11 Sep 2026 14:15:14 GMT
-Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
-	by ppma23.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4gkvtfer26-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Fri, 11 Sep 2026 14:15:13 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 68BEFBqG44040664
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Fri, 11 Sep 2026 14:15:11 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id BCBFE20043;
-	Fri, 11 Sep 2026 14:15:11 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id A082120040;
-	Fri, 11 Sep 2026 14:15:09 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.124.210.241])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Fri, 11 Sep 2026 14:15:09 +0000 (GMT)
-Date: Fri, 11 Sep 2026 19:45:07 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Pankaj Raghav <p.raghav@samsung.com>
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Ritesh Harjani <ritesh.list@gmail.com>,
-        Baokun Li <libaokun@linux.alibaba.com>, Zhang Yi <yi.zhang@huawei.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: set awu_max_opt to awu_max
-Message-ID: <aqQM61h41Bvf2D00@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260910100829.2532894-1-p.raghav@samsung.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="fL0QSfZ6"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789138664;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KD0eOrBEbb+VrFVYh6f5jiyQlHzKdjClS157J0LrQqs=;
+	b=fL0QSfZ6vAv/fuYnAbo/gsn554T6pBvUd9XkkwdL3A/JoDShlCjgbs3ss0wi7+F1gj0h8W
+	18u4CcUgPfIli60g0AtuxaGH4fJW9pTxWzeJdkBIeqHeZgHxK6cy58kmRmWHYnKKuFDtta
+	TE3AYPZTRdnOC9cDIaIGJf8viTRmCFE=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-564-j3YMwKy9NZqDPtU3kn2kDQ-1; Fri,
+ 11 Sep 2026 10:57:40 -0400
+X-MC-Unique: j3YMwKy9NZqDPtU3kn2kDQ-1
+X-Mimecast-MFC-AGG-ID: j3YMwKy9NZqDPtU3kn2kDQ_1789138657
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 9C4A51953964;
+	Fri, 11 Sep 2026 14:57:36 +0000 (UTC)
+Received: from bfoster (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 6684D18002B1;
+	Fri, 11 Sep 2026 14:57:31 +0000 (UTC)
+Date: Fri, 11 Sep 2026 10:57:29 -0400
+From: Brian Foster <bfoster@redhat.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
+	liam@infradead.org, vbabka@kernel.org, rppt@kernel.org,
+	surenb@google.com, mhocko@suse.com, hughd@google.com,
+	baolin.wang@linux.alibaba.com, willy@infradead.org, jack@suse.cz,
+	ziy@nvidia.com, joannelkoong@gmail.com, djwong@kernel.org,
+	yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
+	chengzhihao1@huawei.com, wangkefeng.wang@huawei.com,
+	yukuai@fnnas.com
+Subject: Re: [PATCH v2] mm/truncate: fix data loss when truncating straddling
+ large folios
+Message-ID: <aqQW2ezVl5bPs0u6@bfoster>
+References: <20260909062339.473816-1-yi.zhang@huaweicloud.com>
+ <aqLaQcZvaFIrAz0e@bfoster>
+ <5796c4ea-fd8f-48aa-8c9b-f1cc8ec1dde1@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,82 +68,405 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260910100829.2532894-1-p.raghav@samsung.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Authority-Analysis: v=2.4 cv=eM2GH3p1 c=1 sm=1 tr=0 ts=6aa40cf3 cx=c_pps
- a=3Bg1Hr4SwmMryq2xdFQyZA==:117 a=3Bg1Hr4SwmMryq2xdFQyZA==:17
- a=kj9zAlcOel0A:10 a=VdqzKS8jKosA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=hD80L64hAAAA:8
- a=VnNF1IyMAAAA:8 a=iD6DdYCTz8RvmU_FwZsA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-ORIG-GUID: qLP8FhA-wTOMoezaahbIEnw90aorqNOs
-X-Proofpoint-GUID: 49reEoy6p8R2u7ZXYJzhNUkLFkqMJauL
-X-Proofpoint-Spam-Info: AW1haW4tMjYwOTExMDE5NiBTYWx0ZWRfX+rvEuCfjOwz8
- OqU1gFOl6GBCovH+SwfQj2ZLCMZvaNLA3O/O29SmZyyoqFDVFoyIzYM113mAuUN4A/KnO8mxd3C
- DkCwPYlGj40bbDgaohVoi4j0R86QX98=
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwOTExMDE5NiBTYWx0ZWRfXzUfEF2ooGXmb
- ZlkLcXS+lUZge+EvbTFj38vWVCJcycvtl3IRqljuILKlVVb2CJ3W/brQaVLaM4svvCdPVVYhKr3
- 1KHSU4rVpycASQ4OUeMTqfuxEUE8dNKmTQRznpK0/aW9oo/br62tyziOiSAwJ2TV6zqKHOhzsYh
- ZZlp2pbPFtMwDymrW23I9dJ8auoWCVQLYu0ZxD1wp/2XdUiAzIeUkxCrKxWL1wxTq702tYDxAFH
- PMukHGnME6Q58CPb/qkzloThtN0LxlwB8VJIA7xWnb26uUb4cFnPg2F3RWGHaWVL5fRdKYyiAD9
- sRkKfXBKrl/D+Ozdb6o2+C1t29z9pMPUJSE3OeCWY5Gl+wmWwR3hdrql0wi7byyVcP4kJezOLCI
- jWQGwvwZHPRYoqQecyIwpVfOuv+JegBynpdCRMlmcS/l9W1wtolCrfwpIMhAaU3tDmbC0VJjv0i
- dWA+AFoxusP4hklIRVQ==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-09-11_04,2026-09-11_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1011 impostorscore=0 malwarescore=0 adultscore=0 phishscore=0
- lowpriorityscore=0 suspectscore=0 spamscore=0 priorityscore=1501 bulkscore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2609040000 definitions=main-2609110196
+In-Reply-To: <5796c4ea-fd8f-48aa-8c9b-f1cc8ec1dde1@huaweicloud.com>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-On Thu, Sep 10, 2026 at 12:08:29PM +0200, Pankaj Raghav wrote:
-> commit 5d894321c49e ("fs: add atomic write unit max opt to statx")
-> added atomic write max optimal to statx. As XFS can support large atomic
-> writes through SW, max_opt exposes the value that will be HW accelerated
-> atomics.
+On Fri, Sep 11, 2026 at 03:34:48PM +0800, Zhang Yi wrote:
+> On 9/11/2026 12:26 AM, Brian Foster wrote:
+> > On Wed, Sep 09, 2026 at 02:23:39PM +0800, Zhang Yi wrote:
+> >> From: Zhang Yi <yi.zhang@huawei.com>
+> >>
+> >> truncate_inode_partial_folio() splits a large folio so that the caller's
+> >> truncate loop can drop the in-range sub-folios while keeping the
+> >> out-of-range tail. The first split at the punch start edge is
+> >> non-uniform, which leaves the sub-folio at the truncation end edge as
+> >> large as possible, this means it may still straddle the range, holding
+> >> both zeroed in-range and valid out-of-range data. The function then
+> >> attempts a second split at offset + length to isolate that tail.
+> >>
+> >> If the second split fails the straddling sub-folio stays merged. The
+> >> function returned true unconditionally on all exit paths of the success
+> >> block, telling the caller it was fully handled. The caller kept its
+> >> default end and the truncate loop truncated every sub-folio below it,
+> >> including the merged straddler, discarding the valid out-of-range tail.
+> >>
+> >> For example, a 4-page order-2 folio punched from offset 0 to the middle
+> >> of the last page:
+> >>
+> >>   truncate_inode_pages_range()
+> >>     truncate_inode_partial_folio()      # same_folio == true
+> >>       1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
+> >>       folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
+> >>       2nd split of folio2 fails / cannot lock
+> >>       return true                       # BUG: caller keeps default end
+> >>     end = 3
+> >>     loop truncates p0, p1, p2-3        # p3's valid tail is lost
+> >>
+> >> This became reachable after commit 7460b470a131 ("mm/truncate: use
+> >> folio_split() in truncate operation") replaced the atomic split_folio()
+> >> with folio_split(), whose non-uniform split can partially split a folio
+> >> and leave the end edge merged.
+> >>
+> >> It has gone unnoticed because a dirty large folio normally carries the
+> >> filesystem's private data, for example buffer_head, so
+> >> filemap_release_folio() -> iomap_release_folio() returns false on a
+> >> dirty folio and folio_split() aborts with -EBUSY before any split,
+> >> leaving the straddler safely unsplit. The bug is only reachable on paths
+> >> that produce dirty large folios without filesystem private data, and it
+> >> was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
+> >> attached.
+> >>
+> >> In addition, even when both splits succeed, data can still be lost when
+> >> the mapping's minimum folio order (min_order) is non-zero. folio_split()
+> >> stops at min_order instead of order 0, so the sub-folio containing a
+> >> split point stays aligned to 1 << min_order rather than to a page. The
+> >> original success path left start at the page-aligned head of the range
+> >> and set end to the exact page index of the end edge, neither of which is
+> >> a folio boundary in general. Either one could land inside the large
+> >> folio at its edge, and the truncate loop would drop that straddling
+> >> folio together with its valid out-of-range tail.
+> >>
+> >> For example, a 64K (order-4) folio with min_order = 2 punched from
+> >> offset 0 to 36K:
+> >>
+> >>   truncate_inode_pages_range()
+> >>     truncate_inode_partial_folio()        # same_folio == true
+> >>       1st split at p0 -> [p0-p3, p4-p7, p8-p15]  # non-uniform, min_order
+> >>       folio2 = p8-p15 # straddles: p8 in range, p9-p15 tail valid
+> >>       2nd split of folio2 -> [p8-p11, p12-p15]   # success
+> >>       end = p9                           # BUG: p9 inside [p8-p11]
+> >>     loop truncates ... p8-p11           # p9-p11's valid tail is lost
+> >>
+> >> Rework the contract so the caller is told the page range to discard:
+> >>
+> >>   - Return true only when a split occurred, false otherwise. This
+> >>     clarifies the existing confusing return value semantics.
+> >>
+> >>   - Add pgoff_t *pstart and *pend out-parameters that receive the page
+> >>     range fully covered by [lstart, lend] after any split (or none),
+> >>     i.e. the pages wholly within the range and safe to discard. They are
+> >>     aligned up (pstart) and down (pend) to the mapping's minimum folio
+> >>     order so they always fall on a folio boundary.
+> >>
+> >>   - Rename the byte-range parameters start/end to lstart/lend to avoid
+> >>     clashing with the new outputs and to separate byte offsets from
+> >>     folio indices.
+> >>
+> >> Callers in truncate_inode_pages_range() and shmem_undo_range() pass
+> >> &pstart for the folio at the start edge and &pend for the folio at the
+> >> end edge, so the truncate loop drops exactly the fully covered pages and
+> >> never touches a straddling folio that still holds valid out-of-range
+> >> data.
+> >>
+> >> Suggested-by: Brian Foster <bfoster@redhat.com>
+> >> Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
+> >> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
+> >> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> >> ---
+> >> v1->v2:
+> >>  - Export pstart as a new parameter so that the generic and shmem
+> >>    truncate paths don't need to recompute the start value from the
+> >>    return value. (Brian)
+> >>  - When min_order is nonzero, align [pstart, pend] to the inner
+> >>    boundaries of the folio to ensure they do not point into the middle
+> >>    of a large folio, which could otherwise cause valid data within the
+> >>    folio to be incorrectly cleared. (Joanne)
+> >>
+> >> v1: https://lore.kernel.org/linux-mm/20260903115018.2034541-1-yi.zhang@huaweicloud.com/
+> >>
+> > 
+> > Hi Zhang,
+> > 
+> > Thanks for the tweaks. I still found some of the logic circuitous as I
+> > read through it so I spent some time playing with this just to
+> > experiment with cleaning it up a bit. I ended up removing a couple of
+> > the labels, lifting the pstart/pend assignment to a default init/case,
+> > and reshuffling the split case pstart/pend assignments in a way that I
+> > think also elides the need for the boolean or using folio2. (I'm curious
+> > if this happens to address the Sashiko feedback as well..?)
+> > 
+> > Note that this is completely untested and needs further review. Since
+> > the current patch looked mostly Ok to me functionally (though I do agree
+> > with the comment about possibly splitting up into smaller changes) and
+> > has other reviews, I'm just posting this as an FYI. Here's a diff of the
+> > changes I made on top of this patch (Assisted-by: LLM, fwiw). Feel free
+> > to use some, all or none of it. Thanks!
+> > 
+> > Brian
 > 
-> As ext4 does not support SW atomics, set awu_max_opt to awu_max.
+> Hi Brian,
 > 
-> Signed-off-by: Pankaj Raghav <p.raghav@samsung.com>
-
-Hey Pankaj, I think 0 is allowed for backward compatibility as
-highlighted in the commit you mentioned:
-	...
-	Masks STATX{_ATTR}_WRITE_ATOMIC can be used to get this new field. This is
-  ok for older kernels which don't support this new field, as they would
-  report 0 in this field (from zeroing in cp_statx()) already.
-	...
-	
-But yeah sure, advertising it as awu_max is more clearer. 
-
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-
-Regards,
-ojaswin
-
-
-> ---
->  fs/ext4/inode.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+> Thanks a lot for spending time on this, and for posting the diff. I
+> agree with most of it.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 26f0f9714f03..93056c971e74 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6304,7 +6304,8 @@ int ext4_getattr(struct mnt_idmap *idmap, const struct path *path,
->  			awu_max = sbi->s_awu_max;
->  		}
->  
-> -		generic_fill_statx_atomic_writes(stat, awu_min, awu_max, 0);
-> +		generic_fill_statx_atomic_writes(stat, awu_min, awu_max,
-> +						 awu_max);
+> Lifting the default pstart/pend assignment to the top and turning the
+> early exits into plain returns removed the need for the no_split: /
+> split: labels and the tail_isolated boolean, which does make the
+> function easier to follow.
+> 
+> One thing I was wondering about: in your diff, when setting pend while
+> trying to split folio2, you completely dropped the use of folio2->index.
+> With folio2->index gone, an unaligned end means any failed split falls
+> back to folio->index. I assume that is mainly because its value is not
+> reliable under concurrency, which is exactly what sashiko pointed out.
+> However, it does mean we lose a bit of precision though, I mean the
+> sub-folios that were successfully split off at the pstart edge end up
+> left behind in the page cache. Please see a small example below.
+> 
+
+Yeah, it's possible this went a little too far on the simplification
+side. I was thinking of just being conservative and saying it's probably
+safer to err on the side of leaving folios around in the failure case
+vs. being too aggressive and losing data like the issue this is trying
+to fix.
+
+I won't be able to take a closer look at this until next week, but on a
+quick glance what you describe below sounds reasonable to me. Thanks!
+
+Brian
+
+> > 
+> > --- 8< ---
+> > 
+> > diff --git a/mm/truncate.c b/mm/truncate.c
+> > index d88a1b159084..8da16d7e6763 100644
+> > --- a/mm/truncate.c
+> > +++ b/mm/truncate.c
+> > @@ -237,10 +237,16 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+> >  	else
+> >  		length = lend + 1 - pos - offset;
+> >  
+> > +	if (pstart)
+> > +		*pstart = offset ? folio_next_index(folio) : folio->index;
+> > +	if (pend)
+> > +		*pend = (pos + size > (u64)lend) ? folio->index :
+> > +						   folio_next_index(folio);
+> > +
+> >  	folio_wait_writeback(folio);
+> >  	if (length == size) {
+> >  		truncate_inode_folio(folio->mapping, folio);
+> > -		goto no_split;
+> > +		return false;
+> >  	}
+> >  
+> >  	/*
+> > @@ -254,7 +260,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+> >  	if (folio_needs_release(folio))
+> >  		folio_invalidate(folio, offset, length);
+> >  	if (!folio_test_large(folio))
+> > -		goto no_split;
+> > +		return false;
+> >  
+> >  	min_order = mapping_min_folio_order(folio->mapping);
+> >  	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
+> > @@ -266,29 +272,30 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+> >  		 * for shmem truncate
+> >  		 */
+> >  		struct folio *folio2;
+> > -		bool tail_isolated = true;
+> >  
+> > -		if (pend)
+> > -			*pend = round_down(pos + offset + length,
+> > +		if (pstart)
+> > +			*pstart = round_up(pos + offset,
+> >  					   min_nrbytes) >> PAGE_SHIFT;
+> >  
+> > -		if (offset + length == size)
+> > -			goto split;
+> > +		if (offset + length == size) {
+> > +			if (pend)
+> > +				*pend = round_down(pos + offset + length,
+> > +						   min_nrbytes) >> PAGE_SHIFT;
+> > +			return true;
+> > +		}
+> >  retry:
+> >  		split_at2 = folio_page(folio,
+> >  				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+> >  		folio2 = page_folio(split_at2);
+> >  
+> >  		if (!folio_try_get(folio2))
+> > -			goto split;
+> > +			return true;
+> >  
+> >  		if (!folio_test_large(folio2))
+> >  			goto out;
+> >  
+> > -		if (!folio_trylock(folio2)) {
+> > -			tail_isolated = false;
+> > +		if (!folio_trylock(folio2))
+> >  			goto out;
+> > -		}
+> >  
+> >  		/*
+> >  		 * split_at2 may no longer belong to folio2 due to concurrent
+> > @@ -304,28 +311,18 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+> >  		/* make sure folio2 is large and does not change its mapping */
+> >  		if (folio_test_large(folio2) &&
+> >  		    folio2->mapping == folio->mapping &&
+> > -		    folio_split_or_unmap(folio2, split_at2, min_order))
+> > -			tail_isolated = false;
+> > +		    !folio_split_or_unmap(folio2, split_at2, min_order) &&
+> > +		    pend)
+> > +			*pend = round_down(pos + offset + length,
+> > +					   min_nrbytes) >> PAGE_SHIFT;
+> 
+> [...]
+> 
+> Assume a 4-page order-2 folio [p0 p1 p2 p3], punched from offset 0 into
+> the middle of p3, with min_order == 0.:
+> 
+>    [p0 p1 p2 p3]  --1st split @p0-->  [p0] [p1] [p2-p3]
+>    folio now points to [p0]
+>    folio2 = [p2-p3]            # p2 zeroed, p3 tail valid
+>    2nd split of [p2-p3] fails  # folio_split_or_unmap() returns failure.
+> 		
+> As a result, both pstart and pend are p0, so the sub-folios p0 and p1
+> are left behind.
+> 
+> I agree that under concurrency we really can't get a valid end position
+> since folio2 is not trustworthy(e,g., failed to get the folio2 or failed
+> to lock the folio2...). But once we have successfully got a reference to
+> and locked folio2, its index should be valid. So I've ended up with
+> something like the below (This hasn't been tested yet, just wanted to see
+> everyone's opinions), let me know what you and the other reviewers think.
+> 
+> 
+> diff --git a/mm/truncate.c b/mm/truncate.c
+> index d88a1b159084..b551e8253de7 100644
+> --- a/mm/truncate.c
+> +++ b/mm/truncate.c
+> @@ -237,10 +237,16 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>  	else
+>  		length = lend + 1 - pos - offset;
+> 
+> +	if (pstart)
+> +		*pstart = offset ? folio_next_index(folio) : folio->index;
+> +	if (pend)
+> +		*pend = (pos + size > (u64)lend) ? folio->index :
+> +						   folio_next_index(folio);
+> +
+>  	folio_wait_writeback(folio);
+>  	if (length == size) {
+>  		truncate_inode_folio(folio->mapping, folio);
+> -		goto no_split;
+> +		return false;
 >  	}
->  
->  	flags = ei->i_flags & EXT4_FL_USER_VISIBLE;
 > 
-> base-commit: d5ba62a0b130441bcabca59c2fd2d59e65360234
-> -- 
-> 2.51.2
+>  	/*
+> @@ -254,7 +260,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>  	if (folio_needs_release(folio))
+>  		folio_invalidate(folio, offset, length);
+>  	if (!folio_test_large(folio))
+> -		goto no_split;
+> +		return false;
 > 
+>  	min_order = mapping_min_folio_order(folio->mapping);
+>  	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
+> @@ -266,66 +272,65 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>  		 * for shmem truncate
+>  		 */
+>  		struct folio *folio2;
+> -		bool tail_isolated = true;
+> +		pgoff_t end, aligned_end = round_down(pos + offset + length,
+> +						min_nrbytes) >> PAGE_SHIFT;
+> 
+> -		if (pend)
+> -			*pend = round_down(pos + offset + length,
+> +		if (pstart)
+> +			*pstart = round_up(pos + offset,
+>  					   min_nrbytes) >> PAGE_SHIFT;
+> 
+> -		if (offset + length == size)
+> -			goto split;
+> -retry:
+> +		if (offset + length == size) {
+> +			end = aligned_end;
+> +			goto out;
+> +		}
+> +
+>  		split_at2 = folio_page(folio,
+>  				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+>  		folio2 = page_folio(split_at2);
+> 
+> -		if (!folio_try_get(folio2))
+> -			goto split;
+> -
+> -		if (!folio_test_large(folio2))
+> -			goto out;
+> -
+> -		if (!folio_trylock(folio2)) {
+> -			tail_isolated = false;
+> -			goto out;
+> -		}
+> -
+>  		/*
+> -		 * split_at2 may no longer belong to folio2 due to concurrent
+> -		 * split. Retry to find the correct folio in case it's still
+> -		 * large.
+> +		 * folio2 may become stale due to a concurrent split or
+> +		 * freeing, so validate it before and after taking its lock.
+> +		 * If it fails, we can't get an accurate end position and fall
+> +		 * back to folio->index, which may leave sub-folios split off
+> +		 * at the offset edge in the page cache this round.
+>  		 */
+> +		end = folio->index;
+> +		if (!folio_try_get(folio2))
+> +			goto out;
+> +		if (folio2->mapping != folio->mapping ||
+> +		    !folio_test_large(folio2))
+> +			goto out_put;
+> +
+> +		if (!folio_trylock(folio2))
+> +			goto out_put;
+> +
+>  		if (page_folio(split_at2) != folio2) {
+>  			folio_unlock(folio2);
+> -			folio_put(folio2);
+> -			goto retry;
+> +			goto out_put;
+> +		}
+> +		if (!folio_test_large(folio2)) {
+> +			end = aligned_end;
+> +			folio_unlock(folio2);
+> +			goto out_put;
+>  		}
+> 
+> -		/* make sure folio2 is large and does not change its mapping */
+> -		if (folio_test_large(folio2) &&
+> -		    folio2->mapping == folio->mapping &&
+> -		    folio_split_or_unmap(folio2, split_at2, min_order))
+> -			tail_isolated = false;
+> +		/* Split failed: back off to the head of the straddler */
+> +		if (folio_split_or_unmap(folio2, split_at2, min_order))
+> +			end = folio2->index;
+> +		else
+> +			end = aligned_end;
+> 
+>  		folio_unlock(folio2);
+> -out:
+> -		if (!tail_isolated && pend)
+> -			*pend = folio2->index;
+> +out_put:
+>  		folio_put(folio2);
+> -split:
+> -		if (pstart)
+> -			*pstart = round_up(pos + offset,
+> -					   min_nrbytes) >> PAGE_SHIFT;
+> +out:
+> +		if (pend)
+> +			*pend = end;
+>  		return true;
+>  	}
+>  	if (!folio_test_dirty(folio))
+>  		truncate_inode_folio(folio->mapping, folio);
+> -no_split:
+> -	if (pstart)
+> -		*pstart = offset ? folio_next_index(folio) : folio->index;
+> -	if (pend)
+> -		*pend = (pos + size > (u64)lend) ? folio->index :
+> -						   folio_next_index(folio);
+>  	return false;
+>  }
+> 
+> 
+
