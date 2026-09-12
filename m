@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5D2C35F184
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2026 06:42:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71F3836E484
+	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2026 06:42:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789195336; cv=none; b=XDy/ROdOjqIkDQh1wmUvCP7PoLwZbfc2wEzqUuaicIj8d5/gglpnVzBpzSxZEXolzvHOHffj+yRVdcBaSYUUzOK2q981OhcshdB9AAWKhXBbJrwUvmOGyOevmCOQeLB0aPc/fJZCS+74o1kbKtTRzWv+7fLNbA4k3ssXb8sochM=
+	t=1789195352; cv=none; b=sQrDxxAQC/JdovltDFPSBsIQcjJolPRPKwCR0r+KzS3AXnfS6DEoo1iL57RA9GNP2Vg5nBgVxOFt/uC3s8MaIsjKEBAEdkOyjEFP68VJ2KkA1x67iD8+tAvUeZ+FsK4nWyaeEnlHYq5oI+XAmolPPj55sir9KKbNFQnsmVJDU9Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789195336; c=relaxed/simple;
-	bh=7rs8f4dRNVu/BpxnmPeNgzgKtlZSvSxuI+EzLQz4KCM=;
-	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:Content-Type; b=U1wOxbAok09tKiQud1k4Oep6Qk9Ijt6QG0dwMpeIQLOdK/5Ce0jpiFm5SKvVVuswS/cLDuYR13jXmsr2xAu0Z5998K0W22BOz7+FfYG0hqY/dlsyMtY2tAd8OC85bai+16Vfgi9bkg1YwWCZmhLwBaFAL6NjvBlqmis0SASACc4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Dg0evtt2; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789195352; c=relaxed/simple;
+	bh=O7dkoaFcI2V9sSYLzUjIU0eVnQuTK2OPhsIQe2TO28s=;
+	h=Date:Subject:From:To:Cc:Message-ID:MIME-Version:Content-Type; b=Gx+bM4QIPHovSXdhhV4Pum6XVs6dbEKkdkGEwGZrWwTBtKSDlDzDr2aTHQCqBWoOA5RHGAXmml3KhNmLSUTUXjITWK8LLtcyrQpDC5Np+/xsQmkOZUaEBg/uYHQtiQNQZ9xfR8knQvGGx0N4JW1b5k3+DATO8uDR9fEWTk1W/KI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=S1vEVJHx; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Dg0evtt2"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 690D01F000FF;
-	Sat, 12 Sep 2026 06:42:15 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="S1vEVJHx"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 14D821F000FF;
+	Sat, 12 Sep 2026 06:42:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789195335;
-	bh=0E2zdM+YMdmr9LW1ZnRd4xzmGHFtS8/oasbt7ibLkd4=;
+	s=k20260515; t=1789195351;
+	bh=2cK/4VDIu/GFUr3gdGQjL+uf3bQWraJQjtj/anq+gl8=;
 	h=Date:Subject:From:To:Cc;
-	b=Dg0evtt2p4772YUMdT49QFRwvvW+l1MXEFvuDaxYB0PrkjTX8XmaEygNTTfkRAZtc
-	 /Ku+c0xkpQTeBkNn02mfhjsSjj1AHhHyRt8GwNGn0YjH0zMdFrXdS/3hXs+8CcFw4+
-	 NSBbPV1U8blIIpy4OuyPJdzrpRmwXcdgeaUN8bJ+SlG+pCM3ebbtjeuxrqI5D8sa8O
-	 Gh2DHmCzHvo1wUuJUZ4FiwaIudhy5W10mxiMEK5zRxP08zpGEju/TCF7NKyUieWaqj
-	 czm5NGfGe2uvc5DcVyjKItC0ml3blebxEqPJIByIv1sC4RlM4Hnzz8GrGBMJUk3myn
-	 epPTEFVMG04+A==
-Date: Fri, 11 Sep 2026 23:42:15 -0700
-Subject: [GIT PULL 3/4] fuse2fs: improve block and inode caching
+	b=S1vEVJHxDwukD525csRRV+lXKC1HDjw/uXM8iz9Ulehdbo/RItCoGiH4v1QF+gPwA
+	 vpLKapVEJqhr8/H+QV/MpVSAX51MHNLuf7fq9KLxpXAkH9bZr8k1Iuu4z3WRT9juOq
+	 scY/eCEsdCibn6XxZeTkdVQAT3E2QCgpGkYu7CKYAOAIlyBAEMm+BaBpBJOKKuLuSk
+	 R7j8ySBWV5iKdRmUgTQFaHhNAABAjm/K5shr+9E94rX3LKy5HVtWQu7A+Lbd1tO5x1
+	 AFPhZQoMegEthzeuCzQ7TDT7pdsx02MA9EBu963Lu96J3EQ8t0myh/DLYopAO19bwX
+	 PlAvCE6ut2tXA==
+Date: Fri, 11 Sep 2026 23:42:30 -0700
+Subject: [GIT PULL 4/4] fuse4fs: reclaim buffer cache under memory pressure
 From: "Darrick J. Wong" <djwong@kernel.org>
 To: tytso@mit.edu
 Cc: djwong@kernel.org, linux-ext4@vger.kernel.org
-Message-ID: <178919524496.1033422.16170817413025710050.stg-ugh@frogsfrogsfrogs>
+Message-ID: <178919524526.1033422.4174224890210516955.stg-ugh@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,58 +48,51 @@ As usual, I did a test-merge with the main upstream branch as of a few
 minutes ago, and didn't see any conflicts.  Please let me know if you
 encounter any problems.
 
-The following changes since commit 8bf9ced74cb6f7cfc26dfbe0f8fff5ed13f51c90:
-
-debian: update packaging for fuse4fs service (2026-09-11 23:35:02 -0700)
-
-are available in the Git repository at:
-
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse2fs-caching_2026-09-11
-
-for you to fetch changes up to 348aa5ebbb5d52aecba07f6069be986be9bfc4fe:
+The following changes since commit 348aa5ebbb5d52aecba07f6069be986be9bfc4fe:
 
 libext2fs: improve caching for inodes (2026-09-11 23:35:03 -0700)
 
-----------------------------------------------------------------
-fuse2fs: improve block and inode caching [v6 3/4]
+are available in the Git repository at:
 
-This series ports the libext2fs inode cache to the new cache.c hashtable
-code that was added for fuse4fs unlinked file support and improves on
-the UNIX I/O manager's block cache by adding a new I/O manager that does
-its own caching.  Now we no longer have statically sized buffer caching
-for the two fuse servers.
+https://git.kernel.org/pub/scm/linux/kernel/git/djwong/e2fsprogs.git tags/fuse4fs-memory-reclaim_2026-09-11
+
+for you to fetch changes up to 9fb92b58e1c74300262242812d53b84a7f5b51ac:
+
+fuse2fs: flush dirty metadata periodically (2026-09-11 23:35:03 -0700)
+
+----------------------------------------------------------------
+fuse4fs: reclaim buffer cache under memory pressure [v6 4/4]
+
+Having a static buffer cache limit of 32MB is very conservative.  When
+there's plenty of free memory, evicting metadata from the cache isn't
+actually a good idea, so we'd like to let it grow to handle large
+working sets.  However, we also don't want to OOM the kernel or (in the
+future) the fuse4fs container cgroup, so we need to listen for memory
+reclamation events in the kernel.
+
+The solution to this is to open the kernel memory pressure stall
+indicator files, configure an event when too much time is spent waiting
+for reclamation, and to trim the buffer cache when the events happen.
 
 Signed-off-by: "Darrick J. Wong" <djwong@kernel.org>
 
 ----------------------------------------------------------------
-Darrick J. Wong (6):
-libsupport: add caching IO manager
-iocache: add the actual buffer cache
-iocache: bump buffer mru priority every 50 accesses
-fuse2fs: enable caching IO manager
-fuse2fs: increase inode cache size
-libext2fs: improve caching for inodes
+Darrick J. Wong (4):
+libsupport: add pressure stall monitor
+fuse2fs: only reclaim buffer cache when there is memory pressure
+fuse4fs: enable memory pressure monitoring with service containers
+fuse2fs: flush dirty metadata periodically
 
-lib/ext2fs/ext2fsP.h     |  13 +-
-lib/support/cache.h      |   1 +
-lib/support/iocache.h    |  17 ++
-debugfs/Makefile.in      |   8 +-
-e2fsck/Makefile.in       |  12 +-
-fuse4fs/Makefile.in      |  10 +-
-fuse4fs/fuse4fs.c        |  15 +-
-lib/ext2fs/Makefile.in   |  69 ++---
-lib/ext2fs/inline_data.c |   4 -
-lib/ext2fs/inode.c       | 215 +++++++++++---
-lib/ext2fs/io_manager.c  |   3 +
-lib/support/Makefile.in  |   6 +-
-lib/support/cache.c      |  16 +
-lib/support/iocache.c    | 751 +++++++++++++++++++++++++++++++++++++++++++++++
-misc/Makefile.in         |  11 +-
-misc/fuse2fs.c           |  11 +-
-resize/Makefile.in       |  11 +-
-tests/fuzz/Makefile.in   |   4 +-
-tests/progs/Makefile.in  |   4 +-
-19 files changed, 1057 insertions(+), 124 deletions(-)
-create mode 100644 lib/support/iocache.h
-create mode 100644 lib/support/iocache.c
+lib/support/list.h      |   6 +
+lib/support/psi.h       |  66 ++++++
+fuse4fs/Makefile.in     |   3 +-
+fuse4fs/fuse4fs.c       | 258 +++++++++++++++++++++-
+lib/support/Makefile.in |   4 +
+lib/support/iocache.c   |  19 ++
+lib/support/psi.c       | 557 ++++++++++++++++++++++++++++++++++++++++++++++++
+misc/Makefile.in        |   3 +-
+misc/fuse2fs.c          | 189 +++++++++++++++-
+9 files changed, 1091 insertions(+), 14 deletions(-)
+create mode 100644 lib/support/psi.h
+create mode 100644 lib/support/psi.c
 
