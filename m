@@ -1,67 +1,87 @@
-Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-00364e01.pphosted.com (mx0a-00364e01.pphosted.com [148.163.135.74])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D3DB368D5A
-	for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2026 08:29:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AEEBC34027B
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Sep 2026 23:18:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.135.74
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789201742; cv=none; b=ZrjYgjlj0jRe+MTLYMz9ryGD1imBxX9+RGYYd4uhC9Lx++E1+8tEsHQzWHt89EbiDduaisi//mD1WKLfERwEU3ycYTEp4mz51F8A3U1xIDW/9bZt3n45KEvNT4ALPdtnDGIZ1BjjZDCn1oiIuAEYoYZ+R2/AXoc57sSKZ3h+qcc=
+	t=1789341522; cv=none; b=o/m1BmCKyJASc252WLO/Ymxha9f/KWrtROZQiuifg+NotmSuwAECfN1t/5bqM8HU7PDlKZEYY7eHqOI/d+Ph4tjM4utDvgBQ2O0mAC3oKKlITz4/0gRMkWE0g6MmzkXOULKqQyG6MGQJhIJlqP3WY/lP2Z7Eo5foTcBIH4dLhhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789201742; c=relaxed/simple;
-	bh=Jr3Z5hnHY/gSm4sXIwIJ4qOe2MDnzFwkN9JANbpBKb0=;
+	s=arc-20240116; t=1789341522; c=relaxed/simple;
+	bh=QPFJR1vWXmId38S6Ojs7fTtlJqKNFpoaJ1oU9u/sTPw=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Mvcqo95MpyMOH6Gfq3hXkzBvz9R2j4phy56lRt1bAHIEbxt607bQwpTdDv1eXZ6UGdaeG7N8C9XS8RWGSzDhtbpKELCn2ESDIO+U9yM6QBapcFC4oEQ9gg1G7ojpSMBbAogX3D1REV9j32nM+wvPmkMIE410D4o8Ya7+nYrMZQw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=lN2JCykG; arc=none smtp.client-ip=74.125.227.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	 In-Reply-To:Content-Type; b=buI8fI7zOulgJ9NefTc04MMxyzwwhX5zHqeSwK7EgXwJVRuszQQ9FXu4IrXVcxH8Z/oprMaovpHc202uvcdqIGYDpZJYtQn4PKZrf7gfiqyuFqcxnBDnAQujn6Hze6Vk6fCk28Afm8tXDp7VS6Cy/QEG3fGav/Xy6tyYqIoeU/o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu; spf=pass smtp.mailfrom=columbia.edu; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=BQ/XtwgH; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=kKTjyUYR; arc=none smtp.client-ip=148.163.135.74
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lN2JCykG"
-Received: by mail-pj2-f12.google.com with SMTP id 98e67ed59e1d1-396ccb65437so213723a91.3
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Sep 2026 01:29:00 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="BQ/XtwgH";
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="kKTjyUYR"
+Received: from pps.filterd (m0167070.ppops.net [127.0.0.1])
+	by mx0a-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 68DMZNA2434897
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Sep 2026 19:18:40 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
+	cc:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pps01; bh=ObdQ
+	sYoMgqM8w+pcvvksK13OgLV53W+GjlfoqKgXnfE=; b=BQ/XtwgHWxGaUPJsgd8F
+	yG5ZfmhoUv1wcuSGz+ROMMXmxjQT+PZL7OmaaAN+I2LreCpXDbuwsKy3n6+6BaaD
+	Cyz5Txu9dE4X+agjtcrEFURVlQQckCh35yOgj2uwUdb+KLGFvizWEdyXCYV9Fhxj
+	wa6YRttSXKGznHn9fCyxkMjbNsiOoZrT/TDGr8B0wOTwPm5lc4TqEQ9QZfBn5XvS
+	SpNB1YU3nXPx1mirH/Bn5tYODyfRFC1l1Tg9k0zOzavA3Cuz3Lht8fansFlXGlpO
+	DRybnUfFwN5r13GDDk2ep3bENxz5IONM8CnhSGcUCOecy0B8opPmRWCXGG7JwreM
+	AQ==
+Received: from mail-qt1-f199.google.com (mail-qt1-f199.google.com [209.85.160.199])
+	by mx0a-00364e01.pphosted.com (PPS) with ESMTPS id 4gnyfg1e6h-1
+	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Sun, 13 Sep 2026 19:18:39 -0400 (EDT)
+Received: by mail-qt1-f199.google.com with SMTP id d75a77b69052e-530d028f779so28812841cf.2
+        for <linux-ext4@vger.kernel.org>; Sun, 13 Sep 2026 16:18:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789201740; x=1789806540; darn=vger.kernel.org;
+        d=columbia.edu; s=lionmail; t=1789341519; x=1789946319; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=8WyrkMGCFnrJHZlBLRQ3nbLnQoILyTDTc6d/TcvwDpo=;
-        b=lN2JCykGFtPU0EiCBU3/ynkGZYCkG1KsxQbDGFoMAKGOzO80T1Xs3lVuRdljgr+VDl
-         E61eWXVFVKLkDNxRJ9eEcusa5ah/gqAC2scjHElZ9R+HwDvqKSbO8nyrnWf9AwEXHWjF
-         B3lgNm5kTaiYlZ5ba2j1RBg2jey0ydNxeMxO54/7XKDU6pdi4JZ7x0T+EVIus8RUxopg
-         Va0P93ya0shOB2FzEIPMfCiGPrRKcy+kJj2htsvKTnHsOq3RBQpqa6XxxE8cNToFra5N
-         tFqh3V7qnKr1pAwzYmxfLXynS2CdrOQF2wPxilnKlomRR/SJhdjmrJVjRPgNFi/grv/i
-         9uQA==
+        bh=ObdQsYoMgqM8w+pcvvksK13OgLV53W+GjlfoqKgXnfE=;
+        b=kKTjyUYRY0lyKQdmmOhd0loYvhRhao0QfSbCanRzduUGh7knZ2XrrKILUE2exGbjiE
+         ysJoQrPrFERQmiX3KQslYkm1pVjakLc0O7qNKRUDW6+kqLpUn9rooIX+1TNAlyj78M0p
+         TYxpuVVAjnXhi08M/S02Xoi/YoTsDnyPOySe6idxvLjkWIB5lcQiJuNYZIKTvZ6phhLI
+         ytOQjQQqmWESeTVIatAqale+pJbwpVNaQIxXKjhglRrpHNXT0d3r8+CWS7ojFREJYUbH
+         Z1+Ny7mVqoqgF5Rri12K77iAKCqVytO0ldFOXHUC0KBArANLX00mDCKsux0ScGGK3PGK
+         EKIg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789201740; x=1789806540;
+        d=1e100.net; s=20251104; t=1789341519; x=1789946319;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=8WyrkMGCFnrJHZlBLRQ3nbLnQoILyTDTc6d/TcvwDpo=;
-        b=cw+9POLq6NKeAsFIuGO8apMa3OnZxYXg++Az86dYeEIcx2/Va7+LQMPbd4OtImHv0q
-         GDnsjBN8y7cpbG5a//Mc9V4pDIIKT5aGZb44gneq4kBAzHBCEBUq8efjTmAmNda3MZFw
-         TkJdE+z7MqFL41ISLAILu7OZsoe9FWUm2O32ySIvKLfdasIIRyBwosAsO2N3LTypequk
-         hPkPVNsetuGiWLKvlMY2GBWilpWk0Qn65s/cTjFbkrbenV6wdF3K+zp0UkICqiAlmKTn
-         ji0q8884xwxzbXZpr53i2bpfjIQwCCpyyaY3kYOuVv5x2kDfzdwHsDEHYwvWexmo8QgH
-         uFiw==
-X-Gm-Message-State: AFuF++nmG+BZRjJTk4lTL07n5QX/b5qwdbYFmcaKI4CU8md2+LQhbSMu
-	4q4j9TQoLqqPG4j6ur/YPbw7C9aOAV8RlzjirSh195iYTcyjhBpOUycV
-X-Gm-Gg: AYBFou2cjrWx7nm8z0KObFY4DE+3HfkzoBZHoUj73XGEY8M990Tul8K5vJqpV1NQklt
-	iMbD8kJHWaiD83C3h7gfgVVWGynUjRdFkj/+o5PrQ+Kq7OZWMXFn9wB7QCBvRSqZ8WTYTOM/Tcw
-	Qji7219rWS4xapbrUnq0zx7sNKknxL6dUMIKlUiygSChoFDYkGKF5NSK8HZIwUnqa7NFsC2p7Ea
-	+3OjQ5/EN7k/xZVNGyDIBK4Ll0lSrrmY66Oe+cDzb0zK/TJVhphjWGeKuIGNPF1l3Zz6zLDO9yz
-	ZPejJWwKK1kIEA3B21no4dc1CGVub4JWf7JsBZ4DqHW1lZ8Ix4lzlXRZKafyckobkr/o8hOC07J
-	rq27pGIpaZmA90e+3JdkLNjaT1gE4SG3XAeLRpIFfF1i9aawQ1yvLWltwIeWuQrCsQU2zLlWvpK
-	nhvUldMPGh1ui5VcdNiurMhoigGieNwZjNwuGUvMhEf5SdkBuJC96ZuFo0wvp9MmCvbqzbLC4t8
-	6xjNZt6DaHVziOZIEs=
-X-Received: by 2002:a17:90a:c2c6:b0:396:5fce:8e24 with SMTP id 98e67ed59e1d1-39dbbe85d7bmr3204586a91.4.1789201740359;
-        Sat, 12 Sep 2026 01:29:00 -0700 (PDT)
-Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-39d99531b16sm9840725a91.14.2026.09.12.01.28.56
+        bh=ObdQsYoMgqM8w+pcvvksK13OgLV53W+GjlfoqKgXnfE=;
+        b=Y8M3uI7ZKn6ubZpQVdubFt3dAminp30oVaxVW0LEYGvugx+nzARlh430LXpBoaZniP
+         iZq7MN4wvw1VuiQ6yuxslfwlBT/zPUA77FI/qYPSdsqi0JuWprNoIip3/EJrKVCVisBa
+         M/8p2aeZIILr9vCKC/d33o2IHGSiaj7xHOZ6eVeeV/DWfXmqWUq8llL9xxfKxU9te8tm
+         4Z2b3PYOImD8v6Y4Tsc1VfSfKAAu5nubWaX7U9Mj5UTseXwDHas+Tk7JAmU/3Ncwv1VT
+         ZY4UfyrIfyoQbnv3NKZR8t1EPfks1ScnZkaAgHHqua7dsmGpw/vxjlvSi6w7zflm/iVv
+         N1Ng==
+X-Forwarded-Encrypted: i=1; AKwUvBwDnmu0InY8Dij5UI9bD7GOQpojtdl2qctDuBWLobPRYdY+Hcd3Gv0qq8lNFG6g8LyBdTLpGzFAM4Kf@vger.kernel.org
+X-Gm-Message-State: AFuF++nzTB1tLsRkue+VSeNR+9WjVzVWs4lXeYbcBXIL07c1l2MiKpyN
+	x9+qYwdKKSD0B3HbBY7jbGmMs+dwATqU1OAmb8nwMQbebc2sNFW/WrVKOX8oCllNWRhpVkXuq9O
+	p4pIffggB9IXrh4MllrU8Ewe6VJucvEPLwTRAmhkpMpN0CvlrMdYafT0K1Uk=
+X-Gm-Gg: AYBFou17HkE7+n9xgD70rFxmCb+uUbzaMd2DSvUoM44OGWOC61WMLJsOBgA4iAvNhAK
+	ASw0T/LqgDrkE4sYEPfy4jNbkwu+o4K55D9hnHM7njsX+gCREu9QfvPctGyKZbwI2mdaVvf/Zwo
+	iDI0sNps/X2b7/3tc8LBY6iyK5UdM2S9PaViAbnl1rOID/TPmt8hnYn9OqY/2cjUrSCjs1TwHH+
+	NBGMH2DFDPNybiKslCzyny2Q5XcN0O8SjBada0yXmIxJ14LxvCW+JU+DZvbRE7gQ8/bE3ruAGlC
+	TgLUFyYv8KT93f5KR9mtiJT6F4FPbi/oOQl7xv0sYtMi4QDazu+/Y6x2AoQ2C+RGCfnpLgzom2G
+	C1qrksHf3cBAnXd63WSHiZWJLXlCoYmAsQAjFWiFcgGMkB2CaF6HZexuPaA==
+X-Received: by 2002:a05:622a:15d6:b0:530:b2e1:8e38 with SMTP id d75a77b69052e-5310d063e03mr2361281cf.51.1789341518764;
+        Sun, 13 Sep 2026 16:18:38 -0700 (PDT)
+X-Received: by 2002:a05:622a:15d6:b0:530:b2e1:8e38 with SMTP id d75a77b69052e-5310d063e03mr2360851cf.51.1789341518241;
+        Sun, 13 Sep 2026 16:18:38 -0700 (PDT)
+Received: from [10.207.49.22] (nat-128-59-179-215.net.columbia.edu. [128.59.179.215])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-530ca46283csm82324741cf.5.2026.09.13.16.18.37
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 12 Sep 2026 01:28:59 -0700 (PDT)
-Message-ID: <bda020e4-2145-4c30-9330-ff8f9a6ff517@gmail.com>
-Date: Sat, 12 Sep 2026 16:28:52 +0800
+        Sun, 13 Sep 2026 16:18:37 -0700 (PDT)
+Message-ID: <03907742-fc59-4d31-b12d-760a67e163a6@columbia.edu>
+Date: Sun, 13 Sep 2026 19:18:37 -0400
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,173 +89,80 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v6 15/31] ext4: implement writeback path using iomap
-To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903123543.2302999-16-yi.zhang@huaweicloud.com>
- <20260903133650.EDC101F00A3D@smtp.kernel.org>
+Subject: Re: [PATCH RFC] ext4: never fall back to buffered I/O for atomic
+ direct writes
+To: Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>,
+        Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>, Christoph Hellwig <hch@lst.de>,
+        John Garry <john.g.garry@oracle.com>, linux-block@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20260909-ext4-atomic-no-fallback-v1-1-5a6b9539c002@columbia.edu>
+ <vgxva24firqq6eqt2wyovm6uqh356nvrsb35exzxtnxftspy3w@gb7uiv4gwets>
 Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20260903133650.EDC101F00A3D@smtp.kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+From: Tal Zussman <tz2294@columbia.edu>
+In-Reply-To: <vgxva24firqq6eqt2wyovm6uqh356nvrsb35exzxtnxftspy3w@gb7uiv4gwets>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
+X-Proofpoint-Spam-Info: AW1haW4tMjYwOTEzMDMzNCBTYWx0ZWRfX/vQYUgIPm0QV
+ sGwt2cf36Y5N+p+DOPnd9vI8Qk+OGA6sx2LYeqJa78bc9bW/1aC+zsfT8HF+hfDMT1VN3tIuF6N
+ YDFl0LoqC3Geb9qIKpDYe61B9pQDa9ZtZ+hLanTs3CcsX9DBtIp2
+X-Authority-Analysis: v=2.4 cv=bOODs/+Z c=1 sm=1 tr=0 ts=6aa72f4f cx=c_pps
+ a=WeENfcodrlLV9YRTxbY/uA==:117 a=2jelXx5xVcRIF5zNctN5Qg==:17
+ a=IkcTkHD0fZMA:10 a=VdqzKS8jKosA:10 a=x7bEGLp0ZPQA:10 a=A0y_DWxS2BwA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=svvvyxlR1OQQkelhaPoB:22
+ a=c92rfblmAAAA:8 a=yFLjkkry6Ff6WXaXFHAA:9 a=QEXdDO2ut3YA:10
+ a=kacYvNCVWA4VmyqE58fU:22 a=GvGzcOZaWPEFPQC_NcjD:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwOTEzMDMzNCBTYWx0ZWRfX3/3/b059NQbx
+ zM2IgnVtCPA4/uQppwDUnd0loJWbc7pUi583VawTMA0R8DJjUQynbBBkwOaTe5e0Dbm2oQnhfMp
+ iTI6+wZ7tFi85uhhPqeo9m7XtIKhDmQasKnjtUC45Tb7AHkFSNRNifVnxWaeJc59baotESOwWZl
+ SAYTG4nohlgqFw3IZsp0DS5Y/nGm5mgNCTgpJoQpqJ85h51Nm14DC3YYgEYU1yAmtPG1Ngoek+N
+ O9zQHAasfNXR++TPe9PNGVPyi7HQRKSmJWvFeLXmwZcmbIl6rppTmb/G+qPW5ASAkvMlqHFnLLK
+ z4JqZb1oGKKydWjOnmh/jEgk2lwEeWIY5WnX2xkkKSzK1odebbE3SBhkWV82p1/hZEIhm43oQ3K
+ ezakRGnAoaJAFUdPTtUBVqD4FXrvg54gjrv432s0dIYoc5ou+z5Ej1TpwrpuNf/Mxe51edw2Ee2
+ p7i3jn2MR4Bn607WssQ==
+X-Proofpoint-ORIG-GUID: yfDcrgolDUudC99zYHH9uDPJk5s_iu32
+X-Proofpoint-GUID: yfDcrgolDUudC99zYHH9uDPJk5s_iu32
+X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11904
+ signatures=596817
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 spamscore=0 phishscore=0 malwarescore=0 bulkscore=10
+ adultscore=0 suspectscore=0 clxscore=1015 lowpriorityscore=10
+ impostorscore=10 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2609040000
+ definitions=main-2609130334
 
-On 9/3/2026 9:36 PM, sashiko-bot@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 2 potential issue(s) to consider:
-> - [Critical] Journal Credits Exhaustion / Panic in `ext4_iomap_finish_ioend()` due to arbitrarily large merged ioends.
-> - [High] Infinite loop in `ext4_iomap_map_writeback_range` due to open-coded ENOSPC retry logic without limits.
-> --
+On 9/10/26 6:58 AM, Jan Kara wrote:
+> I agree your patch makes things better but I have a question: are short
+> writes (even 0) allowed for atomic writes? I don't think so as far as my
+> understanding of atomic writes goes (and based on what I could find in the
+> code). But after your change we'd just return short write (including ret ==
+> 0) now which doesn't look ideal and also doesn't match your "so any future
+> bug yields an error rather than a torn write with a WARN()" description. So
+> as a futureproofing I'd maybe suggest just:
 > 
-> commit e7cc5164579a940550c93afb2dfec1f186e079ed
-> Author: Zhang Yi <yi.zhang@huawei.com>
-> ext4: implement writeback path using iomap
+> 	if (WARN_ON_ONCE(iocb->ki_flags & IOCB_ATOMIC && ret >= 0 &&
+> 			 iov_iter_count(from)))
+> 		ret = -EIO; /* or maybe -ENOPROTOOPT??? */
 > 
-> This commit adds the iomap writeback path for ext4 buffered I/O, introducing
-> new writeback operations and end I/O handlers. It maps and allocates blocks
-> as unwritten extents during writeback to prevent stale data exposure.
-> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 1f18854b9cdd3..f7d7610197a1c 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
-> 
-> [ ... ]
-> 
->> +static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
->> +					  loff_t offset, unsigned int dirty_len)
->> +{
-> 
-> [ ... ]
-> 
->> +retry:
->> +	map.m_lblk = index;
->> +	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
->> +	ret = ext4_map_blocks(NULL, inode, &map,
->> +			      EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
->> +			      EXT4_GET_BLOCKS_METADATA_NOFAIL |
->> +			      EXT4_GET_BLOCKS_IO_SUBMIT |
->> +			      EXT4_EX_NOCACHE);
->> +	if (ret < 0) {
->> +		if (ext4_emergency_state(sb))
->> +			return ret;
->> +
->> +		/*
->> +		 * Retry transient ENOSPC errors, if
->> +		 * ext4_count_free_blocks() is non-zero, a commit
->> +		 * should free up blocks.
->> +		 */
->> +		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb)) {
->> +			jbd2_journal_force_commit_nested(journal);
->> +			goto retry;
->> +		}
-> 
-> [Severity: High]
-> Could this open-coded retry loop result in an infinite hang under certain
-> conditions?
-> 
-> If a non-root user fills the disk up to the threshold of root-reserved
-> blocks, ext4_map_blocks() will return -ENOSPC because the block allocator
-> denies access to reserved blocks for non-root users.
-> 
-> However, ext4_count_free_clusters() returns the total free space including
-> those root-reserved blocks. Because the count evaluates as non-zero, the code
-> will force a journal commit and goto retry indefinitely, without any loop
-> limits.
-> 
-> Should this retry logic use a limit like ext4_should_retry_alloc(), or
-> specifically account for root-reserved blocks to prevent a soft lockup in
-> the writeback worker thread?
+> before the fallback to buffered IO as a more robust solution.
 > 
 
-This logic is inherited from the existing buffer_head writeback path
-(the -ENOSPC handling in ext4_do_writepages()), which also retries after
-a forced commit without any limit, so it does not introduce a new class
-of problem.  That said, I agree that bounding the number of retries is
-better, and I will add a limit in the next version.
+Short writes shouldn't be allowed, so this is definitely better in terms of
+future-proofing. I'll do this with EIO but with the if (WARN_ON_ONCE())
+inside the existing ret and iov_iter_count() check to avoid duplicating the
+checks.
 
-
->> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
->> index 0236b6b9785a2..9b0e12b5463cf 100644
->> --- a/fs/ext4/page-io.c
->> +++ b/fs/ext4/page-io.c
-> 
-> [ ... ]
-> 
->> +static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
->> +{
-> 
-> [ ... ]
-> 
->> +	/*
->> +	 * We may need to convert one extent, update the i_disksize and
->> +	 * dirty the inode.
->> +	 */
->> +	credits = ext4_chunk_trans_blocks(inode,
->> +			EXT4_MAX_BLOCKS(size, pos, inode->i_blkbits));
->> +	handle = ext4_journal_start(inode, EXT4_HT_EXT_CONVERT, credits);
->> +	if (IS_ERR(handle)) {
->> +		ret = PTR_ERR(handle);
->> +		goto out_err;
->> +	}
-> 
-> [ ... ]
-> 
->> +void ext4_iomap_end_io(struct work_struct *work)
->> +{
->> +	struct ext4_inode_info *ei = container_of(work, struct ext4_inode_info,
->> +						  i_rsv_conversion_work);
->> +	struct iomap_ioend *ioend;
->> +	struct list_head ioend_list;
->> +	unsigned long flags;
->> +
->> +	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
->> +	list_replace_init(&ei->i_rsv_conversion_list, &ioend_list);
->> +	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
->> +
->> +	iomap_sort_ioends(&ioend_list);
->> +	while (!list_empty(&ioend_list)) {
->> +		ioend = list_entry(ioend_list.next, struct iomap_ioend, io_list);
->> +		list_del_init(&ioend->io_list);
->> +		iomap_ioend_try_merge(ioend, &ioend_list);
->> +		ext4_iomap_finish_ioend(ioend);
->> +	}
->> +}
-> 
-> [Severity: Critical]
-> Is there a risk of exhausting journal credits and panicking JBD2 when ioends
-> are merged?
-> 
-> In ext4_iomap_end_io(), iomap_ioend_try_merge() merges contiguous completions
-> into an arbitrarily large ioend. When this merged ioend is later passed to
-> ext4_iomap_finish_ioend(), it requests credits using ext4_chunk_trans_blocks().
-> 
-> However, ext4_chunk_trans_blocks() internally hardcodes the extent count to 1,
-> allocating credits sufficient for modifying only a single extent on disk.
-> 
-> If a user writes a very large contiguous file (e.g., larger than 128MB), the
-> merged ioend will exceed the maximum size of a single unwritten extent in ext4
-> (which is 32,768 blocks). This will cause ext4_convert_unwritten_extents() to
-> loop over multiple extents using the same transaction handle.
-> 
-> Could this exhaust the single-extent credits provided by the transaction
-> handle, resulting in a JBD2 panic during writeback?
-> 
-
-This is right.  ext4_convert_unwritten_extents() converts every extent
-covered by the ioend using a single transaction handle, but that handle
-was sized by ext4_chunk_trans_blocks() for one extent only, so a large
-enough merged ioend can run out of credits.  This is hard to hit in
-practice, since the end I/O worker normally runs promptly and not many
-completed ioends accumulate before the merge, but to be safe I will
-still fix it: call ext4_journal_ensure_credits() before each extent in
-the conversion loop, so that the transaction is extended, or restarted
-once it is full, as needed, and correct the estimation to
-ext4_meta_trans_blocks(inode, max_blocks, 1, 0) at the same time, as no
-data blocks are allocated there.
+It looks like Sashiko also found a pre-existing issue where an atomic request
+can be done non-atomically [1]. I'll see if I can reproduce it and add a fix
+as a second patch in v2.
 
 Thanks,
-Yi.
+Tal
 
+[1] https://sashiko.dev/#/patchset/20260909-ext4-atomic-no-fallback-v1-1-5a6b9539c002%40columbia.edu?part=1
 
 
