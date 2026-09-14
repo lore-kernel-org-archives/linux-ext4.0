@@ -1,191 +1,85 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.2])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D8774156DF
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 08:41:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE98B40F721;
+	Mon, 14 Sep 2026 09:11:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.2
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789375282; cv=none; b=GTIcurYmOkYGCG/WlWaz7ivgLuIsuc6FxHEOo3YWx42RChos+mV97Zz8NkSokvwjJxZaKt+2HFTb0684Sh7ECQVhIH/DbpmoZ3i8czPctK377yilEhaKV/QraoueQ37XvmZf1pgehxktMv+fKyuDtSzUHG+qtnBC6FIhotmrYGk=
+	t=1789377119; cv=none; b=ovtm6njKDEM3jEMp5FvbswovXqPMLVgIu9K0HUSH0UR8HRKSltwfZ4IZYeKqpl+pkePw+n6qcqdnLmgiLqr8KHbzfnzcmYb7H1jupcUIOqEwBfAOsiZCUeYN744arFtoRYuEgiX0SCKu99J6VgBKC7YXO0vJnsxJdhB7f0NOw84=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789375282; c=relaxed/simple;
-	bh=wVdRPz8u8m5tap7v8+70jMAkwxyePnPftrIY8aKPiYo=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=sRl3XEI7BHkdXlMq52pjMFZ23cyN7D2Ez4Bmv/wl1e9SSDlp+GbuSAt2kjURgcJnhQIDl4NTaNJmreasS7u8pOKvGJcWJhmd2brCzW3G1bJB4UCu01mPBR86tS2RCtwZ3ZerWX6cTz0pNvLfZSfCAfNejTxGGnTn0OPwFpQRfP4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WufQ+0Uc; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789377119; c=relaxed/simple;
+	bh=ZQ0PoAs4Pulw3ORXenybFbKJjhnMyjzeiXsGx2Mo/ig=;
+	h=Date:From:To:Cc:Subject:Content-Type:MIME-Version:Message-ID; b=s1Zf5edKDttuP8kTJkzCEA+U8ujjVd5zQsnH1k4LzsDhONEoE1fqxccWWps+kn6wdhebZxvMs0HOcu8lTezL14MFYnicxw2rQga2/dAvqwwUQD6DQyPjvDtpIK1gtTUc4TqskhtH5ioM029480hWIMBxYFHyLHasmdBXlBKGs9M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=JMCblaIT; arc=none smtp.client-ip=220.197.31.2
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WufQ+0Uc"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F0831F000FF;
-	Mon, 14 Sep 2026 08:41:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789375272;
-	bh=4XJkIzY72T8mI7hhb6ODoftwjxnhPvpf/dUgFD4/vE4=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=WufQ+0UcFDgZr0e/qfOEowo60+ausiGrmecZB4BNrRSzV3jvJp59qVCeyVKMPi9NP
-	 oCi7iGfUnlYnD/uRzAXfEtF0Jy+nSZkYAUto3/wRd6LgH2T4Ox4qnlW6zjdwC7Mndt
-	 hoZLVakhzgFDKW0NZ8E+GG5/4gJvPAlqcnNqSVRLO/MPiViOr/GaHBrPLKwdKc5mL9
-	 0nlaPPWqhAGoxZqmoy8XySyMOPuCAak6AOov58pxy1WFqaL7hoaN0fTNqr/ewdAmDG
-	 O+Eo574/KUeTWFL+BZLhQXLfq1DAPYLBPV6vCGufc5QZ/AeMkndEX/DJtyfiDnkG9A
-	 fQgpaNnTeWgYA==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2] ext4: fix the logical block counter overflow in
- indirect migration
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Yichong Chen" <chenyichong@uniontech.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260914082516.3442815-1-chenyichong@uniontech.com>
-References: <20260914082516.3442815-1-chenyichong@uniontech.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 14 Sep 2026 08:41:11 +0000
-Message-Id: <20260914084112.4F0831F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="JMCblaIT"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=Date:From:To:Subject:Content-Type:MIME-Version:
+	Message-ID; bh=ZQ0PoAs4Pulw3ORXenybFbKJjhnMyjzeiXsGx2Mo/ig=; b=J
+	MCblaIToLNQIjYtrfzLni5998e5Dxku0+sqRLOVs8kwOmeMizRudNlG3m/Idrjtc
+	KrfpKQgzBbhQB1QLk31SL75ckSp1XWQOCeMLMTkXUMLn0S951Foj9zrpOK4tLlp/
+	na+Y4rJyrp6tQ8pCDEzoodJqiMh7YZSgA2fqC+qNX8=
+Date: Mon, 14 Sep 2026 17:11:24 +0800 (CST)
+From: CJ <firefly0158@163.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com,
+	jack@suse.cz, ojaswin@linux.ibm.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [BUG] ext4: WARNING in lock_two_nondirectories from __ext4_ioctl
+X-Priority: 3
+X-Mailer: Coremail Webmail Server Version 2023.4-cmXT build
+ 20260511(2e539873) Copyright (c) 2002-2026 www.mailtech.cn 163com
+X-NTES-SC: AL_Qu2TC/+cuEgj4iCbbOkdmEsTju82UcS4ufQl245Xc98Figbk+QAgeFpPNFDG1NiRKyuJkh+TdQFs6cJxc45/gkwpYWS6vHPI1djUM8nNAg==
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=UTF-8
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Message-ID: <72a2177d.8ac9.1a09f2f7a8f.Coremail.firefly0158@163.com>
+X-Coremail-Locale: zh_CN
+X-CM-TRANSID:hygvCgD3_648uqdq90MPAA--.18921W
+X-CM-SenderInfo: piluvw1o1qikqy6rljoofrz/xtbC3RxC82qnujyN9gAA3A
+X-Coremail-Antispam: 1U5529EdanIXcx71UUUUU7vcSsGvfC2KfnxnUU==
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
-s) to consider:
-
-Pre-existing issues:
-- [Critical] Missing bounds check on extent length during contiguous block =
-aggregation leads to extent corruption and silent data loss.
-- [Critical] Erroneous freeing of active extent metadata blocks if `free_in=
-d_block()` fails after the inode data is permanently swapped.
-- [High] `ext4_ext_migrate()` silently overwrites error codes, including th=
-e newly added `-EOPNOTSUPP`, falsely reporting success to userspace.
---
-
-commit 551790cf82563190f29580d447430a3723ff4943
-Author: Yichong Chen <chenyichong@uniontech.com>
-Subject: ext4: fix the logical block counter overflow in indirect migration
-
-This commit prevents a logical block counter overflow in the ext4 indirect
-migration path by keeping the counter in 64-bit and refusing migration if a
-block reaches EXT_MAX_BLOCKS.
-
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index c5e3fc998211a..f492935d5e3de 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-
-[ ... ]
-
-> @@ -66,6 +66,10 @@ static int update_extent_range(handle_t *handle, struc=
-t inode *inode,
->  			       ext4_fsblk_t pblock, struct migrate_struct *lb)
->  {
->  	int retval;
-> +
-> +	if (lb->curr_block >=3D EXT_MAX_BLOCKS)
-> +		return -EOPNOTSUPP;
-> +
->  	/*
->  	 * See if we can add on to the existing range (if it exists)
->  	 */
->  	if (lb->first_pblock &&
->  		(lb->last_pblock+1 =3D=3D pblock) &&
->  		(lb->last_block+1 =3D=3D lb->curr_block)) {
->  		lb->last_pblock =3D pblock;
->  		lb->last_block =3D lb->curr_block;
->  		lb->curr_block++;
->  		return 0;
->  	}
-
-[Severity: Critical]
-This is a pre-existing issue, but it appears this contiguous block check
-blindly accumulates blocks without verifying that the maximum extent length
-(EXT_INIT_MAX_LEN) is respected.
-
-If a file has more than 32768 physically contiguous blocks, the resulting
-length is later cast to 16 bits in finish_range():
-
-	newext.ee_len   =3D cpu_to_le16(lb->last_block - lb->first_block + 1);
-
-Could a length greater than 32768 set the 0x8000 (UNWRITTEN) bit or overflow
-entirely, causing valid data to read as zeroes and corrupting the file?
-
-
-[Severity: High]
-This isn't a bug introduced by this patch, but the error handling in
-ext4_ext_migrate() seems to unconditionally overwrite error codes like the
-newly added -EOPNOTSUPP.
-
-Looking at the error path in ext4_ext_migrate():
-
-err_out:
-	if (retval)
-		/*
-		 * Failure case delete the extent information with the
-		 * tmp_inode
-		 */
-		free_ext_block(handle, tmp_inode);
-	else {
-		retval =3D ext4_ext_swap_inode_data(handle, inode, tmp_inode);
-		if (retval)
-			/*
-			 * if we fail to swap inode data free the extent
-			 * details of the tmp inode
-			 */
-			free_ext_block(handle, tmp_inode);
-	}
-
-	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
-	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
-	if (retval < 0)
-		goto out_stop;
-
-If any function within the migration loop (like the new EXT_MAX_BLOCKS chec=
-k)
-fails, it jumps to err_out with a negative error code in retval. However,
-retval is then overwritten by ext4_journal_ensure_credits().
-
-Since this function typically returns 0 or 1 on success, might this falsely
-report success to userspace and leave the file unmodified or incomplete?
-
-
-[Severity: Critical]
-This is a pre-existing issue, but I am wondering if the rollback logic in
-ext4_ext_migrate() erroneously frees active extent metadata when
-ext4_ext_swap_inode_data() encounters an error.
-
-In ext4_ext_swap_inode_data(), the original inode is permanently modified to
-use extents:
-
-	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
-	memcpy(ei->i_data, tmp_ei->i_data, sizeof(ei->i_data));
-
-	/* ... snip ... */
-
-	retval =3D free_ind_block(handle, inode, i_data);
-	retval2 =3D ext4_mark_inode_dirty(handle, inode);
-	if (unlikely(retval2 && !retval))
-		retval =3D retval2;
-
-err_out:
-	return retval;
-
-If free_ind_block() fails (for example, due to a lack of journal credits), =
-it
-returns an error. This error is caught in ext4_ext_migrate(), which then
-attempts to clean up:
-
-	else {
-		retval =3D ext4_ext_swap_inode_data(handle, inode, tmp_inode);
-		if (retval)
-			/*
-			 * if we fail to swap inode data free the extent
-			 * details of the tmp inode
-			 */
-			free_ext_block(handle, tmp_inode);
-	}
-
-Since the extent tree root was already copied to the active inode, is it
-possible that calling free_ext_block(handle, tmp_inode) blindly frees the
-exact metadata blocks that the active inode now relies upon, leading to sev=
-ere
-on-disk data corruption?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260914082516.3442=
-815-1-chenyichong@uniontech.com?part=3D1
+CkhpLAoKCkkgYW0gcmVwb3J0aW5nIGEgbG9ja2luZyBXQVJOSU5HIG9uIHRoZSBleHQ0IGJvb3Qt
+bG9hZGVyIGlub2RlIHN3YXAgaW9jdGwsCnRyaWdnZXJlZCBieSBhIHN5emthbGxlciByZXByb2R1
+Y2VyIHRoYXQgbW91bnRzIGEgY3JhZnRlZCBleHQ0IGltYWdlLiAgVGhlIGlzc3VlCmlzIHJlcHJv
+ZHVjaWJsZSB3aXRoIEhFQUQgY29tbWl0IGNlZTkzOTVhY2Q4MDQzYmUwNjQ0YjI1YzM0YmZhODY2
+MjNmMmI5MzUKKHY3LjMtcmMxLCBMaW51eCA3LjMuMC1yYzEpLgoKClRoZSByZXByb2R1Y2VyIG1v
+dW50cyBhIGNyYWZ0ZWQgZXh0NCBmaWxlc3lzdGVtIGltYWdlIHdpdGhvdXQgYSBqb3VybmFsIG9u
+IGEKbG9vcCBkZXZpY2UgYW5kIGlzc3VlcyB0aGUgaW9jdGwgdGhhdCBzd2FwcyB0aGUgYm9vdCBs
+b2FkZXIgaW5vZGUuICBUaGUgY29uc29sZQpzaG93cyB0aGUgbW91bnQgc3VjY2VlZGluZyB3aXRo
+IHF1b3RhIGFuZCBub2xvYWQgb3B0aW9ucyBhbmQgdGhlbiB0aGUgV0FSTklORy4KCgpUaGUgY29u
+c29sZSBzaG93cyAiV0FSTklORzogZnMvaW5vZGUuYzoxMjUwIGF0CmxvY2tfdHdvX25vbmRpcmVj
+dG9yaWVzKzB4MWFkLzB4MjAwIiB3aXRoIFJJUCBpbiBsb2NrX3R3b19ub25kaXJlY3RvcmllcywK
+cmVhY2hlZCBmcm9tIF9fZXh0NF9pb2N0bC4gIE9uIHRoZSBrZXJuZWwgd2hlcmUgdGhpcyB3YXMg
+Zmlyc3QgcmVwb3J0ZWQgdGhlIHNhbWUKaW9jdGwgcGF0aCBwcm9kdWNlZCBhIGRpZmZlcmVudCBs
+b2NraW5nIGNvbXBsYWludDogYSBiYWQgdW5sb2NrIGJhbGFuY2UgZm9yCiZ0eXBlLT5pX211dGV4
+X2Rpcl9rZXksIHJlcG9ydGVkIGF0IHRoZSByd3NlbSB1cF93cml0ZSBzaXRlLCBhZ2FpbiByZWFj
+aGVkIGZyb20Kc3dhcF9pbm9kZV9ib290X2xvYWRlciBpbiBfX2V4dDRfaW9jdGwuICBCb3RoIHJl
+cG9ydHMgcG9pbnQgYXQgdGhlIHNhbWUKbG9jay91bmxvY2sgaGFuZGxpbmcgaW4gdGhlIGJvb3Qt
+bG9hZGVyIHN3YXAsIGJ1dCB0aGUgcmVwb3J0ZWQgbWVjaGFuaXNtIGFuZApsb2NhdGlvbiBkaWZm
+ZXIgYmV0d2VlbiB0aGUgdHdvIGtlcm5lbHMsIHNvIEkgYW0gZGVzY3JpYmluZyB0aGlzIGFzIGEg
+bGlrZWx5CnJlY3VycmVuY2UgcmF0aGVyIHRoYW4gYW4gaWRlbnRpY2FsIHNwbGF0LgoKCk9uZSBw
+b3NzaWJsZSBjYXVzZSBpcyB0aGF0IHRoZSBib290LWxvYWRlciBzd2FwIHBhdGggZG9lcyBub3Qg
+dGFrZSBhbmQgcmVsZWFzZQp0aGUgaW5vZGUgbG9ja3MgaW4gdGhlIG9yZGVyIGxvY2tfdHdvX25v
+bmRpcmVjdG9yaWVzIGV4cGVjdHMsIHNvIHRoZSBpbm9kZS1sZXZlbApsb2NrIGhlbHBlciB3YXJu
+cy4gIFRoaXMgbG9va3MgbGlrZSBhIGxvY2tpbmctZGlzY2lwbGluZSBwcm9ibGVtIGluIHRoZSBp
+b2N0bApwYXRoIHJhdGhlciB0aGFuIGEgZmlsZXN5c3RlbS1mb3JtYXQgcHJvYmxlbS4gIEkgYW0g
+cmVwb3J0aW5nIHRoZSB3YXJuaW5nIGFuZAp0aGUgcGF0aCBhcyBvYnNlcnZlZC4KCgpUaGlzIGFw
+cGVhcnMgdG8gYmUgYSByZWN1cnJlbmNlIG9mIHRoZSBzeXpib3QgaXNzdWUgd2hvc2UgZXh0ZXJu
+YWwgaWQgaXMKNzdhMDI0NWViNGVkOTk1MTUwYTYuICBJdCByZW1haW5zIHJlcHJvZHVjaWJsZSBv
+biB2Ny4zLXJjMS4KCgpSZXByb2R1Y2VyOgoKCnN5eiByZXByb2R1Y2VyOiBodHRwczovL3Bhc3Rl
+YmluLmNvbS9yYXcvNkJtM0tMUWUKCmNvbnNvbGUgb3V0cHV0OiBodHRwczovL3Bhc3RlYmluLmNv
+bS9yYXcvc3JOa2V6emUKCmtlcm5lbCBjb25maWc6IGh0dHBzOi8vcGFzdGViaW4uY29tL3Jhdy9j
+VFFyNWlEYQoKCktlcm5lbDoKCgpIRUFEIGNvbW1pdDogY2VlOTM5NWFjZDgwNDNiZTA2NDRiMjVj
+MzRiZmE4NjYyM2YyYjkzNQpnaXQgdHJlZTogdXBzdHJlYW0gKGxpbnV4LmdpdCksIHRlc3RlZCB0
+aHJvdWdoIHRoZSB2Ny4zLXJjMSBhbm5vdGF0ZWQgdGFnIG9iamVjdArCoCDCoCDCoCDCoCDCoCDC
+oGU1ZTA0NzI2Y2RkMDQzZTMwOTY3NzA3MWFiMWI2NWE0YjE4ZjQyMmIKa2VybmVsIHZlcnNpb246
+IDcuMy4wLXJjMSAjMSBQUkVFTVBUKGZ1bGwpCnRlc3RlZCB0YWc6IHY3LjMtcmMxIChMaW51eCA3
+LjMtcmMxLCAyMDI2LTA4LTMwKQoKCkxldCBtZSBrbm93IGlmIHlvdSBuZWVkIG1vcmUgZGV0YWls
+cyBvciB0ZXN0aW5nLgoKCkJlc3QgcmVnYXJkcyw=
