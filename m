@@ -1,122 +1,128 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from smtpbgeu2.qq.com (smtpbgeu2.qq.com [18.194.254.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 330C82EEE75
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 02:38:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1DE83290C7;
+	Mon, 14 Sep 2026 06:57:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.194.254.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789353526; cv=none; b=VKEScvNB5J1Jh5cIDYDbHnTtVWRwMuXN+ehJ1UwYtF4JH8UDtkIhINHaVt5aNzdkLK/njoFPdpGLtidpPtdePK1E7B+Qk2jOjYwOz7M6QyAZNFj0svGLq3eZ51vsYdGeV7qIT8ygt2xeSuJMxE8vnbqDsyzKHza9u8scYC3hk0A=
+	t=1789369078; cv=none; b=YySZtxHKbkU1uo6pDnv+o0lQhQd1mi1bYcNwBPJZoL7+Tj7SpWTgWCjF3W0YPJHLWpmyMJsxK+SuVNea9FZntYi3hE1xtzDVl4LOS/xF5/4Ds5YRmga3pfm/DvODzaZ5KVW6sF7J4WcSGa3zXC+tX7mRcT+VpKIFLa8OQb+ygVY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789353526; c=relaxed/simple;
-	bh=NQwgCub/++tZ8zqQPl87tMDkF7g0AuysMMzG7AZOm3Y=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=QeosXmj5+KI3Bkn4vrjziL2Tsci0g8De9xduvMtM7it5C91t9lIYudV0BiRd7+Bc5hoRdf2POPkAmCNVQJNndWlfYlzxUGeo5KSZ3hhbtSjgB+wwga9dFZCBNoZLf3qk/uLOmhWu6RUuAG9raTzT7LQhfTDNGNeuhPSuZN6UdBg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OdCAg41P; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789369078; c=relaxed/simple;
+	bh=cE7HLX+YCBfj2HIFGPdVVmbWnE7TYB2eicReZHTWim8=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=D3HWGx1hIlvDaXjtWc2q0feAgV74/3FTcktjVXulaYrG6wTMFCm/+fHaN5w8zCfdOtgpp5MFVwhIZviLtD0n0l/X5TeViqAbfq+YDD2FkvJS5LwSGfXy7VdUDc3Pj4swwEsk3dWWl7hbxBCoGzCQjiCyj6mKf+PG3VR6WtEUxAQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=e4nn9din; arc=none smtp.client-ip=18.194.254.142
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OdCAg41P"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A99371F000FF;
-	Mon, 14 Sep 2026 02:38:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789353524;
-	bh=Cfx27GobV1vbgYt4x4Z6be3S3+mnYXl1T7ASaT9r6RY=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=OdCAg41Pq5Kzp+w+qDua+1H1yuvilYINX4Rd9+SRwnsZefLtGzfuY9k76V2BQ1qY1
-	 oaMVJjr5XRjKYJesQIp0Ia43iNXob4nfgYLJwOBehvmh03DEtMjGCgsOC/VjK9gbXz
-	 vv7cnli7m1hgiW2coFI4vh6OLWh8JkXDxEAi+ZYEezcXxjjpwQt3WOkgDJ+GSHIuPY
-	 wKtyNIgmv8tvIx+1AfVUkGmbVdQQt1TAx+OqfcMF5XIJTewgyEBlM/HwVvCGyrlIJ0
-	 hvCUHHUH2PWVcwrqEbvfhxLANNqhCdcmJsPV6MmyBtno4kFYQ77BxYJWwlbHWZoPNx
-	 F2vpypou6tcrg==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4:Fix WARNING in ext4_journalled_invalidate_folio
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "shuo chen" <1289151713@qq.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <tencent_D74F4B8A5FDC1BCFC23B8750428019635609@qq.com>
-References: <tencent_D74F4B8A5FDC1BCFC23B8750428019635609@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 14 Sep 2026 02:38:44 +0000
-Message-Id: <20260914023844.A99371F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="e4nn9din"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1789369005;
+	bh=LIVL8L76t6KEPTcGTpEPKDpsGGvY+rr+QPSKuZ3S47E=;
+	h=From:To:Subject:Date:Message-Id:MIME-Version;
+	b=e4nn9dinSZAPTIIaOk+HD0sAxthyzy9pakrgHJfDCKP1WhJwdDk7TaoFzP2WROk3M
+	 C6u0v2WuyiVBLOnjLWeVD6S2w9hWV075y465gjSR86p+fp15BmWrick6Rxy7hk0dJk
+	 Vww3YhRdG32SjScsofT7JHu2OyX4IzyJ7Wv4GLuY=
+X-QQ-mid: esmtpgz10t1789368987tc3938474
+X-QQ-Originating-IP: oa/POHotl25pRRqxZDjcxefat9hRezoAQFHWYo8D1aA=
+Received: from uniontech.com ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Mon, 14 Sep 2026 14:55:47 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 9193533759185836638
+EX-QQ-RecipientCnt: 11
+From: Yichong Chen <chenyichong@uniontech.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	"Aneesh Kumar K . V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Yichong Chen <chenyichong@uniontech.com>
+Subject: [PATCH] ext4: fix the logical block counter overflow in indirect migration
+Date: Mon, 14 Sep 2026 14:55:44 +0800
+Message-Id: <20260914065544.3438431-1-chenyichong@uniontech.com>
+X-Mailer: git-send-email 2.20.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: esmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
+X-QQ-XMAILINFO: MfQnJH+7WKv6drDog6dbw8OMcEYzBjol7oM3AVxXW59Tzq/zKgrcnk7G
+	xqoBRHDC88Qo3DzarVgCnBEH7GHaGtmiU6gIIV03S3AgXAyK6SgUkBHi/C7OyikOf5aCUFf
+	5gWRkwicgu+wh2Q9Unh8KjZK8icy5Vzo31A2PomiIAxJTsoYSEKcdSeb3UQOknBynAqN8n7
+	xOG8DOGTb0hwAuaEfify3DAsuE6SoQn5qqC+j8lOt6+B1p9EatKnfOiJ5qv3O3AZnvET4lO
+	p5zD5lUTlXNPH6fqI/H8XXoIh7JUzBBM82rsiXu0ic9Ph1YubMk6Uzxs1zg6ip4Sd2DL4ZU
+	QwZk1GN2RrgaCmdjgxCc45HvHA+G59eGj6lXDX785dEmSWH0juxiOVzgc8oUT57igk/+/MM
+	bHwmNX5Vwtz9i4b/rokZSkd7wuzX0wBG/fYKybNzCNXzI9WCYcQXswTiUk2NsJGt0yel1w0
+	OBrD0ysVHHkNxZcs88H5XSIh32QIxPM9cxInCD/8691mRRgIAaqJec0Ms+e9bryxlBcclF2
+	ZyOa7kF+Q4AtXoXgg+wy/aexar+XBNwej4Q9HuZDPle804R5yf4XiEV4XnCQUiCI/SQrwS5
+	zRiu7LRxD+vZ7xK5q+Cq19TSzKBJkrXAynVSgUyB+miQLaFumeaySlf5+KdcZRrouYdiDBr
+	T5oMI+lrzfIt6utfLKh8fGSzWFMKQ3MNLGSbFsT0u/M9zN+JJzTkyVRogcYnWfh0PnlXTgA
+	2PgzMF1C890NcJedt65Tcglx7NkzLYe1NnNeq0vXpos/orzJXU/LYB83fXRs8/NFkCOmSyM
+	6pIb/nC7klHCZbL5vTk18TC5E3WVemhwfGmqqd5jukt/Z/Xz1SJq1ZX0+31ZYoytwNwSCMo
+	Qk3Kh2ekvO4W5z2HBPk4PBRUn3D1NhZ0TwecSYKkDc9cfkDkgvki3+I0LASewPTiqGvhB6D
+	7rOIwW6A2jNEsfmAfJ1JWWs0j8xxzJdHIXcUu1KN95v21lIqUl06VfWk5iwQj/hRS4wkbk/
+	Cr4lPxYg==
+X-QQ-XMRINFO: Nq+8W0+stu50tPAe92KXseR0ZZmBTk3gLg==
+X-QQ-RECHKSPAM: 0
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] ABBA deadlock between truncating thread and journal commit thread =
-due to holding the folio lock while waiting for a transaction commit.
---
+update_tind_extent_range() advances lb->curr_block, an ext4_lblk_t, by
+max_entries * max_entries for every empty triple-indirect slot.  One
+triple-indirect block spans max_entries^3 logical blocks, which exceeds
+2^32 as soon as the block size is 8K or larger (16384^3 = 2^42 with 64K
+blocks), so the counter wraps while that block is walked.
 
-commit 0b3a826d64ad8fde652eef131d6bd13542e8206b
-Author: shuo chen <1289151713@qq.com>
+A wrapped counter makes the migration store a block number that is 2^32
+blocks away from the one the pointer block describes.  Two ranges can then
+end up with the same ee_block, which trips
+BUG_ON(newext->ee_block == nearex->ee_block) in ext4_ext_insert_extent(),
+and without that collision the data is still moved to the wrong logical
+block while the migration reports success.
 
-ext4:Fix WARNING in ext4_journalled_invalidate_folio
+Keep the counter in 64 bit so that it cannot wrap, and refuse the
+migration with -EOPNOTSUPP when a data block is found after the last
+logical block an extent can describe, which only a corrupt block map can
+contain.
 
-This commit modifies ext4_journalled_invalidate_folio() to handle -EBUSY
-from __ext4_journalled_invalidate_folio() by waiting for the current
-transaction to commit before retrying.
+Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
+Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
+---
+ fs/ext4/migrate.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Closes: https://lore.kernel.org/linux-ext4/CA+0ovCgxFN3TLpdS_O_Z48sARuQ-WR-=
-JLDCqQWEmd9ELtkzddA@mail.gmail.com/T/
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index e06d847033a1..8043959c19ef 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -14,7 +14,7 @@
+  * represented by a single extent
+  */
+ struct migrate_struct {
+-	ext4_lblk_t first_block, last_block, curr_block;
++	u64 first_block, last_block, curr_block;
+ 	ext4_fsblk_t first_pblock, last_pblock;
+ };
+ 
+@@ -65,6 +65,10 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
+ 			       ext4_fsblk_t pblock, struct migrate_struct *lb)
+ {
+ 	int retval;
++
++	if (lb->curr_block > (ext4_lblk_t)-1)
++		return -EOPNOTSUPP;
++
+ 	/*
+ 	 * See if we can add on to the existing range (if it exists)
+ 	 */
+-- 
+2.51.0
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 26f0f9714f03c..e5e78d5551474 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3419,7 +3419,27 @@ static void ext4_journalled_invalidate_folio(struc=
-t folio *folio,
->  					   size_t offset,
->  					   size_t length)
->  {
-> -	WARN_ON(__ext4_journalled_invalidate_folio(folio, offset, length) < 0);
-> +	tid_t commit_tid;
-> +	int ret;
-> +	bool has_transaction;
-> +	journal_t *journal =3D EXT4_JOURNAL(folio->mapping->host);
-> +
-> +	while (1) {
-> +		ret =3D __ext4_journalled_invalidate_folio(folio, offset, length);
-> +		if (ret !=3D -EBUSY) {
-> +			WARN_ON(ret < 0);
-> +			return;
-> +		}
-> +		has_transaction =3D false;
-> +		read_lock(&journal->j_state_lock);
-> +		if (journal->j_committing_transaction) {
-> +			commit_tid =3D journal->j_committing_transaction->t_tid;
-> +			has_transaction =3D true;
-> +		}
-> +		read_unlock(&journal->j_state_lock);
-> +		if (has_transaction)
-> +			jbd2_log_wait_commit(journal, commit_tid);
-
-[Severity: High]
-Does waiting for a journal commit while holding the folio lock cause an ABBA
-deadlock with the JBD2 commit thread?
-
-The truncation thread enters this path with the folio locked. If it sleeps
-here, it blocks while holding the folio lock.
-
-Meanwhile, the main JBD2 commit thread loops over dirty folios during commi=
-t:
-
-fs/ext4/super.c:ext4_journalled_submit_inode_data_buffers() {
-    ...
-	while ((folio =3D writeback_iter(mapping, &wbc, folio, &error))) {
-		if (ext4_journalled_writepage_needs_redirty(jinode, folio))
-			folio_redirty_for_writepage(&wbc, folio);
-		folio_unlock(folio);
-	}
-    ...
-}
-
-The writeback_iter() function internally calls folio_lock(). If it reaches
-the folio held by the truncation thread, the commit thread will block
-waiting for the folio lock, while the truncation thread is blocked waiting
-for the commit thread to finish, leading to a complete filesystem stall.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_D74F4B8A5FD=
-C1BCFC23B8750428019635609@qq.com?part=3D1
