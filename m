@@ -1,114 +1,178 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DDC13DDDB0
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 07:27:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E37393B7754
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 07:27:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789370845; cv=none; b=Y4qcupqCjMGLP0oGBGhPH5e3fpwAyIaINz2AqWRSTU7pzpWQchvV7lRVg33Pht6GQehTo2jlL1iROUAGvuFDRFPamwb6uZk+TdVWeTxiJGbx+LUZK+GPnq9Cke3M6NQQpTIqVSeBbE9nDN4TLTCgaz2VFIcljrTUe3VxW6p/G84=
+	t=1789370858; cv=none; b=PBluvf4uW4Zgk72jvARoTRHC1s0lRZYbVeCi+OZwKomUpyRRSNx3nlOirmes5Cp1VvZZpq4mUOMf6izD4Yw2TFBEUDK1Prwu9GygNQhSLKAzlLTolhoXhiqfCpWZHF47Z2KPnF1gugCaJHFvU9xzsJ7TEWuKrlW5z11/gW4whYY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789370845; c=relaxed/simple;
-	bh=CVSZ6pCIUTdohRrqT0kLpzT31+uiyldwGYsSEKHOLq4=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=J+Zhv66gxnDn1CnocIHh91rISMNlhzX6GkAavelaPTfKL8L+jp7xydvAswX/Ldhfb7FStmDLFs9Kjz73E+depQcCkJZXtb+60faq3qHk5wXWOWyddVr69q/U/BUaI/DqW27+5K81rmLBjQFnmkZN3XzfUNx+UUK2W3SSHHKK15M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gN9zyb1a; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789370858; c=relaxed/simple;
+	bh=FDmdJsva6PhVAruik3JBwqxF0r/t249ybkFPnUQ8UnE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=liOH8sL6rX2bLFszcn6aABE9qMAKFD7GVwCG1+4trf2i1L8iJkNYVBvprEfCmv1XEtYbZcBE/Cwd+lwUC6hXCwonGaoMiMxSenzCSRqHllYLYuECoFnv29aRXmDzyJeegaHtWF2Qri7ywctiL6dmGxunwh2ZgzztTLPHWPCPBUI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kpmTxZPG; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gN9zyb1a"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AA7101F000FF;
-	Mon, 14 Sep 2026 07:27:18 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789370838;
-	bh=umUeGQJaQdrJBT2qhTCYZaoTxolf9bQZRZVjJL/pPo8=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=gN9zyb1aTslcjenNpzoy34usAQ+PSPsSrnNoXPUs9i7DxtCdjO8ToS5I4c8WDwfTw
-	 EG7Kf2XvVG8T4Tg4lAaRHCAZSpQnvVDbUrW1h4CVqaEJkMSRY1PQ9WYu/+RIWTQtG4
-	 QUc9ohTnTBwaplfSZfyPxwrPmIPY9LECgWJByZe4CAu22TnildSHLcEQZY3SrLSpOZ
-	 aHD+rJGYeHpuk0kjYaCHcwJsy9YJFJC2MEl2kjEn35LryUHE6Io4p2NxNGU+BGlXoC
-	 4FuaDcYUaJVbxKU/xId2tt3ZXKlG+0ESw4ZIAkstt3NVJ+ZR/E2hlYO4RcDxwiYIdW
-	 fkbS77pq1bN5w==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: propagate errors from fast commit i_blocks replay
-Reply-To: sashiko-reviews@lists.linux.dev
-To: lty <781735889@qq.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <tencent_46F42EDFC0F504046B160E939DB76255EE08@qq.com>
-References: <tencent_46F42EDFC0F504046B160E939DB76255EE08@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 14 Sep 2026 07:27:18 +0000
-Message-Id: <20260914072718.AA7101F000FF@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kpmTxZPG"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d747ee1f9bso18004875ad.3
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 00:27:36 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789370856; x=1789975656; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=1JAD9tmGDUmLFmmjsY5lDiINw+bhtxWNRT0fitk2tyM=;
+        b=kpmTxZPG0ggYaB0TPKaXFghDTeg2fT7auPYDjYSZO+VPRpX4neF5wISVZhxHRM425l
+         gKrhXMQMWjhUe9eaHGhKTRSNou20BPek/jD7IU7APPO+nCbGqGsfLItLjLuCsXDD40w8
+         ZrJA9JjCnuoRkKeTT3q1IQl713Pj2lh/PkkV/b0/8riVtjV2MqxrK9UmnCEBue0LZdGI
+         3N49BxT6uPWO0s5rA+z7Orp8/4/6jv3bPDPDhnJhnE4et+WYK9Nx8+Dn7jthTR+SuXdm
+         I/kLdrgRsVtwGHw2nDFsEqe4vUdXDXKFpxom8CvQAiHLFEJEoKi+Em8ioPPd38FA03Ew
+         O7Ow==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789370856; x=1789975656;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=1JAD9tmGDUmLFmmjsY5lDiINw+bhtxWNRT0fitk2tyM=;
+        b=aOjM2AQCUOumPCim+bvVhr1Jhic6HywJpoez9v8qavQ7NMDarCQvREXwEwJDBg8Ze+
+         urfqaGGWb+QMVcMV5seJygBYtXfrINRKgrerZMebF/Jz6RyrhQdGlr1xE7jqcNPmeuOe
+         yt6YuQvzPPumVJn+ctvOyf939QxCjqCL+2Ytf2CNFiFoIWcm7QsDFgFMotOeBa4xqfGn
+         /E0SJMez7/zgxIT2tsmg9LXEtQ+KEONjP7KMkEReNXOmH438PJ8ge3gEkOaxM1xn5NMQ
+         XIbvIBb4ScS/VzZSYVU7DWK0i20IvAxQRj6/pD0CJbllspGZl9cvrCw5biAE3Oz9KORm
+         dp/Q==
+X-Gm-Message-State: AFuF++m48CznxVjbmeoYVqySYzAirbuvZIntgA3zxu7SFhpzqSZe/uWE
+	XnFRkHLImrPmPNxv18bBraUuZNqygxL/CzQKeGUlQBJY0I4PmOJrtxggCs+EzFU9xjE=
+X-Gm-Gg: AYBFou3DwRSEtdV1o5yMeJaGQ05mp14LcCie8DmTBE2076nGv2u9vWJHp8lR5KItfQw
+	IAXFT7hH0L2xslMMzDr9izyOoZGTe7X8N/bs9OsUUYfo8Ab2joGyw5aufuMQmZDyIcoB5x38FkL
+	K34466eHZj/qx65V4p+lWNQeWslu2nfdEMMuSFaXKD9r9DdZC/x7L2ZfbMruRGnyDzVHq1U8Gv8
+	yFSgNz34EnBkjHo4ytFV8tQqrGtpsXWMglLfpP0k+SceKkfx2YnKhPjk7LXk2TdK2tXlgNXjM81
+	Wx4/IOMa4uTGJzITm3w/aD9f9Y2HZuu4D9Eu/BO6jujxTAjJZggew7cTWSRGsx5TMy33/Pr0e/Z
+	hA7z1gqlWt5C6qnFBYN1/3DIHGRUaNxpcevEt4TbhpK6Vf/2gvW1XaWHMp5gosfA6gX10xIQHrD
+	I/Y1CxaAK+WAxDmz6qDNayvMy6EU89EilMXFj2Rvlk7VypvyVvksUKav2XLYAMaudhGoP6/vce5
+	bb5hpnaaYgBUKeFDWxi5kYEpH1Tlg==
+X-Received: by 2002:a17:902:fc4c:b0:2d9:123c:8c49 with SMTP id d9443c01a7336-2dd6c6db8b7mr32241015ad.14.1789370855896;
+        Mon, 14 Sep 2026 00:27:35 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd5650198csm21446345ad.84.2026.09.14.00.27.32
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 14 Sep 2026 00:27:35 -0700 (PDT)
+Message-ID: <999d5aab-d84b-45c2-96d4-ce809a111d48@gmail.com>
+Date: Mon, 14 Sep 2026 15:27:28 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v6 22/31] ext4: submit and wait for pending disksize-grow
+ I/O on writeback
+To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
+ <20260903123543.2302999-23-yi.zhang@huaweicloud.com>
+ <20260903134042.5E0251F00A3F@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <20260903134042.5E0251F00A3F@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
+On 9/3/2026 9:40 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [Critical] Single-threaded workqueue stall causing filesystem-wide deadlock on concurrent write and writeback due to WB_SYNC_NONE skipping locked folios.
+> --
 
-Pre-existing issues:
-- [High] The patch fails to fix error handling in the second loop of ext4_e=
-xt_replay_set_iblocks(), leading to partial block counts being applied to t=
-he inode and masked errors.
---
+I don't think this case can happen. A folio which is temporarily locked
+by a writer is not skipped: writeback_get_folio() takes the folio lock
+with a blocking folio_lock(), and the only folio WB_SYNC_NONE drops is
+one already under writeback, i.e. whose I/O has already been submitted
+with EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO set (the flag is applied at
+submission time in ext4_iomap_writeback_submit()), so the state is
+cleared in ext4_iomap_end_bio().  That clearing happens in the bio
+completion path, in softirq context, not in the rsv_conversion worker,
+so a blocked worker cannot prevent it.
 
-commit 561c6a78544da466ba6d1525d42b474f54d2d473
-Author: lty <781735889@qq.com>
+The jbd2 link doesn't hold either: inodes on the iomap buffered I/O path
+do not use data=ordered, so they are never added to the transaction's
+ordered list and journal_finish_inode_data_buffers() never waits for
+their PG_writeback.
 
-ext4: propagate errors from fast commit i_blocks replay
+Thanks,
+Yi.
 
-This patch stops ext4_ext_replay_set_iblocks() from calculating partial
-block counts when ext4_map_blocks() fails. It leaves i_blocks unchanged
-and aborts inode replay on errors.
+> 
+> commit 8015bea7c1654bcaea86ce738fcb50400fa35290
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> 
+> ext4: submit and wait for pending disksize-grow I/O on writeback
+> 
+> This commit introduces a mechanism to proactively submit and wait for pending
+> disksize-grow zeroed EOF blocks during writeback. This prevents stale data
+> exposure when advancing i_disksize.
+> 
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index 383824e89d123..4c2b6cd15d1f9 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+> [ ... ]
+>> +static void ext4_iomap_wb_submit_zeroed_eof(struct inode *inode,
+>> +					    struct writeback_control *wbc)
+>> +{
+>> +	struct address_space *mapping = inode->i_mapping;
+>> +	loff_t pstart, plen, range_start;
+> [ ... ]
+>> +	/* Keep the caller's sync mode to avoid stalling the background flusher. */
+>> +	if (wbc->sync_mode == WB_SYNC_ALL)
+>> +		filemap_fdatawrite_range(mapping, pstart, pstart + plen - 1);
+>> +	else
+>> +		filemap_flush_range(mapping, pstart, pstart + plen - 1);
+> 
+> [Severity: Critical]
+> Could this WB_SYNC_NONE flush silently skip a locked folio, leaving the pending
+> EOF block unsubmitted?
+> 
+> If a user-space thread is concurrently modifying a folio covering the pending
+> zeroed EOF block (which has EXT4_STATE_DISKSIZE_GROW_PENDING set), the folio
+> will be temporarily locked.
+> 
+> When background writeback (kupdate) flushes a subsequent range, it will call
+> filemap_flush_range() here, which uses WB_SYNC_NONE and skips locked folios
+> without submitting their I/O.
+> 
+>> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+>> index 9b0e12b5463cf..697e12a54a49a 100644
+>> --- a/fs/ext4/page-io.c
+>> +++ b/fs/ext4/page-io.c
+> [ ... ]
+>> @@ -594,6 +622,9 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
+>>   	    end <= READ_ONCE(EXT4_I(inode)->i_disksize))
+>>   		goto out;
+>>   
+>> +	/* Wait for disksize-pending zeroed data to be written out. */
+>> +	ext4_iomap_wb_disksize_pending_wait(inode, pos, size);
+> 
+> [Severity: Critical]
+> Does this wait cause a permanent filesystem-wide deadlock if the pending EOF
+> block was skipped during WB_SYNC_NONE?
+> 
+> If the locked EOF folio was skipped by ext4_iomap_wb_submit_zeroed_eof(), the
+> I/O for the subsequent range will complete and queue its ioend on the
+> single-threaded sbi->rsv_conversion_wq. The worker thread will unconditionally
+> block here waiting for the unsubmitted EOF block's I/O to complete.
+> 
+> This stalls the entire workqueue. Later, the jbd2 commit thread runs and blocks
+> in filemap_fdatawait() waiting for the PG_writeback bit of the subsequent range
+> to clear, which only happens at the end of ext4_iomap_finish_ioend() via
+> iomap_finish_ioends().
+> 
+> Finally, kupdate attempts to write another file with delayed allocation,
+> blocking in ext4_journal_start() waiting for jbd2. Because kupdate is now
+> deadlocked, it will never loop back to write out the skipped EOF folio,
+> resulting in a permanent circular deadlock.
+> 
 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 76038b6c36552..d67e30cf44adb 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-[ ... ]
-> @@ -6329,11 +6329,11 @@ int ext4_ext_replay_set_iblocks(struct inode *ino=
-de)
->  out:
->  	inode->i_blocks =3D numblks << (inode->i_sb->s_blocksize_bits - 9);
->  	ext4_mark_inode_dirty(NULL, inode);
-
-[Severity: High]
-This isn't a bug introduced by this patch, but does the second loop in
-ext4_ext_replay_set_iblocks() still suffer from the same issue?
-
-While this patch correctly captures errors from ext4_map_blocks() in the
-first loop, failures during the extent tree block counting phase still jump
-to the out label:
-
-	while (cur < end) {
-		path =3D ext4_find_extent(inode, cur, path, 0);
-		if (IS_ERR(path))
-			break;
-		ex =3D path[path->p_depth].p_ext;
-		...
-		ret =3D skip_hole(inode, &cur);
-		if (ret < 0)
-			break;
-
-If any of these break conditions occur, we hit the out label shown in the
-diff context above and blindly overwrite inode->i_blocks with an incomplete
-numblks tally.
-
-Additionally, if ext4_find_extent() fails, we don't propagate the error code
-because ret might still be 0 from a previous skip_hole() success. This allo=
-ws
-fast commit replay to silently corrupt metadata while returning success.
-
-Should the error paths in the second loop also jump to cleanup instead of
-out, and ensure ret is updated to PTR_ERR(path) on lookup failures?
-
->  cleanup:
->  	ext4_free_ext_path(path);
->  	ext4_free_ext_path(path2);
-> -	return 0;
-> +	return ret;
->  }
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_46F42EDFC0F=
-504046B160E939DB76255EE08@qq.com?part=3D1
