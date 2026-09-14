@@ -1,128 +1,163 @@
-Received: from out203-205-221-202.mail.qq.com (out203-205-221-202.mail.qq.com [203.205.221.202])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8574D3ACA7F;
-	Mon, 14 Sep 2026 07:16:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.202
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 997B130F924
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 07:18:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789370220; cv=none; b=fkrDj1faeK727Mk8A6sP7lB344vMyEMApSQ30nq1hpf6pdyjJ6uIYg8wDRmSr6d5wdVTS0O5Mbp89m2dIy6kLAo7D68W4krSVzzq90wab3Djuj0UFB3+DjLMTi7HvZzVF1TmU5XY/6IFPAFixfsCWCWe3yOnvEIirEkVvCBpbeU=
+	t=1789370335; cv=none; b=eUHK17pTaQux2KSHngFPuvjiTD9ygyUl28pwZta/Nz6EV3oq3fv/dW3Pf4vfzgCkLGmCsw5RZCxbl5JTaKdgAkuohBfir/crlNTeinO7jLHi2CcUDreUXBQUD6V7tELFp6IM2wTa2GMEhuiLfDNk92AU1dwEBSxsBsFoc/CgJrg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789370220; c=relaxed/simple;
-	bh=eKHB7MfBj0IguylIYjLWeVC5LnMSpSyyrq+zUkTwLX8=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=dsc/b7nAuWJfjUNxcYjzOMdSW5Pr6UsG7tfCJgAcjC3rGEE4XDu8TLLdmxHlnvZr71PTqbk5igjaFjPA6DhNoean/cXYLi86QeWn85SiNzkwcKYr10y6tfLtI/g4+Zn+TV9BJOutM45glM1VPsGZe9jIHKjODOnn3ji1cCLuTkY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=NEpiELQO; arc=none smtp.client-ip=203.205.221.202
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+	s=arc-20240116; t=1789370335; c=relaxed/simple;
+	bh=zyI9Aa6D55H0flQBNq5E2Jihny6cLA5bqLF5hPy5Bmg=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=FqNOsoStLwW48nETAG2nJvI5FkyJACU8gZ71b8fwuWbXymdfwebCH8eMh/qpbQExbhlq3/O1HXRUl1Vwy7Y6bF2vPigbTjCD5XpUWbS0nbuXpWHyiBbM99Oo2esDG6SdIIwVjAB8sDrBROlKD76dCymNoHjnIEGXfTgm80UC/uE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aXO2I/8V; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="NEpiELQO"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1789370209; bh=GogiiBIuLlE0MdtpCIkJteKnRJY5wkoihOLQDRksfOo=;
-	h=From:To:Cc:Subject:Date;
-	b=NEpiELQOTfE7LzDrgE5Djklh/ynM+dj1DKXe5vAQxCTTGBLPwzm0v8ZtgzoYnOdqZ
-	 KlHCCP+k9hf5bg0FWcq1bWoPoCj0hPYW3Uguso3p5nXISecWHGSEPqEwzUyzrkxEuA
-	 n5Ey4133mK5xqtLNnVIXMeDFQi00aDd8RLNq9elg=
-Received: from fs.localdomain ([221.176.157.243])
-	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
-	id 42E3E4BF; Mon, 14 Sep 2026 15:16:46 +0800
-X-QQ-mid: xmsmtpt1789370206t69158870
-Message-ID: <tencent_46F42EDFC0F504046B160E939DB76255EE08@qq.com>
-X-QQ-XMAILINFO: NxKoLLhE22aTIX2g66ENyH70bwnS5uFkkoXVaNjiPVrk9X3vYppTMJKXmRkQkn
-	 vfXETtANo5piX7o8B3g5LTtrRAF4+MoWbLm6LHsWVOw8vh0wSciuqtBP/1+BzHL3tAnXUY3KsOdC
-	 E25+57V/1hREfr1Y0tHrFLZZ+41FEvQznbMbwHrFkvEvRjXw8BA9ZlxZBez8fCxmNZmXgSUEiXXr
-	 ONAkmePisA6rikpLy3hJ5vXIUS2xXonuX9OLsrxk515CnnfrXvFkJdBH8Jqsx2UanoVc+5JiTafm
-	 JXU7wYIZRLIxjmRxM/Lmvy0ufULB9gW3xeE5SoRw8AMg95N2DpiHbpMgK/cGmRaGIOtxBPjJ8lJ0
-	 1w26qPVFWwoIo43ko9fleGuO++MFrtCmUhp2fPbrK7xWZZ3eiNpag+VIPq4o1HOuowrJ64BuDZcg
-	 3qmEpR7xhoMobQA1rphbujJn8tnwgqVXZxZo1bX/nwnJI+Ke/HSNwDgPkKSJKTwP7PwMUfkFifrl
-	 VsMqfwzJCEEJhAXZ/eqS1b3/4UCU7mfJIIy5quZTOVTMH5zknkpBkXFGMc+Cs3+ZKvsAW9yebQ9f
-	 03IrZK00xDutEubYWYS1VD72URDAyVhRNf9kRDkaVAs3YHgpFu9A+UqGIvukH8vxKhRdO5ynkpee
-	 oARddKX6D+JhAfTwB7kpUhL48kq6q/NukXj8NRJHEFcwSDKKJEFZ+IbXNeKpyuXG5LoDaKUiNJOw
-	 YfVeufUbh2Heelma9DEA8Z5s1uCVa9Xw4OOIrDVL3vWmpT7/fwI7Wcx5TUD0v6Rq2AEQKovmRRkt
-	 KYcXi6udBI44Hihhyhop0LbjS0+NdshrZBW38Gj7dIRXmjgH3eiSf7wtbJ0h9BRoPRIcA9KO35qS
-	 FyH7vDp/frm0k8faSj64IDzj92AYQ/E8Md3NPT8Ed+UuyHGYLiB6Wk++j2EET9OHiXzGBzzrHJhX
-	 qfuNijVMhMuTKQLpaTqtSppEj+dGRVC0dimtgD98E+63aI6IH1ZiOX4E/joQhiacGYUymtOJo=
-X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
-From: lty <781735889@qq.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	harshadshirwadkar@gmail.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	lty <781735889@qq.com>
-Subject: [PATCH] ext4: propagate errors from fast commit i_blocks replay
-Date: Mon, 14 Sep 2026 15:16:45 +0800
-X-OQ-MSGID: <20260914071645.567625-1-781735889@qq.com>
-X-Mailer: git-send-email 2.34.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aXO2I/8V"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ED58F1F000FF;
+	Mon, 14 Sep 2026 07:18:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789370334;
+	bh=rzwGqGHZCzMXYMbOW56sZt6/PunPAShhx+T3cbulyVE=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=aXO2I/8V+sup2kZl+lnCBMwL4oUXoV2rkDlbH/XhhIGm5/H8hDAaee14YCKxMxDZe
+	 /d1cey4xwm4bx47jt8YNcIdCRWlm2czIQKDuNWehBoPkVAzOh8UwUpLqmE+IuzQ4Iz
+	 kyvUIWPP7DFG81JLxnaTK2queqPzHuLLlEHkDylklHiVAaUxn4vgjNONeFn15L+Aid
+	 FI+ofCXPuTbZrulLWd3PF5BFBFCUJeMlEePHj9FkOZyZNlAB6klGSsOwEHzsJEVOtw
+	 Gof26PG1jEF61yYfvMZJ2WJqFW2LH339Pdh7pGnT41cI0jv3VF/pz+28kjzC+WVGXa
+	 mDMIqrXp2I4zA==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: fix the logical block counter overflow in
+ indirect migration
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Yichong Chen" <chenyichong@uniontech.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260914065544.3438431-1-chenyichong@uniontech.com>
+References: <20260914065544.3438431-1-chenyichong@uniontech.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 14 Sep 2026 07:18:53 +0000
+Message-Id: <20260914071853.ED58F1F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-ext4_ext_replay_set_iblocks() breaks out of its mapping loop when
-ext4_map_blocks() fails, but then continues with a partial block count
-and unconditionally returns success. The fast commit replay caller also
-ignores the helper return value.
+Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+s) to consider:
 
-Stop the count immediately on mapping errors, leave i_blocks unchanged,
-and propagate the failure to abort inode replay.
+New issues:
+- [High] The bounds check for `curr_block` incorrectly allows migrating a l=
+ogical block at `EXT_MAX_BLOCKS` (`0xffffffff`), which is a reserved sentin=
+el in extent trees.
 
-Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Pre-existing issues:
+- [Critical] Unbounded extent length accumulation in `update_extent_range()=
+` leads to `ee_len` overflow and data corruption.
+- [Critical] If journal credit extension fails after successfully swapping =
+inode data, `tmp_inode` is evicted with its extent tree intact, erroneously=
+ freeing the migrated blocks.
+--
 
-Signed-off-by: lty <781735889@qq.com>
----
- fs/ext4/extents.c     | 4 ++--
- fs/ext4/fast_commit.c | 7 +++++--
- 2 files changed, 7 insertions(+), 4 deletions(-)
+commit 09fb778181d3ee108e977c6ec47d3771e863f54a
+Author: Yichong Chen <chenyichong@uniontech.com>
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 76038b6c3655..d67e30cf44ad 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -6275,7 +6275,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
- 		map.m_len = end - cur;
- 		ret = ext4_map_blocks(NULL, inode, &map, 0);
- 		if (ret < 0)
--			break;
-+			goto cleanup;
- 		if (ret > 0)
- 			numblks += ret;
- 		cur = cur + map.m_len;
-@@ -6333,7 +6333,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
- cleanup:
- 	ext4_free_ext_path(path);
- 	ext4_free_ext_path(path2);
--	return 0;
-+	return ret;
- }
- 
- int ext4_ext_clear_bb(struct inode *inode)
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0cac890cf370..8110b01e36c1 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -2002,8 +2002,11 @@ static int ext4_fc_replay_inode(struct super_block *sb,
- 	 * crashing. This should be fixed but until then, we calculate
- 	 * the number of blocks the inode.
- 	 */
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
--		ext4_ext_replay_set_iblocks(inode);
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA)) {
-+		ret = ext4_ext_replay_set_iblocks(inode);
-+		if (ret)
-+			goto out_brelse;
-+	}
- 
- 	inode->i_generation = le32_to_cpu(ext4_raw_inode(&iloc)->i_generation);
- 	ext4_reset_inode_seed(inode);
+ext4: fix the logical block counter overflow in indirect migration
 
-base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
--- 
-2.34.1
+update_tind_extent_range() advances lb->curr_block by max_entries *
+max_entries for every empty triple-indirect slot. This fixes the block
+counter overflow by keeping the counter in 64-bit and refusing migration
+with -EOPNOTSUPP when a data block is found after the last logical block.
 
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index c5e3fc998211a..dbf13d47aae4c 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+
+[ ... ]
+
+> @@ -66,6 +66,10 @@ static int update_extent_range(handle_t *handle, struc=
+t inode *inode,
+>  			       ext4_fsblk_t pblock, struct migrate_struct *lb)
+>  {
+>  	int retval;
+> +
+> +	if (lb->curr_block > (ext4_lblk_t)-1)
+> +		return -EOPNOTSUPP;
+> +
+
+[Severity: High]
+Does this bounds check correctly handle the EXT_MAX_BLOCKS sentinel?
+
+Since EXT_MAX_BLOCKS is 0xffffffff, when lb->curr_block is exactly
+0xffffffff, the condition 0xffffffff > 0xffffffff evaluates to false.
+This successfully allows the logical block to be migrated and inserted into
+the extent tree with ee_block =3D 0xffffffff, which subsequent block mapping
+operations will reject with -EFSCORRUPTED.
+
+Should this use >=3D to properly reject the EXT_MAX_BLOCKS sentinel?
+
+>  	/*
+>  	 * See if we can add on to the existing range (if it exists)
+>  	 */
+>  	if (lb->first_pblock &&
+>  		(lb->last_pblock+1 =3D=3D pblock) &&
+>  		(lb->last_block+1 =3D=3D lb->curr_block)) {
+>  		lb->last_pblock =3D pblock;
+>  		lb->last_block =3D lb->curr_block;
+>  		lb->curr_block++;
+>  		return 0;
+>  	}
+
+[Severity: Critical]
+This is a pre-existing issue, but does this loop lack bounds checking again=
+st
+the maximum extent length (EXT_INIT_MAX_LEN)?
+
+Because contiguous blocks are accumulated here indefinitely, if the run of
+blocks becomes > 32768, could this overflow the 16-bit ee_len field when
+written in finish_range()?
+
+fs/ext4/migrate.c:finish_range() {
+    ...
+	newext.ee_len   =3D cpu_to_le16(lb->last_block - lb->first_block + 1);
+    ...
+}
+
+An overflow could set the MSB (0x8000), marking the extent as unwritten, or
+wrap past 65535, truncating the length. This silently corrupts the migrated
+file by replacing valid user data with zeros or unmapping it entirely.
+
+[ ... ]
+
+[Severity: Critical]
+This is also a pre-existing issue, but what happens if journal credit
+extension fails after successfully swapping inode data in ext4_ext_migrate(=
+)?
+
+fs/ext4/migrate.c:ext4_ext_migrate() {
+    ...
+	else {
+		retval =3D ext4_ext_swap_inode_data(handle, inode, tmp_inode);
+		if (retval)
+			free_ext_block(handle, tmp_inode);
+	}
+
+	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
+	if (retval < 0)
+		goto out_stop;
+    ...
+}
+
+If ext4_journal_ensure_credits() fails, the error path jumps to out_stop
+without clearing tmp_inode's i_data array. Does this leave tmp_inode to
+be evicted with its extent tree intact?
+
+Since the extent tree now points to the original file's data blocks,
+will this erroneously free the migrated blocks during tmp_inode eviction,
+leading to a use-after-free and cross-file data corruption?
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260914065544.3438=
+431-1-chenyichong@uniontech.com?part=3D1
