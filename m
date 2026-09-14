@@ -1,52 +1,62 @@
-Received: from smtpbgeu2.qq.com (smtpbgeu2.qq.com [18.194.254.142])
+Received: from out203-205-221-202.mail.qq.com (out203-205-221-202.mail.qq.com [203.205.221.202])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1DE83290C7;
-	Mon, 14 Sep 2026 06:57:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.194.254.142
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8574D3ACA7F;
+	Mon, 14 Sep 2026 07:16:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.202
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789369078; cv=none; b=YySZtxHKbkU1uo6pDnv+o0lQhQd1mi1bYcNwBPJZoL7+Tj7SpWTgWCjF3W0YPJHLWpmyMJsxK+SuVNea9FZntYi3hE1xtzDVl4LOS/xF5/4Ds5YRmga3pfm/DvODzaZ5KVW6sF7J4WcSGa3zXC+tX7mRcT+VpKIFLa8OQb+ygVY=
+	t=1789370220; cv=none; b=fkrDj1faeK727Mk8A6sP7lB344vMyEMApSQ30nq1hpf6pdyjJ6uIYg8wDRmSr6d5wdVTS0O5Mbp89m2dIy6kLAo7D68W4krSVzzq90wab3Djuj0UFB3+DjLMTi7HvZzVF1TmU5XY/6IFPAFixfsCWCWe3yOnvEIirEkVvCBpbeU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789369078; c=relaxed/simple;
-	bh=cE7HLX+YCBfj2HIFGPdVVmbWnE7TYB2eicReZHTWim8=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=D3HWGx1hIlvDaXjtWc2q0feAgV74/3FTcktjVXulaYrG6wTMFCm/+fHaN5w8zCfdOtgpp5MFVwhIZviLtD0n0l/X5TeViqAbfq+YDD2FkvJS5LwSGfXy7VdUDc3Pj4swwEsk3dWWl7hbxBCoGzCQjiCyj6mKf+PG3VR6WtEUxAQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=e4nn9din; arc=none smtp.client-ip=18.194.254.142
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+	s=arc-20240116; t=1789370220; c=relaxed/simple;
+	bh=eKHB7MfBj0IguylIYjLWeVC5LnMSpSyyrq+zUkTwLX8=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=dsc/b7nAuWJfjUNxcYjzOMdSW5Pr6UsG7tfCJgAcjC3rGEE4XDu8TLLdmxHlnvZr71PTqbk5igjaFjPA6DhNoean/cXYLi86QeWn85SiNzkwcKYr10y6tfLtI/g4+Zn+TV9BJOutM45glM1VPsGZe9jIHKjODOnn3ji1cCLuTkY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=NEpiELQO; arc=none smtp.client-ip=203.205.221.202
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="e4nn9din"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1789369005;
-	bh=LIVL8L76t6KEPTcGTpEPKDpsGGvY+rr+QPSKuZ3S47E=;
-	h=From:To:Subject:Date:Message-Id:MIME-Version;
-	b=e4nn9dinSZAPTIIaOk+HD0sAxthyzy9pakrgHJfDCKP1WhJwdDk7TaoFzP2WROk3M
-	 C6u0v2WuyiVBLOnjLWeVD6S2w9hWV075y465gjSR86p+fp15BmWrick6Rxy7hk0dJk
-	 Vww3YhRdG32SjScsofT7JHu2OyX4IzyJ7Wv4GLuY=
-X-QQ-mid: esmtpgz10t1789368987tc3938474
-X-QQ-Originating-IP: oa/POHotl25pRRqxZDjcxefat9hRezoAQFHWYo8D1aA=
-Received: from uniontech.com ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Mon, 14 Sep 2026 14:55:47 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 9193533759185836638
-EX-QQ-RecipientCnt: 11
-From: Yichong Chen <chenyichong@uniontech.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="NEpiELQO"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1789370209; bh=GogiiBIuLlE0MdtpCIkJteKnRJY5wkoihOLQDRksfOo=;
+	h=From:To:Cc:Subject:Date;
+	b=NEpiELQOTfE7LzDrgE5Djklh/ynM+dj1DKXe5vAQxCTTGBLPwzm0v8ZtgzoYnOdqZ
+	 KlHCCP+k9hf5bg0FWcq1bWoPoCj0hPYW3Uguso3p5nXISecWHGSEPqEwzUyzrkxEuA
+	 n5Ey4133mK5xqtLNnVIXMeDFQi00aDd8RLNq9elg=
+Received: from fs.localdomain ([221.176.157.243])
+	by newxmesmtplogicsvrsza63-0.qq.com (NewEsmtp) with SMTP
+	id 42E3E4BF; Mon, 14 Sep 2026 15:16:46 +0800
+X-QQ-mid: xmsmtpt1789370206t69158870
+Message-ID: <tencent_46F42EDFC0F504046B160E939DB76255EE08@qq.com>
+X-QQ-XMAILINFO: NxKoLLhE22aTIX2g66ENyH70bwnS5uFkkoXVaNjiPVrk9X3vYppTMJKXmRkQkn
+	 vfXETtANo5piX7o8B3g5LTtrRAF4+MoWbLm6LHsWVOw8vh0wSciuqtBP/1+BzHL3tAnXUY3KsOdC
+	 E25+57V/1hREfr1Y0tHrFLZZ+41FEvQznbMbwHrFkvEvRjXw8BA9ZlxZBez8fCxmNZmXgSUEiXXr
+	 ONAkmePisA6rikpLy3hJ5vXIUS2xXonuX9OLsrxk515CnnfrXvFkJdBH8Jqsx2UanoVc+5JiTafm
+	 JXU7wYIZRLIxjmRxM/Lmvy0ufULB9gW3xeE5SoRw8AMg95N2DpiHbpMgK/cGmRaGIOtxBPjJ8lJ0
+	 1w26qPVFWwoIo43ko9fleGuO++MFrtCmUhp2fPbrK7xWZZ3eiNpag+VIPq4o1HOuowrJ64BuDZcg
+	 3qmEpR7xhoMobQA1rphbujJn8tnwgqVXZxZo1bX/nwnJI+Ke/HSNwDgPkKSJKTwP7PwMUfkFifrl
+	 VsMqfwzJCEEJhAXZ/eqS1b3/4UCU7mfJIIy5quZTOVTMH5zknkpBkXFGMc+Cs3+ZKvsAW9yebQ9f
+	 03IrZK00xDutEubYWYS1VD72URDAyVhRNf9kRDkaVAs3YHgpFu9A+UqGIvukH8vxKhRdO5ynkpee
+	 oARddKX6D+JhAfTwB7kpUhL48kq6q/NukXj8NRJHEFcwSDKKJEFZ+IbXNeKpyuXG5LoDaKUiNJOw
+	 YfVeufUbh2Heelma9DEA8Z5s1uCVa9Xw4OOIrDVL3vWmpT7/fwI7Wcx5TUD0v6Rq2AEQKovmRRkt
+	 KYcXi6udBI44Hihhyhop0LbjS0+NdshrZBW38Gj7dIRXmjgH3eiSf7wtbJ0h9BRoPRIcA9KO35qS
+	 FyH7vDp/frm0k8faSj64IDzj92AYQ/E8Md3NPT8Ed+UuyHGYLiB6Wk++j2EET9OHiXzGBzzrHJhX
+	 qfuNijVMhMuTKQLpaTqtSppEj+dGRVC0dimtgD98E+63aI6IH1ZiOX4E/joQhiacGYUymtOJo=
+X-QQ-XMRINFO: MPJ6Tf5t3I/ylTmHUqvI8+Wpn+Gzalws3A==
+From: lty <781735889@qq.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	harshadshirwadkar@gmail.com,
+	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	"Aneesh Kumar K . V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Yichong Chen <chenyichong@uniontech.com>
-Subject: [PATCH] ext4: fix the logical block counter overflow in indirect migration
-Date: Mon, 14 Sep 2026 14:55:44 +0800
-Message-Id: <20260914065544.3438431-1-chenyichong@uniontech.com>
-X-Mailer: git-send-email 2.20.1
+	lty <781735889@qq.com>
+Subject: [PATCH] ext4: propagate errors from fast commit i_blocks replay
+Date: Mon, 14 Sep 2026 15:16:45 +0800
+X-OQ-MSGID: <20260914071645.567625-1-781735889@qq.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -54,75 +64,65 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: esmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
-X-QQ-XMAILINFO: MfQnJH+7WKv6drDog6dbw8OMcEYzBjol7oM3AVxXW59Tzq/zKgrcnk7G
-	xqoBRHDC88Qo3DzarVgCnBEH7GHaGtmiU6gIIV03S3AgXAyK6SgUkBHi/C7OyikOf5aCUFf
-	5gWRkwicgu+wh2Q9Unh8KjZK8icy5Vzo31A2PomiIAxJTsoYSEKcdSeb3UQOknBynAqN8n7
-	xOG8DOGTb0hwAuaEfify3DAsuE6SoQn5qqC+j8lOt6+B1p9EatKnfOiJ5qv3O3AZnvET4lO
-	p5zD5lUTlXNPH6fqI/H8XXoIh7JUzBBM82rsiXu0ic9Ph1YubMk6Uzxs1zg6ip4Sd2DL4ZU
-	QwZk1GN2RrgaCmdjgxCc45HvHA+G59eGj6lXDX785dEmSWH0juxiOVzgc8oUT57igk/+/MM
-	bHwmNX5Vwtz9i4b/rokZSkd7wuzX0wBG/fYKybNzCNXzI9WCYcQXswTiUk2NsJGt0yel1w0
-	OBrD0ysVHHkNxZcs88H5XSIh32QIxPM9cxInCD/8691mRRgIAaqJec0Ms+e9bryxlBcclF2
-	ZyOa7kF+Q4AtXoXgg+wy/aexar+XBNwej4Q9HuZDPle804R5yf4XiEV4XnCQUiCI/SQrwS5
-	zRiu7LRxD+vZ7xK5q+Cq19TSzKBJkrXAynVSgUyB+miQLaFumeaySlf5+KdcZRrouYdiDBr
-	T5oMI+lrzfIt6utfLKh8fGSzWFMKQ3MNLGSbFsT0u/M9zN+JJzTkyVRogcYnWfh0PnlXTgA
-	2PgzMF1C890NcJedt65Tcglx7NkzLYe1NnNeq0vXpos/orzJXU/LYB83fXRs8/NFkCOmSyM
-	6pIb/nC7klHCZbL5vTk18TC5E3WVemhwfGmqqd5jukt/Z/Xz1SJq1ZX0+31ZYoytwNwSCMo
-	Qk3Kh2ekvO4W5z2HBPk4PBRUn3D1NhZ0TwecSYKkDc9cfkDkgvki3+I0LASewPTiqGvhB6D
-	7rOIwW6A2jNEsfmAfJ1JWWs0j8xxzJdHIXcUu1KN95v21lIqUl06VfWk5iwQj/hRS4wkbk/
-	Cr4lPxYg==
-X-QQ-XMRINFO: Nq+8W0+stu50tPAe92KXseR0ZZmBTk3gLg==
-X-QQ-RECHKSPAM: 0
 
-update_tind_extent_range() advances lb->curr_block, an ext4_lblk_t, by
-max_entries * max_entries for every empty triple-indirect slot.  One
-triple-indirect block spans max_entries^3 logical blocks, which exceeds
-2^32 as soon as the block size is 8K or larger (16384^3 = 2^42 with 64K
-blocks), so the counter wraps while that block is walked.
+ext4_ext_replay_set_iblocks() breaks out of its mapping loop when
+ext4_map_blocks() fails, but then continues with a partial block count
+and unconditionally returns success. The fast commit replay caller also
+ignores the helper return value.
 
-A wrapped counter makes the migration store a block number that is 2^32
-blocks away from the one the pointer block describes.  Two ranges can then
-end up with the same ee_block, which trips
-BUG_ON(newext->ee_block == nearex->ee_block) in ext4_ext_insert_extent(),
-and without that collision the data is still moved to the wrong logical
-block while the migration reports success.
+Stop the count immediately on mapping errors, leave i_blocks unchanged,
+and propagate the failure to abort inode replay.
 
-Keep the counter in 64 bit so that it cannot wrap, and refuse the
-migration with -EOPNOTSUPP when a data block is found after the last
-logical block an extent can describe, which only a corrupt block map can
-contain.
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
 
-Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
-Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
+Signed-off-by: lty <781735889@qq.com>
 ---
- fs/ext4/migrate.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/ext4/extents.c     | 4 ++--
+ fs/ext4/fast_commit.c | 7 +++++--
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index e06d847033a1..8043959c19ef 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -14,7 +14,7 @@
-  * represented by a single extent
-  */
- struct migrate_struct {
--	ext4_lblk_t first_block, last_block, curr_block;
-+	u64 first_block, last_block, curr_block;
- 	ext4_fsblk_t first_pblock, last_pblock;
- };
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 76038b6c3655..d67e30cf44ad 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -6275,7 +6275,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 		map.m_len = end - cur;
+ 		ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 		if (ret < 0)
+-			break;
++			goto cleanup;
+ 		if (ret > 0)
+ 			numblks += ret;
+ 		cur = cur + map.m_len;
+@@ -6333,7 +6333,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ cleanup:
+ 	ext4_free_ext_path(path);
+ 	ext4_free_ext_path(path2);
+-	return 0;
++	return ret;
+ }
  
-@@ -65,6 +65,10 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
- 			       ext4_fsblk_t pblock, struct migrate_struct *lb)
- {
- 	int retval;
-+
-+	if (lb->curr_block > (ext4_lblk_t)-1)
-+		return -EOPNOTSUPP;
-+
- 	/*
- 	 * See if we can add on to the existing range (if it exists)
+ int ext4_ext_clear_bb(struct inode *inode)
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 0cac890cf370..8110b01e36c1 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -2002,8 +2002,11 @@ static int ext4_fc_replay_inode(struct super_block *sb,
+ 	 * crashing. This should be fixed but until then, we calculate
+ 	 * the number of blocks the inode.
  	 */
+-	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
+-		ext4_ext_replay_set_iblocks(inode);
++	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA)) {
++		ret = ext4_ext_replay_set_iblocks(inode);
++		if (ret)
++			goto out_brelse;
++	}
+ 
+ 	inode->i_generation = le32_to_cpu(ext4_raw_inode(&iloc)->i_generation);
+ 	ext4_reset_inode_seed(inode);
+
+base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
 -- 
-2.51.0
+2.34.1
 
