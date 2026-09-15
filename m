@@ -1,46 +1,47 @@
-Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
+Received: from out162-62-57-137.mail.qq.com (out162-62-57-137.mail.qq.com [162.62.57.137])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54F233CEB99
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2026 01:58:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.210
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 92D1A318EC7;
+	Tue, 15 Sep 2026 01:58:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.137
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789437508; cv=none; b=sS0aMtkfgixIJP7x8X7iHiPHSDXRzupNSLIPQJSeK6XSgNl/KSg9X0QJhZg6coOGwO1IGzrqYYJj2uhCTTuv88jolm+QivbGZIF797BHI4rXn9aIsuEf2CxJVmIHahs3PofT75L4FLOdAR4vWfOfAaWGqSdexoM0Vq5Vl6uXlcc=
+	t=1789437537; cv=none; b=hyrvfdNWjrkN37b4g1DeTTui6KDiqHjBi7au1PrC9JyVdXXitfFJlLXq2IyVoHPOB7PSEo2ZXECYgrwGWwB1CSdiCU/TJJjeaBV9fqaW19tRj7n79LJlocTZkOvjRRe8z6mkPNBaLTb7GqQ5qm6MBkvu7OAA8AS8oQYXEfdxZkk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789437508; c=relaxed/simple;
-	bh=qYQmH8ngtaPac+K8JUQ/yRgZn24J2DIhazz4/5beY64=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=kj75c9a+ffmuRHSFpl0k7cyz5X474vvXrP4cpMOE7f/myTDrF08bDpsgWpVxU5b4VBIg04LPSEj5Ka5S5CWrDlChC45fZD4lZZaccTsmkEopdvQCuYRHydl/ILR5invDQxUNPi+2QFn4zxqsKCLXn6NEXODUO83h1W1b6L7Q+sg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=CH2S3KU2; arc=none smtp.client-ip=162.62.57.210
+	s=arc-20240116; t=1789437537; c=relaxed/simple;
+	bh=FN8WjdxOGAFG3G1A6muAmBqyDA2TmlJtcfibr6xfxXI=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=TpeH2nt/qhfUwHhsYND2d8xxe5N9G+dfCOFy9kw96iZcu+mySeBw1LqHFqfDyhxJhtWswOrvYpJ4YyapDODr9r/hgdJrfTTtGiC3k9zRla2p1BM1AlKNF0rJ+TN/IhUBns2wYL1IAgKnLtqX9mIuWQmQbIupNO12UEW5BU3a+Po=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=EKZkpl56; arc=none smtp.client-ip=162.62.57.137
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="CH2S3KU2"
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="EKZkpl56"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1789437495; bh=FCODJr/2EGdLTB7JhKYj8dAx/+MZjYGcCKafdDengk8=;
+	t=1789437524; bh=uJhP7pghNh27yatsnw3vuh8TA7NgBiYtWCubNtiu5rg=;
 	h=From:To:Cc:Subject:Date;
-	b=CH2S3KU2uB5wqF1+SlI1WH75+uMinWeMJLL84a1V8IgNdLUpu4MxFulYrD/GTFSk/
-	 3vTlk1qxydczAuiFeddhC7V2az2vJFlejIdl0MOOqcws45+C0cyN6MiGX61Z92A9ze
-	 707U6IaQFHcaJrW3kzdynqI2dLesBeK76pvDq9+8=
+	b=EKZkpl56Ni++rZdKTccxHvQG/QerHqKIgyIPBCdgEp+Uv3YoITEURB7uGSRdKxASS
+	 DCsuSU+XCdAXM/8BUH+IGhRhGrIID8vkJvZF61wAFkt6w4al3sm03hZUd+LYZK98Cq
+	 MJSoUB60ikaSWmarD+Pu2r0F0tkbsBWaBlj4v16E=
 Received: from fs.localdomain ([221.176.157.243])
-	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
-	id E8318A2D; Tue, 15 Sep 2026 09:58:03 +0800
-X-QQ-mid: xmsmtpt1789437483tg8li2pa5
-Message-ID: <tencent_ECF4DA918377A7A0D8863B860B0F3025C106@qq.com>
-X-QQ-XMAILINFO: MidKUt01ypo8UqRUGtFLetnB2ckaukSR66cv1SuRRpVB2ijPX4l5RGRuVx0Izq
-	 Mhg9Dd0qmYRt6H5GyR75TCMA0n5tPM+ktadv9vGSQvDoihoudlyoSejrxh5bXziVFIGytZFUxYbN
-	 6jTK7nHzSi81t2TFg+A73PoNLLsiJJga7jpIDd306RgMoSR8tr+5RbCMPqn0u4MxfCMMu2gvBCYH
-	 WweCb991jacqhoO7XR1yL33T8pjk7HanZRfVqbGbP2hRxDfI9HQ3ncKVr4UWu/1bs+/lPSX4Y7OY
-	 x4pd9RLwSDC2ixOz1gdcnZKNDkaeQL2j9iTiE8sNxbJ53Gmemetrzk76nsRL43SZ0kCO6cKhuRi5
-	 7jB0Cp5PCq5uBcSqi5i1n8ak2fWiIQTgV3AxEsUpiBUbd4t5r9d3uc459mwRVJ7nf7eadkdKUXwd
-	 Je9MsPb7uknzM38uh5ID1j5U1+jjwAvD3xlFuSRkE5YulWuNNkKSRjNAYgS1RnAIzSStiAmBH8fT
-	 VihWp+bwGiqXoT4ZKbMAiBjuYgJGdqU118q8HwCCwn5EzYlSN1POwg7j2UZEvRxzu8RyP7dyQ1fU
-	 0/GTP4+60nFEpgS6epc2SIPrYuiT/y5mLVroQuQQzQnreEUW/kZ6+LxhZDa35aDKO7OhhLckD7RF
-	 qh4aTnC4cKs2pxpo0TXLs2k2nqvGnFThrIaCJYJoJy8udoYC9PmxIN5zIot0EhY244pF1vPOohMs
-	 uP8B8eplwNrtjXGQ14+/MU1hSTJWHS19kr5otAHoWBwtKHQzXKXGahzfp3y6TBMB47N7y/5QT88O
-	 3HvsE39i1CgkzGt4/uqh0Qx8fNmlnev8VtsaG3ZuZ4X+0An10Fk5eAR4dc39PSXbx4OIchQaio8R
-	 KTlBJFuaedQVwcO8BzsjnEEMgR+sJettw/yLO1OuC+84pAEZiYCHHT0G7JeWXkzHfHDnj1tWjfFs
-	 SD+LNKGDfUQ67linHnTIFES05akb0vt4/nTc+jaXybjuKCrAZGqC0m5VPcJ2zAJm5G9JBLwUx83V
-	 IQvpM6C5yDF/0N0hpDdb0RINeaC5jyvqnggQX/BKsxgSO/85mYILblPhzaswA=
+	by newxmesmtplogicsvrszc43-0.qq.com (NewEsmtp) with SMTP
+	id EA3222CC; Tue, 15 Sep 2026 09:58:35 +0800
+X-QQ-mid: xmsmtpt1789437515t0n93olsp
+Message-ID: <tencent_FBD69AA6034FE7AF98BC3B90CB1EF012C106@qq.com>
+X-QQ-XMAILINFO: N0wO3GTqxQkwwOV9h1Y8Pf6BZ5Y3piV0+asf7ajYqthLQRAMeFFGWt6Q5vIPGf
+	 sa9w5m4/HbeGD1321/Ld3zHq2pirYw7CsBEL+ZweBlIWcRimK8sdbqLGaYcoVWkEXl8pb+Rb/mgY
+	 zcTI4R13a2jKAjt0Jp9iV6Qs6dQeQ4Houo64alW/X6aLe0FrPhIwOtmWn6PUWweMSyK8Eodwcas/
+	 rV733kFCdSzfu3kbt30jNGviRXf9XOCz6CuihdVDG/kadwQug+GQ+qPlmhBjJ4w4Y/7MlJWBNdIZ
+	 1eAS/kz9AD4AgvONqBvPtP61Uz/qnS8rAFaMZru4DYQOQFy/PhkyeoFwTjZZ3hZmjHAVMZd0xgPP
+	 ivQUtnn5fkFkoI+g6wfsnf9Tct/8g/pM3WJ5rIsVVkWnxDrP6pADEZZIWa/v5J4HC0ZwbtwTQhEk
+	 Zo3PrjXGGM/EX4B1twxH1jqbBh+DJtfS4rKff4FWyOf1KYOxtrwNLPL2pSJZoOOHfriH39EXnwtY
+	 zGuLP8hjxpZg31ZkbDrTAcdO9Y5mJybebwP01xCZQNHEPLa1facxSibgv/xl5MSDdOowRvTXEVih
+	 rB0kiQWP6sVgIJbfEtz9oWoeevMKJuTk/eZmXPSw7XGnPgfkEoM9wPqbkMO2ZEyY1GzKvxlysr7Y
+	 TVrW2ExeakYhp5yeg6sn8TQn5bUfdP/PncM7omhOFnFm3nUSvrnTf1/fxCAgseBI9xvbqmZMKpM1
+	 MtsMvrIKLSfczMd8ZneVllL077zRJ+JoN5scPh5cpWWH5k6eBFz2QSOoLWZETdbaB3DPx8j2E4cJ
+	 bRwhUInZ50sACH2YTjclXZpjD5WvMnpgmOn2UAYQHQ7mp+fZm57ihv0JdlfE3bsrkWcfcr/2gMsz
+	 7sbhjonYR9D+vrbSnhc6HiGGZNris80rRCN23OtBMpFH3nWytR6GeW5qbvppzHztOJE6o3rmYlwC
+	 EFMZVvMcgGhBlHYQcvqdURvWJUKLRW7DJXYrCLA32bYkkF0tW8wuBUNVKxGVenbMiFklIJaJCxHv
+	 D/LycjzJROUYU1UeXdF2F7EHv8I5fYCDczgmMK1AutfUqk2GK8b3qMZGtRNp1nlfSZ209ocHjd5d
+	 1jOeEF
 X-QQ-XMRINFO: Nq+8W0+stu50tPAe92KXseR0ZZmBTk3gLg==
 From: 781735889@qq.com
 To: linux-ext4@vger.kernel.org
@@ -52,10 +53,11 @@ Cc: tytso@mit.edu,
 	ritesh.list@gmail.com,
 	yi.zhang@huawei.com,
 	harshadshirwadkar@gmail.com,
-	lty <781735889@qq.com>
-Subject: [PATCH v3] ext4: propagate errors from fast commit i_blocks replay
-Date: Tue, 15 Sep 2026 09:57:46 +0800
-X-OQ-MSGID: <20260915015746.1426200-1-781735889@qq.com>
+	lty <781735889@qq.com>,
+	stable@vger.kernel.org
+Subject: [PATCH v2] ext4: propagate errors from fast commit block cleanup
+Date: Tue, 15 Sep 2026 09:58:28 +0800
+X-OQ-MSGID: <20260915015828.1426799-1-781735889@qq.com>
 X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -67,112 +69,103 @@ Content-Transfer-Encoding: 8bit
 
 From: lty <781735889@qq.com>
 
-ext4_ext_replay_set_iblocks() breaks out of its mapping loop when
-ext4_map_blocks() fails, but then continues with a partial block count
-and unconditionally returns success. The fast commit replay caller also
-ignores the helper return value.
+ext4_ext_clear_bb() stops scanning when ext4_map_blocks() fails, but it
+returns success to its caller. It also ignores failures from extent lookup
+and replay-region allocation. ext4_fc_replay_inode() ignores the helper
+result and continues replay with stale block bitmap accounting.
 
-Stop the count immediately on mapping errors, leave i_blocks unchanged,
-and propagate the failure to abort inode replay.
+Propagate all cleanup errors from ext4_ext_clear_bb() and abort inode
+replay when cleanup fails.
 
 Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Cc: stable@vger.kernel.org
+
+Testing: QEMU fast-commit replay with an injected -EIO at the
+ext4_ext_clear_bb() mapping call. The unpatched kernel completed recovery
+and e2fsck reported a free-block count mismatch; the patched kernel aborted
+recovery with EIO. Also built the ext4 target objects with the expanded
+error paths.
+
 Signed-off-by: lty <781735889@qq.com>
 ---
-Changes in v3:
-- Move the version history below the separator.
-
 Changes in v2:
-- Propagate errors from all ext4_find_extent() and skip_hole() calls in
-  ext4_ext_replay_set_iblocks(), as requested by Jan Kara.
-- Keep i_blocks unchanged when any replay lookup fails.
+- Propagate errors from extent lookup and replay-region recording.
+- Abort inode replay when block cleanup fails.
 
- fs/ext4/extents.c     | 26 ++++++++++++++++----------
- fs/ext4/fast_commit.c |  7 +++++--
- 2 files changed, 21 insertions(+), 12 deletions(-)
+ fs/ext4/extents.c     | 31 ++++++++++++++++++-------------
+ fs/ext4/fast_commit.c |  5 ++++-
+ 2 files changed, 22 insertions(+), 14 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 76038b6c3655..f8c805d80c33 100644
+index f8c805d80c33..ba6dee8829a5 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -6275,7 +6275,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+@@ -6369,29 +6369,34 @@ int ext4_ext_clear_bb(struct inode *inode)
  		map.m_len = end - cur;
  		ret = ext4_map_blocks(NULL, inode, &map, 0);
  		if (ret < 0)
 -			break;
-+			goto cleanup;
- 		if (ret > 0)
- 			numblks += ret;
++			goto out;
+ 		if (ret > 0) {
+ 			path = ext4_find_extent(inode, map.m_lblk, path, 0);
+-			if (!IS_ERR(path)) {
+-				for (j = 0; j < path->p_depth; j++) {
+-					ext4_mb_mark_bb(inode->i_sb,
+-							path[j].p_block, 1, false);
+-					ext4_fc_record_regions(inode->i_sb, inode->i_ino,
+-							0, path[j].p_block, 1, 1);
+-				}
+-			} else {
+-				path = NULL;
++			if (IS_ERR(path)) {
++				ret = PTR_ERR(path);
++				goto out;
++			}
++			for (j = 0; j < path->p_depth; j++) {
++				ext4_mb_mark_bb(inode->i_sb,
++						path[j].p_block, 1, false);
++				ret = ext4_fc_record_regions(inode->i_sb,
++							     inode->i_ino, 0,
++							     path[j].p_block, 1, 1);
++				if (ret)
++					goto out;
+ 			}
+ 			ext4_mb_mark_bb(inode->i_sb, map.m_pblk, map.m_len, false);
+-			ext4_fc_record_regions(inode->i_sb, inode->i_ino,
+-					map.m_lblk, map.m_pblk, map.m_len, 1);
++			ret = ext4_fc_record_regions(inode->i_sb, inode->i_ino,
++						     map.m_lblk, map.m_pblk, map.m_len, 1);
++			if (ret)
++				goto out;
+ 		}
  		cur = cur + map.m_len;
-@@ -6291,15 +6291,19 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
- 	cur = 0;
- 	ret = skip_hole(inode, &cur);
- 	if (ret < 0)
--		goto out;
-+		goto cleanup;
- 	path = ext4_find_extent(inode, cur, path, 0);
--	if (IS_ERR(path))
--		goto out;
-+	if (IS_ERR(path)) {
-+		ret = PTR_ERR(path);
-+		goto cleanup;
-+	}
- 	numblks += path->p_depth;
- 	while (cur < end) {
- 		path = ext4_find_extent(inode, cur, path, 0);
--		if (IS_ERR(path))
--			break;
-+		if (IS_ERR(path)) {
-+			ret = PTR_ERR(path);
-+			goto cleanup;
-+		}
- 		ex = path[path->p_depth].p_ext;
- 		if (!ex)
- 			goto cleanup;
-@@ -6308,11 +6312,13 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
- 					ext4_ext_get_actual_len(ex));
- 		ret = skip_hole(inode, &cur);
- 		if (ret < 0)
--			break;
-+			goto cleanup;
+ 	}
  
- 		path2 = ext4_find_extent(inode, cur, path2, 0);
--		if (IS_ERR(path2))
--			break;
-+		if (IS_ERR(path2)) {
-+			ret = PTR_ERR(path2);
-+			goto cleanup;
-+		}
- 
- 		for (i = 0; i <= max(path->p_depth, path2->p_depth); i++) {
- 			cmp1 = cmp2 = 0;
-@@ -6333,7 +6339,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
- cleanup:
+ out:
  	ext4_free_ext_path(path);
- 	ext4_free_ext_path(path2);
 -	return 0;
-+	return ret;
++	return ret < 0 ? ret : 0;
  }
  
- int ext4_ext_clear_bb(struct inode *inode)
+ #if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0cac890cf370..8110b01e36c1 100644
+index 8110b01e36c1..8c24e882aee8 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -2002,8 +2002,11 @@ static int ext4_fc_replay_inode(struct super_block *sb,
- 	 * crashing. This should be fixed but until then, we calculate
- 	 * the number of blocks the inode.
- 	 */
--	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
--		ext4_ext_replay_set_iblocks(inode);
-+	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA)) {
-+		ret = ext4_ext_replay_set_iblocks(inode);
-+		if (ret)
-+			goto out_brelse;
-+	}
+@@ -1941,8 +1941,11 @@ static int ext4_fc_replay_inode(struct super_block *sb,
  
- 	inode->i_generation = le32_to_cpu(ext4_raw_inode(&iloc)->i_generation);
- 	ext4_reset_inode_seed(inode);
+ 	inode = ext4_iget(sb, ino, EXT4_IGET_NORMAL);
+ 	if (!IS_ERR(inode)) {
+-		ext4_ext_clear_bb(inode);
++		ret = ext4_ext_clear_bb(inode);
+ 		iput(inode);
++		inode = NULL;
++		if (ret)
++			goto out;
+ 	}
+ 	inode = NULL;
 
 -- 
 2.34.1
+ 
 
