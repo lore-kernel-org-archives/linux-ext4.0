@@ -1,164 +1,178 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out162-62-57-210.mail.qq.com (out162-62-57-210.mail.qq.com [162.62.57.210])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 790BE38C421
-	for <linux-ext4@vger.kernel.org>; Mon, 14 Sep 2026 18:47:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54F233CEB99
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2026 01:58:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.57.210
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789411659; cv=none; b=Ue54V2/W3P1gAmGk1NkbtbjZa1DPoJHfI4rcw2cBzzER288vWmPxCg1FMIfPBhhWDcZ6QkpeWluIM2sA53fWp5kb32ZwciG/71U/4WGOPLzn10JIRKXqeMB8xPsaaL4NvBGxzIw+xCvt0Q1T13cy3qvd6XUS8ex1EqXfuP52XPY=
+	t=1789437508; cv=none; b=sS0aMtkfgixIJP7x8X7iHiPHSDXRzupNSLIPQJSeK6XSgNl/KSg9X0QJhZg6coOGwO1IGzrqYYJj2uhCTTuv88jolm+QivbGZIF797BHI4rXn9aIsuEf2CxJVmIHahs3PofT75L4FLOdAR4vWfOfAaWGqSdexoM0Vq5Vl6uXlcc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789411659; c=relaxed/simple;
-	bh=5foOB0viW1Eoh4GR4pnGedM49yZUhcB9J3zZTql375U=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=QRRCdZ9RAKyrOKwmrYLjA64k1MyGYK97CFRVTHQ3p7KoxrsNdkqd/AtMOrPJ8j79/Ew4m5eMADNVk4UlzvpFbEi/GNCQs/AGQFA4gKiFo1BhMlco/idShb2o2bAmzgOEv+Y4Xhz7/SgDgJ1FEi4bSTMat7VX+u6cCxtMr3PnlI4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fcxNeEdc; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ArxLSHNf; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=hpjJ5Rm3; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Pz7f7uX+; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1789437508; c=relaxed/simple;
+	bh=qYQmH8ngtaPac+K8JUQ/yRgZn24J2DIhazz4/5beY64=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=kj75c9a+ffmuRHSFpl0k7cyz5X474vvXrP4cpMOE7f/myTDrF08bDpsgWpVxU5b4VBIg04LPSEj5Ka5S5CWrDlChC45fZD4lZZaccTsmkEopdvQCuYRHydl/ILR5invDQxUNPi+2QFn4zxqsKCLXn6NEXODUO83h1W1b6L7Q+sg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=CH2S3KU2; arc=none smtp.client-ip=162.62.57.210
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fcxNeEdc";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ArxLSHNf";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="hpjJ5Rm3";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Pz7f7uX+"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 3265521A7B;
-	Mon, 14 Sep 2026 18:47:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789411651; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5Hzc4uU/BZWWVGYaGAn9oSImTuO/O5hxbqLcTiPsVAw=;
-	b=fcxNeEdcsYCnhcJ84Yk9ttlljq/85P/zZpPeeGMimcAW5DeydmPzBqPGoLG8YMcpj9Iaq5
-	OqolzTi2zwAv9oglpllwi0gmqNMCUAfCJBzDcIpb0nHYdMZnkIYB+6fzCQ0tWD7OfYa0tY
-	Qsz+1eliNgHAOhPUqo4rZs6s7BBZU8k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789411651;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5Hzc4uU/BZWWVGYaGAn9oSImTuO/O5hxbqLcTiPsVAw=;
-	b=ArxLSHNfw4RISUJz/dREVOzYOSPbcq8DOXdbbZIFr6N8wmahOCO6ScNGWvrFkimDG/2f24
-	jCAyvHI7OCKiuqAQ==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789411647; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5Hzc4uU/BZWWVGYaGAn9oSImTuO/O5hxbqLcTiPsVAw=;
-	b=hpjJ5Rm3QMfnsKR+j7MSXLOdm7XfAUWkgUi5kAauF/sFyWY0zmef5zJOZnjU/T0TkXnFqm
-	9zw96Myq+g5Wt8xz4MX3Lvcx/jvuQ5JHk2NzKWqXlXYnfTeGeCCK0etQRQvXoRBuyzy18L
-	DmptXmebLuQfydJFH5GkWDGyg4N7unA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789411647;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=5Hzc4uU/BZWWVGYaGAn9oSImTuO/O5hxbqLcTiPsVAw=;
-	b=Pz7f7uX+H7cCBIkVhTo6vXtsC8YtsCkDXPYHsw22dEvGwscYa/TMB9J94hOEWtYY/TUFTv
-	B76GyBte5QcUMFBg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DD1401368C;
-	Mon, 14 Sep 2026 18:47:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id eOlpNT5BqGqvPQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 14 Sep 2026 18:47:26 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 5F8D1A12E4; Mon, 14 Sep 2026 20:47:22 +0200 (CEST)
-Date: Mon, 14 Sep 2026 20:47:22 +0200
-From: Jan Kara <jack@suse.cz>
-To: shuo chen <1289151713@qq.com>
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, 
-	jack@suse.cz, ojaswin@linux.ibm.com, yi.zhang@huawei.com, 
-	linux-ext4@vger.kernel.org, Farhad Alemi <farhad.alemi@berkeley.edu>
-Subject: Re: [PATCH v2] ext4:Fix WARNING in ext4_journalled_invalidate_folio
-Message-ID: <dou62oqosza2rxerkg2getanwttfwjfrv7pc6fdq6enmdayjon@65qzjs7yququ>
-References: <tencent_D74F4B8A5FDC1BCFC23B8750428019635609@qq.com>
- <tencent_87F5A404ED65B0B1349C60E830C485716705@qq.com>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="CH2S3KU2"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1789437495; bh=FCODJr/2EGdLTB7JhKYj8dAx/+MZjYGcCKafdDengk8=;
+	h=From:To:Cc:Subject:Date;
+	b=CH2S3KU2uB5wqF1+SlI1WH75+uMinWeMJLL84a1V8IgNdLUpu4MxFulYrD/GTFSk/
+	 3vTlk1qxydczAuiFeddhC7V2az2vJFlejIdl0MOOqcws45+C0cyN6MiGX61Z92A9ze
+	 707U6IaQFHcaJrW3kzdynqI2dLesBeK76pvDq9+8=
+Received: from fs.localdomain ([221.176.157.243])
+	by newxmesmtplogicsvrszb51-1.qq.com (NewEsmtp) with SMTP
+	id E8318A2D; Tue, 15 Sep 2026 09:58:03 +0800
+X-QQ-mid: xmsmtpt1789437483tg8li2pa5
+Message-ID: <tencent_ECF4DA918377A7A0D8863B860B0F3025C106@qq.com>
+X-QQ-XMAILINFO: MidKUt01ypo8UqRUGtFLetnB2ckaukSR66cv1SuRRpVB2ijPX4l5RGRuVx0Izq
+	 Mhg9Dd0qmYRt6H5GyR75TCMA0n5tPM+ktadv9vGSQvDoihoudlyoSejrxh5bXziVFIGytZFUxYbN
+	 6jTK7nHzSi81t2TFg+A73PoNLLsiJJga7jpIDd306RgMoSR8tr+5RbCMPqn0u4MxfCMMu2gvBCYH
+	 WweCb991jacqhoO7XR1yL33T8pjk7HanZRfVqbGbP2hRxDfI9HQ3ncKVr4UWu/1bs+/lPSX4Y7OY
+	 x4pd9RLwSDC2ixOz1gdcnZKNDkaeQL2j9iTiE8sNxbJ53Gmemetrzk76nsRL43SZ0kCO6cKhuRi5
+	 7jB0Cp5PCq5uBcSqi5i1n8ak2fWiIQTgV3AxEsUpiBUbd4t5r9d3uc459mwRVJ7nf7eadkdKUXwd
+	 Je9MsPb7uknzM38uh5ID1j5U1+jjwAvD3xlFuSRkE5YulWuNNkKSRjNAYgS1RnAIzSStiAmBH8fT
+	 VihWp+bwGiqXoT4ZKbMAiBjuYgJGdqU118q8HwCCwn5EzYlSN1POwg7j2UZEvRxzu8RyP7dyQ1fU
+	 0/GTP4+60nFEpgS6epc2SIPrYuiT/y5mLVroQuQQzQnreEUW/kZ6+LxhZDa35aDKO7OhhLckD7RF
+	 qh4aTnC4cKs2pxpo0TXLs2k2nqvGnFThrIaCJYJoJy8udoYC9PmxIN5zIot0EhY244pF1vPOohMs
+	 uP8B8eplwNrtjXGQ14+/MU1hSTJWHS19kr5otAHoWBwtKHQzXKXGahzfp3y6TBMB47N7y/5QT88O
+	 3HvsE39i1CgkzGt4/uqh0Qx8fNmlnev8VtsaG3ZuZ4X+0An10Fk5eAR4dc39PSXbx4OIchQaio8R
+	 KTlBJFuaedQVwcO8BzsjnEEMgR+sJettw/yLO1OuC+84pAEZiYCHHT0G7JeWXkzHfHDnj1tWjfFs
+	 SD+LNKGDfUQ67linHnTIFES05akb0vt4/nTc+jaXybjuKCrAZGqC0m5VPcJ2zAJm5G9JBLwUx83V
+	 IQvpM6C5yDF/0N0hpDdb0RINeaC5jyvqnggQX/BKsxgSO/85mYILblPhzaswA=
+X-QQ-XMRINFO: Nq+8W0+stu50tPAe92KXseR0ZZmBTk3gLg==
+From: 781735889@qq.com
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	jack@suse.cz,
+	libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	harshadshirwadkar@gmail.com,
+	lty <781735889@qq.com>
+Subject: [PATCH v3] ext4: propagate errors from fast commit i_blocks replay
+Date: Tue, 15 Sep 2026 09:57:46 +0800
+X-OQ-MSGID: <20260915015746.1426200-1-781735889@qq.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <tencent_87F5A404ED65B0B1349C60E830C485716705@qq.com>
-X-Spam-Score: -3.80
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.80 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	FREEMAIL_TO(0.00)[qq.com];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[qq.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email,qq.com:email,berkeley.edu:email]
-X-Spam-Flag: NO
+Content-Transfer-Encoding: 8bit
 
-On Tue 15-09-26 00:41:44, shuo chen wrote:
-> Thanks to Jack's suggestion.
-> Call the ext4_wait_for_tail_page_commit() helper before
-> ext4_truncate_failed_write() from ext4_journalled_write_end(),
-> which avoids invalidating the folio while it is being committed.
-> 
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Reported-by: Farhad Alemi <farhad.alemi@berkeley.edu>
-> Closes:https://lore.kernel.org/linux-ext4/CA+0ovCgxFN3TLpdS_O_Z48sARuQ-WR-JLDCqQWEmd9ELtkzddA@mail.gmail.com/T/
-> Signed-off-by: shuo chen <1289151713@qq.com>
+From: lty <781735889@qq.com>
 
-Looks good. Feel free to add:
+ext4_ext_replay_set_iblocks() breaks out of its mapping loop when
+ext4_map_blocks() fails, but then continues with a partial block count
+and unconditionally returns success. The fast commit replay caller also
+ignores the helper return value.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Stop the count immediately on mapping errors, leave i_blocks unchanged,
+and propagate the failure to abort inode replay.
 
-								Honza
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Signed-off-by: lty <781735889@qq.com>
+---
+Changes in v3:
+- Move the version history below the separator.
 
-> ---
->  fs/ext4/inode.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c2c2d6ac7f3d..10a89bbb994a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -56,6 +56,7 @@ static void ext4_journalled_zero_new_buffers(handle_t *handle,
->  					    struct inode *inode,
->  					    struct folio *folio,
->  					    unsigned from, unsigned to);
-> +static void ext4_wait_for_tail_page_commit(struct inode *inode);
->  
->  static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
->  			      struct ext4_inode_info *ei)
-> @@ -1605,6 +1606,7 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
->  	if (!ret)
->  		ret = ret2;
->  	if (pos + len > inode->i_size && !verity) {
-> +		ext4_wait_for_tail_page_commit(inode);
->  		ext4_truncate_failed_write(inode);
->  		/*
->  		 * If truncate failed early the inode might still be
-> -- 
-> 2.55.0
-> 
+Changes in v2:
+- Propagate errors from all ext4_find_extent() and skip_hole() calls in
+  ext4_ext_replay_set_iblocks(), as requested by Jan Kara.
+- Keep i_blocks unchanged when any replay lookup fails.
+
+ fs/ext4/extents.c     | 26 ++++++++++++++++----------
+ fs/ext4/fast_commit.c |  7 +++++--
+ 2 files changed, 21 insertions(+), 12 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 76038b6c3655..f8c805d80c33 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -6275,7 +6275,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 		map.m_len = end - cur;
+ 		ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 		if (ret < 0)
+-			break;
++			goto cleanup;
+ 		if (ret > 0)
+ 			numblks += ret;
+ 		cur = cur + map.m_len;
+@@ -6291,15 +6291,19 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 	cur = 0;
+ 	ret = skip_hole(inode, &cur);
+ 	if (ret < 0)
+-		goto out;
++		goto cleanup;
+ 	path = ext4_find_extent(inode, cur, path, 0);
+-	if (IS_ERR(path))
+-		goto out;
++	if (IS_ERR(path)) {
++		ret = PTR_ERR(path);
++		goto cleanup;
++	}
+ 	numblks += path->p_depth;
+ 	while (cur < end) {
+ 		path = ext4_find_extent(inode, cur, path, 0);
+-		if (IS_ERR(path))
+-			break;
++		if (IS_ERR(path)) {
++			ret = PTR_ERR(path);
++			goto cleanup;
++		}
+ 		ex = path[path->p_depth].p_ext;
+ 		if (!ex)
+ 			goto cleanup;
+@@ -6308,11 +6312,13 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ 					ext4_ext_get_actual_len(ex));
+ 		ret = skip_hole(inode, &cur);
+ 		if (ret < 0)
+-			break;
++			goto cleanup;
+ 
+ 		path2 = ext4_find_extent(inode, cur, path2, 0);
+-		if (IS_ERR(path2))
+-			break;
++		if (IS_ERR(path2)) {
++			ret = PTR_ERR(path2);
++			goto cleanup;
++		}
+ 
+ 		for (i = 0; i <= max(path->p_depth, path2->p_depth); i++) {
+ 			cmp1 = cmp2 = 0;
+@@ -6333,7 +6339,7 @@ int ext4_ext_replay_set_iblocks(struct inode *inode)
+ cleanup:
+ 	ext4_free_ext_path(path);
+ 	ext4_free_ext_path(path2);
+-	return 0;
++	return ret;
+ }
+ 
+ int ext4_ext_clear_bb(struct inode *inode)
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 0cac890cf370..8110b01e36c1 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -2002,8 +2002,11 @@ static int ext4_fc_replay_inode(struct super_block *sb,
+ 	 * crashing. This should be fixed but until then, we calculate
+ 	 * the number of blocks the inode.
+ 	 */
+-	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA))
+-		ext4_ext_replay_set_iblocks(inode);
++	if (!ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA)) {
++		ret = ext4_ext_replay_set_iblocks(inode);
++		if (ret)
++			goto out_brelse;
++	}
+ 
+ 	inode->i_generation = le32_to_cpu(ext4_raw_inode(&iloc)->i_generation);
+ 	ext4_reset_inode_seed(inode);
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.34.1
+
