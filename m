@@ -1,27 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D8B04AC14E;
-	Wed, 16 Sep 2026 09:32:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB2084AEBD4;
+	Wed, 16 Sep 2026 09:32:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789551180; cv=none; b=l5gnX9GZUNaMJJJyY11xJSFo4D5fziY3PNfJOd/TXJRek0eQ53NK28nm12Qt3Vdsrz0QPp3aL5HjC6u7NQbuX85NaM371ZYrEoXrV8eWKwFPFXfbTRp3SqcVARe0zMrT/4jHcj27EruJ9ufF9zcg3J4hqHpf26FHA5y/ZpdvJpY=
+	t=1789551186; cv=none; b=kOGAvcXWpv+mhn+7+sL0yMet45g2t44O/TvRNFJNnjmNvgffwhVtle/5NPXUj+lDGCn4JOqM6mfl5WLN9wMCyx/5I7rOSLAR0n1OIIpW049rU42mNljfnrpOhVlBP2cb0kDX+D2G51iJ0+4KSa+8wmsW3sIY477Pgr5ypj+gW/w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789551180; c=relaxed/simple;
-	bh=NtPjiCyCqEW56gksSfAtrRaeqQJ7ypvr+plInLxt+3k=;
+	s=arc-20240116; t=1789551186; c=relaxed/simple;
+	bh=jtrV9wUz7keq+svAMMiwMuzlfCzYTh7F673W4idWNKY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GUb3+FXXmdT2HCURINGEx8/K6IwwFUOxDPS2HTFkcr3pwrQPPj+HhxSOR5MbSTDrJ5Kr0fBda/TI5GbvLMSv6ryfNOrVValjS3SNuQOXSSPhap6Tdqv/QC/9UauxdnHUh+FcApytS6LctGhlxPtmY/ELKxVo/0LPkUE4b1+zeKs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=DCVDdfuE5VP+2gNo8cFh36RfxxCluc2bfpul+hQN+JrM40WKhaYEqeNuFMeZGuJ/OLxruMLP2k4IjNdhQpF3lNkKcQYFLTYZaGwDx/u8KJ4Ch4DZX0sqC9/vnH9yVI1IMaQXgbQIampblAsOiM9FxRCzqGWPeXStyO1wH5cPFEI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hlDFD58mlzKHMcf;
-	Wed, 16 Sep 2026 17:32:32 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hlDFQ2KkVzYQv1G;
+	Wed, 16 Sep 2026 17:32:42 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id DEF8540570;
-	Wed, 16 Sep 2026 17:32:46 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 0AD3540577;
+	Wed, 16 Sep 2026 17:32:47 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgCHVikvYqpq8i0GAg--.65015S6;
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgCHVikvYqpq8i0GAg--.65015S7;
 	Wed, 16 Sep 2026 17:32:46 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-mm@kvack.org
@@ -51,9 +51,9 @@ Cc: linux-fsdevel@vger.kernel.org,
 	chengzhihao1@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v3 2/3] mm/truncate: align truncation boundaries to mapping minimum folio order
-Date: Wed, 16 Sep 2026 17:24:49 +0800
-Message-ID: <20260916092450.654408-3-yi.zhang@huaweicloud.com>
+Subject: [PATCH v3 3/3] mm/truncate: clarify return value of truncate_inode_partial_folio()
+Date: Wed, 16 Sep 2026 17:24:50 +0800
+Message-ID: <20260916092450.654408-4-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260916092450.654408-1-yi.zhang@huaweicloud.com>
 References: <20260916092450.654408-1-yi.zhang@huaweicloud.com>
@@ -64,115 +64,89 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgCHVikvYqpq8i0GAg--.65015S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxWr15ZFyfXryUWryUJFykGrg_yoWrXr45pF
-	W2g3ZxArWUXr12kr4Dua1DZr45X39xX3WUAFWxGF93C3Z0q3WqkFyjg3W8Zw48GryxAryr
-	ZF1jyasrWF1DAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jryl82xGYIkIc2
+X-CM-TRANSID:gCh0CgCHVikvYqpq8i0GAg--.65015S7
+X-Coremail-Antispam: 1UD129KBjvJXoW7ZFW3CF4xuryfAry3XF15CFg_yoW8Kr43pa
+	y7G3sxJ395Wa1Ikw1xuF48Zw4YyFZagrWUAFWxG3s7CFn8Zw4UKr1Ut3WUtw4fJr1kZ340
+	qF1jyFW3W3WUJF7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmI14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JrWl82xGYIkIc2
 	x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UM2
-	8EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq3wAS
-	0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7IYx2
-	IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4UM4x0
-	Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2kIc2
-	xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWU
-	JVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67
-	kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY
-	6xIIjxv20xvEc7CjxVAFwI0_Cr0_Gr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIev
-	Ja73UjIFyTuYvjTRNiSHDUUUU
+	Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
+	A2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1l
+	e2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI
+	8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
+	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
+	kIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
+	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
+	AY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
+	cVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMI
+	IF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnI
+	WIevJa73UjIFyTuYvjTRM6wCDUUUU
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-When the mapping has a non-zero minimum folio order (min_order),
-folio_split() stops at min_order instead of order 0, so the sub-folio
-containing a split point stays aligned to 1 << min_order rather than to
-a single page. The original boundaries were based on page granularity,
-so either boundary could land inside the min_order chunk at its edge,
-and the truncation loop would drop that whole chunk, valid out-of-range
-tail included.
+With the earlier rework the callers no longer rely on the return value
+of truncate_inode_partial_folio() to decide whether to adjust the
+truncation range. The pstart/pend out-parameters carry that information
+instead. The callers now only use the return value as a flag indicating
+whether the loop should be reset to pick up newly split sub-folios on
+the shmem path.
 
-For example, a 64K (order-4) folio with min_order = 2 (16K) punched from
-offset 0 to 36K:
+Return true if at least one split succeeded, and false otherwise.
+This clarifies the existing confusing return value semantics.
 
-  split @p0 -> [p0-p3, p4-p7, p8-p15]         # non-uniform, min_order
-  folio2 = p8-p15           # straddles: p8 in range, p9-p15 tail valid
-  2nd split of folio2 -> [p8-p11, p12-p15]    # success
-  end(old) = p9                               # BUG: p9 inside [p8-p11]
-  loop truncates ... p8-p11               # p9-p11's valid tail is lost
-
-It has gone unnoticed so far for two reasons. A non-zero min_order is
-only used by filesystems with a block or sector size larger than the
-page size, and those either always write back the affected range before
-punching a hole or truncating, or they carry filesystem private data on
-dirty folios (e.g. buffer_head), which makes filemap_release_folio()
-fail and folio_split() abort with -EBUSY, so the folio is never split
-and the old start/end boundaries remain valid. The bug only becomes
-reachable on paths that truncate dirty large folios without prior
-writeback and without filesystem private data, such as the upcoming ext4
-iomap buffered I/O path.
-
-Align both start (rounded up) and end (rounded down) to the mapping
-minimum folio order so they always fall on a folio boundary.
-
-Reported-by: Joanne Koong <joannelkoong@gmail.com>
-Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=OWzVRgD4202y1g@mail.gmail.com/
-Fixes: e220917fa5077 ("mm: split a folio in minimum folio order chunks")
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- mm/truncate.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+ mm/truncate.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
 diff --git a/mm/truncate.c b/mm/truncate.c
-index bec6d881d022..5ab7a40b1e25 100644
+index 5ab7a40b1e25..23c90f00b530 100644
 --- a/mm/truncate.c
 +++ b/mm/truncate.c
-@@ -213,8 +213,8 @@ static int folio_split_or_unmap(struct folio *folio, struct page *split_at,
+@@ -216,8 +216,7 @@ static int folio_split_or_unmap(struct folio *folio, struct page *split_at,
+  * aligned inwards to min_order, i.e. the range of folios wholly within
+  * [lstart, lend] and so safe to discard.
   *
-  * When @pstart and/or @pend are non-NULL they receive the indexes of the
-  * page range fully covered by [lstart, lend] after any split (or none),
-- * i.e. the range of pages wholly within [lstart, lend] and so safe to
-- * discard.
-+ * aligned inwards to min_order, i.e. the range of folios wholly within
-+ * [lstart, lend] and so safe to discard.
-  *
-  * Returns false if splitting failed so the caller can avoid
-  * discarding the entire folio which is stubbornly unsplit.
-@@ -226,6 +226,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 	size_t size = folio_size(folio);
- 	unsigned int offset, length;
- 	struct page *split_at, *split_at2;
-+	unsigned long min_nrbytes;
- 	unsigned int min_order;
+- * Returns false if splitting failed so the caller can avoid
+- * discarding the entire folio which is stubbornly unsplit.
++ * Return %true if at least one split succeeded, %false otherwise.
+  */
+ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+ 				  loff_t lend, pgoff_t *pstart, pgoff_t *pend)
+@@ -247,7 +246,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+ 	folio_wait_writeback(folio);
+ 	if (length == size) {
+ 		truncate_inode_folio(folio->mapping, folio);
+-		return true;
++		return false;
+ 	}
  
- 	if (pos < lstart)
-@@ -263,6 +264,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 		return true;
+ 	/*
+@@ -261,7 +260,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+ 	if (folio_needs_release(folio))
+ 		folio_invalidate(folio, offset, length);
+ 	if (!folio_test_large(folio))
+-		return true;
++		return false;
  
  	min_order = mapping_min_folio_order(folio->mapping);
-+	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
- 	split_at = folio_page(folio, PAGE_ALIGN_DOWN(offset) / PAGE_SIZE);
- 	if (!folio_split_or_unmap(folio, split_at, min_order)) {
- 		/*
-@@ -271,12 +273,12 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
- 		 * for shmem truncate
- 		 */
- 		struct folio *folio2;
--		pgoff_t end, aligned_end = (pos + offset + length) >>
--					   PAGE_SHIFT;
-+		pgoff_t end, aligned_end = round_down(pos + offset + length,
-+						min_nrbytes) >> PAGE_SHIFT;
+ 	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
+@@ -331,10 +330,9 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+ 			*pend = end;
+ 		return true;
+ 	}
+-	if (folio_test_dirty(folio))
+-		return false;
+-	truncate_inode_folio(folio->mapping, folio);
+-	return true;
++	if (!folio_test_dirty(folio))
++		truncate_inode_folio(folio->mapping, folio);
++	return false;
+ }
  
- 		if (pstart)
--			*pstart = round_up(pos + offset, PAGE_SIZE) >>
--				  PAGE_SHIFT;
-+			*pstart = round_up(pos + offset,
-+					   min_nrbytes) >> PAGE_SHIFT;
- 
- 		if (offset + length == size) {
- 			end = aligned_end;
+ /*
 -- 
 2.52.0
 
