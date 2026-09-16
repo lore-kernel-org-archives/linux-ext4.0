@@ -1,333 +1,178 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FFCF39937C;
-	Wed, 16 Sep 2026 12:09:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 669F9381B1D
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2026 13:57:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789560603; cv=none; b=gbs+fAE+pYJ5N5yZZi4bwMeKbnWqmK0368+U4+iGd1NDZgAQhTWQHJFxOG7nbq6jMyBNty4za9+pkMAWrxEfBDZV7vcMVQfd6VdqpmfzZRKzNrNe3hibiGPoaf5Ip1Ki5y13HsDXqSwbmT2GIgc856HIeaNPknbIOCDT46VCCPM=
+	t=1789567052; cv=none; b=kqxlopN7VDZhwdqVpsMH5G9lBPYdumFBT9yfn9cFSmqrUl7V1kUnTVK682uvJtJpuluu4fNSimal97mbQjMmDZGUl9AWxLnoGcKxZLYMkYITfB4kjhm9TX9LCoz4X2qFUWkLyINtrvJIxOAZjIUitBfC2GBTFpuPecM+rfz6hQc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789560603; c=relaxed/simple;
-	bh=AfSEswlCLRdBhKXBn5vkb9ejpwkPsuTDmPP3Axe+f7Y=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=s9XkhtUkikMbDHQxplt+HuF3X0hNbLstO47H9wyj7seXsv8Dwrohp8hvY7JioTSUereuiVucn9iJUUd3hto7P8Fhk4uGG6pQYr0PWThqcjj0lFpYNMtGwVsljQqY+LUkn9hmc90dMTD7ScUo6J+uhoDv5HqW0GDrxe5J184tf3Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=SQzgqKj7; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ii9UL340; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=h4lTgrcS; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=drprDADX; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1789567052; c=relaxed/simple;
+	bh=eFD3WPCmglnlOAxlOFy/ZCOv6hFf116irxgZZsCso+k=;
+	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
+	 In-Reply-To:Content-Type; b=X+WFTd+LO8ABT6QvP59OERptZMDycNgkK2MHe3QzUK+WxlIJkJRse4yDFclbAt80Bar5yISvr8ub7LpSAfDFE55Ds8Vjk8D4D8Qq+Tus7mZtzPpb4SgKKJ92jR8bx4AJo9nlli+yJS/X7gV/kAfXKG359Y4/XmL8YKP3jRz93ws=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=TxpoRdEl; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=kD7lpGGq; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="SQzgqKj7";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ii9UL340";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="h4lTgrcS";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="drprDADX"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id E73E81FE5D;
-	Wed, 16 Sep 2026 12:09:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789560587; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=D85vXBe2xfk1jvSWs9TcMey2V3KKLMoyz3bWz1rk7eI=;
-	b=SQzgqKj7lsf2UAcZl4s6jxmS3A9EcIP48QnkWkH5uJB7nLt0OSGd0HBtKtZJp3VCnxOD+X
-	0T1OIq6Uv3JtwGfGX1k01qAagOOWDn49od7h+lcstDyBMU1y07mnLTv1oLA+PvRI19RPZ/
-	SdieQeijm6/QDJgPmbZloi3vnFO3+X0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789560587;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=D85vXBe2xfk1jvSWs9TcMey2V3KKLMoyz3bWz1rk7eI=;
-	b=Ii9UL340WKjT4dH6mhNsOgZQXueEg1OOvbp0RTHkrvOmG2okjBZ/XspMz+9mPrH8dh74tT
-	LHuc4DG7kr6axGAA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=h4lTgrcS;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=drprDADX
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1789560582; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=D85vXBe2xfk1jvSWs9TcMey2V3KKLMoyz3bWz1rk7eI=;
-	b=h4lTgrcS795S9e5ofKlTaEjGmbVI2CkNtSx/AtITpaUCyI/SCevJy38l6BjHP+1VGltIk+
-	jchB4o4X0wR2jn8CsL137siGXmvL74GQax7VWBFq38mODg3zU02r8IVylbVQf9Dbvj3XiE
-	C8N38rLTvs3SkbJUoOuuaGfp0V1OTrg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1789560582;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=D85vXBe2xfk1jvSWs9TcMey2V3KKLMoyz3bWz1rk7eI=;
-	b=drprDADXBAHHVtDPk/j7Gyn+5Kqcv1TvhWJ7bBltu38WJ0A34FsbiLt/LsK3v+KTaI6AxQ
-	V1ArPhoThqRmuDDg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F11C11348F;
-	Wed, 16 Sep 2026 12:09:40 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OVrVIQSHqmp0SAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 16 Sep 2026 12:09:40 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 81E26A13D5; Wed, 16 Sep 2026 14:02:35 +0200 (CEST)
-Date: Wed, 16 Sep 2026 14:02:35 +0200
-From: Jan Kara <jack@suse.cz>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, akpm@linux-foundation.org, 
-	david@kernel.org, ljs@kernel.org, liam@infradead.org, vbabka@kernel.org, 
-	rppt@kernel.org, surenb@google.com, mhocko@suse.com, hughd@google.com, 
-	baolin.wang@linux.alibaba.com, willy@infradead.org, jack@suse.cz, ziy@nvidia.com, 
-	bfoster@redhat.com, joannelkoong@gmail.com, djwong@kernel.org, yi.zhang@huawei.com, 
-	yizhang089@gmail.com, yangerkun@huawei.com, chengzhihao1@huawei.com, 
-	wangkefeng.wang@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v3 1/3] mm/truncate: fix data loss when splitting
- straddling large folios fails
-Message-ID: <xl2rtnntlxoxoozkddgrlkcsgukcngvvcwazm7gb7q5g32yxir@ef5ltcwueboh>
-References: <20260916092450.654408-1-yi.zhang@huaweicloud.com>
- <20260916092450.654408-2-yi.zhang@huaweicloud.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TxpoRdEl";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="kD7lpGGq"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1789567041;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references:autocrypt:autocrypt;
+	bh=si2ROIQcvCsUOop+V1xZhSo56xdC4eQzPJO67kXhPWE=;
+	b=TxpoRdElD7m1x2GEkjRPYE+euvzSGNhtU5Nhy/hQF7sctPD5zzH327cZcrDZyn0fyRCCfo
+	jB11FeYltqnMr4FUaZp83orA2lmEghxktTmi76DQy81Uvaio+5T83DH4DK7DX9auQo9zh1
+	Dr/PL9Ha28zcvTXXcdD0/nGLnEsMCfw=
+Received: from mail-wr1-f69.google.com (mail-wr1-f69.google.com
+ [209.85.221.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-611-JRGcCuMVMqiTOevMUueElA-1; Wed, 16 Sep 2026 09:57:20 -0400
+X-MC-Unique: JRGcCuMVMqiTOevMUueElA-1
+X-Mimecast-MFC-AGG-ID: JRGcCuMVMqiTOevMUueElA_1789567039
+Received: by mail-wr1-f69.google.com with SMTP id ffacd0b85a97d-486f18da958so1229408f8f.0
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Sep 2026 06:57:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1789567039; x=1790171839; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
+         :content-language:references:to:subject:user-agent:mime-version:date
+         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=si2ROIQcvCsUOop+V1xZhSo56xdC4eQzPJO67kXhPWE=;
+        b=kD7lpGGqVjXdwyzMVeWt+eoRvk/owxrBsowfZbOnSqeD5TwT9ie0SzjT98hPGVSwCp
+         Rp5RbWKJF+S7+ZZvzptUPsypvph5Kbw66WgH4e7IT91iTC04W2tzn1rVC0B8hsG5Lmpw
+         znlafzc5fr8gnjjM4cH2x/UxKrN+vlaPSgiJM+aiBqsWvKaVi+nnWJYOmk+W75UsufN3
+         U6sll7ZjRncMr4WAC/OXSxdivQwHge/1z4PEE1+Hdn8QetkNyqgZXFlmDah7D9UndfXv
+         IicXqgLFWQoS3Hny0cdvFI4oxchxnKQoHWMfuinc2QXXtYjXtHx1K2NGC8RNoPScLTkm
+         jgnw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789567039; x=1790171839;
+        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
+         :content-language:references:to:subject:user-agent:mime-version:date
+         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=si2ROIQcvCsUOop+V1xZhSo56xdC4eQzPJO67kXhPWE=;
+        b=JfNSlnIbboCqXgJYPsiakF9WBlq6JE5r7LJQb/TmE5toKkoCYIeBE+KfTw2AvdqjDJ
+         nsIV2SNoHKvTOO05i5alSxUt3wRLThAmv16XceoQrYoWnm9Ooy2W44G34ZP4++YIG+i9
+         8X3RqFV17l2V+1yJQT1XEE3EVoImIyXEwcNXdonAyO4rV2N2UM7ln3GgG/LlDq1xS1zh
+         HNSFe77mUH1Gqr9xkR1AHrVlWdEqeMXIc4kWxOssozS/RVS2DzMaZgHztdi+hzcLgDXE
+         bVJS8OokZWu15N33kfzefb55LaADk1yTXg+3urUt060XLL9u8a2+1YBbpk1APljfiOD8
+         q0Cw==
+X-Forwarded-Encrypted: i=1; AKwUvBwRJNQVgZWENlC1t6sUcSZ3xF6vRKtyUtqpQNiOWJDkQidBem+VXCV4MGbLdIS/DUnm2LVQ5Q1OSfW/@vger.kernel.org
+X-Gm-Message-State: AFuF++n5IXtoSCxKkETE5RNuNPNAFHMyx8Sc4SpyEDOta47uQYbYofKJ
+	csQRBag5s0Tv2lUpY20xnZyDPwP2bJOM2q9Au9bdPbG+m5v2n+8fmxCn7l+xzBfRZ0ZWrPDQFav
+	Gxlhz69CjSIbI3Unk8D6JyRm8sWm3gDMeAC9uTtiB9MhIZ+ftyaL05sY3i+p1Su8=
+X-Gm-Gg: AYBFou09FENFSPjCyhfqdf2YIURGTLvQyB0r/qIPiwFhBL1QDckeQo2kvU2iEGgfxZB
+	f58nbt8/zNprgtdEUpgq9YR0s5SVwSbt6cY0euBwyPt4jl3EM0i5+LOGIJxi1je6YIxf2skZ1AS
+	PH4VUqNyE+3V+P0hgT/ewr1OIkoUBJG6DLm8nxeVV0BZUImSpWwE+zHT3nF7dR7t8uwvw1nrsKW
+	MidgtbyS1mqb1/yxGrWaCASvdD/1TWot1DqaLpTfYwxqTVc9RW78oPLA+O8WI65NJxVcxycta92
+	uHCHQoiRb1PBHfzIsJpn/D6xXvYsYWmUB+CUJNS51EsdA11CTIJK4RH3Exha2e2fOYxnnlzLZjm
+	MGLPus11frsSF7IZ+m96q1lXDnuNP
+X-Received: by 2002:a05:6000:2890:b0:486:fcf2:fdf7 with SMTP id ffacd0b85a97d-48705b90f4fmr11674707f8f.14.1789567039032;
+        Wed, 16 Sep 2026 06:57:19 -0700 (PDT)
+X-Received: by 2002:a05:6000:2890:b0:486:fcf2:fdf7 with SMTP id ffacd0b85a97d-48705b90f4fmr11674671f8f.14.1789567038623;
+        Wed, 16 Sep 2026 06:57:18 -0700 (PDT)
+Received: from [192.168.0.9] (ip-109-41-176-3.web.vodafone.de. [109.41.176.3])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4870bf1fa70sm7071024f8f.9.2026.09.16.06.57.17
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 16 Sep 2026 06:57:17 -0700 (PDT)
+Message-ID: <6a790a32-e28e-4a79-9eb8-9bf039b57bc6@redhat.com>
+Date: Wed, 16 Sep 2026 15:57:16 +0200
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260916092450.654408-2-yi.zhang@huaweicloud.com>
-X-Spam-Score: -4.01
-X-Rspamd-Queue-Id: E73E81FE5D
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,suse.cz:dkim,huawei.com:email];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[27];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RL77qb5igscudnz1iomstzbaxb)];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_CC(0.00)[kvack.org,vger.kernel.org,linux-foundation.org,kernel.org,infradead.org,google.com,suse.com,linux.alibaba.com,suse.cz,nvidia.com,redhat.com,gmail.com,huawei.com,fnnas.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.com:email]
-X-Spam-Flag: NO
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/2] ext4: enable scoped NOFS when starting a handle in
+ nojournal mode
+To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
+References: <20260721140152.461286-1-tytso@mit.edu>
+ <20260721140152.461286-2-tytso@mit.edu>
+Content-Language: en-US
+From: Thomas Huth <thuth@redhat.com>
+Autocrypt: addr=thuth@redhat.com; keydata=
+ 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
+In-Reply-To: <20260721140152.461286-2-tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Wed 16-09-26 17:24:48, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
+On 21/07/2026 16.01, Theodore Ts'o wrote:
+> The jbd2 layer enables NOFS mode using memalloc_nofs_{save,restore}()
+> while a handle is active.  We need to do the same in nojournal mode so
+> that it is safe to remove GFP_NOFS flags while a jbd2 handle is
+> active.
 > 
-> truncate_inode_partial_folio() splits a large folio so that the caller's
-> truncate loop can drop the in-range sub-folios while keeping the
-> out-of-range tail. The first split at the punch start edge is
-> non-uniform, which leaves the sub-folio at the truncation end edge as
-> large as possible, this means it may still straddle the range, holding
-> both zeroed in-range and valid out-of-range data. The function then
-> attempts a second split at offset + length to isolate that tail.
+> This will require that we actually allocate a real handle, but with an
+> h_invalid flag set, so there is a place to put the saved memalloc
+> context.
 > 
-> If the second split fails the straddling sub-folio stays merged. The
-> function returned true unconditionally on all exit paths of the success
-> block, telling the caller it was fully handled. The caller kept its
-> default end and the truncate loop truncated every sub-folio below it,
-> including the merged straddler, discarding the valid out-of-range tail.
-> 
-> For example, a 4-page order-2 folio punched from offset 0 to the middle
-> of the last page:
-> 
->   truncate_inode_pages_range()
->     truncate_inode_partial_folio()      # same_folio == true
->       1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
->       folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
->       2nd split of folio2 fails / cannot lock
->       return true                       # BUG: caller keeps default end
->     end = 3
->     loop truncates p0, p1, p2-3        # p3's valid tail is lost
-> 
-> This became reachable after commit 7460b470a131 ("mm/truncate: use
-> folio_split() in truncate operation") replaced the atomic split_folio()
-> with folio_split(), whose non-uniform split can partially split a folio
-> and leave the end edge merged.
-> 
-> It has gone unnoticed because a dirty large folio normally carries the
-> filesystem's private data, for example buffer_head, so
-> filemap_release_folio() -> iomap_release_folio() returns false on a
-> dirty folio and folio_split() aborts with -EBUSY before any split,
-> leaving the straddler safely unsplit. The bug is only reachable on paths
-> that produce dirty large folios without filesystem private data, and it
-> was caught on the upcoming ext4 iomap buffered I/O path when no ifs is
-> attached.
-> 
-> Rework the contract so the caller is told the page range to discard:
-> 
->   - Add pgoff_t *pstart and *pend out-parameters that receive the page
->     range fully covered by [lstart, lend] after any split (or none),
->     i.e. the pages wholly within the range and safe to discard.
-> 
->   - Adjust the ordering of the validate check when splitting folio2.
->     folio2->index is only reliable after the reference count and lock
->     have been successfully acquired, since it may have been split
->     concurrently, or freed and recycled to an unrelated mapping. On any
->     failure to obtain a reliable end position, fall back to
->     folio->index, which is safe but leaves the sub-folios split off at
->     the offset edge in the page cache.
-> 
->   - Rename the byte-range parameters start/end to lstart/lend to better
->     express their semantics.
-> 
-> Callers in truncate_inode_pages_range() and shmem_undo_range() pass
-> &pstart for the folio at the start edge and &pend for the folio at the
-> end edge, so the truncate loop drops exactly the fully covered pages and
-> never touches a straddling folio that still holds valid out-of-range
-> data.
-> 
-> Suggested-by: Brian Foster <bfoster@redhat.com>
-> Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
-> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+...
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index b68561187e90..7348fdadc810 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -513,6 +513,7 @@ struct jbd2_journal_handle
+>   	unsigned int	h_sync:		1;
+>   	unsigned int	h_reserved:	1;
+>   	unsigned int	h_aborted:	1;
+> +	unsigned int	h_invalid:	1;
+>   	unsigned int	h_type:		8;
+>   	unsigned int	h_line_no:	16;
 
-The changes mostly look good to me but I have some confusion around the
-folio2 splitting below.
+  Hi!
 
-> @@ -259,32 +271,62 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
->  		 * for shmem truncate
->  		 */
->  		struct folio *folio2;
-> +		pgoff_t end, aligned_end = (pos + offset + length) >>
-> +					   PAGE_SHIFT;
->  
-> -		if (offset + length == size)
-> -			goto no_split;
-> +		if (pstart)
-> +			*pstart = round_up(pos + offset, PAGE_SIZE) >>
-> +				  PAGE_SHIFT;
-> +
-> +		if (offset + length == size) {
-> +			end = aligned_end;
-> +			goto out;
-> +		}
->  
->  		split_at2 = folio_page(folio,
->  				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
->  		folio2 = page_folio(split_at2);
->  
-> +		/*
-> +		 * folio2 may become stale due to a concurrent split or
-> +		 * freeing, so validate it before and after taking its lock.
-> +		 * If it fails, we can't get an accurate end position and fall
-> +		 * back to folio->index, which may leave sub-folios split off
-> +		 * at the offset edge in the page cache this round.
-> +		 */
-> +		end = folio->index;
->  		if (!folio_try_get(folio2))
-> -			goto no_split;
-> -
-> -		if (!folio_test_large(folio2))
->  			goto out;
->  
-> +		if (folio2->mapping != folio->mapping ||
-> +		    !folio_test_large(folio2))
-> +			goto out_put;
-> +
->  		if (!folio_trylock(folio2))
-> -			goto out;
-> +			goto out_put;
->  
-> -		/* make sure folio2 is large and does not change its mapping */
-> -		if (folio_test_large(folio2) &&
-> -		    folio2->mapping == folio->mapping)
-> -			folio_split_or_unmap(folio2, split_at2, min_order);
-> +		if (page_folio(split_at2) != folio2) {
-> +			folio_unlock(folio2);
-> +			goto out_put;
-> +		}
-> +		if (!folio_test_large(folio2)) {
-> +			end = aligned_end;
-> +			folio_unlock(folio2);
-> +			goto out_put;
-> +		}
+FYI, this seems to cause a warning during "make htmldocs" now:
 
-So I always found this folio2 lookup and revalidation somewhat suspicious
-and now that we're digging into it I'll ask: As you note in the changelog,
-by the time we compute split_at2 the page can be already freed and reused
-because it was split off from the original 'folio'. It can be for example a
-slab page or anything else. So is it guaranteed that page_folio() actually
-returns something sensible? What guarantees we properly detect the "reuse
-for something else" case in all possible cases for which the page can be
-reused? I understand this is mostly a preexisting issue so maybe these
-questions are more for MM guys than you...
+  WARNING: .../include/linux/jbd2.h:523 struct member 'h_invalid' not 
+described in 'jbd2_journal_handle'
+Could you maybe add a line to the kerneldoc comment?
 
-So for me as an filesystem guy I'd appreciate some comment in this code
-explaining why grabbing folio2 this way is actually safe. The really safe
-way of getting to folio2 would be to use
-  __filemap_get_folio(mapping, (offset+length) >> PAGE_SHIFT, FGP_LOCK, 0)
-but I suppose we don't use the mapping lookup as it is more expensive?
+  Thanks,
+   Thomas
 
-								Honza
-
-> +
-> +		/* Split failed: back off to the head of the straddler */
-> +		if (folio_split_or_unmap(folio2, split_at2, min_order))
-> +			end = folio2->index;
-> +		else
-> +			end = aligned_end;
->  
->  		folio_unlock(folio2);
-> -out:
-> +out_put:
->  		folio_put(folio2);
-> -no_split:
-> +out:
-> +		if (pend)
-> +			*pend = end;
->  		return true;
->  	}
->  	if (folio_test_dirty(folio))
-> @@ -413,11 +455,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	folio = __filemap_get_folio(mapping, lstart >> PAGE_SHIFT, FGP_LOCK, 0);
->  	if (!IS_ERR(folio)) {
->  		same_folio = lend < folio_next_pos(folio);
-> -		if (!truncate_inode_partial_folio(folio, lstart, lend)) {
-> -			start = folio_next_index(folio);
-> -			if (same_folio)
-> -				end = folio->index;
-> -		}
-> +		truncate_inode_partial_folio(folio, lstart, lend, &start,
-> +					     same_folio ? &end : NULL);
->  		folio_unlock(folio);
->  		folio_put(folio);
->  		folio = NULL;
-> @@ -427,8 +466,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  		folio = __filemap_get_folio(mapping, lend >> PAGE_SHIFT,
->  						FGP_LOCK, 0);
->  		if (!IS_ERR(folio)) {
-> -			if (!truncate_inode_partial_folio(folio, lstart, lend))
-> -				end = folio->index;
-> +			truncate_inode_partial_folio(folio, lstart, lend,
-> +						     NULL, &end);
->  			folio_unlock(folio);
->  			folio_put(folio);
->  		}
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
