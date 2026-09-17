@@ -1,71 +1,71 @@
-Received: from mail-pj2-f13.google.com (mail-pj2-f13.google.com [74.125.227.141])
+Received: from mail-pz2-f16.google.com (mail-pz2-f16.google.com [74.125.228.16])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 388BF4DDB27
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 15:14:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.141
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33E1F599A22
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 15:14:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.16
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789658054; cv=none; b=rFzVz1evtZMRJoBOuai598I+Ya5dN8fajm/+CvRJUvWWODfheFd04x57ufMvVUBzjNW//HellZ86kewiVUsXN/lDUtHjCu37cVWEXKHIgB2QCzMmcL2DPctshP7d9yigoIxJ7hhAyWY25w4fLcGl6wXcQPhu43nWVqCY7R9shSU=
+	t=1789658106; cv=none; b=sWkVSdJgU9YVy57cU0+PezqWfCwF/asfCQ4Hiygsstp6AULaghGFg75ufaJiZafZJ/hrTl9Le7KXeRE7csvriF0Uk9zxB2/CFTmT0n1EpLwPfUWv4UvYuQkg04OXwlHFzUxn8McrrB05W9nbC4+3DWbg+fDyNP1l7RGyp/e4YuY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789658054; c=relaxed/simple;
-	bh=t6h+v1TMwHLddYzQCfbsmVI6zKcZ51BmkGJamlXAlBY=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=RDL28QlPffJl5hG9mbTE8TnyBKBAjLDF6jqIq3S91aUxmsXESRx7sexyk9YaHKqi0pP2joiyGtM0SDOMY2z01eJp0DxYf/hwtryjl9ONNyxgEfDYYHlFuj6jz/Zqsyg3usj/DAg1VICPr1IeXktYhZ069qC0BsXqUrTQQ2mbCDA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AOYkIWu+; arc=none smtp.client-ip=74.125.227.141
+	s=arc-20240116; t=1789658106; c=relaxed/simple;
+	bh=d6UKzQKyPiGJsGM+Qu7tJG56YQxLOxqIMP9yGCsnkHs=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=lzxrdIi/VbvuPulUT5q8y1z9Q7ryOVrlyHD1z1pdSrzcCO6Sv20HtqukXpjrfQPzSGOE2BE/ae1kLsJOyrnBCqa2M+MTkSgnd0rNtmpcQ1z71wztc+4MyXIWaPLPTQ78DDBF2qXNA1lPccQw+SEy8xGqxnnpGZjDBnw/CqhpJF4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gSOdclJR; arc=none smtp.client-ip=74.125.228.16
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AOYkIWu+"
-Received: by mail-pj2-f13.google.com with SMTP id 98e67ed59e1d1-396ccda24a3so774800a91.0
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 08:14:02 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gSOdclJR"
+Received: by mail-pz2-f16.google.com with SMTP id 41be03b00d2f7-cc4d2fe2056so626837a12.2
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 08:14:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789658040; x=1790262840; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1789658095; x=1790262895; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=kcXKRIDcw5mAZxkYucxI77vzHbmXLBieOuahAT0hPgU=;
-        b=AOYkIWu+u46JFv4WEc53lIosaWtWG66TXNTeq+QU96hUlOwR2iSB7CyDKHMJtdgD4e
-         hYOuT+Cq3/pLPxWhbXS+lPqdjI+q3s/XesFeTM2w1DfOvi9jsD7g/IF11zJb8x/75sqJ
-         UrpcUtb6L7eQuhqpQGAdbodNZzrXYOhCdiBldH3zfRctwziuTE5VTHE1OUqU2XCirnrx
-         76YuPnfAdBqvHjjlzyP3lJKQbC8TpIVsTMMIWHw9W/TT2vV5+s5sX2nx8F3qLu0T7psl
-         zD9d4BQ10X7hnm59XVSK9V40l1VKJp1/7v6LBCk28YK/xGOHYC/XdNiOWlGVBcnHX++h
-         48yw==
+        bh=rh2mXdJ4Gx0vDgozfrCs3n1I8ixRE20WMk7/6kOasWU=;
+        b=gSOdclJR0V/29vw/cXtzcSqZ7ML754aPOdcdxqZ3SUsmMrc7RZLXUOdgvdAypqoMdR
+         vqBvDYhnHtaUsIbla/38YGegMKDn51ycdplqKY5Bj1GCat9SwqT/75WBEigKSsoYD+hi
+         rdbKOhdWkDodYUEaYJZZJZzxh3nd+LeMYp/ddXvHgF5bgGYeSF5OTFFJcDFg213HH/ra
+         SPn+GQo2JX0ASebRqyw8wZl1TovpfiD/8CtuF2rWiMBhc7pwz/3KWjc61YZsfpOgFNxG
+         d+D4S0UG7UMYXtiBGDhygMQe3UGTLA5Ax0HtEvplebXT8Bgkb+ny5OhyLc0i5TLcVO0m
+         StWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789658040; x=1790262840;
+        d=1e100.net; s=20260707; t=1789658095; x=1790262895;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=kcXKRIDcw5mAZxkYucxI77vzHbmXLBieOuahAT0hPgU=;
-        b=SF9UyTwJzJ7YBveYLJfdKaNH1d27MnN/E9LpGJFILau3M/2Ye8Xnxxp9NPfaxmB5kZ
-         gC7pMgL+HxDuYcMtcmlT2N58f0HOb6imkWe4OT8RGAooQckE4E8gqr7QOH9cog2X3P5Q
-         VyM28RhEwB+rvFkyj3/OYzx3/q9UioGyVnj4p0D3lYAB8jE4CDl9k2Y761Q5kRMMa5yh
-         T2gdmtywUoqq75LxplwE3W4nhCf4ErsdmzxO0er2oWp4aDZQjxEvy8hRvGct8wRHYZGr
-         ZBDK0v2OXf3W2odnoDMeVESBxESLtwCyzrghKwMjAEhUVMjk3nhBcfc+a5DM93keoBF2
-         BtHg==
-X-Forwarded-Encrypted: i=1; AKwUvBzDWgdO49UOMdTVUcvbujGF/DWbpen741qhGDXbh4z6XMX7AumYv6+xG5YvskzkBwRHUBmpOXR5fgpG@vger.kernel.org
-X-Gm-Message-State: AFuF++k0NPge8Zmxsq7BdbcYyHDwOV2HI+ONfOR82bPW83ymSSNC6Hyd
-	HZvM3LASuhZ3jyVrrbrVoEturpKMRanTM1B3A0l28bqJqXooN4IwmLGU
-X-Gm-Gg: AYBFou1r29+7vyXdyc7Wf1h+nPyBJk0av299NX5Rr3HmTtN/udz6N6xIvbskjeQlvEx
-	hXErYSc3CIULtyNyKWEN06w7ixMhY+j0fSkdf8Kgg21FrcY5u/a25pnbmVZKmdZS2UGYSvOvJzO
-	4OxRqsCwHVs+78gMXfo7nIr72AW9pFr0jByz4YEHr6sMDCBEorhfcbT6aGHHMw1Il1gW03wQThm
-	hcdPUpdoAVBdOGpxxPBeJmqoOTNYdSboOEFX0AiogxYidZkqafzC0GfUSpf5hVd9ug6GdKeG+6T
-	tmM7gAoZxmvp8lyQIzJ2S7yqQUk9ETR3+fTrSogkTDGj7IusQ27oW+xs2p7GudMj9qI0kyLAcsp
-	Mifi0MDXFG5Ugz7HpKFttEGXjyESDLQiK9xL9R0CRpIlLg/IN8dH9wnMEyUqnM0iikhrSRc5WuS
-	7u6haHk4shq43O/NWpk+pDg7m6Ph/iHswXP0095PBjsr8jUWcI+x0OOF7bpaWR3eehN8OUrDM2Y
-	GjConah+bfe8QKPxTrkxH/q
-X-Received: by 2002:a17:90b:2ec7:b0:39d:f317:44cd with SMTP id 98e67ed59e1d1-39e1e4907f3mr23769529a91.14.1789658039358;
-        Thu, 17 Sep 2026 08:13:59 -0700 (PDT)
+        bh=rh2mXdJ4Gx0vDgozfrCs3n1I8ixRE20WMk7/6kOasWU=;
+        b=m8i91zbwxsM8VqUVSBgyMqSM8CTCH0RNZnuKggSb+1ZoX41JMx3LF9RYFUxzRGq7ig
+         0bhyXHi4IBpx9tfltWjP9AefTknva9vvtpC0iq+Y33zPy0Ubwu8JP5cR4D4dp1FBDE0j
+         CICW/lj/julR1bySWTUE93LOaRLoNCeBy4eW96FmeNUKmQ8lcLgNEjAjl6Di53dbwjYa
+         cgA6XS7+MfURbw4BW8mOWk7sUQHMqs0l4pm6acicKmzFIWgnh0UIu4V64VyWVJ/VlUqZ
+         ezPDK9B0I7lbKx4HhHw+Xb2OPNycnLkVB/DWAaoAsry+omenLgsYxHrtndAGn9q75Lqh
+         ueMg==
+X-Forwarded-Encrypted: i=1; AKwUvBw3Wl+VctS/xaVaxvDf+Y8+XlhfnnqLYGxApn90ToqYInNFg+g/2Zy5CIbXryS84t7hGJPFfU12YPzF@vger.kernel.org
+X-Gm-Message-State: AFuF++kGNOnKc9Kj8te3OuSGmlOWcLQoZ48sduuZez1dUd82iE+f3yAV
+	bnHJu5TjxxIJ4CA2p3m6/mBwEU8z0gVybHNSQjAlC78bm/0tSNg3hem6
+X-Gm-Gg: AYBFou0EQbzVMjo/Efn2OUmc48wquqTfhr0yoJqI6mu7NmZzHRn+yv6zjl48hMaGMcG
+	DasC+AstdkB3vNUFCmzmQslZv/bvpUFystzhsl9OsDdpwy4kiGbz/0HUhpClL31oUXAy7ylp7PD
+	+RIOMD6ZM9AOb3t+RN35Dq+lyKF3pNdIyg3FFFqlOmtABh/o3xPA1Jt6F9+8dlz3nXI+uU9KzAF
+	L9wmbKIa6ROX/nvCWUSb+tgpUWiX2aq/4Bv6rPLvkR3fS31uO2RpBVB6MC+yXFy4RKverpfJP30
+	TIh+iX6fJoJYCnFHXt7RAH5DK6z7ps7NY8NCflBq2rqJ/LUasX8LXnLphwwj5C5E5aMtQmBGsh6
+	aFovrAW3ZiD10nYSHO1Rcj8Qnycih8F6RGDvi5cTYsrBWSbB/XT57XzKrsKCQcy8glsvqoCFwBo
+	0TVVxk3HbP0O+7ot0vjbaXzhtg7qaw76J4YC3O52iLCX5ccnxwj2f3qaAWKf5RFLRTGiZE5t/Yy
+	jv6lxm+d/3Vv3xxR4xr4vX9wJmuJ4gcx/c=
+X-Received: by 2002:a05:6a20:6a0c:b0:3d3:adbf:777d with SMTP id adf61e73a8af0-3dd5f79059emr17452137637.25.1789658094318;
+        Thu, 17 Sep 2026 08:14:54 -0700 (PDT)
 Received: from csl-conti-dell7859.ntu.edu.sg ([155.69.199.57])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-39e1c2132dfsm3834454a91.3.2026.09.17.08.13.57
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc50abc400bsm3523663a12.29.2026.09.17.08.14.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 17 Sep 2026 08:13:58 -0700 (PDT)
+        Thu, 17 Sep 2026 08:14:53 -0700 (PDT)
 From: MarkLee131 <kaixuanli0131@gmail.com>
 X-Google-Original-From: MarkLee131 <kaixuan.li@ntu.edu.sg>
 To: kaixuanli0131@gmail.com,
 	linux-ext4@vger.kernel.org
 Cc: "Theodore Ts'o" <tytso@mit.edu>,
 	linux-kernel@vger.kernel.org
-Subject: [BUG] ext4: stack OOB in set_flexbg_block_bitmap() via EXT4_IOC_GROUP_ADD
-Date: Thu, 17 Sep 2026 23:13:40 +0800
-Message-Id: <20260917151340.412498-1-kaixuan.li@ntu.edu.sg>
+Subject: [PATCH] ext4: don't read past the UAPI struct in EXT4_IOC_GROUP_ADD
+Date: Thu, 17 Sep 2026 23:14:41 +0800
+Message-Id: <20260917151441.413135-1-kaixuan.li@ntu.edu.sg>
 X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -77,117 +77,68 @@ Content-Transfer-Encoding: 8bit
 
 From: Kaixuan Li <kaixuanli0131@gmail.com>
 
-EXT4_IOC_GROUP_ADD can make set_flexbg_block_bitmap() index two one-element
-arrays at offset 1. KASAN reports a stack out-of-bounds read on v6.12.9 and
-v7.2.4; a reproducer is below.
+EXT4_IOC_GROUP_ADD casts the user pointer to struct ext4_new_group_input,
+its UAPI type, but sizes the copy by struct ext4_new_group_data, the
+internal type:
 
-EXT4_IOC_GROUP_ADD requires CAP_SYS_RESOURCE, so this goes to the list
-rather than security@kernel.org. The ioctl returns 0 whether or not the
-read happens.
+	struct ext4_new_group_data input;
 
-ext4_group_add() builds a one-element flex group descriptor whose arrays
-are locals in its own frame:
+	if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
+			sizeof(input)))
 
-	__u16 bg_flags = 0;
-	...
-	flex_gd.count = 1;
-	flex_gd.groups = input;          /* the ioctl's single struct */
-	flex_gd.bg_flags = &bg_flags;    /* one __u16 */
-	err = ext4_flex_group_add(sb, inode, &flex_gd);
+The UAPI struct is 40 bytes, the internal one 48.  A caller that follows
+the UAPI and allocates 40 bytes gets 8 bytes read past its object, and the
+ioctl returns EFAULT when those bytes are unmapped.  The internal struct
+has carried the extra fields since ext4 was split from ext3, so the copy
+has always over-read the UAPI object.
 
-set_flexbg_block_bitmap() derives its index from a block number, not from
-flex_gd->count (fs/ext4/resize.c):
+The two extra fields are not used from this path: free_clusters_count is
+overwritten by verify_group_input(), and mdata_blocks is used only by
+ext4_resize_fs(), which builds its own group_data array.  The compat path
+already copies the six UAPI fields individually; the native path does not.
 
-	group  = ext4_get_group_number(sb, EXT4_C2B(sbi, first_cluster));
-	start  = EXT4_B2C(sbi, ext4_group_first_block_no(sb, group));
-	group -= flex_gd->groups[0].group;
-	...
-	if (flex_gd->bg_flags[group] & EXT4_BG_BLOCK_UNINIT) {
-		BUG_ON(flex_gd->count > 1);
-		continue;
-	}
-	...
-	bh = sb_getblk(sb, flex_gd->groups[group].block_bitmap);
+Copy the UAPI struct, then set the internal fields from it.
 
-The BUG_ON tests flex_gd->count, not group, so it does not fire.
+Reproducible on v6.12.9 and v7.2.4 by placing a 40-byte struct at the end
+of a mapped page whose successor is unmapped: the ioctl returns EFAULT.
 
-verify_group_input() bounds the three supplied blocks against
-[start, start + input->blocks_count), but nothing bounds blocks_count
-against EXT4_BLOCKS_PER_GROUP(sb). A blocks_count spanning more than one
-group lets inode_table sit in group N+1, so group above becomes 1 while
-both arrays hold one element.
+Signed-off-by: Kaixuan Li <kaixuanli0131@gmail.com>
+---
+Built fs/ext4/ioctl.o warning-free (W=1, x86_64 defconfig) and checkpatch-clean.
+The bug (EFAULT on a conforming 40-byte object) was reproduced under QEMU on
+v6.12.9 and v7.2.4; the fix itself was not runtime-tested.
+ fs/ext4/ioctl.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-The second access feeds a journalled write: the out-of-bounds 8 bytes
-become the block number passed to sb_getblk(),
-ext4_journal_get_write_access(), mb_set_bits() and
-ext4_handle_dirty_metadata().
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index c8387e6a2c6e..ea3cd8cdae25 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1674,12 +1674,22 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 	}
+ 
+ 	case EXT4_IOC_GROUP_ADD: {
++		struct ext4_new_group_input uinput;
+ 		struct ext4_new_group_data input;
+ 
+-		if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
+-				sizeof(input)))
++		if (copy_from_user(&uinput,
++				   (struct ext4_new_group_input __user *)arg,
++				   sizeof(uinput)))
+ 			return -EFAULT;
+ 
++		memset(&input, 0, sizeof(input));
++		input.group		= uinput.group;
++		input.block_bitmap	= uinput.block_bitmap;
++		input.inode_bitmap	= uinput.inode_bitmap;
++		input.inode_table	= uinput.inode_table;
++		input.blocks_count	= uinput.blocks_count;
++		input.reserved_blocks	= uinput.reserved_blocks;
++
+ 		return ext4_ioctl_group_add(filp, &input);
+ 	}
+ 
+-- 
+2.34.1
 
-ext4_resize_fs() is not affected. ext4_setup_next_flex_gd() sets
-blocks_count = EXT4_BLOCKS_PER_GROUP(sb) and ext4_alloc_group_tables()
-keeps the tables inside the flex group, so group stays below flex_gd->count
-there. Only EXT4_IOC_GROUP_ADD takes these numbers from userspace.
-
-Reproducer
-==========
-
-blocks_count must be first_data_block + N * blocks_per_group, or
-verify_group_input() stops at "Last group not full" first:
-
-	truncate -s 64M img
-	mke2fs -q -F -t ext4 -b 1024 -g 1024 -O ^has_journal img 4097
-	mount -o loop img /mnt
-
-Group 4 is the next group and carries no superblock backup, so overhead is
-0. inode_table is the first block of group 5, which makes the index 1:
-
-	struct ext4_new_group_input in = {
-		.group		 = 4,
-		.block_bitmap	 = 4097,
-		.inode_bitmap	 = 4098,
-		.inode_table	 = 5121,
-		.blocks_count	 = 1088,
-		.reserved_blocks = 0,
-	};
-	ioctl(fd_on_mnt, EXT4_IOC_GROUP_ADD, &in);	/* returns 0 */
-
-KASAN
-=====
-
-v7.2.4, x86_64 defconfig plus CONFIG_KASAN=y CONFIG_KASAN_STACK=y
-CONFIG_KASAN_INLINE=y, under QEMU:
-
-	BUG: KASAN: stack-out-of-bounds in set_flexbg_block_bitmap+0x531/0x6a0
-	Read of size 2 at addr ffff8880072b7b2a by task init/1
-	CPU: 0 UID: 0 PID: 1 Comm: init Not tainted 7.2.4 #1 PREEMPT(lazy)
-	Call Trace:
-	 <TASK>
-	 set_flexbg_block_bitmap+0x531/0x6a0
-	 ext4_flex_group_add+0x3885/0x5730
-	 ext4_group_add+0xc13/0x14b0
-	 ext4_ioctl_group_add+0x1a4/0x4a0
-
-	BUG: KASAN: stack-out-of-bounds in set_flexbg_block_bitmap+0x646/0x6a0
-	Read of size 8 at addr ffff8880072b7da8 by task init/1
-
-Size 2 is bg_flags, size 8 is groups[1].block_bitmap. v6.12.9 gives the
-same pair. set_flexbg_block_bitmap() and verify_group_input() are unchanged
-in current master.
-
-set_flexbg_block_bitmap() has computed the index this way since
-33afdcc5402d ("ext4: add a function which sets up group blocks of a flex
-bg"), v3.3.
-
-Fix
-===
-
-Either bounds check works, and I do not know which you prefer:
-
-  - reject blocks_count > EXT4_BLOCKS_PER_GROUP(sb) in
-    verify_group_input(), which is what the single-group path means; or
-
-  - bound group against flex_gd->count in set_flexbg_block_bitmap(), which
-    also covers a future multi-group caller.
-
-I can send a patch for either, and test one.
-
-Kaixuan
