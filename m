@@ -1,102 +1,113 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm2-f12.google.com (mail-wm2-f12.google.com [74.125.225.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC45C2BEFF6
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 03:42:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1FDF4CB8D2
+	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 11:28:14 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.225.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789616541; cv=none; b=ktby0R3vKTeUvO10r3J4e5wx7sZ9TXrKFktPjxuBi6ja8foPMxqMHzOxcuLgtn1PjPWRxgpNUN0umTmWn/4e/6LLFCo3xEQHVFtWLoNNjSqPQzGDVG/V7vxjQdlmdCylF93GdGKM3mocCITCh23G1kjbxTZlsuM6AJ/CYqjy89M=
+	t=1789644496; cv=none; b=c7oz6SevrV40gfAlSDGzEK8S+B48y1N0rJLvzgM672UhWdKNUR8QlVfNjzVN4gREnV7Ca5oGt3pPKS5jn1BuXzoBzY9LP/ylFDdvsTg+klo13lefm2oFRibnUQgzyKJ1Ij3v4rVR/75sqc9sdYwMkJHgAYI/F/v6rvjR/22+Vfo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789616541; c=relaxed/simple;
-	bh=PZVgOnm5sHX5SBkd7yukcg0gOFYh/ZuuCYVMg+trQFw=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=p2Y5xhGQj7zkUj4YdCZ2At3xm0sX6r/7zqKcwMawQJWTd3OclQGpwMrtw4/nAENnVSH5MclpMzdZq/GluNXedPeVGMSGuIuqsj2U7Zvalt1VTAmNMRDJkzYRyj0TKqQpxrFL31q76/K2+RCkS6ou6tr9BSK/slXKtKnq+FjIjQY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JnKfS1mr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789644496; c=relaxed/simple;
+	bh=rkbgMLuM3vm0QjSeOouBx6sDtJtxGAt8tN51h/k1Emg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ka7T++7KliafTPRAd5K38U1K+JlRsdPOK7JOT32qg/GsHzUUHZtoNCV6jaCB17aQcecPBU6MfcLA4lpnqnPtMy2YNL/rC/GjODozqWt/NwySUvkTG082krrMFQ3jYgzw6W6kFpSq2HOX3qAromnKjF4Y/sqNMxYkVViy7Eiy+mk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com; spf=pass smtp.mailfrom=suse.com; dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b=cBiVsMop; arc=none smtp.client-ip=74.125.225.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=suse.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JnKfS1mr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F41F1F000FF;
-	Thu, 17 Sep 2026 03:42:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789616540;
-	bh=r1nWKUr/+y75/X4yGt5//7BJajCbKT84rskHsex5inY=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=JnKfS1mr77hx/xpJ8K1H164U3fffeqomdhTL/kTV9Fx75CbYDn+GjUw459+oXoxu0
-	 f06ifmAas88PWbVaU+T55ExyfTOrcg452IXe6102yDuqTp9mbESZH9H0tl4B4JrjfT
-	 /wrGVA0qLAGLVAV1Usc48aqRduzHTyaWjJ3VXObeVnH2p55YfAXkO7KXmxmw0RRXUt
-	 ZTxxL12ZSdmf5ngNgVe+m/W7z5thCwOWMCFiC2eJ7OPzULR14+PiW+tvw5VTNlG6qD
-	 mZAWZLqaev/k2xuXxHE0cTi07pHRKW+UkZM05ArfM3Rzh68KV8xmZKJlnmqXhiQwJQ
-	 t3D9n496Hlo0Q==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: propagate errors from fast commit create replay
-Reply-To: sashiko-reviews@lists.linux.dev
-To: 781735889@qq.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <tencent_1289C5B99FB98002A71088AC49394474B20A@qq.com>
-References: <tencent_1289C5B99FB98002A71088AC49394474B20A@qq.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 17 Sep 2026 03:42:19 +0000
-Message-Id: <20260917034220.3F41F1F000FF@smtp.kernel.org>
+	dkim=pass (2048-bit key) header.d=suse.com header.i=@suse.com header.b="cBiVsMop"
+Received: by mail-wm2-f12.google.com with SMTP id 5b1f17b1804b1-49ccead2aecso3514875e9.0
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 04:28:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=suse.com; s=google; t=1789644493; x=1790249293; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=cPQWIr4fS6DSXVaIcQLRpggCO3UERblx+k2pBWKEiyY=;
+        b=cBiVsMopEYxIp2v4ZQ0BZHIhPOhv1WkhfZIuu4HsqqQK2T4j917iiq1KN5c/fsjADH
+         Lb/DrZRbp2YE8jKyKg5brHB8Ei8fXa9RRsZYJOu9PUMNXzPqiuM3h4y48c4CxnqggowI
+         n9DZLWnAay7DQn4gweYncMCfKk8vjh+xGoxaFlpQF5t1SeWlXGSrVkG/lR8LmI6At+OT
+         csDVDcxzQJx+0jpORA4Dm24qTlXpudp0AMa3Giks29Rq7Zdn7cEI92OQDOoXbs34Nl4U
+         nIxCQyu9PJWh+fO+c4nhXpeAdIWHLIegu4mkkX+nSSnf5HlFlhml2wWtXm6vKZBOhzmk
+         RjpA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789644493; x=1790249293;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=cPQWIr4fS6DSXVaIcQLRpggCO3UERblx+k2pBWKEiyY=;
+        b=Z05c3ZIqaV/8cktWteHfDjUBgUJrdyPP7hl9tmp4LRz80m0+DyQcAUOdSm4E22cN2U
+         MYaRvsMbgsYt2CVX1KQ7oUdXAeMNQuvr9xORxctpjASCD3rkuCqRVbq0K4DPdpZnxHoz
+         G+Ivb2Ng5ou+kUEUwEgmwQRtHbIWL8/DkIeRfT2iTM8yrDV6+e5o3Ak4CJ5lDMVw8OL8
+         xlMRCyOFF3sBirOyJvz1ajXtk1/Il5pi9VOKhRvLhl1wzVGWKz6Z1j1/5V3uXftSyfrv
+         FSXoyt0vkpPoXJTUb5RnpMfEukCbRyBYGbziLSoQhmWXaJC+z0cA9Y5MIhV5e8EWvYuu
+         6CLA==
+X-Forwarded-Encrypted: i=1; AKwUvByQgNZT1osnUAmiov2AX0EjVNppaY1y65wG9F7TB4fbu0iE6wVHck1Go55qWSybnnp+3+52CVtQTZ5a@vger.kernel.org
+X-Gm-Message-State: AFuF++k6d+SjtR6rEUQfL/1bg94h8lN51MG/KqXOVRY/GfewI/z7A1I6
+	r0dmCE5pP4+jabM0CPhpX19zj0VbjjUePeEISkY7Sv6trmU+L0uGiQCEDCUns8tgXnA=
+X-Gm-Gg: AYBFou2KtUX3vmn+k4W6OxOAessoUA9Drvyj1/RQOaw4TN7nR/eFFvuaLz4VSetqHgc
+	oqo/gxSSskPgHGfNtEXlQriZR7+Mosqqut/jQ800JnZ/S8Xd4Z2q4Q0VxX9qQbMEbXr3IoV8G6t
+	LaI5qs4a+T2yEo1vRtCU0pK1O8rlbHnJOxu9mUHwOj9BXj0KNh+HMMN7UtPP2HJni7BPnbU8y/v
+	ayCobGlcETkrehnQq2GG048uQcyv+rzxwVvYEIlQjcP5Kx3wQZWCEoewqbcsCzKBO3lsr47LXzQ
+	I3Yj2teZa5L95VtSEpvD3bAxxBhiTX03tG8mTINF+V2T9R4RlUH4vplk8Xi7Gu5J19nL5Mlyil9
+	ThMw43X3AKdtdQKpgDQygGkKk6o9UmFj5/vTida6DIErQw0oJ4BGx8WmbTLa+YlyEDFoaCh6J2V
+	z1FSqbeeeCaK87b4mU0Z5zw+3kHOrwWPaHWiORNjxJSkokrxlyItQM6XWglMXG+8x8MkO0VGysE
+	w==
+X-Received: by 2002:a05:600c:8a17:20b0:49f:bd0d:59f5 with SMTP id 5b1f17b1804b1-49fbd0d59fbmr28486785e9.18.1789644492945;
+        Thu, 17 Sep 2026 04:28:12 -0700 (PDT)
+Received: from pathway.suse.cz ([176.114.240.130])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4870bf34440sm14542597f8f.25.2026.09.17.04.28.11
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 17 Sep 2026 04:28:12 -0700 (PDT)
+Date: Thu, 17 Sep 2026 13:28:09 +0200
+From: Petr Mladek <pmladek@suse.com>
+To: Jinjie Ruan <ruanjinjie@huawei.com>
+Cc: bcrl@kvack.org, viro@zeniv.linux.org.uk, brauner@kernel.org,
+	jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com, ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com, yi.zhang@huawei.com, sforshee@kernel.org,
+	akpm@linux-foundation.org, rostedt@goodmis.org,
+	andriy.shevchenko@linux.intel.com, linux@rasmusvillemoes.dk,
+	senozhatsky@chromium.org, kees@kernel.org, tglx@kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v3 2/8] lib/vsprintf: Use acquire/release for ptr_key
+ publication
+Message-ID: <aqvOybiwt5ZTBjAG@pathway.suse.cz>
+References: <20260902074805.398540-1-ruanjinjie@huawei.com>
+ <20260902074805.398540-3-ruanjinjie@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260902074805.398540-3-ruanjinjie@huawei.com>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] ext4: fast commit mount failure due to broken idempotent directory=
- replay
---
+On Wed 2026-09-02 15:47:59, Jinjie Ruan wrote:
+> Replace the smp_wmb() + WRITE_ONCE() and READ_ONCE() + smp_rmb() barrier
+> pair with smp_store_release()/smp_load_acquire() on filled_random_ptr_key.
+> 
+> This expresses the publish/subscribe pattern more clearly and allows
+> architectures with native acquire/release instructions (e.g. arm64's
+> STLR/LDAR) to avoid the cost of full one-way barriers (DMB ISHST/ISHLD).
+> 
+> No functional change intended.
+> 
+> Cc: Petr Mladek <pmladek@suse.com>
+> Cc: Steven Rostedt <rostedt@goodmis.org>
+> Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+> Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+> Cc: Sergey Senozhatsky <senozhatsky@chromium.org>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Assisted-by: DeepSeek:DeepSeek-V3
+> Signed-off-by: Jinjie Ruan <ruanjinjie@huawei.com>
 
-commit 4015b43a7d3a20549b784ebf5a4fb9ffc38d14b9
-Author: lty <781735889@qq.com>
-ext4: propagate errors from fast commit create replay
+JFYI, this patch has been committed into printk/linux.git,
+branch for-7.3.
 
-This commit updates the fast-commit replay for directory creation to
-propagate errors from parent lookup, directory initialization, and inode
-dirtying. Previously, some of these errors were either ignored or masked.
-
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 0cac890cf3702..a6230f4411ed5 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -2062,12 +2062,12 @@ static int ext4_fc_replay_create(struct super_blo=
-ck *sb,
-
-[ ... ]
-
->  		ret =3D ext4_init_new_dir(NULL, dir, inode);
->  		iput(dir);
->  		if (ret) {
-> -			ret =3D 0;
-
-[Severity: High]
-Does this removal break idempotent replays of directory creation?
-
-Fast commit log replay must be idempotent because a directory's blocks might
-have been flushed to disk by background writeback before the crash.
-
-In ext4_fc_replay_create(), if the directory already exists on disk,
-ext4_init_new_dir() forcefully sets its in-memory i_size to 0 and calls
-ext4_append(). ext4_append() then computes logical block 0 and checks if
-it is already allocated via ext4_map_blocks().
-
-Since the directory was already fully persisted, the extent tree still maps
-block 0, causing ext4_map_blocks() to return a positive value. ext4_append()
-interprets this as a corruption ("Logical block already allocated") and
-returns -EFSCORRUPTED.
-
-Before this patch, this specific error was safely bypassed (ret =3D 0) since
-the directory was already on disk. By propagating this error, it appears
-journal recovery will abort with -EFSCORRUPTED whenever it encounters a
-previously persisted directory without inline data, which might cause valid
-mounts to fail.
-
->  			goto out;
->  		}
->  	}
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/tencent_1289C5B99FB=
-98002A71088AC49394474B20A@qq.com?part=3D1
+Best Regards,
+Petr
