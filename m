@@ -1,146 +1,128 @@
-Received: from mail-pj2-f31.google.com (mail-pj2-f31.google.com [74.125.227.159])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79A0937BE64
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 01:06:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.159
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C453F2ECEB9
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 01:19:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789693577; cv=none; b=SwyCfS+cbWmdO+oleKxYl0hZfIf6VIx/+dZ71botkU6jH+6citCumU4r9RJFIOv28dFbwRLBVTyQinqTSaeg6PlZkuuQ7vz71SBXkrXfrXL88G06L7WdvBLVQwF5eHqbMVl6o/fCSfkou7OdvOdmhPkJ7ssFRSSuW+zTI6eu4lQ=
+	t=1789694372; cv=none; b=bD54XfjYBNevRYWFCYE5GHs8ZkZGZqY/SFqxoHQ5VKL4rSkE/LHIXQ5JlLTo+q1ocso5gFUP/O7qkz4UaoBJkbVLqoQbulperOAhUDkxILZUmhlaSy/7UAwy22mik/upXH1UtTqVD/SRYRA5jkWrtKHqQ29Sd58Wt5LiJaxAMWM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789693577; c=relaxed/simple;
-	bh=yBIGT8BXOLPPjlnisUuvjv8aqjnLGGAervT2GKtRzBY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=u5Ryly3Ohpb9wea0RMlOwiHdKeISE0Y3iltMcySUOirc/ht9NBihqs0hoIIvnTQ6DOvGrbfpOjng2FcGESH8yoFmNGsIdJfVb+ZyQ9AgWIrfYf8fnS7pcDYtfXmQdtRzhp92/982deevRVW+dozrakWA0mF2ElnQdFubhj+Hegg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=c5zgM1uQ; arc=none smtp.client-ip=74.125.227.159
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789694372; c=relaxed/simple;
+	bh=gMZcKkV/HZeL+T+4kLhWx4njbJFJ+hF2H12bnO77NMU=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=fq5S7TRY52w5x2/n4r0nm86xUe9n72oh2xEx+17KqiLGF2NGxzhwyBxiO3mkF2oylSZmoNvWauIMbGrmSgiEFq1+Q02CnM/flJlpdegN9OnBlsUCm1cqO9brf/Lh3KrzfZDdHgkb07NTN9z9oI2f11f28rnw59dmZ+UV1t1Qy54=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZCXErnh1; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="c5zgM1uQ"
-Received: by mail-pj2-f31.google.com with SMTP id d9443c01a7336-2dd53691be5so1659385ad.1
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 18:06:11 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789693570; x=1790298370; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=iFcT2DOyxQDtRKBeD9Hf0Svlfti42z1k3EuEK/szEUM=;
-        b=c5zgM1uQko+aMmYYWP6nQJUg8b/MUMPqc2xOpbsnCgyP9hKVgPdTpB4qg6IknQrAjg
-         gdu+eiGS5CFGNaRaMC8xvX2YYRv5Gr1WY4pWxRtu7/bRTIOcFcc7Qwg6TZbaVzSMuyaV
-         js8h+r8f8wzp/qZKzmjeC86hDrbywkBjSXf9RIJScGn9KUz1Z09DslR/AaVKAqGMYyhI
-         56fREe+4Ga8lKD20G4Te38V2Ak3MUVQ1hUtzrmII/M++ydxXVm3kb7UgRD2o0054Bepn
-         v4eI2kA98zk4G8CHGmPLFWfJh/Z3/OEplw8Sfuozoj/l3YO0tsNTOA33XlDLjYk68bX4
-         FSHQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789693570; x=1790298370;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=iFcT2DOyxQDtRKBeD9Hf0Svlfti42z1k3EuEK/szEUM=;
-        b=mxWHV+Sv/+FWmpgRbyJI0E0NsQ7TmaKgHk9KeMzJhQqapgfUqS39hnyciB7l1+e8b0
-         /MYdkGMLwDYlAP3esUca6Rn2VXN5lNrVhzmrXowZuuUKUbVxd0P19PYvV2PxApQZBNyC
-         zTVC4EYC0AvSW80l7Kr/t/cJ5JRLmCjbQ1DagLCyg6Q654ULkFCaE5+zf37h5vwDIYtn
-         tNhTcm1yj9AiJqWOJXTLEJL82RWoJ567ayebvMIONlgvYXyRKUMRSao5fZz5sZG4fYiu
-         35r5NGIZQv0vVa7WHX6TcOYz+R2KDxBDB5vgRJ5r0mNSKJtha4k9fmS6qOOL+Iutkl7c
-         0hLA==
-X-Forwarded-Encrypted: i=1; AKwUvBzbx+Sj/aAtURk0M+Ac/kk7zuo7PWcBLynsQsql3D+b8kVIKE+rvfJn7uRo0XKzQvL3ooZ+XKvoMb4I@vger.kernel.org
-X-Gm-Message-State: AFuF++l5uNH7bfvHLAT80wsnH0L27jRK+EU0kBslqSvLKxWFbB2xRJwo
-	I8ngVGzXLlRLwAyTg5S0f4/0cg0s/wO0vV0tkmcm+9wx59j/QDU5/ZXS
-X-Gm-Gg: AYBFou3bKjuyhuBXr0KPuc/DKGsResj9gzx3HVBXB+a+kAQ+2uweYz5r2hLcPNaNy75
-	V6rQWc3sIG2T/Z7fiSLvSFXcLHLH08reaJZBsSjGxHalEnlODqjk4/odhT4PGs43RkQ23Dw6dM7
-	aMHQYsKDhYUWWBYZJNplXS4FLF/QpU8SGD43YEO8Ct5czFB7HsNwMMANsAWNbZXrydhjHVIqTew
-	Eo6dhq5yphsAtccmOo+MeFh/PN2nzOTSPzmLK240uH7pFM828s6UA7qKjXMTqa4PfwgFPHNoXeJ
-	4EJwx1cG2s/nILLPw5KKhgwc5/OZcGbnUmbHNlhOOuCwAGuyRVcCMb5U8sDMMZDKh2OoaUMGmEE
-	kCwn/ByJbm2NlPDYlPLQ0D90Z8upe/FqhiGN20FTBKEbT+rtiRDF7LMsqb5jLYeRsR4hN/7Rjjw
-	jqRKX1nL0KqKC82/TVDrv8RtbjR6f8kuZusqSv8lAJc/2ENYbuX+OtsN4A7vtu1bRyHGE4KOZ2t
-	sLVEUKjZdkjebmzYY7W4w1RWcSgEL/eGfh3y6X72A8vmd+nz5d2TeiJkAxpUZOy
-X-Received: by 2002:a17:902:f687:b0:2db:2413:87d2 with SMTP id d9443c01a7336-2ddb1ac954dmr19438205ad.4.1789693569827;
-        Thu, 17 Sep 2026 18:06:09 -0700 (PDT)
-Received: from deepanshu-Legion-Pro-5-16AFR10.. ([2405:201:682f:383f:5d30:2332:ca7b:eac1])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd89f338a9sm33460655ad.83.2026.09.17.18.06.03
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 17 Sep 2026 18:06:08 -0700 (PDT)
-From: Deepanshu Kartikey <kartikey406@gmail.com>
-To: tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com
-Cc: boyu.mt@taobao.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Deepanshu Kartikey <kartikey406@gmail.com>,
-	syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
-Subject: [PATCH] ext4: add bounds check for e_value_offs in ext4_read_inline_data
-Date: Fri, 18 Sep 2026 06:35:58 +0530
-Message-ID: <20260918010558.8210-1-kartikey406@gmail.com>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZCXErnh1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 22A121F000FF;
+	Fri, 18 Sep 2026 01:19:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789694370;
+	bh=9UQsQs6FP/+W6c52/yy0gLWjKNflrFWjapcxTHo3ZBo=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=ZCXErnh14X2WkHap6K+twhymbvgDdHqDxCVCHJ2+GjSLEm+OEMAEZk3LYQV1G2Y4S
+	 bpUqXJXvy65j331xy3JcUjMkkAietf5w/dNRzT5AqK+8JzYIxWa9XsjoL692+d4l1k
+	 AzhpBSPTJvNDp009AoRh7jTh9koPVDldaBWXcCXU5w8YqoQ3Let7i+PcHdZi5/BlQq
+	 QAZmvRF0J+mMhHxBVY51yiOKe1ZLlNuLeIw2TCwsWX8Jen0T4sQCBSpJn6lfizixHQ
+	 I2QvNeIu6sVnjz9OoQygbQsmoUsfkx1AHtjKDWPafN82fvOOd3aHxE5qOcSedGJ1IS
+	 OmWXytgjrfVig==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH] ext4: add bounds check for e_value_offs in
+ ext4_read_inline_data
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Deepanshu Kartikey" <kartikey406@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260918010558.8210-1-kartikey406@gmail.com>
+References: <20260918010558.8210-1-kartikey406@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Fri, 18 Sep 2026 01:19:29 +0000
+Message-Id: <20260918011930.22A121F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-ext4_read_inline_data() reads the location of an inline data xattr
-value directly from entry->e_value_offs without validating it against
-the actual bounds of the inode's xattr area. A corrupted filesystem
-image can set e_value_offs to an out-of-range value, causing the
-subsequent memcpy() to read from an address far outside the inode
-buffer, including memory that has already been freed and reused for
-something else. This mirrors the check already performed in
-ext4_xattr_ibody_get(), which is missing here.
+Thank you for your contribution! Sashiko AI review found 2 potential issue(=
+s) to consider:
+- [High] ext4: information leak due to unhandled error in ext4_read_inline_=
+page()
+- [Low] ext4: undefined macro ITAIL causes compilation failure
+--
 
-Add a bounds check on the computed source pointer against the end of
-the inode's xattr area before the memcpy, and reject the read with
--EFSCORRUPTED if it would go out of bounds.
+commit 61b118bf302b061ec089fd01a981cb9991fa3a62
+Author: Deepanshu Kartikey <kartikey406@gmail.com>
+ext4: add bounds check for e_value_offs in ext4_read_inline_data
 
-Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
-Reported-by: syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=085a394c92518a04fd09
-Tested-by: syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
-Signed-off-by: Deepanshu Kartikey <kartikey406@gmail.com>
----
- fs/ext4/inline.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+This patch adds a bounds check to ext4_read_inline_data() to validate the
+location of inline data xattr values against the actual bounds of the inode=
+'s
+xattr area. If the value is out of bounds, it returns -EFSCORRUPTED to
+prevent reading out-of-bounds memory.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ceee69a66482..2e60ab3e0db5 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -187,6 +187,8 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
- 	struct ext4_xattr_ibody_header *header;
- 	int cp_len = 0;
- 	struct ext4_inode *raw_inode;
-+	void *end, *p;
-+	u16 offset;
- 
- 	if (!len)
- 		return 0;
-@@ -205,13 +207,21 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
- 		goto out;
- 
- 	header = IHDR(inode, raw_inode);
-+	end = ITAIL(inode, raw_inode);
- 	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
- 					    EXT4_I(inode)->i_inline_off);
- 	len = min_t(unsigned int, len,
- 		    (unsigned int)le32_to_cpu(entry->e_value_size));
- 
--	memcpy(buffer,
--	       (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs), len);
-+	offset = le16_to_cpu(entry->e_value_offs);
-+	p = (void *)IFIRST(header) + offset;
-+
-+	if (unlikely(p + len > end)) {
-+		EXT4_ERROR_INODE(inode, "corrupt inline xattr entry");
-+		return -EFSCORRUPTED;
-+	}
-+
-+	memcpy(buffer, p, len);
- 	cp_len += len;
- 
- out:
--- 
-2.43.0
+Closes: https://syzkaller.appspot.com/bug?extid=3D085a394c92518a04fd09
 
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index caa51473207d7..7d5592030ec32 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+
+[ ... ]
+
+> @@ -188,13 +190,21 @@ static int ext4_read_inline_data(struct inode *inod=
+e, void *buffer,
+>  		goto out;
+> =20
+>  	header =3D IHDR(inode, raw_inode);
+> +	end =3D ITAIL(inode, raw_inode);
+
+[Severity: Low]
+Does this code compile? ITAIL() appears to be undefined in this context,
+which would break the build.
+
+>  	entry =3D (struct ext4_xattr_entry *)((void *)raw_inode +
+>  					    EXT4_I(inode)->i_inline_off);
+>  	len =3D min_t(unsigned int, len,
+>  		    (unsigned int)le32_to_cpu(entry->e_value_size));
+> =20
+> -	memcpy(buffer,
+> -	       (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs), len);
+> +	offset =3D le16_to_cpu(entry->e_value_offs);
+> +	p =3D (void *)IFIRST(header) + offset;
+> +
+> +	if (unlikely(p + len > end)) {
+> +		EXT4_ERROR_INODE(inode, "corrupt inline xattr entry");
+> +		return -EFSCORRUPTED;
+
+[Severity: High]
+Does returning an error code here cause an information leak?
+
+Looking at ext4_read_inline_page(), it calls this function but does not
+check if the return value is negative before unconditionally zeroing the ta=
+il
+and marking the page as up-to-date:
+
+fs/ext4/inline.c:ext4_read_inline_page() {
+    ...
+    ret =3D ext4_read_inline_data(inode, kaddr, len, &iloc);
+    flush_dcache_page(page);
+    kunmap_atomic(kaddr);
+    zero_user_segment(page, len, PAGE_SIZE);
+    SetPageUptodate(page);
+    ...
+}
+
+If this returns -EFSCORRUPTED, will the page be left with uninitialized
+kernel memory that gets exposed to userspace?
+
+> +	}
+> +
+> +	memcpy(buffer, p, len);
+>  	cp_len +=3D len;
+> =20
+>  out:
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260918010558.8210=
+-1-kartikey406@gmail.com?part=3D1
