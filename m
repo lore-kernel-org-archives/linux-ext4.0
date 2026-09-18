@@ -1,228 +1,166 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5757543B6E2
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 11:38:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A05CD4DBD62
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 11:41:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789731539; cv=none; b=bMXO/5So/0u27q6Mw8cxiBwShhpLnpOJ6CI8NGyVD0SBE3fS2rO/QWUgcQ5MObBCya7sy2yyhUybqu6CwBuqkauQNdMVPcghsb4PbqS1GdqiaC/qm1WDy7s71H7TwOssEWsIZZoEjPnyR3QSvQG6R8Xxh3VH7wRjihG9oL30D1I=
+	t=1789731663; cv=none; b=oYREAms9/N9+EqLtaFZ1S5kDxwWgbYaKjX4jwtnFM54TbiMOa9dan+3/4kAjZ1Xm1AWMAsVUjWLL8WBHiUDdW1lSgwqZ9B/it+uFpWONPndf5bjBJtB/zzEYcTNZzmN2YVsM5g++2Ue+r5j9g339JeZmsabcL9W06JsOCHhB7GA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789731539; c=relaxed/simple;
-	bh=9YaOk9A8hQLYHnFW47V4mbMTiLrPhgO5p+bYt35SkkE=;
+	s=arc-20240116; t=1789731663; c=relaxed/simple;
+	bh=wteXjEC+cQabTsH73C5cNlaPYJOAF/m5J3l1sFOgs0w=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=EODYmAjJIgurXqAAXhYcz+K5TEdcEo+RkLAvnD7whUzNuswLqU/9quwq+Glme/DI6d74/uXwX86eVMdzVIsmDUYQErazKk1fPJOUlgavlldE8NhLmxhO4H0H+Qfh1GQUe4B8VooMgWPkEyTJaJ6iJZuKPt56IrONRmKK4JzT2X0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XdS04cKj; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=AdyNKwlPrrPE+7Rtr0d/HmUfbHtFEiIAErg3BFWFxIkZ2GPX8CXu41gzRhfowtIVN4VIN7/LcFPsQddIg3R/15SM+zZzaQR8GD1rCkDTiIVpm/HD8JIL5EeJBh7EXEg1pLbanrMx9v82jw2v6GP+wASZjIQCszUAzVf7mJU34es=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jMlxJ7Er; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XdS04cKj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD6411F000FF;
-	Fri, 18 Sep 2026 11:38:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jMlxJ7Er"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E7FB31F00893;
+	Fri, 18 Sep 2026 11:41:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789731538;
-	bh=0oXjT3egk3kaJKj3ZNjItm+jC2AAFFQI5IzOj1Erc84=;
+	s=k20260515; t=1789731661;
+	bh=+eJALgUHc3YHzFaD8zqe+hk2DZQ3LU4K2L7km27t8uE=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=XdS04cKj0hlZt1iiAVvChkREeqj+dVT4TZh33MNGfY6rRfQxQxxwfa9lOXLXtZIZ3
-	 A8qZEDGcPjwdw9XCmC4397mGKoTJCr6/ov2fl2e2SwPKnsbAnYVFHGUDR1z8MMMcmC
-	 1dj+XwEHIP2zYgb9mgst40Q+Z90gBALu8yxpK0idzc0rrqr0N0MHV/PnYY542LStVO
-	 28Lmstb7lExs4V8T+3RGZtq3gk9mYI2vTV8h9yzT50lczsL9dKO6vL4FUocM2KPlzA
-	 cogX0kTU/eD6FnGVGDsEzkv5E1Ajy8s6K4TnHAc5cGvR+8T5GsHeE9bt0aUtvNc6Om
-	 7OPPpwrDraPTw==
+	b=jMlxJ7EriCkLgUzptgUiQYo94IttZ6mEKSp9FzBA5TlaJFBA/AtWnbzgDmTtNX6ow
+	 1v/ouFiVhbje2r4NrpfRKuN5nphUYIDUzJLVimaTSlsDvVjRxtvEVQZHrP2caeJC/m
+	 NLEvJ+VpaBUj06rIHUX5b6D5veJ5jSBW7OisLrNhhCna6wjFxpLi6tuMYgwPFMFZLe
+	 lH7LfglM3FPgyJRkZ6B/hj7ljxChnDSYx6qnt75auyhDI/vx2p/OneI7+DW1yPGbY3
+	 95++7FbbhXBcTR2kHsoGn/jNDEXdcQr/hOxHvJPlH0I/Qdn6y2yuOYD1PysvTnMAiI
+	 5BiPiYg4wCSkQ==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v16 11/21] xfs: handle fsverity I/O in write/read path
+Subject: Re: [PATCH v16 19/21] xfs: check and repair the verity inode flag
+ state
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Andrey Albershteyn" <aalbersh@kernel.org>
-Cc: tytso@mit.edu, dsterba@suse.cz, linux-ext4@vger.kernel.org
-In-Reply-To: <20260918111539.1003439-12-aalbersh@kernel.org>
+Cc: dsterba@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260918111539.1003439-20-aalbersh@kernel.org>
 References: <20260918111539.1003439-1-aalbersh@kernel.org>
- <20260918111539.1003439-12-aalbersh@kernel.org>
+ <20260918111539.1003439-20-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 18 Sep 2026 11:38:57 +0000
-Message-Id: <20260918113857.BD6411F000FF@smtp.kernel.org>
+Date: Fri, 18 Sep 2026 11:40:59 +0000
+Message-Id: <20260918114100.E7FB31F00893@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+Thank you for your contribution! Sashiko AI review found 2 potential issue(=
 s) to consider:
-- [High] xfs: global IOMAP_F_FSVERITY in writeback triggers WARN_ON_ONCE an=
-d skips zeroing
-- [High] xfs: missing IOMAP_F_FSVERITY in srcmap causes Merkle tree data co=
-rruption during COW
-- [High] xfs: extent merging in writeback drops IOMAP_F_FSVERITY, permanent=
-ly leaking dirty folios
+- [High] xfs: scrub silently removes fs-verity protection on capability mis=
+match
+- [High] xfs: TOCTOU race in fsverity open triggers kernel panic
 --
 
-commit 921462565b838ec412711bced36094baa0229a3e
-Author: Andrey Albershteyn <aalbersh@kernel.org>
-Date:   Fri Sep 18 11:15:23 2026 +0000
+commit f41f7f55dbc0aa68b4ef7ee729b6b2e8b291d72f
+Author: Darrick J. Wong <djwong@kernel.org>
+Subject: xfs: check and repair the verity inode flag state
 
-    xfs: handle fsverity I/O in write/read path
+If an inode has the incore verity iflag set, make sure that we can
+actually activate fsverity on that inode.  If activation fails due to
+a fsverity metadata validation error, clear the flag.  The usage model
+for fsverity requires that any program that cares about verity state is
+required to call statx/getflags to check that the flag is set after
+opening the file, so clearing the flag will not compromise that model.
 
-    For write/writeback set IOMAP_F_FSVERITY flag telling iomap to not
-    update inode size and to not skip folios beyond EOF. Initiate fsverity
-    writeback with IOMAP_F_FSVERITY set to tell iomap should not skip folio
-    that is dirty beyond EOF.
-
-> diff --git a/fs/xfs/libxfs/xfs_bmap.c b/fs/xfs/libxfs/xfs_bmap.c
-> index ae91f63455c5d..ba6a9611f6f9d 100644
-> --- a/fs/xfs/libxfs/xfs_bmap.c
-> +++ b/fs/xfs/libxfs/xfs_bmap.c
+> diff --git a/fs/xfs/scrub/common.c b/fs/xfs/scrub/common.c
+> index e5233e31abb75..02b68bf4c5127 100644
+> --- a/fs/xfs/scrub/common.c
+> +++ b/fs/xfs/scrub/common.c
 [ ... ]
-> @@ -4401,6 +4403,10 @@ xfs_bmapi_convert_one_delalloc(
->  	 * the extent.  Just return the real extent at this offset.
->  	 */
->  	if (!isnullstartblock(bma.got.br_startblock)) {
-> +		if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION) &&
-> +		    XFS_FSB_TO_B(mp, bma.got.br_startoff) >=3D
-> +			    xfs_fsverity_metadata_offset(ip))
-> +			flags |=3D IOMAP_F_FSVERITY;
-
-[Severity: High]
-Does checking the potentially merged extent's start offset instead of the
-requested offset cause the flag to be wrongly omitted?
-
-If the file size is exactly aligned to the filesystem block size, the
-Merkle tree begins immediately after the file data without a padding hole.
-When xfs_bmapi_allocate() converts the Merkle tree delalloc extent to a real
-extent, the block allocator might place it contiguously with the existing
-data extent and automatically merge them. This shifts bma.got.br_startoff
-back to 0.
-
-This would cause the check to evaluate to false and IOMAP_F_FSVERITY to not
-be set. Without the verity flag, iomap_writeback_handle_eof() processes the
-Merkle tree folios as invalid past-EOF folios and returns false, completely
-aborting writeback without clearing the dirty state. The Merkle tree folios
-are permanently leaked as dirty memory, preventing filesystem unmount and
-causing data loss of the Merkle tree.=20
-
-Could this use the requested offset instead of the potentially merged
-extent's start offset?
-
->  		xfs_bmbt_to_iomap(ip, iomap, &bma.got, 0, flags,
->  				xfs_iomap_inode_sequence(ip, flags));
->  		if (seq)
-[ ... ]
-> @@ -4448,6 +4454,11 @@ xfs_bmapi_convert_one_delalloc(
->  	XFS_STATS_ADD(mp, xs_xstrat_bytes, XFS_FSB_TO_B(mp, bma.length));
->  	XFS_STATS_INC(mp, xs_xstrat_quick);
-> =20
-> +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION) &&
-> +	    XFS_FSB_TO_B(mp, bma.got.br_startoff) >=3D
-> +		    xfs_fsverity_metadata_offset(ip))
-> +		flags |=3D IOMAP_F_FSVERITY;
-> +
-
-[Severity: High]
-Does this check have the same issue with merged extents causing the flag
-to be dropped as mentioned above?
-
->  	ASSERT(!isnullstartblock(bma.got.br_startblock));
->  	xfs_bmbt_to_iomap(ip, iomap, &bma.got, 0, flags,
->  				xfs_iomap_inode_sequence(ip, flags));
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index c30e688cfc9f6..19640e4e3ed12 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-[ ... ]
-> @@ -172,12 +173,16 @@ xfs_map_blocks(
->  	int			retries =3D 0;
->  	int			error =3D 0;
->  	unsigned int		*seq;
-> +	unsigned int		iomap_flags =3D 0;
-> =20
->  	if (xfs_is_shutdown(mp))
->  		return -EIO;
-> =20
->  	XFS_ERRORTAG_DELAY(mp, XFS_ERRTAG_WB_DELAY_MS);
-> =20
-> +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
-> +		iomap_flags |=3D IOMAP_F_FSVERITY;
-> +
-
-[Severity: High]
-Does unconditionally setting IOMAP_F_FSVERITY here, without checking if the
-mapped offset is actually within the metadata region, contaminate writeback
-for data folios?
-
-If a large folio is allocated that spans across both the file size and the
-verity metadata offset, the folio covers both data and metadata. During
-writeback of this dirtied folio, iomap_writeback_handle_eof() sees the
-IOMAP_F_FSVERITY flag set unconditionally. Because folio_pos(folio) < isize,
-it triggers a WARN_ON_ONCE and returns early, entirely skipping the
-folio_zero_segment() call required to zero the padding hole between the
-file size and the Merkle tree. This leaks uninitialized pagecache memory to
-disk and causes a kernel DoS via the splat.
-
->  	/*
->  	 * COW fork blocks can overlap data fork blocks even if the blocks
->  	 * aren't shared.  COW I/O always takes precedent, so we must always
-[ ... ]
-> @@ -507,6 +517,22 @@ static const struct iomap_writeback_ops xfs_zoned_wr=
-iteback_ops =3D {
->  	.writeback_submit	=3D xfs_zoned_writeback_submit,
->  };
-> =20
-> +static int
-> +xfs_iomap_writepages(
-> +	struct xfs_inode		*ip,
-> +	struct iomap_writepage_ctx	*ctx)
+> @@ -1754,3 +1756,56 @@ xchk_inode_count_blocks(
+> +int
+> +xchk_inode_setup_verity(
+> +	struct xfs_scrub	*sc)
 > +{
-> +	/*
-> +	 * Writeback does not work for folios past EOF, let it know that
-> +	 * I/O happens for fsverity metadata and this restriction need
-> +	 * to be skipped
-> +	 */
-> +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
-> +		ctx->iomap.flags |=3D IOMAP_F_FSVERITY;
+> +	int			error;
+> +
+> +	if (!fsverity_active(VFS_I(sc->ip)))
+> +		return 0;
+> +
+> +	error =3D fsverity_ensure_verity_info(VFS_I(sc->ip));
+> +	switch (error) {
+> +	case 0:
+> +		/* fsverity is active */
+> +		break;
+> +	case -ENODATA:
+> +	case -EMSGSIZE:
+> +	case -EINVAL:
+> +	case -EFSCORRUPTED:
+> +	case -EFBIG:
+> +	case -ERANGE:
+> +	case -EBADMSG:
+> +		/*
+> +		 * The nonzero errno codes above are the error codes that can
+> +		 * be returned from fsverity on metadata validation errors.
+> +		 */
+> +		return 0;
 
 [Severity: High]
-Can this unconditional assignment also trigger the same kernel splat and
-skip tail-zeroing for large folios spanning EOF?
+Does this code silently remove fs-verity protection on capability mismatche=
+s?
 
+The switch statement in xchk_inode_setup_verity() returns 0 for compatibili=
+ty
+mismatch errors like -EINVAL and -EFBIG from fsverity_ensure_verity_info().
+This treats capability/compatibility mismatch errors as metadata corruption,
+allowing xchk_inode_verity_broken() to flag the inode as corrupt because
+fsverity_get_info() failed.
+
+As a result, running xfs_scrub on a valid fsverity file system mounted on a
+platform with different capabilities (e.g., 64K block size mounted on a 4K
+page system, or lacking a specific hash algorithm) will silently and
+permanently strip the file's verity protection.
+
+> +	default:
+> +		/* runtime errors */
+> +		return error;
+> +	}
 > +
-> +	return iomap_writepages(ctx);
+> +	return 0;
 > +}
-> +
->  STATIC int
->  xfs_vm_writepages(
 [ ... ]
-> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> index 7c6238fed61e4..fa11d830dfc09 100644
-> --- a/fs/xfs/xfs_iomap.c
-> +++ b/fs/xfs/xfs_iomap.c
+> diff --git a/fs/xfs/scrub/inode_repair.c b/fs/xfs/scrub/inode_repair.c
+> index abfcab86928e6..b43b39662b687 100644
+> --- a/fs/xfs/scrub/inode_repair.c
+> +++ b/fs/xfs/scrub/inode_repair.c
 [ ... ]
-> @@ -1809,9 +1817,12 @@ xfs_buffered_write_iomap_begin(
->  	if (xfs_is_shutdown(mp))
->  		return -EIO;
-> =20
-> +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
-> +		iomap_flags |=3D IOMAP_F_FSVERITY;
+> @@ -2035,6 +2041,27 @@ xrep_inode_unlinked(
+> +STATIC int
+> +xrep_inode_verity(
+> +	struct xfs_scrub	*sc)
+> +{
+> +	struct inode		*inode =3D VFS_I(sc->ip);
 > +
+> +	if (xchk_inode_verity_broken(sc->ip)) {
+> +		sc->ip->i_diflags2 &=3D ~XFS_DIFLAG2_VERITY;
+> +		inode_set_flags(inode, 0, S_VERITY);
 
 [Severity: High]
-Does this code omit passing the IOMAP_F_FSVERITY flag to the srcmap when
-a COW extent is mapped for a write?
+Can this code trigger a race condition and a kernel panic?
 
-Later in this function (and similarly in xfs_direct_write_iomap_begin()),
-xfs_bmbt_to_iomap() is called to populate the srcmap:
+When xrep_inode_verity() clears S_VERITY from the inode here locklessly, it
+can race with the VFS open path. If Thread A opens an fsverity file and
+fsverity_file_open() locklessly checks IS_VERITY(inode) successfully, Threa=
+d B
+could concurrently clear S_VERITY during scrub here.
 
-	if (imap.br_startblock !=3D HOLESTARTBLOCK) {
-		seq =3D xfs_iomap_inode_sequence(ip, 0);
-		error =3D xfs_bmbt_to_iomap(ip, srcmap, &imap, flags, 0, seq);
-		if (error)
-			goto out_unlock;
-	}
+When Thread A proceeds to xfs_fsverity_get_descriptor(), it will execute
+ASSERT(inode->i_flags & S_VERITY) before taking the XFS ILOCK, causing a
+panic on debug kernels because Thread B just cleared the flag.
 
-Since 0 is passed instead of iomap_flags, IOMAP_F_FSVERITY is missing
-from the srcmap. If always_cow is enabled on the mount, writes to the Merkle
-tree will allocate in the COW fork. A subsequent partial block write to the
-same block requires a read-modify-write cycle. Because srcmap->flags lacks
-IOMAP_F_FSVERITY, iomap_block_needs_zeroing() incorrectly zeroes the block
-(thinking it's past EOF) instead of reading the existing Merkle tree data
-from disk. This permanently corrupts the fs-verity metadata.
+Additionally, this is where the security protection is permanently deleted
+from the inode based on the assumption in xchk_inode_setup_verity() regardi=
+ng
+compatibility mismatch errors.
+
+> +
+> +		xfs_trans_log_inode(sc->tp, sc->ip, XFS_ILOG_CORE);
+> +	}
+> +
+> +	return 0;
+> +}
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260918111539.1003=
-439-1-aalbersh@kernel.org?part=3D11
+439-1-aalbersh@kernel.org?part=3D19
