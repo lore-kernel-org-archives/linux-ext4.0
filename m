@@ -1,119 +1,137 @@
-Received: from relay.yourmailgateway.de (relay.yourmailgateway.de [194.59.206.189])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from va-2-114.ptr.blmpb.com (va-2-114.ptr.blmpb.com [209.127.231.114])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEA8148C3E3;
-	Fri, 18 Sep 2026 06:55:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=194.59.206.189
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C31DD4C33C8
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 10:13:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.231.114
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789714512; cv=none; b=NAaYf8qMSlnsml16RcOeZgWJTDk2mNvOFREowuAVcLhOpQkZ8HGxqsX3TTdcRknPI4XXj3u9yZovxD3DleLLPWWmFLOB2Ft8x0xzhed4HbPfy2i+IZ3O1E1HkN/1d5x9rI4xo8DoIFqq9IS/Eo/S1ZV86lbuDvf3nT2r9nGa56c=
+	t=1789726414; cv=none; b=FhL98zFvbgVtKtl/Rc4fgawcADt2XMChHn7XayuUqhG5qS63mS0jSN2ULZ415bNtxxExLjLeWfsdW6/0JBlKld2aXcsMBkuTZzJ7VIVEMXcFwGb63lFAG8zSVWsJzgWaWnLi71F1i6gk2HirQn5cAPlZAX0N2jdTR19Yy5X8cKQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789714512; c=relaxed/simple;
-	bh=Y9s+V8hIMLVqSdacHfFD88ou9qrojjmYU6uQCjwgbFk=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=nROi+QCijOhrtHQOrFRjXBli6Vn2v3NzT5TwmGpnUXPIavvx+6O4L9zsWPEHr2sXkfJHwoGYztZjVxTkbRK2xMWVxUEJACq5Ey+JdXSERxb6bfI/qL6SapkWMRYPlNvw9HmqWIUoUxXNp51B01hJmqypANmZlfuj3FKrmu8eK2c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=leemhuis.info; spf=pass smtp.mailfrom=leemhuis.info; dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b=KdXxenMf; arc=none smtp.client-ip=194.59.206.189
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=leemhuis.info
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=leemhuis.info
+	s=arc-20240116; t=1789726414; c=relaxed/simple;
+	bh=dZHhw90Zo7hwyMM0KWsX/6pY2ExSGOUDO83AkrjYefY=;
+	h=Cc:Subject:Date:Message-Id:Content-Type:To:From:Mime-Version; b=on0idD5Nc14bX0HfOOjGHBrVUYSuULHdSt9g//XdPCVaLz7njv7KMV0Z4Gw4E4rlGgXT7a/bO/4QCGW+MS/YhjOtYMxogul5HOV3/1XZtS89SzMhwDXiEyMI6SRjpYt98c+8wlYKB2dKJJagmBU506aRp01sJ5FAj/9GQ5iPcX4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=nOS2JkU9; arc=none smtp.client-ip=209.127.231.114
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b="KdXxenMf"
-Received: from relay02-mors.netcup.net (localhost [127.0.0.1])
-	by relay02-mors.netcup.net (Postfix) with ESMTPS id 4hmNfZ2qqhz4RCj;
-	Fri, 18 Sep 2026 08:55:02 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=leemhuis.info;
-	s=key2; t=1789714502;
-	bh=Y9s+V8hIMLVqSdacHfFD88ou9qrojjmYU6uQCjwgbFk=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-	b=KdXxenMf6Uv0mqlMvf06S7gzLdPoS8tHtOiET/D+FovlrL1jUGVO7dqTp4nKcjKM/
-	 gqFbYIz0CDnYpDKD1OJE1hqAErHI6+asb9OeWLaaVKmNFkYREe3yjrHyMJkOFAubg8
-	 N/YFs9EWEyenHxCwgDnMPB006RYjfJ4DxZcgZsE25DM0pE9MAMSVsMLN5dX5PlvKlS
-	 J/bFZwQyUvT2cfdsyels36Yi3ENMgQsk+nFRyA6UHFETc/MjJveiIIa4/7yf081SE6
-	 DTWhrFoCXea1vEfRbTTlhKZnzeZnLpsLpV7bU60743Qiu4769TxjiGc/0+NJsUJhLT
-	 0l3hKTCxz5hDg==
-Received: from policy02-mors.netcup.net (unknown [46.38.225.35])
-	by relay02-mors.netcup.net (Postfix) with ESMTPS id 4hmNd61CT3z7wv7;
-	Fri, 18 Sep 2026 08:53:46 +0200 (CEST)
-Received: from mxe9fb.netcup.net (unknown [10.243.12.53])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by policy02-mors.netcup.net (Postfix) with ESMTPS id 4hmNd46N9yz8scr;
-	Fri, 18 Sep 2026 08:53:44 +0200 (CEST)
-Received: from [IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f] (unknown [IPv6:2a02:8108:8984:1d00:a0cf:1912:4be:477f])
-	by mxe9fb.netcup.net (Postfix) with ESMTPSA id A4C195F995;
-	Fri, 18 Sep 2026 08:53:39 +0200 (CEST)
-Authentication-Results: mxe9fb;
-        spf=pass (sender IP is 2a02:8108:8984:1d00:a0cf:1912:4be:477f) smtp.mailfrom=regressions@leemhuis.info smtp.helo=[IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f]
-Received-SPF: pass (mxe9fb: connection is authenticated)
-Message-ID: <12e93e0d-0fb8-4ac8-9be2-3d9b5f7c6d4e@leemhuis.info>
-Date: Fri, 18 Sep 2026 08:53:38 +0200
+	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="nOS2JkU9"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+ s=2212171451; d=bytedance.com; t=1789726394; h=from:subject:
+ mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
+ mime-version:in-reply-to:message-id;
+ bh=jUh0oO6Klx+ZE+PWk/0c8jcKPhTLuXbCHk9sShXLA5g=;
+ b=nOS2JkU9i6ZySyKuqTa1toPHrOdppKcv171Y8ix4e2Ym6UP4y6JrZ6uZmhzKgwO5Un3HQ1
+ KGvtf5TYSe6bNS+54h2soxzkt6Jt0WLn9ckbGDqI4RRUm1C07LHArPYdedjQTcp64WKU4R
+ YjTjEHh/X+2Mguxq7Sx5ynged0YVL9La0vUaf9GG9pNDTjnfKBTsmfWApXmvuvb9D9Bnn9
+ cZ6GsvWCyFmCi5H9UTg+g1CS4rmIkSaJ37/0eOre7lCqIcadwtxMYMP+b3VMxlaNhuNNEG
+ 8KZomwBWGJGjYKJDRu7uN7XA/Vp1cwVdIOy/cgeQav44A1eMTyzsWAWVbkKGDQ==
+Cc: "Andreas Dilger" <adilger.kernel@dilger.ca>, 
+	"Baokun Li" <libaokun@linux.alibaba.com>, "Jan Kara" <jack@suse.cz>, 
+	"Ojaswin Mujoo" <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	"Zhang Yi" <yi.zhang@huawei.com>, <linux-ext4@vger.kernel.org>, 
+	<linux-kernel@vger.kernel.org>, <stable@vger.kernel.org>, 
+	"Zhao Gongyi" <zhaogongyi@bytedance.com>
+X-Lms-Return-Path: <lba+26aad0eb8+74b509+vger.kernel.org+zhaogongyi@bytedance.com>
+Subject: [PATCH] ext4: fix OOB memmove in ext4_xattr_set_entry
+Date: Fri, 18 Sep 2026 18:12:49 +0800
+Message-Id: <20260918101249.43643-1-zhaogongyi@bytedance.com>
+X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
+Content-Type: text/plain; charset=UTF-8
+To: "Theodore Ts'o" <tytso@mit.edu>
+From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] buffer: fix NULL dereference of bh->b_folio in
- __bh_submit()
-To: Christian Brauner <brauner@kernel.org>
-Cc: Joseph Qi <joseph.qi@linux.alibaba.com>,
- Yalagada Pavan Kumar <pavankumaryalagada@gmail.com>,
- linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- ocfs2-devel@lists.linux.dev, linux-kernel@vger.kernel.org,
- Srikanth Aithal <Srikanth.Aithal@amd.com>,
- Luca Weiss <luca.weiss@fairphone.com>, Jan Kara <jack@suse.cz>,
- Linux kernel regressions list <regressions@lists.linux.dev>
-References: <20260902013357.2815214-1-joseph.qi@linux.alibaba.com>
- <apiMiLlwujmqyYLP@user>
- <c3be2678-72e6-4122-94de-ae95e980578b@linux.alibaba.com>
- <20260904-unkraut-preis-pendel-a57f694a54c5@brauner>
-From: Thorsten Leemhuis <regressions@leemhuis.info>
-Content-Language: de-DE, en-US
-In-Reply-To: <20260904-unkraut-preis-pendel-a57f694a54c5@brauner>
-Content-Type: text/plain; charset=UTF-8
+Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-X-PPP-Message-ID: <178971442017.268043.15968006172941830620@mxe9fb.netcup.net>
-X-Rspamd-Server: rspamd-worker-8404
-X-Rspamd-Queue-Id: A4C195F995
-X-NC-CID: 3cTDfuCUa7jz5N+rD9oSjy+lGqqoxOGdMhEhVhaaIqK9CZ/Cn2k=
 
-On 9/4/26 12:35, Christian Brauner wrote:
-> On Thu, Sep 03, 2026 at 09:42:27AM +0800, Joseph Qi wrote:
->> On 9/3/26 4:52 AM, Yalagada Pavan Kumar wrote:
->>> On Wed, Sep 02, 2026 at 09:33:57AM +0800, Joseph Qi wrote:
->>>> Commit a2c924c240e7 ("buffer: set BIO_COMPLETE_IN_TASK for dropbehind
->>>> writeback") added an unconditional folio_test_dropbehind(bh->b_folio) in
->>>> __bh_submit().  But jbd2 shadow buffers have a NULL b_folio since commit
->>>> 5febcba29792 ("jbd2: point the shadow buffer at the frozen data
->>>> directly") made them point b_data at the kmalloced frozen data rather
->>>> than a folio.  Submitting such a buffer during journal commit oopses:
->>>>
->>>>   BUG: kernel NULL pointer dereference, address: 0000000000000000
->>> [...]
->>> I was working on a fix for this syzbot report [1] and didn't realize that you were
->>> already working on it. I noticed your patch on the mailing list, so i won't
->>> send a duplicate patch.
->>>  
->>>> Fixes: 5febcba29792 ("jbd2: point the shadow buffer at the frozen data directly")
->>>
->>> Could you please add the Reported-by: and Closes: tags from the syzbot report
->>> to your patch? This will help syzbot associate the patch with the reported
->>> issue and track the fix.
->>>
->>> [1]: https://syzkaller.appspot.com/bug?extid=41453ea05ab61c075f1f
->>>
->> Could you please address the above when apply the patch? Or should I
->> resend the patch with them?
-> 
-> I'll do it. Thanks!
-Christian, just wondering, did this fix maybe fall through the cracks?
-This got on my radar because there were a few other reports about this
-regression since then -- and I can't see this or some other fix like
-this in -next.
+A corrupted filesystem can leave an inode marked as having inline data
+while the system.data xattr is missing. ext4_destroy_inline_data_nolock()
+then asks ext4_xattr_set_entry() to remove an entry even though
+ext4_xattr_ibody_find() left the search state at the insertion position.
 
-At the same time it feels a lot like I'm missing something -- or like
-some deeper problem with all of this turned up meanwhile, which required
-more changes that people are still working on. If it's something like
-that and everything is on track, feel free to just ignore this message.
+In the syzkaller reproducer, the old xattr value offset is smaller than
+min_offs. ext4_xattr_set_entry() then computes val - first_val for
+memmove(), the length wraps to a huge size_t, and memmove() can run out of
+the xattr buffer. This results in an out-of-bounds memmove and a kernel
+page fault.
 
-Ciao, Thorsten
+A crafted corrupted ext4 image can trigger this while inline data is being
+converted out of the inode. Treat the inconsistent inline/xattr state as
+filesystem corruption before updating the xattr entry.
+
+The issue was found by syzkaller and reproduced with the generated C
+reproducer. The crash signature is:
+
+  BUG: unable to handle page fault for address: ffff8880074cf000
+  RIP: 0010:memmove+0x28/0x1b0
+  Call Trace:
+   ext4_xattr_set_entry+0xe2f/0x1e90 fs/ext4/xattr.c:1761
+   ext4_xattr_ibody_set+0x3d6/0x5d0 fs/ext4/xattr.c:2268
+   ext4_destroy_inline_data_nolock+0x288/0x5b0 fs/ext4/inline.c:467
+   ext4_convert_inline_data_nolock+0x178/0xe80 fs/ext4/inline.c:1222
+   ext4_convert_inline_data+0x52a/0x610 fs/ext4/inline.c:2083
+   ext4_fallocate+0x1a0/0x3ba0 fs/ext4/extents.c:4752
+
+Reject the missing system.data xattr before destroying inline data, and
+validate the old value offset before ext4_xattr_set_entry() reaches the
+memmove().
+
+The crash was reproduced on unpatched 7.3.0-rc3 and 6.6.122 kernels. With
+this fix applied to both versions, the same syzkaller C reproducer ran for
+120 seconds without triggering KASAN, Oops, a memmove fault, or panic.
+
+Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
+Cc: stable@vger.kernel.org # v3.8+
+Signed-off-by: Zhao Gongyi <zhaogongyi@bytedance.com>
+---
+ fs/ext4/inline.c |  6 ++++++
+ fs/ext4/xattr.c  | 12 ++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index ceee69a66..0a30d40cb 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -461,6 +461,12 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
+ 	error = ext4_xattr_ibody_find(inode, &i, &is);
+ 	if (error)
+ 		goto out;
++	if (is.s.not_found) {
++		EXT4_ERROR_INODE(inode,
++				 "corrupted inline data without system.data xattr");
++		error = -EFSCORRUPTED;
++		goto out;
++	}
+ 
+ 	BUFFER_TRACE(is.iloc.bh, "get_write_access");
+ 	error = ext4_journal_get_write_access(handle, inode->i_sb, is.iloc.bh,
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 5c310747b..9a0ee5779 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1712,6 +1712,18 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 		}
+ 	}
+ 
++	if (!s->not_found && here->e_value_size && !here->e_value_inum) {
++		size_t offs = le16_to_cpu(here->e_value_offs);
++
++		if (offs < min_offs) {
++			EXT4_ERROR_INODE(inode,
++					 "corrupted xattr: value offset %zu < min_offs %zu",
++					 offs, min_offs);
++			ret = -EFSCORRUPTED;
++			goto out;
++		}
++	}
++
+ 	/*
+ 	 * Getting access to old and new ea inodes is subject to failures.
+ 	 * Finish that work before doing any modifications to the xattr data.
+-- 
+2.39.5 (Apple Git-154)
