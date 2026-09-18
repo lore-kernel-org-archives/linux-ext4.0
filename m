@@ -1,188 +1,146 @@
-Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+Received: from mail-pj2-f31.google.com (mail-pj2-f31.google.com [74.125.227.159])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B46844E06E5
-	for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 19:46:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 79A0937BE64
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 01:06:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.159
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789674403; cv=none; b=YyuPN5zL5v8q3xMnmxK6jTalS0/ucNt8GkPUOXY7bwX7oAXNinIO+K9wObAgMU0qwJQm8PkdJYUGwXURJISvd0lDKxoZcHS91X5Fg4bmU53mW+3w4jbI6pM1xlKLsh3meqAwiyna79k0PrjlZVBQNR4LzSJmz65n9xsTl0eMRY4=
+	t=1789693577; cv=none; b=SwyCfS+cbWmdO+oleKxYl0hZfIf6VIx/+dZ71botkU6jH+6citCumU4r9RJFIOv28dFbwRLBVTyQinqTSaeg6PlZkuuQ7vz71SBXkrXfrXL88G06L7WdvBLVQwF5eHqbMVl6o/fCSfkou7OdvOdmhPkJ7ssFRSSuW+zTI6eu4lQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789674403; c=relaxed/simple;
-	bh=J395OdcAvINDFH5EsNPp9eX/ISxP92k+SNBgpqBwGhE=;
-	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Message-Id:References:To; b=FYVf3r+Oj5ti7Xj1e6sO3dojnxLa59CjFeaz64Zdt2KMVgWI2cHZwcPDo12soz/8n1EHSxNRJ7iD1VJoZeTiLbvEB59JSVuL2qur+/Vx9KJb8YecawO6lYrLf1WIvzgkoh1aOzOaPqV/C//vmIBDwYmbBWsUbAX61+vDT8DrbSY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=h/XHEk8Z; arc=none smtp.client-ip=74.125.227.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
+	s=arc-20240116; t=1789693577; c=relaxed/simple;
+	bh=yBIGT8BXOLPPjlnisUuvjv8aqjnLGGAervT2GKtRzBY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=u5Ryly3Ohpb9wea0RMlOwiHdKeISE0Y3iltMcySUOirc/ht9NBihqs0hoIIvnTQ6DOvGrbfpOjng2FcGESH8yoFmNGsIdJfVb+ZyQ9AgWIrfYf8fnS7pcDYtfXmQdtRzhp92/982deevRVW+dozrakWA0mF2ElnQdFubhj+Hegg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=c5zgM1uQ; arc=none smtp.client-ip=74.125.227.159
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="h/XHEk8Z"
-Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d91ede8035so135945ad.3
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 12:46:40 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="c5zgM1uQ"
+Received: by mail-pj2-f31.google.com with SMTP id d9443c01a7336-2dd53691be5so1659385ad.1
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2026 18:06:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1789674399; x=1790279199; darn=vger.kernel.org;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=7caSD0RrDJs9mmxp2S1vWD9pRdslsdHGImymqLKFUPw=;
-        b=h/XHEk8Z3/1tdJgDIzANyEW/O5ym/QPMh1dOgRMsqHoRALBER+93dt4xphpkqaRP7z
-         vP6PAPI7pMO89VJXYWPEPf3hPlwVFszekNQ8kXs8r8NVQI+fTeTGDaOiHKkSifhvsmRb
-         pPfT1LAdoaww457jpIPERS5xTldAXc6Q2vOLRVEjRa1L5iksB9vS5MVnopX/m7/GgPJc
-         vIRtGdegx7VKZ388b8Ifta2tcum4AC75+9FC+sQ92d8CA0QMjzLQLCgTlTyh/kCNcdXJ
-         PaDQNBJUqJj6lCGvQkRRhmb1RS84oCNHN/GBJIgjXy7IMHVUovhsi4Spv9VZgTSmSa0y
-         +8Jg==
+        d=gmail.com; s=20251104; t=1789693570; x=1790298370; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=iFcT2DOyxQDtRKBeD9Hf0Svlfti42z1k3EuEK/szEUM=;
+        b=c5zgM1uQko+aMmYYWP6nQJUg8b/MUMPqc2xOpbsnCgyP9hKVgPdTpB4qg6IknQrAjg
+         gdu+eiGS5CFGNaRaMC8xvX2YYRv5Gr1WY4pWxRtu7/bRTIOcFcc7Qwg6TZbaVzSMuyaV
+         js8h+r8f8wzp/qZKzmjeC86hDrbywkBjSXf9RIJScGn9KUz1Z09DslR/AaVKAqGMYyhI
+         56fREe+4Ga8lKD20G4Te38V2Ak3MUVQ1hUtzrmII/M++ydxXVm3kb7UgRD2o0054Bepn
+         v4eI2kA98zk4G8CHGmPLFWfJh/Z3/OEplw8Sfuozoj/l3YO0tsNTOA33XlDLjYk68bX4
+         FSHQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789674399; x=1790279199;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=7caSD0RrDJs9mmxp2S1vWD9pRdslsdHGImymqLKFUPw=;
-        b=RRmro358nduBmFqHueCx7g7ykssgy9bSfjDDKkgsdE2dwjgvpUNI9kYqV/rPiJM4sd
-         2niOovFpCiD7EeWX/YJ6WjkxMeEyuSTFGK1F0aqVOEW9jebrk0E8bGvIXgKz1SiK8SuQ
-         cqRGIgs3kIc4XOq4qW4Vf2o6n4DNwgSaplyRFJHhw7R0L/Xi7UtqYxuWWQQY+SJTZyyF
-         kcBv+1Sw+g7poA+r/8/+ADYV5q5xVLcqclo3Zj5N4dzZHwBzH7LfCiwgsCjmm3d8xDx1
-         1ITAN9GnnvWhHXswdgoSMTmL7Re302B4VFg+sT59gZCkARQYMSlVOMXJoFOA+Jm+stP8
-         HZ6g==
-X-Gm-Message-State: AFuF++kRS1zYr5tUHiM+UvSPUA9vVbB9U1VVWTrZ3YlNTXuCNhZdTb3x
-	f5AOASmLHpvxtvoT4fWlISgjjLzojuspA+M2eHsUIKA0yS9C9AZ8+yhqumXzHXvXPlU=
-X-Gm-Gg: AYBFou2DEAD0gBLuOQQB/zKYQFJkzOY35njcLuHR++lXmSEp2nvjV0/4vkjc/rzp88n
-	bvNrTjbe0JWOuitpXWxk+CBap7Rb2Aq/lN5xiCevi+u6mnl7bVABfvuLQpig70/2olDs9/mElpz
-	EOBVQiovtL5Q8BUxKRRHRwdDcfU1Dwso8Kf8v6z8w4Zc4QtMjue8Hk2bXEpAjG/0I2Afr0+F9zK
-	sD//QCexIIvqeEpgO9+k3iHoLwNpMsI97LTfimpGg1xPfq1O3SV8ZJmJ1gY9DoFqx+bQDy6N5/M
-	Wly4/9wfUmFhAi27UqIgga43XqfpgwO7l+J0ZvQU0F4NkR+beEfzPIQsWMrjA2qRdCZvwH6h1+3
-	Y/vbDecvTbKuC3lxETqAhZE2bUk6m2DQPx3SPrWd8JToNVsgq5+z++FbGUs9Q7VvnWygRwjTwUe
-	ueFUwV61dNwELy/IRsKWjHNE/erc4hB4GezIvO70U1zVTBTRKQpsLI4+2emw3rBzYUji+omwg6X
-	cIDR28vzz2wn4o0B/Kw7ZA/ISu2q2GkcOMJlrTDngJMLaW4f9ptTA==
-X-Received: by 2002:a17:902:f687:b0:2db:2413:87d2 with SMTP id d9443c01a7336-2ddb1ac954dmr5277545ad.4.1789674399407;
-        Thu, 17 Sep 2026 12:46:39 -0700 (PDT)
-Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [70.77.200.158])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dda9cf4c4dsm9457035ad.30.2026.09.17.12.46.38
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 17 Sep 2026 12:46:38 -0700 (PDT)
-Content-Type: text/plain;
-	charset=us-ascii
+        d=1e100.net; s=20260707; t=1789693570; x=1790298370;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=iFcT2DOyxQDtRKBeD9Hf0Svlfti42z1k3EuEK/szEUM=;
+        b=mxWHV+Sv/+FWmpgRbyJI0E0NsQ7TmaKgHk9KeMzJhQqapgfUqS39hnyciB7l1+e8b0
+         /MYdkGMLwDYlAP3esUca6Rn2VXN5lNrVhzmrXowZuuUKUbVxd0P19PYvV2PxApQZBNyC
+         zTVC4EYC0AvSW80l7Kr/t/cJ5JRLmCjbQ1DagLCyg6Q654ULkFCaE5+zf37h5vwDIYtn
+         tNhTcm1yj9AiJqWOJXTLEJL82RWoJ567ayebvMIONlgvYXyRKUMRSao5fZz5sZG4fYiu
+         35r5NGIZQv0vVa7WHX6TcOYz+R2KDxBDB5vgRJ5r0mNSKJtha4k9fmS6qOOL+Iutkl7c
+         0hLA==
+X-Forwarded-Encrypted: i=1; AKwUvBzbx+Sj/aAtURk0M+Ac/kk7zuo7PWcBLynsQsql3D+b8kVIKE+rvfJn7uRo0XKzQvL3ooZ+XKvoMb4I@vger.kernel.org
+X-Gm-Message-State: AFuF++l5uNH7bfvHLAT80wsnH0L27jRK+EU0kBslqSvLKxWFbB2xRJwo
+	I8ngVGzXLlRLwAyTg5S0f4/0cg0s/wO0vV0tkmcm+9wx59j/QDU5/ZXS
+X-Gm-Gg: AYBFou3bKjuyhuBXr0KPuc/DKGsResj9gzx3HVBXB+a+kAQ+2uweYz5r2hLcPNaNy75
+	V6rQWc3sIG2T/Z7fiSLvSFXcLHLH08reaJZBsSjGxHalEnlODqjk4/odhT4PGs43RkQ23Dw6dM7
+	aMHQYsKDhYUWWBYZJNplXS4FLF/QpU8SGD43YEO8Ct5czFB7HsNwMMANsAWNbZXrydhjHVIqTew
+	Eo6dhq5yphsAtccmOo+MeFh/PN2nzOTSPzmLK240uH7pFM828s6UA7qKjXMTqa4PfwgFPHNoXeJ
+	4EJwx1cG2s/nILLPw5KKhgwc5/OZcGbnUmbHNlhOOuCwAGuyRVcCMb5U8sDMMZDKh2OoaUMGmEE
+	kCwn/ByJbm2NlPDYlPLQ0D90Z8upe/FqhiGN20FTBKEbT+rtiRDF7LMsqb5jLYeRsR4hN/7Rjjw
+	jqRKX1nL0KqKC82/TVDrv8RtbjR6f8kuZusqSv8lAJc/2ENYbuX+OtsN4A7vtu1bRyHGE4KOZ2t
+	sLVEUKjZdkjebmzYY7W4w1RWcSgEL/eGfh3y6X72A8vmd+nz5d2TeiJkAxpUZOy
+X-Received: by 2002:a17:902:f687:b0:2db:2413:87d2 with SMTP id d9443c01a7336-2ddb1ac954dmr19438205ad.4.1789693569827;
+        Thu, 17 Sep 2026 18:06:09 -0700 (PDT)
+Received: from deepanshu-Legion-Pro-5-16AFR10.. ([2405:201:682f:383f:5d30:2332:ca7b:eac1])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2dd89f338a9sm33460655ad.83.2026.09.17.18.06.03
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 17 Sep 2026 18:06:08 -0700 (PDT)
+From: Deepanshu Kartikey <kartikey406@gmail.com>
+To: tytso@mit.edu,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com
+Cc: boyu.mt@taobao.com,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Deepanshu Kartikey <kartikey406@gmail.com>,
+	syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: add bounds check for e_value_offs in ext4_read_inline_data
+Date: Fri, 18 Sep 2026 06:35:58 +0530
+Message-ID: <20260918010558.8210-1-kartikey406@gmail.com>
+X-Mailer: git-send-email 2.43.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.700.51.1.3\))
-Subject: Re: [PATCH] ext4: don't read past the UAPI struct in
- EXT4_IOC_GROUP_ADD
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20260917151949.415967-1-kaixuan.li@ntu.edu.sg>
-Date: Thu, 17 Sep 2026 13:46:26 -0600
-Cc: linux-ext4@vger.kernel.org,
- Theodore Ts'o <tytso@mit.edu>,
- linux-kernel@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <C988F080-1069-4584-AAC8-A9476B699208@dilger.ca>
-References: <20260917151949.415967-1-kaixuan.li@ntu.edu.sg>
-To: MarkLee131 <kaixuanli0131@gmail.com>
-X-Mailer: Apple Mail (2.3864.700.51.1.3)
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Sep 17, 2026, at 09:19, MarkLee131 <kaixuanli0131@gmail.com> wrote:
->=20
-> From: Kaixuan Li <kaixuanli0131@gmail.com>
->=20
-> EXT4_IOC_GROUP_ADD casts the user pointer to struct =
-ext4_new_group_input,
-> its UAPI type, but sizes the copy by struct ext4_new_group_data, the
-> internal type:
->=20
-> struct ext4_new_group_data input;
->=20
-> if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
-> sizeof(input)))
->=20
-> The UAPI struct is 40 bytes, the internal one 48.  A caller that =
-follows
-> the UAPI and allocates 40 bytes gets 8 bytes read past its object, and =
-the
-> ioctl returns EFAULT when those bytes are unmapped.  The internal =
-struct
-> has carried the extra fields since ext4 was split from ext3, so the =
-copy
-> has always over-read the UAPI object.
->=20
-> The two extra fields are not used from this path: free_clusters_count =
-is
-> overwritten by verify_group_input(), and mdata_blocks is used only by
-> ext4_resize_fs(), which builds its own group_data array.  The compat =
-path
-> already copies the six UAPI fields individually; the native path does =
-not.
->=20
-> Copy the UAPI struct, then set the internal fields from it.
->=20
-> Reproducible on v6.12.9 and v7.2.4 by placing a 40-byte struct at the =
-end
-> of a mapped page whose successor is unmapped: the ioctl returns =
-EFAULT.
->=20
-> Signed-off-by: Kaixuan Li <kaixuanli0131@gmail.com>
-> ---
-> Built fs/ext4/ioctl.o warning-free (W=3D1, x86_64 defconfig) and =
-checkpatch-clean.
-> The bug (EFAULT on a conforming 40-byte object) was reproduced under =
-QEMU on
-> v6.12.9 and v7.2.4; the fix itself was not runtime-tested.
-> fs/ext4/ioctl.c | 14 ++++++++++++--
-> 1 file changed, 12 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index c8387e6a2c6e..ea3cd8cdae25 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -1674,12 +1674,22 @@ static long __ext4_ioctl(struct file *filp, =
-unsigned int cmd,
->  	}
-> =20
->  	case EXT4_IOC_GROUP_ADD: {
-> +		struct ext4_new_group_input uinput;
->  		struct ext4_new_group_data input;
-> =20
-> -		if (copy_from_user(&input, (struct ext4_new_group_input =
-__user *)arg,
-> -				sizeof(input)))
-> +		if (copy_from_user(&uinput,
-> +				   (struct ext4_new_group_input __user =
-*)arg,
-> +				   sizeof(uinput)))
->  			return -EFAULT;
-> =20
-> +		memset(&input, 0, sizeof(input));
-> +		input.group =3D uinput.group;
-> +		input.block_bitmap =3D uinput.block_bitmap;
-> +		input.inode_bitmap =3D uinput.inode_bitmap;
-> +		input.inode_table =3D uinput.inode_table;
-> +		input.blocks_count =3D uinput.blocks_count;
-> +		input.reserved_blocks =3D uinput.reserved_blocks;
-> +
+ext4_read_inline_data() reads the location of an inline data xattr
+value directly from entry->e_value_offs without validating it against
+the actual bounds of the inode's xattr area. A corrupted filesystem
+image can set e_value_offs to an out-of-range value, causing the
+subsequent memcpy() to read from an address far outside the inode
+buffer, including memory that has already been freed and reused for
+something else. This mirrors the check already performed in
+ext4_xattr_ibody_get(), which is missing here.
 
-This does more than necessary.  It doesn't need two copies of the struct =
-on the stack,
-and it doesn't need to copy the fields twice.  It could just copy the =
-'input' part of
-the struct into the 'data' struct and zero only the remaining fields, =
-something like:
+Add a bounds check on the computed source pointer against the end of
+the inode's xattr area before the memcpy, and reject the read with
+-EFSCORRUPTED if it would go out of bounds.
 
-	case EXT4_IOC_GROUP_ADD: {
-		struct ext4_new_group_input __user *uinput =3D (void =
-__user *)arg;
-		struct ext4_new_group_data data;
-=20
-		if (copy_from_user(&data, uinput, sizeof(*uinput))
-			return -EFAULT;
-=20
-		memset(&data + sizeof(*uinput), 0, sizeof(data) - =
-sizeof(*uinput));
+Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
+Reported-by: syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=085a394c92518a04fd09
+Tested-by: syzbot+085a394c92518a04fd09@syzkaller.appspotmail.com
+Signed-off-by: Deepanshu Kartikey <kartikey406@gmail.com>
+---
+ fs/ext4/inline.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-		return ext4_ioctl_group_add(filp, &data);
-
-Cheers, Andreas
-
-
-
-
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index ceee69a66482..2e60ab3e0db5 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -187,6 +187,8 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
+ 	struct ext4_xattr_ibody_header *header;
+ 	int cp_len = 0;
+ 	struct ext4_inode *raw_inode;
++	void *end, *p;
++	u16 offset;
+ 
+ 	if (!len)
+ 		return 0;
+@@ -205,13 +207,21 @@ static int ext4_read_inline_data(struct inode *inode, void *buffer,
+ 		goto out;
+ 
+ 	header = IHDR(inode, raw_inode);
++	end = ITAIL(inode, raw_inode);
+ 	entry = (struct ext4_xattr_entry *)((void *)raw_inode +
+ 					    EXT4_I(inode)->i_inline_off);
+ 	len = min_t(unsigned int, len,
+ 		    (unsigned int)le32_to_cpu(entry->e_value_size));
+ 
+-	memcpy(buffer,
+-	       (void *)IFIRST(header) + le16_to_cpu(entry->e_value_offs), len);
++	offset = le16_to_cpu(entry->e_value_offs);
++	p = (void *)IFIRST(header) + offset;
++
++	if (unlikely(p + len > end)) {
++		EXT4_ERROR_INODE(inode, "corrupt inline xattr entry");
++		return -EFSCORRUPTED;
++	}
++
++	memcpy(buffer, p, len);
+ 	cp_len += len;
+ 
+ out:
+-- 
+2.43.0
 
