@@ -1,137 +1,116 @@
-Received: from va-2-114.ptr.blmpb.com (va-2-114.ptr.blmpb.com [209.127.231.114])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtpbgeu1.qq.com (smtpbgeu1.qq.com [52.59.177.22])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C31DD4C33C8
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 10:13:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.127.231.114
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0B283B4E87;
+	Fri, 18 Sep 2026 10:14:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.59.177.22
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789726414; cv=none; b=FhL98zFvbgVtKtl/Rc4fgawcADt2XMChHn7XayuUqhG5qS63mS0jSN2ULZ415bNtxxExLjLeWfsdW6/0JBlKld2aXcsMBkuTZzJ7VIVEMXcFwGb63lFAG8zSVWsJzgWaWnLi71F1i6gk2HirQn5cAPlZAX0N2jdTR19Yy5X8cKQ=
+	t=1789726452; cv=none; b=T68A4fwZVzdUU3cJ/Dv65TbL6l3B2ncbsb628Lk+obt9vva8+hjd1HsNDTqqNdsPZt2udu+LkiGBdOwoeMcY3aQCzXokJ8bGyGRYepHVW7VAYcoBQeL5R4dsBT0bJrkJjAIODcUMqy5gJ6JlEPRGkwzSLho4Pu2BvhPx7kHhM98=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789726414; c=relaxed/simple;
-	bh=dZHhw90Zo7hwyMM0KWsX/6pY2ExSGOUDO83AkrjYefY=;
-	h=Cc:Subject:Date:Message-Id:Content-Type:To:From:Mime-Version; b=on0idD5Nc14bX0HfOOjGHBrVUYSuULHdSt9g//XdPCVaLz7njv7KMV0Z4Gw4E4rlGgXT7a/bO/4QCGW+MS/YhjOtYMxogul5HOV3/1XZtS89SzMhwDXiEyMI6SRjpYt98c+8wlYKB2dKJJagmBU506aRp01sJ5FAj/9GQ5iPcX4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com; spf=pass smtp.mailfrom=bytedance.com; dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b=nOS2JkU9; arc=none smtp.client-ip=209.127.231.114
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
+	s=arc-20240116; t=1789726452; c=relaxed/simple;
+	bh=6YYj288nL3A7x7X8OeL7wLcwbvIuGI86AqM85QfuEA4=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=WyQyNecYrn1DL/6OVdR78sWUxeJrSla4TvYNHZklDsgZeLLKJZCngQelO1tytttU2VzzS1ufwdWsESRbodCUJWFRFD0qngSP/FN876tqTpFwWsi1Xy1+Apy0stH54dr2oHM+xYKaF+igTP/K3F73j+H2lRO0yu2RQ91XrNvePcI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=dZ2U+Hsp; arc=none smtp.client-ip=52.59.177.22
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bytedance.com header.i=@bytedance.com header.b="nOS2JkU9"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
- s=2212171451; d=bytedance.com; t=1789726394; h=from:subject:
- mime-version:from:date:message-id:subject:to:cc:reply-to:content-type:
- mime-version:in-reply-to:message-id;
- bh=jUh0oO6Klx+ZE+PWk/0c8jcKPhTLuXbCHk9sShXLA5g=;
- b=nOS2JkU9i6ZySyKuqTa1toPHrOdppKcv171Y8ix4e2Ym6UP4y6JrZ6uZmhzKgwO5Un3HQ1
- KGvtf5TYSe6bNS+54h2soxzkt6Jt0WLn9ckbGDqI4RRUm1C07LHArPYdedjQTcp64WKU4R
- YjTjEHh/X+2Mguxq7Sx5ynged0YVL9La0vUaf9GG9pNDTjnfKBTsmfWApXmvuvb9D9Bnn9
- cZ6GsvWCyFmCi5H9UTg+g1CS4rmIkSaJ37/0eOre7lCqIcadwtxMYMP+b3VMxlaNhuNNEG
- 8KZomwBWGJGjYKJDRu7uN7XA/Vp1cwVdIOy/cgeQav44A1eMTyzsWAWVbkKGDQ==
-Cc: "Andreas Dilger" <adilger.kernel@dilger.ca>, 
-	"Baokun Li" <libaokun@linux.alibaba.com>, "Jan Kara" <jack@suse.cz>, 
-	"Ojaswin Mujoo" <ojaswin@linux.ibm.com>, 
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	"Zhang Yi" <yi.zhang@huawei.com>, <linux-ext4@vger.kernel.org>, 
-	<linux-kernel@vger.kernel.org>, <stable@vger.kernel.org>, 
-	"Zhao Gongyi" <zhaogongyi@bytedance.com>
-X-Lms-Return-Path: <lba+26aad0eb8+74b509+vger.kernel.org+zhaogongyi@bytedance.com>
-Subject: [PATCH] ext4: fix OOB memmove in ext4_xattr_set_entry
-Date: Fri, 18 Sep 2026 18:12:49 +0800
-Message-Id: <20260918101249.43643-1-zhaogongyi@bytedance.com>
-X-Original-From: Zhao Gongyi <zhaogongyi@bytedance.com>
-X-Mailer: git-send-email 2.39.5 (Apple Git-154)
-Content-Type: text/plain; charset=UTF-8
-To: "Theodore Ts'o" <tytso@mit.edu>
-From: "Zhao Gongyi" <zhaogongyi@bytedance.com>
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="dZ2U+Hsp"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1789726384;
+	bh=z3rtAnpTaCBhOBulUgQk5hXYorxOdTRKUWGzxObqXF8=;
+	h=From:To:Subject:Date:Message-Id:MIME-Version;
+	b=dZ2U+Hsp7rSa+1hgxworcyfoFhtySh91A7QnaQWiKYRQI57y+RCqygK3PWrJnyT7s
+	 EZGY7KBvCat9xOBWX0PoaZiajo99CeojSvwISeyjV3b3pMOp7Wj5gy+4WOHIJcp1bY
+	 0Js784GJQbP6XSYobRnzEBFRtlCn05Kjz3vVmuq8=
+X-QQ-mid: esmtpsz16t1789726365t4b52b81f
+X-QQ-Originating-IP: 01JchSmDf3cfyE9ym0NCGe7/Ay5aYhAOf5Y/jluU7OI=
+Received: from uniontech.com ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Fri, 18 Sep 2026 18:12:43 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 11805283164246825907
+EX-QQ-RecipientCnt: 11
+From: Yichong Chen <chenyichong@uniontech.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	"Aneesh Kumar K . V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Yichong Chen <chenyichong@uniontech.com>
+Subject: [PATCH] ext4: don't free the tmp_inode tree after a partial migration swap
+Date: Fri, 18 Sep 2026 18:12:40 +0800
+Message-Id: <20260918101240.3721805-1-chenyichong@uniontech.com>
+X-Mailer: git-send-email 2.20.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: esmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
+X-QQ-XMAILINFO: OW4JKxETGMY2Biz6KcG/VPV6BeuQJN8dat0sTJjO6qRQ6sYRr76JaICM
+	GISrHtxeyM3UK4aDPJRhwxQClYP05NEobyl972iv9HSlTC5ftSehUNuPjn5RSoAWJzhF8m2
+	yLK2Pw1aHcuQ+vT7gBZq0ottuhJi9XazPmEAUVX2FOifV4pn4otzScFWTbdUgFP2MpoOAht
+	Wb+qu8S1yhFOr/v2EsJ8gi0BsXP0kz6TbgWPmOMNhTVy1pz0ogTcT3FJrfDLIwYI/mnR6Ny
+	aufUxKFgSmu3GToIIHJdk5rtou7n8lIDom+4OLAOIaleToUIb1ASA4oR4wD23aV8A2kcwQq
+	DWYCQ2h8+aeoahuAM3YQ5IBj27QjT5/d2v6sFwdWiOhQfeFHatiLKi/C++8S26RQXNVnRZs
+	RPZ7UraRR8fZ4c5Ajs5EfBXBvl8QLjl83HuwywnRQRHf1a2XBw2+6fR8Sm27Pq9TKE0UCQu
+	0DJa2XdU/zs7xAZaENO0mlFPy4A6tOUFixeYk6CeIIhr7iajy3u92rK6lR+0Hg/dXlSgYuD
+	RAEbk5LQkTRN2KfLgW4wHqFpGNa/dShKvvcniQEp996E4F6+d4KlzSGB9YublDdY9s4wzeK
+	xUwP0HIu6mAqm4fo29N9dpLE/IRoIqOdsuGMYX5GVRA9zgwn43Kx/G/GoZyKwA93lFbZf82
+	T+W47DfE1Zx3Zd7tNZNQHJhIqWayNVhHiiM0US/j1MlSP7bo/93KNvYNPKw8Y/na8gquaUH
+	4GzWE0wyXK8EoBbsYn7Y7uDaM16sLYhU65BAbMOotJtGj8IoDc6BxkvLmoP20h4lw0/F1pW
+	T18+DUIH5VubdRZMleNY+BE3CALqgyjSRzniV81SvBiKGrAfMqFc6GNEhpR6tYHY4b4RGhM
+	Hk+op4EZNJ/nvZHuPR0Oq5xHhA9zwYpxvhdDR58LuXCAE97LGXdvMhv/Xe7NAqqohAj1Qs/
+	8zW2iPStqkLOAgZEc0GTmtmJmGDfnuHiUCpjVBy4GjLT1iF7DncFlju8hGcLzSNk+27LgyU
+	Hwb09ziG8oxbMfHSi8bEtaVzqlwGofgSHAgL3eZqUdEP8HKMnf
+X-QQ-XMRINFO: MSVp+SPm3vtSI1QTLgDHQqIV1w2oNKDqfg==
+X-QQ-RECHKSPAM: 0
 
-A corrupted filesystem can leave an inode marked as having inline data
-while the system.data xattr is missing. ext4_destroy_inline_data_nolock()
-then asks ext4_xattr_set_entry() to remove an entry even though
-ext4_xattr_ibody_find() left the search state at the insertion position.
+ext4_ext_migrate() cleans up the temporary inode when
+ext4_ext_swap_inode_data() fails:
 
-In the syzkaller reproducer, the old xattr value offset is smaller than
-min_offs. ext4_xattr_set_entry() then computes val - first_val for
-memmove(), the length wraps to a huge size_t, and memmove() can run out of
-the xattr buffer. This results in an out-of-bounds memmove and a kernel
-page fault.
+	retval = ext4_ext_swap_inode_data(handle, inode, tmp_inode);
+	if (retval)
+		free_ext_block(handle, tmp_inode);
 
-A crafted corrupted ext4 image can trigger this while inline data is being
-converted out of the inode. Treat the inconsistent inline/xattr state as
-filesystem corruption before updating the xattr entry.
+ext4_ext_swap_inode_data() switches the inode to extents and copies the
+tree root into it before it frees the old indirect block map, so it can
+return an error after the swap has already happened.  The copied root
+points at index blocks that tmp_inode allocated, and free_ext_block()
+walks that same tree and frees them, leaving the migrated inode with a
+tree node that the block bitmap considers free.
 
-The issue was found by syzkaller and reproduced with the generated C
-reproducer. The crash signature is:
+Only free the tmp_inode tree when the inode has not been switched to
+extents, which is exactly the case where the swap did not happen.
 
-  BUG: unable to handle page fault for address: ffff8880074cf000
-  RIP: 0010:memmove+0x28/0x1b0
-  Call Trace:
-   ext4_xattr_set_entry+0xe2f/0x1e90 fs/ext4/xattr.c:1761
-   ext4_xattr_ibody_set+0x3d6/0x5d0 fs/ext4/xattr.c:2268
-   ext4_destroy_inline_data_nolock+0x288/0x5b0 fs/ext4/inline.c:467
-   ext4_convert_inline_data_nolock+0x178/0xe80 fs/ext4/inline.c:1222
-   ext4_convert_inline_data+0x52a/0x610 fs/ext4/inline.c:2083
-   ext4_fallocate+0x1a0/0x3ba0 fs/ext4/extents.c:4752
-
-Reject the missing system.data xattr before destroying inline data, and
-validate the old value offset before ext4_xattr_set_entry() reaches the
-memmove().
-
-The crash was reproduced on unpatched 7.3.0-rc3 and 6.6.122 kernels. With
-this fix applied to both versions, the same syzkaller C reproducer ran for
-120 seconds without triggering KASAN, Oops, a memmove fault, or panic.
-
-Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data support")
-Cc: stable@vger.kernel.org # v3.8+
-Signed-off-by: Zhao Gongyi <zhaogongyi@bytedance.com>
+Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
+Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
 ---
- fs/ext4/inline.c |  6 ++++++
- fs/ext4/xattr.c  | 12 ++++++++++++
- 2 files changed, 18 insertions(+)
+ fs/ext4/migrate.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index ceee69a66..0a30d40cb 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -461,6 +461,12 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
- 	error = ext4_xattr_ibody_find(inode, &i, &is);
- 	if (error)
- 		goto out;
-+	if (is.s.not_found) {
-+		EXT4_ERROR_INODE(inode,
-+				 "corrupted inline data without system.data xattr");
-+		error = -EFSCORRUPTED;
-+		goto out;
-+	}
- 
- 	BUFFER_TRACE(is.iloc.bh, "get_write_access");
- 	error = ext4_journal_get_write_access(handle, inode->i_sb, is.iloc.bh,
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 5c310747b..9a0ee5779 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1712,6 +1712,18 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 		}
- 	}
- 
-+	if (!s->not_found && here->e_value_size && !here->e_value_inum) {
-+		size_t offs = le16_to_cpu(here->e_value_offs);
-+
-+		if (offs < min_offs) {
-+			EXT4_ERROR_INODE(inode,
-+					 "corrupted xattr: value offset %zu < min_offs %zu",
-+					 offs, min_offs);
-+			ret = -EFSCORRUPTED;
-+			goto out;
-+		}
-+	}
-+
- 	/*
- 	 * Getting access to old and new ea inodes is subject to failures.
- 	 * Finish that work before doing any modifications to the xattr data.
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 2ce587043945..e588b4157604 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -562,7 +562,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 		free_ext_block(handle, tmp_inode);
+ 	else {
+ 		retval = ext4_ext_swap_inode_data(handle, inode, tmp_inode);
+-		if (retval)
++		if (retval && !ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+ 			/*
+ 			 * if we fail to swap inode data free the extent
+ 			 * details of the tmp inode
 -- 
-2.39.5 (Apple Git-154)
+2.51.0
+
