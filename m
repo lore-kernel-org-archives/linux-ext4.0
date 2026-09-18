@@ -1,72 +1,74 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CADD250BF2
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 10:26:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 934853D9548
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 10:34:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789727174; cv=none; b=cmhviMDsx/B8Tn8No2alpm73munqwG4sEnSPNxNDXPDvUEqnlIandTa87nHkkEgFgy5NCoXCUsIpbxwqNgpKz4EAIQ2B7PbB5bGOmrtiCgWskg8UVm/akp0VM3PAnn3m2Ril8uKriHK5Vb3rIipBocGaDb7pTZlaSMpisNNm340=
+	t=1789727686; cv=none; b=mlodprBcYUPf8XffW10A3bUTYlX23+DkKoOpaFHsmf1tvVrxtPwMQcM7BF0EKwl8RVCCc6lnilBN7MVPVgPD7Eqnegr9cgGxbxwbS79rBX97NQOexUeRmNVzHB1zwL8YUW0LNdrT0eeRhlm+deai+556+tY5ZZx/bGGXcOUFOxc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789727174; c=relaxed/simple;
-	bh=fROcsYeifdebroA4XjVpmrG3TpCA38KJ2wdYWuiP5jg=;
+	s=arc-20240116; t=1789727686; c=relaxed/simple;
+	bh=DJlGTLSkC3pRd7r8oFJwmSz1xOFCGOqMe3vCua9+Log=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=aOhvKDNIBMUfCwd+MMl42rRxFuI3ic6BxAcYkuciGDG18o36y3cegEAK/+vCo1/tFNz0cjKMHP+t1NV5Dm1u3rN+fl5KRLwhgWm0Du4GVZBdzCZ9+7UJA++HTaw8QZSdu7dj950QSdD7BZ77KMJ1r9ztY1kGNXf/quBHZJx3eJ8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nNQGLtds; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=me3MnrCmLwn9Sv9b8ESVmFFsuB5bt/bZpfac0CEDbS75GiiuUDkhmOu4VDo1WCrOsMP2W8k1PtckpSfXBERvvMEffp/A0KbZ7i/pIGzDADpaxaYLGZ8RVry/X1lPk3ElCrfYRZW00YSwTJFtpMt28L4+oLx+RiRrnXOSuMnMWGI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Er4D+uA+; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nNQGLtds"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12B791F000FF;
-	Fri, 18 Sep 2026 10:26:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Er4D+uA+"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1CC2B1F000FF;
+	Fri, 18 Sep 2026 10:34:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789727173;
-	bh=n80nYTO37W+/wxuvS6aGzneGgdY/uOFg5hlZ3ii7eb0=;
+	s=k20260515; t=1789727685;
+	bh=DJlGTLSkC3pRd7r8oFJwmSz1xOFCGOqMe3vCua9+Log=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=nNQGLtdsXXEhMTJWqJmumLP0KDemDwmJCKvGlkBS5oEGIVrNyeQehvnA/rDBnIvCR
-	 S9OHuXeH36Q4u1GUoxbBoTJESoEy61uhB9M0JED5P158O9rP2bKdCj7+mmEAim3jGx
-	 CFoI2VXWWUFvx2PqudOzSnwsD9Z299UliMjM8oQsq5stcPifjiv9tRd6p+f2xFUX6C
-	 f0y+meWM6Zu3ktRfRetNOFYnIm9chkIKz+mC2kWiqcy2wX1+4zAFlxaIKFpqGZDl3O
-	 gHMqDEEhTB9DkzMz0if/MQ3cqPhf2Ah8b6Ay5CMhYbvCAZ3rA8vggZMfIxoJKahNc9
-	 yqx3eokVbETBg==
+	b=Er4D+uA+hDx5aBxEsywFrvaWICx3VIxDOdOqh7/9ImHeNCmZAiul0/rEdJoHg9iWp
+	 D/rv2rUHGm3x4wNQCsM3sE1AHxYbU9WZzAaFb9dUuv1fyPzNmYcW4RJ8uoZ2J3V7Zr
+	 8nkwDwjDdd1cJMdBFSplfkiHIZqMI2tb9+Lf+zBaa4e4FYNnwgTvhC9CRuOio9uX2j
+	 42RRoE9RbeSD3NxecxFin+fNt6VR4NuBIaYiMabFn4f+fJiqSBQoLO11PstyqyTnRw
+	 DwPSZ6SZaSDwDqGkittgRi07BRRFjhhKPIH2wixXjZp75ZsUQf84x4bVHGdMEzymPD
+	 KIfipbFO/nmGw==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: don't free the tmp_inode tree after a partial
- migration swap
+Subject: Re: [PATCH] ext4: fix OOB memmove in ext4_xattr_set_entry
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Yichong Chen" <chenyichong@uniontech.com>
+To: "Zhao Gongyi" <zhaogongyi@bytedance.com>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260918101240.3721805-1-chenyichong@uniontech.com>
-References: <20260918101240.3721805-1-chenyichong@uniontech.com>
+In-Reply-To: <20260918101249.43643-1-zhaogongyi@bytedance.com>
+References: <20260918101249.43643-1-zhaogongyi@bytedance.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 18 Sep 2026 10:26:12 +0000
-Message-Id: <20260918102613.12B791F000FF@smtp.kernel.org>
+Date: Fri, 18 Sep 2026 10:34:44 +0000
+Message-Id: <20260918103445.1CC2B1F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> ext4_ext_migrate() cleans up the temporary inode when
-> ext4_ext_swap_inode_data() fails:
+> A corrupted filesystem can leave an inode marked as having inline data
+> while the system.data xattr is missing. ext4_destroy_inline_data_nolock()
+> then asks ext4_xattr_set_entry() to remove an entry even though
+> ext4_xattr_ibody_find() left the search state at the insertion position.
 >=20
-> 	retval =3D ext4_ext_swap_inode_data(handle, inode, tmp_inode);
-> 	if (retval)
-> 		free_ext_block(handle, tmp_inode);
+> In the syzkaller reproducer, the old xattr value offset is smaller than
+> min_offs. ext4_xattr_set_entry() then computes val - first_val for
+> memmove(), the length wraps to a huge size_t, and memmove() can run out of
+> the xattr buffer. This results in an out-of-bounds memmove and a kernel
+> page fault.
 >=20
-> ext4_ext_swap_inode_data() switches the inode to extents and copies the
-> tree root into it before it frees the old indirect block map, so it can
-> return an error after the swap has already happened.  The copied root
-> points at index blocks that tmp_inode allocated, and free_ext_block()
-> walks that same tree and frees them, leaving the migrated inode with a
-> tree node that the block bitmap considers free.
+> A crafted corrupted ext4 image can trigger this while inline data is being
+> converted out of the inode. Treat the inconsistent inline/xattr state as
+> filesystem corruption before updating the xattr entry.
 >=20
-> Only free the tmp_inode tree when the inode has not been switched to
-> extents, which is exactly the case where the swap did not happen.
+> [ ... ]
+> 120 seconds without triggering KASAN, Oops, a memmove fault, or panic.
 >=20
-> Fixes: c14c6fd5c56a ("ext4: Add EXT4_IOC_MIGRATE ioctl")
-> Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
+> Fixes: 67cf5b09a46f ("ext4: add the basic function for inline data suppor=
+t")
+> Cc: stable@vger.kernel.org # v3.8+
+> Signed-off-by: Zhao Gongyi <zhaogongyi@bytedance.com>
 
 Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260918101240.3721=
-805-1-chenyichong@uniontech.com?part=3D1
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260918101249.4364=
+3-1-zhaogongyi@bytedance.com?part=3D1
 
