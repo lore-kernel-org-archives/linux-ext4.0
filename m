@@ -1,56 +1,55 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 299AD3ACA7A
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 11:30:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 07C1D476CC5
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2026 11:31:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789731031; cv=none; b=WcBG7bnqVd3NOw0WpPgcX/PjbofgPSL1jdYb3bvXzZdB05Sk/20c23VsHp/fiDou8NrG6Mg7kru9cg6ZMGpqLPnRziyz5rrXDSIzU2N+OcV3gClyQTGfJhxW9ziWWJzRpMwUjJxKaCCN7tU+ibIqhndWnvhB5LO7xm7Ug/26v4w=
+	t=1789731118; cv=none; b=kEvcFQlBgjM6mmqr9ffCdgn406+cBUy9TsLEsdg8nZrUiUlWRtcHhB9O89PiqkGGE4YtvA4nWGXKeuG6zy0gNMo2VvLRDg6hJWlKz18a3750rAMmnaysTbkkgGbFPTAjMCgUZ/zKwoHLLVw7kHSrUjkKsvW8Ehwa7Zn2ELzC5B4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789731031; c=relaxed/simple;
-	bh=VsaCzXZV37iWiNeeWW4gV6gKbLPGywIKEujLf+s755k=;
+	s=arc-20240116; t=1789731118; c=relaxed/simple;
+	bh=iQAU9mMou69xS3mvuHh4PIukfNPoitPrMzl+ealrJfE=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=bXBoR26hSdeCYg1yWjvFbFXgEzmqU2La63hZTC86wSMHJLK7F4uLnNE4glkmHFHW2A5lsy6IRNnEdo5J1gKiLfzTQ2uNBkWkf/4aADeUG/bIoKXwdnduTPAkUprR8RCUM9KoWUp27INAMky+QSPPkfVC2pl4Y4u3aD7YuvHJb5M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dwlv8rkN; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=cJT8w2l8WHVEyVtLkFuj/PP6wspfhVANz4PYLy8XeCzUDbp99RNEqy13hp8p/078ZsG2N9OonCmhdaqtiOGF5HSO3UvT0YJcLGWs7YQZCSAEhwhfBrHqj9oaZhIPxyAyZNoQ/tg4fpEpdG477jWcjVHLHynMsB9yINw4L4uxEw0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D4tX1hF1; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dwlv8rkN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 585B61F000FF;
-	Fri, 18 Sep 2026 11:30:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D4tX1hF1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2CA921F000FF;
+	Fri, 18 Sep 2026 11:31:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789731029;
-	bh=VsaCzXZV37iWiNeeWW4gV6gKbLPGywIKEujLf+s755k=;
+	s=k20260515; t=1789731116;
+	bh=iQAU9mMou69xS3mvuHh4PIukfNPoitPrMzl+ealrJfE=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=dwlv8rkNBjMemqORiHkaX0MT7mnBM/1ffxCcxGQVS25HStHY/ynw48eJtaiIcmoks
-	 xR0Zy5qNW6deUqo2zYGyr1YOE1rHPl7AONmla3oXmkkqtm4/sjRSkM9XtbXSeE6H1k
-	 NNFd3EqLzTsqtKJlPUmONeommLmoj8F5P4Hp6ZhXbsffc7CY4GRsiBSIJ7ypC25yv/
-	 o2ZytDS5bRqMRVySOnhCwd7TdkawMgYOtkhEH4fO2fiRg23ojOXPpTex1trTJgbCyS
-	 9aJ54qZx9P6W5gpn7bVJG1RnE4M4+o53GEhLWpqzcrZB6dCidceAzLQuT496rzXZMx
-	 sNilz5qNkouVQ==
+	b=D4tX1hF1rmKFeHzeKtqvRi4xCas9NCSKmjufqvFNo1n4P3/OKLIm+EjPjf9ZR57Y5
+	 v1Bh8TJXJMlF9UUdFJqqEx6pjU6ueVgjSdtrTAHA/AXrKtyS95qQPMHyJOHBNeuW4C
+	 beehu1VshRjQeowncmSydGqr/WgXbYtjXyBl4e3pj8n5Gb8mJzmSX4HlaC44nw4f5C
+	 JcFZqKsdQ/7jBFhuOkSXDfccxJ70iSAt8jF+jh3J8ORcdDTg/Ze4AGpBIgQkQ7zM1k
+	 BYce0S5qXrz923e6hbfeFAYtNq667MGyIhSj/EHUlFZn8QjmUMbS3C1Q7oM2zU3k/c
+	 /EFwFZwiRgZZQ==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v16 18/21] xfs: advertise fs-verity being available on
- filesystem
+Subject: Re: [PATCH v16 17/21] xfs: add fs-verity ioctls
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Andrey Albershteyn" <aalbersh@kernel.org>
-Cc: dsterba@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260918111539.1003439-19-aalbersh@kernel.org>
+Cc: linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
+In-Reply-To: <20260918111539.1003439-18-aalbersh@kernel.org>
 References: <20260918111539.1003439-1-aalbersh@kernel.org>
- <20260918111539.1003439-19-aalbersh@kernel.org>
+ <20260918111539.1003439-18-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 18 Sep 2026 11:30:28 +0000
-Message-Id: <20260918113029.585B61F000FF@smtp.kernel.org>
+Date: Fri, 18 Sep 2026 11:31:55 +0000
+Message-Id: <20260918113156.2CA921F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> From: "Darrick J. Wong" <djwong@kernel.org>
+> Add fs-verity ioctls to enable, dump metadata (descriptor and Merkle
+> tree pages) and obtain file's digest.
 >=20
-> Advertise that this filesystem supports fsverity.
+> [djwong: remove unnecessary casting]
 >=20
 > Signed-off-by: Darrick J. Wong <djwong@kernel.org>
-> Reviewed-by: Andrey Albershteyn <aalbersh@redhat.com>
 > Reviewed-by: Christoph Hellwig <hch@lst.de>
 > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
 
@@ -58,5 +57,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260918111539.1003=
-439-1-aalbersh@kernel.org?part=3D18
+439-1-aalbersh@kernel.org?part=3D17
 
