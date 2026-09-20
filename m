@@ -1,73 +1,86 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out30-101.freemail.mail.aliyun.com (out30-101.freemail.mail.aliyun.com [115.124.30.101])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C55F434E745
-	for <linux-ext4@vger.kernel.org>; Sat, 19 Sep 2026 21:00:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A4B63EC691;
+	Sun, 20 Sep 2026 09:41:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789851604; cv=none; b=me8URYYKjKImzY3RCubIuG7L8syRSxIbxzr5jEALUXOgr0fW3Esn6iOz2oxjj06bdH6CMce+OdZ+O5x8QlkmVR8riZIn7enmhgh9O+mM6MAi+xD9RvNfM2kpznZ2mP6ki0OR+XHfbB256b9BPJODalvgXI2ia5A3Wc7ugCcQa5s=
+	t=1789897312; cv=none; b=Z6dFw59hbaMXMqBKGkeVDJzME9IFM+WiexzKHT0bPBwaCgfZzWVH0R0+bQ3tVvxVFLM/IE89XgsUwswAdnnIdrJraBKYYiwOn5iTAyhC8nNtBEOkL9w0Ds8JGqErKz5oQY42rtJDljxjEgnBFY+NlzfJkVTOv6veP588UvNMltE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789851604; c=relaxed/simple;
-	bh=PY73LVHOk9Sy8VeeWlasWXIlkAUS2gZVwb8h/pzEh2I=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=EcJ4Lr6MSXOniXO56yZCgVgt8xdp/oxTxalDoO4e5wsF/JY3gA4kz5UDy8+QjkT2fBL027VEptZLINpsASIRlrTZhbC9ebGkvhfoJ2Ql+KXbgIexCqvz3UjE1saAELK9lDPiWAMsegQPC+NAIOdjRj2WLby1zPrIN3OLqMnw/1k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eg6dn5vs; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789897312; c=relaxed/simple;
+	bh=RJK6BbLCHnOZZOUnen2VZqlg3ixOiEdsUevu8/0WJYA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=fo3CB9EyVsLhX58lswvszst5GFKUGaWRLLNfYQcJGWfVnX0a1ZdSUfmunxVH4yc1sxqor1tfTQx5lPgMk8X2hEn2axHntt6zh24AbhP3++zaaI+LaHjkkzVQCoc/oh4Pqt25mn5Nt3rG73csQSVrPFSr/s22Fmhh/BdN0OJrq40=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=nnquEsfQ; arc=none smtp.client-ip=115.124.30.101
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eg6dn5vs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 228521F000FF;
-	Sat, 19 Sep 2026 21:00:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789851603;
-	bh=PY73LVHOk9Sy8VeeWlasWXIlkAUS2gZVwb8h/pzEh2I=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=eg6dn5vsR78c5BbuBMaUJTVQ9YGT+mrf4PusM6+HNaOdTHVNLlFirlZReiIo/i2md
-	 rPpgcxtZi6eS5fFxbhytYDV31VukJQTnBBVEisM7lOYevVrsQsFarlJOqwM1taXIxM
-	 RliEU3tnx+Edf9Sj9xjzS86woyJxbWtiF2h4LHBT2yS7vUgzey/iUcOYkEx38333q8
-	 I5o7VU1Np4qcdZuk3lilHJrGfwqqHIqZN+2BkWJlfOlkyDML6hCzu7HWHnaFMxqiL5
-	 5OkUQXf0XM2w9GYvSjtAzjYFmUS8LmeHQ38rVHmWTbsxMk+ycyOcLVHgZPDIMFpwnB
-	 NM8dxY3tWdlFg==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: clear EXT4_STATE_MAY_INLINE_DATA in
- swap_inode_boot_loader()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Hui Peng" <benquike@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260919204812.2814531-1-benquike@gmail.com>
-References: <20260919204812.2814531-1-benquike@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Sat, 19 Sep 2026 21:00:02 +0000
-Message-Id: <20260919210003.228521F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="nnquEsfQ"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1789897306; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=HB839kQM3NZPpQrGhr6AVMFZpD+GG38HAjWMksSHc3A=;
+	b=nnquEsfQNAk1PeeKp2+9Pmd/2TkeF4o+b0sIgKu6fCf7RaApkzlX3BZvQrec0UcdwCWIt0KdQeQoyPUj+oB753WvML32uat83g26y8HbLT3rYCZ9KY5/IXDq16uuDAIvJFmnN+Qdj1WjVZAe7OXChxUz63TCioXb12fKnoXohNY=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R931e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=7;SR=0;TI=SMTPD_---0XBFdMm8_1789897297;
+Received: from x31h02109.sqa.na131.tbsite.net(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XBFdMm8_1789897297 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Sun, 20 Sep 2026 17:41:45 +0800
+From: Baokun Li <libaokun@linux.alibaba.com>
+To: fstests@vger.kernel.org
+Cc: zlang@kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	sandeen@redhat.com,
+	dgc@kernel.org
+Subject: [PATCH] generic/492: bypass the blkid cache when probing the label
+Date: Sun, 20 Sep 2026 17:41:37 +0800
+Message-ID: <20260920094137.2749428-1-libaokun@linux.alibaba.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-> swap_inode_boot_loader() (EXT4_IOC_SWAP_BOOT) checks
-> !ext4_has_inline_data(inode), but neither checks
-> ext4_has_inline_data(inode_bl) nor clears EXT4_STATE_MAY_INLINE_DATA on
-> inode and inode_bl after swapping their inode data.
->=20
-> When a newly created empty file (which has EXT4_STATE_MAY_INLINE_DATA
-> set in memory) is swapped with a non-empty EXT4_BOOT_LOADER_INO that
-> already has extent blocks, the target inode retains
-> EXT4_STATE_MAY_INLINE_DATA =3D=3D 1 alongside extent blocks. A subsequent
-> ftruncate() + small pwrite() + fsync() dirties folio 0 while converting
-> the inode to inline data, hitting
-> BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) in
-> ext4_writepages().
->=20
-> Reject inline data on inode_bl and clear EXT4_STATE_MAY_INLINE_DATA on
-> both inodes in swap_inode_boot_loader().
->=20
-> Fixes: 67a11611e1a5 ("ext4: fix check of inode in swap_inode_boot_loader")
-> Assisted-by: LLM
-> Signed-off-by: Hui Peng <benquike@gmail.com>
+blkid may serve a stale label from its cache instead of probing the
+device, so the label just set via xfs_io can be missed and the output
+mismatch is non-deterministic.
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+Pass "-c /dev/null" so that blkid always probes the on-disk superblock
+directly.  Unlike the low-level probing mode (-p), which requires
+util-linux 2.16 or later, this is also supported by the legacy blkid
+shipped with e2fsprogs.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260919204812.2814=
-531-1-benquike@gmail.com?part=3D1
+Fixes: c3c9630968a6 ("generic: test online label ioctl")
+Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+---
+ tests/generic/492 | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/tests/generic/492 b/tests/generic/492
+index 51a46b510453..0b4f69b80f17 100755
+--- a/tests/generic/492
++++ b/tests/generic/492
+@@ -28,14 +28,15 @@ $XFS_IO_PROG -c "label -c" $SCRATCH_MNT
+ $XFS_IO_PROG -c "label" $SCRATCH_MNT
+ 
+ # And that userspace can see it now, while mounted
+-# NB: some blkid has trailing whitespace, filter it out here
++# NB: bypass the blkid cache which may hold a stale label, and filter
++# out the trailing whitespace some blkid versions emit
+ $XFS_IO_PROG -c "label -s label.$seq" $SCRATCH_MNT
+ $XFS_IO_PROG -c "label" $SCRATCH_MNT
+-blkid -s LABEL $SCRATCH_DEV | _filter_scratch | sed -e "s/ $//g"
++blkid -c /dev/null -s LABEL $SCRATCH_DEV | _filter_scratch | sed -e "s/ $//g"
+ 
+ # And that the it is still there when it's unmounted
+ _scratch_unmount
+-blkid -s LABEL $SCRATCH_DEV | _filter_scratch | sed -e "s/ $//g"
++blkid -c /dev/null -s LABEL $SCRATCH_DEV | _filter_scratch | sed -e "s/ $//g"
+ 
+ # And that it persists after a remount
+ _scratch_mount
+-- 
+2.43.7
 
