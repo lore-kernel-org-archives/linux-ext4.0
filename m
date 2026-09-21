@@ -1,133 +1,172 @@
-Received: from out30-124.freemail.mail.aliyun.com (out30-124.freemail.mail.aliyun.com [115.124.30.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F652455616;
-	Mon, 21 Sep 2026 09:07:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9FCA3559C9;
+	Mon, 21 Sep 2026 09:09:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789981678; cv=none; b=m3VrXH/UyNthOsjP35KA9wCS4ouW2cn/YZtPMrMhlJHBV6fDi633PItIGow/XLDtH8MqW1IuVWqeR2nMH2fVLNzewVSgyYMBexCiAB23wfHXpQL7UvFK2+jKLDFqTCiB1+hvDDKPnYhaUjO6Oo9mJmMSHm4e43TSAJlny3LSbZs=
+	t=1789981791; cv=none; b=fcdq/9XgnAPDt+pzVEgMkHZ0/A0SV38HjcurBzZcDOhBJ7A3D+IVHAmrhNi3hHPIVVJQDBOc4M5Uk/iKxFfFqi7lXnVbqHUoNaO0Q50HyOupcVLan28GBZYYQqpZW422oF4OI/YVvCY25oU5OjrtNsNsGksrp6H9rCLMDUgg4Ts=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789981678; c=relaxed/simple;
-	bh=sRKEu1/qqfwRyFwE+XaUw08xHMRrUtuVx5raLVwn1hU=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=ldrs5OdjOGkWechc3JjwbZNtN+ooz8Rix4I+h5fIgR0cn6sK8olceh4ptViO8nvxIUbvYiqImMf9bQa1DvJUMXt6ShLn13HWh9HpSWahTvH6rNeKDAxrdvxsNur7S7hENrvQu1qVGYdPSBweyRPMulwAGye4cmzET91YQSL4rd0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=sEw4Io67; arc=none smtp.client-ip=115.124.30.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1789981791; c=relaxed/simple;
+	bh=FC6rts5iX6PaZKgWQE7XgVzD5qhzb6gjc9SVjg94fYQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=adh8b/6nCEZQn+rG/gAXAzDABxJz1NrGGHCePW763nXX8N57/l8jYVnbIZ9weIIWMaDbsBSbVH+s+4Jt3jIiX8sNJ5AlynEWjbsf9gT4UDOIXXOR7mYVG8bG92q2ybCpJeO7lV7QVvU/mvpEwBvezAXFCFlJdnWGLlbOfxy5NYU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=TivbOJ0x; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QxvR08KG; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=BekFBb33; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=SQOZgQni; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="sEw4Io67"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1789981670; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=EOa/5tsQSRM8oUQZbGURvWMXis/Fe7v/dd80qFR2lSk=;
-	b=sEw4Io67adUHM7r9Z8EbjrptNuZkaiTDIWfHKCkugqTgGJCdgDIMWMPC0cyBfiYa4I3fDxtNXb6LHvsukShIEzoxSDlzyzRLIPoXwfQ8U5Ei9bXSL5xXegvk6R0/Es96P+zfH0/Y6gJxtEELFI9EtSgBHwwWulUfRsxB+6CXT2Q=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R781e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=7;SR=0;TI=SMTPD_---0XBLnGor_1789981668;
-Received: from 30.221.147.168(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XBLnGor_1789981668 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Mon, 21 Sep 2026 17:07:49 +0800
-Message-ID: <b4a10712-1658-4fba-a037-095fab466270@linux.alibaba.com>
-Date: Mon, 21 Sep 2026 17:07:48 +0800
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="TivbOJ0x";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QxvR08KG";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="BekFBb33";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="SQOZgQni"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id A831C21C08;
+	Mon, 21 Sep 2026 09:09:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1789981783; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xY2KVLq9cSio0ys71LWr26a1j0slOLo8q2lgLNgE7eA=;
+	b=TivbOJ0xLarVQlX7APgMEzjQ2v0Trpg4SUl2qKjXYSiIl2WxBxt+PDcRXaqhJujqYNqqI8
+	5RDbnZZ6u7LEN+obFVOWr+7xC9rNUeqFDkJZaq04XasCAbRtDjib841D98cnG5avUmwQJq
+	D9olWmOjuTEyjx5Pspf+fzT7eR5eQY8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1789981783;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xY2KVLq9cSio0ys71LWr26a1j0slOLo8q2lgLNgE7eA=;
+	b=QxvR08KGtM8e/F7baxet1kARWnjSswjCRIvSRtOYFsxKUvteNg5j90wIYykOTFbx2ssXtC
+	mNdsmVyOn5jtl7Dg==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=BekFBb33;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=SQOZgQni
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1789981779; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xY2KVLq9cSio0ys71LWr26a1j0slOLo8q2lgLNgE7eA=;
+	b=BekFBb33+vx+/z8+853w54PLCLdYe226PPKSpyYsX8QpEg+lxlE2HBVFKhlvkIJUn5hOyZ
+	VN2zPMEdWKBmc0Gf3dBWJvbYsPiieaZIebSZGhcuNd++Bo2jAVA8u3C4F2bCsbKV70oVDj
+	OCva0qHkm/p6urQcmuGy7BqqlCjrJoA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1789981779;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xY2KVLq9cSio0ys71LWr26a1j0slOLo8q2lgLNgE7eA=;
+	b=SQOZgQniCIkCyTwSYIC+qxhaAdsD3T79daKP+irTMTdcvR7yCzVoGt4d3a7WUxFMOfUikP
+	EogHHrSUB9Xg0ZBQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7E39B1368D;
+	Mon, 21 Sep 2026 09:09:39 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id vTB/FlP0sGojZAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 21 Sep 2026 09:09:39 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 0C63CA13D5; Mon, 21 Sep 2026 11:09:39 +0200 (CEST)
+Date: Mon, 21 Sep 2026 11:09:39 +0200
+From: Jan Kara <jack@suse.cz>
+To: Manuel Ebner <manuelebnerli@mailbox.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, Jonathan Corbet <corbet@lwn.net>, 
+	Shuah Khan <skhan@linuxfoundation.org>, Randy Dunlap <rdunlap@infradead.org>, linux-ext4@vger.kernel.org, 
+	linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] ext4, doc: remove unnecessary bracket
+Message-ID: <qxtwbujylatoi7vl2lyngg4n557to6rdafpk45hzlnjxnx5ezp@lcdaur46z3vu>
+References: <20260916104251.296148-3-manuelebnerli@mailbox.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] generic/492: bypass the blkid cache when probing the
- label
-To: "Darrick J. Wong" <djwong@kernel.org>
-Cc: fstests@vger.kernel.org, zlang@kernel.org, linux-fsdevel@vger.kernel.org,
- linux-ext4@vger.kernel.org, sandeen@redhat.com, dgc@kernel.org
-References: <20260920094137.2749428-1-libaokun@linux.alibaba.com>
- <20260921052719.GB6253@frogsfrogsfrogs>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260921052719.GB6253@frogsfrogsfrogs>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260916104251.296148-3-manuelebnerli@mailbox.org>
+X-Spam-Score: -2.51
+X-Rspamd-Queue-Id: A831C21C08
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_TWELVE(0.00)[14];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,lwn.net,linuxfoundation.org,infradead.org,vger.kernel.org];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,infradead.org:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
+X-Spam-Flag: NO
 
-Hi Darrick,
+On Wed 16-09-26 12:42:52, Manuel Ebner wrote:
+> Fix sentence structure to improve readability
+> 
+> Signed-off-by: Manuel Ebner <manuelebnerli@mailbox.org>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> CC: Randy Dunlap <rdunlap@infradead.org>
+> ---
+> @Jan Kara, is the reviewed-tag ok even though I changed the patch?
 
-On 2026/9/21 13:27, Darrick J. Wong wrote:
-> On Sun, Sep 20, 2026 at 05:41:37PM +0800, Baokun Li wrote:
->> blkid may serve a stale label from its cache instead of probing the
->> device, so the label just set via xfs_io can be missed and the output
->> mismatch is non-deterministic.
->>
->> Pass "-c /dev/null" so that blkid always probes the on-disk superblock
->> directly.  Unlike the low-level probing mode (-p), which requires
->> util-linux 2.16 or later, this is also supported by the legacy blkid
->> shipped with e2fsprogs.
->>
->> Fixes: c3c9630968a6 ("generic: test online label ioctl")
->> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
-> Seems fine to me; I guess blkid could be racing with whatever updates
-> the cache...udev?
+Well, it doesn't seem to have changed substantially so sure, you can keep
+it in such cases.
 
+								Honza
 
-Not a race, and not related to udev.  It's a long story; details below.
-
-In the xfstests-bld appliance blkid is e2fsprogs' legacy blkid and its
-cache is /etc/blkid.tab; the only writers are blkid itself and
-e2fsprogs' fsck (both probe with the cache enabled).  systemd's udev
-uses libblkid's low-level probe API and never touches this file.
-
-What we hit is a strictly sequential sequence that depends on two
-"same second" coincidences.  The cache validity check (blkid_verify()
-in lib/blkid/probe.c) is:
-
-    now >= TIME && mtime(seconds) <= TIME && age < 2s
-
-Both sides are in seconds, and only the 2s window applies to a fresh
-blkid process (BLKID_BID_FL_VERIFIED is not persistent).
-
-mkfs only advances the device mtime and never updates the cache; the fs
-label ioctl updates neither, so right after setting a new label a
-cached lookup can still return the old one.
-
-The trap is set by _check_scratch_fs: it runs "fsck -t ext4 ...", which
-probes the device with the cache enabled and writes the entry back with
-TIME=now and the current label state.
-
-Here is a sequential 490/491/492 run that trips it (timestamps from a
-CI log, ext4/bigalloc_1k):
-
-    M-2  09:09:44  end of 490: fsck finds the previous entry stale
-                   (age >= 2s) -> probes -> tab = {no LABEL, TIME=44}
-
-    M-1  09:09:45  start of 491: mkfs -> device mtime = 45
-                   (mkfs doesn't update the cache; tab stays TIME=44)
-    M    09:09:46  end of 491: unmount + _check_scratch_fs
-                   -> fsck sees mtime(45) > TIME(44) -> probes
-                   -> tab = {no LABEL, TIME=46}          <- trap
-
-    M    09:09:46  start of 492: mkfs -> device mtime = 46
-    M    09:09:46  mount; ioctl label="label.492" (mtime unchanged)
-    M    09:09:46  blkid(35): mtime(46) <= TIME(46), age < 2s
-                   -> cache deemed valid, no probe -> prints no LABEL
-    M+1  09:09:47  umount; blkid(39): still < 2s -> again
-    M+1  09:09:47  check reports output mismatch (two lines missing)
-
-The difference between the e2fsprogs and util-linux libblkid is the
-time granularity: the former stores seconds only (TIME="%ld",
-bid_time = time(0), compares st_mtime <= bid_time), while the latter
-stores usec (TIME="sec.usec") and has an nsec tie-break in the compare,
-so the same-second case is much easier to hit with the e2fsprogs blkid.
-
-The patch avoids this by probing with -c /dev/null (the legacy blkid
-has no -p).  Reproduced on ext4/bigalloc_1k: unpatched 10 of 65 runs
-fail, patched 120/120 pass.
-
-
->
-> Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
->
-> --D
-
-
-Thanks for the review!
-
-Cheers,
-Baokun
-
+> 
+> [v2]
+>  Incorporate Randys suggestion.
+> 
+> [v1]
+>  https://lore.kernel.org/all/20260902143254.702971-2-manuelebnerli@mailbox.org/
+> ---
+>  Documentation/filesystems/ext4/directory.rst | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/Documentation/filesystems/ext4/directory.rst b/Documentation/filesystems/ext4/directory.rst
+> index 9b003a4d4..6d8021309 100644
+> --- a/Documentation/filesystems/ext4/directory.rst
+> +++ b/Documentation/filesystems/ext4/directory.rst
+> @@ -429,7 +429,7 @@ block (precisely the length of one dx_entry) are used to store a
+>  ``count`` entries in the dx_root/dx_node structures are adjusted as
+>  necessary to fit the dx_tail into the block. If there is no space for
+>  the dx_tail, the user is notified to run e2fsck -D to rebuild the
+> -directory index (which will ensure that there's space for the checksum.
+> +directory index, which will ensure that there's space for the checksum.
+>  The dx_tail structure is 8 bytes long and looks like this:
+>  
+>  .. list-table::
+> -- 
+> 2.55.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
