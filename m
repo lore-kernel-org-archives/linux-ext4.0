@@ -1,178 +1,105 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C63C6352014;
-	Tue, 22 Sep 2026 01:11:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C9533D3336
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 03:47:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790039500; cv=none; b=DdNVVx2PHKL8sgqnFl+td3ByuMK6ss8XnSPwDWn2att8Yzjl77V1irNyM2kM5SLF9snbo07OiZZtZz1hihIIQPH9SqmQOolz6SySR5lPPbsYiUJClTtsOA3dmMdAhkhkenQbABLPacBMaFXvIOmf8RiugstwwxSuPMbWAbGSxVQ=
+	t=1790048873; cv=none; b=a5su75A9JgDiTN0FoQNxx+kCcd9hywr1KV51nwW4wmeFgq275l/ZbwF2i/K5DUGFb1e4S6AAjkNmjKwH5sP4V/5pyfOl9qB+yrTEC7bIGOTUsmq1zCKkov0fpQD3eu6+4n6fX6p/Yz/2EtZ6SW7KPHVg+eH9vlWRDLfynnz2XjI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790039500; c=relaxed/simple;
-	bh=LjqntJm4sYSuRQmpROhO2wmSoFEVZCKevoQ1XiN/sc0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=icxyA7Tb3WQeJjQKRhYttvEwwFRS1MsxHGO+oVaNYBbYNnB5stCWAnLKKbPPnnAMHBurofkMf3aGEi6UZSmJhPrC2YVnPi7lL9zEqwEZIQSiTQFQLSODcqz3O5J86qq269Mm7c3x+GYZi8P3DcvKrguu0zR0Fx+NRbBxoA3KtAY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hphqz5V5XzYQvCb;
-	Tue, 22 Sep 2026 09:11:11 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 2545640A64;
-	Tue, 22 Sep 2026 09:11:26 +0800 (CST)
-Received: from [10.174.178.176] (unknown [10.174.178.176])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3Ryqx1bFqtPrQBA--.27304S3;
-	Tue, 22 Sep 2026 09:11:25 +0800 (CST)
-Message-ID: <a563fc94-1143-46f5-a505-49a1a74a9e88@huaweicloud.com>
-Date: Tue, 22 Sep 2026 09:11:13 +0800
+	s=arc-20240116; t=1790048873; c=relaxed/simple;
+	bh=BvTbZzUJgxXAynlaurlQmfP5rEK52IWNgDP+DS9uOZ0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=r18yRR9inoucP28T6SDcmTlkxTvb/RlXbckbn6MUSJMZN2QFiwc/T7a8jFctfz8U2osKwQmQOAEY5++rdfjGXgzwViPraWEyaiERQrIMuWwDLl24wyPmD3ximQ7Fs+LHKlJxm4MnsZjqZmqZSFRbc1UqyjeSUXcrpaeDO6Rrmys=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=C+6mZh+d; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="C+6mZh+d"
+Received: from macsyma.thunk.org (pool-108-26-156-67.bstnma.fios.verizon.net [108.26.156.67])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 68M3iHHV013743
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 21 Sep 2026 23:44:18 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1790048660; bh=aaZjQCWBhAPpfjq9NOdT2vH7DRz/WSK6FD7H/vAgio8=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=C+6mZh+dphwxOhFVsiyqQAQUn58wMxjYZhrAb5ZSFSzzSuZD0pf5oTc1EuHhavnIQ
+	 YaWh0rfAUVYP20cm0ExY6re6mWLVFTjlaLYLH6jRd5GMxxmGreNHqwQ/VjWr+aeWGD
+	 bx9sT7F5v7aFX291ImkUhkcYq/N+0RpQl7VuNfKvMVUNPw8rjml3dOcMijcyNgsNtK
+	 UKUBtnYSMMcEhIlbpJWZ29FLZQ8M4QnWQ8OYuhh2RrzgiEweLyul8fAvMab/I8/AX8
+	 9LTHn4uXFTHNuThe9MDhQHCB5gPgzjvyP/Wku0XvD1GeHrIeHP/joaByqjRrwvMPH9
+	 +KALpNax6fhlQ==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 274911C81F3E; Mon, 21 Sep 2026 23:43:17 -0400 (EDT)
+Date: Mon, 21 Sep 2026 23:43:17 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Baokun Li <libaokun@linux.alibaba.com>, fstests@vger.kernel.org,
+        zlang@kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, sandeen@redhat.com, dgc@kernel.org
+Subject: Re: [PATCH] generic/492: bypass the blkid cache when probing the
+ label
+Message-ID: <arHaTLxSEk3yQxU4@mit.edu>
+References: <20260920094137.2749428-1-libaokun@linux.alibaba.com>
+ <20260921052719.GB6253@frogsfrogsfrogs>
+ <b4a10712-1658-4fba-a037-095fab466270@linux.alibaba.com>
+ <20260921234910.GC6253@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 1/3] mm/truncate: fix data loss when splitting
- straddling large folios fails
-To: Jan Kara <jack@suse.cz>
-Cc: Zhang Yi <yizhang089@gmail.com>, Zi Yan <ziy@nvidia.com>,
- linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
- liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
- mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
- willy@infradead.org, bfoster@redhat.com, joannelkoong@gmail.com,
- djwong@kernel.org, yi.zhang@huawei.com, yangerkun@huawei.com,
- chengzhihao1@huawei.com, wangkefeng.wang@huawei.com, yukuai@fnnas.com
-References: <20260916092450.654408-1-yi.zhang@huaweicloud.com>
- <20260916092450.654408-2-yi.zhang@huaweicloud.com>
- <xl2rtnntlxoxoozkddgrlkcsgukcngvvcwazm7gb7q5g32yxir@ef5ltcwueboh>
- <DLGXT0ERY79Z.3C5DYVJVX6S9Z@nvidia.com>
- <9d931f5e-cb34-4721-9def-7aeeda48700c@gmail.com>
- <453d0054-4f53-452a-9737-cd37d30a7d44@huaweicloud.com>
- <35me4qswsu2dd3howvfdglh4ge4t5vihkizoutxt2jhiyul6xj@i6kqsnqpvbra>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <35me4qswsu2dd3howvfdglh4ge4t5vihkizoutxt2jhiyul6xj@i6kqsnqpvbra>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgB3Ryqx1bFqtPrQBA--.27304S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxur17Zw1rCFy3JFy3Zw4UCFg_yoW5CrW3pF
-	ZYgrWqgFWxJr1jkrnrZ3WjqFyay345WF1UAFWfGF17C3ZxXrn3KryYg3WDu3yfGwnrZ348
-	XFyUtF9ruF1jyFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv2b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6x
-	kF7I0E14v26F4UJVW0owAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAq
-	x4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6x
-	CaFVCjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0E
-	n4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I
-	0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8
-	ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcV
-	CY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAF
-	wI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa
-	7IU04xRDUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260921234910.GC6253@frogsfrogsfrogs>
 
-On 9/21/2026 5:05 PM, Jan Kara wrote:
-> On Thu 17-09-26 20:03:57, Zhang Yi wrote:
->> Sorry, the previous diff format was incorrect, reposting it.
->>
->> diff --git a/mm/truncate.c b/mm/truncate.c
->> index 23c90f00b530..b5e5bdf5f9ef 100644
->> --- a/mm/truncate.c
->> +++ b/mm/truncate.c
->> @@ -279,51 +279,46 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->>  			*pstart = round_up(pos + offset,
->>  					   min_nrbytes) >> PAGE_SHIFT;
->>
->> -		if (offset + length == size) {
->> -			end = aligned_end;
->> +		end = aligned_end;
->> +		if (offset + length == size)
->>  			goto out;
->> -		}
->> -
->> -		split_at2 = folio_page(folio,
->> -				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
->> -		folio2 = page_folio(split_at2);
->>
->>  		/*
->> -		 * folio2 may become stale due to a concurrent split or
->> -		 * freeing, so validate it before and after taking its lock.
->> -		 * If it fails, we can't get an accurate end position and fall
->> -		 * back to folio->index, which may leave sub-folios split off
->> -		 * at the offset edge in the page cache this round.
->> +		 * After the first split at the start edge, the folio at the
->> +		 * end edge may be freed and reused concurrently.
->> +		 * __filemap_get_folio() looks up the straddler at
->> +		 * aligned_end and returns it locked and ref'd with the
->> +		 * mapping validated.
->>  		 */
->> -		end = folio->index;
->> -		if (!folio_try_get(folio2))
->> +		folio2 = __filemap_get_folio(folio->mapping, aligned_end,
->> +					     FGP_LOCK | FGP_NOWAIT, 0);
->> +		if (IS_ERR(folio2)) {
->> +			/*
->> +			 * No sub-folio straddles the boundary when aligned_end
->> +			 * is empty so discarding up to it is safe.  Otherwise
->> +			 * the straddler is locked by someone else and we
->> +			 * cannot obtain a reliable end position, so we fall
->> +			 * back to folio->index.  This is safe but may leave
->> +			 * pages split off at the offset edge lingering in the
->> +			 * page cache this round.
->> +			 */
->> +			if (PTR_ERR(folio2) != -ENOENT)
->> +				end = folio->index;
->>  			goto out;
->> -
->> -		if (folio2->mapping != folio->mapping ||
->> -		    !folio_test_large(folio2))
->> -			goto out_put;
->> -
->> -		if (!folio_trylock(folio2))
->> -			goto out_put;
->> -
->> -		if (page_folio(split_at2) != folio2) {
->> -			folio_unlock(folio2);
->> -			goto out_put;
->> -		}
->> -		if (!folio_test_large(folio2)) {
->> -			end = aligned_end;
->> -			folio_unlock(folio2);
->> -			goto out_put;
->>  		}
->>
->> -		/* Split failed: back off to the head of the straddler */
->> +		/* Already at the minimum order, nothing to split */
->> +		if (folio_order(folio2) == min_order)
->> +			goto out_put;
->> +
->> +		split_at2 = folio_page(folio2, (aligned_end - folio2->index));
->> +
->> +		/* Split failed, keep the straddler intact */
->>  		if (folio_split_or_unmap(folio2, split_at2, min_order))
->>  			end = folio2->index;
->> -		else
->> -			end = aligned_end;
->>
->> -		folio_unlock(folio2);
->>  out_put:
->> +		folio_unlock(folio2);
->>  		folio_put(folio2);
->>  out:
->>  		if (pend)
+On Mon, Sep 21, 2026 at 04:49:10PM -0500, Darrick J. Wong wrote:
+> > The difference between the e2fsprogs and util-linux libblkid is the
+> > time granularity: the former stores seconds only (TIME="%ld",
+> > bid_time = time(0), compares st_mtime <= bid_time), while the latter
+> > stores usec (TIME="sec.usec") and has an nsec tie-break in the compare,
+> > so the same-second case is much easier to hit with the e2fsprogs blkid.
 > 
-> FWIW this looks much more understandable to me. And since this is a
-> preexisting issue I agree this should be a separate patch.
-> 
-> 								Honza
+> Perhaps xfstests-bld should use the system blkid then?  IIRC the one
+> in e2fsprogs is very old and out of date.
 
-Thank you for confirming. I will send out the next iteration after
-testing.
+Historically, xfstests-bld was built in environments where libblkid
+wasn't available.  This included Android's runtime (which uses the
+bionic libc), and grte (Google Runtime Environment)[1].
 
-Thanks,
-Yi.
+[1] https://github.com/bazelment/lrte/blob/master/grte/grte-build
 
+However, as more and more tests require utilities from util-linux,
+xfstests-bld was taught to build util-linux.  And if util-linux is
+being built, then we don't use e2fsprogs-libs any more, which is where
+libblkid is built.  From build-all:
+
+if test -z "$USE_LOCAL_E2FSLIBS" -o -d util-linux; then
+    SKIP_E2FSLIBS=yes
+fi
+
+I've always built xfstesets-bld with util-linux, even though it is
+listed as an optional repository.  This is because (a) util-linux is
+needed for Android and other non-standard Linux environments, and (b)
+the version of util-linux used by earlier Debian Stable was too old
+for some of the newer tests in fstests and blktests.
+
+If you aren't building xfstests-bld with util-linux, it falls back to
+building libblkid from e2fsprogs-libs.  HOWEVER, we don't actually
+blkid, and libblkid is always built statically.  So what seems to be
+going on is that one of the programs built by xfstests-bld is using
+the older libblkid, and that results in the blkid cache being writen
+with a second granularity.
+
+I've never noticed this issue because I've always built with
+util-linux.  The way to solve this is to require building with the
+system libblkid if util-linux is not being built, and to drop
+e2fsprogs-libs from xfstests-bld.  Or just build xfstests-bld with
+util-linux.  :-)
+
+Cheers,
+
+					- Ted
