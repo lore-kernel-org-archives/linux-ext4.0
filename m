@@ -1,69 +1,73 @@
-Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+Received: from mail-pj2-f34.google.com (mail-pj2-f34.google.com [74.125.227.162])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A8D45372CF
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 11:04:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7AAF1539764
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 11:04:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.162
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790075081; cv=none; b=BEk/CTpVZmfWkg5TyF5WBm9TM2IhZwkRLjHSTYtZ/um4+w8zQBhg7Do7Ffm7RW5FwkUu5Kxdyz9SPH0eF+i2inPfAyICkT+I9C8uLvLm1F8FFNLgu+Z8b9+rmK5CwMMoDKn1bexSB7tHBClVnYp+3A6uqfjLUb2jyczPFqN6Aho=
+	t=1790075082; cv=none; b=LCgeu1rt0ugBiK6YLoLHB0P/FcEZ3wukkKjOzHJeMocjxk/x+lZiRueNBqD5aDNtqP1g7UC3iw4jnIoe6/ERphHQOjMRW4XF/MDz2Q50isWltlcjiBb3Hk/7ilfHy5thkFkfd9oHyriS0vcQr1pUlmsk22v9RESpTROa+aK1V1Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790075081; c=relaxed/simple;
-	bh=XrntUMqtv+5STCu6GVPtxPr3qDmlNLiO+TSz4JGusxo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=qIXoYkW+PvLa7WQeSB1HZtWsBiLxlWYosyNSDvBZaz2lU1kPGezNmIjFS5HP9sADCN/CwdqrFtg3CJE7jK6LQPh0AM4UXFw/e4CLfL7TXl4unZWZUJ8o/NMbtKkcRxd0C9+Er2/IBh1QxoPevzRjYRH/7nZwOBAbbUo+IdGqudY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HXjcsEWb; arc=none smtp.client-ip=74.125.227.140
+	s=arc-20240116; t=1790075082; c=relaxed/simple;
+	bh=jlleyKQ4xOX5JPZ8yJ7FAlQMxnT2CneS8DubZB/qGO4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=J+tTcNFJLvya74k+8uwNMiL0eQRXfknqlS0PKPDYCqdOapNnfAk02X+zwv5jVVzzy+3PUg4ASPNmRfAMOFOZvLst1rceKyAWXT+27Vi+pQkGom8H+HKdWzEJgXPWddU30DHWISGH09MTi6wq7rDtKaLwP44vCte7w8jshC+TVWo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aNdib1kW; arc=none smtp.client-ip=74.125.227.162
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HXjcsEWb"
-Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d91ede8035so48312705ad.3
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 04:04:39 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aNdib1kW"
+Received: by mail-pj2-f34.google.com with SMTP id d9443c01a7336-2d747eb79f7so27401295ad.1
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 04:04:41 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790075079; x=1790679879; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=quCMQpSP3GkxFpVvlOBPI6bWTobHNZTw/8lDPTf3Jzg=;
-        b=HXjcsEWbCrjpLjXOIDs5yzgG2RcxxrJNPRBKe0zS0Bzr4Ai9lTJPoQ4ISY6pKswD2F
-         bC3UKmM5cOChNK1zyU8ZNVPE1p3sfHB695g76ONGeOPBY84fleSRcdv3n3QCbYISG4ZD
-         jtBDMPCnFGCtToH79DjvmIS1Gr4cxUlecwvZoH8ozrtF48MaM9Lj6X1b4CtHmTyx9FSW
-         uxYdMMz14h7FuQamKSYvnlbqsJsDWjs7Txr0oa8cL5bA1cr3rQSHXibiO8/YztHswzo1
-         nUdVbB9qocJyU9YX/ku65az6M5Nd3jQsEfIGoFxUAGukL9BECF3a1a64E/NZKOBZkNPC
-         oS/A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790075079; x=1790679879;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20251104; t=1790075081; x=1790679881; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=quCMQpSP3GkxFpVvlOBPI6bWTobHNZTw/8lDPTf3Jzg=;
-        b=2FON8kWqoBqsV+sXXkhhwuoNNQLrRAST1/EexPTjfPW/gkZzEwA4lKiAmKYfP16FAg
-         DsMMbhbCHtUR/99saP0ADQsDzpBkL0H2csHlzte2YriDjzVH2+r4drB8dPLENRZGje4l
-         3cFQ/X2VLo9JYA02BGeyPAZfASjntO8intnsGGjR1h+tFA0p0vlUUW4dBiqa/1OqXeQ4
-         LzlYIvASFO4UgtqiwrPsXFdtny6soUI8AFoAxR9QUzsewEbFqvTFqvlS4cPEK+j0RqhQ
-         p/yE6UCAdQTvg3gJs4ize8MD1NvsJkrTyI5kP9dXNglcv1/OyB2D2Kz/5vNTVVzvg/6e
-         BNng==
-X-Gm-Message-State: AFuF++mz+HTRw7OxjBQ6My7nSZu6wxPLuT7y21fT8SS1HJzyhiVBnbrE
-	4M7zQRZhJLzBpje1/ZAncj8BEVusRhMvXbFl33+s8A+vUuYdm1RstVLSAEa0g+Fz
-X-Gm-Gg: AYBFou1OdsAwNWo8jfcPAuJudcbDVb+MegEj/HiUmESv3NE666Ga8fdvCgNexf5TYif
-	8cwgdhbYYeMlefBnzQ8U44Q/7Box4FNtidHIDvn+c3HIz4Bron7Kd18Ezbry802EkhYV9KsLI9p
-	Zd5oYd2Tg/eyOUJ8F+0fH+dNIs2E6XMq+9XA4mEbDWUcz1WZBDvGNcGGJ8M14dimw/c8WUBnQO7
-	WB9j2GH7Nl0hpMIzMWxIKdL2jKnRBuRr6WHUrFbnPrpdpQZW7Y7DvD5NkF5eODxcCegbGTb3n2k
-	KfRNR8a3igAUTd+toc1HTO0gz5DIF+PLg57Zh3hqtLv/z42+vcU6zVNwZ4fk1GoRVXIRkShlQL9
-	ulw/BDu9C2YtUpR2/SqOgvljcRSnSGx9TTon4mr33pz1p8d2GFLl88ID4AFYjDH2hh7C5NCWRbZ
-	hJgahTml8dOrzFCZZRffMX+zj87beYbnzyZ7eIruEM33fbMBFHjC8KHqraB/RbXjKXGu8dVZYU3
-	HalpGMT8O7DKfvLHLuZdbIETRRKkB9npt7lKEDnyORWA5OHZuH+/a9ePy/SfcYWD28U2Bxvpjwz
-	/njn8JScIQc/oxibhPNFdGD3eBJsv54blGDhMdP0p8HkoaQICCtT0TtIFNGdilM=
-X-Received: by 2002:a17:903:90d:b0:2dd:ad74:ac81 with SMTP id d9443c01a7336-2df60b2eb7cmr8919905ad.28.1790075079100;
-        Tue, 22 Sep 2026 04:04:39 -0700 (PDT)
+        bh=OBuuCSVaovNO/WjZ5rO9/fuLOMxcuXau4s48Rrjvlho=;
+        b=aNdib1kW8lA7qVx2h5JfWIRb1F9j4rwdjaRK8BIP1KonE49hwoB2WrOXoXaYH7bscj
+         8iFTe5y7Nb3zEPUkgJ6PFYXcD7UHa9jWohovVwBEOH/yo0pGhXo7Fb1TyHFx5WHUx3g/
+         3nJQx6ASRShkbK9ovB0C2eSIMR0a3fS8foWMlGrk7iIZ0qLveebL+QoAudhB7mShV3gs
+         O41xP9Jdn81DagRyrUBbQ+SPDeIGo6TEAzQ/hbA3gNDS30A/AWF43vB5rxMQ0OuXagN9
+         utZFXIOdkxBXOemv+pdbgmT7ODOPHCBbeHNvCZ06UC463b9ickLEeVGE6oRoypEzhQFn
+         cazg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790075081; x=1790679881;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=OBuuCSVaovNO/WjZ5rO9/fuLOMxcuXau4s48Rrjvlho=;
+        b=QhYjIXoQaotH4bNKOJQUfNP1uWL4u1x3D8lUqAeGkdjzW87/15WQl7TGQ6xDSbNTsG
+         NxmU9vQ7xRrw4eoAb+YoqmU65Lf0F4K+K99Bt2ppRq3TlcH7esjsfkAfDFimsWbYyd1x
+         xJnSP0jih4sIQ01Zf+GVgp9YPnk6yD2QBue1Y03d3JfVcJ2+yByixaoVrLjA97TjRlkv
+         4nFyj6wVChUmpGf3rbFjwnukFiiSi2mLYGYQQof7al4gJYdu+BCw+4ateysFGIOOovol
+         X01h/Eyy27AR3lRRc2C9NkpxowkBveiE2nRxgCKii8av6DTd55GY8Xr9uzhl7iTh25Ml
+         lWEA==
+X-Gm-Message-State: AFuF++kT1x2SysmxkJOTbu6KM1T0LeTXxXDG7Uo96CoNBRCgCHYMoNac
+	jRP9SfDvhfItMEssylCIi8c0+SriT6CWjUgvhNEr6bWxGGEXbPPu3sX/1UQzPYYM
+X-Gm-Gg: AYBFou1fgqS0XV35NF1oD0Zt6ipKGxCL5m0Qsvf7neyw985kJhZ/SCb9IRxoepReaC5
+	BmPOUQuzSeUzkVWDQ7SIG5wc8zNiGy4/ueRwPbf9OoBndL90xs6T3bXhhSaBFcOLJckMYscUKuh
+	hMV3S1Be9MrsZszYxlgxBa2dv8anYe+elMg+PuM27tEUXaykYnaNu4a0MkOFIdsUruaUNtBqbR5
+	slaq0pT7YId/4lt7hp1mNkXE62p/6yuBvQ6/guCK1K3HGYLVa7XI5bsJm2Z1+lkT2bF80IfGRp7
+	3TiIlx9WznDJBPfZaHnTe2NDfP4IKuIUVnX7ffn6Ko6yxJ8Ei6rDBCU4xRhRjWaOBarQuR7jC1j
+	991VIJNlHXHVKcDNaEIKKmvZfaLYaaLdhe3jODnXmVSUheLs3xyG2fD++MwJXOIoNjczPajGUyX
+	xbsg6E+RcohmXSdYdwcru2FlqMmchRq+LDwPASZ2hhquPMwtFpGULRErG0SskWmrX+bSQMTzLit
+	y8oTXjqyBUMHLB7bxbiAO6nkx9QH+Wl8sOIZ35sb24c25ZpcyZGqO0YLST6Ms8CQ9ucsq5hPfrg
+	U3BNt582Dz/YRSynaRfeo4OLRoPtBeHHpnMRn4CM8tPqI2R4Z2acQwHlf6tLgfVr
+X-Received: by 2002:a17:903:98d:b0:2dd:ad73:c984 with SMTP id d9443c01a7336-2df609d501cmr9198535ad.28.1790075080553;
+        Tue, 22 Sep 2026 04:04:40 -0700 (PDT)
 Received: from spider.bream-herring.ts.net ([103.252.203.158])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2df5d019a83sm7999465ad.26.2026.09.22.04.04.37
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2df5d019a83sm7999465ad.26.2026.09.22.04.04.39
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 22 Sep 2026 04:04:38 -0700 (PDT)
+        Tue, 22 Sep 2026 04:04:40 -0700 (PDT)
 From: Matthias Goergens <matthias.goergens@gmail.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org
-Subject: [PATCH e2fsprogs 0/2] e2fsck: fix a self-deadlock that hangs fsck on corrupt images
-Date: Tue, 22 Sep 2026 19:04:33 +0800
-Message-ID: <20260922110435.1528332-1-matthias.goergens@gmail.com>
+Subject: [PATCH e2fsprogs 1/2] libext2fs: fix self-deadlock in flush_cached_blocks() write-error retry
+Date: Tue, 22 Sep 2026 19:04:34 +0800
+Message-ID: <20260922110435.1528332-2-matthias.goergens@gmail.com>
 X-Mailer: git-send-email 2.55.0
+In-Reply-To: <20260922110435.1528332-1-matthias.goergens@gmail.com>
+References: <20260922110435.1528332-1-matthias.goergens@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -72,48 +76,57 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-e2fsck can hang forever on a corrupt image.  The hang is a self-deadlock
-in libext2fs: flush_cached_blocks() releases CACHE_MTX around the
-write_error callback, re-acquires it, and then jumps to a label above
-the loop whose first statement acquires it again.  The mutex is not
-recursive, so the first flush that reports a write error through a
-registered handler blocks the thread that already holds the lock.
+flush_cached_blocks() drops CACHE_MTX before invoking the channel's
+write_error handler, then re-acquires it and jumps to the retry label.
+The retry label is above the while loop, whose first statement acquires
+CACHE_MTX again:
 
-Patch 1 removes the redundant acquisition.  Patch 2 adds a regression
-test.
+  retry:
+	while (errors_found) {
+		if ((flags & FLUSH_NOLOCK) == 0)
+			mutex_lock(data, CACHE_MTX);		<- second
+		...
+				mutex_unlock(data, CACHE_MTX);
+				(channel->write_error)(...);
+				...
+				mutex_lock(data, CACHE_MTX);		<- first
+				goto retry;
 
-This matters beyond the fuzzer that found it: the deadlocked process
-sits at 0% CPU and does not respond to SIGTERM, so an init script
-waiting on fsck waits forever, and read-only checking (-fn) is enough
-to reach it.
+The mutex is created with pthread_mutex_init(..., NULL), so it is not
+recursive and the second acquisition blocks the thread that already
+holds it.  The first flush that has to report a write error through a
+registered handler deadlocks, every time.
 
-Patch 2 departs from the usual f_* shape twice, both times because the
-bug is a hang rather than a wrong answer: the e2fsck run is wrapped in
-timeout(1), or a failure would stop the suite indefinitely rather than
-fail, and the transcript is not compared, because it is a thousand
-lines of repeated write errors that say nothing about this bug.  Happy
-to drop the test or shape it differently if you would rather not have
-either of those in the f_* tests.
+Found by fuzzing e2fsck with corrupt images.  An image whose group
+descriptors force bitmap relocation makes e2fsck -fn fail hundreds of
+writes on the read-only device; the aborted run reaches fatal_error(),
+whose io_channel_flush() enters this loop.  e2fsck then sleeps forever
+at 0% CPU and does not respond to SIGTERM, so an init script waiting on
+fsck waits indefinitely.  Read-only checking is enough to reach it.
 
-Matthias Goergens (2):
-  libext2fs: fix self-deadlock in flush_cached_blocks() write-error
-    retry
-  tests: add f_cache_mtx_deadlock for the flush_cached_blocks() retry
-    lock
+  unfixed:  killed after 35s, no progress
+  fixed:    exits 12 after 13ms
 
- lib/ext2fs/unix_io.c                |   2 +-
- tests/f_cache_mtx_deadlock/expect   |   2 ++
- tests/f_cache_mtx_deadlock/image.gz | Bin 0 -> 695 bytes
- tests/f_cache_mtx_deadlock/name     |   1 +
- tests/f_cache_mtx_deadlock/script   |  44 ++++++++++++++++++++++++++++
- 5 files changed, 48 insertions(+), 1 deletion(-)
- create mode 100644 tests/f_cache_mtx_deadlock/expect
- create mode 100644 tests/f_cache_mtx_deadlock/image.gz
- create mode 100644 tests/f_cache_mtx_deadlock/name
- create mode 100644 tests/f_cache_mtx_deadlock/script
+Drop the redundant acquisition; the loop head takes the lock.
 
+Signed-off-by: Matthias Goergens <matthias.goergens@gmail.com>
+---
+ lib/ext2fs/unix_io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-base-commit: 8fd79523d051d5ea881237f27eb1c664486e0078
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index abd33ba..29968e3 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -738,7 +738,7 @@ retry:
+ 					retval2);
+ 				if (err_buf)
+ 					ext2fs_free_mem(&err_buf);
+-				mutex_lock(data, CACHE_MTX);
++				/* the loop head re-acquires CACHE_MTX */
+ 				goto retry;
+ 			} else
+ 				cache->write_err = 0;
 -- 
 2.55.0
 
