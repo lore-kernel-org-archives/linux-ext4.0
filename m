@@ -1,145 +1,178 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3493D470EA8;
-	Mon, 21 Sep 2026 23:49:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C63C6352014;
+	Tue, 22 Sep 2026 01:11:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790034552; cv=none; b=IO5jRr+A69GokRFnOPaSUK3c2CKGHCYaJi/T5EBc4b+2XbNJo+Gf7dcBAbOZwGiZ3CjsJvL7oYsBtYfQn0bg3C6R11A7G0EHtdvMrYOSETZE3hvQDLTa4IX+DNanXXDdHp2OP5NIf9aQfwb21Vdb3TlreBzTkkSpDgg80Vqsofw=
+	t=1790039500; cv=none; b=DdNVVx2PHKL8sgqnFl+td3ByuMK6ss8XnSPwDWn2att8Yzjl77V1irNyM2kM5SLF9snbo07OiZZtZz1hihIIQPH9SqmQOolz6SySR5lPPbsYiUJClTtsOA3dmMdAhkhkenQbABLPacBMaFXvIOmf8RiugstwwxSuPMbWAbGSxVQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790034552; c=relaxed/simple;
-	bh=sxAkHqTPTG+FHZSO72A/k9PBbKfyid3Xe+Vt7iJNS8E=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=LLwN54eSFCsn7ZnDtcncq3dRknoERVQTZWC8fVtFuVh8zn+GWn3+8SLQgGPa23GrWxP1w7nHKEaeoLwBINRWgrz1rIM3f5ZI+A+Oqf8d1XO2GFbIptOBTTo/m0LdlioC8OS+swRlpX2yUZEXUOTpUSkIwwDqPVgIe2rqHPbczmU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BpHDygNE; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BpHDygNE"
-Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 8A6041F000FF;
-	Mon, 21 Sep 2026 23:49:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790034550;
-	bh=fkWrJTpYBRZ2+QAbaTLvdz++3oPbNjmqWTJdXwsbXPI=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=BpHDygNEkWxOEirG4DGvgTfW1hxIVA8/sW5MxC7GGXZZvewfZ3kdD10WHma9PWIgv
-	 4Xjn9grUtitPkR9vUIZY3h5L9nr8fu7f+gdInJHiS2LwgDTlCMsy82T9VZwOhIcGsF
-	 nbDXiHAlLbUpvXnmNd35h6XpUKZ/npKZYq5bWQgS6AoB54h2VFtxNlHLrYpzg1Yj/n
-	 dKCKVoj6bNsxQLpkDh2F1alToZXj58586+3kOVhOn/T7a5ECupNEoUdFQY8KuZBtz7
-	 tKduJeHgcFUkI30V9+sHmCBXM9cXwbAJ230fpHXChmA/5bChfVsCUPDWCWinYIzvfd
-	 hmWKwAf+WO6Aw==
-Date: Mon, 21 Sep 2026 16:49:10 -0700
-From: "Darrick J. Wong" <djwong@kernel.org>
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: fstests@vger.kernel.org, zlang@kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com, dgc@kernel.org
-Subject: Re: [PATCH] generic/492: bypass the blkid cache when probing the
- label
-Message-ID: <20260921234910.GC6253@frogsfrogsfrogs>
-References: <20260920094137.2749428-1-libaokun@linux.alibaba.com>
- <20260921052719.GB6253@frogsfrogsfrogs>
- <b4a10712-1658-4fba-a037-095fab466270@linux.alibaba.com>
+	s=arc-20240116; t=1790039500; c=relaxed/simple;
+	bh=LjqntJm4sYSuRQmpROhO2wmSoFEVZCKevoQ1XiN/sc0=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=icxyA7Tb3WQeJjQKRhYttvEwwFRS1MsxHGO+oVaNYBbYNnB5stCWAnLKKbPPnnAMHBurofkMf3aGEi6UZSmJhPrC2YVnPi7lL9zEqwEZIQSiTQFQLSODcqz3O5J86qq269Mm7c3x+GYZi8P3DcvKrguu0zR0Fx+NRbBxoA3KtAY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hphqz5V5XzYQvCb;
+	Tue, 22 Sep 2026 09:11:11 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 2545640A64;
+	Tue, 22 Sep 2026 09:11:26 +0800 (CST)
+Received: from [10.174.178.176] (unknown [10.174.178.176])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3Ryqx1bFqtPrQBA--.27304S3;
+	Tue, 22 Sep 2026 09:11:25 +0800 (CST)
+Message-ID: <a563fc94-1143-46f5-a505-49a1a74a9e88@huaweicloud.com>
+Date: Tue, 22 Sep 2026 09:11:13 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <b4a10712-1658-4fba-a037-095fab466270@linux.alibaba.com>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3 1/3] mm/truncate: fix data loss when splitting
+ straddling large folios fails
+To: Jan Kara <jack@suse.cz>
+Cc: Zhang Yi <yizhang089@gmail.com>, Zi Yan <ziy@nvidia.com>,
+ linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
+ liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
+ mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
+ willy@infradead.org, bfoster@redhat.com, joannelkoong@gmail.com,
+ djwong@kernel.org, yi.zhang@huawei.com, yangerkun@huawei.com,
+ chengzhihao1@huawei.com, wangkefeng.wang@huawei.com, yukuai@fnnas.com
+References: <20260916092450.654408-1-yi.zhang@huaweicloud.com>
+ <20260916092450.654408-2-yi.zhang@huaweicloud.com>
+ <xl2rtnntlxoxoozkddgrlkcsgukcngvvcwazm7gb7q5g32yxir@ef5ltcwueboh>
+ <DLGXT0ERY79Z.3C5DYVJVX6S9Z@nvidia.com>
+ <9d931f5e-cb34-4721-9def-7aeeda48700c@gmail.com>
+ <453d0054-4f53-452a-9737-cd37d30a7d44@huaweicloud.com>
+ <35me4qswsu2dd3howvfdglh4ge4t5vihkizoutxt2jhiyul6xj@i6kqsnqpvbra>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <35me4qswsu2dd3howvfdglh4ge4t5vihkizoutxt2jhiyul6xj@i6kqsnqpvbra>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgB3Ryqx1bFqtPrQBA--.27304S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxur17Zw1rCFy3JFy3Zw4UCFg_yoW5CrW3pF
+	ZYgrWqgFWxJr1jkrnrZ3WjqFyay345WF1UAFWfGF17C3ZxXrn3KryYg3WDu3yfGwnrZ348
+	XFyUtF9ruF1jyFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUv2b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I8E87Iv6x
+	kF7I0E14v26F4UJVW0owAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAq
+	x4xG6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6x
+	CaFVCjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0E
+	n4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I
+	0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8
+	ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcV
+	CY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAF
+	wI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa
+	7IU04xRDUUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Mon, Sep 21, 2026 at 05:07:48PM +0800, Baokun Li wrote:
-> Hi Darrick,
+On 9/21/2026 5:05 PM, Jan Kara wrote:
+> On Thu 17-09-26 20:03:57, Zhang Yi wrote:
+>> Sorry, the previous diff format was incorrect, reposting it.
+>>
+>> diff --git a/mm/truncate.c b/mm/truncate.c
+>> index 23c90f00b530..b5e5bdf5f9ef 100644
+>> --- a/mm/truncate.c
+>> +++ b/mm/truncate.c
+>> @@ -279,51 +279,46 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
+>>  			*pstart = round_up(pos + offset,
+>>  					   min_nrbytes) >> PAGE_SHIFT;
+>>
+>> -		if (offset + length == size) {
+>> -			end = aligned_end;
+>> +		end = aligned_end;
+>> +		if (offset + length == size)
+>>  			goto out;
+>> -		}
+>> -
+>> -		split_at2 = folio_page(folio,
+>> -				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+>> -		folio2 = page_folio(split_at2);
+>>
+>>  		/*
+>> -		 * folio2 may become stale due to a concurrent split or
+>> -		 * freeing, so validate it before and after taking its lock.
+>> -		 * If it fails, we can't get an accurate end position and fall
+>> -		 * back to folio->index, which may leave sub-folios split off
+>> -		 * at the offset edge in the page cache this round.
+>> +		 * After the first split at the start edge, the folio at the
+>> +		 * end edge may be freed and reused concurrently.
+>> +		 * __filemap_get_folio() looks up the straddler at
+>> +		 * aligned_end and returns it locked and ref'd with the
+>> +		 * mapping validated.
+>>  		 */
+>> -		end = folio->index;
+>> -		if (!folio_try_get(folio2))
+>> +		folio2 = __filemap_get_folio(folio->mapping, aligned_end,
+>> +					     FGP_LOCK | FGP_NOWAIT, 0);
+>> +		if (IS_ERR(folio2)) {
+>> +			/*
+>> +			 * No sub-folio straddles the boundary when aligned_end
+>> +			 * is empty so discarding up to it is safe.  Otherwise
+>> +			 * the straddler is locked by someone else and we
+>> +			 * cannot obtain a reliable end position, so we fall
+>> +			 * back to folio->index.  This is safe but may leave
+>> +			 * pages split off at the offset edge lingering in the
+>> +			 * page cache this round.
+>> +			 */
+>> +			if (PTR_ERR(folio2) != -ENOENT)
+>> +				end = folio->index;
+>>  			goto out;
+>> -
+>> -		if (folio2->mapping != folio->mapping ||
+>> -		    !folio_test_large(folio2))
+>> -			goto out_put;
+>> -
+>> -		if (!folio_trylock(folio2))
+>> -			goto out_put;
+>> -
+>> -		if (page_folio(split_at2) != folio2) {
+>> -			folio_unlock(folio2);
+>> -			goto out_put;
+>> -		}
+>> -		if (!folio_test_large(folio2)) {
+>> -			end = aligned_end;
+>> -			folio_unlock(folio2);
+>> -			goto out_put;
+>>  		}
+>>
+>> -		/* Split failed: back off to the head of the straddler */
+>> +		/* Already at the minimum order, nothing to split */
+>> +		if (folio_order(folio2) == min_order)
+>> +			goto out_put;
+>> +
+>> +		split_at2 = folio_page(folio2, (aligned_end - folio2->index));
+>> +
+>> +		/* Split failed, keep the straddler intact */
+>>  		if (folio_split_or_unmap(folio2, split_at2, min_order))
+>>  			end = folio2->index;
+>> -		else
+>> -			end = aligned_end;
+>>
+>> -		folio_unlock(folio2);
+>>  out_put:
+>> +		folio_unlock(folio2);
+>>  		folio_put(folio2);
+>>  out:
+>>  		if (pend)
 > 
-> On 2026/9/21 13:27, Darrick J. Wong wrote:
-> > On Sun, Sep 20, 2026 at 05:41:37PM +0800, Baokun Li wrote:
-> >> blkid may serve a stale label from its cache instead of probing the
-> >> device, so the label just set via xfs_io can be missed and the output
-> >> mismatch is non-deterministic.
-> >>
-> >> Pass "-c /dev/null" so that blkid always probes the on-disk superblock
-> >> directly.  Unlike the low-level probing mode (-p), which requires
-> >> util-linux 2.16 or later, this is also supported by the legacy blkid
-> >> shipped with e2fsprogs.
-> >>
-> >> Fixes: c3c9630968a6 ("generic: test online label ioctl")
-> >> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
-> > Seems fine to me; I guess blkid could be racing with whatever updates
-> > the cache...udev?
+> FWIW this looks much more understandable to me. And since this is a
+> preexisting issue I agree this should be a separate patch.
 > 
-> 
-> Not a race, and not related to udev.  It's a long story; details below.
-> 
-> In the xfstests-bld appliance blkid is e2fsprogs' legacy blkid and its
-> cache is /etc/blkid.tab; the only writers are blkid itself and
-> e2fsprogs' fsck (both probe with the cache enabled).  systemd's udev
-> uses libblkid's low-level probe API and never touches this file.
-> 
-> What we hit is a strictly sequential sequence that depends on two
-> "same second" coincidences.  The cache validity check (blkid_verify()
-> in lib/blkid/probe.c) is:
-> 
->     now >= TIME && mtime(seconds) <= TIME && age < 2s
-> 
-> Both sides are in seconds, and only the 2s window applies to a fresh
-> blkid process (BLKID_BID_FL_VERIFIED is not persistent).
-> 
-> mkfs only advances the device mtime and never updates the cache; the fs
-> label ioctl updates neither, so right after setting a new label a
-> cached lookup can still return the old one.
-> 
-> The trap is set by _check_scratch_fs: it runs "fsck -t ext4 ...", which
-> probes the device with the cache enabled and writes the entry back with
-> TIME=now and the current label state.
-> 
-> Here is a sequential 490/491/492 run that trips it (timestamps from a
-> CI log, ext4/bigalloc_1k):
-> 
->     M-2  09:09:44  end of 490: fsck finds the previous entry stale
->                    (age >= 2s) -> probes -> tab = {no LABEL, TIME=44}
-> 
->     M-1  09:09:45  start of 491: mkfs -> device mtime = 45
->                    (mkfs doesn't update the cache; tab stays TIME=44)
->     M    09:09:46  end of 491: unmount + _check_scratch_fs
->                    -> fsck sees mtime(45) > TIME(44) -> probes
->                    -> tab = {no LABEL, TIME=46}          <- trap
-> 
->     M    09:09:46  start of 492: mkfs -> device mtime = 46
->     M    09:09:46  mount; ioctl label="label.492" (mtime unchanged)
->     M    09:09:46  blkid(35): mtime(46) <= TIME(46), age < 2s
->                    -> cache deemed valid, no probe -> prints no LABEL
->     M+1  09:09:47  umount; blkid(39): still < 2s -> again
->     M+1  09:09:47  check reports output mismatch (two lines missing)
-> 
-> The difference between the e2fsprogs and util-linux libblkid is the
-> time granularity: the former stores seconds only (TIME="%ld",
-> bid_time = time(0), compares st_mtime <= bid_time), while the latter
-> stores usec (TIME="sec.usec") and has an nsec tie-break in the compare,
-> so the same-second case is much easier to hit with the e2fsprogs blkid.
+> 								Honza
 
-[add ext4 list to cc]
+Thank you for confirming. I will send out the next iteration after
+testing.
 
-Perhaps xfstests-bld should use the system blkid then?  IIRC the one
-in e2fsprogs is very old and out of date.
+Thanks,
+Yi.
 
---D
-
-> 
-> The patch avoids this by probing with -c /dev/null (the legacy blkid
-> has no -p).  Reproduced on ext4/bigalloc_1k: unpatched 10 of 65 runs
-> fail, patched 120/120 pass.
-> 
-> 
-> >
-> > Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
-> >
-> > --D
-> 
-> 
-> Thanks for the review!
-> 
-> Cheers,
-> Baokun
-> 
-> 
