@@ -1,77 +1,77 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8496F3AFAF8;
-	Tue, 22 Sep 2026 11:32:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C0F43DD862;
+	Tue, 22 Sep 2026 11:35:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076784; cv=none; b=i4N1U/loy/wPy/b825RPx/Uq/XdJluWnFyxIu0iiuoL4NcVXD42ZxFzsL2uH1tqz93v+QAtjUCswDY3YHHSvmtfGrb7anZFo+E2E9FPjgnlk07/SSul+QBdgoCmdTbBs1Y19Zt5NuaK66f22GK5edBIcfhNvZSfkF1qS2s0ZJ84=
+	t=1790076914; cv=none; b=RLR8EB2kIOxns4CZ1cu2sozrqpNvPfD4lwmX6oMWJGGAUUUhAexc+I/+PqV3ei2qoNOpKnGOzkbuJhJFZmGsL4teAD5k61sx/CyR3zztncrFDxoxuUBeoXuEdSOx3JWLp7U0ByXn2vBa5BT3T1UGA0C8LYbEGyE+mJlrrAeZtQ8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076784; c=relaxed/simple;
-	bh=UZcpxsK7+haISNbUhHekrYGgLE/nNFgu9VzubUjAvZU=;
+	s=arc-20240116; t=1790076914; c=relaxed/simple;
+	bh=iongsWRzhtIVBamgQFIm65qd3lNrHWGKTPupxrNqcgw=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tbsdGc0L86JVRrYhceliCim0jRcXBoacviPYz52x1ZWaBoCFSotENC/Ht8aegvnSJCENyJdrUWkoJ5QdF/DZJJ4LkpO7ZskkDK7wT+C19sbo+XEvQzTKp9x7ftUvtpvq/uzOV6JoVRgA7xoVH2NZNn//u7Ey61bDh931AnD3oII=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=lqw/VHsF; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Bt7fouIx; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Z7nMRJA3; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=g82nSuCf; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=Cg4qiLNoR1YhhF1XbA5VrZCkpGh1yPYHWaqH1ooiFZD4HnF04pMN/IEjEbzyvlg1cIsRu9ty8RGOSTbobB73hXJVKDJ4kvBy+bN3rquQNdNpHfXxOT8wJfzjzUTC9fPDPg4iUsPLcicnE5WKwbZpgTHVNjjxDmclLCX6UG0T8UU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=dnuYEvhV; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FQSJM2lW; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=kB/aZ+Ol; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZO0zUPM/; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="lqw/VHsF";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Bt7fouIx";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Z7nMRJA3";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="g82nSuCf"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="dnuYEvhV";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FQSJM2lW";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="kB/aZ+Ol";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZO0zUPM/"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 1F39F1F769;
-	Tue, 22 Sep 2026 11:32:45 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 094B01F769;
+	Tue, 22 Sep 2026 11:35:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790076769; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1790076906; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
-	b=lqw/VHsFOyM1PsjsKWmUnjEAiCZrbCnlFP2c7OK+0emnIHPmzIbSp1YpgckUrEHrz2AjrC
-	/aWIoTkEXg8IG0wwc6BsWf1vGj9FIih8N+MsndNSIotYIWQbAi16PyUfu0l/F5ZxazwUu0
-	D7t+jRi1ynyV3tEtiFWjEZ2J9nt4SSk=
+	bh=Oypy0douIFW7EKquJ4goZfdutHxcrX5ecmHjC0AHCmA=;
+	b=dnuYEvhVPbmvayuEgEWwWquR8F4sHLQrOxLAH5VyRQcEfSz3ylC/KUrgdxt1Qt/t+T6V/4
+	nmgs3pIZ6j7L0DlDKuibxWj2Xf5/iJhAlxa6BvhGlQ8c7qYK16/E6vkbWipEmDZgGhiopx
+	Vhyn1x1mpppG2XUoR5gZ85qqKoUsQ8g=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790076769;
+	s=susede2_ed25519; t=1790076906;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
-	b=Bt7fouIx/zmaW99whmgqogNbfULuwiK8aUDCtch2h0xdWVV8aNbOOh48S9YFiJQO1/U7I7
-	N46r8uF2MkoG7lAw==
+	bh=Oypy0douIFW7EKquJ4goZfdutHxcrX5ecmHjC0AHCmA=;
+	b=FQSJM2lWhQZcnLYpgfaUvhbTkaeEfVokk4QPLgydhiUlnsjHhjiufEU+WhL4vls9tN9XVq
+	TQXu9Oz30jPoj0DQ==
 Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790076765; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1790076902; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
-	b=Z7nMRJA3v3h9WyGyPMrFub5U360su5GbXavnZdD3x71RC76+r8aj4DqIxF2+lT6vTLsEZi
-	tz3IkGHeqZQKzlpmnjbKbwVKmS/uyNNA3TW7nHY7PkNnz7f6/w1Gbg0cju42okiZ0tMzOx
-	TTkuY2HSZWOHUN6TVyOA5wO4PVMcbxY=
+	bh=Oypy0douIFW7EKquJ4goZfdutHxcrX5ecmHjC0AHCmA=;
+	b=kB/aZ+OlFZ9UZ7yqapZcNkHIcapcK43UIxyW6fSQSvMdpl3Uu93M6X5hvw7ytzbJFZ2Cv+
+	72UZTKdlBWZbylykbR7MmBC+OVmB2Wo5RJYJEp/tjGeN5BH0Jr87cVgXRXtIiHJVQj232w
+	5FACwHrmNQlob8dVjL5Ul/9kFr4w8+w=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790076765;
+	s=susede2_ed25519; t=1790076902;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
-	b=g82nSuCfFgyI2FLYZDCH/OAHmR7BQZm0QS3txU3OBpo0yR30jLM02PapAsE9RY8V8EeHGk
-	Aih5aEjTgmXiYZAQ==
+	bh=Oypy0douIFW7EKquJ4goZfdutHxcrX5ecmHjC0AHCmA=;
+	b=ZO0zUPM/DyUZAl8qbb8OeQThGVkzh4U+O4Y8VpZ6aUuMXNzR1XA/Lp/N5gRZgri+vQ0qfG
+	Eu7Gc3ZeKg3ItUAA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E2D60132D3;
-	Tue, 22 Sep 2026 11:32:44 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D2C37132D3;
+	Tue, 22 Sep 2026 11:35:01 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id mNjuLFxnsmpTcgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 22 Sep 2026 11:32:44 +0000
+	id ksqgK+VnsmqmdAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 22 Sep 2026 11:35:01 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 67F14A13D4; Tue, 22 Sep 2026 13:32:36 +0200 (CEST)
-Date: Tue, 22 Sep 2026 13:32:36 +0200
+	id 63538A13D4; Tue, 22 Sep 2026 13:35:01 +0200 (CEST)
+Date: Tue, 22 Sep 2026 13:35:01 +0200
 From: Jan Kara <jack@suse.cz>
 To: Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, 
@@ -82,11 +82,11 @@ Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
 	bfoster@redhat.com, joannelkoong@gmail.com, djwong@kernel.org, yi.zhang@huawei.com, 
 	yizhang089@gmail.com, yangerkun@huawei.com, chengzhihao1@huawei.com, 
 	wangkefeng.wang@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v4 1/4] mm/truncate: align truncation boundaries to
- mapping minimum folio order
-Message-ID: <uo7xgm7zk53f77i6qnrubqbhxf3tg6tp7qscci5nkylifnfahv@nf2xpxbkqwbe>
+Subject: Re: [PATCH v4 2/4] mm/truncate: look up the end-edge straddler by
+ index
+Message-ID: <beaedzhoq4frb4nyeecva4plxxpalojnqomxuyfaphflskttqq@vecce4gwtr45>
 References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
- <20260922110703.468389-2-yi.zhang@huaweicloud.com>
+ <20260922110703.468389-3-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -95,7 +95,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260922110703.468389-2-yi.zhang@huaweicloud.com>
+In-Reply-To: <20260922110703.468389-3-yi.zhang@huaweicloud.com>
 X-Spam-Score: -3.80
 X-Spam-Level: 
 X-Spamd-Result: default: False [-3.80 / 50.00];
@@ -119,47 +119,41 @@ X-Spamd-Result: default: False [-3.80 / 50.00];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,nvidia.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.cz:email,sashiko.dev:url,nvidia.com:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 X-Spam-Flag: NO
 
-On Tue 22-09-26 19:07:00, Zhang Yi wrote:
+On Tue 22-09-26 19:07:01, Zhang Yi wrote:
 > From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> When the mapping has a non-zero minimum folio order (min_order),
-> folio_split() in truncate_inode_partial_folio() stops at min_order
-> instead of order 0, so the sub-folio containing a split point stays
-> aligned to 1 << min_order rather than to a single page. The original
-> boundaries in truncate_inode_pages_range() were based on page
-> granularity, so either boundary could land inside the min_order chunk at
-> its edge, and the truncation loop would drop that whole chunk, valid
-> out-of-range tail included.
+> In truncate_inode_partial_folio(), after the first split at the start
+> edge, folio_split() unlocks and drops the refcount of the after-split
+> sub-folios. The sub-folio straddling the end of the truncation range is
+> therefore unlocked and only transiently ref'd in the page cache while
+> the code still derives it from a page pointer inside the original folio.
 > 
-> For example, a 64K (order-4) folio with min_order = 2 (16K) punched from
-> offset 0 to 36K:
+> Between the first split finishing and page_folio() resolving split_at2,
+> that tail page can be reclaimed, freed and reallocated as a new large
+> folio in the same mapping at a different file offset. folio2 then points
+> at a folio that does not cover the end boundary, yet
+> folio2->mapping == folio->mapping still holds, so the stale pointer
+> passes the mapping check and folio_split_or_unmap() splits a folio at a
+> wrong position (or, with a transient refcount, a use-after-free window
+> opens between try_get and the split). __folio_split()'s own
+> folio != page_folio(split_at) check cannot catch this either since
+> split_at2 has been reallocated as part of the new folio, so
+> page_folio(split_at2) resolves back to folio2.
 > 
->   split @p0 -> [p0-p3, p4-p7, p8-p15]         # non-uniform, min_order
->   folio2 = p8-p15           # straddles: p8 in range, p9-p15 tail valid
->   2nd split of folio2 -> [p8-p11, p12-p15]    # success
->   end(old) = p9                               # BUG: p9 inside [p8-p11]
->   loop truncates ... p8-p11               # p9-p11's valid tail is lost
+> Look the straddler up by its page index instead. __filemap_get_folio()
+> returns the folio currently covering the boundary, ref'd and locked,
+> with the mapping validated under the lock, so the split target is always
+> the real folio at the end edge.
 > 
-> It has gone unnoticed so far for two reasons. A non-zero min_order is
-> only used by filesystems with a block or sector size larger than the
-> page size, and those either always write back the affected range before
-> punching a hole or truncating, or they carry filesystem private data on
-> dirty folios (e.g. buffer_head), which makes filemap_release_folio()
-> fail and folio_split() abort with -EBUSY, so the folio is never split
-> and the old start/end boundaries remain valid. The bug only becomes
-> reachable on paths that truncate dirty large folios without prior
-> writeback and without filesystem private data, such as the upcoming ext4
-> iomap buffered I/O path.
-> 
-> Align both start (rounded up) and end (rounded down) to the mapping
-> minimum folio order so they always fall on a folio boundary.
-> 
-> Reported-by: Joanne Koong <joannelkoong@gmail.com>
-> Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=OWzVRgD4202y1g@mail.gmail.com/
-> Fixes: e220917fa5077 ("mm: split a folio in minimum folio order chunks")
+> Reported-by: Sashiko <sashiko-bot@kernel.org>
+> Link: https://sashiko.dev/#/message/20260916094500.C30061F00893%40smtp.kernel.org
+> Link: https://lore.kernel.org/linux-mm/DLGXT0ERY79Z.3C5DYVJVX6S9Z@nvidia.com/
+> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
+> Cc: stable@vger.kernel.org
+> Suggested-by: Jan Kara <jack@suse.cz>
 > Suggested-by: Zi Yan <ziy@nvidia.com>
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
@@ -170,57 +164,60 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  mm/truncate.c | 18 ++++++++++++------
->  1 file changed, 12 insertions(+), 6 deletions(-)
+>  mm/truncate.c | 30 ++++++++++++++++--------------
+>  1 file changed, 16 insertions(+), 14 deletions(-)
 > 
 > diff --git a/mm/truncate.c b/mm/truncate.c
-> index b58ba940be47..f9625bb4916f 100644
+> index f9625bb4916f..a8a179b38252 100644
 > --- a/mm/truncate.c
 > +++ b/mm/truncate.c
-> @@ -345,9 +345,11 @@ long mapping_evict_folio(struct address_space *mapping, struct folio *folio)
->   * @lstart: offset from which to truncate
->   * @lend: offset to which to truncate (inclusive)
->   *
-> - * Truncate the page cache, removing the pages that are between
-> - * specified offsets (and zeroing out partial pages
-> - * if lstart or lend + 1 is not page aligned).
-> + * Truncate the page cache, removing the folios that are between specified
-> + * offsets (and zeroing out partial folios if lstart or lend + 1 is not
-> + * folio aligned).  For mappings with a non-zero minimum folio order, the
-> + * boundaries are aligned inwards to 1 << min_order so the edge sub-folio
-> + * straddling the range is kept.
->   *
->   * Truncate takes two passes - the first pass is nonblocking.  It will not
->   * block on page locks and it will not block on writeback.  The second pass
-> @@ -374,14 +376,14 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	int		i;
->  	struct folio	*folio;
->  	bool		same_folio;
-> +	pgoff_t		min_nrpages = mapping_min_folio_nrpages(mapping);
+> @@ -259,30 +259,32 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
+>  		 * for shmem truncate
+>  		 */
+>  		struct folio *folio2;
+> +		pgoff_t end_idx;
 >  
->  	if (mapping_empty(mapping))
->  		return;
+>  		if (offset + length == size)
+>  			goto no_split;
 >  
->  	/*
-> -	 * 'start' and 'end' always covers the range of pages to be fully
-> -	 * truncated. Partial pages are covered with 'partial_start' at the
-> -	 * start of the range and 'partial_end' at the end of the range.
-> +	 * 'start' and 'end' always covers the range of folios to be fully
-> +	 * truncated, with both boundaries aligned inwards to 1 << min_order.
->  	 * Note that 'end' is exclusive while 'lend' is inclusive.
->  	 */
->  	start = (lstart + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	else
->  		end = (lend + 1) >> PAGE_SHIFT;
+> -		split_at2 = folio_page(folio,
+> -				PAGE_ALIGN_DOWN(offset + length) / PAGE_SIZE);
+> -		folio2 = page_folio(split_at2);
+> -
+> -		if (!folio_try_get(folio2))
+> +		/*
+> +		 * After the first split at the start edge, the folio at the
+> +		 * end edge may be freed and reused concurrently.
+> +		 * __filemap_get_folio() looks up the straddler at end_idx
+> +		 * and returns it locked and ref'd with the mapping
+> +		 * validated.
+> +		 */
+> +		end_idx = (pos + offset + length) >> PAGE_SHIFT;
+> +		folio2 = __filemap_get_folio(folio->mapping, end_idx,
+> +					     FGP_LOCK | FGP_NOWAIT, 0);
+> +		if (IS_ERR(folio2))
+>  			goto no_split;
 >  
-> +	start = round_up(start, min_nrpages);
-> +	if (end != (pgoff_t)-1)
-> +		end = round_down(end, min_nrpages);
-> +
->  	folio_batch_init(&fbatch);
->  	index = start;
->  	while (index < end && find_lock_entries(mapping, &index, end - 1,
+> +		/* make sure folio2 is large */
+>  		if (!folio_test_large(folio2))
+>  			goto out;
+>  
+> -		if (!folio_trylock(folio2))
+> -			goto out;
+> -
+> -		/* make sure folio2 is large and does not change its mapping */
+> -		if (folio_test_large(folio2) &&
+> -		    folio2->mapping == folio->mapping)
+> -			folio_split_or_unmap(folio2, split_at2, min_order);
+> -
+> -		folio_unlock(folio2);
+> +		split_at2 = folio_page(folio2, (end_idx - folio2->index));
+> +		folio_split_or_unmap(folio2, split_at2, min_order);
+>  out:
+> +		folio_unlock(folio2);
+>  		folio_put(folio2);
+>  no_split:
+>  		return true;
 > -- 
 > 2.52.0
 > 
