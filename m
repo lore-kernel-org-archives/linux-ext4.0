@@ -1,114 +1,168 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70A0953B325
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2026 11:29:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F15BD53B5F3;
+	Tue, 22 Sep 2026 11:29:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076582; cv=none; b=OnlfqrWe8xm6g4ZJ+gO74Dg8z3MjaxauPJaXN9T0F1xf0RAvsSQtPzUqCFjGXx6vNKy/HvTQEcdVYnxFeN066CAs8secIwremyDHlI1eZ46ny1C9zfozao1TTFSJRFdMe/HJ8/4fIEUsqNwD47F95+jOccwPFnC1eGcXmwJHsMA=
+	t=1790076605; cv=none; b=jy5pCMWbceOeqdJ78gm5yzYzzJfXseJEYphFhiAiS9vdgf6atJj6JXCWgD9rr9laBtvvA5pnZhpR30yapT8+vb+DBNkGTW7EKItqCGAgTnwbQjogGh86QMbQ4vHhBXClA5hoYoOOJbjN+1r8sVnJfs8XlAtoGPWaw7fKoK5SoxE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076582; c=relaxed/simple;
-	bh=CNGySPDVlBnXBGbLT9fJvQYGRvLcQDA+hhpDACQpv7k=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=bYhOgO/AQCvl2zLVNXJ3venBY00qXwS3RCBmdMtxgDj6ExF2NDdFZAeFq1nwJ7nwsYTcpWgmfzhDkzVphVRv/u/FBy3u74GLG2u2Vr8/jtATE6dQRvNVHshjYCkw4+WabIvvweaJlo9lRDzd3bAEBbaMt+vqhW0mPE0P7v/n5ts=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VbxrG2dg; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790076605; c=relaxed/simple;
+	bh=Fcfcg/SnohK01pfQgT7UZiMMCzRAK7qzFCiSmSN4/Io=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=tUM5/SyPryWxAjMexQwuxglG01UN9Bw7ZTkZxBX0RTwHKb5wrH3PRHdfDb87XhKsBw2cmPpV7vIynxluQB3b7XBF7AbzyvIE4UeqrqYDRigEH07ngDwFT8bFV10GvUALDrtgkpPmdKgdaHuUANpi15iaialYJDUqrtBqHBkagck=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W0dEvj5z; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VbxrG2dg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BEF871F000FF;
-	Tue, 22 Sep 2026 11:29:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W0dEvj5z"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F43B1F000FF;
+	Tue, 22 Sep 2026 11:29:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790076581;
-	bh=tOi1br+Pz9UFaXfBW4YwUW5/hTHqFJYJ1DlTMnz/xKQ=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=VbxrG2dgLWuN47bzvgtNJ/xhIV/YwYjx28SBgsk7fEi5OEKh/2ufoGZGkZQHGEWEM
-	 N6XGNB9AGEVAxBOJ81ozp77CDUfnl3Qr0sGFh0AQBt+fjrZTrBjPtOkweieNGSBPtH
-	 k40FDb11Jr94UZpoC0GTCSC6MndcQs5DQpzAIUxWuDbpaCyWA3c5xiehdLXyGZ95BJ
-	 StGYDVvAGEu1IvwfWVMvONpBxLsKcoFozDJdWx7FlEay4oVmzYdks5QkVrdUt01sR2
-	 zDuJvfaYw6l9+P6ktLunZ2+7BN7evKQIOwDsnTBL6KtypNYh7BOlf3oNHJwjFPlWQ4
-	 d2LDpsGxvBSzQ==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v4 4/4] mm/truncate: clarify return value of
- truncate_inode_partial_folio()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260922110703.468389-5-yi.zhang@huaweicloud.com>
-References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
- <20260922110703.468389-5-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 22 Sep 2026 11:29:40 +0000
-Message-Id: <20260922112940.BEF871F000FF@smtp.kernel.org>
+	s=k20260515; t=1790076597;
+	bh=nV8p6Om8qinv6yCBXUuo5B2uIDMSV459k6GB4PG3ZlI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=W0dEvj5zWbynOI1xN6zKaAWjWZtxGOprab+zcQIcvZTXmYxhx+2RqMPc1aU4QZttH
+	 2Lp/6eIl2zv0Rkkad56JU0uFNc+uHztMw/x5ZfZxowYZWEw4kRJSvw8P/qPQoyxL5C
+	 UTA5+iAh3uJMkWBtQtoGBf8I8SGI3pdjY4ByxIkJLukL9e6r5RWIkKiyEB2CiVe1LW
+	 XrR+xVhQVeezmzuRaN9DcXdomNZZUVVzWLOP+fWiZamXflNSka1h1QzcCOqxZnGtQU
+	 +oJijmz3DdwhmB4njIISMv+3QdNdnGRdwwZHpH6aDbkzTZl4JcBfIu8Bc7Hx0RgtkP
+	 F/uhJyHeh1mfQ==
+Date: Tue, 22 Sep 2026 13:29:52 +0200
+From: Andrey Albershteyn <aalbersh@kernel.org>
+To: Andrey Albershteyn <aalbersh@redhat.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, ebiggers@kernel.org, hch@lst.de, 
+	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, david@fromorbit.com
+Subject: Re: [PATCH v16 14/21] xfs: don't remove written extents past EOF on
+ fsverity inodes
+Message-ID: <arJl4xbG3vUrX9DK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+References: <20260918111539.1003439-1-aalbersh@kernel.org>
+ <20260918111539.1003439-15-aalbersh@kernel.org>
+ <20260922043750.GN2705364@frogsfrogsfrogs>
+ <arI9MpRVBZ0UEofK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <arI9MpRVBZ0UEofK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] mm: newly split large folios are skipped during shmem truncation
---
+On 2026-09-22 10:33:22, Andrey Albershteyn wrote:
+> On 2026-09-21 21:37:50, Darrick J. Wong wrote:
+> > On Fri, Sep 18, 2026 at 01:15:26PM +0200, Andrey Albershteyn wrote:
+> > > xfs_free_eofblocks() removes all extents past EOF unless the
+> > > XFS_DIFLAG_PREALLOC or XFS_DIFLAG_APPEND flags are set. This is
+> > > undesired for fsverity as it stores metadata beyond EOF. However, while
+> > > merkle tree is being built, delayed preallocation and unwritten extents
+> > > are used. After metadata construction is done, fsverity inodes becomes
+> > > read-only and won't be changed anymore, none of these unwritten extents
+> > > or preallocations in post EOF region will be used.
+> > > 
+> > > Let xfs_free_eofblocks() be called on fsverity inode as usual to remove
+> > > anything which is not written extent. However, inodes which are
+> > > undergoing merkle tree construction need to be skipped in case reclaim
+> > > takes place.
+> > > 
+> > > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
+> > > ---
+> > >  fs/xfs/xfs_bmap_util.c | 25 ++++++++++++++++++++++---
+> > >  1 file changed, 22 insertions(+), 3 deletions(-)
+> > > 
+> > > diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+> > > index 268d159339d0..7fd951992557 100644
+> > > --- a/fs/xfs/xfs_bmap_util.c
+> > > +++ b/fs/xfs/xfs_bmap_util.c
+> > > @@ -31,6 +31,7 @@
+> > >  #include "xfs_rtbitmap.h"
+> > >  #include "xfs_rtgroup.h"
+> > >  #include "xfs_zone_alloc.h"
+> > > +#include <linux/fsverity.h>
+> > >  
+> > >  /* Kernel only BMAP related definitions and functions */
+> > >  
+> > > @@ -553,6 +554,13 @@ xfs_can_free_eofblocks(
+> > >  	if (last_fsb <= end_fsb)
+> > >  		return false;
+> > >  
+> > > +	/*
+> > > +	 * Don't clean fsverity inodes which have merkle tree being built, the
+> > > +	 * merkle tree is written beyond EOF
+> > > +	 */
+> > > +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
+> > > +		return false;
+> > > +
+> > >  	/*
+> > >  	 * Check if there is an post-EOF extent to free.  If there are any
+> > >  	 * delalloc blocks attached to the inode (data fork delalloc
+> > > @@ -579,6 +587,9 @@ xfs_free_eofblocks(
+> > >  	struct xfs_trans	*tp;
+> > >  	struct xfs_mount	*mp = ip->i_mount;
+> > >  	int			error;
+> > > +	int			bmapi_flags = XFS_BMAPI_NODISCARD;
+> > > +	bool			has_verity =
+> > > +			ip->i_diflags2 & XFS_DIFLAG2_VERITY;
+> > >  
+> > >  	/* Attach the dquots to the inode up front. */
+> > >  	error = xfs_qm_dqattach(ip);
+> > > @@ -593,15 +604,20 @@ xfs_free_eofblocks(
+> > >  	 *
+> > >  	 * Note that this means we also leave speculative preallocations in
+> > >  	 * place for preallocated files.
+> > > +	 *
+> > > +	 * Clean up delalloc reservations for fsverity too as those won't be
+> > > +	 * used
+> > >  	 */
+> > > -	if (ip->i_diflags & (XFS_DIFLAG_PREALLOC | XFS_DIFLAG_APPEND)) {
+> > > +	if (ip->i_diflags & (XFS_DIFLAG_PREALLOC | XFS_DIFLAG_APPEND) ||
+> > > +			has_verity) {
+> > >  		if (ip->i_delayed_blks) {
+> > >  			xfs_bmap_punch_delalloc_range(ip, XFS_DATA_FORK,
+> > >  				round_up(XFS_ISIZE(ip), mp->m_sb.sb_blocksize),
+> > >  				LLONG_MAX, NULL);
+> > >  		}
+> > >  		xfs_inode_clear_eofblocks_tag(ip);
+> > > -		return 0;
+> > > +		if (!has_verity)
+> > > +			return 0;
+> > >  	}
+> > >  
+> > >  	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
+> > > @@ -613,6 +629,9 @@ xfs_free_eofblocks(
+> > >  	xfs_ilock(ip, XFS_ILOCK_EXCL);
+> > >  	xfs_trans_ijoin(tp, ip, 0);
+> > >  
+> > > +	if (has_verity)
+> > > +		bmapi_flags |= XFS_BMAPI_UNWRITTEN;
+> > 
+> > This ought to have a comment explaining where post-eof unwritten extents
+> > might come from:
+> > 
+> > 	/*
+> > 	 * If fs-verity fails to write the full metadata, it can leave
+> > 	 * unwritten preallocations after EOF.  Clear all that out.
+> > 	 */
+> > 	if (has_verity)
+> > 		bmapi_flags |= XFS_BMAPI_UNWRITTEN;
+> > 
+> > 
+> > With that documented,
+> > Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+> 
+> Sure, I will add the comment
+> Thanks!
 
-commit 15553d4635c639eef475fb728e2da88b1d36fe93
-Author: Zhang Yi <yi.zhang@huawei.com>
+I will re-pharese the comment to:
 
-mm/truncate: clarify return value of truncate_inode_partial_folio()
+	/*
+	 * While fs-verity writes metadata after EOF, it can leave unwritten
+	 * preallocations.  Clear all that out.
+	 */
 
-This commit clarifies the return value of truncate_inode_partial_folio()
-to strictly indicate whether at least one split succeeded. The callers now
-use this return value as a flag to determine whether the truncation loop
-should be reset to pick up newly split sub-folios on the shmem path.
+The preallocation are left even in good case, in the merkle tree
+holes and after fsverity descriptor.
 
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index 81fb4de6226bc..317cb4ae36259 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -216,8 +216,7 @@ static int folio_split_or_unmap(struct folio *folio, =
-struct page *split_at,
->   * aligned inwards to min_order, i.e. the range of folios wholly within
->   * [lstart, lend] and so safe to discard.
->   *
-> - * Returns false if splitting failed so the caller can avoid
-> - * discarding the entire folio which is stubbornly unsplit.
-> + * Return %true if at least one split succeeded, %false otherwise.
->   */
->  bool truncate_inode_partial_folio(struct folio *folio, loff_t lstart,
->  				  loff_t lend, pgoff_t *pstart, pgoff_t *pend)
-
-[Severity: High]
-Does shmem_undo_range() still rely on an outdated check instead of just this
-return value?
-
-mm/shmem.c:shmem_undo_range() {
-    ...
-				} else if (truncate_inode_partial_folio(folio,
-						lstart, lend, NULL, NULL)) {
-					if (!folio_test_large(folio)) {
-						folio_unlock(folio);
-						index =3D start;
-						break;
-					}
-				}
-    ...
-}
-
-Because folio_split() can perform non-uniform splits, the resulting sub-fol=
-io
-could still be a large folio (order > 0). If it is, folio_test_large(folio)
-evaluates to true, so this check prevents the loop from resetting even when
-truncate_inode_partial_folio() successfully split it.
-
-Since find_get_entries() has already advanced the search index, the loop
-continues from the advanced index and bypasses the newly split sub-folios
-within the truncation range.
-
-Can this cause newly split sub-folios to be skipped, leaving them in the pa=
-ge
-cache beyond EOF?
-
-[ ... ]
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260922110703.4683=
-89-1-yi.zhang@huaweicloud.com?part=3D4
+-- 
+- Andrey
