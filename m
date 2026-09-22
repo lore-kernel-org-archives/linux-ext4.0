@@ -1,45 +1,92 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F15BD53B5F3;
-	Tue, 22 Sep 2026 11:29:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8496F3AFAF8;
+	Tue, 22 Sep 2026 11:32:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790076605; cv=none; b=jy5pCMWbceOeqdJ78gm5yzYzzJfXseJEYphFhiAiS9vdgf6atJj6JXCWgD9rr9laBtvvA5pnZhpR30yapT8+vb+DBNkGTW7EKItqCGAgTnwbQjogGh86QMbQ4vHhBXClA5hoYoOOJbjN+1r8sVnJfs8XlAtoGPWaw7fKoK5SoxE=
+	t=1790076784; cv=none; b=i4N1U/loy/wPy/b825RPx/Uq/XdJluWnFyxIu0iiuoL4NcVXD42ZxFzsL2uH1tqz93v+QAtjUCswDY3YHHSvmtfGrb7anZFo+E2E9FPjgnlk07/SSul+QBdgoCmdTbBs1Y19Zt5NuaK66f22GK5edBIcfhNvZSfkF1qS2s0ZJ84=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790076605; c=relaxed/simple;
-	bh=Fcfcg/SnohK01pfQgT7UZiMMCzRAK7qzFCiSmSN4/Io=;
+	s=arc-20240116; t=1790076784; c=relaxed/simple;
+	bh=UZcpxsK7+haISNbUhHekrYGgLE/nNFgu9VzubUjAvZU=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tUM5/SyPryWxAjMexQwuxglG01UN9Bw7ZTkZxBX0RTwHKb5wrH3PRHdfDb87XhKsBw2cmPpV7vIynxluQB3b7XBF7AbzyvIE4UeqrqYDRigEH07ngDwFT8bFV10GvUALDrtgkpPmdKgdaHuUANpi15iaialYJDUqrtBqHBkagck=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W0dEvj5z; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=tbsdGc0L86JVRrYhceliCim0jRcXBoacviPYz52x1ZWaBoCFSotENC/Ht8aegvnSJCENyJdrUWkoJ5QdF/DZJJ4LkpO7ZskkDK7wT+C19sbo+XEvQzTKp9x7ftUvtpvq/uzOV6JoVRgA7xoVH2NZNn//u7Ey61bDh931AnD3oII=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=lqw/VHsF; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Bt7fouIx; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Z7nMRJA3; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=g82nSuCf; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W0dEvj5z"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F43B1F000FF;
-	Tue, 22 Sep 2026 11:29:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790076597;
-	bh=nV8p6Om8qinv6yCBXUuo5B2uIDMSV459k6GB4PG3ZlI=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=W0dEvj5zWbynOI1xN6zKaAWjWZtxGOprab+zcQIcvZTXmYxhx+2RqMPc1aU4QZttH
-	 2Lp/6eIl2zv0Rkkad56JU0uFNc+uHztMw/x5ZfZxowYZWEw4kRJSvw8P/qPQoyxL5C
-	 UTA5+iAh3uJMkWBtQtoGBf8I8SGI3pdjY4ByxIkJLukL9e6r5RWIkKiyEB2CiVe1LW
-	 XrR+xVhQVeezmzuRaN9DcXdomNZZUVVzWLOP+fWiZamXflNSka1h1QzcCOqxZnGtQU
-	 +oJijmz3DdwhmB4njIISMv+3QdNdnGRdwwZHpH6aDbkzTZl4JcBfIu8Bc7Hx0RgtkP
-	 F/uhJyHeh1mfQ==
-Date: Tue, 22 Sep 2026 13:29:52 +0200
-From: Andrey Albershteyn <aalbersh@kernel.org>
-To: Andrey Albershteyn <aalbersh@redhat.com>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, ebiggers@kernel.org, hch@lst.de, 
-	Carlos Maiolino <cem@kernel.org>, fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
-	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org, linux-ext4@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, linux-btrfs@vger.kernel.org, david@fromorbit.com
-Subject: Re: [PATCH v16 14/21] xfs: don't remove written extents past EOF on
- fsverity inodes
-Message-ID: <arJl4xbG3vUrX9DK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
-References: <20260918111539.1003439-1-aalbersh@kernel.org>
- <20260918111539.1003439-15-aalbersh@kernel.org>
- <20260922043750.GN2705364@frogsfrogsfrogs>
- <arI9MpRVBZ0UEofK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="lqw/VHsF";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Bt7fouIx";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Z7nMRJA3";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="g82nSuCf"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 1F39F1F769;
+	Tue, 22 Sep 2026 11:32:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790076769; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
+	b=lqw/VHsFOyM1PsjsKWmUnjEAiCZrbCnlFP2c7OK+0emnIHPmzIbSp1YpgckUrEHrz2AjrC
+	/aWIoTkEXg8IG0wwc6BsWf1vGj9FIih8N+MsndNSIotYIWQbAi16PyUfu0l/F5ZxazwUu0
+	D7t+jRi1ynyV3tEtiFWjEZ2J9nt4SSk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790076769;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
+	b=Bt7fouIx/zmaW99whmgqogNbfULuwiK8aUDCtch2h0xdWVV8aNbOOh48S9YFiJQO1/U7I7
+	N46r8uF2MkoG7lAw==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790076765; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
+	b=Z7nMRJA3v3h9WyGyPMrFub5U360su5GbXavnZdD3x71RC76+r8aj4DqIxF2+lT6vTLsEZi
+	tz3IkGHeqZQKzlpmnjbKbwVKmS/uyNNA3TW7nHY7PkNnz7f6/w1Gbg0cju42okiZ0tMzOx
+	TTkuY2HSZWOHUN6TVyOA5wO4PVMcbxY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790076765;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=qHNqRhZsY4PDDoaGfo9Y4rMrXjw8S4znraHltHttsGg=;
+	b=g82nSuCfFgyI2FLYZDCH/OAHmR7BQZm0QS3txU3OBpo0yR30jLM02PapAsE9RY8V8EeHGk
+	Aih5aEjTgmXiYZAQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E2D60132D3;
+	Tue, 22 Sep 2026 11:32:44 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id mNjuLFxnsmpTcgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 22 Sep 2026 11:32:44 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 67F14A13D4; Tue, 22 Sep 2026 13:32:36 +0200 (CEST)
+Date: Tue, 22 Sep 2026 13:32:36 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, akpm@linux-foundation.org, 
+	david@kernel.org, ljs@kernel.org, liam@infradead.org, vbabka@kernel.org, 
+	rppt@kernel.org, surenb@google.com, mhocko@suse.com, hughd@google.com, 
+	baolin.wang@linux.alibaba.com, willy@infradead.org, jack@suse.cz, ziy@nvidia.com, 
+	bfoster@redhat.com, joannelkoong@gmail.com, djwong@kernel.org, yi.zhang@huawei.com, 
+	yizhang089@gmail.com, yangerkun@huawei.com, chengzhihao1@huawei.com, 
+	wangkefeng.wang@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 1/4] mm/truncate: align truncation boundaries to
+ mapping minimum folio order
+Message-ID: <uo7xgm7zk53f77i6qnrubqbhxf3tg6tp7qscci5nkylifnfahv@nf2xpxbkqwbe>
+References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
+ <20260922110703.468389-2-yi.zhang@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,121 +95,135 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <arI9MpRVBZ0UEofK@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+In-Reply-To: <20260922110703.468389-2-yi.zhang@huaweicloud.com>
+X-Spam-Score: -3.80
+X-Spam-Level: 
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TO_DN_SOME(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[27];
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[kvack.org,vger.kernel.org,linux-foundation.org,kernel.org,infradead.org,google.com,suse.com,linux.alibaba.com,suse.cz,nvidia.com,redhat.com,gmail.com,huawei.com,fnnas.com];
+	R_RATELIMIT(0.00)[to_ip_from(RLh65wkrmjx1yjc7agkshaaime)];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[huawei.com:email,suse.com:email,nvidia.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+X-Spam-Flag: NO
 
-On 2026-09-22 10:33:22, Andrey Albershteyn wrote:
-> On 2026-09-21 21:37:50, Darrick J. Wong wrote:
-> > On Fri, Sep 18, 2026 at 01:15:26PM +0200, Andrey Albershteyn wrote:
-> > > xfs_free_eofblocks() removes all extents past EOF unless the
-> > > XFS_DIFLAG_PREALLOC or XFS_DIFLAG_APPEND flags are set. This is
-> > > undesired for fsverity as it stores metadata beyond EOF. However, while
-> > > merkle tree is being built, delayed preallocation and unwritten extents
-> > > are used. After metadata construction is done, fsverity inodes becomes
-> > > read-only and won't be changed anymore, none of these unwritten extents
-> > > or preallocations in post EOF region will be used.
-> > > 
-> > > Let xfs_free_eofblocks() be called on fsverity inode as usual to remove
-> > > anything which is not written extent. However, inodes which are
-> > > undergoing merkle tree construction need to be skipped in case reclaim
-> > > takes place.
-> > > 
-> > > Signed-off-by: Andrey Albershteyn <aalbersh@kernel.org>
-> > > ---
-> > >  fs/xfs/xfs_bmap_util.c | 25 ++++++++++++++++++++++---
-> > >  1 file changed, 22 insertions(+), 3 deletions(-)
-> > > 
-> > > diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
-> > > index 268d159339d0..7fd951992557 100644
-> > > --- a/fs/xfs/xfs_bmap_util.c
-> > > +++ b/fs/xfs/xfs_bmap_util.c
-> > > @@ -31,6 +31,7 @@
-> > >  #include "xfs_rtbitmap.h"
-> > >  #include "xfs_rtgroup.h"
-> > >  #include "xfs_zone_alloc.h"
-> > > +#include <linux/fsverity.h>
-> > >  
-> > >  /* Kernel only BMAP related definitions and functions */
-> > >  
-> > > @@ -553,6 +554,13 @@ xfs_can_free_eofblocks(
-> > >  	if (last_fsb <= end_fsb)
-> > >  		return false;
-> > >  
-> > > +	/*
-> > > +	 * Don't clean fsverity inodes which have merkle tree being built, the
-> > > +	 * merkle tree is written beyond EOF
-> > > +	 */
-> > > +	if (xfs_iflags_test(ip, XFS_VERITY_CONSTRUCTION))
-> > > +		return false;
-> > > +
-> > >  	/*
-> > >  	 * Check if there is an post-EOF extent to free.  If there are any
-> > >  	 * delalloc blocks attached to the inode (data fork delalloc
-> > > @@ -579,6 +587,9 @@ xfs_free_eofblocks(
-> > >  	struct xfs_trans	*tp;
-> > >  	struct xfs_mount	*mp = ip->i_mount;
-> > >  	int			error;
-> > > +	int			bmapi_flags = XFS_BMAPI_NODISCARD;
-> > > +	bool			has_verity =
-> > > +			ip->i_diflags2 & XFS_DIFLAG2_VERITY;
-> > >  
-> > >  	/* Attach the dquots to the inode up front. */
-> > >  	error = xfs_qm_dqattach(ip);
-> > > @@ -593,15 +604,20 @@ xfs_free_eofblocks(
-> > >  	 *
-> > >  	 * Note that this means we also leave speculative preallocations in
-> > >  	 * place for preallocated files.
-> > > +	 *
-> > > +	 * Clean up delalloc reservations for fsverity too as those won't be
-> > > +	 * used
-> > >  	 */
-> > > -	if (ip->i_diflags & (XFS_DIFLAG_PREALLOC | XFS_DIFLAG_APPEND)) {
-> > > +	if (ip->i_diflags & (XFS_DIFLAG_PREALLOC | XFS_DIFLAG_APPEND) ||
-> > > +			has_verity) {
-> > >  		if (ip->i_delayed_blks) {
-> > >  			xfs_bmap_punch_delalloc_range(ip, XFS_DATA_FORK,
-> > >  				round_up(XFS_ISIZE(ip), mp->m_sb.sb_blocksize),
-> > >  				LLONG_MAX, NULL);
-> > >  		}
-> > >  		xfs_inode_clear_eofblocks_tag(ip);
-> > > -		return 0;
-> > > +		if (!has_verity)
-> > > +			return 0;
-> > >  	}
-> > >  
-> > >  	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
-> > > @@ -613,6 +629,9 @@ xfs_free_eofblocks(
-> > >  	xfs_ilock(ip, XFS_ILOCK_EXCL);
-> > >  	xfs_trans_ijoin(tp, ip, 0);
-> > >  
-> > > +	if (has_verity)
-> > > +		bmapi_flags |= XFS_BMAPI_UNWRITTEN;
-> > 
-> > This ought to have a comment explaining where post-eof unwritten extents
-> > might come from:
-> > 
-> > 	/*
-> > 	 * If fs-verity fails to write the full metadata, it can leave
-> > 	 * unwritten preallocations after EOF.  Clear all that out.
-> > 	 */
-> > 	if (has_verity)
-> > 		bmapi_flags |= XFS_BMAPI_UNWRITTEN;
-> > 
-> > 
-> > With that documented,
-> > Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
+On Tue 22-09-26 19:07:00, Zhang Yi wrote:
+> From: Zhang Yi <yi.zhang@huawei.com>
 > 
-> Sure, I will add the comment
-> Thanks!
+> When the mapping has a non-zero minimum folio order (min_order),
+> folio_split() in truncate_inode_partial_folio() stops at min_order
+> instead of order 0, so the sub-folio containing a split point stays
+> aligned to 1 << min_order rather than to a single page. The original
+> boundaries in truncate_inode_pages_range() were based on page
+> granularity, so either boundary could land inside the min_order chunk at
+> its edge, and the truncation loop would drop that whole chunk, valid
+> out-of-range tail included.
+> 
+> For example, a 64K (order-4) folio with min_order = 2 (16K) punched from
+> offset 0 to 36K:
+> 
+>   split @p0 -> [p0-p3, p4-p7, p8-p15]         # non-uniform, min_order
+>   folio2 = p8-p15           # straddles: p8 in range, p9-p15 tail valid
+>   2nd split of folio2 -> [p8-p11, p12-p15]    # success
+>   end(old) = p9                               # BUG: p9 inside [p8-p11]
+>   loop truncates ... p8-p11               # p9-p11's valid tail is lost
+> 
+> It has gone unnoticed so far for two reasons. A non-zero min_order is
+> only used by filesystems with a block or sector size larger than the
+> page size, and those either always write back the affected range before
+> punching a hole or truncating, or they carry filesystem private data on
+> dirty folios (e.g. buffer_head), which makes filemap_release_folio()
+> fail and folio_split() abort with -EBUSY, so the folio is never split
+> and the old start/end boundaries remain valid. The bug only becomes
+> reachable on paths that truncate dirty large folios without prior
+> writeback and without filesystem private data, such as the upcoming ext4
+> iomap buffered I/O path.
+> 
+> Align both start (rounded up) and end (rounded down) to the mapping
+> minimum folio order so they always fall on a folio boundary.
+> 
+> Reported-by: Joanne Koong <joannelkoong@gmail.com>
+> Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=OWzVRgD4202y1g@mail.gmail.com/
+> Fixes: e220917fa5077 ("mm: split a folio in minimum folio order chunks")
+> Suggested-by: Zi Yan <ziy@nvidia.com>
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-I will re-pharese the comment to:
+Looks good. Feel free to add:
 
-	/*
-	 * While fs-verity writes metadata after EOF, it can leave unwritten
-	 * preallocations.  Clear all that out.
-	 */
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-The preallocation are left even in good case, in the merkle tree
-holes and after fsverity descriptor.
+								Honza
 
+> ---
+>  mm/truncate.c | 18 ++++++++++++------
+>  1 file changed, 12 insertions(+), 6 deletions(-)
+> 
+> diff --git a/mm/truncate.c b/mm/truncate.c
+> index b58ba940be47..f9625bb4916f 100644
+> --- a/mm/truncate.c
+> +++ b/mm/truncate.c
+> @@ -345,9 +345,11 @@ long mapping_evict_folio(struct address_space *mapping, struct folio *folio)
+>   * @lstart: offset from which to truncate
+>   * @lend: offset to which to truncate (inclusive)
+>   *
+> - * Truncate the page cache, removing the pages that are between
+> - * specified offsets (and zeroing out partial pages
+> - * if lstart or lend + 1 is not page aligned).
+> + * Truncate the page cache, removing the folios that are between specified
+> + * offsets (and zeroing out partial folios if lstart or lend + 1 is not
+> + * folio aligned).  For mappings with a non-zero minimum folio order, the
+> + * boundaries are aligned inwards to 1 << min_order so the edge sub-folio
+> + * straddling the range is kept.
+>   *
+>   * Truncate takes two passes - the first pass is nonblocking.  It will not
+>   * block on page locks and it will not block on writeback.  The second pass
+> @@ -374,14 +376,14 @@ void truncate_inode_pages_range(struct address_space *mapping,
+>  	int		i;
+>  	struct folio	*folio;
+>  	bool		same_folio;
+> +	pgoff_t		min_nrpages = mapping_min_folio_nrpages(mapping);
+>  
+>  	if (mapping_empty(mapping))
+>  		return;
+>  
+>  	/*
+> -	 * 'start' and 'end' always covers the range of pages to be fully
+> -	 * truncated. Partial pages are covered with 'partial_start' at the
+> -	 * start of the range and 'partial_end' at the end of the range.
+> +	 * 'start' and 'end' always covers the range of folios to be fully
+> +	 * truncated, with both boundaries aligned inwards to 1 << min_order.
+>  	 * Note that 'end' is exclusive while 'lend' is inclusive.
+>  	 */
+>  	start = (lstart + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
+>  	else
+>  		end = (lend + 1) >> PAGE_SHIFT;
+>  
+> +	start = round_up(start, min_nrpages);
+> +	if (end != (pgoff_t)-1)
+> +		end = round_down(end, min_nrpages);
+> +
+>  	folio_batch_init(&fbatch);
+>  	index = start;
+>  	while (index < end && find_lock_entries(mapping, &index, end - 1,
+> -- 
+> 2.52.0
+> 
 -- 
-- Andrey
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
