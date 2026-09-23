@@ -1,193 +1,177 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej2-f36.google.com (mail-ej2-f36.google.com [74.125.228.164])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87A6C38838B;
-	Wed, 23 Sep 2026 08:29:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790152193; cv=none; b=oluhexmVL6EJwM9C6TmWSZLlo3HIcXVRStY+6zlXLRRryv0cKYW2ZfEBMYjnrCBWBs/L2VZWv2nRVs7rMGuqq7bsmkbuWOahxwaD3ECBJuHMJ0cWkAebMOhMDna5antsioC1Y/i9k3ahzE5V8KwWbE6wm6NGj4JnU902nNPt6nc=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790152193; c=relaxed/simple;
-	bh=cHaw5H27Jso4WGjJebjaDnIPz549SpzzHfZr7B+dnOc=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=akLg0IQ3ETXxjxm74XtzqVb6c/j7yHRCM1ieZrgjuhzPgpzIqHZN11b3UAT7dL5F1ctKa/CUscMIR6STctC011WeUOVs21nUSOWyV3x2HZTwJbxKhdtSH45PDm2pY9VEq4RumrtO1yDg7YS9hIEViMAu7c67INrOO3YZIu140g0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4hqVWF1Y99zYQv0M;
-	Wed, 23 Sep 2026 16:29:29 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id CC74840791;
-	Wed, 23 Sep 2026 16:29:45 +0800 (CST)
-Received: from [10.174.178.176] (unknown [10.174.178.176])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBHFyr4jbNqMJV0BQ--.62376S3;
-	Wed, 23 Sep 2026 16:29:45 +0800 (CST)
-Message-ID: <ea87901a-b1ec-4066-b81e-a1e5864b3872@huaweicloud.com>
-Date: Wed, 23 Sep 2026 16:29:43 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D57FA47606D
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 08:53:15 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.164
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790153604; cv=pass; b=dupM2jPZBRQyB+IsO0FYQf7c9Wsok61pLruNS70jkKkY4wllK/ta5uD0GhsnpTXINi+eegReOntbxxZ1ozN9DHhoZmWStxraugByq8+xJmnO9sA/vt7q+kKGCW6hLpV0EGDc0W9dTeQ7zu18Kw426MWlDkDO0UQeOcDB2VD7cbo=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790153604; c=relaxed/simple;
+	bh=sd73B+0fv4kFWg1/BIpMIx0XVt6pOSOqH8NxgJdLnhs=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Hru6YYq2FzSmrDrJvKeWsCeojii/TxQd+BvGzRuhVABUzp1b9T5nJRnZ1HNolYJ67AeM0MEcrH8NgZ4w8gYC2tf4THc4CYcSNBU4iknIWk1JvkfKDn9OPfeiouUS8qfEbRgOnjq/7S49pZfhFoxDZiTYe8g4m3+YeqnVXy9d5e8=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MesPcnv+; arc=pass smtp.client-ip=74.125.228.164
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MesPcnv+"
+Received: by mail-ej2-f36.google.com with SMTP id a640c23a62f3a-c254f9f0b1eso99273666b.1
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 01:53:15 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1790153592; cv=none;
+        d=google.com; s=arc-20260327;
+        b=nDOxFsPfdnoTdBnofOzDbR6NyfNAuxQSBvrMBdVAQYQ+LTEL9xIjuOWvew4KhQmf6A
+         Ec2i7039a+qz3iIEmbpR5kX5XyJrFSRGdacBHbbBV8dGJzcSeLZ93VTKV2x+EqN0DEQQ
+         4AJCgbff3V1H28UqKd2ooIuIk+dRVShjMQ/uyiDJf6VSEhhgNS11jCk42oqBZfJ7yOZn
+         nDooY6hpaJZ0IyPuIlzm020uk3DSVRv1ZkAZIx3EdJbdfRI2WqmlPjeKQJFzJWl4vMlA
+         /dd30UQ/mw5Le2BCHqQfMzl/WyzIw+c7RoYd783fY66/3PxvjguzBV8MQ3pbwG1llLm6
+         17Zg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        fh=WIFEer7PYDSUHHm8y/dspnWdmGhuRWKoUi84z5WBH7s=;
+        b=SUVGEAbfv2aLOWXgNjKH+MASHGdSyG2x64ssP++ZA1JIlr17V5sFPu3RqNQROFeV6W
+         ZlytEQxqFEtrxwmm1B0p1mHnF0iLZc8p4g4g/l9ch7UTQX6zQ1QgkFKlTW6Xi7HRTs95
+         agaGOTaWLdlCba5DWCgf0g52807/aDfVCO41TJ+C/K84pe+lR9Pc7zfMrRxgtYU4hCBA
+         Qyg705DuT2VkS0+NrhyyWjaEDBFS3loMt9ksMr4wcVVxMrIJVM9GxGC2jDPwKj52XaHn
+         T2LywfigE5ibwjdSzNPtY2ipFr/hZLpyRIIhxGSDJea4Fe/7J70eZHIUOCIq2ONYSfWR
+         MN1Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790153592; x=1790758392; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        b=MesPcnv+Gj0HST6wUepYrtVQ5V4Hcj+RKx783JSHfmhvNmhigGefBfytwDZ4SSH4pl
+         neb9bZcSGdYsWqrIOuOmI/9+U153HF6RXp/QJEKPtK8uM3x/fL43PRx+5cRrqgju5fjA
+         cMJY7Vy9YdqldLljYwKj1EecmIZL0XLRiMsoL+wj+VYPM4PI51nOOu8ERG9YOs6qBvwq
+         myuaC0myKfaBPQm9iLkYjY9XrKAJGSu4Z2q1AOpjLNTswm39CaXZ4/tcScubYNYLq7/D
+         fsMGw0eK8kBXxF3FcA69rs6NN3IhAbdKpQxe1wDoTrY5EUi4Vy2iR4nPA1fwIKTDoLXQ
+         RE7Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790153592; x=1790758392;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        b=v5wlEqG6hTxH9T9n1F8x3XjYClzpKnSXFFN87yK2IrmWEaD1LZ+pgKwI6Mi4coThvI
+         5Id+gOxPJMJxzVxR0BVUMZzBwR3TsY6w54dFPpxuIy+P4Kl2HpkqEBjtYpQcHndp+YkV
+         5ccaQN/WFNhPzWTxnv4Gv5Xst5DpJVvRjpL85RaKEbcZ5W/oi1lBuELdAhjlGqSRh1QK
+         drv0FQ/gwc4z5HnYjD+C71BNsJjnzCogwV5rQ780sLU1f7GntYYALketJV+En+f+rw3e
+         oQLoBdP0QNSws7TrboIpqwNeUPa9+K4dz4HNBL/uGkAuPzvQAUA2xycnn9CT0jS02Js1
+         oFeA==
+X-Gm-Message-State: AFuF++mLxDnrau29CsSYIRNZ4GNcPE4jIenKfuvbm8VfGcOmaFa+i2C4
+	hLRVqyUQIv70gEAXmxoC+7G4RmB3BB0FM3R4W5lc9mlJBjCYpueQjq2hYOgmmIvgxJYDz2rhZPe
+	tAE7bSQhAy35AquxlRGqbOUVeGAF12DFXl+nnOVk=
+X-Gm-Gg: AYBFou0vECBeNvZzAxGfqNBHsDCqKxTCyLxBpzJtcyLHR5/nydxUUT3Nb+ZyAHZebjI
+	1+9/N5+cSV9CFyHeb4mZYWtnEcqwuLkYy6gy6OBwNP1IlXtxCGPrKKaDUJ2qmgsbOazRdQr3Tc6
+	5Awwck7LAw0s4i6ZGwpwIeDfTHkBdGZXOyobd/JHPFj9eO7xJ0kHjOAr9+tlpbhR69nGpipWh74
+	9IQNnGy5iKASTLSyBBNtZmb2J90oJBLb/Lnj3J02PMZqd5dNhOajxI0hykiuQWO8iNEBFeYxVz2
+	xSJ3tg14ntanM5XS+IvTuFFaY81IUZPYw+QFeVCRw1zLpvg4mWMXmsu+4gXehnOpPqjg
+X-Received: by 2002:a17:907:972a:b0:c29:f5d8:9c7b with SMTP id
+ a640c23a62f3a-c2aadcc89c2mr161328266b.42.1790153591027; Wed, 23 Sep 2026
+ 01:53:11 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 3/4] mm/truncate: fix data loss when splitting
- straddling large folios fails
-To: Zi Yan <ziy@nvidia.com>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
- liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
- mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
- willy@infradead.org, jack@suse.cz, bfoster@redhat.com,
- joannelkoong@gmail.com, djwong@kernel.org, yi.zhang@huawei.com,
- yizhang089@gmail.com, yangerkun@huawei.com, chengzhihao1@huawei.com,
- wangkefeng.wang@huawei.com, yukuai@fnnas.com
-References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
- <20260922110703.468389-4-yi.zhang@huaweicloud.com>
- <DLM0SRQ1LAMU.3Q4REHFJ7TETZ@nvidia.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <DLM0SRQ1LAMU.3Q4REHFJ7TETZ@nvidia.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgBHFyr4jbNqMJV0BQ--.62376S3
-X-Coremail-Antispam: 1UD129KBjvJXoW3XrW3tFykWw17CrWrKrW8Crg_yoW7Xw18pr
-	Wjga9IyrWkGws2krnrZa1jqF1Yq34fXrWUJFyxG3WSkan0vr12kF1UK3W8uFWUK3s7Gw10
-	qF1UZ3ZrWF1DAa7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWr
-	XwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVWxJVW8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	jzE__UUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+References: <CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com>
+ <20260916084723.877552-1-r772577952@gmail.com>
+In-Reply-To: <20260916084723.877552-1-r772577952@gmail.com>
+From: Jiaming Zhang <r772577952@gmail.com>
+Date: Wed, 23 Sep 2026 16:52:32 +0800
+X-Gm-Features: AcwNN1UMfSu8IzUIQZOKw71fWeU3uvzM62Ysf-NXrGIr3kl704yBCqU3vyMQB5A
+Message-ID: <CANypQFaFf4mGrr_pLRyPgKCTDX-0vCd0nnwHenwn1xxQSa5X0w@mail.gmail.com>
+Subject: Re: [PATCH] ext4: clear in-inode xattr space before adding the first xattr
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	syzkaller@googlegroups.com, yi.zhang@huawei.com, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On 9/23/2026 1:27 AM, Zi Yan wrote:
-> On Tue Sep 22, 2026 at 7:07 AM EDT, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> truncate_inode_partial_folio() splits a large folio so that the caller's
->> truncate loop can drop the in-range sub-folios while keeping the
->> out-of-range tail. The first split at the punch start edge is
->> non-uniform, which leaves the sub-folio at the truncation end edge as
->> large as possible, this means it may still straddle the range, holding
->> both zeroed in-range and valid out-of-range data. The function then
->> attempts a second split at offset + length to isolate that tail.
->>
->> If the second split fails the straddling sub-folio stays merged. The
->> function returned true unconditionally on all exit paths of the success
->> block, telling the caller it was fully handled. The caller kept its
->> default end and the truncate loop truncated every sub-folio below it,
->> including the merged straddler, discarding the valid out-of-range tail.
->>
->> For example, a 4-page order-2 folio punched from offset 0 to the middle
->> of the last page:
->>
->>   truncate_inode_pages_range()
->>     truncate_inode_partial_folio()      # same_folio == true
->>       1st split at page0 -> [p0, p1, p2-3]   # non-uniform, success
->>       folio2 = p2-3 # straddles: p2 zeroed, p3 tail valid
->>       2nd split of folio2 fails / cannot lock
->>       return true                       # BUG: caller keeps default end
->>     end = 3
->>     loop truncates p0, p1, p2-3        # p3's valid tail is lost
->>
->> This became reachable after commit 7460b470a131 ("mm/truncate: use
->> folio_split() in truncate operation") replaced the atomic split_folio()
->> with folio_split(), whose non-uniform split can partially split a folio
->> and leave the end edge merged.
->>
->> It has gone unnoticed because a dirty large folio normally carries the
->> filesystem's private data, for example buffer_head, so
->> filemap_release_folio() fails on a dirty folio and folio_split() aborts
->> with -EBUSY before any split, leaving the straddler safely unsplit. The
->> bug is only reachable on paths that produce dirty large folios without
->> filesystem private data, and it was caught on the upcoming ext4 iomap
->> buffered I/O path when no ifs is attached.
->>
->> Rework the contract so the caller is told the folio range to discard:
->>
->>   - Add pgoff_t *pstart and *pend out-parameters that receive the folio
->>     range fully covered by [lstart, lend] after any split (or none),
->>     aligned inwards to min_order, i.e. the folios wholly within the
->>     range and safe to discard.
->>
->>   - Report a reliable end position to the caller. The straddler is
->>     looked up at an index aligned inwards to the mapping minimum folio
->>     order, and *pend is set to that boundary on success. If nothing
->>     covers the boundary, discarding up to it stays safe. If the
->>     straddler is locked by someone else, fall back to folio->index.
->>     This best-effort fallback may leave the in-range sub-folios to a
->>     later pass but never discards the out-of-range tail. If the
->>     straddler cannot be split, fall back to folio2->index so the caller
->>     keeps the out-of-range tail.
->>
->>   - Rename the byte-range parameters start/end to lstart/lend to better
->>     express their semantics.
->>
->> Callers in truncate_inode_pages_range() and shmem_undo_range() pass
->> &pstart for the folio at the start edge and &pend for the folio at the
->> end edge, so the truncate loop drops exactly the fully covered pages and
->> never touches a straddling folio that still holds valid out-of-range
->> data.
->>
->> Suggested-by: Brian Foster <bfoster@redhat.com>
->> Link: https://lore.kernel.org/linux-fsdevel/anH-WKA1coW6wtfG@bfoster/
->> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operation")
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> ---
->>  mm/internal.h |  4 +--
->>  mm/shmem.c    | 13 +++-----
->>  mm/truncate.c | 88 +++++++++++++++++++++++++++++++++++----------------
->>  3 files changed, 68 insertions(+), 37 deletions(-)
-> 
-> <snip>
->>
->> @@ -251,6 +264,7 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
-> 
-> Add more context:
-> 
-> 	if (!folio_test_large(folio))
->>  		return true;
->>  
->>  	min_order = mapping_min_folio_order(folio->mapping);
->> +	min_nrbytes = mapping_min_folio_nrbytes(folio->mapping);
->>  	split_at = folio_page(folio, PAGE_ALIGN_DOWN(offset) / PAGE_SIZE);
->>  	if (!folio_split_or_unmap(folio, split_at, min_order)) {
->>  		/*
->> @@ -259,34 +273,57 @@ bool truncate_inode_partial_folio(struct folio *folio, loff_t start, loff_t end)
->>  		 * for shmem truncate
->>  		 */
->>  		struct folio *folio2;
->> -		pgoff_t end_idx;
->> +		pgoff_t end, aligned_end = round_down(pos + offset + length,
->> +						min_nrbytes) >> PAGE_SHIFT;
-> 
-> <snip>
-> 
->> +		/* Already at the minimum order, nothing to split */
->> +		if (folio_order(folio2) == min_order)
->> +			goto out_put;
-> 
-> In the above, folio_test_large() is used to determine whether folio
-> needs to be split or not, but here folio_order() == min_order is used.
-> Should the above "if (!folio_test_large(folio))" be changed to use
-> min_order check to match the check here?
-> 
+Jiaming Zhang <r772577952@gmail.com> =E4=BA=8E2026=E5=B9=B49=E6=9C=8816=E6=
+=97=A5=E5=91=A8=E4=B8=89 16:47=E5=86=99=E9=81=93=EF=BC=9A
+>
+> An inode can hold extended attributes in the space that follows its extra
+> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
+> ext4_iget_extra_inode() validates that space only if it starts with the
+> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
+> space is treated as empty and is not checked.
+>
+> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
+> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
+> there to find min_offs, the lowest value offset.  That offset decides
+> whether the new value fits and where the value is copied:
+>
+>         free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
+>         ...
+>         void *val =3D s->base + min_offs - new_size;
+>
+> A crafted image can leave non-zero bytes in that space without the magic
+> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
+> bytes are parsed as entries, and an entry that claims an in-inode value a=
+t
+> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
+> then wraps around to a huge value, and the free space check passes althou=
+gh
+> the value does not fit.  The value is copied new_size bytes before the
+> start of the space, over the inode's own fields and, for a large value, t=
+he
+> memory in front of the inode.
+>
+> On a kernel without KASAN, the copy corrupts memory: it overwrites the
+> inode's own fields and, for a large value, also the memory in front of th=
+e
+> inode.  The bytes and their length are decided by the setxattr() caller.
+> Nothing is freed and reused here, so the use-after-free in the report onl=
+y
+> reflects where the write happened to land.
+>
+> Triggering this issue requires mounting a crafted image, which needs
+> CAP_SYS_ADMIN or automounting of removable media; after that, any
+> setxattr() on the file reaches this path.  The issue was found by fuzzing
+> and has not been seen in production; a reproducer is available in the
+> linked report.
+>
+> Clear the space in ext4_xattr_ibody_set() before calling
+> ext4_xattr_set_entry() when EXT4_STATE_XATTR is not set, so that the walk
+> starts from the empty entry list.
+>
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88N=
+DWiQKoM7QTOnP40sg@mail.gmail.com/
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude Code:claude-opus-5
+> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
+> ---
+>  fs/ext4/xattr.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+>
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b965..2e5f39b710bd 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2274,6 +2274,10 @@ int ext4_xattr_ibody_set(handle_t *handle, struct =
+inode *inode,
+>                 if (IS_ERR(ea_inode))
+>                         return PTR_ERR(ea_inode);
+>         }
+> +
+> +       if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> +               memset(s->first, 0, s->end - (void *)s->first);
+> +
+>         error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+>                                      false /* is_block */);
+>         if (error) {
+> --
+> 2.43.0
+>
 
-Yeah, this makes sense to me.
-
-Thanks,
-Yi.
-
-
-
+Friendly ping, please tell me if any further change is needed.
