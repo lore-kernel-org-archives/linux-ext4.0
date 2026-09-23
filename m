@@ -1,104 +1,163 @@
-Received: from mail-pj2-f43.google.com (mail-pj2-f43.google.com [74.125.227.171])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C93A47FAF1
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 10:18:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D16148380B
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 10:44:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790158708; cv=none; b=t3Z9+GhZ3387UkQxy1F+h48JcQ8K8tQj+31DIGg/QSWOP7gwW60S/OjqJJevCv3XNP9q9taPeaxXXhu8czpREieuceHmz1p6uO0W9Q9Z/FYVjrwn6gb+LuaDk6LK5xTXlLKN06D2VzQpbG5AYIqwmqArTZFh1tdaJdv2U5T5VuA=
+	t=1790160273; cv=none; b=Rx+PNHorsYL1/Q+yvdvmTGr5WmLqQlJs5NaT3z+PRuYgiRQsWLJx09ALPxSIClEDgmPrne1/Mqn48sCYe0LFTtwahPJyYA7kZJ2hYj7wZo1gBHgzNQf5Zrz70W9ZTibulq09e+sQi0ma7L8Lv/JDozfSegW5sZ+noQRPU0C1JTo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790158708; c=relaxed/simple;
-	bh=a+cJdm8IiZcacYLUjAZcRb2XVSYMoCvpEgOVZcRpriI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=M3XgfET3jtUxhurnmYee7us+7QAReKkDuigc+kmLzy1b2bry/FrJ4/aLNZ2og4zj5At4pxYuTIbJL3LHRVn2G6BT7t2ncVFi7SrFRQtH+gDnIw6UFfgL+sLF4v1GHSZgSJXbKMpKcIJXMfr5OIpJ1T3hMN9q6c1/Y5moEfpbD6c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Jt5Y1gaW; arc=none smtp.client-ip=74.125.227.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1790160273; c=relaxed/simple;
+	bh=6xPYkyIKm1n+pIKVwdP5BjtOHpdMJISHGOAcnKOgYIQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=QCqA1wRAmIeLGUOy3hp7sZeWjBM+XJdZe+FR+PfldPyzNjxPNy8kxjGfrer70TjxXl6ucdA9Dl5HozX+JQpfhJueXW+jvkq4PSflAPv1VAIO/euZ8HOXVk5aosFJVPT33AOODDGJ5fLDxLPihtKUlCZnvDPpwrF/a7oaHNnrLrw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Vv/gNbg8; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZqqesWH9; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=iyr+VPsd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FVPLKAud; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Jt5Y1gaW"
-Received: by mail-pj2-f43.google.com with SMTP id 98e67ed59e1d1-398b3b189e0so432219a91.2
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 03:18:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790158701; x=1790763501; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=t4Qt8UnZ0vVuVe6iwFyjd3A5kkZMGcM702CaDlGMCck=;
-        b=Jt5Y1gaWbouHOxolMzkFbsxZ2cblYUoI6N//SDLgxID6Y1Bc0fHColPV2iDYXDKvr7
-         gUMIBFElD5WwYWwPcbsosVKkYVqg9g9cKiiVUi+kS4IKdwjFitU//wQ5XbxxVXBN2dzR
-         XMwwHrTCVSj3BOMlQ8ZVgzzRA0g1Ukn319x39zsg0EmP0ovgJAToc9VB0mVvC1P23fW/
-         Tz56tLr0arEZfqWk7WLbUgRoSSKG0qRpmfzpvyhq2BjZ71SxxBfAmAkYGQycFC5YeLwa
-         WQ6wjdokNAPfEuZnRA04WtOFU0ie4Mwq72Z1vJVP4KBcap483dDdNILe8MfsddS0pmTb
-         Ggdg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790158701; x=1790763501;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=t4Qt8UnZ0vVuVe6iwFyjd3A5kkZMGcM702CaDlGMCck=;
-        b=IC9d3bAraRTR1EPw0kaudBsc4XFS65lE1u+KnoV+JhWMHi0E+3OZAB985b2cI4ekNT
-         lsORB/GqWUg/OTiV979+F17/1zxxhagGtJgS/sA0oPOAyBxX8SKI/WqDdIwMxuSMitsa
-         huTfJonp1cUHkrJ4onO5WBqPp3XBMsHPOIIaezNuk2MDUmNCfu1akT01mYM4+ecYDKez
-         O4LNG3ogBj+iAU3w4bEezqsZx2AUppyfixOIccRnlCNPhYq9BL7zA38B6HFBxyuu4s5T
-         IBRhUz/z7/wDUGMLMTiyvKMplhzzPwrLPnK/dZZpleySRncPuWvUO5uaMXg7URknyJTZ
-         RhvQ==
-X-Gm-Message-State: AFuF++nYu+xyDd6iuVuOEpfA98em9hgvszIkKfI7+2xkC8HAmr9B4rCX
-	99ye7BgfQ7Z8h7kxIfdq0yalEaVKCeAzr7M/qqLN37DYmTU1623rdNYh
-X-Gm-Gg: AYBFou2LrgpX5Xg8DxobifClyQWB9kGbj0Wt8EnqGKxxqi5mhwrLy69JTkxjkpZ+ifY
-	hl1J+XRoJFRKBkVx+UNkkEiQTxn+aFRBMUMacJ7+xMgxtFQqQ1/lX36/Lze74JhUEprZLe2BHvW
-	zLZVIgluzynL0paohEBLbH53o1VY2OTsA6JGXKG0n4Twc37It3XxErZTpGD1b4KXcqD/AvQN68L
-	LC/MVudk/+09dLp6nktdSb5Y85GT9K6CrnirR7f0vjmWtC53XVg9PQEVeHt7bLuk65E9WSu3MFa
-	8+cqHgGFhpmd7sCO4ALKsZEhvxKRrRItxBvxdLbfBqAuFKZnEqpVeZFZT/fhHj1kaz4SlZWQL6l
-	RODxL+ryYxv23o/xzrJV0+R8gbCkYswqhmcROkq9FGHjw4/3sslCcYyZ0yQnbuKLHhfiLBPnLm5
-	dqnheStyh04VxabBn4eT8DndRYqmp1Eg/z/dbijTLkhYqWKCIHFTZipSYf9cNGRMeJ/SUFXHzDS
-	Z/45/DdxRpBaw6xecOPGS9mZXbNZnEwD6OLcr61lJTGBOeESXUhtbdXTDfLxw5wOUUeTdlPJJSs
-	88GkRfzN4YFWIwDcNOjgskmN4SFRW7qPoj5qFnAAVEKYPhaFZFj1R0goJY5NEQ==
-X-Received: by 2002:a17:90b:2b43:b0:39e:4717:7cd9 with SMTP id 98e67ed59e1d1-3a07e313fcdmr1820334a91.0.1790158701335;
-        Wed, 23 Sep 2026 03:18:21 -0700 (PDT)
-Received: from spider.bream-herring.ts.net ([103.252.203.158])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3a07dbf69f0sm4423738a91.8.2026.09.23.03.18.19
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 23 Sep 2026 03:18:20 -0700 (PDT)
-From: Matthias Goergens <matthias.goergens@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>,
-	Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org,
-	sashiko-reviews@lists.linux.dev
-Subject: Re: [PATCH v3] ext4: drop extra ea_inode ref in cached-block reuse path
-Date: Wed, 23 Sep 2026 18:18:17 +0800
-Message-ID: <20260923101817.3507594-1-matthias.goergens@gmail.com>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260916072420.316321F000FF@smtp.kernel.org>
-References: <20260916071046.2182813-1-matthias.goergens@gmail.com> <20260916072420.316321F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Vv/gNbg8";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZqqesWH9";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="iyr+VPsd";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FVPLKAud"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id ADFCA21B8C;
+	Wed, 23 Sep 2026 10:44:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790160255; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
+	b=Vv/gNbg8JOMjjReG8us2XUmt0/4TuAad90vG9Y4BRaKSUbwINrcZSR2m9ldFh2eQU9SPUO
+	FHY+mUgLgPaXWvhesRrMZEqB85gNlDkIdVBGRhM6N4EQVvwGxAZTnw0TY+qpQc637nfaDz
+	/lBFcJ1oIUglc8L8jm169ZeTlK8xp3I=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790160255;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
+	b=ZqqesWH9dF8pH8YJC9RWo94EpNuxECNm0yPV7nKfGa4cdQF9GuJzJwUDG6/a9eCFUZ1gaO
+	I685ndaaiSSj4HCQ==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790160251; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
+	b=iyr+VPsd2hRkOe2he+NbqnB5qb1E3gmvpp0n0ZiVLGTnqD6kkxgGlOfL3K8cdC3+XNP1KO
+	M1WsnFvxflfLKrKa0MUu09JTIxALptwZepm9vqiroCh3b9+EALjCA4/kfDNuiPpl2Fspy8
+	tR5qPZv7VlVgr7r8Ab8CU7NDJuf8L30=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790160251;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
+	b=FVPLKAud6Piui4QXRO/TGN5jxxSZuHkoiJ48nA9/7vzSlUhsIVmXUqpIoUV5i/5wapjtIr
+	UDCoXJYHEBkrJaDw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 84B0413432;
+	Wed, 23 Sep 2026 10:44:11 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id eN9GGHuts2rUawAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 23 Sep 2026 10:44:11 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 11450A13D4; Wed, 23 Sep 2026 12:44:11 +0200 (CEST)
+Date: Wed, 23 Sep 2026 12:44:11 +0200
+From: Jan Kara <jack@suse.cz>
+To: Matthias Goergens <matthias.goergens@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>, 
+	linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
+Message-ID: <5vxi5l66uorp6o4ctrw2ggg7bj2earkj43sbnnbhv3u2jmaazs@pzhoyizpfqfp>
+References: <20260923101749.3505886-1-matthias.goergens@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260923101749.3505886-1-matthias.goergens@gmail.com>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	TAGGED_RCPT(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	RCPT_COUNT_THREE(0.00)[4];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,ozlabs.org:url,suse.cz:email,suse.com:email]
+X-Spam-Flag: NO
 
-Ted, Jan: both findings come from the tree the review ran against, not
-from the patch.  The baseline was ext4/HEAD, which is 96485e446260 from
-October 2020: HEAD in tytso/ext4.git points at master, which stopped
-there, while this patch is against dev (9091c97be340).
+On Wed 23-09-26 18:17:49, Matthias Goergens wrote:
+> The ext4 T: entry names the repository without a branch, so tools that
+> default to the repository's HEAD select master, which still points at a
+> merge from October 2020 (96485e446260).  Development happens on dev,
+> which is also the branch linux-next merges.  Name it.
+> 
+> The Sashiko review bot, for one, falls back to HEAD this way and has
+> been reviewing ext4 patches against that tree.  Its review of an EA
+> inode refcount fix reported a Critical double decrement and an
+> undefined function after applying the patch to that stale baseline;
+> neither holds on dev.
+> 
+> Link: https://lore.kernel.org/all/20260916072420.316321F000FF@smtp.kernel.org/
+> Signed-off-by: Matthias Goergens <matthias.goergens@gmail.com>
 
-- [Critical] double decrement: at 96485e446260 the cleanup label dropped
-  the lookup reference whenever ea_inode was set, error or not.  Since
-  0a46ef234756 ("ext4: do not create EA inode under buffer lock") it
-  does so only when error is set, and a successful cache hit reaches
-  cleanup with error == 0, so the new ext4_xattr_inode_dec_ref() is the
-  only drop of the lookup reference on that path.  If that call fails,
-  ea_inode is cleared before the goto.
+Good point. Feel free to add:
 
-- [Low] ext4_put_ea_inode() undefined: it was added by 4f48af3dc755
-  ("ext4: introduce ext4_put_ea_inode() for safe deferred iput") and is
-  declared in fs/ext4/xattr.h.
+Acked-by: Jan Kara <jack@suse.cz>
 
-Sashiko takes the tree from the ext4 T: entry in MAINTAINERS, which
-names no branch, so it uses the repository's HEAD.  I've sent a patch
-naming dev there, which is also what linux-next merges; pointing HEAD at
-dev would also help other tools that follow the default branch.  I'll
-report the stale baseline to the Sashiko maintainers as well.
+								Honza
 
-Matthias
+> ---
+>  MAINTAINERS | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/MAINTAINERS b/MAINTAINERS
+> index 806bd2d80d153..8ed6ae20c2523 100644
+> --- a/MAINTAINERS
+> +++ b/MAINTAINERS
+> @@ -9791,7 +9791,7 @@ L:	linux-ext4@vger.kernel.org
+>  S:	Maintained
+>  W:	http://ext4.wiki.kernel.org
+>  Q:	http://patchwork.ozlabs.org/project/linux-ext4/list/
+> -T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+> +T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+>  F:	Documentation/filesystems/ext4/
+>  F:	fs/ext4/
+>  F:	include/trace/events/ext4.h
+> 
+> base-commit: 9091c97be34083587a75db174aab51551d8e8543
+> -- 
+> 2.55.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
