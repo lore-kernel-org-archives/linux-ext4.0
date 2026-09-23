@@ -1,163 +1,193 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-pz2-f40.google.com (mail-pz2-f40.google.com [74.125.228.40])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D16148380B
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 10:44:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCE283A9DB2
+	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 11:10:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.40
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790160273; cv=none; b=Rx+PNHorsYL1/Q+yvdvmTGr5WmLqQlJs5NaT3z+PRuYgiRQsWLJx09ALPxSIClEDgmPrne1/Mqn48sCYe0LFTtwahPJyYA7kZJ2hYj7wZo1gBHgzNQf5Zrz70W9ZTibulq09e+sQi0ma7L8Lv/JDozfSegW5sZ+noQRPU0C1JTo=
+	t=1790161819; cv=none; b=VZ1y0RCJ4l1wCPY2T0b861bsL7b0FSj1xm/jDNS53r1dTUwGEcii7N4YD5sfARi/rIGDossIfFOodwa+7h4Hjd/R/bbK56Ccijo4HU2J6Sw96EfUSPpVVHnlW+bAVHsvqtj25U7MIjQJUokYbQfQ6p4mbZ2icJBPP7c2sqneMZ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790160273; c=relaxed/simple;
-	bh=6xPYkyIKm1n+pIKVwdP5BjtOHpdMJISHGOAcnKOgYIQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=QCqA1wRAmIeLGUOy3hp7sZeWjBM+XJdZe+FR+PfldPyzNjxPNy8kxjGfrer70TjxXl6ucdA9Dl5HozX+JQpfhJueXW+jvkq4PSflAPv1VAIO/euZ8HOXVk5aosFJVPT33AOODDGJ5fLDxLPihtKUlCZnvDPpwrF/a7oaHNnrLrw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Vv/gNbg8; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZqqesWH9; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=iyr+VPsd; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=FVPLKAud; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1790161819; c=relaxed/simple;
+	bh=A/+Sr7tx4D5ZREKYnrRAnL8aFLsHkN0hJrmaBtU7YrY=;
+	h=Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
+	 Message-Id:References:To; b=cjBXQh7l0rk1h/S2ajb4+nunoPn4NZiuhAU0IgiTpQou+DNh7u6o+b2XdyNu7AkvMTCCB4fV+pcGpN3NrDH6kb+kW05H55Q76BEXMCXijyr2dbeiBRco253BdTP3mR5y/5SgW3CnpITatO+GK1sg3ZYLUZ67c9/MnsuZ7MvtcYM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca; spf=pass smtp.mailfrom=dilger.ca; dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b=mgy7NTI/; arc=none smtp.client-ip=74.125.228.40
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Vv/gNbg8";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZqqesWH9";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="iyr+VPsd";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="FVPLKAud"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id ADFCA21B8C;
-	Wed, 23 Sep 2026 10:44:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790160255; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
-	b=Vv/gNbg8JOMjjReG8us2XUmt0/4TuAad90vG9Y4BRaKSUbwINrcZSR2m9ldFh2eQU9SPUO
-	FHY+mUgLgPaXWvhesRrMZEqB85gNlDkIdVBGRhM6N4EQVvwGxAZTnw0TY+qpQc637nfaDz
-	/lBFcJ1oIUglc8L8jm169ZeTlK8xp3I=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790160255;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
-	b=ZqqesWH9dF8pH8YJC9RWo94EpNuxECNm0yPV7nKfGa4cdQF9GuJzJwUDG6/a9eCFUZ1gaO
-	I685ndaaiSSj4HCQ==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790160251; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
-	b=iyr+VPsd2hRkOe2he+NbqnB5qb1E3gmvpp0n0ZiVLGTnqD6kkxgGlOfL3K8cdC3+XNP1KO
-	M1WsnFvxflfLKrKa0MUu09JTIxALptwZepm9vqiroCh3b9+EALjCA4/kfDNuiPpl2Fspy8
-	tR5qPZv7VlVgr7r8Ab8CU7NDJuf8L30=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790160251;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/bC/bqO9WykPptf4YQ6uosjFCCZq8jPc2lRQLDv1N6A=;
-	b=FVPLKAud6Piui4QXRO/TGN5jxxSZuHkoiJ48nA9/7vzSlUhsIVmXUqpIoUV5i/5wapjtIr
-	UDCoXJYHEBkrJaDw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 84B0413432;
-	Wed, 23 Sep 2026 10:44:11 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id eN9GGHuts2rUawAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 23 Sep 2026 10:44:11 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 11450A13D4; Wed, 23 Sep 2026 12:44:11 +0200 (CEST)
-Date: Wed, 23 Sep 2026 12:44:11 +0200
-From: Jan Kara <jack@suse.cz>
-To: Matthias Goergens <matthias.goergens@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>, 
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
-Message-ID: <5vxi5l66uorp6o4ctrw2ggg7bj2earkj43sbnnbhv3u2jmaazs@pzhoyizpfqfp>
-References: <20260923101749.3505886-1-matthias.goergens@gmail.com>
+	dkim=pass (2048-bit key) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.b="mgy7NTI/"
+Received: by mail-pz2-f40.google.com with SMTP id 41be03b00d2f7-cc750a1482fso558949a12.2
+        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 04:10:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1790161816; x=1790766616; darn=vger.kernel.org;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=Z9avEEAnjpEf+bLzxYVfU8riO/8xZqKHcMVkzWtu7O4=;
+        b=mgy7NTI/3R1D/3AMop0EXt9y9YxnWS83VYR5w+jlL103Ij8Ux9J6/pMqy1NX9kHZOD
+         BmFw4rtEZ2ImFnunwfOPOly/2BwNZU7j8d8BdD6pmw/waKumV4YZDzg2MplRfijSR27J
+         9we+PEQPMrUUxuaPUL1h2CJEVTa9TBswXl5c1oMUwXgawturPgJ8e7LDFWFYZcmQsEZX
+         1Mh83c2Rdr2/gH9j0L1OdogEKgEvodNMnTfPCce0oVoK3uPV8eJvk3GiifUek6cF1E1h
+         usLT6KVoW/djsoQaqzoD+hg/7zCUKajZikNywpWPQXawUrN0p7fP2ekpZartx7MN8mGd
+         h9Wg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790161816; x=1790766616;
+        h=to:references:message-id:content-transfer-encoding:cc:date
+         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Z9avEEAnjpEf+bLzxYVfU8riO/8xZqKHcMVkzWtu7O4=;
+        b=V8uZub9P17MbuWY49x0Wv80xldg+K+lpb7aD2PAdEDhBs3wR2Iyu56850rgqXVAG5f
+         BD939aH4Knyi/yrL29QRBJGoxZWskRyu2F21lWPVvtWvMjjDFBbH1RVYvhcFmXCRMYfB
+         kcPFGkklz3XoM+Muq+x9/JjJ52zVsJ99CEmzJOB4b2rZy9QSaXVVZ051fJsX12psxNm6
+         g1avQlkwIoyluEH5kU6vNhnDVMjSmgLuHxtbkhFqIR6PNStYJANX820wpKOduHzWQ3Mz
+         +05dgtbasc8uunZE6sn4GAStI+ZR9N0JAK0Maa9Dpdhfalydc2Z3T8gPpplWaB5fDjuh
+         IgSw==
+X-Gm-Message-State: AFuF++ngG1Ff3ny0Zd/ZErM8sUDHasfbIGElAacSfsB8PeC7yF0VcbvT
+	qcghC65YzZG8ZPEHUYMA3NudrR3VneCZcpQ/t/ZmrobbBRj3hsAoQ31ULzJ4puCWECY=
+X-Gm-Gg: AYBFou3u7watUve0R8QSPY6Ifw6o7g/mQn+XMU86C0GLf6GZVwWT/1Ty+eDGtf0+jp7
+	bDpyPPuTpXNK8VESLNaLce6myA+bBNzXMvfwosNVUDk32pjjvqHHWYnFfVZORQv2t0sG0/5GCAP
+	IHJ0CJ9bSoJ0IDtYgQph/f+Z/c9V2yzhnfpO1dftoLqaIesMwd3DGe/rG78Ge/ARvp5W5CrWckp
+	0m36dLOu8lhgvZrDi7DOG8GpsTgPkJSYn/YYZ5bZKAbxqrUuykgx1PXFj1mQ9s9e8M+yBrzFvoP
+	UCb/f25Qfrgb8syqn1Pcn7utkJPmMHHh/LsgqW9lgnF+LZ45dH8CqiUH0n6m6a5DxNXYNA3WzMk
+	Ir/pQW9BEEjQB5SqQETLWLz6DVl729LF9IZ8ZTRc9KnvJ+5PROxMjOTt8xrklJYc4+Qwk76MGRy
+	6Y19edIWlJKRSZdCOityzKeWbqun4hlRyEVghmShTz48xjtvwNPgaTKRFIjFTXbPQURoqt6o65t
+	qxxFBSOuJzoo0I3H4FadZqg5I1CX/wDtBhMSncE1c46SdHo6/6wlLa5Slzw9BLH
+X-Received: by 2002:a17:90b:3806:b0:3a0:4146:2955 with SMTP id 98e67ed59e1d1-3a07e693c71mr1949123a91.61.1790161815923;
+        Wed, 23 Sep 2026 04:10:15 -0700 (PDT)
+Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [24.64.171.237])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3a07db882a5sm4644779a91.1.2026.09.23.04.10.14
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 23 Sep 2026 04:10:15 -0700 (PDT)
+Content-Type: text/plain;
+	charset=us-ascii
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260923101749.3505886-1-matthias.goergens@gmail.com>
-X-Spam-Score: -2.30
-X-Spam-Level: 
-X-Spamd-Result: default: False [-2.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	TAGGED_RCPT(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCPT_COUNT_THREE(0.00)[4];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,ozlabs.org:url,suse.cz:email,suse.com:email]
-X-Spam-Flag: NO
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.700.51.1.3\))
+Subject: Re: [PATCH] ext4: clear in-inode xattr space before adding the first
+ xattr
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20260916084723.877552-1-r772577952@gmail.com>
+Date: Wed, 23 Sep 2026 05:10:03 -0600
+Cc: linux-ext4@vger.kernel.org,
+ tytso@mit.edu,
+ jack@suse.cz,
+ libaokun@linux.alibaba.com,
+ linux-kernel@vger.kernel.org,
+ ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com,
+ syzkaller@googlegroups.com,
+ yi.zhang@huawei.com,
+ stable@vger.kernel.org
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <50CE75D5-930B-4DD6-B0DF-7B956EBA0A62@dilger.ca>
+References: <CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com>
+ <20260916084723.877552-1-r772577952@gmail.com>
+To: Jiaming Zhang <r772577952@gmail.com>
+X-Mailer: Apple Mail (2.3864.700.51.1.3)
 
-On Wed 23-09-26 18:17:49, Matthias Goergens wrote:
-> The ext4 T: entry names the repository without a branch, so tools that
-> default to the repository's HEAD select master, which still points at a
-> merge from October 2020 (96485e446260).  Development happens on dev,
-> which is also the branch linux-next merges.  Name it.
-> 
-> The Sashiko review bot, for one, falls back to HEAD this way and has
-> been reviewing ext4 patches against that tree.  Its review of an EA
-> inode refcount fix reported a Critical double decrement and an
-> undefined function after applying the patch to that stale baseline;
-> neither holds on dev.
-> 
-> Link: https://lore.kernel.org/all/20260916072420.316321F000FF@smtp.kernel.org/
-> Signed-off-by: Matthias Goergens <matthias.goergens@gmail.com>
+On Sep 16, 2026, at 02:47, Jiaming Zhang <r772577952@gmail.com> wrote:
+>=20
+> An inode can hold extended attributes in the space that follows its =
+extra
+> fields, whose size is given by i_extra_isize.  When ext4 loads an =
+inode,
+> ext4_iget_extra_inode() validates that space only if it starts with =
+the
+> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, =
+the
+> space is treated as empty and is not checked.
+>=20
+> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() =
+whether
+> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the =
+entries
+> there to find min_offs, the lowest value offset.  That offset decides
+> whether the new value fits and where the value is copied:
+>=20
+> free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
+> ...
+> void *val =3D s->base + min_offs - new_size;
+>=20
+> A crafted image can leave non-zero bytes in that space without the =
+magic
+> where ext4 looks for it, for example by shrinking i_extra_isize.  =
+Those
+> bytes are parsed as entries, and an entry that claims an in-inode =
+value at
+> offset 0 sets min_offs to 0.  Because free is a size_t, the =
+subtraction
+> then wraps around to a huge value, and the free space check passes =
+although
+> the value does not fit.  The value is copied new_size bytes before the
+> start of the space, over the inode's own fields and, for a large =
+value, the
+> memory in front of the inode.
+>=20
+> On a kernel without KASAN, the copy corrupts memory: it overwrites the
+> inode's own fields and, for a large value, also the memory in front of =
+the
+> inode.  The bytes and their length are decided by the setxattr() =
+caller.
+> Nothing is freed and reused here, so the use-after-free in the report =
+only
+> reflects where the write happened to land.
+>=20
+> Triggering this issue requires mounting a crafted image, which needs
+> CAP_SYS_ADMIN or automounting of removable media; after that, any
+> setxattr() on the file reaches this path.  The issue was found by =
+fuzzing
+> and has not been seen in production; a reproducer is available in the
+> linked report.
+>=20
+> Clear the space in ext4_xattr_ibody_set() before calling
+> ext4_xattr_set_entry() when EXT4_STATE_XATTR is not set, so that the =
+walk
+> starts from the empty entry list.
+>=20
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Closes: =
+https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88NDWiQKoM7Q=
+TOnP40sg@mail.gmail.com/
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude Code:claude-opus-5
+> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
 
-Good point. Feel free to add:
+Looks good to me.
 
-Acked-by: Jan Kara <jack@suse.cz>
-
-								Honza
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
->  MAINTAINERS | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 806bd2d80d153..8ed6ae20c2523 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -9791,7 +9791,7 @@ L:	linux-ext4@vger.kernel.org
->  S:	Maintained
->  W:	http://ext4.wiki.kernel.org
->  Q:	http://patchwork.ozlabs.org/project/linux-ext4/list/
-> -T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
-> +T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
->  F:	Documentation/filesystems/ext4/
->  F:	fs/ext4/
->  F:	include/trace/events/ext4.h
-> 
-> base-commit: 9091c97be34083587a75db174aab51551d8e8543
-> -- 
-> 2.55.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> fs/ext4/xattr.c | 4 ++++
+> 1 file changed, 4 insertions(+)
+>=20
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b965..2e5f39b710bd 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2274,6 +2274,10 @@ int ext4_xattr_ibody_set(handle_t *handle, =
+struct inode *inode,
+>  		if (IS_ERR(ea_inode))
+>  			return PTR_ERR(ea_inode);
+>  	}
+> +
+> +	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> +		memset(s->first, 0, s->end - (void *)s->first);
+> +
+>  	error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+>  				     false /* is_block */);
+>  	if (error) {
+> --=20
+> 2.43.0
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
