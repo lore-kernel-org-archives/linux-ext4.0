@@ -1,177 +1,173 @@
-Received: from mail-ej2-f36.google.com (mail-ej2-f36.google.com [74.125.228.164])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out30-133.freemail.mail.aliyun.com (out30-133.freemail.mail.aliyun.com [115.124.30.133])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D57FA47606D
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 08:53:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.164
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790153604; cv=pass; b=dupM2jPZBRQyB+IsO0FYQf7c9Wsok61pLruNS70jkKkY4wllK/ta5uD0GhsnpTXINi+eegReOntbxxZ1ozN9DHhoZmWStxraugByq8+xJmnO9sA/vt7q+kKGCW6hLpV0EGDc0W9dTeQ7zu18Kw426MWlDkDO0UQeOcDB2VD7cbo=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790153604; c=relaxed/simple;
-	bh=sd73B+0fv4kFWg1/BIpMIx0XVt6pOSOqH8NxgJdLnhs=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=Hru6YYq2FzSmrDrJvKeWsCeojii/TxQd+BvGzRuhVABUzp1b9T5nJRnZ1HNolYJ67AeM0MEcrH8NgZ4w8gYC2tf4THc4CYcSNBU4iknIWk1JvkfKDn9OPfeiouUS8qfEbRgOnjq/7S49pZfhFoxDZiTYe8g4m3+YeqnVXy9d5e8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MesPcnv+; arc=pass smtp.client-ip=74.125.228.164
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6D9B3B2D04;
+	Wed, 23 Sep 2026 09:13:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.133
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790154794; cv=none; b=SFbpcd/k2g3yzAhwCqC6vUXpw7sxOEXWfXswg15swsw7O8AqvFzuCZ9yvzcVL9bKj/AdbXBgzV+ta81w99mjc+6D4rEgjv1kjz+kIcvyKgrjH0xTVjvEktQECc39zhXQ5y5NdvEUGMM5UM9lzbYDb4jamxILWyWtgV9P7rgB3T8=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790154794; c=relaxed/simple;
+	bh=MDDfBcmpZsiS84VkxriAREG5/EOIBDnwy5z09d5NXnE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=lgDvHoa8nSQB+F7iASF4XTsjK4kUCHc3qECdDOEjZm2arew4GpRt9WjwKiTqhBu6S6r9uE2SZ6nXalhellR+LBpMhgeWMY6oEHut8739PJBTnr4mrtu4SAlGaP1RuwNYBYNAo4oQVNL1zi1JhgtlvB6HaZDpIy8tFfT7yn+WT90=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=uSLZ22e5; arc=none smtp.client-ip=115.124.30.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MesPcnv+"
-Received: by mail-ej2-f36.google.com with SMTP id a640c23a62f3a-c254f9f0b1eso99273666b.1
-        for <linux-ext4@vger.kernel.org>; Wed, 23 Sep 2026 01:53:15 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1790153592; cv=none;
-        d=google.com; s=arc-20260327;
-        b=nDOxFsPfdnoTdBnofOzDbR6NyfNAuxQSBvrMBdVAQYQ+LTEL9xIjuOWvew4KhQmf6A
-         Ec2i7039a+qz3iIEmbpR5kX5XyJrFSRGdacBHbbBV8dGJzcSeLZ93VTKV2x+EqN0DEQQ
-         4AJCgbff3V1H28UqKd2ooIuIk+dRVShjMQ/uyiDJf6VSEhhgNS11jCk42oqBZfJ7yOZn
-         nDooY6hpaJZ0IyPuIlzm020uk3DSVRv1ZkAZIx3EdJbdfRI2WqmlPjeKQJFzJWl4vMlA
-         /dd30UQ/mw5Le2BCHqQfMzl/WyzIw+c7RoYd783fY66/3PxvjguzBV8MQ3pbwG1llLm6
-         17Zg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
-        fh=WIFEer7PYDSUHHm8y/dspnWdmGhuRWKoUi84z5WBH7s=;
-        b=SUVGEAbfv2aLOWXgNjKH+MASHGdSyG2x64ssP++ZA1JIlr17V5sFPu3RqNQROFeV6W
-         ZlytEQxqFEtrxwmm1B0p1mHnF0iLZc8p4g4g/l9ch7UTQX6zQ1QgkFKlTW6Xi7HRTs95
-         agaGOTaWLdlCba5DWCgf0g52807/aDfVCO41TJ+C/K84pe+lR9Pc7zfMrRxgtYU4hCBA
-         Qyg705DuT2VkS0+NrhyyWjaEDBFS3loMt9ksMr4wcVVxMrIJVM9GxGC2jDPwKj52XaHn
-         T2LywfigE5ibwjdSzNPtY2ipFr/hZLpyRIIhxGSDJea4Fe/7J70eZHIUOCIq2ONYSfWR
-         MN1Q==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790153592; x=1790758392; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
-        b=MesPcnv+Gj0HST6wUepYrtVQ5V4Hcj+RKx783JSHfmhvNmhigGefBfytwDZ4SSH4pl
-         neb9bZcSGdYsWqrIOuOmI/9+U153HF6RXp/QJEKPtK8uM3x/fL43PRx+5cRrqgju5fjA
-         cMJY7Vy9YdqldLljYwKj1EecmIZL0XLRiMsoL+wj+VYPM4PI51nOOu8ERG9YOs6qBvwq
-         myuaC0myKfaBPQm9iLkYjY9XrKAJGSu4Z2q1AOpjLNTswm39CaXZ4/tcScubYNYLq7/D
-         fsMGw0eK8kBXxF3FcA69rs6NN3IhAbdKpQxe1wDoTrY5EUi4Vy2iR4nPA1fwIKTDoLXQ
-         RE7Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790153592; x=1790758392;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
-        b=v5wlEqG6hTxH9T9n1F8x3XjYClzpKnSXFFN87yK2IrmWEaD1LZ+pgKwI6Mi4coThvI
-         5Id+gOxPJMJxzVxR0BVUMZzBwR3TsY6w54dFPpxuIy+P4Kl2HpkqEBjtYpQcHndp+YkV
-         5ccaQN/WFNhPzWTxnv4Gv5Xst5DpJVvRjpL85RaKEbcZ5W/oi1lBuELdAhjlGqSRh1QK
-         drv0FQ/gwc4z5HnYjD+C71BNsJjnzCogwV5rQ780sLU1f7GntYYALketJV+En+f+rw3e
-         oQLoBdP0QNSws7TrboIpqwNeUPa9+K4dz4HNBL/uGkAuPzvQAUA2xycnn9CT0jS02Js1
-         oFeA==
-X-Gm-Message-State: AFuF++mLxDnrau29CsSYIRNZ4GNcPE4jIenKfuvbm8VfGcOmaFa+i2C4
-	hLRVqyUQIv70gEAXmxoC+7G4RmB3BB0FM3R4W5lc9mlJBjCYpueQjq2hYOgmmIvgxJYDz2rhZPe
-	tAE7bSQhAy35AquxlRGqbOUVeGAF12DFXl+nnOVk=
-X-Gm-Gg: AYBFou0vECBeNvZzAxGfqNBHsDCqKxTCyLxBpzJtcyLHR5/nydxUUT3Nb+ZyAHZebjI
-	1+9/N5+cSV9CFyHeb4mZYWtnEcqwuLkYy6gy6OBwNP1IlXtxCGPrKKaDUJ2qmgsbOazRdQr3Tc6
-	5Awwck7LAw0s4i6ZGwpwIeDfTHkBdGZXOyobd/JHPFj9eO7xJ0kHjOAr9+tlpbhR69nGpipWh74
-	9IQNnGy5iKASTLSyBBNtZmb2J90oJBLb/Lnj3J02PMZqd5dNhOajxI0hykiuQWO8iNEBFeYxVz2
-	xSJ3tg14ntanM5XS+IvTuFFaY81IUZPYw+QFeVCRw1zLpvg4mWMXmsu+4gXehnOpPqjg
-X-Received: by 2002:a17:907:972a:b0:c29:f5d8:9c7b with SMTP id
- a640c23a62f3a-c2aadcc89c2mr161328266b.42.1790153591027; Wed, 23 Sep 2026
- 01:53:11 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="uSLZ22e5"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1790154783; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=EkmkbW6uWSFKxZa5RPcpAVvadAQXx10Aq1DH3CdSOsk=;
+	b=uSLZ22e5dpCAlAqJP73rGbBI95CxtkQB16ImtjBLCkbo03do06rIAvKsuAx73l+8kBcEsFF6qduAGGSn+e1a1Bq+qEEWKa86IYslc+vT/cbxeJq63MSzVULjFHPhETd8poK6d8q/I8yviPB4fBuryjVD8ef9ldrDQz7n6jPbyDg=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R101e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0XBWhjZd_1790154782;
+Received: from 30.221.148.48(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XBWhjZd_1790154782 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Wed, 23 Sep 2026 17:13:02 +0800
+Message-ID: <eeeab8d8-dfd3-45ff-9f30-d83c527210f2@linux.alibaba.com>
+Date: Wed, 23 Sep 2026 17:13:02 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com>
- <20260916084723.877552-1-r772577952@gmail.com>
-In-Reply-To: <20260916084723.877552-1-r772577952@gmail.com>
-From: Jiaming Zhang <r772577952@gmail.com>
-Date: Wed, 23 Sep 2026 16:52:32 +0800
-X-Gm-Features: AcwNN1UMfSu8IzUIQZOKw71fWeU3uvzM62Ysf-NXrGIr3kl704yBCqU3vyMQB5A
-Message-ID: <CANypQFaFf4mGrr_pLRyPgKCTDX-0vCd0nnwHenwn1xxQSa5X0w@mail.gmail.com>
-Subject: Re: [PATCH] ext4: clear in-inode xattr space before adding the first xattr
-To: linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
-	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	syzkaller@googlegroups.com, yi.zhang@huawei.com, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] generic/492: bypass the blkid cache when probing the
+ label
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>, fstests@vger.kernel.org, zlang@kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ sandeen@redhat.com, dgc@kernel.org
+References: <20260920094137.2749428-1-libaokun@linux.alibaba.com>
+ <20260921052719.GB6253@frogsfrogsfrogs>
+ <b4a10712-1658-4fba-a037-095fab466270@linux.alibaba.com>
+ <20260921234910.GC6253@frogsfrogsfrogs> <arHaTLxSEk3yQxU4@mit.edu>
+ <74463cb5-14af-47bb-9380-ca75dc5d293a@linux.alibaba.com>
+ <20260922145335.GV6283@frogsfrogsfrogs>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20260922145335.GV6283@frogsfrogsfrogs>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-Jiaming Zhang <r772577952@gmail.com> =E4=BA=8E2026=E5=B9=B49=E6=9C=8816=E6=
-=97=A5=E5=91=A8=E4=B8=89 16:47=E5=86=99=E9=81=93=EF=BC=9A
->
-> An inode can hold extended attributes in the space that follows its extra
-> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
-> ext4_iget_extra_inode() validates that space only if it starts with the
-> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
-> space is treated as empty and is not checked.
->
-> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
-> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
-> there to find min_offs, the lowest value offset.  That offset decides
-> whether the new value fits and where the value is copied:
->
->         free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
->         ...
->         void *val =3D s->base + min_offs - new_size;
->
-> A crafted image can leave non-zero bytes in that space without the magic
-> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
-> bytes are parsed as entries, and an entry that claims an in-inode value a=
-t
-> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
-> then wraps around to a huge value, and the free space check passes althou=
-gh
-> the value does not fit.  The value is copied new_size bytes before the
-> start of the space, over the inode's own fields and, for a large value, t=
-he
-> memory in front of the inode.
->
-> On a kernel without KASAN, the copy corrupts memory: it overwrites the
-> inode's own fields and, for a large value, also the memory in front of th=
-e
-> inode.  The bytes and their length are decided by the setxattr() caller.
-> Nothing is freed and reused here, so the use-after-free in the report onl=
-y
-> reflects where the write happened to land.
->
-> Triggering this issue requires mounting a crafted image, which needs
-> CAP_SYS_ADMIN or automounting of removable media; after that, any
-> setxattr() on the file reaches this path.  The issue was found by fuzzing
-> and has not been seen in production; a reproducer is available in the
-> linked report.
->
-> Clear the space in ext4_xattr_ibody_set() before calling
-> ext4_xattr_set_entry() when EXT4_STATE_XATTR is not set, so that the walk
-> starts from the empty entry list.
->
-> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
-> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88N=
-DWiQKoM7QTOnP40sg@mail.gmail.com/
-> Cc: stable@vger.kernel.org
-> Assisted-by: Claude Code:claude-opus-5
-> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
-> ---
->  fs/ext4/xattr.c | 4 ++++
->  1 file changed, 4 insertions(+)
->
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 5c310747b965..2e5f39b710bd 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -2274,6 +2274,10 @@ int ext4_xattr_ibody_set(handle_t *handle, struct =
-inode *inode,
->                 if (IS_ERR(ea_inode))
->                         return PTR_ERR(ea_inode);
->         }
-> +
-> +       if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
-> +               memset(s->first, 0, s->end - (void *)s->first);
-> +
->         error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
->                                      false /* is_block */);
->         if (error) {
-> --
-> 2.43.0
->
+On 2026/9/22 22:53, Darrick J. Wong wrote:
+> On Tue, Sep 22, 2026 at 03:17:27PM +0800, Baokun Li wrote:
+>> On 2026/9/22 11:43, Theodore Tso wrote:
+>>> On Mon, Sep 21, 2026 at 04:49:10PM -0500, Darrick J. Wong wrote:
+>>>>> The difference between the e2fsprogs and util-linux libblkid is the
+>>>>> time granularity: the former stores seconds only (TIME="%ld",
+>>>>> bid_time = time(0), compares st_mtime <= bid_time), while the latter
+>>>>> stores usec (TIME="sec.usec") and has an nsec tie-break in the compare,
+>>>>> so the same-second case is much easier to hit with the e2fsprogs blkid.
+>>>> Perhaps xfstests-bld should use the system blkid then?  IIRC the one
+>>>> in e2fsprogs is very old and out of date.
+>>> Historically, xfstests-bld was built in environments where libblkid
+>>> wasn't available.  This included Android's runtime (which uses the
+>>> bionic libc), and grte (Google Runtime Environment)[1].
+>>>
+>>> [1] https://github.com/bazelment/lrte/blob/master/grte/grte-build
+>>>
+>>> However, as more and more tests require utilities from util-linux,
+>>> xfstests-bld was taught to build util-linux.  And if util-linux is
+>>> being built, then we don't use e2fsprogs-libs any more, which is where
+>>> libblkid is built.  From build-all:
+>>>
+>>> if test -z "$USE_LOCAL_E2FSLIBS" -o -d util-linux; then
+>>>     SKIP_E2FSLIBS=yes
+>>> fi
+>>>
+>>> I've always built xfstesets-bld with util-linux, even though it is
+>>> listed as an optional repository.  This is because (a) util-linux is
+>>> needed for Android and other non-standard Linux environments, and (b)
+>>> the version of util-linux used by earlier Debian Stable was too old
+>>> for some of the newer tests in fstests and blktests.
+>>>
+>>> If you aren't building xfstests-bld with util-linux, it falls back to
+>>> building libblkid from e2fsprogs-libs.  HOWEVER, we don't actually
+>>> blkid, and libblkid is always built statically.  So what seems to be
+>>> going on is that one of the programs built by xfstests-bld is using
+>>> the older libblkid, and that results in the blkid cache being writen
+>>> with a second granularity.
+>>>
+>>> I've never noticed this issue because I've always built with
+>>> util-linux.  The way to solve this is to require building with the
+>>> system libblkid if util-linux is not being built, and to drop
+>>> e2fsprogs-libs from xfstests-bld.  Or just build xfstests-bld with
+>>> util-linux.  :-)
+>>
+>> Thanks for the detailed explanation.
+>>
+>> I checked my environment again though -- it turned out not to be
+>> xfstests-bld at all.  xfstests-bld never touches e2fsprogs.
+>>
+>> What happened is that I had manually run "make install" of a locally
+>> patched e2fsprogs in the test VM, which overwrote util-linux's blkid
+>> and fsck.
+>>
+>> Rebuilding e2fsprogs with these options disabled made the test pass:
+>>
+>>     ./configure --disable-libblkid --disable-fsck \
+>>             --disable-libuuid --disable-uuidd
+>>
+>> I ran unpatched generic/492 60 times on each side in a VM: 12/60
+>> failures with the hand-installed strays, 0/60 with util-linux's
+>> blkid/fsck.
+>>
+>> That said, I think the patch is still needed, because
+>> FS_IOC_SETFSLABEL does not update the block device's mtime:
+> Many filesystems /never/ update the bdev mtime, why would they?
 
-Friendly ping, please tell me if any further change is needed.
+
+Not from FS_IOC_SETFSLABEL, at least -- as far as I can see, none of
+the filesystems implementing it updates the mtime, and even btrfs does
+not do it from its label ioctl.  btrfs does have update_dev_time() for
+the add/remove case (5a1972bd9fd4, so that libblkid does not keep
+reading a stale cache), but that is not wired into its label ioctl.
+
+I can see why.  What blkid keys on is the mtime of the /dev/xxx node,
+and once the mount is set up we hold no reference to that path anymore
+-- the node can be deleted or re-created, and s_id only keeps an
+informational name.
+
+Worse, one block device can have any number of /dev nodes pointing at
+it; an ioctl on a mountpoint fd cannot tell which one the caller means,
+nor find them all.  So the kernel has no well-defined node to update
+here.
+
+And it gets easy in userspace: for tools that take the device as an
+argument (tune2fs, e2label, xfs_admin), one utime(device_name, NULL)
+is enough to guarantee that after set the label of a device with
+the tool, blkid -s <device> won't see the old label.
+
+The tricky counterpart is the standard way to invoke this ioctl: a
+mountpoint as the argument, xfs_io being the typical case.  It seems
+the only option there is what the kernel would have to do anyway --
+resolve the device behind the mount and update that node's mtime.
+
+Do you have any thoughts?
+
+
+>>     blkid -s LABEL ...    # get A
+>>     FS_IOC_SETFSLABEL     # set B (device mtime unchanged)
+>>     blkid -s LABEL ...    # still get A (within 2s)
+>>
+>> The first read writes a cache entry with TIME=now, and the ioctl
+>> leaves the device mtime untouched, so a second read within the 2s
+>> window still trusts the cache.
+>>
+>> I reproduced this with util-linux 2.41.5 too, so
+>> "blkid -c /dev/null" is what keeps the test deterministic
+>> regardless of which blkid the image carries.
+> <nod> That was the problem I thought you were solving here ;)
+
+Yep, that's the idea.  The point was to stay away from blkid's
+cache complexity -- testing how a userspace tool caches things is
+not really what a kernel test should be doing.
+
+
+Cheers,
+Baokun
+
+
