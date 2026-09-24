@@ -1,30 +1,67 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1359232C8B;
-	Thu, 24 Sep 2026 09:31:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0143E33993
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 09:37:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790242309; cv=none; b=KqDQG0PKJaAmGGWePaWMgwUN+GmYe4N6/mHOMOx+s1cm4xsCZOUUPvzvR9r3YCBk/PaPikHrPUkbcaCYDqqJmIDK7q9jraAjXg2ZYLnlTueqp9cPrZmN1flE1mX/2RMkg83QfLTKuuMfG19wp4jOOMdBWSGOnGIfyfD3d2fQvVA=
+	t=1790242640; cv=none; b=PF66/HZNcG3+skZGQlhupsUWhmo5EQsCwCdU6H6QjnTYpWKImdYWVJtZr/K4/8tEEuZRbAperrXE0/Sl4A99xA4MRrqdA2ZrQXoZWGfjX5z4XwIPbEB1lCKFoPDHZpArdS7Fsuz5r2dSZypyMqZRZcXo9PgcIPYi78mQeQOtvp4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790242309; c=relaxed/simple;
-	bh=Eii8pIapq3+IVKHeZMnWF/ITHh8UnbjO9k7WQIJ1NC4=;
+	s=arc-20240116; t=1790242640; c=relaxed/simple;
+	bh=70TFsAFRbI1TuzaqNIADo3Zfc7ofFfEiP7yn9cQoyzM=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=tqbWunvGgsx/RY93jTdtPbSE2oKnU9ynI6XUNcGPzMwgiANzyd8UROIhjeCZTmJm2XDaV8Ov4vGkTO30gGZfnraMeESV1j/1uOdK5YEguhXQFj9Ww1miB9fRMxsUxa23VAk0nslHWi20s+7KnLXrjJiKhxl76TnBrtUR8o1vMY8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hr7r35d2TzKHMdk;
-	Thu, 24 Sep 2026 17:31:15 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 10A5D40574;
-	Thu, 24 Sep 2026 17:31:43 +0800 (CST)
-Received: from [10.174.178.176] (unknown [10.174.178.176])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBXdCf87bRq9wz3BQ--.25718S3;
-	Thu, 24 Sep 2026 17:31:42 +0800 (CST)
-Message-ID: <5a454f2a-8ae2-491d-b903-750c945cfb9d@huaweicloud.com>
-Date: Thu, 24 Sep 2026 17:31:40 +0800
+	 In-Reply-To:Content-Type; b=aFsN3uOTGXk1oVwhsti48TWSvOI2bL5hbztgxiKsToYqbG77V26KUmSJyGnr+wrSr8G4cN1B0qRJEDvOD8jFlITq4LkYpEXbjdv2ZcJutFCN3tG1pds6aU3tryK3BVMqDpK8V5ZEQLHhTRYesWgatzIysPkA51r8AMG16DgJBSw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AmN19kJ8; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AmN19kJ8"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d91ede8035so16779855ad.3
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 02:37:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790242637; x=1790847437; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=FHoeQiU6kNP6O34S62q6U8XbBumTsi34UKnTIzqpmJA=;
+        b=AmN19kJ8BsJ0X1DljsyziIWCsc6ZQRbMF7/wBuPlYkavSBK3IPgRFebvJhf80wLL+F
+         OyGPRgX6AozROkkIveCZtmOp/j9Iq1FflgyO/mGv/tpSAm5AbhYmiQUQv20SKjBESdXn
+         iySZrvkw4PjISx+SRvyblr4H+JyHQ0Yxtf9NosmK5PjHS91fL0g/sNQAEesf7n5AQ7DZ
+         s8HMYRPg5mLE1OdBLwiqURYRAFsN8k/fGsYXQGGcXUzp6ea0qRNsNJLKKZaeNqsf/TgB
+         SGlrbDb0I/0qjATkqgdBpaDAZupNm+fkTJ9W029gJB704vLlFWSqR5lpOxo5iqpSocbd
+         lv9A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790242637; x=1790847437;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:subject:user-agent:mime-version:date:message-id:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=FHoeQiU6kNP6O34S62q6U8XbBumTsi34UKnTIzqpmJA=;
+        b=ZafuqbCQsKbnAV+298+GXbtMfl88T5Aw3KcgzxOMefNu4U/YjLokKQS0+Zc/A8AGlI
+         kC66n7vmaP3MkxE0l9NavGo2Rs/1m02lLoD7g6HQcAG+nbPFLgwaYWmsreYdEwbdwz8j
+         3elAlDzKGGb4EZ9YGrsBevNTZ01mx7PGruFP+UlMV8GvOubO+cZQj/Hemu2Nho2brADt
+         y8PTkoyph/QPET1/Qag9HwhP5QThBazmLlgL5r1zd/YgxTgsPO9Cm86pADjNOrrDbMYq
+         dzxLODp44kSONbWex48foPM8ffDX32TlMbB0Ae4LPAZ0PpgAXgDAfZ406dNBG/iMBC65
+         hOSA==
+X-Forwarded-Encrypted: i=1; AKwUvBwj5wfDPWCvXaT9IaywTWUVFaxkHpP6rBYPMBw3oBU7bubVwkQ/zxWIB+aKuYiGxQMgrhjoXbq3lq0Q@vger.kernel.org
+X-Gm-Message-State: AFuF++k21RuH4/BarCZvHxtagXZ0FvCC04TSBL+YNxoJlTA8y35P9Dk+
+	Qhoqv+SBBqCpCeAWKiIih26/rsRm90CTPFdeoXgd6UlGFFvw7oLhLYLo
+X-Gm-Gg: AYBFou3K//r1iNFTnlrdesV/0HItphq6Qz0TvD30V15/KfVjv2MtFXRxcCKRD/fBLgq
+	gOv+vFfkJPzDAl6T/+IsebDCgiyYgsCc/k3Qy89TfmkK7akRYijqlmIJp0pbaopmOexO5/YuPgE
+	RgrFY4nuJKeYI9NYUZ8eApCJUzUcW7GQbnySeuHFzl5w7kh9FqcXTAeTTCCEZV3pLBJzI8g4IvN
+	erxWdiuWHzH0xm4irA3Ly/mgSfDyEW+DfrmOVfA5E8YQmWxbkgc9um8Z2iAbJFNaQutSxrPKO1h
+	BKa3ZJM43Dp65BX/ANH0pGqoCu5+pP953t7CRoHQuC6GGqeigVJ+LtIIEmLWcJ78uQeEGvyRKsP
+	Etgp98itoZ1ivC66synnlY3bwKoe1ERLjw9kuHx48fySDpv3a7rPVUCYpAC9dGffFZXe+9QS4dB
+	D5dPXIi/kPk803Hwpq49cBiEAnb4U8C8iNeBmfWu2cqc3hpjeyushDWM7PDKXMTdSgtqzir9k/t
+	ihrYVAj4fAkbfPAYGM/cg==
+X-Received: by 2002:a17:903:3c67:b0:2ca:e19c:97b with SMTP id d9443c01a7336-2df7e24f3a5mr16150895ad.5.1790242637239;
+        Thu, 24 Sep 2026 02:37:17 -0700 (PDT)
+Received: from [10.192.33.43] ([43.224.245.245])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2df6a5169absm24501695ad.8.2026.09.24.02.37.12
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 24 Sep 2026 02:37:16 -0700 (PDT)
+Message-ID: <9a542b7e-bbb0-4c14-8760-f3aceaab39e2@gmail.com>
+Date: Thu, 24 Sep 2026 17:37:08 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,199 +69,108 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 1/4] mm/truncate: align truncation boundaries to
- mapping minimum folio order
-To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, jack@suse.cz,
- bfoster@redhat.com, ziy@nvidia.com
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org,
- liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com,
- mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com,
- willy@infradead.org, joannelkoong@gmail.com, djwong@kernel.org,
- yi.zhang@huawei.com, yizhang089@gmail.com, yangerkun@huawei.com,
- chengzhihao1@huawei.com, wangkefeng.wang@huawei.com, yukuai@fnnas.com
-References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
- <20260922110703.468389-2-yi.zhang@huaweicloud.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260922110703.468389-2-yi.zhang@huaweicloud.com>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH] ext4: fix race between inline dir conversion and folio
+ read
+To: Sandeep Dhavale <dhavale@google.com>, Theodore Ts'o <tytso@mit.edu>
+Cc: kernel-team@android.com, stable@vger.kernel.org,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, liuderong@xiaomi.com
+References: <20260918025416.604297-1-dhavale@google.com>
+From: liuderong <liuderong2022@gmail.com>
+In-Reply-To: <20260918025416.604297-1-dhavale@google.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgBXdCf87bRq9wz3BQ--.25718S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxKF13Kr15CrW8WF4kKr4UArb_yoWxWw1kpF
-	WUKrnayrW8Wr47Cr4kua1kZr1rW3ykXa1UAFyxGr9ayrnYga42kry2g3W09ay8Kwn7AF1F
-	qF4jvFWq9a1qyFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUv0b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS
-	14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I
-	8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWr
-	XwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x
-	0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_
-	Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IU0
-	4xRDUUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 
-
-On 9/22/2026 7:07 PM, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> When the mapping has a non-zero minimum folio order (min_order),
-> folio_split() in truncate_inode_partial_folio() stops at min_order
-> instead of order 0, so the sub-folio containing a split point stays
-> aligned to 1 << min_order rather than to a single page. The original
-> boundaries in truncate_inode_pages_range() were based on page
-> granularity, so either boundary could land inside the min_order chunk at
-> its edge, and the truncation loop would drop that whole chunk, valid
-> out-of-range tail included.
-> 
-> For example, a 64K (order-4) folio with min_order = 2 (16K) punched from
-> offset 0 to 36K:
-> 
->   split @p0 -> [p0-p3, p4-p7, p8-p15]         # non-uniform, min_order
->   folio2 = p8-p15           # straddles: p8 in range, p9-p15 tail valid
->   2nd split of folio2 -> [p8-p11, p12-p15]    # success
->   end(old) = p9                               # BUG: p9 inside [p8-p11]
->   loop truncates ... p8-p11               # p9-p11's valid tail is lost
-> 
-> It has gone unnoticed so far for two reasons. A non-zero min_order is
-> only used by filesystems with a block or sector size larger than the
-> page size, and those either always write back the affected range before
-> punching a hole or truncating, or they carry filesystem private data on
-> dirty folios (e.g. buffer_head), which makes filemap_release_folio()
-> fail and folio_split() abort with -EBUSY, so the folio is never split
-> and the old start/end boundaries remain valid. The bug only becomes
-> reachable on paths that truncate dirty large folios without prior
-> writeback and without filesystem private data, such as the upcoming ext4
-> iomap buffered I/O path.
-> 
-> Align both start (rounded up) and end (rounded down) to the mapping
-> minimum folio order so they always fall on a folio boundary.
-> 
-> Reported-by: Joanne Koong <joannelkoong@gmail.com>
-> Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=OWzVRgD4202y1g@mail.gmail.com/
-> Fixes: e220917fa5077 ("mm: split a folio in minimum folio order chunks")
-> Suggested-by: Zi Yan <ziy@nvidia.com>
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+On 9/18/2026 10:54 AM, Sandeep Dhavale wrote:
+> Commit 90f097b1403f ("ext4: refactor the inline directory conversion and
+> new directory codepaths") moved directory block initialization in
+> ext4_convert_inline_data_nolock() into ext4_init_dirblock(), unlocking
+> data_bh before setting BH_Uptodate.
+>
+> When block size is smaller than PAGE_SIZE, multiple buffer heads share a
+> single block device folio. If a concurrent read on that folio runs via
+> block_read_full_folio() while data_bh is unlocked and not uptodate, it
+> locks data_bh and submits a disk read for the uninitialized block.
+>
+> Because ext4_init_dirblock() initializes bh->b_data without holding the
+> buffer lock, the disk read races with and overwrites the initialized
+> directory entries and checksum tail, corrupting the directory block:
+>
+>    EXT4-fs warning: ext4_dirblock_csum_verify:375: inode #...:
+>      No space for directory leaf checksum. Please run e2fsck -D.
+>    EXT4-fs error: __ext4_find_entry:1626: inode #...:
+>      checksumming directory block 0
+>
+> To fix this, mark data_bh uptodate before unlocking it in
+> ext4_convert_inline_data_nolock(), just like the regular file path
+> does. Additionally, hold lock_buffer(bh) in ext4_init_dirblock() while
+> populating the directory entries and checksum tail so any buffer
+> modifications are properly serialized.
+>
+> Fixes: 90f097b1403f ("ext4: refactor the inline directory conversion and new directory codepaths")
+> Cc: stable@vger.kernel.org
+> Assisted-by: Antigravity:gemini-3.8-flash
+> Signed-off-by: Sandeep Dhavale <dhavale@google.com>
 > ---
->  mm/truncate.c | 18 ++++++++++++------
->  1 file changed, 12 insertions(+), 6 deletions(-)
-> 
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index b58ba940be47..f9625bb4916f 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -345,9 +345,11 @@ long mapping_evict_folio(struct address_space *mapping, struct folio *folio)
->   * @lstart: offset from which to truncate
->   * @lend: offset to which to truncate (inclusive)
->   *
-> - * Truncate the page cache, removing the pages that are between
-> - * specified offsets (and zeroing out partial pages
-> - * if lstart or lend + 1 is not page aligned).
-> + * Truncate the page cache, removing the folios that are between specified
-> + * offsets (and zeroing out partial folios if lstart or lend + 1 is not
-> + * folio aligned).  For mappings with a non-zero minimum folio order, the
-> + * boundaries are aligned inwards to 1 << min_order so the edge sub-folio
-> + * straddling the range is kept.
->   *
->   * Truncate takes two passes - the first pass is nonblocking.  It will not
->   * block on page locks and it will not block on writeback.  The second pass
-> @@ -374,14 +376,14 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	int		i;
->  	struct folio	*folio;
->  	bool		same_folio;
-> +	pgoff_t		min_nrpages = mapping_min_folio_nrpages(mapping);
->  
->  	if (mapping_empty(mapping))
->  		return;
->  
->  	/*
-> -	 * 'start' and 'end' always covers the range of pages to be fully
-> -	 * truncated. Partial pages are covered with 'partial_start' at the
-> -	 * start of the range and 'partial_end' at the end of the range.
-> +	 * 'start' and 'end' always covers the range of folios to be fully
-> +	 * truncated, with both boundaries aligned inwards to 1 << min_order.
->  	 * Note that 'end' is exclusive while 'lend' is inclusive.
->  	 */
->  	start = (lstart + PAGE_SIZE - 1) >> PAGE_SHIFT;
-> @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
->  	else
->  		end = (lend + 1) >> PAGE_SHIFT;
->  
-> +	start = round_up(start, min_nrpages);
-> +	if (end != (pgoff_t)-1)
-> +		end = round_down(end, min_nrpages);
-> +
-Hi, all
-
-The sashiko pointed out an issue on this patch:
-
-> [Severity: Critical]
-> Can this integer overflow on 32-bit architectures?
+> Note:
+> This issue was reported by an Android partner encountering kernel panics
+> in ext4_dirblock_csum_verify() ("No space for directory leaf checksum")
+> on 16KB page size kernels mounting a 4KB block size ext4 filesystem.
 >
-> In truncate_inode_pages_range(), pgoff_t is a 32-bit integer on 32-bit
-> systems. If a hole punch or truncate operation occurs at an offset near
-> MAX_LFS_FILESIZE, the start page index will be close to 0xFFFFFFFF.
+> We verified with a standalone reproducer that the race reproduces
+> deterministically on Iteration 0 (< 1s) on both ARM64 (16KB page size,
+> 4KB ext4 blocks) and upstream ext4-tree/dev on x86_64 (4KB page size,
+> 1KB ext4 blocks), and confirmed that this patch resolves the issue.
+I verified this patch on an MTK platform running Android 17 (kernel 
+6.18) with 16KB page size and 4KB ext4 block size: the script can 
+reliably reproduce the issue. After applying the patch, the issue no 
+longer reproduces.
+Reproduction log snippet:
+EXT4-fs warning (device loop54): ext4_dirblock_csum_verify:375: inode 
+#15: comm repro_issue2: No space for directory leaf checksum. Please run 
+e2fsck -D.
+EXT4-fs error (device loop54): __ext4_find_entry:1626: inode #15: comm 
+repro_issue2: checksumming directory block 0
+
+Tested-by: liuderong <liuderong@xiaomi.com>
+>   fs/ext4/inline.c | 1 +
+>   fs/ext4/namei.c  | 2 ++
+>   2 files changed, 3 insertions(+)
 >
-> When min_nrpages > 1 (e.g., on filesystems supporting min_order > 0 like
-> Ext4 with bigalloc), rounding up this index wraps it to 0.
->
-> Would this wrap-around cause the entire page cache for the file to be
-> truncated instead of just the intended tail, leading to data loss?
-
-
-This is a pre-existing issue, and it is not specific to the truncate
-path.
-
-On 32-bit systems, for a mapping with a non-zero minimum folio order,
-the last min_order-aligned block of a file of MAX_LFS_FILESIZE is also
-the last block of the page index space, so the folio covering it ends at
-or past the last representable page index.  All places that do offset
-calculations on such end folios carry an overflow risk, e.g.,
-folio_next_index() wraps to 0 for that folio, and the values derived
-from it are wrong.
-
-For example, on a 32-bit environment I create an ext4 filesystem with a
-16KB blocksize, where the maximum file size is 0xFFFFFFFF000
-(MAX_LFS_FILESIZE). If we run:
-
- xfs_io -f -c "pwrite -b 0x10000 0xFFFFFFFC000 0x3000" /mnt/foo
-
-The last folio starts at 0xFFFFFFFC000, but its length is 0x4000,
-so calling folio_next_index() on it will overflow, leading to
-unpredictable errors.
-
-
-I think the root cause is that sb->s_maxbytes is set to
-MAX_LFS_FILESIZE, which on 32-bit is (loff_t)ULONG_MAX << PAGE_SHIFT.  A
-folio is at least min_order pages and min_order aligned, so the file
-must have at most ULONG_MAX + 1 - (1 << min_order) pages for the last
-folio's next index to stay representable.
-
-I suppose filesystems that use a non-zero minimum folio order should cap
-sb->s_maxbytes instead of using MAX_LFS_FILESIZE directly, something
-like this:
-
-static inline loff_t max_lfs_filesize(unsigned int min_order)
-{
-#if BITS_PER_LONG == 32
-	return ((loff_t)ULONG_MAX + 1 - (1UL << min_order)) << PAGE_SHIFT;
-#else
-    return MAX_LFS_FILESIZE;
-#endif
-}
-
-Any thoughts?
-
-Besides, I understand that since this is a pre-existing issue, it
-shouldn't block the merging of this series?
-
-Thanks,
-Yi.
-
-
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index ceee69a66482..0aa14cee3310 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1167,6 +1167,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
+>   		error = ext4_handle_dirty_metadata(handle,
+>   						   inode, data_bh);
+>   	} else {
+> +		set_buffer_uptodate(data_bh);
+>   		unlock_buffer(data_bh);
+>   		inode->i_size = inode->i_sb->s_blocksize;
+>   		i_size_write(inode, inode->i_sb->s_blocksize);
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 3b9740c1c16d..6550102fb56b 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -2933,6 +2933,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
+>   	if (ext4_has_feature_metadata_csum(inode->i_sb))
+>   		csum_size = sizeof(struct ext4_dir_entry_tail);
+>   
+> +	lock_buffer(bh);
+>   	de->inode = cpu_to_le32(inode->i_ino);
+>   	de->name_len = 1;
+>   	de->rec_len = ext4_rec_len_to_disk(ext4_dir_rec_len(de->name_len, NULL),
+> @@ -2965,6 +2966,7 @@ int ext4_init_dirblock(handle_t *handle, struct inode *inode,
+>   	BUFFER_TRACE(dir_block, "call ext4_handle_dirty_metadata");
+>   	set_buffer_uptodate(bh);
+>   	set_buffer_verified(bh);
+> +	unlock_buffer(bh);
+>   	return ext4_handle_dirty_dirblock(handle, inode, bh);
+>   }
+>   
