@@ -1,86 +1,86 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF9C1221F39;
-	Thu, 24 Sep 2026 16:26:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2A764A1E02;
+	Thu, 24 Sep 2026 16:56:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790267175; cv=none; b=ZXQQ2xm4P4uY+vpxFtTTMyrRI09TmNjPTXzgwBkYd2DYCS4ynKhdiPCQ4tIWrvltwTh2s+fTf97rOBCB/qQdQ7cAU7+Zo/WiysH4C0NwCMcBHlIjQXSE3m86JNe+0z1rrtwyuRDCkcXatY39fL8kCCmAODftbcFLTFXcg31YTk8=
+	t=1790269016; cv=none; b=cOXj3qkEggGsAlHvTXHuhI2Purk6ebPdg2BCiJziVp8jTipDWazpm7PbvwpSI6RH5cFdvqBKkzIDtwYRoD5gj0tCaD417hdU8yesL3NTGFwNp0v3uwXu5MNf3rMQ4s56Y0LIn5BjPV6Ff/mzrNid9dbTKjR/qFGdDWLJKwhtyWM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790267175; c=relaxed/simple;
-	bh=GBwsGq/c16eRIf9SgP1JA885U7vvY6nsVQzlwHl9tmE=;
+	s=arc-20240116; t=1790269016; c=relaxed/simple;
+	bh=6GoBYB20cNxu/nXI4zC2xvZw5WS3sdmYWWg1srXYBWg=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=enxhkVa3bTVExjkE81fV1OEBFNxCwoYkhNC4vFECPQlYDJJ9vlUTAbVd5M/XUyDR9LXZ6spnmkwklMMJVBD41lmZWkFgRkJpYWO0FA0iIQGkdnSozAfhMIvB4qyAiHCqxrEKTeUBmDVhPZlCXIAfNVHaPFgf0MgGZr6TH/KrRuQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=flo68gNn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=BWUbc2vT; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=lepQ2No0; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=nLdBX8lz; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=qENmCTp0qnccCknylWy+qdg/KbGyJFH7g1K2q5l7Wnb64gOK5goP7SEAxQeJjburIN/9aZW149fndm6A1+IhH/rVuNZqOBSBgP02EsJgEVezSYPc+5zOgrtZdMr+DNnZmPBNUJcVsITOLK7+CoHGgrXqcdovIk8oxASHUq07/Uw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=D79S1lvn; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=/j42n/1x; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=TDVXUjny; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=RAdzgSla; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="flo68gNn";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="BWUbc2vT";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="lepQ2No0";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="nLdBX8lz"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="D79S1lvn";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="/j42n/1x";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="TDVXUjny";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="RAdzgSla"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 57C8C20113;
-	Thu, 24 Sep 2026 16:26:03 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 953F6200E2;
+	Thu, 24 Sep 2026 16:56:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790267167; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1790269008; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=oNsW0Ricji6qGWWtvE4nR3LeWHVL38JIWd6EhtAoHdE=;
-	b=flo68gNnJauA+BscrqF0/AJmqmZW5adDveugaJ1TLvGdePMA0+lxcwtXhwzZh4WTjdqOfd
-	s0nlHXJ5OyKWqDQbjGcxcpZAeFF/aOoAzNUL1MWtVpTQSPVhpTqFS4/oiylXOrHrDWunj4
-	EJEd7gKKyBSHdnX5qSDrsOhuLmrAg+A=
+	bh=ieJvlrAgk+y/IIunMtd5uXKsQGJx+qv4AsIourcCCbw=;
+	b=D79S1lvnOmv4eA4aLqE72WH5VuMNXzyXjlh7Aj8P1a3TEeawfzhHXzM2MPThpB1iChr1rc
+	XAiv4nsmxW+dNc3e+ZYGdzT+8yXSIkU3WFraAZHm6qbZBrCaCeKw5MFxmpO7Dx7AxSr/Ma
+	rhwkHhZ498XNKNrPZcZixKyEfZH1D20=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790267167;
+	s=susede2_ed25519; t=1790269008;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=oNsW0Ricji6qGWWtvE4nR3LeWHVL38JIWd6EhtAoHdE=;
-	b=BWUbc2vTWvgQ9/kJAc/AvHRe1paWgYnUpcFqLZaJW2xGtrabY+HgCdvGKQe85jJdipelEe
-	vX9Uoj0TmREPCAAQ==
+	bh=ieJvlrAgk+y/IIunMtd5uXKsQGJx+qv4AsIourcCCbw=;
+	b=/j42n/1xrNTp8UUvNhWPQEBzcBL7IYy2kQmUU/4FSDJdgNps5c5F1Az/xWoA3UxM10Pi61
+	/t5NrrCMJhSCR7Cg==
 Authentication-Results: smtp-out2.suse.de;
-	none
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=TDVXUjny;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=RAdzgSla
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1790267163; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1790269004; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=oNsW0Ricji6qGWWtvE4nR3LeWHVL38JIWd6EhtAoHdE=;
-	b=lepQ2No0TKcFO7iRaRidoB/D9M2r/qZEV4zGLfJmN7wKCXjP544doUdJy9KHo746McbzSk
-	vZQn3/MHlVyCs5mHJzts01MpnM3QtMElXOvoEQeFQC+vtVYazhRhpYwzIYGRFLvDjAYBBw
-	gQkymTMEz/W3qNy/Jcen0pnYNbS83MQ=
+	bh=ieJvlrAgk+y/IIunMtd5uXKsQGJx+qv4AsIourcCCbw=;
+	b=TDVXUjnyVHwuFhIPaGjnkTEEEXyztBJH4+KecIRtzrtWqtvOqLPiZ9M4scb7EnBuB0EDio
+	UH1Fp8SDFCHT2SXlaG+BGGquMHgy4abRoqEgJKAWqKwo71YLCpFv7MpL7mmgpcfd5J8Zud
+	bglC1jEOYpsaELo4y89n2YsT0FrIbaE=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1790267163;
+	s=susede2_ed25519; t=1790269004;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=oNsW0Ricji6qGWWtvE4nR3LeWHVL38JIWd6EhtAoHdE=;
-	b=nLdBX8lzORNo12gXk3fLUmXR/gG4Jsl1yO9uUoyQA865yLvvc3/6yVdrFfBNi3sK9rbTXK
-	kX8L3NbEkJryRaDg==
+	bh=ieJvlrAgk+y/IIunMtd5uXKsQGJx+qv4AsIourcCCbw=;
+	b=RAdzgSlauPkvkdUG0C6RXec1vWQwtrmNSTQcq/rc4x/piFUgHnHeAAcvys57ponMWg3zmc
+	kw39rHwf/UzJoOAw==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1E11513354;
-	Thu, 24 Sep 2026 16:26:03 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6CE8213354;
+	Thu, 24 Sep 2026 16:56:44 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id RMtNORpPtWo6eAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 24 Sep 2026 16:26:03 +0000
+	id aJdmEkxWtWp3OgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 24 Sep 2026 16:56:44 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 8D727A132E; Thu, 24 Sep 2026 18:25:58 +0200 (CEST)
-Date: Thu, 24 Sep 2026 18:25:58 +0200
+	id F0F41A132E; Thu, 24 Sep 2026 18:56:39 +0200 (CEST)
+Date: Thu, 24 Sep 2026 18:56:39 +0200
 From: Jan Kara <jack@suse.cz>
-To: 781735889@qq.com
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, harshadshirwadkar@gmail.com, linux-kernel@vger.kernel.org, 
+To: Matthias Goergens <matthias.goergens@gmail.com>
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz, tytso@mit.edu, 
 	stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: propagate errors from fast commit create replay
-Message-ID: <j7ujv5ea5z32bxcut7ndcfasaqi6dfa4w2xjgeej7lcsn64yrt@7eutvqnfjvfs>
-References: <tencent_46A95D4281B70962D6EC1D523A85C448DC09@qq.com>
+Subject: Re: [PATCH v3] ext4: drop extra ea_inode ref in cached-block reuse
+ path
+Message-ID: <p72ohr4pnixuhsi4mve2saudzmcomxb6h2tamvl6qwnr7msiyi@q2gcmmhmyjvp>
+References: <20260916071046.2182813-1-matthias.goergens@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -89,92 +89,137 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <tencent_46A95D4281B70962D6EC1D523A85C448DC09@qq.com>
-X-Spam-Score: -2.30
+In-Reply-To: <20260916071046.2182813-1-matthias.goergens@gmail.com>
 X-Spam-Level: 
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 953F6200E2
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	FREEMAIL_TO(0.00)[qq.com];
-	TAGGED_RCPT(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCVD_COUNT_THREE(0.00)[3];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com,qq.com];
+	MX_GOOD(-0.01)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
-	RCPT_COUNT_TWELVE(0.00)[12];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TO_DN_NONE(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_TO(0.00)[gmail.com];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
 	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[qq.com:email,suse.cz:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	RCPT_COUNT_FIVE(0.00)[5];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:dkim,suse.cz:email,sashiko.dev:url]
 X-Spam-Flag: NO
+X-Spam-Score: -2.51
 
-On Thu 17-09-26 11:28:33, 781735889@qq.com wrote:
-> From: lty <781735889@qq.com>
+On Wed 16-09-26 15:10:46, Matthias Goergens wrote:
+> ext4_xattr_block_set() takes a reference on the ea_inode via
+> ext4_xattr_inode_lookup_create() before it builds the new xattr block.
+> The new-block path drops that reference once
+> ext4_xattr_inode_inc_ref_all() has counted every entry in the block.
+> When a separately built block is discarded in favour of an identical
+> cached block, the cached block already counts its entries and the
+> lookup reference is left unbalanced.
 > 
-> During fast-commit replay, ext4_fc_replay_create() can fail while
-> looking up the parent directory, initializing a new directory, or
-> dirtying the replayed inode.  The parent lookup error jumps to the
-> cleanup path while ret is still zero.  Errors from ext4_init_new_dir()
-> are explicitly converted to zero, and the return value from
-> ext4_mark_inode_dirty() is ignored.
+> Each affected reuse leaks one on-disk reference, and the ea_inode and
+> its data blocks stay allocated after the last xattr referring to them
+> is gone.  Setting the same xattr on two files is enough when the value
+> needs an EA inode and the entry does not fit in the inode body: the
+> second set reuses the first file's block and leaves the ea_inode at
+> refcount 2, and removing the xattr from both files leaves it at 1.
 > 
-> Consequently, replay can report success and mount the filesystem even
-> though the directory creation was not completely replayed.  A failed
-> parent lookup, for example, leaves an unconnected directory inode.
+> Drop the reference when the entry was not written into the old block in
+> place.  new_bh != bs->bh is not the right test: the in-place path can
+> reach 'inserted' and match a different cached block, and there the
+> reference belongs to the old block and ext4_xattr_release_block() drops
+> it, so dropping it here too would under-count.  Conversely, new_bh ==
+> bs->bh with a cloned s->base (re-setting an unchanged external value on
+> a shared block) leaks the reference as well, so the check follows both
+> branches.
 > 
-> Propagate these errors so journal recovery aborts rather than completing
-> with inconsistent metadata.
+> If the decrement fails the filesystem is already broken: report the
+> error and return it without rolling back, putting and clearing ea_inode
+> first so that cleanup does not retry the decrement.  The reused block
+> keeps its incremented refcount and its block quota charge; e2fsck
+> corrects the refcount.
 > 
-> Tested with QEMU fast-commit directory replay and injected failures in
-> the parent lookup, directory initialization, and inode dirtying paths.
-> Before the change, recovery completed and e2fsck reported an unconnected
-> directory inode or inconsistent inode metadata.  With the change, JBD2
-> reports recovery failure and the mount fails in all three cases.
+> Found by the Sashiko AI review bot while reviewing commit 54b6bd40898d
+> ("ext4: stop retrying saturated xattr cache entries"):
+> https://sashiko.dev/#/patchset/20260802065941.1726052-1-matthias.goergens@gmail.com?part=1
 > 
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+> Fixes: 0a46ef234756 ("ext4: do not create EA inode under buffer lock")
 > Cc: stable@vger.kernel.org
+> Signed-off-by: Matthias Goergens <matthias.goergens@gmail.com>
 
-I don't think this is really stable material. Mostly a cosmetic bugfix...
-
-> Signed-off-by: lty <781735889@qq.com>
-
-Otherwise looks mostly good. Feel free to add:
+Grumble. This code is really subtle and needs some simplification. But your
+fix looks good to me now so feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
-but please fix one nit below:
-
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index b3c22636251d..e656abd938fb 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -1656,12 +1656,12 @@ static int ext4_fc_replay_create(struct super_block *sb,
->  		dir = ext4_iget(sb, darg.parent_ino, EXT4_IGET_NORMAL);
->  		if (IS_ERR(dir)) {
->  			ext4_debug("Dir %d not found.", darg.ino);
-> +			ret = PTR_ERR(dir);
->  			goto out;
->  		}
->  		ret = ext4_init_new_dir(NULL, dir, inode);
->  		iput(dir);
->  		if (ret) {
-> -			ret = 0;
->  			goto out;
->  		}
-
-Please remove the now superfluous braces.
-
 								Honza
+
+> ---
+> v3:
+> - Error path per Jan: report with ext4_error_inode() and return, no
+>   unwinding.  Put and clear ea_inode there so cleanup does not retry the
+>   decrement.  After a successful decrement the branch reaches cleanup
+>   with error == 0, which only puts the inode, so nothing is needed there.
+>   The new-block path is unchanged.
+> - Keep the in-place condition instead of new_bh != bs->bh; reasons and
+>   measurements in the reply to v2.
+> - Changelog: the normal-path leak does not retain quota charges; state
+>   the preconditions of the example.
+> - Shorter comment, EXT4_ERROR_INODE(); rebased onto ext4 dev; Cc stable.
+> v2: fail the operation on a failed decrement instead of masking it.
+>  fs/ext4/xattr.c | 18 ++++++++++++++++++
+>  1 file changed, 18 insertions(+)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b9650..d9e60b5952d2d 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2113,6 +2113,24 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  			mb_cache_entry_touch(ea_block_cache, ce);
+>  			mb_cache_entry_put(ea_block_cache, ce);
+>  			ce = NULL;
+> +			if (ea_inode && !(bs->bh && s->base == bs->bh->b_data)) {
+> +				/*
+> +				 * The cached block already owns its EA inode
+> +				 * references.  For an in-place update the lookup
+> +				 * reference belongs to the old block and is
+> +				 * dropped when that block is released.
+> +				 */
+> +				error = ext4_xattr_inode_dec_ref(handle,
+> +								 ea_inode);
+> +				if (error) {
+> +					EXT4_ERROR_INODE(inode,
+> +							 "dec ref error=%d",
+> +							 error);
+> +					ext4_put_ea_inode(ea_inode);
+> +					ea_inode = NULL;
+> +					goto cleanup;
+> +				}
+> +			}
+>  		} else if (bs->bh && s->base == bs->bh->b_data) {
+>  			/* We were modifying this block in-place. */
+>  			ea_bdebug(bs->bh, "keeping this block");
+> -- 
+> 2.55.0
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
