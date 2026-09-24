@@ -1,127 +1,68 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.5])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.2])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 548CD478870;
-	Thu, 24 Sep 2026 12:04:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8AD6047ECCB;
+	Thu, 24 Sep 2026 12:21:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.2
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790251497; cv=none; b=kznndfzzNFLuBXge8384BP33iWR8p/F+cA+TfWfIQBfsmY0DhzrTjlqGFRSI06JKjEEC0pP/eOYorQZMzAoBSsH1Kxwf/pYAIbaoBvD4pmE0ygP7JVHBpHuQgmf44xpzLVNgPTsT2RlHYkEqi4fLvF2qIyAjzS4ndxn36VmAogM=
+	t=1790252506; cv=none; b=YVBWSlYpV7wJ8vHW8qMLy+wG7yyJ/b34Au74ju5MU0p3l1CEwK3MvFJF6FU007wweF0+4fA3TBfB6RQJBRyB6BgWxROT0xY7sqhWhVhHSbhxOphslrZT+KoZ0kAPuQROZrEWobEmCWcTotmL9zKIV0Nd9MpnAEk46LCUdngta4o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790251497; c=relaxed/simple;
-	bh=Wb9UfTdAfRe3M7usASG3pV8I28E3o5494Kjit7FKro8=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=rcs4s0ZKoJKOnCc1YO9cE1Wc9Dq6D1gou5ZcNPYPDl0S1JdmpAwjP6Zh1e6crDcS1V18NTZ6AkBY6RVWGJs1qYH32CuKVWKBxchVLT3nfiCMeIdQxK0fZnKWowB/T16ZdLjtDD1PLUGfY8dw+5RgXsMcXpMkC7RqDZocT8b4y/w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=mEaC849y; arc=none smtp.client-ip=220.197.31.5
+	s=arc-20240116; t=1790252506; c=relaxed/simple;
+	bh=Zpd+j/mUx9C7TrN/L31jgjvx5dJBC8fLkMNiUI0+nMM=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References:Content-Type:
+	 MIME-Version:Message-ID; b=djZcevZ5hA7nfNrQtF3hQjIwLBkyKxCndMYaJk5kYr6xIjIbKcimcWzHGW7lrFWJpPn+BtxKp/sPzKvBaTQOaWps1M15iN++oNr7piN4mjKMp0JCP/dK8YRcmEh156jwTew98sTCJzGPWySZA0LRXHXi0e8JAwg/c1FCI5Sf+Ss=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=PHX86KUV; arc=none smtp.client-ip=117.135.210.2
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="mEaC849y"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="PHX86KUV"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=Message-ID:Date:MIME-Version:Subject:To:From:
-	Content-Type; bh=BHGkzVj7YVTIwQWSxeG5FamHMAQuS8AgVPjPclOktEs=;
-	b=mEaC849yZzIANJfxqgtQ0/Jrm6BZuParKlK8S6ZUAZmhhAjjF3wO+t1u0+dMGT
-	+eojw893NVAbotH0Kl9UY/WNjxCTQi9A52z3Sy7WYar7MvUtmsXKfLjbL8/UtimP
-	oZ8hG91LR5Wr4aGwRUBXkKJ7iMolLeRnSRo3trqrw/SsY=
-Message-ID: <b51a2ffa-5778-4075-a679-84cd3acf419a@163.com>
-Date: Thu, 24 Sep 2026 20:04:14 +0800
+	s=s110527; h=Date:From:To:Subject:Content-Type:MIME-Version:
+	Message-ID; bh=Zpd+j/mUx9C7TrN/L31jgjvx5dJBC8fLkMNiUI0+nMM=; b=P
+	HX86KUVSFYJ+onbEn1E3UI18by81/qVQJmtiZ0R8Ejl63Gus3wfT05rHJaDql+Hk
+	CkRJwxrcaFK51V2rqR/8mUXimKTXQ2RM+4r2luBOH3cS3WucmxJqIwnVFw4P3xnu
+	+5ZYuQ//9K60QV07khAlnWStJlhR+ZsQWfp85Bu3/o=
+Date: Thu, 24 Sep 2026 20:20:47 +0800 (CST)
+From: "jiale yao" <19888972804@163.com>
+To: liubaolin <liubaolin12138@163.com>
+Cc: "Namjae Jeon" <linkinjeon@kernel.org>,
+	"Sungjong Seo" <sj1557.seo@samsung.com>,
+	"Yuezhang Mo" <yuezhang.mo@sony.com>, "Jan Kara" <jack@suse.com>,
+	"Hyunchul Lee" <hyc.lee@gmail.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	"Darrick J. Wong" <djwong@kernel.org>, exfat@lists.linux.dev,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	ntfs@lists.linux.dev
+Subject: Re:Re: [PATCH 2/3] ntfs: drain in-flight DIO before buffered write
+ fallback
+X-Priority: 3
+X-Mailer: Coremail Webmail Server Version 2023.4-cmXT build
+ 20260511(2e539873) Copyright (c) 2002-2026 www.mailtech.cn 163com
+In-Reply-To: <b51a2ffa-5778-4075-a679-84cd3acf419a@163.com>
+References: <20260924110544.601390-1-yaojiale02@163.com>
+ <20260924110544.601390-3-yaojiale02@163.com>
+ <b51a2ffa-5778-4075-a679-84cd3acf419a@163.com>
+X-NTES-SC: AL_Qu2SAv6evUwv4SSZZukcn08ShO49XMOyvfoi2YFTc+wEnhnL8yUYRG1aAVbZ0M2NIDyrmSO1VSZU0dZdb4B+FqGYtFDMTsnu5maxz/wyRw==
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=GBK
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/3] ntfs: drain in-flight DIO before buffered write
- fallback
-To: Jiale Yao <yaojiale02@163.com>, Namjae Jeon <linkinjeon@kernel.org>,
- Sungjong Seo <sj1557.seo@samsung.com>, Yuezhang Mo <yuezhang.mo@sony.com>,
- Jan Kara <jack@suse.com>, Hyunchul Lee <hyc.lee@gmail.com>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- "Darrick J. Wong" <djwong@kernel.org>, exfat@lists.linux.dev,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
- ntfs@lists.linux.dev
-References: <20260924110544.601390-1-yaojiale02@163.com>
- <20260924110544.601390-3-yaojiale02@163.com>
-Content-Language: en-US
-From: liubaolin <liubaolin12138@163.com>
-In-Reply-To: <20260924110544.601390-3-yaojiale02@163.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:PCgvCgBHFBW+EbVq9SEGBA--.9703S2
-X-Coremail-Antispam: 1Uf129KBjvJXoWxWrWDZryfZF47Zr1xJw13urg_yoW5Gw17pr
-	ZakFy5Jr9FyrWIq3Z7GF4rWF1Fg397JrWa9rWkWw1UC3y8Gr4vgF40kr1jvr4rAFsrJr42
-	qa109rykZryjvaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07U5CztUUUUU=
-X-CM-SenderInfo: xolxutxrol0iasrtmqqrwthudrp/xtbC6gF8R2q1EcEEMwAA3o
+Message-ID: <7e97a16e.9bac.1a0d35c76c2.Coremail.19888972804@163.com>
+X-Coremail-Locale: zh_CN
+X-CM-TRANSID:ZygvCgD3f1mfFbVqMqtOAA--.47461W
+X-CM-SenderInfo: x1dryxhdohiji6rwjhhfrp/xtbC8B90rmq1FZ-9nQAA3A
+X-Coremail-Antispam: 1U5529EdanIXcx71UUUUU7vcSsGvfC2KfnxnUU==
 
-
-
-在 2026/9/24 19:05, Jiale Yao 写道:
-> An asynchronous direct write can remain in flight after the inode lock is
-> released.  If another direct write falls back to buffered I/O while the
-> first write is still pending, iomap_file_buffered_write() can dirty pages
-> before the first write completes its post-I/O page cache invalidation.
-> The invalidation then finds dirty pages, reports a page cache invalidation
-> failure, and records -EIO in the mapping error sequence.  A later fsync()
-> therefore returns -EIO.
-> 
-> Commit 15cdefd0c0522f9d5e12d947fa04f4c11649b699 ("ext4: drain
-> in-flight DIO before buffered write fallback") fixed the same race in
-> ext4.  NTFS has an equivalent fallback after iomap_dio_rw() returns
-> -ENOTBLK or a short write, but does not drain other in-flight DIO before
-> dirtying the page cache.
-> 
-> Wait for in-flight DIO before calling iomap_file_buffered_write() in the
-> fallback path.
-> 
-> A reproducer using concurrent AIO direct writes and buffered fallback
-> triggered the following warning and made a subsequent fsync() return
-> -EIO:
-> 
->    Page cache invalidation failure on direct I/O.  Possible data corruption
->    due to collision with buffered I/O!
-> 
-> Fixes: 9c87959601e8 ("ntfs: update file operations")
-> Link: https://lore.kernel.org/r/20260629113827.4074335-3-libaokun@linux.alibaba.com
-> Signed-off-by: Jiale Yao <yaojiale02@163.com>
-> ---
->   fs/ntfs/file.c | 7 +++++++
->   1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
-> index 007d1614b9ac..2fc2ffde3846 100644
-> --- a/fs/ntfs/file.c
-> +++ b/fs/ntfs/file.c
-> @@ -527,6 +527,13 @@ static ssize_t ntfs_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
->   
->   		offset = iocb->ki_pos;
->   		iocb->ki_flags &= ~IOCB_DIRECT;
-> +
-> +		/*
-> +		 * Prevent concurrent direct I/O and buffered I/O to the same file
-> +		 * range. Wait for in-flight DIO to finish before dirtying pages.
-> +		 */
-> +		inode_dio_wait(file_inode(iocb->ki_filp));
-
-Hi Jiale,
-    This fallback path can still have IOCB_NOWAIT set, but 
-inode_dio_wait() blocks when there is outstanding DIO. Clearing 
-IOCB_DIRECT does not clear IOCB_NOWAIT.
-
-   In comparison, ext4_buffered_write_iter() rejects NOWAIT requests 
-before reaching the wait.
-
-   Could we also handle IOCB_NOWAIT before entering this potentially 
-blocking fallback?
-   If no bytes have been written, we can return -EAGAIN; if some DIO has 
-already completed, we should preserve the positive short-write result.
-
-Thanks,
-Baolin.
-
-
-> +
->   		written = iomap_file_buffered_write(iocb, from,
->   				&ntfs_write_iomap_ops, &ntfs_iomap_folio_ops,
->   				NULL);
-
+SGkgQmFvbGluLAoKWW91J3JlIHJpZ2h0LiBOVEZTIGFkdmVydGlzZXMgRk1PREVfTk9XQUlULCBh
+bmQgY2xlYXJpbmcgSU9DQl9ESVJFQ1QKZG9lcyBub3QgbWFrZSBpdCB2YWxpZCB0byBibG9jayBp
+biBpbm9kZV9kaW9fd2FpdCgpLgoKSSB3aWxsIGNoZWNrIElPQ0JfTk9XQUlUIGJlZm9yZSBlbnRl
+cmluZyB0aGUgYnVmZmVyZWQgZmFsbGJhY2suIElmCmlvbWFwX2Rpb19ydygpIGhhcyBub3Qgd3Jp
+dHRlbiBhbnkgZGF0YSwgdGhlIHBhdGggd2lsbCByZXR1cm4gLUVBR0FJTi4KSWYgaXQgY29tcGxl
+dGVkIGEgcGFydGlhbCB3cml0ZSwgaXQgd2lsbCByZXR1cm4gdGhlIHBvc2l0aXZlIHNob3J0LXdy
+aXRlCnJlc3VsdCB3aXRob3V0IGVudGVyaW5nIHRoZSBwb3RlbnRpYWxseSBibG9ja2luZyBmYWxs
+YmFjay4KCkkgd2lsbCBhZGRyZXNzIHRoaXMgaW4gdjIsIGFmdGVyIDI0aC4KClRoYW5rcywKSmlh
+bGU=
