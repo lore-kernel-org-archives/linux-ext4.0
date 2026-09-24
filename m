@@ -1,155 +1,131 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej2-f12.google.com (mail-ej2-f12.google.com [74.125.228.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1F0640A926
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 22:29:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790289000; cv=none; b=bGEMCgULIbW6djiy5F3Ao0VtzMWAKAzI1V6MTkGWc7Kg6aYcvVwyv02u47lnKugWBv10r/9Q+Za329Dz1tdAe2qgwW6b8mqF0/WDVPr3KyRPVtHWdXqx+NSXm4dZ3232Ci7YPg5Gpyv5++04gmZqaMxSWr9Y2Pp0aO09rRH+WSk=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790289000; c=relaxed/simple;
-	bh=IQZ5Qz3B02DHilP8/lrHynVk/gWCWnZRlP5K2MsqtuI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DVm58Db3SCQvcNnhzCTOkwe71wuW49+S7QcGtRLNn0FJeedSrBD9pj15DANaUeAjDpbDAm6OD1GgYIlC01U7DU0FqQT0726Jg9d3bAil5Z+qW7Oo+c9tJeaQJqHleTSZsqT57JjPJ9h32QxzosFs6sf+fnYe3OIipdHQREZucC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=I/mAihiN; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=GYBLjAQq; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD28541DEC9
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 23:12:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.140
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790291554; cv=pass; b=b0lzteU+YaB43CKneWRTCHHc2M+AVTrnOexZ1BdVk2eE7jIaqgUFv42cOXoZB0bKQhTTmBIMEAUc33pyy8Fz5GvJIfEEkqQ8FdGm7hyPlCebypr3Z0CId1aNHPaOQ07xSKiVMGnZYkCrkqyDkDIWYIo/YnTgYHriDdLER3gwmLc=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790291554; c=relaxed/simple;
+	bh=i5gtPL45/HsWqgNnaIaxvWIYAE5RMDtissUXKYWjbRg=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=qWibdXNDez6TxgNnWGBDPWOyh+y6Mv9SVN3YWAS+KVeyRxySpUAI3di62cp8uW74yjuDf/k6+w5Uvlawi4IPK5SwqFLfmYi3k7hBWPl6JOWEnxACLOxh/j7+nNHyf83Bl+OlraOnM3ptg9mmlOQfdzhD6LjM/AKiNMU2SpfQRjc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=MNhn+6bQ; arc=pass smtp.client-ip=74.125.228.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="I/mAihiN";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="GYBLjAQq"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790288997;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
-	b=I/mAihiNIPVUz6mZpa44Za2iOAKyfStWhOCj9ZDiBv5/HcPJoDfqFMwQw6ksGYYTXCmVud
-	W2wghTMRVVjCglnk0ctdQdeF/+VjOcQdigEOqr9SrtoWa0DCzBGg7Nstpf63jDuevvE7wH
-	9OeG+h9vMyegBQZ97uYTbo0Uqw9bk6c=
-Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
- [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-269-SYxe64uDMUajuuYBmxTOQw-1; Thu, 24 Sep 2026 18:29:56 -0400
-X-MC-Unique: SYxe64uDMUajuuYBmxTOQw-1
-X-Mimecast-MFC-AGG-ID: SYxe64uDMUajuuYBmxTOQw_1790288996
-Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-93ae8e7e546so59587185a.1
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 15:29:56 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="MNhn+6bQ"
+Received: by mail-ej2-f12.google.com with SMTP id a640c23a62f3a-c254f6c7a56so42048466b.1
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 16:12:32 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1790291551; cv=none;
+        d=google.com; s=arc-20260327;
+        b=eunFco7FXa8YlnJNrmVINO4tgxke7uO6J+dLTUsX9ofCa2tlCs7WXPUAcV5r8/LC2H
+         azbCiFDEBBifBTfCx+rq5jXSzDD/3XRowuzwOZb1lof0mH4eS62Oouagn4ytl508G7ra
+         U6C/xzXkVd95HCh1eR1F6z9YdA6yk8EKngiOhpIWbx1eeT7XhspFOPGqh/bxj9xhEpr7
+         H7wuCMH4hbMUaf31iPFyoABHMLEhn322xyFutV2imGNQQdD2ME5oRm2miB7C3LSJnVX8
+         hRMcwPz6vTDG/9ltuOWxvyokOgm+54yc7PxShu5NaFepVX0Rj6Dv+4qoyovts+0jUedQ
+         DssQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=1/GtmCck+btFeib66fipBTabB87VzP8LLtE6Qx5AZ/Y=;
+        fh=sJUaQDtV92IHW9MqzZwVTJfHovuHdfhmvTGXamoFLVU=;
+        b=TbHVRsm6wpR1R337yvMG9o9Darka/D9NRFY7QVnuy69FvJQIYCl6rxrwVK0SsLuCjk
+         psREFWlNxTtYUHm/nmLZVug8oK9vFdhhGcdY/5DIW+bAB8YuIof/onLIDyal1eRMEERm
+         nzZD3CkacRkOW5kwn8OUo+9pQN1GNsLX/MwcRzmFM5mOVow3H7SRemfSXfypDIp0RTyM
+         LbMNp/XCvUUr2/4jKwmawrwjdPzS/xf/UwzZzbCWBHn4So4sqOHHsYtNAXAHK4K0o9pI
+         e0w6S/FV9lmOEqPIwQIIPKbGItNeUmUH9dAs/EK1ok6DW9Q6ZXp068O9xw1EAqBsrS5s
+         C8Dw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1790288996; x=1790893796; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
-        b=GYBLjAQq+d5u6do1eLJ3ESihX6qUNACW55NhFnZjDJvxq60VRFeoGnsUY62ynSIEHi
-         sOHG+UdUNqinpVVBIbVOgd3gqeAOyQ7MK4VlCOTqVh6+r9W1m0JZ1NK2RD0Q00eQx8XI
-         NSazJM17TYDR/c1GAFuMplU8OAcZnHlvKSZmuLstSjZiyAuAALVKHnE2wkWZBLokNg2/
-         glnsaZhWQiaPB62cOsVvoyowMUYLur16qytHUAWOtmgInxjfysZ89X2bm0RJQIbH0xEm
-         x42vPHs5CYjypTUKCnzLFqK5dc64+nw+EvUXIg/eB+v3f99KYC5Bc/ioOmVWhC3+RBCj
-         3wWA==
+        d=google.com; s=20251104; t=1790291551; x=1790896351; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=1/GtmCck+btFeib66fipBTabB87VzP8LLtE6Qx5AZ/Y=;
+        b=MNhn+6bQ0yOwUi7nD6sQIuImLP3dhxaCTGS8dOraKPpILKFlSAkUGE3t4ALNV+KO9Q
+         /YU+LtmbbQkpU4iiaBwJgqyWJQh4Xc5wZqldJV6GaIQvRo7eCbQxqIfb7PVDjkXIa7Bp
+         7LI1OBOZEb5rgbfLu0eOtxGDw/wihzA4pcYUPoba1k91jZiLyqKwGbcNkHiguyiDuuf3
+         h6bxvZ2rvSaeRHTBpuP3msEQqCYBau1I5OWIfkx9/xmqYRzwJ/03CjSzFDJnS8AEBcVH
+         s4LMyEZVErV1aRicdWUXf6Y3wEPkcOeDky8CLY0bO7rryhOpKdhL0Hscv50Oitv9sLOG
+         s88w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790288996; x=1790893796;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
-        b=xlE2ggeEKmeKpsENEMOoYyk9SHG05l1NppFJeRTv0d4tF5nbsjwKs4vXe7/SRj0G+U
-         KoZhQ6AA7rYAESXd8vl3Hr8HO6ufD0G/JaGErxSSezF9zXRJmdqghKXQAakzrxg+yWmJ
-         NDn664/Vbjgcw0fzOAoiX8cBNtCvGFZgouCeHZ+KU8/TNRiOeVBmLtpNxg86q+SgsCz+
-         kaVrnUEtZFMBUeaGFRYBAUzfs2t7QmaQ2ceuGMsB3e7LVwN9JgkZNmXha9tvKcpkDaKm
-         nlIxWXFUvA08zEOxQB0Wtwvb8Qwsl0H0peeL9floXB6iqC7q29Ts9T/eg27TANbmMC02
-         ueeQ==
-X-Gm-Message-State: AFuF++lsO4akyQghQonCZPXNUEqPgu6IZXQRFqEQNUaL6Utj1+jsczQR
-	49x63L4B1d3LqtRAXUblhPIrcdcutALDc9AolGAXAwe47FER76dTptQI5RdDoKLiiVw5AjC2u/S
-	mrzvk/tEoOJo4S22OXoaq8f7JmsPVAtT+lVgB9pY0jtsgc37dLdU29Ni/elvASYUXFN4zfUxTWQ
-	3sW+DlRCiFDwaRNmRhCkcb6Hk+WxhaSET8aC7GtOjtZ45ABDfj
-X-Gm-Gg: AYBFou3ipVtvd1UZrKIxr1DmTFO+vD+i9/z5M0OIIDaQa/u/BDb1XUReUJ9WPocn3Es
-	HeBHtOPAB+h6kUCXorIZpLEC4fNCeYCQeY2vra3UwOO6HPb/eDE6StYoMVXD4e682soOKuDr2ol
-	6xtQZNqDbqVbWhfYa8KdaVqz9LTG7nfJMPfcsVPhc2889ad9/6MsmZFJG+vc9RyJysvVVWIU6td
-	51Uri4+Sh+V+Tl2t4kbe4qncqEiRcWxBOnJCV+50SGEcaxotpUjsSaG8toZzI0l79DHHhdjVmwa
-	a7miS/vvCzSSEgYW5i70fKY1a3g4x+FdD+7CIo7aH5dzEdtlZGt0P2b5KI44i6HIvN4hvP8yrV5
-	lskeDx4+4Kp+S2qg1OJKzvejTjkScZT0FhzQI5w==
-X-Received: by 2002:a05:620a:414a:b0:939:9b1c:ea4c with SMTP id af79cd13be357-93c43bc93b2mr151443385a.28.1790288996044;
-        Thu, 24 Sep 2026 15:29:56 -0700 (PDT)
-X-Received: by 2002:a05:620a:414a:b0:939:9b1c:ea4c with SMTP id af79cd13be357-93c43bc93b2mr151440685a.28.1790288995533;
-        Thu, 24 Sep 2026 15:29:55 -0700 (PDT)
-Received: from big24.sandeen.net (97-116-156-223.mpls.qwest.net. [97.116.156.223])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c44972febsm37216985a.39.2026.09.24.15.29.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 24 Sep 2026 15:29:55 -0700 (PDT)
-From: Eric Sandeen <sandeen@redhat.com>
-To: linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu,
-	sandeen@redhat.com,
-	agruenba@redhat.com
-Subject: [PATCH 8/8] libext2fs: fix ea loop in ext2fs_xattr_inode_max_size
-Date: Thu, 24 Sep 2026 17:23:42 -0500
-Message-ID: <20260924222944.3683556-9-sandeen@redhat.com>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260924222944.3683556-1-sandeen@redhat.com>
-References: <20260924222944.3683556-1-sandeen@redhat.com>
+        d=1e100.net; s=20260707; t=1790291551; x=1790896351;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=1/GtmCck+btFeib66fipBTabB87VzP8LLtE6Qx5AZ/Y=;
+        b=DkHw2caBY/lSV+4e8IGImIibThQDLq7X4faqbH+twMPSUWqPe5f0J36EhPCzEe0rwa
+         0TgTST5mJrVNUoGSnbAj8fH3JjhDDoQrs9Pzoxur6eEn99ddVwrOzpusAFNigF8dglPc
+         eHBuUxSufZb3DLUbI/zgw+P/0UXvLoKhXibZo/leUlAbZx9OBXAFXZMYmTYVG7JYJjrp
+         6DqA2hHK2S6usFk6KSr9JexCc/6BEKh8ug92FSO/3CWouJZMK6T/zjOJ15pMc+iavKhw
+         wsJGVHhFpteviJY4PjumDxyWCl6DY88UTX8sxO1/TjUXQmlXGbDpQC0aQ5+rlpr0Mapq
+         +pXg==
+X-Forwarded-Encrypted: i=1; AKwUvBwmCO8zan4KJ0c+S1OZvvTOMR5OkGKbBFsyUCgvOx49XuJwgjAbW39aNyfM+lpMTEiGr9o/Pxfk10y1@vger.kernel.org
+X-Gm-Message-State: AFuF++mAhCbUVDFMWVjICT2tE7JfElLo84AMmRE9P5DYv8km1ZJrB8Ke
+	ABndxX9V+opd+cE/R57ZgnDO7uRtPaumAlvcjge8SQg+pdxE5sSpheuzSZsCBmMp+cLcKH6H00s
+	7SRfuH+AKkYXEDbsAxkBYvMKF1NROap/SgYWjAUJd
+X-Gm-Gg: AYBFou1qpO+uscJVR9F3Uvvx6zgZBo3uGO1oquxRn2s4JuwnwDaxbYQX0J1HtJ9kCRh
+	XLtAcaEMSu1TaxZ737BjI/N9CzRS1xDpx0Gpd0Te9fmfxph8N6lMFnosZkQCiYixdXeNJI/lpBr
+	7BOtLx0KYuFe7eai5AdTDlrNnZq7G+TkAshS1pGaUa/CItT+xhIMzXqTIA1/BwjE0EYenzpup20
+	Pvd6xR4zH0W7H3atyO2ki/BOsJ5ZAQih0YenEg88MnPvqsDhkxfvtjEAWZLj7rHfRulCqKYEHAR
+	rIzUM+63SMvAGS2WdZ7Q3yDv9ct2EWTjqUyWNeED4JTxzassnubtut+UfW8YholUqzvK8Ko+sqI
+	U/CWCIMhVm3yPW6XvCg/e
+X-Received: by 2002:a17:907:7a8b:b0:c29:3b7e:3a94 with SMTP id
+ a640c23a62f3a-c2ac53d2785mr321958666b.38.1790291550387; Thu, 24 Sep 2026
+ 16:12:30 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260918025416.604297-1-dhavale@google.com> <2ednz67kpd2ikrnerrmnvol2mdfntgqhakuoiu7x4cnrlpiugm@ojqolvlfmpnj>
+In-Reply-To: <2ednz67kpd2ikrnerrmnvol2mdfntgqhakuoiu7x4cnrlpiugm@ojqolvlfmpnj>
+From: Sandeep Dhavale <dhavale@google.com>
+Date: Thu, 24 Sep 2026 16:12:19 -0700
+X-Gm-Features: AclHuK_JnRXmc4okmBH7-69dBKIYOYrVopgPbSH1OLPpNlpiiv03zV98rUrU7KA
+Message-ID: <CAB=BE-Svy3yoG+nJ7Z6Us5GG2Rj-7dyCY+EMpR9Y+PtyXUKnCQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4: fix race between inline dir conversion and folio read
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, kernel-team@android.com, stable@vger.kernel.org, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+>
+> Good catch! At least the first paragraph below would be also useful in the
+> commit changelog - the realworld impact is important information. But I
+> guess Ted can modify the changelog on commit if he wants. Feel free to add:
+>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+>
+>                                                                 Honza
+>
+Hi Jan,
+Thanks for the review!
 
-Fix the same problems as in check_ea_in_inode().
+Hi Ted,
+Is that something you can add while applying or shall I send v2 with
+just updated commit message?
 
-Found by AISLE in partnership with Red Hat.
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
- lib/ext2fs/ext_attr.c | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 6f6d2f4f..f2ac8911 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -1211,8 +1211,8 @@ errcode_t ext2fs_xattr_inode_max_size(ext2_filsys fs, ext2_ino_t ino,
- 	struct ext2_ext_attr_entry *entry;
- 	struct ext2_inode_large *inode;
- 	__u32 ea_inode_magic;
--	unsigned int minoff;
--	char *start;
-+	unsigned int minoff, remain;
-+	char *start, *end;
- 	size_t i;
- 	errcode_t err;
- 
-@@ -1241,14 +1241,25 @@ errcode_t ext2fs_xattr_inode_max_size(ext2_filsys fs, ext2_ino_t ino,
- 	       inode->i_extra_isize, sizeof(__u32));
- 	if (ea_inode_magic == EXT2_EXT_ATTR_MAGIC) {
- 		/* has xattrs.  calculate the size */
--		start= ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
-+		start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
- 			inode->i_extra_isize + sizeof(__u32);
-+		end = (char *)inode + EXT2_INODE_SIZE(fs->super);
-+		/* take finish entry 0UL into account */
-+		remain = end - (char *)start - sizeof(__u32);
- 		entry = (struct ext2_ext_attr_entry *) start;
- 		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+			/* end->e_name_len is within the first four bytes */
-+			if (EXT2_EXT_ATTR_LEN(entry->e_name_len) > remain)
-+				return EXT2_ET_INLINE_DATA_NO_SPACE;
-+			remain -= EXT2_EXT_ATTR_LEN(entry->e_name_len);
-+
- 			if (!entry->e_value_inum && entry->e_value_size) {
- 				unsigned int offs = entry->e_value_offs;
- 				if (offs < minoff)
- 					minoff = offs;
-+				if (EXT2_EXT_ATTR_SIZE(entry->e_value_size) > remain)
-+					return EXT2_ET_INLINE_DATA_NO_SPACE;
-+				remain -= EXT2_EXT_ATTR_SIZE(entry->e_value_size);
- 			}
- 			entry = EXT2_EXT_ATTR_NEXT(entry);
- 		}
--- 
-2.55.0
-
+Thanks,
+Sandeep.
+> > ---
+> > Note:
+> > This issue was reported by an Android partner encountering kernel panics
+> > in ext4_dirblock_csum_verify() ("No space for directory leaf checksum")
+> > on 16KB page size kernels mounting a 4KB block size ext4 filesystem.
+> >
+> > We verified with a standalone reproducer that the race reproduces
+> > deterministically on Iteration 0 (< 1s) on both ARM64 (16KB page size,
+> > 4KB ext4 blocks) and upstream ext4-tree/dev on x86_64 (4KB page size,
+> > 1KB ext4 blocks), and confirmed that this patch resolves the issue.
+> >
+> >  fs/ext4/inline.c | 1 +
+> >  fs/ext4/namei.c  | 2 ++
+> >  2 files changed, 3 insertions(+)
