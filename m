@@ -1,105 +1,215 @@
-Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DA8D46D08B
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 10:19:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.132
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 377BF3D0910;
+	Thu, 24 Sep 2026 10:31:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790245159; cv=none; b=A8aBZ0O8WyWSfdxHbQ/O2Fx/oJ4avdPwwiiniLbVjeevvt+rwP81Y1u08vU5unlX6PhGxsGD7K6OBqRPXKsGrksLM7zlh2uv4Irf6sbGXgwuZNDxs7x3I7e3txWfYUyv0ssJOaK1d0vQo/D3A8iUIS3L3FGRK2jbwUFr6yiVsfI=
+	t=1790245889; cv=none; b=h5PkDiCLy3rTBCkBt3m8XgxnGuECiIG75us6Wonq398+If/FpfqugJ0frZtc8iouP1TdKU9npuWz9fOcb9+66AIM2RzomGTFm7pXxrvos26AIySA4on1u/3Sqgkwem8F80ln84Y6iu0S3nUGIHouKs5tbWALRMwrHieHWbeZU8U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790245159; c=relaxed/simple;
-	bh=CJ5J0HUXTfBAGU4J35VJsDOyvdx2b2au+YMxSfiLwq4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=hj7rKW/qmTQt5ljn3WO4onlbVuNa39r9X8gKAFLeOpX4Orxhee2dQc57tOPjoaHPnx9YjyNpZ8YIbDmHezAEbNk3eIn+V0UcM9dp5u2jVgSJ8WkfgbTUwlu0H8hRh4o17FvxmHmNG2MhuEQjyXnjGsm5hoXrPyt5jjjWOU6jQdw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=gcj8yF7y; arc=none smtp.client-ip=115.124.30.132
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1790245889; c=relaxed/simple;
+	bh=SKpi2Yv3R3pyklsF8MuLWMUT9Px+HVE54l1pZS+gKeg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=gVwrL12RCWU1rbqlwxOtdaDHwzOrVJvu8XZ/iH00Cl+Q4akrZhrnixhidXxEw0uB8h+bUgSxyoJDzqWUq7KtM7I1WM2ChXxPLvNYzjG58UfruTbsl8fafpHN8zQqZdCpDDpnraWEKDP3iN+156oG8RNgIQJIu1hGkxqatjztnhY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zNfNCSPZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vbDmVdxb; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=J74NF9iY; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=MsZq+Mkj; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="gcj8yF7y"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1790245146; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=CJ5J0HUXTfBAGU4J35VJsDOyvdx2b2au+YMxSfiLwq4=;
-	b=gcj8yF7ytovvrkiNUDHDtDuFREddGis3/5gQ4azF9zMCaVSqhhj/8Bk0qEEI3BKl/bDXYrCwsxOQS/vUuPQgcZ0mmF/paBGHceeHSjZcnFkTKrfRMwy4O/Cl0n6fe9ZAA8aRGHf5Q6jwIBcSUSuar4uAA7zIQzgR/fj9Yc1RA7M=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R991e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033037033178;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0XBZMqoW_1790245144;
-Received: from 30.221.147.180(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XBZMqoW_1790245144 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 24 Sep 2026 18:19:05 +0800
-Message-ID: <b4660572-cbed-426c-b26e-636742aadb29@linux.alibaba.com>
-Date: Thu, 24 Sep 2026 18:19:04 +0800
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zNfNCSPZ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vbDmVdxb";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="J74NF9iY";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="MsZq+Mkj"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 133AE200A5;
+	Thu, 24 Sep 2026 10:31:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790245882; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xCB1GnTROqtgtC+Ay0yMAheRFnWXLRm8yqSmXov/XW0=;
+	b=zNfNCSPZP0SpkAQkGRLD6HgWA9MwVhUV9X1/tV5qkI692+o7URF7e4dX1uEAUZgtPMavcB
+	if0P/jkGtttcVECmfFbHSvoOf378SoaaTzY4+pMPMHACCKXtDpos8V/GdzNYyxPaPTAwiA
+	r2rvcdi0884Mn8BvWzj5nvEZ+aWwb1Y=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790245882;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xCB1GnTROqtgtC+Ay0yMAheRFnWXLRm8yqSmXov/XW0=;
+	b=vbDmVdxbh0zA0K5bCCtx7id/XYCLqY//kwcvC6UvMdM2ZD6NKcR/f/mgtEvdcHaiDA2Gmp
+	k+4ABwVHA2AGi/Bg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=J74NF9iY;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=MsZq+Mkj
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790245878; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xCB1GnTROqtgtC+Ay0yMAheRFnWXLRm8yqSmXov/XW0=;
+	b=J74NF9iYNLw5mH55CkajqTlC/paZFBur0mteL3FY5qDyKTMST/n33MfnOubGm+SOVG1YQT
+	WSh/fD9eeAqwaB6KP9OcYTA//ZVw8+9f9M8B5N0C84XQOAPIqaYG57BpYlliPKTkIGrBf8
+	gWAwgZCbloeUK8U6F9CA0hqLrsqvPlo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790245878;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=xCB1GnTROqtgtC+Ay0yMAheRFnWXLRm8yqSmXov/XW0=;
+	b=MsZq+MkjM49BpLXHFHghPNwTWPQf3HqylNIAJ3f859xZ/rnO8sgd1KkkGp0RBdVyu6tJMr
+	e2rMfRaEY1qIUOAA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DAC8413354;
+	Thu, 24 Sep 2026 10:31:17 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Zs+eLPX7tGqQZAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 24 Sep 2026 10:31:17 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 61D80A132E; Thu, 24 Sep 2026 12:31:17 +0200 (CEST)
+Date: Thu, 24 Sep 2026 12:31:17 +0200
+From: Jan Kara <jack@suse.cz>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org, jack@suse.cz, 
+	bfoster@redhat.com, ziy@nvidia.com, linux-kernel@vger.kernel.org, 
+	linux-ext4@vger.kernel.org, akpm@linux-foundation.org, david@kernel.org, ljs@kernel.org, 
+	liam@infradead.org, vbabka@kernel.org, rppt@kernel.org, surenb@google.com, 
+	mhocko@suse.com, hughd@google.com, baolin.wang@linux.alibaba.com, 
+	willy@infradead.org, joannelkoong@gmail.com, djwong@kernel.org, yi.zhang@huawei.com, 
+	yizhang089@gmail.com, yangerkun@huawei.com, chengzhihao1@huawei.com, 
+	wangkefeng.wang@huawei.com, yukuai@fnnas.com
+Subject: Re: [PATCH v4 1/4] mm/truncate: align truncation boundaries to
+ mapping minimum folio order
+Message-ID: <ui2ybt3gdynpxiwz6z56u6vedv6ic3npi726yndba3a3u7rqqj@owkcfnjnbvtn>
+References: <20260922110703.468389-1-yi.zhang@huaweicloud.com>
+ <20260922110703.468389-2-yi.zhang@huaweicloud.com>
+ <5a454f2a-8ae2-491d-b903-750c945cfb9d@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [REGRESSION] ext4: oops in ext4_finish_bio() after enabling
- encryption on a mounted fs
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Alberto Garcia <berto@igalia.com>, Theodore Ts'o <tytso@mit.edu>,
- Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org
-References: <arO0KE9_Jf8rNRwN@igalia.com>
- <38d9a34b-0547-45f0-b8b3-64da1f913058@linux.alibaba.com>
- <arPIrtWTXUTwqxFC@igalia.com>
- <cbbfa461-c770-457d-bfc6-317d744f1dcd@linux.alibaba.com>
- <20260923180119.GA1506901@google.com>
-Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20260923180119.GA1506901@google.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <5a454f2a-8ae2-491d-b903-750c945cfb9d@huaweicloud.com>
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 133AE200A5
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_TLS_LAST(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_TWELVE(0.00)[27];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_COUNT_THREE(0.00)[3];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[kvack.org,vger.kernel.org,suse.cz,redhat.com,nvidia.com,linux-foundation.org,kernel.org,infradead.org,google.com,suse.com,linux.alibaba.com,gmail.com,huawei.com,fnnas.com];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	R_RATELIMIT(0.00)[to_ip_from(RL77qb5igscudnz1iomstzbaxb)];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Flag: NO
+X-Spam-Score: -4.01
 
-On 2026/9/24 02:01, Eric Biggers wrote:
-> On Wed, Sep 23, 2026 at 09:28:54PM +0800, Baokun Li wrote:
->> On 2026/9/23 20:40, Alberto Garcia wrote:
->>> On Wed, Sep 23, 2026 at 08:12:03PM +0800, Baokun Li wrote:
->>>>> 1) Enable encryption on an ext4 filesystem with tune2fs -O encrypt
->>>> Is it valid to enable encrypt at mount time?
->>> Good question, I always understood that it was allowed and tune2fs
->>> certainly doesn't forbid it (compare with casefold):
->>>
->>> https://github.com/tytso/e2fsprogs/blob/v1.47.4/misc/tune2fs.c#L1599
->>>
->>> Berto
->>
->> If enabling encryption on a mounted ext4 fs is allowed,
->> I think the current change is fine.
->>
->> Ted, Eric - would either of you know the details here?
-> Yes, it is allowed.
->
-> The proposed patch looks good, even though the problem seems to be gone
-> on mainline already due to the removal of the code path that used the
-> non-large-folio-compatible function fscrypt_encrypt_pagecache_blocks().
+On Thu 24-09-26 17:31:40, Zhang Yi wrote:
+> > @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
+> >  	else
+> >  		end = (lend + 1) >> PAGE_SHIFT;
+> >  
+> > +	start = round_up(start, min_nrpages);
+> > +	if (end != (pgoff_t)-1)
+> > +		end = round_down(end, min_nrpages);
+> > +
+> Hi, all
+> 
+> The sashiko pointed out an issue on this patch:
+> 
+> > [Severity: Critical]
+> > Can this integer overflow on 32-bit architectures?
+> >
+> > In truncate_inode_pages_range(), pgoff_t is a 32-bit integer on 32-bit
+> > systems. If a hole punch or truncate operation occurs at an offset near
+> > MAX_LFS_FILESIZE, the start page index will be close to 0xFFFFFFFF.
+> >
+> > When min_nrpages > 1 (e.g., on filesystems supporting min_order > 0 like
+> > Ext4 with bigalloc), rounding up this index wraps it to 0.
+> >
+> > Would this wrap-around cause the entire page cache for the file to be
+> > truncated instead of just the intended tail, leading to data loss?
+> 
+> This is a pre-existing issue, and it is not specific to the truncate
+> path.
+> 
+> On 32-bit systems, for a mapping with a non-zero minimum folio order,
+> the last min_order-aligned block of a file of MAX_LFS_FILESIZE is also
+> the last block of the page index space, so the folio covering it ends at
+> or past the last representable page index.  All places that do offset
+> calculations on such end folios carry an overflow risk, e.g.,
+> folio_next_index() wraps to 0 for that folio, and the values derived
+> from it are wrong.
+> 
+> For example, on a 32-bit environment I create an ext4 filesystem with a
+> 16KB blocksize, where the maximum file size is 0xFFFFFFFF000
+> (MAX_LFS_FILESIZE). If we run:
+> 
+>  xfs_io -f -c "pwrite -b 0x10000 0xFFFFFFFC000 0x3000" /mnt/foo
+> 
+> The last folio starts at 0xFFFFFFFC000, but its length is 0x4000,
+> so calling folio_next_index() on it will overflow, leading to
+> unpredictable errors.
+> 
+> 
+> I think the root cause is that sb->s_maxbytes is set to
+> MAX_LFS_FILESIZE, which on 32-bit is (loff_t)ULONG_MAX << PAGE_SHIFT.  A
+> folio is at least min_order pages and min_order aligned, so the file
+> must have at most ULONG_MAX + 1 - (1 << min_order) pages for the last
+> folio's next index to stay representable.
+> 
+> I suppose filesystems that use a non-zero minimum folio order should cap
+> sb->s_maxbytes instead of using MAX_LFS_FILESIZE directly, something
+> like this:
+> 
+> static inline loff_t max_lfs_filesize(unsigned int min_order)
+> {
+> #if BITS_PER_LONG == 32
+> 	return ((loff_t)ULONG_MAX + 1 - (1UL << min_order)) << PAGE_SHIFT;
+> #else
+>     return MAX_LFS_FILESIZE;
+> #endif
+> }
+> 
+> Any thoughts?
 
-Agreed, then this current modification can be made into a separate
-bugfix for backporting to stable.
+Yeah, I guess it makes sense.
 
->
-> There can be another patch that removes both that check and the
-> mount-time check, if they're truly no longer needed (I don't know of any
-> reason why they would be, but it needs to be properly tested).
+> Besides, I understand that since this is a pre-existing issue, it
+> shouldn't block the merging of this series?
 
-After removing both checks, I ran
+Right, I don't think this belongs to this patchset.
 
-    kvm-xfstests -c ext4/32k -g encrypt
-
-16 of the 29 tests still fail.  blk-crypto-fallback still en/decrypts one
-page at a time, while the data unit size is 32k with a block size larger
-than the page size.  It doesn't crash, but the writes fail with
-BLK_STS_INVAL, so write() succeeds while the data never reaches the disk,
-and reads fail once the page cache is dropped.
-
-Supporting data units larger than a page is simple enough.  A rough
-implementation of mine already gives 30%~50% higher buffered I/O
-throughput with 32k blocks than with 4k blocks.  The patches are still
-being polished, and I'll send them out in the next two days.
-
-
-Thanks,
-Baokun
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
