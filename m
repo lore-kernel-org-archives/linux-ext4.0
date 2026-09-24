@@ -1,45 +1,87 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3336311946;
-	Thu, 24 Sep 2026 08:52:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D28044062D
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 08:53:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790239944; cv=none; b=ckop8blfEUROcXd2ymnFsAtnz2BgQMugercb9zHEA7gvq5QIEDJV/6v450PyDvRq2mEpjVLL57p+01JV0ymbW1lKDJHrRREkQBSQvWu4EkredC0GNUMgU4D4OY+FRBHfgKqNeO2i+G56AF3EJWCD4hfscqYaBDsMrq4surotQBY=
+	t=1790240017; cv=none; b=o35hLrDPLL0QCHIcjac20fyLFy3VHnwbruU3TJ9xBe0D6NEz2LVxlZffHlSQpx7EQ0ac3TEHhfBUzHnZb1ByrVRyI9QbyVWOoZ/R2hnWXuURHbhN4LwkUUkh0OgXg/IKvpr3rP5iMB7V+sRnZRAhENCdeMcPbd2fYn0TSa/abiU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790239944; c=relaxed/simple;
-	bh=Qe82rKIHScuhe2PuK2KMbNDhBK7sjwiMWTxBycrZztA=;
+	s=arc-20240116; t=1790240017; c=relaxed/simple;
+	bh=WOhMFp9vMrTN3iJMKYkvmr6SXY/GmKkJpp7gWWns58E=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=c+9cYO+2yx1I8JFZNa0iyMoWGfzFfPrOYH2y6c4kRHIqKVGZEmmmpQgxLQ7xRfBC8Eh7lVApy6x65YGpnLTa+l0q7T4u/wlXgI8/zeRzSYU0dL5iuGz82tbl06ROlsyTA43MKqLZQUHO3C9NYrIp1baEo2E2GvYWH1f70EO/f4g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=R5mi1tiQ; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=pGSfTj9+ruqF4RmAhIionUJT20B4yCWk/Ft1UIYKK5MH7/wNWHAVXk+so9R3XVk8qkdEUXVIE1kZOAiRs0TwODIjiAyTidK6YpHZz3KdD3Wmpr+nkV07AcFlbxcBbdugLWwS22F8Ba4dl624xX3hMSENFGztoQCmm2afWts1Wb4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=u5ZoGoEW; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=SfTPI+Mh; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=vTZfHytj; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=9B0Zqi+N; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="R5mi1tiQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2116F1F000FF;
-	Thu, 24 Sep 2026 08:52:18 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790239942;
-	bh=uWMhh+Vr2gIxwHKH0IoyS9nRGOMWCcgjZiTj2nIYyiM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=R5mi1tiQKGkktN6ni0msY6lIOn680upbYYmWPhP0bEoC4/sOKoPWa18jz04oK42AK
-	 4w2hU0VgsSYfUsx5l9nYsMwwSy6fIspuaTRzFulowUKw+zqqVpvT0UqaQa3bzsCbNM
-	 PNqbv+tv0GUXiIXwyMp4bviiWcHjWMSWxB/YgmB5kqv5snWfRICyLJrV4diYCPWM3o
-	 YG+SL6YXwMA8YifrP1fuTsM1yVI6QnYPqVZ/ucWWEDbM+FPIKanV18ZDY0vvIhgp9f
-	 eAUaTX/9ow46HrwcXL3emBRJ2UjO67+66oik/ixS14ceRCu0Qm0ffw2w1hHw+ZcnXh
-	 UXKCgAMHr4Ovw==
-Date: Thu, 24 Sep 2026 09:52:16 +0100
-From: "Lorenzo Stoakes (ARM)" <ljs@kernel.org>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: Lance Yang <lance.yang@linux.dev>, akpm@linux-foundation.org, 
-	harry@kernel.org, jannh@google.com, liam@infradead.org, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-mm@kvack.org, riel@surriel.com, 
-	syzkaller-bugs@googlegroups.com, vbabka@kernel.org, 
-	syzbot+c181d3198e98f8aef8b9@syzkaller.appspotmail.com
-Subject: Re: [syzbot] [mm?] [ext4?] WARNING in __folio_set_anon
-Message-ID: <arTiHRj-i_17L3qo@gremlin>
-References: <6ab4ae75.80e1c6cc.1e8e5f.000d.GAE@google.com>
- <20260924065458.49698-1-lance.yang@linux.dev>
- <0a0a07f8-8ac9-4d75-b4c6-c403865f0be9@kernel.org>
- <08bbb615-a054-472c-9873-787cc0f7a4d7@kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="u5ZoGoEW";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="SfTPI+Mh";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="vTZfHytj";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="9B0Zqi+N"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id CF25D2004E;
+	Thu, 24 Sep 2026 08:53:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790240007; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1AXZPKMsd8rk6LXIXh1CsHdwUjc8str5qR185p3e1/Y=;
+	b=u5ZoGoEWpCsDSxkidwxPooWaa/PgtNzBNgEKP7CLa6hCa8S/XNV6YzMMNaKYhuS+uv+Q7D
+	GH5/8KkKivi8lUm2njtWkddxRYO+53FJLWAAqfDdwHVOAO1L0WHhKHIkjSYPyDkOkTO4la
+	c54FKRHv4a5RYVAAMt6QcSPJth+C+5U=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790240007;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1AXZPKMsd8rk6LXIXh1CsHdwUjc8str5qR185p3e1/Y=;
+	b=SfTPI+MhqTP2PfDHQSZX9q+/igZD4RpzIKTwbyIIo5iCTNcosiruoiMeD+JIgREY9kk6uM
+	p5DgFpeAVl3uxYAg==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790240003; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1AXZPKMsd8rk6LXIXh1CsHdwUjc8str5qR185p3e1/Y=;
+	b=vTZfHytjoYwyhDPY1iBAIzmD4tZh3OMIHPGIWFae4HTBV/Rj5hC0TwjZqpHmkKLK/fM36I
+	gAvqDBX4wYaH04s9IF/UXZ7kVyRj2PEK9+/7SK7ctmsFtisAW5/17USyPZvRgrIf76KiqJ
+	qhdxMxXysIJold9OaZ9MaZ+Czn32eZo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790240003;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1AXZPKMsd8rk6LXIXh1CsHdwUjc8str5qR185p3e1/Y=;
+	b=9B0Zqi+NFFC0Lb12eN2MI3hjM6Imlg3tI/0hKsl/xJIxoy8JnUwuyZEMZSCSele0cYgnAv
+	VTVVJBVy4jX5/8AQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A972613668;
+	Thu, 24 Sep 2026 08:53:23 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id DN1hIQPltGpIdQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 24 Sep 2026 08:53:23 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 2AE27A132E; Thu, 24 Sep 2026 10:53:23 +0200 (CEST)
+Date: Thu, 24 Sep 2026 10:53:23 +0200
+From: Jan Kara <jack@suse.cz>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Matthias Goergens <matthias.goergens@gmail.com>, 
+	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
+Message-ID: <r54isf26qrmnn42wmto3lihzbjbjdabyskdch3xzkuowsxkv6g@x3pmxqkzoh6n>
+References: <20260923101749.3505886-1-matthias.goergens@gmail.com>
+ <arSMwd1bGO1vrif-@mit.edu>
+ <20260924033200.3615554-1-matthias.goergens@gmail.com>
+ <20260924040030.GB5048@sol>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -48,91 +90,58 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <08bbb615-a054-472c-9873-787cc0f7a4d7@kernel.org>
+In-Reply-To: <20260924040030.GB5048@sol>
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCPT_COUNT_FIVE(0.00)[5];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[gmail.com,mit.edu,suse.cz,vger.kernel.org];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Flag: NO
 
-On Thu, Sep 24, 2026 at 09:50:02AM +0200, David Hildenbrand (Arm) wrote:
-> On 9/24/26 09:43, David Hildenbrand (Arm) wrote:
-> > On 9/24/26 08:54, Lance Yang wrote:
-> >>
-> >> On Wed, Sep 23, 2026 at 10:00:37PM -0700, syzbot wrote:
-> >>> Hello,
-> >>>
-> >>> syzbot found the following issue on:
-> >>>
-> >>> HEAD commit:    38872197cae2 Merge branch 'for-next/fixes' into for-kernelci
-> >>> git tree:       git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux.git for-kernelci
-> >>> console output: https://syzkaller.appspot.com/x/log.txt?x=17a44d25580000
-> >>> kernel config:  https://syzkaller.appspot.com/x/.config?x=56ed23170c168d4c
-> >>> dashboard link: https://syzkaller.appspot.com/bug?extid=c181d3198e98f8aef8b9
-> >>> compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
-> >>> userspace arch: arm64
-> >>> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=16a36515580000
-> >>> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=16dcf4c9580000
-> >>
-> >> Looking at the repro, emm ... the repro maps an O_RDONLY /dev/zero fd with
-> >
-> > Does this trigger upstream or only after Lorenzo's rework (not upstream yet IIRC)
+On Wed 23-09-26 21:00:30, Eric Biggers wrote:
+> On Thu, Sep 24, 2026 at 11:32:00AM +0800, Matthias Goergens wrote:
+> > For the entries, my plan is to start with the roughly 160 T: lines
+> > that name a repository whose HEAD is already in mainline while
+> > linux-next pulls a different branch from it: one small patch per
+> > repository, sent to that entry's maintainers as its own thread.  I'd
+> > send a few first, to maintainers who usually respond quickly, and then
+> > the rest in larger batches once the first ones have landed or drawn
+> > comments.  You know far better than I do how maintainers take this
+> > kind of tree-wide cleanup, so I'd welcome your view on that approach
+> > before I start.
+> 
+> Explicitly documenting branches in MAINTAINERS sounds good, but in
+> addition to that, HEAD should also be made to point to the correct
+> branch (at least in repositories where there is only one main
+> development branch).  This can be done using gitolite's symbolic-ref
+> command: https://korg.docs.kernel.org/gitolite/index.html#symbolic-ref
+> 
+> That is how https://git.kernel.org/pub/scm/fs/fscrypt/linux.git points
+> to the 'for-next' branch by default, for example.
 
-It'd trigger with my make MAP_PRIVATE-/dev/zero true anon stuff too yes.
+Thanks for the idea! I've done it for my tree now :)
 
-> >
-> > 46827ac1ab221 mm/vma: make MAP_PRIVATE-mapped /dev/zero mappings truly anonymous
-> > db7438ea23180 mm/vma: only permit MAP_PRIVATE /dev/zero to be mapped anonymous
-> > 54e8e096ea86b mm: implement file_is_dev_zero() to uniquely identify /dev/zero
-> > fb24843cfd9eb mm: move drivers/char/mem.c to mm/char-mem.c
-> >
-> > I assume it triggers upstream. Does it also trigger with lorenzo's changes?
-> >
-> >> MAP_SHARED | PROT_READ. do_mmap() clears VM_SHARED and VM_MAYWRITE, so
-> >
-> > Clearing VM_MAYWRITE for a private mapping is odd. Can you point me at the code
-> > that clears both things?
-> >
-> > I assume we still have the file pointer, and as the file is read-only we remove
-> > VM_MAYWRITE. But why are we removing MAP_SHARED? (where?)
->
-> Looking at the code, it's the
->
-> 	if (!(file->f_mode & FMODE_WRITE))
-> 		vma_flags_clear(&vma_flags, VMA_MAYWRITE_BIT, VMA_SHARED_BIT);
->
-> So we end up with VMA_MAYSHARE_BIT but without VMA_MAYWRITE_BIT and without
-> VMA_SHARED_BIT.
->
-> So it's by definition not a COW mapping. But it's marked anonymous and confuses
-> the system :)
-
-This is definitely a bug. And I added these asserts specifically to find
-bugs like this with anon mappings:
-
-	VM_WARN_ON_ONCE(!vma_is_cow_mapping(vma)); <-- fires
-	if (vma_is_anonymous(vma))
-		VM_WARN_ON_ONCE(pgoff != linear_page_index(vma, address)); <-- would have fired
-
-It's because mmap_zero_prepare() keys off VMA_SHARED_BIT when it should be
-keying off the terribly-named VMA_MAYSHARE_BIT.
-
-(VMA_MAYSHARE_BIT actually tells you if the mapping was mapped shared _in
-the first place_ specifically because of this clearing of VMA_SHARED_BIT,
-VMA_MAYWRITE_BIT.)
-
-So it turns out forever a readonly /dev/zero shared mapping has quietly been
-converted to yet another variant of a 'special' anonymous mapping that we
-weren't even aware of.
-
-And it's got an incorrect pgoff (but not anon pgoff now) as a result,
-similar to the usual MAP_PRIVATE-/dev/zero case.
-
-So the solution is simple, check for VMA_MAYSHARE_BIT in
-mmap_zero_prepare(). The Fixes: will be in the sands of time.
-
-I'll send a fix out.
-
->
-> --
-> Cheers,
->
-> David
-
---
-Cheers, Lorenzo
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
