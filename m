@@ -1,90 +1,90 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0087A40B6FC
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1F0640A926
 	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 22:29:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790289000; cv=none; b=XYBJgnrRvLcFY/8pQhxjSX8IG4KDII8YCFmjIdHVWyTXeEjm8hvWCNdbt/niEBAFkl1yRXunI+tZiy5pVpkxyH8xmg++Ge+tQoKEQe6fIUO1iTxKr5dNAjuRW5bb5PNEKOLKSPfWtnYwcx9VkjoCS8vI5V7MerB0UMYFSVqzOqM=
+	t=1790289000; cv=none; b=bGEMCgULIbW6djiy5F3Ao0VtzMWAKAzI1V6MTkGWc7Kg6aYcvVwyv02u47lnKugWBv10r/9Q+Za329Dz1tdAe2qgwW6b8mqF0/WDVPr3KyRPVtHWdXqx+NSXm4dZ3232Ci7YPg5Gpyv5++04gmZqaMxSWr9Y2Pp0aO09rRH+WSk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1790289000; c=relaxed/simple;
-	bh=IhRNBpMOLPaoAruJSr1anXnxKzHCYaHizvngL6qDbzM=;
+	bh=IQZ5Qz3B02DHilP8/lrHynVk/gWCWnZRlP5K2MsqtuI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=F8xul/kMlY1nQpNy7te/l0Ygaa4kDNJqeryaoHErpnVMFd5s/nvvicLSVUj8os0R4BBEWNdCpoJOR3uCkGBIjL0TtPVXzNuJsYh0om7wTDBPStAwiS6zyqz2Ib/T5zqsl+y0jKwh0gDXNBp1XnS/QHQ+K+dMLb2TKPEXM7jDK9s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Xm2sOxLS; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=Y7d2yDN7; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=DVm58Db3SCQvcNnhzCTOkwe71wuW49+S7QcGtRLNn0FJeedSrBD9pj15DANaUeAjDpbDAm6OD1GgYIlC01U7DU0FqQT0726Jg9d3bAil5Z+qW7Oo+c9tJeaQJqHleTSZsqT57JjPJ9h32QxzosFs6sf+fnYe3OIipdHQREZucC8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=I/mAihiN; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=GYBLjAQq; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Xm2sOxLS";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="Y7d2yDN7"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="I/mAihiN";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="GYBLjAQq"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790288998;
+	s=mimecast20190719; t=1790288997;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=maziDtTtq6Bths82FexowbFXRko7tUV+THFhllPjGS0=;
-	b=Xm2sOxLSITFE4vBA+/eUxxtxKkI2dN+/H9GuLgb5WLk14LESppYRLLUGX6ckRtRMJz4+ZJ
-	U1ATukOFx+NoSwB2Y+eeR0r4ASnFktsba6o1DdlaPn4vBY5IlHZv6Z7DrQ8LpPcxJ1WV6p
-	hr9Y3vOhk+uJX2r0duaYPhC9Qy8IP3g=
-Received: from mail-qk1-f200.google.com (mail-qk1-f200.google.com
- [209.85.222.200]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
+	b=I/mAihiNIPVUz6mZpa44Za2iOAKyfStWhOCj9ZDiBv5/HcPJoDfqFMwQw6ksGYYTXCmVud
+	W2wghTMRVVjCglnk0ctdQdeF/+VjOcQdigEOqr9SrtoWa0DCzBGg7Nstpf63jDuevvE7wH
+	9OeG+h9vMyegBQZ97uYTbo0Uqw9bk6c=
+Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
+ [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-629-TtwmM2hxPV-lXTeBPD4DOQ-1; Thu, 24 Sep 2026 18:29:54 -0400
-X-MC-Unique: TtwmM2hxPV-lXTeBPD4DOQ-1
-X-Mimecast-MFC-AGG-ID: TtwmM2hxPV-lXTeBPD4DOQ_1790288993
-Received: by mail-qk1-f200.google.com with SMTP id af79cd13be357-93a0c7126e7so50948485a.2
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 15:29:53 -0700 (PDT)
+ us-mta-269-SYxe64uDMUajuuYBmxTOQw-1; Thu, 24 Sep 2026 18:29:56 -0400
+X-MC-Unique: SYxe64uDMUajuuYBmxTOQw-1
+X-Mimecast-MFC-AGG-ID: SYxe64uDMUajuuYBmxTOQw_1790288996
+Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-93ae8e7e546so59587185a.1
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 15:29:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1790288993; x=1790893793; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1790288996; x=1790893796; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=maziDtTtq6Bths82FexowbFXRko7tUV+THFhllPjGS0=;
-        b=Y7d2yDN72NwBuiZE4jPJq2orxX5CUKmIb3pYrmetP8W9GiXAiqV5movHHPlR7LRUqs
-         neh+Sypu7AeN/2ENm82GRM6vyIPax/a8VoQPnuF0HC9DfYyqxQOD4R/efLm+0528xx3f
-         uulo+xUXP43Ph7V9B5g8T1nMLyVuCYuui9oz2xfE2Fm8Qs4vDOcYznzJv15+zJusD7OW
-         vu7SdRDaKjw3xAMBBc+qnx90URl+0CLyLTN/Z4ihTBJjPHZSTH1EmMCTam3mik9/6voA
-         dpKfofq7bN5i3DdNDwNDpTKo45Tn6CvNxr7T73v5yD2YqDZ72gZ1qne5J0w9dbJXmSDs
-         5yGQ==
+        bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
+        b=GYBLjAQq+d5u6do1eLJ3ESihX6qUNACW55NhFnZjDJvxq60VRFeoGnsUY62ynSIEHi
+         sOHG+UdUNqinpVVBIbVOgd3gqeAOyQ7MK4VlCOTqVh6+r9W1m0JZ1NK2RD0Q00eQx8XI
+         NSazJM17TYDR/c1GAFuMplU8OAcZnHlvKSZmuLstSjZiyAuAALVKHnE2wkWZBLokNg2/
+         glnsaZhWQiaPB62cOsVvoyowMUYLur16qytHUAWOtmgInxjfysZ89X2bm0RJQIbH0xEm
+         x42vPHs5CYjypTUKCnzLFqK5dc64+nw+EvUXIg/eB+v3f99KYC5Bc/ioOmVWhC3+RBCj
+         3wWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790288993; x=1790893793;
+        d=1e100.net; s=20260707; t=1790288996; x=1790893796;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=maziDtTtq6Bths82FexowbFXRko7tUV+THFhllPjGS0=;
-        b=H6LLLn+PDx6en+yjZS9JfjzrymazJIHpOIb6bp9QOzrkV608FCFBGZjTKl7+CILj0e
-         j70zRW/FZAfJiZEyZKbVS9XVYTeG1uxcXOfhHTNHag3w25ZMh+d80Qlus4uTd8rNMVkG
-         U3GbPYwQYAKDD458g7gXBZnQx5lmNaQetabxF+U2v/AffDDumF5jVlSZjVDVpc4CzYMU
-         d/WxsqQqvwonkiCES3oWPl7eFEcQQaSUTgza6va+ZTexExsVR03W0saacHfLVa7/oWlC
-         X9RQLhT8wpgnn97+EO8V53uExq7EWn5gbmvTBK6qPgkWhHSaTruOrVDyr3FnXKjHc8It
-         fgcg==
-X-Gm-Message-State: AFuF++m4LygAPGsalMOFZnZDkCQQmii56sZibaDuCqTEalnQGsYy4IRY
-	vlwmYaNAMu2AOGaT0hLX4XKc0nUHFL2sV7xgA6u4iTn7jUVPXd+eHF8PVo7adXfgorCEZ0NJh7+
-	NrtxB4BVUTFu1WIqkbUVH7zV1SHTnclr0qW3tqQ/VCfQHK8EHCg0qO4tT8RN+VNL2y/zJboE3Iq
-	KTMbr/1pGNI+27xN23asETDcmbBuPLgW7uLoRWUntC5BvRRZ3w
-X-Gm-Gg: AYBFou3J1747ULWvzW+v2zH3y9UK5zwtOXJlZJaKg2c63cYGFHMIECvV8oJiGk/B1dW
-	79jTAiKFENG8aT7AkpQnuKz30BUxWbfaROziTwrH0K/i45dzE8UIW5yV6RqoNWHTmZOHT/YSJmY
-	plMwyQP1LT1/9YLSiJ+Yb1cLiea8x1lvXJLYumJCUcy+wFPD9c8V2isGpvBsFNHCZWVxlpg3eu9
-	gfJL+fIhaTFz4qTccnlMZxw+gJLqB5v1K/lElgCytdiNDgehjFnu31BJguhux1dSot/SfCIB377
-	dFWQyNRvQs2g2fPDlfjTJ0HlFzcBjbqlAJ7ZLNMLOgKiekI3tWQDvRYETEwenklrTvtLibqweK+
-	Bq/AaGnKl0Milnebar/rLXPZK7kL0RTV0I8LMJA==
-X-Received: by 2002:a05:620a:4515:b0:939:6df9:6547 with SMTP id af79cd13be357-93c43d16ae4mr140140785a.51.1790288993355;
-        Thu, 24 Sep 2026 15:29:53 -0700 (PDT)
-X-Received: by 2002:a05:620a:4515:b0:939:6df9:6547 with SMTP id af79cd13be357-93c43d16ae4mr140137485a.51.1790288992867;
-        Thu, 24 Sep 2026 15:29:52 -0700 (PDT)
+        bh=/JPbKcTBOygIosoT5NJIzt0x/bV8oQDNYyTuHPzROr4=;
+        b=xlE2ggeEKmeKpsENEMOoYyk9SHG05l1NppFJeRTv0d4tF5nbsjwKs4vXe7/SRj0G+U
+         KoZhQ6AA7rYAESXd8vl3Hr8HO6ufD0G/JaGErxSSezF9zXRJmdqghKXQAakzrxg+yWmJ
+         NDn664/Vbjgcw0fzOAoiX8cBNtCvGFZgouCeHZ+KU8/TNRiOeVBmLtpNxg86q+SgsCz+
+         kaVrnUEtZFMBUeaGFRYBAUzfs2t7QmaQ2ceuGMsB3e7LVwN9JgkZNmXha9tvKcpkDaKm
+         nlIxWXFUvA08zEOxQB0Wtwvb8Qwsl0H0peeL9floXB6iqC7q29Ts9T/eg27TANbmMC02
+         ueeQ==
+X-Gm-Message-State: AFuF++lsO4akyQghQonCZPXNUEqPgu6IZXQRFqEQNUaL6Utj1+jsczQR
+	49x63L4B1d3LqtRAXUblhPIrcdcutALDc9AolGAXAwe47FER76dTptQI5RdDoKLiiVw5AjC2u/S
+	mrzvk/tEoOJo4S22OXoaq8f7JmsPVAtT+lVgB9pY0jtsgc37dLdU29Ni/elvASYUXFN4zfUxTWQ
+	3sW+DlRCiFDwaRNmRhCkcb6Hk+WxhaSET8aC7GtOjtZ45ABDfj
+X-Gm-Gg: AYBFou3ipVtvd1UZrKIxr1DmTFO+vD+i9/z5M0OIIDaQa/u/BDb1XUReUJ9WPocn3Es
+	HeBHtOPAB+h6kUCXorIZpLEC4fNCeYCQeY2vra3UwOO6HPb/eDE6StYoMVXD4e682soOKuDr2ol
+	6xtQZNqDbqVbWhfYa8KdaVqz9LTG7nfJMPfcsVPhc2889ad9/6MsmZFJG+vc9RyJysvVVWIU6td
+	51Uri4+Sh+V+Tl2t4kbe4qncqEiRcWxBOnJCV+50SGEcaxotpUjsSaG8toZzI0l79DHHhdjVmwa
+	a7miS/vvCzSSEgYW5i70fKY1a3g4x+FdD+7CIo7aH5dzEdtlZGt0P2b5KI44i6HIvN4hvP8yrV5
+	lskeDx4+4Kp+S2qg1OJKzvejTjkScZT0FhzQI5w==
+X-Received: by 2002:a05:620a:414a:b0:939:9b1c:ea4c with SMTP id af79cd13be357-93c43bc93b2mr151443385a.28.1790288996044;
+        Thu, 24 Sep 2026 15:29:56 -0700 (PDT)
+X-Received: by 2002:a05:620a:414a:b0:939:9b1c:ea4c with SMTP id af79cd13be357-93c43bc93b2mr151440685a.28.1790288995533;
+        Thu, 24 Sep 2026 15:29:55 -0700 (PDT)
 Received: from big24.sandeen.net (97-116-156-223.mpls.qwest.net. [97.116.156.223])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c44972febsm37216985a.39.2026.09.24.15.29.51
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c44972febsm37216985a.39.2026.09.24.15.29.54
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 24 Sep 2026 15:29:52 -0700 (PDT)
+        Thu, 24 Sep 2026 15:29:55 -0700 (PDT)
 From: Eric Sandeen <sandeen@redhat.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
 	sandeen@redhat.com,
 	agruenba@redhat.com
-Subject: [PATCH 5/8] libext2fs: fix ea loop in read_xattrs_from_buffer
-Date: Thu, 24 Sep 2026 17:23:39 -0500
-Message-ID: <20260924222944.3683556-6-sandeen@redhat.com>
+Subject: [PATCH 8/8] libext2fs: fix ea loop in ext2fs_xattr_inode_max_size
+Date: Thu, 24 Sep 2026 17:23:42 -0500
+Message-ID: <20260924222944.3683556-9-sandeen@redhat.com>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924222944.3683556-1-sandeen@redhat.com>
 References: <20260924222944.3683556-1-sandeen@redhat.com>
@@ -100,90 +100,56 @@ From: Andreas Gruenbacher <agruenba@redhat.com>
 
 Fix the same problems as in check_ea_in_inode().
 
-There is no need for recalculating the remaining space in the second
-iteration.
+Found by AISLE in partnership with Red Hat.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- lib/ext2fs/ext_attr.c | 38 ++++++++++++--------------------------
- 1 file changed, 12 insertions(+), 26 deletions(-)
+ lib/ext2fs/ext_attr.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index 914bff1d..6f6d2f4f 100644
+index 6f6d2f4f..f2ac8911 100644
 --- a/lib/ext2fs/ext_attr.c
 +++ b/lib/ext2fs/ext_attr.c
-@@ -884,26 +884,23 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
+@@ -1211,8 +1211,8 @@ errcode_t ext2fs_xattr_inode_max_size(ext2_filsys fs, ext2_ino_t ino,
+ 	struct ext2_ext_attr_entry *entry;
+ 	struct ext2_inode_large *inode;
+ 	__u32 ea_inode_magic;
+-	unsigned int minoff;
+-	char *start;
++	unsigned int minoff, remain;
++	char *start, *end;
+ 	size_t i;
+ 	errcode_t err;
  
- 	/* find the end */
- 	end = entries;
--	remain = storage_size;
--	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
--	       !EXT2_EXT_IS_LAST_ENTRY(end)) {
--
--		/* header eats this space */
--		remain -= sizeof(struct ext2_ext_attr_entry);
--
--		/* is attribute name valid? */
--		if (EXT2_EXT_ATTR_SIZE(end->e_name_len) > remain)
-+	/* take finish entry 0UL into account */
-+	remain = storage_size - sizeof(__u32);
-+	while (!EXT2_EXT_IS_LAST_ENTRY(end)) {
-+		/* end->e_name_len is within the first four bytes */
-+		if (EXT2_EXT_ATTR_LEN(end->e_name_len) > remain)
- 			return EXT2_ET_EA_BAD_NAME_LEN;
--
--		/* attribute len eats this space */
--		remain -= EXT2_EXT_ATTR_SIZE(end->e_name_len);
-+		remain -= EXT2_EXT_ATTR_LEN(end->e_name_len);
-+		if (!end->e_value_inum) {
-+			if (EXT2_EXT_ATTR_SIZE(end->e_value_size) > remain)
-+				return EXT2_ET_EA_BAD_VALUE_SIZE;
-+			remain -= EXT2_EXT_ATTR_SIZE(end->e_value_size);
-+		}
- 		end = EXT2_EXT_ATTR_NEXT(end);
- 	}
- 
- 	entry = entries;
--	remain = storage_size;
--	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
--	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
-+	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 
- 		/* Allocate space for more attrs? */
- 		if (handle->count == handle->capacity) {
-@@ -914,12 +911,6 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
- 
- 		x = handle->attrs + handle->count;
- 
--		/* header eats this space */
--		remain -= sizeof(struct ext2_ext_attr_entry);
--
--		/* attribute len eats this space */
--		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
--
- 		/* Extract name */
- 		prefix = find_ea_prefix(entry->e_name_index);
- 		prefix_len = (prefix ? strlen(prefix) : 0);
-@@ -942,9 +933,6 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
- 			return EXT2_ET_BAD_EA_BLOCK_NUM;
- 
- 		if (entry->e_value_inum == 0) {
--			if (entry->e_value_size > remain)
--				return EXT2_ET_EA_BAD_VALUE_SIZE;
--
- 			if (entry->e_value_offs + entry->e_value_size > values_size)
- 				return EXT2_ET_EA_BAD_VALUE_OFFSET;
- 
-@@ -953,8 +941,6 @@ static errcode_t read_xattrs_from_buffer(struct ext2_xattr_handle *handle,
- 			    (char *)end + sizeof(__u32))
- 				return EXT2_ET_EA_BAD_VALUE_OFFSET;
- 
--			remain -= entry->e_value_size;
--
- 			err = ext2fs_get_mem(entry->e_value_size, &x->value);
- 			if (err)
- 				return err;
+@@ -1241,14 +1241,25 @@ errcode_t ext2fs_xattr_inode_max_size(ext2_filsys fs, ext2_ino_t ino,
+ 	       inode->i_extra_isize, sizeof(__u32));
+ 	if (ea_inode_magic == EXT2_EXT_ATTR_MAGIC) {
+ 		/* has xattrs.  calculate the size */
+-		start= ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
++		start = ((char *) inode) + EXT2_GOOD_OLD_INODE_SIZE +
+ 			inode->i_extra_isize + sizeof(__u32);
++		end = (char *)inode + EXT2_INODE_SIZE(fs->super);
++		/* take finish entry 0UL into account */
++		remain = end - (char *)start - sizeof(__u32);
+ 		entry = (struct ext2_ext_attr_entry *) start;
+ 		while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
++			/* end->e_name_len is within the first four bytes */
++			if (EXT2_EXT_ATTR_LEN(entry->e_name_len) > remain)
++				return EXT2_ET_INLINE_DATA_NO_SPACE;
++			remain -= EXT2_EXT_ATTR_LEN(entry->e_name_len);
++
+ 			if (!entry->e_value_inum && entry->e_value_size) {
+ 				unsigned int offs = entry->e_value_offs;
+ 				if (offs < minoff)
+ 					minoff = offs;
++				if (EXT2_EXT_ATTR_SIZE(entry->e_value_size) > remain)
++					return EXT2_ET_INLINE_DATA_NO_SPACE;
++				remain -= EXT2_EXT_ATTR_SIZE(entry->e_value_size);
+ 			}
+ 			entry = EXT2_EXT_ATTR_NEXT(entry);
+ 		}
 -- 
 2.55.0
 
