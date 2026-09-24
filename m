@@ -1,90 +1,90 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEC63401A14
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 22:29:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13C333BFE3B
+	for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 22:29:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790288993; cv=none; b=TcL3sdcyKX5FOmNu75v/RRIUChZKdddCevC7xW4FL8fyTyh8ueSFnA72ZEO9McU89gB+38m27Ey9Cr5BponzTaCBYAa6gsseeQrbe2UKBp1gTwKl+9ZPoNO13d7QYfk2GcaATnfEAW49EYIBwwXrauS+2xfga/Jg25tP2qUbTJ8=
+	t=1790288994; cv=none; b=jqBv5c+Zc6fiGMWBWF+fAeC9XhUQObO7HjQICuJwczwrFnXZ9IYPQ4Sobe8YI5uaoss5rkD92+aTswap48/TbTnnayBpFK3c1Jcf3vgbFaYhKeHcj5dWJrG4H6ACzbtBMSTV8ZsZO1GZU2+T2VXlJ3RklI8GWhB61D3veLFIRhs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790288993; c=relaxed/simple;
-	bh=YKewhQV3t+qXR7VOIoLQfn8r58VjM08NCAraoc9ncrA=;
+	s=arc-20240116; t=1790288994; c=relaxed/simple;
+	bh=jk2W4qW5Jvcpd0GdJiPdJSDciJZlk0IZGptCLebEpKg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Tn+dSLrlt4yFmsNXemqyvwAXEL+dWgvhHJs+RG5JAdnhhWZ64nKzPautbhdwpbmM08glMsvbBilNI85ySh4jEQOtqY8nQLdoZIY7h/lxyb70f58QevHim3wPZEh/YUj6eVK4QpJ9WgPtDfBEgzr3BG57vTRaaQpvi6iIZcG1hBw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=BnoJfrRl; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=dQknURvo; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=jhest3avc0yXJjQpiINyyMVBb2YgwL2GjJ7jgRqFgGgCQ9d3jtD1E7+fSab05yUd4p6b8VEubO7B+szrANQXvP19/BMuWj0u/DGYCOCwzxTMgF4X7KPj9ytOUXkGBNYFhckzz8qvwliBDhX6dQWFw0ymR7dS98GE9Oq0kQNhPyI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=dqgtbIEK; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=OiZxXP3H; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="BnoJfrRl";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="dQknURvo"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dqgtbIEK";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="OiZxXP3H"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790288990;
+	s=mimecast20190719; t=1790288992;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=rTB2RO/CzG7LyVzrq9FrGnKwZC4VXatX5TG2iW5jeXo=;
-	b=BnoJfrRlWozTkDUBTNME/RhjQ+pCiNWOHY/bLVZuNQv32F7HLFC5U1nGIRxkbxqiF/p1kC
-	bBkl9m17UQqBUxvqk84IeCL/jRWFCIXOK76za5HTxK/Czg7d3beYYo05mVh0KXDE9Smq5d
-	J+8e+jv47bDlJViDe/4YTafy/lNg89I=
+	bh=Jnx16kM9dVUjgz9S3hg7CrUBs+H3vT/ogFfVT/rQd9w=;
+	b=dqgtbIEK3o7c3JDm+PFELYdfiY1VN0eEltTBm6myFdBEA0jbuBP/fiSEOCHfIFzjyIg+qY
+	sUx/cftx5DEhQ6bxGS4kUudy5hZyDQ9bbihT6sW9YrENTphj52Z/eWju8SrZXdr7p6T0P9
+	kxpYZn/6dvEKDybf5dx5eYXAA8FoKhw=
 Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com
  [209.85.222.199]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-120-S-O1j5vdP0m9ITuwaYRekw-1; Thu, 24 Sep 2026 18:29:49 -0400
-X-MC-Unique: S-O1j5vdP0m9ITuwaYRekw-1
-X-Mimecast-MFC-AGG-ID: S-O1j5vdP0m9ITuwaYRekw_1790288989
-Received: by mail-qk1-f199.google.com with SMTP id af79cd13be357-93bfb2da664so81716685a.1
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 15:29:49 -0700 (PDT)
+ us-mta-691-LvQ3HQoeOZGG8urBHcsZdQ-1; Thu, 24 Sep 2026 18:29:50 -0400
+X-MC-Unique: LvQ3HQoeOZGG8urBHcsZdQ-1
+X-Mimecast-MFC-AGG-ID: LvQ3HQoeOZGG8urBHcsZdQ_1790288990
+Received: by mail-qk1-f199.google.com with SMTP id af79cd13be357-9390a2c895bso81142585a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Sep 2026 15:29:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1790288989; x=1790893789; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1790288990; x=1790893790; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=rTB2RO/CzG7LyVzrq9FrGnKwZC4VXatX5TG2iW5jeXo=;
-        b=dQknURvoGanRSkMGtcD1VEtR4nHKYt0wUTmOhTjEDZs1uroJi3JhE5AZ9SMzr6O0zg
-         Rqdmt3ADv3kkQr3PUS09RE8XANh3+9gCQP4hlFBcSNbOs20DEWicWHoINQ8IPOtghoJE
-         rflVxLTgEfg4mALfc74RtPfov8MS/c/o9tFNcdTS01tWaAMSRy1a8Hn+nLl8WBa78A5X
-         LtAki5ZTO01v9rttv429PvdgShNthDDnkfPOHr1Uy9caGVU1o0abyK40n1YNlfZfXpOe
-         IAKR7oxKOaKGKXCLskE0wF7VB7jZ+jyBJ0zTdOKWsi4IK/j1sb8YaFTCz30G74X6xrbl
-         wsQw==
+        bh=Jnx16kM9dVUjgz9S3hg7CrUBs+H3vT/ogFfVT/rQd9w=;
+        b=OiZxXP3HNQHvt7F+9RaRoIKn5fb9DbSBO5ZQzxEFCsIbLZM3YI96FE68CCp0Vvgj8z
+         8ebf+v03OQtIr83upgS0iN0FKsHYY4Xx9U18HV2B/WxFmZkZ1kAYMtMohn8q6dtBK7Vb
+         IJUjSYuYjred27ff54yFO6fORs7vFrSNnNqBdEdYpV03iHOCFHECMz9kV+f2rHP1LdH4
+         A+a1rmM13v6UBg1rTGlWcKnBTQKVNK0k/+5qxquJSKr+sUIAOGj8rgUXol3sIXL8Rcux
+         36EwSQzztxXzmuE95TN0GORmrOnqVMTPjvLdYf2DbCRPiBTcOvmb2xMAE4T25PMl4Mef
+         TzaA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790288989; x=1790893789;
+        d=1e100.net; s=20260707; t=1790288990; x=1790893790;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=rTB2RO/CzG7LyVzrq9FrGnKwZC4VXatX5TG2iW5jeXo=;
-        b=NjrMUDKAxkx4xMjqdK21UzeUouyBhDIhyfWr+MKO3BmpfNy5JDnNj4df7ikx6tLPFl
-         6veDJBuVIl1srsKVfMerhvCDb/8EbakDTXcItyI9veZuLD7GZPcY96uR/WKMdC+fax94
-         DrGoJdWRZ9rg3ql6tE5x+zaHqtMyCce9/XbkUxgSKpZJc2MH9dw+1DQBnmOB6A/n08XL
-         7fqZ5Hqay6TRyUFdsTqlJDfLdbca6DYc/TIqD5mFe8FIDQMtDjD+154qtbF0qRitztdP
-         blrBQDPnD5qiJXW0cBVpaj882N+eCfxzg1mCysIm7FyyN44PM7/uTToISitBoZqYtSMW
-         T9GQ==
-X-Gm-Message-State: AFuF++l/j4BcB0eiP/B2K5naSSv5LRgVStRDuUM8ffqWQlyVML+o3SEi
-	zov8MNxshBVFQeqOeC2FkoonKpLWxQGPcXbIi79rJkr8P1fwBpWqRH4g6ZVMhHuqj5fGNXxizqS
-	GxvfYLS3s1xP9QqRJ9xIeiHkZRXoZgPdbO8BUEarRV3M21Nmyw0w5kW+cBjJNbs7O8m2z59KGmm
-	8TAuB8HXDhFEyUabx1Ue1hP+4Tap2aZrPIEYMoH5cGbkqfJInQ
-X-Gm-Gg: AYBFou1KLQnT7aKQBTJJOyGKzLzdW/oKv1w3jpR7K8Vh5JMAMcUPyl0GZoMEDK7ers/
-	6/Jfe9dIsVfVycBuEsGURefULRiGPsGROE/IAgpAH9ntI8mVSUDhL1pMIP+DmuXDZmcHufssGsE
-	1QQqTnQQb8IZEWPxwSKrQ/X98Mm7nWac1+3DLt+Ky6sP4vKSayFzriyP3ZtV8D7FHCwpIQPf9jj
-	yRGvYHgCPIsu2wrjaI7bP/sMr903P6Ayhhl+6+1196Yr5GMj6yeW4uB1PB+7YSsMWfO/6aIeBaa
-	0utNUnJxcutBTqayY1nWSBQxIg+Qq35er11Li5C+PQEs5NKSD1ATBo8xil3c8ceCCpua7l7huYq
-	aJOOpzXtkQ9q+qEZB9oyNjuFrzhFCNd5/KX4Fmw==
-X-Received: by 2002:a05:620a:1d05:b0:93c:739:dd5c with SMTP id af79cd13be357-93c4738b2e3mr30115685a.25.1790288988954;
-        Thu, 24 Sep 2026 15:29:48 -0700 (PDT)
-X-Received: by 2002:a05:620a:1d05:b0:93c:739:dd5c with SMTP id af79cd13be357-93c4738b2e3mr30112285a.25.1790288988306;
-        Thu, 24 Sep 2026 15:29:48 -0700 (PDT)
+        bh=Jnx16kM9dVUjgz9S3hg7CrUBs+H3vT/ogFfVT/rQd9w=;
+        b=WYDVaaEgmVExcNGU1opXTQ3i3rs4IRRQY80CgAytIK7stiDSZXdwpCJMr2ZetLVKHL
+         Q4n+F78l5QuLJb7nY9gGAIwXI38fL/lbRgd11ZOUvTaZ7axDvRRglprUCXrNAZE4NCTD
+         SgpPsHzbuqnXOJn3MP/kipJkbJo4wSVZg+FzQS1R2dhd7NYjOoY9B7aPG8o+i7vIPTtR
+         iK8khGfW+DmpVdjx4rReQsaoahNjXvkEiYCjQzXKSUoSy0496/iKeK3j3pA9c7T4BoWO
+         JFoMQxF6hIbqzx7mHy07z0UVvTgK41h489roI42MkbiViCai+GHtQYmn54xfguUFKMfe
+         Fo5Q==
+X-Gm-Message-State: AFuF++mqlYMqCVALfZ7xRtRfBFiPk/WqwOEXBK1m7i78kxDQEvljDmbR
+	ASn6tcdi9QBYHQvIHpzGfy9VeveP8CD9n++6p3RN7YLTc8xpy4Q1/N/IDnz3bfaNfMTNbmT1kKN
+	bcQt3OmJ/ZMfggvbPLLQKubAmeBD2fyjlw4PnJaUpG4ukRZUjvgdBveZkTvZE2P9LG1YERvzF74
+	IIYoxoxdkUN8yZVglY7k/DUKzrUCu1ntdCajAZTUTkjJ55YfT3
+X-Gm-Gg: AYBFou2qW3K+RU/o8DreGfCyrQEtwQg6tRdt9Xav9oE6eXrIigt7dBZ6ePJrJ7KI+Hy
+	yUMafsn5r5j1UkHtJdirjPsB//2QjsiddmMrlTR8zn9sfidceP5rcu7Yqtwd7q52U+S2iJIUAh1
+	c5OpogYsyZFZFESwcv7Ct9Q+DIgzBpUi4i4ZOgH7e/I0bpBxdx+FPnWEXw9YUMxEoUZNyC1Iok8
+	vn4naSrwLNpD8pD2ayPW3dZfJ3tIGSuiso5dZv8Q30ha82suBbUG1PQZbKjkIzr22luRbain+XF
+	YpAXiZCJYWCI65+giqo2F5KRTEDQIgA2+eHA+hCM51a98g1fPAkgCKO+2AU4o1gY7dTDoQQqMrf
+	jK+L+egt0V+aLlIXkijhPzm25T6HwTejcUNP+LA==
+X-Received: by 2002:a05:620a:2727:b0:93b:eac0:ddd5 with SMTP id af79cd13be357-93c43e480bbmr141770685a.51.1790288990110;
+        Thu, 24 Sep 2026 15:29:50 -0700 (PDT)
+X-Received: by 2002:a05:620a:2727:b0:93b:eac0:ddd5 with SMTP id af79cd13be357-93c43e480bbmr141766785a.51.1790288989639;
+        Thu, 24 Sep 2026 15:29:49 -0700 (PDT)
 Received: from big24.sandeen.net (97-116-156-223.mpls.qwest.net. [97.116.156.223])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c44972febsm37216985a.39.2026.09.24.15.29.47
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93c44972febsm37216985a.39.2026.09.24.15.29.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 24 Sep 2026 15:29:47 -0700 (PDT)
+        Thu, 24 Sep 2026 15:29:48 -0700 (PDT)
 From: Eric Sandeen <sandeen@redhat.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
 	sandeen@redhat.com,
 	agruenba@redhat.com
-Subject: [PATCH 1/8] e2fsck: fix in-inode extended attribute checking
-Date: Thu, 24 Sep 2026 17:23:35 -0500
-Message-ID: <20260924222944.3683556-2-sandeen@redhat.com>
+Subject: [PATCH 2/8] e2fsck: fix extended attribute block checking
+Date: Thu, 24 Sep 2026 17:23:36 -0500
+Message-ID: <20260924222944.3683556-3-sandeen@redhat.com>
 X-Mailer: git-send-email 2.55.0
 In-Reply-To: <20260924222944.3683556-1-sandeen@redhat.com>
 References: <20260924222944.3683556-1-sandeen@redhat.com>
@@ -98,125 +98,76 @@ Content-Transfer-Encoding: 8bit
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-Extended attribute areas in inodes and on separate blocks are stored in
-the following format: (1) first comes the list of name records, (2)
-followed by an end marker, followed by any (3) free space that remains,
-followed by (4) any attribute values that are not stored in separate
-inodes.  The name records and values are all variable-length and 4-byte
-aligned.  The end marker is mandatory.
+Fix the same problems as in check_ea_in_inode().
 
-A lot of the loops iterating over those extended attribute areas get this
-wrong.  This patch fixes the loop in check_ea_in_inode:
-
-- First, we can safely assume that the total size is at least 4 bytes.
-  Take 4 bytes (the size of the end marker) off of the remaining space
-  to make sure that enough space remains available for the end marker.
-  (We can safely assume that the total size is at least 4 bytes.)
-
-- Second, at the top of the loop, we can assume that the area contains
-  at least an end marker, but we cannot assume that the list still
-  contains an entire ext2_ext_attr_entry header.
-
-- Third, since the loop condition now no longer checks if we have a
-  complete ext2_ext_attr_entry header, check if we still have a complete
-  name record of size EXT2_EXT_ATTR_LEN(entry->e_name_len).  The length
-  of the name is stored in the first byte of the entry, so we can safely
-  access it.
-
-- Fourth, value are 4-byte aligned, so take that into consideration when
-  calculating the remaining free space.
-
-With these changes to check_ea_in_inode(), an 'Extended attribute in
-inode has Aa namelen which is invalid' error is detected before
-allocation is checked, which masks the previous 'Inode extended attribute
-is corrupt (allocation collision)' error in test f_inode_ea_collision.
-Adjust the expected test result.
+The 'entry->e_value_offs + entry->e_value_size > fs->blocksize' check is
+covered by the region_allocate() check that follows it, so it can be
+removed.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- e2fsck/pass1.c                      | 32 ++++++++++-------------------
- tests/f_inode_ea_collision/expect.1 |  3 ++-
- 2 files changed, 13 insertions(+), 22 deletions(-)
+ e2fsck/pass1.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c9711446..555429b6 100644
+index 555429b6..f66a2908 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -501,36 +501,31 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx,
- 		goto fix;
- 	}
+@@ -2493,6 +2493,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 	char *		end;
+ 	struct ext2_ext_attr_header *header;
+ 	struct ext2_ext_attr_entry *first, *entry;
++	unsigned int	remain;
+ 	blk64_t		quota_blocks = EXT2FS_C2B(fs, 1);
+ 	__u64		quota_inodes = 0;
+ 	region_t	region = 0;
+@@ -2630,10 +2631,19 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
  
--	while (remain >= sizeof(struct ext2_ext_attr_entry) &&
--	       !EXT2_EXT_IS_LAST_ENTRY(entry)) {
+ 	first = (struct ext2_ext_attr_entry *)(header+1);
+ 	end = block_buf + fs->blocksize;
++	/* take finish entry 0UL into account */
++	remain = end - (char *)first - sizeof(__u32);
+ 	entry = first;
+-	while ((char *)entry < end && *(__u32 *)entry) {
 +	while (!EXT2_EXT_IS_LAST_ENTRY(entry)) {
  		__u32 hash;
  
--		if (region_allocate(region, (char *)entry - (char *)header,
--				    EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
--			problem = PR_1_INODE_EA_ALLOC_COLLISION;
--			goto fix;
--		}
--
--		/* header eats this space */
--		remain -= sizeof(struct ext2_ext_attr_entry);
--
--		/* is attribute name valid? */
--		if (EXT2_EXT_ATTR_SIZE(entry->e_name_len) > remain) {
 +		/* entry->e_name_len is within the first four bytes */
 +		if (EXT2_EXT_ATTR_LEN(entry->e_name_len) > remain) {
- 			pctx->num = entry->e_name_len;
- 			problem = PR_1_ATTR_NAME_LEN;
- 			goto fix;
- 		}
-+		remain -= EXT2_EXT_ATTR_LEN(entry->e_name_len);
- 
--		/* attribute len eats this space */
--		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
-+		if (region_allocate(region, (char *)entry - (char *)header,
-+				    EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
-+			problem = PR_1_INODE_EA_ALLOC_COLLISION;
-+			goto fix;
++			if (fix_problem(ctx, PR_1_EA_BAD_NAME, pctx))
++				goto clear_extattr;
++			break;
 +		}
- 
++		remain -= EXT2_EXT_ATTR_LEN(entry->e_name_len);
+ 		if (region_allocate(region, (char *)entry - (char *)header,
+ 			           EXT2_EXT_ATTR_LEN(entry->e_name_len))) {
+ 			if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
+@@ -2649,13 +2659,12 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 			break;
+ 		}
  		if (entry->e_value_inum == 0) {
- 			/* check value size */
--			if (entry->e_value_size > remain) {
+-			if (entry->e_value_size > EXT2_XATTR_SIZE_MAX ||
+-			    (entry->e_value_offs + entry->e_value_size >
+-			     fs->blocksize)) {
 +			if (EXT2_EXT_ATTR_SIZE(entry->e_value_size) > remain) {
- 				pctx->num = entry->e_value_size;
- 				problem = PR_1_ATTR_VALUE_SIZE;
- 				goto fix;
+ 				if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
+ 					goto clear_extattr;
+ 				break;
  			}
 +			remain -= EXT2_EXT_ATTR_SIZE(entry->e_value_size);
- 
  			if (entry->e_value_size &&
- 			    region_allocate(region,
-@@ -571,11 +566,6 @@ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx,
- 			ea_ibody_quota->inodes++;
- 		}
+ 			    region_allocate(region, entry->e_value_offs,
+ 					    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
+@@ -2697,7 +2706,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
  
--		/* If EA value is stored in external inode then it does not
--		 * consume space here */
--		if (entry->e_value_inum == 0)
--			remain -= entry->e_value_size;
--
  		entry = EXT2_EXT_ATTR_NEXT(entry);
  	}
- 
-diff --git a/tests/f_inode_ea_collision/expect.1 b/tests/f_inode_ea_collision/expect.1
-index a67a5f19..dfe49a9f 100644
---- a/tests/f_inode_ea_collision/expect.1
-+++ b/tests/f_inode_ea_collision/expect.1
-@@ -1,7 +1,8 @@
- Pass 1: Checking inodes, blocks, and sizes
- Inode 12 extended attribute is corrupt (allocation collision).  Clear? yes
- 
--Inode 13 extended attribute is corrupt (allocation collision).  Clear? yes
-+Extended attribute in inode 13 has a namelen (98) which is invalid
-+Clear? yes
- 
- Inode 14 extended attribute is corrupt (allocation collision).  Clear? yes
- 
+-	if (region_allocate(region, (char *)entry - (char *)header, 4)) {
++	if (region_allocate(region, (char *)entry - (char *)header, sizeof(__u32))) {
+ 		if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
+ 			goto clear_extattr;
+ 	}
 -- 
 2.55.0
 
