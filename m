@@ -1,50 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A16C3BB9EB
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2026 19:07:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D98664E8DF5;
+	Fri, 25 Sep 2026 19:59:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790363281; cv=none; b=UC2Z5TVm2KnGuNWo5nvTe5laShac6NwHhPUlI2abROBoFt31TuqJZR5GFZEqIlgiCzonfZJjBPdZyaS+hnm2XcybIlCyHI63jwxw2MORlnd4XjQjmP3bwo59gSufF4RIsUyC9lN/jDCqKo59m/8VMazV+qUthZJyU3ZPj7mSXQA=
+	t=1790366365; cv=none; b=EzSKlD4P4I0gYYBmT93Qd2pZpl0Z7GqkhqSHP8cYCRKac0VM4XaZMVuNAJVy9LjP2bT4QawAkmhkTWz9ogm4SNS4xeHO5l3HrH2ebEV7o9k9Y4NUnv7CaxOlFFQcZ0b+I7TJuEMz3n0yVjyZ3NaVp+yJcB2RsVH9CSa4hRpUsEs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790363281; c=relaxed/simple;
-	bh=i3qVX8tIPYM4M8Sajy5nrisZJ6LnTcp+cEBPgui3NMU=;
+	s=arc-20240116; t=1790366365; c=relaxed/simple;
+	bh=0FQ83vRAkYlWE/9ny/4c1VRIcQ+iRevz5Ab6KyCK7yA=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=sm1494w/rZWR9LuSXCL9vJBKzO8Y/lR+PMjiHm/13e0yfDVR96a5diZptdMAO5FJPm+ZBce7YzG5FEZpDkqrx588F6Ng8Ahh0+75Pn6YdeHLQsk4NSL6fNxhsfc5Fia4jBrekaQlma2HsGwJP1GjNfYw1da/sZ7kcDt9wOcuHBQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NnZQs3+7; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=Dz/6SvVMo2mVw/Gu0noXke+LsYK//S7RsWGMZObTC1Jtv8sdQm+wosof8x/L+DxLJqcog4pd49THJPJTIi4hzq4Hob4K83cS4dLAEpQMrpqKOa0wGrViWFRQTTb9fMIFkFpkoDYDnf4Mb4gqEeOaUjeAfQgKBUGaDR+JnRIHQio=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cYTCJv2Z; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NnZQs3+7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3BBE1F000FF;
-	Fri, 25 Sep 2026 19:07:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cYTCJv2Z"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3CA2B1F000FF;
+	Fri, 25 Sep 2026 19:59:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790363273;
-	bh=/kI2T9FQdLjrwVT2oVQh4iKydySDYghYc5QIfJPBLVo=;
+	s=k20260515; t=1790366363;
+	bh=j0n1Su+cgngbLmmkdleAw6u2hJKqkzvmBS356gMf3Bs=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=NnZQs3+79lniFs2J88flmV6q7K55OL+J7jfsuxmZLoVBudrKr9MIB97UH/9grAyPa
-	 yAHuo95XXvFE9faWoaXxUndmdNCUBqK+20bwb0iUheAfnCKgNM7xKecpSDBkLbTISo
-	 VHNC+Y2KLRtJgkh1IF/V9Vwmeg+dXaHss6LiZ7rY8iHxIsSF4Ny/PyVXjl9JK/j7Af
-	 JXhWdp5hC6euEpZdxEsEHN4YyxLJA9/fRnss6sa327pT4KcBkfFZQmYjTe7So358Q0
-	 z45lnL/3zbmWZv/5owZ2c9CcXYF/aYHy2UFdCARo9m6X3w2Ze3G1EDWLgEEuLmKRx4
-	 Os2SnpwMSUUaA==
-Date: Fri, 25 Sep 2026 12:07:51 -0700
+	b=cYTCJv2Zbjg7AuW/SdFXA7Xbyjq6/GdDZqz6mO89wJhKLAxXV0fwMQIJdXyTTgJs8
+	 jdZ72fSL96gHOSis6UnZByrfAz8mUtZ4/f48L4HnHdXy5tx7oZMg1urcnLmlj8tzi+
+	 8QKkQ3OhVxiT8UPxpTDZ+hGgWzMmShpocswYgM1p5/Kbax2vLgbBeqPFVVGovorRVk
+	 p//pNUXEZL86+VLKO0HJ2buWb2Qn9rBWjR0VSc8QQPVNpTVy+Bb6JCvLQgxmOuUzw7
+	 iYHSlxp6AfhMykm6gGLKTlzsaa7H+v4tPIU2Kyjvqn3IKVntSmeSGHLPfQaQxoz6c3
+	 /985Abyoall7w==
+Date: Fri, 25 Sep 2026 12:59:21 -0700
 From: Eric Biggers <ebiggers@kernel.org>
 To: Alberto Garcia <berto@igalia.com>
-Cc: Baokun Li <libaokun@linux.alibaba.com>, Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
 	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org
-Subject: Re: [REGRESSION] ext4: oops in ext4_finish_bio() after enabling
- encryption on a mounted fs
-Message-ID: <20260925190751.GB2060@quark>
-References: <arO0KE9_Jf8rNRwN@igalia.com>
- <38d9a34b-0547-45f0-b8b3-64da1f913058@linux.alibaba.com>
- <arPIrtWTXUTwqxFC@igalia.com>
- <cbbfa461-c770-457d-bfc6-317d744f1dcd@linux.alibaba.com>
- <20260923180119.GA1506901@google.com>
- <arU-kvN-75AEmNQw@igalia.com>
- <20260924180438.GB1978@sol>
- <arZVoP0GGSNXYBLC@igalia.com>
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>, linux-fscrypt@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 0/2] ext4: refuse encryption when block size > page size
+Message-ID: <20260925195921.GA5511@quark>
+References: <cover.1790343958.git.berto@igalia.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -53,49 +47,55 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <arZVoP0GGSNXYBLC@igalia.com>
+In-Reply-To: <cover.1790343958.git.berto@igalia.com>
 
-On Fri, Sep 25, 2026 at 01:06:08PM +0200, Alberto Garcia wrote:
-> On Thu, Sep 24, 2026 at 11:04:38AM -0700, Eric Biggers wrote:
-> > * And maybe a check in __ext4_iget() to prevent existing encrypted
-> >   inodes from being loaded when fs_block_size > PAGE_SIZE.  This would
-> >   be needed for fuzzing robustness, where a fuzzer generates a
-> >   filesystem that has encrypted files without the encrypt feature flag.
+On Fri, Sep 25, 2026 at 04:19:17PM +0200, Alberto Garcia wrote:
+> Hi,
 > 
-> Does the kernel reject encrypted files on a fs without the encrypt
-> flag? I'm asking in general, regardless of the block size. Should it?
+> encryption is not supported when a filesystem's block size is larger
+> than the page size. Although the kernel refuses to mount such a
+> filesystem if the "encrypt" feature is already set, it is possible to
+> enable it on a mounted filesystem with e.g. tune2fs.
+> 
+> # mkfs.ext4 -b 16384 /dev/vdb
+> # mount /dev/vdb /mnt/
+> # tune2fs -O encrypt /dev/vdb
+> # mkdir /mnt/foo
+> # fscrypt setup /mnt
+> # fscrypt encrypt /mnt/foo/
+> # head -c 20M /dev/urandom > /mnt/foo/data
+> # sync
+> [  116.014221] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 130040)
+> [  116.014235] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
+> [  116.014241] Buffer I/O error on device vdb, logical block 130040
+> [...]
+> [  116.014264] Buffer I/O error on device vdb, logical block 130049
+> [  116.015505] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 66552)
+> [  116.015520] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
+> [  116.016451] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 65784)
+> [  116.016459] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
+> 
+> This affects all kernels starting from v6.19 up to v7.3-rc4.
+> 
+> Note that this still allows encrypted inodes even when the 'encrypt'
+> feature is missing as long as block size <= page size. With v1
+> encryption policies they can be used normally.
+> 
+> There's an additional bug that only affects kernels between v6.19 and
+> v7.2 (but not v7.3), which will be dealt with separately.
+> 
+> Regards,
+> 
+> Berto
+> 
+> Alberto Garcia (2):
+>   ext4: refuse encryption when block size > page size
+>   ext4: reject encrypted inodes when block size > page size
+> 
+>  fs/ext4/crypto.c | 9 +++++++++
+>  fs/ext4/inode.c  | 6 ++++++
+>  2 files changed, 15 insertions(+)
 
-On a filesystem without the encrypt flag, ext4 rejects creating new
-encrypted directories, but it doesn't reject accessing existing
-encrypted directories.
-
-It *should* reject accessing existing encrypted directories.  I think
-the fact that it doesn't is a holdout from the bug that ext4 originally
-had where it didn't enforce the encrypt feature flag at all.
-
-ext4 encryption was first supported in Linux v4.1.  ext4 incorrectly
-allowed creating new encrypted directories on filesystems without the
-encrypt feature flag until commit 9a200d075e5 ("ext4: require encryption
-feature for EXT4_IOC_SET_ENCRYPTION_POLICY") in Linux v4.9.  ext4 also
-allowed the FS_IOC_GET_ENCRYPTION_POLICY ioctl on filesystems without
-the encrypt feature flag until commit 0642ea2409f3bf ("ext4 crypto: fix
-to check feature status before get policy") in Linux v5.4.
-
-Since v5.4 (7 years ago), ext4 has enforced ext4_has_feature_encrypt(sb)
-for all encryption ioctls.
-
-I think at this point would be pretty safe for ext4_iget() to reject any
-encrypted inodes when the filesystem doesn't have the encrypt flag.  The
-only caveat is that, technically, if an existing encrypted directory is
-using the old policy version (which before v5.4 was the only option), it
-can be unlocked and accessed without executing any of the encryption
-ioctls.  So in theory someone could be depending on that on a filesystem
-without the encrypt flag.  I think it's unlikely at this point, though.
-
-(Android for example certainly isn't depending on that, since I updated
-it to use 'tune2fs -O encrypt' many years ago.  Also, its keyctl() based
-unlocking code was removed and only the ioctls are used now.)
-
-So I would suggest we just fix this as well.
+Reviewed-by: Eric Biggers <ebiggers@kernel.org>
 
 - Eric
