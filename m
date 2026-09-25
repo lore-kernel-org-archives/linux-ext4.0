@@ -1,95 +1,106 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D98349E148
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Sep 2026 13:06:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D9DB3B6354;
+	Fri, 25 Sep 2026 14:20:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790341594; cv=none; b=OVuk7N3zQ+LXcXAELtaQWU4ew34kql0H73S0tue64ctJzoaP6xwBPTCF+x/iKovPryyVyLE81LQjxnkAV1udwKlW+8XqQ7zpG/emUtXzADt3s7sK9G4KGB69FPIENmll/cKGx7Ky7YMFA7zDERl4lja1sxyjBykDY2wT2Vnplo4=
+	t=1790346012; cv=none; b=e/hHTA2V6uHBoUes6Oiy4hTuIH9yx9/hgJwWJ5r0B1O5PMHFjdFmVUyflnnsFxw7z7j7bLcH/UZvp7YFBppJWHd2eXebHliAmY2GX6vvAut3NVpmrRHZ+80e4nJFUJbKqy4X2ts6OFyB/b3/zIa1Dr5q4WO18qhf0LKY3SzXb6M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790341594; c=relaxed/simple;
-	bh=AgeSdJ8ToAnVIAokP/7LJXIuV37Tv8CTBms3+JwOwas=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cV0qpl8pmgvfY2fXEcEETsYSeZaIWrN0gWjb1PrfQUHs9Hwa29h28+2q6JEdR77Y6u1NQwGOX5gHO85OH88TfJWERF1X4RlpHC2csFGv0658wA0fJsvNRV9o0Jml8bsWQyqa0JzVuK8vJ+nGCqNGFA7CmdjOc4xoM41gG/2zh/Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EXMvHLzX; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790346012; c=relaxed/simple;
+	bh=8Tlt/Xs/lnHxi6mpME7i6h7KxXZvDx1I51vC8Ed+D28=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HBpFcgK2O7RZu3DQYyDMb22JdF41NuwkrGK9icitOqsG9PtI5dAQZpLRS3B5x/4wBnWq2DpvHZdmxPZ7xtCyBVQQxQySkS4jo1t66m0bwJEP1fAPfRvRBE8EMulSxRFpMq+i1yoxx8kAa8JnLDAzJ0RhhTtl6SNUNV/CAvi5rMY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=pEv09GjQ; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EXMvHLzX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26F0C1F000FF;
-	Fri, 25 Sep 2026 13:06:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790341592;
-	bh=an58+dywmNJdEJtr2fcD0mhdpZqj1VdN8YTzgeL2WR8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=EXMvHLzXcGoGMpKyBHVWkjNeFgtrn6AsJEQL5It29Vl8aHYapdqGh3FLrxAzpsb04
-	 Rf5LSYSBR/sxToXJhqbfycMzmvknzruhXQivPFNtnoByGtqajNqqR0k9agEr4nE/3Y
-	 GGBegkNUwOxM1UTvzr61tpIXRLmY8nnmxw8ZAd8wW/AaL9872W6bjzTSbmqxU03N+n
-	 7VjEtE2Fj8sKk8K99le+KCrk22cDK4KOT4iQu8gauSoWLh4ujoDi4sTAvvi5Eza16U
-	 DsbCF3LnysWsY3K0WnPF7L8XrK+jc+2Xm+q3SpYUlyKAuo8nO9raR0LN9ghnf6FgOD
-	 cT5sie85KSCeA==
-Date: Fri, 25 Sep 2026 15:06:28 +0200
-From: Niklas Cassel <cassel@kernel.org>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Matthias Goergens <matthias.goergens@gmail.com>,
-	Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org, dlemoal@kernel.org
-Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
-Message-ID: <arZx1GSVS61EFaiQ@ryzen>
-References: <20260923101749.3505886-1-matthias.goergens@gmail.com>
- <arSMwd1bGO1vrif-@mit.edu>
- <20260924033200.3615554-1-matthias.goergens@gmail.com>
- <20260924040030.GB5048@sol>
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="pEv09GjQ"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Content-Transfer-Encoding:MIME-Version:Message-ID:Date:Subject:
+	Cc:To:From:From:Reply-To; bh=zOjagqsbVpNgX2XaI8021zvpIWajVqwPcnsMhNeTeW8=; b=
+	pEv09GjQjsTk9YzLtkW/UeU3lXbfkYys6JUeux+z/UbwojQMedCQd0be+XLnYoZFUTf0fcvhhyYWy
+	9wlAqnWTIO+l/prP6R2NosWix/1TvZpoxtQ7PMYaIcuCUXyrbbPfyiqQdLCmnPB1zM08sPSYGt4aE
+	ghzmCrpa5dKirL0ze/pYCAzb6oFBSW8+USbk9bczyf2yWNVw0jvgQ8ej/m+LOG/eJnpGp+Qg8wqgR
+	eYvYjzlmemHdQa6fRQVpqokz/ZRYrL9RQtoSjkK6Sw90W4wKdKzuAt+2ADrzxLwbneo6463bXJtXA
+	RlYUIr4pHpLTMpSa50+OROm75D5s0sEJrQ==;
+Received: from ip40.wifi.igalia.com ([192.168.12.40] helo=zeus.local)
+	by fanzine2.igalia.com with esmtpsa 
+	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1xA6mA-007B5Y-Hn; Fri, 25 Sep 2026 16:19:46 +0200
+Received: from berto by zeus.local with local (Exim 4.98.2)
+	(envelope-from <berto@igalia.com>)
+	id 1xA6mA-000000065Tf-0VY5;
+	Fri, 25 Sep 2026 16:19:46 +0200
+From: Alberto Garcia <berto@igalia.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Alberto Garcia <berto@igalia.com>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>,
+	Eric Biggers <ebiggers@kernel.org>,
+	linux-fscrypt@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+Subject: [PATCH 0/2] ext4: refuse encryption when block size > page size
+Date: Fri, 25 Sep 2026 16:19:17 +0200
+Message-ID: <cover.1790343958.git.berto@igalia.com>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260924040030.GB5048@sol>
+Content-Transfer-Encoding: 8bit
 
-Hello Eric,
+Hi,
 
-On Wed, Sep 23, 2026 at 09:00:30PM -0700, Eric Biggers wrote:
-> On Thu, Sep 24, 2026 at 11:32:00AM +0800, Matthias Goergens wrote:
-> > For the entries, my plan is to start with the roughly 160 T: lines
-> > that name a repository whose HEAD is already in mainline while
-> > linux-next pulls a different branch from it: one small patch per
-> > repository, sent to that entry's maintainers as its own thread.  I'd
-> > send a few first, to maintainers who usually respond quickly, and then
-> > the rest in larger batches once the first ones have landed or drawn
-> > comments.  You know far better than I do how maintainers take this
-> > kind of tree-wide cleanup, so I'd welcome your view on that approach
-> > before I start.
-> 
-> Explicitly documenting branches in MAINTAINERS sounds good, but in
-> addition to that, HEAD should also be made to point to the correct
-> branch (at least in repositories where there is only one main
-> development branch).  This can be done using gitolite's symbolic-ref
-> command: https://korg.docs.kernel.org/gitolite/index.html#symbolic-ref
+encryption is not supported when a filesystem's block size is larger
+than the page size. Although the kernel refuses to mount such a
+filesystem if the "encrypt" feature is already set, it is possible to
+enable it on a mounted filesystem with e.g. tune2fs.
 
-For the record, there is no need to use a gitolite specific command,
-regular:
+# mkfs.ext4 -b 16384 /dev/vdb
+# mount /dev/vdb /mnt/
+# tune2fs -O encrypt /dev/vdb
+# mkdir /mnt/foo
+# fscrypt setup /mnt
+# fscrypt encrypt /mnt/foo/
+# head -c 20M /dev/urandom > /mnt/foo/data
+# sync
+[  116.014221] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 130040)
+[  116.014235] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
+[  116.014241] Buffer I/O error on device vdb, logical block 130040
+[...]
+[  116.014264] Buffer I/O error on device vdb, logical block 130049
+[  116.015505] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 66552)
+[  116.015520] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
+[  116.016451] EXT4-fs warning (device vdb): ext4_end_bio:360: I/O error 19 writing to inode 19 starting block 65784)
+[  116.016459] EXT4-fs (vdb): failed to convert unwritten extents to written extents -- potential data loss!  (inode 19, error -5)
 
-$ git remote set-head libata for-next
+This affects all kernels starting from v6.19 up to v7.3-rc4.
 
-works.
+Note that this still allows encrypted inodes even when the 'encrypt'
+feature is missing as long as block size <= page size. With v1
+encryption policies they can be used normally.
 
+There's an additional bug that only affects kernels between v6.19 and
+v7.2 (but not v7.3), which will be dealt with separately.
 
-Damien and I (co-maintainers for libata) had this discussion offline a few
-months ago when Sashiko was constantly using the wrong branch.
+Regards,
 
-Assuming that you have a 'fixes' branch and a 'for-next' branch, which
-branch should be default?
+Berto
 
-The branch to use depends on the type of change it is.
+Alberto Garcia (2):
+  ext4: refuse encryption when block size > page size
+  ext4: reject encrypted inodes when block size > page size
 
-And many maintainers can go a very long time without either merging in
-'fixes' to 'for-next', or rebasing 'for-next', so critical fixes might
-be lacking from 'for-next'.
+ fs/ext4/crypto.c | 9 +++++++++
+ fs/ext4/inode.c  | 6 ++++++
+ 2 files changed, 15 insertions(+)
 
-We decided to keep HEAD pointed to 'master' as that is somewhat neutral.
+-- 
+2.47.3
 
-
-Kind regards,
-Niklas
