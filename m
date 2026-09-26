@@ -1,70 +1,120 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA7C33F5BE;
-	Sat, 26 Sep 2026 15:27:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E4B32E2663
+	for <linux-ext4@vger.kernel.org>; Sat, 26 Sep 2026 15:57:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790436435; cv=none; b=WoBZ0RhCCaUJ+LpVDQNMMS9Q8Fe7FYdqY3F+wo5hneWuG6nz/OOfOK/eIQWShwA93K0+lDqS/vG3u66VQxa/ERHhrIBdJzMn4nfYswX5ElOuqmQrOTGwqX365ZTaAqb0rIHbu1D6CCrzV2KGA9UhPD2teF3QhfAHHLTkBQswrY0=
+	t=1790438240; cv=none; b=EdIIPmD0P3uxGTGnBC0OhE64ICtBE3wZ6ABwNrrs618VG9NUjj5l09TfS5Wt+1FvCLIa3BxnZ4cvE2reoNvF4AFtggtLhp4JmshkZyNvDPFjBgwzQXDNHSc4qgivFDvt106VgeVmaoHyQoGkjEOLsxYKhcsirh9DeDIpmBYlRL4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790436435; c=relaxed/simple;
-	bh=CqqO0p1owogF6hNXfHok/PA5ctjevkw329RbVdtyngw=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=BPzwefF+42NlLYUhrin745tMcEifnYeHfz9McWo0DVe4y3JxtkfCuYgwnmJ540n621+TNPXDL0lmbakg4QtIvZjgsgpg+tXK7ST0/0ZY3C+oZEZKgFrHcUFNeZLRzahtu7/6ZG1gibZykmfU5AoQuh0qLN/LKfyuQNonRpMMHy0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mXZW35A8; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790438240; c=relaxed/simple;
+	bh=2AjfjZH1w+HWcQJWQpbX3DTRZbyNj0PM3epFqCHsfck=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=CFPs9MzGzouJwlOUe2YzN5ZK1REwdnq98J+tLgrRbif8kWn4ESREMjS2ApgsVw70tBMf1bEUnYXnWX0B9B9PKSf0Oee7VX4kbyjalaBfXUiGa7qmQ4B8BlM2Kdb2fEBqLADZpoVlz+ZBt/6HZ4vZFOZnQ3lquBHsKjqEPV3NxFo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q1gkFnjk; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mXZW35A8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7017A1F00893;
-	Sat, 26 Sep 2026 15:27:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q1gkFnjk"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 004B41F000FF;
+	Sat, 26 Sep 2026 15:57:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790436433;
-	bh=QbnY1KcZdcLSf/h6FTU94+McCURWh0TDX+JT/VqgBco=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=mXZW35A8dEa7T90iUrKVxs+ckQDjk+R6S2CN+JQhk2shIpymzs0QPrMsO3R29cWOS
-	 bRGj+IEPfU5tsgnvOzxBDG2RxiOzGUFmNUANTvGp+DgaEuWiYtEzWmxZsgfX2Q6F+G
-	 4JQ2SgMZnFfWNi7zFTXaMeCAH+1POeodRxzDykEdc0iwvkaoh+TtEx9kIyK8TQPdgO
-	 OWEqZ5ueppZQ790eBJWYqaqIl3zkS8PhufpWkEQSAv85dLoiDoB4ENkqqkQmacxGYZ
-	 tVR1KRChl7Yd4owJv9KOzRoC5af6IU1o2AO1ABHCYASw6RllaRMjTFtcb3OL8i3+bU
-	 chpwqLxu4QE4Q==
-From: Sasha Levin <sashal@kernel.org>
-To: stable@vger.kernel.org
-Cc: Sasha Levin <sashal@kernel.org>,
-	Alberto Garcia <berto@igalia.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>,
-	Eric Biggers <ebiggers@kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-fscrypt@vger.kernel.org,
-	regressions@lists.linux.dev
-Subject: Re: [PATCH 7.2.y] ext4: don't enable large folios on encrypted inodes
-Date: Sat, 26 Sep 2026 11:26:54 -0400
-Message-ID: <2026-09-26-daily-reply-0001-re-ext4-large-folios-encrypted-7-2@kernel.org>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260925153127.1472301-1-berto@igalia.com>
-References: <20260925153127.1472301-1-berto@igalia.com>
+	s=k20260515; t=1790438239;
+	bh=V49SISosnBx/tC1P1BEEomuPQO1RxydhnRYlY8+7udE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Q1gkFnjkPHD2OWLHHQF5zNH/8KqXfQhb+xjqz5nUNQilZiSSE4MrCUTgRvcNKJWD4
+	 9L6UFj9mA0XlNliCbdGXLUiXq/RmhKrARSHL5cDrvqmFhgfcyJTJu3JXxd+9m8gB4F
+	 kFzZPUNqW8gdYnHSIPnxW/52P5OyIRuISDWqjmBbtJLwbROaIKoK0j1Aj1Sx3QIV2H
+	 hlvNZOz8QbI3A9WuyAVKUlAon8dR1wsjwDOBZKomJDLozH/77sZDG2+7r7NR6WBq3g
+	 CgGJ+ha11J65+ax2Zf8XWxlsAFmo7eb4ZKUaLjnAOy7nra6jHWfTdiD/ekdbGBR0sT
+	 iObE9zuw29r2g==
+Date: Sat, 26 Sep 2026 17:57:15 +0200
+From: Niklas Cassel <cassel@kernel.org>
+To: Matthias Goergens <matthias.goergens@gmail.com>
+Cc: Eric Biggers <ebiggers@kernel.org>, Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	dlemoal@kernel.org
+Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
+Message-ID: <arfrW8NmQ4tsCF2I@ryzen>
+References: <20260923101749.3505886-1-matthias.goergens@gmail.com>
+ <arSMwd1bGO1vrif-@mit.edu>
+ <20260924033200.3615554-1-matthias.goergens@gmail.com>
+ <20260924040030.GB5048@sol>
+ <arZx1GSVS61EFaiQ@ryzen>
+ <20260926061101.3812389-1-matthias.goergens@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260926061101.3812389-1-matthias.goergens@gmail.com>
 
-> This patch has no upstream equivalent: in v7.3 the code was
-> significantly refactored and the problem no longer happens, see commit
-> b4e409c18c79 ("ext4: Remove fs-layer file contents en/decryption
-> code").
+On Sat, Sep 26, 2026 at 02:11:01PM +0800, Matthias Goergens wrote:
+> Hi Niklas,
+> 
+> On Fri, Sep 25, 2026 at 03:06:28PM +0200, Niklas Cassel wrote:
+> > For the record, there is no need to use a gitolite specific command,
+> > regular:
+> >
+> > $ git remote set-head libata for-next
+> >
+> > works.
+> 
+> Did you mean this as a way to change the server's default branch, or
+> for each consumer to run in its own clone?
+> 
+> For the server, I tried it with a scratch bare repository that has
+> master and for-next, and it looks to me as if set-head only moves
+> refs/remotes/origin/HEAD in the clone where it runs.  The server's HEAD
+> stays on master, and so do ls-remote and a fresh clone.  With git
+> 2.55.0, this script:
+> 
+>   git init --quiet --bare --initial-branch=master server.git
+>   git clone --quiet server.git work
+>   git -C work commit --quiet --allow-empty --message one
+>   git -C work push --quiet origin HEAD:master HEAD:for-next
+>   git --git-dir=server.git symbolic-ref HEAD
+>   git -C work remote set-head origin for-next
+>   git -C work symbolic-ref refs/remotes/origin/HEAD
+>   git --git-dir=server.git symbolic-ref HEAD
+>   git ls-remote --symref server.git HEAD
+>   git clone --quiet server.git consumer
+>   git -C consumer symbolic-ref refs/remotes/origin/HEAD
+> 
+> prints
+> 
+>   refs/heads/master
+>   refs/remotes/origin/for-next
+>   refs/heads/master
+>   ref: refs/heads/master  HEAD
+>   (object id)  HEAD
+>   refs/remotes/origin/master
+> 
+> For each consumer's own clone, it works, as long as the consumer knows
+> which branch to pick; for tools that read MAINTAINERS, that is what
+> naming the branch in the T: entry would tell them.  Have I missed
+> something?
 
-Since this is a stable-only change, I'd like an ack from the ext4 side
-before queuing it. Eric's Reviewed-by is already in.
+You are right.
 
-Ted, could you ack this for 7.2.y? I'll queue it once you do.
+Even though:
+https://git-scm.com/docs/git-remote#Documentation/git-remote.txt-set-head
 
--- 
-Thanks,
-Sasha
+says:
+Set or delete the default branch (i.e. the target of the symbolic-ref
+refs/remotes/<name>/HEAD) for the named remote.
+
+And:
+
+$ git symbolic-ref refs/remotes/libata/HEAD
+
+gets updated, it still only seems to get applied in my local repo,
+even after a git push.
+
+Seems like gitolite commands are actually needed then.
+I'm sorry for misleading you guys.
+
+
+Kind regards,
+Niklas
