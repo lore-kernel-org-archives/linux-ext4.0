@@ -1,101 +1,72 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.5])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C13A351C22;
-	Sat, 26 Sep 2026 07:26:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AECB534CFC5;
+	Sat, 26 Sep 2026 07:30:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790407616; cv=none; b=Dqg9RugCa8owFJB2EcHrUUTfMIvDDE8Dc/TfNX52UFlyO/BW42H5OV55b1bS1Ec/up+Dg4C/6EYTMvY/jtZJ5YiM4kc8PFxOeDlLNH7a3aeJC3FUcs5nem6SuReCGjPJOr1tNYoTtepXlR9zwDxvZv25iXa1ua3rGS5xN+vEUk8=
+	t=1790407822; cv=none; b=flQNv/AgMNyId5sUOtFjT6xC6K2LZ+4nQEhQUr401XrsjUKDA2HJIKD2LpM30DFCd0yeT5GufOUSOjE3XudXd6R4PUaKo2Dheh6yZofQKEWGt5SLexARfv/iSZFQYAsrEPeTSlo3sr13Xwli3vy2Gp9VuaBHyToA/aaGG52QY1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790407616; c=relaxed/simple;
-	bh=2ZSNPAPQ5uFpNEKRdOTXowKTOrg10NYXVjhcH0Q8yps=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=BnsuKs7a/NWTIUrccdbvztRNARIxqf3ejQrmbYq3WmvhW8u7uZ9ljKUSronX859C4X+toUHs50HYEWkJFyRherrzwyCu7nMVpAIRau7b/d0RdeAMoGMhK/772AQ+0bOqAuBj3jYHP+fZe0fDK/QH8AVW269v4JI0H1L02+F3vdI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=EIKtKwzf; arc=none smtp.client-ip=220.197.31.5
+	s=arc-20240116; t=1790407822; c=relaxed/simple;
+	bh=hMgD4cND9CJBndYFu6le5SnVC3/bG3HpVvXWc4Crebk=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References:Content-Type:
+	 MIME-Version:Message-ID; b=dGH+3/7IHjwFF+pRaoVhmowXH2beavowFAcsdZogTAviPDgwKgLOqgD9L0usUf7X3ShbvSJsXcpq3nNtFxkWKg/jli8GeAYihhd9le9H6UONP5T+SYVtXV+yKNNiqMbMh1l+0mKrgAGWO5XNuzSHFMmL74XM18eJKI3ChGgVLQg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=KEXrh/Z7; arc=none smtp.client-ip=117.135.210.5
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="EIKtKwzf"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="KEXrh/Z7"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=f5
-	OESZYUSuEE3QJEQwFZEeCJAa7TO61zwpOGvTN/CgY=; b=EIKtKwzfLvhrF8zGGi
-	hhaChGSOCy8bGpAYeEaIYlv9P0FxCRBBcyH/j9BW6/kxy0F8+Ggw/fKCG0/0wCdj
-	ouqAFSoI+QH/lt2CMWqZeCsjvzY57GssmnxkcC82xY4Q5VVN6fIOMvfOiYDMyGxD
-	kAnfPgPeECzwH+D7vvmcNWwkY=
-Received: from pc.localdomain (unknown [])
-	by gzga-smtp-mtada-g1-3 (Coremail) with SMTP id _____wD3v62dc7dqbEDbAw--.41165S2;
-	Sat, 26 Sep 2026 15:26:22 +0800 (CST)
-From: Jiale Yao <yaojiale02@163.com>
-To: Namjae Jeon <linkinjeon@kernel.org>,
-	Sungjong Seo <sj1557.seo@samsung.com>,
-	Yuezhang Mo <yuezhang.mo@sony.com>,
-	Jan Kara <jack@suse.com>,
-	Hyunchul Lee <hyc.lee@gmail.com>,
+	s=s110527; h=Date:From:To:Subject:Content-Type:MIME-Version:
+	Message-ID; bh=hMgD4cND9CJBndYFu6le5SnVC3/bG3HpVvXWc4Crebk=; b=K
+	EXrh/Z7jbQ5QyV+T+eAGsBVK+0+xwpDcKCqaFk4OKq8Pcg8uDRc5Vo0wSflp/Oee
+	HH3SM/Vnts1elGa1ZXlahHezvQittslD1zh0qoo/p/toJzxRcEyK2GfL7f4EgTNf
+	wrv9ooc1gx0SVO4gzph3hF8GDI+9qt3ZdPia2gssH8=
+Date: Sat, 26 Sep 2026 15:29:45 +0800 (CST)
+From: "jiale yao" <19888972804@163.com>
+To: liubaolin <liubaolin12138@163.com>
+Cc: "Namjae Jeon" <linkinjeon@kernel.org>,
+	"Sungjong Seo" <sj1557.seo@samsung.com>,
+	"Yuezhang Mo" <yuezhang.mo@sony.com>, "Jan Kara" <jack@suse.com>,
+	"Hyunchul Lee" <hyc.lee@gmail.com>,
 	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	"Darrick J. Wong" <djwong@kernel.org>,
-	exfat@lists.linux.dev,
-	linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
+	"Darrick J. Wong" <djwong@kernel.org>, exfat@lists.linux.dev,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	ntfs@lists.linux.dev
-Cc: Jiale Yao <yaojiale02@163.com>
-Subject: [PATCH v2 0/3] fs: drain in-flight DIO before buffered write fallback
-Date: Sat, 26 Sep 2026 15:26:09 +0800
-Message-Id: <20260926072612.3022680-1-yaojiale02@163.com>
-X-Mailer: git-send-email 2.34.1
+Subject: Re:Re: [PATCH 2/3] ntfs: drain in-flight DIO before buffered write
+ fallback
+X-Priority: 3
+X-Mailer: Coremail Webmail Server Version 2023.4-cmXT build
+ 20260511(2e539873) Copyright (c) 2002-2026 www.mailtech.cn 163com
+In-Reply-To: <b51a2ffa-5778-4075-a679-84cd3acf419a@163.com>
+References: <20260924110544.601390-1-yaojiale02@163.com>
+ <20260924110544.601390-3-yaojiale02@163.com>
+ <b51a2ffa-5778-4075-a679-84cd3acf419a@163.com>
+X-NTES-SC: AL_Qu2SAvibuE8j4yacZukdmE8Uges8WcC0svki1YJUc/gEiA305CwnXVJyOEHmy8eeADCmojeSbzhe59xaeahmp2/Ymvt05eKFWO4AJlQkZQ==
+Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=GBK
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wD3v62dc7dqbEDbAw--.41165S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW7AF1DtryfXF1fKry5tryDtrb_yoW8CrWrpr
-	WYga1rtrnIyFZ7Awn7uF4xGr1rCas5Z3y3ZrZ3Wa4j9w1rGr4DXF48tr1jqrW3Aa13Gw1j
-	vw4Fvas7WryDCaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0piL0ePUUUUU=
-X-CM-SenderInfo: x1dryxhdohiji6rwjhhfrp/xtbCzR6Mxmq3c57+KwAA38
+Message-ID: <8700d3f.1059.1a0dc9ebcb3.Coremail.19888972804@163.com>
+X-Coremail-Locale: zh_CN
+X-CM-TRANSID:cCgvCgD3N+5pdLdq9+pOAA--.9765W
+X-CM-SenderInfo: x1dryxhdohiji6rwjhhfrp/xtbC7wm-+Wq3dGlpcgAA37
+X-Coremail-Antispam: 1U5529EdanIXcx71UUUUU7vcSsGvfC2KfnxnUU==
 
-An asynchronous direct write can remain in flight after its submitting
-thread releases the inode lock.  If another direct write falls back to
-buffered I/O in the meantime, the buffered write can dirty page cache
-before the first write completes post-I/O invalidation.  The invalidation
-then finds dirty pages, emits a page cache invalidation failure warning,
-and records -EIO in the mapping error sequence.  A later fsync() returns
--EIO.
-
-Commit 15cdefd0c0522f9d5e12d947fa04f4c11649b699 ("ext4: drain
-in-flight DIO before buffered write fallback") fixed this race in ext4.
-The same ordering is missing from the buffered fallback paths in ext2,
-NTFS, and exFAT.
-
-This series adds inode_dio_wait() before each fallback dirties page cache.
-Each patch fixes one filesystem and remains independently buildable.  The
-NTFS patch also avoids entering the blocking fallback for IOCB_NOWAIT
-requests: it returns -EAGAIN if DIO made no progress and preserves a
-positive result after a partial direct write.
-
-A reproducer using concurrent AIO direct writes and buffered fallback
-triggered the following warning on all three filesystems and made a
-subsequent fsync() return -EIO:
-
-  Page cache invalidation failure on direct I/O.  Possible data corruption
-  due to collision with buffered I/O!
-
-Changes in v2:
-- Handle IOCB_NOWAIT before the potentially blocking NTFS fallback,
-  returning -EAGAIN before any bytes are written and preserving a positive
-  short-write result otherwise, as requested in review.
-
-Jiale Yao (3):
-  ext2: drain in-flight DIO before buffered write fallback
-  ntfs: drain in-flight DIO before buffered write fallback
-  exfat: drain in-flight DIO before buffered write fallback
-
- fs/exfat/file.c |  6 ++++++
- fs/ext2/file.c  |  7 +++++++
- fs/ntfs/file.c  | 13 +++++++++++++
- 3 files changed, 26 insertions(+)
-
--- 
-2.34.1
-
+SGkgQmFvbGluLCAKQXQgMjAyNi0wOS0yNCAyMDowNDoxNCwgImxpdWJhb2xpbiIgPGxpdWJhb2xp
+bjEyMTM4QDE2My5jb20+IHdyb3RlOgo+SGkgSmlhbGUsCj4gICAgVGhpcyBmYWxsYmFjayBwYXRo
+IGNhbiBzdGlsbCBoYXZlIElPQ0JfTk9XQUlUIHNldCwgYnV0IAo+aW5vZGVfZGlvX3dhaXQoKSBi
+bG9ja3Mgd2hlbiB0aGVyZSBpcyBvdXRzdGFuZGluZyBESU8uIENsZWFyaW5nIAo+SU9DQl9ESVJF
+Q1QgZG9lcyBub3QgY2xlYXIgSU9DQl9OT1dBSVQuCj4KPiAgIEluIGNvbXBhcmlzb24sIGV4dDRf
+YnVmZmVyZWRfd3JpdGVfaXRlcigpIHJlamVjdHMgTk9XQUlUIHJlcXVlc3RzIAo+YmVmb3JlIHJl
+YWNoaW5nIHRoZSB3YWl0Lgo+Cj4gICBDb3VsZCB3ZSBhbHNvIGhhbmRsZSBJT0NCX05PV0FJVCBi
+ZWZvcmUgZW50ZXJpbmcgdGhpcyBwb3RlbnRpYWxseSAKPmJsb2NraW5nIGZhbGxiYWNrPwo+ICAg
+SWYgbm8gYnl0ZXMgaGF2ZSBiZWVuIHdyaXR0ZW4sIHdlIGNhbiByZXR1cm4gLUVBR0FJTjsgaWYg
+c29tZSBESU8gaGFzIAo+YWxyZWFkeSBjb21wbGV0ZWQsIHdlIHNob3VsZCBwcmVzZXJ2ZSB0aGUg
+cG9zaXRpdmUgc2hvcnQtd3JpdGUgcmVzdWx0LgoKVjIgaXMgaGVyZSwgaHR0cHM6Ly9sb3JlLmtl
+cm5lbC5vcmcvYWxsLzIwMjYwOTI2MDcyNjEyLjMwMjI2ODAtMS15YW9qaWFsZTAyQDE2My5jb20K
+CkppYWxl
