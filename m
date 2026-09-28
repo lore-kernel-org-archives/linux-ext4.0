@@ -1,44 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3F0823EA83
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 12:31:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 847892BEC34
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 12:40:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790598697; cv=none; b=lcruktciLyMJ+kMJcdVNAOX94OkA2dIq9KaAWEHTd8BQXqbIlA0NePJH2kAIAHPQcIOP03K4Nfm9GbXtotMY3PDh08qBGKUnD/auraFY3Ml0+H6Xn3VstbLhPv9tGSerD9D5tNjwqDQvUo0Uau1eXxxLYdkym1ls1xB181VZ6W8=
+	t=1790599249; cv=none; b=XZZbE7Xuar3MotsHUlurSQEaAs5dFVziLz3W+KaBfFpWY/Ge2F/eougmLsMNeTC9ROY3nSmp1oN6Kqn+CYsFLR8M/CTkcLJLNXgdAmAcDGwameqYx0Y2PqTDuVa2nDrD5xeFf2QRgN0paPk4u2uMvrQhkAEwZpc4yapay1bxBGo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790598697; c=relaxed/simple;
-	bh=A+dby+zesU5B8A+NrfXEWrE7BNAKVq2mXOnXzHNF+10=;
+	s=arc-20240116; t=1790599249; c=relaxed/simple;
+	bh=DakE5qpICacjijCLCawxYMXwuXg86kReinll7Fe+QjI=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=p9iE0pthQlmd7VGkq8MlJzQwiKzO4KllUqwQpjmEnzjJ2rhI+9CjU7nQmoSGVLTfwn2UbxNe8wiXoaLpkt59Wc08XoLEVK+OMyqgofHxobodyXh1py4G5IX4WBSMsGL3XGcNhpWUAhvZQCyVX7f9Zg6IhmqlWe33YauIvdBk8eM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nIm0HHGo; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=ECCfsS6pmoOQniCNViSFYjI/8mOdJ7ZCNrPDRi2sAe2sLLzCAFvQHsDlSPgrBfCqo3Zg2XKacrEnOOMORrZHRJesEbcx4C+3usTezu+Da5LrbbwtqzEPtHE3jQxUaGa6RGbnyNT0EkA2cTJ26sgd3cCrwvExNJokdwK6hJ3bTbM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NxTKHbG8; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nIm0HHGo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D6891F000FF;
-	Mon, 28 Sep 2026 12:31:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NxTKHbG8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0357D1F000FF;
+	Mon, 28 Sep 2026 12:40:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790598696;
-	bh=UrvI8zEwV0JyxxNnrXj3RsgLvEZgXyOkWwxamvOT1RM=;
+	s=k20260515; t=1790599248;
+	bh=l54ckVoZJxzbnY2XNk/OrhP3NYMuqEUlLSzIC8uRxPs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=nIm0HHGoIbhBS/7UUYFHqoGsr4zIWSDDgiDvaEq1HWCbJvG/hVcKF9Mo1fgIWautA
-	 0ZU2MheBtvbo1/Z3i6u3Mlve67MV/IEfYqBwsosXIgYUCB3j49PnMAhNyYybOpgNTF
-	 TCDD5LLQM/aGCL/B+9pY+P/7g7odLskHQIxLIEGW6gu2A5mRverqP0wCdKqFZPXvsG
-	 fznOMHwhpP1HLPHJXzODXr5On8XNgvXSTmDlxJJmppoYhKdw+1WJs7T7njzKyA+o5q
-	 fV3CMU5eMlq3P8En9HO9BqqcIK9EZHFX1OlZyGdilVG6I7xIiIOFMKqNM/kvJqjcam
-	 ZqUtHdaiiNWSg==
+	b=NxTKHbG8NBbZmgj0rO7bufKPHPOF0jzKYVFQFCUY/usTRMw6VcknPUvTJTzmkZdrZ
+	 ER+zQa/AqS3m9gq65pBo8NsQ37A+wDQkhuSYXXwyRbDcZvb3/iuP7SMzctBjbaQbss
+	 WRYajdnKu787Ddux4lML1GFBW+ZwELUciyYEXNU4ZEBlhzyucRXrI+jIz9R4VeUCXj
+	 nxjJZSLW2bRrNDrHi5pMJMNHwlmhS5SKTQ/qqcFHBHuGphTUVmN7GdAI8STZJNVQ55
+	 FTAgow2Ns+eVrgm0HYLHbsHBxSL7nSwlB/F4yglELI7CWVP/Guvo8kkCHdxpxYtdiL
+	 m86X4jign+jDw==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v5 1/4] mm/truncate: align truncation boundaries to
- mapping minimum folio order
+Subject: Re: [PATCH] jbd2: fix shrinker scan budget accounting in
+ jbd2_journal_shrink_scan()
 Reply-To: sashiko-reviews@lists.linux.dev
-To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260928120833.3440834-2-yi.zhang@huaweicloud.com>
-References: <20260928120833.3440834-1-yi.zhang@huaweicloud.com>
- <20260928120833.3440834-2-yi.zhang@huaweicloud.com>
+To: "Qiliang Yuan" <odys.yuan@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260928-fix-jbd2-shrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com>
+References: <20260928-fix-jbd2-shrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 28 Sep 2026 12:31:35 +0000
-Message-Id: <20260928123136.2D6891F000FF@smtp.kernel.org>
+Date: Mon, 28 Sep 2026 12:40:47 +0000
+Message-Id: <20260928124048.0357D1F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,65 +46,62 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [Critical] mm: integer overflow in round_up() during truncation causes co=
-mplete file data loss
+- [High] jbd2: CPU spike due to incorrect shrinker nr_scanned accounting
 --
 
-commit 583804d300760dcf60e3ec5aab6503a560ad3e7e
-Author: Zhang Yi <yi.zhang@huawei.com>
+commit 47731fd468777a6abc87ac06fd933280e1966163
+Author: Qiliang Yuan <odys.yuan@gmail.com>
 
-mm/truncate: align truncation boundaries to mapping minimum folio order
+jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
 
-When the mapping has a non-zero minimum folio order, this patch changes
-folio_split() in truncate_inode_partial_folio() to stop at min_order instead
-of order 0. It also aligns both start and end to the mapping minimum folio
-order so they always fall on a folio boundary, preventing valid out-of-range
-tails from being dropped.
+This commit updates the jbd2 checkpoint shrinker's scan budget accounting
+by calculating the number of scanned items, and returning SHRINK_STOP if
+no items were scanned.
 
-Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=
-=3DOWzVRgD4202y1g@mail.gmail.com/
-
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index b58ba940be474..8a28f4a212677 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 09efa337649e2..2602e5946cc14 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
 [ ... ]
-> @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space=
- *mapping,
->  	else
->  		end =3D (lend + 1) >> PAGE_SHIFT;
+> @@ -1262,10 +1262,26 @@ static unsigned long jbd2_journal_shrink_scan(str=
+uct shrinker *shrink,
+>  	trace_jbd2_shrink_scan_enter(journal, sc->nr_to_scan, count);
 > =20
-> +	start =3D round_up(start, min_nrpages);
+>  	nr_shrunk =3D jbd2_journal_shrink_checkpoint_list(journal, &nr_to_scan);
+> +	sc->nr_scanned =3D sc->nr_to_scan - nr_to_scan;
 
-[Severity: Critical]
-Could this round_up() result in an integer overflow that changes a very lar=
-ge
-start index to 0 on 32-bit architectures?
+[Severity: High]
+Will this correctly account for the items that were scanned but not freed?
 
-When an unprivileged user issues fallocate(PUNCH_HOLE) or truncate at an of=
-fset
-near ULONG_MAX << PAGE_SHIFT (e.g., 16TB on 32-bit systems) on a filesystem=
- with
-min_nrpages > 1 (like ext4 with large folio/iomap), start approaches
-ULONG_MAX (e.g., 0xFFFFFFFF on 32-bit x86).
+Looking at jbd2_journal_shrink_checkpoint_list() in fs/jbd2/checkpoint.c,
+nr_to_scan is only decremented by the number of freed items:
 
-The macro round_up(start, min_nrpages) performs 32-bit arithmetic. With
-start approaching 0xFFFFFFFF, start + min_nrpages - 1 can overflow to a val=
-ue
-less than min_nrpages, causing round_up to evaluate to 0.
+    freed =3D journal_shrink_one_cp_list(transaction->t_checkpoint_list,
+                                       JBD2_SHRINK_BUSY_SKIP, &released);
+    nr_freed +=3D freed;
+    (*nr_to_scan) -=3D min(*nr_to_scan, freed);
 
-This would corrupt the start index to 0 in truncate_inode_pages_range(), and
-the subsequent loop would unintentionally truncate the entire page cache fr=
-om
-index 0 to end, causing complete data loss of unwritten data.
+Furthermore, journal_shrink_one_cp_list() explicitly skips busy buffers
+without them counting towards the freed total:
 
-> +	if (end !=3D (pgoff_t)-1)
-> +		end =3D round_down(end, min_nrpages);
-> +
->  	folio_batch_init(&fbatch);
->  	index =3D start;
->  	while (index < end && find_lock_entries(mapping, &index, end - 1,
+    if (type =3D=3D JBD2_SHRINK_BUSY_SKIP && jh->b_transaction)
+        continue;
+
+This effectively sets sc->nr_scanned to the number of freed items, not the
+actual number of scanned items.
+
+The shrinker API expects sc->nr_scanned to reflect the actual amount of work
+done (items scanned). If the shrinker scans many busy buffers but frees very
+few of them, it reports a tiny number of scanned items.=20
+
+Can this cause do_shrink_slab() to repeatedly re-invoke the shrinker without
+meaningfully reducing its total_scan budget, leading to high CPU usage or
+potential soft lockups under memory pressure?
+
+> =20
+>  	count =3D percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
+>  	trace_jbd2_shrink_scan_exit(journal, nr_to_scan, nr_shrunk, count);
 
 --=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260928120833.3440=
-834-1-yi.zhang@huaweicloud.com?part=3D1
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260928-fix-jbd2-s=
+hrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com?part=3D1
