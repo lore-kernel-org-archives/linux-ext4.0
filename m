@@ -1,192 +1,216 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-dl2-f43.google.com (mail-dl2-f43.google.com [74.125.229.171])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9185648D890;
-	Mon, 28 Sep 2026 10:37:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 195954AC14E
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 11:40:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.229.171
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790591858; cv=none; b=nFVNwGzfIFHvkdYjArBUQj6vAFSkh0AF/9DmW13cT0MlVApP79lsqwJ7sg4NWRwGHcISO201A3ilz02SB1dqBBNnizYz4qmWel4W5IE9rfdZP2C0j0uE74KlqqzWkTnWymYA+Jk65UMyKK6oCN1PjvXqDhXe6igP8XkVtiYyLCU=
+	t=1790595630; cv=none; b=gRT9DnIoGzuVe6YpZ4J4NEi1e2qq0ZURmB6vmrg5eNALzMawaCEZ7R9+rx1dShlFfI5syRLhMp0/YnmXJyvpfaq5xP5HFiazEkJfjff8Jlshx3njco+9Wy+VsX90j6okCuVrV0bIvZqupk1u/DyHiKMREPeFdrUaCI080tiBQCo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790591858; c=relaxed/simple;
-	bh=c5tuQoEdlF5IPBJbLqozrMCTXsNhWkHgmi2tjpQToBo=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=BKqPT9E6ma5dP8A2Y26KCoX3eYNI7GEI20waY8UJbEcKDi1RjGbmuokHBZ/rogo7VwGxQXRKndYfARO86qkgtTEnxtEHlToAvVPkcN86Cc0Jo43BzjbFoSi4vCXbrxXutDhnhoD856kGhoNcEtiQA1hBf9LYYPS/DJTihuk5SVk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=kADR6fWP; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+	s=arc-20240116; t=1790595630; c=relaxed/simple;
+	bh=Lzr5bEcyEtqxOcsi0a6Wx4YdU9NF9pl4pgfrg72dBeU=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=HMzG4fJj2GtIni81hH2tRztFLH0j4gqPQ9I6GQwl7y/iR+DC6vKBkb0Mt6IoU1ljAhKWXA2GnHInHKciSEtELhkdv93v0P/L14XgueSVk9M8bjlCfzq9BLDm0noeVApmm8UMn0CkwleShRo6OA41CCmm5Ui9ygu0x4xxUlnUhNc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=URGaXcjk; arc=none smtp.client-ip=74.125.229.171
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="kADR6fWP"
-Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 68S9Zl5Q577538;
-	Mon, 28 Sep 2026 10:36:59 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=JuH9RPjud1DwKJCzuLhj6G807cgzLP
-	jFKV6YWMJuM7c=; b=kADR6fWPS8Klpjt60istW31E0hCE5cWCTh6gBOOm3ok9tO
-	shxuj/o5nd7TlraCxBwtbEJhf6KatpOq/F2vrStg+vjI7KJOvqIm6CjCSpca6MBO
-	c7rpuKpJI13MPmqtszZ5dhlUPIxg12fRmoH8LI1ViAWzu5mDE4GljA3P99vdtyqR
-	jENe0/DEp8TkpVw5sEYe6T5MqlPNhsARILAflZyzIgADcTrNMGnyUyamPbh1ZHKQ
-	Ev20d/WnGMbNbR84RUGYc2OfwkePEv3t4CHUcCAr6CAyWTGBX/69CuEFINIYXL2g
-	F7UOz51mJ/hanvlLFkQkROFpOiOKassxegOEKN6Q==
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4gx3fk0ptc-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Mon, 28 Sep 2026 10:36:58 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 68S9Hwe62810204;
-	Mon, 28 Sep 2026 10:36:57 GMT
-Received: from smtprelay07.fra02v.mail.ibm.com ([9.218.2.229])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4gxtkg4n3v-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 28 Sep 2026 10:36:57 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay07.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 68SAau6g50069784
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 28 Sep 2026 10:36:56 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 1313B2004E;
-	Mon, 28 Sep 2026 10:36:56 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 8363920040;
-	Mon, 28 Sep 2026 10:36:50 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.20.95])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Mon, 28 Sep 2026 10:36:50 +0000 (GMT)
-Date: Mon, 28 Sep 2026 16:06:47 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
-        djwong@kernel.org, hch@infradead.org, yi.zhang@huawei.com,
-        yizhang089@gmail.com, chengzhihao1@huawei.com, yangerkun@huawei.com,
-        wangkefeng.wang@huawei.com, yukuai@fnnas.com
-Subject: Re: [PATCH v6 09/31] ext4: skip block allocation for holes in the
- data submission path
-Message-ID: <arpDP43MIAGjaWYx@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903123543.2302999-10-yi.zhang@huaweicloud.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="URGaXcjk"
+Received: by mail-dl2-f43.google.com with SMTP id a92af1059eb24-144f7915355so2440565c88.3
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 04:40:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1790595628; x=1791200428; darn=vger.kernel.org;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=xOrrX4VASxwxOHIje5fqVHmltt8bEneArNzq9Pnrg3Y=;
+        b=URGaXcjkTBf7gnd63ov5D8Xti1JAlEd7m6aJVQQlZiEpmRoBLZsKj+qCyMJQhFTpwj
+         hIrN3g6nnLoHfB+GJm7W+Z6VAkQ2GbXZe4rWAdF5w66MaS/aMa2z9f/ar0M7IFtohf+H
+         DJYClU3ZFJLSTONZY16xMJEjrt51BTPW/2ObGLFew2/63e3ZkO7sQUgDzkoaU4wIW3wV
+         BP+P5qVP4F5Sqd6TYciM1YuF2Kjm/REl3oesCSB3cH1lOp31Ih2tgUBJb9PDTC06Xn+j
+         Po5ryvYm/l0QQb48WhPUCC06jrhliBERXbQRydYRWoyCdjMe9fY4lHERZbO+J+CUGGK4
+         u7gQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1790595628; x=1791200428;
+        h=cc:to:message-id:content-transfer-encoding:content-type
+         :mime-version:subject:date:from:x-gm-gg:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=xOrrX4VASxwxOHIje5fqVHmltt8bEneArNzq9Pnrg3Y=;
+        b=eaMdslTyvXDI26OKLre2IeSSQRPo1acMfE/wIc4hgBl0b2qzAizjMP9wR8n6zzPTI+
+         h6jzk056woyQFY6PTFagmpcxzVswKBuA9ZOZqYiV8Eef5waO3ICO0UR5oqWt7KGKqaSN
+         kR+Ycz3STelNSy2/OlZRmJ7VeKsAuEORAW7XQh2PglxwYldrtI+k0vpF7NOx+RnDlN58
+         80oCRTmZQdulPscrz6m2Ww3qyQBTrdzzBqfzi3vkvtBuP4ZbxSY1CeuRJK2KG27gogxw
+         urHImNfH1JkfMJoaLRMl14UAtlWOBuuJ7rXy8/JHgWZKG/M8R2hN96Kr8GBijolxUmiy
+         pQaQ==
+X-Gm-Message-State: AFuF++kQnV7E/f5l5rWOojGKGTTOGrpBaq2orUEgsJOsrB4D/flX9k0q
+	hAm44CzlzGl1nmwrbvUrhah7llzUijCpop+Pusw/2Bq1aF8fcaO7lRaC
+X-Gm-Gg: AYBFou1406tDuRXZ3EtF3zipBTm49pu9rG+oH6qice74MYG8pTTFo1fl3NbHNZJ7/RO
+	C3bVzrNk9O8aEZYRypzYHgiVXvHQjBZf1ErvUuUS1qZ5XDzPC/HtD6RLeCIUdcSI0XunBUrH9Nl
+	HGViJIGdKEX0QX+NyluypflvqtdIGkMVGsxaKIdi8KdFElSuGXwieWUzP/3lVV2Vu50BQjij3rd
+	Wq2Wiw+ZF9K/MrbbXeJ/xV6Zd+KXK06v2b1K4veX3sqJKQghIz/WdfOz3Sf6b9xu8E0to5v+MHg
+	IgITLUfiGD4oAjfI3utE9igETmUh3fZh3a45vE8GSk+RVD20mM5wqGLKqnIOxRlIiYHnmcHtJlD
+	48uF1k+vFnfGvbO7IlD7C7IH1kPaQkiJDtQGkxQHIgHrKEaGI7DS1ZIMTWY5crXXcXZ3o5Xgwtn
+	DCOHQni/zgkVSbVUt061bBzFojZGofFWM42XXYeHxQpnSfKfLs7xzEj24HcDc8AvkDwZP8bB5VL
+	0yfog==
+X-Received: by 2002:a05:701b:2902:b0:143:56f8:dc5 with SMTP id a92af1059eb24-146cfec877bmr9086036c88.23.1790595628009;
+        Mon, 28 Sep 2026 04:40:28 -0700 (PDT)
+Received: from [127.0.1.1] ([47.88.22.254])
+        by smtp.gmail.com with ESMTPSA id a92af1059eb24-145ac67c3f8sm24289375c88.3.2026.09.28.04.40.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 28 Sep 2026 04:40:27 -0700 (PDT)
+From: Qiliang Yuan <odys.yuan@gmail.com>
+Date: Mon, 28 Sep 2026 19:40:21 +0800
+Subject: [PATCH] ext4: fix shrinker scan budget accounting in
+ ext4_es_scan()
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260903123543.2302999-10-yi.zhang@huaweicloud.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-ORIG-GUID: KnGRxV1NpjEfVpeq6xmwODQRk0ftQQiy
-X-Proofpoint-GUID: uMp-NBB3qG_zHv09oXqbuF6gU4SjwgIZ
-X-Proofpoint-Spam-Info: AW1haW4tMjYwOTI4MDA0MiBTYWx0ZWRfX8VuDzYoG4jlP
- OAfbbl9uFXK/r+PpUvCGRbYAPpryJ5mO82Chm+e5CZcf9U+IE6VGBbh8Tk7UTg+C1rflTNXVe8a
- sRhNA42HunzXlAOq3XzcFp9Nmn8R3aU=
-X-Authority-Analysis: v=2.4 cv=Vv62kO2n c=1 sm=1 tr=0 ts=6aba434b cx=c_pps
- a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
- a=kj9zAlcOel0A:10 a=VdqzKS8jKosA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=Y2IxJ9c9Rs8Kov3niI8_:22 a=i0EeH86SAAAA:8
- a=VnNF1IyMAAAA:8 a=uegeSZEF0Te5fBA9WTAA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwOTI4MDA0MiBTYWx0ZWRfX3qmpos6/VY7e
- hpWTp90Z3r5sTxWzhfavwXy6IjmBOCGweIJV5ytbH1bXp13NDXJd1R6L9bdCLmSxgUs04+NT1gT
- TJvTDvq/MEaFcAGcTD2wYwruQOsMOvdW0gdRK8IFXwcE3sYbX8WErbGsoNq8wous69v+vChdgAS
- Vdj3A4R1zAnxv5woy2nnFKxHruLIwB1KSD9N4ap552KkeoZTdyitSsuP1+xcHFsDEeyR0lJNaUP
- URMHDR9gHgBz1xzrb6vnUwGhGehAKe5JdugLgYL+E5RK8hoi5jGymOZktL2SJFpB88/0bC6Fghv
- krpafvx0NYL1o1g4GsWtPyhns/1w0sGO/PC+sPGSwQuevXK21zNKPUkwcqIWzLztsPtooMXXg4/
- n504qpO30jXpwLHOeyVnznqCvxGxEsDXIMMx9Yr5Fzkogllfv+VW2llPw95DNT+iknPJc6VY/Di
- f/NY4y7eOrGlaAIGlbA==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-09-28_02,2026-09-21_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- suspectscore=0 spamscore=0 phishscore=0 bulkscore=0 adultscore=0
- priorityscore=1501 malwarescore=0 clxscore=1015 lowpriorityscore=0
- impostorscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2609040000
- definitions=main-2609280042
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260928-fix-ext4-es-scan-nr-scanned-v1-1-91d88228b0c8@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACVSumoC/x2MSQqAMAwAvyI5G6ilrl8RD6VNNZcojYgg/t3ia
+ RgY5gGlzKQwVQ9kulh5lyJNXUHYvKyEHIuDNbYzox0w8Y10nw5JUYMXlPxTKGLrU29651IXIpT
+ Dkank/31e3vcDq4kNiG0AAAA=
+To: Theodore Ts'o <tytso@mit.edu>, 
+ Andreas Dilger <adilger.kernel@dilger.ca>, 
+ Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+ Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Qiliang Yuan <odys.yuan@gmail.com>
+X-Mailer: b4 0.13.0
 
-On Thu, Sep 03, 2026 at 08:35:21PM +0800, Zhang Yi wrote:
-> From: Zhang Yi <yi.zhang@huawei.com>
-> 
-> When ext4_map_blocks() is called from the data submission path and I/O
-> end extent conversion path (EXT4_GET_BLOCKS_IO_SUBMIT), it should not
-> allocate blocks if the lookup returns a hole.
-> 
-> The writeback path can legitimately encounter dirty ranges that map to
-> holes. For example, when a folio straddles i_size and the tail beyond
-> i_size is dirtied via a mmap write. Allocating blocks for such ranges is
-> wrong because there is no data to write back, the dirty bits should
-> simply be discarded without submitting I/O. This prepares for the
-> buffered iomap writeback conversion, mirrors the existing buffer_head
-> writeback path, where mpage_add_bh_to_extent() skip unmapped buffers and
-> ext4_bio_write_folio() clears their dirty bits.
+The extents_status shrinker's count_objects() callback,
+ext4_es_count(), reports the number of shrinkable extent_status
+objects via a percpu counter. do_shrink_slab() reads this count
+exactly once per invocation and derives a one-shot scan budget
+(total_scan) from it, then repeatedly calls scan_objects() in
+fixed-size batches until that budget is exhausted.
 
-Looks good, checking the iomap vs bh head logic. If we consider
-a 1k bs FS with 4k page size, with hte following ops:
+ext4_es_scan() never updates sc->nr_scanned, even though
+include/linux/shrinker.h documents that "the callee should track
+its actual progress" in that field. Because sc->nr_scanned defaults
+to sc->nr_to_scan before every call, do_shrink_slab() always
+believes a full batch was examined, regardless of what __es_shrink()
+actually did. When __es_shrink() hits an empty sbi->s_es_list and
+returns immediately having examined nothing, do_shrink_slab() has
+no way to tell "there was nothing to scan" from "a full batch was
+scanned and none of it was freeable". It keeps calling scan_objects()
+until the original, one-shot total_scan budget is drained, even
+though the shrinkable list emptied out long before that budget was
+used up.
 
-  ftruncate(fd, 0);
-  pwrite(fd, buf, 1024, 0);
-  map = mmap(NULL, 1024, PROT_WRITE, MAP_SHARED, fd, 0);
-  map[0] = 'a';  ---->  mkwrite allocates 1 block and dirties the whole 
-                        page
-  ftruncate(fd, 10000);
+Make __es_shrink() report the number of extent_status objects it
+actually examined through a new nr_scanned output parameter, derived
+from the existing per-extent nr_to_scan counter that es_reclaim_extents()
+already decrements as it walks the tree. Have ext4_es_scan() copy this
+value into sc->nr_scanned, and return SHRINK_STOP once nr_scanned comes
+back as zero, since that only happens when sbi->s_es_list was already
+empty and no further calls in this reclaim pass can make progress.
 
-Here both non-iomap path (ext4) and iomap path (xfs) will allocate a
-single block but both will mark the whole page range dirty in bh/ifs.
+Tested by fallocate(2)-ing 10000 4K files (to populate the shrinker
+with reclaimable unwritten extents without also exercising the
+extent_status "referenced" second-chance path, which needs a
+separate two-pass accounting of its own) and triggering
+"echo 2 > /proc/sys/vm/drop_caches", while tracing the
+ext4_es_shrink* tracepoints:
 
-In both iomap and ext4, while writeback, we skip bhs which are holes,
-and we clear dirty on them as well.. The only difference is that in
-iomap xfs_map_blocks() shall detect a hole and inform about the hole but
-in ext4, we filter holes out before the map block call.
+                      total scan_objects()   calls with
+                      calls                  nr_shrunk == 0
+  before this patch   429                    189 (44%)
+  after this patch    165                    1 (0.6%)
+  after (rerun)        242                    1 (0.4%)
 
-So with this change we will be closer to iomap's behavior. Looks good
-althought it's unfortunate that IO_SUBMIT has yet another implicit
-behavior added to it's scope :)
+nr_skipped stayed at 0 throughout every run, confirming the wasted
+calls came from the stale one-shot budget racing ahead of the real
+list state, not from the existing precached/trylock skip paths.
 
-Feel free to add:
+Signed-off-by: Qiliang Yuan <odys.yuan@gmail.com>
+---
+ fs/ext4/extents_status.c | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
 
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 6e4a191e82191..05ded0c018e08 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -184,7 +184,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 			      struct extent_status *prealloc);
+ static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
+ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+-		       struct ext4_inode_info *locked_ei);
++		       struct ext4_inode_info *locked_ei, int *nr_scanned);
+ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+ 			    ext4_lblk_t len,
+ 			    struct pending_reservation **prealloc);
+@@ -1670,7 +1670,7 @@ void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ }
+ 
+ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+-		       struct ext4_inode_info *locked_ei)
++		       struct ext4_inode_info *locked_ei, int *nr_scanned)
+ {
+ 	struct ext4_inode_info *ei;
+ 	struct ext4_es_stats *es_stats;
+@@ -1679,6 +1679,7 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ 	int nr_to_walk;
+ 	int nr_shrunk = 0;
+ 	int retried = 0, nr_skipped = 0;
++	int orig_nr_to_scan = nr_to_scan;
+ 
+ 	es_stats = &sbi->s_es_stats;
+ 	start_time = ktime_get();
+@@ -1738,6 +1739,8 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+ 		nr_shrunk = es_reclaim_extents(locked_ei, &nr_to_scan);
+ 
+ out:
++	*nr_scanned = orig_nr_to_scan - nr_to_scan;
++
+ 	scan_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
+ 	if (likely(es_stats->es_stats_scan_time))
+ 		es_stats->es_stats_scan_time = (scan_time +
+@@ -1774,15 +1777,30 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ {
+ 	struct ext4_sb_info *sbi = shrink->private_data;
+ 	int nr_to_scan = sc->nr_to_scan;
+-	int ret, nr_shrunk;
++	int ret, nr_shrunk, nr_scanned;
+ 
+ 	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
+ 
+-	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL);
++	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL, &nr_scanned);
++	sc->nr_scanned = nr_scanned;
+ 
+ 	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	trace_ext4_es_shrink_scan_exit(sbi->s_sb, nr_shrunk, ret);
++
++	/*
++	 * es_stats_shk_cnt is a percpu counter, so count_objects() can report
++	 * a stale/approximate value that is still positive even though
++	 * sbi->s_es_list is actually empty by the time we get here. When that
++	 * happens __es_shrink() returns immediately having examined nothing
++	 * (nr_scanned == 0). Without SHRINK_STOP, do_shrink_slab() has no way
++	 * to tell "nothing was there" from "nothing was scanned yet" and will
++	 * keep calling us with the same stale freeable count until its scan
++	 * budget for this priority level is exhausted one batch at a time.
++	 */
++	if (nr_scanned == 0)
++		return SHRINK_STOP;
++
+ 	return nr_shrunk;
+ }
+ 
 
-> 
-> In the ioend extent conversion path, holes are also not expected because
-> we should wait for folio writeback before punching hole. If one is
-> encountered, it likely indicates a failure in the concurrency
-> protection, so ext4_map_blocks() returns zero, and we keep warning and
-> bail out with -EINVAL to surface the failure rather than continuing
-> conversion on torn data. Atomic writes in
-> ext4_convert_unwritten_extents_atomic() already bail out similarly.
+---
+base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
+change-id: 20260928-fix-ext4-es-scan-nr-scanned-5af70744f6cd
 
-Ahh that's right we do bail out but we don't seem to be returning an
-error in the atomic write path. I think ideally that would be the right
-thing to do. I'll fix it, thanks!
+Best regards,
+-- 
+Qiliang Yuan <odys.yuan@gmail.com>
 
-Regards,
-ojaswin
-
-> 
-> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-> ---
->  fs/ext4/inode.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 7a5c74af8ff3..2881596bff8b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -825,6 +825,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  			map->m_flags |= EXT4_MAP_MAPPED;
->  			goto out_handle;
->  		}
-> +	} else if (retval == 0) {
-> +		/*
-> +		 * Do not allocate blocks for holes in the context of
-> +		 * data submission path.
-> +		 */
-> +		if (!map->m_flags && (flags & EXT4_GET_BLOCKS_IO_SUBMIT))
-> +			goto out_handle;
->  	}
->  
->  	if (!handle) {
-> -- 
-> 2.52.0
-> 
