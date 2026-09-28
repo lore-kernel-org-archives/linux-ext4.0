@@ -1,107 +1,128 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 847892BEC34
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 12:40:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F21FD2E8B83;
+	Mon, 28 Sep 2026 12:46:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790599249; cv=none; b=XZZbE7Xuar3MotsHUlurSQEaAs5dFVziLz3W+KaBfFpWY/Ge2F/eougmLsMNeTC9ROY3nSmp1oN6Kqn+CYsFLR8M/CTkcLJLNXgdAmAcDGwameqYx0Y2PqTDuVa2nDrD5xeFf2QRgN0paPk4u2uMvrQhkAEwZpc4yapay1bxBGo=
+	t=1790599598; cv=none; b=flXKW2gvzitiaCT+MKv6vCo6yefF/dcUiH7DpbxORQHxtMp0wiNOx1atv/nbg1fF+YzL9PQ+VACOngAEHZRwLkjcHBzDR7UeoiiejmB5CokJwfWoggrsXWylMDvzne0buR+DE1CkOh0sIyA1VQwreVudi561x0nefkB3nUmzINA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790599249; c=relaxed/simple;
-	bh=DakE5qpICacjijCLCawxYMXwuXg86kReinll7Fe+QjI=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=ECCfsS6pmoOQniCNViSFYjI/8mOdJ7ZCNrPDRi2sAe2sLLzCAFvQHsDlSPgrBfCqo3Zg2XKacrEnOOMORrZHRJesEbcx4C+3usTezu+Da5LrbbwtqzEPtHE3jQxUaGa6RGbnyNT0EkA2cTJ26sgd3cCrwvExNJokdwK6hJ3bTbM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NxTKHbG8; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NxTKHbG8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0357D1F000FF;
-	Mon, 28 Sep 2026 12:40:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790599248;
-	bh=l54ckVoZJxzbnY2XNk/OrhP3NYMuqEUlLSzIC8uRxPs=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=NxTKHbG8NBbZmgj0rO7bufKPHPOF0jzKYVFQFCUY/usTRMw6VcknPUvTJTzmkZdrZ
-	 ER+zQa/AqS3m9gq65pBo8NsQ37A+wDQkhuSYXXwyRbDcZvb3/iuP7SMzctBjbaQbss
-	 WRYajdnKu787Ddux4lML1GFBW+ZwELUciyYEXNU4ZEBlhzyucRXrI+jIz9R4VeUCXj
-	 nxjJZSLW2bRrNDrHi5pMJMNHwlmhS5SKTQ/qqcFHBHuGphTUVmN7GdAI8STZJNVQ55
-	 FTAgow2Ns+eVrgm0HYLHbsHBxSL7nSwlB/F4yglELI7CWVP/Guvo8kkCHdxpxYtdiL
-	 m86X4jign+jDw==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] jbd2: fix shrinker scan budget accounting in
- jbd2_journal_shrink_scan()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Qiliang Yuan" <odys.yuan@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260928-fix-jbd2-shrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com>
-References: <20260928-fix-jbd2-shrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 28 Sep 2026 12:40:47 +0000
-Message-Id: <20260928124048.0357D1F000FF@smtp.kernel.org>
+	s=arc-20240116; t=1790599598; c=relaxed/simple;
+	bh=4hCYLJkTGUQETROtL5OWvDslbHodh0mVKtdF088gnQE=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=WIcTAM19PgSPupxsnA2UCMtemIJ7bt9A14yulN6Uo46CfRYp11xPdYpETn9c3yQr2rQ3y9tQb+M6m6Gvxnf3XBEXXgu0P2LUPd9Agx2Mi1Hi/SNZsQBEsLiwyPvDc0s+gmmcqnGDEWPL45nrHMRrhfQEs+Fq48xxx1ugPzHbPkM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4htgyr20FMzKHMRh;
+	Mon, 28 Sep 2026 20:45:56 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 53AC5406C2;
+	Mon, 28 Sep 2026 20:46:30 +0800 (CST)
+Received: from [10.174.178.176] (unknown [10.174.178.176])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBXdCekYbpqBR0ACA--.8279S3;
+	Mon, 28 Sep 2026 20:46:30 +0800 (CST)
+Message-ID: <168ab288-39d2-48e5-9b2d-59441102c728@huaweicloud.com>
+Date: Mon, 28 Sep 2026 20:46:28 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v5 1/4] mm/truncate: align truncation boundaries to
+ mapping minimum folio order
+To: sashiko-reviews@lists.linux.dev, linux-mm@kvack.org
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+ linux-ext4@vger.kernel.org,
+ "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+References: <20260928120833.3440834-1-yi.zhang@huaweicloud.com>
+ <20260928120833.3440834-2-yi.zhang@huaweicloud.com>
+ <20260928123136.2D6891F000FF@smtp.kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20260928123136.2D6891F000FF@smtp.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgBXdCekYbpqBR0ACA--.8279S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7ZFy3CFykKrWUGr1UZFy7Wrg_yoW5JF1UpF
+	WDXFWruw48Ww4xuFy093WDAr1fWa48Kay5AF1xK393Jwn3WwnF9r4Utay0gw4Iqr4xAF10
+	yF1jyr9rWr4jvFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvjb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7
+	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0E
+	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwCFIxCjY7AvzIIF6xkI1cIj4wC20s026c02F4
+	0E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1l
+	IxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxV
+	AFwI0_Jr0_Gr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j
+	6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxUIl
+	1vDUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] jbd2: CPU spike due to incorrect shrinker nr_scanned accounting
---
+On 9/28/2026 8:31 PM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [Critical] mm: integer overflow in round_up() during truncation causes complete file data loss
+> --
 
-commit 47731fd468777a6abc87ac06fd933280e1966163
-Author: Qiliang Yuan <odys.yuan@gmail.com>
+As mentioned in the cover litter,  this is a pre-existing issue related
+to the file system that needs to be addressed separately.
 
-jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
+Thanks,
+Yi.
 
-This commit updates the jbd2 checkpoint shrinker's scan budget accounting
-by calculating the number of scanned items, and returning SHRINK_STOP if
-no items were scanned.
+> 
+> commit 583804d300760dcf60e3ec5aab6503a560ad3e7e
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> 
+> mm/truncate: align truncation boundaries to mapping minimum folio order
+> 
+> When the mapping has a non-zero minimum folio order, this patch changes
+> folio_split() in truncate_inode_partial_folio() to stop at min_order instead
+> of order 0. It also aligns both start and end to the mapping minimum folio
+> order so they always fall on a folio boundary, preventing valid out-of-range
+> tails from being dropped.
+> 
+> Link: https://lore.kernel.org/linux-mm/CAJnrk1bQYUe6+1ryyJur5EEnZYrC+_5AYsy=OWzVRgD4202y1g@mail.gmail.com/
+> 
+>> diff --git a/mm/truncate.c b/mm/truncate.c
+>> index b58ba940be474..8a28f4a212677 100644
+>> --- a/mm/truncate.c
+>> +++ b/mm/truncate.c
+> [ ... ]
+>> @@ -395,6 +397,10 @@ void truncate_inode_pages_range(struct address_space *mapping,
+>>  	else
+>>  		end = (lend + 1) >> PAGE_SHIFT;
+>>  
+>> +	start = round_up(start, min_nrpages);
+> 
+> [Severity: Critical]
+> Could this round_up() result in an integer overflow that changes a very large
+> start index to 0 on 32-bit architectures?
+> 
+> When an unprivileged user issues fallocate(PUNCH_HOLE) or truncate at an offset
+> near ULONG_MAX << PAGE_SHIFT (e.g., 16TB on 32-bit systems) on a filesystem with
+> min_nrpages > 1 (like ext4 with large folio/iomap), start approaches
+> ULONG_MAX (e.g., 0xFFFFFFFF on 32-bit x86).
+> 
+> The macro round_up(start, min_nrpages) performs 32-bit arithmetic. With
+> start approaching 0xFFFFFFFF, start + min_nrpages - 1 can overflow to a value
+> less than min_nrpages, causing round_up to evaluate to 0.
+> 
+> This would corrupt the start index to 0 in truncate_inode_pages_range(), and
+> the subsequent loop would unintentionally truncate the entire page cache from
+> index 0 to end, causing complete data loss of unwritten data.
+> 
+>> +	if (end != (pgoff_t)-1)
+>> +		end = round_down(end, min_nrpages);
+>> +
+>>  	folio_batch_init(&fbatch);
+>>  	index = start;
+>>  	while (index < end && find_lock_entries(mapping, &index, end - 1,
+> 
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 09efa337649e2..2602e5946cc14 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-[ ... ]
-> @@ -1262,10 +1262,26 @@ static unsigned long jbd2_journal_shrink_scan(str=
-uct shrinker *shrink,
->  	trace_jbd2_shrink_scan_enter(journal, sc->nr_to_scan, count);
-> =20
->  	nr_shrunk =3D jbd2_journal_shrink_checkpoint_list(journal, &nr_to_scan);
-> +	sc->nr_scanned =3D sc->nr_to_scan - nr_to_scan;
-
-[Severity: High]
-Will this correctly account for the items that were scanned but not freed?
-
-Looking at jbd2_journal_shrink_checkpoint_list() in fs/jbd2/checkpoint.c,
-nr_to_scan is only decremented by the number of freed items:
-
-    freed =3D journal_shrink_one_cp_list(transaction->t_checkpoint_list,
-                                       JBD2_SHRINK_BUSY_SKIP, &released);
-    nr_freed +=3D freed;
-    (*nr_to_scan) -=3D min(*nr_to_scan, freed);
-
-Furthermore, journal_shrink_one_cp_list() explicitly skips busy buffers
-without them counting towards the freed total:
-
-    if (type =3D=3D JBD2_SHRINK_BUSY_SKIP && jh->b_transaction)
-        continue;
-
-This effectively sets sc->nr_scanned to the number of freed items, not the
-actual number of scanned items.
-
-The shrinker API expects sc->nr_scanned to reflect the actual amount of work
-done (items scanned). If the shrinker scans many busy buffers but frees very
-few of them, it reports a tiny number of scanned items.=20
-
-Can this cause do_shrink_slab() to repeatedly re-invoke the shrinker without
-meaningfully reducing its total_scan budget, leading to high CPU usage or
-potential soft lockups under memory pressure?
-
-> =20
->  	count =3D percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
->  	trace_jbd2_shrink_scan_exit(journal, nr_to_scan, nr_shrunk, count);
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260928-fix-jbd2-s=
-hrink-scan-nr-scanned-v1-1-e6f4016ec699@gmail.com?part=3D1
