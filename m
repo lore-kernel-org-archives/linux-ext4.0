@@ -1,44 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 359EC34402B
-	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 12:24:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F3B422367D3
+	for <linux-ext4@vger.kernel.org>; Mon, 28 Sep 2026 12:27:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790598259; cv=none; b=pCiuP5pYcvMOCegIt1vEG87TQmzyWtWo2WRjckFQyUe57lMHMOp40Li/Cwf7KoWpfnw2+PoND9pCKFviX3TaTjgGNyzjphiFkSPp/jZgNzla9Eh2g5rIzSdYVcGcSqYjOeBFpU0dc1mHylmL6/tm6+/CQ1IucaA4Hl4wqDdFyk0=
+	t=1790598443; cv=none; b=fjqCTlsC+KHLkDFmXFoTMRjbInW4a5Gs4Ln1Iir3pIltKX9Lpx40rXb4oD9kfHl/0CU0Utzx+NH4n3wNLlKGVjTGWruDkjam0TMgHF5PwHGd62IXP9aH6ZB0HefdQB2uqBjlZdvOrIapv5k3lXKv+DMMdOywK3X6r1ncNYH+fR4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790598259; c=relaxed/simple;
-	bh=skLPNCu9NHMCK21eLTIAOixrDvX5Mr2HP2NCEI7l/Wg=;
+	s=arc-20240116; t=1790598443; c=relaxed/simple;
+	bh=0uDumeWeJ8vTSR7lon5amEHgllfxVev40DPqL88UaFU=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=UbVbBFYH7vKc+yhzQbJw28KDLXQiQVUMg0Et3l/m/oKgo7Sl8oj3xO0rh7J3ZVz4fOR1g0/dQYza/GboYL4q0aRm4rkhAIQjArkDEcHViXObKDdrypRlZN/k8K/gtJ+fpm+f9b4H0SlJUpO60C6wmbEM15YV+UxxUXFpSJJhiIE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i5n4uL9b; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=M0mu307KCRF42/q4jteL9n1odLHgOm/gblj1w2iY8Ui2R87mT2vx1VAVUAIAoSPDFcl4S82swn9VuVTtJVBefVKfUYnGtvPuDt+LvO2OO0dWWB6xfSaWTpSjv5Y0qUHZt4JYgSSDS/QMMcmML1z15uSFlHOsefQ2uQ6n8jFT8Ls=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=g7EsfqWp; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i5n4uL9b"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4A5B1F000FF;
-	Mon, 28 Sep 2026 12:24:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="g7EsfqWp"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5FDA01F000FF;
+	Mon, 28 Sep 2026 12:27:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790598258;
-	bh=skLPNCu9NHMCK21eLTIAOixrDvX5Mr2HP2NCEI7l/Wg=;
+	s=k20260515; t=1790598441;
+	bh=0uDumeWeJ8vTSR7lon5amEHgllfxVev40DPqL88UaFU=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=i5n4uL9bu6VvI7A4XMae9AfdgRC5cvYp4S9rOWKWLBz1SMbsNX9gVlYAWdlej647N
-	 mNXps/k1kTLmmZH2FbpXI/CvDxgHjzn+CkUna9KGhQdJRu7HQ40CAgAj30/4fLr7/a
-	 1gU6/7vTVVMc9TkNtM6aydlj/UjqbdtPgcb+EwdR94LHEzsQtwZPWPWF/2egiKRH43
-	 uBpGCqMlgvKgy0d7jvt5kylwboPmi+WMHeJkEeK/4+8j+AmUq4IvUkx1jqJGQOa5ek
-	 JoBfKRkmLaKpq8tYvVPpNJsXI1yQ1MIpJYUYgE/ILlCiIaAYrMICPm4q2v6ggyeb8g
-	 GGxhP95tmQ/Mg==
+	b=g7EsfqWpxfYLZ9ggAeM2LbkzX5dQCeuBacfcejcBp2dQvg3ZdpsO6y9duc6ItD5Tr
+	 H4Y5+sEQ8tF4o/UbOSXRHCT/vb2bbeeKUaxAq4OfIIYI62Sm9BELZnTi2+gRbTPAfo
+	 3YZHusfCYf6Vc7x8cRqq262ZBwk6iuigemMoDK2NLVSzZVP52EOog2BfW7MgmMB0vS
+	 KVaX2pIqEiTiLiqq7F7uDJp6Te9ab2Y8nzsLWrBoNdZRVs4pcYterQFrD14nU50yHm
+	 i8CXJgZ/kihwSHL4nKITipW/K98i/GBXHZBfLl2GT4SRJRvMLRJIEyTAqCQkrFBs1Y
+	 y3yJueKFkonUA==
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v5 2/4] mm/truncate: look up the end-edge straddler by
- index
+Subject: Re: [PATCH v5 3/4] mm/truncate: fix data loss when splitting
+ straddling large folios fails
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20260928120833.3440834-3-yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20260928120833.3440834-4-yi.zhang@huaweicloud.com>
 References: <20260928120833.3440834-1-yi.zhang@huaweicloud.com>
- <20260928120833.3440834-3-yi.zhang@huaweicloud.com>
+ <20260928120833.3440834-4-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 28 Sep 2026 12:24:17 +0000
-Message-Id: <20260928122417.E4A5B1F000FF@smtp.kernel.org>
+Date: Mon, 28 Sep 2026 12:27:20 +0000
+Message-Id: <20260928122721.5FDA01F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,21 +47,22 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> In truncate_inode_partial_folio(), after the first split at the start
-> edge, folio_split() unlocks and drops the refcount of the after-split
-> sub-folios. The sub-folio straddling the end of the truncation range is
-> therefore unlocked and only transiently ref'd in the page cache while
-> the code still derives it from a page pointer inside the original folio.
+> truncate_inode_partial_folio() splits a large folio so that the caller's
+> truncate loop can drop the in-range sub-folios while keeping the
+> out-of-range tail. The first split at the punch start edge is
+> non-uniform, which leaves the sub-folio at the truncation end edge as
+> large as possible, this means it may still straddle the range, holding
+> both zeroed in-range and valid out-of-range data. The function then
+> attempts a second split at offset + length to isolate that tail.
 >=20
-> Between the first split finishing and page_folio() resolving split_at2,
-> that tail page can be reclaimed, freed and reallocated as a new large
-> folio in the same mapping at a different file offset. folio2 then points
-> at a folio that does not cover the end boundary, yet
-> folio2->mapping =3D=3D folio->mapping still holds, so the stale pointer
-> passes the mapping check and folio_split_or_unmap() splits a folio at a
-> wrong position (or, with a transient refcount, a use-after-free window
+> If the second split fails the straddling sub-folio stays merged. The
+> function returned true unconditionally on all exit paths of the success
+> block, telling the caller it was fully handled. The caller kept its
+> default end and the truncate loop truncated every sub-folio below it,
+> including the merged straddler, discarding the valid out-of-range tail.
 > [ ... ]
-> Suggested-by: Zi Yan <ziy@nvidia.com>
+> Fixes: 7460b470a131 ("mm/truncate: use folio_split() in truncate operatio=
+n")
 > Reviewed-by: Jan Kara <jack@suse.cz>
 > Reviewed-by: Brian Foster <bfoster@redhat.com>
 > Acked-by: Zi Yan <ziy@nvidia.com>
@@ -71,5 +72,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260928120833.3440=
-834-1-yi.zhang@huaweicloud.com?part=3D2
+834-1-yi.zhang@huaweicloud.com?part=3D3
 
