@@ -1,167 +1,112 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6FF113DA7DD;
-	Tue, 29 Sep 2026 15:36:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98DAA549390
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2026 17:48:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790696164; cv=none; b=BwEamMNQpzm3WOTJmuWsVHccxnhFR95NJgNXy6Dd4+pdudUwQwRt3PfXqUkKsItdzHoxfpBUAOitIjE12mEi5PnqKAzpa7t0FsaleqvksGlSZI4sk7MCgrcCXHR5Ax2ThFwd+/VChcr8Phhn0yjdDu35uedGc4nbhsZ5P4dID3U=
+	t=1790704124; cv=none; b=YpfKGBII3hg3XD7u6Ze8vlV28WFCB4wNYOzinm5wrDJXRDPQMN9TPBAz/vrwMazBCRdsFhGxo5BmeeoEl7lSCIoNSXi0pyKqniuhb/N81sClsLFtGwetg1dtkCER5+jCmrwzKsAPWRkbB2xO53ivAPUNtdXQ8O3bAOGuMq33WLs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790696164; c=relaxed/simple;
-	bh=dJ+teJJ6nyP49pH9Qv+qmG4wRUKs0zIMYBw7U2m7jiw=;
-	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
-	 MIME-Version:Content-Type; b=FwuyCxK1wvk7qN9vevCB1qqKTfbzHVRkPU9ngTPtEoy8SzG0h0Uzt1xrGRhiKIl711YhaCBGRkYyRpfRLrLWaeCX2wpqEZ4gDErZjVn9NlBuXgYmxRQUqbRxUS04rzilO2cIbGjGdDRhfryyLFPOkdB7+PsAlBXo+6GmRDLHzwg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=sTGZSRl2; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ie2AEQyS; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=gamWqDUt; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=/GQdw1NJ; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1790704124; c=relaxed/simple;
+	bh=Yqkr516dodCMQRjpkAVVeP2deGGsz+nctIBugY5R4V4=;
+	h=Date:From:To:cc:Subject:Message-ID:MIME-Version:Content-Type; b=cFBvB/JmN4s8JnEtl57xWGtGG/m4/w8hpkft0GJ5c3g/6JG6zdnorru/Guac001MhDK7g/A0U1t3ZUnVisa3OIhlvKkoFq9lkVYsF/ZFBWIEJwOsP4/zo6av5BDrLVFYrwLF7NBOGfFXEIywkBCac9ZJO1vAiNI1qoYyuqYuiFA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=d5s8TMDr; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="sTGZSRl2";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ie2AEQyS";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="gamWqDUt";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="/GQdw1NJ"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="d5s8TMDr"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1790704121;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+	bh=ETicKdBpGWuIenEMTtqcrWuHBlfUne40odEeT39lTdo=;
+	b=d5s8TMDrjGJtrNoDWZRyfENGxeGYLD8Ltlv8R0xpgl1aQ7qPNegJQuBuOp3Nv6FkkrRBJU
+	du+IDjnc0dx+kYd+ZZfnqVgkWfj/P6LN567rmOToDUyIfznoHKxGSf1KcCTC0XBqunGepO
+	xQgfd6beLvDyk51xBXQ9Z/TgED4LKGU=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-385-QlROogDBMTCYXt4kiSjtDg-1; Tue,
+ 29 Sep 2026 13:48:36 -0400
+X-MC-Unique: QlROogDBMTCYXt4kiSjtDg-1
+X-Mimecast-MFC-AGG-ID: QlROogDBMTCYXt4kiSjtDg_1790704114
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id D0C771F79C;
-	Tue, 29 Sep 2026 15:35:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1790696156; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yMrm96DArMa2on1T2OU8poCiT/Ajlmru9xAu5CV6dbY=;
-	b=sTGZSRl2gb/ZI0qsUPV3bN/ycC4DOfvy0k8jSRYRu3cJDqFnn4MGY45KEk8RogeTeiPdHa
-	vUG0ZFjm2qoCr3arXbNQjJBU5OdETEhnTgwrFFv8W8eImBLyPjUvWmTsj0Snpba2OSetfS
-	DCf6sEK6IK/dVrdrB9H/QNdXJVoOAcM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1790696156;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yMrm96DArMa2on1T2OU8poCiT/Ajlmru9xAu5CV6dbY=;
-	b=ie2AEQySndq9FaLcpcsC0PYLPt1l6WpyPcbdBBy6ica2ycsMHWP7daV1brC11IQSohKNlj
-	rpUOyuMe3Gf/ZSCw==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=gamWqDUt;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b="/GQdw1NJ"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1790696151; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yMrm96DArMa2on1T2OU8poCiT/Ajlmru9xAu5CV6dbY=;
-	b=gamWqDUtEANmJfk8jCSlqDWHELAoBaqUUJIOvWZRf9sxyxjNCDZfHorSql8Qs4cn8rB66v
-	O0wOZpdI8SgwF9UUxlIsxTf9iDK8SGWZNBPSN0Bm/u9kPcNbyVPjtXnXlXYUkiJdCn1qFF
-	PEDwWkmRpXJUUALVhl0Ugus0ZHAvrfE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1790696151;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yMrm96DArMa2on1T2OU8poCiT/Ajlmru9xAu5CV6dbY=;
-	b=/GQdw1NJ6k1WzzehfohpLY+HtIMSmnqQG0xeAHCPbhqYk1is3nMa5jvQtPH4QQ2G+7HlG5
-	5P9GjvlmBt2ykUAw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4D37C136E4;
-	Tue, 29 Sep 2026 15:35:51 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id y8YsBdfau2rwKAAAD6G6ig
-	(envelope-from <krisman@suse.de>); Tue, 29 Sep 2026 15:35:51 +0000
-From: Gabriel Krisman Bertazi <krisman@suse.de>
-To: Pali =?utf-8?Q?Roh=C3=A1r?= <pali@kernel.org>, Amir Goldstein
- <amir73il@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, Christian Brauner <brauner@kernel.org>,
- Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>, Hugh Dickins
- <hughd@google.com>, Daniel Tang <danielzgtg.opensource@gmail.com>,
- linux-ext4@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>,
- linux-unionfs@vger.kernel.org, linux-mm@kvack.org, Chuck Lever
- <cel@kernel.org>
-Subject: Re: [PATCH 4/4] ovl: Expose the filesystem encoding through sysfs
-In-Reply-To: <20260929144043.5rg4zf7uth333qke@pali>
-Organization: SUSE
-References: <20260928213155.2612039-1-krisman@suse.de>
- <20260928213155.2612039-5-krisman@suse.de>
- <CAOQ4uxj7Vx-UGvgGGr9hPC0qUgJZ_WRAv1ZLi=gJ6r=ZJW0QAQ@mail.gmail.com>
- <20260929144043.5rg4zf7uth333qke@pali>
-Date: Tue, 29 Sep 2026 11:35:49 -0400
-Message-ID: <87jyo4xe7e.fsf@mailhost.krisman.be>
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7E89A1944DFE;
+	Tue, 29 Sep 2026 17:48:34 +0000 (UTC)
+Received: from mpatocka-thinkpadx1carbongen12.rmtcz.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id F21B476A;
+	Tue, 29 Sep 2026 17:48:31 +0000 (UTC)
+Date: Tue, 29 Sep 2026 19:48:29 +0200 (CEST)
+From: Mikulas Patocka <mpatocka@redhat.com>
+To: Baokun Li <libaokun1@huawei.com>, Jan Kara <jack@suse.cz>, 
+    Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+    Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+    Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>
+cc: linux-ext4@vger.kernel.org
+Subject: regression - ext4 fails to mount a filesystem due to large orphan
+ file
+Message-ID: <e65cdbfe-3ff9-4638-fbd3-4d8f8880966f@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-X-Spamd-Result: default: False [-3.01 / 50.00];
-	BAYES_HAM(-3.00)[99.99%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.de:dkim,suse.de:email,mailhost.krisman.be:mid];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	ARC_NA(0.00)[];
-	HAS_ORG_HEADER(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	FREEMAIL_TO(0.00)[kernel.org,gmail.com];
-	MIME_TRACE(0.00)[0:+];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[vger.kernel.org,kernel.org,suse.cz,mit.edu,google.com,gmail.com,szeredi.hu,kvack.org];
-	RCVD_COUNT_TWO(0.00)[2];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_TRACE(0.00)[suse.de:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.de:dkim,suse.de:email,mailhost.krisman.be:mid]
-X-Spam-Score: -3.01
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: D0C771F79C
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
+Content-Type: multipart/mixed; boundary="-1463801984-239856173-1790704114=:585089"
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-Pali Roh=C3=A1r <pali@kernel.org> writes:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> On Tuesday 29 September 2026 16:15:04 Amir Goldstein wrote:
->> On Mon, Sep 28, 2026 at 11:32=E2=80=AFPM Gabriel Krisman Bertazi
->> <krisman@suse.de> wrote:
->> >
->> > This patch reproduces the same interface from ext4/f2fs to have feature
->> > parity, so users don't need to rely on parsing dmesg or trying +F on a
->> > temporary directory just to check for support.  Note there is no
->> > encoding_flags file, as none are supported by ovl.
->> >
->>=20
->> Gabriel,
->>=20
->> I am not ok with this API.
->> It is wrong in several ways.
->> It is not generic, we have already file_getattr() to get casefold status.
->> There was a suggestion by Pali [1] to get the supported xflags - statx s=
-tyle,
->> which can be a way to say if a fs could return FS_XFLAG_CASEFOLD.
->
-> Yea, sorry for that. I have not finished it, I did not have time. But I
-> would like to address this as this is something was was asked more
-> times...
+---1463801984-239856173-1790704114=:585089
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: 8BIT
 
-please cc me when sending it.=20
+Hi
 
---=20
-Gabriel Krisman Bertazi
+I report a bug in the commit 7c11c56eb32eae96893eebafdbe3decadefe88ad. 
+The commit introduces a regression into the ext4 filesystem:
+
+# truncate -s 1GiB ext4.test
+# mkfs.ext4 -b 1024 ext4.test
+mke2fs 1.47.4 (6-Mar-2025)
+Discarding device blocks: done
+Creating filesystem with 1048576 1k blocks and 65536 inodes
+Filesystem UUID: 246857e4-85e8-4393-b3c7-d52a92b999e9
+Superblock backups stored on blocks:
+        8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553,
+        1024001
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (16384 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+# mount -o loop ext4.test /mnt/test
+mount: /mnt/test: volání fsconfig() selhalo: Struktura potøebuje opravu.
+       dmesg(1) mù¾e obsahovat více údajù o selhaném pøipojení.
+# dmesg |tail
+[ 2325.547222] EXT4-fs (loop0): mounted filesystem 3af6fb51-f5c5-44af-84f1-d94e098f66d0 r/w with ordered data mode. Quota mode: none.
+[ 2325.549968] EXT4-fs (loop0): unmounting filesystem 3af6fb51-f5c5-44af-84f1-d94e098f66d0.
+[ 2325.585469] loop0: detected capacity change from 0 to 134217728
+[ 2325.589344] EXT4-fs (loop0): mounted filesystem f6d86dae-c171-45ea-9e52-7d0de64d449c r/w with ordered data mode. Quota mode: none.
+[ 2325.592672] EXT4-fs (loop0): unmounting filesystem f6d86dae-c171-45ea-9e52-7d0de64d449c.
+[ 2374.988529] EXT4-fs (dm-0): unmounting filesystem 794eeb51-98fb-4d5c-b511-e4a56817ee6c.
+[ 2376.433633] brd: module unloaded
+[ 2906.044816] loop0: detected capacity change from 0 to 2097152
+[ 2906.052278] EXT4-fs (loop0): orphan file too big: 1048576
+[ 2906.052388] EXT4-fs (loop0): mount failed
+# mkfs.ext4 -V
+mke2fs 1.47.4 (6-Mar-2025)
+        Using EXT2FS Library version 1.47.4
+
+(the limit 512 blocks seems to be enforced in mke2fs in git, but 
+distributions still use the last released version 1.47.4, which can 
+produce filesystems with larger orphan list)
+
+Mikulas
+---1463801984-239856173-1790704114=:585089--
+
