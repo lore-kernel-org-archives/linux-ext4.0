@@ -1,112 +1,271 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98DAA549390
-	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2026 17:48:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 922443D8121;
+	Tue, 29 Sep 2026 20:38:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790704124; cv=none; b=YpfKGBII3hg3XD7u6Ze8vlV28WFCB4wNYOzinm5wrDJXRDPQMN9TPBAz/vrwMazBCRdsFhGxo5BmeeoEl7lSCIoNSXi0pyKqniuhb/N81sClsLFtGwetg1dtkCER5+jCmrwzKsAPWRkbB2xO53ivAPUNtdXQ8O3bAOGuMq33WLs=
+	t=1790714294; cv=none; b=DszSy+O9Op8qAA1kjy4gcrqHF3hDqC2/E6aUQRKzYLmt2bm5yqCE08saB67IETZXouxWkHYqfbyWnsPDeE9XUafTZXv6rrv7m2BEN6Y8GNpIW9+loA5W18W2MI+JkNmKf06tzwQeGP7axu5VqBtOYHc2cgTVCAzy/38VrEKGObE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790704124; c=relaxed/simple;
-	bh=Yqkr516dodCMQRjpkAVVeP2deGGsz+nctIBugY5R4V4=;
-	h=Date:From:To:cc:Subject:Message-ID:MIME-Version:Content-Type; b=cFBvB/JmN4s8JnEtl57xWGtGG/m4/w8hpkft0GJ5c3g/6JG6zdnorru/Guac001MhDK7g/A0U1t3ZUnVisa3OIhlvKkoFq9lkVYsF/ZFBWIEJwOsP4/zo6av5BDrLVFYrwLF7NBOGfFXEIywkBCac9ZJO1vAiNI1qoYyuqYuiFA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=d5s8TMDr; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1790714294; c=relaxed/simple;
+	bh=/zrcr8++5pbydr7yLpiHAKmoLfikhHyb0SCCoB3E/hA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZZ52VrSx0K3uh3CzKLF36j0OfL+0qj0j88M95BfTJm7J+eIILkPZkwY9CzDVGBdwi2yT6/D6u5jKXkYhVH5AlwwYyf3GUkSA4lPqZnB8dlI4ed3RWXkZ++YajsaK/awmBOWrsg/kSSAS3mREbRALTf9PsZ6kYmqPwZhEk8+XID8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZoUvPu+i; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=URPoxkHj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=BB0npjzy; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=7AbaVDi3; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="d5s8TMDr"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1790704121;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type;
-	bh=ETicKdBpGWuIenEMTtqcrWuHBlfUne40odEeT39lTdo=;
-	b=d5s8TMDrjGJtrNoDWZRyfENGxeGYLD8Ltlv8R0xpgl1aQ7qPNegJQuBuOp3Nv6FkkrRBJU
-	du+IDjnc0dx+kYd+ZZfnqVgkWfj/P6LN567rmOToDUyIfznoHKxGSf1KcCTC0XBqunGepO
-	xQgfd6beLvDyk51xBXQ9Z/TgED4LKGU=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-385-QlROogDBMTCYXt4kiSjtDg-1; Tue,
- 29 Sep 2026 13:48:36 -0400
-X-MC-Unique: QlROogDBMTCYXt4kiSjtDg-1
-X-Mimecast-MFC-AGG-ID: QlROogDBMTCYXt4kiSjtDg_1790704114
-Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZoUvPu+i";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="URPoxkHj";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="BB0npjzy";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="7AbaVDi3"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7E89A1944DFE;
-	Tue, 29 Sep 2026 17:48:34 +0000 (UTC)
-Received: from mpatocka-thinkpadx1carbongen12.rmtcz.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
-	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id F21B476A;
-	Tue, 29 Sep 2026 17:48:31 +0000 (UTC)
-Date: Tue, 29 Sep 2026 19:48:29 +0200 (CEST)
-From: Mikulas Patocka <mpatocka@redhat.com>
-To: Baokun Li <libaokun1@huawei.com>, Jan Kara <jack@suse.cz>, 
-    Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>, 
-    Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
-    Ritesh Harjani <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>
-cc: linux-ext4@vger.kernel.org
-Subject: regression - ext4 fails to mount a filesystem due to large orphan
- file
-Message-ID: <e65cdbfe-3ff9-4638-fbd3-4d8f8880966f@redhat.com>
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 2C56F1F454;
+	Tue, 29 Sep 2026 20:38:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790714286; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rZbqptg86RjS78kCsjJk4EgAIpUZTmMqf49s3JBJhZA=;
+	b=ZoUvPu+iRuriiEt2k2Qgd1oFr/nPqeWVEl2uYJfPR5zlAkZ4+Gh1RSkzf4LvXpSTnTuKH/
+	9E3QO/Ldwu/e6UwEbxNVt3a66qz7l5OQSkunDOT0rgQH2K1DwcykOVYiyIlNU2FzvX3Dzq
+	X33s3/TK18P4YA01auR6k1HSuUfoplg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790714286;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rZbqptg86RjS78kCsjJk4EgAIpUZTmMqf49s3JBJhZA=;
+	b=URPoxkHjPVz8UYXUO8c+BfZz5uCEQoPDvilTRKGfN8fGAgDKiELH/SzK7Y7zoPgFoTv/ZX
+	o4xvXBQJO3WJAoBw==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=BB0npjzy;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=7AbaVDi3
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790714282; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rZbqptg86RjS78kCsjJk4EgAIpUZTmMqf49s3JBJhZA=;
+	b=BB0npjzyw08TNOPD72lWneE9hv8AZ6cxm7ZhEqBWsevl0MovKHqrbiT5OZHj5/7ho9rWNA
+	vZa/ocyBHuCmY3vo/Ft46IAVT448A23fPrFZ/rMmToZIFhVEIE7a8i9GQLSaHRDebVyy/e
+	YMajOXM5merExlyWPcpoEFsZ4AUfLhg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790714282;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rZbqptg86RjS78kCsjJk4EgAIpUZTmMqf49s3JBJhZA=;
+	b=7AbaVDi3sZPnxzxrDrCmNNoIzeh9WatLJOGce/5HZW5pSibiaxDSKkQSxX5rjqgzyF8ucf
+	Ey4qEDgICxTr4TBA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 005F9136D1;
+	Tue, 29 Sep 2026 20:38:02 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id PcnqMqkhvGplaQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 29 Sep 2026 20:38:01 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 84A79A133D; Tue, 29 Sep 2026 22:38:01 +0200 (CEST)
+Date: Tue, 29 Sep 2026 22:38:01 +0200
+From: Jan Kara <jack@suse.cz>
+To: Qiliang Yuan <odys.yuan@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix shrinker scan budget accounting in
+ ext4_es_scan()
+Message-ID: <bwx3ci2swc5v3gxtw52ts2jjzvtjf537cub5m47josuo7mvrwh@n24tb5zfxz2d>
+References: <20260928-fix-ext4-es-scan-nr-scanned-v1-1-91d88228b0c8@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="-1463801984-239856173-1790704114=:585089"
-X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260928-fix-ext4-es-scan-nr-scanned-v1-1-91d88228b0c8@gmail.com>
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 2C56F1F454
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	MIME_TRACE(0.00)[0:+];
+	ARC_NA(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+On Mon 28-09-26 19:40:21, Qiliang Yuan wrote:
+> The extents_status shrinker's count_objects() callback,
+> ext4_es_count(), reports the number of shrinkable extent_status
+> objects via a percpu counter. do_shrink_slab() reads this count
+> exactly once per invocation and derives a one-shot scan budget
+> (total_scan) from it, then repeatedly calls scan_objects() in
+> fixed-size batches until that budget is exhausted.
+> 
+> ext4_es_scan() never updates sc->nr_scanned, even though
+> include/linux/shrinker.h documents that "the callee should track
+> its actual progress" in that field. Because sc->nr_scanned defaults
+> to sc->nr_to_scan before every call, do_shrink_slab() always
+> believes a full batch was examined, regardless of what __es_shrink()
+> actually did. When __es_shrink() hits an empty sbi->s_es_list and
+> returns immediately having examined nothing, do_shrink_slab() has
+> no way to tell "there was nothing to scan" from "a full batch was
+> scanned and none of it was freeable". It keeps calling scan_objects()
+> until the original, one-shot total_scan budget is drained, even
+> though the shrinkable list emptied out long before that budget was
+> used up.
+> 
+> Make __es_shrink() report the number of extent_status objects it
+> actually examined through a new nr_scanned output parameter, derived
+> from the existing per-extent nr_to_scan counter that es_reclaim_extents()
+> already decrements as it walks the tree. Have ext4_es_scan() copy this
+> value into sc->nr_scanned, and return SHRINK_STOP once nr_scanned comes
+> back as zero, since that only happens when sbi->s_es_list was already
+> empty and no further calls in this reclaim pass can make progress.
+> 
+> Tested by fallocate(2)-ing 10000 4K files (to populate the shrinker
+> with reclaimable unwritten extents without also exercising the
+> extent_status "referenced" second-chance path, which needs a
+> separate two-pass accounting of its own) and triggering
+> "echo 2 > /proc/sys/vm/drop_caches", while tracing the
+> ext4_es_shrink* tracepoints:
+> 
+>                       total scan_objects()   calls with
+>                       calls                  nr_shrunk == 0
+>   before this patch   429                    189 (44%)
+>   after this patch    165                    1 (0.6%)
+>   after (rerun)        242                    1 (0.4%)
+> 
+> nr_skipped stayed at 0 throughout every run, confirming the wasted
+> calls came from the stale one-shot budget racing ahead of the real
+> list state, not from the existing precached/trylock skip paths.
+> 
+> Signed-off-by: Qiliang Yuan <odys.yuan@gmail.com>
 
----1463801984-239856173-1790704114=:585089
-Content-Type: text/plain; charset=ISO-8859-2
-Content-Transfer-Encoding: 8BIT
+Looks good. Feel free to add:
 
-Hi
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I report a bug in the commit 7c11c56eb32eae96893eebafdbe3decadefe88ad. 
-The commit introduces a regression into the ext4 filesystem:
+								Honza
 
-# truncate -s 1GiB ext4.test
-# mkfs.ext4 -b 1024 ext4.test
-mke2fs 1.47.4 (6-Mar-2025)
-Discarding device blocks: done
-Creating filesystem with 1048576 1k blocks and 65536 inodes
-Filesystem UUID: 246857e4-85e8-4393-b3c7-d52a92b999e9
-Superblock backups stored on blocks:
-        8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409, 663553,
-        1024001
-
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (16384 blocks): done
-Writing superblocks and filesystem accounting information: done
-
-# mount -o loop ext4.test /mnt/test
-mount: /mnt/test: volání fsconfig() selhalo: Struktura potøebuje opravu.
-       dmesg(1) mù¾e obsahovat více údajù o selhaném pøipojení.
-# dmesg |tail
-[ 2325.547222] EXT4-fs (loop0): mounted filesystem 3af6fb51-f5c5-44af-84f1-d94e098f66d0 r/w with ordered data mode. Quota mode: none.
-[ 2325.549968] EXT4-fs (loop0): unmounting filesystem 3af6fb51-f5c5-44af-84f1-d94e098f66d0.
-[ 2325.585469] loop0: detected capacity change from 0 to 134217728
-[ 2325.589344] EXT4-fs (loop0): mounted filesystem f6d86dae-c171-45ea-9e52-7d0de64d449c r/w with ordered data mode. Quota mode: none.
-[ 2325.592672] EXT4-fs (loop0): unmounting filesystem f6d86dae-c171-45ea-9e52-7d0de64d449c.
-[ 2374.988529] EXT4-fs (dm-0): unmounting filesystem 794eeb51-98fb-4d5c-b511-e4a56817ee6c.
-[ 2376.433633] brd: module unloaded
-[ 2906.044816] loop0: detected capacity change from 0 to 2097152
-[ 2906.052278] EXT4-fs (loop0): orphan file too big: 1048576
-[ 2906.052388] EXT4-fs (loop0): mount failed
-# mkfs.ext4 -V
-mke2fs 1.47.4 (6-Mar-2025)
-        Using EXT2FS Library version 1.47.4
-
-(the limit 512 blocks seems to be enforced in mke2fs in git, but 
-distributions still use the last released version 1.47.4, which can 
-produce filesystems with larger orphan list)
-
-Mikulas
----1463801984-239856173-1790704114=:585089--
-
+> ---
+>  fs/ext4/extents_status.c | 26 ++++++++++++++++++++++----
+>  1 file changed, 22 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+> index 6e4a191e82191..05ded0c018e08 100644
+> --- a/fs/ext4/extents_status.c
+> +++ b/fs/ext4/extents_status.c
+> @@ -184,7 +184,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>  			      struct extent_status *prealloc);
+>  static int es_reclaim_extents(struct ext4_inode_info *ei, int *nr_to_scan);
+>  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+> -		       struct ext4_inode_info *locked_ei);
+> +		       struct ext4_inode_info *locked_ei, int *nr_scanned);
+>  static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+>  			    ext4_lblk_t len,
+>  			    struct pending_reservation **prealloc);
+> @@ -1670,7 +1670,7 @@ void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>  }
+>  
+>  static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+> -		       struct ext4_inode_info *locked_ei)
+> +		       struct ext4_inode_info *locked_ei, int *nr_scanned)
+>  {
+>  	struct ext4_inode_info *ei;
+>  	struct ext4_es_stats *es_stats;
+> @@ -1679,6 +1679,7 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  	int nr_to_walk;
+>  	int nr_shrunk = 0;
+>  	int retried = 0, nr_skipped = 0;
+> +	int orig_nr_to_scan = nr_to_scan;
+>  
+>  	es_stats = &sbi->s_es_stats;
+>  	start_time = ktime_get();
+> @@ -1738,6 +1739,8 @@ static int __es_shrink(struct ext4_sb_info *sbi, int nr_to_scan,
+>  		nr_shrunk = es_reclaim_extents(locked_ei, &nr_to_scan);
+>  
+>  out:
+> +	*nr_scanned = orig_nr_to_scan - nr_to_scan;
+> +
+>  	scan_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
+>  	if (likely(es_stats->es_stats_scan_time))
+>  		es_stats->es_stats_scan_time = (scan_time +
+> @@ -1774,15 +1777,30 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+>  {
+>  	struct ext4_sb_info *sbi = shrink->private_data;
+>  	int nr_to_scan = sc->nr_to_scan;
+> -	int ret, nr_shrunk;
+> +	int ret, nr_shrunk, nr_scanned;
+>  
+>  	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+>  	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
+>  
+> -	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL);
+> +	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL, &nr_scanned);
+> +	sc->nr_scanned = nr_scanned;
+>  
+>  	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+>  	trace_ext4_es_shrink_scan_exit(sbi->s_sb, nr_shrunk, ret);
+> +
+> +	/*
+> +	 * es_stats_shk_cnt is a percpu counter, so count_objects() can report
+> +	 * a stale/approximate value that is still positive even though
+> +	 * sbi->s_es_list is actually empty by the time we get here. When that
+> +	 * happens __es_shrink() returns immediately having examined nothing
+> +	 * (nr_scanned == 0). Without SHRINK_STOP, do_shrink_slab() has no way
+> +	 * to tell "nothing was there" from "nothing was scanned yet" and will
+> +	 * keep calling us with the same stale freeable count until its scan
+> +	 * budget for this priority level is exhausted one batch at a time.
+> +	 */
+> +	if (nr_scanned == 0)
+> +		return SHRINK_STOP;
+> +
+>  	return nr_shrunk;
+>  }
+>  
+> 
+> ---
+> base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
+> change-id: 20260928-fix-ext4-es-scan-nr-scanned-5af70744f6cd
+> 
+> Best regards,
+> -- 
+> Qiliang Yuan <odys.yuan@gmail.com>
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
