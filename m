@@ -1,142 +1,161 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D26233AF660;
-	Tue, 29 Sep 2026 08:35:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B9AD514743
+	for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2026 11:18:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790670926; cv=none; b=B5nUCzoNpc19NqE2JICmJ3Jib8rphkAS0Rfgujvr5BkaplAQS+sjnYuLQqoONwjjT/jC6rCOavnBfihpfx8EodXXA5u2pCBFrv40+OJ0SKVQob21HLGjM/yKDjetJz35FKZC9grBLuQdVWEgU0jfgLYCQ5bVIWfrMHDPVxrdELQ=
+	t=1790680710; cv=none; b=BeEwBwaJdtdR5pXZ1yGAnQkJmJP84oGmWoCZp4fWvTnefT87RlEFY5gCXVAljDElRz5eopE/4onJATFKbyOIUWAYOb1KLZJVMaO86h1Glxsoe1AGdDSQnifKiD4xE89y9G+ad9TXzVmG8nYchflNU+bYJV06Mb1rPLKZ725ZPmI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790670926; c=relaxed/simple;
-	bh=CPji5eXNFFWkxIfKfD0A1KEgC6WOI5sgEbOR3s5XkSA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=m2prT4K16agrcg4Xoaq0hPSgtBGY3FfQPJAVBXPumqPStKMi57brEcDoG4CSzOWfexpbjJWi8xaxELYNaFkWRdK+17YQih5V1R4aEGm6dtzDcVHeXC+shXv7mY3WvpwKtEd5fgFepREkR6AgOpUKvqe8jn4PTW+NelKFaesQTIU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hvBLY4qcYzKHMcY;
-	Tue, 29 Sep 2026 16:34:45 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 135C440579;
-	Tue, 29 Sep 2026 16:35:21 +0800 (CST)
-Received: from [10.174.178.176] (unknown [10.174.178.176])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBXdCdGeLtqQxpoCA--.31456S3;
-	Tue, 29 Sep 2026 16:35:20 +0800 (CST)
-Message-ID: <f05f6de8-121e-4897-9a0f-f9bf9edaae4e@huaweicloud.com>
-Date: Tue, 29 Sep 2026 16:35:17 +0800
+	s=arc-20240116; t=1790680710; c=relaxed/simple;
+	bh=iySmgqq4FqPd9G82urILN5lWP5gmUtgoJnrG7lr0rO8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dnhZbznRUvl5YFMS+6NNEaurq7rIK7VQw1g34oYKNRWhgFcIx/mdlGfC3Xm3k87S4VqU7ClKHEnrqnAbZaF9iOfw0bgTj5KPFuT8QmcipGMyiaWhfXeYkm+E8jkjnlkyv85nvkQAXptDB/+w/sNpc9XnsFVso3KGEp4UGHb6VfM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=uQmEv7eL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=4qt5ma/p; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=XequeGdw; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8uNOQ68B; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="uQmEv7eL";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="4qt5ma/p";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="XequeGdw";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8uNOQ68B"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id D555B21CE0;
+	Tue, 29 Sep 2026 11:18:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790680703; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7Zj6EK1kZRtd/QX7s8cqCOJvgr5lWKH/M09payvKFoM=;
+	b=uQmEv7eLfg/DZY32PtcJqaZANX8eHFtNe/5V55WJ5j6HO09Q37DDs5JOXWseQLDSobHxja
+	FONAowiOFGK9i28uTQE5UkaMQZUeEKd/wJAnKHdY17fZjywNQBlwLBTN4ppxrQumnEfnUr
+	6Zoxb8bSabsuz2BCO0LWb1DylIDff4o=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790680703;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7Zj6EK1kZRtd/QX7s8cqCOJvgr5lWKH/M09payvKFoM=;
+	b=4qt5ma/piat85oiPZKxDv+Wj3+mQNcz1GXUKaiWjBU+5Em9vU/BlQV6QGFx/MU41j4LMV5
+	1LuSMiV9MpxKB7BA==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=XequeGdw;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=8uNOQ68B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1790680698; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7Zj6EK1kZRtd/QX7s8cqCOJvgr5lWKH/M09payvKFoM=;
+	b=XequeGdwFzHY3h2dUu4snxOvpYupmQrD9mG5N/hmarjYhYA20kM0cqM+CeyKMm0/xIkWs8
+	Z7ozeoA7pclowSSuORIuK5MSyTSZtISM2Hb0KT4oEa7wR1VWmGCB+nAM/hnbuC2HnZ2Ov9
+	8Z30nQoz9eM5vIZ6rpI/bk1/PwJG8uc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1790680698;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7Zj6EK1kZRtd/QX7s8cqCOJvgr5lWKH/M09payvKFoM=;
+	b=8uNOQ68BxaRaZFZdM6Ja8T7+Tl3wqvCvl9pagctNn4q0KZ/TPAFNiv1u0xi6mRXNgIAiyL
+	NmTahlarqLZwGgAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8A00C136F7;
+	Tue, 29 Sep 2026 11:18:18 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id IgOGGXqeu2o4DAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 29 Sep 2026 11:18:18 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 188C1A132A; Tue, 29 Sep 2026 13:18:18 +0200 (CEST)
+Date: Tue, 29 Sep 2026 13:18:18 +0200
+From: Jan Kara <jack@suse.cz>
+To: Alberto Garcia <berto@igalia.com>
+Cc: Eric Biggers <ebiggers@kernel.org>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org
+Subject: Re: [REGRESSION] ext4: oops in ext4_finish_bio() after enabling
+ encryption on a mounted fs
+Message-ID: <4eha2a3cgcfnkhjcxziycbm4rzz5e2xkyjhwah4sokn2brz4vz@heqnevhi4yiy>
+References: <arO0KE9_Jf8rNRwN@igalia.com>
+ <38d9a34b-0547-45f0-b8b3-64da1f913058@linux.alibaba.com>
+ <arPIrtWTXUTwqxFC@igalia.com>
+ <cbbfa461-c770-457d-bfc6-317d744f1dcd@linux.alibaba.com>
+ <20260923180119.GA1506901@google.com>
+ <arU-kvN-75AEmNQw@igalia.com>
+ <20260924180438.GB1978@sol>
+ <arZVoP0GGSNXYBLC@igalia.com>
+ <20260925190751.GB2060@quark>
+ <armU51iuvA9d7zvR@igalia.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v5 0/4] mm/truncate: fix data loss when truncating
- straddling large folios
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org, david@kernel.org,
- ljs@kernel.org, liam@infradead.org, vbabka@kernel.org, rppt@kernel.org,
- surenb@google.com, mhocko@suse.com, hughd@google.com,
- baolin.wang@linux.alibaba.com, willy@infradead.org, jack@suse.cz,
- ziy@nvidia.com, bfoster@redhat.com, joannelkoong@gmail.com,
- djwong@kernel.org, yi.zhang@huawei.com, yizhang089@gmail.com,
- yangerkun@huawei.com, chengzhihao1@huawei.com, wangkefeng.wang@huawei.com,
- yukuai@fnnas.com
-References: <20260928120833.3440834-1-yi.zhang@huaweicloud.com>
- <20260928144901.83cc90357c9a488e94fd6785@linux-foundation.org>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20260928144901.83cc90357c9a488e94fd6785@linux-foundation.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgBXdCdGeLtqQxpoCA--.31456S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxWw4xXF1xXFW5Jr15Kr1DGFg_yoW5ZF1rpF
-	W3Was8Kr4kGws7Cr1xZF4UWw1rtay3XrWDAFy5G3Z7CFsagr1IkFWftw10gFWUGrs7Cw10
-	9r4jv398u3Z8AaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
-	e7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_
-	WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	jxCztUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <armU51iuvA9d7zvR@igalia.com>
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: D555B21CE0
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_TLS_LAST(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	ARC_NA(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[kernel.org,linux.alibaba.com,mit.edu,dilger.ca,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TAGGED_RCPT(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.com:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
 
-On 9/29/2026 5:49 AM, Andrew Morton wrote:
-> On Mon, 28 Sep 2026 20:08:29 +0800 Zhang Yi <yi.zhang@huaweicloud.com> wrote:
+On Mon 28-09-26 00:12:55, Alberto Garcia wrote:
+> On Fri, Sep 25, 2026 at 12:07:51PM -0700, Eric Biggers wrote:
+> > On a filesystem without the encrypt flag, ext4 rejects creating new
+> > encrypted directories, but it doesn't reject accessing existing
+> > encrypted directories.
+> > 
+> > It *should* reject accessing existing encrypted directories. [...]
+> > The only caveat is that, technically, if an existing encrypted
+> > directory is using the old policy version (which before v5.4 was the
+> > only option), it can be unlocked and accessed without executing any
+> > of the encryption ioctls.  So in theory someone could be depending
+> > on that on a filesystem without the encrypt flag.  I think it's
+> > unlikely at this point, though.
 > 
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> Hello,
->>
->> This is the fifth version fixing data loss when truncating straddling
->> large folios caught on the upcomming ext4 + iomap buffered I/O
->> conversion.
-> 
-> Thanks.
-> 
->> When truncate_inode_pages_range() punches a hole or truncates a file,
->> truncate_inode_partial_folio() splits a large folio so that the caller
->> can drop the in-range sub-folios while keeping the out-of-range tail
->> intact.  This series fixes three distinct problems in that path that
->> can each lose the valid out-of-range tail of a straddling folio, plus a
->> follow-up that clarifies the return value semantics.
->>
->> Patch 01 aligns the truncation boundaries inwards to the mapping minimum
->> folio order in truncate_inode_pages_range().  With a non-zero min_order,
->> folio_split() stops at min_order instead of order 0, so a boundary
->> computed at page granularity can land inside a min-order-aligned
->> sub-folio and the truncate loop drops that whole chunk, valid tail
->> included, causing data loss.
->>
->> Patch 02 looks the end-edge straddler up by its page index through
->> __filemap_get_folio() in truncate_inode_partial_folio().  After the
->> first split the straddler is unlocked and only transiently ref'd in the
->> page cache, so the page pointer derived from the original folio can be
->> freed and reallocated as a different folio in the same mapping, and the
->> mapping check cannot catch it, which may cause incorrect splitting and
->> potential data loss.
->>
->> Patch 03 reworks the contract between truncate_inode_partial_folio() and
->> its callers.  If the second split of the straddler fails, the function
->> reported success unconditionally, and the leftover incorrect end
->> position could cause the truncate loop to drop that valid tail.  After
->> rework, it tells the caller the exact page range safe to discard via new
->> pstart/pend out-parameters, so the truncate loop never touches a
->> straddling folio that still holds valid out-of-range data.
->>
->> Patch 04 clarifies the return value semantics to "at least one split
->> succeeded", which is all the shmem caller needs to decide whether to
->> reset its scan loop.
->>
->> The second patch fixes a pre-existing race issue that is reachable
->> today, so it is Cc'd to stable.  Patches 01 and 03 require a dirty large
->> folio that carries no filesystem private data, so they are not reachable
->> on current filesystems.  They were found while developing the upcoming
->> ext4 iomap buffered I/O path. [1]
-> 
-> Can you confirm that [2/4] will work correctly when backported into
-> -stable kernels?  That is has no dependency on the other three?
-> 
+> One problem that I see is that e2fsck does not seem to detect such
+> filesystems. Wouldn't it make sense to fix it there first? (I suppose
+> by setting the encrypt feature if an encrypted inode is found)
 
-I confirmed the 6.18 and 7.2 versions that need to be backport. The 7.2
-version applies cleanly, and the 6.18 version also applies smoothly with
-only minor adaptation.
+Yes, that sounds like a worthwhile thing to do to me.
 
-From a code analysis perspective, I did not find any obvious issues.
-After merging both versions, I ran local xfstests on ext4, LTP, and mm
-self tests, and did not find any regressions, so I believe it works
-correctly.
-
-Cheers,
-Yi.
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
