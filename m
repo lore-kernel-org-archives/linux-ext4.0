@@ -1,109 +1,108 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from bg1.exmail.qq.com (bg1.exmail.qq.com [114.132.73.137])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 180BB45517D
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Sep 2026 07:27:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F43A3438A9;
+	Wed, 30 Sep 2026 08:04:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=114.132.73.137
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790753241; cv=none; b=gLKG21so4qirlXMdseS1Up+2FuIuXuDG+eKsFyEED6Dk6fIfmNy7/FFvcawWAdDy4m5NaaCEGRcOaIr5VZgazEd8b41eH5dryzouwD6gqVkWayd7zZPssXDuj0b+gsT0jkw/WShowFVXw0IReRUyy5mocXdGBgw8HYXQ0u6uF+E=
+	t=1790755461; cv=none; b=DOWOSNuSI4g5O0qNSCP45SA8Vb7puojf1+NdSZdTRz78ctVPYog0202vjNaCVwTfhqEHEItCVI94eMRRwknH7XMqp95OQ99rDt8W5hycCHmHrmfC4wHD0RPs6+PBgYjcHn0u3vgkV8s12UCva4ow+VXhCGYA1jXLcZEaSuO0XgY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790753241; c=relaxed/simple;
-	bh=FDdesBlFn3tNS9KQ39c43aQvAxJ38RZx6D62IPUNbOM=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=kfbcV9RK7+/ua6xl6Wx5XWbcJgKreZPVl5KdP7mDfYMYARdKTReorx4lzDtb+Eg8Jg6fWNg/r7TfA6tvG2DIhdcYLUpIJb/a/96yNRfeNHJdYvRsf3tlPgvE14cYG70efFny6RdV75m5rVoVuyM810g7NuaVTw3KhofHDNQ7Oyo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PeS4YOJO; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1790755461; c=relaxed/simple;
+	bh=oPT3tg2L6HmLsILUaRQtcWroKgIIt/TdhpZ7yEk7Uho=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=R3kS7QI1Rp0BvLt4ApJVQFRsYVTHdYX/atD2FLGoRHW88YtkWv4oOK9hUqtwNetxhG6xb0t9o9NDYY1oM0eoBniiocqZg4Y2EgqajfzssTkgmWwY3oAGful3bnGBKpkouU+r6QwhZK2GuQUtacwq8Gbenq02qfxZq2AkLYerh/o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com; spf=pass smtp.mailfrom=uniontech.com; dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b=DqeG1QQG; arc=none smtp.client-ip=114.132.73.137
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PeS4YOJO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7BD131F000FF;
-	Wed, 30 Sep 2026 07:27:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790753239;
-	bh=uorLBjbO8OL/ZbmNtaN9NJfqsi85QJIxjvI685bT5vM=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=PeS4YOJOX3MD60rUBBmy4ZSoT8xdcEeVuJTtEGvzUxav4FM5crIKsf3kdzKCF88gc
-	 rYHRQCrhb+D13jMNJHswKSOJjJ+OkISvuk5cjIF9RC9DPDp3gqpcfFuyed3SAgo6ck
-	 pbLYKjRfDrk7kNYpF84tVGjCuwhPEk2moAtVBxOmrXp3hOo82PxNs4wN3qv+7K4UmR
-	 vQsUqmGVfVBDqbnsAQ9IjHslrawwVL9RseMO3btN2jU5fvVnT2Q/x4khr4MJImq+8a
-	 uuQZwqpOP76xcD+v0uduPRbyikkHIc39iY41c6S98aejXex8jWipv4yZZUk3s2YtQF
-	 APVztA0PkjGhQ==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v4] jbd2: fix shrinker scan budget accounting in
- jbd2_journal_shrink_scan()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Qiliang Yuan" <odys.yuan@gmail.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20260930-fix-jbd2-shrink-scan-nr-scanned-v4-1-eb9a3ccc2524@gmail.com>
-References: <20260930-fix-jbd2-shrink-scan-nr-scanned-v4-1-eb9a3ccc2524@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Wed, 30 Sep 2026 07:27:19 +0000
-Message-Id: <20260930072719.7BD131F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=uniontech.com header.i=@uniontech.com header.b="DqeG1QQG"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1790755385;
+	bh=B1xaRJPj1w1p0V5KG4GDUYATKKaieqfDd6pMYauV7vg=;
+	h=From:To:Subject:Date:Message-Id:MIME-Version;
+	b=DqeG1QQGaHcvf1HKThqjcdp81HOJW/+lgMr42I6vvU20KDKXFGJcBKgploSmstNq0
+	 Csfe/umtbwbp0N6Ywbtat/L2qV1lwKchwjcy1EOMD35oBCWUcjSyS9eKQDjWVh6ICq
+	 to+1wnEAuDCmrXGBMNdDFKWFi1r9yuRMtX9nCZzs=
+X-QQ-mid: zesmtpgz7t1790755366t5415e8df
+X-QQ-Originating-IP: JsKWQKryqfAHbSkD8GCJzK/uJ5Jcb+q5d8aNCaXg+Oc=
+Received: from uniontech.com ( [113.57.152.160])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Wed, 30 Sep 2026 16:02:44 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 12572682429920885809
+EX-QQ-RecipientCnt: 10
+From: Yichong Chen <chenyichong@uniontech.com>
+To: tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+Cc: adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	jack@suse.cz,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	linux-kernel@vger.kernel.org,
+	Yichong Chen <chenyichong@uniontech.com>
+Subject: [PATCH] ext4: drop tmp inode ownership before migration cleanup
+Date: Wed, 30 Sep 2026 16:02:41 +0800
+Message-Id: <20260930080241.414973-1-chenyichong@uniontech.com>
+X-Mailer: git-send-email 2.20.1
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: zesmtpgz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
+X-QQ-XMAILINFO: MgIyGr9KWTnBG3Rh32fDhinrJs1J9kMiPYpssQ+xlMeKGpSJ6k0plS09
+	Z8ap2egc7QRTzBO/Rh0Eyn+xUr7Tu7L3KS9yBkYjvE7NGAJP7e9900JwPo1Nuj368FYZT18
+	iPIkmLXiYNxgXX+SGeo7BSA0Ro2oMcb7H0hEG0ApAYPqcABTVDHCJRQ/lZmYQX6FrK4t0s/
+	Whc6X8ME05OdCpguRRtn32XmqL9cQcC7/56AeOjuFHI1cy+hYGqxXG6abVv56gVkn2HRdvy
+	zPZeCkodJiqQabUmU9zsnT3yE4RgWetM5hZAqc9B+8FI+oxokzALSwl4zJEPDjZgGY5OExa
+	5XhRVycn2YCR31etq25R5IRpvmI8o77gjateEoZPqqZN2Zt0/v6iDEJlojM9fdjyGVppA8w
+	NG1c3nFoF93I0UBsVbtmI57CT0dERUa+ZzSDD08OxQ57nXkUOmxxSLugfFXsTCyxapBBYR1
+	5IlWbehDvaO1od8zTVXOBeKoccI+qh7gA24IRl+uBhdidJwA85rvZ+qTSnYh86BvTN3MH4K
+	mYFq6Nq4Kxkg+JMQoDhiWjyc6S0YfeEgqukKa5EyOGJ7t0yU25vXAys2AghVOQiAAS6M6f9
+	OvZHttM03Gp0Mc0L9Kns5DMvDP0bTiDEJ+frUKCIgktbO03QNoXLoKAfg4Ir6PYfZLEgwQG
+	oZtbX9pbGcnEqj4TVKOb3wafXNpKTlgS6ZZ4t4CHPQVlZilA5HB973Ze+vYx3VhlhgKWhTr
+	zOc2t8hM62Y6vCjyXwcS98mPrwArYgUZt3e65a4vGul3jZbQDbnaSj8dEiz7nMzZHVrTalM
+	7ph8KnVoJ1aYFTVyVD2MwU3D4dFPINVgiVndVB2tX/xY6pBUXSDjYAEEiNVdNonw7e+gLus
+	mNGdkyBXxVO9uBrSgXwc4WXGPw2s5ZT/6w6Me2xa2awyZrHoKy/b2884OGOm8wpDjhSZbWP
+	UFFflO4BEwKXp6jjgwBJm/Q+UvTx4gjwp3wYXUx4KmRhe9wzPpQ1MsZSoDBh1KOmKxUuIHC
+	Ir17S7O1ynJq0SsuzlJGPn5jsrcjE=
+X-QQ-XMRINFO: NyFYKkN4Ny6FuXrnB5Ye7Aabb3ujjtK+gg==
+X-QQ-RECHKSPAM: 0
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] fs/jbd2: premature reclaim abort in jbd2_journal_shrink_scan()
---
+After the extent tree is transferred to the original inode,
+ext4_journal_ensure_credits() can fail before tmp_inode is cleared.  The
+subsequent iput(tmp_inode) may then free the transferred tree.
 
-commit ac994d3eed163d41361f281d91578f4538a2003f
-Author: Qiliang Yuan <odys.yuan@gmail.com>
+Clear tmp_inode's size and block count as soon as ownership is transferred.
 
-jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
+Fixes: a413036791d0 ("ext4: Provide function to handle transaction restarts")
+Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
+---
+ fs/ext4/migrate.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-This commit modifies jbd2_journal_shrink_scan() to return SHRINK_STOP
-when jbd2_journal_shrink_checkpoint_list() frees zero items. The goal
-is to prevent the shrinker from continually scanning a stale freeable count
-when the checkpoint list only contains busy buffers.
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index e588b4157604..11b3da396966 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -570,6 +570,12 @@ int ext4_ext_migrate(struct inode *inode)
+ 			free_ext_block(handle, tmp_inode);
+ 	}
+ 
++	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
++		i_size_write(tmp_inode, 0);
++		tmp_inode->i_blocks = 0;
++		EXT4_I(tmp_inode)->i_csum_seed = tmp_csum_seed;
++	}
++
+ 	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
+ 	err = ext4_journal_ensure_credits(handle, 1, 0);
+ 	if (err < 0) {
+-- 
+2.51.0
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 00f5a98f3d4fe..c921afce7d061 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1267,6 +1267,16 @@ static unsigned long jbd2_journal_shrink_scan(stru=
-ct shrinker *shrink,
->  	count =3D percpu_counter_read_positive(&journal->j_checkpoint_jh_count);
->  	trace_jbd2_shrink_scan_exit(journal, nr_to_scan, nr_shrunk, count);
-> =20
-> +	/*
-> +	 * A checkpoint list full of busy buffers can keep reporting a
-> +	 * stale, positive freeable count after nothing more can be
-> +	 * reclaimed. Stop this reclaim pass once a call frees nothing,
-> +	 * instead of burning through do_shrink_slab()'s scan budget
-> +	 * retrying against buffers whose writeback won't finish any sooner.
-> +	 */
-> +	if (nr_shrunk =3D=3D 0)
-> +		return SHRINK_STOP;
-
-[Severity: High]
-Could this unintentionally abort the entire reclaim pass when the code hits
-a chunk of busy buffers or gets interrupted by the scheduler?
-
-If do_shrink_slab() provides a scan budget and the first batch of buffers
-happen to be busy writeback buffers, jbd2_journal_shrink_checkpoint_list()
-will return 0. This change then translates that 0 into SHRINK_STOP, which
-aborts the rest of the scanning budget for this reclaim pass.
-
-Additionally, jbd2_journal_shrink_checkpoint_list() can return 0 early due
-to scheduling or lock contention:
-
-fs/jbd2/checkpoint.c:jbd2_journal_shrink_checkpoint_list()
-    ...
-		if (need_resched() || spin_needbreak(&journal->j_list_lock))
-			break;
-    ...
-
-Will returning SHRINK_STOP in these scenarios prematurely skip remaining
-transactions that might contain clean, freeable buffers?
-
-> +
->  	return nr_shrunk;
->  }
->
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20260930-fix-jbd2-s=
-hrink-scan-nr-scanned-v4-1-eb9a3ccc2524@gmail.com?part=3D1
