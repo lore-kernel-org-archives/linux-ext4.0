@@ -1,113 +1,130 @@
-Received: from mail-pj2-f41.google.com (mail-pj2-f41.google.com [74.125.227.169])
+Received: from mail-pz2-f37.google.com (mail-pz2-f37.google.com [74.125.228.37])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B777F4F4028
-	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2026 11:25:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A667337F8DD
+	for <linux-ext4@vger.kernel.org>; Thu,  1 Oct 2026 13:03:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.37
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790853945; cv=none; b=DAVJkI4tsHNjNUsxspkIuOIXTiZmdOiBiyIsI0WUn9pObgGfLTW8g0DkqhJ4dQBoUhi7h7t1TXoiP3fIxm4eGV2MJMriEcJ6KQHeft5pR0Gy5CHP4IAVygOK0OgcJ4p75QPeylzAP/6BoIKvMkJ9vptrqihlGC7/ONYPZhdT5oQ=
+	t=1790859813; cv=none; b=HSRENBhGoFMs8W7UxnUaLUEj8Kam/E/TVQh/p6FktpZUeGwGuZQEoD4kkgmaePi6id81IIycxGYjhQhfprSN4YQT5AEbcippFC5IgWRIDQVzK2jeHxj0nJ9R5LOMsAVXj+MvHrlRGJjjR9qbh6M/hreOBv2BplJwYe0l0LjDHNY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790853945; c=relaxed/simple;
-	bh=zYI2pA9oDdC9aLVc9kEClqnlrJ7JHA61KbG8dwrNEBU=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=bV4OAVlbImSPiZydJQWLmT3qnCi3FmhlX+5NujMDnAlh90OLCGqnMOc08Fx9Qsogn2ix/ZgU//66lLBqrvSvE9upQKXTzNxbtem0jk/WwM2Gtm4mFKdCJmKSs9BrfdpvyQVdfqcFy6mp/kceaPc8izqZJf4PhHGJkftChpc0VPQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=tFGxB9O9; arc=none smtp.client-ip=74.125.227.169
+	s=arc-20240116; t=1790859813; c=relaxed/simple;
+	bh=hPwjqibiB9koRt+6y+SayjWl14OE90Z+UGmvnV9nSYk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=CIx8z6iphpBXV3Cwxz9AgHc5VTWlQ1aXPlf8AT/bhRmp9WClX3y3ZbwZpxjHGC/EjH+tHGTQWFqj7UO5zk9NK+6k/0sE46EuMJ62iQ87aJGBkGil9a9OTkwkF4Q523ghPcCuZgpwa0kFkWKvVUB2rUKSa42MRrXWB7bZr02B2Gs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UbSjBoC9; arc=none smtp.client-ip=74.125.228.37
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tFGxB9O9"
-Received: by mail-pj2-f41.google.com with SMTP id d9443c01a7336-2df9754484aso34812785ad.0
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Oct 2026 04:25:44 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UbSjBoC9"
+Received: by mail-pz2-f37.google.com with SMTP id d2e1a72fcca58-887d4b0e846so323080b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Oct 2026 06:03:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790853944; x=1791458744; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=46Gnvw4XZP2m9MgaWkI590HFmj3sZHED3T66VPv3/js=;
-        b=tFGxB9O9CBJFk1K6eVPURg4FN3reHcxWKcUIpNsXVoZ9Sy16i6JxOBNx8/ngOvhpKm
-         /DdMmyQB05Co7t5MoBuAR09sv7e/XmGV2d2C7lcHirBTOgPjTn0zNjk1ZR9VMr/SB3Zu
-         BEEqlTQn/74GjzB7vGqN0AuCHN12eaa2j/Gg78i502BhmzhbLSUlVPCoDYkmhi/fNovl
-         rii2uLrsNN7BsK46ztz+P3Pqg1aA9M4nYelFPT6/xjN3tcKsF+jLSFT+n1PIS+MP6Lbo
-         nOgFPtug7a7maJD6wMSoQb7kxIPyhbSJ3JhTkglOgKP+R/1Clz74f6awy2c9skHPtBWJ
-         hGxA==
+        d=gmail.com; s=20251104; t=1790859812; x=1791464612; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=MinJghnSBypyMzn9OcYSY7JFWoBLc24jRn4Lm5g0pDk=;
+        b=UbSjBoC992jVuPko9WbDrdJKxqig20E+wfx2Z5eZ0uPbCJYxHZzdcvv7Nz2npBql1Q
+         /O992ad+yVX5tNEZ2hsuZCkEPB7vR5PUKl1ySeVRNjXXdhd+0xgblY6G1OJuykMC0grj
+         jmRTYawxyNAKZlFP72Irb0G2hBEnhBGdBWZz6JtFw+lXWNR/cMKRVux+viNV33MmrKJ8
+         psCnDWst9T3YC2K/dwfb2QfJ9plWWV3gHsqJZqzpD4oMHTJfPgObfYHjy3NjvqSwqR45
+         1UJXwm9pg7F0Hn6WBjdPQ9sCHWo/5vJ3THkKQ9txnIlWrmX0fiBX/0IRdj32IqnWPdSw
+         EElg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790853944; x=1791458744;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=46Gnvw4XZP2m9MgaWkI590HFmj3sZHED3T66VPv3/js=;
-        b=PPtI2aSfH97Inums0yN3LCbQjmavdYO5tW1L3VKWBp2dRllMjCo0BnTSHzY6u+UJhc
-         +fRw+O7bo+oR5zdDNlrmoAFEqyo9JwwNxaKIV/HkIhyJCPxtutmusGyMH57rWK5EtDqC
-         B5UBIcQ4IGcT6wjEUyp6HHG6XpAOzJkF+iqVO02heIuX1nhUc4jATGwBNb1epGImwAzV
-         y4uMPcBMYYpwYb2JI7u5AGdXwWMcRSqb1CEm2i01kpkwgfxwRt61LAfYI8PQqgKD5vCN
-         yMZPXuIdcX/h0TgKWtyyKP8nhodwYeyYaq0h2gCvPGLTA5oIGP5GUhgVSZ8+jJksNx/F
-         g5PQ==
-X-Forwarded-Encrypted: i=1; AKwUvBxZz3lez6QkLP4eTIJKrqyexWZQMm/dlavwD4CN85TkYLLvEoIOHS9yLGKQzvIpVqiq1j1WwBSGudjW@vger.kernel.org
-X-Gm-Message-State: AFq9FYJ++MWH/BW2RCe+aylLHhylZo4J2qdxyu+rdhb5t2MlmHsqWRJw
-	E+zXAPfOWNWGngIA6vCRPbNK0qX9LunR0VJcYJSvUxw1GJB99l+CykUB
-X-Gm-Gg: AYBFou1BJG4Q7LhYFLWdZvo9VhNaB+mGlGbA/dV9WmZB7Pw6BeudJIvpl7G2P+lDJmy
-	lJwLCQhiL/DHBT10kRi/VIIoVDL7MuvzvcYTsPT4wJQwYmC30VaUJBL1330rtR5SvgQnXHQPRfN
-	DKVSSUIN2zhEbbrwkxcXie79DEdqk1Lr0N8slPbuSOJyGCEwhunmj6R8TwxGX2J70OEvAcNRVio
-	EgKVoOy3v7bdZVnZb05jmm/n7QyjceXNvaJAUVZ5KfKubvG76AWL9IiO4sH7taEw4FQzsFY1CbM
-	qzITiZjqRouL2rVpScQvCsnnkufEoWqQSeKRJOqjYd19Z7ePFhWJ6lZiRNH2xz/kBuxlYX/qHVN
-	YqNjU5jiHZ0plFENOgh3ow9tubBqUP8Itd0RY4IEOHCfYUTK9YM99U56mKB0veZ9YcNZlrztfD7
-	EI2u139JWH51lX6F+7CDjiQ+kIb2G72QtM87Vl+0RXqV/WHSOBecovTiHBYQphIwGNNltuboK6V
-	Jh0piPt0RBw0xbqdz6h15Byk+rJUqZ3p6Vza+Mdj/N7dWVhXnbzoBPs98g8d2bdEEja34DF47na
-	4OkbWdloXe7SYz0JuruCqYUKIgoLOe5xXNhISlm7KAerghszKHrAqibzvPm6
-X-Received: by 2002:a17:902:ce90:b0:2e2:dc54:3148 with SMTP id d9443c01a7336-2e2e4bc9c5bmr34756425ad.66.1790853943929;
-        Thu, 01 Oct 2026 04:25:43 -0700 (PDT)
-Received: from spider.bream-herring.ts.net ([103.6.151.236])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2e300a90dd5sm9311015ad.22.2026.10.01.04.25.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 01 Oct 2026 04:25:43 -0700 (PDT)
-From: Matthias Goergens <matthias.goergens@gmail.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>,
-	linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] MAINTAINERS: name the ext4 dev branch
-Date: Thu,  1 Oct 2026 19:25:40 +0800
-Message-ID: <20261001112540.3822983-1-matthias.goergens@gmail.com>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <20260924033200.3615554-1-matthias.goergens@gmail.com>
-References: <20260923101749.3505886-1-matthias.goergens@gmail.com> <arSMwd1bGO1vrif-@mit.edu> <20260924033200.3615554-1-matthias.goergens@gmail.com>
+        d=1e100.net; s=20260707; t=1790859812; x=1791464612;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=MinJghnSBypyMzn9OcYSY7JFWoBLc24jRn4Lm5g0pDk=;
+        b=2Rrg51r/NW2C+f+YR4zWFVCKf742JBNVbfNbFomOSINDFCtkdV4F4uWdv4tECqwFEI
+         TUR1tsZFLsWRSq5XpAKi+wOOpDUZXIduyLR13k1z7+qqBtr7AoLbqB8zcZZINRIvlgrW
+         JYTf1aKxVzPoFWpiRKraW3FzFfwC9fUJ/ue/0/rjLrXexGOeaWL0hjmhesErdnbNUi2G
+         UZ87ClMOg1f/rj8nuMBtyE748ijcowZDBMr6OF6u6nW8HWIgKVWvaDIA8uaLwOJZdNu6
+         0M5pDVTTlYAUB4+QhvCGYliE4nGIpvsE4mKIBJdpTsnDatpCs1isg0Tygdc5jwFu+xeJ
+         3RaQ==
+X-Forwarded-Encrypted: i=1; AKwUvBz0fUC9fgv9sqgh2Uiv3TO5rH9m8OCS+CWgPnjRjdvHeltnm5adiO0HX9v/gADgPuloPEGd2muPXF/v@vger.kernel.org
+X-Gm-Message-State: AFuF++lvQ9BXzMrttV/C4nyldo9im/DQK+fcPJ4UokdwMO/7zSaP4O5B
+	SPE2KK04dFpgcTC5SidQHX1N9rBs9nMwYnBgMEWbv3EkLO8P5Gsi+u8Xgd1LqFmt
+X-Gm-Gg: AYBFou3RSy5DHu2TEPXx4R8Je4hV2Vsec7R/V2Vm3pEoCYdpGRvd5a/Xh08kA1J7/LS
+	GBqOfobnF5VAJf7d1qez7+cAJ1k9JpDQ1VigV6sUw939JimLkxNchPFqLuBYdliISeudeu6q8tg
+	gs0xOosXtl62lnIZOi0kEf5uPAiyNPW3FE9QJamG7BEz57vuZFN+9kuxn6qObSnAByAXRQNLQkR
+	TuzpLqf0MUTXDn+zDFxTo2FjEdJjBbY2rHyYf3ofajLwfe6c90tNV1AE6XvIifXl2ORjm3pLbea
+	j7V2MSV5g5SyowbfTf8BMKikMfYvvY6qPEIbvWyg7kVImCa32VwOyP/LH7emMwZPYmxd+99agEv
+	erS/6/ut/baf4Ii6ss0vnXWuZGW/OZcJDwcLhACJVkpKCiZKk0mVhTtPeZ6lxiRwnEByL2FRQPz
+	K9GwSO9030Uoh3c5kT71YqIFgPTNlWq7tgC/f11gncavXZ7aqNQc+QQQmCKcJvfnA8/DDrGUjUY
+	UmTmCinqNi0p7fGZLs=
+X-Received: by 2002:a05:6a21:498:b0:3dd:a196:ffcf with SMTP id adf61e73a8af0-3deacaed83fmr2468264637.31.1790859811706;
+        Thu, 01 Oct 2026 06:03:31 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc7e548677fsm1442223a12.15.2026.10.01.06.03.25
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 01 Oct 2026 06:03:31 -0700 (PDT)
+Message-ID: <eb3d1d25-dfeb-4bf5-bd66-95216a5cb87b@gmail.com>
+Date: Thu, 1 Oct 2026 21:03:01 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] ext4: fix shrinker scan budget accounting in
+ ext4_es_scan()
+To: Jan Kara <jack@suse.cz>, Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Qiliang Yuan <odys.yuan@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>,
+ "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Zhang Yi <yi.zhang@huawei.com>,
+ linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20260929-fix-ext4-es-scan-nr-scanned-v2-1-f4e8f6f6b8b1@gmail.com>
+ <f8e677df-4896-415d-9795-e15362be6b92@huaweicloud.com>
+ <shfd6lmgopxqvcwaq6dqrm2x4ovlnzvspmatpqxtaf6wmb7z5p@lqog5ma575x7>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <shfd6lmgopxqvcwaq6dqrm2x4ovlnzvspmatpqxtaf6wmb7z5p@lqog5ma575x7>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hi Ted,
+On 9/30/2026 7:48 PM, Jan Kara wrote:
+> On Wed 30-09-26 09:45:26, Zhang Yi wrote:
+>> On 9/29/2026 10:20 AM, Qiliang Yuan wrote:
+>>> @@ -1774,15 +1777,41 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+>>>   {
+>>>   	struct ext4_sb_info *sbi = shrink->private_data;
+>>>   	int nr_to_scan = sc->nr_to_scan;
+>>> -	int ret, nr_shrunk;
+>>> +	int ret, nr_shrunk, nr_scanned;
+>>>   
+>>>   	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+>>>   	trace_ext4_es_shrink_scan_enter(sbi->s_sb, nr_to_scan, ret);
+>>>   
+>>> -	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL);
+>>> +	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL, &nr_scanned);
+>>> +	sc->nr_scanned = nr_scanned;
+>>
+>>
+>> I'm a bit concerned that modifying sc->nr_scanned here could actually
+>> end up increasing the number of scan_objects() calls in real-world
+>> usage. If there are other background processes running and continuously
+>> accessing certain files, they may keep producing a small number of new
+>> reclaimable extent caches. That would mean nr_scanned stays at a
+>> relatively small value on each iteration and never drops to 0, so
+>> shrinker->scan_objects() may end up going through more loops because it
+>> can't return SHRINK_STOP. So I'd tend to leave shrinkctl->nr_scanned
+>> alone. What do you think?
+> 
+> Well, I agree but lying to upper layers about the number of objects we have
+> scanned doesn't look like a proper solution? We could return SHRINK_STOP
+> when we scanned everything before nr_to_walk dropped to 0. It isn't perfect
+> but would somewhat address your concern...
+> 
+> 								Honza
+> 
 
-A short report on how the T: cleanup went, as promised.
-
-The documentation patch is at v2 [1].  It now only describes the
-syntax: a git T: entry may name a branch, or an entry may have several
-T: lines, and what each branch is for is left to the subsystem's P:
-profile or the maintainer.  Niklas Cassel, Krzysztof Kozlowski and Eric
-Biggers reviewed it and Marc Zyngier acked it; no word from Jon yet.
-
-I sent one patch each to 18 repositories, a few a day.  Three were
-picked up (libata, clk, mfd), three have acks or reviews (ext4, phy,
-fbdev), six had no reply, and the rest I withdrew or am withdrawing.
-Most objections came down to two points.  One branch cannot describe a
-tree with both a fixes and a next branch (Greg Kroah-Hartman, Guenter
-Roeck).  And several maintainers want contributors to start from
-mainline, not from their next branch (Fan Wu, Marc Zyngier); Petr
-Mladek and Miroslav Benes added that T: names a repository, and that
-review tools should get their own pointer if they need one.
-
-The trigger was Sashiko, the AI review bot, reviewing against a
-repository's default branch even when mainline had long since merged
-it.  That is now fixed in Sashiko itself: since 28 September it skips
-such a branch and uses linux-next.  So I am not sending the 46 further
-patches I had prepared.
-
-For ext4 the patch is still correct, but no tool needs it any more, so
-take it only if you want it there for people; dropping it is fine.
-
-[1] https://lore.kernel.org/all/20260925120047.1093617-1-matthias.goergens@gmail.com/
+Yeah, that sounds good to me.
 
 Thanks,
-Matthias
+Yi.
