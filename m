@@ -1,174 +1,151 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0CC338D686
-	for <linux-ext4@vger.kernel.org>; Sat,  3 Oct 2026 01:34:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C95E838DC77
+	for <linux-ext4@vger.kernel.org>; Sat,  3 Oct 2026 01:34:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790991264; cv=none; b=S8nq3+l38ip/9r6dIoGqlzygqZ7safuQSzlBDqG+dCN2BqkZMKzCzpRhb4wlbPhkma0zjflbd5ow6p1xbc0NntzhQw9V7jR8skbTsMUPyCYZWs83A2w4byrRsa/I8X3l3gcuVqmqkhOmrA+4hDQxtoW07ZSN3HNCoeM9P0IjFGE=
+	t=1790991265; cv=none; b=qXZ7N57rdvKJzq0DpBvuIBDvxrbby8R83I7t7E92YrNe5vw5JJd+TkCCI/Q19rDZcx9iozsJLdyaXePathzdn3QTrAOTE/19z66Rcj9JmQswqvp2Ln6WrTFUj6Y6wND+/qm0pI4F3crU66TEB2RBEytZCJhgLav0yYG8Qf7GJPA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790991264; c=relaxed/simple;
-	bh=F+tHIKS1fnH+rnipL73Gf4B3bSniQXPQ1xCcfbajLk4=;
+	s=arc-20240116; t=1790991265; c=relaxed/simple;
+	bh=Ue/aXPLQ5AYPNUDTdSeGr4IFZEsAy3wwnRUV49usvTE=;
 	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=CBYjv2uVUmZeW/s58DGaYKegNuK3ZlTm6n+CfSwxv7bqNPxY5BEoZS1xPON69/W91CLGJGOKecIzJ2QrQIjv3m8piz4JQ8khINLliw/G4lx7ivSfRlOlbZXfKU+5J3E3c/i41Ry85lfaBeFUneNUycMF+Z2DtmYv1Ccs6w1VCFE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TerrwNGh; arc=none smtp.client-ip=100.103.45.18
+	 Message-Id; b=UwFOS+9fiCupWR4knqm8J8QxRyYcEKdJgWMp4l61E08HCo7tK+OYiJgZY5lQzmEO0nGvxy5mcCX2ZYEsUFu84LZipXIuAJSV5G9zWqoH8q95uHWc3eXxzZgKUhy0XWGT8qeSHpws1Bd1py259hTqq8xr46CfUL2pW9OjtjPzWxs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZJA/EodF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TerrwNGh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 708321F00893;
-	Sat,  3 Oct 2026 01:34:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZJA/EodF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33F4E1F00899;
+	Sat,  3 Oct 2026 01:34:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790991262;
-	bh=x7vMuR5AcU1jSWw2WHJu8galDlc8EMn6cPwWJMVwloQ=;
+	s=k20260515; t=1790991263;
+	bh=iAc2SJPMx1kpAYE7t6Ztsj/T6PG+UB1BAqXGjjzUQiA=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=TerrwNGhhOKb/DzepP3rjV7a+qOKU43MvTZX9Q+MjD+YoejT73hEehDCxvF/GJkUR
-	 X0Iy4Yl1GQ3dhAHKKxrH1Z/tY48bNoIU8l4nwCU9McJCFX7pMnkadvJH3sdgqALZ8Z
-	 YBUzxy45QG4KGDiP/F8inLxwaT7GsZX589XnwMHmQSwlL8LzN3ANYF2mU1xICl4ocL
-	 Jj4ZiZJWHUaJySuHLwCGSI10kXC2+XgsxHHV7O+4pAEeEFFgvmSTCqv1JfK0D8PW8d
-	 dGH3LmKSjaV/1OyJX9C9rzwDiR922GQB20Mq4tUSVszbISxeMdKmwL4iaITnhf2dCC
-	 jLrytqSumL4bg==
+	b=ZJA/EodFPHV96PyxnGvMoT0+G0GL8MCdeDz74QiGlgPH5u+ySh7qAJPGrTz7/W6zI
+	 h2LTA6NnN+KtutkD6OYry5tqOHFje16kC//D908PKPPjyAve+a9ljF2CueGUozX4pG
+	 dIOq/QIasq6GDZaRsxzqoZ+F2bPdRBs+I5b3DBFUj//vJbMuPMz5StTI48yBO0vkvb
+	 TGMhibjM2pu71/O9vpWkKuwe9oKHIgcM7u6vLQFVAlAIUaDqkS+dMB27JRSnFAGX2F
+	 F+BCUFf9N5X53sWBsiMXQ3vZxHlYswrxeU0Q7fcvORb7Ai3NFpMxkuV7CkJojqub4E
+	 GajwD2iwSPuOA==
 From: sashiko-bot@kernel.org
-Subject: Re: [f2fs-dev] [PATCH v17 15/21] xfs: add fs-verity support
+Subject: Re: [f2fs-dev] [PATCH v17 12/21] xfs: use read ioend for fsverity
+ data verification
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Andrey Albershteyn via Linux-f2fs-devel" <linux-f2fs-devel@lists.sourceforge.net>
-Cc: linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
-In-Reply-To: <20261002223705.2175542-16-aalbersh@kernel.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, dsterba@suse.cz
+In-Reply-To: <20261002223705.2175542-13-aalbersh@kernel.org>
 References: <20261002223705.2175542-1-aalbersh@kernel.org>
- <20261002223705.2175542-16-aalbersh@kernel.org>
+ <20261002223705.2175542-13-aalbersh@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 Date: Sat, 03 Oct 2026 01:34:22 +0000
-Message-Id: <20261003013422.708321F00893@smtp.kernel.org>
+Message-Id: <20261003013423.33F4E1F00899@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [High] xfs: AB-BA lock inversion deadlock in xfs_fsverity_delete_metadata
-- [High] xfs: inconsistent on-disk state after fs-verity enablement optimiz=
-ation failure
-- [Medium] xfs: resource leak when fs-verity enablement is aborted
+- [High] xfs: deadlock in per-CPU bio completion due to mempool_alloc() wit=
+h GFP_NOFS
 --
 
-commit e2140f5468115bfa6cf4b74f36f51ee2780f1c23
+commit ea1a0b2023bf04b556e0f9d798eb8d673f0e72ca
 Author: Andrey Albershteyn via Linux-f2fs-devel <linux-f2fs-devel@lists.sou=
 rceforge.net>
 
-xfs: add fs-verity support
+xfs: use read ioend for fsverity data verification
 
-This commit adds integration with fs-verity for XFS. It introduces reading
-and writing the Merkle tree through the iomap interface and stores the
-verity descriptor in the inode data fork past EOF.
+This commit uses read ioends for fsverity verification, moving fsverity
+metadata I/O to a separate workqueue to avoid deadlocks. It passes
+fsverity_info from the iomap context down to the ioend and adds a helper to
+check for file data.
 
-> diff --git a/fs/xfs/xfs_fsverity.c b/fs/xfs/xfs_fsverity.c
-> index 976e05257bf90..8cffcafc19aa0 100644
-> --- a/fs/xfs/xfs_fsverity.c
-> +++ b/fs/xfs/xfs_fsverity.c
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index 19640e4e3ed12..a36f840884b49 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+[ ... ]
+> @@ -623,11 +624,13 @@ static const struct iomap_read_ops xfs_iomap_read_o=
+ps =3D {
+> =20
+>  static inline const struct iomap_read_ops *
+>  xfs_get_iomap_read_ops(
+> -	const struct address_space	*mapping)
+> +	const struct address_space	*mapping,
+> +	loff_t				pos)
+>  {
+>  	struct xfs_inode		*ip =3D XFS_I(mapping->host);
+> =20
+> -	if (bdev_has_integrity_csum(xfs_inode_buftarg(ip)->bt_bdev))
+> +	if (bdev_has_integrity_csum(xfs_inode_buftarg(ip)->bt_bdev) ||
+> +	    xfs_fsverity_is_file_data(ip, pos))
+>  		return &xfs_iomap_read_ops;
+
+[Severity: High]
+Does this logic route fsverity metadata reads through xfs_iomap_read_ops if
+the block device has integrity checksums?=20
+
+Using xfs_iomap_read_ops causes xfs_bio_submit_read() to call
+xfs_ioend_submit_read(), which sets BIO_COMPLETE_IN_TASK on the bio. This
+means the completions for these metadata reads will be queued to the per-CPU
+bio completion worker.
+
+>  	return &iomap_bio_read_ops;
+>  }
 
 [ ... ]
+> diff --git a/fs/xfs/xfs_ioend.c b/fs/xfs/xfs_ioend.c
+> index e70be5b86f0b7..f4c1bbc03714f 100644
+> --- a/fs/xfs/xfs_ioend.c
+> +++ b/fs/xfs/xfs_ioend.c
+[ ... ]
+> @@ -117,6 +138,24 @@ xfs_end_io_read(
+>  		}
+>  	}
+> =20
+> +	/*
+> +	 * If we have fsverity on this bio, we need to run fsverity verification
+> +	 * of data folios from a separate fsverity workqueue. This is necessary
+> +	 * to avoid deadlocking due to fsverity issuing more reads of fsverity
+> +	 * metadata which would be processed by the same worker in the BIO
+> +	 * completion workqueue.
+> +	 */
+> +	if (IS_ENABLED(CONFIG_FS_VERITY) && !error && ioend->io_vi &&
+> +			xfs_fsverity_is_file_data(ip, ioend->io_offset)) {
+> +		fsv_ioend =3D mempool_alloc(&xfs_fsverity_ioend_pool,
+> +				GFP_NOFS);
 
-> +static int
-> +xfs_fsverity_delete_metadata(
-> +	struct xfs_inode	*ip)
-> +{
-> +	struct xfs_trans	*tp;
-> +	struct xfs_mount	*mp =3D ip->i_mount;
-> +	int			error;
+[Severity: High]
+Can this result in an ABBA deadlock under memory pressure?
+
+If the memory pool is empty, mempool_alloc() with GFP_NOFS will sleep and
+block the per-CPU bio completion worker in xfs_end_io_read().
+
+As noted in xfs_get_iomap_read_ops() above, if the block device has integri=
+ty
+checksums enabled, fsverity metadata reads will use xfs_iomap_read_ops
+and their completions will also be queued to this same per-CPU bio completi=
+on
+worker.
+
+Since this worker could be blocked in mempool_alloc() waiting for the
+fsverity workqueue to finish verifying data, and the fsverity workqueue
+could concurrently be waiting on a metadata read completion that is queued =
+on
+this blocked worker, can this cause a hang?
+
+> +		fsv_ioend->ioend =3D ioend;
+> +		INIT_WORK(&fsv_ioend->work, xfs_end_fsverity_io_read);
 > +
-> +	xfs_ilock(ip, XFS_MMAPLOCK_EXCL);
-> +	error =3D xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate, 0, 0, 0, &tp);
-> +	if (error) {
-> +		xfs_iunlock(ip, XFS_MMAPLOCK_EXCL);
-> +		return error;
+> +		fsverity_enqueue_verify_work(&fsv_ioend->work);
+> +		return;
 > +	}
 > +
-> +	truncate_inode_pages(VFS_I(ip)->i_mapping, XFS_ISIZE(ip));
-
-[Severity: High]
-Could this lock ordering lead to an AB-BA deadlock?
-
-In XFS, folio locks must generally be acquired before transaction allocation
-to prevent deadlocks with memory reclaim or writeback threads that may hold
-the folio lock while waiting for transaction log space.
-
-Here, xfs_trans_alloc() is called before truncate_inode_pages(), which
-acquires the folio locks.
-
-[ ... ]
-
-> +static int
-> +xfs_fsverity_end_enable(
-> +	struct file		*file,
-> +	const void		*desc,
-> +	size_t			desc_size,
-> +	u64			merkle_tree_size)
-> +{
-> +	struct inode		*inode =3D file_inode(file);
-> +	struct xfs_inode	*ip =3D XFS_I(inode);
-> +	struct xfs_mount	*mp =3D ip->i_mount;
-> +	struct xfs_trans	*tp;
-> +	int			error =3D 0;
-> +	loff_t			range_start =3D xfs_fsverity_metadata_offset(ip);
-> +
-> +	xfs_assert_ilocked(ip, XFS_IOLOCK_EXCL);
-> +
-> +	/* fs-verity failed, just cleanup */
-> +	if (desc =3D=3D NULL)
-> +		goto out;
-
-[Severity: Medium]
-Does this abort path leak blocks allocated for the Merkle tree past EOF?
-
-When the core calls xfs_fsverity_end_enable() with desc =3D=3D NULL to sign=
-al
-an abort, this code jumps to the out label.
-
-Because error is initialized to 0 and not updated here, the cleanup block
-at the end of the function (which checks if error is non-zero) is skipped.
-
-[ ... ]
-
-> +	/*
-> +	 * Ensure that we've persisted the verity information before we enable
-> +	 * it on the inode and tell the caller we have sealed the inode.
-> +	 */
-> +	ip->i_diflags2 |=3D XFS_DIFLAG2_VERITY;
-> +
-> +	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-> +	xfs_trans_set_sync(tp);
-> +
-> +	error =3D xfs_trans_commit(tp);
-> +	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-> +	if (error)
-> +		goto out;
-> +
-> +	inode_set_flags(inode, S_VERITY, S_VERITY);
-> +
-> +	/*
-> +	 * Proactively remove unwritten extents left by COW preallocations and
-> +	 * write preallocation in the merkle tree holes and past descriptor,
-> +	 * and any delayed preallocations
-> +	 */
-> +	error =3D xfs_free_eofblocks(ip);
-> +out:
-> +	if (error) {
-> +		int	error2;
-> +
-> +		error2 =3D xfs_fsverity_reset_inode(ip);
-
-[Severity: High]
-Can this sequence result in an inconsistent on-disk state?
-
-If xfs_free_eofblocks() fails, the XFS_DIFLAG2_VERITY flag has already
-been committed to disk in the previous transaction. The code then calls
-xfs_fsverity_reset_inode() to revert the enablement in a new transaction.
-
-If a system crash occurs between the two transactions, or if allocating
-the second transaction fails, the file could be left permanently sealed
-on disk, but unsealed in memory.
+>  	iomap_finish_ioends(ioend, error);
+>  }
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261002223705.2175=
-542-1-aalbersh@kernel.org?part=3D15
+542-1-aalbersh@kernel.org?part=3D12
