@@ -1,127 +1,105 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66858384224
-	for <linux-ext4@vger.kernel.org>; Sat,  3 Oct 2026 01:34:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A82933E1CED;
+	Sat,  3 Oct 2026 09:30:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790991265; cv=none; b=AkvaFm6F+sfmadQjzoh4VeSnbRgvfPDf6DluNn0zo8eRDglahogQfaVIMAZt4YPqyCAoKQqeD8Br3cHwNCekR+B/gAoVNdyCcLWlO571wIkSeF2R80ZcWzO7gMBkPZynTfQ7opSLrbH0Z0cN08ym70m6tEbxWf1HdPBPlqg1vYw=
+	t=1791019857; cv=none; b=ZiRbazVrtJyLhev9R7yrhaspagIJqfWtcUiX9rRpMkR5CWu9M9QtghFNJbL/8w6HHTX346ObULsDhTi8ydFbxM0qNFSMOdLlCJl2avtexy1IiHsCfDdd2Vk2IxMMJp+kI2fBMxGilPdys2kyvXK6x0mOZ55aZ1mxwF5j+BoUM7Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790991265; c=relaxed/simple;
-	bh=71aF5Re8001dOR8w/NauwNq/Z4pyZEpGU497PZMGRWE=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=UQf70vlZoZDcToVIwzU2Bj/b8Tugb+iG5zxxPlLDoWanIcJl9q96Fkx1BDjzhDtpAgaHTCe7scRfYDIbXGZVzcMjwHd8XhYN0rCS0AxGvICk4/uOKKK4MiPFW3rLZTltf2IhHnTWTAhOtlkCpHsr+o2HEtD5lkNVWSA2P1DRnDk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jPyo05Pw; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791019857; c=relaxed/simple;
+	bh=5gW3H/1yVOxL00jh4JY44hYMcfiOVXML9SuZIS61MNk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=ll9f4jv+Y5yH2qodcVVn5w/yehfswh7gccfoBtwvvKeinzvgsStecn3LJ9JfC7HVEWub6tIX4w7gBRsmGN9zpgKZjznofYN4lvQtUCoVJxFIl5DuKTak63fm2eXRASBVIdihbVBBpeNzAGm7rKOaIeRx3l1+KaCcFQgYo1opaAM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=aRwBAEi1; arc=none smtp.client-ip=117.135.210.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jPyo05Pw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 08BC41F000FF;
-	Sat,  3 Oct 2026 01:34:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1790991264;
-	bh=DbIzpBVN3WRd7NTzQMjDbnLE/zFKPQ+K6jvKXl2+ERU=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=jPyo05PwPwv2tk+Mbzf8HcytvfQvPKrmMF9mN1+yH0DUBcBje8Swqf55aH8iZInnm
-	 HLIy2WH5eckZt4iz8A2oAMT6SIaLaqxrUyFn6zMebKngruj1JXWdZRjsXjmjBjbXOY
-	 j40HaU+B6tqhLPOY4jjmPi1kysJ+Gsu0vMnRMtMkEnBqbySry7dzkBkZstlF8Lbg7b
-	 /GiqwMA5ow/qh/hLk862lIHttlNORUAs2TjgNWHQ6kUIgTeC7Sck3O6lqkPtfk03s4
-	 VBldvUTyB4+x/LTkleQHZjTTrH7ZI+IVKzi/4BaHx1Z+Ag3fW4//gd+3lPeMj7xIZN
-	 7f9voUaEFjw5Q==
-From: sashiko-bot@kernel.org
-Subject: Re: [f2fs-dev] [PATCH v17 19/21] xfs: check and repair the verity
- inode flag state
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Andrey Albershteyn via Linux-f2fs-devel" <linux-f2fs-devel@lists.sourceforge.net>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, dsterba@suse.cz
-In-Reply-To: <20261002223705.2175542-20-aalbersh@kernel.org>
-References: <20261002223705.2175542-1-aalbersh@kernel.org>
- <20261002223705.2175542-20-aalbersh@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Sat, 03 Oct 2026 01:34:23 +0000
-Message-Id: <20261003013424.08BC41F000FF@smtp.kernel.org>
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="aRwBAEi1"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=2C
+	SflERWiIEUtHIYwYt7AZ8Vjsf1CeCsPdvuomIllHU=; b=aRwBAEi1rnEc+K2Swl
+	U92Jmr/YhX4GzHyauikZLdTrcNAUOLgAFA3OTt6qoHBEtMNC3E29vJb48bbG8TWP
+	BWn4fqKR14wBCFFLnnxyHyrhSRgWOnMlycKVMGDGRVt9KUUQAeNMkgHz9PY/hXKv
+	3xLYI3uxos+zqhUGoizpwDHC4=
+Received: from pc.localdomain (unknown [])
+	by gzsmtp3 (Coremail) with SMTP id PigvCgBnTqs9y8BqZLmrCg--.23213S3;
+	Sat, 03 Oct 2026 17:30:40 +0800 (CST)
+From: Jiale Yao <yaojiale02@163.com>
+To: Jan Kara <jack@suse.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Cc: Jiale Yao <yaojiale02@163.com>
+Subject: [PATCH v4 1/3] ext2: drain in-flight DIO before buffered write fallback
+Date: Sat,  3 Oct 2026 17:30:33 +0800
+Message-Id: <20261003093035.532916-2-yaojiale02@163.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20261003093035.532916-1-yaojiale02@163.com>
+References: <20261003093035.532916-1-yaojiale02@163.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:PigvCgBnTqs9y8BqZLmrCg--.23213S3
+X-Coremail-Antispam: 1Uf129KBjvJXoW7tFyUuryxtFyDXr47tF1DJrb_yoW8Zrykpr
+	Z093W5JryqyrZ7Wwn7Wa18ur1fK398ArW3XrWvv3WDCry5Gws0gF4ktr1jvF1fGFsrJw4Y
+	qan29r97u3W0yaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0zECzuAUUUUU=
+X-CM-SenderInfo: x1dryxhdohiji6rwjhhfrp/xtbC7wLNCGrAy0JE6wAA3k
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Medium] xfs: scrub aborts on fsverity validation errors -EINVAL and -EFB=
-IG
---
+An asynchronous direct write can remain in flight after the inode lock is
+released.  If another direct write falls back to buffered I/O while the
+first write is still pending, generic_perform_write() can dirty pages
+before the first write completes its post-I/O page cache invalidation.
+The invalidation then finds dirty pages, reports a page cache invalidation
+failure, and records -EIO in the mapping error sequence.  A later fsync()
+therefore returns -EIO.
 
-commit 856d4488769e21ab11188de2cd348b2c2b9cb631
-Author: Darrick J. Wong <djwong@kernel.org>
+Commit 15cdefd0c0522f9d5e12d947fa04f4c11649b699 ("ext4: drain
+in-flight DIO before buffered write fallback") fixed the same race in
+ext4.  Ext2 has an equivalent fallback after iomap_dio_rw() returns
+-ENOTBLK or a short write, but does not drain other in-flight DIO before
+dirtying the page cache.
 
-xfs: check and repair the verity inode flag state
+Wait for in-flight DIO before calling generic_perform_write() in the
+fallback path.
 
-If an inode has the incore verity iflag set, make sure that we can
-actually activate fsverity on that inode.  If activation fails due to
-a fsverity metadata validation error, clear the flag.
+A reproducer using concurrent AIO direct writes and buffered fallback
+triggered the following warning and made a subsequent fsync() return
+-EIO:
 
-> diff --git a/fs/xfs/scrub/common.c b/fs/xfs/scrub/common.c
-> index e5233e31abb75..ebbef3afb7d6e 100644
-> --- a/fs/xfs/scrub/common.c
-> +++ b/fs/xfs/scrub/common.c
-[ ... ]
-> @@ -1754,3 +1756,54 @@ xchk_inode_count_blocks(
->  	return xfs_bmap_count_blocks(sc->tp, sc->ip, whichfork, nextents,
->  			count);
->  }
-> +
-> +/*
-> + * If this inode has S_VERITY set on it, read the verity info. If the re=
-ading
-> + * fails with anything other than ENOMEM, the file is corrupt, which we =
-can
-> + * detect later with fsverity_active.
-> + *
-> + * Callers must hold the IOLOCK and must not hold the ILOCK of sc->ip be=
-cause
-> + * activation reads inode data.
-> + */
-> +int
-> +xchk_inode_setup_verity(
-> +	struct xfs_scrub	*sc)
-> +{
-> +	int			error;
-> +
-> +	if (!fsverity_active(VFS_I(sc->ip)))
-> +		return 0;
-> +
-> +	error =3D fsverity_ensure_verity_info(VFS_I(sc->ip));
-> +	switch (error) {
-> +	case 0:
-> +		/* fsverity is active */
-> +		break;
-> +	case -ENODATA:
-> +	case -EMSGSIZE:
-> +	case -EFSCORRUPTED:
-> +	case -ERANGE:
-> +	case -EBADMSG:
-> +		/*
-> +		 * The nonzero errno codes above are the error codes that can
-> +		 * be returned from fsverity on metadata validation errors.
-> +		 */
-> +		return 0;
-> +	default:
-> +		/* runtime errors */
-> +		return error;
-> +	}
+  Page cache invalidation failure on direct I/O.  Possible data corruption
+  due to collision with buffered I/O!
 
-[Severity: Medium]
-Should -EINVAL and -EFBIG be included in the allowed validation error codes?
+Fixes: fb5de4358e1a ("ext2: Move direct-io to use iomap")
+Link: https://lore.kernel.org/r/20260629113827.4074335-3-libaokun@linux.alibaba.com
+Signed-off-by: Jiale Yao <yaojiale02@163.com>
+---
+ fs/ext2/file.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-A corrupted fsverity descriptor on disk can trigger
-validate_fsverity_descriptor() to return -EINVAL or
-fsverity_init_merkle_tree_params() to return -EFBIG.
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index b9020df7d89e..67fe423c3828 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -135,6 +135,13 @@ static ssize_t ext2_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		int ret2;
+ 
+ 		iocb->ki_flags &= ~IOCB_DIRECT;
++
++		/*
++		 * Prevent concurrent direct I/O and buffered I/O to the same file
++		 * range. Wait for in-flight DIO to finish before dirtying pages.
++		 */
++		inode_dio_wait(inode);
++
+ 		pos = iocb->ki_pos;
+ 		status = generic_perform_write(iocb, from);
+ 		if (unlikely(status < 0)) {
+-- 
+2.34.1
 
-Because they are omitted from this switch statement, they fall through to t=
-he
-default case and return the error, aborting the scrub setup instead of
-gracefully marking the inode as broken and continuing the repair pipeline.
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261002223705.2175=
-542-1-aalbersh@kernel.org?part=3D19
