@@ -1,97 +1,191 @@
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2312543C058
-	for <linux-ext4@vger.kernel.org>; Mon,  5 Oct 2026 09:24:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC54524EA90;
+	Mon,  5 Oct 2026 11:24:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791192293; cv=none; b=An0iZHwYIg9/YVXWDdiut8idyvy0T0wogKt9QulNc5c8y+zC+Y3v+jLuvVzKbxl3HpNgpx45rMMpF7gJuPUlJ/yWhUdDxz8dj464YWUtIHLDJkm+nvoUXUROtZ8C7Fev6HGrRlcut24OKiNcvxDtUEu2If5v5EhC0/+ss3QN69c=
+	t=1791199463; cv=none; b=ZseBfgB5o5jul1q0sEBtcnxTkQNbUCLEbpDSA94bPOumKEijEdJkKwZODmTXGixbwPuI69yWqlK0vYcVHj6ARebmeQAvvbb8AcZZxtfERZcPOlTDrzU3XCxFXZv3+QPPu88PdFpoKBALcMU95BNP5INI/9Ac/zOBvdHJ/Ytv88s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791192293; c=relaxed/simple;
-	bh=1fVnP2VPrFhD4is/yUTqDxpgbtHb6zWEju2Fw2t7dE8=;
+	s=arc-20240116; t=1791199463; c=relaxed/simple;
+	bh=E+/anujU4hzfDaZKEm0jdfCYNgUqhOwTdM94oH0uJzA=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CmHmoeRR5SGJ9Y6yBWOI/Eko6+LPGNGmPOwW5XnfUnL3kJFUfaq73wgXwQMmkuDfdQtocJm4f8hLPQn0XqIhs7bAn2fhy99xdsx+2pEyKBlfCMBd6s6khFlpcy9gNJutB8MYuxdg3ZRQ9tqCl+8ophGV/2vcKmZlZkzxCGLAE00=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=HT7vDx2Y; arc=none smtp.client-ip=18.9.28.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	 Content-Type:Content-Disposition:In-Reply-To; b=bRdgJfo46AQrLucLYNNnEEmKETr4+j+ddTv2PF9ZHZBLUIcmp1vSkfNh7FrsIZDOWpu6tCora/3askr85W7FwaLsjore3K9iWVGBNXyE/K3vXcWaIxRxPb4QuRQQjAv/uMM+wcESDcREo4//rB6/8POazCH5EE7OE/PHIMgwUQM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=jr6TwbUk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=wUgEKgYB; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Tky9ZzWw; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=22mM/DgM; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="HT7vDx2Y"
-Received: from macsyma.thunk.org ([151.240.45.26])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 6959NVCI010944
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 5 Oct 2026 05:23:33 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1791192222; bh=LfR/ecHbJryzXbl3NJYXU0egVbqlkkMIxT7emsQJ6xo=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=HT7vDx2Y24glFhfkBZal0F7B6KH+KVYLpbxTjgrp1ydux5mAu4LEE+gyQPCO6x4kc
-	 hx+QSh+VkK8Wh7ipA2X1Q10H3Q5vuMHaQ6v2LpO50DXCkqdibzKWU4QAsdkVDf2+dE
-	 KxSxVulF1vlswQHP8CitO7J3tXkoOI2UxONmyrvUIElMFItakBepZxr8UHcFTxFq3U
-	 vOndOqy78yMiM7AFWKQ6Emdkk0if49FK286jks4BNQHAtWUVo3fvl/FA5CL+bYeWDL
-	 DqdmK6a3InoEyxPr/pyYqK/x4wz/hKdJmTWexGzdfqQFERmndxIc3wnM+MoE7ZNgZX
-	 8FlPybNT+bXog==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 2FF3F1F100E8; Mon,  5 Oct 2026 05:23:31 -0400 (EDT)
-Date: Mon, 5 Oct 2026 05:23:31 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
-        ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org,
-        yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
-        yangerkun@huawei.com, wangkefeng.wang@huawei.com,
-        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com
-Subject: Re: [PATCH v6 11/31] ext4: implement buffered read path using iomap
-Message-ID: <asNrmCSW8UjpyfRv@mit.edu>
-References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
- <20260903123543.2302999-12-yi.zhang@huaweicloud.com>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="jr6TwbUk";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="wUgEKgYB";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Tky9ZzWw";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="22mM/DgM"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 5FA9C1F399;
+	Mon,  5 Oct 2026 11:24:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1791199455; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=vm/ySz3HOdR/ndmcqA8Sm3SIQvkPcyS1mZWChqoU3Q4=;
+	b=jr6TwbUkasUVtvqzw/he5+JUGfc5u3Hy9DBlQkViyWT4l96+iLjzULpFpGv3Hv6jbhEapy
+	gegKBh/V+Ni6z87EczlUdrZWp8jdUgPAE6/T75HEGggsIJGtR4B0jS9j7dkRR6NCo/jK+H
+	nDEsu1cvS8v9XGxqF3ZuPSwx0PSQUx4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1791199455;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=vm/ySz3HOdR/ndmcqA8Sm3SIQvkPcyS1mZWChqoU3Q4=;
+	b=wUgEKgYBxLZh57EPa0GNS8ODeeZmq85OAMqB6zny9XFEAkM5nrgrPtLSlSQ6JHTVBnYzqU
+	8P/wPeXL19JeZjAA==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=Tky9ZzWw;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="22mM/DgM"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1791199451; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=vm/ySz3HOdR/ndmcqA8Sm3SIQvkPcyS1mZWChqoU3Q4=;
+	b=Tky9ZzWwEng6pVZQTB6OXGGEQil67eNYlY3XbfvGYONai6dEk4j41uyKaaBQZDnZGapBAr
+	4/SoMZDFAXgtSQlZx8TRBrVdSibBHO3j8WKKHZgiNskjSCFR6houOxHXg1sVoQ04Hl4y95
+	sI/Y+wUOmWyU2u9pgLXqD1yTXLugrro=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1791199451;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=vm/ySz3HOdR/ndmcqA8Sm3SIQvkPcyS1mZWChqoU3Q4=;
+	b=22mM/DgMPsZiKNj7v7q1llmo0HNgiGAsgc/3TW4j8qzf0xKpQ1Ajk/oggQEqGmbDXbjjUN
+	D1EytuDgeoyKi1DA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 355F713A1D;
+	Mon,  5 Oct 2026 11:24:11 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id qUAOB9uIw2p7YgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 05 Oct 2026 11:24:11 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 5C1BBA13FD; Mon, 05 Oct 2026 13:18:44 +0200 (CEST)
+Date: Mon, 5 Oct 2026 13:18:44 +0200
+From: Jan Kara <jack@suse.cz>
+To: Karl Mehltretter <kmehltretter@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: return an error when a journal block is not mapped
+Message-ID: <vxskryoldaadfisrk27j4rohp3h2xmvk5bdeqjytivl7w5evu3@ztksgr266ujk>
+References: <20261004180629.27213-1-kmehltretter@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20260903123543.2302999-12-yi.zhang@huaweicloud.com>
+In-Reply-To: <20261004180629.27213-1-kmehltretter@gmail.com>
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 5FA9C1F399
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_DN_SOME(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,suse.cz:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email]
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
 
-I tried running "git am" on your patch series, and after resolving a
-patch conflict manually, I ran a build check to make sure things were
-still building, and I ran into a couple of issues that caused the
-build to fail:
+On Sun 04-10-26 20:06:29, Karl Mehltretter wrote:
+> If the internal journal inode contains a hole, ext4_map_blocks() returns
+> 0. ext4_journal_bmap() logs "journal bmap failed" and aborts the
+> journal, but also returns 0 and leaves *block unchanged.
+> 
+> jbd2_journal_bmap() takes that as success and uses the unchanged logical
+> journal block number as a physical filesystem block number. Journal I/O
+> can then overwrite filesystem blocks outside the journal despite the
+> abort.
+> 
+> Return -EFSCORRUPTED for a hole, matching the error passed to
+> jbd2_journal_abort(). Keep propagating negative mapping errors.
+> 
+> Fixes: 62913ae96de7 ("ext4, jbd2: add an optimized bmap for the journal inode")
+> Cc: stable@vger.kernel.org
+> Assisted-by: LLM
+> Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
 
-On Thu, Sep 03, 2026 at 08:35:23PM -0500, Zhang Yi wrote:
-> +static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_buffered_read_next,
-> +			      ext4_iomap_buffered_read_begin);
+Makes sense. Feel free to add:
 
-/usr/projects/linux/ext4/fs/ext4/inode.c:4016:8: error: type defaults to ‘int’ in declaration of ‘DEFINE_IOMAP_ITER_NEXT’ [-Wimplicit-int]
- 4016 | static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_buffered_read_next,
-       |        ^~~~~~~~~~~~~~~~~~~~~~
-       /usr/projects/linux/ext4/fs/ext4/inode.c:4017:31: error: parameter names (without types) in function declaration [-Wdeclaration-missing-parameter-type]
-        4017 |                               ext4_iomap_buffered_read_begin);
-	      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-> +
-> +const struct iomap_ops ext4_iomap_buffered_read_ops = {
-> +	.iomap_next = ext4_iomap_buffered_read_next,
-> +};
+								Honza
 
-/usr/projects/linux/ext4/fs/ext4/inode.c:4020:10: error: ‘const struct iomap_ops’ has no member named ‘iomap_next’; did you mean ‘iomap_end’?
- 4020 |         .iomap_next = ext4_iomap_buffered_read_next,
-      |          ^~~~~~~~~~
-      |          iomap_end
-/usr/projects/linux/ext4/fs/ext4/inode.c:4020:23: error: ‘ext4_iomap_buffered_read_next’ undeclared here (not in a function); did you mean ‘ext4_iomap_buffered_read_ops’?
- 4020 |         .iomap_next = ext4_iomap_buffered_read_next,
-      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      |                       ext4_iomap_buffered_read_ops
-
-I'm going to assume these issues got resolved later in the patch set,
-but I wanted to point this out since this can make it harder to bisect
-the kernel in the future.
-
-Thanks,
-
-						- Ted
+> ---
+> Found with an experimental clang that warns when a function returns 0
+> right after reporting a failure.
+> 
+> Recorded QEMU A/B testing used x86_64 kernels and a 1 KiB-block image
+> with a hole in the journal inode starting at logical block 40. The
+> unpatched kernel overwrote filesystem block 40, a reserved GDT block.
+> With the patch, none of the marker blocks changed. There were three
+> runs per kernel.
+> 
+> Both kernels logged the mapping failure and journal abort:
+> 
+>   EXT4-fs (vda): journal bmap failed: block 40 ret 0
+>   Aborting journal on device vda-8.
+> 
+>  fs/ext4/super.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index bca0dc87d0b7..3e7dabe45153 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -5967,7 +5967,7 @@ static int ext4_journal_bmap(journal_t *journal, sector_t *block)
+>  			 "journal bmap failed: block %llu ret %d\n",
+>  			 *block, ret);
+>  		jbd2_journal_abort(journal, ret ? ret : -EFSCORRUPTED);
+> -		return ret;
+> +		return ret ? ret : -EFSCORRUPTED;
+>  	}
+>  	*block = map.m_pblk;
+>  	return 0;
+> 
+> base-commit: e767a4ea70a3992c37ed604157d32f0dfbf9b1e3
+> -- 
+> 2.53.0
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
