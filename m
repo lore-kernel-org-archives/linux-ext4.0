@@ -1,145 +1,141 @@
-Received: from mail-vs2-f36.google.com (mail-vs2-f36.google.com [74.125.227.36])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7A85221FD4
-	for <linux-ext4@vger.kernel.org>; Mon,  5 Oct 2026 00:35:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.36
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E00341FC0EA
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Oct 2026 00:46:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791160545; cv=none; b=T58vwWpbm+LFKVr1oUGH6rG6Szpd6deTOi6zvRoHEdP/68AhzmRSI2svwFx16JWyxmRXCO6B8I//cYajswz0U3KBzVP2HVbi7udI6//jVr2oMTjzm/NuRnZXvHK/Z7vPxKTw/+xI8S9dZ2pgtwEHzcF9xw8xTD0dsinAOjIcXO8=
+	t=1791161190; cv=none; b=YnIaMFYWmkybgfKWUGK1ILq+UnbhcNnXaB+PZy8W8c2xHvHnNI8kTlBeGuZdC3g0lPvsaQ/gDYsHppUGm9h0giClm1lMUZLXoSGyAUDfd+yMjvz1FhIbjHNamO+NM7ykoTNTlVI5Hq6bS3vwABeS0qvkLt9jv01GMl4UGBFqrC4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791160545; c=relaxed/simple;
-	bh=2FrvFsvX2x9s1teS7gnxDFE6GIWl1nvTF/TpcSBVZGA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=G9f80Vch9b9NUwHxkHqNoplDzdDYAg7VI1TUhWfbSjfVgLQorGg+IY9er9syI15dE4g9DAcrg1xYQURwVUcdWwNc8slAW3ird7Z6azpzS7qmkhOZob/jO0nmulT6/NBv1oWkedIkSuajkiJXt8NGlllE5ixWo+DIz4AU2YDrRQU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fMAWBAoK; arc=none smtp.client-ip=74.125.227.36
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1791161190; c=relaxed/simple;
+	bh=uUTPywUa7uO70mcktkOGQ8BIQsZ5RFGUFl3W5DvwArM=;
+	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
+	 Message-Id; b=pHQr7/uZSZYxLgyquL83at9BzL7EGos+skWbAsLvnPfGOP7UIWcv3wT5MtxpbSyaZbzDMWIZDvJ/qa+cS6T7s2EPOASHaex4ztW4tARtNcJNrkMUgxnjod3JMLpH4NSCngF48NqyZtH77J4yA1TCcVNcSKBr0BWOreUqxQUlUUc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MiHLBSkC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fMAWBAoK"
-Received: by mail-vs2-f36.google.com with SMTP id ada2fe7eead31-7bad9d27d58so627376137.1
-        for <linux-ext4@vger.kernel.org>; Sun, 04 Oct 2026 17:35:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791160542; x=1791765342; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=DIFlMzCD+Q6Ytncf1DaxxppB9CiAQqNyy2tvfDerbIY=;
-        b=fMAWBAoKMJtVrU+8ykYaOI2c0O3assXEyghTNSb9XhOWROzs0X/lQrldmdawYggh5v
-         DkhzKh5MsB7So2567csqx3VvtNYbJsgiJtKQNrmCR2mfa0Gb6p8mGItsi2cXn9Ua9EqN
-         GLas686JRmTI3oPImyEnz0cb+A5xfo/H8TBr5VbUFB4pBoHIQVe9CPpbpcWHySRovz8L
-         wLIr0DZyU8sTmRmNPBIIvArkAWrPhX8OxISoaBl2AxDpLBaqa8P8lmE/fylmYJ6jGdSu
-         RNsQgzoARPo8wLQZsjmUgb5ybRbhn8urZVgTaOWAtTbilsrKJgWy/+jpG7NK+7NcslwJ
-         rXtA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791160542; x=1791765342;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=DIFlMzCD+Q6Ytncf1DaxxppB9CiAQqNyy2tvfDerbIY=;
-        b=IAZ+95lu/xWnk+6vo5NPx1iKsy4Jz+ZH7uf0pOtyoAwELS23mMeel7M67gP71qgtP7
-         nXN61m6YNpISNidVORcLCkTiwXXnY4QBtbBdaTnNODyQL7AHhbn22tb+K3X0tUinQ2K9
-         jcGouwX5LRdKbyAYYm3xQs5AacNbdDhsTMSztum3qwvJhPipkAzC0vgL5mwC6szfzw1V
-         3vNH2/mRsnTTgg8sSo30gPHf/ODN98aKLG4Q+467MstZ+g2J2OKY7o08ozvjZz00Fhbp
-         D8hFqUHmAEocePYr9wJ6tmSA9s/Jg3Qx7w/kguCluokyRsiWORC0aJy+QidCrjUbRDcW
-         cTUw==
-X-Forwarded-Encrypted: i=1; AKwUvBzg6Nq4m7JCgpgOUz0bmP21k92ZgcbRYpA++jyQdF1JUgEM6k6ZihjGuqNCroN/FGSbfm59HXZeffaf@vger.kernel.org
-X-Gm-Message-State: AFq9FYIfY4Mm1CcB2EgxzBbRDEz+rLwiW3DNcqJcCglfx/CBeRMehxxp
-	ULvZJsz8YdQUrEqiVhhuCaO6tbNwCPBJTlbp/jyzZqp71jlmJBzDbQXZ
-X-Gm-Gg: AYBFou2p7AvauU6SOdhCodK/sULvW11vO96LdSOPa1P51mA3WNCsWWai9FzK8n1+LzM
-	qbSNr0lRJHWd+OZ7HX4O8bS71QfE00DAvdR4ul4luYdQzGCbHrCzqq9S1pHtcCOPFZcpvHOUVAe
-	ahpKAWcPf43Q0jhzkhnvGYrzahvBaExpl6O67lVNsbKMbS8EhZCS3BtJYIFAMLpjdts0u1TsEGb
-	V3rjk0sqCrYV++CqbQDvVKTSc+Add4ryXJ7mUDzSrkZ2xjkIxHfc5SSqMEnomMjgsQHPVZGbIHH
-	O65B2UPUnN6sfs4M4Dj53c5U6ncCEV1lsTaa+RtH/i63b0BIrqdh2zFGXyeAzwjnaPTVbuXW6X1
-	MrWTDKz8PSz2+P84QJEsfEIR5QgKaY8An+Dc0KnxGAwbtMn2XDv/jdtKC1vO0uEkj9yBGyAum4S
-	Jfh1/EmpE1Tt5Ou+lw3y70R3JMZfkUnkr8T3IIwQNJTaGXsgBzg2DO5ickaMBzchR7mG1UPumBd
-	T4=
-X-Received: by 2002:a05:6102:6b03:b0:7a8:1837:9eb9 with SMTP id ada2fe7eead31-7c0f57aaf35mr2393143137.27.1791160542463;
-        Sun, 04 Oct 2026 17:35:42 -0700 (PDT)
-Received: from adriano ([190.215.95.120])
-        by smtp.gmail.com with ESMTPSA id ada2fe7eead31-7c100026109sm8546639137.9.2026.10.04.17.35.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 04 Oct 2026 17:35:41 -0700 (PDT)
-From: Adriano Cordova <adrianox@gmail.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Adriano Cordova <adrianox@gmail.com>,
-	syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
-Subject: [PATCH v2] ext4: don't append a directory block already mapped in the inode
-Date: Sun,  4 Oct 2026 21:35:28 -0300
-Message-ID: <20261005003528.92046-1-adrianox@gmail.com>
-X-Mailer: git-send-email 2.51.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MiHLBSkC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 277B51F000FF;
+	Mon,  5 Oct 2026 00:46:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791161188;
+	bh=DFKL2Xkx9GK0BOML6mC2k/EgxqUHAHdOcvJzAyMQrdo=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=MiHLBSkCfm/pK26dVZbvf71i/+JvQgtQKaudETD8QI8PDQgr/O23JUmB7MvM5s0Pa
+	 hx3zIZ3ed5vu3Yq8VDKWkeV8cporn8z7XNT2WOLtynzZbalduYWm48UzdJtHLvOXgW
+	 4jomPWQ3k3dGJH4rFu+/qs/8Res+Vv4JccR7Z7CHdfQS2t50rhqwrl5Xn79qd5dmg6
+	 Bx+RA2ZzpUCL+ysLS/q6Pi0ezLTaLgRH1cn209IfZL3NarRfZZMZ+FV1yaxUO3OXhx
+	 Z8AZ9swkCc+yGyos7w8C5STgyCZHFCm/DN191xG5oX6uPZS5t0tBpLLcSvo62szPJ3
+	 H4y0oGeSBSjKQ==
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v2] ext4: don't append a directory block already mapped
+ in the inode
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Adriano Cordova" <adrianox@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261005003528.92046-1-adrianox@gmail.com>
+References: <20261005003528.92046-1-adrianox@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 05 Oct 2026 00:46:27 +0000
+Message-Id: <20261005004628.277B51F000FF@smtp.kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-ext4_append() grows a directory by one block.  It checks that the target
-logical block is a hole, but a corrupt block bitmap can still make the
-allocator hand back a physical block that is already in use by this
-inode.  The in-memory copy of a block is keyed by its physical block
-number, so the "new" block and that existing one are the same memory;
-callers that split a directory (make_indexed_dir()/do_split()) then move
-entries between two aliased buffers and corrupt the directory, until a
-bogus rec_len read from the middle of a name runs the wipe out of bounds:
+Thank you for your contribution! Sashiko AI review found 3 potential issue(=
+s) to consider:
+- [High] ext4: ext4_append() misses aliases in multi-block extents
+- [High] ext4: ext4_append() forces O(N) iteration over holes leading to so=
+ft lockup
+- [High] ext4: ext4_append() escalates transient errors to filesystem corru=
+ption
+--
 
-  BUG: KASAN: slab-use-after-free in dx_move_dirents [inline]
-  Write of size 90458 ...
+commit 4e22a7e845c3a3e2ac2696b510b59d9b11640408
+Author: Adriano Cordova <adrianox@gmail.com>
+ext4: don't append a directory block already mapped in the inode
 
-Reject the block and report the corrupt bitmap instead of corrupting
-memory.
+This commit adds a check in ext4_append to ensure a newly allocated
+directory block is not already mapped by the inode. It iterates through
+the inode's logical blocks to verify the new physical block does not
+alias an existing one.
 
-Reported-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=09bec78ee77613a3efdd
-Tested-by: syzbot+09bec78ee77613a3efdd@syzkaller.appspotmail.com
-Signed-off-by: Adriano Cordova <adrianox@gmail.com>
----
-Changes in v2:
-- Rework after review of v1 ("ext4: wipe moved dirents with their real
-  length"). dx_make_map() already validates each entry, so the bad
-  rec_len does not come from disk. The problem is that the block
-  allocator was handing back a block already mapped by the inode.
+Closes: https://syzkaller.appspot.com/bug?extid=3D09bec78ee77613a3efdd
 
- fs/ext4/namei.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+[ ... ]
+> @@ -83,6 +83,25 @@ static struct buffer_head *ext4_append(handle_t *handl=
+e,
+>  	bh =3D ext4_bread(handle, inode, *block, EXT4_GET_BLOCKS_CREATE);
+>  	if (IS_ERR(bh))
+>  		return bh;
+> +
+> +	for (map.m_lblk =3D 0; map.m_lblk < *block; map.m_lblk +=3D map.m_len) {
+> +		map.m_len =3D *block - map.m_lblk;
+> +		err =3D ext4_map_blocks(NULL, inode, &map, 0);
+> +		if (err < 0)
+> +			goto out;
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 3b9740c1c16d..ff6013306b74 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -83,6 +83,25 @@ static struct buffer_head *ext4_append(handle_t *handle,
- 	bh = ext4_bread(handle, inode, *block, EXT4_GET_BLOCKS_CREATE);
- 	if (IS_ERR(bh))
- 		return bh;
-+
-+	for (map.m_lblk = 0; map.m_lblk < *block; map.m_lblk += map.m_len) {
-+		map.m_len = *block - map.m_lblk;
-+		err = ext4_map_blocks(NULL, inode, &map, 0);
-+		if (err < 0)
-+			goto out;
-+		if (err == 0) {
-+			map.m_len = 1;
-+			continue;
-+		}
-+		if (unlikely(map.m_pblk == bh->b_blocknr)) {
-+			EXT4_ERROR_INODE(inode,
-+					 "new block %llu already mapped",
-+					 (unsigned long long)bh->b_blocknr);
-+			err = -EFSCORRUPTED;
-+			goto out;
-+		}
-+	}
-+
- 	inode->i_size += inode->i_sb->s_blocksize;
- 	EXT4_I(inode)->i_disksize = inode->i_size;
- 	err = ext4_mark_inode_dirty(handle, inode);
--- 
-2.51.0
+[Severity: High]
+Could this cause a regression where transient errors are escalated to
+filesystem corruption?
 
+The goto out path calls ext4_std_error(inode->i_sb, err), which marks the
+filesystem as corrupted.
+
+If ext4_map_blocks() returns a transient error like -ENOMEM or -EIO, should
+it instead propagate the error directly back to the caller, similar to how
+the earlier ext4_map_blocks() call handles them before the loop?
+
+> +		if (err =3D=3D 0) {
+> +			map.m_len =3D 1;
+> +			continue;
+> +		}
+
+[Severity: High]
+Does this force an iteration over large holes, potentially causing a
+performance regression?
+
+When ext4_map_blocks() returns 0 for a hole, it populates map.m_len with
+the full length of the hole.
+
+Overriding map.m_len to 1 discards the hole size and forces the loop to
+iterate block-by-block. For directories with large sparse holes, could this
+lead to severe performance degradation and soft lockups?
+
+> +		if (unlikely(map.m_pblk =3D=3D bh->b_blocknr)) {
+
+[Severity: High]
+Can this equality check miss aliases if the mapped extent spans multiple
+blocks, allowing a memory corruption regression?
+
+Because ext4_map_blocks() can return a multi-block extent with map.m_len > =
+1,
+the newly allocated block bh->b_blocknr might fall in the middle of a
+previously allocated multi-block extent.
+
+If bh->b_blocknr is within the range from map.m_pblk to
+map.m_pblk + map.m_len - 1, this exact match check will evaluate to false,
+failing to prevent the alias.
+
+Should this check account for the extent length?
+
+> +			EXT4_ERROR_INODE(inode,
+> +					 "new block %llu already mapped",
+> +					 (unsigned long long)bh->b_blocknr);
+> +			err =3D -EFSCORRUPTED;
+> +			goto out;
+> +		}
+> +	}
+> +
+>  	inode->i_size +=3D inode->i_sb->s_blocksize;
+>  	EXT4_I(inode)->i_disksize =3D inode->i_size;
+>  	err =3D ext4_mark_inode_dirty(handle, inode);
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261005003528.9204=
+6-1-adrianox@gmail.com?part=3D1
