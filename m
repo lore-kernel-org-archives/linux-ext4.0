@@ -1,46 +1,53 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42954493620;
-	Mon,  5 Oct 2026 13:31:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD48E48640B
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Oct 2026 14:03:23 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791207065; cv=none; b=AtDgfeoIknQECXp2FGiw3tBFNgbJyVtmR8GstZxQ23Qf2B4T02+WYqRQDM95Qz+0Vc/wMAtljJMWCXO6Waf3cCVDygIt+y7Qu6ayh/titfY85mQc4+vVzy5VadehHQP83GGqnkt7XyvIw7PiRjZNolAIpYiiD7aE+pQFVNaj8Io=
+	t=1791209005; cv=none; b=VMSKGiSbG48eMeHrhoiHQDBXh/g8PmBow+7rbccdNip/mFtHmu8fT1ztgBCKg1VHTvlPWBaDRULs/viBMt9iaxB/HWj/7RA6P+fBKeO9bGzZS5X4K49OI/GJ0TSL0VykizI/Hd1UDANMUXFmdt7C5/Bz0tSviMql3Zeqr9RMd6Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791207065; c=relaxed/simple;
-	bh=sEB6SwsEKw/juxXaWiNtskiEqoJzpjPGaf36uDKKgFw=;
+	s=arc-20240116; t=1791209005; c=relaxed/simple;
+	bh=Y0BFTkA47iyFJ29RfA9FIn0I7Rr/kvLIQWeKr2f47KQ=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=B873Tyt78eAxIiZfv+JvEsqK1jor+Yz3w5JbxiFvVav1mb0BFnwIoe5fkBaRjrw0JYHlLNQAfgSttxruRawPlFqtaveXumATFeS4cffXpG95ZFmebaqLTQ7+sbM0fzc5kiAScNmH7rrJfs1sVKcRSXtXTT/JMoK8O+6/Iz10CJU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NZ6Jfn/X; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=t3tUY4gZj3N2Gilp/URIIEL8cT/6LO+fFKe7VnbJjX2wh/oG/Ro1KfvqyrltCpn7CNE2GyQn8jrWDto0AVsqUY8321CRCkqQgtjjKh083NJL+mIxl2irNZ9O88/9DJqPTA7wcNGwQAg3sBN8ERFsr1wP6kfsizLSw5FIoAfFNdU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=V6LSENu8; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NZ6Jfn/X"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 13F051F000FF;
-	Mon,  5 Oct 2026 13:31:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791207063;
-	bh=YJVFrcH51dcWxKvIvBoz5wPALOazHMgdkbmMui1YFvM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=NZ6Jfn/XZvbHZ9XZWUeKBjHSx8Gwxg6v9+i6QIGrWRSYK6B+BD325E+wAPloxoe/i
-	 Fs0cNZt9HTSfTT2fIuyt6SYI1V09qLZotsQ26++U92UybnNUaDw0daQxMq6OXEmHz0
-	 i0PFp2xlI5bN8hSzGOBBRCH3JWS+H70cQojexrMqnWd03bd2zyUxgPDLGWsM8ic8Ku
-	 QnX5ZkA4xjMnqmwLM1PpJtDCy+KyfG/1LhrPesOPoEB6lMAvHhPjgubeCTHc9m14iL
-	 +eol8QKhP1q2npvOdrJ21JxbWpF29PQuDSXup+Vj4YervpvvbsjXI7A0l5yidd80/U
-	 VY/SQv9Bzlw+w==
-Date: Mon, 5 Oct 2026 15:30:58 +0200
-From: Eric Biggers <ebiggers@kernel.org>
-To: Andrey Albershteyn <aalbersh@kernel.org>
-Cc: Carlos Maiolino <cem@kernel.org>, djwong@kernel.org, hch@lst.de,
-	fsverity@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	linux-xfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-	linux-btrfs@vger.kernel.org, david@fromorbit.com
-Subject: Re: [PATCH v17 00/21] fs-verity support for XFS with post EOF merkle
- tree
-Message-ID: <20261005133058.GA3436@quark>
-References: <20261002223705.2175542-1-aalbersh@kernel.org>
- <20261002232542.GA15366@quark>
- <asDvqctUgrxflcCa@nidhogg.toxiclabs.cc>
- <asN8lCPmZpA0tp5S@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="V6LSENu8"
+Received: from macsyma.thunk.org ([151.240.45.38])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 695E1pXg006784
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 5 Oct 2026 10:01:53 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1791208920; bh=Upl7F91amjUFqp9wyYmz9ODrIhZOAhPMAxoyRitl3L0=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=V6LSENu82/5QHJEpjIQKsDLNWAZfXCMl7QKTnJluY+fal63ihQbkpYeXXhLxn3A6M
+	 W2cR9ekZVVHr/2qSqUztc47IiTgmEycOidY9Nq1YSiAIIGGOOqCvaWQ5WPyL9nsvRD
+	 1n0R0Z3LoU0MCg0F4jLyUNYX+FzTtsBd0jaoEealqrDQiNxMpRJnxRZVhp9QrACWcP
+	 0M6szUmqTf52z+bHbn5jlAgjpDq1G6HbseDDXC6KTCCLwSaW06SagzuDoA1UTrDZ19
+	 7TyOuVpsOZwnQSXRfYxKk2WXelHmVZ+W5ogB1/UPVOZNvCgfkEV7xrv7ZlgFf86aHw
+	 PkjbY6mtUUPMA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 4019D1F15D36; Mon,  5 Oct 2026 10:01:50 -0400 (EDT)
+Date: Mon, 5 Oct 2026 10:01:50 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+        ritesh.list@gmail.com, djwong@kernel.org, hch@infradead.org,
+        yi.zhang@huawei.com, yizhang089@gmail.com, chengzhihao1@huawei.com,
+        yangerkun@huawei.com, wangkefeng.wang@huawei.com,
+        yukuai@alb-78bjiv52429oh8qptp.cn-shenzhen.alb.aliyuncs.com
+Subject: Re: [PATCH v6 11/31] ext4: implement buffered read path using iomap
+Message-ID: <asOtpKyvNQOahh5X@mit.edu>
+References: <20260903123543.2302999-1-yi.zhang@huaweicloud.com>
+ <20260903123543.2302999-12-yi.zhang@huaweicloud.com>
+ <asNrmCSW8UjpyfRv@mit.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -49,41 +56,16 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <asN8lCPmZpA0tp5S@aalbersh-thinkpadx1carbongen13.rmtcz.csb>
+In-Reply-To: <asNrmCSW8UjpyfRv@mit.edu>
 
-On Mon, Oct 05, 2026 at 01:26:18PM +0200, Andrey Albershteyn wrote:
-> On 2026-10-03 14:07:23, Carlos Maiolino wrote:
-> > On Fri, Oct 02, 2026 at 04:25:42PM -0700, Eric Biggers wrote:
-> > > On Sat, Oct 03, 2026 at 12:36:41AM +0200, Andrey Albershteyn wrote:
-> > > > Andrey Albershteyn (19):
-> > > >   fsverity: report validation errors through fserror to fsnotify
-> > > >   fsverity: expose ensure_fsverity_info()
-> > > >   fsverity: pass digest size and hash of the all-zeroes block to ->write
-> > > >   fsverity: hoist pagecache_read from f2fs/ext4 to fsverity
-> > > >   fsverity: don't allow setting DAX file attribute on fsverity files
-> > > >   fsverity: hoist statx reporting of fs-verity flag
-> > > 
-> > > Would it be helpful if I applied these six patches to fsverity/for-next
-> > > for 7.4, or do you want to wait for the full series to go in at once
-> > > (presumably through the XFS tree)?
-> > > 
-> > > - Eric
-> > > 
-> > 
-> > It's your call, I *think*, this is too late for xfs 7.4, so I want to
-> > queue it as soon as possible for 7.5.
-> > 
-> > If you want to take the fsverity patches into 7.4, go for it, then the
-> > xfs ones I'll pull in once yours are merged.
-> > 
-> > Sounds reasonable?
-> > 
-> > Carlos
-> > 
-> 
-> Fine with me too
+On Mon, Oct 05, 2026 at 05:23:31AM -0500, Theodore Tso wrote:
+> I tried running "git am" on your patch series, and after resolving a
+> patch conflict manually, I ran a build check to make sure things were
+> still building, and I ran into a couple of issues that caused the
+> build to fail:
 
-Applied patches 1-6 to
-https://git.kernel.org/pub/scm/fs/fsverity/linux.git/log/?h=for-next
+Never mind; this was caused bby building on too old of a kernel base.
+When I applied this on a newer kernel, the problem went away.  Sorry
+for the noise!
 
-- Eric
+						- Ted
