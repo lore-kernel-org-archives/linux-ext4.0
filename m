@@ -1,74 +1,109 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0.herbolt.com (mx0.herbolt.com [5.59.97.199])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A46483AB28D
-	for <linux-ext4@vger.kernel.org>; Tue,  6 Oct 2026 11:23:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE81445C715;
+	Tue,  6 Oct 2026 13:52:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=5.59.97.199
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791285787; cv=none; b=R24H6Mjc7BkXFF6g48YqYEj1110QIOzDsQYY0SJUMZYjjXyiuhScXWuJ/UMpw/khGT3cB5Z5l1bqrihdL2fpJ1Ocwknztu8DG81Y1AYyIGHOEF0VLGAkcTGAACEkQk2dwja06lMmDVlJfAF83MY9u5pPitq4OP818bPLaUB4T+8=
+	t=1791294745; cv=none; b=BMlsCFmkiVkI+4cucwdXYNnbdUGBh//jwRYYANGkt8/cp1+qE6Yk7afU/JRraA5cDasaSqfbWI9qgNzdySN76JqlKcWEjuMiWNeVfWeq5uMY+GbfBX1Cn2dvUMIXb2i5ExEE6/zpI/Zc+ODNh80Kdb+umZX5tfJ/ykSbtSekpFI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791285787; c=relaxed/simple;
-	bh=3nhqe9FRziYj2i7VnrEC+q85iJVI1iamO/qAoGM+kqk=;
-	h=From:Subject:To:Cc:In-Reply-To:References:Content-Type:Date:
-	 Message-Id; b=PqDtA3IoX72EzGssIX00S5aL3M+pajp8VmozKI9+VjJ8RaFGqiPU6Ya4hT29FDEYXorZ3HlShpX5Wpah1A/6DHAcvCqOfBrIVAYE8zPIokKV8u0H1cuzP8mjOnufp9LPXmYINsGlplwJN9K3jiYZqqQGjU9DFEqeZ8KGjYoAWh4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SzSzrYue; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SzSzrYue"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AAEA1F000FF;
-	Tue,  6 Oct 2026 11:23:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791285786;
-	bh=3nhqe9FRziYj2i7VnrEC+q85iJVI1iamO/qAoGM+kqk=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=SzSzrYueSIE+p1Nu36QAbcHVaQS6LKxGbpGIJsWTGnSGd6vEOVe8ubfVSGLW45Opw
-	 KXgrq7ns6w6D2f7EtZWTTpntLHPSJoZrJZfRWgaLM9KTBtRPNfIkClGZuK9bu5p8PJ
-	 WPAqJ1iTcHDd3TaJ4wMc//pNpbaXonAUtKC//zoq05v1VKnd/tDaCvfTRF6quRVI+M
-	 WEE7ftzjYFOAvWLAOK0KaoAIKdDMsgNaL/VJjvvU80vEAiMK9krDstvD+g3w2NreRo
-	 ccsucxkvpNehMrUKxbwebjViVTlO3hgt7WG6qPbYVtVPPAE5yxYXHSd0wrOtPV8y6i
-	 KzwX8KtHqIlcA==
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: do not accept rec_len 0 for block sizes below 64k
-Reply-To: sashiko-reviews@lists.linux.dev
-To: hengyul@cs.unc.edu
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261006111546.3252481-1-hengyul@cs.unc.edu>
-References: <20261006111546.3252481-1-hengyul@cs.unc.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 06 Oct 2026 11:23:05 +0000
-Message-Id: <20261006112306.4AAEA1F000FF@smtp.kernel.org>
+	s=arc-20240116; t=1791294745; c=relaxed/simple;
+	bh=maVJ9R67KGtDdwu3uAK9yCxmJdv9ore2N3ygNFhv8ug=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bAI/1KCKhc5C+tmtdAoFtZUsYF0PIim38ZBpHDgLOfwiNZX5NRvRlzD9HyZuNjG0s/jEwOyqoXxW1xVqNHErtz74pP6AZyQvTc897VIPHt7kM6ELAt03odGhsaz0IRNtVThikJ8OiGd0nM9j+QmssW7iOM8+H60kzBTMvqfvqGY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=herbolt.com; spf=pass smtp.mailfrom=herbolt.com; arc=none smtp.client-ip=5.59.97.199
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=herbolt.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=herbolt.com
+Received: from mx0.herbolt.com (localhost [127.0.0.1])
+	by mx0.herbolt.com (Postfix) with ESMTP id 06F91180F2C1;
+	Tue, 06 Oct 2026 15:52:14 +0200 (CEST)
+Received: from trufa.intra.herbolt.com ([172.16.31.30])
+	by mx0.herbolt.com with ESMTPSA
+	id NqUZMw79xGqI/wEAKEJqOA
+	(envelope-from <lukas@herbolt.com>); Tue, 06 Oct 2026 15:52:14 +0200
+From: Lukas Herbolt <lukas@herbolt.com>
+To: zlang@kernel.org
+Cc: fstests@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	Lukas Herbolt <lukas@herbolt.com>
+Subject: [PATCH 0/1] Fix random.c UB on int overflow
+Date: Tue,  6 Oct 2026 15:51:51 +0200
+Message-ID: <20261006135205.400485-1-lukas@herbolt.com>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-> From: Hengyu Liang <hengyul@cs.unc.edu>
->=20
-> Commit afa6d5a16bf2 ("ext4: remove PAGE_SIZE checks for rec_len
-> conversion") made ext4_rec_len_from_disk() read a rec_len of 0 as "this
-> entry covers the whole block" for every block size.
->=20
-> However, this special value only exists for block sizes of 64k and
-> more. With smaller blocks, a rec_len of 0 means that the directory
-> block is corrupted. As of now, a directory block that has been
-> overwritten with zeroes is treated as an empty block. The kernel no
-> longer reports the corruption and can store new entries in that block,
-> while e2fsck still reports the block as corrupted.
->=20
-> The issue can be reproduced on a file system without metadata_csum:
->=20
-> [ ... ]
-> unchanged when the block size is below 64k, as e2fsprogs does.
->=20
-> Fixes: afa6d5a16bf2 ("ext4: remove PAGE_SIZE checks for rec_len conversio=
-n")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Hengyu Liang <hengyul@cs.unc.edu>
+While building xfstests with default rpm CFLAGS/LDFLAGS, I noticed
+the generic/007 fails with:
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+    --- /opt/xfstests-dev/tests/generic/007.out	2026-10-06 14:08:02.556220624 +0200
+    +++ /opt/xfstests-dev/results//generic/007.out.bad	2026-10-06 14:40:01.667593670 +0200
+    @@ -14,9 +14,9 @@
+     .........................................................................
+     .........................................................................
+     ....................................................
+    -creates:  18736 OK,  18802 EEXIST  ( 37538 total, 50% EEXIST)
+    -removes:  18675 OK,  19927 ENOENT  ( 38602 total, 51% ENOENT)
+    -lookups:  12000 OK,  11860 ENOENT  ( 23860 total, 49% ENOENT)
+    -total  :  49411 OK,  50589 w/error (100000 total, 50% w/error)
+    +creates:  18745 OK,  19086 EEXIST  ( 37831 total, 50% EEXIST)
+    +removes:  18685 OK,  19864 ENOENT  ( 38549 total, 51% ENOENT)
+    +lookups:  12065 OK,  11555 ENOENT  ( 23620 total, 48% ENOENT)
+    +total  :  49495 OK,  50505 w/error (100000 total, 50% w/error)
+     
+    -cleanup:     61 removes
+    +cleanup:     60 removes
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261006111546.3252=
-481-1-hengyul@cs.unc.edu?part=3D1
+This happens because because the lib/random.c has optimized out the negative
+branch check as overflow on signed int is undefined behavior.
+
+    if (it <= 0)	
+        it = (it + it) ^ MASK;
+    else
+        it = it + it;
+
+Changing the if-else to single if based on the original `it` value prevents the
+compiler from optimizing out the code.
+
+    int apply_mask = (it <= 0);
+    it = (unsigned)it << 1;
+    if (apply_mask)
+        it ^= MASK;
+
+Steps to reproduce: 
+    dnf install redhat-rpm-config -y
+    ./configure CFLAGS="$(rpm --eval '%{optflags}')" \
+        LDFLAGS="$(rpm --eval '%{__global_ldflags}')"
+    ./check generic/007
+
+The random.c is used in:
+
+    ext4/052
+    generic/007
+    generic/010
+    generic/011
+    generic/014
+    generic/094
+    generic/225
+    generic/311
+    generic/676
+    xfs/008
+    xfs/188
+
+and I did not noticed any regression with this change and the only one
+failing with the original implementation is the generic/007. 
+
+Lukas Herbolt (1):
+  lib/random.c fix undefined behavior on signed integer overflow.
+
+ lib/random.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+-- 
+2.55.0
 
