@@ -1,89 +1,85 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 450813B47D2;
-	Tue,  6 Oct 2026 16:08:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1320F49E13F;
+	Tue,  6 Oct 2026 16:17:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791302892; cv=none; b=DObfBq7EfEWCrEWK19O3yPUhp3ZBSCmMBb7+/LnqJwdP6ZuG3TRFsqpZn53WXKeE4Flklhhwu21nmYDZvesDCxdzNhoz/I17Dbj5lW/76rbz+ijIXg0SrhqJgLTwwT+HQOKbaW+0Xkt5SwXLRzlwWmVA3TpWAPK5KEjeP8UJYT4=
+	t=1791303431; cv=none; b=lq/tG2vvi7itu0lEvQtz81xIm409h/BNkqBkT0qO0uCadGF0u6hrFuN56Z68kAB78DWd+TjGWKkZfd4xqtvL5d2iCvfBIrK77qHn0Lr8LZ8YRHwILw+GUMMrcXxC6xcmxcaFdUAO12nrHsZhE7UrGp1nQbxfcMfY9iw6FlUxlKc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791302892; c=relaxed/simple;
-	bh=ZMbfy5T1L22ciFYreqBQEiV5PiUklSJsjaGzDALj2yk=;
+	s=arc-20240116; t=1791303431; c=relaxed/simple;
+	bh=PczUcbNg4hIwm4j3OVoMKwDwH7cBMxGxmCO+d4NCjgM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lDyeYh6pCAly8obAzEscv08By24ivQBzspIFg8vwBHm7LGMPc7PlyLJyrfTFngFTussFC+uBqE2pEPU6WeGc3+t2XFSr4T3P7+b+i3bmCe4gxBflDI5XKnAlNwIPTcIbRXVcxRFgV0zqaFnAivpO8CGqpR+kU84kF9i7sZBdmJI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tI9mxjP+; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=oHbEE9Rm; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=bNMoP48F; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ZB5Aq7VM; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=uTcnlDzbzpx5eajsrW7gUV7fNHcsDzDUzwlIcoofE253fg5VQHY18OWr2njkKBaPhUITWWBHniFwWX+SMc91CBG+4GN+9yC3v1XWpEfEMz/ro4z8kv98832NHnZ27Ib26H/QaQlxxAQSmUZJplwfjnMffgVWyBtnTKY2Aq4oGRo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=yswJp7mk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=c2IzJ9k3; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Bq9XnZGZ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=mV90ntUf; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tI9mxjP+";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="oHbEE9Rm";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="bNMoP48F";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ZB5Aq7VM"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="yswJp7mk";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="c2IzJ9k3";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Bq9XnZGZ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="mV90ntUf"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id AB9361F7E7;
-	Tue,  6 Oct 2026 16:07:59 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 865BA1F790;
+	Tue,  6 Oct 2026 16:16:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791302883; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1791303423; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vpz0lypCKncyT6u1lIVJMRv1p/Y8ZdSjusZqENW2IY4=;
-	b=tI9mxjP+BcEAcaXMpM5yIQeIKtl2erhMgGxZMBaoNbLiAn/ralilVAYvRMSCg83oXE2Dul
-	/rcQNYaUhlbQ2OqlYInBK/GKI9uScry26MaNAsQbOkq6fu5BxXGkz5ykD86m7XzIXzB1ed
-	H4OhtrUwfi1O5q/t+oAWMPVGAIQ6At4=
+	bh=ns/hZi66/IrEl2Y6Vcc6eI+8eCzOlyk0H+fCfWrrKR0=;
+	b=yswJp7mkQ2kuBhF3Gy+GUyAhb0Ny+pTQ41frbawuJ+Hu3qCgaIwju1ZCBGbNmj8iDABbbb
+	zf6UtRKO83WbGWxHlGnAhvjbPFx4b2uffm0nXkdauORoMk6bD/MlI5BzBTKYICeSJDgJCC
+	zS1zjnCOoJHJYmZ5HKBalX4s8/34c5M=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791302883;
+	s=susede2_ed25519; t=1791303423;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vpz0lypCKncyT6u1lIVJMRv1p/Y8ZdSjusZqENW2IY4=;
-	b=oHbEE9RmexxR05ENl2aqtxKfdPBNl48y3O1UYrNERHHiSqZIYvi7aocxjVBrhvSsXdA50u
-	1dcuaoWl4xbYd9Bg==
+	bh=ns/hZi66/IrEl2Y6Vcc6eI+8eCzOlyk0H+fCfWrrKR0=;
+	b=c2IzJ9k3+3VrL+2m3IuzNN295pCfNZ8wBjLfVkXVc4zJBIhUMgNZzZyX29z+o/oFYe1kHF
+	6euJuKX0i4rytFBA==
 Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=bNMoP48F;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=ZB5Aq7VM
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791302879; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1791303419; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vpz0lypCKncyT6u1lIVJMRv1p/Y8ZdSjusZqENW2IY4=;
-	b=bNMoP48FmyYjm+tRRP/ZrF6wQdg14oh71FKhGIH9VaXPBPzjmewgeEJJweNXm868z2ePhn
-	yHatpZLA5mOsjwLz4v725ezar9rWeNV6gUgnZepvfKF4cmkC25B0vdNcMCCU/vOj/AGV8f
-	3LMWV8zBfkNkazPT0BK7b+c1AsxGQPQ=
+	bh=ns/hZi66/IrEl2Y6Vcc6eI+8eCzOlyk0H+fCfWrrKR0=;
+	b=Bq9XnZGZr0VXvS70w8VGf3MNy3GeToFxxi5uymn8x2rOnpe45RdE1K2ElQgFBAweMEDUNX
+	IG0yDrJJzR5kggNKhgNgYL1/Xvnc0xTjyc2OkAH6Q0mz4YW45YJ+9Ouogn4WQPxbtqAYAP
+	32NgtplKOKGy+rUrNuHrNM4eg3mLzUA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791302879;
+	s=susede2_ed25519; t=1791303419;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=vpz0lypCKncyT6u1lIVJMRv1p/Y8ZdSjusZqENW2IY4=;
-	b=ZB5Aq7VMhp+yxN0eSppGIRjCN3+irL+38c17gGGufLxFRp8acBv45111meZrEjBGmPdNAH
-	exF56cVrA3O3oZAw==
+	bh=ns/hZi66/IrEl2Y6Vcc6eI+8eCzOlyk0H+fCfWrrKR0=;
+	b=mV90ntUfNhFbcYzuTq/60ooElRqmBW9NumUgnB4t/7STxofAh9UA5y8fXSRIfdXOHm6MKG
+	Q13hTDxAg+b8gDDg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7A024133CF;
-	Tue,  6 Oct 2026 16:07:59 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3752D137AC;
+	Tue,  6 Oct 2026 16:16:59 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id NIufFd8cxWrNFwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 06 Oct 2026 16:07:59 +0000
+	id NvFABPsexWqhIQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Tue, 06 Oct 2026 16:16:59 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id DD43BA13FA; Tue, 06 Oct 2026 18:07:58 +0200 (CEST)
-Date: Tue, 6 Oct 2026 18:07:58 +0200
+	id 7D7FBA13FA; Tue, 06 Oct 2026 18:16:58 +0200 (CEST)
+Date: Tue, 6 Oct 2026 18:16:58 +0200
 From: Jan Kara <jack@suse.cz>
-To: Hsiu-Hsien Lee <swinds24@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>, 
-	Harshad Shirwadkar <harshadshirwadkar@gmail.com>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: don't fail journal recovery on an incomplete fast
- commit
-Message-ID: <s3rlm3edtb4hfcggiqkqotywfhobjnwmc2v373nwvkwihitstg@66kypvunlqqm>
-References: <20261006070005.1209234-1-swinds24@gmail.com>
+To: hengyul@cs.unc.edu
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, 
+	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	yi.zhang@huawei.com, linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: do not accept rec_len 0 for block sizes below 64k
+Message-ID: <qvaeibtro3i7xxpxbgomjmsvnaejtlo5if57lp5aeowl42e6v2@x3ckk5ovep4s>
+References: <20261006111546.3252481-1-hengyul@cs.unc.edu>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -92,175 +88,106 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261006070005.1209234-1-swinds24@gmail.com>
-X-Spamd-Result: default: False [-2.51 / 50.00];
+In-Reply-To: <20261006111546.3252481-1-hengyul@cs.unc.edu>
+X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	FREEMAIL_TO(0.00)[gmail.com];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,suse.cz,gmail.com,linux.alibaba.com,linux.ibm.com,huawei.com];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	RCPT_COUNT_SEVEN(0.00)[11];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
 	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	ARC_NA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.com:email]
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: AB9361F7E7
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	RCVD_TLS_LAST(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
+	MIME_TRACE(0.00)[0:+];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	TO_DN_NONE(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,unc.edu:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 X-Spam-Flag: NO
+X-Spam-Score: -2.30
+X-Spam-Level: 
 
-On Tue 06-10-26 15:00:05, Hsiu-Hsien Lee wrote:
-> If the system crashes while the first fast commit after a full commit is
-> being written, the fast commit area can hold the head of that fast
-> commit without a valid tail.  ext4_fc_replay_scan() treats this as an
-> error as long as no valid tail has been seen: an invalid tag length or
-> an unknown tag returns -ECANCELED, a tail with a wrong tid or checksum
-> returns -EFSBADCRC.  jbd2_journal_recover() then fails, the file system
-> can be mounted neither read-write nor read-only, and the regular journal
-> transactions committed before the fast commit are not replayed either:
+On Tue 06-10-26 07:15:46, hengyul@cs.unc.edu wrote:
+> From: Hengyu Liang <hengyul@cs.unc.edu>
 > 
->   JBD2: journal recovery failed
->   EXT4-fs (sdb): error loading journal
+> Commit afa6d5a16bf2 ("ext4: remove PAGE_SIZE checks for rec_len
+> conversion") made ext4_rec_len_from_disk() read a rec_len of 0 as "this
+> entry covers the whole block" for every block size.
 > 
-> The tail is written last and fsync() does not return before it has
-> completed, so an incomplete fast commit was never reported as durable.
-> Handle it like jbd2 handles a transaction without a valid commit block:
-> stop the scan and replay what is valid.  This is already what happens
-> when an earlier fast commit in the area has a valid tail.  Log a
-> warning so that the dropped fast commit is visible.
+> However, this special value only exists for block sizes of 64k and
+> more. With smaller blocks, a rec_len of 0 means that the directory
+> block is corrupted. As of now, a directory block that has been
+> overwritten with zeroes is treated as an empty block. The kernel no
+> longer reports the corruption and can store new entries in that block,
+> while e2fsck still reports the block as corrupted.
 > 
-> Reproducer, with the power cut emulated by copying the device while it
-> is mounted:
+> The issue can be reproduced on a file system without metadata_csum:
 > 
->   mkfs.ext4 -O fast_commit /dev/sdb
->   mount /dev/sdb /mnt; mkdir /mnt/d
->   create 20 files in /mnt/d; sync
->   write a fragmented file and modify the 20 files, fsync one file
->       (one fast commit spanning several blocks)
->   copy /dev/sdb while still mounted, then zero the block holding the
->   fast commit tail in the copy
->   mount the copy
+>     mke2fs -q -t ext4 -b 1024 -O ^metadata_csum,^dir_index img 8M
+>     mount -o loop img /mnt
+>     mkdir /mnt/d
+>     for i in $(seq 100); do touch /mnt/d/file_with_a_long_name_$i; done
+>     umount /mnt
+>     dd if=/dev/zero of=img bs=1024 count=1 conv=notrunc \
+>         seek=$(debugfs -R "bmap d 1" img)
+>     mount -o loop img /mnt
+>     touch /mnt/d/new
 > 
-> Without this patch the mount fails as above.  With it, the mount
-> succeeds, the state after sync is recovered and e2fsck finds no errors.
-> The same holds when a full commit precedes the torn fast commit, in
-> which case the full commit is now replayed as well.
+> Before commit afa6d5a16bf2 ("ext4: remove PAGE_SIZE checks for rec_len
+> conversion"), the last command fails with "Structure needs cleaning".
+> After that commit, it succeeds.
 > 
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-> Assisted-by: Claude Opus 5.5
-> Signed-off-by: Hsiu-Hsien Lee <swinds24@gmail.com>
-> ---
->  fs/ext4/fast_commit.c | 36 +++++++++++++++++++++++++++++-------
->  1 file changed, 29 insertions(+), 7 deletions(-)
+> This patch makes ext4_rec_len_from_disk() return the on-disk value
+> unchanged when the block size is below 64k, as e2fsprogs does.
 > 
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 0cac890cf370..5649447b9524 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -2427,6 +2427,26 @@ static bool ext4_fc_value_len_isvalid(struct ext4_sb_info *sbi,
->  	return false;
->  }
->  
-> +/*
-> + * The fast commit area ends with an invalid tag or a tail that does not
-> + * match.  This is how a fast commit that was only partially written before
-> + * a crash looks like: its tail is written last and fsync() only returns
-> + * after the tail write has completed, so nobody was told that this fast
-> + * commit is durable and it can simply be dropped, the same way jbd2 drops
-> + * a transaction without a valid commit block.  Everything up to the last
-> + * valid tail is still replayed.
-> + */
-> +static int ext4_fc_replay_scan_end(struct super_block *sb,
-> +				   struct ext4_fc_replay_state *state,
-> +				   int off, const char *reason)
-> +{
-> +	if (!state->fc_replay_num_tags)
-> +		ext4_msg(sb, KERN_WARNING,
-> +			 "ignoring incomplete fast commit at block %d: %s",
-> +			 off, reason);
+> Fixes: afa6d5a16bf2 ("ext4: remove PAGE_SIZE checks for rec_len conversion")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Hengyu Liang <hengyul@cs.unc.edu>
 
-I don't think there's need to print any message when discovering incomplete
-fast commit. As you mention, it is a perfectly normal situation (similarly
-as incomplete normal transaction we spot in a journal). I'd perhaps just
-print ext4_debug() message (and I don't think conditioning on
-fc_replay_num_tags makes sense in that case. So probably just drop the
-helper function and print the debug message and set the return value
-inline...
+Makes sense. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+BTW, the kernel never allowed larger than 64k block size so I'm kind of at
+loss why we have that strange code trying to accommodate upto 256k
+blocksize here. I'd just delete that code (not really related to your
+chnage). Ted?
 
 								Honza
 
-> +	return JBD2_FC_REPLAY_STOP;
-> +}
-> +
->  /*
->   * Recovery Scan phase handler
->   *
-> @@ -2440,7 +2460,9 @@ static bool ext4_fc_value_len_isvalid(struct ext4_sb_info *sbi,
->   * This function returns JBD2_FC_REPLAY_CONTINUE to indicate that SCAN is
->   * incomplete and JBD2 should send more blocks. It returns JBD2_FC_REPLAY_STOP
->   * to indicate that scan has finished and JBD2 can now start replay phase.
-> - * It returns a negative error to indicate that there was an error. At the end
-> + * It returns a negative error to indicate that there was an error. An invalid
-> + * or incomplete fast commit at the end of the area is not an error, see
-> + * ext4_fc_replay_scan_end(). At the end
->   * of a successful scan phase, sbi->s_fc_replay_state.fc_replay_num_tags is set
->   * to indicate the number of tags that need to replayed during the replay phase.
->   */
-> @@ -2489,8 +2511,8 @@ static int ext4_fc_replay_scan(journal_t *journal,
->  		val = cur + EXT4_FC_TAG_BASE_LEN;
->  		if (tl.fc_len > end - val ||
->  		    !ext4_fc_value_len_isvalid(sbi, tl.fc_tag, tl.fc_len)) {
-> -			ret = state->fc_replay_num_tags ?
-> -				JBD2_FC_REPLAY_STOP : -ECANCELED;
-> +			ret = ext4_fc_replay_scan_end(sb, state, off,
-> +						      "invalid tag length");
->  			goto out_err;
->  		}
->  		ext4_debug("Scan phase, tag:%s, blk %lld\n",
-> @@ -2530,8 +2552,8 @@ static int ext4_fc_replay_scan(journal_t *journal,
->  				state->fc_regions_valid =
->  					state->fc_regions_used;
->  			} else {
-> -				ret = state->fc_replay_num_tags ?
-> -					JBD2_FC_REPLAY_STOP : -EFSBADCRC;
-> +				ret = ext4_fc_replay_scan_end(sb, state, off,
-> +							      "invalid tail");
->  			}
->  			state->fc_crc = 0;
->  			break;
-> @@ -2551,8 +2573,8 @@ static int ext4_fc_replay_scan(journal_t *journal,
->  				EXT4_FC_TAG_BASE_LEN + tl.fc_len);
->  			break;
->  		default:
-> -			ret = state->fc_replay_num_tags ?
-> -				JBD2_FC_REPLAY_STOP : -ECANCELED;
-> +			ret = ext4_fc_replay_scan_end(sb, state, off,
-> +						      "unknown tag");
->  		}
->  		if (ret < 0 || ret == JBD2_FC_REPLAY_STOP)
->  			break;
+> ---
+>  fs/ext4/ext4.h | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 724a27e8be61..ab716a5ad6da 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2611,6 +2611,13 @@ ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize)
+>  {
+>  	unsigned len = le16_to_cpu(dlen);
+>  
+> +	/*
+> +	 * Only blocks of 64k and more need the special encoding of rec_len.
+> +	 * For smaller blocks 0 and EXT4_MAX_REC_LEN are not valid lengths
+> +	 * and must not be taken for an entry that spans the whole block.
+> +	 */
+> +	if (blocksize < 65536)
+> +		return len;
+>  	if (len == EXT4_MAX_REC_LEN || len == 0)
+>  		return blocksize;
+>  	return (len & 65532) | ((len & 3) << 16);
 > -- 
-> 2.43.0
+> 2.53.0
 > 
 -- 
 Jan Kara <jack@suse.com>
