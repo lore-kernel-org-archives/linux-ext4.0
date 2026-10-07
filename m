@@ -1,90 +1,91 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B64F44973A2;
-	Wed,  7 Oct 2026 12:44:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6370F4A5C30;
+	Wed,  7 Oct 2026 12:51:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791377060; cv=none; b=N/sTnwtyj/5JNp6E0UHJTgsgZx9TCGpPTc9651GlqzjBb7086atEe8BHn5FPokymRgU1yU8HLdZkvZTIzqlTREG1x2JNyOVc/Txde26LHcrsz3FV2mjwfChm1+59HcsdG3fIubproYu6JvU+7FMQMpqf29c65ssSs/Zq6uuDTmk=
+	t=1791377505; cv=none; b=gf2cfWvMCp361JvUiNhny9hZhyehjk8BIgE8tyGMg42SslU2ylB7dLO0Iu1Oqc1+Eb/jnT3qwngUEgEWGZv+Tw2bG5KKhf8aPkTh9qCzFD1E8aNPDE5sohiDxZaaYTvuDnj50mkIbBPkIFzt8xdcyvdPKphbmojx7NMUtygW5bc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791377060; c=relaxed/simple;
-	bh=4rZ1YrUR53Ww2fXvW5mSKt2hnfigChYTV1LZHZbGtBk=;
+	s=arc-20240116; t=1791377505; c=relaxed/simple;
+	bh=q3lSLRJs+E52nTVedTXEt+2A0lsIwNzJPeN8b+lUDTM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tJ69Fq0wqo0yOS1J7aTJpnSu7/a53yLEHhUqQwlRzxicF31hHV9a36AznhhYE3x2fluX9YaKM9wtRVz08qjPUQec2I7lnIDxEDuirPxh9oExuDDPChvI++Fsy+CepqnFVJcxM7nfDjY75Kh3jahADVIGDWYY7DUkZUgPqP/itX0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=CmSTxDjk; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=hAA19RFU; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=EQYLwAxC; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=oNpD3aU1; arc=none smtp.client-ip=195.135.223.131
+	 Content-Type:Content-Disposition:In-Reply-To; b=iANbB/SHEKObgxpVi/sPrz5hETJ5u40acn1FfKPuBbLtVKPJkvaShcY7hU3RXMNNv/TsSO3Or3sc4sKX6NqjsdyhIgCus7R8ku/q+tp4j8NMhASdodt4NgIRZIPMOpJGXrQ3ROKoWhRuv09X+rFY1P9cfsq53rL/AULh92jaUlQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=bX7t546R; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=l+6wS696; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=FL8XE92M; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=OQFqw/g6; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="CmSTxDjk";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="hAA19RFU";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="EQYLwAxC";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="oNpD3aU1"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="bX7t546R";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="l+6wS696";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="FL8XE92M";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="OQFqw/g6"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 44FCE1F391;
-	Wed,  7 Oct 2026 12:44:09 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id E001321BDC;
+	Wed,  7 Oct 2026 12:51:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791377050; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1791377493; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=W8YmGbG2QVXUCosoSguT8Yoo2PP6BTDi63ecnP8k3G0=;
-	b=CmSTxDjkgIFyVHegcX43tHPfw5JVNiwywQfk9SEBg8vzBdvTNupD0aPAuTvYnwTEGyfKQ2
-	uM+bJE4bmvsscd6ojs5nUtYEQV/gefBbfKJBU/BqmJT6nn4dUk3cDGcn1ILuS4UQL1vHMQ
-	FJvEvLPGkTWBvpFGVQ/5/UDOzND11Sk=
+	bh=O1xDxqZSMFD+YczUQdJtNul/b6irsruiZxlmJvGzZuI=;
+	b=bX7t546RDCNU8h9sT+3g6pMGKtt4GYDGw7FMU6vjxs7SAQFirBIrat1Eval1EWqy81bx09
+	UhUQQIs1Hl51ftXAPTMv1rIUevaQrXmrdzYpxklFiKF9tbfUv5grpDnwW7DrBpLu1a2aZh
+	/A7kcXSG02llXWXeqCrpY3pvviXEiTU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791377050;
+	s=susede2_ed25519; t=1791377493;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=W8YmGbG2QVXUCosoSguT8Yoo2PP6BTDi63ecnP8k3G0=;
-	b=hAA19RFUFz+9mMGtQa2okeWhIb2HVFn9YFKlsYOsh5AgCO9OLeEKyBXMcyN/vQKPFSduPx
-	ll3dejAUr7FQljDw==
-Authentication-Results: smtp-out2.suse.de;
-	none
+	bh=O1xDxqZSMFD+YczUQdJtNul/b6irsruiZxlmJvGzZuI=;
+	b=l+6wS696P/If8n02xyLKIbMZWUSfsf0b73X9BSt4+FxUx32YipoNUt9GK+3IZscVippuz6
+	m26bebmCtKId9hDQ==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=FL8XE92M;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="OQFqw/g6"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791377049; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1791377492; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=W8YmGbG2QVXUCosoSguT8Yoo2PP6BTDi63ecnP8k3G0=;
-	b=EQYLwAxC6gaYjMoZSOWCxS1W+vRaKShHp49P6g4qzo0stm2g0ITYSt43qZeX4lp/+GSSaj
-	KOBqIEeHA5ONQX9jZ7Tg0xE0Ty/OiLbCeMR4818V3KDPMTPxhsJOmmQY/YM3FHhcykj8W+
-	JUPUpegw3Fg2GbmRyKlgZPscRw8uEHs=
+	bh=O1xDxqZSMFD+YczUQdJtNul/b6irsruiZxlmJvGzZuI=;
+	b=FL8XE92MY8zzeT9DMKt9JM+IK0xPcgKIfE7Yve1j2TzZeWosnIpDycsVl+FetnRc1ZUIAE
+	pd6Va59DCdsG2Sxju/53zlZq5C6+/VY5PIQb66J5GCTIKoxeRywD5jJhl3QK0bh2Q2qLYc
+	uUvGbZp6YVeDtCCqcvqnK1zyM0qvi7U=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791377049;
+	s=susede2_ed25519; t=1791377492;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=W8YmGbG2QVXUCosoSguT8Yoo2PP6BTDi63ecnP8k3G0=;
-	b=oNpD3aU1kQqKiVwq7O7SA/u8oVOVixf62TuGUi7uZeTyS0i5xYX9YRi8gNsYv4ZW8NbktC
-	0PT/ovSrFjUL0IDg==
+	bh=O1xDxqZSMFD+YczUQdJtNul/b6irsruiZxlmJvGzZuI=;
+	b=OQFqw/g6eEaKCcdT96AOSxNH/+3XFEq3Z/r26Gr/RLMMrPIPkn4gLZZ89TzB3at3yy7OMO
+	JUCsBNyd1nAwBoCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EC4DB13354;
-	Wed,  7 Oct 2026 12:44:08 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AB0A013354;
+	Wed,  7 Oct 2026 12:51:32 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id vYPhMZg+xmpdWgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 07 Oct 2026 12:44:08 +0000
+	id qY54IVRAxmr3YQAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 07 Oct 2026 12:51:32 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 4EEE2A13FE; Wed, 07 Oct 2026 14:44:04 +0200 (CEST)
-Date: Wed, 7 Oct 2026 14:44:04 +0200
+	id EF254A13FE; Wed, 07 Oct 2026 14:51:31 +0200 (CEST)
+Date: Wed, 7 Oct 2026 14:51:31 +0200
 From: Jan Kara <jack@suse.cz>
 To: daejun7.park@samsung.com
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>, 
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>, 
-	Harshad Shirwadkar <harshadshirwadkar@gmail.com>, Li Chen <me@linux.beauty>, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH] jbd2: don't start a fast commit while the journal is
- marked empty
-Message-ID: <coe3to72lu7bpma674x2z5yy6ng3ixia5xkqcx3halyijbmcnr@j5fierqu2stw>
-References: <20261007-jbd2-fc-after-flush-v1-1-548bd91cd959@samsung.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org, 
+	Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>, 
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, Zhang Yi <yi.zhang@huawei.com>, 
+	Zhang Yi <yi.zhang@huaweicloud.com>, Harshad Shirwadkar <harshadshirwadkar@gmail.com>, 
+	Li Chen <me@linux.beauty>, linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH 1/2] ext4: don't cache unzeroed blocks as written after a
+ failed zeroout
+Message-ID: <acwwxbc3qzyiwc6djmzemig2eutiia4zsi4kjeyd3tquhcmrpn@kuntjv2owek7>
+References: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
+ <20261007-ext4-fc-zeroout-v1-1-b86de6439431@samsung.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -93,128 +94,111 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261007-jbd2-fc-after-flush-v1-1-548bd91cd959@samsung.com>
-X-Spam-Score: -2.30
+In-Reply-To: <20261007-ext4-fc-zeroout-v1-1-b86de6439431@samsung.com>
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: E001321BDC
 X-Spam-Level: 
 X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.30 / 50.00];
+X-Spam-Score: -2.51
+X-Spamd-Result: default: False [-2.51 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[15];
-	TAGGED_RCPT(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,suse.com,suse.cz,vger.kernel.org,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com,linux.beauty];
+	MX_GOOD(-0.01)[];
 	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[14];
 	RCVD_TLS_LAST(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email,samsung.com:email]
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,suse.cz,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,huaweicloud.com,linux.beauty];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[samsung.com:email,suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email]
 
-On Wed 07-10-26 09:41:09, Daejun Park via B4 Relay wrote:
+On Wed 07-10-26 09:41:20, Daejun Park via B4 Relay wrote:
 > From: Daejun Park <daejun7.park@samsung.com>
 > 
-> jbd2_journal_flush() checkpoints everything, and
-> jbd2_mark_journal_empty() then writes the journal superblock with
-> s_start == 0 and the fast commit feature cleared. It sets JBD2_FLUSHED
-> so that the next commit writes the log tail and the feature back, but
-> only jbd2_journal_commit_transaction() looks at that flag. A fast commit
-> started before the next full commit writes its blocks while the
-> superblock on disk still says the log is empty: jbd2_journal_recover()
-> returns at once and the fast commit is never replayed.
+> ext4_ext_convert_to_initialized() may zero out the blocks before and
+> after the range being written and convert them to written together with
+> it, instead of splitting them off the unwritten extent. If
+> ext4_ext_zeroout() fails for one side, it falls back to splitting the
+> extent, so the blocks on that side stay unwritten in the extent tree.
+> But zero_ex1 or zero_ex2 keeps its length, and ext4_zeroout_es() still
+> inserts those blocks into the extent status tree as written.
 > 
-> On ext4 with -O fast_commit this happens after ext4_freeze(), and after
-> a remount to read-only, which flushes the journal in
-> ext4_mark_recovery_complete(), once the file system is read-write again.
-> EXT4_IOC_CHECKPOINT and online resize flush it as well. An fsync that a
-> fast commit handles after one of them is lost if the system crashes
-> before the next full commit, which can be up to the commit interval
-> later:
+> Until that entry goes away, a read of those blocks returns whatever was
+> on the disk before the extent was allocated. A write to them is mapped
+> from the cache and goes in place without converting the extent, so its
+> data would read back as zeroes once the entry is dropped. To reproduce
+> on 4 KiB blocks with -o nodelalloc: fallocate 32 KiB, map the last seven
+> blocks of that extent to dm-error, write the first block, restore the
+> mapping and read the second block. It returns the old disk contents
+> instead of zeroes.
 > 
->   mount -o commit=60 (-O fast_commit file system)
->   echo first > a; sync
->   fsfreeze -f; fsfreeze -u      # or: remount ro, then rw
->   write b; fsync b              # one fast commit, s_start still 0
->   crash (kill the VM), mount
->   b is missing
+> Clear the length of an extent that could not be zeroed out, so that
+> ext4_zeroout_es() skips it, as the comment at the out label intends.
 > 
-> Refuse to start a fast commit while JBD2_FLUSHED is set, as is already
-> done before the first full commit. ext4 then falls back to a full
-> commit, which writes the log tail, and the fast commits after it are
-> recovered again. fc_info counts the refused fast commit as ineligible,
-> as it does for the existing check.
-> 
-> Fixes: ff780b91efe9 ("jbd2: add fast commit machinery")
+> Fixes: 308c57ccf431 ("ext4: if zeroout fails fall back to splitting the extent node")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 
-Yeah, good catch! Feel free to add:
+Looks good. Feel free to add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
-> Tested in QEMU on ext4 dev 9091c97be340, crashing by killing QEMU: the
-> sequence above loses b without this change and keeps it with it, both
-> after fsfreeze and after a remount ro then rw. A second fsync after the
-> fallback is a fast commit again and is recovered. xfstests ext4/044
-> ext4/045 generic/455 generic/456 generic/482 with -O fast_commit, and
-> generic/068 generic/085 generic/390, give the same results as without
-> the change (generic/455 fails on both).
-> ---
->  fs/jbd2/journal.c | 13 ++++++++++++-
->  1 file changed, 12 insertions(+), 1 deletion(-)
+>  fs/ext4/extents.c | 8 ++++++--
+>  1 file changed, 6 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 00f5a98f3d..22576af8c8 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -695,7 +695,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
->   * it to complete. Returns 0 if a new fast commit was started. Returns -EALREADY
->   * if a fast commit is not needed, either because there's an already a commit
->   * going on or this tid has already been committed. Returns -EINVAL if no jbd2
-> - * commit has yet been performed.
-> + * commit has yet been performed, or none since the journal was last marked
-> + * empty.
->   */
->  int jbd2_fc_begin_commit(journal_t *journal, tid_t tid)
->  {
-> @@ -714,6 +715,16 @@ int jbd2_fc_begin_commit(journal_t *journal, tid_t tid)
->  		return -EALREADY;
->  	}
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 836396ea79..d65e30f3c1 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3755,8 +3755,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+>  				ext4_ext_pblock(ex) + split_map.m_lblk +
+>  				split_map.m_len - ee_block);
+>  			err = ext4_ext_zeroout(inode, &zero_ex1);
+> -			if (err)
+> +			if (err) {
+> +				zero_ex1.ee_len = 0;
+>  				goto fallback;
+> +			}
+>  			split_map.m_len = *allocated;
+>  		}
+>  		if (split_map.m_lblk - ee_block + split_map.m_len <
+> @@ -3769,8 +3771,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+>  				ext4_ext_store_pblock(&zero_ex2,
+>  						      ext4_ext_pblock(ex));
+>  				err = ext4_ext_zeroout(inode, &zero_ex2);
+> -				if (err)
+> +				if (err) {
+> +					zero_ex2.ee_len = 0;
+>  					goto fallback;
+> +				}
+>  			}
 >  
-> +	/*
-> +	 * The log was emptied and the superblock on disk says so, which makes
-> +	 * recovery skip the fast commit area as well. Only a full commit
-> +	 * records the log tail again.
-> +	 */
-> +	if (journal->j_flags & JBD2_FLUSHED) {
-> +		write_unlock(&journal->j_state_lock);
-> +		return -EINVAL;
-> +	}
-> +
->  	if (journal->j_flags & JBD2_FULL_COMMIT_ONGOING ||
->  	    (journal->j_flags & JBD2_FAST_COMMIT_ONGOING)) {
->  		DEFINE_WAIT(wait);
+>  			split_map.m_len += split_map.m_lblk - ee_block;
 > 
-> ---
-> base-commit: 9091c97be34083587a75db174aab51551d8e8543
-> change-id: 20261006-jbd2-fc-after-flush-2ef9bbc32cea
-> 
-> Best regards,
 > -- 
-> Daejun Park <daejun7.park@samsung.com>
+> 2.43.0
 > 
 > 
 -- 
