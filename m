@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B5D0267B89;
-	Wed,  7 Oct 2026 00:41:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B563235045;
+	Wed,  7 Oct 2026 00:41:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791333681; cv=none; b=IvZJffEGAq1po/U+stdtVJ4phzsaeg+QUsKEGvXkUqyWwgLGLJaBo2VzF4GWNZkUT552fwXds2rkTPsuIIiD2FWWAVJEF7IIX3Ium1p1O83qMI3tpqgkrQe7SqLy69/2qzOwoouSl42JKiFA1rN8eDEbYXCuWNoaZJnqvZ9KTYc=
+	t=1791333681; cv=none; b=fXAIX/lVddDDBVVJWIN2HI6KnOvmxQqRPz6oRqA7xoXE8ZJMlF6SN3YDUhNlfP0lkSHFqymhQ0V4HxSsA7G221g6EHFPJ/xXBt9Pcv7LOl98pPGZouHzXARVqrsUxAaa3PObIaXBDPgShTjGEoKyCyo9TaDnbg7R5J7E/RxpQUY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1791333681; c=relaxed/simple;
-	bh=8F9GJMv3WTxZjI1Rk1NLaQRRVl0LopGzPbJ88DUUPZw=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=eoXhceq8DLRwQuZBLX5RU6L90ceFMWqqO6pzZ/kY36Bm8bpsKPSUF7h276tWoAC7nFb9KAVjj8YAjDnsCuOBbLRoF8gadsIAoMUIoWXJL4d/kVtZDg8xLOYc7DbgGrTFWTeC3mctL+FE/k6YkCu+s15V+dmgYepXz9x25J6MjHU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GEQ2bGCM; arc=none smtp.client-ip=10.30.226.201
+	bh=b5wK8NanvJBqj0H0hxLB6xceEz9anjUIHgRshKqVREI=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=m1C/sX5z2lM0XQCnHwezhzVLW29/ebVemotvM6QmZVd6DfqXirJeqAaUnEbNquis1L7mxDFh310l/3h+LSZbH6cfTTlJ12LXQzwnQ2isQnWhPG0nzbiece7UXAUuFpUVjPCscEONnU95jxi75z1SlcI3osrSyGa555O3Cuz6F3M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kHvoRIbG; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GEQ2bGCM"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id C8B47C2BCF4;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kHvoRIbG"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id F14F1C4AF61;
 	Wed,  7 Oct 2026 00:41:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791333680;
-	bh=8F9GJMv3WTxZjI1Rk1NLaQRRVl0LopGzPbJ88DUUPZw=;
-	h=From:Subject:Date:To:Cc:Reply-To:From;
-	b=GEQ2bGCMI6fVGYvscwyFtlMbzTu99BNP0Ee+N50qsUL1fwXxGaft3/sU5TfmxlJZd
-	 T1M3ginJyo7pd0XzkWgs7nMMQwnSLrXuG9vQMG2oVgHbr8sdV1sDyqh5qPEJOEj5bN
-	 j4JbyFZU96wN/nqd7+TEauxaivPlyJn12VZfgK8qyrWZ6xYZ86CSRvGbDmlDSyjaU+
-	 n8jB/pWT9P9hVUArnRpe8NrwQauxP/B2e5bf1m03xm2A4o6Tw8AF9Z+WA5TX9RpN8R
-	 DoHhKRup9b3Ao5dpROlpfk6wOpgP7sBrTsJgPkmx88hB7rKS3+DBzVf+fMlnDmGc1Z
-	 +73yzdJRQSGxw==
+	s=k20201202; t=1791333681;
+	bh=b5wK8NanvJBqj0H0hxLB6xceEz9anjUIHgRshKqVREI=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
+	b=kHvoRIbGitdQzUjkmz2LDIRlAknNNB5eaMyEGNqLa8Qthk+iQJUYOnPjgDPz/EspA
+	 pL/x0/zI9+J+ndTU796NUK23zbXMkLftCU1msWUqzJh7PjUSFAv6NQQSIVdkYSOv+x
+	 n0UZ1GskwsBjQAPhtN0VGCPXv1/VlpgBz9vqxlwPCAQAho/ytiqV+ZZPzF5LK/YWGK
+	 gBSHUMhko+02aN9N9l82ezR7UplMoF9Uh2FiH66AaBB6YEzpgGnOqi9cjGElGKn8S0
+	 Y/0s4eCIIMP3NOlQS6X2X4avMrQT2qULF8fpB7Baku7t/Dv760V7DNPqmaHQ6d0vRs
+	 pyqlp7ippj4/A==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B69ACCA5FFF;
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8AE7CA6007;
 	Wed,  7 Oct 2026 00:41:20 +0000 (UTC)
 From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Subject: [PATCH 0/2] ext4: fix fast commit and extent status after
- unwritten extent zero-out
-Date: Wed, 07 Oct 2026 09:41:19 +0900
-Message-Id: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
+Date: Wed, 07 Oct 2026 09:41:21 +0900
+Subject: [PATCH 2/2] ext4: track zeroed out blocks of unwritten extents for
+ fast commit
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -41,9 +41,9 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAC+VxWoC/x3MQQqAIBBA0avIrBuYJJK6SrQIG2s2GmoRhXdPW
- r7F/y8kjsIJRvVC5EuSBF/RNgrsvviNUdZq0KT7lqhHvnOHzuLDMYQzI3d6IDLW6IWgVkdkJ/d
- /nOZSPvlk5G9hAAAA
+Message-Id: <20261007-ext4-fc-zeroout-v1-2-b86de6439431@samsung.com>
+References: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
+In-Reply-To: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
 To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>, 
  Baokun Li <libaokun@linux.alibaba.com>, 
@@ -54,11 +54,11 @@ Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791333679; l=2396;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791333679; l=4004;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=8F9GJMv3WTxZjI1Rk1NLaQRRVl0LopGzPbJ88DUUPZw=;
- b=/YkCKYdsa6j3xDyVIOKw7GHwwaFkrVXKMcE9hsv/SUX2Ug0nWmTQhTjKguF1Joo4Ep8RZVOSC
- b6YxKqDly2eBKTzPXuOIzIhiZl0nCthtHup8zICTQP72ytRpuPUb2aQ
+ bh=d9SheBZRfYCrMhVNszvP5FRUiKvPyhSXBHKUCm3sE90=;
+ b=Oe6J+czpj47YiaLfNZjCZv0tPnykP9GJOHM9ggfO02ilZpNnHomn97vqUrbkn5Hzqa6NXBtc3
+ bW0jcDov+XrD0dth0L+cWJBb+DawZSQNDhxwUNKrh/L37CHjfyhAOyl
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
@@ -66,53 +66,106 @@ X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
 X-Original-From: Daejun Park <daejun7.park@samsung.com>
 Reply-To: daejun7.park@samsung.com
 
+From: Daejun Park <daejun7.park@samsung.com>
+
 When ext4_ext_convert_to_initialized() converts part of an unwritten
-extent, it may zero out the blocks around the range and convert them
-too, and ext4_split_extent() does the same with a whole extent when a
-split fails. Two things go wrong around that.
+extent, it may zero out the blocks before and after that range (a side
+only if it fits together with the range in s_extent_max_zeroout_kb,
+32 KiB by default, and the extent lies within i_size) and convert them
+to written together with it, instead of splitting them off.
+ext4_split_extent() zeroes out and converts the whole extent when a
+split fails with -ENOSPC, -EDQUOT or -ENOMEM. In both cases
+ext4_map_blocks() reports only the mapped range to fast commit, so the
+other converted blocks are not tracked.
 
-1/2: if the zeroout fails, the blocks on that side stay unwritten in the
-extent tree, but the extent status tree caches them as written. Reads
-return old disk contents, and writes go in place without converting the
-extent, so they read back as zeroes once the entry is dropped.
+A later write to one of those blocks overwrites a written block in
+place. That changes no mapping and is not tracked either, so the next
+fsync is a fast commit that logs the inode but no range for the block.
+After a crash, replay starts from the last full commit, where the block
+is still part of an unwritten extent, and the fsynced data reads back
+as zeroes. Fast commit tracks one [min, max] range per inode, so this
+shows only when no other block beyond the zeroed ones was tracked in
+the same commit, which makes it easy to miss.
 
-2/2: when the zeroout succeeds, fast commit is told only about the range
-that was written. A later in-place overwrite of a zeroed block is not
-tracked either, and after a crash the fsynced data reads back as zeroes.
+The first conversion runs when writes allocate through ext4_map_blocks()
+with EXT4_GET_BLOCKS_CREATE, for example with -o nodelalloc,
+-o dioread_lock or DAX. On a 4 KiB block file system made with
+-O fast_commit and mounted with -o nodelalloc,commit=60:
 
-2/2 depends on 1/2. With 2/2 alone, the blocks that failed to zero out
-are tracked as well, and fast commit replay converts them to written on
-disk, so the old contents survive the crash: with the dm-error
-reproducer described in 1/2, block 1 reads back as old data after
-replay on a kernel with only 2/2, and as zeroes with both patches.
+  fallocate -l 32k f; sync      # blocks 0-7 unwritten
+  write block 0; fsync f        # zeroes out 1-7, tracks only 0
+  write block 2; fsync f        # in place, nothing tracked
+  crash (kill the VM), mount    # fast commit replay
+  block 2 reads back as zeroes
 
-Tested in QEMU on ext4 dev 9091c97be340 plus this series:
- - the reproducer described in 2/2, with -o nodelalloc and with
-   -o dioread_lock, also on a PROVE_LOCKING and DEBUG_ATOMIC_SLEEP kernel
-   (no report), and the dm-error reproducer described in 1/2;
- - xfstests ext4/044 ext4/045 generic/455 generic/456 generic/482 with
-   -O fast_commit, with and without -o nodelalloc: the same results as
-   without the series (generic/455 fails on both, at different marks);
- - the ext4 KUnit tests, 72 of 72, including the split cases that zero
-   out. They are the only ones to reach the second hunk of 2/2, and they
-   run without fast commit, so its tracking is not exercised.
+Track the zeroed out blocks in ext4_zeroout_es(), and the whole extent
+in ext4_split_extent_zeroout() when it converts one to written. Both run
+under i_data_sem, as fast commit tracking already does when
+ext4_ext_dirty() changes an extent kept in the inode (through
+ext4_mark_inode_dirty()).
 
-For stable: 2/2 needs ext4_split_extent_zeroout(), which came in 7.0,
-hence "# 7.0.x". Before that only its ext4_zeroout_es() part applies.
-
+Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
+Cc: stable@vger.kernel.org # 7.0.x
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Daejun Park (2):
-      ext4: don't cache unzeroed blocks as written after a failed zeroout
-      ext4: track zeroed out blocks of unwritten extents for fast commit
+ fs/ext4/extents.c | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
- fs/ext4/extents.c | 29 ++++++++++++++++++++++++-----
- 1 file changed, 24 insertions(+), 5 deletions(-)
----
-base-commit: 9091c97be34083587a75db174aab51551d8e8543
-change-id: 20261006-ext4-fc-zeroout-e429007c72a0
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index d65e30f3c1..3b45b55931 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3149,7 +3149,8 @@ void ext4_ext_release(struct super_block *sb)
+ #endif
+ }
+ 
+-static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
++static void ext4_zeroout_es(handle_t *handle, struct inode *inode,
++			    struct ext4_extent *ex)
+ {
+ 	ext4_lblk_t  ee_block;
+ 	ext4_fsblk_t ee_pblock;
+@@ -3164,6 +3165,12 @@ static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
+ 
+ 	ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
+ 			      EXTENT_STATUS_WRITTEN, false);
++	/*
++	 * The zeroed out blocks became written together with the mapped
++	 * range, but ext4_map_blocks() reports only the mapped range to fast
++	 * commit.
++	 */
++	ext4_fc_track_range(handle, inode, ee_block, ee_block + ee_len - 1);
+ }
+ 
+ /* FIXME!! we need to try to merge to left or right after zero-out  */
+@@ -3400,6 +3407,14 @@ static int ext4_split_extent_zeroout(handle_t *handle, struct inode *inode,
+ 	if (err)
+ 		return err;
+ 
++	/*
++	 * The whole extent is written now, not only the range in @map that
++	 * ext4_map_blocks() reports to fast commit.
++	 */
++	if (flags & EXT4_GET_BLOCKS_CONVERT)
++		ext4_fc_track_range(handle, inode, ee_block,
++				    ee_block + ee_len - 1);
++
+ 	return 0;
+ }
+ 
+@@ -3790,8 +3805,8 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+ 		return path;
+ out:
+ 	/* If we have gotten a failure, don't zero out status tree */
+-	ext4_zeroout_es(inode, &zero_ex1);
+-	ext4_zeroout_es(inode, &zero_ex2);
++	ext4_zeroout_es(handle, inode, &zero_ex1);
++	ext4_zeroout_es(handle, inode, &zero_ex2);
+ 	return path;
+ 
+ errout:
 
-Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+2.43.0
 
 
