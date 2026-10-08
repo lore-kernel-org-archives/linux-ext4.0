@@ -1,246 +1,96 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59FC247CC96;
-	Thu,  8 Oct 2026 10:18:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6FCC486437
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2026 10:26:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791454705; cv=none; b=RflsiPUFG9XwLGRVPkFbnk0cOs0i+FpjEbGfmJJkWBEehpdhD0EWzqfFjJlWFuLa2/mleqFmTHokGCqwWaIGuzSz3J+l07dEv9g42K8juJ7uOaF36mM8VH9rZhB7d/ET42Hv7GdmLaFR5Q2eD/3oN5F1T9HaDxFtfdtfg6W2iHo=
+	t=1791455180; cv=none; b=raioHdGrL+YwoMRY4TnHK8DsenHb4+bAWWqhL85QW0myvoUfH25+cWIUTcbqxyhGPPNkJMOVjDclJIlK3dqpkzpRPyg8Z6V/QB05C6EpQzy6O3kVvO/I8iCZsrWd3S+wWdDTTx0JiZmeal0qVpg79buFYIE+NqeBphMKs1m2nwM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791454705; c=relaxed/simple;
-	bh=4PAVJIQ1iWZznf87QREqdj7wgQzZxrm9wXmgoaYrsdo=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=aWQbStFiu6ENYTgzUXAggBFyGbiu5I1ogycjYT+yo8UX5QWn4ZI/PMQmWbPEfPy3IbSt9/TjE5VATZ80dnxwvr7Lfl0N1HhFqdjIVjT3o/rXNf+F4ZHhqcaHmbnmSgZCiXG/C0wvy8/6HZk4WCn4dy9xke/wiM80h21G+hOLIyI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kpaTjppy; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791455180; c=relaxed/simple;
+	bh=HzR9WNnD+ifJl3sRZqNLJRURJgYZXfwYK1/idMmy6xE=;
+	h=Mime-Version:Subject:From:To:CC:In-Reply-To:Message-ID:Date:
+	 Content-Type:References; b=NPijZ8jeU2DSobJ2lm1UegmaTosK2gXBQemwKtGCOqRfHyqHsSwd7GFX4AiACPPoPhM7XW3wW9f0zfJC7dwbEU4OTimVS4eoGgFboOYgTMIxYxcLjl5pq/2Yvrm7LmaWzn3nZLIZVigWtL9Jh2uE0/cA/c+NQq8hjr03gK6Dx+4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=jQoNIQBZ; arc=none smtp.client-ip=203.254.224.25
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kpaTjppy"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id CBBBEC2BCC7;
-	Thu,  8 Oct 2026 10:18:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791454704;
-	bh=4PAVJIQ1iWZznf87QREqdj7wgQzZxrm9wXmgoaYrsdo=;
-	h=From:Date:Subject:To:Cc:Reply-To:From;
-	b=kpaTjppy0bRIKCP8XCNEKH6VbafPAtIAN4ieTtYoIdbPQR7PJPo6hj4FNeUluizq0
-	 a7Jz+ypakBDi7enl2onsgkx/sNi6I5c+5brdBMPcKamoTV/Ms9JKia9BlFDWVym6jB
-	 cVBDlmpZEu+tWQGQd6pGzh5RbEfBzukr6kzw5Ya3kJT7fqsWPoJF5pQf8FKyffrpqq
-	 Rg81u0tHlma6wlleFKQGS+n5+l7Jcqe1TqdWcJxFWzB0WlyFkGgtL/xDBhZg0DfdjF
-	 26czPhgiPGK/FngcFKyC+c/w44xTAcMcQovlVoEHyKWwTY6QuqTFyB2oNlP3e/tT9V
-	 5C2cXThs5C0FA==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A74E7CA600B;
-	Thu,  8 Oct 2026 10:18:24 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 08 Oct 2026 19:18:24 +0900
-Subject: [PATCH v2] generic: test that preallocated blocks still read
- zeroes after I/O errors
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="jQoNIQBZ"
+Received: from epcas2p4.samsung.com (unknown [182.195.41.56])
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20261008102616epoutp02555f77b2a50cee0f042995c20cbfcdc5~chv3Izf6q3019530195epoutp02i
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2026 10:26:16 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20261008102616epoutp02555f77b2a50cee0f042995c20cbfcdc5~chv3Izf6q3019530195epoutp02i
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+	s=mail20170921; t=1791455176;
+	bh=HzR9WNnD+ifJl3sRZqNLJRURJgYZXfwYK1/idMmy6xE=;
+	h=Subject:Reply-To:From:To:CC:In-Reply-To:Date:References:From;
+	b=jQoNIQBZG1PoMNBYOrZK4iaS8DB0jBSPUEpw0AeNZrr4YEDFTs2pU1sRlOOz57hT3
+	 pMmxnz+hiDTyykXcnZoyghomJzWY9DMVZ9H4o7cYfBRhRggnlsKk0fGo2+TWMT+goM
+	 /fvZe6FZrK/unjW6BvVbbs8IwIPsMn5qn3OqlzMc=
+Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
+	epcas2p2.samsung.com (KnoxPortal) with ESMTPS id
+	20261008102615epcas2p275f7269caa86134c5081a53ee069e69a~chv2t-f9J0793507935epcas2p2h;
+	Thu,  8 Oct 2026 10:26:15 +0000 (GMT)
+Received: from epcas2p4.samsung.com (unknown [182.195.38.205]) by
+	epsnrtp03.localdomain (Postfix) with ESMTP id 4j0mP33rdYz3hhT9; Thu,  8 Oct
+	2026 10:26:15 +0000 (GMT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-ext4-zeroout-eio-test-v2-1-883ac28de4cf@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAO9tx2oC/4WNQQ6CMBBFr0Jm7ZiWYFFX3sOwaGGAWUBNpzQo4
- e5WLuDuv5/89zcQCkwC92KDQImF/ZyhPBXQjnYeCLnLDKUqjVbqirTGCj8UvF8iEnuMJDlQbRx
- ZZS+6hrx9Bep5PbzPJvPIEn14HzdJ/9p/xqRR4805YzqyvanMQ+wkyzycWz9Bs+/7F//tTZ+8A
- AAA
-To: fstests@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
- Christoph Hellwig <hch@infradead.org>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
- Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791454703; l=6468;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=bQ9R3OIOFgPENEMm5FZziQo5b0dVQOH5X5ABnSjdIRU=;
- b=4yudI3ooTojxPcpGuXzftjwu0HiF+LVdly7MhZ4z4WRwXqssiC6zC+vvjXDbhTbZaQb5nWrWz
- 3QgG7ZBfJ3PCd6p/Hd0y3czUV8LO20C5eAZZUrg3tQotFXRelON4tRw
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Mime-Version: 1.0
+Subject: RE:(2) [PATCH v2 2/2] ext4: track zeroed out blocks of unwritten
+ extents for fast commit
 Reply-To: daejun7.park@samsung.com
-
+Sender: Daejun Park <daejun7.park@samsung.com>
 From: Daejun Park <daejun7.park@samsung.com>
+To: Jan Kara <jack@suse.cz>
+CC: Theodore Ts'o <tytso@mit.edu>, "linux-ext4@vger.kernel.org"
+	<linux-ext4@vger.kernel.org>, Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
+	<ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>, Harshad
+	Shirwadkar <harshadshirwadkar@gmail.com>, Li Chen <me@linux.beauty>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"stable@vger.kernel.org" <stable@vger.kernel.org>, Daejun Park
+	<daejun7.park@samsung.com>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+In-Reply-To: <2lgtlg7ydx4qeau2nvv5wkcuc2jkvwdcrav7gbxmxdieptkwl4@emgyfuxuskiu>
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20261008102615epcms2p2858ca95d96bd2b090f2e406aa1bad63c@epcms2p2>
+Date: Thu, 08 Oct 2026 19:26:15 +0900
+X-CMS-MailID: 20261008102615epcms2p2858ca95d96bd2b090f2e406aa1bad63c
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-CPGSPASS: Y
+X-CPGSPASS: Y
+cpgsPolicy: CPGSC10-223,Y
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20261008095512epcas2p243a0deff110c0cc75da1ae049b4bbb8b
+References: <2lgtlg7ydx4qeau2nvv5wkcuc2jkvwdcrav7gbxmxdieptkwl4@emgyfuxuskiu>
+	<20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
+	<20261008-ext4-fc-zeroout-v2-2-55cab1e24fa3@samsung.com>
+	<CGME20261008095512epcas2p243a0deff110c0cc75da1ae049b4bbb8b@epcms2p2>
 
-Write one block of a preallocated range while I/O to the rest of the
-range fails, and check that the rest still reads back as zeroes rather
-than the old contents of the disk.
+On Thu, Oct 08, 2026 at 11:55:02 +0200, Jan Kara wrote:
+> Just one note: I agree with you ext4_alloc_file_blocks() is actually handled
+> correctly. But OTOH tracking a range twice isn't really an issue (only tiny
+> performance overhead compared to the extent tree operations and zeroing
+> itself). So I just wouldn't special-case ext4_alloc_file_blocks() and
+> always pass a proper handle to ext4_issue_zeroout(). That keeps the logic
+> slightly simpler: kernel zeroes out blocks => kernel tracks the range. But
+> I don't really insist, it's just a suggestion.
 
-ext4 got this wrong. When a write converts part of a small unwritten
-extent, ext4 may zero out the rest of the extent and convert all of it
-to written. If that zeroout fails, ext4 falls back to splitting the
-extent, but it cached the blocks it failed to zero out as written in the
-extent status tree, so reads of those blocks returned the old contents
-of the disk.
-
-On ext4 the test mounts with dioread_lock and nodelalloc and sets
-extent_max_zeroout_kb to get into that path: with the default
-dioread_nolock, the extent stays unwritten until the I/O completes and
-is converted then, without this zeroout. generic/250 and generic/252 do
-not hit it either, as they write with direct I/O while dm-error is
-loaded, which also leaves the extent unwritten. btrfs is excluded, as
-fiemap does not report device offsets there.
-
-The ext4 fix is "ext4: don't cache unzeroed blocks as written after a
-failed zeroout".
-
-Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
-Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-The ext4 fix is 1/2 of the series in the Link: and is not merged yet,
-hence xxxxxxxxxxxx in _fixed_by_fs_commit. The test number may need to
-change.
-
-Tested in QEMU. On ext4 dev 9091c97be340 without the fix, blocks 1-7
-read back as 0x53. With the fix, alone or with the rest of the series,
-the test passes with 1k and 4k blocks. It passes on xfs with 1k and 4k
-blocks.
----
-Changes in v2:
-- Make it a generic test (Christoph). The ext4 mount options and
-  extent_max_zeroout_kb are set only on ext4. btrfs is excluded, as
-  fiemap does not report device offsets there, and xfs gets the zoned
-  and realtime handling of generic/791.
-- Link to v1: https://lore.kernel.org/r/20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com
----
- tests/generic/806     | 106 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/806.out |   5 +++
- 2 files changed, 111 insertions(+)
-
-diff --git a/tests/generic/806 b/tests/generic/806
-new file mode 100755
-index 0000000..8991b6e
---- /dev/null
-+++ b/tests/generic/806
-@@ -0,0 +1,106 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
-+#
-+# FS QA Test No. 806
-+#
-+# Write one block of a preallocated range while I/O to the rest of the range
-+# fails, then check that the rest still reads back as zeroes, not as the old
-+# contents of the disk.
-+#
-+# ext4 zeroes out the rest of a small unwritten extent when a write converts
-+# part of it. When that zeroout failed, it fell back to splitting the extent,
-+# but it cached the blocks it failed to zero out as written in the extent
-+# status tree, so reading them returned the old contents of the disk.
-+#
-+. ./common/preamble
-+_begin_fstest auto quick rw prealloc eio
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+	_dmerror_cleanup
-+}
-+
-+. ./common/dmerror
-+
-+# The test writes to the device at the offsets fiemap reports, which are not
-+# device offsets on btrfs.
-+_exclude_fs btrfs
-+
-+_require_scratch
-+_require_dm_target error
-+_require_xfs_io_command "falloc"
-+_require_xfs_io_command "fiemap"
-+test $FSTYP = ext4 && _require_scratch_ext4_feature_enabled "extent"
-+
-+_fixed_by_fs_commit ext4 xxxxxxxxxxxx \
-+	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
-+
-+_scratch_mkfs >> $seqres.full 2>&1
-+
-+# dm-error table sizes need zone alignment on zoned devices, and the check
-+# needs a mounted file system.
-+_scratch_mount
-+test $FSTYP = xfs && _require_xfs_scratch_non_zoned
-+_scratch_unmount
-+
-+# ext4 does the zeroout when a write converts the extent itself. With the
-+# default dioread_nolock, the extent stays unwritten until the I/O completes,
-+# so mount with dioread_lock, and with nodelalloc to convert the extent at
-+# write time.
-+mount_opts=
-+test $FSTYP = ext4 && mount_opts="-o nodelalloc,dioread_lock"
-+
-+do_mount()
-+{
-+	_dmerror_mount $mount_opts >> $seqres.full 2>&1 || _fail "mount failed"
-+	test $FSTYP = xfs && _xfs_force_bdev data $SCRATCH_MNT
-+}
-+
-+_dmerror_init
-+do_mount
-+
-+nblks=8
-+blksz=$(_get_file_block_size $SCRATCH_MNT)
-+sects_per_blk=$((blksz / 512))
-+file=$SCRATCH_MNT/file
-+
-+$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
-+extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
-+echo "$extent" >> $seqres.full
-+phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
-+len=$(echo "$extent" | $AWK_PROG '{print $4}')
-+flags=$(echo "$extent" | $AWK_PROG '{print $5}')
-+flags=${flags:-0}
-+test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
-+	_notrun "could not allocate one unwritten extent of $nblks blocks"
-+
-+# Put something other than zeroes in the preallocated blocks
-+_dmerror_unmount
-+$XFS_IO_PROG -d \
-+	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
-+	$DMERROR_DEV >> $seqres.full
-+do_mount
-+
-+# ext4 zeroes out the rest of the extent if the whole extent fits in
-+# extent_max_zeroout_kb, which mount resets.
-+test $FSTYP = ext4 && _set_fs_sysfs_attr $DMERROR_DEV \
-+	extent_max_zeroout_kb $((nblks * blksz / 1024))
-+
-+# Fail I/O to blocks 1 to the end of the range and write block 0
-+_dmerror_reset_table
-+_dmerror_mark_range_bad $((phys + sects_per_blk)) \
-+	$(((nblks - 1) * sects_per_blk))
-+_dmerror_load_error_table
-+$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
-+_dmerror_load_working_table
-+
-+echo "block 0:"
-+od -An -v -tx1 -N $blksz $file | sort -u
-+echo "blocks 1-$((nblks - 1)):"
-+od -An -v -tx1 -j $blksz $file | sort -u
-+
-+# success, all done
-+_exit 0
-diff --git a/tests/generic/806.out b/tests/generic/806.out
-new file mode 100644
-index 0000000..84b3a35
---- /dev/null
-+++ b/tests/generic/806.out
-@@ -0,0 +1,5 @@
-+QA output created by 806
-+block 0:
-+ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
-+blocks 1-7:
-+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-
----
-base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
-change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
-
-Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
-
-
+Thanks for the review. I wasn't sure I should do that in
+ext4_alloc_file_blocks(): f4265b8d32c4 ("ext4: add
+FALLOC_FL_WRITE_ZEROES support") issues the zeroout outside of the
+running transaction on purpose, and passing a handle there would put it
+under the conversion handle, so I left it as it is.
