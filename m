@@ -1,114 +1,246 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74291484237;
-	Thu,  8 Oct 2026 10:08:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59FC247CC96;
+	Thu,  8 Oct 2026 10:18:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791454099; cv=none; b=JQf9Zs3Hh0u9X4vtYGftEFmGl+/po5xruTwrQy+LIKO9bDPbKEpfFTWAjAkxLkYJY1iyzRRYUKc8uzkloSKZ0m/L71PexR5eo5+8wTcpdhAiV+dKqSshZKMibQ/ly2c9LlhaGJ0yIqm783Rwb95VXX2TzOkSkUsmFHsaU0TG0jQ=
+	t=1791454705; cv=none; b=RflsiPUFG9XwLGRVPkFbnk0cOs0i+FpjEbGfmJJkWBEehpdhD0EWzqfFjJlWFuLa2/mleqFmTHokGCqwWaIGuzSz3J+l07dEv9g42K8juJ7uOaF36mM8VH9rZhB7d/ET42Hv7GdmLaFR5Q2eD/3oN5F1T9HaDxFtfdtfg6W2iHo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791454099; c=relaxed/simple;
-	bh=eZUGXwsI3NzWhnlMgjYNBD5eqnT1TVLMkQpJnpiKROQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=eceYe2e/BukpHb8gU0qAiERbC5cktsjBi/AvnzetjxzcvLmV99YPRRDDLsBTz7eU6JgoKh1PgdpzXIadfocnYUwfMAGdsjwU+q5oCpOeaD4XfrSsV8nPVi9ylZToJ+ugWnvBLclswAqkSv9YcG+7EnQUIrKvLHkQhKBSXmQExIQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ryRT5VaO; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=ORWGV06X; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1791454705; c=relaxed/simple;
+	bh=4PAVJIQ1iWZznf87QREqdj7wgQzZxrm9wXmgoaYrsdo=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=aWQbStFiu6ENYTgzUXAggBFyGbiu5I1ogycjYT+yo8UX5QWn4ZI/PMQmWbPEfPy3IbSt9/TjE5VATZ80dnxwvr7Lfl0N1HhFqdjIVjT3o/rXNf+F4ZHhqcaHmbnmSgZCiXG/C0wvy8/6HZk4WCn4dy9xke/wiM80h21G+hOLIyI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kpaTjppy; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ryRT5VaO";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="ORWGV06X"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2F55E1F79D;
-	Thu,  8 Oct 2026 10:08:16 +0000 (UTC)
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791454096; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HrWvcaddFOnuytcC3zGMkWmIvXz+drcjFZscktNZXf0=;
-	b=ryRT5VaOQEAPQ53QKSRQkkJbv/JNdjltnCh8Yp28kF38cDs1nizGUJlgDXplIlXt+2XmG4
-	3avuDOe/RIerJZYfV8fhb4HCLe71DmdjSliQXstx97X3RUTJgav9jI6eFV0hk6M4MLxlKF
-	rP8tIiNNCCga8wEBIxLHP2rwzacTxgI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791454096;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=HrWvcaddFOnuytcC3zGMkWmIvXz+drcjFZscktNZXf0=;
-	b=ORWGV06XNyJzjvQOCopeaY3mdHmZ6Y0JNLNVdvnM8+U9CMGx7sYJ3AuT8pR4/80qH+mvul
-	ZMjcgEPxOJ1/9BCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D74541339F;
-	Thu,  8 Oct 2026 10:08:15 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id j4bjK49rx2oWKwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 08 Oct 2026 10:08:15 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 64122A13FC; Thu, 08 Oct 2026 12:08:00 +0200 (CEST)
-Date: Thu, 8 Oct 2026 12:08:00 +0200
-From: Jan Kara <jack@suse.cz>
-To: Markus Elfring <Markus.Elfring@web.de>
-Cc: Karl Mehltretter <kmehltretter@gmail.com>, linux-ext4@vger.kernel.org, 
-	Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>, 
-	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
-	Zhang Yi <yi.zhang@huawei.com>
-Subject: Re: [PATCH] ext4: return an error when a journal block is not mapped
-Message-ID: <xmgbasz4ie6aiuz37ubci7qwp55j4zefghhrv5yfzx3cnzsyie@f4tqtbyovfae>
-References: <20261004180629.27213-1-kmehltretter@gmail.com>
- <23514bc7-e2b1-4796-a107-a5674dede5b0@web.de>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kpaTjppy"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id CBBBEC2BCC7;
+	Thu,  8 Oct 2026 10:18:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1791454704;
+	bh=4PAVJIQ1iWZznf87QREqdj7wgQzZxrm9wXmgoaYrsdo=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=kpaTjppy0bRIKCP8XCNEKH6VbafPAtIAN4ieTtYoIdbPQR7PJPo6hj4FNeUluizq0
+	 a7Jz+ypakBDi7enl2onsgkx/sNi6I5c+5brdBMPcKamoTV/Ms9JKia9BlFDWVym6jB
+	 cVBDlmpZEu+tWQGQd6pGzh5RbEfBzukr6kzw5Ya3kJT7fqsWPoJF5pQf8FKyffrpqq
+	 Rg81u0tHlma6wlleFKQGS+n5+l7Jcqe1TqdWcJxFWzB0WlyFkGgtL/xDBhZg0DfdjF
+	 26czPhgiPGK/FngcFKyC+c/w44xTAcMcQovlVoEHyKWwTY6QuqTFyB2oNlP3e/tT9V
+	 5C2cXThs5C0FA==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A74E7CA600B;
+	Thu,  8 Oct 2026 10:18:24 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Thu, 08 Oct 2026 19:18:24 +0900
+Subject: [PATCH v2] generic: test that preallocated blocks still read
+ zeroes after I/O errors
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <23514bc7-e2b1-4796-a107-a5674dede5b0@web.de>
-X-Spamd-Result: default: False [0.00 / 50.00];
-	TAGGED_RCPT(0.00)[]
-X-Spam-Score: 0.00
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Rspamd-Pre-Result: action=no action;
-	module=Unknown lua;
-	unknown reason
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261008-ext4-zeroout-eio-test-v2-1-883ac28de4cf@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAO9tx2oC/4WNQQ6CMBBFr0Jm7ZiWYFFX3sOwaGGAWUBNpzQo4
+ e5WLuDuv5/89zcQCkwC92KDQImF/ZyhPBXQjnYeCLnLDKUqjVbqirTGCj8UvF8iEnuMJDlQbRx
+ ZZS+6hrx9Bep5PbzPJvPIEn14HzdJ/9p/xqRR4805YzqyvanMQ+wkyzycWz9Bs+/7F//tTZ+8A
+ AAA
+To: fstests@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
+ Christoph Hellwig <hch@infradead.org>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791454703; l=6468;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=bQ9R3OIOFgPENEMm5FZziQo5b0dVQOH5X5ABnSjdIRU=;
+ b=4yudI3ooTojxPcpGuXzftjwu0HiF+LVdly7MhZ4z4WRwXqssiC6zC+vvjXDbhTbZaQb5nWrWz
+ 3QgG7ZBfJ3PCd6p/Hd0y3czUV8LO20C5eAZZUrg3tQotFXRelON4tRw
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
 
-On Thu 08-10-26 10:32:06, Markus Elfring wrote:
-> …
-> > +++ b/fs/ext4/super.c
-> > @@ -5967,7 +5967,7 @@ static int ext4_journal_bmap(journal_t *journal, sector_t *block)
-> >  			 "journal bmap failed: block %llu ret %d\n",
-> >  			 *block, ret);
-> >  		jbd2_journal_abort(journal, ret ? ret : -EFSCORRUPTED);
-> > -		return ret;
-> > +		return ret ? ret : -EFSCORRUPTED;
-> >  	}
-> >  	*block = map.m_pblk;
-> >  	return 0;
-> 
-> Would you expect that an optimiser will avoid a duplicate expression here?
-> How do you think about to adjust this implementation detail another bit?
+From: Daejun Park <daejun7.park@samsung.com>
 
-I don't think we care about a duplicate expression in this path but yes,
-perhaps doing:
-	if (!ret)
-		ret = -EFSCORRUPTED;
-before calling jbd2_journal_abort() would be a tad bit cleaner.
+Write one block of a preallocated range while I/O to the rest of the
+range fails, and check that the rest still reads back as zeroes rather
+than the old contents of the disk.
 
-								Honza
+ext4 got this wrong. When a write converts part of a small unwritten
+extent, ext4 may zero out the rest of the extent and convert all of it
+to written. If that zeroout fails, ext4 falls back to splitting the
+extent, but it cached the blocks it failed to zero out as written in the
+extent status tree, so reads of those blocks returned the old contents
+of the disk.
+
+On ext4 the test mounts with dioread_lock and nodelalloc and sets
+extent_max_zeroout_kb to get into that path: with the default
+dioread_nolock, the extent stays unwritten until the I/O completes and
+is converted then, without this zeroout. generic/250 and generic/252 do
+not hit it either, as they write with direct I/O while dm-error is
+loaded, which also leaves the extent unwritten. btrfs is excluded, as
+fiemap does not report device offsets there.
+
+The ext4 fix is "ext4: don't cache unzeroed blocks as written after a
+failed zeroout".
+
+Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
+Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+The ext4 fix is 1/2 of the series in the Link: and is not merged yet,
+hence xxxxxxxxxxxx in _fixed_by_fs_commit. The test number may need to
+change.
+
+Tested in QEMU. On ext4 dev 9091c97be340 without the fix, blocks 1-7
+read back as 0x53. With the fix, alone or with the rest of the series,
+the test passes with 1k and 4k blocks. It passes on xfs with 1k and 4k
+blocks.
+---
+Changes in v2:
+- Make it a generic test (Christoph). The ext4 mount options and
+  extent_max_zeroout_kb are set only on ext4. btrfs is excluded, as
+  fiemap does not report device offsets there, and xfs gets the zoned
+  and realtime handling of generic/791.
+- Link to v1: https://lore.kernel.org/r/20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com
+---
+ tests/generic/806     | 106 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/806.out |   5 +++
+ 2 files changed, 111 insertions(+)
+
+diff --git a/tests/generic/806 b/tests/generic/806
+new file mode 100755
+index 0000000..8991b6e
+--- /dev/null
++++ b/tests/generic/806
+@@ -0,0 +1,106 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
++#
++# FS QA Test No. 806
++#
++# Write one block of a preallocated range while I/O to the rest of the range
++# fails, then check that the rest still reads back as zeroes, not as the old
++# contents of the disk.
++#
++# ext4 zeroes out the rest of a small unwritten extent when a write converts
++# part of it. When that zeroout failed, it fell back to splitting the extent,
++# but it cached the blocks it failed to zero out as written in the extent
++# status tree, so reading them returned the old contents of the disk.
++#
++. ./common/preamble
++_begin_fstest auto quick rw prealloc eio
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++	_dmerror_cleanup
++}
++
++. ./common/dmerror
++
++# The test writes to the device at the offsets fiemap reports, which are not
++# device offsets on btrfs.
++_exclude_fs btrfs
++
++_require_scratch
++_require_dm_target error
++_require_xfs_io_command "falloc"
++_require_xfs_io_command "fiemap"
++test $FSTYP = ext4 && _require_scratch_ext4_feature_enabled "extent"
++
++_fixed_by_fs_commit ext4 xxxxxxxxxxxx \
++	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
++
++_scratch_mkfs >> $seqres.full 2>&1
++
++# dm-error table sizes need zone alignment on zoned devices, and the check
++# needs a mounted file system.
++_scratch_mount
++test $FSTYP = xfs && _require_xfs_scratch_non_zoned
++_scratch_unmount
++
++# ext4 does the zeroout when a write converts the extent itself. With the
++# default dioread_nolock, the extent stays unwritten until the I/O completes,
++# so mount with dioread_lock, and with nodelalloc to convert the extent at
++# write time.
++mount_opts=
++test $FSTYP = ext4 && mount_opts="-o nodelalloc,dioread_lock"
++
++do_mount()
++{
++	_dmerror_mount $mount_opts >> $seqres.full 2>&1 || _fail "mount failed"
++	test $FSTYP = xfs && _xfs_force_bdev data $SCRATCH_MNT
++}
++
++_dmerror_init
++do_mount
++
++nblks=8
++blksz=$(_get_file_block_size $SCRATCH_MNT)
++sects_per_blk=$((blksz / 512))
++file=$SCRATCH_MNT/file
++
++$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
++extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
++echo "$extent" >> $seqres.full
++phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
++len=$(echo "$extent" | $AWK_PROG '{print $4}')
++flags=$(echo "$extent" | $AWK_PROG '{print $5}')
++flags=${flags:-0}
++test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
++	_notrun "could not allocate one unwritten extent of $nblks blocks"
++
++# Put something other than zeroes in the preallocated blocks
++_dmerror_unmount
++$XFS_IO_PROG -d \
++	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
++	$DMERROR_DEV >> $seqres.full
++do_mount
++
++# ext4 zeroes out the rest of the extent if the whole extent fits in
++# extent_max_zeroout_kb, which mount resets.
++test $FSTYP = ext4 && _set_fs_sysfs_attr $DMERROR_DEV \
++	extent_max_zeroout_kb $((nblks * blksz / 1024))
++
++# Fail I/O to blocks 1 to the end of the range and write block 0
++_dmerror_reset_table
++_dmerror_mark_range_bad $((phys + sects_per_blk)) \
++	$(((nblks - 1) * sects_per_blk))
++_dmerror_load_error_table
++$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
++_dmerror_load_working_table
++
++echo "block 0:"
++od -An -v -tx1 -N $blksz $file | sort -u
++echo "blocks 1-$((nblks - 1)):"
++od -An -v -tx1 -j $blksz $file | sort -u
++
++# success, all done
++_exit 0
+diff --git a/tests/generic/806.out b/tests/generic/806.out
+new file mode 100644
+index 0000000..84b3a35
+--- /dev/null
++++ b/tests/generic/806.out
+@@ -0,0 +1,5 @@
++QA output created by 806
++block 0:
++ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
++blocks 1-7:
++ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+---
+base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
+change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
+
+Best regards,
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Daejun Park <daejun7.park@samsung.com>
+
+
