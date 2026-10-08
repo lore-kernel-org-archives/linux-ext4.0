@@ -1,184 +1,161 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F1394503B;
-	Thu,  8 Oct 2026 06:20:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE1AB31716D;
+	Thu,  8 Oct 2026 06:35:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791440427; cv=none; b=JUdhRsXK5eTLUe/6ErupZlKNqTwGPHzC1lVqxwGKv5s+pRfkbQlMHHzsb/zenJ1BkVN7H83qBFmUgg6t1ofiVXYW2su+0PcBcLCjWv7Ksj27XojjIzBjhVdyAcT5JXb3vYrplHEFD+cn6w/1Ndkh3xU4Tpf5HnCvmhHixhPqRxw=
+	t=1791441322; cv=none; b=dm2AnOcvPcnnRe0p8SE5D4zjRpQAEmQgkVXp2JfD75AiC+A03w43XXZuFmEMakhrnGX/ly0MrRzureS6EP003h8VjaMRDLJDzC/T/9HUXcfD8QVQ3K9yum3Cjvtd84XMXcjEQ77HjPZVr7fiTPVPl/QP6pxwGUr62dr0rYSinbo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791440427; c=relaxed/simple;
-	bh=30SAqPkiXwkok1B+xQ5u5QDt8LFUXBP0/6ewxf+qDB0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=hIuxIQ8WI6Y5cCh5SqiuoIHt1HEekZXHJmZeDTwD5Elq2eqoMOUD3QpY1jU2E1DHgOrkHie1uRKPwLeZJgMp1f5eza6pU94iN9dOf7LvzcAHr/aOYGnK1q0EPgXWrJuS9yHEsvZBsi1/QEizE+NbU+why5m0+XR2LSjJrF7Vd98=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=WMFPiGGo; arc=none smtp.client-ip=148.163.158.5
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="WMFPiGGo"
-Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6984Zqi1346038;
-	Thu, 8 Oct 2026 06:19:59 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
-	:content-type:date:from:in-reply-to:message-id:mime-version
-	:references:subject:to; s=pp1; bh=XVM+0rWvnY8M0Iwb8C1H6g9B9Sp6D1
-	quJ0AQdvNdxB4=; b=WMFPiGGoZV/a2bFafn1yugiU1P/iuDFvb/e3r1+LFwQ0BB
-	mEp0U3ae0DxRnFiVFiugDtjBO3CbUXvKyjCVPwF1OdDWCnOu7+U8konooKdbIJWT
-	bapUZ6enOyHUzyM6CDtZzZ+HhkjA3Iw2cgHJMy36hbWHa9+NMWGxuorqLsUwki/2
-	98lUjLHwCu1tcIfgvuooBxsKv31qN1Hv70WkvUlKl92V2LaJdJDu8cCCMENZTRL3
-	aa/DN2LlYA6dDj6UtoLtVQRs6gSYA9S0H9ZkcI35aqBrvhEb80pIfekI2b5vUBmG
-	Q6p48BY8V8k7TlJd9XXFNb57tRVvVO75GjnWiBUA==
-Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4h5xjvhmv4-1
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-	Thu, 08 Oct 2026 06:19:58 +0000 (GMT)
-Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma13.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 6984HbnG1678354;
-	Thu, 8 Oct 2026 06:19:57 GMT
-Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
-	by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 4h5f3tvxdb-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 08 Oct 2026 06:19:57 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 6986JtLa52167124
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 8 Oct 2026 06:19:55 GMT
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 8455620043;
-	Thu,  8 Oct 2026 06:19:55 +0000 (GMT)
-Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 6C58220040;
-	Thu,  8 Oct 2026 06:19:51 +0000 (GMT)
-Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.26.191])
-	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
-	Thu,  8 Oct 2026 06:19:51 +0000 (GMT)
-Date: Thu, 8 Oct 2026 11:49:48 +0530
-From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To: daejun7.park@samsung.com
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        Li Chen <me@linux.beauty>, linux-kernel@vger.kernel.org,
-        stable@vger.kernel.org
-Subject: Re: [PATCH 1/2] ext4: don't cache unzeroed blocks as written after a
- failed zeroout
-Message-ID: <asc2BOOFgO8Nupw7@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-References: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
- <20261007-ext4-fc-zeroout-v1-1-b86de6439431@samsung.com>
+	s=arc-20240116; t=1791441322; c=relaxed/simple;
+	bh=I+rBECfhMRi7b4iq6NMmlFbEfsUx63FrXLW970ILfJ4=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=MYUiL/HajJvOAWIw0Njr40ZX5BhbwPfR4M3uePuB2HmIKVlNgzj4vaC0N7RlMoj1NGmMAPRgUe8UCoElqR/vUlzV0U3H9pEOgYpLuplUTB+Y7J6amkEjTNa2m0kXqT0ku8GVbNG00yiZBtBLaWl+L00yD6goqwFFVb85we6esiw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j0gFZ4cjDzKHMp6;
+	Thu,  8 Oct 2026 14:34:26 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id A81894056F;
+	Thu,  8 Oct 2026 14:35:16 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgD3ximiOcdqZjfLDA--.22468S3;
+	Thu, 08 Oct 2026 14:35:16 +0800 (CST)
+Message-ID: <06d4da83-2655-495f-b317-6a2985989fdd@huaweicloud.com>
+Date: Thu, 8 Oct 2026 14:35:14 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261007-ext4-fc-zeroout-v1-1-b86de6439431@samsung.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-GUID: z8VKRIVfMmZurponM3VXxrEtp7IRmlaB
-X-Proofpoint-ORIG-GUID: reTZp4OnaABxQX_Yq9XC8E2f0GlQUCt6
-X-Authority-Analysis: v=2.4 cv=FoOQbGrq c=1 sm=1 tr=0 ts=6ac7360e cx=c_pps
- a=AfN7/Ok6k8XGzOShvHwTGQ==:117 a=AfN7/Ok6k8XGzOShvHwTGQ==:17
- a=kj9zAlcOel0A:10 a=660iZSQnnn4A:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=hD80L64hAAAA:8
- a=VwQbUJbxAAAA:8 a=VnNF1IyMAAAA:8 a=LEktE2FlL8_m3Wk7YuYA:9 a=CjuIK1q_8ugA:10
-X-Proofpoint-Spam-Info: AW1haW4tMjYxMDA4MDAyNCBTYWx0ZWRfX+DFMwIvfoMyc
- rUZBhNohtcd2RRw58mRDtd1w69oVkokIewqP+Yi8u+v+LAln6YUX+crMSFub+tKbCLxrlpSs0qT
- BJmNLZvPLHCaqan9vJ19NBVnWNnhfog=
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDA4MDAyNCBTYWx0ZWRfX+jzOH61tMg4Y
- ezOENrQnj0Lo+dpiQ8xYHkKM2555bfxy2aLFh6EaDKB77zF1g1+XSbIqmKa74+z1ANFFQT1I+I/
- e9HFYGSC3WhJaSvXqwqApkyGKH9iXf7UA3IJiU8z6Cdx1zIyLEerLkUg52NQFIQnRBOKS8el5kh
- Wo0UuNSC3PYfhmzv8W4VPxZ1A/dG55TRyKnJBkrIq7uGylR/s3l6rcP3JanifNpCBXKu7JFhXRL
- /flwTvjnZB9gdjNXiH7WRN+jXgs6HYDdunuZMXEcDGBJRwIjemDJpBvmZ95hbM2Cd44dJBeHVkW
- Mgs7439AuFYhO3khpRJsQX9DadHxZj8gjMgsLvIEpzOWc+dMWaeNt4q5IHG8E4iCnIyGb225/Ik
- WWZklEAjllHmMHAD1w6W1L2Mkf3O09zcHbQYI3m3bU8atJ6yfhLUdxxoLeB6+PaHaMkoPKV9zvZ
- 4+LGkr+Kg6MPHuPBjQQ==
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.134,FMLib:17.12.100.49
- definitions=2026-10-08_02,2026-10-06_03,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- impostorscore=0 suspectscore=0 clxscore=1011 lowpriorityscore=0 bulkscore=0
- adultscore=0 priorityscore=1501 spamscore=0 phishscore=0 malwarescore=0
- classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
- reason=mlx scancount=1 engine=8.22.0-2610020000 definitions=main-2610080024
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] jbd2: don't start a fast commit while the journal is
+ marked empty
+To: daejun7.park@samsung.com
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+ Jan Kara <jack@suse.com>, Jan Kara <jack@suse.cz>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ Baokun Li <libaokun@linux.alibaba.com>, Ojaswin Mujoo
+ <ojaswin@linux.ibm.com>, "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+ Zhang Yi <yi.zhang@huaweicloud.com>,
+ Harshad Shirwadkar <harshadshirwadkar@gmail.com>, Li Chen <me@linux.beauty>,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <20261007-jbd2-fc-after-flush-v1-1-548bd91cd959@samsung.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20261007-jbd2-fc-after-flush-v1-1-548bd91cd959@samsung.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgD3ximiOcdqZjfLDA--.22468S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxurWxCF4UAw15WFyrWFyrtFb_yoWrGr45pF
+	WrJFy8trWvvr1Utrs5Wr18XFWFq3yvyFWUWr1ku3Wqqa15Jrn7Kw42qrnxJF1UJFsY9w4Y
+	gF4jk3s8K34Yka7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUvE14x267AKxVW8JVW5JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26r1j6r1xM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j
+	6F4UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gc
+	CE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E
+	2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJV
+	W8JwACjcxG0xvEwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka
+	0xkIwI1lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7
+	v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF
+	1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIx
+	AIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI
+	42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWI
+	evJa73UjIFyTuYvjfUonmRUUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Wed, Oct 07, 2026 at 09:41:20AM +0900, Daejun Park via B4 Relay wrote:
+On 10/7/2026 8:41 AM, Daejun Park via B4 Relay wrote:
 > From: Daejun Park <daejun7.park@samsung.com>
 > 
-> ext4_ext_convert_to_initialized() may zero out the blocks before and
-> after the range being written and convert them to written together with
-> it, instead of splitting them off the unwritten extent. If
-> ext4_ext_zeroout() fails for one side, it falls back to splitting the
-> extent, so the blocks on that side stay unwritten in the extent tree.
-> But zero_ex1 or zero_ex2 keeps its length, and ext4_zeroout_es() still
-> inserts those blocks into the extent status tree as written.
+> jbd2_journal_flush() checkpoints everything, and
+> jbd2_mark_journal_empty() then writes the journal superblock with
+> s_start == 0 and the fast commit feature cleared. It sets JBD2_FLUSHED
+> so that the next commit writes the log tail and the feature back, but
+> only jbd2_journal_commit_transaction() looks at that flag. A fast commit
+> started before the next full commit writes its blocks while the
+> superblock on disk still says the log is empty: jbd2_journal_recover()
+> returns at once and the fast commit is never replayed.
 > 
-> Until that entry goes away, a read of those blocks returns whatever was
-> on the disk before the extent was allocated. A write to them is mapped
-> from the cache and goes in place without converting the extent, so its
-> data would read back as zeroes once the entry is dropped. To reproduce
-> on 4 KiB blocks with -o nodelalloc: fallocate 32 KiB, map the last seven
-> blocks of that extent to dm-error, write the first block, restore the
-> mapping and read the second block. It returns the old disk contents
-> instead of zeroes.
+> On ext4 with -O fast_commit this happens after ext4_freeze(), and after
+> a remount to read-only, which flushes the journal in
+> ext4_mark_recovery_complete(), once the file system is read-write again.
+> EXT4_IOC_CHECKPOINT and online resize flush it as well. An fsync that a
+> fast commit handles after one of them is lost if the system crashes
+> before the next full commit, which can be up to the commit interval
+> later:
 > 
-> Clear the length of an extent that could not be zeroed out, so that
-> ext4_zeroout_es() skips it, as the comment at the out label intends.
+>   mount -o commit=60 (-O fast_commit file system)
+>   echo first > a; sync
+>   fsfreeze -f; fsfreeze -u      # or: remount ro, then rw
+>   write b; fsync b              # one fast commit, s_start still 0
+>   crash (kill the VM), mount
+>   b is missing
 > 
-> Fixes: 308c57ccf431 ("ext4: if zeroout fails fall back to splitting the extent node")
+> Refuse to start a fast commit while JBD2_FLUSHED is set, as is already
+> done before the first full commit. ext4 then falls back to a full
+> commit, which writes the log tail, and the fast commits after it are
+> recovered again. fc_info counts the refused fast commit as ineligible,
+> as it does for the existing check.
+> 
+> Fixes: ff780b91efe9 ("jbd2: add fast commit machinery")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 
-Hi Daejun,
+This makes sense to me!
 
-Feel free to add:
-
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-
-btw, did you catch this with some fstests? If not I think it would be
-good to add a test for this. 
-
-Regards
-ojaswin
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 
 > ---
->  fs/ext4/extents.c | 8 ++++++--
->  1 file changed, 6 insertions(+), 2 deletions(-)
+> Tested in QEMU on ext4 dev 9091c97be340, crashing by killing QEMU: the
+> sequence above loses b without this change and keeps it with it, both
+> after fsfreeze and after a remount ro then rw. A second fsync after the
+> fallback is a fast commit again and is recovered. xfstests ext4/044
+> ext4/045 generic/455 generic/456 generic/482 with -O fast_commit, and
+> generic/068 generic/085 generic/390, give the same results as without
+> the change (generic/455 fails on both).
+> ---
+>  fs/jbd2/journal.c | 13 ++++++++++++-
+>  1 file changed, 12 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 836396ea79..d65e30f3c1 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3755,8 +3755,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
->  				ext4_ext_pblock(ex) + split_map.m_lblk +
->  				split_map.m_len - ee_block);
->  			err = ext4_ext_zeroout(inode, &zero_ex1);
-> -			if (err)
-> +			if (err) {
-> +				zero_ex1.ee_len = 0;
->  				goto fallback;
-> +			}
->  			split_map.m_len = *allocated;
->  		}
->  		if (split_map.m_lblk - ee_block + split_map.m_len <
-> @@ -3769,8 +3771,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
->  				ext4_ext_store_pblock(&zero_ex2,
->  						      ext4_ext_pblock(ex));
->  				err = ext4_ext_zeroout(inode, &zero_ex2);
-> -				if (err)
-> +				if (err) {
-> +					zero_ex2.ee_len = 0;
->  					goto fallback;
-> +				}
->  			}
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 00f5a98f3d..22576af8c8 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -695,7 +695,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+>   * it to complete. Returns 0 if a new fast commit was started. Returns -EALREADY
+>   * if a fast commit is not needed, either because there's an already a commit
+>   * going on or this tid has already been committed. Returns -EINVAL if no jbd2
+> - * commit has yet been performed.
+> + * commit has yet been performed, or none since the journal was last marked
+> + * empty.
+>   */
+>  int jbd2_fc_begin_commit(journal_t *journal, tid_t tid)
+>  {
+> @@ -714,6 +715,16 @@ int jbd2_fc_begin_commit(journal_t *journal, tid_t tid)
+>  		return -EALREADY;
+>  	}
 >  
->  			split_map.m_len += split_map.m_lblk - ee_block;
+> +	/*
+> +	 * The log was emptied and the superblock on disk says so, which makes
+> +	 * recovery skip the fast commit area as well. Only a full commit
+> +	 * records the log tail again.
+> +	 */
+> +	if (journal->j_flags & JBD2_FLUSHED) {
+> +		write_unlock(&journal->j_state_lock);
+> +		return -EINVAL;
+> +	}
+> +
+>  	if (journal->j_flags & JBD2_FULL_COMMIT_ONGOING ||
+>  	    (journal->j_flags & JBD2_FAST_COMMIT_ONGOING)) {
+>  		DEFINE_WAIT(wait);
 > 
-> -- 
-> 2.43.0
+> ---
+> base-commit: 9091c97be34083587a75db174aab51551d8e8543
+> change-id: 20261006-jbd2-fc-after-flush-2ef9bbc32cea
 > 
-> 
+> Best regards,
+
