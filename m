@@ -1,131 +1,81 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681A4298CC4;
-	Thu,  8 Oct 2026 01:25:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7DE7010F0
+	for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2026 01:32:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791422737; cv=none; b=iTrfhnivsf8gvpW6QEXpdoLAmWIEpZdN3Qx5tdALoNRHR5LO4tjkv10jfTnxPNnZ2AN0VftOsQemXI03S/LIWLCj2tO7iAbZy+ZP6CSvCUziAIHfldHFbaZsybgpKtFop1ZwRjZGXEDJcsM8HtDRZXgea2JeXJCFGLDfok0xj0s=
+	t=1791423174; cv=none; b=aYKEQ6siwoPVr8AsGYY3V8/mx9xIETYGdoj3fj5WaS7QlQNXYGjVBj2dX8+i21nq4gzRzqbc46tg1umDY8X5+Brx09XdrHFSZMrTNGnXg37jkJYcBYj92RKNIK+Uh8d5Sr0A+4vQWSAQ7kLTnfk1xV615ADalNsKVVyD7c5O0q8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791422737; c=relaxed/simple;
-	bh=nPFeDsRzzhamAEnETiulO1V4ii1rNA+AWGDbUJ2U/nk=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ellVF/JgDjHBXt1xWBu6F36I1r4HxNRXA2KuOmQaQosK2v8HyOpkWnjuMgJoV5pRqPAuj5vIBoyTg1X2Vvp76Gmu9YqXC3M3rwlmZP8WhpMKuyATBwMZIxUislAuZ7F7/dJPQLz+pD2KEvWX04HT6vi5s8xrkr+L+5PpPn2cX1Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l1kK7bLb; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1791423174; c=relaxed/simple;
+	bh=9EP4lZxFabBRp65/2V2ELIHGwtaY/8KfOo/kNiuDdzY=;
+	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
+	 Date; b=Kd8dtz3vCjXpMfPPGmG/EXEmHAfKdcX55Zzr/4qmbVTlX8pKq6gBDDNSCqpteHPPfUPhlzvPk663dvtq/9qnXf07oIGylAIB5cu2StQjsHfL5jueE7L80KtqO1fg5KmT9b5vl2qztSrL4ZGassOe/pEATvzcnNg9cG/lmqz391g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UMva5DVm; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l1kK7bLb"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 111A2C2BCF7;
-	Thu,  8 Oct 2026 01:25:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1791422737;
-	bh=nPFeDsRzzhamAEnETiulO1V4ii1rNA+AWGDbUJ2U/nk=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-	b=l1kK7bLbvzBaW1ODniulEd1fiTkRW7iWEmj2RqUlxa99sEmqcm5q7PWvaXcBymBEE
-	 UjA5SJw5OzLMkqIZXEjR8AFi1nFmMmhAMBBS8E9RVjXCvHUDKI1R9gEAMy3S7zW/70
-	 2BI+44SMZP2y2R69JQVsB1Is02pn8z0Ie+AseZOg0dipYc312vop3UuiYqFFzjpa1J
-	 ZspndQmw86CPbC7ZCZmEsl7Rx2l8XdkkAarlafX8VKMEA2iasp8+3twwDY2YHlXLTG
-	 YrzZcVQnsx/O0LuNW/aZ5gcuIxLOJJ452vS+LsFJvfnX14y0PSKl8eadVAzlsHlDK7
-	 rL14IK4XSNIZw==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4AA2CA6007;
-	Thu,  8 Oct 2026 01:25:36 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 08 Oct 2026 10:25:36 +0900
-Subject: [PATCH v2 1/2] ext4: don't cache unzeroed blocks as written after
- a failed zeroout
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UMva5DVm"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C80191F000FF;
+	Thu,  8 Oct 2026 01:32:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791423173;
+	bh=9EP4lZxFabBRp65/2V2ELIHGwtaY/8KfOo/kNiuDdzY=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=UMva5DVmvsHinQUZnzTT6FRlVTmvWR68E2H6/UdMcAy/HXY4BQIszp4uP6Mecc47d
+	 YNmVUxAPvPPzeIv5xYhZMDDZrOM5EZe4OxFt5HC+m73QGLZo84Li8UOHnZ2xqVXM4p
+	 MY32ssYuFxNEpOVuFGYLHKK9sqZIaJ4gALpKbBxpnTJU7lOkAdLrmhsQzhFc51zAzm
+	 12r+OXSFGQvNptR0Y5JyxIK3VQjlVGNbtgd4ySfc64tpXZNUCId3PRBomoQcwcdMHv
+	 iYEpBQvq7iSUvKw4Wx2Z+udQyRC03smljy3OJh6c+4xE/59msCrH4SWGH2o+7BkZY8
+	 l0gKZtFbpD4bw==
+Message-ID: <sashiko-outbox-163489@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v2 1/2] ext4: don't cache unzeroed blocks as written
+ after a failed zeroout
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Daejun Park" <daejun7.park@samsung.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com>
+References: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
+ <20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 08 Oct 2026 01:32:52 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com>
-References: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
-In-Reply-To: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>, 
- Baokun Li <libaokun@linux.alibaba.com>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, 
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>, 
- Zhang Yi <yi.zhang@huawei.com>, Zhang Yi <yi.zhang@huaweicloud.com>, 
- Harshad Shirwadkar <harshadshirwadkar@gmail.com>, Li Chen <me@linux.beauty>, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791422735; l=2376;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=ZXBsp2KR944OJd1cOp2rHhViwJH53RZyyfzB8Lb5lOM=;
- b=GDJnH07QqjNoAu+2nxXwxkkuy5IX8dRKw2LIXDCwLRfywNwSc+sG5IEV4ex3BbpnS41pRdFRh
- hZ5PRtiOEs1Dyex3sWHq7d2CVb63lJHBldHFXIxHJQyBnZNKoQD5/XV
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
-Reply-To: daejun7.park@samsung.com
 
-From: Daejun Park <daejun7.park@samsung.com>
+> From: Daejun Park <daejun7.park@samsung.com>
+>=20
+> ext4_ext_convert_to_initialized() may zero out the blocks before and
+> after the range being written and convert them to written together with
+> it, instead of splitting them off the unwritten extent. If
+> ext4_ext_zeroout() fails for one side, it falls back to splitting the
+> extent, so the blocks on that side stay unwritten in the extent tree.
+> But zero_ex1 or zero_ex2 keeps its length, and ext4_zeroout_es() still
+> inserts those blocks into the extent status tree as written.
+>=20
+> Until that entry goes away, a read of those blocks returns whatever was
+> on the disk before the extent was allocated. A write to them is mapped
+> from the cache and goes in place without converting the extent, so its
+> data would read back as zeroes once the entry is dropped. To reproduce
+> on 4 KiB blocks with -o nodelalloc: fallocate 32 KiB, map the last seven
+> blocks of that extent to dm-error, write the first block, restore the
+> mapping and read the second block. It returns the old disk contents
+> instead of zeroes.
+>=20
+> Clear the length of an extent that could not be zeroed out, so that
+> ext4_zeroout_es() skips it, as the comment at the out label intends.
+>=20
+> Fixes: 308c57ccf431 ("ext4: if zeroout fails fall back to splitting the e=
+xtent node")
+> Cc: stable@vger.kernel.org
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 
-ext4_ext_convert_to_initialized() may zero out the blocks before and
-after the range being written and convert them to written together with
-it, instead of splitting them off the unwritten extent. If
-ext4_ext_zeroout() fails for one side, it falls back to splitting the
-extent, so the blocks on that side stay unwritten in the extent tree.
-But zero_ex1 or zero_ex2 keeps its length, and ext4_zeroout_es() still
-inserts those blocks into the extent status tree as written.
+Sashiko has reviewed this patch and found no issues. It looks great!
 
-Until that entry goes away, a read of those blocks returns whatever was
-on the disk before the extent was allocated. A write to them is mapped
-from the cache and goes in place without converting the extent, so its
-data would read back as zeroes once the entry is dropped. To reproduce
-on 4 KiB blocks with -o nodelalloc: fallocate 32 KiB, map the last seven
-blocks of that extent to dm-error, write the first block, restore the
-mapping and read the second block. It returns the old disk contents
-instead of zeroes.
-
-Clear the length of an extent that could not be zeroed out, so that
-ext4_zeroout_es() skips it, as the comment at the out label intends.
-
-Fixes: 308c57ccf431 ("ext4: if zeroout fails fall back to splitting the extent node")
-Cc: stable@vger.kernel.org
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
- fs/ext4/extents.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 836396ea79..d65e30f3c1 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3755,8 +3755,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
- 				ext4_ext_pblock(ex) + split_map.m_lblk +
- 				split_map.m_len - ee_block);
- 			err = ext4_ext_zeroout(inode, &zero_ex1);
--			if (err)
-+			if (err) {
-+				zero_ex1.ee_len = 0;
- 				goto fallback;
-+			}
- 			split_map.m_len = *allocated;
- 		}
- 		if (split_map.m_lblk - ee_block + split_map.m_len <
-@@ -3769,8 +3771,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
- 				ext4_ext_store_pblock(&zero_ex2,
- 						      ext4_ext_pblock(ex));
- 				err = ext4_ext_zeroout(inode, &zero_ex2);
--				if (err)
-+				if (err) {
-+					zero_ex2.ee_len = 0;
- 					goto fallback;
-+				}
- 			}
- 
- 			split_map.m_len += split_map.m_lblk - ee_block;
-
--- 
-2.43.0
-
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261008-ext4-fc-ze=
+roout-v2-0-55cab1e24fa3@samsung.com?part=3D1
 
