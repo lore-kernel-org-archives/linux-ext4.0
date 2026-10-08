@@ -1,143 +1,211 @@
-Received: from mail-pl1-f175.google.com (mail-pl1-f175.google.com [209.85.214.175])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C59E38F938
-	for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2026 07:26:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.175
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA8DA3E49DE;
+	Thu,  8 Oct 2026 07:39:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791444387; cv=none; b=tCC6grx3NEdWoMBQg6HMkVyFkgiieiht/ZCdFpTmF5Wda0C0P8zPsP6GgnoEICpgUQMf4KQlnp6mPcP4aBLPMxXwn0AN+ySNRVpxcGX2Do8oepGV577ivq3ESiKC7X2EXOPn8OMj9owX19CifptzYsozNDhy770sHP4j3obgfqk=
+	t=1791445173; cv=none; b=eETcbllq3e7ud+5X0nUlttVAWYrF3c8YrRE209NHjZ6dEb1U5AKFJWmSCZ2IUDjQHrDjaXku4GRSykIzf/gkXo5iuvHxgORuoiTF6QEm+WY6KKAODfbNyZirC3H9BugFsjLFC/Pnyvp4HtL2iEW9PTbx6iMhrFSZbQrtWr+6S28=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791444387; c=relaxed/simple;
-	bh=j8W5fcVIQL8yr1o7jHpFmoYapsdcHpcbNHxnm4HBbtg=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=IpvxgnPWRxRFMeAV48S0ZNKteRBwHD2Ku5Q/pBpEGA1VmbTy0LA2TDiieOsTePz69B8TMTJBZV7yjwpcNSF258oWVAkeeFefNv2eMSnN0q9HHRpY8J/Yst4k6EAW6RTQAON8/dvVznGM/dzpXamia5KRtPMjJuDnDmLLIgz/ONY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=iitHbdG9; arc=none smtp.client-ip=209.85.214.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1791445173; c=relaxed/simple;
+	bh=4gNHbJwBuPellqyAmn1Hld1XDaNxiVQNDpKEhNmQ3Rw=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=mv5KtjF6xyC4DryYmCN7nqPI9vFuGaS9ww7XTyYDs9iGjWYKkDxDJkCkiwQUr39LZ5uk4GMQ3z97K6zs/obN0wTfG/o80I8l8G7VnbQlnSA6Ll/U/a+7g35SNQ7PYSlte4lWMnQbmr8rKUBZ8a8imTR0YrYfvfh8yzeplJxa78M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AzM2SSb9; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iitHbdG9"
-Received: by mail-pl1-f175.google.com with SMTP id d9443c01a7336-2e2de97b4d2so21306495ad.2
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Oct 2026 00:26:26 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791444385; x=1792049185; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=fwW6TH+uNt3PSjP2BacA5tGNX0rsS9JlSkv1g6t6otA=;
-        b=iitHbdG9MitO84FjdtX2Njt1nmAdpzby4H2wfK8/lAleXxm9t4PV/PaHe8vynZZh1z
-         rV0vy1qgaOCfZ7RDVlsNiVkwegKTP93nKf2lS8b151QzQToyatXBmCGXxY45M6s6szEK
-         18eiVvLJlskRjpwdZYEQVrnq2CZu9VWkAlFvTkFF6qglQE/gQFsNAv91tK1wU7lylW5X
-         BQYABgp+R2+tslaKEybG7UppDBwFMVCt7ERFiJYP9F+0/0TVuecgAoj4hFJmJrWGdOv2
-         iEQIm08TI+GEtvEK2ddi1QW9qPKIgvNp6oj721BbgRr2+qgyTZhhjX0R79B5uHAPAL2T
-         53bg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791444385; x=1792049185;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=fwW6TH+uNt3PSjP2BacA5tGNX0rsS9JlSkv1g6t6otA=;
-        b=VoUAQl6JPVNnYehoozOELznx7pFO48OJcZxRv52qRirYFQSO9o7wgyQrltIxXbRjvk
-         hSzl2gT5vUAzT8JWX09W4mgnlIdRTSyfLIN96I9eKOPWn0xIKQB0JYwOTxQOS8ssTQnb
-         Auu/zxEGJqXsr6dLChzIFvRxH53VkZeZ3iEsg0TmKTmenSpZbABgBnR1z5e9i88R1P9j
-         mV61IXwDn1w8JlYeliu6HVfe07Psf0wf9xre9Q7c9ue4YgtqMg05RUtujSGltVy8bYYn
-         V+BTGln162JnQ40WfTZNwK+Ski1d1E0KQX7bKFBhMYhTMHPU57RJtkgHUrBIBzGg3AEO
-         fMPw==
-X-Forwarded-Encrypted: i=1; AKwUvBzTGRMi5SqV8L4Fmiod32S64wky5tn4jcq/NjMOVicFS5IGLcuQtp9sJjSogCFg3Fu8rxbN1XahR43R@vger.kernel.org
-X-Gm-Message-State: AFq9FYJVvfuSnNGAiuZO6xoP9FspiBV8due1M1nJssmEjhK8WFDRg0Zx
-	ysZLwF9vDsvtJhJ2iYq2UL2eGbZ4MF67t5aw9P1rNRsBxl16sFSqn4lY
-X-Gm-Gg: AYBFou3XPH4A4w5lhOzJmP69oPbOBb/LBIyy4R36N3opVc/aWCbH/3pFJ8CgO7Bhvff
-	3PyOqC/Wx6+yj9bqKzgDmkdGErEcAY+y42pY9cg5N55Mb58dvtr0d9ChfvgPkZ8chJXJ/OUm990
-	Ay8Vh4ViliXUiy6IhrecWUqEzz6gdqm/JpACnBUZEylkRR0JTkV/Oo9FmoDDuIIZydyJiJtJ8yd
-	Yf0KzDhQcYxvKNfxMTeyuburKxNdfOjLUnf7/vdin57LtyrovwZ1vw9JxJmiITwb04mE3CjDoTN
-	bc+xR4J7QTHeBCoXvuYRlaqvDBxmPulYRdVONZQiRcFF7vgGWIDPo/rRuyVXdYhixaGFRr8DDUj
-	Js3gj4QGldmrHU0hNZDWTW3ExrpQfvO/Cf3TEeaIs5DJrEu1TpigM86T2KmNF9aR5/ZRlrXVTmL
-	pDnAAK4Jk26R0Q8/cyrpGxAnq7qq25VMFo49uhLz5OkPO701hgR7H2vSNKiB4jHHRLfdHuno5N9
-	pQ6waWgqS56cLiCjno=
-X-Received: by 2002:a17:902:cf4c:b0:2dd:c100:943e with SMTP id d9443c01a7336-2e6005979d8mr40321045ad.60.1791444385483;
-        Thu, 08 Oct 2026 00:26:25 -0700 (PDT)
-Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2e6046fe0d9sm20957695ad.20.2026.10.08.00.26.18
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 08 Oct 2026 00:26:24 -0700 (PDT)
-Message-ID: <f456efaa-08e2-4f1e-ab5e-e34ef3368ee0@gmail.com>
-Date: Thu, 8 Oct 2026 15:25:44 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AzM2SSb9"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 33CAFC2BCF5;
+	Thu,  8 Oct 2026 07:39:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1791445173;
+	bh=4gNHbJwBuPellqyAmn1Hld1XDaNxiVQNDpKEhNmQ3Rw=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=AzM2SSb9yLLh6mDRTdDWfSOYr0tx60MmfZrLLA4DJHaaJ2FgbaRlm/Lb1xvl4Q6N6
+	 HRj9WF1FghThzFXzMVkQ+bXSi7V7sT8zo03OLx19jBciWeWJHK6J6rwpaVru5PmOOB
+	 7mFdzc7/w2jg01VZr6UQW569UQA8eeJdoZ/rbzoV0no/A8NYTJw1PLHdyzZ8iitKAk
+	 i6qjbWf9kynHg4BmvZJzlXeIl21o596M3SUYBKIY5IJSSTxVXQVBJCYcOFhNn9sTV6
+	 7gankrlfkr4zVqz8ZShxUqEKegybc/AsPiyTYbYog2V9o/Md+eXnJOUhg9WDeh1l3W
+	 4v8tFgfo+DQYw==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 119EDCA6007;
+	Thu,  8 Oct 2026 07:39:33 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Thu, 08 Oct 2026 16:39:33 +0900
+Subject: [PATCH] ext4: test reads after a failed zeroout of an unwritten
+ extent
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: return an error when a journal block is not mapped
-To: Karl Mehltretter <kmehltretter@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Jan Kara <jack@suse.cz>, Baokun Li <libaokun@linux.alibaba.com>,
- Ojaswin Mujoo <ojaswin@linux.ibm.com>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20261004180629.27213-1-kmehltretter@gmail.com>
-Content-Language: en-US
-From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20261004180629.27213-1-kmehltretter@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Message-Id: <20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com>
+X-B4-Tracking: v=1; b=H4sIALRIx2oC/x2MTQ5AMBQGryJv7SWt+IuriEXx4W1U2pKGuLvGb
+ mYx85CHE3jqsoccLvFi9yQ6z2jazL6CZU5OhSpqrVTLiKHkG87aMzDEcoBPgKYeYZSpdEOpPRw
+ Wif+3H973AyG9aZpnAAAA
+To: fstests@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791445172; l=5273;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=q6mMATYv2ME98koxg+DZiicKe/k0E2HaDFj4GdEIBcM=;
+ b=9mN9Mmc+vUiM2AX1wNHA5KSYYHDaXJMJRcHJucyz2+FajjDU7cJ3Wx+LQ4skO4W5scpchnQXo
+ ireUp4ZwBmiAIOLazd1rrVxCGT6G9G/vQsGqyr9Jc8finYibUPnEeqS
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
 
-On 10/5/2026 2:06 AM, Karl Mehltretter wrote:
-> If the internal journal inode contains a hole, ext4_map_blocks() returns
-> 0. ext4_journal_bmap() logs "journal bmap failed" and aborts the
-> journal, but also returns 0 and leaves *block unchanged.
-> 
-> jbd2_journal_bmap() takes that as success and uses the unchanged logical
-> journal block number as a physical filesystem block number. Journal I/O
-> can then overwrite filesystem blocks outside the journal despite the
-> abort.
-> 
-> Return -EFSCORRUPTED for a hole, matching the error passed to
-> jbd2_journal_abort(). Keep propagating negative mapping errors.
-> 
-> Fixes: 62913ae96de7 ("ext4, jbd2: add an optimized bmap for the journal inode")
-> Cc: stable@vger.kernel.org
-> Assisted-by: LLM
-> Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
+From: Daejun Park <daejun7.park@samsung.com>
 
-Looks good to me.
+When a write converts part of a small unwritten extent, ext4 may zero
+out the rest of the extent and convert all of it to written. If that
+zeroout fails, ext4 falls back to splitting the extent, but it cached
+the blocks it failed to zero out as written in the extent status tree,
+so reads of those blocks returned the old contents of the disk.
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+Make the zeroout fail with dm-error and check that those blocks still
+read back as zeroes. The test mounts with dioread_lock and nodelalloc:
+with the default dioread_nolock, the extent stays unwritten until the
+I/O completes and is converted then, without this zeroout. generic/250
+and generic/252 do not hit it either, as they write with direct I/O
+while dm-error is loaded, which also leaves the extent unwritten.
 
-> ---
-> Found with an experimental clang that warns when a function returns 0
-> right after reporting a failure.
-> 
-> Recorded QEMU A/B testing used x86_64 kernels and a 1 KiB-block image
-> with a hole in the journal inode starting at logical block 40. The
-> unpatched kernel overwrote filesystem block 40, a reserved GDT block.
-> With the patch, none of the marker blocks changed. There were three
-> runs per kernel.
-> 
-> Both kernels logged the mapping failure and journal abort:
-> 
->    EXT4-fs (vda): journal bmap failed: block 40 ret 0
->    Aborting journal on device vda-8.
-> 
->   fs/ext4/super.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bca0dc87d0b7..3e7dabe45153 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5967,7 +5967,7 @@ static int ext4_journal_bmap(journal_t *journal, sector_t *block)
->   			 "journal bmap failed: block %llu ret %d\n",
->   			 *block, ret);
->   		jbd2_journal_abort(journal, ret ? ret : -EFSCORRUPTED);
-> -		return ret;
-> +		return ret ? ret : -EFSCORRUPTED;
->   	}
->   	*block = map.m_pblk;
->   	return 0;
-> 
-> base-commit: e767a4ea70a3992c37ed604157d32f0dfbf9b1e3
+The kernel fix is "ext4: don't cache unzeroed blocks as written after a
+failed zeroout".
+
+Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
+Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+---
+The kernel fix is 1/2 of the series in the Link: and is not merged yet,
+hence xxxxxxxxxxxx in _fixed_by_kernel_commit. The test number may need
+to change.
+
+Tested in QEMU on ext4 dev 9091c97be340. Without the fix, blocks 1-7
+read back as 0x53 with 1k, 4k and 64k blocks. With the fix, alone or
+with the rest of the series, the test passes, also with -O fast_commit.
+---
+ tests/ext4/309     | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/309.out |  5 ++++
+ 2 files changed, 92 insertions(+)
+
+diff --git a/tests/ext4/309 b/tests/ext4/309
+new file mode 100755
+index 0000000..1fafd58
+--- /dev/null
++++ b/tests/ext4/309
+@@ -0,0 +1,87 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
++#
++# FS QA Test No. 309
++#
++# When a write converts part of a small unwritten extent, ext4 may zero out
++# the rest of the extent and convert all of it to written. If that zeroout
++# fails, it falls back to splitting the extent, but it used to cache the
++# blocks it failed to zero out as written in the extent status tree, so
++# reading them returned the old contents of the disk. Fail the zeroout with
++# dm-error and check that those blocks still read back as zeroes.
++#
++. ./common/preamble
++_begin_fstest auto quick rw prealloc eio
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++	_dmerror_cleanup
++}
++
++. ./common/dmerror
++
++_require_scratch
++_require_dm_target error
++_require_xfs_io_command "falloc"
++_require_xfs_io_command "fiemap"
++_require_scratch_ext4_feature_enabled "extent"
++
++_fixed_by_kernel_commit xxxxxxxxxxxx \
++	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
++
++# The zeroout is done when a write converts the extent itself. With the
++# default dioread_nolock, the extent stays unwritten until the I/O completes,
++# so mount with dioread_lock, and with nodelalloc to convert the extent at
++# write time.
++mount_dioread_lock()
++{
++	_dmerror_mount -o nodelalloc,dioread_lock >> $seqres.full 2>&1 || \
++		_fail "mount failed"
++}
++
++_scratch_mkfs >> $seqres.full 2>&1
++_dmerror_init
++mount_dioread_lock
++
++nblks=8
++blksz=$(_get_file_block_size $SCRATCH_MNT)
++sects_per_blk=$((blksz / 512))
++file=$SCRATCH_MNT/file
++
++$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
++extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
++echo "$extent" >> $seqres.full
++phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
++len=$(echo "$extent" | $AWK_PROG '{print $4}')
++flags=$(echo "$extent" | $AWK_PROG '{print $5}')
++flags=${flags:-0}
++test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
++	_notrun "could not allocate one unwritten extent of $nblks blocks"
++
++# Put something other than zeroes in the unwritten blocks
++_dmerror_unmount
++$XFS_IO_PROG -d \
++	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
++	$DMERROR_DEV >> $seqres.full
++mount_dioread_lock
++
++# Writing block 0 zeroes out the rest of the extent if the whole extent fits
++# in extent_max_zeroout_kb, which mount resets; make that zeroout fail.
++_set_fs_sysfs_attr $DMERROR_DEV extent_max_zeroout_kb $((nblks * blksz / 1024))
++_dmerror_reset_table
++_dmerror_mark_range_bad $((phys + sects_per_blk)) \
++	$(((nblks - 1) * sects_per_blk))
++_dmerror_load_error_table
++$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
++_dmerror_load_working_table
++
++echo "block 0:"
++od -An -v -tx1 -N $blksz $file | sort -u
++echo "blocks 1-$((nblks - 1)):"
++od -An -v -tx1 -j $blksz $file | sort -u
++
++# success, all done
++_exit 0
+diff --git a/tests/ext4/309.out b/tests/ext4/309.out
+new file mode 100644
+index 0000000..19ed3d6
+--- /dev/null
++++ b/tests/ext4/309.out
+@@ -0,0 +1,5 @@
++QA output created by 309
++block 0:
++ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
++blocks 1-7:
++ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+---
+base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
+change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
+
+Best regards,
+-- 
+Daejun Park <daejun7.park@samsung.com>
+
 
