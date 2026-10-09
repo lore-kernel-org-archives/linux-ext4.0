@@ -1,27 +1,27 @@
 Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58CAE4BB28A;
-	Fri,  9 Oct 2026 10:37:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 113674BD108;
+	Fri,  9 Oct 2026 10:37:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791542256; cv=none; b=RsvVBg0epu+wBkMxsmiEcs59dPQBnBhvjITKTSFgbyhF67Ox6TDe5Np8u4WqadUgF00+lsYT//c0OUooydlJEzplVgZKg4mzJMjMhVu1UsM1iAVXWzKHT6fBYmdqy9d1GAOVIZTyXwnclz4eMRV/uwHAOJxYq/2JhccLshw9PcU=
+	t=1791542256; cv=none; b=lOcN71hZ/xSthU2h8sFzVxocSvM6v4zVe8XpCGA0kzCRVRYtVK3G2DCFWmey0wcn+uU4vpIFhYT1o1cjiRY9IHdgO3CC6RvTgtsWqANcazso51N8VThPP2KPCCTjQZw3rYvMw8C3yw0fJvNSNQrgQwxxxo30uO4K+qsTgECDHkA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1791542256; c=relaxed/simple;
-	bh=6zfNoYDLrgx0OUEBO0JOsQfJZ8QB6LBFeM8Ma+CMBxo=;
+	bh=xfj78OOy7wv8lKa7JZtVQaQvLeJeLFFDYwDWLly6fCQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OYAVYSiJ3rIBiiDETK/j8nGdQnGdFKfI/s4gipjaBeBInCjCWkZDMoUfGkG0Sh0V5pdvhxPkOqXq6hJgHFjJ1v84X0WcDc6fhpfahGT9Oo6PhEdQPDt0q8AE/asaTsPUd9UVOnzK/cZT4VA8aUhktrBgdm6RBRmP8meLp2h8zJo=
+	 MIME-Version; b=au5jtnfmX4fExgDaeVzv2zQpT6PtFMDopmZ++z0/NO3HMq98YPEoYKVpFCDEL1z/bKX49DrLh8Fcr/5ajlDDQPbKAZ6GCNp/FzMF0A1D/WNMbX2fnDcOgZiULc2549KrnNAZa3xbSzKm7nBlIEqA8deNkZbQp2fsBUhZ34XXpo0=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZX2FXlzYQv1S;
-	Fri,  9 Oct 2026 18:36:36 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZY0Zy9zYQv8f;
+	Fri,  9 Oct 2026 18:36:37 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 83BC44056B;
-	Fri,  9 Oct 2026 18:37:20 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4A09040561;
+	Fri,  9 Oct 2026 18:37:21 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S20;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S27;
 	Fri, 09 Oct 2026 18:37:20 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -42,9 +42,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yangerkun@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v7 16/31] ext4: implement mmap path using iomap
-Date: Fri,  9 Oct 2026 18:30:17 +0800
-Message-ID: <20261009103033.2920530-17-yi.zhang@huaweicloud.com>
+Subject: [PATCH v7 23/31] ext4: advance i_disksize to i_size upon disksize-grow I/O completion
+Date: Fri,  9 Oct 2026 18:30:24 +0800
+Message-ID: <20261009103033.2920530-24-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
@@ -55,128 +55,136 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S20
-X-Coremail-Antispam: 1UD129KBjvJXoWxWFWfJr17JryxtF43Kw1DGFg_yoWrGrW7pr
-	95K3yrGrsIqwn29rs2gFs8Zr1FkayxtrW7WrW3Wr15Za42yw18tF48KF1YvF4rJrWfur42
-	qF4Ykr18Wa47ArDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S27
+X-Coremail-Antispam: 1UD129KBjvJXoWxZF1kKF1UWF4kJw15Aw43Jrb_yoWruF1Dpr
+	W5Krn8Gr48Xr1a9rsaqry0vr1Ska1rA3y8JFW7GrWjqFyYkrZagFWxKFyfWFy0yrs3Zw4q
+	q34Dtr4UWw1kAr7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUmS14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
-	z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F
-	4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE
-	3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2I
-	x0cI8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8
-	JwACjcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2
-	ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Y
-	z7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zV
-	AF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Gr0_Xr1l
-	IxAIcVC0I7IYx2IY6xkF7I0E14v26r4UJVWxJr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r
-	1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIY
-	CTnIWIevJa73UjIFyTuYvjTRRyxRDUUUU
+	z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j6r
+	xdM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x0267AKxVW0oVCq
+	3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VC0I7
+	IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY6r1j6r4U
+	M4x0Y48IcxkI7VAKI48JM4x0x7Aq67IIx4CEVc8vx2IErcIFxwACI402YVCY1x02628vn2
+	kIc2xKxwCY1x0262kKe7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkE
+	bVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67
+	AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVW5JVW7JwCI
+	42IY6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF
+	4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBI
+	daVFxhVjvjDU0xZFpf9x0pRiF4iUUUUU=
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-Introduce ext4_iomap_page_mkwrite() to implement the mmap iomap path
-for ext4. The heavy lifting is delegated to iomap_page_mkwrite(), which
-only requires ext4_iomap_buffered_write_ops and
-ext4_iomap_buffered_da_write_ops to allocate and map blocks.
+When the disksize-grow-pending zeroed EOF I/O completes, i_disksize has
+to be advanced. Advancing it only to the end of that specific I/O would
+discard any later i_disksize updates from concurrent fallocate or
+similar operations, causing filesystem inconsistency.
 
-Note that the lock ordering between folio lock and transaction start in
-this path is reversed compared to the buffer_head buffered write path.
-The lock ordering documentation in super.c has been updated accordingly.
+Scanning dirty or writeback folios beyond the current position to
+compute a safe advance target is expensive and racy with concurrent
+fallocate, so instead advance i_disksize directly to i_size. This may
+expose zeroed data (not stale data) after crash recovery when dirty data
+in the range is not yet on disk, but only for unaligned append writes,
+which is deemed acceptable.
 
+To support this, teach ext4_iomap_wb_update_disksize() to take an
+is_disksize_grow flag and advance i_disksize to i_size when set, and
+have ext4_iomap_finish_ioend() pass the flag based on the
+EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO tag of the completing ioend.
+
+Note that EXT4_STATE_DISKSIZE_GROW_PENDING is not set for now, and it
+will be set after everthing is done.
+
+Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 32 +++++++++++++++++++++++++++++++-
- fs/ext4/super.c |  8 ++++++--
- 2 files changed, 37 insertions(+), 3 deletions(-)
+ fs/ext4/page-io.c | 42 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 36 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 78be37cd3fa2b..f8721fd6eb22b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4040,7 +4040,7 @@ static int ext4_iomap_buffered_do_write_begin(struct inode *inode,
- 		return -ERANGE;
- 	if (WARN_ON_ONCE(!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
- 		return -EINVAL;
--	if (WARN_ON_ONCE(!(flags & IOMAP_WRITE)))
-+	if (WARN_ON_ONCE(!(flags & (IOMAP_WRITE | IOMAP_FAULT))))
- 		return -EINVAL;
- 
- 	map_flags = delalloc ? EXT4_GET_BLOCKS_DELALLOC_RESERVE :
-@@ -4098,6 +4098,14 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
- 	if (iomap->type != IOMAP_DELALLOC || !(iomap->flags & IOMAP_F_NEW))
- 		return 0;
- 
-+	/*
-+	 * iomap_page_mkwrite() will never fail in a way that requires delalloc
-+	 * extents that it allocated to be revoked.  Hence never try to release
-+	 * them here.
-+	 */
-+	if (flags & IOMAP_FAULT)
-+		return 0;
-+
- 	/* Nothing to do if we've written the entire delalloc extent */
- 	start_byte = iomap_last_written_block(inode, offset, written);
- 	end_byte = round_up(offset + length, i_blocksize(inode));
-@@ -7309,6 +7317,23 @@ static int ext4_block_page_mkwrite(struct inode *inode, struct folio *folio,
- 	return ret;
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 697e12a54a49a..4f1176b9332f2 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -578,9 +578,9 @@ static void ext4_iomap_wb_disksize_pending_wait(struct inode *inode,
  }
  
-+static vm_fault_t ext4_iomap_page_mkwrite(struct vm_fault *vmf)
-+{
-+	struct inode *inode = file_inode(vmf->vma->vm_file);
-+	const struct iomap_ops *iomap_ops;
+ static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
+-					 loff_t end)
++					 loff_t end, bool is_disksize_grow)
+ {
+-	loff_t new_disksize = end;
++	loff_t new_disksize, i_size;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	int ret;
+ 
+@@ -589,7 +589,34 @@ static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
+ 	 * i_data_sem.
+ 	 */
+ 	down_write(&ei->i_data_sem);
+-	new_disksize = min(new_disksize, i_size_read(inode));
++	i_size = i_size_read(inode);
 +
 +	/*
-+	 * ext4_nonda_switch() could writeback this folio, so have to
-+	 * call it before lock folio.
++	 * EXT4_STATE_DISKSIZE_GROW_PENDING is cleared when the pending
++	 * I/O completes. However, another thread may have re-set the bit
++	 * between that point and here, meaning i_disksize has already
++	 * been advanced and a new EOF zeroing has been initiated. In that
++	 * case, do not advance i_disksize to i_size; leave it to the
++	 * next pending grow ioend.
 +	 */
-+	if (test_opt(inode->i_sb, DELALLOC) && !ext4_nonda_switch(inode->i_sb))
-+		iomap_ops = &ext4_iomap_buffered_da_write_ops;
-+	else
-+		iomap_ops = &ext4_iomap_buffered_write_ops;
++	if (is_disksize_grow &&
++	    ext4_test_inode_state(inode, EXT4_STATE_DISKSIZE_GROW_PENDING))
++		is_disksize_grow = false;
 +
-+	return iomap_page_mkwrite(vmf, iomap_ops, NULL);
-+}
-+
- vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -7335,6 +7360,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- 	if (err)
- 		goto out_ret;
++	/*
++	 * Update i_disksize to i_size when EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO
++	 * completes. This is safe because we never directly allocate written
++	 * blocks during buffered writes.
++	 *
++	 * This ensures that i_disksize is correctly advanced during
++	 * truncate-up or append fallocate on a block-unaligned file,
++	 * preventing it from remaining stale. The tradeoff is that zeroed
++	 * data may be exposed after crash recovery if dirty data in this
++	 * range is not yet on disk, but stale data will never be exposed.
++	 * This is because the extent is only converted to written state
++	 * after the data has been persisted.
++	 */
++	new_disksize = is_disksize_grow ? i_size : min(end, i_size);
+ 	if (new_disksize > ei->i_disksize)
+ 		WRITE_ONCE(ei->i_disksize, new_disksize);
+ 	up_write(&ei->i_data_sem);
+@@ -607,6 +634,8 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
+ 	loff_t pos = ioend->io_offset;
+ 	size_t size = ioend->io_size;
+ 	loff_t end = pos + size;
++	unsigned long io_mode = (unsigned long)ioend->io_private;
++	bool is_disksize_grow = (io_mode == EXT4_IOMAP_IOEND_DISKSIZE_GROW_IO);
+ 	handle_t *handle;
+ 	int credits;
+ 	int ret, err;
+@@ -619,7 +648,7 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
+ 	}
  
-+	if (ext4_inode_buffered_iomap(inode)) {
-+		ret = ext4_iomap_page_mkwrite(vmf);
-+		goto out;
-+	}
-+
- 	/*
- 	 * On data journalling we skip straight to the transaction handle:
- 	 * there's no delalloc; page truncated will be checked later; the
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6d2d323604f96..1c2395aa1d53a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -100,8 +100,12 @@ static const struct fs_parameter_spec ext4_param_specs[];
-  * Lock ordering
-  *
-  * page fault path:
-- * mmap_lock -> sb_start_pagefault -> invalidate_lock (r) -> transaction start
-- *   -> page lock -> i_data_sem (rw)
-+ * - buffer_head path:
-+ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
-+ *     transaction start -> folio lock -> i_data_sem (rw)
-+ * - iomap path:
-+ *   mmap_lock -> sb_start_pagefault -> invalidate_lock (r) ->
-+ *     folio lock -> transaction start -> i_data_sem (rw)
-  *
-  * buffered write path:
-  * sb_start_write -> i_rwsem (w) -> mmap_lock
+ 	if (!(ioend->io_flags & IOMAP_IOEND_UNWRITTEN) &&
+-	    end <= READ_ONCE(EXT4_I(inode)->i_disksize))
++	    end <= READ_ONCE(EXT4_I(inode)->i_disksize) && !is_disksize_grow)
+ 		goto out;
+ 
+ 	/* Wait for disksize-pending zeroed data to be written out. */
+@@ -638,8 +667,9 @@ static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
+ 	}
+ 
+ 	/* Update on-disk size after I/O is completed. */
+-	if (end > READ_ONCE(EXT4_I(inode)->i_disksize)) {
+-		ret = ext4_iomap_wb_update_disksize(handle, inode, end);
++	if (end > READ_ONCE(EXT4_I(inode)->i_disksize) || is_disksize_grow) {
++		ret = ext4_iomap_wb_update_disksize(handle, inode, end,
++						    is_disksize_grow);
+ 		if (ret)
+ 			goto out_journal;
+ 	}
 -- 
 2.52.0
 
