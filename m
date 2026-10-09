@@ -1,27 +1,27 @@
 Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 73F0A4ACC60;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 741A54ACC69;
 	Fri,  9 Oct 2026 10:37:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791542249; cv=none; b=kZXKpBPMawhmdp3RfET+h3uVgJ5wNGORwTK5nffn4Bgvmj84v2dJmqX+RzpkzlDxaAsBWiRJZMy0EH0QT/eb01gEOFx4f6NkiTIaOCdAy/vm8EtC0GZMpFnqQzOyj30WuLSdmHO/Nw+Bw1K+MyNapGF6dYTFg8R1HwTf+QITCAo=
+	t=1791542249; cv=none; b=MHWYDM2c7uRm/s1YNGs9LoB3oZjy1ishM6dgaDeGRWs7b5f7jQfjxmOUnNWwg9qFhE1kllmNmbtFgFNjcsNRX4LA4X0S/Cv4F2vXPcUp3epW8FABenzhqnvHBTvzz4ay6rR+io3VNgKDNlEiaQmCqAyKf2KKx6ZNWvOtJDRzOZc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1791542249; c=relaxed/simple;
-	bh=70dfTJg8ct7WaPi1j+hXoldab/s3PsHt4fc+YbhCXmQ=;
+	bh=p1oyCduwDeMkAADutYzHWCOLTEk/jTY9T3nVHgWA0mc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=K0KMQaBrcFXLrieylCDngdLPruZoYVyhGbFaWMQzd0/ihmOuwpXoSYOsgbMTk18CL8jCgPeDXaBnsW4tPTipm/VQXpvhD7rNcuBBFWyiX8mCBK0gPpScn5DnFDPnwGxVLsRn7eVSdNn4/hW8e5wN19s3dyOq1DGSjUdAIg+QVrI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	 MIME-Version; b=tCW8kwWg3QmTvCJ2QX1asriC6zYfP/5jvzrUYE8TFMSuGp7WUlqm4xgjD4ixQDOpaa9eDM5HhqttfV1qBB8fwqR5kR9NHvCCx/kCKsHbvOR9LaLkNRKmWNsXCqxZurNdWBdj/MqgbCJUHEuuGSnzl7hJFMZLVCn+AHyVyNshvzU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZN2mv3zKHMqn;
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.198])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZN4pnVzKHMqV;
 	Fri,  9 Oct 2026 18:36:28 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 5066D40D0E;
+	by mail.maildlp.com (Postfix) with ESMTP id 9667540576;
 	Fri,  9 Oct 2026 18:37:20 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S18;
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S21;
 	Fri, 09 Oct 2026 18:37:20 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
@@ -42,9 +42,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yangerkun@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v7 14/31] ext4: rework handle credit accounting for unwritten extent conversion
-Date: Fri,  9 Oct 2026 18:30:15 +0800
-Message-ID: <20261009103033.2920530-15-yi.zhang@huaweicloud.com>
+Subject: [PATCH v7 17/31] ext4: implement partial block zero range path using iomap
+Date: Fri,  9 Oct 2026 18:30:18 +0800
+Message-ID: <20261009103033.2920530-18-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
@@ -55,10 +55,10 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S18
-X-Coremail-Antispam: 1UD129KBjvJXoWxXr13AFWkAw1fCF48Jry5Jwb_yoWrtFWrpF
-	y3Ca4Fkr15Ww129FWxAF48AF1ak3W8GrW7ArZ3Gr9xAay5Xr1SgFy5K3WFkFy5KrWxWFya
-	vr4jk34UGws8AaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S21
+X-Coremail-Antispam: 1UD129KBjvJXoW3GF47CF4DAr17CFWUurW8Crg_yoW3GFyxpF
+	ZxKry5Grs7X3sF9w4fJFnrXr1Ykw1ftrWUWry3GrsYva45Z3yxKF1UGFWFvFyUJ3y7Jr12
+	qF4jy34xKF1UA3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
 	9KBjDU0xBIdaVrnRJUUUmq14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_JF0E3s1l82xGYI
 	kIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2
@@ -77,131 +77,211 @@ X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-While converting the buffered I/O path to iomap, we noticed that the
-writeback completion can hand over an ioend which was merged across an
-arbitrary number of extents because iomap_ioend_try_merge() doesn't
-limit the length of the merged ioends, while
-ext4_convert_unwritten_extents() converts all of them with the handle
-provided by the caller, and callers calculate the credits of that handle
-without knowing the exact number of extents. Converting more extents
-than that within one transaction can exhaust its credits.
+Introduce a new iomap_ops instance, ext4_iomap_zero_ops, along with
+ext4_block_iomap_zero_range() to implement block zeroing via the iomap
+infrastructure for ext4.
 
-Prepare for the iomap path nevertheless by making the conversion loop
-check the remaining credits before each extent with
-ext4_journal_ensure_credits(), so that the transaction is extended, or
-restarted once it is full, as needed. Also estimate the credits with
-ext4_meta_trans_blocks(..., alloc_extents = 0), since no data blocks are
-allocated here, and manage an internally started transaction as a whole
-instead of starting and stopping one for each extent.
+ext4_block_iomap_zero_range() calls iomap_zero_range() with
+ext4_iomap_zero_begin() as the callback. The callback locates the
+range and populates the iomap mapping. If the range is mapped,
+iomap_zero_iter() in the iomap core zeros the partial block
+directly. If the range is an unwritten extent within EOF, the
+callback collects a dirty folio batch via iomap_fill_dirty_folios()
+so that iomap_zero_iter() can zero those folios directly, bypassing
+a separate slow flush operation that would otherwise be needed to
+convert the unwritten extent.
 
-The buffer_head writeback path is safe, as it passes a handle whose
-credits are reserved by ext4_meta_trans_blocks(inode, bpf, bpf, 0),
-which is enough to convert one extent per block of a folio, so the
-reservation is sufficient and the handle is never restarted there.
+Note that ext4_iomap_zero_begin() can race with concurrent writeback:
+after it queries an unwritten extent, writeback may convert it to
+written and complete on the folio before iomap_fill_dirty_folios() scans
+the range. The empty batch then makes iomap_zero_iter() skip zeroing,
+leaving stale on-disk data.
 
-This also helps the fallocate path, where ext4_alloc_file_blocks() sizes
-the handle for the conversion with ext4_chunk_trans_blocks() as well,
-i.e. for a single extent only, while a concurrent modification of the
-extent tree can make the conversion cover more extents than the handle
-has credits for.
+  zero_range                      writeback
+  ----------------------          ----------------------
+  ext4_block_zero_range()
+    iomap_zero_range()
+      iomap_iter()
+        ext4_iomap_zero_begin()
+          ext4_iomap_map_blocks()
+            -> extent is UNWRITTEN
+                                  ext4_convert_unwritten_extents_endio()
+                                    -> extent is converted to WRITTEN
+                                    -> folio is clean
+          iomap_fill_dirty_folios()
+            filemap_get_folios_dirty()
+            -> folio is clean, not added to batch
+          ext4_set_iomap() -> IOMAP_UNWRITTEN
+      iomap_zero_iter()
+        __iomap_get_folio() -> NULL (empty batch)
+        iomap_iter_advance_full()  <-- zeroing skipped
+
+  [later read returns stale on-disk data]   <--   CORRUPTION
+
+Therefore, we retry the extent lookup when iomap_fill_dirty_folios()
+adds nothing and the i_es_seq cookie captured at the first lookup has
+advanced, indicating the race actually occurred.
+
+Other important constraints:
+
+Zeroing out under an active journal handle can cause deadlock, as the
+lock/handle ordering is inconsistent with the iomap writeback path.
+Therefore, ext4_block_iomap_zero_range() must not be called under an
+active handle. In addition, for post-EOF zeroing, the caller cannot
+rely on data=ordered mode to persist the zeroed data before
+i_disksize is updated.
+
+Subsequent patches will address this by deferring i_disksize update
+to i_size until after the zeroed data has been written back.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/extents.c | 53 ++++++++++++++++++++++++++++-------------------
- 1 file changed, 32 insertions(+), 21 deletions(-)
+ fs/ext4/inode.c | 110 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 110 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 76038b6c36552..83d040e36b682 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5137,27 +5137,36 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 	int ret = 0, ret2 = 0, ret3 = 0;
- 	struct ext4_map_blocks map;
- 	unsigned int blkbits = inode->i_blkbits;
--	unsigned int credits = 0;
-+	unsigned int credits;
-+	bool internal_handle = !handle;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f8721fd6eb22b..35a2c96535c03 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4119,6 +4119,67 @@ static int ext4_iomap_buffered_da_write_end(struct inode *inode, loff_t offset,
+ 	return 0;
+ }
  
- 	map.m_lblk = offset >> blkbits;
- 	map.m_len = max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
- 
--	if (!handle) {
--		/*
--		 * credits to insert 1 extent into extent tree
--		 */
--		credits = ext4_chunk_trans_blocks(inode, max_blocks);
-+	/* Credits to convert one extent in this range to written state. */
-+	credits = ext4_meta_trans_blocks(inode, max_blocks, 1, 0);
++static int ext4_iomap_zero_begin(struct inode *inode,
++		loff_t offset, loff_t length, unsigned int flags,
++		struct iomap *iomap, struct iomap *srcmap)
++{
++	struct iomap_iter *iter = container_of(iomap, struct iomap_iter, iomap);
++	struct ext4_map_blocks map;
++	u8 blkbits = inode->i_blkbits;
++	unsigned int iomap_flags;
++	int ret;
 +
-+	if (internal_handle) {
-+		handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS, credits);
-+		if (IS_ERR(handle)) {
-+			ret = PTR_ERR(handle);
-+			goto out;
-+		}
- 	}
- 
- 	while (max_blocks) {
--		if (credits) {
--			handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
--						    credits);
--			if (IS_ERR(handle)) {
--				ret = PTR_ERR(handle);
--				break;
--			}
--		}
++	ret = ext4_emergency_state(inode->i_sb);
++	if (unlikely(ret))
++		return ret;
++
++	if (WARN_ON_ONCE(!(flags & IOMAP_ZERO)))
++		return -EINVAL;
++
++again:
++	ret = ext4_iomap_map_blocks(inode, offset, length, &map, 0);
++	if (ret < 0)
++		return ret;
++
++	/*
++	 * Look up dirty folios for unwritten mappings within EOF. Providing
++	 * this bypasses the flush iomap uses to trigger extent conversion
++	 * when unwritten mappings have dirty pagecache in need of zeroing.
++	 */
++	iomap_flags = 0;
++	if (map.m_flags & EXT4_MAP_UNWRITTEN) {
++		loff_t start = ((loff_t)map.m_lblk) << blkbits;
++		loff_t end = ((loff_t)map.m_lblk + map.m_len) << blkbits;
++		unsigned int count;
++
++		count = iomap_fill_dirty_folios(iter, &start, end,
++						&iomap_flags);
++		if ((start >> blkbits) < map.m_lblk + map.m_len)
++			map.m_len = (start >> blkbits) - map.m_lblk;
++
 +		/*
-+		 * The caller cannot know how many extents the range covers,
-+		 * so make sure the transaction can take one more extent,
-+		 * extending or restarting it once it is full.  The reserved
-+		 * handle of the buffer_head writeback path is safe as it has
-+		 * enough credits for the conversion, so it is not restarted
-+		 * here.
++		 * This can be raced by a concurrent writeback that cleans
++		 * the folio and converts the unwritten extent to written.
++		 * Recheck the mapping after a folio lock round in
++		 * iomap_fill_dirty_folios().
 +		 */
-+		ret = ext4_journal_ensure_credits(handle, credits, 0);
-+		if (ret < 0)
-+			break;
-+
- 		/*
- 		 * Do not cache any unrelated extents, as it does not hold the
- 		 * i_rwsem or invalidate_lock, which could corrupt the extent
-@@ -5177,11 +5186,6 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 		}
- 
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
--		if (credits) {
--			ret3 = ext4_journal_stop(handle);
--			if (unlikely(ret3))
--				ret2 = ret3;
--		}
- 		ret = ret < 0 ? ret : ret2;
- 		if (ret)
- 			break;
-@@ -5189,6 +5193,13 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 		map.m_lblk += map.m_len;
- 		map.m_len = (max_blocks -= map.m_len);
- 	}
-+
-+	if (internal_handle) {
-+		ret3 = ext4_journal_stop(handle);
-+		if (!ret)
-+			ret = ret3;
++		if (count == 0 &&
++		    map.m_seq != READ_ONCE(EXT4_I(inode)->i_es_seq))
++			goto again;
 +	}
-+out:
- 	/* Converted some or all blocks successfully? */
- 	if (converted)
- 		*converted = conv_blocks;
-@@ -5203,8 +5214,8 @@ int ext4_convert_unwritten_io_end_vec(handle_t *handle, ext4_io_end_t *io_end)
++
++	ext4_set_iomap(inode, iomap, &map, offset, length, flags);
++	iomap->flags |= iomap_flags;
++
++	return 0;
++}
++
++static DEFINE_IOMAP_ITER_NEXT(ext4_iomap_zero_next, ext4_iomap_zero_begin);
++
++static const struct iomap_ops ext4_iomap_zero_ops = {
++	.iomap_next = ext4_iomap_zero_next,
++};
++
+ /*
+  * Since we always allocate unwritten extents, there is no need for
+  * iomap_end to clean up allocated blocks on a short write.
+@@ -4582,6 +4643,48 @@ static int ext4_block_journalled_zero_range(struct inode *inode, loff_t from,
+ 	return err;
+ }
  
- 	/*
- 	 * This is somewhat ugly but the idea is clear: When transaction is
--	 * reserved, everything goes into it. Otherwise we rather start several
--	 * smaller transactions for conversion of each extent separately.
-+	 * reserved, everything goes into it. Otherwise the conversion runs
-+	 * its own transaction, extending or restarting it as it goes.
++static int ext4_block_iomap_zero_range(struct inode *inode, loff_t from,
++				       loff_t length, bool *did_zero,
++				       bool *zero_written)
++{
++	int ret;
++
++	/*
++	 * Zeroing out under an active handle can cause deadlock since
++	 * the order of acquiring the folio lock and starting a handle is
++	 * inconsistent with the iomap writeback procedure.
++	 */
++	if (WARN_ON_ONCE(ext4_handle_valid(journal_current_handle())))
++		return -EINVAL;
++
++	/* The zeroing scope should not extend across a block. */
++	if (WARN_ON_ONCE((from >> inode->i_blkbits) !=
++			 ((from + length - 1) >> inode->i_blkbits)))
++		return -EINVAL;
++
++	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS) &&
++	    !(inode_state_read_once(inode) & (I_NEW | I_FREEING)))
++		WARN_ON_ONCE(!inode_is_locked(inode) &&
++			!rwsem_is_locked(&inode->i_mapping->invalidate_lock));
++
++	ret = iomap_zero_range(inode, from, length, did_zero,
++			       &ext4_iomap_zero_ops, &ext4_iomap_write_ops,
++			       NULL);
++	if (ret)
++		return ret;
++
++	/*
++	 * TODO: The iomap does not distinguish between different types
++	 * of zeroing operations. So we always set zero_written whenever
++	 * zeroing is performed, which may cause unnecessary folio
++	 * flushing when zeroing occurs on delayed-allocated blocks.
++	 */
++	if (did_zero && zero_written)
++		*zero_written = *did_zero;
++
++	return 0;
++}
++
+ /*
+  * Zeros out a mapping of length 'length' starting from file offset
+  * 'from'.  The range to be zero'd must be contained with in one block.
+@@ -4608,6 +4711,9 @@ static int ext4_block_zero_range(struct inode *inode,
+ 	} else if (ext4_should_journal_data(inode)) {
+ 		return ext4_block_journalled_zero_range(inode, from, length,
+ 							did_zero);
++	} else if (ext4_inode_buffered_iomap(inode)) {
++		return ext4_block_iomap_zero_range(inode, from, length,
++						   did_zero, zero_written);
+ 	}
+ 	return ext4_block_do_zero_range(inode, from, length, did_zero,
+ 					zero_written);
+@@ -4656,6 +4762,10 @@ int ext4_block_zero_eof(struct inode *inode, loff_t from, loff_t end)
+ 	 * truncating up or performing an append write, because there might be
+ 	 * exposing stale on-disk data which may caused by concurrent post-EOF
+ 	 * mmap write during folio writeback.
++	 *
++	 * TODO: In the iomap path, handle this by tracking the ordered range
++	 * and updating i_disksize to i_size after the zeroed data has been
++	 * written back.
  	 */
- 	if (handle) {
- 		handle = ext4_journal_start_reserved(handle,
+ 	if (ext4_should_order_data(inode) &&
+ 	    did_zero && zero_written && !IS_DAX(inode)) {
 -- 
 2.52.0
 
