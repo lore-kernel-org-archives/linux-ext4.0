@@ -1,44 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 993384D4896
-	for <linux-ext4@vger.kernel.org>; Fri,  9 Oct 2026 10:54:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4A7C54D8DBD
+	for <linux-ext4@vger.kernel.org>; Fri,  9 Oct 2026 10:54:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791543288; cv=none; b=HpjsNI8/Fr2IgQOeRpo9b9wjl09AOaIB4EfCY3v5rdSg/2yITyc2ndsPLjzNri5EfIBPD3QnJDp2b/QzlAZRcA0hNbvNSgg1NMXXoMLjaWqXxmh7RaBC4AWz3LHoeHd46FGQy1kOMAJJwmIfLB7TdXlDyi/4V+rty22dZWXzhyU=
+	t=1791543294; cv=none; b=TBd9c2jGIpJ+SjQdCXePL3uDYeXvWfRQ1dQzNwYXVNFGcGu+9NTKzt6rxmIJ0mLI9d596WtgQgGGPDwbjWrX1l7aeAGwKxZNE5TWAx6xlDor24jVHusDJVowGmBDAEdPY8ruLNKpNBjyG7wa3RuTyRiHYjFd4DurSQkPCO8vD/M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791543288; c=relaxed/simple;
-	bh=7KaSkdl4M0O71Y8yyx2rSd7eoVRV2CuvSVRcwFrYP20=;
+	s=arc-20240116; t=1791543294; c=relaxed/simple;
+	bh=O0guHxIK1f+fvevXXPvOxWpb8PLPXpEZrJTODxKYiSs=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=obZQJrRZ3SAOK9+ppkRwQIEzAz6KgPmfToP2GbUhPRudpWUNcM+vWq3WIkrNl/jSl+Fc/UBIDpx56PRWLKbwoETAodqnyQZFSuSpVsIhObrieii1NlthiBR6W82+rzhGMwtkz3KiE4972pnwili834KpLD9OmYVSIRQlPBU7E34=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YVzAzejq; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=QhcyFqH/OVoX+keZf7NHtDuC5bM50yhJFIYX1JgZqmWPRxPAMba20IS/Ug7TFzbePG+lu5i7Z+XED+8/lfPERNRUSkBtBYOPlnpJiwXqZNjJDWljGWNjD8zNmihKaQ1bIUyN2jy9ChSNOL/bvNGCmEz9FnY3OG1u+hoWO2pnsfQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DDctjOEi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YVzAzejq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BE121F000FF;
-	Fri,  9 Oct 2026 10:54:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DDctjOEi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9058B1F00893;
+	Fri,  9 Oct 2026 10:54:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791543278;
-	bh=9tUehLK/YtiR6jvBR2PpeqidJ/39MQmdfWcAsMP4lp4=;
+	s=k20260515; t=1791543283;
+	bh=O0guHxIK1f+fvevXXPvOxWpb8PLPXpEZrJTODxKYiSs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=YVzAzejqA3UiDq6QhxcEVFGOxXFM3rGdqLOtxYY72e1cwwK30FLw1rEhZivfLYFwa
-	 x38lL51XTJaQiICpiH2CpaSs5JLpWs4nRWhA2tSTfDTv2p729JX53szKFuF3JRen+H
-	 nJ1nys93L6RCTXqeO2jKKooQV6I3T5M6IlBw14bdq2/xrDABYVO3jwGmZ2txxgsWIB
-	 DHR0d3suzB4bPriC4Qit+qirLbIw+JdymDqWdmHzyh47Pbl2hcQXiM30BZBzNRI6b8
-	 XUNOOOttbfxg7CFAlR6WO5rdnGBFFvGLRJkodB5PkAB5F9jBbgLA89IrWgKIDQ89Nq
-	 a1ZC+gZu6S89w==
-Message-ID: <sashiko-outbox-165284@kernel.org>
+	b=DDctjOEi4Sbt4i9aZqw0gnCGjfT96kQ1RB94L2EfSgsihRV0JSGXGiEJ2DmlqCZNi
+	 6rTt6noyyCPPafQo6oT+8wpxOZXq+8lsXWYRRDb+TUB9bu/yV0gDDOh2W8ebAIweoB
+	 7+2lhEVrknAMSQYstMpKPOL3puqrY+CG4Q7C5l3SBsu31/cqcuxBPKsol3nIxN6zqR
+	 Rmb9VXMk0hDngLuuzw9E4qT8gmKN9BFDIiLwgCoRYNBXTmLLMz6ZI6JO7BK7HGrliN
+	 +SPwQIQnAfOCqJRHb14aVSqmLe3hs4A7ryhT3+J5PniQRnJcpdq0rS2nz0z9CM4SWS
+	 mzv+YNv8H3gwg==
+Message-ID: <sashiko-outbox-165285@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v7 09/31] ext4: add iomap address space operations for
- buffered I/O
+Subject: Re: [PATCH v7 04/31] ext4: recheck extent status tree before block
+ allocation
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261009103033.2920530-10-yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261009103033.2920530-5-yi.zhang@huaweicloud.com>
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
- <20261009103033.2920530-10-yi.zhang@huaweicloud.com>
+ <20261009103033.2920530-5-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 09 Oct 2026 10:54:37 +0000
+Date: Fri, 09 Oct 2026 10:54:43 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,24 +47,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> Introduce initial support for iomap in the buffered I/O path for regular
-> files on ext4.
+> After acquiring i_data_sem in write mode, recheck that the mapping
+> found via the extent status tree or disk query has not changed. A
+> racing truncate may have trimmed the extent between the earlier lookup
+> and the write lock acquisition, since writeback does not hold i_rwsem
+> or the folio locks covering the full extent. This could cause
+> ext4_map_create_blocks() to allocate blocks beyond the truncated range,
+> potentially leading to quota leaks in the upcomming iomap buffered
+> writeback path, because the iomap writeback infrastructure caches
+> extents beyond the folio range.
 >=20
->   - Add a new inode state flag EXT4_STATE_BUFFERED_IOMAP to indicate the
->     inode uses iomap instead of buffer_head for buffered I/O
->   - Add helper ext4_inode_buffered_iomap() to check the flag
->   - Add new address space operations ext4_iomap_aops with callbacks that
->     will use generic iomap implementations
->   - Add ext4_iomap_aops to ext4_set_aops() when the flag is set
+> Therefore, if we find a valid extent and the sequence number has
+> changed, retry the entire lookup to obtain the correct trimmed mapping.
 >=20
-> The following callbacks(read_folio(), readahead(), writepages()) are
-> provided as placeholders and will be implemented in later patches.
+> [ ... ]
+> continuing on an error is not advisable.
 >=20
+> Suggested-by: Jan Kara <jack@suse.cz>
+> Link: https://lore.kernel.org/linux-ext4/b0781809-4759-4e12-be17-71555b76=
+4f48@gmail.com/
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
 Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261009103033.2920=
-530-1-yi.zhang@huaweicloud.com?part=3D9
+530-1-yi.zhang@huaweicloud.com?part=3D4
 
