@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 379EA3F1079;
-	Fri,  9 Oct 2026 21:52:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C49AB3EEAF4;
+	Fri,  9 Oct 2026 21:52:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791582736; cv=none; b=Vc/yfOceoDGtcCy3j+xdXAx+EmYn1JREB5/jYhCEuky1swwW+Qd0ygsHhgfI0+EK7O06qO3vOSzS9k/jEksXAkm1KGYLxwC01otWnX6NwM6BfgG8lsOYR3fH1GHKfNeZbntphc2lbYLdgFu5WR1hHiF5h8TyXm+FUqiNaT5jS8c=
+	t=1791582738; cv=none; b=V1r2szxiLkOZ1rttlCsBDkJb1wNNsVNth91CfmiL6VcsHliOORC4RExVqsizVY0eXIy9iKxrRWlLb0nEoKK4NbnZyvCh+Hn8/Qv+DLgLkO1J5Swb29B86XJsBl8R4ouNRgYr3xs39piWb+1/ft8bCrCuCiMF5JmYehBFyASVQ84=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791582736; c=relaxed/simple;
-	bh=LXsL1y/j+e7UUH5xH4UKs5usCG1uCNqZTFzWMmxwdro=;
+	s=arc-20240116; t=1791582738; c=relaxed/simple;
+	bh=nBEmiiEoAfQb3/RPfTImmOxn8PBxV0P99lY6N2vclYw=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=T1ygxKDVFsb8+Cmy/ggGpWi28niZjPgutDFr4rSR38HOcAiqCGITwRQeSAtbnKe0FB4AsXi33A5PXFQw/RRWL+5haLh4WfmzRmNUMsiKYyFX5Frv27G5p8XaId6V7ieBg2732dDNCcGhskFLjRhmo9YBfE8XuB47LIFu1HhQEIA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bAHaLuVF; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=LkmUgImLMUbFa36PItvd6+0d/Z6WfkzvLL7CcJPbzLlg9btKy1hFuIuPA+0kFXVDspOjNEOI2hTTmJ0VnQuvm3i4Yeq2BH061H9LYm1tzwK+sQQJLo6W0VoCbR0OW8D3ea5H2J76sLWZDUXraOirqK7ELFS4iSJPHc+XMgwVGyg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Bkb5mNQr; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bAHaLuVF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4A9A1F000FF;
-	Fri,  9 Oct 2026 21:52:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Bkb5mNQr"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 56D311F00893;
+	Fri,  9 Oct 2026 21:52:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791582734;
-	bh=BunSUlMmKQVuWdN5L9PoEJ5F0NzruEHwxHZ6NbALJpc=;
+	s=k20260515; t=1791582737;
+	bh=M7QuAsYvBBUyOh4F7fA0Cqn6o4QP0E6xrLJ+y+EX3qw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bAHaLuVFp4JmN9S7f9njuTYmSS6aYjqMUXbYKRyQNJ1NEDTfGrsxD7KlHevn+jH1E
-	 cgaKLdZofUb/LyohOV6YIMiSjvpIbl4g9NpgsOUsTw4JainD121I2pbyiKXeaxEyuv
-	 j4BRw95R/GSp5phafjtZ174GCBprix+O/MuUe32nrRMq3DwvbUVWKxVTnwgCv+pfEW
-	 x6rVAiOqM8HA3eOl62/DX7AErGex0yZaIhtDql96RPQXZ6jgW4wOzQWuhTcw9DKlgJ
-	 rWpwt0I1Xbmoq9dXaiFKMj+xowhUMnK7Tbb7nFRz/7UIfjuMYJKrkywcl0cX9ReR1R
-	 cvehzqrkMiRzg==
+	b=Bkb5mNQrENr/KzawpnhRJOic9aO+817sW3hto+0q3XDSDYcrXmatcsiiCwPO5d1Nr
+	 HHGR0rgnjJw+WquXKKY0UW3/89q3eEngQu6wfSo0/r/vCLHYTaGFuvcffvI6dqGE23
+	 GN/gGP5V/XrHufuoSBH9oZfVXBqoid7JeWZC6UQUPkm2LflHYyaFaatsWkKiTVxB2o
+	 OcdDcGDq5LM4T7KnBOeq38h1OhYM8gxJEx0kWbOsgrhxTaDGSBjl6rn/9j4aYDlI84
+	 g4mVPFpbCYkGVzdcNF1raCpA/L/w6jXY6oLmRbAsxUyBvaMpsmpMc1f2UrQfpdB8KK
+	 rsmMLd3hJ/AMg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Fri, 09 Oct 2026 23:51:55 +0200
-Subject: [PATCH 5/8] ipc: drop the mqueue mount with kern_unmount() on
- setup failure
+Date: Fri, 09 Oct 2026 23:51:56 +0200
+Subject: [PATCH 6/8] unicode: free the map after a grace period
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-work-fixes-rcu-v1-5-7446d2d335e6@kernel.org>
+Message-Id: <20261009-work-fixes-rcu-v1-6-7446d2d335e6@kernel.org>
 References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
 In-Reply-To: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -48,110 +47,233 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
  ntfs3@lists.linux.dev, "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-3d1b8
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3268; i=brauner@kernel.org;
- h=from:subject:message-id; bh=LXsL1y/j+e7UUH5xH4UKs5usCG1uCNqZTFzWMmxwdro=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWSdTPwTWGqwgj1m0XrXfZvNT5mu+CI+9eOJzdsjObi+H
- 1i1wN5veUcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBEtjxl+B+fsN6jpHHN3Nf7
- HatvruIP3T5NmCVSZd2vlT3Hu4WfnbjMyPD4+Mm5KX1n/2XWuOv/m3BkZo3b6Wono61ed1QTZcX
- OzuADAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6529; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=nBEmiiEoAfQb3/RPfTImmOxn8PBxV0P99lY6N2vclYw=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWSdTPwrolTeJyk8baJ4W5Pr1hM7RHy7ckwSd0jKhNekf
+ ynNnGzeUcrCIMbFICumyOLQbhIut5ynYrNRpgbMHFYmkCEMXJwCMJGVCxkZtus9l53zwya/VJcz
+ 0f5ZlfwjW72DKmrXfiW2Wm+4IrCdjZGh961EkdpWt9y/RlqbrvjILT7QfCX1TM2RvRcypCz2slx
+ gAwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-mq_init_ns() creates the mqueue mount with fc_mount_longterm(), so its
-->mnt_ns is MNT_NS_INTERNAL. When setting up the mqueue or ipc sysctls
-or msg_init_ns() fails afterwards, create_ipc_ns() drops it with a plain
-mntput(). With ->mnt_ns set that takes the fast path of
-mntput_no_expire(). The count drops to zero and nothing ever kills the
-mount, so the mount and the mqueue superblock are leaked.
+generic_ci_d_hash() and generic_ci_d_compare() read sb->s_encoding and
+dereference the unicode map while a pathwalk in rcu mode holds nothing
+but rcu_read_lock(). The filesystems that use them, ext4, f2fs and
+tmpfs, drop the map with utf8_unload() from ->put_super(), which runs
+when the last reference to the mount goes away. A lookup that is still
+inside such a filesystem at that point reads a freed map.
 
-Commit dc55e35f9e81 ("ipc: Store mqueue sysctls in the ipc namespace")
-added the first failure path after mq_init_ns() and never dropped the
-mount. Commit 7229d74e5e8c ("ipc: create_ipc_ns: drop mqueue mount on
-sysctl setup failure") tried to fix that with a mntput() but that
-doesn't help for a long-term mount.
+With a pathwalk held up in utf8_casefold_hash() while the last reference
+to a casefolded tmpfs goes away:
 
-Use kern_unmount(). free_ipc() open-codes the same thing for a namespace
-that made it.
+  BUG: KASAN: slab-use-after-free in utf8nlookup+0x74c/0x950
+  Read of size 8 at addr ff110001030fe658 by task walker/98
+  Call Trace:
+   <TASK>
+   utf8nlookup+0x74c/0x950
+   utf8byte+0x160/0x1560
+   utf8_casefold_hash+0x167/0x230
+   generic_ci_d_hash+0xdd/0x1c0
+   link_path_walk+0x11ad/0x1d30
+   path_lookupat+0x63/0xb00
+   filename_lookup+0x1f1/0x5b0
+   vfs_statx+0xd7/0x3b0
+  [...]
+  Allocated by task 94:
+   __kmalloc_cache_noprof+0x249/0x560
+   utf8_load+0x4e/0x570
+   shmem_parse_opt_casefold.isra.0+0x92/0x270
+  [...]
+  Freed by task 97:
+   kfree+0x1db/0x5b0
+   shmem_put_super+0x72/0x170
+   generic_shutdown_super+0x14c/0x530
+   kill_anon_super+0x3a/0x60
+   deactivate_locked_super+0x9c/0xf0
+   cleanup_mnt+0x9f/0x130
 
-Fixes: dc55e35f9e81 ("ipc: Store mqueue sysctls in the ipc namespace")
-Fixes: 7229d74e5e8c ("ipc: create_ipc_ns: drop mqueue mount on sysctl setup failure")
+So far that has been hard to hit. umount(2) waits for a grace period
+in namespace_unlock() before it drops the mount, so only a mount whose
+last reference goes away elsewhere, like the close of a file or a chdir
+out of a lazily unmounted directory, can race a walker. So it is
+reachable.
+
+Delay the free until a grace period has passed. The map and the data
+table it holds a reference to then outlive any pathwalk that found the
+superblock before the mount went away. The reference on the data table
+module is dropped from the rcu callback as well. utf8-core is built in
+whenever CONFIG_UNICODE is set, so there is no module exit that would
+have to wait for the callbacks.
+
+Overlayfs points the s_encoding of an overlay at the map of its first
+layer without taking a reference of its own. That stays correct. The
+layer is held by the overlay, so its map is dropped only after the
+overlay is gone.
+
+Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
-Reproducer: repro.c fails each slab allocation of unshare(CLONE_NEWIPC)
-in turn with fail-nth, a hundred rounds. It needs CONFIG_FAILSLAB and
-CONFIG_FAULT_INJECTION_DEBUG_FS and runs as root.
+Reproducer: delay.c holds a task named walker in utf8_casefold_hash() in
+rcu pathwalk mode for two seconds and repro.c drops the last reference
+to a lazily unmounted casefolded tmpfs meanwhile.
 
-    echo N > /sys/kernel/debug/failslab/ignore-gfp-wait
-    echo 0 > /sys/kernel/debug/failslab/verbose
-    echo 2 > /proc/sys/vm/drop_caches; cat /proc/sys/fs/inode-nr
-    ./repro 100
-    sleep 2
-    echo 2 > /proc/sys/vm/drop_caches; cat /proc/sys/fs/inode-nr
+    mount -t tmpfs -o casefold tmpfs /mnt
+    chattr +F /mnt
+    echo hello > /mnt/Foo
+    insmod delay.ko
+    ./repro
 
-Every failure in setup_mq_sysctls() and setup_ipc_sysctls() leaves an
-mqueue superblock behind with its root inode, about seven per round.
-Without this patch inode-nr goes from 967 to 1678, with it it stays at
-967.
+Without this patch that gives the splat above, with it it runs clean.
+
+delay.c:
+
+    #include <linux/delay.h>
+    #include <linux/kprobes.h>
+    #include <linux/module.h>
+
+    /* keep a task named "walker" in utf8_casefold_hash() in rcu pathwalk */
+    static int pre(struct kprobe *p, struct pt_regs *regs)
+    {
+    	if (!strcmp(current->comm, "walker"))
+    		mdelay(2000);
+    	return 0;
+    }
+
+    static struct kprobe kp = {
+    	.symbol_name	= "utf8_casefold_hash",
+    	.pre_handler	= pre,
+    };
+
+    static int __init delay_init(void)
+    {
+    	return register_kprobe(&kp);
+    }
+
+    static void __exit delay_exit(void)
+    {
+    	unregister_kprobe(&kp);
+    }
+
+    module_init(delay_init);
+    module_exit(delay_exit);
+    MODULE_LICENSE("GPL");
 
 repro.c:
 
     #define _GNU_SOURCE
-    #include <fcntl.h>
+    #include <pthread.h>
     #include <sched.h>
-    #include <stdio.h>
-    #include <stdlib.h>
     #include <string.h>
-    #include <sys/wait.h>
+    #include <sys/mman.h>
+    #include <sys/mount.h>
+    #include <sys/prctl.h>
+    #include <sys/stat.h>
     #include <unistd.h>
 
-    /*
-     * Fail the nth slab allocation of unshare(CLONE_NEWIPC). Returns 1 once
-     * nth is past the last one: nothing was injected and unshare() worked.
-     */
-    static int last(int nth)
+    static void pin(int cpu)
     {
-    	int status;
+    	cpu_set_t set;
 
-    	if (!fork()) {
-    		char buf[16] = "";
-    		int fd, ret;
-
-    		fd = open("/proc/thread-self/fail-nth", O_RDWR);
-    		snprintf(buf, sizeof(buf), "%d", nth);
-    		write(fd, buf, strlen(buf));
-    		ret = unshare(CLONE_NEWIPC);
-    		pread(fd, buf, sizeof(buf) - 1, 0);
-    		_exit(!ret && atoi(buf));
-    	}
-    	wait(&status);
-    	return WEXITSTATUS(status);
+    	CPU_ZERO(&set);
+    	CPU_SET(cpu, &set);
+    	sched_setaffinity(0, sizeof(set), &set);
     }
 
-    int main(int argc, char *argv[])
+    static void *walker(void *arg)
     {
-    	for (int i = 0; i < atoi(argv[1]); i++)
-    		for (int nth = 1; !last(nth); nth++)
-    			;
+    	struct stat st;
+    	char *p;
+
+    	/*
+    	 * The delay spins. Empty this cpu's lru batches so that an
+    	 * lru_add_drain_all() on the other side has no work to wait for here.
+    	 */
+    	pin(1);
+    	p = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    	memset(p, 1, 4096);
+    	madvise(p, 4096, MADV_COLD);
+
+    	prctl(PR_SET_NAME, "walker");
+    	stat("FOO", &st);
+    	return NULL;
+    }
+
+    int main(void)
+    {
+    	struct stat st;
+    	pthread_t t;
+
+    	pin(0);
+    	chdir("/mnt");
+    	stat("FOO", &st);
+    	/* the cwd now holds the last reference to the mount */
+    	umount2("/mnt", MNT_DETACH);
+    	pthread_create(&t, NULL, walker, NULL);
+    	sleep(1);
+    	/* drop it, ->kill_sb() runs before chdir() returns */
+    	chdir("/");
+    	pthread_join(t, NULL);
     	return 0;
     }
 ---
- ipc/namespace.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/unicode/utf8-core.c  | 21 +++++++++++++++++----
+ include/linux/unicode.h |  1 +
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/ipc/namespace.c b/ipc/namespace.c
-index 1e71353bdb4a..75aa7b469348 100644
---- a/ipc/namespace.c
-+++ b/ipc/namespace.c
-@@ -96,7 +96,7 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,
- fail_mq_sysctls:
- 	retire_mq_sysctls(ns);
- fail_mq_mount:
--	mntput(ns->mq_mnt);
-+	kern_unmount(ns->mq_mnt);
- fail_put:
- 	put_user_ns(ns->user_ns);
- 	ns_common_free(ns);
+diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
+index f313532f5e80..74a74a48dd8b 100644
+--- a/fs/unicode/utf8-core.c
++++ b/fs/unicode/utf8-core.c
+@@ -3,6 +3,7 @@
+ #include <linux/kernel.h>
+ #include <linux/string.h>
+ #include <linux/slab.h>
++#include <linux/rcupdate.h>
+ #include <linux/parser.h>
+ #include <linux/errno.h>
+ #include <linux/stringhash.h>
+@@ -183,12 +184,24 @@ struct unicode_map *utf8_load(unsigned int version)
+ }
+ EXPORT_SYMBOL(utf8_load);
+ 
++static void utf8_unload_rcu(struct rcu_head *head)
++{
++	struct unicode_map *um = container_of(head, struct unicode_map, rcu);
++
++	symbol_put(utf8_data_table);
++	kfree(um);
++}
++
++/*
++ * A pathwalk in rcu mode may still be in ->d_hash() or ->d_compare() of a
++ * filesystem that is being torn down and read the map through its
++ * superblock, so the map and the tables it points to have to outlive the
++ * grace period.
++ */
+ void utf8_unload(struct unicode_map *um)
+ {
+-	if (um) {
+-		symbol_put(utf8_data_table);
+-		kfree(um);
+-	}
++	if (um)
++		call_rcu(&um->rcu, utf8_unload_rcu);
+ }
+ EXPORT_SYMBOL(utf8_unload);
+ 
+diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+index 64fa44fe180c..3a8cb603eb93 100644
+--- a/include/linux/unicode.h
++++ b/include/linux/unicode.h
+@@ -53,6 +53,7 @@ struct unicode_map {
+ 	unsigned int version;
+ 	const struct utf8data *ntab[UTF8_NMAX];
+ 	const struct utf8data_table *tables;
++	struct rcu_head rcu;
+ };
+ 
+ int utf8_validate(const struct unicode_map *um, const struct qstr *str);
 
 -- 
 2.53.0
