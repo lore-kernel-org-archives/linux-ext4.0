@@ -1,28 +1,28 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0AB74AD4A8;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 740474ACC61;
 	Fri,  9 Oct 2026 10:37:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791542249; cv=none; b=gfm4EAxKN4kaRcx03uFW8E2yruEE578gfjxHmmqLz70VxJ4Wwv0IFcD34u2fZIiCCmvoq2fSbrVsqRhkQ76OFCKKUjO51h/Bunj0w4hhEtFk8V8naHfFvUIh7mHUvRsVYVK4YqIKt2xnxCvRdCSWMPb/3vfolB3GX5XT+A3GHRU=
+	t=1791542250; cv=none; b=AEscwqky6/ZZ97D68kERJs3OjlIcsPGrSIQAl2jqr+4zQ3iFamYNZMJQs+SSe+glBxH5M80D+QC5XO2/TtirseyqOScoJX6RUIk4huywzVHi3/TN9G1m086LTcKW30osUUNduqfisqh2ZNmgmq3aUcpgoepD7spQJV/+yjD9tEo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791542249; c=relaxed/simple;
-	bh=24XEr937KBemqk4d0mAcaT7/7H82gSkruSxHBfqDhGc=;
+	s=arc-20240116; t=1791542250; c=relaxed/simple;
+	bh=lcSDebB/wHmB/USWspbBFSGD7lQv9vn4e6hX/Z0gRWo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KQv9Usry+Gvrl/+JHLzklAqL+T4QG/wBdnhMunnp26mp0OQI0+W6qeXcfgYY6lCEPzPYwlONFjozVyF57c3y1qDwIcsCmgn2ubuIZVWJIiAnvVz1eVH1owZzo1ykMHeOMCwijJ01fDl4Sfnw5HlNw8jUpjCE+hinLlCAiEJKPeY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=none smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
+	 MIME-Version; b=iiMh31pWQ/JaQWDxzxlw7JZHwztAzdxzOzQuqKwYXcczy4rGa1YCrfGA4f4TXCUrX3IJGPEusp9KC59DNlVhSlqKhjar15UlKqJH189Evq1batRjsyW1A7+tvk3QmrUEkcOcKM+f5EodiOy0CwHMYzjwIlyEnuTUnP9SoHI/2mU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZV5gvyzYQv3V;
-	Fri,  9 Oct 2026 18:36:34 +0800 (CST)
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j1NZN3Cg7zKHMq9;
+	Fri,  9 Oct 2026 18:36:28 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.252])
-	by mail.maildlp.com (Postfix) with ESMTP id 0636640578;
-	Fri,  9 Oct 2026 18:37:19 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 63D064056B;
+	Fri,  9 Oct 2026 18:37:20 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.50.85.155])
-	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S5;
-	Fri, 09 Oct 2026 18:37:18 +0800 (CST)
+	by APP3 (Coremail) with UTF8SMTPSA id _Ch0CgBXGG3Vw8hqUHceDQ--.45810S19;
+	Fri, 09 Oct 2026 18:37:20 +0800 (CST)
 From: Zhang Yi <yi.zhang@huaweicloud.com>
 To: linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: linux-kernel@vger.kernel.org,
 	yangerkun@huawei.com,
 	wangkefeng.wang@huawei.com,
 	yukuai@fnnas.com
-Subject: [PATCH v7 01/31] ext4: simplify size updating in ext4_setattr()
-Date: Fri,  9 Oct 2026 18:30:02 +0800
-Message-ID: <20261009103033.2920530-2-yi.zhang@huaweicloud.com>
+Subject: [PATCH v7 15/31] ext4: implement writeback path using iomap
+Date: Fri,  9 Oct 2026 18:30:16 +0800
+Message-ID: <20261009103033.2920530-16-yi.zhang@huaweicloud.com>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
@@ -55,92 +55,443 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S5
-X-Coremail-Antispam: 1UD129KBjvJXoW7Aw4rtry7KFWUtr4UuFWfZrb_yoW8Kr1fpF
-	y3Kw1vkw10gF1q9rn2gF1UZa48ta1093yUXFWUCw4IqFyDC3ZaqF17K3y3WFWrtrWkWw4Y
-	qF4kGrs5Aw1UGrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUmY14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr4l82xGYIkIc2
-	x26xkF7I0E14v26r4j6ryUM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8wA2z4x0
-	Y4vE2Ix0cI8IcVAFwI0_Gr0_Xr1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Gr1j6F4UJw
-	A2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_GcCE3s1l
-	e2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI
-	8IcVAFwI0_JrI_JrylYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWUJVW8JwAC
-	jcxG0xvY0x0EwIxGrwACjI8F5VA0II8E6IAqYI8I648v4I1lFIxGxcIEc7CjxVA2Y2ka0x
-	kIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_
-	Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1V
-	AY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAI
-	cVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42
-	IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIev
-	Ja73UjIFyTuYvjTRAb10DUUUU
+X-CM-TRANSID:_Ch0CgBXGG3Vw8hqUHceDQ--.45810S19
+X-Coremail-Antispam: 1UD129KBjvAXoW3tFyDXrWUurW5Ww45AF1UWrg_yoW8Gw17to
+	Waqa15Xr48JryYyay09F1SyryUuan7Gr48Jr45Zr4Iva47AFyY93yfGw43Wa47Xw4FkFWf
+	A3yxJa1rGr4xJF1rn29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
+	AaLaJ3UjIYCTnIWjp_UUUO37AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20EY4v20xva
+	j40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r126s0DM28Irc
+	Ia0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK021l
+	84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4UJV
+	WxJr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I0E14v26rxl
+	6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6x
+	IIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_Jr0_
+	Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8c
+	xan2IY04v7MxkF7I0En4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCj
+	c4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4
+	CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r4j6ryU
+	MIIF0xvE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UMIIF0xvE42xK8VAvwI8IcIk0rVWUJV
+	WUCwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUv
+	cSsGvfC2KfnxnUUI43ZEXa7sRRtCztUUUUU==
 X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-The logic for updating the file size in ext4_setattr() is currently
-somewhat messy. By directly entering the error-handling path after
-failing to add an orphan inode, the unnecessary recovery process
-involving old_disksize and the file size can be avoided.
+Add the iomap writeback path for ext4 buffered I/O. This introduces:
+
+ - ext4_iomap_writepages(): the main writeback entry point.
+ - ext4_writeback_ops: a new iomap_writeback_ops instance to handle
+   block mapping and I/O submission.
+ - A new end I/O work handler ext4_iomap_finish_ioend() is added for
+   converting unwritten extents, updating file size, and handling
+   DATA_ERR_ABORT after I/O completion.
+
+Core implementation details:
+
+ - ->writeback_range() callback
+   Calls ext4_iomap_map_writeback_range() to map and allocate blocks
+   using the enhanced ext4_map_blocks(). ext4_map_blocks() now starts
+   its own transaction internally when it needs to allocate blocks.
+   For performance, when a block range is not yet allocated, it
+   allocates based on the writeback length and delalloc extent length
+   (ext4_map_blocks() will trim the allocated length), rather than
+   allocating a single folio at a time. The folio is then added to
+   an iomap_ioend instance.
+
+ - ->writeback_submit() callback
+   Registers ext4_iomap_end_bio() as the end bio callback. This callback
+   schedules a worker to handle:
+   - Unwritten extent conversion.
+   - i_disksize update after data is written back.
+   - Journal abort on writeback I/O failure.
+
+ - The new end I/O work handler ext4_iomap_finish_ioend()
+   This reuses i_rsv_conversion_work and i_rsv_conversion_list, which
+   are now used in the buffer_head writeback path for memory saving,
+   because an inode can never go through both buffer_head and iomap
+   paths. Those are not initialized in this patch but will be when the
+   iomap path is formally enabled later.
+
+Key changes and considerations:
+
+ - Append write and unwritten extents
+   Since data=ordered mode is not used to prevent stale data exposure
+   during append writebacks, new blocks are always allocated as
+   unwritten extents (i.e. always enable dioread_nolock), and i_disksize
+   update is postponed until I/O completion. Additionally, the deadlock
+   that the reserve handle was expected to resolve does not occur
+   anymore. Therefore, the end I/O worker can start a normal journal
+   handle instead of a reserve handle when converting unwritten extents.
+
+ - Lock ordering
+   The ->writeback_range() callback runs under the folio lock, requiring
+   the journal handle to be started under that same lock. This reverses
+   the order compared to the buffer_head writeback path. The lock
+   ordering documentation in super.c has been updated accordingly.
+
+ - Don't cache writes
+   The iomap infrastructure sets the BIO_COMPLETE_IN_TASK flag when
+   submitting I/O, so the ioend will be processed in task context.
+   However, if a private defer worker is to be started, this flag must
+   be cleared explicitly to avoid double deferral. In the future, all
+   private defer work should be moved to the generic bio complete in
+   task framework.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
 ---
- fs/ext4/inode.c | 22 +++++++++-------------
- 1 file changed, 9 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h    |   8 ++-
+ fs/ext4/inode.c   | 147 +++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/page-io.c | 122 ++++++++++++++++++++++++++++++++++++++
+ fs/ext4/super.c   |   5 +-
+ 4 files changed, 278 insertions(+), 4 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 98295ef7069ac..03fa90d2986ff 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1208,8 +1208,10 @@ struct ext4_inode_info {
+ 	/* Lock protecting lists below */
+ 	spinlock_t i_completed_io_lock;
+ 	/*
+-	 * Completed IOs that need unwritten extents handling and have
+-	 * transaction reserved
++	 * Completed IOs that need unwritten extents handling and have a
++	 * transaction reserved for the buffer_head writeback path, and
++	 * also used by the iomap writeback path to queue ioends needing
++	 * unwritten extents conversion, i_disksize update, etc.
+ 	 */
+ 	struct list_head i_rsv_conversion_list;
+ 	struct work_struct i_rsv_conversion_work;
+@@ -3991,6 +3993,8 @@ void ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *page,
+ 		size_t len);
+ extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
+ extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
++extern void ext4_iomap_end_io(struct work_struct *work);
++extern void ext4_iomap_end_bio(struct bio *bio);
+ 
+ /* mmp.c */
+ extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 26f0f9714f03c..ddee4c50bd859 100644
+index 92ed73842d7d9..78be37cd3fa2b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -6080,7 +6080,6 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (attr->ia_valid & ATTR_SIZE) {
- 		handle_t *handle;
- 		loff_t oldsize = inode->i_size;
--		loff_t old_disksize;
- 		int shrink = (attr->ia_size < inode->i_size);
+@@ -44,6 +44,7 @@
+ #include <linux/iversion.h>
  
- 		if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
-@@ -6164,6 +6163,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 			if (ext4_handle_valid(handle) && shrink) {
- 				error = ext4_orphan_add(handle, inode);
- 				orphan = 1;
-+				if (error)
-+					goto out_handle;
- 			}
+ #include "ext4_jbd2.h"
++#include "ext4_extents.h"
+ #include "xattr.h"
+ #include "acl.h"
+ #include "truncate.h"
+@@ -4147,10 +4148,154 @@ static void ext4_iomap_readahead(struct readahead_control *rac)
+ 	iomap_bio_readahead(rac, &ext4_iomap_buffered_read_ops);
+ }
  
- 			if (shrink)
-@@ -6179,23 +6180,18 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 					(attr->ia_size > 0 ? attr->ia_size - 1 : 0) >>
- 					inode->i_sb->s_blocksize_bits);
- 
--			down_write(&EXT4_I(inode)->i_data_sem);
--			old_disksize = EXT4_I(inode)->i_disksize;
--			EXT4_I(inode)->i_disksize = attr->ia_size;
--
- 			/*
- 			 * We have to update i_size under i_data_sem together
- 			 * with i_disksize to avoid races with writeback code
--			 * running ext4_wb_update_i_disksize().
-+			 * updating disksize in mpage_map_and_submit_extent().
- 			 */
--			if (!error)
--				i_size_write(inode, attr->ia_size);
--			else
--				EXT4_I(inode)->i_disksize = old_disksize;
-+			down_write(&EXT4_I(inode)->i_data_sem);
-+			i_size_write(inode, attr->ia_size);
-+			EXT4_I(inode)->i_disksize = attr->ia_size;
- 			up_write(&EXT4_I(inode)->i_data_sem);
--			rc = ext4_mark_inode_dirty(handle, inode);
--			if (!error)
--				error = rc;
 +
-+			error = ext4_mark_inode_dirty(handle, inode);
-+out_handle:
- 			ext4_journal_stop(handle);
- 			if (error)
- 				goto out_mmap_sem;
++static int ext4_iomap_map_writeback_range(struct iomap_writepage_ctx *wpc,
++					  loff_t offset, unsigned int dirty_len)
++{
++	struct inode *inode = wpc->inode;
++	struct super_block *sb = inode->i_sb;
++	struct journal_s *journal = EXT4_SB(sb)->s_journal;
++	struct ext4_map_blocks map;
++	ext4_lblk_t index = offset >> inode->i_blkbits;
++	unsigned int blk_len, blk_end;
++	int retries = 0;
++	int ret;
++
++	ret = ext4_emergency_state(sb);
++	if (unlikely(ret))
++		return ret;
++
++	/* Check validity of the cached writeback mapping. */
++	if (offset >= wpc->iomap.offset &&
++	    offset < wpc->iomap.offset + wpc->iomap.length &&
++	    ext4_iomap_valid(inode, &wpc->iomap))
++		return 0;
++
++	blk_len = dirty_len >> inode->i_blkbits;
++	blk_end = umin(wpc->wbc->range_end >> inode->i_blkbits, UINT_MAX - 1);
++	if (blk_end > index + blk_len)
++		blk_len = blk_end - index + 1;
++
++retry:
++	map.m_lblk = index;
++	map.m_len = min_t(unsigned int, MAX_WRITEPAGES_EXTENT_LEN, blk_len);
++	ret = ext4_map_blocks(NULL, inode, &map,
++			      EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT |
++			      EXT4_GET_BLOCKS_METADATA_NOFAIL |
++			      EXT4_GET_BLOCKS_IO_SUBMIT |
++			      EXT4_EX_NOCACHE);
++	if (ret < 0) {
++		if (ext4_emergency_state(sb))
++			return ret;
++
++		/*
++		 * Retry transient ENOSPC errors, if
++		 * ext4_count_free_blocks() is non-zero, a commit
++		 * should free up blocks.
++		 */
++		if (ret == -ENOSPC && journal && ext4_count_free_clusters(sb) &&
++		    ++retries <= 3) {
++			jbd2_journal_force_commit_nested(journal);
++			goto retry;
++		}
++
++		ext4_msg(sb, KERN_CRIT,
++			 "Delayed block allocation failed for inode %llu at logical offset %llu with max blocks %u with error %d",
++			 inode->i_ino, (unsigned long long)map.m_lblk,
++			 (unsigned int)map.m_len, -ret);
++		ext4_msg(sb, KERN_CRIT,
++			 "This should not happen!! Data will be lost\n");
++		if (ret == -ENOSPC)
++			ext4_print_free_blocks(inode);
++		return ret;
++	}
++
++	ext4_set_iomap(inode, &wpc->iomap, &map, offset, dirty_len, 0);
++	return 0;
++}
++
++static void ext4_iomap_discard_folio(struct folio *folio, loff_t pos)
++{
++	struct inode *inode = folio->mapping->host;
++	loff_t length = folio_pos(folio) + folio_size(folio) - pos;
++
++	ext4_iomap_punch_delalloc(inode, pos, length, NULL);
++}
++
++static ssize_t ext4_iomap_writeback_range(struct iomap_writepage_ctx *wpc,
++					  struct folio *folio, u64 offset,
++					  unsigned int len, u64 end_pos)
++{
++	ssize_t ret;
++
++	ret = ext4_iomap_map_writeback_range(wpc, offset, len);
++	if (!ret)
++		ret = iomap_add_to_ioend(wpc, folio, offset, end_pos, len);
++	if (ret < 0)
++		ext4_iomap_discard_folio(folio, offset);
++	return ret;
++}
++
++static int ext4_iomap_writeback_submit(struct iomap_writepage_ctx *wpc,
++				       int error)
++{
++	struct iomap_ioend *ioend = wpc->wb_ctx;
++	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
++
++	/*
++	 * After I/O completion, a worker needs to be scheduled when:
++	 * 1) Unwritten extents require conversion.
++	 * 2) The file size needs to be extended.
++	 * 3) The journal needs to be aborted due to an I/O error.
++	 */
++	if ((ioend->io_flags & IOMAP_IOEND_UNWRITTEN) ||
++	    (ioend->io_offset + ioend->io_size > READ_ONCE(ei->i_disksize)) ||
++	    test_opt(ioend->io_inode->i_sb, DATA_ERR_ABORT))
++		ioend->io_bio.bi_end_io = ext4_iomap_end_bio;
++
++	/*
++	 * ext4_iomap_end_bio() always defers endio processing, disable
++	 * generic BIO in task to avoid double deferral since we will use
++	 * a private defer endio handler in process context.
++	 *
++	 * TODO: Switch all defer handlers to the generic bio complete
++	 * in task framework.
++	 */
++	if (ioend->io_bio.bi_end_io)
++		bio_clear_flag(&ioend->io_bio, BIO_COMPLETE_IN_TASK);
++
++	return iomap_ioend_writeback_submit(wpc, error);
++}
++
++static const struct iomap_writeback_ops ext4_writeback_ops = {
++	.writeback_range = ext4_iomap_writeback_range,
++	.writeback_submit = ext4_iomap_writeback_submit,
++};
++
+ static int ext4_iomap_writepages(struct address_space *mapping,
+ 				 struct writeback_control *wbc)
+ {
+-	return 0;
++	struct inode *inode = mapping->host;
++	struct super_block *sb = inode->i_sb;
++	long nr = wbc->nr_to_write;
++	int alloc_ctx, ret;
++	struct iomap_writepage_ctx wpc = {
++		.inode = inode,
++		.wbc = wbc,
++		.ops = &ext4_writeback_ops,
++	};
++
++	ret = ext4_emergency_state(sb);
++	if (unlikely(ret))
++		return ret;
++
++	alloc_ctx = ext4_writepages_down_read(sb);
++	trace_ext4_writepages(inode, wbc);
++	ret = iomap_writepages(&wpc);
++	trace_ext4_writepages_result(inode, wbc, ret, nr - wbc->nr_to_write);
++	ext4_writepages_up_read(sb, alloc_ctx);
++
++	return ret;
+ }
+ 
+ /*
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 0236b6b9785a2..9b0e12b5463cf 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -22,6 +22,7 @@
+ #include <linux/bio.h>
+ #include <linux/workqueue.h>
+ #include <linux/kernel.h>
++#include <linux/iomap.h>
+ #include <linux/slab.h>
+ #include <linux/mm.h>
+ #include <linux/sched/mm.h>
+@@ -547,3 +548,124 @@ void ext4_bio_write_folio(struct ext4_io_submit *io, struct folio *folio,
+ 		io_submit_add_bh(io, inode, folio, bh);
+ 	} while ((bh = bh->b_this_page) != head);
+ }
++
++static int ext4_iomap_wb_update_disksize(handle_t *handle, struct inode *inode,
++					 loff_t end)
++{
++	loff_t new_disksize = end;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	int ret;
++
++	/*
++	 * Races with truncate are avoided by checking i_size under
++	 * i_data_sem.
++	 */
++	down_write(&ei->i_data_sem);
++	new_disksize = min(new_disksize, i_size_read(inode));
++	if (new_disksize > ei->i_disksize)
++		WRITE_ONCE(ei->i_disksize, new_disksize);
++	up_write(&ei->i_data_sem);
++	ret = ext4_mark_inode_dirty(handle, inode);
++	if (ret)
++		EXT4_ERROR_INODE_ERR(inode, -ret, "Failed to mark inode dirty");
++
++	return ret;
++}
++
++static void ext4_iomap_finish_ioend(struct iomap_ioend *ioend)
++{
++	struct inode *inode = ioend->io_inode;
++	struct super_block *sb = inode->i_sb;
++	loff_t pos = ioend->io_offset;
++	size_t size = ioend->io_size;
++	loff_t end = pos + size;
++	handle_t *handle;
++	int credits;
++	int ret, err;
++
++	ret = blk_status_to_errno(ioend->io_bio.bi_status);
++	if (unlikely(ret)) {
++		if (test_opt(sb, DATA_ERR_ABORT) && !ext4_emergency_state(sb))
++			jbd2_journal_abort(EXT4_SB(sb)->s_journal, ret);
++		goto out;
++	}
++
++	if (!(ioend->io_flags & IOMAP_IOEND_UNWRITTEN) &&
++	    end <= READ_ONCE(EXT4_I(inode)->i_disksize))
++		goto out;
++
++	/*
++	 * We may need to convert one extent, update the i_disksize and
++	 * dirty the inode.
++	 */
++	credits = ext4_chunk_trans_blocks(inode,
++			EXT4_MAX_BLOCKS(size, pos, inode->i_blkbits));
++	handle = ext4_journal_start(inode, EXT4_HT_EXT_CONVERT, credits);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out_err;
++	}
++
++	/* Update on-disk size after I/O is completed. */
++	if (end > READ_ONCE(EXT4_I(inode)->i_disksize)) {
++		ret = ext4_iomap_wb_update_disksize(handle, inode, end);
++		if (ret)
++			goto out_journal;
++	}
++
++	if (ioend->io_flags & IOMAP_IOEND_UNWRITTEN)
++		ret = ext4_convert_unwritten_extents(handle, inode, pos,
++						     size, NULL);
++
++out_journal:
++	err = ext4_journal_stop(handle);
++	if (!ret)
++		ret = err;
++out_err:
++	if (ret < 0 && !ext4_emergency_state(sb)) {
++		ext4_msg(sb, KERN_EMERG,
++			 "failed to convert unwritten extents to written extents or update inode size -- potential data loss! (inode %llu, error %d)",
++			 inode->i_ino, ret);
++	}
++out:
++	iomap_finish_ioends(ioend, ret);
++}
++
++/*
++ * Work on buffered iomap completed IO, to convert unwritten extents to
++ * mapped extents
++ */
++void ext4_iomap_end_io(struct work_struct *work)
++{
++	struct ext4_inode_info *ei = container_of(work, struct ext4_inode_info,
++						  i_rsv_conversion_work);
++	struct iomap_ioend *ioend;
++	struct list_head ioend_list;
++	unsigned long flags;
++
++	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	list_replace_init(&ei->i_rsv_conversion_list, &ioend_list);
++	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++
++	iomap_sort_ioends(&ioend_list);
++	while (!list_empty(&ioend_list)) {
++		ioend = list_entry(ioend_list.next, struct iomap_ioend, io_list);
++		list_del_init(&ioend->io_list);
++		iomap_ioend_try_merge(ioend, &ioend_list);
++		ext4_iomap_finish_ioend(ioend);
++	}
++}
++
++void ext4_iomap_end_bio(struct bio *bio)
++{
++	struct iomap_ioend *ioend = iomap_ioend_from_bio(bio);
++	struct ext4_inode_info *ei = EXT4_I(ioend->io_inode);
++	unsigned long flags;
++
++	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
++	if (list_empty(&ei->i_rsv_conversion_list))
++		queue_work(EXT4_SB(ioend->io_inode->i_sb)->rsv_conversion_wq,
++			   &ei->i_rsv_conversion_work);
++	list_add_tail(&ioend->io_list, &ei->i_rsv_conversion_list);
++	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
++}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 30150094f2a54..6d2d323604f96 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -123,7 +123,10 @@ static const struct fs_parameter_spec ext4_param_specs[];
+  * sb_start_write -> i_mutex -> transaction start -> i_data_sem (rw)
+  *
+  * writepages:
+- * transaction start -> page lock(s) -> i_data_sem (rw)
++ * - buffer_head path:
++ *   transaction start -> folio lock(s) -> i_data_sem (rw)
++ * - iomap path:
++ *   folio lock -> transaction start -> i_data_sem (rw)
+  */
+ 
+ static const struct fs_context_operations ext4_context_ops = {
 -- 
 2.52.0
 
