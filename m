@@ -1,44 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 864E14CC261
-	for <linux-ext4@vger.kernel.org>; Fri,  9 Oct 2026 11:00:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7CE1C4D0CC4
+	for <linux-ext4@vger.kernel.org>; Fri,  9 Oct 2026 11:01:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791543648; cv=none; b=N+CiYRmK0vxisw5YU7kfxShRY1JLu/Mq+Mh2aKLIIK+Wx0TDkioy4ZsOWIVwZVCSfRQKX0t7XNZ/vGARJGGlX6e+92OW0uiKoXqTrHN0IUg/hfM+wOBe26rJPGrXdr9pQyDpzMN9tR7pWRu3c9duZVwfjpe9tz2QmovUlMgl3IA=
+	t=1791543686; cv=none; b=IhT9vQWsAqhiuDnaoLUUtJ2VrcaQMvI6x6y5xCPPvPObtHLtByVm9qMJN9OZ0GgYPjnX8wr0dbNk3N76B4CK7Cs7UFQ2LcIS4m27Xv34qYQ3LT8GXwnCCmTdiZpGKWkDWGxTwUv0RmHX5WvQ6DPcbr+5A3Nrs7v/HJ8q0+HQU8c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791543648; c=relaxed/simple;
-	bh=m+xXj77t87O1pkZemzjhCgip12l2KZdwhEh+JFzvGhw=;
+	s=arc-20240116; t=1791543686; c=relaxed/simple;
+	bh=WMwG//0d1cXpGHvwFHY/dwwvHa+llPzRWDWSbjcVrIM=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=VKCWKR//V+LadLaDcgS7CPiofKBYWZG4bnEhAbO6DHitMn5Ronhx240Oxly8fRcFinUJ++Bv4upayt++uY0Hfj7PaDH5BUI4tSBcg8ovTeap2yOEmlRcZE4SRttpKBt6M6cyAB7wKBlgayTIl8TZ1XXNDBulyf64KkurOgpBKX0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=e9ll1xik; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=s0YFiH+bNnZ+Uzc9OIJrmMmJUoEJH5wY1z7cEQxQb+EhiH/EhSKFAN+loMPXWn3Hqjt+97XT3SD4toCS/nHIQ4S/GuRrialnKcyAB1e2V/KEQgbTv0FHdOX7dYbUy6FqsvmsW0yxYoR1BfgsdxLXWmvOxLXfJCXwWtgzCfR4edE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SlcWKbo6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="e9ll1xik"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B58F1F00898;
-	Fri,  9 Oct 2026 11:00:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SlcWKbo6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CDA4A1F000FF;
+	Fri,  9 Oct 2026 11:01:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791543639;
-	bh=m+xXj77t87O1pkZemzjhCgip12l2KZdwhEh+JFzvGhw=;
+	s=k20260515; t=1791543680;
+	bh=TCvUsPEY+QLzSBc4F/BeCKTG8E1nXt4loK+NBCX1Fss=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=e9ll1xik3mVwhG5fli/+oni2rGZ0wHadeHe+FN4O2aZGWKnncHwSgcGp9y+vp9fcK
-	 B8jyZGMjk/VZdGE/rXq+1rM4E/HgUmGbKJLdpuzFO34ZylkdwKHL8he3jqdLuE4Jnu
-	 Os5tU5t3Tqh0wj2YxdMSCcRMBGqspxw11gtTW4wi2xinHod3SBsjOX0MkuaFTnKBpj
-	 uAaWLFT0zFOpEHEhkRMnL4WP7/SkfNJJEAAuagX9yvcBe06PkFJEWPufOAOusYzk+8
-	 232LM8bayOxw1+Ua2PRBNR+HdVlW5hXYT4J+n/yoTxRUcy1kLkHxA1OvF7fAYqoL1/
-	 FCZsbLRdrxIvw==
-Message-ID: <sashiko-outbox-165297@kernel.org>
+	b=SlcWKbo6eRyUkxraAfRHFINaU6cky4dPkYQZTk7I84yfnSPaoDWgyhr5A5ovLfOJp
+	 BoPw6x+LMhwuGvhMkm0Cg0l/dNFjMCgCL5Zlh87fPpjhDpoLttMbuZI6c7fjV9UC73
+	 ict8W+W668v/oYbOSHuOv0zPgHKNqKd6tQCJ560Y1BTrjhBHyasngtBQBCtDVzutOX
+	 LLO/bGtzQff9nIExyhGcm0031Y2ux4ur7eslnWDQWXBUt5X6qKON40MgKvlfZhKax+
+	 Fwl6P7hBzvI9sm24rfBXsXeUbXEHqKOSVpPJRZ6l3Ut4hCcMjScwkR3gDrejorn+tO
+	 ZCL6WVAA3qsPA==
+Message-ID: <sashiko-outbox-165299@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v7 20/31] ext4: disable online defrag when inode using
- iomap buffered I/O path
+Subject: Re: [PATCH v7 12/31] ext4: do not use data=ordered mode for inodes
+ using buffered iomap path
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Zhang Yi" <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261009103033.2920530-21-yi.zhang@huaweicloud.com>
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20261009103033.2920530-13-yi.zhang@huaweicloud.com>
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
- <20261009103033.2920530-21-yi.zhang@huaweicloud.com>
+ <20261009103033.2920530-13-yi.zhang@huaweicloud.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Fri, 09 Oct 2026 11:00:38 +0000
+Date: Fri, 09 Oct 2026 11:01:19 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -47,10 +47,23 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 > From: Zhang Yi <yi.zhang@huawei.com>
 >=20
-> Online defragmentation does not currently support inodes using the
-> iomap buffered I/O path. The existing implementation relies on
-> buffer_head for sub-folio block management and data=3Dordered mode for
-> data consistency, both of which are incompatible with the iomap path.
+> The data=3Dordered mode introduces two fundamental conflicts with the
+> iomap buffered write path, leading to potential deadlocks.
+>=20
+> 1) Lock ordering conflict
+>    In the iomap writeback path, each folio is processed sequentially:
+>    the folio lock is acquired first, followed by starting a transaction
+>    to create block mappings.
+>=20
+>    In data=3Dordered mode, writeback triggered by the journal commit
+>    process may attempt to acquire a folio lock that is already held by
+>    iomap background writeback process. Meanwhile, iomap, under that same
+>    folio lock, may start a new transaction to map other blocks on this
+>    folio and wait for the currently committing transaction to finish,
+> [ ... ]
+>=20
+> Online defragmentation does not yet support iomap; this can be resolved
+> separately in the future.
 >=20
 > Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
@@ -58,5 +71,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261009103033.2920=
-530-1-yi.zhang@huaweicloud.com?part=3D20
+530-1-yi.zhang@huaweicloud.com?part=3D12
 
