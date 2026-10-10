@@ -1,67 +1,68 @@
-Received: from mail-pf1-f174.google.com (mail-pf1-f174.google.com [209.85.210.174])
+Received: from mail-pj1-f52.google.com (mail-pj1-f52.google.com [209.85.216.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B8BAF353A65
-	for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 07:21:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E06CF324B33
+	for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 08:09:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791616893; cv=none; b=Cpwrl5PME0mgeur4RMvmAB+5Fo6Olw+Rr2Cd1aDNPrV/TRLb62pFjAb3bBjABP6IQOCj9/qbF2RwDVy1OmNsYNPPPXwta+IROKXMi52QCwIrpeKP/jG5OekgbY8pKHeWUhnahPA/+V3pLBJwcdhNm/aOEQzaAF4hk8N5sYh1rI8=
+	t=1791619749; cv=none; b=mhjifOPmaKrKzdDamtmUuEtOANUR4DrJD5BvUtkM4C9xYciruyiD8ZA+EvBJ4rVEippKDsCh2Zh+p+Jj/S7e7uCI8VuMfpaqw/m/6HOg6v1dp1xPvnFT9q/82LFpK9VrKWpkvUmN4LJl/HPfKxqIWbnaD3Vrq58ZNoghFwBTU0w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791616893; c=relaxed/simple;
-	bh=xo//w35Kmn7FpIx31KMLYBjgptYPhoWnnYI3piYr8gI=;
+	s=arc-20240116; t=1791619749; c=relaxed/simple;
+	bh=VyXzyhxXix2J5dcURdpKFUag11U6FjtFgNekV8QQaic=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=uOmxMWTAE459BPpetDRgCWVtZ37kJk/4ubRP6Img4O35ASsKkQam2mhR/5qM3SUEuLWyI8J22Dii+AkcM3Z/TD7j/IQeVTvcyLEf68m50VQupLQVB06vq43CADK0tvrAi8Wl8Lw2BA4eYcoQFCgL6N6CBJNCv1BAM251HpYojp8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=mt2gRFS0; arc=none smtp.client-ip=209.85.210.174
+	 In-Reply-To:Content-Type; b=HPSIdFDTbZfJIEyeuav4khxBZJKhKWPNQT9Dos4bt+e6VvdQ1KdBSwlEz+zn3Dbkz564M+7eNMoS6VhcGhfwjq4BbSnvHR9gu0Gsa7FbUbvIsTP/qke5YnOaUpsB9eI+iPKdlPqvvFUOnlWyZcxFItuW4BHHtdMpBEMd09+TgAg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Klr9aXbV; arc=none smtp.client-ip=209.85.216.52
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mt2gRFS0"
-Received: by mail-pf1-f174.google.com with SMTP id d2e1a72fcca58-8897e83332fso1197370b3a.1
-        for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 00:21:32 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Klr9aXbV"
+Received: by mail-pj1-f52.google.com with SMTP id 98e67ed59e1d1-3ab62a8250aso210040a91.1
+        for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 01:09:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791616892; x=1792221692; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1791619747; x=1792224547; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=mtZL905viNivAYPB+dpalqyhUQkTx2Pe6yZCdf2c5Tg=;
-        b=mt2gRFS0jwR5DAebSe24ucueBQBQitXQMSVPN4Vw4QKC+OZdQrgdnQHf7mXLlyyW9b
-         X+8bCEYA8YJVgJd9LaofDrs/xnpt4KuuTJb67KME/AKpha1PpeKD0+drxJu+livYpm8R
-         A1i72s/76ZOKojzdoyxontc7ZMufnssMSkTWqoK81KsPBMQ0P8mmlfJEn5/nuwa0GboH
-         lCdZf++PmfeE6rccsymlHwOjJu8vBddVZMg2wZBJUHr8NHtOyMDV8BnlbS3w6qoy9LgV
-         8AhiMc5lZTAu9fkbnHkzcTA0G33Ba7fVigVN/o/BTr3Gsyps+gE86LdMAl1zg/SSY14S
-         oGcw==
+        bh=EPdE1haLXtYmkfSNpDltFBKmBYf3c6eC0Va7uh1cwWE=;
+        b=Klr9aXbVe3vGAOO1P9/JdzkUp9Iu21no8AgrG0ucrLEYhkGCOQmlGOhftGCoVS015R
+         3ICbdHiLYv5IEhkttFcdpkxyVV9ZGNiDMPKqw7nV/a3/ifVNClluRg84PHl/2WGDKrPs
+         9rnJhDRJDlNlxFgQSCiLjmD+lMNCcDvsUsoKZTHqY/85pgrTF2DZJetS53U/mCYkLAYf
+         qyDvuNvECudr7Djx1pGzO4aBMXVCKJKhwD9IsQ2nsVk0mMQJIZM2y0Qpg2ZAEi6L4Nk+
+         TcSuwyFEwCZYbttK4CvNu1xxPEzrXCxBeNgyJXusrpsQGxaaMBSVyWKiposbt2TYax9G
+         Es6g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791616892; x=1792221692;
+        d=1e100.net; s=20260707; t=1791619747; x=1792224547;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=mtZL905viNivAYPB+dpalqyhUQkTx2Pe6yZCdf2c5Tg=;
-        b=NRtslTG1wJQtuAGr17Go0GjZ3A1NNrlBRBwqRmmGxiegJnopPrmkXNe5+LA8dhzRjz
-         RZTMxlGTAt+3m/+PFzZSHgLu+r5tkJw/K9UbRAksEMntPhcDxB3zmGNbJlognJboH9kM
-         8lgYbTUNwkMp8cjJbUpH+l+SbOTTSApV1M2yOdN3tsBA3jOgXuI92vG8aB3Hw/OC5aSJ
-         F4oRG0qfTOdM0QBYKPqi3Ppsxj+pvIPrIlrfzYpi3STeJY7akHDGj0ylAi7HFqpBqVK8
-         J5K/WaZC+HiJr+xgKx/AbBBxTNyzBvFLhQU0lTXJ5do/Es+leGdKNrAZ1Vf3sf/+I1XT
-         TxOw==
-X-Gm-Message-State: AFq9FYI6fC9aV+CrkV8Os3B32WPfdqw2q/w0leUlTnDeuj9aOU4RsYlg
-	XojLEraXLz9ZNWVVKnG1P4oRH9wvOVI8Eo2e8DiLoCThTGYvd08YPFTu
-X-Gm-Gg: AYBFou3zFltuAmOP9nJ+7OETUOIiuqVj3+WiUMujQNxudTn3XX7zOAWRvTH27JsLDzt
-	0dqg6YeefXwIw4H7xuD+apn9F8yP24dYMKc9uqvJB6tphaMienHv4jz3qam528qsPZXY1cyZeN0
-	JUFxKhqZPFHueqMj52xZuxZFVyYMi9kwHgOQjUvf2XEtokClgb1/hrpiwgAnT7AW6nosT3PV8ED
-	NFlF9ERG1zBY9noI7CzRYVdBkIvQbYU1D2UAwMn8sjJwUNaPk+euCh4i1TogMHRCLQFOZ8wMxu+
-	YZb5Qp8LdPlXHH/RYYy5ShrcFbgqyduWHH8VV+EEjUGnMVE/r5JG910jvXh4WvGPTYariZvtIRx
-	iF/r8AXcAsjIc3W6aOJvkL640Vaof/Q7dmN9Ty5VGmjFgoKgtiOhGyrHBs5pBwkArkTctiNOpx/
-	n/amKmp+ctHX1vsI9BIEIb+yDnCsVzaC1PTOX2dCMh+266xi8wd88mfvbmb5Aru5xOY2dZw5bOV
-	7ckhPD+7BLd6GGP4om036QjX07pSA==
-X-Received: by 2002:a05:6a00:44c7:b0:88d:511a:bd43 with SMTP id d2e1a72fcca58-896a3958148mr2900308b3a.30.1791616891783;
-        Sat, 10 Oct 2026 00:21:31 -0700 (PDT)
+        bh=EPdE1haLXtYmkfSNpDltFBKmBYf3c6eC0Va7uh1cwWE=;
+        b=DtRJzacam3Rkpe3SrD8KuxG/DGvwXJpXJa3CnGKa5yldCNwk9eMAuUYqvrlwRAl8Bf
+         PnuAoRu/gRRefjUGHalfIMTQfBiT6NvSDW//1fJozWY9WWikj/wxh1s+C+4ndEa2afPo
+         MSiO/EmhLS1P5du7MjiC4O8pvB3tnWJb+BMK5wqQma7R4uv7GMMkKef75CvyJ2Ng/92Y
+         xPMBrbynoMbw40pNoYijBOug19KimD6LGqujEk1UURyNXldTLWuaDgzVuYKLIsu5gO5g
+         6ilugbcNxl7do6iCl7NkefhTUh6uebQHR63/GMWqjjHKEo+edRreDoRxXtu32keG6CNg
+         Wrkw==
+X-Forwarded-Encrypted: i=1; AKwUvBzdhPDxY26HinJe/9i1dWguwS7nk+zfmiO6Lr5OInixjLrtyOYjqLFfXrVXCxhlowLegOK4BfF1DklB@vger.kernel.org
+X-Gm-Message-State: AFq9FYJIb5I3EXiDafXyIsXJQthr/6UhXyCEaQwSLyzOFoARjtL0GqYM
+	fS+tmWIIPI9586Hezn+jF+yMoWuTe5hIHg4JNg0zLeWNirVNVtTXmowL
+X-Gm-Gg: AYBFou0fnkdlg3lraIuyS/b4ufeNasyV4aZz/bTIQYRmaTKT76GBmdfJvjGc4IFeeIa
+	m4OdBLjmOJYSCmsdY/dH6HW0sc5XWsT9M0V4q9Ws9Li6P+kDwPpJo92jG2nu9pXT5SUN+guBsVH
+	WGBneENxHxnbGTa92XhsCfoLPgI0xAeE5Fxg95MQUg6NRBEglO3s325mlMiVkvT3LcYEM7IJhmw
+	Ft9JUv4IdMPFTspE2YuK2FbZoR5ledF3CyD4/6ZFC3E0nJjJ2cHmw6lnh5XM+lhn1bDlmTpoxuD
+	Bx4Kv1ovtfmFMxFxg4X9+PnYxCGf7+FlSM5IeQC5z42WonZVGoi0CxIOxD8bJGX/7rchsZWxOjO
+	BPAPdFNpkJDL3I+PnjUKDmHuG0B0AljoO7AI4vmzkgFIiUf891SOItoa0lHvdTFQjd73HY3YvR0
+	zbvqG6HLABXU46lTlN6hU/AP2Ge8thur6uP5ePgSDEWaJlh1KsR7L96vhAaPZN5/B3uCi0p+rFM
+	X9/pUR6ee2HzT08jZQ=
+X-Received: by 2002:a17:90b:510a:b0:3a8:e2c:af52 with SMTP id 98e67ed59e1d1-3ab3a93eae8mr3361522a91.24.1791619746698;
+        Sat, 10 Oct 2026 01:09:06 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8985a414614sm1361747b3a.51.2026.10.10.00.21.28
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ab371c32cesm6887768a91.16.2026.10.10.01.09.03
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 10 Oct 2026 00:21:31 -0700 (PDT)
-Message-ID: <7208fed8-d3e8-454c-9376-a359f9089400@gmail.com>
-Date: Sat, 10 Oct 2026 15:21:04 +0800
+        Sat, 10 Oct 2026 01:09:06 -0700 (PDT)
+Message-ID: <fe737cea-e80b-401e-b03e-d2eacf7b7fb3@gmail.com>
+Date: Sat, 10 Oct 2026 16:09:01 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -69,100 +70,93 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v7 27/31] ext4: set DISKSIZE_GROW_PENDING after zeroing
- unaligned EOF block
+Subject: Re: [PATCH v7 30/31] ext4: partially enable iomap for the buffered
+ I/O path of regular files
 To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
- <20261009103033.2920530-28-yi.zhang@huaweicloud.com>
- <sashiko-outbox-165360@kernel.org>
+ <20261009103831.2978767-2-yi.zhang@huaweicloud.com>
+ <sashiko-outbox-165384@kernel.org>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <sashiko-outbox-165360@kernel.org>
+In-Reply-To: <sashiko-outbox-165384@kernel.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On 10/9/2026 7:21 PM, sashiko-bot@kernel.org wrote:
+On 10/9/2026 7:33 PM, sashiko-bot@kernel.org wrote:
 > Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [Medium] ext4: torn lockless read of i_disksize causes missing DISKSIZE_GROW_PENDING
+> - [Critical] ext4: NULL pointer dereference in pagecache_write() during dynamic fsverity enablement
 > --
 > 
-> commit 4a76a3a815e11b477d4aaf7fd5a0eb69623ddb31
+> commit 3391a6fc6c975d43c433b32dd18bae4da4784860
 > Author: Zhang Yi <yi.zhang@huawei.com>
 > 
-> ext4: set DISKSIZE_GROW_PENDING after zeroing unaligned EOF block
-> 
-> This commit adds the ext4_iomap_mark_disksize_pending() function to set
-> EXT4_STATE_DISKSIZE_GROW_PENDING after zeroing an unaligned EOF block.
-> It ensures that the zeroed block is written before any subsequent data
-> updates i_disksize, preventing the exposure of stale data.
+> ext4: partially enable iomap for the buffered I/O path of regular files
+>      
+> Introduce ext4_enable_buffered_iomap() to determine whether a regular file
+> inode should use the iomap buffered I/O path. If unsupported features like
+> fsverity are enabled at the superblock level, the inode silently falls back
+> to the buffer_head path.
 > 
 >> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 9b6916609000c..3bdb5f3b119ab 100644
+>> index c3a6f3dce3d86..a07ce368e6e82 100644
 >> --- a/fs/ext4/inode.c
 >> +++ b/fs/ext4/inode.c
->> @@ -4847,6 +4847,89 @@ static int ext4_block_zero_range(struct inode *inode,
-> 
 > [ ... ]
+>> @@ -6076,6 +6098,81 @@ static int check_igot_inode(struct inode *inode, ext4_iget_flags flags,
+> [ ... ]
+>> +void ext4_enable_buffered_iomap(struct inode *inode)
+>> +{
+>> +	struct super_block *sb = inode->i_sb;
+>> +
+>> +	if (!S_ISREG(inode->i_mode))
+>> +		return;
+>> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE))
+>> +		return;
+>> +
+>> +	/* Unsupported Features */
+>> +	if (ext4_has_feature_inline_data(sb))
+>> +		return;
+>> +	if (ext4_has_feature_verity(sb))
+>> +		return;
 > 
->> +	/*
->> +	 * If the zeroed range does not overlap the existing on-disk tail
->> +	 * block, the zeroed data lies beyond the currently on-disk data
->> +	 * and will be written back before i_disksize is advanced past it,
->> +	 * so no stale data can be exposed.
->> +	 *
->> +	 * Checking i_disksize here (after folio_wait_writeback()) is
->> +	 * necessary and safe. If a delalloc writeback of this folio was
->> +	 * in-flight, it could be raced by a concurrent mmap write which
->> +	 * corrupts the tail block beyond i_size but the i_disksize is not
->> +	 * advanced. folio_wait_writeback() has waited for its completion
->> +	 * and the ioend has advanced i_disksize accordingly. If writeback
->> +	 * had not started, we don't need to mark any pending state because
->> +	 * any future writeback will carry the pagecache content that now
->> +	 * includes the zeroed data, so no stale data can appear on disk
->> +	 * even without the pending tracking.
->> +	 */
->> +	if (from >= round_up(READ_ONCE(EXT4_I(inode)->i_disksize),
->> +			     i_blocksize(inode)))
->> +		goto out;
+> [Severity: Critical]
+> Does this logic handle dynamic fsverity enablement correctly?
 > 
-> [Severity: Medium]
-> Could this lockless read of a 64-bit integer suffer from a torn read on
-> 32-bit architectures?
+> If FS_IOC_ENABLE_VERITY is executed on a file where the verity feature was not
+> initially set on the superblock, ext4_has_feature_verity(sb) will be false at
+> inode initialization. This causes the inode to be assigned to the iomap
+> buffered I/O path, setting mapping->a_ops = &ext4_iomap_aops.
 > 
-> On a 32-bit system, READ_ONCE() on a 64-bit variable like i_disksize compiles
-> to two 32-bit loads. If a concurrent thread updates i_disksize via
-> WRITE_ONCE() (for example, during I/O completion while holding i_data_sem)
-> and the value crosses a 32-bit boundary, this read can tear.
+> When the user executes the ioctl, ext4_begin_enable_verity() does not check if
+> the inode is using the iomap path. It proceeds to write the verity descriptor
+> via ext4_write_verity_descriptor(), which calls pagecache_write().
 > 
-> For instance, if i_disksize changes from 0x00000000_FFFFFFFF to
-> 0x00000001_00000000, the torn read could yield 0x00000000_00000000.
+> fs/ext4/verity.c:pagecache_write() {
+>      ...
+>      res = aops->write_begin(NULL, mapping, pos, n, &folio, &fsdata);
+>      ...
+> }
 > 
-> This would cause the condition to evaluate to true, skipping the pending
-> tracking and failing to set EXT4_STATE_DISKSIZE_GROW_PENDING.
+> Because pagecache_write() unconditionally dereferences aops->write_begin, and
+> ext4_iomap_aops does not implement write_begin (it is NULL), can this lead to
+> an immediate NULL pointer dereference?
 > 
-> If the system crashes, this could allow i_disksize to be advanced past the
-> unwritten zeroed block, exposing stale, uninitialized disk data to the
-> file tail and defeating the data-ordering mechanism.
-> 
-> While i_size is protected by i_size_seqcount on 32-bit platforms, i_disksize
-> does not seem to have seqcount protection here.
+> Since this can be triggered by unprivileged users with write access via an
+> ioctl, could this be exploited as a local Denial of Service?
 > 
 
-I don't think a torn read is possible here, because there is no
-concurrent writer of i_disksize in this window.
+This is a false positive.  An inode is put on the buffered iomap path
+only when the superblock does not have the verity feature, and that
+feature is not allowed to be enabled at runtime.  It is a ro_compat
+feature set by mkfs/tune2fs with the filesystem unmounted, and there is
+no in-kernel setter for it.
 
-ext4_iomap_mark_disksize_pending() is called under i_rwsem, so the
-i_disksize read can only be raced by the worker in
-ext4_iomap_wb_update_disksize().  But it cannot make i_disksize larger
-than what we account for here.  It writes min(end, i_size), and all
-callers of ext4_block_zero_eof() zero the tail block before i_size is
-advanced, so the new value is at most 'from'.  To change the outcome of
-the check, 'end' would have to fall inside the block containing 'from',
-and the only ioend that can do that is the one covering the folio we
-have already waited for with folio_wait_writeback().  So the value we
-read is already settled.
+More importantly, the only way to reach pagecache_write() from
+ext4_begin_enable_verity() is FS_IOC_ENABLE_VERITY, and ext4's ioctl
+handler gates it on the same ext4_has_feature_verity() check, so the
+ioctl is rejected before ext4_begin_enable_verity() is ever called and
+aops->write_begin() is never dereferenced.
 
 Thanks,
 Yi.
-
