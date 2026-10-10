@@ -1,68 +1,68 @@
-Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
+Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48A3126FD97
-	for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 00:55:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A6A62EB5A6
+	for <linux-ext4@vger.kernel.org>; Sat, 10 Oct 2026 02:33:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791593733; cv=none; b=YdIHCJBRqiSQUAFTMeUil9uyZPJBmrt46uz2X0/rh66xQ8eZsSDjsOd3QPrUVu5AHZu0Ex2bdRbYoQsQIGJ+BFY+rXimyCy/Adf8nZpGKC6tK6RxF6rrRowMOvdfMO5JXf/7Yjg8BFdf7MO6bwbAmM6mi8QvAcznn804BSZ6YHM=
+	t=1791599628; cv=none; b=eyGXgo3tDuY7dltK1mj0xZvlqxD/FYLXmYvdc5ljvNtjWcELbj2SoZoAScLZSGEyBQvxxR+FhKkC6OlY0hs0jLLy2MBqbZpQ0n+bRcjanQ734sOnc7eukRJ5WHHJjS9S3mEcO9iAr0NiloKOAtoDTrdrcprz5tgr6IV7paEQ6tw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791593733; c=relaxed/simple;
-	bh=0jYbb/yhRRq8TpdEyhqaIgEEwDVeZQgf0q3aDSLfxbE=;
+	s=arc-20240116; t=1791599628; c=relaxed/simple;
+	bh=0wMBqclhma4cJaDymreec7xEshpKLFtABUes117fpWo=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=lqPTviqGWJwKU6QrAmOUWkhcFOJVLaTKiXOHRWWU3f8hRLQih82I6ovlRHLTr3lcvk1F21WPx6sV+WDpROXvTFm2XYfM3zpUN3q3UenMJiIKSdz76MkiMq4j/xwRYn7lmd/EiY4UGDTXh1VPcLMtutchAA9WdMhV2BG5Tt3nBC8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Hqu3hIdu; arc=none smtp.client-ip=209.85.215.179
+	 In-Reply-To:Content-Type; b=tppvmlB+nGcWWirIj+JHU/dYU/j960Kt5xyFk48t0b7iiwJObrXy/GABCtjki5RTMcWkb8MzyDNLiHse4n5BFDA4uCuqtYNTryj0p3HgJvaQsqIHGJ9QzdmyHM7++uw8iMUTLK0x7PhPh25J2kPINERvyqZehjUTy1IGKF0GG5M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=WqZILpYi; arc=none smtp.client-ip=209.85.216.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Hqu3hIdu"
-Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-cc52c1b8286so98191a12.1
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Oct 2026 17:55:31 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WqZILpYi"
+Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-38759bcd877so138362a91.2
+        for <linux-ext4@vger.kernel.org>; Fri, 09 Oct 2026 19:33:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791593730; x=1792198530; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1791599626; x=1792204426; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=O3WY6TRIz4TsQZ9reS0WsRTDwlNOMeXFQmMZEMPkOS4=;
-        b=Hqu3hIduZLOe6mQelfKjkg3/ttVFLKnV6TU324nadPoc1fmOtPw2vkiyOE4TLfDz/l
-         Fmv9KRJ/9nnc5J+M/e4y9vmCZVB8sD88z2TkrldZTSyDUCOkXF9yt+FS9qqkRs4uast7
-         Y1CnRRhoOHX456Vjv96lN4IbUjV4QhtbxJAYxTHQ7pkV76R5og2Vm3NOAg8x9FHfOxcc
-         lKJvX5e3p65OwZQpZaxxEUhxrFou1gqgL5H1HBqRIe7N9d6xaZDnbqfzUBJKceFkCndG
-         Dsqr5F0Zc2672p3rhSBv6wcR6OI1KqagrpgST8w2Bx/P81ogWNKUFDDNs5ytPC/2MCZq
-         f2vw==
+        bh=JBelTmompdM3mA4VVDTQCGY1mxSHgpB0e021EZ+22c4=;
+        b=WqZILpYiIwDqsDBMSDckDauLtDCmDKCLQCOat0bnwGFvL8ahbPDAa+VUZKLs6jubbn
+         lxtdS7rtcTnMH2XLBkk7Yncdh1QlCojUoxpZnSLHaYR4L5dtDcxtbXkp5CSkhJMew4ll
+         NBgRDNl7JwKx08FBxvacB6J3AmoweP8n/UN7UCllwc7XHZwYnuKn0O2WqPjDGh1nLSqm
+         eiBwhIywaH/KBiCcBz/IsPf/TO/RuKszikT+uTVhKX/Ug5IuPlVIG8oO5B10zOuCnXmJ
+         V/1deIPnAytEUyzIu/QGVa6W94GRbH/ZfdmS/RUeZT5sBF8VTAy/q2130aPGwiVanBZ1
+         ofRQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791593730; x=1792198530;
+        d=1e100.net; s=20260707; t=1791599626; x=1792204426;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=O3WY6TRIz4TsQZ9reS0WsRTDwlNOMeXFQmMZEMPkOS4=;
-        b=2USlnexIaIa5ZRFOBUXdsfn//69h5JZTqv8eusAkC5G7oliFUnDUwaTV5Q6awVirJW
-         gvTd1GMt4rmxGkSdZVGverpW4WqtHpLvkRQKKEE+OmEilv1qCHgkuJ1LoEw4qVSDPGmO
-         31L/adROYymqT+iJaz7CX2f9wD7yIRqJ/6yhnMhSWvWFGWfreeJf4JU3UTB1ViWQOaUg
-         JB8wsav6b/Moi1UIdNnE0Y3+q0EEDOEN7s60F/AwWd+9QyX+hIO3cl3vRpsNon7V6RFz
-         6/EPwxqyWgRMjkfydOmQYTd3AiKJpewkZpKY9MTtfeiYn5p2krKuN4Za1v4eaSbvG/Xm
-         FXkA==
-X-Forwarded-Encrypted: i=1; AKwUvBzr5j+xkpLuRAmh2QDpgF0c1W3vj5wi42yDkuzr2N/HZuTswp4FuHPgizo0iEwiMWrl57Ji4Gm29Dn9@vger.kernel.org
-X-Gm-Message-State: AFq9FYJTIhSAT/Gb+4zpta8f2jng7xiiIjwYs68Da/IX5ZW2LUhfCdsy
-	L10lXnq9ZurPgQ+kP3gG/UojGBS/L33fipXrt13Fof9s/vuTxp/5mOyZa7uY1OWlm0Y=
-X-Gm-Gg: AYBFou306Z5hko9SI1QX+T9s42em3m3qoDDeIYQRGqLu5gT9Vkay6naId9pKZBeeCAE
-	krMUxi/q4Qu4j1rIZ+i+HQGP+gwzBlK6wsfNFAN1Gz5gyXfh+/yHZFJ+TFpj/bIWyXddsqE/kQd
-	78XsLwrJTvxnvq+MSQIubBliTGTYqqx8wEvC5EECz1M5fiqDL4ynA1qVA+UXysVjgQf+Xszgfi7
-	cTF2MzDNm2yE6StHkHTtY9+HhegkUxm6s6TO6yx5EUG5sD8SpmdXscDq2hfxjsC9G8jhNZpsszM
-	FKCDwpXPpuBqoZyXdsFliPjpX1akQ/zE2Za4tnPHQ2AjaT/EwuJly5yUoHzp7MEq6RepvoK+23B
-	lDBzwvGHeu68OqcqSSVPkv7dImdhS7zPWlQ1hrk7phUPKYHGxDzlnseJYZuLqbSSfkR5D6+D8Fs
-	qbR5LjjvBWrmPwpkf+Q5wKU3I+5DKb2T4HnCYyD5EnyTeiE34sFSylxPrYNCP3vGLbZoseEBO4R
-	yTtqPCS2FhjpCBJtTg=
-X-Received: by 2002:a05:6a21:6e91:b0:3e1:84a4:3441 with SMTP id adf61e73a8af0-3e184a43789mr90031637.48.1791593730410;
-        Fri, 09 Oct 2026 17:55:30 -0700 (PDT)
+        bh=JBelTmompdM3mA4VVDTQCGY1mxSHgpB0e021EZ+22c4=;
+        b=Ka+X5FnBAAEJJBnjmHmfOSxi+phDYYH93C9RaWVUG6QWCFkm8Cq12JSEuA8lMvJlWy
+         1wCSwzPaz4HLXTLJMsLP/fN58+BclqAysyFeez+AAU7rsRjIvngvRTNAWwrs1vEyB4LA
+         cK9j03n/Rb472Ug6WfVcNByaweN3Iq5b79kuIJujqtLV72XtcdI3oZxnN7pN9s4rZDKN
+         JB2++ClVRJKK5pBrKdq1Kv75RL/wtmVPd7AbCDeQeQrpMvv3ctTlyDSRRFW4WR2AfeHj
+         2k+jZbVVUuRhIwPD1BR7y2pr18p8TnX4OOCwH64tg2Jwj/sz+gsBp4yLcQUW7J7LO01B
+         gjcg==
+X-Forwarded-Encrypted: i=1; AKwUvBwrlPjjaObpuDz7kxeKgINCfhRqDf9sImVz05JbSBePHbcVV8tqZEAEi3+raRlMlOtX4DEkERBdSE81@vger.kernel.org
+X-Gm-Message-State: AFq9FYIHPXb7eZQiQGlW34Id6JQcIP4kYzoji72HdSs+siQ45iwmYVl/
+	c705vSwFC5WuEohFPDdj7x0+SOs4xUYtIKx5VTS929RBFrRSRZ+laLgFSjS6U4PTuKU=
+X-Gm-Gg: AYBFou13lNI6KfIxsKaE/CsvsW+Fch/SawaLMyhJbp+NzVfsI4tnz+bmeHY6xns+NmF
+	OfIXEhvSh3NXgfMDd15iFlfb01CHvNCvdYopPYs5dorCjwn2JLsXv8xS9ekfU/adBeggGlQi1h8
+	him2rmz5cJnK4RFyXkHoTGc66cI5QNna0nSkRkuey3cQucUsBfPQ8HmpyDMPX5ekLn/zWA5IUC5
+	/Pe1IcFLZxqGWTL5XLUDnBd94q1shVLUbJsO5YvbbiGna089IrwuZe7Cr7s8I/wMc/9MCQZANbh
+	If5ppA9hdSkvGD7IO36ajTWED/CYp4T3ZVaDxjpVWza/s58elvpp8NkP2ReMxn/ygUO1dUMApiS
+	P7uh4Pvq5JjODBB1fhcwbGlNB20+LFm4AGoLB3aiECY67ZNprlwAz/g54iJkZVHqD+u5/OaNIkw
+	KvKh+r4R2qA2iuDQ7m77XV6ElPn8UuxxuO+CNClmEw7/XpoJQyXfDCdXRXfz8vpoeRc+96LWf5o
+	6GM2xiN0SA/EBQ3if9U
+X-Received: by 2002:a17:90b:3d89:b0:3ab:c6d:2bf9 with SMTP id 98e67ed59e1d1-3ab3afdaaacmr3655096a91.57.1791599626493;
+        Fri, 09 Oct 2026 19:33:46 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cd3d9e3f5acsm1769490a12.22.2026.10.09.17.55.27
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ab38f5509fsm6165781a91.12.2026.10.09.19.33.43
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 09 Oct 2026 17:55:29 -0700 (PDT)
-Message-ID: <ec0668cc-cc3f-4e7e-88ac-d5bb64c56c47@gmail.com>
-Date: Sat, 10 Oct 2026 08:55:23 +0800
+        Fri, 09 Oct 2026 19:33:46 -0700 (PDT)
+Message-ID: <b82ca2bb-1026-440d-871f-d092e57a17e5@gmail.com>
+Date: Sat, 10 Oct 2026 10:33:40 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -70,102 +70,119 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v7 08/31] ext4: skip block allocation for holes in the
- data submission path
+Subject: Re: [PATCH v7 14/31] ext4: rework handle credit accounting for
+ unwritten extent conversion
 To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
 References: <20261009103033.2920530-1-yi.zhang@huaweicloud.com>
- <20261009103033.2920530-9-yi.zhang@huaweicloud.com>
- <sashiko-outbox-165289@kernel.org>
+ <20261009103033.2920530-15-yi.zhang@huaweicloud.com>
+ <sashiko-outbox-165354@kernel.org>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <sashiko-outbox-165289@kernel.org>
+In-Reply-To: <sashiko-outbox-165354@kernel.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On 10/9/2026 6:58 PM, sashiko-bot@kernel.org wrote:
+On 10/9/2026 7:20 PM, sashiko-bot@kernel.org wrote:
 > Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
-> - [High] ext4: silent data loss in atomic extent conversion due to unhandled 0 return
+> - [High] ext4: atomicity violation in fallocate extent conversion
+> --
+> 
+> commit 352cf8eb3125c707efc06205d4a61cc670cd67bf
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> 
+> ext4: rework handle credit accounting for unwritten extent conversion
+> 
+> This commit updates the unwritten extent conversion process to handle long
+> merged ioends. It introduces a check using ext4_journal_ensure_credits to
+> extend or restart the transaction if credits run low during the loop.
+> 
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 76038b6c36552..83d040e36b682 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+> [ ... ]
+>> @@ -5137,27 +5137,36 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+> [ ... ]
+>>   	while (max_blocks) {
+>> -		if (credits) {
+>> -			handle = ext4_journal_start(inode, EXT4_HT_MAP_BLOCKS,
+>> -						    credits);
+>> -			if (IS_ERR(handle)) {
+>> -				ret = PTR_ERR(handle);
+>> -				break;
+>> -			}
+>> -		}
+>> +		/*
+>> +		 * The caller cannot know how many extents the range covers,
+>> +		 * so make sure the transaction can take one more extent,
+>> +		 * extending or restarting it once it is full.  The reserved
+>> +		 * handle of the buffer_head writeback path is safe as it has
+>> +		 * enough credits for the conversion, so it is not restarted
+>> +		 * here.
+>> +		 */
+>> +		ret = ext4_journal_ensure_credits(handle, credits, 0);
+>> +		if (ret < 0)
+>> +			break;
+> 
+> [Severity: High]
+> Does restarting the caller's transaction here break atomicity requirements
+> for fallocate?
+> 
+> ext4_alloc_file_blocks relies on the atomicity of converting unwritten
+> extents to written and adding the inode to the orphan list. This prevents
+> e2fsck from flagging initialized extents beyond i_disksize as corruption on
+> crash.
+> 
+> If the transaction restarts during this conversion loop, the first batch of
+> converted extents is committed to the journal before the loop finishes and
+> ext4_orphan_add is called in the parent function:
+> 
+> fs/ext4/extents.c:ext4_alloc_file_blocks() {
+>      ...
+>      ret = ext4_convert_unwritten_extents(handle, inode, ...);
+>      ...
+>      if (new_size && converted) {
+>          ret2 = ext4_orphan_add(handle, inode);
+>      ...
+> }
+> 
+> If a crash occurs after the transaction restarts but before ext4_orphan_add
+> completes, will it leave the disk with initialized extents beyond i_disksize
+> and no orphan list entry, triggering filesystem corruption warnings and
+> silent truncations in e2fsck?
+> 
 
-Yeah, this is a pre-existing issue in
-ext4_convert_unwritten_extents_atomic(), and Ojaswin had already pointed
-this out, he will address this separately.
+This is a pre-existing issue in ext4_alloc_file_blocks(), which is
+extremely hard to trigger in practice, and the failure mode after the
+patch will differ somewhat from before.
+
+This can only be triggered by a size-extending FALLOC_FL_WRITE_ZEROES
+that runs concurrently with another I/O completion. Since
+ext4_alloc_file_blocks() holds i_rwsem, what it requires is that the
+extent that the ext4_map_blocks() call at the top of the loop returned
+as a single extent gets split before ext4_convert_unwritten_extents()
+is called, so that the conversion is spread over more extents than the
+extent tree had at map time. That means another unwritten extent
+conversion has to land in that window, and the io_end conversion runs
+from a workqueue, so it routinely completes only after the data
+writeback and after the page cache has been dropped. A direct I/O
+completion (ext4_dio_write_end_io()) can do the same. Buffered writes,
+truncate and other fallocate calls are excluded by i_rwsem.
+
+Before the patch, in the worst case, this would exhaust the handle
+credits and cause a filesystem error. After the patch, since
+ext4_journal_ensure_credits() will first try to extend the credits, the
+credit exhaustion itself becomes much less likely, and only when the
+extension fails, because the transaction is already at
+j_max_transaction_buffers, will the transaction be restarted, which then
+can trigger the issue Sashiko described.
+
+This issue needs to be fixed separately, perhaps by moving
+ext4_orphan_add() in ext4_alloc_file_blocks() before
+ext4_convert_unwritten_extents().
 
 Thanks,
 Yi.
 
-> --
-> 
-> commit d986a085e4ae32e7076239e912abb3b6e2e97038
-> Author: Zhang Yi <yi.zhang@huawei.com>
-> 
-> ext4: skip block allocation for holes in the data submission path
-> 
-> When ext4_map_blocks() is called from the data submission path and I/O
-> end extent conversion path, it should not allocate blocks if the lookup
-> returns a hole. This patch prepares for the buffered iomap writeback
-> conversion by filtering out holes and bailing out with an error.
-> 
->>      In the ioend extent conversion path, holes are also not expected because
->>      we should wait for folio writeback before punching hole. If one is
->>      encountered, it likely indicates a failure in the concurrency
->>      protection, so ext4_map_blocks() returns zero, and we keep warning and
->>      bail out with -EINVAL to surface the failure rather than continuing
->>      conversion on torn data. Atomic writes in
->>      ext4_convert_unwritten_extents_atomic() already bail out similarly.
-> 
-> [Severity: High]
-> The commit message states that ext4_convert_unwritten_extents_atomic()
-> "already bails out similarly" (presumably with an error code like -EINVAL)
-> when ext4_map_blocks() returns 0 for a hole.
-> 
-> However, looking at ext4_convert_unwritten_extents_atomic() in
-> fs/ext4/extents.c, it breaks the loop when ret is 0, and returns 0 (success):
-> 
-> fs/ext4/extents.c:ext4_convert_unwritten_extents_atomic() {
->      ...
-> 	while (ret >= 0 && ret < max_blocks) {
-> 		map.m_lblk += ret;
-> 		map.m_len = (max_blocks -= ret);
-> 		ret = ext4_map_blocks(handle, inode, &map, flags);
-> 		...
-> 		if (ret <= 0)
-> 			break;
-> 	}
->      ...
-> 	if (ret <= 0 || ret2)
-> 		ext4_warning(inode->i_sb, ...);
-> 
-> 	return ret > 0 ? ret2 : ret;
-> }
-> 
-> If ret is 0, the expression ret > 0 ? ret2 : ret evaluates to 0.
-> 
-> Could this cause a regression where the unwritten extent conversion fails
-> due to encountering a hole, but the direct I/O layer is told it succeeded,
-> leaving unwritten extents on disk that will return zeroes on subsequent
-> reads?
-> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 6b0489cbb1319..778cf539f6df2 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
-> 
-> [ ... ]
-> 
->> @@ -830,6 +830,13 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->>   				map->m_flags |= EXT4_MAP_MAPPED;
->>   			goto out;
->>   		}
->> +	} else if (retval == 0) {
->> +		/*
->> +		 * Do not allocate blocks for holes in the context of
->> +		 * data submission path.
->> +		 */
->> +		if (!map->m_flags && (flags & EXT4_GET_BLOCKS_IO_SUBMIT))
->> +			goto out;
->>   	}
->>   
->>   	if (!handle) {
-> 
 
