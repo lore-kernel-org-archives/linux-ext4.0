@@ -1,42 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E576345D5FC;
-	Sat, 10 Oct 2026 12:54:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C57B3BE64B;
+	Sat, 10 Oct 2026 12:55:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791636875; cv=none; b=oPGwWpLgynDJrLI02N3v17Jcors6zcy1WbY2Ee8vsDaNiIJMLY3p+qaHi/c5i3iDLUJrSUY7azVRu78ae+/SaguKOSVkPzNjE8WBEISnv1pPZwQzW7ocVGkAnMz3p4JwTuBDIoCN0hlExBFrsgnkeJwy2JB/AQo0g6ACv/duV9I=
+	t=1791636907; cv=none; b=C21mwFKdbDtcVP/Y8Hu5Ql1rerXKA3O6mhoqwzSKqXeOY1G3KsyTAQOglUUDPoM29Ua+q6v2Y/5dhxy0qxGowe+PJTtFCTfohzpD4tZIFY7PeDeSvfN3bjWnUMtBUTunxIZI2v8MVSPHodqij00CyyG3q8TZorn4T1mFwWQqvfc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791636875; c=relaxed/simple;
-	bh=ZcrCwafbniEewCzWv1MZiFYJQ5X4fHmk7ltpbIe8dVg=;
+	s=arc-20240116; t=1791636907; c=relaxed/simple;
+	bh=Q5+aMWgY55Clan6SoRPJddFiutENi32J1rMwr/lqb50=;
 	h=Date:From:To:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=SfUIvd64DRqWjDZliuNyNgandJFnIc+L1S5Rx99qTyt/CLI7GczJFeO4/iwJFsZ4KMDBoP+A1XNEWX4s4OicjXX3hPkJtjg2IvOoXMCOELjkWP008BqHkKMGhdxLtxCOwy7ggJNgjPN+n9IH0jlI4E4KeQ6XOnlydraH8TDBPSs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q/qQqSlf; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:Content-Disposition:In-Reply-To; b=F27Ae6XGMU5ipxwrnlrTD6JBFouG9AozqkMHCAq64mlkoCZzGYEKX7Cs4sX81pDLOIuMlcGcLzki1B/AiKY4zJ7K4Kkfp/ZHaBWNWVgtPB473qoaGlNBgRPXffsG6uB8uQrLj32vdo84l9JH9vnnCay4K6VqceWUTGttsmH8Gwg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SGxxiP1l; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q/qQqSlf"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 471BF1F000FF;
-	Sat, 10 Oct 2026 12:54:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SGxxiP1l"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6FA8D1F000FF;
+	Sat, 10 Oct 2026 12:55:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791636874;
-	bh=ZcrCwafbniEewCzWv1MZiFYJQ5X4fHmk7ltpbIe8dVg=;
+	s=k20260515; t=1791636905;
+	bh=Q5+aMWgY55Clan6SoRPJddFiutENi32J1rMwr/lqb50=;
 	h=Date:From:To:Subject:References:In-Reply-To;
-	b=Q/qQqSlf62cH1TJxDffYqyRk2dfWWBuMJBUm95IE6dEYWjB0axS+ihRYUasmWweGl
-	 kByE5DMqaoLj4kmSHAdISzmsb53vUnuwpnmxfuD41Z5+QL5JwmOKaVuSUWqk+iwZnQ
-	 ya6PPttk0FvmkFsj/u3msXE0HMqDCdqJ6u1WrG0QACvNAgDiwCox9XMee34k6/5VxV
-	 u8JbnFICrG9XPafeKuBva/4ZZV0RJC9tXtEnKFpT7G8B/p2xji89qFlJQdR2xhlVIc
-	 9te2vVIj/v29TkuIlZPqBhaOKDE7j4qsdGKAKj9z+qkjwhX71k97zczQ91IDlIYiWS
-	 rAEX2VNwQRMQA==
-Date: Sat, 10 Oct 2026 14:54:29 +0200
+	b=SGxxiP1lxnZTv/3wZ1ooOOGNeYcAC7UMCYwG1+D3dSewJ/Irh8AWZ+yn7aaldV8XU
+	 BrFsH+5N6uNLrcaUKNhqVlBLbONUWoiF0MWj8wYZKgUkSFwMSbTOWC1UKsMZmp1sKU
+	 IbS/T9a6Oc+4yJKNnoek7f2pz06+vxutT3zQGCg+KNX/EUiR4LA79C/xZNXNZfAkla
+	 NqX+mPjMEIyyp8jWnap+S8he54jlefn/ZiYZvum004Qx1mDFqJB5xeljDIn2HxLivQ
+	 R3h33DVG8yZON6SuE0cTwjPquMiBTZOGF2Ey6ZAPVv+KqZrVrX8qupdi1vB175Pspv
+	 6lfKNYPMs8ivg==
+Date: Sat, 10 Oct 2026 14:55:01 +0200
 From: Christian Brauner <brauner@kernel.org>
 To: sashiko-reviews@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
 	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org, 
 	linux-afs@lists.infradead.org, v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org, 
 	ntfs3@lists.linux.dev, tytso@mit.edu, stable@vger.kernel.org
-Subject: Re: [PATCH 2/8] afs: free the super info after a grace period
-Message-ID: <20261010-veranda-allemal-frivol-5ee6b359d2c8@brauner>
+Subject: Re: [PATCH 8/8] ntfs3: free replaced mount options after a grace
+ period
+Message-ID: <20261010-kampagne-jubilieren-piloten-0c00c1f26aba@brauner>
 References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
- <20261009-work-fixes-rcu-v1-2-7446d2d335e6@kernel.org>
- <sashiko-outbox-166125@kernel.org>
+ <20261009-work-fixes-rcu-v1-8-7446d2d335e6@kernel.org>
+ <sashiko-outbox-166120@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -45,31 +46,32 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <sashiko-outbox-166125@kernel.org>
+In-Reply-To: <sashiko-outbox-166120@kernel.org>
 
-On Fri, Oct 09, 2026 at 10:07:58PM +0000, sashiko-bot@kernel.org wrote:
-> Does this regression introduce a TOCTOU race in afs_atcell_get_link() that
-> can cause a NULL dereference?
+On Fri, Oct 09, 2026 at 10:02:47PM +0000, sashiko-bot@kernel.org wrote:
+> Does this change leave other readers of sbi->options vulnerable to a
+> use-after-free?
 >
-> By leaving put_net() executing before the RCU grace period, afs_net_exit() can
-> tear down the namespace while pathwalks are still active. If cleanup_net()
-> calls afs_cell_purge(), it replaces net->ws_cell with NULL.
+> While this patch protects ntfs_nls_to_utf16(), other VFS operations appear
+> to access sbi->options without holding rcu_read_lock() or s_umount. If a
+> thread is preempted immediately after loading the sbi->options pointer, and
+> a concurrent mount -o remount calls ntfs_fs_reconfigure() which replaces
+> sbi->options and schedules its destruction via call_rcu(), the grace period
+> can complete before the first thread resumes.
 
-No. This patch doesn't touch put_net(). It's called in the same place
-as before.
+This is pre-existing. Before this patch ntfs_fs_reconfigure() swapped
+the options and put_fs_context() freed the old ones right when the
+remount returned. So all of these readers could already see freed
+options and now they at least have to stay preempted for a whole grace
+period.
 
-The only place that sets net->ws_cell to NULL is afs_cell_purge() from
-afs_net_exit(). The superblock pins the network namespace via
-as->net_ns and once the last reference is gone cleanup_net() does a
-synchronize_rcu() before it calls any ->exit() method. So
-afs_cell_purge() can't run while a pathwalk is still in
-afs_atcell_get_link() in rcu mode.
+Making every sbi->options reader safe against a concurrent remount is a
+separate ntfs3 problem. This patch only cares about ntfs_nls_to_utf16()
+because that's what rcu pathwalk calls.
 
-The double load of net->ws_cell is a bit sloppy but it's harmless.
+> This problem wasn't introduced by this patch, but doesn't replacing
+> sbi->options with new_opts cause a silent loss of mount options during
+> remount?
 
-> Can net->ws_cell be cleared to NULL before the lock is acquired, causing a
-> NULL dereference here as well?
-
-No. Without rcu the caller holds references to the dentry and the
-mount. So the superblock and with it the network namespace can't go
-away underneath it.
+That's how ntfs3 remount has worked since it switched to the new mount
+api. Unrelated to this series.
