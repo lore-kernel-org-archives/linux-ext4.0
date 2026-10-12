@@ -1,118 +1,95 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mail-m155101.qiye.163.com (mail-m155101.qiye.163.com [101.71.155.101])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC41541F7EE
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 11:05:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22E2C486B8F;
+	Mon, 12 Oct 2026 11:47:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=101.71.155.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791803132; cv=none; b=ap0W9axDUQIeCG5IIyv18+IK5cr/bFrZAtKrwvgSdg8KioU1/tRl6Ba9OoQipc3JCn3Ml1WCJTF3XBD4cNDSJaBQYglIQ0r5E2UCoSnwuhHgLUWDrInss4+Gqah5Nd3leQYE5tDTzI9KodhWJnnjYqZelVMg6cidGWMZfoLOV6A=
+	t=1791805681; cv=none; b=OgEw8Fb9CzyPNZp5/IRH3uZ4nAjsXnq0Sa7CgBiPkQBMZ1Q+SY3tyVfutG8SMSbigljR8kAXdXe8EBeGKvNgOME4blhSNlcfY0vqNUKKVNFqV5HQDabG96auG8zdr89kH6fYZGnm3BHNNm+w24rruH159Sapj9BsRZsmisjSy/A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791803132; c=relaxed/simple;
-	bh=tc5AWAoxeGNGEWblEMXakujP0P4Rjw7+mPe3HAJeqgI=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=UN78W6tJRMREjX1zdNFev3TNtSb4piJq99IKTQTmHCnSFhrAMAfz2hNv1r5omTMiejYbtD+Gmw+1TK6kMSnM3Rrx3c7B78Tlx8LZADht4rZM8AAFmafEC3HTooIRjnuMLuDHRideDSnMifPx2REJzcvUl8omB7g2vWq8vcUlu10=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SRIfapXw; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791805681; c=relaxed/simple;
+	bh=u/FrjB6I0lj8OmlShb9gfX/cV5TpLi9ILFa5s7s63iw=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=FLHEPWKmnhkJt1mzJsejtnxaC8KDMBwAqFOLh0s3Bylwi8iAw6JpmLVNCbuHD0HvPayeEIkDke343eQYQPNLhZH4zLFHry4pK08gPCm9n3ry5oW1OKM0EhzUDnokQvAGqEk+PcUdD0YCxNPdfhZfZslvwu6sacahD3I0VzD4Sm8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn; spf=pass smtp.mailfrom=tju.edu.cn; dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b=e1J7nJTs; arc=none smtp.client-ip=101.71.155.101
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tju.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SRIfapXw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66C081F0089B;
-	Mon, 12 Oct 2026 11:05:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791803128;
-	bh=oRJFflfFl6VwfL/AFjCDCWw9r9FfFqr+AYvBr1MdvQQ=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=SRIfapXwxgiK92gkHA2IpkM3QBvMluyqDdMkbvzjLKhv3bgrXaluJUQFbSafL1P7l
-	 HpYDN1lTqgXR/mMwQ+IwoIWQmboJOBBw3X8E6kPmtMcM7k+7NRnl7QpSqh79RaqQAI
-	 eovUM99SXTU++iEGnhqyHl/AjBKnS/r9geZQ0TYDJZvxroDrmvHfSGthdVwJ8x1y6G
-	 yrTlojcitBIl9Rx7IM1GqAWFHgZ53NY+BpJ3TVlbyMy5LkzQ24Ef04R21H1DvZU/n3
-	 5UhZgqgUcsyAJsaB/fHH1QDVEV9FmnbtEcAvhkHyVgIaPBnjmnpkCiARmRVj1328zO
-	 /kGY4R4bcLWkQ==
-Message-ID: <sashiko-outbox-168005@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 23/28] ubifs: don't set SB_RDONLY after errors
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Joseph Qi" <joseph.qi@linux.alibaba.com>, tytso@mit.edu, linux-ext4@vger.kernel.org, "Mark
- Fasheh" <mark@fasheh.com>, "Joel Becker" <jlbec@evilplan.org>, dsterba@suse.cz
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-23-60743a3dc326@kernel.org>
-References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-23-60743a3dc326@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 11:05:26 +0000
+	dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b="e1J7nJTs"
+Received: from localhost (gyproxy-mailtls0-entmail-virt215.gy.ntes [IPV6:2409:8d28:140:849:c9f1:798d:951b:9e3f])
+	by smtp.qiye.163.com (Hmail) with ESMTP id 50bb2b788;
+	Mon, 12 Oct 2026 19:47:44 +0800 (GMT+08:00)
+From: guolingxing <guolingxing@tju.edu.cn>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Jan Kara <jack@suse.com>
+Cc: linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	guolingxing <guolingxing@tju.edu.cn>,
+	stable@vger.kernel.org
+Subject: [PATCH 2/3] jbd2: check return value of blkdev_issue_flush() when committing
+Date: Mon, 12 Oct 2026 11:47:12 +0000
+Message-Id: <20261012114713.4049391-2-guolingxing@tju.edu.cn>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
+References: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-HM-Tid: 0aa12ff0ab1803a2kunmef167be047e83a
+X-HM-MType: 10
+X-HM-Spam-Status: e1kfGhgUHx5ZQUpXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
+	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVkaTEMfVklDQh1JSkhNSxlOSVYeHw
+	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlJT0tCQUMfSUNBSk9LQUNPQkEYQh1KQUxCQx9BQk5KGUFCHk
+	gdWVdZFhoPEhUdFFlBWU9LSFVKS0hKTENKVUpLS1VKQktLWQY+
+DKIM-Signature: a=rsa-sha256;
+	b=e1J7nJTsbfWSBoa1PoccMkWqkfbDO1jD4iFO6x7lGhAuQQF59dEvuCPDDBI/IV47vgsOvZ9gQR/c9n7/MTqW/EfER6h+NG+5GnB6iLvq7u8SYkl3xXQxWg39OFKK4u1XV/CYF7rf6SIuZjoAiOklIhbw6G9qaNv7FnlDbnmj3oE=; s=default; c=relaxed/relaxed; d=tju.edu.cn; v=1;
+	bh=RjGt3ZP3ZB6apk3GFMJWI0Ilz4mIsRFM/N+BaxsjmCg=;
+	h=date:mime-version:subject:message-id:from;
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] fs/ubifs: Data race on bitfields ro_error and ro_mount causes lost=
- updates
---
+For journals on a separate device, jbd2_commit_transaction() must
+flush the file system device before submitting the commit record,
+otherwise the transaction may get committed while the ordered data
+are still in the device cache.  However the return value of
+blkdev_issue_flush() is ignored so if the flush fails, the commit
+record is still submitted and fsync() reports success although the
+ordered data may have never reached the disk.  After a crash the
+journal recovery will consider such transactions committed and data
+written by fsync() may be lost.
 
-commit 3576c210f3d797e4caeeb6fb96d4f74501988ba8
-Author: Christian Brauner <brauner@kernel.org>
+Abort the journal when the flush fails.  The commit record is then
+not submitted anymore since journal_submit_commit_record() checks
+for an aborted journal.
 
-ubifs: don't set SB_RDONLY after errors
+Fixes: cc3e1bea5d87 ("ext4, jbd2: Add barriers for file systems with exernal journals")
+Cc: stable@vger.kernel.org
+Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+---
+ fs/jbd2/commit.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-The commit stops UBIFS from asynchronously setting SB_RDONLY on the VFS
-superblock when an error occurs, to avoid racing with VFS operations.
-Instead, it relies on the c->ro_error flag to reject writes, returning
--EROFS from various file operations after an error.
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3029cb6f6d64..99477e9c78c7 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -800,8 +800,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	 */
+ 	if ((commit_transaction->t_need_data_flush || update_tail) &&
+ 	    (journal->j_fs_dev != journal->j_dev) &&
+-	    (journal->j_flags & JBD2_BARRIER))
+-		blkdev_issue_flush(journal->j_fs_dev);
++	    (journal->j_flags & JBD2_BARRIER)) {
++		int err = blkdev_issue_flush(journal->j_fs_dev);
++
++		if (err)
++			jbd2_journal_abort(journal, err);
++	}
+ 
+ 	/* Done it all: now write the commit record asynchronously. */
+ 	if (jbd2_has_feature_async_commit(journal)) {
+-- 
+2.34.1
 
-> diff --git a/fs/ubifs/io.c b/fs/ubifs/io.c
-> index 6c6d682427793..3d01529a07540 100644
-> --- a/fs/ubifs/io.c
-> +++ b/fs/ubifs/io.c
-> @@ -72,7 +72,12 @@ void ubifs_ro_mode(struct ubifs_info *c, int err)
->  	if (!c->ro_error) {
->  		c->ro_error =3D 1;
->  		c->no_chk_data_crc =3D 0;
-> -		c->vfs_sb->s_flags |=3D SB_RDONLY;
-> +		/*
-> +		 * Only a mount in progress may set SB_RDONLY, later that needs
-> +		 * s_umount. UBIFS refuses modifications itself afterwards.
-> +		 */
-> +		if (!(c->vfs_sb->s_flags & SB_BORN))
-> +			c->vfs_sb->s_flags |=3D SB_RDONLY;
-
-[Severity: High]
-Does this change risk losing the ro_error flag update due to a data race on
-adjacent bitfields?
-
-In struct ubifs_info, ro_error, ro_media, and ro_mount are adjacent bitfiel=
-ds
-sharing the same unsigned int.
-
-ubifs_ro_mode() locklessly sets c->ro_error =3D 1 from any context, includi=
-ng
-hardware interrupt or softirq contexts during I/O error completions.
-
-Concurrently, ubifs_remount_ro() modifies c->ro_mount while holding
-c->umount_mutex:
-
-fs/ubifs/super.c:ubifs_remount_ro() {
-    ...
-    ubifs_lpt_free(c, 1);
-    c->ro_mount =3D 1;
-    err =3D dbg_check_space_info(c);
-    ...
-}
-
-Because bitfield assignments are implemented as read-modify-write operations
-on the entire word, an interrupt firing during the RMW cycle of
-ubifs_remount_ro() will cause the ro_error update to be silently clobbered
-and lost.
-
-Now that the asynchronous setting of SB_RDONLY is removed, the filesystem
-is entirely dependent on c->ro_error to reject subsequent writes. If ro_err=
-or
-is lost, could the filesystem erroneously continue attempting writes to a
-broken medium during a concurrent remount?
-
-[ ... ]
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D23
