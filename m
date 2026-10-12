@@ -1,127 +1,143 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C04F54C4F5D
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 18:19:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C5833B0AF3
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 18:54:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.9.28.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791829200; cv=none; b=XqLmv15m+mm5n3FYzWReFVotzQCE0ZoSJN8fY7uAPPA0PU3qvBvRVEtZkXkdmG52qc+0U4PloupCPHNIUtd1wjV5YT5biEr9Ez0ArEZMCCQFbg2Tsj+dMEsHKLyDvCWtY11sPHWcFnd+SFEHU9ytcUMRW7b4U/0Q4Chf/84VM+w=
+	t=1791831298; cv=none; b=pqaS2I6eqk7FAqbQqai9VW0g0W0ExtRSarbkVKmsHv3I93GtAdjDoZXwBB0W4uli/Z6pAYQ/Hiy6vytjKwRwfeyHsyA1p7dLBelpjqLV0C6a4CatIDaWSoaDQerDpy36avZ4dYKoTP2N/Sdx1nRNW4rU+2tnB6l645h87WV9fho=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791829200; c=relaxed/simple;
-	bh=QyHBaWM+WVjO1x0sC+DTHamkQzln1mLhqNDbKFfkhkg=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=GL+51j4Vny+nVE382NPXNNpPypxHLVsktXmJdgjNbPNfXodsGvpVcwV2C/WEpfHb0TzQuGxll1OJrZUNXRB0+ezWLLXlHNdVH9vqGwl9OpEFbd/x/rfGPECjUakSO4oSTGHT1pQcq9XTlZcfg4HLaX0u9+46+j/MXUNJsmGQSKw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IipXYbCr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791831298; c=relaxed/simple;
+	bh=uSsj3domjqDPkTGaE1zINnP2Iko0kvQk5J+sqA8q0sg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=CpdJIizzIDj+bdkX1LYhm7OqIICDo4f31kaUQxLUoDa9/s7Y26mflrVYTF2iIN71Nxo9xYwVAi9hQ5+/viJplcFpu/NzYcSlhVzb5pt9N+9YSh8ZKRGYAodr53gEwboTPP6I7pBG2QX9lanLjy2MRfYXecUu5qRv/vMiuPgCirk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu; spf=pass smtp.mailfrom=mit.edu; dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b=JEFnbdFH; arc=none smtp.client-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IipXYbCr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 273F11F0089B;
-	Mon, 12 Oct 2026 18:19:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791829199;
-	bh=dc7AFFYJQmFZTD0x90eElcCZYl4eZp5zWYz3vuWAnfw=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=IipXYbCrorOARv+US+bHBMAZMMRNFDvIHVoj6RQZuMSJOC0VSfWIAl0YY86MgQOTR
-	 wOzdOocQkQ5NOKZw3wHLBXsyvii492ckSwTg6WpjWnZvEZpo4bS4eBHmm8tof6207o
-	 Z7UX1aHTbqM/evhaMJoBne4KGQ9R4l7p7RMPlCtWILJUm+WqtX9ERIAHo3Ugruc27Y
-	 4su9RrCNdyi3skHT2oPnBlJyuEVLO2Hk99fEU+MKhsxJgvB/2G2idtU8eQ6bG0TL9x
-	 mA/onxAaFE0n0hKNlvwfeDPISvmuIqLJp51gsS2R4eMPi6/iBDonKG2h9Hhl6VtZMl
-	 lyq41FSUod+RQ==
-Message-ID: <sashiko-outbox-168530@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: complete dropbehind writeback in task context
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Tal Zussman" <tz2294@columbia.edu>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012-ext4-dontcache-complete-in-task-v1-1-6ac801557041@columbia.edu>
-References: <20261012-ext4-dontcache-complete-in-task-v1-1-6ac801557041@columbia.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 18:19:58 +0000
+	dkim=pass (2048-bit key) header.d=mit.edu header.i=@mit.edu header.b="JEFnbdFH"
+Received: from macsyma.thunk.org (pool-173-48-111-204.bstnma.fios.verizon.net [173.48.111.204])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69CIsjEk032717
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 12 Oct 2026 14:54:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1791831286; bh=v4dNfEL5eAGeTEQ847I6fsZ2V1kZb4cUrrSFYhIHZLQ=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=JEFnbdFHJwjdhhHSKKFw5qqE2H9Lmzf29CKsblwGn3Vspb7nEfOW/aFpBCDUn3DCQ
+	 IBub4Z0NQiPZQbPfjnf77+2zoM4kw40rZfzQ2ZI7gQ4tezeHkwQZbslMlLatGAcxpE
+	 3MSHzbSuZdO4p/mvw88a7a+cvDRysr4S3BKiXdgltaM0JxN5uh+5eqOFu1psXH3B0p
+	 +vU4oUAZ2zYHZZh8QLNWB1zbUTLNxlpzNXYUpunzAYgqQz7TBRTmi1h5wNhb1OkDSk
+	 kxvEbmx39ZJJHTww5XehVaHSIw/z+WinlrAiiM7OiMp6A/gDIdmfFYjoRLREKHC/Rx
+	 uRVzT6CW0tphA==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id D0B5B1FF9771; Mon, 12 Oct 2026 14:53:44 -0400 (EDT)
+Date: Mon, 12 Oct 2026 14:53:44 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Gabriele Moabiti <gabmoa@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: ext4 data=journal deprecation: long-standing industrial use case
+Message-ID: <as0U-lfet5slrD8o@mit.edu>
+References: <CAAbJaeALOrZwWs++mz9Wv0pfvyDoHmfzPKyVHR0v6TwnzLkYGw@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAAbJaeALOrZwWs++mz9Wv0pfvyDoHmfzPKyVHR0v6TwnzLkYGw@mail.gmail.com>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [High] ext4: data race on io_end->flag corrupts UNWRITTEN and FAILED state
---
+On Mon, Oct 12, 2026 at 03:41:29PM -0500, Gabriele Moabiti wrote:
+> 
+> In these deployments, we have not experienced problems with this
+> configuration over those 15 years. It has been a reliable solution for our
+> operating conditions.
+> I understand that data=journal is deprecated and scheduled for removal in
+> January 2028. Given this established industrial use case, could the
+> decision be reconsidered, perhaps retaining full data journaling as an
+> optional feature?
 
-commit 578221fefbc4e5e8f3b366b7ce8ee33f43bb2e34
-Author: Tal Zussman <tz2294@columbia.edu>
+The challenge with data=journal is that it adds a lot of complexity,
+and more and more of the advanced featuers are simply "turned off" and
+the original code path is used for data=journal --- and the "original
+code path" is only used by the data=journal case.  This has the
+following of undesireable outcomes:
 
-ext4: complete dropbehind writeback in task context
+   * Extra code paths == extra maintenance overhead
+   * The data=journal specific codepaths are getting much less testing
+   * There are known test failures with data=journal which are not
+     getting addressed.  (n.b.  If paying customers were supporting with $$$
+     the SWE investment of data=journal this could be better addressed, but
+     at the moment data=journal is essentially best efforts by volunteers.)
 
-This commit introduces task-context bio completion for bios carrying
-dropbehind folios. It sets BIO_COMPLETE_IN_TASK on these bios during
-io_submit_add_bh() to ensure their invalidation runs from a worker rather
-than interrupt context.
+> If removal goes ahead, will ext4 provide an alternative with equivalent
+> protection against interrupted data writes and abrupt power loss? In
+> particular, I would appreciate clarification on how users relying on full
+> data journaling are expected to preserve comparable guarantees within ext4.
 
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 734d856a6d478..e556598ce9e14 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
+The phrase "comparable guarantees" is not particularly well defined, because...
 
-[ ... ]
+> I understand that data=journal does not make application-level updates
+> atomic or preserve data still buffered in userspace. Nevertheless, its
+> protection beyond metadata-only journaling is valuable for our deployments.
 
-> @@ -458,6 +458,16 @@ static void io_submit_add_bh(struct ext4_io_submit *=
-io,
->  		io_submit_init_bio(io, inode, folio, bh);
->  	if (!bio_add_folio(io->io_bio, folio, bh->b_size, bh_offset(bh)))
->  		goto submit_and_retry;
-> +
-> +	/*
-> +	 * Dropbehind folios can only be invalidated in task context. An
-> +	 * io_end with unwritten extents is completed from ext4's workqueue
-> +	 * anyway, so only ask the block layer to defer the others.
-> +	 */
-> +	if (folio_test_dropbehind(folio) &&
-> +	    !(io->io_end->flag & EXT4_IO_END_UNWRITTEN))
-> +		bio_set_flag(io->io_bio, BIO_COMPLETE_IN_TASK);
-> +
+Given that there is no guarantees of what writes will be persisted
+with respect to program execution, it's unclear exactly what your
+deployments are requiring or assuming.
 
-[Severity: High]
-Does this lockless read of io_end->flag introduce a data race that could le=
-ad
-to data loss?
+That being said, I *suspect* that this should cover most, if not all
+of your deployments' requirements.
 
-During submission, the ext4_writepages thread can map multiple extents that
-share a single ext4_io_end. If an early bio completes with an error while t=
-he
-submission thread is still mapping a subsequent unwritten extent,
-ext4_end_bio() can set EXT4_IO_END_FAILED concurrently:
+echo 500 > /proc/sys/vm/dirty_expire_centisecs
+echo 100 > /proc/sys/vm/dirty_writeback_centisecs
 
-fs/ext4/page-io.c:ext4_end_bio() {
-    ...
-    io_end->flag |=3D EXT4_IO_END_FAILED;
-    ...
-}
+To make these changes persistent after a reboot, put the following in
+/etc/sysctl.conf, or in a file in /etc/sysctl.d/
 
-Meanwhile, the submission thread might be setting EXT4_IO_END_UNWRITTEN:
+vm.dirty_expire_centisecs = 500
+vm.dirty_writeback_centisecs = 100
 
-fs/ext4/ext4.h:ext4_set_io_unwritten_flag() {
-    ...
-    io_end->flag |=3D EXT4_IO_END_UNWRITTEN;
-    ...
-}
+What these changes will do is if there are any dirty pages, writeback
+will be initiated after 5 seconds (vm.dirty_expire_centisecs) and the
+writeback flusher kernel threads will wake up once a second
+(vm.dirty_writeback_centisecs).
 
-Since both paths use non-atomic bitwise OR without a shared lock, reading
-the flag here in io_submit_add_bh() appears to rely on a racy state.
+The default values of these two settings are 30 seconds (3000) and 5
+seconds (500), respectively.  By default, ext4 uses a commit time of 5
+seconds (mount option commit=300).  In data=journal mode, when we
+close an jbd2 journal commit, we effectively force data to be
+persisted after a crash.  So by setting vm.dirty_expire_centisecs to
+500, this will have roughly the same effect --- which is to say, after
+a write first dirties a page, that page will be persisted after 5
+seconds.
 
-If the UNWRITTEN flag is lost due to a read-modify-write race,
-ext4_io_end_defer_completion() will return false and Ext4 could drop the
-io_end without converting the unwritten extents on disk. Can this lead to
-silent data loss where written data reads as zeroes?
+If the application wants a guarantee that a write is persisted, it
+should use fsync(2).  But if you don't want to modify the application,
+the window between when the application writes a file to when the data
+is persisted can be reduced from 30 seconds to 5 seconds either by
+using data=journal *or* setting dirty_expire_centisecs.
 
-Could this lockless check be made safe against concurrent bio completions, =
-or
-perhaps atomic bitops should be used for io_end->flag?
+There will be some slight differences in behavior, but given that
+data=journal doesn't have any real guarantees ---- if you want those
+guarantees, using fsync(2) or fdatasync(2), hopefully it should be
+good enough.  You may also find that performance may be improved by
+using dirty_expire_centisecs if you are bottlenecked by the storage
+device's I/O throughput limits, and it will also reduce flash write
+endurance impacts (and hence improve SSD lifetime) if you are using
+flash storage.
 
->  	wbc_account_cgroup_owner(io->io_wbc, folio, bh->b_size);
->  	io->io_next_block++;
->  }
+Can you give it a try and see if it works for you?
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-ext4-dontc=
-ache-complete-in-task-v1-1-6ac801557041@columbia.edu?part=3D1
+> We would prefer to continue using a normally writable ext4 filesystem,
+> without introducing an overlay or migrating to another filesystem.
+
+Note that no other file system has anything like data=journal, so
+introducing an overlay (not sure what you mean by that) or migrating
+to another file system is not likely to help you.
+
+Cheers,
+
+   	   	       	      	     	     - Ted
