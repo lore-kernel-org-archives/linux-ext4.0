@@ -1,121 +1,161 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23A6336B934
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:39:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C59CB3A9636
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:41:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791801580; cv=none; b=sEo6dy+1AUwXkOcAQXtJV6cTO6D7Z1W34BS9/99Zk0OXByHKRY+JdR7XNYPyw2L3zrkhNNISHdrx7d8BNtc6ej6WfVtz/TZdvSQw/THTHlDavQ3UB8SqRchavCdwZBKegsE2yX/LGwWtUOgUkFOnBjV4vrEQ2RqNO41Y/NE5350=
+	t=1791801696; cv=none; b=q+jw9Rvg/CuZXJU/iJPMcy5W8UrwCmUpZ4e7GGEqyyS8epTAsf1nUj06sN9yu6vYgQpx5FzcDN0DfKZFWYFMOI72HaWXpWArM2DlFB823WbjAGChSNp1fHOBDE2+tesRTGp2iE47H5orkcJSSVV3lyr5wOU/CqwTa/0MPG/xY6A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791801580; c=relaxed/simple;
-	bh=e39JtHgcqt1f7xkCAnQbx2eCH2T3xa6dmCBEmsPan1A=;
+	s=arc-20240116; t=1791801696; c=relaxed/simple;
+	bh=TZ/Nyfdb9tvCJalnAdbKw/vlBHCbnRnFWNqA/U02aYI=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=mf0SnFp/lvXvpnI/hj4p013ANBFY5HQWJyTH9Ej1neC+PTgNQmynz4kPnE9gjc1jq3X47GAM7jTwd0LysZEmF4I6jla46wQt6hJBuGc9ADTNrT98EkX0uFMBjPaULLDDZ3DLFkFOqZiYRxQA5ASPiJrncqnkieeD/fw8dEaKBXM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=blgTV+vl; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=cQKAU+ibRKZ2+1d7fX9qXa562aJ/5dHlmBxEEHBJKwu/PXu0qZULF8oTKon14sZ2q6qdb9PYIwyvVj4sspgj3kftfDH83DFoWVWLK+88AlBkIGUxPtTtcRuy8SvrEOrjihdiN22wyM6DUqE91AAxbQGOBZ4kiVX3nvZBRncahMQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Uy39LkPg; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="blgTV+vl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0A61F0089B;
-	Mon, 12 Oct 2026 10:39:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Uy39LkPg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 365921F0089B;
+	Mon, 12 Oct 2026 10:41:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791801578;
-	bh=kWuMwvNbb9ZSMwFkf5ubyXRHUOVWbhm4REIDPFcZkm0=;
+	s=k20260515; t=1791801695;
+	bh=JbqtMOE5hqSIK1iR17dtktNWdsjAaebZ17VzRfgStVk=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=blgTV+vlnfJQrlLbYMx/Fh4xQZXy9Z7S0st9UQ6xztFzKNzn8nL27fvgbkprG/TuR
-	 LKG8LfKUem72xfWUMG1mGYfIqud8NzH68zoypxnUvhVTY6zYcDfirnzIIdHA1VpAd6
-	 0hfFUV2+lV4wfnKzKRYfwtR85WHkdsmfSwNljY8wyhMbZlSqIV2eF1yvWGbf0Uh0PO
-	 YCe2rSL5KBUKVkNmRnAWHLhVrhkEJj5f4phT5eSTrT2mLxelV0LRzJnJkInxxXqYb0
-	 Q6/Q5BEbn6SzX/awtKhm9QEZtEYbf/Dk4xCBKdKyjVwK4RvvBlno9Vkw8Mw8+pTP35
-	 e4qMf0rpM3k/Q==
-Message-ID: <sashiko-outbox-167972@kernel.org>
+	b=Uy39LkPgIFQmG74WoBGPYn9WSekwS0C/fkGu4Lt9J4tbWqRnILHSR5N78z/n560//
+	 iMgutP6IDekOX5S+L2GyDUYxHIuw/doBWfjWi8zvEzmyjCjf+b9quAKQENCNyqfxm9
+	 MmkbaO+/bLVE1uBJ0jZZlzAXvysDjOG40kyiHcCcgf7cD+YcIIqPS9CyouF+M+LVVo
+	 ktlRGZItmDVNOCmxq05Z+peHS2b0IuVWGnacuPNgXruHoRtOWFCDDWlTWPp/7W5HZN
+	 x9PrwpNQc6O6/vhEz7pnc9D/seL19TMAXAypSQIHbTzZj6bPNNFr5lBDa1V2TpUl3+
+	 rJsprDQwL6/Dg==
+Message-ID: <sashiko-outbox-167974@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 12/28] ufs: don't set SB_RDONLY after filesystem
+Subject: Re: [PATCH RFC 09/28] hfs: don't set SB_RDONLY after MDB write
  errors
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
-Cc: linux-ext4@vger.kernel.org, "Mark Fasheh" <mark@fasheh.com>, "Joel
- Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>, dsterba@suse.cz, tytso@mit.edu
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-12-60743a3dc326@kernel.org>
+Cc: "Joel Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>, "Mark
+ Fasheh" <mark@fasheh.com>, linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-9-60743a3dc326@kernel.org>
 References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-12-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-9-60743a3dc326@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 10:39:37 +0000
+Date: Mon, 12 Oct 2026 10:41:34 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+Thank you for your contribution! Sashiko AI review found 2 potential issue(=
 s) to consider:
-- [High] ufs: writeback, mmap, and eviction bypass emergency read-only state
+- [High] hfs: mmap writes bypass emergency read-only enforcement
+- [High] hfs: b-tree corruption on mount due to mismatched MDB and b-tree h=
+eader
 --
 
-commit 6478a7f3e3ddcde9a7105fb1b9035fa4059fa6a4
+commit 438a15bb409c797940d5b4b61b0567260f26030a
 Author: Christian Brauner <brauner@kernel.org>
 
-ufs: don't set SB_RDONLY after filesystem errors
+    hfs: don't set SB_RDONLY after MDB write errors
+   =20
+    Since commit fdbb95ff89b2 ("hfs: don't re-dirty MDB buffers after a
+    write failure") hfs_mdb_commit() sets SB_RDONLY when the MDB or the
+    alternate MDB buffer lost BH_Uptodate after a failed write.
 
-This commit replaces the setting of the VFS SB_RDONLY flag on filesystem
-errors with a custom UFS_STATE_EMERGENCY_RO state flag. This prevents
-thaw_super() from hanging, while preventing new modifications by returning
--EROFS in VFS-level UFS functions.
+[ ... ]
 
-> diff --git a/fs/ufs/super.c b/fs/ufs/super.c
-> index 3569ac92b065b..ba2dd4502869c 100644
-> --- a/fs/ufs/super.c
-> +++ b/fs/ufs/super.c
-> @@ -280,11 +280,17 @@ void ufs_error (struct super_block * sb, const char=
- * function,
->  	uspi =3D UFS_SB(sb)->s_uspi;
->  	usb1 =3D ubh_get_usb_first(uspi);
->  =09
-> -	if (!sb_rdonly(sb)) {
-> +	/*
-> +	 * Don't set SB_RDONLY: that requires sb->s_umount and a proper
-> +	 * remount. Set while the superblock is frozen it makes thaw_super()
-> +	 * skip releasing s_writers and every later writer hangs. Refuse
-> +	 * modifications until umount instead.
-> +	 * The superblock buffer marked bad goes out with the block device.
-> +	 */
-> +	if (!sb_rdonly(sb) &&
-> +	    !test_and_set_bit(UFS_STATE_EMERGENCY_RO, &UFS_SB(sb)->s_state)) {
->  		usb1->fs_clean =3D UFS_FSBAD;
->  		ubh_mark_buffer_dirty(USPI_UBH(uspi));
-> -		ufs_mark_sb_dirty(sb);
-> -		sb->s_flags |=3D SB_RDONLY;
+> diff --git a/fs/hfs/extent.c b/fs/hfs/extent.c
+> index f066a99a863bc..dab31f159b1aa 100644
+> --- a/fs/hfs/extent.c
+> +++ b/fs/hfs/extent.c
+> @@ -350,6 +350,9 @@ int hfs_get_block(struct inode *inode, sector_t block,
+>  		if (block > HFS_I(inode)->fs_blocks)
+>  			return -EIO;
+>  		if (ablock >=3D HFS_I(inode)->alloc_blocks) {
+> +			/* No new allocations after an error. */
+> +			if (unlikely(hfs_emergency_ro(sb)))
+> +				return -EROFS;
+>  			res =3D hfs_extend_file(inode);
+>  			if (res)
+>  				return res;
 
 [Severity: High]
-With the removal of the VFS SB_RDONLY flag here, are background VFS operati=
-ons
-now able to bypass the emergency read-only state?
-
-Since the VFS is no longer aware of the read-only state, it appears that
-background writeback and eviction operations will continue to run.
-
-For example, ufs_writepages() in fs/ufs/inode.c lacks a check for
-ufs_emergency_ro(). Dirty pages dirtied before the error occurred could sti=
-ll
-be flushed to disk, and mpage_writepages() could allocate new blocks by
-calling ufs_getfrag_block() with create=3D1.
-
-Memory-mapped writes use filemap_page_mkwrite(), which invokes
-ufs_write_begin(). Without an emergency RO check in ufs_write_begin(),
-userspace could continue to dirty mapped pages and allocate new blocks.
-
-Additionally, ufs_evict_inode() processes unlinked files when they are clos=
-ed.
-It unconditionally calls ufs_truncate_blocks(), ufs_update_inode(), and
-ufs_free_inode(). These functions modify block/inode bitmaps and call
-ubh_mark_buffer_dirty().
-
-Because the block layer's flusher will sync these dirty buffer heads to the
-underlying block device, could this silently write data and metadata
-modifications to a corrupted disk while the filesystem is in the emergency
+Does this code allow data modification on a filesystem in an emergency
 read-only state?
 
->  	}
+If a user memory-maps a file with PROT_WRITE and modifies the pages after t=
+he
+filesystem enters the emergency read-only state, the page fault succeeds
+because hfs does not override page_mkwrite to check hfs_emergency_ro().
+
+When the VM triggers writeback, hfs_writepages() calls mpage_writepages(),
+which calls hfs_get_block(). For existing file blocks where
+ablock < HFS_I(inode)->alloc_blocks, hfs_get_block() bypasses this new chec=
+k,
+maps the block, and successfully writes dirty pages to disk, violating the
+read-only guarantee.
+
+[ ... ]
+
+> diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
+> index 2aef3c36a150a..42a2c2e390b23 100644
+> --- a/fs/hfs/inode.c
+> +++ b/fs/hfs/inode.c
+> @@ -472,6 +479,20 @@ int hfs_write_inode(struct inode *inode, struct writ=
+eback_control *wbc)
+>  	int res;
+> =20
+>  	hfs_dbg("ino %llu\n", inode->i_ino);
+> +	if (unlikely(hfs_emergency_ro(inode->i_sb))) {
+> +		/*
+> +		 * Writeback still writes the b-tree nodes. Keep the headers in
+> +		 * sync with them so the trees on disk stay intact.
+> +		 */
+> +		if (inode->i_ino =3D=3D HFS_EXT_CNID)
+> +			hfs_btree_write(HFS_SB(inode->i_sb)->ext_tree);
+> +		else if (inode->i_ino =3D=3D HFS_CAT_CNID)
+> +			hfs_btree_write(HFS_SB(inode->i_sb)->cat_tree);
+> +		else
+> +			return -EROFS;
+> +		return 0;
+> +	}
+> +
+
+[ ... ]
+
+> diff --git a/fs/hfs/mdb.c b/fs/hfs/mdb.c
+> index 277de712f9d47..ce20824bbdc84 100644
+> --- a/fs/hfs/mdb.c
+> +++ b/fs/hfs/mdb.c
+> @@ -338,12 +338,18 @@ int hfs_mdb_commit(struct super_block *sb)
+>  	struct hfs_mdb *mdb =3D HFS_SB(sb)->mdb;
+>  	int ret =3D 0;
+> =20
+> -	if (sb_rdonly(sb))
+> +	if (sb_rdonly(sb) || hfs_emergency_ro(sb))
+>  		return 0;
+
+[Severity: High]
+Can writing the updated b-tree header in hfs_write_inode() but dropping
+the MDB update here cause b-tree corruption on the next mount?
+
+The commit message notes that b-tree growth through hfs_bmap_reserve() isn't
+refused. If a read operation triggers a cache flush of an extent record,
+allocating new physical blocks, the b-tree header is updated and written to
+disk with an increased node_count.
+
+However, since hfs_mdb_commit() now returns early when hfs_emergency_ro() is
+true, the MDB is not updated on disk. This causes the on-disk MDB size fiel=
+ds
+(such as drXTFlSize and drXTExtRec) to desync from the b-tree header.
+
+On the next mount, the b-tree file size is initialized from the stale MDB a=
+nd
+is smaller than node_count * node_size. Accessing the newly allocated nodes
+reads past EOF, which the VFS zero-fills, resulting in -EIO during tree
+traversal. Furthermore, the newly allocated blocks are not marked as used in
+the MDB bitmap, leading to potential data overwrites.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D12
+_rdonly-v1-0-60743a3dc326@kernel.org?part=3D9
