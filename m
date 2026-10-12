@@ -1,23 +1,24 @@
-Received: from mail-m155101.qiye.163.com (mail-m155101.qiye.163.com [101.71.155.101])
+Received: from mail-m49197.qiye.163.com (mail-m49197.qiye.163.com [45.254.49.197])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84DD7489869;
-	Mon, 12 Oct 2026 11:47:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=101.71.155.101
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 19F6E46C832;
+	Mon, 12 Oct 2026 11:47:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.254.49.197
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791805681; cv=none; b=fgAuJMP4xKMyuD8hNVYQQNpqQaOKbLQ9qm/H2HS9AUeCbv3YqFDK003xuHzNYGpq0z8rR/kyJ5Uk9ANtZtLs6/CinnwrV4WGzICqVHV6Tl4mCLzu3tABfVXqb8pIyWS0gDYAIIHrqnCkCtv9KnpPt2UdyZQfagLI3+mP/lSuuU0=
+	t=1791805684; cv=none; b=poFHhe0p4o2lHz7wh3bQANuhsHH7L/KM+LPV/L5JwsIX3nPPXM5pLh8iHnK/GICRYkA6Ecp+KaBfrnj7DlIlR8LzCzULwKzyKcgqnJwOTf5MAX6k40yHdHTwGGnF9RtzJ63YMkZOBl5EvosSczluOmd+dPHw68cwTcEhkTQYv1k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791805681; c=relaxed/simple;
-	bh=cQEHHmELmdZw7Sx3ATP+f56PMCGYH35Lpfm+fq7+MRs=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=lpeURnlNdA6ElWdSLHMcivuO4AO7dqRW74hAairfPyiD2rqJKV2EofFRxBfcvLmlOwhySicIE8HsfoTU/hjXpUNToxmCLmlVfEFCTGEvdyAP7QviCNuuFTbBB0ZA7+0bTLaVktSMYRXL3RCdTRkGzqC9poiuPilw+3GbJyMGfn8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn; spf=pass smtp.mailfrom=tju.edu.cn; dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b=MUmyBEa6; arc=none smtp.client-ip=101.71.155.101
+	s=arc-20240116; t=1791805684; c=relaxed/simple;
+	bh=qYqWcUCn6MiCl/FB5qXumgZK8VzUDIdbUosR8j9LkX0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=eIaBUBhPjhY8LR7EZf26i8QfNScW046RLwmEK3aa1MwuU9y3DI2LgUTwI6XpU++0bJtlJ1gmKp/qv2SwpMw5R/5GyU/f07n/EjDegEFnUd88rRteFKcG3Smreq8OJfniP84aTRO/ataOhAz9zbGoj1zTC8Ngi+jMSXTXKCWvdtY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn; spf=pass smtp.mailfrom=tju.edu.cn; dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b=nL+bNp4k; arc=none smtp.client-ip=45.254.49.197
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tju.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b="MUmyBEa6"
-Received: from localhost (gyproxy-mailtls0-entmail-virt215.gy.ntes [IPV6:2409:8d28:140:849:c9f1:798d:951b:9e3f])
-	by smtp.qiye.163.com (Hmail) with ESMTP id 50bb2b782;
-	Mon, 12 Oct 2026 19:47:40 +0800 (GMT+08:00)
+	dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b="nL+bNp4k"
+Received: from localhost (gy-adaptive-ssl-proxy-3-entmail-virt135.gy.ntes [39.144.128.140])
+	by smtp.qiye.163.com (Hmail) with ESMTP id 50bb2b78e;
+	Mon, 12 Oct 2026 19:47:48 +0800 (GMT+08:00)
 From: guolingxing <guolingxing@tju.edu.cn>
 To: Theodore Ts'o <tytso@mit.edu>,
 	Jan Kara <jack@suse.com>
@@ -25,10 +26,12 @@ Cc: linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	guolingxing <guolingxing@tju.edu.cn>,
 	stable@vger.kernel.org
-Subject: [PATCH 1/3] jbd2: check return value of blkdev_issue_flush() when checkpointing
-Date: Mon, 12 Oct 2026 11:47:11 +0000
-Message-Id: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
+Subject: [PATCH 3/3] jbd2: check return value of blkdev_issue_flush() for async commits
+Date: Mon, 12 Oct 2026 11:47:13 +0000
+Message-Id: <20261012114713.4049391-3-guolingxing@tju.edu.cn>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
+References: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -36,57 +39,48 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-HM-Tid: 0aa12ff09baa03a2kunm0f9a87bb47e826
+X-HM-Tid: 0aa12ff0ba3e03a2kunm3ef7205347e848
 X-HM-MType: 10
 X-HM-Spam-Status: e1kfGhgUHx5ZQUpXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
-	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVlDS08ZVhkZHUkZHx0fGEhCSlYeHw
-	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlJT0tCQUMfSUNBSk9LQUNPQkEYQh1KQUxCQx9BQk5KGUFCHk
-	gdWVdZFhoPEhUdFFlBWU9LSFVKS0lCQ01CVUpLS1VLWQY+
+	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVlCGBpJVk4aSU9NHUlMTkpOTlYeHw
+	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlIQlVKT09VSklDVUpPS1lXWRYaDxIVHRRZQVlPS0hVSktJQk
+	NNQlVKS0tVS1kG
 DKIM-Signature: a=rsa-sha256;
-	b=MUmyBEa6HDXdI+USUo9JFVROTWG1Xt0Xnz2ya0Lx3oQzV8diE10E2u8Gy1a2BT1HiscLya88/TarJFKT22UOwHv/Da1FdOKPi2swVYsNazRmmKhAVucNx9Y43SaEf2RO/RskC1Zk4zC1e3VZsMpYcBAHz38Uwq44wXosgN8QqHc=; s=default; c=relaxed/relaxed; d=tju.edu.cn; v=1;
-	bh=vyAgpXVMNNpDwbaYB9wrxTvAVCQ8Jnh2UT/qE4Hjs5U=;
+	b=nL+bNp4k4QOjmCQch3J+cW4y2cnmPZg9Q8AfAGJf21OkQyFfLr+F1PMvsi2VAU1zs9qyvrUqFjln2vJHWt4meELse123qMZt6Rcwt9gyrfqc+cLe1YeA/CPU2epLTk+qtK4ftBVQvwxTSzsbw4TxXuSjq9EPswFlGUdsO/KmtXs=; s=default; c=relaxed/relaxed; d=tju.edu.cn; v=1;
+	bh=8d1g2429ResGiYJIn7ErnpNUgVHxsqLqnox0s8ovTg4=;
 	h=date:mime-version:subject:message-id:from;
 
-jbd2_cleanup_journal_tail() calls blkdev_issue_flush() on the file
-system device to make sure all checkpointed data are on permanent
-storage before it updates the log tail in the superblock.  However
-the return value of blkdev_issue_flush() is ignored so if the flush
-fails, we still advance the log tail.  After a crash the journal
-recovery will consider the checkpointed transactions as committed
-and skip the replay while their data may have never reached the
-disk, which may lead to a filesystem corruption.
+When asynchronous commits are enabled, jbd2_commit_transaction()
+calls blkdev_issue_flush() on the journal device to make the commit
+record permanent.  However the return value is ignored so if the
+flush fails, the transaction is considered committed although the
+commit record may have never reached the disk.  Abort the journal
+when the flush fails, as we already do when waiting for the commit
+record fails.
 
-Abort the journal when the flush fails, similar to how we abort
-when detecting writeback errors of the file system device.
-
-Fixes: 79feb521a447 ("jbd2: issue cache flush after checkpointing even with internal journal")
+Fixes: f73bee49855f ("jbd2: Modify ASYNC_COMMIT code to not rely on queue draining on barrier")
 Cc: stable@vger.kernel.org
 Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
 ---
- fs/jbd2/checkpoint.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 513273712010..9bbce4c8cadb 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -346,8 +346,14 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
- 	 * need this to guarantee correctness.  Fortunately
- 	 * jbd2_cleanup_journal_tail() doesn't get called all that often.
- 	 */
--	if (journal->j_flags & JBD2_BARRIER)
--		blkdev_issue_flush(journal->j_fs_dev);
-+	if (journal->j_flags & JBD2_BARRIER) {
-+		int err = blkdev_issue_flush(journal->j_fs_dev);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 99477e9c78c7..32ca502603be 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -912,7 +912,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	stats.run.rs_blocks_logged++;
+ 	if (jbd2_has_feature_async_commit(journal) &&
+ 	    journal->j_flags & JBD2_BARRIER) {
+-		blkdev_issue_flush(journal->j_dev);
++		int err = blkdev_issue_flush(journal->j_dev);
 +
-+		if (err) {
++		if (err)
 +			jbd2_journal_abort(journal, err);
-+			return err;
-+		}
-+	}
+ 	}
  
- 	return __jbd2_update_log_tail(journal, first_tid, blocknr);
- }
+ 	if (err)
 -- 
 2.34.1
 
