@@ -1,143 +1,121 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E68C27A92D
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:37:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23A6336B934
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:39:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791801447; cv=none; b=KBPGDY6B2dOMZz3TBxkzmO/gqd1Og2apCDnK859kUznh8ZTni79x3pO2pGJP9ltJE4tDfz7bUGEsLq0LCojndJ9oa5kh/DJLkpl7g4iuQgm5ifihNwhYazVCwaSDmT6nLJuAKggnelVMqVOGtpQDzOCDvVB35ecrdStRQXZF8x4=
+	t=1791801580; cv=none; b=sEo6dy+1AUwXkOcAQXtJV6cTO6D7Z1W34BS9/99Zk0OXByHKRY+JdR7XNYPyw2L3zrkhNNISHdrx7d8BNtc6ej6WfVtz/TZdvSQw/THTHlDavQ3UB8SqRchavCdwZBKegsE2yX/LGwWtUOgUkFOnBjV4vrEQ2RqNO41Y/NE5350=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791801447; c=relaxed/simple;
-	bh=5lz9y8l0OxY7KXf0j5aDlLMfaK53ozLqhSG2ByD6Ap0=;
+	s=arc-20240116; t=1791801580; c=relaxed/simple;
+	bh=e39JtHgcqt1f7xkCAnQbx2eCH2T3xa6dmCBEmsPan1A=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=XE0ByaEHcR1kz/efC+vPUVxtyzDT9zEJrcu0TfJM7+a0pJsvR8+zrSLxgPyzZRzvNZEbQDDB56u3KrmMevCXaPI230tVI3236Tv+x6xpYkyit6DSNRXhMul/MKrypiC2ezU+d6U+qp1S+/mntJxvPdPkooxLUgYLQ1AsJSru6WQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IsP6cvUg; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=mf0SnFp/lvXvpnI/hj4p013ANBFY5HQWJyTH9Ej1neC+PTgNQmynz4kPnE9gjc1jq3X47GAM7jTwd0LysZEmF4I6jla46wQt6hJBuGc9ADTNrT98EkX0uFMBjPaULLDDZ3DLFkFOqZiYRxQA5ASPiJrncqnkieeD/fw8dEaKBXM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=blgTV+vl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IsP6cvUg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66F8A1F0089F;
-	Mon, 12 Oct 2026 10:37:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="blgTV+vl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B0A61F0089B;
+	Mon, 12 Oct 2026 10:39:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791801445;
-	bh=l6MepkO6ybgYZXqdCKlsEM5YstDLNFk/1UW3Cuh2dPg=;
+	s=k20260515; t=1791801578;
+	bh=kWuMwvNbb9ZSMwFkf5ubyXRHUOVWbhm4REIDPFcZkm0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=IsP6cvUg7ZKgz6lapo30ZjmOv+LXi+bDdkxU8mGl/L+7238NVkAycfqTgfabAbiLX
-	 97M4vSnryLcnO8yqPcsKUP7J8lB5sBHagLbvE7GwlSRYsEFRKPn4yZOASzhf5BzQn4
-	 ZaoiPj/QR7JniUxXEcxrep0BvRdrFfj1FhkxwRSQ30vQgDGsiG+NsCPzPU4OHjA26v
-	 162JGFyWOZt7EUtHoa99Qqkkm+cqX2s19dfjQSzugEvYwz7jBovo1NookSyipn/Y97
-	 3itu/1WfqLGk2qGEg03DS1cFmwNqxLuFxyD/1lJd+Et7eGn6zP1hE6Y6Rdmz34943j
-	 tjOUUMBWS/7Zg==
-Message-ID: <sashiko-outbox-167971@kernel.org>
+	b=blgTV+vlnfJQrlLbYMx/Fh4xQZXy9Z7S0st9UQ6xztFzKNzn8nL27fvgbkprG/TuR
+	 LKG8LfKUem72xfWUMG1mGYfIqud8NzH68zoypxnUvhVTY6zYcDfirnzIIdHA1VpAd6
+	 0hfFUV2+lV4wfnKzKRYfwtR85WHkdsmfSwNljY8wyhMbZlSqIV2eF1yvWGbf0Uh0PO
+	 YCe2rSL5KBUKVkNmRnAWHLhVrhkEJj5f4phT5eSTrT2mLxelV0LRzJnJkInxxXqYb0
+	 Q6/Q5BEbn6SzX/awtKhm9QEZtEYbf/Dk4xCBKdKyjVwK4RvvBlno9Vkw8Mw8+pTP35
+	 e4qMf0rpM3k/Q==
+Message-ID: <sashiko-outbox-167972@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 06/28] fat: don't set SB_RDONLY after filesystem
+Subject: Re: [PATCH RFC 12/28] ufs: don't set SB_RDONLY after filesystem
  errors
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Mark Fasheh" <mark@fasheh.com>, dsterba@suse.cz, tytso@mit.edu, "Joseph
- Qi" <joseph.qi@linux.alibaba.com>, "Joel Becker" <jlbec@evilplan.org>, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-6-60743a3dc326@kernel.org>
+Cc: linux-ext4@vger.kernel.org, "Mark Fasheh" <mark@fasheh.com>, "Joel
+ Becker" <jlbec@evilplan.org>, "Joseph Qi" <joseph.qi@linux.alibaba.com>, dsterba@suse.cz, tytso@mit.edu
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-12-60743a3dc326@kernel.org>
 References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-6-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-12-60743a3dc326@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 10:37:24 +0000
+Date: Mon, 12 Oct 2026 10:39:37 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [High] fat: logical bypass of emergency RO flag on read-only mounts
-- [Medium] fat: TOCTOU race in directory operations bypasses emergency RO s=
-tate
+- [High] ufs: writeback, mmap, and eviction bypass emergency read-only state
 --
 
-commit e77264e006a2ef4a1ac604c047b873a1d5b45bb5
+commit 6478a7f3e3ddcde9a7105fb1b9035fa4059fa6a4
 Author: Christian Brauner <brauner@kernel.org>
 
-    fat: don't set SB_RDONLY after filesystem errors
+ufs: don't set SB_RDONLY after filesystem errors
 
-This commit introduces a new FAT_FLAGS_EMERGENCY_RO bit to handle filesystem
-errors instead of setting SB_RDONLY directly. This prevents hangs when erro=
-rs
-occur while the filesystem is frozen, and various filesystem operations are
-updated to check this new flag to refuse modifications.
+This commit replaces the setting of the VFS SB_RDONLY flag on filesystem
+errors with a custom UFS_STATE_EMERGENCY_RO state flag. This prevents
+thaw_super() from hanging, while preventing new modifications by returning
+-EROFS in VFS-level UFS functions.
 
-> diff --git a/fs/fat/misc.c b/fs/fat/misc.c
-> index e79762cf19754..ecba57df83ca2 100644
-> --- a/fs/fat/misc.c
-> +++ b/fs/fat/misc.c
-[ ... ]
-> @@ -32,10 +33,22 @@ void __fat_fs_error(struct super_block *sb, int repor=
-t, const char *fmt, ...)
->  		va_end(args);
->  	}
-> =20
-> -	if (opts->errors =3D=3D FAT_ERRORS_PANIC)
-> +	if (opts->errors =3D=3D FAT_ERRORS_PANIC) {
->  		panic("FAT-fs (%s): fs panic from previous error\n", sb->s_id);
-> -	else if (opts->errors =3D=3D FAT_ERRORS_RO && !sb_rdonly(sb)) {
+> diff --git a/fs/ufs/super.c b/fs/ufs/super.c
+> index 3569ac92b065b..ba2dd4502869c 100644
+> --- a/fs/ufs/super.c
+> +++ b/fs/ufs/super.c
+> @@ -280,11 +280,17 @@ void ufs_error (struct super_block * sb, const char=
+ * function,
+>  	uspi =3D UFS_SB(sb)->s_uspi;
+>  	usb1 =3D ubh_get_usb_first(uspi);
+>  =09
+> -	if (!sb_rdonly(sb)) {
+> +	/*
+> +	 * Don't set SB_RDONLY: that requires sb->s_umount and a proper
+> +	 * remount. Set while the superblock is frozen it makes thaw_super()
+> +	 * skip releasing s_writers and every later writer hangs. Refuse
+> +	 * modifications until umount instead.
+> +	 * The superblock buffer marked bad goes out with the block device.
+> +	 */
+> +	if (!sb_rdonly(sb) &&
+> +	    !test_and_set_bit(UFS_STATE_EMERGENCY_RO, &UFS_SB(sb)->s_state)) {
+>  		usb1->fs_clean =3D UFS_FSBAD;
+>  		ubh_mark_buffer_dirty(USPI_UBH(uspi));
+> -		ufs_mark_sb_dirty(sb);
 > -		sb->s_flags |=3D SB_RDONLY;
-> +	} else if (opts->errors =3D=3D FAT_ERRORS_RO && !sb_rdonly(sb)) {
-> +		/*
-> +		 * Only a mount in progress may still set SB_RDONLY: the
-> +		 * mounter holds s_umount and nothing can freeze the superblock
-> +		 * before SB_BORN. Later, setting it without s_umount on a
-> +		 * frozen superblock makes thaw_super() mark it unfrozen but
-> +		 * skip sb_freeze_unlock(), so the s_writers rwsems stay
-> +		 * write-locked and every writer hangs. Refuse modifications
-> +		 * until umount instead.
-> +		 */
-> +		if (!(sb->s_flags & SB_BORN))
-> +			sb->s_flags |=3D SB_RDONLY;
-> +		else if (test_and_set_bit(FAT_FLAGS_EMERGENCY_RO, &sbi->flags))
-> +			return;
 
 [Severity: High]
-Does this logic bypass setting the emergency read-only flag if the filesyst=
-em
-is already mounted read-only when the error occurs?
+With the removal of the VFS SB_RDONLY flag here, are background VFS operati=
+ons
+now able to bypass the emergency read-only state?
 
-If an error happens on a read-only mount, the !sb_rdonly(sb) condition skips
-setting the FAT_FLAGS_EMERGENCY_RO bit, meaning the filesystem won't
-persistently record its corrupted emergency state.
+Since the VFS is no longer aware of the read-only state, it appears that
+background writeback and eviction operations will continue to run.
 
-If the administrator later remounts the filesystem as read-write,
-fat_reconfigure() allows the remount because fat_emergency_ro(sb) will retu=
-rn
-false. Could this allow modifying a known-corrupted filesystem?
+For example, ufs_writepages() in fs/ufs/inode.c lacks a check for
+ufs_emergency_ro(). Dirty pages dirtied before the error occurred could sti=
+ll
+be flushed to disk, and mpage_writepages() could allocate new blocks by
+calling ufs_getfrag_block() with create=3D1.
 
-> diff --git a/fs/fat/namei_vfat.c b/fs/fat/namei_vfat.c
-> index da3e89c0b16ac..73f7f11b05907 100644
-> --- a/fs/fat/namei_vfat.c
-> +++ b/fs/fat/namei_vfat.c
-> @@ -791,6 +791,9 @@ static int vfat_rmdir(struct inode *dir, struct dentr=
-y *dentry)
->  	struct fat_slot_info sinfo;
->  	int err;
-> =20
-> +	if (unlikely(fat_emergency_ro(sb)))
-> +		return -EROFS;
-> +
->  	mutex_lock(&MSDOS_SB(sb)->s_lock);
-> =20
->  	err =3D fat_dir_empty(inode);
+Memory-mapped writes use filemap_page_mkwrite(), which invokes
+ufs_write_begin(). Without an emergency RO check in ufs_write_begin(),
+userspace could continue to dirty mapped pages and allocate new blocks.
 
-[Severity: Medium]
-Could this lockless check introduce a TOCTOU race?
+Additionally, ufs_evict_inode() processes unlinked files when they are clos=
+ed.
+It unconditionally calls ufs_truncate_blocks(), ufs_update_inode(), and
+ufs_free_inode(). These functions modify block/inode bitmaps and call
+ubh_mark_buffer_dirty().
 
-If a separate thread encounters an error and locklessly sets
-FAT_FLAGS_EMERGENCY_RO, and concurrently a thread executing vfat_rmdir() pa=
-sses
-this check and waits on s_lock, the rmdir thread will proceed with the
-operation once it acquires the lock.
+Because the block layer's flusher will sync these dirty buffer heads to the
+underlying block device, could this silently write data and metadata
+modifications to a corrupted disk while the filesystem is in the emergency
+read-only state?
 
-Since fat_remove_entries() is called later inside s_lock but doesn't perform
-its own internal check of the emergency read-only flag (unlike
-fat_add_entries()), could directory modifications be written to disk despite
-the filesystem having entered an emergency read-only state?
+>  	}
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D6
+_rdonly-v1-0-60743a3dc326@kernel.org?part=3D12
