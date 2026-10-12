@@ -1,63 +1,101 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78801381EA0
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 06:25:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FCA4438037;
+	Mon, 12 Oct 2026 06:55:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791786325; cv=none; b=EHGgJk1HGELR246cwQoBhlkXkNT81/CbpGTKH3cdH3v1eFQSgpi3oKKlXfTrUrp5MTAiL6J14hMiaUzSBI4r6BkziWUIGWgpX/PgNr96AFIkQM0hGseXfRLWhjENUtoxnnbQEOKTG0kxlC2F66EhmlByYHfC5JlLuj+JovbF744=
+	t=1791788152; cv=none; b=e/ot3aluBqMC0MJdrIItfSU6ZxGHgrU3/HtX8wqyWTI7ZgeRA75fw2Cb1QGkDyH8YyZkL/IKLNHWaK4hklJ7tAyylOzn6LR5sIBJM/+T8MiTI3yQdcv5yGOAXqKfUMidt9Vmpp6dtGI2pZJdDcc+le+SKc499nefoQA8PjnxQWU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791786325; c=relaxed/simple;
-	bh=ABCMQn19fZyGkfmN4Pp3uCSJImt3V2H5JRZYOmW8VBU=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=jM1iASwSS37lQJnfBrNvm8CzmP77itfDaouTDpZWEsu0VDzAaKLxdz+rXalpoO8ZU+IfjT07lXyFBWd8U2UVAxNrWkkQ3pI4iyVr493HcIwAhtY/JfMgRZJAHONi6vaqTv1B/iRTAeTn0rRfmo7Oi6VkLiOvT3Gtf/SvApF5Qtc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n9GTiMNi; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n9GTiMNi"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB2351F0089B;
-	Mon, 12 Oct 2026 06:25:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791786320;
-	bh=mru+Vx6wQUHDqp48nZl8mDxW+IDIMYhtRJP89bZvmNs=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=n9GTiMNieLpcLzUuGhFextkjvQc94a5XFZmXAZ0+8KAsTJnzva24djYkYwTBNTPgV
-	 4pZeGH85CMhm1oqAgJPPSIT5ixtbl8ylJ8eC8uyX4oVlhPyMslSI4gxcOxGzmgy4n9
-	 jlDKeA8y3pWZNhpPQ2XXYDCLlhnyw8LiR+BILFwO8EOwAq09yxPr/q97vPO+aGBPPV
-	 nou+xv0bCBiXpiLMFTiqR/iaA6V6Vx00ZugJfFSo7dPGVMhFffBQUotn4HfO41IJQ4
-	 kKT+efLh+nzQ0zl8bdy5IwXn6oLoHjLJd4W0UxyjKT3j519cGAy1LlRBF9ZdnK8ksx
-	 A7iOVlpTieCwQ==
-Message-ID: <sashiko-outbox-167731@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: check CAP_SYS_ADMIN in ext4_ioctl_get_tune_sb()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Guanglei Zhu" <zhugl3@xiaopeng.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012060844.836001-1-zhugl3@xiaopeng.com>
-References: <20261012060844.836001-1-zhugl3@xiaopeng.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 06:25:19 +0000
+	s=arc-20240116; t=1791788152; c=relaxed/simple;
+	bh=MN6j/jDgbPWTAPCKl/9lUmdH5PiDX9KTv2YknUczJmQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=QAGgqXYdYZTXZM5/a25dUat03ZRQp5TiihaH5JLmcG9G41C+LMNW+L2fl+m1bm1LAZeE9buz1M9nF29rtVHlSp8Ex7Vl+p/vNll3BM9KQyuhe1AaRBRCIcBAC4cV+EJw3V5uCj/dpIfPHa6PQ3Un2h/G/0QqiC1B95jqgq3O7zQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.177])
+	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j37W72N0mzKHMNB;
+	Mon, 12 Oct 2026 14:54:43 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id EBB3E40539;
+	Mon, 12 Oct 2026 14:55:39 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPNqhMxqV2+QAA--.34644S3;
+	Mon, 12 Oct 2026 14:55:39 +0800 (CST)
+Message-ID: <5baa0f89-11b1-46c5-91e9-fbb89f8a325b@huaweicloud.com>
+Date: Mon, 12 Oct 2026 14:55:38 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix buffer_head leak in ext4_ind_map_blocks() error
+ path
+To: guolingxing <guolingxing@tju.edu.cn>, tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+References: <20261009062846.327298-1-guolingxing@tju.edu.cn>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20261009062846.327298-1-guolingxing@tju.edu.cn>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgAnZPNqhMxqV2+QAA--.34644S3
+X-Coremail-Antispam: 1UD129KBjvJXoW7tr48Gr4DZw47Wr4xZFW8JFb_yoW8Xr15pr
+	sxKF9akrs5uryIkanrX3W8ZFyxuan3Gw45Grs2kw4UZr9xuFnaqrZ8tF18XFWxArZ5Ja12
+	qFW5KryxW34Uua7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
+	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
+	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
+	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0E
+	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
+	80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
+	I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
+	k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
+	xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU80fO7UUUUU==
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-> ext4_ioctl_set_tune_sb() requires CAP_SYS_ADMIN before changing the
-> superblock tunables, but the GET side has no permission check.  Any
-> user who can open a file on the filesystem read-only can read the
-> whole tune struct, including the 64-byte mount_opts string that
-> mount(2) stored in the superblock.
->=20
-> Require CAP_SYS_ADMIN on the GET side as well.
->=20
-> Fixes: 04a91570ac67 ("ext4: implemet new ioctls to set and get superblock=
- parameters")
-> Signed-off-by: Guanglei Zhu <zhugl3@xiaopeng.com>
+On 10/9/2026 2:28 PM, guolingxing wrote:
+> When ext4_ind_map_blocks() is called with EXT4_GET_BLOCKS_CREATE on
+> a non-extent mapped inode of a filesystem with the bigalloc feature
+> enabled, it fails with -EFSCORRUPTED via 'goto out'.  However, at
+> this point ext4_get_branch() has already acquired buffer_head
+> references for the chain of indirect blocks, which are stored in
+> the stack variable 'chain'.  Since 'goto out' skips the cleanup
+> loop that releases these references, they are leaked permanently
+> (each failed allocation can leak up to 3 buffer_heads, and repeated
+> allocation attempts keep pinning the corresponding pages in memory).
+> 
+> Jump to 'cleanup' instead, so that the chain of buffer_heads is
+> properly released before the error is returned.
+> 
+> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+Looks good to me.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012060844.8360=
-01-1-zhugl3@xiaopeng.com?part=3D1
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+
+> ---
+>  fs/ext4/indirect.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+> index 5aec759eed70..9f1f4e6c37a4 100644
+> --- a/fs/ext4/indirect.c
+> +++ b/fs/ext4/indirect.c
+> @@ -603,7 +603,7 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+>  		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
+>  				 "non-extent mapped inodes with bigalloc");
+>  		err = -EFSCORRUPTED;
+> -		goto out;
+> +		goto cleanup;
+>  	}
+>  
+>  	/* Set up for the direct block allocation */
 
