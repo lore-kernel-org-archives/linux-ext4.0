@@ -1,68 +1,110 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23BEE48A2D9;
-	Mon, 12 Oct 2026 12:28:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 340E5367B74;
+	Mon, 12 Oct 2026 13:33:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791808110; cv=none; b=pbZhjRjr8xu1j5N0n+9M5ydBHiC2zBXr1gjQLgz3dzMmD5PNYPAul2FLE44KAHx2DKseTuFdNPs7fpQxSLNixJxwqLp7966IuCArJUpuIRaRgm0RvFg6VLFwMOXf97nni4sekIMfC7Rf/5nGWyhYu69zCWnwcej78u8yglr9cHk=
+	t=1791812014; cv=none; b=QvDwBJpzqDTsXibjjXf9/rhzgbd/9cJhrtgy1wz+fHqoLLyVXhlNC8ErDDShdwyiXUjiyP6DPb6jH27IkfvMzTuAJMxrhsQ+jFF+OLg9TnCbzUiwy+eSXaAyazzquuHT9edDn1R4zgOzNZuBXeTVz+18L1CjXxK23jIPwMthR6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791808110; c=relaxed/simple;
-	bh=Vcu/HCEhq7DCjXml6syCX/GU4xL1ShWeVZsI2fAEF+I=;
+	s=arc-20240116; t=1791812014; c=relaxed/simple;
+	bh=oXpJJmU8Anjiy26i2WZNuQR7aGU9DdaxZCT+al9Dn5Q=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Ad/WuSaKnOVzoqDHdoQWiRi/ydaB578KD5JPq8Fc+0VOeD5zlr5cwETsqZxS/cDyt2W2CmoKbilwokuxhQSDvPCwCZgRPbU9VlawI5XwAW2lHALxqfVhnaGdrTa92jaG6LFgJi47Cya3uovmyL52dfKUSVeFJy77mTQaW1NWdcY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=bxyaLWFe; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=geE49uBcRoABfAawCliW8SxWA1BHYhWalaoA5WXljDV5Of4OGTu9aOOcw7zlr6Hj7fa+DmF3cs5Y8xrrP+w4ldtAM/7qYGrFF9MqMZHuvXJxVZef6xCWWc3oB4TNtnAXXF5XGee2wjyTQ/o5GRPTpPoEVbE01TwRGo3NU5BWrJ0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gRaCDE7U; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="bxyaLWFe"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=Vcu/HCEhq7DCjXml6syCX/GU4xL1ShWeVZsI2fAEF+I=; b=bxyaLWFe1xOm5MqyME5cDDfZtW
-	vnHPoWJNVGDqEvkizqlWW7LmT2g0aHxsjDKdLiNSkvFto+mFcBE8ckjqnBgAQFB9Ftg19PQ3lNydP
-	UpBpDAtj7mrkG0p1B9AjyWfJSKKfMp3B7DFQKnqS3LR6jMPFf23AWy5944e3OoCeLlZZChdwkB9oT
-	r1kXxvUNWvMalf6TOaCJ59T1eOCHR9DIaFhUPPsRHgJUMEf17tV6oYIx/gZGWUrPS+XCmYqqES56W
-	WLHJXORYvIz0Kk4Bf9EfUJgSy1ZzMrromAORGowD4nqUkDH2ysx/0ubBUKi8xtoEmDyIHbbnXdsfK
-	6Nq4p+NA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1xGF8h-0000000ASDK-1suX;
-	Mon, 12 Oct 2026 12:28:23 +0000
-Date: Mon, 12 Oct 2026 05:28:23 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: daejun7.park@samsung.com
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Zorro Lang <zlang@kernel.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>,
-	Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] generic: test that preallocated blocks still read
- zeroes after I/O errors
-Message-ID: <aszSZ7Y2f8sIorpU@infradead.org>
-References: <20261008-ext4-zeroout-eio-test-v2-1-883ac28de4cf@samsung.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gRaCDE7U"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D84451F0089B;
+	Mon, 12 Oct 2026 13:33:29 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791812012;
+	bh=Jk2ATHm1+7IqzHKNOh4AeA3ysPCL06HNzU14JeuVcR8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=gRaCDE7U/awcfYEVienAoxa/9eTTQRTBlBYpsawt15BWLYvoVWH+0KHrLLGYloRxL
+	 BrAho/k3tF8CXLNQ2kNWhLXIUBXlQDHKxEAZVYqWvn9F8b+9xwog1oidU2XAAICDRy
+	 QiR6WsgW+0n/MF5qknYkaXT31bwrlZtk1NjAPYk2HLCjypWnh1e9Wig1A9HBzUDY7l
+	 VWkhEYKTAZ2sn3MagsGaFaYY1Ak5AhSsIzvccV3me1jO/0wGo6hsgk3zF2xKx3o3cE
+	 R11RAI/aoV6aT/mHhLsaM2bwjvMehDGseRrH3KOpiXNhe973nW8/h4GF2ihOk4i08J
+	 PcwksjDDRS9QQ==
+Date: Mon, 12 Oct 2026 21:33:24 +0800
+From: Zorro Lang <zlang@kernel.org>
+To: Lukas Herbolt <lukas@herbolt.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, fstests@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/1] lib/random.c fix undefined behavior on signed
+ integer overflow.
+Message-ID: <aszhaYx_x1LrEKmc@zlang-mailbox>
+Mail-Followup-To: Lukas Herbolt <lukas@herbolt.com>, 
+	"Darrick J. Wong" <djwong@kernel.org>, fstests@vger.kernel.org, linux-xfs@vger.kernel.org, 
+	linux-ext4@vger.kernel.org
+References: <20261006135205.400485-1-lukas@herbolt.com>
+ <20261006135205.400485-2-lukas@herbolt.com>
+ <20261007170058.GG2705364@frogsfrogsfrogs>
+ <d000ae8abba884b0a58be93e6e63f486@herbolt.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261008-ext4-zeroout-eio-test-v2-1-883ac28de4cf@samsung.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <d000ae8abba884b0a58be93e6e63f486@herbolt.com>
 
-On Thu, Oct 08, 2026 at 07:18:24PM +0900, Daejun Park via B4 Relay wrote:
-> +# dm-error table sizes need zone alignment on zoned devices, and the check
-> +# needs a mounted file system.
-> +_scratch_mount
-> +test $FSTYP = xfs && _require_xfs_scratch_non_zoned
+On Thu, Oct 08, 2026 at 10:23:59AM +0200, Lukas Herbolt wrote:
+> On 2026-10-07 19:00, Darrick J. Wong wrote:
+> > On Tue, Oct 06, 2026 at 03:51:52PM +0200, Lukas Herbolt wrote:
+> > > The random.c now expects that signed integer to overflow and
+> > > triggers the  ^MASK branch. But signed int overflow is undefined
+> > > behavior and GCC can optimize this branch out with certain
+> > > CFLAGS/LDFLAGS.
+> > > 
+> > > Signed-off-by: Lukas Herbolt <lukas@herbolt.com>
+> > > ---
+> > >  lib/random.c | 13 +++++++------
+> > >  1 file changed, 7 insertions(+), 6 deletions(-)
+> > > 
+> > > diff --git a/lib/random.c b/lib/random.c
+> > > index d5c81be817c8..f767ed1d1337 100644
+> > > --- a/lib/random.c
+> > > +++ b/lib/random.c
+> > > @@ -186,14 +186,15 @@ _random (int32_t is [2])
+> > >  int32_t
+> > >  _irandm (int32_t is [2])
+> > >  {
+> > > -	int32_t it, leh, nit;
+> > > -
+> > > +	int32_t it, leh, nit, apply_mask;
+> > >  	it = is [0];
+> > >  	leh = is [1];
+> > > -	if (it <= 0)
+> > > -		it = (it + it) ^ MASK;
+> > > -	else
+> > > -		it = it + it;
+> > > +
+> > > +/* 	evaluate on original value — no UB here */
+> > > +	apply_mask = (it <= 0);
+> > > +/*	double via unsigned shift — well-defined */
+> > > +	it = (unsigned)it << 1;
+> > > +	if (apply_mask) it ^= MASK;
+> > 
+> > Doesn't _random suffer the same flaw?
+> > 
+> > Oh.  It's dead code, maybe it should go away?
+> Good point.
 
-The canonical way to write this would be
+If you'd like to do this in another patch, I'll merge this one at first (or
+I'll wait your V2).
 
-_require_non_zoned_device $SCRATCH_RTDEV
-
-Otherwise looks good:
-
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > 
+> > Also, what about converting all the variables to unsigned?
+> 
+> It would break two signed checks: `it <= 0` (LFSR feedback -
+> only fires at zero instead of when MSB set) and `leh < 0`
+> (output folding — never fires). The `it` register degenerates
+> to 33 repeating values after 64 calls. Reducing the pool of
+> random numbers.
+> 
+> -- 
+> -lhe
