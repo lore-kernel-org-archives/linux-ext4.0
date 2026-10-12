@@ -1,30 +1,32 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FCA4438037;
-	Mon, 12 Oct 2026 06:55:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C53B13C8C7D;
+	Mon, 12 Oct 2026 07:50:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.132
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791788152; cv=none; b=e/ot3aluBqMC0MJdrIItfSU6ZxGHgrU3/HtX8wqyWTI7ZgeRA75fw2Cb1QGkDyH8YyZkL/IKLNHWaK4hklJ7tAyylOzn6LR5sIBJM/+T8MiTI3yQdcv5yGOAXqKfUMidt9Vmpp6dtGI2pZJdDcc+le+SKc499nefoQA8PjnxQWU=
+	t=1791791424; cv=none; b=iKRbi6izYLn9+hGZVCmDeUpZaG8R3YdVxazVGKRrG+VHu7UStmqbhuyBHsuRIksAueEKruJW8fqivwhOg99R4IakXz+otEwW2A0S83usendTartZ0eHQ/jT4vaApbAEPh3u73CLYRGT3lxIfCGjfiPEn1Tox5Is9gxWo6uyjnik=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791788152; c=relaxed/simple;
-	bh=MN6j/jDgbPWTAPCKl/9lUmdH5PiDX9KTv2YknUczJmQ=;
+	s=arc-20240116; t=1791791424; c=relaxed/simple;
+	bh=C50LJ3Vdsia6GXxtYUqtD+r3BibR95E6noBXKAs8UUE=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=QAGgqXYdYZTXZM5/a25dUat03ZRQp5TiihaH5JLmcG9G41C+LMNW+L2fl+m1bm1LAZeE9buz1M9nF29rtVHlSp8Ex7Vl+p/vNll3BM9KQyuhe1AaRBRCIcBAC4cV+EJw3V5uCj/dpIfPHa6PQ3Un2h/G/0QqiC1B95jqgq3O7zQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j37W72N0mzKHMNB;
-	Mon, 12 Oct 2026 14:54:43 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id EBB3E40539;
-	Mon, 12 Oct 2026 14:55:39 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPNqhMxqV2+QAA--.34644S3;
-	Mon, 12 Oct 2026 14:55:39 +0800 (CST)
-Message-ID: <5baa0f89-11b1-46c5-91e9-fbb89f8a325b@huaweicloud.com>
-Date: Mon, 12 Oct 2026 14:55:38 +0800
+	 In-Reply-To:Content-Type; b=NXGxTwWbPyVr+/z08jtFlDP8P9k9pZuPpTC2RrsmVQWxCt4rUlAmere7uxkBjhHusH9cKnwS/nf8zV/W1oS9m5sEhXUpF02jslkyDdCuQNurGi1kPjdjt5wfkYcBoDHaQU2ApUFjdaWuLigWT5FMAtIqrsQwEy7M2ynZq8poZIY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=pVvixb49; arc=none smtp.client-ip=115.124.30.132
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="pVvixb49"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1791791419; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=nyvz0mMuh4bqfbMaOFn6ymiAv9PJ0j5FQKUNYH4alZ0=;
+	b=pVvixb49ewWJMizZQ27INjqKAkP7cwieO0xtH+nyLfLjwBLGC+2oozXKrMnQO8bAi3mivreHWXAl3DVc7vip3A9HFi7xpUmabKd9gp4bBQIu/FlOlKfNjsC6DU0WLGSsV9MnBIA3V2DuPbCxdZAgDr9TMS4Apn1joZqe9gAoJpU=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=20;SR=0;TI=SMTPD_---0XCclAy1_1791791415;
+Received: from 30.221.130.114(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XCclAy1_1791791415 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Mon, 12 Oct 2026 15:50:17 +0800
+Message-ID: <bda10a43-5ff3-4f8d-b9a7-e63161e0fb4b@linux.alibaba.com>
+Date: Mon, 12 Oct 2026 15:50:15 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -32,70 +34,84 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix buffer_head leak in ext4_ind_map_blocks() error
- path
-To: guolingxing <guolingxing@tju.edu.cn>, tytso@mit.edu
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
- linux-kernel@vger.kernel.org
-References: <20261009062846.327298-1-guolingxing@tju.edu.cn>
+Subject: Re: [PATCH 03/13] blk-crypto: reject fallback data unit sizes it
+ can't handle
+To: sashiko-reviews@lists.linux.dev
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org, tytso@mit.edu,
+ linux-fscrypt@vger.kernel.org, linux-block@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+ ebiggers@kernel.org, jaegeuk@kernel.org, axboe@kernel.dk, hch@lst.de,
+ djwong@kernel.org, brauner@kernel.org, tytso@mit.edu, berto@igalia.com,
+ adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, stable@vger.kernel.org
+References: <20261011170958.1759230-1-libaokun@linux.alibaba.com>
+ <20261011170958.1759230-4-libaokun@linux.alibaba.com>
+ <sashiko-outbox-167341@kernel.org>
 Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20261009062846.327298-1-guolingxing@tju.edu.cn>
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <sashiko-outbox-167341@kernel.org>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAnZPNqhMxqV2+QAA--.34644S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7tr48Gr4DZw47Wr4xZFW8JFb_yoW8Xr15pr
-	sxKF9akrs5uryIkanrX3W8ZFyxuan3Gw45Grs2kw4UZr9xuFnaqrZ8tF18XFWxArZ5Ja12
-	qFW5KryxW34Uua7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwCY1x0262kKe7AKxVWUAVWUtwCF04k20xvY0x0E
-	wIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E74
-	80Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41lIxAIcVC0
-	I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIxAIcVCF04
-	k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7Cj
-	xVAFwI0_Jr0_GrUvcSsGvfC2KfnxnUUI43ZEXa7IU80fO7UUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
 
-On 10/9/2026 2:28 PM, guolingxing wrote:
-> When ext4_ind_map_blocks() is called with EXT4_GET_BLOCKS_CREATE on
-> a non-extent mapped inode of a filesystem with the bigalloc feature
-> enabled, it fails with -EFSCORRUPTED via 'goto out'.  However, at
-> this point ext4_get_branch() has already acquired buffer_head
-> references for the chain of indirect blocks, which are stored in
-> the stack variable 'chain'.  Since 'goto out' skips the cleanup
-> loop that releases these references, they are leaked permanently
-> (each failed allocation can leak up to 3 buffer_heads, and repeated
-> allocation attempts keep pinning the corresponding pages in memory).
-> 
-> Jump to 'cleanup' instead, so that the chain of buffer_heads is
-> properly released before the error is returned.
-> 
-> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+On 2026/10/12 01:20, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [High] block: NULL pointer deref in blk_crypto_fallback_evict_key() on setup failure
+[...]
+> [Severity: High]
+> Does this early return bypass blk_crypto_fallback_init() and leave
+> blk_crypto_fallback_profile as NULL?
+>
+> If this is the first fallback usage, returning here means we haven't
+> initialized the profile. If downstream callers (like dm-inlinecrypt) handle
+> this -EOPNOTSUPP error by attempting to evict the partially initialized key,
+> can it lead to a NULL pointer dereference?
+>
+> When target teardown calls blk_crypto_evict_key(), it will eventually call
+> blk_crypto_fallback_evict_key(), which passes the uninitialized profile
+> directly:
+>
+> block/blk-crypto-fallback.c:blk_crypto_fallback_evict_key() {
+> 	return __blk_crypto_evict_key(blk_crypto_fallback_profile, key);
+> }
+>
+> This unvalidated profile pointer is then dereferenced when checking the number
+> of slots:
+>
+> block/blk-crypto-profile.c:__blk_crypto_evict_key() {
+> 	...
+> 	if (profile->num_slots == 0) {
+> 	...
+> }
+>
+> Could this cause a kernel panic if a user with device mapper access requests
+> an unsupported data unit size?
+>
 
-Looks good to me.
+The early return does leave blk_crypto_fallback_profile uninitialized,
+but the NULL dereference that follows is a pre-existing issue, unrelated
+to this series: the same eviction path is reachable on the base tree,
+and the two flows below trigger a NULL dereference or a use-after-free:
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+  dm-inlinecrypt ctor            # first use of the fallback
+   ├─ blk_crypto_init_key()      # succeeds, ctx->key.size != 0
+   ├─ blk_crypto_start_using_key()
+   │   ├─ return -EOPNOTSUPP     # uninit profile, will NULL deref
+   │   └─ blk_crypto_fallback_start_using_key()
+   │      └─ blk_crypto_fallback_init() fails
+   │         └─ kfree(profile)   # not NULLed, will UAF
+   ├─ goto bad
+   └─ inlinecrypt_dtr()          # evicts whenever key.size is set
+      └─ blk_crypto_evict_key()
+         └─ blk_crypto_config_supported_natively() = false
+            └─ blk_crypto_fallback_evict_key()
+               └─ __blk_crypto_evict_key(blk_crypto_fallback_profile)
+                  └─ profile->num_slots # BOOM!!!
 
-> ---
->  fs/ext4/indirect.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-> index 5aec759eed70..9f1f4e6c37a4 100644
-> --- a/fs/ext4/indirect.c
-> +++ b/fs/ext4/indirect.c
-> @@ -603,7 +603,7 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
->  		EXT4_ERROR_INODE(inode, "Can't allocate blocks for "
->  				 "non-extent mapped inodes with bigalloc");
->  		err = -EFSCORRUPTED;
-> -		goto out;
-> +		goto cleanup;
->  	}
->  
->  	/* Set up for the direct block allocation */
+If this series doesn't need a V2, I'll send the fix as a standalone
+bugfix.  If a V2 is needed, I'll include it in the series before this
+patch.
+
+
+Thanks,
+Baokun
 
