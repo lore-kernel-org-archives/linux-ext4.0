@@ -1,66 +1,60 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3DD5438466
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 12:10:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC1EC3E51C5
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 12:16:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791807031; cv=none; b=M/F9mAMtCW29SV6fi7sk0Cxl6+uU5Y4f69xtEARYS479DFYVHsewthXrh/oac9TpcfyCn0mPwGR6ZtURCY7QxiY+bqHG3bPJ61x/2Bo047Owq9zrAXeRjTneATO7rM7VXd1tVrRaIqSYMcaELklxIJKnhujz2qi/q4xK31/qliY=
+	t=1791807382; cv=none; b=A188M/7DvMO5C0YaCmRZT/VI/3gvpf7Cv+zeKgTyld6mCO29a1xPoRS1GWu3Kpr79wZqunyRlibGSBbibaml6TjMDQlE58opddQwIYZ4NTwmxPE5EGIZ0QjK6SMDK7baU4lSRAkIM3RR3d3QSPGvB+9vQii951eKtg6CRuNUGgg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791807031; c=relaxed/simple;
-	bh=QNZ0LWN9hM37U3nIAiOZxTCzsssj1cZzdJSlQnTDf2o=;
+	s=arc-20240116; t=1791807382; c=relaxed/simple;
+	bh=2u3laYR5bnCN/KBYTs41cWX2K58Ua506V4MGFre+6+s=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=Kfgqqxzmw0Npy3GVUelNBmcx+DUpqNs6x4b4CLsFdhlN8knEGBRn555wM3vkLNitTmkF1yxoUvO/0/8CNDovTjvttuPWr8Ii7gUHJo1tqbBCGSjdM2m9djt4qdFCXVWzMN1lCFBzFCBDl4ZwK1pmU+b/GJVkcZ/Oy0c1iwI78JU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QHKSYo0v; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=YW26i4XM/SSbpciwKH2J/Y1Id7kb9h1EDEF30so0QsmHAyv8T+wtZntO9gkYkpcm2wccEjJTJG+vt4ZGxupGJBFmwnknQd/NrawczKG8kFjb8iC2JORz2fuXHKD2h7HqzhGjq0k1jspQr2UVRpnDN+jeNb8h7TLgZiahcUBHDt8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JMgKQPki; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QHKSYo0v"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 064781F0089B;
-	Mon, 12 Oct 2026 12:10:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JMgKQPki"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 384D51F0089B;
+	Mon, 12 Oct 2026 12:16:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791807030;
-	bh=VjrqhsWuGbOBSJLlqYDeStlTVa9Uj/zp2mpOf48Bq0Y=;
+	s=k20260515; t=1791807381;
+	bh=Dk/XqOAUE/KLZvFAf0UxwkBqwPXjAbVMy+bycyDSpSQ=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=QHKSYo0vbEbhQwc4Qi5uHzteQLvtOiCn202lwnT6o9dgtqbsY8vt6g8mdS9bthtpW
-	 fWn6/ULAPjrg84GAjxyX6RpoET0Oq1brxT8hW6znfkV84JZQAL+9eHV87m9cNYnMgP
-	 BPZZ6x0AxVPilL3r4p4IwyhzZKOnkotSm3fcJgzqXAKl1SLd6KEzfGUgPvHofU3mp+
-	 etrLuloqNmcktdNwV2RCgVKcqFT3n3cv9+sgvfa5tY936kr13AJ3QeIJmJcBHuj+v4
-	 AXTpOzNXtk3cAkf4XXQokq+qOT0UFgdbE2LetB4EQDsR6I291VtIl6f9F+Z6jDZiCG
-	 imnk1R6SxwYKg==
-Message-ID: <sashiko-outbox-168069@kernel.org>
+	b=JMgKQPkina9upOQmtlp2uA23mzHclPTjYuoUMuxVtaikxFLHeou9cjeg/ADCcLY0e
+	 9rs7WjughppMaT7xEUNgpOkcvSuJWaWkWOqcp5Sg0ByEorVOxcTC6Bybxtf9SSEqJ2
+	 mbW6GwDNKq11fTyGiof0Uwi/7tpYHUpSoo19iB7n8JhNo9zL0qXbDGMZrSqYLA8kBx
+	 U8Sod5LesCCrQp4ZtYE6pFHOJ7M8jW7uQOhUtb8/uY+kEkmy3i5WiDcoQL6WKjP+Ko
+	 WcA/hRB0cETmg9NnDgfesrWPQZhCsH+NECBCxUyYriBGdfi82KYPi8hyqxE61P/qZr
+	 So0NgcEnbckYA==
+Message-ID: <sashiko-outbox-168078@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 2/3] jbd2: check return value of blkdev_issue_flush()
- when committing
+Subject: Re: [PATCH 3/3] jbd2: check return value of blkdev_issue_flush()
+ for async commits
 Reply-To: sashiko-reviews@lists.linux.dev
 To: guolingxing <guolingxing@tju.edu.cn>
 Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012114713.4049391-2-guolingxing@tju.edu.cn>
+In-Reply-To: <20261012114713.4049391-3-guolingxing@tju.edu.cn>
 References: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
- <20261012114713.4049391-2-guolingxing@tju.edu.cn>
+ <20261012114713.4049391-3-guolingxing@tju.edu.cn>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 12:10:29 +0000
+Date: Mon, 12 Oct 2026 12:16:20 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> For journals on a separate device, jbd2_commit_transaction() must
-> flush the file system device before submitting the commit record,
-> otherwise the transaction may get committed while the ordered data
-> are still in the device cache.  However the return value of
-> blkdev_issue_flush() is ignored so if the flush fails, the commit
-> record is still submitted and fsync() reports success although the
-> ordered data may have never reached the disk.  After a crash the
-> journal recovery will consider such transactions committed and data
-> written by fsync() may be lost.
+> When asynchronous commits are enabled, jbd2_commit_transaction()
+> calls blkdev_issue_flush() on the journal device to make the commit
+> record permanent.  However the return value is ignored so if the
+> flush fails, the transaction is considered committed although the
+> commit record may have never reached the disk.  Abort the journal
+> when the flush fails, as we already do when waiting for the commit
+> record fails.
 >=20
-> Abort the journal when the flush fails.  The commit record is then
-> not submitted anymore since journal_submit_commit_record() checks
-> for an aborted journal.
->=20
-> Fixes: cc3e1bea5d87 ("ext4, jbd2: Add barriers for file systems with exer=
-nal journals")
+> Fixes: f73bee49855f ("jbd2: Modify ASYNC_COMMIT code to not rely on queue=
+ draining on barrier")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
 
@@ -68,5 +62,5 @@ Sashiko has reviewed this patch and found no issues. It looks great!
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012114713.4049=
-391-1-guolingxing@tju.edu.cn?part=3D2
+391-1-guolingxing@tju.edu.cn?part=3D3
 
