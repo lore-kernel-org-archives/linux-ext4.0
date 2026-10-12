@@ -1,88 +1,118 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C60D339EB5B;
-	Mon, 12 Oct 2026 10:42:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95F5E3D8912
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:42:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791801732; cv=none; b=eh3UYGRq+fa3n/jHxY8Qx2L+Epo8nXpkG9y4MKOKfN4tAzL4OLCAN0+zBUFEFRTE4UT5g0BD5SrqI52zX98g9CXm9/bUuV+du3bI2IUHcu8t4FI2L1yxKu+a4FbcJh6dCCawYIaI6Ly8xp6IA1ZlBNtAWm/m6qKFxGV7zLfNcas=
+	t=1791801774; cv=none; b=ONccZuIC7PiBHgApjtaeOgNixix0VeXTimdqEJHrVn29jazHkiNuLtuOvaXjzOeWFjnR/FT0v+fKlV7LaqL7NgLlNAYviwktwjYmt+ekiF1oSnS7oYi1EZ+nD/fk4i9fnjZUk+jC9ysJivAPpIk1jfUFmnnnZ4eoZqqNr5t0SqA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791801732; c=relaxed/simple;
-	bh=o27eM5988rmeHc6Wl/ktBGCOoh6BTZxx0Tx40pDWtnE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cdzvCnV6sB+hwbvvTz87ZVJTk4OKmgPiGRewhlKDxvASPHgkNE090BRQ/J2LcRSXpMIqH8JPk2SZDvgDloaJWwiKIYSseGgXpcWNNTHaB7VBndVa/Nc8Emc3FjTxdZ1TFBhvZNw2MnOyoh7tjbkQddybDe97ds0Gg6OSM77NVZM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RuUr3tDd; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791801774; c=relaxed/simple;
+	bh=zF1Wrqx6Z6MJuSc9ehQixbOfSi1GRbLAM50xsJAVhGc=;
+	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
+	 Date; b=kt0BIP5qhlmueyKnOIcc8geO2ykA2oC2KS8UpPCv0TgoQ0befdwXkHvb730uP0a1skYfzOyy0s7XX5w1LXSoPDDYk0jgBBKr+siOUjkl/oZ3lrHeZ6I9ixYKvstyM7AQBHKXTO9hqTn9P4Ao2v7Lhw4PLScNC0l5/Fzsw5Ctsgc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W7gsm3iE; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RuUr3tDd"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C5EC41F0089B;
-	Mon, 12 Oct 2026 10:42:08 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W7gsm3iE"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E315F1F0089B;
+	Mon, 12 Oct 2026 10:42:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791801731;
-	bh=k7JPldLcVG1lkMzLDS2nPfYwi1SwyLu22FtP8Z5jWgM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=RuUr3tDdDXg+pCOzmOMcVxwWhySLjEB4oaYo/KMOudemt5kLpDA2P3NUDxNPuWnC2
-	 42jZE0FKQ8a/2trIGhWlW4JMNePTL/sgzdJN/7xbqdB/NSCGzoIUcnZz1B8rOzwyiU
-	 qclXTTiFvWu1Nbt3iBwR4wNG+IqUgFaWd9M0eWiaWlJMcnbzlnchKzeR08tmR74rb3
-	 nelzbn25y7NuhVKVHG9arq/5EC+YvApGxVJhYfuO8VB1sgYhfMr43poOyVagkrmShC
-	 dOZKhXoBQv/X0/XMgg9H6OJxHGqdfyuC7xMHOLq3NbYMGJ0K0Sje/EYcX2cJxWM3rV
-	 LHuQxW9rZhArA==
-Date: Mon, 12 Oct 2026 12:42:06 +0200
-From: Christian Brauner <brauner@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org, 
-	v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org, ntfs3@lists.linux.dev, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH 0/8] fs: fix a range of UAFs during rcu pathwalk caused
- by non-rcu frees
-Message-ID: <20261012-gaukeln-zeltlager-etikettieren-73ae50ccac01@brauner>
-References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
- <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
+	s=k20260515; t=1791801773;
+	bh=CLFmBgWUqXZgOnChpXCbjh7/wdXN0m0XG9GuX5Ldu7k=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=W7gsm3iE+53jeEhperKtTk3cQEGvww4ncpg0L+H6GxhGAqIGUA0n9o8JnmXhTX6Ib
+	 49n0BrttLig4/7tmEzc033o5marnUvIKBsFpA0F2BenCzwtdMprHMTwqo4QL18kyFG
+	 AvQSOo9+ChlKMxKxMWh7vqZdRAp4Eng0PCoUQSGCTJisq51MwCC4IHOa6vXwB9+J7r
+	 CrsDdZbxT9fi/CpSfLDiJPDydkPJdEYbEDI2iXE7XeVIe1SYXvz8k0wBouAMSehFO+
+	 fg9LrcvXZAjQeEC6f967QO6Vq/7Jn4NYOiXYEUjmjXToJcofs4WVkoHcuyVP7z5+iW
+	 uAPIivSq3Pp0Q==
+Message-ID: <sashiko-outbox-167978@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH RFC 17/28] zonefs: don't set SB_RDONLY after I/O errors
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Christian Brauner" <brauner@kernel.org>
+Cc: "Mark Fasheh" <mark@fasheh.com>, "Joseph Qi" <joseph.qi@linux.alibaba.com>, linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu, "Joel
+ Becker" <jlbec@evilplan.org>
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-17-60743a3dc326@kernel.org>
+References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-17-60743a3dc326@kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Mon, 12 Oct 2026 10:42:52 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
 
-On Mon, Oct 12, 2026 at 12:36:15PM +0200, Jan Kara wrote:
-> On Fri 09-10-26 23:51:50, Christian Brauner wrote:
-> > While working on eliding the grace period in namespace_unlock() I went
-> > through what filesystems free when they're shut down and what a pathwalk
-> > in rcu mode can still read at that point. Since 66a97c2ec953's rcu
-> > pathwalk fixes that's the filesystem's job. Whatever ->permission(),
-> > ->d_revalidate(), ->get_link(), ->d_hash() and ->d_compare() look at in
-> > rcu mode has to be freed after a grace period. A few filesystems don't
-> > do that.
-> > 
-> > Most of it is hidden by umount(2). namespace_unlock() waits for a grace
-> > period before it drops the mounts, so a walker that was inside the
-> > filesystem is gone by the time the filesystem is shut down.
-> > 
-> > But the last reference to a mount doesn't have to go away in umount(2).
-> > A chdir() out of a lazily unmounted directory or the close() of the last
-> > file on it drops it without a grace period. A walker can then still be
-> > in the filesystem while ->put_super() and ->kill_sb() free what it
-> > reads.
-> 
-> Good catches! But I find it very counter-intuitive that pathname lookups
-> can still be running against a filesystem while its ->put_super is called.
-> People will keep forgetting about that and as a result these UAF bugs will
-> be introduced again. Isn't it feasible we'd guarantee to the filesystem
-> ->put_super() gets called only after all lookups are done (i.e., after RCU
-> grace period expires)?
-> 
-> I understand this is a hairy bussiness because this has userspace visible
-> implications (like when filesystem's sysfs files disappear, when the bdev
-> really gets unused, etc.) but keeping all filesystems safe to run RCU
-> lookup after ->put_super() will be IMHO a headache.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Medium] zonefs: missing ZONEFS_SB_EMERGENCY_RO on read-only mount allows=
+ bypassing errors=3Dremount-ro
+--
 
-I don't think delaying put_super() or freeing the superblock helps.
-That's not where the issue is. The issue is with sb->s_fs_info being
-available after a grace period and that can go away in different
-locations ->put_super() or ->kill_sb(). Bringing put_super() into the
-argument was maybe not my best idea. We also need to backport this
-stuff.
+commit 51c4c88472fcc9d9e49452a7673d858c48222e8e
+Author: Christian Brauner <brauner@kernel.org>
+
+zonefs: don't set SB_RDONLY after I/O errors
+
+This commit changes zonefs to use a new ZONEFS_SB_EMERGENCY_RO state bit
+instead of SB_RDONLY when handling I/O errors. This prevents rwsem deadlocks
+during freeze/thaw cycles by enforcing that the filesystem refuses writes
+until it is unmounted.
+
+Cc: stable@vger.kernel.org
+
+> diff --git a/fs/zonefs/super.c b/fs/zonefs/super.c
+> index ff43d6d1ea30a..367d657febe5f 100644
+> --- a/fs/zonefs/super.c
+> +++ b/fs/zonefs/super.c
+> @@ -247,6 +247,20 @@ static void zonefs_inode_update_mode(struct inode *i=
+node)
+>  	z->z_mode =3D inode->i_mode;
+>  }
+> =20
+> +/*
+> + * Make the file system refuse writes after an error. Don't set SB_RDONL=
+Y:
+> + * that needs sb->s_umount and a proper remount, and setting it while th=
+e file
+> + * system is frozen makes thaw_super() leave the s_writers rwsems locked.
+> + */
+> +void zonefs_set_emergency_ro(struct super_block *sb)
+> +{
+> +	if (sb_rdonly(sb) ||
+> +	    test_and_set_bit(ZONEFS_SB_EMERGENCY_RO, &ZONEFS_SB(sb)->s_state))
+> +		return;
+
+[Severity: Medium]
+Does skipping the ZONEFS_SB_EMERGENCY_RO bit when the filesystem is already
+read-only allow writes to be re-enabled later?
+
+If an I/O error occurs while the filesystem is mounted read-only, this
+condition returns early without setting the emergency bit.
+
+[ ... ]
+
+> @@ -1369,6 +1385,11 @@ static int zonefs_reconfigure(struct fs_context *f=
+c)
+>  	struct super_block *sb =3D fc->root->d_sb;
+>  	struct zonefs_sb_info *sbi =3D sb->s_fs_info;
+> =20
+> +	/* An error made the file system read-only until it is unmounted. */
+> +	if (sb_rdonly(sb) && !(fc->sb_flags & SB_RDONLY) &&
+> +	    zonefs_emergency_ro(sb))
+> +		return -EROFS;
+
+[Severity: Medium]
+If a read-only filesystem experiences an I/O error and the administrator
+subsequently remounts the filesystem read-write, zonefs_emergency_ro(sb)
+will evaluate to false because the bit was bypassed in
+zonefs_set_emergency_ro().
+
+Could this allow the remount to succeed and re-enable writes on a faulty
+block device, bypassing the intended policy?
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
+_rdonly-v1-0-60743a3dc326@kernel.org?part=3D17
