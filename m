@@ -1,160 +1,88 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFBDC3ABDA5
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:41:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C60D339EB5B;
+	Mon, 12 Oct 2026 10:42:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791801718; cv=none; b=HIOAZO6FEHJri+keV5gn25wBIJmo15jS90ayuUidL1xjGu2qwmVlEGpmrmZB2XuLim3DRvXQqKDxy816dMVqokWuBW95ucCgGlkPQdcIs9JT2WbuOXDXW2RRrx5YtPUah79yFcQo26oCHnod4KNhQXy/pP35jc5qvMfhUueWy28=
+	t=1791801732; cv=none; b=eh3UYGRq+fa3n/jHxY8Qx2L+Epo8nXpkG9y4MKOKfN4tAzL4OLCAN0+zBUFEFRTE4UT5g0BD5SrqI52zX98g9CXm9/bUuV+du3bI2IUHcu8t4FI2L1yxKu+a4FbcJh6dCCawYIaI6Ly8xp6IA1ZlBNtAWm/m6qKFxGV7zLfNcas=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791801718; c=relaxed/simple;
-	bh=93U0ZGQFyRpl5IWAPwvPCgj153yHej8LOFni0VlPPKs=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=VTLE49tcuyKINB9+2nlrH4CoVWHU5kbSxKv2BnfR8bcTmskIfb0WnBURzEkgkkIN90yEqZMHPq3iuXLlEb0wQWJt62yhm1Wzb5RjSxNNKFusz8MKcvuCznIs5F1+qPiPn+0jqotFajRZyVXOzj5XgqKrM21x7zGfRvu4ZdgncKY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CTZwwMo8; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791801732; c=relaxed/simple;
+	bh=o27eM5988rmeHc6Wl/ktBGCOoh6BTZxx0Tx40pDWtnE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=cdzvCnV6sB+hwbvvTz87ZVJTk4OKmgPiGRewhlKDxvASPHgkNE090BRQ/J2LcRSXpMIqH8JPk2SZDvgDloaJWwiKIYSseGgXpcWNNTHaB7VBndVa/Nc8Emc3FjTxdZ1TFBhvZNw2MnOyoh7tjbkQddybDe97ds0Gg6OSM77NVZM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RuUr3tDd; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CTZwwMo8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EB2D61F0089B;
-	Mon, 12 Oct 2026 10:41:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RuUr3tDd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C5EC41F0089B;
+	Mon, 12 Oct 2026 10:42:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791801717;
-	bh=gVbaP+vx4awXxrsYxNLKij8RZLGRpUEH+MVSB+kfmQg=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=CTZwwMo8G6fsEjaORdz+Lk2Mr3MQqQMh5D9cacKtOmICLjzT5klLT5wPCxvxmSi/B
-	 r0ZqaJr2Guu0qp9/a9Nif+6ky4C3pY9XsnExKF/KEs294hyECdNKHtlQ2e+4iQrcZu
-	 A/7LrOmREdoP5bt/y49X1I8e7yR5z0iH/lalxfWMM3W2ufqg6NtktrS7avnk6lau1V
-	 h+RBYtpbhW2UPcC+GxE1mC6KQ9eqNS/XDnbsRvWhO89H4FxVRoGIf//q23KrfiodtA
-	 wi0v6MwNGKBy6YSvrOUAVY+WVM85MvxG9meOwpX2zI2XxjY/r0jBqMCy215Bce0QcX
-	 2TtaSU/dBu8zA==
-Message-ID: <sashiko-outbox-167976@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 11/28] affs: don't set SB_RDONLY after filesystem
- errors
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Mark Fasheh" <mark@fasheh.com>, "Joel Becker" <jlbec@evilplan.org>, "Joseph
- Qi" <joseph.qi@linux.alibaba.com>, dsterba@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-11-60743a3dc326@kernel.org>
-References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-11-60743a3dc326@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 10:41:56 +0000
+	s=k20260515; t=1791801731;
+	bh=k7JPldLcVG1lkMzLDS2nPfYwi1SwyLu22FtP8Z5jWgM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=RuUr3tDdDXg+pCOzmOMcVxwWhySLjEB4oaYo/KMOudemt5kLpDA2P3NUDxNPuWnC2
+	 42jZE0FKQ8a/2trIGhWlW4JMNePTL/sgzdJN/7xbqdB/NSCGzoIUcnZz1B8rOzwyiU
+	 qclXTTiFvWu1Nbt3iBwR4wNG+IqUgFaWd9M0eWiaWlJMcnbzlnchKzeR08tmR74rb3
+	 nelzbn25y7NuhVKVHG9arq/5EC+YvApGxVJhYfuO8VB1sgYhfMr43poOyVagkrmShC
+	 dOZKhXoBQv/X0/XMgg9H6OJxHGqdfyuC7xMHOLq3NbYMGJ0K0Sje/EYcX2cJxWM3rV
+	 LHuQxW9rZhArA==
+Date: Mon, 12 Oct 2026 12:42:06 +0200
+From: Christian Brauner <brauner@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org, 
+	v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org, ntfs3@lists.linux.dev, 
+	stable@vger.kernel.org
+Subject: Re: [PATCH 0/8] fs: fix a range of UAFs during rcu pathwalk caused
+ by non-rcu frees
+Message-ID: <20261012-gaukeln-zeltlager-etikettieren-73ae50ccac01@brauner>
+References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
+ <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
-s) to consider:
-- [High] affs: affs_error() logic short-circuit prevents setting emergency =
-RO if already SB_RDONLY
-- [High] affs: mmap writes and writeback bypass AFFS_STATE_EMERGENCY_RO and=
- corrupt filesystem
---
+On Mon, Oct 12, 2026 at 12:36:15PM +0200, Jan Kara wrote:
+> On Fri 09-10-26 23:51:50, Christian Brauner wrote:
+> > While working on eliding the grace period in namespace_unlock() I went
+> > through what filesystems free when they're shut down and what a pathwalk
+> > in rcu mode can still read at that point. Since 66a97c2ec953's rcu
+> > pathwalk fixes that's the filesystem's job. Whatever ->permission(),
+> > ->d_revalidate(), ->get_link(), ->d_hash() and ->d_compare() look at in
+> > rcu mode has to be freed after a grace period. A few filesystems don't
+> > do that.
+> > 
+> > Most of it is hidden by umount(2). namespace_unlock() waits for a grace
+> > period before it drops the mounts, so a walker that was inside the
+> > filesystem is gone by the time the filesystem is shut down.
+> > 
+> > But the last reference to a mount doesn't have to go away in umount(2).
+> > A chdir() out of a lazily unmounted directory or the close() of the last
+> > file on it drops it without a grace period. A walker can then still be
+> > in the filesystem while ->put_super() and ->kill_sb() free what it
+> > reads.
+> 
+> Good catches! But I find it very counter-intuitive that pathname lookups
+> can still be running against a filesystem while its ->put_super is called.
+> People will keep forgetting about that and as a result these UAF bugs will
+> be introduced again. Isn't it feasible we'd guarantee to the filesystem
+> ->put_super() gets called only after all lookups are done (i.e., after RCU
+> grace period expires)?
+> 
+> I understand this is a hairy bussiness because this has userspace visible
+> implications (like when filesystem's sysfs files disappear, when the bdev
+> really gets unused, etc.) but keeping all filesystems safe to run RCU
+> lookup after ->put_super() will be IMHO a headache.
 
-commit 1ab95d009ae4a762fda73d7b1a5276c439494d6a
-Author: Christian Brauner <brauner@kernel.org>
-Subject: affs: don't set SB_RDONLY after filesystem errors
-
-This commit stops setting SB_RDONLY directly in affs_error() without
-holding sb->s_umount, which previously caused deadlocks during freezing.
-Instead, it introduces an AFFS_STATE_EMERGENCY_RO bit to gracefully
-refuse modifications with -EROFS.
-
-> diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
-> --- a/fs/affs/amigaffs.c
-> +++ b/fs/affs/amigaffs.c
-> @@ -479,9 +479,15 @@ affs_error(struct super_block *sb, const char *funct=
-ion, const char *fmt, ...)
->  	vaf.fmt =3D fmt;
->  	vaf.va =3D &args;
->  	pr_crit("error (device %s): %s(): %pV\n", sb->s_id, function, &vaf);
-> -	if (!sb_rdonly(sb))
-> +	/*
-> +	 * Don't set SB_RDONLY: that requires sb->s_umount and a proper
-> +	 * remount. Set while the superblock is frozen it makes thaw_super()
-> +	 * skip releasing s_writers and every later writer hangs. Refuse
-> +	 * modifications until umount instead.
-> +	 */
-> +	if (!sb_rdonly(sb) &&
-> +	    !test_and_set_bit(AFFS_STATE_EMERGENCY_RO, &AFFS_SB(sb)->s_state))
-
-[Severity: High]
-Does this short-circuit logic prevent the emergency RO bit from being set
-if the filesystem is already read-only?
-
-If a user mounts the filesystem RO, hits a read or checksum error (triggeri=
-ng
-affs_error()), the AFFS_STATE_EMERGENCY_RO bit is completely skipped because
-sb_rdonly(sb) is true.
-
-When the user later remounts RW, affs_reconfigure() finds
-affs_emergency_ro(sb) to be false and permits the RW remount. Could this
-allow a corrupted filesystem to become writable, violating the intent to
-refuse modifications after an error?
-
->  		pr_warn("Remounting filesystem read-only\n");
-> -	sb->s_flags |=3D SB_RDONLY;
->  	va_end(args);
->  }
-
-> diff --git a/fs/affs/file.c b/fs/affs/file.c
-> --- a/fs/affs/file.c
-> +++ b/fs/affs/file.c
-[ ... ]
-> @@ -1000,10 +1006,18 @@ int affs_file_fsync(struct file *filp, loff_t sta=
-rt, loff_t end, int datasync)
->  	inode_unlock(inode);
->  	return ret;
->  }
-> +
-> +static ssize_t affs_file_write_iter(struct kiocb *iocb, struct iov_iter =
-*from)
-> +{
-> +	if (affs_emergency_ro(file_inode(iocb->ki_filp)->i_sb))
-> +		return -EROFS;
-> +	return generic_file_write_iter(iocb, from);
-> +}
-
-[Severity: High]
-Since this patch removes SB_RDONLY from the error path, do we now need
-checks in the mmap and writeback paths to prevent arbitrary data and
-metadata modifications?
-
-By no longer setting SB_RDONLY, the VFS filemap_page_mkwrite (used by
-generic_file_mmap_prepare) permits dirtying pages without resistance.
-During writeback, affs_writepages() calls affs_get_block():
-
-fs/affs/file.c:affs_writepages() {
-    return mpage_writepages(mapping, wbc, affs_get_block);
-}
-
-fs/affs/file.c:affs_get_block() {
-    ...
-    if (create) {
-        u32 blocknr =3D affs_alloc_block(inode, ext_bh->b_blocknr);
-    ...
-}
-
-If the write targets a hole, affs_alloc_block() allocates blocks on the
-physical disk and dirties metadata buffers. Because neither affs_writepages=
-()
-nor affs_get_block() check affs_emergency_ro(), could a user memory map an
-opened file, write to it after an error, and have background writeback flush
-the pages to disk, thereby corrupting the filesystem?
-
-> +
->  const struct file_operations affs_file_operations =3D {
->  	.llseek		=3D generic_file_llseek,
->  	.read_iter	=3D generic_file_read_iter,
-> -	.write_iter	=3D generic_file_write_iter,
-> +	.write_iter	=3D affs_file_write_iter,
->  	.mmap_prepare	=3D generic_file_mmap_prepare,
->  	.open		=3D affs_file_open,
->  	.release	=3D affs_file_release,
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D11
+I don't think delaying put_super() or freeing the superblock helps.
+That's not where the issue is. The issue is with sb->s_fs_info being
+available after a grace period and that can go away in different
+locations ->put_super() or ->kill_sb(). Bringing put_super() into the
+argument was maybe not my best idea. We also need to backport this
+stuff.
