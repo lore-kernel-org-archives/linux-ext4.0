@@ -1,77 +1,112 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0C433B8D78
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:59:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 491063A9635
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 11:05:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791802780; cv=none; b=p6lc+Z2pXjR8KLW2dQFueZdadSAQglzlVfULloDXKEl5z8zsaX+hLBRIU7ZcFnFF1EDhBs3eQXmmJeag/ObDD55jNO31ctC7GusvWH0hKJQV+t8MPKCoBB7souHOhp2/Y4+i33yjGMKQYnzOrMX9Kpi26ubEBAztX8Y6Nui3vBQ=
+	t=1791803103; cv=none; b=BdrIzksayIqpV4Y0poKMCF5q7HqvQ/7Ue/5S1W6PEAnqupGkX5OcVwvIHxPX14/rSO+cP+bfiqVzLjq7w//dvSYkpnUIR8NyJORlpoliHvqnjqrqd6L5HvCv3TUaiMuOSTjQjkb9AgEvAcavZNn24C37ASH28WHl9hRsYMCfcws=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791802780; c=relaxed/simple;
-	bh=mR+i3VOaeFcHdk+7WkAM4e51Vu9BRuXznnKyk5oS1+o=;
+	s=arc-20240116; t=1791803103; c=relaxed/simple;
+	bh=IuHjotWLFoEv/owwi/ZdsTQ7+hxbd8/jYpBo0k8P7x4=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=t4MQl6wSNiqyqBZjjaHG9c0tP3JUVdXY/AS7qb7ymqyuL7OTNI55zBMBtiw44VjDmwZhV/ohj8bDtEBcbVRjLntl/wgVrQh5rD6r49l6v5rt4j7pjORp0J+GpWXT/SwRgJK+8ZVxu3K7lzgrY0gcPudsCynghTjj6SaWdyXeKdU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CrFRR9lC; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=Z7z058b346huZvo6xXRRdwZP1kuquxfMGCB4HmA491YXvjSY3Tf+BFdMVD5HVhlaaNFNqfTJr5O/fDeYFFvLwuHy/AoiB6jRh908HeoLRLoM23jw3j7Vj6Sm6woxZmd5B2Hw3fQWVKqU5e1xDQqFLYDgneWgTmPSMMViEWjw96Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ckx9rEeR; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CrFRR9lC"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6E5A31F0089E;
-	Mon, 12 Oct 2026 10:59:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ckx9rEeR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7FB861F0089B;
+	Mon, 12 Oct 2026 11:05:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791802779;
-	bh=tX3TE5CQuROxSxKPac60egGE975d9sjLazY+ND92GFM=;
+	s=k20260515; t=1791803101;
+	bh=uWthotPLuDYrrBFrHiKjlD1vtZQRinyOI+J9Ca2T+7o=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=CrFRR9lCcmwKghkYcholDJwrNJCtLKLtTShZFw2L7DR2efc0SmXXZd4gPQqA6mKq4
-	 lOljhre/P81jqgeIU0QOgeByE1xkERzkSu0EYZ7Nc534nGqQRPR48l4VN/Osy2J6Ry
-	 TSLwOstUscVEuZvgdnAw0UGfcbdFQYWPwzL1JAz2/DLNlMjW+lCYa95DMuROp2Drzd
-	 KP/nfWdtiZcOIYCuGou4bbiQH1v/kQEaJbOoZbl/Sbe1xkC1EJcUy9l/Tyj52/dNFM
-	 Su6xfItYzF74ERl+0qViZwbBRlkGeqUu+i1I/g1LKbEX301D9gXD8NcvaVPxx9ltBs
-	 qLT7Zz+do38oA==
-Message-ID: <sashiko-outbox-168002@kernel.org>
+	b=Ckx9rEeRgWb9PHNhZ8yuu17VOORkMCbCg0rUy9G/4CFfgpQ9CuXLTy+CIXKZLzgiT
+	 xiHZ9khHu97Q05FtKWrFwrGXLIvlZm8kG2KcecyuNPHRCewTiVX9H7dLeY23cKZC86
+	 X2FWJjyqGWGKewyT3gJ7fubilrFMkQLvArF77hVPNOv5Jzd9GMcn2p+UmzL0xko7Wc
+	 qM4IWMyvPiG/pAzEeu336N8GJhI6dwhB5yleU6bZUjzZVD2wE6OZLGPi4deP6jw1IU
+	 mRMBhYmH9MacenkfQZtfQShOWSm26lGr1MG8zw/DenKcb869IuOMNWLRzblxfbdzv1
+	 /kMf/u33opcmw==
+Message-ID: <sashiko-outbox-168003@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 16/28] ocfs2: don't set SB_RDONLY after filesystem
+Subject: Re: [PATCH RFC 19/28] btrfs: don't set SB_RDONLY after filesystem
  errors
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Joseph Qi" <joseph.qi@linux.alibaba.com>, "Mark Fasheh" <mark@fasheh.com>, tytso@mit.edu, "Joel
- Becker" <jlbec@evilplan.org>, dsterba@suse.cz, linux-ext4@vger.kernel.org
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-16-60743a3dc326@kernel.org>
+Cc: "Joseph Qi" <joseph.qi@linux.alibaba.com>, "Mark Fasheh" <mark@fasheh.com>, tytso@mit.edu, linux-ext4@vger.kernel.org, "Joel
+ Becker" <jlbec@evilplan.org>, dsterba@suse.cz
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-19-60743a3dc326@kernel.org>
 References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-16-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-19-60743a3dc326@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 10:59:39 +0000
+Date: Mon, 12 Oct 2026 11:05:01 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-> With errors=3Dremount-ro, the default, ocfs2_handle_error() sets SB_RDONLY
-> on every ocfs2_error() and on local mounts also on ocfs2_abort(). It
-> does that without holding sb->s_umount.
->=20
-> freeze_super() and thaw_super() both look at sb_rdonly() to figure out
-> whether the s_writers rwsems need to be taken or released. So an error
-> while the filesystem is frozen leaves the rwsems write-locked after the
-> thaw. Writers hang in sb_start_write() and so does umount, forever,
-> because ocfs2_shutdown_local_alloc() starts a transaction and that needs
-> sb_start_intwrite():
->=20
->   OCFS2: ERROR (device dm-0): ocfs2_get_clusters_nocache: Inode 5652 has =
-bad extent record (0, 16, 0)
->   OCFS2: File system is now read-only.
->=20
->   [<0>] percpu_rwsem_wait+0x203/0x500
-> [ ... ]
->=20
-> noatime matters, otherwise the atime transaction of the read waits for
-> the frozen filesystem.
->=20
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [Medium] btrfs: inconsistent SIGBUS in page_mkwrite during emergency RO s=
+tate
+--
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+commit 37c3f7ad9f2e4471edb125849f5c833765177985
+Author: Christian Brauner <brauner@kernel.org>
+
+btrfs: don't set SB_RDONLY after filesystem errors
+
+This commit changes btrfs error handling to stop setting SB_RDONLY without
+holding s_umount. Instead, it relies on BTRFS_FS_STATE_RO and a new
+BTRFS_FS_STATE_EMERGENCY_RO flag to block modifications, keeping the VFS
+layer under the impression that the filesystem is read-write.
+
+> diff --git a/fs/btrfs/messages.c b/fs/btrfs/messages.c
+> index 9aee0e0d7e85f..99cdd5f5a1111 100644
+> --- a/fs/btrfs/messages.c
+> +++ b/fs/btrfs/messages.c
+> @@ -171,8 +172,16 @@ void __btrfs_handle_fs_error(struct btrfs_fs_info *f=
+s_info, const char *function
+> =20
+>  	btrfs_discard_stop(fs_info);
+> =20
+> -	/* Handle error by forcing the filesystem readonly. */
+> -	btrfs_set_sb_rdonly(sb);
+> +	/*
+> +	 * Handle error by forcing the filesystem readonly. We don't set
+> +	 * SB_RDONLY because that requires sb->s_umount, and changing it under
+> +	 * freeze_super() and thaw_super() leaves the freeze protection
+> +	 * unbalanced. The fs_error recorded above stops new transactions and
+> +	 * BTRFS_FS_STATE_RO makes btrfs refuse modifications, see
+> +	 * btrfs_fs_rdonly().
+> +	 */
+> +	set_bit(BTRFS_FS_STATE_RO, &fs_info->fs_state);
+> +	set_bit(BTRFS_FS_STATE_EMERGENCY_RO, &fs_info->fs_state);
+
+[Severity: Medium]
+The commit message states: "And stores through shared mappings set up before
+the error get SIGBUS because btrfs_update_time() refuses now."
+
+Does removing btrfs_set_sb_rdonly() here lead to inconsistent fault behavior
+for existing memory-mapped files?
+
+Looking at btrfs_page_mkwrite() in fs/btrfs/file.c, it calls:
+
+        ret =3D file_update_time(vmf->vma->vm_file);
+        if (ret < 0)
+                goto out;
+
+Without SB_RDONLY set on the VFS superblock, mnt_want_write_file() no longer
+fails immediately with -EROFS. If the inode's timestamps are already current
+(for example, if they were modified very recently), file_update_time() retu=
+rns
+0 and bypasses the filesystem's ->update_time hook entirely.
+
+Could a store silently succeed in dirtying the memory page under these
+conditions (with data later lost during background writeback), instead of
+getting a SIGBUS as described in the commit message?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D16
-
+_rdonly-v1-0-60743a3dc326@kernel.org?part=3D19
