@@ -1,121 +1,115 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C315385D75
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:35:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 446853ED11B
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 10:35:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791801337; cv=none; b=tTnZdkTEeFfmGuntheZSORGM/Hts/jym3dCVv7HnFUr421hu+YXVrvyIlGM3SeX3LLow9ZKW+A5VUhfNw6wxgpEvnn4CdBvRxeRNHINtMXvvGTitOr/gc4YVlV0sN507yWpTULp1g2D2j9U38aMRgIS+ZeiWcuRG/dkkV3k6YeA=
+	t=1791801338; cv=none; b=RStxQhuyizd6kv+IVNhQEAsMx4b52BTewq91nu+cUU/wbcUTxgJsVe1pAg5MeX5vu3eMjhW8dvURBQP3cg39SVRMHcVAGD5EBZSsoUiuteP/aBSdbIu+T/ibfJVsTDNbxNSH7DaQCccYklz8ELt2KXdCoN3jntNS7BBKwUtMskw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791801337; c=relaxed/simple;
-	bh=ZlgzHZlWgUNd/A5ZEWfSN00wcH36+fb7BoNkh9oiQGQ=;
+	s=arc-20240116; t=1791801338; c=relaxed/simple;
+	bh=0P/9VeL7DyTnF2ZfstI9kv5LutyIEoUKs7loTG2u9H0=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=fpXg5tMBZ2YqHhIyFVhAwEDdZCl+RXyTawpVIPzGv+55nZCfHo4pKa1xZ7ntdBSYBW4YpXFJR1xjz9kI20ZZkyxB2V0G8I3iRmviF9lzDqHblWwpkxBhFS0lwusXYP4Wu5YW/9Mm0Utp2Z6oQlaCwt2MdECsB/Dz2uFDU0DCLAc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UYJI137F; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=dR1E5ea/HwAbu15Omhkp2zH5qfCism36NaR43ikY8GtrCVHKQOMuKlWAxqQ3Iwbx5pefKcmHi8+Avn3IVteEbvD3YuLDrarCZfvDKXLsRPkchsM4nZ6fgPY2+bYRmmmmPL5GPbRI4o3y2xd9KlUS5f5G2RjY0SlT0yvcIGeb2L8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LslRiyMi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UYJI137F"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6A7D1F0089B;
-	Mon, 12 Oct 2026 10:35:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LslRiyMi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84DC71F0089C;
+	Mon, 12 Oct 2026 10:35:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1791801336;
-	bh=KKAJY2lOGy4l5BbFsQaS9OVib4E+kNBmyZLfocqQbh4=;
+	bh=l0o6LKk5kTcB3aprx/4oZ3mDR6xA4KDYbY8TMfZxGVs=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=UYJI137F73HV9ati7khPP9yqiy+brpPfIA4lpNEmpJ5NInBsZufC+BDBKn4vUi1C2
-	 MhJ8WIWJ+2rsXmjxEIe3UBEBgbdzRu2/teSN1xiJXBIebJCLAaINz/qI+t5OQXnvur
-	 AGbny8M90hQR7CsJ1JDHZJ5N664YSBR9KntkkbLldqMrL4NSs9kxLIE0PF8PNdAhyc
-	 zXBpaEbs5UGStQgJzfYIWXEY4MscV6i99ItnZ4jn2rxSTkbRsHO/XuhUNPFzvuqAeG
-	 aJcWYoiL7Vk3kdJB2WwQOrmVJHlwpgr6mbxulxgnATsin4mI6XEtfRD56Cun9o3kV3
-	 M8WcHI1V/1s9g==
-Message-ID: <sashiko-outbox-167966@kernel.org>
+	b=LslRiyMiZMc5qahjdn9w8UqpYBFgWOFpZpqgQPfSSqeYNLwtyrr8OC18riGngWCTo
+	 lvKdpQwE1Gwz7FTM0dxDBDgYB0h7jg3xZMBVdCqy3ImOjRoxpyHvvU8VSbFwDzyEp4
+	 BwKOq4UdSxUYgj6ZOM2rC33h2a9rlyOiakStDua9VG8Six2RxJzD5cbLaHSJ/fm41b
+	 pTwMmJYEU+1Lq/n/l7sUue9YTIZoM69Nx5ryjdfs2Bij26v1G9h/BghaTQR96vxFdH
+	 zytsjK9zL4PVaX8B9miOEC13DL0BcBzE7z9zbiqBsTJcjCCK1437iC4CUeR6OoWrDS
+	 xoz9C7XBqimHQ==
+Message-ID: <sashiko-outbox-167967@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH RFC 13/28] hpfs: don't set SB_RDONLY after filesystem
+Subject: Re: [PATCH RFC 08/28] exfat: don't set SB_RDONLY after filesystem
  errors
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Christian Brauner" <brauner@kernel.org>
-Cc: "Joseph Qi" <joseph.qi@linux.alibaba.com>, dsterba@suse.cz, "Mark Fasheh" <mark@fasheh.com>, linux-ext4@vger.kernel.org, tytso@mit.edu, "Joel
- Becker" <jlbec@evilplan.org>
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-13-60743a3dc326@kernel.org>
+Cc: "Joseph Qi" <joseph.qi@linux.alibaba.com>, "Joel Becker" <jlbec@evilplan.org>, dsterba@suse.cz, "Mark
+ Fasheh" <mark@fasheh.com>, tytso@mit.edu, linux-ext4@vger.kernel.org
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-8-60743a3dc326@kernel.org>
 References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-13-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-8-60743a3dc326@kernel.org>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Mon, 12 Oct 2026 10:35:35 +0000
+Date: Mon, 12 Oct 2026 10:35:36 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [High] vfs: hpfs: writeback, mmap, and eviction bypass emergency RO state
-- [Medium] vfs: hpfs: read-write remount bypasses -EROFS rejection
+- [High] fs/exfat: exfat_evict_inode bypasses emergency_ro state causing re=
+ad-only violation
 --
 
-commit fff4d175276350a79a5a1bcb72eb2e0bb0259054
+commit 3964e8f2b3e07c51599bfa953e3997f549740387
 Author: Christian Brauner <brauner@kernel.org>
-hpfs: don't set SB_RDONLY after filesystem errors
 
-This commit replaces setting SB_RDONLY with a new HPFS_STATE_EMERGENCY_RO
-flag during runtime filesystem errors. This avoids blocking on s_writers
-locks if the filesystem is frozen.
+    exfat: don't set SB_RDONLY after filesystem errors
+   =20
+    With errors=3Dremount-ro, the exfat default, __exfat_fs_error() sets
+    SB_RDONLY without holding sb->s_umount.
+   =20
+    freeze_super() and thaw_super() both look at sb_rdonly() to figure out
+    whether the s_writers rwsems need to be taken or released.
+   =20
+    [ ... ]
 
-> diff --git a/fs/hpfs/super.c b/fs/hpfs/super.c
-> index 8fbdbf0806276..cff963cabbb63 100644
-> --- a/fs/hpfs/super.c
-> +++ b/fs/hpfs/super.c
-> @@ -81,7 +81,18 @@ void hpfs_error(struct super_block *s, const char *fmt=
-, ...)
->  			else {
->  				pr_cont("; remounting read-only\n");
->  				mark_dirty(s, 0);
-> -				s->s_flags |=3D SB_RDONLY;
-> +				/*
-> +				 * Only a mount in progress may still set
-> +				 * SB_RDONLY: later that needs s->s_umount,
-> +				 * and on a frozen superblock it makes
-> +				 * thaw_super() leave s_writers locked.
-> +				 * Refuse modifications until umount instead.
-> +				 */
-> +				if (s->s_flags & SB_BORN)
-> +					set_bit(HPFS_STATE_EMERGENCY_RO,
-> +						&hpfs_sb(s)->sb_state);
-> +				else
-> +					s->s_flags |=3D SB_RDONLY;
+> diff --git a/fs/exfat/inode.c b/fs/exfat/inode.c
+> index ccd13630187e1..9fcd1a1255b06 100644
+> --- a/fs/exfat/inode.c
+> +++ b/fs/exfat/inode.c
+> @@ -113,8 +113,9 @@ int exfat_write_inode(struct inode *inode, struct wri=
+teback_control *wbc)
+>  {
+>  	int ret;
+> =20
+> -	if (unlikely(exfat_forced_shutdown(inode->i_sb)))
+> -		return -EIO;
+> +	ret =3D exfat_emergency_state(inode->i_sb);
+> +	if (unlikely(ret))
+> +		return ret;
+> =20
+>  	mutex_lock(&EXFAT_SB(inode->i_sb)->s_lock);
+>  	ret =3D __exfat_write_inode(inode, wbc->sync_mode =3D=3D WB_SYNC_ALL);
 
 [Severity: High]
-Because the VFS SB_RDONLY flag is no longer set here, the VFS background
-writeback thread and generic memory-mapped page faults will no longer
-automatically skip the filesystem.
+While many VFS entry points were updated to check for the emergency read-on=
+ly
+state, it appears exfat_evict_inode() might have been missed.
 
-While the namespace operations were appropriately updated, could this allow
-dirty pages from mmap to be written out since hpfs_writepages() doesn't
-check the emergency read-only state? Similarly, could hpfs_evict_inode()
-mutate the btree and sector bitmaps on a corrupted filesystem when an
-unlinked inode is evicted?
+If an unlinked file (i_nlink =3D=3D 0) is held open, its clusters are not f=
+reed
+until the final file descriptor is closed.=20
 
-[ ... ]
+If the filesystem enters the emergency RO state before this final close,
+exfat_evict_inode() unconditionally invokes __exfat_truncate():
 
-> @@ -426,6 +437,11 @@ static int hpfs_reconfigure(struct fs_context *fc)
->  	struct super_block *s =3D fc->root->d_sb;
->  	struct hpfs_sb_info *sbi =3D hpfs_sb(s);
-> =20
-> +	/* After an error, refuse going back to read-write until umount. */
-> +	if (hpfs_emergency_ro(s) && sb_rdonly(s) &&
-> +	    !(fc->sb_flags & SB_RDONLY))
-> +		return -EROFS;
+fs/exfat/inode.c:exfat_evict_inode() {
+	if (!inode->i_nlink) {
+		i_size_write(inode, 0);
+		mutex_lock(&EXFAT_SB(inode->i_sb)->s_lock);
+		__exfat_truncate(inode);
+		mutex_unlock(&EXFAT_SB(inode->i_sb)->s_lock);
+	}
+}
 
-[Severity: Medium]
-The commit message states "A remount to read-write fails with -EROFS until
-umount". However, if the filesystem experienced the runtime error while
-originally mounted read-write, hpfs_error() sets HPFS_STATE_EMERGENCY_RO
-but not SB_RDONLY.
+Could this bypass the intended read-only protection and mutate the corrupted
+filesystem on disk by modifying the FAT chain and allocation bitmap?
 
-In that scenario, sb_rdonly(s) is false. When a user subsequently executes
-a read-write remount, does this check inadvertently bypass the -EROFS
-rejection and allow the remount to succeed since sb_rdonly(s) evaluates
-to false?
+Since this also submits synchronous I/O to the block device, does this need
+an exfat_emergency_state() check before truncating the inode?
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261012-work-fs-sb=
-_rdonly-v1-0-60743a3dc326@kernel.org?part=3D13
+_rdonly-v1-0-60743a3dc326@kernel.org?part=3D8
