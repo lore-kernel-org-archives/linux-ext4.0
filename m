@@ -1,95 +1,126 @@
-Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
+Received: from mail-pg1-f180.google.com (mail-pg1-f180.google.com [209.85.215.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 688A034AB14
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 04:33:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.199
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 08BFF368D52
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2026 04:58:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791779611; cv=none; b=l473GLJIoya4dGdEfDaBs5Oza/6pD0P8pTlgCaSkDgJP5JMmTx/lWCfkMBawTlt5Wbez5GNNPTpd36eIhrwVXrwfvBzNZFSGJ8n7BcGdg9Qzb8m2m6ULXtlz9moVk4vnISUAfZz5MWlkNJ290aPwv5ThZrzGGQWazb2NNiUx8kk=
+	t=1791781107; cv=none; b=FJRLO7Zl2k1Yft2kFem6fBUHHuzKYVJ4HR01dBeWQcEZcFhgsa3x4sA5epsNMs278FuJt1A6hiXlFX7RRyb2QGhlU40WT6yxPx7f3AMYQg+T60/Se+ftbRexiFT0vvZsw+duvar8xd3bADw3+yLD1AuFkjNets06LLXA9lPUVCk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791779611; c=relaxed/simple;
-	bh=FVufC84ZVzl1TKa7/0P8wcTzLCOhKrh1XiephzjRhd8=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=I9aozbVcz7w3SQvzRis8UgteDsTQZxSlroox3HNCCsTM0R3XUm47EezKCLMkVdGHyGQtmIm1X+XdtBILLYKkhfRC/gw+Y6hluMxDqjSJp2p+nz1joOBxrcd5Lku8qqJ2y+pkLPySaqM2nzKhVWzJ2jGQm8gh5cuczaBhKKMqm1Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.199
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4b38ea4c6acso1318639b6e.1
-        for <linux-ext4@vger.kernel.org>; Sun, 11 Oct 2026 21:33:29 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791779608; x=1792384408;
-        h=content-type:to:from:subject:message-id:date:mime-version
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+	s=arc-20240116; t=1791781107; c=relaxed/simple;
+	bh=/88gb4xXx/ct8SYmwoUN77gPHy7bOsWujBs+78VQ+YA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=RXkk4A+gCImQDI6o+5X2xPL+Xfa68dG+sh+Sefcewo4JvfYyZNWbHvJzjvty6sZ36dnld4oCDbOH6+0GNT7nnSm3dALQ4S1UKO3Xjxw0Rh8i43tdEPzYd8Y089e1UnlVlGkQUu+rL08CGZFKxxg0o0fJ0RoYCv2W1JJqHD5srXw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KqD2Rtoe; arc=none smtp.client-ip=209.85.215.180
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KqD2Rtoe"
+Received: by mail-pg1-f180.google.com with SMTP id 41be03b00d2f7-cd3310348d2so1491646a12.1
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Oct 2026 21:58:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1791781105; x=1792385905; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=0G0E8OhRGy648DN5LKROx9KakNCqwu+0fkernSUHaGQ=;
-        b=RKSJMVvuIkmUXsKaw2a/0O/WdC6IgxgRRmZuZO87ccnFzAEgkBkGZz83LGX094ToHI
-         7P2BZMg01rlE7iNdOzBL2RWDr9IeiKOAebwpL4ySGN8k3qzlYi9cNflFPNnP0VV1dX4f
-         9SyBsG8J/+lBZKq91KZSxIsm9AfVjUF6qzeNLun6Oml+nFkzp8sjAo+xyuHc1rjpWNQJ
-         Xhh7fxPb9tTRN/nADffU3lHTJjH3Wesx4Xnx0PvJFdXsrODXbFcKStwykXAwaIWiGf8e
-         8q3RvjYR+VwTW/AoiXyYhz8fBrnt4U9DJfvYMSENNSCCwg+EQYl+SCevzzIoQAFXqj+D
-         6T1Q==
-X-Gm-Message-State: AFq9FYJ7i8luOEYrWsyweTNIT4kRXchXLAhkDnlSY2sPxDr8TL1NXMdc
-	ifnTxQ+7tK+VgUOTkHDPAcmSadFJEClc7hGQNkhSM73tUphkLWVLmFgBSVV0GPg873R3obec+2S
-	NJgEmZRHcWvncdesD8OprBxV/q6gbE+z08TITq+8E7OgnPKxfO3iGY0yIQWo=
+        bh=NhfckbeXLIpMxAPyiq6IgFMQs1IKyfPcAZ69OLh1xDE=;
+        b=KqD2RtoeYW4jMt6Gt9L6/8Y7Iuig4FYtAUxvBpr5WU4LcMBK8nOy9Vzlb0oGG3/Eri
+         8qXV4e6fWDqTyZNcLNdIJF/RCFULRhi1SzEWTuHs+HvJ0rlQJt46ka7mFG7Sogo/AA+Y
+         Q/IKU/5zVyuTJFIwqECRZkdrO2m0il+D2um1cV9z0LZOppmeOF6L4XclnwSkb4JkEAFK
+         +2cgRKVlVknBsmMYsemUFeeebV8+BTdW2eQdvRjxBqixlslliMV6YuGkmIRfbVp3FLX2
+         tNFWpvAmY4ITqfrhsfVXvErRilw64FC7sVlk+IG+Tm7sgtzJZyTbHPMy0Yn+h1/hbBgK
+         qTng==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791781105; x=1792385905;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=NhfckbeXLIpMxAPyiq6IgFMQs1IKyfPcAZ69OLh1xDE=;
+        b=tSmJNubIhBbjGC0tWjwvXlwan0XPaiGEKAzogxDCKvshJzMBXD7oR1QULP8pI4TIrD
+         7SqTV6A/kv9fCjjjlDEZdUhn0RzZqHujal7qQn+qnCLBGQSmjMrNRhgaTbn+CBDSSs9+
+         yo36mRluBQ9bg/NvDkzqcf46WZPlM4ptGYi69DYvQPFG0c1FkYasfJrSFrZq77zPg8SH
+         AMzYhRwoQOOy3nUvMKbvilw7rtgK/0VPVB14kJBkm8xQkeBypnZ1FJl7M7K6wZ2KWJ2I
+         z+WIV3GSNox9aNDKDD/AW2bYw/50oIiV5IpsGdlhWICiDlr2N1nPwH/jry6UlPIeAeL9
+         qufg==
+X-Forwarded-Encrypted: i=1; AKwUvBxTtOEAuurQxtaymxRle6CHGJUSaYSCQ2C01vw3Eujsm4ry0Tn2/Sv5vLc8dJt+lMWXOztIlm8QcN29@vger.kernel.org
+X-Gm-Message-State: AFq9FYKMNjzxGpDAjao1TvXnJtnP075//Wpor7OxqBHGei2UtBNgscLR
+	Dpl5iLuXEfKp3o6fUe/j/7vaTFLxsNU0y5NjOKM20dkW+c2opXI4v07+
+X-Gm-Gg: AYBFou2zUk9cD5Kv+Izv6C0LJcxj8X1sZTx8CuBU9QGpQ6sgvVDjOIrfi/f0MuFbxEV
+	dvrGw9JU/OJ7j3ar9I5HhmOdIQhA+OQgqQUCAQpvJYYkqNmQ5TVxALuziItvFRcRgAQvpHfoRgH
+	lKACaiKriqif2qqvS8e4rLf2uNyhp6EMp1geXGWqc59/zbOp+t+ht117RWcfBGIiFDJseuMcErN
+	vxzaAEnvSmMSQ84cHkpvR1UpdZL0xmeyErXqCyMJAZXkxUGeG4FqRXs2Yt6AkhAFM+HT3PD294m
+	hezbVKip7j4wC9yIG8/XMY+sYcSy3/jdsxsUN1nAAohWU40bhnjzmBgKGjz0fT4PBUVaRLClwqP
+	ExWHXQh7xTG32JfYVUjff0CroB2ywtvk8KD8tKVCoXXyXAOLjRpt0HtkYF07FHMHonYw608MgP+
+	KPhU34Z3e9BA9ldl+7Obt1/IEKbxYL6ehOZtcBUb9m0kVnJnyhRNjZGN4KMl7VD6LCVztOrOzoH
+	jLSAakSVp9Oi2Doq2A=
+X-Received: by 2002:a17:90a:d44d:b0:39b:5622:d645 with SMTP id 98e67ed59e1d1-3ab3a09d2e0mr5364614a91.0.1791781105353;
+        Sun, 11 Oct 2026 21:58:25 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ab371c32cesm14143895a91.16.2026.10.11.21.58.20
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 11 Oct 2026 21:58:24 -0700 (PDT)
+Message-ID: <df2b0776-00d9-4ac7-9d6d-316f86971c41@gmail.com>
+Date: Mon, 12 Oct 2026 12:58:18 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:ec2:b0:4f3:e133:c574 with SMTP id
- 5614622812f47-50c4e683233mr6811203b6e.19.1791779608245; Sun, 11 Oct 2026
- 21:33:28 -0700 (PDT)
-Date: Sun, 11 Oct 2026 21:33:28 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6acc6318.a150a118.27e199.0042.GAE@google.com>
-Subject: [syzbot] Monthly ext4 report (Oct 2026)
-From: syzbot <syzbot+list147f02f2e5f25940476c@syzkaller.appspotmail.com>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla Thunderbird
+Subject: Re: [tytso-ext4:dev 21/41] fs/ext4/inode.c:4002:24: sparse: sparse:
+ symbol 'ext4_iomap_buffered_read_ops' was not declared. Should it be static?
+To: Theodore Tso <tytso@mit.edu>
+Cc: kernel test robot <lkp@intel.com>, Zhang Yi <yi.zhang@huawei.com>,
+ oe-kbuild-all@lists.linux.dev, linux-ext4@vger.kernel.org,
+ Jan Kara <jack@suse.cz>, Ojaswin Mujoo <ojaswin@linux.ibm.com>
+References: <202610082225.lcsAyIiF-lkp@intel.com>
+ <5bac3071-5823-4714-8c39-662b91c927a3@gmail.com> <ask6HB-62-bUBb7u@mit.edu>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <ask6HB-62-bUBb7u@mit.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hello ext4 maintainers/developers,
 
-This is a 31-day syzbot report for the ext4 subsystem.
-All related reports/information can be found at:
-https://syzkaller.appspot.com/upstream/s/ext4
 
-During the period, 2 new issues were detected and 1 were fixed.
-In total, 36 issues are still open and 186 have already been fixed.
-There are also 9 low-priority issues.
+On 10/10/2026 3:03 AM, Theodore Tso wrote:
+> On Fri, Oct 09, 2026 at 10:55:18AM -0500, Zhang Yi wrote:
+>> Hi Ted, would it be okay to replace the current version with my v7 on
+>> ext4 dev branch after I send it out?
+> 
+> Sure, no problem.  I took a quick look and it looks like there were
+> one or two new Sashiko issues?  I'll give time for folks to take a
+> look, and I'll rerun my tests on the v7 patch series, so I might not
+> pull it in right away.
+> 
+> 						- Ted
 
-Some of the still happening issues:
+Hi Ted,
 
-Ref Crashes Repro Title
-<1> 8084    Yes   KASAN: out-of-bounds Read in ext4_xattr_set_entry
-                  https://syzkaller.appspot.com/bug?extid=f792df426ff0f5ceb8d1
-<2> 5595    Yes   kernel BUG in ext4_do_writepages
-                  https://syzkaller.appspot.com/bug?extid=d1da16f03614058fdc48
-<3> 345     Yes   WARNING in ext4_iomap_begin (3)
-                  https://syzkaller.appspot.com/bug?extid=626aa13bf52efc3aa86e
-<4> 297     Yes   WARNING in ext4_mb_load_buddy_gfp
-                  https://syzkaller.appspot.com/bug?extid=fd3f70a4509fca8c265d
-<5> 16      Yes   INFO: task hung in ext4_write_end
-                  https://syzkaller.appspot.com/bug?extid=16bf7cd0ebeb1de93aa5
-<6> 1       Yes   KASAN: use-after-free Read in ext4_read_inline_data (2)
-                  https://syzkaller.appspot.com/bug?extid=085a394c92518a04fd09
-<7> 513     Yes   kernel BUG in ext4_mb_use_inode_pa (2)
-                  https://syzkaller.appspot.com/bug?extid=d79019213609e7056a19
-<8> 175     Yes   WARNING in ext4_journal_check_start (2)
-                  https://syzkaller.appspot.com/bug?extid=b75d75f957975f3d40e3
-<9> 78      Yes   INFO: rcu detected stall in wb_workfn (4)
-                  https://syzkaller.appspot.com/bug?extid=5b4f4f81240931b16844
+I've gone through the Sashiko and syzbot reports one by one, and apart
+from some pre-existing issues and false positives, no new regressions
+were found. However, there are currently two nits in the code that need
+adjustment:
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+  - The WARN_ON_ONCE() check in patch 8 is too heavy and is better
+    removed, since it seems to expose some corner pre-existing issues in
+    the buffer_head path and causes syzbot noise[1]. This syzbot report
+    doesn't belong to the current series and may need to be addressed
+    separately.
 
-To disable reminders for individual bugs, reply with the following command:
-#syz set <Ref> no-reminders
+  - The tracepoint in patch 19 may print an uninitialized map->m_pblk
+    during delalloc writes, so it needs to be initialized. I'd prefer to
+    initialize it separately in ext4_da_map_blocks().
 
-To change bug's subsystems, reply with:
-#syz set <Ref> subsystems: new-subsystem
+Since you've already started testing this series, and these two nits
+aren't critical I think, I can send fix patches to address them
+separately, or let me know if you'd prefer that I send a v8 instead.
 
-You may send multiple commands in a single email message.
+[1] 
+https://lore.kernel.org/linux-ext4/34423908-aceb-4c57-9502-7da10b12e4a4@huaweicloud.com/
+
+Cheers,
+Yi.
