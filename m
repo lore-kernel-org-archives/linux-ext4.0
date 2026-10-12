@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9D753A4F50;
-	Mon, 12 Oct 2026 23:12:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F03C9397B09;
+	Mon, 12 Oct 2026 23:12:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791846728; cv=none; b=LelyAq+b78OYxAjKjqwnV9PMu6O6dGXfaCtmnNJUWB3tfdCWwM/yBt417S3Wnpa+1I4ns4iE5S2g4zbpF7uGxFEASL+JrS2YDmNU+TnB/AEzhzbZxU+KHvQpH0qHDMwO1B0DUUKafYnzorfO2gZLapw9KZ0/xXzNMiLEMaVIsqI=
+	t=1791846744; cv=none; b=EAXpULTEmd8iKmf6FmpEt2kBaXyET6tss2KQJgdxG08wLAyFt9agVV6SLCmLCYQO+1nmGUIdTkk23fI9RXG6R3Di6SRTGd/aa9YXIQ5NB8I/RHYHmJen7FiJqdCEF66TBffRnyq1G4R7XQWuN0slxe5q5CWhHq2fSphyyVs2Ly8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791846728; c=relaxed/simple;
-	bh=93CgcEuzyQ6Ai/8akTBe6/1yGYR33rXNQbNRSyzAZPc=;
+	s=arc-20240116; t=1791846744; c=relaxed/simple;
+	bh=WuiZGD9HJDIwIqOF4+bnUymcl2EgwzNG0GKr4Mewi0Q=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Lo3VehAX14fanqqj2/hx2Id+FkPr7hupXhlJr9QUDuqpOJZr1h0AjCaGYplnr/resobafhkB3T6qdltiyW5psudxHf4sV7odzH0RUyG4wnsTX/NhOuRO2VcIR1Fwsb5YVThHRe5ION+7sGvlJtQdfLEioULpz3Nm3LVD5a+aioM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WvQzkUoH; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=GeUtu2XcEcxr7/OjFLevGNp2eevjB6APuUbWwv20iE2Ybb2Q/DI9D83HUleIDNavGYrmZtUpTFPyjdiEINqepRsUQyGRaNM8h3xMWpatV/89CAx3fKXthYBEdQzwelH5SuIFhQSYlEOrbkIDsQoAI4A/sg562sgQ6f+PRcdBhRA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K9MbJrYn; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WvQzkUoH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C03E81F008A2;
-	Mon, 12 Oct 2026 23:12:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K9MbJrYn"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE79B1F008A1;
+	Mon, 12 Oct 2026 23:12:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791846727;
-	bh=a2bb0eoGuGyhcfyI3fwC72JX7HBf84eKj7ndJ4mNd0E=;
+	s=k20260515; t=1791846742;
+	bh=0tbNgtHEViWgRTsKN7TQ8sY7isFMNzaagThy05w1+S0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WvQzkUoH7qxJOymEMT9jJoRIdmxRl21am4AVcpDWw00bbXvAMmSoTChASoJ93mcIv
-	 pk/AFzi/pcLSn35OuQbUlI/knxek2cKTbcSd10+6TwmVc8h0KnZ/eeA4B5qEtYMjrc
-	 ZoFCXL8QCDFD5UQwmbqE7IV/gBrTNYv5uSlYccW25fSJFKJ4MJImUtRpPnqvvr3iz6
-	 JdnEDmtAo5Cp3EqAgqXDf3G1NRlSA3LugFfv2mk3G2DrxET8A+weYCP6r/nUC+qTCb
-	 /0qXYB/GVQLWMorVErq6AgrAJ5A5fnacFS85ycdmttOwFwSLI5uOPGtYosdBPvIPFw
-	 3J2qXXXMM3Tww==
+	b=K9MbJrYn6y57m0DVEXdCDRq3kjSeyySUDZqeeuTxJV4rv4hk24bLBew7uyaKl5CRv
+	 UJeUcW0T+7iclAqoesVhRw351Er/vWPswDz6DWy797mSHWTRBtMJxcto9xYqAstvz5
+	 K9xPl9VuULkZXNVXJVLu9ba5tvnr7a9mHZ+VQCYs2zcaPS829R+Xk7xwNxYs31Do9k
+	 Lq3UCWBDOVXsSZZM1Cy+JS5LHkZZkVNLJfI4oKuNXnq7dcm9WLeoKDnaMZPbV1U+G9
+	 mRxMvEzMTufpXJ0ep8aWdMPIgx+aFl5ffDd/AaSeDyUFldy19nuHSXhLw0qE3s/Myh
+	 EMAZ8RBIcyC6w==
 From: Mark <broonie@kernel.org>
-Date: Tue, 13 Oct 2026 00:10:11 +0100
-Subject: [PATCH 1/9] firmware: cs_dsp: Run the wmfw payload error tests
- with invalid block types
+Date: Tue, 13 Oct 2026 00:10:12 +0100
+Subject: [PATCH 2/9] kunit: Add KUNIT_CASE_PARAM_UNIQUE() and
+ KUNIT_CASE_PARAM_WITH_INIT_UNIQUE()
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-kunit-param-names-v1-1-4b22ec5b85b9@kernel.org>
+Message-Id: <20261013-kunit-param-names-v1-2-4b22ec5b85b9@kernel.org>
 References: <20261013-kunit-param-names-v1-0-4b22ec5b85b9@kernel.org>
 In-Reply-To: <20261013-kunit-param-names-v1-0-4b22ec5b85b9@kernel.org>
 To: Simon Trimmer <simont@opensource.cirrus.com>, 
@@ -60,85 +60,122 @@ Cc: patches@opensource.cirrus.com, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org, 
  linux-sound@vger.kernel.org, Mark Brown <broonie@kernel.org>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4843; i=broonie@kernel.org;
- h=from:subject:message-id; bh=93CgcEuzyQ6Ai/8akTBe6/1yGYR33rXNQbNRSyzAZPc=;
- b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLOZlonWi9lNVSsEVWL5+u0+MMbHNFaf79VuXaF1sUPS
- YsEv+7uKGVhEONikBVTZInL4n5ZX/J6Dd/BhW0wc1iZQIYwcHEKwEQ+1TH8D735w1jtKpvm7M2p
- 09pWn10wedpUi421YZvFV/GffiK+cDXD/9R1ol+YNet+TZ6lup7n37eWxWkeii2rXkcXiLXMNZr
- XwAMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5762; i=broonie@kernel.org;
+ h=from:subject:message-id; bh=WuiZGD9HJDIwIqOF4+bnUymcl2EgwzNG0GKr4Mewi0Q=;
+ b=owGbwMvMwCWm/754w+YLFp2Mp9WSGLLOZlo33YqpEdo+Y+PaXysLFVaG3a28P/20Sxe3pqnm9
+ yLPsnkaHaUsDGJcDLJiiixxWdwv60ter+E7uLANZg4rE8gQBi5OAZjINDuGv4L5tzIrZnS/z/yR
+ knSbl0HvwgXjtgPp1tcequbM/nShlZXhr+TrjeHBz5kmfRSZ1116uYPHbbvB+3N3TksXV57/pvG
+ ThQsA
 X-Developer-Key: i=broonie@kernel.org; a=openpgp;
  fpr=3F2568AAC26998F9E813A1C5C3F436CA30F5D8EB
 
-Each of the wmfw error suites lists the truncated block header, truncated
-block payload and garbage payload length tests twice, once with valid
-block types and once with invalid block types. For the payload and
-garbage length tests the second entry names wmfw_too_short_for_block_header
-rather than the test on the preceding line, so the block header test is
-run four times with invalid block types while the other two are only ever
-run with valid ones.
+KUNIT_CASE_PARAM() and KUNIT_CASE_PARAM_WITH_INIT() name the test case
+after the test function. Several suites reuse one test function with
+more than one parameter generator or param_init() function, listing it
+once per set of parameters, which leads to multiple tests being created
+with the same name. Same-named cases cannot be told apart in the results
+and cannot be selected individually with kunit.filter_glob=, so kunit.py
+--run_isolated=test boots a kernel for every entry and each kernel runs
+all of the same-named cases.
 
-Point the second entries at the intended tests so that
-wmfw_too_short_for_block_payload() and wmfw_block_payload_len_garbage()
-are also run with invalid block types, as the header test already is.
+We could fix this by having the KUNIT_CASE_PARAM() macros always include
+the parameter name but this would not only rename all existing users but
+also result in some awkwardly named tests. Instead introduce some new
+macros for use in cases where we need to disambiguate.
 
-Fixes: feb5fb0615f3 ("firmware: cs_dsp: Add KUnit testing of wmfw error cases")
+Add KUNIT_CASE_PARAM_UNIQUE() and KUNIT_CASE_PARAM_WITH_INIT_UNIQUE()
+which behave identically to the existing macros but include the name of
+the parameter generator or the param_init() function in the name of
+the case, giving names such as sha1_test-sha1_gen_params. The
+param_init() function is used for the WITH_INIT variant since currently
+all the tests which register parameter arrays from param_init() all
+share the generic kunit_array_gen_params() generator.
+
 Signed-off-by: Mark Brown <broonie@kernel.org>
 ---
- drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ Documentation/dev-tools/kunit/usage.rst |  9 ++++++++
+ include/kunit/test.h                    | 41 +++++++++++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+)
 
-diff --git a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
-index e7bf5dc474f5..b07978d90fa9 100644
---- a/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
-+++ b/drivers/firmware/cirrus/test/cs_dsp_test_wmfw_error.c
-@@ -1222,9 +1222,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v0[] = {
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
+diff --git a/Documentation/dev-tools/kunit/usage.rst b/Documentation/dev-tools/kunit/usage.rst
+index 1c78dfff94e8..193233fd2925 100644
+--- a/Documentation/dev-tools/kunit/usage.rst
++++ b/Documentation/dev-tools/kunit/usage.rst
+@@ -662,6 +662,15 @@ Custom Parameter Generator Function:
+    You can pass the generator function to the ``KUNIT_CASE_PARAM``
+    or ``KUNIT_CASE_PARAM_WITH_INIT`` macros.
  
- 	{ } /* terminator */
- };
-@@ -1239,9 +1239,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v1[] = {
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++   These macros name the test case after the test function. If the same test
++   function is listed in a suite with more than one generator (or, for
++   ``KUNIT_CASE_PARAM_WITH_INIT``, more than one ``param_init()`` function)
++   use ``KUNIT_CASE_PARAM_UNIQUE`` or ``KUNIT_CASE_PARAM_WITH_INIT_UNIQUE``
++   instead. These also include the name of the generator or ``param_init()``
++   function in the test case name, for example ``sha1_test-sha1_gen_params``,
++   so that each case has a distinct name which can be selected with
++   ``kunit.filter_glob=``.
++
+    The function receives the previously generated parameter as the ``prev`` argument
+    (which is ``NULL`` on the first call) and can also access the parameterized
+    test context passed as the ``test`` argument. KUnit calls this function
+diff --git a/include/kunit/test.h b/include/kunit/test.h
+index da5312e0dfa5..e43f5e007f20 100644
+--- a/include/kunit/test.h
++++ b/include/kunit/test.h
+@@ -209,6 +209,24 @@ static inline char *kunit_status_to_ok_not_ok(enum kunit_status status)
+ 		{ .run_case = test_name, .name = #test_name,	\
+ 		  .generate_params = gen_params, .module_name = KBUILD_MODNAME}
  
- 	KUNIT_CASE(wmfw_too_short_for_alg_header),
- 	KUNIT_CASE(wmfw_v1_alg_name_unterminated),
-@@ -1261,9 +1261,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v2[] = {
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_adsp2_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_adsp2_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
++/**
++ * KUNIT_CASE_PARAM_UNIQUE - A helper for creating a parameterized &struct
++ * kunit_case named after both the test and its parameter generator
++ *
++ * @test_name: a reference to a test case function.
++ * @gen_params: a reference to a parameter generator function.
++ *
++ * Identical to KUNIT_CASE_PARAM() except that the case is named
++ * "test_name-gen_params" rather than "test_name". Use this when the same
++ * test function is listed in a suite with more than one parameter generator,
++ * where KUNIT_CASE_PARAM() would give every instance the same name. Test
++ * names must be unique within a suite for the results to be unambiguous and
++ * for filters such as kunit.filter_glob= to be able to select a single case.
++ */
++#define KUNIT_CASE_PARAM_UNIQUE(test_name, gen_params)				\
++		{ .run_case = test_name, .name = #test_name "-" #gen_params,	\
++		  .generate_params = gen_params, .module_name = KBUILD_MODNAME}
++
+ /**
+  * KUNIT_CASE_PARAM_ATTR - A helper for creating a parameterized &struct
+  * kunit_case with attributes
+@@ -248,6 +266,29 @@ static inline char *kunit_status_to_ok_not_ok(enum kunit_status status)
+ 		  .param_init = init, .param_exit = exit,			\
+ 		  .module_name = KBUILD_MODNAME}
  
- 	KUNIT_CASE(wmfw_too_short_for_alg_header),
- 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
-@@ -1287,9 +1287,9 @@ static struct kunit_case cs_dsp_wmfw_err_test_cases_v3[] = {
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_valid_block_types_halo_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_valid_block_types_halo_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_too_short_for_block_payload, wmfw_invalid_block_types_gen_params),
- 	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_valid_block_types_halo_gen_params),
--	KUNIT_CASE_PARAM(wmfw_too_short_for_block_header, wmfw_invalid_block_types_gen_params),
-+	KUNIT_CASE_PARAM(wmfw_block_payload_len_garbage, wmfw_invalid_block_types_gen_params),
- 
- 	KUNIT_CASE(wmfw_too_short_for_alg_header),
- 	KUNIT_CASE(wmfw_v2_alg_name_exceeds_block),
++/**
++ * KUNIT_CASE_PARAM_WITH_INIT_UNIQUE - Define a parameterized KUnit test case
++ * with custom param_init() and param_exit() functions, named after both the
++ * test and its param_init() function.
++ * @test_name: The function implementing the test case.
++ * @gen_params: The function to generate parameters for the test case.
++ * @init: A reference to the param_init() function to run before a parameterized test.
++ * @exit: A reference to the param_exit() function to run after a parameterized test.
++ *
++ * Identical to KUNIT_CASE_PARAM_WITH_INIT() except that the case is named
++ * "test_name-init" rather than "test_name". Use this when the same test
++ * function is listed in a suite with more than one param_init() function,
++ * where KUNIT_CASE_PARAM_WITH_INIT() would give every instance the same
++ * name. The param_init() function is used rather than the generator since
++ * tests registering parameter arrays in param_init() all share the generic
++ * kunit_array_gen_params() generator.
++ */
++#define KUNIT_CASE_PARAM_WITH_INIT_UNIQUE(test_name, gen_params, init, exit)	\
++		{ .run_case = test_name, .name = #test_name "-" #init,		\
++		  .generate_params = gen_params,				\
++		  .param_init = init, .param_exit = exit,			\
++		  .module_name = KBUILD_MODNAME}
++
+ /**
+  * struct kunit_suite - describes a related collection of &struct kunit_case
+  *
 
 -- 
 2.47.3
