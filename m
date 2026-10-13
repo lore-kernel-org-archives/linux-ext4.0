@@ -1,192 +1,295 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out162-62-58-216.mail.qq.com (out162-62-58-216.mail.qq.com [162.62.58.216])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 373984BD372;
-	Tue, 13 Oct 2026 10:48:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27C804F3ED5;
+	Tue, 13 Oct 2026 11:53:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=162.62.58.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791888488; cv=none; b=EVqpdZpL0Y84AHLeByPKS0FAKFo29lsLtdBX6sry/n4LNfYe60yjjwcVr7gwIAxXNOKRzDpkv9Rvj1Ds+W+lqS0qkDilNlKP8pSviiCHzNvxvM+Qfy5U6Koak2Nc5y5YJX7rcTsZ53nIZvuNswziS81k7HcK8tQzDqOLdfBg7Ps=
+	t=1791892406; cv=none; b=ALoEQYyMfkehFLaXNx6f/Ouf0B7QzoqeAW1iZIdpVyfJRtW/hNjNOa0jR2naXn3We/W/vUDm1mo74rRrQYfM3uveDxK5dc2wE7NHYf/hwejPe474TNSpvf4glP3ufrvYXMI/aK3dDyn0vHP45qk2F8aWl9FR/3cKOTDaqK9mcIs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791888488; c=relaxed/simple;
-	bh=XWxQOzQmRhcEeRYLwL7aHJiLfqRZs7XiIn/mb8ZOCM4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=p8tR7L3IzA7ufpQCWrEBOukXKGPWJlHPdLzssYymkvTacptPHN/Opjvs506cd5lWwezMe0IZ/ZDLI9rKTJSHOfS+W+oXzu/capJy75KVLJsKGiAFe1GfSaa+KDvQ9X5yfmdSc1AtRlzV3vtOvTBVCf1MA/p7Aw/KXoYi8SQc2uU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=EG7bqh+Z; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qE4642sS; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=EG7bqh+Z; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=qE4642sS; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1791892406; c=relaxed/simple;
+	bh=6ShjShKDTTxDAF/xMVOi+x0WdmQR/3lmrLONlX+ziBk=;
+	h=Message-ID:Content-Type:MIME-Version:From:To:Cc:Subject:Date; b=jI4snaaU9n+3uH2rMAj3Slpky7NhrEibxP3mEpoP4dZSgqMsFkfIecLCXIXqwZh5pQC8eAJMgOEqBP4eNng56jATbeM9TfqtUU3kqNTaWSKiNePlFiFf2pAm1ZmnKPDMM/+zhIVHzH+VLBhBJtB2/DiAoXaEIaoQ++cmuXvs2GQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=AdiMTpNX; arc=none smtp.client-ip=162.62.58.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="EG7bqh+Z";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qE4642sS";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="EG7bqh+Z";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="qE4642sS"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 14A3C2203D;
-	Tue, 13 Oct 2026 10:48:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791888483; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yVqAieB4CGgWp8a6Woe7pvFM/NJIWkghO0P4eoSGYZM=;
-	b=EG7bqh+ZOCjwiSNgRbuJ3xiOwxh2nzKuJGFJ+rxRecLtQzOH1TBLBE1xIIVpXHGmhYGr+Y
-	oDz7GoIQ9+hed/61+Z0wWOlJ+/XOqRpqs7APiK3f/k7I6HoQamPN1/Ypp9NZ7Cuh7Wh28m
-	6blUvhFEYIXb66WMOhztGwlmZAATDSw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791888483;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yVqAieB4CGgWp8a6Woe7pvFM/NJIWkghO0P4eoSGYZM=;
-	b=qE4642sSzOJNKNTtWkpEnorn1sYU2PthybaCkZlco8phcGsictncJkGuxLr49gKgdPqe7h
-	fc0cjKws8fDciSCQ==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=EG7bqh+Z;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=qE4642sS
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791888483; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yVqAieB4CGgWp8a6Woe7pvFM/NJIWkghO0P4eoSGYZM=;
-	b=EG7bqh+ZOCjwiSNgRbuJ3xiOwxh2nzKuJGFJ+rxRecLtQzOH1TBLBE1xIIVpXHGmhYGr+Y
-	oDz7GoIQ9+hed/61+Z0wWOlJ+/XOqRpqs7APiK3f/k7I6HoQamPN1/Ypp9NZ7Cuh7Wh28m
-	6blUvhFEYIXb66WMOhztGwlmZAATDSw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791888483;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=yVqAieB4CGgWp8a6Woe7pvFM/NJIWkghO0P4eoSGYZM=;
-	b=qE4642sSzOJNKNTtWkpEnorn1sYU2PthybaCkZlco8phcGsictncJkGuxLr49gKgdPqe7h
-	fc0cjKws8fDciSCQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id BB62713341;
-	Tue, 13 Oct 2026 10:48:02 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id p6CPJGIMzmoPPgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Tue, 13 Oct 2026 10:48:02 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3B9A0A1407; Tue, 13 Oct 2026 12:47:58 +0200 (CEST)
-Date: Tue, 13 Oct 2026 12:47:58 +0200
-From: Jan Kara <jack@suse.cz>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org, 
-	v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org, ntfs3@lists.linux.dev, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH 0/8] fs: fix a range of UAFs during rcu pathwalk caused
- by non-rcu frees
-Message-ID: <voobrqryqulmrq7gyt5vdwuiqd3wrhsrgfcadszclcgs6smw64@qb7yne64airm>
-References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
- <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
- <20261012-gaukeln-zeltlager-etikettieren-73ae50ccac01@brauner>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="AdiMTpNX"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1791892387; bh=6ShjShKDTTxDAF/xMVOi+x0WdmQR/3lmrLONlX+ziBk=;
+	h=From:To:Cc:Subject:Date;
+	b=AdiMTpNXKAOQwJsc/yRO5Zh4gP4n6htdVgsFBQ7oKPmnvkcrzdmEwGvF5oaCbaEXC
+	 L7MvXb2ccnwakZn/XQdWMBV1A0YSiGy5v5cWW2c70xf+AyDZgH1TvQ8RI87uDShvJd
+	 XdebbISixJW3UlPuW1r0Z5TYUHl4AYniN9d1McRI=
+Received: from [172.18.4.77] ([111.31.227.58])
+	by newxmesmtplogicsvrsza73-0.qq.com (NewEsmtp) with SMTP
+	id CF429CFF; Tue, 13 Oct 2026 19:51:52 +0800
+X-QQ-mid: xmsmtpt1791892312tfggc2kgp
+Message-ID: <tencent_30C554296ACA4722AA33D5E81B7C24CF6905@qq.com>
+X-QQ-XMAILINFO: NLYZ3YmleWNDsyx5bcB1NM75E7YCS8SXnPhmxz1jF5CYlX/3bLaQODuDnTfVkk
+	 K2LoiiQCvbdKlR9rZJtWqrJ1Cz1yAXtLWujOfdcURG+kgpvoKWgpMcJhs+0GnUZuQzxqUcQfUFi8
+	 pUscFfCtneIYqPT2yjuTx+bpiAKSUy7KT62M+qD8dfSixI5zvEJ76ebAiNlKrJuVP6eGdYPzdIsg
+	 QQ2tAriWrBEt4fuc+XeTw3pYSyBL3DMtG/TJMjnoyKt6lPkeOk33U5Gv29NcSP2JblVyWZxeh4uU
+	 F0pXgKivOcQDksQImTNuPzf2LCrEF+9MUiPdAknd9TvyuKXkzRnf7qLJkZazg5M0badh25/RW0RR
+	 AI5QrtIobAwjNZY2P4Q0wdGBkDc2xe1fSDlsRBICjxJVRMnpJ0GOddptmU94NjtdKDkOCYln0VYg
+	 KYJVrGu3oug97mCwVsRBB5c090CUDOw7Y7m+CeX0Q5yN31DQYZ27M6jFUNXbh74dgPXXVPXvDD8U
+	 jF7wfKEFTQhFY/klsLfoPENyi4/zmgD8jKYPmErYLTig6rQ/p9Gkk97Z/asXAmy74xy232X21LXO
+	 Yf3KV7Y0U+XDkwPDXd5ShCkRX35ldSD5eJBJVDot2Mm9l/MIIg6FNcoYj7qUpQtr3QxpX/wPZIGL
+	 1OfOCbXks4RipKGiE3U79LcIILP4aAowj5AEnaiQMX12P8vTxfhAEktUR49lALTsWRVATflt7uEW
+	 4ToQuRNhm9wu7vK75mb1izoaOqp/uz3FR24LVDz6+MdnJD8iFPMRgxKnug/rsViBpw7yf14WI/pH
+	 KU+ePNiRVtliB+oQe9vXQhVF+E1ckb8nzL9VS5VVJByj1RHxmxwFFxkEX1RN2/2FqjBf/MrWEUd1
+	 shUm+qBACyc64m1SyE5g/IaAp76tvO13KFfQ+TEsgGIzM2DZDoI7b9eOBubNlT4sWdAw8+GDz9DT
+	 O/dp1dYEArNMNdepDiKyD992wR+hEFfK9iwzMhBbZ15ht1bus6OVRhr9zispLLRU+TlPJgpAb/AN
+	 SZW3kl6bzwsXOztvv3W54FDpPOAAclsGU72UfKotwuzDiCNUg6SMPBe2Z5t0SqTOQgbilQHgvaSa
+	 i+kFPU6yKUW/b0BeTTBP9zAz6NXV8TZ9mn2xRGUOSWvNa8Yrg=
+X-QQ-XMRINFO: M/715EihBoGS47X28/vv4NpnfpeBLnr4Qg==
+Content-Type: multipart/mixed; boundary="===============1862422436374644438=="
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261012-gaukeln-zeltlager-etikettieren-73ae50ccac01@brauner>
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 14A3C2203D
-X-Rspamd-Action: no action
-X-Spam-Level: 
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	MIME_TRACE(0.00)[0:+];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim]
-X-Spam-Flag: NO
-X-Spam-Score: -4.01
+From: yangguikun <yangguikun19@qq.com>
+To: linux-ext4@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+ linux-kernel@vger.kernel.org
+Subject: [Bug report] ext4: mount-time orphan recovery silently truncates a
+ LIVE file (crafted s_last_orphan;
+ only log line is the routine "1 truncate cleaned up")
+Date: Tue, 13 Oct 2026 19:51:51 +0800
+X-OQ-MSGID: <179189231167.69340.11182677440881480361@yangguikun19.qq.com>
+X-Mailer: mutt-like (python smtplib)
 
-On Mon 12-10-26 12:42:06, Christian Brauner wrote:
-> On Mon, Oct 12, 2026 at 12:36:15PM +0200, Jan Kara wrote:
-> > On Fri 09-10-26 23:51:50, Christian Brauner wrote:
-> > > While working on eliding the grace period in namespace_unlock() I went
-> > > through what filesystems free when they're shut down and what a pathwalk
-> > > in rcu mode can still read at that point. Since 66a97c2ec953's rcu
-> > > pathwalk fixes that's the filesystem's job. Whatever ->permission(),
-> > > ->d_revalidate(), ->get_link(), ->d_hash() and ->d_compare() look at in
-> > > rcu mode has to be freed after a grace period. A few filesystems don't
-> > > do that.
-> > > 
-> > > Most of it is hidden by umount(2). namespace_unlock() waits for a grace
-> > > period before it drops the mounts, so a walker that was inside the
-> > > filesystem is gone by the time the filesystem is shut down.
-> > > 
-> > > But the last reference to a mount doesn't have to go away in umount(2).
-> > > A chdir() out of a lazily unmounted directory or the close() of the last
-> > > file on it drops it without a grace period. A walker can then still be
-> > > in the filesystem while ->put_super() and ->kill_sb() free what it
-> > > reads.
-> > 
-> > Good catches! But I find it very counter-intuitive that pathname lookups
-> > can still be running against a filesystem while its ->put_super is called.
-> > People will keep forgetting about that and as a result these UAF bugs will
-> > be introduced again. Isn't it feasible we'd guarantee to the filesystem
-> > ->put_super() gets called only after all lookups are done (i.e., after RCU
-> > grace period expires)?
-> > 
-> > I understand this is a hairy bussiness because this has userspace visible
-> > implications (like when filesystem's sysfs files disappear, when the bdev
-> > really gets unused, etc.) but keeping all filesystems safe to run RCU
-> > lookup after ->put_super() will be IMHO a headache.
-> 
-> I don't think delaying put_super() or freeing the superblock helps.
-> That's not where the issue is. The issue is with sb->s_fs_info being
-> available after a grace period and that can go away in different
-> locations ->put_super() or ->kill_sb().
+--===============1862422436374644438==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
 
-So my thinking was: Cannot we separate the teardown of mounts and the
-teardown of the sb by an RCU grace period? Then by the time the filesystem
-gets to any freeing of filesystem related structures all RCU lookups are
-guaranteed to be done so there's no problem with them accessing possibly
-freed structures pointed to by the sb.
+SGksCgpEdXJpbmcgZmllbGQtc2VtYW50aWMgY29ycnVwdGlvbiB0ZXN0aW5nIG9mIGV4dDQgaW1h
+Z2VzLCB3ZSBmb3VuZCB0aGF0IHRoZQptb3VudC10aW1lIG9ycGhhbiByZWNvdmVyeSBwYXRoIHRy
+dW5jYXRlcyBhIGZ1bGx5LWxpdmUsIGxpbmtlZCBmaWxlIHdoZW4KZm91ciBpbmRpdmlkdWFsbHkt
+cGxhdXNpYmxlIG9uLWRpc2sgZmllbGRzIGFyZSBtYWRlIG11dHVhbGx5IGluY29uc2lzdGVudCDi
+gJQKYW5kIHRoZSBvbmx5IGtlcm5lbCBsb2cgbGluZSBpcyB0aGUgcm91dGluZSByZWNvdmVyeSBt
+ZXNzYWdlLCBtYWtpbmcgdGhlCmRlc3RydWN0aW9uIGluZGlzdGluZ3Vpc2hhYmxlIGZyb20gbGVn
+aXRpbWF0ZSBjcmFzaCByZWNvdmVyeS4gRGV0ZXJtaW5pc3RpYwpyZXByb2R1Y2VyIGJlbG93IChl
+MmZzcHJvZ3MgKyBvbmUgbW91bnQ7IG5vIHN5c2NhbGxzIG5lZWRlZCBhZnRlciBtb3VudCkuCgoj
+IyBUaGUgY29ycnVwdGlvbgoKRm91ciBjb29yZGluYXRlZCBlZGl0cyBvbiBhIHN0b2NrIDFNQiBl
+eHQ0IChta2UyZnMgLU8gXmhhc19qb3VybmFsLF5tZXRhZGF0YV9jc3VtLAp0aHJlZSA4S0IgZmls
+ZXM7IC9maWxlMSBpcyBhIG5vcm1hbCBsaXZlIGZpbGUsIG5saW5rPTEsIGhhcyBhIGRpcmVudCk6
+CgogICAgMS4gc19sYXN0X29ycGhhbiAoc2IrMHhFOCkgOj0gL2ZpbGUxJ3MgaW5vZGUgbnVtYmVy
+CiAgICAyLiAvZmlsZTEgaV9kdGltZSA6PSAwCiAgICAzLiBzX3N0YXRlOiBjbGVhciBFWFQ0X1ZB
+TElEX0ZTCiAgICA0LiAvZmlsZTEgaV9zaXplIDo9IDQwOTYgICAocmVhbCBkYXRhOiA4MTkyKQoK
+Tm90aGluZyBpcyBvdXQgb2YgYm91bmRzOyBldmVyeSBmaWVsZCBpcyBpbmRpdmlkdWFsbHkgdmFs
+aWQuCgojIyBPYnNlcnZlZCAoZGV0ZXJtaW5pc3RpYywgMy8zKQoKICAgICQgbW91bnQgLXQgZXh0
+NCAvZGV2L2xvb3A3IC9tbnQgICAgICAgICAgIyB0aGUgZW50aXJlIGF0dGFjayBzdXJmYWNlCiAg
+ICBbICAgXSBFWFQ0LWZzIChsb29wNyk6IDEgdHJ1bmNhdGUgY2xlYW5lZCB1cAogICAgJCBzdGF0
+IC1jICJzaXplPSVzIG5saW5rPSVoIiAvbW50L2ZpbGUxCiAgICBzaXplPTQwOTYgbmxpbms9MSAg
+ICAgICAgICAgICAgICAgICAgICAgICAjIHdhcyBzaXplPTgxOTIg4oCUIGhhbGYgdGhlIGZpbGUK
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICMgc2lsZW50bHkg
+ZGVzdHJveWVkCgpleHQ0X29ycGhhbl9jbGVhbnVwKCkgLT4gZXh0NF9vcnBoYW5fZ2V0KCkgYWNj
+ZXB0cyB0aGUgaW5vZGU6IGl0IHZhbGlkYXRlcwp0aGUgaW5vZGUgbnVtYmVyLCB0aGUgaW5vZGUg
+Yml0bWFwIGJpdCwgYW5kIHRoYXQgTkVYVF9PUlBIQU4gKGlfZHRpbWUsIHRoZQpvcnBoYW4tbGlz
+dCBsaW5rKSBpcyB3aXRoaW4gcmFuZ2UsIGJ1dCBuZXZlciBjaGVja3MgdGhhdCB0aGUgdmljdGlt
+IGlzCmFjdHVhbGx5IG9ycGhhbmVkLiBJbiA3LjMtcmM1IChmcy9leHQ0L2lhbGxvYy5jOjEzOTYp
+IHRoZSBjb21tZW50IGV4cGxhaW5zCndoeSBpX25saW5rPT0wIGlzIGRlbGliZXJhdGVseSBOT1Qg
+cmVxdWlyZWQ6CgogICAgLyogT3JwaGFucyBhbHNvIGluY2x1ZGUgaW5vZGVzIHRoYXQgd2VyZSBi
+ZWluZyB0cnVuY2F0ZWQsIHNvIHdlIGNhbid0CiAgICAgKiBjaGVjayBpX25saW5rPT0wLiAqLwoK
+YW5kIHRoZSBzdWJzZXF1ZW50IGNoZWNrIG9ubHkgcmVqZWN0cyAoaV9ubGluayAmJiAhZXh0NF9j
+YW5fdHJ1bmNhdGUoKSkg4oCUCmkuZS4sIG9iamVjdHMgdGhhdCBDQU5OT1QgYmUgdHJ1bmNhdGVk
+LiBBIG5vcm1hbCBsaXZlIHJlZ3VsYXIgZmlsZQoobmxpbms9MSwgdHJ1bmNhdGFibGUpIGlzIGFj
+Y2VwdGVkLCBhbmQgZXh0NF9wcm9jZXNzX29ycGhhbigpIHRoZW4gcnVucwp0cnVuY2F0ZV9pbm9k
+ZV9wYWdlcygpICsgZXh0NF90cnVuY2F0ZSgpIG9uIGl0IGF0IG1vdW50IHRpbWUuCgpUaGUgY29k
+ZSBpbnZvbHZlZCBpcyB1bmNoYW5nZWQgaW4gY3VycmVudCBtYWlubGluZTogZnMvZXh0NC9vcnBo
+YW4uYywKaWFsbG9jLmMgYW5kIGlub2RlLmMgYXJlIGJ5dGUtaWRlbnRpY2FsIGJldHdlZW4gNy4z
+LXJjNSBhbmQgY3VycmVudAptYWlubGluZS4KCiMjIFdoeSB3ZSB0aGluayB0aGlzIGlzIHdvcnRo
+IGEgbG9vayBiZXlvbmQgImNvcnJ1cHQgZnMiCgotIFRoZSBkYW1hZ2UgaXMgY3Jvc3MtZmlsZSBh
+bmQga2VybmVsLWluaXRpYXRlZDogb25lIHN1cGVyYmxvY2sgdTMyIHNlbGVjdHMKICBBTlkgaW5v
+ZGUgb24gdGhlIGZpbGVzeXN0ZW0gZm9yIGRhdGEgZGVzdHJ1Y3Rpb24gYXQgbW91bnQsIHdpdGgg
+emVybwogIHN5c2NhbGxzIGZyb20gdGhlICh1bnByaXZpbGVnZWQtYWZ0ZXItbW91bnQpIHBvaW50
+IG9mIHZpZXcuCi0gSXQgaXMgc2lsZW50OiB0aGUgb25seSBsb2cgbGluZSAoIk4gdHJ1bmNhdGUg
+Y2xlYW5lZCB1cCIpIGlzIGV4YWN0bHkgd2hhdAogIGxlZ2l0aW1hdGUgcmVjb3ZlcnkgcHJpbnRz
+LiBBbiBvcGVyYXRvciBtb3VudGluZyBhIHN1c3BlY3QgaW1hZ2UgZ2V0cyBubwogIHNpZ25hbCB0
+aGF0IGEgbGl2ZSBmaWxlIHdhcyBkZXN0cm95ZWQuCi0gVGhlIGNvbW1lbnQncyAiSGF2aW5nIHRo
+ZSBpbm9kZSBiaXQgc2V0IHNob3VsZCBiZSBhIDEwMCUgaW5kaWNhdG9yIHRoYXQKICB0aGlzIGlz
+IGEgdmFsaWQgb3JwaGFuIiBob2xkcyBvbmx5IGlmIHRoZSBpbm9kZSBiaXRtYXAgaXMgdHJ1c3R3
+b3J0aHk7CiAgd2l0aCBhIGNyYWZ0ZWQgaW1hZ2UgYm90aCB0aGUgYml0bWFwIGJpdCBhbmQgdGhl
+IGNoYWluIGhlYWQgYXJlCiAgYXR0YWNrZXItY2hvc2VuLCBhbmQgdGhlIG5vLW5saW5rLWNoZWNr
+IGRlc2lnbiBkZWNpc2lvbiBiZWNvbWVzIHRoZQogIGFtcGxpZmljYXRpb24gcG9pbnQuCgpXZSBh
+cHByZWNpYXRlIHRoZSB0cnVuY2F0ZS1pbi1mbGlnaHQgb3JwaGFuIHVzZSBjYXNlIHRoYXQgbW90
+aXZhdGVzCnNraXBwaW5nIHRoZSBubGluayBjaGVjaywgc28gYSBmdWxsICJtdXN0IGJlIHVubGlu
+a2VkIiBydWxlIGlzIG5vdCB0aGUKYW5zd2VyLiBUd28gZGlyZWN0aW9ucyB0aGF0IG1pZ2h0IGJl
+IGNoZWFwIGVub3VnaDoKCiAgYSkgd2FybiBsb3VkbHkgKGV4dDRfd2FybmluZyB3aXRoIGlub2Rl
+IG51bWJlciBhbmQgb2xkL25ldyBzaXplKSB3aGVuZXZlcgogICAgIG9ycGhhbiBjbGVhbnVwIHRy
+dW5jYXRlcyBhbiBpbm9kZSB3aXRoIGlfbmxpbmsgPiAwIOKAlCB0dXJuaW5nIHRoZQogICAgIHNp
+bGVudCBkZXN0cnVjdGlvbiBpbnRvIGFuIG9ic2VydmFibGUgZXZlbnQsIG9yCiAgYikgcmVjb3Jk
+aW5nIHRoZSB0cnVuY2F0ZWQgaW5vZGVzIChlLmcuIHJhdGUtbGltaXRlZCBwZXItbW91bnQgc3Vt
+bWFyeQogICAgICJvcnBoYW4gY2xlYW51cCB0cnVuY2F0ZWQgTiBsaW5rZWQgaW5vZGVzIikgc28g
+cG9zdC1tb3VudCBmb3JlbnNpY3MKICAgICBjYW4gZGlzdGluZ3Vpc2ggdGhpcyBmcm9tIG5vcm1h
+bCByZWNvdmVyeS4KCkhhcHB5IHRvIHRlc3QgYW55IHBhdGNoOyByZXByb2R1Y2VyIGFuZCBtZXRo
+b2RvbG9neSBub3RlcyBhdHRhY2hlZC4KCiMjIFJlcHJvZHVjZXIKCiAgICBjcmFmdF9mNS5weSAg
+ICAgICBidWlsZHMgdGhlIGltYWdlIGZyb20gc2NyYXRjaCAoZGQvbWtlMmZzL2RlYnVnZnMpCiAg
+ICBmNS5pbWcueHogICAgICAgICBwcmUtYmFrZWQgaW1hZ2UgKG9uZSBtb3VudCBwZXIgY29weTog
+c19sYXN0X29ycGhhbiBpcwogICAgICAgICAgICAgICAgICAgICAgY2xlYXJlZCBieSB0aGUgZmly
+c3QgcmVjb3ZlcnksIGFzIGluIHJlYWwgcmVjb3ZlcnkpCiAgICBmNV9kbWVzZy5sb2cgICAgICBl
+dmlkZW5jZSBsb2cgbGluZXMKICAgIFJFQURNRSAgICAgICAgICAgIG5vdGVzCgpFbnZpcm9ubWVu
+dDogUUVNVS9LVk0geDg2XzY0LCBEZWJpYW4gMTEgZ3Vlc3QsIGtlcm5lbCA3LjMuMC1yYzUgKEtB
+U0FOCmdlbmVyaWMsIFNMVUJfREVCVUcpLiBGcmFtaW5nOiByb2J1c3RuZXNzL29ic2VydmFiaWxp
+dHkgaXNzdWUgb24KYXR0YWNrZXItY29udHJvbGxlZCBpbWFnZXM7IHdlIGFyZSBub3QgY2xhaW1p
+bmcgYSBwcml2aWxlZ2UtYm91bmRhcnkKY3Jvc3NpbmcuCgpUaGFua3MsCnlhbmdndWlrdW4gPHlh
+bmdndWlrdW4xOUBxcS5jb20+Cg==
 
-But then I've read more of the changelogs and AFAIU getting rid of the RCU
-grace period waiting in the unmount path is actually your point to speedup
-container teardown. I still think in-progress RCU lookups on a sb being
-unmounted will be a source of bugs in the future (dependencies during fs
-unmount are complex as is and adding RCU lookups to the game adds even more
-complexity). Anyway, if we're going to do that then eventually I think
-we'll need to add something like lockdep context tracking to verify each
-structure accessed from RCU lookup is properly RCU-freed but that's for
-later.
+--===============1862422436374644438==
+Content-Type: text/x-python
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="craft_f5.py"
 
-> Bringing put_super() into the argument was maybe not my best idea. We
-> also need to backport this stuff.
+IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJHZW5lcmF0ZSB0aGUgbWluaW1hbCBGNSByZXBybyBp
+bWFnZSBmcm9tIHNjcmF0Y2gg4oCUIGUyZnNwcm9ncyBvbmx5LgoKQ3JlYXRlcyBhIDFNQiBleHQ0
+IChubyBqb3VybmFsLCBubyBtZXRhZGF0YV9jc3VtKSB3aXRoIHRocmVlIDhLQiBmaWxlcywKdGhl
+biBhcHBsaWVzIHRoZSBmb3VyIGNvb3JkaW5hdGVkIGVkaXRzIHRoYXQgdHVybiBhIHBsYWluIHJ3
+IG1vdW50IGludG8gYQpzaWxlbnQgdHJ1bmNhdGlvbiBvZiB0aGUgTElWRSAvZmlsZTE6CgogIDEu
+IHNfbGFzdF9vcnBoYW4gKHNiKzB4RTgpIDo9IC9maWxlMSdzIGlub2RlIG51bWJlcgogIDIuIC9m
+aWxlMSBpX2R0aW1lIDo9IDAgICAgICAgICAgICAgICAgICAgICAgKHBhc3NlcyByZWNlbnRseS1k
+ZWxldGVkIGdhdGUpCiAgMy4gc19zdGF0ZSAmPSB+RVhUNF9WQUxJRF9GUyAgICAgICAgICAgICAg
+ICAodW5jbGVhbiDigJQgZW5nYWdlcyByZWNvdmVyeSkKICA0LiAvZmlsZTEgaV9zaXplIDo9IDQw
+OTYgICAgICAgICAgICAgICAgICAgIChyZWFsIGRhdGEgODE5MiDigJQgcGF5bG9hZCkKClVzYWdl
+OiBweXRob24zIGNyYWZ0X2Y1LnB5IFtvdXQuaW1nXQoiIiIKaW1wb3J0IHJlCmltcG9ydCBzdHJ1
+Y3QKaW1wb3J0IHN1YnByb2Nlc3MKaW1wb3J0IHN5cwoKSU1HID0gc3lzLmFyZ3ZbMV0gaWYgbGVu
+KHN5cy5hcmd2KSA+IDEgZWxzZSAiZjUuaW1nIgpCUyA9IDQwOTYKCgpkZWYgcnVuKGNtZCwgb2s9
+VHJ1ZSk6CiAgICByID0gc3VicHJvY2Vzcy5ydW4oY21kLCBjYXB0dXJlX291dHB1dD1UcnVlLCB0
+ZXh0PVRydWUpCiAgICBpZiBvayBhbmQgci5yZXR1cm5jb2RlICE9IDA6CiAgICAgICAgcmFpc2Ug
+UnVudGltZUVycm9yKGYie2NtZH06IHtyLnN0ZGVycn0iKQogICAgcmV0dXJuIHIuc3Rkb3V0CgoK
+cnVuKFsiZGQiLCAiaWY9L2Rldi96ZXJvIiwgZiJvZj17SU1HfSIsICJicz0xTSIsICJjb3VudD0x
+Il0pCnJ1bihbIm1rZTJmcyIsICItcSIsICItRiIsICItdCIsICJleHQ0IiwgIi1iIiwgc3RyKEJT
+KSwgIi1JIiwgIjI1NiIsICItTiIsICI0OCIsCiAgICAgIi1PIiwgIl5oYXNfam91cm5hbCxebWV0
+YWRhdGFfY3N1bSIsIElNR10pCmZvciBuYW1lIGluICgiZmlsZTAiLCAiZmlsZTEiLCAiZmlsZTIi
+KToKICAgIG9wZW4oZiIvdG1wL2Y1X3tuYW1lfSIsICJ3YiIpLndyaXRlKGIieCIgKiA4MTkyKQog
+ICAgcnVuKFsiZGVidWdmcyIsICItdyIsICItUiIsIGYid3JpdGUgL3RtcC9mNV97bmFtZX0gL3tu
+YW1lfSIsIElNR10pCgpnZW8gPSBydW4oWyJkdW1wZTJmcyIsIElNR10pCml0YWIgPSBpbnQocmUu
+c2VhcmNoKHIiR3JvdXAgMDouKj9Jbm9kZSB0YWJsZSBhdCAoXGQrKSIsIGdlbywgcmUuUykuZ3Jv
+dXAoMSkpCnZpY3RpbSA9IGludChyZS5zZWFyY2gociJJbm9kZTpccysoXGQrKSIsCiAgICAgICAg
+ICAgICBydW4oWyJkZWJ1Z2ZzIiwgIi1SIiwgInN0YXQgL2ZpbGUxIiwgSU1HXSkpLmdyb3VwKDEp
+KQoKYnVmID0gYnl0ZWFycmF5KG9wZW4oSU1HLCAicmIiKS5yZWFkKCkpCnZvID0gaXRhYiAqIEJT
+ICsgKHZpY3RpbSAtIDEpICogMjU2CnN0cnVjdC5wYWNrX2ludG8oIjxJIiwgYnVmLCB2byArIDIw
+LCAwKSAgICAgICAgICAgICAgIyBpX2R0aW1lID0gMApzdHJ1Y3QucGFja19pbnRvKCI8SSIsIGJ1
+Ziwgdm8gKyA0LCA0MDk2KSAgICAgICAgICAgICMgaV9zaXplIDgxOTIgLT4gNDA5NgpzdHJ1Y3Qu
+cGFja19pbnRvKCI8SSIsIGJ1ZiwgMTAyNCArIDB4RTgsIHZpY3RpbSkgICAgICMgc19sYXN0X29y
+cGhhbgpzdCA9IHN0cnVjdC51bnBhY2tfZnJvbSgiPEgiLCBidWYsIDEwMjQgKyA1OClbMF0Kc3Ry
+dWN0LnBhY2tfaW50bygiPEgiLCBidWYsIDEwMjQgKyA1OCwgc3QgJiB+MHgxKSAgICAjIH5FWFQ0
+X1ZBTElEX0ZTCm9wZW4oSU1HLCAid2IiKS53cml0ZShieXRlcyhidWYpKQpwcmludChmImNyYWZ0
+ZWQge0lNR306IHNfbGFzdF9vcnBoYW4gLT4gbGl2ZSAvZmlsZTEgKGlubyB7dmljdGltfSksICIK
+ICAgICAgZiJpX3NpemUgNDA5NiAoZGF0YSA4MTkyKSwgZHRpbWUgMCwgc19zdGF0ZSB+VkFMSURf
+RlMiKQo=
 
-OK, let's go with these fixes for now.
+--===============1862422436374644438==
+Content-Type: text/x-shellscript
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="run_f5.sh"
 
-								Honza
+IyEvYmluL2Jhc2gKIyBGNSByZXBybzogZ2VuZXJhdGUgaW1hZ2UsIG1vdW50IHJ3IG9uY2UsIG9i
+c2VydmUgdGhlIHNpbGVudCB0cnVuY2F0aW9uLgojIFJ1biBhcyByb290IG9uIGFueSBMaW51eCB3
+aXRoIGUyZnNwcm9ncyArIHB5dGhvbjMuIE5PVCBmb3IgcHJvZHVjdGlvbgojIG1hY2hpbmVzIChp
+dCBtb3VudHMgYSBkZWxpYmVyYXRlbHkgY29ycnVwdGVkIGZpbGVzeXN0ZW0pLgpzZXQgLWUKY2Qg
+IiQoZGlybmFtZSAiJDAiKSIKcHl0aG9uMyBjcmFmdF9mNS5weSBmNS5pbWcKCmxvc2V0dXAgLWQg
+L2Rldi9sb29wOSAyPi9kZXYvbnVsbCB8fCB0cnVlCm1rZGlyIC1wIC9tbnQvdApsb3NldHVwIC9k
+ZXYvbG9vcDkgZjUuaW1nCmRtZXNnIC1DIDI+L2Rldi9udWxsIHx8IHRydWUKbW91bnQgLXQgZXh0
+NCAtbyBydyAvZGV2L2xvb3A5IC9tbnQvdAoKZWNobyAiZmlsZTEgYWZ0ZXIgbW91bnQ6IgpzdGF0
+IC1jICIgIHNpemU9JXMgbmxpbms9JWgiIC9tbnQvdC9maWxlMQplY2hvICIoZXhwZWN0ZWQ6IHNp
+emU9NDA5NiBubGluaz0xOyBjcmFmdGVkIGRhdGEgd2FzIDgxOTIg4oCUIGhhbGYgZGVzdHJveWVk
+KSIKCnVtb3VudCAvbW50L3QKbG9zZXR1cCAtZCAvZGV2L2xvb3A5IHx8IHRydWUKCmVjaG8gIi0t
+LSBrZXJuZWwgbG9nIGZvciB0aGlzIG1vdW50IC0tLSIKZG1lc2cgfCBncmVwIC1FICJ0cnVuY2F0
+ZSBjbGVhbmVkfEVYVDQtZnMiIHwgdGFpbCAtNAplY2hvCmRtZXNnIHwgZ3JlcCAtcSAidHJ1bmNh
+dGUgY2xlYW5lZCIgXAoJJiYgZWNobyAiUkVQUk9EVUNFRDogbGl2ZSBmaWxlIHRydW5jYXRlZCBh
+dCBtb3VudCAoc2lsZW50IHJlY292ZXJ5IGxpbmUpIiBcCgl8fCBlY2hvICJub3QgcmVwcm9kdWNl
+ZCB0aGlzIHJ1biIK
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+--===============1862422436374644438==
+Content-Type: application/x-xz
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="f5.img.xz"
+
+/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM7///AkJdAABv/f//o7d/aqdSmpJgJdwMnMxRI+w1ENFk
+DWEtVuQJYUR8SnH+K06obTrKo3NolqAk5A6TpeQexoKOpw/mToJXk+XHgxDXFB8kQ4bCDAeMZI1a
+63FhMs6Gpqnr+MrtQggifU7vxRXz5DOlnbWtBF0/GC6fZ5FTkWyg5JtzffYnuWiyal0phYrvWSj8
+dLygfMNEy2nGgQLKuOL3UueemC1uSh3j7wcTE3uQ791iisUkEUNSaGHW5cuRVOk1qzJZsMLdRVTc
+bWUUK57QwSlOPu1STjAmekhkSWN7XCP2W2mDUrUa47C8I356AsIWnJ0lXuCyf+UqFD73vrFx/UNr
+fSR64IXCbrjcJrdJvexOJPOfvyZ8A9PQqRPYIGLmnfJRMoX02z1c5Oh+1oCCwLr1JlGx6HsQSAU4
+biIZ6SwTISAFnPJ/Y3yAqPkI3cyzphX5McD4PVRhZQm5FbsAY3y+BsdFCEtPcuj4+a8YffGajm7x
+F+H9mlC2xzj3/mXGiqPjQLUvSF9w25GWzT4q/zDJpSm5q5P3txrw/sKiFOsoBoq7ch5tjwfCxmdu
+dOP+/qy40tntk93ThShWRCIEDYLAccZ3XBEkGN/3NQE3YPZiVoKkP+3OsScYXFmG6WZSWL7pdqxZ
+5OVbBQj5x9qt/PtSK3TNHlsgQvndUz34KWQJO4DLKmzftTvwxL0uX6oPPktmQpATDv8Qk/hxeFn4
+C83/lShGD6n8fN77mjAuVsCPhfODgcBlxCVT+PWRNjEFpZcJErXLAAAALUIM/1oZ8pAAAd4EgIBA
+APzt9OKxxGf7AgAAAAAEWVo=
+
+--===============1862422436374644438==
+Content-Type: text/plain
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="f5_dmesg.log"
+
+IyBGNSBldmlkZW5jZTogdGhyZWUgZnJlc2gtaW1hZ2UgaXRlcmF0aW9ucywgZ3Vlc3Qga2VybmVs
+IDcuMy4wLXJjNQojIChmcm9tIGY1X3ZlcmlmeV8zeC5zaDsgZWFjaCBpdGVyYXRpb24gPSBuZXds
+eSBjcmFmdGVkIGltYWdlLCBvbmUgcncgbW91bnQpCiMKIyBpdGVyYXRpb24gMQpzaXplPTQwOTYg
+bmxpbms9MSAgICAgICAgICAgICAgICAgICAgICAgPC0gL2ZpbGUxIGFmdGVyIG1vdW50ICh3YXMg
+ODE5MikKWzEyNjYxLjkxNDU3OV0gRVhUNC1mcyAobG9vcDkpOiB3YXJuaW5nOiBtb3VudGluZyB1
+bmNoZWNrZWQgZnMsIHJ1bm5pbmcgZTJmc2NrIGlzIHJlY29tbWVuZGVkClsxMjY2MS45MTcxNjRd
+IEVYVDQtZnMgKGxvb3A5KTogMSB0cnVuY2F0ZSBjbGVhbmVkIHVwClsxMjY2MS45MTc0MzRdIEVY
+VDQtZnMgKGxvb3A5KTogbW91bnRlZCBmaWxlc3lzdGVtIGFkYWJhYzM5LTVkMzItNDNkNS04Mzky
+LTdmY2JiMGNhOWY3NSByL3cgd2l0aG91dCBqb3VybmFsLiBRdW90YSBtb2RlOiBub25lLgojCiMg
+aXRlcmF0aW9uIDIKc2l6ZT00MDk2IG5saW5rPTEKWzEyNjYyLjYxNDI5NV0gRVhUNC1mcyAobG9v
+cDkpOiAxIHRydW5jYXRlIGNsZWFuZWQgdXAKWzEyNjYyLjYxNDY2MV0gRVhUNC1mcyAobG9vcDkp
+OiBtb3VudGVkIGZpbGVzeXN0ZW0gNmRiNjFjMGEtNjE3MS00ZjM5LTk2OWItMzkwZWQwYTlmMmQy
+IHIvdyB3aXRob3V0IGpvdXJuYWwuIFF1b3RhIG1vZGU6IG5vbmUuCiMKIyBpdGVyYXRpb24gMwpz
+aXplPTQwOTYgbmxpbms9MQpbMTI2NjMuNjUwOTU4XSBFWFQ0LWZzIChsb29wOSk6IDEgdHJ1bmNh
+dGUgY2xlYW5lZCB1cApbMTI2NjMuNjUxMzc2XSBFWFQ0LWZzIChsb29wOSk6IG1vdW50ZWQgZmls
+ZXN5c3RlbSA4NDEyNTFkOS0zNjY1LTQzYzItOTE4Ny0wZDlkODMyZjZiOGYgci93IHdpdGhvdXQg
+am91cm5hbC4gUXVvdGEgbW9kZTogbm9uZS4KIwojIE5PVEU6IHRoZSBPTkxZIGFub21hbHktaW5k
+aWNhdGluZyBsaW5lIGlzIHRoZSByb3V0aW5lIHJlY292ZXJ5IG1lc3NhZ2UKIyAiMSB0cnVuY2F0
+ZSBjbGVhbmVkIHVwIiDigJQgaWRlbnRpY2FsIHRvIGxlZ2l0aW1hdGUgY3Jhc2ggcmVjb3Zlcnkg
+b3V0cHV0Lgo=
+
+--===============1862422436374644438==
+Content-Type: text/plain
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="README"
+
+IyBGNSBtaW5pbWFsIHJlcHJvZHVjZXIg4oCUIGV4dDQgbW91bnQtdGltZSBvcnBoYW4gcmVjb3Zl
+cnkgc2lsZW50bHkgdHJ1bmNhdGVzIGEgTElWRSBmaWxlCgpUYXJnZXQ6IExpbnV4IDcuMy4wLXJj
+NSB4ODZfNjQgKCtLQVNBTjsgdGhlIG9ycGhhbi1yZWNvdmVyeSBsb2dpYyBpcwpsb25nc3RhbmRp
+bmcgbWFpbmxpbmUpLiBEZXRlcm1pbmlzdGljIDMvMy4KCiMjIENvbnRlbnRzCgp8IGZpbGUgfCBy
+b2xlIHwKfC0tLXwtLS18CnwgYGNyYWZ0X2Y1LnB5YCB8IHNlbGYtY29udGFpbmVkIGdlbmVyYXRv
+ciAoZGQgKyBta2UyZnMgKyBkZWJ1Z2ZzICsgNCBlZGl0czsgZTJmc3Byb2dzIG9ubHkpIHwKfCBg
+ZjUuaW1nLnh6YCB8IHByZS1iYWtlZCBjcmFmdGVkIGltYWdlICg2NDQgYnl0ZXMgY29tcHJlc3Nl
+ZCkgfAp8IGBmNV9kbWVzZy5sb2dgIHwgZXZpZGVuY2U6IHRoZSBPTkxZIGtlcm5lbCBvdXRwdXQg
+aXMgdGhlIHJvdXRpbmUgbGluZSB8CnwgKGVtYWlsLnR4dCwgU0VORF9DSEVDS0xJU1QubWQgbGl2
+ZSBvbmUgZGlyZWN0b3J5IHVwKSB8IHwKCiMjIFJ1bgoKYGBgYmFzaApweXRob24zIGNyYWZ0X2Y1
+LnB5IGY1LmltZwpsb3NldHVwIC9kZXYvbG9vcDkgZjUuaW1nICYmIG1rZGlyIC1wIC9tbnQvdApt
+b3VudCAtdCBleHQ0IC1vIHJ3IC9kZXYvbG9vcDkgL21udC90CnN0YXQgLWMgInNpemU9JXMgbmxp
+bms9JWgiIC9tbnQvdC9maWxlMSAgICAgIyAtPiBzaXplPTQwOTYgbmxpbms9MSAod2FzIDgxOTIp
+CmRtZXNnIHwgdGFpbCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIyAtPiAiMSB0cnVu
+Y2F0ZSBjbGVhbmVkIHVwIiBvbmx5CmBgYAoKT25lIG1vdW50IHBlciBpbWFnZSBjb3B5OiByZWFs
+IHJlY292ZXJ5IChhbmQgdGhpcyB0cmlnZ2VyKSBjbGVhcnMKc19sYXN0X29ycGhhbiwgc28gcmUt
+bW91bnRpbmcgYSBjb25zdW1lZCBpbWFnZSBpcyBjbGVhbiDigJQgc2FtZSBhcyBnZW51aW5lCmNy
+YXNoIHJlY292ZXJ5IGJlaGF2aW9yLgoKIyMgVGhlIGZvdXIgZWRpdHMgKGFsbCBpbmRpdmlkdWFs
+bHkgdmFsaWQsIG11dHVhbGx5IGx5aW5nKQoKMS4gYHNfbGFzdF9vcnBoYW5gIChzYisweEU4KSA6
+PSBsaXZlIC9maWxlMSBpbm9kZSAoMTMpCjIuIC9maWxlMSBgaV9kdGltZWAgOj0gMAozLiBgc19z
+dGF0ZWAgJj0gfkVYVDRfVkFMSURfRlMKNC4gL2ZpbGUxIGBpX3NpemVgIDo9IDQwOTYgKHJlYWwg
+ZGF0YSA4MTkyKQoKIyMgV2h5IGFjY2VwdGVkICg3LjMtcmM1LCBmcy9leHQ0L2lhbGxvYy5jIGV4
+dDRfb3JwaGFuX2dldCkKCi0gY29tbWVudDogdHJ1bmNhdGUtaW4tZmxpZ2h0IG9ycGhhbnMgYXJl
+IGxlZ2FsIHdpdGggbmxpbms+MCwgc28KICBgaV9ubGluaz09MGAgaXMgZGVsaWJlcmF0ZWx5IE5P
+VCBjaGVja2VkOwotIHRoZSBvbmx5IG5saW5rIGd1YXJkIGlzIGAoaV9ubGluayAmJiAhZXh0NF9j
+YW5fdHJ1bmNhdGUoKSlgIOKAlCBhIG5vcm1hbAogIHJlZ3VsYXIgZmlsZSBwYXNzZXM7Ci0gImJp
+dG1hcCBiaXQgPSAxMDAlIHZhbGlkIG9ycGhhbiIgYXNzdW1wdGlvbiBob2xkcyBvbmx5IGZvciB1
+bmNyYWZ0ZWQgaW1hZ2VzLgoKRWZmZWN0OiBrZXJuZWwtaW5pdGlhdGVkLCBjcm9zcy1maWxlLCB6
+ZXJvLXN5c2NhbGwgZGF0YSBkZXN0cnVjdGlvbjsgdGhlCmxvbmUgbG9nIGxpbmUgaXMgaW5kaXN0
+aW5ndWlzaGFibGUgZnJvbSBsZWdpdGltYXRlIHJlY292ZXJ5LiBTdWdnZXN0ZWQKZGlyZWN0aW9u
+cyBpbiB0aGUgZW1haWw6IGxvdWQgd2FybmluZyBvbiB0cnVuY2F0aW5nIGxpbmtlZCBpbm9kZXMs
+IG9yIGEKcGVyLW1vdW50IHN1bW1hcnkgb2YgbGlua2VkLWlub2RlIHRydW5jYXRpb25zLgo=
+
+--===============1862422436374644438==--
+
