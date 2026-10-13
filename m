@@ -1,230 +1,195 @@
-Received: from mx0b-00364e01.pphosted.com (mx0b-00364e01.pphosted.com [148.163.139.74])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C101E4DAFB2
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 17:32:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.139.74
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B34F48C8CE;
+	Tue, 13 Oct 2026 17:35:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791912727; cv=none; b=mzWpwn/WrhXITZ/mFj+uK54OtvNOtsi4xc0dnbSZsYfrPcmvhj089aSPiC03bMF2xFPq6ZMSrWZBJJ/wiTIQZBREz1WVWp7+mVE3EAj4vBLKohjoodsjmhKiJdoamPcCDpgYIu1gwbOGQ4fdzi+pIHQBaEZU6KJsFYdnuEMC6qM=
+	t=1791912925; cv=none; b=J2raOfNd1A2s/o62OA7XeZKqllIRqPFDyjROu9nVDfTQIbzQMjShlJPjIAfe3F+aRLva8mgC4lCeuzc8wcajVER3fB6Xj3R5ZLEZ5snlGnYpkX7OlYz4W2k5yP0u/2B2yEvNQo7ptczhnD+32SjXQx4tg0AljujHuEN7AXfaSAQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791912727; c=relaxed/simple;
-	bh=0WkhDjuOG6g0G+Pa/vJ8JsjNy04kahj1JZSpUEVr6zg=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=oUSgvzama/7wIG+3h2F5boy3UQK59ibQY0E7ipG0EeNBPz/dN16Wer5+e1sQT/cSqUaPzYXQh535Z77qSL+R7ksP28QT7aomJ1JAgZ+e4t+dW6+ZC4umwhC2Yud6Kevln0jE0xoY0KYDYfh41bba1YHQg2ulfAKJcLj8fvCQP1E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu; spf=pass smtp.mailfrom=columbia.edu; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=gTt1GC4k; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=2IcP8vuI; arc=none smtp.client-ip=148.163.139.74
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
+	s=arc-20240116; t=1791912925; c=relaxed/simple;
+	bh=7mHVByUea5c34s1NdGTzuGVOx5szBHaF6Eyje3OS6lA=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=mqeDrih3u6C+5jrJOYOYIc64D8BBYoWrrkSBFfNR/g1ulzlVgbP6Q1+4YuZbjvEteSw/5gYRE0MGDspaHR2B2LlaCi7EwTW5zfb+t0fzczlxlH+2f1BVF5agY/8f+FhUfnYe6j5Q98rKPnse4/lgLwFUSjvxskgyh8pPVE1dsIA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=SycErfN/; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=WJhL9YZk; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=SycErfN/; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=WJhL9YZk; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="gTt1GC4k";
-	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="2IcP8vuI"
-Received: from pps.filterd (m0167077.ppops.net [127.0.0.1])
-	by mx0b-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 69DGY5Th3889805
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 13:32:03 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
-	cc:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pps01; bh=bBjc
-	kCrRQo6e16uasOscqOcaE/otX5YkEqtpLgsFwik=; b=gTt1GC4ku8itkjVgDFxt
-	Y0DMbK9m62npOG7Ur2EDUKTmU7D/Pnd75QmUmCCN2tHWtFKa9Q+jI/9USkxkFopY
-	oxstTLN4jYpDa6YbPmFI30NLrEt0L1Ad+u/KXaimoZXZUEm6HifNflnnhvM/B1Mx
-	FiZFBEK4xy91SwKBtZSVGOa17kXtSY4JUXT0DPf4G9a8EnOHKd1n6rVNmo7C3RVP
-	iIUzZdgahVAmfcPvzZGt+zHv2ejgM7GdjvrfaliYmP5ZydrR12Kuowcspcuu5u7J
-	9llo3VdfIDIEi8zAJNCF1J4zKbJSdSxqL5ZvVel3IRDgWOyowBnU33Xfm7Exh5WP
-	+g==
-Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com [209.85.222.197])
-	by mx0b-00364e01.pphosted.com (PPS) with ESMTPS id 4h9q1c1bwx-1
-	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 13:32:03 -0400 (EDT)
-Received: by mail-qk1-f197.google.com with SMTP id af79cd13be357-93c5ab5c136so556505685a.3
-        for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 10:32:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=columbia.edu; s=lionmail; t=1791912723; x=1792517523; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=bBjckCrRQo6e16uasOscqOcaE/otX5YkEqtpLgsFwik=;
-        b=2IcP8vuIXqSI3vQbFdfCejUB20ZbkB6xpquxlm1sTE/oeISk4YUCwiCv3Mpj3I0VSp
-         dVCKdAbuDdj0+gjHWugWijK6oxTJX5pFdvIOgAA+9GmZLBAMqBgqoGVQTxh8qrp43gPM
-         urJaLexLXgnjHvxYdFNu+8/+1pUpS/fkWsanb0iRviS24sp08ndrAV24Rk+T5gRyP8bO
-         dk3w5AbQEqIpa3yh7TB8az4uetuSkWsuzveLs4VKhZ0EwBh9mzr4ej7psqOWARdUE+Kw
-         OZziEJyxEaZR605wQm6Qo50Egd1KHcl42tqPCL0Yr9ytS/8IsNOTPELwHJx0vMCIlsNI
-         Jxjg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791912723; x=1792517523;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=bBjckCrRQo6e16uasOscqOcaE/otX5YkEqtpLgsFwik=;
-        b=jTKbaS1fAJM/I3XCFBqE2ohcj04Ja+63Rgw4bL2ZJbAyk+4nx8ELRGDSKzq3aMHLOy
-         Q4/qB849xpEjXkwBIpLve8JgK61X7hN8xu0tZfcL0/fDzimMVGAEvOXwayG6RtxB0sCD
-         h+hXIanM4gmk76XFI/9zMcm4a6TyJ1Jc3zqZihATsUoeTAQT3/cIYFaqCzqRTqP7uujn
-         Nxgnxokz9vOOUaL8l24koQTk1pd5gcn4RaDWGkQHCZ/3CgVk8pw2gx8t+l45yzl327mv
-         1ehprz0G0UTMaNN64NRRtQF1DeWuFBik9GNW/yzD56JHlGmJu6awFKMYQLO1s77S+nJd
-         K3yg==
-X-Forwarded-Encrypted: i=1; AKwUvBwIuUxEXiyihbhRnvKCtHbuXP+B5nuABlsnHu+JjqKek+2RyMoARj0jldQ5aCMrINo+xGFPhhwcq7js@vger.kernel.org
-X-Gm-Message-State: AFq9FYLBxoh6zCq1SH9j05dIIW9AqNBjAYOwSWHSX3YGSelrlAmZd5Fu
-	zWVHZxzGsSoctzj+0J7xnm8CCHs0i6462bO2VJ+oqNU4KZiGp7lxr2wrPXCTgaUw89zS4Pn6q9H
-	TkZ0lXLoVa42Fc1l80uoOZ+3tPucFn5iKT5Cpu3P2Qt3FNolMLC7KRFdubSE=
-X-Gm-Gg: AYBFou2lGnKEX0zIjmWUIV400Cr2twHLFRd9XcV4a8IIAmi/bwoYmO/sG6dJxD170o2
-	EyuH9bJymNahdarXLd7eig2WZeEQ9xu2h+21b5eqHIi5QpsEyqsXk6ztWMMF89wdHZ1RQfVIky9
-	muUq64t1gA9y/ZQYxgs4Jm4J5zvMNb/OPlyhxjB6WE6DkynJ0draSeHpWX1qqvSBAMHR3LbBkV3
-	W1CLqFlM5gwMWvHjtmPSpVJUWfl3rss0pvrXaiz+18PKjE1FSozSEiboeOx30XlHJgTR54P/KFp
-	8lDQcW+V749sSEZybtOqqplmXxt3dfv0ilHoxUPLvLoz3t6n0zVWGDzSGlblofUoxe8O1WbXkin
-	SjZ6YMYlbc+oR5Sbym1sV+JVszJB15oKjQlM7HHK3QusYzg==
-X-Received: by 2002:a05:620a:a0d5:20b0:93e:c12c:f135 with SMTP id af79cd13be357-93ec12d07admr1412874485a.80.1791912722879;
-        Tue, 13 Oct 2026 10:32:02 -0700 (PDT)
-X-Received: by 2002:a05:620a:a0d5:20b0:93e:c12c:f135 with SMTP id af79cd13be357-93ec12d07admr1412868585a.80.1791912722195;
-        Tue, 13 Oct 2026 10:32:02 -0700 (PDT)
-Received: from [10.207.9.0] (nat-128-59-177-43.net.columbia.edu. [128.59.177.43])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93ef505463esm285156785a.32.2026.10.13.10.32.00
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 13 Oct 2026 10:32:01 -0700 (PDT)
-Message-ID: <ef6d0df9-c71a-4b42-bde2-efc4477306ed@columbia.edu>
-Date: Tue, 13 Oct 2026 13:32:00 -0400
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="SycErfN/";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="WJhL9YZk";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="SycErfN/";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="WJhL9YZk"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 0B09921E04;
+	Tue, 13 Oct 2026 17:35:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1791912921; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KbklspijRvdlfU7/CwOImEurfZ5evV9eiAhvXxXmFEI=;
+	b=SycErfN/kedLAEUrpRmu0MQs2Ez1OEGEx8n7xMmjBqmKiOk8fLWyJykziHxIFCFPyeUXos
+	v5IOMXc9Ewn9nkXJBptRD/OYd5/6gdyXen/slnD/ExRLhSHJjjflbXCym6PUSltcLGi/a+
+	K0Fot23xOvp9ose/nzomPXvnAkXpSTk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1791912921;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KbklspijRvdlfU7/CwOImEurfZ5evV9eiAhvXxXmFEI=;
+	b=WJhL9YZkZp+aP6AUjVEWnoI8uJKmcpSB5i6053VoEt2tgDOPq6vE5GhueJzG189k/RXpTn
+	hoxiAtCbRDYEh3Cw==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b="SycErfN/";
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=WJhL9YZk
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1791912921; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KbklspijRvdlfU7/CwOImEurfZ5evV9eiAhvXxXmFEI=;
+	b=SycErfN/kedLAEUrpRmu0MQs2Ez1OEGEx8n7xMmjBqmKiOk8fLWyJykziHxIFCFPyeUXos
+	v5IOMXc9Ewn9nkXJBptRD/OYd5/6gdyXen/slnD/ExRLhSHJjjflbXCym6PUSltcLGi/a+
+	K0Fot23xOvp9ose/nzomPXvnAkXpSTk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1791912921;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=KbklspijRvdlfU7/CwOImEurfZ5evV9eiAhvXxXmFEI=;
+	b=WJhL9YZkZp+aP6AUjVEWnoI8uJKmcpSB5i6053VoEt2tgDOPq6vE5GhueJzG189k/RXpTn
+	hoxiAtCbRDYEh3Cw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 32ACA134B8;
+	Tue, 13 Oct 2026 17:35:20 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id 7DKDLNdrzmqwDAAAD6G6ig
+	(envelope-from <krisman@suse.de>); Tue, 13 Oct 2026 17:35:20 +0000
+From: Gabriel Krisman Bertazi <krisman@suse.de>
+To: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+ linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org,
+ v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org,
+ ntfs3@lists.linux.dev, "Christian Brauner (Amutable)"
+ <brauner@kernel.org>, stable@vger.kernel.org
+Subject: Re: [PATCH 6/8] unicode: free the map after a grace period
+In-Reply-To: <20261009-work-fixes-rcu-v1-6-7446d2d335e6@kernel.org>
+Organization: SUSE
+References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
+ <20261009-work-fixes-rcu-v1-6-7446d2d335e6@kernel.org>
+Date: Tue, 13 Oct 2026 13:35:18 -0400
+Message-ID: <87qzhtbj1l.fsf@mailhost.krisman.be>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: complete dropbehind writeback in task context
-To: Jan Kara <jack@suse.cz>
-Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        Baokun Li <libaokun@linux.alibaba.com>,
-        Ojaswin Mujoo
- <ojaswin@linux.ibm.com>,
-        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-        Zhang Yi <yi.zhang@huawei.com>,
-        Taotao Chen <chentaotao@didiglobal.com>,
-        Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@lst.de>,
-        Jens Axboe <axboe@kernel.dk>,
-        "Matthew Wilcox (Oracle)"
- <willy@infradead.org>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20261012-ext4-dontcache-complete-in-task-v1-1-6ac801557041@columbia.edu>
- <cwlno6baljswazb7izeue7yh4qjwbs6ktfj3jgnhdh5zyfp72c@xpar52ae3uej>
-Content-Language: en-US
-From: Tal Zussman <tz2294@columbia.edu>
-In-Reply-To: <cwlno6baljswazb7izeue7yh4qjwbs6ktfj3jgnhdh5zyfp72c@xpar52ae3uej>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-Authority-Analysis: v=2.4 cv=R8GWitRX c=1 sm=1 tr=0 ts=6ace6b13 cx=c_pps
- a=50t2pK5VMbmlHzFWWp8p/g==:117 a=lXeS3XHMKYhu4Q0xF1pUDQ==:17
- a=IkcTkHD0fZMA:10 a=660iZSQnnn4A:10 a=x7bEGLp0ZPQA:10 a=A0y_DWxS2BwA:10
- a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=QOCMdifcju39GKoXhKua:22
- a=iox4zFpeAAAA:8 a=Z6J5lG1_I9FvLMjSkYoA:9 a=QEXdDO2ut3YA:10
- a=IoWCM6iH3mJn3m4BftBB:22 a=WzC6qhA0u3u7Ye7llzcV:22
-X-Proofpoint-Spam-Info: AW1haW4tMjYxMDEzMDA2OSBTYWx0ZWRfX3QCw8UKlbn4V
- RzSHMS9/cTk/kZhDZw/ao7cpgXOgpSspSdo2dHtGNMRB+YplxjEEAgYESgQp2GyRLYcNgFGt3Nb
- VSPa8bdlDcnhIPvxNe03arpGrLvtsHECLsi1sUMc3bB0dhY/P7I+
-X-Proofpoint-GUID: j5bJNLfcav5cZvGRR7Je6xh8Sr73svj9
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDEzMDA2OSBTYWx0ZWRfX+uE/HMtzWdz2
- PgponNU/Iv03FHdtot1FKLKr2LAIBT6CV6x1rGOwEjnPSg5q7QJLGiHW8sK+ZEAy7lpGvWgCo0l
- rj24bpnXbVSdyrQUJSSh/hjw/9pz4UOLVYC5R7En05CJ8F4QydbdxAN98JWBKx3IvOje6fdvc5E
- qNe7GwiTFDx/wos3cX3n9VtLOyG+oc1bOJ7SydEyOsno+K/kAV+4IURtWCofmdaIueaSEcnqZIv
- aw5dCr2pIyDNBi4TFVk/25T4yXk29QVAOUa3u1KIroPWvG4BP4K6r2OWJRBBFnZBuBkuKlkAAsB
- QxmfyJVJ0Ka46V3GM4dBr5vHk3G9x60+UOg0N7ZqbSEXIVP6XsgKGgGXvfv0SOldbYVaWCNAYN4
- PiJkgRnIvlX8PhBF32iEsc4lOWuAGGWBy84+tsEDdodTHGuBlDh3ox3zAJyEYFMNmlGZwJPSwut
- CO/6Ny9ZMkGsLV76BRw==
-X-Proofpoint-ORIG-GUID: j5bJNLfcav5cZvGRR7Je6xh8Sr73svj9
-X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11934
- signatures=596817
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- phishscore=0 adultscore=0 clxscore=1015 malwarescore=0 impostorscore=10
- bulkscore=10 lowpriorityscore=10 priorityscore=1501 spamscore=0
- suspectscore=0 classifier=typeunknown authscore=0 authtc= authcc=
- route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2610080000
- definitions=main-2610130069
+Content-Type: text/plain
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 0B09921E04
+X-Rspamd-Action: no action
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	HAS_ORG_HEADER(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_SEVEN(0.00)[11];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_COUNT_TWO(0.00)[2];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,suse.de:dkim,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.de:+]
+X-Spam-Flag: NO
+X-Spam-Score: -4.51
 
-On 10/13/26 8:47 AM, Jan Kara wrote:
-> On Mon 12-10-26 14:04:37, Tal Zussman wrote:
->> ext4_end_bio() ends writeback directly from bio completion, which
->> usually runs in interrupt context, unless the io_end has unwritten
->> extents to convert and is completed from ext4's workqueue.
->> folio_end_dropbehind() only invalidates the folios of an RWF_DONTCACHE
->> write when it runs in task context, and silently skips them otherwise.
->> So on ext4, dontcache writes that overwrite blocks that are already
->> written, or that allocate blocks without unwritten extents, leave their
->> folios in the page cache. Dropping them was best effort so far, as there
->> was no way to get task context from bio completion.
->> 
->> Use the task-context bio completion infrastructure instead: set
->> BIO_COMPLETE_IN_TASK on bios that carry dropbehind folios in
->> io_submit_add_bh(), so that bio_endio() runs their completion from a
->> worker. ext4's iomap buffered I/O path already gets this from iomap, so
->> only the buffer_head based writeback is affected. Skip the flag when the
->> io_end already has unwritten extents, as ext4 then defers the completion
->> itself. A later extent can still make the io_end unwritten after an
->> earlier bio was built. That bio's completion is then deferred twice,
->> which is not optimal, but harmless.
->> 
->> This changes behavior only for bios that carry dropbehind folios: their
->> completion now runs from a worker instead of in interrupt context.
->> 
->> On the unpatched kernel a dontcache overwrite of already-written blocks,
->> or a dontcache write into a new file on a dioread_lock mount, leaves
->> every folio in the page cache (16384/16384 for a 64M file). With the
->> patch, none remain in the page cache. A dontcache write into a new file
->> with unwritten extents already drops its folios on both kernels, as
->> expected, and a plain write keeps them.
->> 
->> Signed-off-by: Tal Zussman <tz2294@columbia.edu>
-> 
-> I guess this is OK as a short term fix but having two different offloading
-> mechanisms for IO completion is just asking for trouble and we should use
-> BIO_COMPLETE_IN_TASK when unwritten extent conversion is needed as well.
-> But for this fix feel free to add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
+Christian Brauner <brauner@kernel.org> writes:
 
-Thanks! Agreed on the above. I saw that there was a TODO added in
-ext4_iomap_writeback_submit() from the new iomap conversion series to
-"switch all defer handlers to the generic bio complete in task framework",
-so I assumed that'll be taken care of as part of the ongoing conversion.
+> generic_ci_d_hash() and generic_ci_d_compare() read sb->s_encoding and
+> dereference the unicode map while a pathwalk in rcu mode holds nothing
+> but rcu_read_lock(). The filesystems that use them, ext4, f2fs and
+> tmpfs, drop the map with utf8_unload() from ->put_super(), which runs
+> when the last reference to the mount goes away. A lookup that is still
+> inside such a filesystem at that point reads a freed map.
+>
+> With a pathwalk held up in utf8_casefold_hash() while the last reference
+> to a casefolded tmpfs goes away:
+>
+>   BUG: KASAN: slab-use-after-free in utf8nlookup+0x74c/0x950
+>   Read of size 8 at addr ff110001030fe658 by task walker/98
+>   Call Trace:
+>    <TASK>
+>    utf8nlookup+0x74c/0x950
+>    utf8byte+0x160/0x1560
+>    utf8_casefold_hash+0x167/0x230
+>    generic_ci_d_hash+0xdd/0x1c0
+>    link_path_walk+0x11ad/0x1d30
+>    path_lookupat+0x63/0xb00
+>    filename_lookup+0x1f1/0x5b0
+>    vfs_statx+0xd7/0x3b0
+>   [...]
+>   Allocated by task 94:
+>    __kmalloc_cache_noprof+0x249/0x560
+>    utf8_load+0x4e/0x570
+>    shmem_parse_opt_casefold.isra.0+0x92/0x270
+>   [...]
+>   Freed by task 97:
+>    kfree+0x1db/0x5b0
+>    shmem_put_super+0x72/0x170
+>    generic_shutdown_super+0x14c/0x530
+>    kill_anon_super+0x3a/0x60
+>    deactivate_locked_super+0x9c/0xf0
+>    cleanup_mnt+0x9f/0x130
+>
+> So far that has been hard to hit. umount(2) waits for a grace period
+> in namespace_unlock() before it drops the mount, so only a mount whose
+> last reference goes away elsewhere, like the close of a file or a chdir
+> out of a lazily unmounted directory, can race a walker. So it is
+> reachable.
+>
+> Delay the free until a grace period has passed. The map and the data
+> table it holds a reference to then outlive any pathwalk that found the
+> superblock before the mount went away. The reference on the data table
+> module is dropped from the rcu callback as well. utf8-core is built in
+> whenever CONFIG_UNICODE is set, so there is no module exit that would
+> have to wait for the callbacks.
+>
+> Overlayfs points the s_encoding of an overlay at the map of its first
+> layer without taking a reference of its own. That stays correct. The
+> layer is held by the overlay, so its map is dropped only after the
+> overlay is gone.
+>
+> Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
-- Tal
+Hey, Christian!
 
-> 								Honza
-> 
->> ---
->>  fs/ext4/page-io.c | 10 ++++++++++
->>  1 file changed, 10 insertions(+)
->> 
->> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
->> index 734d856a6d47..e556598ce9e1 100644
->> --- a/fs/ext4/page-io.c
->> +++ b/fs/ext4/page-io.c
->> @@ -458,6 +458,16 @@ static void io_submit_add_bh(struct ext4_io_submit *io,
->>  		io_submit_init_bio(io, inode, folio, bh);
->>  	if (!bio_add_folio(io->io_bio, folio, bh->b_size, bh_offset(bh)))
->>  		goto submit_and_retry;
->> +
->> +	/*
->> +	 * Dropbehind folios can only be invalidated in task context. An
->> +	 * io_end with unwritten extents is completed from ext4's workqueue
->> +	 * anyway, so only ask the block layer to defer the others.
->> +	 */
->> +	if (folio_test_dropbehind(folio) &&
->> +	    !(io->io_end->flag & EXT4_IO_END_UNWRITTEN))
->> +		bio_set_flag(io->io_bio, BIO_COMPLETE_IN_TASK);
->> +
->>  	wbc_account_cgroup_owner(io->io_wbc, folio, bh->b_size);
->>  	io->io_next_block++;
->>  }
->> 
->> ---
->> base-commit: 35aefefd7aba0801bab635b11943f932626be3b2
->> change-id: 20260924-ext4-dontcache-complete-in-task-2340ed5f3114
->> 
->> Best regards,
->> --  
->> Tal Zussman <tz2294@columbia.edu>
->> 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
-> 
+Interesting find and looks good to me.  Feel free to add:
 
+Reviewed-by: Gabriel Krisman Bertazi <krisman@suse.de>
+
+thanks,
+
+-- 
+Gabriel Krisman Bertazi
