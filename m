@@ -1,102 +1,51 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out28-76.mail.aliyun.com (out28-76.mail.aliyun.com [115.124.28.76])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46C9C46D09D
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 06:42:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2370437A83D;
+	Tue, 13 Oct 2026 06:55:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.28.76
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791873725; cv=none; b=I7MyFaF0gftiSWyZAqy6RqPtVWguZWczUdAbMRvLEKrG4fDojSqCQMjMQZ1ADe+3lZvtAMA6L9y2NRcjh3MdTJGL6accYQVeyEMLbIhdL9zysINiqAF3pR3C6KJnjSFCuCHNIy72B0TSivxar+lKQDNgjG6DxB32+HZaGBhgjcU=
+	t=1791874545; cv=none; b=ntG4bY7TKUw3/fK5ZRrAc7m4OcRheZVJuB76QuDQmE+cbxye+za020P1UfflSN2J0W/vMARnYQImF24k6YcH7JDfIXXgi00/xauPepdzKcZACGfme1cDM9Yea4jn1rVUUaEaDbSDAWk15DbNz1Wo1tvi5K/vu7SpP+wG+H0hYZU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791873725; c=relaxed/simple;
-	bh=Trlt/ScbWyq2ICjQY6Y9I/gSKyxKgbEnpeYX7OYY6LQ=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=LWMjJ6sw2T68xYj+QCx8U6VhNxTwYzbyFrE8MhwZtfQ1ZWOg1aJrVDhKkMgab4azKtLE1z+uPdmDZzcU6D6i721JHRmMGLJ9SwnnN+Si/SYc84krpbm1lJ3irw/cYNx2d0TO4oEDdxvAnaQfpwUXO1aUk5JqI4zR/SfRbr/B7QI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j+tEYMlS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791874545; c=relaxed/simple;
+	bh=PISy3SVABn67fHF04ulOdcSzl+QWbkqPBYMDO8qiwLc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=DF/GvQB1X8uLg39kuBwbhyju48maNQEEL5uNnkqf4ZYgruvwqLeskCdgb+L3PNYEacnwccBtOXcX9srPgx9cigLhf1jYRCgFx8deygCQ8akQv2P2fp0mj6xZzIrEFbFiPhPMvgEextf61p3Ul/1r+uj8IpSdtGRhnDMUDeu3ijs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com; spf=pass smtp.mailfrom=xiaopeng.com; dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b=EN84N+Fj; arc=none smtp.client-ip=115.124.28.76
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=xiaopeng.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j+tEYMlS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 976991F000FF;
-	Tue, 13 Oct 2026 06:42:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791873723;
-	bh=jHXRSNuSNE+KQrWR0b/MqXjHbj44gg/I4f5aC6buT4E=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=j+tEYMlS4AppNgCJ4HjHYKQxc2XPk1n/7EzAzYRbsBfGdwIBa6i2XXEe7yBgVfFCv
-	 MuHU9fKWJy7vGmClRLYSWQROWWciVJuyfFE3ZfOk1nltTDunSylUZX6Yr4Rd8r6VCy
-	 q9f65gQi7GRoXGqgtecPTBNXIGuzmv2PtVk1pFQQDyKmihNoWfysAA7hqJwa/KESwl
-	 YO9WVcjqk1we1Haq42hv5FTXBBZpzaY1Cg7CwJ21rcQcv6rCfmlSDDtRfbqa0cDDJU
-	 VO6oZAVyrd4fJebAQd4XGtBzj1z6RIejW14V4XByhNH8UZrO+5rHRmSl3itvTv2Hh3
-	 W+xRgXcC/gADA==
-Message-ID: <sashiko-outbox-169121@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 2/3] ext4: check return value of blkdev_issue_flush()
- when starting a fast commit
-Reply-To: sashiko-reviews@lists.linux.dev
-To: guolingxing <guolingxing@tju.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261013062618.1741670-2-guolingxing@tju.edu.cn>
-References: <20261013062618.1741670-1-guolingxing@tju.edu.cn>
- <20261013062618.1741670-2-guolingxing@tju.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 13 Oct 2026 06:42:02 +0000
+	dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b="EN84N+Fj"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=xiaopeng.com; s=default;
+	t=1791874531; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=wGtB/w4Xo1n8Ww942ixcm7IXYpRnUR6HTfNkgTYaXbM=;
+	b=EN84N+Fj39AT0DADR8j/XqFsRhw6UwVBY7WEH/TkdYnN0fa9mZC0s/1uspKJFoRXyugt9I0wxaCMqCg/mfE91t9dr6+ZVq3vBVtRAMF3czVXZuwzS6as/shqwG7EHfP4xdDEdIenBBfnuBE8xBKRlGOyi9MJRSM23is3apcD98c=
+X-Alimail-AntiSpam:AC=CONTINUE;BC=0.198318|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_regular_dialog|0.0324748-0.0025322-0.964993;FP=8616361359640773361|0|0|0|0|-1|-1|-1;HT=maildocker-contentspam033040074035;MF=zhugl3@xiaopeng.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.jbIOHT9_1791874530;
+Received: from DESKTOP-UL5U09E.xiaopeng.local(mailfrom:zhugl3@xiaopeng.com fp:SMTPD_---.jbIOHT9_1791874530 cluster:ay29)
+          by smtp.aliyun-inc.com;
+          Tue, 13 Oct 2026 14:55:30 +0800
+From: Guanglei Zhu <zhugl3@xiaopeng.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	guozh23@xiaopeng.com
+Subject: Re: [PATCH] ext4: check CAP_SYS_ADMIN in ext4_ioctl_get_tune_sb()
+Date: Tue, 13 Oct 2026 14:55:30 +0800
+Message-ID: <20261013065530.1395507-1-zhugl3@xiaopeng.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261013020145.1297074-1-zhugl3@xiaopeng.com>
+References: <20261013020145.1297074-1-zhugl3@xiaopeng.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 1 potential issue(=
-s) to consider:
-- [Medium] ext4: missing JBD2_BARRIER check for fast commit device flush
---
+Thanks for confirming, and for the pointer to
+/proc/fs/ext4/<block>/options - I wasn't aware of that interface.
 
-commit a1cae98067fdb2cd8eec738283b6d33c84b7ca8d
-Author: guolingxing <guolingxing@tju.edu.cn>
-
-ext4: check return value of blkdev_issue_flush() when starting a fast commit
-
-When the file system device differs from the journal device, a cache flush
-is issued before fast commit blocks are written. The return value of
-blkdev_issue_flush() was previously ignored. This patch checks the return
-value and aborts the fast commit if the flush fails, falling back to a full
-journal commit.
-
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 0cac890cf3702..ead8b16f9be07 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -1425,8 +1425,11 @@ static int ext4_fc_perform_commit(journal_t *journ=
-al, tid_t commit_tid)
->  	 * Step 5: If file system device is different from journal device,
->  	 * issue a cache flush before we start writing fast commit blocks.
->  	 */
-> -	if (journal->j_fs_dev !=3D journal->j_dev)
-> -		blkdev_issue_flush(journal->j_fs_dev);
-> +	if (journal->j_fs_dev !=3D journal->j_dev) {
-> +		ret =3D blkdev_issue_flush(journal->j_fs_dev);
-> +		if (ret)
-> +			return ret;
-> +	}
-
-[Severity: Medium]
-This problem wasn't introduced by this patch, but does this flush need to
-validate journal->j_flags & JBD2_BARRIER before proceeding?
-
-In ext4_fc_perform_commit(), blkdev_issue_flush() is called unconditionally
-when the filesystem device differs from the journal device. If the filesyst=
-em
-is mounted with the "nobarrier" option, this appears to ignore the mount
-option and issue the cache flush anyway, unlike the JBD2 full commit path a=
-nd
-fast commit tail block writers.
-
-Could this bypass the user's mount options and cause unnecessary I/O
-overhead during fast commits?
-
-> =20
->  	blk_start_plug(&plug);
->  	alloc_ctx =3D ext4_fc_lock(sb);
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261013062618.1741=
-670-1-guolingxing@tju.edu.cn?part=3D2
+Agreed, this was not a real leak.  Dropping the patch.
