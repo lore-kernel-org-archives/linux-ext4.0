@@ -1,43 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E7023DA7E0
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 06:39:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46C9C46D09D
+	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 06:42:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791873577; cv=none; b=j7iG1+FwGILLV6XAh4xfJ68fjoA3CG4U1+2c8zkRj/kB8jjSC/KIYWkwKZiC6dBTdabCK9saXyxBXjt/ATczqLXtrCJo1CQjy6nXaT0hYEX9iB8LU/RcCeN8XRaJ9ZJjiFATq38m62eKaI2Tqr/x1Iy9KVLMR+ir6l6vVQcdMtg=
+	t=1791873725; cv=none; b=I7MyFaF0gftiSWyZAqy6RqPtVWguZWczUdAbMRvLEKrG4fDojSqCQMjMQZ1ADe+3lZvtAMA6L9y2NRcjh3MdTJGL6accYQVeyEMLbIhdL9zysINiqAF3pR3C6KJnjSFCuCHNIy72B0TSivxar+lKQDNgjG6DxB32+HZaGBhgjcU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791873577; c=relaxed/simple;
-	bh=o/11whAoAmbREQNpC6B6VdrSDIa2QCDi9Ma6RkgLRnA=;
+	s=arc-20240116; t=1791873725; c=relaxed/simple;
+	bh=Trlt/ScbWyq2ICjQY6Y9I/gSKyxKgbEnpeYX7OYY6LQ=;
 	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=NC5ftnuX0nkmmIgQ0aM0MoXg7Uz8KpkijsERvqGEIxl05/BFKS9wxRcqxFmYQJx8i5wfsV9GtcKLnibLP7BwvQBWe01uTe1jO8suZwFwDPxjrmIBIUOi3TK1A7Vl7z2+7ORo5lZJDRM/44CGgl0q396m1Yb75ziSJcUv0RkRcaA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a2rApsCN; arc=none smtp.client-ip=100.103.45.18
+	 Date; b=LWMjJ6sw2T68xYj+QCx8U6VhNxTwYzbyFrE8MhwZtfQ1ZWOg1aJrVDhKkMgab4azKtLE1z+uPdmDZzcU6D6i721JHRmMGLJ9SwnnN+Si/SYc84krpbm1lJ3irw/cYNx2d0TO4oEDdxvAnaQfpwUXO1aUk5JqI4zR/SfRbr/B7QI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=j+tEYMlS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a2rApsCN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB4061F000FF;
-	Tue, 13 Oct 2026 06:39:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="j+tEYMlS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 976991F000FF;
+	Tue, 13 Oct 2026 06:42:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791873575;
-	bh=K99yxLmQ3265LEVEPM3bHk72MvODI1umvsD1P8YMM/k=;
+	s=k20260515; t=1791873723;
+	bh=jHXRSNuSNE+KQrWR0b/MqXjHbj44gg/I4f5aC6buT4E=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=a2rApsCN/cLi5SFKqWxdAZUPPKizmrwrTZXUmdjszMbAN8Fm/UoE4Dl6DT7f4rg0z
-	 akv9Z5JDuCoua2ALNoC5c1B8o5uO1jJbWzLd07GV4Y+/gGrFk3pttxJ6GaK+Hy2ZkN
-	 /3/1M0uRUHit1FDFlcm9raPcL3xYEwmWqgiafZPExYbmqLNr2gneAywUnZqZw0g03K
-	 Jm3da/1oDmhM1yI2Qwjn20LHMxbnE/RTWFgvWJvPllCpJLb5nWaCahNv9zPLtmq6qv
-	 jv7LXaI7tcufh9PQwtgxv7Q2WoBX7XZITNVC5bg4YWs1tz6e6Wu6NMuE4aROcdX1fL
-	 PWmio8lMRX2oA==
-Message-ID: <sashiko-outbox-169116@kernel.org>
+	b=j+tEYMlS4AppNgCJ4HjHYKQxc2XPk1n/7EzAzYRbsBfGdwIBa6i2XXEe7yBgVfFCv
+	 MuHU9fKWJy7vGmClRLYSWQROWWciVJuyfFE3ZfOk1nltTDunSylUZX6Yr4Rd8r6VCy
+	 q9f65gQi7GRoXGqgtecPTBNXIGuzmv2PtVk1pFQQDyKmihNoWfysAA7hqJwa/KESwl
+	 YO9WVcjqk1we1Haq42hv5FTXBBZpzaY1Cg7CwJ21rcQcv6rCfmlSDDtRfbqa0cDDJU
+	 VO6oZAVyrd4fJebAQd4XGtBzj1z6RIejW14V4XByhNH8UZrO+5rHRmSl3itvTv2Hh3
+	 W+xRgXcC/gADA==
+Message-ID: <sashiko-outbox-169121@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 1/3] ext4: check return value of blkdev_issue_flush()
- when initializing inode tables
+Subject: Re: [PATCH 2/3] ext4: check return value of blkdev_issue_flush()
+ when starting a fast commit
 Reply-To: sashiko-reviews@lists.linux.dev
 To: guolingxing <guolingxing@tju.edu.cn>
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261013062618.1741670-1-guolingxing@tju.edu.cn>
+In-Reply-To: <20261013062618.1741670-2-guolingxing@tju.edu.cn>
 References: <20261013062618.1741670-1-guolingxing@tju.edu.cn>
+ <20261013062618.1741670-2-guolingxing@tju.edu.cn>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Tue, 13 Oct 2026 06:39:35 +0000
+Date: Tue, 13 Oct 2026 06:42:02 +0000
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -46,60 +47,56 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 
 Thank you for your contribution! Sashiko AI review found 1 potential issue(=
 s) to consider:
-- [Medium] ext4: lazyinit thread ignores nobarrier mount option and aborts =
-on flush error
+- [Medium] ext4: missing JBD2_BARRIER check for fast commit device flush
 --
 
-commit 06e54e3a165a1e8b6269f6dbdf6487defdbf7915
+commit a1cae98067fdb2cd8eec738283b6d33c84b7ca8d
 Author: guolingxing <guolingxing@tju.edu.cn>
 
-ext4: check return value of blkdev_issue_flush() when initializing inode ta=
-bles
+ext4: check return value of blkdev_issue_flush() when starting a fast commit
 
-This commit checks the return value of blkdev_issue_flush() when lazily
-zeroing inode tables to prevent exposing stale data if the flush fails.
-By leaving the EXT4_BG_INODE_ZEROED flag unset on failure, it ensures
-the zeroing is retried on the next mount.
+When the file system device differs from the journal device, a cache flush
+is issued before fast commit blocks are written. The return value of
+blkdev_issue_flush() was previously ignored. This patch checks the return
+value and aborts the fast commit if the flush fails, falling back to a full
+journal commit.
 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index f97a2f4904ebb..843a78fc6e51a 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-
-[ ... ]
-
-> @@ -1611,8 +1611,11 @@ int ext4_init_inode_table(struct super_block *sb, =
-ext4_group_t group,
->  	ret =3D sb_issue_zeroout(sb, blk, num, GFP_NOFS);
->  	if (ret < 0)
->  		goto err_out;
-> -	if (barrier)
-> -		blkdev_issue_flush(sb->s_bdev);
-> +	if (barrier) {
-> +		ret =3D blkdev_issue_flush(sb->s_bdev);
+> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+> index 0cac890cf3702..ead8b16f9be07 100644
+> --- a/fs/ext4/fast_commit.c
+> +++ b/fs/ext4/fast_commit.c
+> @@ -1425,8 +1425,11 @@ static int ext4_fc_perform_commit(journal_t *journ=
+al, tid_t commit_tid)
+>  	 * Step 5: If file system device is different from journal device,
+>  	 * issue a cache flush before we start writing fast commit blocks.
+>  	 */
+> -	if (journal->j_fs_dev !=3D journal->j_dev)
+> -		blkdev_issue_flush(journal->j_fs_dev);
+> +	if (journal->j_fs_dev !=3D journal->j_dev) {
+> +		ret =3D blkdev_issue_flush(journal->j_fs_dev);
 > +		if (ret)
-> +			goto err_out;
+> +			return ret;
 > +	}
 
 [Severity: Medium]
-Does this change break filesystem initialization for users who mount with
-the nobarrier option on devices with broken write caches?
+This problem wasn't introduced by this patch, but does this flush need to
+validate journal->j_flags & JBD2_BARRIER before proceeding?
 
-In ext4_run_li_request() in fs/ext4/super.c, the lazyinit thread calls
-ext4_init_inode_table() with the barrier argument set unconditionally
-to 1 for the first block group, ignoring the mount options:
+In ext4_fc_perform_commit(), blkdev_issue_flush() is called unconditionally
+when the filesystem device differs from the journal device. If the filesyst=
+em
+is mounted with the "nobarrier" option, this appears to ignore the mount
+option and issue the cache flush anyway, unlike the JBD2 full commit path a=
+nd
+fast commit tail block writers.
 
-    ret =3D ext4_init_inode_table(sb, group,
-                                elr->lr_timeout ? 0 : 1);
+Could this bypass the user's mount options and cause unnecessary I/O
+overhead during fast commits?
 
-If a user mounts with -o nobarrier because their block device returns errors
-for flush requests, this timing measurement flush will fail. Before this
-patch, the flush error was safely ignored.
-
-Now that the return value is checked, will this cause the lazy inode table
-initialization thread to permanently abort and leave the inode tables
-un-zeroed across mounts?
+> =20
+>  	blk_start_plug(&plug);
+>  	alloc_ctx =3D ext4_fc_lock(sb);
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261013062618.1741=
-670-1-guolingxing@tju.edu.cn?part=3D1
+670-1-guolingxing@tju.edu.cn?part=3D2
