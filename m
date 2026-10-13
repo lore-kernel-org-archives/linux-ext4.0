@@ -1,72 +1,62 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from out28-1.mail.aliyun.com (out28-1.mail.aliyun.com [115.124.28.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBB643B9610
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 01:50:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0314237E5F2;
+	Tue, 13 Oct 2026 02:01:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.28.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791856239; cv=none; b=KTak0mukVJqwIhooC2ZSVMU/Oyqj+5ar1fKjeORctM/9EcihmtjUu2XurXosDRuUApz84IB6Mq/cEpjx1U7i2kXWug/Ez8DvT4lXO7OFVKWL86ttDkjqJ2/LTBXY6gGY2z05nP0o4L+KPVEJPt6Ga24kIxeULOnIyCdDujkx7aE=
+	t=1791856917; cv=none; b=TQKjNMu2Vhn3c/cSMshahfOdf1o+J9n43CLcu3xewsr5ifhTa6LW35Rf0Qjo+khycFsEqwm4ezp7DzDqUR1j3JTFhDO3d1P3qNG7qn0n+HaVw7JAgC5uXh75gt6IIOlVKaS701q+xluj6JNsuBRX9x+6BL3Y1bCnSPJBzijsO8o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791856239; c=relaxed/simple;
-	bh=VB/VVZ1i3Q511fjrCnUIu4NsPn897CedwM/MKULlZGs=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=h/DSDP6cnogIw6sBaZPXsOjdhVZdk2age/6mcOEtIj65vtsPy83QNjzTags+Xaj42zfY33jJshDnNTeLWaU38dtcDdfCGB8VEmWU64QGN1RlusguehrH3AqhNs2Vb2g7t4KlypcyJCEN/QWiL3elze5zTGzClH1kzH7egYHdEis=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aeRNvGHF; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791856917; c=relaxed/simple;
+	bh=El1gm2QXCyk6BMtLE7OLMwLSYkCGgr0Dww7mE2ml/cA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=k0HjHOudURCI/10PRNWND7bjKDvg1KBAwSxb69jBygLHzLer+bIbhcTDBMCfNjQ24i1OnySHz5ayGsVrr+oICZPdot20qZHDm9zpBIUd7EQ3FksvkqQhiXs2cm64zBt2O2Cg9u8SDJ+A0hh4n8M3VZI4b4jyPIB7sNZJVVIQsLs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com; spf=pass smtp.mailfrom=xiaopeng.com; dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b=Nb09rNav; arc=none smtp.client-ip=115.124.28.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=xiaopeng.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=xiaopeng.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aeRNvGHF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8769C1F000FF;
-	Tue, 13 Oct 2026 01:50:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791856238;
-	bh=/PdbG0b4r4fqoy1BXGLY4t9ZTcuLKHBmnJREpQ7QaNU=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=aeRNvGHF0s/ZTYkva7n3Bd2mL/e7lFJQ8GW9XXSjwfpyxps/nod1VlGppEByPX7UJ
-	 DdvDTh/PhHeZXCiIMFj7UpWU2rIlYR3i26ArIqkzZIyAchPdtpCHK0jTzqREz/LEmO
-	 JMpVxp1TabJZDWo+N+6oNchdRzAapxlmxvJXD1V8Ze2ghsFxsWwirKkHjTKRGguoTD
-	 165aejtIF6yxY3q5lpJIqgEN6EOLsVO8UIofEOMq/cJ86ALRNZ5WmOMcHU5TZ/WNpe
-	 3Xo0OB7ZyTIrLosDhijKJdrPi5udSzOF0ySYCYPlv//0kYeQVJro/Yxce1FVQ3ebt/
-	 WsdHkpCgw5HDg==
-Message-ID: <sashiko-outbox-168844@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2 1/3] jbd2: check return value of blkdev_issue_flush()
- when checkpointing
-Reply-To: sashiko-reviews@lists.linux.dev
-To: guolingxing <guolingxing@tju.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261013014028.1152277-2-guolingxing@tju.edu.cn>
-References: <20261012114713.4049391-1-guolingxing@tju.edu.cn>
- <20261013014028.1152277-1-guolingxing@tju.edu.cn>
- <20261013014028.1152277-2-guolingxing@tju.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 13 Oct 2026 01:50:38 +0000
+	dkim=pass (1024-bit key) header.d=xiaopeng.com header.i=@xiaopeng.com header.b="Nb09rNav"
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=xiaopeng.com; s=default;
+	t=1791856906; h=From:To:Subject:Date:Message-ID:MIME-Version;
+	bh=jw4QLSY1JGurDTMfKM4O66yjInxgdzpGy3tXigO4+7Y=;
+	b=Nb09rNavA/2+3+A7Iqpa62CG2h+UeRim3erNJL3vB2NTHQa/2TnxZmxyukEYWyv8JJm9BS33NfGfNg3YeciOW6P0SUdrxma6jecLH4M/lWEMtR6w1Pv3CFkhgWaCKVOowvZ5kd7Y/Exqg733+vWYbyHVOa7i5gMEXjM77wPj98s=
+X-Alimail-AntiSpam:AC=CONTINUE;BC=0.1738694|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.00315073-0.00053508-0.996314;FP=5093895818369959676|0|0|0|0|-1|-1|-1;HT=maildocker-contentspam033037022039;MF=zhugl3@xiaopeng.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.jajBP1r_1791856905;
+Received: from DESKTOP-UL5U09E.xiaopeng.local(mailfrom:zhugl3@xiaopeng.com fp:SMTPD_---.jajBP1r_1791856905 cluster:ay29)
+          by smtp.aliyun-inc.com;
+          Tue, 13 Oct 2026 10:01:45 +0800
+From: Guanglei Zhu <zhugl3@xiaopeng.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	guozh23@xiaopeng.com
+Subject: Re: [PATCH] ext4: check CAP_SYS_ADMIN in ext4_ioctl_get_tune_sb()
+Date: Tue, 13 Oct 2026 10:01:45 +0800
+Message-ID: <20261013020145.1297074-1-zhugl3@xiaopeng.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261012060844.836001-1-zhugl3@xiaopeng.com>
+References: <20261012060844.836001-1-zhugl3@xiaopeng.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-> jbd2_cleanup_journal_tail() calls blkdev_issue_flush() on the file
-> system device to make sure all checkpointed data are on permanent
-> storage before it updates the log tail in the superblock.  However
-> the return value of blkdev_issue_flush() is ignored so if the flush
-> fails, we still advance the log tail.  After a crash the journal
-> recovery will consider the checkpointed transactions as committed
-> and skip the replay while their data may have never reached the
-> disk, which may lead to a filesystem corruption.
->=20
-> Abort the journal when the flush fails, similar to how we abort
-> when detecting writeback errors of the file system device.
->=20
-> Fixes: 79feb521a447 ("jbd2: issue cache flush after checkpointing even wi=
-th internal journal")
-> Cc: stable@vger.kernel.org
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+I checked the original series (20250916-tune2fs-v2): neither the
+commit message of 04a91570ac67 nor the discussion around it says
+anything about a permission policy for the GET side - the only
+statement is that the ioctls allow parameters to be changed while
+the file system is mounted, without needing write access to the
+block device.
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+You are probably right that reading these parameters is not
+sensitive on its own: most of them are already visible through
+/proc/mounts or statfs(), and the superblock is readable by anyone
+with read access to the block device.  The argument of my patch was
+the asymmetry with the SET side rather than an actual leak.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261013014028.1152=
-277-1-guolingxing@tju.edu.cn?part=3D1
-
+I'm happy to drop this patch if Ted confirms that the missing check
+was deliberate.
