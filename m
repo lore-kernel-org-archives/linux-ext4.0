@@ -1,74 +1,61 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BD233876B3
-	for <linux-ext4@vger.kernel.org>; Tue, 13 Oct 2026 07:35:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D313539CCEB;
+	Tue, 13 Oct 2026 07:38:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791876959; cv=none; b=IgTkiNgjEX8BnRPdIjcbGWiOoCPt5GlWHBnBi7HiTC++zSFH75sQzdh6FK2GO8zd3YQ5uMxjqP2iiYkwwEBq8gA+4pxNEN41HLWGzV+AFhLxnYbMyiI+MK7kCzdGRtnSvPyXDswSOsOvLh78a+kVrla78qi/Cge4msXjVojp/48=
+	t=1791877111; cv=none; b=e4F4Svw5qOKY5hkCH3NHMllufXhcGt+Vf2zMPa77j+gVXWIXwkIoDikJoF8SlUJyXk1BqLybtqKmO7+DQ61QxCDTo2Mqor03hhFQQAEv2B9yfwAWmm90xzxegrfPYi2uHJQME88p7eJrfJphD8Ze7L/1/QLRVKSlaOXi4DE8lUE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791876959; c=relaxed/simple;
-	bh=eS1a6dOS5eAx6r1KQIKOBf0ZyXpNFyeWZPLl+a8JZ8s=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=rctadlGx+NkFyZgvYO5koHeu2hlbNJVbbkSMaKAIukinY/CedY6y/5EpZjkmKwIcVvcggdvYt6v3pHUm9kbFW4A0cMUnlTyjJ3OKE/Vgo7ebi/bElq8A2JougiEjuRrF29YlRXTizfvcfa3m3TXKpSWTXmfxovW8M06F8/EPbRQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Fmi/vp2D; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1791877111; c=relaxed/simple;
+	bh=J8ZpJ7IEUIssWYiGn4JUZV8YSFiAwMHHgkpgEGYWdV8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KvP2U2NpSpzzQETOeVajckH0Nywz2R2QgQj1krApRoZTORjKHMwQzI9hpegAvwkX0QTaWLhKaXjoR656KlleeQWUkqpZi38OQZ+nKK5+qyBlGg4MgaqY6nyZnzmE/j06mAXV8CHAREbDQN0JJnYga6HEfbN0SosHHakPiSY9zME=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=lfgaW4Hq; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Fmi/vp2D"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 869391F000FF;
-	Tue, 13 Oct 2026 07:35:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1791876957;
-	bh=eS1a6dOS5eAx6r1KQIKOBf0ZyXpNFyeWZPLl+a8JZ8s=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Fmi/vp2D7c9rKwvOykQrxoX7H0w/rHg5PN2UX5+6Y0poi+7H9W3FnkOMWzPfnKd4s
-	 f/HVPyUKEjseHUNFx21sh8R9hhJyzxEBrVu3CXyRnxej4OzUU0JoxcdJo9vto+zHNm
-	 56oeG0pxe85m0qsBN+8MRapAskVLROI1vkU7D5LIhTWlIsBeb3LufcbM0PhKaFghjt
-	 a+zOY2XClwuhvLZHU6eWBtYaA+Z/FqwzD0KkQtH19t9RVPtSZJh2n4flZyIyO+BRqj
-	 W3cDcnKOHLnvm6c+Wtjn1rKvU4CeZ+nkOki1zl0PPlatI7jzAx/FHdkLAPl3Ar4SW+
-	 8cD1lCekrYoOQ==
-Message-ID: <sashiko-outbox-169190@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: spread files of sibling directories over a flex
- group
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Daejun Park" <daejun7.park@samsung.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261013-ialloc-flex-spread-v1-1-9ea1d86961aa@samsung.com>
-References: <20261013-ialloc-flex-spread-v1-1-9ea1d86961aa@samsung.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 13 Oct 2026 07:35:57 +0000
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="lfgaW4Hq"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=J8ZpJ7IEUIssWYiGn4JUZV8YSFiAwMHHgkpgEGYWdV8=; b=lfgaW4HqHZr2OMCoLERfsnEWNQ
+	bNkTC7v2h25if/yQTTGP8EOcwDNaRtE7J2vtlmKWo/ylvBK1TPcetmDvS7pLHQ34m5ZiSPIrMPhZH
+	+9L6t2gZzpI97FHHDAgxJ0GQ9NjCJznJbRZiCdJELf4BMNa2mMh5W8d7we4Qhud3wAzxvZ9ij66kH
+	87L3pqLvhdKJHmFI8LB0FeQKFsu6v0ZGsxwakuoWyOSkHMJyAKqoqyTaMPQslS1mi/Ix+LqGeNUXF
+	w59Q2r0MpqI6Xm2vz42aha+kDcpO2tFCkB6UCGDuyRYcTfQfEM/TWrt64Bs63VCiavr1T/OgcrPLK
+	OKh6EHxw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1xGX5h-0000000CESs-37gO;
+	Tue, 13 Oct 2026 07:38:29 +0000
+Date: Tue, 13 Oct 2026 00:38:29 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>,
+	ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+	exfat@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+	ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev,
+	linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev,
+	linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org,
+	linux-xfs@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 27/28] xfs: allow remounting read-only after a
+ shutdown
+Message-ID: <as3f9WNZ1nB_lLvV@infradead.org>
+References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
+ <20261012-work-fs-sb_rdonly-v1-27-60743a3dc326@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261012-work-fs-sb_rdonly-v1-27-60743a3dc326@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-> From: Daejun Park <daejun7.park@samsung.com>
->=20
-> On a flex_bg file system, find_group_other() puts a new file in the
-> first group of the parent's flex group that has a free inode. Orlov
-> usually keeps a directory below the top level in its parent's flex group
-> and packs directory inodes at its start, so the files of sibling
-> directories come from the same group and get consecutive inode numbers.
-> The flex_bg path was added by commit a4912123b688 ("ext4: New
-> inode/block allocation algorithms for flex_bg filesystems"). The
-> non-flex_bg path instead adds the parent's inode number to the starting
-> group once the parent's own group has no free inode or block, so that
-> the files of different directories which share a group land in
-> different groups.
->=20
-> When several tasks create files in sibling directories at the same time,
-> [ ... ]
-> retry only with a group below the number of groups.
->=20
-> Update the description in Documentation/filesystems/ext4/allocators.rst.
->=20
-> Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Looks fine:
 
-Sashiko has reviewed this patch and found no issues. It looks great!
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261013-ialloc-fle=
-x-spread-v1-1-9ea1d86961aa@samsung.com?part=3D1
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
