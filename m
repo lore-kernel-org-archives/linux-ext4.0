@@ -1,176 +1,169 @@
-Received: from fhigh-b6-smtp.messagingengine.com (fhigh-b6-smtp.messagingengine.com [202.12.124.157])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f49.google.com (mail-pj1-f49.google.com [209.85.216.49])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F755361651
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 04:40:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDE5F47F3D1
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 07:14:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791952841; cv=none; b=Xnx8Yriax0/pmYgFM2b289+l9KnQ2yXcc+Tj5PazlR1bOaIzVEObn2J/+jvjB+xM6L/UCaUoRujCAFen4+ObmkECYTnuEnqyS7vVk0eVea74kQaBmhfOLXey8pY80DwzP476NgfO2y+r6Oh+0bxQjYSU+X/hc4tjMgmAu5liOKM=
+	t=1791962101; cv=none; b=CAGzIdic49Y6HdLaduauKGlvn0VT7qn6QHt/zPv3Oq6c6YJB/OPD1wapcNVlGZlpSQnOJ6tANSaViAANAxu6TLMfXolcvDtgUD+uF0W6UnP4mOmbrEdorSUdXwlXOmWSnMyRRceCPVzkFNFGaIHn2mli3g5HIqJbzETdrNIsv+M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791952841; c=relaxed/simple;
-	bh=n0Hs5KVddvSkBLEzXlL+zhClUBSiGyvm5QaOrNgUFDY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=BrDvhTnjuwj0vfSaE9BQGJAIsNzzdcmwBaj1sbFLelRyA5e4yXrbhc+BjlDRUiufrdiz6xx+SftMjAH+G92hV/55kx45/PCtnCkhqdmU3qyrHuN0yQqZgmE25IanabmFf/ne5hJygJahK2mK4LeC225aP7u/UECkaLZ6/DxFafU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tyhicks.com; spf=pass smtp.mailfrom=tyhicks.com; dkim=pass (2048-bit key) header.d=tyhicks.com header.i=@tyhicks.com header.b=ncQOfXsY; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=K0VjHOtO; arc=none smtp.client-ip=202.12.124.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tyhicks.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tyhicks.com
+	s=arc-20240116; t=1791962101; c=relaxed/simple;
+	bh=1Lwf+hhmpw3w8k79pyJRhisqrrz0H2X4UofZTveLYwo=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=Ds/fNbzv5Ou0TsJZuzT8ML3WNOm0w+DiFA6zmayLmkJQlWYli1EmuCakys7KI5MiRmUX2cnise7mseVT+YFTbaDGhP4j+t6wuYwXMbTc1fp8XmUMlnWcae1v8g4BlXSe1NAx5WDd8LKx2ZS7lzJR6DFmSMnjtEE0qAzqZbAjGmc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QxTKIiSe; arc=none smtp.client-ip=209.85.216.49
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=tyhicks.com header.i=@tyhicks.com header.b="ncQOfXsY";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="K0VjHOtO"
-Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 075217A00D9
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 00:40:39 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-05.internal (MEProxy); Wed, 14 Oct 2026 00:40:39 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=tyhicks.com; h=
-	cc:cc:content-type:content-type:date:date:from:from:in-reply-to
-	:in-reply-to:message-id:mime-version:references:reply-to:subject
-	:subject:to:to; s=fm1; t=1791952838; x=1792039238; bh=mAFiYhtbFe
-	mwvvnCWTEeExr0pkWB7IZg7tNJUrlWDeo=; b=ncQOfXsYux6xUE5Yfpf1YgaBFT
-	cTHfw7QjzH5wusg7wxu/N7/hm73X28PpKquXZc5xiYwPW4+lAfqJxibqXR+UvLz+
-	2ZTUnxRz7HtcfNGFgS1MJkd0Tuv5h/GpjcWCaiSGJ1TZ1UdFlpedEaseFuzvowv/
-	TqQSSl8IG9OCVkOhNBJP95SN5RDQQl8GiR1aqF1Dp02uVWnRjvaljmZODDWOuAYc
-	RQbBArRhfe9jWPm3Oy560onwObhrAOQw70BBPuWWCXlWiSD0St3KNWW1JAL9kmbP
-	bNzF5pEbPDujqawxsBVKwUfbzwYVRc65jY+AqtX1732BeF90Rc9hAafKJ/NA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-type:content-type:date:date
-	:feedback-id:feedback-id:from:from:in-reply-to:in-reply-to
-	:message-id:mime-version:references:reply-to:subject:subject:to
-	:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=
-	1791952838; x=1792039238; bh=mAFiYhtbFemwvvnCWTEeExr0pkWB7IZg7tN
-	JUrlWDeo=; b=K0VjHOtOjP8x4OK/qLK5hjnzj3UEK+pOwByQK/diLCthYYtuRak
-	4w+UCUKGCK7JFq5rpq992TQ414sGpeXwoQll/jApp5jSvjv1N0AQ/vV6o8TAQSoj
-	0jIdCgbmVEwbpWc/GDIYhV7iGxhVnAVGyxOucONqfd+Qut3pa8xlZu9eupkPHb7a
-	O19RfpWHCKap1Ii2AG4C4Rgf9FKDqPAESBzjmyuI8I+/7v/rcZf87XvPdXRhxOVR
-	PHI64FJJSdJiopZc5fM/F+oblU4aUcPwF93Yc0oXuLowDYOwPy7A3lW/OBTdMI+P
-	X7xVR3mFNXlN4nZtsbMmUuaI/XZPAGqxlHA==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-06;
-	repo=github.com/dkim2wg/interop; date=2026-10-04; sw=lmtpprox;
-	action=sign d=tyhicks.com a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1791952838; d=tyhicks.com;
-	mf=PGNvZGVAdHloaWNrcy5jb20+;
-	rt=PGxpbnV4LWV4dDRAdmdlci5rZXJuZWwub3JnPg==;
-	s=fm1:rsa-sha256:IfveDbQJ6MVfHMta4FlyOrkXmG3BAhiuAqvMcXjnMxGISux
-	3+ojt6p8odW/uCRisNXOtE5msE4U22y9XRCjW8lQSA4i2uzytESPVAV6uFUQVx66
-	W/1CTfQQwa4ZeRFhQA2RP3kZK3r247IRrTvv0U83qK8D0DlK2Nf0tyjlRlLVDyiM
-	YD2gptmyxgvRRGzk3tRfnZ4pdzF9CgQwSr5bNCHCrBagDvJP/kTD+qx5k8RHBmTj
-	mLTePJ75O/vhGvSEt1uEqFH5vD4fvy84KMv/TnxL75XDmr80uz0E0zEkVxCZg/q9
-	jDiwdnbOi6t6jSjp2Q1Sgk6WUeCfVQ1l8CsLjnw==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-06;
-	repo=github.com/dkim2wg/interop; date=2026-10-04; sw=lmtpprox;
-	action=mi-m=1; hc=12;
-	hn=cc,content-disposition,content-type,date,feedback-id,from,
-	in-reply-to,message-id,mime-version,references,subject,to;
-Message-Instance: m=1; h=sha256:qUmERcW4JyBitZMe5zuk9ywp5LRlIgLiVnlpfK0/pBM=:n0Hs5KVddvSkBLEzXlL+zhClUBSiGyvm5QaOrNgUFDY=;
-X-ME-Sender: <xms:xgfPaiirqaGth-_QIS8OAsoYy7Sf2rYbZwFhAfjJ0MuAWKxQ7THxuQ>
-    <xme:xgfPajaE8ofnGot4Pky4vdm_HNaxz3sV7tnqENiHW1NZcFJGvD6DD5wX-ruqy_MSt
-    qzisuah0SMwdW1miO5q3pRD4Y4a5JhX9iIk39cqEEXme_YFFqwv3Rg>
-X-ME-Received: <xmr:xgfParPcjPkYn4vlK0LMTgxNr5Ysji4BSj-bUDmcojpTmB7UhXNDHw>
-X-ME-Proxy-Cause: dmFkZTFKd7b9t+rYxj8fdFEGtNMVuNQ5jOwC8SdIlUTY97d1oNKv/jurn5DUraLtoIX+2E
-    I3bIdfkpsGhUi+/tt/Szji6YvW2+vzMoDGWv9xPK+lO1Sb1zC3bVSP3NLZ3IFInykWKEaP
-    PH93NfwO6+b7/crRfH4wX5WXalVIiTPCeErxbBQz6CcsOBGB7Z36o5CAXL7bOQ0KwYB3u2
-    Tt7S2s6M3ONy1Jf6lLNDRHUve8aF4/8yXcvszXWYbXHvQvvmoncKrISq6v28AJ11qBn/sv
-    qp0QBdjQ9qmGRZKU7BnZTWgAAxoRXCyTV5hWG4Si3B29+0DMJIgEbol0t/XKYLu9NNjraX
-    0smkOXWfrc/IBFYy/pyNxGx9kfhI0WiCxuDyZdzXI9f2NIYsJkUDkDUeJG4zUPuBWtaBvE
-    Mwi2vLMuBjIiVqP446bbIM7nhubKyyD0dXHP2HMFxaXSbWZp3G1UIOBjW6FPA7HQKr1TcP
-    BPwGPZdrFFh4a5r7M1kmZLbWcfqQp/zQcXFYEYi5bg9fYkAJaxBna2FbAXCGRPGb4Oc6Gh
-    1r+gceQWpvlFBkLAjH/mFrxDSXQUT5CImV6pag4feAxFZbphAWhHyasICJGejFWDtY2NaB
-    BCVdHpJu62iJDBfhFB3EF7k3EeYcm32d9i47bHoDPeSCp+YbyXeBn+EXahFQ
-X-ME-Proxy: <xmx:xgfPanR7GBzeumdsdancLyUun9rpWy2_-9xodM1WQNRR_NGP-MwpZg>
-    <xmx:xgfPau7MdffZ0A3QPGcRatiLqM8PYL5uRriXSWH_CfIWpuOpVlPScw>
-    <xmx:xgfPaia9aS220tTKgJDOpqj2xLlBZI6Y-T6J6zgubPIDKeXL060mVQ>
-    <xmx:xgfPaqZKI-8EgzC6LYS3JQGrtcebVT9OxULUA-QFxdCybqbmiymnFA>
-    <xmx:xgfPan3Lpy4_ahjI4bwYfGxNbwKEt-4H9IVwxWRAdOc68A38BkASVj37>
-Feedback-ID: i78e14604:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 14 Oct 2026 00:40:36 -0400 (EDT)
-Date: Tue, 13 Oct 2026 23:40:28 -0500
-From: Tyler Hicks <code@tyhicks.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>,
-	ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	exfat@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-	linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev,
-	linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-xfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 01/28] ecryptfs: don't leak the inode when a lookup
- can't open the lower file
-Message-ID: <as8HvJJq-JP5-UCp@elm>
-References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-1-60743a3dc326@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QxTKIiSe"
+Received: by mail-pj1-f49.google.com with SMTP id 98e67ed59e1d1-3ab9268d90eso1883641a91.3
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 00:14:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1791962093; x=1792566893; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=3mxOyqRIlc5Dtk9kMZ9pDtG3G34SgarEZsbcWS6t2oE=;
+        b=QxTKIiSevA+HqhKf7jA/LQXpwAmTHSYRrQSbrZwk7Hsw4Ga0mnONrlEs8CFkuMPYU5
+         tIzsBkaib+WHtCb1QOiIdGQsHY32HP6sxjMDQ9ekR9HrythUBZOSi/dNnaOmvHtKPaGs
+         EmbOLfeAwGFjv5ShtF4x24+3XErD6cPwDZS1rHX86RZJ8hYeD6ut4M6k0MFp4v9YRr8d
+         yQCK9T+3r7U5NpjJkxFsSlIftSQWlnJUBZ1hPsXhekY14Ij0xOgz5SZqDzajJ8MB1T4b
+         894u1vsDkAlraNi65DX/fPCRJWjFTbBxZ5MZeeueisFY98f6YscyRtSYklEwJphe6yY8
+         MuoQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791962093; x=1792566893;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=3mxOyqRIlc5Dtk9kMZ9pDtG3G34SgarEZsbcWS6t2oE=;
+        b=iQqL4JdzPogaurRrkfjLw08C/g7G8CnhXqnukONMeqIybVSzoo4REkm6eV3xOaqHKc
+         ldJcAsiFAPUAg4sa/OAFZRUvm5meCdcyjyQy5gOaWGBos9YFkLfYpSGqfw8OA9pO/Vi4
+         OhgM4/OrqELUVqIT8oSIJyjyFBGac1x50WlLK0zl0r0F4+2maSdREhneG1LXS4elDsRt
+         N0lPMSqPMkbjJPDCE1u1V6BQHD51ayFeZy9ywKHwVtGGarY0UdbFP1hLm5W6Ed7QH+l/
+         vz8AO9LJEAbwQSI2R2frjVMnKgx6i2o1/K5aNSV7QP+Aa7eyQaKqMUF8cZ++mQDSnyrQ
+         I9/Q==
+X-Forwarded-Encrypted: i=1; AKwUvBxUQlKg56CerfxmFjOK9gM0BVWLEfbqB52LDsyV4croxOlwAqYvHBayxGp0SX/etWm8hJAX8fu4wV3x@vger.kernel.org
+X-Gm-Message-State: AFq9FYIXHYieXIS1QtxHJ8ZWxBBz8HuwAUdXmgkuh9YBFCRJemHGIdEY
+	VUPF3YF81dTHKJJbrPO4ghDnHruy9dH5Ptc/fDqH25+GmUs1l5TmPGh+
+X-Gm-Gg: AYBFou1QczXsVeoLIU/g95RAHXBRN47lYSk3xtyn1j9NNU8x+ofEAqFOqCDs3VcO8SM
+	x/iBE8JD7zLvcS8lQgNw2RR+vpB1K3YhZNN/qRVxMgrIBfDamozrCjlBBXozsC7nOo+BvLsJo+p
+	bJMymNIN8PrL/Zhp0dMAsRU8wFYNe5aeMpw9451WU3FmtvxaZ/95lE5NdWEn1P2M26vDGeEOnoJ
+	5lEfnTSKIGsuP0PtssUlDt6HkGXUzPIk+OM05bZpBEakizyNzUiI2lfZg/8vzHREwQLFAx52Nhj
+	g3ay0JRA8iZ6P8WogWGi8IQKg+3VaFORViVsQIADJULb7OaXm3vUdopRf3/1amZauxy6QksZ05R
+	cbxxJWJYsDcgXyS6oROWqhY1Qaph/oBJXnM+mVGeykC08aPUVsP2o+REUciD3mj2JWOTuBVpXZv
+	Ujiy48BLwdwXNKKK1r7PRsEjaIDavSlsXuhK8l+sPMzekdyTSOTbIhDEJtIOESoG6vzfSH2/n0c
+	6x3QyGEovp2GcwwWp8=
+X-Received: by 2002:a17:90b:5444:b0:3a8:5d57:a5e7 with SMTP id 98e67ed59e1d1-3ab3ab32b3cmr10599306a91.28.1791962092870;
+        Wed, 14 Oct 2026 00:14:52 -0700 (PDT)
+Received: from [100.125.248.95] ([124.70.231.46])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ac61171feesm3027261a91.17.2026.10.14.00.14.48
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 14 Oct 2026 00:14:52 -0700 (PDT)
+Message-ID: <53a4ffd5-3ea5-483d-ac11-74b95b5d37ed@gmail.com>
+Date: Wed, 14 Oct 2026 15:14:45 +0800
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-1-60743a3dc326@kernel.org>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: fix extent status cache clearing when truncating
+ inline data
+To: sashiko-reviews@lists.linux.dev, Zhang Yi <yi.zhang@huaweicloud.com>,
+ linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu
+References: <20261014021714.2382353-1-yi.zhang@huaweicloud.com>
+ <sashiko-outbox-170745@kernel.org>
+Content-Language: en-US
+From: Zhang Yi <yizhang089@gmail.com>
+In-Reply-To: <sashiko-outbox-170745@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On 2026-10-12 12:20:46, Christian Brauner wrote:
-> ecryptfs_lookup_interpose() opens the lower file of a regular file to
-> read the size from the header. If that fails it calls make_bad_inode()
-> and returns the error. A new inode is still I_NEW at that point and
-> nothing ever unlocks or puts it, so it leaks together with the reference
-> it holds on the lower inode. And an inode that was already in the cache
-> gets marked bad for all its other users instead of just losing the
-> reference this lookup took.
+On 10/14/2026 10:42 AM, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [High] ext4: integer truncation of i_size in ext4_inline_data_truncate()
+> --
 > 
-> umount then complains:
+> commit dadd6832c867f600a26266f1d17a57f7cfd12f24
+> Author: Zhang Yi <yi.zhang@huawei.com>
+> Subject: ext4: fix extent status cache clearing when truncating inline data
 > 
->   VFS: Busy inodes after unmount of ecryptfs (ecryptfs)
+> This commit restricts the extent status cache clear range during inline data
+> truncation. Instead of dropping the whole extent status tree, it clears only
+> the blocks that are actually truncated away to prevent inconsistencies with
+> dirty, mapped, and delayed buffers.
 > 
-> That's a WARN, or a BUG with CONFIG_BUG_ON_DATA_CORRUPTION. The lower
-> filesystem reports the same when it is unmounted. Use iget_failed() for
-> a new inode and iput() for one from the cache.
+> Link: https://lore.kernel.org/linux-ext4/20261009103033.2920530-9-yi.zhang@huaweicloud.com/
+> Link: https://lore.kernel.org/linux-ext4/6ac92a4c.70ed5d86.2ac85.0072.GAE@google.com/
 > 
-> Reproducer, opening the lower file read-write fails on a read-only bind
-> mount:
+>> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+>> index ceee69a66482b..b630e56815bb5 100644
+>> --- a/fs/ext4/inline.c
+>> +++ b/fs/ext4/inline.c
+> [ ... ]
+>> @@ -1905,8 +1905,12 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
+>>   		 * the extent status cache must be cleared to avoid leaving
+>>   		 * behind stale delayed allocated extent entries
+>>   		 */
+>> -		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+>> -			ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
+>> +		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
+>> +			ext4_lblk_t lblk = EXT4_B_TO_LBLK(inode, i_size);
+>> +
+>> +			ext4_es_remove_extent(inode, lblk,
+>> +					      EXT_MAX_BLOCKS - lblk);
+>> +		}
 > 
->   sig=$(printf x | ecryptfs-add-passphrase - | sed -n 's/.*\[\(.*\)\].*/\1/p')
->   mount --bind -o ro /lower /lower
->   mount -i -t ecryptfs -o ecryptfs_sig=$sig,ecryptfs_cipher=aes,ecryptfs_key_bytes=16,ecryptfs_passthrough /lower /upper
->   cat /upper/f      # EROFS
->   umount /upper     # VFS: Busy inodes after unmount of ecryptfs
+> [Severity: High]
+> Does this calculation inadvertently drop valid delayed allocation extents on
+> 32-bit architectures for files larger than 4GB?
 > 
-> Fixes: 3b06b3ebf441 ("eCryptfs: Fix new inode race condition")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+> Looking at ext4_inline_data_truncate(), the local variable i_size is
+> declared as a size_t:
+> 
+> fs/ext4/inline.c:ext4_inline_data_truncate() {
+>          size_t i_size;
+>          ...
+>          i_size = inode->i_size;
+>          EXT4_I(inode)->i_disksize = i_size;
+>          ...
+> }
+> 
+> On 32-bit architectures, size_t is 32-bit, while inode->i_size is a 64-bit
+> loff_t.
+> 
+> If a file with inline data is extended beyond 4GB via a delayed allocation
+> write, inode->i_size successfully updates to >4GB. A subsequent failed write
+> past EOF (e.g., from ENOSPC) triggers ext4_truncate_failed_write(), which
+> calls ext4_inline_data_truncate().
+> 
+> Because i_size is a 32-bit size_t, the 64-bit inode->i_size wraps around
+> (e.g., 4GB + 10 truncates to 10). When this patch uses the truncated i_size
+> to calculate lblk, lblk incorrectly evaluates to a block near 0. This
+> results in dropping valid delayed allocation extents across the entire >4GB
+> file.
+> 
+> Additionally, the preexisting code assigns this truncated 32-bit i_size to
+> the 64-bit EXT4_I(inode)->i_disksize, corrupting the on-disk size. Should
+> i_size be changed to loff_t to prevent both the incorrect extent removal
+> introduced here, and the disk size corruption?
+> 
 
-Thanks, Christian! I ran this through the regression tests in the
-ecryptfs-utils project and everything passed. I also followed the steps
-in your reproducer, with and without this change, and verified that it
-fixes the intended issue.
+This is not reachable today.  ext4_inline_data_truncate() is only called
+from ext4_truncate() when the inode still has inline data, and ext4
+keeps the size of such an inode below the inline capacity.  Every path
+that can grow the size past it converts the inline data to extents first,
+which destroys the inline data, so the inode cannot carry inline data
+any more. So a file that still has inline data when
+ext4_inline_data_truncate() runs has a size of at most a few bytes.
 
-  Acked-by: Tyler Hicks <code@tyhicks.com>
+That said, in the future it would indeed be more appropriate to change
+i_size to loff_t, but this patch doesn't need it.
 
-Tyler
+Thanks,
+Yi.
 
-> ---
->  fs/ecryptfs/inode.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-> index 525297c7ebd8..0d8452558a98 100644
-> --- a/fs/ecryptfs/inode.c
-> +++ b/fs/ecryptfs/inode.c
-> @@ -362,7 +362,10 @@ static struct dentry *ecryptfs_lookup_interpose(struct dentry *dentry,
->  	if (S_ISREG(inode->i_mode)) {
->  		rc = ecryptfs_i_size_read(dentry, inode);
->  		if (rc) {
-> -			make_bad_inode(inode);
-> +			if (inode_state_read_once(inode) & I_NEW)
-> +				iget_failed(inode);
-> +			else
-> +				iput(inode);
->  			return ERR_PTR(rc);
->  		}
->  	}
-> 
-> -- 
-> 2.53.0
-> 
-> 
