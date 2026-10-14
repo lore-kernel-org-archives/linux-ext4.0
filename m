@@ -1,204 +1,177 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com [209.85.208.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAEAA519DE1;
-	Wed, 14 Oct 2026 13:53:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791986035; cv=none; b=XnUN5uh1X/KuA2m2DP/hTreqwdwqoU3QwZXrta4Rxm+7scEFlzfsfc5F9Hqo6UPEdwj1yDB2IUn9a3kvuK1KEMoWbHfQIoHzV4A1fYljsnSAMgRnMhHHEx2ePTyUZNfgzKUqWoXoz2tnAclkVjZqwQjjIO4aF1NzX+1k+/C3hec=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791986035; c=relaxed/simple;
-	bh=FY/Y1v2iphqNQXBdfxVM2bdNOoy2eFDzxycsgnfoaOI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Z+9Kt3kGdHpvsJ8H7mrmFx5Z925tzTHeP/c3Ojte5YyluwDhhQGbVa1xlD6mhJ9Q90j1nCkNPnuSCzXE1kq0Crm8fLzRUFQ9nkhkJi1qP/Rnk7XRB1KAlitbDd8bhfuorobuSvhxvUW47rIaXcqA804p4Npey3CrD7dcW1ZEKa0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ThH/PLvo; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CEv0Vm+A; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=ThH/PLvo; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CEv0Vm+A; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97DE253CA9A
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 14:09:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.53
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791986968; cv=pass; b=Ca/B2PiEt4BtcPTVfcE0fljBSyX9NhbYH/9FAd/OPGq6+cYFKfSnfe5QUI1bqaHO8pOIU/ytw1L1zCfGSQe5Xsn8z1M29dyowso/vZYE3P2d7QyF2PqCHIpH5SEBcbOatU2qblNf5RsprWm1aTAl7t/+00GUuiXtH2beUE9nDeM=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791986968; c=relaxed/simple;
+	bh=sd73B+0fv4kFWg1/BIpMIx0XVt6pOSOqH8NxgJdLnhs=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=nAlUKz0dfjBaVWaTxcFnovZH65re4uiuDTXFlzdTIuMx6cWqWHcyYFMScjO3Usj7ZjgtIy3SbgKxxge36kNtUemhBdfQWsHiahdEDflBIQAfmVmjWg9bTVEt29M8mzDkA1ZUH69hKDW7qhMGMniu3rl/mlu/itYZ6R7sdHEr+FY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Yv9FP3sb; arc=pass smtp.client-ip=209.85.208.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ThH/PLvo";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CEv0Vm+A";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="ThH/PLvo";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CEv0Vm+A"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2A3C01FB67;
-	Wed, 14 Oct 2026 13:53:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791986026; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=m33Hz2F8zGiBvESxxwsmonj/pJ1AncoCvKPtx51EwMU=;
-	b=ThH/PLvo9pUHVNc41lZOefyT+F8GPMeD5ZkPd1GDwn/YCn2uhBr+1YfaDv+2BOqu9gt0v7
-	3pIEJqBcEylfJItgi77Aw8rh3Yz5HyS4+AWCveSNFJBQ6NZBBxdeI6mcfAFr4fiVUwnCvT
-	jimWoXXktTfGczEYSrVuA1SIL+ObSKk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791986026;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=m33Hz2F8zGiBvESxxwsmonj/pJ1AncoCvKPtx51EwMU=;
-	b=CEv0Vm+ASRNt9Zk7drNEtvyFSJ8owB/j/x9FvOVYNo4CwrqKnVQvUPAV4llmauSkt6Pxa4
-	HKw8SPD9y/TX/MDQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b="ThH/PLvo";
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=CEv0Vm+A
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1791986026; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=m33Hz2F8zGiBvESxxwsmonj/pJ1AncoCvKPtx51EwMU=;
-	b=ThH/PLvo9pUHVNc41lZOefyT+F8GPMeD5ZkPd1GDwn/YCn2uhBr+1YfaDv+2BOqu9gt0v7
-	3pIEJqBcEylfJItgi77Aw8rh3Yz5HyS4+AWCveSNFJBQ6NZBBxdeI6mcfAFr4fiVUwnCvT
-	jimWoXXktTfGczEYSrVuA1SIL+ObSKk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1791986026;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=m33Hz2F8zGiBvESxxwsmonj/pJ1AncoCvKPtx51EwMU=;
-	b=CEv0Vm+ASRNt9Zk7drNEtvyFSJ8owB/j/x9FvOVYNo4CwrqKnVQvUPAV4llmauSkt6Pxa4
-	HKw8SPD9y/TX/MDQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D61D2133F1;
-	Wed, 14 Oct 2026 13:53:45 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 9hLHK2mJz2ppWAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 14 Oct 2026 13:53:45 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 7BB03A140F; Wed, 14 Oct 2026 15:53:36 +0200 (CEST)
-Date: Wed, 14 Oct 2026 15:53:36 +0200
-From: Jan Kara <jack@suse.cz>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org, 
-	v9fs@lists.linux.dev, linux-trace-kernel@vger.kernel.org, ntfs3@lists.linux.dev, 
-	stable@vger.kernel.org
-Subject: Re: [PATCH 0/8] fs: fix a range of UAFs during rcu pathwalk caused
- by non-rcu frees
-Message-ID: <mlo45jj5jwsdysv3jrh6vw64yqzfbrfjbyw4tu54i4gdlgi3qd@56ch32zakgt5>
-References: <20261009-work-fixes-rcu-v1-0-7446d2d335e6@kernel.org>
- <r72foycb4ol4hywl5m2sj6h6yxee3nladaw7g2zdxhejmhrkgc@v24cfppcak2h>
- <20261012-gaukeln-zeltlager-etikettieren-73ae50ccac01@brauner>
- <voobrqryqulmrq7gyt5vdwuiqd3wrhsrgfcadszclcgs6smw64@qb7yne64airm>
- <20261013-tante-unwiederholbar-summieren-de1079d8fb05@brauner>
- <20261013-hektik-kommunal-zischen-f7e37ee3ddff@brauner>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Yv9FP3sb"
+Received: by mail-ed1-f53.google.com with SMTP id 4fb4d7f45d1cf-6b203527bceso1346476a12.0
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 07:09:26 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1791986965; cv=none;
+        d=google.com; s=arc-20260327;
+        b=d/YaYxjgc6m50EY8ot/b4nPd/uGxUHS1pDWBVh9zONcPrp/WOPkD24DgSwrPE/p2aV
+         qRgX94w72y09EXCH4FBKsYJikfW39S2uD+BTgA1vYwlqB8proWCs0L09Jbl/9PEJ0vDp
+         loyslT21qBd8gbdbDPq2/rCILGyqjyN09u3i/2xD9ioWzCKw5/cpjvzCOFpaD8rY5CNH
+         fJKdbCZ0kz4nFUlbMnVCHjR1BUGp+vG9RcJFQRLtXqK1D3sV5T4H7sJfQ5d1vAch1qoz
+         lw9UB8PTwZnF5ngL9+tiBW3PM6F81DQHiSZra+rygHCKH+3xUthkJAFaxKHIUwFZOmuT
+         1/EA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        fh=WIFEer7PYDSUHHm8y/dspnWdmGhuRWKoUi84z5WBH7s=;
+        b=Lc0RJVz/x8oJQ8iHv9Tedj8x16PB6NzOY5qIuVImW7jB6V0jWsje5mVhxgt8spaqwt
+         NSWwf2wyZhOQxKzNUGmB0i5Nt4dqbwTs8+g3GR++QfKhPkXSSiz9XE1+kLXA5w+2PX1I
+         0BTdkVq3eJx+pTkZBiLLm6waohxyNKM5a27NjruE5mCHaNwO9AsaRbA9W5lkN0SYqbbd
+         Ni98oYvRHFgsVud1GeiUmZlfOHZ6UiwT3SruNnVRwhdxbKR6zZEo649BstfFzXwsaOhv
+         0AdQXOZCy4+N471c0SNxshfCHnD6gmQIF90NS1sl/HT2OqkkvAGhs6xYvFlYOSPsQTZt
+         kMCg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1791986965; x=1792591765; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        b=Yv9FP3sbiIObVAd7cQCkT8vTjPQW2euo9H17lTc683i6p/9tjAZHD3S9ayAId6G0zz
+         dQYUlx/P+mPWnqR8kIwELDxA4rrlK+DZSm+KaUQTAMniHDkNZnPCR++KRwh7RTt9+Agi
+         I9i7NLKsLJS+UmpnuE9zPi0jx6n/+/T5irpT7bVmblmpFszyxhKin/46rGpydo95BcKq
+         IcyN18iUvpnSLYyb+pKCR/J6dInJLThCGAfphxMtfBW1C1+VN+CsTQ2MJ2gii8IBuZTe
+         80PVez7adrbGox9g4t7B1FfYLvu9DSMHEeD0fm38bCBymSXz53Xvaub2gtunyZidBGOu
+         OVQA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791986965; x=1792591765;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=3FLZn3X7YL11DIAVkQWpw7vFctgltGOcmiwV6tG+5Ks=;
+        b=ggT5uvUckXm4MgM2cWcEc+qXWl080CGCfw935XvQ3GAIIIDAVtPBp8LbH1gQdCPdez
+         /B2uH+WrbPRnbbKiYw+KhFGImkrAdikBmGqj1s81c0A2zJRcnrSygzIy1ttCv78vULeW
+         YYW+z4+Hw2+NoM/fF4SSNIL0SmGyOwerzRx2nuIpTgsgQxgA9VVXjyasahdQji6wZWl1
+         Nrcjpcvc6JSDf3iJdZ2f2cFXAvtAzo0d8/M3X4lulRU6lS9ur4d0PXsLLiYQWhFsNDAf
+         XszLMvjEyKtJJRvCLxj+ibUfV/WfwM57tcbOYe5i4FEEIDqottfCuaLXI+DfDprztH94
+         /YJg==
+X-Gm-Message-State: AFq9FYLMLzjSlFbt2/5GM/DL1ZMOlnuAeC6fJY16stXPNqllo6L/G7fr
+	ClNlRZdMgZFrTHlaMYSt/KIeHBYi5wndvoUHtgskXXbLtVMGQhCs9HwyknPAK+IkJWBMSO67GOv
+	XA/xuAYc+gDahh2Ks3r/bzAP+r3CYoiiwqeQJyGZ8pWLJ
+X-Gm-Gg: AYBFou0ozyychU4BdHPH0zjensV8so+WGFqKBzJBHkd73svcL1VIw8hT0ibB7jsGwDI
+	2kJnQDABfaXyZrb6KPZDOOAbiHeeie1ypwZlDogNlXC2gUtQmLUy5/Hi8qSVjzobXaJnyoYgpXE
+	7mot5CGj6g1h60qGqGPK0CnuNlXfcTW/oVJKU8m30DdmPeK6WlB245bLAm6AgXGODDSj0BYm4wF
+	/TGWL4t9flJbncps8kbzj6LJA6AN4ffRczwttymS6JSKVV6Nc7nRhZ6N8FCod/jwRAjVVigu3xJ
+	v3bdMOdkmqBmll/oKsDDqeRpVV37npA+w38aepkEAjsWutaHggsOuZc41SWOSdGWJVoT
+X-Received: by 2002:a17:906:dc8c:b0:c29:555e:bf2 with SMTP id
+ a640c23a62f3a-c31a9fe3cf5mr1382766766b.41.1791986964194; Wed, 14 Oct 2026
+ 07:09:24 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261013-hektik-kommunal-zischen-f7e37ee3ddff@brauner>
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 2A3C01FB67
-X-Rspamd-Action: no action
-X-Spam-Level: 
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[10];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.com:email,suse.cz:dkim];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Spam-Flag: NO
-X-Spam-Score: -4.01
+References: <CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com>
+ <20260916084723.877552-1-r772577952@gmail.com>
+In-Reply-To: <20260916084723.877552-1-r772577952@gmail.com>
+From: Jiaming Zhang <r772577952@gmail.com>
+Date: Wed, 14 Oct 2026 22:08:45 +0800
+X-Gm-Features: AclHuK_KOZRXvkZAlVmDLv2Mmd5CCVB7SGq_bvSi3dxWQZgMQy5Ldx3OdNtwlzo
+Message-ID: <CANypQFZCx7iAhsMzb1-WRAMwi1T_sk34LkUX8-bDquWrez3_eQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4: clear in-inode xattr space before adding the first xattr
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, jack@suse.cz, libaokun@linux.alibaba.com, 
+	linux-kernel@vger.kernel.org, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
+	syzkaller@googlegroups.com, yi.zhang@huawei.com, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Tue 13-10-26 21:25:55, Christian Brauner wrote:
-> On Tue, Oct 13, 2026 at 09:23:07PM +0200, Christian Brauner wrote:
-> > On Tue, Oct 13, 2026 at 12:47:58PM +0200, Jan Kara wrote:
-> > > On Mon 12-10-26 12:42:06, Christian Brauner wrote:
-> > > > On Mon, Oct 12, 2026 at 12:36:15PM +0200, Jan Kara wrote:
-> > > > > On Fri 09-10-26 23:51:50, Christian Brauner wrote:
-> > > > > > While working on eliding the grace period in namespace_unlock() I went
-> > > > > > through what filesystems free when they're shut down and what a pathwalk
-> > > > > > in rcu mode can still read at that point. Since 66a97c2ec953's rcu
-> > > > > > pathwalk fixes that's the filesystem's job. Whatever ->permission(),
-> > > > > > ->d_revalidate(), ->get_link(), ->d_hash() and ->d_compare() look at in
-> > > > > > rcu mode has to be freed after a grace period. A few filesystems don't
-> > > > > > do that.
-> > > > > > 
-> > > > > > Most of it is hidden by umount(2). namespace_unlock() waits for a grace
-> > > > > > period before it drops the mounts, so a walker that was inside the
-> > > > > > filesystem is gone by the time the filesystem is shut down.
-> > > > > > 
-> > > > > > But the last reference to a mount doesn't have to go away in umount(2).
-> > > > > > A chdir() out of a lazily unmounted directory or the close() of the last
-> > > > > > file on it drops it without a grace period. A walker can then still be
-> > > > > > in the filesystem while ->put_super() and ->kill_sb() free what it
-> > > > > > reads.
-> > > > > 
-> > > > > Good catches! But I find it very counter-intuitive that pathname lookups
-> > > > > can still be running against a filesystem while its ->put_super is called.
-> > > > > People will keep forgetting about that and as a result these UAF bugs will
-> > > > > be introduced again. Isn't it feasible we'd guarantee to the filesystem
-> > > > > ->put_super() gets called only after all lookups are done (i.e., after RCU
-> > > > > grace period expires)?
-> > > > > 
-> > > > > I understand this is a hairy bussiness because this has userspace visible
-> > > > > implications (like when filesystem's sysfs files disappear, when the bdev
-> > > > > really gets unused, etc.) but keeping all filesystems safe to run RCU
-> > > > > lookup after ->put_super() will be IMHO a headache.
-> > > > 
-> > > > I don't think delaying put_super() or freeing the superblock helps.
-> > > > That's not where the issue is. The issue is with sb->s_fs_info being
-> > > > available after a grace period and that can go away in different
-> > > > locations ->put_super() or ->kill_sb().
-> > > 
-> > > So my thinking was: Cannot we separate the teardown of mounts and the
-> > > teardown of the sb by an RCU grace period? Then by the time the filesystem
-> > > gets to any freeing of filesystem related structures all RCU lookups are
-> > > guaranteed to be done so there's no problem with them accessing possibly
-> > > freed structures pointed to by the sb.
-> > > 
-> > > But then I've read more of the changelogs and AFAIU getting rid of the RCU
-> > > grace period waiting in the unmount path is actually your point to speedup
-> > 
-> > So I prototyped your thing and all version I could see working end up
-> > penalizing umount and filesystem shutdown quite heavily. Maybe I'm not
-> > imagnative enough but everything involving synchronize_rcu* should be
-> > kicked in the n*ts. Because if you're going onto big machines your
-> > workloads will get said kick.
+Jiaming Zhang <r772577952@gmail.com> =E4=BA=8E2026=E5=B9=B49=E6=9C=8816=E6=
+=97=A5=E5=91=A8=E4=B8=89 16:47=E5=86=99=E9=81=93=EF=BC=9A
+>
+> An inode can hold extended attributes in the space that follows its extra
+> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
+> ext4_iget_extra_inode() validates that space only if it starts with the
+> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
+> space is treated as empty and is not checked.
+>
+> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
+> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
+> there to find min_offs, the lowest value offset.  That offset decides
+> whether the new value fits and where the value is copied:
+>
+>         free =3D min_offs - ((void *)last - s->base) - sizeof(__u32);
+>         ...
+>         void *val =3D s->base + min_offs - new_size;
+>
+> A crafted image can leave non-zero bytes in that space without the magic
+> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
+> bytes are parsed as entries, and an entry that claims an in-inode value a=
+t
+> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
+> then wraps around to a huge value, and the free space check passes althou=
+gh
+> the value does not fit.  The value is copied new_size bytes before the
+> start of the space, over the inode's own fields and, for a large value, t=
+he
+> memory in front of the inode.
+>
+> On a kernel without KASAN, the copy corrupts memory: it overwrites the
+> inode's own fields and, for a large value, also the memory in front of th=
+e
+> inode.  The bytes and their length are decided by the setxattr() caller.
+> Nothing is freed and reused here, so the use-after-free in the report onl=
+y
+> reflects where the write happened to land.
+>
+> Triggering this issue requires mounting a crafted image, which needs
+> CAP_SYS_ADMIN or automounting of removable media; after that, any
+> setxattr() on the file reaches this path.  The issue was found by fuzzing
+> and has not been seen in production; a reproducer is available in the
+> linked report.
+>
+> Clear the space in ext4_xattr_ibody_set() before calling
+> ext4_xattr_set_entry() when EXT4_STATE_XATTR is not set, so that the walk
+> starts from the empty entry list.
+>
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=3D4QRRDoqH6VAw1daAq88N=
+DWiQKoM7QTOnP40sg@mail.gmail.com/
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude Code:claude-opus-5
+> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
+> ---
+>  fs/ext4/xattr.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+>
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b965..2e5f39b710bd 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2274,6 +2274,10 @@ int ext4_xattr_ibody_set(handle_t *handle, struct =
+inode *inode,
+>                 if (IS_ERR(ea_inode))
+>                         return PTR_ERR(ea_inode);
+>         }
+> +
+> +       if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> +               memset(s->first, 0, s->end - (void *)s->first);
+> +
+>         error =3D ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+>                                      false /* is_block */);
+>         if (error) {
+> --
+> 2.43.0
+>
 
-Thanks for trying! I kind of expected that it won't be acceptable after
-reading all those changelogs.
-
-> And one thing I forgot to say: that requirement exists today. It is
-> entirely accidental that this wasn't an issue in the umount() path
-> because of the synchronize_rcu* in there. But said grace period doesn't
-> exist if you e.g., chdir() out of a mount and put the last reference
-> while still in lookup. Then said filesystems are fscked today because
-> that is a requirement. And various reproducers in this series illustrate
-> that.
-
-Yeah, I understood that from your description. The RCU grace period delay
-would have to be somehow added to those cases as well.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Friendly ping, please tell me if any further change is needed.
