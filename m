@@ -1,83 +1,78 @@
-Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+Received: from mail-pj1-f45.google.com (mail-pj1-f45.google.com [209.85.216.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EBB43DC4B7
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 02:35:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2ADF33DBD5E
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 02:35:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792031723; cv=none; b=WBtdwbdpqv4xUnHy0DdpowoMzWPJdXEuowfjsJJJkt0ZYZ0Nt/aGdhrb1c60vZKjgFJfl8dD8SBQ0EBNGZPi4S91ZPkFz1a91om7lIp4Rq3aLn++m5ez91Ih9ulzIjRy6DyasDXEhB+t/hGbBzL+Nq7zwgAhc6+1pKcX8P1ciKM=
+	t=1792031733; cv=none; b=DQaQC/Cq5HOkWg5MawbMsYLwTSHoQlfwSvYbj3PC3etb08MRIm8XxnstZhZ7GUbdrQ/tLyfiL2kEoinNpNhiFaA3nUYV673mSylk73TQMp+4TvfrDUM44F0y7HbKnbI0XyhbqYdDmjuM7c8nmGuuUWivf38A50ivEugwUxDGg00=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792031723; c=relaxed/simple;
-	bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
+	s=arc-20240116; t=1792031733; c=relaxed/simple;
+	bh=HuGeJoAQEA7iwbIiLxJv53njPzZ3n0LkR9Yw7d+krrI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=JnSF7MYerRxiMpPkHpfY9P2T2Fq8CA6ewSXnCSCcL+lB2JwYciKmPO7R5isFk77S/b1lPAKUSkS5lt3jl2ejejwaVU9cF9ML6kC1h5YIKBHoeo2WzfqB/HUvcoZA9i5cHg/yb7058wqxC8GWOSOoLH8stDUNWSIGzYkoVK8gu7U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AoXKe+74; arc=none smtp.client-ip=209.85.210.180
+	 MIME-Version:Content-Type; b=Hl0KNcDrPUJbWpQGKSAfJiF1n/GKo+3mRnBygDboxL6JuHr1/pEHyMr9oMXR170aqidN6P+3VG9PwNLAwkKnMX2yl3CsaywORpaPKGMkcCOTc26WwUmH61tC3fCWm32b0UjhH2+JVYsvjAZrU50g/z8p2vdDV3TtWPLq7pr6ijU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DFO3X0IK; arc=none smtp.client-ip=209.85.216.45
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AoXKe+74"
-Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8935f42e8f0so612779b3a.2
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 19:35:19 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DFO3X0IK"
+Received: by mail-pj1-f45.google.com with SMTP id 98e67ed59e1d1-3a813079a55so3977832a91.0
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 19:35:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792031719; x=1792636519; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1792031730; x=1792636530; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:mime-version:references
          :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
-        b=AoXKe+7412efTE3EiwkvFQ1eH6HE8+DIv/au2cGQ+bJsCJCsMy7MqhBT+x1d9NR03/
-         dUVVhqiuRoMcUh3VkjX/X8DJr839oZuoxYgPUE2RgQjmh4/JUsQmaQMMqnHBf9yhtqdR
-         cwUItZ6bJP7KzS0deSFFEj5KaPugm+oAXaPqAk6rDeAGWOQhW1krcDLHJVjBudpenUOO
-         kU2wlQX0ORcDR6LukEdPEv+m6DIIcQj6lxj63U3JP8uJlq9O+gHq0qWUSyqxVYzlXHqi
-         1w/e9MuSsYOh3tbDHwEdtc2K2HOpwTPl0YsY54rUT55znrRZYaKTlx/qSuN1/23G1xur
-         D1og==
+        bh=HuGeJoAQEA7iwbIiLxJv53njPzZ3n0LkR9Yw7d+krrI=;
+        b=DFO3X0IKNgTSyoBkih4W9uj9sRv8v+MhgvfHjvQzJNayEqXQy4gKrHyjOjIPusKzgA
+         hYrvLT7TZY2Rbl8m+sT6+8Svhqwi+ZS/dqeuW0GhThqGjYkVvEb74eZWh0gYYhXdUnQK
+         /ba3qCIHaNPEN6VcsAnVTxbIp77nCAFe06twS+E8HqVJsIrHmcQS872h/D7qroffARqx
+         dTI3tTFvB8D+XqMR0dilPvvF+MPlzQ1LSaGChNMlxzDciW752vL47JU60UdhAeM/CC9u
+         Npas3LQ5C/UDFawFjH+pZMdA7LP+EOp7vGTZ0JunPtOhF7N4W0rVhkl8Q+Nd54sXvzNa
+         o2qw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792031719; x=1792636519;
+        d=1e100.net; s=20260707; t=1792031730; x=1792636530;
         h=content-transfer-encoding:content-type:mime-version:references
          :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
-        b=iklaxV1el38MfBu/bsA6EdngH3eANWu5j/VlzB9XWsAO+X5TNVQhZv4oYx3r6/j8bj
-         2RwdoVRQu8V4JOXcPOnQ1+cFwFG1OvvjrX5k59+pB57vME/al7umU9/G1HHmpuYAyTXH
-         8ShlhreUL/QpHHwQgxTgcu3S20d5k3DLhRvhzVgY0TvtrvUO+oTgE/kOjxiE+1gY2Yw3
-         lZYC1KmIo1k2v9EsXJfN+c+pEUN/tIHSTsOYRSfIBBd0K1tLlhSHyPH28vAu4tnxvApX
-         9fFmC8VLHOmCBZeHG/wu52bCNkO8wX/ZV/B3tZPAGEb/UowWmrIkgHUROiJZO/o0ERaD
-         Dm+g==
-X-Forwarded-Encrypted: i=1; AKwUvByZIBM9Mx9p7bmTrtsbHgGpzfxzOfswA1lW1DvDi33mRa6WnMp1AZmQpBhncG6pdcjX70Yc8u1357dS@vger.kernel.org
-X-Gm-Message-State: AFq9FYI62MXSh+0IUNte/UnKGAkoH430lWYkoZ9sVFCG3nzm7H5+vXPG
-	QUPIDj5W794G98d/I/414olBU4BEUdg4koMabVzxnNY3gdCAZYmztCi8jfmF7ufz
-X-Gm-Gg: AYBFou3HUoDKm1kM6gRuxsf7Dk7nnZsQTf0SgI3+0zQoKkcMRCo0mneN24UP0lW3Zqh
-	XUfacE6cZ6Mbk93vopV4QeFh/VpQng99zc5Zh2pb0GnBTwNoBT2vgP3oKmFdwPfnzxTSBKgJXdz
-	6e4AiWgFA4kRQurPqfUWFzuvxcTbJSLVeccJQ7nFbiKZDcsRuXWzq8ypzPFSPe+sn2MB4+YTlhs
-	vZ9v28HtJXzkzOcM0acmz+epFjsnaNaBuKyRpaYrqnuScnRwyhP4Ds0wPxOiYvy0LgBlF2ThcgA
-	fKA3svibtpgteKe4MxLankUp2YtSbh1+JIDtXBl5M8fA2fu856cq16gPbJmaOuL0V2WvyKIhxkV
-	qscM1yK6unyGGzpnNO7pKTFm6su0pWvors7juww+ZlEoyQsXn3tJsal0sqRenozCE9SUgS27cuY
-	hr0LYh/1RMQbiltIi8kQA/m2CGih/nvO6iN7vcEbyAJmLDv09LjByXqVUIWVPsGPWPTkAbfRuBO
-	w==
-X-Received: by 2002:a17:90b:4fd1:b0:3a8:5fd6:cb6 with SMTP id 98e67ed59e1d1-3ab39feaf19mr13291631a91.0.1792031719067;
-        Wed, 14 Oct 2026 19:35:19 -0700 (PDT)
+        bh=HuGeJoAQEA7iwbIiLxJv53njPzZ3n0LkR9Yw7d+krrI=;
+        b=Qbns+FPBbgDqhZxr1vQ01GfJS+8xNhN8c4FIFJFRKNkUtRaH86L5/ONyKJJhSwv105
+         qWqrKsQ7iJl+w+TyRAviC/vZO1BFTiDLJpdqUAbyno35MqPYMRqelzqaXRepZbbfakh/
+         yKDZ189oV6IgESCVoDfLEph3bbXVjX0Kny69pauByWtVJO3kD53bNrkptjIS3zZtlFzb
+         1E3t0xTAseGyTjHqslOKM8RRJS0u0K5GIveGtp1JVfX1Cnc4McT8+dExc+upcgKTiVU+
+         NR5k/CuvY6lVVG78ucV2PWg/pKeofFJO8IAt5TiHJuK4zhPXfy2o5jHQQ942ZAe+fhD8
+         M5bw==
+X-Forwarded-Encrypted: i=1; AKwUvBxzxaV5jdKCaX+Q77NEw+FHL4NBFnNqUq8q+VzjMYnGfD42x9OTR03a8cX4JDztiH/yfbLXrO78vcvi@vger.kernel.org
+X-Gm-Message-State: AFq9FYLM8+U5yMc5uMCY5HK5LpJC5nCXwKlcjPc5basj+OUqBTgWGLNJ
+	Tj4zKLW3KdmscN+g1hsisTVHeb2Hr4t6FB1sKwsQno5v7+q+o/6i5Auw
+X-Gm-Gg: AYBFou3cbopUHRgz+yBC0an+bgRd7mIz6GOW562CeCZCNA5dfPYq+cQqw0OUfQzIBi8
+	mDoeoRuqwUyk2lqC8siN5pmX8CnboZ8ncKB9xN5KDWacxRRGy7p+QRY9OPJZMFkpjXy3UUCKdxp
+	qPD3US4OMJxScULFYJqlV7POsh6LBlk1mrC1D/OO5kwOpIhF5w7dWdvvFm6EnXTA90a2Wo117JB
+	G9AfMuw4zNIx1cKEwKBNJTIhYkmUH8DM1IT3UaFB6Oxx5RjmAlO9prGg1bTl1YJveotDaHx8JLp
+	tQl7Nn0ROVQpgqt6rDnhUXt2vlYkvv3+wYUkMMnGyfKYOGMFz6yY4fYzTDq+cyeTOXWSp7ouiUz
+	0xBp1OaSQ4PINi7fTNNtSykBJz+LjxLgHzByBQnyHhZFqjoSX8AiMDA4MuRoWGG0S3fM63fGwrl
+	fm7VX6Dh5WTxCB8U/e7AJHkHfiflSlg9LL3U7XzE1gj5Jr+EUNnPgUvpiY7f8JHFo=
+X-Received: by 2002:a17:90b:1844:b0:3a6:d2ac:74ce with SMTP id 98e67ed59e1d1-3ab3a9a8da3mr10311790a91.19.1792031730350;
+        Wed, 14 Oct 2026 19:35:30 -0700 (PDT)
 Received: from ubuntu.. ([138.199.21.232])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ac944511f1sm2034989a91.12.2026.10.14.19.35.15
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ac943e821csm1940875a91.8.2026.10.14.19.35.27
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 14 Oct 2026 19:35:18 -0700 (PDT)
+        Wed, 14 Oct 2026 19:35:29 -0700 (PDT)
 From: Qiliang Yuan <odys.yuan@gmail.com>
 To: Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Baokun Li <libaokun@linux.alibaba.com>,
-	Jan Kara <jack@suse.cz>,
-	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
-	Zhang Yi <yi.zhang@huawei.com>
+	Jan Kara <jack@suse.com>
 Cc: Qiliang Yuan <odys.yuan@gmail.com>,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-Subject: Re: [PATCH v4 0/2] ext4: fix shrinker scan budget accounting, plus a related cleanup
-Date: Thu, 15 Oct 2026 10:35:11 +0800
-Message-ID: <20261015023342.ping-ext4-v4@gmail.com>
+	stable@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v5] jbd2: fix shrinker scan budget accounting in jbd2_journal_shrink_scan()
+Date: Thu, 15 Oct 2026 10:35:23 +0800
+Message-ID: <20261015023342.ping-jbd2-v5@gmail.com>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20261001-fix-ext4-es-scan-nr-scanned-v4-0-b13703714ce2@gmail.com>
-References: <20261001-fix-ext4-es-scan-nr-scanned-v4-0-b13703714ce2@gmail.com>
+In-Reply-To: <20261001-fix-jbd2-shrink-scan-nr-scanned-v5-1-5348b51efce2@gmail.com>
+References: <20261001-fix-jbd2-shrink-scan-nr-scanned-v5-1-5348b51efce2@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -89,10 +84,12 @@ Content-Transfer-Encoding: 8bit
 
 Hi Ted, Jan,
 
-Friendly ping on this series -- it's been about two weeks since v4
-with no review feedback yet. Patch 1 reverts ext4_es_scan() to the
+Friendly ping on this -- it's been about two weeks since v5 with no
+review feedback yet. This reverts jbd2_journal_shrink_scan() to the
 sc->nr_scanned-based SHRINK_STOP check from v1, which Jan had
-already reviewed and preferred over v3's nr_shrunk-based attempt.
+reviewed, after v3/v4's nr_shrunk-based attempt turned out to
+conflate "this batch was unproductive" with "nothing left to
+reclaim."
 
 Let me know if anything's still needed on my end.
 
