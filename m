@@ -1,175 +1,263 @@
-Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-00364e01.pphosted.com (mx0b-00364e01.pphosted.com [148.163.139.74])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE8E1379C22
-	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 20:02:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.53
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792094541; cv=pass; b=ZCUSIhJTTLGJ9p79yJtrti/38zoib8Va4GRKzzbY2MORMQqwCovg4MPlJKyGsP7qe5xWUb84dyZRjgGxmdOMmx7Pd96PjXh6oXVfU/k4PZeZoYHlbHO7DAcviiBt92Xr+LE7GH370cEwZYyqIlxKh8hYzAqyDCSNSwzlmOPTdsY=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792094541; c=relaxed/simple;
-	bh=mTPvvAdIxgOtHuBEpEFyNQt8LStAshIksTq74xqzhRE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=kd6ZC9sW7Dek6MaGOxrsWwxjBQhOtFx7roHCiSkYzuPX0bBIv3/2Po+4p5F648pmjR1ROTiHn4Du5+dA0OfAoEP6O+IQJ8v5Q81WHshZK3G0ZY0xnkpVxQySAensohBgfJgJ2Dr8u1neS1F12yfdeUYPdlPwF7poAALytYGujCI=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=trailofbits.com; spf=pass smtp.mailfrom=trailofbits.com; dkim=pass (2048-bit key) header.d=trailofbits.com header.i=@trailofbits.com header.b=J6tqORvj; arc=pass smtp.client-ip=209.85.221.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=trailofbits.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=trailofbits.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 122BC58E2C6
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 20:56:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.139.74
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1792097794; cv=none; b=ZxzOs4PHeoQ5WuXGAnvpGUfWIHMqdKqiz2MQPvzjlEvEMXytlDobMySKQd0hexP+5ZP5V7riKgLbm3uorlsNMquAwJjCO8BMsvkdnh2k6MaTMGbZv60WiAt/l30WHy0dVSLiRwatseLQeODHNtFljFMXhvNPqHBQKBW30ulvHys=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1792097794; c=relaxed/simple;
+	bh=ciee2zWhT8lxantCi46yYHD5wYqbH4IopJ2MwJBGLz4=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=RiMXCQkQ8rNGHGvEAB3n+BGfb0Y7FeKzdgYG3NokZ3UOznD99meBx/zESq0VRFkadw0oXhDvU/JN8R5+TnNQQ/iAz4H/8pNxDHjsRJhpEIakEWyLK0B8I7Ru1qAEDmtTgMajEnNSPj5JtmX9Qk9xejvPP53jWLgHcLjgP2ZH1Ig=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu; spf=pass smtp.mailfrom=columbia.edu; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=TDyYyGK6; dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b=hvpEcmYw; arc=none smtp.client-ip=148.163.139.74
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=trailofbits.com header.i=@trailofbits.com header.b="J6tqORvj"
-Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-48b042c0759so4221405f8f.2
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 13:02:19 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1792094538; cv=none;
-        d=google.com; s=arc-20260327;
-        b=kiCGxjx6vj+UTmeY4Xt1TpYCDPBMwq8uN2cCIzP66pcFiX8yXxHkWmNGnQGDfNEGiB
-         XhGF5yHziNndYyjdOEqQhNKSwZGEltjSbyMVlrjttNv/xs83blD3GXzo9YHD5fZPG/FS
-         IPx/vBfCnCQuXtRJbirU8x4PjIB0CdFTfQ3Ap/iwynSXmPhl7Qe4lMPZMMgjhuZygAMh
-         rGvWQw/af1XFmkyvfP0Xz78k3j3wrrM/2TjOP9VmLLN+6gME3gQ7N3vIjqgNzX7VszdB
-         EcwNMQ4bz64oXPtw7k2hUtixigRuhw7fMXeG5c0PQ/poQ8orKR8H4uwqY0xnic6HOFq7
-         t3vQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=adFghwGxsnRj3hxYZf8a4TwNZCzfV6GnTk1GcsiUceg=;
-        fh=D0KSR4VaoHyXlksr/teqsIW2fkwSsFCSSTq/oJE62l8=;
-        b=Ls90aTs7KtJgKxOBdCOIDa5wrX4HOl+PMFbSGMo983c2mu5yk0uUKxSFHmdO4QIXAM
-         nziewgjH8/8EKt9vYrAusBYH+F+r/j0KtyqgmDSilhU5bGP3wheanUbZKSbjOuCBhuNu
-         41Fx8LQpcew/1cNmE4JfdRslmzx15erof6vVm2l7cb/0V2CJFYdT/PfIAqJgE7iNFmfM
-         JUAMnKZ2ofx/+a/WzK4mmhQOfCUkhvbJcmR0ksMcfTgYs0B1wTjG97iHM3x5yrOKeUQM
-         zB0lvk9u5B3jdL2x7W+WpvKS3VlvjmOIy5tUHFTT1FeWE85RFzdf+OJlKFtoHrhdW41v
-         zVBg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="TDyYyGK6";
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.b="hvpEcmYw"
+Received: from pps.filterd (m0167075.ppops.net [127.0.0.1])
+	by mx0b-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 69FKaGdd2463582
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 16:56:25 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
+	cc:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pps01; bh=8Px1
+	FtmNtK6xsqmbcUZAty0eeqDU/9nNBMTp6lOdRrg=; b=TDyYyGK6J88TACC41n0t
+	CMA5kTgLTfwY3VvarwMTuxVrMgCTd4LD0bdMSDbPbW2Dags+l1XcK8MptcE8v+0N
+	T1et+iv3YZWIW0l/1J2c3NAr9UB+FQyYgAV/hYK8oErQCjFkcLqV7MtjbqXjzoxY
+	4q3XjxXSA19l7MbwBWs9uRAKteu+OVB1x4CPTl/nAb0Ngq8K+gxalVt3b1UXbSvG
+	Gf7PyfNdW5oX0cuuxGeKnTcHW2pTKXLpwVTWQ1gMtlWTRr8YL5aVX4/fkEU8iVCd
+	jTlXyaevmtyagRawAl0gVgYTbAh4cLs7k7DSNbnal3CNUmf/1mvRVZxGa4crSlJ3
+	pw==
+Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com [209.85.222.199])
+	by mx0b-00364e01.pphosted.com (PPS) with ESMTPS id 4hb303sv0v-1
+	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 16:56:24 -0400 (EDT)
+Received: by mail-qk1-f199.google.com with SMTP id af79cd13be357-93e834ff4d0so1499158485a.3
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 13:56:24 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=trailofbits.com; s=google; t=1792094538; x=1792699338; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=adFghwGxsnRj3hxYZf8a4TwNZCzfV6GnTk1GcsiUceg=;
-        b=J6tqORvjRuFkEkkGRW/2LhUoSr3JqMvg9Fg+4R6PXROwZ/ey/9K3hnFRKuH6BlyuaO
-         6ndrOb40SHg0/bR7Hhl8I4CB9UHTvSh6t1GZT7oTU7j6bJkmb4nsg2m6Ydgghckt350w
-         EGiyldwcAVUCimvFv7FHdpzwBV8EafymP4TSA+8Y9NHPPxdPk9dpujAsgDRWgJcR79zQ
-         I6/xF9PK0B54QpcY2W7ZMuFuk8o04TQjeZ8rNfgdI5w60T/5gujFXfpfY0txIejuAhpU
-         OM73573QKnsIxRbYpE5hzvvEFpIpqODEIuHQgoAC3LpBEEekPcdkrdWsCAz8QzasjRdV
-         FkBQ==
+        d=columbia.edu; s=lionmail; t=1792097784; x=1792702584; darn=vger.kernel.org;
+        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
+         :content-type:mime-version:subject:date:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=8Px1FtmNtK6xsqmbcUZAty0eeqDU/9nNBMTp6lOdRrg=;
+        b=hvpEcmYw2gDDysN2ykQWNMxfsnlNt2TetBhD1egFOiWs4Ns5t1/qngOU3wtFSggtLt
+         UpUPFNbJeMYSDEWfFFAY/pbybD00khntK518BXd3p1TZMbuLKDa41Gp96tMQT4kkrqEu
+         fCc/RmeqanFhRzhbTk26/odI6y8RYJiC5ed3e9e0zJl7Cj2wcHySNdPb1Nct9BQm2Omj
+         Szj0RjNUJagpkQ/RoMAz5Gqx/GpaaK0xVwAnSaWB8aOvyazFIBl6B4kc6CQbYkoWM1OB
+         ifL9xmGRw/Z0jNMrPFCL245fARvewBvn4C0gDZFzIlpz6oPpiVgxvMNZYuhJpkPV6nsq
+         tzUw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792094538; x=1792699338;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
+        d=1e100.net; s=20260707; t=1792097784; x=1792702584;
+        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
+         :content-type:mime-version:subject:date:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=adFghwGxsnRj3hxYZf8a4TwNZCzfV6GnTk1GcsiUceg=;
-        b=0koWYEukUee5eecdTHFF0UeFj7JhWXiqB3dI2gg9yII5vA+jXGhXhIAdgtnyF5sNs2
-         g5D0XglFMD7xKT1sP3aOcrkUxnFE2GVrnEboOoXTyDF0eSAO/JBxMnkGkEWn3SO+JD17
-         d/+APNHOfdoIWD+G4fCQGuv2imBiFiN0q2hYxY5DLESEY7BQXsyoO0TrwBcneSrICFbt
-         /gPBiIknNenBIMxwmNEzqiwwK3ZjOal+VlLPzX15yOONE/9FBP0BtmWRtLvCy/2zNxnq
-         NAv79zQ4DQE20SAQfS487l5/38+FDZ0pSOb+6nhHszNUrqjWtEjLVWPkRZ/qfcgX0/gl
-         0YYw==
-X-Forwarded-Encrypted: i=1; AKwUvBwZhmAJqXXM455lNbMeOkHX9aao46/bLEaVDcYoxLDDJzX+bbeE1Ms9LfbPi3eZ4NVOj1+7qId1DX3u@vger.kernel.org
-X-Gm-Message-State: AFq9FYIFDeberWIQIzPeZY6D79ZGQfoq0pE9QDBQydINdT//W+WCJA7e
-	fSkCxdgB3cPy17N3UJm1jxtpwQVfiBkSPKHmGDTmtMgli0lCpizY9xDWKXzzEMBaeRLuCYCHtSS
-	9U6u3tIuoWimmSUF38JC7v9i4sYg4SiPQLIohKOglvw==
-X-Gm-Gg: AYBFou1BWWRUOhf7XZbc4qxmQjLBr6PBverTvoOMdHGsZycbhcu4eA84wFNdj/d3XI3
-	CV21oeZ08IjBFuVuaO0ift2cwcHAS6bV9zsUk9+ZsYmqA5LVuzcZTDm2wv6iM0laB2B8nG/ja07
-	NQeQVeFORUwN2x3G+3VAF/HJ0v4swGgePWT57flJHAhpAOXWaK4YqmTRo04HXUnxsC5BMIG3wYd
-	2wmzoXXd/tgE1s5Bmiv4cvPsONv1vfcb/VUVk9pIjQKXPG0ja3MGQyitJ+sY0SsBj+g4fbyVt1j
-	lP9Ce29kQQyxktcTjFqVA30Zcyn75+C4g0hCt45SUy5/e7Ft9naRzL+BrrJxNMxNWnTiPEUK0Kv
-	KdoLo4Da8BfHHa929enh2rrGqv7JI4cM0n5+p+0+vMX4obg==
-X-Received: by 2002:a05:6000:987:b0:488:7787:469d with SMTP id
- ffacd0b85a97d-48df14ed887mr9923470f8f.25.1792094538039; Thu, 15 Oct 2026
- 13:02:18 -0700 (PDT)
+        bh=8Px1FtmNtK6xsqmbcUZAty0eeqDU/9nNBMTp6lOdRrg=;
+        b=fIhBVJlKQW+Rvmjb2gAtC0d83ykW+WH8RRaY+IAVQk5aKtORAgcwbnQLG4xQTQQatS
+         GtdFH5XN1EGUNIF/ndBphctF/+83vAjsDWDzmxolrlGfxGU6jaHQG5LJ00EmW7Dfj0wQ
+         el+5GCV2miiKb+lrZXV1yBwb/uN/lUjUQmPxNFGKYEtY2ZhyK8CB5DICHchzVc8MTkTs
+         z6DQCPBZO9qDom5ndELo7Sg0QLnWIJnxEOyTkEQfAKKR2PhESrHPCOQSNnRRctMCixEs
+         MK6TG5wZytIVMqxpQcA1zmu9CY/PJ0oGeZ0C2tKbmqa2P0yaoNMG/fOj6ROyJu3KbrtW
+         za7A==
+X-Forwarded-Encrypted: i=1; AKwUvBz7cW+lzRteWIs3/IaTBpOace5LQ4EhI2tFnLxGAqfV+yLP7f4s05eMJEZV+cmEuLXCvJwnu0kl2vyu@vger.kernel.org
+X-Gm-Message-State: AFq9FYKjFg/VGCCEN3iDhtroJ4Q5nYEyf/YkGit2uuEM6O87Luu6Jc8p
+	cIGaCRdyDC5HEBPO3UtLOlm32p/lpSzJ7/o0MGr0NrV906xjF4mNXh1r8EE4IEumcgy5CQcsjqj
+	SyQAEMxvprLlL+TfKT3WsGr96zyikywa1zUrSdr9tWnjmkXMiyWh4S19f4xY=
+X-Gm-Gg: AYBFou01a0U6Ig/EpnMJh83PyUJwI8ZjUD0i1SKbhjs19ofoHqBg6xf9eoKxZkvqYtX
+	XeHrZ0paYf39zT73lJ28Y1qZg64ur2wMVVmBX2ZEJFkOrILyDhtxApHoEtiWNiPNcYnWFV5k2zc
+	NxPNA0UIdQf/JTcRPjt/xK7KIlHDp6hQ7YcY3tKCJtwhviC6cQ0CENyz+EdyE6wm375aQ7NVTV8
+	0/Qp9NZC8dO/KsJzjvQOunzctq/U7/bTlmB9+x0dwpv2pQTVsDV98naba6xi6PZqOKSqmuHbsB2
+	GLAZFhC47rqo1q3znCsVhh+E1kgSZ/STVU7QjtGohMRW57uM3T98JWT2w/hDb0JSj437VR2PL63
+	FMCZVIXb49ipHd4Vqbr5VTjRqnwkSVb50EhGGXp3WgI2v
+X-Received: by 2002:a05:620a:710e:b0:93e:5e2c:8c12 with SMTP id af79cd13be357-93ebd2aae46mr3259512885a.60.1792097784347;
+        Thu, 15 Oct 2026 13:56:24 -0700 (PDT)
+X-Received: by 2002:a05:620a:710e:b0:93e:5e2c:8c12 with SMTP id af79cd13be357-93ebd2aae46mr3259508485a.60.1792097783725;
+        Thu, 15 Oct 2026 13:56:23 -0700 (PDT)
+Received: from [127.0.1.1] (nat-128-59-176-51.net.columbia.edu. [128.59.176.51])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93f1a1d1bf6sm29062485a.47.2026.10.15.13.56.22
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 15 Oct 2026 13:56:23 -0700 (PDT)
+From: Tal Zussman <tz2294@columbia.edu>
+Date: Thu, 15 Oct 2026 16:54:04 -0400
+Subject: [PATCH 3/3] generic/810: check that RWF_DONTCACHE I/O drops its
+ folios
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20261008192048.98833-1-artem@trailofbits.com> <askqkXhBORyXr-v9@mit.edu>
- <CAP3zxaC92rwQNCpuK_tXR9THQOecVoZwxg8ZUgYt=0iKiMsuxg@mail.gmail.com> <asrNX2qBf5qBrFLu@mit.edu>
-In-Reply-To: <asrNX2qBf5qBrFLu@mit.edu>
-From: Artem Dinaburg <artem@trailofbits.com>
-Date: Thu, 15 Oct 2026 16:01:42 -0400
-X-Gm-Features: AclHuK9tJDFa3d3xJEx_0hqszb3wpW9Z8si-SJpf2vKpIgukHzjFNUgs2VdIVxA
-Message-ID: <CAP3zxaD3-QYqe588XGxzTrgAnK4OQC4aRfbea1Ln452mM45KBQ@mail.gmail.com>
-Subject: Re: [PATCH 6.6.y 0/2] jbd2: backport CVE-2026-89566, CVE-2026-89567
-To: Theodore Tso <tytso@mit.edu>
-Cc: stable@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
-	Sasha Levin <sashal@kernel.org>, Max Kellermann <max.kellermann@ionos.com>, 
-	Zhang Yi <yi.zhang@huawei.com>, Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261015-dontcache-test-v1-3-6aa7583973a9@columbia.edu>
+References: <20261015-dontcache-test-v1-0-6aa7583973a9@columbia.edu>
+In-Reply-To: <20261015-dontcache-test-v1-0-6aa7583973a9@columbia.edu>
+To: fstests@vger.kernel.org, Zorro Lang <zlang@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Jens Axboe <axboe@kernel.dk>, "Darrick J. Wong" <djwong@kernel.org>,
+        Jan Kara <jack@suse.cz>, Tal Zussman <tz2294@columbia.edu>
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792097779; l=3694;
+ i=tz2294@columbia.edu; s=20250528; h=from:subject:message-id;
+ bh=ciee2zWhT8lxantCi46yYHD5wYqbH4IopJ2MwJBGLz4=;
+ b=9TnIgvCxwMMJAO5OLRloZAbaDesQ0h773ImjEbA/dXoHu/0bFm12h5OClVrb3/UM4YF6pY4Vc
+ y8U/xT8ZX5eDinW3M9NJCi+h2iIEsdca3dJqz8JkGM7Z5ENFcrhQtPo
+X-Developer-Key: i=tz2294@columbia.edu; a=ed25519;
+ pk=BIj5KdACscEOyAC0oIkeZqLB3L94fzBnDccEooxeM5Y=
+X-Proofpoint-GUID: 88SRmoVE9NQ6OAXTvc1HdFSDW-3PDlJG
+X-Authority-Analysis: v=2.4 cv=IJmXmQvG c=1 sm=1 tr=0 ts=6ad13df8 cx=c_pps
+ a=HLyN3IcIa5EE8TELMZ618Q==:117 a=NKoNGjn6KhAaSQkl0TXC/A==:17
+ a=IkcTkHD0fZMA:10 a=660iZSQnnn4A:10 a=x7bEGLp0ZPQA:10 a=A0y_DWxS2BwA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=HpS3TJQ9O3Ob1ozEcmik:22
+ a=VwQbUJbxAAAA:8 a=aE_N2tjmDNVO8T2WUesA:9 a=QEXdDO2ut3YA:10
+ a=bTQJ7kPSJx9SKPbeHEYW:22
+X-Proofpoint-ORIG-GUID: 88SRmoVE9NQ6OAXTvc1HdFSDW-3PDlJG
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMDE1MDA4MyBTYWx0ZWRfX4DXlssNSm6m4
+ 2LF67v1i37EXg9lbjBB3Sc2JudoQuX+bLCFDzOtVUBpCqFS5SSPRC7PwqBhFNlJBt9puVgTPaed
+ zfpe2lCEw/26sTanS7Ov4CiKk9DdPYUxzGlnkQntVgNmBUvSvsxU
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDE1MDA4MyBTYWx0ZWRfX+vYxi337IZte
+ dSVRCgSqx2vS+NkUEr2xeBg6ikaH448SD7je9JcLTK40KeYZrFwwV+mg5gPuWYMqH9q88PVjiUv
+ bkrg2pkl1Yof6ElWqJQiLHzJ1nY+rFbLlI/U5HXovRCS6nANM6uGF8GwauScbqZVYlzDU2gtQz8
+ p/b45TUolcyYqLZNNsVBZ87YrB7LBGXjGOU/TUQy4SpDz5ib3+5Pc53rlwukHWMykxyKpd2wPdd
+ uthCQsSloiG8jB35DJzQfQ1GYTzuXWgVG4gsqe2BysbRS+d8ddmKG+sWbvV/pDv1Suw6jjm4mKD
+ GmrJ6to8ByDsW34E+hwwY/uO6AmFzo7E7y8maLNVJPBDW/0Miz8g7WgXxs2DNdW5uJJndLVpf4U
+ nljFNwKo579gznaxI1P4iFgBEwRSscLWLEkRXKIb0P/qTiWb8NqU5I+3e6kMN4crbgdiv5SKWmW
+ 4wnn+Ab+e/yRYYfRyxw==
+X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11936
+ signatures=596817
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 suspectscore=0 spamscore=0 adultscore=0 lowpriorityscore=10
+ clxscore=1015 bulkscore=10 impostorscore=10 priorityscore=1501 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2610080000 definitions=main-2610150083
 
-Hi Ted,
+A dontcache write drops its folios from the page cache once writeback
+completes, and a dontcache read drops them once the read completes.
 
-> Note that some tests can be flaky. So when you see a test failure, it
-> can be useful to run a test multiple times
+Test this by writing and reading a 1M file with and without
+RWF_DONTCACHE and checking with mincore how much of it is cached
+afterwards: all of it for plain I/O, none of it for dontcache I/O.
 
-Thanks for the advice. We are still working through the testing and
-wanted to send you a progress update.
+The overwrite is a separate case because the drop is skipped when
+writeback completes in interrupt context, which is what happens on ext4
+without commit "ext4: complete dropbehind writeback in task context"
+[1].
 
-We have completed three full iterations of
-ext4/all,xfs/4k,btrfs/4k -g auto on the same unpatched 6.6.159-rc1
-baseline (72bada21be7b), followed by one full iteration with the
-submitted two-patch jbd2 series.
+Link: https://lore.kernel.org/linux-ext4/20261012-ext4-dontcache-complete-in-task-v1-1-6ac801557041@columbia.edu/ [1]
+Signed-off-by: Tal Zussman <tz2294@columbia.edu>
+---
+ tests/generic/810     | 82 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/810.out | 11 +++++++
+ 2 files changed, 93 insertions(+)
 
-We used QEMU/KVM with fresh guest and test disks for each
-configuration.
+diff --git a/tests/generic/810 b/tests/generic/810
+new file mode 100755
+index 00000000..9022c26a
+--- /dev/null
++++ b/tests/generic/810
+@@ -0,0 +1,82 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Tal Zussman.  All Rights Reserved.
++#
++# FS QA Test No. 810
++#
++# Check that RWF_DONTCACHE I/O drops its folios from the page cache: a
++# dontcache write once its writeback completes, and a dontcache read once the
++# read completes. Plain buffered I/O on the same file has to leave them cached.
++#
++. ./common/preamble
++_begin_fstest auto quick rw
++
++_require_scratch
++_require_xfs_io_command "pwrite" "-U"
++_require_xfs_io_command "pread" "-U"
++_require_xfs_io_command "mincore"
++_exclude_scratch_mount_option "dax"
++
++_scratch_mkfs > $seqres.full 2>&1
++_scratch_mount
++
++size=$((1024 * 1024))
++file=$SCRATCH_MNT/file
++pagesize=$(_get_page_size)
++
++# Count the bytes of the file that are in the page cache.
++cached_bytes()
++{
++	local pages
++
++	pages=$($XFS_IO_PROG -c "mmap -r 0 $size" -c "mincore" $file | \
++		awk '{ n += $4 } END { print n + 0 }')
++	echo $((pages * pagesize))
++}
++
++report_cached()
++{
++	echo "$(cached_bytes) of $size bytes cached"
++}
++
++# Dontcache writeback drops a folio right after it clears the writeback flag,
++# so a check immediately after fsync returns can run a moment too early. Give
++# the drop a little time before reporting.
++report_cached_after_writeback()
++{
++	local i
++
++	for ((i = 0; i < 50; i++)); do
++		[ "$(cached_bytes)" -eq 0 ] && break
++		sleep 0.1
++	done
++	report_cached
++}
++
++echo "plain write"
++$XFS_IO_PROG -f -c "pwrite -q 0 $size" -c fsync $file
++report_cached
++
++echo "dontcache write to a new file"
++rm -f $file
++$XFS_IO_PROG -f -c "pwrite -q -U -V 1 -b $size 0 $size" -c fsync $file
++report_cached_after_writeback
++
++# Start each of the remaining cases from an empty page cache.
++echo "dontcache overwrite"
++_scratch_cycle_mount
++$XFS_IO_PROG -c "pwrite -q -U -V 1 -b $size 0 $size" -c fsync $file
++report_cached_after_writeback
++
++echo "dontcache read"
++_scratch_cycle_mount
++$XFS_IO_PROG -c "pread -q -U -V 1 -b $size 0 $size" $file
++report_cached
++
++echo "plain read"
++_scratch_cycle_mount
++$XFS_IO_PROG -c "pread -q 0 $size" $file
++report_cached
++
++_scratch_unmount
++_exit 0
+diff --git a/tests/generic/810.out b/tests/generic/810.out
+new file mode 100644
+index 00000000..cb6c3f2a
+--- /dev/null
++++ b/tests/generic/810.out
+@@ -0,0 +1,11 @@
++QA output created by 810
++plain write
++1048576 of 1048576 bytes cached
++dontcache write to a new file
++0 of 1048576 bytes cached
++dontcache overwrite
++0 of 1048576 bytes cached
++dontcache read
++0 of 1048576 bytes cached
++plain read
++1048576 of 1048576 bytes cached
 
-Following your suggestion, we also completed ten focused trials on
-each kernel for 21 suspect configuration/test pairs: 420 trials in
-total. Each trial used a separately booted guest and fresh disks.
+-- 
+2.39.5
 
-In those ten runs on each kernel, we observed the following flaky
-tests. Counts below are failures out of ten, unpatched / patched:
-
-Flaky on both kernels:
-
-  btrfs/4k btrfs/028: 3 / 3
-  btrfs/4k btrfs/192: 7 / 6
-  btrfs/4k generic/449: 4 / 7
-  ext4/1k generic/051: 3 / 5
-  ext4/1k generic/388: 2 / 3
-  ext4/1k generic/475: 5 / 3
-  ext4/adv generic/455: 5 / 5
-  ext4/adv generic/482: 4 / 2
-  ext4/ext3 generic/388: 8 / 9
-
-Flaky on the unpatched kernel only:
-
-  ext4/bigalloc_4k generic/320: 2 / 0
-
-Flaky on the patched kernel only:
-
-  ext4/4k generic/045: 0 / 1
-
-We are now running 200 additional iterations of generic/045 on each
-kernel in each of ext4/4k and ext4/1k. Ten runs leave wide confidence
-intervals: a rare failure could easily have been missed on the
-unpatched kernel. The additional runs will let us estimate failure
-rates and their 95% confidence intervals to assess whether the test
-fails more often on the patched kernel. We will finish all planned
-runs before comparing the results.
-
-
-Thanks,
-Artem Dinaburg
-
-On Sat, Oct 10, 2026 at 7:54=E2=80=AFPM Theodore Tso <tytso@mit.edu> wrote:
->
-> On Sat, Oct 10, 2026 at 06:12:10PM -0500, Artem Dinaburg wrote:
-> >
-> > Our initial unpatched/patched runs showed some differences in both
-> > directions. We cannot yet attribute those to the series, so we have
-> > paused the patched comparison and are running three complete
-> > iterations on the same unpatched baseline to assess repeatability.
->
-> Note that some tests can be flaky.  So when you see a test failure, it
-> can be useful to run a test multiple times, so you can see if the test
-> is a reliable hard failure, or one that only fails, say, 30% of the
-> time.  So to run generic/363 10 times in the ext4/1k configuration,
-> you might do soemthing like this:
->
->    kvm-xfstests -c ext4/1k generic/363 -C 10
->
->                                                 - Ted
->
