@@ -1,176 +1,100 @@
-Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7EBE3D813A;
-	Thu, 15 Oct 2026 02:18:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EBB43DC4B7
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2026 02:35:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.180
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792030723; cv=none; b=eabCl1+4Dk2iIRD/cHwn/smYZbmTBLHpTgktlhy1ueWyF5xnPRp9zaiT10sf1DQ7Enjeap+RbYnojjU0T87Px9Xht/eIgDj3UXWlSTLyR/kOIiXA5DHF3KPPYDV3eHxDYoJ/V/Zpvs+SQ2X7uqYc7zNpDb++r7T893RUBro432o=
+	t=1792031723; cv=none; b=WBtdwbdpqv4xUnHy0DdpowoMzWPJdXEuowfjsJJJkt0ZYZ0Nt/aGdhrb1c60vZKjgFJfl8dD8SBQ0EBNGZPi4S91ZPkFz1a91om7lIp4Rq3aLn++m5ez91Ih9ulzIjRy6DyasDXEhB+t/hGbBzL+Nq7zwgAhc6+1pKcX8P1ciKM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792030723; c=relaxed/simple;
-	bh=M/hfzFRfXZT5gtMPfkmHt1JKyF/bg+pj/In18m1zA24=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=BQCSUaItaPbtjyVo9On//k4qZVx2y9u8chDR3CSejAii1Pq/2zzxTCMftQ2JUEkjc4ddrTqUKcQMf7NM3YdP3o2k03MMvyUgmTa5oFDFEcMpbtk36mbljotvQJyyWcktf1SwmFLbBRECuf/ePE6hO7ABhfFmBScBsGk1UJVLuqc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.177])
-	by dggsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4j4sCt6yJ8zYQtmx;
-	Thu, 15 Oct 2026 10:17:30 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id DE07F405AD;
-	Thu, 15 Oct 2026 10:18:24 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAXTu3uN9BquGHxAQ--.50203S3;
-	Thu, 15 Oct 2026 10:18:24 +0800 (CST)
-Message-ID: <ab472a6d-0435-447e-82de-cf1ac2566797@huaweicloud.com>
-Date: Thu, 15 Oct 2026 10:18:22 +0800
+	s=arc-20240116; t=1792031723; c=relaxed/simple;
+	bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=JnSF7MYerRxiMpPkHpfY9P2T2Fq8CA6ewSXnCSCcL+lB2JwYciKmPO7R5isFk77S/b1lPAKUSkS5lt3jl2ejejwaVU9cF9ML6kC1h5YIKBHoeo2WzfqB/HUvcoZA9i5cHg/yb7058wqxC8GWOSOoLH8stDUNWSIGzYkoVK8gu7U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AoXKe+74; arc=none smtp.client-ip=209.85.210.180
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AoXKe+74"
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8935f42e8f0so612779b3a.2
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Oct 2026 19:35:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792031719; x=1792636519; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
+        b=AoXKe+7412efTE3EiwkvFQ1eH6HE8+DIv/au2cGQ+bJsCJCsMy7MqhBT+x1d9NR03/
+         dUVVhqiuRoMcUh3VkjX/X8DJr839oZuoxYgPUE2RgQjmh4/JUsQmaQMMqnHBf9yhtqdR
+         cwUItZ6bJP7KzS0deSFFEj5KaPugm+oAXaPqAk6rDeAGWOQhW1krcDLHJVjBudpenUOO
+         kU2wlQX0ORcDR6LukEdPEv+m6DIIcQj6lxj63U3JP8uJlq9O+gHq0qWUSyqxVYzlXHqi
+         1w/e9MuSsYOh3tbDHwEdtc2K2HOpwTPl0YsY54rUT55znrRZYaKTlx/qSuN1/23G1xur
+         D1og==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792031719; x=1792636519;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Azk9vLWdcFUm0rin/x9F0DNXMUr/g4qM7o/1SCI2+c4=;
+        b=iklaxV1el38MfBu/bsA6EdngH3eANWu5j/VlzB9XWsAO+X5TNVQhZv4oYx3r6/j8bj
+         2RwdoVRQu8V4JOXcPOnQ1+cFwFG1OvvjrX5k59+pB57vME/al7umU9/G1HHmpuYAyTXH
+         8ShlhreUL/QpHHwQgxTgcu3S20d5k3DLhRvhzVgY0TvtrvUO+oTgE/kOjxiE+1gY2Yw3
+         lZYC1KmIo1k2v9EsXJfN+c+pEUN/tIHSTsOYRSfIBBd0K1tLlhSHyPH28vAu4tnxvApX
+         9fFmC8VLHOmCBZeHG/wu52bCNkO8wX/ZV/B3tZPAGEb/UowWmrIkgHUROiJZO/o0ERaD
+         Dm+g==
+X-Forwarded-Encrypted: i=1; AKwUvByZIBM9Mx9p7bmTrtsbHgGpzfxzOfswA1lW1DvDi33mRa6WnMp1AZmQpBhncG6pdcjX70Yc8u1357dS@vger.kernel.org
+X-Gm-Message-State: AFq9FYI62MXSh+0IUNte/UnKGAkoH430lWYkoZ9sVFCG3nzm7H5+vXPG
+	QUPIDj5W794G98d/I/414olBU4BEUdg4koMabVzxnNY3gdCAZYmztCi8jfmF7ufz
+X-Gm-Gg: AYBFou3HUoDKm1kM6gRuxsf7Dk7nnZsQTf0SgI3+0zQoKkcMRCo0mneN24UP0lW3Zqh
+	XUfacE6cZ6Mbk93vopV4QeFh/VpQng99zc5Zh2pb0GnBTwNoBT2vgP3oKmFdwPfnzxTSBKgJXdz
+	6e4AiWgFA4kRQurPqfUWFzuvxcTbJSLVeccJQ7nFbiKZDcsRuXWzq8ypzPFSPe+sn2MB4+YTlhs
+	vZ9v28HtJXzkzOcM0acmz+epFjsnaNaBuKyRpaYrqnuScnRwyhP4Ds0wPxOiYvy0LgBlF2ThcgA
+	fKA3svibtpgteKe4MxLankUp2YtSbh1+JIDtXBl5M8fA2fu856cq16gPbJmaOuL0V2WvyKIhxkV
+	qscM1yK6unyGGzpnNO7pKTFm6su0pWvors7juww+ZlEoyQsXn3tJsal0sqRenozCE9SUgS27cuY
+	hr0LYh/1RMQbiltIi8kQA/m2CGih/nvO6iN7vcEbyAJmLDv09LjByXqVUIWVPsGPWPTkAbfRuBO
+	w==
+X-Received: by 2002:a17:90b:4fd1:b0:3a8:5fd6:cb6 with SMTP id 98e67ed59e1d1-3ab39feaf19mr13291631a91.0.1792031719067;
+        Wed, 14 Oct 2026 19:35:19 -0700 (PDT)
+Received: from ubuntu.. ([138.199.21.232])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ac944511f1sm2034989a91.12.2026.10.14.19.35.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 14 Oct 2026 19:35:18 -0700 (PDT)
+From: Qiliang Yuan <odys.yuan@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Baokun Li <libaokun@linux.alibaba.com>,
+	Jan Kara <jack@suse.cz>,
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+	Zhang Yi <yi.zhang@huawei.com>
+Cc: Qiliang Yuan <odys.yuan@gmail.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH v4 0/2] ext4: fix shrinker scan budget accounting, plus a related cleanup
+Date: Thu, 15 Oct 2026 10:35:11 +0800
+Message-ID: <20261015023342.ping-ext4-v4@gmail.com>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20261001-fix-ext4-es-scan-nr-scanned-v4-0-b13703714ce2@gmail.com>
+References: <20261001-fix-ext4-es-scan-nr-scanned-v4-0-b13703714ce2@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: fix extent status cache clearing when truncating
- inline data
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- enwlinux@gmail.com, yi.zhang@huawei.com, yizhang089@gmail.com,
- chengzhihao1@huawei.com, yangerkun@huawei.com, yukuai@fnnas.com
-References: <20261014021714.2382353-1-yi.zhang@huaweicloud.com>
- <sohkizuoexeuwreaxw463pyktxbrafyvtscklv5qyanhaehn4d@sx2bgp2s6e4u>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <sohkizuoexeuwreaxw463pyktxbrafyvtscklv5qyanhaehn4d@sx2bgp2s6e4u>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAXTu3uN9BquGHxAQ--.50203S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxXry5uw47WFyxJF1rAr4xJFb_yoW7JrWDpF
-	ZIkF4UKr4kW34UGa97Z3WjqF1Fga1rCr47GryagrnrWF15CF1IgF90krWFvasrKrWvyayj
-	qFWFq3Z7Gan8trJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
-	e7AKxVWUtVW8ZwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_Jw0_
-	GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	UAwIDUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 
-On 10/15/2026 12:27 AM, Jan Kara wrote:
-> On Wed 14-10-26 10:17:14, Zhang Yi wrote:
->> From: Zhang Yi <yi.zhang@huawei.com>
->>
->> ext4_inline_data_truncate() clears the whole extent status tree of the
->> inode when it truncates the inline data, with
->>
->> 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
->>
->> It does that when the inode still carries inline data while the
->> EXT4_STATE_MAY_INLINE_DATA state bit is already cleared, which is the
->> case once an inline to extent conversion has been initiated, for
->> example a delalloc buffered write larger than the inline space.
->>
->> The clear is meant to drop stale extent status entries of such an inode
->> to prevent stale extents and stale reserved space after the conversion,
->> but the range is too wide.  It also drops the entries of the blocks
->> below the new end of file, that is the blocks that stay in the file.
->>
->> When writeback of these blocks starts later, the lookup of such a block
->> misses the extent status tree, falls back to the extent tree and caches
->> a hole entry for it.  Those blocks then have dirty, mapped and delayed
->> buffers together with a hole extent status entry.  This is an
->> unexpected inconsistency.
->>
->> This problem has been hidden so far because we allocate blocks and new
->> extents for them during writeback.  But once [1] is merged during the
->> iomap conversion, the writeback behavior will be normalized, and it will
->> no longer allocate blocks for holes, thus exposing this problem.
-> 
-> Hum, I don't understand. So we have inode with inline data. We truncate it
-> (i.e. further reduce i_size). At this point we hold i_rwsem,
-> invalidate_lock, i_data_sem. So how can race with inline data
-> conversion?
-> 
+Hi Ted, Jan,
 
-Hi Jan,
+Friendly ping on this series -- it's been about two weeks since v4
+with no review feedback yet. Patch 1 reverts ext4_es_scan() to the
+sc->nr_scanned-based SHRINK_STOP check from v1, which Jan had
+already reviewed and preferred over v3's nr_shrunk-based attempt.
 
-It is not a race, the state is left behind by an ordinary delalloc
-buffered write that ran before the truncate started.  Please take a look
-at ext4_da_convert_inline_data_to_extent().
+Let me know if anything's still needed on my end.
 
-A buffered write into an inline file that does not fit the inline space
-goes there.  It copies the inline data into the page cache, creates
-delayed allocation mappings for it, marks the folio dirty and clears
-EXT4_STATE_MAY_INLINE_DATA.  The non-delalloc variant
-ext4_convert_inline_data_to_extent() destroys the inline data with
-ext4_destroy_inline_data_nolock() right there, but it can do that
-because it allocates the blocks in the same transaction.  The delalloc
-path deliberately keeps the inline data, it is the only copy of the data
-until the blocks are created.  It is destroyed later by
-ext4_do_writepages() during writeback, which calls
-ext4_destroy_inline_data() when the inode still has inline data and it
-is about to create the blocks, see the "we will soon create the block
-for the 1st page, so we'd better clear the inline data here" comment.
-
-So until that writeback runs, the inode has inline data, the
-EXT4_STATE_MAY_INLINE_DATA bit cleared, and a dirty page whose blocks
-are mapped as delayed allocations in the extent status tree.  A truncate
-that comes later is fully serialized and still sees
-ext4_has_inline_data() true, which is why it enters
-ext4_inline_data_truncate().
-
-Those delayed allocation entries below the new end of file are what the
-unconditional ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS) drops,
-even though their dirty buffers are still in the page cache.
-
-Cheers,
-Yi.
-
-> 
->>
->> Therefore, restrict the range to the blocks that are actually truncated
->> away, and pass EXT_MAX_BLOCKS minus lblk as the length.
->>
->> [1] https://lore.kernel.org/linux-ext4/20261009103033.2920530-9-yi.zhang@huaweicloud.com/
->>
->> Reported-by: syzbot ci <syzbot+ci46f64f7b6a2a188e@syzkaller.appspotmail.com>
->> Closes: https://lore.kernel.org/linux-ext4/6ac92a4c.70ed5d86.2ac85.0072.GAE@google.com/
->> Fixes: 0add491df4e5 ("ext4: remove extent cache entries when truncating inline data")
->> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
->> ---
->>  fs/ext4/inline.c | 8 ++++++--
->>  1 file changed, 6 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
->> index ceee69a66482b..b630e56815bb5 100644
->> --- a/fs/ext4/inline.c
->> +++ b/fs/ext4/inline.c
->> @@ -1905,8 +1905,12 @@ int ext4_inline_data_truncate(struct inode *inode, int *has_inline)
->>  		 * the extent status cache must be cleared to avoid leaving
->>  		 * behind stale delayed allocated extent entries
->>  		 */
->> -		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
->> -			ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
->> +		if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
->> +			ext4_lblk_t lblk = EXT4_B_TO_LBLK(inode, i_size);
->> +
->> +			ext4_es_remove_extent(inode, lblk,
->> +					      EXT_MAX_BLOCKS - lblk);
->> +		}
->>  
->>  		/* Clear the content in the xattr space. */
->>  		if (inline_size > EXT4_MIN_INLINE_DATA_SIZE) {
->> -- 
->> 2.52.0
->>
-
+Thanks,
+Qiliang
