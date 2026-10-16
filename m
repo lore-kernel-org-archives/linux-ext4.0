@@ -1,65 +1,58 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DB0835C6BB
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2026 14:35:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95E704DB547;
+	Fri, 16 Oct 2026 16:00:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792161343; cv=none; b=TrO3aiLqCIMFm0vPW8y2kMLmZH3epQLLHXL7gkyaC+EzBJDluxichSWtp2OXsSiggkdiyX8hTHb8KcHlSvlHjoDVPOAGZQ/lVjCSSOZbxbKecPgCwSEl3mBhfMIZ7Gi/sEnEwoWrJn60+Qrki7Iwfvnj1ijJ7z7blos5TSCizNI=
+	t=1792166439; cv=none; b=eoeD3iWTfWmD9EQx3Ne1rY5fn/E28mTK0iObme5/uBf2g//uG1v7vziFLXULYyAbZdzwO8/qgqEmYIBRQAO7Up6yUd5zTLJHl9gdobvACCb0vPkjO3sLO3CCuIlTIt+DO2KFq7cIMRPAVG46Rse135agPHL0lH9oW+vUTs1KEEY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792161343; c=relaxed/simple;
-	bh=gKFQEFB3EfBJ4vuOp5cU46ALctp0h/zGWty16Q4ulec=;
-	h=Message-ID:From:Subject:To:Cc:In-Reply-To:References:Content-Type:
-	 Date; b=jUDiWXomqghnjUt2Xya2LWE8QcVKk5S/YloPCOzAtCFkrGgw5Dmf11Ty795Mm+7xGGiMI2lHWCYxFDl01FKCHUG6eVXJKsVHODBcf0fSzRDHmCkSSXmPAYJbjina/e89CnzKYFPJoCPsDCGxK63jx/zdX1cFmjHeXnr+ywrcwc4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YZfSLa+P; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1792166439; c=relaxed/simple;
+	bh=wZWwAubiLeVzLQOEG3jpJGsWjZL6wE6Slmjn3p+wtD0=;
+	h=Date:From:To:Subject:Message-ID:MIME-Version:Content-Type:
+	 Content-Disposition; b=tVg5lYyK55WGYbiBQ9kY7vKnQ63qGduX8Hk3FGZOJoFTvT1GKCb0E4MzOarJxa1yU8hnTyeREo4QmkHs/iY5IQLZ/eZRm01R/Wb8hv3wiS6VHzVjtBo5Na9oYi5UcuOa7CfD330q7xMIKl7eihvY3HdyN48UX1i592tzZJPvXqE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PB3fwH9a; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YZfSLa+P"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F116D1F000C4;
-	Fri, 16 Oct 2026 14:35:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PB3fwH9a"
+Received: by smtp.kernel.org (Postfix) with UTF8SMTPSA id 4EA461F000C5;
+	Fri, 16 Oct 2026 16:00:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792161342;
-	bh=gKFQEFB3EfBJ4vuOp5cU46ALctp0h/zGWty16Q4ulec=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=YZfSLa+PvPuIWVkK1qDrfkUub6Sw1NY3+AqmKtFPtHQ2Z9S4jjmk1Np3dNAPpEkth
-	 KnZg59xi5v2NEjqMKEOensxwd/E2iJqAYsq+0Htkq6gg4WzMuAhddmo6pfn86DFVyU
-	 dyEGjVNgxrR0B8PPH2buwJHZ+LAFGKfLUQoLgvrlgVl3mx1/lX+x/7o7WNUtv379xp
-	 awla/qQvKawM4BVsLEVMIVi8Uvcwi2vY2y581E2dwVBlNkeTzN/ZuSBpTTqPSr54FL
-	 bINOipQ+MWGFeHMayo0dgEM6xFdLvi3iZBiEX5QZIpExft4eQCb1fORRuyCvjboKeF
-	 whGKQuX832yJg==
-Message-ID: <sashiko-outbox-174461@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: fix folio reference leak in
- mpage_submit_partial_folio()
-Reply-To: sashiko-reviews@lists.linux.dev
-To: guolingxing <guolingxing@tju.edu.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261016142524.655789-1-guolingxing@tju.edu.cn>
-References: <20261016142524.655789-1-guolingxing@tju.edu.cn>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 16 Oct 2026 14:35:41 +0000
+	s=k20260515; t=1792166438;
+	bh=DPPtWJThkR1HSDGyZJb+uhlwde5r6SG1m/oIZY7KoAQ=;
+	h=Date:From:To:Subject;
+	b=PB3fwH9ad/RdxiI88KTVVyHt/5Qwa7WFh6uIqGh3S7bkddp7ETFj57SmN6Ag597p5
+	 9HTL3LBL4VJhisD5y/b8wfkfgg/syv10xSEx9Cdeb+AkpV7nuKMbYnJZEK8MWW73lG
+	 SGyHK1sdoy92vPvBJrn5kDMfWQAPYIzqa2+HHPhVnxXzFLwR/Qis6uiiDNFa0IctA6
+	 s7WqTB/ps18gHS6gKUwsQWkJvs9yEUAZA7c67ozjVI55kQWL8s1jhJ7PpXUR1gI6mm
+	 sPzTVvbDKNszOEwaN9py1n4wX+qeO+z0rx2pKkz3f7mAGQjih7Py0SPj6DI9kQX92z
+	 sz1OGa6AQVDew==
+Date: Fri, 16 Oct 2026 09:00:37 -0700
+From: "Darrick J. Wong" <djwong@kernel.org>
+To: xfs <linux-xfs@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	fuse-devel <fuse-devel@lists.linux.dev>,
+	fstests <fstests@vger.kernel.org>
+Subject: Farewell!
+Message-ID: <20261016160037.GA107919@frogsfrogsfrogs>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> mpage_submit_partial_folio() obtains a folio reference with
-> filemap_get_folio(). If the subsequent position check fails, it
-> returns -EINVAL without dropping that reference.
->=20
-> Call folio_put() before returning from this error path. Leave the
-> folio locked so that the caller can invalidate and unlock it through
-> mpage_release_unused_pages().
->=20
-> Fixes: ded2d726a304 ("ext4: fix stale data if it bail out of the extents =
-mapping loop")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+Hi everyone,
 
-Sashiko has reviewed this patch and found no issues. It looks great!
+After 14 years at Oracle and 23 years working on Linux, I've decided to
+take an extended break.  Today, October 16th, 2026, is my last day.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261016142524.6557=
-89-1-guolingxing@tju.edu.cn?part=3D1
+I don't have any immediate plans to drop the djwong@kernel.org
+forwarding, though ultimately that's up to the sysadmins to decide.
 
+I have very much enjoyed working with you all, and I'm proud of what
+we've accomplished together.  Good luck!
+
+--Darrick
