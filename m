@@ -1,40 +1,79 @@
-Received: from mail-m155101.qiye.163.com (mail-m155101.qiye.163.com [101.71.155.101])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A864346A5E2;
-	Fri, 16 Oct 2026 10:21:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=101.71.155.101
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD2D4175A9D
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2026 10:37:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.48
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792146096; cv=none; b=im2rrLiWUTtSN4sYKBTLI3FHAZTXwgi2FLGBVvR6cemF948mU1WV32lX6MW7Jax61fvWI3jQcIoeZZLWXYeO3sOsEWMrDnvBENffak3TRzN99s+nX+b5lNcHBfDKGHkAI1RMSA8QMx5OzPZTwcdDJIZVkdm7kAiouVNsRDp65cI=
+	t=1792147073; cv=none; b=HH20sw3VKLMlzLcyEWkewFnE29BaYOVD0tFOiNfrQHBsCz8ZVQRVZ8ulL2HasE/0bhKMH1IyLcjk7ADAo4ERfb79sCNuCz/C4PBCA20CnTtqPKFIWBE412WHLQR+g/ehxdqZ82TXq3T51Pjit1HTkgv9Zi9xjteETu3xLjT6hRc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792146096; c=relaxed/simple;
-	bh=q4OwaTzadwgCTdJ9TVs0P3l712qfdWyz2bs4kl8ONis=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=Lj9XCZ1Ql+jDYOR7CSCNRU5GobJIfCwvx0KyYNdM0F5wtbZCYNyNeNh51W6afxoXD/C+YktsSi/xtlIf3WEhV8mRECDSZgf9YL6Wek/A1AGbeAtpDtLo59LZEUx/l4p9ZTB6J1YSeKsa60oxUXcP+k+taYr61yqEzM2VRgnmqLo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn; spf=pass smtp.mailfrom=tju.edu.cn; dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b=llCEn2yZ; arc=none smtp.client-ip=101.71.155.101
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tju.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tju.edu.cn
+	s=arc-20240116; t=1792147073; c=relaxed/simple;
+	bh=UsTtGHRl7YsiXbTcd8vpkD3E/t43DTNiHhxmC8Bxs4Y=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=MJ3bB90L51HZ5RHZ1BsytR8QfHaCvR4Iy7Kr8hmRu+CrIw/eSTWnjdxqQhQ1fdDu/GRGwZvntXxrERkKnGht/PkyOZoRRF8P83PFdASMzkNl8CyyPYpupvQAqWUMVyxOifNFvBe4NtQmKfdkMUrtqXlxt7kN+e9zALNByQLkpdU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=VL/qQZUF; arc=none smtp.client-ip=209.85.128.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=tju.edu.cn header.i=@tju.edu.cn header.b="llCEn2yZ"
-Received: from localhost (gyproxy-mailtls1-entmail-virt216.gy.ntes [39.144.128.100])
-	by smtp.qiye.163.com (Hmail) with ESMTP id 514e64cfb;
-	Fri, 16 Oct 2026 18:16:09 +0800 (GMT+08:00)
-From: guolingxing <guolingxing@tju.edu.cn>
-To: Theodore Ts'o <tytso@mit.edu>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VL/qQZUF"
+Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4980fe6b3beso5320095e9.0
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Oct 2026 03:37:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792147069; x=1792751869; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=J1cLBp+fIudU+J+n4s6nKX2nnwxELgfGqb7A1F2ozo8=;
+        b=VL/qQZUFx/6hBK9uogVlXcQTd8l3L3ifl4rM1ahUEW1y+jbpH0zrK58xdiv7ic0Vhl
+         7D4uhuA5kb/HEJXf5fhveD+HglfJcDISodvzvSkRg3nJ/bVValOFKelrB94eoSFF/ZqE
+         lpMcRkg3wuYK1jH1llvFBzP7mdf8dfUk7kcAPxxeTgikeTh0xTZLTDKXxY4+UuhQ0Nel
+         7ak1M4dkBLfSsxeKuMFpalIUVQdynLx0QsoKKJiwUqk3s9a0Ob/z7kNSMa2Xh1zsmepQ
+         peYgZwqZv1oZdN2nuaRWZ7wje1sLUVru1av83w2iOtwE5fUb4WrEQFaI272b3SHNOzjK
+         NmFA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792147069; x=1792751869;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=J1cLBp+fIudU+J+n4s6nKX2nnwxELgfGqb7A1F2ozo8=;
+        b=w3CPEeGdmG/1Tkhssu+JloIW5hTWSh0Jaj2VKngm4LPAZ5W6agGHOJh2QQ+IJDMGew
+         jXRfe6n0C7EPZuAOgZorAs5PBBPbHad6CycU5XduArvMNkxDYqa8QoDV7VzZeu5kR8Rm
+         nDnU3e37gIG3g/qNAhwSO+iiBe95xLK0VDGpRCYRc7+BMkr/vZjEKAB0vTlFXgHCu9gx
+         zE3r5dDomqITG/ukq24Brd+UxBldA0N+5/Ptapb9qoYsuyNKyjl3k6uTqOack1Ua80Ll
+         hlOSxHReW0pTU7bcKLsfAUO+e2B8m8wLJ2H3Cj+pEC6QOCl80tdBybZT3ySrxHeL8Z3c
+         tSkw==
+X-Forwarded-Encrypted: i=1; AKwUvBymPdNB62cc58W5Je3S+ALvzv4/D48xlUk01pJQEgZIciJi7IXSlmFwtVcEpfM115Xmjvhyepf2TUNe@vger.kernel.org
+X-Gm-Message-State: AFq9FYJ6/26uLPsc66iNkbZr91/bmErF899dLb0N+YqEahjCbjsSGh+7
+	7j/K4neQ0dcVA0n9WWNcH3xzlbT7ls/jL8WLR987+KQnzoTR2ZyfobLyrRJCme7b
+X-Gm-Gg: AYBFou1Sr9vzNo3X7OiW9L2ViuEpAInlhUn1UhhlclBl7DoEfKXho/HYfdcexDagXTS
+	FrNg09652cpQikYgfHxQZDV9DDUXMUlCW+5RlprOLjTlPqNmDX+9sCk/r3XfQmRA6eOIIMLifYh
+	4VQ1dhCxIh1LWznKMNfJTSJEHwBFs1Usz6OsPdroLbvv7MVUBfU37PnasbKA/mZNcPuSPogYpBw
+	yHLP57v/UMHPrnxt3Iwz1epcM0P8ouFcuA+FnHE/vs2BcgdPdZPZpLDIJaOg32kweUNPpQhszbk
+	wS6jRSfBsNY0mUxfr1zBPbGxlan6Ykz3Ze0344mGBdSyjg8nX2f/2cU4JvdGjlpv8tCY5FnwwSI
+	9K7uFopqZ6HDn0rKrcB784i7HDtkgUIqsPsyG23cLLrle6O63bBweDUw3Zeq+42MnSIQFMcd+m/
+	O6dbmYI4xUuCpHWFIfUevijJiGNENiY+lJf/mn5tHuRjk972Dx4ev5rBsilvUX20Q1J05EikqBR
+	YXDQi+SxSVyvBZDPa1yL7M9GshE3MmeX2+bGV5B0AdG50qm238FDsEImm0oY6m3K++NSvmPRPZg
+	EWBnVgcHzsaF1q0EBmWCMAKfVbzX8d26WX7vScYim5G0Ny9Fd4tkhMt5T0mIKVhWEcqzlkjKkj2
+	63w==
+X-Received: by 2002:a05:600d:82f3:b0:4a0:ec5:46d9 with SMTP id 5b1f17b1804b1-4a1c65b9d1cmr74177055e9.0.1792147068524;
+        Fri, 16 Oct 2026 03:37:48 -0700 (PDT)
+Received: from localhost.localdomain (dynamic-2a02-3100-a951-9501-1471-d90c-a21f-9dd7.310.pool.telefonica.de. [2a02:3100:a951:9501:1471:d90c:a21f:9dd7])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4a1bd9c001dsm136875975e9.12.2026.10.16.03.37.47
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Fri, 16 Oct 2026 03:37:48 -0700 (PDT)
+From: Karl Mehltretter <kmehltretter@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Karl Mehltretter <kmehltretter@gmail.com>,
 	Andreas Dilger <adilger.kernel@dilger.ca>,
-	"Aneesh Kumar K . V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: Baokun Li <libaokun@linux.alibaba.com>,
 	Jan Kara <jack@suse.cz>,
+	Baokun Li <libaokun@linux.alibaba.com>,
 	Ojaswin Mujoo <ojaswin@linux.ibm.com>,
-	Ritesh Harjani <ritesh.list@gmail.com>,
+	"Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
 	Zhang Yi <yi.zhang@huawei.com>,
 	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	guolingxing <guolingxing@tju.edu.cn>,
-	stable@vger.kernel.org
-Subject: [PATCH] ext4: record writeback error when discarding pages on failed delalloc
-Date: Fri, 16 Oct 2026 10:16:05 +0000
-Message-Id: <20261016101605.4039217-1-guolingxing@tju.edu.cn>
-X-Mailer: git-send-email 2.34.1
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2] ext4: return an error when a journal block is not mapped
+Date: Fri, 16 Oct 2026 12:37:26 +0200
+Message-Id: <20261016103726.98553-1-kmehltretter@gmail.com>
+X-Mailer: git-send-email 2.39.5 (Apple Git-154)
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
@@ -42,57 +81,66 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-HM-Tid: 0aa14436451b03a2kunm6f703c5baa467
-X-HM-MType: 10
-X-HM-Spam-Status: e1kfGhgUHx5ZQUpXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
-	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVlCGktIVkhMGh8fTU1KGEhPH1YeHw
-	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlIQlVKT09VSklDVUpLS1lXWRYaDxIVHRRZQVlPS0hVSktISk
-	xMSVVKS0tVSkJLS1kG
-DKIM-Signature: a=rsa-sha256;
-	b=llCEn2yZY/bNmfx1ZaT0CHDxDWlRsRG2EQCH7LRgdxkTdb1qKKk9tthJyIVW/sHJiVpzFGBrW8MOWENs/AhjEzxpSjaDbAY1i/bwI+82usY8ET+W/aOglDBtCt9j6WaUahAGaofqK3rNuOScanh+b1H4BAIZzcWxe9LW3r1Z+rU=; s=default; c=relaxed/relaxed; d=tju.edu.cn; v=1;
-	bh=DOLiDaA5ZGjG1eytvPuyuGBa6K7mUgIux4GKB6ue1nM=;
-	h=date:mime-version:subject:message-id:from;
 
-When mpage_map_and_submit_extent() gives up on a failed block mapping,
-it sets give_up_on_write so that mpage_release_unused_pages() discards
-the remaining dirty folios. However, the error is not recorded in the
-mapping's writeback error state.
+If the internal journal inode contains a hole, ext4_map_blocks() returns
+0. ext4_journal_bmap() logs "journal bmap failed" and aborts the
+journal, but also returns 0 and leaves *block unchanged.
 
-If this happens during background writeback, a later fsync() may
-report success even though the dirty data was discarded and never
-written. Returning the error from ext4_writepages() is not sufficient
-to notify a later fsync(). In addition, ext4_do_writepages() may clear
--ENOSPC when committing the journal and retrying, even after the
-affected dirty folios have been discarded.
+jbd2_journal_bmap() takes that as success and uses the unchanged logical
+journal block number as a physical filesystem block number. Journal I/O
+can then overwrite filesystem blocks outside the journal despite the
+abort.
 
-Call mapping_set_error() when deciding to give up on the write,
-before the dirty folios are invalidated, so that fsync() can report
-the writeback failure through the mapping's error state.
+Return -EFSCORRUPTED for a hole, matching the error passed to
+jbd2_journal_abort(). Keep propagating negative mapping errors.
 
-Fixes: c4a0c46ec92c ("ext4: invalidate pages if delalloc block allocation fails.")
+Fixes: 62913ae96de7 ("ext4, jbd2: add an optimized bmap for the journal inode")
 Cc: stable@vger.kernel.org
-Signed-off-by: guolingxing <guolingxing@tju.edu.cn>
+Assisted-by: LLM
+Signed-off-by: Karl Mehltretter <kmehltretter@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Changes in v2:
+- Assign -EFSCORRUPTED to ret before aborting and returning (Markus, Jan).
+- Add Reviewed-by tags from Jan Kara and Zhang Yi.
+- Rebase onto v7.3-rc7.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 26f0f9714f03..dba903d188e2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2505,6 +2505,12 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 				ext4_print_free_blocks(inode);
- 		invalidate_dirty_pages:
- 			*give_up_on_write = true;
-+			/*
-+			 * Record the error so that a subsequent fsync()
-+			 * / errseq check can observe the data loss that
-+			 * discarding these dirty pages implies.
-+			 */
-+			mapping_set_error(inode->i_mapping, err);
- 			return err;
- 		}
- 		progress = 1;
+v1: https://lore.kernel.org/r/20261004180629.27213-1-kmehltretter@gmail.com/
+
+Found with an experimental clang that warns when a function returns 0
+right after reporting a failure.
+
+Recorded QEMU A/B testing used x86_64 kernels and a 1 KiB-block image
+with a hole in the journal inode starting at logical block 40. The
+unpatched kernel overwrote filesystem block 40, a reserved GDT block.
+With the patch, none of the marker blocks changed. There were three
+runs per kernel.
+
+Both kernels logged the mapping failure and journal abort:
+
+  EXT4-fs (vda): journal bmap failed: block 40 ret 0
+  Aborting journal on device vda-8.
+
+ fs/ext4/super.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d636b89090a2..1e959f196ffe 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5967,7 +5967,9 @@ static int ext4_journal_bmap(journal_t *journal, sector_t *block)
+ 		ext4_msg(journal->j_inode->i_sb, KERN_CRIT,
+ 			 "journal bmap failed: block %llu ret %d\n",
+ 			 *block, ret);
+-		jbd2_journal_abort(journal, ret ? ret : -EFSCORRUPTED);
++		if (!ret)
++			ret = -EFSCORRUPTED;
++		jbd2_journal_abort(journal, ret);
+ 		return ret;
+ 	}
+ 	*block = map.m_pblk;
+
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
 -- 
-2.34.1
-
+2.39.5 (Apple Git-154)
