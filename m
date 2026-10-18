@@ -1,178 +1,207 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mout.gmx.net (mout.gmx.net [212.227.15.19])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3A833A453B;
-	Sun, 18 Oct 2026 15:48:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A61F3A6EEE;
+	Sun, 18 Oct 2026 18:01:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.15.19
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792338522; cv=none; b=mQPBS+o84ndHvbu/QcdVOn1C4GVAz3KkMHOy+po/FHyJ1hA0VwMxGc05BP51inAKwA5NIHPzUfWko9D/iGKa3lou/NNSk+cymGWKFk0m/8bvXZvegGuC4+cljbBj3f9VF5uU83y7IV7IhFFaHC3rjBxnxchZ8u6V6AgcoytMMRs=
+	t=1792346499; cv=none; b=TBBwskWNCbQQDoXIdL2IX6i3g/S9uhbQs4GhQb7aGBorl7C+SSDbj/T768MjeL6UGDrD4hagkovyeyrArErrmrRAgN8Czgf6fMotRzL2Q/20MG56vdCu5xQbHBARAiW8MCMNJ7eqosrzBJ4reMWhgp0RkKYdD7O47K/ecdOC1BU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792338522; c=relaxed/simple;
-	bh=FaRcLEUs6l15qig9t/5mUVXsio7boF41UEEgpQSRb4g=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=T55XSCI5Bv56z3Hz7iH+q3uCuqzavW/LdzfnBbLbQ+2F21ozj5E0tkJXj1ZPmVDvzuYoL1scaALTOtQ80iK+KwKQZK/ru7MWmriw/gq+yiB8Y9M/K3gqORZouwhMktbG+8pd2rix8Jejv23kJ6tLwNybtIYZvoT83l5E3tSmtZY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WVyI2KX3; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1792346499; c=relaxed/simple;
+	bh=igDPB54ohkA/iCGPz5QHHAI/cGPj6A5SAFTyNAnDRpE=;
+	h=Message-ID:In-Reply-To:References:From:Subject:To:Cc:Date; b=mHwCG1dD5cGOUiy0sY9pfLnYxFviv2ec3nbdMrCCFEIVh8zDlf9+gW2FFFh+XHdokoenZS+nt/bpxk5DHKbo568r4EvMVxHqmA+hmM6YbpGMIfZSxw7MVoLuSl6p7EjDr3Z+Cl44aVHOB9jRNAA3gvz/Fq7rdKnkvPC3XnUBFrc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.net; spf=pass smtp.mailfrom=gmx.net; dkim=pass (2048-bit key) header.d=gmx.net header.i=jan.koester@gmx.net header.b=Z8A8KpGl; arc=none smtp.client-ip=212.227.15.19
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmx.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WVyI2KX3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F62E1F000C8;
-	Sun, 18 Oct 2026 15:48:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792338520;
-	bh=qHr+ZYKSpAzCi10EtcwRrDzJJq6BBKkyzbps+RPUef0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=WVyI2KX3sfSFb7oZBIkg5vyFZX7+LpvwVP7fn4Cty10Z+Y1LmZOfywyVqCXWWjkZk
-	 w0HsKNxrIpDN+fTkwgMX01zxZ9pMY6N/P1LtrU17V8ZUMVAxbiAmgrPDGg7W+Rjs6i
-	 cOUCAgudB6PnoTQaLURK0fj6/ZYFFSlnOyU9KKE/6KmvZiNJKMOPTK8W4Rny4GZZn5
-	 dnzO8E7iP9hzjx0W6bJF+lnhorAfjoibm0p1V0l9L9VW6uVghDWolJvqlzthVu28XZ
-	 /BYjpM8dC6pSBrEBdq8Xis70LV4n4Q0dBgk6Rq7VtYXCr+VagK8d6QqHe7hk60/2QA
-	 1AcOlXaFgMXKQ==
-Date: Sun, 18 Oct 2026 17:48:34 +0200
-From: Christian Brauner <brauner@kernel.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>, 
-	ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net, 
-	linux-nilfs@vger.kernel.org, exfat@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
-	ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev, linux-btrfs@vger.kernel.org, 
-	gfs2@lists.linux.dev, linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org, 
-	linux-xfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 20/28] gfs2: wait for a pending withdraw before
- remounting read-only
-Message-ID: <20261018-ungemacht-sodbrennen-hausordnung-42d33a4f7098@brauner>
-References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-20-60743a3dc326@kernel.org>
- <CAHc6FU5bdAjABRm=bnH68b2f66TZTDZ8sPdatLB2fS7-55U=yw@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=gmx.net header.i=jan.koester@gmx.net header.b="Z8A8KpGl"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmx.net;
+	s=s31663417; t=1792346495; x=1792951295; i=jan.koester@gmx.net;
+	bh=evA8GgCA3NQFkHXDQ7MeNdC+6mXl1ook8LjtjQ/lxm8=;
+	h=X-UI-Sender-Class:Message-ID:In-Reply-To:References:From:Subject:
+	 To:Cc:Date:Content-Transfer-Encoding:cc:content-transfer-encoding:
+	 content-type:date:from:message-id:mime-version:reply-to:subject:
+	 to;
+	b=Z8A8KpGletgjVwrJfsHKy3hKq5Pk3JQ2QLcluY94O8JY5jQZ5WV2Lhv6m7ySbkSR
+	 eBX59NeFBNFvQgQix2wVZpB5g6F3YnSAnUgCRSh/2ap81ePHZrL8i1eNlYQ0g2oS1
+	 Hf7ongbcSmsJRyNAGeGsXhxeMz+W5w5ofLeVh1EwisV3+5GT+sbsMpOUEOeTGaCav
+	 BtgPyhBghvotDykPazB9/wZSSK4mjGoX261l8iAtn6JpKFdp2T6z+d3HyDkz1csUk
+	 ZeVu8ql3s4LvOpSNDx2X4TnCAsj+Vyipn96nm+XEDfkRzcFMLpOoKPYSsXyn+DffF
+	 e4UUaFFGLCxDUTIpUQ==
+X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
+Received: from client.hidden.invalid by mail.gmx.net (mrgmx004
+ [212.227.17.190]) with ESMTPSA (Nemesis) id 1N1wq3-1wcf2c0gkT-00tMmo; Sun, 18
+ Oct 2026 20:01:35 +0200
+Message-ID: <900dcae782cd38981235a9b80fdf72a03e7966c8.1792346472.git.jan.koester@gmx.net>
+In-Reply-To: <cover.1792346472.git.jan.koester@gmx.net>
+References: <cover.1792346472.git.jan.koester@gmx.net>
+From: Jan Koester <jan.koester@gmx.net>
+Subject: [RFC PATCH 03/41] uidgid: add uid_is_legacy() and gid_is_legacy()
+To: Christian Brauner <brauner@kernel.org>,
+    Alexander Viro <viro@zeniv.linux.org.uk>,
+    "Serge E. Hallyn" <serge@hallyn.com>
+Cc: Jan Kara <jack@suse.cz>,
+    "Theodore Y. Ts'o" <tytso@mit.edu>,
+    Paul Moore <paul@paul-moore.com>,
+    Arnd Bergmann <arnd@arndb.de>,
+    linux-fsdevel@vger.kernel.org,
+    linux-api@vger.kernel.org,
+    linux-security-module@vger.kernel.org,
+    linux-arch@vger.kernel.org,
+    linux-ext4@vger.kernel.org,
+    linux-nfs@vger.kernel.org,
+    linux-cifs@vger.kernel.org,
+    netdev@vger.kernel.org,
+    audit@vger.kernel.org,
+    keyrings@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Date: Sun, 18 Oct 2026 20:01:24 +0200
+X-Provags-ID: V03:K1:ut5J5TE6c0eCoSrs8Otn0Uu9bFSWqFfe3IkqFS+2hCyzDsSR3Fm
+ Xl5cGvB15sCJDcprXV+lLSJoD/MdhVmMJDdRTCEUsC/BYVBpT9Ldw8sl0WKD42gqBYIQiYz
+ Mc4JYnRfyiyGpEaf1sZD/mdn3D70ZjfizABXGYIKF2ilOvtDvLSJvczeZhYeyOAkff56fe+
+ s84aCdGdp6D7q7vZ7ZMRQ==
+X-Spam-Flag: NO
+UI-OutboundReport: notjunk:1;M01:P0:NDmdPdIb2eg=;qqhwh5vSeNBOxkoylCQcsR0GxJY
+ qDNE7cSsOPtRFIw7xNLptjQKEMN/qHDcbAHeDrCAIrm2vZUHeL36aO2aO+RVnadaRBgQ4cPGX
+ Yx9ldqFyfQhdqwA9wOUIIReiVO71iQsd5MuHZHQxN9bzneOIr4A17FGThByTBdyTp9rJe3WcN
+ OkpCv/pvUPNhvaSmAPTw519+X3Bds1YTI9/3tG39xJ8UOv7EpNZtk0VsF460dLwwIQ2HFIgZf
+ V8yExLzrhLT3mH9mKqa7j2YoD/+bnkF0XMZbi5dQIddfPLNhWpf0SnhXn7A3hoziI3c6ropj+
+ b9/GksbjBJBkS0Y6abw4/YG5WxE88gde4ANTuv5IKFncagE7h9ywo/fEofUlwoj3ipazdZt5k
+ PHll5EAPWuZnOahbIReWeTKWacb2fj+cN8AsV1zskb+fUuODlxY6/k/2h41bqf1iP6ixNBlGd
+ d81XUiY3tRMombpITmlKoFVG/qE8avKDwOhcdDeEjOtC0lg+xLUBnbTHgUq3wE12aOw5/XEB4
+ MRmUkg8yLK1NnY7jTggHTaho/0wkq4l0yKVAG281VGpvkzDBgRvKpUYbngX7XzT/ydu+NbT0I
+ BnkSLik/JO+tzfYkNoXbqjeeLMCSdVls3IkvHE0WoC8LW8od0jcS2i2BrbtEIdI2IwmClT4yf
+ 8g10FZge8zesbrghDDHGkxN1wN+6q4oJYaRJZHV4tGqSCT8uOxOSExiBiFof+nqQC9wj3gwLr
+ sQtWVGfFjOmI29nRcpd5WcqIktLlFsOiXh458mXNpVR1AiFZTzBsASlTkI71qbk64MKHMfzlA
+ QBZ7d3Jnwh9pOzjSQhDLAFiWgjGwqYO9T6TveQbmwHNxFONh7QFaeuBqdUaNxuUXkDi6RzfiI
+ I4HPgsPRySfup992M9cMB9yYPxdGvAqfCIKaZpC4cX57DNIKqoJMDWYdxkRC0WGKn21wH1OKg
+ r6wBRBNjTXV+MBJ+k9Wi8x30lNPnYNBt2IsPZwFDWQTkdigCSFhwwBmFTI9tok8ACyb53IzHX
+ UQemD9roLz6TX/Zj5Wcpl8+5caA56rnf5qwNGQyNvCETttY51vCFXfibo+3tu4GkhZMKaktfq
+ d+Gi5k5JChA9wb6qrExEv9gWr5NuAzi/G0SJb9cd0NVYnlRzGTMAxk6gu+iqEN082m6+rRXGp
+ Db1HNP1vrmtgF7HRufu8Mb+7/rLelinuxT/5dK3uYef6U9QNSbeD/N4rECbUO9Jo2JvT1qyEo
+ ZRy621nFvt5M+JVDyA5bEnoeGC14oloYL02iD3LnfJbLN4zBxA92Wlax8bYfOO/FAquBtKk22
+ FcXEpovMY8nvRXXDHe8IkWrsshnCNgVub0ifMzxDx9WZX4S3XrZUcfygeLzAySBx0pGjp8/xX
+ m+W7aF213gowlpXoX3oZxYv80AhJ1eTbDc4MOemNlfwRrAQmWUB1sMYKa0ZLy9tD8tZ+ggnW/
+ q4HXThCL7pqIq0DUzm17U5VgqKzKDpK+6k41dLnBVbOGUv0Ovm1ITZn+Tx1dqb/y6krbmBFmL
+ nobdzG4V+O9mU6RQLOfqqnfhuPyHMru+fS2RLIHOzfAkrooCU8o46nAbPvtks7Ql70iDYNK/c
+ gYtAJePTlkWziVZJ9dQ3j0tPBdyBSbxfPUCGyeloPxZ+yo4Y3M6klcBUrbnWLdckdAqPkXxNp
+ btWGpdfGNG2cJluJRYDnNCypdusKH9dRoVl7YhlUmxti+TKCfWtF5Y4MPKwTcCImYZ2m3RJVB
+ R9kbtClZ4a8tz8GFXE8N7CU87P2MRL6DK4iKWVGEkFL/g43f3d0f7ZZc41qOJ1iwnrF8X1daD
+ qv7EneloQPWP4pE/MUz0LyNk+4XgipNYMCnHe0vz61/pvgdPypcWTXQK6jttcIjCHaPpH12PS
+ xAvreLlZIg+Bfji0EXrSoIKEGU63NJZ3EuRUy9v0DEkt5RR2lT7Xr7+EcHgOhhrjmpyXXQOYA
+ GdXtbNtUfg2KlYhmuerVKnj5ftVR7hWTuLwPYDBRdxllfYOh7O2IsH8VjHpmIVWgR+Mf1tyB8
+ Rz+mVTHQDtEwC5G9Y8hUufiu+jAE7z1NaeWkGd6uGKGSMmhTN+4Ocal3tGTkGDFKKeMDLs1R7
+ ZjbsEx6tOPclYEc6ndYPN7tkhhN0noT86mmIb7KAL3Ob4HZ8+9/E3EjpRLPhr4Vo4j4YMia+v
+ gz4Uy+6uPLhUpA26zxKIYVGbLGXaJbkN8ugwrfMGXTsNOR9q7J36U6TqRqiCXejutB3xrbHVa
+ 9gkeXMgxEW1Gv7C7IM9WfYMcoKPh1C1+OUcG5wAar5YkjNow5jJdE+IPEl90pldIuKSZbuuu+
+ 5/w+QcaMCApss5DOZH0DtckgmPp3gZTlJK+Pnn0xfTBNLKj1IIrmoHt2RFZmBYLhK5/RpvuZ9
+ s4XApZSVsWnH8SGDN+qs0cz5fk2XVMtry1zlPm+T0PrkAzhkeWg6HSjPw0rT4EtPVuJK+i93j
+ lDpq45zapAbtwbzL8K8IEvSLcw7xWOPbXgVwh1uww/ruCGdn8c9Eku3qtrM7PL9W+fIQNo5wH
+ dTGlm8h4hrH4mUFN6F6yuAmJkfH2INgCo+umh4z8MOaz0zBO/8gafBEVFfHIxrslhxFWs41Zn
+ 36bBIYIGyXPjPq+BvVXV08Br1WlbQaD6WGfWt5GinzfvGj7pQcWLDg4cXQWYc8nQBnfrlaFrL
+ vp3Eqkm3Geyfnqxkl7HSVQinBona3cm8pS6uCvbjiVI5dsLkWBKFTqvQ6PAG+frQAFbCcxgUc
+ ofmWYb3V9nLo6I2DtTyr7+q0As+lR2T+q+SWgKHlcAVuBmB1PzwLgG0Mr+K7NPLA2dgqjChEk
+ k8WKsEope1jeqgQ8iHImWN8gz/af7+xiYRe3O5NtJWKKqofuhIDmGIlhy0NcnoRr9tgdMNL1m
+ E9mH9ajEMvKDRHY0enPsi/NsSE3xXAb01YjEp97MRj7oq5pShh1MThtSbpTTKBcUVB2sP5Eej
+ gRk57wziXHaHBFkuqfEyHxhstp7x1dQFqrEAYSDHzwHpENDcvDDHOkyUCmF2Aujh4IzLotG8O
+ 5k9ZQQpFig6rgZd+T9hG8oxfJ9UHuK5Eg7U6YtCRm1kuZUlsfshlC9a3pnExFgYiSx6JT8K1T
+ CLKpnYdYgjugWahDZnno9p6b4NplD8MN1C+kccSg4waaLEPAQgkZJhjamdWb3v7rUELwsdEz+
+ Z46fFyM3nGPE0PHRhJvV41yMm19ACNqlLapRFiZlB2KV0bR2WAiXmPBXYBxodiBkWncgMOkVX
+ BWVvBgckRQfP4HmPkfuAQcLFFOIDE8YJsDbI75XWMh/X2FIp/5yXbN4zB7JBBO6z0cNmiuEx8
+ D9UpIyXesG9cy3Wac07JMe3T+7BPKFkcLnvkDGUUGtCuVvNGUhNFuCh/z8gShfWjVsORJ0R81
+ StmzqrOOYo2GcNaxXVyBV3BzdHPlx9VYY8wEwzGrNIr7pqmVeUSN00VfB0QT09lEO0WhYxDat
+ qi4l5WQbHe3bfuW2PEtEHswsQ6TGwGWE3wun9SffPIkrbSFbK6OGl19zbpkF6cYbYHZwlX1AH
+ SAkq1lXLh0IN6wiFXJC7Is3RprwnE6GF5CCHeWdbiNj+KWUXmNpGu2Ns1+R7em74YZw1iNW4I
+ 1OLLRcXxFZwd5FMEGwxpN+UGDGQ7o5+qcoYBPIs0mbYV60MJF6tkwxH9Wqglzt4hVxqAyNsG/
+ Jk/mKNgncQvG3SieGVfr/seh85l1KI5/pmFK/Ya2U3Xy+YhvzIHzBp9DADGeL7R9FLlzPQz71
+ TEcPN0bTuPCo1/MXk8dfElWfjo/AUCWCT5C5PD43jTDUSoFHJHjSooeOcG4XX8A5VSjNJqBaa
+ rUxezNBYEnAV2YDf6pQCpMeiaPKu0Q+U2pGTNXK38wwr8IpxHLO8tRH4ExlaR9agSydNum7mp
+ nyT88xYV3ziNTQ0lH/6NpCWz0pEozZ/Drx1GYyRfOK5JRLQbtFsv2Quq+s0WrxEq136sKo0uW
+ sLmLY+O4x5+vVZMmvDz6xMD2OWYozkljYqw7a6UrjRXRNEv7e+8lEcwdkuvpxcdaMIItKjbQs
+ GeOGakbvZi7TM3tm1ca1rpPlEorPOAuKdt6BRdW/YW06YID5+iBYypLZtDFnhBXItU52yiibA
+ rADSKfKrOffR39rDTRa7EjS06i8oYh7hzU/HkvhRsEAxQ5d5z1qs595CvwfJEaBM/7JEPxKgh
+ AqYrVVYD5k0B+xkE3qa6NaXycajDK61ijiwl+XgPmMu0ATTQKlQgW/LiVSiSXyWXWWtzhs0Aj
+ i5KQaRiO2bDSRKgk7gWlVmrV8Kf9sUYcOimox/tP6SUx2kZLkV92ylsgkcOwLzVTXMUIeMNMM
+ rZXhd02tVvMKui0RMlK6oTlXS56z4Sa5nU0NJaEK6/p3zjrAGGb2nSsDN2YLVMj7i1Gjz2PpT
+ Iw3utTIsDtRyc6tYYpkP/taAMydMQCbOjxB2x22R76y75u8gBerooKLPpdTuIcuPTQIvMD2tb
+ N9NAlPHVFpNphjVb6/gBbQzrC+1EsJ83WIs/s/rSZUV3zuZXhvAugCaD0a2xtAZGoBVw+pL/4
+ FRnhi5IOvrLXxML7UAYz4DRF0Na9U0G2BYRaehOdh7Keq/yzhvxXikwNI3cNhNAF4/cvgO1bH
+ bbHXv/QFCD402eRV92witpeoNVZ0E1WOBRaynwBrlXaAnzarytMBjdRgNX4Nz/10clDC9jlwL
+ KuipNS5R4X+LkzJi1kxrPL3YYloJ06FaswLvjoAMbvZP86vCu9pYWgkoZyo86qpM1w/zsEVQl
+ NNJ2eH5+Z0f0CqpV6nG5dQa/PnOd0tJFXFdzffRTWqfttfEIq9jgcrzhBCsM+3cSHvgzX+Atu
+ Qp1OfKeM65SE9KsEXOn/DtkjXxAyYeAUS9zOhipsrduMhX+1ExBDZol8jvOP+GFBvJsfu3rf/
+ WUfZVv7P/NMdYUkYiQC0zbrzB5TelMJbjmgUfUF2Rcu52mIv38H7XV+blGBC4CN9lh3kRA1Kt
+ FWOojXX8IUYROXOJ9wBMfKr50Ghuv5d1MQGQHe/eo1gl3dJdmNPT25UR5griRVhWuvRSNij/6
+ wGXuxaWoPIy/r/tRO/XTziNkWJXHM5Ozi+oBFKbzOS0glBsukyqmbTWxCf+YS1aDYbG+WMo0w
+ CWTYehmyiyEeXBC9NUW+8Lmd+iWKql8dNeFBLom/9//ObPPpqX2JqnWfuPiHo6FUSRhW7j8tx
+ wGPItWS11AddZB/cEWQSDVWve0qDtpPaBkjJjr7Sk8oYmwx7B5U1e7dkdS66rUe9O9UoIktjK
+ j+Ro6KC8u0qasOCPkOyBDvb20x9sHtRCmF9cEpP2F9cEjLdsteoDIFnplvFWlOw4aDGMVFqdl
+ hQnhNU3QHBOtUycXuhO0LoQoydc46iCebTLKg+9Lcxf0fMiS9vNGF2guw4uVDfDvgnxgoT4rG
+ GS+xasWNuqrO7qL/OjP9k6sBHY0QbzJ3IAiQIcck2ag6JgMCejsedGH6jJBTBHFw3CRmrP5Lw
+ ztOe1OXHr0B0JJI3z2Qsgv7fz9yGHSi8UYGYU9TP9VdEBqtRJnaFYvh/l1RGyDooBM+dnYbPN
+ Ac6yLvQr2FaIeCqJTuGTyfMwkj1GZRd8ayAe4400c1ldqxUk6/ACAeNQc3U5Dv8eIvMCeNdbe
+ PPs3o6tP4Ih/aEhWRjw2pxy3tmr9kwPCF7SjgRtmHRe++wZc63fV4OG08oC2vgv5VYbsLxACQ
+ +Pkv+WaPjiFG3N7jWBKiCjJ7UIpeIdWbrjn6PtWQA6tc9lelbd3t4/IGnC6KbwwkBn31Wy9Mv
+ Z59b9Il926VOKX1LzG9lZleZPAp+V0LzNhcm8BoXpBbCGKtIfkI/58wb6H9ew04isi+xQpj76
+ vBmrC+jEVgWhM8FCCEXMZMSWBRpbzBN9nKurA3Xbe055ZkqS3cjpjYPxQwNHmEDuBEy+sMe8g
+ 9ZNCGTBDsUokdcrueKBOmghKykiRlzCaJi60iCnu/2D+shdprRhYgkF8O331C7qD16IRXzbxJ
+ g+4qMGJ9sPla8ztCkn6JMwur+kFM3ji1oeLK4k0yomKWEb8zlKbUkC+bGBcaWkK4u9LVKm9US
+ /w3WiAlYFSh3pMC6OBetcSz0nWLDjevpf26P/sCwI1XzAxPO/XmHYRZarWcuDvvCyc2UXY4PW
+ nsyi3flxw4xS/Chlw442Aepw0QMin0PPAorBox5rpbcluybTSKAXzqc/BdR99/gh2v4Ab0IzP
+ /Ksqt36f8jc9NlEmI9OZrzOsdkaaRGlPwSiDRiRbOa3H1TuaCICDeSqJ3aEDbwrbIBCc8nLr5
+ oelG7CkvXVXy0qrT6Vdkqku9vFfpmRsCBdBnMnOP9/ExxasTv3SR3lPKbqfS8Inh/mD5qoxpT
+ Qv1uSv2l/XxVybJPF9foddaYgrp+BdY0Fpz/gMbAGQWLi0srTCOmLDCtDXu5fpDtB82EXkNvk
+ bQmuu4MqEVB1YULcAUtoCtBuR8Xze8zK270JMLJIiMnPEjrn0TyPI7NAIolYvseKfEVB3WFF3
+ 3YzKDTtd/ptFV5wHwG71/tHlhmZb5NRzaNKCE0tOkcRb7wxFOred8sAzBGrEUP3bI2lTii/h0
+ SYAwByncX8H2Vl+m1DU9Wsu5qyaO8=
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAHc6FU5bdAjABRm=bnH68b2f66TZTDZ8sPdatLB2fS7-55U=yw@mail.gmail.com>
 
-On Fri, Oct 16, 2026 at 02:32:01AM +0200, Andreas Gruenbacher wrote:
-> Christian,
-> 
-> On Mon, Oct 12, 2026 at 1:27 PM Christian Brauner <brauner@kernel.org> wrote:
-> > Since commit 9c4a3de6cd5b ("gfs2: Asynchronous withdraw") most of a
-> > withdraw happens in do_withdraw() from a work item and SDF_JOURNAL_LIVE
-> > stays set until it ran. A remount to read-only in that window goes
-> > through gfs2_make_fs_ro(). Its log flushes bail out early on the
-> > withdrawn filesystem before FLUSH_SHUTDOWN can clear SDF_JOURNAL_LIVE
-> > and then gfs2_quota_cleanup() hits its BUG_ON():
-> >
-> >   kernel BUG at fs/gfs2/quota.c:1532!
-> >   RIP: 0010:gfs2_quota_cleanup+0x562/0x6b0
-> >    gfs2_make_fs_ro+0xf3/0x2e0
-> >    gfs2_reconfigure+0x42e/0xfd0
-> >    reconfigure_super+0x437/0xb20
-> >
-> > Just flushing the withdraw work before the remount isn't enough.
-> > gfs2_withdraw() sets SDF_WITHDRAWN, calls dump_stack() and only then
-> > queues the work. So a remount can see a withdrawn filesystem while
-> > there's nothing to flush yet. And a withdraw can also start in the
-> > middle of gfs2_make_fs_ro().
-> >
-> > So let do_withdraw() wake up waiters when it clears SDF_JOURNAL_LIVE and
-> > let gfs2_make_fs_ro() wait for the bit after its log flushes, right
-> > before gfs2_quota_cleanup(). On a healthy filesystem the shutdown flush
-> > already cleared it. umount doesn't need to wait. gfs2_put_super() sets
-> > SDF_NORECOVERY first and gfs2_quota_cleanup() only BUGs without it. Once
-> > the bit is clear the journal isn't live anymore and gfs2_make_fs_ro()
-> > doesn't write anything.
-> >
-> > gfs2_make_fs_rw() can leave the bit set on a withdrawn filesystem as
-> > well. It checks for a withdraw and then sets SDF_JOURNAL_LIVE. If
-> > do_withdraw() runs in between it finds the journal not live yet and
-> > returns. Nothing clears the bit then and the next remount to read-only
-> > waits for it forever. So check for the withdraw and set the bit under
-> > sd_log_flush_lock, which do_withdraw() holds while it tests the bit.
-> > Then either the remount sees the withdraw or do_withdraw() sees the live
-> > journal.
-> >
-> > Reproducer, lock_nolock: a SCHED_FIFO task writes 1 to the withdraw
-> > sysfs knob from cpu 1 and keeps cpu 1 busy (RT throttling and cpu 1's
-> > fair server disabled) so do_withdraw() can't run, then from cpu 2:
-> >
-> >   mount -o remount,ro /mnt
-> >
-> > On lock_dlm the window lasts as long as the withdraw helper runs. The
-> > window before the work is queued can be widened with a kprobe on
-> > dump_stack_lvl() that delays the task writing to the withdraw knob by a
-> > few seconds. A remount to read-only or sysrq u in that window hits the
-> > same BUG_ON().
-> >
-> > Fixes: 9c4a3de6cd5b ("gfs2: Asynchronous withdraw")
-> > Cc: stable@vger.kernel.org
-> > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-> > ---
-> >  fs/gfs2/super.c | 22 ++++++++++++++++++----
-> >  fs/gfs2/util.c  |  2 +-
-> >  2 files changed, 19 insertions(+), 5 deletions(-)
-> >
-> > diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
-> > index 06302c29340f..1d7b39354d65 100644
-> > --- a/fs/gfs2/super.c
-> > +++ b/fs/gfs2/super.c
-> > @@ -147,12 +147,23 @@ int gfs2_make_fs_rw(struct gfs2_sbd *sdp)
-> >         }
-> >
-> >         error = gfs2_quota_init(sdp);
-> > -       if (!error && gfs2_withdrawn(sdp)) {
-> > -               gfs2_quota_cleanup(sdp);
-> > +       if (error)
-> > +               return error;
-> > +
-> > +       /*
-> > +        * do_withdraw() only takes a live journal down. Check for a withdraw
-> > +        * under the lock it holds for that so that either we see the withdraw
-> > +        * or it sees the journal live. Otherwise gfs2_make_fs_ro() waits for
-> > +        * the bit forever.
-> > +        */
-> > +       down_write(&sdp->sd_log_flush_lock);
-> > +       if (gfs2_withdrawn(sdp))
-> >                 error = -EIO;
-> > -       }
-> > -       if (!error)
-> > +       else
-> >                 set_bit(SDF_JOURNAL_LIVE, &sdp->sd_flags);
-> > +       up_write(&sdp->sd_log_flush_lock);
-> > +       if (error)
-> > +               gfs2_quota_cleanup(sdp);
-> >         return error;
-> >  }
-> >
-> > @@ -565,6 +576,9 @@ void gfs2_make_fs_ro(struct gfs2_sbd *sdp)
-> >                                    HZ * 5);
-> >                 gfs2_assert_warn(sdp, gfs2_log_is_empty(sdp));
-> >         }
-> > +       /* A withdraw that do_withdraw() didn't finish yet leaves it live. */
-> > +       if (!test_bit(SDF_NORECOVERY, &sdp->sd_flags))
-> > +               wait_on_bit(&sdp->sd_flags, SDF_JOURNAL_LIVE, TASK_UNINTERRUPTIBLE);
-> >         gfs2_quota_cleanup(sdp);
-> >  }
-> >
-> > diff --git a/fs/gfs2/util.c b/fs/gfs2/util.c
-> > index 83b8bb6446e5..1535ce2b7aa8 100644
-> > --- a/fs/gfs2/util.c
-> > +++ b/fs/gfs2/util.c
-> > @@ -122,7 +122,7 @@ static void do_withdraw(struct gfs2_sbd *sdp)
-> >                 up_write(&sdp->sd_log_flush_lock);
-> >                 return;
-> >         }
-> > -       clear_bit(SDF_JOURNAL_LIVE, &sdp->sd_flags);
-> > +       clear_and_wake_up_bit(SDF_JOURNAL_LIVE, &sdp->sd_flags);
-> >         gfs2_ail_drain(sdp); /* frees all transactions */
-> >         up_write(&sdp->sd_log_flush_lock);
-> >
-> >
-> > --
-> > 2.53.0
-> >
-> 
-> this looks good all around, thank you very much. Can I add it to my gfs2 queue?
+User and group ids are about to become able to hold a UUID or a GUID
+besides a classic 32 bit id. Add the predicates code that can only keep
+a classic id (in 32 bits of a buffer, for instance) tests with, so it
+can be converted before the types change. For now every id is a classic
+one.
 
-I was planning to just provide a stable branch for everyone to pull post
--rc1. Then you can just pull that in?
+No functional change.
+
+Assisted-by: Claude:claude-opus-5-5
+
+Signed-off-by: Jan Koester <jan.koester@gmx.net>
+=2D--
+ include/linux/uidgid.h | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/include/linux/uidgid.h b/include/linux/uidgid.h
+index 2dc767e08f..182c682458 100644
+=2D-- a/include/linux/uidgid.h
++++ b/include/linux/uidgid.h
+@@ -22,6 +22,20 @@ struct uid_gid_map;
+ #define KUIDT_INIT(value) (kuid_t){ value }
+ #define KGIDT_INIT(value) (kgid_t){ value }
+=20
++/*
++ * Whether an id is a classic 32 bit id. All of them are for now; code th=
+at
++ * needs one (to store it in 32 bits, for example) checks with these.
++ */
++static inline bool uid_is_legacy(kuid_t uid)
++{
++	return true;
++}
++
++static inline bool gid_is_legacy(kgid_t gid)
++{
++	return true;
++}
++
+ #ifdef CONFIG_MULTIUSER
+ static inline uid_t __kuid_val(kuid_t uid)
+ {
+=2D-=20
+2.56.0
+
