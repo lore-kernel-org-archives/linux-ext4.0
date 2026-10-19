@@ -1,43 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D63C656F5AD;
-	Mon, 19 Oct 2026 13:58:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0FB95D9D97;
+	Mon, 19 Oct 2026 14:02:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792418291; cv=none; b=LcRAzLqS4raaZ9x0TzEG7olddXTbcFaDKJPLjR7nZy6eddYZhPJLxTAN4iJ8tXj8mjLEV65qwjL1aVOGqP+JcfvWBszTvc6WEz7eH/OBx/Ltz3p32GUKa635/I72NKOTERQw0CF0dkFsAxtrgrm9JniKdFI19audTmH+INOwm4w=
+	t=1792418525; cv=none; b=P3hybLzjR43/q6dCEhCIRs8Lo9qYs0XGmPo0VoWH0ePVzcuXMMQGJi/w/WKsy7drTEPbFdJrKfkZ4e80h9zQ1zfuOZil9otXusNBLYo7zWejEWCH1HYgB/ivVnJ0BwuEg0pc5CTdNNaNoOawmfFELskfBlVgQsSgOVUjnfQ1dZ8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792418291; c=relaxed/simple;
-	bh=mzty+ws1sKtDmSkzjIdIec4AMpgjXVrDoYqBTWcLT7U=;
+	s=arc-20240116; t=1792418525; c=relaxed/simple;
+	bh=HWU39KNqQaW6mRCYZGyKIsIVE5a4TkNDiJLtp751LYY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=kFQYNE3umkC3lCi7HH2H6tRmyOHfP+uEVMMrhLPGEVJEMlAbH33+B2HsBwUPOq0x9ZMdO+lloc6u/qK+uhVggR5dvC44eMYwAm0G2Es0Gy24iyHB1fwKKUy8kR+0W7C9TUUoVfpFM7gFploap2AujyhVaT9hmncE3FQBcPFt16E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HgNRhGoG; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=YeZxvgX7jd6n9pi5FPPqJ2z2F2PoVh/jgj8ctO/X2cHxWds44Xs9h46wfz4DcIqv8VFCKyyypg9H4Hm4biabTAuL0CAqv5GY1TsK2GIsYhmkENIHz779j4H9gwrJdS6Tq2NMyFfIIAePcz4DIjM31wVcb9neZ6GQ/vkotq1+B50=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AXvUb+o6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HgNRhGoG"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 815411F000C6;
-	Mon, 19 Oct 2026 13:58:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AXvUb+o6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C2FF1F000C4;
+	Mon, 19 Oct 2026 14:02:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792418288;
-	bh=4tv8ydoFGM/MRd2Ch8NgorMLvUS1dYbChvJFqN0lylI=;
+	s=k20260515; t=1792418522;
+	bh=at/eGBD5LOOerqpoJEWHNdcxGFSF0uKjnyFVsmUIpVk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=HgNRhGoGghLZul2qxsbU3epsCG/Mm7PHqCPHGYO26VuHfgjzIWRIjh/v8WxOTV6e1
-	 Yob2wsQOmR5ySHvIU6PP4caBDgFIjCiriUHCf3LktjV9ZpYtLG/8QHBEFuyo8qQhC1
-	 F8GoKh1Di0GN2FxQ/GW15Qc67VlbFsHiUrG0APsgLDolj3JKfbYl+XZh4BmtKOjOkz
-	 t9PsSRWtmwaj/45h0bkR+IiPhcDRjs8d/rKA9ADBJAqycChCi/cK1JLlwZ98oMwORc
-	 q/k+r3Oj2kvO7N6qWQtU3z9l2A0L3pQPY9SkwG3biIOkyC7c1A6eAqE//l1XISTiTu
-	 Sn7kf3pSXfEKQ==
+	b=AXvUb+o6M8Ncq9sSfDQ1ZCDvykg38KcP4skCbX5mwlX67ANOlxL2NX6D1qBZdNFBr
+	 wIeEKDnfWyTCtjLX91OAwPvXeL1HjtzupFSwr8exrkzDKNp+qwa05OdjO305y1Y9kR
+	 JGoHDptfeuSqVms/KWA+fSWDzpkRMl55m03ZnpNuT7HYlUiUi1HYZTPUkn2XBKn4TD
+	 S7uFBQkUjM1q9HjmnAzD45B9E8vI9un8vuXopf5A9GhP5G5Tyf4bwD893FdZFjzcPY
+	 cIkLnAtTrngm7KiFfkf1q2LAONZLNTdPYdDtPrvYG2mMy8DtzVhTg7aDnMw5jNYOB3
+	 OJNNnS72mMmLg==
 From: Sasha Levin <sashal@kernel.org>
 To: patches@lists.linux.dev,
 	stable@vger.kernel.org
-Cc: Zhang Yi <yi.zhang@huawei.com>,
-	Jan Kara <jack@suse.cz>,
+Cc: Junzhe Yu <junzheyu1@gmail.com>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Sasha Levin <sashal@kernel.org>,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.18-5.10] ext4: check return value of ext4_get_block() in ext4_load_tail_bh()
-Date: Mon, 19 Oct 2026 09:47:12 -0400
-Message-ID: <20261019135441.1420968-141-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.18-5.10] ext4: guard against NULL s_group_info in ext4_get_group_info
+Date: Mon, 19 Oct 2026 09:49:59 -0400
+Message-ID: <20261019135441.1420968-308-sashal@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261019135441.1420968-1-sashal@kernel.org>
 References: <20261019135441.1420968-1-sashal@kernel.org>
@@ -47,408 +46,442 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 X-stable: review
 X-Patchwork-Hint: Ignore
 X-stable-base: Linux 6.18.57
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Zhang Yi <yi.zhang@huawei.com>
+From: Junzhe Yu <junzheyu1@gmail.com>
 
-[ Upstream commit 705a3fd3bac167f1dabe3d3bba46cd484c5528dd ]
+[ Upstream commit 8f3901fbb40745046e513226ad84e8b84492632d ]
 
-ext4_load_tail_bh() ignores the return value of ext4_get_block(), so an
-I/O or allocation failure is silently discarded. buffer_mapped(bh) stays
-false and the function returns NULL, which callers such as
-ext4_block_do_zero_range() treat as "nothing to do" and return success.
-This can mask real failures during zero-range, truncate, or punch-hole
-operations, potentially exposing stale data if the block was not
-actually a hole and needed zeroing. So propagate the error to the
-callers.
+Resend: previous attempt was rejected by vger for containing HTML.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://patch.msgid.link/20260714080044.4038124-4-yi.zhang@huaweicloud.com
+==================================================================
+
+ext4_mark_group_bitmap_corrupted() already treats a NULL return from
+ext4_get_group_info() as "nothing to do", but ext4_get_group_info()
+indexes s_group_info without checking whether the array exists.
+
+During mount, fast-commit replay runs inside jbd2_journal_load() from
+ext4_load_and_init_journal(), which is before ext4_mb_init() allocates
+s_group_info. Replaying an FC UNLINK for an inode whose bitmap bit is
+already clear takes:
+
+   ext4_fc_replay_unlink -> iput -> ext4_evict_inode -> ext4_free_inode
+     -> ext4_mark_group_bitmap_corrupted -> ext4_get_group_info
+
+and faults on the NULL s_group_info base. Userspace only mounts a dirty
+ext4 image; this is a supported recovery path.
+
+Return NULL when s_group_info (or the per-block grp_info row) is unset
+so the existing caller check is effective during early mount.
+
+Tested on Linux v6.6.145 KASAN: crafted FC-unlink image previously
+triggered KASAN null-ptr-deref / panic in ext4_get_group_info; with this
+patch, mount succeeds (EXT4 "bit already cleared" may still log). Also
+observed on v6.6.144; still present on torvalds/linux as of
+f5098b6bae76 (2026-07-26).
+
+A self-contained Docker/QEMU reproducer (craft + mount + patch verify) is
+available on request.
+
+Signed-off-by: Yu Junzhe <junzheyu1@gmail.com>
+Link: https://patch.msgid.link/65c955b0-716b-4599-b925-59c2782e38b4@gmail.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
 
 LLM Generated explanations, may be completely bogus:
 
-## Local tree
-
-This checkout is **v7.3-rc4** (`7.3.0-rc4`, HEAD `f0100363d8c37`).
-`ext4_load_tail_bh()` exists here (since v7.1-rc1). The candidate
-`705a3fd3bac16` is already an ancestor of HEAD (merged in v7.3-rc1). The
-verdict is whether this fix belongs in **this** tree on technical merit,
-not because it was already applied.
-
----
-
 ## Phase 1: Commit message forensics
 
 **Step 1.1 — Subject**
-- Record: **[ext4] [check] check return value of `ext4_get_block()` in
-  `ext4_load_tail_bh()`**
-- Verb “check” here means propagate a previously ignored error.
+Record: **[ext4] [guard / prevent] NULL `s_group_info` dereference in
+`ext4_get_group_info`**. “Guard against” is a bug-fix verb: add a
+missing safety check.
 
 **Step 1.2 — Tags**
-- Record:
-  - `Signed-off-by: Zhang Yi <yi.zhang@huawei.com>` (author; ext4
-    reviewer in MAINTAINERS)
-  - `Reviewed-by: Jan Kara <jack@suse.cz>` (ext4 reviewer)
-  - `Link: https://patch.msgid.link/20260714080044.4038124-4-
-    yi.zhang@huaweicloud.com` (v4 3/9)
-  - `Signed-off-by: Theodore Ts'o <tytso@mit.edu>` (ext4 maintainer)
-  - No `Fixes:`, no `Cc: stable`, no `Reported-by`, no syzbot. Absence
-    of those tags is expected for this review.
+Record:
+- `Signed-off-by: Yu Junzhe <junzheyu1@gmail.com>` (author)
+- `Link: https://patch.msgid.link/65c955b0-716b-4599-b925-
+  59c2782e38b4@gmail.com`
+- `Signed-off-by: Theodore Ts'o <tytso@mit.edu>` (ext4 maintainer
+  applied it)
+- No `Fixes:`, `Reported-by:`, `Tested-by:`, `Reviewed-by:`, `Acked-
+  by:`, or `Cc: stable` (absence is expected in this pipeline)
+- Upstream SHA after maintainer application:
+  `8f3901fbb40745046e513226ad84e8b84492632d`
 
 **Step 1.3 — Body**
-- Record: **Bug:** `ext4_load_tail_bh()` ignores `ext4_get_block()`
-  errors. On failure `buffer_mapped(bh)` stays false, the helper returns
-  `NULL`, and callers such as `ext4_block_do_zero_range()` treat that as
-  “hole / nothing to do” and return success.
-- **Symptom:** Silent success of zero-range, truncate, or punch-hole
-  while the tail block was not zeroed.
-- **Failure mode:** Stale data can later be exposed if the block was not
-  a hole.
-- **Root cause:** Error conflated with “unmapped hole”.
-- **No version range** in the message.
+Record:
+- **Bug:** `ext4_get_group_info()` indexes `s_group_info` without
+  checking that the array exists.
+- **Symptom:** KASAN null-ptr-deref / panic in `ext4_get_group_info`
+  while mounting a dirty ext4 image that needs fast-commit UNLINK
+  replay.
+- **Path:** `ext4_fc_replay_unlink` → `iput` → `ext4_evict_inode` →
+  `ext4_free_inode` → `ext4_mark_group_bitmap_corrupted` →
+  `ext4_get_group_info`
+- **Root cause:** FC replay runs inside `jbd2_journal_load()` from
+  `ext4_load_and_init_journal()`, **before** `ext4_mb_init()` allocates
+  `s_group_info`.
+- **Author testing:** KASAN on v6.6.145 (also seen on v6.6.144); still
+  present on torvalds/linux as of `f5098b6bae76` (2026-07-26). Mount
+  succeeds with the patch.
 
 **Step 1.4 — Hidden bug fix?**
-- Record: **Not hidden.** It is an explicit error-propagation / stale-
-  data fix. Cover letter later confirms patches 2 and 3 were “pre-
-  existing fixes … originally going to be sent separately,” then folded
-  into the WRITE_ZEROES series.
-
----
+Record: Not hidden. This is an explicit NULL-deref fix. The “already-
+cleared bitmap bit” path looks like a recovery edge case, but it is a
+real oops on a supported mount/recovery path.
 
 ## Phase 2: Diff analysis
 
 **Step 2.1 — Inventory**
-- Record: **One file**, `fs/ext4/inode.c`: **+3 / −1**. One function:
-  `ext4_load_tail_bh()`. Surgical, single-file.
+Record:
+- File: `fs/ext4/balloc.c` only (`+4 / -0`)
+- Function: `ext4_get_group_info()`
+- Scope: **single-file surgical fix**
 
-**Step 2.2 — Flow**
-- Record: **Before:** unmapped bh → `ext4_get_block(..., create=0)`
-  return ignored → if still unmapped, `goto unlock` with `err == 0` →
-  `return NULL`.
-- **After:** negative return sets `err` and `goto unlock` → existing
-  `return err ? ERR_PTR(err) : NULL`.
-- Path: mapping lookup on the tail block during partial-block zeroing
-  (error path only).
+**Step 2.2 — Code flow**
+Record (verified against local `fs/ext4/balloc.c`):
+
+Before:
+```
+if (group >= s_groups_count) return NULL;
+indexv/indexh = ...
+grp_info = sbi_array_rcu_deref(..., s_group_info, indexv);  //
+NULL[index] if array missing
+return grp_info[indexh];
+```
+
+After:
+```
+if (group >= s_groups_count) return NULL;
+if (!s_group_info) return NULL;          // new
+... deref row ...
+if (!grp_info) return NULL;              // new
+return grp_info[indexh];
+```
+
+This is an early-mount / missing-table path, not a new feature path.
 
 **Step 2.3 — Bug mechanism**
-- Record: **Logic / correctness (ignored error → false success).**
-  Category closest to “return value checking / missing error handling.”
-  Not UAF, leak, or race.
-- Mechanism: I/O or allocation failure from `ext4_get_block()` is
-  treated as a hole, so truncate/punch/zero-range skip tail zeroing and
-  still succeed.
+Record: **NULL pointer dereference (memory safety)**.
+`sbi_array_rcu_deref()` does
+`rcu_dereference(sbi->s_group_info)[index]`. `sbi` is `kzalloc`’d, so
+`s_group_info` is NULL until `ext4_mb_alloc_groupinfo()` /
+`rcu_assign_pointer`. The per-row check covers `ext4_mb_add_groupinfo()`
+error paths that set `group_info[idx] = NULL`.
 
 **Step 2.4 — Fix quality**
-- Record: **Obviously correct.** Callers already do `IS_ERR_OR_NULL(bh)`
-  / `PTR_ERR_OR_ZERO(bh)` (present since the helper was factored out).
-  Unlock/put already runs on the `unlock` path. Regression risk is low
-  **in this tree** because parent `2fff82f081401` skips inline-data EOF
-  zeroing (otherwise append writes on inline files could see `-ERANGE`).
-  No API change.
-
----
+Record: Obviously correct. Matches the existing contract
+(`ext4_get_group_info()` may return NULL;
+`ext4_mark_group_bitmap_corrupted()` already does `if (!grp || !gdp)
+return;`). Four `unlikely()` lines, no API/lock/data-structure change.
+Regression risk is very low: after `ext4_mb_init()`, `s_group_info` is
+non-NULL and these checks are no-ops. Returning NULL instead of oopsing
+cannot be worse for callers that already handle NULL.
 
 ## Phase 3: Git history
 
 **Step 3.1 — Blame**
-- Record: Ignored `ext4_get_block()` call dates to **`d863dc3614e489`
-  (2013, Lukas Czerner)** inside `__ext4_block_zero_page_range`. Helper
-  **`ext4_load_tail_bh`** was factored out in **`3b312a6f510ca` (“ext4:
-  factor out journalled block zeroing range”, Zhang Yi, 2026-03)** and
-  kept the same ignored return. First in this lineage: **v7.1-rc1**.
+Record: Current function body in this tree is from the 6.4-era change
+“allow `ext4_get_group_info()` to fail” (this history: `b4319e457d6e3`;
+mainline `5354b2af34064`, 2023-05-13) plus `fa285d799d1d5` (“drop
+`ext4_error()` from `ext4_get_group_info()`”). Those commits taught the
+helper to return NULL for a bad group number and taught callers to check
+NULL — but they never checked the array pointer itself.
 
 **Step 3.2 — Fixes: tag**
-- Record: **None.** Introducing commit for the helper is
-  `3b312a6f510ca`, ancestor of this HEAD. The ignored-return bug is
-  older than the helper.
+Record: None. Reachability comes from fast-commit replay, added in
+`6866d7b3f2bb4` (“ext4 / jbd2: add fast commit initialization”,
+`tags/v5.10-rc1~59^2~7`). Journal load still runs before
+`ext4_mb_init()` in this tree.
 
 **Step 3.3 — File history**
-- Record: Same v4 series around this commit:
-  1. `e1cf7b5f5c8ad` FGP_WRITEBEGIN
-  2. `2fff82f081401` skip inline-data tail zeroing **(prerequisite)**
-  3. **`705a3fd3bac16` this fix**
-  4. `b16e9d27a643a` move partial zeroing earlier
-  5. `012e6a2c9ff4d` comment-only return-semantics clarification
-  6–9. WRITE_ZEROES edge handling (some of those have `Cc: stable`)
-- This patch is **standalone** given (2). (5) is comments only; 6–9 are
-  WRITE_ZEROES, not required for this error check.
+Record: Recent `fs/ext4/balloc.c` commits here are unrelated
+(capability-check reorder, fault-injection race, kunit stubs). No
+prerequisite series. Standalone 1/1 patch.
 
 **Step 3.4 — Author**
-- Record: **Zhang Yi** is an ext4 **Reviewer** in MAINTAINERS; 178 ext4
-  commits in this tree. Not a drive-by.
+Record: Yu Junzhe is not the ext4 maintainer. Theodore Ts’o applied it
+by hand after noting mangled whitespace, then posted “Applied, thanks!”
+with commit `8f3901fbb407`.
 
 **Step 3.5 — Dependencies**
-- Record: Needs `ext4_load_tail_bh()` + `ERR_PTR` return +
-  `IS_ERR_OR_NULL` callers — all present since `3b312a6f510ca` (v7.1).
-  Needs **`2fff82f081401`** so inline-data append does not start
-  failing. Both are in this tree. **Applies standalone on top of that
-  parent.**
+Record: None. The helper, `s_group_info`, FC replay, and the caller NULL
+check all exist in this checkout. Applies standalone.
 
----
-
-## Phase 4: Mailing list
+## Phase 4: Mailing list / external
 
 **Step 4.1 — Original discussion**
-- Record: `b4 dig -c 705a3fd3bac16` → **https://patch.msgid.link/2026071
-  4080044.4038124-4-yi.zhang@huaweicloud.com**
-- Series: **[PATCH v4 0/9] ext4: fix unaligned edge handling in
-  FALLOC_FL_WRITE_ZEROES**
-- Revisions: v1 → v4. v4 vs v3: **no code change** on this patch; v3
-  collected Jan’s R-b.
-- Cover letter: patches 2 and 3 were **pre-existing fixes folded in**,
-  not WRITE_ZEROES-only prep.
-- No NAK found on this patch. Ted merged it.
+Record:
+- Lore/msgid: https://patch.msgid.link/65c955b0-716b-4599-b925-
+  59c2782e38b4@gmail.com
+- Direct lore WebFetch: **403** (could not read lore HTML)
+- Openwall/LKML mirrors and `b4` succeeded
+- `b4 dig -a`: **v1 only** (no v2/v3)
+- Thread: author submission; tytso note about gmail whitespace (still
+  applied); tytso “Applied, thanks!” — **no NAK**
+- No reviewer `Cc: stable` in the thread (tytso also did not add it when
+  committing)
 
 **Step 4.2 — Recipients (`b4 dig -w`)**
-- Record: `linux-ext4`, `linux-fsdevel`, **tytso@mit.edu**,
-  **jack@suse.cz**, adilger, libaokun, ojaswin, ritesh.list —
-  maintainers/reviewers were on Cc. Jan reviewed; Ted committed.
+Record: Junzhe Yu, Theodore Ts’o, Andreas Dilger, linux-ext4, linux-
+kernel. Both ext4 maintainers were on the original To/Cc.
 
 **Step 4.3 — Bug report**
-- Record: **No external bugzilla/syzbot report.** Issue found by code
-  inspection (author). Severity is argued in the commit: silent success
-  + possible stale data.
+Record: No syzbot/bugzilla link. Author reports KASAN on a crafted FC-
+unlink image and offers a Docker/QEMU reproducer. I did not run that
+reproducer (UNVERIFIED empirically; the code path is verified).
 
 **Step 4.4 — Series**
-- Record: 9 patches. This one is independently useful. Sibling patches
-  7–9 carry `Cc: stable` for WRITE_ZEROES; this one does not. That is
-  **not** used as a NO vote (tags are expected to be absent here).
+Record: Standalone `[PATCH]` 1/1. Related-in-time FC-replay crashes
+(writeback rwsem not initialized, RO mount replay) are separate bugs,
+not prerequisites.
 
-**Step 4.5 — stable@**
-- Record: **UNVERIFIED.** lore.kernel.org WebFetch returned 403; no
-  separate stable-thread confirmation. `b4 dig` matched the ext4 thread.
+**Step 4.5 — Stable list**
+Record: lore.kernel.org/stable WebFetch returned **403**. No stable-list
+discussion found via search. No evidence it was rejected for stable.
 
----
-
-## Phase 5: Semantic / call graph
+## Phase 5: Semantic / call-chain analysis
 
 **Step 5.1 — Functions**
-- Record: **`ext4_load_tail_bh`** only.
+Record: `ext4_get_group_info()` only. (No semcode MCP in this
+environment; used `git grep` + reads.)
 
 **Step 5.2 — Callers**
-- Record (this tree):
-  - `ext4_block_do_zero_range()` → `IS_ERR_OR_NULL` / `PTR_ERR_OR_ZERO`
-  - `ext4_block_journalled_zero_range()` → same
-  - via `ext4_block_zero_range()`:
-    - `ext4_block_zero_eof()` — truncate (`ext4_truncate`), setattr
-      grow, append (`ext4_write_checks` in `fs/ext4/file.c`)
-    - `ext4_zero_partial_blocks()` — punch-hole (`ext4_punch_hole`),
-      `ext4_zero_range()` / WRITE_ZEROES in `fs/ext4/extents.c`
+Record: Many, across `fs/ext4/{balloc,ialloc,mballoc,super}.c`. Almost
+all already handle NULL (`if (!grp)` / `if (!grinfo)`), because of the
+6.4 “allow to fail” work. The crashing caller is
+`ext4_mark_group_bitmap_corrupted()` in `fs/ext4/super.c`, which already
+returns on NULL.
 
 **Step 5.3 — Callees**
-- Record: `__filemap_get_folio`, `ext4_get_block` (lookup only),
-  `ext4_read_bh_lock`, folio lock/put.
+Record: `sbi_array_rcu_deref()` →
+`rcu_dereference(s_group_info)[indexv]`. That is the NULL deref.
 
 **Step 5.4 — Reachability**
-- Record: **Yes, from userspace:** `truncate`/`ftruncate`, `fallocate`
-  (punch/zero/WRITE_ZEROES), append `write`. Unprivileged processes on
-  their own files can hit the path. The **error** itself needs
-  `ext4_get_block()` failure (I/O error, ENOMEM, corruption), not a
-  normal happy path.
+Record: User-reachable: mount an ext4 filesystem with a journal that
+still has fast-commit UNLINK tags, when the inode bitmap bit is already
+clear. `ext4_fc_init()` installs `j_fc_replay_callback` even if fast
+commit is currently off, so leftover FC blocks still replay. Mount of a
+dirty ext4 image is a normal recovery path (crash, unclean unmount, or
+an untrusted image). Typically needs mount privilege, but the failure is
+a **kernel oops**, not a userspace error.
+
+Verified mount order in this tree (`fs/ext4/super.c`):
+1. `ext4_load_and_init_journal()` → `ext4_load_journal()` →
+   `jbd2_journal_load()` (FC replay)
+2. much later: `ext4_mb_init()` (allocates `s_group_info`)
+
+Verified free path: `ext4_free_inode()` skips the group-info corruption
+check under `EXT4_FC_REPLAY`, then on `!cleared` still calls
+`ext4_error` + `ext4_mark_group_bitmap_corrupted()`.
 
 **Step 5.5 — Similar patterns**
-- Record: Same ignored return lived in `__ext4_block_zero_page_range`
-  since 2013. No second copy of this exact bug in current
-  `ext4_load_tail_bh`.
+Record: `ext4_count_free_clusters()` already does `if
+(EXT4_SB(sb)->s_group_info)` before calling `ext4_get_group_info()`.
+Bitmap validators skip work under `EXT4_FC_REPLAY`. The hole is
+specifically the helper used by `ext4_mark_group_bitmap_corrupted()`.
 
----
+## Phase 6: This checkout (6.12.y)
 
-## Phase 6: This checkout
-
-**Step 6.1 — Buggy code here?**
-- Record: **Yes.** Helper is in `fs/ext4/inode.c` (~4033). Introduced
-  **v7.1-rc1** (`3b312a6f510ca`). This 7.3-rc4 tree has that code. The
-  ignored-return bug existed until `705a3fd3bac16` (v7.3-rc1).
+**Step 6.1 — Does the buggy code exist here?**
+Record: **Yes.** Local tree is **6.12.111** (`pending-6.12`; `git
+describe` was `p-6.12-3-g88406e77611c6` at start).
+`ext4_get_group_info()` in `fs/ext4/balloc.c` still has only the
+`s_groups_count` check. `git merge-base --is-ancestor 8f3901fbb407 HEAD`
+→ **not an ancestor**. `git grep` for the new `!s_group_info` guard →
+**not present**. Fast commit and the journal-before-mballoc order
+**are** present.
 
 **Step 6.2 — Backport difficulty**
-- Record: **Clean apply** onto the parent in this tree
-  (`2fff82f081401`). Three lines. Later `b4e409c18c797` removed fs-layer
-  fscrypt decrypt from this function; that is after/around the same
-  merge window and does not change the get_block check.
+Record: **Clean apply.** Local function text matches the upstream hunk
+context exactly. Confirmed by reading the function and by comparing to
+`git show 8f3901fbb407`.
 
 **Step 6.3 — Related fixes already here?**
-- Record: Prerequisite `2fff82f081401` is in HEAD. Follow-up
-  `012e6a2c9ff4d` is comments only. No competing alternate fix.
+Record: The “allow to fail” / drop-`ext4_error` work is here
+(`b4319e457d6e3`, `fa285d799d1d5`). That is why the caller already
+treats NULL as success-noop — and why this four-line guard is
+sufficient. No alternate fix for this crash is in the tree.
+`origin/master` has `8f3901fbb407` as the latest `balloc.c` change; no
+follow-up revert/amend on that function.
 
----
-
-## Phase 7: Subsystem
+## Phase 7: Subsystem context
 
 **Step 7.1**
-- Record: **ext4 (`fs/ext4`)** — **IMPORTANT** (default Linux
-  filesystem; data integrity).
+Record: **ext4 (fs/ext4). Criticality: IMPORTANT** (default Linux
+filesystem; not quite mm/VFS core, but production-critical).
 
 **Step 7.2**
-- Record: **Active** in 7.3 (WRITE_ZEROES series, iomap, fastcommit,
-  etc.). Helper itself is recent (7.1) but the ignored-return pattern is
-  old.
-
----
+Record: Actively maintained (tytso/Dilger, linux-ext4). The hole is old
+(FC since 5.10 + helper NULL contract since 6.4), not a brand-new
+subsystem.
 
 ## Phase 8: Impact and risk
 
-**Step 8.1 — Who**
-- Record: **Filesystem-specific:** ext4 users doing truncate, punch-
-  hole, zero-range, append, WRITE_ZEROES.
+**Step 8.1 — Who is affected**
+Record: Anyone mounting an ext4 filesystem that still has fast-commit
+journal data to replay (crash recovery, or a crafted/dirty image). That
+is a large, real population — not an obscure driver.
 
 **Step 8.2 — Trigger**
-- Record: Partial-block zeroing **plus** `ext4_get_block()` failure.
-  Uncommon (I/O error / ENOMEM / bad metadata). Unprivileged users can
-  invoke the operations; they cannot usually force get_block failure
-  except under memory/IO pressure.
+Record: Mount-time FC UNLINK replay when the inode bitmap bit is already
+clear. Not every boot, but a **supported recovery path**. Unprivileged
+users cannot usually mount; a user who can mount a malicious ext4 image
+(containers, loop, removable media with automount) can panic the kernel.
 
 **Step 8.3 — Failure mode**
-- Record: **Stale data / false success** on truncate/punch/zero-range.
-  Not a panic. **Severity: HIGH** for a filesystem (classic “truncate
-  succeeded but tail not zeroed → later extend exposes old data”). Not
-  CRITICAL (no oops/deadlock).
+Record: **NULL deref → KASAN report / oops / panic during mount.**
+Severity: **CRITICAL** (host crash while recovering a dirty filesystem).
 
-**Step 8.4 — Ratio**
-- Record: **Benefit: high** for ext4 data integrity on error paths.
-  **Risk: very low** (3 lines, existing ERR_PTR path, Jan + Ted).
-  Prerequisite for inline data is already in this tree.
+**Step 8.4 — Risk/benefit**
+Record: **Benefit: high** (prevents oops on ext4 recovery). **Risk: very
+low** (4 lines, existing NULL contract, hot path unchanged after
+`ext4_mb_init()`). Ratio strongly favors backport.
 
----
+Note: `ext4_error("bit already cleared...")` can still log or remount-ro
+depending on `errors=`; the author states mount succeeds with this
+patch. That `ext4_error` is pre-existing, not introduced here.
 
 ## Phase 9: Synthesis
 
 **Step 9.1 — Evidence**
 
-**For:**
-- Real correctness bug: mapping lookup failure reported as success.
-- Concrete data-integrity outcome on truncate/punch/zero-range.
-- Userspace-reachable (common ext4 ops).
-- 3-line, obviously correct; callers already handle `ERR_PTR`.
-- Reviewed by Jan Kara, merged by Ted Ts'o; author is an ext4 reviewer.
-- Cover letter: intended as a standalone pre-existing fix.
-- Buggy helper **is in this 7.3 tree** (since 7.1).
-- Prerequisite inline-data skip **is in this tree**.
+FOR:
+- Real NULL deref on a supported ext4 mount/recovery path
+- KASAN-confirmed; author tested the patch
+- Call path and journal-before-`mb_init` order verified in **this** 6.12
+  tree
+- 4-line, obviously correct guard; callers already handle NULL
+- Ext4 maintainer applied it upstream (`8f3901fbb407`); it is on
+  `origin/master`
+- No dependencies; applies cleanly
+- Ext4 is widely used; FC exists since 5.10
 
-**Against:**
-- Error-path only; no syzbot/user `Reported-by`.
-- Bundled in a 9-patch WRITE_ZEROES series (mitigated: explicitly called
-  out as a separate pre-existing fix).
-- Trigger requires get_block failure (rare).
+AGAINST:
+- No `Fixes:` / `Cc: stable` (expected; not a negative)
+- Trigger is an FC replay edge (already-cleared bit), not every mount
+- I did not run the author’s QEMU reproducer
+- tytso did not nominate stable in the apply mail
 
-**Unresolved:** stable@ archive (lore 403); full v1 review text beyond
-the on-commit `Reviewed-by`.
+UNRESOLVED:
+- Empirical reproducer not run here
+- lore.kernel.org HTML and stable-list search returned HTTP 403 (thread
+  recovered via b4/openwall)
 
 **Step 9.2 — Stable rules**
-1. Obviously correct and tested? **PASS** (trivial check; R-b Jan; in
-   7.3-rc1)
-2. Real bug affecting users? **PASS** (false success + possible stale
-   data)
-3. Important (crash/security/corruption/deadlock)? **PASS** (stale data
-   / integrity, HIGH)
-4. Small and contained? **PASS** (+3/−1, one function)
+1. Obviously correct and tested? **PASS** (KASAN + maintainer apply;
+   logic matches existing NULL contract)
+2. Real bug affecting users? **PASS** (oops on dirty-ext4 mount / FC
+   replay)
+3. Important (crash/security/corruption/deadlock)? **PASS** — kernel
+   oops/panic, severity CRITICAL
+4. Small and contained? **PASS** — +4 lines, one function
 5. No new features/APIs? **PASS**
-6. Can apply to this tree? **PASS** (helper + callers + prerequisite
-   present)
+6. Can apply to this tree? **PASS** — buggy code present, clean context
 
 **Step 9.3 — Exceptions**
-- Record: **None** (not a device ID/quirk/DT/build/doc exception).
-  Ordinary bugfix.
+Record: Not an ID/quirk/DT/docs exception. It is a normal crash fix.
 
 **Step 9.4 — Decision**
-This is a small, reviewed ext4 integrity fix for code that exists in
-this 7.3-rc4 tree. Callers already propagate `ERR_PTR`. The inline-data
-prerequisite is present, so the change does not turn append-on-inline-
-data into `-ERANGE`. It meets stable criteria for **this** tree.
+This tree is 6.12.y. The bug exists here; the fix is a four-line NULL
+guard with no prerequisites. It should be backported.
 
 ---
 
-## Why it matters here
+### What this solves for stable users
 
-On this 7.3 tree, `ext4_load_tail_bh()` is the shared tail-zero helper
-for truncate, punch-hole, fallocate zero/WRITE_ZEROES, and post-EOF
-append. Ignoring `ext4_get_block()` makes a failed extent lookup look
-like a hole, so those operations can succeed without zeroing a mapped
-tail. Later grow/read can then expose stale bytes. Checking the return
-and using the existing `ERR_PTR` path is the right, minimal fix.
+Mounting a dirty ext4 filesystem with leftover fast-commit UNLINK
+records can take `ext4_free_inode()` →
+`ext4_mark_group_bitmap_corrupted()` **before** mballoc has allocated
+`s_group_info`. The helper then does `NULL[index]` and oopses. The patch
+makes the helper return NULL so the existing caller check is a no-op and
+mount/recovery can continue.
 
-Risk is low: three lines, no locking/API change, prerequisite
-`2fff82f081401` already in this checkout.
+### Risk vs benefit
+
+Benefit is a real mount-time crash fix on the default Linux filesystem.
+Risk is a pair of `unlikely()` NULL returns in a helper that is already
+allowed to fail. After `ext4_mb_init()`, behavior is unchanged.
+
+### Concerns
+
+None that block backport. No missing commits, no API change, no follow-
+up on `origin/master` that reworks this function.
 
 ---
 
-## Verification
-
-- **[Phase 1]** Parsed commit
-  `705a3fd3bac167f1dabe3d3bba46cd484c5528dd`: Zhang Yi, R-b Jan Kara,
-  SOB Ted Ts'o, Link msgid `…4038124-4…`. No Fixes/Cc:stable/Reported-
-  by.
-- **[Phase 2]** `git show 705a3fd3bac16`: +3/−1 in `ext4_load_tail_bh`;
-  `err = ext4_get_block(...); if (err < 0) goto unlock`.
-- **[Phase 2]** Confirmed unlock already returns `err ? ERR_PTR(err) :
-  NULL` before the patch (`git show 705a3fd3bac16^:fs/ext4/inode.c`).
-- **[Phase 2]** Callers at the fix: `IS_ERR_OR_NULL` / `PTR_ERR_OR_ZERO`
-  (`git grep` on `705a3fd3bac16`).
-- **[Phase 3]** `git blame 705a3fd3bac16^` around the call:
-  `d863dc3614e489` (2013).
-- **[Phase 3]** `git log -S ext4_load_tail_bh -- fs/ext4/inode.c` →
-  `3b312a6f510ca`; `git describe --contains` → **v7.1-rc1**.
-- **[Phase 3]** `git merge-base --is-ancestor 3b312a6f510ca HEAD` true;
-  `705a3fd3bac16` ancestor of HEAD true; **not** in v7.2; **in**
-  v7.3-rc1.
-- **[Phase 3]** Parent `2fff82f081401` documents `-ERANGE` on inline
-  data if this check is added without the skip; that skip is in HEAD.
-- **[Phase 4]** `b4 dig -c 705a3fd3bac16` → v4 3/9 lore URL; `-a` showed
-  v3 and v4; `-w` listed ext4 maintainers.
-- **[Phase 4]** Cover letter (mbox): “Fold in two pre-existing fixes
-  (now patches 2 and 3)”.
-- **[Phase 4]** WebFetch lore/msgid.link: **403**. Stable-list search:
-  **UNVERIFIED**.
-- **[Phase 5]** Grep callers: `ext4_block_do_zero_range`,
-  `ext4_block_journalled_zero_range` → `ext4_block_zero_eof` /
-  `ext4_zero_partial_blocks` → truncate, setattr, punch-hole,
-  zero_range, `file.c` append.
-- **[Phase 5]** Truncate: `ext4_truncate` → `ext4_block_zero_eof`; on
-  error `goto out_trace` (does **not** keep shrinking after a failed
-  zero). Punch-hole/`ext4_zero_range` return the error.
-- **[Phase 6]** `git describe HEAD` = `v7.3-rc4-27-gf0100363d8c37`;
-  `make kernelversion` = `7.3.0-rc4`.
-- **[Phase 6]** Buggy helper present in this tree since v7.1;
-  prerequisite and this commit both ancestors of HEAD.
-- **[Phase 7]** MAINTAINERS: Zhang Yi is `R:` on EXT4; Jan Kara is `R:`;
-  Ted is `M:`.
-- **[Phase 8]** Failure mode verified from commit text + truncate/punch
-  callers, not from a live repro (no reproducer in the message).
-- **UNVERIFIED:** Whether `ext4_get_block` can return an error while
-  leaving `BH_Mapped` set (fix still correct: any `err < 0` is
-  propagated). No live I/O-error repro.
-
-The patch is a small, reviewed ext4 integrity fix for code that exists
-in this 7.3 tree, with callers already wired for `ERR_PTR` and the
-inline-data prerequisite present.
+Verification:
+- [Phase 1] Parsed subject/tags/body from the candidate message and from
+  `git show 8f3901fbb407`
+- [Phase 1] Confirmed no Fixes/Cc:stable; maintainer SOB present
+- [Phase 2] Diff is +4 lines in `ext4_get_group_info()`; local function
+  matches the hunk
+- [Phase 2] `sbi_array_rcu_deref` indexes `s_group_info` without a NULL
+  check (`fs/ext4/ext4.h`)
+- [Phase 2] `ext4_mark_group_bitmap_corrupted()` already returns if
+  `!grp` (`fs/ext4/super.c`)
+- [Phase 3] Blame: helper NULL-for-bad-group from `b4319e457d6e3` /
+  `fa285d799d1d5` in this history
+- [Phase 3] Fast commit added in `6866d7b3f2bb4` (v5.10-rc1); present
+  here
+- [Phase 3] `git log --grep` on `fs/ext4/`: this subject is **not** in
+  HEAD
+- [Phase 4] `b4 am` / `b4 dig -c 8f3901fbb407`: thread at msgid
+  `65c955b0-716b-4599-b925-59c2782e38b4@gmail.com`; v1 only
+- [Phase 4] `b4 dig -w`: tytso + Dilger + linux-ext4 on the original
+  mail
+- [Phase 4] tytso applied as `8f3901fbb407`; noted whitespace but no NAK
+- [Phase 4] lore.kernel.org WebFetch: 403; used openwall + b4 mbox
+  instead
+- [Phase 5] Callers of `ext4_get_group_info` grepped; crashing caller
+  checks NULL
+- [Phase 5] `ext4_free_inode()` FC_REPLAY skip + “bit already cleared” →
+  `ext4_mark_group_bitmap_corrupted()` verified
+- [Phase 5] Mount order: `jbd2_journal_load` in `ext4_load_journal()`
+  before `ext4_mb_init()` verified
+- [Phase 5] `sbi = kzalloc` zeroes `s_group_info`; assigned later via
+  `rcu_assign_pointer` in mballoc
+- [Phase 6] `make kernelversion` / Makefile: **6.12.111**; branch
+  `pending-6.12`
+- [Phase 6] `git merge-base --is-ancestor 8f3901fbb407 HEAD` → not in
+  this tree
+- [Phase 6] Same SHA **is** an ancestor of `origin/master`; no later
+  balloc.c follow-up on that fix
+- [Phase 6] Clean apply context present in local `ext4_get_group_info()`
+- [Phase 8] Failure mode: NULL deref oops on mount/recovery, severity
+  CRITICAL
+- UNVERIFIED: Did not run the author’s crafted-image/QEMU reproducer
+- UNVERIFIED: Could not search lore.kernel.org/stable HTML (HTTP 403)
 
 **YES**
 
- fs/ext4/inode.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/balloc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9a5c08650bd1e..2e3f7ba1a924b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4119,7 +4119,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	}
- 	if (!buffer_mapped(bh)) {
- 		BUFFER_TRACE(bh, "unmapped");
--		ext4_get_block(inode, iblock, bh, 0);
-+		err = ext4_get_block(inode, iblock, bh, 0);
-+		if (err < 0)
-+			goto unlock;
- 		/* unmapped? It's a hole - nothing to do */
- 		if (!buffer_mapped(bh)) {
- 			BUFFER_TRACE(bh, "still unmapped");
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index c9329ed5c094e..08556dd45760d 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -331,9 +331,13 @@ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
+ 
+ 	if (unlikely(group >= EXT4_SB(sb)->s_groups_count))
+ 		return NULL;
++	if (unlikely(!EXT4_SB(sb)->s_group_info))
++		return NULL;
+ 	indexv = group >> (EXT4_DESC_PER_BLOCK_BITS(sb));
+ 	indexh = group & ((EXT4_DESC_PER_BLOCK(sb)) - 1);
+ 	grp_info = sbi_array_rcu_deref(EXT4_SB(sb), s_group_info, indexv);
++	if (unlikely(!grp_info))
++		return NULL;
+ 	return grp_info[indexh];
+ }
+ 
 -- 
 2.53.0
 
