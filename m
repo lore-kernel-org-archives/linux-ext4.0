@@ -1,106 +1,144 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-dy1-f177.google.com (mail-dy1-f177.google.com [74.125.82.177])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 985334F4CF6
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 12:38:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 433994F96CC
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 13:17:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.82.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792413510; cv=none; b=jZ6bKA76pKk9BHJiqbSht4HwzYhW69mY3Isg47XqFABA1RZvOaDOIGUPXshtbflh2WTckzrnTtZwTEUu2pkW4OamqGvTCs1obADJbylSYS4AfFalze7z4ckaweiJe8LZ7WSagBIzQ0RuYjY4V5aTQO0fgtxq5Z+3hbVNQfrV/H8=
+	t=1792415834; cv=none; b=Ql0sgQfXql3vU+2GPvYbQ9pIH4LUVLOpWvbQcmd/zQzrYEsjiB07Z0X9sRo2Hepe5Ilm+xSX770Vl75nceNSaZRXA6h0SPyjXEIJdZM0K1Vp4FbI+BPY8j2t6AxhJ5eh34JGPgAFQMF2CjmIdjxL7JjVVrPDUbPQoSRk4k9ErDY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792413510; c=relaxed/simple;
-	bh=WaGy4E03++97TCbMmAto9M75aT5iSsiYGQMrgToMqt0=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=ORR4k4KzGhgwP3hcKXYCZ3MrMvmV/wdmk7nu69MEc4HQNbcs0SGDmV252wm0aFs5TNDSU8pBBa2qayirl4Z88AsxrpEUcwUt2b8JztSS/z1IFYXCNx6LJeTyrdilyPe3TD9y4UEE2R5oy3hJAInCzpj6EkVEgstzyzIpYVNHZsE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j7Zp70DVlzKHPSb
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 20:38:07 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 3BF7C40573
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 20:38:15 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgBXkO82D9Zqy1klBA--.37298S3;
-	Mon, 19 Oct 2026 20:38:15 +0800 (CST)
-Message-ID: <efd8d9c6-8688-46e4-998a-6ef9b0129a88@huaweicloud.com>
-Date: Mon, 19 Oct 2026 20:38:14 +0800
+	s=arc-20240116; t=1792415834; c=relaxed/simple;
+	bh=v0N0ue0D/9q3twivEXd/Xex83WpXtVQPxtWDyAK2fGA=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=ZLwHHWEFAmakZG9oZpNZs/f8rW7uyE2wtsBTLCTXcjlVw6EC6UDc+29NhsmJt/Q6VJnb9qw/veqE+7D2tsqypP1HAOo0aClSpzwxDEnYzjDpvUDpw5lLKjjWmlATHRpVuxbOY2HV6g7Q8+5GFv8KvjtQPXkk9Z4/O3XzYXpUPxc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Yde7Hawg; arc=none smtp.client-ip=74.125.82.177
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Yde7Hawg"
+Received: by mail-dy1-f177.google.com with SMTP id 5a478bee46e88-3645f0f3fcdso1946334eec.0
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 06:17:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792415832; x=1793020632; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Un2FQLn1cyVPuKINi4Pu+DXYqsg5kHet0ISFq98QOI4=;
+        b=Yde7Hawgbgp7LWtm/0W5qeYIiMvIMT2Y8Hu1jgvtruw5W29wgReanuMdQAhnh3wFiV
+         /AYbk/YBGFfWREQmkN1tc8m/kbPXB0hnV2DOOSSzaOPHnzzUJAjWWJckSD+ve+6InlNl
+         E89QNCceEJEAAk7Pf/tMj/klDCgHymPZT6MPKwibVViU9Z2MGzGKa3+3gz+V5klUdy2S
+         enAJHeEsbq7B0yjB4377qSIPJrucKhxR1Kw8aaVXAcNRlziPj7aeOO/OKbA4SWqpAON5
+         gwqCLKQAky9E3YX9EtDJZyZ9sVPBvHTUgY5OG2bKBjScDNapZqmWR47lW7fVWyzEfxkB
+         BQAA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792415832; x=1793020632;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Un2FQLn1cyVPuKINi4Pu+DXYqsg5kHet0ISFq98QOI4=;
+        b=PY61lw0Jyn505MHtknw2Z2584sbPAzvCClvVKvaOwQWNhss5PII2I0d24MlPr4Or7y
+         CNe50LqW6wt2Xm52X4glhmNNImBiyNS7AMf5kvL+9bRHLJTBuKL8lrODy9QPbtllg162
+         752ekd8SypMhIMKV17/MH2JJ1EWd7LlE7n1xI5LgKOZlj5ObPHYCBPvRC3F8GG2W/n+H
+         YVHPzd7uQM0GJswQ3+ft/Aq9cwnSc9lkS7/Lorv2nNJv8Ff367PDuOhOf8gX9skjUjiu
+         V/mcfOvvI7LNg4FxxTyq5i/n05cTIblBVSLRbb/ZX+mPpizw+PkYP8V/jkO405JRK+tW
+         lnYA==
+X-Forwarded-Encrypted: i=1; AKwUvBwNVFhIGfMT1w8Tk9mcAt9e288/Jd0N+/pO7Pn7LPnMzjxmJyGLqXNgtLBD6ZI8dwGg1CE7qfRFIWaY@vger.kernel.org
+X-Gm-Message-State: AFq9FYILcwl/KTDhV0Bre2y4JJsjxl2VD0AhECruVwxU4BO86bszLB5o
+	ALbqmSId4cvMn5v3kS34T2SU5Jjlc3/0h6xIYvGwoAZK5W36GXn3j+Vs
+X-Gm-Gg: AYBFou1oP3CWVqQakJ5CDN0h9h+/1yqa2hpLAbPdjZkNc4rKC7eNy08UBb1ZyBLX16N
+	THfA7wzhvzi8LrPrllkCpLJXpOH6tF/igSbbEEApebUaAjrLyYYH6grGSrh9knUbHelk8Y4mOH6
+	oq+3Q34OXt3JhL1nyrMiWnxP8syUcNLljk+tOCbp9R6VpXbyoMOL9yP7S/RxYTcbdK+dP/Cvz+u
+	fw2CagGM1/weQ/3jcFM1tafOy6glSvXG4EKeuT9Qw4GkZxdA6Kjze1tR1WPlislxjVenOEx4LVW
+	LlJVNBz/48lM//fs91jqsIVyhAaj2Dew4omeiD3sZqfhM5dhXPzc1chrAYWcY6OI0ctx2oAAQwW
+	sot6AaMFLIb6f0NRSxYNRECDF3Z58jCb14kOurf3SKn6c8UBcRTkSFZ+HiaML23o7YVPRLrfmuM
+	ffIs7sZSpLs6Q6MqXWr/ScmY8MH9CKYiLl2SX2F+npLEW3rUHTspKox26wDDyoL5NYv6RLO8RVY
+	FStbC/qU7/sISEoZSBLFDrQ
+X-Received: by 2002:a05:7301:6196:20b0:34c:d1f2:b552 with SMTP id 5a478bee46e88-3619ea2377dmr10582267eec.4.1792415831916;
+        Mon, 19 Oct 2026 06:17:11 -0700 (PDT)
+Received: from csl-conti-dell7859.ntu.edu.sg ([155.69.199.57])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3608258aa66sm40785403eec.20.2026.10.19.06.17.09
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 19 Oct 2026 06:17:11 -0700 (PDT)
+From: Kaixuan Li <kaixuanli0131@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+	Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v3] ext4: don't read past the UAPI struct in GROUP_ADD
+Date: Mon, 19 Oct 2026 21:16:55 +0800
+Message-Id: <20261019131655.2583227-1-kaixuanli0131@gmail.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20260918111742.827428-1-kaixuan.li@ntu.edu.sg>
+References: <20260918111742.827428-1-kaixuan.li@ntu.edu.sg>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: ext4 data=journal deprecation: long-standing industrial use case
-To: "Korber, Markus" <markus.korber@anton-paar.com>
-Cc: Theodore Tso <tytso@mit.edu>, Gabriele Moabiti <gabmoa@gmail.com>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-References: <CAAbJaeALOrZwWs++mz9Wv0pfvyDoHmfzPKyVHR0v6TwnzLkYGw@mail.gmail.com>
- <as0U-lfet5slrD8o@mit.edu>
- <AM0PR03MB5714FB8241C13A499E7D5155DE982@AM0PR03MB5714.eurprd03.prod.outlook.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <AM0PR03MB5714FB8241C13A499E7D5155DE982@AM0PR03MB5714.eurprd03.prod.outlook.com>
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgBXkO82D9Zqy1klBA--.37298S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxJrWDKw1kXr1Dtw18GFW5Awb_yoW8AF4kpF
-	Zaqr4DtFyvyr9xAwn293WxGa12qFn5uFW5Wrs8W3s0va45Kw129w1ayF409FyIyr1rGr1j
-	vrZFqas5W34DZFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUgvb4IE77IF4wAFF20E14v26r1j6r4UM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY
-	6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17
-	CEb7AF67AKxVWUAVWUtwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF
-	0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIx
-	AIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIev
-	Ja73UjIFyTuYvjxUwmhFDUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On 10/19/2026 4:51 PM, Korber, Markus wrote:
-> On Mon, Oct 12, 2026, Theodore Tso wrote:
->> Given that there is no guarantees of what writes will be persisted
->> with respect to program execution, it's unclear exactly what your
->> deployments are requiring or assuming.
-> 
-> I'd like to add another data point in support of Gabriele's use case.
-> 
-> We also use ext4 data=journal on embedded systems where unexpected
-> power loss is possible. Our main concern is not losing the most recent
-> few seconds of data. That is acceptable for our use case. What we want
-> to avoid is corruption of file contents after an unexpected power loss.
-> 
-> We performed repeated hard power-cut tests using both data=ordered and
-> data=journal. With data=ordered we observed, among other expected
-> failure modes, files containing NULs and partially written files where
-> the unwritten part contained NULs. These failure modes are particularly
-> difficult for applications to recover from.
-> 
+EXT4_IOC_GROUP_ADD casts the user pointer to struct ext4_new_group_input,
+its UAPI type, but sizes the copy by struct ext4_new_group_data, the
+internal type:
 
-If you're only doing regular append writes rather than post-EOF append
-writes, then the upcoming buffered_iomap mount option should be able to
-address this one (though in the short term it won't support all the
-features of the buffered_head flow — hopefully it will be useful for
-you), since the on-disk file size update is performed after the I/O
-completes.
+	struct ext4_new_group_data input;
 
-Regards,
-Yi.
+	if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
+			sizeof(input)))
 
-> With data=journal we still observed lost recent files, zero-length
-> files and truncated current writes, but we did not observe those
-> NUL-filled corruption patterns.
-> 
-> So at least for our use case, the useful property of data=journal is
-> not primarily reducing the amount of recent data that can be lost.
-> It is the different failure behavior when power is removed during file
-> I/O.
-> 
-> Regards,
-> Markus
+The UAPI struct is 40 bytes, the internal one 48.  A caller that follows
+the UAPI and allocates 40 bytes gets 8 bytes read past its object, and the
+ioctl returns EFAULT when those bytes are unmapped.  The two structs have
+differed in size for as long as I can see back -- v6.12.9, v7.2.4 and
+current master all have 40 against 48 -- so the copy has been over-reading
+the UAPI object throughout.
+
+The first 40 bytes of the two structs have the same layout, with the UAPI
+'unused' in the slot of mdata_blocks, so copying that much fills every
+field the UAPI defines.  free_clusters_count, the one field past it, is
+overwritten by verify_group_input(), and mdata_blocks is read only on the
+ext4_resize_fs() path, which builds its own group_data array.  Copy the
+UAPI size into a zero-initialised struct.
+
+Reproducible on v6.12.9 and v7.2.4 by placing a 40-byte struct at the end
+of a mapped page whose successor is unmapped: the ioctl returns EFAULT.
+
+Signed-off-by: Kaixuan Li <kaixuanli0131@gmail.com>
+---
+v3: initialise input with = {} and drop the tail memset (Jan Kara).
+    Correct the description: the UAPI 'unused' shares its slot with
+    mdata_blocks, so only free_clusters_count lies past the copy.
+
+v2: https://lore.kernel.org/linux-ext4/20260918111742.827428-1-kaixuan.li@ntu.edu.sg/
+v1: https://lore.kernel.org/linux-ext4/20260917151441.413135-1-kaixuan.li@ntu.edu.sg/
+
+Built fs/ext4/ioctl.o warning-free with W=1 on x86_64 (gcc 11.4), and
+checkpatch-clean.  The EFAULT reproducer behaves as before on v6.12.9 and
+v7.2.4; the fix itself was not runtime-tested.
+
+ fs/ext4/ioctl.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index c8387e6a2c6e..aab02575d90a 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1674,10 +1674,10 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 	}
+ 
+ 	case EXT4_IOC_GROUP_ADD: {
+-		struct ext4_new_group_data input;
++		struct ext4_new_group_input __user *uinput = (void __user *)arg;
++		struct ext4_new_group_data input = {};
+ 
+-		if (copy_from_user(&input, (struct ext4_new_group_input __user *)arg,
+-				sizeof(input)))
++		if (copy_from_user(&input, uinput, sizeof(*uinput)))
+ 			return -EFAULT;
+ 
+ 		return ext4_ioctl_group_add(filp, &input);
+-- 
+2.34.1
 
