@@ -1,42 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0FB95D9D97;
-	Mon, 19 Oct 2026 14:02:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 959AF55CA14;
+	Mon, 19 Oct 2026 14:02:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792418525; cv=none; b=P3hybLzjR43/q6dCEhCIRs8Lo9qYs0XGmPo0VoWH0ePVzcuXMMQGJi/w/WKsy7drTEPbFdJrKfkZ4e80h9zQ1zfuOZil9otXusNBLYo7zWejEWCH1HYgB/ivVnJ0BwuEg0pc5CTdNNaNoOawmfFELskfBlVgQsSgOVUjnfQ1dZ8=
+	t=1792418544; cv=none; b=ZHOjaumLS9nw7p93FWJFDvrEHPY9E82wmDjQ38ORwkJB90TyWJbVBhJbzxfNWMpgZrd81ef2zYh9YvkmgFaD6HyCdtY0GUkPGxCkNO/zNNAPOh5VLfJ09S0MvWMK2dFqSN9yTGgmtJZ4WFQ3jhGGnw87yqfS7ZMBGApTmqrdGek=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792418525; c=relaxed/simple;
-	bh=HWU39KNqQaW6mRCYZGyKIsIVE5a4TkNDiJLtp751LYY=;
+	s=arc-20240116; t=1792418544; c=relaxed/simple;
+	bh=UDq5053jnIp0nACalX/WLj/JAyswSDu0oN7/MP8AyKM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=YeZxvgX7jd6n9pi5FPPqJ2z2F2PoVh/jgj8ctO/X2cHxWds44Xs9h46wfz4DcIqv8VFCKyyypg9H4Hm4biabTAuL0CAqv5GY1TsK2GIsYhmkENIHz779j4H9gwrJdS6Tq2NMyFfIIAePcz4DIjM31wVcb9neZ6GQ/vkotq1+B50=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AXvUb+o6; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=APX0TJQggCSfzPKPKYfGRf6gKoCazAW8ISGeOse1ryT0Lfnx/iLBrAATh298d4ul3hqP6c2j4jKhQONzSV79Ctb4dvnjAHSwqS4C0U8nXCeRt3xo/9ZxPNkWbo1OUYSD/6hVxZgV8XAqbDL0LUlVrHoEKMWruN9hnUZG00+n9TY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MLrgiH9l; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AXvUb+o6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C2FF1F000C4;
-	Mon, 19 Oct 2026 14:02:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MLrgiH9l"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C0811F000C9;
+	Mon, 19 Oct 2026 14:02:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792418522;
-	bh=at/eGBD5LOOerqpoJEWHNdcxGFSF0uKjnyFVsmUIpVk=;
+	s=k20260515; t=1792418540;
+	bh=ML5Ogu5sz5ZvjQpb+auDtP+seRlGoKMEgtVP1eyM/so=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=AXvUb+o6M8Ncq9sSfDQ1ZCDvykg38KcP4skCbX5mwlX67ANOlxL2NX6D1qBZdNFBr
-	 wIeEKDnfWyTCtjLX91OAwPvXeL1HjtzupFSwr8exrkzDKNp+qwa05OdjO305y1Y9kR
-	 JGoHDptfeuSqVms/KWA+fSWDzpkRMl55m03ZnpNuT7HYlUiUi1HYZTPUkn2XBKn4TD
-	 S7uFBQkUjM1q9HjmnAzD45B9E8vI9un8vuXopf5A9GhP5G5Tyf4bwD893FdZFjzcPY
-	 cIkLnAtTrngm7KiFfkf1q2LAONZLNTdPYdDtPrvYG2mMy8DtzVhTg7aDnMw5jNYOB3
-	 OJNNnS72mMmLg==
+	b=MLrgiH9lqyFdyDN8tPbm0azHyvUI+DYljXiM+0qWbHWoj6zFnRcpF9LRff0E4JAk4
+	 yYKk104Ef0IERi17kJjajcIz5OmIb6/8+3TrwBqSmJdw7HUGaNaxJtyYOfOmlireee
+	 Er9B9Bv0EuExddgcqLgqff6Mj1Fz19zaI7glb7HEAX+PR3sheXXdfOqMvmr+mpbR0Q
+	 019MBl8xAhotkF9oaDC0fH3uZ3vElPgjhWEVfubZXswvAuQb7Gu7EZ39/zwZN3ZNyk
+	 Ad5zfdEuFv9qMdK7QkRTaT4tq0u9Gu43BMEqCTeCfGD6pze9Itzo8vEu2ieGFD9iPr
+	 kdIWmsgr7hA1A==
 From: Sasha Levin <sashal@kernel.org>
 To: patches@lists.linux.dev,
 	stable@vger.kernel.org
-Cc: Junzhe Yu <junzheyu1@gmail.com>,
+Cc: Yun Zhou <yun.zhou@windriver.com>,
+	Jan Kara <jack@suse.cz>,
 	Theodore Ts'o <tytso@mit.edu>,
 	Sasha Levin <sashal@kernel.org>,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.18-5.10] ext4: guard against NULL s_group_info in ext4_get_group_info
-Date: Mon, 19 Oct 2026 09:49:59 -0400
-Message-ID: <20261019135441.1420968-308-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.18-5.10] ext4: set EXT4_STATE_NO_EXPAND in ext4_evict_inode
+Date: Mon, 19 Oct 2026 09:50:12 -0400
+Message-ID: <20261019135441.1420968-321-sashal@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261019135441.1420968-1-sashal@kernel.org>
 References: <20261019135441.1420968-1-sashal@kernel.org>
@@ -46,442 +47,526 @@ List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 X-stable: review
 X-Patchwork-Hint: Ignore
 X-stable-base: Linux 6.18.57
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-From: Junzhe Yu <junzheyu1@gmail.com>
+From: Yun Zhou <yun.zhou@windriver.com>
 
-[ Upstream commit 8f3901fbb40745046e513226ad84e8b84492632d ]
+[ Upstream commit 2c0e4fb511f97467dafc91b6afb3414100289081 ]
 
-Resend: previous attempt was rejected by vger for containing HTML.
+An inode being evicted will never need its extra isize expanded.  Set
+EXT4_STATE_NO_EXPAND before ext4_mark_inode_dirty() in ext4_evict_inode()
+to make this explicit and prevent any unnecessary work in
+ext4_try_to_expand_extra_isize().
 
-==================================================================
+This also provides defense-in-depth for the s_writepages_rwsem deadlock
+during mount-time orphan cleanup, ensuring the expand path is blocked
+for inodes under eviction regardless of how they are reached.
 
-ext4_mark_group_bitmap_corrupted() already treats a NULL return from
-ext4_get_group_info() as "nothing to do", but ext4_get_group_info()
-indexes s_group_info without checking whether the array exists.
-
-During mount, fast-commit replay runs inside jbd2_journal_load() from
-ext4_load_and_init_journal(), which is before ext4_mb_init() allocates
-s_group_info. Replaying an FC UNLINK for an inode whose bitmap bit is
-already clear takes:
-
-   ext4_fc_replay_unlink -> iput -> ext4_evict_inode -> ext4_free_inode
-     -> ext4_mark_group_bitmap_corrupted -> ext4_get_group_info
-
-and faults on the NULL s_group_info base. Userspace only mounts a dirty
-ext4 image; this is a supported recovery path.
-
-Return NULL when s_group_info (or the per-block grp_info row) is unset
-so the existing caller check is effective during early mount.
-
-Tested on Linux v6.6.145 KASAN: crafted FC-unlink image previously
-triggered KASAN null-ptr-deref / panic in ext4_get_group_info; with this
-patch, mount succeeds (EXT4 "bit already cleared" may still log). Also
-observed on v6.6.144; still present on torvalds/linux as of
-f5098b6bae76 (2026-07-26).
-
-A self-contained Docker/QEMU reproducer (craft + mount + patch verify) is
-available on request.
-
-Signed-off-by: Yu Junzhe <junzheyu1@gmail.com>
-Link: https://patch.msgid.link/65c955b0-716b-4599-b925-59c2782e38b4@gmail.com
+Signed-off-by: Yun Zhou <yun.zhou@windriver.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://patch.msgid.link/20260623061903.2148767-2-yun.zhou@windriver.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
 
 LLM Generated explanations, may be completely bogus:
 
-## Phase 1: Commit message forensics
-
-**Step 1.1 — Subject**
-Record: **[ext4] [guard / prevent] NULL `s_group_info` dereference in
-`ext4_get_group_info`**. “Guard against” is a bug-fix verb: add a
-missing safety check.
-
-**Step 1.2 — Tags**
-Record:
-- `Signed-off-by: Yu Junzhe <junzheyu1@gmail.com>` (author)
-- `Link: https://patch.msgid.link/65c955b0-716b-4599-b925-
-  59c2782e38b4@gmail.com`
-- `Signed-off-by: Theodore Ts'o <tytso@mit.edu>` (ext4 maintainer
-  applied it)
-- No `Fixes:`, `Reported-by:`, `Tested-by:`, `Reviewed-by:`, `Acked-
-  by:`, or `Cc: stable` (absence is expected in this pipeline)
-- Upstream SHA after maintainer application:
-  `8f3901fbb40745046e513226ad84e8b84492632d`
-
-**Step 1.3 — Body**
-Record:
-- **Bug:** `ext4_get_group_info()` indexes `s_group_info` without
-  checking that the array exists.
-- **Symptom:** KASAN null-ptr-deref / panic in `ext4_get_group_info`
-  while mounting a dirty ext4 image that needs fast-commit UNLINK
-  replay.
-- **Path:** `ext4_fc_replay_unlink` → `iput` → `ext4_evict_inode` →
-  `ext4_free_inode` → `ext4_mark_group_bitmap_corrupted` →
-  `ext4_get_group_info`
-- **Root cause:** FC replay runs inside `jbd2_journal_load()` from
-  `ext4_load_and_init_journal()`, **before** `ext4_mb_init()` allocates
-  `s_group_info`.
-- **Author testing:** KASAN on v6.6.145 (also seen on v6.6.144); still
-  present on torvalds/linux as of `f5098b6bae76` (2026-07-26). Mount
-  succeeds with the patch.
-
-**Step 1.4 — Hidden bug fix?**
-Record: Not hidden. This is an explicit NULL-deref fix. The “already-
-cleared bitmap bit” path looks like a recovery edge case, but it is a
-real oops on a supported mount/recovery path.
-
-## Phase 2: Diff analysis
-
-**Step 2.1 — Inventory**
-Record:
-- File: `fs/ext4/balloc.c` only (`+4 / -0`)
-- Function: `ext4_get_group_info()`
-- Scope: **single-file surgical fix**
-
-**Step 2.2 — Code flow**
-Record (verified against local `fs/ext4/balloc.c`):
-
-Before:
-```
-if (group >= s_groups_count) return NULL;
-indexv/indexh = ...
-grp_info = sbi_array_rcu_deref(..., s_group_info, indexv);  //
-NULL[index] if array missing
-return grp_info[indexh];
-```
-
-After:
-```
-if (group >= s_groups_count) return NULL;
-if (!s_group_info) return NULL;          // new
-... deref row ...
-if (!grp_info) return NULL;              // new
-return grp_info[indexh];
-```
-
-This is an early-mount / missing-table path, not a new feature path.
-
-**Step 2.3 — Bug mechanism**
-Record: **NULL pointer dereference (memory safety)**.
-`sbi_array_rcu_deref()` does
-`rcu_dereference(sbi->s_group_info)[index]`. `sbi` is `kzalloc`’d, so
-`s_group_info` is NULL until `ext4_mb_alloc_groupinfo()` /
-`rcu_assign_pointer`. The per-row check covers `ext4_mb_add_groupinfo()`
-error paths that set `group_info[idx] = NULL`.
-
-**Step 2.4 — Fix quality**
-Record: Obviously correct. Matches the existing contract
-(`ext4_get_group_info()` may return NULL;
-`ext4_mark_group_bitmap_corrupted()` already does `if (!grp || !gdp)
-return;`). Four `unlikely()` lines, no API/lock/data-structure change.
-Regression risk is very low: after `ext4_mb_init()`, `s_group_info` is
-non-NULL and these checks are no-ops. Returning NULL instead of oopsing
-cannot be worse for callers that already handle NULL.
-
-## Phase 3: Git history
-
-**Step 3.1 — Blame**
-Record: Current function body in this tree is from the 6.4-era change
-“allow `ext4_get_group_info()` to fail” (this history: `b4319e457d6e3`;
-mainline `5354b2af34064`, 2023-05-13) plus `fa285d799d1d5` (“drop
-`ext4_error()` from `ext4_get_group_info()`”). Those commits taught the
-helper to return NULL for a bad group number and taught callers to check
-NULL — but they never checked the array pointer itself.
-
-**Step 3.2 — Fixes: tag**
-Record: None. Reachability comes from fast-commit replay, added in
-`6866d7b3f2bb4` (“ext4 / jbd2: add fast commit initialization”,
-`tags/v5.10-rc1~59^2~7`). Journal load still runs before
-`ext4_mb_init()` in this tree.
-
-**Step 3.3 — File history**
-Record: Recent `fs/ext4/balloc.c` commits here are unrelated
-(capability-check reorder, fault-injection race, kunit stubs). No
-prerequisite series. Standalone 1/1 patch.
-
-**Step 3.4 — Author**
-Record: Yu Junzhe is not the ext4 maintainer. Theodore Ts’o applied it
-by hand after noting mangled whitespace, then posted “Applied, thanks!”
-with commit `8f3901fbb407`.
-
-**Step 3.5 — Dependencies**
-Record: None. The helper, `s_group_info`, FC replay, and the caller NULL
-check all exist in this checkout. Applies standalone.
-
-## Phase 4: Mailing list / external
-
-**Step 4.1 — Original discussion**
-Record:
-- Lore/msgid: https://patch.msgid.link/65c955b0-716b-4599-b925-
-  59c2782e38b4@gmail.com
-- Direct lore WebFetch: **403** (could not read lore HTML)
-- Openwall/LKML mirrors and `b4` succeeded
-- `b4 dig -a`: **v1 only** (no v2/v3)
-- Thread: author submission; tytso note about gmail whitespace (still
-  applied); tytso “Applied, thanks!” — **no NAK**
-- No reviewer `Cc: stable` in the thread (tytso also did not add it when
-  committing)
-
-**Step 4.2 — Recipients (`b4 dig -w`)**
-Record: Junzhe Yu, Theodore Ts’o, Andreas Dilger, linux-ext4, linux-
-kernel. Both ext4 maintainers were on the original To/Cc.
-
-**Step 4.3 — Bug report**
-Record: No syzbot/bugzilla link. Author reports KASAN on a crafted FC-
-unlink image and offers a Docker/QEMU reproducer. I did not run that
-reproducer (UNVERIFIED empirically; the code path is verified).
-
-**Step 4.4 — Series**
-Record: Standalone `[PATCH]` 1/1. Related-in-time FC-replay crashes
-(writeback rwsem not initialized, RO mount replay) are separate bugs,
-not prerequisites.
-
-**Step 4.5 — Stable list**
-Record: lore.kernel.org/stable WebFetch returned **403**. No stable-list
-discussion found via search. No evidence it was rejected for stable.
-
-## Phase 5: Semantic / call-chain analysis
-
-**Step 5.1 — Functions**
-Record: `ext4_get_group_info()` only. (No semcode MCP in this
-environment; used `git grep` + reads.)
-
-**Step 5.2 — Callers**
-Record: Many, across `fs/ext4/{balloc,ialloc,mballoc,super}.c`. Almost
-all already handle NULL (`if (!grp)` / `if (!grinfo)`), because of the
-6.4 “allow to fail” work. The crashing caller is
-`ext4_mark_group_bitmap_corrupted()` in `fs/ext4/super.c`, which already
-returns on NULL.
-
-**Step 5.3 — Callees**
-Record: `sbi_array_rcu_deref()` →
-`rcu_dereference(s_group_info)[indexv]`. That is the NULL deref.
-
-**Step 5.4 — Reachability**
-Record: User-reachable: mount an ext4 filesystem with a journal that
-still has fast-commit UNLINK tags, when the inode bitmap bit is already
-clear. `ext4_fc_init()` installs `j_fc_replay_callback` even if fast
-commit is currently off, so leftover FC blocks still replay. Mount of a
-dirty ext4 image is a normal recovery path (crash, unclean unmount, or
-an untrusted image). Typically needs mount privilege, but the failure is
-a **kernel oops**, not a userspace error.
-
-Verified mount order in this tree (`fs/ext4/super.c`):
-1. `ext4_load_and_init_journal()` → `ext4_load_journal()` →
-   `jbd2_journal_load()` (FC replay)
-2. much later: `ext4_mb_init()` (allocates `s_group_info`)
-
-Verified free path: `ext4_free_inode()` skips the group-info corruption
-check under `EXT4_FC_REPLAY`, then on `!cleared` still calls
-`ext4_error` + `ext4_mark_group_bitmap_corrupted()`.
-
-**Step 5.5 — Similar patterns**
-Record: `ext4_count_free_clusters()` already does `if
-(EXT4_SB(sb)->s_group_info)` before calling `ext4_get_group_info()`.
-Bitmap validators skip work under `EXT4_FC_REPLAY`. The hole is
-specifically the helper used by `ext4_mark_group_bitmap_corrupted()`.
-
-## Phase 6: This checkout (6.12.y)
-
-**Step 6.1 — Does the buggy code exist here?**
-Record: **Yes.** Local tree is **6.12.111** (`pending-6.12`; `git
-describe` was `p-6.12-3-g88406e77611c6` at start).
-`ext4_get_group_info()` in `fs/ext4/balloc.c` still has only the
-`s_groups_count` check. `git merge-base --is-ancestor 8f3901fbb407 HEAD`
-→ **not an ancestor**. `git grep` for the new `!s_group_info` guard →
-**not present**. Fast commit and the journal-before-mballoc order
-**are** present.
-
-**Step 6.2 — Backport difficulty**
-Record: **Clean apply.** Local function text matches the upstream hunk
-context exactly. Confirmed by reading the function and by comparing to
-`git show 8f3901fbb407`.
-
-**Step 6.3 — Related fixes already here?**
-Record: The “allow to fail” / drop-`ext4_error` work is here
-(`b4319e457d6e3`, `fa285d799d1d5`). That is why the caller already
-treats NULL as success-noop — and why this four-line guard is
-sufficient. No alternate fix for this crash is in the tree.
-`origin/master` has `8f3901fbb407` as the latest `balloc.c` change; no
-follow-up revert/amend on that function.
-
-## Phase 7: Subsystem context
-
-**Step 7.1**
-Record: **ext4 (fs/ext4). Criticality: IMPORTANT** (default Linux
-filesystem; not quite mm/VFS core, but production-critical).
-
-**Step 7.2**
-Record: Actively maintained (tytso/Dilger, linux-ext4). The hole is old
-(FC since 5.10 + helper NULL contract since 6.4), not a brand-new
-subsystem.
-
-## Phase 8: Impact and risk
-
-**Step 8.1 — Who is affected**
-Record: Anyone mounting an ext4 filesystem that still has fast-commit
-journal data to replay (crash recovery, or a crafted/dirty image). That
-is a large, real population — not an obscure driver.
-
-**Step 8.2 — Trigger**
-Record: Mount-time FC UNLINK replay when the inode bitmap bit is already
-clear. Not every boot, but a **supported recovery path**. Unprivileged
-users cannot usually mount; a user who can mount a malicious ext4 image
-(containers, loop, removable media with automount) can panic the kernel.
-
-**Step 8.3 — Failure mode**
-Record: **NULL deref → KASAN report / oops / panic during mount.**
-Severity: **CRITICAL** (host crash while recovering a dirty filesystem).
-
-**Step 8.4 — Risk/benefit**
-Record: **Benefit: high** (prevents oops on ext4 recovery). **Risk: very
-low** (4 lines, existing NULL contract, hot path unchanged after
-`ext4_mb_init()`). Ratio strongly favors backport.
-
-Note: `ext4_error("bit already cleared...")` can still log or remount-ro
-depending on `errors=`; the author states mount succeeds with this
-patch. That `ext4_error` is pre-existing, not introduced here.
-
-## Phase 9: Synthesis
-
-**Step 9.1 — Evidence**
-
-FOR:
-- Real NULL deref on a supported ext4 mount/recovery path
-- KASAN-confirmed; author tested the patch
-- Call path and journal-before-`mb_init` order verified in **this** 6.12
-  tree
-- 4-line, obviously correct guard; callers already handle NULL
-- Ext4 maintainer applied it upstream (`8f3901fbb407`); it is on
-  `origin/master`
-- No dependencies; applies cleanly
-- Ext4 is widely used; FC exists since 5.10
-
-AGAINST:
-- No `Fixes:` / `Cc: stable` (expected; not a negative)
-- Trigger is an FC replay edge (already-cleared bit), not every mount
-- I did not run the author’s QEMU reproducer
-- tytso did not nominate stable in the apply mail
-
-UNRESOLVED:
-- Empirical reproducer not run here
-- lore.kernel.org HTML and stable-list search returned HTTP 403 (thread
-  recovered via b4/openwall)
-
-**Step 9.2 — Stable rules**
-1. Obviously correct and tested? **PASS** (KASAN + maintainer apply;
-   logic matches existing NULL contract)
-2. Real bug affecting users? **PASS** (oops on dirty-ext4 mount / FC
-   replay)
-3. Important (crash/security/corruption/deadlock)? **PASS** — kernel
-   oops/panic, severity CRITICAL
-4. Small and contained? **PASS** — +4 lines, one function
-5. No new features/APIs? **PASS**
-6. Can apply to this tree? **PASS** — buggy code present, clean context
-
-**Step 9.3 — Exceptions**
-Record: Not an ID/quirk/DT/docs exception. It is a normal crash fix.
-
-**Step 9.4 — Decision**
-This tree is 6.12.y. The bug exists here; the fix is a four-line NULL
-guard with no prerequisites. It should be backported.
+I have the series context, Jan Kara’s review, and the syzbot stack.
+Compiling the nine-phase analysis and the backport verdict for this
+tree.
 
 ---
 
-### What this solves for stable users
+## PHASE 1: COMMIT MESSAGE FORENSICS
 
-Mounting a dirty ext4 filesystem with leftover fast-commit UNLINK
-records can take `ext4_free_inode()` →
-`ext4_mark_group_bitmap_corrupted()` **before** mballoc has allocated
-`s_group_info`. The helper then does `NULL[index]` and oopses. The patch
-makes the helper return NULL so the existing caller check is a no-op and
-mount/recovery can continue.
+**Step 1.1: PARSE THE SUBJECT LINE**
 
-### Risk vs benefit
+Record: **[ext4] [set] set EXT4_STATE_NO_EXPAND in ext4_evict_inode**
 
-Benefit is a real mount-time crash fix on the default Linux filesystem.
-Risk is a pair of `unlikely()` NULL returns in a helper that is already
-allowed to fail. After `ext4_mb_init()`, behavior is unchanged.
+- Subsystem: `ext4`
+- Action verb: **set** (the body also uses “prevent” and “ensuring … is
+  blocked”)
+- Claimed intent: mark an inode under eviction so extra-isize expansion
+  is skipped
+
+**Step 1.2: PARSE ALL COMMIT MESSAGE TAGS**
+
+Record:
+- **Reviewed-by:** Jan Kara `<jack@suse.cz>` (ext4 reviewer / long-time
+  maintainer)
+- **Link:** `https://patch.msgid.link/20260623061903.2148767-2-
+  yun.zhou@windriver.com` (patch **2/2**)
+- **Signed-off-by:** Yun Zhou `<yun.zhou@windriver.com>` (author)
+- **Signed-off-by:** Theodore Ts'o `<tytso@mit.edu>` (ext4 maintainer;
+  merged)
+- **No Fixes:** tag on the committed version (expected for this review
+  pipeline)
+- **No Cc: stable** (expected)
+- **No Reported-by / Closes** on this revision (those tags live on patch
+  1/2)
+
+Notable: this is explicitly patch **2/2** of a two-patch series.
+
+**Step 1.3: ANALYZE THE COMMIT BODY TEXT**
+
+Record:
+- **Bug description:** An evicted inode never needs extra isize
+  expanded. Doing that work is unnecessary and can participate in the
+  `s_writepages_rwsem` deadlock during mount-time orphan cleanup.
+- **Symptom/failure mode:** Circular lock dependency / deadlock
+  (`s_writepages_rwsem` → jbd2 handle → `xattr_sem` →
+  `s_writepages_rwsem`).
+- **Version information:** none in this commit; sibling patch 1/2 has
+  `Fixes: c8585c6fcaf2` (v4.7-rc1).
+- **Author’s root-cause framing:** skip expansion by setting
+  `EXT4_STATE_NO_EXPAND` before `ext4_mark_inode_dirty()` in
+  `ext4_evict_inode()`. Described as making the invariant explicit
+  **and** as defense-in-depth for the mount-time orphan deadlock.
+
+**Step 1.4: DETECT HIDDEN BUG FIXES**
+
+Record: **Yes — this is a hidden/downplayed deadlock-path fix, not mere
+cleanup.**
+
+The committed text says “unnecessary work” and “defense-in-depth”. The
+**v1** of this exact one-line change was titled *“skip extra isize
+expansion on inode eviction to avoid deadlock”*, carried the syzbot
+`Reported-by`/`Closes`/`Fixes:` tags, and the syzbot stack is
+`ext4_orphan_cleanup` → `evict` → **`ext4_evict_inode`** →
+`__ext4_mark_inode_dirty` → `ext4_try_to_expand_extra_isize`. The tags
+moved to patch 1/2 (`!SB_ACTIVE`) after Jan Kara asked for the real
+lock-order fix; this line remained as the eviction-path closer.
+
+---
+
+## PHASE 2: DIFF ANALYSIS - LINE BY LINE
+
+**Step 2.1: INVENTORY THE CHANGES**
+
+Record:
+- **Files:** `fs/ext4/inode.c` — **+1 / −0**
+- **Function:** `ext4_evict_inode()`
+- **Scope:** single-file, one-line surgical change
+
+**Step 2.2: UNDERSTAND THE CODE FLOW CHANGE**
+
+Record:
+- **Before:** deletion path sets `i_size = 0`, then calls
+  `ext4_mark_inode_dirty()`. That calls `__ext4_mark_inode_dirty()` → if
+  `i_extra_isize < s_want_extra_isize`,
+  `ext4_try_to_expand_extra_isize()`, which may take `xattr_sem`, move
+  xattrs, and `iput()` EA inodes.
+- **After:** `ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND)` runs
+  first. `ext4_try_to_expand_extra_isize()` already returns `-EOVERFLOW`
+  when that flag is set (check present since 2017), so expansion is
+  skipped for this and later `ext4_mark_inode_dirty()` calls in the same
+  eviction.
+- **Path:** deletion path only (after the `i_nlink` / `is_bad_inode`
+  early outs; not the cache-drop `no_delete` path).
+
+**Step 2.3: IDENTIFY THE BUG MECHANISM**
+
+Record:
+- **Category:** deadlock / lock-ordering (plus skipping pointless
+  expansion that can `iput` EA inodes under a jbd2 handle).
+- **Mechanism:** mount-time orphan cleanup (`!SB_ACTIVE`) of a deleted
+  inode (`i_nlink == 0`) hits `ext4_evict_inode` → expand extra isize →
+  `ext4_xattr_block_set` → `iput(ea_inode)` → `write_inode_now()` →
+  `s_writepages_rwsem`, while a jbd2 handle and `xattr_sem` are held.
+  Setting `EXT4_STATE_NO_EXPAND` removes that edge for every inode under
+  eviction.
+
+**Step 2.4: ASSESS THE FIX QUALITY**
+
+Record:
+- **Quality:** obviously correct. An inode being deleted cannot benefit
+  from extra isize. The flag’s save/restore in `ext4_write_lock_xattr` /
+  `ext4_write_unlock_xattr` keeps it set (`*save == 1` → do not clear).
+- **Regression risk:** very low. One inode-state bit on an inode that is
+  about to be freed. No API, locking, or on-disk format change.
+- **Red flags:** none (1 line, one function). It is patch 2/2 but does
+  **not** depend on patch 1’s `!SB_ACTIVE` check.
+
+---
+
+## PHASE 3: GIT HISTORY INVESTIGATION
+
+**Step 3.1: BLAME THE CHANGED LINES**
+
+Record:
+- Added line: commit **`2c0e4fb511f97`** (this change, 2026-06-23).
+- Surrounding `inode->i_size = 0` / `ext4_mark_inode_dirty()`: Dave
+  Kleikamp 2006 / Ted Ts’o **`bc965ab3f2b4b7`** (2008). Extra-isize
+  expansion from dirtying: **`6dd4ee7cab7e3`** (2007).
+  `EXT4_STATE_NO_EXPAND` early-out in `ext4_try_to_expand_extra_isize`:
+  **`cf0a5e818fe216`** (2017, from **`2e81a4eeedcaa`** in 2016).
+- This path has been in-tree for many years; not a newly introduced
+  subsystem.
+
+**Step 3.2: FOLLOW THE FIXES: TAG**
+
+Record: **No Fixes: tag on this commit.** Sibling **`7461c60b9c6a8`**
+(patch 1/2, parent of this commit) has `Fixes: c8585c6fcaf2` (“ext4: fix
+races between changing inode journal mode and ext4_writepages”,
+2016-04-25, **v4.7-rc1**). That commit is an ancestor of this tree. It
+introduced `s_writepages_rwsem` (originally `s_journal_flag_rwsem`),
+which is the lock in the cycle.
+
+**Step 3.3: CHECK FILE HISTORY FOR RELATED CHANGES**
+
+Record:
+- **`7461c60b9c6a8`** — skip expansion when `!SB_ACTIVE` (primary mount-
+  time fix).
+- **`2c0e4fb511f97`** — this commit (eviction-path flag).
+- **`4f48af3dc7554` / `a54778243e88f`** — later deferred `iput` for EA
+  inodes (Jan Kara’s deeper lock-order fix; larger).
+- This change is **standalone**: it only uses `ext4_set_inode_state()`
+  and a flag check that has existed since 2017. It is part of a series
+  but is not patch-X-that-needs-Y to compile or run.
+
+**Step 3.4: CHECK THE AUTHOR'S OTHER COMMITS**
+
+Record: Yun Zhou is a regular ext4 contributor (orphan/xattr/deadlock
+work in this area), not the maintainer. Ted Ts’o merged it; Jan Kara
+reviewed it. Related author commits: the `!SB_ACTIVE` skip, then
+deferred EA `iput` helpers.
+
+**Step 3.5: CHECK FOR DEPENDENT/PREREQUISITE COMMITS**
+
+Record: **No hard prerequisites beyond code that is already old.** Needs
+`EXT4_STATE_NO_EXPAND` and the test at the top of
+`ext4_try_to_expand_extra_isize()` (2016–2017). Does **not** need patch
+1. Applies as a single insertion before the existing
+`ext4_mark_inode_dirty()` call.
+
+---
+
+## PHASE 4: MAILING LIST AND EXTERNAL RESEARCH
+
+**Step 4.1: FIND THE ORIGINAL PATCH DISCUSSION**
+
+Record:
+- **b4 dig:** `[PATCH 2/2] ext4: set EXT4_STATE_NO_EXPAND in
+  ext4_evict_inode` — `https://patch.msgid.link/20260623061903.2148767-
+  2-yun.zhou@windriver.com`
+- **Revisions:** evolved from standalone v1 (2026-06-11) through v5–v8
+  of a larger xattr-iput series, then a simplified 2-patch series that
+  Ted applied. Applied version is that final 2/2.
+- **v6/v8 cover letter (author):** “Patch 2 is a belt-and-suspenders
+  semantic improvement: an inode under eviction never needs extra isize
+  expansion.” “v1 … Only fixes the syzbot reproducer, not the underlying
+  lock ordering violation.”
+- **Jan Kara (2026-06-11) on the original identical change:** agrees
+  expansion is pointless in `ext4_evict_inode`; says it **does not fix
+  the real lock-order bug**, only the particular syzbot reproducer. No
+  NAK of this line; he wanted a deeper fix as well.
+- **No NAK** of setting the flag. Ted merged it with Jan’s Reviewed-by.
+
+**Step 4.2: CHECK WHO REVIEWED THE PATCH**
+
+Record (b4 dig -w): `tytso@mit.edu`, `adilger.kernel@dilger.ca`,
+`libaokun@linux.alibaba.com`, `jack@suse.cz`, `ojaswin@linux.ibm.com`,
+`ritesh.list@gmail.com`, `yi.zhang@huawei.com`, `linux-
+ext4@vger.kernel.org`. Subsystem maintainers/reviewers were on To/Cc.
+Jan Kara reviewed; Ted merged.
+
+**Step 4.3: SEARCH FOR THE BUG REPORT**
+
+Record:
+- Syzbot: `https://syzkaller.appspot.com/bug?extid=5d19358d7eb30ffb0cc5`
+  — **possible deadlock in wait_transaction_locked**, prio:high, C
+  repro, Denial-of-service via filesystem mount.
+- Stack (verified): `ext4_orphan_cleanup` → `evict` →
+  **`ext4_evict_inode`** → `__ext4_mark_inode_dirty` →
+  `ext4_try_to_expand_extra_isize` → `ext4_expand_extra_isize_ea` →
+  `ext4_xattr_block_set` → `iput` → `write_inode_now` →
+  `ext4_writepages` / `s_writepages_rwsem`.
+- Still reported on linux-5.15 / 6.1 / 6.6 at the time of the dashboard
+  snapshot. Syzbot’s “fix commit” is **`7461c60b9c6a`** (patch 1),
+  because that commit carries the tags; this commit closes the **same**
+  `ext4_evict_inode` frame.
+
+**Step 4.4: CHECK FOR RELATED PATCHES AND SERIES**
+
+Record: Series is (1) skip expansion during mount, (2) this flag in
+evict, then later deferred-iput patches. Patch 1 covers all `!SB_ACTIVE`
+callers (including `ext4_process_orphan` → `ext4_truncate`). Patch 2
+covers **all** eviction, including post-mount. They complement; this one
+is not incomplete on its own for the syzbot stack.
+
+**Step 4.5: CHECK STABLE MAILING LIST HISTORY**
+
+Record: No stable-list thread found for this subject. Absence of Cc:
+stable is expected for this pipeline.
+
+---
+
+## PHASE 5: CODE SEMANTIC ANALYSIS
+
+**Step 5.1: IDENTIFY KEY FUNCTIONS IN THE DIFF**
+
+Record: **`ext4_evict_inode()`** (modified). Indirectly
+**`__ext4_mark_inode_dirty()`**, **`ext4_try_to_expand_extra_isize()`**.
+
+**Step 5.2: TRACE CALLERS**
+
+Record:
+- `ext4_evict_inode` is `ext4_sops.evict_inode` (`fs/ext4/super.c`).
+  Called from VFS `evict()` on last `iput` when `i_nlink == 0`.
+- Reachable from unlink/close, and from **`ext4_process_orphan()` →
+  `iput()`** during `ext4_orphan_cleanup()` at mount
+  (`fs/ext4/orphan.c`). That is the syzbot path.
+
+**Step 5.3: TRACE CALLEES**
+
+Record: After the new flag: `ext4_mark_inode_dirty` →
+`__ext4_mark_inode_dirty` → `ext4_try_to_expand_extra_isize` (now a no-
+op via `-EOVERFLOW`) → later `ext4_truncate`, `ext4_xattr_delete_inode`,
+`ext4_free_inode`. No new callees.
+
+**Step 5.4: FOLLOW THE CALL CHAIN**
+
+Record: **Yes, userspace-reachable.** Unprivileged unlink hits eviction
+(no deadlock there once `SB_ACTIVE` is set). The deadlock needs mount-
+time orphan cleanup (`!SB_ACTIVE`), typically `mount(2)` (admin /
+crafted image). Syzbot reproduced it. Assessment: DoS, filesystem
+trigger.
+
+**Step 5.5: SEARCH FOR SIMILAR PATTERNS**
+
+Record: Only this site sets `EXT4_STATE_NO_EXPAND` outside the xattr
+lock helpers. No sibling-driver clone. Patch 1 is the related early-
+return in `ext4_try_to_expand_extra_isize`.
+
+---
+
+## PHASE 6: CROSS-REFERENCING AGAINST THE LOCAL TREE
+
+**Step 6.1: DOES THE BUGGY CODE EXIST IN THIS TREE?**
+
+Record:
+- Local tree: **`v7.3-rc4-27-gf0100363d8c37`**, `make kernelversion` =
+  **7.3.0-rc4** (mainline, not a `*.y` stable branch).
+- `ext4_evict_inode` + `ext4_mark_inode_dirty` + expand-on-dirty all
+  exist.
+- This commit **is already an ancestor** of HEAD (`2c0e4fb511f97`). That
+  is expected (source tree), not a reason to treat it as “already
+  selected for stable”.
+- Bug class dates to extra-isize expansion (2007) plus
+  `s_writepages_rwsem` (2016 / v4.7).
+
+**Step 6.2: CHECK FOR BACKPORT COMPLICATIONS**
+
+Record: **Clean apply.** Insert one call between long-stable
+`inode->i_size = 0` and `ext4_mark_inode_dirty()`. No refactor of that
+sequence. `EXT4_STATE_NO_EXPAND` exists here.
+
+**Step 6.3: CHECK IF RELATED FIXES ARE ALREADY HERE**
+
+Record: Patch 1 (`7461c60b9c6a8`) and later deferred-iput work are also
+in this mainline checkout. They do not make this line wrong or redundant
+for stable: patch 1 is mount-only; this flag also covers post-mount
+eviction and is the direct closer of the syzbot `ext4_evict_inode`
+frame.
+
+---
+
+## PHASE 7: SUBSYSTEM AND MAINTAINER CONTEXT
+
+**Step 7.1: IDENTIFY THE SUBSYSTEM AND ITS CRITICALITY**
+
+Record: **ext4 (`fs/ext4/`)** — **IMPORTANT** (default filesystem on a
+large fraction of Linux systems; mount/orphan cleanup is a common path
+after crash).
+
+**Step 7.2: ASSESS SUBSYSTEM ACTIVITY**
+
+Record: Actively developed (recent writeback, xattr, orphan, deadlock
+fixes). The eviction dirtying sequence itself has been stable for many
+years; this is a small invariant on old code, not a feature on new code.
+
+---
+
+## PHASE 8: IMPACT AND RISK ASSESSMENT
+
+**Step 8.1: DETERMINE WHO IS AFFECTED**
+
+Record: **Filesystem-specific (ext4), but a very large user
+population.** Triggered on mount of a filesystem with orphans that still
+need extra-isize expansion and have xattrs that must move.
+
+**Step 8.2: DETERMINE THE TRIGGER CONDITIONS**
+
+Record:
+- **Deadlock:** mount-time orphan cleanup, inode with `i_extra_isize <
+  s_want_extra_isize`, expansion moves xattrs, `!SB_ACTIVE` forces
+  `write_inode_now` on EA `iput`. Syzbot has a C repro.
+- **Post-mount:** every deletion of such an inode would previously
+  attempt a pointless expand (not this deadlock).
+- **Unprivileged mount:** generally no; crafted/unclean ext4 images and
+  admin mount yes. Syzbot still reached it from syscall fuzzing.
+
+**Step 8.3: DETERMINE THE FAILURE MODE SEVERITY**
+
+Record: **Deadlock / lockdep circular dependency → hang or lockdep
+splat. Severity: HIGH (DoS on mount/orphan cleanup).** Not a data-
+corruption bug.
+
+**Step 8.4: CALCULATE RISK-BENEFIT RATIO**
+
+Record:
+- **Benefit:** high for a 1-line closer of a documented, syzbot-
+  reproduced deadlock path on ext4 eviction; also stops pointless expand
+  (xattr shuffle / EA `iput`) on every delete.
+- **Risk:** very low (1 line, existing flag, deletion-only).
+- **Ratio:** strongly favorable.
+
+---
+
+## PHASE 9: FINAL SYNTHESIS
+
+**Step 9.1: COMPILE THE EVIDENCE**
+
+**FOR backporting:**
+- Syzbot C-repro deadlock; stack is exactly `ext4_evict_inode` → mark
+  dirty → expand extra isize.
+- 1-line, obviously correct; Jan Kara Reviewed-by; Ted Ts’o merged.
+- Uses a flag and check that have existed since 2016–2017; no new API.
+- Independent of patch 1; complements the `!SB_ACTIVE` skip.
+- Defense-in-depth on a HIGH-severity hang in a core filesystem.
+- Applies cleanly to this tree’s `ext4_evict_inode`.
+
+**AGAINST:**
+- Final message frames it as “unnecessary work” / “defense-in-depth”;
+  author called v1 incomplete vs the real lock-order bug.
+- Patch 2/2; the tagged “real” mount fix is patch 1.
+- Jan Kara: this line alone does not fix `ext4_xattr_block_set` taking
+  `s_writepages_rwsem` under a handle.
+- Deadlock is mount-time / orphan-specific, not every unlink.
+
+**UNRESOLVED:** lore.kernel.org returned 403 to WebFetch; discussion
+recovered via b4 dig, openwall/lkml mirrors, patchew, and the syzbot
+dashboard. No stable@ thread found.
+
+**Step 9.2: APPLY THE STABLE RULES CHECKLIST**
+
+1. Obviously correct and tested? **PASS** — 1-line invariant; Reviewed-
+   by Jan Kara; in mainline; syzbot exercised the path.
+2. Fixes a real bug that affects users? **PASS** — same path as the
+   syzbot deadlock; also skips harmful extra work on delete.
+3. Important issue (crash, security, corruption, deadlock)? **PASS** —
+   deadlock / DoS (HIGH), not theoretical.
+4. Small and contained? **PASS** — +1 line, one function.
+5. No new features or APIs? **PASS**.
+6. Can apply to the local tree? **PASS** — call site and
+   `EXT4_STATE_NO_EXPAND` are present; insertion is mechanical.
+
+**Step 9.3: CHECK FOR EXCEPTION CATEGORIES**
+
+Record: Not a device-ID/quirk/DT/docs/build exception. It is a normal
+small correctness/deadlock-path fix.
+
+**Step 9.4: MAKE YOUR DECISION**
+
+This tree is **7.3-rc4 mainline**. The eviction dirtying path exists;
+the extra-isize expand-on-dirty path exists; the syzbot stack is this
+function. The committed wording is modest, but the change is the direct
+closer of a real, reproduced deadlock edge, not a refactor or a new
+feature. Risk is negligible. It should be backported.
+
+---
+
+### What the commit solves for stable users
+
+On ext4, `ext4_mark_inode_dirty()` may try to grow `i_extra_isize`.
+During **mount-time orphan cleanup**, that runs from
+**`ext4_evict_inode`** while `!SB_ACTIVE`. Expanding can move xattrs and
+`iput()` EA inodes, which then calls `write_inode_now()` and takes
+`s_writepages_rwsem` under a jbd2 handle and `xattr_sem`. Syzbot
+reproduced that cycle. Setting `EXT4_STATE_NO_EXPAND` before the dirty
+call is correct (the inode is being deleted) and stops that expand/iput
+edge for every eviction.
+
+### Stable rules / risk
+
+Meets all six criteria: one line, reviewed, real deadlock path, no new
+API, applies cleanly. Sibling patch 1 (`!SB_ACTIVE`) is the broader
+mount fix; this line does not need it, and it still helps post-mount by
+skipping pointless expansion.
 
 ### Concerns
 
-None that block backport. No missing commits, no API change, no follow-
-up on `origin/master` that reworks this function.
+Incomplete as the *only* lock-order fix (Jan Kara). That is a reason to
+also want patch 1 / deferred iput, not a reason to drop this 1-liner. No
+backport rework needed on this tree.
 
 ---
 
 Verification:
-- [Phase 1] Parsed subject/tags/body from the candidate message and from
-  `git show 8f3901fbb407`
-- [Phase 1] Confirmed no Fixes/Cc:stable; maintainer SOB present
-- [Phase 2] Diff is +4 lines in `ext4_get_group_info()`; local function
-  matches the hunk
-- [Phase 2] `sbi_array_rcu_deref` indexes `s_group_info` without a NULL
-  check (`fs/ext4/ext4.h`)
-- [Phase 2] `ext4_mark_group_bitmap_corrupted()` already returns if
-  `!grp` (`fs/ext4/super.c`)
-- [Phase 3] Blame: helper NULL-for-bad-group from `b4319e457d6e3` /
-  `fa285d799d1d5` in this history
-- [Phase 3] Fast commit added in `6866d7b3f2bb4` (v5.10-rc1); present
-  here
-- [Phase 3] `git log --grep` on `fs/ext4/`: this subject is **not** in
-  HEAD
-- [Phase 4] `b4 am` / `b4 dig -c 8f3901fbb407`: thread at msgid
-  `65c955b0-716b-4599-b925-59c2782e38b4@gmail.com`; v1 only
-- [Phase 4] `b4 dig -w`: tytso + Dilger + linux-ext4 on the original
-  mail
-- [Phase 4] tytso applied as `8f3901fbb407`; noted whitespace but no NAK
-- [Phase 4] lore.kernel.org WebFetch: 403; used openwall + b4 mbox
-  instead
-- [Phase 5] Callers of `ext4_get_group_info` grepped; crashing caller
-  checks NULL
-- [Phase 5] `ext4_free_inode()` FC_REPLAY skip + “bit already cleared” →
-  `ext4_mark_group_bitmap_corrupted()` verified
-- [Phase 5] Mount order: `jbd2_journal_load` in `ext4_load_journal()`
-  before `ext4_mb_init()` verified
-- [Phase 5] `sbi = kzalloc` zeroes `s_group_info`; assigned later via
-  `rcu_assign_pointer` in mballoc
-- [Phase 6] `make kernelversion` / Makefile: **6.12.111**; branch
-  `pending-6.12`
-- [Phase 6] `git merge-base --is-ancestor 8f3901fbb407 HEAD` → not in
-  this tree
-- [Phase 6] Same SHA **is** an ancestor of `origin/master`; no later
-  balloc.c follow-up on that fix
-- [Phase 6] Clean apply context present in local `ext4_get_group_info()`
-- [Phase 8] Failure mode: NULL deref oops on mount/recovery, severity
-  CRITICAL
-- UNVERIFIED: Did not run the author’s crafted-image/QEMU reproducer
-- UNVERIFIED: Could not search lore.kernel.org/stable HTML (HTTP 403)
+- [Phase 1] Subject/tags: ext4 set NO_EXPAND; Reviewed-by Jan Kara; Link
+  patch 2/2; Ted Ts’o SOB; no Fixes/Reported-by on this revision
+- [Phase 1] Body: skip expand on evict; defense-in-depth for
+  s_writepages_rwsem deadlock
+- [Phase 2] Diff: +1 line in `ext4_evict_inode` before
+  `ext4_mark_inode_dirty`
+- [Phase 2] Expand skip: `ext4_try_to_expand_extra_isize` returns
+  `-EOVERFLOW` if `EXT4_STATE_NO_EXPAND` (inode.c:6597)
+- [Phase 2] Flag restore: `ext4_write_unlock_xattr` clears only if
+  `*save == 0` (xattr.h:166-170)
+- [Phase 3] `git describe HEAD`: v7.3-rc4-27-gf0100363d8c37; `make
+  kernelversion`: 7.3.0-rc4
+- [Phase 3] `git merge-base --is-ancestor 2c0e4fb511f97 HEAD`: yes
+  (mainline already has it)
+- [Phase 3] Blame: `i_size=0` 2006; `mark_inode_dirty` in evict
+  `bc965ab3f2b4b7` 2008; expand-on-dirty `6dd4ee7cab7e3` 2007; NO_EXPAND
+  check `cf0a5e818fe216` 2017
+- [Phase 3] Sibling 7461c60b9c6a8 Fixes: c8585c6fcaf2 (v4.7-rc1);
+  `merge-base --is-ancestor c8585c6fcaf2 HEAD`: yes
+- [Phase 4] `b4 dig -c 2c0e4fb511f97`: msgid 20260623061903.2148767-2
+- [Phase 4] `b4 dig -a`: v5–v8 larger series then final 2-patch series
+- [Phase 4] `b4 dig -w`: tytso, adilger, jack@suse.cz, linux-ext4 on
+  To/Cc
+- [Phase 4] Jan Kara 2026-06-11 (openwall/lkml): agrees with the flag;
+  says it only covers the syzbot reproducer, not the full lock-order bug
+  — no NAK
+- [Phase 4] Cover letter: “belt-and-suspenders semantic improvement”
+- [Phase 4] Syzbot bug extid=5d19358d7eb30ffb0cc5: stack through
+  `ext4_evict_inode`; prio high; C repro; linux-5.15/6.1/6.6 still
+  listed
+- [Phase 4] lore.kernel.org WebFetch: 403; used b4 + mirrors. Stable
+  list search: no hits
+- [Phase 5] Caller: `ext4_sops.evict_inode`; orphan:
+  `ext4_process_orphan` → `iput` (orphan.c:359)
+- [Phase 6] Local `ext4_evict_inode` already contains the line at
+  inode.c:268; apply would be clean on the pre-patch form of the same
+  function
+- [Phase 7] ext4, IMPORTANT, actively developed
+- [Phase 8] Failure: circular lockdep / deadlock on mount orphan
+  cleanup; severity HIGH; risk very low
+- UNVERIFIED: live lore.kernel.org HTML of the thread (403);
+  reconstructed from b4, openwall, patchew, syzbot
 
 **YES**
 
- fs/ext4/balloc.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/ext4/inode.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index c9329ed5c094e..08556dd45760d 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -331,9 +331,13 @@ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
- 
- 	if (unlikely(group >= EXT4_SB(sb)->s_groups_count))
- 		return NULL;
-+	if (unlikely(!EXT4_SB(sb)->s_group_info))
-+		return NULL;
- 	indexv = group >> (EXT4_DESC_PER_BLOCK_BITS(sb));
- 	indexh = group & ((EXT4_DESC_PER_BLOCK(sb)) - 1);
- 	grp_info = sbi_array_rcu_deref(EXT4_SB(sb), s_group_info, indexv);
-+	if (unlikely(!grp_info))
-+		return NULL;
- 	return grp_info[indexh];
- }
- 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bbc437be5e63b..9a5c08650bd1e 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -261,6 +261,7 @@ void ext4_evict_inode(struct inode *inode)
+ 	if (ext4_inode_is_fast_symlink(inode))
+ 		memset(EXT4_I(inode)->i_data, 0, sizeof(EXT4_I(inode)->i_data));
+ 	inode->i_size = 0;
++	ext4_set_inode_state(inode, EXT4_STATE_NO_EXPAND);
+ 	err = ext4_mark_inode_dirty(handle, inode);
+ 	if (err) {
+ 		ext4_warning(inode->i_sb,
 -- 
 2.53.0
 
