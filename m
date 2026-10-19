@@ -1,118 +1,440 @@
-Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 065F9480331
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 06:14:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
+Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 56256390C8A
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 07:09:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.77.154.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792390494; cv=none; b=EJLnx69SNcfJCN1Qy05v4Sh5bGES79CCcTj2GHsJCmBYxjIIsBandevM5RwTqTQUbXznLa3ghSaTvc6IQR7KoUyhboVyAOcAZ3Vz9UTIRwKynwWbT7rqK3rmsV++sJB66Xf6u1SnBSHbTzAWrTsDb1ebto+FKhmsIkypsVu+XtA=
+	t=1792393791; cv=none; b=SvdKIYKMIUHPZhnDQFrunD2gc8y5oXjFqfAx8DHqBBuZ0N1gnKZMNZCQ2ow+JNKoMJ7PtasRSMcMJzCLLOmBh969TdGBG1U2Vky5lzRFuIEgmA6nhu0ly+Gpz4QQCEHw/fH2pKCPy6WWe3c5H/un5m80ryHj6QuWnTa0s2zlknU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792390494; c=relaxed/simple;
-	bh=hLviHrUQcnY9d6Hs59o7A7DhG6hJV3vxIcScsJNeYyM=;
+	s=arc-20240116; t=1792393791; c=relaxed/simple;
+	bh=JA/HEEDFtRcv7p7Sz4fd5RW4AylYpHw9t/Kge9YiILo=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=CDYP8HL8qyuh1lnz7lSpnoLFVjI+grYm+P155hpQSna2Xz8Y95PclxJbaCKCaMLFV+qTiI8OURf0A3clr6Z/6wyEO1MhHT2TEE/zjJr+3e9k2MZRhQM33Sy4CPJ6lHhSe5b1ASF7kNZy3crIVDUtlq42wRel5ZHqq3TLC9bUOqs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=b15sAq9N; arc=none smtp.client-ip=209.85.216.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=kqM4fiP6xccgqSbvO1E4mLxoPiqJrIrRYfX+fuZwYBLM0nBxQzHfScPtKJNBK1ok26pDOgbzOCqlHvBg3XMflyHIwwggbba45kSRQzwNG8wjqws7/KvKncBsKaaMggdBcimV5/+hsXqCrtOnEyeeOCZf9n/YFhTd9PszuuPxAKg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com; spf=pass smtp.mailfrom=linux.microsoft.com; dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b=PxENXpWs; arc=none smtp.client-ip=13.77.154.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b15sAq9N"
-Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-38d489b6b71so934926a91.0
-        for <linux-ext4@vger.kernel.org>; Sun, 18 Oct 2026 23:14:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792390492; x=1792995292; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=CH7/2Pn88Czop2CrZPadAXkcJAGF4wsEW/e1YNB1cxQ=;
-        b=b15sAq9NWihv6GFpfqSH5HJ3jmNXepVPacRSjllpONskWo3VoEK4Itgk5hQGhDqVUm
-         OWiPBYy0UhE40WYO7DWnLZlZpp1Jwz4eqeXN2NSXpBe447i3vO6tMCc7g3awQB10u3Jj
-         jTYX/R96bQphJx/b/em2D3HoMpomNXcg8xaw48nYpVKInNkwqKttKW2Y5t+OgBhBj5Fy
-         EbpmE93ZISJExcTC6ZjYcexazX0RFzhEETQCXjJaWpZSM11D4gqsKPPoT80kk/2BPyfp
-         49Q5kSYl++unHpMs6blx4qxYak19NowZTS7eZvDPax0vG4/9RmoFI/cMVEqXRgNQ7P5Q
-         Zvog==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792390492; x=1792995292;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=CH7/2Pn88Czop2CrZPadAXkcJAGF4wsEW/e1YNB1cxQ=;
-        b=g15FnYumndQhtqfRCJXdXiq0P+t3BPnq9koLPzlO+p8FDKhAs7APDVkPpe9Fn8XlN9
-         XWZveFZ0bkMxmOPmeUjs8jOpH8yNM7ODxxaTr1L1CivZ2MK59Zis1e2PPU/pHZr3kn8s
-         K7lBERuTJSHvgX7k3mbXA3BByNtMQ4H0WhcZaQ8x+FxIP02lCR8W4n+9q1U0Jo/gf6bU
-         Ebp1HNT+cupAtU39p+jkkdPUJBfYwBjjjDAVLQgfJZxrtME76yBMAcALr2O5PIK9aOwF
-         +lpy/31uoehqxRlUuF6pJWB+cmjtJb/2Uu7u/Mp+XdWK0oD8rY83vNO1xmxahUzbI+gB
-         7cWg==
-X-Forwarded-Encrypted: i=1; AKwUvBxIj/dzcysmZi9a/nNA7C6L1A9xfaFx2mTYbFlQbS1gzTAFl2k/NA+LyVI56IX0wNYNV7e47ejnPWbm@vger.kernel.org
-X-Gm-Message-State: AFq9FYJDx+gvYUjvWfLaTgqk5RNottpy1cvGv9hj5rq7u6mSyovdnCX3
-	EHClIwcIgcb4CwXLp6dkgXvqKzxba3MBCjo6rrpuDeD4fEghpFhqLiAo
-X-Gm-Gg: AYBFou0c/0selEGiCvfrVGscF5E5HPJJnsvNFFi/MC8AyVfYn8WJfqLEdtoFYlSE8Z/
-	7jOtichGxbeA72rVZk/KRs08kx6kKJebz7zBJ0GuUi+vMo5fOpb5F81reasz9Q+0h+FmBDTHzy/
-	0qtbVHSeBbS2OeqsTdFfHkjSfudbdvYDnBK+hl1EtMHqWIt9s6jTqpHYh9F+0pByJ3ID2smJJm4
-	S+dEChx3m9VT4sV6S9McwZvqFUBDgz1nolk026REFZaNvwjtm+X31dcTW48+3gIxgxqmHAlm/ps
-	04y2mnz+DSl+yEkFTrBL9OlxRKuolLw8L0LL9Wij9PuQO3IKTsnGjUmMzUpyBaJWEUUL4ofkpTg
-	DDEaiosltbd1WJ5oZHJ/F5Qe2TczU1YRK3NwjGPlJVso5CqK800gwnG5AFbF64cy5hGNONMLYcE
-	7winKwFp9fLsejlkcgdkNgpvdci8wI1JMcibj27jbBPZwZPAvMk+ySQbxpkkT9
-X-Received: by 2002:a17:90b:3851:b0:3ab:c80:9362 with SMTP id 98e67ed59e1d1-3aceeea8f3amr5078332a91.35.1792390492104;
-        Sun, 18 Oct 2026 23:14:52 -0700 (PDT)
-Received: from localhost ([27.122.242.71])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3ac94794dd9sm19035101a91.12.2026.10.18.23.14.50
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 18 Oct 2026 23:14:51 -0700 (PDT)
-Date: Mon, 19 Oct 2026 15:14:46 +0900
-From: Hyunchul Lee <hyc.lee@gmail.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>,
-	ecryptfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jfs-discussion@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-	exfat@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	ntfs@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-	linux-btrfs@vger.kernel.org, gfs2@lists.linux.dev,
-	linux-efi@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-xfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 14/28] ntfs: don't set SB_RDONLY after filesystem
- errors
-Message-ID: <atW1VhJXAIvtYPfd@hyunchul-PC02>
-References: <20261012-work-fs-sb_rdonly-v1-0-60743a3dc326@kernel.org>
- <20261012-work-fs-sb_rdonly-v1-14-60743a3dc326@kernel.org>
+	dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b="PxENXpWs"
+Received: by linux.microsoft.com (Postfix, from userid 1217)
+	id C260920B7168; Mon, 19 Oct 2026 00:09:42 -0700 (PDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com C260920B7168
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
+	s=default; t=1792393782;
+	bh=P2zzRII1uo8zrwYFjS4CX/RaOsUrm06gEyLrNi4VDAA=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=PxENXpWsDROt0Rqg2w0IesFDdW3oGklPSZwTHY059vYeKiFK5m4qhdZDT499sx6vh
+	 C5pGdC113YbxK4si24UXJYMWuKHCOEfGDPXqSX6HnJmqOjegZZSIW0n5JTTDCnUakB
+	 qr2fPLj0wzYq+IB3cT8YHCXsk3ryQ0y4Fam/woac=
+Date: Mon, 19 Oct 2026 00:09:42 -0700
+From: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu, adilger@dilger.ca, djwong@kernel.org,
+	srivatsa@csail.mit.edu
+Subject: Re: [PATCH v3] e2fsck: take flock(LOCK_EX) on whole-disk device
+ during filesystem check
+Message-ID: <atXCNjzlWQif28dN@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+References: <apCRFu5vpNxRLO8Y@mit.edu>
+ <20260910120441.1017866-1-naraghavan@linux.microsoft.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261012-work-fs-sb_rdonly-v1-14-60743a3dc326@kernel.org>
+In-Reply-To: <20260910120441.1017866-1-naraghavan@linux.microsoft.com>
 
-Hi Christian,
-
-> diff --git a/fs/ntfs/super.c b/fs/ntfs/super.c
-> index 4066bacabe37..12ad2ce938ba 100644
-> --- a/fs/ntfs/super.c
-> +++ b/fs/ntfs/super.c
-> @@ -269,6 +269,8 @@ static int ntfs_reconfigure(struct fs_context *fc)
+On Thu, Sep 10, 2026 at 05:04:41AM -0700, Nandakumar Raghavan wrote:
+> During journal replay, e2fsck writes the primary superblock back to disk
+> in multiple I/O operations. The payload lands before the checksum, leaving
+> a transient window where the on-disk superblock has a bad checksum.
+> 
+> If udevd processes a change uevent during this window, libblkid probes the
+> primary superblock, finds a checksum mismatch, and concludes the partition
+> has no recognisable filesystem. udev then fires a remove event, wiping all
+> symlinks in /dev/disk/by-label/ and /dev/disk/by-uuid/. Any mount unit
+> that depends on those symlinks will fail.
+> 
+> udevd already serialises its own partition probes against whole-disk device
+> access using flock(LOCK_SH|LOCK_NB); if EAGAIN is returned it requeues the
+> event. Take advantage of this protocol by acquiring flock(LOCK_EX) on the
+> whole-disk device before opening the filesystem. This forces udevd to defer
+> all probes on that disk until e2fsck exits and the lock is released, by
+> which point the filesystem is fully consistent.
+> 
+> The whole-disk device is resolved using libsystemd's sd-device API
+> (sd_device_new_from_devnum(), sd_device_get_parent_with_subsystem_devtype())
+> rather than parsing sysfs, so the lock covers the same device node
+> that udevd itself resolves and locks.
+> 
+> This locking is entirely optional at build time where configure checks for
+> sd_device_get_parent_with_subsystem_devtype() via AC_CHECK_LIB, and
+> e2fsck.c only compiles in the locking code when it is found. On platforms
+> without libsystemd there is no udevd to race against in the first place,
+> so nothing is lost by skipping it there.
+> 
+> Signed-off-by: Nandakumar Raghavan <naraghavan@linux.microsoft.com>
+> ---
+> 
+> Changes in v3:
+>     - Resolve the parent whole-disk device using libsystemd's sd-device API
+>       (sd_device_new_from_devnum(), sd_device_get_parent_with_subsystem_devtype(),
+>       sd_device_get_devname()) instead of parsing sysfs paths
+>     - Gate the feature on autoconf detecting
+>       sd_device_get_parent_with_subsystem_devtype() via AC_CHECK_LIB; compile it
+>       out entirely when libsystemd is absent, rather than falling back to another
+>       implementation
+>     - Use sd_device_new_from_devnum() rather than the sd_device_new_from_devname()
+>       used by the systemd.io example, since the former has been available in
+>       libsystemd for much longer, keeping the version floor as low as possible
+>     - Keep lock_whole_disk()'s signature unconditional and provide a stub returning
+>       -1 on the #else branch, so main()'s primary code path has no #ifdefs in it
+>     
+> Changes in v2:
+>     - Guard the whole feature (function, call site, lock_fd, cleanup) rather than
+>       just the function body, so it is fully absent from non-Linux builds 
+>     - Collapse the three HAVE_SYS_*_H header guards into a single conditional
+>     - Reuse a single dev_path[] buffer instead of three single-use stack buffers
+>     - Keep translatable warning strings on one line each, even past 80 columns
+>     - Drop the blanket "could not lock" warning that fired even when the target was
+>       not a block device at all (e.g. a regular file), which broke most of
+>       "make check"; lock_whole_disk() now only warns at the point of a genuine failure
+>     - No change needed for the Ctrl-C/EINTR concern: the SIGINT handler is installed
+>       before lock_whole_disk() runs and is not SA_RESTART, so a blocked flock() is
+>       interrupted and the existing E2F_FLAG_CANCEL check unwinds cleanly
+> 
+>  MCONFIG.in         |  1 +
+>  configure          | 71 +++++++++++++++++++++++++++++++++++
+>  configure.ac       | 14 +++++++
+>  e2fsck/Makefile.in |  6 +--
+>  e2fsck/unix.c      | 93 ++++++++++++++++++++++++++++++++++++++++++++++
+>  lib/config.h.in    |  6 +++
+>  6 files changed, 188 insertions(+), 3 deletions(-)
+> 
+> diff --git a/MCONFIG.in b/MCONFIG.in
+> index d66e2f3b..d3055955 100644
+> --- a/MCONFIG.in
+> +++ b/MCONFIG.in
+> @@ -137,6 +137,7 @@ LIBE2P = $(LIB)/libe2p@LIB_EXT@
+>  LIBEXT2FS = $(LIB)/libext2fs@LIB_EXT@
+>  LIBUUID = @LIBUUID@ @SOCKET_LIB@
+>  LIBMAGIC = @MAGIC_LIB@
+> +LIBSYSTEMD = @SYSTEMD_LIB@
+>  LIBFUSE = @FUSE_LIB@
+>  LIBSUPPORT = $(LIBINTL) $(LIB)/libsupport@STATIC_LIB_EXT@
+>  LIBBLKID = @LIBBLKID@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
+> diff --git a/configure b/configure
+> index b04b31af..696dd07c 100755
+> --- a/configure
+> +++ b/configure
+> @@ -702,6 +702,7 @@ fuse3_CFLAGS
+>  CLOCK_GETTIME_LIB
+>  ARCHIVE_LIBS
+>  ARCHIVE_CFLAGS
+> +SYSTEMD_LIB
+>  MAGIC_LIB
+>  SOCKET_LIB
+>  SIZEOF_TIME_T
+> @@ -14130,6 +14131,76 @@ if test "$ac_cv_func_dlopen" = yes ; then
+>     MAGIC_LIB=$DLOPEN_LIB
+>  fi
 >  
->  	ntfs_debug("Entering with remount");
+> +SYSTEMD_LIB=
+> +{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sd_device_get_parent_with_subsystem_devtype in -lsystemd" >&5
+> +printf %s "checking for sd_device_get_parent_with_subsystem_devtype in -lsystemd... " >&6; }
+> +if test ${ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype+y}
+> +then :
+> +  printf %s "(cached) " >&6
+> +else case e in #(
+> +  e) ac_check_lib_save_LIBS=$LIBS
+> +LIBS="-lsystemd  $LIBS"
+> +cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+> +/* end confdefs.h.  */
+> +
+> +/* Override any GCC internal prototype to avoid an error.
+> +   Use char because int might match the return type of a GCC
+> +   builtin and then its argument prototype would still apply.
+> +   The 'extern "C"' is for builds by C++ compilers;
+> +   although this is not generally supported in C code supporting it here
+> +   has little cost and some practical benefit (sr 110532).  */
+> +#ifdef __cplusplus
+> +extern "C"
+> +#endif
+> +char sd_device_get_parent_with_subsystem_devtype (void);
+> +int
+> +main (void)
+> +{
+> +return sd_device_get_parent_with_subsystem_devtype ();
+> +  ;
+> +  return 0;
+> +}
+> +_ACEOF
+> +if ac_fn_c_try_link "$LINENO"
+> +then :
+> +  ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype=yes
+> +else case e in #(
+> +  e) ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype=no ;;
+> +esac
+> +fi
+> +rm -f core conftest.err conftest.$ac_objext conftest.beam \
+> +    conftest$ac_exeext conftest.$ac_ext
+> +LIBS=$ac_check_lib_save_LIBS ;;
+> +esac
+> +fi
+> +{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype" >&5
+> +printf "%s\n" "$ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype" >&6; }
+> +if test "x$ac_cv_lib_systemd_sd_device_get_parent_with_subsystem_devtype" = xyes
+> +then :
+> +  SYSTEMD_LIB=-lsystemd
+> +fi
+> +
+> +if test -n "$SYSTEMD_LIB"; then
+> +	       for ac_header in systemd/sd-device.h
+> +do :
+> +  ac_fn_c_check_header_compile "$LINENO" "systemd/sd-device.h" "ac_cv_header_systemd_sd_device_h" "$ac_includes_default"
+> +if test "x$ac_cv_header_systemd_sd_device_h" = xyes
+> +then :
+> +  printf "%s\n" "#define HAVE_SYSTEMD_SD_DEVICE_H 1" >>confdefs.h
+> +
+> +else case e in #(
+> +  e) SYSTEMD_LIB= ;;
+> +esac
+> +fi
+> +
+> +done
+> +fi
+> +if test -n "$SYSTEMD_LIB"; then
+> +
+> +printf "%s\n" "#define HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE 1" >>confdefs.h
+> +
+> +fi
+> +
 >  
-> +	/* Mark the volume dirty first if an error made it read-only. */
-> +	flush_work(&vol->error_work);
->  	sync_filesystem(sb);
+>  # Check whether --with-libarchive was given.
+>  if test ${with_libarchive+y}
+> diff --git a/configure.ac b/configure.ac
+> index 4921f81f..9f585aae 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -1309,6 +1309,20 @@ if test "$ac_cv_func_dlopen" = yes ; then
+>  fi
+>  AC_SUBST(MAGIC_LIB)
+>  dnl
+> +dnl See if libsystemd has sd-device APIs for whole-disk BSD locking
+> +dnl
+> +SYSTEMD_LIB=
+> +AC_CHECK_LIB(systemd, sd_device_get_parent_with_subsystem_devtype,
+> +	[SYSTEMD_LIB=-lsystemd])
+> +if test -n "$SYSTEMD_LIB"; then
+> +	AC_CHECK_HEADERS([systemd/sd-device.h], , [SYSTEMD_LIB=])
+> +fi
+> +if test -n "$SYSTEMD_LIB"; then
+> +	AC_DEFINE(HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE, 1,
+> +		[Define to 1 if libsystemd has sd-device APIs for whole-disk locking])
+> +fi
+> +AC_SUBST(SYSTEMD_LIB)
+> +dnl
+>  dnl libarchive
+>  dnl
+>  AC_ARG_WITH([libarchive],
+> diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+> index fbb7b156..a050eafe 100644
+> --- a/e2fsck/Makefile.in
+> +++ b/e2fsck/Makefile.in
+> @@ -17,20 +17,20 @@ MANPAGES=	e2fsck.8
+>  FMANPAGES=	e2fsck.conf.5
 >  
+>  LIBS= $(LIBSUPPORT) $(LIBEXT2FS) $(LIBCOM_ERR) $(LIBBLKID) $(LIBUUID) \
+> -	$(LIBINTL) $(LIBE2P) $(LIBMAGIC) $(SYSLIBS)
+> +	$(LIBINTL) $(LIBE2P) $(LIBMAGIC) $(LIBSYSTEMD) $(SYSLIBS)
+>  DEPLIBS= $(DEPLIBSUPPORT) $(LIBEXT2FS) $(DEPLIBCOM_ERR) $(DEPLIBBLKID) \
+>  	 $(DEPLIBUUID) $(DEPLIBE2P)
+>  
+>  STATIC_LIBS= $(STATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) $(STATIC_LIBCOM_ERR) \
+>  	     $(STATIC_LIBBLKID) $(STATIC_LIBUUID) $(LIBINTL) $(STATIC_LIBE2P) \
+> -	     $(LIBMAGIC) $(SYSLIBS)
+> +	     $(LIBMAGIC) $(LIBSYSTEMD) $(SYSLIBS)
+>  STATIC_DEPLIBS= $(DEPSTATIC_LIBSUPPORT) $(STATIC_LIBEXT2FS) \
+>  		$(DEPSTATIC_LIBCOM_ERR) $(DEPSTATIC_LIBBLKID) \
+>  		$(DEPSTATIC_LIBUUID) $(DEPSTATIC_LIBE2P)
+>  
+>  PROFILED_LIBS= $(PROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
+>  	       $(PROFILED_LIBCOM_ERR) $(PROFILED_LIBBLKID) $(PROFILED_LIBUUID) \
+> -	       $(PROFILED_LIBE2P) $(LIBINTL) $(LIBMAGIC) $(SYSLIBS)
+> +	       $(PROFILED_LIBE2P) $(LIBINTL) $(LIBMAGIC) $(LIBSYSTEMD) $(SYSLIBS)
+>  PROFILED_DEPLIBS= $(DEPPROFILED_LIBSUPPORT) $(PROFILED_LIBEXT2FS) \
+>  		  $(DEPPROFILED_LIBCOM_ERR) $(DEPPROFILED_LIBBLKID) \
+>  		  $(DEPPROFILED_LIBUUID) $(DEPPROFILED_LIBE2P)
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 335ca377..51bc41eb 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -36,6 +36,11 @@ extern int optind;
+>  #ifdef HAVE_SYS_IOCTL_H
+>  #include <sys/ioctl.h>
+>  #endif
+> +#ifdef HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE
+> +#include <sys/file.h>
+> +#include <sys/stat.h>
+> +#include <systemd/sd-device.h>
+> +#endif
+>  #ifdef HAVE_MALLOC_H
+>  #include <malloc.h>
+>  #endif
+> @@ -1397,6 +1402,88 @@ err:
+>  	return retval;
+>  }
+>  
+> +static int lock_whole_disk(e2fsck_t ctx, const char *dev_name)
+> +{
+> +#ifdef HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE
+> +	struct stat st;
+> +	sd_device *dev = NULL, *whole_dev;
+> +	const char *subsystem, *devtype, *whole_disk_devname;
+> +	int r, fd;
+> +
+> +	if (stat(dev_name, &st) < 0)
+> +		return -1;
+> +
+> +	if (!S_ISBLK(st.st_mode))
+> +		return -1;
+> +
+> +	r = sd_device_new_from_devnum(&dev, 'b', st.st_rdev);
+> +	if (r < 0)
+> +		return -1;
+> +
+> +	r = sd_device_get_subsystem(dev, &subsystem);
+> +	if (r < 0 || strcmp(subsystem, "block") != 0) {
+> +		sd_device_unref(dev);
+> +		return -1;
+> +	}
+> +
+> +	r = sd_device_get_devtype(dev, &devtype);
+> +	if (r < 0) {
+> +		sd_device_unref(dev);
+> +		return -1;
+> +	}
+> +
+> +	/*
+> +	 * If dev_name is a partition, resolve the parent whole-disk device
+> +	 * so the flock covers the same device node that udevd locks before
+> +	 * probing any partition on it.
+> +	 */
+> +	if (strcmp(devtype, "disk") == 0)
+> +		whole_dev = dev;
+> +	else {
+> +		r = sd_device_get_parent_with_subsystem_devtype(dev, "block",
+> +								 "disk", &whole_dev);
+> +		if (r < 0) {
+> +			log_err(ctx, _("Warning: could not resolve whole-disk device for %s; lock may not prevent udev races\n"), dev_name);
+> +			sd_device_unref(dev);
+> +			return -1;
+> +		}
+> +	}
+> +
+> +	r = sd_device_get_devname(whole_dev, &whole_disk_devname);
+> +	if (r < 0) {
+> +		sd_device_unref(dev);
+> +		return -1;
+> +	}
+> +
+> +	fd = open(whole_disk_devname, O_RDONLY | O_CLOEXEC, 0);
+> +	if (fd < 0) {
+> +		com_err(ctx->program_name, errno,
+> +			_("while trying to open %s for locking"), whole_disk_devname);
+> +		sd_device_unref(dev);
+> +		return -1;
+> +	}
+> +	sd_device_unref(dev);
+> +
+> +	while (flock(fd, LOCK_EX) != 0) {
+> +		if (errno == EINTR) {
+> +			if (ctx->flags & E2F_FLAG_CANCEL) {
+> +				close(fd);
+> +				return -1;
+> +			}
+> +			continue;
+> +		}
+> +		com_err(ctx->program_name, errno,
+> +			_("while trying to lock %s"), whole_disk_devname);
+> +		close(fd);
+> +		return -1;
+> +	}
+> +
+> +	return fd;
+> +#else
+> +	return -1;
+> +#endif /* HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE */
+> +}
+> +
+>  int main (int argc, char *argv[])
+>  {
+>  	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
+> @@ -1413,6 +1500,7 @@ int main (int argc, char *argv[])
+>  	int journal_size;
+>  	int sysval, sys_page_size = 4096;
+>  	int old_bitmaps;
+> +	int lock_fd = -1;
+>  	__u32 features[3];
+>  	char *cp;
+>  	enum quota_type qtype;
+> @@ -1488,6 +1576,8 @@ int main (int argc, char *argv[])
+>  
+>  	check_mount(ctx);
+>  
+> +	lock_fd = lock_whole_disk(ctx, ctx->filesystem_name);
+> +
+>  	if (!(ctx->options & E2F_OPT_PREEN) &&
+>  	    !(ctx->options & E2F_OPT_NO) &&
+>  	    !(ctx->options & E2F_OPT_YES)) {
+> @@ -2169,6 +2259,9 @@ skip_write:
+>  	ext2fs_close_free(&ctx->fs);
+>  	free(ctx->journal_name);
+>  
+> +	if (lock_fd >= 0)
+> +		close(lock_fd);
+> +
+>  	if (ctx->logf)
+>  		fprintf(ctx->logf, "Exit status: %d\n", exit_value);
+>  	e2fsck_free_context(ctx);
+> diff --git a/lib/config.h.in b/lib/config.h.in
+> index f129abfe..bc3ae4aa 100644
+> --- a/lib/config.h.in
+> +++ b/lib/config.h.in
+> @@ -352,6 +352,9 @@
+>  /* Define to 1 if if struct sockaddr contains sa_len */
+>  #undef HAVE_SA_LEN
+>  
+> +/* Define to 1 if libsystemd has sd-device APIs for whole-disk locking */
+> +#undef HAVE_SD_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE
+> +
+>  /* Define to 1 if you have the 'secure_getenv' function. */
+>  #undef HAVE_SECURE_GETENV
+>  
+> @@ -430,6 +433,9 @@
+>  /* Define to 1 if you have the 'sysconf' function. */
+>  #undef HAVE_SYSCONF
+>  
+> +/* Define to 1 if you have the <systemd/sd-device.h> header file. */
+> +#undef HAVE_SYSTEMD_SD_DEVICE_H
+> +
+>  /* Define to 1 if you have the <sys/acl.h> header file. */
+>  #undef HAVE_SYS_ACL_H
+>  
+> -- 
+> 2.55.0
 
-    if (sb_rdonly(sb) && !(fc->sb_flags & SB_RDONLY)) {
-        ....
-	return -EROFS;
 
-Before this patch, SB_RDONLY is set, so remount,rw returned -EROFS. With
-this patch, sb_rdonly(sb) is false, so remount,rw skips the check and
-return success even though writes are rejected with -EROFS.
-
-I think that the condition should be test NVolErrors(), for example
-
-    if ((sb_rdonly(sb) || NVolErrors(vol)) &&
-        !(fc->sb_flags & SB_RDONLY)) {
-
--- 
-Thanks,
-Hyunchul
+After discussing with Ted at LPC: It was discussed to use non-exclusive lock
+in e2fsck, but e2fsck cannot  use a non-exclusive lock here, because of
+how udevd backs off. It calls flock(fd, LOCK_SH | LOCK_NB) on the whole disk,
+and requeues the event only if that fails with EAGAIN (worker_lock_whole_disk() in udevd).
+Shared locks don't conflict, so a LOCK_SH held by e2fsck would not stop udevd
+from probing a half-written superblock. Only LOCK_EX does.
+ 
+v4 changes:
+ 
+Add a lock_whole_disk boolean to [options] in e2fsck.conf, default true,
+to disable the lock without rebuilding. It is documented in e2fsck.conf(5).
+The commit message now explains why LOCK_SH can't replace LOCK_EX, and describes
+the option. The libsystemd detection and the locking logic are unchanged from v3.
