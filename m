@@ -1,157 +1,212 @@
-Received: from DB3PR0202CU003.outbound.protection.outlook.com (mail-northeuropeazon11020106.outbound.protection.outlook.com [52.101.84.106])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD98B49C4CE
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 08:51:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.84.106
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792399902; cv=fail; b=KK3E87QL5BZUtMDZ4vc34b8DQeq0+EeAZKbeEOD/49cChQQhBg3ykNc9vi9lvMqtol0aCb3qw4xxPlkJEPsDjrcOO5ypZBzC7Nuh8aLT1qMifZsVI95jzPXsBqvQIvZuGU8C12xPJgzbfMWqSFhxYQNbKvN292oLe1CXtFI6j20=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792399902; c=relaxed/simple;
-	bh=uJK/MAYdOMEZTk4SLPExU/wSKVf9+zVYF2lWSJfZtEs=;
-	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
-	 Content-Type:MIME-Version; b=e9MfZiS/MRFwN/8/fDleKH0n4ONsOjdyO86p0PlgIbS9H52gZsiIHwUjH2QK8t2OAb3QDE3iSRcSvipmNj6Q8S+IxnDx5EPOAntrq6rzojhhh2BKZWrRuuYtxGYqchAMVclQZSKsGgSISO1sNgOgKw23BwsgT8GW7yDhnCwfTcg=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=anton-paar.com; spf=pass smtp.mailfrom=anton-paar.com; dkim=pass (2048-bit key) header.d=anton-paar.com header.i=@anton-paar.com header.b=YvZaPzyF; arc=fail smtp.client-ip=52.101.84.106
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=anton-paar.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=anton-paar.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAF9A49A3AB;
+	Mon, 19 Oct 2026 09:01:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1792400520; cv=none; b=lrbaflQuOjikRYmnouNbfQ5o6hlKv4TL2mzk/IF6zupRW6V52yT16J921czhMdunvX3Q/Es4ua9+bzgltt5Fq+9IHT0GOOuUiTCa0WNAW0XuznAU6GvqMyfwHKIkPXj3IrpjuhJGruTOADUDcIf1EUb9JgFtw8mFwEDYePzjaOQ=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1792400520; c=relaxed/simple;
+	bh=9YWx8WAm34xanNpLhpaS8oLDCPXamViXVVUfEYDnJg0=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=eO8kbEIZcemv5k8Z2hgOtQyFKx5ebI0ZuXu09oXFbZysGpuxiTbKtr7a2LI8SefLC/zYjbEc6bRIq/xXtRlZW2O32yBNZYZKApajBKoV2PoQ/puHUHHVwzQyx0xbAQBpnyN9LEh+ztvv+j6ECcD1RJwqZp1nRO+Jc8dbyxN31dM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=TaXJcFkG; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CJMfatPT; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=TaXJcFkG; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=CJMfatPT; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=anton-paar.com header.i=@anton-paar.com header.b="YvZaPzyF"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=CaXw9P9ISaK61qcOkPShqks5wUVZifRCv7CS/8ZBD+E0Fqix3Alq5buzY0EI/ILFeyIwOv34bC9arZx7e87sDO5xDrcmRl2vriE+Jdxb4dmd4X8mpNyNwMFtVomdtqYBvZdu1r5diGbbf4lhqnerfG12uKcLWfsUt3u7zoa5oI0ihcPzG92Bd0zJqwbo77CKma/t/CljR4+k4hqR97EZzjjgYDNQNIUhmTUPdicA7NiqJ/fZhJoRezNnP0ObE2BoKjtrw7n4eKdZiuNbnkUvmUX1E7/KIcK+A8opq/653fzWRf+YR2hpxOpG6bV9HKycW4HCrzSGavFdIdOOnzqSgw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=uJK/MAYdOMEZTk4SLPExU/wSKVf9+zVYF2lWSJfZtEs=;
- b=U/18dLPYGUxJAZLepT+rw557mYx2UZQVQtgKnOcqYpvrTHTl15EovrS8uGMHFm5cvPUBtWTdVA1mg0ZFprkNMxZHlJxxmXDHag5tipkrWl7oZd8NVv4/Mk3jVCfhclWf0ska4mY74sEukJbkBbO0VsUYAKC5yeemnbdIxPtVplt3N/7ByJv7xYbf2ey6BYmxelRW5ZjFoU6OYNXk9YXNOGdkJXUcCorYrrlOYGC0yvv/Ktb3FfEmTFlcS4ZpwFva79PYz6axkuwz8k48wPQUrYYTO1rkC1HxBzFvtn4MvN4SzHGf79C3+yb9RPrwRyML3MdCF8WI2tZjKtHYR7xbRw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=anton-paar.com; dmarc=pass action=none
- header.from=anton-paar.com; dkim=pass header.d=anton-paar.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=anton-paar.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=uJK/MAYdOMEZTk4SLPExU/wSKVf9+zVYF2lWSJfZtEs=;
- b=YvZaPzyF1RAjtMxbQ5DlcaK7kip8ado0nwVequi5P0/5vPKVNq076RoH96i6aspxYXMUcljNk0GW9M3j5AVmBXAaqD1adJxFwekKI+bAKbzCdnON9r7PITEegMbQZyUXWNI2JH4KARWlklCsxcSu2KC/jRvbu5dJBVwvT6Q1lwB9YL1/+rW2F1rAjl3dIY5PzCI/UASqPQnmnixIXqtKx31amYAWVkyGo9JTsh8cuFHmt678R3cjCh9ZREfBaDISnekf+qCHtWu0ySiGALuACxoBKgThAr4Dk0RULWY6mVSe5H9Rwtu/DpRA8codcaFE21i8Xs4AN7wBZ5BTta8fyg==
-Received: from AM0PR03MB5714.eurprd03.prod.outlook.com (2603:10a6:208:177::23)
- by VI0PR03MB11653.eurprd03.prod.outlook.com (2603:10a6:800:322::21) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.522.19; Mon, 19 Oct
- 2026 08:51:33 +0000
-Received: from AM0PR03MB5714.eurprd03.prod.outlook.com
- ([fe80::632b:9566:1361:5740]) by AM0PR03MB5714.eurprd03.prod.outlook.com
- ([fe80::632b:9566:1361:5740%4]) with mapi id 15.21.0522.017; Mon, 19 Oct 2026
- 08:51:33 +0000
-From: "Korber, Markus" <markus.korber@anton-paar.com>
-To: Theodore Tso <tytso@mit.edu>, Gabriele Moabiti <gabmoa@gmail.com>
-CC: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: RE: ext4 data=journal deprecation: long-standing industrial use case
-Thread-Topic: ext4 data=journal deprecation: long-standing industrial use case
-Thread-Index: AQJe7lEtanpk7txC6V2h/QI8XBITzwFQhtZstfbrjkA=
-Date: Mon, 19 Oct 2026 08:51:33 +0000
-Message-ID:
- <AM0PR03MB5714FB8241C13A499E7D5155DE982@AM0PR03MB5714.eurprd03.prod.outlook.com>
-References:
- <CAAbJaeALOrZwWs++mz9Wv0pfvyDoHmfzPKyVHR0v6TwnzLkYGw@mail.gmail.com>
- <as0U-lfet5slrD8o@mit.edu>
-In-Reply-To: <as0U-lfet5slrD8o@mit.edu>
-Accept-Language: de-AT, en-US
-Content-Language: en-US
-X-MS-Has-Attach:
-X-MS-TNEF-Correlator:
-authentication-results: mx.microsoft.com 1; dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=anton-paar.com;
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: AM0PR03MB5714:EE_|VI0PR03MB11653:EE_
-x-ms-office365-filtering-correlation-id: 726fa8c5-e808-4378-818d-08df2dbe2d50
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam:
- BCL:0;ARA:13230040|376014|1800799024|366016|23010399003|10067099003|56012099006|22082099003|18002099003|4143699003|38070700021;
-x-microsoft-antispam-message-info:
- V0GhN1HwIQidfTc4ia0qq2ffvynwcg23M9W/Lo/NOvxRNFkgXYyK81mB/4hRv/Q9tRPWG7T9f2AgGlPMw/YiJqLak//eHx6WDwFA1mYrv4hrikwMRm1eaEjfwOZ2TrhB3zOlyFczG/ggmBgxc3MNZILSZZkhzKW6Mw2iQTBQDr5IUvJi5znQMbrmQ4uutf6D97xfUOCm9y35fiXBdgw0ztGWNEsN4ZREECjrMrLAqTpzs5rbfFu6sXcZQOlgkA8w4S5duDPxseyQvdzJZnnkRIdJirxAUvb6nYjKN/u1XzMm4ea/QVTE652DolezDejRvGXvdtj0go/LbqUl0KiOwN9B68tpK/tf52HyMUVRygy5JU+riGupHL2ttV/HSllevjeHAVa5v7hwGJ1CBX1fR0kSQtY8Vy2dMNcCAkMihzaIYLDACkdZ3gx+0AC91V0u0EFHUuiAL+bXbAHmgx4ASEsc7EGOWvV7uP+hzVGCbddwhXMZzY1KfU0dFByGjjB2I9quuiNPEP+npdtlHyfEZiuuppZWNHPDLQ5tFEHk2B41mG0kiHiPGZw9/qQKqxhGxqAe6SgymAzb+kiL6C+d23l/Pyf9TYNYLr4c9X23CClVtrjjW/+na+knUQjkOSUAsk00NncqHxKMQkIsQQ5KcX+KGhTSHejO9t4vSXJCBj06wW81qEoCo+8X4q9Gc1b/zV4Q8OCOje9uhWLN17byEjRiJZzQPQapUQiloWR7CvM=
-x-forefront-antispam-report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM0PR03MB5714.eurprd03.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(366016)(23010399003)(10067099003)(56012099006)(22082099003)(18002099003)(4143699003)(38070700021);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0:
- =?utf-8?B?R3BnUXlDeDVlVmJTU0pDeXdrY1RtbDhpeDdnL29LMGtqckwvN1dsWjN5bTB3?=
- =?utf-8?B?ZnU0Zi9KNjBWS0JYQ1dyV1luYmNuQnhBVFIxbmVqOWVubXFSQjhVRWlnU3I2?=
- =?utf-8?B?V1BTUzJiWWRkaUFxNHl6emNWRFJsRmRxNS9mYlN0ZEIzVHBqSWRLQkNBeHFN?=
- =?utf-8?B?VE44STQya0d4ZC9MM2hVQzhwcWl6ZE9Zd2s4VUpYYUF0VlZmZDVESnJITWs2?=
- =?utf-8?B?akVHdXlNVFpveDhpWitlWGNTdGpsMXlHalFJWStDZUJvR2YvM3JKaFM0OEpm?=
- =?utf-8?B?TFRNN3pEeXgxSTdSenNTWnNidnZUU0ZMY3JENjAzbXZYT2dNbS9VQnVjZi9s?=
- =?utf-8?B?ZFRqMUdicXNuMktscXI0QW9SUFBncmJWV05XbG1tMzdKZy95MDRmWGV4NXhv?=
- =?utf-8?B?b1A2OVhOT3BQbVoxWmdTcGsxdHJOWDRlM1E1NDZ2ekNyd3BFak5CeFdsR0k0?=
- =?utf-8?B?cmpENW5scmV5WnlPbTJ0RG8rbTVrZTI5c2NNUm1yTUk0VWY0UFFDRkxMM2l6?=
- =?utf-8?B?eXBZZW5vYkMrSlpiM09tWGVwc2hzeVNFNmxYYit3RDNlOWdGbVhkRTQ1QlNJ?=
- =?utf-8?B?c2hJZlFZY3FJTUNQZXU1TlBRSXlxZDBzWTh0L3RmZFIzVHc1TTNPRDRFTkNP?=
- =?utf-8?B?SFFRU2VScjBDaW9ZUW9Nc0kxUDdQN0ZvK25zMkZmdmZNMUJDaHB3dmFScVVX?=
- =?utf-8?B?QW9ESVJXOWpmR0ZqKzVSdTJ6dFlTQ3BhTkRDQlZZZGIyckRjU0tvVFQyWmNZ?=
- =?utf-8?B?eVRVOWpGWXlYRXA3WWtCN0JjY1YyM3B6ZHp4MUlGN2VQRlRpUklGN2dTQlg4?=
- =?utf-8?B?RWZ5VnphM1BUY3NFaFFtMzAvUVFUREU0NUwxdUlsMjltZGxQb1BORVAyOEF5?=
- =?utf-8?B?cTBkUGZjMnFTdkliSkUwRk1FOG13azdQOHdsUjlJbEZCUXhuY2YxY3ZOMjZC?=
- =?utf-8?B?RDhJSFU4emMrZSt3NmJTVHVTRmhqV05aSmlwVlVuYXdod1FWdVZtVHNWRFo5?=
- =?utf-8?B?bDZ1TElnZkcwUDFPTnlJMHlKNWsyQ2QraUhQSlJQbmpSYlNCY000U3c2SGJq?=
- =?utf-8?B?dVgvc0pCWElUcDBNbzFlNU1XbEVWUzRjZi9Cb1FqazZ6czF1YUdEQ1kxMlVv?=
- =?utf-8?B?WXByQ2NvYm9LcE9nclc0TVlvUTVLOFZaNHJRc2I3ZTdxZWprWWdGYXBPdFlt?=
- =?utf-8?B?YnBTc0o2ZHB2Wk5XSWtudEJRdmFjL1NRKzVKMUx6ejNyZU1hY2xXanNaSjhm?=
- =?utf-8?B?SHM3bTVjSVY1b3p0WndPU3B3aGE1elFyN2FBUjRsZHpYY0w0dHRUSXNLNjVt?=
- =?utf-8?B?NGt1N2JLaUlKSjZXWFJvWFFKaXFsZnlRS1U3cTUzNm1obU5ZejA0aVVuYUJp?=
- =?utf-8?B?THFaZzJQK0d2SzZMMlhkcUVIdG8vUGVsUDZSVmtFNGlYZ0ozaHk3dTVHeDRG?=
- =?utf-8?B?aUhNeC9KV0RSZXl3R1NrR05ld1MvVjltVGNOcGdGY0JaUHF0SGxyckdrbEUz?=
- =?utf-8?B?WEZUU2xvVEU0QmJiK3BUS1lKZWVsNDFRWWdISStwR3krcExYcmFlV1o2YVpZ?=
- =?utf-8?B?RXpjN1lzMDN6c0ZIVTlBSHlLU1piUGlhbXRZektyTVN1YWU1NVhCQWFkS0Zy?=
- =?utf-8?B?SmhiV3N1RGhoOXM0SWVJeWNaelpqUnhGMHc0eldUL01ZYWVKS2M0Z1ZiS0xC?=
- =?utf-8?B?dnZqbnQyc0lVNkhtWE5BLzdQaDlFc0hremRZeXhZOS9sMkVvcUJkaFdBdlNG?=
- =?utf-8?B?TGZybWFSQ1h1L3oyZ2lhU1laQjFkWFNiT1R6ZnNTNUtxNkhMYXNLQUVna3NX?=
- =?utf-8?B?UUs0RnE4Z0xsRzBoU2JteW1ROWRiOXRXTm93SG5LQ1gzOHBnVjRlZGRVMTVl?=
- =?utf-8?B?clNnSUE5Y0t2RWRGYmJJYUsvZVczNkR5Y3pMSDF2bVNDRDg1czh1OFdjRTZp?=
- =?utf-8?B?b0pEeGJqcUNIQlArcE8xT3dnQ3lPV281ZGRwUmtUZHpvKzNiS1FmaXVTdzlR?=
- =?utf-8?B?TTZHV1dmeTZMcDVWYmhzRDFXMFVsdzBicnl6STBabHFZaXNVVVRyN1EvWC84?=
- =?utf-8?B?aDMrYlk5c3ZlR3ZxeGlObysyQzA4b1VPS0ZQUXlOV0FsV24rSWdIWjROUlBN?=
- =?utf-8?B?UlJjdER1R2hzOGxNWGZ4Vk1DQ0hlaHJiRm9nWDZNY2M0U3dzSDJMZkZIdU8z?=
- =?utf-8?B?UmZDTmkyMWxyVzUvTzluNGU5US9lZ2lwY0k2Z2tkdHRjVCtnamNKWWQrOU0v?=
- =?utf-8?B?WitDdmp4RW9FSlR0TGpJckdPaDZYYzlxVG9JOVlzUEZ0ZmliSVl6OHRjUlpa?=
- =?utf-8?B?VnRsMWtUOXhCV0VIbTVXaUM5NHo2ZkEzalZqMTJZd1hLYTBERStTZz09?=
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="TaXJcFkG";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CJMfatPT";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="TaXJcFkG";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="CJMfatPT"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id A995321BFC;
+	Mon, 19 Oct 2026 09:01:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1792400516; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rNnRDA0okT2U1jOeZ0ajx9DmL7Ea6AXQTcY6hG5C1uY=;
+	b=TaXJcFkGDZ0EXREic6WoGSbFVHAEWbnzq3aanYZa87tbaKEl63euyfpdosy417TMOk4I4N
+	zwi0p5xH0rDGjKf6GegBqyWcF16QG4MIESqw3e3cFdU6tfNdNqo3MLhUAmau4CWe2zbOHv
+	EurflAFdGYV3iScwvHqPI6/qzWqLcIY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1792400516;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rNnRDA0okT2U1jOeZ0ajx9DmL7Ea6AXQTcY6hG5C1uY=;
+	b=CJMfatPTMzus+53MyicnGmxneKM91UGC8BPS7bR6wPyRe+czFqKiA5IS5AuljRBlWOpQE1
+	0Ku/DYD0ePTpxWAg==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1792400516; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rNnRDA0okT2U1jOeZ0ajx9DmL7Ea6AXQTcY6hG5C1uY=;
+	b=TaXJcFkGDZ0EXREic6WoGSbFVHAEWbnzq3aanYZa87tbaKEl63euyfpdosy417TMOk4I4N
+	zwi0p5xH0rDGjKf6GegBqyWcF16QG4MIESqw3e3cFdU6tfNdNqo3MLhUAmau4CWe2zbOHv
+	EurflAFdGYV3iScwvHqPI6/qzWqLcIY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1792400516;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=rNnRDA0okT2U1jOeZ0ajx9DmL7Ea6AXQTcY6hG5C1uY=;
+	b=CJMfatPTMzus+53MyicnGmxneKM91UGC8BPS7bR6wPyRe+czFqKiA5IS5AuljRBlWOpQE1
+	0Ku/DYD0ePTpxWAg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 3B8401373D;
+	Mon, 19 Oct 2026 09:01:56 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id swPSAITc1Wo5BgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 19 Oct 2026 09:01:56 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 9B42AA1418; Mon, 19 Oct 2026 11:01:47 +0200 (CEST)
+Date: Mon, 19 Oct 2026 11:01:47 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jiaming Zhang <r772577952@gmail.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca, 
+	jack@suse.cz, libaokun@linux.alibaba.com, linux-kernel@vger.kernel.org, 
+	ojaswin@linux.ibm.com, ritesh.list@gmail.com, syzkaller@googlegroups.com, 
+	yi.zhang@huawei.com, stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: clear in-inode xattr space before adding the first
+ xattr
+Message-ID: <rmorrps3y6t366v4kfno7bcitpic5saoqomt2muaipcif67lzr@jum5r5zposvr>
+References: <CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com>
+ <20260916084723.877552-1-r772577952@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-OriginatorOrg: anton-paar.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: AM0PR03MB5714.eurprd03.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 726fa8c5-e808-4378-818d-08df2dbe2d50
-X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Oct 2026 08:51:33.7158
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 1650d056-0824-4040-8341-61f3c6069bbd
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: yTiWXUkdWgNqa7YeiOn0E1cge8XWqPfqGHFAlKxNCH/nymSX0Yg+WTdeZD6yohlPAQEhkVaJ4If6dzLjBFHauEEi9EfNbz1bRjTR+xG53N0=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI0PR03MB11653
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260916084723.877552-1-r772577952@gmail.com>
+X-Spamd-Result: default: False [-2.30 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	TAGGED_RCPT(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[12];
+	FREEMAIL_TO(0.00)[gmail.com];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[vger.kernel.org,mit.edu,dilger.ca,suse.cz,linux.alibaba.com,linux.ibm.com,gmail.com,googlegroups.com,huawei.com];
+	RCVD_COUNT_THREE(0.00)[3];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -2.30
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-T24gTW9uLCBPY3QgMTIsIDIwMjYsIFRoZW9kb3JlIFRzbyB3cm90ZToNCj4gR2l2ZW4gdGhhdCB0
-aGVyZSBpcyBubyBndWFyYW50ZWVzIG9mIHdoYXQgd3JpdGVzIHdpbGwgYmUgcGVyc2lzdGVkDQo+
-IHdpdGggcmVzcGVjdCB0byBwcm9ncmFtIGV4ZWN1dGlvbiwgaXQncyB1bmNsZWFyIGV4YWN0bHkg
-d2hhdCB5b3VyDQo+IGRlcGxveW1lbnRzIGFyZSByZXF1aXJpbmcgb3IgYXNzdW1pbmcuDQoNCkkn
-ZCBsaWtlIHRvIGFkZCBhbm90aGVyIGRhdGEgcG9pbnQgaW4gc3VwcG9ydCBvZiBHYWJyaWVsZSdz
-IHVzZSBjYXNlLg0KDQpXZSBhbHNvIHVzZSBleHQ0IGRhdGE9am91cm5hbCBvbiBlbWJlZGRlZCBz
-eXN0ZW1zIHdoZXJlIHVuZXhwZWN0ZWQNCnBvd2VyIGxvc3MgaXMgcG9zc2libGUuIE91ciBtYWlu
-IGNvbmNlcm4gaXMgbm90IGxvc2luZyB0aGUgbW9zdCByZWNlbnQNCmZldyBzZWNvbmRzIG9mIGRh
-dGEuIFRoYXQgaXMgYWNjZXB0YWJsZSBmb3Igb3VyIHVzZSBjYXNlLiBXaGF0IHdlIHdhbnQNCnRv
-IGF2b2lkIGlzIGNvcnJ1cHRpb24gb2YgZmlsZSBjb250ZW50cyBhZnRlciBhbiB1bmV4cGVjdGVk
-IHBvd2VyIGxvc3MuDQoNCldlIHBlcmZvcm1lZCByZXBlYXRlZCBoYXJkIHBvd2VyLWN1dCB0ZXN0
-cyB1c2luZyBib3RoIGRhdGE9b3JkZXJlZCBhbmQNCmRhdGE9am91cm5hbC4gV2l0aCBkYXRhPW9y
-ZGVyZWQgd2Ugb2JzZXJ2ZWQsIGFtb25nIG90aGVyIGV4cGVjdGVkDQpmYWlsdXJlIG1vZGVzLCBm
-aWxlcyBjb250YWluaW5nIE5VTHMgYW5kIHBhcnRpYWxseSB3cml0dGVuIGZpbGVzIHdoZXJlDQp0
-aGUgdW53cml0dGVuIHBhcnQgY29udGFpbmVkIE5VTHMuIFRoZXNlIGZhaWx1cmUgbW9kZXMgYXJl
-IHBhcnRpY3VsYXJseQ0KZGlmZmljdWx0IGZvciBhcHBsaWNhdGlvbnMgdG8gcmVjb3ZlciBmcm9t
-Lg0KDQpXaXRoIGRhdGE9am91cm5hbCB3ZSBzdGlsbCBvYnNlcnZlZCBsb3N0IHJlY2VudCBmaWxl
-cywgemVyby1sZW5ndGgNCmZpbGVzIGFuZCB0cnVuY2F0ZWQgY3VycmVudCB3cml0ZXMsIGJ1dCB3
-ZSBkaWQgbm90IG9ic2VydmUgdGhvc2UNCk5VTC1maWxsZWQgY29ycnVwdGlvbiBwYXR0ZXJucy4N
-Cg0KU28gYXQgbGVhc3QgZm9yIG91ciB1c2UgY2FzZSwgdGhlIHVzZWZ1bCBwcm9wZXJ0eSBvZiBk
-YXRhPWpvdXJuYWwgaXMNCm5vdCBwcmltYXJpbHkgcmVkdWNpbmcgdGhlIGFtb3VudCBvZiByZWNl
-bnQgZGF0YSB0aGF0IGNhbiBiZSBsb3N0Lg0KSXQgaXMgdGhlIGRpZmZlcmVudCBmYWlsdXJlIGJl
-aGF2aW9yIHdoZW4gcG93ZXIgaXMgcmVtb3ZlZCBkdXJpbmcgZmlsZQ0KSS9PLg0KDQpSZWdhcmRz
-LA0KTWFya3VzDQo=
+On Wed 16-09-26 16:47:23, Jiaming Zhang wrote:
+> An inode can hold extended attributes in the space that follows its extra
+> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
+> ext4_iget_extra_inode() validates that space only if it starts with the
+> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
+> space is treated as empty and is not checked.
+> 
+> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
+> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
+> there to find min_offs, the lowest value offset.  That offset decides
+> whether the new value fits and where the value is copied:
+> 
+> 	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
+> 	...
+> 	void *val = s->base + min_offs - new_size;
+> 
+> A crafted image can leave non-zero bytes in that space without the magic
+> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
+> bytes are parsed as entries, and an entry that claims an in-inode value at
+> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
+> then wraps around to a huge value, and the free space check passes although
+> the value does not fit.  The value is copied new_size bytes before the
+> start of the space, over the inode's own fields and, for a large value, the
+> memory in front of the inode.
+> 
+> On a kernel without KASAN, the copy corrupts memory: it overwrites the
+> inode's own fields and, for a large value, also the memory in front of the
+> inode.  The bytes and their length are decided by the setxattr() caller.
+> Nothing is freed and reused here, so the use-after-free in the report only
+> reflects where the write happened to land.
+> 
+> Triggering this issue requires mounting a crafted image, which needs
+> CAP_SYS_ADMIN or automounting of removable media; after that, any
+> setxattr() on the file reaches this path.  The issue was found by fuzzing
+> and has not been seen in production; a reproducer is available in the
+> linked report.
+> 
+> Clear the space in ext4_xattr_ibody_set() before calling
+> ext4_xattr_set_entry() when EXT4_STATE_XATTR is not set, so that the walk
+> starts from the empty entry list.
+> 
+> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com/
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude Code:claude-opus-5
+> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
+
+Thanks for the fix! One nit below:
+
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5c310747b965..2e5f39b710bd 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -2274,6 +2274,10 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+>  		if (IS_ERR(ea_inode))
+>  			return PTR_ERR(ea_inode);
+>  	}
+> +
+> +	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
+> +		memset(s->first, 0, s->end - (void *)s->first);
+> +
+
+So this looks correct but AFAICS it should be enough to zero just the first
+u32 of the xattr space? I.e.:
+		*(__u32 *)s->first = 0;
+
+That way IS_LAST_ENTRY() returns true for s->first and the whole space is
+treated as empty. For larger inodes memsetting the whole space could be
+unnecessarily expensive and inode without EXT4_STATE_XATTR is actually a
+common thing (inode without any extented attributes will be such as well).
+Also please add a comment before the check like:
+
+	/*
+	 * Make sure xattr space is properly initialized so that
+	 * IS_LAST_ENTRY() returns true for it's first entry
+	 */
+
+Thanks.
+
+								Honza
+
+>  	error = ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+>  				     false /* is_block */);
+>  	if (error) {
+> -- 
+> 2.43.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
