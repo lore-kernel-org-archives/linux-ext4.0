@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 075654FD29B;
-	Mon, 19 Oct 2026 13:54:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D63C656F5AD;
+	Mon, 19 Oct 2026 13:58:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792418093; cv=none; b=jzZJ2tvs0M87PxJvNzpSd6r1fS9uTaZLrQQKIbdRYXF4It+VYf7dYrf0eD+mHSv8k6x6y5Yr8bbqx0P2+f44cemKonELm5Gct7xOzUxtf4Qrz27Pg+j3upzWCk6ZmHoD4zciLdwjnZDrniWJThUEykMCdYGyLZnapOecKrB3ZPc=
+	t=1792418291; cv=none; b=LcRAzLqS4raaZ9x0TzEG7olddXTbcFaDKJPLjR7nZy6eddYZhPJLxTAN4iJ8tXj8mjLEV65qwjL1aVOGqP+JcfvWBszTvc6WEz7eH/OBx/Ltz3p32GUKa635/I72NKOTERQw0CF0dkFsAxtrgrm9JniKdFI19audTmH+INOwm4w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792418093; c=relaxed/simple;
-	bh=OWLb2TiGJ9IwlMCPEq24zD1+vzwirIdMUHo2W1pZaBU=;
+	s=arc-20240116; t=1792418291; c=relaxed/simple;
+	bh=mzty+ws1sKtDmSkzjIdIec4AMpgjXVrDoYqBTWcLT7U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=X1PRhM8zbFBHF7h7cH/AhyJSizdaasKVSJGkMzB4wXRKVbVE3n40pNPq6Vy4viht2MpNP9A23JsLj53e99v7wI8CS5K3dif4Op5Co0GWyP9nlViAZh4wU1zB6uES8ZRzYYp6xiAfMk8jLiXQ1cnE+KqyEhBj5yFZYYmPTUKrxQI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OtBPssNy; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=kFQYNE3umkC3lCi7HH2H6tRmyOHfP+uEVMMrhLPGEVJEMlAbH33+B2HsBwUPOq0x9ZMdO+lloc6u/qK+uhVggR5dvC44eMYwAm0G2Es0Gy24iyHB1fwKKUy8kR+0W7C9TUUoVfpFM7gFploap2AujyhVaT9hmncE3FQBcPFt16E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HgNRhGoG; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OtBPssNy"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC9521F000C8;
-	Mon, 19 Oct 2026 13:54:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HgNRhGoG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 815411F000C6;
+	Mon, 19 Oct 2026 13:58:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792418089;
-	bh=HnQ43w9Y9f8r4GagshV8oopPcggbOu3LYuh/KbApEkg=;
+	s=k20260515; t=1792418288;
+	bh=4tv8ydoFGM/MRd2Ch8NgorMLvUS1dYbChvJFqN0lylI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=OtBPssNyl7km5VBF+pbIwU+EJYhjfG0z03aw9QqEZMtezxjtjWzEa+DlQyATPGEhD
-	 KZAcbYF3xXtN58FSKkFz51hn3z4NLXWRwFLm4lg/FerR+E6eh6UgWog4sfat1bnchh
-	 oQgVm5l5LxSwpL5sFD9wbstHKTRBxEmd/zNPtRA4LDIeciM+IvLGs9Z2cvLyzdk4kV
-	 ZWLYj7VU+sSYtXN2e7XiM+QdX4daI/uNBPPEuCYL2mKUUuzObfKZ1gMzMQynb6qNxj
-	 vILwLgsgWM8gQcTs3FCH55j9lR23aLzRndywLiBs912mBcisHC03RWo0O7gjigOQri
-	 cnZM7uWky568w==
+	b=HgNRhGoGghLZul2qxsbU3epsCG/Mm7PHqCPHGYO26VuHfgjzIWRIjh/v8WxOTV6e1
+	 Yob2wsQOmR5ySHvIU6PP4caBDgFIjCiriUHCf3LktjV9ZpYtLG/8QHBEFuyo8qQhC1
+	 F8GoKh1Di0GN2FxQ/GW15Qc67VlbFsHiUrG0APsgLDolj3JKfbYl+XZh4BmtKOjOkz
+	 t9PsSRWtmwaj/45h0bkR+IiPhcDRjs8d/rKA9ADBJAqycChCi/cK1JLlwZ98oMwORc
+	 q/k+r3Oj2kvO7N6qWQtU3z9l2A0L3pQPY9SkwG3biIOkyC7c1A6eAqE//l1XISTiTu
+	 Sn7kf3pSXfEKQ==
 From: Sasha Levin <sashal@kernel.org>
 To: patches@lists.linux.dev,
 	stable@vger.kernel.org
@@ -35,9 +35,9 @@ Cc: Zhang Yi <yi.zhang@huawei.com>,
 	Sasha Levin <sashal@kernel.org>,
 	linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.18-6.6] ext4: use FGP_WRITEBEGIN for tail block zeroing
-Date: Mon, 19 Oct 2026 09:44:56 -0400
-Message-ID: <20261019135441.1420968-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 6.18-5.10] ext4: check return value of ext4_get_block() in ext4_load_tail_bh()
+Date: Mon, 19 Oct 2026 09:47:12 -0400
+Message-ID: <20261019135441.1420968-141-sashal@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261019135441.1420968-1-sashal@kernel.org>
 References: <20261019135441.1420968-1-sashal@kernel.org>
@@ -55,567 +55,400 @@ Content-Transfer-Encoding: 8bit
 
 From: Zhang Yi <yi.zhang@huawei.com>
 
-[ Upstream commit e1cf7b5f5c8ad1e00d00c50c61c3e8fdc79cd422 ]
+[ Upstream commit 705a3fd3bac167f1dabe3d3bba46cd484c5528dd ]
 
-ext4_load_tail_bh() returns a locked folio that callers immediately
-mutate through folio_zero_range() and mark_buffer_dirty().  Use
-FGP_WRITEBEGIN so that, on backing devices that require stable writes,
-__filemap_get_folio() waits for writeback to finish before returning
-the folio; on regular devices the wait is a no-op.
+ext4_load_tail_bh() ignores the return value of ext4_get_block(), so an
+I/O or allocation failure is silently discarded. buffer_mapped(bh) stays
+false and the function returns NULL, which callers such as
+ext4_block_do_zero_range() treat as "nothing to do" and return success.
+This can mask real failures during zero-range, truncate, or punch-hole
+operations, potentially exposing stale data if the block was not
+actually a hole and needed zeroing. So propagate the error to the
+callers.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://patch.msgid.link/20260714080044.4038124-2-yi.zhang@huaweicloud.com
+Link: https://patch.msgid.link/20260714080044.4038124-4-yi.zhang@huaweicloud.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
 
 LLM Generated explanations, may be completely bogus:
 
-I have enough to decide: this is a one-line stable-writes data-integrity
-fix in a userspace-reachable ext4 tail-zeroing path, and the helper and
-`FGP_WRITEBEGIN` both exist in this 7.3-rc4 tree.
-
-===============================================================
-PHASE 1: COMMIT MESSAGE FORENSICS
-===============================================================
-
-**Step 1.1: PARSE THE SUBJECT LINE**
-
-Record: **[ext4] [use] use FGP_WRITEBEGIN for tail block zeroing**
-
-Subsystem prefix `ext4:`. Verb is “use” (correctness change of folio-get
-flags, not a feature). Claimed intent: get the tail folio with the
-write-begin flag set so writeback finishes before the folio is mutated.
-
-**Step 1.2: PARSE ALL COMMIT MESSAGE TAGS**
-
-Verified from `git show e1cf7b5f5c8ad1e00d00c50c61c3e8fdc79cd422`:
-
-- **Fixes:** none (expected for this review pipeline)
-- **Reported-by:** none
-- **Tested-by:** none
-- **Reviewed-by:** Jan Kara \<jack@suse.cz\> (ext4 co-maintainer)
-- **Acked-by:** none
-- **Link:** https://patch.msgid.link/20260714080044.4038124-2-
-  yi.zhang@huaweicloud.com
-- **Cc: stable:** none (expected; not a negative signal)
-- **Signed-off-by:** Zhang Yi \<yi.zhang@huawei.com\> (author); Theodore
-  Ts'o \<tytso@mit.edu\> (ext4 maintainer)
-
-No syzbot, no kernel-test-robot, no multiple reporters.
-
-**Step 1.3: ANALYZE THE COMMIT BODY TEXT**
-
-Record:
-
-- **Bug:** `ext4_load_tail_bh()` returns a locked folio that callers
-  immediately mutate with `folio_zero_range()` and
-  `mark_buffer_dirty()`, without waiting for in-flight writeback.
-- **Symptom/failure mode:** On backing devices that require stable
-  writes, page-cache contents can change while DMA/writeback is in
-  progress, which can corrupt the in-flight write or break integrity
-  checksums. On ordinary devices the extra wait is a no-op.
-- **Version information:** none in the message. History shows the helper
-  landed in v7.1-rc1 and this fix in v7.3-rc1.
-- **Root cause:** folio obtained with `FGP_LOCK | FGP_ACCESSED |
-  FGP_CREAT` (no `FGP_STABLE` / `FGP_WRITE`).
-
-**Step 1.4: DETECT HIDDEN BUG FIXES**
-
-Record: **Yes, this is a real bug fix**, not cleanup. The cover letter
-for the series (v4) states it explicitly: “Add patch 1 to use
-FGP_WRITEBEGIN in ext4_load_tail_bh(), fixing a pre-existing stable-
-writes bug exposed by patch 4's reordering.”
-
-===============================================================
-PHASE 2: DIFF ANALYSIS - LINE BY LINE
-===============================================================
-
-**Step 2.1: INVENTORY THE CHANGES**
-
-Record:
-
-- File: `fs/ext4/inode.c` — **1 insertion, 1 deletion**
-- Function: `ext4_load_tail_bh()`
-- Scope: **single-file surgical fix** (one flag expression)
-
-**Step 2.2: UNDERSTAND THE CODE FLOW CHANGE**
-
-Record:
-
-**Before:** `__filemap_get_folio(..., FGP_LOCK | FGP_ACCESSED |
-FGP_CREAT, ...)`. Locks/creates the folio and marks it accessed. Does
-**not** wait for writeback.
-
-**After:** `__filemap_get_folio(..., FGP_WRITEBEGIN | FGP_ACCESSED,
-...)`.
-
-`FGP_WRITEBEGIN` is defined in `include/linux/pagemap.h` as:
-
-`FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE`
-
-Net additions: `FGP_WRITE` and `FGP_STABLE`. `FGP_STABLE` calls
-`folio_wait_stable()` after the folio is locked (`mm/filemap.c`). That
-waits for writeback only if `mapping_stable_writes()` is set.
-
-Path affected: every caller of `ext4_load_tail_bh()` immediately zeros
-the folio (`ext4_block_do_zero_range()`,
-`ext4_block_journalled_zero_range()`). This is a **normal mutator
-path**, not an error-only path.
-
-**Step 2.3: IDENTIFY THE BUG MECHANISM**
-
-Record:
-
-- **Category:** memory-safety / data integrity (stable-pages race with
-  writeback), plus a small GFP/idle-flag side effect from `FGP_WRITE`
-- **Mechanism:** On `AS_STABLE_WRITES` mappings, in-flight writeback
-  DMA’s from page cache. Zeroing the folio without `folio_wait_stable()`
-  can mix old and new contents in the I/O. `FGP_WRITEBEGIN` is the
-  established write-begin flag set that waits first.
-
-**Step 2.4: ASSESS THE FIX QUALITY**
-
-Record:
-
-- **Quality:** obviously correct. Same flags every `->write_begin`
-  implementation uses. `folio_wait_stable()` is a no-op when
-  `mapping_stable_writes()` is false, so typical disks are unchanged.
-- **Regression risk:** very low. Waiting while the folio is locked is
-  the documented write-begin pattern (`folio_wait_stable` comment: if
-  unlocked, writeback can restart). `FGP_ACCESSED | FGP_WRITEBEGIN`
-  still takes the `FGP_ACCESSED` branch in `__filemap_get_folio()`, so
-  idle-flag clearing does not change vs the old flags; `FGP_WRITE` only
-  adds `__GFP_WRITE` on allocation.
-
-===============================================================
-PHASE 3: GIT HISTORY INVESTIGATION
-===============================================================
-
-**Step 3.1: BLAME THE CHANGED LINES**
-
-Record:
-
-- Current line is `e1cf7b5f5c8ad` (this commit).
-- Same flags were already in `__ext4_block_zero_page_range()` before the
-  helper was factored out (`3b312a6f510ca`, v7.1-rc1, “ext4: factor out
-  journalled block zeroing range”).
-- Folio conversion `9d3973de9a374` (“ext4: Convert
-  __ext4_block_zero_page_range() to use a folio”, v6.4 era) replaced
-  `find_or_create_page()` with `FGP_LOCK | FGP_ACCESSED | FGP_CREAT`.
-  `find_or_create_page()` also did **not** wait for stable writeback, so
-  the gap is older than the helper.
-- Helper `ext4_load_tail_bh` first appeared in **v7.1-rc1**
-  (`3b312a6f510ca`).
-
-**Step 3.2: FOLLOW THE FIXES: TAG**
-
-Record: **No Fixes: tag.** Not applicable. The immediate pre-image is
-the helper as introduced in `3b312a6f510ca`, which copied the old flags.
-
-**Step 3.3: CHECK FILE HISTORY FOR RELATED CHANGES**
-
-Record: This is **patch 1/9** of Zhang Yi’s series “ext4: fix unaligned
-edge handling in FALLOC_FL_WRITE_ZEROES”, landed together around
-2026-07-22:
-
-1. `e1cf7b5f5c8ad` this commit
-2. `2fff82f081401` skip tail zeroing for inline data
-3. `705a3fd3bac16` check `ext4_get_block()` return
-4. `b16e9d27a643a` move partial zeroing earlier in `ext4_zero_range()`
-   (the reorder that **exposes** the stable-writes bug)
-5–9. WRITE_ZEROES edge-handling / orphan-list work
-
-This patch does **not** depend on 2–9. Later patches that increase tail-
-zeroing (especially 4) depend on this one for correctness on stable-
-write devices.
-
-Related earlier commit `df0b5afc62f33` (“ext4: remove the redundant
-folio_wait_stable()”) is a different path (`ext4_da_write_begin`); it
-only shows that ext4 already treats `FGP_WRITEBEGIN` as implying the
-stable wait.
-
-**Step 3.4: CHECK THE AUTHOR'S OTHER COMMITS**
-
-Record: Zhang Yi is a regular, high-volume ext4 contributor (tail-
-zeroing, WRITE_ZEROES, journal paths). This series was reviewed by Jan
-Kara and applied by Ted Ts'o. Related commits in the same week are the
-rest of the 1/9 series.
-
-**Step 3.5: CHECK FOR DEPENDENT/PREREQUISITE COMMITS**
-
-Record:
-
-- Prerequisite API: `FGP_WRITEBEGIN` from `e999a5c5a19cf` (“fs: Add
-  FGP_WRITEBEGIN”), present since **v6.4-rc1**. Present in this tree.
-- Prerequisite function: `ext4_load_tail_bh()` since **v7.1-rc1**.
-  Present in this tree.
-- **Can apply standalone:** yes. One flag change; no new helpers.
-
-===============================================================
-PHASE 4: MAILING LIST AND EXTERNAL RESEARCH
-===============================================================
-
-**Step 4.1: FIND THE ORIGINAL PATCH DISCUSSION**
-
-Record:
-
-- `b4 dig -c e1cf7b5f5c8ad` → https://patch.msgid.link/20260714080044.40
-  38124-2-yi.zhang@huaweicloud.com
-- Series revisions: **v3** (2026-07-08) and **v4** (2026-07-14). Cover
-  letter: v4 has **no code changes** vs v3; v2 **added this patch**.
-- Cover letter quote (verified in saved mbox): “Add patch 1 to use
-  FGP_WRITEBEGIN in ext4_load_tail_bh(), fixing a pre-existing stable-
-  writes bug exposed by patch 4's reordering.”
-- Ted Ts'o applied the series; patch 9 was dropped separately over
-  error-handling concerns.
-- No NAK on this patch. No reviewer asked for `Cc: stable` on patch 1
-  (patches 7/8 in the same mbox do have `Cc: stable`, for WRITE_ZEROES-
-  specific bugs).
-- WebFetch of lore.kernel.org returned **403**; discussion recovered via
-  `b4 dig -m /tmp/ext4-fgp.mbox`.
-
-**Step 4.2: CHECK WHO REVIEWED THE PATCH**
-
-`b4 dig -w` recipients included linux-ext4, linux-fsdevel, tytso,
-adilger, Jan Kara, Ojaswin Mujoo, Ritesh Harjani, Huawei ext4
-developers.
-
-Record: **Jan Kara Reviewed-by** (in the patch); **Ted Ts'o** applied
-it. Right maintainers were on the thread.
-
-**Step 4.3: SEARCH FOR THE BUG REPORT**
-
-Record: **No standalone bugzilla/syzbot report.** The bug was found
-while reworking WRITE_ZEROES unaligned edges. Severity from the author:
-pre-existing **stable-writes data-integrity** bug.
-
-**Step 4.4: CHECK FOR RELATED PATCHES AND SERIES**
-
-Record: Standalone as a fix. The rest of 1/9 is WRITE_ZEROES contract
-work and two other pre-existing helper fixes (inline-data skip;
-propagate `ext4_get_block()` errors). This commit does not require those
-to be correct.
-
-**Step 4.5: CHECK STABLE MAILING LIST HISTORY**
-
-Record: lore.kernel.org/stable WebFetch returned **403**. No evidence in
-the ext4 thread that this patch 1 was requested for stable or rejected
-for stable. **UNVERIFIED** whether linux-stable@ discussed it.
-
-===============================================================
-PHASE 5: CODE SEMANTIC ANALYSIS
-===============================================================
-
-**Step 5.1: IDENTIFY KEY FUNCTIONS IN THE DIFF**
-
-Record: **`ext4_load_tail_bh()`** only.
-
-**Step 5.2: TRACE CALLERS**
-
-Verified in this tree:
-
-- `ext4_block_do_zero_range()` → `folio_zero_range()` +
-  `mark_buffer_dirty()`
-- `ext4_block_journalled_zero_range()` → journal write access +
-  `folio_zero_range()`
-- Both from `ext4_block_zero_range()`
-- That is used by:
-  - `ext4_block_zero_eof()` — truncate (`ext4_truncate`), append
-    (`ext4_write_checks` in `fs/ext4/file.c`), extent operations
-    (`fs/ext4/extents.c`)
-  - `ext4_zero_partial_blocks()` — punch hole / zero_range /
-    WRITE_ZEROES (`ext4_punch_hole`, `ext4_zero_range`, extents
-    WRITE_ZEROES)
-
-Record: **Common filesystem operations**, process context, folio locked.
-Not IRQ.
-
-**Step 5.3: TRACE CALLEES**
-
-Record: `__filemap_get_folio()` → on `FGP_STABLE`, `folio_wait_stable()`
-→ `folio_wait_writeback()` if `mapping_stable_writes()`. Then
-`create_empty_buffers` / `ext4_get_block` / `ext4_read_bh_lock` as
-before.
-
-**Step 5.4: FOLLOW THE CALL CHAIN**
-
-Record: **Userspace-reachable** without privilege beyond write access to
-an ext4 file: `truncate`,
-`fallocate(PUNCH_HOLE|ZERO_RANGE|WRITE_ZEROES)`, append `write()`.
-**HIGH** reachability.
-
-**Step 5.5: SEARCH FOR SIMILAR PATTERNS**
-
-Record: Other ext4 write paths already use `FGP_WRITEBEGIN`
-(`fs/ext4/inline.c`, `fs/ext4/move_extent.c`) and/or explicit
-`folio_wait_stable()` (`ext4_write_begin`, `ext4_page_mkwrite`). Tail-
-block zeroing was the outlier.
-
-===============================================================
-PHASE 6: CROSS-REFERENCING AGAINST THE LOCAL TREE
-===============================================================
-
-**Step 6.1: DOES THE BUGGY CODE EXIST IN THIS TREE?**
-
-Record:
-
-- Local tree: **`git describe HEAD` = `v7.3-rc4-27-gf0100363d8c37`**,
-  `VERSION=7 PATCHLEVEL=3 SUBLEVEL=0 EXTRAVERSION=-rc4`. Origin is
-  torvalds/linux (mainline), detached HEAD.
-- `ext4_load_tail_bh()` exists at `fs/ext4/inode.c` (currently already
-  using `FGP_WRITEBEGIN | FGP_ACCESSED` because `e1cf7b5f5c8ad` **is an
-  ancestor of HEAD**).
-- Buggy pre-image (helper with `FGP_LOCK | FGP_ACCESSED | FGP_CREAT`)
-  existed from **v7.1-rc1** (`3b312a6f510ca`) until this fix in
-  **v7.3-rc1**.
-- `FGP_WRITEBEGIN` exists here (`include/linux/pagemap.h:720`).
-
-The pipeline instruction is to ignore “already selected” markers, not to
-treat mainline already containing the original commit as a reason to
-reject a backport-worthy fix. The code and prerequisites are in this
-tree.
-
-**Step 6.2: CHECK FOR BACKPORT COMPLICATIONS**
-
-Record: **Clean apply** on this tree (one-line flag change;
-`FGP_WRITEBEGIN` present). `git log --oneline -10 -- fs/ext4/inode.c`
-shows normal ext4 churn; nothing that would conflict with this hunk.
-
-**Step 6.3: CHECK IF RELATED FIXES ARE ALREADY HERE**
-
-Record: This exact change **is** HEAD’s current code (`git blame` on the
-flags line is `e1cf7b5f5c8ad`). No alternate fix for the same stable-
-writes hole in `ext4_load_tail_bh()`. Other `folio_wait_stable()` sites
-in ext4 do not cover this helper.
-
-===============================================================
-PHASE 7: SUBSYSTEM AND MAINTAINER CONTEXT
-===============================================================
-
-**Step 7.1: IDENTIFY THE SUBSYSTEM AND ITS CRITICALITY**
-
-Record: **Subsystem: fs/ext4. Criticality: IMPORTANT** (widely used
-filesystem; data-integrity on stable-write devices). Not core mm/VFS,
-but truncate/punch/zero are universal ext4 operations.
-
-**Step 7.2: ASSESS SUBSYSTEM ACTIVITY**
-
-Record: **Actively developed** (WRITE_ZEROES series, iomap conversion,
-journal/writeback fixes in 7.3). The helper itself is recent (v7.1) but
-the missing stable wait is the same pattern as the older zero-page-range
-code.
-
-===============================================================
-PHASE 8: IMPACT AND RISK ASSESSMENT
-===============================================================
-
-**Step 8.1: DETERMINE WHO IS AFFECTED**
-
-Record: **ext4 users whose backing device requires stable writes**, i.e.
-`bdev_stable_writes()`: integrity checksums (`CONFIG_BLK_DEV_INTEGRITY`)
-**or** `BLK_FEAT_STABLE_WRITES`.
-
-Verified setters of `BLK_FEAT_STABLE_WRITES` in this tree include NVMe
-(when `data_digest` is enabled), RAID5 `skip_copy`, dm-integrity, zram,
-RBD, iSCSI TCP, MMC, DRBD. Superblock then sets `SB_I_STABLE_WRITES` and
-inode mappings get `AS_STABLE_WRITES`.
-
-Not universal, but not a toy config: enterprise integrity, RAID, dm-
-integrity, some NVMe.
-
-**Step 8.2: DETERMINE THE TRIGGER CONDITIONS**
-
-Record:
-
-- Trigger: tail/partial-block zeroing while that folio is under
-  writeback.
-- How common: truncate, punch, zero_range, append past EOF —
-  **routine**. The race still needs concurrent writeback of that folio,
-  so it is **timing-dependent**.
-- Cover letter: patch 4’s reorder **widens** the window; the bug is
-  still pre-existing without patch 4. This tree **already has patch 4**
-  (`b16e9d27a643a`).
-- Unprivileged users with write access **can** trigger the operations.
-
-**Step 8.3: DETERMINE THE FAILURE MODE SEVERITY**
-
-Record: **Failure mode: in-flight writeback sees torn folio contents /
-integrity checksum mismatch.** **Severity: CRITICAL** (data corruption),
-limited to stable-write devices. Not a panic path.
-
-**Step 8.4: CALCULATE RISK-BENEFIT RATIO**
-
-Record:
-
-- **Benefit: high** for ext4 on stable-write devices (prevents silent
-  data corruption on common ops). **Low** for everyone else (wait is a
-  no-op).
-- **Risk: very low** (1 line, standard flags, no API change, no new
-  locking order).
-- **Ratio: strongly favors applying.**
-
-===============================================================
-PHASE 9: FINAL SYNTHESIS
-===============================================================
-
-**Step 9.1: COMPILE THE EVIDENCE**
-
-**FOR backporting:**
-
-- Author and cover letter call it a **pre-existing stable-writes bug**.
-- Mutating a folio under writeback on `AS_STABLE_WRITES` is a known
-  class of **data corruption**.
-- Reachable from truncate / fallocate / append.
-- One-line, matches `FGP_WRITEBEGIN` used everywhere else.
-- Reviewed by Jan Kara; applied by Ted Ts'o.
-- `FGP_WRITEBEGIN` and `ext4_load_tail_bh()` both exist in this 7.3-rc4
-  tree.
-- This tree also has the later reorder (`b16e9d27a643a`) that
-  **exposes** the race more.
-
-**AGAINST backporting:**
-
-- No Fixes tag, no user/syzbot report (not a valid NO by pipeline
-  rules).
-- Nested in a 9-patch WRITE_ZEROES series; later patches are feature-
-  contract fixes. This patch is still self-contained.
-- Author did not `Cc: stable` on patch 1 (other patches in the same
-  series did).
-- Bug existed in spirit since `find_or_create_page()`; field reports are
-  absent, so the race may be rare without the v7.3 reorder.
-
-**UNRESOLVED:**
-
-- linux-stable@ archives could not be fetched (HTTP 403).
-- Full v2 mailing-list review text for this hunk was not retrieved (lore
-  403); Jan’s Reviewed-by on the committed patch is verified.
-
-**Step 9.2: APPLY THE STABLE RULES CHECKLIST**
-
-1. Obviously correct and tested? **PASS** — one flag change to the
-   standard write-begin set; reviewed by Jan Kara; in mainline since
-   v7.3-rc1.
-2. Fixes a real bug that affects users? **PASS** — stable-writes devices
-   (NVMe digest, RAID5 skip_copy, dm-integrity, zram, T10 PI, etc.).
-3. Important issue? **PASS** — data corruption on in-flight writeback,
-   not a crash, but explicitly in the stable rules list.
-4. Small and contained? **PASS** — 1 line, one function.
-5. No new features or APIs? **PASS**.
-6. Can apply to the local tree? **PASS** — `FGP_WRITEBEGIN` and
-   `ext4_load_tail_bh()` are here; the hunk is identical to what already
-   landed.
-
-**Step 9.3: CHECK FOR EXCEPTION CATEGORIES**
-
-Record: **None** (not a device ID, quirk, DT, build, or docs exception).
-It qualifies as a normal data-integrity bug fix.
-
-**Step 9.4: MAKE YOUR DECISION**
-
-This tree is **Linux 7.3-rc4** (Linus mainline). The helper lives here,
-`FGP_WRITEBEGIN` lives here, and callers still zero the folio
-immediately. The change is a one-line restoration of the stable-write
-wait that every other write-begin path already does. That is exactly the
-kind of small, important data-integrity fix stable trees should take.
-The surrounding WRITE_ZEROES series is not required for this hunk to be
-correct.
-
-### What the commit solves
-
-`ext4_load_tail_bh()` was grabbing a locked folio without `FGP_STABLE`.
-Callers then call `folio_zero_range()` and dirty the buffer. On devices
-that set `AS_STABLE_WRITES` (integrity checksums or
-`BLK_FEAT_STABLE_WRITES`), that can change page-cache bytes while
-writeback DMA is still running. Switching to `FGP_WRITEBEGIN |
-FGP_ACCESSED` waits for writeback first; elsewhere the wait is a no-op.
-
-### Stable rules / risk vs benefit
-
-Meets all six stable criteria. Benefit is preventing filesystem data
-corruption on a real (if not universal) device class; risk is a single
-established flag combination.
-
-### Concerns
-
-- Nested in a larger series, but this patch is standalone.
-- No field report; the author found it while reordering zeroing. Still a
-  concrete integrity bug, and this tree already contains the reorder
-  that widens it.
-- Lore stable-list search was blocked (403); that does not change the
-  code-level conclusion.
-
-Verification:
-- [Phase 1] Parsed tags from `git show e1cf7b5f5c8ad`: Reviewed-by Jan
-  Kara; Link msgid `...4038124-2...`; no Fixes/Reported-by/Cc:stable
-- [Phase 1] Cover letter in `/tmp/ext4-fgp.mbox` msg 5: “pre-existing
-  stable-writes bug exposed by patch 4's reordering”
-- [Phase 2] Diff: 1 line in `ext4_load_tail_bh()`; flags
-  `FGP_LOCK|FGP_ACCESSED|FGP_CREAT` → `FGP_WRITEBEGIN|FGP_ACCESSED`
-- [Phase 2] `FGP_WRITEBEGIN` = `FGP_LOCK|FGP_WRITE|FGP_CREAT|FGP_STABLE`
-  (`include/linux/pagemap.h:720`)
-- [Phase 2] `__filemap_get_folio` calls `folio_wait_stable()` when
-  `FGP_STABLE` (`mm/filemap.c:1986-1987`)
-- [Phase 2] `folio_wait_stable()` only waits if
-  `mapping_stable_writes()` (`mm/page-writeback.c:3105-3108`)
-- [Phase 3] `git describe --contains --match 'v7.*' 3b312a6f510ca` →
-  v7.1-rc1 (helper introduced)
-- [Phase 3] `git describe --contains --match 'v7.*' e1cf7b5f5c8ad` →
-  v7.3-rc1 (this fix)
-- [Phase 3] `git merge-base --is-ancestor e1cf7b5f5c8ad HEAD` true;
-  `3b312a6f510ca` also ancestor
-- [Phase 3] `git show 9d3973de9a374`: folio conversion used the same
-  non-stable flags; previously `find_or_create_page()`
-- [Phase 3] `git show 3b312a6f510ca`: factor-out copied those flags into
-  `ext4_load_tail_bh()`
-- [Phase 4] `b4 dig -c e1cf7b5f5c8ad`: lore URL; v3 then v4; v4 no code
-  change
-- [Phase 4] `b4 dig -w`: linux-ext4, tytso, Jan Kara, adilger, Ojaswin,
-  Ritesh on Cc
-- [Phase 4] `b4 dig -m /tmp/ext4-fgp.mbox`: Ted applied 1–8; patch 9
-  dropped; no NAK on patch 1
-- [Phase 4] WebFetch lore.kernel.org 403 — UNVERIFIED stable-list
-  discussion
-- [Phase 5] Callers: `ext4_block_do_zero_range` /
-  `ext4_block_journalled_zero_range` → `ext4_block_zero_range` →
-  `ext4_block_zero_eof` / `ext4_zero_partial_blocks` (truncate, punch,
-  zero_range, WRITE_ZEROES, append)
-- [Phase 5] Other ext4 write paths already use `FGP_WRITEBEGIN` or
-  `folio_wait_stable()`
-- [Phase 6] `git describe HEAD` = v7.3-rc4-27-gf0100363d8c37; Makefile
-  7.3.0-rc4
-- [Phase 6] Current `fs/ext4/inode.c:4042-4043` already has
-  `FGP_WRITEBEGIN | FGP_ACCESSED`
-- [Phase 7] fs/ext4, important filesystem
-- [Phase 8] `bdev_stable_writes()` = integrity csum OR
-  `BLK_FEAT_STABLE_WRITES` (`include/linux/blkdev.h:1410-1414`)
-- [Phase 8] `BLK_FEAT_STABLE_WRITES` set by nvme (data_digest), raid5
-  skip_copy, dm-integrity, zram, rbd, iscsi_tcp, mmc, drbd
-- [Phase 8] Failure: data corruption on stable-write devices; wait is
-  no-op otherwise
-- UNVERIFIED: linux-stable mailing list history (HTTP 403)
-- UNVERIFIED: full v2 review mail body for this hunk (lore 403);
-  Reviewed-by on the commit is verified
+## Local tree
+
+This checkout is **v7.3-rc4** (`7.3.0-rc4`, HEAD `f0100363d8c37`).
+`ext4_load_tail_bh()` exists here (since v7.1-rc1). The candidate
+`705a3fd3bac16` is already an ancestor of HEAD (merged in v7.3-rc1). The
+verdict is whether this fix belongs in **this** tree on technical merit,
+not because it was already applied.
+
+---
+
+## Phase 1: Commit message forensics
+
+**Step 1.1 — Subject**
+- Record: **[ext4] [check] check return value of `ext4_get_block()` in
+  `ext4_load_tail_bh()`**
+- Verb “check” here means propagate a previously ignored error.
+
+**Step 1.2 — Tags**
+- Record:
+  - `Signed-off-by: Zhang Yi <yi.zhang@huawei.com>` (author; ext4
+    reviewer in MAINTAINERS)
+  - `Reviewed-by: Jan Kara <jack@suse.cz>` (ext4 reviewer)
+  - `Link: https://patch.msgid.link/20260714080044.4038124-4-
+    yi.zhang@huaweicloud.com` (v4 3/9)
+  - `Signed-off-by: Theodore Ts'o <tytso@mit.edu>` (ext4 maintainer)
+  - No `Fixes:`, no `Cc: stable`, no `Reported-by`, no syzbot. Absence
+    of those tags is expected for this review.
+
+**Step 1.3 — Body**
+- Record: **Bug:** `ext4_load_tail_bh()` ignores `ext4_get_block()`
+  errors. On failure `buffer_mapped(bh)` stays false, the helper returns
+  `NULL`, and callers such as `ext4_block_do_zero_range()` treat that as
+  “hole / nothing to do” and return success.
+- **Symptom:** Silent success of zero-range, truncate, or punch-hole
+  while the tail block was not zeroed.
+- **Failure mode:** Stale data can later be exposed if the block was not
+  a hole.
+- **Root cause:** Error conflated with “unmapped hole”.
+- **No version range** in the message.
+
+**Step 1.4 — Hidden bug fix?**
+- Record: **Not hidden.** It is an explicit error-propagation / stale-
+  data fix. Cover letter later confirms patches 2 and 3 were “pre-
+  existing fixes … originally going to be sent separately,” then folded
+  into the WRITE_ZEROES series.
+
+---
+
+## Phase 2: Diff analysis
+
+**Step 2.1 — Inventory**
+- Record: **One file**, `fs/ext4/inode.c`: **+3 / −1**. One function:
+  `ext4_load_tail_bh()`. Surgical, single-file.
+
+**Step 2.2 — Flow**
+- Record: **Before:** unmapped bh → `ext4_get_block(..., create=0)`
+  return ignored → if still unmapped, `goto unlock` with `err == 0` →
+  `return NULL`.
+- **After:** negative return sets `err` and `goto unlock` → existing
+  `return err ? ERR_PTR(err) : NULL`.
+- Path: mapping lookup on the tail block during partial-block zeroing
+  (error path only).
+
+**Step 2.3 — Bug mechanism**
+- Record: **Logic / correctness (ignored error → false success).**
+  Category closest to “return value checking / missing error handling.”
+  Not UAF, leak, or race.
+- Mechanism: I/O or allocation failure from `ext4_get_block()` is
+  treated as a hole, so truncate/punch/zero-range skip tail zeroing and
+  still succeed.
+
+**Step 2.4 — Fix quality**
+- Record: **Obviously correct.** Callers already do `IS_ERR_OR_NULL(bh)`
+  / `PTR_ERR_OR_ZERO(bh)` (present since the helper was factored out).
+  Unlock/put already runs on the `unlock` path. Regression risk is low
+  **in this tree** because parent `2fff82f081401` skips inline-data EOF
+  zeroing (otherwise append writes on inline files could see `-ERANGE`).
+  No API change.
+
+---
+
+## Phase 3: Git history
+
+**Step 3.1 — Blame**
+- Record: Ignored `ext4_get_block()` call dates to **`d863dc3614e489`
+  (2013, Lukas Czerner)** inside `__ext4_block_zero_page_range`. Helper
+  **`ext4_load_tail_bh`** was factored out in **`3b312a6f510ca` (“ext4:
+  factor out journalled block zeroing range”, Zhang Yi, 2026-03)** and
+  kept the same ignored return. First in this lineage: **v7.1-rc1**.
+
+**Step 3.2 — Fixes: tag**
+- Record: **None.** Introducing commit for the helper is
+  `3b312a6f510ca`, ancestor of this HEAD. The ignored-return bug is
+  older than the helper.
+
+**Step 3.3 — File history**
+- Record: Same v4 series around this commit:
+  1. `e1cf7b5f5c8ad` FGP_WRITEBEGIN
+  2. `2fff82f081401` skip inline-data tail zeroing **(prerequisite)**
+  3. **`705a3fd3bac16` this fix**
+  4. `b16e9d27a643a` move partial zeroing earlier
+  5. `012e6a2c9ff4d` comment-only return-semantics clarification
+  6–9. WRITE_ZEROES edge handling (some of those have `Cc: stable`)
+- This patch is **standalone** given (2). (5) is comments only; 6–9 are
+  WRITE_ZEROES, not required for this error check.
+
+**Step 3.4 — Author**
+- Record: **Zhang Yi** is an ext4 **Reviewer** in MAINTAINERS; 178 ext4
+  commits in this tree. Not a drive-by.
+
+**Step 3.5 — Dependencies**
+- Record: Needs `ext4_load_tail_bh()` + `ERR_PTR` return +
+  `IS_ERR_OR_NULL` callers — all present since `3b312a6f510ca` (v7.1).
+  Needs **`2fff82f081401`** so inline-data append does not start
+  failing. Both are in this tree. **Applies standalone on top of that
+  parent.**
+
+---
+
+## Phase 4: Mailing list
+
+**Step 4.1 — Original discussion**
+- Record: `b4 dig -c 705a3fd3bac16` → **https://patch.msgid.link/2026071
+  4080044.4038124-4-yi.zhang@huaweicloud.com**
+- Series: **[PATCH v4 0/9] ext4: fix unaligned edge handling in
+  FALLOC_FL_WRITE_ZEROES**
+- Revisions: v1 → v4. v4 vs v3: **no code change** on this patch; v3
+  collected Jan’s R-b.
+- Cover letter: patches 2 and 3 were **pre-existing fixes folded in**,
+  not WRITE_ZEROES-only prep.
+- No NAK found on this patch. Ted merged it.
+
+**Step 4.2 — Recipients (`b4 dig -w`)**
+- Record: `linux-ext4`, `linux-fsdevel`, **tytso@mit.edu**,
+  **jack@suse.cz**, adilger, libaokun, ojaswin, ritesh.list —
+  maintainers/reviewers were on Cc. Jan reviewed; Ted committed.
+
+**Step 4.3 — Bug report**
+- Record: **No external bugzilla/syzbot report.** Issue found by code
+  inspection (author). Severity is argued in the commit: silent success
+  + possible stale data.
+
+**Step 4.4 — Series**
+- Record: 9 patches. This one is independently useful. Sibling patches
+  7–9 carry `Cc: stable` for WRITE_ZEROES; this one does not. That is
+  **not** used as a NO vote (tags are expected to be absent here).
+
+**Step 4.5 — stable@**
+- Record: **UNVERIFIED.** lore.kernel.org WebFetch returned 403; no
+  separate stable-thread confirmation. `b4 dig` matched the ext4 thread.
+
+---
+
+## Phase 5: Semantic / call graph
+
+**Step 5.1 — Functions**
+- Record: **`ext4_load_tail_bh`** only.
+
+**Step 5.2 — Callers**
+- Record (this tree):
+  - `ext4_block_do_zero_range()` → `IS_ERR_OR_NULL` / `PTR_ERR_OR_ZERO`
+  - `ext4_block_journalled_zero_range()` → same
+  - via `ext4_block_zero_range()`:
+    - `ext4_block_zero_eof()` — truncate (`ext4_truncate`), setattr
+      grow, append (`ext4_write_checks` in `fs/ext4/file.c`)
+    - `ext4_zero_partial_blocks()` — punch-hole (`ext4_punch_hole`),
+      `ext4_zero_range()` / WRITE_ZEROES in `fs/ext4/extents.c`
+
+**Step 5.3 — Callees**
+- Record: `__filemap_get_folio`, `ext4_get_block` (lookup only),
+  `ext4_read_bh_lock`, folio lock/put.
+
+**Step 5.4 — Reachability**
+- Record: **Yes, from userspace:** `truncate`/`ftruncate`, `fallocate`
+  (punch/zero/WRITE_ZEROES), append `write`. Unprivileged processes on
+  their own files can hit the path. The **error** itself needs
+  `ext4_get_block()` failure (I/O error, ENOMEM, corruption), not a
+  normal happy path.
+
+**Step 5.5 — Similar patterns**
+- Record: Same ignored return lived in `__ext4_block_zero_page_range`
+  since 2013. No second copy of this exact bug in current
+  `ext4_load_tail_bh`.
+
+---
+
+## Phase 6: This checkout
+
+**Step 6.1 — Buggy code here?**
+- Record: **Yes.** Helper is in `fs/ext4/inode.c` (~4033). Introduced
+  **v7.1-rc1** (`3b312a6f510ca`). This 7.3-rc4 tree has that code. The
+  ignored-return bug existed until `705a3fd3bac16` (v7.3-rc1).
+
+**Step 6.2 — Backport difficulty**
+- Record: **Clean apply** onto the parent in this tree
+  (`2fff82f081401`). Three lines. Later `b4e409c18c797` removed fs-layer
+  fscrypt decrypt from this function; that is after/around the same
+  merge window and does not change the get_block check.
+
+**Step 6.3 — Related fixes already here?**
+- Record: Prerequisite `2fff82f081401` is in HEAD. Follow-up
+  `012e6a2c9ff4d` is comments only. No competing alternate fix.
+
+---
+
+## Phase 7: Subsystem
+
+**Step 7.1**
+- Record: **ext4 (`fs/ext4`)** — **IMPORTANT** (default Linux
+  filesystem; data integrity).
+
+**Step 7.2**
+- Record: **Active** in 7.3 (WRITE_ZEROES series, iomap, fastcommit,
+  etc.). Helper itself is recent (7.1) but the ignored-return pattern is
+  old.
+
+---
+
+## Phase 8: Impact and risk
+
+**Step 8.1 — Who**
+- Record: **Filesystem-specific:** ext4 users doing truncate, punch-
+  hole, zero-range, append, WRITE_ZEROES.
+
+**Step 8.2 — Trigger**
+- Record: Partial-block zeroing **plus** `ext4_get_block()` failure.
+  Uncommon (I/O error / ENOMEM / bad metadata). Unprivileged users can
+  invoke the operations; they cannot usually force get_block failure
+  except under memory/IO pressure.
+
+**Step 8.3 — Failure mode**
+- Record: **Stale data / false success** on truncate/punch/zero-range.
+  Not a panic. **Severity: HIGH** for a filesystem (classic “truncate
+  succeeded but tail not zeroed → later extend exposes old data”). Not
+  CRITICAL (no oops/deadlock).
+
+**Step 8.4 — Ratio**
+- Record: **Benefit: high** for ext4 data integrity on error paths.
+  **Risk: very low** (3 lines, existing ERR_PTR path, Jan + Ted).
+  Prerequisite for inline data is already in this tree.
+
+---
+
+## Phase 9: Synthesis
+
+**Step 9.1 — Evidence**
+
+**For:**
+- Real correctness bug: mapping lookup failure reported as success.
+- Concrete data-integrity outcome on truncate/punch/zero-range.
+- Userspace-reachable (common ext4 ops).
+- 3-line, obviously correct; callers already handle `ERR_PTR`.
+- Reviewed by Jan Kara, merged by Ted Ts'o; author is an ext4 reviewer.
+- Cover letter: intended as a standalone pre-existing fix.
+- Buggy helper **is in this 7.3 tree** (since 7.1).
+- Prerequisite inline-data skip **is in this tree**.
+
+**Against:**
+- Error-path only; no syzbot/user `Reported-by`.
+- Bundled in a 9-patch WRITE_ZEROES series (mitigated: explicitly called
+  out as a separate pre-existing fix).
+- Trigger requires get_block failure (rare).
+
+**Unresolved:** stable@ archive (lore 403); full v1 review text beyond
+the on-commit `Reviewed-by`.
+
+**Step 9.2 — Stable rules**
+1. Obviously correct and tested? **PASS** (trivial check; R-b Jan; in
+   7.3-rc1)
+2. Real bug affecting users? **PASS** (false success + possible stale
+   data)
+3. Important (crash/security/corruption/deadlock)? **PASS** (stale data
+   / integrity, HIGH)
+4. Small and contained? **PASS** (+3/−1, one function)
+5. No new features/APIs? **PASS**
+6. Can apply to this tree? **PASS** (helper + callers + prerequisite
+   present)
+
+**Step 9.3 — Exceptions**
+- Record: **None** (not a device ID/quirk/DT/build/doc exception).
+  Ordinary bugfix.
+
+**Step 9.4 — Decision**
+This is a small, reviewed ext4 integrity fix for code that exists in
+this 7.3-rc4 tree. Callers already propagate `ERR_PTR`. The inline-data
+prerequisite is present, so the change does not turn append-on-inline-
+data into `-ERANGE`. It meets stable criteria for **this** tree.
+
+---
+
+## Why it matters here
+
+On this 7.3 tree, `ext4_load_tail_bh()` is the shared tail-zero helper
+for truncate, punch-hole, fallocate zero/WRITE_ZEROES, and post-EOF
+append. Ignoring `ext4_get_block()` makes a failed extent lookup look
+like a hole, so those operations can succeed without zeroing a mapped
+tail. Later grow/read can then expose stale bytes. Checking the return
+and using the existing `ERR_PTR` path is the right, minimal fix.
+
+Risk is low: three lines, no locking/API change, prerequisite
+`2fff82f081401` already in this checkout.
+
+---
+
+## Verification
+
+- **[Phase 1]** Parsed commit
+  `705a3fd3bac167f1dabe3d3bba46cd484c5528dd`: Zhang Yi, R-b Jan Kara,
+  SOB Ted Ts'o, Link msgid `…4038124-4…`. No Fixes/Cc:stable/Reported-
+  by.
+- **[Phase 2]** `git show 705a3fd3bac16`: +3/−1 in `ext4_load_tail_bh`;
+  `err = ext4_get_block(...); if (err < 0) goto unlock`.
+- **[Phase 2]** Confirmed unlock already returns `err ? ERR_PTR(err) :
+  NULL` before the patch (`git show 705a3fd3bac16^:fs/ext4/inode.c`).
+- **[Phase 2]** Callers at the fix: `IS_ERR_OR_NULL` / `PTR_ERR_OR_ZERO`
+  (`git grep` on `705a3fd3bac16`).
+- **[Phase 3]** `git blame 705a3fd3bac16^` around the call:
+  `d863dc3614e489` (2013).
+- **[Phase 3]** `git log -S ext4_load_tail_bh -- fs/ext4/inode.c` →
+  `3b312a6f510ca`; `git describe --contains` → **v7.1-rc1**.
+- **[Phase 3]** `git merge-base --is-ancestor 3b312a6f510ca HEAD` true;
+  `705a3fd3bac16` ancestor of HEAD true; **not** in v7.2; **in**
+  v7.3-rc1.
+- **[Phase 3]** Parent `2fff82f081401` documents `-ERANGE` on inline
+  data if this check is added without the skip; that skip is in HEAD.
+- **[Phase 4]** `b4 dig -c 705a3fd3bac16` → v4 3/9 lore URL; `-a` showed
+  v3 and v4; `-w` listed ext4 maintainers.
+- **[Phase 4]** Cover letter (mbox): “Fold in two pre-existing fixes
+  (now patches 2 and 3)”.
+- **[Phase 4]** WebFetch lore/msgid.link: **403**. Stable-list search:
+  **UNVERIFIED**.
+- **[Phase 5]** Grep callers: `ext4_block_do_zero_range`,
+  `ext4_block_journalled_zero_range` → `ext4_block_zero_eof` /
+  `ext4_zero_partial_blocks` → truncate, setattr, punch-hole,
+  zero_range, `file.c` append.
+- **[Phase 5]** Truncate: `ext4_truncate` → `ext4_block_zero_eof`; on
+  error `goto out_trace` (does **not** keep shrinking after a failed
+  zero). Punch-hole/`ext4_zero_range` return the error.
+- **[Phase 6]** `git describe HEAD` = `v7.3-rc4-27-gf0100363d8c37`;
+  `make kernelversion` = `7.3.0-rc4`.
+- **[Phase 6]** Buggy helper present in this tree since v7.1;
+  prerequisite and this commit both ancestors of HEAD.
+- **[Phase 7]** MAINTAINERS: Zhang Yi is `R:` on EXT4; Jan Kara is `R:`;
+  Ted is `M:`.
+- **[Phase 8]** Failure mode verified from commit text + truncate/punch
+  callers, not from a live repro (no reproducer in the message).
+- **UNVERIFIED:** Whether `ext4_get_block` can return an error while
+  leaving `BH_Mapped` set (fix still correct: any `err < 0` is
+  propagated). No live I/O-error repro.
+
+The patch is a small, reviewed ext4 integrity fix for code that exists
+in this 7.3 tree, with callers already wired for `ERR_PTR` and the
+inline-data prerequisite present.
 
 **YES**
 
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/inode.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2e3f7ba1a924b..c3fb5f16f6e39 100644
+index 9a5c08650bd1e..2e3f7ba1a924b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4092,7 +4092,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 	int err = 0;
- 
- 	folio = __filemap_get_folio(mapping, from >> PAGE_SHIFT,
--				    FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
-+				    FGP_WRITEBEGIN | FGP_ACCESSED,
- 				    mapping_gfp_constraint(mapping, ~__GFP_FS));
- 	if (IS_ERR(folio))
- 		return PTR_ERR(folio);
+@@ -4119,7 +4119,9 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 	}
+ 	if (!buffer_mapped(bh)) {
+ 		BUFFER_TRACE(bh, "unmapped");
+-		ext4_get_block(inode, iblock, bh, 0);
++		err = ext4_get_block(inode, iblock, bh, 0);
++		if (err < 0)
++			goto unlock;
+ 		/* unmapped? It's a hole - nothing to do */
+ 		if (!buffer_mapped(bh)) {
+ 			BUFFER_TRACE(bh, "still unmapped");
 -- 
 2.53.0
 
