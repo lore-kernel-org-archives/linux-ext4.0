@@ -1,87 +1,59 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.174
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792461071;
-	b=UbKqlMeQWJe+LfRP/q6ANKKRupEEXCX2V8G+W/AjH7ao/LQMD/eREYwtbUOzAOMixv+n
-	 E/oIzmy+5eJSCiVlr5niPNEu/54kg5h06/gMhUeIpwOqV5uE/K+J3OmtLK07RdkHpEx/m
-	 E+DynihTzhR9tBZBbKqbrnkyhIeae2iZdBpsoFDgUv1Hyod5nHQPGhv2svuJG0US0j2Dv
-	 +mCM6T5dcYTYuPA8ZCHuRGoA2sjUJ0xMJshg0vOoK127xLE6/vVknqquz9FZqeaHdjQGJ
-	 CLvv1b7EbXcchTvZ4f5zmwCaCrehmPYzUqVNQVZsJqE5Ky299vvRikVP7gUCjHvJniw==
+	t=1792463480;
+	b=owEYl/MDe9dPsqOOgLAaNEmc1/ESl13Z8QRQlliVoLHcSvRjz9Fp+3C3Og8oxd1j7MaG
+	 gjkyvvoUH0PLOiSxXNv+SM9DdR1vtrvsRAxb9ZeukkbRPwqfMeR4UFPegTcC1sVds9ryg
+	 CrGedJfgPuyFGb6rEo5tLkf0esdc/SSY3jy9xpg2MuzQ6Ox9N5kVAvTceapC1Eg3Hj5ay
+	 XdXgw5S/WyDCDfsQSTfYQ1vQ02QMghJYLcqnf5fBZwMC30Y0Ip5gAGDe0JrgNRPBJJbgm
+	 Co38iDLIxLExenfawS08K/j0lUnOyYLJ2eNwQdSwG5JE9dLaPMDoQitlRe5qLEAfotw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792461071;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Content-Type:Mime-Version:Subject:From:In-Reply-To:Date:Cc:
-	 Content-Transfer-Encoding:Message-Id:References:To:X-Mailer;
-	bh=GkUROnuuq3GQnIlFVFlBip9eGtoY+U0f5TO49V3vauk=;
-	b=iLNKlMtDyxd0xCQWQWUVp5peeaNrl7NuYioI7vDV0lQJSJkkckQ1iVx7YSnvWD/jaiK9
-	 fROex6trFzWs5gHArqr24GL1JUhObM2NgV5WbZcuOV11H+GNb6PsmODtMFzKMuIINVmSw
-	 gH8DQY1KTfTunpu4VA/HbU+7rcR3K4YrGvzlWikgSO+N5nhkNYPSoMHCAImKtIZQAI8h5
-	 WoDMx+7/lN7sdWrPcEqtC4yOLS0+UBoJqSnRb068iAja9LWfLFDMdACutbYeM3TdlAc1c
-	 iv3N6QgGgdu9mfbF4tyBjlPsToYpBvA3ME00gjLPVqZem8qb+eoSS3GIoZoSf8sa6TA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792463480;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Subject:
+	 Message-ID:MIME-Version:Content-Type:Content-Disposition;
+	bh=RzwQCivDJSPWbdNr9UQvzswVKVwJ7/cbm/3JW+r54Js=;
+	b=W7EgtN0iteHUC7Jl6AOt+5MUJbTQjn1aUIOiRS684EU9jrZkuMh5n8mA9tWR4QA7ojMj
+	 fH1lpfFYKe6F6AAnC+l/75n+GRGHrhytpP29PSLW6EVzkv+3hcUk+Jmub/UrZeLbXthL0
+	 1OmTxMYCHx9NhtHLvqXW3uOHH5Uu+CZORkTceYsj0y/xHPTHL2zVYCE1svPeq+tAn5Vlk
+	 y4xCGRnmAIilHRHFCbaiIze1+F6enea5zV7zn3FXYuk0tuxe45c0yH09KkIGIz9PV/RNX
+	 yw4luaSrIGJwy4hmZl0mWWUB8etNCEfHanqlL/st4GuyNQs9JZNsQRPyiVw4QaH2LhA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=dilger.ca;
-	spf=pass smtp.mailfrom=dilger.ca;
-	dkim=pass header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.a=rsa-sha256 header.s=20251104 header.b=GoBbALlJ;
-	arc=none smtp.remote-ip=209.85.214.174
-Received: from mail-pl1-f174.google.com (mail-pl1-f174.google.com [209.85.214.174])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=mit.edu;
+	spf=pass smtp.mailfrom=mit.edu;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MWbYbPMJ;
+	arc=none smtp.remote-ip=18.9.28.11
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3257F606A32A
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2026 01:51:09 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3257F606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dilger.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dilger.ca
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A2469606A31B
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2026 02:31:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A2469606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=dilger-ca.20251104.gappssmtp.com header.i=@dilger-ca.20251104.gappssmtp.com header.a=rsa-sha256 header.s=20251104 header.b=GoBbALlJ
-Received: by mail-pl1-f174.google.com with SMTP id d9443c01a7336-2ea1e7fad99so1409195ad.1
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Oct 2026 18:51:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20251104.gappssmtp.com; s=20251104; t=1792461069; x=1793065869; darn=vger.kernel.org;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=GkUROnuuq3GQnIlFVFlBip9eGtoY+U0f5TO49V3vauk=;
-        b=GoBbALlJgfwGSsoPzUYYckdkHBmwzQiNFNMfG88oQ5xhOvJ/lkNr4aGcOBMZMIPDES
-         b3aDcRH2T8OGpJwVbaMtiKIury01fPNG9VmfkPGOA1vlNXb7f8Yy93V7GROYXpaBS4NP
-         uNj9uNXmLNLVe9m7FPOU74t+eUdfS5/XwOGm5bn0rDKBj5zfwdKcYa/plbrPDi/ipt0T
-         KSRK9GEyJXsAJ7DaIAyV7SSiVACZhxwqlqCRU+noYCGisFKKK13txgLQWFsNjAHdmASo
-         LUIDeMzFINHMi5aBJ4nqLYbbnSthO30HMPDVuzt5FPknUCzUrWUKc5xc1epe24EyU35z
-         T0Ww==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792461069; x=1793065869;
-        h=to:references:message-id:content-transfer-encoding:cc:date
-         :in-reply-to:from:subject:mime-version:content-type:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=GkUROnuuq3GQnIlFVFlBip9eGtoY+U0f5TO49V3vauk=;
-        b=ENvl7ucOeF45SaCqbXmiZhx44VmFxg48ytpdfDsCkg4UbgGyCjZSJK/YpAqwOYXS83
-         C3ReAs03P0nHp74FyFVje/cM/1hNxF6lKPz+xm25p2shseaUKpoF8KDT1E/E7GMfDWqx
-         v3FOGnRKCRqqOLbkyksn96IZyQlGb6pe3A4r+e0HVDfvYrafpt2iVP7xlCZcODFiKLiB
-         vQNee9r7R7XumHmKKGlWP06q/3dU/pQgulKKkMAEeSU9Tn8A9odWu7jQfIRiS0ZI1l4I
-         x7emDOdTAL2nfew0NfR0vCpKo8nNOahSVczRLmQBM/VBKnYR9pVztASvQ0vH+dvmH0N8
-         lwwQ==
-X-Forwarded-Encrypted: i=1; AKwUvBxKANcesR9BTxf8Dv9BZAmxg3MT3BkTKCGugVAEmTG8gZHaJE4b8kiVX6J8VfRLzN1BVCLujwv4x5Ks@vger.kernel.org
-X-Gm-Message-State: AFq9FYI3EV0OiSrKJ5dGuP0KLzyRLEacOQwdr/pXWg1dOG7tHH4vXRv+
-	e6YLuixGC6HwI/dBhrlBI1E3lgf2v4oM1ck6KUoLEwUnQBwpq8Do75A1AN3XsFAzLpufMgTLNFf
-	XSgiyAdQ=
-X-Gm-Gg: AYBFou26hk+T1HHIBYXuor2h4hSVCmoYmIjcZmnklBRUNPwQS6ZOW8QEmYFOcS+mre/
-	Bh75Mk6Me5Ct6aAEqZMHYmAZyRlwWyjaPa8+t9FVCXVf6XFy2DntaKBRDjpkcy6fHx9Eu0COeYl
-	Pmf+aRNYtPhG9K6p9VSkq9k9zy/WPbn4u3HAuhTyL6hwn8gEyeBwWVfNK718JCPLWqgj6wQuoIU
-	AndicBz+GKKrS4scEHpsVdWmlyGbQBf9oJkbvHJgM1QlUjw97tS41vKWl2dRWjb+9PpOtnqUro4
-	y3tPrVP8ypiN7TFPX3hA72KBKAnRkim7Xx4HZoOs1WxhSvDVt+zewlzHBMODL/jcLZVMsscLKrA
-	dKQiBWPEyqXuWSHy8G71sUC5RuuISafzXrWZvDxhSG3YSAX/gbQtQK6bdm+mICRGsI5h3p/p/4O
-	T1ocRe7ClhMz1q3XmICO05Xvg03reSCFhx/i0KKjax2N6nEv7BSIK8Qymb55aedQAZCN7R/Tej+
-	S2OjDPiFCjjaIZvH1/5+zQ0KcLH7JTamZ0sytG18cfHv1QROSWfQT0k8BLl2R9H+CfSlHauZfl6
-	NbZ/zsHUUzMFD9btSSXYGflzroYbB9yYR4o=
-X-Received: by 2002:a17:902:f603:b0:2e5:70cd:b606 with SMTP id d9443c01a7336-2e9a705c7c9mr72997865ad.56.1792461069403;
-        Mon, 19 Oct 2026 18:51:09 -0700 (PDT)
-Received: from smtpclient.apple (S01068c763f81ca4b.cg.shawcable.net. [24.64.171.237])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2ea1502971csm6928475ad.51.2026.10.19.18.51.08
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 19 Oct 2026 18:51:09 -0700 (PDT)
-Content-Type: text/plain;
-	charset=us-ascii
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=MWbYbPMJ
+Received: from macsyma.thunk.org (pool-173-48-113-115.bstnma.fios.verizon.net [173.48.113.115])
+	(authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69K2VAUi026398
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Mon, 19 Oct 2026 22:31:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+	t=1792463472; bh=RzwQCivDJSPWbdNr9UQvzswVKVwJ7/cbm/3JW+r54Js=;
+	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
+	b=MWbYbPMJX9vG43W+RsL9TtmFwx81NkGwIfzvJjjfjgcdd5b1SZrSTqkbBEdQF4+Om
+	 BL5jD+Xsmp6iV7kgm4f0w9lmFTPG5c+jTm2qKIpgQGWyVtWsdzmIWgxyhqXf8u8kZL
+	 5LD/Rm6XSCN0az/aHU+QXn8l/kUmXm1c1ReCLOGdkFA+3X3pT4XYY8HSDHHuVdIsdO
+	 SiqUQ8l0nRmW0W1+7Wkmz1Js1/zik51k3hD9R00YOvlzaDEC6UKm2sFM8TdDKCtcSs
+	 /Hn6cIVhfN72ssXvVkydQ66m98SX7FF7a9l6xM2fH7RBkrKsWsXJTg+Pyr5RscDBsJ
+	 IyOdEAbMDrA3g==
+Received: by macsyma.thunk.org (Postfix, from userid 15806)
+	id 5E35F21A952E; Mon, 19 Oct 2026 22:30:10 -0400 (EDT)
+Date: Mon, 19 Oct 2026 22:30:10 -0400
+From: "Theodore Tso" <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        kunit-dev@googlegroups.com
+Subject: [PATCH -RFC] ext4: add KUinit tests for fs/ext4/extents_status.c
+Message-ID: <atbPbe-i8DV3kLr8@mit.edu>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -90,62 +62,1638 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3864.700.51.1.3\))
-Subject: Re: ext4 data=journal deprecation: long-standing industrial use case
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <AM0PR03MB5714FB8241C13A499E7D5155DE982@AM0PR03MB5714.eurprd03.prod.outlook.com>
-Date: Mon, 19 Oct 2026 19:50:57 -0600
-Cc: Theodore Tso <tytso@mit.edu>,
- Gabriele Moabiti <gabmoa@gmail.com>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <4FAF6F56-F054-474C-8538-92D8309FAC08@dilger.ca>
-References: <CAAbJaeALOrZwWs++mz9Wv0pfvyDoHmfzPKyVHR0v6TwnzLkYGw@mail.gmail.com>
- <as0U-lfet5slrD8o@mit.edu>
- <AM0PR03MB5714FB8241C13A499E7D5155DE982@AM0PR03MB5714.eurprd03.prod.outlook.com>
-To: "Korber, Markus" <markus.korber@anton-paar.com>
-X-Mailer: Apple Mail (2.3864.700.51.1.3)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-On Oct 19, 2026, at 02:51, Korber, Markus <markus.korber@anton-paar.com> =
-wrote:
->=20
-> On Mon, Oct 12, 2026, Theodore Tso wrote:
->> Given that there is no guarantees of what writes will be persisted
->> with respect to program execution, it's unclear exactly what your
->> deployments are requiring or assuming.
->=20
-> I'd like to add another data point in support of Gabriele's use case.
->=20
-> We also use ext4 data=3Djournal on embedded systems where unexpected
-> power loss is possible. Our main concern is not losing the most recent
-> few seconds of data. That is acceptable for our use case. What we want
-> to avoid is corruption of file contents after an unexpected power =
-loss.
->=20
-> We performed repeated hard power-cut tests using both data=3Dordered =
-and
-> data=3Djournal. With data=3Dordered we observed, among other expected
-> failure modes, files containing NULs and partially written files where
-> the unwritten part contained NULs. These failure modes are =
-particularly
-> difficult for applications to recover from.
->=20
-> With data=3Djournal we still observed lost recent files, zero-length
-> files and truncated current writes, but we did not observe those
-> NUL-filled corruption patterns.
->=20
-> So at least for our use case, the useful property of data=3Djournal is
-> not primarily reducing the amount of recent data that can be lost.
-> It is the different failure behavior when power is removed during file
-> I/O.
+These tests were created with the help of Gemini Pro.
 
-Hi Markus,
-are you running with delalloc disabled when testing ordered mode?  That =
-might be the source of NULs in recently written files.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
 
-Cheers, Andreas
+This was an experiment to see how well a frontier model could write a
+Kunit test, since more unit tests, we can more efficiently and more
+quickly perform agentic code review, agentic rebase, and agentic
+coding loops.
 
+The ext4 extents status tree is probably the easist code to create
+unit tests, but I wanted to start small before giving the LLM
+something more challenging.   What do people think?
 
+ fs/ext4/Makefile              |    3 +-
+ fs/ext4/extents.c             |    5 -
+ fs/ext4/extents_status-test.c | 1509 +++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.c      |   19 +
+ fs/ext4/inode.c               |   10 +
+ 5 files changed, 1540 insertions(+), 6 deletions(-)
+ create mode 100644 fs/ext4/extents_status-test.c
 
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 3f9fc0eb8eca..74b485dbb229 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -15,7 +15,8 @@ ext4-y	:= balloc.o bitmap.o block_validity.o dir.o ext4_jbd2.o extents.o \
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+ ext4-test-objs				+= inode-test.o mballoc-test.o \
+-					   extents-test.o hash-test.o
++					   extents-test.o hash-test.o \
++					   extents_status-test.o
+ obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-test.o
+ ext4-$(CONFIG_FS_VERITY)		+= verity.o
+ ext4-$(CONFIG_FS_ENCRYPTION)		+= crypto.o
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 76038b6c3655..6c018bcc0118 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -6407,12 +6407,7 @@ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_split_convert_extents_test);
+ 
+ EXPORT_SYMBOL_FOR_EXT4_TEST(__ext4_ext_dirty);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_ext_zeroout);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_register_shrinker);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_unregister_shrinker);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_map_create_blocks);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_init_tree);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_lookup_extent);
+-EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_insert_extent);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_ext_insert_extent);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_find_extent);
+ EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_issue_zeroout);
+diff --git a/fs/ext4/extents_status-test.c b/fs/ext4/extents_status-test.c
+new file mode 100644
+index 000000000000..65376666a362
+--- /dev/null
++++ b/fs/ext4/extents_status-test.c
+@@ -0,0 +1,1509 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * KUnit tests for ext4 extents status tree and bigalloc pending reservations.
++ */
++
++#include <kunit/test.h>
++#include <kunit/test-bug.h>
++#include <kunit/static_stub.h>
++#include <linux/fs_context.h>
++#include <linux/seq_file.h>
++
++#include "ext4.h"
++
++struct es_test_ctx {
++	struct super_block *sb;
++	struct ext4_sb_info *sbi;
++	struct ext4_inode_info *ei;
++	bool shrinker_registered;
++
++	/* Tracking for stubbed delalloc reservation callbacks */
++	int da_update_calls;
++	int last_da_used;
++	int total_da_used;
++	int last_da_quota_claim;
++
++	int da_release_calls;
++	int last_da_released;
++	int total_da_released;
++};
++
++struct expected_es {
++	ext4_lblk_t lblk;
++	ext4_lblk_t len;
++	ext4_fsblk_t pblk;
++	unsigned int type;
++};
++
++static void reset_da_stub_stats(struct es_test_ctx *ctx)
++{
++	ctx->da_update_calls = 0;
++	ctx->last_da_used = 0;
++	ctx->total_da_used = 0;
++	ctx->last_da_quota_claim = 0;
++
++	ctx->da_release_calls = 0;
++	ctx->last_da_released = 0;
++	ctx->total_da_released = 0;
++}
++
++static void ext4_da_update_reserve_space_stub(struct inode *inode,
++					      int used, int quota_claim)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct es_test_ctx *ctx;
++
++	if (!test || !test->priv)
++		return;
++
++	ctx = test->priv;
++	ctx->da_update_calls++;
++	ctx->last_da_used = used;
++	ctx->total_da_used += used;
++	ctx->last_da_quota_claim = quota_claim;
++}
++
++static void ext4_da_release_space_stub(struct inode *inode, int to_free)
++{
++	struct kunit *test = kunit_get_current_test();
++	struct es_test_ctx *ctx;
++
++	if (!to_free || !test || !test->priv)
++		return;
++
++	ctx = test->priv;
++	ctx->da_release_calls++;
++	ctx->last_da_released = to_free;
++	ctx->total_da_released += to_free;
++}
++
++static int es_init_fs_context(struct fs_context *fc)
++{
++	return 0;
++}
++
++static int es_set_anon(struct super_block *sb, struct fs_context *fc)
++{
++	return set_anon_super_fc(sb, fc);
++}
++
++static struct file_system_type es_fs_type = {
++	.name		 = "extents_status test",
++	.init_fs_context = es_init_fs_context,
++	.kill_sb	 = kill_anon_super,
++};
++
++static void es_init_mock_inode(struct ext4_inode_info *ei,
++			       struct super_block *sb, unsigned long ino)
++{
++	struct inode *inode = &ei->vfs_inode;
++
++	memset(ei, 0, sizeof(*ei));
++	inode->i_sb = sb;
++	inode->i_ino = ino;
++	inode->i_blkbits = sb->s_blocksize_bits;
++
++	ext4_es_init_tree(&ei->i_es_tree);
++	ext4_init_pending_tree(&ei->i_pending_tree);
++	rwlock_init(&ei->i_es_lock);
++	INIT_LIST_HEAD(&ei->i_es_list);
++	init_rwsem(&ei->i_data_sem);
++	spin_lock_init(&ei->i_block_reservation_lock);
++	ext4_set_inode_flag(inode, EXT4_INODE_EXTENTS);
++}
++
++static void es_cleanup_inode(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct rb_node *node;
++
++	sbi->s_mount_state &= ~EXT4_FC_REPLAY;
++	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
++
++	while ((node = rb_first(&ei->i_pending_tree.root)) != NULL) {
++		struct pending_reservation *pr;
++
++		pr = rb_entry(node, struct pending_reservation, rb_node);
++		ext4_remove_pending(inode, EXT4_C2B(sbi, pr->lclu));
++	}
++}
++
++KUNIT_DEFINE_ACTION_WRAPPER(es_cleanup_inode_action, es_cleanup_inode,
++			    struct inode *);
++
++static struct inode *es_alloc_test_inode(struct kunit *test,
++					 struct super_block *sb,
++					 unsigned long ino)
++{
++	struct ext4_inode_info *ei;
++	int ret;
++
++	ei = kunit_kzalloc(test, sizeof(*ei), GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, ei);
++	es_init_mock_inode(ei, sb, ino);
++
++	ret = kunit_add_action_or_reset(test, es_cleanup_inode_action,
++					&ei->vfs_inode);
++	KUNIT_ASSERT_EQ(test, ret, 0);
++
++	return &ei->vfs_inode;
++}
++
++static void es_set_cluster_bits(struct super_block *sb,
++				unsigned int cluster_bits)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	sbi->s_cluster_bits = cluster_bits;
++	sbi->s_cluster_ratio = 1U << cluster_bits;
++}
++
++static int es_kunit_init(struct kunit *test)
++{
++	struct es_test_ctx *ctx;
++	struct ext4_sb_info *sbi;
++	struct super_block *sb;
++	struct fs_context *fc;
++	int err;
++
++	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	sbi = kunit_kzalloc(test, sizeof(*sbi), GFP_KERNEL);
++	if (!sbi)
++		return -ENOMEM;
++
++	ctx->ei = kunit_kzalloc(test, sizeof(*ctx->ei), GFP_KERNEL);
++	if (!ctx->ei)
++		return -ENOMEM;
++
++	fc = fs_context_for_mount(&es_fs_type, 0);
++	if (IS_ERR(fc))
++		return PTR_ERR(fc);
++
++	sb = sget_fc(fc, NULL, es_set_anon);
++	put_fs_context(fc);
++	if (IS_ERR(sb))
++		return PTR_ERR(sb);
++
++	sbi->s_sb = sb;
++	sb->s_fs_info = sbi;
++	sb->s_blocksize = 4096;
++	sb->s_blocksize_bits = 12;
++	strscpy(sb->s_id, "es_kunit", sizeof(sb->s_id));
++
++	es_set_cluster_bits(sb, 0);
++	set_opt(sb, DELALLOC);
++	ratelimit_state_init(&sbi->s_warning_ratelimit_state,
++			     DEFAULT_RATELIMIT_INTERVAL,
++			     DEFAULT_RATELIMIT_BURST);
++
++	err = ext4_es_register_shrinker(sbi);
++	if (err) {
++		deactivate_locked_super(sb);
++		return err;
++	}
++
++	es_init_mock_inode(ctx->ei, sb, 12);
++	ctx->sb = sb;
++	ctx->sbi = sbi;
++	ctx->shrinker_registered = true;
++	test->priv = ctx;
++
++	kunit_activate_static_stub(test, ext4_da_update_reserve_space,
++				   ext4_da_update_reserve_space_stub);
++	kunit_activate_static_stub(test, ext4_da_release_space,
++				   ext4_da_release_space_stub);
++
++	up_write(&sb->s_umount);
++	return 0;
++}
++
++static void es_kunit_exit(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++
++	if (!ctx)
++		return;
++
++	if (ctx->ei && ctx->sb)
++		es_cleanup_inode(&ctx->ei->vfs_inode);
++	if (ctx->shrinker_registered)
++		ext4_es_unregister_shrinker(ctx->sbi);
++	if (ctx->sb)
++		deactivate_super(ctx->sb);
++}
++
++static void assert_es_tree(struct kunit *test, struct inode *inode,
++			   const struct expected_es *exp, unsigned int nr_exp)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct rb_node *node;
++	unsigned int i = 0;
++	ext4_lblk_t prev_end = 0;
++
++	read_lock(&ei->i_es_lock);
++	for (node = rb_first(&ei->i_es_tree.root); node; node = rb_next(node)) {
++		struct extent_status *es =
++			rb_entry(node, struct extent_status, rb_node);
++
++		KUNIT_ASSERT_LT_MSG(test, i, nr_exp,
++				    "unexpected extra extent [%u/%u) type 0x%x",
++				    es->es_lblk, es->es_len, ext4_es_type(es));
++
++		if (i > 0)
++			KUNIT_EXPECT_GT_MSG(test, es->es_lblk, prev_end,
++					    "extent %u not strictly ordered",
++					    i);
++
++		KUNIT_EXPECT_EQ_MSG(test, es->es_lblk, exp[i].lblk,
++				    "extent %u lblk mismatch", i);
++		KUNIT_EXPECT_EQ_MSG(test, es->es_len, exp[i].len,
++				    "extent %u len mismatch", i);
++		KUNIT_EXPECT_EQ_MSG(test, ext4_es_type(es), exp[i].type,
++				    "extent %u type mismatch", i);
++
++		if (exp[i].type & (EXTENT_STATUS_WRITTEN |
++				   EXTENT_STATUS_UNWRITTEN))
++			KUNIT_EXPECT_EQ_MSG(test, ext4_es_pblock(es),
++					    exp[i].pblk,
++					    "extent %u pblk mismatch", i);
++
++		prev_end = es->es_lblk + es->es_len - 1;
++		i++;
++	}
++	read_unlock(&ei->i_es_lock);
++
++	KUNIT_EXPECT_EQ(test, i, nr_exp);
++	KUNIT_EXPECT_EQ(test, ei->i_es_all_nr, nr_exp);
++}
++
++/*
++ * Group 1: Bitfield Encoding & Inline Helpers
++ */
++static void test_es_bitfield_written_and_unwritten_encoding(struct kunit *test)
++{
++	struct extent_status es = {};
++	const ext4_fsblk_t sample_pblk = 0x123456789abcULL;
++
++	ext4_es_store_pblock_status(&es, sample_pblk, EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), sample_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_show_pblock(&es), sample_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_type(&es), EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_EQ(test, ext4_es_status(&es), EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_written(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_unwritten(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_delayed(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_hole(&es));
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_mapped(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_referenced(&es));
++
++	ext4_es_store_pblock_status(&es, sample_pblk, EXTENT_STATUS_UNWRITTEN);
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), sample_pblk);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_unwritten(&es));
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_mapped(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_written(&es));
++}
++
++static void test_es_bitfield_delayed_and_hole_encoding(struct kunit *test)
++{
++	struct extent_status es = {};
++	/* 59-bit physical block field (64 - 5 status bits) all ones */
++	const ext4_fsblk_t max_59bit_pblk = 0x07ffffffffffffffULL;
++
++	ext4_es_store_pblock_status(&es, ~0ULL, EXTENT_STATUS_DELAYED);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_delayed(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_mapped(&es));
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), max_59bit_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_show_pblock(&es), 0ULL);
++
++	ext4_es_store_pblock_status(&es, 0ULL, EXTENT_STATUS_HOLE);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_hole(&es));
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_mapped(&es));
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), 0ULL);
++}
++
++static void
++test_es_bitfield_referenced_and_pblock_update_preserve_state(struct kunit *test)
++{
++	struct extent_status es = {};
++	const ext4_fsblk_t initial_pblk = 0x123456789abcULL;
++	const ext4_fsblk_t updated_pblk = 0x07ffffffffffffffULL;
++
++	ext4_es_store_pblock_status(&es, initial_pblk, EXTENT_STATUS_WRITTEN);
++
++	/* Setting referenced bit preserves pblk and type */
++	ext4_es_set_referenced(&es);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_referenced(&es));
++	KUNIT_EXPECT_EQ(test, ext4_es_type(&es), EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), initial_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_status(&es),
++			EXTENT_STATUS_WRITTEN | EXTENT_STATUS_REFERENCED);
++
++	/* Updating pblock preserves status and referenced bit */
++	ext4_es_store_pblock(&es, updated_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), updated_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_type(&es), EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_referenced(&es));
++
++	/* Clearing referenced bit preserves updated pblk and type */
++	ext4_es_clear_referenced(&es);
++	KUNIT_EXPECT_FALSE(test, ext4_es_is_referenced(&es));
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), updated_pblk);
++	KUNIT_EXPECT_EQ(test, ext4_es_type(&es), EXTENT_STATUS_WRITTEN);
++}
++
++/*
++ * Group 2: Insertion, Lookup, Sequence Numbers, and Merging
++ */
++static void test_es_lookup_empty_tree_returns_miss(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct extent_status es;
++	ext4_lblk_t next_lblk = 0xdead;
++	s64 misses_before;
++	int ret;
++
++	misses_before = percpu_counter_sum_positive(
++		&ctx->sbi->s_es_stats.es_stats_cache_misses);
++	ret = ext4_es_lookup_extent(inode, 10, &next_lblk, &es, NULL);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, percpu_counter_sum_positive(
++		&ctx->sbi->s_es_stats.es_stats_cache_misses),
++		misses_before + 1);
++}
++
++static void test_es_insert_zero_len_is_noop(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	ext4_es_insert_extent(inode, 10, 0, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_delayed_extent(inode, 20, 0, false, false);
++	ext4_es_cache_extent(inode, 30, 0, 300, EXTENT_STATUS_WRITTEN);
++
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_all_nr, 0U);
++	KUNIT_EXPECT_TRUE(test, RB_EMPTY_ROOT(&ctx->ei->i_es_tree.root));
++}
++
++static void
++test_es_lookup_hits_cache_and_rbtree_with_next_lblk(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct extent_status es;
++	ext4_lblk_t next_lblk = 0xdead;
++	u64 seq_after_first, seq_after_second, lookup_seq = 0;
++	s64 hits_before;
++	int ret;
++
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++	seq_after_first = ctx->ei->i_es_seq;
++	ext4_es_insert_extent(inode, 20, 5, 200, EXTENT_STATUS_UNWRITTEN,
++			      false);
++	seq_after_second = ctx->ei->i_es_seq;
++	KUNIT_EXPECT_GT(test, seq_after_second, seq_after_first);
++
++	/*
++	 * Right after inserting [20, 5), tree->cache_es points to [20, 5).
++	 * Looking up lblk 22 hits cache_es and sets next_lblk to 0 because
++	 * [20, 5) is the last extent in the tree.
++	 */
++	hits_before = percpu_counter_sum_positive(
++		&ctx->sbi->s_es_stats.es_stats_cache_hits);
++
++	ret = ext4_es_lookup_extent(inode, 22, &next_lblk, &es, &lookup_seq);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 20U);
++	KUNIT_EXPECT_EQ(test, es.es_len, 5U);
++	KUNIT_EXPECT_EQ(test, ext4_es_pblock(&es), 200ULL);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_unwritten(&es));
++	KUNIT_EXPECT_EQ(test, next_lblk, 0U);
++	KUNIT_EXPECT_EQ(test, lookup_seq, seq_after_second);
++
++	/* Lookup start, middle, and end of first extent [10, 5) via rb-tree */
++	ret = ext4_es_lookup_extent(inode, 10, &next_lblk, &es, NULL);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 10U);
++	KUNIT_EXPECT_EQ(test, next_lblk, 20U);
++
++	ret = ext4_es_lookup_extent(inode, 12, &next_lblk, &es, NULL);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 10U);
++	KUNIT_EXPECT_EQ(test, next_lblk, 20U);
++
++	ret = ext4_es_lookup_extent(inode, 14, &next_lblk, &es, NULL);
++	KUNIT_EXPECT_EQ(test, ret, 1);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 10U);
++	KUNIT_EXPECT_EQ(test, next_lblk, 20U);
++
++	KUNIT_EXPECT_EQ(test, percpu_counter_sum_positive(
++		&ctx->sbi->s_es_stats.es_stats_cache_hits),
++		hits_before + 4);
++
++	/* Lookup in gap [15..19] returns 0 */
++	ret = ext4_es_lookup_extent(inode, 15, &next_lblk, &es, NULL);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++}
++
++static void test_es_fc_replay_bypasses_tree_operations(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct extent_status es;
++	static const struct expected_es expected[] = {
++		{ .lblk = 10, .len = 5, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++
++	ctx->sbi->s_mount_state |= EXT4_FC_REPLAY;
++	KUNIT_EXPECT_EQ(test,
++			ext4_es_lookup_extent(inode, 10, NULL, &es, NULL), 0);
++	ext4_es_find_extent_range(inode, ext4_es_is_written, 0, 20, &es);
++	KUNIT_EXPECT_EQ(test, es.es_len, 0U);
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_range(inode, ext4_es_is_written,
++					      0, 20));
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_clu(inode, ext4_es_is_written, 10));
++
++	ext4_es_insert_extent(inode, 30, 5, 300, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_cache_extent(inode, 40, 5, 400, EXTENT_STATUS_WRITTEN);
++	ext4_es_insert_delayed_extent(inode, 50, 5, false, false);
++	ext4_es_remove_extent(inode, 10, 5);
++	ctx->sbi->s_mount_state &= ~EXT4_FC_REPLAY;
++
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++struct es_merge_test_param {
++	const char *desc;
++	unsigned int nr_inserts;
++	struct expected_es inserts[3];
++	unsigned int nr_expected;
++	struct expected_es expected[3];
++};
++
++static const struct es_merge_test_param es_merge_params[] = {
++	{
++		.desc = "left merge contiguous written extents",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 10, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "right merge contiguous written extents",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 10, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "three-way bridge merge via try_to_merge_right",
++		.nr_inserts = 3,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 20, .len = 5, .pblk = 110,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 15, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "three-way bridge merge via try_to_merge_left",
++		.nr_inserts = 3,
++		.inserts = {
++			{ .lblk = 20, .len = 5, .pblk = 110,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++		},
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 15, .pblk = 100,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++		},
++	},
++	{
++		.desc = "adjacent hole extents merge",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 0,
++			  .type = EXTENT_STATUS_HOLE },
++			{ .lblk = 15, .len = 5, .pblk = 0,
++			  .type = EXTENT_STATUS_HOLE },
++		},
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 10, .pblk = 0,
++			  .type = EXTENT_STATUS_HOLE },
++		},
++	},
++	{
++		.desc = "discontiguous physical blocks do not merge",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 200,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++		.nr_expected = 2,
++		.expected = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 200,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "different status types with contiguous pblk do not merge",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++		},
++		.nr_expected = 2,
++		.expected = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 15, .len = 5, .pblk = 105,
++			  .type = EXTENT_STATUS_UNWRITTEN },
++		},
++	},
++	{
++		.desc = "logically separated extents with 1-block gap do not merge",
++		.nr_inserts = 2,
++		.inserts = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 16, .len = 5, .pblk = 106,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++		.nr_expected = 2,
++		.expected = {
++			{ .lblk = 10, .len = 5, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 16, .len = 5, .pblk = 106,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++};
++
++static void es_merge_get_desc(const struct es_merge_test_param *param,
++			      char *desc)
++{
++	strscpy(desc, param->desc, KUNIT_PARAM_DESC_SIZE);
++}
++KUNIT_ARRAY_PARAM(es_merge, es_merge_params, es_merge_get_desc);
++
++static void test_es_merge_cases(struct kunit *test)
++{
++	const struct es_merge_test_param *param = test->param_value;
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	unsigned int i;
++
++	for (i = 0; i < param->nr_inserts; i++) {
++		const struct expected_es *ins = &param->inserts[i];
++
++		ext4_es_insert_extent(inode, ins->lblk, ins->len,
++				      ins->pblk, ins->type, false);
++	}
++
++	assert_es_tree(test, inode, param->expected, param->nr_expected);
++}
++
++static void test_es_insert_adjacent_delayed_extents_merges(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 10, .len = 10, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++
++	ext4_es_insert_delayed_extent(inode, 10, 5, false, false);
++	ext4_es_insert_delayed_extent(inode, 15, 5, false, false);
++
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++static void test_es_merge_preserves_referenced(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct extent_status es;
++	struct rb_node *node;
++
++	/*
++	 * Insert [10, 5) and [20, 5), mark [20, 5) referenced via lookup,
++	 * then bridge [15, 5) so [20, 5) is merged into [10, 10) via
++	 * ext4_es_try_to_merge_right().
++	 */
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 20, 5, 110, EXTENT_STATUS_WRITTEN, false);
++	KUNIT_ASSERT_EQ(test,
++			ext4_es_lookup_extent(inode, 20, NULL, &es, NULL), 1);
++
++	ext4_es_insert_extent(inode, 15, 5, 105, EXTENT_STATUS_WRITTEN, false);
++	KUNIT_ASSERT_EQ(test, ctx->ei->i_es_all_nr, 1U);
++
++	node = rb_first(&ctx->ei->i_es_tree.root);
++	KUNIT_ASSERT_NOT_NULL(test, node);
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_is_referenced(rb_entry(node,
++							 struct extent_status,
++							 rb_node)));
++}
++
++static void
++test_es_merge_at_max_blocks_boundary_succeeds(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 0, .len = EXT_MAX_BLOCKS, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++
++	ext4_es_insert_extent(inode, 0, 0x80000000U, 100,
++			      EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 0x80000000U, 0x7fffffffU,
++			      100ULL + 0x80000000ULL,
++			      EXTENT_STATUS_WRITTEN, false);
++
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++/*
++ * Group 3: Removal, Trimming, Splitting, and Overwrites
++ */
++struct es_remove_test_param {
++	const char *desc;
++	ext4_lblk_t rem_lblk;
++	ext4_lblk_t rem_len;
++	unsigned int nr_expected;
++	struct expected_es expected[2];
++};
++
++static const struct es_remove_test_param es_remove_params[] = {
++	{
++		.desc = "remove range before extent",
++		.rem_lblk = 0,
++		.rem_len = 5,
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 10, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "remove range after extent",
++		.rem_lblk = 20,
++		.rem_len = 5,
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 10, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "remove exact extent range",
++		.rem_lblk = 10,
++		.rem_len = 10,
++		.nr_expected = 0,
++	},
++	{
++		.desc = "remove superset of extent range",
++		.rem_lblk = 5,
++		.rem_len = 20,
++		.nr_expected = 0,
++	},
++	{
++		.desc = "prefix trim of extent",
++		.rem_lblk = 10,
++		.rem_len = 4,
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 14, .len = 6, .pblk = 104,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "suffix trim of extent",
++		.rem_lblk = 16,
++		.rem_len = 4,
++		.nr_expected = 1,
++		.expected = {
++			{ .lblk = 10, .len = 6, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++	{
++		.desc = "middle split of extent into two",
++		.rem_lblk = 13,
++		.rem_len = 4,
++		.nr_expected = 2,
++		.expected = {
++			{ .lblk = 10, .len = 3, .pblk = 100,
++			  .type = EXTENT_STATUS_WRITTEN },
++			{ .lblk = 17, .len = 3, .pblk = 107,
++			  .type = EXTENT_STATUS_WRITTEN },
++		},
++	},
++};
++
++static void es_remove_get_desc(const struct es_remove_test_param *param,
++			       char *desc)
++{
++	strscpy(desc, param->desc, KUNIT_PARAM_DESC_SIZE);
++}
++KUNIT_ARRAY_PARAM(es_remove, es_remove_params, es_remove_get_desc);
++
++static void test_es_remove_geometries(struct kunit *test)
++{
++	const struct es_remove_test_param *param = test->param_value;
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	ext4_es_insert_extent(inode, 10, 10, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_remove_extent(inode, param->rem_lblk, param->rem_len);
++
++	assert_es_tree(test, inode, param->expected, param->nr_expected);
++}
++
++static void
++test_es_remove_multi_extent_span_trims_and_deletes(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 10, .len = 2, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++		{ .lblk = 43, .len = 2, .pblk = 403,
++		  .type = EXTENT_STATUS_UNWRITTEN },
++	};
++
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 20, 5, 200, EXTENT_STATUS_HOLE, false);
++	ext4_es_insert_extent(inode, 30, 5, 300, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 40, 5, 400, EXTENT_STATUS_UNWRITTEN,
++			      false);
++
++	/*
++	 * Remove [12, 31) covering lblks 12..42 inclusive:
++	 * - trims suffix of [10, 5) -> [10, 2)
++	 * - completely removes [20, 5) and [30, 5)
++	 * - trims prefix of [40, 5) -> [43, 2)
++	 */
++	ext4_es_remove_extent(inode, 12, 31);
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++static void test_es_insert_overwrite_split_and_remerge(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es split_exp[] = {
++		{ .lblk = 10, .len = 3, .pblk = 100,
++		  .type = EXTENT_STATUS_UNWRITTEN },
++		{ .lblk = 13, .len = 4, .pblk = 103,
++		  .type = EXTENT_STATUS_WRITTEN },
++		{ .lblk = 17, .len = 3, .pblk = 107,
++		  .type = EXTENT_STATUS_UNWRITTEN },
++	};
++	static const struct expected_es merged_exp[] = {
++		{ .lblk = 10, .len = 10, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++
++	ext4_es_insert_extent(inode, 10, 10, 100, EXTENT_STATUS_UNWRITTEN,
++			      false);
++	ext4_es_insert_extent(inode, 13, 4, 103, EXTENT_STATUS_WRITTEN, false);
++	assert_es_tree(test, inode, split_exp, ARRAY_SIZE(split_exp));
++
++	/* Convert the remaining prefix and suffix to WRITTEN; all 3 merge */
++	ext4_es_insert_extent(inode, 10, 3, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 17, 3, 107, EXTENT_STATUS_WRITTEN, false);
++	assert_es_tree(test, inode, merged_exp, ARRAY_SIZE(merged_exp));
++}
++
++/*
++ * Group 4: On-Disk Caching & Conflict Detection (ext4_es_cache_extent)
++ */
++static void
++test_es_cache_extent_inserts_and_coalesces_same_status(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es initial_exp[] = {
++		{ .lblk = 10, .len = 5, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++	static const struct expected_es coalesced_exp[] = {
++		{ .lblk = 8, .len = 10, .pblk = 98,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++	int warnings_before;
++
++	warnings_before = atomic_read(&ctx->sbi->s_warning_count);
++
++	/* Cache into empty tree */
++	ext4_es_cache_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN);
++	assert_es_tree(test, inode, initial_exp, ARRAY_SIZE(initial_exp));
++
++	/* Caching sub-range with identical status is a no-op */
++	ext4_es_cache_extent(inode, 11, 2, 101, EXTENT_STATUS_WRITTEN);
++	assert_es_tree(test, inode, initial_exp, ARRAY_SIZE(initial_exp));
++
++	/* Caching larger covering range with same status coalesces */
++	ext4_es_cache_extent(inode, 8, 10, 98, EXTENT_STATUS_WRITTEN);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->sbi->s_warning_count),
++			warnings_before);
++	assert_es_tree(test, inode, coalesced_exp, ARRAY_SIZE(coalesced_exp));
++}
++
++static void
++test_es_cache_extent_conflict_covered_range_warns(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 8, .len = 10, .pblk = 98,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++	int warnings_before;
++
++	ext4_es_cache_extent(inode, 8, 10, 98, EXTENT_STATUS_WRITTEN);
++	warnings_before = atomic_read(&ctx->sbi->s_warning_count);
++
++	/* Sub-range [10, 4) covered by [8, 10) with conflicting status */
++	ext4_es_cache_extent(inode, 10, 4, 500, EXTENT_STATUS_UNWRITTEN);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->sbi->s_warning_count),
++			warnings_before + 1);
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++static void
++test_es_cache_extent_conflict_partial_overlap_warns(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 10, .len = 5, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++	};
++	int warnings_before;
++
++	ext4_es_cache_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN);
++	warnings_before = atomic_read(&ctx->sbi->s_warning_count);
++
++	/*
++	 * Range [8, 10) is not covered by [10, 5), so ext4_es_cache_extent()
++	 * enters __es_remove_extent() which detects the status conflict and
++	 * returns -EINVAL without modifying [10, 5).
++	 */
++	ext4_es_cache_extent(inode, 8, 10, 500, EXTENT_STATUS_UNWRITTEN);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->sbi->s_warning_count),
++			warnings_before + 1);
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++static void
++test_es_cache_extent_hole_over_delayed_does_not_warn(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es expected[] = {
++		{ .lblk = 30, .len = 5, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++	int warnings_before;
++
++	ext4_es_insert_delayed_extent(inode, 30, 5, false, false);
++	warnings_before = atomic_read(&ctx->sbi->s_warning_count);
++
++	ext4_es_cache_extent(inode, 30, 5, 0, EXTENT_STATUS_HOLE);
++	KUNIT_EXPECT_EQ(test, atomic_read(&ctx->sbi->s_warning_count),
++			warnings_before);
++	assert_es_tree(test, inode, expected, ARRAY_SIZE(expected));
++}
++
++/*
++ * Group 5: Range Search & Cluster Scanning
++ */
++static void
++test_es_find_extent_range_skips_nonmatching_and_finds_next(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct extent_status es;
++
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_delayed_extent(inode, 20, 5, false, false);
++	ext4_es_insert_extent(inode, 30, 5, 300, EXTENT_STATUS_UNWRITTEN,
++			      false);
++
++	/*
++	 * Prime cache_es to [10, 5) WRITTEN, then search [10, 25] for DELAYED:
++	 * cache_es is hit at lblk 10, fails matching_fn(ext4_es_is_delayed),
++	 * and walks rb_next to find [20, 5) DELAYED.
++	 */
++	KUNIT_ASSERT_EQ(test,
++			ext4_es_lookup_extent(inode, 10, NULL, &es, NULL), 1);
++	ext4_es_find_extent_range(inode, ext4_es_is_delayed, 10, 25, &es);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 20U);
++	KUNIT_EXPECT_EQ(test, es.es_len, 5U);
++	KUNIT_EXPECT_TRUE(test, ext4_es_is_delayed(&es));
++
++	/* Search [10, 18] for DELAYED when starting inside [10, 5) returns 0 */
++	KUNIT_ASSERT_EQ(test,
++			ext4_es_lookup_extent(inode, 10, NULL, &es, NULL), 1);
++	ext4_es_find_extent_range(inode, ext4_es_is_delayed, 10, 18, &es);
++	KUNIT_EXPECT_EQ(test, es.es_len, 0U);
++
++	/*
++	 * Search [16, 18] in gap before [20, 5): __es_tree_search(16) returns
++	 * the next extent [20, 5) following the range.
++	 */
++	ext4_es_find_extent_range(inode, ext4_es_is_delayed, 16, 18, &es);
++	KUNIT_EXPECT_EQ(test, es.es_lblk, 20U);
++	KUNIT_EXPECT_EQ(test, es.es_len, 5U);
++}
++
++static void
++test_es_scan_range_matches_only_overlapping_extents(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	ext4_es_insert_delayed_extent(inode, 20, 5, false, false);
++	ext4_es_insert_extent(inode, 30, 5, 300, EXTENT_STATUS_UNWRITTEN,
++			      false);
++
++	/* Gap [16, 18] before [20, 5) does not overlap */
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_range(inode, ext4_es_is_delayed,
++					      16, 18));
++
++	/* Ranges overlapping [20, 5) or [30, 5) return true */
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_range(inode, ext4_es_is_delayed,
++					     16, 20));
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_range(inode, ext4_es_is_delayed,
++					     22, 23));
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_range(inode, ext4_es_is_mapped,
++					     34, 40));
++
++	/* Range [35, 40] after [30, 5) does not overlap */
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_range(inode, ext4_es_is_mapped,
++					      35, 40));
++}
++
++static void test_es_scan_clu_matches_extent_in_same_cluster(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Configure cluster size = 16 blocks (cluster_bits = 4) */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/* Insert delayed block at the very end of cluster 0 (lblk 15) */
++	ext4_es_insert_delayed_extent(inode, 15, 1, false, false);
++
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_clu(inode, ext4_es_is_delayed, 0));
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_clu(inode, ext4_es_is_delayed, 8));
++	KUNIT_EXPECT_TRUE(test,
++			  ext4_es_scan_clu(inode, ext4_es_is_delayed, 15));
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_clu(inode, ext4_es_is_delayed, 16));
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_es_scan_clu(inode, ext4_es_is_mapped, 0));
++}
++
++/*
++ * Group 6: Delayed Allocation & Bigalloc Pending Reservations
++ */
++static void
++test_es_delalloc_remove_and_overwrite_account_reserved_blocks(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es after_rem_exp[] = {
++		{ .lblk = 10, .len = 2, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++		{ .lblk = 15, .len = 5, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++	static const struct expected_es after_ins_exp[] = {
++		{ .lblk = 10, .len = 6, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++		{ .lblk = 16, .len = 4, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++
++	/* Delayed extents are must-keep: i_es_shk_nr remains 0 */
++	ext4_es_insert_delayed_extent(inode, 10, 10, false, false);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_all_nr, 1U);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 0U);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei->i_es_list));
++
++	/* Removing 3 delayed blocks [12, 3) releases 3 reserved blocks */
++	reset_da_stub_stats(ctx);
++	ext4_es_remove_extent(inode, 12, 3);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_released, 3);
++	assert_es_tree(test, inode, after_rem_exp, ARRAY_SIZE(after_rem_exp));
++
++	/*
++	 * Inserting WRITTEN [10, 6) overwrites [10, 2) delayed, [12, 3) gap,
++	 * and [15, 1) delayed -> claims 3 delayed blocks of reservation.
++	 */
++	reset_da_stub_stats(ctx);
++	ext4_es_insert_extent(inode, 10, 6, 100, EXTENT_STATUS_WRITTEN, true);
++	KUNIT_EXPECT_EQ(test, ctx->da_update_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_used, 3);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_quota_claim, 1);
++	assert_es_tree(test, inode, after_ins_exp, ARRAY_SIZE(after_ins_exp));
++}
++
++static void
++test_es_bigalloc_insert_delayed_creates_and_removes_pending(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks: clu 0=[0..15], clu 1=[16..31], clu 2=[32..47] */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/* Single cluster with lclu_allocated = true */
++	ext4_es_insert_delayed_extent(inode, 2, 4, true, false);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 0));
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 15));
++	KUNIT_EXPECT_FALSE(test, ext4_is_pending(inode, 16));
++
++	/* Multi-cluster [20, 20) spanning clusters 1 and 2, both allocated */
++	ext4_es_insert_delayed_extent(inode, 20, 20, true, true);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 16));
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 32));
++	KUNIT_EXPECT_FALSE(test, ext4_is_pending(inode, 48));
++
++	/* Duplicate pending insertion on cluster 0 is idempotent */
++	ext4_es_insert_delayed_extent(inode, 8, 2, true, false);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 0));
++
++	/* Explicit removal of pending reservation */
++	ext4_remove_pending(inode, 16);
++	KUNIT_EXPECT_FALSE(test, ext4_is_pending(inode, 16));
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 32));
++}
++
++static void
++test_es_bigalloc_revise_pending_single_cluster_halves(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/* Insert delayed extent [0, 32) covering clusters 0 and 1 */
++	ext4_es_insert_delayed_extent(inode, 0, 32, false, false);
++
++	/*
++	 * 1. Allocate first half of cluster 0: [0, 8) -> WRITTEN.
++	 * Delayed blocks [8, 8) remain after [0, 8) in cluster 0 (l_del=true):
++	 * __revise_pending inserts pending on cluster 0 and claims 1 cluster.
++	 */
++	reset_da_stub_stats(ctx);
++	ext4_es_insert_extent(inode, 0, 8, 100, EXTENT_STATUS_WRITTEN, true);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 0));
++	KUNIT_EXPECT_EQ(test, ctx->da_update_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_used, 1);
++
++	/*
++	 * 2. Allocate second half of cluster 0: [8, 8) -> WRITTEN.
++	 * No delayed blocks remain in cluster 0; pending reservation on
++	 * cluster 0 is removed and 0 additional clusters are claimed.
++	 */
++	reset_da_stub_stats(ctx);
++	ext4_es_insert_extent(inode, 8, 8, 108, EXTENT_STATUS_WRITTEN, true);
++	KUNIT_EXPECT_FALSE(test, ext4_is_pending(inode, 0));
++	KUNIT_EXPECT_EQ(test, ctx->da_update_calls, 0);
++
++	/*
++	 * 3. Allocate second half of cluster 1 first: [24, 8) -> WRITTEN while
++	 * [16, 8) remains delayed before it in cluster 1 (f_del=true branch in
++	 * __revise_pending): inserts pending on cluster 1 and claims 1 cluster.
++	 */
++	reset_da_stub_stats(ctx);
++	ext4_es_insert_extent(inode, 24, 8, 224, EXTENT_STATUS_WRITTEN, true);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 16));
++	KUNIT_EXPECT_EQ(test, ctx->da_update_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_used, 1);
++}
++
++static void
++test_es_bigalloc_revise_pending_multi_cluster_span(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/*
++	 * Insert delayed [16, 32) across cluster 1 [16..31] and cluster 2
++	 * [32..47], then allocate [20, 24) (lblks 20..43), leaving delayed
++	 * [16, 4) in cluster 1 and delayed [44, 4) in cluster 2. Both clusters
++	 * get pending reservations and 2 clusters are claimed.
++	 */
++	ext4_es_insert_delayed_extent(inode, 16, 32, false, false);
++	reset_da_stub_stats(ctx);
++	ext4_es_insert_extent(inode, 20, 24, 220, EXTENT_STATUS_WRITTEN, true);
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 16));
++	KUNIT_EXPECT_TRUE(test, ext4_is_pending(inode, 32));
++	KUNIT_EXPECT_EQ(test, ctx->da_update_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_used, 2);
++}
++
++static void
++test_es_bigalloc_remove_partial_cluster_holds_rsvd_until_empty(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	ext4_es_insert_delayed_extent(inode, 0, 16, false, false);
++	reset_da_stub_stats(ctx);
++
++	ext4_es_remove_extent(inode, 0, 4);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 0);
++
++	ext4_es_remove_extent(inode, 12, 4);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 0);
++
++	ext4_es_remove_extent(inode, 4, 8);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_released, 1);
++}
++
++static void
++test_es_bigalloc_remove_fragmented_cluster_releases_once(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/*
++	 * Two fragmented delayed extents within cluster 0 ([2, 3) and [10, 3))
++	 * share a single cluster reservation and must release 1 cluster, not 2.
++	 */
++	ext4_es_insert_delayed_extent(inode, 2, 3, false, false);
++	ext4_es_insert_delayed_extent(inode, 10, 3, false, false);
++	reset_da_stub_stats(ctx);
++
++	ext4_es_remove_extent(inode, 0, 16);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 1);
++	KUNIT_EXPECT_EQ(test, ctx->last_da_released, 1);
++}
++
++static void
++test_es_bigalloc_remove_pending_cluster_cancels_pending_only(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++
++	/* Cluster size = 16 blocks */
++	es_set_cluster_bits(ctx->sb, 4);
++
++	/*
++	 * Removing a delayed extent in a cluster with a pending reservation
++	 * cancels the pending reservation and releases 0 clusters (because the
++	 * cluster reservation was already claimed when allocated).
++	 */
++	ext4_es_insert_delayed_extent(inode, 16, 8, true, false);
++	KUNIT_ASSERT_TRUE(test, ext4_is_pending(inode, 16));
++	reset_da_stub_stats(ctx);
++
++	ext4_es_remove_extent(inode, 16, 8);
++	KUNIT_EXPECT_EQ(test, ctx->da_release_calls, 0);
++	KUNIT_EXPECT_FALSE(test, ext4_is_pending(inode, 16));
++}
++
++/*
++ * Group 7: Shrinker, Referenced Aging, and Cache Clearing
++ */
++static void
++test_es_clear_inode_es_retains_only_delayed_extents(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	static const struct expected_es only_delayed_exp[] = {
++		{ .lblk = 40, .len = 5, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++
++	ext4_es_insert_extent(inode, 10, 5, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 20, 5, 200, EXTENT_STATUS_UNWRITTEN,
++			      false);
++	ext4_es_insert_extent(inode, 30, 5, 0, EXTENT_STATUS_HOLE, false);
++	ext4_es_insert_delayed_extent(inode, 40, 5, false, false);
++	ext4_set_inode_state(inode, EXT4_STATE_EXT_PRECACHED);
++
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_all_nr, 4U);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 3U);
++
++	ext4_clear_inode_es(inode);
++
++	KUNIT_EXPECT_FALSE(test,
++			   ext4_test_inode_state(inode,
++						 EXT4_STATE_EXT_PRECACHED));
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 0U);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei->i_es_list));
++	assert_es_tree(test, inode, only_delayed_exp,
++		       ARRAY_SIZE(only_delayed_exp));
++}
++
++static void
++test_es_shrinker_ages_referenced_and_keeps_delayed(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct shrinker *shrink = ctx->sbi->s_es_shrinker;
++	struct percpu_counter *shk_cnt = &ctx->sbi->s_es_stats.es_stats_shk_cnt;
++	struct shrink_control sc = { .nr_to_scan = 0 };
++	struct extent_status es;
++	unsigned long count, shrunk;
++	static const struct expected_es after_first_scan[] = {
++		{ .lblk = 10, .len = 2, .pblk = 100,
++		  .type = EXTENT_STATUS_WRITTEN },
++		{ .lblk = 30, .len = 2, .pblk = 300,
++		  .type = EXTENT_STATUS_WRITTEN },
++		{ .lblk = 50, .len = 2, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++	static const struct expected_es after_second_scan[] = {
++		{ .lblk = 50, .len = 2, .pblk = 0,
++		  .type = EXTENT_STATUS_DELAYED },
++	};
++
++	/* Insert 4 reclaimable WRITTEN extents and 1 non-reclaimable DELAYED */
++	ext4_es_insert_extent(inode, 10, 2, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 20, 2, 200, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 30, 2, 300, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 40, 2, 400, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_delayed_extent(inode, 50, 2, false, false);
++
++	/* Mark [10, 2) and [30, 2) as EXTENT_STATUS_REFERENCED via lookup */
++	KUNIT_ASSERT_EQ(test,
++			ext4_es_lookup_extent(inode, 10, NULL, &es, NULL), 1);
++	KUNIT_ASSERT_EQ(test,
++			ext4_es_lookup_extent(inode, 30, NULL, &es, NULL), 1);
++
++	/*
++	 * Fold per-CPU counter deltas into the central count so count_objects
++	 * (which uses percpu_counter_read_positive) sees all 4 extents on SMP.
++	 */
++	percpu_counter_set(shk_cnt, percpu_counter_sum_positive(shk_cnt));
++	count = shrink->count_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, count, 4UL);
++
++	/*
++	 * First scan (nr_to_scan = 5):
++	 * - [20, 2) and [40, 2) are unreferenced and reclaimed (shrunk = 2)
++	 * - [10, 2) and [30, 2) have REFERENCED cleared and survive
++	 * - [50, 2) is DELAYED (must_keep) and survives
++	 */
++	sc.nr_to_scan = 5;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 2UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 2U);
++	assert_es_tree(test, inode, after_first_scan,
++		       ARRAY_SIZE(after_first_scan));
++
++	/*
++	 * Second scan (nr_to_scan = 5):
++	 * - [10, 2) and [30, 2) are now unreferenced and reclaimed (shrunk = 2)
++	 * - Only [50, 2) DELAYED remains; inode is removed from s_es_list
++	 */
++	sc.nr_to_scan = 5;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 2UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 0U);
++	KUNIT_EXPECT_TRUE(test, list_empty(&ctx->ei->i_es_list));
++	assert_es_tree(test, inode, after_second_scan,
++		       ARRAY_SIZE(after_second_scan));
++}
++
++static void
++test_es_shrinker_cursor_advances_and_wraps_around(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct shrinker *shrink = ctx->sbi->s_es_shrinker;
++	struct shrink_control sc;
++	unsigned long shrunk;
++
++	ext4_es_insert_extent(inode, 10, 2, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 20, 2, 200, EXTENT_STATUS_WRITTEN, false);
++	ext4_es_insert_extent(inode, 30, 2, 300, EXTENT_STATUS_WRITTEN, false);
++
++	sc.nr_to_scan = 1;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 1UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shrink_lblk, 20U);
++
++	/* Re-insert [10, 2) behind the shrink cursor; next scan wraps to it */
++	ext4_es_insert_extent(inode, 10, 2, 100, EXTENT_STATUS_WRITTEN, false);
++	sc.nr_to_scan = 3;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 3UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_all_nr, 0U);
++}
++
++static void
++test_es_shrinker_skips_precached_inode_until_last_resort(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode1 = &ctx->ei->vfs_inode;
++	struct inode *inode2;
++	struct shrinker *shrink = ctx->sbi->s_es_shrinker;
++	struct shrink_control sc;
++	unsigned long shrunk;
++
++	inode2 = es_alloc_test_inode(test, ctx->sb, 13);
++
++	ext4_es_insert_extent(inode1, 10, 2, 100, EXTENT_STATUS_WRITTEN, false);
++	ext4_set_inode_state(inode1, EXT4_STATE_EXT_PRECACHED);
++	ext4_es_insert_extent(inode2, 10, 2, 200, EXTENT_STATUS_WRITTEN, false);
++
++	/* First scan skips precached inode1 and reclaims from inode2 */
++	sc.nr_to_scan = 1;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 1UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 1U);
++	KUNIT_EXPECT_EQ(test, EXT4_I(inode2)->i_es_shk_nr, 0U);
++
++	/*
++	 * Now only precached inode1 remains on s_es_list; shrinker retries
++	 * and reclaims from inode1 as a last resort.
++	 */
++	sc.nr_to_scan = 1;
++	shrunk = shrink->scan_objects(shrink, &sc);
++	KUNIT_EXPECT_EQ(test, shrunk, 1UL);
++	KUNIT_EXPECT_EQ(test, ctx->ei->i_es_shk_nr, 0U);
++}
++
++static void test_es_seq_shrinker_info_show_formats_stats(struct kunit *test)
++{
++	struct es_test_ctx *ctx = test->priv;
++	struct inode *inode = &ctx->ei->vfs_inode;
++	struct seq_file seq = {};
++	char *buf;
++
++	ext4_es_insert_extent(inode, 10, 2, 100, EXTENT_STATUS_WRITTEN, false);
++
++	buf = kunit_kzalloc(test, PAGE_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_NULL(test, buf);
++	seq.buf = buf;
++	seq.size = PAGE_SIZE;
++	seq.private = ctx->sb;
++
++	KUNIT_EXPECT_EQ(test,
++			ext4_seq_es_shrinker_info_show(&seq, SEQ_START_TOKEN),
++			0);
++	KUNIT_EXPECT_GT(test, seq.count, 0UL);
++	KUNIT_EXPECT_NOT_NULL(test, strstr(buf, "reclaimable objects"));
++}
++
++static struct kunit_case extents_status_test_cases[] = {
++	KUNIT_CASE(test_es_bitfield_written_and_unwritten_encoding),
++	KUNIT_CASE(test_es_bitfield_delayed_and_hole_encoding),
++	KUNIT_CASE(test_es_bitfield_referenced_and_pblock_update_preserve_state),
++	KUNIT_CASE(test_es_lookup_empty_tree_returns_miss),
++	KUNIT_CASE(test_es_insert_zero_len_is_noop),
++	KUNIT_CASE(test_es_lookup_hits_cache_and_rbtree_with_next_lblk),
++	KUNIT_CASE(test_es_fc_replay_bypasses_tree_operations),
++	KUNIT_CASE_PARAM(test_es_merge_cases, es_merge_gen_params),
++	KUNIT_CASE(test_es_insert_adjacent_delayed_extents_merges),
++	KUNIT_CASE(test_es_merge_preserves_referenced),
++	KUNIT_CASE(test_es_merge_at_max_blocks_boundary_succeeds),
++	KUNIT_CASE_PARAM(test_es_remove_geometries, es_remove_gen_params),
++	KUNIT_CASE(test_es_remove_multi_extent_span_trims_and_deletes),
++	KUNIT_CASE(test_es_insert_overwrite_split_and_remerge),
++	KUNIT_CASE(test_es_cache_extent_inserts_and_coalesces_same_status),
++	KUNIT_CASE(test_es_cache_extent_conflict_covered_range_warns),
++	KUNIT_CASE(test_es_cache_extent_conflict_partial_overlap_warns),
++	KUNIT_CASE(test_es_cache_extent_hole_over_delayed_does_not_warn),
++	KUNIT_CASE(test_es_find_extent_range_skips_nonmatching_and_finds_next),
++	KUNIT_CASE(test_es_scan_range_matches_only_overlapping_extents),
++	KUNIT_CASE(test_es_scan_clu_matches_extent_in_same_cluster),
++	KUNIT_CASE(test_es_delalloc_remove_and_overwrite_account_reserved_blocks),
++	KUNIT_CASE(test_es_bigalloc_insert_delayed_creates_and_removes_pending),
++	KUNIT_CASE(test_es_bigalloc_revise_pending_single_cluster_halves),
++	KUNIT_CASE(test_es_bigalloc_revise_pending_multi_cluster_span),
++	KUNIT_CASE(test_es_bigalloc_remove_partial_cluster_holds_rsvd_until_empty),
++	KUNIT_CASE(test_es_bigalloc_remove_fragmented_cluster_releases_once),
++	KUNIT_CASE(test_es_bigalloc_remove_pending_cluster_cancels_pending_only),
++	KUNIT_CASE(test_es_clear_inode_es_retains_only_delayed_extents),
++	KUNIT_CASE(test_es_shrinker_ages_referenced_and_keeps_delayed),
++	KUNIT_CASE(test_es_shrinker_cursor_advances_and_wraps_around),
++	KUNIT_CASE(test_es_shrinker_skips_precached_inode_until_last_resort),
++	KUNIT_CASE(test_es_seq_shrinker_info_show_formats_stats),
++	{}
++};
++
++static struct kunit_suite extents_status_test_suite = {
++	.name = "ext4_extents_status_test",
++	.init = es_kunit_init,
++	.exit = es_kunit_exit,
++	.test_cases = extents_status_test_cases,
++};
++
++kunit_test_suites(&extents_status_test_suite);
++
++MODULE_DESCRIPTION("KUnit tests for ext4 extents status tree and pending reservations");
++MODULE_LICENSE("GPL");
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 6e4a191e8219..64bac0c4c1fa 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -2390,3 +2390,22 @@ static int __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+ out:
+ 	return (ret < 0) ? ret : pendings;
+ }
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_init_tree);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_insert_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_cache_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_remove_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_find_extent_range);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_lookup_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_scan_range);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_scan_clu);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_register_shrinker);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_unregister_shrinker);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_seq_es_shrinker_info_show);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_init_pending_tree);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_remove_pending);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_is_pending);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_es_insert_delayed_extent);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_clear_inode_es);
++#endif
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 26f0f9714f03..966a760f64e6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -350,6 +350,9 @@ void ext4_da_update_reserve_space(struct inode *inode,
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_da_update_reserve_space,
++				   inode, used, quota_claim);
++
+ 	spin_lock(&ei->i_block_reservation_lock);
+ 	trace_ext4_da_update_reserve_space(inode, used, quota_claim);
+ 	if (unlikely(used > ei->i_reserved_data_blocks)) {
+@@ -1646,6 +1649,8 @@ void ext4_da_release_space(struct inode *inode, int to_free)
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 
++	KUNIT_STATIC_STUB_REDIRECT(ext4_da_release_space, inode, to_free);
++
+ 	if (!to_free)
+ 		return;		/* Nothing to release, exit */
+ 
+@@ -6973,3 +6978,8 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
++
++#if IS_ENABLED(CONFIG_EXT4_KUNIT_TESTS)
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_update_reserve_space);
++EXPORT_SYMBOL_FOR_EXT4_TEST(ext4_da_release_space);
++#endif
+-- 
+2.56.0.212.g129ede20d9-goog
 
 
