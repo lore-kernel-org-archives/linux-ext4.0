@@ -1,61 +1,63 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792465387;
-	b=tcn7aJKBjJKgqNDOxpjYPj5cEZkvDzHbaAFWfZpXcGi74ZLH+yUI6akFv7PYVRfLPvQl
-	 4XPIWJ8bwTkPXNmwpePokySahnE+v3Qfenfi4HRQtK9HXIHJpXVLbUwx4zigAqcnqmVVX
-	 GwO8iAnj46y1iuz4VnzPucLyPEhz3JIJn4DPHMwv8MgHrZUbAOsAOoOc8xdxEO/9iVv0Z
-	 dGFExd0D3QG4aQUQLeW4TgzLeN7xw3IfBL+eAfBo/2RAjGs2miIlzmU4H9I8aWBUZdhn1
-	 1O/RukO0QjDUSqfv961h53ZygjWp7Qdqje8NiYDMekMR2z/SiRS5KqLf6HIZKHzinWg==
+	t=1792468531;
+	b=vQRFVdPQGZrlHd2rCYX+4hB+moc7RLA3MaPkeDBlvif88BKEwEgC4PQGhB/FfeMXHUJJ
+	 gO7bZH8JABWDOT5/I8aLRto3mJ2l9jzR/yu9WoNFVwRZ7zM3xNgHYbVEn/6QYaFER5TRj
+	 VqMkjNWCgGG59ur71KNGhPATsc5hRyckGM7Bz017zYySwR1ba6J05E81Hzxzew2MpGRnk
+	 O00bJhOKNlq2qSqZ9zzW0HUuXQRLP3B+Nmm6kqERpvgjEhTbFfvkUOE0yfWT6fHoHtjBJ
+	 zxmVEVkl08mysht50aY3Gm+0/R2qZLzJ/JMNfdSwdSY6jgBhH2YZXsrNfosRoBD3NaA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792465387;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To;
-	bh=F5zLjXTP9Ff4u8TO1OU17654SvhmzuWPsqwB75rTvEI=;
-	b=nIMM5mCXbZxxeHYd7Z4VXZw7DKdS4TpXRzWIyUM7BFI2WI/FebZVy5uwkLWhLARXJH3V
-	 MVzvdbxPNHJXqgn3MXiM5kCM+SB8P4hbkV/6Uod9D/fdYB6c4Op+wEmKLBU0Vcy9mJ64d
-	 jXquPAJn9cmEeLkoUP1rj2qfJVHx/nq7UUnh9cfevm73tfJndhei4d+uue6aa8fuvnCvt
-	 F9q9y4GYMRHCFyEa+alA/0eO2uWWcKPPdheeFwaGV0qmkE7XJRUYiRjYaT1jqeqbTtccO
-	 tYCln33K8v/iomNbOvJBhObuLzt7rEWJd98kNEkhIYy1lduvYkSC8HwqA7NQe9zD90Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792468531;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=WRL+U2GtPXLd9M9soIL/RdABtXtQzxJ+R6mcoH5x5Uk=;
+	b=Mc4KsFx2xy9mkoFlMLiUOvV+L6kj7wIc7p2alg96kAgT5dm/UvSGuKHebWWPRMhCSaac
+	 wv/NXAWZqhJqFHotG7v3pK0GSB72WnQoWq+R8DHMlpeD+bN9lf2yaxtiKNpfXqsE5SelZ
+	 IqLV9ZcZhaVTBD5xyO0qIv27i46u46J0w2G4BEbJqd+JvJmdfWhO3azJp9gmXbue/aglK
+	 l6jJHqr6EYz1kNHUrX++nTY6Imu579pqrmbWHu1R++nonHaH4IExCBUEsF4iLU3lClNVt
+	 FdmPYbFIr0ix4wX93HZfgqiPMsrouXZZp1XuvoW/qrNgYKKvPeT3YUN9K/wawBL05QQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=mit.edu;
 	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=hIdVa39S;
+	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=jLxktzrj;
 	arc=none smtp.remote-ip=18.9.28.11
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 743FE606A319
-	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2026 03:03:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 743FE606A319
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD1C0606A319
+	for <linux-ext4@vger.kernel.org>; Tue, 20 Oct 2026 03:55:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CD1C0606A319
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=hIdVa39S
+	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=jLxktzrj
 Received: from macsyma.thunk.org (pool-173-48-113-115.bstnma.fios.verizon.net [173.48.113.115])
 	(authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69K32xbe005836
+	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69K3tInV024476
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Mon, 19 Oct 2026 23:03:00 -0400
+	Mon, 19 Oct 2026 23:55:20 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1792465382; bh=F5zLjXTP9Ff4u8TO1OU17654SvhmzuWPsqwB75rTvEI=;
+	t=1792468522; bh=WRL+U2GtPXLd9M9soIL/RdABtXtQzxJ+R6mcoH5x5Uk=;
 	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=hIdVa39SKfQY+UmKpawllEuMJ4c8Lo6dQNXUpNS6Y+wn57k4aG/l7mEN12GsGSkbQ
-	 3l4fkThzV/1R6e5gzXyPJ/mcnslqo7JNmbe3e25WRprO3z57LuUK0L3b5Kdi0R1jAg
-	 Oee4zV4MWT7XR4hOZuMkboi/Sa9nqoMQ3ZBkb3vRVM5g/fq5mpVjVLecKLOkuai6hQ
-	 R7C+iWWGN2Bv5ibmtJ5EZHShK7J1z/pVI0GLJSLKNjpsRKoI7nEy+AApFVYI85/ipd
-	 nH3A60b9pmJZ6s1JI5Tp+l9CdzsPmlIIU+/LyPwrSSuinsf5Nxe6I1mKrWXxLkGBj8
-	 BiZAlmw4SPi7A==
+	b=jLxktzrjCe5UOWn4TudGdJzD1cosG/zRL72ghT8NtJGoJCAFe1Y5GDErOH/M9dC9u
+	 7HAms5kTBPifNJhxWb9yHNvOh4SgcqgDnHfR9F6UI9/+GlGDUFiLreWxQH7FDdSRLq
+	 qfAJto+h54zQlm2Q4OvgPf5fJODQc8HEaW18zKIOOhtiBY64vSYNBAf1hCYInsXTRn
+	 6MeauEXgMUUJE2gbtyA6f8wSM9h1eOBgKpB50oqW87+wBFh++vBmKSWfH3FxxQoUF5
+	 wUDuRctDktxaHPmxgvC7yZ64uA+Fv7gilZ66wkjLJCA4emGu+0YyWfLR1Bi4+19skg
+	 k502nAxjl5zew==
 Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 6F1D121ADCF5; Mon, 19 Oct 2026 23:01:59 -0400 (EDT)
-Date: Mon, 19 Oct 2026 23:01:59 -0400
+	id AAD2D21B0CD7; Mon, 19 Oct 2026 23:54:18 -0400 (EDT)
+Date: Mon, 19 Oct 2026 23:54:18 -0400
 From: "Theodore Tso" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        kunit-dev@googlegroups.com
-Subject: Re: [PATCH -RFC] ext4: add KUinit tests for fs/ext4/extents_status.c
-Message-ID: <atbZWze194QiSOTe@mit.edu>
-References: <atbPbe-i8DV3kLr8@mit.edu>
+To: Claudio Fernando Pinto <claudiofernandopinto@gmail.com>
+Cc: linux-unionfs@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>,
+        Amir Goldstein <amir73il@gmail.com>, linux-ext4@vger.kernel.org
+Subject: Re: overlayfs: unprivileged writes can use ext4's reserved blocks
+ with the default resuid
+Message-ID: <atbfAjLsKxhkqW-q@mit.edu>
+References: <CACs2WyyyGBxznvnJRDYWziAbzz8QROr41CF9Wtu9fOj7jX1fDw@mail.gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -65,480 +67,37 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="quosb2dej3pam7za"
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <atbPbe-i8DV3kLr8@mit.edu>
-
-
---quosb2dej3pam7za
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <CACs2WyyyGBxznvnJRDYWziAbzz8QROr41CF9Wtu9fOj7jX1fDw@mail.gmail.com>
 
-On Mon, Oct 19, 2026 at 10:30:10PM -0500, Theodore Tso wrote:
+On Mon, Oct 19, 2026 at 06:03:17AM -0500, Claudio Fernando Pinto wrote:
+> Hello,
 > 
-> This was an experiment to see how well a frontier model could write a
-> Kunit test, since more unit tests, we can more efficiently and more
-> quickly perform agentic code review, agentic rebase, and agentic
-> coding loops.
+> ovl_fill_super() lowers CAP_SYS_RESOURCE in the creator credentials with
+> the comment "Never override disk quota limits or use reserved space"
+> (fs/overlayfs/super.c:1511 in v7.3-rc7). On an ext4 upper with the
+> default reserve owner, the second half does not hold:
+> ext4_has_free_clusters() grants the reserve when the allocating task's
+> fsuid equals s_resuid, 0 by default, before it looks at the capability
+> (fs/ext4/balloc.c:654-657). Writes through overlayfs run with the
+> mounter's credentials (ovl_write_iter() sets .cred = ovl_creds(sb) and
+> backing_file_write_iter() applies it), so with a root mounter the fsuid
+> that reaches ext4 is 0, and an unprivileged writer can spend the blocks
+> reserved for root.
 
-I used the following instructions to the LLM.  Suggestions and
-corrections on how they can be improved welcome.
+I'm not sure why overlayfs is trying to override disk quota limits.
+What's the background behind this?
+
+	/* Never override disk quota limits or use reserved space */
+	cap_lower(creator_cred->cap_effective, CAP_SYS_RESOURCE);
+
+More the point, why do we have creator_cred in the first place?  We're
+not lowering CAP_FOWNER or CAP_DAC_OVERRIDE and fsuid is 0.  So if
+we're allowing some file system operations with the mounter's creds,
+why is CAP_SYS_RESOURCE special?  Also note that if fsuid is 0, then
+regardless of CAP_SYS_RESOURCE, any writes will be charged against
+user 0's quota, and user 0 doesn't have any limits (often it doesn't)
+there won't be any disk quota limits anyway.
 
 						- Ted
-
-
---quosb2dej3pam7za
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: attachment; filename="writing-kunit-tests.md"
-Content-Transfer-Encoding: 8bit
-
-# Prompt: Writing High-Quality Linux Kernel KUnit Tests
-
-You are an expert Linux kernel developer and software testing
-engineer. Your task is to design, implement, verify, and commit
-high-quality **KUnit** unit tests for the Linux kernel.
-
-Before writing any code, read the relevant kernel documentation:
-- **AI Coding Assistants & Tool-Generated Content**:
-  `Documentation/process/coding-assistants.rst` and
-  `Documentation/process/generated-content.rst`
-  
-- **Kernel Development & Patch Submission**:
-  `Documentation/process/development-process.rst`,
-  `Documentation/process/coding-style.rst`,
-  `Documentation/process/submitting-patches.rst`, and
-  `Documentation/process/license-rules.rst`
-  
-- **KUnit Framework & Style**:
-  `Documentation/dev-tools/kunit/usage.rst`,
-  `Documentation/dev-tools/kunit/style.rst`,
-  `Documentation/dev-tools/kunit/start.rst`, and
-  `Documentation/dev-tools/kunit/api/functionredirection.rst`
-  
-
-Also inspect existing KUnit tests in the target subsystem (e.g.,
-`*-test.c` or `tests/*_kunit.c`) to follow established local conventions
-for file naming, symbol visibility, Kconfig, and Makefile integration.
-
----
-
-## 1. Core Unit Testing Principles
-
-Apply the following software testing best practices to ensure your KUnit
-tests have high **fidelity** (fail when code is broken), **resilience**
-(only fail when actual behavior breaks, not during internal
-refactoring), **precision** (pinpoint the exact defect on failure), and
-**clarity** (serve as executable documentation):
-
-### 1.1 Test Behaviors, Not Functions or Implementation Details
-- **Avoid a 1:1 function-to-test mapping**: A single C function often
-  exhibits multiple distinct behaviors (e.g., normal insertion, merging
-  with left/right neighbors, splitting an existing entry, error
-  handling), and a single logical behavior may span multiple functions
-  (e.g., insert followed by lookup and removal). Write separate test
-  cases for each distinct behavior.
-  
-- **Test public/subsystem APIs over internal details**: Exercise the
-  unit through its intended interface rather than testing private helper
-  functions in isolation whenever possible. If internal implementation
-  details are refactored without changing observable behavior, existing
-  tests should continue to pass.
-  
-- **Do not write "change-detector" tests**: Never write tests that
-  merely mirror the implementation line-by-line or assert an exact
-  sequence of internal helper calls without checking the resulting state
-  or output.
-  
-
-### 1.2 Keep Tests Focused
-- **One scenario per test case**: Each `static void test_...(struct
-  kunit *test)` function should test a single scenario or behavior.
-  
-- **Do not chain unrelated scenarios in one test**: Avoid mutating state
-  across a long sequence of unrelated scenarios in a single test
-  function where side effects from an earlier check can mask bugs or
-  invalidate assumptions in later checks.
-  
-- **Include the scenario and expected outcome in test names**: Name test
-  functions so a developer can tell what scenario is being exercised and
-  what should happen from the function name alone (e.g.,
-  `test_es_insert_adjacent_same_status_merges_extents` or
-  `unpack_u32_with_null_name_fails` rather than just `test_insert` or
-  `test_unpack`).
-  
-### 1.3 Make Tests DAMP, Not Overly DRY
-- **Prioritize readability by inspection (DAMP — Descriptive and
-  Meaningful Phrases)**: Because tests do not have their own tests,
-  their correctness must be obvious to a human reviewer reading
-  top-to-bottom. Do not over-abstract tests just to eliminate a few
-  lines of duplication.
-  
-- **Keep cause and effect together**: Set up the specific inputs that
-  drive a test's outcome directly inside the test case body right before
-  the call under test and its `KUNIT_EXPECT_*` checks. Never hide the
-  critical input values that determine an expected output inside a
-  distant `.init` function.
-  
-- **Include only relevant details (hide noise)**: Use helper functions
-  to hide irrelevant boilerplate setup (such as allocating a dummy
-  `super_block`, initializing locks, or zeroing unrelated struct
-  fields), but pass the values that actually matter to the test
-  explicitly as arguments at the call site:
-  
-  ```c
-  /* BAD: Critical values hidden inside helper, or noisy setup inline */
-  inode = create_test_inode();
-  KUNIT_EXPECT_EQ(test, get_quota_blocks(inode), 42); /* Where did 42 come from? */
-
-  /* GOOD: Helper hides boilerplate; test-relevant value is explicit */
-  inode = create_test_inode_with_reserved_blocks(test, 42);
-  KUNIT_EXPECT_EQ(test, get_quota_blocks(inode), 42);
-  ```
-
-### 1.4 Don't Put Logic in Tests & Prefer Literals/Constants
-- **State expected outputs directly**: Never compute expected values in
-  assertions using arithmetic, bit shifts, string concatenation, loops,
-  or conditionals that duplicate the production algorithm. Computing
-  expectations in tests can introduce bugs in the test itself or mask a
-  shared bug in production code.
-  
-- **Prefer literals or named constants in assertions**: Compare actual
-  results against concrete literals or self-explanatory constants rather
-  than dynamic expressions derived from the system under test.
-  
-
-### 1.5 Choose Robust Test Values & Think Beyond Line Coverage
-- **Test with non-default values**: In the kernel, structs are
-  frequently zero-allocated (`kzalloc` / `kunit_kzalloc`). If you test a
-  setter, parser, or lookup using `0`, `false`, `NULL`, or enum value
-  `0`, a broken implementation that never writes the field will still
-  pass! Always use non-zero, non-default test values for positive tests.
-  
-- **Use distinct values for each parameter**: When calling a function
-  that takes multiple arguments of the same or compatible types (e.g.,
-  `ext4_es_insert_extent(inode, lblk, len, pblk, status, ...)`), use
-  clearly distinct values (e.g., `lblk = 10`, `len = 5`, `pblk = 1000`)
-  so swapped arguments or off-by-one mixups are caught immediately.
-  
-- **Think beyond line coverage**:
-  - **Branch & Condition coverage**: For compound boolean conditions
-    like `if ((a && b) || !c)`, write test cases that exercise each
-    condition independently, not just a single path that executes the
-    line.
-	
-  - **Boundary & Edge cases**: Test `0`, `1`, exact power-of-two/cluster
-    boundaries, maximum legal limits (e.g., `INT_MAX`, `ULONG_MAX`,
-    `EXT_MAX_BLOCKS`), overflow/underflow boundaries, empty trees/lists,
-    single-element collections, and multi-element spans.
-	
-  - **Error paths**: Test invalid inputs, `-EINVAL` / `-ENOMEM` /
-    `-ENOSPC` conditions, and verify that error paths leave data
-    structures in a valid, uncorrupted state without leaking resources.
-	
-
-### 1.6 Prefer Narrow Assertions & Make Failures Actionable
-- **Actionable failure messages**: When a test fails, the test name and
-  KUnit failure log alone should be enough to start debugging without
-  adding `printk`s and re-running.
-  
-- **Use specific KUnit expectation macros**:
-  - Use `KUNIT_EXPECT_EQ(test, actual, expected)`, `KUNIT_EXPECT_NE`, `KUNIT_EXPECT_LT`, `KUNIT_EXPECT_LE`, `KUNIT_EXPECT_GT`, `KUNIT_EXPECT_GE` for integers/enums (instead of `KUNIT_EXPECT_TRUE(test, a == b)`, which only prints `Expected true, got false`).
-  - Use `KUNIT_EXPECT_PTR_EQ`, `KUNIT_EXPECT_NULL`,
-    `KUNIT_EXPECT_NOT_NULL`, `KUNIT_EXPECT_NOT_ERR_OR_NULL` for
-    pointers.
-	
-  - Use `KUNIT_EXPECT_STREQ` / `KUNIT_EXPECT_MEMEQ` for strings and
-    buffers.
-	
-- **Use `_MSG` variants in loops and helpers**: Whenever an expectation
-  is inside a helper function, loop, or table-driven check, use
-  `KUNIT_EXPECT_*_MSG(test, ..., "context fmt", ...)` so the failure
-  output identifies the exact case or index that failed.
-  
-- **Prefer narrow assertions**: Assert only the struct fields or
-  properties relevant to the behavior under test, rather than asserting
-  every unrelated field of a large struct (which creates brittle tests
-  that break whenever unrelated fields change).
-  
-
-### 1.7 Test Isolation, Order Independence, and Zero Flakiness
-- **Complete independence between test cases**: Every test case must
-  pass when run by itself (`kunit.py run suite.test`), in any order, or
-  repeatedly.
-  
-- **Never leak mutable shared state**: Avoid file-scope mutable
-  globals. Prefer allocating per-test context in `test->priv` via
-  `kunit_kzalloc(test, ...)` in `.init`. If a suite shares a fixture
-  structure, ensure `.init` and `.exit` completely reset all trees,
-  lists, flags, and stub counters before and after every single test
-  case.
-  
-- **No "sleep gambling"**: Never use `msleep()` or arbitrary delays to
-  wait for asynchronous work in unit tests. Test synchronous entry
-  points, flush workqueues deterministically, or inject synchronous
-  stubs.
-  
-
-### 1.8 High Fidelity & Smart Use of Test Doubles (Real > Fake > Stub > Mock)
-- **Prefer real implementations first**: Use real kernel data structures
-  (e.g., `rbtree`, `xarray`, `list_head`, in-memory anonymous
-  `super_block` / `inode`, or `kunit_device_register()`) whenever they
-  run fast and deterministically in memory.
-  
-- **Use fakes or stubs to isolate heavyweight dependencies**: When code
-  under test interacts with hardware, disk I/O, journals, block
-  allocators, or global kernel state, isolate it using:
-  
-  1. **Lightweight in-memory fakes** (e.g., an ops struct backed by a
-     memory buffer), or
-	 
-  2. **KUnit static stubs** (`KUNIT_STATIC_STUB_REDIRECT` and
-     `kunit_activate_static_stub`).
-	 
-- **Avoid overusing mocks / interaction verification**:
-  - Prefer **state testing** (verifying return values and resulting data
-    structure state) over **interaction testing** (verifying that
-    function X was called).
-	
-  - Only verify **state-changing** external calls (e.g., verifying that
-    a delayed-allocation block reservation was claimed or released),
-    never read-only query helpers.
-	
-  - When verifying stub calls, only check arguments relevant to the
-    behavior being tested.
-	
-
-### 1.9 Parameterize Repetitive Tests Judiciously
-- **Use parameterized or table-driven tests for input/output matrices**:
-  When testing the same behavior across many input combinations (e.g.,
-  extent merge/split geometries, timestamp bit-decoding tables, hash
-  test vectors), use `KUNIT_ARRAY_PARAM` / `KUNIT_ARRAY_PARAM_DESC` with
-  `KUNIT_CASE_PARAM` (or a clean table-driven helper) to avoid
-  copy-pasting identical test functions.
-  
-- **Do not put conditional logic inside parameterized tests**: If a
-  parameterized test requires `if (param->expect_error)` or `switch
-  (param->mode)` inside the test function to decide what assertions to
-  run, split it into separate parameterized or standalone tests instead.
-  
-
-## 2. KUnit Framework Idioms & Mechanics
-
-### 2.1 Expectations vs. Assertions
-- **`KUNIT_EXPECT_*`**: Records a test failure and logs diagnostic
-  details, but **continues** executing the rest of the test case. Use
-  `KUNIT_EXPECT_*` for the behavioral checks in your test.
-  
-- **`KUNIT_ASSERT_*`**: Immediately **aborts** the current test case
-  (terminating the KUnit kthread) on failure. Use `KUNIT_ASSERT_*` for
-  preconditions whose failure makes continuing impossible or unsafe
-  (e.g., `KUNIT_ASSERT_NOT_ERR_OR_NULL(test, ptr)` after memory
-  allocation or object lookup before dereferencing `ptr`).
-  
-- **CRITICAL**: **Never** use `KUNIT_ASSERT_*` in `.exit()`,
-  `.suite_exit()`, or `kunit_resource` / action cleanup
-  callbacks. Aborting during teardown skips subsequent cleanup steps and
-  causes memory or resource leaks in the running kernel.
-  
-
-### 2.2 Resource & Memory Management
-- **Managed memory**: Always prefer `kunit_kmalloc()`,
-  `kunit_kzalloc()`, `kunit_kcalloc()`, `kunit_kmalloc_array()`, and
-  `kunit_kstrdup()` over raw `kmalloc`/`kzalloc`. KUnit automatically
-  frees these allocations when the test case exits—even if a
-  `KUNIT_ASSERT_*` aborts the test midway.
-  
-- **Deferred cleanup actions**: For non-memory resources (e.g.,
-  unregistering a shrinker, freeing slab cache objects, releasing
-  locks/superblocks, cleaning up trees), either clean them up in `.exit`
-  or register a deferred action immediately after acquisition using
-  `kunit_add_action_or_reset()`:
-  
-  ```c
-  KUNIT_DEFINE_ACTION_WRAPPER(my_resource_cleanup, my_resource_cleanup_wrapper,
-                              struct my_resource *);
-  ...
-  ret = kunit_add_action_or_reset(test, my_resource_cleanup_wrapper, res);
-  KUNIT_ASSERT_EQ(test, ret, 0);
-  ```
-  Always use `KUNIT_DEFINE_ACTION_WRAPPER()` rather than casting
-  function pointers to `kunit_action_t`, as casting function pointers
-  breaks Control Flow Integrity (CFI).
-  
-- **Safe `.exit` functions**: Remember that `.exit` and `.suite_exit`
-  run even if `.init` or `.suite_init` failed or exited early. Always
-  guard `.exit` cleanup against NULL or partially initialized pointers.
-  
-- **Fake devices**: When code under test requires a `struct device *`
-  (e.g., for `devm_*` managed APIs), use `kunit_device_register(test,
-  "name")` from `<kunit/device.h>`.
-  
-
-### 2.3 Testing Static Functions & Isolating Dependencies
-Check how the target subsystem exposes internal functions to KUnit tests
-and follow the local convention:
-
-1. **Subsystem export macros** (e.g., `EXPORT_SYMBOL_FOR_EXT4_TEST(fn)`
-   or `VISIBLE_IF_KUNIT` / `EXPORT_SYMBOL_IF_KUNIT(fn)` from
-   `<kunit/visibility.h>` paired with
-   `MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");` in the test file).
-   
-2. **Conditionally `#include`ing the test file** at the bottom of the
-   `.c` file under `#if IS_ENABLED(CONFIG_<SUBSYSTEM>_KUNIT_TEST)` if
-   the subsystem already uses that pattern to test `static` functions
-   directly.
-   
-3. **Function Redirection (Static Stubs)**: To intercept calls to
-   external functions during a test without refactoring production APIs:
-   
-   - In the real function (right after variable declarations):
-     ```c
-     #include <kunit/static_stub.h>
-     ...
-     KUNIT_STATIC_STUB_REDIRECT(my_external_fn, arg1, arg2);
-     ```
-   - In the KUnit test:
-     ```c
-     kunit_activate_static_stub(test, my_external_fn, my_external_fn_stub);
-     ```
-   - If the stub needs the current `struct kunit *`, call
-     `kunit_get_current_test()` (`#include <kunit/test-bug.h>`).
-	 
-4. **Suppressing expected warning backtraces**: If a test intentionally
-   triggers `WARN()` / `WARN_ON()`, wrap the call in
-   `kunit_warning_suppress(test)` and verify with
-   `KUNIT_EXPECT_SUPPRESSED_WARNING_COUNT(test, 1)` so intentional
-   warnings do not pollute kernel logs.
-   
-
-### 2.4 Suite, File, and Kconfig Nomenclature
-Unless the subsystem has an established convention (such as
-`fs/ext4/*-test.c` linked into `ext4-test.o`), follow
-`Documentation/dev-tools/kunit/style.rst`:
-
-- **Subsystem & Suite naming**: Name the suite `<subsystem>_<area>`
-  using underscores, without redundant `_kunit` or `_test` suffixes in
-  `.name` (unless matching existing suites in that directory).
-  
-- **File naming**: Place new standalone test files in
-  `tests/<suite>_kunit.c` (or match the subsystem's existing `*-test.c`
-  / `*_kunit.c` pattern).
-  
-- **Kconfig**:
-  ```kconfig
-  config FOO_KUNIT_TEST
-  	tristate "KUnit test for foo" if !KUNIT_ALL_TESTS
-  	depends on FOO && KUNIT
-  	default KUNIT_ALL_TESTS
-  	help
-  	  This builds unit tests for foo.
-
-  	  For more information on KUnit and unit tests in general,
-  	  please refer to the KUnit documentation in
-  	  Documentation/dev-tools/kunit/.
-
-  	  If unsure, say N.
-  ```
-
----
-
-## 3. Building, Running, and Verifying Tests
-
-You **must** build and run your KUnit tests before creating a commit:
-
-1. **Run the test suite with `kunit.py`**:
-   ```bash
-   ./tools/testing/kunit/kunit.py run <suite_name>
-   ```
-   (If a `.kunitconfig` exists in the repo root or subsystem directory,
-   pass `--kunitconfig=.kunitconfig` or
-   `--kunitconfig=<subdir>/.kunitconfig`, or add needed configs via
-   `--kconfig_add CONFIG_...=y`).
-   
-2. **Verify zero build warnings**: Ensure the files you added or
-   modified compile with zero compiler warnings or errors.
-   
-3. **Verify test isolation**: Run individual test cases using glob
-   filtering to confirm no test depends on state left behind by an
-   earlier test:
-   
-   ```bash
-   ./tools/testing/kunit/kunit.py run "<suite_name>.<test_case_name>"
-   ```
-4. **Verify test fidelity**: Confirm that your tests actually exercise
-   the intended code paths (e.g., via GCOV/coverage if configured, or by
-   mentally/temporarily verifying that breaking the condition under test
-   causes the KUnit expectation to fail).
-   
----
-
-## 4. Creating Kernel Commits & AI Assistant Compliance
-
-When committing your KUnit tests, strictly follow the Linux kernel
-development rules referenced in `README`,
-`Documentation/process/coding-style.rst`,
-`Documentation/process/submitting-patches.rst`,
-`Documentation/process/coding-assistants.rst`, and
-`Documentation/process/generated-content.rst`:
-
-
-### 4.1 Coding Style & Licensing
-- **SPDX & Module License**:
-  - Line 1 of every new `.c` test file must be `// SPDX-License-Identifier: GPL-2.0` (or the appropriate GPL-2.0-compatible identifier).
-  - Include `MODULE_LICENSE("GPL");` and `MODULE_DESCRIPTION("...");` at the bottom of the test module.
-- **Linux Kernel Coding Style**:
-  - Use **8-character hard tabs** for indentation (never spaces).
-  - Follow K&R brace placement (opening brace on the same line for
-    control statements, on the next line for functions; omit braces
-    around single-statement `if`/`else`/`for` blocks unless one branch
-    requires braces).
-  - Keep lines within **80 columns** unless exceeding 80 columns significantly improves readability (e.g., unbroken format strings).
-  - Do not mix declarations and code in the middle of blocks; keep local
-    variable declarations cleanly ordered at the start of
-    functions/blocks.
-- **Run `checkpatch.pl`**:
-  ```bash
-  ./scripts/checkpatch.pl -g HEAD
-  ```
-  Fix all `ERROR`, `WARNING`, and `CHECK` issues reported by `checkpatch.pl`.
-
-### 4.2 Commit Structure & Changelog Format
-- **Separate logical changes**: Each commit must represent a single
-  logical change and leave the kernel buildable and all tests passing.
-  
-- **Subject line**:
-  - Format: `<subsystem>: <concise summary phrase in imperative mood>`
-  - Keep the subject line under 70–75 characters (e.g., `ext4: add KUnit
-    tests for extents status tree`).
-	
-- **Commit message body**:
-  - Wrap lines at **72–75 columns**.
-  - Write in the **imperative mood** (e.g., "Add KUnit tests for...",
-    "Export symbol X for KUnit testing...", not "This patch adds..." or
-    "I added...").
-	
-  - Explain **why** the tests are useful, **what** behaviors, data
-    structures, and edge cases are covered, any minimal production code
-    hooks added (such as `KUNIT_STATIC_STUB_REDIRECT` or KUnit symbol
-    exports), and how the tests were verified.
-	
-  - If referencing any prior commit, always use at least 12 characters
-    of the SHA-1 hash and its quoted one-line summary: `Commit <12+ char
-    sha1> ("<subject line>")`.
-	
-
-### 4.3 Mandatory AI Coding Assistant Rules (DCO & Attribution)
-Per `Documentation/process/coding-assistants.rst` and `Documentation/process/generated-content.rst`:
-1. **NEVER add a `Signed-off-by:` tag**: AI agents cannot legally
-   certify the Developer Certificate of Origin (DCO). Do **not**
-   generate or append a `Signed-off-by:` line for yourself or on behalf
-   of the human user. The human submitter will review the commit and add
-   their own `Signed-off-by:` tag.
-   
-2. **Explicitly report verification status**: In your final response to
-   the user, clearly state what was built and tested (including
-   `kunit.py` and `checkpatch.pl` results), and explicitly note anything
-   that could not be built or verified.
-
---quosb2dej3pam7za--
