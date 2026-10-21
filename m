@@ -1,108 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792595553;
-	b=ZWQ93AjY8Vo5Gj5XVQNWHxfk62LFNpCmKX9fqp5nqt+7bNTLQtw+SgPmKkMkzMUcryWq
-	 kQsNxLPCTsEM5dXZGGvBX62V5jJ8lh6u6NjddChHAD9gVmzr7yK9o3auBhThXYggQxRAh
-	 OWf3ocrb0KDu+YoI0VkCsc43YrxkgmXqBPXfSymhXdSvSejgxIR5eIyHFTEAfPRCed0OT
-	 7njYKEpfrpfcWlKjLLv++Z6M8RPh8aJCpgH7umTB9P1QPXfWxMc6BzdzQbtoNhJq9r9D4
-	 oA54jVEtdVnugAvEsW7AqeVW178Bzlc5eEhjNDi3DaU+39L6KT1Ui8N09I7WPV/2aQQ==
+	t=1792604143;
+	b=PLhzBhrqawwcU34AXZjIbvL7L07/s/ldxWIfMUr0tj+2otHAzYVk6p2tHyDIEuDeoQxP
+	 vqEPdcJ+NhFAT+rcdNTReLBO/FDOMp69thjx26LtcPNelN08UKgpL8Gz6FuU/5LMBd6d/
+	 xG4rbTmm9fYycm8jeW8cdDohkrAsVQ31YhxfMj5B2st0qeJsBh/2ZcgD+XK64MFczYekz
+	 HxAWhPd2/qc9nPy0HhnelnG+oFyfnbYO7PzYGUsIzyZfYX84RMC+hqxJA8tuWAQKMPlOL
+	 LCib9jp3JZxIrtmfK1WVAU96kCnFHTWzm00Ao6/fCgo+/nsqNfxZhvymVyq1ff5l5yA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792595553;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=JLZamb2QjKCTzcKQQ3RteLsTsOXTxF3zEYzjuWfe96k=;
-	b=5RFZA/uYXQ0RuSSpmytGnJgWZhI7k7Dw4sb9Q8CHQIMauVKW3c/fmgjo0e+1/BmzD/+w
-	 s8pcLbnI2Hi5Jmov/jyywJqjdpDAY/QYns9W6WwN88mTufCzuV5bUIa2GWcbTAnuCJKnS
-	 DtDn5EL64MWzFUgwx4nFUd0ab7owJdPuseD13ifCrGyYUSTJT2LcNELZbkF9oJrqgb2LP
-	 UsNPRDiWekPm0ZkIiYIBz1mhmPt/yfKYVRTaz6nLjPuwUUSAts8WQ0kODDVK58a8Mdrjv
-	 zSC2a+Hu5SS9YJ0APZLaJeyaRyIop93kiEN3Fx0FhNrWi3vFPlUXurzTmjoBB/kfXaQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792604143;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=nZQZSw18SACZ1al6YiSFkYg9oVM20D+TpFhKEJVNqeo=;
+	b=F5oiohnxOdXpOrZz9cqsdexPg/Jp9zimbyj1JlG2V5newQ7WSRVpaGo5+X6xWxokQRT6
+	 H2p5xvP3mYBrxgcDGSb4op4GKGZXzv4dEz2/qF1HYD3ARIzni6Hj0gmMZTomuuzRxIe4E
+	 UmEXOJ2eplRjUFB+Y7V0nQYUOkByik+VFr/SoqSN4xk+lDdWtmiwFJ1siNx9FUAEWWX67
+	 s1t5sxtjkSBhN+9PLE7MJXqYEEgoGZcWxQFBZzQ657wpDYeLRw92xG+myVCOsDJ7lclsG
+	 Kl9FOumk7YL/S4/GWwFXnZFfdzkuMjG7P+nCQ46tW2gxYe77o+UYHsP5xiqyYcuw5qg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NCajc3Td;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9EWMINU2;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NCajc3Td;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9EWMINU2;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gtHPyv2D;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0CD5606A31A;
-	Wed, 21 Oct 2026 15:12:32 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E0CD5606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBEE6606A31F;
+	Wed, 21 Oct 2026 17:35:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NCajc3Td;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9EWMINU2;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=NCajc3Td;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9EWMINU2
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 140C521F9C;
-	Wed, 21 Oct 2026 15:12:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792595551; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JLZamb2QjKCTzcKQQ3RteLsTsOXTxF3zEYzjuWfe96k=;
-	b=NCajc3TdrPnCrX9e3Rfrc407Fo5pwsRwu9CbCU8cWkCp5fWQfeG+Ak2pvYYhGdQwsdxEto
-	psLUsZ5JJa3fGx2bPNdNtEw/WdA9XjBtA15h1hX5WW23tVx74ckJ+VH8KfPNcf0+5krTLM
-	+W+TVaWBP/mD374Jkq6OdYUe6TcTtog=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792595551;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JLZamb2QjKCTzcKQQ3RteLsTsOXTxF3zEYzjuWfe96k=;
-	b=9EWMINU2cYkDwbqYEketlORbh1dsfgaaJMqavOafUaFA/x6uAy8Ej+diYXe52DWddRkcM1
-	mLSl+OI5dmbws2Aw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792595551; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JLZamb2QjKCTzcKQQ3RteLsTsOXTxF3zEYzjuWfe96k=;
-	b=NCajc3TdrPnCrX9e3Rfrc407Fo5pwsRwu9CbCU8cWkCp5fWQfeG+Ak2pvYYhGdQwsdxEto
-	psLUsZ5JJa3fGx2bPNdNtEw/WdA9XjBtA15h1hX5WW23tVx74ckJ+VH8KfPNcf0+5krTLM
-	+W+TVaWBP/mD374Jkq6OdYUe6TcTtog=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792595551;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=JLZamb2QjKCTzcKQQ3RteLsTsOXTxF3zEYzjuWfe96k=;
-	b=9EWMINU2cYkDwbqYEketlORbh1dsfgaaJMqavOafUaFA/x6uAy8Ej+diYXe52DWddRkcM1
-	mLSl+OI5dmbws2Aw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id E241D134A5;
-	Wed, 21 Oct 2026 15:12:30 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id mSRoMF7W2GpFAgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 21 Oct 2026 15:12:30 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 73A8AA13C6; Wed, 21 Oct 2026 17:12:26 +0200 (CEST)
-Date: Wed, 21 Oct 2026 17:12:26 +0200
-From: Jan Kara <jack@suse.cz>
-To: Jiaming Zhang <r772577952@gmail.com>
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org, tytso@mit.edu, 
-	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, linux-kernel@vger.kernel.org, 
-	ojaswin@linux.ibm.com, ritesh.list@gmail.com, stable@vger.kernel.org, 
-	yi.zhang@huawei.com
-Subject: Re: [PATCH v2] ext4: clear in-inode xattr space before adding the
- first xattr
-Message-ID: <6pxvr4arcsittsvr22z453es734tmw3th5adedekcmeyrzs5r6@bgd7kpmspm75>
-References: <20261021085635.3633692-1-r772577952@gmail.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gtHPyv2D
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C89561F000C7;
+	Wed, 21 Oct 2026 17:35:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792604142;
+	bh=nZQZSw18SACZ1al6YiSFkYg9oVM20D+TpFhKEJVNqeo=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=gtHPyv2DytAGwXwqP6AuPtrURaFm2Es6e2+bG+60zzEQjzkkjCH2xhWwDE3vMuH+W
+	 /njNlq5bKa1C0QFRO5yVl3CYVzjJuumbgjChgiKa5cNuoBqQPx3tzAXdWq2jpC+7y4
+	 xfZDP8ctYNyBUsoHqGnqbHyKWFyiydtg2UVaHKz1bxT0eH2yeW7iceeNsx9xDvff0D
+	 d4QWmsRgnZJm8URGCYwD8psqQME5NT4H5VD3SIk89SsgIA6HMZZEAsCYnJEPLVse/v
+	 1178n3snkCX5UTsdJTmWorxjZ/Nm5yhJmvMW7+8VBnvSRDFL7n1GBpZxztin4LJw2Z
+	 dpIDU4fmdMHjg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 05E1FF40069;
+	Wed, 21 Oct 2026 13:35:41 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 21 Oct 2026 13:35:41 -0400
+X-ME-Sender: <xms:7PfYatFbK3SGvkv1PZ5WJiKqbnltKgPHrFocaFLc9JUp-IAv1dxn3A>
+    <xme:7PfYatKxLinDI60CCDCNz6n-Sj1DQX516hiu7qtOg8hUKZlVb4_0cJO4J4axVu7QJ
+    n1c5qECWdS6ItzXnr6A1UuwHQpES3rw0oSxFPHU6JXFRfYZownwzmuv>
+X-ME-Proxy-Cause: dmFkZTGCRjlnSR8Neg2mpGTDvJvFQ+WyF5lNldIB0q4zon/r5UxQ070SLuVQHGmuL/1IQs
+    hwZ/xhsfszkwm1t5IL5077RE9E1CmNJeGs5M0heUIqhUPsiPorYZOAoMMquElo45vQkPAL
+    5o6E0JGmgCcNf4/b7AK7NvmWD3X8w88YX8WwNKFCy2mAPFdtZUSubNdlIZYjAp45PwEKqJ
+    i3UG1z5Zs2Q6j+WxyzADnx++ZMd9/Av6U2d1l0Maysg4LiGWlPSZs2/UbKUPa/Sl9zQZru
+    JKCpo88uCIHH/dHiqwxA1Rv195n9u+MHvTsKxE7AJcpg1u+K44QfQeHXoE0mwvDOxUQdsz
+    OHmTRf4blfvfR3Bk+u0TWU/xBbokz/9rHk5FCnl/2PEY0GqpE8jafPjgMx2t9fOQOJifyb
+    OvUSDTZHBf0u1XXyfa1kBlP2Boe47OSRAIwc9jb99f+EMW67C7764RfA5PznCwLRSZ9f/o
+    OqZSXZnbCIdxRw/7VnpgCAqdpuDhD+HX6ju96Wrn7XD7EubQVkBsAIh+oYZKgKtNtPPOCs
+    t0TXsHLIYfOm/HdEysB64ZHxkNQcWRBrSFhbbsvaJxnVRZ1lGQHczXsHXxYjzTZbwDN6kx
+    XWhWdnja+2FHBWi51pwBJFQahQp7RP95auTW9R065CD/aDZKZ4I1gRWDnU2w
+X-ME-Proxy: <xmx:7PfYatVD__8wXb41zYEe29XHtozznhOzv0MZZN1eY7p2KicO12w-DA>
+    <xmx:7ffYaqyWNau02205DPQuCdlHluDhf9_AFQPdUjs5A-o56NnLQ2GlIQ>
+    <xmx:7ffYat4ndxHHVQANfVp63WjkU7APGZB5e8ZcmmUrAQOmxScV7dZNNg>
+    <xmx:7ffYash0_tdrm5M8iKwj5F7TeVZI76mm4tQp4HL6Y-vsbGuMimeBwA>
+    <xmx:7ffYaohOZRNYEwZe0HcPVW550R2avMTr5rBAQvWHh4KFch9VYCrntV3W>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id D6715782738; Wed, 21 Oct 2026 13:35:40 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -112,124 +77,66 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261021085635.3633692-1-r772577952@gmail.com>
-X-Spamd-Result: default: False [-11.30 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_TO(0.00)[gmail.com];
-	RCVD_COUNT_THREE(0.00)[3];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,suse.cz:email,suse.com:email];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[suse.cz,vger.kernel.org,mit.edu,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -11.30
-X-Spam-Level: 
-X-Spam-Flag: NO
+X-ThreadId: AwLsEl3CooH3
+Date: Wed, 21 Oct 2026 13:35:20 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jan Koester" <jan.koester@tuxist.de>
+Cc: "Christian Brauner" <brauner@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Serge E. Hallyn" <serge@hallyn.com>, "Jan Kara" <jack@suse.cz>,
+ "Theodore Y. Ts'o" <tytso@mit.edu>, "Paul Moore" <paul@paul-moore.com>,
+ "Arnd Bergmann" <arnd@arndb.de>, linux-fsdevel@vger.kernel.org,
+ linux-api@vger.kernel.org, linux-security-module@vger.kernel.org,
+ linux-arch@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+ netdev@vger.kernel.org, audit@vger.kernel.org, keyrings@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Message-Id: <fd20b840-350e-469c-9fd2-008fa0ded62a@slotpi15m67>
+In-Reply-To: 
+ <f444dffc8e6bf98bf44c02456adc2de40e4ecd95.1792552161.git.jan.koester@tuxist.de>
+References: <cover.1792552161.git.jan.koester@tuxist.de>
+ <f444dffc8e6bf98bf44c02456adc2de40e4ecd95.1792552161.git.jan.koester@tuxist.de>
+Subject: Re: [RFC PATCH v2 40/41] nfsd, nfs: carry UUID and GUID owners as their text
+ form
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Wed 21-10-26 16:56:35, Jiaming Zhang wrote:
-> An inode can hold extended attributes in the space that follows its extra
-> fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
-> ext4_iget_extra_inode() validates that space only if it starts with the
-> xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
-> space is treated as empty and is not checked.
-> 
-> ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
-> or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
-> there to find min_offs, the lowest value offset.  That offset decides
-> whether the new value fits and where the value is copied:
-> 
-> 	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
-> 	...
-> 	void *val = s->base + min_offs - new_size;
-> 
-> A crafted image can leave non-zero bytes in that space without the magic
-> where ext4 looks for it, for example by shrinking i_extra_isize.  Those
-> bytes are parsed as entries, and an entry that claims an in-inode value at
-> offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
-> then wraps around to a huge value, and the free space check passes although
-> the value does not fit.  The value is copied new_size bytes before the
-> start of the space, over the inode's own fields and, for a large value, the
-> memory in front of the inode.
-> 
-> On a kernel without KASAN, the copy corrupts memory: it overwrites the
-> inode's own fields and, for a large value, also the memory in front of the
-> inode.  The bytes and their length are decided by the setxattr() caller.
-> Nothing is freed and reused here, so the use-after-free in the report only
-> reflects where the write happened to land.
-> 
-> Triggering this issue requires mounting a crafted image, which needs
-> CAP_SYS_ADMIN or automounting of removable media; after that, any
-> setxattr() on the file reaches this path.  The issue was found by fuzzing
-> and has not been seen in production; a reproducer is available in the
-> linked report.
-> 
-> When EXT4_STATE_XATTR is not set, zero the first 32 bits of the space in
-> ext4_xattr_ibody_set() before calling ext4_xattr_set_entry().  These are
-> the bits IS_LAST_ENTRY() reads, so the space is treated as empty and the
-> walk stops before reading any stale entry.
-> 
-> Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
-> Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com/
-> Cc: stable@vger.kernel.org
-> Assisted-by: Claude Code:claude-opus-5-5
-> Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
+On 10/20/26 11:16 PM, Jan Koester wrote:
+> Encode such an id as its text form -- "xxxxxxxx-xxxx-xxxx-xxxx-
+> xxxxxxxxxxxx" for a UUID, the same in braces for a GUID -- in both
+> directions on the server and the client, and take such a string (it
+> has no '@', so it can't be a user@domain name) as that id again.
 
-Looks good to me. Feel free to add:
+A bare UUID in an owner, owner_group, or ACE 'who' string is a new
+owner-string syntax for NFSv4, one that only Linux would recognize.
+Thus it isn't interoperable with other NFSv4 stacks as proposed
+here.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+RFC 8881 Section 5.9 says a string without an '@' that is not a
+decimal number means no translation was available and the receiver
+"should not use that string as a basis for translation into its
+own internal format." RFC 8000 Section 6.1 forbids bare numeric
+ids in multi-domain deployments because they collide; the same
+applies to bare UUIDs, and more so to GUIDs.
 
-								Honza
+If you are serious about pursuing this, you'll have to start by
+raising the proposed wire format on nfsv4@ietf.org before the
+Linux kernel's NFS stack commits to it.
 
-> ---
-> Changes in v2:
-> - Zero only the first 32 bits space instead of the whole space.
-> - Add a comment above the check.
-> - v1: https://lore.kernel.org/lkml/20260916084723.877552-1-r772577952@gmail.com/
-> 
->  fs/ext4/xattr.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 5c310747b965..8e1fd26329d3 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -2274,6 +2274,14 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
->  		if (IS_ERR(ea_inode))
->  			return PTR_ERR(ea_inode);
->  	}
-> +
-> +	/*
-> +	 * Make sure xattr space is properly initialized so that
-> +	 * IS_LAST_ENTRY() returns true for its first entry
-> +	 */
-> +	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
-> +		*(__u32 *)s->first = 0;
-> +
->  	error = ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
->  				     false /* is_block */);
->  	if (error) {
-> -- 
-> 2.43.0
-> 
+With nfs4_disable_idmapping and AUTH_SYS, numeric_name_to_id() and
+encode_ascii_id() handle decimal ids in the kernel because there is
+nothing to look up. Recognizing the text form in that branch only
+would be the natural analogue once the format is agreed. Everything
+else should go through the idmapper: extend the nametoid/idtoname
+channels and the client keyring upcall to carry a 128-bit id, and
+let rpc.idmapd and nfsidmap decide which strings map to which ids.
+As written, the UUID check runs before idmapd for every name and
+auth flavor, bypassing the cache and any site policy.
+
+So my general preference for NFSv4 would be to pass the new format
+up to the user space idmapper instead of handling these in-kernel
+with no opportunity to apply local policy.
+
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
