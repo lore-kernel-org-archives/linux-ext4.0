@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552626;
-	b=dUzqwv4EGp87HrBPFsc7x1SRge8BDwRLvNyskpKmmdm/ERd1qxVJuPbibxoYvbSn4GN9
-	 m1WxLBcUNqE8viYlqfdVc6TG8b3lqY+tXmbPeD9tasVCMnAZSCrmXk8tAPSzvRXvZfOFU
-	 IDSuutJnzaFSNjKyrrJtsfaesk6+A6Q9kkVFNDMgp/tKFRmxHlimgJZxFBV2m2+AOogvj
-	 8eGxCTUwRnEaq8ZOMbJVjjdpl9i0qdoLaYdd0qBBE6z7pmNznJHukTHiUt6F5zdGllIgu
-	 fuUS7Cls57wVo31+xGO6okGmAxiqleFC56v3YxLrPNINo4waNkk081zeNCnpHJu4FBg==
+	t=1792552639;
+	b=OUpWa4EcfJOGLnu/sqnvDgAD9HKZkvlUQ0ppK0NFUENIN4WAoQXExTEauEC8qpg4e3mf
+	 0QEIqYKuu1PXXoj6j0yLqSvdLxOIaRuJu21ngPkSr8L/7VJX/CMZLn0bqtZnFMdZ91G8J
+	 B4da2XrLnjMJV/TZnFQ+1goA2s0msYDxOZdSSnggzdCk/h0vzc3vW8XZYZOlv8Aq+RRzn
+	 KvWmO4n0MddtiwAFp3WbgDc/x/ZKBJ6FkVRnIUVYGTVn4n6JVsrcxD6HABlIBDYw+rONt
+	 Y1gQOTIr68zUpfNizuW98n9DX3YlqNmYja+wRKYC19Xvrww7YXt3wQ6rgUSrIfOutbA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552626;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552639;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=xPPuSjLhDbMViYqpEHpt4dnNVDTdoh5q6lqQYXei5pA=;
-	b=CVfys4/AvH9+AelNGIOEupJoRwXW4NrB54AskXcZkiaYPTpdYaKpzyZ6sV8VgByR7fis
-	 FyX5nZnybT4fwr8n8rV2v9L8/Ui4BYQ/uYT3bOk4RpJ8NKUYNxeH5qfYeg7mI2fUv7Jog
-	 3/Qr1wQEWTuesearNXiuJ50Fm+PFg2+kFjZg1plYmgQTVjZY6UcUoPKz0iSoXSgdEn2PV
-	 whqSdfZBeVCOLLNgmXISpmqk1cJX7Jh110mQj3l7uRz8OKohVO1Y/DNQFBiabRdaOtX4H
-	 sKouaUM3E/wztBkLPrcmmNCocs2bvZKq0pAzaortdYLJ5QxXU6wNPHwlkz+9AJrBUAQ==
+	bh=gfFBA8LH4gfsSKNHEPmNQ/vWCOtrs7FdgWk9k3JrBHg=;
+	b=Yba0laho60HZzfL9vOFJfOjRp4UV7VKZnh75x3NSp6aAmFo7gz+GvzV0ez2c19Uwoa9a
+	 9DSyMZG3LxQGxjEDiYtYcd9KPTRI0Snzu1Rq7YlWXTgjIVA8suxKxN4A8cnq4ECKwmQI5
+	 BlsoG+YmZ98PxevXR1ypiq6bEnYSbuZnmk2Xf5FIIZIK7afGvo/y66/5L06o/QVBrcPW1
+	 L2NYzboz2Zdkhb6JK06S7g/LEJ+ugahH1ImVS/mHe6co51Y7rRI2eiPw4OBqeSRqYF6S/
+	 3j/vC3y4J4Y/1EtzLq4eRryrn4K00QrC6noZiV9X+YOekPPWunjtjeBZjdbjW6F4Y/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=l6sqAx24;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=W4BT9TNR;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE3256074AF1;
-	Wed, 21 Oct 2026 03:17:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DE3256074AF1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0926460A382C;
+	Wed, 21 Oct 2026 03:17:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0926460A382C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=l6sqAx24
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=W4BT9TNR
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552623; bh=7OhuYr1jzT08GfwqsT/yDIHMI0ebaXemXLD2jKJdeak=;
+	t=1792552637; bh=c/MatJ7zCmct39K83og7TVItx3cItrvprM66Ihgbc+M=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=l6sqAx24f32iFDvNQPYmCz2mQIork2CZho4QaX7n4duiJm715lhI3Hl0W1nvJIYDv
-	 AVQWyb0V6WKgAm3CYTdY1Z1aXftHAxnwKahEkibu627MXgGu7fG1F5yESuDetRxXWP
-	 TpndRpd6PjP3HjXXz24bsk7FI83JMlw+lrUaUQj9+f1HAuNvcivO270Z1COlxj2Q70
-	 TPFi2s4yHDpkEyEDkgaocDWQrbL/pyurE9jFfqNjU2zg6TqFNcRGyrMxveCwdx7v1t
-	 KFn2xp0OIhZOarnx/1nxNeYc3c2hNrzKi7GCbEOV5FSzGZaW/BGgWLgrtIgsSo/yc+
-	 zMbdRey63iHAg==
+	b=W4BT9TNRFBeCPYk+tKtWArqh4Ur5DtLo0vljyceBtP8rbavEfHigwo1frJ3i62gYx
+	 z3krisNdVJ37oqMsaK2uyqmWlj6j5QRmocqzrfCSlVaqAvdn3FKeDZ06WL8JdAekBj
+	 E7aIKHC3FMOIOS6+6iOaSGE3W0UvLoa7fVNArUs6w3C4w28+pp0TpyIfGYnkbePujE
+	 16fIfgDl5Cn9Nm9qlMDXuTLW1NKDlP+Y5bs4b4R+tLarpLnDRLArLHntkMoIxtIP6z
+	 1Inqg2AngQKfLy0kxk0oelvGjx6iRqmwZ+SAdL2RVR8iQHys3D5Y0RxckrhsVDOmsM
+	 eQW3xgoajXseg==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id 24F018A07DE;
-	Wed, 21 Oct 2026 05:17:03 +0200 (CEST)
-Message-ID: <b086aef70fd4516d33c535b4ea3d5d6f204c0af7.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id 71B0F8A091B;
+	Wed, 21 Oct 2026 05:17:16 +0200 (CEST)
+Message-ID: <98758113db07083faeb158948b6b3362c2795231.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 30/41] ipc: add IPC_STAT_R and IPC_SET_R
+Subject: [RFC PATCH v2 34/41] ext4: store ACLs with UUID and GUID entries on
+ uid_r filesystems
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -69,7 +70,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:50 +0200
+Date: Wed, 21 Oct 2026 05:15:54 +0200
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,613 +80,275 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-The ids of SysV message queues, semaphore sets and shared memory
-segments reach userspace in struct ipc64_perm, 32 bits each, so a UUID
-or GUID owner shows up as the overflow id and can't be set at all.
-
-Rather than doubling every *id64_ds, add two commands shared by
-msgctl(), semctl() and shmctl() that work on a struct ipc_perm_r with
-key, mode, and uid, gid, cuid and cgid as __kernel_uid_r_t:
-
-- IPC_STAT_R reads it, with the permission checks of IPC_STAT,
-- IPC_SET_R sets uid, gid and mode like IPC_SET does (a message queue
-  keeps its size).
-
-The IPC_SET path now works on the kernel ids of a struct ipc_set_ids,
-which the classic command fills from its ipc64_perm. The audit record
-of IPC_SET has the new owner as a kuid as well and logs it like the
-other audit ids, in the initial user namespace.
+ACLs whose ACL_USER or ACL_GROUP entries are UUIDs or GUIDs are written
+in a new on-disk format, EXT4_ACL_VERSION_R: the short entries stay as
+they are, the user and group entries carry an EXT4_ID_R_* kind and 16
+bytes of id. Only such ACLs use it, and only uid_r filesystems can have
+them (set_posix_acl() refuses them elsewhere); all other ACLs keep
+EXT4_ACL_VERSION.
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- include/linux/audit.h    |   8 +--
- include/uapi/linux/ipc.h |  17 ++++++
- ipc/msg.c                |  40 ++++++++++----
- ipc/sem.c                |  31 ++++++++---
- ipc/shm.c                |  32 ++++++++---
- ipc/util.c               | 112 +++++++++++++++++++++++++++++++++++----
- ipc/util.h               |  23 +++++++-
- kernel/audit.h           |   4 +-
- kernel/auditsc.c         |   8 +--
- 9 files changed, 226 insertions(+), 49 deletions(-)
+ fs/ext4/acl.c | 109 +++++++++++++++++++++++++++++++++++++++-----------
+ fs/ext4/acl.h |  34 +++++++++++++---
+ 2 files changed, 115 insertions(+), 28 deletions(-)
 
-diff --git a/include/linux/audit.h b/include/linux/audit.h
-index 45abb3722d..a769f04e45 100644
---- a/include/linux/audit.h
-+++ b/include/linux/audit.h
-@@ -428,7 +428,7 @@ static inline void audit_ptrace(struct task_struct *t)
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index 3bffe862f9..27f8a1b503 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -6,6 +6,7 @@
+  */
  
- 				/* Private API (for audit.c only) */
- extern void __audit_ipc_obj(struct kern_ipc_perm *ipcp);
--extern void __audit_ipc_set_perm(unsigned long qbytes, uid_t uid, gid_t gid, umode_t mode);
-+extern void __audit_ipc_set_perm(unsigned long qbytes, kuid_t uid, kgid_t gid, umode_t mode);
- extern void __audit_bprm(struct linux_binprm *bprm);
- extern int __audit_socketcall(int nargs, unsigned long *args);
- extern int __audit_sockaddr(int len, void *addr);
-@@ -460,7 +460,7 @@ static inline void audit_fd_pair(int fd1, int fd2)
- 	if (unlikely(!audit_dummy_context()))
- 		__audit_fd_pair(fd1, fd2);
- }
--static inline void audit_ipc_set_perm(unsigned long qbytes, uid_t uid, gid_t gid, umode_t mode)
-+static inline void audit_ipc_set_perm(unsigned long qbytes, kuid_t uid, kgid_t gid, umode_t mode)
- {
- 	if (unlikely(!audit_dummy_context()))
- 		__audit_ipc_set_perm(qbytes, uid, gid, mode);
-@@ -652,8 +652,8 @@ static inline void audit_seccomp_actions_logged(const char *names,
- { }
- static inline void audit_ipc_obj(struct kern_ipc_perm *ipcp)
- { }
--static inline void audit_ipc_set_perm(unsigned long qbytes, uid_t uid,
--					gid_t gid, umode_t mode)
-+static inline void audit_ipc_set_perm(unsigned long qbytes, kuid_t uid,
-+					kgid_t gid, umode_t mode)
- { }
- static inline void audit_bprm(struct linux_binprm *bprm)
- { }
-diff --git a/include/uapi/linux/ipc.h b/include/uapi/linux/ipc.h
-index 5995fc9d67..e927564fbb 100644
---- a/include/uapi/linux/ipc.h
-+++ b/include/uapi/linux/ipc.h
-@@ -3,6 +3,7 @@
- #define _UAPI_LINUX_IPC_H
- 
- #include <linux/types.h>
-+#include <linux/uidgid_r.h>
- 
- #define IPC_PRIVATE ((__kernel_key_t) 0)  
- 
-@@ -40,6 +41,22 @@ struct ipc_perm
- #define IPC_SET  1     /* set ipc_perm options */
- #define IPC_STAT 2     /* get ipc_perm options */
- #define IPC_INFO 3     /* see ipcs */
-+#define IPC_SET_R  21  /* set uid, gid and mode from struct ipc_perm_r */
-+#define IPC_STAT_R 22  /* get struct ipc_perm_r */
-+
-+/*
-+ * The ids and mode of an ipc object for IPC_STAT_R and IPC_SET_R, which
-+ * also hold UUIDs and GUIDs; IPC_SET_R uses uid, gid and mode. The other
-+ * attributes of the object come from IPC_STAT.
-+ */
-+struct ipc_perm_r {
-+	__kernel_key_t		key;
-+	__u32			mode;
-+	__kernel_uid_r_t	uid;
-+	__kernel_gid_r_t	gid;
-+	__kernel_uid_r_t	cuid;
-+	__kernel_gid_r_t	cgid;
-+};
- 
+ #include <linux/quotaops.h>
++#include <linux/unaligned.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "xattr.h"
+@@ -14,22 +15,41 @@
  /*
-  * Version flags for semctl, msgctl, and shmctl commands
-diff --git a/ipc/msg.c b/ipc/msg.c
-index 62996b97f0..a3f5287e54 100644
---- a/ipc/msg.c
-+++ b/ipc/msg.c
-@@ -398,8 +398,10 @@ copy_msqid_from_user(struct msqid64_ds *out, void __user *buf, int version)
-  * to be held in write mode.
-  * NOTE: no locks must be held, the rwsem is taken inside this function.
+  * Convert from filesystem to in-memory representation.
   */
-+/* IPC_SET_R is IPC_SET without a new queue size */
- static int msgctl_down(struct ipc_namespace *ns, int msqid, int cmd,
--			struct ipc64_perm *perm, int msg_qbytes)
-+			const struct ipc_set_ids *set, int msg_qbytes,
-+			bool set_qbytes)
- {
- 	struct kern_ipc_perm *ipcp;
- 	struct msg_queue *msq;
-@@ -409,7 +411,7 @@ static int msgctl_down(struct ipc_namespace *ns, int msqid, int cmd,
- 	rcu_read_lock();
- 
- 	ipcp = ipcctl_obtain_check(ns, &msg_ids(ns), msqid, cmd,
--				      perm, msg_qbytes);
-+				      set, msg_qbytes);
- 	if (IS_ERR(ipcp)) {
- 		err = PTR_ERR(ipcp);
- 		goto out_unlock1;
-@@ -431,18 +433,19 @@ static int msgctl_down(struct ipc_namespace *ns, int msqid, int cmd,
- 	{
- 		DEFINE_WAKE_Q(wake_q);
- 
--		if (msg_qbytes > ns->msg_ctlmnb &&
-+		if (set_qbytes && msg_qbytes > ns->msg_ctlmnb &&
- 		    !capable(CAP_SYS_RESOURCE)) {
- 			err = -EPERM;
- 			goto out_unlock1;
- 		}
- 
- 		ipc_lock_object(&msq->q_perm);
--		err = ipc_update_perm(perm, ipcp);
-+		err = ipc_update_perm(set, ipcp);
- 		if (err)
- 			goto out_unlock0;
- 
--		msq->q_qbytes = msg_qbytes;
-+		if (set_qbytes)
-+			msq->q_qbytes = msg_qbytes;
- 
- 		msq->q_ctime = ktime_get_real_seconds();
- 		/*
-@@ -598,6 +601,7 @@ static long ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf, int ver
- {
- 	struct ipc_namespace *ns;
- 	struct msqid64_ds msqid64;
-+	struct ipc_set_ids set;
- 	int err;
- 
- 	if (msqid < 0 || cmd < 0)
-@@ -628,10 +632,17 @@ static long ksys_msgctl(int msqid, int cmd, struct msqid_ds __user *buf, int ver
- 	case IPC_SET:
- 		if (copy_msqid_from_user(&msqid64, buf, version))
- 			return -EFAULT;
--		return msgctl_down(ns, msqid, cmd, &msqid64.msg_perm,
--				   msqid64.msg_qbytes);
-+		ipc64_perm_to_set_ids(&msqid64.msg_perm, &set);
-+		return msgctl_down(ns, msqid, cmd, &set, msqid64.msg_qbytes, true);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids((void __user *)buf, &set))
-+			return -EFAULT;
-+		return msgctl_down(ns, msqid, IPC_SET, &set, 0, false);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &msg_ids(ns), msqid,
-+				  security_msg_queue_msgctl, (void __user *)buf);
- 	case IPC_RMID:
--		return msgctl_down(ns, msqid, cmd, NULL, 0);
-+		return msgctl_down(ns, msqid, cmd, NULL, 0, false);
- 	default:
- 		return  -EINVAL;
- 	}
-@@ -734,6 +745,7 @@ static long compat_ksys_msgctl(int msqid, int cmd, void __user *uptr, int versio
- 	struct ipc_namespace *ns;
- 	int err;
- 	struct msqid64_ds msqid64;
-+	struct ipc_set_ids set;
- 
- 	ns = current->nsproxy->ipc_ns;
- 
-@@ -763,9 +775,17 @@ static long compat_ksys_msgctl(int msqid, int cmd, void __user *uptr, int versio
- 	case IPC_SET:
- 		if (copy_compat_msqid_from_user(&msqid64, uptr, version))
- 			return -EFAULT;
--		return msgctl_down(ns, msqid, cmd, &msqid64.msg_perm, msqid64.msg_qbytes);
-+		ipc64_perm_to_set_ids(&msqid64.msg_perm, &set);
-+		return msgctl_down(ns, msqid, cmd, &set, msqid64.msg_qbytes, true);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids(uptr, &set))
-+			return -EFAULT;
-+		return msgctl_down(ns, msqid, IPC_SET, &set, 0, false);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &msg_ids(ns), msqid,
-+				  security_msg_queue_msgctl, uptr);
- 	case IPC_RMID:
--		return msgctl_down(ns, msqid, cmd, NULL, 0);
-+		return msgctl_down(ns, msqid, cmd, NULL, 0, false);
- 	default:
- 		return -EINVAL;
- 	}
-diff --git a/ipc/sem.c b/ipc/sem.c
-index 5ec41de7e8..ab456991e4 100644
---- a/ipc/sem.c
-+++ b/ipc/sem.c
-@@ -1599,7 +1599,7 @@ copy_semid_from_user(struct semid64_ds *out, void __user *buf, int version)
-  * NOTE: no locks must be held, the rwsem is taken inside this function.
-  */
- static int semctl_down(struct ipc_namespace *ns, int semid,
--		       int cmd, struct semid64_ds *semid64)
-+		       int cmd, const struct ipc_set_ids *set)
- {
- 	struct sem_array *sma;
- 	int err;
-@@ -1608,8 +1608,7 @@ static int semctl_down(struct ipc_namespace *ns, int semid,
- 	down_write(&sem_ids(ns).rwsem);
- 	rcu_read_lock();
- 
--	ipcp = ipcctl_obtain_check(ns, &sem_ids(ns), semid, cmd,
--				      &semid64->sem_perm, 0);
-+	ipcp = ipcctl_obtain_check(ns, &sem_ids(ns), semid, cmd, set, 0);
- 	if (IS_ERR(ipcp)) {
- 		err = PTR_ERR(ipcp);
- 		goto out_unlock1;
-@@ -1629,7 +1628,7 @@ static int semctl_down(struct ipc_namespace *ns, int semid,
- 		goto out_up;
- 	case IPC_SET:
- 		sem_lock(sma, NULL, -1);
--		err = ipc_update_perm(&semid64->sem_perm, ipcp);
-+		err = ipc_update_perm(set, ipcp);
- 		if (err)
- 			goto out_unlock0;
- 		sma->sem_ctime = ktime_get_real_seconds();
-@@ -1653,6 +1652,7 @@ static long ksys_semctl(int semid, int semnum, int cmd, unsigned long arg, int v
- 	struct ipc_namespace *ns;
- 	void __user *p = (void __user *)arg;
- 	struct semid64_ds semid64;
-+	struct ipc_set_ids set;
- 	int err;
- 
- 	if (semid < 0)
-@@ -1694,9 +1694,16 @@ static long ksys_semctl(int semid, int semnum, int cmd, unsigned long arg, int v
- 	case IPC_SET:
- 		if (copy_semid_from_user(&semid64, p, version))
- 			return -EFAULT;
--		fallthrough;
-+		ipc64_perm_to_set_ids(&semid64.sem_perm, &set);
-+		return semctl_down(ns, semid, cmd, &set);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids(p, &set))
-+			return -EFAULT;
-+		return semctl_down(ns, semid, IPC_SET, &set);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &sem_ids(ns), semid, security_sem_semctl, p);
- 	case IPC_RMID:
--		return semctl_down(ns, semid, cmd, &semid64);
-+		return semctl_down(ns, semid, cmd, NULL);
- 	default:
- 		return -EINVAL;
- 	}
-@@ -1776,6 +1783,7 @@ static long compat_ksys_semctl(int semid, int semnum, int cmd, int arg, int vers
- 	void __user *p = compat_ptr(arg);
- 	struct ipc_namespace *ns;
- 	struct semid64_ds semid64;
-+	struct ipc_set_ids set;
- 	int err;
- 
- 	ns = current->nsproxy->ipc_ns;
-@@ -1808,9 +1816,16 @@ static long compat_ksys_semctl(int semid, int semnum, int cmd, int arg, int vers
- 	case IPC_SET:
- 		if (copy_compat_semid_from_user(&semid64, p, version))
- 			return -EFAULT;
--		fallthrough;
-+		ipc64_perm_to_set_ids(&semid64.sem_perm, &set);
-+		return semctl_down(ns, semid, cmd, &set);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids(p, &set))
-+			return -EFAULT;
-+		return semctl_down(ns, semid, IPC_SET, &set);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &sem_ids(ns), semid, security_sem_semctl, p);
- 	case IPC_RMID:
--		return semctl_down(ns, semid, cmd, &semid64);
-+		return semctl_down(ns, semid, cmd, NULL);
- 	default:
- 		return -EINVAL;
- 	}
-diff --git a/ipc/shm.c b/ipc/shm.c
-index bb1a721a3e..33f30941c2 100644
---- a/ipc/shm.c
-+++ b/ipc/shm.c
-@@ -993,7 +993,7 @@ static void shm_get_stat(struct ipc_namespace *ns, unsigned long *rss,
-  * NOTE: no locks must be held, the rwsem is taken inside this function.
-  */
- static int shmctl_down(struct ipc_namespace *ns, int shmid, int cmd,
--		       struct shmid64_ds *shmid64)
-+		       const struct ipc_set_ids *set)
- {
- 	struct kern_ipc_perm *ipcp;
- 	struct shmid_kernel *shp;
-@@ -1002,8 +1002,7 @@ static int shmctl_down(struct ipc_namespace *ns, int shmid, int cmd,
- 	down_write(&shm_ids(ns).rwsem);
- 	rcu_read_lock();
- 
--	ipcp = ipcctl_obtain_check(ns, &shm_ids(ns), shmid, cmd,
--				      &shmid64->shm_perm, 0);
-+	ipcp = ipcctl_obtain_check(ns, &shm_ids(ns), shmid, cmd, set, 0);
- 	if (IS_ERR(ipcp)) {
- 		err = PTR_ERR(ipcp);
- 		goto out_unlock1;
-@@ -1023,7 +1022,7 @@ static int shmctl_down(struct ipc_namespace *ns, int shmid, int cmd,
- 		goto out_up;
- 	case IPC_SET:
- 		ipc_lock_object(&shp->shm_perm);
--		err = ipc_update_perm(&shmid64->shm_perm, ipcp);
-+		err = ipc_update_perm(set, ipcp);
- 		if (err)
- 			goto out_unlock0;
- 		shp->shm_ctim = ktime_get_real_seconds();
-@@ -1246,6 +1245,7 @@ static long ksys_shmctl(int shmid, int cmd, struct shmid_ds __user *buf, int ver
- 	int err;
- 	struct ipc_namespace *ns;
- 	struct shmid64_ds sem64;
-+	struct ipc_set_ids set;
- 
- 	if (cmd < 0 || shmid < 0)
- 		return -EINVAL;
-@@ -1284,9 +1284,17 @@ static long ksys_shmctl(int shmid, int cmd, struct shmid_ds __user *buf, int ver
- 	case IPC_SET:
- 		if (copy_shmid_from_user(&sem64, buf, version))
- 			return -EFAULT;
--		fallthrough;
-+		ipc64_perm_to_set_ids(&sem64.shm_perm, &set);
-+		return shmctl_down(ns, shmid, cmd, &set);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids((void __user *)buf, &set))
-+			return -EFAULT;
-+		return shmctl_down(ns, shmid, IPC_SET, &set);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &shm_ids(ns), shmid, security_shm_shmctl,
-+				  (void __user *)buf);
- 	case IPC_RMID:
--		return shmctl_down(ns, shmid, cmd, &sem64);
-+		return shmctl_down(ns, shmid, cmd, NULL);
- 	case SHM_LOCK:
- 	case SHM_UNLOCK:
- 		return shmctl_do_lock(ns, shmid, cmd);
-@@ -1440,6 +1448,7 @@ static long compat_ksys_shmctl(int shmid, int cmd, void __user *uptr, int versio
- {
- 	struct ipc_namespace *ns;
- 	struct shmid64_ds sem64;
-+	struct ipc_set_ids set;
- 	int err;
- 
- 	ns = current->nsproxy->ipc_ns;
-@@ -1479,9 +1488,16 @@ static long compat_ksys_shmctl(int shmid, int cmd, void __user *uptr, int versio
- 	case IPC_SET:
- 		if (copy_compat_shmid_from_user(&sem64, uptr, version))
- 			return -EFAULT;
--		fallthrough;
-+		ipc64_perm_to_set_ids(&sem64.shm_perm, &set);
-+		return shmctl_down(ns, shmid, cmd, &set);
-+	case IPC_SET_R:
-+		if (ipc_perm_r_to_set_ids(uptr, &set))
-+			return -EFAULT;
-+		return shmctl_down(ns, shmid, IPC_SET, &set);
-+	case IPC_STAT_R:
-+		return ipc_stat_r(ns, &shm_ids(ns), shmid, security_shm_shmctl, uptr);
- 	case IPC_RMID:
--		return shmctl_down(ns, shmid, cmd, &sem64);
-+		return shmctl_down(ns, shmid, cmd, NULL);
- 	case SHM_LOCK:
- 	case SHM_UNLOCK:
- 		return shmctl_do_lock(ns, shmid, cmd);
-diff --git a/ipc/util.c b/ipc/util.c
-index 1737d776bc..bc4df56193 100644
---- a/ipc/util.c
-+++ b/ipc/util.c
-@@ -681,28 +681,117 @@ int ipcget(struct ipc_namespace *ns, struct ipc_ids *ids,
-  * @in:  the permission given as input.
-  * @out: the permission of the ipc to set.
-  */
--int ipc_update_perm(struct ipc64_perm *in, struct kern_ipc_perm *out)
-+int ipc_update_perm(const struct ipc_set_ids *in, struct kern_ipc_perm *out)
- {
--	kuid_t uid = make_kuid(current_user_ns(), in->uid);
--	kgid_t gid = make_kgid(current_user_ns(), in->gid);
--	if (!uid_valid(uid) || !gid_valid(gid))
--		return -EINVAL;
-+	if (in->err)
-+		return in->err;
- 
--	out->uid = uid;
--	out->gid = gid;
-+	out->uid = in->uid;
-+	out->gid = in->gid;
- 	out->mode = (out->mode & ~S_IRWXUGO)
- 		| (in->mode & S_IRWXUGO);
- 
- 	return 0;
- }
- 
-+/**
-+ * ipc64_perm_to_set_ids - the IPC_SET ids and mode of a classic ipc64_perm
-+ * @in: user permissions
-+ * @out: kernel ids and mode, -EINVAL in @out->err if an id is invalid
-+ */
-+void ipc64_perm_to_set_ids(const struct ipc64_perm *in, struct ipc_set_ids *out)
++/* The id of an ACL_USER or ACL_GROUP entry of EXT4_ACL_VERSION_R */
++static int ext4_acl_id_from_disk(const ext4_acl_entry_r *entry, u32 *type,
++				 u32 *legacy, uuid_t *id)
 +{
-+	out->uid = make_kuid(current_user_ns(), in->uid);
-+	out->gid = make_kgid(current_user_ns(), in->gid);
-+	out->mode = in->mode;
-+	out->err = uid_valid(out->uid) && gid_valid(out->gid) ? 0 : -EINVAL;
-+}
-+
-+/**
-+ * ipc_perm_r_to_set_ids - the IPC_SET_R ids and mode of a struct ipc_perm_r
-+ * @in: user permissions
-+ * @out: kernel ids and mode, -EINVAL in @out->err if an id is invalid
-+ *
-+ * Return: 0 or -EFAULT.
-+ */
-+int ipc_perm_r_to_set_ids(const struct ipc_perm_r __user *in,
-+			  struct ipc_set_ids *out)
-+{
-+	struct ipc_perm_r perm;
-+
-+	if (copy_from_user(&perm, in, sizeof(perm)))
-+		return -EFAULT;
-+	out->uid = make_kuid_r(current_user_ns(), &perm.uid);
-+	out->gid = make_kgid_r(current_user_ns(), &perm.gid);
-+	out->mode = perm.mode;
-+	out->err = uid_valid(out->uid) && gid_valid(out->gid) ? 0 : -EINVAL;
++	*type = le32_to_cpu(entry->e_type);
++	if (*type > EXT4_ID_R_GUID)
++		return -EINVAL;
++	*legacy = get_unaligned_le32(entry->e_id);
++	memcpy(id->b, entry->e_id, sizeof(id->b));
 +	return 0;
 +}
 +
-+/**
-+ * ipc_stat_r - IPC_STAT_R of an ipc object
-+ * @ns: ipc namespace
-+ * @ids: the table of ids where to look for the object
-+ * @id: the id of the object
-+ * @security: the security hook of the object's kind, asked for IPC_STAT
-+ * @buf: where to put the struct ipc_perm_r
-+ *
-+ * Return: 0 or a negative error code.
-+ */
-+int ipc_stat_r(struct ipc_namespace *ns, struct ipc_ids *ids, int id,
-+	       int (*security)(struct kern_ipc_perm *, int),
-+	       struct ipc_perm_r __user *buf)
+ static struct posix_acl *
+ ext4_acl_from_disk(const void *value, size_t size)
+ {
+ 	const char *end = (char *)value + size;
+ 	int n, count;
+ 	struct posix_acl *acl;
++	size_t entry_size = sizeof(ext4_acl_entry);
++	bool r = false;
+ 
+ 	if (!value)
+ 		return NULL;
+ 	if (size < sizeof(ext4_acl_header))
+ 		 return ERR_PTR(-EINVAL);
+-	if (((ext4_acl_header *)value)->a_version !=
+-	    cpu_to_le32(EXT4_ACL_VERSION))
++	if (((ext4_acl_header *)value)->a_version ==
++	    cpu_to_le32(EXT4_ACL_VERSION_R)) {
++		r = true;
++		entry_size = sizeof(ext4_acl_entry_r);
++	} else if (((ext4_acl_header *)value)->a_version !=
++		   cpu_to_le32(EXT4_ACL_VERSION)) {
+ 		return ERR_PTR(-EINVAL);
++	}
+ 	value = (char *)value + sizeof(ext4_acl_header);
+-	count = ext4_acl_count(size);
++	count = ext4_acl_count_e(size, entry_size);
+ 	if (count < 0)
+ 		return ERR_PTR(-EINVAL);
+ 	if (count == 0)
+@@ -55,21 +75,33 @@ ext4_acl_from_disk(const void *value, size_t size)
+ 			break;
+ 
+ 		case ACL_USER:
+-			value = (char *)value + sizeof(ext4_acl_entry);
++		case ACL_GROUP: {
++			u32 type = EXT4_ID_R_LEGACY, legacy;
++			uuid_t id;
++
++			value = (char *)value + entry_size;
+ 			if ((char *)value > end)
+ 				goto fail;
+-			acl->a_entries[n].e_uid =
+-				make_kuid(&init_user_ns,
+-					  le32_to_cpu(entry->e_id));
+-			break;
+-		case ACL_GROUP:
+-			value = (char *)value + sizeof(ext4_acl_entry);
+-			if ((char *)value > end)
++			legacy = le32_to_cpu(entry->e_id);
++			if (r && ext4_acl_id_from_disk((void *)entry, &type,
++						       &legacy, &id))
+ 				goto fail;
+-			acl->a_entries[n].e_gid =
+-				make_kgid(&init_user_ns,
+-					  le32_to_cpu(entry->e_id));
++			if (acl->a_entries[n].e_tag == ACL_USER)
++				acl->a_entries[n].e_uid =
++					type == EXT4_ID_R_LEGACY ?
++					make_kuid(&init_user_ns, legacy) :
++					type == EXT4_ID_R_UUID ?
++					KUIDT_INIT_UUID(id) :
++					KUIDT_INIT_GUID(*(guid_t *)&id);
++			else
++				acl->a_entries[n].e_gid =
++					type == EXT4_ID_R_LEGACY ?
++					make_kgid(&init_user_ns, legacy) :
++					type == EXT4_ID_R_UUID ?
++					KGIDT_INIT_UUID(id) :
++					KGIDT_INIT_GUID(*(guid_t *)&id);
+ 			break;
++		}
+ 
+ 		default:
+ 			goto fail;
+@@ -87,19 +119,38 @@ ext4_acl_from_disk(const void *value, size_t size)
+ /*
+  * Convert from in-memory to filesystem representation.
+  */
++/* An ACL_USER or ACL_GROUP id into an entry of EXT4_ACL_VERSION_R */
++static void ext4_acl_id_to_disk(ext4_acl_entry_r *entry, u32 type, u32 legacy,
++				const uuid_t *id)
 +{
-+	struct user_namespace *user_ns = current_user_ns();
-+	struct kern_ipc_perm *ipcp;
-+	struct ipc_perm_r perm;
-+	int err;
-+
-+	memset(&perm, 0, sizeof(perm));
-+	rcu_read_lock();
-+	ipcp = ipc_obtain_object_check(ids, id);
-+	if (IS_ERR(ipcp)) {
-+		err = PTR_ERR(ipcp);
-+		goto out_unlock;
-+	}
-+
-+	err = -EACCES;
-+	if (ipcperms(ns, ipcp, S_IRUGO))
-+		goto out_unlock;
-+
-+	err = security(ipcp, IPC_STAT);
-+	if (err)
-+		goto out_unlock;
-+
-+	ipc_lock_object(ipcp);
-+	if (!ipc_valid_object(ipcp)) {
-+		ipc_unlock_object(ipcp);
-+		err = -EIDRM;
-+		goto out_unlock;
-+	}
-+	perm.key = ipcp->key;
-+	perm.mode = ipcp->mode;
-+	from_kuid_r_munged(user_ns, ipcp->uid, &perm.uid);
-+	from_kgid_r_munged(user_ns, ipcp->gid, &perm.gid);
-+	from_kuid_r_munged(user_ns, ipcp->cuid, &perm.cuid);
-+	from_kgid_r_munged(user_ns, ipcp->cgid, &perm.cgid);
-+	ipc_unlock_object(ipcp);
-+	rcu_read_unlock();
-+
-+	return copy_to_user(buf, &perm, sizeof(perm)) ? -EFAULT : 0;
-+
-+out_unlock:
-+	rcu_read_unlock();
-+	return err;
++	entry->e_type = cpu_to_le32(type);
++	memset(entry->e_id, 0, sizeof(entry->e_id));
++	if (type == EXT4_ID_R_LEGACY)
++		put_unaligned_le32(legacy, entry->e_id);
++	else
++		memcpy(entry->e_id, id->b, sizeof(entry->e_id));
 +}
 +
- /**
-  * ipcctl_obtain_check - retrieve an ipc object and check permissions
-  * @ns:  ipc namespace
-  * @ids:  the table of ids where to look for the ipc
-  * @id:   the id of the ipc to retrieve
-  * @cmd:  the cmd to check
-- * @perm: the permission to set
-+ * @set: the ids and mode to set
-  * @extra_perm: one extra permission parameter used by msq
-  *
-  * This function does some common audit and permissions check for some IPC_XXX
-@@ -718,7 +807,8 @@ int ipc_update_perm(struct ipc64_perm *in, struct kern_ipc_perm *out)
-  */
- struct kern_ipc_perm *ipcctl_obtain_check(struct ipc_namespace *ns,
- 					struct ipc_ids *ids, int id, int cmd,
--					struct ipc64_perm *perm, int extra_perm)
-+					const struct ipc_set_ids *set,
-+					int extra_perm)
- {
- 	kuid_t euid;
- 	int err = -EPERM;
-@@ -732,8 +822,8 @@ struct kern_ipc_perm *ipcctl_obtain_check(struct ipc_namespace *ns,
- 
- 	audit_ipc_obj(ipcp);
- 	if (cmd == IPC_SET)
--		audit_ipc_set_perm(extra_perm, perm->uid,
--				   perm->gid, perm->mode);
-+		audit_ipc_set_perm(extra_perm, set->uid,
-+				   set->gid, set->mode);
- 
- 	euid = current_euid();
- 	if (uid_eq(euid, ipcp->cuid) || uid_eq(euid, ipcp->uid)  ||
-diff --git a/ipc/util.h b/ipc/util.h
-index a55d6cebe6..b0d57f4e64 100644
---- a/ipc/util.h
-+++ b/ipc/util.h
-@@ -177,10 +177,29 @@ struct kern_ipc_perm *ipc_obtain_object_idr(struct ipc_ids *ids, int id);
- 
- void kernel_to_ipc64_perm(struct kern_ipc_perm *in, struct ipc64_perm *out);
- void ipc64_perm_to_ipc_perm(struct ipc64_perm *in, struct ipc_perm *out);
--int ipc_update_perm(struct ipc64_perm *in, struct kern_ipc_perm *out);
-+
 +/*
-+ * The new owner, group and mode of IPC_SET/IPC_SET_R. @err is an error of
-+ * their conversion, reported once the object has been found.
++ * ACLs with UUID or GUID entries (only on uid_r filesystems, see
++ * set_posix_acl()) are written as EXT4_ACL_VERSION_R, others as before.
 + */
-+struct ipc_set_ids {
-+	kuid_t uid;
-+	kgid_t gid;
-+	umode_t mode;
-+	int err;
-+};
+ static void *
+ ext4_acl_to_disk(const struct posix_acl *acl, size_t *size)
+ {
+ 	ext4_acl_header *ext_acl;
+ 	char *e;
+ 	size_t n;
++	bool r = posix_acl_has_id_r(acl);
++	size_t entry_size = r ? sizeof(ext4_acl_entry_r) : sizeof(ext4_acl_entry);
+ 
+-	*size = ext4_acl_size(acl->a_count);
++	*size = ext4_acl_size_e(acl->a_count, entry_size);
+ 	ext_acl = kmalloc(sizeof(ext4_acl_header) + acl->a_count *
+-			sizeof(ext4_acl_entry), GFP_NOFS);
++			entry_size, GFP_NOFS);
+ 	if (!ext_acl)
+ 		return ERR_PTR(-ENOMEM);
+-	ext_acl->a_version = cpu_to_le32(EXT4_ACL_VERSION);
++	ext_acl->a_version = cpu_to_le32(r ? EXT4_ACL_VERSION_R :
++					     EXT4_ACL_VERSION);
+ 	e = (char *)ext_acl + sizeof(ext4_acl_header);
+ 	for (n = 0; n < acl->a_count; n++) {
+ 		const struct posix_acl_entry *acl_e = &acl->a_entries[n];
+@@ -108,14 +159,26 @@ ext4_acl_to_disk(const struct posix_acl *acl, size_t *size)
+ 		entry->e_perm = cpu_to_le16(acl_e->e_perm);
+ 		switch (acl_e->e_tag) {
+ 		case ACL_USER:
+-			entry->e_id = cpu_to_le32(
+-				from_kuid(&init_user_ns, acl_e->e_uid));
+-			e += sizeof(ext4_acl_entry);
++			if (r)
++				ext4_acl_id_to_disk((void *)entry,
++						    acl_e->e_uid.type,
++						    from_kuid(&init_user_ns, acl_e->e_uid),
++						    &acl_e->e_uid.uuid);
++			else
++				entry->e_id = cpu_to_le32(
++					from_kuid(&init_user_ns, acl_e->e_uid));
++			e += entry_size;
+ 			break;
+ 		case ACL_GROUP:
+-			entry->e_id = cpu_to_le32(
+-				from_kgid(&init_user_ns, acl_e->e_gid));
+-			e += sizeof(ext4_acl_entry);
++			if (r)
++				ext4_acl_id_to_disk((void *)entry,
++						    acl_e->e_gid.type,
++						    from_kgid(&init_user_ns, acl_e->e_gid),
++						    &acl_e->e_gid.uuid);
++			else
++				entry->e_id = cpu_to_le32(
++					from_kgid(&init_user_ns, acl_e->e_gid));
++			e += entry_size;
+ 			break;
+ 
+ 		case ACL_USER_OBJ:
+diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
+index 0c5a79c3b5..48bc352ec7 100644
+--- a/fs/ext4/acl.h
++++ b/fs/ext4/acl.h
+@@ -8,6 +8,8 @@
+ #include <linux/posix_acl_xattr.h>
+ 
+ #define EXT4_ACL_VERSION	0x0001
++/* uid_r: ACL_USER and ACL_GROUP entries are ext4_acl_entry_r */
++#define EXT4_ACL_VERSION_R	0x0002
+ 
+ typedef struct {
+ 	__le16		e_tag;
+@@ -20,11 +22,23 @@ typedef struct {
+ 	__le16		e_perm;
+ } ext4_acl_entry_short;
+ 
++/*
++ * EXT4_ACL_VERSION_R: e_type an EXT4_ID_R_* kind, a classic id in the
++ * first four bytes of e_id (little endian), a UUID or GUID all of it
++ */
++typedef struct {
++	__le16		e_tag;
++	__le16		e_perm;
++	__le32		e_type;
++	__u8		e_id[16];
++} ext4_acl_entry_r;
 +
-+void ipc64_perm_to_set_ids(const struct ipc64_perm *in, struct ipc_set_ids *out);
-+int ipc_perm_r_to_set_ids(const struct ipc_perm_r __user *in,
-+			  struct ipc_set_ids *out);
-+int ipc_update_perm(const struct ipc_set_ids *in, struct kern_ipc_perm *out);
- struct kern_ipc_perm *ipcctl_obtain_check(struct ipc_namespace *ns,
- 					     struct ipc_ids *ids, int id, int cmd,
--					     struct ipc64_perm *perm, int extra_perm);
-+					     const struct ipc_set_ids *set,
-+					     int extra_perm);
-+int ipc_stat_r(struct ipc_namespace *ns, struct ipc_ids *ids, int id,
-+	       int (*security)(struct kern_ipc_perm *, int),
-+	       struct ipc_perm_r __user *buf);
+ typedef struct {
+ 	__le32		a_version;
+ } ext4_acl_header;
  
- static inline void ipc_update_pid(struct pid **pos, struct pid *pid)
+-static inline size_t ext4_acl_size(int count)
++/* @entry: sizeof(ext4_acl_entry) or, for EXT4_ACL_VERSION_R, of _r */
++static inline size_t ext4_acl_size_e(int count, size_t entry)
  {
-diff --git a/kernel/audit.h b/kernel/audit.h
-index 92d5e723d5..6195f13882 100644
---- a/kernel/audit.h
-+++ b/kernel/audit.h
-@@ -168,8 +168,8 @@ struct audit_context {
- 			umode_t			mode;
- 			struct lsm_prop		oprop;
- 			int			has_perm;
--			uid_t			perm_uid;
--			gid_t			perm_gid;
-+			kuid_t			perm_uid;
-+			kgid_t			perm_gid;
- 			umode_t			perm_mode;
- 			unsigned long		qbytes;
- 		} ipc;
-diff --git a/kernel/auditsc.c b/kernel/auditsc.c
-index 08d8f5af46..9abe0615a1 100644
---- a/kernel/auditsc.c
-+++ b/kernel/auditsc.c
-@@ -1395,10 +1395,10 @@ static void show_special(struct audit_context *context, int *call_panic)
- 			if (unlikely(!ab))
- 				return;
- 			audit_log_format(ab,
--				"qbytes=%lx ouid=%u ogid=%u mode=%#ho",
-+				"qbytes=%lx ouid=%s ogid=%s mode=%#ho",
- 				context->ipc.qbytes,
--				context->ipc.perm_uid,
--				context->ipc.perm_gid,
-+				KUID_STR(context->ipc.perm_uid),
-+				KGID_STR(context->ipc.perm_gid),
- 				context->ipc.perm_mode);
- 		}
- 		break;
-@@ -2585,7 +2585,7 @@ void __audit_ipc_obj(struct kern_ipc_perm *ipcp)
-  *
-  * Called only after audit_ipc_obj().
-  */
--void __audit_ipc_set_perm(unsigned long qbytes, uid_t uid, gid_t gid, umode_t mode)
-+void __audit_ipc_set_perm(unsigned long qbytes, kuid_t uid, kgid_t gid, umode_t mode)
- {
- 	struct audit_context *context = audit_context();
+ 	if (count <= 4) {
+ 		return sizeof(ext4_acl_header) +
+@@ -32,11 +46,11 @@ static inline size_t ext4_acl_size(int count)
+ 	} else {
+ 		return sizeof(ext4_acl_header) +
+ 		       4 * sizeof(ext4_acl_entry_short) +
+-		       (count - 4) * sizeof(ext4_acl_entry);
++		       (count - 4) * entry;
+ 	}
+ }
  
+-static inline int ext4_acl_count(size_t size)
++static inline int ext4_acl_count_e(size_t size, size_t entry)
+ {
+ 	ssize_t s;
+ 	size -= sizeof(ext4_acl_header);
+@@ -46,12 +60,22 @@ static inline int ext4_acl_count(size_t size)
+ 			return -1;
+ 		return size / sizeof(ext4_acl_entry_short);
+ 	} else {
+-		if (s % sizeof(ext4_acl_entry))
++		if (s % entry)
+ 			return -1;
+-		return s / sizeof(ext4_acl_entry) + 4;
++		return s / entry + 4;
+ 	}
+ }
+ 
++static inline size_t ext4_acl_size(int count)
++{
++	return ext4_acl_size_e(count, sizeof(ext4_acl_entry));
++}
++
++static inline int ext4_acl_count(size_t size)
++{
++	return ext4_acl_count_e(size, sizeof(ext4_acl_entry));
++}
++
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 
+ /* acl.c */
 -- 
 2.56.0
 
