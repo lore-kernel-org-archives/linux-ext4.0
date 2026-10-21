@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552609;
-	b=tuvzwwFaYT9bXoDLq4eXrznsJYIToZ4tnJrH9zqeB/zocppDHxhQtRXKXlo5aV0lgC+w
-	 a0QpUeNQmzlqBp+zaVz0smkNAl03rc7I7kR0/LFv1BVSIYh+Z34PoKq/nJbioTvyJusb6
-	 bVIvPF08Ssf7KmXskj9E8sJ6QbXYXFNCnYr/IVksuKjRzKuWfN7QTTw9hbKfYen6luhdB
-	 EODU0OXnI0UPYAbjaYUWrCNbex2UC3/Ov4XfvELxVBLWwLhZLEQXEYciyev7Zh6cM/fxf
-	 uBH0tkLop/zmA+QyGAwSz5Ula8oyiMGtav9d/BpBB5Zp60n+XklIoEDq3B/pej2sb+A==
+	t=1792552619;
+	b=yqb4sK5B/RsvXnltaUObQIiE6EQngNnpUnm/s057asAzjhp+wfqG8Bilfr7ddHp+cwnr
+	 5PuGA1qYsAYlAz5io/ewX5AdAZmdiZ0BAPJPORsaNGVibo5Bknc7new0YC85WqOYUHytI
+	 MPXC9YqDye/iTXNTD/T6WfdBzyHPB4UXhs5bFX5/MojrAdzidS19T/7icfgaG2hKzyzdZ
+	 HE4c+e91LnmUfGLyBnjbI5nWQUxhz5EkG7ltJozm2pBU1BZtrUmF/UqvCbhosNSnYrMpm
+	 ivheX08wS4h/hq4lSCGBbBXIB5otTWiGJaThItBWRwbrMS8t6Eu1yyOZ/FAWT9t3tNQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552609;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552619;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=XPetBJfDkAzAZ8UTDQicbQRK+iH8jjbopwvCHr+wr6I=;
-	b=xlRKqqNnHr5O2yYiHYPDxlX6Xrp63nWY9XDVOY5Ly/pIbS6Gd0vm3t8GDN8qzivoNUEp
-	 B7pDyQdjxfIY81Vbx1f28QUtwUcva9WqSryJk2RYW+btwyeX5D6sOd/FUpJ96oEj8tAy2
-	 y3Bc9zo4hqIe+seRORQEDx56+tC+EaRd4iUwfNrUoGDPmntyqntd2sUQiSVveAzkUPiSu
-	 X0QEsMrjF2NcjuX+qUxUK9FXLkOZrUYPBGsHTBNjDwO6eILxgTsPP2pTChVZ2xkMZYoyk
-	 8sxHUX47lvcw+QXHIbaemqTOcX9NyNyvdbGUZYEshnbhYwkOUv3hM4BP82WbDBu1NKw==
+	bh=DGpOL1alo4UJiM0Ho8CtIv0oQYcetUD0hsrP92D8HMc=;
+	b=g4Q+BRkVtr/6f/K685XtHl2YR02ZjqlydfC5ro18BLrImIbDxnGTbRxk2sgqavQ55ydr
+	 6xYgdDbPla7fh4aJnRryiAjYAYEtOsWRo1PlvHgpj1ZBf5TIJxcVo4vZIQj9GSq0+y9gy
+	 IwzFtIdeY58MELZ8s5CzJSFQ1SzdnzYis4h6LVyPiaPB1biLCMAWgwipDl0Y+UW04FtzP
+	 WtUFrdCGQqvcSFPbTEQXoYyCku9CbBJsWIiSHUD3q7E319gOB2mytpjDBEA1eUll9T5I6
+	 r9hw1UZ+yZQuZD/kFI9nxixSTlJ1t3Arqy9Ou5U6W/BNlGOSVjTEso6+0d/5SYzwUTw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=MvZnv28O;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=f4CKs3WW;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BE5A607095A;
-	Wed, 21 Oct 2026 03:16:48 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5BE5A607095A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD928606A334;
+	Wed, 21 Oct 2026 03:16:58 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CD928606A334
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=MvZnv28O
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=f4CKs3WW
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552606; bh=vR17OcW5DP2to57LMQkJCXz9sOVicwks2xNBVa+gK/c=;
+	t=1792552616; bh=VRBxDdnvXqALD2rzbv+EwPGrvd8Aj3j3z/QOZub3dbw=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=MvZnv28OBDboO1Uckg4VHuK/UCnr5rurzSeDn9rh3CM8Oi+8NpNgWNtkIccYx5qyF
-	 ndW6QFNpKp4H1P/4JvmDSWzdVIoAEaNqTq0xoPzvfxt/e9z2vys6oMeRq/oKDBtAKX
-	 +aN+sOmHrfuEdV51ZZ2r9g7Wr8TdKTAbfDMuwOcjaJRjx2hJlcsYGzARDsqfxqV/ox
-	 pXIMjzH5sYuB/rluXQcqmrcXuXG3EFvM9A7sdlk/Mb+bGwKBVX2e/Nd0FT74brAjMl
-	 Uv8wqwMlruNGr/0anQBZWwG1U3ZR6i99bXdWRuTg5MYbLZTBKM77f30XEu7RAoTaFi
-	 ZGVDd4t4+1GaQ==
+	b=f4CKs3WWrWAUtUA2NGbEiD2VqCGTpmWPQALpTmfujgSfhuKpUZTBo5urvDI7oRumn
+	 Mky25dJKdbumsGH/cp7T+CelOLAifIbww3yEbmrAAiI0K7Jf1AojXiWS2C2QLwDIYs
+	 SxH6hvgRN9HhMSUrd25wHtrDnJ+9Fool/AkuT6ks/uDgdODqIarHFxad6I+dN1GZIc
+	 NbBQWLvGeBUZtS0qc89wydGBQO5wRonEr8z9FtGBMLFkVlVEX85RXE7PUEbXNH6WpK
+	 7VEPKSHUFDltm0Gjyk5J9RL0ebxmiZQM0aA/diF0sKnd0E3RJ2pkN9Kkb7MN4gRw4/
+	 i9+KJtiNPHMwg==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id B90608A096E;
-	Wed, 21 Oct 2026 05:16:45 +0200 (CEST)
-Message-ID: <1151adfbb3aeae57cb26df8723287857f8d0af57.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id D7BB48A098B;
+	Wed, 21 Oct 2026 05:16:55 +0200 (CEST)
+Message-ID: <ef85db692c151f13d4749f6c6f4fc7372a2ab0b4.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 25/41] uidgid: parse and print ids in their text form
+Subject: [RFC PATCH v2 28/41] net: add SO_PEERCRED_R, SO_PEERGROUPS_R and
+ SCM_CREDENTIALS_R
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -69,7 +70,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:45 +0200
+Date: Wed, 21 Oct 2026 05:15:48 +0200
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,243 +80,485 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Add helpers for interfaces that pass ids as text:
+Services authenticate AF_UNIX peers with SO_PEERCRED, SO_PEERGROUPS and
+SCM_CREDENTIALS, which carry 32 bit ids: a UUID or GUID user shows up
+as the overflow id there.
 
-- make_kuid_str()/make_kgid_str() parse what kuid_str() writes: a
-  decimal number, a UUID, or a GUID in braces,
-- kuid_str_munged()/kgid_str_munged() write an id as seen from a user
-  namespace, the overflow id if it has no mapping there,
-- kuid_str_signed()/kgid_str_signed() write a legacy id as a signed
-  number, for output that used "%d",
-- KUID_STR() and friends wrap them as expressions with a buffer of the
-  enclosing block, so that printf-like calls can replace
-  "%u", from_kuid(&init_user_ns, uid) by "%s", KUID_STR(uid) and print
-  legacy ids exactly as before.
+Add variants with __kernel_uid_r_t ids:
+
+- SO_PEERCRED_R returns a struct __kernel_ucred_r of the peer,
+- SO_PEERGROUPS_R its supplementary groups as __kernel_gid_r_t,
+- SO_PASSCRED_R asks for SCM_CREDENTIALS_R messages, with a struct
+  __kernel_ucred_r, next to or instead of SCM_CREDENTIALS (a separate
+  option, so receivers sizing their control buffer for SCM_CREDENTIALS
+  don't get truncated), and SCM_CREDENTIALS_R can be sent with the same
+  privilege rules as SCM_CREDENTIALS.
+
+The classic SCM_CREDENTIALS sending path now shares the checks and pid
+handling with it. Netlink keeps classic ids in its skbs, so it hands out
+the overflow id for UUID senders in SCM_CREDENTIALS_R too.
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- include/linux/uidgid.h |  19 ++++++
- kernel/uidgid_r.c      | 152 +++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 167 insertions(+), 4 deletions(-)
+ arch/alpha/include/uapi/asm/socket.h  |  5 ++
+ arch/mips/include/uapi/asm/socket.h   |  5 ++
+ arch/parisc/include/uapi/asm/socket.h |  5 ++
+ arch/sparc/include/uapi/asm/socket.h  |  5 ++
+ include/linux/socket.h                |  1 +
+ include/net/sock.h                    |  4 +-
+ include/uapi/asm-generic/socket.h     |  5 ++
+ include/uapi/linux/socket.h           |  9 +++
+ net/core/scm.c                        | 94 ++++++++++++++++++---------
+ net/core/sock.c                       | 84 ++++++++++++++++++++++++
+ net/unix/af_unix.c                    |  3 +-
+ 11 files changed, 186 insertions(+), 34 deletions(-)
 
-diff --git a/include/linux/uidgid.h b/include/linux/uidgid.h
-index ac7786f760..03ece8a4cb 100644
---- a/include/linux/uidgid.h
-+++ b/include/linux/uidgid.h
-@@ -190,6 +190,25 @@ static inline u32 kgid_hash(kgid_t gid)
+diff --git a/arch/alpha/include/uapi/asm/socket.h b/arch/alpha/include/uapi/asm/socket.h
+index 946a5fad26..3f1dd0e766 100644
+--- a/arch/alpha/include/uapi/asm/socket.h
++++ b/arch/alpha/include/uapi/asm/socket.h
+@@ -153,10 +153,15 @@
+ #define SO_PASSRIGHTS		83
  
- char *kuid_str(kuid_t uid, char buf[KID_STR_LEN]);
- char *kgid_str(kgid_t gid, char buf[KID_STR_LEN]);
-+char *kuid_str_signed(kuid_t uid, char buf[KID_STR_LEN]);
-+char *kgid_str_signed(kgid_t gid, char buf[KID_STR_LEN]);
+ #define SO_INQ			84
 +
-+/*
-+ * The text form of an id as an expression, in a buffer that lives until
-+ * the end of the enclosing block -- for "%s" in place of "%u" (or "%d",
-+ * with the _D variants, which write a legacy id as a signed number) of
-+ * from_kuid(&init_user_ns, uid) in printf-like calls.
-+ */
-+#define KUID_STR(uid)	kuid_str(uid, (char [KID_STR_LEN]) {})
-+#define KGID_STR(gid)	kgid_str(gid, (char [KID_STR_LEN]) {})
-+#define KUID_STR_D(uid)	kuid_str_signed(uid, (char [KID_STR_LEN]) {})
-+#define KGID_STR_D(gid)	kgid_str_signed(gid, (char [KID_STR_LEN]) {})
-+char *kuid_str_munged(struct user_namespace *to, kuid_t uid,
-+		      char buf[KID_STR_LEN]);
-+char *kgid_str_munged(struct user_namespace *to, kgid_t gid,
-+		      char buf[KID_STR_LEN]);
-+kuid_t make_kuid_str(struct user_namespace *from, const char *str);
-+kgid_t make_kgid_str(struct user_namespace *from, const char *str);
+ #define SCM_INQ			SO_INQ
  
- #ifdef CONFIG_USER_NS
+ #define SO_RIGHTS_NOTRUNC      85
  
-diff --git a/kernel/uidgid_r.c b/kernel/uidgid_r.c
-index d71aecddb2..9bba60f413 100644
---- a/kernel/uidgid_r.c
-+++ b/kernel/uidgid_r.c
-@@ -12,6 +12,7 @@
- #include <linux/uidgid.h>
- #include <linux/uidgid_r.h>
- #include <linux/user_namespace.h>
-+#include <linux/uuid.h>
++#define SO_PEERCRED_R		86
++#define SO_PEERGROUPS_R		87
++#define SO_PASSCRED_R		88
++
+ #if !defined(__KERNEL__)
  
+ #if __BITS_PER_LONG == 64
+diff --git a/arch/mips/include/uapi/asm/socket.h b/arch/mips/include/uapi/asm/socket.h
+index f1641dde13..a2bbd153a9 100644
+--- a/arch/mips/include/uapi/asm/socket.h
++++ b/arch/mips/include/uapi/asm/socket.h
+@@ -164,10 +164,15 @@
+ #define SO_PASSRIGHTS		83
+ 
+ #define SO_INQ			84
++
+ #define SCM_INQ			SO_INQ
+ 
+ #define SO_RIGHTS_NOTRUNC      85
+ 
++#define SO_PEERCRED_R		86
++#define SO_PEERGROUPS_R		87
++#define SO_PASSCRED_R		88
++
+ #if !defined(__KERNEL__)
+ 
+ #if __BITS_PER_LONG == 64
+diff --git a/arch/parisc/include/uapi/asm/socket.h b/arch/parisc/include/uapi/asm/socket.h
+index f3a3815c7d..72751399a8 100644
+--- a/arch/parisc/include/uapi/asm/socket.h
++++ b/arch/parisc/include/uapi/asm/socket.h
+@@ -145,10 +145,15 @@
+ #define SO_PASSRIGHTS		0x4051
+ 
+ #define SO_INQ			0x4052
++
+ #define SCM_INQ			SO_INQ
+ 
+ #define SO_RIGHTS_NOTRUNC	0x4053
+ 
++#define SO_PEERCRED_R		0x4054
++#define SO_PEERGROUPS_R		0x4055
++#define SO_PASSCRED_R		0x4056
++
+ #if !defined(__KERNEL__)
+ 
+ #if __BITS_PER_LONG == 64
+diff --git a/arch/sparc/include/uapi/asm/socket.h b/arch/sparc/include/uapi/asm/socket.h
+index 7907f3b1f0..39162ca456 100644
+--- a/arch/sparc/include/uapi/asm/socket.h
++++ b/arch/sparc/include/uapi/asm/socket.h
+@@ -146,10 +146,15 @@
+ #define SO_PASSRIGHTS            0x005c
+ 
+ #define SO_INQ                   0x005d
++
+ #define SCM_INQ                  SO_INQ
+ 
+ #define SO_RIGHTS_NOTRUNC        0x005e
+ 
++#define SO_PEERCRED_R            0x005f
++#define SO_PEERGROUPS_R          0x0060
++#define SO_PASSCRED_R            0x0061
++
+ #if !defined(__KERNEL__)
+ 
+ 
+diff --git a/include/linux/socket.h b/include/linux/socket.h
+index 5a5eb12501..b8e7ba6ffe 100644
+--- a/include/linux/socket.h
++++ b/include/linux/socket.h
+@@ -193,6 +193,7 @@ static inline size_t msg_data_left(const struct msghdr *msg)
+ #define SCM_CREDENTIALS 0x02		/* rw: struct ucred		*/
+ #define SCM_SECURITY	0x03		/* rw: security label		*/
+ #define SCM_PIDFD	0x04		/* ro: pidfd (int)		*/
++#define SCM_CREDENTIALS_R 0x05		/* rw: struct __kernel_ucred_r	*/
+ 
+ struct ucred {
+ 	__u32	pid;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 0986d94665..7055afcf0d 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -358,6 +358,7 @@ struct sk_filter;
+   *	@sk_scm_security: flagged by SO_PASSSEC to recv SCM_SECURITY
+   *	@sk_scm_pidfd: flagged by SO_PASSPIDFD to recv SCM_PIDFD
+   *	@sk_scm_rights: flagged by SO_PASSRIGHTS to recv SCM_RIGHTS
++  *	@sk_scm_credentials_r: flagged by SO_PASSCRED_R to recv SCM_CREDENTIALS_R
+   *	@sk_scm_unused: unused flags for scm_recv()
+   *	@ns_tracker: tracker for netns reference
+   *	@sk_user_frags: xarray of pages the user is holding a reference on.
+@@ -565,7 +566,8 @@ struct sock {
+ 				sk_scm_security : 1,
+ 				sk_scm_pidfd : 1,
+ 				sk_scm_rights : 1,
+-				sk_scm_unused : 4;
++				sk_scm_credentials_r : 1,
++				sk_scm_unused : 3;
+ 		};
+ 	};
+ 	u8			sk_clockid;
+diff --git a/include/uapi/asm-generic/socket.h b/include/uapi/asm-generic/socket.h
+index 84ea7b9293..f3445c32ca 100644
+--- a/include/uapi/asm-generic/socket.h
++++ b/include/uapi/asm-generic/socket.h
+@@ -148,10 +148,15 @@
+ #define SO_PASSRIGHTS		83
+ 
+ #define SO_INQ			84
++
+ #define SCM_INQ			SO_INQ
+ 
+ #define SO_RIGHTS_NOTRUNC	85
+ 
++#define SO_PEERCRED_R		86
++#define SO_PEERGROUPS_R		87
++#define SO_PASSCRED_R		88
++
+ #if !defined(__KERNEL__)
+ 
+ #if __BITS_PER_LONG == 64 || (defined(__x86_64__) && defined(__ILP32__))
+diff --git a/include/uapi/linux/socket.h b/include/uapi/linux/socket.h
+index d3fcd3b5ec..38d3cd814a 100644
+--- a/include/uapi/linux/socket.h
++++ b/include/uapi/linux/socket.h
+@@ -2,6 +2,8 @@
+ #ifndef _UAPI_LINUX_SOCKET_H
+ #define _UAPI_LINUX_SOCKET_H
+ 
++#include <linux/uidgid_r.h>
++
  /*
-  * Whether @id is well formed: a known type, reserved bytes zero, a UUID of
-@@ -278,11 +279,12 @@ int put_kgid_r(struct user_namespace *to, kgid_t kgid,
- }
- EXPORT_SYMBOL(put_kgid_r);
+  * Desired design of maximum size and alignment (see RFC2553)
+  */
+@@ -35,4 +37,11 @@ struct __kernel_sockaddr_storage {
+ #define SOCK_TXREHASH_DISABLED	0
+ #define SOCK_TXREHASH_ENABLED	1
  
--static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf)
-+static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf,
-+		     bool sgn)
++/* SO_PEERCRED_R and SCM_CREDENTIALS_R: struct ucred with UUIDs and GUIDs */
++struct __kernel_ucred_r {
++	__u32			pid;
++	__kernel_uid_r_t	uid;
++	__kernel_gid_r_t	gid;
++};
++
+ #endif /* _UAPI_LINUX_SOCKET_H */
+diff --git a/net/core/scm.c b/net/core/scm.c
+index f0d44ecdb1..7e40f7de12 100644
+--- a/net/core/scm.c
++++ b/net/core/scm.c
+@@ -40,22 +40,19 @@
+ #include <net/cls_cgroup.h>
+ #include <net/af_unix.h>
+ 
+-
+ /*
+  *	Only allow a user to send credentials, that they could set with
+  *	setu(g)id.
+  */
+ 
+-static __inline__ int scm_check_creds(struct ucred *creds)
++static int scm_check_kcreds(u32 pid, kuid_t uid, kgid_t gid)
  {
- 	switch (type) {
- 	case KID_LEGACY:
--		snprintf(buf, KID_STR_LEN, "%u", legacy);
-+		snprintf(buf, KID_STR_LEN, sgn ? "%d" : "%u", legacy);
+ 	const struct cred *cred = current_cred();
+-	kuid_t uid = make_kuid(cred->user_ns, creds->uid);
+-	kgid_t gid = make_kgid(cred->user_ns, creds->gid);
+ 
+ 	if (!uid_valid(uid) || !gid_valid(gid))
+ 		return -EINVAL;
+ 
+-	if ((creds->pid == task_tgid_vnr(current) ||
++	if ((pid == task_tgid_vnr(current) ||
+ 	     ns_capable(task_active_pid_ns(current)->user_ns, CAP_SYS_ADMIN)) &&
+ 	    ((uid_eq(uid, cred->uid)   || uid_eq(uid, cred->euid) ||
+ 	      uid_eq(uid, cred->suid)) || ns_capable(cred->user_ns, CAP_SETUID)) &&
+@@ -163,6 +160,30 @@ static inline int scm_replace_pid(struct scm_cookie *scm, struct pid *pid)
+ 	return 0;
+ }
+ 
++/* The sender's pid in @p is @pid, and the sender ids @uid and @gid */
++static int scm_set_creds(struct scm_cookie *p, u32 pid, kuid_t uid, kgid_t gid)
++{
++	int err;
++
++	if (!p->pid || pid_vnr(p->pid) != pid) {
++		struct pid *kpid = find_get_pid(pid);
++
++		if (!kpid)
++			return -ESRCH;
++		/* pass a struct pid reference from find_get_pid() to
++		 * scm_replace_pid().
++		 */
++		err = scm_replace_pid(p, kpid);
++		if (err) {
++			put_pid(kpid);
++			return err;
++		}
++	}
++	p->creds.uid = uid;
++	p->creds.gid = gid;
++	return 0;
++}
++
+ int __scm_send(struct socket *sock, struct msghdr *msg, struct scm_cookie *p)
+ {
+ 	const struct proto_ops *ops = READ_ONCE(sock->ops);
+@@ -203,35 +224,33 @@ int __scm_send(struct socket *sock, struct msghdr *msg, struct scm_cookie *p)
+ 			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct ucred)))
+ 				goto error;
+ 			memcpy(&creds, CMSG_DATA(cmsg), sizeof(struct ucred));
+-			err = scm_check_creds(&creds);
+-			if (err)
+-				goto error;
+-
+-			if (!p->pid || pid_vnr(p->pid) != creds.pid) {
+-				struct pid *pid;
+-				err = -ESRCH;
+-				pid = find_get_pid(creds.pid);
+-				if (!pid)
+-					goto error;
+-
+-				/* pass a struct pid reference from
+-				 * find_get_pid() to scm_replace_pid().
+-				 */
+-				err = scm_replace_pid(p, pid);
+-				if (err) {
+-					put_pid(pid);
+-					goto error;
+-				}
+-			}
+-
+-			err = -EINVAL;
+ 			uid = make_kuid(current_user_ns(), creds.uid);
+ 			gid = make_kgid(current_user_ns(), creds.gid);
+-			if (!uid_valid(uid) || !gid_valid(gid))
++			err = scm_check_kcreds(creds.pid, uid, gid);
++			if (!err)
++				err = scm_set_creds(p, creds.pid, uid, gid);
++			if (err)
+ 				goto error;
++			break;
++		}
++		/* SCM_CREDENTIALS with __kernel_uid_r_t ids */
++		case SCM_CREDENTIALS_R:
++		{
++			struct __kernel_ucred_r creds;
++			struct user_namespace *ns = current_user_ns();
++			kuid_t uid;
++			kgid_t gid;
+ 
+-			p->creds.uid = uid;
+-			p->creds.gid = gid;
++			if (cmsg->cmsg_len != CMSG_LEN(sizeof(creds)))
++				goto error;
++			memcpy(&creds, CMSG_DATA(cmsg), sizeof(creds));
++			uid = make_kuid_r(ns, &creds.uid);
++			gid = make_kgid_r(ns, &creds.gid);
++			err = scm_check_kcreds(creds.pid, uid, gid);
++			if (!err)
++				err = scm_set_creds(p, creds.pid, uid, gid);
++			if (err)
++				goto error;
+ 			break;
+ 		}
+ 		default:
+@@ -526,8 +545,8 @@ static bool __scm_recv_common(struct sock *sk, struct msghdr *msg,
+ 			      struct scm_cookie *scm, int flags)
+ {
+ 	if (!msg->msg_control) {
+-		if (sk->sk_scm_credentials || sk->sk_scm_pidfd ||
+-		    scm->fp || scm_has_secdata(sk))
++		if (sk->sk_scm_credentials || sk->sk_scm_credentials_r ||
++		    sk->sk_scm_pidfd || scm->fp || scm_has_secdata(sk))
+ 			msg->msg_flags |= MSG_CTRUNC;
+ 
+ 		scm_destroy(scm);
+@@ -545,6 +564,17 @@ static bool __scm_recv_common(struct sock *sk, struct msghdr *msg,
+ 		put_cmsg(msg, SOL_SOCKET, SCM_CREDENTIALS, sizeof(ucreds), &ucreds);
+ 	}
+ 
++	if (sk->sk_scm_credentials_r) {
++		struct user_namespace *current_ns = current_user_ns();
++		struct __kernel_ucred_r ucreds;
++
++		memset(&ucreds, 0, sizeof(ucreds));
++		ucreds.pid = scm->creds.pid;
++		from_kuid_r_munged(current_ns, scm->creds.uid, &ucreds.uid);
++		from_kgid_r_munged(current_ns, scm->creds.gid, &ucreds.gid);
++		put_cmsg(msg, SOL_SOCKET, SCM_CREDENTIALS_R, sizeof(ucreds), &ucreds);
++	}
++
+ 	scm_passec(sk, msg, scm);
+ 
+ 	return true;
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 300bc75ce1..d34da446b0 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -1585,6 +1585,13 @@ int sk_setsockopt(struct sock *sk, int level, int optname,
+ 			ret = -EOPNOTSUPP;
  		break;
- 	case KID_UUID:
- 		snprintf(buf, KID_STR_LEN, "%pUb", b);
-@@ -304,7 +306,7 @@ static char *kid_str(u32 type, u32 legacy, const uuid_t *b, char *buf)
-  */
- char *kuid_str(kuid_t uid, char buf[KID_STR_LEN])
- {
--	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf);
-+	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf, false);
- }
- EXPORT_SYMBOL(kuid_str);
  
-@@ -318,6 +320,148 @@ EXPORT_SYMBOL(kuid_str);
-  */
- char *kgid_str(kgid_t gid, char buf[KID_STR_LEN])
- {
--	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf);
-+	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf, false);
++	case SO_PASSCRED_R:
++		if (sk_may_scm_recv(sk))
++			sk->sk_scm_credentials_r = valbool;
++		else
++			ret = -EOPNOTSUPP;
++		break;
++
+ 	case SO_INCOMING_CPU:
+ 		reuseport_update_incoming_cpu(sk, val);
+ 		break;
+@@ -1714,6 +1721,34 @@ static void cred_to_ucred(struct pid *pid, const struct cred *cred,
+ 	}
  }
- EXPORT_SYMBOL(kgid_str);
-+
-+/**
-+ * kuid_str_signed - like kuid_str(), but a legacy uid as a signed number
-+ * @uid: the kuid
-+ * @buf: buffer of KID_STR_LEN bytes
-+ *
-+ * For callers that used to print from_kuid() with "%d".
-+ *
-+ * Return: @buf.
-+ */
-+char *kuid_str_signed(kuid_t uid, char buf[KID_STR_LEN])
+ 
++static void cred_to_ucred_r(struct pid *pid, const struct cred *cred,
++			    struct __kernel_ucred_r *ucred)
 +{
-+	return kid_str(uid.type, __kuid_val(uid), &uid.uuid, buf, true);
-+}
-+EXPORT_SYMBOL(kuid_str_signed);
++	struct user_namespace *current_ns = current_user_ns();
 +
-+/**
-+ * kgid_str_signed - like kgid_str(), but a legacy gid as a signed number
-+ * @gid: the kgid
-+ * @buf: buffer of KID_STR_LEN bytes
-+ *
-+ * For callers that used to print from_kgid() with "%d".
-+ *
-+ * Return: @buf.
-+ */
-+char *kgid_str_signed(kgid_t gid, char buf[KID_STR_LEN])
-+{
-+	return kid_str(gid.type, __kgid_val(gid), &gid.uuid, buf, true);
-+}
-+EXPORT_SYMBOL(kgid_str_signed);
-+
-+/*
-+ * Parses the text forms of kuid_str() -- a decimal number, a UUID, a GUID
-+ * in braces -- with an optional trailing newline.
-+ */
-+static int kid_r_from_str(const char *str, struct __kernel_uid_r *id)
-+{
-+	char buf[KID_STR_LEN];
-+	size_t len = strlen(str);
-+
-+	if (len && str[len - 1] == '\n')
-+		len--;
-+	if (!len || len >= sizeof(buf))
-+		return -EINVAL;
-+	memcpy(buf, str, len);
-+	buf[len] = '\0';
-+	memset(id, 0, sizeof(*id));
-+
-+	if (len == UUID_STRING_LEN) {
-+		id->type = UID_R_UUID;
-+		return uuid_parse(buf, (uuid_t *)id->uuid);
++	memset(ucred, 0, sizeof(*ucred));
++	ucred->pid = pid_vnr(pid);
++	if (cred) {
++		from_kuid_r_munged(current_ns, cred->euid, &ucred->uid);
++		from_kgid_r_munged(current_ns, cred->egid, &ucred->gid);
 +	}
-+	if (len == UUID_STRING_LEN + 2 && buf[0] == '{' && buf[len - 1] == '}') {
-+		buf[len - 1] = '\0';
-+		id->type = UID_R_GUID;
-+		return guid_parse(buf + 1, (guid_t *)id->guid);
++}
++
++static int groups_to_user_r(sockptr_t dst, const struct group_info *src)
++{
++	struct user_namespace *user_ns = current_user_ns();
++	__kernel_gid_r_t gid;
++	int i;
++
++	for (i = 0; i < src->ngroups; i++) {
++		from_kgid_r_munged(user_ns, src->gid[i], &gid);
++		if (copy_to_sockptr_offset(dst, i * sizeof(gid), &gid, sizeof(gid)))
++			return -EFAULT;
 +	}
-+	id->type = UID_R_LEGACY;
-+	return kstrtou32(buf, 10, &id->legacy);
++
++	return 0;
 +}
 +
-+/**
-+ * make_kuid_str - map the text form of a uid into a kuid
-+ * @from: user namespace the uid is in
-+ * @str: a decimal number, a UUID, or a GUID in braces; a trailing newline
-+ *       is allowed
-+ *
-+ * Return: the kuid, INVALID_UID if @str is malformed or has no mapping in
-+ * @from.
-+ */
-+kuid_t make_kuid_str(struct user_namespace *from, const char *str)
-+{
-+	struct __kernel_uid_r id;
+ static int groups_to_user(sockptr_t dst, const struct group_info *src)
+ {
+ 	struct user_namespace *user_ns = current_user_ns();
+@@ -1900,6 +1935,13 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
+ 		v.val = sk->sk_scm_rights;
+ 		break;
+ 
++	case SO_PASSCRED_R:
++		if (!sk_may_scm_recv(sk))
++			return -EOPNOTSUPP;
 +
-+	if (kid_r_from_str(str, &id))
-+		return INVALID_UID;
-+	return make_kuid_r(from, &id);
-+}
-+EXPORT_SYMBOL(make_kuid_str);
++		v.val = sk->sk_scm_credentials_r;
++		break;
 +
-+/**
-+ * make_kgid_str - map the text form of a gid into a kgid
-+ * @from: user namespace the gid is in
-+ * @str: a decimal number, a UUID, or a GUID in braces; a trailing newline
-+ *       is allowed
-+ *
-+ * Return: the kgid, INVALID_GID if @str is malformed or has no mapping in
-+ * @from.
-+ */
-+kgid_t make_kgid_str(struct user_namespace *from, const char *str)
-+{
-+	struct __kernel_uid_r id;
+ 	case SO_PEERCRED:
+ 	{
+ 		struct ucred peercred;
+@@ -1915,6 +1957,23 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
+ 		goto lenout;
+ 	}
+ 
++	/* Like SO_PEERCRED, with uid and gid as __kernel_uid_r_t */
++	case SO_PEERCRED_R:
++	{
++		struct __kernel_ucred_r peercred;
 +
-+	if (kid_r_from_str(str, &id))
-+		return INVALID_GID;
-+	return make_kgid_r(from, &id);
-+}
-+EXPORT_SYMBOL(make_kgid_str);
++		if (len > sizeof(peercred))
++			len = sizeof(peercred);
 +
-+/**
-+ * kuid_str_munged - text form of a kuid in a user namespace
-+ * @to: user namespace the uid is wanted in
-+ * @uid: the kuid
-+ * @buf: buffer of KID_STR_LEN bytes
-+ *
-+ * Return: @buf, holding the uid in @to like kuid_str() does, overflowuid if
-+ * @uid has no mapping there.
-+ */
-+char *kuid_str_munged(struct user_namespace *to, kuid_t uid,
-+		      char buf[KID_STR_LEN])
-+{
-+	if (!kuid_has_mapping(to, uid))
-+		snprintf(buf, KID_STR_LEN, "%u", overflowuid);
-+	else if (uid_is_legacy(uid))
-+		snprintf(buf, KID_STR_LEN, "%u", from_kuid(to, uid));
-+	else
-+		kuid_str(uid, buf);
-+	return buf;
-+}
-+EXPORT_SYMBOL(kuid_str_munged);
++		spin_lock(&sk->sk_peer_lock);
++		cred_to_ucred_r(sk->sk_peer_pid, sk->sk_peer_cred, &peercred);
++		spin_unlock(&sk->sk_peer_lock);
 +
-+/**
-+ * kgid_str_munged - text form of a kgid in a user namespace
-+ * @to: user namespace the gid is wanted in
-+ * @gid: the kgid
-+ * @buf: buffer of KID_STR_LEN bytes
-+ *
-+ * Return: @buf, holding the gid in @to like kgid_str() does, overflowgid if
-+ * @gid has no mapping there.
-+ */
-+char *kgid_str_munged(struct user_namespace *to, kgid_t gid,
-+		      char buf[KID_STR_LEN])
-+{
-+	if (!kgid_has_mapping(to, gid))
-+		snprintf(buf, KID_STR_LEN, "%u", overflowgid);
-+	else if (gid_is_legacy(gid))
-+		snprintf(buf, KID_STR_LEN, "%u", from_kgid(to, gid));
-+	else
-+		kgid_str(gid, buf);
-+	return buf;
-+}
-+EXPORT_SYMBOL(kgid_str_munged);
++		if (copy_to_sockptr(optval, &peercred, len))
++			return -EFAULT;
++		goto lenout;
++	}
++
+ 	case SO_PEERPIDFD:
+ 	{
+ 		struct pid *peer_pid;
+@@ -1980,6 +2039,31 @@ int sk_getsockopt(struct sock *sk, int level, int optname,
+ 		goto lenout;
+ 	}
+ 
++	/* Like SO_PEERGROUPS, with an array of __kernel_gid_r_t */
++	case SO_PEERGROUPS_R:
++	{
++		const struct cred *cred;
++		int ret, n;
++
++		cred = sk_get_peer_cred(sk);
++		if (!cred)
++			return -ENODATA;
++
++		n = cred->group_info->ngroups;
++		if (len < n * sizeof(__kernel_gid_r_t)) {
++			len = n * sizeof(__kernel_gid_r_t);
++			put_cred(cred);
++			return copy_to_sockptr(optlen, &len, sizeof(int)) ? -EFAULT : -ERANGE;
++		}
++		len = n * sizeof(__kernel_gid_r_t);
++
++		ret = groups_to_user_r(optval, cred->group_info);
++		put_cred(cred);
++		if (ret)
++			return ret;
++		goto lenout;
++	}
++
+ 	case SO_PEERNAME:
+ 	{
+ 		struct sockaddr_storage address;
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 2b17310534..f2e1e88e83 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -803,7 +803,8 @@ static void copy_peercred(struct sock *sk, struct sock *peersk)
+ 
+ static bool unix_may_passcred(const struct sock *sk)
+ {
+-	return sk->sk_scm_credentials || sk->sk_scm_pidfd;
++	return sk->sk_scm_credentials || sk->sk_scm_credentials_r ||
++	       sk->sk_scm_pidfd;
+ }
+ 
+ static int unix_listen(struct socket *sock, int backlog)
 -- 
 2.56.0
 
