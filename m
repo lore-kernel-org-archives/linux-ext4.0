@@ -1,47 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.176
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792572841;
-	b=MEFrKV5N+ppDs9voIRjrfR3/NZQlMCatQ4rJUQlHSj3a3k+mfC6C6GKdzGFcqTQz3oKt
-	 FevCyh7gJ3FxzRMr6txrrNDNY4tQ3EzjB30pwqhVxaSy5KdzZQzmhYmrmhsFNxHv2Fitg
-	 2UF8qZ8mAM81uow5JCkDSawVLYq+AK6eGl0z4GKkRb8Fm4UtBa4yc9UOFPg8NFSIMNtxX
-	 ECBdvpUasfZkTqp+nq+ZwSZed4/Pmfods1JCdExQTFqDDtO022QioeO4ObyJ4NOSkXxiu
-	 BtypLo3y+xp+7bNWk6HHwAEVFXBfdYIlkYXePMHcJ9bKpKJy+6hvEHRufSHiNup92og==
+	t=1792573007;
+	b=KWiPnOzsHmEk3sU1T9NTRyBUjqF3f+tHTsxFitOcLUN3U1bafr7QXinAwdwRdfNcmy5I
+	 rY2mH19EKm89H8OX7bAvApQXOiOM1SaBL7sHEgWpQK2MihH7lrOAeoRXVCQw00/P0vkfW
+	 I5nTDYQGCZCcQkd5UUTBPM/TVjdX3Er4XlIPZ1ZkQ+BFWfIwNWtov2f48dELkZHj5vAW6
+	 DJBqvXaa3uR3+5WoPR5gTrekoWjM6Yjl4mpSKeY6ApfC3X++Q8a4Lnhnc74V8N80ayptT
+	 xCABYs3kVv2aIwDi9t4a9UDm1DEIPlM9hAlYgA79b9wKdlfsQnPH3eCkmu2fe17teeA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792572841;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=2/ITxtFm7WzIeL9LaTvhshI8w/pfxnMxNXE8wbtMtC4=;
-	b=1VPgC9MO/rDmOkKpijsbk19jUnBxkyXk9pR81fwI3Bo/x5ZPaVn8aynNs1evD1JRXEVl
-	 rY88+mEE6zlZm3b654V6M+zqaJ1A29d2bzPYfUpCb4gcBprXtD36yPQVxKPWy0q50FFHy
-	 XKBV12x9tlTE3OtXQpjjFlBxaRpkBUQTO0ATuNuRwTTljtW2jnJ9tYmf3119blwI8eXzJ
-	 ZFw2C7obRstNMsqrYUZt0ZiRZ7iRPhepsrVaZHC2prvHrlZePjlX2zECX82QBM4rLzC2r
-	 LgU3nX5rPpSb1EeR41aQbffNAY3gOjtxt6KPqwTsLwdDhEgXhnttcZIDold6d9lxi+w==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792573007;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=EbKXyleNFY9/8wO9jUa8etPnmUJItO82wpWtCoS+TCw=;
+	b=XuelXNfyEHAesXgdWNhau5tVUic0ON1dDrMOUAR+GX1zv64zkockacbBBEwvJzbIQHY3
+	 3PIWzjJDO6prRt4dDGjt3DT3E7/CwRU/Bd7KSyzV8RNi3FjUCZTDXl+dxb04Z5n1EjEZj
+	 nNZoJ8l5RXnzYDhNixbYvy/6exeNWaQB8OVLaTCc3awQMJQ71sqW/ZtLDiNQBH9vUmd99
+	 siA/ydfpySaiEso0wqko7a5H4VtZ/0rnbp/DlMzLmDQYGXHUbqAjjK+0mqiBq25TiguIP
+	 Im8nYsQvYOUrulf5KM02zCyCRYwjlTwjIlCQiDgaEBYqv0lIRQ4+mTwGhhfNh5bAVuw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=none smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=45.249.212.56
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=fvWzPODK;
+	arc=none smtp.remote-ip=209.85.214.176
+Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DC41606A31A;
-	Wed, 21 Oct 2026 08:53:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6DC41606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.198])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4j8jkD13CJzKHMfw;
-	Wed, 21 Oct 2026 16:53:40 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 62C0140576;
-	Wed, 21 Oct 2026 16:53:51 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgAnZPOafdhqv4QRBQ--.29944S3;
-	Wed, 21 Oct 2026 16:53:47 +0800 (CST)
-Message-ID: <8add4484-aed2-4d43-b973-ae1396ee664d@huaweicloud.com>
-Date: Wed, 21 Oct 2026 16:53:45 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 975EB606A31C
+	for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2026 08:56:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 975EB606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=fvWzPODK
+Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2e98798cbddso2327615ad.0
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2026 01:56:46 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1792573006; x=1793177806; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=EbKXyleNFY9/8wO9jUa8etPnmUJItO82wpWtCoS+TCw=;
+        b=fvWzPODKAaR1ZepcYCr4Kqnj8cfIodJG78eH5l7FhHOvNA79KP9MkM8zHh09kywfF1
+         iP+u0Bdv4FkQGSHItaZieRNGU0q3Y1ZhcuBLmD6bCWYr4YWkzK0eBEZ1C1y8XVWUjO+P
+         fz+oQDwmE9NVKZQoz0R0/nZ3yNf2Jmd2b/MzPO29SpseRLye1/a1ooORC7eKuZJgzJtX
+         zvBeAhNlngPrLndmGii9iNklOd167rGKjHSdjFob0H5VxpdZJtsx4K0941wZnXWBnBSL
+         CXcfopI7YRtqE23T+wETOfXxU3FLGgt2sqinvPb5CXJ8fZhFWcIhSS1humAN9+Dpd/VP
+         qMGQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792573006; x=1793177806;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=EbKXyleNFY9/8wO9jUa8etPnmUJItO82wpWtCoS+TCw=;
+        b=pBPOfX4FEvBV/4s1inpYcLsGrv/KTMMJ5rHsVvhPyiZEHITY8JXTAA6aiwdlD2EyZj
+         KBEqNmbQKXAeHotzlRgFimlMz6Mr3yljQxT24UgyQjU1xaz01+zs4GGy4M8THmyUEFBg
+         b6ig98AtXIdLqtYRLyssaGwbBcPyhwbd7F21K8iGP3ZgURGCDtojkfNdcIEWMMWQTbEn
+         3PTsXm0o8Zt1Z7DN4x8UaP7EcZ96c4llO7x1nESfoY0yodzwES87/jPmGCykvfKYenor
+         wtkESNcPk0pIfeOd+BR2mZ/uUG0HfBvV2woh69ws/KdCD+OttqHo3jcZYEon5/lpQ1gl
+         7Qtw==
+X-Forwarded-Encrypted: i=1; AKwUvBwR0gnFiV1jmvG6NdHkKKKuMuo0cUJcS2pIt0RsHjigOPoQScnXoxBab8zYKHJU62HaY2QN6ZZ7S5Sa@vger.kernel.org
+X-Gm-Message-State: AFq9FYJKTlS+B/TDFwQjLuVPnjBbOfdx7lidBGlgSbkjsz0v5msRhpIg
+	VURGPVYt+41iR70NvQ8pS56JDLv5n/UWvqTSgstIhl/UC52yxUHr0sCm
+X-Gm-Gg: AYBFou2DFjCLm4zDpRXhNMF2HmUY7Y21/hjqdU867iRyD1g3hTh9rfFfZmTWFYRapj5
+	oj7wHLXTIPrmX7/l2EHj17On2L/dQaBikMPu3kMlpg4Acdn2a3Piinalz8G4n6Uewexkb9Vs+fU
+	4Y0iqooI6B0pkrJ+9H+uxjGy6w7J6fgbvNaLEfePfngErR8TNmnhp19YmxVPPN6K/mbMyRCDjdN
+	ks9I/qSzfZXgtepp0JNKNrYNYypadidMuqSKF1X3oRt/v0lFIT+0JYlkSLORzAXO7nZqIFakGRb
+	HFi3mV6WIsmCSarXOnIwutVCk46dpw6C0KkrTIrxuqwXEMlpSP49AcHUNQ5x/fc5iKiqFZ85Aho
+	mE+vlgS/gZjDHtXrDO6aB6H12f66EWA3gNjDRzEeZKdyNnpkl/oP6CmV4my3QhFy/stSAiqUayV
+	jqV6jCkfQPq+iEDrd/nslX9XBy9bW7Mag8beMUaWSPpgFvUpF9MAUufJuJDm6+REE/gkvNvOTX3
+	8bNv08BcDkUk++PciWqkgHZZDs2d0sbyc+5r3uS4WXog7BHuErzWvXuRS+E/ebWxqs=
+X-Received: by 2002:a17:902:ce01:b0:2e6:1a6c:abcd with SMTP id d9443c01a7336-2ea4391f99dmr10699345ad.3.1792573005536;
+        Wed, 21 Oct 2026 01:56:45 -0700 (PDT)
+Received: from ustb520lab-MS-7E07.. ([115.25.44.221])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2ea3b411067sm8420785ad.23.2026.10.21.01.56.41
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 21 Oct 2026 01:56:44 -0700 (PDT)
+From: Jiaming Zhang <r772577952@gmail.com>
+To: jack@suse.cz,
+	linux-ext4@vger.kernel.org,
+	tytso@mit.edu,
+	adilger.kernel@dilger.ca
+Cc: libaokun@linux.alibaba.com,
+	linux-kernel@vger.kernel.org,
+	ojaswin@linux.ibm.com,
+	r772577952@gmail.com,
+	ritesh.list@gmail.com,
+	stable@vger.kernel.org,
+	yi.zhang@huawei.com
+Subject: [PATCH v2] ext4: clear in-inode xattr space before adding the first xattr
+Date: Wed, 21 Oct 2026 16:56:35 +0800
+Message-ID: <20261021085635.3633692-1-r772577952@gmail.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,154 +101,82 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [syzbot ci] Re: ext4: use iomap for regular file's buffered I/O
- path
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: syzbot ci <syzbot+ci46f64f7b6a2a188e@syzkaller.appspotmail.com>,
- syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com,
- adilger.kernel@dilger.ca, chengzhihao1@huawei.com, djwong@kernel.org,
- hch@infradead.org, jack@suse.cz, libaokun@linux.alibaba.com,
- linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, ritesh.list@gmail.com, tytso@mit.edu,
- wangkefeng.wang@huawei.com, yangerkun@huawei.com, yi.zhang@huawei.com,
- yizhang089@gmail.com, yukuai@fnnas.com
-References: <6ac92a4c.70ed5d86.2ac85.0072.GAE@google.com>
- <34423908-aceb-4c57-9502-7da10b12e4a4@huaweicloud.com>
- <athx6i4FVmzaCWXE@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <athx6i4FVmzaCWXE@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgAnZPOafdhqv4QRBQ--.29944S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxGr1kKFWrtw1UJr43CFyrXrb_yoWrZrykpr
-	WfKF4qkr4ktr1UAFs2qr1DXr1Utw4akF47XryfWr1xAFn09FyjqFyrJrW8ury7Gry7CF12
-	yF45A3s2vr1UtaUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUvYb4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26F4UJVW0owA2z4x0Y4vEx4A2jsIEc7
-	CjxVAFwI0_GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8C
-	rVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4
-	IE7xkEbVWUJVW8JwACjcxG0xvEwIxGrwACI402YVCY1x02628vn2kIc2xKxwCY1x0262kK
-	e7AKxVW8ZVWrXwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c
-	02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_
-	WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7
-	CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v2
-	6r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07
-	jIksgUUUUU=
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Transfer-Encoding: 8bit
 
-On 10/21/2026 4:03 PM, Ojaswin Mujoo wrote:
-> On Sat, Oct 10, 2026 at 04:44:52PM +0800, Zhang Yi wrote:
->> On 10/10/2026 1:54 AM, syzbot ci wrote:
->>> syzbot ci has tested the following series
->>>
->>
->> [...]
->>
->>> and found the following issue:
->>> WARNING in ext4_do_writepages
->>>
->>> Full report is available here:
->>> https://ci.syzbot.org/series/3711c951-acf4-4ebe-a920-9cc89b6be2ff
->>>
->>> ***
->>>
->>> WARNING in ext4_do_writepages
->>>
->>> tree:      vfs
->>> URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/vfs/vfs.git
->>> base:      3d399224425573875b6f6f1181bd8cf9a28cc7d1
->>> arch:      amd64
->>> compiler:  Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
->>> config:    https://ci.syzbot.org/builds/c3c01f8c-846d-4c7a-955a-fd7427af6b0d/config
->>>
->>> ------------[ cut here ]------------
->>> !err
->>> WARNING: fs/ext4/inode.c:2512 at ext4_do_writepages+0x33b3/0x44a0, CPU#0: kworker/u9:3/147
->>> Modules linked in:
->>> CPU: 0 UID: 0 PID: 147 Comm: kworker/u9:3 Not tainted syzkaller #0 PREEMPT(full) 
->>> Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
->>> Workqueue: writeback wb_workfn (flush-7:1)
->>> RIP: 0010:ext4_do_writepages+0x33b3/0x44a0
->>> Code: 0f 0b 90 e9 b6 d9 ff ff e8 6a e2 36 ff 90 0f 0b 90 e9 e6 dc ff ff e8 5c e2 36 ff 90 0f 0b 90 e9 94 df ff ff e8 4e e2 36 ff 90 <0f> 0b 90 bb ea ff ff ff e9 ae f8 ff ff e8 3b e2 36 ff 48 8d 3d 64
->>> RSP: 0018:ffffc90003106ce0 EFLAGS: 00010293
->>> RAX: ffffffff8290e912 RBX: 0000000000000000 RCX: ffff8881053f9e00
->>> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
->>> RBP: ffffc900031070f0 R08: ffff888025da4a37 R09: 1ffff11004bb4946
->>> R10: dffffc0000000000 R11: ffffed1004bb4947 R12: ffffc900031071a0
->>> R13: dffffc0000000000 R14: 0000000000000000 R15: 1ffff11004bb495d
->>> FS:  0000000000000000(0000) GS:ffff88818d6c9000(0000) knlGS:0000000000000000
->>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>> CR2: 00005555565a5a28 CR3: 0000000031f66000 CR4: 00000000000006f0
->>> Call Trace:
->>>  <TASK>
->>>  ext4_writepages+0x241/0x3b0
->>>  do_writepages+0x338/0x560
->>>  __writeback_single_inode+0x136/0x1220
->>>  writeback_sb_inodes+0x9de/0x1b00
->>>  wb_writeback+0x41c/0xad0
->>>  wb_workfn+0x431/0x10f0
->>>  process_scheduled_works+0xc3d/0x1630
->>>  worker_thread+0xa47/0xfb0
->>>  kthread+0x38b/0x480
->>>  ret_from_fork+0x514/0xb70
->>>  ret_from_fork_asm+0x1a/0x30
->>>  </TASK>
->>>
->>>
->>
->> This WARNING was newly introduced by patch 8, "ext4: skip block
->> allocation for holes in the data submission path". It doesn't actually
->> cause a new regression, it just appears to expose a pre-existing issue
->> in the buffer_head buffered I/O path, where an inconsistency between
->> the bh and extent state could potentially lead to allocating a block and
->> writing data into a hole. The logic of the patch itself is fine. To
->> avoid noise, I can drop the WARN_ON_ONCE() while still keeping return
->> -EINVAL. Thoughts?
-> 
-> Hi Zhang,
-> 
-> I think we can keep the WARN_ON. Failing in writeback here will anyways
-> throw out some error messages about data loss so having an extra WARN
-> dump should be okay. It will help us find and eliminate paths that cause
-> this quickly, like your patch for the inline truncate fix.
-> 
+An inode can hold extended attributes in the space that follows its extra
+fields, whose size is given by i_extra_isize.  When ext4 loads an inode,
+ext4_iget_extra_inode() validates that space only if it starts with the
+xattr magic, and only then sets EXT4_STATE_XATTR.  Without the magic, the
+space is treated as empty and is not checked.
 
-Yes, I agree. After all, now that we're encountering holes not being
-written, together with the existing logging, this WARN_ON can help us catch
-the problem.
+ext4_xattr_ibody_set() passes the space to ext4_xattr_set_entry() whether
+or not EXT4_STATE_XATTR is set.  ext4_xattr_set_entry() walks the entries
+there to find min_offs, the lowest value offset.  That offset decides
+whether the new value fits and where the value is copied:
 
-Thanks,
-Yi.
+	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
+	...
+	void *val = s->base + min_offs - new_size;
 
-> Regards,
-> ojaswin
-> 
->>
->> Thanks,
->> Yi.
->>
->>> ***
->>>
->>> If these findings have caused you to resend the series or submit a
->>> separate fix, please add the following tag to your commit message:
->>>   Tested-by: syzbot@syzkaller.appspotmail.com
->>>
->>> ---
->>> This report is generated by a bot. It may contain errors.
->>> syzbot ci engineers can be reached at syzkaller@googlegroups.com.
->>>
->>> To test a fix for this bug, please reply with `#syz test`
->>> (on a separate line) and attach the patch to the email.
->>>
->>> Notes:
->>> - The patch will be applied on top of the tested series (as an
->>>   incremental fix).
->>> - To test a new version of the whole series, please send it directly
->>>   to syzbot@lists.linux.dev.
->>> - Arguments like custom git repos and branches are not supported.
->>
+A crafted image can leave non-zero bytes in that space without the magic
+where ext4 looks for it, for example by shrinking i_extra_isize.  Those
+bytes are parsed as entries, and an entry that claims an in-inode value at
+offset 0 sets min_offs to 0.  Because free is a size_t, the subtraction
+then wraps around to a huge value, and the free space check passes although
+the value does not fit.  The value is copied new_size bytes before the
+start of the space, over the inode's own fields and, for a large value, the
+memory in front of the inode.
+
+On a kernel without KASAN, the copy corrupts memory: it overwrites the
+inode's own fields and, for a large value, also the memory in front of the
+inode.  The bytes and their length are decided by the setxattr() caller.
+Nothing is freed and reused here, so the use-after-free in the report only
+reflects where the write happened to land.
+
+Triggering this issue requires mounting a crafted image, which needs
+CAP_SYS_ADMIN or automounting of removable media; after that, any
+setxattr() on the file reaches this path.  The issue was found by fuzzing
+and has not been seen in production; a reproducer is available in the
+linked report.
+
+When EXT4_STATE_XATTR is not set, zero the first 32 bits of the space in
+ext4_xattr_ibody_set() before calling ext4_xattr_set_entry().  These are
+the bits IS_LAST_ENTRY() reads, so the space is treated as empty and the
+walk stops before reading any stale entry.
+
+Fixes: ac27a0ec112a ("[PATCH] ext4: initial copy of files from ext3")
+Closes: https://lore.kernel.org/lkml/CANypQFZzxTAH=4QRRDoqH6VAw1daAq88NDWiQKoM7QTOnP40sg@mail.gmail.com/
+Cc: stable@vger.kernel.org
+Assisted-by: Claude Code:claude-opus-5-5
+Signed-off-by: Jiaming Zhang <r772577952@gmail.com>
+---
+Changes in v2:
+- Zero only the first 32 bits space instead of the whole space.
+- Add a comment above the check.
+- v1: https://lore.kernel.org/lkml/20260916084723.877552-1-r772577952@gmail.com/
+
+ fs/ext4/xattr.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 5c310747b965..8e1fd26329d3 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -2274,6 +2274,14 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
+ 		if (IS_ERR(ea_inode))
+ 			return PTR_ERR(ea_inode);
+ 	}
++
++	/*
++	 * Make sure xattr space is properly initialized so that
++	 * IS_LAST_ENTRY() returns true for its first entry
++	 */
++	if (!ext4_test_inode_state(inode, EXT4_STATE_XATTR))
++		*(__u32 *)s->first = 0;
++
+ 	error = ext4_xattr_set_entry(i, s, handle, inode, ea_inode,
+ 				     false /* is_block */);
+ 	if (error) {
+-- 
+2.43.0
 
