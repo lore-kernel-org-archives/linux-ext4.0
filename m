@@ -1,106 +1,108 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792593282;
-	b=WW643u9DTiPu+t24UB+pIAiG50FbsEb7sRltyiF/olJ8kp1CqTObkL4lz8OcVC2O+RGU
-	 y9QeMh0Ov8uCCK8NmG16MfxzdHkFo1mTwVn6qmaEDfG0PNSocszD6z/KRdT11tlSOe6aE
-	 j0dafOYd3/+inIA2StZWaynIbV6UWiWoJ9zR4K/s0uXGD3TWr9OHQxT7axMU1wzdbe5B9
-	 7MEvlFhfcGmfu14mOLBkf43eTb1JnnyKwAHcM1Tz2cx8T8DdLxXLB/+oo+HCDWiLlmfCT
-	 lEa9rzIGQsA/BmH/Fvchn+PTA6UgyePkgo61WgMxDJXbXU0FlVbcBiBPZJzr8ZjO0GA==
+	t=1792593288;
+	b=qJ6kdrIJl0xMQlIN0Fys2ZxeHo8HLPjqJiqNixRhzH662A/XhJlArmHL7wWdqxlAUpDH
+	 SCr/1JzajlI9rtxR2N4wyUQBCoZmzpYePV7XoEggcgz9YEDQkpNRchGGzO6CHC7d/buL3
+	 lhpu1VmPAyba9A+cCuMHcoLxXKc5/kdINAfVpCiZIAM9VJp2xjubgxLI4FXHTGyPWbN41
+	 gW6t06BX6FILhvak84q63C2M9P+NrabvnmyNMSWIy5utdpSmj2y/6FGFAuNfF4Vbm7O/L
+	 WdkzwjrryuOr61StKEtyJcB9EGDDcsIvLg/itSKgQZmomLEnWgvB61jeK09U9VdcWEQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792593282;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792593288;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
 	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=iep7syUHx63mxMwZv9E3itRqjkHRksmcjumISh2RYTY=;
-	b=KBKnheZ9Jp1U7okitB0uQXV+5D4s/5EGlwc0s0XTUvLNWCMngHRosN2qJQ6083U4DWvr
-	 EnTK4afg2U5feB5Z+wxgfhonDbf8v3dQWS30qo6jXMjTtkl0FPUa1HrpuoUot7l5RplBq
-	 Bl7ugf86XEzazXxKOpO2j6KVXvORa9jagfUNEjaCyk4CS0HVsg3AhvNlWrGCEFBEPOq04
-	 ymBuhGdz4zH19USY/H2r6vGWg4ULSDDPAo8FuwbrF4MJxHzNys2iX3KaaZdWmRN08etHP
-	 zbwXI6sS+eLQSkny8r4stCtpneA1/aQmOhzMl7iqVFs0vTJltQmhk6P6ixb7BOw9Ikg==
+	bh=i1o45mU1wVGBJYMOu+l6LXLaf1xRjqI1u8WDXqM4gzE=;
+	b=oY7hn8AeCrCaafQU9GmbzBe2w3WFnDJi9JBlaOnwSS6UlyYizZrpD1d8hPdKs/wyX/vx
+	 8hf/O+mKpxche52lc6onMAdmrg6DUlMpC3tlW7Pc/SFEsqkunc19BEfKy2A6M2Ea7StQy
+	 AGojxDaTnw4Uyj9l7N+wbSIrMo6cOE6qoZXgEb8JB+AJvCYnKciEsjKbjFpSi60dZXvzo
+	 KndQG59OT4z45QUxfPEMBqVzYmZC5rlVqrnkRmtd1+wBusqhh8NlANljA/Mh3jBihdl9d
+	 bJoWaQRn4PTV9syqpcZ3GgHvko8ai1cg3h7kI2xfwtmiUQZhBAmy3bF0izBZlkEJkZQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2ewuX6++;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ifGXKZvT;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2ewuX6++;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ifGXKZvT;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yYoM0Iap;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=XWwsFUKY;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yYoM0Iap;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=XWwsFUKY;
 	arc=none smtp.remote-ip=195.135.223.131
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4AA9A606A31B;
-	Wed, 21 Oct 2026 14:34:41 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4AA9A606A31B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76B3D606A328;
+	Wed, 21 Oct 2026 14:34:47 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 76B3D606A328
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2ewuX6++;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ifGXKZvT;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2ewuX6++;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=ifGXKZvT
+	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yYoM0Iap;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=XWwsFUKY;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=yYoM0Iap;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=XWwsFUKY
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 619C31FA83;
+	by smtp-out2.suse.de (Postfix) with ESMTPS id A67541FAA3;
 	Wed, 21 Oct 2026 14:34:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1792593279; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=iep7syUHx63mxMwZv9E3itRqjkHRksmcjumISh2RYTY=;
-	b=2ewuX6++DKsqsBN6N4wfbcgu6xM7hIAZ0JiNst6yccms38UgEmQ2Bkxp5t7prz7yJJ5/NQ
-	Oq3wCXBZccFrGzcLI1OQlzX/vpi4+58qgzArkRuIVU0nkGfTJMN3LVK0y9Ax8+BIYD6goN
-	On7KFXJtz6ejs0mCsWsTfi445vL/e8k=
+	bh=i1o45mU1wVGBJYMOu+l6LXLaf1xRjqI1u8WDXqM4gzE=;
+	b=yYoM0IappbjPkKyB/pYvzpL+WN4kVfCoEWt8WjAKjmgPwrMUnj/NqsZIHMf0WpeAT+0pq7
+	3QMtkrifp/JRT+ILKAY8ZJiSWAl8t5HOrJLubnOvOuQ+/cQNvaBX78hDJ+dpBpXg4LAc2l
+	7IYdiAn4JqlXaSo7xlZtIefS+A1PLWQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1792593279;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=iep7syUHx63mxMwZv9E3itRqjkHRksmcjumISh2RYTY=;
-	b=ifGXKZvTwWRjGiecYnijyyqvDVx0QtnWC/kAIM4AXMQhNC8+HttJfR4hZmqkpI1OgRlke0
-	0pFjWvqrQxlbRUBQ==
+	bh=i1o45mU1wVGBJYMOu+l6LXLaf1xRjqI1u8WDXqM4gzE=;
+	b=XWwsFUKYkcPW1OsHvE0cU/Xk9Ey9EDWp0xESuHSE4wS/K2oRjh2ifwI/t4hgm/PHCxyffl
+	9tBcyFDNwsSAY0DA==
 Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1792593279; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=iep7syUHx63mxMwZv9E3itRqjkHRksmcjumISh2RYTY=;
-	b=2ewuX6++DKsqsBN6N4wfbcgu6xM7hIAZ0JiNst6yccms38UgEmQ2Bkxp5t7prz7yJJ5/NQ
-	Oq3wCXBZccFrGzcLI1OQlzX/vpi4+58qgzArkRuIVU0nkGfTJMN3LVK0y9Ax8+BIYD6goN
-	On7KFXJtz6ejs0mCsWsTfi445vL/e8k=
+	bh=i1o45mU1wVGBJYMOu+l6LXLaf1xRjqI1u8WDXqM4gzE=;
+	b=yYoM0IappbjPkKyB/pYvzpL+WN4kVfCoEWt8WjAKjmgPwrMUnj/NqsZIHMf0WpeAT+0pq7
+	3QMtkrifp/JRT+ILKAY8ZJiSWAl8t5HOrJLubnOvOuQ+/cQNvaBX78hDJ+dpBpXg4LAc2l
+	7IYdiAn4JqlXaSo7xlZtIefS+A1PLWQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1792593279;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=iep7syUHx63mxMwZv9E3itRqjkHRksmcjumISh2RYTY=;
-	b=ifGXKZvTwWRjGiecYnijyyqvDVx0QtnWC/kAIM4AXMQhNC8+HttJfR4hZmqkpI1OgRlke0
-	0pFjWvqrQxlbRUBQ==
+	bh=i1o45mU1wVGBJYMOu+l6LXLaf1xRjqI1u8WDXqM4gzE=;
+	b=XWwsFUKYkcPW1OsHvE0cU/Xk9Ey9EDWp0xESuHSE4wS/K2oRjh2ifwI/t4hgm/PHCxyffl
+	9tBcyFDNwsSAY0DA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 2C63E13518;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4F45A1351E;
 	Wed, 21 Oct 2026 14:34:39 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id DGZ+AX/N2GoHWQAAD6G6ig
+	id KxuoDH/N2GoMWQAAD6G6ig
 	(envelope-from <jack@suse.cz>); Wed, 21 Oct 2026 14:34:39 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 457EEA1425; Wed, 21 Oct 2026 14:03:38 +0200 (CEST)
-Date: Wed, 21 Oct 2026 14:03:38 +0200
+	id EE445A141A; Wed, 21 Oct 2026 13:24:28 +0200 (CEST)
+Date: Wed, 21 Oct 2026 13:24:28 +0200
 From: Jan Kara <jack@suse.cz>
-To: Yichong Chen <chenyichong@uniontech.com>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: drop tmp inode ownership before migration cleanup
-Message-ID: <wjfjy4xo2csqrcmvcetol7nj2kqzm2zn6hdu5zajlaslnvqefr@ralv37qbyx6s>
-References: <20260930080241.414973-1-chenyichong@uniontech.com>
+To: Kaixuan Li <kaixuanli0131@gmail.com>
+Cc: Theodore Ts'o <tytso@mit.edu>, 
+	Andreas Dilger <adilger.kernel@dilger.ca>, Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>, 
+	Ojaswin Mujoo <ojaswin@linux.ibm.com>, Ritesh Harjani <ritesh.list@gmail.com>, 
+	Zhang Yi <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: stop verify_reserved_gdb() one entry short of the
+ block
+Message-ID: <mlx7il3nok35qeppdkafrqgztvazj3fc44xrp2umziye5ox24m@xwg43blfi3jn>
+References: <20260919113940.1823559-1-kaixuanli0131@gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -112,7 +114,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260930080241.414973-1-chenyichong@uniontech.com>
+In-Reply-To: <20260919113940.1823559-1-kaixuanli0131@gmail.com>
 X-Spamd-Result: default: False [-11.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -121,65 +123,122 @@ X-Spamd-Result: default: False [-11.30 / 50.00];
 	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
 	TAGGED_RCPT(0.00)[];
+	ARC_NA(0.00)[];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
 	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
 	RCPT_COUNT_SEVEN(0.00)[10];
 	FREEMAIL_ENVRCPT(0.00)[gmail.com];
 	TO_DN_SOME(0.00)[];
 	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com];
+	FREEMAIL_CC(0.00)[mit.edu,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,vger.kernel.org];
 	RCVD_COUNT_THREE(0.00)[3];
 	FROM_EQ_ENVFROM(0.00)[];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[uniontech.com:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
 X-Spam-Score: -11.30
 X-Spam-Level: 
 X-Spam-Flag: NO
 
-On Wed 30-09-26 16:02:41, Yichong Chen wrote:
-> After the extent tree is transferred to the original inode,
-> ext4_journal_ensure_credits() can fail before tmp_inode is cleared.  The
-> subsequent iput(tmp_inode) may then free the transferred tree.
+On Sat 19-09-26 19:39:40, Kaixuan Li wrote:
+> verify_reserved_gdb() walks the backup group list, reading one __le32 from
+> the reserved GDT block per iteration, and bounds the walk after the read:
 > 
-> Clear tmp_inode's size and block count as soon as ownership is transferred.
+> 	if (le32_to_cpu(*p++) !=
+> 	    grp * EXT4_BLOCKS_PER_GROUP(sb) + blk){
+> 		...
+> 		return -EINVAL;
+> 	}
+> 	if (++gdbackups > EXT4_ADDR_PER_BLOCK(sb))
+> 		return -EFBIG;
 > 
-> Fixes: a413036791d0 ("ext4: Provide function to handle transaction restarts")
-> Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
-> ---
->  fs/ext4/migrate.c | 6 ++++++
->  1 file changed, 6 insertions(+)
+> The block holds exactly EXT4_ADDR_PER_BLOCK(sb) entries, so when gdbackups
+> reaches that value the test is false, the loop runs once more, and *p++
+> reads one entry past the block before -EFBIG is returned. The same value is
+> also the largest gdbackups the function can return, and
+> reserve_backup_gdb() then uses it as an index into a block of exactly that
+> many entries:
 > 
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index e588b4157604..11b3da396966 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-> @@ -570,6 +570,12 @@ int ext4_ext_migrate(struct inode *inode)
->  			free_ext_block(handle, tmp_inode);
->  	}
->  
-> +	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)) {
-> +		i_size_write(tmp_inode, 0);
-> +		tmp_inode->i_blocks = 0;
-> +		EXT4_I(tmp_inode)->i_csum_seed = tmp_csum_seed;
-> +	}
+> 	data = (__le32 *)primary[i]->b_data;
+> 	data[gdbackups] = cpu_to_le32(blk + primary[i]->b_blocknr);
+> 
+> which writes one entry past. Comparing with >= stops the walk before the
+> read and caps the return value one lower, which closes both.
+> 
+> The walk enumerates the groups ext4_list_backups() produces -- the powers
+> of 3, 5 and 7 below the group being added -- so EXT4_ADDR_PER_BLOCK of
+> them, 256 at a 1K block size and 1024 at 4K, cannot occur within a 32-bit
+> group number. The entry the old bound went on to read was therefore never a
+> real backup.
+> 
+> Signed-off-by: Kaixuan Li <kaixuanli0131@gmail.com>
 
-I'd just move the setting of i_size, i_blocks and i_csum_seed above the
-ext4_journal_ensure_credits() instead of adding this extra branch...
+Looks good. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> +
->  	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
->  	err = ext4_journal_ensure_credits(handle, 1, 0);
->  	if (err < 0) {
-> -- 
-> 2.51.0
+> ---
+> Reproduced on v7.2.4 x86_64 with KASAN enabled, and on v6.12.9 before that.
+> Three images, one reproducer, the resize target passed on the kernel
+> command line:
 > 
+> 	case                     stock                  patched
+> 	A plain, 8 -> 32 groups  0, 65537 -> 262145     0, 65537 -> 262145
+> 	B group 257 (APB + 1)    0, 2105345 -> 2113537  -EFBIG, no growth
+> 	C ^sparse_super walk     -EINVAL                -EFBIG
+> 
+> 	(APB is EXT4_ADDR_PER_BLOCK, 256 at the 1K block size used here.)
+> 
+> B is the write, and the thing to notice is that the resize SUCCEEDS on the
+> stock kernel -- this is not an operation that aborts after the access:
+> 
+> 	BUG: KASAN: slab-use-after-free in ext4_flex_group_add+0x50f0/0x5680
+> 
+> C is the read:
+> 
+> 	BUG: KASAN: slab-use-after-free in verify_reserved_gdb.isra.0+0x270/0x290
+> 
+> A is the control that matters for a one-character change: an ordinary
+> online resize goes through reserve_backup_gdb() -> verify_reserved_gdb()
+> and is unchanged by the patch, same return value and same resulting block
+> count.
+> 
+> Building B needs the group being added to be exactly EXT4_ADDR_PER_BLOCK+1:
+> below that the index is in bounds, above it the read defect trips -EFBIG
+> first and the call aborts before the write. At a 1K block size that is
+> group 257, so the image is built with groups 0..256 already present and the
+> resize adds only 257. sparse_super is cleared with debugfs so the walk runs
+> end-1 times rather than skipping most groups.
+> 
+> Mounting a crafted image is not a Linux kernel vulnerability
+> (Documentation/process/threat-model.rst), and I am not reporting it as one.
+> I have not attached a Fixes: tag: the bound reads the same in v2.6.32, so
+> it predates the git history I can bisect over.
+> ---
+>  fs/ext4/resize.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -794,11 +794,11 @@ static int verify_reserved_gdb(struct super_block *sb,
+>  				     grp *
+>  				     (ext4_fsblk_t)EXT4_BLOCKS_PER_GROUP(sb) +
+>  				     blk);
+>  			return -EINVAL;
+>  		}
+> -		if (++gdbackups > EXT4_ADDR_PER_BLOCK(sb))
+> +		if (++gdbackups >= EXT4_ADDR_PER_BLOCK(sb))
+>  			return -EFBIG;
+>  	}
+>  
+>  	return gdbackups;
+>  }
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
