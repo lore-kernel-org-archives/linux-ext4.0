@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=173.212.254.19
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792552581;
-	b=GeIROkDcIgHyBemf4Doo4dSr+Uz+jEVy6Qqf+y1r6ve6tAM73K54FFK57qO/owwBlGPK
-	 vEO1xGP8QiTXpZv/VhUUKOgtD0iR3vYC2qiWnVb1pqYzaQMiL3CGGaUgoCerRw57Sme0J
-	 RfPIDnjFczW8toK4plawpEFJtM6sB0C4q/0l8rbLt1Qp9pr9kZesbjMptox9leEVmITBR
-	 OSux6cKFL+Mtr7WGaAnFy4tA2kYZTP97FpKAAosn1UNRNj6G+Jdj0uAOJ+lDjlq4TIeib
-	 mDn1aH7+x/fduV1iov2mrF0UAH02Aj/Ito5BVkX08plmYDlfk2gfGU22C0XVB8PHqCw==
+	t=1792552578;
+	b=B0la0eDSlEDsRd6PENdzSYjdGSOdnZdoQZmjaLFz/j7HQiZZZiVnZvmjyuOJesQylbYc
+	 OFbPrcTgc6njHasCwRgTpc9/jQESSVa5yo6OEJXpJFGrI6Wo5RAyzZj7IHJI8IqpRW2JN
+	 +aj77Z9RPRefP0MKxrABWxnrbmQFCoJC69xYTmwH8/06SIjIyeYlOYp6UeGIFJzbjGf37
+	 qvMCyUp9HNJZH9GzCkWs/v0WQz/iZgDeJZmfEZgaX2ei3Bc7bv/6eM++7Lw9BNdfg/joZ
+	 RH3FWGDQJa5nnxzNn+nNCRO3ow2bMzZVZ6f1Ki+dxe+Nbcnr6JPurd1bF1e1SxyGfcQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792552581;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792552578;
 	h=DMARC-Filter:DKIM-Signature:Received:Message-ID:In-Reply-To:
 	 References:From:Subject:To:Cc:Date;
-	bh=LSH0H2p+4hPwyxhykRR+OoOPuBJNPy27VM/n5UgWimw=;
-	b=jblpVsFt+nyx437ORBUptQjSTqWKHsrNK9vgiwmskBx1iAa1IYmXKuG0dFgMpCFNd5iq
-	 pRPWlsWgZUSI7toEfL6nBaciLEYhu2BeIlcs7A7wBtgVruV9l4WhUkeZWyZlq0z7iIllP
-	 EGz4qjij/TVyJb8FvgvNEVOeCiemeLJf8D4fgrgaGgASqkiI4DYeLFO+Jz7p8/Z//3Cjb
-	 kDP1u/zhDClZ7X9r2VlsIXlMPNjMozYlzgDYDhpXudV9dEUsFzIF4KMzFPnmUFo2/j7nE
-	 QgOue2b+tGNm9z+h16c/e+1F6mAmlCWfOVtk1Ja/DoYB1CG6Oy6h3WX4AXISG0RLNQg==
+	bh=zex3zkPBhFWKfPKx8to+rRp0ONmQ0UbhV0TLwAUCCQA=;
+	b=zhmxpROUDFizLoNtXFkB2kRep8HJe2xveFyj8MBIH51TSkguKSu9LXZhbd5UUd9/g+/g
+	 4Vr8RuzGZhBMCWBzA81xIKBELaKVbYv0CH07ekiW0EVs33Pjr6QQVWGfvkDWYxBemHug1
+	 6KxySeqByzF5HHGsXFRLTSAVfX8k1SMflNcU1NsZR5ZROLjJLgSqO9USj94cDgyCVOgfO
+	 prN9sNP8WCM61LphFYe+j4qfsg3isJAAvWjZ0iH30R1QyNp9q2rWpZMzFS5sbHS82Hmgu
+	 SMg6awyPXcMoQrscEctDrmeoqHznN6Wwc3M+x93i+MbiQusjj3w6f/yd4A199y11R/g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=tuxist.de;
 	spf=fail smtp.mailfrom=tuxist.de;
-	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=aCM+Okv6;
+	dkim=pass header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=FGzibVGE;
 	arc=none smtp.remote-ip=173.212.254.19
 Received: from groupware.tuxist.de (groupware.tuxist.de [173.212.254.19])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3175F606BED5;
-	Wed, 21 Oct 2026 03:16:21 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3175F606BED5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48EAB606A912;
+	Wed, 21 Oct 2026 03:16:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 48EAB606A912
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=tuxist.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=aCM+Okv6
+	dkim=pass (2048-bit key, unprotected) header.d=tuxist.de header.i=@tuxist.de header.a=rsa-sha256 header.s=201705 header.b=FGzibVGE
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tuxist.de; s=201705;
-	t=1792552579; bh=cPizOxWZGJDi5/QHy2w18Y9MZUJPB6xdHmqFawOY40c=;
+	t=1792552576; bh=IORN8HpiFolYxgOFw1dmhLuz4Wix28EOhU1Si/uNADU=;
 	h=In-Reply-To:References:From:Subject:To:Cc:Date:From;
-	b=aCM+Okv6LaS3A+GYWsvFYkea4+QW5+9Lm7IoFhmLKwgqXgBcpJT2i5MhMbA01UGlz
-	 e3E3B3DjhhzaGtThZwtdw+UI6PKl/AeZbqZJQqcSRFwBGUkmg3Vr/p4FpSShhiH2PE
-	 dWekEqjds1nA7tW/E1RopBjeAfnYzy/NVm5Kpcc53Pv97mkANHRkS8HNHa+KecbPLk
-	 qqf7qWJ077gy+CQO1tKgE8xFzxJ3QLRCD6Ay23lfjO8ZtIlfpQUgxL321oH4xo3T4r
-	 cbmwYaCPP0+MUUoFMeYpfUOa3kXrTbJDaKaXA3Ud2vcdmLJ7BhEKmfh2O44xmKgZjH
-	 mxytheHKsaJfg==
+	b=FGzibVGEM6vyViUIFazPySG2uG8tsGK/AjhYNaRdZIMeE0UoLWBLHPBrYjE/m+AsS
+	 fIqlFoy1cyvxvUPqjBlKGxJ0bArq93kq+/ydOLzasGfHT8XdawR7br3nGdhE5Q8bud
+	 mN/SGgjIywc2/P1AJpAs4gnVJm9uAkt77egEdLAZA5kPW6rkAmSdlmPzRlUAx30Ycy
+	 +LV/g2TewIqtqenS7Z7DLWu3p+Qjw/rT3Yo6/4z7uEiAVzRCsbgZZdHq2llO7uLIT8
+	 RV86bA6fRuEVrgBqpAZewvfa2fIXylkY+PbFD0pufO1e028btbYqkF1zHK4vTtGyBV
+	 3jnT7USvzsPvA==
 Received: from [10.1.1.106] (unknown [10.1.2.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by groupware.tuxist.de (Postfix) with ESMTPSA id D745F8A0651;
-	Wed, 21 Oct 2026 05:16:18 +0200 (CEST)
-Message-ID: <3c65c1107a1f9e634b35f59566f6ed70f217c85e.1792552161.git.jan.koester@tuxist.de>
+	by groupware.tuxist.de (Postfix) with ESMTPSA id 7895E8A0938;
+	Wed, 21 Oct 2026 05:16:15 +0200 (CEST)
+Message-ID: <b6c3e5df169940a45831966c180f27889958e1a7.1792552161.git.jan.koester@tuxist.de>
 In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
 From: Jan Koester <jan.koester@tuxist.de>
-Subject: [RFC PATCH v2 17/41] quota: don't account UUID and GUID owners
+Subject: [RFC PATCH v2 16/41] ecryptfs: hash daemons by kuid_hash()
 To: Christian Brauner <brauner@kernel.org>,
     Alexander Viro <viro@zeniv.linux.org.uk>,
     "Serge E. Hallyn" <serge@hallyn.com>
@@ -69,7 +69,7 @@ Cc: Jan Kara <jack@suse.cz>,
     audit@vger.kernel.org,
     keyrings@vger.kernel.org,
     linux-kernel@vger.kernel.org
-Date: Wed, 21 Oct 2026 05:15:37 +0200
+Date: Wed, 21 Oct 2026 05:15:36 +0200
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -79,65 +79,30 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-Quota files and the quotactl interface use 32 bit ids. dqget() would
-hash and store a UUID or GUID owner as -1, so all of them would share
-one dquot, written out as id 4294967295.
-
-Treat such ids like quota being off for them: dqget() returns -ESRCH,
-which its callers already handle by not charging the inode. An inode
-given to such an owner stays charged to the previous one.
+The daemon hash uses from_kuid(&init_user_ns, euid), which puts all UUID
+and GUID users into one bucket. Lookups compare the kuid, so this only
+costs time; use kuid_hash().
 
 Assisted-by: Claude:claude-opus-5-5
 
 Signed-off-by: Jan Koester <jan.koester@tuxist.de>
 ---
- fs/quota/dquot.c      |  3 +++
- include/linux/quota.h | 18 ++++++++++++++++++
- 2 files changed, 21 insertions(+)
+ fs/ecryptfs/messaging.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
-index 1c78c695d0..62f333f824 100644
---- a/fs/quota/dquot.c
-+++ b/fs/quota/dquot.c
-@@ -954,6 +954,9 @@ struct dquot *dqget(struct super_block *sb, struct kqid qid)
+diff --git a/fs/ecryptfs/messaging.c b/fs/ecryptfs/messaging.c
+index 73c7b8215e..4e2524f786 100644
+--- a/fs/ecryptfs/messaging.c
++++ b/fs/ecryptfs/messaging.c
+@@ -21,7 +21,7 @@ static struct hlist_head *ecryptfs_daemon_hash;
+ DEFINE_MUTEX(ecryptfs_daemon_hash_mux);
+ static int ecryptfs_hash_bits;
+ #define ecryptfs_current_euid_hash(uid) \
+-	hash_long((unsigned long)from_kuid(&init_user_ns, current_euid()), ecryptfs_hash_bits)
++	hash_long((unsigned long)kuid_hash(current_euid()), ecryptfs_hash_bits)
  
- 	if (!qid_has_mapping(sb->s_user_ns, qid))
- 		return ERR_PTR(-EINVAL);
-+	/* Quota files hold 32 bit ids: like quota off for UUIDs and GUIDs */
-+	if (!qid_is_legacy(qid))
-+		return ERR_PTR(-ESRCH);
- 
-         if (!sb_has_quota_active(sb, qid.type))
- 		return ERR_PTR(-ESRCH);
-diff --git a/include/linux/quota.h b/include/linux/quota.h
-index 89a0d83dda..00685209fd 100644
---- a/include/linux/quota.h
-+++ b/include/linux/quota.h
-@@ -80,6 +80,24 @@ extern qid_t from_kqid(struct user_namespace *to, struct kqid qid);
- extern qid_t from_kqid_munged(struct user_namespace *to, struct kqid qid);
- extern bool qid_valid(struct kqid qid);
- 
-+/**
-+ *	qid_is_legacy - Report if a kqid fits the 32 bit ids of quota files
-+ *	@qid: The kernel internal quota identifier to test.
-+ *
-+ *	UUID and GUID owners don't, and are not subject to quotas.
-+ */
-+static inline bool qid_is_legacy(struct kqid qid)
-+{
-+	switch (qid.type) {
-+	case USRQUOTA:
-+		return uid_is_legacy(qid.uid);
-+	case GRPQUOTA:
-+		return gid_is_legacy(qid.gid);
-+	default:
-+		return true;
-+	}
-+}
-+
- /**
-  *	make_kqid - Map a user-namespace, type, qid tuple into a kqid.
-  *	@from: User namespace that the qid is in
+ static u32 ecryptfs_msg_counter;
+ static struct ecryptfs_msg_ctx *ecryptfs_msg_ctx_arr;
 -- 
 2.56.0
 
