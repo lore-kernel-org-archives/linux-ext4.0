@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792682246;
-	b=gVW4sLK3t7jTsPaBi4C18ZqxZ+yw4sNIRs/QEyo8vupH7FEqimz2JuShOKigsEYhtpRH
-	 naBD6S74P0CgmE7+5VG9euDia1RHIKcU83DeYSTBbRQRmQjPXCQikJYspbUmES1/MBrXe
-	 wuds+5Ofca8enCsO6EcDnVqh9YebXWARyloqZmdYiLuNKm7IJTtGY1Vh/iBwfXn6uqeqP
-	 aql+MBGRnaCQSpxcGx7SZo5GQBuf4NYniX1q4FTW/istbK0ezvT5m8roc8wsMdusCwHZy
-	 eKeKEqGR5WYNGAtj01/7Lfixs7EH0ATUAMpLxQci3choxOKLfTR4KCJAuFzlWkySCXg==
+	t=1792682362;
+	b=Zesi4vjHvBXn0L35D7/+Fzq5gnW9Ar2tMkgizMNTE8ec6Fw4LzoBLSN/hyUh2mVQSxXJ
+	 2LGjtEsDy2swXPGUgSjxIBv/VJPaK4OkbQrae1jAvRO8yUo+R5EOH2ggT1dnpjtW+UyO5
+	 yRnM96OVbEX0zZtORsymo/xlBYhOF3KzdXn0NtrjUkVbfpaOiipY84yfmdAQWFXHqy80i
+	 QFkrdeNjZAbuKSQpNw88mZWB5drP+7/L1qb6JuK+3iEtmUJgNIreF25bG9EQO2We1QnnL
+	 NnVlWxBv+GuATyklX/hnNKhEStsbSdVhYf8yhpwX55zhMNABMDnfV66Z5wQLVZ/wDCA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792682246;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792682362;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=kGlYv24yAQVxL1b+BmzlslwfOhi3G/GiYhN6ir4IiaQ=;
-	b=NOqzUcq8eF3eLbs6OjTHmFIicMHhtpY6IaQuC/e/SzCe+33woKa0Dy0dod0eRAVZilkX
-	 psUAmPiGqYU9qO1cuQ0PPnC51XTdd6W9WkiMuNUmKU6dEzvywyCJ03tY3J9ajHrNEr3iY
-	 bCr0HpKmfqVSR+wuwEPwHYv0v9h/isXmzt+6qA86iokvsNwrG9czO6Na006O3h2uHnLTh
-	 IxHil2y+SDFs92TCSoYxvI7PYRyNbCG827Sd8qM8wu8b1uH+2BkMOTCizhem1Pz37hurg
-	 +JV8pXILCkkBthlSl6tpnQGxy6biHiVhPGxMAp5YABYuJHAVLexgGtxZz7s8RdoGTmQ==
+	bh=+Pa8Vo3h8aCrE+Loa/rhYUOnjkisybihZOsKwDoEtJA=;
+	b=HRsZQDQT6+n87AVQLVLAzsFkK0DREiNIpu3ORlwxpju7ytksQr+HI+a/7Ho+b5uIi98M
+	 kgoJuA4qPGHrLeNnp+1SW9hsN86g/26FWPPiVwrUOE7uq5PVCg5g8kvqbUGBPCH7vXU+q
+	 9MSYl4GyMszsndJiuSVBr64JAz58+p/r6atZma0XE+wf/z0cuIaI2Y9q4tAl+X82oE7Ot
+	 RT/SryOjGT6P1I1lsOmmeyzWETGnQ5q7gMAHbClt7g9sdnh7Mh/rimLnh+fKnpdOQOUYy
+	 MPKxV4KUko4VcQMpDc0RuuqeGUoFp0dkGbYhb8topPmGdu3jIf3afTsbMKYA0tlYCQg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nbtzOg+L;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GHg00c7Q;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21C08606BE72
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 15:17:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E726606CC5A
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 15:19:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=nbtzOg+L
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C77B1F01825;
-	Thu, 22 Oct 2026 15:17:25 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GHg00c7Q
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E91D21F01140;
+	Thu, 22 Oct 2026 15:19:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792682245;
-	bh=kGlYv24yAQVxL1b+BmzlslwfOhi3G/GiYhN6ir4IiaQ=;
+	s=k20260515; t=1792682362;
+	bh=+Pa8Vo3h8aCrE+Loa/rhYUOnjkisybihZOsKwDoEtJA=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=nbtzOg+L8SV+O+aG0o9/DnQF7jRsC0YAdIPbMYjWWgAVJZavTAE8HA9p1FHwVAGcp
-	 V6wchQhDvABqBoJzjzBQapjx3PV6d9bzlbltHUiL+NKPo2ArX5Ec+xt/piDp6x3G33
-	 VDGiMgwM41fZghkbkjl0Sh1KpSCfCLMDkwePsFhUcZBc8hgIRGFiiSb6xMqCDoOqvi
-	 u8mwUjJd6oN7hvrU7TqKLHYMvCwu0jOrqhwWlZro3OU9qQuYhIkM0K87eOKwSvdhtY
-	 vATUqTS3xxuQMLg7uToK+8lJWHeb3HQwQQGCdPrtuHb6q3APhzn1V9QK9rhVI7FCl0
-	 dgHUHeFvjD/lQ==
-Message-ID: <sashiko-outbox-181686@kernel.org>
+	b=GHg00c7QvOkTg/lSnBa+IvN525Y2c/z+SD0ecDy3YoSqXt722CVk3PNiwhOIT3RI1
+	 rhp7UWOpuJakVA+QUph90mHRAUeVy36n9vczifewv4X/hY4pQUM2vhVELZRkgX/JK9
+	 1qi7OZo3wAZ5fjl2vqBktYwNCXgfmJ3fZKnhl2oJd+wRe3bCMPqhmLZwtx5V3kplNK
+	 nM+JTcAfmMscuKKDh600vRPigOnHuDlLbH7LfgoMucgmVHqTpntdVbcUdl6pE3BdFw
+	 NzVTJt8U+WyhDT5X2pO9G59ssdKuBo0KYZCEDHmnV1bbS4udizLsIGI82tdeBbYmeZ
+	 Jetb3Q7PU+2hw==
+Message-ID: <sashiko-outbox-181687@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 6/6] ext4: use atomic bitops for io_end flags
+Subject: Re: [PATCH 5/6] ext4: report unwritten extent conversion errors to
+ fsync
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Julian Sun" <sunjunchao@bytedance.com>, linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu
-In-Reply-To: <20261022151239.2981745-2-sunjunchao@bytedance.com>
+In-Reply-To: <20261022151239.2981745-1-sunjunchao@bytedance.com>
 References: <20261022145241.2950379-1-sunjunchao@bytedance.com>
  <20261022151239.2981745-1-sunjunchao@bytedance.com>
- <20261022151239.2981745-2-sunjunchao@bytedance.com>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 22 Oct 2026 15:17:24 +0000
+Date: Thu, 22 Oct 2026 15:19:21 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,26 +61,19 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Before EXT4_IO_END_FAILED was added, the writeback thread set
-> EXT4_IO_END_UNWRITTEN and final completion cleared it after the last
-> io_end reference was dropped. Adding EXT4_IO_END_FAILED introduced a
-> concurrent writer in failed-bio completion. Successful bio completions
-> do not update the flags.
+> Buffered writeback can complete data I/O successfully but fail to convert
+> unwritten extents, for example when allocating an extent path returns
+> ENOMEM. ext4_end_io_end() logs the failure and returns an error, but the
+> conversion worker discards that return value. As a result, fsync() can
+> report success while the extents remain unwritten and direct reads return
+> zeros instead of the data written.
 >=20
-> An io_end can cover already-mapped folios submitted before a later
-> unwritten extent is mapped. An earlier bio can fail while writeback
-> first sets UNWRITTEN. The non-atomic updates can then lose a bit:
+> Record the error in the inode mapping before ext4_release_io_end() ends
+> folio writeback. This lets fsync() observe the error after waiting for
+> writeback.
 >=20
->   Bio completion                  Writeback thread
->   --------------                  ----------------
->   read flag =3D 0
->                                   attach reserved handle to io_end
->                                   flag |=3D UNWRITTEN
-> [ ... ]
-> Use atomic bit operations to fix the race.
->=20
-> Fixes: e856f93e0fb2 ("ext4: do not convert the unwritten extents if data =
-writeback fails")
+> Fixes: b82e384c7bb9 ("ext4: optimize locking for end_io extent conversion=
+")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Julian Sun <sunjunchao@bytedance.com>
 
@@ -88,5 +81,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261022145241.2950=
-379-1-sunjunchao@bytedance.com?part=3D6
+379-1-sunjunchao@bytedance.com?part=3D5
 
