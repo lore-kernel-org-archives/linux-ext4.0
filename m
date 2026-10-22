@@ -1,54 +1,53 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792639087;
-	b=L9atY/zWYlEffItfrCOwVqmW6nRYPaVp9Sz5dBY9/n2xLQgTNj4gdhw0Tve5ncirCN2g
-	 FpP26kbVPmhpm+jnsSZ0Zn3A11h0mA21Dm5NC2VTRUrZjczaNnUC1wfYz9xCwAo5xCp5m
-	 +z6/EE7RJYwwR28zCOD3+1l4NNHnMru/haWn4H2FJn83SPu8BffGZpWptPUT/6avIbRBd
-	 LbnlPGYqI1nR/S475x0Sl+CQfDJGHyqD+kPQ5ceo6GJZWmpoT3MNU0JKGZEFv5mDslDGZ
-	 SQ36wJzb2aifoBHGr3cp6g0Uc3eO568peKFK1U3Uv2U3krHK6JEetchU+pGVoWvYvYg==
+	t=1792639088;
+	b=iJr1a2pwJrn+kweVJIvkH7BicC7siLFTVBwzD6cJu8s35bf+xsruL1YmqV7eoIUFhuAH
+	 SrkV9iLsf7iUTBNZiMQUOdRflvFDqo/QN3Av4vUrCuJ82O+fG7r2szr4Do8X3VCN/ssga
+	 xLFzR9HVSJceydE5oLM9YDowV2Ro6qApJ1sVhmUhWoiJmdZNlA8Itpjc2S81mOty/JNTq
+	 TXX7QpcdhVCGIGAczTIp2LD0ZRuW2y5KP2Wq+/0Up4AfUKiEnAoYy5wAxmnnTArFjc4rL
+	 yOKZDxAEGF4pDbpukuomrbfiXgfm+bIaRcM+mv7GgHLhownu86vtiRLUoaau4DB0YYg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792639087;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792639088;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=xIeRjuP8Hd8dZEnz8sWjOjn62YDNrzush+aKKm0+k0w=;
-	b=uizs1MjMvIziDvtvPNskq3PpCrZzr/XqvJDO0Je30nXBfDM69XZ2xs9cAp5Ufe6PuHTa
-	 inkrAl0Uhqgm3zU4g6F86gteCJ3XaZleUSlUnWpXLITaHhRsv7AnfbrZ1LI8vmSz9pWwE
-	 ZmfuchWbEhfVCAm1XhUJ2LGmb8yFV13usTnQIVmqdAmekJ/IVjE0zUn7vgLSUkEHGIGF7
-	 RbiTv36/aeSOJFZdQWiO3Cu0AyK1mrqx0RCT2f6GuvRsqYPG6f6BV68z1eOkcp6dbfUie
-	 WbCzuZX9Gf3zEDU4Q3A6PLN+4Cp609TcszWpNCIGMBzzB+QyqavvUKxyBSktldgxy8g==
+	bh=urSY6DBJ2Gd9BPxDsLJvqDlTd1VRvQLXO5BLOcbgq2c=;
+	b=WW2TaR4Hq9KGQ0N0uYE1CPI9ve6p2H4yr+VlR8N2tYMo0y1mlRuc2Y7DNWMeQMe3xj8f
+	 ItXgQI4OmeW3UAw38161Lcq/ykv5VRtZvtpT9J22aUPVQIqQ5/btgMOOsV2jxXnDQpjS1
+	 wtcNuQQN6bWfjMKP8Aa7mkxWRK0FZlU0UKsQcDF7JLfz57NnNZJ/afEy9DC7oNxBuAQet
+	 5x4m5+HQ1p0fYxMl5UNGGaa2vXSUTcmAs1yKzgjYZ4Oy++alOuN/1Tbua9l7oNttLnJd1
+	 sNH3YtHCzIANVX6AQGb4E+46AOGZPvmTXVpVqdLUSf6KDuZw3FftKV2dhGxD4yoct2g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SvZBKTde;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SfWsxrAH;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 16F8E60A4AE9;
-	Thu, 22 Oct 2026 03:18:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B77A060A2630;
+	Thu, 22 Oct 2026 03:18:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SvZBKTde
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C3131F000C1;
-	Thu, 22 Oct 2026 03:18:06 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SfWsxrAH
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AA921F000C3;
+	Thu, 22 Oct 2026 03:18:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792639086;
-	bh=xIeRjuP8Hd8dZEnz8sWjOjn62YDNrzush+aKKm0+k0w=;
+	s=k20260515; t=1792639087;
+	bh=urSY6DBJ2Gd9BPxDsLJvqDlTd1VRvQLXO5BLOcbgq2c=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=SvZBKTde4CVAMrgFcMmAxNgMyALQdBnJjZqZjN/e4UrP+nCsLxrVgfEw8SpZlzPjQ
-	 4p2+yg5n0WtVrChiXBqo3ulsJujYh/u54HEMRxOCuALgCQjCDyGOabJVIqN4CxG7wq
-	 WKvdjxioaUR0KOqRlqhvpcmio/EUJ8uJA2mLf3r1XmjhV5Vx0XVdXM81DTACW7BRhv
-	 ImgSwGvo6flnfPiddj0z/GpFRcfkhPFjFFPQg4vgz7uroWLhImlOxwh66OAwNZnb+1
-	 KExJd7YnHbakF1ZumbiGAKC2XXCDyiZenxHYTfj7WjVByo7F+Jvm/G76IlD7BP/kkb
-	 63UtAsLJxYZ+Q==
-Message-ID: <sashiko-outbox-180938@kernel.org>
+	b=SfWsxrAHyr+NHZNl5UU9PIMKwhM0GLTD3w2w10HoqW/LsOt6mWL3DRb0VQ90+CHG6
+	 7wLBCnXxOxZH3vQexfT8ZPdrbssdW0d8asVf9QPP41Fwq4aQyjjijau6ehg/MrOzQM
+	 j/XePZKMacPSFFP3hjAX4/e9i0WAnjTzAceg6xe/23J32eBYXktm5sqmWGoMKDmsu9
+	 ufCFb8g84FbdcnrVQ10OeOyOYFGAyj/EOd/32ftpZzElTcHNSq7yGMoli8ZdM5q5Im
+	 UykolKZUtObQ3t97FCW7cn701By0Q8YD9aqDN+uR4F2ynZrfPHToAI/A4CTfccuSb+
+	 ACzvvPv/aKrVA==
+Message-ID: <sashiko-outbox-180939@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [RFC PATCH v2 37/41] ovl: allow UUID and GUID owners when the
- upper layer does
+Subject: Re: [RFC PATCH v2 38/41] devpts: allow UUID and GUID owners
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jan Koester" <jan.koester@tuxist.de>
 Cc: linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org, audit@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <8bb654a6a07fa2c000a965f72629138eec3f87b1.1792552161.git.jan.koester@tuxist.de>
+In-Reply-To: <0c3bae750fb443d5207a30a2e32a47a724bca5cb.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
- <8bb654a6a07fa2c000a965f72629138eec3f87b1.1792552161.git.jan.koester@tuxist.de>
+ <0c3bae750fb443d5207a30a2e32a47a724bca5cb.1792552161.git.jan.koester@tuxist.de>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 Date: Thu, 22 Oct 2026 03:18:06 +0000
@@ -61,13 +60,13 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> Changes to an overlay land in its upper layer, so whether the overlay
-> can store UUID and GUID owners is the upper layer's business: take
-> SB_I_UID_R over from it. Copy-up of such an owner from a lower layer
-> into an upper layer without the flag keeps failing with -EOVERFLOW.
+> Terminals are given to the user of a login session: sshd and login
+> chown the slave to the user, and a pty opened by a UUID or GUID user
+> gets that user as its owner. devpts keeps owners in its inodes only,
+> so like tmpfs and ramfs it can hold any kind of owner: set SB_I_UID_R.
 >=20
-> This is what a live system with a tmpfs over a read-only image needs
-> to give files to UUID and GUID users.
+> Without it, sshd's chown() of the pty of a UUID user fails with
+> -EOVERFLOW and the session is closed.
 >=20
 > Assisted-by: Claude:claude-opus-5-5
 >=20
@@ -77,5 +76,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/cover.1792552161.gi=
-t.jan.koester@tuxist.de?part=3D37
+t.jan.koester@tuxist.de?part=3D38
 
