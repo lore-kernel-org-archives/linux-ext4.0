@@ -1,103 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.172
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.180
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792679363;
-	b=gxCUVlE731BeOSG98Fu5hBb5+NkONoTsyiV/W4/cH/o27dmXvfB/SYgr2unZbcWdRKn8
-	 3nbI40ZjK/mihmS+EZmu/9ihzScgqAkVa02BWfpBTMMgMRoAHcTCc5mjkx/RdkUSXiCOj
-	 2LNZY9qzbgn4wlyF0H6QTJ7RzTiuRgc6rr/VBGt8vy8j4aS9jzgKuCAi6iOd4GP+aHMlJ
-	 4hh1w2jq0m0hBPTpb2Fz9dzlCQeJT4bUdtbxdwTatzvDgR8ZfiFqhVmCuANjg+m7t34cB
-	 0kSd2m2iqOcA0YEEC43PT+d7cRj4bRLdtMsHs3outkgph28Y5Fv7WUhBOcZRI8XjXFg==
+	t=1792680767;
+	b=gwzOkSlPh+J72DJ/2VLga7z/hmANIyGZZyHzv5TUKgZ4Te+zegcoaU7kqReYO2ykzCMY
+	 /nqAmCYkQwnzre2iVFzSq2yhezhbB92ocSFqjtU4RpuGvA6oNFAzL36AG0pMw9nbsfvQt
+	 PalWwLLsfFx+Ga80gfT5jToXmEazClGb3WgZb0Kjb6l9w34cR/zjFToILLKwI7aR38Tuk
+	 gz5St91Lg0hWVm0gfizrDLHt8+mswJfvX86cOFPtSFIWUu9gqVVyUbSR0Amip/Bmoe4eZ
+	 JxxAQleV7TVXPQ/hmNFS/+raypsjKZYJfRT8Z5iBLIhUHzpr8fCz0AOsecJbV/QnUtw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792679363;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792680767;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding;
-	bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
-	b=U8JiE1m+I8Yg2aPczcD4Zohgu9vs7QpKRXuee5rMiZiIS1ix5iL278ZzsF9fv6ajvBRN
-	 NsF3KSx5aP0DgHmDKsY/kGBYyy4rhsvuUN+iGSOzvDZ2wlr1Jpl5WywVngrQ4bfJzK+O8
-	 rjbKRPL+vM8wewTnJ7tUof7D6SBBfy7vP9gT2G8PyuskeYGwBvgUqhrKGL8vy3blDYh0K
-	 f8TgfRAcmGJTX41Ubg+uh09FVT26RNf3Wf+U5aryzPqb+xWG5apsQMuN+pJLxyfJageM5
-	 JFgjtOnbMIKMSexVIc0DF2FLlzKL4uulI5fOM2TC6yMmmH9UwkTvKMy+CpFOP13XSkg==
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-Id:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=QNV9Grn12kKHSJiLs5T3Kf487Bm6lI3HctQrHxCaqmU=;
+	b=NnqonfOW9LtgCE98vghRtFtk/yXYTaHGQnp6W+j9qpVVLJ5EpmmuDJSsH2Z6u3FqnxZn
+	 H5XCpUaF+kD6OU2HRHPDZ/JbQ8R7i46DcLR/8hO8jr7NOH59G4OMpbbjOo/TSE6HuUe2J
+	 BmkYL2KYTGJ1f8xwbyZb/+gf5WBnKAnRlccH5b6XbbxMXLQ/mGy68t/Xvx+iPAsjJVyG9
+	 3jn++FF4TCy9aCKG2aMAF23qpk5Z3P3/qT0XIOYuIGPlpnEO5q2FmzvjRk5+Cj5PB2reA
+	 dK00R6Q+vzC80qmx294aPSgbKKSv6q38rgeHkArLIBeKbc06CJqo3cFv+hIhu+Au1Mw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=cs.unc.edu;
-	spf=pass smtp.mailfrom=cs.unc.edu;
-	dkim=pass header.d=cs.unc.edu header.i=@cs.unc.edu header.a=rsa-sha256 header.s=google header.b=Sh3VG5SY;
-	arc=none smtp.remote-ip=209.85.128.172
-Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
+	dmarc=pass header.from=bytedance.com;
+	spf=pass smtp.mailfrom=bytedance.com;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=c902pZWM;
+	arc=none smtp.remote-ip=209.85.210.180
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D68BC606A32C
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 14:29:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D68BC606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=cs.unc.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cs.unc.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAAB4606A319
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 14:52:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AAAB4606A319
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=cs.unc.edu header.i=@cs.unc.edu header.a=rsa-sha256 header.s=google header.b=Sh3VG5SY
-Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-8b0e21048f8so18566277b3.0
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:29:22 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=c902pZWM
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8a06c60065fso1338556b3a.1
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:52:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cs.unc.edu; s=google; t=1792679362; x=1793284162; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
-        b=Sh3VG5SYS86Y/cUu48NcOpZrlstcwtzOP6oDtt0f1lj8SLeLI5pZWs7o+SIp4ix3oT
-         5SggpjHjZ7iWCohx4alswx4ieJz3fvs2sb977apngl3IBzprzk4ulKjhiMFuN6ydLzPY
-         u+OpLY/nMxUyMt/PFrFzJImPdTz/mxUyUWVNKGrEISFLs6U1C1IZZV7uuawmXExSMTo/
-         fLl4ztuQw5RQXnLf6jlBAC9GycJ38e4qI3pKMz8GHe7RDB8g6Qib28eKU+J32wqwYyK5
-         90VRC7sN7POAsHt2h6PjNVLCGTBMGFJ/5KOAClc+KKEbaLuUeqK6opKhBmbEwfSp6jMU
-         PbbQ==
+        d=bytedance.com; s=google; t=1792680766; x=1793285566; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=QNV9Grn12kKHSJiLs5T3Kf487Bm6lI3HctQrHxCaqmU=;
+        b=c902pZWM+n4QwC8mwy2TjJn98Js9RoDFR0PaRtUDCzSJTUMXm1cOswbgHE6YZXboJl
+         s+lVQ+jBvgPfc3g9tupgsNwThSiNSS094wkkUFUuD4PiGP8ZCxdtv1AOuKRt053a/upX
+         As07h7+FFUvAsI4Al7SDPf/ix3M+y1LNd4HB+g8XW1U4KUN+tOnuke1q9IEBe8Vyg0cJ
+         kkI3Ou7H64RvszbRo3x3JBX2wKsmd3/hlL/WcDVlPvtU3V0LNA/cEOYL0r3svbi4rxja
+         2E6QQnKZS5WQCFnznY/GYoNa4RuHDW0jFDXylDZiIZddRBxJtK4afFaK/iL4xM7/VaQB
+         UVEw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792679362; x=1793284162;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
-        b=Y5t3t02z0/Uxooi31RdJ0gJNQZVJ5rf3kesTm/9oU75tdIACjMV3Z0VUB672bqP450
-         pZvLt3usAUqvaRSf6EI2nGCUBZgTNJU5qWcgpUAr75yrWTYeLmSsz4hDiCHN5c17nDQh
-         RSgtRrykEasY7dlhmzobRIKQcP1Csur+TOcFice9MWys37x957Ajn7vLzBqQyLeP9SZb
-         9egWQ3qjQ5ZEuJ0infoYQ8xAMvTZGyWh/UcBkwN/awV/UObG/yWMJkLSc5ieeh6C6H6A
-         Ap3hCZ9cKsqySkyBXvFzkUIPZ75IX0QHEObK5rDlODyyjVqlm5nzA2bcHaKQCMpLZMkS
-         TKoQ==
-X-Forwarded-Encrypted: i=1; AKwUvBzvntGohumdBhm9WZFi6P9OnfkgDNMzTAiDu26ZvDif/zk5EWpKh7Nv92tZhcUFUdVqn8l0eC1E0oyj@vger.kernel.org
-X-Gm-Message-State: AFq9FYJcRslg6YCiJo3qCXeWmesO0jeBse3sQNyVphX4PbFsGZIgK0Sp
-	zJxDiE8koMgJZEdHdCW9/sUUa/Gat7Ax/i3XYeQGAkzMSprRKPreveZEZ2K23Dvl6w==
-X-Gm-Gg: AYBFou12TIzw5VHNi7peyYSA1jU2UtCx7tw1inrBvvyADWrpeDCEQczUiQVeZL2Rdoi
-	vQBprDfNtWBRPm3eBY33/auMhjCuL1YH4xQ1vDv6wxSBeXxHg5rGeGV/07jmbbq6d806tPdpVPV
-	6jIKf5ancuLECWHMB8gPXhZQsTWwNXAqbRE334srnmjiWMYr4fOxKtJpxSyGpvrS3X6podo4smB
-	TCjZQwA+B8FmQgOoQe7PKthimfxuAQY9V8i3CzxyvFVCQ7nPCkav5hXxVOLmWI3jSWuVBufQXYd
-	mFWPWWkhQ96MqRNJ2TexD7zNruBggSICE9z3NnArAbS6b6bVe7dTpr1OZ1j6hSZ+WuV0Im8SOj6
-	yWhihRMLxdKWG5YDwbwz0HkX1C57fDEdCudZkZR0OTCKpFWlUHaAH5C+98Xdvnj1iqCVZlVVeW8
-	pOOUhfXFpWYeEWvDnz7B/MrrcdUAk5lazfGVWT6VLtKWXNso1Sw2I5fwbizG9QkwfNzN2smr7X2
-	nze+MJ02k/yuja/aqWCQuINVIIiUpX7ua73sevK/b9EYzNl6m9SJsKEiJD8UaBIhmdHfRxAIktF
-	J26yh2eQU97xiG7cq1teF90p
-X-Received: by 2002:a05:690c:6603:b0:8b0:a171:65e4 with SMTP id 00721157ae682-8b133f979ebmr36772897b3.15.1792679361535;
-        Thu, 22 Oct 2026 07:29:21 -0700 (PDT)
-Received: from cobra01.cs.unc.edu (cobra01.cs.unc.edu. [152.2.130.143])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b1300f3cfesm27329767b3.27.2026.10.22.07.29.20
+        d=1e100.net; s=20260707; t=1792680766; x=1793285566;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=QNV9Grn12kKHSJiLs5T3Kf487Bm6lI3HctQrHxCaqmU=;
+        b=APFwiOBk+PGwlaySjGd5XPWGtecgxSl8fTQQWtBGnfzCoYlXbYkIEOfUBQfx8O2hwE
+         eqQGYqyNob0LnS3fY47iK+t3dOnK02zS6nTOlU84DRASy+K0PFQ/f8FBb0ZOFFCq7Z1n
+         S7l5XulQxFcr79BUBKMB2zzknhH1MYLsdsY8c/JioPDNrqj9dQMZvxzvQiqxd2DFdcPJ
+         bZicEi1t1hVLDEzJmJPzOaxJ8JB/aMUjNH6Om6N0SZNQTwyqrg7dTFGLblcH/cmTV7uY
+         7hCdr1apKM9tWfNgWyUM0uOqbpySLJm+AbRTEcrRG3PRG+fYGYw4TtBt7C2q5QyjxML7
+         ztgQ==
+X-Gm-Message-State: AFq9FYJ8j5nHpV6pCNI2tCmJSYMs7n82xn6B9RrhU6wpqBIxQ+N2wI9D
+	eZD/YKRQWSqMcoii7Mxe/U321+YlkJTY5EDfwDbQA9qWravnF+LwdjHQC2Nh9QppHcPghsQFwdG
+	opUN5lo0=
+X-Gm-Gg: AYBFou1uLXjjVOnFzuV0Nu6Xtp5WXe5yBkQsSKJTqFZ6sgV0eFPQccuO5SUhLCBe8GU
+	DmJFns4eL6l27ffqEkQqY6GdtpwOwzpvNv0pbLdYxZv3nqEQzbGpSYeL6Q+DMtMKo0/72HjrgD0
+	2vdIs+vPtjjAZOwno1jiuFLI4nv0/J6FTB+i6ip2CnV6H7StMfx6V0SC2YXNKegFxeFJxNblsTM
+	p1q6TuOBQhagR/Xkv2n+hfVPz/FEpr9YbSfwGXEHRJWbph71xMouvSMAtyhej2KjeiMZb+5sWi0
+	T+fb/CqMISANKJ5vPGA5zwGorMG5oIJ7g1dorfYyAd4MWQbJa/Y9GMGj+wx0d7cS19ddyUzUvF2
+	48SvOpdAXvBXHx+QArCkSmbeWNUx9/J3tsbZwtXmRxxnjp2VduRyNlAotuAA8VEHivExachKUKf
+	45Aslz2oOk9FnTJwOXoj3q8Tg2AXqOW5PR0Jbm1wHFXXxUIk2DppvklVBLWS3RYuGxT+iSMgMVh
+	4UG1MCLrYTVDpojeMB7+d2T/EccfH24PTzgu/iiyP3uIbIMb9C5/PaKWvE=
+X-Received: by 2002:a05:6a00:328a:b0:874:705d:f659 with SMTP id d2e1a72fcca58-8a089d2c932mr4362035b3a.39.1792680765922;
+        Thu, 22 Oct 2026 07:52:45 -0700 (PDT)
+Received: from localhost ([106.38.226.26])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8a0895fa967sm2263961b3a.47.2026.10.22.07.52.44
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Oct 2026 07:29:21 -0700 (PDT)
-From: Hengyu Liang <hengyul@cs.unc.edu>
-To: jack@suse.cz
+        Thu, 22 Oct 2026 07:52:45 -0700 (PDT)
+From: Julian Sun <sunjunchao@bytedance.com>
+To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
-	linux-ext4@vger.kernel.org,
 	adilger.kernel@dilger.ca,
 	libaokun@linux.alibaba.com,
+	jack@suse.cz,
 	ojaswin@linux.ibm.com,
 	ritesh.list@gmail.com,
 	yi.zhang@huawei.com,
-	dave.hansen@linux.intel.com,
-	akpm@linux-foundation.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: do not advance i_size on a buffered write that copied nothing
-Date: Thu, 22 Oct 2026 10:29:11 -0400
-Message-ID: <20261022142911.1490979-1-hengyul@cs.unc.edu>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
-References: <20261009044656.1993196-1-hengyul@cs.unc.edu> <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
+	riteshh@linux.ibm.com
+Subject: [PATCH 0/6] ext4: fix buffered writeback error handling
+Date: Thu, 22 Oct 2026 22:52:35 +0800
+Message-Id: <20261022145241.2950379-1-sunjunchao@bytedance.com>
+X-Mailer: git-send-email 2.39.5
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -107,58 +98,46 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Hi Jan,
+This series fixes error handling in ext4 buffered writeback. It prevents
+stale data exposure when mapping or io_end_vec allocation fails, reports
+unwritten conversion errors to fsync(), and preserves concurrent io_end
+flag updates.
 
-On Thu 22-10-26 11:48:35, Jan Kara wrote:
-> I agree with the problem but first, Ted has merged rewrite of ext4
-> buffered IO path to iomap your fix would very likely need rebasing, and
-> second:
+The patches are arranged as follows:
 
-Thanks for the review.
+1. Move extent mapping error handling out of the loop, without changing
+   behavior, so the following fixes can share the partial-folio path.
+2. Submit mapped buffers when allocation of the next io_end_vec fails.
+   Otherwise, their ranges remain eligible for unwritten conversion even
+   though their data was never submitted.
+3. Submit mapped buffers when mapping a later extent in the same folio
+   fails with a fatal error, and discard buffers still needing mapping.
+4. Drop the folio lookup reference if partial-writeback validation fails.
+5. Prevent silent data loss by reporting unwritten extent conversion
+   failures through fsync(), instead of returning success while direct
+   reads still return zeros.
+6. Use atomic bitops for io_end flags so failed-bio completion and
+   writeback cannot overwrite each other's updates.
 
-In the ext4 dev branch, the iomap buffered path is only used with the
-new buffered_iomap mount option, and it faults the source in before
-->write_begin(), so it does not have this problem. The default
-buffer_head path still does: on 8c4f6e337634, a 100-byte file still
-has a size of 1048586 after a failed pwrite() at 1 MiB + 10, sync and
-remount. The patch applies to the dev branch without changes, and I
-will base v2 on it.
+Sashiko helped identify these issues.
 
-> this is wrong and would leak delayed allocation reservations AFAICT. You
-> should just use ext4_truncate_failed_write() like e.g.
-> ext4_da_write_begin() does on failure.
+Julian Sun (6):
+  ext4: move extent mapping error handling out of the loop
+  ext4: submit mapped buffers when io_end_vec allocation fails
+  ext4: prevent stale data exposure after fatal mapping errors
+  ext4: put folio on partial writeback validation failure
+  ext4: report unwritten extent conversion errors to fsync
+  ext4: use atomic bitops for io_end flags
 
-I don't think it leaks. ext4_es_remove_extent() gives back the
-reservation of the delayed blocks it removes through
-ext4_da_release_space(), which ext4_iomap_punch_delalloc() also relies
-on in the iomap path.
+ fs/ext4/ext4.h    |  16 ++--
+ fs/ext4/inode.c   | 188 +++++++++++++++++++++++++++++++---------------
+ fs/ext4/page-io.c |  24 +++---
+ 3 files changed, 148 insertions(+), 80 deletions(-)
 
-To check this, I ran my earlier tests on the dev branch with the patch
-as sent and with the helper replaced by ext4_truncate_failed_write(),
-plus a test on an image with the quota feature that reads the user's
-quota usage (which includes reserved space) and the free block count.
-After a failed write past EOF, both versions bring both numbers back
-to their values before the write, and nothing is logged at umount.
-Without the patch, the same case keeps 64 KiB reserved until the inode
-is evicted.
 
-I did not use ext4_truncate_failed_write() because since 665575cff098
-this path is also taken by ordinary writes. When the source page is
-not faulted in yet, the first copy fails, ->write_end() sees
-copied == 0, and generic_perform_write() faults the page in and tries
-again. ext4_truncate_failed_write() would then run ext4_truncate() for
-each such write that starts past EOF, and that frees blocks
-preallocated past EOF with FALLOC_FL_KEEP_SIZE, even though the write
-succeeds right after. In my test, a 64 KiB write from untouched
-anonymous memory into a file with 1 MiB preallocated past EOF leaves
-st_blocks at 2056 with the helper, but drops it to 136 with
-ext4_truncate_failed_write().
+base-commit: 4403278e4ea2f654f8130a5c03eb8b4516a0f201
+-- 
+2.39.5
 
-So I would prefer to keep the helper. Is that OK with you, or would
-you still rather use ext4_truncate_failed_write()?
-
-Thanks,
-Hengyu
