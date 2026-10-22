@@ -1,83 +1,82 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.176
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792680771;
-	b=mjo0AJhzHT5m3Ig98PbaSkzEeJvSOoby3UD9nFewy6TzHK4hnYKZZ7zgzYvQ8dxxHcC8
-	 phs8dWWgtt1supKh7f+SPHw6kCMrUyKA6F6InV5JUrfEqLKef/hAEqAe38dVBk3PJwY62
-	 mHApzjDkB4vbh1TbS1w2MxO3g+myfXM78L4Nr8N6bQxQ45Th1JLOpnTvFi1NayS36rg6a
-	 fY/0ry+yyB2NncMc9m2z4keiyCETiMa041SwKPX/5kVw0g9A3DAyRiB20hpxiJvG3sgQ/
-	 jLK7ujCq7WYc7aJRAEOqZPyRlrG/aVv9jmzyjnJCh421Tph962RyrqIsMmUFy6zHNxw==
+	t=1792680775;
+	b=wNuf8aVLRFoSdVA8hjNRnaYM7tp/AKsdv6wQEdDgmqODjuYvxL05Y4taQui7rqKiUmyF
+	 lRQr52dK9nodXYbdNOckTIMG0KkVAW11S4pcmjlIR/MFJEDA7qf5wA2MWWjlLawIE5TLQ
+	 V1Si6ZJFdOQ3MopzH13MbJUK2IBQlGMJiNwqvxpY3MjY/85pFJDtXCXsu1L6oFL3Pq769
+	 45G+aTikgYeCHyiEa+vyRGXW2zllKt//R/INUEsKrNqsPe0xkYH75223i9iY5R92u2iac
+	 CML/eyRysypI5oBys1C6HdNr27HUf0OONYMQHIEDy7uRDNWF7WGtPDtVkLIE3LCn4eQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792680771;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792680775;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=SCaogKi71PFtUSWXRjd3cOixXULyWR6y4CuVMAWg7j4=;
-	b=ugaQGcmS6Gpni/LXJkyQim+S5Dezb5DyEAzQnojvP/SGdWKcJUqBGpyPylBILH2X4UzS
-	 9ZLJvmMY9WPVNAHAtgz03Z30U6W3694oU3gKaZXn7ExKFiZXsooKEworDhv7B1VsoIDye
-	 /ashrdFQ3aa6TR/XT0oz+ELu+BCohXuNhvdmv2cOLZYK1flhdMML0O5/9oCmCBHQ8TWoC
-	 6rJtFAAQ1+maKyUBPs3YXjtRv7uW0EcjYuwCQ4dGGiXeXhFOdBOMNIYDk910ENce/HrRm
-	 pCt4LyT5tFEGjMJjiqAZtAz7pZnIG2A26XcP7loErXn13sTgqgAOOHz41rymrjmHSow==
+	bh=ZHuqbNWWWqk1IBfZuqNiFFlbdhuv2/45o5PhktZ7Kvk=;
+	b=UIyzwJa+b0ZY2CWvO8AIbQ1KHYNFjqt4imvJOnjj+wCjSn0IBlhaZY2K5wMsCkqH2XJi
+	 t5G2Z5ZZTq8BTh+HKns3TSBvQUOQ6En8zsqfHv+kc7k1MXe/3plRbkR8zMrQYUfHh1HkH
+	 2NqDLUbqnLXAcZ9KgezBN+6vkhAjrI4Mauxgys00x5d+pbpXDv4QcL1MUBvKnXMoKok9X
+	 xPCPzY9kXKcEKCy92a67J+6vnaokmCoiBXMMJ+FJOsuLeMt1gb9GpWjZjws6tf2M1dEbf
+	 +oQWSJZQ3Sv4e6FKD2YK/vLQGe091w3pH7choiHH8HWMOwkT4bM+5GXw8wgbzUmbo8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=bytedance.com;
 	spf=pass smtp.mailfrom=bytedance.com;
-	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=DWDfdxos;
+	dkim=pass header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=ZfCYu+U5;
 	arc=none smtp.remote-ip=209.85.210.176
 Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17358606A31A
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 14:52:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 17358606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6423B606A31B
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 14:52:55 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6423B606A31B
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bytedance.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=DWDfdxos
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8a06b436dffso827388b3a.3
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:52:50 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=bytedance.com header.i=@bytedance.com header.a=rsa-sha256 header.s=google header.b=ZfCYu+U5
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-89d6bd67045so529448b3a.0
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:52:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1792680770; x=1793285570; darn=vger.kernel.org;
+        d=bytedance.com; s=google; t=1792680775; x=1793285575; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=SCaogKi71PFtUSWXRjd3cOixXULyWR6y4CuVMAWg7j4=;
-        b=DWDfdxosaLRWdCfQamEqowbdvCEILimBpiNWRYpYtvhL/+26TK5bOoRdjCC6zWHl3n
-         TVza+utdSCoe/T61ogKhwihj70Q8u7XM0Cca5TFRlAKjmg7Q3aAIVcF9SRDHe6pUJ48/
-         +YOWnUoLkVYOWOkIWypIiO7Rm+IwGeibwFgBCcKP4Bfh5hPPk/U3ZbMe9gVIWGWs9k1O
-         bUQ0vYnTfqc75CIMwKhFNj91RisV3tFirZer7DRqeFXtprbAhm4ejIwtr1qb3FnyKTRZ
-         nzwFG8Mn616JYYQ+X0Zb3yyizng+16JytdU13103v9E3ksQCFK2TPmZrPKVS5d80Zne+
-         FN6A==
+        bh=ZHuqbNWWWqk1IBfZuqNiFFlbdhuv2/45o5PhktZ7Kvk=;
+        b=ZfCYu+U5vnq3lkabMk4B7O/EGapfZ0T8mkR5vQTeIOw1H9nfT3f7Wj/bgWYMbwEp1v
+         +0jKpvlTY3DtDuA1gvRVqmH63Nmn4vuUlgOXcVE6cZQe3Eikrc8o/ww+lCperHLF5Ljd
+         cHOXzTEA1FIwWs7j3En3WlNRn0KNjZ9KgXoIU4RDfPc2D1GmH0HiWwrzNgKX+pvSmatc
+         UNkDT4LOxujJmsC3zjR0xYlj5xalbK2Zlh5KhnfyvhiX6ZcuikOH/IRJd7PaME/NaGql
+         VfiqNOre+ZMW5FZdblevgI2F3ky0abQdAoofC4sFsOCgPxnH4w1FtHdwdA+nWBcQhvP3
+         xwCw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792680770; x=1793285570;
+        d=1e100.net; s=20260707; t=1792680775; x=1793285575;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=SCaogKi71PFtUSWXRjd3cOixXULyWR6y4CuVMAWg7j4=;
-        b=JQJ6+54VGUAxHuCXkJWBzN+5nlNeXRU2Bj8RSNi3NyY55g3hvy7DM5k71Wwb5h0W6e
-         xcpojWH2Kquw42pMlK2cTflPuPKrZsaRxTPjuuw+fod2tAkaLlrZLHK+IjAD0siTpaH7
-         3NCLd8LItdP6GRTiotldjtWrM2fyybM9MUUIDxGmafKy8tWY6nUJZwVRwOo+UezkH83/
-         aHelQU0GQScB7uCz99IYqkZ7U+AvUS+ug10FkoaWJVvI0Vs9pgz4L7prMCDhUhXSk6eP
-         aQBtN3R9ZJub6F+9LANXEsJalxyBnoqfzSod1wCXWh+8c9o4tu+jHlAGgnUxkfGiipm4
-         JFkg==
-X-Gm-Message-State: AFq9FYJO6femxyXdODJ80ifxQINyyROvApWTlCNG/9foBdzKi9xbZqTp
-	/sLfEYveNDjg05D2afhnc8jCBgkbWmUn3nkrGKB6Kq6JBePyTTZQjwgUnmo+ziu2s+XlPt8P9ou
-	01GNY7v8=
-X-Gm-Gg: AYBFou27FBeA6r0ottXZt0LRfjyPaJ2dmYI7G7BmPkmAvByau5/HOgrAeBFpSw9AlQH
-	/Fu5K3YOyynG6BuoJtk8oW72pfn4G5Mm+i2R7EVlNl/A3I5epj+/B2JE4E+J+EPsfL0sgcszls2
-	bnHDrEyuvT9yz9LWoubWNSgC+a4Sbpl2+uvV3A/7/SHMH1TXZEuY75yhKUT+zsinM4vWRyQ1XKj
-	/TqKxTWb8312oQRjWO/PeoRdy4DHCCO3mcWA2lYFvGVlIe9BgindZud05HrnNiDMpufmqjCkp8L
-	RH3FaORqaeDYhmu1hEjt0EylzSpIibaMI4hpm2CWzKOHbJTekj/QHnnHWZw0lD3v2wUdhvdlKFv
-	wGmhb2b0T6/OqnkHYScsTUKauSN9GyVnHRQHS6n0JTwVuBDSr/dSjxSxd04as21AJvpGfrhHMd3
-	QhZvVBGiguL7l3E5FoIPiXGweM/7NjFA+rexWXvlznqXkndhA1etY+LL5BSHit1JwxKpoquU05p
-	4arNpEwVbNOTQdtRWnhj7E/NqTxlNBubtuEDLI/hhU7yQAJAw3qZJjqMhp8sSJ68PvsYFKLxvSD
-	UxkLHA==
-X-Received: by 2002:a05:6a00:3698:b0:8a0:6414:a54c with SMTP id d2e1a72fcca58-8a089e3fddfmr4280965b3a.32.1792680770224;
-        Thu, 22 Oct 2026 07:52:50 -0700 (PDT)
-Received: from localhost ([106.38.226.229])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8a0895db551sm2381881b3a.34.2026.10.22.07.52.49
+        bh=ZHuqbNWWWqk1IBfZuqNiFFlbdhuv2/45o5PhktZ7Kvk=;
+        b=aY9CWaEGzIXSc1dYFL4m8Tps+pZOL7ax7pHqDm7cHOWTOxD62N0SaQCmKStrCSnOGV
+         V0rRT1tM/iqUT7VXSYTVIACmZ9LLJ4qXWoORz2G7xYMf7e0oyb4flNTx2t3r8iqGv0TT
+         GeKMY0nwyO+oS1d7H3b8T8rNACgoGkWTUJESV6iXb50cQ35llDxiuXZGGXAKHr/FvZtj
+         fMgioYxckOITNPGSwwOHhpyDEmtdfD+ByXAHVSYv0RtvgglgFvJTI5mhzFFK0oaDcIgW
+         bRCLvz/XDCZm/7o1O0kT3AO23hT/frjFQqTBpqVKz7EHi3eQNkZTFOx5FdIXpfpHfiZR
+         Pz1g==
+X-Gm-Message-State: AFq9FYL0mj5mzxsLZfoMFh4BZKCNAlQQ+1y5DDf8h7+HbyLICflr2hGh
+	Uju6fmD3g5vQQWpeQowp5ryiJRdAtk+DI44iDHBV33RugGp3YVok0xi6OtQ+S2kyVDyaZPw2040
+	RjXjjXa8=
+X-Gm-Gg: AYBFou0jWDeaFX4qAjAUSH8HLMZmh5zSeMz3mAdvpxPU0GSMx+64SUv30Igmn4WGuB2
+	/lbWoiBvC1J9yHDyG8Yy3TT2OEJwEsVLiSjkiSufonnH8IoasXeVn0gSFjO6LXB9OFXb2biLCe7
+	ij0MGREeK9f9ELR4MMXQ0n65cI0VIU2ad9EDl0HiphBz/xeaQ4h561eus1WZmfe7KODt3J+1d39
+	DuS2Dn55unB+KKzAupwzsPvST5Vt4noueUYBlgaLfec08G1r2CeEbYP/LWu4U7niiqZ1w0RUSgW
+	ugKe38WbE3bra/9UpIwzLnGtZ+QYfw1lQiEy1gNuV+M/JFAFj8WsDiCE5GhRdQ2/PHNiixtAbLW
+	cBMiKHBj0aKREZK3lJKe0IeBRvslemaSqqxILH4aR6F1jfUT6sZX9QQxoCMPxM+WJuSVeRFIke9
+	n5mBz+nBLojHVlT2qMnwtNJgQ2ZOiTGmnbFXVI+SFnSqhbaioVEvOeXhrDjTyD3Mng6OWsPLiuT
+	ZnAlSX/TSo8vaoavfLqdXDjS7QbQOLsqVXlZ4xZ3udB3K0i16LKy/uTg04=
+X-Received: by 2002:a05:6a00:9098:b0:89e:b19a:3bb5 with SMTP id d2e1a72fcca58-8a0a0486d6emr1826013b3a.15.1792680774470;
+        Thu, 22 Oct 2026 07:52:54 -0700 (PDT)
+Received: from localhost ([106.38.226.29])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8a0894b4292sm2206792b3a.20.2026.10.22.07.52.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Oct 2026 07:52:49 -0700 (PDT)
+        Thu, 22 Oct 2026 07:52:54 -0700 (PDT)
 From: Julian Sun <sunjunchao@bytedance.com>
 To: linux-ext4@vger.kernel.org
 Cc: tytso@mit.edu,
@@ -88,9 +87,9 @@ Cc: tytso@mit.edu,
 	ritesh.list@gmail.com,
 	yi.zhang@huawei.com,
 	riteshh@linux.ibm.com
-Subject: [PATCH 1/6] ext4: move extent mapping error handling out of the loop
-Date: Thu, 22 Oct 2026 22:52:36 +0800
-Message-Id: <20261022145241.2950379-2-sunjunchao@bytedance.com>
+Subject: [PATCH 2/6] ext4: submit mapped buffers when io_end_vec allocation fails
+Date: Thu, 22 Oct 2026 22:52:37 +0800
+Message-Id: <20261022145241.2950379-3-sunjunchao@bytedance.com>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20261022145241.2950379-1-sunjunchao@bytedance.com>
 References: <20261022145241.2950379-1-sunjunchao@bytedance.com>
@@ -105,120 +104,88 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Move the error handling for mpage_map_one_extent() failures after the
-mapping loop in mpage_map_and_submit_extent(). Keep buffer-processing
-errors on the existing update_disksize path and preserve progress
-tracking and return values.
+When the filesystem block size is smaller than the folio size, a folio
+can contain discontiguous unwritten ranges. mpage_process_folio() records
+a mapped range for conversion before allocating an io_end_vec for the
+next range.
 
-This prepares for reusing partial-folio submission when buffer processing
-fails. No functional change.
+If that allocation fails, mpage_map_and_submit_buffers() returns before
+submitting the folio. Its caller skips partial-folio submission, leaving
+the recorded range in io_end. Completion can then convert the range to
+written without writing its data, allowing reads to return stale disk
+contents.
 
+Pass progress into buffer processing and set it as buffer mappings are
+updated. Route errors after such progress through the existing
+partial-folio submission path, so the mapped buffers are submitted before
+io_end completion. Buffers still requiring mapping remain dirty for retry.
+
+Fixes: 4d06bfb97ecb ("ext4: Add error handling for io_end_vec struct allocation")
+Cc: stable@vger.kernel.org
 Signed-off-by: Julian Sun <sunjunchao@bytedance.com>
 ---
- fs/ext4/inode.c | 83 +++++++++++++++++++++++++------------------------
- 1 file changed, 43 insertions(+), 40 deletions(-)
+ fs/ext4/inode.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9a9ec02dce9f..bacead801709 100644
+index bacead801709..cefc4b97ac41 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2467,46 +2467,8 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 	io_end_vec->offset = EXT4_LBLK_TO_B(inode, map->m_lblk);
- 	do {
+@@ -2226,7 +2226,7 @@ static int mpage_process_page_bufs(struct mpage_da_data *mpd,
+  */
+ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 			      ext4_lblk_t *m_lblk, ext4_fsblk_t *m_pblk,
+-			      bool *map_bh)
++			      bool *map_bh, int *progress)
+ {
+ 	struct buffer_head *head, *bh;
+ 	ext4_io_end_t *io_end = mpd->io_submit.io_end;
+@@ -2270,6 +2270,7 @@ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+ 		}
+ 		clear_buffer_unwritten(bh);
+ 		io_end_size += i_blocksize(mpd->inode);
++		*progress = 1;
+ 	} while (lblk++, (bh = bh->b_this_page) != head);
+ 
+ 	io_end_vec->size += io_end_size;
+@@ -2294,7 +2295,7 @@ static int mpage_process_folio(struct mpage_da_data *mpd, struct folio *folio,
+  * mapped, we update @map to the next extent in the last page that needs
+  * mapping. Otherwise we submit the page for IO.
+  */
+-static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
++static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd, int *progress)
+ {
+ 	struct folio_batch fbatch;
+ 	unsigned nr, i;
+@@ -2319,7 +2320,7 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 
+ 			lblk = EXT4_PG_TO_LBLK(inode, folio->index);
+ 			err = mpage_process_folio(mpd, folio, &lblk, &pblock,
+-						 &map_bh);
++						 &map_bh, progress);
+ 			/*
+ 			 * If map_bh is true, means page may require further bh
+ 			 * mapping, or maybe the page was submitted for IO.
+@@ -2469,14 +2470,16 @@ static int mpage_map_and_submit_extent(handle_t *handle,
  		err = mpage_map_one_extent(handle, mpd);
--		if (err < 0) {
--			struct super_block *sb = inode->i_sb;
--
--			if (ext4_emergency_state(sb))
--				goto invalidate_dirty_pages;
--			/*
--			 * Let the uper layers retry transient errors.
--			 * In the case of ENOSPC, if ext4_count_free_blocks()
--			 * is non-zero, a commit should free up blocks.
--			 */
--			if ((err == -ENOMEM) || (err == -EAGAIN) ||
--			    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
--				/*
--				 * We may have already allocated extents for
--				 * some bhs inside the folio, issue the
--				 * corresponding data to prevent stale data.
--				 */
--				if (progress) {
--					if (mpage_submit_partial_folio(mpd))
--						goto invalidate_dirty_pages;
--					goto update_disksize;
--				}
--				return err;
--			}
--			ext4_msg(sb, KERN_CRIT,
--				 "Delayed block allocation failed for "
--				 "inode %llu at logical offset %llu with"
--				 " max blocks %u with error %d",
--				 inode->i_ino,
--				 (unsigned long long)map->m_lblk,
--				 (unsigned)map->m_len, -err);
--			ext4_msg(sb, KERN_CRIT,
--				 "This should not happen!! Data will "
--				 "be lost\n");
--			if (err == -ENOSPC)
--				ext4_print_free_blocks(inode);
--		invalidate_dirty_pages:
--			*give_up_on_write = true;
--			return err;
--		}
-+		if (err < 0)
-+			break;
- 		progress = 1;
+ 		if (err < 0)
+ 			break;
+-		progress = 1;
  		/*
  		 * Update buffer state, submit mapped pages, and get us new
-@@ -2517,6 +2479,47 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 		 * extent to map
+ 		 */
+-		err = mpage_map_and_submit_buffers(mpd);
+-		if (err < 0)
++		err = mpage_map_and_submit_buffers(mpd, &progress);
++		if (err < 0) {
++			if (progress)
++				break;
  			goto update_disksize;
++		}
  	} while (map->m_len);
  
-+	if (err < 0) {
-+		struct super_block *sb = inode->i_sb;
-+
-+		if (ext4_emergency_state(sb))
-+			goto invalidate_dirty_pages;
-+		/*
-+		 * Let the uper layers retry transient errors.
-+		 * In the case of ENOSPC, if ext4_count_free_blocks()
-+		 * is non-zero, a commit should free up blocks.
-+		 */
-+		if ((err == -ENOMEM) || (err == -EAGAIN) ||
-+		    (err == -ENOSPC && ext4_count_free_clusters(sb))) {
-+			/*
-+			 * We may have already allocated extents for
-+			 * some bhs inside the folio, issue the
-+			 * corresponding data to prevent stale data.
-+			 */
-+			if (progress) {
-+				if (mpage_submit_partial_folio(mpd))
-+					goto invalidate_dirty_pages;
-+				goto update_disksize;
-+			}
-+			return err;
-+		}
-+		ext4_msg(sb, KERN_CRIT,
-+			 "Delayed block allocation failed for "
-+			 "inode %llu at logical offset %llu with"
-+			 " max blocks %u with error %d",
-+			 inode->i_ino,
-+			 (unsigned long long)map->m_lblk,
-+			 (unsigned)map->m_len, -err);
-+		ext4_msg(sb, KERN_CRIT,
-+			 "This should not happen!! Data will "
-+			 "be lost\n");
-+		if (err == -ENOSPC)
-+			ext4_print_free_blocks(inode);
-+invalidate_dirty_pages:
-+		*give_up_on_write = true;
-+		return err;
-+	}
-+
- update_disksize:
- 	/*
- 	 * Update on-disk size after IO is submitted.  Races with
+ 	if (err < 0) {
 -- 
 2.39.5
 
