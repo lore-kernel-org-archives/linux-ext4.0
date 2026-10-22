@@ -1,60 +1,103 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.172
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792677437;
-	b=kVgDWk0EEEweDuEGOdHi2GRrNqq6FKjkKaJtKKhR+ZZXzGzGq+LfH0/NWxnoGXx53yTk
-	 bT/NyF7afJuRZy3TsoNi14HKpPaGX9oV+kz5JVrPo30z0AggV9Ied1oe+eS3ytAu+AZSS
-	 rlt1keP4Jzvjirb97O42go716z/l27E9zLixF3H9WZ5WBO01iwikZx3U70Cw3+vDhUFEG
-	 AAXLNlrFdTyN1x5QSmo4HFB3kpib1s4TUkForAuY9oDZiP8rs5p18skmyvIs3boVcQv/d
-	 swekqkIHz/oUm8olJUOTpbMUubVFsfkIf7LG8Dg4fMDh3UWSV04gPGc6C6fqfag3uFg==
+	t=1792679363;
+	b=gxCUVlE731BeOSG98Fu5hBb5+NkONoTsyiV/W4/cH/o27dmXvfB/SYgr2unZbcWdRKn8
+	 3nbI40ZjK/mihmS+EZmu/9ihzScgqAkVa02BWfpBTMMgMRoAHcTCc5mjkx/RdkUSXiCOj
+	 2LNZY9qzbgn4wlyF0H6QTJ7RzTiuRgc6rr/VBGt8vy8j4aS9jzgKuCAi6iOd4GP+aHMlJ
+	 4hh1w2jq0m0hBPTpb2Fz9dzlCQeJT4bUdtbxdwTatzvDgR8ZfiFqhVmCuANjg+m7t34cB
+	 0kSd2m2iqOcA0YEEC43PT+d7cRj4bRLdtMsHs3outkgph28Y5Fv7WUhBOcZRI8XjXFg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792677437;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:MIME-Version:Content-Type:Content-Disposition;
-	bh=4g4nl85uQ+oqe5lEbYHv075zDMEI+YwtCB8bjQcYNuc=;
-	b=Bwg2p1Aw0CkgWQmmuQwqWiQor4KjUD1ABNgEU6FWyVCZjJnIWGtrPPO74tT3LygrbA9p
-	 vwN0t7sbVEFcApuSXz4OnQi3ZCX8ecBCYUA1BVEgvCqJUmr8CGAE//mearEXjzrI5BCui
-	 oshRpkwOR5f11DslPT+Q7uFQhkGpJpqeo/n1mme2kGHEjXs3Giwqm2SbezLZPcqIeArXL
-	 AQFpPKVRIDZaZmSPz/H4Giavql6vXas0dxhNuyum5ee7euwuVZbv9Nei4Gv4DszlUN8de
-	 SAs3+vuZ6uBL81QFhdJ/XEHOXXr5IhMzK6cDZF6cVH4LzhVCD8EXsjgjZI8v5RBfCXw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792679363;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding;
+	bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
+	b=U8JiE1m+I8Yg2aPczcD4Zohgu9vs7QpKRXuee5rMiZiIS1ix5iL278ZzsF9fv6ajvBRN
+	 NsF3KSx5aP0DgHmDKsY/kGBYyy4rhsvuUN+iGSOzvDZ2wlr1Jpl5WywVngrQ4bfJzK+O8
+	 rjbKRPL+vM8wewTnJ7tUof7D6SBBfy7vP9gT2G8PyuskeYGwBvgUqhrKGL8vy3blDYh0K
+	 f8TgfRAcmGJTX41Ubg+uh09FVT26RNf3Wf+U5aryzPqb+xWG5apsQMuN+pJLxyfJageM5
+	 JFgjtOnbMIKMSexVIc0DF2FLlzKL4uulI5fOM2TC6yMmmH9UwkTvKMy+CpFOP13XSkg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b="HgO/1FxQ";
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=cs.unc.edu;
+	spf=pass smtp.mailfrom=cs.unc.edu;
+	dkim=pass header.d=cs.unc.edu header.i=@cs.unc.edu header.a=rsa-sha256 header.s=google header.b=Sh3VG5SY;
+	arc=none smtp.remote-ip=209.85.128.172
+Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2641606A31E
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 13:57:16 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D2641606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D68BC606A32C
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 14:29:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D68BC606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=cs.unc.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cs.unc.edu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=HgO/1FxQ
-Received: from trampoline.thunk.org (pool-108-26-156-23.bstnma.fios.verizon.net [108.26.156.23])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69MDux9g003881
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Oct 2026 09:57:04 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1792677425; bh=4g4nl85uQ+oqe5lEbYHv075zDMEI+YwtCB8bjQcYNuc=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=HgO/1FxQ0sLg+xMOb1xqaUZ7HsAOJnl9pqX6CqfrQ5vxFx9p5AOwA/GXgoIOgzW0/
-	 Rvhz39/yB/pPhh3AxoHnWCKrodM6C7aaXIfYfTufK1WElOXXANiz6l6tDAwh++bECy
-	 /7Voc/jOjAikb9zwk3YnSudNtN6pHs3UHDe0bVvhKKvidVCxfzw8/cld4gdqGizS0a
-	 6LsmPdW4b91ZKaz0Fek5QUKd6cwfZwKkcidYWtANhE29BR4NnPQbxVQvsWmScbp4F8
-	 piPbwkRXpzR5M0fVnSQxS5Drs+gbFU/gqzpT/nNCrWP2lE6jFhyz+xbwsC4yXMWCQ9
-	 fPjA53YfaGp3Q==
-Received: by trampoline.thunk.org (Postfix, from userid 15806)
-	id 5BDB42E00B9; Thu, 22 Oct 2026 09:56:59 -0400 (EDT)
-Date: Thu, 22 Oct 2026 09:56:59 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] ext4 updates for 7.4-rc1
-Message-ID: <atoWDJDx6sFovvjp@mit.edu>
+	dkim=pass (2048-bit key, unprotected) header.d=cs.unc.edu header.i=@cs.unc.edu header.a=rsa-sha256 header.s=google header.b=Sh3VG5SY
+Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-8b0e21048f8so18566277b3.0
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:29:22 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=cs.unc.edu; s=google; t=1792679362; x=1793284162; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
+        b=Sh3VG5SYS86Y/cUu48NcOpZrlstcwtzOP6oDtt0f1lj8SLeLI5pZWs7o+SIp4ix3oT
+         5SggpjHjZ7iWCohx4alswx4ieJz3fvs2sb977apngl3IBzprzk4ulKjhiMFuN6ydLzPY
+         u+OpLY/nMxUyMt/PFrFzJImPdTz/mxUyUWVNKGrEISFLs6U1C1IZZV7uuawmXExSMTo/
+         fLl4ztuQw5RQXnLf6jlBAC9GycJ38e4qI3pKMz8GHe7RDB8g6Qib28eKU+J32wqwYyK5
+         90VRC7sN7POAsHt2h6PjNVLCGTBMGFJ/5KOAClc+KKEbaLuUeqK6opKhBmbEwfSp6jMU
+         PbbQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792679362; x=1793284162;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=ip3LDVkz43JVMLeEy65y5DnSL95eKEKIg6rsimQU6Ow=;
+        b=Y5t3t02z0/Uxooi31RdJ0gJNQZVJ5rf3kesTm/9oU75tdIACjMV3Z0VUB672bqP450
+         pZvLt3usAUqvaRSf6EI2nGCUBZgTNJU5qWcgpUAr75yrWTYeLmSsz4hDiCHN5c17nDQh
+         RSgtRrykEasY7dlhmzobRIKQcP1Csur+TOcFice9MWys37x957Ajn7vLzBqQyLeP9SZb
+         9egWQ3qjQ5ZEuJ0infoYQ8xAMvTZGyWh/UcBkwN/awV/UObG/yWMJkLSc5ieeh6C6H6A
+         Ap3hCZ9cKsqySkyBXvFzkUIPZ75IX0QHEObK5rDlODyyjVqlm5nzA2bcHaKQCMpLZMkS
+         TKoQ==
+X-Forwarded-Encrypted: i=1; AKwUvBzvntGohumdBhm9WZFi6P9OnfkgDNMzTAiDu26ZvDif/zk5EWpKh7Nv92tZhcUFUdVqn8l0eC1E0oyj@vger.kernel.org
+X-Gm-Message-State: AFq9FYJcRslg6YCiJo3qCXeWmesO0jeBse3sQNyVphX4PbFsGZIgK0Sp
+	zJxDiE8koMgJZEdHdCW9/sUUa/Gat7Ax/i3XYeQGAkzMSprRKPreveZEZ2K23Dvl6w==
+X-Gm-Gg: AYBFou12TIzw5VHNi7peyYSA1jU2UtCx7tw1inrBvvyADWrpeDCEQczUiQVeZL2Rdoi
+	vQBprDfNtWBRPm3eBY33/auMhjCuL1YH4xQ1vDv6wxSBeXxHg5rGeGV/07jmbbq6d806tPdpVPV
+	6jIKf5ancuLECWHMB8gPXhZQsTWwNXAqbRE334srnmjiWMYr4fOxKtJpxSyGpvrS3X6podo4smB
+	TCjZQwA+B8FmQgOoQe7PKthimfxuAQY9V8i3CzxyvFVCQ7nPCkav5hXxVOLmWI3jSWuVBufQXYd
+	mFWPWWkhQ96MqRNJ2TexD7zNruBggSICE9z3NnArAbS6b6bVe7dTpr1OZ1j6hSZ+WuV0Im8SOj6
+	yWhihRMLxdKWG5YDwbwz0HkX1C57fDEdCudZkZR0OTCKpFWlUHaAH5C+98Xdvnj1iqCVZlVVeW8
+	pOOUhfXFpWYeEWvDnz7B/MrrcdUAk5lazfGVWT6VLtKWXNso1Sw2I5fwbizG9QkwfNzN2smr7X2
+	nze+MJ02k/yuja/aqWCQuINVIIiUpX7ua73sevK/b9EYzNl6m9SJsKEiJD8UaBIhmdHfRxAIktF
+	J26yh2eQU97xiG7cq1teF90p
+X-Received: by 2002:a05:690c:6603:b0:8b0:a171:65e4 with SMTP id 00721157ae682-8b133f979ebmr36772897b3.15.1792679361535;
+        Thu, 22 Oct 2026 07:29:21 -0700 (PDT)
+Received: from cobra01.cs.unc.edu (cobra01.cs.unc.edu. [152.2.130.143])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b1300f3cfesm27329767b3.27.2026.10.22.07.29.20
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 22 Oct 2026 07:29:21 -0700 (PDT)
+From: Hengyu Liang <hengyul@cs.unc.edu>
+To: jack@suse.cz
+Cc: tytso@mit.edu,
+	linux-ext4@vger.kernel.org,
+	adilger.kernel@dilger.ca,
+	libaokun@linux.alibaba.com,
+	ojaswin@linux.ibm.com,
+	ritesh.list@gmail.com,
+	yi.zhang@huawei.com,
+	dave.hansen@linux.intel.com,
+	akpm@linux-foundation.org,
+	linux-kernel@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: do not advance i_size on a buffered write that copied nothing
+Date: Thu, 22 Oct 2026 10:29:11 -0400
+Message-ID: <20261022142911.1490979-1-hengyul@cs.unc.edu>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
+References: <20261009044656.1993196-1-hengyul@cs.unc.edu> <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -64,110 +107,58 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-The following changes since commit 93f51579e7df248780214094418f205253383cc5:
+Hi Jan,
 
-  Linux 7.3-rc4 (2026-09-20 13:48:15 -0700)
+On Thu 22-10-26 11:48:35, Jan Kara wrote:
+> I agree with the problem but first, Ted has merged rewrite of ext4
+> buffered IO path to iomap your fix would very likely need rebasing, and
+> second:
 
-are available in the Git repository at:
+Thanks for the review.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus-7.4-rc1
+In the ext4 dev branch, the iomap buffered path is only used with the
+new buffered_iomap mount option, and it faults the source in before
+->write_begin(), so it does not have this problem. The default
+buffer_head path still does: on 8c4f6e337634, a 100-byte file still
+has a size of 1048586 after a failed pwrite() at 1 MiB + 10, sync and
+remount. The patch applies to the dev branch without changes, and I
+will base v2 on it.
 
-for you to fetch changes up to 8c4f6e3376348fc3162eed86a05b933921c8f9ed:
+> this is wrong and would leak delayed allocation reservations AFAICT. You
+> should just use ext4_truncate_failed_write() like e.g.
+> ext4_da_write_begin() does on failure.
 
-  ext4: introduce a mount option for iomap buffered I/O path (2026-10-15 10:53:14 -0400)
+I don't think it leaks. ext4_es_remove_extent() gives back the
+reservation of the delayed blocks it removes through
+ext4_da_release_space(), which ext4_iomap_punch_delalloc() also relies
+on in the iomap path.
 
-----------------------------------------------------------------
-Add support for buffered iomap support in ext4.  This is not enabled
-by default, but requires the buffered_iomap mount option, as this mode
-does not support online defragmentation, inline data, fsverify,
-fscrypt, non-extent inodes, and data=journal mode.  If buffered_iomap
-is enabled, ext4 will fall back to the original I/O code path
-automatically if necessary.  Large writes show significant performance
-improvements when buffered iomap is enabled.
+To check this, I ran my earlier tests on the dev branch with the patch
+as sent and with the helper replaced by ext4_truncate_failed_write(),
+plus a test on an image with the quota feature that reads the user's
+quota usage (which includes reserved space) and the free block count.
+After a failed write past EOF, both versions bring both numbers back
+to their values before the write, and nothing is logged at umount.
+Without the patch, the same case keeps 64 KiB reserved until the inode
+is evicted.
 
-There are also miscellaneous bug fixes and improvements, including for
-fast commit and avoiding deadlocks and out-of-bound reads when
-handling corner cases involving corrupted file systems.
+I did not use ext4_truncate_failed_write() because since 665575cff098
+this path is also taken by ordinary writes. When the source page is
+not faulted in yet, the first copy fails, ->write_end() sees
+copied == 0, and generic_perform_write() faults the page in and tries
+again. ext4_truncate_failed_write() would then run ext4_truncate() for
+each such write that starts past EOF, and that frees blocks
+preallocated past EOF with FALLOC_FL_KEEP_SIZE, even though the write
+succeeds right after. In my test, a 64 KiB write from untouched
+anonymous memory into a file with 1 MiB preallocated past EOF leaves
+st_blocks at 2056 with the helper, but drops it to 136 with
+ext4_truncate_failed_write().
 
-----------------------------------------------------------------
-Daejun Park (2):
-      jbd2: don't advance j_fc_off before the buffer is recorded
-      ext4: don't report delalloc data as a hole on indirect-mapped inodes
+So I would prefer to keep the helper. Is that OK with you, or would
+you still rather use ext4_truncate_failed_write()?
 
-Hemanth Selam (1):
-      ext4: skip extra isize expansion while unmounting
-
-Hsiu-Hsien Lee (1):
-      ext4: fix fast commit replay failing on a read-only mount
-
-Jinjie Ruan (2):
-      ext4: fix out-of-bounds read in ext4_get_group_info()
-      ext4: convert group-count barrier protocol to acquire/release
-
-JonasZhou-oc (1):
-      jbd2: avoid false sharing with j_state_lock
-
-Sergey Senozhatsky (1):
-      ext4: fix ABBA deadlock in ext4_rmdir()
-
-Zhang Yi (31):
-      ext4: simplify size updating in ext4_setattr()
-      ext4: factor out ext4_truncate_[up|down]()
-      ext4: set EXT4_MAP_NEW flag for delayed allocated blocks
-      ext4: recheck extent status tree before block allocation
-      ext4: fix orig_mlen initialization in ext4_map_blocks()
-      ext4: allow ext4_map_blocks() to start its own transaction handle
-      ext4: avoid unnecessary transaction in ext4_map_blocks() for unwritten extents
-      ext4: skip block allocation for holes in the data submission path
-      ext4: add iomap address space operations for buffered I/O
-      ext4: implement buffered read path using iomap
-      ext4: pass out extent seq counter when mapping da blocks
-      ext4: do not use data=ordered mode for inodes using buffered iomap path
-      ext4: implement buffered write path using iomap
-      ext4: rework handle credit accounting for unwritten extent conversion
-      ext4: implement writeback path using iomap
-      ext4: implement mmap path using iomap
-      ext4: implement partial block zero range path using iomap
-      ext4: drain writeback before removing extents on the iomap path
-      ext4: add block mapping tracepoints for iomap buffered I/O path
-      ext4: disable online defrag when inode using iomap buffered I/O path
-      ext4: add EXT4_STATE_DISKSIZE_GROW_PENDING state bit and helpers
-      ext4: submit and wait for pending disksize-grow I/O on writeback
-      ext4: advance i_disksize to i_size upon disksize-grow I/O completion
-      ext4: defer i_disksize update while DISKSIZE_GROW_PENDING is set
-      ext4: submit and wait for disksize-grow I/O in fallocate paths
-      ext4: clear DISKSIZE_GROW_PENDING on truncate or error
-      ext4: set DISKSIZE_GROW_PENDING after zeroing unaligned EOF block
-      ext4: add tracepoints for DISKSIZE_GROW_PENDING set, clear, and wait
-      ext4: add tracepoints for EOF block zeroing and disksize-grow I/O
-      ext4: partially enable iomap for the buffered I/O path of regular files
-      ext4: introduce a mount option for iomap buffered I/O path
-
-guzebing (2):
-      ext4: only update tune mount options when requested
-      ext4: reject delalloc to nodelalloc before applying remount options
-
- fs/ext4/balloc.c            |    2 +-
- fs/ext4/ext4.h              |   96 ++-
- fs/ext4/ext4_jbd2.c         |    8 +-
- fs/ext4/ext4_jbd2.h         |    7 +-
- fs/ext4/extents.c           |  131 ++--
- fs/ext4/file.c              |   20 +-
- fs/ext4/ialloc.c            |    1 +
- fs/ext4/indirect.c          |   17 +
- fs/ext4/inode.c             | 1448 +++++++++++++++++++++++++++++++++++++--------
- fs/ext4/ioctl.c             |    3 +-
- fs/ext4/mballoc.c           |    6 +-
- fs/ext4/migrate.c           |    2 +
- fs/ext4/move_extent.c       |   11 +
- fs/ext4/namei.c             |   11 +-
- fs/ext4/page-io.c           |  201 +++++++
- fs/ext4/resize.c            |   19 +-
- fs/ext4/super.c             |   67 ++-
- fs/jbd2/journal.c           |    2 +-
- include/linux/jbd2.h        |    2 +-
- include/trace/events/ext4.h |  209 +++++++
- 20 files changed, 1927 insertions(+), 336 deletions(-)
+Thanks,
+Hengyu
