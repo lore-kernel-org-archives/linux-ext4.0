@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792639050;
-	b=VeQaX017VZpE7T450um4o9pVVdRa1jOGi9IgjHeiWSHGgHU8JRbTFEDuunc+kCDdJFnr
-	 5NGpKcGPNGkJ4Vs32rjIDDYSnSgA9xjtI+vnAVGkKGLxfy0dtTDwxvYyY/CoGj9Nb8c0V
-	 3GHnw7yXi/cilRRhjyPVHX5YFi8rT/boeOBEWGyhlBRVyJInqlC6L1fmhNeZoYajd1ZZO
-	 FY82UAGh/cXozMUNWJrEl0OpLsjj9hboMXFhxQKEEX8Ss4x+zskxHd+myldKAJ3qtxQIa
-	 EVMhaXp8OZjAAX4YklDxKlQBW9iiDj4SFfyM7hpVFiPcQbl969Ctj10jx4jxW09r3lA==
+	t=1792639045;
+	b=s7uwTLvRgEmXolD9kJwH6qtnXCcotAV6qCkQMcTto/yETRKAruDFkiTXGAH8G3jRz5eF
+	 5Ligy5UCzDe5ICIj+cqDGvUK1RRhJnlGjBvW8rEMNY7VADJO9xCfaqWWT9sQVZcZQ4PPp
+	 waDvmpfeCtywcfff8xYV5R1BBKLqxz3iOYAteyJERh1L0S9GEA3P5OCVYcyO+rEm5zJmo
+	 tf01Lq6s4mekm5bIC+67gAfrLmaDVCWwrXOvOMk6NUUFpHcLo9lYaYRevq37c2IGvWYyn
+	 QrQwwQW8m5AAX0Btesbj3d6K+IlIWTIWgLQJIBvnD4jVz25hVsBMvSubhSqIOW7Pk+w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792639050;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792639045;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=eH2jLfWicMmvDBYEDOSmDOGtMY+TS1LzuxKd1LGPhHA=;
-	b=vjWMhrAoVzVCJ/kJvHKzdALgOTIX2uqS4PedP5a/IKA49bIG/UD1OdRe4S4Ta4VTN1Oc
-	 7a62m6wmzHtPM1wC3NdcZuC0m+Aa8DwXwaVZxJNgQyla+FRFEXxrDDJsuj39r6kAb0mzV
-	 BObwKRTeGG7eUr51zETpoiO/9WvXep1apu3HaIXshXGYsAYVNzDYGCnse5YmUbt9r0sil
-	 ZqphUWEQd8qA6GDZnUdQHaO4XCzhnGqH2eqxSwfyEWFB+RHDiqxIXp4uCA4jHFiRiSsxH
-	 ID4ePWgFZwZ6DwWrcQpk6RL9gyZ31zpNZqZcfpEtt1HAzERT0XQ9h0x9tc3HOp52vQA==
+	bh=bx6QWKD/euDZMtEpRXog2V0i+1UhpJag8Fg+fUT4ibM=;
+	b=forHQKFBgDxmtbg4xaE4gvAginfAG/kkoe1nx6H4eUq7j/YWNzQgyBQSCYPaQyGMGS9H
+	 ZuRAS6fazk28PVD+wccFkPs+wJkBBY3TdoIgfyrMx8Ee71g/RTZ6kdHzJvnr3BrKGNoaa
+	 X6eX/suk06qYF33iLMHVq52RvV0p26/r/XdV6DKYP/fW1Pq/mBRyNr2vwxtOF2owNGfP6
+	 s/U8FEFsAk/DB5H7PdEY100YisK697bYiirDLYDJd3Sy9VlmSPYkHnb2UZiM/2eRfqXKn
+	 g6g4ZYWfPLEiFIj1tCUS7hgKSHJji6zfRckjS4Qjhfl/TJQ6Hemf3SDmebEFPQaa0Sg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GIONzmLU;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V4ywl8Mg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40856606A32E;
-	Thu, 22 Oct 2026 03:17:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B550606A326;
+	Thu, 22 Oct 2026 03:17:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GIONzmLU
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C28F31F000C5;
-	Thu, 22 Oct 2026 03:17:29 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=V4ywl8Mg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB68E1F000C2;
+	Thu, 22 Oct 2026 03:17:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792639050;
-	bh=eH2jLfWicMmvDBYEDOSmDOGtMY+TS1LzuxKd1LGPhHA=;
+	s=k20260515; t=1792639045;
+	bh=bx6QWKD/euDZMtEpRXog2V0i+1UhpJag8Fg+fUT4ibM=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=GIONzmLUms9o42RqBSjzfO/f26o4fsneC/ZE7AJMSThxXPYmvC5Zv3mvPt/h0ijDc
-	 9N0RQCe6xDFc3F+rJu1rYMBtQgUokSsUFPSlvG60LvwsNRsOpe8Qen0/dZh/kZ83QL
-	 WwTEGtXePb8OUUeWqqig3Wen1xVnlR8ZRVBMxKJhq35DiNNyJDPY1Sxq9JvrLqVyDD
-	 EZhGegi0sTrA5GA++TN5m0u/HbaRqg+zegnVFRSZ7OmyiWNO8g4RXLM8G90tDuT4gK
-	 LphqwUMMuOK0TdP8o1QGd8e2yf4N9IdJLwkc0QL36pUv4bwcSR1Z4UAm0cAnSDzmqt
-	 JIiAZ/zEpTkcw==
-Message-ID: <sashiko-outbox-180907@kernel.org>
+	b=V4ywl8Mg+wiP5ipROrQ8folI+kEWeg6B+xVxWQzHV65jEjhgyPAl60MiLs7KOJsZh
+	 fIuqSUNKavq20EuIwPXo4uZjfVqv5atW21CfsFVEHXSKm+SF8OkuTY07V1osaK1Ugc
+	 9CihL1Y1478d9ZOCFY6BbdzeBYL+rULyQEaAAOYTBaaD+mWnwv5u9eKCQpV2P5MUeq
+	 ROrBztPzEcr+2gN6pqhhNEcuP/25zuQni6r/gP7uJPTuLlPx5yCNcRYj4USbBDloK/
+	 SrSZri5/KmLfWpiRPAXepOzHRQK9yk+gHkrOSD+d/Xd44eAYoeiEjx12x7cAOBa8/f
+	 KQAyZu8n0M7Kg==
+Message-ID: <sashiko-outbox-180903@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [RFC PATCH v2 06/41] netlink: keep classic sender ids in
- skb->cb
+Subject: Re: [RFC PATCH v2 02/41] uapi: add <linux/uidgid_r.h> for 128 bit
+ capable user and group ids
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jan Koester" <jan.koester@tuxist.de>
 Cc: linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org, audit@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <6cce823256f7f88ad17a2d16aa4020b1bb228dba.1792552161.git.jan.koester@tuxist.de>
+In-Reply-To: <423713b22f1cfa384f3df8cddc91e81d35c52d8a.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
- <6cce823256f7f88ad17a2d16aa4020b1bb228dba.1792552161.git.jan.koester@tuxist.de>
+ <423713b22f1cfa384f3df8cddc91e81d35c52d8a.1792552161.git.jan.koester@tuxist.de>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 22 Oct 2026 03:17:29 +0000
+Date: Thu, 22 Oct 2026 03:17:24 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,14 +61,20 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 
-> netlink_skb_parms has to fit into skb->cb, and netlink skbs are cloned
-> together with it for broadcasts, so there is neither room for kuid_t
-> and kgid_t holding UUIDs nor a single owner for an allocation.
+> User and group ids are 32 bit numbers. Identities that come from
+> elsewhere -- UUIDs handed out by a directory service, or the GUIDs of a
+> Windows domain -- have to be squeezed into that range through mapping
+> tables kept in userspace, and the kernel never sees who a process really
+> is.
 >=20
-> Store the sender ids as classic kernel ids: a UUID or GUID becomes -1,
-> which reaches the receiver of SCM_CREDENTIALS as the overflow id. The
-> kernel's own permission checks on netlink messages use the socket's
-> file credentials, not these.
+> Add a tagged id for a new family of system calls (named after the
+> classic ones with an _r suffix): a classic 32 bit id, an RFC 9562
+> version 4 UUID, or a Microsoft GUID in the byte order Windows stores it
+> in. Type 0 is "no id", so a zero-initialized id is never root, and lets
+> the set*id_r() calls express "unchanged" without a magic number.
+>=20
+> The struct has no 64 bit members and the same layout on all ABIs, so
+> none of the new calls needs a compat entry point.
 >=20
 > Assisted-by: Claude:claude-opus-5-5
 >=20
@@ -78,5 +84,5 @@ Sashiko has reviewed this patch and found no issues.
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/cover.1792552161.gi=
-t.jan.koester@tuxist.de?part=3D6
+t.jan.koester@tuxist.de?part=3D2
 
