@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792639063;
-	b=RzrmZ93Q4E0TwUVhPbAMY4xZ1NjJPRR4mdlWqlAB4+ynQbHOEpCuZuAgZ9d2fgR0oans
-	 AItKrdb/9SL8hblIvqksyvXPjjqBOFbQk+HICTyt/CNGG9VpkShZvq13DnUDbhJ852YQu
-	 1bCwO0wZP12OeWCRCvCMO+x6c1Nd162g/hyXyNxCvBmypBrXWX6WZsjcp5PTCFMuycQix
-	 4fkoTYaPE6x0rH8pPVwRm58+1bwM77tkFmOXCbIzoTIGeZ9azZ0NnAgIy63rB0mp9H36P
-	 sKvJTTHx9/NVdfRd2Fz01PIciLsjNdvTNfJCKpRb+7fazNB0zz2hab06cUcLHiH4TKw==
+	t=1792639060;
+	b=IBI8JYeF+j90Emyt/aG5W5a5Ll553oxS7wa2xRAQuhx4deKhYIIlmukMqMPgRV3NWbM6
+	 SN8/9JMRkuVuCYesX3FakWl3+k3hb9Nblc8Gbu0Gdh4QUxBDqPMe0PnnZJnsiD6rzBqcb
+	 dgS6NZRde9hZolsfrlS1N59Cwq7D1lftKxaQQPujVr2IUPrvhuWgER+Z131AreZL9AHpG
+	 TTjJrauRJshMxVv8tmLBtOEDUvQ2F5Ujo8+FSQ5AEG7h7VouNobzRkOThGV9KA2RMPNz+
+	 4i6MG52JnKSqYNvi1DyLtRuotjUYi1RyaeYGTNBo4+k0q5rTliaahyUCcO/zmLZ1sTw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792639063;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792639060;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=zo2Tb32+IKEt2npZMaOafG7jIQLj+yFukRmwwfNigLU=;
-	b=0zG8sdD4oAzLJ5c9Y6HSA90f+MTaelV++LJo2MWCtA2LQoHyPwUv9Vblx9P+vu9HnxjW
-	 aJnfAJoybuD7cgjcww+nLsXcXCslF3fFhSLolFhEScIOibjTxhz97kSIHjW6mSa4snsyo
-	 p8KyREqVk+qlwpxIoDyp0OH7WGuRzwfJlviUokmQo6+B+wSSeNMd99Ryd3UrxSecrrtFt
-	 b+JIXqIwdnujQDFKV/U6CjNpnq4dxwYqMkZ+84a4rV9L3IPLGD+qz0OLydjwk8hEes7Em
-	 p2dtXlHDYE32eGWrCngh6/m+p9mfJXa3VfLPHrXr/9xTyiD43zJQE4Mke3QPwvjOjqQ==
+	bh=XHilr4ZYzm71A6ybW4DdPhmTDkaYPHxPvtQXkP5Bie0=;
+	b=H/rriMtLZ3OGNXrgsiqxxSj7xJo6ag0cp7PNkQps+XZOydTcxSuCRS/ZTLipkmtsFJ61
+	 rj7kDM6wgS0ITFygjDlE5ib6jhPZozAtb0Dr1/t9izFjqOmhIaH9ZaRlyY2KkVNzUabqM
+	 khoXanSO9wLO4hvAup7a3MTZ0QebRZuzZy1RxvUtIG+9fjB0Qtw+GEVtTe8BYV/Wbuxc0
+	 QTVjJzK5rhQ4nq3YM3WBJszc3yhmuXO9ZWzL+3PSBIMgD3OQnOAz7bBvGgGYvogCYamEF
+	 uRP8UiopS8eqK8JJXE+2nE5mK+VaEd0aSL1mUIMPm2Enbxw81ol3RXTgdlTVX2Ht4OQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B5QhHoW4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gqtoZhEX;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76FFE60A263F;
-	Thu, 22 Oct 2026 03:17:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F68D60A3822;
+	Thu, 22 Oct 2026 03:17:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B5QhHoW4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7500E1F000CB;
-	Thu, 22 Oct 2026 03:17:42 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gqtoZhEX
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9EA31F000C4;
+	Thu, 22 Oct 2026 03:17:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792639063;
-	bh=zo2Tb32+IKEt2npZMaOafG7jIQLj+yFukRmwwfNigLU=;
+	s=k20260515; t=1792639054;
+	bh=XHilr4ZYzm71A6ybW4DdPhmTDkaYPHxPvtQXkP5Bie0=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=B5QhHoW4TwfPlYBEMytyaqJSPQjSAu104/Y/NUneBhh8kgVRGdHidlTVD/U+cyr57
-	 OXM69YZitMDCqVGPldyz0cemHcHzgjK/b3AEfQX3c/3Zb4uFgbEFQ8VP6imTF9SeLj
-	 qO+0rrPM5nAhRK8xwYpe0OpsHPhBiqDUNwB+DalZg/beRdEQux60aQHsh3fsN2IL4n
-	 0YHeowEH+0GqfwyJrsWJPpAHYpchIyEaH/XatoNHE6Pb1TxVEwDdl1rIsVwI+h3BRu
-	 KP9ruUeM/uspBy44RGp5GD9aEfkwjV/jLWpQ7aypCPAL/P4kXyBAeMDhFgN0DDFCzH
-	 M7VvgHf4CR72A==
-Message-ID: <sashiko-outbox-180919@kernel.org>
+	b=gqtoZhEX1q7QVBjbcH4o+vlQYaIJ4Bow71CiX2IW9UO29PBKNz+EFcDPCcaH02Sqo
+	 Sdr2XPPrCwwMJYw9wbFpwYEtLwvBE8plemhO9DPV1vOt0Ou8b33DaBCHE+MLdbJ9Rf
+	 rOBc+6s8rbQcXQzJXqv1DoceJKHbqgc8E77ZPz8LWRSL0BtN50JfGolvYXCPrQq7hp
+	 9LbKlnhe9qxUmI6kRuMIUvdRbcgmYEYqfg4XfLRl0Rvz8t8edbFO5G63vzTnFJe6fM
+	 +gkUMMVxPWh4ctEZn4emq1wNE3Z1lUI0kQ5vNz1bDgjj8ARNEhDfAVjpZwyPxeJXME
+	 DVy2ofDy8gSGQ==
+Message-ID: <sashiko-outbox-180911@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [RFC PATCH v2 18/41] fs: keep UUID and GUID owners off
- filesystems that can't store them
+Subject: Re: [RFC PATCH v2 10/41] uidgid: convert between kernel ids and the
+ ids of the *_r system calls
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jan Koester" <jan.koester@tuxist.de>, "Christian Brauner" <brauner@kernel.org>, "Alexander
  Viro" <viro@zeniv.linux.org.uk>, "Serge E. Hallyn" <serge@hallyn.com>
@@ -50,12 +50,12 @@ Cc: "Jan Kara" <jack@suse.cz>, =?utf-8?b?VGhlb2RvcmUgWS4gVHMnbw==?= <tytso@mit.e
  Moore" <paul@paul-moore.com>, "Arnd Bergmann" <arnd@arndb.de>, linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org, audit@vger.kernel.org, keyrings@vger.kernel.org, "Chuck
  Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>, "Anna
  Schumaker" <anna@kernel.org>
-In-Reply-To: <d67ff709d9b2a9a8eb0948cebbba445ed48276d1.1792552161.git.jan.koester@tuxist.de>
+In-Reply-To: <42176587b0491de4d74cc6c8dde7e035ffd44661.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
- <d67ff709d9b2a9a8eb0948cebbba445ed48276d1.1792552161.git.jan.koester@tuxist.de>
+ <42176587b0491de4d74cc6c8dde7e035ffd44661.1792552161.git.jan.koester@tuxist.de>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 22 Oct 2026 03:17:42 +0000
+Date: Thu, 22 Oct 2026 03:17:33 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -67,226 +67,165 @@ Precedence: list
 
 Thank you for your contribution! Sashiko AI review found 2 potential issue(=
 s) to consider:
-- [High] fs: vfs_rename() with RENAME_WHITEOUT skips fsuidgid_has_mapping()=
- when target exists
-- [Medium] fs: UUID/GUID owner check bypassed in ocfs2_may_create() and f2f=
-s atomic write
+- [Medium] uidgid: get_kuid_r() and get_kgid_r() accept nonzero reserved by=
+tes
+- [Medium] uidgid: get_kuid_r() and get_kgid_r() accept invalid IDs on !CON=
+FIG_MULTIUSER
 --
 
-commit 3d0ae6a640c537e68d1d11095789815bcc76e4cd
+commit 991387abfa396e9352b6de3b866ad79653e997ad
 Author: Jan Koester <jan.koester@tuxist.de>
 
-fs: keep UUID and GUID owners off filesystems that can't store them
+uidgid: convert between kernel ids and the ids of the *_r system calls
 
-This commit adds the SB_I_UID_R superblock flag for filesystems that can
-store UUID and GUID inode owners, and updates notify_change() and
-fsuidgid_has_mapping() to reject UUID and GUID owners on filesystems
-without that flag.
+This commit adds helper functions to convert between kernel kuid_t/kgid_t
+values and the struct __kernel_uid_r representation used by the *_r system
+calls, along with helpers to copy them to and from userspace and format
+them as strings.
 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index deb411e866617..05c4611c87744 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1563,14 +1563,35 @@ static inline void inode_fsgid_set(struct inode *=
-inode,
->  	inode->i_gid =3D mapped_fsgid(idmap, i_user_ns(inode));
->  }
-> =20
-> +/**
-> + * sb_can_own_kuid() - check whether a filesystem can store an owner
-> + * @sb: the superblock
-> + * @kuid: the owner
-> + *
-> + * Classic ids fit any filesystem; UUIDs and GUIDs only those that set
-> + * SB_I_UID_R. Elsewhere i_uid_read() would turn them into -1.
-> + *
-> + * Return: true if @sb can store @kuid.
+> diff --git a/kernel/uidgid_r.c b/kernel/uidgid_r.c
+> new file mode 100644
+> index 0000000000000..d71aecddb27e4
+> --- /dev/null
+> +++ b/kernel/uidgid_r.c
+> @@ -0,0 +1,323 @@
+[ ... ]
+> +/*
+> + * Whether @id is well formed: a known type, reserved bytes zero, a UUID=
+ of
+> + * version 4 with the RFC 9562 variant, a GUID other than the nil GUID.
 > + */
-> +static inline bool sb_can_own_kuid(const struct super_block *sb, kuid_t =
-kuid)
+> +static bool kid_r_valid(const struct __kernel_uid_r *id)
 > +{
-> +	return uid_is_legacy(kuid) || (sb->s_iflags & SB_I_UID_R);
+> +	switch (id->type) {
+> +	case UID_R_LEGACY:
+> +		return !memchr_inv(id->uuid + sizeof(id->legacy), 0,
+> +				   UID_R_SIZE - sizeof(id->legacy));
+> +	case UID_R_UUID:
+> +		return (id->uuid[6] >> 4) =3D=3D 4 && (id->uuid[8] & 0xc0) =3D=3D 0x80;
+> +	case UID_R_GUID:
+> +		return memchr_inv(id->guid, 0, UID_R_SIZE);
+> +	}
+> +	return false;
 > +}
-> +
-> +static inline bool sb_can_own_kgid(const struct super_block *sb, kgid_t =
-kgid)
+[ ... ]
+> +/*
+> + * "No id" from userspace: no pointer, UID_R_NONE, or the classic -1. The
+> + * set*id_r() and chown_r() calls take it as "leave unchanged".
+> + */
+> +static bool kid_r_is_none(const struct __kernel_uid_r *id)
 > +{
-> +	return gid_is_legacy(kgid) || (sb->s_iflags & SB_I_UID_R);
+> +	return id->type =3D=3D UID_R_NONE ||
+> +	       (id->type =3D=3D UID_R_LEGACY && id->legacy =3D=3D (u32)-1);
 > +}
-> +
->  /**
->   * fsuidgid_has_mapping() - check whether caller's fsuid/fsgid is mapped
->   * @sb: the superblock we want a mapping in
->   * @idmap: idmap of the relevant mount
->   *
->   * Check whether the caller's fsuid and fsgid have a valid mapping in the
-> - * s_user_ns of the superblock @sb. If the caller is on an idmapped moun=
-t map
-> - * the caller's fsuid and fsgid according to the @idmap first.
-> + * s_user_ns of the superblock @sb, and whether @sb can store them as ow=
-ner
-> + * of a new inode. If the caller is on an idmapped mount map the caller's
-> + * fsuid and fsgid according to the @idmap first.
->   *
->   * Return: true if fsuid and fsgid is mapped, false if not.
->   */
-> @@ -1582,10 +1603,10 @@ static inline bool fsuidgid_has_mapping(struct su=
-per_block *sb,
->  	kgid_t kgid;
-> =20
->  	kuid =3D mapped_fsuid(idmap, fs_userns);
-> -	if (!uid_valid(kuid))
-> +	if (!uid_valid(kuid) || !sb_can_own_kuid(sb, kuid))
->  		return false;
-
-[Severity: High]
-Can a caller with a UUID or GUID fsuid or fsgid bypass fsuidgid_has_mapping=
-()
-during a whiteout rename when the target dentry already exists?
-
-In fs/namei.c, sys_renameat2() -> filename_renameat2() -> vfs_rename() only
-calls may_create_dentry() (which checks fsuidgid_has_mapping()) when target
-is NULL:
-
-fs/namei.c:vfs_rename() {
-    ...
-	if (!target) {
-		error =3D may_create_dentry(rd->mnt_idmap, new_dir, new_dentry);
-	} else {
-		new_is_dir =3D d_is_dir(new_dentry);
-
-		if (!(flags & RENAME_EXCHANGE))
-			error =3D may_delete_dentry(rd->mnt_idmap, new_dir,
-						  new_dentry, is_dir);
-		else
-			error =3D may_delete_dentry(rd->mnt_idmap, new_dir,
-						  new_dentry, new_is_dir);
-	}
-    ...
-}
-
-When target is non-NULL and flags includes RENAME_WHITEOUT, vfs_rename()
-only calls may_delete_dentry() on old_dentry and new_dentry, which validates
-the existing victim inodes and directory permissions without checking
-fsuidgid_has_mapping(old_dir->i_sb, rd->mnt_idmap).
-
-vfs_rename() then invokes old_dir->i_op->rename(..., RENAME_WHITEOUT), which
-allocates a new whiteout inode in old_dir and initializes its i_uid and i_g=
-id
-from current_fsuid() and current_fsgid() via inode_init_owner(), such as in
-fs/ext4/namei.c:
-
-fs/ext4/namei.c:ext4_rename() {
-    ...
-	if (!(flags & RENAME_WHITEOUT)) {
-		handle =3D ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
-		if (IS_ERR(handle)) {
-			retval =3D PTR_ERR(handle);
-			goto release_bh;
-		}
-	} else {
-		whiteout =3D ext4_whiteout_for_rename(idmap, &old, credits, &handle);
-		if (IS_ERR(whiteout)) {
-			retval =3D PTR_ERR(whiteout);
-			goto release_bh;
-		}
-	}
-    ...
-}
-
-The same whiteout creation occurs in ext4_rename() ->
-ext4_whiteout_for_rename() -> __ext4_new_inode(), btrfs_rename() ->
-new_whiteout_inode(), f2fs_rename() -> f2fs_create_whiteout(), and
-xfs_rename() -> xfs_rename_alloc_whiteout().
-
-On filesystems without SB_I_UID_R (such as btrfs, f2fs, xfs, ubifs, and ext4
-prior to the later commit "ext4: add the uid_r feature for UUID and GUID
-owners"), the whiteout inode's owner is written to disk via i_uid_read() and
-i_gid_read() as (uid_t)-1 / (gid_t)-1 (0xffffffff). When read back from dis=
-k,
-that becomes INVALID_UID / INVALID_GID and leaves the whiteout entry
-undeletable because may_delete_dentry() rejects inodes with invalid vfsuid =
-or
-vfsgid with -EOVERFLOW.
-
-Additionally, once the later commit "ext4: add the uid_r feature for UUID a=
-nd
-GUID owners" is applied, __ext4_new_inode() -> ext4_mark_inode_dirty() ->
-ext4_do_update_inode() -> ext4_fill_raw_inode() -> ext4_inode_set_id_r()
-fails with -EOVERFLOW on an ext4 filesystem without the uid_r feature and
-calls EXT4_ERROR_INODE() and ext4_std_error(), aborting the journal and
-remounting the filesystem read-only (or panicking when mounted with
-errors=3Dpanic).
-
-Should vfs_rename() also check fsuidgid_has_mapping(old_dir->i_sb,
-rd->mnt_idmap) when flags & RENAME_WHITEOUT is set?
-
->  	kgid =3D mapped_fsgid(idmap, fs_userns);
-> -	if (!gid_valid(kgid))
-> +	if (!gid_valid(kgid) || !sb_can_own_kgid(sb, kgid))
->  		return false;
 
 [Severity: Medium]
-Are there also filesystem-internal inode creation paths that initialize new
-inodes with inode_init_owner() without going through fsuidgid_has_mapping()?
+Does kid_r_is_none() in kernel/uidgid_r.c allow nonzero reserved bytes in
+struct __kernel_uid_r to bypass validation in get_kuid_r() and get_kgid_r()?
 
-Because sb_can_own_kuid() and sb_can_own_kgid() are only checked in
-fsuidgid_has_mapping() (called by may_create_dentry(), may_o_create(), and
-vfs_tmpfile()), callers that allocate new inodes through private helpers sk=
-ip
-this check:
+When userspace passes a struct __kernel_uid_r to get_kuid_r() or
+get_kgid_r(), kid_r_is_none(&id) is checked before make_kuid_r() or
+make_kgid_r() (which call kid_r_valid(&id)):
 
-1. In fs/ocfs2/refcounttree.c, ioctl(OCFS2_IOC_REFLINK) ->
-ocfs2_reflink_ioctl() -> ocfs2_vfs_reflink() checks permissions with
-ocfs2_may_create() rather than may_create_dentry():
+	if (kid_r_is_none(&id))
+		return 0;
+	*kuid =3D make_kuid_r(from, &id);
 
-fs/ocfs2/refcounttree.c:ocfs2_may_create() {
-	if (d_really_is_positive(child))
-		return -EEXIST;
-	if (IS_DEADDIR(dir))
-		return -ENOENT;
-	return inode_permission(&nop_mnt_idmap, dir, MAY_WRITE | MAY_EXEC);
+If userspace passes id->type =3D=3D UID_R_NONE with nonzero bytes in id->uu=
+id,
+or id->type =3D=3D UID_R_LEGACY with id->legacy =3D=3D (u32)-1 and nonzero =
+trailing
+bytes in id->uuid + sizeof(id->legacy), kid_r_is_none() returns true and
+get_kuid_r() / get_kgid_r() return 0 instead of -EINVAL.
+
+Should kid_r_is_none() also verify that all bytes of id->uuid are zero for
+UID_R_NONE and that the trailing reserved bytes are zero for UID_R_LEGACY?
+
+> +
+> +/**
+> + * get_kuid_r - read a uid of a *_r system call from userspace
+> + * @from: user namespace the uid is in
+> + * @uid: the uid, or NULL
+> + * @kuid: the kuid, INVALID_UID for "no id" (NULL, UID_R_NONE or -1)
+> + *
+> + * Return: 0, -EFAULT, or -EINVAL if the uid is malformed or has no mapp=
+ing
+> + * in @from.
+> + */
+> +int get_kuid_r(struct user_namespace *from,
+> +	       const struct __kernel_uid_r __user *uid, kuid_t *kuid)
+> +{
+> +	struct __kernel_uid_r id;
+> +
+> +	*kuid =3D INVALID_UID;
+> +	if (!uid)
+> +		return 0;
+> +	if (copy_from_user(&id, uid, sizeof(id)))
+> +		return -EFAULT;
+> +	if (kid_r_is_none(&id))
+> +		return 0;
+> +	*kuid =3D make_kuid_r(from, &id);
+> +	return uid_valid(*kuid) ? 0 : -EINVAL;
+> +}
+> +EXPORT_SYMBOL(get_kuid_r);
+> +
+> +/**
+> + * get_kgid_r - read a gid of a *_r system call from userspace
+> + * @from: user namespace the gid is in
+> + * @gid: the gid, or NULL
+> + * @kgid: the kgid, INVALID_GID for "no id" (NULL, UID_R_NONE or -1)
+> + *
+> + * Return: 0, -EFAULT, or -EINVAL if the gid is malformed or has no mapp=
+ing
+> + * in @from.
+> + */
+> +int get_kgid_r(struct user_namespace *from,
+> +	       const struct __kernel_uid_r __user *gid, kgid_t *kgid)
+> +{
+> +	struct __kernel_uid_r id;
+> +
+> +	*kgid =3D INVALID_GID;
+> +	if (!gid)
+> +		return 0;
+> +	if (copy_from_user(&id, gid, sizeof(id)))
+> +		return -EFAULT;
+> +	if (kid_r_is_none(&id))
+> +		return 0;
+> +	*kgid =3D make_kgid_r(from, &id);
+> +	return gid_valid(*kgid) ? 0 : -EINVAL;
+> +}
+> +EXPORT_SYMBOL(get_kgid_r);
+
+[Severity: Medium]
+What happens in get_kuid_r() and get_kgid_r() in kernel/uidgid_r.c when
+CONFIG_MULTIUSER is disabled?
+
+kernel/Makefile builds uidgid_r.o unconditionally via obj-y. When userspace
+passes a malformed struct __kernel_uid_r (such as an unknown type, nonzero
+reserved bytes, a non-v4 UUID, or a nil GUID), make_kuid_r() and
+make_kgid_r() return INVALID_UID and INVALID_GID, and get_kuid_r() and
+get_kgid_r() then check uid_valid(*kuid) and gid_valid(*kgid).
+
+In include/linux/uidgid.h, when !CONFIG_MULTIUSER, __kuid_val() and
+__kgid_val() unconditionally return 0:
+
+static inline uid_t __kuid_val(kuid_t uid)
+{
+	return 0;
 }
 
-When preserve is false, a caller with a UUID or GUID fsuid or fsgid creates=
- a
-new inode via ocfs2_reflink() -> ocfs2_create_inode_in_orphan() ->
-ocfs2_get_init_inode() -> inode_init_owner() in fs/ocfs2/namei.c.
-__ocfs2_mknod_locked() then writes i_uid_read(inode) and i_gid_read(inode) =
-as
--1 to fe->i_uid and fe->i_gid on disk and calls ocfs2_populate_inode(), whi=
-ch
-sets the in-memory inode's i_uid and i_gid to INVALID_UID and INVALID_GID
-before ocfs2_mv_orphaned_inode_to_new() links it into the target directory.
-
-2. In fs/f2fs/file.c, f2fs_ioc_start_atomic_write() checks
-inode_owner_or_capable() (which does not check fsgid, and permits a UUID or
-GUID fsuid if the caller has CAP_FOWNER) and then allocates a COW inode via
-f2fs_get_tmpfile() -> __f2fs_tmpfile() -> f2fs_new_inode() ->
-inode_init_owner() without calling vfs_tmpfile() or fsuidgid_has_mapping():
-
-fs/f2fs/file.c:f2fs_ioc_start_atomic_write() {
-    ...
-	if (fi->cow_inode =3D=3D NULL) {
-		struct dentry *dentry =3D file_dentry(filp);
-		struct inode *dir =3D d_inode(dentry->d_parent);
-
-		ret =3D f2fs_get_tmpfile(idmap, dir, &fi->cow_inode);
-    ...
+static inline bool uid_valid(kuid_t uid)
+{
+	return !uid_is_legacy(uid) || __kuid_val(uid) !=3D (uid_t) -1;
 }
 
-This causes f2fs_update_inode() to write (uid_t)-1 / (gid_t)-1 to the on-di=
-sk
-COW inode.
-
-Should ocfs2_may_create() and f2fs_ioc_start_atomic_write() (or the common
-inode allocation path) also verify fsuidgid_has_mapping()?
-
->  	return kuid_has_mapping(fs_userns, kuid) &&
->  	       kgid_has_mapping(fs_userns, kgid);
+Because __kuid_val(INVALID_UID) and __kgid_val(INVALID_GID) return 0 under
+!CONFIG_MULTIUSER, uid_valid(INVALID_UID) and gid_valid(INVALID_GID) always
+evaluate to true. Will this cause get_kuid_r() and get_kgid_r() to return 0
+instead of -EINVAL for malformed IDs on !CONFIG_MULTIUSER builds?
 
 [ ... ]
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/cover.1792552161.gi=
-t.jan.koester@tuxist.de?part=3D18
+t.jan.koester@tuxist.de?part=3D10
