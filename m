@@ -1,73 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792693718;
-	b=zoo/O3pnqsRZ/HIsz+J5zsF9JGTHPZdG4QVCZcSAvd3zhHL/48P/3IOixSU8XKuFO3Wp
-	 iKZ36e+hCZ5ZEJwBQE8fZHPX6wVPP4BlUGo0/d+FQGAUFieDT+kFXMYbBChIw0tPGEPvR
-	 9WVsnv/qTyMgh8hYOKEp5NkS7A39UGmzcdCbxFxQfnK6dzxLbX7lCrL91tBtm3nGnTp3k
-	 eL+MKc/+VPRoW2KvQ6oYQu4CAfVAVk+tOq/9b9SQCPF2A/Ret8B3I7swKJBib+2Ovg1uE
-	 Hcwvap0+zg7EU0zOItvIPptoP4k4q90v6y/TKhYwPBLl+knoJ7roxPYIMAH2st/S4Sg==
+	t=1792706697;
+	b=lqOaisgXJM/ozZvcOFkqlo+6tf/HpgfGYW+S1UhSMuhtEKSG710zfMRHsSwq7sc9e31y
+	 pRXcO2U9QAJYpIwpwHTrdANsyO/w4+sNNVQ76JJl7p18yzMgrSWDbeTHCUUWTxjYSKQOk
+	 NByN8EDshiLJTWJOfYADisqphPSaCNDz6mF5LBV+IsKyjbhJj5uw9ABfv7eu8fgXy7nsE
+	 RqICgZiNdi2LFgP0OAIhODlUqj/uk1K0e5849tXCvVm4HtHXt388KmqCBWrAheVXjQsGG
+	 R3Q9YUYokk07wsl1b0Y0d7LP0D0WSvSj1/MHdnuASeDMbeobtPhcbh5nuDYL22lMHXg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792693718;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=JYh+FSmeD5zBdSGmLXfoWsuKx9ehvUO73Rr6qnSc3X8=;
-	b=Fecs+HmJFY6+iixI6StFjxo62K7nKLukWr/tHS4RBZwW5IPwXQwUyd1kKF0BWlC53eP4
-	 XRjst3ygFspT/qCKNQyGFZ6kut1YVuJrWeuvuMhfQovW1hsT4sOvQQ/XjIZP6EOq0a9uj
-	 y4uimB1L4w8kTBvJqTXgqSlf9NslueEJD13z8UTT03469KOvtx/25Cs/FDVuLtlIu8Wnu
-	 7WxQHA9c6/4hLKTG6pFH1GyR3VZ+g3Xcs1FUwLgVvTfjvivR4ZMgDrNQ4hRQzKedWNmL6
-	 KlLg6EKeMSpn38gwlwOwF0vaLrOuDGewvmA1jW3qq2Sf0qNki+9AOPXmAjTz9HLDsIQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792706697;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:
+	 Content-Transfer-Encoding:In-Reply-To;
+	bh=zWkFFrCjzJ7Rb09dks5kAI7WSjnHbFizCZlsjSWaW68=;
+	b=a/pvRtB6MNZKpbk7Y6uYTuKWApQUChQplZIqWVrkZru1P1kp9gnrovPgrvnpI01JLCJ1
+	 55VmYxJZiarm2cgb+cS69DhCX8L8rj0lJXLQYnEvuKdm2ET4GRL6PquHpNhY7Hkdf41uT
+	 7/YJDRAecWyva6+6WVHKHKlYz6vsjC8kk8iILIYykL0HVDouRShJyKxp74hR6G51pTEcs
+	 a/y5Uwp30MeSYMZCYdYVvnZZHhr1o29thxXcBzoHC5oGjL1rTuqbOncq8G8f6JsvOFpq9
+	 Pj8x5zWCeMOUkMOVVALoDslRkqQiYznf08+6EKs9GdCpPW+5BOm84LdYDbtSYNucM1g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FB4rIzmo;
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Rqj0HHoS;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8BC9D606A321
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 18:28:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8BC9D606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C1B6606A319;
+	Thu, 22 Oct 2026 22:04:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=FB4rIzmo
-Received: from macsyma.thunk.org (pool-108-26-156-23.bstnma.fios.verizon.net [108.26.156.23])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69MIRtlq008340
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Oct 2026 14:27:56 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1792693680; bh=JYh+FSmeD5zBdSGmLXfoWsuKx9ehvUO73Rr6qnSc3X8=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=FB4rIzmodCuc/ai76PzcPn8NKTCLCBgJQn5lG4OsNurD082LpzxvtWFDvX0WpozMi
-	 G5Wxrp5EKZivFppsyR/34R27Liveb8SHZHVPaUoS8ZK0SZqi5QIowbJZ3A3OxbM4VC
-	 T6wusZBLcMx4TA37NCtnpi9VcygARe/ydMqEQL+dUU2EOTWaGTS6Vg7HOcXefp/15T
-	 d7nP4c/UgU10vdDcWJP9aCfO9onPi6Wq2o/TdsUsdoFN9dfgwzIj5Cp6zqZxHaVWNY
-	 x9vDg8JooiFE5P2IxXk6tkIe6BLRPcasmFTfgbGaiWHz4u1SVqCZ6O7DWx0DCQCJGP
-	 /VtU8vRIAggOg==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 96FCB22114B9; Thu, 22 Oct 2026 14:26:55 -0400 (EDT)
-Date: Thu, 22 Oct 2026 14:26:55 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: Jan Koester <jan.koester@tuxist.de>,
-        Christian Brauner <brauner@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Serge E. Hallyn" <serge@hallyn.com>, Jan Kara <jack@suse.cz>,
-        Paul Moore <paul@paul-moore.com>, Arnd Bergmann <arnd@arndb.de>,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-arch@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, netdev@vger.kernel.org,
-        audit@vger.kernel.org, keyrings@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC PATCH v2 00/41] UUID and GUID user and group ids (*_r
- system calls)
-Message-ID: <atpNJINlFhQ0M3Y6@mit.edu>
-References: <cover.1792552161.git.jan.koester@tuxist.de>
- <018ca365-ce9b-424c-b600-bd9c8aefc9a1@schaufler-ca.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Rqj0HHoS
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4BA6B1F01828;
+	Thu, 22 Oct 2026 22:04:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792706696;
+	bh=zWkFFrCjzJ7Rb09dks5kAI7WSjnHbFizCZlsjSWaW68=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Rqj0HHoSEP/g7GIhndcGRvVFz5o/sVqSQu6ndjYgZtxC7DdxRLAsff7z4mliNGYo8
+	 lxxktvxYqQbjzXcmMePZy0FR/RnvPzQP+AEgq845EUXq/NDHL7Hx08J7vU5xlV1DZn
+	 fTZGKPor23cE7I1I8UsxuHBn0TQMd6belOg203h+APRtvAsOnZWy3hnC0A9or29si4
+	 eVbZhYMjJ9nBM4Tmkg1mZilMSXDZ4hWubCMb2jjU0a0FNiaB25gBZCpZBqXNtXKYND
+	 M72+GUkvcm5ePJvMEz5/LzEfE4CJ3RW2VN0LgkFR/9JqaGIinAYgR1L+8ChAJ6ucyi
+	 z7OXIJYHp7VIA==
+Date: Thu, 22 Oct 2026 22:04:54 +0000
+From: Eric Biggers <ebiggers@kernel.org>
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-xfs@vger.kernel.org, jaegeuk@kernel.org, axboe@kernel.dk,
+	hch@lst.de, djwong@kernel.org, brauner@kernel.org, tytso@mit.edu,
+	berto@igalia.com, adilger.kernel@dilger.ca, jack@suse.cz,
+	yi.zhang@huawei.com, ojaswin@linux.ibm.com, ritesh.list@gmail.com
+Subject: Re: [PATCH 00/13] block, ext4: allow encryption with a block size
+ larger than the page size
+Message-ID: <20261022220454.GC1383716@google.com>
+References: <20261011170958.1759230-1-libaokun@linux.alibaba.com>
+ <20261015185325.GG2170687@google.com>
+ <625e5190-d43e-4a2b-9296-da15c52d1a9a@linux.alibaba.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -77,45 +64,110 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <018ca365-ce9b-424c-b600-bd9c8aefc9a1@schaufler-ca.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <625e5190-d43e-4a2b-9296-da15c52d1a9a@linux.alibaba.com>
 
-On Thu, Oct 22, 2026 at 10:00:16AM -0500, Casey Schaufler wrote:
+On Fri, Oct 23, 2026 at 12:30:39AM +0800, Baokun Li wrote:
+> Hi Eric, Thank you for your feedback!
+> On 2026/10/16 02:53, Eric Biggers wrote:
+> > On Mon, Oct 12, 2026 at 01:09:45AM +0800, Baokun Li wrote:
+> >> Motivation
+> >> ==========
+> >>
+> >> ext4 supports a block size larger than the page size (LBS), e.g. a 32k
+> >> block size on a machine with 4k pages [1].  Encryption, however, is
+> >> still refused on such a filesystem: file contents used to be encrypted
+> >> page by page in the fs-layer path, which cannot handle a folio that
+> >> covers several data units, so the checks that refuse encryption with
+> >> such a block size stayed in place.
+> >>
+> >> Since commit 5acc6f649a68 ("fscrypt: Always use blk-crypto for
+> >> contents on block-based filesystems") file contents are always
+> >> encrypted through blk-crypto.  Inline encryption hardware can already
+> >> en/decrypt a data unit that spans several pages, but the fallback and
+> >> the block layer cannot carry such a data unit:
+> >>
+> >>   1. blk-crypto-fallback en/decrypts a data unit with the bio_vecs of
+> >>      a single page-clamped segment, so a larger data unit fails with
+> >>      BLK_STS_INVAL;
+> >>   2. the block layer requires every bio_vec of an encrypted bio to be
+> >>      data unit aligned, and splits such a bio without rounding the
+> >>      split size down to the data unit size;
+> >>   3. iomap cuts the direct I/O bios of an encrypted file only at the
+> >>      logical block size of the device, so a bio can end in the middle
+> >>      of a data unit.
+> >>
+> >> This series adds the missing pieces on all three layers, removes the
+> >> refusals, and enables large folios for encrypted files on the way.
+> >>
+> >> [1]: https://lore.kernel.org/all/20251121090654.631996-1-libaokun@huaweicloud.com
+> > A high-level question: most of the complexity in this series is to
+> > support crypto_data_unit_size > PAGE_SIZE, despite the actual goal being
+> > to support fs_block_size > PAGE_SIZE.  It's left unstated that the
+> > default of crypto_data_unit_size == fs_block_size is used.  However,
+> > ext4 and f2fs already support crypto_data_unit_size < fs_block_size.
+> >
+> > Would leaving the crypto_data_unit_size at e.g. 4 KiB while increasing
+> > fs_block_size be a simpler way to achieve the goal of this series?
 > 
-> I can't see this being acceptable for a variety of reasons, including
-> but not limited to performance and configuration complexity. It's a
-> general solution for a special case or two, and the impact is significant.
+> I initially followed the LBS approach of lifting the page-size
+> restriction, keeping the existing default crypto_data_unit_size
+> equal to fs_block_size. I had not considered using sub-block DUs.
+> 
+> After your reply, I implemented a variant using min(bs, PS) for
+> new default v2 policies, recording a smaller DU explicitly on disk.
+> This avoids patches 3-6 and the per-bvec alignment relaxation in
+> patch 10, and is indeed much simpler.
+> 
+> Both variants retain large-folio support and showed similar gains,
+> about twice their respective 4K-block controls. Although 32K DUs reduced
+> decryption calls eightfold, I did not observe a consistent additional
+> throughput benefit, or CPU savings at matched bandwidth, in the tested
+> workloads.
+> 
+> > Or do you feel that would be incomplete, and you'd indeed like to
+> > support crypto_data_unit_size = fs_block_size > PAGE_SIZE?
+> 
+> However, keeping DU = bs has a compatibility advantage for existing
+> encrypted filesystems.
+> 
+> For example, a 64K-block filesystem created with a default v2 policy
+> on a 64K-page machine uses 64K DUs. Supporting DU > PAGE_SIZE would
+> allow a 4K-page machine to use that format without re-encryption,
+> assuming the other policy and backend requirements are met.
+> 
+> This also covers otherwise-supported legacy v1 policies, which cannot
+> encode smaller DUs.
+> 
+> Explicit 4K v2 DUs can also be portable across page sizes, but
+> choosing a smaller DU for new files does not make existing large-DU
+> ciphertext readable on a smaller-page machine. I have not yet tested
+> the cross-page-size migration.
+> 
+> If you think supporting DU = bs > PS makes this series too broad,
+> I can use the simpler sub-block version in the next revision and
+> develop larger-DU support separately.
+> 
+> Looking forward to hearing your thoughts.
 
-Yeah. I agree it's a non-starter.  For one thing, it requires
-replacing every single system call which uses a 32-bit uid or gid ---
-either as an input parameter, a return value, or in a structure, such
-as, "struct stat".  It also requires making breaking changes into
-on-disk file formats that use a uid --- for example, /etc/passwd,
-/etc/group, utmp/wtmp, etc.  If it will also break compatibility with
-remote file systems that don't use a Windows SID --- e.g., nfsv3, AFS,
-etc.  And that's before we even get to breaking things like tar files, etc.
+I think I prefer the simpler version for now.  If someone wants to
+create encrypted files on a 64K block size filesystem on a 64K PAGE_SIZE
+system that are also readable on a 4K PAGE_SIZE system, for now they can
+just set crypto_data_unit_size = 4K.  v1 policies were deprecated 7
+years ago, so they shouldn't really factor into considerations here.
 
-I'll also note that customers that are most likely to need to use the
-abominationm of Windows SIDs are also those that are likely to be
-using proprietary third party binaries --- you know, silly things like
-SAP R/3, Oracle Enterprise Database, db2, etc.  And if you use Windows
-SIDs as user id's in your /etc/passwd, then binaries that are still
-using the traditional system calls will get the overflow 32-bit number
---- and break.
+Note also that setting crypto_data_unit_size too high can break write
+atomicity as well as compatibility with inline encryption hardware.
 
-I suspect it will be much more useful to simply add a supplementary
-user id and group id which is only used by those file systems that
-*care* about Windows SID's, and assume that everything else will use
-true, traditional Unix uids and gids.  I also suspect that we should
-be stashing the supplementary id's as extended attributes for the file
-systems.  That way we can much more quickly and easily add support to
-ext4, xfs, btrfs, etc., as file systems that can be used as backing
-stores for NFSv4 and CIFS for those (few) environments that care about
-Windows SID's.
+(Also, the more common use case these days is that someone is
+*increasing* their page size, not decreasing it.)
 
-						- Ted
+I understand there's been a trend to lift limitations like these and
+make every size work on every system.  But the large crypto data unit
+sizes are difficult to implement correctly, and the proposed
+implementation slows down common cases that matter.  Let's focus on
+fs_block_size > PAGE_SIZE by itself first.
 
-P.S., From my perspective, Windows SID's are actually the legacy
-ID's. especially as more and more people flee Microslop's Windows 11
-and moving to Linux and MacOS.  :-)
+- Eric
