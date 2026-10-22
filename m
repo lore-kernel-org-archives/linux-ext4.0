@@ -1,70 +1,56 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.194.254.142
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792652636;
-	b=Mh69ddAfQOxFZGl3mIP37T25pun9YuDdeDdgzQFfrAh5qZ1MbBzvfxjdbAcd1UEyyXH9
-	 RwkXJ9nZd5Tl7MPQXKzhVr7PsKqNtf3LdFozx3t7M46LCo76CRyLRIqxI1vXaC4AxSBkJ
-	 7at842x4lSTxf+/mrQAyyWgIKO4BzqtRj6Zw8LA20bDP66z2m+vrn1mdY+CJINjpLjbKf
-	 e9s1AXrYNtq6NtBDCp5bTs10vNEbmTyOmub5AVyThg4kFH/XOIann0QqdxHZLXPOfZeM4
-	 jcOtkUzXWD7g4owOCQg7Jul6Y5qz9N0OE1UAJOHCWAawZjj45NPQgn7bqZ3Zkia0ZvQ==
+	t=1792653368;
+	b=z7lufBULCbaMTut0QJn2iKvZt+7yBoLyrvibvA3OW7SeSfb83NVbIh1OrnzcHIz05t42
+	 sAKjMZmATRcv9Dvp5ghtkGPvSjmTDNxdiynKLQsRvw7illxm1/+ydWGboO9nUzDeQW2/R
+	 B+rMnH3ISYi0TUxFNLZI8AiGYFEjva1tqMxBXeM5eG2NSwCUuraZdPVwYDeGPDjlF79p7
+	 siFv+73kIEAWdhEwODH6fA3ciQwefoHPBKhJD+H6jxUqTMIS5GPEKx/pEkR7W1hSiMQPu
+	 TsZK/b+OWPbHCuWCz+aeDdSZwKLzlioElM7cZUaElcnmRhCHgTTlLpbEKymtfco91KA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792652636;
-	h=DMARC-Filter:DKIM-Signature:X-QQ-mid:X-QQ-Originating-IP:Received:
-	 X-QQ-SSF:X-QQ-GoodBg:X-BIZMAIL-ID:EX-QQ-RecipientCnt:From:To:Cc:
-	 Subject:Date:Message-Id:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding:X-QQ-SENDSIZE:Feedback-ID:X-QQ-XMAILINFO:
-	 X-QQ-XMRINFO:X-QQ-RECHKSPAM;
-	bh=Vh9t55iizJgxx1z3hrOQq6uSMRH3e0AAbZNB2mNDNFI=;
-	b=rhDayeMymBse9PSl00BypcgBNibKtBlX7AvmiCgqXducHqPCny/poeOTzwWz6Ljsjgoc
-	 zJomgrCBywj/hWoLtgi6YotErEz8jPj3sNWMUrtD3f9cZQDJZnMI/0UZdRTXZZoblZt8T
-	 +MZv2meu6KnilxKWjvQmxsao+uSGAP2rN0VxQm/J9OvV/X2XnhK3DuBWTD6uDdcqLrNnc
-	 yKcZbVFkTOg/HEWTGhZaUFj3ymggK+MzWO7ZsF8EVA4xQp++Pn2QgfSJ3anORu1dStyOU
-	 F1C2YT9NeOBgQvo82B9zoLTkfuyu/w7hcZNqOaAa8536ThmOG52JQ8LTR+8Sh4bmn0Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792653368;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=CQUyP1UiEozNR3meAeEQMCUbE9zCKmRk6JtkHKHBeQY=;
+	b=lSH+vdCFqp9/SgC8J+M367nc7VpWLS/mQ2GokTCTdgLyNJOOUjeDfo1LLXql9caU7iwI
+	 cvKsYp2nyk2UP97A06n1oa6Pe4iHgYSbuwfFyPkJnIRs+ww5EJnHdYNCc3P2DHMCe765h
+	 xLvA0tVzs3C7JR4Hv3EXFmU9r0rEfThilzqvM92FSArt49eHKuYz98ufDqd6g+VFm98zk
+	 KdwpGMIXZLUSJ/obZYc1oRxFsWG2W5eUjL6NpjS1+mfFE3yhF4my9q0mYlTPW7dbszYkt
+	 hgAePVeUUFt6NbmYpMEmVGnSySLQluxcdxAFimK6KKe2EbIOb0TJrSS/QemgiS00FgA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=uniontech.com;
-	spf=pass smtp.mailfrom=uniontech.com;
-	dkim=pass header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=GK27cvbS;
-	arc=none smtp.remote-ip=18.194.254.142
-Received: from smtpbgeu2.qq.com (smtpbgeu2.qq.com [18.194.254.142])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hykEY4iF;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02EDE606A319;
-	Thu, 22 Oct 2026 07:03:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 02EDE606A319
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96BA9606A319
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 07:16:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=GK27cvbS
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
-	s=onoh2408; t=1792652577;
-	bh=Vh9t55iizJgxx1z3hrOQq6uSMRH3e0AAbZNB2mNDNFI=;
-	h=From:To:Subject:Date:Message-Id:MIME-Version;
-	b=GK27cvbSDu9iLilIqB0VhBYytipY73YDu8rVF44n/qFLVHKRoDmQGBm7IbuAe7lv7
-	 8FkzLxruQoUhOZrO3Pxq4CwqHw0RwMzYuujOsfglOeavy9loZQVo+tXkq4r5H+TdsO
-	 YXB/odrBfWshChj1/rzB5cMXzDLgb7mmlnFUsJmM=
-X-QQ-mid: zesmtpsz9t1792652559t4c609bf7
-X-QQ-Originating-IP: KHid3TdewaR6ZJAwD/c+SfzGRxlxSbLwS+PIDpNG418=
-Received: from uniontech.com ( [113.57.152.160])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Thu, 22 Oct 2026 15:02:37 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 1
-X-BIZMAIL-ID: 11804153230825737676
-EX-QQ-RecipientCnt: 10
-From: Yichong Chen <chenyichong@uniontech.com>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca,
-	libaokun@linux.alibaba.com,
-	jack@suse.cz,
-	ojaswin@linux.ibm.com,
-	ritesh.list@gmail.com,
-	yi.zhang@huawei.com,
-	linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Yichong Chen <chenyichong@uniontech.com>
-Subject: [PATCH v2] ext4: drop tmp inode ownership before migration cleanup
-Date: Thu, 22 Oct 2026 15:02:35 +0800
-Message-Id: <20261022070235.17849-1-chenyichong@uniontech.com>
-X-Mailer: git-send-email 2.20.1
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hykEY4iF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0CD0B1F000C1;
+	Thu, 22 Oct 2026 07:16:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792653368;
+	bh=CQUyP1UiEozNR3meAeEQMCUbE9zCKmRk6JtkHKHBeQY=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=hykEY4iF4fQUesQCRIrVsnzUIXEUGp+deHK9d7qKrSPF+EjpE+4g0+RN0BdKXdOGb
+	 yIrjI+ToL2Xjt5m0h62UixI2iMl8SnaLfSFzTlW6zCnxQlCi5N2URHUzs98wfNYGX1
+	 7rADyuoPO0TCN4aWIT64vM8qM3MEOHAi2qpZ+Oa4RchET72CGmdrAs7CFoOK/R2Z3V
+	 WnDBsk76YLEi96Ej3gaIs3rTDt1/JHYupsY3+TLDdyI/M8+eZtw+yuXgv/e2JS/RzW
+	 FhChEOZR/d3pVP4m4Nl2DC26dvBe7OjtCs6oakWwiWhadln4vUEZw0MhSRBgbur/Pk
+	 6iNYUxWrxRZxg==
+Message-ID: <sashiko-outbox-181120@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [PATCH v2] ext4: drop tmp inode ownership before migration
+ cleanup
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Yichong Chen" <chenyichong@uniontech.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+In-Reply-To: <20261022070235.17849-1-chenyichong@uniontech.com>
+References: <20261022070235.17849-1-chenyichong@uniontech.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 22 Oct 2026 07:16:07 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -73,82 +59,118 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: zesmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz3a-0
-X-QQ-XMAILINFO: NFu7PsLv8TZxQ2r9+jVsx9FB34amAibEjHKg4ZJDREhV1wxNVEBTZ2ce
-	H9p7uvQyft96UcE2lbVCtBq7ZV7bju0/5qlO7NHve+Tiil0JuU96aLJASIgBT68izg/ogyw
-	FQJjwu3MFYqX5lmtKCssKymzVnpIjx2VkJUjOpR1XX0OQa5KEAR7SQwgR5x7/HJFmnC0xAG
-	MLjXGPtPfQg5aOAR2lGg257MjhXeTaaqjdXyIm3vlqpGkpfOtBj+p6UmgYTL/c9Dbe9S7ql
-	czjZYDyUZ+Wk5Ln34xj4uow/YN50C+LaJ7EwUhOOMhw/CEdaVwCa1omDGBMfD7qUEyJNQSt
-	luY4k48Nsod2K5Ner8G2IMIwjNCph+TFUbpbzlBriFDlroYaur8MKA31eG+Gja4/AxSYryq
-	6W36QI9U6x6VLH42+3Yr/3YnChldCf0kNeWhl651Iln3r2TWeiayXJ172PzteAIpNJ15qq5
-	vlukyfCLKKghqQiG1d4qL857ORwVo72FX3wTuRcxl+rVq6vflPxkMeYVSIcgBGggrtelrwM
-	Ak3zkxjGAujhG1tyvN+bDmCp8CZMuk3bF5oM00LwMcBds8+07oCZDIqsYwZxoSvODqGkZfR
-	uBkc/Jgo5LLBagzR/Z8cAOgGnPFmrMuF0Qlu4o+nUKZyTL2KQkwVrurooTIXSK2DiMBdeTd
-	VaDIpifO5l0q/vQDcf0NcsF6W9tw4o3kQ3AbBnRwE+gjkiqpUTTArW992Y/03j+X+J8n5Oe
-	S4eCQgVcDLDtUtIjYuPW8xMC0vXu3y4FcUhuuctPVkrd3q+SRhU7pYEPNDS9EeiTM4Ltxue
-	zebMOs+SnusSMQAyc3/QlQ0hXRnfEFzVR9Sa793v5OYU2Fzk/AoCpgAg5/jyTxLS0ay9Jb2
-	UwcMsj6SJk6TY8RFsjN5NJ+FOwjuKqFqoW3eLHxDD0DcBmwJ2HyKh9Mjx8N0Il4TioUorcg
-	0vw6NYdE1zxB7Z/sZXKx9lnVNSHHepnig5mfDSlQa12zOpi5O9KYuYdl8FNChktP8Rb16c3
-	Prd2sMU40URW//kevKOI4IaD+pyYry9XzJzipElPjH18ha28wE
-X-QQ-XMRINFO: OD9hHCdaPRBwH5bRRRw8tsiH4UAatJqXfg==
-X-QQ-RECHKSPAM: 0
 
-After the extent tree is transferred to the original inode,
-ext4_journal_ensure_credits() can fail before tmp_inode is cleared. The
-subsequent iput(tmp_inode) may then free the transferred tree.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [High] ext4: ext4_ext_migrate() overwrites retval with ext4_journal_ensur=
+e_credits()
+--
 
-Move the existing resets of tmp_inode's size, block count and checksum
-seed before ext4_journal_ensure_credits(). This leaves the temporary inode
-ready for eviction even if obtaining journal credits fails. Keep
-ext4_ext_tree_init(), which marks the inode dirty, after the credits check.
+commit 61a58c38b235cc8fa8d6d2591545809a44de0a40
+Author: Yichong Chen <chenyichong@uniontech.com>
 
-Fixes: a413036791d0 ("ext4: Provide function to handle transaction restarts")
-Signed-off-by: Yichong Chen <chenyichong@uniontech.com>
----
+ext4: drop tmp inode ownership before migration cleanup
 
-Notes:
-    Changes in v2:
-    - Move the existing i_size, i_blocks and i_csum_seed resets before
-      ext4_journal_ensure_credits() instead of adding a conditional duplicate,
-      as suggested by Jan Kara.
-    
-    v1: https://lore.kernel.org/all/20260930080241.414973-1-chenyichong@uniontech.com/
+This commit moves the resets of tmp_inode's i_size, i_blocks, and
+i_csum_seed in ext4_ext_migrate() ahead of ext4_journal_ensure_credits()
+so that iput(tmp_inode) will not free the migrated extent tree if
+obtaining journal credits fails.
 
- fs/ext4/migrate.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 09931d3ba2c6a..cf5239c426935 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -566,10 +566,6 @@ int ext4_ext_migrate(struct inode *inode)
+>  			free_ext_block(handle, tmp_inode);
+>  	}
+> =20
+> -	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
+> -	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
+> -	if (retval < 0)
+> -		goto out_stop;
+>  	/*
+>  	 * Mark the tmp_inode as of size zero
+>  	 */
+> @@ -586,6 +582,11 @@ int ext4_ext_migrate(struct inode *inode)
+>  	tmp_inode->i_blocks =3D 0;
+>  	EXT4_I(tmp_inode)->i_csum_seed =3D tmp_csum_seed;
+> =20
+> +	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
+> +	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
+> +	if (retval < 0)
+> +		goto out_stop;
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 09931d3ba2c6..cf5239c42693 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -566,10 +566,6 @@ int ext4_ext_migrate(struct inode *inode)
- 			free_ext_block(handle, tmp_inode);
- 	}
- 
--	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
--	retval = ext4_journal_ensure_credits(handle, 1, 0);
--	if (retval < 0)
--		goto out_stop;
- 	/*
- 	 * Mark the tmp_inode as of size zero
- 	 */
-@@ -586,6 +582,11 @@ int ext4_ext_migrate(struct inode *inode)
- 	tmp_inode->i_blocks = 0;
- 	EXT4_I(tmp_inode)->i_csum_seed = tmp_csum_seed;
- 
-+	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
-+	retval = ext4_journal_ensure_credits(handle, 1, 0);
-+	if (retval < 0)
-+		goto out_stop;
-+
- 	/* Reset the extent details */
- 	ext4_ext_tree_init(handle, tmp_inode);
- out_stop:
+[Severity: High]
+While moving this block from above, assigning the return value of
+ext4_journal_ensure_credits() directly to retval in
+fs/ext4/migrate.c:ext4_ext_migrate() still overwrites any prior error
+stored in retval and propagates positive return values to the caller:
 
-base-commit: 9a482184d910775cf648863148944945b74e2815
--- 
-2.51.0
+fs/ext4/migrate.c:ext4_ext_migrate() {
+	...
+err_out:
+	if (retval)
+		free_ext_block(handle, tmp_inode);
+	else {
+		retval =3D ext4_ext_swap_inode_data(handle, inode, tmp_inode);
+		if (retval)
+			free_ext_block(handle, tmp_inode);
+	}
+	...
+	retval =3D ext4_journal_ensure_credits(handle, 1, 0);
+	if (retval < 0)
+		goto out_stop;
 
+	/* Reset the extent details */
+	ext4_ext_tree_init(handle, tmp_inode);
+out_stop:
+	ext4_journal_stop(handle);
+out_tmp_inode:
+	unlock_new_inode(tmp_inode);
+out_unlock:
+	ext4_writepages_up_write(inode->i_sb, alloc_ctx);
+	iput(tmp_inode);
+	return retval;
+}
+
+In fs/ext4/ext4_jbd2.h, ext4_journal_ensure_credits_fn() returns 0 when
+credits are sufficient or extended, and 1 when the transaction had to be
+restarted:
+
+	err =3D ext4_journal_restart((handle), (extend_cred), (revoke_cred)); \
+	if (err =3D=3D 0)							\
+		err =3D 1;						\
+
+If building the extent tree (update_extent_range(),
+update_ind_extent_range(), update_dind_extent_range(),
+update_tind_extent_range(), or finish_range()) or swapping the inode data
+in ext4_ext_swap_inode_data() fails with a negative error in retval, and
+ext4_journal_ensure_credits() then succeeds, retval is overwritten with 0
+or 1, losing the migration error.
+
+Conversely, if migration succeeds (retval =3D=3D 0) and
+ext4_journal_ensure_credits() restarts the transaction, ext4_ext_migrate()
+returns 1 to callers such as ext4_fileattr_set() -> ext4_ioctl_setflags()
+in fs/ext4/ioctl.c:
+
+	err =3D ext4_ioctl_setflags(inode, flags);
+	if (err)
+		goto out;
+	err =3D ext4_ioctl_setproject(inode, fa->fsx_projid);
+
+which treats the non-zero return value as an error and aborts before
+ext4_ioctl_setproject().
+
+Should ext4_journal_ensure_credits() use a separate error variable (or
+only update retval when it returns a negative error and retval is not
+already set) so that prior migration errors are preserved and a
+transaction restart does not cause ext4_ext_migrate() to return 1?
+
+> +
+>  	/* Reset the extent details */
+>  	ext4_ext_tree_init(handle, tmp_inode);
+>  out_stop:
+
+--=20
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261022070235.1784=
+9-1-chenyichong@uniontech.com?part=3D1
