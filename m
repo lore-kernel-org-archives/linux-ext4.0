@@ -1,57 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.110
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792673296;
-	b=GO7JjGKOsTQPUB+6bibDActV3H/Dq3nJP9Fm9PI7HPD6MWzWIGVE642EOc/hBkBrfYLy
-	 n7O1PjbZ9/BNhl7iUI3IkHv9d16HAxQnybSli9iBErcTH76vEbBXu9bQpB8u+z7OscR4M
-	 lK8J3rhcKKY0I3LcuyxKh1mo8wACabqO88z9/TktO6EV8uO3mh+lw2SH9nQGpbrfL0HY1
-	 HbXUzM5gish0kNab1nUsOiV3GSq6vdY11EPFbUBX0XloEX3hNRVMo+MdmBcU52bw7MZpn
-	 wLYJsiahnjzURRpeJdRi4yJCsM2NqqU6yKn8CNP6s3pOWXnlYN/nN/4lSDFxyeMIufg==
+	t=1792673519;
+	b=kwOmbNgF8w4EvmEpQqGdmheRltgYvK/gHLDCYRGJJ/cT9FHjFCbLJ/vMLQAyBLKWtObj
+	 w4WVMUaQKP0YgAnJePtYQiaN64clZ7HipWgDQGOVHT2pkDDNku6SMUWUgFjwxM4+BdrIG
+	 hcTUCVdH95IOT2H7INIt04L2AA9VL6YNqBfCp/lVfYT+lFTiucM8Zksn3r8LtcvMEtLZx
+	 w+vsWyCrutvTL0Qlcmr13tLBD2IQ6KMVTMWp76jZ6XFPZ78NFAB0Y4LHIzErQHBTZ3h4W
+	 te87dij3WQaqBB389bz1O+WFr22h/PIzzt91fWdwXpgNA6MzN/NOfQFcfdhOOHy7daQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792673296;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=F5mdvUYsVNiOgtQvuxdVe/4OzAYQNK1lfEkEj7AIQdM=;
-	b=bN+kVjkSLUTIdjdfo7W0vBBX2sOHx7arJ7KemVII649R0bVbJJECZTBJIuyRf2PQ/BIZ
-	 b+bpDWMzPTeZHdO5M+jr1iWKTm3yfJe27310PCtdHta/5wtjK2fDDw8kVIwC/XMpajxok
-	 qMQNzJg5tMoA30G7WXa++fbKJYn8kV4X4gpfI0Ey+IwgiZCoBcoo1xL84X/Dp87llImqv
-	 osgbb+62GBlfCE4AGL5DcxfiU5WIDpjf3t5jSj0JL9ji+CYsSPPbBIPyuZX+KQwseJC1Q
-	 egrQidg3ALYP36PZVUOBWXhP1PN/rjVKB0z4p/fW49xdXuIx6DyM1ex0WamyLrIIwjQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792673519;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=JJ+yvx8h9h7oxNTqk5GOk42TZ5zXpsHUleVZXM9ghI0=;
+	b=Jen0aIHdgpIyo1vNIcb2EENITgPAIv3Az/gCXjlgHTPUdooAvx58vjn/J4h8OKX62vmY
+	 kbhpL+INcRzvAsRdWNXWyL89ATLEdxtZ5V5PwubvdFCvJyeiSGtyClY3V9BXr6uUFrgW0
+	 yrUBhmmFyuo4xsqNa9Zt3+ccLElEhbQO4xzmRhdllLprZuUPqme7oja+i/cV6WGCY01as
+	 AoIxrHi+a4LwGnieNk5sBU2qwpAHFlVFIO71LR8XZ8MrjFT2u0pitt6MGdD1TVd/06GSj
+	 CTWrRo+yLhpdoT/rBObVm208xEe33CAn3EQbSQeRvCuBbQw7lCqHvhf9whfbloJuOPg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XVEpoySu;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=LlABwMC1;
+	arc=none smtp.remote-ip=115.124.30.110
+Received: from out30-110.freemail.mail.aliyun.com (out30-110.freemail.mail.aliyun.com [115.124.30.110])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A09D606A319
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 12:48:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE326606A31A;
+	Thu, 22 Oct 2026 12:51:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AE326606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XVEpoySu
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E7E11F000C1;
-	Thu, 22 Oct 2026 12:48:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792673295;
-	bh=F5mdvUYsVNiOgtQvuxdVe/4OzAYQNK1lfEkEj7AIQdM=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=XVEpoySuj0oOFhvVguX02V6cfUi4kKoQr3f63/OUDvecKKgmX1oj3QQd/uqmV1uOW
-	 RilKuIiX09/7WFPuiwYUQvrk02a/OM3j6UzLQZSAaLg4SqjQLkbEWTGrelCY0pMAcu
-	 OA9j1EOAJnp2ftRno+gTwh9tPjYiyU8Lvrz5BeZT8uewS3J1glvq+7NQg7+QNarzjQ
-	 O1cpqON8TKhvSSpBW5X+PDIedY6e/0OfSo/AkSKGldA4cVvWqqtgLKUqgLtIKLPkJy
-	 ME+jpRflUPZpyXpUN4HidySV7/cxttP/4UhTyXmWrjHefjSUgWtDhbufKG93Y5KOqD
-	 EE/vdG9WJmLeA==
-Message-ID: <sashiko-outbox-181503@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH v2] ext4: skip eof zeroing when the zero range covers
- the eof block
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Baokun Li" <libaokun@linux.alibaba.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261022122625.1744363-1-libaokun@linux.alibaba.com>
-References: <sashiko-outbox-181121@kernel.org>
- <20261022122625.1744363-1-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Thu, 22 Oct 2026 12:48:15 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=LlABwMC1
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1792673512; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=JJ+yvx8h9h7oxNTqk5GOk42TZ5zXpsHUleVZXM9ghI0=;
+	b=LlABwMC1mRDKvdEUTDmmL4G48o+OAckR8J8cTgwUli6m10D3tlAuSzhu5v9O0kQLBXNrIZpbhhsksi4EzWtSph7pvmDgnn9z+Cvb8Wx3y+rAwH6nixSN/R+0GrNNB+fAdocv8F1svWi+pLZnKSHVzhAJ/4jLX9QPUcG6m28+2LQ=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045098064;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=19;SR=0;TI=SMTPD_---0XDJERAJ_1792673509;
+Received: from 30.221.132.50(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XDJERAJ_1792673509 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Thu, 22 Oct 2026 20:51:50 +0800
+Message-ID: <58c0fc65-8275-4d38-9d64-0f4638dbda34@linux.alibaba.com>
+Date: Thu, 22 Oct 2026 20:51:49 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,33 +53,66 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 03/13] blk-crypto: reject fallback data unit sizes it
+ can't handle
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+ linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-xfs@vger.kernel.org, jaegeuk@kernel.org, axboe@kernel.dk, hch@lst.de,
+ djwong@kernel.org, brauner@kernel.org, tytso@mit.edu, berto@igalia.com,
+ adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com, stable@vger.kernel.org
+References: <20261011170958.1759230-1-libaokun@linux.alibaba.com>
+ <20261011170958.1759230-4-libaokun@linux.alibaba.com>
+ <20261015184519.GF2170687@google.com>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20261015184519.GF2170687@google.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-> ext4_zero_range() drops the page cache of the range before allocating,
-> to avoid exposing stale cached data.  However, the dropped page can be
-> read back by the eof zeroing:
->=20
->   fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, 4096)
->     ext4_zero_range()
->       ext4_truncate_page_cache_block_range(0, 4096)
->         truncate_pagecache_range(0, 4095)
->           truncate_inode_pages_range()
->             delete_from_page_cache_batch()  # drops the page
->       ext4_alloc_file_blocks(..., 4096)
->         ext4_block_zero_eof(512, LLONG_MAX) # not block aligned
->           ext4_load_tail_bh()
->              __filemap_get_folio(FGP_WRITEBEGIN | FGP_ACCESSED)
->              # FGP_CREAT reads the dropped page back
-> [ ... ]
->=20
-> Fixes: c4602a1d09ec ("ext4: move zero partial block range functions out o=
-f active handle")
-> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+On 2026/10/16 02:45, Eric Biggers wrote:
+> On Mon, Oct 12, 2026 at 01:09:48AM +0800, Baokun Li wrote:
+>> Such keys exist on filesystems whose
+>> block size is larger than the page size, because fscrypt uses the block
+>> size as its data unit size by default.
+>>
+>> Fix this by advertising only the data unit sizes that the fallback
+>> really supports, and by rejecting keys that the fallback can't handle in
+>> blk_crypto_fallback_start_using_key(), so that the failure happens when
+>> the key is set up instead of during I/O, and before any data is written.
+>>
+>> Fixes: 488f6682c832 ("block: blk-crypto-fallback for Inline Encryption")
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+> Several patches in this series are marked as fixes, but they seem to
+> only be needed for encryption with data_unit_size > PAGE_SIZE which is a
+> new feature in this series.  I don't think these should be marked as
+> fixes, as they will cause unnecessary backports, CVEs, etc.
 
-Sashiko has reviewed this patch and found no issues.
+In this patch set, the five patches carrying the “Fixes” tag are
+1, 2, 3, 8, and 12.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261022122625.1744=
-363-1-libaokun@linux.alibaba.com?part=3D1
+Patches 1, 2, and 12 were included because my commit 709f0f1f1bf5
+(“ext4: add checks for large folio incompatibilities when BS > PS”)
+did not account for the fact that encryption can be enabled at mount
+time, making these issues accessible. Sorry about that.
 
+Patch 3 was added because the blk-crypto-fallback implementation did not
+limit the supported data unit size, setting it directly to 0xFFFFFFFF.
+This could cause silent data corruption, so I added an upper limit in
+the patch set and applied the “Fixes” tag. However, since this issue was
+unreachable prior to my patch mentioned above, I'm fine with removing
+the “Fixes” tag 
+
+Patch 8 can also be triggered when the sector size is 512 but the
+filesystem block size is 4k, so a `Fixes` tag was added to it as well.
+
+If you think any of these are unnecessary, I can remove them in the next
+iteration.
+
+
+Cheers,
+Baokun
