@@ -1,100 +1,61 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.43
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1792637632;
-	b=hAnRv46i1TcXdg3g4wVal0079m3LPAFSRRGS0+DZ8zvxw9RhQ9VkFDRIgPK9tYmguKxf
-	 UyviqALoB2l6MEIGzyYr4y+nxgSPw9TJsj93WN73m4Bp4Cm8hzJdN83doUeQnm9BopOoR
-	 oqkFmrOvd5T7Dly2oHY2jMxBGM/Iom/8gWhLFKMjVWZleGOxUkslTaRI1lcYq83/LZbIT
-	 LgKBdazF4c+a1GedzfDz77Al2S5vPtFZxMrY2evAXI3dI0DkQSj7ct9tz4oUDssisWUJ2
-	 ocBrCWnvJuMGw4RugcgZDAXR7fdjYhk0nPO7yqVm30Q4BrfMF8FNPdokgGZaAyxgv/w==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792637632;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=NnU6rs3hrQM9btLPDOKgfodkMRYa3+dqaWM6BzIydXs=;
-	b=CleZKY8W2ELwZqtFgZTcFEUam/MvLCebNBqcsOjUqkIwQUuTW3fOE4kW8RflCoEQv5cD
-	 r5/FqGh365BYTdLs3GusuHPHzFvv5+wLBFWkoqGnza0a6q6oQiF/ZSnbbmeUrWG/qwouN
-	 9ge0vjl1Z9iB/2VWS+0WtUbcwH0/jJTyiUqB84J6UZcYcnzYxmWhh/KxhWRsJn+LXuu1Z
-	 YzTBA9ACH38LWgGVNrlIlsfDU8toE9iIYYxzuTS9BqWajgcDR2d+I9QqCvFZ2sNnGwcBu
-	 KfS3AkjoDe0Wwc2v4xXEpHCwz4IPP0VUqxZWwI98FLcV4kvfmK0k8cw+NBM3Y5hq45A==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b="DTOI/Pek";
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.218.43
-Received: from mail-ej1-f43.google.com (mail-ej1-f43.google.com [209.85.218.43])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1792639047;
+	b=Kb3ChGnVf2bznKDrX6v18AiZcCSHMDczi1hcyoTrzz/c5WawzBYS0gqQnTa0x2rzEqlr
+	 hN2hpLLvpv91T9JaxPQNAmbKuzp+CAsJMvYsx1pGK7kAGP3MKmuU7XUMaoE14mCD9VfBg
+	 XovxWCeS15uwIV0ZXib3RC3znT223d4ApKRgbqjFjEd9qahZd6eV4ZaEbpt2wZnP05YMC
+	 MKQH6OQ8IKR2GrGUW1zMv8TDZBl4ac3xvzBhFWZD5aUNcgJmP9ho4o1xB45Cqwcfw+Org
+	 aVuzhVOi/0mw9rkTpKa6j/dWX/ntuU1mzYr4k7E9judh3aBtPD6ZpxjwociHHEyq0uw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792639047;
+	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
+	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
+	bh=yjFMi5sa8IiRoww7lpTyifwMtADCmpAmjtuNVHhpd2Y=;
+	b=T5IZjwOlu6+6WGiiSDVu1GA0fFyOnuEFkbzgvJEAIy471XcTDDlm896zAK6a3QqkktZ+
+	 MzHpyB1T+BnI2LZ9wJWDIT5uejL2rGme7WxUPbWwDKail6w9lBquMjC9zo7H43I4dii/w
+	 RQ2/aSibPgFNCq0eUNJQngv6PzrrfPweMrVo6sj36dVjjLlah53zTDrwQDeS/aCtPkI2k
+	 nnuimFJqtngghgYiWBJAutsWtlBtiuIfEt09A0jPiydV4C+QEQBocD+T1wsgO6T56Kx9i
+	 7zMILLjw7/OJho7/RVrSJJ5oQjZMugYS+CSHQwD9yITnbLeqqvjQiVTe0u1yI91X8uA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ocPFPO0b;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78F1E606A320
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 02:53:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 78F1E606A320
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66A4A606A33A;
+	Thu, 22 Oct 2026 03:17:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=DTOI/Pek
-Received: by mail-ej1-f43.google.com with SMTP id a640c23a62f3a-c43fbcb4393so173532366b.0
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2026 19:53:52 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1792637631; cv=none;
-        d=google.com; s=arc-20260327;
-        b=iMTAyjEN++UNq6iburDxfHnX8uSHOtx5WMJPSe3r+CzM9/d/Vvtqh/XAsM5fS+P76P
-         el8EhA+Q9HygPeKOyaZmdK+Rq4QFSkKXbh+fvZqCwLL42rmeKJQQR/OwbTsFNxo2EKj5
-         hkkJOQ/RwmKU4c/gTU3QO7FJtapP6tJuinh6txc3oS57vU+dkM79nji39Cnszgp8ErdI
-         GvxS/1n78u3e+/YvBxrYNYYXx+ohboJYPqD3CFmO1EgYM451j2ylC72qDlsq+6aEErv/
-         7Bv77TQ5aAOhKvti2g3Cjaoke1zxxy5NpeZ2cz6dmyqLPGE+64N4wCAvVcFiq5QdcrmL
-         ahAg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=NnU6rs3hrQM9btLPDOKgfodkMRYa3+dqaWM6BzIydXs=;
-        fh=z7boC0Iu98zjAYwka8/ZdLCrunia2L+k9WdUb8FkDlA=;
-        b=BVnAMLu8b5lu+mPKICvJr51Hp/ekVfdC+LMzumSASwmZd3FBpkB1HPNKzbibsI1C/T
-         myZqlTCrFitSS/ro9MHokFTJUy0fVF/Rq1G17leVtsi0zfNBlQa6qUPcrK1UkSKTT6Qe
-         bwH3SMF+9WtZaQv8pR+ppYsLmwejsaJep3bacFfmFULuknqpm73AyK677ALIv+yTK3w3
-         hVHUV+isABK0ZrrT8Xy62g2ES8XJyeY5Ieqs79+hJik0eCopciJIBlNB9ZlWt4Gis9Vx
-         YVLb6fxzVEIxnBq9lrjbaMDDxDd6wugRhh8DfPW3DOrlH4D52YwOTR4FKBBqe1icX04K
-         BWwg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792637631; x=1793242431; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=NnU6rs3hrQM9btLPDOKgfodkMRYa3+dqaWM6BzIydXs=;
-        b=DTOI/PekpHCFwbCxS6btLnjWQNCiYVc9jJXCEYwAmPekEK8t/PxBNEKZNgCm5yMo5O
-         ZHRqWqq6Sa4prnp5961iu97eKvO2fCe1P/oDhQUuXQyhe3en4gFePLH+ndAycKrOkdLY
-         ZBtVPzCtW837QZIUsvIlXqXaajHAOKuqlnaym36x90uyaZGBsQGk0lDoH47TKDdTDSv/
-         +bNghojo2jLNQuKI4CGPrg7pLnnWdQfj43K8C91aQyr5qb1zEo8L/J/KSRypGRSRs42E
-         gu3hUif099K3NIyvd05k0+GuTWcbFOAPWaSRNh9N1gfC8G9MuampVJBqQHApn7d+PZp0
-         CiAA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792637631; x=1793242431;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=NnU6rs3hrQM9btLPDOKgfodkMRYa3+dqaWM6BzIydXs=;
-        b=ZmUFz4PTEvsTYcaWDLbl7/VKnFn9BAscQyj7ienf8Wfnju33A0KEzIuYXNXc67Wxd2
-         AptNHxqX/Rwz+aIHyoe94RfF3iwh6w3SK+sGoF0y/5+fauoqf/j8mtTm95mmljDOeD+0
-         /GokvwJ1AFoeUn4R01H0fHA40rn4lKqB+WF1RsHvFmAgy7YZucNUyqceXg3dOMnjkVSU
-         7gz/qUYO9lUZCjUVe2MnEO7gDzHRD+wEF3yuidTU0OCbHQcutMX9mkTkbPA1fDayUYXy
-         5oNnD+90Ak3OK9SCsByOgd7UiH9lwpd8oQ3LHmMOt2EVYFGME95F2eL+UvQ764rdCeDO
-         n1NA==
-X-Forwarded-Encrypted: i=1; AKwUvBzXQnYiUrO5Xbh4L92MHc9mIPEZhQi2Yxyx0Y6K4CzMHaUhi4M0x0llCImHLdYmzbObBkv0LGfV02PX@vger.kernel.org
-X-Gm-Message-State: AFq9FYKkYKiTjvppqgr5SxqKb9lyQw167NwH4gSiajfzzy4MT4mPhm2t
-	YkdBFIdPidFEu1qqSX8NfigNYxr+SZmdudhoJCAZfTnwU91kz1be5siE/r5lhHCcmEKa8Y3CzmH
-	B40+6GBfT0H7I3dOZMkXizehOJiIzk+4=
-X-Gm-Gg: AYBFou1EIIF/xby5RN7UmltRl/6b46wzZef7BslaKZ7Q663yfZl7OD5FbxWYHLuuMTw
-	4v5cnKOfOvVeAslYSq8EkolUTMj0hB2+qszgrFH6RB5zQRdtz065ZlhuTBfttuafomZanAx60/I
-	V9UtgWjihnehsBdq3bl6XribDIhJB4aRoMfXTkwVicvzLuTK8A4QN5psGXky6R9Ezi4bBefUn0g
-	sPOge8S0Cbk7Xr5iw6l+Kw/Vw3Z8G9fgtdjEU/iba2wDm7GxP7j3UekBEaA+5dsDhkGH7496qoD
-	ozmj/MFE0DsAz5RKYqT6apdM6vsXed+4eE+wxFD3Q5cBKU6FoqRwJ+xbxj1kdApH09/iZk2wwQy
-	iYj1307LC004rtSsafqPmDKe0Nv6L72DA0bRw9sk/vLTaWscbTsvmu8re9g==
-X-Received: by 2002:a17:906:ba84:b0:c41:8e21:4d60 with SMTP id
- a640c23a62f3a-c46791326c1mr341731966b.1.1792637630664; Wed, 21 Oct 2026
- 19:53:50 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ocPFPO0b
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C5DD1F000C4;
+	Thu, 22 Oct 2026 03:17:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792639046;
+	bh=yjFMi5sa8IiRoww7lpTyifwMtADCmpAmjtuNVHhpd2Y=;
+	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
+	b=ocPFPO0biOmku3gfL7tlqYJDxMIiW3MHPyfKc/5JStwEE9UuFxP2y+OVJwhJRBs5l
+	 H1eTwvww7R8HUeFFLW9jrQZm+Jufv31sCHk+UXKoF1i+493hTdhDksct0BInziFBm/
+	 hJS+PD7cAOe9DRKSQHcJ+A5Bh4ZQdpZsSmPk2IYiZ3U8ow6bkLOspxqe1iDNs1n5vh
+	 G3Mxw6jxYnGCeCHfL701q9oykDvfzCMtozI7ICMzqICfD4JWrei3kzdeQ7lKyMM1bc
+	 lHV6QK886HiAqL8CekLc2CidMRRX/gtNeLz/ZKa4KSPT5AwDUnyVJCOOk+vLS7ssgt
+	 vv/S0F8HeTkrA==
+Message-ID: <sashiko-outbox-180904@kernel.org>
+From: sashiko-bot@kernel.org
+Subject: Re: [RFC PATCH v2 03/41] uidgid: add uid_is_legacy() and
+ gid_is_legacy()
+Reply-To: sashiko-reviews@lists.linux.dev
+To: "Jan Koester" <jan.koester@tuxist.de>, "Christian Brauner" <brauner@kernel.org>, "Alexander
+ Viro" <viro@zeniv.linux.org.uk>, "Serge E. Hallyn" <serge@hallyn.com>
+Cc: "Jan Kara" <jack@suse.cz>, =?utf-8?b?VGhlb2RvcmUgWS4gVHMnbw==?= <tytso@mit.edu>, "Paul
+ Moore" <paul@paul-moore.com>, "Arnd Bergmann" <arnd@arndb.de>, linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org, audit@vger.kernel.org, keyrings@vger.kernel.org, "Chuck
+ Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>, "Anna
+ Schumaker" <anna@kernel.org>
+In-Reply-To: <acd7e5be521cc2ba0526c45212e0c7b0010a6d16.1792552161.git.jan.koester@tuxist.de>
+References: <cover.1792552161.git.jan.koester@tuxist.de>
+ <acd7e5be521cc2ba0526c45212e0c7b0010a6d16.1792552161.git.jan.koester@tuxist.de>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Date: Thu, 22 Oct 2026 03:17:25 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -103,64 +64,83 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-References: <cover.1792552161.git.jan.koester@tuxist.de> <f444dffc8e6bf98bf44c02456adc2de40e4ecd95.1792552161.git.jan.koester@tuxist.de>
- <fd20b840-350e-469c-9fd2-008fa0ded62a@slotpi15m67>
-In-Reply-To: <fd20b840-350e-469c-9fd2-008fa0ded62a@slotpi15m67>
-From: Takeshi Nishimura <takeshi.nishimura.linux@gmail.com>
-Date: Thu, 22 Oct 2026 04:52:00 +0200
-X-Gm-Features: AclHuK8zMCY_XzKvgZWVeEW29rK2WIKSmZA1a7YbTdfyZ3EtSnPZJ1CNUxd7pQ8
-Message-ID: <CALWcw=FYKcDNXeArpsabHiQOAL+cWkF=L3stL6MB0OvVaHei1g@mail.gmail.com>
-Subject: Re: [RFC PATCH v2 40/41] nfsd, nfs: carry UUID and GUID owners as
- their text form
-To: Chuck Lever <cel@kernel.org>
-Cc: Jan Koester <jan.koester@tuxist.de>, Christian Brauner <brauner@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, "Serge E. Hallyn" <serge@hallyn.com>, Jan Kara <jack@suse.cz>, 
-	"Theodore Y. Ts'o" <tytso@mit.edu>, Paul Moore <paul@paul-moore.com>, Arnd Bergmann <arnd@arndb.de>, 
-	linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, linux-arch@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-cifs@vger.kernel.org, netdev@vger.kernel.org, audit@vger.kernel.org, 
-	keyrings@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, Oct 21, 2026 at 7:44=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
-> On 10/20/26 11:16 PM, Jan Koester wrote:
-> > Encode such an id as its text form -- "xxxxxxxx-xxxx-xxxx-xxxx-
-> > xxxxxxxxxxxx" for a UUID, the same in braces for a GUID -- in both
-> > directions on the server and the client, and take such a string (it
-> > has no '@', so it can't be a user@domain name) as that id again.
->
-> A bare UUID in an owner, owner_group, or ACE 'who' string is a new
-> owner-string syntax for NFSv4, one that only Linux would recognize.
-> Thus it isn't interoperable with other NFSv4 stacks as proposed
-> here.
->
-> RFC 8881 Section 5.9 says a string without an '@' that is not a
-> decimal number means no translation was available and the receiver
-> "should not use that string as a basis for translation into its
-> own internal format." RFC 8000 Section 6.1 forbids bare numeric
-> ids in multi-domain deployments because they collide; the same
-> applies to bare UUIDs, and more so to GUIDs.
->
-> If you are serious about pursuing this, you'll have to start by
-> raising the proposed wire format on nfsv4@ietf.org before the
-> Linux kernel's NFS stack commits to it.
+Thank you for your contribution! Sashiko AI review found 1 potential issue(=
+s) to consider:
+- [High] uidgid: uid_is_legacy() and gid_is_legacy() bifurcate kernel UID/G=
+ID model
+--
 
-I recall rumors of MS wanting to stick Windows SID in text form into
-the NFSv4 protocol.
+commit 89bf063fd971bc3a6a5e091bc2ca038531384166
+Author: Jan Koester <jan.koester@tuxist.de>
 
-THIS proposal is even worse, in every imaginable way:
-Stuff an unreadable 128bit blob everywhere. I am sure people having to
-debug that in the kernel will LOVE the idea (compare blob a with blob
-b as human,YAY!), and admins facing the 128bit hexdump will send
-marriage proposals to the author, for making their lives even more
-heartless and miserable.
+uidgid: add uid_is_legacy() and gid_is_legacy()
 
-NAK, -1, for the whole patch series.
+This commit adds the uid_is_legacy() and gid_is_legacy() predicate helpers =
+in
+include/linux/uidgid.h to check whether a kuid_t or kgid_t holds a 32-bit id
+in preparation for storing 128-bit ids in those types.
+
+> diff --git a/include/linux/uidgid.h b/include/linux/uidgid.h
+> index 2dc767e08f544..182c682458cb6 100644
+> --- a/include/linux/uidgid.h
+> +++ b/include/linux/uidgid.h
+> @@ -22,6 +22,20 @@ struct uid_gid_map;
+>  #define KUIDT_INIT(value) (kuid_t){ value }
+>  #define KGIDT_INIT(value) (kgid_t){ value }
+> =20
+> +/*
+> + * Whether an id is a classic 32 bit id. All of them are for now; code t=
+hat
+> + * needs one (to store it in 32 bits, for example) checks with these.
+> + */
+> +static inline bool uid_is_legacy(kuid_t uid)
+> +{
+> +	return true;
+> +}
+> +
+> +static inline bool gid_is_legacy(kgid_t gid)
+> +{
+> +	return true;
+> +}
+> +
+>  #ifdef CONFIG_MULTIUSER
+>  static inline uid_t __kuid_val(kuid_t uid)
+>  {
+
+[Severity: High]
+Introducing uid_is_legacy() and gid_is_legacy() in include/linux/uidgid.h to
+bifurcate kernel code paths for 20-byte tagged union kuid_t, kgid_t, vfsuid=
+_t,
+and vfsgid_t types raises several architectural and correctness regressions.
+
+kuid_t and kgid_t are designed as zero-overhead 32-bit wrappers passed by
+value in a single register and embedded in core structures including struct
+inode, struct cred, struct group_info, struct user_struct, struct
+posix_acl_entry, and struct kstat. Expanding each id from 4 bytes to 20 byt=
+es
+grows struct cred by 128 bytes and struct inode by 32 bytes for every cached
+inode, while turning pass-by-value helpers and equality checks into 20-byte
+struct copies and __builtin_memcmp() calls.
+
+Expanding inode->i_uid and inode->i_gid beyond 32 bits also breaks the
+single-word access assumption required by lockless readers in
+acl_permission_check() during rcu pathwalk and in generic_fillattr() during
+statx() when racing with updates in setattr_copy() and i_uid_update(), which
+can result in torn reads.
+
+Furthermore, splitting kernel subsystems with uid_is_legacy() and
+gid_is_legacy() so that __kuid_val() and from_kuid() return (uid_t)-1 and
+from_kuid_munged() collapses non-legacy ids into overflowuid and overflowgid
+breaks the invariant that every valid kuid_t and kgid_t maps uniformly acro=
+ss
+the vfs, filesystems, user namespaces, quotas, netlink credentials, and
+userspace interfaces.
+
+Should mapping external 128-bit directory ids to 32-bit ids be handled by
+userspace identity daemons and existing kernel id-mapping facilities instead
+of bifurcating kuid_t and kgid_t with uid_is_legacy() and gid_is_legacy()?
+
 --=20
-Internationalization&localization dev / =E5=A4=A7=E9=98=AA=E5=A4=A7=E5=AD=
-=A6
-Takeshi Nishimura <takeshi.nishimura.linux@gmail.com>
+Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/cover.1792552161.gi=
+t.jan.koester@tuxist.de?part=3D3
