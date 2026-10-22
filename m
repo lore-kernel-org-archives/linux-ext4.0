@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792639073;
-	b=dlWgR5YjaMPm48WcMocCfq7Mxh9SurPsbMjqLGWbkt3NPdiNyZN3pfqQbxii3ypMLVe7
-	 Krj2+bbvRnazrLkGq28Dd5fpCrO9rsraYQUdsC2c+2Bw5BDsia0QyqhJCm0A+wHxT+P1a
-	 vVh8rHUSXnwtKhGH42EKXMegoB6nNrvoDXAHeTdN6tLMu797WLgpvC/ouKT9yTF6JYGiE
-	 LmVXa8EOp6s1merowYzJUrVFFqR7LZ4UASNll7bQlRR5lekgT8c05Ir19knawIWKCpw87
-	 S3C97yKlPyawuH5Y2MH0zyW+CWe2yT4+8DJglCLkKdKQUMAfvu62iFmeD+d6OYp8ixQ==
+	t=1792639068;
+	b=ZJy6TIAugzEoRBxtLCRoNbSsv26NG9MgwSFEZvix8z8RCp8EfaKRzRk1QyJwjU0nRnMH
+	 z0frbTatZ2LdxIjMqLzC1d8wQ7cAqgoUfRw7ZTD0ciJ9q0XurocXE/Id7N7uZrN0mna3V
+	 jG0SV7G0Lfw4DEdHZ5raHHcnvIorWtiB9bTywBeulnmdoLnpW2zDpAn2YQQM5obwgCxxR
+	 aES1JJhd3BwEej+wOMTLHC9MkNCKSv5h5XXPHYfjWfkJLSeRP8MaCkuZu1hoJYaRTqapq
+	 nTvCRbKnvj7u6/fOCQBth8Ti+MQb58Nt0JLTIxK4ElzPh85PzDYDJv4wfWcGpwY3IzA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792639073;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792639068;
 	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
 	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=5ieIJanyBEjK9GzgvCDjcdA4rdlAuffQNhskh5KUZ8s=;
-	b=gzJWQJtEZs4RIBM0HsA4HO0Za4tx6VzrFqQE4KJZJIK4q4ATbVxosQD4q5rrDzm00IFi
-	 EuM+nTxDdEJIS9Mtj63pH7v5EurUXVQPV2w6trh7T7EEPERw9naZ2k6LJje30p4GXZEQi
-	 wuok2aYreN+bupZzjOBm6iUrVZFA0/ZSJlCGsvUg0jtaP12N7+ysorwpk37/I+UNdCmxf
-	 tuJKY1MxAiNWj+STaf7PzYqYJPULHu1qONjxudDYQCF8Wlb9HkX6PRLqCt+N/2HhOa1jB
-	 84NAOIEr293yn0G8SyGvvnYLDvNPpnAfY308gw5WBeGJax8un4echQ/tngFcbSsBV+g==
+	bh=C3u2J5p7ZJQre7MK7LAkW3PLotnEu5GXQR/XZ9ATPRQ=;
+	b=enZUTN7rTaVOh+LC41k2AFXn1+JAd6J1u6Rh/gVwGJDN0RZ09g4LwFlvmm9YwxPiS7hG
+	 9UFc/L/SAXobTJ8Nnu9EMjZgBUYTNNi8OpCVOiKYyN6b+837N38kAUlJn8/O3sOm05WKW
+	 DRiZ/rVFiWUfrsOCDNinMyRn4rQILfisu0zYR+m0BR2uc+HvhO63EUO1puWG7UDk+l/xo
+	 Gttyf43yFQXOUzlkRE6TT6Y7XxjTP3W4QcbRNtgVTWeWGWnnF4xIZGBB8mYm50jiuYUOM
+	 iZirtXGGxBebDcHTbmelF9qCNzab4bZnNrjSS3m2qm1WFCQ0hm9+trFj00C3LoffR1g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mwS0hGb3;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hnjVWvri;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E139960A3808;
-	Thu, 22 Oct 2026 03:17:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9253060A382A;
+	Thu, 22 Oct 2026 03:17:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mwS0hGb3
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9030E1F000D1;
-	Thu, 22 Oct 2026 03:17:51 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hnjVWvri
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 668DE1F000C5;
+	Thu, 22 Oct 2026 03:17:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792639072;
-	bh=5ieIJanyBEjK9GzgvCDjcdA4rdlAuffQNhskh5KUZ8s=;
+	s=k20260515; t=1792639068;
+	bh=C3u2J5p7ZJQre7MK7LAkW3PLotnEu5GXQR/XZ9ATPRQ=;
 	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=mwS0hGb3uuaw9sqy9s8sRgVTJaYF1Q3jyouzqIF5hKVc+tCfDKFbHjIixj5TVr3Yo
-	 j6Z1RakMEv0Zzzk4TEyVnn+G59ygh54l636s96jBui4V6tINAOqoFiQk6XrIwkQKy6
-	 ia4N7LgUsGmRakIgtsKZmvFWemLLwQDVf6OGntkL0gvZc2yv9uXF7GH0okV0R7Jn+i
-	 aYmkgaCrPs2tdlHDxwQsL1fyOCrL2oxDxZ91HIkqz+5E5238gEgP7KZ2azMGssJiDa
-	 7iVsVbIDbyDUV2hc+L6M5Mvi2W18tY4yLP5gglj71dPQZLXPShP9f+oKnCFU1x94DT
-	 O4a6lDibKkRcw==
-Message-ID: <sashiko-outbox-180927@kernel.org>
+	b=hnjVWvripGRsPB+ksR+ULBkGLxiFAbn/HmfgrLZCz3LOm+zZmDfVzvvR6iSzv07BS
+	 tHbP21FBWsDuBm/1UQFcDwXZ5JoaAj0Wmug0CNmQdce6jcn3LjK3r7PmZ6yasPB5h3
+	 II0Rj10+zVZRNn5DnE8WBWmwC626Mt88RpYUZBTTlN0vqezeJ91r7XoiB5KVd3FRnK
+	 clB74NqGVWrM6jpMEx3opOEg+U9pYMv2XMvkTd2/9xmRDI+z7OQDhsDtEOoi1peMrv
+	 a4YWCCELi1kkzEZauHnz5iODj5siL0GsC8BzqUn5omrRvFy2r+csDxIt04cQILLqS+
+	 880/EgWI+kMGg==
+Message-ID: <sashiko-outbox-180923@kernel.org>
 From: sashiko-bot@kernel.org
-Subject: Re: [RFC PATCH v2 26/41] proc: show UUID and GUID ids in status,
- accept them for loginuid
+Subject: Re: [RFC PATCH v2 22/41] arch: wire up the *_r uid and gid system
+ calls
 Reply-To: sashiko-reviews@lists.linux.dev
 To: "Jan Koester" <jan.koester@tuxist.de>, "Christian Brauner" <brauner@kernel.org>, "Alexander
  Viro" <viro@zeniv.linux.org.uk>, "Serge E. Hallyn" <serge@hallyn.com>
@@ -50,12 +50,12 @@ Cc: "Jan Kara" <jack@suse.cz>, =?utf-8?b?VGhlb2RvcmUgWS4gVHMnbw==?= <tytso@mit.e
  Moore" <paul@paul-moore.com>, "Arnd Bergmann" <arnd@arndb.de>, linux-security-module@vger.kernel.org, linux-ext4@vger.kernel.org, audit@vger.kernel.org, keyrings@vger.kernel.org, "Chuck
  Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>, "Anna
  Schumaker" <anna@kernel.org>
-In-Reply-To: <5e8def743ca1ecd53337d7c1ff543cab0ef9b313.1792552161.git.jan.koester@tuxist.de>
+In-Reply-To: <014ca715d4d35199cda084420f0c7b8163d64cab.1792552161.git.jan.koester@tuxist.de>
 References: <cover.1792552161.git.jan.koester@tuxist.de>
- <5e8def743ca1ecd53337d7c1ff543cab0ef9b313.1792552161.git.jan.koester@tuxist.de>
+ <014ca715d4d35199cda084420f0c7b8163d64cab.1792552161.git.jan.koester@tuxist.de>
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
-Date: Thu, 22 Oct 2026 03:17:51 +0000
+Date: Thu, 22 Oct 2026 03:17:46 +0000
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -67,153 +67,136 @@ Precedence: list
 
 Thank you for your contribution! Sashiko AI review found 2 potential issue(=
 s) to consider:
-- [Medium] proc: off-by-one TMPBUFLEN in proc_loginuid_write() rejects GUID=
- with newline
-- [Medium] proc: torn read of 20-byte loginuid in proc_loginuid_read()
+- [Medium] audit: missing chown_r family syscalls in audit_change_attr.h
+- [Low] arch: commit message states wrong syscall number ranges for *_r sys=
+calls
 --
 
-commit 272e06b9ffc63c454062912295a6fc0f1ae20fab
+commit de1d2caf3a9cdd09efea2705dc6569ed00a466b1
 Author: Jan Koester <jan.koester@tuxist.de>
 
-proc: show UUID and GUID ids in status, accept them for loginuid
+arch: wire up the *_r uid and gid system calls
 
-This commit adds Uid_r, Gid_r, and Groups_r lines to /proc/<pid>/status to
-display user and group ids in text form via kuid_str_munged() and
-kgid_str_munged(). It also updates /proc/<pid>/loginuid to accept and
-display text-formatted uuid and guid ids alongside classic numeric uids.
+This commit wires up the 20 extended uid and gid system calls (getuid_r
+through fchownat_r) in the generic syscall header and across architecture
+syscall tables.
 
-> diff --git a/fs/proc/base.c b/fs/proc/base.c
-> index 6a39de424f62a..ec3147e7ab05e 100644
-> --- a/fs/proc/base.c
-> +++ b/fs/proc/base.c
-> @@ -1290,20 +1290,26 @@ static const struct file_operations proc_oom_scor=
-e_adj_operations =3D {
->  };
+>     arch: wire up the *_r uid and gid system calls
+>    =20
+>     Assign 472-491 on all architectures (582-601 on alpha) to getuid_r,
+>     geteuid_r, getgid_r, getegid_r, setuid_r, setgid_r, setreuid_r,
+>     setregid_r, setresuid_r, getresuid_r, setresgid_r, getresgid_r,
+>     setfsuid_r, setfsgid_r, getgroups_r, setgroups_r, chown_r, lchown_r,
+>     fchown_r and fchownat_r.
+>    =20
+>     __kernel_uid_r_t has the same layout on all ABIs, so the compat ABIs
+>     use the native entry points.
+>    =20
+>     Assisted-by: Claude:claude-opus-5-5
+>    =20
+>     Signed-off-by: Jan Koester <jan.koester@tuxist.de>
+
+[Severity: Low]
+Should the syscall number ranges in the commit message be 473-492 (and
+583-602 on alpha) instead of 472-491 (and 582-601 on alpha)?
+
+Syscall 472 is already assigned to fchroot in
+include/uapi/asm-generic/unistd.h (and 582 in
+arch/alpha/kernel/syscalls/syscall.tbl):
+
+arch/alpha/kernel/syscalls/syscall.tbl:
+    582	common	fchroot				sys_fchroot
+    583	common	getuid_r		sys_getuid_r
+    ...
+    602	common	fchownat_r		sys_fchownat_r
+
+[ ... ]
+
+> diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic=
+/unistd.h
+> index 5b7e77a7c736e..8475635005025 100644
+> --- a/include/uapi/asm-generic/unistd.h
+> +++ b/include/uapi/asm-generic/unistd.h
+> @@ -867,8 +867,49 @@ __SYSCALL(__NR_rseq_slice_yield, sys_rseq_slice_yiel=
+d)
+>  #define __NR_fchroot 472
+>  __SYSCALL(__NR_fchroot, sys_fchroot)
 > =20
->  #ifdef CONFIG_AUDIT
-> -#define TMPBUFLEN 11
-> +#define TMPBUFLEN KID_STR_LEN
->  static ssize_t proc_loginuid_read(struct file * file, char __user * buf,
->  				  size_t count, loff_t *ppos)
->  {
->  	struct inode * inode =3D file_inode(file);
->  	struct task_struct *task =3D get_proc_task(inode);
-> +	struct user_namespace *ns =3D file->f_cred->user_ns;
->  	ssize_t length;
->  	char tmpbuf[TMPBUFLEN];
-> +	kuid_t loginuid;
-> =20
->  	if (!task)
->  		return -ESRCH;
-> -	length =3D scnprintf(tmpbuf, TMPBUFLEN, "%u",
-> -			   from_kuid(file->f_cred->user_ns,
-> -				     audit_get_loginuid(task)));
-> +	loginuid =3D audit_get_loginuid(task);
-> +	/* a UUID or GUID loginuid as text, if @ns can see it */
-> +	if (!uid_is_legacy(loginuid) && kuid_has_mapping(ns, loginuid))
-> +		length =3D strlen(kuid_str(loginuid, tmpbuf));
-> +	else
-> +		length =3D scnprintf(tmpbuf, TMPBUFLEN, "%u",
-> +				   from_kuid(ns, loginuid));
+> +#define __NR_getuid_r 473
+> +__SYSCALL(__NR_getuid_r, sys_getuid_r)
+
+[ ... ]
+
+> +#define __NR_chown_r 489
+> +__SYSCALL(__NR_chown_r, sys_chown_r)
+> +#define __NR_lchown_r 490
+> +__SYSCALL(__NR_lchown_r, sys_lchown_r)
+> +#define __NR_fchown_r 491
+> +__SYSCALL(__NR_fchown_r, sys_fchown_r)
+> +#define __NR_fchownat_r 492
+> +__SYSCALL(__NR_fchownat_r, sys_fchownat_r)
 
 [Severity: Medium]
-Can proc_loginuid_read() observe a torn 20-byte kuid_t when reading
-task->loginuid concurrently with proc_loginuid_write() ->
-audit_set_loginuid()?
+When wiring up chown_r, lchown_r, fchown_r, and fchownat_r, should these
+new syscall numbers also be added to include/asm-generic/audit_change_attr.=
+h?
 
-In kernel/audit.c:audit_set_loginuid():
+Currently include/asm-generic/audit_change_attr.h lists the existing
+ownership-changing syscalls to populate chattr_class[] in lib/audit.c and
+compat_chattr_class[] in lib/compat_audit.c:
 
-	current->sessionid =3D sessionid;
-	current->loginuid =3D loginuid;
+include/asm-generic/audit_change_attr.h:
+    #ifdef __NR_chown
+    __NR_chown,
+    __NR_lchown,
+    #endif
+    #ifdef __NR_fchown
+    __NR_fchown,
+    #endif
+    ...
+    #ifdef __NR_fchownat
+    __NR_fchownat,
+    __NR_fchmodat,
+    #endif
 
-Updating current->loginuid is an unsynchronized 20-byte struct store, and
-audit_get_loginuid(task) in proc_loginuid_read() copies task->loginuid from
-a potentially running target task without a lock or seqcount retry loop.
+When an audit watch or directory rule monitors attribute changes,
+audit_to_entry_common() in kernel/auditfilter.c expands those classes into
+entry->rule.mask[], and __audit_filter_op() -> audit_match_perm() in
+kernel/auditsc.c checks whether the syscall number belongs to the attribute
+change class:
 
-When transitioning between a legacy id (such as INVALID_UID) and a uuid or
-guid id, a concurrent reader of /proc/<pid>/loginuid could see the new
-.type before all 16 bytes of .uuid/.guid are written (or after .legacy is
-overwritten when unsetting), causing kuid_str() to format a corrupted uuid
-or guid string. Conversely, seeing the old KID_LEGACY .type with the first
-4 bytes of the new .uuid/.guid already stored would cause from_kuid() to
-return a bogus numeric uid to userspace.
+kernel/auditsc.c:audit_match_perm() {
+    ...
+	switch (audit_classify_syscall(ctx->arch, n)) {
+	case AUDITSC_NATIVE:
+		...
+		if ((mask & AUDIT_PERM_ATTR) &&
+		     audit_match_class(AUDIT_CLASS_CHATTR, n))
+			return 1;
+		return 0;
+	case AUDITSC_COMPAT: /* 32bit on biarch */
+		...
+		if ((mask & AUDIT_PERM_ATTR) &&
+		     audit_match_class(AUDIT_CLASS_CHATTR_32, n))
+			return 1;
+		return 0;
+    ...
+}
 
-Would a seqcount or lock around task->loginuid be needed here to prevent
-torn reads?
+Without the *_r ownership syscalls in
+include/asm-generic/audit_change_attr.h, ownership changes made via
+sys_chown_r(), sys_lchown_r(), sys_fchown_r(), or sys_fchownat_r() will not
+match attribute-change audit watch rules.
 
->  	put_task_struct(task);
->  	return simple_read_from_buffer(buf, count, ppos, tmpbuf, length);
->  }
-> @@ -1312,7 +1318,7 @@ static ssize_t proc_loginuid_write(struct file * fi=
-le, const char __user * buf,
->  				   size_t count, loff_t *ppos)
->  {
->  	struct inode * inode =3D file_inode(file);
-> -	uid_t loginuid;
-> +	char tmpbuf[TMPBUFLEN];
->  	kuid_t kloginuid;
->  	int rv;
-> =20
-> @@ -1332,16 +1338,20 @@ static ssize_t proc_loginuid_write(struct file * =
-file, const char __user * buf,
->  		return -EINVAL;
->  	}
-> =20
-> -	rv =3D kstrtou32_from_user(buf, count, 10, &loginuid);
-> -	if (rv < 0)
-> -		return rv;
-> +	/* a decimal uid, a UUID or a GUID in braces */
-> +	if (count >=3D sizeof(tmpbuf))
-> +		return -EINVAL;
-> +	if (copy_from_user(tmpbuf, buf, count))
-> +		return -EFAULT;
-> +	tmpbuf[count] =3D '\0';
-> =20
-> -	/* is userspace tring to explicitly UNSET the loginuid? */
-> -	if (loginuid =3D=3D AUDIT_UID_UNSET) {
-> -		kloginuid =3D INVALID_UID;
-> -	} else {
-> -		kloginuid =3D make_kuid(file->f_cred->user_ns, loginuid);
-> -		if (!uid_valid(kloginuid))
-> +	kloginuid =3D make_kuid_str(file->f_cred->user_ns, tmpbuf);
+[ ... ]
 
-[Severity: Medium]
-Does this size check in proc_loginuid_write() reject a guid in braces when
-written with a trailing newline?
-
-In include/linux/uidgid.h, KID_STR_LEN is 39, which is the exact size of a
-38-character guid in braces ("{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}") plus
-the terminating nul byte.
-
-Meanwhile, make_kuid_str() -> kid_r_from_str() in kernel/uidgid_r.c is
-designed to accept an optional trailing newline before checking the length
-against KID_STR_LEN:
-
-	if (len && str[len - 1] =3D=3D '\n')
-		len--;
-	if (!len || len >=3D sizeof(buf))
-		return -EINVAL;
-
-Because TMPBUFLEN is defined as KID_STR_LEN (39), writing a 38-byte guid in
-braces followed by '\n' passes count =3D=3D 39 to proc_loginuid_write(), wh=
-ich
-hits count >=3D sizeof(tmpbuf) and returns -EINVAL before reaching
-make_kuid_str().
-
-Should tmpbuf in proc_loginuid_write() (or TMPBUFLEN) be sized to
-KID_STR_LEN + 1 so that a guid in braces with a trailing newline is
-accepted just like decimal uids and uuids with a trailing newline?
-
-> +	if (!uid_valid(kloginuid)) {
-> +		u32 loginuid;
-> +
-> +		/* is userspace tring to explicitly UNSET the loginuid? */
-> +		if (kstrtou32(tmpbuf, 10, &loginuid) ||
-> +		    loginuid !=3D AUDIT_UID_UNSET)
->  			return -EINVAL;
->  	}
 >
+>  #undef __NR_syscalls
+> -#define __NR_syscalls 473
+> +#define __NR_syscalls 493
+
+[ ... ]
 
 --=20
 Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/cover.1792552161.gi=
-t.jan.koester@tuxist.de?part=3D26
+t.jan.koester@tuxist.de?part=3D22
