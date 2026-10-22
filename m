@@ -1,108 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.132
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792662526;
-	b=Wzga7TnoICi/flIVHqzcNu4XaN7w8tAK/dNb7QUE505Ub4v7f+NcAUkGWWjinNyH7EyD
-	 ArGqFiks/+J/6EYkOz+4YdMILf/tzvXPImm8PdkDlED3icRdad6/9yp+J+fhj1Gw3NNwG
-	 qUFgSUUxymXTXgNJnDVTEDN3TXoJt3dft+o1GVgAgR31Fc6XOJSawUWlaSCF9D5Wo6Nl2
-	 CQ4QktjooZ2ZS4LUGbW/hh34Xtm9uXhNaoJfIZCpXBGjsnANlnVkFirt/KSZtlmJnr75h
-	 HzpRw7P5QJeieec3sTPrEvzwa44yR9xuWkQ3c/O/hYrTS9BA7PI9DWPnbcP8+wp/OUQ==
+	t=1792662971;
+	b=nkQqchi5taRdsktsuNvsRz/ozVhEC4uBOzfttP70ZS4Vmzylll9J2+dEt5JBkI0JiMd6
+	 7xIxxa4r/vltPwIpGlhclqKVEUpkp5IGBKI5H9eC4JUgEAEdriyTEobe5cqoRemH3fmJW
+	 u3nV/PRXfz+InNzWWWOTabGmfl0Wh1IoSiz3tIIbdgLYpfT+Hvbxh1njowK57naBNt5PK
+	 aN8PB2f17qRKFKnqaRVTTlSZcDIF7n+xUjS8UUAglI1+uGQrqqXFjQ9x8Cqw0cAFnjO4F
+	 TcKanXvtn8v9N1wODjHC01L0fpawTIJzNuTznhZxmM1S/cAje+KCVXTd8Qc7xC5RKAg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792662526;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=YaLhqZAxNujf1yf6yjVdrpEfaUMs2QKzKZiW60wQPUY=;
-	b=ix371fHXhV/zp12ERidyS5IVDSNZ7lr+V0EBql8nDalTNeoXgsP6FCpNmRQ2hcz9xOWK
-	 9baAl25Zn9Apn3VhgHwaOOTkTN8fDHnb5WxGX1NxasfyP/W1kHaHSEwtiOeoIwqmvBTb2
-	 WcP0apu3D/IOTkVnLK5Q3+9lcyiTROkUCQ42sunBr7u8n52hkC2VpIM3JYd0xA/k/VmFF
-	 QqaZe6sciJqvu9+Rn9vo+lDw9Menjwo685YjV12Mq9yxGl46SYUmkio8CsEkA1KcThaOr
-	 w8XyO0gioNDhICPaWXAljtHuHK6tOFOkLudWuVGXFK0kDpa5u2GyrHgCI6Tuxbj+LuQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792662971;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=wc8R6pcetAOysFIliaOJ2VQr+tr2jqU67xiXxMwPvfM=;
+	b=Q9eYf9IiuuoqFigZIQjIm9NvhqojFIg5I7j4Y3jYdYCJ17fP2YCYAtRtzNnuyMpfP10x
+	 WsW1dAPafEErYJ+ILY2X5Y3CtIjy9QmKXhlDTdF4loe7v2JAYKW8s+LYE0QzvgIpl/l0Y
+	 x527uUxheBLZf98TVPIqrU4ayQKTyfMknbFNbQIhsUTH4cQii57E1Sk12/9kU8JpcxEOf
+	 3rfHz8+u/MCtfviP1cSTtwlgBtJbtFlzVPyLJ5B7uvs8mdidurhAp9fP2j5i3sZNMgrJt
+	 pMwjKqgF57vnVr3R/Va5HDJBXPR+TLu5uwfU15KoC/IylRFpxUsDdRVNypWN8tNT6Yg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=sq0ZEkY3;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9P3wS2WJ;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=1JQPu11m;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=b+vUUJkB;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=S6SKAGp8;
+	arc=none smtp.remote-ip=115.124.30.132
+Received: from out30-132.freemail.mail.aliyun.com (out30-132.freemail.mail.aliyun.com [115.124.30.132])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B2E9606A319;
-	Thu, 22 Oct 2026 09:48:45 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9B2E9606A319
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E05DB606A329
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 09:56:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E05DB606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=sq0ZEkY3;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9P3wS2WJ;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=1JQPu11m;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=b+vUUJkB
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id B5DDD1FB25;
-	Thu, 22 Oct 2026 09:48:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792662524; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=YaLhqZAxNujf1yf6yjVdrpEfaUMs2QKzKZiW60wQPUY=;
-	b=sq0ZEkY3GUZ6IFkcbQItrO56hTeErfKwyfnFL7plrikFQlK1FJC7oWPZqpcU3Gg/ssLSvK
-	8JjS2Vi1RaW6tIyik/zCSRUrOfVJFDaFv+fDwDqaifWOjpcpu10X4JrHHgOd+J1XGmc9HP
-	jm7SumRJQOgrzyfjNZTIbrOEpYwaLtw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792662524;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=YaLhqZAxNujf1yf6yjVdrpEfaUMs2QKzKZiW60wQPUY=;
-	b=9P3wS2WJMWjwoRK3tP9kyGmMLZYWCFoyXN30fTxL9kZHLt/JNG96uUpplwHgH8CWWw25QG
-	xPzzCknugj+Y+YAg==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792662523; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=YaLhqZAxNujf1yf6yjVdrpEfaUMs2QKzKZiW60wQPUY=;
-	b=1JQPu11mrGFmGZd9JbyPAII7Y3+E2KlofWb/7MHvdLkEw8If8m8hDtAe8cJaoPaZayyWGO
-	pA+CAszPAACd0Z81kyQSPOQoxSP9DGrLhUb+RhE7qPSBS0tgIc7hy9jUKICC/g4VFnUKwJ
-	VgUcybVSxK4deQNAVLyS4nKQUSbG23U=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792662523;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=YaLhqZAxNujf1yf6yjVdrpEfaUMs2QKzKZiW60wQPUY=;
-	b=b+vUUJkB5hut1nOg9/jf17aPk9NHGd9TRSnhkwXTABL0GLvlaGp2eJJNWI2hI0OGQV9h/D
-	JGyM1kT3kENRFDCQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8DFE9133F3;
-	Thu, 22 Oct 2026 09:48:43 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OnJUGvvb2WoHfwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Thu, 22 Oct 2026 09:48:43 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 117A0A1417; Thu, 22 Oct 2026 11:48:35 +0200 (CEST)
-Date: Thu, 22 Oct 2026 11:48:35 +0200
-From: Jan Kara <jack@suse.cz>
-To: Hengyu Liang <hengyul@cs.unc.edu>
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, 
-	libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com, 
-	yi.zhang@huawei.com, dave.hansen@linux.intel.com, akpm@linux-foundation.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: do not advance i_size on a buffered write that
- copied nothing
-Message-ID: <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
-References: <20261009044656.1993196-1-hengyul@cs.unc.edu>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=S6SKAGp8
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1792662961; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=wc8R6pcetAOysFIliaOJ2VQr+tr2jqU67xiXxMwPvfM=;
+	b=S6SKAGp8BSICqU2kLKb/xtQ5FJMmRjSGeUd4Q66qhAZOi76fU2QRE1B5Z2+kZlZvZA0Y4VzxuKHvpf7vCUoOjMHdTIjfaLT5Iv8RBJlbHUkmft87Vvgd3Wpr84d5ar0Av7uS7h7nl3NUkpq1aWf+SQVlmfAmNMgfgXS2PP25PlI=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R961e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033032089153;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0XDIrfSv_1792662960;
+Received: from 30.221.132.50(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XDIrfSv_1792662960 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Thu, 22 Oct 2026 17:56:01 +0800
+Message-ID: <dd05e858-88f6-40de-b91d-734e171915ca@linux.alibaba.com>
+Date: Thu, 22 Oct 2026 17:56:00 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -112,139 +54,100 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261009044656.1993196-1-hengyul@cs.unc.edu>
-X-Spam-Flag: NO
-X-Spam-Level: 
-X-Spamd-Result: default: False [-11.30 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	TAGGED_RCPT(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[mit.edu,vger.kernel.org,dilger.ca,linux.alibaba.com,suse.cz,linux.ibm.com,gmail.com,huawei.com,linux.intel.com,linux-foundation.org];
-	RCVD_COUNT_THREE(0.00)[3];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[unc.edu:email,suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -11.30
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] ext4: skip eof zeroing when the zero range covers the eof
+ block
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu, sashiko-reviews@lists.linux.dev
+References: <20261022065342.3569693-1-libaokun@linux.alibaba.com>
+ <sashiko-outbox-181121@kernel.org>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <sashiko-outbox-181121@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Fri 09-10-26 00:46:56, Hengyu Liang wrote:
-> Commit 665575cff098 ("filemap: move prefaulting out of hot write path")
-> made generic_perform_write() call ->write_begin() and ->write_end()
-> before it finds out that the source buffer cannot be read.  In that
-> case ->write_end() is called with copied == 0.
-> 
-> However, ext4_write_end(), ext4_journalled_write_end() and
-> ext4_da_do_write_end() set i_size to pos + copied without checking
-> copied.  As of now, a buffered write() past EOF that fails with EFAULT
-> grows the file to the write offset, and the new size can reach the
-> disk.
-> 
-> The issue can be reproduced on an ext4 mount with:
-> 
->     char *p = mmap(NULL, 4096, PROT_NONE,
->                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
->     int fd = open("/mnt/ext4/file", O_CREAT | O_TRUNC | O_RDWR, 0600);
->     pwrite(fd, p, 4096, 1024 * 1024);   /* fails with EFAULT */
->     fstat(fd, &st);
-> 
-> Before that commit, the result is st_size = 0.
-> After it, the result is st_size = 1048576.
-> 
-> This patch will leave i_size alone when nothing was copied, as
-> ext4_write_inline_data_end() already does.  The delalloc path does not
-> trim after a short write, so in this case it also has to drop the
-> folio and the delayed blocks that ->write_begin() set up past i_size.
-> Otherwise that folio stays dirty past EOF and writeback never cleans
-> it.
-> 
-> Fixes: 665575cff098 ("filemap: move prefaulting out of hot write path")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Hengyu Liang <hengyul@cs.unc.edu>
+On 2026/10/22 15:16, sashiko-bot@kernel.org wrote:
+> Thank you for your contribution! Sashiko AI review found 1 potential issue(s) to consider:
+> - [Critical] ext4: stale data in ext4_alloc_file_blocks() on FALLOC_FL_WRITE_ZEROES
+> --
+>
+> commit 5e26fed6c5f3f56bd5013064a243a3a558e3a73d
+> Author: Baokun Li <libaokun@linux.alibaba.com>
+>
+> ext4: skip eof zeroing when the zero range covers the eof block
+>
+> This commit skips calling ext4_block_zero_eof() in ext4_alloc_file_blocks()
+> when EXT4_GET_BLOCKS_CONVERT_UNWRITTEN is set and the allocation range covers
+> the EOF block, preventing the dropped EOF page from being read back into the
+> page cache with stale data during FALLOC_FL_ZERO_RANGE.
+>
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index 7193429a05e1f..8f7ded6e08299 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -4639,8 +4639,15 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+>>  	credits = ext4_chunk_trans_blocks(inode, len_lblk);
+>>  	depth = ext_depth(inode);
+>>  
+>> -	/* Zero to the end of the block containing i_size */
+>> -	if (new_size > old_size) {
+>> +	/*
+>> +	 * Zero to the end of the block containing i_size.
+>> +	 * Loading the eof block back before it is converted to unwritten
+>> +	 * may leave the page cache inconsistent with the disk, and zeroing
+>> +	 * it is redundant, so skip it.
+>> +	 */
+>> +	if (new_size > old_size &&
+>> +	    (!(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) ||
+>> +	     !in_range(old_size >> blkbits, map.m_lblk, map.m_len))) {
+>>  		ret = ext4_block_zero_eof(inode, old_size, LLONG_MAX);
+>>  		if (ret)
+>>  			return ret;
+> [Severity: Critical]
+> Does this condition also need to check !alloc_zero to cover the
+> FALLOC_FL_WRITE_ZEROES path?
+>
+> In ext4_zero_range(), after ext4_truncate_page_cache_block_range() drops the
+> page cache, FALLOC_FL_WRITE_ZEROES calls ext4_alloc_file_blocks() with
+> EXT4_GET_BLOCKS_CREATE_ZERO rather than EXT4_GET_BLOCKS_CONVERT_UNWRITTEN:
+>
+> 	if (align_end > align_start) {
+> 		if (mode & FALLOC_FL_WRITE_ZEROES)
+> 			flags = EXT4_GET_BLOCKS_CREATE_ZERO | EXT4_EX_NOCACHE;
+> 		else
+> 			flags |= (EXT4_GET_BLOCKS_CONVERT_UNWRITTEN |
+> 				  EXT4_EX_NOCACHE);
+> 		ret = ext4_alloc_file_blocks(file, align_start,
+> 					     align_end - align_start, new_size,
+> 					     flags);
+>
+> Earlier in ext4_alloc_file_blocks(), EXT4_GET_BLOCKS_ZERO is cleared from
+> flags and converted into alloc_zero = true:
+>
+> 	if (flags & EXT4_GET_BLOCKS_ZERO) {
+> 		flags &= ~EXT4_GET_BLOCKS_ZERO;
+> 		flags |= EXT4_GET_BLOCKS_UNWRIT_EXT;
+> 		alloc_zero = true;
+> 	}
+>
+> When FALLOC_FL_WRITE_ZEROES extends i_size across an unaligned written EOF
+> block covered by [align_start, align_end),
+> !(flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN) is true. As a result,
+> ext4_block_zero_eof() is still called and reads the dropped EOF block back
+> from disk into the page cache with stale data below old_size, marks the
+> buffer or folio dirty, and then the loop zeroes the block on disk via
+> ext4_issue_zeroout() and leaves the extent mapped as written.
+>
+> Wouldn't this leave the dirty page cache folio with stale data that is
+> returned on buffered reads and written back over the zeroed disk block on
+> writeback or fsync?
+>
 
-I agree with the problem but first, Ted has merged rewrite of ext4
-buffered IO path to iomap your fix would very likely need rebasing, and
-second:
+This is indeed another similar issue that can be addressed
+in the current patch. I will send version 2 soon.
 
-> +/*
-> + * Delalloc counterpart of ext4_truncate_failed_write(): ->write_begin() only
-> + * reserved delayed blocks, so drop the page cache and the delayed extents
-> + * beyond i_size and leave the blocks that are allocated there alone.
-> + */
-> +static void ext4_da_truncate_failed_write(struct inode *inode)
-> +{
-> +	struct address_space *mapping = inode->i_mapping;
-> +	ext4_lblk_t lblk = EXT4_B_TO_LBLK(inode, inode->i_size);
-> +
-> +	filemap_invalidate_lock(mapping);
-> +	truncate_inode_pages(mapping, inode->i_size);
-> +	down_write(&EXT4_I(inode)->i_data_sem);
-> +	ext4_es_remove_extent(inode, lblk, EXT_MAX_BLOCKS - lblk);
-> +	up_write(&EXT4_I(inode)->i_data_sem);
-> +	filemap_invalidate_unlock(mapping);
-> +}
-> +
+Thanks,
+Baokun
 
-this is wrong and would leak delayed allocation reservations AFAICT. You
-should just use ext4_truncate_failed_write() like e.g.
-ext4_da_write_begin() does on failure.
 
-								Honza
-
->  static int ext4_da_do_write_end(struct address_space *mapping,
->  			loff_t pos, unsigned len, unsigned copied,
->  			struct folio *folio)
-> @@ -3247,12 +3268,12 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	 * checked, we need to update i_disksize here as certain
->  	 * ext4_writepages() paths not allocating blocks and update i_disksize.
->  	 */
-> -	if (new_i_size > inode->i_size) {
-> +	if (copied && new_i_size > inode->i_size) {
->  		unsigned long end;
->  
->  		i_size_write(inode, new_i_size);
->  		end = offset_in_folio(folio, new_i_size - 1);
-> -		if (copied && ext4_da_should_update_i_disksize(folio, end)) {
-> +		if (ext4_da_should_update_i_disksize(folio, end)) {
->  			ext4_update_i_disksize(inode, new_i_size);
->  			disksize_changed = true;
->  		}
-> @@ -3261,9 +3282,16 @@ static int ext4_da_do_write_end(struct address_space *mapping,
->  	folio_unlock(folio);
->  	folio_put(folio);
->  
-> -	if (pos > old_size)
-> +	if (copied && pos > old_size)
->  		pagecache_isize_extended(inode, old_size, pos);
->  
-> +	/*
-> +	 * A write past i_size that copied nothing leaves i_size alone, so
-> +	 * trim what ->write_begin() set up beyond it.
-> +	 */
-> +	if (!copied && pos > old_size)
-> +		ext4_da_truncate_failed_write(inode);
-> +
->  	if (!disksize_changed)
->  		return copied;
->  
-> -- 
-> 2.53.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
