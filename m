@@ -1,50 +1,79 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.97
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=66.163.187.152
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792686655;
-	b=muWpyt5EVA28Ioh1VpT2XWKaehyDRsvzeozzdsvh1juDR1m0X1nGobTqBA+HKqNzIAlA
-	 esNYzG4hYUd9dDAzqIoL5srloCb6BB0VK7CjpCXIQxkGengQVg9ar0heblJhyCapRIC1q
-	 pLQFGSpDfZkBnrjsO6qTRtvP9yeCUFL5YtGFINbwEvEWH8S1b3GqbKSlCB8O24J4eJsU3
-	 qu1YZJFLC+HRvu+7siF8wMu3+9qyYa2mqMdNg5jeLNrY7/KAETMvwdzLPvj8ysw3PB0kT
-	 kUOBMxhAq5vIkFfokJdWP26HkF4iguWLzSBqlXqDNj+i/UMqVbbcUdG4CNpHtXhTCoQ==
+	t=1792688426;
+	b=DTDcEfrcaEgNczVks/emUO+ShItgUDBi80L1XuwFSzY9FCWReTeZzs7mq/OK6LsDOHBI
+	 iowApRwnPDC4dRiSXy9E7StogqzVQwyoNtnR7Pjs4K5/hd+TA/YrMjdBUl6PDTfKJXZJZ
+	 Pz/OTEPDqfDn267W19rAxOgzDSyS1zx9/0c6UP3g/Esos4StRD1WemDQyXyiSGoSHl2cq
+	 Psnw0K/fzN77DLJRzoeoJdGtojZ/5BvW2YzDg5OqWPXPI4iG96E3txal5kXhKgjcURw6h
+	 Sx+OgqMfpB4omBaUPdyYXZTGPXMn7K8mAeDEB0jBcWhcdN/HenFBZOzgmes5G4ooBsQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792686655;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=tc4RtQ+McDeq8l1s8m84usBk75s9ZYG6jo3YuZ+d7zc=;
-	b=QTW7cUeHnSTTZQDRAtGSdqaP4ncAId1WMVuExFpwe5ifd0+WGhRFuivzTmygOMwkKQmZ
-	 DfGzsK9pix5QCl883pYsXg3VSEYAi/NE6hVJp7GlcKBCW4Bs05bNSfOdnL4/ncNIEeJN5
-	 a+LMOrJgJUj1PakxreJGJp74n4IJl2UwRZnwEQOC+ONO+0KSVlnykVB41mbmRiJFkPfUE
-	 FGb6RWeZmUE94HEwF/MsJPtz6phX11cBzJkTggRXH7jmESIGp+nToTo8ovczPD3tPZW3w
-	 xNGEn55sV40RBE73eMAll042rirARV/j2DiGH5MABRGWEITUta9QrFdAFjzogmu8HZA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792688426;
+	h=DMARC-Filter:DKIM-Signature:X-SONIC-DKIM-SIGN:X-YMail-OSG:X-Sonic-MF:
+	 X-Sonic-ID:Received:Received:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-Mailer;
+	bh=RLhaJlQZZNoYg6hcgIAk04w24uGo5Qnp+frkN1FOTxs=;
+	b=PxQPzA8h04IQO3I+qZa9IKeHVKtELC7CX5m4wDoHyxua0P882WDxKtVNSYpzSlHwmEoD
+	 VmGmOPddHwYPymU7ygs9FnyrPw5W3eDxLgMzvdreO59vr9VXEQnvLUIgeEhIo7ZKc0ExF
+	 PZuMwIngM12BggxaLOc9wzPcS8BqMrNjJ2H3FVgh0hCrrvcR0HmdxVxOaj5CTWfvyjHf/
+	 32m20113ClcNaD+C3OJn0i5GBqMV2dHi1kNxTRVe1rT9pdS/4mvwkbn7WTsXOxrqbUfqx
+	 9BnlBqkC6I5sVZZRplbGIwu+09Mh9ZQbdydFX5R72MyGaqZ0HyzmxkvwcCbIFyp8GPQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=cjeqLWZM;
-	arc=none smtp.remote-ip=115.124.30.97
-Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=schaufler-ca.com;
+	spf=pass smtp.mailfrom=schaufler-ca.com;
+	dkim=pass header.d=yahoo.com header.i=@yahoo.com header.a=rsa-sha256 header.s=s2048 header.b=EPxXXTv2;
+	arc=none smtp.remote-ip=66.163.187.152
+Received: from sonic316-26.consmr.mail.ne1.yahoo.com (sonic316-26.consmr.mail.ne1.yahoo.com [66.163.187.152])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB43E606A31B;
-	Thu, 22 Oct 2026 16:30:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AB43E606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C7F9606A31D
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 17:00:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8C7F9606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=schaufler-ca.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=schaufler-ca.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=cjeqLWZM
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1792686643; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
-	bh=tc4RtQ+McDeq8l1s8m84usBk75s9ZYG6jo3YuZ+d7zc=;
-	b=cjeqLWZMtA9n3tPAe9DC01AJAWrdB/em+IUMc+LyPICucgcT9moGv+RkfJIAun0Ejqt3xrNb44Zk8BLiXyK4NZS0rL3BezLsgz3yqxx1TYfVh5SzCwjzikS4P+et78CTp88iMwBS1b0JpxUUtvAofrpqZ/YB7BZFuZdX+EuVtN8=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R251e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=18;SR=0;TI=SMTPD_---0XDJckJa_1792686640;
-Received: from 30.170.203.187(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XDJckJa_1792686640 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Fri, 23 Oct 2026 00:30:41 +0800
-Message-ID: <625e5190-d43e-4a2b-9296-da15c52d1a9a@linux.alibaba.com>
-Date: Fri, 23 Oct 2026 00:30:39 +0800
+	dkim=pass (2048-bit key, unprotected) header.d=yahoo.com header.i=@yahoo.com header.a=rsa-sha256 header.s=s2048 header.b=EPxXXTv2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1792688424; bh=RLhaJlQZZNoYg6hcgIAk04w24uGo5Qnp+frkN1FOTxs=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=EPxXXTv2yOAfkDeBVlGeldcmNKyITO49k9DX4W1JG3YiE2Z74mj7AwH3HL1ng4JuL4XxI3I2isrYof/PHPDdpVN996WJqCpMr0pkAFvfwFV5SZwp46MjvTMeRQ1GAR9zWWRo2FJCRnFND+/SktiTxIiWFnlf6zJXk7OnBYGNhvJQAnPIKH2weZ2rIVCG114sIM4XTNPZeFllAM6QUMRqMiXedWD6b/nwKU/1Rawon/5NquZ9uPQA/EwsDnXni/1UMKx8zZ7u+NlrBG67+RD4mNZntTeEcqw1rJ1tjqkse2NY9afIeqwb598x3ZMaZSUOdkg6HOr+ubgMCK5VFGysJw==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1792688424; bh=NrkW7Nzc52jx8owV4g5TQ09TCsBPGhlT5UFiu1qUhoH=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=J0fJxifRcTTaKtm1kfx9ZO5CcKbTJMtfN18e9pWizD1uERM7sGK7bnuACDtqKSMxG+tL6Hy+iXDn0i1QM11uB/3ZiH1zb5BWyuvJEiQF6uL57etcG/GTtwLmHKIA+ra+3JKSOYo5rJhod2/xvS/4gu84qPKamy1shn0r662FSD191d0r/Qu1oFRHYOknkPo5Ccfe4FICXhvLChyIseUzh8oIbLwWdcePDbYO5UpdZ7QZq8Y0+NhQVvkbZXPIiiYqa7eA3FNVN/+AQ1OYqhzlYBqmx1/R+Vo+oOZzbU+xmNaDpfS3LG5AZNq72SvA21YMSlBfdqfJ9BRQXY53D/eSfA==
+X-YMail-OSG: xRD30LcVM1l1oAWUFc3wSEmkOWJMjiD2Jw1_JGIU9Bdii66XxC5fX401cOGqfnB
+ W4hkfMQKIcRII8bT.rM1fo.855tYR0AsXM5AG5UG6WzBitDsVK2h7Wjx0s37e1372WH_8mlt7JX6
+ _6jRINfXlTnxTR_21HJwSLhWQThvcWhBT2zsXPC5LYdjE4N7Gj4br9VVpYumqpUgjIlBOj6p5krK
+ aNHtytIbJ..6O2nnRC1PmkkfILLQ62ZGoPtM1uhFCc3Xjwg7am7Era7juk2bFyI9FSTboGets_zm
+ AhhfffgPfIr.RiYkKOZM3sG2W0sovPZPZwgb_DHu1pvsAbsJN119nN8dlJ3XlGc7X4uZT2d4oKZK
+ F0aRM0Z7zXFfG2S_5iib_3a9_s3ptZi.K0Zy35ekZh_rDQICVey1vlANnUpuIV8WibgDK06yPdno
+ ap29UZlv7P.xsaYVTWU4_AGVX1fHV0cXuiqYZE.zLonqzqnQM..e38uwxx9OCyMi8A4PdyyBY.Dl
+ Zs9k.G69vmbM6oJqYPnQ5AsNDS.kdW.IuhxIdW.7DrsP_PHBGZBGmxr3dCeBNHpKQBM1I5dQK.WT
+ VuI3c_4lX.Vbej9sn9BNpMMPf4P2djGeKXOFjib_d9G1KXuU2VUEpCWTpnGAKWN.P72xQLPNtRso
+ yYN2svrh4sPjWXhnH1g6GauSpLPf64jyzs86EtT_Wea0htZ_180xUpFJ.dOtcxv6a7BjQ6wW.USw
+ enbtthrK0owLhL2HWC0.z1I.MBapxkZM7d41Djh7hiRZHyULXOp5AhqWVNk.RauEQGMYXwyOzHq3
+ LRuDUZxNE_BbMfol99ddoBDvLyNk0qONeuU0qT0GGBPwJu4J6t.9Jy6ZReHksf3C5pse8IcnUWpJ
+ oiVak20A8O0z82cBUMMPCq5mrJhaopEEjAtomXD8asxCgmOwbLDwMNpaTPMw_pGsi_VdIs6_28RL
+ TuA8CaMXHGMSRA71Ic4aOGUXqECu0PudSoQs.uqjXnNnLHnypRxns6kbJUHBWVdoFTxFFo5hQR0N
+ JCvfRnIwGfZ2hDFMNLSp2c.zRJ2HjBCGtLayGcFM3rD9.rP3uTQ6GCuKe_7pQgfCbVNbxjRzxsgS
+ Obo3VPPf0GtkxoO40P.33d5dMb116c.0y2HIIzG4b_0mVAZmhr8ECM8_oL_74oDzXHgkNIcRuGMw
+ ADNkAH4KfWAI1xaSFM3PUM0xA8wK24KEeOG6GbGHKg6nE2R4eSAEwKhme3rwMdP4kv3qpLnWr4GH
+ eaM3ZtVYjDlXjMQHOS2JfWYHn8oNto9ZV6NCcZPc2sEOhIHp9cyudxIDTgiTpFRj1V54Bi_eai4Z
+ HBxTUzS7tmHZ72ylhKjwgJrSbpJogTzD9BFKYDvFlWmLAd213iaHFTAX5Mz47ywgusMAqmLhwHV0
+ jV5YJZcSSQnVap5iiecEXGI_1NigxWNhtYR7fDNHw0QZz3IEWh01sI8SHI4yibnh.YuTSR5qecoC
+ 2O6q4yD0Gki77xehQHLlekwqIiOuKNZVEWvg4PqGxLW6NwnMor9q0WTpleTQhMZWBFCTxQRub9XG
+ PVGsC0w4bAqIz55qdZDgRM9vwy801Bhe0nb52zQqoOBH0KX0sOmwCLSLaycKTzwWdMTOsW8u9sPI
+ QCWyQJ3A5aUCDmMG6bLwmidewITkoRGE.1JH6er9_3gzJtrh02TOjUYsZQbKY_ECIs6MA8vOZ0Nb
+ veczfcbR9IMqtdArlPM9Vnq4COpIpnlDjd7lNDodwAokDwCqTmzF6lKaDI4coWoaVzc84axARzS7
+ lpmxdvAhDwr_unQu_3UAAD4bzArovBsOBvvjB.J5pWDQyKMPh0u0DwfoiJhO_pEPlRYGIlVHGbyW
+ _DNJ.C00e4RhbKOnLWG5HjNzDpuaMXqg.YQXDb8H49fOCq0LbXwgtISGQzL0KRTsjCEmuT279hfK
+ WRgWseJ3cTB.XuCCb4v54PgI6L19VIVuD1WHvDuelGQX3_j0_gFiRcUpW_Gzr35PJAsnyvD6IrAP
+ xjDKCMLU611h1cfL2Y2Zp8VcB_M1tga3Fn5y1tRIcyNO0xJYATmHWwk3wNBW9SAwBTvFttcbSUH7
+ _0H0_Dnx_YrIZN4whokDOFEzjGbKb5sMjH9W2wcuAsUpAlqfMboL2WcZZa2vgR_AlJSOGt1DffQm
+ sxr1vQZe1ZsTq3yVIoz7hsl..S6bA2N2bLevEq7L4IM8zaRmvlQd6SuI3NGEdQde4sUeuvoQDh7d
+ pa00D8_nGDTxFDWGfGA61OH6654zf.YQIVLkRaa1bB2LtWAsAipxG1Tq1pZqHpQVXqxG_eQ--
+X-Sonic-MF: <casey@schaufler-ca.com>
+X-Sonic-ID: f4d52385-1c22-46e9-a768-7fe9b7b03ed3
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic316.consmr.mail.ne1.yahoo.com with HTTP; Thu, 22 Oct 2026 17:00:24 +0000
+Received: by hermes--production-gq1-fd7994565-wwgbc (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID b52a058941d94202e488719cef4d9678;
+          Thu, 22 Oct 2026 17:00:19 +0000 (UTC)
+Message-ID: <018ca365-ce9b-424c-b600-bd9c8aefc9a1@schaufler-ca.com>
+Date: Thu, 22 Oct 2026 10:00:16 -0700
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -55,106 +84,45 @@ List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 00/13] block, ext4: allow encryption with a block size
- larger than the page size
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
- linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-xfs@vger.kernel.org, jaegeuk@kernel.org, axboe@kernel.dk, hch@lst.de,
- djwong@kernel.org, brauner@kernel.org, tytso@mit.edu, berto@igalia.com,
- adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com
-References: <20261011170958.1759230-1-libaokun@linux.alibaba.com>
- <20261015185325.GG2170687@google.com>
+Subject: Re: [RFC PATCH v2 00/41] UUID and GUID user and group ids (*_r system
+ calls)
+To: Jan Koester <jan.koester@tuxist.de>,
+ Christian Brauner <brauner@kernel.org>,
+ Alexander Viro <viro@zeniv.linux.org.uk>, "Serge E. Hallyn"
+ <serge@hallyn.com>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Y. Ts'o" <tytso@mit.edu>,
+ Paul Moore <paul@paul-moore.com>, Arnd Bergmann <arnd@arndb.de>,
+ linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+ linux-security-module@vger.kernel.org, linux-arch@vger.kernel.org,
+ linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+ linux-cifs@vger.kernel.org, netdev@vger.kernel.org, audit@vger.kernel.org,
+ keyrings@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Casey Schaufler <casey@schaufler-ca.com>
+References: <cover.1792552161.git.jan.koester@tuxist.de>
 Content-Language: en-US
-From: Baokun Li <libaokun@linux.alibaba.com>
-In-Reply-To: <20261015185325.GG2170687@google.com>
+From: Casey Schaufler <casey@schaufler-ca.com>
+In-Reply-To: <cover.1792552161.git.jan.koester@tuxist.de>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
+X-Mailer: WebService/1.1.26740 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
 
-Hi Eric, Thank you for your feedback!
-On 2026/10/16 02:53, Eric Biggers wrote:
-> On Mon, Oct 12, 2026 at 01:09:45AM +0800, Baokun Li wrote:
->> Motivation
->> ==========
->>
->> ext4 supports a block size larger than the page size (LBS), e.g. a 32k
->> block size on a machine with 4k pages [1].  Encryption, however, is
->> still refused on such a filesystem: file contents used to be encrypted
->> page by page in the fs-layer path, which cannot handle a folio that
->> covers several data units, so the checks that refuse encryption with
->> such a block size stayed in place.
->>
->> Since commit 5acc6f649a68 ("fscrypt: Always use blk-crypto for
->> contents on block-based filesystems") file contents are always
->> encrypted through blk-crypto.  Inline encryption hardware can already
->> en/decrypt a data unit that spans several pages, but the fallback and
->> the block layer cannot carry such a data unit:
->>
->>   1. blk-crypto-fallback en/decrypts a data unit with the bio_vecs of
->>      a single page-clamped segment, so a larger data unit fails with
->>      BLK_STS_INVAL;
->>   2. the block layer requires every bio_vec of an encrypted bio to be
->>      data unit aligned, and splits such a bio without rounding the
->>      split size down to the data unit size;
->>   3. iomap cuts the direct I/O bios of an encrypted file only at the
->>      logical block size of the device, so a bio can end in the middle
->>      of a data unit.
->>
->> This series adds the missing pieces on all three layers, removes the
->> refusals, and enables large folios for encrypted files on the way.
->>
->> [1]: https://lore.kernel.org/all/20251121090654.631996-1-libaokun@huaweicloud.com
-> A high-level question: most of the complexity in this series is to
-> support crypto_data_unit_size > PAGE_SIZE, despite the actual goal being
-> to support fs_block_size > PAGE_SIZE.  It's left unstated that the
-> default of crypto_data_unit_size == fs_block_size is used.  However,
-> ext4 and f2fs already support crypto_data_unit_size < fs_block_size.
+On 10/20/2026 8:15 PM, Jan Koester wrote:
+> Hi,
 >
-> Would leaving the crypto_data_unit_size at e.g. 4 KiB while increasing
-> fs_block_size be a simpler way to achieve the goal of this series?
+> this RFC series lets a user or group id be a UUID (RFC 9562, version 4)
+> or a Microsoft GUID as well as a classic 32-bit number. Processes can run
+> as such a user, files can be owned by one, and credentials, ACLs, keys,
+> System V IPC, sockets, signals, audit and procfs carry the whole id.
 
-I initially followed the LBS approach of lifting the page-size
-restriction, keeping the existing default crypto_data_unit_size
-equal to fs_block_size. I had not considered using sub-block DUs.
+I can't see this being acceptable for a variety of reasons, including
+but not limited to performance and configuration complexity. It's a
+general solution for a special case or two, and the impact is significant.
 
-After your reply, I implemented a variant using min(bs, PS) for
-new default v2 policies, recording a smaller DU explicitly on disk.
-This avoids patches 3-6 and the per-bvec alignment relaxation in
-patch 10, and is indeed much simpler.
-
-Both variants retain large-folio support and showed similar gains,
-about twice their respective 4K-block controls. Although 32K DUs reduced
-decryption calls eightfold, I did not observe a consistent additional
-throughput benefit, or CPU savings at matched bandwidth, in the tested
-workloads.
-
-> Or do you feel that would be incomplete, and you'd indeed like to
-> support crypto_data_unit_size = fs_block_size > PAGE_SIZE?
-
-However, keeping DU = bs has a compatibility advantage for existing
-encrypted filesystems.
-
-For example, a 64K-block filesystem created with a default v2 policy
-on a 64K-page machine uses 64K DUs. Supporting DU > PAGE_SIZE would
-allow a 4K-page machine to use that format without re-encryption,
-assuming the other policy and backend requirements are met.
-
-This also covers otherwise-supported legacy v1 policies, which cannot
-encode smaller DUs.
-
-Explicit 4K v2 DUs can also be portable across page sizes, but
-choosing a smaller DU for new files does not make existing large-DU
-ciphertext readable on a smaller-page machine. I have not yet tested
-the cross-page-size migration.
-
-If you think supporting DU = bs > PS makes this series too broad,
-I can use the simpler sub-block version in the next revision and
-develop larger-DU support separately.
-
-Looking forward to hearing your thoughts.
-
-
-Thanks,
-Baokun
+If you're willing to use a UUID and/or GUID in addition to a UID/GID
+instead of in place of it you could consider implementing this as an
+LSM. There are a number of issues you'd still run into there (e.g. UDS
+attributes) and I can't say if the resulting behavior would be what
+you're looking for. I also can't say that the security community would
+necessarily be any happier with it than the general population, but if
+you really want this it might be worth a shot.
 
