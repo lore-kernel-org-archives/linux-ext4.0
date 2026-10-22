@@ -1,63 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.9.28.11
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.97
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792685215;
-	b=oQFXT49rQq4InEoRLH1ulSDg+9EUxEjzZ/1Avl0njAFtFLPko/X6vRuK2TnBH6lEV9dF
-	 uGjBElzRic+BjvOjctd9QaOpu24dILNOvI/mTvLjqvjJ2vZP2kuR48KsaVzA6nXbhOgz0
-	 9F2D5zVaGvVgzMCG8iO0A9ingF62GNz0RwHLW/rVgcOOjG3fC/rkY9tB7lpQCenL68dc1
-	 zanM2AM3vNdtYQduvmd7uidFIDEt8am78Js/h3aGY711tNuI9Wrw6wUrrdfWHOR04scil
-	 ZEB6zqYGDlxJWImCpqumkAoOmDPndeEbXbO9T2hcYS6R0kPfodf9c7/2FpjhykgO0hw==
+	t=1792686655;
+	b=muWpyt5EVA28Ioh1VpT2XWKaehyDRsvzeozzdsvh1juDR1m0X1nGobTqBA+HKqNzIAlA
+	 esNYzG4hYUd9dDAzqIoL5srloCb6BB0VK7CjpCXIQxkGengQVg9ar0heblJhyCapRIC1q
+	 pLQFGSpDfZkBnrjsO6qTRtvP9yeCUFL5YtGFINbwEvEWH8S1b3GqbKSlCB8O24J4eJsU3
+	 qu1YZJFLC+HRvu+7siF8wMu3+9qyYa2mqMdNg5jeLNrY7/KAETMvwdzLPvj8ysw3PB0kT
+	 kUOBMxhAq5vIkFfokJdWP26HkF4iguWLzSBqlXqDNj+i/UMqVbbcUdG4CNpHtXhTCoQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792685215;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=Z8ebFhxyUq3IejLsdLklQXfwFNOjlnZJ+50Y/W7TIVM=;
-	b=C1qdeOxtDtB0nO3q8bEe6kYOiwBYLPnt0hOzRBm8SXttS8Ag/PkyawbgYoO7gzEhQuKm
-	 U8kjLYiq9enysaSQhq9+/WtFiU4kKGJZaVH4eSWFVlJ9nRBiFD7Ueu9HNV0ub/8m+oi1s
-	 mDEqfKyLQlklwS0tLZXZ9HaU2XZ4qtfmNcO13UoZZOgEHju+XIomGcTGyK9aGYLZSRDHP
-	 XPt/zRQ4+CpnjzdEz915Lexe15wyF9dNiF4d+34AmufvUYABvweJD30WHnkTX4RknwOiE
-	 ZU9ZCw8P1H4CrLMFnXvlO7nTvkuzVZecA0mI2qdSdLPgBKLamdSkp8pQozvn6gkxYpw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792686655;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=tc4RtQ+McDeq8l1s8m84usBk75s9ZYG6jo3YuZ+d7zc=;
+	b=QTW7cUeHnSTTZQDRAtGSdqaP4ncAId1WMVuExFpwe5ifd0+WGhRFuivzTmygOMwkKQmZ
+	 DfGzsK9pix5QCl883pYsXg3VSEYAi/NE6hVJp7GlcKBCW4Bs05bNSfOdnL4/ncNIEeJN5
+	 a+LMOrJgJUj1PakxreJGJp74n4IJl2UwRZnwEQOC+ONO+0KSVlnykVB41mbmRiJFkPfUE
+	 FGb6RWeZmUE94HEwF/MsJPtz6phX11cBzJkTggRXH7jmESIGp+nToTo8ovczPD3tPZW3w
+	 xNGEn55sV40RBE73eMAll042rirARV/j2DiGH5MABRGWEITUta9QrFdAFjzogmu8HZA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=mit.edu;
-	spf=pass smtp.mailfrom=mit.edu;
-	dkim=pass header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=c76JrIXE;
-	arc=none smtp.remote-ip=18.9.28.11
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=cjeqLWZM;
+	arc=none smtp.remote-ip=115.124.30.97
+Received: from out30-97.freemail.mail.aliyun.com (out30-97.freemail.mail.aliyun.com [115.124.30.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF476606A31A
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Oct 2026 16:06:54 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AF476606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mit.edu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mit.edu
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB43E606A31B;
+	Thu, 22 Oct 2026 16:30:51 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AB43E606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=mit.edu header.i=@mit.edu header.a=rsa-sha256 header.s=outgoing header.b=c76JrIXE
-Received: from macsyma.thunk.org (pool-108-26-156-23.bstnma.fios.verizon.net [108.26.156.23])
-	(authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-	by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 69MG66jB005218
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Thu, 22 Oct 2026 12:06:07 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-	t=1792685171; bh=Z8ebFhxyUq3IejLsdLklQXfwFNOjlnZJ+50Y/W7TIVM=;
-	h=Date:From:Subject:Message-ID:MIME-Version:Content-Type;
-	b=c76JrIXEAM1iMeUYAUi8NbMxRenYXmXfZFDqlFV+hryG+Ix/clCxf31BGnESaDlgY
-	 F00Gbc8ZtqG62kUErDSL6s5pfUPyBuKOW0yC3Y96oa6PXqzTEiYLZZmrbVb1PymX1u
-	 hRug9Q9fDzy4U9WlRtPtEIAv6Ih1zp/6swFGwBwlRsjCijOeBVh75sA7KDN8ivO2fl
-	 hUajlbiex1F45FtCSRJNEoERRWRVoWD5q/a6xA6h1OdiRDc3kkfrCHSVURXbHoR+34
-	 jytcvJXLG323NebYPRdje9FDs4056ZoZk4hsEyXN3Rv5khp1u42qT9/DHmoKaDFzgH
-	 iCHD4TraanZSA==
-Received: by macsyma.thunk.org (Postfix, from userid 15806)
-	id 638F4220AA74; Thu, 22 Oct 2026 12:05:06 -0400 (EDT)
-Date: Thu, 22 Oct 2026 12:05:06 -0400
-From: "Theodore Tso" <tytso@mit.edu>
-To: Julian Sun <sunjunchao@bytedance.com>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
-        ritesh.list@gmail.com, yi.zhang@huawei.com, riteshh@linux.ibm.com
-Subject: Re: [PATCH 0/6] ext4: fix buffered writeback error handling
-Message-ID: <atoySP5ez1SwWh0X@mit.edu>
-References: <20261022145241.2950379-1-sunjunchao@bytedance.com>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=cjeqLWZM
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1792686643; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=tc4RtQ+McDeq8l1s8m84usBk75s9ZYG6jo3YuZ+d7zc=;
+	b=cjeqLWZMtA9n3tPAe9DC01AJAWrdB/em+IUMc+LyPICucgcT9moGv+RkfJIAun0Ejqt3xrNb44Zk8BLiXyK4NZS0rL3BezLsgz3yqxx1TYfVh5SzCwjzikS4P+et78CTp88iMwBS1b0JpxUUtvAofrpqZ/YB7BZFuZdX+EuVtN8=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R251e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033045133197;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=18;SR=0;TI=SMTPD_---0XDJckJa_1792686640;
+Received: from 30.170.203.187(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XDJckJa_1792686640 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Fri, 23 Oct 2026 00:30:41 +0800
+Message-ID: <625e5190-d43e-4a2b-9296-da15c52d1a9a@linux.alibaba.com>
+Date: Fri, 23 Oct 2026 00:30:39 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -67,29 +54,107 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261022145241.2950379-1-sunjunchao@bytedance.com>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 00/13] block, ext4: allow encryption with a block size
+ larger than the page size
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+ linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-xfs@vger.kernel.org, jaegeuk@kernel.org, axboe@kernel.dk, hch@lst.de,
+ djwong@kernel.org, brauner@kernel.org, tytso@mit.edu, berto@igalia.com,
+ adilger.kernel@dilger.ca, jack@suse.cz, yi.zhang@huawei.com,
+ ojaswin@linux.ibm.com, ritesh.list@gmail.com
+References: <20261011170958.1759230-1-libaokun@linux.alibaba.com>
+ <20261015185325.GG2170687@google.com>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <20261015185325.GG2170687@google.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-On Thu, Oct 22, 2026 at 10:52:35PM -0500, Julian Sun wrote:
-> This series fixes error handling in ext4 buffered writeback. It prevents
-> stale data exposure when mapping or io_end_vec allocation fails, reports
-> unwritten conversion errors to fsync(), and preserves concurrent io_end
-> flag updates.
+Hi Eric, Thank you for your feedback!
+On 2026/10/16 02:53, Eric Biggers wrote:
+> On Mon, Oct 12, 2026 at 01:09:45AM +0800, Baokun Li wrote:
+>> Motivation
+>> ==========
+>>
+>> ext4 supports a block size larger than the page size (LBS), e.g. a 32k
+>> block size on a machine with 4k pages [1].  Encryption, however, is
+>> still refused on such a filesystem: file contents used to be encrypted
+>> page by page in the fs-layer path, which cannot handle a folio that
+>> covers several data units, so the checks that refuse encryption with
+>> such a block size stayed in place.
+>>
+>> Since commit 5acc6f649a68 ("fscrypt: Always use blk-crypto for
+>> contents on block-based filesystems") file contents are always
+>> encrypted through blk-crypto.  Inline encryption hardware can already
+>> en/decrypt a data unit that spans several pages, but the fallback and
+>> the block layer cannot carry such a data unit:
+>>
+>>   1. blk-crypto-fallback en/decrypts a data unit with the bio_vecs of
+>>      a single page-clamped segment, so a larger data unit fails with
+>>      BLK_STS_INVAL;
+>>   2. the block layer requires every bio_vec of an encrypted bio to be
+>>      data unit aligned, and splits such a bio without rounding the
+>>      split size down to the data unit size;
+>>   3. iomap cuts the direct I/O bios of an encrypted file only at the
+>>      logical block size of the device, so a bio can end in the middle
+>>      of a data unit.
+>>
+>> This series adds the missing pieces on all three layers, removes the
+>> refusals, and enables large folios for encrypted files on the way.
+>>
+>> [1]: https://lore.kernel.org/all/20251121090654.631996-1-libaokun@huaweicloud.com
+> A high-level question: most of the complexity in this series is to
+> support crypto_data_unit_size > PAGE_SIZE, despite the actual goal being
+> to support fs_block_size > PAGE_SIZE.  It's left unstated that the
+> default of crypto_data_unit_size == fs_block_size is used.  However,
+> ext4 and f2fs already support crypto_data_unit_size < fs_block_size.
+>
+> Would leaving the crypto_data_unit_size at e.g. 4 KiB while increasing
+> fs_block_size be a simpler way to achieve the goal of this series?
 
-Hi Julian,
+I initially followed the LBS approach of lifting the page-size
+restriction, keeping the existing default crypto_data_unit_size
+equal to fs_block_size. I had not considered using sub-block DUs.
 
-Thanks for this series.  However, we have just landed a significant
-change to the ext4 writeback to add support for fs/iomap's buffered
-I/O.  It is currently not enabled by default, since there are a number
-of features and mount options that aren't yet supported by the
-buffered_iomap codepath.  (Thanks to Zhang Yi at Huawei for his work!)
+After your reply, I implemented a variant using min(bs, PS) for
+new default v2 policies, recording a smaller DU explicitly on disk.
+This avoids patches 3-6 and the per-bvec alignment relaxation in
+patch 10, and is indeed much simpler.
 
-I'd really appreciate it if you could rebase your patches on top of
-the dev branch for the ext4 git tree (I've sent a pull request to
-Linus so this should be in v7.4-rc1), and determine whether any of
-these concerns are also applicable for the buffered_iomap codepath.
+Both variants retain large-folio support and showed similar gains,
+about twice their respective 4K-block controls. Although 32K DUs reduced
+decryption calls eightfold, I did not observe a consistent additional
+throughput benefit, or CPU savings at matched bandwidth, in the tested
+workloads.
 
-Many thanks,
+> Or do you feel that would be incomplete, and you'd indeed like to
+> support crypto_data_unit_size = fs_block_size > PAGE_SIZE?
 
-						- Ted
+However, keeping DU = bs has a compatibility advantage for existing
+encrypted filesystems.
+
+For example, a 64K-block filesystem created with a default v2 policy
+on a 64K-page machine uses 64K DUs. Supporting DU > PAGE_SIZE would
+allow a 4K-page machine to use that format without re-encryption,
+assuming the other policy and backend requirements are met.
+
+This also covers otherwise-supported legacy v1 policies, which cannot
+encode smaller DUs.
+
+Explicit 4K v2 DUs can also be portable across page sizes, but
+choosing a smaller DU for new files does not make existing large-DU
+ciphertext readable on a smaller-page machine. I have not yet tested
+the cross-page-size migration.
+
+If you think supporting DU = bs > PS makes this series too broad,
+I can use the simpler sub-block version in the next revision and
+develop larger-DU support separately.
+
+Looking forward to hearing your thoughts.
+
+
+Thanks,
+Baokun
+
