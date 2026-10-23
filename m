@@ -1,47 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.112
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.156.1
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792723020;
-	b=ktS6Fu3epYW2fi2UgKh2zSwPcXYmzWiiYHylwrXCIDyrmrBFoEWFcQQWsHKpuhMBJIYx
-	 eRBZQm4vAkLmaN3R7pmCwmzb4KzDVXKXlfpKMMZTap4I2zslVNDb3IAHG8MxNtxqxN/Vh
-	 TxYj2VOtSJLoiCwtim7+TLhf+Y5yryJIF9BrpJg+LMQMSyEktoTVopah/bIpDuVFmFUeU
-	 sJMLRz7Srif4lNLLe5irwKZZTfaDg52/ZBT2h/iWux4k9mu4grPfOafx0QKvaqh2H/IUF
-	 Pgz6hCm5F4WLWZ5uw7ShWbVI2oogYy40Lb/xGp6krajgu0skQy6tpG6lx+u8TKG7QSQ==
+	t=1792726840;
+	b=V44MR2TPuLH5EFJESNgihmhprujMwnmq+JB6JQrRpFwEUSKwY9QszfptzGk+yTPWZbQD
+	 cp9ArvxUDwNCsA9V3Ny9rNAR+3p9Pz99EtWfhlKfxlQLV6kNfxTCZVTOUyvbEfIJ2aheb
+	 iZA9EHj5vAbTHdEp13B90eArVUdyRfVXE/9aUA1jBwEyYCtfMYcPfVgIzcS3nkdSUkRsr
+	 wm4lCawHulKiaon47eX0f2PPCXnfSFLRq+NOESk+8uo57+51WYFGO3iA64dufITpNbz6T
+	 CNMP6sc1/JEX1tZEqRAx7sTx6jdJqOuhH16k9Ve983b8507Wq3L6tvA2ww5XrcO4CxA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792723020;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=K9kCZlBhGW9iOnZqPmtFcaDJpbNWZk4Nf14VO+3kDTk=;
-	b=gsMDO5o4hbs/YuWv7uYRBeOCycC3E1EHi/p92bN4otpRW33fepbOy/NV/hjKP5gITJZz
-	 Jgtt8VU747Uoh4iDvQBWNoHJCM6Y85bk8ocNEF10D6Z1cRX5ZIYr0aoyq2MnH501OCgOY
-	 ikicufzylrFN5Xp0ORojQIvr8uKMSowHwz6RmsFajxfBV3S5NYvD6DOUmob0NBb/Qi2DD
-	 CqFIh5SAdUTUBSb4LYglJu9HvvpFNTy/CL37TgYNTLK0fgIoXWsDXx+KIVcjLknJckb0r
-	 48MJLHeLepAoOFRZFWWiIvRVAreePP1bIuw9zJNWdDT7G5KmEmrJsz0e4dgdrdfTnFw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792726840;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-TM-AS-GCONF:X-Proofpoint-Reinject:X-Proofpoint-GUID:
+	 X-Proofpoint-ORIG-GUID:X-Proofpoint-Spam-Info:
+	 X-Proofpoint-Spam-Details-Enc:X-Authority-Analysis:
+	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
+	bh=m3ikE1jC4iTxYTtmRyndWhyT9nMef7Uxze1zR2s0b+Y=;
+	b=qXc6wLocF8RcL5t7Jk7CZTh6pJGCLq2iUkwsRzm1glanqfuXitan4xEzuw+Dxbme0Wj8
+	 DpbK0QYHx/vwBonsZdmLWKbAA7AJY58ts5Ievp61G+hIU1VU32GRCuXKl7+t/r9kKrha2
+	 3IxxfdeCRl5VjiZi1iLphzNfzjzBmScxqqQCZfmGPpPhvnQdGHb4C3kt9de0RURbw6UHq
+	 YA+T1aR+x3znjf/z2DviMSTbA9c4a0J/ImEsUyxBZT6Pcwx9Vs/cBd8gRpNi6t7lMicXB
+	 Mhy5FUfZbNgIAvwj3V6wZHhcZdGK6wFLU+B7LOdnletqjHkPaua3HfeYQFy0adIqDdA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=none smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.112
-Received: from dggmsgout12.his.huawei.com (dggmsgout12.his.huawei.com [124.71.93.112])
+	dmarc=pass header.from=linux.ibm.com;
+	spf=pass smtp.mailfrom=linux.ibm.com;
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=k4Jm6+6i;
+	arc=none smtp.remote-ip=148.163.156.1
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F35BB606A319
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 02:36:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F35BB606A319
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggmsgout12.his.huawei.com (SkyGuard) with ESMTP id 4j9nGP4MZcz1xs4
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 10:36:45 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 5F4BF40561
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 10:36:49 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3tfRAyNpqIGruBQ--.13037S3;
-	Fri, 23 Oct 2026 10:36:49 +0800 (CST)
-Message-ID: <afcf8af1-2f77-4408-b11f-538ca692bf90@huaweicloud.com>
-Date: Fri, 23 Oct 2026 10:36:48 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D75F9606A319
+	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 03:40:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D75F9606A319
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=k4Jm6+6i
+Received: from pps.filterd (m0353729.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 69N1EHtI4011289;
+	Fri, 23 Oct 2026 03:40:18 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-type:date:from:in-reply-to:message-id:mime-version
+	:references:subject:to; s=pp1; bh=m3ikE1jC4iTxYTtmRyndWhyT9nMef7
+	Uxze1zR2s0b+Y=; b=k4Jm6+6iAq8Al6v9btiX4plp//IruMYcxIlK/PRu5nFefg
+	q2cDR8OsGfNy5/F3jMTFxsUBx3RLmFg63h401VwOieYB9XmPW5EdqT5OGRUHeW8M
+	wvS5pnmlcWhBs+zzpafu+43eO/YxPpt+8N3vlnI5vmPDpRkLGVaLwOPHHCZa8YvU
+	gV/dpIUOeduUJVYuuCc28xGw8GP9qlrR9eCy2wY2ODFCQAbgwDUiQqqEY/ad33LH
+	W704PZ7ICRKFauxOkE/bvmq1LCH+X2G3EPQpCDJV1lAMFHXXV4z2S8sw15Ddqsda
+	63rLDZQi64Et8cUuhsh0vYMYXAUnEq4c5PHTOsDQ==
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4hdw5bu4tm-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Fri, 23 Oct 2026 03:40:17 +0000 (GMT)
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma12.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 69N1Juko1368058;
+	Fri, 23 Oct 2026 03:40:16 GMT
+Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
+	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4hfj1x3ewu-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 23 Oct 2026 03:40:16 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
+	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 69N3eFcj38469976
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 23 Oct 2026 03:40:15 GMT
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 0B15120043;
+	Fri, 23 Oct 2026 03:40:15 +0000 (GMT)
+Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id C051520040;
+	Fri, 23 Oct 2026 03:40:12 +0000 (GMT)
+Received: from li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com (unknown [9.39.17.104])
+	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTPS;
+	Fri, 23 Oct 2026 03:40:12 +0000 (GMT)
+Date: Fri, 23 Oct 2026 09:13:17 +0530
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: Theodore Tso <tytso@mit.edu>, Julian Sun <sunjunchao@bytedance.com>,
+        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        libaokun@linux.alibaba.com, jack@suse.cz, ritesh.list@gmail.com,
+        riteshh@linux.ibm.com
+Subject: Re: [PATCH 0/6] ext4: fix buffered writeback error handling
+Message-ID: <atrX1Y5GiTnYv3tQ@li-dc0c254c-257c-11b2-a85c-98b6c1322444.ibm.com>
+References: <20261022145241.2950379-1-sunjunchao@bytedance.com>
+ <atoySP5ez1SwWh0X@mit.edu>
+ <afcf8af1-2f77-4408-b11f-538ca692bf90@huaweicloud.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,71 +94,80 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 0/6] ext4: fix buffered writeback error handling
-To: Theodore Tso <tytso@mit.edu>
-Cc: Julian Sun <sunjunchao@bytedance.com>, linux-ext4@vger.kernel.org,
- adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, jack@suse.cz,
- ojaswin@linux.ibm.com, ritesh.list@gmail.com, riteshh@linux.ibm.com
-References: <20261022145241.2950379-1-sunjunchao@bytedance.com>
- <atoySP5ez1SwWh0X@mit.edu>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <atoySP5ez1SwWh0X@mit.edu>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgB3tfRAyNpqIGruBQ--.13037S3
-X-Coremail-Antispam: 1UD129KBjvJXoW7tryfuFW7uFy5uw4fCw1rWFg_yoW8GF1fpr
-	Z8Kr4UKr97Jw1fAr95Z34rJr4Fyan3Kw15uF4YqrW5Za13W3WaqFW0kF4rZFya9rnxWF12
-	vFnYq34rurn0vrDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUyGb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Ar0_tr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVCY1x
-	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-	6I80ewAv7VC0I7IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-	Cjc4AY6r1j6r4UM4x0Y48IcVAKI48JMxkF7I0En4kS14v26r1q6r43MxAIw28IcxkI7VAK
-	I48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7
-	xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUtVW8ZwCIc40Y0x0EwIxGrwCI42IY6xII
-	jxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWUJVW8JwCI42IY6xAIw2
-	0EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2z280aVCY1x02
-	67AKxVW8JVW8JrUvcSsGvfC2KfnxnUUI43ZEXa7IUbmii3UUUUU==
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <afcf8af1-2f77-4408-b11f-538ca692bf90@huaweicloud.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-GUID: tTK20dSV7HLTt5ZzkOnaHqInVJQhrgJb
+X-Proofpoint-ORIG-GUID: mKWIA6NcB53dstAue7PH9XzLVw2214Me
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMDIzMDAxMiBTYWx0ZWRfXwYeG5PBFrSZf
+ +81LErLMT8PJd5L5hBasIn9hSLfCM64roE9Fjf4B1wCHzBZqeCsiDlu8KjrPq5zOzEnof29c6gP
+ zKmvkDw6NkpHDqEYewxTvp0lvPnauPQ=
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDIzMDAxMiBTYWx0ZWRfX458rNL83I3Gs
+ QfKPjVCqjQb2azVUKLAMvDWOg9ufKHCQxXatgSFmAzVgNZ89CBnAYl5/uSl78/RGJDf9zvFGRGp
+ OytkRXD4msvtDcYlHP3Q5EtN/beswJD3sf5g1cMw+D3YYfaQsXPbR2jGfLJ4zVRtXKjRdcUml9U
+ 9JFsIvR6NoEcKBSV49ZynnjMg09Pbmgh0rKAgEBkYggFb0d3CqXT1fvSQxSU0W4kWCou1PPYe/q
+ bnrL8dMtj/I8tAVq5mFHPjW7fPt5KAUGAf6F7ElzTrYje3ZVY5E3tukf1TS4IFD5069RQUusH9I
+ 8ljigQmCiCw6ecpVorkAjFAbQyfMIX856cVkZBmUcw4cqjflkyUsWLj2FsCZmbWvEXvTnRcfaqV
+ Ko1puJ9AIqeKYSC7DkBldX0h6LlvWs0hQP5BKjNGl1/PqQpNmD2P8KpP3qjKd8QTVyrJkyG02tp
+ KK4og4bWQg0j/Tqg0jg==
+X-Authority-Analysis: v=2.4 cv=Gb2CDgXL c=1 sm=1 tr=0 ts=6adad722 cx=c_pps
+ a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
+ a=kj9zAlcOel0A:10 a=660iZSQnnn4A:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=uAbxVGIbfxUO_5tXvNgY:22 a=K9rkECeryf17TUk1rBAA:9
+ a=CjuIK1q_8ugA:10
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
+ definitions=2026-10-23_01,2026-10-21_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ suspectscore=0 adultscore=0 malwarescore=0 spamscore=0 phishscore=0
+ clxscore=1011 bulkscore=0 impostorscore=0 lowpriorityscore=0
+ priorityscore=1501 classifier=typeunknown authscore=0 authtc= authcc=
+ route=outbound adjust=0 reason=mlx scancount=1 engine=8.22.0-2610190000
+ definitions=main-2610230012
 
-On 10/23/2026 12:05 AM, Theodore Tso wrote:
-> On Thu, Oct 22, 2026 at 10:52:35PM -0500, Julian Sun wrote:
->> This series fixes error handling in ext4 buffered writeback. It prevents
->> stale data exposure when mapping or io_end_vec allocation fails, reports
->> unwritten conversion errors to fsync(), and preserves concurrent io_end
->> flag updates.
+On Fri, Oct 23, 2026 at 10:36:48AM +0800, Zhang Yi wrote:
+> On 10/23/2026 12:05 AM, Theodore Tso wrote:
+> > On Thu, Oct 22, 2026 at 10:52:35PM -0500, Julian Sun wrote:
+> >> This series fixes error handling in ext4 buffered writeback. It prevents
+> >> stale data exposure when mapping or io_end_vec allocation fails, reports
+> >> unwritten conversion errors to fsync(), and preserves concurrent io_end
+> >> flag updates.
+> > 
+> > Hi Julian,
+> > 
+> > Thanks for this series.  However, we have just landed a significant
+> > change to the ext4 writeback to add support for fs/iomap's buffered
+> > I/O.  It is currently not enabled by default, since there are a number
+> > of features and mount options that aren't yet supported by the
+> > buffered_iomap codepath.  (Thanks to Zhang Yi at Huawei for his work!)
 > 
-> Hi Julian,
-> 
-> Thanks for this series.  However, we have just landed a significant
-> change to the ext4 writeback to add support for fs/iomap's buffered
-> I/O.  It is currently not enabled by default, since there are a number
-> of features and mount options that aren't yet supported by the
-> buffered_iomap codepath.  (Thanks to Zhang Yi at Huawei for his work!)
+> I'm glad to hear that the buffered_iomap codepath is going to be
+> upstreamed. I'd also like to thank Jan and Ojaswin for their careful
+> review and valuable suggestions, as well as everyone who has
+> contributed to this conversion in areas such as iomap and mm.
 
-I'm glad to hear that the buffered_iomap codepath is going to be
-upstreamed. I'd also like to thank Jan and Ojaswin for their careful
-review and valuable suggestions, as well as everyone who has
-contributed to this conversion in areas such as iomap and mm.
+Hi Yi, thanks for your consistent effort over multiple years! Glad to
+see it finally merged :)
 
-I will continue to put in effort going forward, and I hope to make
-buffered_iomap the default path soon.
-
-Cheers,
-Yi.
-
+Regards,
+ojaswin
 > 
-> I'd really appreciate it if you could rebase your patches on top of
-> the dev branch for the ext4 git tree (I've sent a pull request to
-> Linus so this should be in v7.4-rc1), and determine whether any of
-> these concerns are also applicable for the buffered_iomap codepath.
+> I will continue to put in effort going forward, and I hope to make
+> buffered_iomap the default path soon.
 > 
-> Many thanks,
+> Cheers,
+> Yi.
 > 
-> 						- Ted
+> > 
+> > I'd really appreciate it if you could rebase your patches on top of
+> > the dev branch for the ext4 git tree (I've sent a pull request to
+> > Linus so this should be in v7.4-rc1), and determine whether any of
+> > these concerns are also applicable for the buffered_iomap codepath.
+> > 
+> > Many thanks,
+> > 
+> > 						- Ted
+> > 
 > 
-
