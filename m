@@ -1,57 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.98
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792760427;
-	b=vNQYVLgdZqsD+TsA5x/86D44RDk0oeL7FaZjCPedmke1TXlXRfr5eUhUDlXk34HsGeTz
-	 RmEpPzELgWJtTjtRiZtSa1s0Wf5qhWYfK7Qdro/BwdfCHPxVR5P/pR/++NEd8mmMNa7Xr
-	 HrCoaTOQtUnhxW/p6ypYhtr3DCFKWyB5G/Yb/7v70mv/gbNRw0d/Ehu0BjIgYFkre3Rfs
-	 TdRyh04l7cLanWuHfKA1fH1AvOi1PYIHbxNc39YtApCVq8zAsBGkbTWlN9cYyRJTCebn9
-	 7QJfhk9q/zSeQMWd2umguy5NXp290JU7f1Y2vs4apCr1A5HGNDXhqsbhI6EIc3LnAWA==
+	t=1792766651;
+	b=nqQB6SA+N5bELe/u9znhzIgSjE02lefqBKn2qYcAq6fJOMF7o1QeXa7DwgFLTnUZUoH4
+	 KUS4ZOXEVciHXUXHaDGsdMK2wQPU98q/xC0hgyXgFxPz/m4RV2qwl91XElqGObAEvsF8V
+	 v0S8J4/xxJ+r7rsahAIJf6IlbwKGDROruGd18w7hA2UgkzRPAUFWJ8K7X5BMtW4Ljr8hV
+	 W0iBKGgj9Agum6qrk/j44WwGXZDaHcD3lVE+5WDl4wzhUWOamTVJSL2uwjTRpWakIqOOw
+	 lV33C7uLLNm/fdanPF4XiXXI+Qjw8x7HG9+XllaZc0Ma37TqT69Mu0RJWCmMacIJ4pw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792760427;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=te1RO6Z/LET/aLZd7Bq7HRZsbKI5OoQBsAgzwh0u4Jk=;
-	b=ZhYFIvT3z+256mRM9dyTcrXC8DwK6RELtQNkj0MmMtiRlpFNsExGZUMcDCKDwri40zGD
-	 qO/Fp63WuLHq9IaKGqC75HzJTupihYpOdg/QQKQzEwSTUBkRaXrqlIXmj8nDLidHGHivu
-	 K+z1xea3OWKn4B7CBXwu4/ZrFoYbKiE+gxmbzz6Vs976zcy/PAPeQ1C9WexMvCsK9cC11
-	 PzBjeUOkToocL9CSW/9QSqMOGwWQPWL+1mJviv1ha7R/lO3xSpU3lTr6RKM4YKypytWBl
-	 AbGt5W5fcz6nbyKh3sktvbRNjO4Rl7CmPrqplnwGpW//CzJt1pVAkRVZAJHeidcniGg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792766651;
+	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=UzoPARaK93napsnGqG5eeO6IinVxNQh5GRiEnSU8yyY=;
+	b=aSFSb6ie8hVoEhXhj7UFY477ctckMW5xjJZ7zypdf2enBdfv53DJpRdMPrwkU2VuiCgO
+	 ZNHMaFGEt+ppIvkvHPTXqk1MhKMeHmkjTAryOb3EhwMrXtjEXIqPJERFlHNXCoObaIVY5
+	 S+oyXzPoN1bp0bI7lTce/r7SSecV9/cLfVw9vSvCzq25fv/gauLm28d31eJJVYilf7kcl
+	 0hQCYUanFcoIZXIQtzqQjsQ6yl9fd5ASZ1SgTkGUdNFZdNsijtHa3SCzucFF1Y+GWoiwz
+	 agackyoHx7JenQxsId5wOotyZViAn5PigLTExuzd+oro/9znYYuXHCFU85MFZTteVnw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ltd5BWlJ;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=linux.alibaba.com;
+	spf=pass smtp.mailfrom=linux.alibaba.com;
+	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=EEpaWNqZ;
+	arc=none smtp.remote-ip=115.124.30.98
+Received: from out30-98.freemail.mail.aliyun.com (out30-98.freemail.mail.aliyun.com [115.124.30.98])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4F56606A330
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 13:00:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52B9C606A31A;
+	Fri, 23 Oct 2026 14:44:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 52B9C606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ltd5BWlJ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 93B4A1F031E5;
-	Fri, 23 Oct 2026 13:00:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792760426;
-	bh=te1RO6Z/LET/aLZd7Bq7HRZsbKI5OoQBsAgzwh0u4Jk=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Ltd5BWlJq6Yu87TObhZpPHxlmZyPDaNb/bG683B8nq7e1uRmTznwTuVdL0Ic9DYCd
-	 D68dqkMQpTY620rKh87l1Dy8uTTnIdzVc48XAJ5oiuG7G41Bnk3cEyWyU/uoG+ABQQ
-	 9c0wu67QIjEZdsfv/nxxgL7r4PlIN561q4ajewM6SqoeE9OZAhSTNNDu2spDk/MunI
-	 MCY0AWYgSq4R8WQyfEoPBiIt1a5NCX8t+Js4A+HZl43tuP56RkCNdq995Tx2ItO/4J
-	 0QbonHcDuhgSod7XyphPA4jml9x0i/A8JpbjSbFfcxHynknXQvFiQp+sHUY3bKBpkK
-	 SmahwiIKkHfPg==
-Message-ID: <sashiko-outbox-182809@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 1/2] dcache: don't leave negative dentries in casefolded
- directories
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Christian Brauner" <brauner@kernel.org>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-In-Reply-To: <20261023-work-dcache-casefold-v1-1-1b0bd5c73a69@kernel.org>
-References: <20261023-work-dcache-casefold-v1-0-1b0bd5c73a69@kernel.org>
- <20261023-work-dcache-casefold-v1-1-1b0bd5c73a69@kernel.org>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Fri, 23 Oct 2026 13:00:26 +0000
+	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=EEpaWNqZ
+DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=linux.alibaba.com; s=default;
+	t=1792766645; h=Message-ID:Date:MIME-Version:Subject:To:From:Content-Type;
+	bh=UzoPARaK93napsnGqG5eeO6IinVxNQh5GRiEnSU8yyY=;
+	b=EEpaWNqZplxCjJvePXbwsM56qM2d7sAY+RubeXQHMGDoVx8dCikxA8Ci1/PeqZ5ewzGigM8uA/3csF0GFUWaIg5EfJCg/TvrAiFGtXqvndnduf9jTEUcgFRqQBsNptOgGvnZOTzUiNY2kRqKRifxZoGvrIIW/XFUArDXaKMAssc=
+X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R161e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033032089153;MF=libaokun@linux.alibaba.com;NM=1;PH=DS;RN=9;SR=0;TI=SMTPD_---0XDMK9Hz_1792766643;
+Received: from 30.134.34.157(mailfrom:libaokun@linux.alibaba.com fp:SMTPD_---0XDMK9Hz_1792766643 cluster:ay36)
+          by smtp.aliyun-inc.com;
+          Fri, 23 Oct 2026 22:44:04 +0800
+Message-ID: <0e1f16c4-9b4e-414a-bb5e-996812e68986@linux.alibaba.com>
+Date: Fri, 23 Oct 2026 22:44:03 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -60,39 +53,101 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] ext4: skip eof zeroing when the zero range covers the
+ eof block
+To: Zhang Yi <yi.zhang@huaweicloud.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <sashiko-outbox-181121@kernel.org>
+ <20261022122625.1744363-1-libaokun@linux.alibaba.com>
+ <fc8f09e1-02b6-4d76-95d8-d19c5635f4d5@huaweicloud.com>
+Content-Language: en-US
+From: Baokun Li <libaokun@linux.alibaba.com>
+In-Reply-To: <fc8f09e1-02b6-4d76-95d8-d19c5635f4d5@huaweicloud.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-> ext4, f2fs and tmpfs keep negative dentries out of casefolded
-> directories. A negative dentry remembers one spelling of the name and
-> the next create() through it would write that spelling to disk.
->=20
-> So their ->lookup() doesn't cache a miss and their ->unlink() and
-> ->rmdir() call d_invalidate() on the dentry so that d_delete() doesn't
-> turn it into a negative dentry.
->=20
-> But d_invalidate() is the wrong primitive for that. It's for a name that
-> went stale. It walks the subtree, prunes it and detaches every mount it
-> finds, under namespace_sem, and here that runs from inside the
-> filesystem's own directory operation. ext4_rmdir() does it with the
-> journal handle still open and ext4_unlink() does it even when the
-> unlink failed. All anyone wanted is the unhash.
->=20
-> So d_delete() now unhashes the dentry when the parent is casefolded,
-> next to the dentry-negative sysctl that does the same for every
-> directory. ext4, f2fs and tmpfs drop their d_invalidate() calls.
->=20
-> Nothing changes for a casefolded directory. A miss still isn't cached
-> and a removed name still doesn't leave a negative dentry behind. The
-> target of a rename over an existing name, which tmpfs also passes
-> through shmem_unlink(), doesn't turn negative either. vfs_rename()
-> detaches its mounts and d_move() unhashes it. A failed unlink or rmdir
-> now leaves the dentry hashed and its mounts in place, as in any other
-> directory.
->=20
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+On 2026/10/23 17:23, Zhang Yi wrote:
+> On 10/22/2026 8:26 PM, Baokun Li wrote:
+>> ext4_zero_range() drops the page cache of the range before allocating,
+>> to avoid exposing stale cached data.  However, the dropped page can be
+>> read back by the eof zeroing:
+>>
+>>   fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, 4096)
+>>     ext4_zero_range()
+>>       ext4_truncate_page_cache_block_range(0, 4096)
+>>         truncate_pagecache_range(0, 4095)
+>>           truncate_inode_pages_range()
+>>             delete_from_page_cache_batch()  # drops the page
+>>       ext4_alloc_file_blocks(..., 4096)
+>>         ext4_block_zero_eof(512, LLONG_MAX) # not block aligned
+>>           ext4_load_tail_bh()
+>>              __filemap_get_folio(FGP_WRITEBEGIN | FGP_ACCESSED)
+>>              # FGP_CREAT reads the dropped page back
+>>              # zeroes [512,1024), marks the buffer dirty
+>>         ext4_map_blocks(...)  # converts the extent to unwritten
+>>         ext4_update_inode_size(4096)
+>>
+>> The bytes below the old EOF keep the stale disk content.  The page is
+>> left dirty, so read() returns old data while O_DIRECT reads zeroes, and
+>> a write into the same block is not converted and is lost until the page
+>> is dropped:
+>>
+>>   page [0, 4096), 1k block size, file ends at 512
+>>    0            512          1024                      4096
+>>    |--- data ----|-- tail ---|---- zero range ----------|
+>>    | old data    |           |                          |
+>>
+>> For example:
+>>
+>>   $ xfs_io -f -c "pwrite -S 1 0 512" f
+>>   $ sync
+>>   $ fallocate -z -o 0 -l 4096 f
+>>   $ xfs_io -c "pread -v 0 16" f  # old data, not zeroes
+>>
+>> FALLOC_FL_WRITE_ZEROES hits the same path.  ext4_issue_zeroout() zeroes
+>> the block on disk without updating the page cache, and the block stays
+>> written.  Therefore, writeback of the dirty page overwrites the zeroes
+>> with old data.
+>>
+>> Since the whole eof block is converted to unwritten or zeroed out,
+>> zeroing it here is redundant.  Therefore, skip the zeroing when this
+>> allocation covers the eof block entirely.
+>>
+>> Fixes: c4602a1d09ec ("ext4: move zero partial block range functions out of active handle")
+>> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+> 
+> Hi Baokun,
 
-Sashiko has reviewed this patch and found no issues.
+Hi Yi,
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261023-work-dcach=
-e-casefold-v1-0-1b0bd5c73a69@kernel.org?part=3D1
+> 
+> Thank you for the fix, this is a nice catch. This makes sense to me.
+> Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+> 
+
+Thank you for your review!
+
+> One small point, the condition you added looks a bit confusing. I'm
+> wondering whether, in the future, it would be more straightforward to
+> extract ext4_block_zero_eof() from ext4_alloc_file_blocks() into
+> ext4_zero_range() and ext4_do_fallocate()?
+
+That sounds great. By writing zeros before truncating the page,
+we won’t have to worry about the page cache being read back,
+which means we won’t need to check the position of the EOF block
+anymore.
+
+I’ll send this out as a separate refactoring patch.
+
+Thanks for the suggestion.
+
+
+Cheers,
+Baokun
 
