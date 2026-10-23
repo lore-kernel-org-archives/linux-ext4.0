@@ -1,112 +1,47 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792743380;
-	b=i1px9Gi5MrMhAaQS559Hvfy+adKQJjVZtmqwvW/8p9ski00bc9F35gLLQuggi6ppLbvb
-	 eInqc2zt2KwFROk0Ebe0FOXPY4r+86feS3iv4cfZjLrJdfX05sh74RjJtxHyshSGRKfPr
-	 ARe990Qdw7/2x6WjWblTBZoeAi854RqW9DYBgA8aOqByn1ADWzGtDE+5mImmK9fxMI930
-	 CmNzXIIbsMWUZ+RG0fu/Z2V/MoZ1U9o0lnk5pKrb6cu7YLm2LocarA+gowtXEraPTmWJf
-	 k/tFtGu6tuKvfKsPaaGm2/G+OtFgpiO407gdty3JTHGsFK4a9onJNtAYgw9+xIZxd7w==
+	t=1792747444;
+	b=l3WKTUHFVuYvoNNARvbktItj0DkAG7SFBHurV/sfhhnpwmdEfudOJt7scJAeVXVb8/jg
+	 UvHfQlGdPPcUXUvc+rjaYNrsHwvAdgFBJGWLslIWDeOAhhFn3inFCXwA8KLLftyfrLKd3
+	 h3tRRjc4iVJFfaCHJN/wTcYlyuahR17eoIumyBWEW7MBFz577GACuxaToC3ZGtvznvTd+
+	 FYJHm+CsbxxwuOzWteZS4BMow+5jMYp8x9Kjlys7LhQoZqF0DPyz8RJYWXTBvYlpUcrIy
+	 KCblUGdV0XXYNNBqwWmRmrLSRx8W79iHO68L6utTSuMiDxt3dNwxrzmnlwVa5M+hGww==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792743380;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
-	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
-	bh=Own+XDkrcsa0rAqcKruFpM5LMPUrTaQ78MTF+e2vtIw=;
-	b=ckhFsKow0G8wzPDi1pB0n0NX3NXYqZ8VFgfSqDxboxzKifL3GTdMz4Y56hLbYvkOQ5Ck
-	 H0nLCaacCb/ZfwDGsuupl5eYHaWFqK4PkDyV+ZG0GBmFeZEaNyN9/6Pf1VHnhq1yfKWz+
-	 SsIvsT9yAtcUTDWNMLioUFbtWmpaD+15lrkSjhvoJ56v5WcPwpJ4SY0vnSe8tHdIAO5Ny
-	 x0913t2XWZP3/dtTS2tPcygBzS1l88qxn7O+/eJ/FHQUY0mKI/3KQ9qTY3nTTOMNKP1to
-	 /WP2JtZQ+qikNsVYf9sxPVk+s4ieNcUvmHwK7I/tB/QJO6ro2cxu5km9wVMnqiqgAjQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792747444;
+	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
+	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
+	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
+	 X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=8UWzL+0fgVXGhLJgm6KTUnBKczl9gCV1bEPkcSz2MAo=;
+	b=o6C6HG8uMK+nhLv7kivDfwpeIaAkBcM+p5dnp9KuSlPMAZ9dbcwuPvO+vf+iT+T+SZLa
+	 YJCGiDy7XG+UYBpTKViN4I97wb1gyBv8V2+6oT1ukr6asqkI6YwDgOpK8KJqDGRe1+/dV
+	 EYe28C/yekDI8LKr08Q5xw5Fy/nhVqxArah0r8senXv/2G4OzgaqjNUOSo+z7umdl/QGs
+	 Tiwqb7GVP2p9kAqDx6RCxPfRbl0R/9mL4CFQ4sjacayg4LslNt+MaNCqGIOHitbv6tmZH
+	 Ya60vbMgFYuY2iWL2htDNxwWuhbPuiUG8Fjp1cCfDnAcg0AVM2HO5NxobObfd2O70Gw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=rLG79M9C;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LU4qWsqy;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=rLG79M9C;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LU4qWsqy;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dmarc=none header.from=huaweicloud.com;
+	spf=none smtp.mailfrom=huaweicloud.com;
+	arc=none smtp.remote-ip=124.71.93.99
+Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A5BE8606A31B;
-	Fri, 23 Oct 2026 08:16:19 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A5BE8606A31B
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=rLG79M9C;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LU4qWsqy;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=rLG79M9C;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=LU4qWsqy
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 2C6471F385;
-	Fri, 23 Oct 2026 08:16:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792743376; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Own+XDkrcsa0rAqcKruFpM5LMPUrTaQ78MTF+e2vtIw=;
-	b=rLG79M9CiCwVLyOXNkk5o0ii2Lm4C3Z8/sXrxAWuOkOtiuCpiJO8Ceq6wXH7P4AS09pNPD
-	VsRZirmu/VYnwdg7Nc7op+FdjGJ2xvDqRiYL9ExEPV8mOvAFLO6y5lzfuZgLXKwoJGmVbP
-	NAklCfPvM9WSnbLSbDXEcgLi4eG0rc0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792743376;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Own+XDkrcsa0rAqcKruFpM5LMPUrTaQ78MTF+e2vtIw=;
-	b=LU4qWsqy9gqPGbxIi+P8F9q2yfefzBzWfU3JS8J+09I3WPaaVUBcV/hDG5klyOahQirQGH
-	5jP57FV+chjar3CA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=rLG79M9C;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=LU4qWsqy
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1792743376; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Own+XDkrcsa0rAqcKruFpM5LMPUrTaQ78MTF+e2vtIw=;
-	b=rLG79M9CiCwVLyOXNkk5o0ii2Lm4C3Z8/sXrxAWuOkOtiuCpiJO8Ceq6wXH7P4AS09pNPD
-	VsRZirmu/VYnwdg7Nc7op+FdjGJ2xvDqRiYL9ExEPV8mOvAFLO6y5lzfuZgLXKwoJGmVbP
-	NAklCfPvM9WSnbLSbDXEcgLi4eG0rc0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1792743376;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Own+XDkrcsa0rAqcKruFpM5LMPUrTaQ78MTF+e2vtIw=;
-	b=LU4qWsqy9gqPGbxIi+P8F9q2yfefzBzWfU3JS8J+09I3WPaaVUBcV/hDG5klyOahQirQGH
-	5jP57FV+chjar3CA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id D2964133F6;
-	Fri, 23 Oct 2026 08:16:15 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id g09uKs8X22p7eAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 23 Oct 2026 08:16:15 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 55361A1415; Fri, 23 Oct 2026 10:16:11 +0200 (CEST)
-Date: Fri, 23 Oct 2026 10:16:11 +0200
-From: Jan Kara <jack@suse.cz>
-To: Hengyu Liang <hengyul@cs.unc.edu>
-Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org, 
-	adilger.kernel@dilger.ca, libaokun@linux.alibaba.com, ojaswin@linux.ibm.com, 
-	ritesh.list@gmail.com, yi.zhang@huawei.com, dave.hansen@linux.intel.com, 
-	akpm@linux-foundation.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: do not advance i_size on a buffered write that
- copied nothing
-Message-ID: <yicmd2fqtfqfl7fmyvkrwwnewk7ahbzzvtceeowa7k5w6v3hbn@lmuqp4a2ojmb>
-References: <20261009044656.1993196-1-hengyul@cs.unc.edu>
- <34dtkdstf5yxg2ulinnh4hocc53gz35ij6k62egi2ykgpyc3a5@zuxt6doiajwq>
- <20261022142911.1490979-1-hengyul@cs.unc.edu>
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFF52606A31A;
+	Fri, 23 Oct 2026 09:24:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CFF52606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
+Received: from mail.maildlp.com (unknown [172.19.163.170])
+	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4j9yJ93KnPz1c0SR;
+	Fri, 23 Oct 2026 17:23:53 +0800 (CST)
+Received: from mail02.huawei.com (unknown [10.116.40.128])
+	by mail.maildlp.com (Postfix) with ESMTP id 31A6C4056B;
+	Fri, 23 Oct 2026 17:23:59 +0800 (CST)
+Received: from [10.174.179.19] (unknown [10.174.179.19])
+	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3tfStJ9tqTFwSBg--.20434S3;
+	Fri, 23 Oct 2026 17:23:59 +0800 (CST)
+Message-ID: <fc8f09e1-02b6-4d76-95d8-d19c5635f4d5@huaweicloud.com>
+Date: Fri, 23 Oct 2026 17:23:56 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -116,100 +51,138 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261022142911.1490979-1-hengyul@cs.unc.edu>
-X-Rspamd-Queue-Id: 2C6471F385
-X-Spam-Level: 
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-11.51 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_TLS_LAST(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[13];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[suse.cz,mit.edu,vger.kernel.org,dilger.ca,linux.alibaba.com,linux.ibm.com,gmail.com,huawei.com,linux.intel.com,linux-foundation.org];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.cz:dkim,suse.com:email]
-X-Spam-Score: -11.51
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] ext4: skip eof zeroing when the zero range covers the
+ eof block
+To: Baokun Li <libaokun@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <sashiko-outbox-181121@kernel.org>
+ <20261022122625.1744363-1-libaokun@linux.alibaba.com>
+Content-Language: en-US
+From: Zhang Yi <yi.zhang@huaweicloud.com>
+In-Reply-To: <20261022122625.1744363-1-libaokun@linux.alibaba.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-CM-TRANSID:gCh0CgB3tfStJ9tqTFwSBg--.20434S3
+X-Coremail-Antispam: 1UD129KBjvJXoWxXF15WF1DXrW7KFWUtr4Utwb_yoWrWryfpF
+	Wa9r1xArs3u395uan7A3WI9r1rCwn3GF45Gry3KF48Z3sxXFyfKFyqga40gFyjkrs3J3Wj
+	vF4Ygry7KFs8C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
+	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vI
+	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
+	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
+	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
+	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
+	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1v3UUUUU
+X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
 
-On Thu 22-10-26 10:29:11, Hengyu Liang wrote:
-> Hi Jan,
+On 10/22/2026 8:26 PM, Baokun Li wrote:
+> ext4_zero_range() drops the page cache of the range before allocating,
+> to avoid exposing stale cached data.  However, the dropped page can be
+> read back by the eof zeroing:
 > 
-> On Thu 22-10-26 11:48:35, Jan Kara wrote:
-> > I agree with the problem but first, Ted has merged rewrite of ext4
-> > buffered IO path to iomap your fix would very likely need rebasing, and
-> > second:
+>   fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, 4096)
+>     ext4_zero_range()
+>       ext4_truncate_page_cache_block_range(0, 4096)
+>         truncate_pagecache_range(0, 4095)
+>           truncate_inode_pages_range()
+>             delete_from_page_cache_batch()  # drops the page
+>       ext4_alloc_file_blocks(..., 4096)
+>         ext4_block_zero_eof(512, LLONG_MAX) # not block aligned
+>           ext4_load_tail_bh()
+>              __filemap_get_folio(FGP_WRITEBEGIN | FGP_ACCESSED)
+>              # FGP_CREAT reads the dropped page back
+>              # zeroes [512,1024), marks the buffer dirty
+>         ext4_map_blocks(...)  # converts the extent to unwritten
+>         ext4_update_inode_size(4096)
 > 
-> Thanks for the review.
+> The bytes below the old EOF keep the stale disk content.  The page is
+> left dirty, so read() returns old data while O_DIRECT reads zeroes, and
+> a write into the same block is not converted and is lost until the page
+> is dropped:
 > 
-> In the ext4 dev branch, the iomap buffered path is only used with the
-> new buffered_iomap mount option, and it faults the source in before
-> ->write_begin(), so it does not have this problem. The default
-> buffer_head path still does: on 8c4f6e337634, a 100-byte file still
-> has a size of 1048586 after a failed pwrite() at 1 MiB + 10, sync and
-> remount. The patch applies to the dev branch without changes, and I
-> will base v2 on it.
+>   page [0, 4096), 1k block size, file ends at 512
+>    0            512          1024                      4096
+>    |--- data ----|-- tail ---|---- zero range ----------|
+>    | old data    |           |                          |
 > 
-> > this is wrong and would leak delayed allocation reservations AFAICT. You
-> > should just use ext4_truncate_failed_write() like e.g.
-> > ext4_da_write_begin() does on failure.
+> For example:
 > 
-> I don't think it leaks. ext4_es_remove_extent() gives back the
-> reservation of the delayed blocks it removes through
-> ext4_da_release_space(), which ext4_iomap_punch_delalloc() also relies
-> on in the iomap path.
+>   $ xfs_io -f -c "pwrite -S 1 0 512" f
+>   $ sync
+>   $ fallocate -z -o 0 -l 4096 f
+>   $ xfs_io -c "pread -v 0 16" f  # old data, not zeroes
+> 
+> FALLOC_FL_WRITE_ZEROES hits the same path.  ext4_issue_zeroout() zeroes
+> the block on disk without updating the page cache, and the block stays
+> written.  Therefore, writeback of the dirty page overwrites the zeroes
+> with old data.
+> 
+> Since the whole eof block is converted to unwritten or zeroed out,
+> zeroing it here is redundant.  Therefore, skip the zeroing when this
+> allocation covers the eof block entirely.
+> 
+> Fixes: c4602a1d09ec ("ext4: move zero partial block range functions out of active handle")
+> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
 
-You are right. I'm sorry for my confusion.
+Hi Baokun,
 
-> To check this, I ran my earlier tests on the dev branch with the patch
-> as sent and with the helper replaced by ext4_truncate_failed_write(),
-> plus a test on an image with the quota feature that reads the user's
-> quota usage (which includes reserved space) and the free block count.
-> After a failed write past EOF, both versions bring both numbers back
-> to their values before the write, and nothing is logged at umount.
-> Without the patch, the same case keeps 64 KiB reserved until the inode
-> is evicted.
+Thank you for the fix, this is a nice catch. This makes sense to me.
+Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+
+One small point, the condition you added looks a bit confusing. I'm
+wondering whether, in the future, it would be more straightforward to
+extract ext4_block_zero_eof() from ext4_alloc_file_blocks() into
+ext4_zero_range() and ext4_do_fallocate()?
+
+Thanks,
+Yi.
+
+> ---
+> Changes since v1:
+>  * Also skip the eof zeroing for FALLOC_FL_WRITE_ZEROES, which
+>    reads the dropped page back in the same way (Reported by Sashiko).
+>  * Corrected the Fixes tags: the ZERO_RANGE regression comes from
+>    c4602a1d09ec, and f4265b8d32c4 introduced the WRITE_ZEROES one.
+>  * Fixed the call chains in the commit message.
 > 
-> I did not use ext4_truncate_failed_write() because since 665575cff098
-> this path is also taken by ordinary writes. When the source page is
-> not faulted in yet, the first copy fails, ->write_end() sees
-> copied == 0, and generic_perform_write() faults the page in and tries
-> again. ext4_truncate_failed_write() would then run ext4_truncate() for
-> each such write that starts past EOF, and that frees blocks
-> preallocated past EOF with FALLOC_FL_KEEP_SIZE, even though the write
-> succeeds right after. In my test, a 64 KiB write from untouched
-> anonymous memory into a file with 1 MiB preallocated past EOF leaves
-> st_blocks at 2056 with the helper, but drops it to 136 with
-> ext4_truncate_failed_write().
+> v1: https://patch.msgid.link/20261022065342.3569693-1-libaokun@linux.alibaba.com
+> 
+> This hunk does not apply to v6.17 - v7.0, where the eof zeroing is
+> done inside the allocation loop; those trees need a manual backport.
+> 
+>  fs/ext4/extents.c | 11 +++++++++--
+>  1 file changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index ad0d80e33f60..b05015b8b62c 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4639,8 +4639,15 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
+>  	credits = ext4_chunk_trans_blocks(inode, len_lblk);
+>  	depth = ext_depth(inode);
+>  
+> -	/* Zero to the end of the block containing i_size */
+> -	if (new_size > old_size) {
+> +	/*
+> +	 * Zero to the end of the block containing i_size.
+> +	 * Loading the eof block back before it is converted to unwritten
+> +	 * or zeroed out may leave the page cache inconsistent with the
+> +	 * disk, and zeroing it is redundant, so skip it.
+> +	 */
+> +	if (new_size > old_size &&
+> +	    !(in_range(old_size >> blkbits, map.m_lblk, map.m_len) &&
+> +	      (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN || alloc_zero))) {
+>  		ret = ext4_block_zero_eof(inode, old_size, LLONG_MAX);
+>  		if (ret)
+>  			return ret;
 
-OK, that's a good observation. Let's keep your special function then.
-Thanks!
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
