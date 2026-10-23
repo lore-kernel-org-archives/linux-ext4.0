@@ -1,47 +1,82 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=124.71.93.99
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.158.5
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792747444;
-	b=l3WKTUHFVuYvoNNARvbktItj0DkAG7SFBHurV/sfhhnpwmdEfudOJt7scJAeVXVb8/jg
-	 UvHfQlGdPPcUXUvc+rjaYNrsHwvAdgFBJGWLslIWDeOAhhFn3inFCXwA8KLLftyfrLKd3
-	 h3tRRjc4iVJFfaCHJN/wTcYlyuahR17eoIumyBWEW7MBFz577GACuxaToC3ZGtvznvTd+
-	 FYJHm+CsbxxwuOzWteZS4BMow+5jMYp8x9Kjlys7LhQoZqF0DPyz8RJYWXTBvYlpUcrIy
-	 KCblUGdV0XXYNNBqwWmRmrLSRx8W79iHO68L6utTSuMiDxt3dNwxrzmnlwVa5M+hGww==
+	t=1792750892;
+	b=cyjLleJ2AhcjFd2gaMpZ6EXC0UXYAJaBzGlkrZXy/YnVflwbMf1GctW8wad/NwKKfeee
+	 YI18VuZqZlbP6f4uCCz2eRFoWMt5mCbCImmwEb/52/yejLN1ruk7p1HyS6BL8SAMO47M4
+	 QdPYlCYcmVwDYeS5hNy6Aco7rjGu/+D7eQFk8/Kd9+ZJXDMTqSuu4HyMh4OSp8BP4kVWM
+	 MDnY+wopcbdhxYgRnWPm4mO8mXwAKudwNE7L2LCXgcUesqys288CKDn2uSnpvn7IhB+C8
+	 vUWhi5EVgiJ7sfrQUYOfCH/tk79ej0yhzVTpr1/da3nPoUH/Rk3zBXGYobpHZ/eY43g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792747444;
-	h=DMARC-Filter:Received:Received:Received:Message-ID:Date:MIME-Version:
-	 User-Agent:Subject:To:Cc:References:Content-Language:From:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding:X-CM-TRANSID:
-	 X-Coremail-Antispam:X-CM-SenderInfo;
-	bh=8UWzL+0fgVXGhLJgm6KTUnBKczl9gCV1bEPkcSz2MAo=;
-	b=o6C6HG8uMK+nhLv7kivDfwpeIaAkBcM+p5dnp9KuSlPMAZ9dbcwuPvO+vf+iT+T+SZLa
-	 YJCGiDy7XG+UYBpTKViN4I97wb1gyBv8V2+6oT1ukr6asqkI6YwDgOpK8KJqDGRe1+/dV
-	 EYe28C/yekDI8LKr08Q5xw5Fy/nhVqxArah0r8senXv/2G4OzgaqjNUOSo+z7umdl/QGs
-	 Tiwqb7GVP2p9kAqDx6RCxPfRbl0R/9mL4CFQ4sjacayg4LslNt+MaNCqGIOHitbv6tmZH
-	 Ya60vbMgFYuY2iWL2htDNxwWuhbPuiUG8Fjp1cCfDnAcg0AVM2HO5NxobObfd2O70Gw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792750892;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:Received:
+	 Received:Received:Received:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:Message-Id:X-B4-Tracking:
+	 X-Change-ID:To:Cc:X-Mailer:X-TM-AS-GCONF:X-Proofpoint-Reinject:
+	 X-Proofpoint-Spam-Info:X-Proofpoint-GUID:X-Proofpoint-ORIG-GUID:
+	 X-Authority-Analysis:X-Proofpoint-Spam-Details-Enc:
+	 X-Proofpoint-Virus-Version:X-Proofpoint-Spam-Details;
+	bh=rPPJB9loT0Wtb3chvJCPPmg+5VgZ6rc04nKglwRnLTo=;
+	b=mb9aEWMJ979R0KrfeIddLSjb/Oe5Tqc9i6Ea9unqifWZjlDysNpcvLloMnJhbOhtdTX0
+	 KV3mEtQSs1WDXD3ZC/gJRb9WgOcihdELqGkrc75nUhmkzBGHbr88fX5qvhp9jCow52bjT
+	 /RcdIA7rjktrSG/5fhnA2kkg13rxcnqThEc8JeLdDoSOsfGKSuejUx7nu4bnQAOV2KdoE
+	 tG/+NR0imxHDQa5qgzf9c3LqNraIoSt3PBiylQ4rl3ODRBA3H2UtgwXuTeZClQzXHvMTg
+	 BvqeMf7lolK+mg28FGvTW9LsxailGend9PMlu/+VxBqNSzfBpoGUPcZVXBe4ISpbnEg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=huaweicloud.com;
-	spf=none smtp.mailfrom=huaweicloud.com;
-	arc=none smtp.remote-ip=124.71.93.99
-Received: from dggmsgout11.his.huawei.com (dggmsgout11.his.huawei.com [124.71.93.99])
+	dmarc=pass header.from=linux.ibm.com;
+	spf=pass smtp.mailfrom=linux.ibm.com;
+	dkim=pass header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b="SEB/IYoq";
+	arc=none smtp.remote-ip=148.163.158.5
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFF52606A31A;
-	Fri, 23 Oct 2026 09:24:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CFF52606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=huaweicloud.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.163.170])
-	by dggmsgout11.his.huawei.com (SkyGuard) with ESMTP id 4j9yJ93KnPz1c0SR;
-	Fri, 23 Oct 2026 17:23:53 +0800 (CST)
-Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id 31A6C4056B;
-	Fri, 23 Oct 2026 17:23:59 +0800 (CST)
-Received: from [10.174.179.19] (unknown [10.174.179.19])
-	by APP4 (Coremail) with UTF8SMTPSA id gCh0CgB3tfStJ9tqTFwSBg--.20434S3;
-	Fri, 23 Oct 2026 17:23:59 +0800 (CST)
-Message-ID: <fc8f09e1-02b6-4d76-95d8-d19c5635f4d5@huaweicloud.com>
-Date: Fri, 23 Oct 2026 17:23:56 +0800
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6627C606A31B;
+	Fri, 23 Oct 2026 10:21:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6627C606A31B
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=ibm.com header.i=@ibm.com header.a=rsa-sha256 header.s=pp1 header.b=SEB/IYoq
+Received: from pps.filterd (m0353725.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 69NAECC11465918;
+	Fri, 23 Oct 2026 10:21:14 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:message-id
+	:mime-version:subject:to; s=pp1; bh=rPPJB9loT0Wtb3chvJCPPmg+5VgZ
+	6rc04nKglwRnLTo=; b=SEB/IYoq6S9n5JyYANkzjwL1kIyzcDoz5YXeSIdb1xk/
+	02+RKo0lnreqLRjvcS6n2kXqcM3jDTdZi29zFJD4/4ntaLQX7/yMRYBsra6+ca9v
+	RnvEW49TWN0G4CLpCreT3ZmQ/Dz60ERY7CPmCJRqjb1DXmhQt3duNmSA60GVb7/3
+	pTA4Kvxzjq1q7Qvpx4rEvKOMa0xcKpZyAGd2abCxw2IKeqKEtDcKZJY3D5CCEoD2
+	r8ZYjX7Ja8cNV+aTcEh5VRCqwAvHFGApfhtgNhNhcDSVlDX4ArG+ydl26P4LAfM8
+	AkBCqjoQZMTOvLn/6Y5eI5mZF4C4ofkNr60eWMnsHA==
+Received: from ppma11.dal12v.mail.ibm.com (db.9e.1632.ip4.static.sl-reverse.com [50.22.158.219])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4hdw58kvta-1
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
+	Fri, 23 Oct 2026 10:21:13 +0000 (GMT)
+Received: from pps.filterd (ppma11.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma11.dal12v.mail.ibm.com (8.18.1.11/8.18.1.11) with ESMTP id 69NAJxa72008284;
+	Fri, 23 Oct 2026 10:21:13 GMT
+Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
+	by ppma11.dal12v.mail.ibm.com (PPS) with ESMTPS id 4hfmpn41b4-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Fri, 23 Oct 2026 10:21:13 +0000 (GMT)
+Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
+	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 69NALBfk45089170
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Fri, 23 Oct 2026 10:21:11 GMT
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 589D320063;
+	Fri, 23 Oct 2026 10:21:11 +0000 (GMT)
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 815422005A;
+	Fri, 23 Oct 2026 10:21:07 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.39.17.15])
+	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Fri, 23 Oct 2026 10:21:07 +0000 (GMT)
+From: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Date: Fri, 23 Oct 2026 15:53:45 +0530
+Subject: [PATCH] ext4: return -EINVAL on hole in
+ ext4_convert_unwritten_extents_atomic()
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -51,138 +86,85 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] ext4: skip eof zeroing when the zero range covers the
- eof block
-To: Baokun Li <libaokun@linux.alibaba.com>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
- jack@suse.cz, ojaswin@linux.ibm.com, ritesh.list@gmail.com,
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-References: <sashiko-outbox-181121@kernel.org>
- <20261022122625.1744363-1-libaokun@linux.alibaba.com>
-Content-Language: en-US
-From: Zhang Yi <yi.zhang@huaweicloud.com>
-In-Reply-To: <20261022122625.1744363-1-libaokun@linux.alibaba.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-CM-TRANSID:gCh0CgB3tfStJ9tqTFwSBg--.20434S3
-X-Coremail-Antispam: 1UD129KBjvJXoWxXF15WF1DXrW7KFWUtr4Utwb_yoWrWryfpF
-	Wa9r1xArs3u395uan7A3WI9r1rCwn3GF45Gry3KF48Z3sxXFyfKFyqga40gFyjkrs3J3Wj
-	vF4Ygry7KFs8C3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUylb4IE77IF4wAFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k2
-	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_JFI_Gr1l84ACjcxK6xIIjxv20xvEc7Cj
-	xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWxJr0_GcWl84ACjcxK6I8E87Iv6xkF7I
-	0E14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-	x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-	0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lc7CjxVAaw2AFwI0_Jw0_GFyl42xK82IYc2Ij64vI
-	r41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8Gjc
-	xK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r1q6r43MIIYrxkI7VAKI48JMIIF0xvE2Ix0
-	cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r1j6r4UMIIF0xvE42xK8V
-	AvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E
-	14v26r4j6r4UJbIYCTnIWIevJa73UjIFyTuYvjxUF1v3UUUUU
-X-CM-SenderInfo: d1lo6xhdqjqx5xdzvxpfor3voofrz/
+Message-Id: <20261023-ext4-atomic-endio-fix-b4-v1-1-f91feb0b9613@linux.ibm.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqDMBBFryKz7oBJRWivIi7G5KuzaFISKQHx7
+ g7dPHg8/j+poigqvbuTCn5aNScT9+go7JI2sEZz8r0fXe+fjHYMLEf+aGCkqJlXbbwM/IKDRKM
+ EIZt/C6z8r6f5um6XGE3YagAAAA==
+X-Change-ID: 20261023-ext4-atomic-endio-fix-b4-9e1ead9e1aca
+To: "Theodore Ts'o" <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+        Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
+        "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
+        Zhang Yi <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMDIzMDAzOSBTYWx0ZWRfX8bOdthKUefl+
+ u5zV/nk2kfkgKzoZttEnKtxdtc13BX1yP6yssyGjIO7RDeZxTLbNhO1m1mgZAT40dS6gzL5SZrc
+ 8EcsAS7Sm+nPDE4ewCMD153EQbCdFAg=
+X-Proofpoint-GUID: PC6XiTfKpINoqA8bMJYOZ5VCLz6MsBTc
+X-Proofpoint-ORIG-GUID: Zmlo_W_MO11WYjmJuAxRYCa5M0gOLIbr
+X-Authority-Analysis: v=2.4 cv=UOBIjyfy c=1 sm=1 tr=0 ts=6adb351a cx=c_pps
+ a=aDMHemPKRhS1OARIsFnwRA==:117 a=aDMHemPKRhS1OARIsFnwRA==:17
+ a=IkcTkHD0fZMA:10 a=660iZSQnnn4A:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=V8glGbnc2Ofi9Qvn3v5h:22 a=VnNF1IyMAAAA:8
+ a=Qgodh-6GP45rOP8ZG-IA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMDIzMDAzOSBTYWx0ZWRfX0w9CYbUVznkv
+ HI2i2s8SAP7WOStHbI1AUYIfTBQP4jc0aeEbyB6joQFiTvIm2n0pGG5X7PC5lbWIW4wlTU+rsrP
+ q2alDZJ6RRn/Otd2zs4UzF/3Orw+BTEE32hjOkJmsUQMg1pMv2GqlQkaiYOmsd9PvpeFlbNWHJO
+ lm6SHYXx4D9VQ9WsTETtV4pPWVkUX3njRYmbVZP501bBzC/pwEtmdMNwrATFpJFV5X8w8KLzd3b
+ CtjX2HUHn9IUok9WT2lGo5P56lfvLDgWesysT1Pl1YJA1FPqYDy/ZZeHrQXRqtP4WQERTXh+WF4
+ T1LmSXAwCcn91MZbZ/y5lYluqcNW08hYIvICGBBdqEBmlI6Q36jHFCgAb+aQDlLtLPG34zunROj
+ Ojrg5N/e6VaHAhnoeL117/q2hrnunYV6G/LyR8kMhxUj8Gr1f/DT/TlRVp2ybtazTIaLfaBqCl9
+ v8UVtxLezK8r0EoSpbA==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1176,Hydra:6.1.138,FMLib:17.12.100.49
+ definitions=2026-10-23_03,2026-10-21_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 clxscore=1015 suspectscore=0 spamscore=0 priorityscore=1501
+ lowpriorityscore=0 adultscore=0 impostorscore=0 bulkscore=0 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2610190000 definitions=main-2610230039
 
-On 10/22/2026 8:26 PM, Baokun Li wrote:
-> ext4_zero_range() drops the page cache of the range before allocating,
-> to avoid exposing stale cached data.  However, the dropped page can be
-> read back by the eof zeroing:
-> 
->   fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, 4096)
->     ext4_zero_range()
->       ext4_truncate_page_cache_block_range(0, 4096)
->         truncate_pagecache_range(0, 4095)
->           truncate_inode_pages_range()
->             delete_from_page_cache_batch()  # drops the page
->       ext4_alloc_file_blocks(..., 4096)
->         ext4_block_zero_eof(512, LLONG_MAX) # not block aligned
->           ext4_load_tail_bh()
->              __filemap_get_folio(FGP_WRITEBEGIN | FGP_ACCESSED)
->              # FGP_CREAT reads the dropped page back
->              # zeroes [512,1024), marks the buffer dirty
->         ext4_map_blocks(...)  # converts the extent to unwritten
->         ext4_update_inode_size(4096)
-> 
-> The bytes below the old EOF keep the stale disk content.  The page is
-> left dirty, so read() returns old data while O_DIRECT reads zeroes, and
-> a write into the same block is not converted and is lost until the page
-> is dropped:
-> 
->   page [0, 4096), 1k block size, file ends at 512
->    0            512          1024                      4096
->    |--- data ----|-- tail ---|---- zero range ----------|
->    | old data    |           |                          |
-> 
-> For example:
-> 
->   $ xfs_io -f -c "pwrite -S 1 0 512" f
->   $ sync
->   $ fallocate -z -o 0 -l 4096 f
->   $ xfs_io -c "pread -v 0 16" f  # old data, not zeroes
-> 
-> FALLOC_FL_WRITE_ZEROES hits the same path.  ext4_issue_zeroout() zeroes
-> the block on disk without updating the page cache, and the block stays
-> written.  Therefore, writeback of the dirty page overwrites the zeroes
-> with old data.
-> 
-> Since the whole eof block is converted to unwritten or zeroed out,
-> zeroing it here is redundant.  Therefore, skip the zeroing when this
-> allocation covers the eof block entirely.
-> 
-> Fixes: c4602a1d09ec ("ext4: move zero partial block range functions out of active handle")
-> Fixes: f4265b8d32c4 ("ext4: add FALLOC_FL_WRITE_ZEROES support")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Baokun Li <libaokun@linux.alibaba.com>
+We should ideally never encounter a hole during the endio conversion as
+that indicates something is wrong with our extent handling. Still if we do
+find a hole at atomic write endio, ext4_map_blocks() returns 0 which would
+be returned back to callers by ext4_convert_unwritten_extents_atomic().
+This can be wrongly interpreted as a success. Fix this by bailing out with
+-EINVAL instead.
 
-Hi Baokun,
+Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+---
+ fs/ext4/extents.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-Thank you for the fix, this is a nice catch. This makes sense to me.
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7193429a05e1..b54d8227786b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5107,6 +5107,14 @@ int ext4_convert_unwritten_extents_atomic(handle_t *handle, struct inode *inode,
+ 		map.m_lblk += ret;
+ 		map.m_len = (max_blocks -= ret);
+ 		ret = ext4_map_blocks(handle, inode, &map, flags);
++		if (ret == 0) {
++			ext4_msg(inode->i_sb, KERN_ERR,
++				 "inode #%llu: block %u: len %u: "
++				 "hole found while converting extents for atomic write",
++				 inode->i_ino, map.m_lblk, map.m_len);
++			ret = -EINVAL;
++			break;
++		}
+ 		if (ret != max_blocks)
+ 			ext4_msg(inode->i_sb, KERN_INFO,
+ 				     "inode #%llu: block %u: len %u: "
 
-One small point, the condition you added looks a bit confusing. I'm
-wondering whether, in the future, it would be more straightforward to
-extract ext4_block_zero_eof() from ext4_alloc_file_blocks() into
-ext4_zero_range() and ext4_do_fallocate()?
+---
+base-commit: 8c4f6e3376348fc3162eed86a05b933921c8f9ed
+change-id: 20261023-ext4-atomic-endio-fix-b4-9e1ead9e1aca
 
-Thanks,
-Yi.
-
-> ---
-> Changes since v1:
->  * Also skip the eof zeroing for FALLOC_FL_WRITE_ZEROES, which
->    reads the dropped page back in the same way (Reported by Sashiko).
->  * Corrected the Fixes tags: the ZERO_RANGE regression comes from
->    c4602a1d09ec, and f4265b8d32c4 introduced the WRITE_ZEROES one.
->  * Fixed the call chains in the commit message.
-> 
-> v1: https://patch.msgid.link/20261022065342.3569693-1-libaokun@linux.alibaba.com
-> 
-> This hunk does not apply to v6.17 - v7.0, where the eof zeroing is
-> done inside the allocation loop; those trees need a manual backport.
-> 
->  fs/ext4/extents.c | 11 +++++++++--
->  1 file changed, 9 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ad0d80e33f60..b05015b8b62c 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4639,8 +4639,15 @@ static int ext4_alloc_file_blocks(struct file *file, loff_t offset, loff_t len,
->  	credits = ext4_chunk_trans_blocks(inode, len_lblk);
->  	depth = ext_depth(inode);
->  
-> -	/* Zero to the end of the block containing i_size */
-> -	if (new_size > old_size) {
-> +	/*
-> +	 * Zero to the end of the block containing i_size.
-> +	 * Loading the eof block back before it is converted to unwritten
-> +	 * or zeroed out may leave the page cache inconsistent with the
-> +	 * disk, and zeroing it is redundant, so skip it.
-> +	 */
-> +	if (new_size > old_size &&
-> +	    !(in_range(old_size >> blkbits, map.m_lblk, map.m_len) &&
-> +	      (flags & EXT4_GET_BLOCKS_CONVERT_UNWRITTEN || alloc_zero))) {
->  		ret = ext4_block_zero_eof(inode, old_size, LLONG_MAX);
->  		if (ret)
->  			return ret;
+Best regards,
+-- 
+Ojaswin Mujoo <ojaswin@linux.ibm.com>
 
