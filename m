@@ -1,54 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792780865;
-	b=1nbpQow84XuaJ8ETN5ToacL64UDS0/PH9+wIkRBx+clkfhvq7hgBSWlGXQ+r4u/4DkGs
-	 p96qoeO79l33hc3M42RV6uzUYahFfmrPvmc+7Obz6cnPtWF9mVc1NS2nPusp4HyDogXSr
-	 dTMpr5/MfPu8P8vyvuKBKeEXs7mCw3Ebj2jtfrr9OoNT+D12TGacCE00GRThT1jMoMC9v
-	 AN7Ma3z149ekHpr5bKSIePwmRtX5N4J0fI42Cqe0k9gFb7GFM0jwB+WimZqueQC46JOAd
-	 A7KYyd1m2QUpizHef14wGhmo/0DN1veFQR44Pr6GIXbf+9Fsz8/RQ+B0Cb9fGAjdmNg==
+	t=1792788792;
+	b=vzIm4/TOaFEeF8IGjf1j2HXwIEiWkA4IAOLs6I1FKzt65w8Xs0H6/RIgWyI4gfKjUe++
+	 b95WEY/SpKseZrEzWWc4XQVtnzRDgij/gZFVLz1uUF5erCPsKMQtI0tZeEtOEPQ4bHInd
+	 R5bG0jQ/KdN/8X6U09tq2zGQnTzgrnAf8psKeAXGwRF+1KykR5pJdY7JFxNhsrqxJ7stA
+	 SVv7nzcUYbg/NrvwFpwyC5k4jtvyvCdpQFhffjoU0rLQ0G+xnSc5WiJDiPQnvEWGo7Ey6
+	 KHuAitlKlhGLIQXXhQ0I0U0lMk8JIn3WX/1/YJO8J98GOlLtlKBjibY8rjMCcUL7shA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792780865;
-	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
-	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
-	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
-	 Subject:From:To:Content-Type;
-	bh=k9tAcHgucxjRPGnV+rTtZYrbnfzK1zdVFYrqtBoNa+c=;
-	b=QK47Jwk5uE6LQU7sbq7URmXHtCgxIOtABe0fakM55PnhdwF28xmtNbqFwpfsilYseBsx
-	 g0ati3jVqW67g+pKoBj3EKKltK9LcOoW4uGiPZ9FD8K0GRB5TD6osllZL1Q9ZsYy8qhoD
-	 ux52gq04feMH3TQqaYvlVDVE5XK78N6/zrFb11w/XYscopWkSu3aU1hJd/377+XYEUj/v
-	 yU8MwKglWqFSEBhAb05VPgBu6JkBIYBcHl4vohc6KiRn5z3E8+ViIEFcY7yxFzpIo7gmQ
-	 D3XJncLUdxtM+xGNG32Bt6XlX+s5zi5l8oxmfZFGzAv6C9LMyRwx2yLm4kas8ePUdcw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792788792;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=4HZ7/B6K41WI+OjSL2WoUlyq+xEMh77iLnsD3cjbDk8=;
+	b=aWkxPK2KNY7YGFCORy8tnhC16ErMOOt08WnwkCGAjiGPii9tAiz48a62r3JFlvl/Xavu
+	 MEDKt5CrLBehNDlE9JG3jaThtz/tqjw9jLoruxdoeYWjuMNDKuvrOqL5T3cYVxS+I32MM
+	 3iNz5ExwhyWa+awHFT+OezLrAzuAZNrA76HdU3iFMvv4NIJafnDfjE6QQYkUcUuVLM0FH
+	 k4JkJXS0O96egDpPCALz3meRdo+9Cn3q3INmyFmRPWtQvi6G1OIj18F15S0mp/qmi9qZZ
+	 EonDttNikN70I783wJvpWS/U1ox8fgsudIpZFW+Cfk+palX4GllXidTgGZjLJmHUEvQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=fail header.from=syzkaller.appspotmail.com;
-	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
-	arc=none smtp.remote-ip=209.85.167.199
-Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TtqZjM5q;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B9FA606A31E
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 18:41:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6B9FA606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4cc89e86e4dso1857745b6e.2
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 11:41:05 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792780864; x=1793385664;
-        h=content-type:to:from:subject:message-id:in-reply-to:date
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=k9tAcHgucxjRPGnV+rTtZYrbnfzK1zdVFYrqtBoNa+c=;
-        b=gV03fkiiGgvmxuWtAI5lDGWM67mgaU+3Ux+mtN6XOl37OLizKPbzuPMxtM2CsrbEQt
-         tpWVVCal54DLpr6vvyqXuQDA+puRoX4ctxGtdvMkC++z+R/uIoiBN9o4nyEZy6AYwWEB
-         LqghcZXZNKSkY78ra21Mt6Nt/T7srjcp9/1Zn6F/xlzYskK+puQgGRVHoxKwH+opQeeY
-         B+qoZ1hkuFXfCoszJgJKrYIt5ndmQaQxGcMzvSZOfCVE59RPqPwVt2ONif3T9Cqwv3Gw
-         nabetmCVm/Zmtpg6zTj2zk7pLLOJ1zsk5J4ahvY5aRPQqyEpLn/hhqkTLWR3/3L93IaK
-         s70g==
-X-Forwarded-Encrypted: i=1; AKwUvBwpURWDdzEOFHwkDtiVmULor0Vo0Mh+gzhr5s6rj/JUz7q9n29OtLF17OQS2C9jfo3zqu9xPCX9ENpx@vger.kernel.org
-X-Gm-Message-State: AFq9FYJdayJ1eV0wxidcnnXPjfnf0OxMKEA4dHLiu84Edjl64LtNDWb9
-	Jfv4DcKs3CAsCvoePpU3A47yB6tbvmP3yyher3Kvk2EG1J9Ygmc0rgfAS3nBFMgVjH285OnWwXc
-	+hHZup0guBZQKwWeh6BHlnZ0HMGou4LJwwWTPpn7qs+p8TdPUYTFxgfgTStY=
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFDB9606A326;
+	Fri, 23 Oct 2026 20:53:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TtqZjM5q
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE68C1F01829;
+	Fri, 23 Oct 2026 20:53:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1792788791;
+	bh=4HZ7/B6K41WI+OjSL2WoUlyq+xEMh77iLnsD3cjbDk8=;
+	h=From:Date:Subject:To:Cc;
+	b=TtqZjM5q5rNTZOxYZWGatBueLAxHHbgcjQW7YC1RebGfN6lAq7G8sg1yumKJJXxcK
+	 s8yFfp2NCSEgJGF1MG8fdFiVbKCyvRmIg9/fPHTxhgRNmx1kawAGtBIvF4MamHt4JW
+	 DcK0fU+XpSBJ/9nh/5zXkIAcq8iCy0C5pFgiqini/DmIHGFc0WuCq0J88RTfBp/h3/
+	 XxyfdCfopxLn2ptHJJJ2vtd5gqSAevMqSTbvf1tH08N1AdYmE0Jg05w0viyC1mBZik
+	 3efp4XBst+MSnb2A2SgUjBrcqU7+AzCLgnMLJvYwmyPR+UQhKbMumsgG2b4xmgAe/H
+	 UxudyA71+czfQ==
+From: Nathan Chancellor <nathan@kernel.org>
+Date: Fri, 23 Oct 2026 13:53:03 -0700
+Subject: [PATCH] ext2: Make sbi an proper alias for EXT2_SB(sb) in
+ ext2_fill_super()
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -58,39 +53,95 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-Received: by 2002:a05:6808:308a:b0:4d6:90d3:e18f with SMTP id
- 5614622812f47-55c0026b6eemr56404b6e.46.1792780864428; Fri, 23 Oct 2026
- 11:41:04 -0700 (PDT)
-Date: Fri, 23 Oct 2026 11:41:04 -0700
-In-Reply-To: <67141631.050a0220.1e4b4d.002e.GAE@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6adbaa40.a6443767.132891.0000.GAE@google.com>
-Subject: Re: [syzbot] [ext4?] possible deadlock in ext4_writepages (2)
-From: syzbot <syzbot+eb5b4ef634a018917f3c@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, hdanton@sina.com, jack@suse.cz, 
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com, tytso@mit.edu, yun.zhou@windriver.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261023-ext2-fix-context-analysis-clang-24-v1-1-2b35c33cd0fa@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yXN2wrCMAwG4FcZuTbQpauIryJedG3UyOikqTIZe
+ 3ejXn7wH1ZQrsIKx26Fyi9RmYuh33WQbrFcGSWbgRzte0ceeWmEF1kwzaUZMJY4vVUU02R5pAG
+ DG8aQc/DOH8CGHpWt8Ds5nf/W53jn1L7LsG0f1qXLrYYAAAA=
+X-Change-ID: 20261023-ext2-fix-context-analysis-clang-24-504b5dd53038
+To: Jan Kara <jack@suse.com>
+Cc: Marco Elver <elver@google.com>, 
+ Timothy Day <timday@thelustrecollective.com>, linux-ext4@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, llvm@lists.linux.dev, 
+ Nathan Chancellor <nathan@kernel.org>
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2862; i=nathan@kernel.org;
+ h=from:subject:message-id; bh=CBjGob9Wbjsm2H69+Nh8omZetImtL3LfrjGHo1E6V5k=;
+ b=owGbwMvMwCUmm602sfCA1DTG02pJDFm3TxoltPQ8r4jJa/h1boOTnkO29vaAeZ+61eTZtirlu
+ ftUNet1lLIwiHExyIopslQ/Vj1uaDjnLOONU5Ng5rAygQxh4OIUgImkbGH4K3BPbI/N+iuPPifv
+ 9udfUrGU8V6Uw4rHc/7/t3YRXbazpoORYYIx1/8dD6NZmqr+fNNZ2n7LuqT7yJJdsk2XmFca5MX
+ qcwIA
+X-Developer-Key: i=nathan@kernel.org; a=openpgp;
+ fpr=2437CB76E544CB6AB3D9DFD399739260CB6CB716
 
-syzbot suspects this issue was fixed by commit:
+A recent LLVM change to fix parsing and validating __guarded_by on
+structure members [1] reveals a couple of warnings in ext2_fill_super()
+from the annotations added by commit 023051c2d0f1 ("ext2: mark
+s_mount_state as guarded by s_lock") and commit c23746524faf ("ext2:
+annotate s_rsv_window_root as requiring s_rsv_window_lock"):
 
-commit 2c3447a9c4fe17c713c014f79d2df485f3829c0e
-Author: Yun Zhou <yun.zhou@windriver.com>
-Date:   Fri Jul 24 10:02:55 2026 +0000
+  fs/ext2/super.c:1040:7: error: writing variable 's_mount_state' requires holding spinlock '_res->s_lock' exclusively [-Werror,-Wthread-safety-precise]
+   1040 |         sbi->s_mount_state = le16_to_cpu(es->s_state);
+        |              ^
+  fs/ext2/super.c:1040:7: note: found near match 'EXT2_SB(sb).s_lock'
+  fs/ext2/super.c:1138:8: error: writing variable 's_rsv_window_root' requires holding spinlock '_res->s_rsv_window_lock' exclusively [-Werror,-Wthread-safety-precise]
+   1138 |                 sbi->s_rsv_window_root = RB_ROOT;
+        |                      ^
+  fs/ext2/super.c:1138:8: note: found near match 'EXT2_SB(sb).s_rsv_window_lock'
 
-    ext4: validate EA inode i_nlink in ext4_xattr_inode_iget
+Context analysis does very minimal alias detection [2], so it is not
+able to figure out that sbi == sb->s_fs_info == EXT2_SB(sb). The only
+reason there were no warnings before the above LLVM change is because
+the annotation was not parsed and verified correctly.
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=13436931580000
-start commit:   f5bbbfec59b4 Merge tag 'probes-fixes-v7.2-rc7' of git://gi..
-git tree:       upstream
-kernel config:  https://syzkaller.appspot.com/x/.config?x=158601bb8cb292dd
-dashboard link: https://syzkaller.appspot.com/bug?extid=eb5b4ef634a018917f3c
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14fe5079580000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17e0d2c6580000
+Rework the allocation and assignment of sbi to have a direct assignment
+of EXT2_SB(sb) to sbi so that the analysis knows that sbi and
+EXT2_SB(sb) refer to the same object, clearing up the warnings.
 
-If the result looks correct, please mark the issue as fixed by replying with:
+Fixes: 9708538ba204 ("ext2: enable context analysis support for ext2 filesystem")
+Link: https://github.com/llvm/llvm-project/commit/217e229a1f32785fccdd3b3f51429f0d309dea45 [1]
+Link: https://clang.llvm.org/docs/ThreadSafetyAnalysis.html#no-alias-analysis [2]
+Signed-off-by: Nathan Chancellor <nathan@kernel.org>
+---
+ fs/ext2/super.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-#syz fix: ext4: validate EA inode i_nlink in ext4_xattr_inode_iget
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index fb217ef2d69f..b55f9ce3267f 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -883,17 +883,18 @@ static int ext2_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	__le32 features;
+ 	int err;
+ 
+-	sbi = kzalloc_obj(*sbi);
+-	if (!sbi)
++	sb->s_fs_info = kzalloc_obj(*sb->s_fs_info);
++	if (!sb->s_fs_info)
+ 		return -ENOMEM;
++	sbi = EXT2_SB(sb);
+ 
+ 	sbi->s_blockgroup_lock =
+ 		kzalloc_obj(struct blockgroup_lock);
+ 	if (!sbi->s_blockgroup_lock) {
+-		kfree(sbi);
++		kfree(sb->s_fs_info);
++		sb->s_fs_info = NULL;
+ 		return -ENOMEM;
+ 	}
+-	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
+ 
+ 	guard(spinlock_init)(&EXT2_SB(sb)->s_lock);
 
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+---
+base-commit: 782654a3e9c4065dea2e9f10539899d348b7a1fc
+base-tree: git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git master
+change-id: 20261023-ext2-fix-context-analysis-clang-24-504b5dd53038
+
+Best regards,
+--  
+Cheers,
+Nathan
+
