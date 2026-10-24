@@ -1,85 +1,85 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.170
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.176
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792806791;
-	b=FXcIB5PT3Nib+O4cQYp0dyoThbWuVL/i55qD6rVr8HwQ6m4h8pi1fz3rb+nKg6q0kEAK
-	 Po10CYpTLjgg6jCqjgaR0JwRMOFlr+zlT9310CB4lprRUylypCfs20OcwBBntvBMQcxRI
-	 qmTRtc0o8Y4uoHSTNGgO42PDuzQCRZDSHR1azGYOpVQhxE69u/KSCVHo0Dqll2LZZfCOE
-	 wCdeXK7yrm7LctK9PqKXSQ4pPVYMWR629Y+WjG5KgZXxrkdGBd0bevGoxHQxdOp5dcLOG
-	 vB0b/KYJoGCinAv3NAjyPJz0eP2gtLnoj/k40mgGdJtq+wVAG6S4NtPLwYs716QSsuA==
+	t=1792825990;
+	b=DC5vPZxlFQJE+MeypMio5dIFMpB3tN3cOmxFdkV7YM24fvZ/j2ST/INHz+0QaOlMyed+
+	 F6WR4Q5+QSQ35ft1AWDom+jcCYwi67ar4wfwoyFp6mm4s6hrU4kuqL0KgBwYQoyE6w9Gt
+	 t3dWjYr+xYL4+ANaMy/ubmy7PQnHfbBdG2qxTGVL+0DzP1eMVh5oVNsBrHtuNw+Ko8Iju
+	 ubtVIHGwYNDKnttIkWV/lJY0wZnwx86XPWvuiRc/oi1H8ZsUPTZAa0Okn9BfdrymRFNyG
+	 AjMNnVwao4OeWFqy4uY756Rzxk+bVbx9eJ/zNozoXMpaDQc3CBgs0/MyATgZLMwDxpA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792806791;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792825990;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Message-ID:Date:
 	 MIME-Version:User-Agent:Subject:To:Cc:References:Content-Language:
 	 From:In-Reply-To:Content-Type:Content-Transfer-Encoding;
-	bh=LjWoAWdpEMOSOVmikYJXtdPPuJN6QLrm0MKN423NGus=;
-	b=FaAo5dGUznpFgAYpdo3D48nKmHMEVMrtQZbIx95tRPurSDOd7rmtu2F2BdfbtEhBxwFa
-	 kVAnzbFTJGn+nGNRl5WRolBnrP8oJkpzGzi6vYgPa8I5FxXM6urN8AyuWPUoG95PNTpXM
-	 C9+cziKw0QXPdqBHnv9CSu/2Dc9ZcIxgIbC67vycankP6NRPmfkLFEcYiMKUVcJalBb7H
-	 qHs9483vD1ZE010WvyEpy42MxZkO/HR2vXcSNpLgh6abqMXEiLeO9/QDDXpnarjjmx/90
-	 2VN1y6tDzS+Q2P5xDwN8bhhdT1LgQXoG6tEJh6TcE+spqa2vCO6DZH5ZWhgZmBgoMHw==
+	bh=vvVgDb84+ZH4mGzuu/NhPjeDNR0l9LEuFpIELpyf8Yk=;
+	b=nwYPYt7wAsDg+c5hhkUOnJSz3MRsZtNvGbaE0uCx+dDLGVY3m0xt3zteJs1W9v3+tFsq
+	 bhryx7HsFQgX7ovF3Huw2hNpXXdM5AzAp4F5Wucm25gG0OIPnUV/kVogkbEiLXB6mnkbT
+	 1ObnDU000j5hoy2gp9AwUCpMi2f6iNOWOTMWczFUB4yqygNx/UTBoS0ljEIavVgYMLfn+
+	 tnlav3nbt2vqM8ZAf1g9EesBGMO3zZdsd8uSdkEAsDwz2RmFxlFoe8fo/nkgnmxRBMX3C
+	 6szX4Ox758uSwGOVfiRQNQahr8GDvCOZ1Qk5ka4FvfKb+1ywuO+qEYmNIa+xp+Hn5qQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=YPpkhyyv;
-	arc=none smtp.remote-ip=74.125.82.170
-Received: from mail-dy1-f170.google.com (mail-dy1-f170.google.com [74.125.82.170])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=gaaCZKW9;
+	arc=none smtp.remote-ip=209.85.215.176
+Received: from mail-pg1-f176.google.com (mail-pg1-f176.google.com [209.85.215.176])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B75BF606A322
-	for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2026 01:53:10 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B75BF606A322
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F581606A31D
+	for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2026 07:13:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8F581606A31D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=YPpkhyyv
-Received: by mail-dy1-f170.google.com with SMTP id 5a478bee46e88-33bf40b0c8bso2776325eec.0
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Oct 2026 18:53:10 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=gaaCZKW9
+Received: by mail-pg1-f176.google.com with SMTP id 41be03b00d2f7-cc4aa0246b7so640109a12.3
+        for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2026 00:13:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792806790; x=1793411590; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1792825989; x=1793430789; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=LjWoAWdpEMOSOVmikYJXtdPPuJN6QLrm0MKN423NGus=;
-        b=YPpkhyyv5hzFxNx4hYdWsiT+HV814azrCr67V+G+wP4mksFY+TstfA6X5nbFJvobdp
-         DaIZbD9BpidwuMYdiIEMFjDT/1oZwf6Sl9UWdQJAEakU3FOE3pQ0I7k5sYIHQZwa6bZb
-         CmKFjmDitTn0FioaO5sOnmxhRyktRt7BIxmQ8RmiHLgUY+Afe06x0+srbWIDJTDKOSm3
-         0Hnpx5CRc9yg2+Q+7WVltFvoxG+yH4OZBhBRoB6yDiKDnf9dRSGhjQie5zq8wTn9uuLa
-         QmqVm419VGHeLN7ikaqfiQxQ1D/M7NaS3eVY4d3/8vGGmgPFUtInWjiEW3XtGrjFqxt7
-         s1SQ==
+        bh=vvVgDb84+ZH4mGzuu/NhPjeDNR0l9LEuFpIELpyf8Yk=;
+        b=gaaCZKW97VyVrU/UyqRFDCtRPkmeVHzomoYOSsaSLwy9qc1oyKdXLDd2xNt9iRiBrm
+         jqYJlin3hbz/1w0/aFEwX6+jsw8fhFlndilXsXCXmpTi6v99GUKpU6r1zwKe9DBofW9C
+         jZXE1bnCoHNLiKq2JXbHDVHQ+U7fNH6piDeQrDCXDnDLzenNUNC4zSn2V3JZkQxD4kL8
+         gqhud9Pr3E6yLkmb1+kyoMrftn7P1e0+Keh1aOLv0jROV+YtlW+ck9V/5IptxIjLmSUU
+         tNz2VbP9G+Tb7Qa6O5deJtcsWeqD5FbVBif3UG9NlOYJTC6gk7b4t203EYBJCkgPHqEu
+         E0Uw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792806790; x=1793411590;
+        d=1e100.net; s=20260707; t=1792825989; x=1793430789;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=LjWoAWdpEMOSOVmikYJXtdPPuJN6QLrm0MKN423NGus=;
-        b=g0Rera+AH1gCt6S4o5aj34CRgzNvNgy6al3qac/Q/8vYK4vMR8Yry3p5LCiSpq8/GP
-         /8K5l4mBl0E2dvDnHuHyJ0lf+LkoIaojnwSDuXM/aaFb5u9Fp4TcplmMMpDhath5+H8P
-         vEOObdzpbYkmPoQE5bZtwORmMgQSguixSyFrIZAUgVyElcH6b4p4phxVthyQKz53LxfS
-         M024Mn84+av5jYdNr6DFWebpgfwumT9o9G2c4rPBGIuttH3txI8xddT8QKSGPvj8Y+BT
-         RROkwmLIuqtqE1XfCI9EBUe/i6LdVy8ifIubZs+LCqsCmyXRtXFpwn4GDUJdDQJgxV+H
-         TPmg==
-X-Gm-Message-State: AFq9FYLAxWwsEwD2weM0F7YHrb8Lc5qnmNfkdfJ1OTvqAjhAGSBo0Eq7
-	kl/2f6t0Hi2z330gfcRbhmU1a7mHMDIV0pFlnFcbZcM6irYS1daYx58s
-X-Gm-Gg: AYBFou0KCot22nGuEXQTbWKHvfSvF6re5AxjizYDlMQ4xE6rRqG/rXXmp7KtC5XErnM
-	yxflikiQCr/YJJfykxR5GalKi8m65jtIgHK17XklpjSFeb1vJIc32ji/QrbLj18Dnl3eg78OW9Q
-	scJDsCc37f4Rkd6B7AiFRbhlcu1ZXhsmffGJyankFOuyCnIaqsb42HCrYNY4RJaUPDiYSTge+gh
-	80FPShtjAWCwfGqg/Bg6RfbxcPBpREu55dUUoK7X9IS1JSFJqM1xi5lm3QRVvZSUy0uhI7zPBvf
-	jPnKsckjicPLpr17V2R20XcnSUgrswp7rZXCq4lAOBpMQZ5E+66pWThBrktYdleNRoIbXdT3zN0
-	PDM7OyYNUkMf2Yl57CIeINPdj+5CsjPGLfVZnEzsoT1GBD1svulgoXa3hsg8D7wQEjhWc+VLgqi
-	/5v7nuAPZKne/S7LN+9pqVGD9YTxpaTuCltct0dmW8XIB7o6WA/PPnJQkPiTFogKQ6cUfMtwuy8
-	Imk0I0c7gYTfFWVXkdvHG94ou7AoTRaAuUrIUSg28Ww7LKsmTGcuPhkA4u80rrdSqQBIpF2gPYm
-X-Received: by 2002:a05:7300:ae18:b0:366:f9c2:9b16 with SMTP id 5a478bee46e88-369e8502798mr1345628eec.31.1792806789656;
-        Fri, 23 Oct 2026 18:53:09 -0700 (PDT)
+        bh=vvVgDb84+ZH4mGzuu/NhPjeDNR0l9LEuFpIELpyf8Yk=;
+        b=N8Rpv5WE8H26bNWEHkd0pS9t/bDF2ACjtqD1XGaH7SQ2i+RDaneLi3r5G9OVmnB4rB
+         sTkBZ9Y/lKpc/Vh65NkhOnFJKlB32lTAm45hpBMIYmrRitne4wt+HOePu7FZhBSB1m2v
+         CVRYmIHP0ZchkEetI0Tbq9fLf7LBmkNfcsmn+skoNsidTj7zacOAIN6Xp5bl/rGjUi6y
+         0gwpU8xGoq8azZ7YkPgpBis6fsAStFbtMWbGQxlwj9Wi7VuABkfM28CLyvzORVn5aTby
+         Fi4OPdiDjUNG2bENqENNwOHXlC1ItKuP0zln52XvI639Bh4VQA/lc2AE224SYS8oowLC
+         LqcA==
+X-Gm-Message-State: AFq9FYKOtMKI/hk+Eeb8L7z7HtMH4XJOrCxZnhaERjWgTcRS2kJYY4Gb
+	65QvaNF9gOmcQdBs3gX0ppC+z7Pix/bHBP5JDcY9FT3j2NFlvBwmX2Hf
+X-Gm-Gg: AYBFou18VeEN076wyd7jqp8i7TtrnLUPDfJheuNkk3MIrYWNA9xBWRxcjk4DIqvzuVk
+	m87P94Y1hUjkT0s8Da6mlvayixgwQm8FuOWSYDuRyUUzApbqwUelJ0ZsNfbkBNWJEIaX5K6O1ED
+	s0Y30WYGRhDNn19ck1iTwdUMm3TEDp+6VYD6LXJd2FdtOaBZgyi+66F2rJ3YocHEJEFkx0ZgjhX
+	Px4Uujar7ENvwhx+Ma3LAvZmHuWFKViQas1bWACZ0CIa04SR6G7QzZwBWixpmx0XSuxe8ftdaQd
+	sp/dMAyd32sfu/o6q5Wq+ei2JPeaykHQ/tev0xJVlbPo033m6/iEESGMDiJJiOozwmYLQuQ0zTY
+	oX1mlU64nv/117ncJNoDAfKHGhF5UGwJzO7ctIrJhPWsZLfRiL9zaak0Lzoi1PDKCXPaaR1v6ob
+	gxDjzLt08Xb6BqPOmW4zcO+jZq/DY8O+Dll4fuYNjsexApPT6S9hQ5HiB3FmqQbNJoeTOSYvVzj
+	KGSd3l0rOUnTRjGB/oFNSYBleN4LMeeZJ8jyNcw2FgWSsKs8Rw6ypVqrp/dLzvELiHFdaAnV6jP
+X-Received: by 2002:a17:90b:4acf:b0:3ac:9e76:aa93 with SMTP id 98e67ed59e1d1-3adea0b1206mr1026779a91.7.1792825988773;
+        Sat, 24 Oct 2026 00:13:08 -0700 (PDT)
 Received: from [100.125.248.95] ([124.70.231.46])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-369e8d95e91sm2474651eec.15.2026.10.23.18.53.04
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3adebe6af0dsm1895499a91.5.2026.10.24.00.12.59
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 23 Oct 2026 18:53:09 -0700 (PDT)
-Message-ID: <02b542c0-8b25-41b3-b271-fb6fde641544@gmail.com>
-Date: Sat, 24 Oct 2026 09:52:40 +0800
+        Sat, 24 Oct 2026 00:13:08 -0700 (PDT)
+Message-ID: <abcaabca-d99e-4bf2-b31b-5e96e7accd29@gmail.com>
+Date: Sat, 24 Oct 2026 15:12:35 +0800
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -90,62 +90,187 @@ List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] ext4: return -EINVAL on hole in
- ext4_convert_unwritten_extents_atomic()
-To: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
- Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
- Baokun Li <libaokun@linux.alibaba.com>, Jan Kara <jack@suse.cz>,
- "Ritesh Harjani (IBM)" <ritesh.list@gmail.com>,
- Zhang Yi <yi.zhang@huawei.com>
-References: <20261023-ext4-atomic-endio-fix-b4-v1-1-f91feb0b9613@linux.ibm.com>
+Subject: Re: [PATCH v2] ext4: do not advance i_size on a buffered write that
+ copied nothing
+To: Hengyu Liang <hengyul@cs.unc.edu>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+ libaokun@linux.alibaba.com, jack@suse.cz, ojaswin@linux.ibm.com,
+ ritesh.list@gmail.com, yi.zhang@huawei.com, yi.zhang@huaweicloud.com,
+ dave.hansen@linux.intel.com, akpm@linux-foundation.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <20261023172532.3271348-1-hengyul@cs.unc.edu>
 Content-Language: en-US
 From: Zhang Yi <yizhang089@gmail.com>
-In-Reply-To: <20261023-ext4-atomic-endio-fix-b4-v1-1-f91feb0b9613@linux.ibm.com>
+In-Reply-To: <20261023172532.3271348-1-hengyul@cs.unc.edu>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
-On 10/23/2026 6:23 PM, Ojaswin Mujoo wrote:
-> We should ideally never encounter a hole during the endio conversion as
-> that indicates something is wrong with our extent handling. Still if we do
-> find a hole at atomic write endio, ext4_map_blocks() returns 0 which would
-> be returned back to callers by ext4_convert_unwritten_extents_atomic().
-> This can be wrongly interpreted as a success. Fix this by bailing out with
-> -EINVAL instead.
+On 10/24/2026 1:25 AM, Hengyu Liang wrote:
+> Commit 665575cff098 ("filemap: move prefaulting out of hot write path")
+> made generic_perform_write() call ->write_begin() and ->write_end()
+> before it finds out that the source buffer cannot be read.  In that
+> case ->write_end() is called with copied == 0.
 > 
-> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> However, ext4_write_end(), ext4_journalled_write_end() and
+> ext4_da_do_write_end() set i_size to pos + copied without checking
+> copied.  As of now, a buffered write() past EOF that fails with EFAULT
+> grows the file to the write offset, and the new size can reach the
+> disk.
+> 
+> The issue can be reproduced on an ext4 mount with:
+> 
+>      char *p = mmap(NULL, 4096, PROT_NONE,
+>                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+>      int fd = open("/mnt/ext4/file", O_CREAT | O_TRUNC | O_RDWR, 0600);
+>      pwrite(fd, p, 4096, 1024 * 1024);   /* fails with EFAULT */
+>      fstat(fd, &st);
+> 
+> Before that commit, the result is st_size = 0.
+> After it, the result is st_size = 1048576.
+> 
+> This patch will leave i_size alone when nothing was copied, as
+> ext4_write_inline_data_end() already does.  The delalloc path does not
+> trim after a failed write, so when such a write reaches past i_size,
+> it also drops the folio and the delayed blocks that ->write_begin()
+> set up there.  Otherwise that folio stays dirty past EOF and writeback
+> never cleans it.
 
-Ha, this looks good to me, thanks!
+I feel the last sentence isn't quite accurate. Dirty folio past
+EOF will be cleaned up during writeback. In mpage_process_page_bufs(),
+when lblk >= blocks, if 1) there are no blocks to map, it will
+directly call mpage_submit_folio(), which clears the dirty flag on
+the folio, and then mpage_submit_folio() will shorten the writeback
+length, so that ext4_bio_write_folio() will also clear the dirty
+flag on the corresponding bh; if 2) there are blocks to map, then
+after the required block allocation is done, it will likewise call
+mpage_submit_folio() and do similar cleanup. Am I missing something?
 
-Reviewed-by: Zhang Yi <yi.zhang@huawei.com>
-
+> 
+> Fixes: 665575cff098 ("filemap: move prefaulting out of hot write path")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Hengyu Liang <hengyul@cs.unc.edu>
 > ---
->   fs/ext4/extents.c | 8 ++++++++
->   1 file changed, 8 insertions(+)
+> Changes in v2:
+> - Rebase onto the ext4 dev branch.
+> - Also trim when a failed write starts before EOF and ends past it
+>    (pos + len > old_size), as suggested by Zhang Yi.
+> - Keep the Fixes tag and the new helper, as discussed on v1.
+> - v1: https://lore.kernel.org/r/20261009044656.1993196-1-hengyul@cs.unc.edu
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 7193429a05e1..b54d8227786b 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -5107,6 +5107,14 @@ int ext4_convert_unwritten_extents_atomic(handle_t *handle, struct inode *inode,
->   		map.m_lblk += ret;
->   		map.m_len = (max_blocks -= ret);
->   		ret = ext4_map_blocks(handle, inode, &map, flags);
-> +		if (ret == 0) {
-> +			ext4_msg(inode->i_sb, KERN_ERR,
-> +				 "inode #%llu: block %u: len %u: "
-> +				 "hole found while converting extents for atomic write",
-> +				 inode->i_ino, map.m_lblk, map.m_len);
-> +			ret = -EINVAL;
-> +			break;
-> +		}
->   		if (ret != max_blocks)
->   			ext4_msg(inode->i_sb, KERN_INFO,
->   				     "inode #%llu: block %u: len %u: "
+> Tested in KVM with KASAN: the reproducer above and failed writes around
+> EOF on delalloc, nodelalloc, bigalloc and 1k block filesystems.
+> e2fsck -fn reports no errors.
 > 
-> ---
+>   fs/ext4/inode.c | 42 +++++++++++++++++++++++++++++++++++-------
+>   1 file changed, 35 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 6ede3644a738..e96321ce17d2 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1578,15 +1578,18 @@ static int ext4_write_end(const struct kiocb *iocb,
+>   	 * it's important to update i_size while still holding folio lock:
+>   	 * page writeout could otherwise come in and zero beyond i_size.
+>   	 *
+> +	 * If nothing was copied (e.g. the source buffer was unreadable), do
+> +	 * not move i_size up to pos.
+> +	 *
+>   	 * If FS_IOC_ENABLE_VERITY is running on this inode, then Merkle tree
+>   	 * blocks are being written past EOF, so skip the i_size update.
+>   	 */
+> -	if (!verity)
+> +	if (copied && !verity)
+>   		i_size_changed = ext4_update_inode_size(inode, pos + copied);
+>   	folio_unlock(folio);
+>   	folio_put(folio);
+>   
+> -	if (old_size < pos && !verity)
+> +	if (copied && old_size < pos && !verity)
+>   		pagecache_isize_extended(inode, old_size, pos);
+>   
+>   	/*
+> @@ -1697,13 +1700,13 @@ static int ext4_journalled_write_end(const struct kiocb *iocb,
+>   		if (!partial)
+>   			folio_mark_uptodate(folio);
+>   	}
+> -	if (!verity)
+> +	if (copied && !verity)
+>   		size_changed = ext4_update_inode_size(inode, pos + copied);
+>   	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+>   	folio_unlock(folio);
+>   	folio_put(folio);
+>   
+> -	if (old_size < pos && !verity)
+> +	if (copied && old_size < pos && !verity)
+>   		pagecache_isize_extended(inode, old_size, pos);
+>   
+>   	if (size_changed) {
+> @@ -3349,6 +3352,24 @@ static int ext4_da_should_update_i_disksize(struct folio *folio,
+>   	return 1;
+>   }
+>   
+> +/*
+> + * Delalloc counterpart of ext4_truncate_failed_write(): ->write_begin() only
+> + * reserved delayed blocks, so drop the page cache and the delayed extents
+> + * beyond i_size and leave the blocks that are allocated there alone.
+> + */
+> +static void ext4_da_truncate_failed_write(struct inode *inode)
+> +{
+> +	struct address_space *mapping = inode->i_mapping;
+> +	ext4_lblk_t lblk = EXT4_B_TO_LBLK(inode, inode->i_size);
+> +
+> +	filemap_invalidate_lock(mapping);
+> +	truncate_inode_pages(mapping, inode->i_size);
+> +	down_write(&EXT4_I(inode)->i_data_sem);
+> +	ext4_es_remove_extent(inode, lblk, EXT_MAX_BLOCKS - lblk);
+> +	up_write(&EXT4_I(inode)->i_data_sem);
+> +	filemap_invalidate_unlock(mapping);
+> +}
+> +
+>   static int ext4_da_do_write_end(struct address_space *mapping,
+>   			loff_t pos, unsigned len, unsigned copied,
+>   			struct folio *folio)
+> @@ -3386,12 +3407,12 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+>   	 * checked, we need to update i_disksize here as certain
+>   	 * ext4_writepages() paths not allocating blocks and update i_disksize.
+>   	 */
+> -	if (new_i_size > inode->i_size) {
+> +	if (copied && new_i_size > inode->i_size) {
+>   		unsigned long end;
+>   
+>   		i_size_write(inode, new_i_size);
+>   		end = offset_in_folio(folio, new_i_size - 1);
+> -		if (copied && ext4_da_should_update_i_disksize(folio, end)) {
+> +		if (ext4_da_should_update_i_disksize(folio, end)) {
+>   			ext4_update_i_disksize(inode, new_i_size);
+>   			disksize_changed = true;
+>   		}
+> @@ -3400,9 +3421,16 @@ static int ext4_da_do_write_end(struct address_space *mapping,
+>   	folio_unlock(folio);
+>   	folio_put(folio);
+>   
+> -	if (pos > old_size)
+> +	if (copied && pos > old_size)
+>   		pagecache_isize_extended(inode, old_size, pos);
+>   
+> +	/*
+> +	 * A write reaching past i_size that copied nothing leaves i_size
+> +	 * alone, so trim what ->write_begin() set up beyond it.
+> +	 */
+> +	if (!copied && pos + len > old_size)
+
+Why do you keep the '!copied' condition? AFAICT, if copied is non-zero
+but less than len, the excess delalloc extent allocate by
+ext4_da_write_begin() should still be cleaned up.
+
+Thanks,
+Yi.
+
+> +		ext4_da_truncate_failed_write(inode);
+> +
+>   	if (!disksize_changed)
+>   		return copied;
+>   
+> 
 > base-commit: 8c4f6e3376348fc3162eed86a05b933921c8f9ed
-> change-id: 20261023-ext4-atomic-endio-fix-b4-9e1ead9e1aca
-> 
-> Best regards,
 
