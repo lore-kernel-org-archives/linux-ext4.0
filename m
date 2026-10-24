@@ -1,57 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=79.135.106.111
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=185.70.43.172
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792857923;
-	b=J8NjpnFllLtbJ+f+O140hHFZc5SLy2Cdw86jseeQ9yjfqp46kdIbEBQvMnZdslLVcJF2
-	 5+QZYcOxsDA8FPGnkrKz+LgU47xLa4IRhdlk+D7aZCr84k7XoeuWD4sCk1ttvBOhoCPcl
-	 /kzO9S5axLstUTvH4psBb9Bzn4c9U7Q9aK8UeS8YJKirg8VxiLnvdBBVyLH3xtA2z+GnC
-	 SbsefNwm7xGS+mEELc71OmDRvnpPwg16KDgAJxQTgsPxWMapfE68kN3n8RlD1PKHkcF4L
-	 bAkcO/YdGgP473JbPFXBSLrmqguzrxWq8IgqxYRJdPZDIPgyo97dvTXF78ugLoRjfEg==
+	t=1792857918;
+	b=WvvWw5yfrg1bFsSfRMvWsrEyOXGU5DtmKWEuHUQsXEMbyj/T4d7qLpeA8r3ozEwT4+fC
+	 IDfI3oUxbTERb98resPQeCXduefTAWDnb7k5hxwhIkuN28XuA1oMXxbTia7bXHxkqJ4Mj
+	 We5QG9id0X1Qwj14MMvygsus3CzZhSsDCW0KX3wSZGuo702UqIwTZG1Fd2KI5BPf7loBw
+	 +1p/cVSjXTOvXcPcSH8PTlPxdcMhdNnpf+lcMB4Mt0MX0I58VQYhAx6r4wJSU8mjEM9dc
+	 vExvInuTf2t+zbM28t56RIctnI5fkxnC/yRM25C8J8WoTXYXYYNfohPBNfudo1U34ZQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792857923;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792857918;
 	h=DMARC-Filter:DKIM-Signature:X-Pm-Submission-Id:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=PmyL8FnvFWmfO8vCVEIvFSqwZV9Ld3MINRaVhnd4Q4U=;
-	b=b2//0+FaDDSSySWYDQdNuF34sOFgh3O5PysoxKXXSZlKKRNl3eXUFGkqMTteNXyVzFS1
-	 d+SgRoWR9Abh8JAHBeKY/5ecy6kMP6OVxwn5VaxgLC2F0kLtjUcm6VpgXGnkK8yI5SLmp
-	 VS4SSikH+bo+AotnN+aeeZyGUPwu0P82HG6xRN9JjjJWVXg8ia/zjbBBfV3SdbKuj25jD
-	 RH9obbqg6lHLd11v1n0z/D/FBiffvZLr9+nYnCpWRB0zjtjefTi8bI04or+MgJHc38pn7
-	 AIpKowmONFrzd1OlSpwbUfB4iIeZLxkC0Vn6NPx8/o7heHzaHY3wHLleuUBovlnAM6Q==
+	bh=jGsjFTTgYKKaMU1FUDk7Rryk+yOYnZHwRRMPZVYxyAc=;
+	b=r49mcibv1mTaABoH7TR5Sq05WmM1lWQluEZr6aQBN2D5l1Ebo0FCwBWexy6JU5JFa806
+	 bim0Jf81d6WL/fpcH9AhWBRikDxXcKpeM7gKR0w3HdvSYMMehbm1sGtfQVVb4e6Ln8MhR
+	 Ld99t1tAAkrbp+JQLDUlOrolkmVJGg/dymQUErgHW3LUAOb/XcS6l//vQfq6KKdQUEuAp
+	 qyqk7dZmuo/jlm6cU7liECd1FwRw7y3CwrahEVE/DD1fqStBJExksif2qTacgU+92GJ1h
+	 eGnDK9h5Ny0bwk1E8PN0rh9tYzvkb/nC4b0dKJgABsChMrjjqRHp3GZ8hPShPqUsTfQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=czerner.cz;
 	spf=pass smtp.mailfrom=czerner.cz;
-	dkim=pass header.d=czerner.cz header.i=@czerner.cz header.a=rsa-sha256 header.s=protonmail3 header.b=pyCIrv8o;
-	arc=none smtp.remote-ip=79.135.106.111
-Received: from mail-106111.protonmail.ch (mail-106111.protonmail.ch [79.135.106.111])
+	dkim=pass header.d=czerner.cz header.i=@czerner.cz header.a=rsa-sha256 header.s=protonmail3 header.b=p+tqQ2JZ;
+	arc=none smtp.remote-ip=185.70.43.172
+Received: from mail-43172.protonmail.ch (mail-43172.protonmail.ch [185.70.43.172])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C283606A320
-	for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2026 16:05:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3C283606A320
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A88B6606A31B
+	for <linux-ext4@vger.kernel.org>; Sat, 24 Oct 2026 16:05:17 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A88B6606A31B
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=czerner.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=czerner.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=czerner.cz header.i=@czerner.cz header.a=rsa-sha256 header.s=protonmail3 header.b=pyCIrv8o
+	dkim=pass (2048-bit key, unprotected) header.d=czerner.cz header.i=@czerner.cz header.a=rsa-sha256 header.s=protonmail3 header.b=p+tqQ2JZ
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=czerner.cz;
-	s=protonmail3; t=1792857919; x=1793117119;
-	bh=PmyL8FnvFWmfO8vCVEIvFSqwZV9Ld3MINRaVhnd4Q4U=;
+	s=protonmail3; t=1792857915; x=1793117115;
+	bh=jGsjFTTgYKKaMU1FUDk7Rryk+yOYnZHwRRMPZVYxyAc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:From:To:
 	 Cc:Date:Subject:Reply-To:Feedback-ID:Message-ID:BIMI-Selector;
-	b=pyCIrv8owKqFGLrRxWjQ41mtodKLvx5IWvfCcy7jqPqB8aN+S0dmeKhQUZhXU++AN
-	 41iRMQUCFTbm1cddVGJeETiG5vvq5zhENYvMQUE0y3FpJO6GnFZZruBVyn/rRoKCOk
-	 3EvVN+soDBX7xQ1HIXe6RNEYbRrCLwjRyAbQLH26kwDD184gpjcSF1BwE4L8o3wHZQ
-	 NqUByouHBcOhn1Zr5PQalM7QxRXK7vOSoTIB4SMjOlDhKjn9kMGKImaVHzd73t/ySZ
-	 akxeqsar90tRv9MOW9/iCsv4dvhoD578VgvyvSGgaZPH24prMID0z5L1wFy+PhAXf8
-	 Wzumcq4Fzou4Q==
-X-Pm-Submission-Id: 4jBl8t2NDSz2ScjC
+	b=p+tqQ2JZ2pQuDMwbxEtAV6PJMUI3OXBuYfj1vOzK6bd/gpAbd/fUypvovK4vemyiW
+	 lt792+M2somIa3Vy94XwpDvg69P9J1pMCT5NZhYmGVwK++YL9qtF9hHYnRKaSJUCIb
+	 q9NXIX/JeqZOAOxxpfm4SJXUA2q0Zf3IchqhmABl92RtU+XQjA24zexnWiowVhStKP
+	 Es1YRi8+3Fi2WIQS4gUoCCx1/Z3UOwyAg1KkIcj+c5nDLgRTXa8k5O5VcetzjDji/d
+	 k7JWOERhrnc9hgZ5qN0c1WNhiarLM8/g1xfG0uRE7NfPVfaeiWpVCHJ69Jh7JVDn66
+	 fXZ1k+dGTeg8w==
+X-Pm-Submission-Id: 4jBl8p21hcz1DFT2
 From: Lukas Czerner <lukas@czerner.cz>
 To: linux-ext4@vger.kernel.org
 Cc: Theodore Ts'o <tytso@mit.edu>,
 	Lukas Czerner <lukas@czerner.cz>
-Subject: [PATCH 3/4] e2fsck: disable resize_inode when too many backups
-Date: Sat, 24 Oct 2026 18:04:51 +0200
-Message-ID: <20261024160452.1818872-4-lukas@czerner.cz>
+Subject: [PATCH 1/4] libext2fs: limit index in ext2fs_create_resize_inode()
+Date: Sat, 24 Oct 2026 18:04:49 +0200
+Message-ID: <20261024160452.1818872-2-lukas@czerner.cz>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261024160452.1818872-1-lukas@czerner.cz>
 References: <20261024160452.1818872-1-lukas@czerner.cz>
@@ -66,94 +66,40 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-check_resize_inode() requires that every backup sb group has an entry in
-the resize inode indirect block, which holds at most fs->blocksize /
-sizeof(__u32) entries. On a crafted or corrupted filesystem image with
-more backup sb groups than that, the resize inode can never be valid.
+ext2fs_create_resize_inode() walks the backup superblock groups returned
+by ext2fs_list_backups() and writes one reserved GDT entry per group in
+gdt_buf buffer. The buffer is exactly one filesystem block in size.
 
-Previous fixes prevent OOB read/write, but e2fsck can never succeed in
-recreating the resize inode, so the repair never succeeds.
+The index is never checked against that limit. A crafted filesystem
+image (resize_inode, no sparse_super and more block groups than
+blocksize/4) can force OOB read and write past the end of gdt_buf
+buffer. e2fsck with ASAN build aborts "e2fsck -f -y" with
+heap-buffer-overflow.
 
-Fix it by checking whether entries can fit into one file system block
-and offer to clear the resize_inode feature, clear s_reserved_gdt_blocks
-and zero the resize inode.
+Fix it by actually checking the index (last) against
+EXT2_ADDR_PER_BLOCK(sb) and return EXT2_ET_RESIZE_INODE_CORRUPT if it is
+larger than the buffer.
 
 Signed-off-by: Lukas Czerner <lukas@czerner.cz>
 ---
- e2fsck/problem.c |  6 ++++++
- e2fsck/problem.h |  3 +++
- e2fsck/super.c   | 27 +++++++++++++++++++++++++++
- 3 files changed, 36 insertions(+)
+ lib/ext2fs/res_gdt.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index e433281f..c17f242a 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -546,6 +546,12 @@ static struct e2fsck_problem problem_table[] = {
- 	  N_("Orphan file (@i %i) size is not multiple of block size. Terminating orphan file recovery.\n"),
- 	  PROMPT_NONE, 0 },
+diff --git a/lib/ext2fs/res_gdt.c b/lib/ext2fs/res_gdt.c
+index 33496480..8bd1188a 100644
+--- a/lib/ext2fs/res_gdt.c
++++ b/lib/ext2fs/res_gdt.c
+@@ -195,6 +195,10 @@ errcode_t ext2fs_create_resize_inode(ext2_filsys fs)
+ 		       fs->group_desc_count) {
+ 			blk_t expect = gdt_blk + grp * sb->s_blocks_per_group;
  
-+	/* More backup-superblock groups than fit in one indirect block */
-+	{ PR_0_RESIZE_INODE_TOO_MANY_BACKUPS,
-+	  N_("Too many backup superblock groups (%N) to fit in the resize\n"
-+	     "@i indirect block. Resize @i should be disabled.  "),
-+	  PROMPT_FIX, 0, 0, 0, 0 },
-+
- 	/* Pass 1 errors */
- 
- 	/* Pass 1: Checking inodes, blocks, and sizes */
-diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-index ef15b8c8..4e8a8f43 100644
---- a/e2fsck/problem.h
-+++ b/e2fsck/problem.h
-@@ -300,6 +300,9 @@ struct problem_context {
- /* Orphan file size isn't multiple of blocks size */
- #define PR_0_ORPHAN_FILE_WRONG_SIZE		0x000055
- 
-+/* Too many backup-superblock groups to fit the resize inode */
-+#define PR_0_RESIZE_INODE_TOO_MANY_BACKUPS	0x000056
-+
- /*
-  * Pass 1 errors
-  */
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index eb1c7e52..2a5025c3 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -731,6 +731,33 @@ void check_resize_inode(e2fsck_t ctx)
- 
- 	clear_problem_context(&pctx);
- 
-+	/*
-+	 * The resize inode must fit backup GDT entries in a single indirect
-+	 * block. If it does not, it won't work. Clear it.
-+	 */
-+	if (ext2fs_has_feature_resize_inode(fs->super) &&
-+	    fs->super->s_reserved_gdt_blocks) {
-+		dgrp_t three = 1, five = 5, seven = 7, backups = 0;
-+
-+		while (ext2fs_list_backups(fs, &three, &five, &seven) <
-+		       fs->group_desc_count)
-+			backups++;
-+		if (backups > fs->blocksize / sizeof(__u32)) {
-+			pctx.num = backups;
-+			if (fix_problem(ctx,
-+					PR_0_RESIZE_INODE_TOO_MANY_BACKUPS,
-+					&pctx)) {
-+				ext2fs_clear_feature_resize_inode(fs->super);
-+				fs->super->s_reserved_gdt_blocks = 0;
-+				memset(&inode, 0, sizeof(inode));
-+				e2fsck_write_inode(ctx, EXT2_RESIZE_INO, &inode,
-+						   "clear_resize");
-+				ext2fs_mark_super_dirty(fs);
-+				goto cleanup;
++			if (last >= apb) {
++				retval = EXT2_ET_RESIZE_INODE_CORRUPT;
++				goto out_dindir;
 +			}
-+		}
-+	}
-+
- 	if (ext2fs_has_feature_resize_inode(fs->super) &&
- 	    ext2fs_has_feature_meta_bg(fs->super) &&
- 	    fix_problem(ctx, PR_0_DISABLE_RESIZE_INODE, &pctx)) {
+ 			if (!gdt_buf[last]) {
+ #ifdef RES_GDT_DEBUG
+ 				printf("added backup GDT %u grp %u@%u[%u]\n",
 -- 
 2.56.0
 
