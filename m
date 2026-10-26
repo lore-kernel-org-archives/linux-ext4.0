@@ -1,56 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793034440;
-	b=l1hJY6MiyCQTHCzzYwfK6pxaCauyFaS7jJimajLuBAGHGit1upW2b4o8oJBN2dWPY8NF
-	 kdeNM4Ri+1iEK+UYMm/Zpfvhp7HbPyS2yE3hsoOozqRxBA5V9ILlflTiZl0C2KrjsUGAU
-	 VKwY+VUFnEGuXfic/e9l14jJ9dG9vnSpsU0fzZ/gdxfSbH8l2doT2cumzCenIEcwuGryR
-	 RKNDo5k63jgL0aaML8hBdWSp4rHvt0owJi3Al2MzE9IqJe25wCnidZzL5Y3RcobmJxTvS
-	 cK9xRocvGQratbggOKZULcdCLhJRXqZmYH/knAIE5NeE6s7lSJOK9DWp2e9ZmdDkb0w==
+	t=1793051112;
+	b=rPUDywjlJngp4XXTwW421NC5DVwnqW1XGacCxI7Ypm4j9uTd0ucQvR10wosEuqyPcXkQ
+	 4rhtcFyxIcjin/udaVeViMywRIpJow1CA5qDPGkrQmvgWtySGwCXfiKlmKZQJner6/Lau
+	 ZoH+b1SPJuErf6Z47WUWoJ+pRdcafyU4VYmjKMB+EBMknCyy5k3kSIlKVu2F4LTY7D8L1
+	 ucNXiU8GTReQR+9Vs+2gYsNImPYf6Z/iC1TEugxY7BqdKwz+xXlOe8KGSeJaQkcO7n7oK
+	 +3mFlyJ9ooZvmX+7NoTMS8cWoyHZaYXRVf9uh+DvrZqh5qq/TDdLACnNMqDy4vYqODQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793034440;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=/3rJ8/Al60DrQWFoem+UA7vypW/OjaSz9+xHzh1QZzE=;
-	b=SczylKpfEI4ob7C1KiSy2N7b+L6rlef+cRuJKHCMmnCwbi/9UlZ8yHDKEwt8L/zoOjTF
-	 6j17hBX+0m0G/YFnfEgHxwMnrhKY/JmZja7qlPGIEzaAmoHm0jDPCenyaTO5CkLjlV6BZ
-	 02RRr3Uyhh1YnsykQCAyBY7x7glZEDfRtt8KXGO2YOXM+2jU6fiNG8rXor0NRQSCwW2Mm
-	 uPuX7aTaAIWnmT4PYxBgEGOkeuzYaZFyCIqnPA7mDiJKX5VgsmdjX2pVRFDAr52nBI7sV
-	 +leKvFmcLDAgJkJnYSKqH7L+z7lRLV9y5CCJVdpMxQofbadeU2m3qXKH2mBbMvvnGvQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793051112;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=bc0btPimZJPlaibGvFgoFV5rNJ8djwhej9Lb7S3UTg8=;
+	b=aRn5h8AIpmDONotfBeAPjPRaczx6bQJSFam+k/5HgCjs2ArYWgUGyG3sO+cLwMefjr+x
+	 yUxfFQXNJdlJgcUtfYqP0eWPKw6UsnRFV5aG+jpAHt6TCBI0559RijGW63UlXfE5FpI8e
+	 ipuDT362UGHVV00C8R5LTun4LglfUqV5YsHlQF/Yx/n/RelUbfF7gDuN4H1FhhkYIo9Oh
+	 IyjsWIu65eQO16hNS9bmBJRruU54zJRtJVO7L4WoydbQT6Q8oi5ebLePB07E8cTSlliQW
+	 6eadkDqs80U/raf3uxcod/fpMebdOmfUq2xTQvQ/jf0EkNTaiqQMKfcK6GWx3HlM4IA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lj118Qut;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSornXuF;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C78F5606A31A
-	for <linux-ext4@vger.kernel.org>; Mon, 26 Oct 2026 17:07:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 434C3606A33B;
+	Mon, 26 Oct 2026 21:45:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Lj118Qut
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38BB11F01825;
-	Mon, 26 Oct 2026 17:07:19 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSornXuF
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B4121F031F4;
+	Mon, 26 Oct 2026 21:45:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793034439;
-	bh=/3rJ8/Al60DrQWFoem+UA7vypW/OjaSz9+xHzh1QZzE=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=Lj118QutSNlev0ir+Uy2f2B3IuwexQ63tS4tEHauJktxhPsmHPyRyi7G9SuHuJ79n
-	 SARnhLlKMywgYSobhhgp5+eeu5xPZVQ+boxiA9Hli0wdRJNDS2ESTqUTKZGw/W7ZMC
-	 36Q45mDavwXvKLqdohw0Qxq5h/XPWmFW2F4JsAtiIDnYxSE1pNQsK7y4FuYh4F6qdi
-	 kLl43159PkBFFCUbCT+1s3WHYJY4zFkpUHuwUN1FuYoLorzzkf5AeHoNnLxlzoTxMS
-	 2HJpkCOXR7awTB03Ku3aqSm/NScI4S27rdy3mfOs7wP90eCOepm7w5rFrBb3PBS6ld
-	 H+qitxZbmykig==
-Message-ID: <sashiko-outbox-185572@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH] ext4: validate inode block references during fast
- commit replay
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Hamza Mahfooz" <hamzamahfooz@linux.microsoft.com>, linux-ext4@vger.kernel.org
-Cc: tytso@mit.edu
-In-Reply-To: <20261026164853.3125835-1-hamzamahfooz@linux.microsoft.com>
-References: <20261026164853.3125835-1-hamzamahfooz@linux.microsoft.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Mon, 26 Oct 2026 17:07:18 +0000
+	s=k20260515; t=1793051111;
+	bh=bc0btPimZJPlaibGvFgoFV5rNJ8djwhej9Lb7S3UTg8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=DSornXuFjTL3O00BcpO78tRklJtdIjNguOzqis7mRJrCkb5JekXEu7W9SehNBNvVW
+	 2VNgGwhZcxfVYHOqxFDbAk6BlcXwSR3+7lVhMH4WK0Pg1ukRRIFd8JwwDsxm5D/3b4
+	 wkw6WHn03VP2FsbGCXtt86fhjo9cfM+ZvqtZptJua67PPQTiO1a3+Acymx9Qz8QxcK
+	 p6HTCVMqd7Ch6MDQmf5gUn1FV/6DMrMJWVvGmJjZn8HawAHgMeaZAy85oUMDtNn2GH
+	 Qqv7wWU8arbr3his/HvAqlXb/k6WnCbkfspK7RQvAVWACFdK9+WxHhTBPlc9SFFl+4
+	 j9Yx/mIhKUzsg==
+Date: Mon, 26 Oct 2026 14:45:07 -0700
+From: Nathan Chancellor <nathan@kernel.org>
+To: Marco Elver <elver@google.com>
+Cc: Jan Kara <jack@suse.com>, Timothy Day <timday@thelustrecollective.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	llvm@lists.linux.dev
+Subject: Re: [PATCH v2] ext2: Make sbi an proper alias for EXT2_SB(sb) in
+ ext2_fill_super()
+Message-ID: <20261026214507.GB1330439@ax162>
+References: <20261023-ext2-fix-context-analysis-clang-24-v2-1-a33961453899@kernel.org>
+ <CANpmjNODG_MBuSJvRkzUjwWqeD=hSQLWtHkre8=9Z6-3ZmTKEA@mail.gmail.com>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,34 +58,18 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CANpmjNODG_MBuSJvRkzUjwWqeD=hSQLWtHkre8=9Z6-3ZmTKEA@mail.gmail.com>
 
-> __ext4_iget() currently skips ext4_ext_check_inode() and
-> ext4_ind_check_inode() when EXT4_FC_REPLAY is set in s_mount_state.
-> As a result, an extent-mapped inode loaded from disk during fast commit
-> replay never has its in-inode extent header or root extent entries
-> validated before replay paths such as ext4_fc_replay_inode() and
-> ext4_fc_replay_add_range() walk or modify i_data[].
->=20
-> A crafted filesystem image with a fast commit journal and an inode whose
-> eh_max / eh_entries exceed the four-extent capacity of i_data[] triggers
-> slab-out-of-bounds reads in ext4_cache_extents() and slab-out-of-bounds
-> writes in ext4_ext_insert_extent() into adjacent fields of struct
-> ext4_inode_info and beyond the ext4_inode_cache slab allocation.
->=20
-> ext4_ext_check_inode() and ext4_ind_check_inode() only validate the
-> in-inode extent header and check block numbers against static superblock
-> bounds via ext4_inode_block_valid(), not block allocation bitmaps. So,
-> drop the EXT4_FC_REPLAY exemption in __ext4_iget() so inodes read during
-> fast commit replay are validated.
->=20
-> Cc: stable@vger.kernel.org
-> Reported-by: Simon Brakhane <simon@brakhane.net>
-> Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
-> Signed-off-by: Hamza Mahfooz <hamzamahfooz@linux.microsoft.com>
+On Mon, Oct 26, 2026 at 11:08:30AM +0100, Marco Elver wrote:
+> Right, though function-local aliases are resolved. We just aren't able
+> to figure out aliases that propagate through non-local variables.
 
-Sashiko has reviewed this patch and found no issues.
+Ah okay thanks, I'll keep that in mind in case it comes up in the
+future.
 
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261026164853.3125=
-835-1-hamzamahfooz@linux.microsoft.com?part=3D1
-
+-- 
+Cheers,
+Nathan
