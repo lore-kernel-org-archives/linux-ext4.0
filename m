@@ -1,105 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793020586;
-	b=ZZ0eLv1fiR/6J0KTpmHMmT6L8XEyEnWrmdv4ahfdNlqqg7sMoXZmIBZ1KvK9P/tjjSzJ
-	 Ixt+N/BceJifx3Inj46MVJ8LTfAIupQ4sY98/gSWgU1Pf5FGfE6h6tYVobuX0+uY5Mq6T
-	 WB2yaSR/kDi1RFcFdDnrkfpQItWThd4mMOGkKddNWEIKlzuAzx8Q91ZQQA9d3nCzCSuha
-	 0czElQ6hB+XMQIPB8TbUpz67VdZgcOeFiYq0gZ6h5xw9sGlojVNdY2b2wf/tR79TGmtC8
-	 Mt1xQ1macWE8FB4C2aMP70iJsGBC4QzXZJm0rfzGXIpTBL5K6JVPysIq+6x800Yuvpw==
+	t=1793029018;
+	b=f3YEb5lEn7JwcP/f9rtYZMQuHXudZnVUCAdKw3Zroz6mrCyzU39Tc10qvikjps7oPCIm
+	 m2XWxOsQoSxoJiG8zfKfioKfnfxImbcYG50nUmJNaAXfyTVdXVykwLP4Pv0h6xctJZ2zf
+	 bTH8XnHRJqG2jZok1nqU6eMc6tBYQCH5KNwVLCy2CWgvRVlAeTLSiNvkDdJe9L8YJroha
+	 tvcPSo3fPT1g7OYOqpBSy0VPsazSmIeMZz+JM6GGHxQXfqsoIG4QELcrHIt1mdmxkbgTo
+	 mR3f3gOfz7ABhT0X82WEMe39rLNYBSPU84RqledBemDU6QNGEl1d4TRDzH/vf5Wr4cw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793020586;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793029018;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=uPBVY13550N14hL+IGk35wKKeTHr4lxO3h9f95jd7JQ=;
-	b=a4slnb196ZNZMiRH/vcJN5y9g3a1l5SN1ACafTuilCIVdM8KZ/y4K7I18ZTroZeS+EE+
-	 KY7peAFaciLMG4NjsvEJFkhtTj19+hUtzaMjWIGcpuFwqOp+ZqyOyuUZTJ7F3ROZ1jr/k
-	 wFTniAAt+TauSxytRWmRmQdnJ+9HF5kEw0zbSfnk8g0K3qLJ+9fVBT0yR3oLSQfDqXtAN
-	 8XigNfqv+xYVnomPTTeYqEGaHlJc5B3sDPg0/yLotroZs0KqpZvXVDDLiMiN8BzQU+YsO
-	 m2NGXEi1pap4217774JKcWkT5TeDLc5h1PT6kTTsrFqJj3hGqlU5ltWg+gAlat3alug==
+	 DKIM-Signature:Received:Received:From:To:Cc:Subject:In-Reply-To:
+	 Organization:References:Date:Message-ID:MIME-Version:Content-Type:
+	 X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
+	bh=cF2LelxJ3MDx6ecMIAXwpCiisZ4MqO9Mbe0g8HDsS6s=;
+	b=k73SJMCfYVAxm899nETXLEYMjVpYhPg4tipfnrev+/pC4kMqf3hUhKoVa6CzQsBENRkP
+	 ubl1DZu3GaeNItx2Li5yRUc6a+EBd5ZRR0+tWcVlNdlFeP3I4JB6hOMCRnBUYGW5vmM+n
+	 gxI0oHuBkYv5Pkp84J8jmng3vc6iZqZG0Gti1aMEEayBDZdKBiA9Utlro50Ry9uyVMznB
+	 k64Z86+MsyIICvKsxRnGnAFatStjlJm7y88k5aVWYp0oUX9GqYufJVispjfutE2zoUiN0
+	 /AlK98IV2Ta67ijQhdk2YNYMIwZB0vZ6XeY/qOC8Wl6pHwvGze0LHwl9Kv/yy8V2azg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KMTpm5F1;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BuF6fJSo;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KMTpm5F1;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BuF6fJSo;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dmarc=pass header.from=suse.de;
+	spf=pass smtp.mailfrom=suse.de;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b="iAXN/Nag";
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JNbRYef1;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b="iAXN/Nag";
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JNbRYef1;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E9C3606A31A;
-	Mon, 26 Oct 2026 13:16:25 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2E9C3606A31A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 831BD606A31A;
+	Mon, 26 Oct 2026 15:36:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 831BD606A31A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KMTpm5F1;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BuF6fJSo;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=KMTpm5F1;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=BuF6fJSo
+	dkim=pass (1024-bit key, unprotected) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=iAXN/Nag;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JNbRYef1;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=iAXN/Nag;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=JNbRYef1
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 4F7B11F80B;
-	Mon, 26 Oct 2026 13:16:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793020584; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	by smtp-out1.suse.de (Postfix) with ESMTPS id CB4C422006;
+	Mon, 26 Oct 2026 15:36:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1793029015; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uPBVY13550N14hL+IGk35wKKeTHr4lxO3h9f95jd7JQ=;
-	b=KMTpm5F1MJ9oPBIgv02dnTf1lEdUrWZkVIgdBh2sfnVkCgiJ/l0X2CfypgCEjP0w+YKqAr
-	EEe4cf1mZABSq7+BJIjdPJ4dKGs63Q2JviYnrGQIOo393iVGDNB0Ywbh+A9xRm8vmo0ey2
-	GncvAFg57tryIokdExbnVQed4UXW55M=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793020584;
+	bh=cF2LelxJ3MDx6ecMIAXwpCiisZ4MqO9Mbe0g8HDsS6s=;
+	b=iAXN/Nag4cQ5zMf3PtgdB40d+rYxX9JJN392R9AezuxUIItNEQ/LY77WUmZXGiI+Kau6jF
+	EUjwcW/0CsKEYhNOhVu/Klm1vydI+Krvw9KcB/8R3CZnxZjAewQxYpXaduCDyngii1qj+O
+	93ayObOHgbUgLno/tEFsOXWtAD5Y1dA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1793029015;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uPBVY13550N14hL+IGk35wKKeTHr4lxO3h9f95jd7JQ=;
-	b=BuF6fJSoCOyPGLUVfudXR18pY+Qs2WKmkxzbSHXjKcyqE1dxuxO7FiD3CLq+p6EmMu28c8
-	3e6t4X48ppg0HPCQ==
-Authentication-Results: smtp-out2.suse.de;
+	bh=cF2LelxJ3MDx6ecMIAXwpCiisZ4MqO9Mbe0g8HDsS6s=;
+	b=JNbRYef1E6RPpmJFcMsn/WUm7pdSpJLIiRoVJ+/h1NgtY/IBx57KvXgX79gIHfUFPKx1ml
+	xZApWHb5f0C9gTCA==
+Authentication-Results: smtp-out1.suse.de;
 	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1793020584; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1793029015; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uPBVY13550N14hL+IGk35wKKeTHr4lxO3h9f95jd7JQ=;
-	b=KMTpm5F1MJ9oPBIgv02dnTf1lEdUrWZkVIgdBh2sfnVkCgiJ/l0X2CfypgCEjP0w+YKqAr
-	EEe4cf1mZABSq7+BJIjdPJ4dKGs63Q2JviYnrGQIOo393iVGDNB0Ywbh+A9xRm8vmo0ey2
-	GncvAFg57tryIokdExbnVQed4UXW55M=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1793020584;
+	bh=cF2LelxJ3MDx6ecMIAXwpCiisZ4MqO9Mbe0g8HDsS6s=;
+	b=iAXN/Nag4cQ5zMf3PtgdB40d+rYxX9JJN392R9AezuxUIItNEQ/LY77WUmZXGiI+Kau6jF
+	EUjwcW/0CsKEYhNOhVu/Klm1vydI+Krvw9KcB/8R3CZnxZjAewQxYpXaduCDyngii1qj+O
+	93ayObOHgbUgLno/tEFsOXWtAD5Y1dA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1793029015;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uPBVY13550N14hL+IGk35wKKeTHr4lxO3h9f95jd7JQ=;
-	b=BuF6fJSoCOyPGLUVfudXR18pY+Qs2WKmkxzbSHXjKcyqE1dxuxO7FiD3CLq+p6EmMu28c8
-	3e6t4X48ppg0HPCQ==
+	bh=cF2LelxJ3MDx6ecMIAXwpCiisZ4MqO9Mbe0g8HDsS6s=;
+	b=JNbRYef1E6RPpmJFcMsn/WUm7pdSpJLIiRoVJ+/h1NgtY/IBx57KvXgX79gIHfUFPKx1ml
+	xZApWHb5f0C9gTCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 272FB13408;
-	Mon, 26 Oct 2026 13:16:24 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 56F0C13408;
+	Mon, 26 Oct 2026 15:36:55 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id YpPYAKhS32pkaQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 26 Oct 2026 13:16:24 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id AADADA1419; Mon, 26 Oct 2026 14:16:19 +0100 (CET)
-Date: Mon, 26 Oct 2026 14:16:19 +0100
-From: Jan Kara <jack@suse.cz>
-To: Pedro Falcato <pfalcato@suse.de>
-Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext2: take invalidate_lock in ext2_write_failed()
-Message-ID: <akdbsbqjyqpju5a42sh64yovrl47p7ty3yp5nm36pmfgrduaxj@tlx6yc5atpiy>
-References: <20261024222726.889520-1-pfalcato@suse.de>
+	id E23TBZdz32pSfwAAD6G6ig
+	(envelope-from <krisman@suse.de>); Mon, 26 Oct 2026 15:36:55 +0000
+From: Gabriel Krisman Bertazi <krisman@suse.de>
+To: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+ linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+ linux-xfs@vger.kernel.org, "Christian Brauner (Amutable)"
+ <brauner@kernel.org>
+Subject: Re: [PATCH 0/2] dcache: don't leave negative dentries in casefolded
+ directories
+In-Reply-To: <20261023-work-dcache-casefold-v1-0-1b0bd5c73a69@kernel.org>
+Organization: SUSE
+References: <20261023-work-dcache-casefold-v1-0-1b0bd5c73a69@kernel.org>
+Date: Mon, 26 Oct 2026 11:36:53 -0400
+Message-ID: <87y0bkqxre.fsf@mailhost.krisman.be>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -109,109 +112,70 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261024222726.889520-1-pfalcato@suse.de>
-X-Spamd-Result: default: False [-12.80 / 50.00];
+Content-Type: text/plain
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-13.30 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
 	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
+	HAS_ORG_HEADER(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
 	MIME_TRACE(0.00)[0:+];
+	MISSING_XM_UA(0.00)[];
+	TO_DN_SOME(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_THREE(0.00)[4];
+	RCPT_COUNT_SEVEN(0.00)[8];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.de:email]
-X-Spam-Score: -12.80
-X-Spam-Level: 
-X-Spam-Flag: NO
+	FROM_HAS_DN(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_EQ_ENVFROM(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.de:email]
+X-Spam-Score: -13.30
 
-On Sat 24-10-26 23:27:26, Pedro Falcato wrote:
-> Currently, ext2_write_failed() takes care of removing extra data
-> (folios & blocks) from the page cache by first truncating the page cache,
-> then truncating the actual inode's blocks.
-> 
-> Understanding that this is correct - namely, that a concurrent page cache
-> lookup can't create stale pages and stale block mappings between
-> truncate_pagecache() and ext2_truncate_blocks() - is non trivial. This is
-> correct for two non-obvious reasons:
-> 
-> 1) every caller of ext2_write_failed() holds some sort of exclusion
-> against truncation. In most cases, callers hold (in some way) the inode
-> lock. ext2_write_failed() is only reachable from buffered/direct IO write
-> paths, which hold it. page_symlink() can also call write_begin _without
-> the inode lock_, but at that point the inode is I_NEW, so there are no other
-> users.
-> 
-> 2) the page cache is generally extremely careful at never instantiating
-> pages beyond EOF.
-> 
-> This is all quite confusing. Holding the invalidate lock across both
-> operations is largely simpler, and mirrors other bits of other filesystems
-> (like ext4_truncate_failed_write). Do that.
-> 
-> This has the side effect of making it so ext2_evict_inode() doesn't take
-> the invalidate_lock when truncating blocks on inode deletion. This is safe
-> as the inode should not have any users at that point.
-> 
-> Signed-off-by: Pedro Falcato <pfalcato@suse.de>
+Christian Brauner <brauner@kernel.org> writes:
 
-There's actually one more reason - filesystems that don't support hole
-punching are generally ok with the synchronization provided by inode lock
-and i_size checks (as within i_size allocated space can never disappear
-under you). But I agree this is all too subtle so you're change is a good
-one. Added to my tree.
+> ext4, f2fs and tmpfs keep negative dentries out of casefolded
+> directories. A negative dentry remembers one spelling of the name and
+> the next create() through it would write that spelling to disk.
+>
+> So their ->lookup() doesn't cache a miss and their ->unlink() and
+> ->rmdir() call d_invalidate() on the dentry so that d_delete() doesn't
+> turn it into a negative dentry.
+>
+> But d_invalidate() is the wrong primitive for that. It's for a name that
+> went stale. It walks the subtree, prunes it and detaches every mount it
+> finds, under namespace_sem, and here that runs from inside the
+> filesystem's own directory operation. ext4_rmdir() does it with the
+> journal handle still open and ext4_unlink() does it even when the
+> unlink failed. All anyone wanted is the unhash.
+>
+> So d_delete() now unhashes the dentry when the parent is casefolded,
+> next to the dentry-negative sysctl that does the same for every
+> directory. ext4, f2fs and tmpfs drop their d_invalidate() calls.
+>
+> xfs's ascii-ci doesn't set S_CASEFOLD and can't so it d_drop()s instead.
+> I did consider setting S_CASEFOLD on ascii-ci directories and didn't.
+> overlayfs warns when a layer's casefold flag disagrees with the
+> superblock having an encoding, and xfs has none.
+>
+> Nothing changes for userspace. A miss still isn't cached and a removed
+> name still leaves no negative dentry behind. Verified with the same
+> create, unlink, create, readdir and stat sequence in a plain and in a
+> casefolded directory on tmpfs and on ext4, before and after.
 
-								Honza
+I think the change looks fine and it passed fstests.
 
-> ---
-> 
-> This is a patch that fell out of trying to understand whether
-> 20261021162105.62525-1-matheus.aalmeida@inf.ufrgs.br was correct. I think
-> it is, for the same reason ext2 is correct. I find this to be easier to reason
-> about if we just take the invalidate lock across both operations.
-> 
->  fs/ext2/inode.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index 12ac4cfe1500..723b31dc7dac 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -58,8 +58,10 @@ void ext2_write_failed(struct address_space *mapping, loff_t to)
->  	struct inode *inode = mapping->host;
->  
->  	if (to > inode->i_size) {
-> +		filemap_invalidate_lock(mapping);
->  		truncate_pagecache(inode, inode->i_size);
->  		ext2_truncate_blocks(inode, inode->i_size);
-> +		filemap_invalidate_unlock(mapping);
->  	}
->  }
->  
-> @@ -1236,9 +1238,7 @@ static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
->  	if (ext2_inode_is_fast_symlink(inode))
->  		return;
->  
-> -	filemap_invalidate_lock(inode->i_mapping);
->  	__ext2_truncate_blocks(inode, offset);
-> -	filemap_invalidate_unlock(inode->i_mapping);
->  }
->  
->  static int ext2_setsize(struct inode *inode, loff_t newsize)
-> -- 
-> 2.56.0
-> 
+Reviewed-by: Gabriel Krisman Bertazi <krisman@suse.de>
+
+Of course, the better approach would be to enable negative dentries
+but the last attempt went sideways, though not for any good reason.
+
+thanks!
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Gabriel Krisman Bertazi
