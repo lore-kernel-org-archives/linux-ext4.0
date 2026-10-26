@@ -1,53 +1,87 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.48
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792972257;
-	b=c6IH4MEQVWjxA6Q+CmN61Si3yvBj+LYQvR0D7fQflrNJraBuTZ7VfItG9LR635dg+EPQ
-	 i6mGzmXqqRtQh9Kw73dffUGFsJhB9PQOMqOyAN7/soQb9RjVUpL9vDxFzDvw07jYBn93Y
-	 HL7MH3HIYb8mWkztlovBYiEaYKYlfHho89raTyZOzmXyxdnwxI5BU0tcfeflRWi2rT8U1
-	 fs8RjnbpSZ68OAeRYXImDMVjT32e7bqJkWSS8CcaLbTwkt2SYI+Bb4THeFAkrpY7g46f3
-	 ejmttM4zfhnjm+87AZKrvpKmK20n2nKdaodrR+FfABS7fbR6v0qC4HLRu7tx1fvOeBw==
+	t=1792980737;
+	b=OQzdJHt+bxf6uQNIBLF0fNUAs9e/YzvFlAzZxJpfTuujSECFmxS1LK4/XbwWwXxFj5xV
+	 5ZNSw8whAO+urbt59NNSWfiYB6oLsroMZ0Ntgzk8l8PMluPyiRXMF1R0lrZoit9Su8L3/
+	 +xUi+rqcoKon0AIfQgJPqBH1n3JIjV82mPtkg+HUzwFllV3LyXqIo7VljKnqx76mXnl1K
+	 8fAgfeawG9JFE8QS0XGDecMi3Wv4rdLddDRUZACBl8dhGH6jR9Y37lRhzlNvRNspJ4CSD
+	 7kfSpY0Fre+igujohJhW9u9ml0EInb6kNj7ZZiTf6cYWygblufPdZX6+pt4pxSxo8pQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792972257;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=7JdNRiIZP8QoKhgXwxEL9cPsxZanNaIMVve0+TXzYFE=;
-	b=rDRKU25u5AY3vTE2WsvIelfdfKrbe7mi7ysrchdqM5tIfzcE7Z1slt4NTlfBabDArbS+
-	 GKnwkF0jMPX1zzAm339mp6XeiQC0iYSaed75GssNQudDn9KxpanOtBw51/F6+R+JX5P8T
-	 u90poPfvwLNRW4QIR9laILSY2QQagnQ7K/zriEx4mdq8lE+YuR2WPST9uA/9X1CrMWV/x
-	 9XTImibkud0rDBVQ4xsI0rcGzXDuS4ZMNR7yH6Q67efMFFsjYritfU8umRzat/2vB56sM
-	 lqLe5dXc2Q3jBM/+WRTpOL/x/M0JBhcTb/z5m3hd1NWdha12BzuMC9UHbA/z5eriAYQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1792980737;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:Received:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:
+	 X-Gmail-Original-Message-ID:X-Gm-Features:Message-ID:Subject:To:Cc:
+	 Content-Type;
+	bh=GPu9YN25dDm57paUC3yXoaI+yd25NXWYw23eCkA96p8=;
+	b=aRaAa/hXPwfpV80R8oJhHQb2g9N3/rNFfFe/Ly0pGTxJanYY1lJxOt0MEcgX51l1ZOcS
+	 ljoXzexuCYnFl5FuxZpl7SKD3tgXgm2IaG5OcXoOvgGiXG2Xnqn4ntVqRnmQ6rYgxnQdN
+	 MRprkLtDRT2jnxrr8qpN3tLA7eKpC9YN2clZMPfB725Gsh0eDtVJnPQLDv5TkCqigeO2Z
+	 mqaBHHmB3ruAkcm+RN2dNb8z66ZFcv40FVdI7MiJNUvMmPau10ZupT9moQme7L8sSwZ5A
+	 hURhlbhRnXYgGl1rvaWxBXcU3tsStV4BBaATg31siJNZSEtbhJvwmYaNx9MO2Sv09Tg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="bUg5/xVa";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=none header.from=linux-foundation.org;
+	spf=pass smtp.mailfrom=linuxfoundation.org;
+	dkim=pass header.d=linux-foundation.org header.i=@linux-foundation.org header.a=rsa-sha256 header.s=google header.b=H6t4AtAr;
+	arc=none smtp.remote-ip=209.85.208.48
+Received: from mail-ed1-f48.google.com (mail-ed1-f48.google.com [209.85.208.48])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A85E0606A31A;
-	Sun, 25 Oct 2026 23:50:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1EB45606A321
+	for <linux-ext4@vger.kernel.org>; Mon, 26 Oct 2026 02:12:15 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1EB45606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linuxfoundation.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bUg5/xVa
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 435591F01825;
-	Sun, 25 Oct 2026 23:50:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1792972256;
-	bh=7JdNRiIZP8QoKhgXwxEL9cPsxZanNaIMVve0+TXzYFE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=bUg5/xVaUySv6itNPSThMbVpsdhq2M4MjnOkwh6MratZzXr0luk6JMuDTs+gL2KiN
-	 d+M86MWAFHetxR2NYAov/+SXI4Fws2a+pcXiiYdK2zX6ipz60Vf+IkhoKJ7R79SbTS
-	 8ZLqH0+TUEt5TYg38vRFMkF2dFaOpNa8s8vAD+FeGxT/eC8H+ydzWNAfOhDUz1hwKs
-	 wlQMp2QmWngG+a8cxKOqyywENRhQNOeQkTUElk1lsp3stIygYfywg51V1cMUgAnblg
-	 beSoRuO1owl/NyaMzBpk6jocWzJQlJnd36fsJW7/BPl3cV+372b8Qsde64OEfVNmAT
-	 8BknUf5NIr2eA==
-Date: Sun, 25 Oct 2026 16:50:54 -0700
-From: Eric Biggers <ebiggers@kernel.org>
-To: Joshua Abata <joshabata@gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-	tytso@mit.edu, adilger.kernel@dilger.ca
-Subject: Re: [BUG] ext4/fscrypt: memory corruption after enabling "encrypt"
- on a mounted fs (large folios + bounce page), 7.0
-Message-ID: <20261025235054.GD148998@quark>
-References: <CAJoS2iZ6kKLDqs0cib2=aXn5WMXH2HmK3D+KZaVBN0mXiv4yQA@mail.gmail.com>
+	dkim=pass (1024-bit key, unprotected) header.d=linux-foundation.org header.i=@linux-foundation.org header.a=rsa-sha256 header.s=google header.b=H6t4AtAr
+Received: by mail-ed1-f48.google.com with SMTP id 4fb4d7f45d1cf-6afafc89b48so4159250a12.2
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2026 19:12:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google; t=1792980734; x=1793585534; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=GPu9YN25dDm57paUC3yXoaI+yd25NXWYw23eCkA96p8=;
+        b=H6t4AtArQAj3QgYaCfrM3lyItzggtnfyus2Lijv+bbrQrM5UR/A99W/WKYkK76N16q
+         J112kHpq/pkZhYcYyHM2ypu2OxNZ9qTRP8mRQVEYwYk0n3KFOKv9RFDWogak2ICoSgy1
+         HYUvM3ch8wN8V8L9x5DvOM0myzqwMXz+RkCCo=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792980734; x=1793585534;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=GPu9YN25dDm57paUC3yXoaI+yd25NXWYw23eCkA96p8=;
+        b=sBS7DMptDT3FMsuHqVBWG/cdK0ltHZVcZYFFVqdYL3kzx1E4vFd45z8EAMcQTXqVHH
+         QCuzY3ocEGt5qZZkTMRGJ/XkzV8bzpg2AKWjAIQypxeftqAX9N/8PGVSLx2AIf8kMf7q
+         Goeey6u3AHguZDS74vK0YIjU9fdNxcbcPtIdCyhGeqFTpX9zBlmPqb2Q341sEQrr5MkG
+         rpg6AQ2Dssje+FQ291bo1Qlk0JfilRNEePwDIdRVd4uFA4yO+OPyfOOg30Wqkz6fwxut
+         f7T5jB6SGfeTC+NQDDEcYGbSqRS053TatXpViRXCNaxTZyV2387X6uwGU9ixJlqyp2l9
+         jntg==
+X-Gm-Message-State: AFq9FYJLomr/kOKMs0W6+uHIbpmkUQ9DcskbpTmfe0wZAs1Z1Xb0dyZu
+	L72zesIONorkrNXty5CFJcoAsNj+MFoB3tGUJ8l+6tm1tmcKpGNOR1YqCQ4I7+Ya2M2vt4HudqE
+	DteE4NuQ=
+X-Gm-Gg: AYBFou2ci2L6f97+Joue8YXTPYAVc9fMKSsNn3n566RJlm+BkAOFz6vQ64vNiUWU1Ud
+	hlDC6w5OwEwYDBgf+b9+CrLM2hkYCyTz0+uOTFn6vTTo5umce3qUQAIx2QHqSay9OY51nHFw38+
+	RiugmcofkVm7L76m5r6zXjOwGYBjYJWbI6yrCT0Oqm5gvuZ6qSxCh50VqX/EOlKnCY+OfC2phI5
+	U873ZjK85sZ2rYBCUhNy21p+HQ+GXv7by7hd52rWAN36GozBG3wHIqsjRNgNXaCi5j9P3KIeaGE
+	xZTrdvrxUCs4O7YtEADOc9sVVjuMbuS8wAe+WtAxeemrSDjss9nNZSRfPUFph0Vc3aULCJLrHY/
+	PaQetzIO0UEqG2QdrAPfsamQs5LwVJ81ULBWB6avaogFTi8MDDYJ3xS9DyWnIYYMo12xEDC1j6B
+	svutGs846oEUeaBGFZoGgCUZcjkzrs7yU70rnsbJdxmH74afp96Dh0fGs0yuJvGMobQhfOgKC/G
+	JzchOh8peJP6OdPtMjk1mt/RGQPJS412UdUtsoTBBLeIE3KJ7HFJeMBnFH3OhrVfEK2pHsf5rRo
+	X90Zdvh/FTFpHlKhryK+D/O/wGy8dQ==
+X-Received: by 2002:a05:6402:1f07:b0:6b4:1d53:5185 with SMTP id 4fb4d7f45d1cf-6b44313823bmr7037199a12.16.1792980734387;
+        Sun, 25 Oct 2026 19:12:14 -0700 (PDT)
+Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com. [209.85.218.48])
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6b44584ad9fsm3143987a12.0.2026.10.25.19.12.13
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 25 Oct 2026 19:12:13 -0700 (PDT)
+Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-c450ab1483cso334204666b.3
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Oct 2026 19:12:13 -0700 (PDT)
+X-Received: by 2002:a17:907:3ccc:b0:c29:f5d8:9c75 with SMTP id
+ a640c23a62f3a-c46bde7eabemr658242866b.36.1792980733776; Sun, 25 Oct 2026
+ 19:12:13 -0700 (PDT)
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -57,31 +91,31 @@ List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAJoS2iZ6kKLDqs0cib2=aXn5WMXH2HmK3D+KZaVBN0mXiv4yQA@mail.gmail.com>
+References: <atoWDJDx6sFovvjp@mit.edu> <at1viAwYP3bFOkj_@mit.edu>
+In-Reply-To: <at1viAwYP3bFOkj_@mit.edu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 25 Oct 2026 16:11:57 -1000
+X-Gmail-Original-Message-ID: <CAHk-=wgsdLwcKr1jguH4QfPtS3sm5Ss6HKfk5RAMULHz+O6Jrw@mail.gmail.com>
+X-Gm-Features: AclHuK9VwiBTuLWnqHPC6xVDVLPjjIrsXpo0uxJp1zsuHKmEBofnjvervhtz3pc
+Message-ID: <CAHk-=wgsdLwcKr1jguH4QfPtS3sm5Ss6HKfk5RAMULHz+O6Jrw@mail.gmail.com>
+Subject: Re: [GIT PULL] ext4 updates for 7.4-rc1
+To: Theodore Tso <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, 
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
-On Sun, Oct 25, 2026 at 04:41:16PM -0700, Joshua Abata wrote:
-> Hi,
-> 
-> Enabling the ext4 "encrypt" feature with tune2fs on a *mounted* filesystem
-> and then writing through an fscrypt v2
-> policy corrupts kernel memory on 7.0 (Ubuntu 7.0.0-38-generic). It
-> reproduces in seconds on an untainted kernel in a
-> plain QEMU VM; the same steps with an unmount/remount after tune2fs are
-> fine.
-> 
-> Reproducer (as root, any 7.0 x86_64 with ext4 large folios):
+On Sat, 24 Oct 2026 at 16:56, Theodore Tso <tytso@mit.edu> wrote:
+>
+> Ping?
 
-7.0 is no longer a supported kernel version upstream.  It was not chosen
-as an LTS kernel, and the last 7.0.y stable release occurred on June 27
-with Linux v7.0.14.
+Pulled.
 
-This sounds like the bug that was already fixed in 7.2 by
-"ext4: don't enable large folios on encrypted inodes"
-(https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=linux-7.2.y&id=40554d1221e3d2ff2e0d192b74a05d89eb3620e7) and in 7.3 by other changes.
+Note that I was pulling filesystem code early in the merge window, but
+this hadn't come in then. And then it was architectures and drivers
+and other things for several days.
 
-If Ubuntu is using an unsupported kernel version that is missing this
-fix, then you would need to report that to Ubuntu.
+Now I'm back to filesystems.
 
-- Eric
+It's been only slightly slower than usual due to a couple of days of diving...
+
+                Linus
