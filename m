@@ -1,55 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793051112;
-	b=rPUDywjlJngp4XXTwW421NC5DVwnqW1XGacCxI7Ypm4j9uTd0ucQvR10wosEuqyPcXkQ
-	 4rhtcFyxIcjin/udaVeViMywRIpJow1CA5qDPGkrQmvgWtySGwCXfiKlmKZQJner6/Lau
-	 ZoH+b1SPJuErf6Z47WUWoJ+pRdcafyU4VYmjKMB+EBMknCyy5k3kSIlKVu2F4LTY7D8L1
-	 ucNXiU8GTReQR+9Vs+2gYsNImPYf6Z/iC1TEugxY7BqdKwz+xXlOe8KGSeJaQkcO7n7oK
-	 +3mFlyJ9ooZvmX+7NoTMS8cWoyHZaYXRVf9uh+DvrZqh5qq/TDdLACnNMqDy4vYqODQ==
+	t=1793051141;
+	b=tiWPRN/tNixQywQxxH/OeJ3R66J4TmZnOYlbQMoqR5xxE5TeVjVJuoY85UAeO0Lsppuo
+	 aqea1xh+HMvLUSpcBxbswZge/m9d19HqlWXqZthBLXMl3qSeVhq4tdCulrobHX/316Gai
+	 Pj5J2WWE8e0A0str1/vnh9N29hK+H3HYq7DGRvSdASf0jMj0qwLBlnqRVC3uQjgCnlUsp
+	 hCnPecXRj44eCqJp2WJ2toWN+CwQWJfitkHiXHbu6aA/2nkol2Air3fwtL8b/h7Y3b+E7
+	 zwBmtK8mJAN2a4sVjMd0B5v5NQLe2UmMI2Dh70WNDwf1ZSyRZbEppJiyFxdq44y13aA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793051112;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793051141;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=bc0btPimZJPlaibGvFgoFV5rNJ8djwhej9Lb7S3UTg8=;
-	b=aRn5h8AIpmDONotfBeAPjPRaczx6bQJSFam+k/5HgCjs2ArYWgUGyG3sO+cLwMefjr+x
-	 yUxfFQXNJdlJgcUtfYqP0eWPKw6UsnRFV5aG+jpAHt6TCBI0559RijGW63UlXfE5FpI8e
-	 ipuDT362UGHVV00C8R5LTun4LglfUqV5YsHlQF/Yx/n/RelUbfF7gDuN4H1FhhkYIo9Oh
-	 IyjsWIu65eQO16hNS9bmBJRruU54zJRtJVO7L4WoydbQT6Q8oi5ebLePB07E8cTSlliQW
-	 6eadkDqs80U/raf3uxcod/fpMebdOmfUq2xTQvQ/jf0EkNTaiqQMKfcK6GWx3HlM4IA==
+	bh=UwH8yfiM951SajpzWNYhn0hNl3yG1fmgU03jiAwGEyk=;
+	b=43BwZDGojHqtH7PEzNU1b5HJDMXclBRI22DEKN24ThzdjXDVUdweij50aqXSaxXjHoiY
+	 sKQhovxZsgobcJZxrQKfeA4hF8aXco/sRQmeHBgr41QWXmnjQLAR2F/g4rx2el1RJEWyq
+	 NKcpQm7/nlj8dmC1aOBz4dHjXtxRgQrKSenAUs10oz10/LUAKwqUL0OeXtZSL0gxouLDo
+	 Ie9fNKtS7u02UMcp2m9fAN5mkEzha7GUeSQLMfWAtKeZL+OENafJt2Wf/NpSYFpoK18c0
+	 D2rhi43s/SGszh8Jpn4mUbFa5frCjLsl3iQ7OTBZwI7eqE3wt809uga9Jx+iCHp1T9Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSornXuF;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MAlKTwif;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 434C3606A33B;
-	Mon, 26 Oct 2026 21:45:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4841606A31A;
+	Mon, 26 Oct 2026 21:45:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DSornXuF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B4121F031F4;
-	Mon, 26 Oct 2026 21:45:10 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=MAlKTwif
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8D4F1F01280;
+	Mon, 26 Oct 2026 21:45:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793051111;
-	bh=bc0btPimZJPlaibGvFgoFV5rNJ8djwhej9Lb7S3UTg8=;
+	s=k20260515; t=1793051140;
+	bh=UwH8yfiM951SajpzWNYhn0hNl3yG1fmgU03jiAwGEyk=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=DSornXuFjTL3O00BcpO78tRklJtdIjNguOzqis7mRJrCkb5JekXEu7W9SehNBNvVW
-	 2VNgGwhZcxfVYHOqxFDbAk6BlcXwSR3+7lVhMH4WK0Pg1ukRRIFd8JwwDsxm5D/3b4
-	 wkw6WHn03VP2FsbGCXtt86fhjo9cfM+ZvqtZptJua67PPQTiO1a3+Acymx9Qz8QxcK
-	 p6HTCVMqd7Ch6MDQmf5gUn1FV/6DMrMJWVvGmJjZn8HawAHgMeaZAy85oUMDtNn2GH
-	 Qqv7wWU8arbr3his/HvAqlXb/k6WnCbkfspK7RQvAVWACFdK9+WxHhTBPlc9SFFl+4
-	 j9Yx/mIhKUzsg==
-Date: Mon, 26 Oct 2026 14:45:07 -0700
+	b=MAlKTwifKmmrkSQ8dBhDfH/RzsUBrjYu6aDNsQWa/jqLPxWie7qbRvzIMG8y0M06+
+	 WgjPdeVXinGfaU3WKxeBojFs4p20370SxW3jKKv2CgjcwfBXADuiDLZJZZkdIy5cXZ
+	 pnZaGYHOroV7mO6AWfQSiA+DXkXh7H2wkL3aZhA9rLkfyqChijbFWFmjbQs5m55DsD
+	 u5pnp2N6vlhJbpf5Htvg6l4mloC6L0xk6nwyoUNd19CnNeooQ89TzaRauouw1VWFIt
+	 SD81E2RkGRzE7JQY2f9wLRpgA+ZkRoYC9OzE8oSQF2n792CH9gyerorMgasnHjGvTq
+	 0aANobeZNrHLA==
+Date: Mon, 26 Oct 2026 14:45:36 -0700
 From: Nathan Chancellor <nathan@kernel.org>
-To: Marco Elver <elver@google.com>
-Cc: Jan Kara <jack@suse.com>, Timothy Day <timday@thelustrecollective.com>,
+To: Jan Kara <jack@suse.cz>
+Cc: Jan Kara <jack@suse.com>, Marco Elver <elver@google.com>,
+	Timothy Day <timday@thelustrecollective.com>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
 	llvm@lists.linux.dev
 Subject: Re: [PATCH v2] ext2: Make sbi an proper alias for EXT2_SB(sb) in
  ext2_fill_super()
-Message-ID: <20261026214507.GB1330439@ax162>
+Message-ID: <20261026214536.GC1330439@ax162>
 References: <20261023-ext2-fix-context-analysis-clang-24-v2-1-a33961453899@kernel.org>
- <CANpmjNODG_MBuSJvRkzUjwWqeD=hSQLWtHkre8=9Z6-3ZmTKEA@mail.gmail.com>
+ <l5r3w2wshrbhcxx4jamjufxdodmkb75zvitxcrll3uipih5cfq@plrdwt7fy5xz>
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -61,14 +62,13 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CANpmjNODG_MBuSJvRkzUjwWqeD=hSQLWtHkre8=9Z6-3ZmTKEA@mail.gmail.com>
+In-Reply-To: <l5r3w2wshrbhcxx4jamjufxdodmkb75zvitxcrll3uipih5cfq@plrdwt7fy5xz>
 
-On Mon, Oct 26, 2026 at 11:08:30AM +0100, Marco Elver wrote:
-> Right, though function-local aliases are resolved. We just aren't able
-> to figure out aliases that propagate through non-local variables.
+On Mon, Oct 26, 2026 at 01:32:34PM +0100, Jan Kara wrote:
+> OK, if this helps you :). Added to my tree, I plan to push it to Linus for
+> rc2.
 
-Ah okay thanks, I'll keep that in mind in case it comes up in the
-future.
+Great, that would help a lot, thanks!
 
 -- 
 Cheers,
