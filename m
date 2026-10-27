@@ -1,56 +1,117 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.170
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793137344;
-	b=4b/3eOEya3n6sibhd2sHXBbDhPqtlsa1zi+Ao6lqyET79gLttheaH07GYRCZAmbg3Kmp
-	 A4rJD705gShprbM3KsmM+wPgaNkRlrKEzE3AYV45hTnLlKdHsxUaSHS6wqIIy+C/reA1B
-	 fHKu5ueAJN1LmySyYA4Ycy2AEihbv7IK7jYaStOp8Y/YXM2hACRK54ZEsQlf2JqTRRvjq
-	 5sR2m3WSND01kl9lk3Au3JyX57nZs/1IzrRsYUwxkYPzV2+Y+LC2EcxJpS6v7YVHerHTf
-	 7xHJ9oNz1s7SjZjcnyjvjSJfwhzouyym0yeIbhzSfeREwm6zBvu3EYwR8DtBUpDtjtw==
+	t=1793138313;
+	b=YhD+RS4LAXib06Xe838+rqVeP+pQZb/gtjJ/T1zUOhD/r5+OVUUm2TXhdrvrzUxIsNdi
+	 mQl6iU7DJibBXMhIsVklCmfdHnBgHelS8JBIyIO+E7SKvcuduFUKN4wO+r5S1ftFzy8hS
+	 RQnljcUl6WFzQjXeF2eXRhRzmNovtm+TsaroZKBoT1DRE7spW5Rg3TpPx4zNEV+nckHDg
+	 gTVsjlb5ok/LwAXUclwlZQQIKSS3ACW+Z7UKHErjWA7XKjBBwTLl01VkFsYUvJGzF2CdX
+	 rfXpVOe/oVuhmM2NIHBapuzB8qj+OlGK3az76I67oLTTkNG66Cjesk4rBXoDVmyTJMA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793137344;
-	h=Received:DKIM-Signature:Message-ID:From:Subject:Reply-To:To:Cc:
-	 In-Reply-To:References:Content-Type:Content-Transfer-Encoding:Date;
-	bh=+U/3AyE9h8VFoJfLGSAvZG/eHASWT4otmv7gFTiSty0=;
-	b=IeqLVD+B4HeynOIzh1gU171BHrHBwcxo4Nsamw0xh/aR5GTL2DqVv6JFSEpKmbWaYEcx
-	 8A9/XqP3+Pyq4IrOiYaQ04YiqqdDW/sMFMYo6Sbhjkc0Uq8PpNDspMWDJhsH2IwaGZqAp
-	 j04gY6v345xQ+cQTLJg3nvzWCyM9JUvkRDvBYZ5if++8iMw2/F1nrcasq5o8bvyj7rm26
-	 /jYGliPlXHd/rs2hf7ef73XU3yv8hea6to0EDLis+2ktdn6AoBMqfyI3D10LuQdMEyj34
-	 ADOCs9nhc3aHYWG7W6iNf8dd1ESui9jfX3jSrZC4ivJhbgSzKbUs/I1Nn1vzsFQqsmQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793138313;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=fKH8lEROlToWUaFVk6HBGi+a3bbRsRUnkhgJ3/v+Ess=;
+	b=IzpAB2vH+s1I4hhfZf+jEpaI2XKKT2++dqyPixcNFHNqT4SEAL6G9jBMR/1z8wxgB8GB
+	 1J/LgeEdM2v1D03406z6I6GnKF/ErW4RHYLJ4BTH0sdBN/ri/yX5BOIhKriFLAfTkV577
+	 Ab5qh+DwAnSlP4byigAOSnVMXap3kVMaC7nwfleaqov0w2lB6Y7MbPOBrlfgU2WIVxQ+k
+	 GFm9c66fLQ+w138bysIo1TfFUbQrolIQ5a2w1RpbC8FBfBTV7wajk6Wxw3QtPGyidpuQz
+	 zjgyHfWeg/05t4OGU57A8AUsJfSsHkeH5b0+zDGhpkMk4HJuyFOdE66ePKKZjgJaLbw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=U7Jzrt9u;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Kktk5MvT;
+	arc=none smtp.remote-ip=209.85.128.170
+Received: from mail-yw1-f170.google.com (mail-yw1-f170.google.com [209.85.128.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 390E2606A31A
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 21:42:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6DDB606A31D
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 21:58:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B6DDB606A31D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=U7Jzrt9u
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89EBD1F01825;
-	Tue, 27 Oct 2026 21:42:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793137343;
-	bh=+U/3AyE9h8VFoJfLGSAvZG/eHASWT4otmv7gFTiSty0=;
-	h=From:Subject:Reply-To:To:Cc:In-Reply-To:References:Date;
-	b=U7Jzrt9u1oYfh06bKCddpUDOjJHfvBGYMiGb5JL6vK95NroclM9LzewJlI9Q0jYmo
-	 gsa2CUQ5WC8dIlhl4+JLehYHIT4PRAdVfC5lrwPT1qeKA2JHzK5Wd7LiY+Ipk+K5Yj
-	 Qoi0Sl1puMwEwkmFV2zqI50+1X3iGNJhKsieb1PY/gOT28u/Mn1ztkP9CnqMd7Z/wd
-	 sgU0C6dgCMi0oCyHpP6q1iIS3/U85yieSCyGvgEzHiwHd6e4rYet96DcLiSPAZQFvZ
-	 Ksh1+FepurNf1vcqhRfE8nE8idU80ubBZISPIaj9hIcSQbzR5dXQ8IJqtawW0aIvwB
-	 nWX7VEU5e/dPg==
-Message-ID: <sashiko-outbox-187137@kernel.org>
-From: sashiko-bot@kernel.org
-Subject: Re: [PATCH 09/10] ovl: handle lazytime on the upper filesystem
-Reply-To: sashiko-reviews@lists.linux.dev
-To: "Josef Bacik" <josef@toxicpanda.com>
-Cc: linux-ext4@vger.kernel.org, dsterba@suse.cz, tytso@mit.edu
-In-Reply-To: <20261027-b4-ovl-containerized-sync-v1-9-802e512379a6@toxicpanda.com>
-References: <20261027-b4-ovl-containerized-sync-v1-0-802e512379a6@toxicpanda.com>
- <20261027-b4-ovl-containerized-sync-v1-9-802e512379a6@toxicpanda.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Date: Tue, 27 Oct 2026 21:42:23 +0000
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Kktk5MvT
+Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-8b0d126f631so3073557b3.2
+        for <linux-ext4@vger.kernel.org>; Tue, 27 Oct 2026 14:58:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1793138312; x=1793743112; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=fKH8lEROlToWUaFVk6HBGi+a3bbRsRUnkhgJ3/v+Ess=;
+        b=Kktk5MvTTmooZ0Q3aCi26vX768BMQ/1m/1iozUmZR0IzIeWf2BuQjazLJfG3476g/r
+         8kvrHa8KOzQV8RrLyDJ1RlEwNQ7Be2n0AY1iiRRdIvzRuc1oPn4B9jjY/M5c2//4SLMj
+         USKthEZZWMli+0SNU4AVBbstq5kepiLkMHCLjcclCHsvypIYeFeeQS+wYw7Tchrd69SR
+         Mqo4l3cOiuk8Ls1Fk9pOGcS/WnltZVnMA+jAYh1/nSwoFzCdA70wDWhzfkrisd+SUrQE
+         6YLG1ywmQCVUi4C6A9d96MuXY2i6KxrufWZylWKs6C1OPJqhIo/CTS2nFacO58n+P2BA
+         axtw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1793138312; x=1793743112;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=fKH8lEROlToWUaFVk6HBGi+a3bbRsRUnkhgJ3/v+Ess=;
+        b=j7CZCC+JjF9Apzq8wKBBEfM8lJijbyf2hA7JFlfLZjRQELBJ0PqTUzQtzBmxV7Cx7u
+         LMWOMwcu7dxAw4kRaXp2QAqGgJvQ8u1JIj8m8nwf05u8L8Y5kMBsxxophl3nGVEpvysw
+         6MswLKaHl7N50mzVQoLRjCglGXuwyWYhxZ8ZSaGlvz24cTuFAHjrvLDy9V52byhAG5fh
+         7suvaWgkm/JPdN8AXgyaKwhBDAII1LP+/OrALzHofP5nF1tWnADhJV3fuueP7zyL9krR
+         m9l5gn34MaUfRontNaLVCyBucjCgIk6kLz02eIfZmuoFfneV6IUkVslwK1caFSBagXTY
+         mFmg==
+X-Forwarded-Encrypted: i=1; AKwUvBwVfA2+mi1PZajZpv7n0WVjlzPDiCSqVXuDeC1aaBfQOy3L4fM5TJzy6BSVzV/JRN/QbAKvKA0Yef61@vger.kernel.org
+X-Gm-Message-State: AFq9FYJf/vEuTY60QSBGzkirTTa1WYA5OaPFScWYiKeXFPDSoIiQSvEK
+	6aCD9a7zbfROCKLMN6qBwZ6nSgCQXqtIpi73RS0s8+yw5ncyXMDZsQe4
+X-Gm-Gg: AYBFou3qcZEpdUWIuylcADfiBE6BeaA+sXtfWP04+A8yhQ9s2Yia1mxfEvNol2sVe5u
+	YOdJV2ncUcq7GBJNdaDb+ZLBY/lb3L8IrlBFjFyjmXyI6PmPq7fSFqRr5GzF+13DTX+FE68iSV6
+	PHKtmhDxlWAVcRHKlDqVWH0rdlIK8DgL6kKrsT4k2A63mwMvn0BE2JbHtTc3uJT170EQEPjDino
+	SpyDq765Tvn3P1jINXp+j2PTqzVzsUkyuZ/dNrNEQB7rp8Y48m8Pw2K9GgTYQ+gunO8YPaj+ygy
+	FCEfFBI+7WSZRYRjvFY77gGPOWJ69lNDlv8bYhsvU8t31BRsAlWd7HtKMmSVwSHDvUahlhEAyJD
+	GGoM6LEKVYvOmqizRb/nrFkIphuTwt0ugSE7FaAGhghmK+z0UBG+EOkKzZ2afdfDDiShEiDp0uB
+	0RfiMypKG3y4IuWdijIN8KpPie7hMtAxeeKHSj8FFi11yeJTLqlRn1Wu/aHSsC63ak8AFt5rPGZ
+	j9xdopenth7shyL/iDRB3JInsMyH4kqvGXhpKwkrCsyBen0TxzretM6xUjbb2NkBDCUw8BCQ20E
+	Bv++lyXilXZIu8Z2o9RJIUVUkq7YeB+f
+X-Received: by 2002:a05:690c:7108:b0:8b0:7c36:4afc with SMTP id 00721157ae682-8b1b5e81826mr2719877b3.58.1793138311531;
+        Tue, 27 Oct 2026 14:58:31 -0700 (PDT)
+Received: from localhost ([2a03:2880:ff:71::])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b19e59400csm19360677b3.22.2026.10.27.14.58.30
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 27 Oct 2026 14:58:30 -0700 (PDT)
+From: Joanne Koong <joannelkoong@gmail.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	changfengnan@bytedance.com,
+	kbusch@kernel.org,
+	Matthew Wilcox <willy@infradead.org>,
+	Jan Kara <jack@suse.cz>,
+	Jonathan Corbet <corbet@lwn.net>,
+	David Sterba <dsterba@suse.com>,
+	Gao Xiang <xiang@kernel.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Carlos Maiolino <cem@kernel.org>,
+	Damien Le Moal <dlemoal@kernel.org>,
+	libaokun@linux.alibaba.com,
+	bfoster@redhat.com,
+	linux-ext4@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+	linux-nilfs@vger.kernel.org,
+	fuse-devel@lists.linux.dev,
+	Zhang Yi <yi.zhang@huawei.com>
+Subject: [PATCH 0/5] iomap: remaining patches for iomap_iter_next conversion
+Date: Tue, 27 Oct 2026 14:53:21 -0700
+Message-ID: <20261027215326.2693300-1-joannelkoong@gmail.com>
+X-Mailer: git-send-email 2.52.0
 X-Mailing-List: linux-ext4@vger.kernel.org
 List-Id: <linux-ext4.vger.kernel.org>
 List-Post: <mailto:linux-ext4@vger.kernel.org>
@@ -59,187 +120,107 @@ List-Subscribe: <mailto:linux-ext4+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-ext4+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-ext4+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential issue(=
-s) to consider:
-- [Medium] ovl: ovl_park_inode() leaves inode->dirtied_time_when at 0
-- [Medium] ovl: unhashed root inode in ovl_get_root() is skipped by __mark_=
-inode_dirty()
---
+Hi Christian,
 
-commit c6403b040bf7636a271f2175d48ac775e6f04154
-Author: Josef Bacik <josef@toxicpanda.com>
+This is a resend of the last 3 patches from the "iomap: convert to in-iter
+iomap_next() model" patch series [1].
 
-ovl: handle lazytime on the upper filesystem
+Those 3 patches are rebased on top of current mainline (commit 83f32c773255
+("Merge tag 'erofs-for-7.4-rc1-2' ...")) in Linus's tree. They require two new
+preparatory patches (patches 1 and 2 in this series), which are trivial
+->iomap_next() conversions of the nilfs2 and fuse iomap code that was added
+during this merge window. There were conflicts with "iomap: pass
+iomap_iter_next_fn directly instead of struct iomap_ops" (patch 4 in this
+series) during the rebase. These are resolved in the patch, which now also
+converts the iomap users added this merge window (ext4 iomap buffered I/O,
+exfat swap activation, nilfs2, and fuse ext_map). Jan's Acked-by and
+Christoph's Reviewed-by on it predate these changes.
 
-This commit handles lazytime on the upper filesystem by parking the overlay
-inode with I_DIRTY_TIME when only lazytime timestamps remain on the upper
-inode after writeback. It also implements ->sync_lazytime() on overlay inode
-operations to propagate lazytime writeback requests to the upper inode.
+These patches are being sent out now in case anyone wants to look at the
+preparatory patches or patch 4. This series applies cleanly to both current
+mainline and next-20261027. If anything conflicts by the time you pick it up
+at the end of the merge window, I'll rebase and resend.
 
-> diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
-> index 954648d417006..631f68a97980f 100644
-> --- a/fs/overlayfs/super.c
-> +++ b/fs/overlayfs/super.c
-> @@ -344,6 +344,28 @@ static bool ovl_upper_unfinished(struct inode *upper)
->  	       (inode_state_read_once(upper) & I_SYNC);
->  }
-> =20
-> +/*
-> + * All that is left of @inode are timestamps which lazytime holds back o=
-n the
-> + * upper filesystem.  A pass which does not wait leaves them alone, for =
-up to 12
-> + * hours.  Do to the overlay inode what was done to the upper inode: with
-> + * I_DIRTY_TIME it is off the list which the flusher walks, syncfs() sti=
-ll gets
-> + * to it, and ovl_sync_lazytime() is told when the time has come.
-> + *
-> + * One such time is when the last reference goes away, which it never do=
-es for
-> + * the upper inode as long as the overlay inode is there.  It may have g=
-one away
-> + * already.  iput() looks for I_DIRTY_TIME under i_lock before it drops =
-the last
-> + * reference, so either it sees the flag or the count is zero here.
-> + */
-> +static void ovl_park_inode(struct inode *inode)
-> +{
-> +	if (!ovl_tracks_dirty(OVL_FS(inode->i_sb)))
-> +		return;
-> +
-> +	__mark_inode_dirty(inode, I_DIRTY_TIME);
-> +	if (!icount_read_once(inode))
-> +		mark_inode_dirty_sync(inode);
-> +}
+Thanks,
+Joanne
 
-[Severity: Medium]
-When ovl_park_inode() is called from ovl_write_inode() during background
-flusher writeback, will inode->dirtied_time_when remain left at 0?
+[1] https://lore.kernel.org/linux-fsdevel/20260729192737.3190206-1-joannelkoong@gmail.com/
 
-Unlike regular filesystems that set I_DIRTY_TIME via generic_update_time()
-when the inode is not queued for writeback, an overlay inode only receives
-I_DIRTY_TIME here in ovl_park_inode() during
-writeback_sb_inodes()->__writeback_single_inode()->write_inode()->ovl_write=
-_inode().
+Joanne Koong (5):
+  nilfs2: convert iomap ops to ->iomap_next()
+  fuse: convert ext_map iomap ops to ->iomap_next()
+  iomap: remove ->iomap_begin()/->iomap_end() legacy path
+  iomap: pass iomap_iter_next_fn directly instead of struct iomap_ops
+  Documentation: iomap: update docs to reflect iomap_iter_next model
 
-At that point, move_expired_inodes() has already set I_SYNC_QUEUED on the
-overlay inode. When ovl_park_inode() calls
-__mark_inode_dirty(inode, I_DIRTY_TIME), __mark_inode_dirty() in
-fs/fs-writeback.c sets I_DIRTY_TIME in i_state and then takes the
-I_SYNC_QUEUED early exit before setting inode->dirtied_time_when:
+ Documentation/filesystems/iomap/design.rst    | 140 +++++++++++++-----
+ .../filesystems/iomap/operations.rst          |  68 ++++-----
+ Documentation/filesystems/iomap/porting.rst   |  16 +-
+ block/fops.c                                  |  10 +-
+ fs/btrfs/direct-io.c                          |   8 +-
+ fs/dax.c                                      |  48 +++---
+ fs/erofs/data.c                               |  28 ++--
+ fs/erofs/internal.h                           |   3 +-
+ fs/erofs/zmap.c                               |   7 +-
+ fs/exfat/file.c                               |  14 +-
+ fs/exfat/inode.c                              |   6 +-
+ fs/exfat/iomap.c                              |  22 +--
+ fs/exfat/iomap.h                              |   6 +-
+ fs/ext2/ext2.h                                |   3 +-
+ fs/ext2/file.c                                |   4 +-
+ fs/ext2/inode.c                               |   9 +-
+ fs/ext4/ext4.h                                |  10 +-
+ fs/ext4/extents.c                             |   8 +-
+ fs/ext4/file.c                                |  22 +--
+ fs/ext4/inode.c                               |  58 +++-----
+ fs/f2fs/data.c                                |   6 +-
+ fs/f2fs/f2fs.h                                |   3 +-
+ fs/f2fs/file.c                                |   4 +-
+ fs/fuse/dax.c                                 |  10 +-
+ fs/fuse/ext_map.c                             |  11 +-
+ fs/fuse/file.c                                |  10 +-
+ fs/fuse/virtio_fs.c                           |   3 +-
+ fs/gfs2/aops.c                                |   6 +-
+ fs/gfs2/bmap.c                                |   9 +-
+ fs/gfs2/bmap.h                                |   2 +-
+ fs/gfs2/file.c                                |   6 +-
+ fs/gfs2/inode.c                               |   6 +-
+ fs/hpfs/file.c                                |   6 +-
+ fs/internal.h                                 |   1 -
+ fs/iomap/buffered-io.c                        |  40 ++---
+ fs/iomap/direct-io.c                          |   8 +-
+ fs/iomap/fiemap.c                             |   8 +-
+ fs/iomap/iter.c                               |  13 +-
+ fs/iomap/seek.c                               |   8 +-
+ fs/iomap/swapfile.c                           |   4 +-
+ fs/iomap/trace.h                              |  12 +-
+ fs/nilfs2/file.c                              |   2 +-
+ fs/nilfs2/iomap.c                             |   4 +-
+ fs/nilfs2/iomap.h                             |   4 +-
+ fs/ntfs/aops.c                                |   6 +-
+ fs/ntfs/file.c                                |  20 +--
+ fs/ntfs/inode.c                               |   2 +-
+ fs/ntfs/iomap.c                               |  42 ++----
+ fs/ntfs/iomap.h                               |  10 +-
+ fs/ntfs3/file.c                               |  16 +-
+ fs/ntfs3/inode.c                              |  13 +-
+ fs/ntfs3/ntfs_fs.h                            |   3 +-
+ fs/remap_range.c                              |   6 +-
+ fs/xfs/xfs_aops.c                             |   8 +-
+ fs/xfs/xfs_file.c                             |  53 +++----
+ fs/xfs/xfs_iomap.c                            |  55 ++-----
+ fs/xfs/xfs_iomap.h                            |  16 +-
+ fs/xfs/xfs_iops.c                             |   4 +-
+ fs/xfs/xfs_reflink.c                          |   6 +-
+ fs/zonefs/file.c                              |  22 +--
+ include/linux/dax.h                           |  18 +--
+ include/linux/fs.h                            |   7 +-
+ include/linux/iomap.h                         |  66 +++++----
+ 63 files changed, 492 insertions(+), 557 deletions(-)
 
-fs/fs-writeback.c:__mark_inode_dirty() {
-    ...
-		if (inode_state_read(inode) & I_SYNC_QUEUED)
-			goto out_unlock;
-    ...
-		if (!was_dirty) {
-			struct list_head *dirty_list;
-			bool wakeup_bdi =3D false;
+-- 
+2.52.0
 
-			inode->dirtied_when =3D jiffies;
-			if (dirtytime)
-				inode->dirtied_time_when =3D jiffies;
-    ...
-}
-
-When __writeback_single_inode() returns, requeue_inode() in fs/fs-writeback=
-.c
-moves the inode to wb->b_dirty_time and updates inode->dirtied_when, but do=
-es
-not set inode->dirtied_time_when:
-
-fs/fs-writeback.c:requeue_inode() {
-    ...
-	} else if (inode_state_read(inode) & I_DIRTY_TIME) {
-		inode->dirtied_when =3D jiffies;
-		inode_io_list_move_locked(inode, wb, &wb->b_dirty_time);
-		inode_state_clear(inode, I_SYNC_QUEUED);
-	}
-    ...
-}
-
-When __writeback_single_inode() later checks whether lazytime has expired on
-a WB_SYNC_NONE pass:
-
-fs/fs-writeback.c:__writeback_single_inode() {
-    ...
-	if ((inode_state_read_once(inode) & I_DIRTY_TIME) &&
-	    (wbc->sync_mode =3D=3D WB_SYNC_ALL ||
-	     time_after(jiffies, inode->dirtied_time_when +
-			dirtytime_expire_interval * HZ)))
-		sync_lazytime(inode);
-    ...
-}
-
-it compares jiffies against inode->dirtied_time_when =3D=3D 0 instead of th=
-e time
-when the inode was dirtied or parked. Depending on jiffies wraparound state
-(or if the inode re-enters __writeback_single_inode() before 12 hours), cou=
-ld
-this either skip sync_lazytime() and requeue the inode on wb->b_dirty_time
-for another 12 hours, or expire lazytime prematurely?
-
-> +
->  static int ovl_write_inode(struct inode *inode, struct writeback_control=
- *wbc)
->  {
->  	struct inode *upper =3D ovl_inode_upper(inode);
-> @@ -360,6 +382,8 @@ static int ovl_write_inode(struct inode *inode, struc=
-t writeback_control *wbc)
-> =20
->  	if (ovl_upper_unfinished(upper))
->  		ovl_mark_inode_dirty(inode);
-> +	else if (inode_state_read_once(upper) & I_DIRTY_TIME)
-> +		ovl_park_inode(inode);
-> =20
->  	return ret;
->  }
-
-[Severity: Medium]
-What happens when timestamps are updated on the overlay root directory inode
-with lazytime enabled on the upper filesystem?
-
-In fs/overlayfs/super.c, ovl_get_root() allocates the root inode via
-ovl_new_inode() and initializes OVL_I(d_inode(root))->__upperdentry via
-ovl_inode_init() without hashing the inode:
-
-fs/overlayfs/super.c:ovl_get_root() {
-    ...
-	root =3D d_make_root(ovl_new_inode(sb, S_IFDIR, 0));
-	if (!root)
-		return NULL;
-    ...
-	ovl_inode_init(d_inode(root), &oip, ino, fsid);
-	ovl_dentry_update_reval(root, upperpath->dentry);
-	return root;
-}
-
-Because __upperdentry is already populated at mount time, ovl_inode_update()
-(which calls insert_inode_locked4()) is never called for the root inode, so
-inode_unhashed(d_inode(sb->s_root)) remains true.
-
-When timestamps on the overlay root directory are updated (for example via
-touch_atime()->ovl_update_time()->ovl_mark_inode_dirty() or
-ovl_dir_modified()->ovl_copyattr()->ovl_mark_inode_dirty()), or when
-ovl_park_inode() calls __mark_inode_dirty(inode, I_DIRTY_TIME),
-__mark_inode_dirty() in fs/fs-writeback.c bails out without queueing the
-inode onto wb->b_dirty or wb->b_dirty_time:
-
-fs/fs-writeback.c:__mark_inode_dirty() {
-    ...
-		if (!S_ISBLK(inode->i_mode)) {
-			if (inode_unhashed(inode))
-				goto out_unlock;
-		}
-    ...
-}
-
-As a result, wouldn't syncfs() and unmount miss flushing lazytime timestamps
-for the upper root directory inode because the overlay root inode is never
-queued on the writeback lists?
-
---=20
-Sashiko AI review =C2=B7 https://sashiko.dev/#/patchset/20261027-b4-ovl-con=
-tainerized-sync-v1-0-802e512379a6@toxicpanda.com?part=3D9
